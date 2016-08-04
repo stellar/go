@@ -1,0 +1,4 @@
+package: github.com/stellar/go
+import:
+- package: github.com/howeyc/gopass
+- package: github.com/agl/ed25519
