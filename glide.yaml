@@ -3,3 +3,14 @@ import:
 - package: github.com/howeyc/gopass
 - package: github.com/agl/ed25519
 - package: github.com/nullstyle/go-xdr
+- package: github.com/pkg/errors
+  version: ^0.7.0
+- package: github.com/getsentry/raven-go
+- package: github.com/segmentio/go-loggly
+- package: golang.org/x/net/context
+- package: github.com/stretchr/testify
+- package: github.com/jmoiron/sqlx
+- package: github.com/lann/squirrel
+- package: github.com/lib/pq
+- package: github.com/go-sql-driver/mysql
+- package: github.com/mattn/go-sqlite3
