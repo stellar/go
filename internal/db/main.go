@@ -1,6 +1,10 @@
-// Package db2 is the replacement for db.  It provides low level db connection
-// and query capabilities.
-package db2
+// Package db is the base package for database access at stellar.  It primarily
+// exposes Repo which is a lightweight wrapper around a *sqlx.DB that provides
+// utility methods (See the repo tests for examples).
+//
+// In addition to the query methods, this package provides query logging and
+// stateful transaction management.
+package db
 
 import (
 	"database/sql"
@@ -19,24 +23,12 @@ type Conn interface {
 	Select(dest interface{}, query string, args ...interface{}) error
 }
 
-// Pageable records have a defined order, and the place withing that order
-// is determined by the paging token
-type Pageable interface {
-	PagingToken() string
-}
-
-// PageQuery represents a portion of a Query struct concerned with paging
-// through a large dataset.
-type PageQuery struct {
-	Cursor string
-	Order  string
-	Limit  uint64
-}
-
-// Repo provides helper methods for making queries against `Conn`, such as
-// logging.
+// Repo provides helper methods for making queries against `DB` and provides
+// utilities such as automatic query logging and transaction management.  NOTE:
+// A Repo is designed to be lightweight and temporarily lived (usually request
+// scoped) which is one reason it is acceptable for it to store a context.
 type Repo struct {
-	// Conn is the database connection that queries should be executed against.
+	// DB is the database connection that queries should be executed against.
 	DB *sqlx.DB
 
 	// Ctx is the optional context in which the repo is operating under.
