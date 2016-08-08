@@ -16,3 +16,5 @@ import:
 - package: github.com/go-sql-driver/mysql
 - package: github.com/mattn/go-sqlite3
 - package: gopkg.in/tylerb/graceful.v1
+- package: github.com/rs/cors
+- package: goji.io

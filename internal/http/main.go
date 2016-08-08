@@ -10,6 +10,8 @@ import (
 	"os"
 	"time"
 
+	"github.com/stellar/go/internal/errors"
+	"github.com/stellar/go/internal/log"
 	"golang.org/x/net/http2"
 	"gopkg.in/tylerb/graceful.v1"
 )
@@ -39,11 +41,7 @@ type Config struct {
 	ShutdownGracePeriod time.Duration
 	OnStarting          func()
 	OnStopping          func()
-
-	// This func, if non-nil, will be called after the server has stopped running,
-	// either from a graceful shutdown request or an error occurring.  The
-	// provided error will be nil if the shutdown was user requested.
-	OnStopped func(error)
+	OnStopped           func()
 }
 
 // Run starts an http server using the provided config struct.
@@ -67,15 +65,15 @@ func Run(conf Config) {
 		err = srv.ListenAndServe()
 	}
 
-	if conf.OnStopped != nil {
-		conf.OnStopped(err)
+	if err != nil {
+		log.Error(errors.Wrap(err, "failed to start server"))
+		os.Exit(1)
 	}
 
-	if err != nil {
-		os.Exit(1)
-	} else {
-		os.Exit(0)
+	if conf.OnStopped != nil {
+		conf.OnStopped()
 	}
+	os.Exit(0)
 }
 
 // setup is a utility function to configure a new graceful server.  Its main
