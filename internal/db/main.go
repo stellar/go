@@ -12,6 +12,11 @@ import (
 	"github.com/jmoiron/sqlx"
 	"github.com/stellar/go/internal/errors"
 	"golang.org/x/net/context"
+
+	// Enable mysql
+	_ "github.com/go-sql-driver/mysql"
+	// Enable postgres
+	_ "github.com/lib/pq"
 )
 
 // Conn represents a connection to a single database.
