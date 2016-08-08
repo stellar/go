@@ -8,9 +8,11 @@ import:
 - package: github.com/getsentry/raven-go
 - package: github.com/segmentio/go-loggly
 - package: golang.org/x/net/context
+- package: golang.org/x/net/http2
 - package: github.com/stretchr/testify
 - package: github.com/jmoiron/sqlx
 - package: github.com/lann/squirrel
 - package: github.com/lib/pq
 - package: github.com/go-sql-driver/mysql
 - package: github.com/mattn/go-sqlite3
+- package: gopkg.in/tylerb/graceful.v1
