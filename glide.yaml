@@ -18,3 +18,4 @@ import:
 - package: gopkg.in/tylerb/graceful.v1
 - package: github.com/rs/cors
 - package: goji.io
+- package: github.com/asaskevich/govalidator

@@ -8,6 +8,7 @@ In addition to the other top-level packages, there are a few special directories
 
 * **clients** contains packages that provide client packages to the various stellar services.
 * **exp** contains experimental packages.  Use at your own risk.
+* **handlers** contains packages that provide pluggable implementors of `http.Handler` that make it easier to incorporate portions of the stellar protocol into your own http server. 
 * **internal** contains packages that are not intended for consumption outside of stellar's other packages.  Packages that provide common infrastructure for use in our services and tools should go here, such as `db` or `log`. 
 * **services** contains packages that compile to applications that are long-running processes (such as API servers).
 * **tools** contains packages that compile to command line applications.
