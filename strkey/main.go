@@ -4,12 +4,13 @@ import (
 	"bytes"
 	"encoding/base32"
 	"encoding/binary"
-	"errors"
-	"fmt"
 
 	"github.com/stellar/go/crc16"
+	"github.com/stellar/go/internal/errors"
 )
 
+// ErrInvalidVersionByte is returned when the version byte from a provided
+// strkey-encoded string is not one of the valid values.
 var ErrInvalidVersionByte = errors.New("invalid version byte")
 
 // VersionByte represents one of the possible prefix values for a StrKey base
@@ -37,7 +38,7 @@ func Decode(expected VersionByte, src string) ([]byte, error) {
 	}
 
 	if len(raw) < 3 {
-		return nil, fmt.Errorf("encoded value is %d bytes; minimum valid length is 3", len(raw))
+		return nil, errors.Errorf("encoded value is %d bytes; minimum valid length is 3", len(raw))
 	}
 
 	// decode into components
