@@ -52,6 +52,12 @@ func Open(dialect, url string) (*Repo, error) {
 	return &Repo{DB: db}, nil
 }
 
+// Wrap wraps a bare *sql.DB (from the database/sql stdlib package) in a
+// *db.Repo instance.
+func Wrap(base *sql.DB, dialect string) *Repo {
+	return &Repo{DB: sqlx.NewDb(base, dialect)}
+}
+
 // ensure various types conform to Conn interface
 var _ Conn = (*sqlx.Tx)(nil)
 var _ Conn = (*sqlx.DB)(nil)
