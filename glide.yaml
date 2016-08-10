@@ -19,3 +19,5 @@ import:
 - package: github.com/rs/cors
 - package: goji.io
 - package: github.com/asaskevich/govalidator
+- package: github.com/BurntSushi/toml
+- package: github.com/spf13/cobra
