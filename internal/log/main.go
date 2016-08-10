@@ -71,6 +71,10 @@ func PushContext(parent context.Context, modFn func(*Entry) *Entry) context.Cont
 	return Set(parent, next)
 }
 
+func SetLevel(level logrus.Level) {
+	DefaultLogger.SetLevel(level)
+}
+
 func WithField(key string, value interface{}) *Entry {
 	result := DefaultLogger.WithField(key, value)
 	return result
