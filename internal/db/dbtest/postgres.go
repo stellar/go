@@ -16,7 +16,7 @@ func Postgres() *DB {
 	var result DB
 	name := randomName()
 	result.Dialect = "postgres"
-	result.URL = fmt.Sprintf("postgres://localhost/%s?sslmode=disable", name)
+	result.DSN = fmt.Sprintf("postgres://localhost/%s?sslmode=disable", name)
 
 	// create the db
 	err := exec.Command("createdb", name).Run()

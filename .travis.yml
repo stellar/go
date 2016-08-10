@@ -1,5 +1,8 @@
 language: go
+services:
+  - mysql
+  - postgres
 go:
 - '1.5'
 - '1.6'
-script: go test -v -race ./...
+script: go test -race ./...

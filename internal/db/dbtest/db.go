@@ -50,7 +50,7 @@ func (db *DB) Load(sql string) *DB {
 
 // Open opens a sqlx connection to the db.
 func (db *DB) Open() *sqlx.DB {
-	conn, err := sqlx.Open(db.Dialect, db.URL)
+	conn, err := sqlx.Open(db.Dialect, db.DSN)
 	if err != nil {
 		err = errors.Wrap(err, "open failed")
 		panic(err)

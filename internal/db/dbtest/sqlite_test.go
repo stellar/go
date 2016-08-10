@@ -11,16 +11,16 @@ import (
 
 func TestSqlite(t *testing.T) {
 	tdb := Sqlite()
-	t.Log(tdb.URL)
+	t.Log(tdb.DSN)
 
-	db, err := sqlx.Open("sqlite3", tdb.URL)
+	db, err := sqlx.Open("sqlite3", tdb.DSN)
 	require.NoError(t, err)
 	_, err = db.Exec("SELECT 1")
 	require.NoError(t, err)
 
 	db.Close()
 	tdb.Close()
-	db, err = sqlx.Open("sqlite", tdb.URL)
+	db, err = sqlx.Open("sqlite", tdb.DSN)
 	require.Error(t, err)
 
 	tdb.Close()

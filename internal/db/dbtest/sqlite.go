@@ -29,7 +29,7 @@ func Sqlite() *DB {
 	}
 
 	result.Dialect = "sqlite3"
-	result.URL = tmpfile.Name()
+	result.DSN = tmpfile.Name()
 	result.closer = func() {
 		err := os.Remove(tmpfile.Name())
 		if err != nil {

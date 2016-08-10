@@ -15,7 +15,7 @@ import (
 // to run tests against.
 type DB struct {
 	Dialect string
-	URL     string
+	DSN     string
 	closer  func()
 	closed  bool
 }
