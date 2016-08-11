@@ -7,6 +7,23 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func TestNew(t *testing.T) {
+	cases := []struct {
+		Name            string
+		Domain          string
+		ExpectedAddress string
+	}{
+		{"scott", "stellar.org", "scott*stellar.org"},
+		{"", "stellar.org", "*stellar.org"},
+		{"scott", "", "scott*"},
+	}
+
+	for _, c := range cases {
+		actual := New(c.Name, c.Domain)
+		assert.Equal(t, actual, c.ExpectedAddress)
+	}
+}
+
 func TestSplit(t *testing.T) {
 	cases := []struct {
 		CaseName       string

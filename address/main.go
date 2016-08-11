@@ -4,6 +4,7 @@
 package address
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/asaskevich/govalidator"
@@ -26,6 +27,14 @@ var (
 	// is invalid.
 	ErrInvalidDomain = errors.New("domain part of address is invalid")
 )
+
+// New returns a new address based upon the provided name and domain.  Note: Not
+// validation is performed on the parts provided... it is possible to create an
+// invalid address by supplying invalid information, for example, supplying a
+// blank domain.
+func New(name, domain string) string {
+	return fmt.Sprintf("%s*%s", name, domain)
+}
 
 // Split takes an address, of the form "name*domain" and provides the
 // constituent elements.
