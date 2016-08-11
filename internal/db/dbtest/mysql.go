@@ -16,7 +16,7 @@ func Mysql() *DB {
 	var result DB
 	name := randomName()
 	result.Dialect = "mysql"
-	result.DSN = fmt.Sprintf("/%s", name)
+	result.DSN = fmt.Sprintf("root@/%s", name)
 
 	// create the db
 	err := exec.Command("mysql", "-e", fmt.Sprintf("CREATE DATABASE %s;", name)).Run()
