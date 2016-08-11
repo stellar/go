@@ -4,6 +4,9 @@
 Go implementation of [Federation](https://www.stellar.org/developers/learn/concepts/federation.html) protocol server. This federation server is designed to be dropped in to your existing infrastructure. It can be configured to pull the data it needs out of your existing DB.
 
 ## Downloading the server
+
+TODO:  The section below does not work
+
 [Prebuilt binaries](https://github.com/stellar/federation/releases) of the federation server are available on the [releases page](https://github.com/stellar/federation/releases).
 
 | Platform       | Binary file name                                                                         |
@@ -16,16 +19,15 @@ Alternatively, you can [build](#building) the binary yourself.
 
 ## Config
 
-The `config.toml` file must be present in a working directory. Config file should contain following values:
+By default this server uses a config file named `federation.cfg` in the current working directory. This configuration file should be [TOML](https://github.com/toml-lang/toml) and the following fields are supported:
 
-* `domain` - domain this federation server represent
 * `port` - server listening port
 * `database`
   * `type` - database type (sqlite3, mysql, postgres)
-  * `url` - url to database connection
+  * `dsn` - The DSN (data source name) used to connect to the database connection.  This value should be appropriate for the databse type chosen.
 * `queries`
-  * `federation` - Implementation dependent query to fetch federation results, should return either 1 or 3 columns. These columns should be labeled `id`,`memo`,`memo_type`. Memo and memo_type are optional - check [Federation](https://www.stellar.org/developers/learn/concepts/federation.html) docs)
-  * `reverse-federation` - Implementation dependent query to fetch reverse federation results, should return one column. This column should be labeled `name`.
+  * `federation` - Implementation dependent query to fetch federation results, should return either 1 or 3 columns. These columns should be labeled `id`,`memo`,`memo_type`. Memo and memo_type are optional - see [Federation](https://www.stellar.org/developers/learn/concepts/federation.html) docs for more detail).  When executed, this query will be provided with two input parameters, the first will be the name portion of a stellar address and the second will be the domain portion of a stellar address.  For example, a request for `scott*stellar.org` would trigger a query with two input parameters, `scott` and `stellar.org` respectively. 
+  * `reverse-federation` - A SQL query to fetch reverse federation results that should return two columns, labeled `name` and `domain`.   When executed, this query will be provided with one input parameter, a [stellar account ID](https://www.stellar.org/developers/guides/concepts/accounts.html#account-id) used to lookup the name and domain mapping.
 * `tls` (only when running HTTPS server)
   * `certificate-file` - a file containing a certificate
   * `private-key-file` - a file containing a matching private key
@@ -35,15 +37,14 @@ The `config.toml` file must be present in a working directory. Config file shoul
 * `text` - then `memo` field should contain string, up to 28 characters.
 * `hash` - then `memo` field should contain string that is 32bytes base64 encoded.
 
-## Example `config.toml`
+## Example `federation.cfg`
 In this section you can find config examples for the two main ways of setting up a federation server.
 
 ### #1: Every user has their own Stellar account
 
-In case every user owns Stellar account you don't need `memo`. You can simply return `account_id` based on username. Your `queries` section could look like this:
+In case every user owns Stellar account you don't need `memo`. You can simply return `id` based on the username. Your `queries` section could look like this:
 
 ```toml
-domain = "acme.com"
 port = 8000
 
 [database]
@@ -51,7 +52,7 @@ type = "mysql"
 url = "root:@/dbname"
 
 [queries]
-federation = "SELECT account_id as id FROM Users WHERE username = $1"
+federation = "SELECT account_id as id FROM Users WHERE username = ?"
 reverse-federation = "SELECT username as name FROM Users WHERE account_id = $1"
 ```
 
@@ -63,7 +64,6 @@ If you have a single Stellar account for all incoming transactions you need to u
 Let's say that your Stellar account ID is: `GAHG6B6QWTC3YNJIKJYUFGRMQNQNEGBALDYNZUEAPVCN2SGIKHTQIKPV` and every user has an `id` and `username` in your database. Then your `queries` section could look like this:
 
 ```toml
-domain = "acme.com"
 port = 8000
 
 [database]
@@ -71,9 +71,20 @@ type = "mysql"
 url = "root:@/dbname"
 
 [queries]
-federation = "SELECT username as memo, 'text' as memo_type, 'GD6WU64OEP5C4LRBH6NK3MHYIA2ADN6K6II6EXPNVUR3ERBXT4AN4ACD' as id FROM Users WHERE username = $1"
-reverse-federation = "SELECT username as name FROM Users WHERE account_id = $1"
+federation = "SELECT username as memo, 'text' as memo_type, 'GD6WU64OEP5C4LRBH6NK3MHYIA2ADN6K6II6EXPNVUR3ERBXT4AN4ACD' as id FROM Users WHERE username = ? AND domain = ?"
+reverse-federation = "SELECT username as name, domain FROM Users WHERE account_id = ?"
 ```
+
+## Providing federation for a single domain
+
+In the event that your organization only wants to offer federation for a single domain, a little bit of trickery can be used to configure your queries to satisfy this use case.  For example, let's say you own `acme.org` and want to provide only results for that domain.  The following example config illustrates:
+
+```toml
+federation = "SELECT username as memo, 'text' as memo_type, 'GD6WU64OEP5C4LRBH6NK3MHYIA2ADN6K6II6EXPNVUR3ERBXT4AN4ACD' as id FROM Users WHERE username = ? AND ? = 'acme.org"
+reverse-federation = "SELECT username as name, 'acme.org' FROM Users WHERE account_id = ?"
+```
+
+Notice that SQL fragment `? = 'acme.org"` on the `federation` query:  It ensures the incoming query is for the correct domain.  Additionally, the `reverse-federation` query always returns `acme.org` for the domain.
 
 ## SQLite sample
 
@@ -84,9 +95,8 @@ id | name | accountId
 1 | bob | GCW667JUHCOP5Y7KY6KGDHNPHFM4CS3FCBQ7QWDUALXTX3PGXLSOEALY
 2 | alice | GCVYGVXNRUUOFYB5OKA37UYBF3W7RK7D6JPNV57FZFYAUU5NKJYZMTK2
 
-It should work out of box with following `config.toml` file:
+It should work out of box with following `federation.cfg` file:
 ```toml
-domain = "stellar.org"
 port = 8000
 
 [database]
@@ -94,8 +104,8 @@ type = "sqlite3"
 url = "./federation-sqlite-sample"
 
 [queries]
-federation = "SELECT accountId as id FROM Users WHERE name = ?"
-reverse-federation = "SELECT name FROM Users WHERE accountId = ?"
+federation = "SELECT accountId as id FROM Users WHERE name = ? AND ? = 'stellar.org'"
+reverse-federation = "SELECT name, 'stellar.org' FROM Users WHERE accountId = ?"
 ```
 
 Start the server and then request it:
@@ -106,23 +116,23 @@ curl "http://localhost:8000/federation?type=name&q=alice*stellar.org"
 ## Usage
 
 ```
-./federation
+./federation [-c=CONFIGPATH]
 ```
 
 ## Building
 
-[gb](http://getgb.io) is used for building and testing.
+This service can built from source, provided you have installed the [go tools](https://golang.org/doc/install), by issuing the following command in a terminal:
 
 Given you have a running golang installation, you can build the server with:
 
 ```
-gb build
+go get -u github.com/stellar/go/services/federation
 ```
 
-After successful completion, you should find `bin/federation` is present in the project directory.
+After successful completion, you should find `bin/federation` is present in your configured GOPATH.
 
 ## Running tests
 
 ```
-gb test
+go test
 ```
