@@ -2,69 +2,131 @@ package main
 
 import (
 	"fmt"
-	"log"
 	"os"
 
+	"goji.io"
+	"goji.io/pat"
+
+	"github.com/rs/cors"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
+	"github.com/stellar/go/handlers/federation"
+	"github.com/stellar/go/internal/config"
+	"github.com/stellar/go/internal/db"
+	"github.com/stellar/go/internal/errors"
 	"github.com/stellar/go/internal/http"
-	"github.com/stellar/go/services/federation/internal"
+	"github.com/stellar/go/internal/log"
 )
 
-var app *federation.App
-var rootCmd *cobra.Command
+// Config represents the configuration of a federation server
+type Config struct {
+	Port     int `valid:"required"`
+	Database struct {
+		Type string `valid:"matches(^mysql|sqlite3|postgres$)"`
+		URL  string `valid:"required"`
+	} `valid:"required"`
+	Queries struct {
+		Federation        string `valid:"required"`
+		ReverseFederation string `toml:"reverse-federation" valid:"required"`
+	} `valid:"required"`
+	TLS struct {
+		CertificateFile string `toml:"certificate-file"`
+		PrivateKeyFile  string `toml:"private-key-file"`
+	} `valid:"optional"`
+}
 
 func main() {
+	rootCmd := &cobra.Command{
+		Use:   "federation",
+		Short: "stellar federation server",
+		Long: `
+The stellar federation server let's you easily integrate the stellar federation 
+protocol with your organization.  This is achieved by connecting the 
+application to your customer database and providing the appropriate queries in 
+the config file.
+    `,
+		Run: run,
+	}
+
+	rootCmd.PersistentFlags().String("conf", "./federation.cfg", "config file path")
 	rootCmd.Execute()
 }
 
-func init() {
-	viper.SetConfigName("config")
-	viper.SetConfigType("toml")
-	viper.AddConfigPath(".")
-
-	rootCmd = &cobra.Command{
-		Use:   "federation",
-		Short: "stellar federation server",
-		Long: `stellar federation server
-=========================
-
-Make sure config.toml file is in the working folder.
-Required config values:
-  - domain
-  - database.type
-  - database.url
-  - queries.federation
-  - queries.reverse-federation`,
-		Run: run,
-	}
-}
-
 func run(cmd *cobra.Command, args []string) {
-	err := viper.ReadInConfig()
-	if err != nil {
-		log.Fatal("Error reading config file: ", err)
-	}
+	var (
+		cfg     Config
+		cfgPath = cmd.PersistentFlags().Lookup("conf").Value.String()
+	)
+	log.SetLevel(log.InfoLevel)
+	err := config.Read(cfgPath, &cfg)
 
-	if viper.GetString("database.type") == "" ||
-		viper.GetString("database.url") == "" ||
-		viper.GetString("domain") == "" ||
-		viper.GetString("queries.federation") == "" ||
-		viper.GetString("queries.reverse-federation") == "" {
-		rootCmd.Help()
+	if err != nil {
+		switch cause := errors.Cause(err).(type) {
+		case *config.InvalidConfigError:
+			log.Error("config file: ", cause)
+		default:
+			log.Error(err)
+		}
 		os.Exit(1)
 	}
 
-	var config federation.Config
-	err = viper.Unmarshal(&config)
-
-	app, err = federation.NewApp(config)
-
+	driver, err := initDriver(cfg)
 	if err != nil {
-		log.Fatal(err)
+		log.Error(err)
+		os.Exit(1)
 	}
+
+	mux := initMux(driver)
+	addr := fmt.Sprintf("0.0.0.0:%d", cfg.Port)
+
 	http.Run(http.Config{
-		ListenAddr: fmt.Sprintf("0.0.0.0:%d", config.Port),
-		Handler:    app.Handler(),
+		ListenAddr: addr,
+		Handler:    mux,
+		OnStarting: func() {
+			log.Infof("Starting server on %s", addr)
+		},
 	})
+}
+
+func initDriver(cfg Config) (federation.Driver, error) {
+	var dialect string
+
+	switch cfg.Database.Type {
+	case "mysql":
+		dialect = "mysql"
+	case "postgres":
+		dialect = "postgres"
+	case "sqlite3":
+		dialect = "sqlite3"
+	default:
+		return nil, errors.Errorf("Invalid db type: %s", cfg.Database.Type)
+	}
+
+	repo, err := db.Open(dialect, cfg.Database.URL)
+	if err != nil {
+		return nil, errors.Wrap(err, "db open failed")
+	}
+
+	return &federation.SQLDriver{
+		DB:                       repo.DB.DB, // unwrap the repo to the bare *sql.DB instance,
+		LookupRecordQuery:        cfg.Queries.Federation,
+		LookupReverseRecordQuery: cfg.Queries.ReverseFederation,
+	}, nil
+}
+
+func initMux(driver federation.Driver) *goji.Mux {
+	mux := goji.NewMux()
+
+	c := cors.New(cors.Options{
+		AllowedOrigins: []string{"*"},
+		AllowedHeaders: []string{"*"},
+		AllowedMethods: []string{"GET"},
+	})
+	mux.Use(c.Handler)
+
+	fed := &federation.Handler{driver}
+
+	mux.Handle(pat.Get("/federation"), fed)
+	mux.Handle(pat.Get("/federation/"), fed)
+
+	return mux
 }
