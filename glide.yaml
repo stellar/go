@@ -21,3 +21,4 @@ import:
 - package: github.com/asaskevich/govalidator
 - package: github.com/BurntSushi/toml
 - package: github.com/spf13/cobra
+- package: gopkg.in/gavv/httpexpect.v1
