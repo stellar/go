@@ -22,3 +22,7 @@ import:
 - package: github.com/BurntSushi/toml
 - package: github.com/spf13/cobra
 - package: gopkg.in/gavv/httpexpect.v1
+- package: github.com/onsi/ginkgo
+  version: master
+- package: github.com/onsi/gomega
+  version: master
