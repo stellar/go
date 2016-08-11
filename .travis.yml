@@ -5,7 +5,16 @@ services:
 go:
 - '1.5'
 - '1.6'
-script: go test -race ./...
+- tip
+install:
+  - go get github.com/Masterminds/glide
+before_script:
+script: 
+- glide install
+- go test -race $(glide novendor)
+matrix:
+  allow_failures:
+  - go: tip
 notifications:
   slack:
     on_success: change
