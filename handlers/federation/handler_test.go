@@ -9,8 +9,8 @@ import (
 )
 
 func TestHandler(t *testing.T) {
-	db := dbtest.Sqlite().Load(`
-    CREATE TABLE people (id TEXT, name TEXT, domain TEXT);
+	db := dbtest.Postgres().Load(`
+    CREATE TABLE people (id character varying, name character varying, domain character varying);
     INSERT INTO people (id, name, domain) VALUES 
       ('GD2GJPL3UOK5LX7TWXOACK2ZPWPFSLBNKL3GTGH6BLBNISK4BGWMFBBG', 'scott', 'stellar.org'),
       ('GCYMGWPZ6NC2U7SO6SMXOP5ZLXOEC5SYPKITDMVEONLCHFSCCQR2J4S3', 'bartek', 'stellar.org');
@@ -23,6 +23,8 @@ func TestHandler(t *testing.T) {
 		LookupRecordQuery:        "SELECT id FROM people WHERE name = ? AND domain = ?",
 		LookupReverseRecordQuery: "SELECT name, domain FROM people WHERE id = ?",
 	}
+
+	defer driver.DB.Close()
 
 	handler := &Handler{driver}
 	server := httptest.NewServer(t, handler)

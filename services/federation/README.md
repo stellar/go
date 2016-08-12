@@ -7,7 +7,7 @@ Go implementation of [Federation](https://www.stellar.org/developers/learn/conce
 
 TODO:  The section below does not work
 
-[Prebuilt binaries](https://github.com/stellar/federation/releases) of the federation server are available on the [releases page](https://github.com/stellar/federation/releases).
+[Prebuilt binaries](https://github.com/stellar/go/releases) of the federation server are available on the [releases page](https://github.com/stellar/go/releases).
 
 | Platform       | Binary file name                                                                         |
 |----------------|------------------------------------------------------------------------------------------|
@@ -86,32 +86,9 @@ reverse-federation = "SELECT username as name, 'acme.org' FROM Users WHERE accou
 
 Notice that SQL fragment `? = 'acme.org"` on the `federation` query:  It ensures the incoming query is for the correct domain.  Additionally, the `reverse-federation` query always returns `acme.org` for the domain.
 
-## SQLite sample
+## Postgresql sample
 
-`federation-sqlite-sample` is a simple SQLite DB file you can use to test federation server quickly. It contains a single `Users` table with following schema and data:
-
-id | name | accountId
---- | --- | ---
-1 | bob | GCW667JUHCOP5Y7KY6KGDHNPHFM4CS3FCBQ7QWDUALXTX3PGXLSOEALY
-2 | alice | GCVYGVXNRUUOFYB5OKA37UYBF3W7RK7D6JPNV57FZFYAUU5NKJYZMTK2
-
-It should work out of box with following `federation.cfg` file:
-```toml
-port = 8000
-
-[database]
-type = "sqlite3"
-url = "./federation-sqlite-sample"
-
-[queries]
-federation = "SELECT accountId as id FROM Users WHERE name = ? AND ? = 'stellar.org'"
-reverse-federation = "SELECT name, 'stellar.org' FROM Users WHERE accountId = ?"
-```
-
-Start the server and then request it:
-```
-curl "http://localhost:8000/federation?type=name&q=alice*stellar.org"
-```
+Bundled with the source code of this project is a sample configuration file and a shell script that can be used to populate a sample database.  These two items can be used to play around with the service.  See (./federation.cfg) and (./build_sample.sh).
 
 ## Usage
 

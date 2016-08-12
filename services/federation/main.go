@@ -10,6 +10,7 @@ import (
 	"github.com/rs/cors"
 	"github.com/spf13/cobra"
 	"github.com/stellar/go/handlers/federation"
+	"github.com/stellar/go/internal/app"
 	"github.com/stellar/go/internal/config"
 	"github.com/stellar/go/internal/db"
 	"github.com/stellar/go/internal/errors"
@@ -82,7 +83,8 @@ func run(cmd *cobra.Command, args []string) {
 		ListenAddr: addr,
 		Handler:    mux,
 		OnStarting: func() {
-			log.Infof("Starting server on %s", addr)
+			log.Infof("starting federation server - %s", app.Version())
+			log.Infof("listening on %s", addr)
 		},
 	})
 }
