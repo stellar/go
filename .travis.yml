@@ -30,8 +30,8 @@ deploy:
   api_key:
     secure: KZe+4gRlHobXf8Q8rzy4rQq0joMtVC3MVU8NxHJCQUXItqzE/+6kMugLoEgUdWgalLtRWBLRyJPKuPYnjcUnoh2AA1EaXgFAtOI5Rd0dJj1R5j0uTNh9zw/v9IY7ZqrR6cZrM8S8lKUIpDgkNROQeBcWk/UUGNXNl/DdjPSTDwVkixaVmmdm3tZ/tE/05PTLMX/qSpa7bGPoIGwFBS4hkr6neaA8jYSfcHKymP09KArgnV7WsO9qIU/aHMvYcxGGls4FdSQXgpMKB24sTPsZXyp2I2PJkZ2aM4FzEWjY8pSqSrY3byp4F1alQIECRCESMAKuBXu22g7BinidYskzaAreM4F09JHSTW163sDfzJk3E6uJabZhnBip9RyDQBRb12uZHJpF7129hgRthopEXsag1TN0NXO9JK/5WDpQhFV9ZK9uHj6Mt9Hi53Wos1sF/w++wU+WSGuQVTzd64uKO8jGnxqfh6PlXnri6RVgBAD40Kik95RNo/tUQ6lUKM259hUJwwwtNmAgHtBStrR3NRDiT3MRQonAKU6a89TWHTMk6kRcNzXCwa/u2TS6hbc/75yPyCXtXyWYpR3r0a+noH7qu3vI5cb8uPzudZYvEgdfyq5HYxjr2aUYAwiwxhz0BdSmLB7sis9qEaQ4ZKFCq199IROuo+L/SLtVqfGrDLI=
   file: dist/*
+  file_glob: true
   on:
-    file_glob: true
     repo: stellar/go
     tags: true
     go: '1.6'
