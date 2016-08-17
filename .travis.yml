@@ -15,7 +15,7 @@ script:
 - glide install
 - go test -race $(glide novendor)
 before_deploy:
-- go run internal/scripts/build_release_artifacts
+- go run ./internal/scripts/build_release_artifacts/main.go
 matrix:
   fast_finish: true
   allow_failures:
