@@ -34,7 +34,7 @@ func status(a string, opts *Options) {
 
 type Options struct {
 	Low         int
-	High        int
+	High        uint32
 	Last        int
 	Profile     bool
 	CommandOpts archivist.CommandOptions
@@ -124,10 +124,10 @@ func main() {
 		"first ledger to act on",
 	)
 
-	rootCmd.PersistentFlags().IntVar(
+	rootCmd.PersistentFlags().Uint32Var(
 		&opts.High,
 		"high",
-		0xffffffff,
+		uint32(0xffffffff),
 		"last ledger to act on",
 	)
 
