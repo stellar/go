@@ -16,7 +16,7 @@ import (
 	"github.com/stellar/go/internal/log"
 )
 
-var extractBinName = regexp.MustCompile(`^(?P<bin>[a-z]+)-(?P<tag>.+)$`)
+var extractBinName = regexp.MustCompile(`^(?P<bin>[a-z-]+)-(?P<tag>.+)$`)
 
 var builds = []struct {
 	OS   string
@@ -30,7 +30,7 @@ var builds = []struct {
 
 func main() {
 	log.SetLevel(log.InfoLevel)
-	bin, version := extractFromTag()
+	bin, version := extractFromTag(os.Getenv("TRAVIS_TAG"))
 	pkg := packageName(bin)
 
 	run("rm", "-rf", "dist/*")
@@ -49,7 +49,7 @@ func main() {
 		run("cp", "LICENSE-APACHE.txt", dest)
 		run("cp", "COPYING", dest)
 		run("cp", filepath.Join(pkg, "README.md"), dest)
-		// run("cp", filepath.Join(pkg, "CHANGELOG.md"), dest)
+		run("cp", filepath.Join(pkg, "CHANGELOG.md"), dest)
 
 		// rebuild the binary with the version variable set
 		build(
@@ -115,8 +115,8 @@ func enableCgo(env []string) (ret []string) {
 //
 // In the event that the TRAVIS_TAG is missing or the match fails, an empty
 // string will be returned.
-func extractFromTag() (string, string) {
-	match := extractBinName.FindStringSubmatch(os.Getenv("TRAVIS_TAG"))
+func extractFromTag(tag string) (string, string) {
+	match := extractBinName.FindStringSubmatch(tag)
 	if match == nil {
 		return "", ""
 	}

@@ -1,6 +1,6 @@
-This directory contains single-file go programs and/or bash scripts that aid in the development of this repo.  Build scripts, linting scripts, etc.
+This directory contains simple go programs and/or bash scripts that aid in the development of this repo.  Build scripts, linting scripts, etc.
 
 
-## `build_release_artifacts.go`
+## `build_release_artifacts`
 
-This script provides the system that travis uses to build our release packages.
+This simple go application that travis uses to build our release packages.
