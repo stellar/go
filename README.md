@@ -38,3 +38,8 @@ Each non-test file can have a test counterpart like normal, whose name ends with
 
 Generally, file contents are sorted by exported/unexported, then declaration type  (ordered as consts, vars, types, then funcs), then finally alphabetically.
 
+
+## Coding conventions
+
+- Always document exported package elements: vars, consts, funcs, types, etc.
+- Tests are better than no tests.
