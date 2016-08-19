@@ -1,4 +1,3 @@
-// This file contains response structs from horizon
 package horizon
 
 type Problem struct {

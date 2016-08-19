@@ -1,3 +1,9 @@
+// Package horizon provides client access to a horizon server, allowing an
+// application to post transactions and lookup ledger information.
+//
+// Create an instance of `Client` to customize the server used, or alternatively
+// use `DefaultTestNetClient` or `DefaultPublicNetClient` to access the SDF run
+// horizon servers.
 package horizon
 
 import (

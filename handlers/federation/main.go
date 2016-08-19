@@ -1,4 +1,4 @@
-// Package federation provides a pluggable handle that satisfies the Stellar
+// Package federation provides a pluggable handler that satisfies the Stellar
 // federation protocol.  Add an instance of `Handler` onto your router to allow
 // a server to satisfy the protocol.
 //
