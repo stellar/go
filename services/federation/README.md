@@ -5,17 +5,7 @@ Go implementation of [Federation](https://www.stellar.org/developers/learn/conce
 
 ## Downloading the server
 
-TODO:  The section below does not work
-
 [Prebuilt binaries](https://github.com/stellar/go/releases) of the federation server are available on the [releases page](https://github.com/stellar/go/releases).
-
-| Platform       | Binary file name                                                                         |
-|----------------|------------------------------------------------------------------------------------------|
-| Mac OSX 64 bit | [federation-darwin-amd64](https://github.com/stellar/federation/releases)      |
-| Linux 64 bit   | [federation-linux-amd64](https://github.com/stellar/federation/releases)       |
-| Windows 64 bit | [federation-windows-amd64.exe](https://github.com/stellar/federation/releases) |
-
-Alternatively, you can [build](#building) the binary yourself.
 
 ## Config
 
