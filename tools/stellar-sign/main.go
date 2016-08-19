@@ -34,7 +34,14 @@ func main() {
 		log.Fatal(err)
 	}
 
-	// TODO: print transaction details
+	fmt.Println("")
+	fmt.Println("Transaction Summary:")
+	fmt.Printf("  source: %s\n", txe.Tx.SourceAccount.Address())
+	fmt.Printf("  ops: %d\n", len(txe.Tx.Operations))
+	fmt.Printf("  sigs: %d\n", len(txe.Signatures))
+	fmt.Println("")
+
+	// TODO: add operation details
 
 	// read seed
 	seed, err := readLine("Enter seed: ", true)
