@@ -18,8 +18,9 @@ type Keyer interface {
 var _ = LedgerEntry{}
 var _ = LedgerKey{}
 
-// SafeUnmarshalBase64 first decodes the provided reader from base64 before decoding the xdr
-// into the provided destination.  Also ensures that the reader is fully consumed.
+// SafeUnmarshalBase64 first decodes the provided reader from base64 before
+// decoding the xdr into the provided destination.  Also ensures that the reader
+// is fully consumed.
 func SafeUnmarshalBase64(data string, dest interface{}) error {
 	count := &countWriter{}
 	l := len(data)

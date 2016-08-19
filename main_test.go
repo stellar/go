@@ -13,6 +13,8 @@ import (
 	"github.com/stellar/go/xdr"
 )
 
+// ExampleDecodeTransaction shows the lowest-level process to decode a base64
+// envelope encoded in base64.
 func ExampleDecodeTransaction() {
 	data := "AAAAAGL8HQvQkbK2HA3WVjRrKmjX00fG8sLI7m0ERwJW/AX3AAAACgAAAAAAAAABAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAArqN6LeOagjxMaUP96Bzfs9e0corNZXzBWJkFoK7kvkwAAAAAO5rKAAAAAAAAAAABVvwF9wAAAEAKZ7IPj/46PuWU6ZOtyMosctNAkXRNX9WCAI5RnfRk+AyxDLoDZP/9l3NvsxQtWj9juQOuoBlFLnWu8intgxQA"
 
@@ -33,9 +35,9 @@ func ExampleDecodeTransaction() {
 	// This tx has 1 operations
 }
 
-// ExampleBuildTransaction creates and signs a simple transaction using the build package.
-// The build package is designed to make it easier and more intuitive to configure and sign
-// a transaction.
+// ExampleBuildTransaction creates and signs a simple transaction using the
+// build package. The build package is designed to make it easier and more
+// intuitive to configure and sign a transaction.
 func ExampleBuildTransaction() {
 	source := "SA26PHIKZM6CXDGR472SSGUQQRYXM6S437ZNHZGRM6QA4FOPLLLFRGDX"
 	tx := b.Transaction(
