@@ -6,7 +6,7 @@ This repo is the home for all of the public go code produced by SDF.  In additio
 
 ## Dependencies
 
-This repository depends upon a [number of external dependencies](./glide.yaml), and we use [Glide](https://glide.sh/) to manage them.  Glide is used to populate the [vendor directory](http://glide.readthedocs.io/en/latest/vendor/), ensuring that builds are reproducible even as upstream dependencies are changed. Please see the [Glide](http://glide.sh/) webstie for installation instructions.
+This repository depends upon a [number of external dependencies](./glide.yaml), and we use [Glide](https://glide.sh/) to manage them.  Glide is used to populate the [vendor directory](http://glide.readthedocs.io/en/latest/vendor/), ensuring that builds are reproducible even as upstream dependencies are changed. Please see the [Glide](http://glide.sh/) website for installation instructions.
 
 
 ## Directory Layout
