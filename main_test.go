@@ -7,7 +7,7 @@ import (
 	"log"
 	"strings"
 
-	b "github.com/stellar/go-stellar-base/build"
+	b "github.com/stellar/go/build"
 	"github.com/stellar/go/hash"
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/xdr"
