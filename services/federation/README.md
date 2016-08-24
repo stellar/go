@@ -14,10 +14,13 @@ By default this server uses a config file named `federation.cfg` in the current 
 * `port` - server listening port
 * `database`
   * `type` - database type (sqlite3, mysql, postgres)
-  * `dsn` - The DSN (data source name) used to connect to the database connection.  This value should be appropriate for the databse type chosen.
+  * `dsn` - The DSN (data source name) used to connect to the database connection.  This value should be appropriate for the database type chosen.
 * `queries`
   * `federation` - Implementation dependent query to fetch federation results, should return either 1 or 3 columns. These columns should be labeled `id`,`memo`,`memo_type`. Memo and memo_type are optional - see [Federation](https://www.stellar.org/developers/learn/concepts/federation.html) docs for more detail).  When executed, this query will be provided with two input parameters, the first will be the name portion of a stellar address and the second will be the domain portion of a stellar address.  For example, a request for `scott*stellar.org` would trigger a query with two input parameters, `scott` and `stellar.org` respectively. 
   * `reverse-federation` - A SQL query to fetch reverse federation results that should return two columns, labeled `name` and `domain`.   When executed, this query will be provided with one input parameter, a [stellar account ID](https://www.stellar.org/developers/guides/concepts/accounts.html#account-id) used to lookup the name and domain mapping.
+
+    If reverse-lookup isn't supported (e.g. you have a single Stellar account for all users), leave this entry out.
+
 * `tls` (only when running HTTPS server)
   * `certificate-file` - a file containing a certificate
   * `private-key-file` - a file containing a matching private key
@@ -42,8 +45,8 @@ type = "mysql"
 url = "root:@/dbname"
 
 [queries]
-federation = "SELECT account_id as id FROM Users WHERE username = ?"
-reverse-federation = "SELECT username as name FROM Users WHERE account_id = $1"
+federation = "SELECT account_id as id FROM Users WHERE username = ? AND domain = ?"
+reverse-federation = "SELECT username as name, domain FROM Users WHERE account_id = ?"
 ```
 
 
@@ -51,7 +54,7 @@ reverse-federation = "SELECT username as name FROM Users WHERE account_id = $1"
 
 If you have a single Stellar account for all incoming transactions you need to use `memo` to check which internal account should receive the payment.
 
-Let's say that your Stellar account ID is: `GAHG6B6QWTC3YNJIKJYUFGRMQNQNEGBALDYNZUEAPVCN2SGIKHTQIKPV` and every user has an `id` and `username` in your database. Then your `queries` section could look like this:
+Let's say that your Stellar account ID is: `GD6WU64OEP5C4LRBH6NK3MHYIA2ADN6K6II6EXPNVUR3ERBXT4AN4ACD` and every user has an `id` and `username` in your database. Then your `queries` section could look like this:
 
 ```toml
 port = 8000
@@ -62,7 +65,7 @@ url = "root:@/dbname"
 
 [queries]
 federation = "SELECT username as memo, 'text' as memo_type, 'GD6WU64OEP5C4LRBH6NK3MHYIA2ADN6K6II6EXPNVUR3ERBXT4AN4ACD' as id FROM Users WHERE username = ? AND domain = ?"
-reverse-federation = "SELECT username as name, domain FROM Users WHERE account_id = ?"
+# No entry for `reverse-federation` since a reverse-lookup isn't possible
 ```
 
 ## Providing federation for a single domain
@@ -70,8 +73,8 @@ reverse-federation = "SELECT username as name, domain FROM Users WHERE account_i
 In the event that your organization only wants to offer federation for a single domain, a little bit of trickery can be used to configure your queries to satisfy this use case.  For example, let's say you own `acme.org` and want to provide only results for that domain.  The following example config illustrates:
 
 ```toml
-federation = "SELECT username as memo, 'text' as memo_type, 'GD6WU64OEP5C4LRBH6NK3MHYIA2ADN6K6II6EXPNVUR3ERBXT4AN4ACD' as id FROM Users WHERE username = ? AND ? = 'acme.org"
-reverse-federation = "SELECT username as name, 'acme.org' FROM Users WHERE account_id = ?"
+federation = "SELECT username as memo, 'text' as memo_type, 'GD6WU64OEP5C4LRBH6NK3MHYIA2ADN6K6II6EXPNVUR3ERBXT4AN4ACD' as id FROM Users WHERE username = ? AND ? = 'acme.org'"
+reverse-federation = "SELECT username as name, 'acme.org' as domain FROM Users WHERE account_id = ?"
 ```
 
 Notice that SQL fragment `? = 'acme.org"` on the `federation` query:  It ensures the incoming query is for the correct domain.  Additionally, the `reverse-federation` query always returns `acme.org` for the domain.
