@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"github.com/Sirupsen/logrus"
-	"github.com/stellar/go/internal/errors"
+	"github.com/stellar/go/support/errors"
 )
 
 func (e *Entry) SetLevel(level logrus.Level) {

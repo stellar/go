@@ -5,7 +5,7 @@ import (
 	"os/exec"
 
 	_ "github.com/go-sql-driver/mysql"
-	"github.com/stellar/go/internal/errors"
+	"github.com/stellar/go/support/errors"
 )
 
 // Mysql provisions a new, blank database with a random name on the localhost of

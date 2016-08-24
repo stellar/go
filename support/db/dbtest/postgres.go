@@ -5,7 +5,7 @@ import (
 	"os/exec"
 
 	_ "github.com/lib/pq"
-	"github.com/stellar/go/internal/errors"
+	"github.com/stellar/go/support/errors"
 )
 
 // Postgres provisions a new, blank database with a random name on the localhost

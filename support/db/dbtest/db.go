@@ -3,7 +3,7 @@ package dbtest
 import (
 	"github.com/jmoiron/sqlx"
 	"github.com/pkg/errors"
-	"github.com/stellar/go/internal/db/sqlutils"
+	"github.com/stellar/go/support/db/sqlutils"
 )
 
 // Close closes and deletes the database represented by `db`

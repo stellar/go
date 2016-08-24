@@ -7,7 +7,7 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/stellar/go/address"
-	"github.com/stellar/go/internal/log"
+	"github.com/stellar/go/support/log"
 )
 
 func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {

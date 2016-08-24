@@ -8,7 +8,7 @@ import (
 	"encoding/hex"
 	"fmt"
 
-	"github.com/stellar/go/internal/errors"
+	"github.com/stellar/go/support/errors"
 )
 
 // DB represents an ephemeral database that can be starts blank and can be used

@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/Sirupsen/logrus"
-	serr "github.com/stellar/go/internal/errors"
+	serr "github.com/stellar/go/support/errors"
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/net/context"
 )

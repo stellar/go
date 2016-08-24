@@ -10,7 +10,7 @@ import (
 	"database/sql"
 
 	"github.com/jmoiron/sqlx"
-	"github.com/stellar/go/internal/errors"
+	"github.com/stellar/go/support/errors"
 	"golang.org/x/net/context"
 
 	// Enable mysql

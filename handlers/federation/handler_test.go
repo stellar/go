@@ -4,8 +4,8 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/stellar/go/internal/db/dbtest"
-	"github.com/stellar/go/internal/http/httptest"
+	"github.com/stellar/go/support/db/dbtest"
+	"github.com/stellar/go/support/http/httptest"
 )
 
 func TestHandler(t *testing.T) {
