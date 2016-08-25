@@ -27,7 +27,7 @@ type Config struct {
 	} `valid:"required"`
 	Queries struct {
 		Federation        string `valid:"required"`
-		ReverseFederation string `toml:"reverse-federation" valid:"required"`
+		ReverseFederation string `toml:"reverse-federation" valid:"optional"`
 	} `valid:"required"`
 	TLS struct {
 		CertificateFile string `toml:"certificate-file"`

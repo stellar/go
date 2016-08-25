@@ -68,7 +68,20 @@ type ReverseRecord struct {
 	Domain string `db:"domain"`
 }
 
-// SQLDriver represents an implementation of `Driver` and `ReverseDriver` that
+// ReverseSQLDriver provides a `ReverseDriver` implementation based upon a SQL
+// Server.  See `SQLDriver`, the forward only version, for more details.
+type ReverseSQLDriver struct {
+	SQLDriver
+
+	// LookupReverseRecordQuery is a SQL query used for performing "reverse"
+	// federation queries.  This query should accomodate a single parameter, using
+	// "?" as the placeholder.  This provided parameter will be a strkey-encoded
+	// stellar account id to lookup, such as
+	// "GDOP3VI4UA5LS7AMLJI66RJUXEQ4HX46WUXTRTJGI5IKDLNWUBOW3FUK".
+	LookupReverseRecordQuery string
+}
+
+// SQLDriver represents an implementation of `Driver` that
 // provides a simple way to incorporate a SQL-backed federation handler into an
 // application.  Note: this type is not designed for dynamic configuration
 // changes.  Once a method is called on the struct the public fields of this
@@ -86,13 +99,6 @@ type SQLDriver struct {
 	// queries.  This query should accomodate one or two parameters, using "?" as
 	// the placeholder.  This provided parameters will be a name and domain
 	LookupRecordQuery string
-
-	// LookupReverseRecordQuery is a SQL query used for performing "reverse"
-	// federation queries.  This query should accomodate a single parameter, using
-	// "?" as the placeholder.  This provided parameter will be a strkey-encoded
-	// stellar account id to lookup, such as
-	// "GDOP3VI4UA5LS7AMLJI66RJUXEQ4HX46WUXTRTJGI5IKDLNWUBOW3FUK".
-	LookupReverseRecordQuery string
 
 	init sync.Once
 	db   *db.Repo

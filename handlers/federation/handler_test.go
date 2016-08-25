@@ -17,10 +17,12 @@ func TestHandler(t *testing.T) {
   `)
 	defer db.Close()
 
-	driver := &SQLDriver{
-		DB:                       db.Open().DB,
-		Dialect:                  db.Dialect,
-		LookupRecordQuery:        "SELECT id FROM people WHERE name = ? AND domain = ?",
+	driver := &ReverseSQLDriver{
+		SQLDriver: SQLDriver{
+			DB:                db.Open().DB,
+			Dialect:           db.Dialect,
+			LookupRecordQuery: "SELECT id FROM people WHERE name = ? AND domain = ?",
+		},
 		LookupReverseRecordQuery: "SELECT name, domain FROM people WHERE id = ?",
 	}
 
@@ -133,4 +135,46 @@ func TestHandler(t *testing.T) {
 		ContainsKey("code").
 		ValueEqual("code", "invalid_request")
 
+}
+
+func TestForwardOnlyHandler(t *testing.T) {
+	db := dbtest.Postgres().Load(`
+    CREATE TABLE people (id character varying, name character varying, domain character varying);
+    INSERT INTO people (id, name, domain) VALUES 
+      ('GD2GJPL3UOK5LX7TWXOACK2ZPWPFSLBNKL3GTGH6BLBNISK4BGWMFBBG', 'scott', 'stellar.org'),
+      ('GCYMGWPZ6NC2U7SO6SMXOP5ZLXOEC5SYPKITDMVEONLCHFSCCQR2J4S3', 'bartek', 'stellar.org');
+  `)
+	defer db.Close()
+
+	driver := &SQLDriver{
+		DB:                db.Open().DB,
+		Dialect:           db.Dialect,
+		LookupRecordQuery: "SELECT id FROM people WHERE name = ? AND domain = ?",
+	}
+
+	defer driver.DB.Close()
+
+	handler := &Handler{driver}
+	server := httptest.NewServer(t, handler)
+	defer server.Close()
+
+	// Good forward request
+	server.GET("/federation").
+		WithQuery("type", "name").
+		WithQuery("q", "scott*stellar.org").
+		Expect().
+		Status(http.StatusOK).
+		JSON().Object().
+		ContainsKey("account_id").
+		ValueEqual("account_id", "GD2GJPL3UOK5LX7TWXOACK2ZPWPFSLBNKL3GTGH6BLBNISK4BGWMFBBG")
+
+	// Reverse request
+	server.GET("/federation").
+		WithQuery("type", "id").
+		WithQuery("q", "GA3R753JKGXU6ETHNY3U6PYIY7D6UUCXXDYBRF4XURNAGXW3CVGQH2ZA").
+		Expect().
+		Status(http.StatusNotImplemented).
+		JSON().Object().
+		ContainsKey("code").
+		ValueEqual("code", "not_implemented")
 }

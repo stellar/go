@@ -6,6 +6,12 @@ file.  This project adheres to [Semantic Versioning](http://semver.org/).
 As this project is pre 1.0, breaking changes may happen for minor version
 bumps.  A breaking change will get clearly notified in this log.
 
+## [Unreleased]
+
+### Added
+
+- Reverse federation is now optional.
+
 ## [v0.2.0] - 2016-08-17
 
 Initial release after import from https://github.com/stellar/federation
