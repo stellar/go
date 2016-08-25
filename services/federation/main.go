@@ -108,11 +108,21 @@ func initDriver(cfg Config) (federation.Driver, error) {
 		return nil, errors.Wrap(err, "db open failed")
 	}
 
-	return &federation.SQLDriver{
-		DB:                       repo.DB.DB, // unwrap the repo to the bare *sql.DB instance,
-		LookupRecordQuery:        cfg.Queries.Federation,
+	sqld := federation.SQLDriver{
+		DB:                repo.DB.DB, // unwrap the repo to the bare *sql.DB instance,
+		LookupRecordQuery: cfg.Queries.Federation,
+	}
+
+	if cfg.Queries.ReverseFederation == "" {
+		return &sqld, nil
+	}
+
+	rsqld := federation.ReverseSQLDriver{
+		SQLDriver:                sqld,
 		LookupReverseRecordQuery: cfg.Queries.ReverseFederation,
-	}, nil
+	}
+
+	return &rsqld, nil
 }
 
 func initMux(driver federation.Driver) *goji.Mux {
