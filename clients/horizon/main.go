@@ -13,6 +13,7 @@ import (
 	"strconv"
 	"sync"
 
+	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
 )
 
@@ -45,6 +46,16 @@ type Client struct {
 	Client HorizonHttpClient
 	// clientInit initializes http client once
 	clientInit sync.Once
+}
+
+// HomeDomainForAccount returns the home domain for the provided strkey-encoded
+// account id.
+func (c *Client) HomeDomainForAccount(aid string) (string, error) {
+	a, err := c.LoadAccount(aid)
+	if err != nil {
+		return "", errors.Wrap(err, "load account failed")
+	}
+	return a.HomeDomain, nil
 }
 
 // LoadAccount loads the account state from horizon. err can be either error
