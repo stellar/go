@@ -17,7 +17,9 @@ func (c *Client) GetStellarToml(domain string) (resp *Response, err error) {
 		err = errors.Wrap(err, "http request errored")
 	}
 
-	if hresp.StatusCode != 200 {
+	defer hresp.Body.Close()
+
+	if !(hresp.StatusCode >= 200 && hresp.StatusCode < 300) {
 		err = errors.New("http request failed with non-200 status code")
 		return
 	}
