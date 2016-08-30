@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/jarcoal/httpmock"
+	"github.com/stellar/go/support/errors"
 )
 
 // Return specifies the response for a ClientExpectation, which is then
@@ -15,6 +16,13 @@ func (ce *ClientExpectation) Return(r httpmock.Responder) *ClientExpectation {
 		r,
 	)
 	return ce
+}
+
+// ReturnError causes this expectation to resolve to an error.
+func (ce *ClientExpectation) ReturnError(msg string) *ClientExpectation {
+	return ce.Return(func(*http.Request) (*http.Response, error) {
+		return nil, errors.New(msg)
+	})
 }
 
 // ReturnString causes this expectation to resolve to a string-based body with
