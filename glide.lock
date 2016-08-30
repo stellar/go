@@ -1,10 +1,12 @@
 hash: 1a2c587152ba60cb7753d309dc265f9a492eaf00283a78cf7a4f4e906415ba24
-updated: 2016-08-29T16:03:57.881898614-07:00
+updated: 2016-08-30T11:38:19.015089322-07:00
 imports:
 - name: github.com/agl/ed25519
   version: 278e1ec8e8a6e017cd07577924d6766039146ced
   subpackages:
   - edwards25519
+- name: github.com/ajg/form
+  version: cc2954064ec9ea8d93917f0f87456e11d7b881ad
 - name: github.com/asaskevich/govalidator
   version: 593d64559f7600f29581a3ee42177f5dbded27a9
 - name: github.com/aws/aws-sdk-go
@@ -41,14 +43,28 @@ imports:
   version: 5215b55f46b2b919f50a1df0eaa5886afe4e3b3d
   subpackages:
   - spew
+- name: github.com/fatih/structs
+  version: dc3312cb1a4513a366c4c9e622ad55c32df12ed3
+- name: github.com/gavv/gojsondiff
+  version: 36046c6e558e7f854ebd3fd97d1e9812ebe8709b
+  subpackages:
+  - formatter
+- name: github.com/gavv/monotime
+  version: 259cd7b345f5aa080eff16f21d7866ef7dea9528
 - name: github.com/getsentry/raven-go
   version: c9d3cc542ad199f62c0264286be537f9bce6063c
 - name: github.com/go-ini/ini
   version: a2610b3a793cfa7fdf0b07038068af5ddc12aba1
 - name: github.com/go-sql-driver/mysql
   version: 0b58b37b664c21f3010e836f1b931e1d0b0b0685
+- name: github.com/google/go-querystring
+  version: 9235644dd9e52eeae6fa48efd539fdc351a0af53
+  subpackages:
+  - query
 - name: github.com/howeyc/gopass
   version: b63a7d07e65df376d14e2d72907a93d4847dffe4
+- name: github.com/imkira/go-interpol
+  version: b9781c93ae51c8b4fc3af1b1426909721af0a624
 - name: github.com/inconshreveable/mousetrap
   version: 76626ae9c91c4f2a10f34cad8ce83ea42c93bb75
 - name: github.com/jarcoal/httpmock
@@ -59,6 +75,16 @@ imports:
   version: 7396209bbeada6a4fcc28aa9408f89b2e71cac39
   subpackages:
   - reflectx
+- name: github.com/klauspost/compress
+  version: 14eb9c4951195779ecfbec34431a976de7335b0a
+  subpackages:
+  - flate
+  - gzip
+  - zlib
+- name: github.com/klauspost/cpuid
+  version: 09cded8978dc9e80714c4d85b0322337b0a1e5e0
+- name: github.com/klauspost/crc32
+  version: 19b0b332c9e4516a6370a0456e6182c3b5036720
 - name: github.com/lann/builder
   version: f22ce00fd9394014049dad11c244859432bd6820
 - name: github.com/lann/ps
@@ -71,6 +97,8 @@ imports:
   - oid
 - name: github.com/mattn/go-sqlite3
   version: c3e9588849195eefa783417c3a53d092f6e93526
+- name: github.com/moul/http2curl
+  version: b1479103caacaa39319f75e7f57fc545287fca0d
 - name: github.com/nullstyle/go-xdr
   version: 8bf8a5d05c8612d4039a7f67ddce3d49ee61b398
   subpackages:
@@ -119,6 +147,10 @@ imports:
   version: ed27b6fd65218132ee50cd95f38474a3d8a2cd12
 - name: github.com/segmentio/go-loggly
   version: e78f6971ebca5835614673e2f5f6a47ca5f13501
+- name: github.com/sergi/go-diff
+  version: 97b2266dfe4bd4ea1b81a463322f04f8b724801e
+  subpackages:
+  - diffmatchpatch
 - name: github.com/Sirupsen/logrus
   version: a283a10442df8dc09befd873fab202bf8a253d6a
 - name: github.com/spf13/cobra
@@ -133,8 +165,24 @@ imports:
   - mock
   - assert
   - require
+- name: github.com/valyala/bytebufferpool
+  version: 8ebd0474e5a2f0a5c7a74ad2bf421a1d1a90264f
+- name: github.com/valyala/fasthttp
+  version: 45697fe30a130ec6a54426a069c82f3abe76b63d
+  subpackages:
+  - fasthttputil
 - name: github.com/visionmedia/go-debug
   version: ff4a55a20a86994118644bbddc6a216da193cc13
+- name: github.com/xeipuuv/gojsonpointer
+  version: e0fe6f68307607d540ed8eac07a342c33fa1b54a
+- name: github.com/xeipuuv/gojsonreference
+  version: e02fc20de94c78484cd5ffb007f8af96be030a45
+- name: github.com/xeipuuv/gojsonschema
+  version: 4f624f6197547606054e042e7903db103585e151
+- name: github.com/yalp/jsonpath
+  version: 31a79c7593bb93eb10b163650d4a3e6ca190e4dc
+- name: github.com/yudai/golcs
+  version: d1c525dea8ce39ea9a783d33cf08932305373f2c
 - name: goji.io
   version: e355964ac565b94cf0fc7f218346626529125086
   subpackages:
@@ -152,6 +200,7 @@ imports:
   - http2
   - http2/hpack
   - lex/httplex
+  - publicsuffix
 - name: golang.org/x/sys
   version: a646d33e2ee3172a661fc09bca23bb4889a41bc8
   subpackages:
