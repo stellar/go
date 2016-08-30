@@ -12,11 +12,11 @@ import (
 // GetStellarToml returns stellar.toml file for a given domain
 func (c *Client) GetStellarToml(domain string) (resp *Response, err error) {
 	var hresp *http.Response
-	hresp, err = http.Get(c.url(domain))
+	hresp, err = c.HTTP.Get(c.url(domain))
 	if err != nil {
 		err = errors.Wrap(err, "http request errored")
+		return
 	}
-
 	defer hresp.Body.Close()
 
 	if !(hresp.StatusCode >= 200 && hresp.StatusCode < 300) {
@@ -27,6 +27,7 @@ func (c *Client) GetStellarToml(domain string) (resp *Response, err error) {
 	_, err = toml.DecodeReader(hresp.Body, &resp)
 	if err != nil {
 		err = errors.Wrap(err, "toml decode failed")
+		return
 	}
 
 	return
