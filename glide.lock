@@ -1,5 +1,5 @@
-hash: 1a2c587152ba60cb7753d309dc265f9a492eaf00283a78cf7a4f4e906415ba24
-updated: 2016-08-30T11:38:19.015089322-07:00
+hash: 16fe0b731a9a76e736f87e7f34179ad3ccd2dc577a95067f5c39f035ee350e79
+updated: 2016-08-30T14:06:41.303176771-07:00
 imports:
 - name: github.com/agl/ed25519
   version: 278e1ec8e8a6e017cd07577924d6766039146ced
@@ -95,6 +95,8 @@ imports:
   version: 80f8150043c80fb52dee6bc863a709cdac7ec8f8
   subpackages:
   - oid
+- name: github.com/manucorporat/sse
+  version: ee05b128a739a0fb76c7ebd3ae4810c1de808d6d
 - name: github.com/mattn/go-sqlite3
   version: c3e9588849195eefa783417c3a53d092f6e93526
 - name: github.com/moul/http2curl

@@ -32,3 +32,4 @@ import:
   subpackages:
   - aws
 - package: github.com/jarcoal/httpmock
+- package: github.com/manucorporat/sse
