@@ -33,3 +33,14 @@ type Response struct {
 	EncryptionKey    string `toml:"ENCRYPTION_KEY"`
 	SigningKey       string `toml:"SIGNING_KEY"`
 }
+
+// GetStellarToml returns stellar.toml file for a given domain
+func GetStellarToml(domain string) (*Response, error) {
+	return DefaultClient.GetStellarToml(domain)
+}
+
+// GetStellarTomlByAddress returns stellar.toml file of a domain fetched from a
+// given address
+func GetStellarTomlByAddress(addy string) (*Response, error) {
+	return DefaultClient.GetStellarTomlByAddress(addy)
+}
