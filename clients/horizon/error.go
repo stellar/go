@@ -37,8 +37,6 @@ func (herr *Error) Envelope() (*xdr.TransactionEnvelope, error) {
 }
 
 // ResultCodes extracts a result code summary from the error, if possible.
-// NOTE: this method will panic if the input that was received from horizon is
-// invalid.
 func (herr *Error) ResultCodes() (*TransactionResultCodes, error) {
 	if herr.Problem.Type != "transaction_failed" {
 		return nil, ErrTransactionNotFailed
