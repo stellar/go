@@ -65,7 +65,9 @@ func TestError_Envelope(t *testing.T) {
 
 	// sad path: unparseable envelope_xdr extra
 	herr.Problem.Extras = make(map[string]json.RawMessage)
-	herr.Problem.Extras["envelope+xdr"] = json.RawMessage(`"AAAAADSMMRmQGDH6EJzkgi"`)
+	herr.Problem.Extras["envelope_xdr"] = json.RawMessage(`"AAAAADSMMRmQGDH6EJzkgi"`)
 	_, err = herr.Envelope()
-	assert.Error(t, err)
+	if assert.Error(t, err) {
+		assert.Contains(t, err.Error(), "xdr decode")
+	}
 }
