@@ -110,6 +110,7 @@ func initDriver(cfg Config) (federation.Driver, error) {
 
 	sqld := federation.SQLDriver{
 		DB:                repo.DB.DB, // unwrap the repo to the bare *sql.DB instance,
+		Dialect:           dialect,
 		LookupRecordQuery: cfg.Queries.Federation,
 	}
 
