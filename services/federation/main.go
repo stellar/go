@@ -135,6 +135,7 @@ func initMux(driver federation.Driver) *goji.Mux {
 		AllowedMethods: []string{"GET"},
 	})
 	mux.Use(c.Handler)
+	mux.Use(log.HTTPMiddleware)
 
 	fed := &federation.Handler{driver}
 
