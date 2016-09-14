@@ -11,6 +11,7 @@ bumps.  A breaking change will get clearly notified in this log.
 ### Added
 
 - Reverse federation is now optional.
+- Logging:  http requests will be logged at the "Info" log level
 
 ## [v0.2.0] - 2016-08-17
 
