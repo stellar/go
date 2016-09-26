@@ -17,6 +17,8 @@ func TestRepo(t *testing.T) {
 	repo := &Repo{DB: db.Open()}
 	defer repo.DB.Close()
 
+	assert.Equal("postgres", repo.Dialect())
+
 	var count int
 	err := repo.GetRaw(&count, "SELECT COUNT(*) FROM people")
 	assert.NoError(err)
