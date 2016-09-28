@@ -52,6 +52,11 @@ func (r *Repo) Commit() error {
 	return err
 }
 
+// Dialect returns the SQL dialect that this repo is configured to use
+func (r *Repo) Dialect() string {
+	return r.DB.DriverName()
+}
+
 func (r *Repo) DeleteRange(
 	start, end int64,
 	table string,
