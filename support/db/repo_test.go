@@ -9,7 +9,7 @@ import (
 )
 
 func TestRepo(t *testing.T) {
-	db := dbtest.Postgres().Load(testSchema)
+	db := dbtest.Postgres(t).Load(testSchema)
 	defer db.Close()
 
 	assert := assert.New(t)
