@@ -75,3 +75,11 @@ func TestLookupByID(t *testing.T) {
 	assert.Error(t, err)
 	assert.Equal(t, "homedomain not set", err.Error())
 }
+
+func Test_url(t *testing.T) {
+	c := &Client{}
+
+	// regression: ensure that query is properly URI encoded
+	url := c.url("", "q", "scott+receiver1@stellar.org*stellar.org")
+	assert.Equal(t, "?q=scott%2Breceiver1%40stellar.org%2Astellar.org&type=q", url)
+}

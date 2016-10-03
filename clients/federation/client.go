@@ -3,6 +3,7 @@ package federation
 import (
 	"encoding/json"
 	"fmt"
+	"net/url"
 	"strings"
 
 	"github.com/stellar/go/address"
@@ -110,5 +111,9 @@ func (c *Client) getJSON(url string, dest interface{}) error {
 }
 
 func (c *Client) url(endpoint string, typ string, q string) string {
-	return fmt.Sprintf("%s?type=%s&q=%s", endpoint, typ, q)
+	qstr := url.Values{}
+	qstr.Add("type", typ)
+	qstr.Add("q", q)
+
+	return fmt.Sprintf("%s?%s", endpoint, qstr.Encode())
 }
