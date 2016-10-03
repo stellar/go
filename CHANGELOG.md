@@ -14,4 +14,8 @@ NOTE:  this changelog represents the changes that are associated with the librar
 
 - network:  Added the `HashTransaction` helper func to get the hash of a transaction targetted to a specific stellar network.
 
+### Changed:
+
+- build: _BREAKING CHANGE_:  A transaction built and signed using the `build` package no longer default to the test network.
+
 [Unreleased]: https://github.com/stellar/go/commits/master
