@@ -35,11 +35,22 @@ In addition to the packages described above, this repository contains various pa
 
 While much of the code in individual packages is organized based upon different developers' personal preferences, many of the packages follow a simple convention for organizing the declarations inside of a package that aim to aid in your ability to find code.
 
-Every package should have a `main.go` file.  This file contains the package documentation (unless a separate `doc.go` file is used), _all_ of the exported vars, consts, types and funcs for the package.  It may also contain any unexported declarations that are not tied to any particular type.  In addition to `main.go`, a package often has a single go source file for each type that has method declarations.  This file uses the snake case form of the type name (for example `loggly_hook.go` should contain methods for the type `LogglyHook`).
+In each package, there may be one or more of a set of common files:
 
-Each non-test file can have a test counterpart like normal, whose name ends with `_test.go`.  Additionally, an `assertions_test.go` file should contain any custom assertions that are related to the package in some way.  This allows a developer to include the package in their tests to gain access to assertions that make writing tests that involve the package more simple.  Finally, a `helpers_test.go` file can contain test utility functions that are not necessarily custom assertions.
+- *main.go*: Every package should have a `main.go` file.  This file contains the package documentation (unless a separate `doc.go` file is used), _all_ of the exported vars, consts, types and funcs for the package. 
+- *internal.go*:  This file should contain unexported vars, consts, types, and funcs.  Conceptually, it should be considered the private counterpart to the `main.go` file of a package
+- *errors.go*: This file should contains declarations (both types and vars) for errors that are used by the package.
+- *example_test.go*: This file should contains example tests, as described at https://blog.golang.org/examples.
+
+In addition to the above files, a package often has files that contains code that is specific to one declared type.  This file uses the snake case form of the type name (for example `loggly_hook.go` would correspond to the type `LogglyHook`).  This file should contain method declarations, interface implementation assertions and any other declarations that are tied solely to to that type.
+
+Each non-test file can have a test counterpart like normal, whose name ends with `_test.go`.  The common files described above also have their own test counterparts... for example `internal_test.go` should contains tests that test unexported behavior and more commonly test helpers that are unexported.
 
 Generally, file contents are sorted by exported/unexported, then declaration type  (ordered as consts, vars, types, then funcs), then finally alphabetically.
+
+### Test helpers
+
+Often, we provide test packages that aid in the creation of tests that interact with our other packages.  For example, the `support/db` package has the `support/db/dbtest` package underneath it that contains elements that make it easier to test code that accesses a SQL database.  We've found that this pattern of having a separate test package maximizes flexibility and simplifies package dependencies.
 
 
 ## Coding conventions
