@@ -8,6 +8,10 @@ bumps.  A breaking change will get clearly notified in this log.
 
 ## [Unreleased]
 
+### Fixed
+
+- TLS support re-enabled.
+
 ### Added
 
 - Reverse federation is now optional.

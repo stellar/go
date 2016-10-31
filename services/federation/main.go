@@ -82,6 +82,8 @@ func run(cmd *cobra.Command, args []string) {
 	http.Run(http.Config{
 		ListenAddr: addr,
 		Handler:    mux,
+		TLSCert:    cfg.TLS.CertificateFile,
+		TLSKey:     cfg.TLS.PrivateKeyFile,
 		OnStarting: func() {
 			log.Infof("starting federation server - %s", app.Version())
 			log.Infof("listening on %s", addr)
