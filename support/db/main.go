@@ -16,6 +16,8 @@ import (
 	// Enable mysql
 	_ "github.com/go-sql-driver/mysql"
 	// Enable postgres
+	"reflect"
+
 	_ "github.com/lib/pq"
 )
 
@@ -28,11 +30,13 @@ type Conn interface {
 	Select(dest interface{}, query string, args ...interface{}) error
 }
 
-// Repo provides helper methods for making queries against `DB` and provides
+// Session provides helper methods for making queries against `DB` and provides
 // utilities such as automatic query logging and transaction management.  NOTE:
-// A Repo is designed to be lightweight and temporarily lived (usually request
-// scoped) which is one reason it is acceptable for it to store a context.
-type Repo struct {
+// A Session is designed to be lightweight and temporarily lived (usually
+// request scoped) which is one reason it is acceptable for it to store a
+// context.  It is not presently intended to cross goroutine boundaries and is
+// not concurrency safe.
+type Session struct {
 	// DB is the database connection that queries should be executed against.
 	DB *sqlx.DB
 
@@ -42,20 +46,28 @@ type Repo struct {
 	tx *sqlx.Tx
 }
 
-// Open the postgres database at `url` and returns a new *Repo using it.
-func Open(dialect, url string) (*Repo, error) {
-	db, err := sqlx.Connect(dialect, url)
+// Table helps to build sql queries against a given table.
+type Table struct {
+	Name   string
+	Source reflect.Type
+}
+
+// Open the database at `dsn` and returns a new *Repo using it.
+func Open(dialect, dsn string) (*Session, error) {
+	db, err := sqlx.Connect(dialect, dsn)
 	if err != nil {
 		return nil, errors.Wrap(err, "connect failed")
 	}
 
-	return &Repo{DB: db}, nil
+	return &Session{DB: db}, nil
 }
 
 // Wrap wraps a bare *sql.DB (from the database/sql stdlib package) in a
-// *db.Repo instance.
-func Wrap(base *sql.DB, dialect string) *Repo {
-	return &Repo{DB: sqlx.NewDb(base, dialect)}
+// *db.Repo instance.  It is meant to be used in cases where you do not control
+// the instantiation of the database connection, but would still like to
+// leverage the facilities provided in Session.
+func Wrap(base *sql.DB, dialect string) *Session {
+	return &Session{DB: sqlx.NewDb(base, dialect)}
 }
 
 // ensure various types conform to Conn interface

@@ -101,7 +101,7 @@ type SQLDriver struct {
 	LookupRecordQuery string
 
 	init sync.Once
-	db   *db.Repo
+	db   *db.Session
 }
 
 // SuccessResponse represents the successful JSON response that will be
