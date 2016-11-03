@@ -55,5 +55,5 @@ func (c *Client) url(domain string) string {
 		scheme = "https"
 	}
 
-	return fmt.Sprintf("%s://www.%s%s", scheme, domain, WellKnownPath)
+	return fmt.Sprintf("%s://%s%s", scheme, domain, WellKnownPath)
 }
