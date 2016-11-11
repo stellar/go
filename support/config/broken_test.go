@@ -1,5 +1,3 @@
-// +build brokentests
-
 package config
 
 import (
