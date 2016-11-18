@@ -55,7 +55,7 @@ func TestColumnsForStruct(t *testing.T) {
 				Ignore string `db:"-"`
 				Age    string `db:"age"`
 			}{},
-			Expected: []string{"name", "age"},
+			Expected: []string{"age", "name"},
 		},
 		{
 			Name: "unannotated",
@@ -64,7 +64,7 @@ func TestColumnsForStruct(t *testing.T) {
 				Age   string
 				Level int `json:"level"`
 			}{},
-			Expected: []string{"name", "Age", "Level"},
+			Expected: []string{"Age", "Level", "name"},
 		},
 		{
 			Name: "private",

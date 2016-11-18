@@ -2,6 +2,7 @@ package db
 
 import (
 	"reflect"
+	"sort"
 
 	"github.com/jmoiron/sqlx/reflectx"
 )
@@ -34,5 +35,9 @@ func columnsForStruct(dest interface{}) []string {
 	for k := range typmap.Names {
 		keys = append(keys, k)
 	}
+
+	// Ensure keys are sorted.
+	sort.Strings(keys)
+
 	return keys
 }
