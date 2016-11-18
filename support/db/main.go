@@ -9,6 +9,7 @@ package db
 import (
 	"database/sql"
 
+	"github.com/Masterminds/squirrel"
 	"github.com/jmoiron/sqlx"
 	"github.com/stellar/go/support/errors"
 	"golang.org/x/net/context"
@@ -16,8 +17,6 @@ import (
 	// Enable mysql
 	_ "github.com/go-sql-driver/mysql"
 	// Enable postgres
-	"reflect"
-
 	_ "github.com/lib/pq"
 )
 
@@ -28,6 +27,40 @@ type Conn interface {
 	Rebind(sql string) string
 	Queryx(query string, args ...interface{}) (*sqlx.Rows, error)
 	Select(dest interface{}, query string, args ...interface{}) error
+}
+
+// DeleteBuilder is a helper struct used to construct sql queries of the DELETE
+// variety.
+type DeleteBuilder struct {
+	Table *Table
+	sql   squirrel.DeleteBuilder
+}
+
+// InsertBuilder is a helper struct used to construct sql queries of the INSERT
+// variety.
+type InsertBuilder struct {
+	Table *Table
+
+	rows []interface{}
+	sql  squirrel.InsertBuilder
+}
+
+// GetBuilder is a helper struct used to construct sql queries of the SELECT
+// variety.
+type GetBuilder struct {
+	Table *Table
+
+	dest interface{}
+	sql  squirrel.SelectBuilder
+}
+
+// SelectBuilder is a helper struct used to construct sql queries of the SELECT
+// variety.
+type SelectBuilder struct {
+	Table *Table
+
+	dest interface{}
+	sql  squirrel.SelectBuilder
 }
 
 // Session provides helper methods for making queries against `DB` and provides
@@ -46,10 +79,13 @@ type Session struct {
 	tx *sqlx.Tx
 }
 
-// Table helps to build sql queries against a given table.
+// Table helps to build sql queries against a given table.  It logically
+// represents a SQL table on the database that `Session` is connected to.
 type Table struct {
-	Name   string
-	Source reflect.Type
+	// Name is the name of the table
+	Name string
+
+	Session *Session
 }
 
 // Open the database at `dsn` and returns a new *Repo using it.

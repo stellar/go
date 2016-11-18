@@ -6,8 +6,8 @@ import (
 	"reflect"
 	"time"
 
+	sq "github.com/Masterminds/squirrel"
 	"github.com/jmoiron/sqlx"
-	sq "github.com/lann/squirrel"
 	"github.com/stellar/go/support/db/sqlutils"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/support/log"
@@ -106,8 +106,12 @@ func (r *Repo) GetRaw(dest interface{}, query string, args ...interface{}) error
 	return errors.Wrap(err, "get failed")
 }
 
-func (s *Session) GetTable(typ interface{}) *Table {
-	return nil
+// GetTable translates the provided struct into a Table,
+func (s *Session) GetTable(name string) *Table {
+	return &Table{
+		Name:    name,
+		Session: s,
+	}
 }
 
 // Exec runs `query`

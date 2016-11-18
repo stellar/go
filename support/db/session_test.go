@@ -89,14 +89,3 @@ func TestSession(t *testing.T) {
 		assert.Equal("$1 = $2 = $3 = ?", out)
 	}
 }
-
-const testSchema = `
-CREATE TABLE  IF NOT EXISTS people (
-    name character varying NOT NULL,
-    hunger_level integer NOT NULL
-);
-DELETE FROM people;
-INSERT INTO people (name, hunger_level) VALUES ('scott', 1000000);
-INSERT INTO people (name, hunger_level) VALUES ('jed', 10);
-INSERT INTO people (name, hunger_level) VALUES ('bartek', 10);
-`
