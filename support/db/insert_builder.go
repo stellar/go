@@ -5,7 +5,6 @@ import (
 	"reflect"
 
 	"github.com/pkg/errors"
-	"github.com/y0ssar1an/q"
 )
 
 // Exec executes the query represented by the builder, inserting each val
@@ -19,14 +18,20 @@ func (ib *InsertBuilder) Exec() (sql.Result, error) {
 	cols := columnsForStruct(template)
 	sql := ib.sql.Columns(cols...)
 
+	// add rows onto the builder
 	for _, row := range ib.rows {
+
+		// extract field values
 		rrow := reflect.ValueOf(row)
 		rvals := mapper.FieldsByName(rrow, cols)
+
+		// convert fields values to interface{}
 		vals := make([]interface{}, len(cols))
 		for i, rval := range rvals {
 			vals[i] = rval.Interface()
 		}
-		q.Q(vals)
+
+		// append row to insert statement
 		sql = sql.Values(vals...)
 	}
 

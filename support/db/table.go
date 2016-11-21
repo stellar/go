@@ -2,8 +2,8 @@ package db
 
 import sq "github.com/Masterminds/squirrel"
 
-// Insert returns a new query builder configured to insert structs into the
-// table
+// Delete returns a new query builder configured to delete rows from the table.
+//
 func (tbl *Table) Delete(
 	pred interface{},
 	args ...interface{},
