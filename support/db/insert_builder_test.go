@@ -40,6 +40,7 @@ func TestInsertBuilder_Exec(t *testing.T) {
 	// no rows
 	_, err = tbl.Insert().Exec()
 	if assert.Error(t, err) {
+		assert.IsType(t, &NoRowsError{}, err)
 		assert.EqualError(t, err, "no rows provided to insert")
 	}
 
