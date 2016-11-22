@@ -1,9 +1,14 @@
 // Package db is the base package for database access at stellar.  It primarily
-// exposes Repo which is a lightweight wrapper around a *sqlx.DB that provides
-// utility methods (See the repo tests for examples).
+// exposes Session which is a lightweight wrapper around a *sqlx.DB that
+// provides utility methods (See the repo tests for examples).
 //
 // In addition to the query methods, this package provides query logging and
 // stateful transaction management.
+//
+// In addition to the lower-level access facilities, this package exposes a
+// system to build queries more dynamically using the help of
+// https://github.com/Masterminds/squirrel.  These builder method are access
+// through the `Table` type.
 package db
 
 import (
@@ -88,7 +93,7 @@ type Table struct {
 	Session *Session
 }
 
-// Open the database at `dsn` and returns a new *Repo using it.
+// Open the database at `dsn` and returns a new *Session using it.
 func Open(dialect, dsn string) (*Session, error) {
 	db, err := sqlx.Connect(dialect, dsn)
 	if err != nil {
@@ -99,8 +104,8 @@ func Open(dialect, dsn string) (*Session, error) {
 }
 
 // Wrap wraps a bare *sql.DB (from the database/sql stdlib package) in a
-// *db.Repo instance.  It is meant to be used in cases where you do not control
-// the instantiation of the database connection, but would still like to
+// *db.Session instance.  It is meant to be used in cases where you do not
+// control the instantiation of the database connection, but would still like to
 // leverage the facilities provided in Session.
 func Wrap(base *sql.DB, dialect string) *Session {
 	return &Session{DB: sqlx.NewDb(base, dialect)}

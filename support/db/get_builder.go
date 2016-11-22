@@ -10,32 +10,45 @@ import (
 func (gb *GetBuilder) Exec() error {
 	err := gb.Table.Session.Get(gb.dest, gb.sql)
 	if err != nil {
-		return errors.Wrap(err, "select failed")
+		return errors.Wrap(err, "get failed")
 	}
 
 	return nil
 }
 
-// Limit is a passthrough call to the squirrel.  See
-// https://godoc.org/github.com/Masterminds/squirrel#GetBuilder.Limit
-func (gb *GetBuilder) Limit(limit uint64) *GetBuilder {
-	gb.sql = gb.sql.Limit(limit)
-	return gb
-}
-
 // Offset is a passthrough call to the squirrel.  See
-// https://godoc.org/github.com/Masterminds/squirrel#GetBuilder.Offset
+// https://godoc.org/github.com/Masterminds/squirrel#SelectBuilder.Offset
 func (gb *GetBuilder) Offset(offset uint64) *GetBuilder {
 	gb.sql = gb.sql.Offset(offset)
 	return gb
 }
 
 // OrderBy is a passthrough call to the squirrel.  See
-// https://godoc.org/github.com/Masterminds/squirrel#GetBuilder.OrderBy
+// https://godoc.org/github.com/Masterminds/squirrel#SelectBuilder.OrderBy
 func (gb *GetBuilder) OrderBy(
 	orderBys ...string,
 ) *GetBuilder {
 	gb.sql = gb.sql.OrderBy(orderBys...)
+	return gb
+}
+
+// Prefix is a passthrough call to the squirrel.  See
+// https://godoc.org/github.com/Masterminds/squirrel#SelectBuilder.Prefix
+func (gb *GetBuilder) Prefix(
+	sql string,
+	args ...interface{},
+) *GetBuilder {
+	gb.sql = gb.sql.Prefix(sql, args...)
+	return gb
+}
+
+// Suffix is a passthrough call to the squirrel.  See
+// https://godoc.org/github.com/Masterminds/squirrel#SelectBuilder.Suffix
+func (gb *GetBuilder) Suffix(
+	sql string,
+	args ...interface{},
+) *GetBuilder {
+	gb.sql = gb.sql.Suffix(sql, args...)
 	return gb
 }
 

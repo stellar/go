@@ -39,6 +39,26 @@ func (sb *SelectBuilder) OrderBy(
 	return sb
 }
 
+// Prefix is a passthrough call to the squirrel.  See
+// https://godoc.org/github.com/Masterminds/squirrel#SelectBuilder.Prefix
+func (sb *SelectBuilder) Prefix(
+	sql string,
+	args ...interface{},
+) *SelectBuilder {
+	sb.sql = sb.sql.Prefix(sql, args...)
+	return sb
+}
+
+// Suffix is a passthrough call to the squirrel.  See
+// https://godoc.org/github.com/Masterminds/squirrel#SelectBuilder.Suffix
+func (sb *SelectBuilder) Suffix(
+	sql string,
+	args ...interface{},
+) *SelectBuilder {
+	sb.sql = sb.sql.Suffix(sql, args...)
+	return sb
+}
+
 // Where is a passthrough call to the squirrel.  See
 // https://godoc.org/github.com/Masterminds/squirrel#SelectBuilder.Where
 func (sb *SelectBuilder) Where(

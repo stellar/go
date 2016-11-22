@@ -16,6 +16,9 @@ func (tbl *Table) Delete(
 
 // Get returns a new query builder configured to select into the provided
 // `dest`.
+//
+// Get behaves the same was as Select, but automatically limits the query
+// generated to a single value and only populates a single struct.
 func (tbl *Table) Get(
 	dest interface{},
 	pred interface{},
@@ -34,6 +37,21 @@ func (tbl *Table) Get(
 
 // Insert returns a new query builder configured to insert structs into the
 // table.
+//
+// Insert takes one or more struct (or pointer to struct) values, each of which
+// represents a single row to be created in the table.  The first value provided
+// in a call to this function will operate as the template for the insert and
+// will determine what columns are populated in the query.   For this reason, it
+// is highly recommmended that you always use the same struct type for any
+// single call this function.
+//
+// An InsertBuilder uses the "db" struct tag to determine the column names that
+// a given struct should be mapped to, and by default the unmofdified name of
+// the field will be used.  Similar to other struct tags, the value "-" will
+// cause the field to be skipped.
+//
+// NOTE:  using the omitempty option, such as used with json struct tags, is not
+// supported.
 func (tbl *Table) Insert(rows ...interface{}) *InsertBuilder {
 	return &InsertBuilder{
 		Table: tbl,

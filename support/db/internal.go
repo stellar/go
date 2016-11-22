@@ -36,7 +36,10 @@ func columnsForStruct(dest interface{}) []string {
 		keys = append(keys, k)
 	}
 
-	// Ensure keys are sorted.
+	// Ensure keys are sorted.  keys is populated from a map, which has no
+	// defined iteration order.  Different versions of go or different
+	// architectures may cause non-deterministic results to occur (and in our CI
+	// environment, they have).  To make testing easier, we sort the keys.
 	sort.Strings(keys)
 
 	return keys
