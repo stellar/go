@@ -2,6 +2,8 @@ package stellartoml
 
 import (
 	"fmt"
+	"io"
+	"io/ioutil"
 	"net/http"
 
 	"github.com/BurntSushi/toml"
@@ -24,7 +26,21 @@ func (c *Client) GetStellarToml(domain string) (resp *Response, err error) {
 		return
 	}
 
-	_, err = toml.DecodeReader(hresp.Body, &resp)
+	// Read StellarTomlMaxSize+1 bytes to check condition for
+	// "stellar.toml file too big" error
+	limitReader := io.LimitReader(hresp.Body, StellarTomlMaxSize+1)
+	stellarTomlBytes, err := ioutil.ReadAll(limitReader)
+	if err != nil {
+		err = errors.Wrap(err, "error reading stellar.toml")
+		return
+	}
+
+	if len(stellarTomlBytes) > StellarTomlMaxSize {
+		err = errors.New("stellar.toml file too big")
+		return
+	}
+
+	_, err = toml.Decode(string(stellarTomlBytes), &resp)
 	if err != nil {
 		err = errors.Wrap(err, "toml decode failed")
 		return

@@ -3,6 +3,8 @@ package federation
 import (
 	"encoding/json"
 	"fmt"
+	"io"
+	"io/ioutil"
 	"net/url"
 	"strings"
 
@@ -102,7 +104,19 @@ func (c *Client) getJSON(url string, dest interface{}) error {
 		return errors.Errorf("http get failed with (%d) status code", hresp.StatusCode)
 	}
 
-	err = json.NewDecoder(hresp.Body).Decode(dest)
+	// Read FederationResponseMaxSize+1 bytes to check condition for
+	// "federation response too big" error
+	limitReader := io.LimitReader(hresp.Body, FederationResponseMaxSize+1)
+	federationResponseBytes, err := ioutil.ReadAll(limitReader)
+	if err != nil {
+		return errors.Wrap(err, "error reading federation response")
+	}
+
+	if len(federationResponseBytes) > FederationResponseMaxSize {
+		return errors.New("federation response too big")
+	}
+
+	err = json.Unmarshal(federationResponseBytes, dest)
 	if err != nil {
 		return errors.Wrap(err, "json decode errored")
 	}
