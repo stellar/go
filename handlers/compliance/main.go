@@ -1,8 +1,4 @@
-package auth
-
-import (
-//
-)
+package compliance
 
 // Strategy defines strategy for handling auth requests.
 // Additionally for all methods we can add memo preimage to params
@@ -19,7 +15,8 @@ type Strategy interface {
 	PersistTransaction(data AuthData) error
 }
 
-type Handler struct {
+// AuthHandler ...
+type AuthHandler struct {
 	Strategy Strategy
 }
 
@@ -37,13 +34,13 @@ const (
 
 // AuthRequest represents auth request sent to compliance server
 type AuthRequest struct {
-	// Stringified AuthData JSON object
-	Data string `name:"data" required:""`
+	// Marshalled AuthData JSON object (because of the attached signature, json can be marshalled to infinite number of valid JSON strings)
+	DataJSON string `name:"data" required:""`
 	// Signature of sending FI
 	Signature string `name:"sig" required:""`
 }
 
-// AuthData represents how AuthRequest.Data field looks like. It is Marshalled because of the attached signature.
+// AuthData represents how AuthRequest.Data field looks like.
 type AuthData struct {
 	// The stellar address of the customer that is initiating the send.
 	Sender string `json:"sender"`
@@ -52,7 +49,7 @@ type AuthData struct {
 	// The transaction that the sender would like to send in XDR format. This transaction is unsigned.
 	Tx string `json:"tx"`
 	// The full text of the memo the hash of this memo is included in the transaction.
-	Memo string `json:"memo"`
+	MemoJSON string `json:"memo"`
 }
 
 // AuthResponse represents response sent by auth server
@@ -65,4 +62,28 @@ type AuthResponse struct {
 	DestInfo string `json:"dest_info,omitempty"`
 	// (only present if info_status or tx_status is pending) Estimated number of seconds till the sender can check back for a change in status. The sender should just resubmit this request after the given number of seconds.
 	Pending int `json:"pending,omitempty"`
+}
+
+// Memo represents memo in Stellar memo convention
+type Memo struct {
+	Transaction `json:"transaction"`
+	Operations  []Operation `json:"operations"`
+}
+
+// Transaction represents transaction field in Stellar memo
+type Transaction struct {
+	SenderInfo string `json:"sender_info"`
+	Route      string `json:"route"`
+	Extra      string `json:"extra"`
+	Note       string `json:"note"`
+}
+
+// Operation represents a single operation object in Stellar memo
+type Operation struct {
+	// Overriddes Transaction field for this operation
+	SenderInfo string `json:"sender_info"`
+	// Overriddes Transaction field for this operation
+	Route string `json:"route"`
+	// Overriddes Transaction field for this operation
+	Note string `json:"note"`
 }
