@@ -8,7 +8,7 @@ import (
 )
 
 // FederationResponseMaxSize is the maximum size of response from a federation server
-const FederationResponseMaxSize = 5 * 1024
+const FederationResponseMaxSize = 100 * 1024
 
 // DefaultTestNetClient is a default federation client for testnet
 var DefaultTestNetClient = &Client{

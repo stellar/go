@@ -35,7 +35,7 @@ func TestLookupByAddress(t *testing.T) {
 		assert.Equal(t, "123", resp.Memo)
 	}
 
-	// response too big
+	// response exceeds limit
 	tomlmock.On("GetStellarToml", "toobig.org").Return(&stellartoml.Response{
 		FederationServer: "https://toobig.org/federation",
 	}, nil)
@@ -48,7 +48,7 @@ func TestLookupByAddress(t *testing.T) {
 		})
 	_, err = c.LookupByAddress("response*toobig.org")
 	if assert.Error(t, err) {
-		assert.Contains(t, err.Error(), "federation response too big")
+		assert.Contains(t, err.Error(), "federation response exceeds")
 	}
 
 	// failed toml resolution
