@@ -35,14 +35,16 @@ func TestClient(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "https://localhost/federation", stoml.FederationServer)
 
-	// stellar.toml too big
+	// stellar.toml exceeds limit
 	h.
 		On("GET", "https://toobig.org/.well-known/stellar.toml").
 		ReturnString(http.StatusOK,
 			`FEDERATION_SERVER="https://localhost/federation`+strings.Repeat("0", StellarTomlMaxSize)+`"`,
 		)
 	stoml, err = c.GetStellarToml("toobig.org")
-	assert.EqualError(t, err, "stellar.toml file too big")
+	if assert.Error(t, err) {
+		assert.Contains(t, err.Error(), "stellar.toml response exceeds")
+	}
 
 	// not found
 	h.
