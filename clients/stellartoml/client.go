@@ -28,8 +28,9 @@ func (c *Client) GetStellarToml(domain string) (resp *Response, err error) {
 	limitReader := io.LimitReader(hresp.Body, StellarTomlMaxSize)
 	_, err = toml.DecodeReader(limitReader, &resp)
 
-	// There is one corner case not handled here: response is exactly StellarTomlMaxSize long and is incorrect toml.
-	// Check discussion: https://github.com/stellar/go/pull/24#discussion_r89909696
+	// There is one corner case not handled here: response is exactly
+	// StellarTomlMaxSize long and is incorrect toml. Check discussion:
+	// https://github.com/stellar/go/pull/24#discussion_r89909696
 	if err != nil && limitReader.(*io.LimitedReader).N == 0 {
 		err = errors.Errorf("stellar.toml response exceeds %d bytes limit", StellarTomlMaxSize)
 		return
