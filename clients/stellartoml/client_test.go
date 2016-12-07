@@ -2,6 +2,7 @@ package stellartoml
 
 import (
 	"net/http"
+	"strings"
 	"testing"
 
 	"github.com/stellar/go/support/http/httptest"
@@ -33,6 +34,17 @@ func TestClient(t *testing.T) {
 	stoml, err := c.GetStellarToml("stellar.org")
 	require.NoError(t, err)
 	assert.Equal(t, "https://localhost/federation", stoml.FederationServer)
+
+	// stellar.toml exceeds limit
+	h.
+		On("GET", "https://toobig.org/.well-known/stellar.toml").
+		ReturnString(http.StatusOK,
+			`FEDERATION_SERVER="https://localhost/federation`+strings.Repeat("0", StellarTomlMaxSize)+`"`,
+		)
+	stoml, err = c.GetStellarToml("toobig.org")
+	if assert.Error(t, err) {
+		assert.Contains(t, err.Error(), "stellar.toml response exceeds")
+	}
 
 	// not found
 	h.
