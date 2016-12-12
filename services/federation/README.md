@@ -42,7 +42,7 @@ port = 8000
 
 [database]
 type = "mysql"
-url = "root:@/dbname"
+url = "dbuser:dbpassword:@/dbname"
 
 [queries]
 federation = "SELECT account_id as id FROM Users WHERE username = ? AND domain = ?"
@@ -61,7 +61,7 @@ port = 8000
 
 [database]
 type = "mysql"
-url = "root:@/dbname"
+url = "dbuser:dbpassword:@/dbname"
 
 [queries]
 federation = "SELECT username as memo, 'text' as memo_type, 'GD6WU64OEP5C4LRBH6NK3MHYIA2ADN6K6II6EXPNVUR3ERBXT4AN4ACD' as id FROM Users WHERE username = ? AND domain = ?"
