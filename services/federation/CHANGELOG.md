@@ -8,6 +8,10 @@ bumps.  A breaking change will get clearly notified in this log.
 
 ## [Unreleased]
 
+### Changed
+
+- BREAKING CHANGE: The `url` database configuration has been renamed to `dsn` to more accurately reflect its content.
+
 ### Fixed
 
 - TLS support re-enabled.

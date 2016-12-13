@@ -14,7 +14,7 @@ By default this server uses a config file named `federation.cfg` in the current 
 * `port` - server listening port
 * `database`
   * `type` - database type (sqlite3, mysql, postgres)
-  * `url` - The DSN (data source name) used to connect to the database connection.  This value should be appropriate for the database type chosen.
+  * `dsn` - The DSN (data source name) used to connect to the database connection.  This value should be appropriate for the database type chosen.
     * for `mysql`: `user:password@(host:port)/dbname` ([more info](https://github.com/go-sql-driver/mysql#dsn-data-source-name))
     * for `postgres`: `postgres://user:password@host/dbname?sslmode=sslmode` ([more info](https://godoc.org/github.com/lib/pq#hdr-Connection_String_Parameters))
 * `queries`
@@ -44,7 +44,7 @@ port = 8000
 
 [database]
 type = "mysql"
-url = "dbuser:dbpassword@/dbname"
+dsn = "dbuser:dbpassword@/dbname"
 
 [queries]
 federation = "SELECT account_id as id FROM Users WHERE username = ? AND domain = ?"
@@ -63,7 +63,7 @@ port = 8000
 
 [database]
 type = "mysql"
-url = "dbuser:dbpassword@/dbname"
+dsn = "dbuser:dbpassword@/dbname"
 
 [queries]
 federation = "SELECT username as memo, 'text' as memo_type, 'GD6WU64OEP5C4LRBH6NK3MHYIA2ADN6K6II6EXPNVUR3ERBXT4AN4ACD' as id FROM Users WHERE username = ? AND domain = ?"

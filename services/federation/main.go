@@ -23,7 +23,7 @@ type Config struct {
 	Port     int `valid:"required"`
 	Database struct {
 		Type string `valid:"matches(^mysql|sqlite3|postgres$)"`
-		URL  string `valid:"required"`
+		DSN  string `valid:"required"`
 	} `valid:"required"`
 	Queries struct {
 		Federation        string `valid:"required"`
@@ -105,7 +105,7 @@ func initDriver(cfg Config) (federation.Driver, error) {
 		return nil, errors.Errorf("Invalid db type: %s", cfg.Database.Type)
 	}
 
-	repo, err := db.Open(dialect, cfg.Database.URL)
+	repo, err := db.Open(dialect, cfg.Database.DSN)
 	if err != nil {
 		return nil, errors.Wrap(err, "db open failed")
 	}
