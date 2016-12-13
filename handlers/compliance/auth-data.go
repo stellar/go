@@ -11,7 +11,7 @@ import (
 
 // Memo returns Memo from the the object. This method
 // assumes that Memo is valid JSON (checked in Validate).
-func (d *AuthData) Memo() (memo *Memo) {
+func (d *AuthData) Memo() (memo Memo) {
 	json.Unmarshal([]byte(d.MemoJSON), &memo)
 	return
 }
@@ -23,13 +23,13 @@ func (d *AuthData) Memo() (memo *Memo) {
 func (d *AuthData) Validate() error {
 	_, _, err := address.Split(d.Sender)
 	if err != nil {
-		return errors.Wrap(err, "Invalid Data.Sender value")
+		return errors.New("Invalid Data.Sender value")
 	}
 
 	var tx xdr.Transaction
 	err = xdr.SafeUnmarshalBase64(d.Tx, &tx)
 	if err != nil {
-		return errors.Wrap(err, "Tx is invalid")
+		return errors.New("Tx is invalid")
 	}
 
 	if tx.Memo.Hash == nil {
@@ -47,7 +47,7 @@ func (d *AuthData) Validate() error {
 	memo := Memo{}
 	err = json.Unmarshal([]byte(d.MemoJSON), &memo)
 	if err != nil {
-		return errors.Wrap(err, "Memo is not valid JSON")
+		return errors.New("Memo is not valid JSON")
 	}
 
 	return nil

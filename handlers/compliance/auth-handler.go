@@ -19,10 +19,8 @@ func (h *AuthHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Info(err)
 		h.writeJSON(w, ErrorResponse{
-			Code: "invalid_request",
-			// TODO show real reason here? Unfortunatelly there is no way to get
-			// top message of wrapped error: https://github.com/pkg/errors/blob/master/errors.go#L228
-			Message: "Request is invalid",
+			Code:    "invalid_request",
+			Message: err.Error(),
 		}, http.StatusBadRequest)
 		return
 	}
@@ -57,7 +55,7 @@ func (h *AuthHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	// If transaction allowed, persist it for future reference
 	if response.TxStatus == AuthStatusOk && response.InfoStatus == AuthStatusOk {
-		err = h.Strategy.PersistTransaction(*authData)
+		err = h.PersistTransaction(*authData)
 		if err != nil {
 			h.writeError(w, err)
 			return

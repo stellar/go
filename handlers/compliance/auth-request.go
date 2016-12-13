@@ -49,17 +49,17 @@ func (r *AuthRequest) VerifySignature(sender string) error {
 
 	signatureBytes, err := base64.StdEncoding.DecodeString(r.Signature)
 	if err != nil {
-		return errors.Wrap(err, "Signature is not base64 encoded")
+		return errors.New("Signature is not base64 encoded")
 	}
 
 	kp, err := keypair.Parse(senderStellarToml.SigningKey)
 	if err != nil {
-		return errors.Wrap(err, "SigningKey is invalid")
+		return errors.New("SigningKey is invalid")
 	}
 
 	err = kp.Verify([]byte(r.DataJSON), signatureBytes)
 	if err != nil {
-		return errors.Wrap(err, "Signature is invalid")
+		return errors.New("Signature is invalid")
 	}
 
 	return nil

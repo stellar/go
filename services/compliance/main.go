@@ -52,7 +52,12 @@ func main() {
 func run(cmd *cobra.Command, args []string) {
 	log.SetLevel(log.InfoLevel)
 
-	mux := initMux(&YesStrategy{})
+	strategy := &compliance.CallbackStrategy{
+		SanctionsCheckURL: "abc",
+		GetUserDataURL:    "def",
+	}
+
+	mux := initMux(strategy)
 	addr := fmt.Sprintf("0.0.0.0:%d", 8000)
 
 	http.Run(http.Config{
@@ -76,7 +81,13 @@ func initMux(strategy compliance.Strategy) *goji.Mux {
 	mux.Use(c.Handler)
 	mux.Use(log.HTTPMiddleware)
 
-	authHandler := &compliance.AuthHandler{strategy}
+	authHandler := &compliance.AuthHandler{
+		Strategy: strategy,
+		PersistTransaction: func(data compliance.AuthData) error {
+			fmt.Println("Persist")
+			return nil
+		},
+	}
 
 	mux.Handle(pat.Post("/auth"), authHandler)
 	mux.Handle(pat.Post("/auth/"), authHandler)
