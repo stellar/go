@@ -20,8 +20,14 @@ func (m *MockClient) LoadMemo(p *PaymentResponse) error {
 }
 
 // StreamPayments is a mocking a method
-func (m *MockClient) StreamPayments(accountID string, cursor *string, onPaymentHandler PaymentHandler) error {
-	a := m.Called(accountID, cursor, onPaymentHandler)
+func (m *MockClient) StreamPayments(accountID string, cursor *string, handler PaymentHandler) error {
+	a := m.Called(accountID, cursor, handler)
+	return a.Error(0)
+}
+
+// StreamTransactions is a mocking a method
+func (m *MockClient) StreamTransactions(accountID string, cursor *string, handler TransactionHandler) error {
+	a := m.Called(accountID, cursor, handler)
 	return a.Error(0)
 }
 

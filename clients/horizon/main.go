@@ -67,5 +67,8 @@ type HTTP interface {
 // PaymentHandler is a function that is called when a new payment is received
 type PaymentHandler func(PaymentResponse)
 
+// TransactionHandler is a function that is called when a new transaction is received
+type TransactionHandler func(TransactionResponse)
+
 // ensure that the horizon client can be used as a SequenceProvider
 var _ build.SequenceProvider = &Client{}

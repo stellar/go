@@ -3,6 +3,7 @@ package horizon
 import (
 	"encoding/base64"
 	"encoding/json"
+	"time"
 )
 
 type Problem struct {
@@ -146,4 +147,25 @@ type PaymentResponse struct {
 		Type  string `json:"memo_type"`
 		Value string `json:"memo"`
 	}
+}
+
+type TransactionResponse struct {
+	ID              string    `json:"id"`
+	PagingToken     string    `json:"paging_token"`
+	Hash            string    `json:"hash"`
+	Ledger          int32     `json:"ledger"`
+	LedgerCloseTime time.Time `json:"created_at"`
+	Account         string    `json:"source_account"`
+	AccountSequence string    `json:"source_account_sequence"`
+	FeePaid         int32     `json:"fee_paid"`
+	OperationCount  int32     `json:"operation_count"`
+	EnvelopeXdr     string    `json:"envelope_xdr"`
+	ResultXdr       string    `json:"result_xdr"`
+	ResultMetaXdr   string    `json:"result_meta_xdr"`
+	FeeMetaXdr      string    `json:"fee_meta_xdr"`
+	MemoType        string    `json:"memo_type"`
+	Memo            string    `json:"memo,omitempty"`
+	Signatures      []string  `json:"signatures"`
+	ValidAfter      string    `json:"valid_after,omitempty"`
+	ValidBefore     string    `json:"valid_before,omitempty"`
 }

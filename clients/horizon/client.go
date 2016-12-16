@@ -62,14 +62,12 @@ func (c *Client) SequenceForAccount(
 	return xdr.SequenceNumber(seq), nil
 }
 
-// StreamPayments streams incoming payments
-func (c *Client) StreamPayments(accountID string, cursor *string, onPaymentHandler PaymentHandler) (err error) {
-	url := c.URL + "/accounts/" + accountID + "/payments"
+func (c *Client) stream(url string, cursor *string, handler interface{}) (err error) {
 	if cursor != nil {
 		url += "?cursor=" + *cursor
 	}
 
-	req, _ := http.NewRequest("GET", url, nil)
+	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		return
 	}
@@ -97,14 +95,26 @@ func (c *Client) StreamPayments(accountID string, cursor *string, onPaymentHandl
 			continue
 		}
 
-		var payment PaymentResponse
 		data := ev.Data.(string)
-		err = json.Unmarshal([]byte(data), &payment)
-		if err != nil {
-			return err
-		}
 
-		onPaymentHandler(payment)
+		switch handler := handler.(type) {
+		case PaymentHandler:
+			var payment PaymentResponse
+			err = json.Unmarshal([]byte(data), &payment)
+			if err != nil {
+				return err
+			}
+			handler(payment)
+		case TransactionHandler:
+			var transaction TransactionResponse
+			err = json.Unmarshal([]byte(data), &transaction)
+			if err != nil {
+				return err
+			}
+			handler(transaction)
+		default:
+			return errors.New("Unknown handler")
+		}
 	}
 
 	err = scanner.Err()
@@ -116,6 +126,16 @@ func (c *Client) StreamPayments(accountID string, cursor *string, onPaymentHandl
 	}
 
 	return nil
+}
+
+// StreamPayments streams incoming payments
+func (c *Client) StreamPayments(accountID string, cursor *string, handler PaymentHandler) (err error) {
+	return c.stream(c.URL+"/accounts/"+accountID+"/payments", cursor, handler)
+}
+
+// StreamTransactions streams incoming payments
+func (c *Client) StreamTransactions(accountID string, cursor *string, handler TransactionHandler) (err error) {
+	return c.stream(c.URL+"/accounts/"+accountID+"/transactions", cursor, handler)
 }
 
 // SubmitTransaction submits a transaction to the network. err can be either error object or horizon.Error object.
