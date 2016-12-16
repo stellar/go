@@ -12,14 +12,14 @@ import (
 
 // Memo returns Memo from the the object. This method
 // assumes that Memo is valid JSON (checked in Validate).
-func (d *AuthData) Memo() (memo Memo) {
+func (d AuthData) Memo() (memo Memo) {
 	json.Unmarshal([]byte(d.MemoJSON), &memo)
 	return
 }
 
 // MemoPreimageHash returns sha-256 hash of memo preimage.
 // The hash is base64 encoded.
-func (d *AuthData) MemoPreimageHash() string {
+func (d AuthData) MemoPreimageHash() string {
 	memoPreimageHashBytes := sha256.Sum256([]byte(d.MemoJSON))
 	return base64.StdEncoding.EncodeToString(memoPreimageHashBytes[:])
 }
@@ -28,7 +28,7 @@ func (d *AuthData) MemoPreimageHash() string {
 //  * `Sender` field is valid address
 //  * `Tx` is valid and it's memo_hash equals sha256 hash of memo preimage
 //  * `Memo` is valid JSON
-func (d *AuthData) Validate() error {
+func (d AuthData) Validate() error {
 	_, _, err := address.Split(d.Sender)
 	if err != nil {
 		return errors.New("Invalid Data.Sender value")

@@ -40,14 +40,14 @@ func (h *AuthHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	response := &AuthResponse{}
 
 	// Sanctions check
-	err = h.Strategy.SanctionsCheck(*authData, response)
+	err = h.Strategy.SanctionsCheck(authData, response)
 	if err != nil {
 		h.writeError(w, err)
 		return
 	}
 
 	// User info
-	err = h.Strategy.GetUserData(*authData, response)
+	err = h.Strategy.GetUserData(authData, response)
 	if err != nil {
 		h.writeError(w, err)
 		return
@@ -55,7 +55,7 @@ func (h *AuthHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	// If transaction allowed, persist it for future reference
 	if response.TxStatus == AuthStatusOk && response.InfoStatus == AuthStatusOk {
-		err = h.PersistTransaction(*authData)
+		err = h.PersistTransaction(authData)
 		if err != nil {
 			h.writeError(w, err)
 			return
