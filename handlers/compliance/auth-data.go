@@ -21,7 +21,7 @@ func (d *AuthData) Memo() (memo Memo) {
 // The hash is base64 encoded.
 func (d *AuthData) MemoPreimageHash() string {
 	memoPreimageHashBytes := sha256.Sum256([]byte(d.MemoJSON))
-	return base64.StdEncoding.EncodeToString(memoPreimageHashBytes)
+	return base64.StdEncoding.EncodeToString(memoPreimageHashBytes[:])
 }
 
 // Validate checks if fields are of required form:
