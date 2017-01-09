@@ -20,11 +20,11 @@ func Mysql(t *testing.T) *DB {
 	result.DSN = fmt.Sprintf("root@/%s", name)
 	result.t = t
 	// create the db
-	err := exec.Command("mysql", "-e", fmt.Sprintf("CREATE DATABASE %s;", name)).Run()
+	err := exec.Command("mysql", "--user=root", "-e", fmt.Sprintf("CREATE DATABASE %s;", name)).Run()
 	require.NoError(t, err)
 
 	result.closer = func() {
-		err := exec.Command("mysql", "-e", fmt.Sprintf("DROP DATABASE %s;", name)).Run()
+		err := exec.Command("mysql", "--user=root", "-e", fmt.Sprintf("DROP DATABASE %s;", name)).Run()
 		require.NoError(t, err)
 	}
 
