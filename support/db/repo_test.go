@@ -35,12 +35,13 @@ func TestRepo(t *testing.T) {
 	assert.NoError(err)
 	assert.Equal(int64(3), deleted)
 
-	// Test args
+	// Test args (NOTE: there is a simple escaped arg to ensure no error is raised
+	// during execution)
 	db.Load(testSchema)
 	var name string
 	err = repo.GetRaw(
 		&name,
-		"SELECT name FROM people WHERE hunger_level = ?",
+		"SELECT name FROM people WHERE hunger_level = ? AND name != '??'",
 		1000000,
 	)
 	assert.NoError(err)
@@ -82,6 +83,11 @@ func TestRepo(t *testing.T) {
 	assert.NoError(err)
 	assert.Len(names, 2)
 
+	// Test ReplacePlaceholders
+	out, err := repo.ReplacePlaceholders("? = ? = ? = ??")
+	if assert.NoError(err) {
+		assert.Equal("$1 = $2 = $3 = ?", out)
+	}
 }
 
 const testSchema = `
