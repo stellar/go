@@ -3,18 +3,23 @@ services:
 - mysql
 - postgres
 go:
-- '1.5'
 - '1.6'
 - '1.7'
 - tip
 env:
-- GO15VENDOREXPERIMENT="1"
+  global:
+    secure: pyoqehFyDyV4Xw4y8PjhPAOUU2UQTw86Q1nhMB+6TA8N+o/0hgOdLJJxINb1EgVcvwmuQg8gaaCb77fLTd41C1z4k8kXRUA5QbtyJFdU0jXt0II3tAWcNeS12G/QKzq1jz7dDsIJtMZOyp/S3Bww/KKRemiTvGpOZ2peoXnD7wzBSjb9oJxmDoXmZ+WAH1UaF4FqtjnXrr+jwkGUYYMh2HzaN7nzO7lVbLio4vefgURYupVbmQvpjttxphxKuj5G2UbqFoTFbr2rBZijDyUP9l4cZHYHw/4GfTafUWFMPkTv7Txu1pNyS3IeHGCttP8AnkRyktJRsbS9Uh1bRZTH3V5TaZmR4dpKERExHABnvkfDSnnxbvc3Yh8ot3N7wiyejhoDLxVa6CKfWF/7gLqjfiRQZRmhOhZ3PFMtkR3oNLDY871zjWNVqsDbJyfj0PvdGKs4T+OWb/uBaewynRKjr5YwJdxPfd46BkdwYBU+iU2TzRP0aDzMJZ2cLdw22mxXs6P2SLtaGn+/jfwIUH8Eo74s98/gQsj/Z+1xerutyHwfrcsO9uDgJs1kgn/rG+u/1rKAYujHd04ZrOTrZLcDZwttYQG8qoIOIOIGOgAMU6meaxXaqvP9U2+dARp3lALYpAyUI6f8q459Q6GZKAqjRnyJYwbinVx3d6twjnxFw3s=
 install:
-- go get github.com/Masterminds/glide
+- go get -u github.com/Masterminds/glide
+- go get -u github.com/alecthomas/gometalinter
+- go get -u github.com/haya14busa/reviewdog/cmd/reviewdog
+- gometalinter --install
 before_script: 
 script:
 - glide install
 - go test -race $(glide novendor)
+- >-
+  gometalinter $(glide novendor) --deadline=20s --disable-all --enable=golint | reviewdog -f=golint -ci=travis
 before_deploy:
 - go run ./support/scripts/build_release_artifacts/main.go
 matrix:
