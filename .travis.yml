@@ -15,7 +15,7 @@ install:
 before_script: 
 script:
 - glide install
-- go test -race $(glide novendor)
+- ./support/scripts/run_tests
 before_deploy:
 - go run ./support/scripts/build_release_artifacts/main.go
 matrix:
