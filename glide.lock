@@ -47,7 +47,7 @@ imports:
 - name: github.com/fatih/structs
   version: dc3312cb1a4513a366c4c9e622ad55c32df12ed3
 - name: github.com/gavv/gojsondiff
-  version: 36046c6e558e7f854ebd3fd97d1e9812ebe8709b
+  version: 7b1b7adf999dab73a6eb02669c3d82dbb27a3dd6
   subpackages:
   - formatter
 - name: github.com/gavv/monotime
