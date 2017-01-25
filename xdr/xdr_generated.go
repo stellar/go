@@ -523,11 +523,21 @@ type Thresholds [4]byte
 //
 type String32 string
 
+// XDRMaxSize implements the Sized interface for String32
+func (e String32) XDRMaxSize() int {
+	return 32
+}
+
 // String64 is an XDR Typedef defines as:
 //
 //   typedef string string64<64>;
 //
 type String64 string
+
+// XDRMaxSize implements the Sized interface for String64
+func (e String64) XDRMaxSize() int {
+	return 64
+}
 
 // SequenceNumber is an XDR Typedef defines as:
 //
@@ -950,7 +960,7 @@ type AccountEntry struct {
 	Flags         Uint32
 	HomeDomain    String32
 	Thresholds    Thresholds
-	Signers       []Signer
+	Signers       []Signer `xdrmaxsize:"20"`
 	Ext           AccountEntryExt
 }
 
@@ -1633,7 +1643,7 @@ type PathPaymentOp struct {
 	Destination AccountId
 	DestAsset   Asset
 	DestAmount  Int64
-	Path        []Asset
+	Path        []Asset `xdrmaxsize:"5"`
 }
 
 // ManageOfferOp is an XDR Struct defines as:
@@ -2637,7 +2647,7 @@ type Transaction struct {
 	SeqNum        SequenceNumber
 	TimeBounds    *TimeBounds
 	Memo          Memo
-	Operations    []Operation
+	Operations    []Operation `xdrmaxsize:"100"`
 	Ext           TransactionExt
 }
 
@@ -2741,7 +2751,7 @@ type TransactionSignaturePayload struct {
 //
 type TransactionEnvelope struct {
 	Tx         Transaction
-	Signatures []DecoratedSignature
+	Signatures []DecoratedSignature `xdrmaxsize:"20"`
 }
 
 // ClaimOfferAtom is an XDR Struct defines as:
@@ -4938,7 +4948,7 @@ func NewStellarValueExt(v int32, value interface{}) (result StellarValueExt, err
 type StellarValue struct {
 	TxSetHash Hash
 	CloseTime Uint64
-	Upgrades  []UpgradeType
+	Upgrades  []UpgradeType `xdrmaxsize:"6"`
 	Ext       StellarValueExt
 }
 
@@ -6274,7 +6284,7 @@ func (e ErrorCode) String() string {
 //
 type Error struct {
 	Code ErrorCode
-	Msg  string
+	Msg  string `xdrmaxsize:"100"`
 }
 
 // AuthCert is an XDR Struct defines as:
@@ -6312,7 +6322,7 @@ type Hello struct {
 	OverlayVersion    Uint32
 	OverlayMinVersion Uint32
 	NetworkId         Hash
-	VersionStr        string
+	VersionStr        string `xdrmaxsize:"100"`
 	ListeningPort     int32
 	PeerId            NodeId
 	Cert              AuthCert
