@@ -11,7 +11,9 @@ env:
 - GO15VENDOREXPERIMENT="1"
 install:
 - mkdir $GOPATH/bin
-- curl https://glide.sh/get | sh
+- wget https://github.com/Masterminds/glide/releases/download/v0.12.3/glide-v0.12.3-linux-amd64.tar.gz
+- tar -xzvf glide-v0.12.3-linux-amd64.tar.gz
+- cp linux-amd64/glide $GOPATH/bin
 before_script: 
 script:
 - glide install
