@@ -12,6 +12,9 @@ NOTE:  this changelog represents the changes that are associated with the librar
 
 ### Added
 
+- xdr: added support for new signer types
+- build: `Signer` learned support for new signer types
+- strkey: added support for new signer types
 - network:  Added the `HashTransaction` helper func to get the hash of a transaction targetted to a specific stellar network.
 
 ### Changed:
