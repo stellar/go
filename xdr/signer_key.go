@@ -48,6 +48,14 @@ func (skey *SignerKey) Equals(other SignerKey) bool {
 		l := skey.MustEd25519()
 		r := other.MustEd25519()
 		return l == r
+	case SignerKeyTypeSignerKeyTypeHashX:
+		l := skey.MustHashX()
+		r := other.MustHashX()
+		return l == r
+	case SignerKeyTypeSignerKeyTypeHashTx:
+		l := skey.MustHashTx()
+		r := other.MustHashTx()
+		return l == r
 	default:
 		panic(fmt.Errorf("Unknown signer key type: %v", skey.Type))
 	}
