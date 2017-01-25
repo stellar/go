@@ -229,10 +229,11 @@ type SetFlag int32
 // ClearFlag is a mutator capable of clearing account flags
 type ClearFlag int32
 
-// Signer is a mutator capable of adding, updating and deleting account signer
+// Signer is a mutator capable of adding, updating and deleting an account
+// signer
 type Signer struct {
-	PublicKey string
-	Weight    uint32
+	Address string
+	Weight  uint32
 }
 
 // SourceAccount is a mutator capable of setting the source account on

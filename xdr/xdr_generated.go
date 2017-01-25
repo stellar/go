@@ -244,17 +244,17 @@ func (u PublicKey) GetEd25519() (result Uint256, ok bool) {
 //        uint256 ed25519;
 //    case SIGNER_KEY_TYPE_HASH_TX:
 //        /* Hash of Transaction structure */
-//        Hash hashTx;
+//        uint256 hashTx;
 //    case SIGNER_KEY_TYPE_HASH_X:
 //        /* Hash of random 256 bit preimage X */
-//        Hash hashX;
+//        uint256 hashX;
 //    };
 //
 type SignerKey struct {
 	Type    SignerKeyType
 	Ed25519 *Uint256
-	HashTx  *Hash
-	HashX   *Hash
+	HashTx  *Uint256
+	HashX   *Uint256
 }
 
 // SwitchFieldName returns the field name in which this union's
@@ -289,16 +289,16 @@ func NewSignerKey(aType SignerKeyType, value interface{}) (result SignerKey, err
 		}
 		result.Ed25519 = &tv
 	case SignerKeyTypeSignerKeyTypeHashTx:
-		tv, ok := value.(Hash)
+		tv, ok := value.(Uint256)
 		if !ok {
-			err = fmt.Errorf("invalid value, must be Hash")
+			err = fmt.Errorf("invalid value, must be Uint256")
 			return
 		}
 		result.HashTx = &tv
 	case SignerKeyTypeSignerKeyTypeHashX:
-		tv, ok := value.(Hash)
+		tv, ok := value.(Uint256)
 		if !ok {
-			err = fmt.Errorf("invalid value, must be Hash")
+			err = fmt.Errorf("invalid value, must be Uint256")
 			return
 		}
 		result.HashX = &tv
@@ -333,7 +333,7 @@ func (u SignerKey) GetEd25519() (result Uint256, ok bool) {
 
 // MustHashTx retrieves the HashTx value from the union,
 // panicing if the value is not set.
-func (u SignerKey) MustHashTx() Hash {
+func (u SignerKey) MustHashTx() Uint256 {
 	val, ok := u.GetHashTx()
 
 	if !ok {
@@ -345,7 +345,7 @@ func (u SignerKey) MustHashTx() Hash {
 
 // GetHashTx retrieves the HashTx value from the union,
 // returning ok if the union's switch indicated the value is valid.
-func (u SignerKey) GetHashTx() (result Hash, ok bool) {
+func (u SignerKey) GetHashTx() (result Uint256, ok bool) {
 	armName, _ := u.ArmForSwitch(int32(u.Type))
 
 	if armName == "HashTx" {
@@ -358,7 +358,7 @@ func (u SignerKey) GetHashTx() (result Hash, ok bool) {
 
 // MustHashX retrieves the HashX value from the union,
 // panicing if the value is not set.
-func (u SignerKey) MustHashX() Hash {
+func (u SignerKey) MustHashX() Uint256 {
 	val, ok := u.GetHashX()
 
 	if !ok {
@@ -370,7 +370,7 @@ func (u SignerKey) MustHashX() Hash {
 
 // GetHashX retrieves the HashX value from the union,
 // returning ok if the union's switch indicated the value is valid.
-func (u SignerKey) GetHashX() (result Hash, ok bool) {
+func (u SignerKey) GetHashX() (result Uint256, ok bool) {
 	armName, _ := u.ArmForSwitch(int32(u.Type))
 
 	if armName == "HashX" {
