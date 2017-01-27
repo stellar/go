@@ -68,6 +68,15 @@ type SelectBuilder struct {
 	sql  squirrel.SelectBuilder
 }
 
+// UpdateBuilder is a helper struct used to construct sql queries of the UPDATE
+// variety.
+type UpdateBuilder struct {
+	Table *Table
+
+	source interface{}
+	sql    squirrel.UpdateBuilder
+}
+
 // Session provides helper methods for making queries against `DB` and provides
 // utilities such as automatic query logging and transaction management.  NOTE:
 // A Session is designed to be lightweight and temporarily lived (usually

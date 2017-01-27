@@ -77,3 +77,21 @@ func (tbl *Table) Select(
 		sql:   sql,
 	}
 }
+
+// Update returns a new query builder configured to update rows that match the
+// predicate with the values of the provided source struct.  See docs for
+// `UpdateBuildeExec` for more documentation.
+func (tbl *Table) Update(
+	source interface{},
+	pred interface{},
+	args ...interface{},
+) *UpdateBuilder {
+
+	sql := sq.Update(tbl.Name).Where(pred, args...)
+
+	return &UpdateBuilder{
+		Table:  tbl,
+		source: source,
+		sql:    sql,
+	}
+}
