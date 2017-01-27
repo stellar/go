@@ -85,15 +85,15 @@ func (s *Session) Get(dest interface{}, query sq.Sqlizer) error {
 
 // GetRaw runs `query` with `args`, setting the first result found on
 // `dest`, if any.
-func (r *Repo) GetRaw(dest interface{}, query string, args ...interface{}) error {
-	query, err := r.ReplacePlaceholders(query)
+func (s *Session) GetRaw(dest interface{}, query string, args ...interface{}) error {
+	query, err := s.ReplacePlaceholders(query)
 	if err != nil {
 		return errors.Wrap(err, "replace placeholders failed")
 	}
 
 	start := time.Now()
-	err = r.conn().Get(dest, query, args...)
-	r.log("get", start, query, args)
+	err = s.conn().Get(dest, query, args...)
+	s.log("get", start, query, args)
 
 	if err == nil {
 		return nil
@@ -144,8 +144,8 @@ func (s *Session) ExecAll(script string) error {
 }
 
 // ExecRaw runs `query` with `args`
-func (r *Repo) ExecRaw(query string, args ...interface{}) (sql.Result, error) {
-	query, err := r.ReplacePlaceholders(query)
+func (s *Session) ExecRaw(query string, args ...interface{}) (sql.Result, error) {
+	query, err := s.ReplacePlaceholders(query)
 	if err != nil {
 		return nil, errors.Wrap(err, "replace placeholders failed")
 	}
@@ -181,8 +181,8 @@ func (s *Session) Query(query sq.Sqlizer) (*sqlx.Rows, error) {
 }
 
 // QueryRaw runs `query` with `args`
-func (r *Repo) QueryRaw(query string, args ...interface{}) (*sqlx.Rows, error) {
-	query, err := r.ReplacePlaceholders(query)
+func (s *Session) QueryRaw(query string, args ...interface{}) (*sqlx.Rows, error) {
+	query, err := s.ReplacePlaceholders(query)
 	if err != nil {
 		return nil, errors.Wrap(err, "replace placeholders failed")
 	}
@@ -205,10 +205,10 @@ func (r *Repo) QueryRaw(query string, args ...interface{}) (*sqlx.Rows, error) {
 // ReplacePlaceholders replaces the '?' parameter placeholders in the provided
 // sql query with a sql dialect appropriate version. Use '??' to escape a
 // placeholder.
-func (r *Repo) ReplacePlaceholders(query string) (string, error) {
+func (s *Session) ReplacePlaceholders(query string) (string, error) {
 	var format sq.PlaceholderFormat = sq.Question
 
-	if r.DB.DriverName() == "postgres" {
+	if s.DB.DriverName() == "postgres" {
 		format = sq.Dollar
 	}
 	return format.ReplacePlaceholders(query)
@@ -241,15 +241,15 @@ func (s *Session) SelectRaw(
 	query string,
 	args ...interface{},
 ) error {
-	r.clearSliceIfPossible(dest)
-	query, err := r.ReplacePlaceholders(query)
+	s.clearSliceIfPossible(dest)
+	query, err := s.ReplacePlaceholders(query)
 	if err != nil {
 		return errors.Wrap(err, "replace placeholders failed")
 	}
 
 	start := time.Now()
-	err = r.conn().Select(dest, query, args...)
-	r.log("select", start, query, args)
+	err = s.conn().Select(dest, query, args...)
+	s.log("select", start, query, args)
 
 	if err == nil {
 		return nil

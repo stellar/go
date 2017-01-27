@@ -84,7 +84,7 @@ func TestSession(t *testing.T) {
 	assert.Len(names, 2)
 
 	// Test ReplacePlaceholders
-	out, err := repo.ReplacePlaceholders("? = ? = ? = ??")
+	out, err := sess.ReplacePlaceholders("? = ? = ? = ??")
 	if assert.NoError(err) {
 		assert.Equal("$1 = $2 = $3 = ?", out)
 	}

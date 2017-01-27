@@ -175,7 +175,7 @@ imports:
 - name: github.com/valyala/bytebufferpool
   version: e746df99fe4a3986f4d4f79e13c1e0117ce9c2f7
 - name: github.com/valyala/fasthttp
-  version: a0f498b65b5690efc4b39a12c9e0555e80d95456
+  version: 0a7f0a797cd66b89588d0a7fdd670b706579a621
   subpackages:
   - fasthttputil
 - name: github.com/visionmedia/go-debug
@@ -217,7 +217,7 @@ imports:
   subpackages:
   - unix
 - name: gopkg.in/gavv/httpexpect.v1
-  version: dc339328a5b3638045ba972e16b5ac6c0f46c796
+  version: 40724cf1e4a08b670b14a02deff693a91f3aa9a0
 - name: gopkg.in/tylerb/graceful.v1
   version: 50a48b6e73fcc75b45e22c05b79629a67c79e938
 testImports:
