@@ -30,6 +30,7 @@ type Account struct {
 	Flags                AccountFlags      `json:"flags"`
 	Balances             []Balance         `json:"balances"`
 	Signers              []Signer          `json:"signers"`
+	Data                 map[string]string `json:"data"`
 }
 
 func (a Account) GetNativeBalance() string {
@@ -97,6 +98,8 @@ type TransactionResultCodes struct {
 type Signer struct {
 	PublicKey string `json:"public_key"`
 	Weight    int32  `json:"weight"`
+	Key       string `json:"key"`
+	Type      string `json:"type"`
 }
 
 type PaymentResponse struct {
