@@ -88,8 +88,8 @@ func TestUndecoded(t *testing.T) {
 	var val struct {
 		Test string `toml:"test" valid:"optional"`
 		TLS  struct {
-			CertificateFile string `toml:"certificate-file" valid:"optional"`
-			PrivateKeyFile  string `toml:"private-key-file" valid:"optional"`
+			CertificateFile string `toml:"certificate-file" valid:"required"`
+			PrivateKeyFile  string `toml:"private-key-file" valid:"required"`
 		} `valid:"optional"`
 	}
 
@@ -108,8 +108,8 @@ func TestCorrect(t *testing.T) {
 	var val struct {
 		Test string `toml:"test" valid:"optional"`
 		TLS  struct {
-			CertificateFile string `toml:"certificate-file" valid:"optional"`
-			PrivateKeyFile  string `toml:"private-key-file" valid:"optional"`
+			CertificateFile string `toml:"certificate-file" valid:"required"`
+			PrivateKeyFile  string `toml:"private-key-file" valid:"required"`
 		} `valid:"optional"`
 	}
 
