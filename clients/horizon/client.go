@@ -3,6 +3,7 @@ package horizon
 import (
 	"bufio"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"net/url"
@@ -130,12 +131,14 @@ func (c *Client) stream(url string, cursor *string, handler interface{}) (err er
 
 // StreamPayments streams incoming payments
 func (c *Client) StreamPayments(accountID string, cursor *string, handler PaymentHandler) (err error) {
-	return c.stream(c.URL+"/accounts/"+accountID+"/payments", cursor, handler)
+	url := fmt.Sprintf("%s/accounts/%s/payments", c.URL, accountID)
+	return c.stream(url, cursor, handler)
 }
 
-// StreamTransactions streams incoming payments
+// StreamTransactions streams incoming transactions
 func (c *Client) StreamTransactions(accountID string, cursor *string, handler TransactionHandler) (err error) {
-	return c.stream(c.URL+"/accounts/"+accountID+"/transactions", cursor, handler)
+	url := fmt.Sprintf("%s/accounts/%s/transactions", c.URL, accountID)
+	return c.stream(url, cursor, handler)
 }
 
 // SubmitTransaction submits a transaction to the network. err can be either error object or horizon.Error object.

@@ -6,14 +6,14 @@ import (
 	"encoding/json"
 
 	"github.com/stellar/go/address"
+	"github.com/stellar/go/compliance"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
 )
 
-// Memo returns Memo from the the object. This method
-// assumes that Memo is valid JSON (checked in Validate).
-func (d AuthData) Memo() (memo Memo) {
-	json.Unmarshal([]byte(d.MemoJSON), &memo)
+// Attachment returns attachment from the the object.
+func (d AuthData) Attachment() (attachment attachment.Attachment, err error) {
+	err = json.Unmarshal([]byte(d.MemoJSON), &memo)
 	return
 }
 

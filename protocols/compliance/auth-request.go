@@ -65,9 +65,8 @@ func (r *AuthRequest) VerifySignature(sender string) error {
 	return nil
 }
 
-// Data returns AuthData from the request. This method
-// assumes that Data is valid JSON (checked in Validate).
-func (r *AuthRequest) Data() (data AuthData) {
-	json.Unmarshal([]byte(r.DataJSON), &data)
+// Data returns AuthData from the request.
+func (r *AuthRequest) Data() (data AuthData, err error) {
+	err = json.Unmarshal([]byte(r.DataJSON), &data)
 	return
 }
