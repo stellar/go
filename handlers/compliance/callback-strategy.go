@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/url"
 
+	complianceProtocol "github.com/stellar/go/protocols/compliance"
 	"github.com/stellar/go/support/errors"
 )
 
@@ -15,13 +16,13 @@ type pendingResponse struct {
 }
 
 // SanctionsCheck performs AML sanctions check of the sender.
-func (s *CallbackStrategy) SanctionsCheck(data AuthData, response *AuthResponse) (err error) {
+func (s *CallbackStrategy) SanctionsCheck(data complianceProtocol.AuthData, response *complianceProtocol.AuthResponse) (err error) {
 	if s.SanctionsCheckURL == "" {
-		response.TxStatus = AuthStatusOk
+		response.TxStatus = complianceProtocol.AuthStatusOk
 		return
 	}
 
-	resp, err := http.PostForm(s.SanctionsCheckURL, url.Values{"memo": {data.MemoJSON}})
+	resp, err := http.PostForm(s.SanctionsCheckURL, url.Values{"memo": {data.AttachmentJSON}})
 	if err != nil {
 		err = errors.Wrap(err, "Error connecting sanctions server")
 		return
@@ -29,9 +30,9 @@ func (s *CallbackStrategy) SanctionsCheck(data AuthData, response *AuthResponse)
 
 	switch resp.StatusCode {
 	case http.StatusOK: // AuthStatusOk
-		response.TxStatus = AuthStatusOk
+		response.TxStatus = complianceProtocol.AuthStatusOk
 	case http.StatusAccepted: // AuthStatusPending
-		response.TxStatus = AuthStatusPending
+		response.TxStatus = complianceProtocol.AuthStatusPending
 
 		defer resp.Body.Close()
 		body, err := ioutil.ReadAll(resp.Body)
@@ -48,7 +49,7 @@ func (s *CallbackStrategy) SanctionsCheck(data AuthData, response *AuthResponse)
 			response.Pending = pendingResponse.Pending
 		}
 	case http.StatusForbidden: // AuthStatusDenied
-		response.TxStatus = AuthStatusDenied
+		response.TxStatus = complianceProtocol.AuthStatusDenied
 	default:
 		err = fmt.Errorf("Invalid status code from sanctions server: %d", resp.StatusCode)
 		return
@@ -59,20 +60,20 @@ func (s *CallbackStrategy) SanctionsCheck(data AuthData, response *AuthResponse)
 
 // GetUserData check if user data is required and if so decides
 // whether to allow access to customer data or not.
-func (s *CallbackStrategy) GetUserData(data AuthData, response *AuthResponse) (err error) {
+func (s *CallbackStrategy) GetUserData(data complianceProtocol.AuthData, response *complianceProtocol.AuthResponse) (err error) {
 	// If sender doesn't need info, return AuthStatusOk
 	if !data.NeedInfo {
-		response.InfoStatus = AuthStatusOk
+		response.InfoStatus = complianceProtocol.AuthStatusOk
 		return
 	}
 
 	// If there is no way to fetch data, return AuthStatusDenied
 	if s.GetUserDataURL == "" {
-		response.InfoStatus = AuthStatusDenied
+		response.InfoStatus = complianceProtocol.AuthStatusDenied
 		return
 	}
 
-	resp, err := http.PostForm(s.GetUserDataURL, url.Values{"memo": {data.MemoJSON}})
+	resp, err := http.PostForm(s.GetUserDataURL, url.Values{"memo": {data.AttachmentJSON}})
 	if err != nil {
 		err = errors.Wrap(err, "Error connecting fetch info server")
 		return
@@ -87,10 +88,10 @@ func (s *CallbackStrategy) GetUserData(data AuthData, response *AuthResponse) (e
 
 	switch resp.StatusCode {
 	case http.StatusOK: // AuthStatusOk
-		response.TxStatus = AuthStatusOk
+		response.TxStatus = complianceProtocol.AuthStatusOk
 		response.DestInfo = string(body)
 	case http.StatusAccepted: // AuthStatusPending
-		response.TxStatus = AuthStatusPending
+		response.TxStatus = complianceProtocol.AuthStatusPending
 
 		var pending int
 		pendingResponse := pendingResponse{}
@@ -107,7 +108,7 @@ func (s *CallbackStrategy) GetUserData(data AuthData, response *AuthResponse) (e
 			response.Pending = pending
 		}
 	case http.StatusForbidden: // AuthStatusDenied
-		response.TxStatus = AuthStatusDenied
+		response.TxStatus = complianceProtocol.AuthStatusDenied
 	default:
 		err = fmt.Errorf("Invalid status code from fetch info server: %d", resp.StatusCode)
 		return

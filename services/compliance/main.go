@@ -9,33 +9,11 @@ import (
 	"github.com/rs/cors"
 	"github.com/spf13/cobra"
 	"github.com/stellar/go/handlers/compliance"
+	complianceProtocol "github.com/stellar/go/protocols/compliance"
 	"github.com/stellar/go/support/app"
 	"github.com/stellar/go/support/http"
 	"github.com/stellar/go/support/log"
 )
-
-// YesStrategy sends OK status to every valid request.
-// It's for testing purposes only and should not be merged
-// to master.
-type YesStrategy struct{}
-
-// SanctionsCheck ...
-func (s *YesStrategy) SanctionsCheck(data compliance.AuthData, response *compliance.AuthResponse) error {
-	response.TxStatus = compliance.AuthStatusOk
-	return nil
-}
-
-// GetUserData ...
-func (s *YesStrategy) GetUserData(data compliance.AuthData, response *compliance.AuthResponse) error {
-	response.InfoStatus = compliance.AuthStatusOk
-	response.DestInfo = `{"name": "John Doe"}`
-	return nil
-}
-
-// PersistTransaction ...
-func (s *YesStrategy) PersistTransaction(data compliance.AuthData) error {
-	return nil
-}
 
 func main() {
 	rootCmd := &cobra.Command{
@@ -83,7 +61,7 @@ func initMux(strategy compliance.Strategy) *goji.Mux {
 
 	authHandler := &compliance.AuthHandler{
 		Strategy: strategy,
-		PersistTransaction: func(data compliance.AuthData) error {
+		PersistTransaction: func(data complianceProtocol.AuthData) error {
 			fmt.Println("Persist")
 			return nil
 		},

@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 
 	"github.com/stellar/go/address"
+	"github.com/stellar/go/protocols/attachment"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
 )
@@ -51,7 +52,7 @@ func (d AuthData) Validate() error {
 	}
 
 	// Check if d.AttachmentJSON is valid JSON
-	attachment := Attachment{}
+	attachment := attachment.Attachment{}
 	err = json.Unmarshal([]byte(d.AttachmentJSON), &attachment)
 	if err != nil {
 		return errors.New("Attachment is not valid JSON")

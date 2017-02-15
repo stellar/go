@@ -1,9 +1,5 @@
 package attachment
 
-import (
-	"encoding/json"
-)
-
 // Attachment represents core object in Stellar attachment convention
 type Attachment struct {
 	Transaction `json:"transaction"`

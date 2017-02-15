@@ -4,12 +4,13 @@ import (
 	"encoding/json"
 	"net/http"
 
+	complianceProtocol "github.com/stellar/go/protocols/compliance"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/support/log"
 )
 
 func (h *AuthHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	authRequest := &AuthRequest{
+	authRequest := &complianceProtocol.AuthRequest{
 		DataJSON:  r.PostFormValue("data"),
 		Signature: r.PostFormValue("sig"),
 	}
@@ -25,7 +26,14 @@ func (h *AuthHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	authData := authRequest.Data()
+	authData, err := authRequest.Data()
+	if err != nil {
+		h.writeJSON(w, ErrorResponse{
+			Code:    "invalid_data",
+			Message: err.Error(),
+		}, http.StatusBadRequest)
+		return
+	}
 
 	err = authRequest.VerifySignature(authData.Sender)
 	if err != nil {
@@ -37,7 +45,7 @@ func (h *AuthHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Create response
-	response := &AuthResponse{}
+	response := &complianceProtocol.AuthResponse{}
 
 	// Sanctions check
 	err = h.Strategy.SanctionsCheck(authData, response)
@@ -54,7 +62,7 @@ func (h *AuthHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// If transaction allowed, persist it for future reference
-	if response.TxStatus == AuthStatusOk && response.InfoStatus == AuthStatusOk {
+	if response.TxStatus == complianceProtocol.AuthStatusOk && response.InfoStatus == complianceProtocol.AuthStatusOk {
 		err = h.PersistTransaction(authData)
 		if err != nil {
 			h.writeError(w, err)
