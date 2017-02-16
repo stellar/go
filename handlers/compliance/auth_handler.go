@@ -10,10 +10,8 @@ import (
 )
 
 func (h *AuthHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	authRequest := &complianceProtocol.AuthRequest{
-		DataJSON:  r.PostFormValue("data"),
-		Signature: r.PostFormValue("sig"),
-	}
+	authRequest := &complianceProtocol.AuthRequest{}
+	authRequest.Populate(r)
 
 	// Validate request
 	err := authRequest.Validate()

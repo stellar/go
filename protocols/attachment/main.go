@@ -2,13 +2,13 @@ package attachment
 
 // Attachment represents core object in Stellar attachment convention
 type Attachment struct {
+	Nonce       string `json:"nonce"`
 	Transaction `json:"transaction"`
 	Operations  []Operation `json:"operations"`
 }
 
 // Transaction represents transaction field in Stellar attachment
 type Transaction struct {
-	Nonce      string     `json:"nonce"`
 	SenderInfo SenderInfo `json:"sender_info"`
 	Route      string     `json:"route"`
 	Note       string     `json:"note"`

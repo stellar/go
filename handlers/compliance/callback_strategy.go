@@ -22,7 +22,7 @@ func (s *CallbackStrategy) SanctionsCheck(data complianceProtocol.AuthData, resp
 		return
 	}
 
-	resp, err := http.PostForm(s.SanctionsCheckURL, url.Values{"memo": {data.AttachmentJSON}})
+	resp, err := http.PostForm(s.SanctionsCheckURL, url.Values{"attachment": {data.AttachmentJSON}})
 	if err != nil {
 		err = errors.Wrap(err, "Error connecting sanctions server")
 		return
@@ -73,7 +73,7 @@ func (s *CallbackStrategy) GetUserData(data complianceProtocol.AuthData, respons
 		return
 	}
 
-	resp, err := http.PostForm(s.GetUserDataURL, url.Values{"memo": {data.AttachmentJSON}})
+	resp, err := http.PostForm(s.GetUserDataURL, url.Values{"attachment": {data.AttachmentJSON}})
 	if err != nil {
 		err = errors.Wrap(err, "Error connecting fetch info server")
 		return

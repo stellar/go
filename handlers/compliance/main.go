@@ -63,6 +63,6 @@ type CallbackStrategy struct {
 type AuthHandler struct {
 	Strategy Strategy
 	// PersistTransaction save authorized transaction to persistent storage so
-	// memo preimage can be fetched when a transaction is sent.
+	// memo preimage (attachment) can be fetched when a transaction is sent.
 	PersistTransaction func(data compliance.AuthData) error
 }

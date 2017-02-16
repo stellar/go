@@ -7,6 +7,7 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/stellar/go/address"
+	federationProtocol "github.com/stellar/go/protocols/federation"
 	"github.com/stellar/go/support/log"
 )
 
@@ -73,7 +74,7 @@ func (h *Handler) lookupByID(w http.ResponseWriter, q string) {
 		return
 	}
 
-	h.writeJSON(w, SuccessResponse{
+	h.writeJSON(w, federationProtocol.Response{
 		StellarAddress: address.New(rec.Name, rec.Domain),
 		AccountID:      q,
 	}, http.StatusOK)
@@ -99,7 +100,7 @@ func (h *Handler) lookupByName(w http.ResponseWriter, q string) {
 		return
 	}
 
-	h.writeJSON(w, SuccessResponse{
+	h.writeJSON(w, federationProtocol.Response{
 		StellarAddress: q,
 		AccountID:      rec.AccountID,
 		Memo:           rec.Memo,

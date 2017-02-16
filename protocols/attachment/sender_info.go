@@ -5,7 +5,6 @@ import (
 )
 
 // Marshal marshals SenderInfo
-func (senderInfo *SenderInfo) Marshal() []byte {
-	json, _ := json.MarshalIndent(senderInfo, "", "  ")
-	return json
+func (senderInfo *SenderInfo) Marshal() ([]byte, error) {
+	return json.Marshal(senderInfo)
 }

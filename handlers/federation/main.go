@@ -103,12 +103,3 @@ type SQLDriver struct {
 	init sync.Once
 	db   *db.Repo
 }
-
-// SuccessResponse represents the successful JSON response that will be
-// delivered to a client.
-type SuccessResponse struct {
-	StellarAddress string `json:"stellar_address"`
-	AccountID      string `json:"account_id"`
-	MemoType       string `json:"memo_type,omitempty"`
-	Memo           string `json:"memo,omitempty"`
-}

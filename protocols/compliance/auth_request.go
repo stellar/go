@@ -3,11 +3,18 @@ package compliance
 import (
 	"encoding/base64"
 	"encoding/json"
+	"net/http"
 
 	"github.com/stellar/go/clients/stellartoml"
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/support/errors"
 )
+
+func (r *AuthRequest) Populate(request *http.Request) *AuthRequest {
+	r.DataJSON = request.PostFormValue("data")
+	r.Signature = request.PostFormValue("sig")
+	return r
+}
 
 // Validate checks if fields are valid:
 //
@@ -27,6 +34,13 @@ func (r *AuthRequest) Validate() error {
 		return errors.Wrap(err, "Data is not valid JSON")
 	}
 
+	// Validate Signature
+	_, err = base64.StdEncoding.DecodeString(r.Signature)
+	if err != nil {
+		return errors.New("Signature is not base64 encoded")
+	}
+
+	// Validate DataJSON
 	err = authData.Validate()
 	if err != nil {
 		return errors.Wrap(err, "Invalid Data")
@@ -47,14 +61,14 @@ func (r *AuthRequest) VerifySignature(sender string) error {
 		return errors.New("No SIGNING_KEY in stellar.toml of sender")
 	}
 
-	signatureBytes, err := base64.StdEncoding.DecodeString(r.Signature)
-	if err != nil {
-		return errors.New("Signature is not base64 encoded")
-	}
-
 	kp, err := keypair.Parse(senderStellarToml.SigningKey)
 	if err != nil {
 		return errors.New("SigningKey is invalid")
+	}
+
+	signatureBytes, err := base64.StdEncoding.DecodeString(r.Signature)
+	if err != nil {
+		return errors.New("Signature is not base64 encoded")
 	}
 
 	err = kp.Verify([]byte(r.DataJSON), signatureBytes)
