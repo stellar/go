@@ -1,6 +1,9 @@
 package horizon
 
-import "encoding/json"
+import (
+	"encoding/base64"
+	"encoding/json"
+)
 
 type Problem struct {
 	Type     string                     `json:"type"`
@@ -41,6 +44,23 @@ func (a Account) GetNativeBalance() string {
 	}
 
 	return "0"
+}
+
+// MustGetData returns decoded value for a given key. If the key does
+// not exist, empty slice will be returned. If there is an error
+// decoding a value, it will panic.
+func (this *Account) MustGetData(key string) []byte {
+	bytes, err := this.GetData(key)
+	if err != nil {
+		panic(err)
+	}
+	return bytes
+}
+
+// GetData returns decoded value for a given key. If the key does
+// not exist, empty slice will be returned.
+func (this *Account) GetData(key string) ([]byte, error) {
+	return base64.StdEncoding.DecodeString(this.Data[key])
 }
 
 type AccountFlags struct {
