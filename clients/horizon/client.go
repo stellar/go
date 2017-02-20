@@ -35,8 +35,8 @@ func (c *Client) LoadAccount(accountID string) (account Account, err error) {
 	return
 }
 
-// LoadMemo loads memo for a transaction in PaymentResponse
-func (c *Client) LoadMemo(p *PaymentResponse) (err error) {
+// LoadMemo loads memo for a transaction in Payment
+func (c *Client) LoadMemo(p *Payment) (err error) {
 	res, err := c.HTTP.Get(p.Links.Transaction.Href)
 	if err != nil {
 		return errors.Wrap(err, "load transaciton failed")
@@ -63,7 +63,7 @@ func (c *Client) SequenceForAccount(
 	return xdr.SequenceNumber(seq), nil
 }
 
-func (c *Client) stream(url string, cursor *string, handler interface{}) (err error) {
+func (c *Client) stream(url string, cursor *string, handler func(data []byte) error) (err error) {
 	if cursor != nil {
 		url += "?cursor=" + *cursor
 	}
@@ -96,25 +96,9 @@ func (c *Client) stream(url string, cursor *string, handler interface{}) (err er
 			continue
 		}
 
-		data := ev.Data.(string)
-
-		switch handler := handler.(type) {
-		case PaymentHandler:
-			var payment PaymentResponse
-			err = json.Unmarshal([]byte(data), &payment)
-			if err != nil {
-				return err
-			}
-			handler(payment)
-		case TransactionHandler:
-			var transaction TransactionResponse
-			err = json.Unmarshal([]byte(data), &transaction)
-			if err != nil {
-				return err
-			}
-			handler(transaction)
-		default:
-			return errors.New("Unknown handler")
+		err = handler(ev.Data.([]byte))
+		if err != nil {
+			return err
 		}
 	}
 
@@ -132,13 +116,29 @@ func (c *Client) stream(url string, cursor *string, handler interface{}) (err er
 // StreamPayments streams incoming payments
 func (c *Client) StreamPayments(accountID string, cursor *string, handler PaymentHandler) (err error) {
 	url := fmt.Sprintf("%s/accounts/%s/payments", c.URL, accountID)
-	return c.stream(url, cursor, handler)
+	return c.stream(url, cursor, func(data []byte) error {
+		var payment Payment
+		err = json.Unmarshal(data, &payment)
+		if err != nil {
+			return errors.Wrap(err, "Error unmarshaling data")
+		}
+		handler(payment)
+		return nil
+	})
 }
 
 // StreamTransactions streams incoming transactions
 func (c *Client) StreamTransactions(accountID string, cursor *string, handler TransactionHandler) (err error) {
 	url := fmt.Sprintf("%s/accounts/%s/transactions", c.URL, accountID)
-	return c.stream(url, cursor, handler)
+	return c.stream(url, cursor, func(data []byte) error {
+		var transaction Transaction
+		err = json.Unmarshal(data, &transaction)
+		if err != nil {
+			return errors.Wrap(err, "Error unmarshaling data")
+		}
+		handler(transaction)
+		return nil
+	})
 }
 
 // SubmitTransaction submits a transaction to the network. err can be either error object or horizon.Error object.

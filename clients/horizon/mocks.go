@@ -14,7 +14,7 @@ func (m *MockClient) LoadAccount(accountID string) (Account, error) {
 }
 
 // LoadMemo is a mocking a method
-func (m *MockClient) LoadMemo(p *PaymentResponse) error {
+func (m *MockClient) LoadMemo(p *Payment) error {
 	a := m.Called(p)
 	return a.Error(0)
 }

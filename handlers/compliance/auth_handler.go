@@ -16,7 +16,6 @@ func (h *AuthHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// Validate request
 	err := authRequest.Validate()
 	if err != nil {
-		log.Info(err)
 		h.writeJSON(w, ErrorResponse{
 			Code:    "invalid_request",
 			Message: err.Error(),

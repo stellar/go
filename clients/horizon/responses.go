@@ -123,7 +123,7 @@ type Signer struct {
 	Type      string `json:"type"`
 }
 
-type PaymentResponse struct {
+type Payment struct {
 	ID          string `json:"id"`
 	Type        string `json:"type"`
 	PagingToken string `json:"paging_token"`
@@ -149,7 +149,7 @@ type PaymentResponse struct {
 	}
 }
 
-type TransactionResponse struct {
+type Transaction struct {
 	ID              string    `json:"id"`
 	PagingToken     string    `json:"paging_token"`
 	Hash            string    `json:"hash"`

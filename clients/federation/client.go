@@ -8,7 +8,7 @@ import (
 	"strings"
 
 	"github.com/stellar/go/address"
-	federationProtocol "github.com/stellar/go/protocols/federation"
+	proto "github.com/stellar/go/protocols/federation"
 	"github.com/stellar/go/support/errors"
 )
 
@@ -17,7 +17,7 @@ import (
 // used to resolve what server the request should be made against.  NOTE: the
 // "name" type is a legacy holdover from the legacy stellar network's federation
 // protocol. It is unfortunate.
-func (c *Client) LookupByAddress(addy string) (*federationProtocol.Response, error) {
+func (c *Client) LookupByAddress(addy string) (*proto.Response, error) {
 	_, domain, err := address.Split(addy)
 	if err != nil {
 		return nil, errors.Wrap(err, "parse address failed")
@@ -30,7 +30,7 @@ func (c *Client) LookupByAddress(addy string) (*federationProtocol.Response, err
 
 	url := c.url(fserv, "name", addy)
 
-	var resp federationProtocol.Response
+	var resp proto.Response
 	err = c.getJSON(url, &resp)
 	if err != nil {
 		return nil, errors.Wrap(err, "get federation failed")
@@ -46,7 +46,7 @@ func (c *Client) LookupByAddress(addy string) (*federationProtocol.Response, err
 // LookupByAccountID performs a federated lookup following to the stellar
 // federation protocol using the "id" type request.  The provided strkey-encoded
 // account id is used to resolve what server the request should be made against.
-func (c *Client) LookupByAccountID(aid string) (*federationProtocol.Response, error) {
+func (c *Client) LookupByAccountID(aid string) (*proto.Response, error) {
 
 	domain, err := c.Horizon.HomeDomainForAccount(aid)
 	if err != nil {
@@ -64,7 +64,7 @@ func (c *Client) LookupByAccountID(aid string) (*federationProtocol.Response, er
 
 	url := c.url(fserv, "id", aid)
 
-	var resp federationProtocol.Response
+	var resp proto.Response
 	err = c.getJSON(url, &resp)
 	if err != nil {
 		return nil, errors.Wrap(err, "get federation failed")

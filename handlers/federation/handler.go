@@ -8,7 +8,7 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/stellar/go/address"
-	federationProtocol "github.com/stellar/go/protocols/federation"
+	proto "github.com/stellar/go/protocols/federation"
 	"github.com/stellar/go/support/log"
 )
 
@@ -16,14 +16,12 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	typ := r.URL.Query().Get("type")
 	q := r.URL.Query().Get("q")
 
-	if typ == "name" || typ == "id" {
-		if q == "" {
-			h.writeJSON(w, ErrorResponse{
-				Code:    "invalid_request",
-				Message: "q parameter is blank",
-			}, http.StatusBadRequest)
-			return
-		}
+	if typ != "forward" && q == "" {
+		h.writeJSON(w, ErrorResponse{
+			Code:    "invalid_request",
+			Message: "q parameter is blank",
+		}, http.StatusBadRequest)
+		return
 	}
 
 	switch typ {
@@ -78,7 +76,7 @@ func (h *Handler) lookupByID(w http.ResponseWriter, q string) {
 		return
 	}
 
-	h.writeJSON(w, federationProtocol.Response{
+	h.writeJSON(w, proto.Response{
 		StellarAddress: address.New(rec.Name, rec.Domain),
 		AccountID:      q,
 	}, http.StatusOK)
@@ -104,7 +102,7 @@ func (h *Handler) lookupByName(w http.ResponseWriter, q string) {
 		return
 	}
 
-	h.writeJSON(w, federationProtocol.Response{
+	h.writeJSON(w, proto.Response{
 		StellarAddress: q,
 		AccountID:      rec.AccountID,
 		Memo:           rec.Memo,
@@ -130,7 +128,7 @@ func (h *Handler) lookupByForward(w http.ResponseWriter, query url.Values) {
 		return
 	}
 
-	h.writeJSON(w, federationProtocol.Response{
+	h.writeJSON(w, proto.Response{
 		AccountID: rec.AccountID,
 		Memo:      rec.Memo,
 		MemoType:  rec.MemoType,
