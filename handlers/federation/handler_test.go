@@ -182,7 +182,7 @@ func TestNameHandler(t *testing.T) {
 
 type ForwardTestDriver struct{}
 
-func (fd ForwardTestDriver) Forward(query url.Values) (*Record, error) {
+func (fd ForwardTestDriver) LookupForwardingRecord(query url.Values) (*Record, error) {
 	if query.Get("acct") == "1234" {
 		return &Record{
 			AccountID: "GD2GJPL3UOK5LX7TWXOACK2ZPWPFSLBNKL3GTGH6BLBNISK4BGWMFBBG",

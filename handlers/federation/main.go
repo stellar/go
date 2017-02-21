@@ -70,7 +70,7 @@ type ForwardDriver interface {
 	// account number).
 	// An implementation should return a nil `*Record` value if the lookup
 	// successfully executed but no result was found.
-	Forward(query url.Values) (*Record, error)
+	LookupForwardingRecord(query url.Values) (*Record, error)
 }
 
 // ReverseRecord represents the result from performing a "Reverse federation"

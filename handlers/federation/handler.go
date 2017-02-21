@@ -118,7 +118,7 @@ func (h *Handler) lookupByForward(w http.ResponseWriter, query url.Values) {
 		return
 	}
 
-	rec, err := fd.Forward(query)
+	rec, err := fd.LookupForwardingRecord(query)
 	if err != nil {
 		h.writeError(w, errors.Wrap(err, "lookupByForward"))
 		return

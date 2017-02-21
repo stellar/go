@@ -11,6 +11,10 @@ import (
 	"github.com/stellar/go/support/errors"
 )
 
+// DefaultPendingTime is a value (in seconds) that will be returned in
+// `pending` response if user callback haven't returned a valid response.
+const DefaultPendingTime = 600
+
 type pendingResponse struct {
 	Pending int `json:"pending"`
 }
@@ -44,7 +48,7 @@ func (s *CallbackStrategy) SanctionsCheck(data complianceProtocol.AuthData, resp
 		err = json.Unmarshal(body, &pendingResponse)
 		if err != nil {
 			// Set default value
-			response.Pending = 600
+			response.Pending = DefaultPendingTime
 		} else {
 			response.Pending = pendingResponse.Pending
 		}
