@@ -19,7 +19,8 @@ func (senderInfo SenderInfo) Map() map[string]string {
 	v := reflect.ValueOf(senderInfo)
 	for i := 0; i < st.NumField(); i++ {
 		field := st.Field(i)
-		if jsonTag, ok := field.Tag.Lookup("json"); ok {
+		jsonTag := field.Tag.Get("json")
+		if jsonTag != "" {
 			tagElements := strings.Split(jsonTag, ",")
 			m[tagElements[0]] = reflect.Indirect(v).FieldByName(field.Name).String()
 		}
