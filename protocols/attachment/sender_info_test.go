@@ -16,7 +16,6 @@ func TestMap(t *testing.T) {
 		Province:    "f",
 		Country:     "g",
 		DateOfBirth: "h",
-		CompanyName: "i",
 	}
 
 	m := senderInfo.Map()
@@ -28,5 +27,7 @@ func TestMap(t *testing.T) {
 	assert.Equal(t, "f", m["province"])
 	assert.Equal(t, "g", m["country"])
 	assert.Equal(t, "h", m["date_of_birth"])
-	assert.Equal(t, "i", m["company_name"])
+	// Should not populate empty values
+	_, ok := m["company_name"]
+	assert.False(t, ok)
 }

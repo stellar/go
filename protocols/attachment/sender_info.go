@@ -22,7 +22,10 @@ func (senderInfo SenderInfo) Map() map[string]string {
 		jsonTag := field.Tag.Get("json")
 		if jsonTag != "" {
 			tagElements := strings.Split(jsonTag, ",")
-			m[tagElements[0]] = reflect.Indirect(v).FieldByName(field.Name).String()
+			value := reflect.Indirect(v).FieldByName(field.Name).String()
+			if value != "" {
+				m[tagElements[0]] = value
+			}
 		}
 	}
 	return m
