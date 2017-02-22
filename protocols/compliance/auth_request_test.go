@@ -30,8 +30,8 @@ func TestPopulate(t *testing.T) {
 func TestValidateSuccess(t *testing.T) {
 	attachment := attachment.Attachment{
 		Transaction: attachment.Transaction{
-			SenderInfo: attachment.SenderInfo{
-				FirstName: "Bartek",
+			SenderInfo: map[string]string{
+				"first_name": "Bartek",
 			},
 			Route: "jed*stellar.org",
 		},

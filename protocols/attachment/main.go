@@ -9,23 +9,25 @@ type Attachment struct {
 
 // Transaction represents transaction field in Stellar attachment
 type Transaction struct {
-	SenderInfo SenderInfo `json:"sender_info"`
-	Route      string     `json:"route"`
-	Note       string     `json:"note"`
-	Extra      string     `json:"extra"`
+	SenderInfo map[string]string `json:"sender_info"`
+	Route      string            `json:"route"`
+	Note       string            `json:"note"`
+	Extra      string            `json:"extra"`
 }
 
 // Operation represents a single operation object in Stellar attachment
 type Operation struct {
 	// Overriddes Transaction field for this operation
-	SenderInfo SenderInfo `json:"sender_info"`
+	SenderInfo map[string]string `json:"sender_info"`
 	// Overriddes Transaction field for this operation
 	Route string `json:"route"`
 	// Overriddes Transaction field for this operation
 	Note string `json:"note"`
 }
 
-// SenderInfo contain information about sender
+// SenderInfo is a helper structure with standardized fields that contains
+// information about the sender. Use Map() method to transform it to
+// map[string]string used in Transaction and Operation structs.
 type SenderInfo struct {
 	FirstName   string `json:"first_name,omitempty"`
 	MiddleName  string `json:"middle_name,omitempty"`
