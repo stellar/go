@@ -4,6 +4,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"net/http"
+	"net/url"
 
 	"github.com/stellar/go/clients/stellartoml"
 	"github.com/stellar/go/keypair"
@@ -83,4 +84,12 @@ func (r *AuthRequest) VerifySignature(sender string) error {
 func (r *AuthRequest) Data() (data AuthData, err error) {
 	err = json.Unmarshal([]byte(r.DataJSON), &data)
 	return
+}
+
+// ToURLValues returns AuthData encoded as url.Values.
+func (r *AuthRequest) ToURLValues() url.Values {
+	return url.Values{
+		"data": []string{r.DataJSON},
+		"sig":  []string{r.Signature},
+	}
 }

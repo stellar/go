@@ -27,6 +27,20 @@ func TestPopulate(t *testing.T) {
 	assert.Equal(t, "sig", authRequest.Signature)
 }
 
+func TestToURLValues(t *testing.T) {
+	request := &http.Request{
+		PostForm: url.Values{
+			"data": []string{`{"hello": "world"}`},
+			"sig":  []string{"si/g="},
+		},
+	}
+
+	authRequest := &AuthRequest{}
+	authRequest.Populate(request)
+
+	assert.Equal(t, `data=%7B%22hello%22%3A+%22world%22%7D&sig=si%2Fg%3D`, authRequest.ToURLValues().Encode())
+}
+
 func TestValidateSuccess(t *testing.T) {
 	attachment := attachment.Attachment{
 		Transaction: attachment.Transaction{
