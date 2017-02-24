@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 
 	"github.com/asaskevich/govalidator"
-	"github.com/stellar/go/protocols/attachment"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
 )
@@ -16,7 +15,7 @@ func (d *AuthData) Marshal() ([]byte, error) {
 }
 
 // Attachment returns attachment from the the object.
-func (d AuthData) Attachment() (attachment attachment.Attachment, err error) {
+func (d AuthData) Attachment() (attachment Attachment, err error) {
 	err = json.Unmarshal([]byte(d.AttachmentJSON), &attachment)
 	return
 }
