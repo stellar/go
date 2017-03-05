@@ -96,7 +96,14 @@ func (c *Client) stream(url string, cursor *string, handler func(data []byte) er
 			continue
 		}
 
-		err = handler(ev.Data.([]byte))
+		switch data := ev.Data.(type) {
+		case string:
+			err = handler([]byte(data))
+		case []byte:
+			err = handler(data)
+		default:
+			err = errors.New("Invalid ev.Data type")
+		}
 		if err != nil {
 			return err
 		}
