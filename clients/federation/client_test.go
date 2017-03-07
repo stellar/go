@@ -32,7 +32,7 @@ func TestLookupByAddress(t *testing.T) {
 	if assert.NoError(t, err) {
 		assert.Equal(t, "GASTNVNLHVR3NFO3QACMHCJT3JUSIV4NBXDHDO4VTPDTNN65W3B2766C", resp.AccountID)
 		assert.Equal(t, "id", resp.MemoType)
-		assert.Equal(t, "123", string(resp.Memo))
+		assert.Equal(t, "123", resp.Memo.String())
 	}
 
 	// happy path - integer
@@ -51,7 +51,7 @@ func TestLookupByAddress(t *testing.T) {
 	if assert.NoError(t, err) {
 		assert.Equal(t, "GASTNVNLHVR3NFO3QACMHCJT3JUSIV4NBXDHDO4VTPDTNN65W3B2766C", resp.AccountID)
 		assert.Equal(t, "id", resp.MemoType)
-		assert.Equal(t, "123", string(resp.Memo))
+		assert.Equal(t, "123", resp.Memo.String())
 	}
 
 	// happy path - string
@@ -70,7 +70,7 @@ func TestLookupByAddress(t *testing.T) {
 	if assert.NoError(t, err) {
 		assert.Equal(t, "GASTNVNLHVR3NFO3QACMHCJT3JUSIV4NBXDHDO4VTPDTNN65W3B2766C", resp.AccountID)
 		assert.Equal(t, "text", resp.MemoType)
-		assert.Equal(t, "testing", string(resp.Memo))
+		assert.Equal(t, "testing", resp.Memo.String())
 	}
 
 	// response exceeds limit
