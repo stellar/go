@@ -35,7 +35,7 @@ func (c *Client) LoadAccount(accountID string) (account Account, err error) {
 	return
 }
 
-// LoadAccountOffers loads the account state from horizon. err can be either error
+// LoadAccountOffers loads the account offers from horizon. err can be either error
 // object or horizon.Error object.
 func (c *Client) LoadAccountOffers(accountID string, params ...interface{}) (offers OffersPage, err error) {
 	query := url.Values{}
