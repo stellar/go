@@ -26,6 +26,10 @@ var DefaultPublicNetClient = &Client{
 	HTTP: http.DefaultClient,
 }
 
+// At is a paging parameter that can be used to override the URL loaded in a
+// remote method call to horizon.
+type At string
+
 // Cursor represents `cursor` param in queries
 type Cursor string
 
