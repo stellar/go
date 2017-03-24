@@ -26,6 +26,20 @@ var DefaultPublicNetClient = &Client{
 	HTTP: http.DefaultClient,
 }
 
+// Cursor represents `cursor` param in queries
+type Cursor string
+
+// Limit represents `limit` param in queries
+type Limit uint
+
+// Order represents `order` param in queries
+type Order string
+
+const (
+	OrderAsc  Order = "asc"
+	OrderDesc Order = "desc"
+)
+
 var (
 	// ErrTransactionNotFailed is the error returned from a call to ResultCodes()
 	// against a `Problem` value that is not of type "transaction_failed".
@@ -51,6 +65,17 @@ type Client struct {
 	HTTP HTTP
 }
 
+type ClientInterface interface {
+	LoadAccount(accountID string) (Account, error)
+	LoadAccountOffers(accountID string, params ...interface{}) (offers OffersPage, err error)
+	LoadMemo(p *Payment) error
+	LoadOrderBook(selling Asset, buying Asset) (orderBook OrderBookSummary, err error)
+	StreamLedgers(cursor *Cursor, handler LedgerHandler) error
+	StreamPayments(accountID string, cursor *Cursor, handler PaymentHandler) error
+	StreamTransactions(accountID string, cursor *Cursor, handler TransactionHandler) error
+	SubmitTransaction(txeBase64 string) (TransactionSuccess, error)
+}
+
 // Error struct contains the problem returned by Horizon
 type Error struct {
 	Response *http.Response
@@ -64,6 +89,9 @@ type HTTP interface {
 	PostForm(url string, data url.Values) (resp *http.Response, err error)
 }
 
+// LedgerHandler is a function that is called when a new ledger is received
+type LedgerHandler func(Ledger)
+
 // PaymentHandler is a function that is called when a new payment is received
 type PaymentHandler func(Payment)
 
@@ -72,3 +100,6 @@ type TransactionHandler func(Transaction)
 
 // ensure that the horizon client can be used as a SequenceProvider
 var _ build.SequenceProvider = &Client{}
+
+// ensure that the horizon client implements ClientInterface
+var _ ClientInterface = &Client{}

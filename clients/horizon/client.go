@@ -35,11 +35,44 @@ func (c *Client) LoadAccount(accountID string) (account Account, err error) {
 	return
 }
 
+// LoadAccountOffers loads the account offers from horizon. err can be either error
+// object or horizon.Error object.
+func (c *Client) LoadAccountOffers(accountID string, params ...interface{}) (offers OffersPage, err error) {
+	query := url.Values{}
+	for _, param := range params {
+		switch param := param.(type) {
+		case Limit:
+			query.Add("limit", strconv.Itoa(int(param)))
+		case Order:
+			query.Add("order", string(param))
+		case Cursor:
+			query.Add("cursor", string(param))
+		default:
+			err = fmt.Errorf("Undefined parameter: %+v", param)
+			return
+		}
+	}
+
+	var q string
+	if len(query) > 0 {
+		q = "?" + query.Encode()
+	}
+
+	url := fmt.Sprintf("%s/accounts/%s/offers%s", c.URL, accountID, q)
+	resp, err := c.HTTP.Get(url)
+	if err != nil {
+		return
+	}
+
+	err = decodeResponse(resp, &offers)
+	return
+}
+
 // LoadMemo loads memo for a transaction in Payment
 func (c *Client) LoadMemo(p *Payment) (err error) {
 	res, err := c.HTTP.Get(p.Links.Transaction.Href)
 	if err != nil {
-		return errors.Wrap(err, "load transaciton failed")
+		return errors.Wrap(err, "load transaction failed")
 	}
 	defer res.Body.Close()
 	return json.NewDecoder(res.Body).Decode(&p.Memo)
@@ -63,9 +96,30 @@ func (c *Client) SequenceForAccount(
 	return xdr.SequenceNumber(seq), nil
 }
 
-func (c *Client) stream(url string, cursor *string, handler func(data []byte) error) (err error) {
+// LoadOrderBook loads order book for given selling and buying assets.
+func (c *Client) LoadOrderBook(selling Asset, buying Asset) (orderBook OrderBookSummary, err error) {
+	query := url.Values{}
+
+	query.Add("selling_asset_type", selling.Type)
+	query.Add("selling_asset_code", selling.Code)
+	query.Add("selling_asset_issuer", selling.Issuer)
+
+	query.Add("buying_asset_type", buying.Type)
+	query.Add("buying_asset_code", buying.Code)
+	query.Add("buying_asset_issuer", buying.Issuer)
+
+	resp, err := c.HTTP.Get(c.URL + "/order_book?" + query.Encode())
+	if err != nil {
+		return
+	}
+
+	err = decodeResponse(resp, &orderBook)
+	return
+}
+
+func (c *Client) stream(url string, cursor *Cursor, handler func(data []byte) error) (err error) {
 	if cursor != nil {
-		url += "?cursor=" + *cursor
+		url += "?cursor=" + string(*cursor)
 	}
 
 	req, err := http.NewRequest("GET", url, nil)
@@ -120,8 +174,22 @@ func (c *Client) stream(url string, cursor *string, handler func(data []byte) er
 	return nil
 }
 
+// StreamLedgers streams incoming ledgers
+func (c *Client) StreamLedgers(cursor *Cursor, handler LedgerHandler) (err error) {
+	url := fmt.Sprintf("%s/ledgers", c.URL)
+	return c.stream(url, cursor, func(data []byte) error {
+		var ledger Ledger
+		err = json.Unmarshal(data, &ledger)
+		if err != nil {
+			return errors.Wrap(err, "Error unmarshaling data")
+		}
+		handler(ledger)
+		return nil
+	})
+}
+
 // StreamPayments streams incoming payments
-func (c *Client) StreamPayments(accountID string, cursor *string, handler PaymentHandler) (err error) {
+func (c *Client) StreamPayments(accountID string, cursor *Cursor, handler PaymentHandler) (err error) {
 	url := fmt.Sprintf("%s/accounts/%s/payments", c.URL, accountID)
 	return c.stream(url, cursor, func(data []byte) error {
 		var payment Payment
@@ -135,7 +203,7 @@ func (c *Client) StreamPayments(accountID string, cursor *string, handler Paymen
 }
 
 // StreamTransactions streams incoming transactions
-func (c *Client) StreamTransactions(accountID string, cursor *string, handler TransactionHandler) (err error) {
+func (c *Client) StreamTransactions(accountID string, cursor *Cursor, handler TransactionHandler) (err error) {
 	url := fmt.Sprintf("%s/accounts/%s/transactions", c.URL, accountID)
 	return c.stream(url, cursor, func(data []byte) error {
 		var transaction Transaction
