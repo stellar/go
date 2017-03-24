@@ -118,6 +118,24 @@ var _ = Describe("Horizon", func() {
 			_, ok := err.(*Error)
 			Expect(ok).To(BeFalse())
 		})
+
+		It("overridden location", func() {
+			hmock.On(
+				"GET",
+				"https://localhost/beepboop",
+			).ReturnString(200, accountOffersResponse)
+
+			offers, err := client.LoadAccountOffers("GC2BQYBXFOVPRDH35D5HT2AFVCDGXJM5YVTAF5THFSAISYOWAJQKRESK", At("https://localhost/beepboop"))
+			Expect(err).To(BeNil())
+			Expect(len(offers.Embedded.Records)).To(Equal(2))
+			Expect(offers.Embedded.Records[0].ID).To(Equal(int64(161)))
+			Expect(offers.Embedded.Records[0].Seller).To(Equal("GC2BQYBXFOVPRDH35D5HT2AFVCDGXJM5YVTAF5THFSAISYOWAJQKRESK"))
+			Expect(offers.Embedded.Records[0].Price).To(Equal("450000.0000000"))
+			Expect(offers.Embedded.Records[0].Buying.Type).To(Equal("native"))
+			Expect(offers.Embedded.Records[0].Selling.Type).To(Equal("credit_alphanum4"))
+			Expect(offers.Embedded.Records[0].Selling.Code).To(Equal("XBT"))
+			Expect(offers.Embedded.Records[0].Selling.Issuer).To(Equal("GDI73WJ4SX7LOG3XZDJC3KCK6ED6E5NBYK2JUBQSPBCNNWEG3ZN7T75U"))
+		})
 	})
 
 	Describe("LoadOrderBook", func() {

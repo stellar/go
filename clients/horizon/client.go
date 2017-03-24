@@ -9,7 +9,7 @@ import (
 	"net/url"
 	"strconv"
 
-	"github.com/pkg/errors"
+	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
 )
 
@@ -35,12 +35,17 @@ func (c *Client) LoadAccount(accountID string) (account Account, err error) {
 	return
 }
 
-// LoadAccountOffers loads the account offers from horizon. err can be either error
-// object or horizon.Error object.
+// LoadAccountOffers loads the account offers from horizon. err can be either
+// error object or horizon.Error object.
 func (c *Client) LoadAccountOffers(accountID string, params ...interface{}) (offers OffersPage, err error) {
+
+	endpoint := ""
 	query := url.Values{}
+
 	for _, param := range params {
 		switch param := param.(type) {
+		case At:
+			endpoint = string(param)
 		case Limit:
 			query.Add("limit", strconv.Itoa(int(param)))
 		case Order:
@@ -53,14 +58,25 @@ func (c *Client) LoadAccountOffers(accountID string, params ...interface{}) (off
 		}
 	}
 
-	var q string
-	if len(query) > 0 {
-		q = "?" + query.Encode()
+	if endpoint == "" {
+		endpoint = fmt.Sprintf(
+			"%s/accounts/%s/offers?%s",
+			c.URL,
+			accountID,
+			query.Encode(),
+		)
 	}
 
-	url := fmt.Sprintf("%s/accounts/%s/offers%s", c.URL, accountID, q)
-	resp, err := c.HTTP.Get(url)
+	// ensure our endpoint is a real url
+	_, err = url.Parse(endpoint)
 	if err != nil {
+		err = errors.Wrap(err, "failed to parse endpoint")
+		return
+	}
+
+	resp, err := c.HTTP.Get(endpoint)
+	if err != nil {
+		err = errors.Wrap(err, "failed to load endpoint")
 		return
 	}
 
