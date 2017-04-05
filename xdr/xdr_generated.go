@@ -458,7 +458,7 @@ func (u NodeId) GetEd25519() (result Uint256, ok bool) {
 //    };
 //
 type Curve25519Secret struct {
-	Key [32]byte
+	Key [32]byte `xdrmaxsize:"32"`
 }
 
 // Curve25519Public is an XDR Struct defines as:
@@ -469,7 +469,7 @@ type Curve25519Secret struct {
 //    };
 //
 type Curve25519Public struct {
-	Key [32]byte
+	Key [32]byte `xdrmaxsize:"32"`
 }
 
 // HmacSha256Key is an XDR Struct defines as:
@@ -480,7 +480,7 @@ type Curve25519Public struct {
 //    };
 //
 type HmacSha256Key struct {
-	Key [32]byte
+	Key [32]byte `xdrmaxsize:"32"`
 }
 
 // HmacSha256Mac is an XDR Struct defines as:
@@ -491,7 +491,7 @@ type HmacSha256Key struct {
 //    };
 //
 type HmacSha256Mac struct {
-	Mac [32]byte
+	Mac [32]byte `xdrmaxsize:"32"`
 }
 
 // AccountId is an XDR Typedef defines as:
@@ -626,7 +626,7 @@ func (e AssetType) String() string {
 //        }
 //
 type AssetAlphaNum4 struct {
-	AssetCode [4]byte
+	AssetCode [4]byte `xdrmaxsize:"4"`
 	Issuer    AccountId
 }
 
@@ -639,7 +639,7 @@ type AssetAlphaNum4 struct {
 //        }
 //
 type AssetAlphaNum12 struct {
-	AssetCode [12]byte
+	AssetCode [12]byte `xdrmaxsize:"12"`
 	Issuer    AccountId
 }
 
@@ -1779,8 +1779,8 @@ type ChangeTrustOp struct {
 //
 type AllowTrustOpAsset struct {
 	Type        AssetType
-	AssetCode4  *[4]byte
-	AssetCode12 *[12]byte
+	AssetCode4  *[4]byte  `xdrmaxsize:"4"`
+	AssetCode12 *[12]byte `xdrmaxsize:"12"`
 }
 
 // SwitchFieldName returns the field name in which this union's
@@ -2423,7 +2423,7 @@ func (e MemoType) String() string {
 //
 type Memo struct {
 	Type    MemoType
-	Text    *string
+	Text    *string `xdrmaxsize:"28"`
 	Id      *Uint64
 	Hash    *Hash
 	RetHash *Hash
@@ -6422,8 +6422,8 @@ func (e IpAddrType) String() string {
 //
 type PeerAddressIp struct {
 	Type IpAddrType
-	Ipv4 *[4]byte
-	Ipv6 *[16]byte
+	Ipv4 *[4]byte  `xdrmaxsize:"4"`
+	Ipv6 *[16]byte `xdrmaxsize:"16"`
 }
 
 // SwitchFieldName returns the field name in which this union's
