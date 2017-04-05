@@ -35,11 +35,21 @@ func Marshal(w io.Writer, v interface{}) (int, error) {
 //
 type Hash [32]byte
 
+// XDRMaxSize implements the Sized interface for Hash
+func (e Hash) XDRMaxSize() int {
+	return 32
+}
+
 // Uint256 is an XDR Typedef defines as:
 //
 //   typedef opaque uint256[32];
 //
 type Uint256 [32]byte
+
+// XDRMaxSize implements the Sized interface for Uint256
+func (e Uint256) XDRMaxSize() int {
+	return 32
+}
 
 // Uint32 is an XDR Typedef defines as:
 //
@@ -387,11 +397,21 @@ func (u SignerKey) GetHashX() (result Uint256, ok bool) {
 //
 type Signature []byte
 
+// XDRMaxSize implements the Sized interface for Signature
+func (e Signature) XDRMaxSize() int {
+	return 64
+}
+
 // SignatureHint is an XDR Typedef defines as:
 //
 //   typedef opaque SignatureHint[4];
 //
 type SignatureHint [4]byte
+
+// XDRMaxSize implements the Sized interface for SignatureHint
+func (e SignatureHint) XDRMaxSize() int {
+	return 4
+}
 
 // NodeId is an XDR Typedef defines as:
 //
@@ -517,6 +537,11 @@ func (u AccountId) GetEd25519() (result Uint256, ok bool) {
 //
 type Thresholds [4]byte
 
+// XDRMaxSize implements the Sized interface for Thresholds
+func (e Thresholds) XDRMaxSize() int {
+	return 4
+}
+
 // String32 is an XDR Typedef defines as:
 //
 //   typedef string string32<32>;
@@ -550,6 +575,11 @@ type SequenceNumber Uint64
 //   typedef opaque DataValue<64>;
 //
 type DataValue []byte
+
+// XDRMaxSize implements the Sized interface for DataValue
+func (e DataValue) XDRMaxSize() int {
+	return 64
+}
 
 // AssetType is an XDR Enum defines as:
 //
@@ -4883,6 +4913,11 @@ type TransactionResult struct {
 //   typedef opaque UpgradeType<128>;
 //
 type UpgradeType []byte
+
+// XDRMaxSize implements the Sized interface for UpgradeType
+func (e UpgradeType) XDRMaxSize() int {
+	return 128
+}
 
 // StellarValueExt is an XDR NestedUnion defines as:
 //
