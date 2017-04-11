@@ -1,13 +1,37 @@
 package horizon
 
 import (
+	"context"
+	"fmt"
 	"testing"
+	"time"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/support/http/httptest"
 )
+
+func ExampleStream() {
+	client := DefaultPublicNetClient
+	cursor := Cursor("now")
+
+	ctx, cancel := context.WithCancel(context.Background())
+
+	go func() {
+		// Stop streaming after 60 seconds.
+		time.Sleep(60 * time.Second)
+		cancel()
+	}()
+
+	err := client.StreamLedgers(ctx, &cursor, func(l Ledger) {
+		fmt.Println(l.Sequence)
+	})
+
+	if err != nil {
+		fmt.Println(err)
+	}
+}
 
 func TestHorizon(t *testing.T) {
 	RegisterFailHandler(Fail)
