@@ -1,9 +1,8 @@
 package horizon
 
 import (
-	"context"
-
 	"github.com/stretchr/testify/mock"
+	"golang.org/x/net/context"
 )
 
 // MockClient is a mockable horizon client.

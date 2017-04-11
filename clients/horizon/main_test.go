@@ -1,7 +1,6 @@
 package horizon
 
 import (
-	"context"
 	"fmt"
 	"testing"
 	"time"
@@ -10,6 +9,7 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/support/http/httptest"
+	"golang.org/x/net/context"
 )
 
 func ExampleStream() {

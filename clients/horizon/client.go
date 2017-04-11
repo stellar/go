@@ -2,7 +2,6 @@ package horizon
 
 import (
 	"bufio"
-	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -12,6 +11,7 @@ import (
 
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
+	"golang.org/x/net/context"
 )
 
 // HomeDomainForAccount returns the home domain for the provided strkey-encoded
