@@ -226,7 +226,8 @@ func (c *Client) stream(ctx context.Context, baseURL string, cursor *Cursor, han
 	return nil
 }
 
-// StreamLedgers streams incoming ledgers. Use context.WithCancel to stop streaming.
+// StreamLedgers streams incoming ledgers. Use context.WithCancel to stop streaming or
+// context.Background() if you want to stream indefinitely.
 func (c *Client) StreamLedgers(ctx context.Context, cursor *Cursor, handler LedgerHandler) (err error) {
 	url := fmt.Sprintf("%s/ledgers", c.URL)
 	return c.stream(ctx, url, cursor, func(data []byte) error {
@@ -240,7 +241,8 @@ func (c *Client) StreamLedgers(ctx context.Context, cursor *Cursor, handler Ledg
 	})
 }
 
-// StreamPayments streams incoming payments. Use context.WithCancel to stop streaming.
+// StreamPayments streams incoming payments. Use context.WithCancel to stop streaming or
+// context.Background() if you want to stream indefinitely.
 func (c *Client) StreamPayments(ctx context.Context, accountID string, cursor *Cursor, handler PaymentHandler) (err error) {
 	url := fmt.Sprintf("%s/accounts/%s/payments", c.URL, accountID)
 	return c.stream(ctx, url, cursor, func(data []byte) error {
@@ -254,7 +256,8 @@ func (c *Client) StreamPayments(ctx context.Context, accountID string, cursor *C
 	})
 }
 
-// StreamTransactions streams incoming transactions. Use context.WithCancel to stop streaming.
+// StreamTransactions streams incoming transactions. Use context.WithCancel to stop streaming or
+// context.Background() if you want to stream indefinitely.
 func (c *Client) StreamTransactions(ctx context.Context, accountID string, cursor *Cursor, handler TransactionHandler) (err error) {
 	url := fmt.Sprintf("%s/accounts/%s/transactions", c.URL, accountID)
 	return c.stream(ctx, url, cursor, func(data []byte) error {
