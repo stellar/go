@@ -1,6 +1,9 @@
 package horizon
 
-import "github.com/stretchr/testify/mock"
+import (
+	"github.com/stretchr/testify/mock"
+	"golang.org/x/net/context"
+)
 
 // MockClient is a mockable horizon client.
 type MockClient struct {
@@ -41,20 +44,20 @@ func (m *MockClient) LoadOrderBook(selling Asset, buying Asset) (orderBook Order
 }
 
 // StreamLedgers is a mocking a method
-func (m *MockClient) StreamLedgers(cursor *Cursor, handler LedgerHandler) error {
-	a := m.Called(cursor, handler)
+func (m *MockClient) StreamLedgers(ctx context.Context, cursor *Cursor, handler LedgerHandler) error {
+	a := m.Called(ctx, cursor, handler)
 	return a.Error(0)
 }
 
 // StreamPayments is a mocking a method
-func (m *MockClient) StreamPayments(accountID string, cursor *Cursor, handler PaymentHandler) error {
-	a := m.Called(accountID, cursor, handler)
+func (m *MockClient) StreamPayments(ctx context.Context, accountID string, cursor *Cursor, handler PaymentHandler) error {
+	a := m.Called(ctx, accountID, cursor, handler)
 	return a.Error(0)
 }
 
 // StreamTransactions is a mocking a method
-func (m *MockClient) StreamTransactions(accountID string, cursor *Cursor, handler TransactionHandler) error {
-	a := m.Called(accountID, cursor, handler)
+func (m *MockClient) StreamTransactions(ctx context.Context, accountID string, cursor *Cursor, handler TransactionHandler) error {
+	a := m.Called(ctx, accountID, cursor, handler)
 	return a.Error(0)
 }
 

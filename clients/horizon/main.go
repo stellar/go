@@ -12,6 +12,7 @@ import (
 
 	"github.com/stellar/go/build"
 	"github.com/stellar/go/support/errors"
+	"golang.org/x/net/context"
 )
 
 // DefaultTestNetClient is a default client to connect to test network
@@ -74,9 +75,9 @@ type ClientInterface interface {
 	LoadAccountOffers(accountID string, params ...interface{}) (offers OffersPage, err error)
 	LoadMemo(p *Payment) error
 	LoadOrderBook(selling Asset, buying Asset) (orderBook OrderBookSummary, err error)
-	StreamLedgers(cursor *Cursor, handler LedgerHandler) error
-	StreamPayments(accountID string, cursor *Cursor, handler PaymentHandler) error
-	StreamTransactions(accountID string, cursor *Cursor, handler TransactionHandler) error
+	StreamLedgers(ctx context.Context, cursor *Cursor, handler LedgerHandler) error
+	StreamPayments(ctx context.Context, accountID string, cursor *Cursor, handler PaymentHandler) error
+	StreamTransactions(ctx context.Context, accountID string, cursor *Cursor, handler TransactionHandler) error
 	SubmitTransaction(txeBase64 string) (TransactionSuccess, error)
 }
 
