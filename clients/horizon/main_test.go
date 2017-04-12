@@ -53,7 +53,7 @@ var _ = Describe("Horizon", func() {
 
 			_, err := client.LoadAccount("GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H")
 			Expect(err).NotTo(BeNil())
-			Expect(err.Error()).To(Equal("Horizon error"))
+			Expect(err.Error()).To(HavePrefix("Horizon error"))
 			horizonError, ok := err.(*Error)
 			Expect(ok).To(BeTrue())
 			Expect(horizonError.Problem.Title).To(Equal("Resource Missing"))
@@ -100,7 +100,7 @@ var _ = Describe("Horizon", func() {
 
 			_, err := client.LoadAccountOffers("GC2BQYBXFOVPRDH35D5HT2AFVCDGXJM5YVTAF5THFSAISYOWAJQKRESK")
 			Expect(err).NotTo(BeNil())
-			Expect(err.Error()).To(Equal("Horizon error"))
+			Expect(err.Error()).To(HavePrefix("Horizon error"))
 			horizonError, ok := err.(*Error)
 			Expect(ok).To(BeTrue())
 			Expect(horizonError.Problem.Title).To(Equal("Resource Missing"))
@@ -173,7 +173,7 @@ var _ = Describe("Horizon", func() {
 
 			_, err := client.LoadOrderBook(Asset{Type: "native"}, Asset{"credit_alphanum4", "DEMO", "GBAMBOOZDWZPVV52RCLJQYMQNXOBLOXWNQAY2IF2FREV2WL46DBCH3BE"})
 			Expect(err).NotTo(BeNil())
-			Expect(err.Error()).To(Equal("Horizon error"))
+			Expect(err.Error()).To(HavePrefix("Horizon error"))
 			horizonError, ok := err.(*Error)
 			Expect(ok).To(BeTrue())
 			Expect(horizonError.Problem.Title).To(Equal("Resource Missing"))
