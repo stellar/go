@@ -134,14 +134,14 @@ func (c *Client) LoadOrderBook(selling Asset, buying Asset) (orderBook OrderBook
 	return
 }
 
-func (c *Client) stream(ctx context.Context, url string, cursor *Cursor, handler func(data []byte) error) error {
-	currentURL := url
+func (c *Client) stream(ctx context.Context, baseURL string, cursor *Cursor, handler func(data []byte) error) error {
+	query := url.Values{}
 	if cursor != nil {
-		currentURL += "?cursor=" + string(*cursor)
+		query.Set("cursor", string(*cursor))
 	}
 
 	for {
-		req, err := http.NewRequest("GET", currentURL, nil)
+		req, err := http.NewRequest("GET", fmt.Sprintf("%s?%s", baseURL, query.Encode()), nil)
 		if err != nil {
 			return err
 		}
@@ -210,7 +210,7 @@ func (c *Client) stream(ctx context.Context, url string, cursor *Cursor, handler
 			}
 
 			if object.PT != "" {
-				currentURL = url + "?cursor=" + object.PT
+				query.Set("cursor", object.PT)
 			} else {
 				return errors.New("no paging_token in object: cannot continue")
 			}
