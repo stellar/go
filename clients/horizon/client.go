@@ -286,7 +286,6 @@ func (c *Client) SubmitTransaction(
 
 	err = decodeResponse(resp, &response)
 	if err != nil {
-		err = errors.Wrap(err, "decode response failed")
 		return
 	}
 
