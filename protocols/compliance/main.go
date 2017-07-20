@@ -55,7 +55,7 @@ type Attachment struct {
 // Transaction represents transaction field in Stellar attachment
 type Transaction struct {
 	SenderInfo map[string]string `json:"sender_info"`
-	Route      string            `json:"route"`
+	Route      Route             `json:"route"`
 	Note       string            `json:"note"`
 	Extra      string            `json:"extra"`
 }
@@ -65,10 +65,13 @@ type Operation struct {
 	// Overriddes Transaction field for this operation
 	SenderInfo map[string]string `json:"sender_info"`
 	// Overriddes Transaction field for this operation
-	Route string `json:"route"`
+	Route Route `json:"route"`
 	// Overriddes Transaction field for this operation
 	Note string `json:"note"`
 }
+
+// Route allows unmarshalling both integer and string types into string
+type Route string
 
 // SenderInfo is a helper structure with standardized fields that contains
 // information about the sender. Use Map() method to transform it to
