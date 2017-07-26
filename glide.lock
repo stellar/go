@@ -158,6 +158,7 @@ imports:
   - diffmatchpatch
 - name: github.com/sirupsen/logrus
   version: 68cec9f21fbf3ea8d8f98c044bc6ce05f17b267a
+  repo: https://github.com/sirupsen/logrus.git
   subpackages:
   - hooks/test
 - name: github.com/spf13/cobra
