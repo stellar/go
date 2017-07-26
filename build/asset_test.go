@@ -1,7 +1,6 @@
 package build
 
 import (
-	"reflect"
 	"testing"
 
 	"github.com/stellar/go/xdr"
@@ -16,30 +15,21 @@ func TestAsset_ToXDR(t *testing.T) {
 	)
 	require.NoError(t, issuer.SetAddress(issuerAddress))
 
-	type fields struct {
-		Code   string
-		Issuer string
-		Native bool
-	}
-	tests := []struct {
-		name    string
-		fields  fields
-		want    xdr.Asset
-		wantErr bool
+	cases := []struct {
+		Name        string
+		Asset       Asset
+		Expected    xdr.Asset
+		ExpectedErr string
 	}{
 		{
-			name:   "Native",
-			fields: fields{"", "", true},
-			want:   xdr.Asset{Type: xdr.AssetTypeAssetTypeNative},
+			Name:     "Native",
+			Asset:    NativeAsset(),
+			Expected: xdr.Asset{Type: xdr.AssetTypeAssetTypeNative},
 		},
 		{
-			name: "USD",
-			fields: fields{
-				"USD",
-				issuerAddress,
-				false,
-			},
-			want: xdr.Asset{
+			Name:  "Alphanum4",
+			Asset: CreditAsset("USD", issuerAddress),
+			Expected: xdr.Asset{
 				Type: xdr.AssetTypeAssetTypeCreditAlphanum4,
 				AlphaNum4: &xdr.AssetAlphaNum4{
 					AssetCode: [4]byte{0x55, 0x53, 0x44, 0x00}, //USD
@@ -47,23 +37,46 @@ func TestAsset_ToXDR(t *testing.T) {
 				},
 			},
 		},
+		{
+			Name:  "Alphanum12",
+			Asset: CreditAsset("SCOTTBUCKS", issuerAddress),
+			Expected: xdr.Asset{
+				Type: xdr.AssetTypeAssetTypeCreditAlphanum12,
+				AlphaNum12: &xdr.AssetAlphaNum12{
+					AssetCode: [12]byte{
+						0x53, 0x43, 0x4f, 0x54,
+						0x54, 0x42, 0x55, 0x43,
+						0x4b, 0x53, 0x00, 0x00,
+					}, //SCOTTBUCKS
+					Issuer: issuer,
+				},
+			},
+		},
+		{
+			Name:        "bad issuer",
+			Asset:       CreditAsset("USD", "FUNK"),
+			ExpectedErr: "base32 decode failed: illegal base32 data at input byte 0",
+		},
+		{
+			Name:        "bad code",
+			Asset:       CreditAsset("", issuerAddress),
+			ExpectedErr: "Asset code length is invalid",
+		},
 	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			a := &Asset{
-				Code:   tt.fields.Code,
-				Issuer: tt.fields.Issuer,
-				Native: tt.fields.Native,
+
+	for _, kase := range cases {
+		actual, err := kase.Asset.ToXDR()
+
+		if kase.ExpectedErr != "" {
+			if assert.Error(t, err, "no expected error in case: %s", kase.Name) {
+				assert.EqualError(t, err, kase.ExpectedErr)
 			}
-			got, err := a.ToXDR()
-			if (err != nil) != tt.wantErr {
-				t.Errorf("Asset.ToXDR() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("Asset.ToXDR() = %v, want %v", got, tt.want)
-			}
-		})
+			continue
+		}
+
+		if assert.NoError(t, err, "unexpected error in case: %s", kase.Name) {
+			assert.Equal(t, kase.Expected, actual, "invalid xdr result")
+		}
 	}
 }
 
