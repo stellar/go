@@ -3,9 +3,9 @@ services:
 - mysql
 - postgres
 go:
-- '1.5'
 - '1.6'
 - '1.7'
+- '1.8'
 - tip
 env:
 - GO15VENDOREXPERIMENT="1"
@@ -30,13 +30,20 @@ notifications:
     on_failure: always
     secure: Uhx8H2RFNsJ9GknDItSwhMOl5K3HTGNjifJwkLUiRio4JH4PzrkHDOzCOpEzrboviVF+Rch9VsC7HchIY2uyqeB9UW63dCMPeaYSs7rfNCmW8bTcGydeVOe0HV18mpM/4yPy/gsw5Zq+eGq7+p9NZtwkOHeQ/YtoSFcWbQQYs3CPZpBUP95KW1fGTn8OIW6nKkVA0Kyr6aXJFZB9AHIg24R9l2uraHdjg5EUJJO/4yR0GWC1pLTfUCqUt9mXPeGSQOhhvR+pCKSljY3pB6oex2hKH04u3U1iRzOBuKMPmMrcyJDzvVRkCaCn+0LPGZ3vgDDcDdcqYxEk1a1n27wzjqYlDeH4xaYTZGpB18LiX6MAm84+iviL5JILIMQ4NcqVNB2L37zl1UW+BMQUSH6+zQknHkGcOImU984PEdrhCM2uvknvp0+IGXdpyv9WwztzxhJOz6PAE1aA3O+BI1xuSft6sGY07Z0Q9iKO/uCWIHbsfLso16kIubiHzwjSAz90tbCc8VcR4EFeVqEoWm9QwRP0v6pclWMhj9bq3Oye1gKrSCwWPXCg8mRFCCuXgr4dev7I+vKcx43oIddgcx6vIROMYsgX/0gInBrkNxZw3Gu1YUXe1fuNvmCZWSlaWrO+9XWnFItnLs2ypnQjlguKzxgqmfqR0eXmMYBQrH18sxU=
 deploy:
-  provider: releases
-  skip_cleanup: true
-  api_key:
-    secure: q8H6HZWdaVF9lW2svzV/xdVZzF8SOBrnqGleAXEtI8l9bykq6gWBxSrU4BSma3KRsIBy/G5z6DNFGO0lRTPMLJ6j6WybvPruW1bOpBgPgaOD6Jz+jr62VNlRr4eWot+UZNTvuJMbR/3qqzMee5pIqIjI2kmDYD6VnOB0vAK3It/JCIc+VDDGzROMi9+nGIsAt7mZkU5kNzLDzaC+92IopTi7vXUGJ0cUDjKF1aiHKCFcWfkNUlTQoPnItpGNzBzGoTOX06LR9X+Uf9w651za+vZ7c0Ftd/Aujvv73KfMV5pIJehPCxI5x/PfEZ3AZwrDYC0theZ+NDWjHz/C2O56Ybi5V9TkKG3Yjy6eNVt7txhq1BY2A4EwvX8Lf8zMiG2VQ0YMNM1qUV6LDjqq4uCOeBjBjtgpqQXwMAtPKH+UF0Z8dj41+GfVOKD/Tv6r2Ue6XHYtk1pJVgWJwImnMbxNArEWWe2gt8ZL5vk21Q1VJN4bF2o2o94j/OjC/Nrawb9wgJN6tcXNEOYZGZPgoviJI5isBZy7SFzVXZpFgFEapZ7Ira3xa8bjGTmG+wTCWGkIRg1uX5EqbOqU1pP9lUPPknstfEi3w30ZR/4wnOrfXBh8fjfxZnTz6S32yolYxWKeSFyR6CvHvtZovAL7nEdEUb3DGSrfk+D6LcmzGqn78L4=
-  file: dist/*
-  file_glob: true
-  on:
-    repo: stellar/go
-    tags: true
-    go: '1.7'
+  - provider: releases
+    skip_cleanup: true
+    api_key:
+      secure: q8H6HZWdaVF9lW2svzV/xdVZzF8SOBrnqGleAXEtI8l9bykq6gWBxSrU4BSma3KRsIBy/G5z6DNFGO0lRTPMLJ6j6WybvPruW1bOpBgPgaOD6Jz+jr62VNlRr4eWot+UZNTvuJMbR/3qqzMee5pIqIjI2kmDYD6VnOB0vAK3It/JCIc+VDDGzROMi9+nGIsAt7mZkU5kNzLDzaC+92IopTi7vXUGJ0cUDjKF1aiHKCFcWfkNUlTQoPnItpGNzBzGoTOX06LR9X+Uf9w651za+vZ7c0Ftd/Aujvv73KfMV5pIJehPCxI5x/PfEZ3AZwrDYC0theZ+NDWjHz/C2O56Ybi5V9TkKG3Yjy6eNVt7txhq1BY2A4EwvX8Lf8zMiG2VQ0YMNM1qUV6LDjqq4uCOeBjBjtgpqQXwMAtPKH+UF0Z8dj41+GfVOKD/Tv6r2Ue6XHYtk1pJVgWJwImnMbxNArEWWe2gt8ZL5vk21Q1VJN4bF2o2o94j/OjC/Nrawb9wgJN6tcXNEOYZGZPgoviJI5isBZy7SFzVXZpFgFEapZ7Ira3xa8bjGTmG+wTCWGkIRg1uX5EqbOqU1pP9lUPPknstfEi3w30ZR/4wnOrfXBh8fjfxZnTz6S32yolYxWKeSFyR6CvHvtZovAL7nEdEUb3DGSrfk+D6LcmzGqn78L4=
+    file: dist/*
+    file_glob: true
+    on:
+      repo: stellar/go
+      tags: true
+      go: '1.8'
+  - provider: script
+    skip_cleanup: true
+    script: echo "TODO: upload the built artifacts somewhere really nice"
+    on:
+      repo: stellar/go
+      condition: $TRAVIS_EVENT_TYPE = cron
+      go: '1.8'
