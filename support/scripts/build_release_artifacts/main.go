@@ -4,6 +4,7 @@ package main
 
 import (
 	"fmt"
+	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -30,43 +31,43 @@ var builds = []struct {
 
 func main() {
 	log.SetLevel(log.InfoLevel)
-	bin, version := extractFromTag(os.Getenv("TRAVIS_TAG"))
-	pkg := packageName(bin)
-	repo := "github.com/stellar/go"
-
-	if os.Getenv("REPO") != "" {
-		repo = os.Getenv("REPO")
-	}
-
 	run("rm", "-rf", "dist/*")
 
-	if bin == "" {
-		log.Info("could not extract info from TRAVIS_TAG: skipping artifact packaging")
+	if os.Getenv("TRAVIS_EVENT_TYPE") == "cron" {
+		buildNightlies()
+		os.Exit(0)
+	} else if os.Getenv("TRAVIS_TAG") != "" {
+		buildByTag()
 		os.Exit(0)
 	}
 
-	for _, cfg := range builds {
-		name := fmt.Sprintf("%s-%s-%s-%s", bin, version, cfg.OS, cfg.Arch)
-		dest := filepath.Join("dist", name)
+	log.Info("nothing to do")
+}
 
-		// make destination directories
-		run("mkdir", "-p", dest)
-		run("cp", "LICENSE-APACHE.txt", dest)
-		run("cp", "COPYING", dest)
-		run("cp", filepath.Join(pkg, "README.md"), dest)
-		run("cp", filepath.Join(pkg, "CHANGELOG.md"), dest)
+// package searches the `tools` and `services` packages of this repo to find
+// the source directory.  This is used within the script to find the README and
+// other files that should be packaged with the binary.
+func binPkgNames() []string {
+	result := []string{}
+	result = append(result, binNamesForDir("services")...)
+	result = append(result, binNamesForDir("tools")...)
+	return result
+}
 
-		// rebuild the binary with the version variable set
-		build(
-			fmt.Sprintf("%s/%s", repo, pkg),
-			filepath.Join(dest, bin),
-			version,
-			cfg.OS,
-			cfg.Arch,
-		)
-
-		packageArchive(dest, cfg.OS)
+func binNamesForDir(dir string) []string {
+	files, err := ioutil.ReadDir(dir)
+	if err != nil {
+		panic(errors.Wrap(err, "read-dir failed"))
 	}
+
+	result := []string{}
+	for _, file := range files {
+		if file.IsDir() {
+			result = append(result, filepath.Join(dir, file.Name()))
+		}
+	}
+
+	return result
 }
 
 func build(pkg, dest, version, buildOS, buildArch string) {
@@ -101,15 +102,52 @@ func build(pkg, dest, version, buildOS, buildArch string) {
 	}
 }
 
-// enableCgo replaces any CGO_ENABLED flags in `env` with CGO_ENABLED=1
-func enableCgo(env []string) (ret []string) {
-	for _, e := range env {
-		if !strings.HasPrefix(e, "CGO_ENABLED") {
-			ret = append(ret, e)
+func buildNightlies() {
+	version := runOutput("git", "describe", "--always", "--dirty", "--tags")
+	repo := repoName()
+
+	for _, pkg := range binPkgNames() {
+		bin := filepath.Base(pkg)
+		for _, cfg := range builds {
+			dest := prepareDest(pkg, bin, "nightly", cfg.OS, cfg.Arch)
+
+			build(
+				fmt.Sprintf("%s/%s", repo, pkg),
+				filepath.Join(dest, bin),
+				version,
+				cfg.OS,
+				cfg.Arch,
+			)
+
+			packageArchive(dest, cfg.OS)
 		}
 	}
-	ret = append(ret, "CGO_ENABLED=1")
-	return
+}
+
+func buildByTag() {
+	bin, version := extractFromTag(os.Getenv("TRAVIS_TAG"))
+	pkg := packageName(bin)
+	repo := repoName()
+
+	if bin == "" {
+		log.Info("could not extract info from TRAVIS_TAG: skipping artifact packaging")
+		os.Exit(0)
+	}
+
+	for _, cfg := range builds {
+		dest := prepareDest(pkg, bin, version, cfg.OS, cfg.Arch)
+
+		// rebuild the binary with the version variable set
+		build(
+			fmt.Sprintf("%s/%s", repo, pkg),
+			filepath.Join(dest, bin),
+			version,
+			cfg.OS,
+			cfg.Arch,
+		)
+
+		packageArchive(dest, cfg.OS)
+	}
 }
 
 // extractFromTag extracts the name of the binary that should be packaged in the
@@ -183,6 +221,19 @@ func packageName(binName string) string {
 	return result
 }
 
+func prepareDest(pkg, bin, version, os, arch string) string {
+	name := fmt.Sprintf("%s-%s-%s-%s", bin, version, os, arch)
+	dest := filepath.Join("dist", name)
+
+	// make destination directories
+	run("mkdir", "-p", dest)
+	run("cp", "LICENSE-APACHE.txt", dest)
+	run("cp", "COPYING", dest)
+	run("cp", filepath.Join(pkg, "README.md"), dest)
+	run("cp", filepath.Join(pkg, "CHANGELOG.md"), dest)
+	return dest
+}
+
 // pushdir is a utility function to temporarily change directories.  It returns
 // a func that can be called to restore the current working directory to the
 // state it was in when first calling pushdir.
@@ -205,6 +256,14 @@ func pushdir(dir string) func() {
 	}
 }
 
+func repoName() string {
+	if os.Getenv("REPO") != "" {
+		return os.Getenv("REPO")
+	}
+	return "github.com/stellar/go"
+
+}
+
 // utility command to run the provided command that echoes any output.  A failed
 // command will trigger a panic.
 func run(name string, args ...string) {
@@ -218,4 +277,20 @@ func run(name string, args ...string) {
 	if err != nil {
 		panic(err)
 	}
+}
+
+// utility command to run  the provided command that returns the output.  A
+// failed command will trigger a panic.
+func runOutput(name string, args ...string) string {
+	cmd := exec.Command(name, args...)
+	cmd.Stderr = os.Stderr
+
+	log.Infof("running: %s %s", name, strings.Join(args, " "))
+	out, err := cmd.Output()
+
+	if err != nil {
+		panic(err)
+	}
+
+	return strings.TrimSpace(string(out))
 }
