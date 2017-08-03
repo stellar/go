@@ -286,3 +286,6 @@ import:
 - package: gopkg.in/yaml.v2
   version: 7ad95dd0798a40da1ccdff6dff35fd177b5edf40
   repo: https://gopkg.in/yaml.v2
+- package: github.com/go-chi/chi
+  version: ~3.1.5
+- package: github.com/tyler-smith/go-bip32
