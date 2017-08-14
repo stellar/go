@@ -103,7 +103,7 @@ imports:
 - name: github.com/moul/http2curl
   version: b1479103caacaa39319f75e7f57fc545287fca0d
 - name: github.com/nullstyle/go-xdr
-  version: 3c3a95da20cd1e19018bf098dce9c3ce358848df
+  version: a875e7c9fa2388ce03279f6b5ba1c2ccd1f9e917
   subpackages:
   - xdr3
 - name: github.com/onsi/ginkgo
