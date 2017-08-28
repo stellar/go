@@ -1,0 +1,101 @@
+
+# Gopkg.toml example
+#
+# Refer to https://github.com/golang/dep/blob/master/docs/Gopkg.toml.md
+# for detailed Gopkg.toml documentation.
+#
+# required = ["github.com/user/thing/cmd/thing"]
+# ignored = ["github.com/user/project/pkgX", "bitbucket.org/user/project/pkgA/pkgY"]
+#
+# [[constraint]]
+#   name = "github.com/user/project"
+#   version = "1.0.0"
+#
+# [[constraint]]
+#   name = "github.com/user/project2"
+#   branch = "dev"
+#   source = "github.com/myfork/project2"
+#
+# [[override]]
+#  name = "github.com/x/y"
+#  version = "2.4.0"
+
+
+[[constraint]]
+  name = "github.com/BurntSushi/toml"
+
+[[constraint]]
+  name = "github.com/Masterminds/squirrel"
+
+[[constraint]]
+  name = "github.com/agl/ed25519"
+
+[[constraint]]
+  name = "github.com/asaskevich/govalidator"
+  source = "https://github.com/stellar/govalidator.git"
+
+[[constraint]]
+  name = "github.com/aws/aws-sdk-go"
+
+[[constraint]]
+  name = "github.com/getsentry/raven-go"
+
+[[constraint]]
+  name = "github.com/go-sql-driver/mysql"
+
+[[constraint]]
+  name = "github.com/howeyc/gopass"
+
+[[constraint]]
+  name = "github.com/jarcoal/httpmock"
+
+[[constraint]]
+  name = "github.com/jmoiron/sqlx"
+
+[[constraint]]
+  name = "github.com/lib/pq"
+
+[[constraint]]
+  name = "github.com/manucorporat/sse"
+
+[[constraint]]
+  name = "github.com/mattn/go-sqlite3"
+
+[[constraint]]
+  name = "github.com/nullstyle/go-xdr"
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/onsi/ginkgo"
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/onsi/gomega"
+
+[[constraint]]
+  name = "github.com/pkg/errors"
+  version = "0.7.0"
+
+[[constraint]]
+  name = "github.com/rs/cors"
+
+[[constraint]]
+  name = "github.com/segmentio/go-loggly"
+
+[[constraint]]
+  name = "github.com/spf13/cobra"
+
+[[constraint]]
+  name = "github.com/stretchr/testify"
+
+[[constraint]]
+  name = "goji.io"
+
+[[constraint]]
+  name = "golang.org/x/net"
+
+[[constraint]]
+  name = "gopkg.in/gavv/httpexpect.v1"
+
+[[constraint]]
+  name = "gopkg.in/tylerb/graceful.v1"

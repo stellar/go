@@ -1,11 +1,15 @@
 #! /bin/bash
 set -e
 
-TESTS=$(glide novendor | sed 's/^\./github.com\/stellar\/go/g')
 
-if [ "$CGO_ENABLED" = "1" ] 
-then
-  exec go test -race $TESTS
-else
-  exec go test $TESTS
-fi
+PKG=$(go list ./... | grep -v /vendor/)
+
+for pkg in $PKG; do
+  if [ "$CGO_ENABLED" = "1" ] 
+  then
+    go test -race $pkg
+  else
+    go test $pkg
+  fi
+done
+

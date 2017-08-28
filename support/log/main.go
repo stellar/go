@@ -1,6 +1,7 @@
 package log
 
 import (
+	"context"
 	"net/http"
 	"os"
 	"time"
@@ -8,7 +9,6 @@ import (
 	"github.com/segmentio/go-loggly"
 	"github.com/sirupsen/logrus"
 	"github.com/stellar/go/support/http/mutil"
-	"golang.org/x/net/context"
 )
 
 // DefaultLogger represents the default logger that is not bound to any specific
