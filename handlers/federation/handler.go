@@ -155,12 +155,11 @@ func (h *Handler) writeJSON(
 }
 
 func (h *Handler) writeError(w http.ResponseWriter, err error) {
-	log.Error(err)
-
 	switch err := errors.Cause(err).(type) {
 	case ErrorResponse:
 		h.writeJSON(w, err, err.StatusCode)
 	default:
+		log.Error(err)
 		http.Error(w, "An internal error occurred", http.StatusInternalServerError)
 	}
 }
