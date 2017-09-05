@@ -95,48 +95,48 @@ type SenderInfo struct {
 type TransactionStatus string
 
 const (
-	// TxStatusUnknown is a value of `status` field for the
+	// TransactionStatusUnknown is a value of `status` field for the
 	// tx_status endpoint response. It represents that the
 	// institution is not aware of the transaction
-	TxStatusUnknown TransactionStatus = "unknown"
+	TransactionStatusUnknown TransactionStatus = "unknown"
 
-	// TxStatusApproved is a value of `status` field for the
+	// TransactionStatusApproved is a value of `status` field for the
 	// tx_status endpoint response. It represents that the
 	// payment was approved by the receiving FI but the Stellar
 	// transaction hasn't been received yet
-	TxStatusApproved TransactionStatus = "approved"
+	TransactionStatusApproved TransactionStatus = "approved"
 
-	// TxStatusNotApproved is a value of `status` field for the
+	// TransactionStatusNotApproved is a value of `status` field for the
 	// tx_status endpoint response. It represents that the
 	// Stellar transaction was found but it was never approved
 	// by the receiving FI.
-	TxStatusNotApproved TransactionStatus = "not_approved"
+	TransactionStatusNotApproved TransactionStatus = "not_approved"
 
-	// TxStatusPending is a value of `status` field for the
+	// TransactionStatusPending is a value of `status` field for the
 	// tx_status endpoint response. It represents that the
 	// payment was received and being processed
-	TxStatusPending TransactionStatus = "pending"
+	TransactionStatusPending TransactionStatus = "pending"
 
-	// TxStatusFailed is a value of `status` field for the
+	// TransactionStatusFailed is a value of `status` field for the
 	// tx_status endpoint response. It represents that the
 	// payment was failed and could not be deposited
-	TxStatusFailed TransactionStatus = "failed"
+	TransactionStatusFailed TransactionStatus = "failed"
 
-	// TxStatusRefunded is a value of `status` field for the
+	// TransactionStatusRefunded is a value of `status` field for the
 	// tx_status endpoint response. It represents that the
 	// payment was sent back to sending FI
-	TxStatusRefunded TransactionStatus = "refunded"
+	TransactionStatusRefunded TransactionStatus = "refunded"
 
-	// TxStatusClaimable is a value of `status` field for the
+	// TransactionStatusClaimable is a value of `status` field for the
 	// tx_status endpoint response. It represents that the
 	// cash is ready to be picked up at specified locations.
 	// Mostly used for cash pickup
-	TxStatusClaimable TransactionStatus = "claimable"
+	TransactionStatusClaimable TransactionStatus = "claimable"
 
-	// TxStatusDelivered is a value of `status` field for the
+	// TransactionStatusDelivered is a value of `status` field for the
 	// tx_status endpoint response. It represents that the
 	// payment has been delivered to the recepient
-	TxStatusDelivered TransactionStatus = "delivered"
+	TransactionStatusDelivered TransactionStatus = "delivered"
 )
 
 // TransactionStatusResponse represents a response from the tx_status endpoint
