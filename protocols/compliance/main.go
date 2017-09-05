@@ -90,3 +90,59 @@ type SenderInfo struct {
 	DateOfBirth string `json:"date_of_birth,omitempty"`
 	CompanyName string `json:"company_name,omitempty"`
 }
+
+// TransactionStatus is the status string returned be tx_status endpoint
+type TransactionStatus string
+
+const (
+	// TransactionStatusUnknown is a value of `status` field for the
+	// tx_status endpoint response. It represents that the
+	// institution is not aware of the transaction
+	TransactionStatusUnknown TransactionStatus = "unknown"
+
+	// TransactionStatusApproved is a value of `status` field for the
+	// tx_status endpoint response. It represents that the
+	// payment was approved by the receiving FI but the Stellar
+	// transaction hasn't been received yet
+	TransactionStatusApproved TransactionStatus = "approved"
+
+	// TransactionStatusNotApproved is a value of `status` field for the
+	// tx_status endpoint response. It represents that the
+	// Stellar transaction was found but it was never approved
+	// by the receiving FI.
+	TransactionStatusNotApproved TransactionStatus = "not_approved"
+
+	// TransactionStatusPending is a value of `status` field for the
+	// tx_status endpoint response. It represents that the
+	// payment was received and being processed
+	TransactionStatusPending TransactionStatus = "pending"
+
+	// TransactionStatusFailed is a value of `status` field for the
+	// tx_status endpoint response. It represents that the
+	// payment was failed and could not be deposited
+	TransactionStatusFailed TransactionStatus = "failed"
+
+	// TransactionStatusRefunded is a value of `status` field for the
+	// tx_status endpoint response. It represents that the
+	// payment was sent back to sending FI
+	TransactionStatusRefunded TransactionStatus = "refunded"
+
+	// TransactionStatusClaimable is a value of `status` field for the
+	// tx_status endpoint response. It represents that the
+	// cash is ready to be picked up at specified locations.
+	// Mostly used for cash pickup
+	TransactionStatusClaimable TransactionStatus = "claimable"
+
+	// TransactionStatusDelivered is a value of `status` field for the
+	// tx_status endpoint response. It represents that the
+	// payment has been delivered to the recepient
+	TransactionStatusDelivered TransactionStatus = "delivered"
+)
+
+// TransactionStatusResponse represents a response from the tx_status endpoint
+type TransactionStatusResponse struct {
+	Status   TransactionStatus `json:"status"`
+	RecvCode string            `json:"recv_code,omitempty"`
+	RefundTx string            `json:"refund_tx,omitempty"`
+	Msg      string            `json:"msg,omitempty"`
+}
