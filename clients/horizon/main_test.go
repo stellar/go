@@ -12,7 +12,7 @@ import (
 	"golang.org/x/net/context"
 )
 
-func ExampleStream() {
+func ExampleClient_StreamLedgers() {
 	client := DefaultPublicNetClient
 	cursor := Cursor("now")
 
@@ -31,6 +31,29 @@ func ExampleStream() {
 	if err != nil {
 		fmt.Println(err)
 	}
+}
+
+func ExampleClient_SubmitTransaction() {
+	client := DefaultPublicNetClient
+	transactionEnvelopeXdr := "AAAAABSxFjMo7qcQlJBlrZQypSqYsHA5hHaYxk5hFXwiehh6AAAAZAAIdakAAABZAAAAAAAAAAAAAAABAAAAAAAAAAEAAAAAFLEWMyjupxCUkGWtlDKlKpiwcDmEdpjGTmEVfCJ6GHoAAAAAAAAAAACYloAAAAAAAAAAASJ6GHoAAABAp0FnKOQ9lJPDXPTh/a91xoZ8BaznwLj59sdDGK94eGzCOk7oetw7Yw50yOSZg2mqXAST6Agc9Ao/f5T9gB+GCw=="
+
+	response, err := client.SubmitTransaction(transactionEnvelopeXdr)
+	if err != nil {
+		fmt.Println(err)
+		herr, isHorizonError := err.(*Error)
+		if isHorizonError {
+			resultCodes, err := herr.ResultCodes()
+			if err != nil {
+				fmt.Println("failed to extract result codes from horizon response")
+				return
+			}
+			fmt.Println(resultCodes)
+		}
+		return
+	}
+
+	fmt.Println("Success")
+	fmt.Println(response)
 }
 
 func TestHorizon(t *testing.T) {
