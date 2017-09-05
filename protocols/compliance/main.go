@@ -90,3 +90,11 @@ type SenderInfo struct {
 	DateOfBirth string `json:"date_of_birth,omitempty"`
 	CompanyName string `json:"company_name,omitempty"`
 }
+
+// TransactionStatusResponse represents a response from the tx_status endpoint
+type TransactionStatusResponse struct {
+	Status   string `json:"status"`
+	RecvCode string `json:"recv_code,omitempty"`
+	RefundTx string `json:"refund_tx,omitempty"`
+	Msg      string `json:"msg,omitempty"`
+}
