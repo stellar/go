@@ -37,10 +37,7 @@ func (herr *Error) Envelope() (*xdr.TransactionEnvelope, error) {
 
 // ResultCodes extracts a result code summary from the error, if possible.
 func (herr *Error) ResultCodes() (*TransactionResultCodes, error) {
-	if herr.Problem.Type != "transaction_failed" {
-		return nil, ErrTransactionNotFailed
-	}
-
+	
 	raw, ok := herr.Problem.Extras["result_codes"]
 	if !ok {
 		return nil, ErrResultCodesNotPopulated
