@@ -46,10 +46,6 @@ const (
 )
 
 var (
-	// ErrTransactionNotFailed is the error returned from a call to ResultCodes()
-	// against a `Problem` value that is not of type "transaction_failed".
-	ErrTransactionNotFailed = errors.New("cannot get result codes from transaction that did not fail")
-
 	// ErrResultCodesNotPopulated is the error returned from a call to
 	// ResultCodes() against a `Problem` value that doesn't have the
 	// "result_codes" extra field populated when it is expected to be.
