@@ -2,10 +2,11 @@ package build
 
 import (
 	"encoding/hex"
+	"fmt"
 
 	"github.com/stellar/go/network"
-	"github.com/stellar/go/xdr"
 	"github.com/stellar/go/support/errors"
+	"github.com/stellar/go/xdr"
 )
 
 // Transaction groups the creation of a new TransactionBuilder with a call
@@ -37,10 +38,10 @@ func (b *TransactionBuilder) Mutate(muts ...TransactionMutator) {
 		b.TX = &xdr.Transaction{}
 	}
 
-	for _, m := range muts {
+	for i, m := range muts {
 		err := m.MutateTransaction(b)
 		if err != nil {
-			b.Err = err
+			b.Err = errors.Wrap(err, fmt.Sprintf("mutator:%d failed", i))
 			return
 		}
 	}
@@ -116,7 +117,7 @@ func (m AutoSequence) MutateTransaction(o *TransactionBuilder) error {
 
 	seq, err := m.SequenceForAccount(source.Address())
 	if err != nil {
-		return err
+		return errors.Wrap(err, fmt.Sprint("couldn't load account for auto sequence"))
 	}
 
 	o.TX.SeqNum = seq + 1
