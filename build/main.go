@@ -135,7 +135,7 @@ type MemoText struct {
 }
 
 // NativeAmount is a mutator that configures a payment to be using native
-// currency and have the amount provided.
+// currency and have the amount provided (in lumens).
 type NativeAmount struct {
 	Amount string
 }
