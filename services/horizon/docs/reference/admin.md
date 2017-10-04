@@ -64,7 +64,7 @@ As you will see if you run the command above, horizon defines a large number of 
 
 `--db-url` specifies the horizon database, and its value should be a valid [PostgreSQL Connection URI](http://www.postgresql.org/docs/9.2/static/libpq-connect.html#AEN38419).  `--stellar-core-db-url` specifies a stellar-core database which will be used to load data about the stellar ledger.  Finally, `--stellar-core-url` specifies the HTTP control port for an instance of stellar-core.  This URL should be associated with the stellar-core that is writing to the database at `--stellar-core-db-url`.
 
-Specifying command line flags every time you invoke horizon can be cumbersome, and so we recommend using environment variables.  There are many tools you can use to manage environment variables:  we recommend either [direnv](http://direnv.net/) or [dotenv](https://github.com/bkeepers/dotenv).  A template configuration that is compatible with dotenv can be found in the [horizon git repo](https://github.com/stellar/go/services/horizon/blob/master/.env.template).
+Specifying command line flags every time you invoke horizon can be cumbersome, and so we recommend using environment variables.  There are many tools you can use to manage environment variables:  we recommend either [direnv](http://direnv.net/) or [dotenv](https://github.com/bkeepers/dotenv).  A template configuration that is compatible with dotenv can be found in the [horizon git repo](https://github.com/stellar/go/tree/master/services/horizon/blob/master/.env.template).
 
 
 
