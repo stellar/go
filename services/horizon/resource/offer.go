@@ -2,10 +2,10 @@ package resource
 
 import (
 	"github.com/stellar/go/amount"
-	"github.com/stellar/horizon/assets"
-	"github.com/stellar/horizon/db2/core"
-	"github.com/stellar/horizon/httpx"
-	"github.com/stellar/horizon/render/hal"
+	"github.com/stellar/go/services/horizon/assets"
+	"github.com/stellar/go/services/horizon/db2/core"
+	"github.com/stellar/go/services/horizon/httpx"
+	"github.com/stellar/go/services/horizon/render/hal"
 	"golang.org/x/net/context"
 )
 

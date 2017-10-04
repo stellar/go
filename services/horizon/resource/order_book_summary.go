@@ -2,7 +2,7 @@ package resource
 
 import (
 	"github.com/stellar/go/xdr"
-	"github.com/stellar/horizon/db2/core"
+	"github.com/stellar/go/services/horizon/db2/core"
 	"golang.org/x/net/context"
 )
 

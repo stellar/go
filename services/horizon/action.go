@@ -5,14 +5,14 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/stellar/horizon/actions"
-	"github.com/stellar/horizon/db2/core"
-	"github.com/stellar/horizon/db2/history"
-	"github.com/stellar/horizon/httpx"
-	"github.com/stellar/horizon/ledger"
-	"github.com/stellar/horizon/log"
-	"github.com/stellar/horizon/render/problem"
-	"github.com/stellar/horizon/toid"
+	"github.com/stellar/go/services/horizon/actions"
+	"github.com/stellar/go/services/horizon/db2/core"
+	"github.com/stellar/go/services/horizon/db2/history"
+	"github.com/stellar/go/services/horizon/httpx"
+	"github.com/stellar/go/services/horizon/ledger"
+	"github.com/stellar/go/services/horizon/log"
+	"github.com/stellar/go/services/horizon/render/problem"
+	"github.com/stellar/go/services/horizon/toid"
 	"github.com/zenazn/goji/web"
 )
 

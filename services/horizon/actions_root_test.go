@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 	"testing"
 
-	"github.com/stellar/horizon/resource"
-	"github.com/stellar/horizon/test"
+	"github.com/stellar/go/services/horizon/resource"
+	"github.com/stellar/go/services/horizon/test"
 )
 
 func TestRootAction(t *testing.T) {

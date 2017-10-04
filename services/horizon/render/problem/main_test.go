@@ -7,8 +7,8 @@ import (
 
 	ge "github.com/go-errors/errors"
 	. "github.com/smartystreets/goconvey/convey"
-	"github.com/stellar/horizon/context/requestid"
-	"github.com/stellar/horizon/test"
+	"github.com/stellar/go/services/horizon/context/requestid"
+	"github.com/stellar/go/services/horizon/test"
 	"golang.org/x/net/context"
 )
 

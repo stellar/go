@@ -2,8 +2,8 @@ package history
 
 import (
 	sq "github.com/Masterminds/squirrel"
-	"github.com/stellar/horizon/db2"
-	"github.com/stellar/horizon/toid"
+	"github.com/stellar/go/services/horizon/db2"
+	"github.com/stellar/go/services/horizon/toid"
 )
 
 // TransactionByHash is a query that loads a single row from the

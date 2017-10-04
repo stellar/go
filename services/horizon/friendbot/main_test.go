@@ -5,7 +5,7 @@ import (
 
 	"sync"
 
-	"github.com/stellar/horizon/test"
+	"github.com/stellar/go/services/horizon/test"
 )
 
 // REGRESSION:  ensure that we can craft a transaction

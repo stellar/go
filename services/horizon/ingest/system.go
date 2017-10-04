@@ -3,12 +3,12 @@ package ingest
 import (
 	"github.com/stellar/go/support/errors"
 	err2 "github.com/stellar/go/support/errors"
-	"github.com/stellar/horizon/db2/core"
-	"github.com/stellar/horizon/db2/history"
-	herr "github.com/stellar/horizon/errors"
-	"github.com/stellar/horizon/ledger"
-	"github.com/stellar/horizon/log"
-	"github.com/stellar/horizon/toid"
+	"github.com/stellar/go/services/horizon/db2/core"
+	"github.com/stellar/go/services/horizon/db2/history"
+	herr "github.com/stellar/go/services/horizon/errors"
+	"github.com/stellar/go/services/horizon/ledger"
+	"github.com/stellar/go/services/horizon/log"
+	"github.com/stellar/go/services/horizon/toid"
 )
 
 // ClearAll removes all previously ingested historical data from the horizon

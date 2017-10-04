@@ -6,10 +6,10 @@ import (
 	"fmt"
 
 	"github.com/stellar/go/xdr"
-	"github.com/stellar/horizon/db2"
-	"github.com/stellar/horizon/db2/history"
-	"github.com/stellar/horizon/render/hal"
-	"github.com/stellar/horizon/resource"
+	"github.com/stellar/go/services/horizon/db2"
+	"github.com/stellar/go/services/horizon/db2/history"
+	"github.com/stellar/go/services/horizon/render/hal"
+	"github.com/stellar/go/services/horizon/resource"
 )
 
 type TradeIndexAction struct {

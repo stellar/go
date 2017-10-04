@@ -3,7 +3,7 @@ package core
 import (
 	"testing"
 
-	"github.com/stellar/horizon/test"
+	"github.com/stellar/go/services/horizon/test"
 )
 
 func TestLatestLedger(t *testing.T) {

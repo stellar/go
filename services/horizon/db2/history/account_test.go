@@ -3,7 +3,7 @@ package history
 import (
 	"testing"
 
-	"github.com/stellar/horizon/test"
+	"github.com/stellar/go/services/horizon/test"
 )
 
 func TestAccountQueries(t *testing.T) {

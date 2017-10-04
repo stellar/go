@@ -3,13 +3,13 @@ package horizon
 import (
 	"net/http"
 
-	"github.com/stellar/horizon/db2"
-	"github.com/stellar/horizon/db2/history"
-	"github.com/stellar/horizon/render/hal"
-	"github.com/stellar/horizon/render/problem"
-	"github.com/stellar/horizon/render/sse"
-	"github.com/stellar/horizon/resource"
-	"github.com/stellar/horizon/txsub"
+	"github.com/stellar/go/services/horizon/db2"
+	"github.com/stellar/go/services/horizon/db2/history"
+	"github.com/stellar/go/services/horizon/render/hal"
+	"github.com/stellar/go/services/horizon/render/problem"
+	"github.com/stellar/go/services/horizon/render/sse"
+	"github.com/stellar/go/services/horizon/resource"
+	"github.com/stellar/go/services/horizon/txsub"
 )
 
 // This file contains the actions:

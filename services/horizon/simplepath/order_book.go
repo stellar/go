@@ -6,8 +6,8 @@ import (
 
 	sq "github.com/Masterminds/squirrel"
 	"github.com/stellar/go/xdr"
-	"github.com/stellar/horizon/assets"
-	"github.com/stellar/horizon/db2/core"
+	"github.com/stellar/go/services/horizon/assets"
+	"github.com/stellar/go/services/horizon/db2/core"
 )
 
 // ErrNotEnough represents an error that occurs when pricing a trade on an

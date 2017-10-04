@@ -1,7 +1,7 @@
 package horizon
 
 import (
-	"github.com/stellar/horizon/simplepath"
+	"github.com/stellar/go/services/horizon/simplepath"
 )
 
 func initPathFinding(app *App) {

@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"github.com/stellar/go/network"
-	"github.com/stellar/horizon/test"
+	"github.com/stellar/go/services/horizon/test"
 )
 
 func TestClearAll(t *testing.T) {

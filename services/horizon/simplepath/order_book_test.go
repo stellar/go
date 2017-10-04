@@ -4,8 +4,8 @@ import (
 	"testing"
 
 	"github.com/stellar/go/xdr"
-	"github.com/stellar/horizon/db2/core"
-	"github.com/stellar/horizon/test"
+	"github.com/stellar/go/services/horizon/db2/core"
+	"github.com/stellar/go/services/horizon/test"
 )
 
 func TestOrderBook(t *testing.T) {

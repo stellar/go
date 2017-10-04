@@ -5,8 +5,8 @@ import (
 	"fmt"
 
 	"github.com/stellar/go/xdr"
-	"github.com/stellar/horizon/db2/core"
-	"github.com/stellar/horizon/paths"
+	"github.com/stellar/go/services/horizon/db2/core"
+	"github.com/stellar/go/services/horizon/paths"
 )
 
 // pathNode implements the paths.Path interface and represents a path

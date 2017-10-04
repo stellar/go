@@ -7,11 +7,11 @@ import (
 
 	"github.com/stellar/go/strkey"
 	"github.com/stellar/go/support/errors"
-	"github.com/stellar/horizon/db2/history"
-	"github.com/stellar/horizon/render/hal"
-	"github.com/stellar/horizon/resource/base"
-	"github.com/stellar/horizon/resource/effects"
-	"github.com/stellar/horizon/resource/operations"
+	"github.com/stellar/go/services/horizon/db2/history"
+	"github.com/stellar/go/services/horizon/render/hal"
+	"github.com/stellar/go/services/horizon/resource/base"
+	"github.com/stellar/go/services/horizon/resource/effects"
+	"github.com/stellar/go/services/horizon/resource/operations"
 	"golang.org/x/net/context"
 )
 
