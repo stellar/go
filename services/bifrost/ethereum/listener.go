@@ -32,6 +32,20 @@ func (l *Listener) Start(rpcServer string) error {
 		return err
 	}
 
+	// Check if connected to correct network
+	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(5*time.Second))
+	defer cancel()
+	id, err := l.client.NetworkID(ctx)
+	if err != nil {
+		err = errors.Wrap(err, "Error getting ethereum network ID")
+		l.log.Error(err)
+		return err
+	}
+
+	if id.String() != l.NetworkID {
+		return errors.Errorf("Invalid network ID (have=%s, want=%s)", id.String(), l.NetworkID)
+	}
+
 	go l.processBlocks(blockNumber)
 	return nil
 }
@@ -43,6 +57,10 @@ func (l *Listener) processBlocks(blockNumber uint64) {
 		l.log.Infof("Starting from block %d", blockNumber)
 	}
 
+	// Time when last new block has been seen
+	lastBlockSeen := time.Now()
+	noBlockWarningLogged := false
+
 	for {
 		block, err := l.getBlock(blockNumber)
 		if err != nil {
@@ -53,9 +71,18 @@ func (l *Listener) processBlocks(blockNumber uint64) {
 
 		// Block doesn't exist yet
 		if block == nil {
+			if time.Since(lastBlockSeen) > 3*time.Minute && !noBlockWarningLogged {
+				l.log.Warn("No new block in more than 3 minutes")
+				noBlockWarningLogged = true
+			}
+
 			time.Sleep(1 * time.Second)
 			continue
 		}
+
+		// Reset counter when new block appears
+		lastBlockSeen = time.Now()
+		noBlockWarningLogged = false
 
 		err = l.processBlock(block)
 		if err != nil {

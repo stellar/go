@@ -20,17 +20,18 @@ func (s *Chain) Scan(src interface{}) error {
 }
 
 const (
+	ChainBitcoin  Chain = "bitcoin"
 	ChainEthereum Chain = "ethereum"
 )
 
 type Database interface {
-	// CreateEthereumAddressAssociation creates Ethereum-Stellar association. `addressIndex`
-	// is the ethereum address derivation index (BIP-32).
-	CreateEthereumAddressAssociation(stellarAddress, ethereumAddress string, addressIndex uint32) error
-	// GetAssociationByEthereumAddress searches for previously saved Ethereum-Stellar association.
+	// CreateAddressAssociation creates Bitcoin/Ethereum-Stellar association. `addressIndex`
+	// is the chain (Bitcoin/Ethereum) address derivation index (BIP-32).
+	CreateAddressAssociation(chain Chain, stellarAddress, ethereumAddress string, addressIndex uint32) error
+	// GetAssociationByChainAddress searches for previously saved Bitcoin/Ethereum-Stellar association.
 	// Should return nil if not found.
-	GetAssociationByEthereumAddress(ethereumAddress string) (*AddressAssociation, error)
-	// GetAssociationByStellarPublicKey searches for previously saved Ethereum-Stellar association.
+	GetAssociationByChainAddress(chain Chain, address string) (*AddressAssociation, error)
+	// GetAssociationByStellarPublicKey searches for previously saved Bitcoin/Ethereum-Stellar association.
 	// Should return nil if not found.
 	GetAssociationByStellarPublicKey(stellarPublicKey string) (*AddressAssociation, error)
 
@@ -40,10 +41,10 @@ type Database interface {
 	// IsTransactionProcessed returns `true` if transaction has been already processed.
 	IsTransactionProcessed(chain Chain, transactionID string) (bool, error)
 
-	// IncrementEthereumAddressIndex returns the current value of index used for ethereum key
+	// IncrementAddressIndex returns the current value of index used for `chain` key
 	// derivation and then increments it. This operation must be atomic so this function
 	// should never return the same value more than once.
-	IncrementEthereumAddressIndex() (uint32, error)
+	IncrementAddressIndex(chain Chain) (uint32, error)
 }
 
 type PostgresDatabase struct {
@@ -51,7 +52,7 @@ type PostgresDatabase struct {
 }
 
 type AddressAssociation struct {
-	// Chain is the name of the payment origin chain: currently `ethereum` only
+	// Chain is the name of the payment origin chain
 	Chain Chain `db:"chain"`
 	// BIP-44
 	AddressIndex     uint32    `db:"address_index"`

@@ -8,7 +8,7 @@ import (
 )
 
 // Listener listens for transactions using geth RPC. It calls TransactionHandler for each new
-// transactions. It will reproces the block if TransactionHandler returns error. It will
+// transactions. It will reprocess the block if TransactionHandler returns error. It will
 // start from the block number returned from Storage.GetEthereumBlockToProcess or the latest block
 // if it returned 0. Transactions can be processed more than once, it's TransactionHandler
 // responsibility to ignore duplicates.
@@ -16,6 +16,7 @@ import (
 // Listener requires geth 1.7.0.
 type Listener struct {
 	Storage            Storage `inject:""`
+	NetworkID          string
 	TransactionHandler TransactionHandler
 
 	client *ethclient.Client
@@ -25,7 +26,7 @@ type Listener struct {
 // Storage is an interface that must be implemented by an object using
 // persistent storage.
 type Storage interface {
-	// GetEthereumBlockToProcess gets the number of Ethereum block to process. `0`means the
+	// GetEthereumBlockToProcess gets the number of Ethereum block to process. `0` means the
 	// processing should start from the current block.
 	GetEthereumBlockToProcess() (uint64, error)
 	// SaveLastProcessedEthereumBlock should update the number of the last processed Ethereum

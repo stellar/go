@@ -14,6 +14,9 @@ const (
 	ethereumAddressIndexKey = "ethereum_address_index"
 	ethereumLastBlockKey    = "ethereum_last_block"
 
+	bitcoinAddressIndexKey = "bitcoin_address_index"
+	bitcoinLastBlockKey    = "bitcoin_last_block"
+
 	addressAssociationTableName   = "address_association"
 	keyValueStoreTableName        = "key_value_store"
 	processedTransactionTableName = "processed_transaction"
@@ -76,13 +79,13 @@ func (d *PostgresDatabase) getTable(name string, session *db.Session) *db.Table 
 	}
 }
 
-func (d *PostgresDatabase) CreateEthereumAddressAssociation(stellarAddress, ethereumAddress string, addressIndex uint32) error {
+func (d *PostgresDatabase) CreateAddressAssociation(chain Chain, stellarAddress, address string, addressIndex uint32) error {
 	addressAssociationTable := d.getTable(addressAssociationTableName, nil)
 
 	association := &AddressAssociation{
-		Chain:            ChainEthereum,
+		Chain:            chain,
 		AddressIndex:     addressIndex,
-		Address:          ethereumAddress,
+		Address:          address,
 		StellarPublicKey: stellarAddress,
 		CreatedAt:        time.Now(),
 	}
@@ -91,10 +94,10 @@ func (d *PostgresDatabase) CreateEthereumAddressAssociation(stellarAddress, ethe
 	return err
 }
 
-func (d *PostgresDatabase) GetAssociationByEthereumAddress(ethereumAddress string) (*AddressAssociation, error) {
+func (d *PostgresDatabase) GetAssociationByChainAddress(chain Chain, address string) (*AddressAssociation, error) {
 	addressAssociationTable := d.getTable(addressAssociationTableName, nil)
 	row := &AddressAssociation{}
-	where := map[string]interface{}{"address": ethereumAddress, "chain": ChainEthereum}
+	where := map[string]interface{}{"address": address, "chain": chain}
 	err := addressAssociationTable.Get(row, where).Exec()
 	if err != nil {
 		switch errors.Cause(err) {
@@ -150,7 +153,17 @@ func (d *PostgresDatabase) IsTransactionProcessed(chain Chain, transactionID str
 	return true, nil
 }
 
-func (d *PostgresDatabase) IncrementEthereumAddressIndex() (uint32, error) {
+func (d *PostgresDatabase) IncrementAddressIndex(chain Chain) (uint32, error) {
+	var key string
+	switch chain {
+	case ChainBitcoin:
+		key = bitcoinAddressIndexKey
+	case ChainEthereum:
+		key = ethereumAddressIndexKey
+	default:
+		return 0, errors.New("Invalid chain")
+	}
+
 	row := keyValueStoreRow{}
 
 	session := d.session.Clone()
@@ -162,23 +175,23 @@ func (d *PostgresDatabase) IncrementEthereumAddressIndex() (uint32, error) {
 	}
 	defer session.Rollback()
 
-	err = keyValueStore.Get(&row, map[string]interface{}{"key": ethereumAddressIndexKey}).Suffix("FOR UPDATE").Exec()
+	err = keyValueStore.Get(&row, map[string]interface{}{"key": key}).Suffix("FOR UPDATE").Exec()
 	if err != nil {
-		return 0, errors.Wrap(err, "Error getting `ethereumAddressIndexKey` from DB")
+		return 0, errors.Wrap(err, "Error getting `"+key+"` from DB")
 	}
 
 	// TODO check for overflows - should we create a new account 1'?
 	index, err := strconv.ParseUint(row.Value, 10, 32)
 	if err != nil {
-		return 0, errors.Wrap(err, "Error converting `ethereumAddressIndexKey` value to uint32")
+		return 0, errors.Wrap(err, "Error converting `"+key+"` value to uint32")
 	}
 
 	index++
 
 	// TODO: something's wrong with db.Table.Update(). Setting the first argument does not work as expected.
-	_, err = keyValueStore.Update(nil, map[string]interface{}{"key": ethereumAddressIndexKey}).Set("value", index).Exec()
+	_, err = keyValueStore.Update(nil, map[string]interface{}{"key": key}).Set("value", index).Exec()
 	if err != nil {
-		return 0, errors.Wrap(err, "Error updating `ethereumAddressIndexKey`")
+		return 0, errors.Wrap(err, "Error updating `"+key+"`")
 	}
 
 	err = session.Commit()
@@ -190,17 +203,33 @@ func (d *PostgresDatabase) IncrementEthereumAddressIndex() (uint32, error) {
 }
 
 func (d *PostgresDatabase) GetEthereumBlockToProcess() (uint64, error) {
+	return d.getBlockToProcess(ethereumLastBlockKey)
+}
+
+func (d *PostgresDatabase) SaveLastProcessedEthereumBlock(block uint64) error {
+	return d.saveLastProcessedBlock(ethereumLastBlockKey, block)
+}
+
+func (d *PostgresDatabase) GetBitcoinBlockToProcess() (uint64, error) {
+	return d.getBlockToProcess(bitcoinLastBlockKey)
+}
+
+func (d *PostgresDatabase) SaveLastProcessedBitcoinBlock(block uint64) error {
+	return d.saveLastProcessedBlock(bitcoinLastBlockKey, block)
+}
+
+func (d *PostgresDatabase) getBlockToProcess(key string) (uint64, error) {
 	keyValueStore := d.getTable(keyValueStoreTableName, nil)
 	row := keyValueStoreRow{}
 
-	err := keyValueStore.Get(&row, map[string]interface{}{"key": ethereumLastBlockKey}).Exec()
+	err := keyValueStore.Get(&row, map[string]interface{}{"key": key}).Exec()
 	if err != nil {
-		return 0, errors.Wrap(err, "Error getting `ethereumLastBlockKey` from DB")
+		return 0, errors.Wrap(err, "Error getting `"+key+"` from DB")
 	}
 
 	block, err := strconv.ParseUint(row.Value, 10, 64)
 	if err != nil {
-		return 0, errors.Wrap(err, "Error converting `ethereumLastBlockKey` value to uint64")
+		return 0, errors.Wrap(err, "Error converting `"+key+"` value to uint64")
 	}
 
 	// If set, `block` is the last processed block so we need to start processing from the next one.
@@ -210,7 +239,7 @@ func (d *PostgresDatabase) GetEthereumBlockToProcess() (uint64, error) {
 	return block, nil
 }
 
-func (d *PostgresDatabase) SaveLastProcessedEthereumBlock(block uint64) error {
+func (d *PostgresDatabase) saveLastProcessedBlock(key string, block uint64) error {
 	row := keyValueStoreRow{}
 
 	session := d.session.Clone()
@@ -222,21 +251,21 @@ func (d *PostgresDatabase) SaveLastProcessedEthereumBlock(block uint64) error {
 	}
 	defer session.Rollback()
 
-	err = keyValueStore.Get(&row, map[string]interface{}{"key": ethereumLastBlockKey}).Suffix("FOR UPDATE").Exec()
+	err = keyValueStore.Get(&row, map[string]interface{}{"key": key}).Suffix("FOR UPDATE").Exec()
 	if err != nil {
-		return errors.Wrap(err, "Error getting `ethereumLastBlockKey` from DB")
+		return errors.Wrap(err, "Error getting `"+key+"` from DB")
 	}
 
 	lastBlock, err := strconv.ParseUint(row.Value, 10, 64)
 	if err != nil {
-		return errors.Wrap(err, "Error converting `ethereumLastBlockKey` value to uint32")
+		return errors.Wrap(err, "Error converting `"+key+"` value to uint32")
 	}
 
 	if block > lastBlock {
 		// TODO: something's wrong with db.Table.Update(). Setting the first argument does not work as expected.
-		_, err = keyValueStore.Update(nil, map[string]interface{}{"key": ethereumLastBlockKey}).Set("value", block).Exec()
+		_, err = keyValueStore.Update(nil, map[string]interface{}{"key": key}).Set("value", block).Exec()
 		if err != nil {
-			return errors.Wrap(err, "Error updating `ethereumLastBlockKey`")
+			return errors.Wrap(err, "Error updating `"+key+"`")
 		}
 	}
 

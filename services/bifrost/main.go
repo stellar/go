@@ -10,6 +10,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/stellar/go/clients/horizon"
+	"github.com/stellar/go/services/bifrost/bitcoin"
 	"github.com/stellar/go/services/bifrost/config"
 	"github.com/stellar/go/services/bifrost/database"
 	"github.com/stellar/go/services/bifrost/ethereum"
@@ -30,9 +31,15 @@ var serverCmd = &cobra.Command{
 	Short: "Starts backend server",
 	Run: func(cmd *cobra.Command, args []string) {
 		var (
-			cfg     config.Config
-			cfgPath = cmd.PersistentFlags().Lookup("config").Value.String()
+			cfg       config.Config
+			cfgPath   = cmd.PersistentFlags().Lookup("config").Value.String()
+			debugMode = cmd.PersistentFlags().Lookup("debug").Changed
 		)
+
+		if debugMode {
+			log.SetLevel(log.DebugLevel)
+			log.Debug("Debug mode ON")
+		}
 
 		err := supportConfig.Read(cfgPath, &cfg)
 		if err != nil {
@@ -52,7 +59,13 @@ var serverCmd = &cobra.Command{
 			os.Exit(-1)
 		}
 
-		ethereumListener := &ethereum.Listener{}
+		bitcoinListener := &bitcoin.Listener{
+			Testnet: cfg.Bitcoin.Testnet,
+		}
+
+		ethereumListener := &ethereum.Listener{
+			NetworkID: cfg.Ethereum.NetworkID,
+		}
 
 		stellarAccountConfigurator := &stellar.AccountConfigurator{
 			NetworkPassphrase: cfg.Stellar.NetworkPassphrase,
@@ -66,7 +79,13 @@ var serverCmd = &cobra.Command{
 			},
 		}
 
-		addressGenerator, err := ethereum.NewAddressGenerator(cfg.Ethereum.MasterPublicKey)
+		bitcoinAddressGenerator, err := bitcoin.NewAddressGenerator(cfg.Bitcoin.MasterPublicKey)
+		if err != nil {
+			log.Error(err)
+			os.Exit(-1)
+		}
+
+		ethereumAddressGenerator, err := ethereum.NewAddressGenerator(cfg.Ethereum.MasterPublicKey)
 		if err != nil {
 			log.Error(err)
 			os.Exit(-1)
@@ -76,9 +95,11 @@ var serverCmd = &cobra.Command{
 
 		var g inject.Graph
 		err = g.Provide(
-			&inject.Object{Value: addressGenerator},
+			&inject.Object{Value: bitcoinAddressGenerator},
+			&inject.Object{Value: bitcoinListener},
 			&inject.Object{Value: &cfg},
 			&inject.Object{Value: db},
+			&inject.Object{Value: ethereumAddressGenerator},
 			&inject.Object{Value: ethereumListener},
 			&inject.Object{Value: horizonClient},
 			&inject.Object{Value: server},
@@ -111,6 +132,7 @@ var versionCmd = &cobra.Command{
 }
 
 func init() {
+	// TODO I think these should be default in stellar/go:
 	log.SetLevel(log.InfoLevel)
 	log.DefaultLogger.Logger.Formatter.(*logrus.TextFormatter).FullTimestamp = true
 
@@ -118,6 +140,7 @@ func init() {
 	rootCmd.AddCommand(serverCmd)
 
 	serverCmd.PersistentFlags().StringP("config", "c", "bifrost.cfg", "config file path")
+	serverCmd.PersistentFlags().Bool("debug", false, "debug mode")
 }
 
 func main() {

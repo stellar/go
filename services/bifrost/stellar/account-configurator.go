@@ -40,7 +40,7 @@ func (ac *AccountConfigurator) Start() error {
 
 // ConfigureAccount configures a new account that participated in ICO.
 // * First it creates a new account.
-// * Once a trusline exists, it credits it with sent number of ETH or BTC.
+// * Once a trusline exists, it credits it with received number of ETH or BTC.
 func (ac *AccountConfigurator) ConfigureAccount(destination, assetCode, amount string) {
 	localLog := ac.log.WithFields(log.F{
 		"destination": destination,

@@ -9,14 +9,18 @@ import (
 type AssetCode string
 
 const (
+	AssetCodeBTC AssetCode = "BTC"
 	AssetCodeETH AssetCode = "ETH"
 )
 
 var (
+	eight    = big.NewInt(8)
 	ten      = big.NewInt(10)
 	eighteen = big.NewInt(18)
 	// weiInEth = 10^18
 	weiInEth = new(big.Rat).SetInt(new(big.Int).Exp(ten, eighteen, nil))
+	// satInBtc = 10^8
+	satInBtc = new(big.Rat).SetInt(new(big.Int).Exp(ten, eight, nil))
 )
 
 type Transaction struct {
@@ -29,6 +33,22 @@ type Transaction struct {
 	StellarPublicKey string
 }
 
+// TODO tests!
+func (t Transaction) AmountToBtc(prec int) (string, error) {
+	if t.AssetCode != AssetCodeBTC {
+		return "", errors.New("Asset code not ETH")
+	}
+
+	valueSat := new(big.Int)
+	_, ok := valueSat.SetString(t.Amount, 10)
+	if !ok {
+		return "", errors.Errorf("%s is not a valid integer", t.Amount)
+	}
+	valueBtc := new(big.Rat).Quo(new(big.Rat).SetInt(valueSat), satInBtc)
+	return valueBtc.FloatString(prec), nil
+}
+
+// TODO tests!
 func (t Transaction) AmountToEth(prec int) (string, error) {
 	if t.AssetCode != AssetCodeETH {
 		return "", errors.New("Asset code not ETH")
@@ -44,7 +64,7 @@ func (t Transaction) AmountToEth(prec int) (string, error) {
 }
 
 // Queue implements transactions queue.
-// The queue must not allow duplicates (including history) or implement deduplication
+// The queue must not allow duplicates (including history) or must implement deduplication
 // interval so it should not allow duplicate entries for 5 minutes since the first
 // entry with the same ID was added.
 // This is a critical requirement! Otherwise ETH/BTC may be sent twice to Stellar account.

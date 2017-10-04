@@ -1,4 +1,4 @@
-CREATE TYPE chain AS ENUM ('ethereum');
+CREATE TYPE chain AS ENUM ('bitcoin', 'ethereum');
 
 CREATE TABLE address_association (
   chain chain NOT NULL,
@@ -18,6 +18,9 @@ CREATE TABLE key_value_store (
 
 INSERT INTO key_value_store (key, value) VALUES ('ethereum_address_index', '0');
 INSERT INTO key_value_store (key, value) VALUES ('ethereum_last_block', '0');
+
+INSERT INTO key_value_store (key, value) VALUES ('bitcoin_address_index', '0');
+INSERT INTO key_value_store (key, value) VALUES ('bitcoin_last_block', '0');
 
 CREATE TABLE processed_transaction (
   chain chain NOT NULL,
