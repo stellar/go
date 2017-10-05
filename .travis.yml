@@ -17,6 +17,7 @@ before_script:
 script:
 - glide install
 - ./support/scripts/run_tests
+- ./services/horizon/scripts/run_tests.bash
 before_deploy:
 - go run ./support/scripts/build_release_artifacts/main.go
 matrix:
