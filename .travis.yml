@@ -27,6 +27,7 @@ script:
 - bash ./services/horizon/scripts/run_tests.bash
 before_deploy:
 - go run ./support/scripts/build_release_artifacts/main.go
+- bash scripts/build_artifacts.bash
 matrix:
   fast_finish: true
   allow_failures:
