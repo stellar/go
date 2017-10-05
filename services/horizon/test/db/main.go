@@ -5,8 +5,6 @@ package db
 
 import (
 	"log"
-	"os"
-
 	"github.com/jmoiron/sqlx"
 	// pq enables postgres support
 	_ "github.com/lib/pq"
