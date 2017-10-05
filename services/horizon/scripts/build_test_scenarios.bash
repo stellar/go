@@ -2,10 +2,10 @@
 set -e
 
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-PACKAGES=$(find src/github.com/stellar/go/services/horizon/test/scenarios -iname '*.rb' -not -name '_common_accounts.rb')
-# PACKAGES=$(find src/github.com/stellar/go/services/horizon/test/scenarios -iname 'kahuna.rb')
+PACKAGES=$(find $GOPATH/src/github.com/stellar/go/services/horizon/test/scenarios -iname '*.rb' -not -name '_common_accounts.rb')
+# PACKAGES=$(find $GOPATH/src/github.com/stellar/go/services/horizon/test/scenarios -iname 'kahuna.rb')
 
-gb build
+go install github.com/stellar/go/services/horizon/cmd/horizon
 
 dropdb hayashi_scenarios --if-exists
 createdb hayashi_scenarios
@@ -43,5 +43,5 @@ done
 
 
 # commit new sql files to bindata
-gb generate github.com/stellar/go/services/horizon/test/scenarios
-# gb test github.com/stellar/go/services/horizon/ingest
+go generate github.com/stellar/go/services/horizon/test/scenarios
+# go test github.com/stellar/go/services/horizon/ingest

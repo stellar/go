@@ -2,4 +2,4 @@
 
 set -e
 
-mcdev-each-change -gb gb test {{.Pkg}}
+mcdev-each-change go test {{.Pkg}}

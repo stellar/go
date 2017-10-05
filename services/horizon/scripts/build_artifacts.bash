@@ -1,7 +1,7 @@
 #! /usr/bin/env bash
 set -e
 
-DIST="dist"
+DIST="$GOPATH/dist"
 VERSION=$(git describe --always --dirty --tags)
 GOARCH=amd64
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
@@ -13,12 +13,12 @@ build() {
 	PKG_DIR="$DIST/$RELEASE"
 
 	# do the actual build
-	GOOS=$GOOS GOARCH=$GOARCH gb build  -ldflags "-X main.version=$VERSION"
+	GOOS=$GOOS GOARCH=$GOARCH go build -ldflags "-X main.version=$VERSION" -o "$GOPATH/bin/$(srcBin $GOOS)" github.com/stellar/go/services/horizon/cmd/horizon
 
 	# make package directory
 	rm -rf $PKG_DIR
 	mkdir -p $PKG_DIR
-	cp bin/$(srcBin $GOOS) $PKG_DIR/$(destBin $GOOS)
+	cp $GOPATH/bin/$(srcBin $GOOS) $PKG_DIR/$(destBin $GOOS)
 	cp LICENSE.txt $PKG_DIR/
 	cp README.md $PKG_DIR/
 

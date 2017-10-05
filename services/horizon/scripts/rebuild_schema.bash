@@ -3,15 +3,15 @@ set -e
 
 # This scripts rebuilds the latest.sql file included in the schema package.
 
-gb generate github.com/stellar/go/services/horizon/db2/schema
-gb build
+go generate github.com/stellar/go/services/horizon/db2/schema
+go install github.com/stellar/go/services/horizon/cmd/horizon
 dropdb horizon_schema --if-exists
 createdb horizon_schema
-DATABASE_URL=postgres://localhost/horizon_schema?sslmode=disable ./bin/horizon db migrate up
+DATABASE_URL=postgres://localhost/horizon_schema?sslmode=disable $GOPATH/bin/horizon db migrate up
 
 DUMP_OPTS="--schema=public --no-owner --no-acl --inserts"
-LATEST_PATH="src/github.com/stellar/go/services/horizon/db2/schema/latest.sql"
-BLANK_PATH="src/github.com/stellar/go/services/horizon/test/scenarios/blank-horizon.sql"
+LATEST_PATH="$GOPATH/src/github.com/stellar/go/services/horizon/db2/schema/latest.sql"
+BLANK_PATH="$GOPATH/src/github.com/stellar/go/services/horizon/test/scenarios/blank-horizon.sql"
 
 pg_dump postgres://localhost/horizon_schema?sslmode=disable $DUMP_OPTS \
   | sed '/SET idle_in_transaction_session_timeout/d'  \
@@ -23,6 +23,6 @@ pg_dump postgres://localhost/horizon_schema?sslmode=disable \
   | sed '/SET row_security/d' \
   > $BLANK_PATH
 
-gb generate github.com/stellar/go/services/horizon/db2/schema
-gb generate github.com/stellar/go/services/horizon/test
-gb build
+go generate github.com/stellar/go/services/horizon/db2/schema
+go generate github.com/stellar/go/services/horizon/test
+go install github.com/stellar/go/services/horizon/cmd/horizon
