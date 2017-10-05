@@ -11,8 +11,8 @@ go:
 - '1.8'
 - tip
 env:
-- GO15VENDOREXPERIMENT="1"
   global:
+  - GO15VENDOREXPERIMENT="1"
   - DATABASE_URL=postgres://localhost:5432/horizon_test?sslmode=disable&user=postgres
   - STELLAR_CORE_DATABASE_URL=postgres://localhost:5432/stellar-core_test?sslmode=disable&user=postgres
 install:
