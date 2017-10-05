@@ -20,11 +20,11 @@ var (
 const (
 	// DefaultHorizonURL is the default postgres connection string for
 	// horizon's test database.
-	DefaultHorizonURL = "postgres://localhost:5432/horizon_test?sslmode=disable"
+	DefaultHorizonURL = "postgres://localhost:5432/horizon_test?sslmode=disable&user=postgres"
 
 	// DefaultStellarCoreURL is the default postgres connection string
 	// for horizon's test stellar core database.
-	DefaultStellarCoreURL = "postgres://localhost:5432/stellar-core_test?sslmode=disable"
+	DefaultStellarCoreURL = "postgres://localhost:5432/stellar-core_test?sslmode=disable&user=postgres"
 )
 
 // Horizon returns a connection to the horizon test database
@@ -39,13 +39,7 @@ func Horizon() *sqlx.DB {
 // HorizonURL returns the database connection the url any test
 // use when connecting to the history/horizon database
 func HorizonURL() string {
-	databaseURL := os.Getenv("DATABASE_URL")
-
-	if databaseURL == "" {
-		databaseURL = DefaultHorizonURL
-	}
-
-	return databaseURL
+	return DefaultHorizonURL
 }
 
 // OpenDatabase opens a database, panicing if it cannot
@@ -71,11 +65,5 @@ func StellarCore() *sqlx.DB {
 // StellarCoreURL returns the database connection the url any test
 // use when connecting to the stellar-core database
 func StellarCoreURL() string {
-	databaseURL := os.Getenv("STELLAR_CORE_DATABASE_URL")
-
-	if databaseURL == "" {
-		databaseURL = DefaultStellarCoreURL
-	}
-
-	return databaseURL
+	return DefaultStellarCoreURL
 }
