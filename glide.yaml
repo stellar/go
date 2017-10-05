@@ -53,7 +53,7 @@ import:
   version: a62a804a8a009876ca59105f7899938a1349f4b3
   repo: https://github.com/rs/cors
 - package: goji.io
-  version: 0d89ff54b2c18c9c4ba530e32496aef902d3c6cd
+  version: e355964ac565b94cf0fc7f218346626529125086
   repo: https://github.com/goji/goji
 - package: github.com/asaskevich/govalidator
   repo: https://github.com/stellar/govalidator.git

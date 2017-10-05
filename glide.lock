@@ -1,5 +1,5 @@
-hash: 6236331c9ddc79781d109c74474786f6fb94a4b0dedef4f5099a16617c2c38b8
-updated: 2017-10-04T10:06:01.748835572-07:00
+hash: d706a6b1bff95df93546374ff7ef6ecf0b11cf60d054c67569f46df10e477cf3
+updated: 2017-10-05T09:54:13.340235406-07:00
 imports:
 - name: bitbucket.org/ww/goautoneg
   version: 75cd24fc2f2c2a2088577d12123ddee5f54e0675
@@ -334,7 +334,7 @@ imports:
   - web/middleware
   - web/mutil
 - name: goji.io
-  version: 0d89ff54b2c18c9c4ba530e32496aef902d3c6cd
+  version: e355964ac565b94cf0fc7f218346626529125086
   repo: https://github.com/goji/goji
   subpackages:
   - internal
