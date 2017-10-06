@@ -2,10 +2,12 @@
 
 set -e
 
-PACKAGES=$(find $GOPATH/src/github.com/stellar/go/services/horizon -type d | grep -o 'github.com/.*')
+DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+GOTOP="$( cd "$DIR/../../../../../../.." && pwd )"
+PACKAGES=$(find $GOTOP/src/github.com/stellar/go/services/horizon -type d | grep -o 'github.com/.*')
 
 for i in $PACKAGES; do
-	has_tests=`ls -1 $GOPATH/src/$i/*_test.go 2>/dev/null | wc -l`
+	has_tests=`ls -1 $GOTOP/src/$i/*_test.go 2>/dev/null | wc -l`
 
 	if [ $has_tests != 0 ]; then
 		go test $i

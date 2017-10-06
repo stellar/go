@@ -2,9 +2,10 @@
 
 set -e
 
+DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 SCENARIO=$1
-CORE_SQL=$GOPATH/src/github.com/stellar/go/services/horizon/test/scenarios/$SCENARIO-core.sql
-HORIZON_SQL=$GOPATH/src/github.com/stellar/go/services/horizon/test/scenarios/$SCENARIO-horizon.sql
+CORE_SQL=$DIR/../test/scenarios/$SCENARIO-core.sql
+HORIZON_SQL=$DIR/../test/scenarios/$SCENARIO-horizon.sql
 
 echo "psql $STELLAR_CORE_DATABASE_URL < $CORE_SQL" 
 psql $STELLAR_CORE_DATABASE_URL < $CORE_SQL 

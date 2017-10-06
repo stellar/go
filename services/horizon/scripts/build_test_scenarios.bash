@@ -2,8 +2,9 @@
 set -e
 
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-PACKAGES=$(find $GOPATH/src/github.com/stellar/go/services/horizon/test/scenarios -iname '*.rb' -not -name '_common_accounts.rb')
-# PACKAGES=$(find $GOPATH/src/github.com/stellar/go/services/horizon/test/scenarios -iname 'kahuna.rb')
+GOTOP="$( cd "$DIR/../../../../../../.." && pwd )"
+PACKAGES=$(find $GOTOP/src/github.com/stellar/go/services/horizon/test/scenarios -iname '*.rb' -not -name '_common_accounts.rb')
+# PACKAGES=$(find $GOTOP/src/github.com/stellar/go/services/horizon/test/scenarios -iname 'kahuna.rb')
 
 go install github.com/stellar/go/services/horizon/cmd/horizon
 
