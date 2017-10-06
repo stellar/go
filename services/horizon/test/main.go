@@ -62,8 +62,8 @@ func ContextWithLogBuffer() (context.Context, *bytes.Buffer) {
 // Database returns a connection to the horizon test database
 //
 // DEPRECATED:  use `Horizon()` from test/db package
-func Database() *sqlx.DB {
-	return tdb.Horizon()
+func Database(t *testing.T) *sqlx.DB {
+	return tdb.Horizon(t)
 }
 
 // DatabaseURL returns the database connection the url any test
@@ -126,8 +126,8 @@ func Start(t *testing.T) *T {
 	OverrideLogger(result.Logger)
 
 	result.Ctx = hlog.Set(context.Background(), result.Logger)
-	result.HorizonDB = Database()
-	result.CoreDB = StellarCoreDatabase()
+	result.HorizonDB = Database(t)
+	result.CoreDB = StellarCoreDatabase(t)
 	result.Assert = assert.New(t)
 	result.Require = require.New(t)
 
@@ -137,8 +137,8 @@ func Start(t *testing.T) *T {
 // StellarCoreDatabase returns a connection to the stellar core test database
 //
 // DEPRECATED:  use `StellarCore()` from test/db package
-func StellarCoreDatabase() *sqlx.DB {
-	return tdb.StellarCore()
+func StellarCoreDatabase(t *testing.T) *sqlx.DB {
+	return tdb.StellarCore(t)
 }
 
 // StellarCoreDatabaseURL returns the database connection the url any test

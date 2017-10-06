@@ -13,7 +13,7 @@ import (
 func TestEmptySignature(t *testing.T) {
 	ingestion := Ingestion{
 		DB: &db.Session{
-			DB: testDB.Horizon(),
+			DB: testDB.Horizon(t),
 		},
 	}
 	ingestion.Start()
