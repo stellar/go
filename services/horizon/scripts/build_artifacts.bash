@@ -20,8 +20,8 @@ build() {
 	rm -rf $PKG_DIR
 	mkdir -p $PKG_DIR
 	cp $GOTOP/bin/$(srcBin $GOOS) $PKG_DIR/$(destBin $GOOS)
-	cp LICENSE.txt $PKG_DIR/
-	cp README.md $PKG_DIR/
+	cp $DIR/../LICENSE.txt $PKG_DIR/
+	cp $DIR/../README.md $PKG_DIR/
 
 	# TODO: add platform specific install intstructions
 
