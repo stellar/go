@@ -7,6 +7,8 @@ Horizon is the [client facing API](/docs) server for the Stellar ecosystem.  It 
 [Prebuilt binaries](https://github.com/stellar/go/releases) of horizon are available on the 
 [releases page](https://github.com/stellar/go/releases).
 
+See [the old releases page](https://github.com/stellar/horizon/releases) for prior releases
+
 | Platform       | Binary file name                                                                         |
 |----------------|------------------------------------------------------------------------------------------|
 | Mac OSX 64 bit | [horizon-darwin-amd64](https://github.com/stellar/go/releases/download/v0.11.0/horizon-v0.11.0-darwin-amd64.tar.gz)      |
@@ -21,24 +23,24 @@ Horizon requires go 1.6 or higher to build. See (https://golang.org/doc/install)
 
 ## Building
 
-[gb](http://getgb.io) is used for building horizon.
+[glide](https://glide.sh/) is used for building horizon.
 
 Given you have a running golang installation, you can install this with:
 
 ```bash
-go get -u github.com/constabulary/gb/...
+curl https://glide.sh/get | sh
 ```
 
 Next, you must download the source for packages that horizon depends upon.  From within the project directory, run:
 
 ```bash
-gb vendor restore
+glide install
 ```
 
-Then, simply run `gb build`.  After successful
-completion, you should find `bin/horizon` is present in the project directory.
+Then, simply run `go install github.com/stellar/go/services/horizon/cmd/horizon`.  After successful
+completion, you should find `horizon` is present in your `$GOPATH/bin` directory.
 
-More detailed intructions and [admin guide](/docs/reference/admin.md). 
+More detailed intructions and [admin guide](docs/reference/admin.md). 
 
 ## Developing Horizon
 
