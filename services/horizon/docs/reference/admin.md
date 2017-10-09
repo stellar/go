@@ -34,7 +34,7 @@ Should you decide not to use one of our prebuilt releases, you may instead build
 
 - A unix-like operating system with the common core commands (cp, tar, mkdir, bash, etc.)
 - A compatible distribution of go (we officially support go 1.6 and later)
-- [gb](https://getgb.io/)
+- [glide](https://glide.sh/)
 - [git](https://git-scm.com/)
 
 Provided your workstation satisfies the requirements above, follow the steps below:
