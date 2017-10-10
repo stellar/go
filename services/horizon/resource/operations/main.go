@@ -52,12 +52,12 @@ func New(
 		err = row.UnmarshalDetails(&e)
 		result = e
 	case xdr.OperationTypeManageOffer:
-		e := ManageOffer{Base: base}
+		e := ManageOffer{}
+		e.CreatePassiveOffer.Base = base
 		err = row.UnmarshalDetails(&e)
 		result = e
 	case xdr.OperationTypeCreatePassiveOffer:
-		e := CreatePassiveOffer{}
-		e.ManageOffer.Base = base
+		e := CreatePassiveOffer{Base: base}
 		err = row.UnmarshalDetails(&e)
 		result = e
 	case xdr.OperationTypeSetOptions:
@@ -148,11 +148,10 @@ type ManageData struct {
 	Value string `json:"value"`
 }
 
-// ManageOffer is the json resource representing a single operation whose type
-// is ManageOffer.
-type ManageOffer struct {
+// CreatePassiveOffer is the json resource representing a single operation whose
+// type is CreatePassiveOffer.
+type CreatePassiveOffer struct {
 	Base
-	OfferID            int64      `json:"offer_id"`
 	Amount             string     `json:"amount"`
 	Price              string     `json:"price"`
 	PriceR             base.Price `json:"price_r"`
@@ -164,10 +163,11 @@ type ManageOffer struct {
 	SellingAssetIssuer string     `json:"selling_asset_issuer,omitempty"`
 }
 
-// CreatePassiveOffer is the json resource representing a single operation whose
-// type is CreatePassiveOffer.
-type CreatePassiveOffer struct {
-	ManageOffer
+// ManageOffer is the json resource representing a single operation whose type
+// is ManageOffer.
+type ManageOffer struct {
+	CreatePassiveOffer
+	OfferID            int64      `json:"offer_id"`
 }
 
 // SetOptions is the json resource representing a single operation whose type is
