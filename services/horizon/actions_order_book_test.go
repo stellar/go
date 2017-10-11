@@ -74,7 +74,7 @@ func TestOrderBookActions_Show(t *testing.T) {
 		ht.Assert.Len(result.Bids, 0)
 	}
 
-	// happy path
+	// happy path with default limit
 	w = ht.Get("/order_book?selling_asset_type=native&buying_asset_type=credit_alphanum4&buying_asset_code=USD&buying_asset_issuer=GC23QF2HUE52AMXUFUH3AYJAXXGXXV2VHXYYR6EYXETPKDXZSAW67XO4")
 	if ht.Assert.Equal(200, w.Code) {
 		err := json.Unmarshal(w.Body.Bytes(), &result)
@@ -96,5 +96,25 @@ func TestOrderBookActions_Show(t *testing.T) {
 		ht.Assert.Equal("10.0000000", result.Bids[0].Amount)
 		ht.Assert.Equal("100.0000000", result.Bids[1].Amount)
 		ht.Assert.Equal("1000.0000000", result.Bids[2].Amount)
+	}
+
+	// happy path with smaller limit
+	w = ht.Get("/order_book?selling_asset_type=native&buying_asset_type=credit_alphanum4&buying_asset_code=USD&buying_asset_issuer=GC23QF2HUE52AMXUFUH3AYJAXXGXXV2VHXYYR6EYXETPKDXZSAW67XO4&limit=1")
+	if ht.Assert.Equal(200, w.Code) {
+		err := json.Unmarshal(w.Body.Bytes(), &result)
+		ht.Require.NoError(err)
+
+		ht.Assert.Equal("native", result.Selling.Type)
+		ht.Assert.Equal("", result.Selling.Code)
+		ht.Assert.Equal("", result.Selling.Issuer)
+		ht.Assert.Equal("credit_alphanum4", result.Buying.Type)
+		ht.Assert.Equal("USD", result.Buying.Code)
+		ht.Assert.Equal("GC23QF2HUE52AMXUFUH3AYJAXXGXXV2VHXYYR6EYXETPKDXZSAW67XO4", result.Buying.Issuer)
+
+		ht.Require.Len(result.Asks, 1)
+		ht.Require.Len(result.Bids, 1)
+
+		ht.Assert.Equal("100.0000000", result.Asks[0].Amount)
+		ht.Assert.Equal("10.0000000", result.Bids[0].Amount)
 	}
 }

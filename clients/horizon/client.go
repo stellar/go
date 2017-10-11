@@ -114,7 +114,7 @@ func (c *Client) SequenceForAccount(
 }
 
 // LoadOrderBook loads order book for given selling and buying assets.
-func (c *Client) LoadOrderBook(selling Asset, buying Asset) (orderBook OrderBookSummary, err error) {
+func (c *Client) LoadOrderBook(selling Asset, buying Asset, limit uint64) (orderBook OrderBookSummary, err error) {
 	query := url.Values{}
 
 	query.Add("selling_asset_type", selling.Type)
@@ -124,6 +124,8 @@ func (c *Client) LoadOrderBook(selling Asset, buying Asset) (orderBook OrderBook
 	query.Add("buying_asset_type", buying.Type)
 	query.Add("buying_asset_code", buying.Code)
 	query.Add("buying_asset_issuer", buying.Issuer)
+
+	query.Add("limit", strconv.Itoa(int(limit)))
 
 	resp, err := c.HTTP.Get(c.URL + "/order_book?" + query.Encode())
 	if err != nil {

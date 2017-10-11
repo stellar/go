@@ -18,10 +18,10 @@ func TestGetOrderBookSummary(t *testing.T) {
 	tt.Require.NoError(err)
 
 	var summary, inverted OrderBookSummary
-	err = q.GetOrderBookSummary(&summary, selling, buying)
+	err = q.GetOrderBookSummary(&summary, selling, buying, 20)
 	tt.Require.NoError(err)
 	tt.Require.Len(summary, 6)
-	err = q.GetOrderBookSummary(&inverted, buying, selling)
+	err = q.GetOrderBookSummary(&inverted, buying, selling, 20)
 	tt.Require.NoError(err)
 	tt.Require.Len(inverted, 6)
 
@@ -76,7 +76,7 @@ func TestGetOrderBookSummary_Regress310(t *testing.T) {
 	tt.Require.NoError(err)
 
 	var summary OrderBookSummary
-	err = q.GetOrderBookSummary(&summary, selling, buying)
+	err = q.GetOrderBookSummary(&summary, selling, buying, 20)
 	tt.Require.NoError(err)
 	tt.Require.Len(summary, 20)
 
@@ -90,7 +90,7 @@ func TestGetOrderBookSummary_Regress310(t *testing.T) {
 	tt.Assert.Equal(10.0, bids[2].Pricef)
 
 	// validate the inverse order book is correct as well
-	err = q.GetOrderBookSummary(&summary, buying, selling)
+	err = q.GetOrderBookSummary(&summary, buying, selling, 20)
 	tt.Require.NoError(err)
 	tt.Require.Len(summary, 20)
 	asks := summary.Asks()
