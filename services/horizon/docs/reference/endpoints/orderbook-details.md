@@ -24,6 +24,7 @@ GET /order_book?selling_asset_type={selling_asset_type}&selling_asset_code={sell
 | `buying_asset_type` | required, string | Type of the Asset being bought | `credit_alphanum4` |
 | `buying_asset_code` | optional, string | Code of the Asset being bought | `BTC` |
 | `buying_asset_issuer` | optional, string | Account ID of the issuer of the Asset being bought | `GD6VWBXI6NY3AOOR55RLVQ4MNIDSXE5JSAVXUTF35FRRI72LYPI3WL6Z` |
+| `limit` | optional, string | Limit the number of items returned | `20` |
 
 ### curl Example Request
 
