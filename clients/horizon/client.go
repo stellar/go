@@ -54,7 +54,7 @@ func (c *Client) LoadAccountOffers(accountID string, params ...interface{}) (off
 		case Cursor:
 			query.Add("cursor", string(param))
 		default:
-			err = fmt.Errorf("Undefined parameter: %+v", param)
+			err = fmt.Errorf("Undefined parameter (%T): %+v", param, param)
 			return
 		}
 	}
@@ -130,7 +130,7 @@ func (c *Client) LoadOrderBook(selling Asset, buying Asset, params ...interface{
 		case Limit:
 			query.Add("limit", strconv.Itoa(int(param)))
 		default:
-			err = fmt.Errorf("Undefined parameter: %+v", param)
+			err = fmt.Errorf("Undefined parameter (%T): %+v", param, param)
 			return
 		}
 	}

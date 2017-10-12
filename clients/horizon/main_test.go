@@ -218,7 +218,7 @@ var _ = Describe("Horizon", func() {
 				"https://localhost/order_book?buying_asset_code=DEMO&buying_asset_issuer=GBAMBOOZDWZPVV52RCLJQYMQNXOBLOXWNQAY2IF2FREV2WL46DBCH3BE&buying_asset_type=credit_alphanum4&limit=20&selling_asset_code=&selling_asset_issuer=&selling_asset_type=native",
 			).ReturnString(200, orderBookResponse)
 
-			orderBook, err := client.LoadOrderBook(Asset{Type: "native"}, Asset{"credit_alphanum4", "DEMO", "GBAMBOOZDWZPVV52RCLJQYMQNXOBLOXWNQAY2IF2FREV2WL46DBCH3BE"}, 20)
+			orderBook, err := client.LoadOrderBook(Asset{Type: "native"}, Asset{"credit_alphanum4", "DEMO", "GBAMBOOZDWZPVV52RCLJQYMQNXOBLOXWNQAY2IF2FREV2WL46DBCH3BE"}, Limit(20))
 			Expect(err).To(BeNil())
 			Expect(orderBook.Selling.Type).To(Equal("native"))
 			Expect(orderBook.Buying.Type).To(Equal("credit_alphanum4"))
@@ -244,7 +244,7 @@ var _ = Describe("Horizon", func() {
 				"https://localhost/order_book?buying_asset_code=DEMO&buying_asset_issuer=GBAMBOOZDWZPVV52RCLJQYMQNXOBLOXWNQAY2IF2FREV2WL46DBCH3BE&buying_asset_type=credit_alphanum4&limit=20&selling_asset_code=&selling_asset_issuer=&selling_asset_type=native",
 			).ReturnString(404, notFoundResponse)
 
-			_, err := client.LoadOrderBook(Asset{Type: "native"}, Asset{"credit_alphanum4", "DEMO", "GBAMBOOZDWZPVV52RCLJQYMQNXOBLOXWNQAY2IF2FREV2WL46DBCH3BE"}, 20)
+			_, err := client.LoadOrderBook(Asset{Type: "native"}, Asset{"credit_alphanum4", "DEMO", "GBAMBOOZDWZPVV52RCLJQYMQNXOBLOXWNQAY2IF2FREV2WL46DBCH3BE"}, Limit(20))
 			Expect(err).NotTo(BeNil())
 			Expect(err.Error()).To(HavePrefix("Horizon error"))
 			horizonError, ok := err.(*Error)
@@ -258,7 +258,7 @@ var _ = Describe("Horizon", func() {
 				"https://localhost/order_book?buying_asset_code=DEMO&buying_asset_issuer=GBAMBOOZDWZPVV52RCLJQYMQNXOBLOXWNQAY2IF2FREV2WL46DBCH3BE&buying_asset_type=credit_alphanum4&limit=20&selling_asset_code=&selling_asset_issuer=&selling_asset_type=native",
 			).ReturnError("http.Client error")
 
-			_, err := client.LoadOrderBook(Asset{Type: "native"}, Asset{"credit_alphanum4", "DEMO", "GBAMBOOZDWZPVV52RCLJQYMQNXOBLOXWNQAY2IF2FREV2WL46DBCH3BE"}, 20)
+			_, err := client.LoadOrderBook(Asset{Type: "native"}, Asset{"credit_alphanum4", "DEMO", "GBAMBOOZDWZPVV52RCLJQYMQNXOBLOXWNQAY2IF2FREV2WL46DBCH3BE"}, Limit(20))
 			Expect(err).NotTo(BeNil())
 			Expect(err.Error()).To(ContainSubstring("http.Client error"))
 			_, ok := err.(*Error)
