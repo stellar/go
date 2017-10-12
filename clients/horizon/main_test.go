@@ -189,7 +189,7 @@ var _ = Describe("Horizon", func() {
 		It("success response", func() {
 			hmock.On(
 				"GET",
-				"https://localhost/order_book?buying_asset_code=DEMO&buying_asset_issuer=GBAMBOOZDWZPVV52RCLJQYMQNXOBLOXWNQAY2IF2FREV2WL46DBCH3BE&buying_asset_type=credit_alphanum4&selling_asset_code=&selling_asset_issuer=&selling_asset_type=native&limit=20",
+				"https://localhost/order_book?buying_asset_code=DEMO&buying_asset_issuer=GBAMBOOZDWZPVV52RCLJQYMQNXOBLOXWNQAY2IF2FREV2WL46DBCH3BE&buying_asset_type=credit_alphanum4&limit=20&selling_asset_code=&selling_asset_issuer=&selling_asset_type=native",
 			).ReturnString(200, orderBookResponse)
 
 			orderBook, err := client.LoadOrderBook(Asset{Type: "native"}, Asset{"credit_alphanum4", "DEMO", "GBAMBOOZDWZPVV52RCLJQYMQNXOBLOXWNQAY2IF2FREV2WL46DBCH3BE"}, 20)
@@ -215,7 +215,7 @@ var _ = Describe("Horizon", func() {
 		It("failure response", func() {
 			hmock.On(
 				"GET",
-				"https://localhost/order_book?buying_asset_code=DEMO&buying_asset_issuer=GBAMBOOZDWZPVV52RCLJQYMQNXOBLOXWNQAY2IF2FREV2WL46DBCH3BE&buying_asset_type=credit_alphanum4&selling_asset_code=&selling_asset_issuer=&selling_asset_type=native&limit=20",
+				"https://localhost/order_book?buying_asset_code=DEMO&buying_asset_issuer=GBAMBOOZDWZPVV52RCLJQYMQNXOBLOXWNQAY2IF2FREV2WL46DBCH3BE&buying_asset_type=credit_alphanum4&limit=20&selling_asset_code=&selling_asset_issuer=&selling_asset_type=native",
 			).ReturnString(404, notFoundResponse)
 
 			_, err := client.LoadOrderBook(Asset{Type: "native"}, Asset{"credit_alphanum4", "DEMO", "GBAMBOOZDWZPVV52RCLJQYMQNXOBLOXWNQAY2IF2FREV2WL46DBCH3BE"}, 20)
@@ -229,7 +229,7 @@ var _ = Describe("Horizon", func() {
 		It("connection error", func() {
 			hmock.On(
 				"GET",
-				"https://localhost/order_book?buying_asset_code=DEMO&buying_asset_issuer=GBAMBOOZDWZPVV52RCLJQYMQNXOBLOXWNQAY2IF2FREV2WL46DBCH3BE&buying_asset_type=credit_alphanum4&selling_asset_code=&selling_asset_issuer=&selling_asset_type=native&limit=20",
+				"https://localhost/order_book?buying_asset_code=DEMO&buying_asset_issuer=GBAMBOOZDWZPVV52RCLJQYMQNXOBLOXWNQAY2IF2FREV2WL46DBCH3BE&buying_asset_type=credit_alphanum4&limit=20&selling_asset_code=&selling_asset_issuer=&selling_asset_type=native",
 			).ReturnError("http.Client error")
 
 			_, err := client.LoadOrderBook(Asset{Type: "native"}, Asset{"credit_alphanum4", "DEMO", "GBAMBOOZDWZPVV52RCLJQYMQNXOBLOXWNQAY2IF2FREV2WL46DBCH3BE"}, 20)
