@@ -1,7 +1,7 @@
 #! /bin/bash
 set -e
 
-TESTS=$(glide novendor | grep -v "./services/" | sed 's/^\./github.com\/stellar\/go/g')
+TESTS=$(glide novendor | sed 's/^\./github.com\/stellar\/go/g')
 
 if [ "$CGO_ENABLED" = "1" ] 
 then

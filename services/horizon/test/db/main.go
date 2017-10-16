@@ -4,64 +4,59 @@
 package db
 
 import (
+	"testing"
+	"fmt"
 	"log"
+
 	"github.com/jmoiron/sqlx"
 	// pq enables postgres support
 	_ "github.com/lib/pq"
+	db "github.com/stellar/go/support/db/dbtest"
 )
 
 var (
-	coreDB    *sqlx.DB
-	horizonDB *sqlx.DB
-)
-
-const (
-	// DefaultHorizonURL is the default postgres connection string for
-	// horizon's test database.
-	DefaultHorizonURL = "postgres://localhost:5432/horizon_test?sslmode=disable&user=postgres"
-
-	// DefaultStellarCoreURL is the default postgres connection string
-	// for horizon's test stellar core database.
-	DefaultStellarCoreURL = "postgres://localhost:5432/stellar-core_test?sslmode=disable&user=postgres"
+	coreDB		*sqlx.DB
+	coreUrl 	*string
+	horizonDB 	*sqlx.DB
+	horizonUrl 	*string
 )
 
 // Horizon returns a connection to the horizon test database
-func Horizon() *sqlx.DB {
+func Horizon(t *testing.T) *sqlx.DB {
 	if horizonDB != nil {
 		return horizonDB
 	}
-	horizonDB = OpenDatabase(HorizonURL())
+	postgres := db.Postgres(t)
+	horizonUrl = &postgres.DSN
+	horizonDB = postgres.Open()
 	return horizonDB
 }
 
 // HorizonURL returns the database connection the url any test
 // use when connecting to the history/horizon database
 func HorizonURL() string {
-	return DefaultHorizonURL
-}
-
-// OpenDatabase opens a database, panicing if it cannot
-func OpenDatabase(dsn string) *sqlx.DB {
-	db, err := sqlx.Open("postgres", dsn)
-
-	if err != nil {
-		log.Panic(err)
+	if horizonUrl == nil  {
+		log.Panic(fmt.Errorf("Horizon not initialized"))
 	}
-
-	return db
+	return *horizonUrl
 }
 
 // StellarCore returns a connection to the stellar core test database
-func StellarCore() *sqlx.DB {
+func StellarCore(t *testing.T) *sqlx.DB {
 	if coreDB != nil {
 		return coreDB
 	}
-	coreDB = OpenDatabase(StellarCoreURL())
+	postgres := db.Postgres(t)
+	coreUrl = &postgres.DSN
+	coreDB = postgres.Open()
 	return coreDB
 }
 
 // StellarCoreURL returns the database connection the url any test
 // use when connecting to the stellar-core database
 func StellarCoreURL() string {
-	return DefaultStellarCoreURL
+	if coreUrl == nil  {
+		log.Panic(fmt.Errorf("StellarCore not initialized"))
+	}
+	return *coreUrl
 }
