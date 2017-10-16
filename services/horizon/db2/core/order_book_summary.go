@@ -53,7 +53,7 @@ func (o *OrderBookSummary) filter(typ string, prepend bool) []OrderBookSummaryPr
 // GetOrderBookSummary loads a summary of an order book identified by a
 // selling/buying pair. It is designed to drive an order book summary client
 // interface (bid/ask spread, prices and volume, etc).
-func (q *Q) GetOrderBookSummary(dest interface{}, selling xdr.Asset, buying xdr.Asset) error {
+func (q *Q) GetOrderBookSummary(dest interface{}, selling xdr.Asset, buying xdr.Asset, limit uint64) error {
 	var sql bytes.Buffer
 	var oq orderbookQueryBuilder
 	err := selling.Extract(&oq.SellingType, &oq.SellingCode, &oq.SellingIssuer)
@@ -65,7 +65,7 @@ func (q *Q) GetOrderBookSummary(dest interface{}, selling xdr.Asset, buying xdr.
 		return err
 	}
 
-	oq.pushArg(20)
+	oq.pushArg(limit)
 
 	err = orderbookQueryTemplate.Execute(&sql, &oq)
 	if err != nil {

@@ -54,7 +54,7 @@ func (c *Client) LoadAccountOffers(accountID string, params ...interface{}) (off
 		case Cursor:
 			query.Add("cursor", string(param))
 		default:
-			err = fmt.Errorf("Undefined parameter: %+v", param)
+			err = fmt.Errorf("Undefined parameter (%T): %+v", param, param)
 			return
 		}
 	}
@@ -114,7 +114,7 @@ func (c *Client) SequenceForAccount(
 }
 
 // LoadOrderBook loads order book for given selling and buying assets.
-func (c *Client) LoadOrderBook(selling Asset, buying Asset) (orderBook OrderBookSummary, err error) {
+func (c *Client) LoadOrderBook(selling Asset, buying Asset, params ...interface{}) (orderBook OrderBookSummary, err error) {
 	query := url.Values{}
 
 	query.Add("selling_asset_type", selling.Type)
@@ -124,6 +124,16 @@ func (c *Client) LoadOrderBook(selling Asset, buying Asset) (orderBook OrderBook
 	query.Add("buying_asset_type", buying.Type)
 	query.Add("buying_asset_code", buying.Code)
 	query.Add("buying_asset_issuer", buying.Issuer)
+
+	for _, param := range params {
+		switch param := param.(type) {
+		case Limit:
+			query.Add("limit", strconv.Itoa(int(param)))
+		default:
+			err = fmt.Errorf("Undefined parameter (%T): %+v", param, param)
+			return
+		}
+	}
 
 	resp, err := c.HTTP.Get(c.URL + "/order_book?" + query.Encode())
 	if err != nil {

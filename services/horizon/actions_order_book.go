@@ -22,12 +22,14 @@ type OrderBookShowAction struct {
 	Buying   xdr.Asset
 	Record   core.OrderBookSummary
 	Resource resource.OrderBookSummary
+	Limit    uint64
 }
 
 // LoadQuery sets action.Query from the request params
 func (action *OrderBookShowAction) LoadQuery() {
 	action.Selling = action.GetAsset("selling_")
 	action.Buying = action.GetAsset("buying_")
+	action.Limit = action.GetLimit("limit", 20, 200)
 
 	if action.Err != nil {
 		action.Err = &problem.P{
@@ -49,6 +51,7 @@ func (action *OrderBookShowAction) LoadRecord() {
 		&action.Record,
 		action.Selling,
 		action.Buying,
+		action.Limit,
 	)
 }
 

@@ -29,7 +29,7 @@ func (res *Root) Populate(
 	res.Links.AccountTransactions = lb.PagedLink("/accounts/{account_id}/transactions")
 	res.Links.Friendbot = lb.Link("/friendbot{?addr}")
 	res.Links.Metrics = lb.Link("/metrics")
-	res.Links.OrderBook = lb.Link("/order_book{?selling_asset_type,selling_asset_code,selling_issuer,buying_asset_type,buying_asset_code,buying_issuer}")
+	res.Links.OrderBook = lb.Link("/order_book{?selling_asset_type,selling_asset_code,selling_issuer,buying_asset_type,buying_asset_code,buying_issuer,limit}")
 	res.Links.Self = lb.Link("/")
 	res.Links.Transaction = lb.Link("/transactions/{hash}")
 	res.Links.Transactions = lb.PagedLink("/transactions")
