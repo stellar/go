@@ -9,10 +9,11 @@ import (
 	"sync"
 	"time"
 
+	"github.com/stellar/go/support/app"
+
 	"github.com/garyburd/redigo/redis"
 	metrics "github.com/rcrowley/go-metrics"
 	"github.com/stellar/go/build"
-	"github.com/stellar/go/support/db"
 	"github.com/stellar/go/services/horizon/db2/core"
 	"github.com/stellar/go/services/horizon/db2/history"
 	"github.com/stellar/go/services/horizon/friendbot"
@@ -23,13 +24,11 @@ import (
 	"github.com/stellar/go/services/horizon/reap"
 	"github.com/stellar/go/services/horizon/render/sse"
 	"github.com/stellar/go/services/horizon/txsub"
+	"github.com/stellar/go/support/db"
 	"golang.org/x/net/context"
 	"golang.org/x/net/http2"
 	graceful "gopkg.in/tylerb/graceful.v1"
 )
-
-// You can override this variable using: gb build -ldflags "-X main.version aabbccdd"
-var version = ""
 
 // App represents the root of the state of a horizon instance.
 type App struct {
@@ -62,17 +61,11 @@ type App struct {
 	goroutineGauge           metrics.Gauge
 }
 
-// SetVersion records the provided version string in the package level `version`
-// var, which will be used for the reported horizon version.
-func SetVersion(v string) {
-	version = v
-}
-
 // NewApp constructs an new App instance from the provided config.
 func NewApp(config Config) (*App, error) {
 
 	result := &App{config: config}
-	result.horizonVersion = version
+	result.horizonVersion = app.Version()
 	result.networkPassphrase = build.TestNetwork.Passphrase
 	result.ticks = time.NewTicker(1 * time.Second)
 	result.init()
