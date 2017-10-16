@@ -168,7 +168,11 @@ func (p PageQuery) CursorInt64Pair(sep string) (l int64, r int64, err error) {
 	// specified using only a ledger sequence will properly exclude
 	// all effects originated in the sequence provided.
 	if len(parts) != 2 {
-		parts = append(parts, fmt.Sprintf("%d", math.MaxInt64))
+		// NOTE(scott): we work around a build issue here which cases an overflow
+		// when building for ARM. We assign the untyped constant explicitly to a
+		// int64.
+		var max int64 = math.MaxInt64
+		parts = append(parts, fmt.Sprintf("%d", max))
 	}
 
 	l, err = strconv.ParseInt(parts[0], 10, 64)
