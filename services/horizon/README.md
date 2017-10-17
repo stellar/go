@@ -31,7 +31,7 @@ Given you have a running golang installation, you can install this with:
 curl https://glide.sh/get | sh
 ```
 
-Next, you must download the source for packages that horizon depends upon.  From within the project directory, run:
+Next, you must download the source for packages that horizon depends upon. From within the project directory, run:
 
 ```bash
 glide install
