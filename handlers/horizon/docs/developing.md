@@ -16,7 +16,7 @@ Horizon uses two go tools you'll need to install:
 1. [go-bindata](https://github.com/jteeuwen/go-bindata) is used to bundle test data
 1. [go-codegen](https://github.com/nullstyle/go-codegen) is used to generate some boilerplate code
 
-After the above are installed, simply run `go generate github.com/stellar/go/services/horizon/...`.
+After the above are installed, simply run `go generate github.com/stellar/go/handlers/horizon/...`.
 
 ## <a name="tests"></a> Running Tests
 

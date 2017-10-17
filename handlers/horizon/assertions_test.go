@@ -4,8 +4,8 @@ import (
 	"bytes"
 	"encoding/json"
 
-	"github.com/stellar/go/services/horizon/render/problem"
-	"github.com/stellar/go/services/horizon/test"
+	"github.com/stellar/go/handlers/horizon/render/problem"
+	"github.com/stellar/go/handlers/horizon/test"
 	"github.com/stretchr/testify/assert"
 )
 

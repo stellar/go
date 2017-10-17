@@ -3,8 +3,8 @@ package core
 import (
 	"testing"
 
-	"github.com/stellar/go/services/horizon/db2"
-	"github.com/stellar/go/services/horizon/test"
+	"github.com/stellar/go/handlers/horizon/db2"
+	"github.com/stellar/go/handlers/horizon/test"
 )
 
 func TestOffersByAddress(t *testing.T) {

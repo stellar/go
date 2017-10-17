@@ -6,8 +6,8 @@ import (
 	sq "github.com/Masterminds/squirrel"
 	"github.com/go-errors/errors"
 	"github.com/stellar/go/xdr"
-	"github.com/stellar/go/services/horizon/db2"
-	"github.com/stellar/go/services/horizon/toid"
+	"github.com/stellar/go/handlers/horizon/db2"
+	"github.com/stellar/go/handlers/horizon/toid"
 )
 
 // LedgerSequence return the ledger in which the effect occurred.

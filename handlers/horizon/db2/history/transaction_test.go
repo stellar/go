@@ -4,7 +4,7 @@ import (
 	"database/sql"
 	"testing"
 
-	"github.com/stellar/go/services/horizon/test"
+	"github.com/stellar/go/handlers/horizon/test"
 )
 
 func TestTransactionQueries(t *testing.T) {

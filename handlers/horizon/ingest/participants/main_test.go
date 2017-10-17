@@ -4,8 +4,8 @@ import (
 	"testing"
 
 	"github.com/stellar/go/xdr"
-	"github.com/stellar/go/services/horizon/db2/core"
-	"github.com/stellar/go/services/horizon/test"
+	"github.com/stellar/go/handlers/horizon/db2/core"
+	"github.com/stellar/go/handlers/horizon/test"
 )
 
 func TestForOperation(t *testing.T) {

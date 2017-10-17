@@ -2,7 +2,7 @@ package horizon
 
 import (
 	"github.com/getsentry/raven-go"
-	"github.com/stellar/go/services/horizon/log"
+	"github.com/stellar/go/handlers/horizon/log"
 )
 
 // initLog initialized the logging subsystem, attaching app.log and

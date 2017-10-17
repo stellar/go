@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"testing"
 
-	"github.com/stellar/go/services/horizon/test"
+	"github.com/stellar/go/handlers/horizon/test"
 )
 
 func TestDataActions_Show(t *testing.T) {
@@ -36,7 +36,7 @@ func TestDataActions_Show(t *testing.T) {
 	w = ht.Get(prefix+"/data/missing", test.RequestHelperRaw)
 	ht.Assert.Equal(404, w.Code)
 
-	// regression: https://github.com/stellar/go/services/horizon/issues/325
+	// regression: https://github.com/stellar/go/handlers/horizon/issues/325
 	// names with special characters do not work
 	w = ht.Get(prefix+"/data/name%20", test.RequestHelperRaw)
 	if ht.Assert.Equal(200, w.Code) {

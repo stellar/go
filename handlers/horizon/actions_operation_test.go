@@ -5,9 +5,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/stellar/go/services/horizon/db2/history"
-	"github.com/stellar/go/services/horizon/resource/operations"
-	"github.com/stellar/go/services/horizon/test"
+	"github.com/stellar/go/handlers/horizon/db2/history"
+	"github.com/stellar/go/handlers/horizon/resource/operations"
+	"github.com/stellar/go/handlers/horizon/test"
 )
 
 func TestOperationActions_Index(t *testing.T) {

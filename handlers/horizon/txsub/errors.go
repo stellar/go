@@ -4,7 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/stellar/go/xdr"
-	"github.com/stellar/go/services/horizon/codes"
+	"github.com/stellar/go/handlers/horizon/codes"
 )
 
 var (

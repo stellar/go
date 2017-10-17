@@ -2,7 +2,7 @@ package simplepath
 
 import (
 	"github.com/stellar/go/xdr"
-	"github.com/stellar/go/services/horizon/paths"
+	"github.com/stellar/go/handlers/horizon/paths"
 )
 
 // search represents a single query against the simple finder.  It provides

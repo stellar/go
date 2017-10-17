@@ -10,7 +10,7 @@ import (
 	"github.com/guregu/null"
 	"github.com/stellar/go/strkey"
 	"github.com/stellar/go/xdr"
-	"github.com/stellar/go/services/horizon/utf8"
+	"github.com/stellar/go/handlers/horizon/utf8"
 )
 
 // Base64Signatures returns a slice of strings where each element is a base64

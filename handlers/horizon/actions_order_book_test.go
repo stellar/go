@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"testing"
 
-	"github.com/stellar/go/services/horizon/resource"
+	"github.com/stellar/go/handlers/horizon/resource"
 )
 
 func TestOrderBookActions_Show(t *testing.T) {

@@ -2,7 +2,7 @@ package txsub
 
 import (
 	. "github.com/smartystreets/goconvey/convey"
-	"github.com/stellar/go/services/horizon/test"
+	"github.com/stellar/go/handlers/horizon/test"
 	"net/http"
 	"testing"
 )

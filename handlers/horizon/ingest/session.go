@@ -14,8 +14,8 @@ import (
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/meta"
 	"github.com/stellar/go/xdr"
-	"github.com/stellar/go/services/horizon/db2/history"
-	"github.com/stellar/go/services/horizon/ingest/participants"
+	"github.com/stellar/go/handlers/horizon/db2/history"
+	"github.com/stellar/go/handlers/horizon/ingest/participants"
 )
 
 // Run starts an attempt to ingest the range of ledgers specified in this

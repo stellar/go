@@ -11,9 +11,9 @@ import (
 	"github.com/guregu/null"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
-	"github.com/stellar/go/services/horizon/db2/core"
-	"github.com/stellar/go/services/horizon/db2/history"
-	"github.com/stellar/go/services/horizon/db2/sqx"
+	"github.com/stellar/go/handlers/horizon/db2/core"
+	"github.com/stellar/go/handlers/horizon/db2/history"
+	"github.com/stellar/go/handlers/horizon/db2/sqx"
 )
 
 // ClearAll clears the entire history database

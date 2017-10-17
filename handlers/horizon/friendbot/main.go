@@ -6,7 +6,7 @@ import (
 
 	. "github.com/stellar/go/build"
 	"github.com/stellar/go/keypair"
-	"github.com/stellar/go/services/horizon/txsub"
+	"github.com/stellar/go/handlers/horizon/txsub"
 	"golang.org/x/net/context"
 )
 

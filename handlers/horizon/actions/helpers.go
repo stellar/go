@@ -9,11 +9,11 @@ import (
 	"github.com/stellar/go/strkey"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
-	"github.com/stellar/go/services/horizon/assets"
-	"github.com/stellar/go/services/horizon/db2"
-	"github.com/stellar/go/services/horizon/ledger"
-	"github.com/stellar/go/services/horizon/render/problem"
-	"github.com/stellar/go/services/horizon/toid"
+	"github.com/stellar/go/handlers/horizon/assets"
+	"github.com/stellar/go/handlers/horizon/db2"
+	"github.com/stellar/go/handlers/horizon/ledger"
+	"github.com/stellar/go/handlers/horizon/render/problem"
+	"github.com/stellar/go/handlers/horizon/toid"
 )
 
 const (

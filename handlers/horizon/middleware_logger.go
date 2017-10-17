@@ -8,8 +8,8 @@ import (
 	"golang.org/x/net/context"
 
 	gctx "github.com/goji/context"
-	"github.com/stellar/go/services/horizon/log"
-	"github.com/stellar/go/services/horizon/render"
+	"github.com/stellar/go/handlers/horizon/log"
+	"github.com/stellar/go/handlers/horizon/render"
 	"github.com/zenazn/goji/web"
 	"github.com/zenazn/goji/web/middleware"
 	"github.com/zenazn/goji/web/mutil"

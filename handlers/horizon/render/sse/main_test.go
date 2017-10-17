@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	. "github.com/smartystreets/goconvey/convey"
-	"github.com/stellar/go/services/horizon/test"
+	"github.com/stellar/go/handlers/horizon/test"
 )
 
 func TestSsePackage(t *testing.T) {

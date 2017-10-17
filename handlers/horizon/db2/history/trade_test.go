@@ -4,8 +4,8 @@ import (
 	"testing"
 
 	"github.com/stellar/go/build"
-	"github.com/stellar/go/services/horizon/db2"
-	"github.com/stellar/go/services/horizon/test"
+	"github.com/stellar/go/handlers/horizon/db2"
+	"github.com/stellar/go/handlers/horizon/test"
 )
 
 func TestTradeQueries(t *testing.T) {

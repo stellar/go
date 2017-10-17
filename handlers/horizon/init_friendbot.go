@@ -2,7 +2,7 @@ package horizon
 
 import (
 	"github.com/stellar/go/strkey"
-	"github.com/stellar/go/services/horizon/friendbot"
+	"github.com/stellar/go/handlers/horizon/friendbot"
 )
 
 func initFriendbot(app *App) {

@@ -3,8 +3,8 @@ set -e
 
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 GOTOP="$( cd "$DIR/../../../../../../.." && pwd )"
-PACKAGES=$(find $GOTOP/src/github.com/stellar/go/services/horizon/test/scenarios -iname '*.rb' -not -name '_common_accounts.rb')
-# PACKAGES=$(find $GOTOP/src/github.com/stellar/go/services/horizon/test/scenarios -iname 'kahuna.rb')
+PACKAGES=$(find $GOTOP/src/github.com/stellar/go/handlers/horizon/test/scenarios -iname '*.rb' -not -name '_common_accounts.rb')
+# PACKAGES=$(find $GOTOP/src/github.com/stellar/go/handlers/horizon/test/scenarios -iname 'kahuna.rb')
 
 go install github.com/stellar/go/services/horizon/cmd/horizon
 
@@ -44,5 +44,5 @@ done
 
 
 # commit new sql files to bindata
-go generate github.com/stellar/go/services/horizon/test/scenarios
-# go test github.com/stellar/go/services/horizon/ingest
+go generate github.com/stellar/go/handlers/horizon/test/scenarios
+# go test github.com/stellar/go/handlers/horizon/ingest

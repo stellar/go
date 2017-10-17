@@ -1,9 +1,9 @@
 package horizon
 
 import (
-	"github.com/stellar/go/services/horizon/paths"
-	"github.com/stellar/go/services/horizon/render/hal"
-	"github.com/stellar/go/services/horizon/resource"
+	"github.com/stellar/go/handlers/horizon/paths"
+	"github.com/stellar/go/handlers/horizon/render/hal"
+	"github.com/stellar/go/handlers/horizon/resource"
 )
 
 // PathIndexAction provides path finding

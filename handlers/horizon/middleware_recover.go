@@ -4,8 +4,8 @@ import (
 	"net/http"
 
 	gctx "github.com/goji/context"
-	"github.com/stellar/go/services/horizon/errors"
-	"github.com/stellar/go/services/horizon/render/problem"
+	"github.com/stellar/go/handlers/horizon/errors"
+	"github.com/stellar/go/handlers/horizon/render/problem"
 	"github.com/zenazn/goji/web"
 )
 

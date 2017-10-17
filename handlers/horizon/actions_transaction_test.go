@@ -5,9 +5,9 @@ import (
 	"net/url"
 	"testing"
 
-	"github.com/stellar/go/services/horizon/resource"
-	"github.com/stellar/go/services/horizon/txsub"
-	"github.com/stellar/go/services/horizon/txsub/sequence"
+	"github.com/stellar/go/handlers/horizon/resource"
+	"github.com/stellar/go/handlers/horizon/txsub"
+	"github.com/stellar/go/handlers/horizon/txsub/sequence"
 )
 
 func TestTransactionActions_Show(t *testing.T) {
@@ -77,7 +77,7 @@ func TestTransactionActions_Index(t *testing.T) {
 		ht.Assert.PageOf(2, w.Body)
 	}
 
-	// regression: https://github.com/stellar/go/services/horizon/issues/365
+	// regression: https://github.com/stellar/go/handlers/horizon/issues/365
 	w = ht.Get("/transactions?limit=200")
 	ht.Require.Equal(200, w.Code)
 	w = ht.Get("/transactions?limit=201")

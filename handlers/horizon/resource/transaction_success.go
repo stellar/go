@@ -1,9 +1,9 @@
 package resource
 
 import (
-	"github.com/stellar/go/services/horizon/httpx"
-	"github.com/stellar/go/services/horizon/render/hal"
-	"github.com/stellar/go/services/horizon/txsub"
+	"github.com/stellar/go/handlers/horizon/httpx"
+	"github.com/stellar/go/handlers/horizon/render/hal"
+	"github.com/stellar/go/handlers/horizon/txsub"
 	"golang.org/x/net/context"
 )
 

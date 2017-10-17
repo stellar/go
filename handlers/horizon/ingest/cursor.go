@@ -5,8 +5,8 @@ import (
 
 	"github.com/stellar/go/meta"
 	"github.com/stellar/go/xdr"
-	"github.com/stellar/go/services/horizon/db2/core"
-	"github.com/stellar/go/services/horizon/toid"
+	"github.com/stellar/go/handlers/horizon/db2/core"
+	"github.com/stellar/go/handlers/horizon/toid"
 )
 
 // BeforeAndAfter loads the ledger entry for `target` before the current

@@ -4,7 +4,7 @@ import (
 	"net/http"
 
 	"bitbucket.org/ww/goautoneg"
-	"github.com/stellar/go/services/horizon/log"
+	"github.com/stellar/go/handlers/horizon/log"
 	"golang.org/x/net/context"
 )
 
