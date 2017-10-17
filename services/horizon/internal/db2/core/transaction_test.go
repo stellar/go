@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"github.com/stellar/go/xdr"
-	"github.com/stellar/go/handlers/horizon/test"
+	"github.com/stellar/go/services/horizon/internal/test"
 )
 
 func TestTransactionsQueries(t *testing.T) {

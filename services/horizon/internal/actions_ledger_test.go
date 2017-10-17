@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"testing"
 
-	"github.com/stellar/go/handlers/horizon/resource"
+	"github.com/stellar/go/services/horizon/internal/resource"
 )
 
 func TestLedgerActions_Index(t *testing.T) {

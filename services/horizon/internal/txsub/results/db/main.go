@@ -7,9 +7,9 @@ import (
 	"encoding/base64"
 
 	"github.com/stellar/go/xdr"
-	"github.com/stellar/go/handlers/horizon/db2/core"
-	"github.com/stellar/go/handlers/horizon/db2/history"
-	"github.com/stellar/go/handlers/horizon/txsub"
+	"github.com/stellar/go/services/horizon/internal/db2/core"
+	"github.com/stellar/go/services/horizon/internal/db2/history"
+	"github.com/stellar/go/services/horizon/internal/txsub"
 	"golang.org/x/net/context"
 )
 

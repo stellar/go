@@ -8,10 +8,10 @@ import (
 	"testing"
 
 	"github.com/stellar/go/xdr"
-	"github.com/stellar/go/handlers/horizon/ledger"
-	"github.com/stellar/go/handlers/horizon/render/problem"
-	"github.com/stellar/go/handlers/horizon/test"
-	"github.com/stellar/go/handlers/horizon/toid"
+	"github.com/stellar/go/services/horizon/internal/ledger"
+	"github.com/stellar/go/services/horizon/internal/render/problem"
+	"github.com/stellar/go/services/horizon/internal/test"
+	"github.com/stellar/go/services/horizon/internal/toid"
 	"github.com/zenazn/goji/web"
 )
 
@@ -230,7 +230,7 @@ func TestGetPageQuery(t *testing.T) {
 	_ = action.GetPageQuery()
 	tt.Assert.Error(action.Err)
 
-	// regression: https://github.com/stellar/go/handlers/horizon/issues/372
+	// regression: https://github.com/stellar/go/services/horizon/internal/issues/372
 	// (limit of 0 turns into 10)
 	makeAction("/?limit=0", nil)
 	_ = action.GetPageQuery()

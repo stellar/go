@@ -1,7 +1,7 @@
 package utf8
 
 import (
-	"github.com/stellar/go/handlers/horizon/test"
+	"github.com/stellar/go/services/horizon/internal/test"
 	"testing"
 )
 

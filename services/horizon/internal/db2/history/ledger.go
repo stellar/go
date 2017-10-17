@@ -5,7 +5,7 @@ import (
 
 	sq "github.com/Masterminds/squirrel"
 	"github.com/stellar/go/support/errors"
-	"github.com/stellar/go/handlers/horizon/db2"
+	"github.com/stellar/go/services/horizon/internal/db2"
 )
 
 // LedgerBySequence loads the single ledger at `seq` into `dest`

@@ -4,9 +4,9 @@ import (
 	"time"
 
 	"github.com/stellar/go/xdr"
-	"github.com/stellar/go/handlers/horizon/db2/history"
-	"github.com/stellar/go/handlers/horizon/render/hal"
-	"github.com/stellar/go/handlers/horizon/resource/base"
+	"github.com/stellar/go/services/horizon/internal/db2/history"
+	"github.com/stellar/go/services/horizon/internal/render/hal"
+	"github.com/stellar/go/services/horizon/internal/resource/base"
 	"golang.org/x/net/context"
 )
 

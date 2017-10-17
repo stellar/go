@@ -5,8 +5,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/stellar/go/handlers/horizon/db2/history"
-	"github.com/stellar/go/handlers/horizon/resource"
+	"github.com/stellar/go/services/horizon/internal/db2/history"
+	"github.com/stellar/go/services/horizon/internal/resource"
 )
 
 func TestTradeActions_Index(t *testing.T) {
@@ -90,7 +90,7 @@ func TestTradeActions_IndexRegressions(t *testing.T) {
 	ht := StartHTTPTest(t, "trades")
 	defer ht.Finish()
 
-	// Regression:  https://github.com/stellar/go/handlers/horizon/issues/318
+	// Regression:  https://github.com/stellar/go/services/horizon/internal/issues/318
 	var q = make(url.Values)
 	q.Add("selling_asset_type", "credit_alphanum4")
 	q.Add("selling_asset_code", "EUR")

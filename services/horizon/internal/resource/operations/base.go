@@ -3,9 +3,9 @@ package operations
 import (
 	"fmt"
 
-	"github.com/stellar/go/handlers/horizon/db2/history"
-	"github.com/stellar/go/handlers/horizon/httpx"
-	"github.com/stellar/go/handlers/horizon/render/hal"
+	"github.com/stellar/go/services/horizon/internal/db2/history"
+	"github.com/stellar/go/services/horizon/internal/httpx"
+	"github.com/stellar/go/services/horizon/internal/render/hal"
 	"golang.org/x/net/context"
 )
 

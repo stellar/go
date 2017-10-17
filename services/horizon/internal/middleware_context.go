@@ -2,8 +2,8 @@ package horizon
 
 import (
 	gctx "github.com/goji/context"
-	"github.com/stellar/go/handlers/horizon/context/requestid"
-	"github.com/stellar/go/handlers/horizon/httpx"
+	"github.com/stellar/go/services/horizon/internal/context/requestid"
+	"github.com/stellar/go/services/horizon/internal/httpx"
 	"github.com/zenazn/goji/web"
 	"golang.org/x/net/context"
 	"net/http"

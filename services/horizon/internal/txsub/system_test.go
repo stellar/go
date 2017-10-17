@@ -7,8 +7,8 @@ import (
 
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stellar/go/build"
-	"github.com/stellar/go/handlers/horizon/test"
-	"github.com/stellar/go/handlers/horizon/txsub/sequence"
+	"github.com/stellar/go/services/horizon/internal/test"
+	"github.com/stellar/go/services/horizon/internal/txsub/sequence"
 )
 
 func TestTxsub(t *testing.T) {

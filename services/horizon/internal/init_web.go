@@ -10,8 +10,8 @@ import (
 	metrics "github.com/rcrowley/go-metrics"
 	"github.com/rs/cors"
 	"github.com/sebest/xff"
-	"github.com/stellar/go/handlers/horizon/render/problem"
-	"github.com/stellar/go/handlers/horizon/txsub/sequence"
+	"github.com/stellar/go/services/horizon/internal/render/problem"
+	"github.com/stellar/go/services/horizon/internal/txsub/sequence"
 	"github.com/zenazn/goji/web"
 	"github.com/zenazn/goji/web/middleware"
 )

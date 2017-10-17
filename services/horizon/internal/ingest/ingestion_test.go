@@ -5,8 +5,8 @@ import (
 
 	"github.com/stellar/go/support/db"
 	"github.com/stellar/go/xdr"
-	"github.com/stellar/go/handlers/horizon/db2/core"
-	testDB "github.com/stellar/go/handlers/horizon/test/db"
+	"github.com/stellar/go/services/horizon/internal/db2/core"
+	testDB "github.com/stellar/go/services/horizon/internal/test/db"
 	"github.com/stretchr/testify/assert"
 )
 

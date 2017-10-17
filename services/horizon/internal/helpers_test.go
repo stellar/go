@@ -7,8 +7,8 @@ import (
 	"log"
 
 	"github.com/PuerkitoBio/throttled"
-	hlog "github.com/stellar/go/handlers/horizon/log"
-	"github.com/stellar/go/handlers/horizon/test"
+	hlog "github.com/stellar/go/services/horizon/internal/log"
+	"github.com/stellar/go/services/horizon/internal/test"
 )
 
 func NewTestApp() *App {

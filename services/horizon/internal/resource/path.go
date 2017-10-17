@@ -2,7 +2,7 @@ package resource
 
 import (
 	"github.com/stellar/go/amount"
-	"github.com/stellar/go/handlers/horizon/paths"
+	"github.com/stellar/go/services/horizon/internal/paths"
 	"golang.org/x/net/context"
 )
 
