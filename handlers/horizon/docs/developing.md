@@ -20,19 +20,22 @@ After the above are installed, simply run `go generate github.com/stellar/go/han
 
 ## <a name="tests"></a> Running Tests
 
-first, create two local Postgres databases, and start a redis server on port
-`6379`
+start a redis server on port `6379`
 
 ```bash
-psql -c 'create database "horizon_test";'
-psql -c 'create database "stellar-core_test";'
 redis-server
 ```
 
-then, run the tests like so:
+then, run the all the go tests like so (assuming you are at stellar/go):
 
 ```bash
-bash scripts/run_tests.bash
+bash ./support/scripts/run_tests
+```
+
+or just run horizon tests like so:
+
+```bash
+go test github.com/stellar/go/handlers/horizon/...
 ```
 
 ## <a name="logging"></a> Logging
