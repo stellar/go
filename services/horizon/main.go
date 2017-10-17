@@ -8,8 +8,8 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-	"github.com/stellar/go/handlers/horizon"
-	hlog "github.com/stellar/go/handlers/horizon/log"
+	"github.com/stellar/go/services/horizon/internal"
+	hlog "github.com/stellar/go/services/horizon/internal/log"
 )
 
 var app *horizon.App
