@@ -14,7 +14,7 @@ build() {
 	PKG_DIR="$DIST/$RELEASE"
 
 	# do the actual build
-	GOOS=$GOOS GOARCH=$GOARCH go build -ldflags "-X main.version=$VERSION" -o "$GOTOP/bin/$(srcBin $GOOS)" github.com/stellar/go/services/horizon/cmd/horizon
+	GOOS=$GOOS GOARCH=$GOARCH go build -ldflags "-X main.version=$VERSION" -o "$GOTOP/bin/$(srcBin $GOOS)" github.com/stellar/go/services/horizon
 
 	# make package directory
 	rm -rf $PKG_DIR

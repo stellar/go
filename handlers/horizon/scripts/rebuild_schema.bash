@@ -5,7 +5,7 @@ set -e
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 GOTOP="$( cd "$DIR/../../../../../../.." && pwd )"
 go generate github.com/stellar/go/handlers/horizon/db2/schema
-go install github.com/stellar/go/services/horizon/cmd/horizon
+go install github.com/stellar/go/services/horizon
 dropdb horizon_schema --if-exists
 createdb horizon_schema
 DATABASE_URL=postgres://localhost/horizon_schema?sslmode=disable $GOTOP/bin/horizon db migrate up
@@ -26,4 +26,4 @@ pg_dump postgres://localhost/horizon_schema?sslmode=disable \
 
 go generate github.com/stellar/go/handlers/horizon/db2/schema
 go generate github.com/stellar/go/handlers/horizon/test
-go install github.com/stellar/go/services/horizon/cmd/horizon
+go install github.com/stellar/go/services/horizon

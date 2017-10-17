@@ -6,7 +6,7 @@ GOTOP="$( cd "$DIR/../../../../../../.." && pwd )"
 PACKAGES=$(find $GOTOP/src/github.com/stellar/go/handlers/horizon/test/scenarios -iname '*.rb' -not -name '_common_accounts.rb')
 # PACKAGES=$(find $GOTOP/src/github.com/stellar/go/handlers/horizon/test/scenarios -iname 'kahuna.rb')
 
-go install github.com/stellar/go/services/horizon/cmd/horizon
+go install github.com/stellar/go/services/horizon
 
 dropdb hayashi_scenarios --if-exists
 createdb hayashi_scenarios

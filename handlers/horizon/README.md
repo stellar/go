@@ -37,7 +37,7 @@ Next, you must download the source for packages that horizon depends upon.  From
 glide install
 ```
 
-Then, simply run `go install github.com/stellar/go/services/horizon/cmd/horizon`.  After successful
+Then, simply run `go install github.com/stellar/go/services/horizon`.  After successful
 completion, you should find `horizon` is present in your `$GOPATH/bin` directory.
 
 More detailed intructions and [admin guide](docs/reference/admin.md). 
