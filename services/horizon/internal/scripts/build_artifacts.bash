@@ -20,7 +20,7 @@ build() {
 	rm -rf $PKG_DIR
 	mkdir -p $PKG_DIR
 	cp $GOTOP/bin/$(srcBin $GOOS) $PKG_DIR/$(destBin $GOOS)
-	cp $DIR/../../LICENSE.txt $PKG_DIR/
+	cp $DIR/../../../../LICENSE-APACHE.txt $PKG_DIR/
 	cp $DIR/../../README.md $PKG_DIR/
 
 	# TODO: add platform specific install intstructions
