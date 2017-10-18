@@ -3,7 +3,7 @@ set -e
 
 # This scripts rebuilds the latest.sql file included in the schema package.
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-GOTOP="$( cd "$DIR/../../../../../../.." && pwd )"
+GOTOP="$( cd "$DIR/../../../../../../../.." && pwd )"
 go generate github.com/stellar/go/services/horizon/internal/db2/schema
 go install github.com/stellar/go/services/horizon
 dropdb horizon_schema --if-exists
