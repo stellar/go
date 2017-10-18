@@ -50,7 +50,6 @@ func (ingest *Ingestion) Clear(start int64, end int64) error {
 	if err != nil {
 		return err
 	}
-
 	err = clear(start, end, "history_trades", "history_operation_id")
 	if err != nil {
 		return err
@@ -255,6 +254,17 @@ func (ingest *Ingestion) Trade(
 		return errors.Wrap(err, "failed to extract bought asset attributes")
 	}
 
+	//This populates the assets table. Returned IDs are currently ignored, until the trades table is modified.
+	_, err = ingest.getAssetId(trade.AssetSold)
+	if err != nil {
+		return errors.Wrap(err, "failed to get sold asset id")
+	}
+
+	_, err = ingest.getAssetId(trade.AssetBought)
+	if err != nil {
+		return errors.Wrap(err, "failed to get bought asset id")
+	}
+
 	sql := ingest.trades.Values(
 		opid,
 		order,
@@ -415,6 +425,7 @@ func (ingest *Ingestion) commit() error {
 	return nil
 }
 
+// Get account row id. If account is first seen, it will be inserted.
 func (ingest *Ingestion) getParticipantID(
 	aid xdr.AccountId,
 ) (result int64, err error) {
@@ -440,6 +451,41 @@ func (ingest *Ingestion) getParticipantID(
 	if err != nil {
 		return
 	}
+
+	return
+}
+
+// Get asset row id. If asset is first seen, it will be inserted.
+func (ingest *Ingestion) getAssetId(
+	asset xdr.Asset,
+) (result int64, err error) {
+
+	q := history.Q{Session: ingest.DB}
+	result, err = q.GetAssetID(asset)
+
+	if err != nil && !q.NoRows(err) {
+		return
+	}
+
+	// already imported, return the found value
+	if !q.NoRows(err) {
+		return result, nil
+	}
+
+	var (
+		assetType   string
+		assetCode   string
+		assetIssuer string
+	)
+
+	err = asset.Extract(&assetType, &assetCode, &assetIssuer)
+	if err != nil {
+		return
+	}
+
+	err = ingest.DB.GetRaw(&result,
+		`INSERT INTO history_assets (asset_type, asset_code, asset_issuer) VALUES (?,?,?) RETURNING id`,
+		assetType, assetCode, assetIssuer)
 
 	return
 }

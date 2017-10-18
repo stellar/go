@@ -2,8 +2,8 @@
 -- PostgreSQL database dump
 --
 
--- Dumped from database version 9.6.2
--- Dumped by pg_dump version 9.6.3
+-- Dumped from database version 9.6.5
+-- Dumped by pg_dump version 9.6.5
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -43,11 +43,15 @@ DROP INDEX IF EXISTS public.hist_e_by_order;
 DROP INDEX IF EXISTS public.by_ledger;
 DROP INDEX IF EXISTS public.by_hash;
 DROP INDEX IF EXISTS public.by_account;
+DROP INDEX IF EXISTS public.asset_by_issuer;
 ALTER TABLE IF EXISTS ONLY public.history_transaction_participants DROP CONSTRAINT IF EXISTS history_transaction_participants_pkey;
 ALTER TABLE IF EXISTS ONLY public.history_operation_participants DROP CONSTRAINT IF EXISTS history_operation_participants_pkey;
+ALTER TABLE IF EXISTS ONLY public.history_assets DROP CONSTRAINT IF EXISTS history_assets_pkey;
+ALTER TABLE IF EXISTS ONLY public.history_assets DROP CONSTRAINT IF EXISTS history_assets_asset_code_asset_type_asset_issuer_key;
 ALTER TABLE IF EXISTS ONLY public.gorp_migrations DROP CONSTRAINT IF EXISTS gorp_migrations_pkey;
 ALTER TABLE IF EXISTS public.history_transaction_participants ALTER COLUMN id DROP DEFAULT;
 ALTER TABLE IF EXISTS public.history_operation_participants ALTER COLUMN id DROP DEFAULT;
+ALTER TABLE IF EXISTS public.history_assets ALTER COLUMN id DROP DEFAULT;
 DROP TABLE IF EXISTS public.history_transactions;
 DROP SEQUENCE IF EXISTS public.history_transaction_participants_id_seq;
 DROP TABLE IF EXISTS public.history_transaction_participants;
@@ -57,6 +61,8 @@ DROP SEQUENCE IF EXISTS public.history_operation_participants_id_seq;
 DROP TABLE IF EXISTS public.history_operation_participants;
 DROP TABLE IF EXISTS public.history_ledgers;
 DROP TABLE IF EXISTS public.history_effects;
+DROP SEQUENCE IF EXISTS public.history_assets_id_seq;
+DROP TABLE IF EXISTS public.history_assets;
 DROP TABLE IF EXISTS public.history_accounts;
 DROP SEQUENCE IF EXISTS public.history_accounts_id_seq;
 DROP TABLE IF EXISTS public.gorp_migrations;
@@ -111,6 +117,37 @@ CREATE TABLE history_accounts (
     id bigint DEFAULT nextval('history_accounts_id_seq'::regclass) NOT NULL,
     address character varying(64)
 );
+
+
+--
+-- Name: history_assets; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE history_assets (
+    id integer NOT NULL,
+    asset_type character varying(64) NOT NULL,
+    asset_code character varying(12) NOT NULL,
+    asset_issuer character varying(56) NOT NULL
+);
+
+
+--
+-- Name: history_assets_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE history_assets_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: history_assets_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE history_assets_id_seq OWNED BY history_assets.id;
 
 
 --
@@ -274,6 +311,13 @@ CREATE TABLE history_transactions (
 
 
 --
+-- Name: history_assets id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY history_assets ALTER COLUMN id SET DEFAULT nextval('history_assets_id_seq'::regclass);
+
+
+--
 -- Name: history_operation_participants id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -291,11 +335,12 @@ ALTER TABLE ONLY history_transaction_participants ALTER COLUMN id SET DEFAULT ne
 -- Data for Name: gorp_migrations; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-INSERT INTO gorp_migrations VALUES ('1_initial_schema.sql', '2017-08-21 14:49:30.202073-05');
-INSERT INTO gorp_migrations VALUES ('2_index_participants_by_toid.sql', '2017-08-21 14:49:30.205419-05');
-INSERT INTO gorp_migrations VALUES ('3_use_sequence_in_history_accounts.sql', '2017-08-21 14:49:30.207133-05');
-INSERT INTO gorp_migrations VALUES ('4_add_protocol_version.sql', '2017-08-21 14:49:30.214204-05');
-INSERT INTO gorp_migrations VALUES ('5_create_trades_table.sql', '2017-08-21 14:49:30.218755-05');
+INSERT INTO gorp_migrations VALUES ('1_initial_schema.sql', '2017-10-18 11:08:39.275583-07');
+INSERT INTO gorp_migrations VALUES ('2_index_participants_by_toid.sql', '2017-10-18 11:08:39.280523-07');
+INSERT INTO gorp_migrations VALUES ('3_use_sequence_in_history_accounts.sql', '2017-10-18 11:08:39.286456-07');
+INSERT INTO gorp_migrations VALUES ('4_add_protocol_version.sql', '2017-10-18 11:08:39.296443-07');
+INSERT INTO gorp_migrations VALUES ('5_create_trades_table.sql', '2017-10-18 11:08:39.302387-07');
+INSERT INTO gorp_migrations VALUES ('6_create_assets_table.sql', '2017-10-18 11:08:39.307158-07');
 
 
 --
@@ -309,6 +354,19 @@ INSERT INTO gorp_migrations VALUES ('5_create_trades_table.sql', '2017-08-21 14:
 --
 
 SELECT pg_catalog.setval('history_accounts_id_seq', 1, false);
+
+
+--
+-- Data for Name: history_assets; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+
+
+--
+-- Name: history_assets_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+--
+
+SELECT pg_catalog.setval('history_assets_id_seq', 1, false);
 
 
 --
@@ -376,6 +434,22 @@ ALTER TABLE ONLY gorp_migrations
 
 
 --
+-- Name: history_assets history_assets_asset_code_asset_type_asset_issuer_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY history_assets
+    ADD CONSTRAINT history_assets_asset_code_asset_type_asset_issuer_key UNIQUE (asset_code, asset_type, asset_issuer);
+
+
+--
+-- Name: history_assets history_assets_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY history_assets
+    ADD CONSTRAINT history_assets_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: history_operation_participants history_operation_participants_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -389,6 +463,13 @@ ALTER TABLE ONLY history_operation_participants
 
 ALTER TABLE ONLY history_transaction_participants
     ADD CONSTRAINT history_transaction_participants_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: asset_by_issuer; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX asset_by_issuer ON history_assets USING btree (asset_issuer);
 
 
 --

@@ -7,6 +7,8 @@ import (
 	"github.com/stellar/go/xdr"
 	"github.com/stellar/go/services/horizon/internal/db2/core"
 	testDB "github.com/stellar/go/services/horizon/internal/test/db"
+	"github.com/stellar/go/services/horizon/internal/test"
+	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -48,4 +50,25 @@ func TestEmptySignature(t *testing.T) {
 
 	err = ingestion.Close()
 	assert.NoError(t, err)
+}
+
+func TestAssetIngest(t *testing.T) {
+	//ingest kahuna and sample a single expected asset output
+
+	tt := test.Start(t).ScenarioWithoutHorizon("kahuna")
+	defer tt.Finish()
+	s := ingest(tt)
+	q := history.Q{Session: s.Ingestion.DB}
+
+	expectedAsset := history.Asset{
+		ID     : 4,
+		Type   : "credit_alphanum4",
+		Code   : "USD",
+		Issuer : "GB2QIYT2IAUFMRXKLSLLPRECC6OCOGJMADSPTRK7TGNT2SFR2YGWDARD",
+	}
+
+	actualAsset := history.Asset{}
+	err := q.GetAssetByID(&actualAsset, 4)
+	tt.Require.NoError(err)
+	tt.Assert.Equal(expectedAsset, actualAsset)
 }

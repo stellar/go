@@ -113,6 +113,14 @@ type AccountsQ struct {
 	sql    sq.SelectBuilder
 }
 
+// Asset is a row of data from the `history_assets` table
+type Asset struct {
+	ID     int64  `db:"id"`
+	Type   string `db:"asset_type"`
+	Code   string `db:"asset_code"`
+	Issuer string `db:"asset_issuer"`
+}
+
 // Effect is a row of data from the `history_effects` table
 type Effect struct {
 	HistoryAccountID   int64       `db:"history_account_id"`
