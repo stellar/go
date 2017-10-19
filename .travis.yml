@@ -19,7 +19,6 @@ script:
 - ./support/scripts/run_tests
 before_deploy:
 - go run ./support/scripts/build_release_artifacts/main.go
-- bash scripts/build_artifacts.bash
 matrix:
   fast_finish: true
   allow_failures:
