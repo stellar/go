@@ -31,8 +31,8 @@ for i in $PACKAGES; do
   createdb horizon_scenarios
 
   # import the core data into horizon
-  $DIR/../bin/horizon db init
-  $DIR/../bin/horizon db reingest
+  horizon db init
+  horizon db reingest
 
   # write horizon data to sql file
   pg_dump $DATABASE_URL \
