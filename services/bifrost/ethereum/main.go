@@ -1,10 +1,21 @@
 package ethereum
 
 import (
+	"context"
+	"math/big"
+
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/stellar/go/support/log"
 	"github.com/tyler-smith/go-bip32"
+)
+
+const stellarAmountPrecision = 7
+
+var (
+	ten      = big.NewInt(10)
+	eighteen = big.NewInt(18)
+	// weiInEth = 10^18
+	weiInEth = new(big.Rat).SetInt(new(big.Int).Exp(ten, eighteen, nil))
 )
 
 // Listener listens for transactions using geth RPC. It calls TransactionHandler for each new
@@ -13,14 +24,20 @@ import (
 // if it returned 0. Transactions can be processed more than once, it's TransactionHandler
 // responsibility to ignore duplicates.
 // You can run multiple Listeners if Storage is implemented correctly.
+// Listener ignores contract creation transactions.
 // Listener requires geth 1.7.0.
 type Listener struct {
+	Client             Client  `inject:""`
 	Storage            Storage `inject:""`
 	NetworkID          string
 	TransactionHandler TransactionHandler
 
-	client *ethclient.Client
-	log    *log.Entry
+	log *log.Entry
+}
+
+type Client interface {
+	NetworkID(ctx context.Context) (*big.Int, error)
+	BlockByNumber(ctx context.Context, number *big.Int) (*types.Block, error)
 }
 
 // Storage is an interface that must be implemented by an object using
@@ -34,7 +51,14 @@ type Storage interface {
 	SaveLastProcessedEthereumBlock(block uint64) error
 }
 
-type TransactionHandler func(transaction *types.Transaction) error
+type TransactionHandler func(transaction Transaction) error
+
+type Transaction struct {
+	Hash string
+	// Value in Wei
+	ValueWei *big.Int
+	To       string
+}
 
 type AddressGenerator struct {
 	masterPublicKey *bip32.Key

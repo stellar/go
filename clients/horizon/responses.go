@@ -47,6 +47,16 @@ func (a Account) GetNativeBalance() string {
 	return "0"
 }
 
+func (a Account) GetCreditBalance(code, issuer string) string {
+	for _, balance := range a.Balances {
+		if balance.Asset.Code == code && balance.Asset.Issuer == issuer {
+			return balance.Balance
+		}
+	}
+
+	return "0"
+}
+
 // MustGetData returns decoded value for a given key. If the key does
 // not exist, empty slice will be returned. If there is an error
 // decoding a value, it will panic.
@@ -191,6 +201,10 @@ type Payment struct {
 			Href string `json:"href"`
 		} `json:"transaction"`
 	} `json:"_links"`
+
+	// create_account fields
+	Account         string `json:"account"`
+	StartingBalance string `json:"starting_balance"`
 
 	// payment/path_payment fields
 	From        string `json:"from"`

@@ -27,24 +27,24 @@ const (
 type Database interface {
 	// CreateAddressAssociation creates Bitcoin/Ethereum-Stellar association. `addressIndex`
 	// is the chain (Bitcoin/Ethereum) address derivation index (BIP-32).
-	CreateAddressAssociation(chain Chain, stellarAddress, ethereumAddress string, addressIndex uint32) error
+	CreateAddressAssociation(chain Chain, stellarAddress, address string, addressIndex uint32) error
 	// GetAssociationByChainAddress searches for previously saved Bitcoin/Ethereum-Stellar association.
 	// Should return nil if not found.
 	GetAssociationByChainAddress(chain Chain, address string) (*AddressAssociation, error)
 	// GetAssociationByStellarPublicKey searches for previously saved Bitcoin/Ethereum-Stellar association.
 	// Should return nil if not found.
 	GetAssociationByStellarPublicKey(stellarPublicKey string) (*AddressAssociation, error)
-
 	// AddProcessedTransaction adds a transaction to database as processed. This
-	// should return `nil` if transaction is already added.
-	AddProcessedTransaction(chain Chain, transactionID string) error
-	// IsTransactionProcessed returns `true` if transaction has been already processed.
-	IsTransactionProcessed(chain Chain, transactionID string) (bool, error)
-
+	// should return `true` and no error if transaction processing has already started/finished.
+	AddProcessedTransaction(chain Chain, transactionID string) (alreadyProcessing bool, err error)
 	// IncrementAddressIndex returns the current value of index used for `chain` key
 	// derivation and then increments it. This operation must be atomic so this function
 	// should never return the same value more than once.
 	IncrementAddressIndex(chain Chain) (uint32, error)
+
+	// ResetBlockCounters changes last processed bitcoin and ethereum block to default value.
+	// Used in stress tests.
+	ResetBlockCounters() error
 }
 
 type PostgresDatabase struct {

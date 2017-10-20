@@ -2,6 +2,8 @@ package server
 
 import (
 	"encoding/json"
+
+	"github.com/stellar/go/services/bifrost/sse"
 )
 
 func (s *Server) onStellarAccountCreated(destination string) {
@@ -16,7 +18,7 @@ func (s *Server) onStellarAccountCreated(destination string) {
 		return
 	}
 
-	s.publishEvent(association.Address, AccountCreatedAddressEvent, nil)
+	s.sseServer.PublishEvent(association.Address, sse.AccountCreatedAddressEvent, nil)
 }
 
 func (s *Server) onStellarAccountCredited(destination, assetCode, amount string) {
@@ -41,5 +43,5 @@ func (s *Server) onStellarAccountCredited(destination, assetCode, amount string)
 		s.log.WithField("data", data).Error("Error marshalling json")
 	}
 
-	s.publishEvent(association.Address, AccountCreditedAddressEvent, j)
+	s.sseServer.PublishEvent(association.Address, sse.AccountCreditedAddressEvent, j)
 }

@@ -6,6 +6,9 @@ import (
 	"os"
 	"time"
 
+	"github.com/btcsuite/btcd/chaincfg"
+	"github.com/btcsuite/btcd/rpcclient"
+	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/facebookgo/inject"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -16,6 +19,7 @@ import (
 	"github.com/stellar/go/services/bifrost/ethereum"
 	"github.com/stellar/go/services/bifrost/server"
 	"github.com/stellar/go/services/bifrost/stellar"
+	"github.com/stellar/go/services/bifrost/stress"
 	supportConfig "github.com/stellar/go/support/config"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/support/log"
@@ -23,7 +27,7 @@ import (
 
 var rootCmd = &cobra.Command{
 	Use:   "bifrost",
-	Short: "Bridge server to allow participating in Stellar based ICOs using Ethereum",
+	Short: "Bridge server to allow participating in Stellar based ICOs using Bitcoin and Ethereum",
 }
 
 var serverCmd = &cobra.Command{
@@ -31,9 +35,8 @@ var serverCmd = &cobra.Command{
 	Short: "Starts backend server",
 	Run: func(cmd *cobra.Command, args []string) {
 		var (
-			cfg       config.Config
-			cfgPath   = cmd.PersistentFlags().Lookup("config").Value.String()
-			debugMode = cmd.PersistentFlags().Lookup("debug").Changed
+			cfgPath   = rootCmd.PersistentFlags().Lookup("config").Value.String()
+			debugMode = rootCmd.PersistentFlags().Lookup("debug").Changed
 		)
 
 		if debugMode {
@@ -41,84 +44,108 @@ var serverCmd = &cobra.Command{
 			log.Debug("Debug mode ON")
 		}
 
-		err := supportConfig.Read(cfgPath, &cfg)
+		cfg := readConfig(cfgPath)
+		server := createServer(cfg, false)
+		err := server.Start()
 		if err != nil {
-			switch cause := errors.Cause(err).(type) {
-			case *supportConfig.InvalidConfigError:
-				log.Error("config file: ", cause)
-			default:
-				log.Error(err)
-			}
+			log.WithField("err", err).Error("Error starting the server")
 			os.Exit(-1)
 		}
+	},
+}
 
-		db := &database.PostgresDatabase{}
-		err = db.Open(cfg.Database.DSN)
+var stressTestCmd = &cobra.Command{
+	Use:   "stress-test",
+	Short: "Starts stress test",
+	Long: `During stress test bitcoin and ethereum transaction will be generated randomly.
+This command will create 3 server.Server's listening on ports 8000-8002.`,
+	Run: func(cmd *cobra.Command, args []string) {
+		cfgPath := rootCmd.PersistentFlags().Lookup("config").Value.String()
+		debugMode := rootCmd.PersistentFlags().Lookup("debug").Changed
+		usersPerSecond, _ := cmd.PersistentFlags().GetInt("users-per-second")
+
+		if debugMode {
+			log.SetLevel(log.DebugLevel)
+			log.Debug("Debug mode ON")
+		}
+
+		cfg := readConfig(cfgPath)
+
+		bitcoinAccounts := make(chan string)
+		bitcoinClient := &stress.RandomBitcoinClient{}
+		bitcoinClient.Start(bitcoinAccounts)
+
+		ethereumAccounts := make(chan string)
+		ethereumClient := &stress.RandomEthereumClient{}
+		ethereumClient.Start(ethereumAccounts)
+
+		db, err := createDatabase(cfg.Database.DSN)
 		if err != nil {
 			log.WithField("err", err).Error("Error connecting to database")
 			os.Exit(-1)
 		}
 
-		bitcoinListener := &bitcoin.Listener{
-			Testnet: cfg.Bitcoin.Testnet,
+		err = db.ResetBlockCounters()
+		if err != nil {
+			log.WithField("err", err).Error("Error reseting counters")
+			os.Exit(-1)
 		}
 
-		ethereumListener := &ethereum.Listener{
-			NetworkID: cfg.Ethereum.NetworkID,
+		// Start servers
+		const numServers = 3
+		signers := []string{
+			// GBQYGXC4AZDL7PPL2H274LYA6YV7OL4IRPWCYMBYCA5FAO45WMTNKGOD
+			"SBX76SCADD2SBIL6M2T62BR4GELMJPZV2MFHIQX24IBVOTIT6DGNAR3D",
+			// GAUDK66OCTKQB737ZNRD2ILB5ZGIZOKMWT3T5TDWVIN7ANVY3RD5DXF3
+			"SCGJ6JRFMHWYTGVBPFXCBMMBENZM433M3JNZDRSI5PZ2DXGJLYDWR4CR",
+			// GDFR6QNVBUK32PGTAV3HATV3GDT7LF2SGVVLD2TOS4TCAD2ANSOH2MCW
+			"SAZUY2XGSILNMBLQSVMDGCCTSZNOB2EXHSFFRFJJ3GKRZIW3FTIMJYV7",
+		}
+		ports := []int{8000, 8001, 8002}
+		for i := 0; i < numServers; i++ {
+			go func(i int) {
+				cfg.Port = ports[i]
+				cfg.Stellar.SignerSecretKey = signers[i]
+				server := createServer(cfg, true)
+				// Replace clients in listeners with random transactions generators
+				server.BitcoinListener.Client = bitcoinClient
+				server.EthereumListener.Client = ethereumClient
+				err := server.Start()
+				if err != nil {
+					log.WithField("err", err).Error("Error starting the server")
+					os.Exit(-1)
+				}
+			}(i)
 		}
 
-		stellarAccountConfigurator := &stellar.AccountConfigurator{
-			NetworkPassphrase: cfg.Stellar.NetworkPassphrase,
-			IssuerSecretKey:   cfg.Stellar.IssuerSecretKey,
-		}
+		// Wait for servers to start. We could wait in a more sophisticated way but this
+		// is just a test code.
+		time.Sleep(2 * time.Second)
 
-		horizonClient := &horizon.Client{
-			URL: cfg.Stellar.Horizon,
-			HTTP: &http.Client{
-				Timeout: 10 * time.Second,
+		accounts := make(chan server.GenerateAddressResponse)
+		users := stress.Users{
+			Horizon: &horizon.Client{
+				URL: cfg.Stellar.Horizon,
+				HTTP: &http.Client{
+					Timeout: 60 * time.Second,
+				},
 			},
+			NetworkPassphrase: cfg.Stellar.NetworkPassphrase,
+			UsersPerSecond:    usersPerSecond,
+			BifrostPorts:      ports,
+			IssuerPublicKey:   cfg.Stellar.IssuerPublicKey,
 		}
-
-		bitcoinAddressGenerator, err := bitcoin.NewAddressGenerator(cfg.Bitcoin.MasterPublicKey)
-		if err != nil {
-			log.Error(err)
-			os.Exit(-1)
-		}
-
-		ethereumAddressGenerator, err := ethereum.NewAddressGenerator(cfg.Ethereum.MasterPublicKey)
-		if err != nil {
-			log.Error(err)
-			os.Exit(-1)
-		}
-
-		server := &server.Server{}
-
-		var g inject.Graph
-		err = g.Provide(
-			&inject.Object{Value: bitcoinAddressGenerator},
-			&inject.Object{Value: bitcoinListener},
-			&inject.Object{Value: &cfg},
-			&inject.Object{Value: db},
-			&inject.Object{Value: ethereumAddressGenerator},
-			&inject.Object{Value: ethereumListener},
-			&inject.Object{Value: horizonClient},
-			&inject.Object{Value: server},
-			&inject.Object{Value: stellarAccountConfigurator},
-		)
-		if err != nil {
-			log.WithField("err", err).Error("Error providing objects to injector")
-			os.Exit(-1)
-		}
-
-		if err := g.Populate(); err != nil {
-			log.WithField("err", err).Error("Error injecting objects")
-			os.Exit(-1)
-		}
-
-		err = server.Start()
-		if err != nil {
-			log.WithField("err", err).Error("Error starting the server")
-			os.Exit(-1)
+		go users.Start(accounts)
+		for {
+			account := <-accounts
+			switch account.Chain {
+			case string(database.ChainBitcoin):
+				bitcoinAccounts <- account.Address
+			case string(database.ChainEthereum):
+				ethereumAccounts <- account.Address
+			default:
+				panic("Unknown chain: " + account.Chain)
+			}
 		}
 	},
 }
@@ -136,13 +163,143 @@ func init() {
 	log.SetLevel(log.InfoLevel)
 	log.DefaultLogger.Logger.Formatter.(*logrus.TextFormatter).FullTimestamp = true
 
-	rootCmd.AddCommand(versionCmd)
-	rootCmd.AddCommand(serverCmd)
+	rootCmd.PersistentFlags().Bool("debug", false, "debug mode")
+	rootCmd.PersistentFlags().StringP("config", "c", "bifrost.cfg", "config file path")
 
-	serverCmd.PersistentFlags().StringP("config", "c", "bifrost.cfg", "config file path")
-	serverCmd.PersistentFlags().Bool("debug", false, "debug mode")
+	rootCmd.AddCommand(serverCmd)
+	rootCmd.AddCommand(stressTestCmd)
+	rootCmd.AddCommand(versionCmd)
+
+	stressTestCmd.PersistentFlags().IntP("users-per-second", "u", 2, "users per second")
 }
 
 func main() {
 	rootCmd.Execute()
+}
+
+func readConfig(cfgPath string) config.Config {
+	var cfg config.Config
+
+	err := supportConfig.Read(cfgPath, &cfg)
+	if err != nil {
+		switch cause := errors.Cause(err).(type) {
+		case *supportConfig.InvalidConfigError:
+			log.Error("config file: ", cause)
+		default:
+			log.Error(err)
+		}
+		os.Exit(-1)
+	}
+
+	return cfg
+}
+
+func createDatabase(dsn string) (*database.PostgresDatabase, error) {
+	db := &database.PostgresDatabase{}
+	err := db.Open(dsn)
+	if err != nil {
+		return nil, err
+	}
+	return db, err
+}
+
+func createServer(cfg config.Config, stressTest bool) *server.Server {
+	var g inject.Graph
+
+	db, err := createDatabase(cfg.Database.DSN)
+	if err != nil {
+		log.WithField("err", err).Error("Error connecting to database")
+		os.Exit(-1)
+	}
+
+	bitcoinClient := &rpcclient.Client{}
+	ethereumClient := &ethclient.Client{}
+
+	if !stressTest {
+		// Configure real clients
+		connConfig := &rpcclient.ConnConfig{
+			Host:         cfg.Bitcoin.RpcServer,
+			User:         cfg.Bitcoin.RpcUser,
+			Pass:         cfg.Bitcoin.RpcPass,
+			HTTPPostMode: true,
+			DisableTLS:   true,
+		}
+		bitcoinClient, err = rpcclient.New(connConfig, nil)
+		if err != nil {
+			log.WithField("err", err).Error("Error connecting to bitcoin-core")
+			os.Exit(-1)
+		}
+
+		ethereumClient, err = ethclient.Dial("http://" + cfg.Ethereum.RpcServer)
+		if err != nil {
+			log.WithField("err", err).Error("Error connecting to geth")
+			os.Exit(-1)
+		}
+	}
+
+	bitcoinListener := &bitcoin.Listener{
+		Testnet: cfg.Bitcoin.Testnet,
+	}
+
+	ethereumListener := &ethereum.Listener{
+		NetworkID: cfg.Ethereum.NetworkID,
+	}
+
+	stellarAccountConfigurator := &stellar.AccountConfigurator{
+		NetworkPassphrase: cfg.Stellar.NetworkPassphrase,
+		IssuerPublicKey:   cfg.Stellar.IssuerPublicKey,
+		SignerSecretKey:   cfg.Stellar.SignerSecretKey,
+	}
+
+	horizonClient := &horizon.Client{
+		URL: cfg.Stellar.Horizon,
+		HTTP: &http.Client{
+			Timeout: 20 * time.Second,
+		},
+	}
+
+	var chainParams *chaincfg.Params
+	if cfg.Bitcoin.Testnet {
+		chainParams = &chaincfg.TestNet3Params
+	} else {
+		chainParams = &chaincfg.MainNetParams
+	}
+	bitcoinAddressGenerator, err := bitcoin.NewAddressGenerator(cfg.Bitcoin.MasterPublicKey, chainParams)
+	if err != nil {
+		log.Error(err)
+		os.Exit(-1)
+	}
+
+	ethereumAddressGenerator, err := ethereum.NewAddressGenerator(cfg.Ethereum.MasterPublicKey)
+	if err != nil {
+		log.Error(err)
+		os.Exit(-1)
+	}
+
+	server := &server.Server{}
+
+	err = g.Provide(
+		&inject.Object{Value: bitcoinAddressGenerator},
+		&inject.Object{Value: bitcoinClient},
+		&inject.Object{Value: bitcoinListener},
+		&inject.Object{Value: &cfg},
+		&inject.Object{Value: db},
+		&inject.Object{Value: ethereumAddressGenerator},
+		&inject.Object{Value: ethereumClient},
+		&inject.Object{Value: ethereumListener},
+		&inject.Object{Value: horizonClient},
+		&inject.Object{Value: server},
+		&inject.Object{Value: stellarAccountConfigurator},
+	)
+	if err != nil {
+		log.WithField("err", err).Error("Error providing objects to injector")
+		os.Exit(-1)
+	}
+
+	if err := g.Populate(); err != nil {
+		log.WithField("err", err).Error("Error injecting objects")
+		os.Exit(-1)
+	}
+
+	return server
 }

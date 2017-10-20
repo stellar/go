@@ -1,6 +1,8 @@
 package stellar
 
 import (
+	"strconv"
+
 	"github.com/stellar/go/build"
 	"github.com/stellar/go/clients/horizon"
 	"github.com/stellar/go/support/errors"
@@ -10,6 +12,7 @@ import (
 func (ac *AccountConfigurator) createAccount(destination string) error {
 	err := ac.submitTransaction(
 		build.CreateAccount(
+			build.SourceAccount{ac.IssuerPublicKey},
 			build.Destination{destination},
 			build.NativeAmount{NewAccountXLMBalance},
 		),
@@ -24,10 +27,11 @@ func (ac *AccountConfigurator) createAccount(destination string) error {
 func (ac *AccountConfigurator) sendToken(destination, assetCode, amount string) error {
 	err := ac.submitTransaction(
 		build.Payment(
+			build.SourceAccount{ac.IssuerPublicKey},
 			build.Destination{destination},
 			build.CreditAmount{
 				Code:   assetCode,
-				Issuer: ac.issuerPublicKey,
+				Issuer: ac.IssuerPublicKey,
 				Amount: amount,
 			},
 		),
@@ -65,12 +69,41 @@ func (ac *AccountConfigurator) submitTransaction(mutator build.TransactionMutato
 
 func (ac *AccountConfigurator) buildTransaction(mutator build.TransactionMutator) (string, error) {
 	tx := build.Transaction(
-		build.SourceAccount{ac.IssuerSecretKey},
+		build.SourceAccount{ac.signerPublicKey},
 		build.Sequence{ac.getSequence()},
 		build.Network{ac.NetworkPassphrase},
 		mutator,
 	)
 
-	txe := tx.Sign(ac.IssuerSecretKey)
+	txe := tx.Sign(ac.SignerSecretKey)
 	return txe.Base64()
+}
+
+func (ac *AccountConfigurator) updateSequence() error {
+	ac.sequenceMutex.Lock()
+	defer ac.sequenceMutex.Unlock()
+
+	account, err := ac.Horizon.LoadAccount(ac.signerPublicKey)
+	if err != nil {
+		err = errors.Wrap(err, "Error loading issuing account")
+		ac.log.Error(err)
+		return err
+	}
+
+	ac.sequence, err = strconv.ParseUint(account.Sequence, 10, 64)
+	if err != nil {
+		err = errors.Wrap(err, "Invalid account.Sequence")
+		ac.log.Error(err)
+		return err
+	}
+
+	return nil
+}
+
+func (ac *AccountConfigurator) getSequence() uint64 {
+	ac.sequenceMutex.Lock()
+	defer ac.sequenceMutex.Unlock()
+	ac.sequence++
+	sequence := ac.sequence
+	return sequence
 }

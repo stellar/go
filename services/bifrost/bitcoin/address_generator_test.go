@@ -3,6 +3,7 @@ package bitcoin
 import (
 	"testing"
 
+	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -13,7 +14,7 @@ func TestAddressGenerator(t *testing.T) {
 	// Derivation Path m/44'/0'/0'/0:
 	// xprvA1y8DJefYknMwXkdUrSk57z26Z3Fjr3rVpk8NzQKRQWjy3ogV43qr4eqTuF1rg5rrw28mqbDHfWsmoBbeDPcQ34teNgDyohSu6oyodoJ6Bu
 	// xpub6ExUcpBZP8LfA1q6asykSFvkeask9Jmhs3fjBNovyk3iqr8q2bN6PryKKCvLLkMs1u2667wJnoM5LRQc3JcsGbQAhjUqJavxhtdk363GbP2
-	generator, err := NewAddressGenerator("xpub6ExUcpBZP8LfA1q6asykSFvkeask9Jmhs3fjBNovyk3iqr8q2bN6PryKKCvLLkMs1u2667wJnoM5LRQc3JcsGbQAhjUqJavxhtdk363GbP2")
+	generator, err := NewAddressGenerator("xpub6ExUcpBZP8LfA1q6asykSFvkeask9Jmhs3fjBNovyk3iqr8q2bN6PryKKCvLLkMs1u2667wJnoM5LRQc3JcsGbQAhjUqJavxhtdk363GbP2", &chaincfg.MainNetParams)
 	assert.NoError(t, err)
 
 	expectedChildren := []struct {

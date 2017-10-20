@@ -2,7 +2,6 @@ package stellar
 
 import (
 	"net/http"
-	"strconv"
 	"time"
 
 	"github.com/stellar/go/clients/horizon"
@@ -19,14 +18,21 @@ func (ac *AccountConfigurator) Start() error {
 	ac.log = common.CreateLogger("StellarAccountConfigurator")
 	ac.log.Info("StellarAccountConfigurator starting")
 
-	kp, err := keypair.Parse(ac.IssuerSecretKey)
-	if err != nil {
-		err = errors.Wrap(err, "Invalid IssuerSecretKey")
+	kp, err := keypair.Parse(ac.IssuerPublicKey)
+	if err != nil || (err == nil && ac.IssuerPublicKey[0] != 'G') {
+		err = errors.Wrap(err, "Invalid IssuerPublicKey")
 		ac.log.Error(err)
 		return err
 	}
 
-	ac.issuerPublicKey = kp.Address()
+	kp, err = keypair.Parse(ac.SignerSecretKey)
+	if err != nil || (err == nil && ac.SignerSecretKey[0] != 'S') {
+		err = errors.Wrap(err, "Invalid SignerSecretKey")
+		ac.log.Error(err)
+		return err
+	}
+
+	ac.signerPublicKey = kp.Address()
 
 	err = ac.updateSequence()
 	if err != nil {
@@ -35,7 +41,15 @@ func (ac *AccountConfigurator) Start() error {
 		return err
 	}
 
+	go ac.logStats()
 	return nil
+}
+
+func (ac *AccountConfigurator) logStats() {
+	for {
+		ac.log.WithField("currently_processing", ac.processingCount).Info("Stats")
+		time.Sleep(15 * time.Second)
+	}
 }
 
 // ConfigureAccount configures a new account that participated in ICO.
@@ -49,30 +63,45 @@ func (ac *AccountConfigurator) ConfigureAccount(destination, assetCode, amount s
 	})
 	localLog.Info("Configuring Stellar account")
 
-	// Check if account exists. If it is, skip creating it.
-	_, exists, err := ac.getAccount(destination)
-	if err != nil {
-		localLog.WithField("err", err).Error("Error loading account from Horizon")
-		return
-	}
+	ac.processingCountMutex.Lock()
+	ac.processingCount++
+	ac.processingCountMutex.Unlock()
 
-	if !exists {
+	defer func() {
+		ac.processingCountMutex.Lock()
+		ac.processingCount--
+		ac.processingCountMutex.Unlock()
+	}()
+
+	// Check if account exists. If it is, skip creating it.
+	for {
+		_, exists, err := ac.getAccount(destination)
+		if err != nil {
+			localLog.WithField("err", err).Error("Error loading account from Horizon")
+			time.Sleep(2 * time.Second)
+			continue
+		}
+
+		if exists {
+			break
+		}
+
 		localLog.WithField("destination", destination).Info("Creating Stellar account")
-		err := ac.createAccount(destination)
+		err = ac.createAccount(destination)
 		if err != nil {
 			localLog.WithField("err", err).Error("Error creating Stellar account")
-			// TODO repeat
-			return
+			time.Sleep(2 * time.Second)
+			continue
 		}
+
+		break
 	}
 
 	if ac.OnAccountCreated != nil {
 		ac.OnAccountCreated(destination)
 	}
 
-	// TODO if exists but native balance is too small, send more XLM?
-
-	// Wait for account and trustline to be created...
+	// Wait for trust line to be created...
 	for {
 		account, err := ac.Horizon.LoadAccount(destination)
 		if err != nil {
@@ -83,14 +112,14 @@ func (ac *AccountConfigurator) ConfigureAccount(destination, assetCode, amount s
 
 		if ac.trustlineExists(account, assetCode) {
 			break
-		} else {
-			time.Sleep(2 * time.Second)
 		}
+
+		time.Sleep(2 * time.Second)
 	}
 
 	// When trustline found send token
 	localLog.Info("Trust line found, sending token")
-	err = ac.sendToken(destination, assetCode, amount)
+	err := ac.sendToken(destination, assetCode, amount)
 	if err != nil {
 		localLog.WithField("err", err).Error("Error sending asset to account")
 		return
@@ -118,39 +147,10 @@ func (ac *AccountConfigurator) getAccount(account string) (horizon.Account, bool
 
 func (ac *AccountConfigurator) trustlineExists(account horizon.Account, assetCode string) bool {
 	for _, balance := range account.Balances {
-		if balance.Asset.Issuer == ac.issuerPublicKey && balance.Asset.Code == assetCode {
+		if balance.Asset.Issuer == ac.IssuerPublicKey && balance.Asset.Code == assetCode {
 			return true
 		}
 	}
 
 	return false
-}
-
-func (ac *AccountConfigurator) updateSequence() error {
-	ac.sequenceMutex.Lock()
-	defer ac.sequenceMutex.Unlock()
-
-	account, err := ac.Horizon.LoadAccount(ac.issuerPublicKey)
-	if err != nil {
-		err = errors.Wrap(err, "Error loading issuing account")
-		ac.log.Error(err)
-		return err
-	}
-
-	ac.sequence, err = strconv.ParseUint(account.Sequence, 10, 64)
-	if err != nil {
-		err = errors.Wrap(err, "Invalid account.Sequence")
-		ac.log.Error(err)
-		return err
-	}
-
-	return nil
-}
-
-func (ac *AccountConfigurator) getSequence() uint64 {
-	ac.sequenceMutex.Lock()
-	defer ac.sequenceMutex.Unlock()
-	ac.sequence++
-	sequence := ac.sequence
-	return sequence
 }

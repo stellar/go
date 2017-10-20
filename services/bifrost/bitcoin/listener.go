@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/btcsuite/btcd/chaincfg"
-	"github.com/btcsuite/btcd/rpcclient"
 	"github.com/btcsuite/btcd/txscript"
 	"github.com/btcsuite/btcd/wire"
 	"github.com/stellar/go/services/bifrost/common"
@@ -13,29 +12,25 @@ import (
 	"github.com/stellar/go/support/log"
 )
 
-func (l *Listener) Start(rpcServer, rpcUser, rpcPass string) error {
+func (l *Listener) Start() error {
 	l.log = common.CreateLogger("BitcoinListener")
 	l.log.Info("BitcoinListener starting")
 
-	if l.Testnet {
-		l.chainParams = &chaincfg.TestNet3Params
-	} else {
-		l.chainParams = &chaincfg.MainNetParams
+	genesisBlockHash, err := l.Client.GetBlockHash(0)
+	if err != nil {
+		return errors.Wrap(err, "Error getting genesis block")
 	}
 
-	var err error
-	connConfig := &rpcclient.ConnConfig{
-		Host:         rpcServer,
-		User:         rpcUser,
-		Pass:         rpcPass,
-		HTTPPostMode: true,
-		DisableTLS:   true,
-	}
-	l.client, err = rpcclient.New(connConfig, nil)
-	if err != nil {
-		err = errors.Wrap(err, "Error connecting to bicoin-core")
-		l.log.Error(err)
-		return err
+	if l.Testnet {
+		l.chainParams = &chaincfg.TestNet3Params
+		if !genesisBlockHash.IsEqual(chaincfg.TestNet3Params.GenesisHash) {
+			return errors.New("Invalid genesis hash")
+		}
+	} else {
+		l.chainParams = &chaincfg.MainNetParams
+		if !genesisBlockHash.IsEqual(chaincfg.MainNetParams.GenesisHash) {
+			return errors.New("Invalid genesis hash")
+		}
 	}
 
 	blockNumber, err := l.Storage.GetBitcoinBlockToProcess()
@@ -46,7 +41,7 @@ func (l *Listener) Start(rpcServer, rpcUser, rpcPass string) error {
 	}
 
 	if blockNumber == 0 {
-		blockNumberTmp, err := l.client.GetBlockCount()
+		blockNumberTmp, err := l.Client.GetBlockCount()
 		if err != nil {
 			err = errors.Wrap(err, "Error getting the block count from bitcoin-core")
 			l.log.Error(err)
@@ -55,7 +50,6 @@ func (l *Listener) Start(rpcServer, rpcUser, rpcPass string) error {
 		blockNumber = uint64(blockNumberTmp)
 	}
 
-	// TODO Check if connected to correct network
 	go l.processBlocks(blockNumber)
 	return nil
 }
@@ -112,19 +106,7 @@ func (l *Listener) processBlocks(blockNumber uint64) {
 // getBlock returns (nil, nil) if block has not been found (not exists yet)
 func (l *Listener) getBlock(blockNumber uint64) (*wire.MsgBlock, error) {
 	blockHeight := int64(blockNumber)
-
-	if blockHeight == 0 {
-		blockCount, err := l.client.GetBlockCount()
-		if err != nil {
-			err = errors.Wrap(err, "Error getting block count from bitcoin-core")
-			l.log.Error(err)
-			return nil, err
-		}
-
-		blockHeight = blockCount
-	}
-
-	blockHash, err := l.client.GetBlockHash(blockHeight)
+	blockHash, err := l.Client.GetBlockHash(blockHeight)
 	if err != nil {
 		if strings.Contains(err.Error(), "Block height out of range") {
 			// Block does not exist yet
@@ -135,7 +117,7 @@ func (l *Listener) getBlock(blockNumber uint64) (*wire.MsgBlock, error) {
 		return nil, err
 	}
 
-	block, err := l.client.GetBlock(blockHash)
+	block, err := l.Client.GetBlock(blockHash)
 	if err != nil {
 		err = errors.Wrap(err, "Error getting block from bitcoin-core")
 		l.log.WithField("blockHash", blockHash.String()).Error(err)
@@ -167,8 +149,9 @@ func (l *Listener) processBlock(block *wire.MsgBlock) error {
 				continue
 			}
 
-			// We only support P2PKH addresses
-			if class != txscript.PubKeyHashTy {
+			// We only support P2PK and P2PKH addresses
+			if class != txscript.PubKeyTy && class != txscript.PubKeyHashTy {
+				transactionLog.WithField("class", class).Debug("Invalid addresses class")
 				continue
 			}
 
@@ -181,7 +164,7 @@ func (l *Listener) processBlock(block *wire.MsgBlock) error {
 			handlerTransaction := Transaction{
 				Hash:       transaction.TxHash().String(),
 				TxOutIndex: index,
-				Value:      output.Value,
+				ValueSat:   output.Value,
 				To:         addresses[0].EncodeAddress(),
 			}
 

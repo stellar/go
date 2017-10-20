@@ -15,7 +15,8 @@
   * `rpc_server` - URL of [geth](https://github.com/ethereum/go-ethereum) >= 1.7.1 RPC server
   * `network_id` - network ID (`3` - Ropsten testnet, `1` - live Ethereum network)
 * `stellar`
-  * `issuer_secret_key` - TODO this will be changed to a signer account of issuing account.
+  * `issuer_public_key` - public key of the assets issuer or hot wallet,
+  * `signer_secret_key` - issuer's secret key if only one instance of Bifrost is deployed OR [channel](https://www.stellar.org/developers/guides/channels.html)'s secret key if more than one instance of Bifrost is deployed. Signer's sequence number will be consumed in transaction's sequence number.
   * `horizon` - URL to [horizon](https://github.com/stellar/go/tree/master/services/horizon) server
   * `network_passphrase` - Stellar network passphrase (`Public Global Stellar Network ; September 2015` for production network, `Test SDF Network ; September 2015` for test network)
 * `database`
@@ -37,3 +38,7 @@
 * Monitor bifrost logs and react to all WARN and ERROR entries.
 * Make sure you are using geth >= 1.7.1 and bitcoin-core >= 0.15.0.
 * Turn off horizon rate limiting.
+
+## Stress-testing
+
+//

@@ -6,8 +6,6 @@ import (
 	"time"
 
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/ethclient"
-	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/stellar/go/services/bifrost/common"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/support/log"
@@ -17,14 +15,6 @@ func (l *Listener) Start(rpcServer string) error {
 	l.log = common.CreateLogger("EthereumListener")
 	l.log.Info("EthereumListener starting")
 
-	rpcClient, err := rpc.Dial(rpcServer)
-	if err != nil {
-		err = errors.Wrap(err, "Error dialing geth")
-		l.log.Error(err)
-		return err
-	}
-
-	l.client = ethclient.NewClient(rpcClient)
 	blockNumber, err := l.Storage.GetEthereumBlockToProcess()
 	if err != nil {
 		err = errors.Wrap(err, "Error getting ethereum block to process from DB")
@@ -35,7 +25,7 @@ func (l *Listener) Start(rpcServer string) error {
 	// Check if connected to correct network
 	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(5*time.Second))
 	defer cancel()
-	id, err := l.client.NetworkID(ctx)
+	id, err := l.Client.NetworkID(ctx)
 	if err != nil {
 		err = errors.Wrap(err, "Error getting ethereum network ID")
 		l.log.Error(err)
@@ -114,7 +104,7 @@ func (l *Listener) getBlock(blockNumber uint64) (*types.Block, error) {
 	ctx, cancel := context.WithDeadline(context.Background(), d)
 	defer cancel()
 
-	block, err := l.client.BlockByNumber(ctx, blockNumberInt)
+	block, err := l.Client.BlockByNumber(ctx, blockNumberInt)
 	if err != nil {
 		if err.Error() == "not found" {
 			return nil, nil
@@ -139,7 +129,18 @@ func (l *Listener) processBlock(block *types.Block) error {
 	localLog.Info("Processing block")
 
 	for _, transaction := range transactions {
-		err := l.TransactionHandler(transaction)
+		to := transaction.To()
+		if to == nil {
+			// Contract creation
+			continue
+		}
+
+		tx := Transaction{
+			Hash:     transaction.Hash().Hex(),
+			ValueWei: transaction.Value(),
+			To:       to.Hex(),
+		}
+		err := l.TransactionHandler(tx)
 		if err != nil {
 			return errors.Wrap(err, "Error processing transaction")
 		}

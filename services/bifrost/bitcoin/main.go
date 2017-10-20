@@ -1,10 +1,22 @@
 package bitcoin
 
 import (
+	"math/big"
+
 	"github.com/btcsuite/btcd/chaincfg"
-	"github.com/btcsuite/btcd/rpcclient"
+	"github.com/btcsuite/btcd/chaincfg/chainhash"
+	"github.com/btcsuite/btcd/wire"
 	"github.com/stellar/go/support/log"
 	"github.com/tyler-smith/go-bip32"
+)
+
+const stellarAmountPrecision = 7
+
+var (
+	eight = big.NewInt(8)
+	ten   = big.NewInt(10)
+	// satInBtc = 10^8
+	satInBtc = new(big.Rat).SetInt(new(big.Int).Exp(ten, eight, nil))
 )
 
 // Listener listens for transactions using bitcoin-core RPC. It calls TransactionHandler for each new
@@ -15,13 +27,19 @@ import (
 // Listener tracks only P2PKH payments.
 // You can run multiple Listeners if Storage is implemented correctly.
 type Listener struct {
+	Client             Client  `inject:""`
 	Storage            Storage `inject:""`
 	TransactionHandler TransactionHandler
 	Testnet            bool
 
-	client      *rpcclient.Client
 	chainParams *chaincfg.Params
 	log         *log.Entry
+}
+
+type Client interface {
+	GetBlockCount() (int64, error)
+	GetBlockHash(blockHeight int64) (*chainhash.Hash, error)
+	GetBlock(blockHash *chainhash.Hash) (*wire.MsgBlock, error)
 }
 
 // Storage is an interface that must be implemented by an object using
@@ -40,10 +58,12 @@ type TransactionHandler func(transaction Transaction) error
 type Transaction struct {
 	Hash       string
 	TxOutIndex int
-	Value      int64
-	To         string
+	// Value in sats
+	ValueSat int64
+	To       string
 }
 
 type AddressGenerator struct {
 	masterPublicKey *bip32.Key
+	chainParams     *chaincfg.Params
 }

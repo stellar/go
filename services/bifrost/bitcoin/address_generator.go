@@ -9,7 +9,7 @@ import (
 
 // TODO should we use account hardened key and then use it to generate change and index keys?
 // That way we can create lot more accounts than 0x80000000-1.
-func NewAddressGenerator(masterPublicKeyString string) (*AddressGenerator, error) {
+func NewAddressGenerator(masterPublicKeyString string, chainParams *chaincfg.Params) (*AddressGenerator, error) {
 	deserializedMasterPublicKey, err := bip32.B58Deserialize(masterPublicKeyString)
 	if err != nil {
 		return nil, errors.Wrap(err, "Error deserializing master public key")
@@ -19,7 +19,7 @@ func NewAddressGenerator(masterPublicKeyString string) (*AddressGenerator, error
 		return nil, errors.New("Key is not a master public key")
 	}
 
-	return &AddressGenerator{deserializedMasterPublicKey}, nil
+	return &AddressGenerator{deserializedMasterPublicKey, chainParams}, nil
 }
 
 func (g *AddressGenerator) Generate(index uint32) (string, error) {
@@ -32,7 +32,7 @@ func (g *AddressGenerator) Generate(index uint32) (string, error) {
 		return "", errors.Wrap(err, "Error creating new child key")
 	}
 
-	address, err := btcutil.NewAddressPubKey(accountKey.Key, &chaincfg.MainNetParams)
+	address, err := btcutil.NewAddressPubKey(accountKey.Key, g.chainParams)
 	if err != nil {
 		return "", errors.Wrap(err, "Error creating address for new child key")
 	}

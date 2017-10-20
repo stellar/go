@@ -12,16 +12,16 @@ import (
 
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
-	"github.com/r3labs/sse"
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/services/bifrost/common"
 	"github.com/stellar/go/services/bifrost/database"
+	"github.com/stellar/go/services/bifrost/sse"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/support/log"
 )
 
 func (s *Server) Start() error {
-	s.log = common.CreateLogger("Server")
+	s.initLogger()
 	s.log.Info("Server starting")
 
 	// Register callbacks
@@ -30,11 +30,7 @@ func (s *Server) Start() error {
 	s.StellarAccountConfigurator.OnAccountCreated = s.onStellarAccountCreated
 	s.StellarAccountConfigurator.OnAccountCredited = s.onStellarAccountCredited
 
-	err := s.BitcoinListener.Start(
-		s.Config.Bitcoin.RpcServer,
-		s.Config.Bitcoin.RpcUser,
-		s.Config.Bitcoin.RpcPass,
-	)
+	err := s.BitcoinListener.Start()
 	if err != nil {
 		return errors.Wrap(err, "Error starting BitcoinListener")
 	}
@@ -61,6 +57,10 @@ func (s *Server) Start() error {
 	return nil
 }
 
+func (s *Server) initLogger() {
+	s.log = common.CreateLogger("Server")
+}
+
 func (s *Server) shutdown() {
 	if s.httpServer != nil {
 		log.Info("Shutting down HTTP server...")
@@ -71,7 +71,7 @@ func (s *Server) shutdown() {
 }
 
 func (s *Server) startHTTPServer() {
-	s.eventsServer = sse.New()
+	s.sseServer = &sse.Server{}
 
 	r := chi.NewRouter()
 	if s.Config.UsingProxy {
@@ -135,7 +135,7 @@ func (s *Server) HandlerEvents(w http.ResponseWriter, r *http.Request) {
 	// Create SSE stream if not exists but only if address exists.
 	// This is required to restart a stream after server restart or failure.
 	address := r.URL.Query().Get("stream")
-	if !s.eventsServer.StreamExists(address) {
+	if !s.sseServer.StreamExists(address) {
 		var chain database.Chain
 		if len(address) > 0 && address[0] == '1' {
 			chain = database.ChainBitcoin
@@ -151,11 +151,11 @@ func (s *Server) HandlerEvents(w http.ResponseWriter, r *http.Request) {
 		}
 
 		if association != nil {
-			s.eventsServer.CreateStream(address)
+			s.sseServer.CreateStream(address)
 		}
 	}
 
-	s.eventsServer.HTTPHandler(w, r)
+	s.sseServer.HTTPHandler(w, r)
 }
 
 func (s *Server) HandlerGenerateBitcoinAddress(w http.ResponseWriter, r *http.Request) {
@@ -205,13 +205,19 @@ func (s *Server) handlerGenerateAddress(w http.ResponseWriter, r *http.Request, 
 
 	err = s.Database.CreateAddressAssociation(chain, stellarPublicKey, address, index)
 	if err != nil {
-		log.WithFields(log.F{"err": err, "index": index}).Error("Error creating address association")
+		log.WithFields(log.F{
+			"err":              err,
+			"chain":            chain,
+			"index":            index,
+			"stellarPublicKey": stellarPublicKey,
+			"address":          address,
+		}).Error("Error creating address association")
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
 	// Create SSE stream
-	s.eventsServer.CreateStream(address)
+	s.sseServer.CreateStream(address)
 
 	response := GenerateAddressResponse{
 		Chain:   string(chain),
@@ -226,23 +232,4 @@ func (s *Server) handlerGenerateAddress(w http.ResponseWriter, r *http.Request, 
 	}
 
 	w.Write(responseBytes)
-}
-
-func (s *Server) publishEvent(address string, event AddressEvent, data []byte) {
-	// Create SSE stream if not exists
-	if !s.eventsServer.StreamExists(address) {
-		s.eventsServer.CreateStream(address)
-	}
-
-	// github.com/r3labs/sse does not send new lines - TODO create PR
-	if data == nil {
-		data = []byte("{}\n")
-	} else {
-		data = append(data, byte('\n'))
-	}
-
-	s.eventsServer.Publish(address, &sse.Event{
-		Event: []byte(event),
-		Data:  data,
-	})
 }

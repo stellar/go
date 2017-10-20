@@ -12,12 +12,15 @@ import (
 type AccountConfigurator struct {
 	Horizon           horizon.ClientInterface `inject:""`
 	NetworkPassphrase string
-	IssuerSecretKey   string
-	OnAccountCreated  func(string)
-	OnAccountCredited func(string, string, string)
+	IssuerPublicKey   string
+	SignerSecretKey   string
+	OnAccountCreated  func(destination string)
+	OnAccountCredited func(destination string, assetCode string, amount string)
 
-	issuerPublicKey string
-	sequence        uint64
-	sequenceMutex   sync.Mutex
-	log             *log.Entry
+	signerPublicKey      string
+	sequence             uint64
+	sequenceMutex        sync.Mutex
+	processingCount      int
+	processingCountMutex sync.Mutex
+	log                  *log.Entry
 }

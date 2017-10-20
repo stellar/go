@@ -3,6 +3,7 @@ package database
 import (
 	"database/sql"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/stellar/go/services/bifrost/queue"
@@ -36,8 +37,9 @@ type transactionsQueueRow struct {
 }
 
 type processedTransactionRow struct {
-	Chain         Chain  `db:"chain"`
-	TransactionID string `db:"transaction_id"`
+	Chain         Chain     `db:"chain"`
+	TransactionID string    `db:"transaction_id"`
+	CreatedAt     time.Time `db:"created_at"`
 }
 
 func fromQueueTransaction(tx queue.Transaction) *transactionsQueueRow {
@@ -47,6 +49,10 @@ func fromQueueTransaction(tx queue.Transaction) *transactionsQueueRow {
 		Amount:           tx.Amount,
 		StellarPublicKey: tx.StellarPublicKey,
 	}
+}
+
+func isDuplicateError(err error) bool {
+	return strings.Contains(err.Error(), "duplicate key value violates unique constraint")
 }
 
 func (r *transactionsQueueRow) toQueueTransaction() *queue.Transaction {
@@ -128,29 +134,14 @@ func (d *PostgresDatabase) GetAssociationByStellarPublicKey(stellarPublicKey str
 	return row, nil
 }
 
-func (d *PostgresDatabase) AddProcessedTransaction(chain Chain, transactionID string) error {
+func (d *PostgresDatabase) AddProcessedTransaction(chain Chain, transactionID string) (bool, error) {
 	processedTransactionTable := d.getTable(processedTransactionTableName, nil)
-	processedTransaction := processedTransactionRow{chain, transactionID}
+	processedTransaction := processedTransactionRow{chain, transactionID, time.Now()}
 	_, err := processedTransactionTable.Insert(processedTransaction).Exec()
-	return err
-}
-
-func (d *PostgresDatabase) IsTransactionProcessed(chain Chain, transactionID string) (bool, error) {
-	processedTransactionTable := d.getTable(processedTransactionTableName, nil)
-
-	row := processedTransactionRow{}
-	where := map[string]interface{}{"chain": chain, "transaction_id": transactionID}
-	err := processedTransactionTable.Get(&row, where).Exec()
-	if err != nil {
-		switch errors.Cause(err) {
-		case sql.ErrNoRows:
-			return false, nil
-		default:
-			return false, errors.Wrap(err, "Error getting processedTransaction from DB")
-		}
+	if err != nil && isDuplicateError(err) {
+		return true, nil
 	}
-
-	return true, nil
+	return false, err
 }
 
 func (d *PostgresDatabase) IncrementAddressIndex(chain Chain) (uint32, error) {
@@ -200,6 +191,22 @@ func (d *PostgresDatabase) IncrementAddressIndex(chain Chain) (uint32, error) {
 	}
 
 	return uint32(index), nil
+}
+
+func (d *PostgresDatabase) ResetBlockCounters() error {
+	keyValueStore := d.getTable(keyValueStoreTableName, nil)
+
+	_, err := keyValueStore.Update(nil, map[string]interface{}{"key": bitcoinLastBlockKey}).Set("value", 0).Exec()
+	if err != nil {
+		return errors.Wrap(err, "Error reseting `bitcoinLastBlockKey`")
+	}
+
+	_, err = keyValueStore.Update(nil, map[string]interface{}{"key": ethereumLastBlockKey}).Set("value", 0).Exec()
+	if err != nil {
+		return errors.Wrap(err, "Error reseting `ethereumLastBlockKey`")
+	}
+
+	return nil
 }
 
 func (d *PostgresDatabase) GetEthereumBlockToProcess() (uint64, error) {
@@ -277,17 +284,23 @@ func (d *PostgresDatabase) saveLastProcessedBlock(key string, block uint64) erro
 	return nil
 }
 
-// Add implements queue.Queue interface
-func (d *PostgresDatabase) Add(tx queue.Transaction) error {
+// QueueAdd implements queue.Queue interface. If element already exists in a queue, it should
+// return nil.
+func (d *PostgresDatabase) QueueAdd(tx queue.Transaction) error {
 	transactionsQueueTable := d.getTable(transactionsQueueTableName, nil)
 	transactionQueue := fromQueueTransaction(tx)
 	_, err := transactionsQueueTable.Insert(transactionQueue).Exec()
+	if err != nil {
+		if isDuplicateError(err) {
+			return nil
+		}
+	}
 	return err
 }
 
-// Pool receives and removes the head of this queue. Returns nil if no elements found.
-// Pool implements queue.Queue interface.
-func (d *PostgresDatabase) Pool() (*queue.Transaction, error) {
+// QueuePool receives and removes the head of this queue. Returns nil if no elements found.
+// QueuePool implements queue.Queue interface.
+func (d *PostgresDatabase) QueuePool() (*queue.Transaction, error) {
 	row := transactionsQueueRow{}
 
 	session := d.session.Clone()
@@ -299,7 +312,7 @@ func (d *PostgresDatabase) Pool() (*queue.Transaction, error) {
 	}
 	defer session.Rollback()
 
-	err = transactionsQueueTable.Get(&row, map[string]interface{}{"pooled": false}).Suffix("FOR UPDATE").Exec()
+	err = transactionsQueueTable.Get(&row, map[string]interface{}{"pooled": false}).OrderBy("id ASC").Suffix("FOR UPDATE").Exec()
 	if err != nil {
 		switch errors.Cause(err) {
 		case sql.ErrNoRows:

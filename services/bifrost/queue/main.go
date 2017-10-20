@@ -1,11 +1,5 @@
 package queue
 
-import (
-	"math/big"
-
-	"github.com/stellar/go/support/errors"
-)
-
 type AssetCode string
 
 const (
@@ -13,54 +7,17 @@ const (
 	AssetCodeETH AssetCode = "ETH"
 )
 
-var (
-	eight    = big.NewInt(8)
-	ten      = big.NewInt(10)
-	eighteen = big.NewInt(18)
-	// weiInEth = 10^18
-	weiInEth = new(big.Rat).SetInt(new(big.Int).Exp(ten, eighteen, nil))
-	// satInBtc = 10^8
-	satInBtc = new(big.Rat).SetInt(new(big.Int).Exp(ten, eight, nil))
-)
-
 type Transaction struct {
 	TransactionID string
 	AssetCode     AssetCode
-	// Amount in the smallest unit of currency.
-	// For 1 satoshi = 0.00000001 BTC this should be equal `1`
-	// For 1 Wei = 0.000000000000000001 ETH this should be equal `1`
+	// CRITICAL REQUIREMENT: Amount in the base unit of currency.
+	// For 10 satoshi this should be equal 0.0000001
+	// For 1 BTC      this should be equal 1.0000000
+	// For 1 Finney   this should be equal 0.0010000
+	// For 1 ETH      this should be equal 1.0000000
+	// Currently, the length of Amount string shouldn't be longer than 17 characters.
 	Amount           string
 	StellarPublicKey string
-}
-
-// TODO tests!
-func (t Transaction) AmountToBtc(prec int) (string, error) {
-	if t.AssetCode != AssetCodeBTC {
-		return "", errors.New("Asset code not ETH")
-	}
-
-	valueSat := new(big.Int)
-	_, ok := valueSat.SetString(t.Amount, 10)
-	if !ok {
-		return "", errors.Errorf("%s is not a valid integer", t.Amount)
-	}
-	valueBtc := new(big.Rat).Quo(new(big.Rat).SetInt(valueSat), satInBtc)
-	return valueBtc.FloatString(prec), nil
-}
-
-// TODO tests!
-func (t Transaction) AmountToEth(prec int) (string, error) {
-	if t.AssetCode != AssetCodeETH {
-		return "", errors.New("Asset code not ETH")
-	}
-
-	valueWei := new(big.Int)
-	_, ok := valueWei.SetString(t.Amount, 10)
-	if !ok {
-		return "", errors.Errorf("%s is not a valid integer", t.Amount)
-	}
-	valueEth := new(big.Rat).Quo(new(big.Rat).SetInt(valueWei), weiInEth)
-	return valueEth.FloatString(prec), nil
 }
 
 // Queue implements transactions queue.
@@ -70,10 +27,11 @@ func (t Transaction) AmountToEth(prec int) (string, error) {
 // This is a critical requirement! Otherwise ETH/BTC may be sent twice to Stellar account.
 // If you don't know what to do, use default AWS SQS FIFO queue or DB queue.
 type Queue interface {
-	// Add inserts the element to this queue.
-	Add(tx Transaction) error
-	// Pool receives and removes the head of this queue. Returns nil if no elements found.
-	Pool() (*Transaction, error)
+	// QueueAdd inserts the element to this queue. If element already exists in a queue, it should
+	// return nil.
+	QueueAdd(tx Transaction) error
+	// QueuePool receives and removes the head of this queue. Returns nil if no elements found.
+	QueuePool() (*Transaction, error)
 }
 
 type SQSFiFo struct{}

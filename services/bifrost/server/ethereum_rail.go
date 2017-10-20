@@ -1,49 +1,34 @@
 package server
 
 import (
-	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/stellar/go/services/bifrost/database"
+	"github.com/stellar/go/services/bifrost/ethereum"
 	"github.com/stellar/go/services/bifrost/queue"
+	"github.com/stellar/go/services/bifrost/sse"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/support/log"
 )
 
 // onNewEthereumTransaction checks if transaction is valid and adds it to
-// the transactions queue.
-func (s *Server) onNewEthereumTransaction(transaction *types.Transaction) error {
-	transactionHash := transaction.Hash().Hex()
-	localLog := s.log.WithFields(log.F{"transaction": transactionHash, "rail": "ethereum"})
+// the transactions queue for StellarAccountConfigurator to consume.
+//
+// Transaction added to transactions queue should be in a format described in
+// queue.Queue (especialy amounts). Pooling service should not have to deal with any
+// conversions.
+func (s *Server) onNewEthereumTransaction(transaction ethereum.Transaction) error {
+	localLog := s.log.WithFields(log.F{"transaction": transaction, "rail": "ethereum"})
 	localLog.Debug("Processing transaction")
 
-	// Check if transaction has not been processed
-	processed, err := s.Database.IsTransactionProcessed(database.ChainEthereum, transactionHash)
-	if err != nil {
-		return err
-	}
-
-	if processed {
-		localLog.Debug("Transaction already processed, skipping")
-		return nil
-	}
-
-	// Check if transaction is sent to one of our addresses
-	to := transaction.To()
-	if to == nil {
-		// Contract creation
-		localLog.Debug("Transaction is a contract creation, skipping")
-		return nil
-	}
+	// Let's check if tx is valid first.
 
 	// Check if value is above minimum required
-	// TODO, check actual minimum (so user doesn't get more in XLM than in ETH)
-	if transaction.Value().Sign() <= 0 {
+	// TODO, make this configurable
+	if transaction.ValueWei.Sign() <= 0 {
 		localLog.Debug("Value is below minimum required amount, skipping")
 		return nil
 	}
 
-	address := to.Hex()
-
-	addressAssociation, err := s.Database.GetAssociationByChainAddress(database.ChainEthereum, address)
+	addressAssociation, err := s.Database.GetAssociationByChainAddress(database.ChainEthereum, transaction.To)
 	if err != nil {
 		return errors.Wrap(err, "Error getting association")
 	}
@@ -53,33 +38,34 @@ func (s *Server) onNewEthereumTransaction(transaction *types.Transaction) error 
 		return nil
 	}
 
+	// Add transaction as processing.
+	processed, err := s.Database.AddProcessedTransaction(database.ChainEthereum, transaction.Hash)
+	if err != nil {
+		return err
+	}
+
+	if processed {
+		localLog.Debug("Transaction already processed, skipping")
+		return nil
+	}
+
 	// Add tx to the processing queue
 	queueTx := queue.Transaction{
-		TransactionID: transactionHash,
+		TransactionID: transaction.Hash,
 		AssetCode:     queue.AssetCodeETH,
-		// Amount in the smallest unit of currency.
-		// For 1 Wei = 0.000000000000000001 ETH this should be equal `1`
-		Amount:           transaction.Value().String(),
+		// Amount in the base unit of currency.
+		Amount:           transaction.ValueToStellar(),
 		StellarPublicKey: addressAssociation.StellarPublicKey,
 	}
 
-	err = s.TransactionsQueue.Add(queueTx)
+	err = s.TransactionsQueue.QueueAdd(queueTx)
 	if err != nil {
 		return errors.Wrap(err, "Error adding transaction to the processing queue")
 	}
-
 	localLog.Info("Transaction added to transaction queue")
 
-	// Save transaction as processed
-	err = s.Database.AddProcessedTransaction(database.ChainEthereum, transactionHash)
-	if err != nil {
-		return errors.Wrap(err, "Error saving transaction as processed")
-	}
-
-	localLog.Info("Transaction processed successfully")
-
 	// Publish event to address stream
-	s.publishEvent(address, TransactionReceivedAddressEvent, nil)
-
+	s.sseServer.PublishEvent(transaction.To, sse.TransactionReceivedAddressEvent, nil)
+	localLog.Info("Transaction processed successfully")
 	return nil
 }
