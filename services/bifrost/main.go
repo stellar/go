@@ -18,6 +18,7 @@ import (
 	"github.com/stellar/go/services/bifrost/database"
 	"github.com/stellar/go/services/bifrost/ethereum"
 	"github.com/stellar/go/services/bifrost/server"
+	"github.com/stellar/go/services/bifrost/sse"
 	"github.com/stellar/go/services/bifrost/stellar"
 	"github.com/stellar/go/services/bifrost/stress"
 	supportConfig "github.com/stellar/go/support/config"
@@ -276,6 +277,8 @@ func createServer(cfg config.Config, stressTest bool) *server.Server {
 		os.Exit(-1)
 	}
 
+	sseServer := &sse.Server{}
+
 	server := &server.Server{}
 
 	err = g.Provide(
@@ -289,6 +292,7 @@ func createServer(cfg config.Config, stressTest bool) *server.Server {
 		&inject.Object{Value: ethereumListener},
 		&inject.Object{Value: horizonClient},
 		&inject.Object{Value: server},
+		&inject.Object{Value: sseServer},
 		&inject.Object{Value: stellarAccountConfigurator},
 	)
 	if err != nil {

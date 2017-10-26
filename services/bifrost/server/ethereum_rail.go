@@ -64,8 +64,8 @@ func (s *Server) onNewEthereumTransaction(transaction ethereum.Transaction) erro
 	}
 	localLog.Info("Transaction added to transaction queue")
 
-	// Publish event to address stream
-	s.sseServer.PublishEvent(transaction.To, sse.TransactionReceivedAddressEvent, nil)
+	// Broadcast event to address stream
+	s.SSEServer.BroadcastEvent(transaction.To, sse.TransactionReceivedAddressEvent, nil)
 	localLog.Info("Transaction processed successfully")
 	return nil
 }

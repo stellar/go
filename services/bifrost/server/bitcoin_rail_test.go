@@ -125,7 +125,7 @@ func (suite *BitcoinRailTestSuite) TestAssociationSuccess() {
 			suite.Assert().Equal(association.StellarPublicKey, queueTransaction.StellarPublicKey)
 		})
 	suite.MockSSEServer.
-		On("PublishEvent", transaction.To, sse.TransactionReceivedAddressEvent, []byte(nil))
+		On("BroadcastEvent", transaction.To, sse.TransactionReceivedAddressEvent, []byte(nil))
 	err := suite.Server.onNewBitcoinTransaction(transaction)
 	suite.Require().NoError(err)
 }

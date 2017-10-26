@@ -15,7 +15,6 @@ import (
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/services/bifrost/common"
 	"github.com/stellar/go/services/bifrost/database"
-	"github.com/stellar/go/services/bifrost/sse"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/support/log"
 )
@@ -45,6 +44,11 @@ func (s *Server) Start() error {
 		return errors.Wrap(err, "Error starting StellarAccountConfigurator")
 	}
 
+	err = s.SSEServer.StartPublishing()
+	if err != nil {
+		return errors.Wrap(err, "Error starting SSE Server")
+	}
+
 	signalInterrupt := make(chan os.Signal, 1)
 	signal.Notify(signalInterrupt, os.Interrupt)
 
@@ -71,8 +75,6 @@ func (s *Server) shutdown() {
 }
 
 func (s *Server) startHTTPServer() {
-	s.sseServer = &sse.Server{}
-
 	r := chi.NewRouter()
 	if s.Config.UsingProxy {
 		r.Use(middleware.RealIP)
@@ -135,7 +137,7 @@ func (s *Server) HandlerEvents(w http.ResponseWriter, r *http.Request) {
 	// Create SSE stream if not exists but only if address exists.
 	// This is required to restart a stream after server restart or failure.
 	address := r.URL.Query().Get("stream")
-	if !s.sseServer.StreamExists(address) {
+	if !s.SSEServer.StreamExists(address) {
 		var chain database.Chain
 		if len(address) > 0 && address[0] == '1' {
 			chain = database.ChainBitcoin
@@ -151,11 +153,11 @@ func (s *Server) HandlerEvents(w http.ResponseWriter, r *http.Request) {
 		}
 
 		if association != nil {
-			s.sseServer.CreateStream(address)
+			s.SSEServer.CreateStream(address)
 		}
 	}
 
-	s.sseServer.HTTPHandler(w, r)
+	s.SSEServer.HTTPHandler(w, r)
 }
 
 func (s *Server) HandlerGenerateBitcoinAddress(w http.ResponseWriter, r *http.Request) {
@@ -217,7 +219,7 @@ func (s *Server) handlerGenerateAddress(w http.ResponseWriter, r *http.Request, 
 	}
 
 	// Create SSE stream
-	s.sseServer.CreateStream(address)
+	s.SSEServer.CreateStream(address)
 
 	response := GenerateAddressResponse{
 		Chain:   string(chain),

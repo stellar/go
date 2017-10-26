@@ -5,6 +5,7 @@ import (
 	"sync"
 
 	"github.com/r3labs/sse"
+	"github.com/stellar/go/support/log"
 )
 
 // AddressEvent is an event sent to address SSE stream.
@@ -17,53 +18,44 @@ const (
 )
 
 type Server struct {
+	Storage Storage `inject:""`
+
+	lastID       int64
 	eventsServer *sse.Server
 	initOnce     sync.Once
+	log          *log.Entry
 }
 
 type ServerInterface interface {
-	PublishEvent(address string, event AddressEvent, data []byte)
+	BroadcastEvent(address string, event AddressEvent, data []byte)
+	StartPublishing() error
 	CreateStream(address string)
 	StreamExists(address string) bool
 	HTTPHandler(w http.ResponseWriter, r *http.Request)
 }
 
-func (s *Server) init() {
-	s.eventsServer = sse.New()
+type Event struct {
+	Address string       `db:"address"`
+	Event   AddressEvent `db:"event"`
+	Data    string       `db:"data"`
 }
 
-func (s *Server) PublishEvent(address string, event AddressEvent, data []byte) {
-	s.initOnce.Do(s.init)
-
-	// Create SSE stream if not exists
-	if !s.eventsServer.StreamExists(address) {
-		s.eventsServer.CreateStream(address)
-	}
-
-	// github.com/r3labs/sse does not send new lines - TODO create PR
-	if data == nil {
-		data = []byte("{}\n")
-	} else {
-		data = append(data, byte('\n'))
-	}
-
-	s.eventsServer.Publish(address, &sse.Event{
-		Event: []byte(event),
-		Data:  data,
-	})
-}
-
-func (s *Server) CreateStream(address string) {
-	s.initOnce.Do(s.init)
-	s.eventsServer.CreateStream(address)
-}
-
-func (s *Server) StreamExists(address string) bool {
-	s.initOnce.Do(s.init)
-	return s.eventsServer.StreamExists(address)
-}
-
-func (s *Server) HTTPHandler(w http.ResponseWriter, r *http.Request) {
-	s.initOnce.Do(s.init)
-	s.eventsServer.HTTPHandler(w, r)
+// Storage contains history of sent events. Because each transaction and
+// Stellar account is always processed by a single Bifrost server, we need
+// to broadcast events in case client streams events from the other Bifrost
+// server.
+//
+// It's used to broadcast events to all instances of Bifrost server and
+// to handle clients' reconnections.
+type Storage interface {
+	// AddEvent adds a new server-sent event to the storage.
+	AddEvent(event Event) error
+	// GetEventsSinceID returns all events since `id`. Used to load and publish
+	// all broadcasted events.
+	// It returns the last event ID, list of events or error.
+	// If `id` is equal `-1`:
+	//    * it should return the last event ID and empty list if at least one
+	//      event has been broadcasted.
+	//    * it should return 0 if no events have been broadcasted.
+	GetEventsSinceID(id int64) (int64, []Event, error)
 }

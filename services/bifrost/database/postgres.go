@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/stellar/go/services/bifrost/queue"
+	"github.com/stellar/go/services/bifrost/sse"
 	"github.com/stellar/go/support/db"
 	"github.com/stellar/go/support/errors"
 )
@@ -19,6 +20,7 @@ const (
 	bitcoinLastBlockKey    = "bitcoin_last_block"
 
 	addressAssociationTableName   = "address_association"
+	broadcastedEventTableName     = "broadcasted_event"
 	keyValueStoreTableName        = "key_value_store"
 	processedTransactionTableName = "processed_transaction"
 	transactionsQueueTableName    = "transactions_queue"
@@ -27,6 +29,21 @@ const (
 type keyValueStoreRow struct {
 	Key   string `db:"key"`
 	Value string `db:"value"`
+}
+
+type broadcastedEventRow struct {
+	ID      int64  `db:"id"`
+	Address string `db:"address"`
+	Event   string `db:"event"`
+	Data    string `db:"data"`
+}
+
+func (b *broadcastedEventRow) toSSE() sse.Event {
+	return sse.Event{
+		Address: b.Address,
+		Event:   sse.AddressEvent(b.Event),
+		Data:    b.Data,
+	}
 }
 
 type transactionsQueueRow struct {
@@ -335,4 +352,74 @@ func (d *PostgresDatabase) QueuePool() (*queue.Transaction, error) {
 	}
 
 	return row.toQueueTransaction(), nil
+}
+
+// AddEvent adds a new server-sent event to the storage.
+func (d *PostgresDatabase) AddEvent(event sse.Event) error {
+	broadcastedEventTable := d.getTable(broadcastedEventTableName, nil)
+	_, err := broadcastedEventTable.Insert(event).Exec()
+	if err != nil {
+		if isDuplicateError(err) {
+			return nil
+		}
+	}
+	return err
+}
+
+// GetEventsSinceID returns all events since `id`. Used to load and publish
+// all broadcasted events.
+// It returns the last event ID, list of events or error.
+// If `id` is equal `-1`:
+//    * it should return the last event ID and empty list if at least one
+//      event has been broadcasted.
+//    * it should return `0` if no events have been broadcasted.
+func (d *PostgresDatabase) GetEventsSinceID(id int64) (int64, []sse.Event, error) {
+	if id == -1 {
+		lastID, err := d.getEventsLastID()
+		return lastID, nil, err
+	}
+
+	broadcastedEventTable := d.getTable(broadcastedEventTableName, nil)
+	rows := []broadcastedEventRow{}
+	err := broadcastedEventTable.Select(&rows, "id > ?", id).Exec()
+	if err != nil {
+		switch errors.Cause(err) {
+		case sql.ErrNoRows:
+			return 0, nil, nil
+		default:
+			return 0, nil, errors.Wrap(err, "Error getting broadcastedEvent's from DB")
+		}
+	}
+
+	var lastID int64
+	returnRows := make([]sse.Event, len(rows))
+	if len(rows) > 0 {
+		lastID = rows[len(rows)-1].ID
+		for i, event := range rows {
+			returnRows[i] = event.toSSE()
+		}
+	}
+
+	return lastID, returnRows, nil
+}
+
+// Returns the last event ID from broadcasted_event table.
+func (d *PostgresDatabase) getEventsLastID() (int64, error) {
+	row := struct {
+		ID int64 `db:"id"`
+	}{}
+	broadcastedEventTable := d.getTable(broadcastedEventTableName, nil)
+	// TODO: `1=1`. We should be able to get row without WHERE clause.
+	// When it's set to nil: `pq: syntax error at or near "ORDER""`
+	err := broadcastedEventTable.Get(&row, "1=1").OrderBy("id DESC").Exec()
+	if err != nil {
+		switch errors.Cause(err) {
+		case sql.ErrNoRows:
+			return 0, nil
+		default:
+			return 0, errors.Wrap(err, "Error getting events last ID")
+		}
+	}
+
+	return row.ID, nil
 }

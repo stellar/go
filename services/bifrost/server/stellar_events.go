@@ -14,11 +14,11 @@ func (s *Server) onStellarAccountCreated(destination string) {
 	}
 
 	if association == nil {
-		s.log.WithField("stellarPublicKey", destination).Warn("Association not found")
+		s.log.WithField("stellarPublicKey", destination).Error("Association not found")
 		return
 	}
 
-	s.sseServer.PublishEvent(association.Address, sse.AccountCreatedAddressEvent, nil)
+	s.SSEServer.BroadcastEvent(association.Address, sse.AccountCreatedAddressEvent, nil)
 }
 
 func (s *Server) onStellarAccountCredited(destination, assetCode, amount string) {
@@ -29,7 +29,7 @@ func (s *Server) onStellarAccountCredited(destination, assetCode, amount string)
 	}
 
 	if association == nil {
-		s.log.WithField("stellarPublicKey", destination).Warn("Association not found")
+		s.log.WithField("stellarPublicKey", destination).Error("Association not found")
 		return
 	}
 
@@ -43,5 +43,5 @@ func (s *Server) onStellarAccountCredited(destination, assetCode, amount string)
 		s.log.WithField("data", data).Error("Error marshalling json")
 	}
 
-	s.sseServer.PublishEvent(association.Address, sse.AccountCreditedAddressEvent, j)
+	s.SSEServer.BroadcastEvent(association.Address, sse.AccountCreditedAddressEvent, j)
 }

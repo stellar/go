@@ -3,6 +3,8 @@ CREATE TYPE chain AS ENUM ('bitcoin', 'ethereum');
 CREATE TABLE address_association (
   chain chain NOT NULL,
   address_index bigint NOT NULL,
+  /* bitcoin 34 characters */
+  /* ethereum 42 characters */
   address varchar(42) NOT NULL UNIQUE,
   stellar_public_key varchar(56) NOT NULL UNIQUE,
   created_at timestamp NOT NULL,
@@ -46,4 +48,17 @@ CREATE TABLE transactions_queue (
   UNIQUE (transaction_id, asset_code),
   CONSTRAINT valid_asset_code CHECK (char_length(asset_code) >= 3),
   CONSTRAINT valid_stellar_public_key CHECK (char_length(stellar_public_key) = 56)
+);
+
+CREATE TYPE event AS ENUM ('transaction_received', 'account_created', 'account_credited');
+
+CREATE TABLE broadcasted_event (
+  id bigserial,
+  /* bitcoin 34 characters */
+  /* ethereum 42 characters */
+  address varchar(42) NOT NULL,
+  event event NOT NULL,
+  data varchar(255) NOT NULL,
+  PRIMARY KEY (id),
+  UNIQUE (address, event)
 );

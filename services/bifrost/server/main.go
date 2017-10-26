@@ -22,8 +22,8 @@ type Server struct {
 	EthereumAddressGenerator   *ethereum.AddressGenerator   `inject:""`
 	StellarAccountConfigurator *stellar.AccountConfigurator `inject:""`
 	TransactionsQueue          queue.Queue                  `inject:""`
+	SSEServer                  sse.ServerInterface          `inject:""`
 
-	sseServer  sse.ServerInterface
 	httpServer *http.Server
 	log        *log.Entry
 }
