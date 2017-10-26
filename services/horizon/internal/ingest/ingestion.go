@@ -223,62 +223,52 @@ func (ingest *Ingestion) Trade(
 	order int32,
 	buyer xdr.AccountId,
 	trade xdr.ClaimOfferAtom,
+	ledgerClosedAt int64,
 ) error {
 
-	var (
-		soldType     string
-		soldCode     string
-		soldIssuer   string
-		boughtType   string
-		boughtCode   string
-		boughtIssuer string
-	)
+	sellerAccountId, err := ingest.getParticipantID(trade.SellerId)
+	if err != nil {
+		return errors.Wrap(err, "failed to load seller account id")
+	}
 
-	buyerID, err := ingest.getParticipantID(buyer)
+	buyerAccountId, err := ingest.getParticipantID(buyer)
 	if err != nil {
 		return errors.Wrap(err, "failed to load buyer account id")
 	}
-
-	sellerID, err := ingest.getParticipantID(trade.SellerId)
-	if err != nil {
-		return errors.Wrap(err, "failed to load buyer account id")
-	}
-
-	err = trade.AssetSold.Extract(&soldType, &soldCode, &soldIssuer)
-	if err != nil {
-		return errors.Wrap(err, "failed to extract sold asset attributes")
-	}
-
-	err = trade.AssetBought.Extract(&boughtType, &boughtCode, &boughtIssuer)
-	if err != nil {
-		return errors.Wrap(err, "failed to extract bought asset attributes")
-	}
-
-	//This populates the assets table. Returned IDs are currently ignored, until the trades table is modified.
-	_, err = ingest.getAssetId(trade.AssetSold)
+	soldAssetId, err := ingest.getAssetId(trade.AssetSold)
 	if err != nil {
 		return errors.Wrap(err, "failed to get sold asset id")
 	}
 
-	_, err = ingest.getAssetId(trade.AssetBought)
+	boughtAssetId, err := ingest.getAssetId(trade.AssetBought)
 	if err != nil {
 		return errors.Wrap(err, "failed to get bought asset id")
+	}
+	var baseAssetId, counterAssetId int64
+	var baseAccountId, counterAccountId int64
+	var baseAmount, counterAmount xdr.Int64
+
+	//map seller and buyer to base and counter based on ordering of ids
+	if soldAssetId < boughtAssetId {
+		baseAccountId, baseAssetId, baseAmount, counterAccountId, counterAssetId, counterAmount =
+			sellerAccountId, soldAssetId, trade.AmountSold, buyerAccountId, boughtAssetId, trade.AmountBought
+	} else {
+		baseAccountId, baseAssetId, baseAmount, counterAccountId, counterAssetId, counterAmount =
+			buyerAccountId, boughtAssetId, trade.AmountBought, sellerAccountId, soldAssetId, trade.AmountSold
 	}
 
 	sql := ingest.trades.Values(
 		opid,
 		order,
+		time.Unix(ledgerClosedAt, 0).UTC(),
 		trade.OfferId,
-		sellerID,
-		buyerID,
-		soldType,
-		soldIssuer,
-		soldCode,
-		trade.AmountSold,
-		boughtType,
-		boughtIssuer,
-		boughtCode,
-		trade.AmountBought,
+		baseAccountId,
+		baseAssetId,
+		baseAmount,
+		counterAccountId,
+		counterAssetId,
+		counterAmount,
+		soldAssetId < boughtAssetId,
 	)
 	_, err = ingest.DB.Exec(sql)
 	if err != nil {
@@ -402,17 +392,15 @@ func (ingest *Ingestion) createInsertBuilders() {
 	ingest.trades = sq.Insert("history_trades").Columns(
 		"history_operation_id",
 		"\"order\"",
+		"ledger_closed_at",
 		"offer_id",
-		"seller_id",
-		"buyer_id",
-		"sold_asset_type",
-		"sold_asset_issuer",
-		"sold_asset_code",
-		"sold_amount",
-		"bought_asset_type",
-		"bought_asset_issuer",
-		"bought_asset_code",
-		"bought_amount",
+		"base_account_id",
+		"base_asset_id",
+		"base_amount",
+		"counter_account_id",
+		"counter_asset_id",
+		"counter_amount",
+		"base_is_seller",
 	)
 }
 

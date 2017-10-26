@@ -14,6 +14,10 @@ SET client_min_messages = warning;
 
 SET search_path = public, pg_catalog;
 
+ALTER TABLE IF EXISTS ONLY public.history_trades DROP CONSTRAINT IF EXISTS history_trades_counter_asset_id_fkey;
+ALTER TABLE IF EXISTS ONLY public.history_trades DROP CONSTRAINT IF EXISTS history_trades_counter_account_id_fkey;
+ALTER TABLE IF EXISTS ONLY public.history_trades DROP CONSTRAINT IF EXISTS history_trades_base_asset_id_fkey;
+ALTER TABLE IF EXISTS ONLY public.history_trades DROP CONSTRAINT IF EXISTS history_trades_base_account_id_fkey;
 DROP INDEX IF EXISTS public.trade_effects_by_order_book;
 DROP INDEX IF EXISTS public.index_history_transactions_on_id;
 DROP INDEX IF EXISTS public.index_history_operations_on_type;
@@ -28,10 +32,11 @@ DROP INDEX IF EXISTS public.index_history_ledgers_on_closed_at;
 DROP INDEX IF EXISTS public.index_history_effects_on_type;
 DROP INDEX IF EXISTS public.index_history_accounts_on_id;
 DROP INDEX IF EXISTS public.index_history_accounts_on_address;
+DROP INDEX IF EXISTS public.htrd_time_lookup;
 DROP INDEX IF EXISTS public.htrd_pid;
+DROP INDEX IF EXISTS public.htrd_pair_time_lookup;
+DROP INDEX IF EXISTS public.htrd_counter_lookup;
 DROP INDEX IF EXISTS public.htrd_by_offer;
-DROP INDEX IF EXISTS public.htr_by_sold;
-DROP INDEX IF EXISTS public.htr_by_bought;
 DROP INDEX IF EXISTS public.htp_by_htid;
 DROP INDEX IF EXISTS public.hs_transaction_by_id;
 DROP INDEX IF EXISTS public.hs_ledger_by_id;
@@ -238,19 +243,18 @@ CREATE TABLE history_operations (
 CREATE TABLE history_trades (
     history_operation_id bigint NOT NULL,
     "order" integer NOT NULL,
+    ledger_closed_at timestamp without time zone NOT NULL,
     offer_id bigint NOT NULL,
-    seller_id bigint NOT NULL,
-    buyer_id bigint NOT NULL,
-    sold_asset_type character varying(64) NOT NULL,
-    sold_asset_issuer character varying(56) NOT NULL,
-    sold_asset_code character varying(12) NOT NULL,
-    sold_amount bigint NOT NULL,
-    bought_asset_type character varying(64) NOT NULL,
-    bought_asset_issuer character varying(56) NOT NULL,
-    bought_asset_code character varying(12) NOT NULL,
-    bought_amount bigint NOT NULL,
-    CONSTRAINT history_trades_bought_amount_check CHECK ((bought_amount > 0)),
-    CONSTRAINT history_trades_sold_amount_check CHECK ((sold_amount > 0))
+    base_account_id bigint NOT NULL,
+    base_asset_id bigint NOT NULL,
+    base_amount bigint NOT NULL,
+    counter_account_id bigint NOT NULL,
+    counter_asset_id bigint NOT NULL,
+    counter_amount bigint NOT NULL,
+    base_is_seller boolean,
+    CONSTRAINT history_trades_base_amount_check CHECK ((base_amount > 0)),
+    CONSTRAINT history_trades_check CHECK ((base_asset_id < counter_asset_id)),
+    CONSTRAINT history_trades_counter_amount_check CHECK ((counter_amount > 0))
 );
 
 
@@ -335,12 +339,13 @@ ALTER TABLE ONLY history_transaction_participants ALTER COLUMN id SET DEFAULT ne
 -- Data for Name: gorp_migrations; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-INSERT INTO gorp_migrations VALUES ('1_initial_schema.sql', '2017-10-18 11:08:39.275583-07');
-INSERT INTO gorp_migrations VALUES ('2_index_participants_by_toid.sql', '2017-10-18 11:08:39.280523-07');
-INSERT INTO gorp_migrations VALUES ('3_use_sequence_in_history_accounts.sql', '2017-10-18 11:08:39.286456-07');
-INSERT INTO gorp_migrations VALUES ('4_add_protocol_version.sql', '2017-10-18 11:08:39.296443-07');
-INSERT INTO gorp_migrations VALUES ('5_create_trades_table.sql', '2017-10-18 11:08:39.302387-07');
-INSERT INTO gorp_migrations VALUES ('6_create_assets_table.sql', '2017-10-18 11:08:39.307158-07');
+INSERT INTO gorp_migrations VALUES ('1_initial_schema.sql', '2017-10-25 12:02:41.355815-07');
+INSERT INTO gorp_migrations VALUES ('2_index_participants_by_toid.sql', '2017-10-25 12:02:41.35913-07');
+INSERT INTO gorp_migrations VALUES ('3_use_sequence_in_history_accounts.sql', '2017-10-25 12:02:41.361119-07');
+INSERT INTO gorp_migrations VALUES ('4_add_protocol_version.sql', '2017-10-25 12:02:41.365998-07');
+INSERT INTO gorp_migrations VALUES ('5_create_trades_table.sql', '2017-10-25 12:02:41.370443-07');
+INSERT INTO gorp_migrations VALUES ('6_create_assets_table.sql', '2017-10-25 12:02:41.373746-07');
+INSERT INTO gorp_migrations VALUES ('7_modify_trades_table.sql', '2017-10-25 12:02:41.381902-07');
 
 
 --
@@ -550,20 +555,6 @@ CREATE INDEX htp_by_htid ON history_transaction_participants USING btree (histor
 
 
 --
--- Name: htr_by_bought; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX htr_by_bought ON history_trades USING btree (bought_asset_type, bought_asset_code, bought_asset_issuer);
-
-
---
--- Name: htr_by_sold; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX htr_by_sold ON history_trades USING btree (sold_asset_type, sold_asset_code, sold_asset_issuer);
-
-
---
 -- Name: htrd_by_offer; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -571,10 +562,31 @@ CREATE INDEX htrd_by_offer ON history_trades USING btree (offer_id);
 
 
 --
+-- Name: htrd_counter_lookup; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX htrd_counter_lookup ON history_trades USING btree (counter_asset_id);
+
+
+--
+-- Name: htrd_pair_time_lookup; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX htrd_pair_time_lookup ON history_trades USING btree (base_asset_id, counter_asset_id, ledger_closed_at);
+
+
+--
 -- Name: htrd_pid; Type: INDEX; Schema: public; Owner: -
 --
 
 CREATE UNIQUE INDEX htrd_pid ON history_trades USING btree (history_operation_id, "order");
+
+
+--
+-- Name: htrd_time_lookup; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX htrd_time_lookup ON history_trades USING btree (ledger_closed_at);
 
 
 --
@@ -673,6 +685,38 @@ CREATE UNIQUE INDEX index_history_transactions_on_id ON history_transactions USI
 --
 
 CREATE INDEX trade_effects_by_order_book ON history_effects USING btree (((details ->> 'sold_asset_type'::text)), ((details ->> 'sold_asset_code'::text)), ((details ->> 'sold_asset_issuer'::text)), ((details ->> 'bought_asset_type'::text)), ((details ->> 'bought_asset_code'::text)), ((details ->> 'bought_asset_issuer'::text))) WHERE (type = 33);
+
+
+--
+-- Name: history_trades history_trades_base_account_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY history_trades
+    ADD CONSTRAINT history_trades_base_account_id_fkey FOREIGN KEY (base_account_id) REFERENCES history_accounts(id);
+
+
+--
+-- Name: history_trades history_trades_base_asset_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY history_trades
+    ADD CONSTRAINT history_trades_base_asset_id_fkey FOREIGN KEY (base_asset_id) REFERENCES history_assets(id);
+
+
+--
+-- Name: history_trades history_trades_counter_account_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY history_trades
+    ADD CONSTRAINT history_trades_counter_account_id_fkey FOREIGN KEY (counter_account_id) REFERENCES history_accounts(id);
+
+
+--
+-- Name: history_trades history_trades_counter_asset_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY history_trades
+    ADD CONSTRAINT history_trades_counter_asset_id_fkey FOREIGN KEY (counter_asset_id) REFERENCES history_assets(id);
 
 
 --

@@ -301,17 +301,18 @@ func (base *Base) GetAsset(prefix string) (result xdr.Asset) {
 }
 
 // MaybeGetAsset decodes an asset from the request fields as GetAsset does, but
-// only if type field is populated.
-func (base *Base) MaybeGetAsset(prefix string) xdr.Asset {
+// only if type field is populated. returns an additional boolean reflecting whether
+// or not the decoding was performed
+func (base *Base) MaybeGetAsset(prefix string) (xdr.Asset, bool){
 	if base.Err != nil {
-		return xdr.Asset{}
+		return xdr.Asset{}, false
 	}
 
 	if base.GetString(prefix+"asset_type") == "" {
-		return xdr.Asset{}
+		return xdr.Asset{}, false
 	}
 
-	return base.GetAsset(prefix)
+	return base.GetAsset(prefix), true
 }
 
 // SetInvalidField establishes an error response triggered by an invalid

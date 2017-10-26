@@ -467,6 +467,7 @@ func (is *Session) ingestTrades() {
 			int32(i),
 			buyer,
 			trade,
+			is.Cursor.Ledger().CloseTime,
 		)
 		if is.Err != nil {
 			return

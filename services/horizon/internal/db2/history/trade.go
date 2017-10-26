@@ -5,19 +5,10 @@ import (
 	"math"
 
 	sq "github.com/Masterminds/squirrel"
-	"github.com/stellar/go/support/errors"
-	"github.com/stellar/go/xdr"
 	"github.com/stellar/go/services/horizon/internal/db2"
-	toid "github.com/stellar/go/services/horizon/internal/toid"
 )
 
-// LedgerSequence return the ledger in which the effect occurred.
-func (r *Trade) LedgerSequence() int32 {
-	id := toid.Parse(r.HistoryOperationID)
-	return id.LedgerSequence
-}
-
-// PagingToken returns a cursor for this effect
+// PagingToken returns a cursor for this trade
 func (r *Trade) PagingToken() string {
 	return fmt.Sprintf("%d-%d", r.HistoryOperationID, r.Order)
 }
@@ -31,33 +22,19 @@ func (q *Q) Trades() *TradesQ {
 	}
 }
 
-// ForBoughtAsset filters the query to only include trades involving that
-// involved selling the provided asset.
-func (q *TradesQ) ForBoughtAsset(bought xdr.Asset) *TradesQ {
-	q.orderBookFilter(bought, "bought_")
-	if q.Err != nil {
-		return q
+// TradesForAssetPair provides a helper to filter rows from the `history_trades` table
+// with the base filter of a specific asset pair.  See `TradesQ` methods for further available filters.
+func (q *Q) TradesForAssetPair(baseAssetId int64, counterAssetId int64) *TradesQ {
+	var sql sq.SelectBuilder
+	if baseAssetId < counterAssetId {
+		sql = selectTrade.Where(sq.Eq{"base_asset_id": baseAssetId, "counter_asset_id": counterAssetId})
+	} else {
+		sql = selectReverseTrade.Where(sq.Eq{"base_asset_id": counterAssetId, "counter_asset_id": baseAssetId})
 	}
-
-	return q
-}
-
-// ForOffer filters the trade query to only return trades that occurred against
-// the offer identified by `id`.
-func (q *TradesQ) ForOffer(id int64) *TradesQ {
-	q.sql = q.sql.Where("htrd.offer_id = ?", id)
-	return q
-}
-
-// ForSoldAsset filters the query to only include trades involving that involved
-// selling the provided asset.
-func (q *TradesQ) ForSoldAsset(sold xdr.Asset) *TradesQ {
-	q.orderBookFilter(sold, "sold_")
-	if q.Err != nil {
-		return q
+	return &TradesQ{
+		parent: q,
+		sql:    sql,
 	}
-
-	return q
 }
 
 // Page specifies the paging constraints for the query being built by `q`.
@@ -113,38 +90,45 @@ func (q *TradesQ) Select(dest interface{}) error {
 }
 
 var selectTrade = sq.Select(
-	"htrd.history_operation_id",
-	"htrd.order",
+	"history_operation_id",
+	"htrd.\"order\"",
+	"htrd.ledger_closed_at",
 	"htrd.offer_id",
-	"hacc1.address as seller_address",
-	"hacc2.address as buyer_address",
-	"htrd.sold_asset_type",
-	"htrd.sold_asset_code",
-	"htrd.sold_asset_issuer",
-	"htrd.sold_amount",
-	"htrd.bought_asset_type",
-	"htrd.bought_asset_code",
-	"htrd.bought_asset_issuer",
-	"htrd.bought_amount",
+	"base_accounts.address as base_account",
+	"base_assets.asset_type as base_asset_type",
+	"base_assets.asset_code as base_asset_code",
+	"base_assets.asset_issuer as base_asset_issuer",
+	"htrd.base_amount",
+	"counter_accounts.address as counter_account",
+	"counter_assets.asset_type as counter_asset_type",
+	"counter_assets.asset_code as counter_asset_code",
+	"counter_assets.asset_issuer as counter_asset_issuer",
+	"htrd.counter_amount",
+	"htrd.base_is_seller",
 ).From("history_trades htrd").
-	LeftJoin("history_accounts hacc1 ON hacc1.id = htrd.seller_id").
-	LeftJoin("history_accounts hacc2 ON hacc2.id = htrd.buyer_id")
+	Join("history_accounts base_accounts ON base_account_id = base_accounts.id").
+	Join("history_accounts counter_accounts ON counter_account_id = counter_accounts.id").
+	Join("history_assets base_assets ON base_asset_id = base_assets.id").
+	Join("history_assets counter_assets ON counter_asset_id = counter_assets.id")
 
-func (q *TradesQ) orderBookFilter(a xdr.Asset, prefix string) {
-	var typ, code, iss string
-	err := a.Extract(&typ, &code, &iss)
-	if err != nil {
-		q.Err = errors.Wrap(err, "failed to extract filter asset")
-		return
-	}
-
-	if !(prefix == "bought_" || prefix == "sold_") {
-		panic("invalid prefix: only bought_ and sold_ allowed")
-	}
-
-	clause := fmt.Sprintf(
-		`(htrd.%sasset_type = ? 
-		AND htrd.%sasset_code = ? 
-		AND htrd.%sasset_issuer = ?)`, prefix, prefix, prefix)
-	q.sql = q.sql.Where(clause, typ, code, iss)
-}
+var selectReverseTrade = sq.Select(
+	"history_operation_id",
+	"htrd.\"order\"",
+	"htrd.ledger_closed_at",
+	"htrd.offer_id",
+	"counter_accounts.address as base_account",
+	"counter_assets.asset_type as base_asset_type",
+	"counter_assets.asset_code as base_asset_code",
+	"counter_assets.asset_issuer as base_asset_issuer",
+	"htrd.base_amount",
+	"base_accounts.address as counter_account",
+	"base_assets.asset_type as counter_asset_type",
+	"base_assets.asset_code as counter_asset_code",
+	"base_assets.asset_issuer as counter_asset_issuer",
+	"htrd.counter_amount",
+	"NOT(htrd.base_is_seller) as base_is_seller",
+).From("history_trades htrd").
+	Join("history_accounts base_accounts ON base_account_id = base_accounts.id").
+	Join("history_accounts counter_accounts ON counter_account_id = counter_accounts.id").
+	Join("history_assets base_assets ON base_asset_id = base_assets.id").
+	Join("history_assets counter_assets ON counter_asset_id = counter_assets.id")

@@ -211,21 +211,24 @@ type TotalOrderID struct {
 	ID int64 `db:"id"`
 }
 
-// Trade is a row of data from the 'history_trades' table
+// Trade represents a trade from the trades table, joined with asset information from the assets table and account
+// addresses from the accounts table
 type Trade struct {
 	HistoryOperationID int64     `db:"history_operation_id"`
 	Order              int32     `db:"order"`
+	LedgerCloseTime    time.Time `db:"ledger_closed_at"`
 	OfferID            int64     `db:"offer_id"`
-	SellerAddress      string    `db:"seller_address"`
-	BuyerAddress       string    `db:"buyer_address"`
-	SoldAssetType      string    `db:"sold_asset_type"`
-	SoldAssetCode      string    `db:"sold_asset_code"`
-	SoldAssetIssuer    string    `db:"sold_asset_issuer"`
-	SoldAmount         xdr.Int64 `db:"sold_amount"`
-	BoughtAssetType    string    `db:"bought_asset_type"`
-	BoughtAssetCode    string    `db:"bought_asset_code"`
-	BoughtAssetIssuer  string    `db:"bought_asset_issuer"`
-	BoughtAmount       xdr.Int64 `db:"bought_amount"`
+	BaseAccount        string    `db:"base_account"`
+	BaseAssetType      string    `db:"base_asset_type"`
+	BaseAssetCode      string    `db:"base_asset_code"`
+	BaseAssetIssuer    string    `db:"base_asset_issuer"`
+	BaseAmount         xdr.Int64 `db:"base_amount"`
+	CounterAccount     string    `db:"counter_account"`
+	CounterAssetType   string    `db:"counter_asset_type"`
+	CounterAssetCode   string    `db:"counter_asset_code"`
+	CounterAssetIssuer string    `db:"counter_asset_issuer"`
+	CounterAmount      xdr.Int64 `db:"counter_amount"`
+	BaseIsSeller       bool      `db:"base_is_seller"`
 }
 
 // TradesQ is a helper struct to aid in configuring queries that loads

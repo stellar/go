@@ -5,13 +5,13 @@ package resource
 import (
 	"time"
 
-	"github.com/stellar/go/strkey"
-	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/services/horizon/internal/render/hal"
 	"github.com/stellar/go/services/horizon/internal/resource/base"
 	"github.com/stellar/go/services/horizon/internal/resource/effects"
 	"github.com/stellar/go/services/horizon/internal/resource/operations"
+	"github.com/stellar/go/strkey"
+	"github.com/stellar/go/support/errors"
 	"golang.org/x/net/context"
 )
 
@@ -185,29 +185,30 @@ type Signer struct {
 	Type      string `json:"type"`
 }
 
-// Trade represents a trade effect
+// Trade represents a horizon digested trade
 type Trade struct {
 	Links struct {
 		Self      hal.Link `json:"self"`
-		Seller    hal.Link `json:"seller"`
-		Buyer     hal.Link `json:"buyer"`
+		Base      hal.Link `json:"base"`
+		Counter   hal.Link `json:"counter"`
 		Operation hal.Link `json:"operation"`
 	} `json:"_links"`
 
-	ID                string    `json:"id"`
-	PT                string    `json:"paging_token"`
-	OfferID           string    `json:"offer_id"`
-	Seller            string    `json:"seller"`
-	SoldAmount        string    `json:"sold_amount"`
-	SoldAssetType     string    `json:"sold_asset_type"`
-	SoldAssetCode     string    `json:"sold_asset_code,omitempty"`
-	SoldAssetIssuer   string    `json:"sold_asset_issuer,omitempty"`
-	Buyer             string    `json:"buyer"`
-	BoughtAmount      string    `json:"bought_amount"`
-	BoughtAssetType   string    `json:"bought_asset_type"`
-	BoughtAssetCode   string    `json:"bought_asset_code,omitempty"`
-	BoughtAssetIssuer string    `json:"bought_asset_issuer,omitempty"`
-	LedgerCloseTime   time.Time `json:"created_at"`
+	ID                 string    `json:"id"`
+	PT                 string    `json:"paging_token"`
+	LedgerCloseTime    time.Time `json:"ledger_close_time"`
+	OfferID            string    `json:"offer_id"`
+	BaseAccount        string    `json:"base_account"`
+	BaseAmount         string    `json:"base_amount"`
+	BaseAssetType      string    `json:"base_asset_type"`
+	BaseAssetCode      string    `json:"base_asset_code,omitempty"`
+	BaseAssetIssuer    string    `json:"base_asset_issuer,omitempty"`
+	CounterAccount     string    `json:"counter_account"`
+	CounterAmount      string    `json:"counter_amount"`
+	CounterAssetType   string    `json:"counter_asset_type"`
+	CounterAssetCode   string    `json:"counter_asset_code,omitempty"`
+	CounterAssetIssuer string    `json:"counter_asset_issuer,omitempty"`
+	BaseIsSeller       bool      `json:"base_is_seller"`
 }
 
 // Transaction represents a single, successful transaction

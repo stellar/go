@@ -2,8 +2,8 @@
 -- PostgreSQL database dump
 --
 
--- Dumped from database version 9.6.3
--- Dumped by pg_dump version 9.6.3
+-- Dumped from database version 9.6.5
+-- Dumped by pg_dump version 9.6.5
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -14,6 +14,10 @@ SET client_min_messages = warning;
 
 SET search_path = public, pg_catalog;
 
+ALTER TABLE IF EXISTS ONLY public.history_trades DROP CONSTRAINT IF EXISTS history_trades_counter_asset_id_fkey;
+ALTER TABLE IF EXISTS ONLY public.history_trades DROP CONSTRAINT IF EXISTS history_trades_counter_account_id_fkey;
+ALTER TABLE IF EXISTS ONLY public.history_trades DROP CONSTRAINT IF EXISTS history_trades_base_asset_id_fkey;
+ALTER TABLE IF EXISTS ONLY public.history_trades DROP CONSTRAINT IF EXISTS history_trades_base_account_id_fkey;
 DROP INDEX IF EXISTS public.trade_effects_by_order_book;
 DROP INDEX IF EXISTS public.index_history_transactions_on_id;
 DROP INDEX IF EXISTS public.index_history_operations_on_type;
@@ -28,10 +32,11 @@ DROP INDEX IF EXISTS public.index_history_ledgers_on_closed_at;
 DROP INDEX IF EXISTS public.index_history_effects_on_type;
 DROP INDEX IF EXISTS public.index_history_accounts_on_id;
 DROP INDEX IF EXISTS public.index_history_accounts_on_address;
+DROP INDEX IF EXISTS public.htrd_time_lookup;
 DROP INDEX IF EXISTS public.htrd_pid;
+DROP INDEX IF EXISTS public.htrd_pair_time_lookup;
+DROP INDEX IF EXISTS public.htrd_counter_lookup;
 DROP INDEX IF EXISTS public.htrd_by_offer;
-DROP INDEX IF EXISTS public.htr_by_sold;
-DROP INDEX IF EXISTS public.htr_by_bought;
 DROP INDEX IF EXISTS public.htp_by_htid;
 DROP INDEX IF EXISTS public.hs_transaction_by_id;
 DROP INDEX IF EXISTS public.hs_ledger_by_id;
@@ -253,19 +258,18 @@ CREATE TABLE history_operations (
 CREATE TABLE history_trades (
     history_operation_id bigint NOT NULL,
     "order" integer NOT NULL,
+    ledger_closed_at timestamp without time zone NOT NULL,
     offer_id bigint NOT NULL,
-    seller_id bigint NOT NULL,
-    buyer_id bigint NOT NULL,
-    sold_asset_type character varying(64) NOT NULL,
-    sold_asset_issuer character varying(56) NOT NULL,
-    sold_asset_code character varying(12) NOT NULL,
-    sold_amount bigint NOT NULL,
-    bought_asset_type character varying(64) NOT NULL,
-    bought_asset_issuer character varying(56) NOT NULL,
-    bought_asset_code character varying(12) NOT NULL,
-    bought_amount bigint NOT NULL,
-    CONSTRAINT history_trades_bought_amount_check CHECK ((bought_amount > 0)),
-    CONSTRAINT history_trades_sold_amount_check CHECK ((sold_amount > 0))
+    base_account_id bigint NOT NULL,
+    base_asset_id bigint NOT NULL,
+    base_amount bigint NOT NULL,
+    counter_account_id bigint NOT NULL,
+    counter_asset_id bigint NOT NULL,
+    counter_amount bigint NOT NULL,
+    base_is_seller boolean,
+    CONSTRAINT history_trades_base_amount_check CHECK ((base_amount > 0)),
+    CONSTRAINT history_trades_check CHECK ((base_asset_id < counter_asset_id)),
+    CONSTRAINT history_trades_counter_amount_check CHECK ((counter_amount > 0))
 );
 
 
@@ -350,12 +354,13 @@ ALTER TABLE ONLY history_transaction_participants ALTER COLUMN id SET DEFAULT ne
 -- Data for Name: gorp_migrations; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-INSERT INTO gorp_migrations VALUES ('1_initial_schema.sql', '2017-10-18 13:08:39.275583-05');
-INSERT INTO gorp_migrations VALUES ('2_index_participants_by_toid.sql', '2017-10-18 13:08:39.280523-05');
-INSERT INTO gorp_migrations VALUES ('3_use_sequence_in_history_accounts.sql', '2017-10-18 13:08:39.286456-05');
-INSERT INTO gorp_migrations VALUES ('4_add_protocol_version.sql', '2017-10-18 13:08:39.296443-05');
-INSERT INTO gorp_migrations VALUES ('5_create_trades_table.sql', '2017-10-18 13:08:39.302387-05');
-INSERT INTO gorp_migrations VALUES ('6_create_assets_table.sql', '2017-10-18 13:08:39.307158-05');
+INSERT INTO gorp_migrations VALUES ('1_initial_schema.sql', '2017-10-25 12:02:41.355815-07');
+INSERT INTO gorp_migrations VALUES ('2_index_participants_by_toid.sql', '2017-10-25 12:02:41.35913-07');
+INSERT INTO gorp_migrations VALUES ('3_use_sequence_in_history_accounts.sql', '2017-10-25 12:02:41.361119-07');
+INSERT INTO gorp_migrations VALUES ('4_add_protocol_version.sql', '2017-10-25 12:02:41.365998-07');
+INSERT INTO gorp_migrations VALUES ('5_create_trades_table.sql', '2017-10-25 12:02:41.370443-07');
+INSERT INTO gorp_migrations VALUES ('6_create_assets_table.sql', '2017-10-25 12:02:41.373746-07');
+INSERT INTO gorp_migrations VALUES ('7_modify_trades_table.sql', '2017-10-25 12:02:41.381902-07');
 
 
 --
@@ -401,9 +406,9 @@ INSERT INTO history_effects VALUES (2, 12884905985, 2, 3, '{"amount": "5.0000000
 -- Data for Name: history_ledgers; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-INSERT INTO history_ledgers VALUES (1, '63d98f536ee68d1b27b5b89f23af5311b7569a24faf1403ad0b52b633b07be99', NULL, 0, 0, '1970-01-01 00:00:00', '2017-10-19 20:33:27.539664', '2017-10-19 20:33:27.539664', 4294967296, 9, 1000000000000000000, 0, 100, 100000000, 100, 0);
-INSERT INTO history_ledgers VALUES (2, 'fb992f041f44bbfdc0691b27ad03c5d59919e97ca77bc7d9b1c0f0c406552493', '63d98f536ee68d1b27b5b89f23af5311b7569a24faf1403ad0b52b633b07be99', 1, 1, '2017-10-19 20:33:25', '2017-10-19 20:33:27.550451', '2017-10-19 20:33:27.550451', 8589934592, 9, 1000000000000000000, 100, 100, 100000000, 10000, 8);
-INSERT INTO history_ledgers VALUES (3, 'ba022898473cf9511946549d0aa0cc36b6f4ea498b0153a55ab168fd4ced7026', 'fb992f041f44bbfdc0691b27ad03c5d59919e97ca77bc7d9b1c0f0c406552493', 1, 1, '2017-10-19 20:33:26', '2017-10-19 20:33:27.566068', '2017-10-19 20:33:27.566068', 12884901888, 9, 1000000000000000000, 200, 100, 100000000, 10000, 8);
+INSERT INTO history_ledgers VALUES (1, '63d98f536ee68d1b27b5b89f23af5311b7569a24faf1403ad0b52b633b07be99', NULL, 0, 0, '1970-01-01 00:00:00', '2017-10-25 19:04:44.835058', '2017-10-25 19:04:44.835058', 4294967296, 10, 1000000000000000000, 0, 100, 100000000, 100, 0);
+INSERT INTO history_ledgers VALUES (2, '636c66f80f6ff82f72b9d770724cc2f7e5720f4e6cc3e4d02d4388722ed645ae', '63d98f536ee68d1b27b5b89f23af5311b7569a24faf1403ad0b52b633b07be99', 1, 1, '2017-10-25 19:04:39', '2017-10-25 19:04:44.840129', '2017-10-25 19:04:44.840129', 8589934592, 10, 1000000000000000000, 100, 100, 100000000, 10000, 8);
+INSERT INTO history_ledgers VALUES (3, '8864dde81bd29ddba26fe3840e172a80ec323a5343bfa757cc4381779f6b56c5', '636c66f80f6ff82f72b9d770724cc2f7e5720f4e6cc3e4d02d4388722ed645ae', 1, 1, '2017-10-25 19:04:40', '2017-10-25 19:04:44.864773', '2017-10-25 19:04:44.864773', 12884901888, 10, 1000000000000000000, 200, 100, 100000000, 10000, 8);
 
 
 --
@@ -456,8 +461,8 @@ SELECT pg_catalog.setval('history_transaction_participants_id_seq', 3, true);
 -- Data for Name: history_transactions; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-INSERT INTO history_transactions VALUES ('2374e99349b9ef7dba9a5db3339b78fda8f34777b1af33ba468ad5c0df946d4d', 2, 1, 'GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H', 1, 100, 1, '2017-10-19 20:33:27.55087', '2017-10-19 20:33:27.55087', 8589938688, 'AAAAAGL8HQvQkbK2HA3WVjRrKmjX00fG8sLI7m0ERwJW/AX3AAAAZAAAAAAAAAABAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAArqN6LeOagjxMaUP96Bzfs9e0corNZXzBWJkFoK7kvkwAAAAAO5rKAAAAAAAAAAABVvwF9wAAAECDzqvkQBQoNAJifPRXDoLhvtycT3lFPCQ51gkdsFHaBNWw05S/VhW0Xgkr0CBPE4NaFV2Kmcs3ZwLmib4TRrML', 'AAAAAAAAAGQAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAA=', 'AAAAAAAAAAEAAAACAAAAAAAAAAIAAAAAAAAAAK6jei3jmoI8TGlD/egc37PXtHKKzWV8wViZBaCu5L5MAAAAADuaygAAAAACAAAAAAAAAAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAIAAAAAAAAAAGL8HQvQkbK2HA3WVjRrKmjX00fG8sLI7m0ERwJW/AX3DeC2s2vJNZwAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAAAA', 'AAAAAgAAAAMAAAABAAAAAAAAAABi/B0L0JGythwN1lY0aypo19NHxvLCyO5tBEcCVvwF9w3gtrOnZAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAEAAAACAAAAAAAAAABi/B0L0JGythwN1lY0aypo19NHxvLCyO5tBEcCVvwF9w3gtrOnY/+cAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAA==', '{g86r5EAUKDQCYnz0Vw6C4b7cnE95RTwkOdYJHbBR2gTVsNOUv1YVtF4JK9AgTxODWhVdipnLN2cC5om+E0azCw==}', 'none', NULL, NULL);
-INSERT INTO history_transactions VALUES ('f5971def3ff08c05ce222e7d71bf43703bb98ea1f776ea73085265d35dfd42ab', 3, 1, 'GCXKG6RN4ONIEPCMNFB732A436Z5PNDSRLGWK7GBLCMQLIFO4S7EYWVU', 8589934593, 100, 1, '2017-10-19 20:33:27.566705', '2017-10-19 20:33:27.566705', 12884905984, 'AAAAAK6jei3jmoI8TGlD/egc37PXtHKKzWV8wViZBaCu5L5MAAAAZAAAAAIAAAABAAAAAAAAAAAAAAABAAAAAAAAAAEAAAAArqN6LeOagjxMaUP96Bzfs9e0corNZXzBWJkFoK7kvkwAAAAAAAAAAAL68IAAAAAAAAAAAa7kvkwAAABAsWrm6a8GQsiVWFe3lswEI88Cq56ij2ztlHnqIiRwWhNBR1YMXHlNwcuICXzJ+2Sux6LQpjpLabuwDUWhHWIZAA==', 'AAAAAAAAAGQAAAAAAAAAAQAAAAAAAAABAAAAAAAAAAA=', 'AAAAAAAAAAEAAAAA', 'AAAAAgAAAAMAAAACAAAAAAAAAACuo3ot45qCPExpQ/3oHN+z17Ryis1lfMFYmQWgruS+TAAAAAA7msoAAAAAAgAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAEAAAADAAAAAAAAAACuo3ot45qCPExpQ/3oHN+z17Ryis1lfMFYmQWgruS+TAAAAAA7msmcAAAAAgAAAAEAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAA==', '{sWrm6a8GQsiVWFe3lswEI88Cq56ij2ztlHnqIiRwWhNBR1YMXHlNwcuICXzJ+2Sux6LQpjpLabuwDUWhHWIZAA==}', 'none', NULL, NULL);
+INSERT INTO history_transactions VALUES ('2374e99349b9ef7dba9a5db3339b78fda8f34777b1af33ba468ad5c0df946d4d', 2, 1, 'GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H', 1, 100, 1, '2017-10-25 19:04:44.840778', '2017-10-25 19:04:44.840778', 8589938688, 'AAAAAGL8HQvQkbK2HA3WVjRrKmjX00fG8sLI7m0ERwJW/AX3AAAAZAAAAAAAAAABAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAArqN6LeOagjxMaUP96Bzfs9e0corNZXzBWJkFoK7kvkwAAAAAO5rKAAAAAAAAAAABVvwF9wAAAECDzqvkQBQoNAJifPRXDoLhvtycT3lFPCQ51gkdsFHaBNWw05S/VhW0Xgkr0CBPE4NaFV2Kmcs3ZwLmib4TRrML', 'AAAAAAAAAGQAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAA=', 'AAAAAAAAAAEAAAACAAAAAAAAAAIAAAAAAAAAAK6jei3jmoI8TGlD/egc37PXtHKKzWV8wViZBaCu5L5MAAAAADuaygAAAAACAAAAAAAAAAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAIAAAAAAAAAAGL8HQvQkbK2HA3WVjRrKmjX00fG8sLI7m0ERwJW/AX3DeC2s2vJNZwAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAAAA', 'AAAAAgAAAAMAAAABAAAAAAAAAABi/B0L0JGythwN1lY0aypo19NHxvLCyO5tBEcCVvwF9w3gtrOnZAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAEAAAACAAAAAAAAAABi/B0L0JGythwN1lY0aypo19NHxvLCyO5tBEcCVvwF9w3gtrOnY/+cAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAA==', '{g86r5EAUKDQCYnz0Vw6C4b7cnE95RTwkOdYJHbBR2gTVsNOUv1YVtF4JK9AgTxODWhVdipnLN2cC5om+E0azCw==}', 'none', NULL, NULL);
+INSERT INTO history_transactions VALUES ('f5971def3ff08c05ce222e7d71bf43703bb98ea1f776ea73085265d35dfd42ab', 3, 1, 'GCXKG6RN4ONIEPCMNFB732A436Z5PNDSRLGWK7GBLCMQLIFO4S7EYWVU', 8589934593, 100, 1, '2017-10-25 19:04:44.865633', '2017-10-25 19:04:44.865633', 12884905984, 'AAAAAK6jei3jmoI8TGlD/egc37PXtHKKzWV8wViZBaCu5L5MAAAAZAAAAAIAAAABAAAAAAAAAAAAAAABAAAAAAAAAAEAAAAArqN6LeOagjxMaUP96Bzfs9e0corNZXzBWJkFoK7kvkwAAAAAAAAAAAL68IAAAAAAAAAAAa7kvkwAAABAsWrm6a8GQsiVWFe3lswEI88Cq56ij2ztlHnqIiRwWhNBR1YMXHlNwcuICXzJ+2Sux6LQpjpLabuwDUWhHWIZAA==', 'AAAAAAAAAGQAAAAAAAAAAQAAAAAAAAABAAAAAAAAAAA=', 'AAAAAAAAAAEAAAAA', 'AAAAAgAAAAMAAAACAAAAAAAAAACuo3ot45qCPExpQ/3oHN+z17Ryis1lfMFYmQWgruS+TAAAAAA7msoAAAAAAgAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAEAAAADAAAAAAAAAACuo3ot45qCPExpQ/3oHN+z17Ryis1lfMFYmQWgruS+TAAAAAA7msmcAAAAAgAAAAEAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAA==', '{sWrm6a8GQsiVWFe3lswEI88Cq56ij2ztlHnqIiRwWhNBR1YMXHlNwcuICXzJ+2Sux6LQpjpLabuwDUWhHWIZAA==}', 'none', NULL, NULL);
 
 
 --
@@ -585,20 +590,6 @@ CREATE INDEX htp_by_htid ON history_transaction_participants USING btree (histor
 
 
 --
--- Name: htr_by_bought; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX htr_by_bought ON history_trades USING btree (bought_asset_type, bought_asset_code, bought_asset_issuer);
-
-
---
--- Name: htr_by_sold; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX htr_by_sold ON history_trades USING btree (sold_asset_type, sold_asset_code, sold_asset_issuer);
-
-
---
 -- Name: htrd_by_offer; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -606,10 +597,31 @@ CREATE INDEX htrd_by_offer ON history_trades USING btree (offer_id);
 
 
 --
+-- Name: htrd_counter_lookup; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX htrd_counter_lookup ON history_trades USING btree (counter_asset_id);
+
+
+--
+-- Name: htrd_pair_time_lookup; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX htrd_pair_time_lookup ON history_trades USING btree (base_asset_id, counter_asset_id, ledger_closed_at);
+
+
+--
 -- Name: htrd_pid; Type: INDEX; Schema: public; Owner: -
 --
 
 CREATE UNIQUE INDEX htrd_pid ON history_trades USING btree (history_operation_id, "order");
+
+
+--
+-- Name: htrd_time_lookup; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX htrd_time_lookup ON history_trades USING btree (ledger_closed_at);
 
 
 --
@@ -708,6 +720,38 @@ CREATE UNIQUE INDEX index_history_transactions_on_id ON history_transactions USI
 --
 
 CREATE INDEX trade_effects_by_order_book ON history_effects USING btree (((details ->> 'sold_asset_type'::text)), ((details ->> 'sold_asset_code'::text)), ((details ->> 'sold_asset_issuer'::text)), ((details ->> 'bought_asset_type'::text)), ((details ->> 'bought_asset_code'::text)), ((details ->> 'bought_asset_issuer'::text))) WHERE (type = 33);
+
+
+--
+-- Name: history_trades history_trades_base_account_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY history_trades
+    ADD CONSTRAINT history_trades_base_account_id_fkey FOREIGN KEY (base_account_id) REFERENCES history_accounts(id);
+
+
+--
+-- Name: history_trades history_trades_base_asset_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY history_trades
+    ADD CONSTRAINT history_trades_base_asset_id_fkey FOREIGN KEY (base_asset_id) REFERENCES history_assets(id);
+
+
+--
+-- Name: history_trades history_trades_counter_account_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY history_trades
+    ADD CONSTRAINT history_trades_counter_account_id_fkey FOREIGN KEY (counter_account_id) REFERENCES history_accounts(id);
+
+
+--
+-- Name: history_trades history_trades_counter_asset_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY history_trades
+    ADD CONSTRAINT history_trades_counter_asset_id_fkey FOREIGN KEY (counter_asset_id) REFERENCES history_assets(id);
 
 
 --
