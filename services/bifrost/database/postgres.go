@@ -60,6 +60,12 @@ type processedTransactionRow struct {
 	CreatedAt        time.Time `db:"created_at"`
 }
 
+
+type recoveryTransactionRow struct {
+	Source	string `db:source`
+	EnvelopeXDR string `db:envelope_xdr`
+}
+
 func fromQueueTransaction(tx queue.Transaction) *transactionsQueueRow {
 	return &transactionsQueueRow{
 		TransactionID:    tx.TransactionID,
@@ -423,4 +429,12 @@ func (d *PostgresDatabase) getEventsLastID() (int64, error) {
 	}
 
 	return row.ID, nil
+}
+
+func (d *PostgresDatabase) AddRecoveryTransaction(sourceAccount string txEnvelope string) error {
+	recoveryTransactionTable := d.getTable("RecoveryTransactions", nil)
+	recoveryTransaction := recoveryTransactionRow{Source: sourceAccount, EnvelopeXDR: txEnvelope,}
+
+		_, err := recoveryTransactionTable.Insert(recoveryTransaction).Exec()
+	return err
 }

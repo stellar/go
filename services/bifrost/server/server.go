@@ -19,6 +19,7 @@ import (
 	"github.com/stellar/go/services/bifrost/ethereum"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/support/log"
+	"github.com/stellar/go/xdr"
 )
 
 func (s *Server) Start() error {
@@ -119,6 +120,7 @@ func (s *Server) startHTTPServer() {
 	r.Get("/events", s.HandlerEvents)
 	r.Post("/generate-bitcoin-address", s.HandlerGenerateBitcoinAddress)
 	r.Post("/generate-ethereum-address", s.HandlerGenerateEthereumAddress)
+	r.Post("/recovery-transaction", s.HandlerRecoveryTransaction)
 
 	log.WithField("port", s.Config.Port).Info("Starting HTTP server")
 
@@ -268,4 +270,32 @@ func (s *Server) handlerGenerateAddress(w http.ResponseWriter, r *http.Request, 
 	}
 
 	w.Write(responseBytes)
+}
+
+func (s *Server) HandlerRecoveryTransaction(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	var transactionEnvelope xdr.TransactionEnvelope
+	transactionXdr := r.PostFormValue("transaction_xdr")
+	if transactionXdr == "" {
+		log.WithField("transaction_xdr", transactionXdr).Warn("Invalid Transaction Xdr")
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	err := xdr.SafeUnmarshalBase64(transactionXdr, &transactionEnvelope)
+	if err != nil {
+		log.WithField("transaction", transactionXdr).Warn("Invalid Transaction Xdr")
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	err := s.Database.AddRecoveryTransaction(transactionEnvelope.Tx.SourceAccount, transactionEnvelope)
+	if err != nil {
+		log.WithField("err", err).Error("Error savinf recovery transaction")
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	return
 }
