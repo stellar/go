@@ -5,11 +5,10 @@ import (
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/support/log"
 	"github.com/tyler-smith/go-bip32"
 )
-
-const stellarAmountPrecision = 7
 
 var (
 	ten      = big.NewInt(10)
@@ -27,6 +26,7 @@ var (
 // Listener ignores contract creation transactions.
 // Listener requires geth 1.7.0.
 type Listener struct {
+	Enabled            bool
 	Client             Client  `inject:""`
 	Storage            Storage `inject:""`
 	NetworkID          string
@@ -62,4 +62,22 @@ type Transaction struct {
 
 type AddressGenerator struct {
 	masterPublicKey *bip32.Key
+}
+
+func EthToWei(eth string) (*big.Int, error) {
+	valueRat := new(big.Rat)
+	_, ok := valueRat.SetString(eth)
+	if !ok {
+		return nil, errors.New("Could not convert to *big.Rat")
+	}
+
+	// Calculate value in Wei
+	valueRat.Mul(valueRat, weiInEth)
+
+	// Ensure denominator is equal `1`
+	if valueRat.Denom().Cmp(big.NewInt(1)) != 0 {
+		return nil, errors.New("Invalid precision, is value smaller than 1 Wei?")
+	}
+
+	return valueRat.Num(), nil
 }

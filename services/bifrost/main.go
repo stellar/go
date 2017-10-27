@@ -213,37 +213,82 @@ func createServer(cfg config.Config, stressTest bool) *server.Server {
 		os.Exit(-1)
 	}
 
+	server := &server.Server{}
+
 	bitcoinClient := &rpcclient.Client{}
+	bitcoinListener := &bitcoin.Listener{}
+	bitcoinAddressGenerator := &bitcoin.AddressGenerator{}
+
 	ethereumClient := &ethclient.Client{}
+	ethereumListener := &ethereum.Listener{}
+	ethereumAddressGenerator := &ethereum.AddressGenerator{}
 
 	if !stressTest {
 		// Configure real clients
-		connConfig := &rpcclient.ConnConfig{
-			Host:         cfg.Bitcoin.RpcServer,
-			User:         cfg.Bitcoin.RpcUser,
-			Pass:         cfg.Bitcoin.RpcPass,
-			HTTPPostMode: true,
-			DisableTLS:   true,
+		if cfg.Bitcoin != nil {
+			connConfig := &rpcclient.ConnConfig{
+				Host:         cfg.Bitcoin.RpcServer,
+				User:         cfg.Bitcoin.RpcUser,
+				Pass:         cfg.Bitcoin.RpcPass,
+				HTTPPostMode: true,
+				DisableTLS:   true,
+			}
+			bitcoinClient, err = rpcclient.New(connConfig, nil)
+			if err != nil {
+				log.WithField("err", err).Error("Error connecting to bitcoin-core")
+				os.Exit(-1)
+			}
+
+			bitcoinListener.Enabled = true
+			bitcoinListener.Testnet = cfg.Bitcoin.Testnet
+			server.MinimumValueBtc = cfg.Bitcoin.MinimumValueBtc
+
+			var chainParams *chaincfg.Params
+			if cfg.Bitcoin.Testnet {
+				chainParams = &chaincfg.TestNet3Params
+			} else {
+				chainParams = &chaincfg.MainNetParams
+			}
+			bitcoinAddressGenerator, err = bitcoin.NewAddressGenerator(cfg.Bitcoin.MasterPublicKey, chainParams)
+			if err != nil {
+				log.Error(err)
+				os.Exit(-1)
+			}
 		}
-		bitcoinClient, err = rpcclient.New(connConfig, nil)
+
+		if cfg.Ethereum != nil {
+			ethereumClient, err = ethclient.Dial("http://" + cfg.Ethereum.RpcServer)
+			if err != nil {
+				log.WithField("err", err).Error("Error connecting to geth")
+				os.Exit(-1)
+			}
+
+			ethereumListener.Enabled = true
+			ethereumListener.NetworkID = cfg.Ethereum.NetworkID
+			server.MinimumValueEth = cfg.Ethereum.MinimumValueEth
+
+			ethereumAddressGenerator, err = ethereum.NewAddressGenerator(cfg.Ethereum.MasterPublicKey)
+			if err != nil {
+				log.Error(err)
+				os.Exit(-1)
+			}
+		}
+	} else {
+		bitcoinListener.Enabled = true
+		bitcoinListener.Testnet = true
+		bitcoinAddressGenerator, err = bitcoin.NewAddressGenerator(cfg.Bitcoin.MasterPublicKey, &chaincfg.TestNet3Params)
 		if err != nil {
-			log.WithField("err", err).Error("Error connecting to bitcoin-core")
+			log.Error(err)
 			os.Exit(-1)
 		}
 
-		ethereumClient, err = ethclient.Dial("http://" + cfg.Ethereum.RpcServer)
+		ethereumListener.Enabled = true
+		ethereumListener.NetworkID = "3"
+		ethereumAddressGenerator, err = ethereum.NewAddressGenerator(cfg.Ethereum.MasterPublicKey)
 		if err != nil {
-			log.WithField("err", err).Error("Error connecting to geth")
+			log.Error(err)
 			os.Exit(-1)
 		}
-	}
-
-	bitcoinListener := &bitcoin.Listener{
-		Testnet: cfg.Bitcoin.Testnet,
-	}
-
-	ethereumListener := &ethereum.Listener{
-		NetworkID: cfg.Ethereum.NetworkID,
 	}
 
 	stellarAccountConfigurator := &stellar.AccountConfigurator{
@@ -259,27 +304,7 @@ func createServer(cfg config.Config, stressTest bool) *server.Server {
 		},
 	}
 
-	var chainParams *chaincfg.Params
-	if cfg.Bitcoin.Testnet {
-		chainParams = &chaincfg.TestNet3Params
-	} else {
-		chainParams = &chaincfg.MainNetParams
-	}
-	bitcoinAddressGenerator, err := bitcoin.NewAddressGenerator(cfg.Bitcoin.MasterPublicKey, chainParams)
-	if err != nil {
-		log.Error(err)
-		os.Exit(-1)
-	}
-
-	ethereumAddressGenerator, err := ethereum.NewAddressGenerator(cfg.Ethereum.MasterPublicKey)
-	if err != nil {
-		log.Error(err)
-		os.Exit(-1)
-	}
-
 	sseServer := &sse.Server{}
-
-	server := &server.Server{}
 
 	err = g.Provide(
 		&inject.Object{Value: bitcoinAddressGenerator},

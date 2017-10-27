@@ -27,8 +27,7 @@ func (s *Server) onNewBitcoinTransaction(transaction bitcoin.Transaction) error 
 	// Let's check if tx is valid first.
 
 	// Check if value is above minimum required
-	// TODO, make this configurable
-	if transaction.ValueSat <= 0 {
+	if transaction.ValueSat < s.minimumValueSat {
 		localLog.Debug("Value is below minimum required amount, skipping")
 		return nil
 	}

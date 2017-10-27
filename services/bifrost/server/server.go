@@ -13,8 +13,10 @@ import (
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
 	"github.com/stellar/go/keypair"
+	"github.com/stellar/go/services/bifrost/bitcoin"
 	"github.com/stellar/go/services/bifrost/common"
 	"github.com/stellar/go/services/bifrost/database"
+	"github.com/stellar/go/services/bifrost/ethereum"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/support/log"
 )
@@ -29,17 +31,49 @@ func (s *Server) Start() error {
 	s.StellarAccountConfigurator.OnAccountCreated = s.onStellarAccountCreated
 	s.StellarAccountConfigurator.OnAccountCredited = s.onStellarAccountCredited
 
-	err := s.BitcoinListener.Start()
-	if err != nil {
-		return errors.Wrap(err, "Error starting BitcoinListener")
+	if !s.BitcoinListener.Enabled && !s.EthereumListener.Enabled {
+		return errors.New("At least one listener (BitcoinListener or EthereumListener) must be enabled")
 	}
 
-	err = s.EthereumListener.Start(s.Config.Ethereum.RpcServer)
-	if err != nil {
-		return errors.Wrap(err, "Error starting EthereumListener")
+	if s.BitcoinListener.Enabled {
+		var err error
+		s.minimumValueSat, err = bitcoin.BtcToSat(s.MinimumValueBtc)
+		if err != nil {
+			return errors.Wrap(err, "Invalid minimum accepted Bitcoin transaction value")
+		}
+
+		if s.minimumValueSat == 0 {
+			return errors.New("Minimum accepted Bitcoin transaction value must be larger than 0")
+		}
+
+		err = s.BitcoinListener.Start()
+		if err != nil {
+			return errors.Wrap(err, "Error starting BitcoinListener")
+		}
+	} else {
+		s.log.Warn("BitcoinListener disabled")
 	}
 
-	err = s.StellarAccountConfigurator.Start()
+	if s.EthereumListener.Enabled {
+		var err error
+		s.minimumValueWei, err = ethereum.EthToWei(s.MinimumValueEth)
+		if err != nil {
+			return errors.Wrap(err, "Invalid minimum accepted Ethereum transaction value")
+		}
+
+		if s.minimumValueWei.Cmp(new(big.Int)) == 0 {
+			return errors.New("Minimum accepted Ethereum transaction value must be larger than 0")
+		}
+
+		err = s.EthereumListener.Start(s.Config.Ethereum.RpcServer)
+		if err != nil {
+			return errors.Wrap(err, "Error starting EthereumListener")
+		}
+	} else {
+		s.log.Warn("EthereumListener disabled")
+	}
+
+	err := s.StellarAccountConfigurator.Start()
 	if err != nil {
 		return errors.Wrap(err, "Error starting StellarAccountConfigurator")
 	}

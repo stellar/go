@@ -9,6 +9,7 @@ package horizon
 import (
 	"net/http"
 	"net/url"
+	"sync"
 
 	"github.com/stellar/go/build"
 	"github.com/stellar/go/support/errors"
@@ -64,6 +65,8 @@ type Client struct {
 
 	// HTTP client to make requests with
 	HTTP HTTP
+
+	fixURLOnce sync.Once
 }
 
 type ClientInterface interface {

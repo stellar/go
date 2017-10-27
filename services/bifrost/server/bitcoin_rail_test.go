@@ -28,7 +28,8 @@ func (suite *BitcoinRailTestSuite) SetupTest() {
 	suite.Server = &Server{
 		Database:          suite.MockDatabase,
 		TransactionsQueue: suite.MockQueue,
-		sseServer:         suite.MockSSEServer,
+		SSEServer:         suite.MockSSEServer,
+		minimumValueSat:   100000000, // 1 BTC
 	}
 	suite.Server.initLogger()
 }
@@ -43,7 +44,7 @@ func (suite *BitcoinRailTestSuite) TestInvalidValue() {
 	transaction := bitcoin.Transaction{
 		Hash:       "109fa1c369680c2f27643fdd160620d010851a376d25b9b00ef71afe789ea6ed",
 		TxOutIndex: 0,
-		ValueSat:   0,
+		ValueSat:   50000000, // 0.5 BTC
 		To:         "1Q74qRud8bXUn6FMtXWZwJa5pj56s3mdyf",
 	}
 	suite.MockDatabase.AssertNotCalled(suite.T(), "AddProcessedTransaction")

@@ -31,7 +31,8 @@ func (suite *EthereumRailTestSuite) SetupTest() {
 	suite.Server = &Server{
 		Database:          suite.MockDatabase,
 		TransactionsQueue: suite.MockQueue,
-		sseServer:         suite.MockSSEServer,
+		SSEServer:         suite.MockSSEServer,
+		minimumValueWei:   big.NewInt(1000000000000000000), // 1 ETH
 	}
 	suite.Server.initLogger()
 }
@@ -45,7 +46,7 @@ func (suite *EthereumRailTestSuite) TearDownTest() {
 func (suite *EthereumRailTestSuite) TestInvalidValue() {
 	transaction := ethereum.Transaction{
 		Hash:     "0x0a190d17ba0405bce37fafd3a7a7bef51264ea4083ffae3b2de90ed61ee5264e",
-		ValueWei: new(big.Int),
+		ValueWei: big.NewInt(500000000000000000), // 0.5 ETH
 		To:       "0x80D3ee1268DC1A2d1b9E73D49050083E75Ef7c2D",
 	}
 	suite.MockDatabase.AssertNotCalled(suite.T(), "AddProcessedTransaction")

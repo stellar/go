@@ -6,11 +6,10 @@ import (
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/btcsuite/btcd/chaincfg/chainhash"
 	"github.com/btcsuite/btcd/wire"
+	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/support/log"
 	"github.com/tyler-smith/go-bip32"
 )
-
-const stellarAmountPrecision = 7
 
 var (
 	eight = big.NewInt(8)
@@ -27,6 +26,7 @@ var (
 // Listener tracks only P2PKH payments.
 // You can run multiple Listeners if Storage is implemented correctly.
 type Listener struct {
+	Enabled            bool
 	Client             Client  `inject:""`
 	Storage            Storage `inject:""`
 	TransactionHandler TransactionHandler
@@ -66,4 +66,22 @@ type Transaction struct {
 type AddressGenerator struct {
 	masterPublicKey *bip32.Key
 	chainParams     *chaincfg.Params
+}
+
+func BtcToSat(btc string) (int64, error) {
+	valueRat := new(big.Rat)
+	_, ok := valueRat.SetString(btc)
+	if !ok {
+		return 0, errors.New("Could not convert to *big.Rat")
+	}
+
+	// Calculate value in satoshi
+	valueRat.Mul(valueRat, satInBtc)
+
+	// Ensure denominator is equal `1`
+	if valueRat.Denom().Cmp(big.NewInt(1)) != 0 {
+		return 0, errors.New("Invalid precision, is value smaller than 1 satoshi?")
+	}
+
+	return valueRat.Num().Int64(), nil
 }

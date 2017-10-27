@@ -22,8 +22,7 @@ func (s *Server) onNewEthereumTransaction(transaction ethereum.Transaction) erro
 	// Let's check if tx is valid first.
 
 	// Check if value is above minimum required
-	// TODO, make this configurable
-	if transaction.ValueWei.Sign() <= 0 {
+	if transaction.ValueWei.Cmp(s.minimumValueWei) < 0 {
 		localLog.Debug("Value is below minimum required amount, skipping")
 		return nil
 	}

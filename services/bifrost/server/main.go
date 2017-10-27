@@ -1,6 +1,7 @@
 package server
 
 import (
+	"math/big"
 	"net/http"
 
 	"github.com/stellar/go/services/bifrost/bitcoin"
@@ -24,8 +25,13 @@ type Server struct {
 	TransactionsQueue          queue.Queue                  `inject:""`
 	SSEServer                  sse.ServerInterface          `inject:""`
 
-	httpServer *http.Server
-	log        *log.Entry
+	MinimumValueBtc string
+	MinimumValueEth string
+
+	minimumValueSat int64
+	minimumValueWei *big.Int
+	httpServer      *http.Server
+	log             *log.Entry
 }
 
 type GenerateAddressResponse struct {

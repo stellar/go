@@ -34,7 +34,7 @@ func (c *Client) fixURL() {
 // LoadAccount loads the account state from horizon. err can be either error
 // object or horizon.Error object.
 func (c *Client) LoadAccount(accountID string) (account Account, err error) {
-	c.fixURL()
+	c.fixURLOnce.Do(c.fixURL)
 	resp, err := c.HTTP.Get(c.URL + "/accounts/" + accountID)
 	if err != nil {
 		return
@@ -47,7 +47,7 @@ func (c *Client) LoadAccount(accountID string) (account Account, err error) {
 // LoadAccountOffers loads the account offers from horizon. err can be either
 // error object or horizon.Error object.
 func (c *Client) LoadAccountOffers(accountID string, params ...interface{}) (offers OffersPage, err error) {
-	c.fixURL()
+	c.fixURLOnce.Do(c.fixURL)
 	endpoint := ""
 	query := url.Values{}
 
@@ -123,7 +123,7 @@ func (c *Client) SequenceForAccount(
 
 // LoadOrderBook loads order book for given selling and buying assets.
 func (c *Client) LoadOrderBook(selling Asset, buying Asset, params ...interface{}) (orderBook OrderBookSummary, err error) {
-	c.fixURL()
+	c.fixURLOnce.Do(c.fixURL)
 	query := url.Values{}
 
 	query.Add("selling_asset_type", selling.Type)
@@ -246,7 +246,7 @@ func (c *Client) stream(ctx context.Context, baseURL string, cursor *Cursor, han
 // StreamLedgers streams incoming ledgers. Use context.WithCancel to stop streaming or
 // context.Background() if you want to stream indefinitely.
 func (c *Client) StreamLedgers(ctx context.Context, cursor *Cursor, handler LedgerHandler) (err error) {
-	c.fixURL()
+	c.fixURLOnce.Do(c.fixURL)
 	url := fmt.Sprintf("%s/ledgers", c.URL)
 	return c.stream(ctx, url, cursor, func(data []byte) error {
 		var ledger Ledger
@@ -262,7 +262,7 @@ func (c *Client) StreamLedgers(ctx context.Context, cursor *Cursor, handler Ledg
 // StreamPayments streams incoming payments. Use context.WithCancel to stop streaming or
 // context.Background() if you want to stream indefinitely.
 func (c *Client) StreamPayments(ctx context.Context, accountID string, cursor *Cursor, handler PaymentHandler) (err error) {
-	c.fixURL()
+	c.fixURLOnce.Do(c.fixURL)
 	url := fmt.Sprintf("%s/accounts/%s/payments", c.URL, accountID)
 	return c.stream(ctx, url, cursor, func(data []byte) error {
 		var payment Payment
@@ -278,7 +278,7 @@ func (c *Client) StreamPayments(ctx context.Context, accountID string, cursor *C
 // StreamTransactions streams incoming transactions. Use context.WithCancel to stop streaming or
 // context.Background() if you want to stream indefinitely.
 func (c *Client) StreamTransactions(ctx context.Context, accountID string, cursor *Cursor, handler TransactionHandler) (err error) {
-	c.fixURL()
+	c.fixURLOnce.Do(c.fixURL)
 	url := fmt.Sprintf("%s/accounts/%s/transactions", c.URL, accountID)
 	return c.stream(ctx, url, cursor, func(data []byte) error {
 		var transaction Transaction
@@ -293,7 +293,7 @@ func (c *Client) StreamTransactions(ctx context.Context, accountID string, curso
 
 // SubmitTransaction submits a transaction to the network. err can be either error object or horizon.Error object.
 func (c *Client) SubmitTransaction(transactionEnvelopeXdr string) (response TransactionSuccess, err error) {
-	c.fixURL()
+	c.fixURLOnce.Do(c.fixURL)
 	v := url.Values{}
 	v.Set("tx", transactionEnvelopeXdr)
 
