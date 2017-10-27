@@ -1,8 +1,8 @@
 package simplepath
 
 import (
-	"github.com/stellar/go/xdr"
 	"github.com/stellar/go/services/horizon/internal/paths"
+	"github.com/stellar/go/xdr"
 )
 
 // search represents a single query against the simple finder.  It provides
@@ -79,7 +79,7 @@ func (s *search) hasMore() bool {
 		return false
 	}
 
-	if len(s.Results) > 4 {
+	if len(s.Results) >= 20 {
 		return false
 	}
 
