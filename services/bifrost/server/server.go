@@ -205,7 +205,7 @@ func (s *Server) HandlerGenerateEthereumAddress(w http.ResponseWriter, r *http.R
 }
 
 func (s *Server) handlerGenerateAddress(w http.ResponseWriter, r *http.Request, chain database.Chain) {
-	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Origin", s.Config.AllowedURL)
 
 	stellarPublicKey := r.PostFormValue("stellar_public_key")
 	_, err := keypair.Parse(stellarPublicKey)
@@ -273,25 +273,27 @@ func (s *Server) handlerGenerateAddress(w http.ResponseWriter, r *http.Request, 
 }
 
 func (s *Server) HandlerRecoveryTransaction(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Origin", s.Config.AllowedURL)
 	var transactionEnvelope xdr.TransactionEnvelope
 	transactionXdr := r.PostFormValue("transaction_xdr")
+	localLog := log.WithField("transaction_xdr", transactionXdr)
+
 	if transactionXdr == "" {
-		log.WithField("transaction_xdr", transactionXdr).Warn("Invalid Transaction Xdr")
+		localLog.Warn("Invalid input. No Transaction XDR")
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
 	err := xdr.SafeUnmarshalBase64(transactionXdr, &transactionEnvelope)
 	if err != nil {
-		log.WithField("transaction", transactionXdr).Warn("Invalid Transaction Xdr")
+		localLog.Warn("Invalid Transaction XDR")
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
 	err := s.Database.AddRecoveryTransaction(transactionEnvelope.Tx.SourceAccount, transactionEnvelope)
 	if err != nil {
-		log.WithField("err", err).Error("Error savinf recovery transaction")
+		log.WithField("err", err).Error("Error saving recovery transaction")
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
