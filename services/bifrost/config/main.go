@@ -21,6 +21,7 @@ type Config struct {
 		Type string `valid:"matches(^postgres$)"`
 		DSN  string `valid:"required"`
 	} `valid:"required"`
+	AllowedURL string `valid:"required" toml:"allowed_url"`
 }
 
 type bitcoinConfig struct {
