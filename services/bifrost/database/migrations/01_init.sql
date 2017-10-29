@@ -65,3 +65,10 @@ CREATE TABLE broadcasted_event (
   PRIMARY KEY (id),
   UNIQUE (address, event)
 );
+
+CREATE TABLE recovery_transaction (
+  source varchar(56) NOT NULL,
+  envelope_xdr text NOT NULL
+);
+
+CREATE INDEX source_index ON recovery_transaction (source);
