@@ -30,6 +30,8 @@ type search struct {
 	Results []paths.Path
 }
 
+const maxResults = 20
+
 // Init initialized the search, setting fields on the struct used to
 // hold state needed during the actual search.
 func (s *search) Init() {
@@ -79,7 +81,7 @@ func (s *search) hasMore() bool {
 		return false
 	}
 
-	if len(s.Results) >= 20 {
+	if len(s.Results) >= maxResults {
 		return false
 	}
 
