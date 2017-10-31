@@ -87,7 +87,7 @@ func (suite *BitcoinRailTestSuite) TestAssociationAlreadyProcessed() {
 		On("GetAssociationByChainAddress", database.ChainBitcoin, transaction.To).
 		Return(association, nil)
 	suite.MockDatabase.
-		On("AddProcessedTransaction", database.ChainBitcoin, transaction.Hash).
+		On("AddProcessedTransaction", database.ChainBitcoin, transaction.Hash, transaction.To).
 		Return(true, nil)
 	suite.MockQueue.AssertNotCalled(suite.T(), "QueueAdd")
 	err := suite.Server.onNewBitcoinTransaction(transaction)
@@ -112,7 +112,7 @@ func (suite *BitcoinRailTestSuite) TestAssociationSuccess() {
 		On("GetAssociationByChainAddress", database.ChainBitcoin, transaction.To).
 		Return(association, nil)
 	suite.MockDatabase.
-		On("AddProcessedTransaction", database.ChainBitcoin, transaction.Hash).
+		On("AddProcessedTransaction", database.ChainBitcoin, transaction.Hash, transaction.To).
 		Return(false, nil)
 	suite.MockQueue.
 		On("QueueAdd", mock.AnythingOfType("queue.Transaction")).

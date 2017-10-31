@@ -87,7 +87,7 @@ func (suite *EthereumRailTestSuite) TestAssociationAlreadyProcessed() {
 		On("GetAssociationByChainAddress", database.ChainEthereum, transaction.To).
 		Return(association, nil)
 	suite.MockDatabase.
-		On("AddProcessedTransaction", database.ChainEthereum, transaction.Hash).
+		On("AddProcessedTransaction", database.ChainEthereum, transaction.Hash, transaction.To).
 		Return(true, nil)
 	suite.MockQueue.AssertNotCalled(suite.T(), "QueueAdd")
 	err := suite.Server.onNewEthereumTransaction(transaction)
@@ -111,7 +111,7 @@ func (suite *EthereumRailTestSuite) TestAssociationSuccess() {
 		On("GetAssociationByChainAddress", database.ChainEthereum, transaction.To).
 		Return(association, nil)
 	suite.MockDatabase.
-		On("AddProcessedTransaction", database.ChainEthereum, transaction.Hash).
+		On("AddProcessedTransaction", database.ChainEthereum, transaction.Hash, transaction.To).
 		Return(false, nil)
 	suite.MockQueue.
 		On("QueueAdd", mock.AnythingOfType("queue.Transaction")).

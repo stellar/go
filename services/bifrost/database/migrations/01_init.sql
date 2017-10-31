@@ -28,6 +28,9 @@ CREATE TABLE processed_transaction (
   chain chain NOT NULL,
   /* Ethereum: "0x"+hash (so 64+2) */
   transaction_id varchar(66) NOT NULL,
+  /* bitcoin 34 characters */
+  /* ethereum 42 characters */
+  receiving_address varchar(42) NOT NULL,
   created_at timestamp NOT NULL,
   PRIMARY KEY (chain, transaction_id)
 );

@@ -10,6 +10,12 @@ type MockClient struct {
 	mock.Mock
 }
 
+// Root is a mocking a method
+func (m *MockClient) Root() (Root, error) {
+	a := m.Called()
+	return a.Get(0).(Root), a.Error(1)
+}
+
 // LoadAccount is a mocking a method
 func (m *MockClient) LoadAccount(accountID string) (Account, error) {
 	a := m.Called(accountID)

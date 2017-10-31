@@ -54,9 +54,10 @@ type transactionsQueueRow struct {
 }
 
 type processedTransactionRow struct {
-	Chain         Chain     `db:"chain"`
-	TransactionID string    `db:"transaction_id"`
-	CreatedAt     time.Time `db:"created_at"`
+	Chain            Chain     `db:"chain"`
+	TransactionID    string    `db:"transaction_id"`
+	ReceivingAddress string    `db:"receiving_address"`
+	CreatedAt        time.Time `db:"created_at"`
 }
 
 func fromQueueTransaction(tx queue.Transaction) *transactionsQueueRow {
@@ -151,9 +152,9 @@ func (d *PostgresDatabase) GetAssociationByStellarPublicKey(stellarPublicKey str
 	return row, nil
 }
 
-func (d *PostgresDatabase) AddProcessedTransaction(chain Chain, transactionID string) (bool, error) {
+func (d *PostgresDatabase) AddProcessedTransaction(chain Chain, transactionID, receivingAddress string) (bool, error) {
 	processedTransactionTable := d.getTable(processedTransactionTableName, nil)
-	processedTransaction := processedTransactionRow{chain, transactionID, time.Now()}
+	processedTransaction := processedTransactionRow{chain, transactionID, receivingAddress, time.Now()}
 	_, err := processedTransactionTable.Insert(processedTransaction).Exec()
 	if err != nil && isDuplicateError(err) {
 		return true, nil

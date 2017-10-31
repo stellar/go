@@ -27,8 +27,8 @@ func (m *MockDatabase) GetAssociationByStellarPublicKey(stellarPublicKey string)
 	return a.Get(0).(*AddressAssociation), a.Error(1)
 }
 
-func (m *MockDatabase) AddProcessedTransaction(chain Chain, transactionID string) (alreadyProcessing bool, err error) {
-	a := m.Called(chain, transactionID)
+func (m *MockDatabase) AddProcessedTransaction(chain Chain, transactionID, receivingAddress string) (alreadyProcessing bool, err error) {
+	a := m.Called(chain, transactionID, receivingAddress)
 	return a.Get(0).(bool), a.Error(1)
 }
 

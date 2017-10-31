@@ -151,6 +151,59 @@ This command will create 3 server.Server's listening on ports 8000-8002.`,
 	},
 }
 
+var checkKeysCmd = &cobra.Command{
+	Use:   "check-keys",
+	Short: "Displays a few public keys derivied using master public keys",
+	Run: func(cmd *cobra.Command, args []string) {
+		cfgPath := rootCmd.PersistentFlags().Lookup("config").Value.String()
+		start, _ := cmd.PersistentFlags().GetUint32("start")
+		count, _ := cmd.PersistentFlags().GetUint32("count")
+		cfg := readConfig(cfgPath)
+
+		fmt.Println("MAKE SURE YOU HAVE PRIVATE KEYS TO CORRESPONDING ADDRESSES:")
+
+		fmt.Println("Bitcoin MainNet:")
+		if cfg.Bitcoin != nil && cfg.Bitcoin.MasterPublicKey != "" {
+			bitcoinAddressGenerator, err := bitcoin.NewAddressGenerator(cfg.Bitcoin.MasterPublicKey, &chaincfg.MainNetParams)
+			if err != nil {
+				log.Error(err)
+				os.Exit(-1)
+			}
+
+			for i := uint32(start); i < start+count; i++ {
+				address, err := bitcoinAddressGenerator.Generate(i)
+				if err != nil {
+					fmt.Println("Error generating address", i)
+					continue
+				}
+				fmt.Printf("%d %s\n", i, address)
+			}
+		} else {
+			fmt.Println("No master key set...")
+		}
+
+		if cfg.Ethereum != nil && cfg.Ethereum.MasterPublicKey != "" {
+			ethereumAddressGenerator, err := ethereum.NewAddressGenerator(cfg.Ethereum.MasterPublicKey)
+			if err != nil {
+				log.Error(err)
+				os.Exit(-1)
+			}
+
+			fmt.Println("Ethereum:")
+			for i := uint32(start); i < start+count; i++ {
+				address, err := ethereumAddressGenerator.Generate(i)
+				if err != nil {
+					fmt.Println("Error generating address", i)
+					continue
+				}
+				fmt.Printf("%d %s\n", i, address)
+			}
+		} else {
+			fmt.Println("No master key set...")
+		}
+	},
+}
+
 var versionCmd = &cobra.Command{
 	Use:   "version",
 	Short: "Print the version number",
@@ -167,11 +220,15 @@ func init() {
 	rootCmd.PersistentFlags().Bool("debug", false, "debug mode")
 	rootCmd.PersistentFlags().StringP("config", "c", "bifrost.cfg", "config file path")
 
+	rootCmd.AddCommand(checkKeysCmd)
 	rootCmd.AddCommand(serverCmd)
 	rootCmd.AddCommand(stressTestCmd)
 	rootCmd.AddCommand(versionCmd)
 
 	stressTestCmd.PersistentFlags().IntP("users-per-second", "u", 2, "users per second")
+
+	checkKeysCmd.PersistentFlags().Uint32P("start", "s", 0, "starting address index")
+	checkKeysCmd.PersistentFlags().Uint32P("count", "l", 10, "how many addresses generate")
 }
 
 func main() {

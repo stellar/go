@@ -43,7 +43,7 @@ func (s *Server) onNewBitcoinTransaction(transaction bitcoin.Transaction) error 
 	}
 
 	// Add transaction as processing.
-	processed, err := s.Database.AddProcessedTransaction(database.ChainBitcoin, transaction.Hash)
+	processed, err := s.Database.AddProcessedTransaction(database.ChainBitcoin, transaction.Hash, transaction.To)
 	if err != nil {
 		return err
 	}

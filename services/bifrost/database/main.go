@@ -36,7 +36,7 @@ type Database interface {
 	GetAssociationByStellarPublicKey(stellarPublicKey string) (*AddressAssociation, error)
 	// AddProcessedTransaction adds a transaction to database as processed. This
 	// should return `true` and no error if transaction processing has already started/finished.
-	AddProcessedTransaction(chain Chain, transactionID string) (alreadyProcessing bool, err error)
+	AddProcessedTransaction(chain Chain, transactionID, receivingAddress string) (alreadyProcessing bool, err error)
 	// IncrementAddressIndex returns the current value of index used for `chain` key
 	// derivation and then increments it. This operation must be atomic so this function
 	// should never return the same value more than once.

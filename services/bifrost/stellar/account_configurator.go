@@ -34,6 +34,17 @@ func (ac *AccountConfigurator) Start() error {
 
 	ac.signerPublicKey = kp.Address()
 
+	root, err := ac.Horizon.Root()
+	if err != nil {
+		err = errors.Wrap(err, "Error loading Horizon root")
+		ac.log.Error(err)
+		return err
+	}
+
+	if root.NetworkPassphrase != ac.NetworkPassphrase {
+		return errors.Errorf("Invalid network passphrase (have=%s, want=%s)", root.NetworkPassphrase, ac.NetworkPassphrase)
+	}
+
 	err = ac.updateSequence()
 	if err != nil {
 		err = errors.Wrap(err, "Error loading issuer sequence number")

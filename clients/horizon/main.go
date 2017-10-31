@@ -70,6 +70,7 @@ type Client struct {
 }
 
 type ClientInterface interface {
+	Root() (Root, error)
 	LoadAccount(accountID string) (Account, error)
 	LoadAccountOffers(accountID string, params ...interface{}) (offers OffersPage, err error)
 	LoadMemo(p *Payment) error

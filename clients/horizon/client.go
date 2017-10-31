@@ -31,6 +31,18 @@ func (c *Client) fixURL() {
 	c.URL = strings.TrimRight(c.URL, "/")
 }
 
+// Root loads the root endpoint of horizon
+func (c *Client) Root() (root Root, err error) {
+	c.fixURLOnce.Do(c.fixURL)
+	resp, err := c.HTTP.Get(c.URL)
+	if err != nil {
+		return
+	}
+
+	err = decodeResponse(resp, &root)
+	return
+}
+
 // LoadAccount loads the account state from horizon. err can be either error
 // object or horizon.Error object.
 func (c *Client) LoadAccount(accountID string) (account Account, err error) {

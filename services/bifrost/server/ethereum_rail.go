@@ -38,7 +38,7 @@ func (s *Server) onNewEthereumTransaction(transaction ethereum.Transaction) erro
 	}
 
 	// Add transaction as processing.
-	processed, err := s.Database.AddProcessedTransaction(database.ChainEthereum, transaction.Hash)
+	processed, err := s.Database.AddProcessedTransaction(database.ChainEthereum, transaction.Hash, transaction.To)
 	if err != nil {
 		return err
 	}
