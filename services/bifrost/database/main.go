@@ -45,6 +45,9 @@ type Database interface {
 	// ResetBlockCounters changes last processed bitcoin and ethereum block to default value.
 	// Used in stress tests.
 	ResetBlockCounters() error
+
+	// AddRecoveryTransaction inserts recovery account ID and transaction envelope
+	AddRecoveryTransaction(sourceAccount string, txEnvelope string) error
 }
 
 type PostgresDatabase struct {
