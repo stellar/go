@@ -5,7 +5,7 @@ type Config struct {
 	UsingProxy                     bool            `valid:"optional" toml:"using_proxy"`
 	Bitcoin                        *bitcoinConfig  `valid:"optional" toml:"bitcoin"`
 	Ethereum                       *ethereumConfig `valid:"optional" toml:"ethereum"`
-	AccessControlAllowOriginHeader string          `valid:"required" toml:"access-control-allow-origin-header"`
+	AccessControlAllowOriginHeader string          `valid:"optional" toml:"access-control-allow-origin-header"`
 
 	Stellar struct {
 		Horizon           string `valid:"required" toml:"horizon"`

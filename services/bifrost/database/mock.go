@@ -41,3 +41,8 @@ func (m *MockDatabase) ResetBlockCounters() error {
 	a := m.Called()
 	return a.Error(0)
 }
+
+func (m *MockDatabase) AddRecoveryTransaction(sourceAccount string, txEnvelope string) error {
+	a := m.Called(sourceAccount, txEnvelope)
+	return a.Error(0)
+}

@@ -291,7 +291,7 @@ func (s *Server) HandlerRecoveryTransaction(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	err := s.Database.AddRecoveryTransaction(transactionEnvelope.Tx.SourceAccount, transactionEnvelope)
+	err = s.Database.AddRecoveryTransaction(transactionEnvelope.Tx.SourceAccount.Address(), transactionXdr)
 	if err != nil {
 		localLog.WithField("err", err).Error("Error saving recovery transaction")
 		w.WriteHeader(http.StatusInternalServerError)
