@@ -248,6 +248,9 @@ func readConfig(cfgPath string) config.Config {
 		}
 		os.Exit(-1)
 	}
+	if cfg.AccessControlAllowOriginHeader == "" {
+		cfg.AccessControlAllowOriginHeader = "*"
+	}
 
 	return cfg
 }
