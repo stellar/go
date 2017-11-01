@@ -182,6 +182,7 @@ var checkKeysCmd = &cobra.Command{
 			fmt.Println("No master key set...")
 		}
 
+		fmt.Println("Ethereum:")
 		if cfg.Ethereum != nil && cfg.Ethereum.MasterPublicKey != "" {
 			ethereumAddressGenerator, err := ethereum.NewAddressGenerator(cfg.Ethereum.MasterPublicKey)
 			if err != nil {
@@ -189,7 +190,6 @@ var checkKeysCmd = &cobra.Command{
 				os.Exit(-1)
 			}
 
-			fmt.Println("Ethereum:")
 			for i := uint32(start); i < start+count; i++ {
 				address, err := ethereumAddressGenerator.Generate(i)
 				if err != nil {
@@ -355,6 +355,8 @@ func createServer(cfg config.Config, stressTest bool) *server.Server {
 		NetworkPassphrase: cfg.Stellar.NetworkPassphrase,
 		IssuerPublicKey:   cfg.Stellar.IssuerPublicKey,
 		SignerSecretKey:   cfg.Stellar.SignerSecretKey,
+		NeedsAuthorize:    cfg.Stellar.NeedsAuthorize,
+		TokenAssetCode:    cfg.Stellar.TokenAssetCode,
 	}
 
 	horizonClient := &horizon.Client{

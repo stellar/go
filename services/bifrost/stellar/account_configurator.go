@@ -128,8 +128,18 @@ func (ac *AccountConfigurator) ConfigureAccount(destination, assetCode, amount s
 		time.Sleep(2 * time.Second)
 	}
 
-	// When trustline found send token
-	localLog.Info("Trust line found, sending token")
+	localLog.Info("Trust line found")
+
+	// When trustline found check if needs to authorize, then send token
+	if ac.NeedsAuthorize {
+		localLog.Info("Authorizing trust line")
+		err := ac.allowTrust(destination, assetCode, ac.TokenAssetCode)
+		if err != nil {
+			localLog.WithField("err", err).Error("Error authorizing trust line")
+		}
+	}
+
+	localLog.Info("Sending token")
 	err := ac.sendToken(destination, assetCode, amount)
 	if err != nil {
 		localLog.WithField("err", err).Error("Error sending asset to account")

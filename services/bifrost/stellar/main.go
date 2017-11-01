@@ -14,6 +14,8 @@ type AccountConfigurator struct {
 	NetworkPassphrase string
 	IssuerPublicKey   string
 	SignerSecretKey   string
+	NeedsAuthorize    bool
+	TokenAssetCode    string
 	OnAccountCreated  func(destination string)
 	OnAccountCredited func(destination string, assetCode string, amount string)
 

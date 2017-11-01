@@ -24,6 +24,30 @@ func (ac *AccountConfigurator) createAccount(destination string) error {
 	return nil
 }
 
+func (ac *AccountConfigurator) allowTrust(trustor, assetCode, tokenAssetCode string) error {
+	err := ac.submitTransaction(
+		// Chain token received (BTC/ETH)
+		build.AllowTrust(
+			build.SourceAccount{ac.IssuerPublicKey},
+			build.Trustor{trustor},
+			build.AllowTrustAsset{assetCode},
+			build.Authorize{true},
+		),
+		// Destination token
+		build.AllowTrust(
+			build.SourceAccount{ac.IssuerPublicKey},
+			build.Trustor{trustor},
+			build.AllowTrustAsset{tokenAssetCode},
+			build.Authorize{true},
+		),
+	)
+	if err != nil {
+		return errors.Wrap(err, "Error submitting transaction")
+	}
+
+	return nil
+}
+
 func (ac *AccountConfigurator) sendToken(destination, assetCode, amount string) error {
 	err := ac.submitTransaction(
 		build.Payment(
@@ -43,8 +67,8 @@ func (ac *AccountConfigurator) sendToken(destination, assetCode, amount string) 
 	return nil
 }
 
-func (ac *AccountConfigurator) submitTransaction(mutator build.TransactionMutator) error {
-	tx, err := ac.buildTransaction(mutator)
+func (ac *AccountConfigurator) submitTransaction(mutators ...build.TransactionMutator) error {
+	tx, err := ac.buildTransaction(mutators...)
 	if err != nil {
 		return errors.Wrap(err, "Error building transaction")
 	}
@@ -67,14 +91,14 @@ func (ac *AccountConfigurator) submitTransaction(mutator build.TransactionMutato
 	return nil
 }
 
-func (ac *AccountConfigurator) buildTransaction(mutator build.TransactionMutator) (string, error) {
-	tx := build.Transaction(
+func (ac *AccountConfigurator) buildTransaction(mutators ...build.TransactionMutator) (string, error) {
+	muts := []build.TransactionMutator{
 		build.SourceAccount{ac.signerPublicKey},
 		build.Sequence{ac.getSequence()},
 		build.Network{ac.NetworkPassphrase},
-		mutator,
-	)
-
+	}
+	muts = append(muts, mutators...)
+	tx := build.Transaction(muts...)
 	txe := tx.Sign(ac.SignerSecretKey)
 	return txe.Base64()
 }

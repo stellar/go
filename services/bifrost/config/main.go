@@ -10,6 +10,10 @@ type Config struct {
 	Stellar struct {
 		Horizon           string `valid:"required" toml:"horizon"`
 		NetworkPassphrase string `valid:"required" toml:"network_passphrase"`
+		// TokenAssetCode is asset code of token that will be purchased using BTC or ETH.
+		TokenAssetCode string `valid:"required" toml:"token_asset_code"`
+		// NeedsAuthorize should be set to true if issuers's authorization required flag is set.
+		NeedsAuthorize bool `valid:"optional" toml:"needs_authorize"`
 		// IssuerPublicKey is public key of the assets issuer or hot wallet.
 		IssuerPublicKey string `valid:"required" toml:"issuer_public_key"`
 		// SignerSecretKey is:
