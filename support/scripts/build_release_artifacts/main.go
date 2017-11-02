@@ -3,6 +3,7 @@ package main
 // See README.md for a description of this script
 
 import (
+	"flag"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -19,17 +20,25 @@ import (
 
 var extractBinName = regexp.MustCompile(`^(?P<bin>[a-z-]+)-(?P<tag>.+)$`)
 
-var builds = []struct {
-	OS   string
-	Arch string
-}{
+var builds = []buildConfig{
 	{"darwin", "amd64"},
 	{"linux", "amd64"},
 	{"linux", "arm"},
 	{"windows", "amd64"},
 }
 
+var binFilter = flag.String("bin", "", "restrict build to single binary")
+var osFilter = flag.String("os", "", "restrict build to single os")
+var archFilter = flag.String("arch", "", "restrict build to single arch")
+var keepDir = flag.Bool("keep", false, "when true, artifact directories are not removed after packaging")
+
+type buildConfig struct {
+	OS   string
+	Arch string
+}
+
 func main() {
+	flag.Parse()
 	log.SetLevel(log.InfoLevel)
 	run("rm", "-rf", "dist/*")
 
@@ -38,6 +47,9 @@ func main() {
 		os.Exit(0)
 	} else if os.Getenv("TRAVIS_TAG") != "" {
 		buildByTag()
+		os.Exit(0)
+	} else {
+		buildSnapshots()
 		os.Exit(0)
 	}
 
@@ -108,7 +120,12 @@ func buildNightlies() {
 
 	for _, pkg := range binPkgNames() {
 		bin := filepath.Base(pkg)
-		for _, cfg := range builds {
+
+		if *binFilter != "" && *binFilter != bin {
+			continue
+		}
+
+		for _, cfg := range getBuildConfigs() {
 			dest := prepareDest(pkg, bin, "nightly", cfg.OS, cfg.Arch)
 
 			build(
@@ -134,7 +151,7 @@ func buildByTag() {
 		os.Exit(0)
 	}
 
-	for _, cfg := range builds {
+	for _, cfg := range getBuildConfigs() {
 		dest := prepareDest(pkg, bin, version, cfg.OS, cfg.Arch)
 
 		// rebuild the binary with the version variable set
@@ -147,6 +164,35 @@ func buildByTag() {
 		)
 
 		packageArchive(dest, cfg.OS)
+	}
+}
+
+func buildSnapshots() {
+	rev := runOutput("git", "describe", "--always", "--dirty")
+	version := fmt.Sprintf("snapshot-%s", rev)
+	repo := repoName()
+
+	for _, pkg := range binPkgNames() {
+		bin := filepath.Base(pkg)
+
+		if *binFilter != "" && *binFilter != bin {
+			continue
+		}
+
+		for _, cfg := range getBuildConfigs() {
+
+			dest := prepareDest(pkg, bin, "snapshot", cfg.OS, cfg.Arch)
+
+			build(
+				fmt.Sprintf("%s/%s", repo, pkg),
+				filepath.Join(dest, bin),
+				version,
+				cfg.OS,
+				cfg.Arch,
+			)
+
+			packageArchive(dest, cfg.OS)
+		}
 	}
 }
 
@@ -167,6 +213,22 @@ func extractFromTag(tag string) (string, string) {
 	return match[1], match[2]
 }
 
+func getBuildConfigs() (result []buildConfig) {
+	for _, cfg := range builds {
+
+		if *osFilter != "" && *osFilter != cfg.OS {
+			continue
+		}
+
+		if *archFilter != "" && *archFilter != cfg.Arch {
+			continue
+		}
+
+		result = append(result, cfg)
+	}
+	return
+}
+
 // packageArchive tars or zips `dest`, depending upon the OS, then removes
 // `dest`, in preparation of travis uploading all artifacts to github releases.
 func packageArchive(dest, buildOS string) {
@@ -183,7 +245,9 @@ func packageArchive(dest, buildOS string) {
 		run("tar", "-czf", dest+".tar.gz", "-C", dir, release)
 	}
 
-	run("rm", "-rf", dest)
+	if !*keepDir {
+		run("rm", "-rf", dest)
+	}
 }
 
 // package searches the `tools` and `services` packages of this repo to find
