@@ -62,8 +62,8 @@ type processedTransactionRow struct {
 }
 
 type recoveryTransactionRow struct {
-	Source      string `db:source`
-	EnvelopeXDR string `db:envelope_xdr`
+	Source      string `db:"source"`
+	EnvelopeXDR string `db:"envelope_xdr"`
 }
 
 func fromQueueTransaction(tx queue.Transaction) *transactionsQueueRow {
