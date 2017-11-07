@@ -9,11 +9,11 @@ import (
 
 	sq "github.com/Masterminds/squirrel"
 	"github.com/guregu/null"
-	"github.com/stellar/go/support/errors"
-	"github.com/stellar/go/xdr"
 	"github.com/stellar/go/services/horizon/internal/db2/core"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/services/horizon/internal/db2/sqx"
+	"github.com/stellar/go/support/errors"
+	"github.com/stellar/go/xdr"
 )
 
 // ClearAll clears the entire history database
@@ -239,12 +239,12 @@ func (ingest *Ingestion) Trade(
 	if err != nil {
 		return errors.Wrap(err, "failed to load buyer account id")
 	}
-	soldAssetId, err := ingest.getAssetId(trade.AssetSold)
+	soldAssetId, err := ingest.GetOrInsertAssetID(trade.AssetSold)
 	if err != nil {
 		return errors.Wrap(err, "failed to get sold asset id")
 	}
 
-	boughtAssetId, err := ingest.getAssetId(trade.AssetBought)
+	boughtAssetId, err := ingest.GetOrInsertAssetID(trade.AssetBought)
 	if err != nil {
 		return errors.Wrap(err, "failed to get bought asset id")
 	}
@@ -406,6 +406,14 @@ func (ingest *Ingestion) createInsertBuilders() {
 		"counter_amount",
 		"base_is_seller",
 	)
+
+	ingest.assetStats = sq.Insert("asset_stats").Columns(
+		"id",
+		"amount",
+		"num_accounts",
+		"flags",
+		"toml",
+	)
 }
 
 func (ingest *Ingestion) commit() error {
@@ -447,8 +455,8 @@ func (ingest *Ingestion) getParticipantID(
 	return
 }
 
-// Get asset row id. If asset is first seen, it will be inserted.
-func (ingest *Ingestion) getAssetId(
+// GetOrInsertAssetID gets asset row id. If asset is first seen, it will be inserted.
+func (ingest *Ingestion) GetOrInsertAssetID(
 	asset xdr.Asset,
 ) (result int64, err error) {
 

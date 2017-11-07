@@ -13,9 +13,9 @@ import (
 	"github.com/stellar/go/amount"
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/meta"
-	"github.com/stellar/go/xdr"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/services/horizon/internal/ingest/participants"
+	"github.com/stellar/go/xdr"
 )
 
 // Run starts an attempt to ingest the range of ledgers specified in this
@@ -28,15 +28,17 @@ func (is *Session) Run() {
 
 	defer is.Ingestion.Rollback()
 
+	assetsModified := make(map[string]xdr.Asset)
 	for is.Cursor.NextLedger() {
 		is.clearLedger()
-		is.ingestLedger()
+		is.ingestLedger(&assetsModified)
 		is.flush()
 
 		if is.Err != nil {
 			break
 		}
 	}
+	UpdateAssetStats(is, &assetsModified)
 
 	if is.Err != nil {
 		is.Ingestion.Rollback()
@@ -92,6 +94,34 @@ func (is *Session) flush() {
 		return
 	}
 	is.Err = is.Ingestion.Flush()
+}
+
+func (is *Session) addAssetsModified(assetsModified *map[string]xdr.Asset) {
+	if is.Err != nil {
+		return
+	}
+
+	body := is.Cursor.Operation().Body
+	switch body.Type {
+	// TODO NNS 1 add all assets touched by destination account in xdr.OperationTypeAccountMerge
+	// or accumulate all these accounts and fetch their assets in bulk
+	case xdr.OperationTypePayment:
+		(*assetsModified)[body.PaymentOp.Asset.String()] = body.PaymentOp.Asset
+	case xdr.OperationTypePathPayment:
+		(*assetsModified)[body.PathPaymentOp.DestAsset.String()] = body.PathPaymentOp.DestAsset
+		(*assetsModified)[body.PathPaymentOp.SendAsset.String()] = body.PathPaymentOp.SendAsset
+		for _, asset := range body.PathPaymentOp.Path {
+			(*assetsModified)[asset.String()] = asset
+		}
+	case xdr.OperationTypeChangeTrust:
+		if body.ChangeTrustOp.Limit == 0 {
+			(*assetsModified)[body.ChangeTrustOp.Line.String()] = body.ChangeTrustOp.Line
+		}
+	case xdr.OperationTypeAllowTrust:
+		issuer := is.Cursor.OperationSourceAccount()
+		asset := body.AllowTrustOp.Asset.ToAsset(issuer)
+		(*assetsModified)[asset.String()] = asset
+	}
 }
 
 func (is *Session) ingestEffects() {
@@ -306,7 +336,7 @@ func (is *Session) ingestEffects() {
 }
 
 // ingestLedger ingests the current ledger
-func (is *Session) ingestLedger() {
+func (is *Session) ingestLedger(assetsModified *map[string]xdr.Asset) {
 	if is.Err != nil {
 		return
 	}
@@ -324,7 +354,7 @@ func (is *Session) ingestLedger() {
 	}
 
 	for is.Cursor.NextTx() {
-		is.ingestTransaction()
+		is.ingestTransaction(assetsModified)
 	}
 
 	is.Ingested++
@@ -335,7 +365,7 @@ func (is *Session) ingestLedger() {
 	return
 }
 
-func (is *Session) ingestOperation() {
+func (is *Session) ingestOperation(assetsModified *map[string]xdr.Asset) {
 	if is.Err != nil {
 		return
 	}
@@ -355,6 +385,7 @@ func (is *Session) ingestOperation() {
 	is.ingestOperationParticipants()
 	is.ingestEffects()
 	is.ingestTrades()
+	is.addAssetsModified(assetsModified)
 }
 
 func (is *Session) ingestOperationParticipants() {
@@ -510,7 +541,7 @@ func (is *Session) tradeDetails(buyer, seller xdr.AccountId, claim xdr.ClaimOffe
 	return
 }
 
-func (is *Session) ingestTransaction() {
+func (is *Session) ingestTransaction(assetsModified *map[string]xdr.Asset) {
 	if is.Err != nil {
 		return
 	}
@@ -529,7 +560,7 @@ func (is *Session) ingestTransaction() {
 	}
 
 	for is.Cursor.NextOp() {
-		is.ingestOperation()
+		is.ingestOperation(assetsModified)
 	}
 
 	is.ingestTransactionParticipants()

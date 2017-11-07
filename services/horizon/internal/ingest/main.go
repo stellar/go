@@ -8,8 +8,8 @@ import (
 
 	sq "github.com/Masterminds/squirrel"
 	metrics "github.com/rcrowley/go-metrics"
-	"github.com/stellar/go/support/db"
 	"github.com/stellar/go/services/horizon/internal/db2/core"
+	"github.com/stellar/go/support/db"
 )
 
 const (
@@ -114,6 +114,7 @@ type Ingestion struct {
 	effects                  sq.InsertBuilder
 	accounts                 sq.InsertBuilder
 	trades                   sq.InsertBuilder
+	assetStats               sq.InsertBuilder
 }
 
 // Session represents a single attempt at ingesting data into the history
