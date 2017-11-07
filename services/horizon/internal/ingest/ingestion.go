@@ -54,6 +54,10 @@ func (ingest *Ingestion) Clear(start int64, end int64) error {
 	if err != nil {
 		return err
 	}
+	err = clear(start, end, "asset_stats", "id")
+	if err != nil {
+		return err
+	}
 
 	return nil
 }
