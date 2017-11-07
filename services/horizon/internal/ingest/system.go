@@ -1,14 +1,14 @@
 package ingest
 
 import (
-	"github.com/stellar/go/support/errors"
-	err2 "github.com/stellar/go/support/errors"
 	"github.com/stellar/go/services/horizon/internal/db2/core"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	herr "github.com/stellar/go/services/horizon/internal/errors"
 	"github.com/stellar/go/services/horizon/internal/ledger"
 	"github.com/stellar/go/services/horizon/internal/log"
 	"github.com/stellar/go/services/horizon/internal/toid"
+	"github.com/stellar/go/support/errors"
+	err2 "github.com/stellar/go/support/errors"
 )
 
 // ClearAll removes all previously ingested historical data from the horizon
@@ -283,7 +283,10 @@ func (i *System) trimAbandondedLedgers() error {
 
 	end := toid.New(coreElder, 0, 0)
 
-	ingestion.Clear(0, end.ToInt64())
+	err = ingestion.Clear(0, end.ToInt64())
+	if err != nil {
+		return errors.Wrap(err, "failed to clear ingestion")
+	}
 
 	err = ingestion.Close()
 	if err != nil {
