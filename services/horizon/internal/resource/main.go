@@ -66,6 +66,19 @@ type AccountThresholds struct {
 // Asset represents a single asset
 type Asset base.Asset
 
+// AssetStat represents the statistics for a single Asset
+type AssetStat struct {
+	Links struct {
+		Toml hal.Link `json:"toml"`
+	} `json:"_links"`
+
+	base.Asset
+	PT          string       `json:"paging_token"`
+	Amount      int64        `json:"amount"`
+	NumAccounts int32        `json:"num_accounts"`
+	Flags       AccountFlags `json:"flags"`
+}
+
 // Balance represents an account's holdings for a single currency type
 type Balance struct {
 	Balance string `json:"balance"`
@@ -159,6 +172,7 @@ type Root struct {
 	Links struct {
 		Account             hal.Link `json:"account"`
 		AccountTransactions hal.Link `json:"account_transactions"`
+		Assets              hal.Link `json:"assets"`
 		Friendbot           hal.Link `json:"friendbot"`
 		Metrics             hal.Link `json:"metrics"`
 		OrderBook           hal.Link `json:"order_book"`

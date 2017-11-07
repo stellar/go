@@ -117,6 +117,9 @@ func initWebActions(app *App) {
 	r.Post("/transactions", &TransactionCreateAction{})
 	r.Get("/paths", &PathIndexAction{})
 
+	// Asset related endpoints
+	r.Get("/assets", &AssetsAction{})
+
 	// friendbot
 	r.Post("/friendbot", &FriendbotAction{})
 	r.Get("/friendbot", &FriendbotAction{})

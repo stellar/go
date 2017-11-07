@@ -1,6 +1,7 @@
 package hal
 
 import (
+	"fmt"
 	"net/url"
 )
 
@@ -43,10 +44,29 @@ type Page struct {
 	Cursor   string `json:"-"`
 }
 
+// LinkParam is an input to PopulateLinks
+type LinkParam struct {
+	Key   string
+	Value string
+}
+
+func bindOptionalParams(fmts string, params ...*LinkParam) string {
+	if params == nil {
+		return fmts
+	}
+
+	encodedParams := ""
+	for _, p := range params {
+		encodedParams += fmt.Sprintf("&%s=%s", p.Key, p.Value)
+	}
+	return fmts + encodedParams
+}
+
 // PopulateLinks sets the common links for a page.
-func (p *Page) PopulateLinks() {
+func (p *Page) PopulateLinks(params ...*LinkParam) {
 	p.Init()
 	fmts := p.BasePath + "?order=%s&limit=%d&cursor=%s"
+	fmts = bindOptionalParams(fmts, params...)
 	lb := LinkBuilder{p.BaseURL}
 
 	p.Links.Self = lb.Linkf(fmts, p.Order, p.Limit, p.Cursor)
