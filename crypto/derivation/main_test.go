@@ -20,7 +20,7 @@ func TestIsValidPath(t *testing.T) {
 	assert.False(t, isValidPath("m/0'/893478327492379497823'")) // Overflow
 }
 
-// https://github.com/satoshilabs/slips/blob/master/slip-0010.md
+// https://github.com/satoshilabs/slips/blob/master/slip-0010.md#test-vector-1-for-ed25519
 func TestDeriveVector1(t *testing.T) {
 	seed, err := hex.DecodeString("000102030405060708090a0b0c0d0e0f")
 	assert.NoError(t, err)
@@ -82,7 +82,7 @@ func TestDeriveVector1(t *testing.T) {
 	}
 }
 
-// https://github.com/satoshilabs/slips/blob/master/slip-0010.md
+// https://github.com/satoshilabs/slips/blob/master/slip-0010.md#test-vector-2-for-ed25519
 func TestDeriveVector2(t *testing.T) {
 	seed, err := hex.DecodeString("fffcf9f6f3f0edeae7e4e1dedbd8d5d2cfccc9c6c3c0bdbab7b4b1aeaba8a5a29f9c999693908d8a8784817e7b7875726f6c696663605d5a5754514e4b484542")
 	assert.NoError(t, err)

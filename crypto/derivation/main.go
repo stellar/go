@@ -16,11 +16,14 @@ import (
 const (
 	// StellarAccountPrefix is a prefix for Stellar key pairs derivation.
 	StellarAccountPrefix = "m/44'/148'"
+	// StellarPrimaryAccountPath is a derivation path of the primary account.
+	StellarPrimaryAccountPath = "m/44'/148'/0'"
 	// StellarAccountPathFormat is a path format used for Stellar key pair
 	// derivation as described in SEP-00XX. Use with `fmt.Sprintf` and `DeriveForPath`.
 	StellarAccountPathFormat = "m/44'/148'/%d'"
-
-	hardenedKey  = uint32(0x80000000)
+	// FirstHardenedIndex is the index of the first hardened key.
+	FirstHardenedIndex = uint32(0x80000000)
+	// As in https://github.com/satoshilabs/slips/blob/master/slip-0010.md
 	seedModifier = "ed25519 seed"
 )
 
@@ -56,7 +59,7 @@ func DeriveForPath(path string, seed []byte) (*Key, error) {
 		}
 
 		// We operate on hardened keys
-		i := uint32(i64) + hardenedKey
+		i := uint32(i64) + FirstHardenedIndex
 		key, err = key.Derive(i)
 		if err != nil {
 			return nil, err
@@ -83,7 +86,7 @@ func NewMasterKey(seed []byte) (*Key, error) {
 
 func (k *Key) Derive(i uint32) (*Key, error) {
 	// no public derivation for ed25519
-	if i < hardenedKey {
+	if i < FirstHardenedIndex {
 		return nil, ErrNoPublicDerivation
 	}
 
