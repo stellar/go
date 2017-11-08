@@ -43,6 +43,16 @@ func (q *Q) TrustlinesByAddress(dest interface{}, addy string) error {
 	return q.Select(dest, sql)
 }
 
+// TrustlinesByAsset returns all the balances by asset type, code, issuer
+func (q *Q) TrustlinesByAsset(dest interface{}, assetType int32, assetCode string, assetIssuer string) error {
+	sql := selectTrustline.Where(sq.Eq{
+		"assettype": assetType,
+		"assetcode": assetCode,
+		"issuer":    assetIssuer,
+	})
+	return q.Select(dest, sql)
+}
+
 var selectTrustline = sq.Select(
 	"tl.accountid",
 	"tl.assettype",
