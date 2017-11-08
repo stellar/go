@@ -118,6 +118,13 @@ func (k *Key) PublicKey() ([]byte, error) {
 	return pub[:], nil
 }
 
+// RawSeed returns raw seed bytes
+func (k *Key) RawSeed() [32]byte {
+	var rawSeed [32]byte
+	copy(rawSeed[:], k.Key[:])
+	return rawSeed
+}
+
 func isValidPath(path string) bool {
 	if !pathRegex.MatchString(path) {
 		return false
