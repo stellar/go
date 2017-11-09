@@ -4,22 +4,15 @@ import (
 	"strconv"
 
 	"github.com/stellar/go/services/horizon/internal/db2/history"
-	"github.com/stellar/go/services/horizon/internal/ingest"
 	"github.com/stellar/go/services/horizon/internal/render/hal"
 	"github.com/stellar/go/xdr"
 	"golang.org/x/net/context"
 )
 
-// JoinedAssetStat is the db representation of a join result from Asset and AssetStat
-type JoinedAssetStat struct {
-	ingest.AssetStat
-	history.Asset
-}
-
 // Populate fills out the details
 func (res *AssetStat) Populate(
 	ctx context.Context,
-	row JoinedAssetStat,
+	row history.JoinedAssetStat,
 ) (err error) {
 
 	res.Asset.Type = row.Type

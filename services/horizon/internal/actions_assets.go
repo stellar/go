@@ -6,6 +6,7 @@ import (
 
 	sq "github.com/Masterminds/squirrel"
 	"github.com/stellar/go/services/horizon/internal/db2"
+	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/services/horizon/internal/render/hal"
 	"github.com/stellar/go/services/horizon/internal/resource"
 )
@@ -20,7 +21,7 @@ type AssetsAction struct {
 	AssetCode    string
 	AssetIssuer  string
 	PagingParams db2.PageQuery
-	Records      []resource.JoinedAssetStat
+	Records      []history.JoinedAssetStat
 	Page         hal.Page
 }
 

@@ -4,17 +4,9 @@ import (
 	"strings"
 
 	"github.com/stellar/go/services/horizon/internal/db2/core"
+	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/xdr"
 )
-
-// AssetStat is a row in the asset_stats table representing the stats per Asset
-type AssetStat struct {
-	ID          int64  `db:"id"`
-	Amount      int64  `db:"amount"`
-	NumAccounts int32  `db:"num_accounts"`
-	Flags       int8   `db:"flags"`
-	Toml        string `db:"toml"`
-}
 
 // UpdateAssetStats updates the db with the latest asset stats for the assetsModified
 func UpdateAssetStats(is *Session, assetsModified *map[string]xdr.Asset) {
@@ -44,7 +36,7 @@ func UpdateAssetStats(is *Session, assetsModified *map[string]xdr.Asset) {
 	}
 }
 
-func computeAssetStat(is *Session, asset *xdr.Asset) *AssetStat {
+func computeAssetStat(is *Session, asset *xdr.Asset) *history.AssetStat {
 	if asset.Type == xdr.AssetTypeAssetTypeNative {
 		return nil
 	}
@@ -77,12 +69,12 @@ func computeAssetStat(is *Session, asset *xdr.Asset) *AssetStat {
 		return nil
 	}
 
-	return &AssetStat{
-		assetID,
-		amount,
-		numAccounts,
-		flags,
-		toml,
+	return &history.AssetStat{
+		ID:          assetID,
+		Amount:      amount,
+		NumAccounts: numAccounts,
+		Flags:       flags,
+		Toml:        toml,
 	}
 }
 
