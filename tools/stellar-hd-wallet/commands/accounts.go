@@ -1,14 +1,15 @@
 package commands
 
 import (
+	"encoding/hex"
 	"fmt"
 	"log"
 	"regexp"
 	"strings"
 
 	"github.com/spf13/cobra"
-	"github.com/stellar/go/tools/stellar-hd-wallet/derive"
-	"github.com/tyler-smith/go-bip32"
+	"github.com/stellar/go/exp/crypto/derivation"
+	"github.com/stellar/go/keypair"
 	"github.com/tyler-smith/go-bip39"
 )
 
@@ -43,19 +44,29 @@ var AccountsCmd = &cobra.Command{
 		fmt.Println("Mnemonic:", mnemonic)
 
 		seed := bip39.NewSeed(mnemonic, password)
-		masterKey, err := bip32.NewMasterKey(seed)
+		fmt.Println("BIP39 Seed:", hex.EncodeToString(seed))
+
+		masterKey, err := derivation.DeriveForPath(derivation.StellarAccountPrefix, seed)
 		if err != nil {
 			log.Fatal(err)
 		}
 
-		paths, keypairs, err := derive.GetKeyPairs(masterKey, startID, count)
-		if err != nil {
-			log.Fatal(err)
-		}
+		fmt.Println("m/44'/148' key:", hex.EncodeToString(masterKey.Key))
 
 		fmt.Println("")
-		for i, keypair := range keypairs {
-			fmt.Printf("%s %s %s\n", paths[i], keypair.Address(), keypair.Seed())
+
+		for i := uint32(startID); i < startID+count; i++ {
+			key, err := masterKey.Derive(derivation.FirstHardenedIndex + i)
+			if err != nil {
+				log.Fatal(err)
+			}
+
+			kp, err := keypair.FromRawSeed(key.RawSeed())
+			if err != nil {
+				log.Fatal(err)
+			}
+
+			fmt.Println(fmt.Sprintf(derivation.StellarAccountPathFormat, i), kp.Address(), kp.Seed())
 		}
 	},
 }
