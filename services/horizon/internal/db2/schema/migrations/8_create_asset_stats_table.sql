@@ -7,5 +7,7 @@ CREATE TABLE asset_stats (
     toml            VARCHAR(64) NOT NULL
 );
 
+CREATE INDEX asset_by_code ON history_assets USING btree (asset_code);
+
 -- +migrate Down
 DROP TABLE asset_stats cascade;

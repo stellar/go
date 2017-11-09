@@ -44,7 +44,7 @@ func (action *AssetsAction) loadParams() {
 }
 
 // history_assets (id) is 32-bits but paging expects to query on an int64 so defaulting for now
-func defaultDescendingCursor(action *AssetsAction) {
+func (action *AssetsAction) defaultDescendingCursor() {
 	if action.PagingParams.Cursor == "" && action.PagingParams.Order == db2.OrderDescending {
 		action.PagingParams.Cursor = strconv.FormatInt(math.MaxInt32, 10)
 	}
@@ -69,7 +69,7 @@ func (action *AssetsAction) loadRecord() {
 		sql = sql.Where("hist.asset_issuer = ?", action.AssetIssuer)
 	}
 
-	defaultDescendingCursor(action)
+	action.defaultDescendingCursor()
 	sql, action.Err = action.PagingParams.ApplyTo(sql, "hist.id")
 	if action.Err != nil {
 		return

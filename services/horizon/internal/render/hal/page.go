@@ -44,12 +44,13 @@ type Page struct {
 	Cursor   string `json:"-"`
 }
 
-// LinkParam is an input to PopulateLinks
+// LinkParam is an input to PopulateLinks; this is a tentative solution that can be changed soon.
 type LinkParam struct {
 	Key   string
 	Value string
 }
 
+// bindOptionalParams is a tentative solution to include non-page params in paging links
 func bindOptionalParams(fmts string, params ...*LinkParam) string {
 	if params == nil {
 		return fmts
@@ -63,6 +64,7 @@ func bindOptionalParams(fmts string, params ...*LinkParam) string {
 }
 
 // PopulateLinks sets the common links for a page.
+// Note: variadic params is a tentative solution to include non-page params in paging links, we need a better solition
 func (p *Page) PopulateLinks(params ...*LinkParam) {
 	p.Init()
 	fmts := p.BasePath + "?order=%s&limit=%d&cursor=%s"
