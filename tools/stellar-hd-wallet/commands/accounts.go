@@ -16,6 +16,8 @@ import (
 var wordsRegexp = regexp.MustCompile(`^[a-z]+$`)
 var count, startID uint32
 
+var allowedNumbers = map[uint32]bool{12: true, 15: true, 18: true, 21: true, 24: true}
+
 var AccountsCmd = &cobra.Command{
 	Use:   "accounts",
 	Short: "Display accounts for a given mnemonic code",
@@ -23,8 +25,8 @@ var AccountsCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		fmt.Printf("How many words? ")
 		wordsCount := readUint()
-		if wordsCount < 12 {
-			log.Fatal("Invalid value (min 12)")
+		if _, exist := allowedNumbers[wordsCount]; !exist {
+			log.Fatal("Invalid value, allowed values: 12, 15, 18, 21, 24")
 		}
 
 		words := make([]string, wordsCount)
@@ -43,7 +45,11 @@ var AccountsCmd = &cobra.Command{
 		mnemonic := strings.Join(words, " ")
 		fmt.Println("Mnemonic:", mnemonic)
 
-		seed := bip39.NewSeed(mnemonic, password)
+		seed, err := bip39.NewSeedWithErrorChecking(mnemonic, password)
+		if err != nil {
+			log.Fatal("Mnemonic or checksum invalid: ", err)
+		}
+
 		fmt.Println("BIP39 Seed:", hex.EncodeToString(seed))
 
 		masterKey, err := derivation.DeriveForPath(derivation.StellarAccountPrefix, seed)
