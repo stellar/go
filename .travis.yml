@@ -47,6 +47,7 @@ deploy:
     file_glob: true
     name: Nightlies
     prerelease: true
+    overwrite: true
     on:
       repo: stellar/go
       branch: master
