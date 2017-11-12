@@ -16,7 +16,7 @@ func TestLookupByAddress(t *testing.T) {
 	tomlmock := &stellartoml.MockClient{}
 	c := &Client{StellarTOML: tomlmock, HTTP: hmock}
 
-	// happy path - string itnteger
+	// happy path - string integer
 	tomlmock.On("GetStellarToml", "stellar.org").Return(&stellartoml.Response{
 		FederationServer: "https://stellar.org/federation",
 	}, nil)
@@ -30,9 +30,9 @@ func TestLookupByAddress(t *testing.T) {
 	resp, err := c.LookupByAddress("scott*stellar.org")
 
 	if assert.NoError(t, err) {
-		assert.Equal(t, resp.AccountID, "GASTNVNLHVR3NFO3QACMHCJT3JUSIV4NBXDHDO4VTPDTNN65W3B2766C")
-		assert.Equal(t, resp.MemoType, "id")
-		assert.Equal(t, resp.Memo.String(), "123")
+		assert.Equal(t, "GASTNVNLHVR3NFO3QACMHCJT3JUSIV4NBXDHDO4VTPDTNN65W3B2766C", resp.AccountID)
+		assert.Equal(t, "id", resp.MemoType)
+		assert.Equal(t, "123", resp.Memo.String())
 	}
 
 	// happy path - integer
