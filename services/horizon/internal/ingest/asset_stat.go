@@ -8,10 +8,48 @@ import (
 	"github.com/stellar/go/xdr"
 )
 
-// UpdateAssetStats updates the db with the latest asset stats for the assetsModified
-func UpdateAssetStats(is *Session, assetsModified *map[string]xdr.Asset) {
+// IngestOperation updates the assetsModified using the passed in operation
+func (assetsModified AssetsModified) IngestOperation(err error, op *xdr.Operation, coreQ *core.Q) {
+	if err != nil {
+		return
+	}
+
+	body := op.Body
+	sourceAccount := op.SourceAccount
+	switch body.Type {
+	case xdr.OperationTypeAccountMerge:
+		assetsModified.addAssetsFromAccount(coreQ, body.Destination)
+		assetsModified.addAssetsFromAccount(coreQ, sourceAccount)
+	case xdr.OperationTypeSetOptions:
+		assetsModified.addAssetsFromAccount(coreQ, sourceAccount)
+	case xdr.OperationTypePayment:
+		assetsModified.assetsModified[body.PaymentOp.Asset.String()] = body.PaymentOp.Asset
+	case xdr.OperationTypePathPayment:
+		assetsModified.assetsModified[body.PathPaymentOp.DestAsset.String()] = body.PathPaymentOp.DestAsset
+		assetsModified.assetsModified[body.PathPaymentOp.SendAsset.String()] = body.PathPaymentOp.SendAsset
+		for _, asset := range body.PathPaymentOp.Path {
+			assetsModified.assetsModified[asset.String()] = asset
+		}
+	case xdr.OperationTypeChangeTrust:
+		if body.ChangeTrustOp.Limit == 0 {
+			assetsModified.assetsModified[body.ChangeTrustOp.Line.String()] = body.ChangeTrustOp.Line
+		}
+	case xdr.OperationTypeAllowTrust:
+		if sourceAccount != nil {
+			asset := body.AllowTrustOp.Asset.ToAsset(*sourceAccount)
+			assetsModified.assetsModified[asset.String()] = asset
+		}
+	}
+}
+
+// UpdateAssetStats updates the db with the latest asset stats for the assets that were modified
+func (assetsModified AssetsModified) UpdateAssetStats(is *Session) {
+	if is.Err != nil {
+		return
+	}
+
 	hasValue := false
-	for _, asset := range *assetsModified {
+	for _, asset := range assetsModified.assetsModified {
 		assetStat := computeAssetStat(is, &asset)
 		if is.Err != nil {
 			return
@@ -33,6 +71,21 @@ func UpdateAssetStats(is *Session, assetsModified *map[string]xdr.Asset) {
 		is.Ingestion.assetStats = is.Ingestion.assetStats.
 			Suffix("ON CONFLICT (id) DO UPDATE SET (amount, num_accounts, flags, toml) = (excluded.amount, excluded.num_accounts, excluded.flags, excluded.toml)")
 		_, is.Err = is.Ingestion.DB.Exec(is.Ingestion.assetStats)
+	}
+}
+
+func (assetsModified AssetsModified) addAssetsFromAccount(coreQ *core.Q, account *xdr.AccountId) {
+	if account == nil {
+		return
+	}
+
+	var assets []xdr.Asset
+	coreQ.AssetsForAddress(&assets, account.Address())
+
+	for _, asset := range assets {
+		if asset.Type != xdr.AssetTypeAssetTypeNative {
+			assetsModified.assetsModified[asset.String()] = asset
+		}
 	}
 }
 

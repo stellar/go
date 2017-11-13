@@ -10,6 +10,7 @@ import (
 	metrics "github.com/rcrowley/go-metrics"
 	"github.com/stellar/go/services/horizon/internal/db2/core"
 	"github.com/stellar/go/support/db"
+	"github.com/stellar/go/xdr"
 )
 
 const (
@@ -35,7 +36,8 @@ type Cursor struct {
 	// DB is the stellar-core db that data is ingested from.
 	DB *db.Session
 
-	Metrics *IngesterMetrics
+	Metrics        *IngesterMetrics
+	AssetsModified *AssetsModified
 
 	// Err is the error that caused this iteration to fail, if any.
 	Err error
@@ -98,6 +100,11 @@ type IngesterMetrics struct {
 	ClearLedgerTimer  metrics.Timer
 	IngestLedgerTimer metrics.Timer
 	LoadLedgerTimer   metrics.Timer
+}
+
+// AssetsModified tracks all the assets modified during a cycle of ingestion
+type AssetsModified struct {
+	assetsModified map[string]xdr.Asset
 }
 
 // Ingestion receives write requests from a Session
@@ -183,6 +190,9 @@ func NewSession(first, last int32, i *System) *Session {
 			LastLedger:  last,
 			DB:          i.CoreDB,
 			Metrics:     &i.Metrics,
+			AssetsModified: &AssetsModified{
+				assetsModified: make(map[string]xdr.Asset),
+			},
 		},
 		Network:          i.Network,
 		StellarCoreURL:   i.StellarCoreURL,
