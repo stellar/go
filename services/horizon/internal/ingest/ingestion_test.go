@@ -59,6 +59,7 @@ func TestAssetIngest(t *testing.T) {
 	tt := test.Start(t).ScenarioWithoutHorizon("kahuna")
 	defer tt.Finish()
 	s := ingest(tt)
+	tt.Require.NoError(s.Err)
 	q := history.Q{Session: s.Ingestion.DB}
 
 	expectedAsset := history.Asset{
