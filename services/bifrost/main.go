@@ -153,7 +153,7 @@ This command will create 3 server.Server's listening on ports 8000-8002.`,
 
 var checkKeysCmd = &cobra.Command{
 	Use:   "check-keys",
-	Short: "Displays a few public keys derivied using master public keys",
+	Short: "Displays a few public keys derived using master public keys",
 	Run: func(cmd *cobra.Command, args []string) {
 		cfgPath := rootCmd.PersistentFlags().Lookup("config").Value.String()
 		start, _ := cmd.PersistentFlags().GetUint32("start")

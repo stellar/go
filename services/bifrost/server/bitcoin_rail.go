@@ -13,7 +13,7 @@ import (
 // the transactions queue for StellarAccountConfigurator to consume.
 //
 // Transaction added to transactions queue should be in a format described in
-// queue.Queue (especialy amounts). Pooling service should not have to deal with any
+// queue.Transaction (especialy amounts). Pooling service should not have to deal with any
 // conversions.
 //
 // This is very unlikely but it's possible that a single transaction will have more than
