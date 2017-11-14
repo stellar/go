@@ -47,7 +47,7 @@ var AccountsCmd = &cobra.Command{
 
 		seed, err := bip39.NewSeedWithErrorChecking(mnemonic, password)
 		if err != nil {
-			log.Fatal("Mnemonic or checksum invalid: ", err)
+			log.Fatal("Invalid words or checksum")
 		}
 
 		fmt.Println("BIP39 Seed:", hex.EncodeToString(seed))

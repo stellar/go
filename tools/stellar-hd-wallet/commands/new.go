@@ -26,7 +26,7 @@ var NewCmd = &cobra.Command{
 
 		words := strings.Split(mnemonic, " ")
 		for i := 0; i < len(words); i++ {
-			fmt.Printf("#%-5d %10s", i+1, words[i])
+			fmt.Printf("word %02d/24: %10s", i+1, words[i])
 			readString()
 		}
 
