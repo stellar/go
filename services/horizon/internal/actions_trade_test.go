@@ -99,15 +99,39 @@ func TestTradeActions_Aggregation(t *testing.T) {
 	ht.Require.NoError(err)
 
 	var records []resource.TradeAggregation
+	var record resource.TradeAggregation
 	var nextLink string
 
 	q := make(url.Values)
 	setAssetQuery(&q, "base_", ass1)
 	setAssetQuery(&q, "counter_", ass2)
-	q.Add("resolution", strconv.FormatInt(minute, 10))
+
 	q.Add("start_time", strconv.FormatInt(start, 10))
 	q.Add("end_time", strconv.FormatInt(start+hour, 10))
+	q.Add("order", "asc")
+
+	//test one bucket for all trades
+	q.Add("resolution", strconv.FormatInt(hour, 10))
 	w := ht.GetWithParams(aggregationPath, q)
+	if ht.Assert.Equal(200, w.Code) {
+		ht.Assert.PageOf(1, w.Body)
+		ht.UnmarshalPage(w.Body, &records)
+		record = records[0] //Save the single aggregation record for next test
+	}
+
+	//test reverse one bucket - make sure values don't change
+	q.Set("order", "desc")
+	w = ht.GetWithParams(aggregationPath, q)
+	if ht.Assert.Equal(200, w.Code) {
+		ht.Assert.PageOf(1, w.Body)
+		ht.UnmarshalPage(w.Body, &records)
+		ht.Assert.Equal(record, records[0])
+	}
+
+	//Test bucket per trade
+	q.Set("order", "asc")
+	q.Set("resolution", strconv.FormatInt(minute, 10))
+	w = ht.GetWithParams(aggregationPath, q)
 	if ht.Assert.Equal(200, w.Code) {
 		ht.Assert.PageOf(numOfTrades, w.Body)
 	}
@@ -141,7 +165,7 @@ func TestTradeActions_Aggregation(t *testing.T) {
 	}
 
 	//test direction (desc)
-	q.Add("order", "desc")
+	q.Set("order", "desc")
 	w = ht.GetWithParams(aggregationPath, q)
 	if ht.Assert.Equal(200, w.Code) {
 		if ht.Assert.PageOf(limit, w.Body) {
