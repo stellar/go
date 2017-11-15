@@ -91,6 +91,9 @@ func TestTradeActions_Aggregation(t *testing.T) {
 	const second = 1000
 	const minute = 60 * second
 	const hour = minute * 60
+
+	//a realistic millis (since epoch) value to start the test from
+	//it represents a round hour and is bigger than a max int32
 	const start = 1510693200000
 
 	dbQ := &Q{ht.HorizonSession()}
