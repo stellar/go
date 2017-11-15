@@ -51,16 +51,19 @@ func (action *AssetsAction) defaultDescendingCursor() {
 }
 
 func (action *AssetsAction) loadRecord() {
-	sql := sq.Select(
-		"hist.id",
-		"hist.asset_type",
-		"hist.asset_code",
-		"hist.asset_issuer",
-		"stats.amount",
-		"stats.num_accounts",
-		"stats.flags",
-		"stats.toml",
-	).From("history_assets hist").Join("asset_stats stats ON hist.id = stats.id")
+	sql := sq.
+		Select(
+			"hist.id as id",
+			"hist.asset_type",
+			"hist.asset_code",
+			"hist.asset_issuer",
+			"stats.amount",
+			"stats.num_accounts",
+			"stats.flags",
+			"stats.toml",
+		).
+		From("history_assets hist").
+		Join("asset_stats stats ON hist.id = stats.id")
 
 	if action.AssetCode != "" {
 		sql = sql.Where("hist.asset_code = ?", action.AssetCode)
@@ -74,6 +77,7 @@ func (action *AssetsAction) loadRecord() {
 	if action.Err != nil {
 		return
 	}
+	sql = sql.OrderBy("hist.asset_code ASC", "hist.asset_issuer ASC")
 
 	action.Err = action.HistoryQ().Select(&action.Records, sql)
 }

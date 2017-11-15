@@ -24,7 +24,7 @@ func (res *AssetStat) Populate(
 		(row.Flags & int8(xdr.AccountFlagsAuthRequiredFlag)) != 0,
 		(row.Flags & int8(xdr.AccountFlagsAuthRevocableFlag)) != 0,
 	}
-	res.PT = strconv.FormatInt(row.Asset.ID, 10)
+	res.PT = strconv.FormatInt(row.AssetStat.ID, 10)
 
 	res.Links.Toml = hal.NewLink(row.Toml)
 	return
