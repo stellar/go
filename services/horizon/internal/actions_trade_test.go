@@ -88,10 +88,10 @@ func TestTradeActions_Aggregation(t *testing.T) {
 
 	const aggregationPath = "/trade_aggregations"
 	const numOfTrades = 10
-	const start = 1000*60*60*24
 	const second = 1000
 	const minute = 60 * second
 	const hour = minute * 60
+	const start = 1510693200000
 
 	dbQ := &Q{ht.HorizonSession()}
 	err, ass1, ass2 := PopulateTestTrades(dbQ, start, numOfTrades, minute)

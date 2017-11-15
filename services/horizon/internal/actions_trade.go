@@ -96,8 +96,8 @@ type TradeAggregateIndexAction struct {
 	Action
 	BaseAssetFilter    xdr.Asset
 	CounterAssetFilter xdr.Asset
-	StartTimeFilter    time.TimeMillis
-	EndTimeFilter      time.TimeMillis
+	StartTimeFilter    time.Millis
+	EndTimeFilter      time.Millis
 	ResolutionFilter   int64
 	PagingParams       db2.PageQuery
 	Records            []history.TradeAggregation
@@ -147,10 +147,10 @@ func (action *TradeAggregateIndexAction) loadRecords() {
 		baseAssetId, counterAssetId, action.ResolutionFilter, action.PagingParams)
 
 	//set time range if supplied
-	if !action.StartTimeFilter.IsNull() {
+	if !action.StartTimeFilter.IsNil() {
 		tradeAggregationsQ.WithStartTime(action.StartTimeFilter)
 	}
-	if !action.EndTimeFilter.IsNull() {
+	if !action.EndTimeFilter.IsNil() {
 		tradeAggregationsQ.WithEndTime(action.EndTimeFilter)
 	}
 	historyQ.Select(&action.Records, tradeAggregationsQ.GetSql())
@@ -184,16 +184,16 @@ func (action *TradeAggregateIndexAction) loadPage() {
 	} else {
 		if action.PagingParams.Order == "asc" {
 			newStartTime := action.Records[len(action.Records)-1].Timestamp + action.ResolutionFilter
-			if newStartTime >= action.EndTimeFilter.Millis() {
-				newStartTime = action.EndTimeFilter.Millis()
+			if newStartTime >= action.EndTimeFilter.ToInt64() {
+				newStartTime = action.EndTimeFilter.ToInt64()
 			}
 			q.Set("start_time", strconv.FormatInt(newStartTime, 10))
 			action.Page.Links.Next = hal.NewLink(base + "?" + q.Encode())
 
 		} else { //desc
 			newEndTime := action.Records[len(action.Records)-1].Timestamp
-			if newEndTime <= action.StartTimeFilter.Millis() {
-				newEndTime = action.StartTimeFilter.Millis()
+			if newEndTime <= action.StartTimeFilter.ToInt64() {
+				newEndTime = action.StartTimeFilter.ToInt64()
 			}
 			q.Set("end_time", strconv.FormatInt(newEndTime, 10))
 			action.Page.Links.Next = hal.NewLink(base + "?" + q.Encode())

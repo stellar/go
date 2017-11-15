@@ -318,7 +318,7 @@ func (base *Base) MaybeGetAsset(prefix string) (xdr.Asset, bool) {
 
 // GetTimeMillis retrieves a TimeMillis from the action parameter of the given name.
 // Populates err if the value is not a valid TimeMillis
-func (base *Base) GetTimeMillis(name string) (timeMillis time.TimeMillis) {
+func (base *Base) GetTimeMillis(name string) (timeMillis time.Millis) {
 	if base.Err != nil {
 		return
 	}
@@ -329,7 +329,7 @@ func (base *Base) GetTimeMillis(name string) (timeMillis time.TimeMillis) {
 		return
 	}
 
-	timeMillis, err := time.TimeMillisFromString(asStr)
+	timeMillis, err := time.MillisFromString(asStr)
 
 	if err != nil {
 		base.SetInvalidField(name, err)

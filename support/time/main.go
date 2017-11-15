@@ -5,45 +5,58 @@ import (
 	goTime "time"
 )
 
-//TimeMillis represents time as milliseconds since epoch without any timezone adjustments
-type TimeMillis int64
+//ToInt64 represents time as milliseconds since epoch without any timezone adjustments
+type Millis int64
 
-//TimeMillisFromString generates a TimeMillis struct from a string representing an int64
-func TimeMillisFromString(s string) (TimeMillis, error) {
-	millis, err := strconv.Atoi(s)
-	return TimeMillis(int64(millis)), err
+//MillisFromString generates a ToInt64 struct from a string representing an int64
+func MillisFromString(s string) (Millis, error) {
+	millis, err := strconv.ParseInt(s, 10, 64)
+	return Millis(int64(millis)), err
 }
 
-//FromMillis generates a TimeMillis struct from given millis int64
-func FromMillis(millis int64) TimeMillis {
-	return TimeMillis(millis)
+//MillisFromInt64 generates a ToInt64 struct from given millis int64
+func MillisFromInt64(millis int64) Millis {
+	return Millis(millis)
 }
 
-//IsNull returns true if the timeMillis has not been initialized to a date other then 0 from epoch
-func (t TimeMillis) IsNull() bool {
+func (t Millis) increment(millisToAdd int64) Millis {
+	return Millis(int64(t)+ millisToAdd)
+}
+
+//IsNil returns true if the timeMillis has not been initialized to a date other then 0 from epoch
+func (t Millis) IsNil() bool {
 	return t == 0
 }
 
-//RoundUp returns a new TimeMillis instance with a rounded up to d millis
-func (t TimeMillis) RoundUp(d int64) TimeMillis {
+//RoundUp returns a new ToInt64 instance with a rounded up to d millis
+func (t Millis) RoundUp(d int64) Millis {
 	if int64(t)%d != 0 {
-		return TimeMillis(int64((int64(t) / d) * (d + 1)))
+		return t.RoundDown(d).increment(d)
 	}
 	return t
 }
 
-//RoundUp returns a new TimeMillis instance with a down to d millis
-func (t TimeMillis) RoundDown(d int64) TimeMillis {
+//RoundUp returns a new ToInt64 instance with a down to d millis
+func (t Millis) RoundDown(d int64) Millis {
 	//round down to the nearest d
-	return TimeMillis(int64(int64(t)/d) * d)
+	return Millis(int64(int64(t)/d) * d)
 }
 
-//Millis returns the actual int64 millis since epoch
-func (t TimeMillis) Millis() int64 {
+//ToInt64 returns the actual int64 millis since epoch
+func (t Millis) ToInt64() int64 {
 	return int64(t)
 }
 
-//ToDate returns a go time.Time timestamp, UTC adjusted
-func (t TimeMillis) ToDate() goTime.Time {
-	return goTime.Unix(int64(t)/1000, int64(t)%100*int64(goTime.Millisecond)).UTC()
+//ToTime returns a go time.Time timestamp, UTC adjusted
+func (t Millis) ToTime() goTime.Time {
+	return goTime.Unix(int64(t)/1000, 0).UTC()
+}
+
+//Now returns current time in millis
+func Now() Millis {
+	return Millis(goTime.Now().UTC().UnixNano() / int64(goTime.Millisecond))
+}
+
+func (t Millis) String() string {
+	return strconv.FormatInt(t.ToInt64(), 10)
 }

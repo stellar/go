@@ -219,7 +219,7 @@ func (q *Q) InsertTrade(
 	sql := tradesInsert.Values(
 		opid,
 		order,
-		time.FromMillis(ledgerClosedAt).ToDate(),
+		time.MillisFromInt64(ledgerClosedAt).ToTime(),
 		trade.OfferId,
 		baseAccountId,
 		baseAssetId,
