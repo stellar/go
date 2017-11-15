@@ -17,11 +17,12 @@ func (assetsModified AssetsModified) IngestOperation(err error, op *xdr.Operatio
 	body := op.Body
 	sourceAccount := op.SourceAccount
 	switch body.Type {
-	case xdr.OperationTypeAccountMerge:
-		assetsModified.addAssetsFromAccount(coreQ, body.Destination)
-		assetsModified.addAssetsFromAccount(coreQ, sourceAccount)
-	case xdr.OperationTypeSetOptions:
-		assetsModified.addAssetsFromAccount(coreQ, sourceAccount)
+	// TODO NNS 1 need to fix GetOrInsertAssetID call when adding assets from account
+	// case xdr.OperationTypeAccountMerge:
+	// 	assetsModified.addAssetsFromAccount(coreQ, body.Destination)
+	// 	assetsModified.addAssetsFromAccount(coreQ, sourceAccount)
+	// case xdr.OperationTypeSetOptions:
+	// 	assetsModified.addAssetsFromAccount(coreQ, sourceAccount)
 	case xdr.OperationTypePayment:
 		assetsModified.assetsModified[body.PaymentOp.Asset.String()] = body.PaymentOp.Asset
 	case xdr.OperationTypePathPayment:
@@ -74,20 +75,20 @@ func (assetsModified AssetsModified) UpdateAssetStats(is *Session) {
 	}
 }
 
-func (assetsModified AssetsModified) addAssetsFromAccount(coreQ *core.Q, account *xdr.AccountId) {
-	if account == nil {
-		return
-	}
+// func (assetsModified AssetsModified) addAssetsFromAccount(coreQ *core.Q, account *xdr.AccountId) {
+// 	if account == nil {
+// 		return
+// 	}
 
-	var assets []xdr.Asset
-	coreQ.AssetsForAddress(&assets, account.Address())
+// 	var assets []xdr.Asset
+// 	coreQ.AssetsForAddress(&assets, account.Address())
 
-	for _, asset := range assets {
-		if asset.Type != xdr.AssetTypeAssetTypeNative {
-			assetsModified.assetsModified[asset.String()] = asset
-		}
-	}
-}
+// 	for _, asset := range assets {
+// 		if asset.Type != xdr.AssetTypeAssetTypeNative {
+// 			assetsModified.assetsModified[asset.String()] = asset
+// 		}
+// 	}
+// }
 
 func computeAssetStat(is *Session, asset *xdr.Asset) *history.AssetStat {
 	if asset.Type == xdr.AssetTypeAssetTypeNative {
