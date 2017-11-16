@@ -78,12 +78,13 @@ m/44'/148'/9' GBOSMFQYKWFDHJWCMCZSMGUMWCZOM4KFMXXS64INDHVCJ2A2JAABCYRR SDXDYPDNR
 	}
 
 	for _, test := range tests {
+		words := strings.Split(test.Words, " ")
+		input := fmt.Sprintf("%d\n%s\n%s\n", len(words), strings.Join(words, "\n"), test.Passphrase)
+
 		// Global variables, AFAIK there is no elegant way to pass it to cobra.Command
 		reader = bufio.NewReader(bytes.NewBufferString(input))
 		out = &bytes.Buffer{}
 
-		words := strings.Split(test.Words, " ")
-		input := fmt.Sprintf("%d\n%s\n%s\n", len(words), strings.Join(words, "\n"), test.Passphrase)
 		err := AccountsCmd.RunE(nil, []string{})
 		if test.Error != "" {
 			assert.Error(t, err)
