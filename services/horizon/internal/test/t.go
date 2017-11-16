@@ -68,6 +68,21 @@ func (t *T) UnmarshalPage(r io.Reader, dest interface{}) {
 	t.Require.NoError(err, "failed to decode records")
 }
 
+// UnmarshalNext extracts and returns the next link
+func (t *T) UnmarshalNext(r io.Reader) string {
+	var env struct {
+		Links struct {
+			Next struct {
+				Href string `json:"href"`
+			} `json:"next"`
+		} `json:"_links"`
+	}
+
+	err := json.NewDecoder(r).Decode(&env)
+	t.Require.NoError(err, "failed to decode page")
+	return env.Links.Next.Href
+}
+
 // UpdateLedgerState updates the cached ledger state (or panicing on failure).
 func (t *T) UpdateLedgerState() {
 	var next ledger.State

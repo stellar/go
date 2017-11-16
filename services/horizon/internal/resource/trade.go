@@ -52,3 +52,26 @@ func (res *Trade) populateLinks(
 		fmt.Sprintf("%d", opid),
 	)
 }
+
+// Populate fills out the details of a trade using a row from the history_trades
+// table.
+func (res *TradeAggregation) Populate(
+	ctx context.Context,
+	row history.TradeAggregation,
+) (err error) {
+	res.Timestamp = row.Timestamp
+	res.TradeCount = row.TradeCount
+	res.BaseVolume = row.BaseVolume
+	res.CounterVolume = row.CounterVolume
+	res.Average = row.Average
+	res.High = row.High
+	res.Low = row.Low
+	res.Open = row.Open
+	res.Close = row.Close
+	return
+}
+
+// PagingToken implementation for hal.Pageable. Not actually used
+func (res TradeAggregation) PagingToken() string {
+	return string(res.Timestamp)
+}

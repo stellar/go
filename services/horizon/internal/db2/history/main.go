@@ -199,7 +199,7 @@ type OperationsQ struct {
 	sql    sq.SelectBuilder
 }
 
-// Q is a helper struct on which to hang common queries against a history
+// Q is a helper struct on which to hang common_trades queries against a history
 // portion of the horizon database.
 type Q struct {
 	*db.Session

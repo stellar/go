@@ -156,8 +156,10 @@ func (ingest *Ingestion) Operation(
 // `history_operation_participants` table.
 func (ingest *Ingestion) OperationParticipants(op int64, aids []xdr.AccountId) error {
 	sql := ingest.operation_participants
+	q := history.Q{Session: ingest.DB}
+
 	for _, aid := range aids {
-		haid, err := ingest.getParticipantID(aid)
+		haid, err := q.GetCreateAccountID(aid)
 		if err != nil {
 			return err
 		}
@@ -226,21 +228,23 @@ func (ingest *Ingestion) Trade(
 	ledgerClosedAt int64,
 ) error {
 
-	sellerAccountId, err := ingest.getParticipantID(trade.SellerId)
+	q := history.Q{Session: ingest.DB}
+
+	sellerAccountId, err := q.GetCreateAccountID(trade.SellerId)
 	if err != nil {
 		return errors.Wrap(err, "failed to load seller account id")
 	}
 
-	buyerAccountId, err := ingest.getParticipantID(buyer)
+	buyerAccountId, err := q.GetCreateAccountID(buyer)
 	if err != nil {
 		return errors.Wrap(err, "failed to load buyer account id")
 	}
-	soldAssetId, err := ingest.getAssetId(trade.AssetSold)
+	soldAssetId, err := q.GetCreateAssetID(trade.AssetSold)
 	if err != nil {
 		return errors.Wrap(err, "failed to get sold asset id")
 	}
 
-	boughtAssetId, err := ingest.getAssetId(trade.AssetBought)
+	boughtAssetId, err := q.GetCreateAssetID(trade.AssetBought)
 	if err != nil {
 		return errors.Wrap(err, "failed to get bought asset id")
 	}
@@ -300,9 +304,10 @@ func (ingest *Ingestion) Transaction(
 // `history_transaction_participants` table.
 func (ingest *Ingestion) TransactionParticipants(tx int64, aids []xdr.AccountId) error {
 	sql := ingest.transaction_participants
+	q := history.Q{Session: ingest.DB}
 
 	for _, aid := range aids {
-		haid, err := ingest.getParticipantID(aid)
+		haid, err := q.GetCreateAccountID(aid)
 		if err != nil {
 			return err
 		}
@@ -411,71 +416,6 @@ func (ingest *Ingestion) commit() error {
 	}
 
 	return nil
-}
-
-// Get account row id. If account is first seen, it will be inserted.
-func (ingest *Ingestion) getParticipantID(
-	aid xdr.AccountId,
-) (result int64, err error) {
-
-	q := history.Q{Session: ingest.DB}
-	var existing history.Account
-	err = q.AccountByAddress(&existing, aid.Address())
-
-	if err != nil && !q.NoRows(err) {
-		return
-	}
-
-	// already imported, return the found value
-	if !q.NoRows(err) {
-		result = existing.ID
-		return
-	}
-	err = ingest.DB.GetRaw(
-		&result,
-		`INSERT INTO history_accounts (address) VALUES (?) RETURNING id`,
-		aid.Address(),
-	)
-	if err != nil {
-		return
-	}
-
-	return
-}
-
-// Get asset row id. If asset is first seen, it will be inserted.
-func (ingest *Ingestion) getAssetId(
-	asset xdr.Asset,
-) (result int64, err error) {
-
-	q := history.Q{Session: ingest.DB}
-	result, err = q.GetAssetID(asset)
-
-	if err != nil && !q.NoRows(err) {
-		return
-	}
-
-	// already imported, return the found value
-	if !q.NoRows(err) {
-		return result, nil
-	}
-
-	var (
-		assetType   string
-		assetCode   string
-		assetIssuer string
-	)
-
-	err = asset.Extract(&assetType, &assetCode, &assetIssuer)
-	if err != nil {
-		return
-	}
-
-	err = ingest.DB.GetRaw(&result,
-		`INSERT INTO history_assets (asset_type, asset_code, asset_issuer) VALUES (?,?,?) RETURNING id`,
-		assetType, assetCode, assetIssuer)
-
-	return
 }
 
 func (ingest *Ingestion) formatTimeBounds(bounds *xdr.TimeBounds) interface{} {

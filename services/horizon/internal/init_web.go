@@ -108,8 +108,9 @@ func initWebActions(app *App) {
 
 	// trading related endpoints
 	r.Get("/trades", &TradeIndexAction{})
+	r.Get("/trade_aggregations", &TradeAggregateIndexAction{})
 	r.Get("/offers/:id", &NotImplementedAction{})
-	r.Get("/offers/:offer_id/trades", &NotImplementedAction{})
+	r.Get("/offers/:offer_id/", &NotImplementedAction{})
 	r.Get("/order_book", &OrderBookShowAction{})
 	r.Get("/order_book/trades", &TradeIndexAction{})
 

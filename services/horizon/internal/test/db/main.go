@@ -55,7 +55,7 @@ func StellarCore(t *testing.T) *sqlx.DB {
 // StellarCoreURL returns the database connection the url any test
 // use when connecting to the stellar-core database
 func StellarCoreURL() string {
-	if coreUrl == nil  {
+	if coreUrl == nil {
 		log.Panic(fmt.Errorf("StellarCore not initialized"))
 	}
 	return *coreUrl
