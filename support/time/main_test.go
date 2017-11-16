@@ -21,3 +21,7 @@ func TestMillisParsing(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, actual, expected)
 }
+
+func TestMillisToTime(t *testing.T) {
+	assert.Equal(t, int64(1510831636149000000), Millis(1510831636149).ToTime().UnixNano())
+}
