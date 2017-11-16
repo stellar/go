@@ -21,12 +21,53 @@ var _ = Describe("Transaction Mutators:", func() {
 			subject.Mutate(Payment())
 			mut = Defaults{}
 		})
-		It("sets the fee", func() { Expect(subject.TX.Fee).To(BeEquivalentTo(100)) })
+		It("sets the fee", func() { Expect(subject.TX.Fee).To(BeEquivalentTo(DefaultBaseFee)) })
 		It("sets the network passphrase", func() { Expect(subject.NetworkPassphrase).To(Equal(DefaultNetwork.Passphrase)) })
 
 		Context("on a transaction with 2 operations", func() {
 			BeforeEach(func() { subject.Mutate(Payment()) })
 			It("sets the fee to 200", func() { Expect(subject.TX.Fee).To(BeEquivalentTo(200)) })
+		})
+	})
+
+	Describe("TransactionBuilder.BaseFee", func() {
+		BeforeEach(func() {
+			subject.Mutate(Payment())
+			mut = Defaults{}
+		})
+		It("sets the fee", func() { Expect(subject.TX.Fee).To(BeEquivalentTo(DefaultBaseFee)) })
+
+		Context("trying to change the base fee to 333", func() {
+			BeforeEach(func() {
+				subject.BaseFee = 333
+				subject.Mutate(Payment())
+			})
+			It(
+				"sets the fee to 333 * 2",
+				func() { Expect(subject.TX.Fee).To(BeEquivalentTo(333 * 2)) },
+			)
+		})
+	})
+
+	Describe("BaseFee Mutator", func() {
+		BeforeEach(func() {
+			subject.Mutate(BaseFee{Amount: 456}, Defaults{})
+		})
+		It(
+			"sets the base fee to 456",
+			func() { Expect(subject.BaseFee).To(BeEquivalentTo(456)) },
+		)
+
+		Context("on a transaction with 3 operations", func() {
+			BeforeEach(func() {
+				subject.Mutate(Payment())
+				subject.Mutate(Payment())
+				subject.Mutate(Payment())
+			})
+			It(
+				"sets the fee to 456 * 3",
+				func() { Expect(subject.TX.Fee).To(BeEquivalentTo(456 * 3)) },
+			)
 		})
 	})
 
