@@ -177,7 +177,7 @@ func (s *Server) HandlerEvents(w http.ResponseWriter, r *http.Request) {
 		var chain database.Chain
 
 		if len(address) == 0 {
-			w.WriteHeader(http.StatusBadGateway)
+			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
 
