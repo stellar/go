@@ -175,10 +175,17 @@ func (s *Server) HandlerEvents(w http.ResponseWriter, r *http.Request) {
 	address := r.URL.Query().Get("stream")
 	if !s.SSEServer.StreamExists(address) {
 		var chain database.Chain
-		if len(address) > 0 && address[0] == '1' {
-			chain = database.ChainBitcoin
-		} else {
+
+		if len(address) == 0 {
+			w.WriteHeader(http.StatusBadGateway)
+			return
+		}
+
+		if address[0] == '0' {
 			chain = database.ChainEthereum
+		} else {
+			// 1 or m, n in testnet
+			chain = database.ChainBitcoin
 		}
 
 		association, err := s.Database.GetAssociationByChainAddress(chain, address)
