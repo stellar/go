@@ -3,14 +3,14 @@ package commands
 import (
 	"encoding/hex"
 	"fmt"
-	"log"
 	"regexp"
 	"strings"
 
+	"github.com/bartekn/go-bip39"
 	"github.com/spf13/cobra"
 	"github.com/stellar/go/exp/crypto/derivation"
 	"github.com/stellar/go/keypair"
-	"github.com/tyler-smith/go-bip39"
+	"github.com/stellar/go/support/errors"
 )
 
 var wordsRegexp = regexp.MustCompile(`^[a-z]+$`)
@@ -22,58 +22,60 @@ var AccountsCmd = &cobra.Command{
 	Use:   "accounts",
 	Short: "Display accounts for a given mnemonic code",
 	Long:  "",
-	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Printf("How many words? ")
+	RunE: func(cmd *cobra.Command, args []string) error {
+		printf("How many words? ")
 		wordsCount := readUint()
 		if _, exist := allowedNumbers[wordsCount]; !exist {
-			log.Fatal("Invalid value, allowed values: 12, 15, 18, 21, 24")
+			return errors.New("Invalid value, allowed values: 12, 15, 18, 21, 24")
 		}
 
 		words := make([]string, wordsCount)
 		for i := uint32(0); i < wordsCount; i++ {
-			fmt.Printf("Enter word #%-4d", i+1)
+			printf("Enter word #%-4d", i+1)
 			words[i] = readString()
 			if !wordsRegexp.MatchString(words[i]) {
-				fmt.Println("Invalid word, try again.")
+				println("Invalid word, try again.")
 				i--
 			}
 		}
 
-		fmt.Printf("Enter password (leave empty if none): ")
+		printf("Enter password (leave empty if none): ")
 		password := readString()
 
 		mnemonic := strings.Join(words, " ")
-		fmt.Println("Mnemonic:", mnemonic)
+		println("Mnemonic:", mnemonic)
 
 		seed, err := bip39.NewSeedWithErrorChecking(mnemonic, password)
 		if err != nil {
-			log.Fatal("Invalid words or checksum")
+			return errors.New("Invalid words or checksum")
 		}
 
-		fmt.Println("BIP39 Seed:", hex.EncodeToString(seed))
+		println("BIP39 Seed:", hex.EncodeToString(seed))
 
 		masterKey, err := derivation.DeriveForPath(derivation.StellarAccountPrefix, seed)
 		if err != nil {
-			log.Fatal(err)
+			return errors.Wrap(err, "Error deriving master key")
 		}
 
-		fmt.Println("m/44'/148' key:", hex.EncodeToString(masterKey.Key))
+		println("m/44'/148' key:", hex.EncodeToString(masterKey.Key))
 
-		fmt.Println("")
+		println("")
 
 		for i := uint32(startID); i < startID+count; i++ {
 			key, err := masterKey.Derive(derivation.FirstHardenedIndex + i)
 			if err != nil {
-				log.Fatal(err)
+				return errors.Wrap(err, "Error deriving child key")
 			}
 
 			kp, err := keypair.FromRawSeed(key.RawSeed())
 			if err != nil {
-				log.Fatal(err)
+				return errors.Wrap(err, "Error creating key pair")
 			}
 
-			fmt.Println(fmt.Sprintf(derivation.StellarAccountPathFormat, i), kp.Address(), kp.Seed())
+			println(fmt.Sprintf(derivation.StellarAccountPathFormat, i), kp.Address(), kp.Seed())
 		}
+
+		return nil
 	},
 }
 

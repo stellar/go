@@ -9,7 +9,7 @@ import (
 
 var mainCmd = &cobra.Command{
 	Use:   "stellar-hd-wallet",
-	Short: "Simple HD wallet for Stellar Lumens",
+	Short: "Simple HD wallet for Stellar Lumens. THIS PROGRAM IS STILL EXPERIMENTAL. USE AT YOUR OWN RISK.",
 }
 
 func init() {
