@@ -68,6 +68,7 @@ func (rh *requestHelper) Execute(
 ) *httptest.ResponseRecorder {
 
 	req.RemoteAddr = "127.0.0.1"
+	req.Host = "localhost"
 	for _, fn := range requestModFns {
 		fn(req)
 	}

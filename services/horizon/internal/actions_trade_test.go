@@ -11,6 +11,7 @@ import (
 	. "github.com/stellar/go/services/horizon/internal/test/trades"
 	"github.com/stellar/go/xdr"
 	"strconv"
+	"strings"
 )
 
 func TestTradeActions_Index(t *testing.T) {
@@ -159,6 +160,8 @@ func TestTradeActions_Aggregation(t *testing.T) {
 	//test that next page delivers the correct amount of records
 	w = ht.GetWithParams(aggregationPath, q)
 	nextLink = ht.UnmarshalNext(w.Body)
+	//make sure the next link is a full url and not just a path
+	ht.Assert.Equal(true, strings.HasPrefix(nextLink, "http://localhost"))
 	w = ht.Get(nextLink)
 	if ht.Assert.Equal(200, w.Code) {
 		ht.Assert.PageOf(numOfTrades/2-limit, w.Body)
