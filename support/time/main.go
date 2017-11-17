@@ -20,7 +20,7 @@ func MillisFromInt64(millis int64) Millis {
 }
 
 func (t Millis) increment(millisToAdd int64) Millis {
-	return Millis(int64(t)+ millisToAdd)
+	return Millis(int64(t) + millisToAdd)
 }
 
 //IsNil returns true if the timeMillis has not been initialized to a date other then 0 from epoch
@@ -49,7 +49,11 @@ func (t Millis) ToInt64() int64 {
 
 //ToTime returns a go time.Time timestamp, UTC adjusted
 func (t Millis) ToTime() goTime.Time {
-	return goTime.Unix(int64(t)/1000, 0).UTC()
+	// Milliseconds   1510831636149
+	// Nanoseconds    1510831636149000000
+	// Unix sec arg   1510831636
+	// Unix nsec arg            149000000
+	return goTime.Unix(int64(t)/1000, int64(t)%1000*int64(goTime.Millisecond)).UTC()
 }
 
 //Now returns current time in millis
