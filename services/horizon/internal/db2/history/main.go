@@ -130,12 +130,6 @@ type AssetStat struct {
 	Toml        string `db:"toml"`
 }
 
-// JoinedAssetStat is the db representation of a join result from Asset and AssetStat
-type JoinedAssetStat struct {
-	Asset
-	AssetStat
-}
-
 // Effect is a row of data from the `history_effects` table
 type Effect struct {
 	HistoryAccountID   int64       `db:"history_account_id"`

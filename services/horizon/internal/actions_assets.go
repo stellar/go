@@ -4,9 +4,8 @@ import (
 	"math"
 	"strconv"
 
-	sq "github.com/Masterminds/squirrel"
 	"github.com/stellar/go/services/horizon/internal/db2"
-	"github.com/stellar/go/services/horizon/internal/db2/history"
+	"github.com/stellar/go/services/horizon/internal/db2/assets"
 	"github.com/stellar/go/services/horizon/internal/render/hal"
 	"github.com/stellar/go/services/horizon/internal/resource"
 )
@@ -21,7 +20,7 @@ type AssetsAction struct {
 	AssetCode    string
 	AssetIssuer  string
 	PagingParams db2.PageQuery
-	Records      []history.JoinedAssetStat
+	Records      []assets.AssetStatsR
 	Page         hal.Page
 }
 
@@ -29,7 +28,7 @@ type AssetsAction struct {
 func (action *AssetsAction) JSON() {
 	action.Do(
 		action.loadParams,
-		action.loadRecord,
+		action.loadRecords,
 		action.loadPage,
 		func() {
 			hal.Render(action.W, action.Page)
@@ -50,35 +49,17 @@ func (action *AssetsAction) defaultDescendingCursor() {
 	}
 }
 
-func (action *AssetsAction) loadRecord() {
-	sql := sq.
-		Select(
-			"hist.id as id",
-			"hist.asset_type",
-			"hist.asset_code",
-			"hist.asset_issuer",
-			"stats.amount",
-			"stats.num_accounts",
-			"stats.flags",
-			"stats.toml",
-		).
-		From("history_assets hist").
-		Join("asset_stats stats ON hist.id = stats.id")
-
-	if action.AssetCode != "" {
-		sql = sql.Where("hist.asset_code = ?", action.AssetCode)
-	}
-	if action.AssetIssuer != "" {
-		sql = sql.Where("hist.asset_issuer = ?", action.AssetIssuer)
-	}
-
+func (action *AssetsAction) loadRecords() {
 	action.defaultDescendingCursor()
-	sql, action.Err = action.PagingParams.ApplyTo(sql, "hist.id")
-	if action.Err != nil {
+	sql, err := assets.AssetStatsQ{
+		AssetCode:   &action.AssetCode,
+		AssetIssuer: &action.AssetIssuer,
+		PageQuery:   &action.PagingParams,
+	}.GetSQL()
+	if err != nil {
+		action.Err = err
 		return
 	}
-	sql = sql.OrderBy("hist.asset_code ASC", "hist.asset_issuer ASC")
-
 	action.Err = action.HistoryQ().Select(&action.Records, sql)
 }
 

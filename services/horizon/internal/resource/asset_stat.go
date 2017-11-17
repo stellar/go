@@ -3,7 +3,7 @@ package resource
 import (
 	"strconv"
 
-	"github.com/stellar/go/services/horizon/internal/db2/history"
+	"github.com/stellar/go/services/horizon/internal/db2/assets"
 	"github.com/stellar/go/services/horizon/internal/render/hal"
 	"github.com/stellar/go/xdr"
 	"golang.org/x/net/context"
@@ -12,7 +12,7 @@ import (
 // Populate fills out the details
 func (res *AssetStat) Populate(
 	ctx context.Context,
-	row history.JoinedAssetStat,
+	row assets.AssetStatsR,
 ) (err error) {
 
 	res.Asset.Type = row.Type
@@ -24,7 +24,7 @@ func (res *AssetStat) Populate(
 		(row.Flags & int8(xdr.AccountFlagsAuthRequiredFlag)) != 0,
 		(row.Flags & int8(xdr.AccountFlagsAuthRevocableFlag)) != 0,
 	}
-	res.PT = strconv.FormatInt(row.AssetStat.ID, 10)
+	res.PT = strconv.FormatInt(row.ID, 10)
 
 	res.Links.Toml = hal.NewLink(row.Toml)
 	return
