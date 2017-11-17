@@ -18,7 +18,7 @@ func TestStatTrustlinesInfo(t *testing.T) {
 		assetType       xdr.AssetType
 		assetCode       string
 		assetIssuer     string
-		wantNumAccounts int
+		wantNumAccounts int32
 		wantAmount      int64
 	}
 
@@ -113,16 +113,11 @@ func TestStatTrustlinesInfo(t *testing.T) {
 			coreQ := &core.Q{Session: session}
 
 			for i, asset := range kase.assetState {
-				numAccounts, amount, err := statTrustlinesInfo(
-					coreQ,
-					int32(asset.assetType),
-					asset.assetCode,
-					asset.assetIssuer,
-				)
+				numAccounts, amount, err := statTrustlinesInfo(coreQ, asset.assetType, asset.assetCode, asset.assetIssuer)
 
 				tt.Require.NoError(err)
-				tt.Assert.Equal(int32(asset.wantNumAccounts), numAccounts, fmt.Sprintf("asset index: %d", i))
-				tt.Assert.Equal(int64(asset.wantAmount), amount, fmt.Sprintf("asset index: %d", i))
+				tt.Assert.Equal(asset.wantNumAccounts, numAccounts, fmt.Sprintf("asset index: %d", i))
+				tt.Assert.Equal(asset.wantAmount, amount, fmt.Sprintf("asset index: %d", i))
 			}
 		})
 	}
@@ -291,14 +286,12 @@ func TestAssetModified(t *testing.T) {
 				coreQ = &core.Q{Session: session}
 			}
 
-			assetsModified := AssetsModified{
-				assetsModified: make(map[string]xdr.Asset),
-			}
+			assetsModified := AssetsModified(make(map[string]xdr.Asset))
 			assetsModified.IngestOperation(nil, &xdr.Operation{
 				SourceAccount: &sourceAccount,
 				Body:          kase.opBody,
 			}, coreQ)
-			assert.Equal(t, kase.wantAssets, extractKeys(&assetsModified.assetsModified))
+			assert.Equal(t, kase.wantAssets, extractKeys(assetsModified))
 		})
 	}
 }
@@ -338,9 +331,9 @@ func makeOperationBody(aType xdr.OperationType, value interface{}) xdr.Operation
 	return body
 }
 
-func extractKeys(m *map[string]xdr.Asset) []string {
-	keys := make([]string, 0, len(*m))
-	for k := range *m {
+func extractKeys(m map[string]xdr.Asset) []string {
+	keys := make([]string, 0, len(m))
+	for k := range m {
 		keys = append(keys, k)
 	}
 	sort.Strings(keys)

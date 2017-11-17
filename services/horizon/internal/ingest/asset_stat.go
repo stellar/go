@@ -24,21 +24,21 @@ func (assetsModified AssetsModified) IngestOperation(err error, op *xdr.Operatio
 	// case xdr.OperationTypeSetOptions:
 	// 	assetsModified.addAssetsFromAccount(coreQ, sourceAccount)
 	case xdr.OperationTypePayment:
-		assetsModified.assetsModified[body.PaymentOp.Asset.String()] = body.PaymentOp.Asset
+		assetsModified[body.PaymentOp.Asset.String()] = body.PaymentOp.Asset
 	case xdr.OperationTypePathPayment:
-		assetsModified.assetsModified[body.PathPaymentOp.DestAsset.String()] = body.PathPaymentOp.DestAsset
-		assetsModified.assetsModified[body.PathPaymentOp.SendAsset.String()] = body.PathPaymentOp.SendAsset
+		assetsModified[body.PathPaymentOp.DestAsset.String()] = body.PathPaymentOp.DestAsset
+		assetsModified[body.PathPaymentOp.SendAsset.String()] = body.PathPaymentOp.SendAsset
 		for _, asset := range body.PathPaymentOp.Path {
-			assetsModified.assetsModified[asset.String()] = asset
+			assetsModified[asset.String()] = asset
 		}
 	case xdr.OperationTypeChangeTrust:
 		if body.ChangeTrustOp.Limit == 0 {
-			assetsModified.assetsModified[body.ChangeTrustOp.Line.String()] = body.ChangeTrustOp.Line
+			assetsModified[body.ChangeTrustOp.Line.String()] = body.ChangeTrustOp.Line
 		}
 	case xdr.OperationTypeAllowTrust:
 		if sourceAccount != nil {
 			asset := body.AllowTrustOp.Asset.ToAsset(*sourceAccount)
-			assetsModified.assetsModified[asset.String()] = asset
+			assetsModified[asset.String()] = asset
 		}
 	}
 }
@@ -50,7 +50,7 @@ func (assetsModified AssetsModified) UpdateAssetStats(is *Session) {
 	}
 
 	hasValue := false
-	for _, asset := range assetsModified.assetsModified {
+	for _, asset := range assetsModified {
 		assetStat := computeAssetStat(is, &asset)
 		if is.Err != nil {
 			return
@@ -85,7 +85,7 @@ func (assetsModified AssetsModified) UpdateAssetStats(is *Session) {
 
 // 	for _, asset := range assets {
 // 		if asset.Type != xdr.AssetTypeAssetTypeNative {
-// 			assetsModified.assetsModified[asset.String()] = asset
+// 			assetsModified[asset.String()] = asset
 // 		}
 // 	}
 // }
@@ -111,7 +111,7 @@ func computeAssetStat(is *Session, asset *xdr.Asset) *history.AssetStat {
 
 	coreQ := &core.Q{Session: is.Cursor.DB}
 
-	numAccounts, amount, err := statTrustlinesInfo(coreQ, int32(assetType), assetCode, assetIssuer)
+	numAccounts, amount, err := statTrustlinesInfo(coreQ, assetType, assetCode, assetIssuer)
 	if err != nil {
 		is.Err = err
 		return nil
@@ -133,21 +133,8 @@ func computeAssetStat(is *Session, asset *xdr.Asset) *history.AssetStat {
 }
 
 // statTrustlinesInfo fetches all the stats from the trustlines table
-func statTrustlinesInfo(coreQ *core.Q, assetType int32, assetCode string, assetIssuer string) (int32, int64, error) {
-	var trustlines []core.Trustline
-	err := coreQ.TrustlinesByAsset(&trustlines, assetType, assetCode, assetIssuer)
-	if err != nil {
-		return -1, -1, err
-	}
-
-	numAccounts := int32(len(trustlines))
-
-	var amount int64
-	for _, t := range trustlines {
-		amount += int64(t.Balance)
-	}
-
-	return numAccounts, amount, nil
+func statTrustlinesInfo(coreQ *core.Q, assetType xdr.AssetType, assetCode string, assetIssuer string) (int32, int64, error) {
+	return coreQ.BalancesForAsset(int32(assetType), assetCode, assetIssuer)
 }
 
 // statAccountInfo fetches all the stats from the accounts table
@@ -162,7 +149,7 @@ func statAccountInfo(coreQ *core.Q, accountID string) (int8, string, error) {
 	if !account.HomeDomain.Valid {
 		toml = ""
 	} else {
-		trimmed := strings.Trim(account.HomeDomain.String, " ")
+		trimmed := strings.TrimSpace(account.HomeDomain.String)
 		if trimmed != "" {
 			toml = "https://" + account.HomeDomain.String + "/.well-known/stellar.toml"
 		} else {

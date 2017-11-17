@@ -37,7 +37,7 @@ type Cursor struct {
 	DB *db.Session
 
 	Metrics        *IngesterMetrics
-	AssetsModified *AssetsModified
+	AssetsModified AssetsModified
 
 	// Err is the error that caused this iteration to fail, if any.
 	Err error
@@ -103,9 +103,7 @@ type IngesterMetrics struct {
 }
 
 // AssetsModified tracks all the assets modified during a cycle of ingestion
-type AssetsModified struct {
-	assetsModified map[string]xdr.Asset
-}
+type AssetsModified map[string]xdr.Asset
 
 // Ingestion receives write requests from a Session
 type Ingestion struct {
@@ -186,13 +184,11 @@ func NewSession(first, last int32, i *System) *Session {
 			DB: hdb,
 		},
 		Cursor: &Cursor{
-			FirstLedger: first,
-			LastLedger:  last,
-			DB:          i.CoreDB,
-			Metrics:     &i.Metrics,
-			AssetsModified: &AssetsModified{
-				assetsModified: make(map[string]xdr.Asset),
-			},
+			FirstLedger:    first,
+			LastLedger:     last,
+			DB:             i.CoreDB,
+			Metrics:        &i.Metrics,
+			AssetsModified: AssetsModified(make(map[string]xdr.Asset)),
 		},
 		Network:          i.Network,
 		StellarCoreURL:   i.StellarCoreURL,
