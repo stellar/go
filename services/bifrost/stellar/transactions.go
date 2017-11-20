@@ -14,7 +14,7 @@ func (ac *AccountConfigurator) createAccount(destination string) error {
 		build.CreateAccount(
 			build.SourceAccount{ac.IssuerPublicKey},
 			build.Destination{destination},
-			build.NativeAmount{NewAccountXLMBalance},
+			build.NativeAmount{ac.StartingBalance},
 		),
 	)
 	if err != nil {
