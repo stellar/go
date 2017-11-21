@@ -5,18 +5,23 @@ import (
 	goTime "time"
 )
 
-//ToInt64 represents time as milliseconds since epoch without any timezone adjustments
+//Millis represents time as milliseconds since epoch without any timezone adjustments
 type Millis int64
 
-//MillisFromString generates a ToInt64 struct from a string representing an int64
+//MillisFromString generates a Millis struct from a string representing an int64
 func MillisFromString(s string) (Millis, error) {
 	millis, err := strconv.ParseInt(s, 10, 64)
 	return Millis(int64(millis)), err
 }
 
-//MillisFromInt64 generates a ToInt64 struct from given millis int64
+//MillisFromInt64 generates a Millis struct from given millis int64
 func MillisFromInt64(millis int64) Millis {
 	return Millis(millis)
+}
+
+//MillisFromSeconds generates a Millis struct from given seconds int64
+func MillisFromSeconds(seconds int64) Millis {
+	return Millis(seconds*1000)
 }
 
 func (t Millis) increment(millisToAdd int64) Millis {
@@ -28,7 +33,7 @@ func (t Millis) IsNil() bool {
 	return t == 0
 }
 
-//RoundUp returns a new ToInt64 instance with a rounded up to d millis
+//RoundUp returns a new Millis instance with a rounded up to d millis
 func (t Millis) RoundUp(d int64) Millis {
 	if int64(t)%d != 0 {
 		return t.RoundDown(d).increment(d)

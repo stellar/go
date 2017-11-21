@@ -72,3 +72,22 @@ func TestAssetIngest(t *testing.T) {
 	tt.Require.NoError(err)
 	tt.Assert.Equal(expectedAsset, actualAsset)
 }
+
+func TestTradeIngestTimestamp(t *testing.T) {
+	//ingest trade scenario and verify that the trade timestamp
+	//matches the appropriate ledger's timestamp
+	tt := test.Start(t).ScenarioWithoutHorizon("trades")
+	defer tt.Finish()
+	s := ingest(tt)
+	q := history.Q{Session: s.Ingestion.DB}
+
+	var ledgers []history.Ledger
+	err := q.Ledgers().Select(&ledgers)
+	tt.Require.NoError(err)
+
+	var trades []history.Trade
+	err = q.Trades().Select(&trades)
+	tt.Require.NoError(err)
+
+	tt.Require.Equal(trades[len(trades)-1].LedgerCloseTime, ledgers[len(ledgers)-1].ClosedAt)
+}

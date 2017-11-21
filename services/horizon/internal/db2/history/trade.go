@@ -182,7 +182,7 @@ func (q *Q) InsertTrade(
 	order int32,
 	buyer xdr.AccountId,
 	trade xdr.ClaimOfferAtom,
-	ledgerClosedAt int64,
+	ledgerClosedAt time.Millis,
 ) error {
 	sellerAccountId, err := q.GetCreateAccountID(trade.SellerId)
 	if err != nil {
@@ -219,7 +219,7 @@ func (q *Q) InsertTrade(
 	sql := tradesInsert.Values(
 		opid,
 		order,
-		time.MillisFromInt64(ledgerClosedAt).ToTime(),
+		ledgerClosedAt.ToTime(),
 		trade.OfferId,
 		baseAccountId,
 		baseAssetId,

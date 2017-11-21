@@ -9,7 +9,7 @@ import (
 	"path"
 	"strings"
 	"time"
-
+	sTime "github.com/stellar/go/support/time"
 	"github.com/stellar/go/amount"
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/meta"
@@ -468,7 +468,7 @@ func (is *Session) ingestTrades() {
 			int32(i),
 			buyer,
 			trade,
-			is.Cursor.Ledger().CloseTime,
+			sTime.MillisFromSeconds(is.Cursor.Ledger().CloseTime),
 		)
 		if is.Err != nil {
 			return

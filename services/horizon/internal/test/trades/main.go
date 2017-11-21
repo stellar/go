@@ -4,6 +4,7 @@ package trades
 import (
 	. "github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/xdr"
+	"github.com/stellar/go/support/time"
 )
 
 //getTestAsset generates an issuer on the fly and creates a CreditAlphanum4 Asset with given code
@@ -30,7 +31,7 @@ func ingestTestTrade(
 	buyer xdr.AccountId,
 	amountSold int64,
 	amountBought int64,
-	timestamp int64,
+	timestamp time.Millis,
 	opCounter int64) error {
 
 	trade := xdr.ClaimOfferAtom{}
@@ -52,8 +53,9 @@ func PopulateTestTrades(q *Q, startTs int64, numOfTrades int, delta int64) (err 
 	ass2 = getTestAsset("euro", 4)
 
 	for i := 1; i <= numOfTrades; i++ {
+		timestamp := time.MillisFromInt64(startTs+(delta*int64(i-1)))
 		err = ingestTestTrade(
-			q, ass1, ass2, acc1, acc2, int64(i*100), int64(i*100)*int64(i), startTs+(delta*int64(i-1)),int64(i))
+			q, ass1, ass2, acc1, acc2, int64(i*100), int64(i*100)*int64(i), timestamp, int64(i))
 		//tt.Assert.NoError(err)
 		if err != nil {
 			return
