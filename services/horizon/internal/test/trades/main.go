@@ -53,7 +53,7 @@ func PopulateTestTrades(
 	startTs int64,
 	numOfTrades int,
 	delta int64,
-	opStart int64) (err error, ass1 xdr.Asset, ass2 xdr.Asset) {
+	opStart int64) (ass1 xdr.Asset, ass2 xdr.Asset, err error) {
 
 	acc1 := getTestAccount()
 	acc2 := getTestAccount()
