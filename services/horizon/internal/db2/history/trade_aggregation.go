@@ -66,7 +66,9 @@ func (q *TradeAggregationsQ) GetSql() sq.SelectBuilder {
 	} else {
 		bucketSql = reverseBucketTrades(q.resolution)
 	}
-	bucketSql = bucketSql.From("history_trades")
+
+	bucketSql = bucketSql.From("history_trades").
+		Where(sq.Eq{"base_asset_id": q.baseAssetId, "counter_asset_id": q.counterAssetId})
 
 	//adjust time range and apply time filters
 	bucketSql = bucketSql.Where(sq.GtOrEq{"ledger_closed_at": q.startTime.ToTime()})

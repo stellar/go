@@ -12,6 +12,7 @@ import (
 	"github.com/stellar/go/xdr"
 	"strconv"
 	"strings"
+	"fmt"
 )
 
 func TestTradeActions_Index(t *testing.T) {
@@ -98,8 +99,12 @@ func TestTradeActions_Aggregation(t *testing.T) {
 	const start = 1510693200000
 
 	dbQ := &Q{ht.HorizonSession()}
-	err, ass1, ass2 := PopulateTestTrades(dbQ, start, numOfTrades, minute)
+	fmt.Println(dbQ.DB.DB)
+	err, ass1, ass2 := PopulateTestTrades(dbQ, start, numOfTrades, minute, 0)
+	ht.Require.NoError(err)
 
+	//add other trades as noise, to ensure asset filtering is working
+	err, _, _ = PopulateTestTrades(dbQ, start, numOfTrades, minute, numOfTrades)
 	ht.Require.NoError(err)
 
 	var records []resource.TradeAggregation
