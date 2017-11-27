@@ -2,6 +2,7 @@ package horizon
 
 import (
 	"math"
+	"net/url"
 	"strconv"
 
 	"github.com/stellar/go/services/horizon/internal/db2"
@@ -76,18 +77,12 @@ func (action *AssetsAction) loadPage() {
 	action.Page.Cursor = action.PagingParams.Cursor
 	action.Page.Order = action.PagingParams.Order
 
-	var linkParams []*hal.LinkParam
+	linkParams := url.Values{}
 	if action.AssetCode != "" {
-		linkParams = append(linkParams, &hal.LinkParam{
-			Key:   "asset_code",
-			Value: action.AssetCode,
-		})
+		linkParams.Set("asset_code", action.AssetCode)
 	}
 	if action.AssetIssuer != "" {
-		linkParams = append(linkParams, &hal.LinkParam{
-			Key:   "asset_issuer",
-			Value: action.AssetIssuer,
-		})
+		linkParams.Set("asset_issuer", action.AssetIssuer)
 	}
-	action.Page.PopulateLinks(linkParams...)
+	action.Page.PopulateLinksWithParams(linkParams)
 }

@@ -1,7 +1,6 @@
 package hal
 
 import (
-	"fmt"
 	"net/url"
 )
 
@@ -27,16 +26,18 @@ func (p *BasePage) Init() {
 	}
 }
 
+// Links represents the Links in a Page
+type Links struct {
+	Self Link `json:"self"`
+	Next Link `json:"next"`
+	Prev Link `json:"prev"`
+}
+
 // Page represents the common page configuration (i.e. has self, next, and prev
 // links) and has a helper method `PopulateLinks` to automate their
 // initialization.
 type Page struct {
-	Links struct {
-		Self Link `json:"self"`
-		Next Link `json:"next"`
-		Prev Link `json:"prev"`
-	} `json:"_links"`
-
+	Links Links `json:"_links"`
 	BasePage
 	BasePath string `json:"-"`
 	Order    string `json:"-"`
@@ -44,31 +45,19 @@ type Page struct {
 	Cursor   string `json:"-"`
 }
 
-// LinkParam is an input to PopulateLinks; this is a tentative solution that can be changed soon.
-type LinkParam struct {
-	Key   string
-	Value string
+// PopulateLinks sets the common links for a page
+func (p *Page) PopulateLinks() {
+	p.PopulateLinksWithParams(url.Values{})
 }
 
-// bindOptionalParams is a tentative solution to include non-page params in paging links
-func bindOptionalParams(fmts string, params ...*LinkParam) string {
-	if params == nil {
-		return fmts
-	}
-
-	encodedParams := ""
-	for _, p := range params {
-		encodedParams += fmt.Sprintf("&%s=%s", p.Key, p.Value)
-	}
-	return fmts + encodedParams
-}
-
-// PopulateLinks sets the common links for a page.
-// Note: variadic params is a tentative solution to include non-page params in paging links, we need a better solition
-func (p *Page) PopulateLinks(params ...*LinkParam) {
+// PopulateLinksWithParams sets the common links for a page with additional non-paging params
+func (p *Page) PopulateLinksWithParams(params url.Values) {
 	p.Init()
 	fmts := p.BasePath + "?order=%s&limit=%d&cursor=%s"
-	fmts = bindOptionalParams(fmts, params...)
+	encodedParams := params.Encode()
+	if len(encodedParams) > 0 {
+		fmts = fmts + "&" + encodedParams
+	}
 	lb := LinkBuilder{p.BaseURL}
 
 	p.Links.Self = lb.Linkf(fmts, p.Order, p.Limit, p.Cursor)
