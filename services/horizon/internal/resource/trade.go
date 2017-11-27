@@ -8,6 +8,7 @@ import (
 	"github.com/stellar/go/services/horizon/internal/httpx"
 	"github.com/stellar/go/services/horizon/internal/render/hal"
 	"golang.org/x/net/context"
+	"github.com/stellar/go/price"
 )
 
 // Populate fills out the details of a trade using a row from the history_trades
@@ -61,13 +62,13 @@ func (res *TradeAggregation) Populate(
 ) (err error) {
 	res.Timestamp = row.Timestamp
 	res.TradeCount = row.TradeCount
-	res.BaseVolume = row.BaseVolume
-	res.CounterVolume = row.CounterVolume
-	res.Average = row.Average
-	res.High = row.High
-	res.Low = row.Low
-	res.Open = row.Open
-	res.Close = row.Close
+	res.BaseVolume = amount.StringFromInt64(row.BaseVolume)
+	res.CounterVolume = amount.StringFromInt64(row.CounterVolume)
+	res.Average = price.StringFromFloat64(row.Average)
+	res.High = price.StringFromFloat64(row.High)
+	res.Low = price.StringFromFloat64(row.Low)
+	res.Open = price.StringFromFloat64(row.Open)
+	res.Close = price.StringFromFloat64(row.Close)
 	return
 }
 

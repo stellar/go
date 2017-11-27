@@ -213,15 +213,15 @@ type Trade struct {
 
 // Transaction represents trade data aggregation over a period of time
 type TradeAggregation struct {
-	Timestamp     int64   `json:"timestamp"`
-	TradeCount    int64   `json:"trade_count"`
-	BaseVolume    int64   `json:"base_volume"`
-	CounterVolume int64   `json:"counter_volume"`
-	Average       float64 `json:"avg"`
-	High          float64 `json:"high"`
-	Low           float64 `json:"low"`
-	Open          float64 `json:"open"`
-	Close         float64 `json:"close"`
+	Timestamp     int64  `json:"timestamp"`
+	TradeCount    int64  `json:"trade_count"`
+	BaseVolume    string `json:"base_volume"`
+	CounterVolume string `json:"counter_volume"`
+	Average       string `json:"avg"`
+	High          string `json:"high"`
+	Low           string `json:"low"`
+	Open          string `json:"open"`
+	Close         string `json:"close"`
 }
 
 // Transaction represents a single, successful transaction

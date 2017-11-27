@@ -11,6 +11,7 @@ import (
 	"math/big"
 
 	"github.com/stellar/go/xdr"
+	"strconv"
 )
 
 // Parse  calculates and returns the best rational approximation of the given
@@ -90,4 +91,9 @@ func floor(n *big.Rat) *big.Rat {
 	z.Div(n.Num(), n.Denom())
 	f.SetInt(z)
 	return f
+}
+
+//StringFromFloat64 will format a float64 to decimal representation with 7 digits after the decimal point
+func StringFromFloat64(v float64) string {
+	return strconv.FormatFloat(v, 'f', 7, 64)
 }

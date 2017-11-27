@@ -121,6 +121,7 @@ func TestTradeActions_Aggregation(t *testing.T) {
 		ht.Assert.PageOf(1, w.Body)
 		ht.UnmarshalPage(w.Body, &records)
 		record = records[0] //Save the single aggregation record for next test
+		ht.Assert.Equal("0.0005500", records[0].BaseVolume)
 	}
 
 	//test reverse one bucket - make sure values don't change
@@ -137,7 +138,13 @@ func TestTradeActions_Aggregation(t *testing.T) {
 	q.Set("resolution", strconv.FormatInt(minute, 10))
 	w = ht.GetWithParams(aggregationPath, q)
 	if ht.Assert.Equal(200, w.Code) {
-		ht.Assert.PageOf(numOfTrades, w.Body)
+		if ht.Assert.PageOf(numOfTrades, w.Body) {
+			//test that asset filters work
+			ht.UnmarshalPage(w.Body, &records)
+			ht.Assert.Equal(int64(1), records[0].TradeCount)
+			ht.Assert.Equal("0.0000100", records[0].BaseVolume)
+			ht.Assert.Equal("1.0000000", records[0].Average)
+		}
 	}
 
 	//test partial range by modifying endTime to be one minute above half range.
