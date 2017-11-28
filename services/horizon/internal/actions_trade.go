@@ -2,6 +2,7 @@ package horizon
 
 import (
 	"errors"
+	"strconv"
 
 	"github.com/stellar/go/services/horizon/internal/db2"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
@@ -9,7 +10,6 @@ import (
 	"github.com/stellar/go/services/horizon/internal/resource"
 	"github.com/stellar/go/support/time"
 	"github.com/stellar/go/xdr"
-	"strconv"
 )
 
 type TradeIndexAction struct {

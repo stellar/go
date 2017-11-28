@@ -3,6 +3,13 @@ package ingest
 import (
 	"encoding/base64"
 	"fmt"
+	"io/ioutil"
+	"net/http"
+	"net/url"
+	"path"
+	"strings"
+	"time"
+
 	"github.com/stellar/go/amount"
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/meta"
@@ -10,12 +17,6 @@ import (
 	"github.com/stellar/go/services/horizon/internal/ingest/participants"
 	sTime "github.com/stellar/go/support/time"
 	"github.com/stellar/go/xdr"
-	"io/ioutil"
-	"net/http"
-	"net/url"
-	"path"
-	"strings"
-	"time"
 )
 
 // Run starts an attempt to ingest the range of ledgers specified in this

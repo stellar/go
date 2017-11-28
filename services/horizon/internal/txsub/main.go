@@ -1,9 +1,10 @@
 package txsub
 
 import (
+	"time"
+
 	"github.com/stellar/go/xdr"
 	"golang.org/x/net/context"
-	"time"
 )
 
 // ResultProvider represents an abstract store that can lookup Result objects

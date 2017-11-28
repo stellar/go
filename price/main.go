@@ -9,9 +9,9 @@ import (
 	"fmt"
 	"math"
 	"math/big"
+	"strconv"
 
 	"github.com/stellar/go/xdr"
-	"strconv"
 )
 
 // Parse  calculates and returns the best rational approximation of the given
