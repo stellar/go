@@ -92,7 +92,6 @@ func (m Destination) MutatePayment(o interface{}) error {
 	case *xdr.PathPaymentOp:
 		return setAccountId(m.AddressOrSeed, &o.Destination)
 	}
-	return nil
 }
 
 // MutatePayment for NativeAmount sets the PaymentOp's currency field to
