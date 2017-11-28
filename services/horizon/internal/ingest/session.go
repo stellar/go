@@ -9,13 +9,14 @@ import (
 	"path"
 	"strings"
 	"time"
-	sTime "github.com/stellar/go/support/time"
+
 	"github.com/stellar/go/amount"
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/meta"
-	"github.com/stellar/go/xdr"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/services/horizon/internal/ingest/participants"
+	sTime "github.com/stellar/go/support/time"
+	"github.com/stellar/go/xdr"
 )
 
 // Run starts an attempt to ingest the range of ledgers specified in this
@@ -384,6 +385,12 @@ func (is *Session) ingestSignerEffects(effects *EffectIngestion, op xdr.SetOptio
 	be, ae, err := is.Cursor.BeforeAndAfter(source.LedgerKey())
 	if err != nil {
 		is.Err = err
+		return
+	}
+
+	// HACK (scott) 2017-11-27:  Prevent crashes when BeforeAndAfter fails to
+	// correctly work.
+	if be == nil || ae == nil {
 		return
 	}
 

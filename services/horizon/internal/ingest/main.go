@@ -8,8 +8,8 @@ import (
 
 	sq "github.com/Masterminds/squirrel"
 	metrics "github.com/rcrowley/go-metrics"
-	"github.com/stellar/go/support/db"
 	"github.com/stellar/go/services/horizon/internal/db2/core"
+	"github.com/stellar/go/support/db"
 )
 
 const (
@@ -21,7 +21,7 @@ const (
 	// Scripts, that have yet to be ported to this codebase can then be leveraged
 	// to re-ingest old data with the new algorithm, providing a seamless
 	// transition when the ingested data's structure changes.
-	CurrentVersion = 10
+	CurrentVersion = 11
 )
 
 // Cursor iterates through a stellar core database's ledgers
