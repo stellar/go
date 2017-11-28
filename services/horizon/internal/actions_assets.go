@@ -1,6 +1,7 @@
 package horizon
 
 import (
+	"fmt"
 	"math"
 	"net/url"
 	"strconv"
@@ -25,6 +26,8 @@ type AssetsAction struct {
 	Page         hal.Page
 }
 
+const maxAssetCodeLength = 12
+
 // JSON is a method for actions.JSON
 func (action *AssetsAction) JSON() {
 	action.Do(
@@ -39,7 +42,18 @@ func (action *AssetsAction) JSON() {
 
 func (action *AssetsAction) loadParams() {
 	action.AssetCode = action.GetString("asset_code")
-	action.AssetIssuer = action.GetString("asset_issuer")
+	if len(action.AssetCode) > maxAssetCodeLength {
+		action.SetInvalidField("asset_code", fmt.Errorf("max length is: %d", maxAssetCodeLength))
+		return
+	}
+
+	if len(action.GetString("asset_issuer")) > 0 {
+		issuerAccount := action.GetAccountID("asset_issuer")
+		if action.Err != nil {
+			return
+		}
+		action.AssetIssuer = issuerAccount.Address()
+	}
 	action.PagingParams = action.GetPageQuery()
 }
 

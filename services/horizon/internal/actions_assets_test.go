@@ -198,10 +198,10 @@ func TestAssetsActions(t *testing.T) {
 			"/assets?order=asc&limit=10&cursor=2&asset_issuer=GCXKG6RN4ONIEPCMNFB732A436Z5PNDSRLGWK7GBLCMQLIFO4S7EYWVU",
 			[]resource.AssetStat{SCOTScott},
 		}, {
-			"/assets?asset_issuer=someissuer",
-			"/assets?order=asc&limit=10&cursor=&asset_issuer=someissuer",
-			"/assets?order=desc&limit=10&cursor=&asset_issuer=someissuer", // TODO NNS 2 - imo should be cursor=1
-			"/assets?order=asc&limit=10&cursor=&asset_issuer=someissuer",
+			"/assets?asset_issuer=GA5WBPYA5Y4WAEHXWR2UKO2UO4BUGHUQ74EUPKON2QHV4WRHOIRNKKH2",
+			"/assets?order=asc&limit=10&cursor=&asset_issuer=GA5WBPYA5Y4WAEHXWR2UKO2UO4BUGHUQ74EUPKON2QHV4WRHOIRNKKH2",
+			"/assets?order=desc&limit=10&cursor=&asset_issuer=GA5WBPYA5Y4WAEHXWR2UKO2UO4BUGHUQ74EUPKON2QHV4WRHOIRNKKH2", // TODO NNS 2 - imo should be cursor=1
+			"/assets?order=asc&limit=10&cursor=&asset_issuer=GA5WBPYA5Y4WAEHXWR2UKO2UO4BUGHUQ74EUPKON2QHV4WRHOIRNKKH2",
 			[]resource.AssetStat{},
 		},
 		// combined
@@ -258,4 +258,26 @@ func TestAssetsActions(t *testing.T) {
 			ht.Assert.Equal(("http://" + kase.wantNext), links.Next.Href)
 		})
 	}
+}
+
+func TestInvalidAssetCode(t *testing.T) {
+	ht := StartHTTPTest(t, "ingest_asset_stats")
+	defer ht.Finish()
+
+	w := ht.Get("/assets?asset_code=ABCDEFGHIJKL")
+	ht.Assert.Equal(200, w.Code)
+
+	w = ht.Get("/assets?asset_code=ABCDEFGHIJKLM")
+	ht.Assert.Equal(400, w.Code)
+}
+
+func TestInvalidAssetIssuer(t *testing.T) {
+	ht := StartHTTPTest(t, "ingest_asset_stats")
+	defer ht.Finish()
+
+	w := ht.Get("/assets?asset_issuer=GC23QF2HUE52AMXUFUH3AYJAXXGXXV2VHXYYR6EYXETPKDXZSAW67XO4")
+	ht.Assert.Equal(200, w.Code)
+
+	w = ht.Get("/assets?asset_issuer=invalid")
+	ht.Assert.Equal(400, w.Code)
 }
