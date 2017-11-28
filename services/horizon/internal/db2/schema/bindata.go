@@ -308,15 +308,15 @@ func AssetNames() []string {
 
 // _bindata is a table, holding each asset generator, mapped to its name.
 var _bindata = map[string]func() (*asset, error){
-	"latest.sql": latestSql,
-	"migrations/1_initial_schema.sql": migrations1_initial_schemaSql,
-	"migrations/2_index_participants_by_toid.sql": migrations2_index_participants_by_toidSql,
+	"latest.sql":                                        latestSql,
+	"migrations/1_initial_schema.sql":                   migrations1_initial_schemaSql,
+	"migrations/2_index_participants_by_toid.sql":       migrations2_index_participants_by_toidSql,
 	"migrations/3_use_sequence_in_history_accounts.sql": migrations3_use_sequence_in_history_accountsSql,
-	"migrations/4_add_protocol_version.sql": migrations4_add_protocol_versionSql,
-	"migrations/5_create_trades_table.sql": migrations5_create_trades_tableSql,
-	"migrations/6_create_assets_table.sql": migrations6_create_assets_tableSql,
-	"migrations/7_modify_trades_table.sql": migrations7_modify_trades_tableSql,
-	"migrations/8_add_aggregators.sql": migrations8_add_aggregatorsSql,
+	"migrations/4_add_protocol_version.sql":             migrations4_add_protocol_versionSql,
+	"migrations/5_create_trades_table.sql":              migrations5_create_trades_tableSql,
+	"migrations/6_create_assets_table.sql":              migrations6_create_assets_tableSql,
+	"migrations/7_modify_trades_table.sql":              migrations7_modify_trades_tableSql,
+	"migrations/8_add_aggregators.sql":                  migrations8_add_aggregatorsSql,
 }
 
 // AssetDir returns the file names below a certain
@@ -358,17 +358,18 @@ type bintree struct {
 	Func     func() (*asset, error)
 	Children map[string]*bintree
 }
+
 var _bintree = &bintree{nil, map[string]*bintree{
 	"latest.sql": &bintree{latestSql, map[string]*bintree{}},
 	"migrations": &bintree{nil, map[string]*bintree{
-		"1_initial_schema.sql": &bintree{migrations1_initial_schemaSql, map[string]*bintree{}},
-		"2_index_participants_by_toid.sql": &bintree{migrations2_index_participants_by_toidSql, map[string]*bintree{}},
+		"1_initial_schema.sql":                   &bintree{migrations1_initial_schemaSql, map[string]*bintree{}},
+		"2_index_participants_by_toid.sql":       &bintree{migrations2_index_participants_by_toidSql, map[string]*bintree{}},
 		"3_use_sequence_in_history_accounts.sql": &bintree{migrations3_use_sequence_in_history_accountsSql, map[string]*bintree{}},
-		"4_add_protocol_version.sql": &bintree{migrations4_add_protocol_versionSql, map[string]*bintree{}},
-		"5_create_trades_table.sql": &bintree{migrations5_create_trades_tableSql, map[string]*bintree{}},
-		"6_create_assets_table.sql": &bintree{migrations6_create_assets_tableSql, map[string]*bintree{}},
-		"7_modify_trades_table.sql": &bintree{migrations7_modify_trades_tableSql, map[string]*bintree{}},
-		"8_add_aggregators.sql": &bintree{migrations8_add_aggregatorsSql, map[string]*bintree{}},
+		"4_add_protocol_version.sql":             &bintree{migrations4_add_protocol_versionSql, map[string]*bintree{}},
+		"5_create_trades_table.sql":              &bintree{migrations5_create_trades_tableSql, map[string]*bintree{}},
+		"6_create_assets_table.sql":              &bintree{migrations6_create_assets_tableSql, map[string]*bintree{}},
+		"7_modify_trades_table.sql":              &bintree{migrations7_modify_trades_tableSql, map[string]*bintree{}},
+		"8_add_aggregators.sql":                  &bintree{migrations8_add_aggregatorsSql, map[string]*bintree{}},
 	}},
 }}
 
@@ -418,4 +419,3 @@ func _filePath(dir, name string) string {
 	cannonicalName := strings.Replace(name, "\\", "/", -1)
 	return filepath.Join(append([]string{dir}, strings.Split(cannonicalName, "/")...)...)
 }
-

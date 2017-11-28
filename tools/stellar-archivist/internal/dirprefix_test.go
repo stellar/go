@@ -6,6 +6,7 @@ package archivist
 
 import (
 	"testing"
+
 	"github.com/stretchr/testify/assert"
 )
 
@@ -18,7 +19,7 @@ func TestDirPrefixPath(t *testing.T) {
 }
 
 func TestRangePaths(t *testing.T) {
-	r := Range{ Low:0x0010001f, High:0x0014001b, }
+	r := Range{Low: 0x0010001f, High: 0x0014001b}
 	assert.Equal(t, []string{
 		"00/10",
 		"00/11",
@@ -26,7 +27,7 @@ func TestRangePaths(t *testing.T) {
 		"00/13",
 		"00/14",
 	}, RangePaths(r))
-	r = Range{ Low:0x00100000, High:0x0010ff00, }
+	r = Range{Low: 0x00100000, High: 0x0010ff00}
 	rps := RangePaths(r)
 	assert.Equal(t, "00/10/00", rps[0])
 	assert.Equal(t, "00/10/ff", rps[255])

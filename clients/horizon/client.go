@@ -232,8 +232,6 @@ func (c *Client) stream(ctx context.Context, baseURL string, cursor *Cursor, han
 			return err
 		}
 	}
-
-	return nil
 }
 
 // StreamLedgers streams incoming ledgers. Use context.WithCancel to stop streaming or

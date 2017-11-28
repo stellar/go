@@ -1,11 +1,12 @@
 package test
 
 import (
-	"github.com/zenazn/goji/web"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"strings"
+
+	"github.com/zenazn/goji/web"
 )
 
 type RequestHelper interface {

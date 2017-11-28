@@ -21,7 +21,7 @@ func MillisFromInt64(millis int64) Millis {
 
 //MillisFromSeconds generates a Millis struct from given seconds int64
 func MillisFromSeconds(seconds int64) Millis {
-	return Millis(seconds*1000)
+	return Millis(seconds * 1000)
 }
 
 func (t Millis) increment(millisToAdd int64) Millis {

@@ -3,12 +3,12 @@ package ingest
 import (
 	"testing"
 
+	"github.com/stellar/go/services/horizon/internal/db2/core"
+	"github.com/stellar/go/services/horizon/internal/db2/history"
+	"github.com/stellar/go/services/horizon/internal/test"
+	testDB "github.com/stellar/go/services/horizon/internal/test/db"
 	"github.com/stellar/go/support/db"
 	"github.com/stellar/go/xdr"
-	"github.com/stellar/go/services/horizon/internal/db2/core"
-	testDB "github.com/stellar/go/services/horizon/internal/test/db"
-	"github.com/stellar/go/services/horizon/internal/test"
-	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -61,10 +61,10 @@ func TestAssetIngest(t *testing.T) {
 	q := history.Q{Session: s.Ingestion.DB}
 
 	expectedAsset := history.Asset{
-		ID     : 4,
-		Type   : "credit_alphanum4",
-		Code   : "USD",
-		Issuer : "GB2QIYT2IAUFMRXKLSLLPRECC6OCOGJMADSPTRK7TGNT2SFR2YGWDARD",
+		ID:     4,
+		Type:   "credit_alphanum4",
+		Code:   "USD",
+		Issuer: "GB2QIYT2IAUFMRXKLSLLPRECC6OCOGJMADSPTRK7TGNT2SFR2YGWDARD",
 	}
 
 	actualAsset := history.Asset{}

@@ -2,6 +2,8 @@ package horizon
 
 import (
 	"net/url"
+	"strconv"
+	"strings"
 	"testing"
 	"time"
 
@@ -10,8 +12,6 @@ import (
 	"github.com/stellar/go/services/horizon/internal/resource"
 	. "github.com/stellar/go/services/horizon/internal/test/trades"
 	"github.com/stellar/go/xdr"
-	"strconv"
-	"strings"
 )
 
 func TestTradeActions_Index(t *testing.T) {
