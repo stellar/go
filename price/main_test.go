@@ -60,13 +60,13 @@ func TestParse(t *testing.T) {
 func TestStringFromFloat64(t *testing.T) {
 
 	tests := map[float64]string{
-		0: "0.0000000",
+		0:         "0.0000000",
 		0.0000001: "0.0000001",
 		1.0000001: "1.0000001",
-		123: "123.0000000",
+		123:       "123.0000000",
 	}
 
-	for f, s := range tests{
+	for f, s := range tests {
 		assert.Equal(t, s, price.StringFromFloat64(f))
 	}
 }

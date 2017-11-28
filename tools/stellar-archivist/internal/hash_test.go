@@ -5,8 +5,8 @@
 package archivist
 
 import (
-	"testing"
 	"github.com/stretchr/testify/assert"
+	"testing"
 )
 
 func TestHashDecode(t *testing.T) {
