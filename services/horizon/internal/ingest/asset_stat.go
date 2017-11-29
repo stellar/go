@@ -8,38 +8,76 @@ import (
 	"github.com/stellar/go/xdr"
 )
 
-// IngestOperation updates the assetsModified using the passed in operation
-func (assetsModified AssetsModified) IngestOperation(err error, op *xdr.Operation, sourceAddress string, coreQ *core.Q) {
+func (assetsModified AssetsModified) handlePaymentOp(paymentOp *xdr.PaymentOp, sourceAccount *xdr.AccountId) error {
+	err := assetsModified.updateIfAssetIssuerInvolved(paymentOp.Asset, *sourceAccount)
 	if err != nil {
-		return
+		return err
+	}
+	err = assetsModified.updateIfAssetIssuerInvolved(paymentOp.Asset, paymentOp.Destination)
+	return err
+}
+
+func (assetsModified AssetsModified) handleManageOfferOp(manageOfferOp *xdr.ManageOfferOp, sourceAccount *xdr.AccountId) error {
+	err := assetsModified.updateIfAssetIssuerInvolved(manageOfferOp.Buying, *sourceAccount)
+	if err != nil {
+		return err
+	}
+	err = assetsModified.updateIfAssetIssuerInvolved(manageOfferOp.Selling, *sourceAccount)
+	return err
+}
+
+func (assetsModified AssetsModified) handlePassiveOfferOp(passiveOfferOp *xdr.CreatePassiveOfferOp, sourceAccount *xdr.AccountId) error {
+	err := assetsModified.updateIfAssetIssuerInvolved(passiveOfferOp.Buying, *sourceAccount)
+	if err != nil {
+		return err
+	}
+	err = assetsModified.updateIfAssetIssuerInvolved(passiveOfferOp.Selling, *sourceAccount)
+	return err
+}
+
+func defaultSourceAccount(sourceAccount *xdr.AccountId, defaultAddress string) *xdr.AccountId {
+	if sourceAccount != nil {
+		return sourceAccount
+	}
+
+	var accountID xdr.AccountId
+	accountID.SetAddress(defaultAddress)
+	return &accountID
+}
+
+// IngestOperation updates the assetsModified using the passed in operation
+func (assetsModified AssetsModified) IngestOperation(err error, op *xdr.Operation, sourceAddress string, coreQ *core.Q) error {
+	if err != nil {
+		return err
 	}
 
 	body := op.Body
-	sourceAccount := op.SourceAccount
-	if sourceAccount == nil {
-		var accountID xdr.AccountId
-		accountID.SetAddress(sourceAddress)
-		sourceAccount = &accountID
-	}
-
+	sourceAccount := defaultSourceAccount(op.SourceAccount, sourceAddress)
 	switch body.Type {
 	// TODO NNS 2 need to fix GetOrInsertAssetID call when adding assets from account
 	// case xdr.OperationTypeSetOptions:
 	// 	assetsModified.addAssetsFromAccount(coreQ, sourceAccount)
 	case xdr.OperationTypePayment:
-		assetsModified[body.PaymentOp.Asset.String()] = body.PaymentOp.Asset
+		return assetsModified.handlePaymentOp(body.PaymentOp, sourceAccount)
 	case xdr.OperationTypePathPayment:
+		// if this gets expensive then we can limit it to only include those assets that includes the issuer
 		assetsModified[body.PathPaymentOp.DestAsset.String()] = body.PathPaymentOp.DestAsset
 		assetsModified[body.PathPaymentOp.SendAsset.String()] = body.PathPaymentOp.SendAsset
 		for _, asset := range body.PathPaymentOp.Path {
 			assetsModified[asset.String()] = asset
 		}
+	case xdr.OperationTypeManageOffer:
+		return assetsModified.handleManageOfferOp(body.ManageOfferOp, sourceAccount)
+	case xdr.OperationTypeCreatePassiveOffer:
+		return assetsModified.handlePassiveOfferOp(body.CreatePassiveOfferOp, sourceAccount)
 	case xdr.OperationTypeChangeTrust:
 		assetsModified[body.ChangeTrustOp.Line.String()] = body.ChangeTrustOp.Line
 	case xdr.OperationTypeAllowTrust:
 		asset := body.AllowTrustOp.Asset.ToAsset(*sourceAccount)
 		assetsModified[asset.String()] = asset
 	}
+
+	return nil
 }
 
 // UpdateAssetStats updates the db with the latest asset stats for the assets that were modified
@@ -88,6 +126,19 @@ func (assetsModified AssetsModified) UpdateAssetStats(is *Session) {
 // 		}
 // 	}
 // }
+
+func (assetsModified AssetsModified) updateIfAssetIssuerInvolved(asset xdr.Asset, account xdr.AccountId) error {
+	var assetType, assetCode, assetIssuer string
+	err := asset.Extract(&assetType, &assetCode, &assetIssuer)
+	if err != nil {
+		return err
+	}
+
+	if assetIssuer == account.Address() {
+		assetsModified[asset.String()] = asset
+	}
+	return nil
+}
 
 func computeAssetStat(is *Session, asset *xdr.Asset) *history.AssetStat {
 	if asset.Type == xdr.AssetTypeAssetTypeNative {

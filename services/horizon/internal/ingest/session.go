@@ -357,7 +357,7 @@ func (is *Session) ingestOperation() {
 	is.ingestOperationParticipants()
 	is.ingestEffects()
 	is.ingestTrades()
-	is.Cursor.AssetsModified.IngestOperation(
+	is.Err = is.Cursor.AssetsModified.IngestOperation(
 		is.Err,
 		is.Cursor.Operation(),
 		is.Cursor.Transaction().SourceAddress(),

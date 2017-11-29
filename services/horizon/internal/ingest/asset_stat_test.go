@@ -170,7 +170,7 @@ func TestAssetModified(t *testing.T) {
 	// GCSX4PDUZP3BL522ZVMFXCEJ55NKEOHEMII7PSMJZNAAESJ444GSSJMO
 	destAccount, destEUR := makeAccount("SABP5P625YBETJV4BCEWQD674ED4FF4QVNBRL6TQCRODJUWBNJBMND5O", "EUR")
 	// GCFZWN3AOVFQM2BZTZX7P47WSI4QMGJC62LILPKODTNDLVKZZNA5BQJ3
-	_, issuerUSD := makeAccount("SCCUFFUANIXJPAWBHDXZXY5D4GB32QPM6MOUWDD6PTYBLPE6JVYZFE76", "USD")
+	issuerAccount, issuerUSD := makeAccount("SCCUFFUANIXJPAWBHDXZXY5D4GB32QPM6MOUWDD6PTYBLPE6JVYZFE76", "USD")
 	// GAB7GMQPJ5YY2E4UJMLNAZPDEUKPK4AAIPRXIZHKZGUIRC6FP2LAQSDN
 	anotherAccount, anotherUSD := makeAccount("SAISD7SISIIW5YNQ7GY5727L6MOFS667K3LVIPYPPUBIPCRQUORFLQMN", "USD")
 
@@ -191,7 +191,21 @@ func TestAssetModified(t *testing.T) {
 				Asset:       issuerUSD,
 				Amount:      100,
 			}),
+			wantAssets: []string{},
+		}, {
+			opBody: makeOperationBody(xdr.OperationTypePayment, xdr.PaymentOp{
+				Destination: issuerAccount,
+				Asset:       issuerUSD,
+				Amount:      100,
+			}),
 			wantAssets: []string{"credit_alphanum4/USD/GCFZWN3AOVFQM2BZTZX7P47WSI4QMGJC62LILPKODTNDLVKZZNA5BQJ3"}, // issuerUSD
+		}, {
+			opBody: makeOperationBody(xdr.OperationTypePayment, xdr.PaymentOp{
+				Destination: issuerAccount,
+				Asset:       sourceUSD,
+				Amount:      100,
+			}),
+			wantAssets: []string{"credit_alphanum4/USD/GCYLTPOU7IVYHHA3XKQF4YB4W4ZWHFERMOQ7K47IWANKNBFBNJJNEOG5"}, // sourceUSD
 		}, {
 			opBody: makeOperationBody(xdr.OperationTypePathPayment, xdr.PathPaymentOp{
 				SendAsset:   issuerUSD,
@@ -214,7 +228,41 @@ func TestAssetModified(t *testing.T) {
 				Price:   xdr.Price{N: 1, D: 2},
 				OfferId: 1012,
 			}),
+			wantAssets: []string{"credit_alphanum4/USD/GCYLTPOU7IVYHHA3XKQF4YB4W4ZWHFERMOQ7K47IWANKNBFBNJJNEOG5"}, // sourceUSD
+		}, {
+			opBody: makeOperationBody(xdr.OperationTypeManageOffer, xdr.ManageOfferOp{
+				Selling: issuerUSD,
+				Buying:  sourceUSD,
+				Amount:  1000000,
+				Price:   xdr.Price{N: 1, D: 2},
+				OfferId: 1012,
+			}),
+			wantAssets: []string{"credit_alphanum4/USD/GCYLTPOU7IVYHHA3XKQF4YB4W4ZWHFERMOQ7K47IWANKNBFBNJJNEOG5"}, // sourceUSD
+		}, {
+			opBody: makeOperationBody(xdr.OperationTypeManageOffer, xdr.ManageOfferOp{
+				Selling: issuerUSD,
+				Buying:  anotherUSD,
+				Amount:  1000000,
+				Price:   xdr.Price{N: 1, D: 2},
+				OfferId: 1012,
+			}),
 			wantAssets: []string{},
+		}, {
+			opBody: makeOperationBody(xdr.OperationTypeCreatePassiveOffer, xdr.CreatePassiveOfferOp{
+				Selling: sourceUSD,
+				Buying:  anotherUSD,
+				Amount:  1000000,
+				Price:   xdr.Price{N: 1, D: 2},
+			}),
+			wantAssets: []string{"credit_alphanum4/USD/GCYLTPOU7IVYHHA3XKQF4YB4W4ZWHFERMOQ7K47IWANKNBFBNJJNEOG5"}, // sourceUSD
+		}, {
+			opBody: makeOperationBody(xdr.OperationTypeCreatePassiveOffer, xdr.CreatePassiveOfferOp{
+				Selling: issuerUSD,
+				Buying:  sourceUSD,
+				Amount:  1000000,
+				Price:   xdr.Price{N: 1, D: 2},
+			}),
+			wantAssets: []string{"credit_alphanum4/USD/GCYLTPOU7IVYHHA3XKQF4YB4W4ZWHFERMOQ7K47IWANKNBFBNJJNEOG5"}, // sourceUSD
 		}, {
 			opBody: makeOperationBody(xdr.OperationTypeCreatePassiveOffer, xdr.CreatePassiveOfferOp{
 				Selling: issuerUSD,
