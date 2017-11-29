@@ -53,6 +53,7 @@ func (q *Q) BalancesForAsset(
 		"assettype": assetType,
 		"assetcode": assetCode,
 		"issuer":    assetIssuer,
+		"flags":     1,
 	})
 	result := struct {
 		Count int32 `db:"count"`

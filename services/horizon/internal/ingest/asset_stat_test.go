@@ -101,6 +101,15 @@ func TestStatTrustlinesInfo(t *testing.T) {
 				2,
 				1012345000,
 			}},
+		}, {
+			"allow_trust",
+			[]AssetState{{
+				xdr.AssetTypeAssetTypeCreditAlphanum4,
+				"USD",
+				"GC23QF2HUE52AMXUFUH3AYJAXXGXXV2VHXYYR6EYXETPKDXZSAW67XO4",
+				1, // assets with the auth_required flag should only be counted for authorized accounts
+				0,
+			}},
 		},
 	}
 
