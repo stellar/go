@@ -23,7 +23,7 @@ func (assetsModified AssetsModified) IngestOperation(err error, op *xdr.Operatio
 	}
 
 	switch body.Type {
-	// TODO NNS 1 need to fix GetOrInsertAssetID call when adding assets from account
+	// TODO NNS 2 need to fix GetOrInsertAssetID call when adding assets from account
 	// case xdr.OperationTypeSetOptions:
 	// 	assetsModified.addAssetsFromAccount(coreQ, sourceAccount)
 	case xdr.OperationTypePayment:

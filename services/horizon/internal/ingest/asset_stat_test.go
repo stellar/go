@@ -224,7 +224,7 @@ func TestAssetModified(t *testing.T) {
 			}),
 			wantAssets: []string{},
 			// }, {
-			// TODO NNS 1
+			// TODO NNS 2
 			// 	opBody: makeOperationBody(xdr.OperationTypeSetOptions, xdr.SetOptionsOp{
 			// 		InflationDest: &destAccount,
 			// 	}),
