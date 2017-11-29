@@ -1,6 +1,7 @@
 package resource
 
 import (
+	"fmt"
 	"strconv"
 
 	"github.com/stellar/go/services/horizon/internal/db2/assets"
@@ -18,7 +19,8 @@ func (res *AssetStat) Populate(
 	res.Asset.Type = row.Type
 	res.Asset.Code = row.Code
 	res.Asset.Issuer = row.Issuer
-	res.Amount = row.Amount
+	amountFloat := float64(row.Amount) / 10000000
+	res.Amount = fmt.Sprintf("%.7f", amountFloat)
 	res.NumAccounts = row.NumAccounts
 	res.Flags = AccountFlags{
 		(row.Flags & int8(xdr.AccountFlagsAuthRequiredFlag)) != 0,

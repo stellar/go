@@ -74,7 +74,7 @@ type AssetStat struct {
 
 	base.Asset
 	PT          string       `json:"paging_token"`
-	Amount      int64        `json:"amount"`
+	Amount      string       `json:"amount"`
 	NumAccounts int32        `json:"num_accounts"`
 	Flags       AccountFlags `json:"flags"`
 }

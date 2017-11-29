@@ -17,10 +17,10 @@ GET /assets{?asset_code,asset_issuer,cursor,limit,order}
 
 | name | notes | description | example |
 | ---- | ----- | ----------- | ------- |
-| `?asset_code`  | optional, string, default _null_ | Code of the Asset to filter by | `asc` |
+| `?asset_code`  | optional, string, default _null_ | Code of the Asset to filter by | `USD` |
 | `?asset_issuer`  | optional, string, default _null_ | Issuer of the Asset to filter by | `GA2HGBJIJKI6O4XEM7CZWY5PS6GKSXL6D34ERAJYQSPYA6X6AI7HYW36` |
 | `?cursor` | optional, any, default _null_ | A paging token, specifying where to start returning records from. | `1` |
-| `?order`  | optional, string, default `asc` | The order in which to return rows, "asc" or "desc". | `asc` |
+| `?order`  | optional, string, default `asc` | The order in which to return rows, "asc" or "desc", ordered chronologically based on when this horizon instance first encountered the asset. | `asc` |
 | `?limit`  | optional, number, default: `10` | Maximum number of records to return. | `200` |
 
 ### curl Example Request
@@ -61,7 +61,7 @@ If called normally this endpoint responds with a [page](../resources/page.md) of
         "asset_code": "USD",
         "asset_issuer": "GBAUUA74H4XOQYRSOW2RZUA4QL5PB37U3JS5NE3RTB2ELJVMIF5RLMAG",
         "paging_token": "1",
-        "amount": 1000000000,
+        "amount": "1000000000.0000000",
         "num_accounts": 91547871,
         "flags": {
           "auth_required": false,
@@ -78,7 +78,7 @@ If called normally this endpoint responds with a [page](../resources/page.md) of
         "asset_code": "BTC",
         "asset_issuer": "GBAUUA74H4XOQYRSOW2RZUA4QL5PB37U3JS5NE3RTB2ELJVMIF5RLMAG",
         "paging_token": "2",
-        "amount": 5000,
+        "amount": "5000.0000000",
         "num_accounts": 32,
         "flags": {
           "auth_required": false,
@@ -95,7 +95,7 @@ If called normally this endpoint responds with a [page](../resources/page.md) of
         "asset_code": "BANANA",
         "asset_issuer": "GDSBCQO34HWPGUGQSP3QBFEXVTSR2PW46UIGTHVWGWJGQKH3AFNHXHXN",
         "paging_token": "3",
-        "amount": 10000,
+        "amount": "10000.0000000",
         "num_accounts": 2126,
         "flags": {
           "auth_required": true,

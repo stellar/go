@@ -28,7 +28,7 @@ func TestAssetsActions(t *testing.T) {
 			Issuer: "GC23QF2HUE52AMXUFUH3AYJAXXGXXV2VHXYYR6EYXETPKDXZSAW67XO4",
 		},
 		PT:          "3",
-		Amount:      1009876000,
+		Amount:      "100.9876000",
 		NumAccounts: 1,
 		Flags: resource.AccountFlags{
 			AuthRequired:  true,
@@ -43,7 +43,7 @@ func TestAssetsActions(t *testing.T) {
 			Issuer: "GCXKG6RN4ONIEPCMNFB732A436Z5PNDSRLGWK7GBLCMQLIFO4S7EYWVU",
 		},
 		PT:          "2",
-		Amount:      10000000000,
+		Amount:      "1000.0000000",
 		NumAccounts: 1,
 		Flags: resource.AccountFlags{
 			AuthRequired:  false,
@@ -58,7 +58,7 @@ func TestAssetsActions(t *testing.T) {
 			Issuer: "GC23QF2HUE52AMXUFUH3AYJAXXGXXV2VHXYYR6EYXETPKDXZSAW67XO4",
 		},
 		PT:          "1",
-		Amount:      3000010434000,
+		Amount:      "300001.0434000",
 		NumAccounts: 2,
 		Flags: resource.AccountFlags{
 			AuthRequired:  true,

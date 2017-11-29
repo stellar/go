@@ -12,11 +12,11 @@ To learn more about the concept of assets in the Stellar network, take a look at
 
 |    Attribute     |  Type  |                                                                                                                                |
 | ---------------- | ------ | ------------------------------------------------------------------------------------------------------------------------------ |
-| asset_type               | string | The type of this asset: "native", "credit_alphanum4", or "credit_alphanum12". |
+| asset_type               | string | The type of this asset: "credit_alphanum4", or "credit_alphanum12". |
 | asset_code               | string | The code of this asset.   |
 | asset_issuer             | string | The issuer of this asset. |
 | amount                   | number | The number of units of credit issued. |
-| num_accounts             | number | The number of accounts that: 1) trust this asset and 2) have had a transaction with this asset. |
+| num_accounts             | number | The number of accounts that: 1) trust this asset and 2) where if the asset has the auth_required flag then the account is authorized to hold the asset. |
 | flags                    | object | The flags on this asset of types: auth_required and auth_revocable. |
 | paging_token     | string | A [paging token](./page.md) suitable for use as the `cursor` parameter to transaction collection resources.                   |
 
@@ -52,7 +52,3 @@ To learn more about the concept of assets in the Stellar network, take a look at
 |  Resource                      |    Type    |    Resource URI Template     |
 | ------------------------------ | ---------- | ---------------------------- |
 | [All Assets](../assets-all.md) | Collection | `/assets` (`GET`)            |
-
-
-## Submitting transactions
-To submit a new transaction to Stellar network, it must first be built and signed locally. Then you can submit a hex representation of your transaction’s [XDR](../../learn/xdr.md) to the `/transactions` endpoint. Read more about submitting transactions in [Post Transaction](../transactions-create.md) doc.
