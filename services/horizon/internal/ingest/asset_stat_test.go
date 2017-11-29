@@ -232,14 +232,12 @@ func TestAssetModified(t *testing.T) {
 			// 	// the source account trusts issuerUSD in asset_stat_operations.rb
 			// 	wantAssets: []string{"credit_alphanum4/USD/GCFZWN3AOVFQM2BZTZX7P47WSI4QMGJC62LILPKODTNDLVKZZNA5BQJ3"}, // issuerUSD
 		}, {
-			// a basic change trust operation does not consider an asset as modified
 			opBody: makeOperationBody(xdr.OperationTypeChangeTrust, xdr.ChangeTrustOp{
 				Line:  issuerUSD,
 				Limit: 400000,
 			}),
-			wantAssets: []string{},
+			wantAssets: []string{"credit_alphanum4/USD/GCFZWN3AOVFQM2BZTZX7P47WSI4QMGJC62LILPKODTNDLVKZZNA5BQJ3"}, // issuerUSD
 		}, {
-			// removal of trust operations consider an asset as modified
 			opBody: makeOperationBody(xdr.OperationTypeChangeTrust, xdr.ChangeTrustOp{
 				Line:  issuerUSD,
 				Limit: 0,
@@ -255,15 +253,11 @@ func TestAssetModified(t *testing.T) {
 				Authorize: true,
 			}),
 			wantAssets: []string{"credit_alphanum4/CAT/GCYLTPOU7IVYHHA3XKQF4YB4W4ZWHFERMOQ7K47IWANKNBFBNJJNEOG5"}, // issued by anotherAccount
-			// }, {
-			// TODO NNS 1
-			// 	opBody:     makeOperationBody(xdr.OperationTypeAccountMerge, destAccount),
-			// 	needsCoreQ: true,
-			// 	// source trusts issuerUSD and dest trusts anotherUSD in asset_stat_operations.rb
-			// 	wantAssets: []string{
-			// 		"credit_alphanum4/USD/GAB7GMQPJ5YY2E4UJMLNAZPDEUKPK4AAIPRXIZHKZGUIRC6FP2LAQSDN", // anotherUSD
-			// 		"credit_alphanum4/USD/GCFZWN3AOVFQM2BZTZX7P47WSI4QMGJC62LILPKODTNDLVKZZNA5BQJ3", // issuerUSD
-			// 	},
+		}, {
+			opBody:     makeOperationBody(xdr.OperationTypeAccountMerge, destAccount),
+			needsCoreQ: true,
+			// account merge can only happen on accounts that don't trust any assets
+			wantAssets: []string{},
 		}, {
 			opBody:     makeOperationBody(xdr.OperationTypeInflation, nil),
 			wantAssets: []string{},
@@ -287,10 +281,14 @@ func TestAssetModified(t *testing.T) {
 			}
 
 			assetsModified := AssetsModified(make(map[string]xdr.Asset))
-			assetsModified.IngestOperation(nil, &xdr.Operation{
-				SourceAccount: &sourceAccount,
-				Body:          kase.opBody,
-			}, coreQ)
+			assetsModified.IngestOperation(
+				nil,
+				&xdr.Operation{
+					SourceAccount: &sourceAccount,
+					Body:          kase.opBody,
+				},
+				sourceAccount.Address(),
+				coreQ)
 			assert.Equal(t, kase.wantAssets, extractKeys(assetsModified))
 		})
 	}

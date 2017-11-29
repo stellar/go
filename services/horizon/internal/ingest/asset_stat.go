@@ -9,18 +9,21 @@ import (
 )
 
 // IngestOperation updates the assetsModified using the passed in operation
-func (assetsModified AssetsModified) IngestOperation(err error, op *xdr.Operation, coreQ *core.Q) {
+func (assetsModified AssetsModified) IngestOperation(err error, op *xdr.Operation, sourceAddress string, coreQ *core.Q) {
 	if err != nil {
 		return
 	}
 
 	body := op.Body
 	sourceAccount := op.SourceAccount
+	if sourceAccount == nil {
+		var accountID xdr.AccountId
+		accountID.SetAddress(sourceAddress)
+		sourceAccount = &accountID
+	}
+
 	switch body.Type {
 	// TODO NNS 1 need to fix GetOrInsertAssetID call when adding assets from account
-	// case xdr.OperationTypeAccountMerge:
-	// 	assetsModified.addAssetsFromAccount(coreQ, body.Destination)
-	// 	assetsModified.addAssetsFromAccount(coreQ, sourceAccount)
 	// case xdr.OperationTypeSetOptions:
 	// 	assetsModified.addAssetsFromAccount(coreQ, sourceAccount)
 	case xdr.OperationTypePayment:
@@ -32,14 +35,10 @@ func (assetsModified AssetsModified) IngestOperation(err error, op *xdr.Operatio
 			assetsModified[asset.String()] = asset
 		}
 	case xdr.OperationTypeChangeTrust:
-		if body.ChangeTrustOp.Limit == 0 {
-			assetsModified[body.ChangeTrustOp.Line.String()] = body.ChangeTrustOp.Line
-		}
+		assetsModified[body.ChangeTrustOp.Line.String()] = body.ChangeTrustOp.Line
 	case xdr.OperationTypeAllowTrust:
-		if sourceAccount != nil {
-			asset := body.AllowTrustOp.Asset.ToAsset(*sourceAccount)
-			assetsModified[asset.String()] = asset
-		}
+		asset := body.AllowTrustOp.Asset.ToAsset(*sourceAccount)
+		assetsModified[asset.String()] = asset
 	}
 }
 

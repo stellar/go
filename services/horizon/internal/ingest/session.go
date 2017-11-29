@@ -360,6 +360,7 @@ func (is *Session) ingestOperation() {
 	is.Cursor.AssetsModified.IngestOperation(
 		is.Err,
 		is.Cursor.Operation(),
+		is.Cursor.Transaction().SourceAddress(),
 		&core.Q{Session: is.Ingestion.DB},
 	)
 }
