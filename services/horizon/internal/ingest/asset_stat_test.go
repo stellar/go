@@ -294,6 +294,35 @@ func TestAssetModified(t *testing.T) {
 	}
 }
 
+func TestSourceAccountForAllowTrust(t *testing.T) {
+	// GCYLTPOU7IVYHHA3XKQF4YB4W4ZWHFERMOQ7K47IWANKNBFBNJJNEOG5
+	sourceAccount, _ := makeAccount("SANFNPZPA4LWBD3RPDSCJU63KCBU3OBFOM5FFBJCGIOCVIABMRTKBAU2", "USD")
+	// GAB7GMQPJ5YY2E4UJMLNAZPDEUKPK4AAIPRXIZHKZGUIRC6FP2LAQSDN
+	anotherAccount, _ := makeAccount("SAISD7SISIIW5YNQ7GY5727L6MOFS667K3LVIPYPPUBIPCRQUORFLQMN", "USD")
+
+	opBody := makeOperationBody(xdr.OperationTypeAllowTrust, xdr.AllowTrustOp{
+		Trustor: anotherAccount,
+		Asset: xdr.AllowTrustOpAsset{
+			Type:       xdr.AssetTypeAssetTypeCreditAlphanum4,
+			AssetCode4: makeCodeBytes("CAT"),
+		},
+		Authorize: true,
+	})
+	wantAssets := []string{"credit_alphanum4/CAT/GCYLTPOU7IVYHHA3XKQF4YB4W4ZWHFERMOQ7K47IWANKNBFBNJJNEOG5"} // issued by anotherAccount
+
+	assetsModified := AssetsModified(make(map[string]xdr.Asset))
+	assetsModified.IngestOperation(
+		nil,
+		&xdr.Operation{
+			// this is the difference between this test and the table-driven case above
+			SourceAccount: nil,
+			Body:          opBody,
+		},
+		sourceAccount.Address(),
+		nil)
+	assert.Equal(t, wantAssets, extractKeys(assetsModified))
+}
+
 func makeAccount(secret string, code string) (xdr.AccountId, xdr.Asset) {
 	kp := keypair.MustParse(secret)
 
