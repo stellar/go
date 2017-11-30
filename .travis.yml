@@ -39,10 +39,3 @@ deploy:
       repo: stellar/go
       tags: true
       go: '1.8'
-  - provider: script
-    skip_cleanup: true
-    script: "echo TODO: upload the built artifacts somewhere really nice"
-    on:
-      repo: stellar/go
-      condition: $TRAVIS_EVENT_TYPE = cron
-      go: '1.8'

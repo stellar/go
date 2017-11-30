@@ -2,11 +2,13 @@ package horizon
 
 import (
 	"errors"
+	"strconv"
 
 	"github.com/stellar/go/services/horizon/internal/db2"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/services/horizon/internal/render/hal"
 	"github.com/stellar/go/services/horizon/internal/resource"
+	"github.com/stellar/go/support/time"
 	"github.com/stellar/go/xdr"
 )
 
@@ -88,4 +90,115 @@ func (action *TradeIndexAction) loadPage() {
 	action.Page.Cursor = action.PagingParams.Cursor
 	action.Page.Order = action.PagingParams.Order
 	action.Page.PopulateLinks()
+}
+
+type TradeAggregateIndexAction struct {
+	Action
+	BaseAssetFilter    xdr.Asset
+	CounterAssetFilter xdr.Asset
+	StartTimeFilter    time.Millis
+	EndTimeFilter      time.Millis
+	ResolutionFilter   int64
+	PagingParams       db2.PageQuery
+	Records            []history.TradeAggregation
+	Page               hal.Page
+}
+
+// JSON is a method for actions.JSON
+func (action *TradeAggregateIndexAction) JSON() {
+	action.Do(
+		action.EnsureHistoryFreshness,
+		action.loadParams,
+		action.loadRecords,
+		action.loadPage,
+		func() {
+			hal.Render(action.W, action.Page)
+		},
+	)
+}
+
+func (action *TradeAggregateIndexAction) loadParams() {
+	action.PagingParams = action.GetPageQuery()
+	action.BaseAssetFilter = action.GetAsset("base_")
+	action.CounterAssetFilter = action.GetAsset("counter_")
+	action.StartTimeFilter = action.GetTimeMillis("start_time")
+	action.EndTimeFilter = action.GetTimeMillis("end_time")
+	action.ResolutionFilter = action.GetInt64("resolution")
+}
+
+// loadRecords populates action.Records
+func (action *TradeAggregateIndexAction) loadRecords() {
+	historyQ := action.HistoryQ()
+
+	//get asset ids
+	baseAssetId, err := historyQ.GetCreateAssetID(action.BaseAssetFilter)
+	if err != nil {
+		action.Err = err
+		return
+	}
+	counterAssetId, err := historyQ.GetCreateAssetID(action.CounterAssetFilter)
+	if err != nil {
+		action.Err = err
+		return
+	}
+
+	//initialize the query builder with required params
+	tradeAggregationsQ := historyQ.GetTradeAggregationsQ(
+		baseAssetId, counterAssetId, action.ResolutionFilter, action.PagingParams)
+
+	//set time range if supplied
+	if !action.StartTimeFilter.IsNil() {
+		tradeAggregationsQ.WithStartTime(action.StartTimeFilter)
+	}
+	if !action.EndTimeFilter.IsNil() {
+		tradeAggregationsQ.WithEndTime(action.EndTimeFilter)
+	}
+	historyQ.Select(&action.Records, tradeAggregationsQ.GetSql())
+}
+
+func (action *TradeAggregateIndexAction) loadPage() {
+	action.Page.Init()
+	for _, record := range action.Records {
+		var res resource.TradeAggregation
+
+		action.Err = res.Populate(action.Ctx, record)
+		if action.Err != nil {
+			return
+		}
+
+		action.Page.Add(res)
+	}
+
+	action.Page.Limit = action.PagingParams.Limit
+	action.Page.Order = action.PagingParams.Order
+
+	newUrl := action.BaseURL()              // preserve scheme and host for the new url links
+	newUrl.RawQuery = action.R.URL.RawQuery //preserve query parameters
+	newUrl.Path = action.Path()             //preserve path
+	q := newUrl.Query()
+
+	action.Page.Links.Self = hal.NewLink(newUrl.String())
+
+	//adjust time range for next page
+	if uint64(len(action.Records)) == 0 {
+		action.Page.Links.Next = action.Page.Links.Self
+	} else {
+		if action.PagingParams.Order == "asc" {
+			newStartTime := action.Records[len(action.Records)-1].Timestamp + action.ResolutionFilter
+			if newStartTime >= action.EndTimeFilter.ToInt64() {
+				newStartTime = action.EndTimeFilter.ToInt64()
+			}
+			q.Set("start_time", strconv.FormatInt(newStartTime, 10))
+			newUrl.RawQuery = q.Encode()
+			action.Page.Links.Next = hal.NewLink(newUrl.String())
+		} else { //desc
+			newEndTime := action.Records[len(action.Records)-1].Timestamp
+			if newEndTime <= action.StartTimeFilter.ToInt64() {
+				newEndTime = action.StartTimeFilter.ToInt64()
+			}
+			q.Set("end_time", strconv.FormatInt(newEndTime, 10))
+			newUrl.RawQuery = q.Encode()
+			action.Page.Links.Next = hal.NewLink(newUrl.String())
+		}
+	}
 }

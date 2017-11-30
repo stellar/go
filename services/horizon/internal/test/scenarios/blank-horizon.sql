@@ -71,6 +71,10 @@ DROP TABLE IF EXISTS public.history_assets;
 DROP TABLE IF EXISTS public.history_accounts;
 DROP SEQUENCE IF EXISTS public.history_accounts_id_seq;
 DROP TABLE IF EXISTS public.gorp_migrations;
+DROP AGGREGATE IF EXISTS public.last(anyelement);
+DROP AGGREGATE IF EXISTS public.first(anyelement);
+DROP FUNCTION IF EXISTS public.last_agg(anyelement, anyelement);
+DROP FUNCTION IF EXISTS public.first_agg(anyelement, anyelement);
 DROP SCHEMA IF EXISTS public;
 --
 -- Name: public; Type: SCHEMA; Schema: -; Owner: -
@@ -87,6 +91,44 @@ COMMENT ON SCHEMA public IS 'standard public schema';
 
 
 SET search_path = public, pg_catalog;
+
+--
+-- Name: first_agg(anyelement, anyelement); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION first_agg(anyelement, anyelement) RETURNS anyelement
+    LANGUAGE sql IMMUTABLE STRICT
+    AS $_$ SELECT $1 $_$;
+
+
+--
+-- Name: last_agg(anyelement, anyelement); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION last_agg(anyelement, anyelement) RETURNS anyelement
+    LANGUAGE sql IMMUTABLE STRICT
+    AS $_$ SELECT $2 $_$;
+
+
+--
+-- Name: first(anyelement); Type: AGGREGATE; Schema: public; Owner: -
+--
+
+CREATE AGGREGATE first(anyelement) (
+    SFUNC = first_agg,
+    STYPE = anyelement
+);
+
+
+--
+-- Name: last(anyelement); Type: AGGREGATE; Schema: public; Owner: -
+--
+
+CREATE AGGREGATE last(anyelement) (
+    SFUNC = last_agg,
+    STYPE = anyelement
+);
+
 
 SET default_tablespace = '';
 
@@ -339,13 +381,14 @@ ALTER TABLE ONLY history_transaction_participants ALTER COLUMN id SET DEFAULT ne
 -- Data for Name: gorp_migrations; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-INSERT INTO gorp_migrations VALUES ('1_initial_schema.sql', '2017-10-25 12:02:41.355815-07');
-INSERT INTO gorp_migrations VALUES ('2_index_participants_by_toid.sql', '2017-10-25 12:02:41.35913-07');
-INSERT INTO gorp_migrations VALUES ('3_use_sequence_in_history_accounts.sql', '2017-10-25 12:02:41.361119-07');
-INSERT INTO gorp_migrations VALUES ('4_add_protocol_version.sql', '2017-10-25 12:02:41.365998-07');
-INSERT INTO gorp_migrations VALUES ('5_create_trades_table.sql', '2017-10-25 12:02:41.370443-07');
-INSERT INTO gorp_migrations VALUES ('6_create_assets_table.sql', '2017-10-25 12:02:41.373746-07');
-INSERT INTO gorp_migrations VALUES ('7_modify_trades_table.sql', '2017-10-25 12:02:41.381902-07');
+INSERT INTO gorp_migrations VALUES ('1_initial_schema.sql', '2017-10-26 11:03:25.188363-07');
+INSERT INTO gorp_migrations VALUES ('2_index_participants_by_toid.sql', '2017-10-26 11:03:25.192559-07');
+INSERT INTO gorp_migrations VALUES ('3_use_sequence_in_history_accounts.sql', '2017-10-26 11:03:25.194834-07');
+INSERT INTO gorp_migrations VALUES ('4_add_protocol_version.sql', '2017-10-26 11:03:25.201129-07');
+INSERT INTO gorp_migrations VALUES ('5_create_trades_table.sql', '2017-10-26 11:03:25.206902-07');
+INSERT INTO gorp_migrations VALUES ('6_create_assets_table.sql', '2017-10-26 11:03:25.211682-07');
+INSERT INTO gorp_migrations VALUES ('7_modify_trades_table.sql', '2017-10-26 11:03:25.219348-07');
+INSERT INTO gorp_migrations VALUES ('8_add_aggregators.sql', '2017-10-26 11:03:25.221803-07');
 
 
 --

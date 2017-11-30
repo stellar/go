@@ -4,8 +4,8 @@ import (
 	"encoding/hex"
 
 	"github.com/stellar/go/network"
-	"github.com/stellar/go/xdr"
 	"github.com/stellar/go/support/errors"
+	"github.com/stellar/go/xdr"
 )
 
 // Transaction groups the creation of a new TransactionBuilder with a call
@@ -29,6 +29,7 @@ type TransactionBuilder struct {
 	TX                *xdr.Transaction
 	NetworkPassphrase string
 	Err               error
+	BaseFee           uint64
 }
 
 // Mutate applies the provided TransactionMutators to this builder's transaction
@@ -149,11 +150,17 @@ func (m CreateAccountBuilder) MutateTransaction(o *TransactionBuilder) error {
 	return m.Err
 }
 
+// DefaultBaseFee is used to calculate the transaction fee by default
+var DefaultBaseFee uint64 = 100
+
 // MutateTransaction for Defaults sets reasonable defaults on the transaction being built
 func (m Defaults) MutateTransaction(o *TransactionBuilder) error {
 
+	if o.BaseFee == 0 {
+		o.BaseFee = DefaultBaseFee
+	}
 	if o.TX.Fee == 0 {
-		o.TX.Fee = xdr.Uint32(100 * len(o.TX.Operations))
+		o.TX.Fee = xdr.Uint32(int(o.BaseFee) * len(o.TX.Operations))
 	}
 
 	if o.NetworkPassphrase == "" {
@@ -283,4 +290,11 @@ func (m Sequence) MutateTransaction(o *TransactionBuilder) error {
 // to the pubilic key for the address provided
 func (m SourceAccount) MutateTransaction(o *TransactionBuilder) error {
 	return setAccountId(m.AddressOrSeed, &o.TX.SourceAccount)
+}
+
+// MutateTransaction for BaseFee sets the base fee
+func (m BaseFee) MutateTransaction(o *TransactionBuilder) error {
+	o.BaseFee = m.Amount
+
+	return nil
 }

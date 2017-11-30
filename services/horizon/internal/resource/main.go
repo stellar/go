@@ -225,6 +225,19 @@ type Trade struct {
 	BaseIsSeller       bool      `json:"base_is_seller"`
 }
 
+// Transaction represents trade data aggregation over a period of time
+type TradeAggregation struct {
+	Timestamp     int64  `json:"timestamp"`
+	TradeCount    int64  `json:"trade_count"`
+	BaseVolume    string `json:"base_volume"`
+	CounterVolume string `json:"counter_volume"`
+	Average       string `json:"avg"`
+	High          string `json:"high"`
+	Low           string `json:"low"`
+	Open          string `json:"open"`
+	Close         string `json:"close"`
+}
+
 // Transaction represents a single, successful transaction
 type Transaction struct {
 	Links struct {

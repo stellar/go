@@ -16,6 +16,7 @@ import (
 	"github.com/stellar/go/services/horizon/internal/db2/core"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/services/horizon/internal/ingest/participants"
+	sTime "github.com/stellar/go/support/time"
 	"github.com/stellar/go/xdr"
 )
 
@@ -395,6 +396,12 @@ func (is *Session) ingestSignerEffects(effects *EffectIngestion, op xdr.SetOptio
 		return
 	}
 
+	// HACK (scott) 2017-11-27:  Prevent crashes when BeforeAndAfter fails to
+	// correctly work.
+	if be == nil || ae == nil {
+		return
+	}
+
 	beforeAccount := be.Data.MustAccount()
 	afterAccount := ae.Data.MustAccount()
 
@@ -459,6 +466,7 @@ func (is *Session) ingestTrades() {
 		}
 	}
 
+	q := history.Q{Session: is.Ingestion.DB}
 	for i, trade := range trades {
 		// stellar-core will opportunisticly garbage collect invalid offers (in the
 		// event that a trader spends down their balance).  These garbage collected
@@ -470,12 +478,12 @@ func (is *Session) ingestTrades() {
 			continue
 		}
 
-		is.Err = is.Ingestion.Trade(
+		is.Err = q.InsertTrade(
 			is.Cursor.OperationID(),
 			int32(i),
 			buyer,
 			trade,
-			is.Cursor.Ledger().CloseTime,
+			sTime.MillisFromSeconds(is.Cursor.Ledger().CloseTime),
 		)
 		if is.Err != nil {
 			return
