@@ -2,7 +2,6 @@ package resource
 
 import (
 	"fmt"
-	"strconv"
 
 	"github.com/stellar/go/services/horizon/internal/db2/assets"
 	"github.com/stellar/go/services/horizon/internal/render/hal"
@@ -26,7 +25,7 @@ func (res *AssetStat) Populate(
 		(row.Flags & int8(xdr.AccountFlagsAuthRequiredFlag)) != 0,
 		(row.Flags & int8(xdr.AccountFlagsAuthRevocableFlag)) != 0,
 	}
-	res.PT = strconv.FormatInt(row.ID, 10)
+	res.PT = row.SortKey
 
 	res.Links.Toml = hal.NewLink(row.Toml)
 	return

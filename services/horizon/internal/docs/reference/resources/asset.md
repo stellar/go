@@ -18,7 +18,7 @@ To learn more about the concept of assets in the Stellar network, take a look at
 | amount                   | number | The number of units of credit issued. |
 | num_accounts             | number | The number of accounts that: 1) trust this asset and 2) where if the asset has the auth_required flag then the account is authorized to hold the asset. |
 | flags                    | object | The flags on this asset of types: auth_required and auth_revocable. |
-| paging_token     | string | A [paging token](./page.md) suitable for use as the `cursor` parameter to transaction collection resources.                   |
+| paging_token             | string | A [paging token](./page.md) suitable for use as the `cursor` parameter to transaction collection resources.                   |
 
 ## Links
 
@@ -37,7 +37,7 @@ To learn more about the concept of assets in the Stellar network, take a look at
   "asset_type": "credit_alphanum4",
   "asset_code": "USD",
   "asset_issuer": "GBAUUA74H4XOQYRSOW2RZUA4QL5PB37U3JS5NE3RTB2ELJVMIF5RLMAG",
-  "paging_token": "1",
+  "paging_token": "USD_GBAUUA74H4XOQYRSOW2RZUA4QL5PB37U3JS5NE3RTB2ELJVMIF5RLMAG",
   "amount": 1000000000,
   "num_accounts": 91547871,
   "flags": {

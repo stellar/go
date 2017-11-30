@@ -7,7 +7,7 @@ import (
 
 // AssetStatsR is the result from the AssetStatsQ query
 type AssetStatsR struct {
-	ID          int64  `db:"id"`
+	SortKey     string `db:"sort_key"`
 	Type        string `db:"asset_type"`
 	Code        string `db:"asset_code"`
 	Issuer      string `db:"asset_issuer"`
@@ -36,18 +36,25 @@ func (q AssetStatsQ) GetSQL() (sq.SelectBuilder, error) {
 
 	var err error
 	if q.PageQuery != nil {
-		sql, err = q.PageQuery.ApplyTo(sql, "hist.id")
+		// cursor needs to work for descending case as well
+		cursor := q.PageQuery.Cursor
+		if q.PageQuery.Order == "desc" && cursor == "" {
+			cursor = "zzzzzzzzzzzzz" // 12 + 1 "z"s so it will always be greater than the _ delimiter since code is max 12 chars
+		}
+
+		sql, err = q.PageQuery.ApplyToUsingCursor(sql, "concat(hist.asset_code, '_', hist.asset_issuer)", cursor)
 		if err != nil {
 			return sql, err
 		}
+	} else {
+		sql = sql.OrderBy("sort_key ASC")
 	}
-	sql = sql.OrderBy("hist.asset_code ASC", "hist.asset_issuer ASC")
 	return sql, nil
 }
 
 var selectQuery = sq.
 	Select(
-		"hist.id as id",
+		"concat(hist.asset_code, '_', hist.asset_issuer) as sort_key",
 		"hist.asset_type",
 		"hist.asset_code",
 		"hist.asset_issuer",

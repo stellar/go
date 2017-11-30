@@ -2,9 +2,7 @@ package horizon
 
 import (
 	"fmt"
-	"math"
 	"net/url"
-	"strconv"
 
 	"github.com/stellar/go/services/horizon/internal/db2"
 	"github.com/stellar/go/services/horizon/internal/db2/assets"
@@ -57,15 +55,7 @@ func (action *AssetsAction) loadParams() {
 	action.PagingParams = action.GetPageQuery()
 }
 
-// history_assets (id) is 32-bits but paging expects to query on an int64 so defaulting for now
-func (action *AssetsAction) defaultDescendingCursor() {
-	if action.PagingParams.Cursor == "" && action.PagingParams.Order == db2.OrderDescending {
-		action.PagingParams.Cursor = strconv.FormatInt(math.MaxInt32, 10)
-	}
-}
-
 func (action *AssetsAction) loadRecords() {
-	action.defaultDescendingCursor()
 	sql, err := assets.AssetStatsQ{
 		AssetCode:   &action.AssetCode,
 		AssetIssuer: &action.AssetIssuer,
