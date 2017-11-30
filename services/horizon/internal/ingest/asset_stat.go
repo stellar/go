@@ -54,7 +54,7 @@ func (assetsModified AssetsModified) IngestOperation(err error, op *xdr.Operatio
 	body := op.Body
 	sourceAccount := defaultSourceAccount(op.SourceAccount, sourceAddress)
 	switch body.Type {
-	// TODO NNS 2 need to fix GetOrInsertAssetID call when adding assets from account
+	// TODO NNS 2 need to fix GetCreateAssetID call when adding assets from account
 	// case xdr.OperationTypeSetOptions:
 	// 	assetsModified.addAssetsFromAccount(coreQ, sourceAccount)
 	case xdr.OperationTypePayment:
@@ -145,7 +145,8 @@ func computeAssetStat(is *Session, asset *xdr.Asset) *history.AssetStat {
 		return nil
 	}
 
-	assetID, err := is.Ingestion.GetOrInsertAssetID(*asset)
+	historyQ := history.Q{Session: is.Ingestion.DB}
+	assetID, err := historyQ.GetCreateAssetID(*asset)
 	if err != nil {
 		is.Err = err
 		return nil
