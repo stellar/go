@@ -8,8 +8,6 @@ import (
 	"github.com/tyler-smith/go-bip32"
 )
 
-// TODO should we use account hardened key and then use it to generate change and index keys?
-// That way we can create lot more accounts than 0x80000000-1.
 func NewAddressGenerator(masterPublicKeyString string) (*AddressGenerator, error) {
 	deserializedMasterPublicKey, err := bip32.B58Deserialize(masterPublicKeyString)
 	if err != nil {

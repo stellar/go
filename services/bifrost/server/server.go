@@ -40,7 +40,7 @@ func (s *Server) Start() error {
 		var err error
 		s.minimumValueSat, err = bitcoin.BtcToSat(s.MinimumValueBtc)
 		if err != nil {
-			return errors.Wrap(err, "Invalid minimum accepted Bitcoin transaction value")
+			return errors.Wrap(err, "Invalid minimum accepted Bitcoin transaction value: "+s.MinimumValueBtc)
 		}
 
 		if s.minimumValueSat == 0 {

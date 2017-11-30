@@ -23,14 +23,12 @@ func (l *Listener) Start() error {
 
 	if l.Testnet {
 		l.chainParams = &chaincfg.TestNet3Params
-		if !genesisBlockHash.IsEqual(chaincfg.TestNet3Params.GenesisHash) {
-			return errors.New("Invalid genesis hash")
-		}
 	} else {
 		l.chainParams = &chaincfg.MainNetParams
-		if !genesisBlockHash.IsEqual(chaincfg.MainNetParams.GenesisHash) {
-			return errors.New("Invalid genesis hash")
-		}
+	}
+
+	if !genesisBlockHash.IsEqual(l.chainParams.GenesisHash) {
+		return errors.New("Invalid genesis hash")
 	}
 
 	blockNumber, err := l.Storage.GetBitcoinBlockToProcess()
@@ -59,35 +57,35 @@ func (l *Listener) processBlocks(blockNumber uint64) {
 
 	// Time when last new block has been seen
 	lastBlockSeen := time.Now()
-	noBlockWarningLogged := false
+	missingBlockWarningLogged := false
 
 	for {
 		block, err := l.getBlock(blockNumber)
 		if err != nil {
 			l.log.WithFields(log.F{"err": err, "blockNumber": blockNumber}).Error("Error getting block")
-			time.Sleep(1 * time.Second)
+			time.Sleep(time.Second)
 			continue
 		}
 
 		// Block doesn't exist yet
 		if block == nil {
-			if time.Since(lastBlockSeen) > 20*time.Minute && !noBlockWarningLogged {
+			if time.Since(lastBlockSeen) > 20*time.Minute && !missingBlockWarningLogged {
 				l.log.Warn("No new block in more than 20 minutes")
-				noBlockWarningLogged = true
+				missingBlockWarningLogged = true
 			}
 
-			time.Sleep(1 * time.Second)
+			time.Sleep(time.Second)
 			continue
 		}
 
 		// Reset counter when new block appears
 		lastBlockSeen = time.Now()
-		noBlockWarningLogged = false
+		missingBlockWarningLogged = false
 
 		err = l.processBlock(block)
 		if err != nil {
 			l.log.WithFields(log.F{"err": err, "blockHash": block.Header.BlockHash().String()}).Error("Error processing block")
-			time.Sleep(1 * time.Second)
+			time.Sleep(time.Second)
 			continue
 		}
 
@@ -95,8 +93,10 @@ func (l *Listener) processBlocks(blockNumber uint64) {
 		err = l.Storage.SaveLastProcessedBitcoinBlock(blockNumber)
 		if err != nil {
 			l.log.WithField("err", err).Error("Error saving last processed block")
-			time.Sleep(1 * time.Second)
-			// We continue to the next block
+			time.Sleep(time.Second)
+			// We continue to the next block.
+			// The idea behind this is if there was a problem with this single query we want to
+			// continue processing because it's safe to reprocess blocks and we don't want a downtime.
 		}
 
 		blockNumber++
@@ -151,7 +151,7 @@ func (l *Listener) processBlock(block *wire.MsgBlock) error {
 
 			// We only support P2PK and P2PKH addresses
 			if class != txscript.PubKeyTy && class != txscript.PubKeyHashTy {
-				transactionLog.WithField("class", class).Debug("Invalid addresses class")
+				transactionLog.WithField("class", class).Debug("Unsupported addresses class")
 				continue
 			}
 

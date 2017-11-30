@@ -40,7 +40,7 @@ CREATE TABLE transactions_queue (
   id bigserial,
   /* Ethereum: "0x"+hash (so 64+2) */
   transaction_id varchar(66) NOT NULL,
-  asset_code varchar(10) NOT NULL,
+  asset_code varchar(3) NOT NULL,
   /* Amount in the base unit of currency (BTC or ETH). */
   /* ethereum: 100000000 in year 2128 + 7 decimal precision in Stellar + dot */
   /* bitcoin:   21000000              + 7 decimal precision in Stellar + dot */
@@ -49,7 +49,7 @@ CREATE TABLE transactions_queue (
   pooled boolean NOT NULL DEFAULT false,
   PRIMARY KEY (id),
   UNIQUE (transaction_id, asset_code),
-  CONSTRAINT valid_asset_code CHECK (char_length(asset_code) >= 3),
+  CONSTRAINT valid_asset_code CHECK (char_length(asset_code) = 3),
   CONSTRAINT valid_stellar_public_key CHECK (char_length(stellar_public_key) = 56)
 );
 
