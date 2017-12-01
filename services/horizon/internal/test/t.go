@@ -96,7 +96,6 @@ func (t *T) UpdateLedgerState() {
 
 	err := t.CoreSession().GetRaw(&next, `
 		SELECT
-			COALESCE(MIN(ledgerseq), 0) as core_elder,
 			COALESCE(MAX(ledgerseq), 0) as core_latest
 		FROM ledgerheaders
 	`)

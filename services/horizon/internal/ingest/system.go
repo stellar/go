@@ -167,7 +167,13 @@ func (i *System) Tick() *Session {
 		return nil
 	}
 
-	is := i.newTickSession()
+	is, err := i.newTickSession()
+	if err != nil {
+		i.lock.Unlock()
+		log.Errorf("ingest error: %s", err)
+		return nil
+	}
+
 	i.current = is
 	i.lock.Unlock()
 
@@ -177,21 +183,44 @@ func (i *System) Tick() *Session {
 
 // newTickSession creates an unverified new ingestion session that reflects the
 // current cached ledger state.
-func (i *System) newTickSession() *Session {
-	var (
-		start int32
-		ls    = ledger.CurrentState()
-	)
+func (i *System) newTickSession() (*Session, error) {
+	ls := ledger.CurrentState()
 
-	if ls.HistoryLatest == 0 {
-		start = ls.CoreElder
-	} else {
-		start = ls.HistoryLatest + 1
+	// If we already have ingested data, start from the next ingestable ledger,
+	// end with the newest closed ledger.
+	if ls.HistoryLatest != 0 {
+		return NewSession(ls.HistoryLatest+1, ls.CoreLatest, i), nil
 	}
 
-	end := ls.CoreLatest
+	// Since we've found out the history db is empty (i.e. ls.HistoryLatest == 0),
+	// we now find what the earliest ledger we can import is.
 
-	return NewSession(start, end, i)
+	// If horizon is configured to only retain a certain number of ledgers, use
+	// that retention number to guess at the new start point.
+	if i.LedgerRetentionCount > 0 {
+		var start int32
+		err := i.CoreDB.GetRaw(&start, `
+			SELECT ledgerseq FROM ledgerheaders WHERE ledgerseq > ?
+		`, ls.CoreLatest-int32(i.LedgerRetentionCount))
+
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to find session start")
+		}
+
+		return NewSession(start, ls.CoreLatest, i), nil
+	}
+
+	// HACK (scott): we just start with ledger 1 because we can't performantly
+	// detect the contiguous range of history that stellar-core has available when
+	// the database is large. Until the ingestion system has support for
+	// backfilling history, it is advised that you manually establish your
+	// ingestion point by using the `horizon db reingest` command with a single
+	// specified ledger number to start from.  If a horizon database is empty and
+	// the connected stellar-core is not configured for CATCHUP_COMPLETE, trying
+	// to import from ledger 1 will cause an ingestion deadlock when the system
+	// hits the first gap.
+	//
+	return NewSession(1, ls.CoreLatest, i), nil
 }
 
 // run causes the importer to check stellar-core to see if we can import new
@@ -208,7 +237,8 @@ func (i *System) runOnce() {
 	ls := ledger.CurrentState()
 
 	// 1. stash a copy of the current ingestion session (assigned from the tick)
-	// 2. output "initial ingestion" message if the
+	// 2. output "initial ingestion" message if the db is empty, otherwise
+	//    validate the ledger chain.
 	// 3. import until none available
 
 	// 1.
@@ -228,6 +258,7 @@ func (i *System) runOnce() {
 	}
 
 	if is.Cursor.FirstLedger > is.Cursor.LastLedger {
+		log.Warn("ingest: runOnce ran with an inverted Cursor")
 		return
 	}
 
@@ -237,9 +268,8 @@ func (i *System) runOnce() {
 			"history db is empty, starting ingestion from ledger %d",
 			is.Cursor.FirstLedger,
 		)
-	}
+	} else {
 
-	if is.Cursor.FirstLedger != ls.CoreElder {
 		err := i.validateLedgerChain(is.Cursor.FirstLedger)
 		if err != nil {
 			log.

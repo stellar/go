@@ -56,7 +56,6 @@ type App struct {
 	historyElderLedgerGauge  metrics.Gauge
 	horizonConnGauge         metrics.Gauge
 	coreLatestLedgerGauge    metrics.Gauge
-	coreElderLedgerGauge     metrics.Gauge
 	coreConnGauge            metrics.Gauge
 	goroutineGauge           metrics.Gauge
 }
@@ -170,11 +169,6 @@ func (a *App) UpdateLedgerState() {
 		goto Failed
 	}
 
-	err = a.CoreQ().ElderLedger(&next.CoreElder)
-	if err != nil {
-		goto Failed
-	}
-
 	err = a.HistoryQ().LatestLedger(&next.HistoryLatest)
 	if err != nil {
 		goto Failed
@@ -248,7 +242,6 @@ func (a *App) UpdateMetrics() {
 	a.historyLatestLedgerGauge.Update(int64(ls.HistoryLatest))
 	a.historyElderLedgerGauge.Update(int64(ls.HistoryElder))
 	a.coreLatestLedgerGauge.Update(int64(ls.CoreLatest))
-	a.coreElderLedgerGauge.Update(int64(ls.CoreElder))
 
 	a.horizonConnGauge.Update(int64(a.historyQ.Session.DB.Stats().OpenConnections))
 	a.coreConnGauge.Update(int64(a.coreQ.Session.DB.Stats().OpenConnections))

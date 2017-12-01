@@ -59,3 +59,19 @@ func TestValidation(t *testing.T) {
 	tt.Assert.Error(err)
 	tt.Assert.Contains(err.Error(), "cur and prev ledger hashes don't match")
 }
+
+// TestSessionStart tests the ledger that newTickSession picks to start
+// ingestion from in various scenarios.
+func TestSessionStart(t *testing.T) {
+	tt := test.Start(t).ScenarioWithoutHorizon("kahuna")
+	defer tt.Finish()
+
+	sys := New(network.TestNetworkPassphrase, "", tt.CoreSession(), tt.HorizonSession())
+
+	_ = sys
+	// when history database is empty and no LedgerRetentionCount is set, start importing from ledger 1
+
+	// when LedgerRetentionCount is set, start with the first importable ledger
+
+	// when the history database is populated, start at the end of ingested history
+}
