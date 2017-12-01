@@ -38,7 +38,7 @@ To learn more about the concept of assets in the Stellar network, take a look at
   "asset_code": "USD",
   "asset_issuer": "GBAUUA74H4XOQYRSOW2RZUA4QL5PB37U3JS5NE3RTB2ELJVMIF5RLMAG",
   "paging_token": "USD_GBAUUA74H4XOQYRSOW2RZUA4QL5PB37U3JS5NE3RTB2ELJVMIF5RLMAG",
-  "amount": 1000000000,
+  "amount": "100.0000000",
   "num_accounts": 91547871,
   "flags": {
     "auth_required": false,

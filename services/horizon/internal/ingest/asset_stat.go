@@ -13,68 +13,55 @@ func (assetsModified AssetsModified) handlePaymentOp(paymentOp *xdr.PaymentOp, s
 	if err != nil {
 		return err
 	}
-	err = assetsModified.updateIfAssetIssuerInvolved(paymentOp.Asset, paymentOp.Destination)
-	return err
+	return assetsModified.updateIfAssetIssuerInvolved(paymentOp.Asset, paymentOp.Destination)
 }
 
-func (assetsModified AssetsModified) handleManageOfferOp(manageOfferOp *xdr.ManageOfferOp, sourceAccount *xdr.AccountId) error {
-	err := assetsModified.updateIfAssetIssuerInvolved(manageOfferOp.Buying, *sourceAccount)
-	if err != nil {
-		return err
-	}
-	err = assetsModified.updateIfAssetIssuerInvolved(manageOfferOp.Selling, *sourceAccount)
-	return err
-}
-
-func (assetsModified AssetsModified) handlePassiveOfferOp(passiveOfferOp *xdr.CreatePassiveOfferOp, sourceAccount *xdr.AccountId) error {
-	err := assetsModified.updateIfAssetIssuerInvolved(passiveOfferOp.Buying, *sourceAccount)
-	if err != nil {
-		return err
-	}
-	err = assetsModified.updateIfAssetIssuerInvolved(passiveOfferOp.Selling, *sourceAccount)
-	return err
-}
-
-func defaultSourceAccount(sourceAccount *xdr.AccountId, defaultAddress string) *xdr.AccountId {
+func defaultSourceAccount(sourceAccount *xdr.AccountId, defaultAccount *xdr.AccountId) *xdr.AccountId {
 	if sourceAccount != nil {
 		return sourceAccount
 	}
+	return defaultAccount
+}
 
-	var accountID xdr.AccountId
-	accountID.SetAddress(defaultAddress)
-	return &accountID
+func (assetsModified AssetsModified) add(asset xdr.Asset) {
+	assetsModified[asset.String()] = asset
 }
 
 // IngestOperation updates the assetsModified using the passed in operation
-func (assetsModified AssetsModified) IngestOperation(err error, op *xdr.Operation, sourceAddress string, coreQ *core.Q) error {
+func (assetsModified AssetsModified) IngestOperation(err error, op *xdr.Operation, source *xdr.AccountId, coreQ *core.Q) error {
 	if err != nil {
 		return err
 	}
 
 	body := op.Body
-	sourceAccount := defaultSourceAccount(op.SourceAccount, sourceAddress)
+	sourceAccount := defaultSourceAccount(op.SourceAccount, source)
 	switch body.Type {
 	// TODO NNS 2 need to fix GetCreateAssetID call when adding assets from account
 	// case xdr.OperationTypeSetOptions:
 	// 	assetsModified.addAssetsFromAccount(coreQ, sourceAccount)
 	case xdr.OperationTypePayment:
+		// payments is the only operation where we currently perform the optimization of checking against the issuer
 		return assetsModified.handlePaymentOp(body.PaymentOp, sourceAccount)
 	case xdr.OperationTypePathPayment:
 		// if this gets expensive then we can limit it to only include those assets that includes the issuer
-		assetsModified[body.PathPaymentOp.DestAsset.String()] = body.PathPaymentOp.DestAsset
-		assetsModified[body.PathPaymentOp.SendAsset.String()] = body.PathPaymentOp.SendAsset
+		assetsModified.add(body.PathPaymentOp.DestAsset)
+		assetsModified.add(body.PathPaymentOp.SendAsset)
 		for _, asset := range body.PathPaymentOp.Path {
-			assetsModified[asset.String()] = asset
+			assetsModified.add(asset)
 		}
 	case xdr.OperationTypeManageOffer:
-		return assetsModified.handleManageOfferOp(body.ManageOfferOp, sourceAccount)
+		// if this gets expensive then we can limit it to only include those assets that includes the issuer
+		assetsModified.add(body.ManageOfferOp.Buying)
+		assetsModified.add(body.ManageOfferOp.Selling)
 	case xdr.OperationTypeCreatePassiveOffer:
-		return assetsModified.handlePassiveOfferOp(body.CreatePassiveOfferOp, sourceAccount)
+		// if this gets expensive then we can limit it to only include those assets that includes the issuer
+		assetsModified.add(body.CreatePassiveOfferOp.Buying)
+		assetsModified.add(body.CreatePassiveOfferOp.Selling)
 	case xdr.OperationTypeChangeTrust:
-		assetsModified[body.ChangeTrustOp.Line.String()] = body.ChangeTrustOp.Line
+		assetsModified.add(body.ChangeTrustOp.Line)
 	case xdr.OperationTypeAllowTrust:
 		asset := body.AllowTrustOp.Asset.ToAsset(*sourceAccount)
-		assetsModified[asset.String()] = asset
+		assetsModified.add(asset)
 	}
 
 	return nil
@@ -122,7 +109,7 @@ func (assetsModified AssetsModified) UpdateAssetStats(is *Session) {
 
 // 	for _, asset := range assets {
 // 		if asset.Type != xdr.AssetTypeAssetTypeNative {
-// 			assetsModified[asset.String()] = asset
+// 			assetsModified.add(asset)
 // 		}
 // 	}
 // }
@@ -135,7 +122,7 @@ func (assetsModified AssetsModified) updateIfAssetIssuerInvolved(asset xdr.Asset
 	}
 
 	if assetIssuer == account.Address() {
-		assetsModified[asset.String()] = asset
+		assetsModified.add(asset)
 	}
 	return nil
 }

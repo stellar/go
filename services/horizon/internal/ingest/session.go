@@ -361,7 +361,7 @@ func (is *Session) ingestOperation() {
 	is.Err = is.Cursor.AssetsModified.IngestOperation(
 		is.Err,
 		is.Cursor.Operation(),
-		is.Cursor.Transaction().SourceAddress(),
+		&is.Cursor.Transaction().Envelope.Tx.SourceAccount,
 		&core.Q{Session: is.Ingestion.DB},
 	)
 }

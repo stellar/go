@@ -202,6 +202,7 @@ func TestAssetModified(t *testing.T) {
 			}),
 			wantAssets: []string{},
 		}, {
+			// payments is the only operation where we currently perform the optimization of checking against the issuer
 			opBody: makeOperationBody(xdr.OperationTypePayment, xdr.PaymentOp{
 				Destination: issuerAccount,
 				Asset:       issuerUSD,
@@ -209,6 +210,7 @@ func TestAssetModified(t *testing.T) {
 			}),
 			wantAssets: []string{"credit_alphanum4/USD/GCFZWN3AOVFQM2BZTZX7P47WSI4QMGJC62LILPKODTNDLVKZZNA5BQJ3"}, // issuerUSD
 		}, {
+			// payments is the only operation where we currently perform the optimization of checking against the issuer
 			opBody: makeOperationBody(xdr.OperationTypePayment, xdr.PaymentOp{
 				Destination: issuerAccount,
 				Asset:       sourceUSD,
@@ -237,7 +239,10 @@ func TestAssetModified(t *testing.T) {
 				Price:   xdr.Price{N: 1, D: 2},
 				OfferId: 1012,
 			}),
-			wantAssets: []string{"credit_alphanum4/USD/GCYLTPOU7IVYHHA3XKQF4YB4W4ZWHFERMOQ7K47IWANKNBFBNJJNEOG5"}, // sourceUSD
+			wantAssets: []string{
+				"credit_alphanum4/USD/GAB7GMQPJ5YY2E4UJMLNAZPDEUKPK4AAIPRXIZHKZGUIRC6FP2LAQSDN", // anotherUSD
+				"credit_alphanum4/USD/GCYLTPOU7IVYHHA3XKQF4YB4W4ZWHFERMOQ7K47IWANKNBFBNJJNEOG5", // sourceUSD
+			},
 		}, {
 			opBody: makeOperationBody(xdr.OperationTypeManageOffer, xdr.ManageOfferOp{
 				Selling: issuerUSD,
@@ -246,7 +251,10 @@ func TestAssetModified(t *testing.T) {
 				Price:   xdr.Price{N: 1, D: 2},
 				OfferId: 1012,
 			}),
-			wantAssets: []string{"credit_alphanum4/USD/GCYLTPOU7IVYHHA3XKQF4YB4W4ZWHFERMOQ7K47IWANKNBFBNJJNEOG5"}, // sourceUSD
+			wantAssets: []string{
+				"credit_alphanum4/USD/GCFZWN3AOVFQM2BZTZX7P47WSI4QMGJC62LILPKODTNDLVKZZNA5BQJ3", // issuerUSD
+				"credit_alphanum4/USD/GCYLTPOU7IVYHHA3XKQF4YB4W4ZWHFERMOQ7K47IWANKNBFBNJJNEOG5", // sourceUSD
+			},
 		}, {
 			opBody: makeOperationBody(xdr.OperationTypeManageOffer, xdr.ManageOfferOp{
 				Selling: issuerUSD,
@@ -255,7 +263,10 @@ func TestAssetModified(t *testing.T) {
 				Price:   xdr.Price{N: 1, D: 2},
 				OfferId: 1012,
 			}),
-			wantAssets: []string{},
+			wantAssets: []string{
+				"credit_alphanum4/USD/GAB7GMQPJ5YY2E4UJMLNAZPDEUKPK4AAIPRXIZHKZGUIRC6FP2LAQSDN", // anotherUSD
+				"credit_alphanum4/USD/GCFZWN3AOVFQM2BZTZX7P47WSI4QMGJC62LILPKODTNDLVKZZNA5BQJ3", // issuerUSD
+			},
 		}, {
 			opBody: makeOperationBody(xdr.OperationTypeCreatePassiveOffer, xdr.CreatePassiveOfferOp{
 				Selling: sourceUSD,
@@ -263,7 +274,10 @@ func TestAssetModified(t *testing.T) {
 				Amount:  1000000,
 				Price:   xdr.Price{N: 1, D: 2},
 			}),
-			wantAssets: []string{"credit_alphanum4/USD/GCYLTPOU7IVYHHA3XKQF4YB4W4ZWHFERMOQ7K47IWANKNBFBNJJNEOG5"}, // sourceUSD
+			wantAssets: []string{
+				"credit_alphanum4/USD/GAB7GMQPJ5YY2E4UJMLNAZPDEUKPK4AAIPRXIZHKZGUIRC6FP2LAQSDN", // anotherUSD
+				"credit_alphanum4/USD/GCYLTPOU7IVYHHA3XKQF4YB4W4ZWHFERMOQ7K47IWANKNBFBNJJNEOG5", // sourceUSD
+			},
 		}, {
 			opBody: makeOperationBody(xdr.OperationTypeCreatePassiveOffer, xdr.CreatePassiveOfferOp{
 				Selling: issuerUSD,
@@ -271,7 +285,10 @@ func TestAssetModified(t *testing.T) {
 				Amount:  1000000,
 				Price:   xdr.Price{N: 1, D: 2},
 			}),
-			wantAssets: []string{"credit_alphanum4/USD/GCYLTPOU7IVYHHA3XKQF4YB4W4ZWHFERMOQ7K47IWANKNBFBNJJNEOG5"}, // sourceUSD
+			wantAssets: []string{
+				"credit_alphanum4/USD/GCFZWN3AOVFQM2BZTZX7P47WSI4QMGJC62LILPKODTNDLVKZZNA5BQJ3", // issuerUSD
+				"credit_alphanum4/USD/GCYLTPOU7IVYHHA3XKQF4YB4W4ZWHFERMOQ7K47IWANKNBFBNJJNEOG5", // sourceUSD
+			},
 		}, {
 			opBody: makeOperationBody(xdr.OperationTypeCreatePassiveOffer, xdr.CreatePassiveOfferOp{
 				Selling: issuerUSD,
@@ -279,7 +296,10 @@ func TestAssetModified(t *testing.T) {
 				Amount:  1000000,
 				Price:   xdr.Price{N: 1, D: 2},
 			}),
-			wantAssets: []string{},
+			wantAssets: []string{
+				"credit_alphanum4/USD/GAB7GMQPJ5YY2E4UJMLNAZPDEUKPK4AAIPRXIZHKZGUIRC6FP2LAQSDN", // anotherUSD
+				"credit_alphanum4/USD/GCFZWN3AOVFQM2BZTZX7P47WSI4QMGJC62LILPKODTNDLVKZZNA5BQJ3", // issuerUSD
+			},
 			// }, {
 			// TODO NNS 2
 			// 	opBody: makeOperationBody(xdr.OperationTypeSetOptions, xdr.SetOptionsOp{
@@ -344,7 +364,7 @@ func TestAssetModified(t *testing.T) {
 					SourceAccount: &sourceAccount,
 					Body:          kase.opBody,
 				},
-				sourceAccount.Address(),
+				&sourceAccount,
 				coreQ)
 			assert.Equal(t, kase.wantAssets, extractKeys(assetsModified))
 		})
@@ -375,7 +395,7 @@ func TestSourceAccountForAllowTrust(t *testing.T) {
 			SourceAccount: nil,
 			Body:          opBody,
 		},
-		sourceAccount.Address(),
+		&sourceAccount,
 		nil)
 	assert.Equal(t, wantAssets, extractKeys(assetsModified))
 }
