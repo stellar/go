@@ -63,5 +63,5 @@ var selectQuery = sq.
 		"stats.flags",
 		"stats.toml",
 	).
-	From("history_assets hist").
-	Join("asset_stats stats ON hist.id = stats.id")
+	From("history_assets hist, asset_stats stats").
+	Where("hist.id = stats.id")
