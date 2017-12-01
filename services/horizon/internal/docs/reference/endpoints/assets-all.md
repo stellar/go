@@ -60,7 +60,7 @@ If called normally this endpoint responds with a [page](../resources/page.md) of
         "asset_type": "credit_alphanum12",
         "asset_code": "BANANA",
         "asset_issuer": "GDSBCQO34HWPGUGQSP3QBFEXVTSR2PW46UIGTHVWGWJGQKH3AFNHXHXN",
-        "paging_token": "BANANA_GDSBCQO34HWPGUGQSP3QBFEXVTSR2PW46UIGTHVWGWJGQKH3AFNHXHXN",
+        "paging_token": "BANANA_GDSBCQO34HWPGUGQSP3QBFEXVTSR2PW46UIGTHVWGWJGQKH3AFNHXHXN_credit_alphanum4",
         "amount": "10000.0000000",
         "num_accounts": 2126,
         "flags": {
@@ -77,7 +77,7 @@ If called normally this endpoint responds with a [page](../resources/page.md) of
         "asset_type": "credit_alphanum4",
         "asset_code": "BTC",
         "asset_issuer": "GBAUUA74H4XOQYRSOW2RZUA4QL5PB37U3JS5NE3RTB2ELJVMIF5RLMAG",
-        "paging_token": "BTC_GBAUUA74H4XOQYRSOW2RZUA4QL5PB37U3JS5NE3RTB2ELJVMIF5RLMAG",
+        "paging_token": "BTC_GBAUUA74H4XOQYRSOW2RZUA4QL5PB37U3JS5NE3RTB2ELJVMIF5RLMAG_credit_alphanum4",
         "amount": "5000.0000000",
         "num_accounts": 32,
         "flags": {
@@ -94,7 +94,7 @@ If called normally this endpoint responds with a [page](../resources/page.md) of
         "asset_type": "credit_alphanum4",
         "asset_code": "USD",
         "asset_issuer": "GBAUUA74H4XOQYRSOW2RZUA4QL5PB37U3JS5NE3RTB2ELJVMIF5RLMAG",
-        "paging_token": "USD_GBAUUA74H4XOQYRSOW2RZUA4QL5PB37U3JS5NE3RTB2ELJVMIF5RLMAG",
+        "paging_token": "USD_GBAUUA74H4XOQYRSOW2RZUA4QL5PB37U3JS5NE3RTB2ELJVMIF5RLMAG_credit_alphanum4",
         "amount": "1000000000.0000000",
         "num_accounts": 91547871,
         "flags": {
