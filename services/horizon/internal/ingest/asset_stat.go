@@ -3,8 +3,10 @@ package ingest
 import (
 	"strings"
 
+	sq "github.com/Masterminds/squirrel"
 	"github.com/stellar/go/services/horizon/internal/db2/core"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
+	"github.com/stellar/go/support/db"
 	"github.com/stellar/go/xdr"
 )
 
@@ -93,8 +95,15 @@ func (assetsModified AssetsModified) UpdateAssetStats(is *Session) {
 	}
 
 	if hasValue {
-		is.Ingestion.assetStats = is.Ingestion.assetStats.
-			Suffix("ON CONFLICT (id) DO UPDATE SET (amount, num_accounts, flags, toml) = (excluded.amount, excluded.num_accounts, excluded.flags, excluded.toml)")
+		// perform a delete first since upsert is not supported if postgres < 9.5
+		is.Err = assetsModified.deleteRows(is.Ingestion.DB)
+		if is.Err != nil {
+			return
+		}
+
+		// can perform a direct upsert if postgres > 9.4
+		// is.Ingestion.assetStats = is.Ingestion.assetStats.
+		// 	Suffix("ON CONFLICT (id) DO UPDATE SET (amount, num_accounts, flags, toml) = (excluded.amount, excluded.num_accounts, excluded.flags, excluded.toml)")
 		_, is.Err = is.Ingestion.DB.Exec(is.Ingestion.assetStats)
 	}
 }
@@ -113,6 +122,29 @@ func (assetsModified AssetsModified) UpdateAssetStats(is *Session) {
 // 		}
 // 	}
 // }
+
+func (assetsModified AssetsModified) deleteRows(session *db.Session) error {
+	if len(assetsModified) == 0 {
+		return nil
+	}
+
+	assets := make([]xdr.Asset, 0, len(assetsModified))
+	for _, asset := range assetsModified {
+		assets = append(assets, asset)
+	}
+	historyQ := history.Q{Session: session}
+	ids, err := historyQ.GetAssetIDs(assets)
+	if err != nil {
+		return err
+	}
+	if len(ids) == 0 {
+		return nil
+	}
+
+	deleteStmt := sq.Delete("asset_stats").Where(sq.Eq{"id": ids})
+	_, err = session.Exec(deleteStmt)
+	return err
+}
 
 func (assetsModified AssetsModified) updateIfAssetIssuerInvolved(asset xdr.Asset, account xdr.AccountId) error {
 	var assetType, assetCode, assetIssuer string
