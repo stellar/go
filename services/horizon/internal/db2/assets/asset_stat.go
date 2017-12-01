@@ -42,7 +42,7 @@ func (q AssetStatsQ) GetSQL() (sq.SelectBuilder, error) {
 			cursor = "zzzzzzzzzzzzz" // 12 + 1 "z"s so it will always be greater than the _ delimiter since code is max 12 chars
 		}
 
-		sql, err = q.PageQuery.ApplyToUsingCursor(sql, "concat(hist.asset_code, '_', hist.asset_issuer)", cursor)
+		sql, err = q.PageQuery.ApplyToUsingCursor(sql, "concat(hist.asset_code, '_', hist.asset_issuer, '_', hist.asset_type)", cursor)
 		if err != nil {
 			return sql, err
 		}
@@ -54,7 +54,7 @@ func (q AssetStatsQ) GetSQL() (sq.SelectBuilder, error) {
 
 var selectQuery = sq.
 	Select(
-		"concat(hist.asset_code, '_', hist.asset_issuer) as sort_key",
+		"concat(hist.asset_code, '_', hist.asset_issuer, '_', hist.asset_type) as sort_key",
 		"hist.asset_type",
 		"hist.asset_code",
 		"hist.asset_issuer",
