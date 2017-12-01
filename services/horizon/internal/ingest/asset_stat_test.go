@@ -114,21 +114,22 @@ func TestStatTrustlinesInfo(t *testing.T) {
 	}
 
 	for _, kase := range testCases {
-		t.Run(kase.scenario, func(t *testing.T) {
-			tt := test.Start(t).ScenarioWithoutHorizon(kase.scenario)
-			defer tt.Finish()
+		// TODO NNS 2 - enable subtests after dropping support for Go1.6
+		// t.Run(kase.scenario, func(t *testing.T) {
+		tt := test.Start(t).ScenarioWithoutHorizon(kase.scenario)
+		defer tt.Finish()
 
-			session := &db.Session{DB: tt.CoreDB}
-			coreQ := &core.Q{Session: session}
+		session := &db.Session{DB: tt.CoreDB}
+		coreQ := &core.Q{Session: session}
 
-			for i, asset := range kase.assetState {
-				numAccounts, amount, err := statTrustlinesInfo(coreQ, asset.assetType, asset.assetCode, asset.assetIssuer)
+		for i, asset := range kase.assetState {
+			numAccounts, amount, err := statTrustlinesInfo(coreQ, asset.assetType, asset.assetCode, asset.assetIssuer)
 
-				tt.Require.NoError(err)
-				tt.Assert.Equal(asset.wantNumAccounts, numAccounts, fmt.Sprintf("asset index: %d", i))
-				tt.Assert.Equal(asset.wantAmount, amount, fmt.Sprintf("asset index: %d", i))
-			}
-		})
+			tt.Require.NoError(err)
+			tt.Assert.Equal(asset.wantNumAccounts, numAccounts, fmt.Sprintf("asset index: %d", i))
+			tt.Assert.Equal(asset.wantAmount, amount, fmt.Sprintf("asset index: %d", i))
+		}
+		// })
 	}
 }
 
@@ -158,18 +159,19 @@ func TestStatAccountInfo(t *testing.T) {
 	}
 
 	for _, kase := range testCases {
-		t.Run(kase.account, func(t *testing.T) {
-			tt := test.Start(t).ScenarioWithoutHorizon("asset_stat_account")
-			defer tt.Finish()
+		// TODO NNS 2 - enable subtests after dropping support for Go1.6
+		// t.Run(kase.account, func(t *testing.T) {
+		tt := test.Start(t).ScenarioWithoutHorizon("asset_stat_account")
+		defer tt.Finish()
 
-			session := &db.Session{DB: tt.CoreDB}
-			coreQ := &core.Q{Session: session}
+		session := &db.Session{DB: tt.CoreDB}
+		coreQ := &core.Q{Session: session}
 
-			flags, toml, err := statAccountInfo(coreQ, kase.account)
-			tt.Require.NoError(err)
-			tt.Assert.Equal(kase.wantFlags, flags)
-			tt.Assert.Equal(kase.wantToml, toml)
-		})
+		flags, toml, err := statAccountInfo(coreQ, kase.account)
+		tt.Require.NoError(err)
+		tt.Assert.Equal(kase.wantFlags, flags)
+		tt.Assert.Equal(kase.wantToml, toml)
+		// })
 	}
 }
 
@@ -348,26 +350,27 @@ func TestAssetModified(t *testing.T) {
 	}
 
 	for _, kase := range testCases {
-		t.Run(kase.opBody.Type.String(), func(t *testing.T) {
-			var coreQ *core.Q
-			if kase.needsCoreQ {
-				tt := test.Start(t).ScenarioWithoutHorizon("asset_stat_operations")
-				defer tt.Finish()
-				session := &db.Session{DB: tt.CoreDB}
-				coreQ = &core.Q{Session: session}
-			}
+		// TODO NNS 2 - enable subtests after dropping support for Go1.6
+		// t.Run(kase.opBody.Type.String(), func(t *testing.T) {
+		var coreQ *core.Q
+		if kase.needsCoreQ {
+			tt := test.Start(t).ScenarioWithoutHorizon("asset_stat_operations")
+			defer tt.Finish()
+			session := &db.Session{DB: tt.CoreDB}
+			coreQ = &core.Q{Session: session}
+		}
 
-			assetsModified := AssetsModified(make(map[string]xdr.Asset))
-			assetsModified.IngestOperation(
-				nil,
-				&xdr.Operation{
-					SourceAccount: &sourceAccount,
-					Body:          kase.opBody,
-				},
-				&sourceAccount,
-				coreQ)
-			assert.Equal(t, kase.wantAssets, extractKeys(assetsModified))
-		})
+		assetsModified := AssetsModified(make(map[string]xdr.Asset))
+		assetsModified.IngestOperation(
+			nil,
+			&xdr.Operation{
+				SourceAccount: &sourceAccount,
+				Body:          kase.opBody,
+			},
+			&sourceAccount,
+			coreQ)
+		assert.Equal(t, kase.wantAssets, extractKeys(assetsModified))
+		// })
 	}
 }
 

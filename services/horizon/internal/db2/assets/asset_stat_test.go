@@ -1,7 +1,6 @@
 package assets
 
 import (
-	"strconv"
 	"testing"
 
 	"github.com/stellar/go/services/horizon/internal/db2"
@@ -70,24 +69,25 @@ func TestAssetsStatsQExec(t *testing.T) {
 	}
 
 	for i, kase := range testCases {
-		t.Run(strconv.Itoa(i), func(t *testing.T) {
-			tt := test.Start(t).Scenario("ingest_asset_stats")
-			defer tt.Finish()
+		// TODO NNS 2 - enable subtests after dropping support for Go1.6
+		// t.Run(strconv.Itoa(i), func(t *testing.T) {
+		tt := test.Start(t).Scenario("ingest_asset_stats")
+		defer tt.Finish()
 
-			sql, err := kase.query.GetSQL()
-			tt.Require.NoError(err)
+		sql, err := kase.query.GetSQL()
+		tt.Require.NoError(err)
 
-			var results []AssetStatsR
-			err = history.Q{Session: tt.HorizonSession()}.Select(&results, sql)
-			tt.Require.NoError(err)
-			if !tt.Assert.Equal(3, len(results)) {
-				return
-			}
+		var results []AssetStatsR
+		err = history.Q{Session: tt.HorizonSession()}.Select(&results, sql)
+		tt.Require.NoError(err)
+		if !tt.Assert.Equal(3, len(results)) {
+			return
+		}
 
-			tt.Assert.Equal(len(kase.want), len(results))
-			for i := range kase.want {
-				tt.Assert.Equal(kase.want[i], results[i])
-			}
-		})
+		tt.Assert.Equal(len(kase.want), len(results))
+		for i := range kase.want {
+			tt.Assert.Equal(kase.want[i], results[i])
+		}
+		// })
 	}
 }

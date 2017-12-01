@@ -227,26 +227,27 @@ func TestAssetsActions(t *testing.T) {
 	}
 
 	for _, kase := range testCases {
-		t.Run(kase.path, func(t *testing.T) {
-			ht := StartHTTPTest(t, "ingest_asset_stats")
-			defer ht.Finish()
+		// TODO NNS 2 - enable subtests after dropping support for Go1.6
+		// t.Run(kase.path, func(t *testing.T) {
+		ht := StartHTTPTest(t, "ingest_asset_stats")
+		defer ht.Finish()
 
-			w := ht.Get(kase.path)
-			ht.Assert.Equal(200, w.Code)
-			ht.Assert.PageOf(len(kase.wantItems), w.Body)
+		w := ht.Get(kase.path)
+		ht.Assert.Equal(200, w.Code)
+		ht.Assert.PageOf(len(kase.wantItems), w.Body)
 
-			records := []resource.AssetStat{}
-			links := ht.UnmarshalPage(w.Body, &records)
-			if ht.Assert.Equal(len(kase.wantItems), len(records)) {
-				for i := range kase.wantItems {
-					ht.Assert.Equal(kase.wantItems[i], records[i])
-				}
+		records := []resource.AssetStat{}
+		links := ht.UnmarshalPage(w.Body, &records)
+		if ht.Assert.Equal(len(kase.wantItems), len(records)) {
+			for i := range kase.wantItems {
+				ht.Assert.Equal(kase.wantItems[i], records[i])
 			}
+		}
 
-			ht.Assert.Equal(("http://localhost" + kase.wantSelf), links.Self.Href)
-			ht.Assert.Equal(("http://localhost" + kase.wantPrevious), links.Prev.Href)
-			ht.Assert.Equal(("http://localhost" + kase.wantNext), links.Next.Href)
-		})
+		ht.Assert.Equal(("http://localhost" + kase.wantSelf), links.Self.Href)
+		ht.Assert.Equal(("http://localhost" + kase.wantPrevious), links.Prev.Href)
+		ht.Assert.Equal(("http://localhost" + kase.wantNext), links.Next.Href)
+		// })
 	}
 }
 
