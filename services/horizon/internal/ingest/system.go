@@ -283,7 +283,10 @@ func (i *System) trimAbandondedLedgers() error {
 
 	end := toid.New(coreElder, 0, 0)
 
-	ingestion.Clear(0, end.ToInt64())
+	err = ingestion.Clear(0, end.ToInt64())
+	if err != nil {
+		return errors.Wrap(err, "failed to clear ingestion")
+	}
 
 	err = ingestion.Close()
 	if err != nil {

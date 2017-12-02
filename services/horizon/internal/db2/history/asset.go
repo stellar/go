@@ -11,8 +11,24 @@ func (q *Q) GetAssetByID(dest interface{}, id int64) (err error) {
 	return
 }
 
-func (q *Q) GetAssetID(asset xdr.Asset) (id int64, err error) {
+// GetAssetIDs fetches the ids for many Assets at once
+func (q *Q) GetAssetIDs(assets []xdr.Asset) ([]int64, error) {
+	list := make([]string, 0, len(assets))
+	for _, asset := range assets {
+		list = append(list, asset.String())
+	}
 
+	sql := sq.Select("id").From("history_assets").Where(sq.Eq{
+		"concat(asset_type, '/', asset_code, '/', asset_issuer)": list,
+	})
+
+	var ids []int64
+	err := q.Select(&ids, sql)
+	return ids, err
+}
+
+// GetAssetID fetches the id for an Asset. If fetching multiple values, look at GetAssetIDs
+func (q *Q) GetAssetID(asset xdr.Asset) (id int64, err error) {
 	var (
 		assetType   string
 		assetCode   string

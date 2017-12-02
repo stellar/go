@@ -121,6 +121,15 @@ type Asset struct {
 	Issuer string `db:"asset_issuer"`
 }
 
+// AssetStat is a row in the asset_stats table representing the stats per Asset
+type AssetStat struct {
+	ID          int64  `db:"id"`
+	Amount      int64  `db:"amount"`
+	NumAccounts int32  `db:"num_accounts"`
+	Flags       int8   `db:"flags"`
+	Toml        string `db:"toml"`
+}
+
 // Effect is a row of data from the `history_effects` table
 type Effect struct {
 	HistoryAccountID   int64       `db:"history_account_id"`

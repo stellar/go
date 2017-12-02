@@ -54,6 +54,10 @@ func (ingest *Ingestion) Clear(start int64, end int64) error {
 	if err != nil {
 		return err
 	}
+	err = clear(start, end, "asset_stats", "id")
+	if err != nil {
+		return err
+	}
 
 	return nil
 }
@@ -406,6 +410,14 @@ func (ingest *Ingestion) createInsertBuilders() {
 		"counter_asset_id",
 		"counter_amount",
 		"base_is_seller",
+	)
+
+	ingest.assetStats = sq.Insert("asset_stats").Columns(
+		"id",
+		"amount",
+		"num_accounts",
+		"flags",
+		"toml",
 	)
 }
 

@@ -13,6 +13,7 @@ import (
 	"github.com/stellar/go/amount"
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/meta"
+	"github.com/stellar/go/services/horizon/internal/db2/core"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/services/horizon/internal/ingest/participants"
 	sTime "github.com/stellar/go/support/time"
@@ -38,6 +39,7 @@ func (is *Session) Run() {
 			break
 		}
 	}
+	is.Cursor.AssetsModified.UpdateAssetStats(is)
 
 	if is.Err != nil {
 		is.Ingestion.Rollback()
@@ -356,6 +358,12 @@ func (is *Session) ingestOperation() {
 	is.ingestOperationParticipants()
 	is.ingestEffects()
 	is.ingestTrades()
+	is.Err = is.Cursor.AssetsModified.IngestOperation(
+		is.Err,
+		is.Cursor.Operation(),
+		&is.Cursor.Transaction().Envelope.Tx.SourceAccount,
+		&core.Q{Session: is.Ingestion.DB},
+	)
 }
 
 func (is *Session) ingestOperationParticipants() {

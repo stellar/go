@@ -10,6 +10,7 @@ import (
 	metrics "github.com/rcrowley/go-metrics"
 	"github.com/stellar/go/services/horizon/internal/db2/core"
 	"github.com/stellar/go/support/db"
+	"github.com/stellar/go/xdr"
 )
 
 const (
@@ -35,7 +36,8 @@ type Cursor struct {
 	// DB is the stellar-core db that data is ingested from.
 	DB *db.Session
 
-	Metrics *IngesterMetrics
+	Metrics        *IngesterMetrics
+	AssetsModified AssetsModified
 
 	// Err is the error that caused this iteration to fail, if any.
 	Err error
@@ -100,6 +102,9 @@ type IngesterMetrics struct {
 	LoadLedgerTimer   metrics.Timer
 }
 
+// AssetsModified tracks all the assets modified during a cycle of ingestion
+type AssetsModified map[string]xdr.Asset
+
 // Ingestion receives write requests from a Session
 type Ingestion struct {
 	// DB is the sql connection to be used for writing any rows into the horizon
@@ -114,6 +119,7 @@ type Ingestion struct {
 	effects                  sq.InsertBuilder
 	accounts                 sq.InsertBuilder
 	trades                   sq.InsertBuilder
+	assetStats               sq.InsertBuilder
 }
 
 // Session represents a single attempt at ingesting data into the history
@@ -178,10 +184,11 @@ func NewSession(first, last int32, i *System) *Session {
 			DB: hdb,
 		},
 		Cursor: &Cursor{
-			FirstLedger: first,
-			LastLedger:  last,
-			DB:          i.CoreDB,
-			Metrics:     &i.Metrics,
+			FirstLedger:    first,
+			LastLedger:     last,
+			DB:             i.CoreDB,
+			Metrics:        &i.Metrics,
+			AssetsModified: AssetsModified(make(map[string]xdr.Asset)),
 		},
 		Network:          i.Network,
 		StellarCoreURL:   i.StellarCoreURL,

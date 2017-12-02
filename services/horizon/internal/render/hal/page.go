@@ -26,16 +26,18 @@ func (p *BasePage) Init() {
 	}
 }
 
+// Links represents the Links in a Page
+type Links struct {
+	Self Link `json:"self"`
+	Next Link `json:"next"`
+	Prev Link `json:"prev"`
+}
+
 // Page represents the common page configuration (i.e. has self, next, and prev
 // links) and has a helper method `PopulateLinks` to automate their
 // initialization.
 type Page struct {
-	Links struct {
-		Self Link `json:"self"`
-		Next Link `json:"next"`
-		Prev Link `json:"prev"`
-	} `json:"_links"`
-
+	Links Links `json:"_links"`
 	BasePage
 	BasePath string `json:"-"`
 	Order    string `json:"-"`
@@ -43,10 +45,19 @@ type Page struct {
 	Cursor   string `json:"-"`
 }
 
-// PopulateLinks sets the common links for a page.
+// PopulateLinks sets the common links for a page
 func (p *Page) PopulateLinks() {
+	p.PopulateLinksWithParams(url.Values{})
+}
+
+// PopulateLinksWithParams sets the common links for a page with additional non-paging params
+func (p *Page) PopulateLinksWithParams(params url.Values) {
 	p.Init()
 	fmts := p.BasePath + "?order=%s&limit=%d&cursor=%s"
+	encodedParams := params.Encode()
+	if len(encodedParams) > 0 {
+		fmts = fmts + "&" + encodedParams
+	}
 	lb := LinkBuilder{p.BaseURL}
 
 	p.Links.Self = lb.Linkf(fmts, p.Order, p.Limit, p.Cursor)

@@ -49,12 +49,22 @@ func (p PageQuery) ApplyTo(
 	sql sq.SelectBuilder,
 	col string,
 ) (sq.SelectBuilder, error) {
-	sql = sql.Limit(p.Limit)
-
 	cursor, err := p.CursorInt64()
 	if err != nil {
 		return sql, err
 	}
+
+	return p.ApplyToUsingCursor(sql, col, cursor)
+}
+
+// ApplyToUsingCursor returns a new SelectBuilder after applying the paging effects of
+// `p` to `sql`.  This method allows any type of cursor by a single column
+func (p PageQuery) ApplyToUsingCursor(
+	sql sq.SelectBuilder,
+	col string,
+	cursor interface{},
+) (sq.SelectBuilder, error) {
+	sql = sql.Limit(p.Limit)
 
 	switch p.Order {
 	case "asc":
