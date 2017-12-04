@@ -14,6 +14,10 @@ import (
 	"github.com/stellar/go/support/log"
 )
 
+// ProtocolVersion is the version of the protocol that Bifrost server and
+// JS SDK use to communicate.
+const ProtocolVersion int = 1
+
 type Server struct {
 	BitcoinListener            *bitcoin.Listener            `inject:""`
 	BitcoinAddressGenerator    *bitcoin.AddressGenerator    `inject:""`
@@ -35,6 +39,7 @@ type Server struct {
 }
 
 type GenerateAddressResponse struct {
-	Chain   string `json:"chain"`
-	Address string `json:"address"`
+	ProtocolVersion int    `json:"protocol_version"`
+	Chain           string `json:"chain"`
+	Address         string `json:"address"`
 }

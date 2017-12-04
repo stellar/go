@@ -265,8 +265,9 @@ func (s *Server) handlerGenerateAddress(w http.ResponseWriter, r *http.Request, 
 	s.SSEServer.CreateStream(address)
 
 	response := GenerateAddressResponse{
-		Chain:   string(chain),
-		Address: address,
+		ProtocolVersion: ProtocolVersion,
+		Chain:           string(chain),
+		Address:         address,
 	}
 
 	responseBytes, err := json.Marshal(response)
