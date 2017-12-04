@@ -258,7 +258,7 @@ func (i *System) runOnce() {
 	}
 
 	if is.Cursor.FirstLedger > is.Cursor.LastLedger {
-		log.Warn("ingest: runOnce ran with an inverted Cursor")
+		// NOTE: this occurs when horizon is synced with the connected stellar-core
 		return
 	}
 
@@ -338,7 +338,7 @@ func (i *System) validateLedgerChain(seq int32) error {
 		prev core.LedgerHeader
 	)
 
-	q := &core.Q{i.CoreDB}
+	q := &core.Q{Session: i.CoreDB}
 
 	err := q.LedgerHeaderBySequence(&cur, seq)
 	if err != nil {
