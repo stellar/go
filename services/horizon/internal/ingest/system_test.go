@@ -69,9 +69,9 @@ func TestSessionStart(t *testing.T) {
 	sys := New(network.TestNetworkPassphrase, "", tt.CoreSession(), tt.HorizonSession())
 
 	_ = sys
-	// when history database is empty and no LedgerRetentionCount is set, start importing from ledger 1
+	// when history database is empty and no HistoryRetentionCount is set, start importing from ledger 1
 
-	// when LedgerRetentionCount is set, start with the first importable ledger
+	// when HistoryRetentionCount is set, start with the first importable ledger
 
 	// when the history database is populated, start at the end of ingested history
 }

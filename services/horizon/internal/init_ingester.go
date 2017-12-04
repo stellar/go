@@ -23,7 +23,7 @@ func initIngester(app *App) {
 	)
 
 	app.ingester.SkipCursorUpdate = app.config.SkipCursorUpdate
-	app.ingester.LedgerRetentionCount = app.config.HistoryRetentionCount
+	app.ingester.HistoryRetentionCount = app.config.HistoryRetentionCount
 }
 
 func init() {

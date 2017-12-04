@@ -197,11 +197,11 @@ func (i *System) newTickSession() (*Session, error) {
 
 	// If horizon is configured to only retain a certain number of ledgers, use
 	// that retention number to guess at the new start point.
-	if i.LedgerRetentionCount > 0 {
+	if i.HistoryRetentionCount > 0 {
 		var start int32
 		err := i.CoreDB.GetRaw(&start, `
 			SELECT ledgerseq FROM ledgerheaders WHERE ledgerseq > ?
-		`, ls.CoreLatest-int32(i.LedgerRetentionCount))
+		`, ls.CoreLatest-int32(i.HistoryRetentionCount))
 
 		if err != nil {
 			return nil, errors.Wrap(err, "failed to find session start")

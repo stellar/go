@@ -91,10 +91,10 @@ type System struct {
 	// stellar-core
 	SkipCursorUpdate bool
 
-	// LedgerRetentionCount is the desired minimum number of ledgers to
+	// HistoryRetentionCount is the desired minimum number of ledgers to
 	// keep in the history database, working backwards from the latest core
 	// ledger.  0 represents "all ledgers".
-	LedgerRetentionCount uint
+	HistoryRetentionCount uint
 
 	lock    sync.Mutex
 	current *Session
