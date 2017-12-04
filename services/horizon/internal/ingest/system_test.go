@@ -96,7 +96,7 @@ func TestSystem_newTickSession(t *testing.T) {
 		tt.Assert.Equal(int32(57), sess.Cursor.LastLedger)
 	}
 
-	// when the history database is populated, start at the end of ingested
+	// when the history database is populated, start after the end of ingested
 	// history
 	sess = sys.Tick()
 	tt.Require.NoError(sess.Err)
@@ -104,7 +104,7 @@ func TestSystem_newTickSession(t *testing.T) {
 
 	sess, err = sys.newTickSession()
 	if tt.Assert.NoError(err) {
-		tt.Assert.Equal(int32(57), sess.Cursor.FirstLedger)
+		tt.Assert.Equal(int32(58), sess.Cursor.FirstLedger)
 		tt.Assert.Equal(int32(57), sess.Cursor.LastLedger)
 	}
 
