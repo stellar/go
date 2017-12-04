@@ -7,6 +7,9 @@ clientData:
 This endpoint represents all [assets](../resources/asset.md).
 It will give you all the assets in the system along with various statistics about each.
 
+Note: When running this in `catchup_recent` mode you will only get a subset of all the assets in the system.
+This is because we only register assets when they are encountered during ingestion.
+
 ## Request
 
 ```
