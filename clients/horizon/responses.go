@@ -15,6 +15,28 @@ type Problem struct {
 	Extras   map[string]json.RawMessage `json:"extras,omitempty"`
 }
 
+type Root struct {
+	Links struct {
+		Account             Link `json:"account"`
+		AccountTransactions Link `json:"account_transactions"`
+		Friendbot           Link `json:"friendbot"`
+		Metrics             Link `json:"metrics"`
+		OrderBook           Link `json:"order_book"`
+		Self                Link `json:"self"`
+		Transaction         Link `json:"transaction"`
+		Transactions        Link `json:"transactions"`
+	} `json:"_links"`
+
+	HorizonVersion       string `json:"horizon_version"`
+	StellarCoreVersion   string `json:"core_version"`
+	HorizonSequence      int32  `json:"history_latest_ledger"`
+	HistoryElderSequence int32  `json:"history_elder_ledger"`
+	CoreSequence         int32  `json:"core_latest_ledger"`
+	CoreElderSequence    int32  `json:"core_elder_ledger"`
+	NetworkPassphrase    string `json:"network_passphrase"`
+	ProtocolVersion      int32  `json:"protocol_version"`
+}
+
 type Account struct {
 	Links struct {
 		Self         Link `json:"self"`
@@ -40,6 +62,16 @@ type Account struct {
 func (a Account) GetNativeBalance() string {
 	for _, balance := range a.Balances {
 		if balance.Asset.Type == "native" {
+			return balance.Balance
+		}
+	}
+
+	return "0"
+}
+
+func (a Account) GetCreditBalance(code, issuer string) string {
+	for _, balance := range a.Balances {
+		if balance.Asset.Code == code && balance.Asset.Issuer == issuer {
 			return balance.Balance
 		}
 	}
@@ -191,6 +223,10 @@ type Payment struct {
 			Href string `json:"href"`
 		} `json:"transaction"`
 	} `json:"_links"`
+
+	// create_account fields
+	Account         string `json:"account"`
+	StartingBalance string `json:"starting_balance"`
 
 	// payment/path_payment fields
 	From        string `json:"from"`
