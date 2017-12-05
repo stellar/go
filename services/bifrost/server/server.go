@@ -1,3 +1,6 @@
+// Skip this file in Go <1.8 because it's using http.Server.Shutdown
+// +build go1.8
+
 package server
 
 import (
