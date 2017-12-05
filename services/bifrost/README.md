@@ -82,7 +82,7 @@ We recommend the latter.
 
 Here's the proposed architecture diagram of high-availability deployment:
 
-![Architecture][./images/architecture.png]
+![Architecture](./images/architecture.png)
 
 ## Going to production
 
