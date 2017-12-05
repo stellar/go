@@ -16,9 +16,9 @@ It solves many problems connected to moving tokens to Stellar network:
   * Simple process for users.
   * Easy installation for developers.
 
-Use Bifrost with it's [JS SDK](https://github.com/stellar/bifrost-js-sdk).
-
 We are releasing the **alpha version** of this software. We encourage our community of developers to test and improve it.
+
+Download the binary from [the release page](https://github.com/stellar/go/releases/tag/bifrost-v0.0.1) and use it with it's [Bifrost JS SDK](https://github.com/stellar/bifrost-js-sdk).
 
 ## How it works
 
