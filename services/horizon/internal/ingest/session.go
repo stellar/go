@@ -22,6 +22,11 @@ import (
 // Run starts an attempt to ingest the range of ledgers specified in this
 // session.
 func (is *Session) Run() {
+	if is.Cursor == nil {
+		is.Err = errors.New("no cursor set on session")
+		return
+	}
+
 	is.Err = is.Ingestion.Start()
 	if is.Err != nil {
 		return
@@ -758,6 +763,10 @@ func (is *Session) operationFlagDetails(result map[string]interface{}, f int32, 
 // allows stellar-core to free that storage when next it runs its own
 // maintenance.
 func (is *Session) reportCursorState() error {
+	if is.StellarCoreURL == "" {
+		return nil
+	}
+
 	if is.SkipCursorUpdate {
 		return nil
 	}

@@ -139,7 +139,8 @@ func (i *System) ReingestOutdated() (n int, err error) {
 
 // ReingestRange reingests a range of ledgers, from `start` to `end`, inclusive.
 func (i *System) ReingestRange(start, end int32) (int, error) {
-	is := NewSession(start, end, i)
+	is := NewSession(i)
+	is.Cursor = NewCursor(start, end, i)
 	is.ClearExisting = true
 
 	is.Run()
@@ -167,13 +168,7 @@ func (i *System) Tick() *Session {
 		return nil
 	}
 
-	is, err := i.newTickSession()
-	if err != nil {
-		i.lock.Unlock()
-		log.Errorf("ingest error: %s", err)
-		return nil
-	}
-
+	is := NewSession(i)
 	i.current = is
 	i.lock.Unlock()
 
@@ -181,15 +176,15 @@ func (i *System) Tick() *Session {
 	return is
 }
 
-// newTickSession creates an unverified new ingestion session that reflects the
+// newCursor creates a new ingestion cursor that reflects the
 // current cached ledger state.
-func (i *System) newTickSession() (*Session, error) {
+func (i *System) newCursor() (*Cursor, error) {
 	ls := ledger.CurrentState()
 
 	// If we already have ingested data, start from the next ingestable ledger,
 	// end with the newest closed ledger.
 	if ls.HistoryLatest != 0 {
-		return NewSession(ls.HistoryLatest+1, ls.CoreLatest, i), nil
+		return NewCursor(ls.HistoryLatest+1, ls.CoreLatest, i), nil
 	}
 
 	// Since we've found out the history db is empty (i.e. ls.HistoryLatest == 0),
@@ -207,7 +202,7 @@ func (i *System) newTickSession() (*Session, error) {
 			return nil, errors.Wrap(err, "failed to find session start")
 		}
 
-		return NewSession(start, ls.CoreLatest, i), nil
+		return NewCursor(start, ls.CoreLatest, i), nil
 	}
 
 	// HACK (scott): we just start with ledger 1 because we can't performantly
@@ -220,7 +215,7 @@ func (i *System) newTickSession() (*Session, error) {
 	// to import from ledger 1 will cause an ingestion deadlock when the system
 	// hits the first gap.
 	//
-	return NewSession(1, ls.CoreLatest, i), nil
+	return NewCursor(1, ls.CoreLatest, i), nil
 }
 
 // run causes the importer to check stellar-core to see if we can import new
@@ -256,6 +251,14 @@ func (i *System) runOnce() {
 		log.Warn("ingest: runOnce ran with a nil current session")
 		return
 	}
+
+	cursor, err := i.newCursor()
+	if err != nil {
+		log.
+			Errorf("failed to create ingestion cursor: %s", err)
+		return
+	}
+	is.Cursor = cursor
 
 	if is.Cursor.FirstLedger > is.Cursor.LastLedger {
 		// NOTE: this occurs when horizon is synced with the connected stellar-core

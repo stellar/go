@@ -60,27 +60,27 @@ func TestValidation(t *testing.T) {
 	tt.Assert.Contains(err.Error(), "cur and prev ledger hashes don't match")
 }
 
-// TestSystem_newTickSession tests the ledger that newTickSession picks to start
+// TestSystem_newCursor tests the ledger that newCursor picks to start
 // ingestion from in various scenarios.
-func TestSystem_newTickSession(t *testing.T) {
+func TestSystem_newCursor(t *testing.T) {
 	tt := test.Start(t).ScenarioWithoutHorizon("kahuna")
 	defer tt.Finish()
 
 	sys := New(network.TestNetworkPassphrase, "", tt.CoreSession(), tt.HorizonSession())
 
-	sess, err := sys.newTickSession()
+	cursor, err := sys.newCursor()
 	if tt.Assert.NoError(err) {
-		tt.Assert.Equal(int32(1), sess.Cursor.FirstLedger)
-		tt.Assert.Equal(int32(57), sess.Cursor.LastLedger)
+		tt.Assert.Equal(int32(1), cursor.FirstLedger)
+		tt.Assert.Equal(int32(57), cursor.LastLedger)
 	}
 
 	// when HistoryRetentionCount is set, start with the first importable ledger
 	sys.HistoryRetentionCount = 10
 
-	sess, err = sys.newTickSession()
+	cursor, err = sys.newCursor()
 	if tt.Assert.NoError(err) {
-		tt.Assert.Equal(int32(48), sess.Cursor.FirstLedger)
-		tt.Assert.Equal(int32(57), sess.Cursor.LastLedger)
+		tt.Assert.Equal(int32(48), cursor.FirstLedger)
+		tt.Assert.Equal(int32(57), cursor.LastLedger)
 	}
 
 	// when a gap exists where the first importable ledger should be, pick the
@@ -90,22 +90,22 @@ func TestSystem_newTickSession(t *testing.T) {
 		WHERE ledgerseq BETWEEN 35 AND 50`)
 	tt.Require.NoError(err)
 
-	sess, err = sys.newTickSession()
+	cursor, err = sys.newCursor()
 	if tt.Assert.NoError(err) {
-		tt.Assert.Equal(int32(51), sess.Cursor.FirstLedger)
-		tt.Assert.Equal(int32(57), sess.Cursor.LastLedger)
+		tt.Assert.Equal(int32(51), cursor.FirstLedger)
+		tt.Assert.Equal(int32(57), cursor.LastLedger)
 	}
 
 	// when the history database is populated, start after the end of ingested
 	// history
-	sess = sys.Tick()
+	sess := sys.Tick()
 	tt.Require.NoError(sess.Err)
 	tt.UpdateLedgerState()
 
-	sess, err = sys.newTickSession()
+	cursor, err = sys.newCursor()
 	if tt.Assert.NoError(err) {
-		tt.Assert.Equal(int32(58), sess.Cursor.FirstLedger)
-		tt.Assert.Equal(int32(57), sess.Cursor.LastLedger)
+		tt.Assert.Equal(int32(58), cursor.FirstLedger)
+		tt.Assert.Equal(int32(57), cursor.LastLedger)
 	}
 
 	// sanity test: ensure no error when re-ticking with a synced horizon db.
@@ -122,9 +122,9 @@ func TestSystem_newTickSession(t *testing.T) {
 	tt.Require.NoError(err)
 	tt.UpdateLedgerState()
 
-	sess, err = sys.newTickSession()
+	cursor, err = sys.newCursor()
 	if tt.Assert.NoError(err) {
-		tt.Assert.Equal(int32(53), sess.Cursor.FirstLedger)
-		tt.Assert.Equal(int32(57), sess.Cursor.LastLedger)
+		tt.Assert.Equal(int32(53), cursor.FirstLedger)
+		tt.Assert.Equal(int32(57), cursor.LastLedger)
 	}
 }
