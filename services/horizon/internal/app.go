@@ -1,13 +1,13 @@
 package horizon
 
 import (
-	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"runtime"
 	"sync"
 	"time"
+
+	"github.com/stellar/go/clients/stellarcore"
 
 	"github.com/stellar/go/support/app"
 
@@ -200,38 +200,20 @@ func (a *App) UpdateStellarCoreInfo() {
 		log.Warnf("could not load stellar-core info: %s", err)
 	}
 
-	resp, err := http.Get(fmt.Sprint(a.config.StellarCoreURL, "/info"))
+	core := &stellarcore.Client{
+		URL: a.config.StellarCoreURL,
+	}
+
+	resp, err := core.Info(context.Background())
 
 	if err != nil {
 		fail(err)
 		return
 	}
 
-	defer resp.Body.Close()
-	contents, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		fail(err)
-		return
-	}
-
-	var responseJSON map[string]*json.RawMessage
-	err = json.Unmarshal(contents, &responseJSON)
-	if err != nil {
-		fail(err)
-		return
-	}
-
-	var serverInfo map[string]interface{}
-	err = json.Unmarshal(*responseJSON["info"], &serverInfo)
-	if err != nil {
-		fail(err)
-		return
-	}
-
-	// TODO: make resilient to changes in stellar-core's info output
-	a.coreVersion = serverInfo["build"].(string)
-	a.networkPassphrase = serverInfo["network"].(string)
-	a.protocolVersion = int32(serverInfo["protocol_version"].(float64))
+	a.coreVersion = resp.Info.Build
+	a.networkPassphrase = resp.Info.Network
+	a.protocolVersion = int32(resp.Info.ProtocolVersion)
 }
 
 // UpdateMetrics triggers a refresh of several metrics gauges, such as open
