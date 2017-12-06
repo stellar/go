@@ -3,7 +3,12 @@ package stellarcore
 import (
 	"context"
 	"encoding/json"
+	"fmt"
+	"io/ioutil"
 	"net/http"
+	"net/url"
+	"path"
+	"strings"
 	"time"
 
 	"github.com/stellar/go/support/errors"
@@ -22,8 +27,6 @@ type Client struct {
 
 // Info returns
 func (c *Client) Info(ctx context.Context) (resp *InfoResponse, err error) {
-	var hresp *http.Response
-
 	req, err := http.NewRequest(http.MethodGet, c.URL+"/info", nil)
 	if err != nil {
 		err = errors.Wrap(err, "failed to create request")
@@ -32,7 +35,7 @@ func (c *Client) Info(ctx context.Context) (resp *InfoResponse, err error) {
 
 	req = req.WithContext(ctx)
 
-	hresp, err = c.http().Do(req)
+	hresp, err := c.http().Do(req)
 	if err != nil {
 		err = errors.Wrap(err, "http request errored")
 		return
@@ -52,6 +55,45 @@ func (c *Client) Info(ctx context.Context) (resp *InfoResponse, err error) {
 	}
 
 	return
+}
+
+func (c *Client) SetCursor(ctx context.Context, id string, cursor int32) error {
+	u, err := url.Parse(c.URL)
+	if err != nil {
+		return err
+	}
+
+	u.Path = path.Join(u.Path, "setcursor")
+	q := u.Query()
+	q.Set("id", id)
+	q.Set("cursor", fmt.Sprintf("%d", cursor))
+	u.RawQuery = q.Encode()
+	url := u.String()
+
+	req, err := http.NewRequest(http.MethodGet, url, nil)
+	if err != nil {
+		return errors.Wrap(err, "failed to create request")
+	}
+
+	req = req.WithContext(ctx)
+
+	hresp, err := c.http().Do(req)
+	if err != nil {
+		return errors.Wrap(err, "http request errored")
+	}
+	defer hresp.Body.Close()
+
+	raw, err := ioutil.ReadAll(hresp.Body)
+	if err != nil {
+		return err
+	}
+
+	body := strings.TrimSpace(string(raw))
+	if body != SetCursorDone {
+		return errors.Errorf("failed to set cursor on stellar-core: %s", body)
+	}
+
+	return nil
 }
 
 // WaitForNetworkSync continually polls the connected stellar-core until it

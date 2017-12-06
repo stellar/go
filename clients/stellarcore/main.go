@@ -4,6 +4,10 @@ package stellarcore
 
 import "net/http"
 
+// SetCursorDone is the success message returned by stellar-core when a cursor
+// update succeeds.
+const SetCursorDone = "Done"
+
 // HTTP represents the http client that a stellarcore client uses to make http
 // requests.
 type HTTP interface {
