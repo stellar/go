@@ -59,3 +59,72 @@ func TestValidation(t *testing.T) {
 	tt.Assert.Error(err)
 	tt.Assert.Contains(err.Error(), "cur and prev ledger hashes don't match")
 }
+
+// TestSystem_newCursor tests the ledger that newCursor picks to start
+// ingestion from in various scenarios.
+func TestSystem_newCursor(t *testing.T) {
+	tt := test.Start(t).ScenarioWithoutHorizon("kahuna")
+	defer tt.Finish()
+
+	sys := New(network.TestNetworkPassphrase, "", tt.CoreSession(), tt.HorizonSession())
+
+	cursor, err := sys.newCursor()
+	if tt.Assert.NoError(err) {
+		tt.Assert.Equal(int32(1), cursor.FirstLedger)
+		tt.Assert.Equal(int32(57), cursor.LastLedger)
+	}
+
+	// when HistoryRetentionCount is set, start with the first importable ledger
+	sys.HistoryRetentionCount = 10
+
+	cursor, err = sys.newCursor()
+	if tt.Assert.NoError(err) {
+		tt.Assert.Equal(int32(48), cursor.FirstLedger)
+		tt.Assert.Equal(int32(57), cursor.LastLedger)
+	}
+
+	// when a gap exists where the first importable ledger should be, pick the
+	// newest after the gap
+	_, err = tt.CoreSession().ExecRaw(`
+		DELETE FROM ledgerheaders
+		WHERE ledgerseq BETWEEN 35 AND 50`)
+	tt.Require.NoError(err)
+
+	cursor, err = sys.newCursor()
+	if tt.Assert.NoError(err) {
+		tt.Assert.Equal(int32(51), cursor.FirstLedger)
+		tt.Assert.Equal(int32(57), cursor.LastLedger)
+	}
+
+	// when the history database is populated, start after the end of ingested
+	// history
+	sess := sys.Tick()
+	tt.Require.NoError(sess.Err)
+	tt.UpdateLedgerState()
+
+	cursor, err = sys.newCursor()
+	if tt.Assert.NoError(err) {
+		tt.Assert.Equal(int32(58), cursor.FirstLedger)
+		tt.Assert.Equal(int32(57), cursor.LastLedger)
+	}
+
+	// sanity test: ensure no error when re-ticking with a synced horizon db.
+	sess = sys.Tick()
+	tt.Assert.NoError(sess.Err)
+
+	// prep for next scenario
+	err = sys.ClearAll()
+	tt.Require.NoError(err)
+	tt.UpdateLedgerState()
+
+	// establish a reingestion start point
+	err = sys.ReingestSingle(int32(52))
+	tt.Require.NoError(err)
+	tt.UpdateLedgerState()
+
+	cursor, err = sys.newCursor()
+	if tt.Assert.NoError(err) {
+		tt.Assert.Equal(int32(53), cursor.FirstLedger)
+		tt.Assert.Equal(int32(57), cursor.LastLedger)
+	}
+}

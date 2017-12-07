@@ -1,14 +1,12 @@
 package ingest
 
 import (
+	"context"
 	"encoding/base64"
 	"fmt"
-	"io/ioutil"
-	"net/http"
-	"net/url"
-	"path"
-	"strings"
 	"time"
+
+	"github.com/stellar/go/clients/stellarcore"
 
 	"github.com/stellar/go/amount"
 	"github.com/stellar/go/keypair"
@@ -16,6 +14,7 @@ import (
 	"github.com/stellar/go/services/horizon/internal/db2/core"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/services/horizon/internal/ingest/participants"
+	"github.com/stellar/go/support/errors"
 	sTime "github.com/stellar/go/support/time"
 	"github.com/stellar/go/xdr"
 )
@@ -23,6 +22,11 @@ import (
 // Run starts an attempt to ingest the range of ledgers specified in this
 // session.
 func (is *Session) Run() {
+	if is.Cursor == nil {
+		is.Err = errors.New("no cursor set on session")
+		return
+	}
+
 	is.Err = is.Ingestion.Start()
 	if is.Err != nil {
 		return
@@ -759,8 +763,6 @@ func (is *Session) operationFlagDetails(result map[string]interface{}, f int32, 
 // allows stellar-core to free that storage when next it runs its own
 // maintenance.
 func (is *Session) reportCursorState() error {
-	// TODO(scott): with the introduction of
-	// SkipCursorUpdate, this should probably be removed.
 	if is.StellarCoreURL == "" {
 		return nil
 	}
@@ -769,32 +771,12 @@ func (is *Session) reportCursorState() error {
 		return nil
 	}
 
-	u, err := url.Parse(is.StellarCoreURL)
+	core := &stellarcore.Client{URL: is.StellarCoreURL}
+
+	err := core.SetCursor(context.Background(), "HORIZON", is.Cursor.LastLedger)
+
 	if err != nil {
-		return err
-	}
-
-	u.Path = path.Join(u.Path, "setcursor")
-	q := u.Query()
-	q.Set("id", "HORIZON")
-	q.Set("cursor", fmt.Sprintf("%d", is.Cursor.LastLedger))
-	u.RawQuery = q.Encode()
-	url := u.String()
-
-	resp, err := http.Get(url)
-	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
-
-	raw, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return err
-	}
-
-	body := strings.TrimSpace(string(raw))
-	if body != "Done" {
-		return fmt.Errorf("failed to set cursor on stellar-core: %s", body)
+		return errors.Wrap(err, "SetCursor failed")
 	}
 
 	return nil

@@ -91,6 +91,11 @@ type System struct {
 	// stellar-core
 	SkipCursorUpdate bool
 
+	// HistoryRetentionCount is the desired minimum number of ledgers to
+	// keep in the history database, working backwards from the latest core
+	// ledger.  0 represents "all ledgers".
+	HistoryRetentionCount uint
+
 	lock    sync.Mutex
 	current *Session
 }
@@ -174,21 +179,24 @@ func New(network string, coreURL string, core, horizon *db.Session) *System {
 	return i
 }
 
-// NewSession initialize a new ingestion session, from `first` to `last` using
-// `i`.
-func NewSession(first, last int32, i *System) *Session {
+// NewCursor initializes a new ingestion cursor
+func NewCursor(first, last int32, i *System) *Cursor {
+	return &Cursor{
+		FirstLedger:    first,
+		LastLedger:     last,
+		DB:             i.CoreDB,
+		Metrics:        &i.Metrics,
+		AssetsModified: AssetsModified(make(map[string]xdr.Asset)),
+	}
+}
+
+// NewSession initialize a new ingestion session
+func NewSession(i *System) *Session {
 	hdb := i.HorizonDB.Clone()
 
 	return &Session{
 		Ingestion: &Ingestion{
 			DB: hdb,
-		},
-		Cursor: &Cursor{
-			FirstLedger:    first,
-			LastLedger:     last,
-			DB:             i.CoreDB,
-			Metrics:        &i.Metrics,
-			AssetsModified: AssetsModified(make(map[string]xdr.Asset)),
 		},
 		Network:          i.Network,
 		StellarCoreURL:   i.StellarCoreURL,

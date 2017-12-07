@@ -179,7 +179,8 @@ func AssetFromDB(typ xdr.AssetType, code string, issuer string) (result xdr.Asse
 // stellar-core database this ingestion system is communicating with.  Horizon,
 // which wants to operate on a contiguous range of ledger data (i.e. free from
 // gaps) uses the elder ledger to start importing in the case of an empty
-// database.
+// database.  NOTE:  This current query used is correct, but slow.  Please keep
+// this query out of latency sensitive or frequently trafficked code paths.
 func (q *Q) ElderLedger(dest *int32) error {
 	err := q.GetRaw(dest, `
 		SELECT COALESCE(ledgerseq, 0)
