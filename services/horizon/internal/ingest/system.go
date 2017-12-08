@@ -254,8 +254,7 @@ func (i *System) runOnce() {
 
 	cursor, err := i.newCursor()
 	if err != nil {
-		log.
-			Errorf("failed to create ingestion cursor: %s", err)
+		log.Errorf("failed to create ingestion cursor: %s", err)
 		return
 	}
 	is.Cursor = cursor

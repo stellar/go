@@ -34,7 +34,6 @@ func TestTradeActions_Index(t *testing.T) {
 
 	ht.Assert.WithinDuration(l.ClosedAt, records[0].LedgerCloseTime, 1*time.Second)
 
-	//
 	var q = make(url.Values)
 	q.Add("base_asset_type", "credit_alphanum4")
 	q.Add("base_asset_code", "USD")
@@ -71,6 +70,28 @@ func TestTradeActions_Index(t *testing.T) {
 
 		ht.Assert.Contains(records[0], "base_amount")
 		ht.Assert.Contains(records[0], "counter_amount")
+	}
+
+	// For offer
+	w = ht.Get("/offers/1/trades")
+	if ht.Assert.Equal(200, w.Code) {
+		ht.Assert.PageOf(1, w.Body)
+	}
+
+	w = ht.Get("/offers/2/trades")
+	if ht.Assert.Equal(200, w.Code) {
+		ht.Assert.PageOf(0, w.Body)
+	}
+
+	// for an account
+	w = ht.Get("/accounts/GA5WBPYA5Y4WAEHXWR2UKO2UO4BUGHUQ74EUPKON2QHV4WRHOIRNKKH2/trades")
+	if ht.Assert.Equal(200, w.Code) {
+		ht.Assert.PageOf(1, w.Body)
+	}
+
+	w = ht.Get("/accounts/GCXKG6RN4ONIEPCMNFB732A436Z5PNDSRLGWK7GBLCMQLIFO4S7EYWVU/trades")
+	if ht.Assert.Equal(200, w.Code) {
+		ht.Assert.PageOf(1, w.Body)
 	}
 }
 

@@ -3,9 +3,14 @@ set -e
 
 TESTS=$(glide novendor | sed 's/^\./github.com\/stellar\/go/g')
 
-if [ "$CGO_ENABLED" = "1" ] 
-then
-  exec go test -race $TESTS
-else
-  exec go test $TESTS
-fi
+for TEST in $TESTS; do
+
+  if [ "$CGO_ENABLED" = "1" ] 
+  then
+    go test -race $TEST
+  else
+    go test $TEST
+  fi
+
+done
+
