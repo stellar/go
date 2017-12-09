@@ -1,16 +1,22 @@
 #! /bin/bash
 set -e
 
-TESTS=$(glide novendor | sed 's/^\./github.com\/stellar\/go/g')
+run () {
+    if [ "$CGO_ENABLED" = "1" ]
+    then
+      go test -race $1
+    else
+      go test $1
+    fi
 
-for TEST in $TESTS; do
+    return 0
+}
 
-  if [ "$CGO_ENABLED" = "1" ] 
-  then
-    go test -race $TEST
-  else
-    go test $TEST
-  fi
+export -f run
 
-done
-
+if [ `uname` = "Darwin" ]
+then
+    glide novendor | sed 's/^\./github.com\/stellar\/go/g' | xargs -I TEST -P 4 sh -c "run TEST"
+else
+    glide novendor | sed 's/^\./github.com\/stellar\/go/g' | xargs -I {} -P 4 echo `if [ "$CGO_ENABLED" = "1" ]; then go test -race {}; else go test {}; fi`
+fi
