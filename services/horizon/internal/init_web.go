@@ -10,6 +10,7 @@ import (
 	metrics "github.com/rcrowley/go-metrics"
 	"github.com/rs/cors"
 	"github.com/sebest/xff"
+	"github.com/stellar/go/services/horizon/internal/db2"
 	"github.com/stellar/go/services/horizon/internal/render/problem"
 	"github.com/stellar/go/services/horizon/internal/txsub/sequence"
 	"github.com/zenazn/goji/web"
@@ -39,6 +40,9 @@ func initWeb(app *App) {
 	// register problems
 	problem.RegisterError(sql.ErrNoRows, problem.NotFound)
 	problem.RegisterError(sequence.ErrNoMoreRoom, problem.ServerOverCapacity)
+	problem.RegisterError(db2.ErrInvalidCursor, problem.BadRequest)
+	problem.RegisterError(db2.ErrInvalidLimit, problem.BadRequest)
+	problem.RegisterError(db2.ErrInvalidOrder, problem.BadRequest)
 }
 
 // initWebMiddleware installs the middleware stack used for horizon onto the
