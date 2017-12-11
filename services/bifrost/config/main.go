@@ -24,7 +24,7 @@ type Config struct {
 		SignerSecretKey string `valid:"required" toml:"signer_secret_key"`
 		// StartingBalance is the starting amount of XLM for newly created accounts.
 		// Default value is 41. Increase it if you need Data records / other custom entities on new account.
-		StartingBalance  string `valid:"optional,int" toml:"starting_balance"`
+		StartingBalance  string `valid:"optional,numeric" toml:"starting_balance"`
 	} `valid:"required" toml:"stellar"`
 	Database struct {
 		Type string `valid:"matches(^postgres$)"`
