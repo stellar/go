@@ -96,7 +96,7 @@ func (a *App) Serve() {
 
 	http2.ConfigureServer(srv.Server, nil)
 
-	log.Infof("Starting horizon on %s", addr)
+	log.Infof("Starting horizon on %s (ingest: %v)", addr, a.config.Ingest)
 
 	go a.run()
 

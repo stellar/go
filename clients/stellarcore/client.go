@@ -25,16 +25,10 @@ type Client struct {
 	URL string
 }
 
-// Info returns
+// Info calls the `info` command on the connected stellar core and returns the
+// provided response
 func (c *Client) Info(ctx context.Context) (resp *InfoResponse, err error) {
-	req, err := http.NewRequest(http.MethodGet, c.URL+"/info", nil)
-	if err != nil {
-		err = errors.Wrap(err, "failed to create request")
-		return
-	}
-
-	req = req.WithContext(ctx)
-
+	req, err := c.simpleGet(ctx, "info", nil)
 	hresp, err := c.http().Do(req)
 	if err != nil {
 		err = errors.Wrap(err, "http request errored")
@@ -57,25 +51,16 @@ func (c *Client) Info(ctx context.Context) (resp *InfoResponse, err error) {
 	return
 }
 
+// SetCursor calls the `setcursor` command on the connected stellar core
 func (c *Client) SetCursor(ctx context.Context, id string, cursor int32) error {
-	u, err := url.Parse(c.URL)
-	if err != nil {
-		return err
-	}
+	req, err := c.simpleGet(ctx, "setcursor", url.Values{
+		"id":     []string{id},
+		"cursor": []string{fmt.Sprintf("%d", cursor)},
+	})
 
-	u.Path = path.Join(u.Path, "setcursor")
-	q := u.Query()
-	q.Set("id", id)
-	q.Set("cursor", fmt.Sprintf("%d", cursor))
-	u.RawQuery = q.Encode()
-	url := u.String()
-
-	req, err := http.NewRequest(http.MethodGet, url, nil)
 	if err != nil {
 		return errors.Wrap(err, "failed to create request")
 	}
-
-	req = req.WithContext(ctx)
 
 	hresp, err := c.http().Do(req)
 	if err != nil {
@@ -126,4 +111,31 @@ func (c *Client) http() HTTP {
 	}
 
 	return c.HTTP
+}
+
+// simpleGet returns a new GET request to the connected stellar-core using the
+// provided path and query values to construct the result.
+func (c *Client) simpleGet(
+	ctx context.Context,
+	newPath string,
+	query url.Values,
+) (*http.Request, error) {
+
+	u, err := url.Parse(c.URL)
+	if err != nil {
+		return nil, errors.Wrap(err, "unparseable url")
+	}
+
+	u.Path = path.Join(u.Path, newPath)
+	if query != nil {
+		u.RawQuery = query.Encode()
+	}
+	newURL := u.String()
+
+	req, err := http.NewRequest(http.MethodGet, newURL, nil)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to create request")
+	}
+
+	return req.WithContext(ctx), nil
 }
