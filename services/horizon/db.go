@@ -109,6 +109,29 @@ var dbReapCmd = &cobra.Command{
 	},
 }
 
+var dbRebaseCmd = &cobra.Command{
+	Use:   "rebase [SEQUENCE]",
+	Short: "rebases horizon history at ledger SEQUENCE",
+	Long:  "rebases clears the horizon history db and ingests the ledger at SEQUENCE",
+	Run: func(cmd *cobra.Command, args []string) {
+		initConfig()
+		hlog.DefaultLogger.Logger.Level = config.LogLevel
+
+		i := ingestSystem()
+		i.SkipCursorUpdate = true
+
+		parsed, err := strconv.ParseInt(args[0], 10, 32)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		err = i.RebaseHistory(int32(parsed))
+		if err != nil {
+			log.Fatal(err)
+		}
+	},
+}
+
 var dbReingestCmd = &cobra.Command{
 	Use:   "reingest",
 	Short: "imports all data",
@@ -164,6 +187,7 @@ func init() {
 	dbCmd.AddCommand(dbMigrateCmd)
 	dbCmd.AddCommand(dbReapCmd)
 	dbCmd.AddCommand(dbReingestCmd)
+	dbCmd.AddCommand(dbRebaseCmd)
 }
 
 func ingestSystem() *ingest.System {

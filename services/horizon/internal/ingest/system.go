@@ -38,6 +38,23 @@ func (i *System) ClearAll() error {
 	return nil
 }
 
+// RebaseHistory re-establishes horizon's history database using the provided
+// sequence as a starting point.
+func (i *System) RebaseHistory(sequence int32) error {
+
+	err := i.ClearAll()
+	if err != nil {
+		return errors.Wrap(err, "failed to  clear db")
+	}
+
+	err = i.ReingestSingle(sequence)
+	if err != nil {
+		return errors.Wrap(err, "failed to reingest new base")
+	}
+
+	return nil
+}
+
 // ReingestAll re-ingests all ledgers
 func (i *System) ReingestAll() (int, error) {
 
