@@ -2,7 +2,6 @@ package horizon
 
 import (
 	"fmt"
-	"net/url"
 
 	"github.com/stellar/go/services/horizon/internal/db2"
 	"github.com/stellar/go/services/horizon/internal/db2/assets"
@@ -75,18 +74,9 @@ func (action *AssetsAction) loadPage() {
 		action.Page.Add(res)
 	}
 
-	action.Page.BaseURL = action.BaseURL()
-	action.Page.BasePath = action.Path()
+	action.Page.FullURL = action.FullURL()
 	action.Page.Limit = action.PagingParams.Limit
 	action.Page.Cursor = action.PagingParams.Cursor
 	action.Page.Order = action.PagingParams.Order
-
-	linkParams := url.Values{}
-	if action.AssetCode != "" {
-		linkParams.Set("asset_code", action.AssetCode)
-	}
-	if action.AssetIssuer != "" {
-		linkParams.Set("asset_issuer", action.AssetIssuer)
-	}
-	action.Page.PopulateLinksWithParams(linkParams)
+	action.Page.PopulateLinks()
 }

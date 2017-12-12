@@ -92,8 +92,7 @@ func (action *TradeIndexAction) loadPage() {
 		action.Page.Add(res)
 	}
 
-	action.Page.BaseURL = action.BaseURL()
-	action.Page.BasePath = action.Path()
+	action.Page.FullURL = action.FullURL()
 	action.Page.Limit = action.PagingParams.Limit
 	action.Page.Cursor = action.PagingParams.Cursor
 	action.Page.Order = action.PagingParams.Order
@@ -180,9 +179,7 @@ func (action *TradeAggregateIndexAction) loadPage() {
 	action.Page.Limit = action.PagingParams.Limit
 	action.Page.Order = action.PagingParams.Order
 
-	newUrl := action.BaseURL()              // preserve scheme and host for the new url links
-	newUrl.RawQuery = action.R.URL.RawQuery //preserve query parameters
-	newUrl.Path = action.Path()             //preserve path
+	newUrl := action.FullURL()              // preserve scheme and host for the new url links
 	q := newUrl.Query()
 
 	action.Page.Links.Self = hal.NewLink(newUrl.String())

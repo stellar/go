@@ -69,8 +69,7 @@ func (action *OffersByAccountAction) loadPage() {
 		action.Page.Add(res)
 	}
 
-	action.Page.BaseURL = action.BaseURL()
-	action.Page.BasePath = action.Path()
+	action.Page.FullURL = action.FullURL()
 	action.Page.Limit = action.PageQuery.Limit
 	action.Page.Cursor = action.PageQuery.Cursor
 	action.Page.Order = action.PageQuery.Order
