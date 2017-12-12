@@ -70,7 +70,7 @@ func TestSystem_newCursor(t *testing.T) {
 
 	cursor, err := sys.newCursor()
 	if tt.Assert.NoError(err) {
-		tt.Assert.Equal(int32(1), cursor.FirstLedger)
+		tt.Assert.Equal(int32(2), cursor.FirstLedger)
 		tt.Assert.Equal(int32(57), cursor.LastLedger)
 	}
 

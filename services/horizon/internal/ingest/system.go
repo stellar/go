@@ -207,10 +207,11 @@ func (i *System) newCursor() (*Cursor, error) {
 	// Since we've found out the history db is empty (i.e. ls.HistoryLatest == 0),
 	// we now find what the earliest ledger we can import is.
 
+	var start int32
+
 	// If horizon is configured to only retain a certain number of ledgers, use
 	// that retention number to guess at the new start point.
 	if i.HistoryRetentionCount > 0 {
-		var start int32
 		err := i.CoreDB.GetRaw(&start, `
 			SELECT ledgerseq FROM ledgerheaders WHERE ledgerseq > ?
 		`, ls.CoreLatest-int32(i.HistoryRetentionCount))
@@ -218,21 +219,32 @@ func (i *System) newCursor() (*Cursor, error) {
 		if err != nil {
 			return nil, errors.Wrap(err, "failed to find session start")
 		}
-
-		return NewCursor(start, ls.CoreLatest, i), nil
+	} else {
+		err := i.CoreDB.GetRaw(&start, `
+			SELECT ledgerseq FROM ledgerheaders WHERE ledgerseq > ? LIMIT 1 
+		`, 1)
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to load first ledger after genesis")
+		}
 	}
 
-	// HACK (scott): we just start with ledger 1 because we can't performantly
+	// HACK (scott): we just start with ledger 2 because we can't performantly
 	// detect the contiguous range of history that stellar-core has available when
 	// the database is large. Until the ingestion system has support for
 	// backfilling history, it is advised that you manually establish your
-	// ingestion point by using the `horizon db reingest` command with a single
+	// ingestion point by using the `horizon db rebase` command with a single
 	// specified ledger number to start from.  If a horizon database is empty and
 	// the connected stellar-core is not configured for CATCHUP_COMPLETE, trying
 	// to import from ledger 1 will cause an ingestion deadlock when the system
 	// hits the first gap.
 	//
-	return NewCursor(1, ls.CoreLatest, i), nil
+	// HACK (scott):  we don't start with ledger 1 because stellar-core will
+	// always write the genesis ledger, even prior to attempting to sync with the
+	// network.  While this behavior is can be considered a bug, the genesis
+	// ledger is usually pretty boring.  By adopting this behavior for the near
+	// term we can get a quick performance win to buy us some time to implement
+	// ingestion backfill.
+	return NewCursor(start, ls.CoreLatest, i), nil
 }
 
 // run causes the importer to check stellar-core to see if we can import new
