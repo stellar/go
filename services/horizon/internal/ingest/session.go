@@ -35,6 +35,7 @@ func (is *Session) Run() {
 	defer is.Ingestion.Rollback()
 
 	for is.Cursor.NextLedger() {
+		is.validateLedger()
 		is.clearLedger()
 		is.ingestLedger()
 		is.flush()
@@ -780,4 +781,21 @@ func (is *Session) reportCursorState() error {
 	}
 
 	return nil
+}
+
+// validate ledger
+func (is *Session) validateLedger() {
+	if is.Err != nil {
+		return
+	}
+
+	// TODO: if the cursor is running forward, load the previous legder and
+	// validate.  if reverse, load the next ledger and validate.
+
+	// if we can find no ledger where one should be, emit a warning because we
+	// cannot validate.  The normal scenario for this to occur is an empty history
+	// databse.
+
+	// if hashes mistmatch, return an error
+
 }

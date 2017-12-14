@@ -226,8 +226,7 @@ func (i *System) runOnce() {
 
 	// 1. stash a copy of the current ingestion session (assigned from the tick)
 	// 2. decide what to import
-	// 3. Validate the ledger chain if we're not starting fresh
-	// 4. import until none available
+	// 3. import until none available
 
 	// 1.
 	i.lock.Lock()
@@ -250,10 +249,13 @@ func (i *System) runOnce() {
 		return
 	}
 
-	isEmpty := ls.HistoryLatest == 0
+	if ls.HistoryLatest == ls.CoreLatest {
+		log.Debug("ingest: no new ledgers")
+		return
+	}
 
 	// 2.
-	if isEmpty {
+	if ls.HistoryLatest == 0 {
 		log.Infof(
 			"history db is empty, establishing base at ledger %d",
 			ls.CoreLatest,
@@ -264,17 +266,6 @@ func (i *System) runOnce() {
 	}
 
 	// 3.
-	if !isEmpty {
-		err := i.validateLedgerChain(is.Cursor.FirstLedger)
-		if err != nil {
-			log.
-				WithField("start", is.Cursor.FirstLedger).
-				Errorf("ledger gap detected (possible db corruption): %s", err)
-			return
-		}
-	}
-
-	// 4.
 	is.Run()
 
 	if is.Err != nil {
