@@ -155,21 +155,22 @@ type EffectType int
 // Ledger is a row of data from the `history_ledgers` table
 type Ledger struct {
 	TotalOrderID
-	Sequence           int32       `db:"sequence"`
-	ImporterVersion    int32       `db:"importer_version"`
-	LedgerHash         string      `db:"ledger_hash"`
-	PreviousLedgerHash null.String `db:"previous_ledger_hash"`
-	TransactionCount   int32       `db:"transaction_count"`
-	OperationCount     int32       `db:"operation_count"`
-	ClosedAt           time.Time   `db:"closed_at"`
-	CreatedAt          time.Time   `db:"created_at"`
-	UpdatedAt          time.Time   `db:"updated_at"`
-	TotalCoins         int64       `db:"total_coins"`
-	FeePool            int64       `db:"fee_pool"`
-	BaseFee            int32       `db:"base_fee"`
-	BaseReserve        int32       `db:"base_reserve"`
-	MaxTxSetSize       int32       `db:"max_tx_set_size"`
-	ProtocolVersion    int32       `db:"protocol_version"`
+	Sequence           int32            `db:"sequence"`
+	ImporterVersion    int32            `db:"importer_version"`
+	LedgerHash         string           `db:"ledger_hash"`
+	PreviousLedgerHash null.String      `db:"previous_ledger_hash"`
+	TransactionCount   int32            `db:"transaction_count"`
+	OperationCount     int32            `db:"operation_count"`
+	ClosedAt           time.Time        `db:"closed_at"`
+	CreatedAt          time.Time        `db:"created_at"`
+	UpdatedAt          time.Time        `db:"updated_at"`
+	TotalCoins         int64            `db:"total_coins"`
+	FeePool            int64            `db:"fee_pool"`
+	BaseFee            int32            `db:"base_fee"`
+	BaseReserve        int32            `db:"base_reserve"`
+	MaxTxSetSize       int32            `db:"max_tx_set_size"`
+	ProtocolVersion    int32            `db:"protocol_version"`
+	LedgerHeader       xdr.LedgerHeader `db:"ledger_header"`
 }
 
 // LedgerCache is a helper struct to load ledger data related to a batch of
