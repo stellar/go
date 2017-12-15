@@ -8,16 +8,16 @@ import (
 	"github.com/stellar/go/xdr"
 )
 
-//getTestAsset generates an issuer on the fly and creates a CreditAlphanum4 Asset with given code
-func getTestAsset(code string) xdr.Asset {
+//GetTestAsset generates an issuer on the fly and creates a CreditAlphanum4 Asset with given code
+func GetTestAsset(code string) xdr.Asset {
 	var codeBytes [4]byte
 	copy(codeBytes[:], []byte(code))
-	ca4 := xdr.AssetAlphaNum4{Issuer: getTestAccount(), AssetCode: codeBytes}
+	ca4 := xdr.AssetAlphaNum4{Issuer: GetTestAccount(), AssetCode: codeBytes}
 	return xdr.Asset{Type: xdr.AssetTypeAssetTypeCreditAlphanum4, AlphaNum4: &ca4, AlphaNum12: nil}
 }
 
 //Get generates and returns an account on the fly
-func getTestAccount() xdr.AccountId {
+func GetTestAccount() xdr.AccountId {
 	var key xdr.Uint256
 	kp, _ := keypair.Random()
 	copy(key[:], kp.Address())
@@ -25,8 +25,8 @@ func getTestAccount() xdr.AccountId {
 	return acc
 }
 
-//ingestTestTrade mock ingests a trade
-func ingestTestTrade(
+//IngestTestTrade mock ingests a trade
+func IngestTestTrade(
 	q *Q,
 	assetSold xdr.Asset,
 	assetBought xdr.Asset,
@@ -55,13 +55,13 @@ func PopulateTestTrades(
 	delta int64,
 	opStart int64) (ass1 xdr.Asset, ass2 xdr.Asset, err error) {
 
-	acc1 := getTestAccount()
-	acc2 := getTestAccount()
-	ass1 = getTestAsset("usd")
-	ass2 = getTestAsset("euro")
+	acc1 := GetTestAccount()
+	acc2 := GetTestAccount()
+	ass1 = GetTestAsset("usd")
+	ass2 = GetTestAsset("euro")
 	for i := 1; i <= numOfTrades; i++ {
 		timestamp := time.MillisFromInt64(startTs + (delta * int64(i-1)))
-		err = ingestTestTrade(
+		err = IngestTestTrade(
 			q, ass1, ass2, acc1, acc2, int64(i*100), int64(i*100)*int64(i), timestamp, opStart+int64(i))
 		//tt.Assert.NoError(err)
 		if err != nil {
@@ -70,3 +70,4 @@ func PopulateTestTrades(
 	}
 	return
 }
+

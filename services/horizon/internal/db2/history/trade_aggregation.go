@@ -77,6 +77,9 @@ func (q *TradeAggregationsQ) GetSql() sq.SelectBuilder {
 		bucketSql = bucketSql.Where(sq.Lt{"ledger_closed_at": q.endTime.ToTime()})
 	}
 
+	//ensure open/close order for cases when multiple trades occur in the same ledger
+	bucketSql = bucketSql.OrderBy("history_operation_id ", "\"order\"")
+
 	return sq.Select(
 		"timestamp",
 		"count(*) as count",
@@ -104,6 +107,8 @@ func formatBucketTimestampSelect(resolution int64) string {
 func bucketTrades(resolution int64) sq.SelectBuilder {
 	return sq.Select(
 		formatBucketTimestampSelect(resolution),
+		"history_operation_id",
+		"\"order\"",
 		"base_asset_id",
 		"base_amount",
 		"counter_asset_id",
@@ -117,6 +122,8 @@ func bucketTrades(resolution int64) sq.SelectBuilder {
 func reverseBucketTrades(resolution int64) sq.SelectBuilder {
 	return sq.Select(
 		formatBucketTimestampSelect(resolution),
+		"history_operation_id",
+		"\"order\"",
 		"counter_asset_id as base_asset_id",
 		"counter_amount as base_amount",
 		"base_asset_id as counter_asset_id",
