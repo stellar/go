@@ -117,6 +117,7 @@ type Ledger struct {
 	BaseReserve      string    `json:"base_reserve"`
 	MaxTxSetSize     int32     `json:"max_tx_set_size"`
 	ProtocolVersion  int32     `json:"protocol_version"`
+	HeaderXdr        string    `json:"header_xdr"`
 }
 
 // Offer is the display form of an offer to trade currency.

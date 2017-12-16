@@ -26,6 +26,7 @@ func (this *Ledger) Populate(ctx context.Context, row history.Ledger) {
 	this.BaseReserve = amount.String(xdr.Int64(row.BaseReserve))
 	this.MaxTxSetSize = row.MaxTxSetSize
 	this.ProtocolVersion = row.ProtocolVersion
+	this.HeaderXdr = row.LedgerHeaderXDR()
 
 	self := fmt.Sprintf("/ledgers/%d", row.Sequence)
 	lb := hal.LinkBuilder{httpx.BaseURL(ctx)}

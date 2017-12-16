@@ -6,7 +6,17 @@ import (
 	sq "github.com/Masterminds/squirrel"
 	"github.com/stellar/go/services/horizon/internal/db2"
 	"github.com/stellar/go/support/errors"
+	"github.com/stellar/go/xdr"
 )
+
+// HeaderXDR returns the base64 encoded ledger header
+func (l *Ledger) LedgerHeaderXDR() string {
+	out, err := xdr.MarshalBase64(l.LedgerHeader)
+	if err != nil {
+		panic(err)
+	}
+	return out
+}
 
 // LedgerBySequence loads the single ledger at `seq` into `dest`
 func (q *Q) LedgerBySequence(dest interface{}, seq int32) error {
