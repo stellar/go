@@ -22,6 +22,8 @@ To learn more about the concept of ledgers in the Stellar network, take a look a
 | base_fee          | number | The [fee] the network charges per operation in a transaction.                                                                 |
 | base_reserve      | string | The [reserve][fee] the network uses when calculating an account's minimum balance.                                            |
 | max_tx_set_size   | number | The maximum number of transactions validators have agreed to process in a given ledger.                                       |
+| protocol_version  | number | The protocol version that the stellar network was running when this ledger was committed.                                     |
+| header_xdr        | string | A base64 encoded string of the raw `LedgerHeader` xdr struct for this ledger.                                                 |
 
 ## Links
 |              | Example                                           | Relation                        | templated |
@@ -65,7 +67,9 @@ To learn more about the concept of ledgers in the Stellar network, take a look a
   "fee_pool": "0.0025600",
   "base_fee": 100,
   "base_reserve": "10.0000000",
-  "max_tx_set_size": 50
+  "max_tx_set_size": 50,
+  "protocol_version": 8,
+  "header_xdr": "...",
 }
 ```
 
