@@ -180,6 +180,8 @@ var tradesInsert = sq.Insert("history_trades").Columns(
 	"counter_asset_id",
 	"counter_amount",
 	"base_is_seller",
+	"price_n",
+	"price_d",
 )
 
 // Trade records a trade into the history_trades table
@@ -188,6 +190,7 @@ func (q *Q) InsertTrade(
 	order int32,
 	buyer xdr.AccountId,
 	trade xdr.ClaimOfferAtom,
+	price xdr.Price,
 	ledgerClosedAt time.Millis,
 ) error {
 	sellerAccountId, err := q.GetCreateAccountID(trade.SellerId)
@@ -214,12 +217,13 @@ func (q *Q) InsertTrade(
 
 	var baseAccountId, counterAccountId int64
 	var baseAmount, counterAmount xdr.Int64
+
 	if orderPreserved {
 		baseAccountId, baseAmount, counterAccountId, counterAmount =
 			sellerAccountId, trade.AmountSold, buyerAccountId, trade.AmountBought
 	} else {
-		baseAccountId, baseAmount, counterAccountId, counterAmount =
-			buyerAccountId, trade.AmountBought, sellerAccountId, trade.AmountSold
+		baseAccountId, baseAmount, counterAccountId, counterAmount, price =
+			buyerAccountId, trade.AmountBought, sellerAccountId, trade.AmountSold, xdr.Price{price.D, price.N}
 	}
 
 	sql := tradesInsert.Values(
@@ -234,6 +238,8 @@ func (q *Q) InsertTrade(
 		counterAssetId,
 		counterAmount,
 		orderPreserved,
+		price.N,
+		price.D,
 	)
 	_, err = q.Exec(sql)
 	if err != nil {
