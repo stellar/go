@@ -11,7 +11,7 @@ A Trade Aggregation represents aggregated statistics on an asset pair (`base` an
 | trade_count |  int | total number of trades aggregated.|
 | base_volume | string | total volume of `base` asset.|
 | counter_volume | string | total volume of `counter` asset.|
-| avg | string | average price of `counter` asset in terms of `base` asset.|
+| avg | string | weighted average price of `counter` asset in terms of `base` asset.|
 | high | string | highest price for this time period.|
 | low | string | lowest price for this time period.|
 | open | string | price as seen on first trade aggregated.|
@@ -22,4 +22,4 @@ A Trade Aggregation represents aggregated statistics on an asset pair (`base` an
 
 | Resource                 | Type       | Resource URI Template                |
 |--------------------------|------------|--------------------------------------|
-| [Trades](../trade_aggregations.md)       | Collection | `/trades?{orderbook_params}`       |
+| [Trade Aggregations](../endpoints/trade_aggregations.md)       | Collection | `/trade_aggregations?{orderbook_params}`       |
