@@ -45,4 +45,4 @@ A trade occurs between two parties - `base` and `counter`. Which is which is eit
 
 | Resource                 | Type       | Resource URI Template                |
 |--------------------------|------------|--------------------------------------|
-| [Trades](../trades.md)       | Collection | `/trades?{orderbook_params}`       |
+| [Trades](../endpoints/trades.md)       | Collection | `/trades`       |
