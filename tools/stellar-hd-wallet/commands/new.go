@@ -31,7 +31,7 @@ var NewCmd = &cobra.Command{
 			readString()
 		}
 
-		println("WARNING! Store the words above in a save place!")
+		println("WARNING! Store the words above in a safe place!")
 		println("WARNING! If you lose your words, you will lose access to funds in all derived accounts!")
 		println("WARNING! Anyone who has access to these words can spend your funds!")
 		println("")
