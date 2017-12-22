@@ -1,5 +1,5 @@
-hash: 558db3af33103976806c9452a4823d13971090678f683b57a793836d58c74d9b
-updated: 2017-10-11T15:07:25.91120115+02:00
+hash: 7eac67607acc35ee775cfd4301d326fa205f7d0e95836f36dd934c5ccd9fc171
+updated: 2017-12-22T11:51:26.139292-09:00
 imports:
 - name: bitbucket.org/ww/goautoneg
   version: 75cd24fc2f2c2a2088577d12123ddee5f54e0675
@@ -51,6 +51,7 @@ imports:
   - chaincfg
   - chaincfg/chainhash
   - rpcclient
+  - txscript
   - wire
 - name: github.com/btcsuite/btclog
   version: 84c8d2346e9fc8c7b947e243b9c24e6df9fd206a
@@ -115,19 +116,21 @@ imports:
 - name: github.com/getsentry/raven-go
   version: c9d3cc542ad199f62c0264286be537f9bce6063c
   repo: https://github.com/getsentry/raven-go
-- name: github.com/go-errors/errors
-  version: a41850380601eeb43f4350f7d17c6bbd8944aaf8
-  repo: https://github.com/go-errors/errors
 - name: github.com/go-chi/chi
   version: 25354a53cca531cb2efd3f1d3c565d90ff04d802
   subpackages:
   - middleware
+- name: github.com/go-errors/errors
+  version: a41850380601eeb43f4350f7d17c6bbd8944aaf8
+  repo: https://github.com/go-errors/errors
 - name: github.com/go-ini/ini
   version: 6f66b0e091edb3c7b380f7c4f0f884274d550b67
   repo: https://github.com/go-ini/ini
 - name: github.com/go-sql-driver/mysql
   version: 2e00b5cd70399450106cec6431c2e2ce3cae5034
   repo: https://github.com/go-sql-driver/mysql
+- name: github.com/go-stack/stack
+  version: 817915b46b97fd7bb80e8ab6b69f01a53ac3eebf
 - name: github.com/goji/context
   version: cc5d214cefa9d50beb2cdbf2344eb8c4bd14709b
   repo: https://github.com/goji/context
@@ -136,8 +139,6 @@ imports:
   repo: https://github.com/golang/groupcache
   subpackages:
   - lru
-- name: github.com/go-stack/stack
-  version: 817915b46b97fd7bb80e8ab6b69f01a53ac3eebf
 - name: github.com/google/go-querystring
   version: 9235644dd9e52eeae6fa48efd539fdc351a0af53
   repo: https://github.com/google/go-querystring
@@ -230,7 +231,7 @@ imports:
   subpackages:
   - xdr3
 - name: github.com/onsi/ginkgo
-  version: 11459a886d9cd66b319dac7ef1e917ee221372c9
+  version: 6c46eb8334b30dc55b42f1a1c725d5ce97375390
   subpackages:
   - config
   - extensions/table
@@ -251,7 +252,7 @@ imports:
   - reporters/stenographer/support/go-isatty
   - types
 - name: github.com/onsi/gomega
-  version: dcabb60a477c2b6f456df65037cb6708210fbb02
+  version: d35dcfdbfd01eaabf8da0b6b36f111ff953b68cb
   subpackages:
   - format
   - internal/assertion
@@ -277,13 +278,11 @@ imports:
   repo: https://github.com/PuerkitoBio/throttled
   subpackages:
   - store
-- name: github.com/rcrowley/go-metrics
-  version: a5cfc242a56ba7fa70b785f678d6214837bf93b9
-  repo: https://github.com/rcrowley/go-metrics
 - name: github.com/r3labs/sse
   version: 2f36fb519619e8589fbef5095fbe113c14e7d090
 - name: github.com/rcrowley/go-metrics
   version: a5cfc242a56ba7fa70b785f678d6214837bf93b9
+  repo: https://github.com/rcrowley/go-metrics
 - name: github.com/rs/cors
   version: a62a804a8a009876ca59105f7899938a1349f4b3
   repo: https://github.com/rs/cors
@@ -298,7 +297,7 @@ imports:
   version: 7a36e3a787b5228de26fbfec89d5060701010da0
   repo: https://github.com/sebest/xff
 - name: github.com/segmentio/go-loggly
-  version: e78f6971ebca5835614673e2f5f6a47ca5f13501
+  version: eb91657e62b25699dd4e84d5562735440d4beace
   repo: https://github.com/segmentio/go-loggly
 - name: github.com/sergi/go-diff
   version: 83532ca1c1caa393179c677b6facf48e61f4ca5d
@@ -347,11 +346,12 @@ imports:
   - assert
   - mock
   - require
+  - suite
+- name: github.com/tyler-smith/go-bip32
+  version: 2c9cfd17756470a0b7c3e4b7954bae7d11035504
 - name: github.com/tylerb/graceful
   version: 7116c7a8115899e80197cd9e0b97998c0f97ed8e
   repo: https://github.com/tylerb/graceful
-- name: github.com/tyler-smith/go-bip32
-  version: 2c9cfd17756470a0b7c3e4b7954bae7d11035504
 - name: github.com/valyala/bytebufferpool
   version: e746df99fe4a3986f4d4f79e13c1e0117ce9c2f7
   repo: https://github.com/valyala/bytebufferpool
@@ -361,9 +361,6 @@ imports:
   subpackages:
   - fasthttputil
   - stackless
-- name: github.com/visionmedia/go-debug
-  version: ff4a55a20a86994118644bbddc6a216da193cc13
-  repo: https://github.com/visionmedia/go-debug
 - name: github.com/xeipuuv/gojsonpointer
   version: e0fe6f68307607d540ed8eac07a342c33fa1b54a
   repo: https://github.com/xeipuuv/gojsonpointer
@@ -434,15 +431,18 @@ imports:
 - name: gopkg.in/gorp.v1
   version: c87af80f3cc5036b55b83d77171e156791085e2e
   repo: https://gopkg.in/gorp.v1
-- name: gopkg.in/tylerb/graceful.v1
-  version: 50a48b6e73fcc75b45e22c05b79629a67c79e938
-  repo: https://gopkg.in/tylerb/graceful.v1
 - name: gopkg.in/karalabe/cookiejar.v2
   version: 8dcd6a7f4951f6ff3ee9cbb919a06d8925822e57
   subpackages:
   - collections/prque
 - name: gopkg.in/natefinch/npipe.v2
   version: c1b8fa8bdccecb0b8db834ee0b92fdbcfa606dd6
+- name: gopkg.in/tylerb/graceful.v1
+  version: 50a48b6e73fcc75b45e22c05b79629a67c79e938
+  repo: https://gopkg.in/tylerb/graceful.v1
+- name: gopkg.in/yaml.v2
+  version: 7ad95dd0798a40da1ccdff6dff35fd177b5edf40
+  repo: https://gopkg.in/yaml.v2
 testImports:
 - name: golang.org/x/text
   version: 1cbadb444a806fd9430d14ad08967ed91da4fa0a
@@ -462,6 +462,3 @@ testImports:
   - language
   - runes
   - transform
-- name: gopkg.in/yaml.v2
-  version: 7ad95dd0798a40da1ccdff6dff35fd177b5edf40
-  repo: https://gopkg.in/yaml.v2

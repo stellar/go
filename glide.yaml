@@ -18,7 +18,7 @@ import:
   version: c9d3cc542ad199f62c0264286be537f9bce6063c
   repo: https://github.com/getsentry/raven-go
 - package: github.com/segmentio/go-loggly
-  version: e78f6971ebca5835614673e2f5f6a47ca5f13501
+  version: eb91657e62b25699dd4e84d5562735440d4beace
   repo: https://github.com/segmentio/go-loggly
 - package: golang.org/x/net
   version: 9bc2a3340c92c17a20edcd0080e93851ed58f5d5
@@ -245,9 +245,6 @@ import:
 - package: github.com/valyala/fasthttp
   version: 0a7f0a797cd66b89588d0a7fdd670b706579a621
   repo: https://github.com/valyala/fasthttp
-- package: github.com/visionmedia/go-debug
-  version: ff4a55a20a86994118644bbddc6a216da193cc13
-  repo: https://github.com/visionmedia/go-debug
 - package: github.com/xeipuuv/gojsonpointer
   version: e0fe6f68307607d540ed8eac07a342c33fa1b54a
   repo: https://github.com/xeipuuv/gojsonpointer
