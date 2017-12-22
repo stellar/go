@@ -18,7 +18,7 @@ import:
   version: c9d3cc542ad199f62c0264286be537f9bce6063c
   repo: https://github.com/getsentry/raven-go
 - package: github.com/segmentio/go-loggly
-  version: e78f6971ebca5835614673e2f5f6a47ca5f13501
+  version: eb91657e62b25699dd4e84d5562735440d4beace
   repo: https://github.com/segmentio/go-loggly
 - package: golang.org/x/net
   version: 9bc2a3340c92c17a20edcd0080e93851ed58f5d5
