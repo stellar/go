@@ -449,31 +449,29 @@ func (is *Session) ingestTrades() {
 
 	buyer := is.Cursor.OperationSourceAccount()
 	trades := []xdr.ClaimOfferAtom{}
-	price := xdr.Price{}
+	price := xdr.Price{-1, -1}
 
 	switch is.Cursor.OperationType() {
 	case xdr.OperationTypePathPayment:
+		//TODO: find price
 		trades = is.Cursor.OperationResult().
 			MustPathPaymentResult().
 			MustSuccess().
 			Offers
 
 	case xdr.OperationTypeManageOffer:
-		manageOfferResult := is.Cursor.OperationResult().MustManageOfferResult().MustSuccess()
-		price = manageOfferResult.Offer.Offer.Price
-		trades = manageOfferResult.OffersClaimed
+		trades = is.Cursor.OperationResult().MustManageOfferResult().MustSuccess().OffersClaimed
+		price = is.Cursor.Operation().Body.ManageOfferOp.Price
 	case xdr.OperationTypeCreatePassiveOffer:
 		result := is.Cursor.OperationResult()
 		// KNOWN ISSUE:  stellar-core creates results for CreatePassiveOffer operations
 		// with the wrong result arm set.
 		if result.Type == xdr.OperationTypeManageOffer {
-			manageOfferResult := result.MustManageOfferResult().MustSuccess()
-			trades = manageOfferResult.OffersClaimed
-			price = manageOfferResult.Offer.Offer.Price
+			trades = result.MustManageOfferResult().MustSuccess().OffersClaimed
+			price = is.Cursor.Operation().Body.ManageOfferOp.Price
 		} else {
-			passiveOfferResult := result.MustCreatePassiveOfferResult().MustSuccess()
-			trades = passiveOfferResult.OffersClaimed
-			price = passiveOfferResult.Offer.Offer.Price
+			trades = result.MustCreatePassiveOfferResult().MustSuccess().OffersClaimed
+			price = is.Cursor.Operation().Body.CreatePassiveOfferOp.Price
 		}
 	}
 
