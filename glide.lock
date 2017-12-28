@@ -349,6 +349,8 @@ imports:
   - suite
 - name: github.com/tyler-smith/go-bip32
   version: 2c9cfd17756470a0b7c3e4b7954bae7d11035504
+- name: github.com/bartekn/go-bip39
+  version: a05967ea095d81c8fe4833776774cfaff8e5036c
 - name: github.com/tylerb/graceful
   version: 7116c7a8115899e80197cd9e0b97998c0f97ed8e
   repo: https://github.com/tylerb/graceful
@@ -403,6 +405,7 @@ imports:
   version: 1f22c0103821b9390939b6776727195525381532
   repo: https://go.googlesource.com/crypto
   subpackages:
+  - pbkdf2
   - ripemd160
   - ssh/terminal
 - name: golang.org/x/net
