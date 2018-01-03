@@ -239,6 +239,8 @@ type Trade struct {
 	CounterAssetIssuer string    `db:"counter_asset_issuer"`
 	CounterAmount      xdr.Int64 `db:"counter_amount"`
 	BaseIsSeller       bool      `db:"base_is_seller"`
+	PriceN             xdr.Int32 `db:"price_n"`
+	PriceD             xdr.Int32 `db:"price_d"`
 }
 
 // TradesQ is a helper struct to aid in configuring queries that loads

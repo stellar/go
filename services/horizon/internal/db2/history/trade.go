@@ -148,6 +148,8 @@ var selectTrade = sq.Select(
 	"counter_assets.asset_issuer as counter_asset_issuer",
 	"htrd.counter_amount",
 	"htrd.base_is_seller",
+	"htrd.price_n",
+	"htrd.price_d",
 ).From("history_trades htrd")
 
 var selectReverseTrade = sq.Select(
@@ -166,6 +168,8 @@ var selectReverseTrade = sq.Select(
 	"base_assets.asset_issuer as counter_asset_issuer",
 	"htrd.base_amount as counter_amount",
 	"NOT(htrd.base_is_seller) as base_is_seller",
+	"htrd.price_d as price_n",
+	"htrd.price_n as price_d",
 ).From("history_trades htrd")
 
 var tradesInsert = sq.Insert("history_trades").Columns(

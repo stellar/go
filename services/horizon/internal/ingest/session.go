@@ -468,11 +468,10 @@ func (is *Session) ingestTrades() {
 		// with the wrong result arm set.
 		if result.Type == xdr.OperationTypeManageOffer {
 			trades = result.MustManageOfferResult().MustSuccess().OffersClaimed
-			price = is.Cursor.Operation().Body.ManageOfferOp.Price
 		} else {
 			trades = result.MustCreatePassiveOfferResult().MustSuccess().OffersClaimed
-			price = is.Cursor.Operation().Body.CreatePassiveOfferOp.Price
 		}
+		price = is.Cursor.Operation().Body.CreatePassiveOfferOp.Price
 	}
 
 	q := history.Q{Session: is.Ingestion.DB}
