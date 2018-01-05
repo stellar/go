@@ -44,7 +44,8 @@ type LogglyHook struct {
 // processes pid as a field.
 func New() (result *Entry) {
 	l := logrus.New()
-	l.Level = logrus.WarnLevel
+	l.Level = logrus.InfoLevel
+	l.Formatter.(*logrus.TextFormatter).FullTimestamp = true
 
 	result = &Entry{
 		Entry: *logrus.NewEntry(l).WithField("pid", os.Getpid()),

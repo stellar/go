@@ -168,7 +168,7 @@ func (s *Session) ExecRaw(query string, args ...interface{}) (sql.Result, error)
 // NoRows returns true if the provided error resulted from a query that found
 // no results.
 func (s *Session) NoRows(err error) bool {
-	return err == sql.ErrNoRows
+	return NoRows(err)
 }
 
 // Query runs `query`, returns a *sqlx.Rows instance

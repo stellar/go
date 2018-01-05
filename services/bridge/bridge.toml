@@ -1,0 +1,11 @@
+horizon = "https://horizon-testnet.stellar.org"
+
+[database]
+type = "postgres"
+dsn = "postgres://root@localhost/bridge?sslmode=disable"
+
+[accounts]
+receiving_account = "GAHWLJE3EET3XE2ND4VI6BI6PKVCENBN4A3EQOKM26WV6JKTFLKXNBFD"
+
+[callbacks]
+receive = "http://localhost:8000"

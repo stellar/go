@@ -178,7 +178,8 @@ func (c *Client) stream(ctx context.Context, baseURL string, cursor *Cursor, han
 		}
 		req.Header.Set("Accept", "text/event-stream")
 
-		resp, err := c.HTTP.Do(req)
+		// We use DefaultClient because user's Client can have Timeout set and it will break streaming.
+		resp, err := http.DefaultClient.Do(req)
 		if err != nil {
 			return err
 		}
@@ -231,6 +232,10 @@ func (c *Client) stream(ctx context.Context, baseURL string, cursor *Cursor, han
 		// - if there was no error OR
 		// - if connection was lost
 		if err == nil || err == io.ErrUnexpectedEOF {
+			if len(objectBytes) == 0 {
+				continue
+			}
+
 			object := struct {
 				PT string `json:"paging_token"`
 			}{}

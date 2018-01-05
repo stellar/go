@@ -112,6 +112,17 @@ func Open(dialect, dsn string) (*Session, error) {
 	return &Session{DB: db}, nil
 }
 
+// NoRows returns true if the provided error resulted from a query that found
+// no results.
+func NoRows(err error) bool {
+	switch errors.Cause(err) {
+	case sql.ErrNoRows:
+		return true
+	default:
+		return false
+	}
+}
+
 // Wrap wraps a bare *sql.DB (from the database/sql stdlib package) in a
 // *db.Session instance.  It is meant to be used in cases where you do not
 // control the instantiation of the database connection, but would still like to
