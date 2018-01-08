@@ -118,6 +118,10 @@ func (c *Cursor) incrementLg() bool {
 		c.lg += increment
 	}
 
+	// If we're complete, reset the cursor and finish the iteration.  Complete in
+	// this context means the current ledger (c.lg) has progressed beyond the
+	// LastLedger: If iterating forward the current ledger is greater than
+	// LastLedger, if reverse the current ledger is less than LastLedger.
 	if (!isReverse && c.lg > c.LastLedger) || (isReverse && c.lg < c.LastLedger) {
 		c.data = nil
 		c.lg = 0
