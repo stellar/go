@@ -12,6 +12,11 @@ bumps.  A breaking change will get clearly notified in this log.
 
 - Operation and payment resources were changed to add a `transaction_hash` property.
 
+### Changed
+
+- BREAKING CHANGE: The `base_fee` property of the ledger resource has been renamed to `base_fee_in_stroops` 
+- BREAKING CHANGE: The `base_reserve` property of the ledger resource has been renamed to `base_reserve_in_stroops` and is now expressed in stroops (rather than lumens) and as a JSON number. 
+
 ## [v0.11.0] - 2017-08-15
 
 ### Bug fixes
