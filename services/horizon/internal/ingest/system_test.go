@@ -7,6 +7,30 @@ import (
 	"github.com/stellar/go/services/horizon/internal/test"
 )
 
+func TestBackfill(t *testing.T) {
+	tt := test.Start(t).ScenarioWithoutHorizon("kahuna")
+	defer tt.Finish()
+	is := sys(tt)
+
+	err := is.ReingestSingle(10)
+	tt.Require.NoError(err)
+	tt.UpdateLedgerState()
+
+	// ensure 1 ledger
+	var found int
+	err = tt.HorizonSession().GetRaw(&found, "SELECT COUNT(*) FROM history_ledgers")
+	tt.Require.NoError(err)
+	tt.Require.Equal(1, found)
+
+	err = is.Backfill(3)
+	if tt.Assert.NoError(err) {
+		err = tt.HorizonSession().GetRaw(&found, "SELECT COUNT(*) FROM history_ledgers")
+		tt.Require.NoError(err)
+
+		tt.Assert.Equal(4, found, "expected 4 ledgers to be in history database, but got %d", found)
+	}
+}
+
 func TestClearAll(t *testing.T) {
 	tt := test.Start(t).Scenario("kahuna")
 	defer tt.Finish()
