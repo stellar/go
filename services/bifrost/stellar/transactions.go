@@ -98,8 +98,14 @@ func (ac *AccountConfigurator) buildTransaction(mutators ...build.TransactionMut
 		build.Network{ac.NetworkPassphrase},
 	}
 	muts = append(muts, mutators...)
-	tx := build.Transaction(muts...)
-	txe := tx.Sign(ac.SignerSecretKey)
+	tx, err := build.Transaction(muts...)
+	if err != nil {
+		return "", err
+	}
+	txe, err := tx.Sign(ac.SignerSecretKey)
+	if err != nil {
+		return "", err
+	}
 	return txe.Base64()
 }
 

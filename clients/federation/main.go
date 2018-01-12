@@ -17,7 +17,7 @@ var DefaultTestNetClient = &Client{
 	StellarTOML: stellartoml.DefaultClient,
 }
 
-// DefaultPublicNetClient is a default federation client for oubnet
+// DefaultPublicNetClient is a default federation client for pubnet
 var DefaultPublicNetClient = &Client{
 	HTTP:        http.DefaultClient,
 	Horizon:     horizon.DefaultPublicNetClient,
@@ -29,14 +29,8 @@ var DefaultPublicNetClient = &Client{
 type Client struct {
 	StellarTOML StellarTOML
 	HTTP        HTTP
-	Horizon     Horizon
+	Horizon     horizon.ClientInterface
 	AllowHTTP   bool
-}
-
-// Horizon represents a horizon client that can be consulted for data when
-// needed as part of the federation protocol
-type Horizon interface {
-	HomeDomainForAccount(aid string) (string, error)
 }
 
 // HTTP represents the http client that a federation client uses to make http
@@ -55,4 +49,3 @@ type StellarTOML interface {
 // confirm interface conformity
 var _ StellarTOML = stellartoml.DefaultClient
 var _ HTTP = http.DefaultClient
-var _ Horizon = horizon.DefaultTestNetClient

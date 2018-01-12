@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/stellar/go/clients/horizon"
 	"github.com/stellar/go/clients/stellartoml"
 	"github.com/stellar/go/support/http/httptest"
 	"github.com/stretchr/testify/assert"
@@ -121,14 +122,16 @@ func TestLookupByAddress(t *testing.T) {
 }
 
 func TestLookupByID(t *testing.T) {
-	// HACK: until we improve our mocking scenario, this is just a smoke test.
-	// When/if it breaks, please write this test correctly.  That, or curse
-	// scott's name aloud.
+	horizonMock := &horizon.MockClient{}
+	client := &Client{Horizon: horizonMock}
+
+	horizonMock.On("HomeDomainForAccount", "GASTNVNLHVR3NFO3QACMHCJT3JUSIV4NBXDHDO4VTPDTNN65W3B2766C").
+		Return("", errors.New("homedomain not set"))
 
 	// an account without a homedomain set fails
-	_, err := DefaultPublicNetClient.LookupByAccountID("GASTNVNLHVR3NFO3QACMHCJT3JUSIV4NBXDHDO4VTPDTNN65W3B2766C")
+	_, err := client.LookupByAccountID("GASTNVNLHVR3NFO3QACMHCJT3JUSIV4NBXDHDO4VTPDTNN65W3B2766C")
 	assert.Error(t, err)
-	assert.Equal(t, "homedomain not set", err.Error())
+	assert.Equal(t, "get homedomain failed: homedomain not set", err.Error())
 }
 
 func Test_url(t *testing.T) {
