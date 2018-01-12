@@ -11,8 +11,9 @@ import (
 	"github.com/rs/cors"
 	"github.com/sebest/xff"
 	"github.com/stellar/go/services/horizon/internal/db2"
-	"github.com/stellar/go/services/horizon/internal/render/problem"
+	hProblem "github.com/stellar/go/services/horizon/internal/render/problem"
 	"github.com/stellar/go/services/horizon/internal/txsub/sequence"
+	"github.com/stellar/go/support/render/problem"
 	"github.com/zenazn/goji/web"
 	"github.com/zenazn/goji/web/middleware"
 )
@@ -39,7 +40,7 @@ func initWeb(app *App) {
 
 	// register problems
 	problem.RegisterError(sql.ErrNoRows, problem.NotFound)
-	problem.RegisterError(sequence.ErrNoMoreRoom, problem.ServerOverCapacity)
+	problem.RegisterError(sequence.ErrNoMoreRoom, hProblem.ServerOverCapacity)
 	problem.RegisterError(db2.ErrInvalidCursor, problem.BadRequest)
 	problem.RegisterError(db2.ErrInvalidLimit, problem.BadRequest)
 	problem.RegisterError(db2.ErrInvalidOrder, problem.BadRequest)
@@ -125,8 +126,12 @@ func initWebActions(app *App) {
 	r.Get("/assets", &AssetsAction{})
 
 	// friendbot
-	r.Post("/friendbot", &FriendbotAction{})
-	r.Get("/friendbot", &FriendbotAction{})
+	redirectFriendbot := func(w http.ResponseWriter, r *http.Request) {
+		redirectURL := app.config.FriendbotURL + "?" + r.URL.RawQuery
+		http.Redirect(w, r, redirectURL, http.StatusTemporaryRedirect)
+	}
+	r.Post("/friendbot", redirectFriendbot)
+	r.Get("/friendbot", redirectFriendbot)
 
 	r.NotFound(&NotFoundAction{})
 }
