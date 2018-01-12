@@ -449,11 +449,9 @@ func (is *Session) ingestTrades() {
 
 	buyer := is.Cursor.OperationSourceAccount()
 	trades := []xdr.ClaimOfferAtom{}
-	price := xdr.Price{-1, -1}
 
 	switch is.Cursor.OperationType() {
 	case xdr.OperationTypePathPayment:
-		//TODO: find price
 		trades = is.Cursor.OperationResult().
 			MustPathPaymentResult().
 			MustSuccess().
@@ -461,9 +459,9 @@ func (is *Session) ingestTrades() {
 
 	case xdr.OperationTypeManageOffer:
 		trades = is.Cursor.OperationResult().MustManageOfferResult().MustSuccess().OffersClaimed
-		price = is.Cursor.Operation().Body.ManageOfferOp.Price
 	case xdr.OperationTypeCreatePassiveOffer:
 		result := is.Cursor.OperationResult()
+
 		// KNOWN ISSUE:  stellar-core creates results for CreatePassiveOffer operations
 		// with the wrong result arm set.
 		if result.Type == xdr.OperationTypeManageOffer {
@@ -471,7 +469,6 @@ func (is *Session) ingestTrades() {
 		} else {
 			trades = result.MustCreatePassiveOfferResult().MustSuccess().OffersClaimed
 		}
-		price = is.Cursor.Operation().Body.CreatePassiveOfferOp.Price
 	}
 
 	q := history.Q{Session: is.Ingestion.DB}
@@ -486,12 +483,22 @@ func (is *Session) ingestTrades() {
 			continue
 		}
 
+		//extract original offer price
+		key := xdr.LedgerKey{}
+		key.SetOffer(trade.SellerId, uint64(trade.OfferId))
+		before, _, err := is.Cursor.BeforeAndAfter(key)
+		if err != nil {
+			is.Err = err
+			return
+		}
+		offerPrice := before.Data.Offer.Price
+
 		is.Err = q.InsertTrade(
 			is.Cursor.OperationID(),
 			int32(i),
 			buyer,
 			trade,
-			price,
+			offerPrice,
 			sTime.MillisFromSeconds(is.Cursor.Ledger().CloseTime),
 		)
 		if is.Err != nil {

@@ -18,10 +18,14 @@ func (res *TradeAggregation) Populate(
 	res.BaseVolume = amount.StringFromInt64(row.BaseVolume)
 	res.CounterVolume = amount.StringFromInt64(row.CounterVolume)
 	res.Average = price.StringFromFloat64(row.Average)
-	res.High = price.StringFromFloat64(row.High)
-	res.Low = price.StringFromFloat64(row.Low)
-	res.Open = price.StringFromFloat64(row.Open)
-	res.Close = price.StringFromFloat64(row.Close)
+	res.High = row.High.String()
+	res.HighR = row.High
+	res.Low = row.Low.String()
+	res.LowR = row.Low
+	res.Open = row.Open.String()
+	res.OpenR = row.Open
+	res.Close = row.Close.String()
+	res.CloseR = row.Close
 	return
 }
 

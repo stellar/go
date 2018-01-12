@@ -161,7 +161,7 @@ func (action *TradeAggregateIndexAction) loadRecords() {
 	if !action.EndTimeFilter.IsNil() {
 		tradeAggregationsQ.WithEndTime(action.EndTimeFilter)
 	}
-	historyQ.Select(&action.Records, tradeAggregationsQ.GetSql())
+	action.Err = historyQ.Select(&action.Records, tradeAggregationsQ.GetSql())
 }
 
 func (action *TradeAggregateIndexAction) loadPage() {

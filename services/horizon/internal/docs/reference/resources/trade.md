@@ -31,6 +31,7 @@ A trade occurs between two parties - `base` and `counter`. Which is which is eit
 | counter_asset_type | string | type of counter asset|
 | counter_asset_code | string | code of counter asset|
 | counter_asset_issuer | string | issuer of counter asset|
+| price | object | original offer price, expressed as a rational number. example: {N:7, D:3}
 | base_is_seller | boolean | indicates which party of the trade made the sell offer|
 
 ## Links
