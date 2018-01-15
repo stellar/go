@@ -7,6 +7,7 @@ import (
 	b "github.com/stellar/go/build"
 	"github.com/stellar/go/clients/horizon"
 	"github.com/stellar/go/keypair"
+	"github.com/stellar/go/support/errors"
 )
 
 // Bot represents the friendbot subsystem.
@@ -74,7 +75,7 @@ func (bot *Bot) makeTx(destAddress string) (string, error) {
 	bot.lock.Lock()
 	defer bot.lock.Unlock()
 
-	txn := b.Transaction(
+	txn, err := b.Transaction(
 		b.SourceAccount{AddressOrSeed: bot.Secret},
 		b.Sequence{Sequence: bot.sequence + 1},
 		b.Network{Passphrase: bot.Network},
@@ -84,11 +85,15 @@ func (bot *Bot) makeTx(destAddress string) (string, error) {
 		),
 	)
 
-	if txn.Err != nil {
-		return "", txn.Err
+	if err != nil {
+		return "", errors.Wrap(err, "Error building a transaction")
 	}
 
-	txs := txn.Sign(bot.Secret)
+	txs, err := txn.Sign(bot.Secret)
+	if err != nil {
+		return "", errors.Wrap(err, "Error signing a transaction")
+	}
+
 	base64, err := txs.Base64()
 
 	// only increment the in-memory sequence number if we are going to submit the transaction, while we hold the lock
