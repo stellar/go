@@ -9,6 +9,7 @@ import (
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/services/horizon/internal/render/hal"
 	"github.com/stellar/go/services/horizon/internal/resource"
+	halRender "github.com/stellar/go/support/render/hal"
 	"github.com/stellar/go/support/time"
 	"github.com/stellar/go/xdr"
 )
@@ -33,7 +34,7 @@ func (action *TradeIndexAction) JSON() {
 		action.loadRecords,
 		action.loadPage,
 		func() {
-			hal.Render(action.W, action.Page)
+			halRender.Render(action.W, action.Page)
 		},
 	)
 }
@@ -119,7 +120,7 @@ func (action *TradeAggregateIndexAction) JSON() {
 		action.loadRecords,
 		action.loadPage,
 		func() {
-			hal.Render(action.W, action.Page)
+			halRender.Render(action.W, action.Page)
 		},
 	)
 }
@@ -179,7 +180,7 @@ func (action *TradeAggregateIndexAction) loadPage() {
 	action.Page.Limit = action.PagingParams.Limit
 	action.Page.Order = action.PagingParams.Order
 
-	newUrl := action.FullURL()              // preserve scheme and host for the new url links
+	newUrl := action.FullURL() // preserve scheme and host for the new url links
 	q := newUrl.Query()
 
 	action.Page.Links.Self = hal.NewLink(newUrl.String())
@@ -227,7 +228,7 @@ func (action *TradeEffectIndexAction) JSON() {
 		action.loadLedgers,
 		action.loadPage,
 		func() {
-			hal.Render(action.W, action.Page)
+			halRender.Render(action.W, action.Page)
 		},
 	)
 }
@@ -276,7 +277,7 @@ func (action *TradeEffectIndexAction) loadPage() {
 		action.Page.Add(res)
 	}
 
-	action.Page.FullURL= action.FullURL()
+	action.Page.FullURL = action.FullURL()
 	action.Page.Limit = action.PagingParams.Limit
 	action.Page.Cursor = action.PagingParams.Cursor
 	action.Page.Order = action.PagingParams.Order

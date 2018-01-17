@@ -4,10 +4,10 @@ import (
 	"net/http"
 
 	"github.com/stellar/go/services/horizon/internal/db2/core"
-	"github.com/stellar/go/services/horizon/internal/render/hal"
-	"github.com/stellar/go/services/horizon/internal/render/problem"
 	"github.com/stellar/go/services/horizon/internal/render/sse"
 	"github.com/stellar/go/services/horizon/internal/resource"
+	"github.com/stellar/go/support/render/hal"
+	"github.com/stellar/go/support/render/problem"
 	"github.com/stellar/go/xdr"
 )
 

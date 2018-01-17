@@ -6,10 +6,10 @@ import (
 	"time"
 
 	"github.com/stellar/go/services/horizon/internal/db2/history"
-	"github.com/stellar/go/services/horizon/internal/render/hal"
 	"github.com/stellar/go/services/horizon/internal/resource/base"
 	"github.com/stellar/go/services/horizon/internal/resource/effects"
 	"github.com/stellar/go/services/horizon/internal/resource/operations"
+	"github.com/stellar/go/services/horizon/internal/render/hal"
 	"github.com/stellar/go/strkey"
 	"github.com/stellar/go/support/errors"
 	"golang.org/x/net/context"
@@ -113,8 +113,8 @@ type Ledger struct {
 	ClosedAt         time.Time `json:"closed_at"`
 	TotalCoins       string    `json:"total_coins"`
 	FeePool          string    `json:"fee_pool"`
-	BaseFee          int32     `json:"base_fee"`
-	BaseReserve      string    `json:"base_reserve"`
+	BaseFee          int32     `json:"base_fee_in_stroops"`
+	BaseReserve      int32     `json:"base_reserve_in_stroops"`
 	MaxTxSetSize     int32     `json:"max_tx_set_size"`
 	ProtocolVersion  int32     `json:"protocol_version"`
 	HeaderXDR        string    `json:"header_xdr"`

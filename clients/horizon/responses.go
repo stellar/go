@@ -143,8 +143,8 @@ type Ledger struct {
 	ClosedAt         time.Time `json:"closed_at"`
 	TotalCoins       string    `json:"total_coins"`
 	FeePool          string    `json:"fee_pool"`
-	BaseFee          int32     `json:"base_fee"`
-	BaseReserve      string    `json:"base_reserve"`
+	BaseFee          int32     `json:"base_fee_in_stroops"`
+	BaseReserve      int32     `json:"base_reserve_in_stroops"`
 	MaxTxSetSize     int32     `json:"max_tx_set_size"`
 	ProtocolVersion  int32     `json:"protocol_version"`
 }
