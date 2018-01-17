@@ -120,6 +120,7 @@ func (ingest *Ingestion) Ledger(
 		txs,
 		ops,
 		header.Data.LedgerVersion,
+		header.DataXDR(),
 	)
 
 	_, err := ingest.DB.Exec(sql)
@@ -344,6 +345,7 @@ func (ingest *Ingestion) createInsertBuilders() {
 		"transaction_count",
 		"operation_count",
 		"protocol_version",
+		"ledger_header",
 	)
 
 	ingest.accounts = sq.Insert("history_accounts").Columns(

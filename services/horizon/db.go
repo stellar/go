@@ -21,6 +21,27 @@ var dbCmd = &cobra.Command{
 	Short: "commands to manage horizon's postgres db",
 }
 
+var dbBackfillCmd = &cobra.Command{
+	Use:   "backfill [COUNT]",
+	Short: "backfills horizon history for COUNT ledgers",
+	Run: func(cmd *cobra.Command, args []string) {
+		initConfig()
+		hlog.DefaultLogger.Logger.Level = config.LogLevel
+
+		i := ingestSystem()
+		i.SkipCursorUpdate = true
+		parsed, err := strconv.ParseUint(args[0], 10, 32)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		err = i.Backfill(uint(parsed))
+		if err != nil {
+			log.Fatal(err)
+		}
+	},
+}
+
 var dbClearCmd = &cobra.Command{
 	Use:   "clear",
 	Short: "clears all imported historical data",
@@ -183,6 +204,7 @@ var dbReingestCmd = &cobra.Command{
 
 func init() {
 	dbCmd.AddCommand(dbInitCmd)
+	dbCmd.AddCommand(dbBackfillCmd)
 	dbCmd.AddCommand(dbClearCmd)
 	dbCmd.AddCommand(dbMigrateCmd)
 	dbCmd.AddCommand(dbReapCmd)

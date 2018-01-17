@@ -170,6 +170,7 @@ type Ledger struct {
 	BaseReserve        int32       `db:"base_reserve"`
 	MaxTxSetSize       int32       `db:"max_tx_set_size"`
 	ProtocolVersion    int32       `db:"protocol_version"`
+	LedgerHeaderXDR    null.String `db:"ledger_header"`
 }
 
 // LedgerCache is a helper struct to load ledger data related to a batch of

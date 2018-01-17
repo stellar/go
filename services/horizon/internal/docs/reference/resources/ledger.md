@@ -7,6 +7,7 @@ A **ledger** resource contains information about a given ledger.
 To learn more about the concept of ledgers in the Stellar network, take a look at the [Stellar ledger concept guide](https://www.stellar.org/developers/learn/concepts/ledger.html).
 
 ## Attributes
+
 | Attribute               | Type   |                                                                                                                               |
 |-------------------------|--------|-------------------------------------------------------------------------------------------------------------------------------|
 | id                      | string | The id is a unique identifier for this ledger.                                                                                |
@@ -19,9 +20,13 @@ To learn more about the concept of ledgers in the Stellar network, take a look a
 | closed_at               | string | An [ISO 8601](https://en.wikipedia.org/wiki/ISO_8601) formatted string of when this ledger was closed.                        |
 | total_coins             | string | The total number of lumens in circulation.                                                                                    |
 | fee_pool                | string | The sum of all transaction fees *(in lumens)* since the last inflation operation. They are redistributed during [inflation].  |
+| base_fee                | number | The [fee] the network charges per operation in a transaction.                                                                 |
+| base_reserve            | string | The [reserve][fee] the network uses when calculating an account's minimum balance.                                            |
+| max_tx_set_size         | number | The maximum number of transactions validators have agreed to process in a given ledger.                                       |
+| protocol_version        | number | The protocol version that the stellar network was running when this ledger was committed.                                     |
+| header_xdr              | string | A base64 encoded string of the raw `LedgerHeader` xdr struct for this ledger.                                                 |
 | base_fee_in_stroops     | number | The [fee] the network charges per operation in a transaction.  Expressed in stroops.                                          |
 | base_reserve_in_stroops | number | The [reserve][fee] the network uses when calculating an account's minimum balance. Expressed in stroops.                      |
-| max_tx_set_size         | number | The maximum number of transactions validators have agreed to process in a given ledger.                                       |
 
 ## Links
 |              | Example                                           | Relation                        | templated |
@@ -63,9 +68,13 @@ To learn more about the concept of ledgers in the Stellar network, take a look a
   "closed_at": "2015-07-09T21:39:28Z",
   "total_coins": "100000000000.0000000",
   "fee_pool": "0.0025600",
+  "base_fee": 100,
+  "base_reserve": "10.0000000",
+  "max_tx_set_size": 50,
+  "protocol_version": 8,
+  "header_xdr": "...",
   "base_fee_in_stroops": 100,
   "base_reserve_in_stroops": 100000000,
-  "max_tx_set_size": 50
 }
 ```
 
