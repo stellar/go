@@ -17,7 +17,7 @@ var DefaultTestNetClient = &Client{
 	StellarTOML: stellartoml.DefaultClient,
 }
 
-// DefaultPublicNetClient is a default federation client for oubnet
+// DefaultPublicNetClient is a default federation client for pubnet
 var DefaultPublicNetClient = &Client{
 	HTTP:        http.DefaultClient,
 	Horizon:     horizon.DefaultPublicNetClient,
@@ -55,4 +55,3 @@ type StellarTOML interface {
 // confirm interface conformity
 var _ StellarTOML = stellartoml.DefaultClient
 var _ HTTP = http.DefaultClient
-var _ Horizon = horizon.DefaultTestNetClient

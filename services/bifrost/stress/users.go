@@ -139,14 +139,22 @@ func (u *Users) newUser(kp *keypair.Full) server.GenerateAddressResponse {
 
 		// Create trust lines
 		sequence++
-		tx := build.Transaction(
+		tx, err := build.Transaction(
 			build.SourceAccount{kp.Address()},
 			build.Sequence{sequence},
 			build.Network{u.NetworkPassphrase},
 			build.Trust("BTC", u.IssuerPublicKey),
 			build.Trust("ETH", u.IssuerPublicKey),
 		)
-		txe := tx.Sign(kp.Seed())
+		if err != nil {
+			panic(err)
+		}
+
+		txe, err := tx.Sign(kp.Seed())
+		if err != nil {
+			panic(err)
+		}
+
 		txeB64, err := txe.Base64()
 		if err != nil {
 			panic(err)
@@ -197,7 +205,7 @@ func (u *Users) newUser(kp *keypair.Full) server.GenerateAddressResponse {
 
 		// Merge account so we don't need to fund issuing account over and over again.
 		sequence++
-		tx = build.Transaction(
+		tx, err = build.Transaction(
 			build.SourceAccount{kp.Address()},
 			build.Sequence{sequence},
 			build.Network{u.NetworkPassphrase},
@@ -215,7 +223,15 @@ func (u *Users) newUser(kp *keypair.Full) server.GenerateAddressResponse {
 				build.Destination{u.IssuerPublicKey},
 			),
 		)
-		txe = tx.Sign(kp.Seed())
+		if err != nil {
+			panic(err)
+		}
+
+		txe, err = tx.Sign(kp.Seed())
+		if err != nil {
+			panic(err)
+		}
+
 		txeB64, err = txe.Base64()
 		if err != nil {
 			panic(err)

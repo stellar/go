@@ -53,7 +53,7 @@ func (b *PaymentBuilder) Mutate(muts ...interface{}) {
 		}
 
 		if err != nil {
-			b.Err = err
+			b.Err = errors.Wrap(err, "PaymentBuilder error")
 			return
 		}
 	}
