@@ -66,17 +66,15 @@ func TestAsset_ToXDR(t *testing.T) {
 
 	for _, kase := range cases {
 		actual, err := kase.Asset.ToXDR()
-
-		if kase.ExpectedErr != "" {
-			if assert.Error(t, err, ("no expected error in case: " + kase.Name)) {
+		t.Run(kase.Name, func(t *testing.T) {
+			if kase.ExpectedErr != "" {
+				require.Error(t, err)
 				assert.EqualError(t, err, kase.ExpectedErr)
+				return
 			}
-			continue
-		}
-
-		if assert.NoError(t, err, "unexpected error in case: %s", kase.Name) {
+			require.NoError(t, err)
 			assert.Equal(t, kase.Expected, actual, "invalid xdr result")
-		}
+		})
 	}
 }
 

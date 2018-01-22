@@ -9,8 +9,8 @@ import (
 	"github.com/stellar/go/support/log"
 )
 
-func (ac *AccountConfigurator) createAccount(destination string) error {
-	err := ac.submitTransaction(
+func (ac *AccountConfigurator) createAccount(transactionID, assetCode, destination string) error {
+	xdr, err := ac.buildTransaction(
 		build.CreateAccount(
 			build.SourceAccount{ac.IssuerPublicKey},
 			build.Destination{destination},
@@ -18,10 +18,12 @@ func (ac *AccountConfigurator) createAccount(destination string) error {
 		),
 	)
 	if err != nil {
-		return errors.Wrap(err, "Error submitting transaction")
+		return errors.Wrap(err, "failed to build transaction")
 	}
-
-	return nil
+	if err := ac.SubmissionArchive.Store(transactionID, assetCode, SubmissionTypeCreateAccount, xdr); err != nil {
+		return errors.Wrap(err, "failed to archive xdr")
+	}
+	return ac.submitArchivedXDR(transactionID, assetCode, SubmissionTypeCreateAccount, xdr)
 }
 
 func (ac *AccountConfigurator) allowTrust(trustor, assetCode, tokenAssetCode string) error {
@@ -48,8 +50,8 @@ func (ac *AccountConfigurator) allowTrust(trustor, assetCode, tokenAssetCode str
 	return nil
 }
 
-func (ac *AccountConfigurator) sendToken(destination, assetCode, amount string) error {
-	err := ac.submitTransaction(
+func (ac *AccountConfigurator) sendToken(transactionID, assetCode, destination, amount string) error {
+	xdr, err := ac.buildTransaction(
 		build.Payment(
 			build.SourceAccount{ac.IssuerPublicKey},
 			build.Destination{destination},
@@ -61,9 +63,38 @@ func (ac *AccountConfigurator) sendToken(destination, assetCode, amount string) 
 		),
 	)
 	if err != nil {
-		return errors.Wrap(err, "Error submitting transaction")
+		return errors.Wrap(err, "failed to build transaction")
+	}
+	if err := ac.SubmissionArchive.Store(transactionID, assetCode, SubmissionTypeSendTokens, xdr); err != nil {
+		return errors.Wrap(err, "failed to archive xdr")
+	}
+	return ac.submitArchivedXDR(transactionID, assetCode, SubmissionTypeSendTokens, xdr)
+}
+
+func (ac *AccountConfigurator) submitArchivedXDR(transactionID, assetCode string, st SubmissionType, xdr string) error {
+	if err := ac.submitXDR(xdr); err != nil {
+		if _, ok := errors.Cause(err).(*horizon.Error); ok {
+			_ = ac.SubmissionArchive.Delete(transactionID, assetCode, SubmissionTypeSendTokens)
+		}
+		return err
+	}
+	return nil
+}
+
+func (ac *AccountConfigurator) submitXDR(xdr string) error {
+	localLog := log.WithField("tx", xdr)
+	localLog.Info("Submitting transaction")
+
+	if _, err := ac.Horizon.SubmitTransaction(xdr); err != nil {
+		if err, ok := err.(*horizon.Error); ok {
+			ac.updateSequence()
+			resultXdr := string(err.Problem.Extras["result_xdr"])
+			return errors.Wrapf(err, "transaction rejected with result xdr: %s", resultXdr)
+		}
+		return errors.Wrap(err, "failed to submit transaction")
 	}
 
+	localLog.Info("Transaction successfully submitted")
 	return nil
 }
 
@@ -72,23 +103,7 @@ func (ac *AccountConfigurator) submitTransaction(mutators ...build.TransactionMu
 	if err != nil {
 		return errors.Wrap(err, "Error building transaction")
 	}
-
-	localLog := log.WithField("tx", tx)
-	localLog.Info("Submitting transaction")
-
-	_, err = ac.Horizon.SubmitTransaction(tx)
-	if err != nil {
-		fields := log.F{"err": err}
-		if err, ok := err.(*horizon.Error); ok {
-			fields["result"] = string(err.Problem.Extras["result_xdr"])
-			ac.updateSequence()
-		}
-		localLog.WithFields(fields).Error("Error submitting transaction")
-		return errors.Wrap(err, "Error submitting transaction")
-	}
-
-	localLog.Info("Transaction successfully submitted")
-	return nil
+	return ac.submitXDR(tx)
 }
 
 func (ac *AccountConfigurator) buildTransaction(mutators ...build.TransactionMutator) (string, error) {
@@ -99,6 +114,9 @@ func (ac *AccountConfigurator) buildTransaction(mutators ...build.TransactionMut
 	}
 	muts = append(muts, mutators...)
 	tx := build.Transaction(muts...)
+	if tx.Err != nil {
+		return "", tx.Err
+	}
 	txe := tx.Sign(ac.SignerSecretKey)
 	return txe.Base64()
 }

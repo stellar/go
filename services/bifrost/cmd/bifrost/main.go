@@ -235,7 +235,10 @@ func init() {
 }
 
 func main() {
-	rootCmd.Execute()
+	if err := rootCmd.Execute(); err != nil {
+		fmt.Println(err)
+		os.Exit(-1)
+	}
 }
 
 func readConfig(cfgPath string) config.Config {

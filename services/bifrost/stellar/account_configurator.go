@@ -1,6 +1,7 @@
 package stellar
 
 import (
+	"context"
 	"net/http"
 	"time"
 
@@ -11,8 +12,11 @@ import (
 	"github.com/stellar/go/support/log"
 )
 
-// NewAccountXLMBalance is amount of lumens sent to new accounts
-const NewAccountXLMBalance = "41"
+const (
+	// NewAccountXLMBalance is amount of lumens sent to new accounts
+	NewAccountXLMBalance    = "41"
+	defaultAccountPullDelay = 2 * time.Second
+)
 
 func (ac *AccountConfigurator) Start() error {
 	ac.log = common.CreateLogger("StellarAccountConfigurator")
@@ -63,10 +67,16 @@ func (ac *AccountConfigurator) logStats() {
 	}
 }
 
+func (ac *AccountConfigurator) activeProcessingCounter(delta int) {
+	ac.processingCountMutex.Lock()
+	ac.processingCount += delta
+	ac.processingCountMutex.Unlock()
+}
+
 // ConfigureAccount configures a new account that participated in ICO.
 // * First it creates a new account.
-// * Once a trusline exists, it credits it with received number of ETH or BTC.
-func (ac *AccountConfigurator) ConfigureAccount(destination, assetCode, amount string) {
+// * Once a trust line exists, it credits it with received number of ETH or BTC.
+func (ac *AccountConfigurator) ConfigureAccount(ctx context.Context, transactionID, destination, assetCode, amount string) error {
 	localLog := ac.log.WithFields(log.F{
 		"destination": destination,
 		"assetCode":   assetCode,
@@ -74,96 +84,133 @@ func (ac *AccountConfigurator) ConfigureAccount(destination, assetCode, amount s
 	})
 	localLog.Info("Configuring Stellar account")
 
-	ac.processingCountMutex.Lock()
-	ac.processingCount++
-	ac.processingCountMutex.Unlock()
+	ac.activeProcessingCounter(1)
+	defer ac.activeProcessingCounter(-1)
 
-	defer func() {
-		ac.processingCountMutex.Lock()
-		ac.processingCount--
-		ac.processingCountMutex.Unlock()
-	}()
-
-	// Check if account exists. If it is, skip creating it.
-	for {
-		_, exists, err := ac.getAccount(destination)
-		if err != nil {
-			localLog.WithField("err", err).Error("Error loading account from Horizon")
-			time.Sleep(2 * time.Second)
-			continue
-		}
-
-		if exists {
-			break
-		}
-
-		localLog.WithField("destination", destination).Info("Creating Stellar account")
-		err = ac.createAccount(destination)
-		if err != nil {
-			localLog.WithField("err", err).Error("Error creating Stellar account")
-			time.Sleep(2 * time.Second)
-			continue
-		}
-
-		break
+	destAccount, destAccountExists, err := ac.getAccount(ctx, destination)
+	if err != nil {
+		return errors.Wrap(err, "failed to load account from Horizon")
 	}
 
+	if !destAccountExists {
+		localLog.WithField("destination", destination).Info("Creating Stellar account")
+		if err := ac.doCreateAccount(transactionID, assetCode, destination); err != nil {
+			return err
+		}
+	}
+	if !ac.trustlineExists(destAccount, assetCode) {
+		if err := ac.awaitTrustLine(ctx, transactionID, assetCode, destination); err != nil {
+			return err
+		}
+	}
+	localLog.Info("Trust line found")
+
+	// When trust line found check if needs to authorize, then send token
+	if ac.NeedsAuthorize {
+		localLog.Info("Authorizing trust line")
+		if err := ac.allowTrust(destination, assetCode, ac.TokenAssetCode); err != nil {
+			return errors.Wrap(err, "authorizing trust line failed")
+		}
+	}
+	localLog.Info("Sending token")
+	if err := ac.doSendTokens(ctx, transactionID, assetCode, destination, amount); err != nil {
+		return err
+	}
+	localLog.Info("Account successfully configured")
+	return nil
+}
+
+func (ac *AccountConfigurator) getAccount(ctx context.Context, account string) (horizon.Account, bool, error) {
+	var hAccount horizon.Account
+	if err := ctx.Err(); err != nil {
+		return hAccount, false, err
+	}
+	result := make(chan error)
+	go func() {
+		defer close(result)
+		var err error
+		hAccount, err = ac.Horizon.LoadAccount(account)
+		result <- err
+	}()
+	select {
+	case err := <-result:
+		if err == nil {
+			return hAccount, true, nil
+		}
+		if err, ok := err.(*horizon.Error); ok && err.Response.StatusCode == http.StatusNotFound {
+			return hAccount, false, nil
+		}
+		return hAccount, false, err
+	case <-ctx.Done():
+		return hAccount, false, ctx.Err()
+	}
+}
+
+func (ac *AccountConfigurator) doCreateAccount(transactionID, assetCode, destination string) error {
+	xdr, err := ac.SubmissionArchive.Find(transactionID, assetCode, SubmissionTypeCreateAccount)
+	switch {
+	case err != nil:
+		return errors.Wrap(err, "failed to find persisted submission")
+	case err == nil && xdr != "":
+		if err := ac.submitArchivedXDR(transactionID, assetCode, SubmissionTypeCreateAccount, xdr); err != nil {
+			return err
+		}
+	default:
+		if err := ac.createAccount(transactionID, assetCode, destination); err != nil {
+			return errors.Wrap(err, "failed to create Stellar account")
+		}
+	}
 	if ac.OnAccountCreated != nil {
 		ac.OnAccountCreated(destination)
 	}
+	return nil
+}
 
+func (ac *AccountConfigurator) awaitTrustLine(ctx context.Context, transactionID, assetCode, destination string) error {
 	// Wait for trust line to be created...
-	for {
-		account, err := ac.Horizon.LoadAccount(destination)
+	retryDelayer := time.NewTimer(defaultAccountPullDelay)
+	defer retryDelayer.Stop()
+	exit := ctx.Done()
+	for i := 0; i < 10; i++ {
+		destAccount, destAccountExists, err := ac.getAccount(ctx, destination)
 		if err != nil {
-			localLog.WithField("err", err).Error("Error loading account to check trustline")
-			time.Sleep(2 * time.Second)
+			return errors.Wrap(err, "failed to load account to check trust line")
+		}
+		if destAccountExists && ac.trustlineExists(destAccount, assetCode) {
+			return nil
+		}
+		retryDelayer.Reset(defaultAccountPullDelay)
+		select {
+		case <-exit:
+			return ctx.Err()
+		case <-retryDelayer.C:
 			continue
 		}
-
-		if ac.trustlineExists(account, assetCode) {
-			break
-		}
-
-		time.Sleep(2 * time.Second)
 	}
+	return errors.New("failed to find trust line set")
+}
 
-	localLog.Info("Trust line found")
-
-	// When trustline found check if needs to authorize, then send token
-	if ac.NeedsAuthorize {
-		localLog.Info("Authorizing trust line")
-		err := ac.allowTrust(destination, assetCode, ac.TokenAssetCode)
-		if err != nil {
-			localLog.WithField("err", err).Error("Error authorizing trust line")
+func (ac *AccountConfigurator) doSendTokens(ctx context.Context, transactionID, assetCode, destination, amount string) error {
+	xdr, err := ac.SubmissionArchive.Find(transactionID, assetCode, SubmissionTypeSendTokens)
+	switch {
+	case err != nil:
+		return errors.Wrap(err, "failed to find persisted submission")
+	case ctx.Err() != nil:
+		return ctx.Err()
+	case err == nil && xdr != "":
+		if err := ac.submitArchivedXDR(transactionID, assetCode, SubmissionTypeSendTokens, xdr); err != nil {
+			return err
 		}
-	}
-
-	localLog.Info("Sending token")
-	err := ac.sendToken(destination, assetCode, amount)
-	if err != nil {
-		localLog.WithField("err", err).Error("Error sending asset to account")
-		return
+	default:
+		if err := ac.sendToken(transactionID, assetCode, destination, amount); err != nil {
+			return errors.Wrap(err, "sending asset to account failed")
+		}
 	}
 
 	if ac.OnAccountCredited != nil {
 		ac.OnAccountCredited(destination, assetCode, amount)
 	}
-
-	localLog.Info("Account successully configured")
-}
-
-func (ac *AccountConfigurator) getAccount(account string) (horizon.Account, bool, error) {
-	var hAccount horizon.Account
-	hAccount, err := ac.Horizon.LoadAccount(account)
-	if err != nil {
-		if err, ok := err.(*horizon.Error); ok && err.Response.StatusCode == http.StatusNotFound {
-			return hAccount, false, nil
-		}
-		return hAccount, false, err
-	}
-
-	return hAccount, true, nil
+	return nil
 }
 
 func (ac *AccountConfigurator) trustlineExists(account horizon.Account, assetCode string) bool {

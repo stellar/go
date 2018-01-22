@@ -88,8 +88,9 @@ func (s *Server) Start() error {
 
 	signalInterrupt := make(chan os.Signal, 1)
 	signal.Notify(signalInterrupt, os.Interrupt)
-
-	go s.poolTransactionsQueue()
+	ctx, cancel := context.WithCancel(context.Background())
+	s.stopTransactionQueueWorker = cancel
+	go s.poolTransactionsQueue(ctx)
 	go s.startHTTPServer()
 
 	<-signalInterrupt
@@ -103,6 +104,9 @@ func (s *Server) initLogger() {
 }
 
 func (s *Server) shutdown() {
+	if s.stopTransactionQueueWorker != nil {
+		s.stopTransactionQueueWorker()
+	}
 	if s.httpServer != nil {
 		log.Info("Shutting down HTTP server...")
 		ctx, close := context.WithTimeout(context.Background(), 5*time.Second)

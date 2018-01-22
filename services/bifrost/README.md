@@ -101,3 +101,27 @@ Here's the proposed architecture diagram of high-availability deployment:
 * Increase horizon rate limiting to handle expected load.
 * Make sure you configured minimum accepted value for Bitcoin and Ethereum transactions to the value you really want.
 * Make sure you start from a fresh Bifrost DB in production. If Bifrost was running, you stopped bitcoin-core or geth and then started it again then all the Bitcoin and Ethereum blocks mined during that period will be processed which can take a lot of time.
+
+## Integration tests
+
+* Start [Postgresql](https://www.postgresql.org/) Database server.
+
+For example via docker
+```bash
+docker run -it --rm  --name stellar-postgres -e POSTGRES_USER=root -e POSTGRES_PASSWORD=mysecretpassword -p5432:5432 circleci/postgres:9-alpine
+```
+
+* Run integration tests
+
+Pass the DB url via parameter
+
+```bash
+export bifrostTestDBAddress="postgres://root:mysecretpassword@127.0.0.1:5432/circle_test?sslmode=disable"
+ go test -v ./database -tags=integration
+```
+
+* Manually access Docker DB
+
+```bash
+docker exec -it stellar-postgres  /usr/local/bin/psql -d circle_test
+```

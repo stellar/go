@@ -14,7 +14,20 @@ func (m *MockQueue) QueueAdd(tx Transaction) error {
 	return a.Error(0)
 }
 
-func (m *MockQueue) QueuePool() (*Transaction, error) {
+func (m *MockQueue) WithQueuedTransaction(f func(Transaction) error) error {
 	a := m.Called()
-	return a.Get(0).(*Transaction), a.Error(1)
+	if err := a.Error(1); err != nil {
+		return err
+	}
+
+	return f(a.Get(0).(Transaction))
+}
+
+func (m *MockQueue) IsEmpty() (bool, error) {
+	a := m.Called()
+	if err := a.Error(1); err != nil {
+		return false, err
+	}
+
+	return a.Get(0).(bool), nil
 }

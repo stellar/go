@@ -1,3 +1,5 @@
+-- +migrate Up
+
 CREATE TYPE chain AS ENUM ('bitcoin', 'ethereum');
 
 CREATE TABLE address_association (

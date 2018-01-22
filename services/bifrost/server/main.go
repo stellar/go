@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"math/big"
 	"net/http"
 
@@ -32,10 +33,11 @@ type Server struct {
 	MinimumValueBtc string
 	MinimumValueEth string
 
-	minimumValueSat int64
-	minimumValueWei *big.Int
-	httpServer      *http.Server
-	log             *log.Entry
+	minimumValueSat            int64
+	minimumValueWei            *big.Int
+	httpServer                 *http.Server
+	log                        *log.Entry
+	stopTransactionQueueWorker context.CancelFunc
 }
 
 type GenerateAddressResponse struct {
