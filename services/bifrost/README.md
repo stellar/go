@@ -42,7 +42,7 @@ https://bifrost.stellar.org/
 1. Create an account at https://www.myetherwallet.com/, then switch Network (top-right dropdown) to "Ropsten (MyEtherWallet)". Write down/copy your Ethereum address somewhere.
 1. Use http://faucet.ropsten.be:3001/ to send 3 ETH to your testnet account.
 1. Now open Bifrost demo: https://bifrost.stellar.org/ It will display address where to send your test ETH.
-1. Go back to MyEtherWallet and send ETH to the address displayed by Bifrost. Sometimes Ropsten network is overloaded so monitor the Etherscan to check if your tx was included in a block. If not, increated gas price (this can be done in "Send Offline" tab).
+1. Go back to MyEtherWallet and send ETH to the address displayed by Bifrost. Sometimes Ropsten network is overloaded so monitor the Etherscan to check if your tx was included in a block. If not, increase the gas price (this can be done in "Send Offline" tab).
 1. Switch back to Bifrost demo and check the progress.
 
 ## Config
