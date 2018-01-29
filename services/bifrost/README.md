@@ -62,6 +62,7 @@ https://bifrost.stellar.org/
   * `network_id` - network ID (`3` - Ropsten testnet, `1` - live Ethereum network)
   * `minimum_value_eth` - minimum transaction value in ETH that will be accepted by Bifrost, everything below will be ignored.
 * `stellar`
+  * `token_asset_code` - asset code for the token that will be distributed
   * `issuer_public_key` - public key of the assets issuer or hot wallet,
   * `signer_secret_key` - issuer's secret key if only one instance of Bifrost is deployed OR [channel](https://www.stellar.org/developers/guides/channels.html)'s secret key if more than one instance of Bifrost is deployed. Signer's sequence number will be consumed in transaction's sequence number.
   * `horizon` - URL to [horizon](https://github.com/stellar/go/tree/master/services/horizon) server
