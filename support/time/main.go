@@ -35,6 +35,9 @@ func (t Millis) IsNil() bool {
 
 //RoundUp returns a new Millis instance with a rounded up to d millis
 func (t Millis) RoundUp(d int64) Millis {
+	if d == 0 {
+		return t
+	}
 	if int64(t)%d != 0 {
 		return t.RoundDown(d).increment(d)
 	}
