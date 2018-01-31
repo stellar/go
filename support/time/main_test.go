@@ -9,6 +9,7 @@ import (
 func TestMillisRoundUp(t *testing.T) {
 	assert.Equal(t, MillisFromInt64(20), MillisFromInt64(13).RoundUp(10))
 	assert.Equal(t, MillisFromInt64(10), MillisFromInt64(10).RoundUp(10))
+	assert.Equal(t, MillisFromInt64(15), MillisFromInt64(15).RoundUp(0))
 }
 
 func TestMillisRoundDown(t *testing.T) {
