@@ -23,22 +23,22 @@ GET /trade_aggregations?base_asset_type={base_asset_type}&base_asset_code={base_
 | `base_asset_issuer` | string | Issuer of base asset, not required if type is `native` | 'GA2HGBJIJKI6O4XEM7CZWY5PS6GKSXL6D34ERAJYQSPYA6X6AI7HYW36' |
 | `counter_asset_type` | string | Type of counter asset  | `credit_alphanum4` |
 | `counter_asset_code` | string | Code of counter asset, not required if type is `native` | `BTC` |
-| `counter_asset_issuer` | string | Issuer of counter asset, not required if type is `native` | 'GD6VWBXI6NY3AOOR55RLVQ4MNIDSXE5JSAVXUTF35FRRI72LYPI3WL6Z' |
+| `counter_asset_issuer` | string | Issuer of counter asset, not required if type is `native` | 'GATEMHCCKCY67ZUCKTROYN24ZYT5GK4EQZ65JJLDHKHRUZI3EUEKMTCH' |
 | `?order`  | optional, string, default `asc` | The order, in terms of timeline, in which to return rows, "asc" or "desc". | `asc` |
 | `?limit`  | optional, number, default: `10` | Maximum number of records to return. | `200` |
 
 ### curl Example Request
-```sh 
+```sh
 curl "https://horizon.stellar.org/trade_aggregations?base_asset_type=native&start_time=1512689100000&counter_asset_issuer=GATEMHCCKCY67ZUCKTROYN24ZYT5GK4EQZ65JJLDHKHRUZI3EUEKMTCH&limit=200&end_time=1512775500000&counter_asset_type=credit_alphanum4&resolution=300000&order=asc&counter_asset_code=BTC"
 ```
 
 ## Response
 
-A list of collected trade aggregations. 
+A list of collected trade aggregations.
 
-Note 
+Note
 - Segments that fit into the time range but have 0 trades in them, will not be included.
-- Partial segments, in the beginning and end of the time range, will not be included. 
+- Partial segments, in the beginning and end of the time range, will not be included.
 
 ### Example Response
 ```json
