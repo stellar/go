@@ -2,8 +2,8 @@
 -- PostgreSQL database dump
 --
 
--- Dumped from database version 9.6.3
--- Dumped by pg_dump version 9.6.3
+-- Dumped from database version 10.1
+-- Dumped by pg_dump version 10.1
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -244,6 +244,7 @@ CREATE TABLE history_assets (
 --
 
 CREATE SEQUENCE history_assets_id_seq
+    AS integer
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
@@ -356,6 +357,8 @@ CREATE TABLE history_trades (
     counter_asset_id bigint NOT NULL,
     counter_amount bigint NOT NULL,
     base_is_seller boolean,
+    price_n bigint,
+    price_d bigint,
     CONSTRAINT history_trades_base_amount_check CHECK ((base_amount > 0)),
     CONSTRAINT history_trades_check CHECK ((base_asset_id < counter_asset_id)),
     CONSTRAINT history_trades_counter_amount_check CHECK ((counter_amount > 0))
@@ -449,42 +452,17 @@ ALTER TABLE ONLY history_transaction_participants ALTER COLUMN id SET DEFAULT ne
 -- Data for Name: gorp_migrations; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-INSERT INTO gorp_migrations VALUES ('1_initial_schema.sql', '2017-12-15 13:25:00.27835-06');
-INSERT INTO gorp_migrations VALUES ('2_index_participants_by_toid.sql', '2017-12-15 13:25:00.284847-06');
-INSERT INTO gorp_migrations VALUES ('3_use_sequence_in_history_accounts.sql', '2017-12-15 13:25:00.287761-06');
-INSERT INTO gorp_migrations VALUES ('4_add_protocol_version.sql', '2017-12-15 13:25:00.296332-06');
-INSERT INTO gorp_migrations VALUES ('5_create_trades_table.sql', '2017-12-15 13:25:00.303579-06');
-INSERT INTO gorp_migrations VALUES ('6_create_assets_table.sql', '2017-12-15 13:25:00.308494-06');
-INSERT INTO gorp_migrations VALUES ('7_modify_trades_table.sql', '2017-12-15 13:25:00.315896-06');
-INSERT INTO gorp_migrations VALUES ('8_add_aggregators.sql', '2017-12-15 13:25:00.317593-06');
-INSERT INTO gorp_migrations VALUES ('8_create_asset_stats_table.sql', '2017-12-15 13:25:00.322275-06');
-INSERT INTO gorp_migrations VALUES ('9_add_header_xdr.sql', '2017-12-15 13:25:00.324723-06');
-=======
-INSERT INTO gorp_migrations VALUES ('1_initial_schema.sql', '2018-01-11 15:48:21.39163-08');
-INSERT INTO gorp_migrations VALUES ('2_index_participants_by_toid.sql', '2018-01-11 15:48:21.404608-08');
-INSERT INTO gorp_migrations VALUES ('3_use_sequence_in_history_accounts.sql', '2018-01-11 15:48:21.410406-08');
-INSERT INTO gorp_migrations VALUES ('4_add_protocol_version.sql', '2018-01-11 15:48:21.446171-08');
-INSERT INTO gorp_migrations VALUES ('5_create_trades_table.sql', '2018-01-11 15:48:21.471319-08');
-INSERT INTO gorp_migrations VALUES ('6_create_assets_table.sql', '2018-01-11 15:48:21.490441-08');
-INSERT INTO gorp_migrations VALUES ('7_modify_trades_table.sql', '2018-01-11 15:48:21.530711-08');
-INSERT INTO gorp_migrations VALUES ('8_add_aggregators.sql', '2018-01-11 15:48:21.536427-08');
-INSERT INTO gorp_migrations VALUES ('9_create_asset_stats_table.sql', '2018-01-11 15:48:21.55437-08');
-INSERT INTO gorp_migrations VALUES ('10_add_price_to_trades.sql', '2018-01-11 15:48:21.560019-08');
->>>>>>> wip aggregation test passing
-=======
-INSERT INTO gorp_migrations VALUES ('1_initial_schema.sql', '2018-01-12 10:34:04.739103-08');
-INSERT INTO gorp_migrations VALUES ('2_index_participants_by_toid.sql', '2018-01-12 10:34:04.752764-08');
-INSERT INTO gorp_migrations VALUES ('3_use_sequence_in_history_accounts.sql', '2018-01-12 10:34:04.758694-08');
-INSERT INTO gorp_migrations VALUES ('4_add_protocol_version.sql', '2018-01-12 10:34:04.794738-08');
-INSERT INTO gorp_migrations VALUES ('5_create_trades_table.sql', '2018-01-12 10:34:04.821058-08');
-INSERT INTO gorp_migrations VALUES ('6_create_assets_table.sql', '2018-01-12 10:34:04.840122-08');
-INSERT INTO gorp_migrations VALUES ('7_modify_trades_table.sql', '2018-01-12 10:34:04.874846-08');
-INSERT INTO gorp_migrations VALUES ('8_add_aggregators.sql', '2018-01-12 10:34:04.879979-08');
-INSERT INTO gorp_migrations VALUES ('9_create_asset_stats_table.sql', '2018-01-12 10:34:04.893319-08');
-INSERT INTO gorp_migrations VALUES ('10_add_price_to_trades.sql', '2018-01-12 10:34:04.898473-08');
->>>>>>> tests passing
+INSERT INTO gorp_migrations VALUES ('1_initial_schema.sql', '2018-01-31 15:15:23.304963-08');
+INSERT INTO gorp_migrations VALUES ('2_index_participants_by_toid.sql', '2018-01-31 15:15:23.318742-08');
+INSERT INTO gorp_migrations VALUES ('3_use_sequence_in_history_accounts.sql', '2018-01-31 15:15:23.324789-08');
+INSERT INTO gorp_migrations VALUES ('4_add_protocol_version.sql', '2018-01-31 15:15:23.359693-08');
+INSERT INTO gorp_migrations VALUES ('5_create_trades_table.sql', '2018-01-31 15:15:23.385307-08');
+INSERT INTO gorp_migrations VALUES ('6_create_assets_table.sql', '2018-01-31 15:15:23.404864-08');
+INSERT INTO gorp_migrations VALUES ('7_modify_trades_table.sql', '2018-01-31 15:15:23.440834-08');
+INSERT INTO gorp_migrations VALUES ('8_add_aggregators.sql', '2018-01-31 15:15:23.446978-08');
+INSERT INTO gorp_migrations VALUES ('9_add_header_xdr.sql', '2018-01-31 15:15:23.455409-08');
+INSERT INTO gorp_migrations VALUES ('9_create_asset_stats_table.sql', '2018-01-31 15:15:23.473537-08');
+INSERT INTO gorp_migrations VALUES ('10_add_price_to_trades.sql', '2018-01-31 15:15:23.478626-08');
 
 
 --
@@ -494,23 +472,9 @@ INSERT INTO gorp_migrations VALUES ('10_add_price_to_trades.sql', '2018-01-12 10
 
 
 --
--- Name: history_accounts_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
---
-
-SELECT pg_catalog.setval('history_accounts_id_seq', 1, false);
-
-
---
 -- Data for Name: history_assets; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-
-
---
--- Name: history_assets_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
---
-
-SELECT pg_catalog.setval('history_assets_id_seq', 1, false);
 
 
 --
@@ -532,13 +496,6 @@ SELECT pg_catalog.setval('history_assets_id_seq', 1, false);
 
 
 --
--- Name: history_operation_participants_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
---
-
-SELECT pg_catalog.setval('history_operation_participants_id_seq', 1, false);
-
-
---
 -- Data for Name: history_operations; Type: TABLE DATA; Schema: public; Owner: -
 --
 
@@ -557,16 +514,37 @@ SELECT pg_catalog.setval('history_operation_participants_id_seq', 1, false);
 
 
 --
+-- Data for Name: history_transactions; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+
+
+--
+-- Name: history_accounts_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+--
+
+SELECT pg_catalog.setval('history_accounts_id_seq', 1, false);
+
+
+--
+-- Name: history_assets_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+--
+
+SELECT pg_catalog.setval('history_assets_id_seq', 1, false);
+
+
+--
+-- Name: history_operation_participants_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+--
+
+SELECT pg_catalog.setval('history_operation_participants_id_seq', 1, false);
+
+
+--
 -- Name: history_transaction_participants_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
 SELECT pg_catalog.setval('history_transaction_participants_id_seq', 1, false);
-
-
---
--- Data for Name: history_transactions; Type: TABLE DATA; Schema: public; Owner: -
---
-
 
 
 --

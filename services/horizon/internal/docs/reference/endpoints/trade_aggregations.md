@@ -28,8 +28,8 @@ GET /trade_aggregations?base_asset_type={base_asset_type}&base_asset_code={base_
 | `?limit`  | optional, number, default: `10` | Maximum number of records to return. | `200` |
 
 ### curl Example Request
-```sh
-curl "https://horizon.stellar.org/trade_aggregations?base_asset_type=native&start_time=1512689100000&counter_asset_issuer=GATEMHCCKCY67ZUCKTROYN24ZYT5GK4EQZ65JJLDHKHRUZI3EUEKMTCH&limit=200&end_time=1512775500000&counter_asset_type=credit_alphanum4&resolution=300000&order=asc&counter_asset_code=BTC"
+```sh 
+curl https://horizon.stellar.org/trade_aggregations?base_asset_type=native&counter_asset_code=SLT&counter_asset_issuer=GCKA6K5PCQ6PNF5RQBF7PQDJWRHO6UOGFMRLK3DYHDOI244V47XKQ4GP&counter_asset_type=credit_alphanum4&limit=200&order=asc&resolution=3600000&start_time=1517521726000&end_time=1517532526000
 ```
 
 ## Response
@@ -45,46 +45,67 @@ Note
 {
   "_links": {
     "self": {
-      "href": "https://horizon.stellar.org/trade_aggregations?base_asset_type=native\u0026start_time=1512689100000\u0026counter_asset_issuer=GATEMHCCKCY67ZUCKTROYN24ZYT5GK4EQZ65JJLDHKHRUZI3EUEKMTCH\u0026limit=200\u0026end_time=1512775500000\u0026counter_asset_type=credit_alphanum4\u0026resolution=300000\u0026order=asc\u0026counter_asset_code=BTC"
+      "href": "https://horizon.stellar.org/trade_aggregations?base_asset_type=native\u0026counter_asset_code=SLT\u0026counter_asset_issuer=GCKA6K5PCQ6PNF5RQBF7PQDJWRHO6UOGFMRLK3DYHDOI244V47XKQ4GP\u0026counter_asset_type=credit_alphanum4\u0026limit=200\u0026order=asc\u0026resolution=3600000\u0026start_time=1517521726000\u0026end_time=1517532526000"
     },
     "next": {
-      "href": "https://horizon.stellar.org/trade_aggregations?base_asset_type=native\u0026counter_asset_code=BTC\u0026counter_asset_issuer=GATEMHCCKCY67ZUCKTROYN24ZYT5GK4EQZ65JJLDHKHRUZI3EUEKMTCH\u0026counter_asset_type=credit_alphanum4\u0026end_time=1512775500000\u0026limit=200\u0026order=asc\u0026resolution=300000\u0026start_time=1512765000000"
-    }
+      "href": "https://horizon.stellar.org/trade_aggregations?base_asset_type=native\u0026counter_asset_code=SLT\u0026counter_asset_issuer=GCKA6K5PCQ6PNF5RQBF7PQDJWRHO6UOGFMRLK3DYHDOI244V47XKQ4GP\u0026counter_asset_type=credit_alphanum4\u0026end_time=1517532526000\u0026limit=200\u0026order=asc\u0026resolution=3600000\u0026start_time=1517529600000"
+    },
   },
   "_embedded": {
     "records": [
       {
-        "timestamp": 1512731100000,
-        "trade_count": 2,
-        "base_volume": "341.8032786",
-        "counter_volume": "0.0041700",
-        "avg": "0.0000122",
-        "high": "0.0000122",
-        "low": "0.0000122",
-        "open": "0.0000122",
-        "close": "0.0000122"
+        "timestamp": 1517522400000,
+        "trade_count": 26,
+        "base_volume": "27575.0201596",
+        "counter_volume": "5085.6410385",
+        "avg": "0.1844293",
+        "high": "0.1915709",
+        "high_r": {
+          "N": 50,
+          "D": 261
+        },
+        "low": "0.1506024",
+        "low_r": {
+          "N": 25,
+          "D": 166
+        },
+        "open": "0.1724138",
+        "open_r": {
+          "N": 5,
+          "D": 29
+        },
+        "close": "0.1506024",
+        "close_r": {
+          "N": 25,
+          "D": 166
+        }
       },
       {
-        "timestamp": 1512732300000,
-        "trade_count": 1,
-        "base_volume": "233.6065573",
-        "counter_volume": "0.0028500",
-        "avg": "0.0000122",
-        "high": "0.0000122",
-        "low": "0.0000122",
-        "open": "0.0000122",
-        "close": "0.0000122"
-      },
-      {
-        "timestamp": 1512764700000,
-        "trade_count": 1,
-        "base_volume": "451.0000000",
-        "counter_volume": "0.0027962",
-        "avg": "0.0000062",
-        "high": "0.0000062",
-        "low": "0.0000062",
-        "open": "0.0000062",
-        "close": "0.0000062"
+        "timestamp": 1517526000000,
+        "trade_count": 15,
+        "base_volume": "3913.8224543",
+        "counter_volume": "719.4993608",
+        "avg": "0.1838355",
+        "high": "0.1960784",
+        "high_r": {
+          "N": 10,
+          "D": 51
+        },
+        "low": "0.1506024",
+        "low_r": {
+          "N": 25,
+          "D": 166
+        },
+        "open": "0.1869159",
+        "open_r": {
+          "N": 20,
+          "D": 107
+        },
+        "close": "0.1515152",
+        "close_r": {
+          "N": 5,
+          "D": 33
+        }
       }
     ]
   }

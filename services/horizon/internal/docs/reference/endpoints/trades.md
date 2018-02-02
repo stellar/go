@@ -29,7 +29,7 @@ GET /trades?base_asset_type={base_asset_type}&base_asset_code={base_asset_code}&
 
 ### curl Example Request
 ```sh 
-curl "https://horizon.stellar.org/trades?counter_asset_type=credit_alphanum4&base_asset_type=native&counter_asset_issuer=GAP5LETOV6YIE62YAM56STDANPRDO7ZFDBGSNHJQIYGGKSMOZAHOOS2S&base_asset_issuer=undefined&counter_asset_code=EURT&base_asset_code=XLM&order=desc&limit=200"
+curl https://horizon.stellar.org/trades?base_asset_type=native&counter_asset_code=SLT&counter_asset_issuer=GCKA6K5PCQ6PNF5RQBF7PQDJWRHO6UOGFMRLK3DYHDOI244V47XKQ4GP&counter_asset_type=credit_alphanum4&limit=2&order=desc
 ```
 
 ## Response
@@ -41,13 +41,13 @@ The list of trades. `base` and `counter` in the records will match the asset pai
 {
   "_links": {
     "self": {
-      "href": "https://horizon.stellar.org/trades?order=desc\u0026limit=2\u0026cursor="
+      "href": "https://horizon.stellar.org/trades?base_asset_type=native\u0026counter_asset_code=SLT\u0026counter_asset_issuer=GCKA6K5PCQ6PNF5RQBF7PQDJWRHO6UOGFMRLK3DYHDOI244V47XKQ4GP\u0026counter_asset_type=credit_alphanum4\u0026cursor=\u0026limit=2\u0026order=desc"
     },
     "next": {
-      "href": "https://horizon.stellar.org/trades?order=desc\u0026limit=2\u0026cursor=64255919088738305-0"
+      "href": "https://horizon.stellar.org/trades?base_asset_type=native\u0026counter_asset_code=SLT\u0026counter_asset_issuer=GCKA6K5PCQ6PNF5RQBF7PQDJWRHO6UOGFMRLK3DYHDOI244V47XKQ4GP\u0026counter_asset_type=credit_alphanum4\u0026cursor=68836785177763841-0\u0026limit=2\u0026order=desc"
     },
     "prev": {
-      "href": "https://horizon.stellar.org/trades?order=asc\u0026limit=2\u0026cursor=64283226490810369-0"
+      "href": "https://horizon.stellar.org/trades?base_asset_type=native\u0026counter_asset_code=SLT\u0026counter_asset_issuer=GCKA6K5PCQ6PNF5RQBF7PQDJWRHO6UOGFMRLK3DYHDOI244V47XKQ4GP\u0026counter_asset_type=credit_alphanum4\u0026cursor=68836918321750017-0\u0026limit=2\u0026order=asc"
     }
   },
   "_embedded": {
@@ -55,54 +55,62 @@ The list of trades. `base` and `counter` in the records will match the asset pai
       {
         "_links": {
           "base": {
-            "href": "https://horizon.stellar.org/accounts/GDZYXBXG4PIQYLHY7BXDMMP3CM3QP2MC65W44M2TP2OLIR6XHGHG3OHG"
+            "href": "https://horizon.stellar.org/accounts/GBZXCJIUEPDXGHMS64UBJHUVKV6ETWYOVHADLTBXJNJFUC7A7RU5B3GN"
           },
           "counter": {
-            "href": "https://horizon.stellar.org/accounts/GDAGT3NCVD4VCLN4TBRPHPJURX2KKCCZPA3WCROTJDUQI73XXJ4LCIMF"
+            "href": "https://horizon.stellar.org/accounts/GBHKUQDYXGK5IEYORI7DZMMXANOIEHHOF364LNT4Q7EWPUL7FOO2SP6D"
           },
           "operation": {
-            "href": "https://horizon.stellar.org/operations/64283226490810369"
+            "href": "https://horizon.stellar.org/operations/68836918321750017"
           }
         },
-        "id": "64283226490810369-0",
-        "paging_token": "64283226490810369-0",
-        "ledger_close_time": "2017-12-08T20:27:12Z",
-        "offer_id": "286304",
-        "base_account": "GDZYXBXG4PIQYLHY7BXDMMP3CM3QP2MC65W44M2TP2OLIR6XHGHG3OHG",
-        "base_amount": "451.0000000",
+        "id": "68836918321750017-0",
+        "paging_token": "68836918321750017-0",
+        "ledger_close_time": "2018-02-02T00:20:10Z",
+        "offer_id": "695254",
+        "base_account": "GBZXCJIUEPDXGHMS64UBJHUVKV6ETWYOVHADLTBXJNJFUC7A7RU5B3GN",
+        "base_amount": "0.1217566",
         "base_asset_type": "native",
-        "counter_account": "GDAGT3NCVD4VCLN4TBRPHPJURX2KKCCZPA3WCROTJDUQI73XXJ4LCIMF",
-        "counter_amount": "0.0027962",
+        "counter_account": "GBHKUQDYXGK5IEYORI7DZMMXANOIEHHOF364LNT4Q7EWPUL7FOO2SP6D",
+        "counter_amount": "0.0199601",
         "counter_asset_type": "credit_alphanum4",
-        "counter_asset_code": "BTC",
-        "counter_asset_issuer": "GATEMHCCKCY67ZUCKTROYN24ZYT5GK4EQZ65JJLDHKHRUZI3EUEKMTCH",
-        "base_is_seller": false
+        "counter_asset_code": "SLT",
+        "counter_asset_issuer": "GCKA6K5PCQ6PNF5RQBF7PQDJWRHO6UOGFMRLK3DYHDOI244V47XKQ4GP",
+        "base_is_seller": true,
+        "price": {
+          "N": 10,
+          "D": 61
+        }
       },
       {
         "_links": {
           "base": {
-            "href": "https://horizon.stellar.org/accounts/GDAGT3NCVD4VCLN4TBRPHPJURX2KKCCZPA3WCROTJDUQI73XXJ4LCIMF"
+            "href": "https://horizon.stellar.org/accounts/GCUODCZAU6CSXEKKWZZNWQXDITIWLWCDK6M4IZ7H5PACLC3QAWEJSOTR"
           },
           "counter": {
-            "href": "https://horizon.stellar.org/accounts/GADROEGWPXBXIEY4HF4U5R7JHK32HJW33DWDFLLSTID4KH23QVR6KMNC"
+            "href": "https://horizon.stellar.org/accounts/GBHKUQDYXGK5IEYORI7DZMMXANOIEHHOF364LNT4Q7EWPUL7FOO2SP6D"
           },
           "operation": {
-            "href": "https://horizon.stellar.org/operations/64255919088738305"
+            "href": "https://horizon.stellar.org/operations/68836785177763841"
           }
         },
-        "id": "64255919088738305-0",
-        "paging_token": "64255919088738305-0",
-        "ledger_close_time": "2017-12-08T11:26:20Z",
-        "offer_id": "283606",
-        "base_account": "GDAGT3NCVD4VCLN4TBRPHPJURX2KKCCZPA3WCROTJDUQI73XXJ4LCIMF",
-        "base_amount": "233.6065573",
+        "id": "68836785177763841-0",
+        "paging_token": "68836785177763841-0",
+        "ledger_close_time": "2018-02-02T00:18:00Z",
+        "offer_id": "695244",
+        "base_account": "GCUODCZAU6CSXEKKWZZNWQXDITIWLWCDK6M4IZ7H5PACLC3QAWEJSOTR",
+        "base_amount": "0.0000050",
         "base_asset_type": "native",
-        "counter_account": "GADROEGWPXBXIEY4HF4U5R7JHK32HJW33DWDFLLSTID4KH23QVR6KMNC",
-        "counter_amount": "0.0028500",
+        "counter_account": "GBHKUQDYXGK5IEYORI7DZMMXANOIEHHOF364LNT4Q7EWPUL7FOO2SP6D",
+        "counter_amount": "0.0000009",
         "counter_asset_type": "credit_alphanum4",
-        "counter_asset_code": "BTC",
-        "counter_asset_issuer": "GATEMHCCKCY67ZUCKTROYN24ZYT5GK4EQZ65JJLDHKHRUZI3EUEKMTCH",
-        "base_is_seller": true
+        "counter_asset_code": "SLT",
+        "counter_asset_issuer": "GCKA6K5PCQ6PNF5RQBF7PQDJWRHO6UOGFMRLK3DYHDOI244V47XKQ4GP",
+        "base_is_seller": false,
+        "price": {
+          "N": 2,
+          "D": 11
+        }
       }
     ]
   }
