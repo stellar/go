@@ -3,6 +3,7 @@ package federation
 import (
 	"errors"
 	"net/http"
+	"net/url"
 	"strings"
 	"testing"
 
@@ -134,10 +135,50 @@ func TestLookupByID(t *testing.T) {
 	assert.Equal(t, "get homedomain failed: homedomain not set", err.Error())
 }
 
+func TestForwardRequest(t *testing.T) {
+	hmock := httptest.NewClient()
+	tomlmock := &stellartoml.MockClient{}
+	c := &Client{StellarTOML: tomlmock, HTTP: hmock}
+
+	// happy path - string integer
+	tomlmock.On("GetStellarToml", "stellar.org").Return(&stellartoml.Response{
+		FederationServer: "https://stellar.org/federation",
+	}, nil)
+	hmock.On("GET", "https://stellar.org/federation").
+		ReturnJSON(http.StatusOK, map[string]string{
+			"account_id": "GASTNVNLHVR3NFO3QACMHCJT3JUSIV4NBXDHDO4VTPDTNN65W3B2766C",
+			"memo_type":  "id",
+			"memo":       "123",
+		})
+	fields := url.Values{}
+	fields.Add("federation_type", "bank_account")
+	fields.Add("swift", "BOPBPHMM")
+	fields.Add("acct", "2382376")
+	resp, err := c.ForwardRequest("stellar.org", fields)
+
+	if assert.NoError(t, err) {
+		assert.Equal(t, "GASTNVNLHVR3NFO3QACMHCJT3JUSIV4NBXDHDO4VTPDTNN65W3B2766C", resp.AccountID)
+		assert.Equal(t, "id", resp.MemoType)
+		assert.Equal(t, "123", resp.Memo.String())
+	}
+}
+
 func Test_url(t *testing.T) {
 	c := &Client{}
 
+	// forward requests
+	qstr := url.Values{}
+	qstr.Add("type", "forward")
+	qstr.Add("federation_type", "bank_account")
+	qstr.Add("swift", "BOPBPHMM")
+	qstr.Add("acct", "2382376")
+	furl := c.url("https://stellar.org/federation", qstr)
+	assert.Equal(t, "https://stellar.org/federation?acct=2382376&federation_type=bank_account&swift=BOPBPHMM&type=forward", furl)
+
 	// regression: ensure that query is properly URI encoded
-	url := c.url("", "q", "scott+receiver1@stellar.org*stellar.org")
-	assert.Equal(t, "?q=scott%2Breceiver1%40stellar.org%2Astellar.org&type=q", url)
+	qstr = url.Values{}
+	qstr.Add("type", "q")
+	qstr.Add("q", "scott+receiver1@stellar.org*stellar.org")
+	furl = c.url("", qstr)
+	assert.Equal(t, "?q=scott%2Breceiver1%40stellar.org%2Astellar.org&type=q", furl)
 }
