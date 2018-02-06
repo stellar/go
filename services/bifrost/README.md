@@ -25,7 +25,7 @@ Download the binary from [the release page](https://github.com/stellar/go/releas
 1. User opens the web app implemented using [Bifrost JS SDK](https://github.com/stellar/bifrost-js-sdk).
 1. User is presented with her public and private Stellar keys where Bitcoin/Ethereum will be sent.
 1. User selects what cryptocurrency she wants to move to Stellar network.
-1. A receiving Bitcoin/Etherem address is generated.
+1. A receiving Bitcoin/Ethereum address is generated.
 1. User sends funds in Bitcoin/Ethereum network.
 1. Bifrost listens to Bitcoin and Ethereum network events. When payment arrives it creates a Stellar [account](https://www.stellar.org/developers/guides/concepts/accounts.html) for the user.
 1. User creates a [trust line](https://www.stellar.org/developers/guides/concepts/assets.html) to BTC/ETH issued by Bifrost account.
@@ -41,8 +41,8 @@ https://bifrost.stellar.org/
 1. First you need some ETH on Ethereum testnet.
 1. Create an account at https://www.myetherwallet.com/, then switch Network (top-right dropdown) to "Ropsten (MyEtherWallet)". Write down/copy your Ethereum address somewhere.
 1. Use http://faucet.ropsten.be:3001/ to send 3 ETH to your testnet account.
-1. Now open Bifrost demo: https://bifrost.stellar.org/ It will display address where to send your test ETH.
-1. Go back to MyEtherWallet and send ETH to the address displayed by Bifrost. Sometimes Ropsten network is overloaded so monitor the Etherscan to check if your tx was included in a block. If not, increase the gas price (this can be done in "Send Offline" tab).
+1. Now open Bifrost demo: https://bifrost.stellar.org/ It will display an Ethereum address for sending your test ETH.
+1. Go back to MyEtherWallet and from your testnet account send ETH to the address displayed by Bifrost. Sometimes Ropsten network is overloaded so monitor the Etherscan to check if your tx was included in a block. If not, increase the gas price (this can be done in "Send Offline" tab).
 1. Switch back to Bifrost demo and check the progress.
 
 ## Config
