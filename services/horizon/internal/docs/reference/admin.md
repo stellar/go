@@ -6,7 +6,9 @@ Horizon is responsible for providing an HTTP API to data in the Stellar network.
 
 ## Why run horizon?
 
-The stellar development foundation runs two horizon servers, one for the public network and one for the test network, free for anyone's use at https://horizon.stellar.org and https://horizon-testnet.stellar.org.  These servers should be fine for development and small scale projects, but is not recommended that you use them for production services that need strong reliability.  By running horizon within your own infrastructure provides a number of benefits:
+The Stellar Development Foundation runs two publicly available Horizon servers. One connected to the public network and one to the test network. They are free for anyone's use at https://horizon.stellar.org and https://horizon-testnet.stellar.org. These servers should be fine for testing, development and small-scale projects, but it is not recommended to use them with production apps that need strong reliability and [no request rate limiting](https://www.stellar.org/developers/horizon/reference/rate-limiting.html).
+
+Running Horizon on your own provides a number of benefits:
 
   - Multiple instances can be run for redundancy and scalability.
   - Request rate limiting can be disabled.
@@ -131,4 +133,4 @@ Metrics are collected while a horizon process is running and they are exposed at
 
 ## I'm Stuck! Help!
 
-If any of the above steps don't work or you are otherwise prevented from correctly setting up horizon, please come to our community and tell us.  Either [post an issue in the horizon github repo](https://github.com/stellar/go/issues) or [chat with us on slack](http://slack.stellar.org/) to ask for help.
+If any of the above steps don't work or you are otherwise prevented from correctly setting up horizon, please come to our community and tell us.  Either [post an issue in the horizon Github repo](https://github.com/stellar/go/issues), publish a question in the [Stellar Stack Exchange](https://stellar.stackexchange.com) or [chat with us on Slack](http://slack.stellar.org/) to ask for help.
