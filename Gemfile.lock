@@ -1,6 +1,6 @@
 GIT
-  remote: git://github.com/stellar/stellar_core_commander.git
-  revision: c65c6e682e36356f2121373996b2785f67fc42e9
+  remote: https://github.com/stellar/stellar_core_commander.git
+  revision: ceeb41b5ed11193721450f3364c52c6b2b41cc61
   branch: master
   specs:
     stellar_core_commander (0.0.12)
@@ -9,14 +9,15 @@ GIT
       faraday (~> 0.9.1)
       faraday_middleware (~> 0.9.1)
       pg (~> 0.18.1)
-      sequel (~> 4.21.0)
+      sequel (~> 5.5.0)
       slop (~> 3.6.0)
       stellar-base (>= 0.12.0)
       typhoeus (~> 0.8.0)
 
 GIT
-  remote: git://github.com/stellar/xdrgen.git
+  remote: https://github.com/stellar/xdrgen.git
   revision: e29a93e248f2ae97ec783949676b4293a67b768e
+  branch: master
   specs:
     xdrgen (0.0.1)
       activesupport (~> 5)
@@ -47,7 +48,7 @@ GEM
       multipart-post (>= 1.2, < 3)
     faraday_middleware (0.9.2)
       faraday (>= 0.7.4, < 0.10)
-    ffi (1.9.18)
+    ffi (1.9.21)
     i18n (0.9.3)
       concurrent-ruby (~> 1.0)
     memoist (0.11.0)
@@ -71,7 +72,7 @@ GEM
     sawyer (0.8.1)
       addressable (>= 2.3.5, < 2.6)
       faraday (~> 0.8, < 1.0)
-    sequel (4.21.0)
+    sequel (5.5.0)
     slop (3.6.0)
     stellar-base (0.12.0)
       activesupport (>= 4.2.7)
@@ -85,7 +86,7 @@ GEM
       polyglot (~> 0.3)
     typhoeus (0.8.0)
       ethon (>= 0.8.0)
-    tzinfo (1.2.4)
+    tzinfo (1.2.5)
       thread_safe (~> 0.1)
     xdr (2.0.0)
       activemodel (>= 4.2.7)
