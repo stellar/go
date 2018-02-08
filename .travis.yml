@@ -18,6 +18,7 @@ install:
 script:
 - glide install
 - ./support/scripts/run_tests
+
 before_deploy:
 - go run ./support/scripts/build_release_artifacts/main.go
 - ./support/scripts/push_snapshots_tag.sh
