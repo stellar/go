@@ -12,7 +12,6 @@ import (
 	"github.com/stellar/go/services/horizon/internal/resource"
 	. "github.com/stellar/go/services/horizon/internal/test/trades"
 	"github.com/stellar/go/xdr"
-	"fmt"
 )
 
 func TestTradeActions_Index(t *testing.T) {
@@ -44,7 +43,6 @@ func TestTradeActions_Index(t *testing.T) {
 	q.Add("counter_asset_issuer", "GCQPYGH4K57XBDENKKX55KDTWOTK5WDWRQOH2LHEDX3EKVIQRLMESGBG")
 
 	w = ht.GetWithParams("/trades", q)
-	fmt.Println(w)
 	if ht.Assert.Equal(200, w.Code) {
 		ht.Assert.PageOf(1, w.Body)
 
@@ -137,11 +135,15 @@ func TestTradeActions_Aggregation(t *testing.T) {
 
 	dbQ := &Q{ht.HorizonSession()}
 	ass1, ass2, err := PopulateTestTrades(dbQ, start, numOfTrades, minute, 0)
-	ht.Require.NoError(err)
+	if !ht.Assert.NoError(err) {
+		return
+	}
 
 	//add other trades as noise, to ensure asset filtering is working
 	_, _, err = PopulateTestTrades(dbQ, start, numOfTrades, minute, numOfTrades)
-	ht.Require.NoError(err)
+	if !ht.Assert.NoError(err) {
+		return
+	}
 
 	var records []resource.TradeAggregation
 	var record resource.TradeAggregation
