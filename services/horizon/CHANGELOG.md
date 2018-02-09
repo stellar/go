@@ -12,6 +12,7 @@ bumps.  A breaking change will get clearly notified in this log.
 
 - Operation and payment resources were changed to add a `transaction_hash` property.
 - The ledger resource was changed to add a `header_xdr` property.  Existing horizon installations should re-ingest all ledgers to populate the history database tables with the data.  In future versions of horizon we will disallow null values in this column.  Going forward, this change reduces the coupling of horizon to stellar-core, ensuring that horizon can re-import history even when the data is no longer stored within stellar-core's database.
+- All Assets endpoint (`/assets`) that returns a list of all the assets in the system along with some stats per asset. The filters allow you to narrow down to any specific asset of interest.
 
 ### Changed
 
