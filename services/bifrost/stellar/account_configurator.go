@@ -11,9 +11,6 @@ import (
 	"github.com/stellar/go/support/log"
 )
 
-// NewAccountXLMBalance is amount of lumens sent to new accounts
-const NewAccountXLMBalance = "41"
-
 func (ac *AccountConfigurator) Start() error {
 	ac.log = common.CreateLogger("StellarAccountConfigurator")
 	ac.log.Info("StellarAccountConfigurator starting")

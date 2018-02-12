@@ -16,6 +16,7 @@ type AccountConfigurator struct {
 	SignerSecretKey   string
 	NeedsAuthorize    bool
 	TokenAssetCode    string
+	StartingBalance   string
 	OnAccountCreated  func(destination string)
 	OnAccountCredited func(destination string, assetCode string, amount string)
 

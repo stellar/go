@@ -360,6 +360,11 @@ func createServer(cfg config.Config, stressTest bool) *server.Server {
 		SignerSecretKey:   cfg.Stellar.SignerSecretKey,
 		NeedsAuthorize:    cfg.Stellar.NeedsAuthorize,
 		TokenAssetCode:    cfg.Stellar.TokenAssetCode,
+		StartingBalance:   cfg.Stellar.StartingBalance,
+	}
+
+	if cfg.Stellar.StartingBalance == "" {
+		stellarAccountConfigurator.StartingBalance = "41"
 	}
 
 	horizonClient := &horizon.Client{
