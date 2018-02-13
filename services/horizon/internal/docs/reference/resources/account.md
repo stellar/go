@@ -105,10 +105,10 @@ When horizon returns information about an account it uses the following format:
 
 | Resource                 | Type       | Resource URI Template                |
 |--------------------------|------------|--------------------------------------|
-| [Account Details](../accounts-single.md)      | Single     | `/accounts/:id`                      |
-| [Account Data](../data-for-account.md)      | Single     | `/accounts/:id/data/:key`                      |
-| [Account Transactions](../transactions-for-account.md) | Collection | `/accounts/:account_id/transactions` |
-| [Account Operations](../operations-for-account.md)   | Collection | `/accounts/:account_id/operations`   |
-| [Account Payments](../payments-for-account.md)     | Collection | `/accounts/:account_id/payments`     |
-| [Account Effects](../effects-for-account.md)      | Collection | `/accounts/:account_id/effects`      |
-| [Account Offers](../offers-for-account.md)       | Collection | `/accounts/:account_id/offers`       |
+| [Account Details](../endpoints/accounts-single.md)      | Single     | `/accounts/:id`                      |
+| [Account Data](../endpoints/data-for-account.md)      | Single     | `/accounts/:id/data/:key`                      |
+| [Account Transactions](../endpoints/transactions-for-account.md) | Collection | `/accounts/:account_id/transactions` |
+| [Account Operations](../endpoints/operations-for-account.md)   | Collection | `/accounts/:account_id/operations`   |
+| [Account Payments](../endpoints/payments-for-account.md)     | Collection | `/accounts/:account_id/payments`     |
+| [Account Effects](../endpoints/effects-for-account.md)      | Collection | `/accounts/:account_id/effects`      |
+| [Account Offers](../endpoints/offers-for-account.md)       | Collection | `/accounts/:account_id/offers`       |
