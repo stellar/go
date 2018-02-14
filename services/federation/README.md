@@ -37,7 +37,7 @@ In this section you can find config examples for the two main ways of setting up
 
 ### #1: Every user has their own Stellar account
 
-In case every user owns Stellar account you don't need `memo`. You can simply return `id` based on the username. Your `queries` section could look like this:
+In the case that every user owns a Stellar account, you don't need `memo`. You can simply return `id` based on the username. Your `queries` section could look like this:
 
 ```toml
 port = 8000
