@@ -12,6 +12,8 @@ type Config struct {
 		NetworkPassphrase string `valid:"required" toml:"network_passphrase"`
 		// TokenAssetCode is asset code of token that will be purchased using BTC or ETH.
 		TokenAssetCode string `valid:"required" toml:"token_asset_code"`
+		// TokenPrice TODO
+		TokenPrice string `valid:"required" toml:"token_asset_code"`
 		// NeedsAuthorize should be set to true if issuers's authorization required flag is set.
 		NeedsAuthorize bool `valid:"optional" toml:"needs_authorize"`
 		// IssuerPublicKey is public key of the assets issuer or hot wallet.
@@ -22,9 +24,11 @@ type Config struct {
 		// https://www.stellar.org/developers/guides/channels.html
 		// Signer's sequence number will be consumed in transaction's sequence number.
 		SignerSecretKey string `valid:"required" toml:"signer_secret_key"`
+		// TemporaryAccountSignerSecretKey TODO
+		TemporaryAccountSignerSecretKey string `valid:"required" toml:"temporary_account_signer_secret_key"`
 		// StartingBalance is the starting amount of XLM for newly created accounts.
 		// Default value is 41. Increase it if you need Data records / other custom entities on new account.
-		StartingBalance  string `valid:"optional,numeric" toml:"starting_balance"`
+		StartingBalance string `valid:"optional,numeric" toml:"starting_balance"`
 	} `valid:"required" toml:"stellar"`
 	Database struct {
 		Type string `valid:"matches(^postgres$)"`

@@ -9,8 +9,9 @@ import (
 	"github.com/stellar/go/support/log"
 )
 
-func (ac *AccountConfigurator) createAccount(destination string) error {
-	err := ac.submitTransaction(
+func (ac *AccountConfigurator) createAccountTransaction(destination string) error {
+	transaction, err := ac.buildTransaction(
+		[]string{ac.SignerSecretKey},
 		build.CreateAccount(
 			build.SourceAccount{ac.IssuerPublicKey},
 			build.Destination{destination},
@@ -18,65 +19,105 @@ func (ac *AccountConfigurator) createAccount(destination string) error {
 		),
 	)
 	if err != nil {
-		return errors.Wrap(err, "Error submitting transaction")
+		return errors.Wrap(err, "Error building transaction")
 	}
 
-	return nil
-}
-
-func (ac *AccountConfigurator) allowTrust(trustor, assetCode, tokenAssetCode string) error {
-	err := ac.submitTransaction(
-		// Chain token received (BTC/ETH)
-		build.AllowTrust(
-			build.SourceAccount{ac.IssuerPublicKey},
-			build.Trustor{trustor},
-			build.AllowTrustAsset{assetCode},
-			build.Authorize{true},
-		),
-		// Destination token
-		build.AllowTrust(
-			build.SourceAccount{ac.IssuerPublicKey},
-			build.Trustor{trustor},
-			build.AllowTrustAsset{tokenAssetCode},
-			build.Authorize{true},
-		),
-	)
+	err = ac.submitTransaction(transaction)
 	if err != nil {
-		return errors.Wrap(err, "Error submitting transaction")
+		return errors.Wrap(err, "Error submitting a transaction")
 	}
 
 	return nil
 }
 
-func (ac *AccountConfigurator) sendToken(destination, assetCode, amount string) error {
-	err := ac.submitTransaction(
+// configureAccountTransaction is using a temporary signer on an user accounts to configure the account.
+func (ac *AccountConfigurator) configureAccountTransaction(destination, intermediateAssetCode, amount string, needsAuthorize bool) error {
+	mutators := []build.TransactionMutator{
+		build.Trust(intermediateAssetCode, ac.TokenAssetCode),
+		build.Trust(ac.TokenAssetCode, ac.TokenAssetCode),
+	}
+
+	if needsAuthorize {
+		mutators = append(
+			mutators,
+			// Chain token received (BTC/ETH)
+			build.AllowTrust(
+				build.SourceAccount{ac.IssuerPublicKey},
+				build.Trustor{destination},
+				build.AllowTrustAsset{intermediateAssetCode},
+				build.Authorize{true},
+			),
+			// Destination token
+			build.AllowTrust(
+				build.SourceAccount{ac.IssuerPublicKey},
+				build.Trustor{destination},
+				build.AllowTrustAsset{ac.TokenAssetCode},
+				build.Authorize{true},
+			),
+		)
+	}
+
+	createOffer := build.CreateOffer(
+		build.Rate{
+			Selling: build.CreditAsset(intermediateAssetCode, ac.IssuerPublicKey),
+			Buying:  build.CreditAsset(ac.TokenAssetCode, ac.IssuerPublicKey),
+			Price:   build.Price(ac.TokenPrice),
+		},
+		build.Amount(amount),
+	)
+
+	mutators = append(
+		mutators,
+		// Send BTC/ETH
 		build.Payment(
 			build.SourceAccount{ac.IssuerPublicKey},
 			build.Destination{destination},
 			build.CreditAmount{
-				Code:   assetCode,
+				Code:   intermediateAssetCode,
 				Issuer: ac.IssuerPublicKey,
 				Amount: amount,
 			},
 		),
+		// Exchange BTC/ETH => token
+		createOffer,
 	)
+
+	transaction, err := ac.buildTransaction([]string{ac.SignerSecretKey, ac.TemporaryAccountSignerSecretKey}, mutators...)
 	if err != nil {
-		return errors.Wrap(err, "Error submitting transaction")
+		return errors.Wrap(err, "Error building a transaction")
+	}
+
+	err = ac.submitTransaction(transaction)
+	if err != nil {
+		return errors.Wrap(err, "Error submitting a transaction")
 	}
 
 	return nil
 }
 
-func (ac *AccountConfigurator) submitTransaction(mutators ...build.TransactionMutator) error {
-	tx, err := ac.buildTransaction(mutators...)
-	if err != nil {
-		return errors.Wrap(err, "Error building transaction")
+func (ac *AccountConfigurator) buildTransaction(signers []string, mutators ...build.TransactionMutator) (string, error) {
+	muts := []build.TransactionMutator{
+		build.SourceAccount{ac.signerPublicKey},
+		build.Sequence{ac.getSequence()},
+		build.Network{ac.NetworkPassphrase},
 	}
+	muts = append(muts, mutators...)
+	tx, err := build.Transaction(muts...)
+	if err != nil {
+		return "", err
+	}
+	txe, err := tx.Sign(signers...)
+	if err != nil {
+		return "", err
+	}
+	return txe.Base64()
+}
 
-	localLog := log.WithField("tx", tx)
+func (ac *AccountConfigurator) submitTransaction(transaction string) error {
+	localLog := log.WithField("tx", transaction)
 	localLog.Info("Submitting transaction")
 
-	_, err = ac.Horizon.SubmitTransaction(tx)
+	_, err := ac.Horizon.SubmitTransaction(transaction)
 	if err != nil {
 		fields := log.F{"err": err}
 		if err, ok := err.(*horizon.Error); ok {
@@ -89,24 +130,6 @@ func (ac *AccountConfigurator) submitTransaction(mutators ...build.TransactionMu
 
 	localLog.Info("Transaction successfully submitted")
 	return nil
-}
-
-func (ac *AccountConfigurator) buildTransaction(mutators ...build.TransactionMutator) (string, error) {
-	muts := []build.TransactionMutator{
-		build.SourceAccount{ac.signerPublicKey},
-		build.Sequence{ac.getSequence()},
-		build.Network{ac.NetworkPassphrase},
-	}
-	muts = append(muts, mutators...)
-	tx, err := build.Transaction(muts...)
-	if err != nil {
-		return "", err
-	}
-	txe, err := tx.Sign(ac.SignerSecretKey)
-	if err != nil {
-		return "", err
-	}
-	return txe.Base64()
 }
 
 func (ac *AccountConfigurator) updateSequence() error {
