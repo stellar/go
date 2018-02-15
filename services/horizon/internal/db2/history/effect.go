@@ -158,24 +158,28 @@ func (q *EffectsQ) Page(page db2.PageQuery) *EffectsQ {
 		idx = math.MaxInt32
 	}
 
+	// NOTE: Remember to test the queries below with EXPLAIN / EXPLAIN ANALYZE
+	// before changing them.
+	// This condition is using multicolumn index and it's easy to write it in a way that
+	// DB will perform a full table scan.
 	switch page.Order {
 	case "asc":
 		q.sql = q.sql.
 			Where(`(
-					 heff.history_operation_id > ?
-				OR (
-							heff.history_operation_id = ?
-					AND heff.order > ?
-				))`, op, op, idx).
+					 heff.history_operation_id >= ?
+				AND (
+					 heff.history_operation_id > ? OR
+					(heff.history_operation_id = ? AND heff.order > ?)
+				))`, op, op, op, idx).
 			OrderBy("heff.history_operation_id asc, heff.order asc")
 	case "desc":
 		q.sql = q.sql.
 			Where(`(
-					 heff.history_operation_id < ?
-				OR (
-							heff.history_operation_id = ?
-					AND heff.order < ?
-				))`, op, op, idx).
+					 heff.history_operation_id <= ?
+				AND (
+					 heff.history_operation_id < ? OR
+					(heff.history_operation_id = ? AND heff.order < ?)
+				))`, op, op, op, idx).
 			OrderBy("heff.history_operation_id desc, heff.order desc")
 	}
 
