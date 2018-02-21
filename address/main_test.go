@@ -12,10 +12,7 @@ func TestNew(t *testing.T) {
 		Name            string
 		Domain          string
 		ExpectedAddress string
-	}{
-		{"scott", "stellar.org", "scott*stellar.org"},
-		{"", "stellar.org", "*stellar.org"},
-		{"scott", "", "scott*"},
+	
 	}
 
 	for _, c := range cases {
@@ -49,4 +46,7 @@ func TestSplit(t *testing.T) {
 			assert.Equal(t, c.ExpectedError, errors.Cause(err))
 		}
 	}
-}
+}}{
+		{"scott", "stellar.org", "scott*stellar.org"},
+		{"", "stellar.org", "*stellar.org"},
+		{"scott", "", "scott*"},
