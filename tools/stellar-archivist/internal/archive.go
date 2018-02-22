@@ -31,7 +31,8 @@ type CommandOptions struct {
 }
 
 type ConnectOptions struct {
-	S3Region string
+	S3Region   string
+	S3Endpoint string
 }
 
 type ArchiveBackend interface {
@@ -168,7 +169,7 @@ func (a *Archive) ListCategoryCheckpoints(cat string, pth string) (chan uint32, 
 	return ch, errs
 }
 
-func Connect(u string, opts *ConnectOptions) (*Archive, error) {
+func Connect(u string, opts ConnectOptions) (*Archive, error) {
 	arch := Archive{
 		checkpointFiles:         make(map[string](map[uint32]bool)),
 		allBuckets:              make(map[Hash]bool),
@@ -179,9 +180,6 @@ func Connect(u string, opts *ConnectOptions) (*Archive, error) {
 		actualTxSetHashes:       make(map[uint32]Hash),
 		expectTxResultSetHashes: make(map[uint32]Hash),
 		actualTxResultSetHashes: make(map[uint32]Hash),
-	}
-	if opts == nil {
-		opts = new(ConnectOptions)
 	}
 	for _, cat := range Categories() {
 		arch.checkpointFiles[cat] = make(map[uint32]bool)
@@ -196,7 +194,7 @@ func Connect(u string, opts *ConnectOptions) (*Archive, error) {
 		if len(pth) > 0 && pth[0] == '/' {
 			pth = pth[1:]
 		}
-		arch.backend = MakeS3Backend(parsed.Host, pth, opts)
+		arch.backend, err = MakeS3Backend(parsed.Host, pth, opts)
 	} else if parsed.Scheme == "file" {
 		pth = path.Join(parsed.Host, pth)
 		arch.backend = MakeFsBackend(pth, opts)
@@ -210,7 +208,7 @@ func Connect(u string, opts *ConnectOptions) (*Archive, error) {
 	return &arch, err
 }
 
-func MustConnect(u string, opts *ConnectOptions) *Archive {
+func MustConnect(u string, opts ConnectOptions) *Archive {
 	arch, err := Connect(u, opts)
 	if err != nil {
 		log.Fatal(err)

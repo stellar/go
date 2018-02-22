@@ -43,6 +43,7 @@ Flags:
       --low int           first ledger to act on
       --profile           collect and serve profile locally
       --s3region string   S3 region to connect to (default "us-east-1")
+      --s3endpoint string S3 endpoint (default to AWS endpoint for selected region)
       --thorough          decode and re-encode all buckets
       --verify            verify file contents
 
@@ -67,6 +68,20 @@ archive; the advantage is that more operations are supported, and the tool can s
 archives much more quickly. This is necessary to handle bulk operations on archives with many
 thousands of files efficiently.
 
+### S3 backend
+
+`stellar-archivist` supports reading from and writing to any S3-compatible storage.
+
+The following options are specific to S3 backend:
+
+ - `--s3region string` — AWS S3 region to connect to (default "us-east-1")
+ - `--s3endpoint string` — S3-compatible endpoint (default to AWS S3 endpoint for selected region)
+
+For example, to check the current status of an archive in DigitalOcean Spaces (ams3 region):
+
+```
+$ stellar-archivist status --s3endpoint ams3.digitaloceanspaces.com s3://bucketname/prefix
+```
 
 ## Examples of use
 

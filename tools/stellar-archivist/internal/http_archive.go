@@ -75,7 +75,7 @@ func (b *HttpArchiveBackend) CanListFiles() bool {
 	return false
 }
 
-func MakeHttpBackend(base *url.URL, opts *ConnectOptions) ArchiveBackend {
+func MakeHttpBackend(base *url.URL, opts ConnectOptions) ArchiveBackend {
 	return &HttpArchiveBackend{
 		base: *base,
 	}
