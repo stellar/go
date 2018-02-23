@@ -12,6 +12,7 @@ import (
 	"github.com/stellar/go/services/horizon/internal/render/hal"
 	"github.com/stellar/go/strkey"
 	"github.com/stellar/go/support/errors"
+	"github.com/stellar/go/xdr"
 	"golang.org/x/net/context"
 )
 
@@ -223,6 +224,7 @@ type Trade struct {
 	CounterAssetCode   string    `json:"counter_asset_code,omitempty"`
 	CounterAssetIssuer string    `json:"counter_asset_issuer,omitempty"`
 	BaseIsSeller       bool      `json:"base_is_seller"`
+	Price              xdr.Price `json:"price"`
 }
 
 // TradeEffect represents a trade effect resource.  NOTE (scott, 2017-12-08):
@@ -255,15 +257,19 @@ type TradeEffect struct {
 
 // Transaction represents trade data aggregation over a period of time
 type TradeAggregation struct {
-	Timestamp     int64  `json:"timestamp"`
-	TradeCount    int64  `json:"trade_count"`
-	BaseVolume    string `json:"base_volume"`
-	CounterVolume string `json:"counter_volume"`
-	Average       string `json:"avg"`
-	High          string `json:"high"`
-	Low           string `json:"low"`
-	Open          string `json:"open"`
-	Close         string `json:"close"`
+	Timestamp     int64     `json:"timestamp"`
+	TradeCount    int64     `json:"trade_count"`
+	BaseVolume    string    `json:"base_volume"`
+	CounterVolume string    `json:"counter_volume"`
+	Average       string    `json:"avg"`
+	High          string    `json:"high"`
+	HighR         xdr.Price `json:"high_r"`
+	Low           string    `json:"low"`
+	LowR          xdr.Price `json:"low_r"`
+	Open          string    `json:"open"`
+	OpenR         xdr.Price `json:"open_r"`
+	Close         string    `json:"close"`
+	CloseR        xdr.Price `json:"close_r"`
 }
 
 // Transaction represents a single, successful transaction

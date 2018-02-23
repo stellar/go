@@ -483,11 +483,22 @@ func (is *Session) ingestTrades() {
 			continue
 		}
 
+		//extract original offer price
+		key := xdr.LedgerKey{}
+		key.SetOffer(trade.SellerId, uint64(trade.OfferId))
+		before, _, err := is.Cursor.BeforeAndAfter(key)
+		if err != nil {
+			is.Err = err
+			return
+		}
+		offerPrice := before.Data.Offer.Price
+
 		is.Err = q.InsertTrade(
 			is.Cursor.OperationID(),
 			int32(i),
 			buyer,
 			trade,
+			offerPrice,
 			sTime.MillisFromSeconds(is.Cursor.Ledger().CloseTime),
 		)
 		if is.Err != nil {

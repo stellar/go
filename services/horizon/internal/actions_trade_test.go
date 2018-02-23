@@ -104,6 +104,21 @@ func setAssetQuery(q *url.Values, prefix string, asset xdr.Asset) {
 	q.Add(prefix+"asset_issuer", assetFilter)
 }
 
+//testPrice ensures that the price float string is equal to the rational price
+func testPrice(t *HTTPT, priceStr string, priceR xdr.Price) {
+	price, err := strconv.ParseFloat(priceStr, 64)
+	if t.Assert.NoError(err) {
+		t.Assert.Equal(price, float64(priceR.N)/float64(priceR.D))
+	}
+}
+
+func testTradeAggregationPrices(t *HTTPT, record resource.TradeAggregation) {
+	testPrice(t, record.High, record.HighR)
+	testPrice(t, record.Low, record.LowR)
+	testPrice(t, record.Open, record.OpenR)
+	testPrice(t, record.Close, record.CloseR)
+}
+
 func TestTradeActions_Aggregation(t *testing.T) {
 	ht := StartHTTPTest(t, "base")
 	defer ht.Finish()
@@ -145,6 +160,7 @@ func TestTradeActions_Aggregation(t *testing.T) {
 		ht.Assert.PageOf(1, w.Body)
 		ht.UnmarshalPage(w.Body, &records)
 		record = records[0] //Save the single aggregation record for next test
+		testTradeAggregationPrices(ht, record)
 		ht.Assert.Equal("0.0005500", records[0].BaseVolume)
 	}
 

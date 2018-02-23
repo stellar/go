@@ -1,6 +1,6 @@
 GIT
   remote: https://github.com/stellar/stellar_core_commander.git
-  revision: ceeb41b5ed11193721450f3364c52c6b2b41cc61
+  revision: 2a6d83e147069188afba52f751edaca45985d07a
   branch: master
   specs:
     stellar_core_commander (0.0.12)
@@ -104,4 +104,4 @@ DEPENDENCIES
   xdrgen!
 
 BUNDLED WITH
-   1.13.7
+   1.16.1

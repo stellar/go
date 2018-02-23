@@ -6,19 +6,20 @@ import (
 	sq "github.com/Masterminds/squirrel"
 	"github.com/stellar/go/services/horizon/internal/db2"
 	. "github.com/stellar/go/support/time"
+	"github.com/stellar/go/xdr"
 )
 
 // Trade aggregation represents an aggregation of trades from the trades table
 type TradeAggregation struct {
-	Timestamp     int64   `db:"timestamp"`
-	TradeCount    int64   `db:"count"`
-	BaseVolume    int64   `db:"base_volume"`
-	CounterVolume int64   `db:"counter_volume"`
-	Average       float64 `db:"avg"`
-	High          float64 `db:"high"`
-	Low           float64 `db:"low"`
-	Open          float64 `db:"open"`
-	Close         float64 `db:"close"`
+	Timestamp     int64     `db:"timestamp"`
+	TradeCount    int64     `db:"count"`
+	BaseVolume    int64     `db:"base_volume"`
+	CounterVolume int64     `db:"counter_volume"`
+	Average       float64   `db:"avg"`
+	High          xdr.Price `db:"high"`
+	Low           xdr.Price `db:"low"`
+	Open          xdr.Price `db:"open"`
+	Close         xdr.Price `db:"close"`
 }
 
 // TradeAggregationsQ is a helper struct to aid in configuring queries to
@@ -85,11 +86,12 @@ func (q *TradeAggregationsQ) GetSql() sq.SelectBuilder {
 		"count(*) as count",
 		"sum(base_amount) as base_volume",
 		"sum(counter_amount) as counter_volume",
-		"avg(price) as avg",
-		"max(price) as high",
-		"min(price) as low",
-		"first(price) as open",
-		"last(price) as close").
+		"sum(counter_amount)/sum(base_amount) as avg",
+		"max_price(price) as high",
+		"min_price(price) as low",
+		"first(price)  as open",
+		"last(price) as close",
+	).
 		FromSelect(bucketSql, "htrd").
 		GroupBy("timestamp").
 		Limit(q.pagingParams.Limit).
@@ -113,7 +115,7 @@ func bucketTrades(resolution int64) sq.SelectBuilder {
 		"base_amount",
 		"counter_asset_id",
 		"counter_amount",
-		"counter_amount::float/base_amount as price",
+		"ARRAY[price_n, price_d] as price",
 	)
 }
 
@@ -128,6 +130,6 @@ func reverseBucketTrades(resolution int64) sq.SelectBuilder {
 		"counter_amount as base_amount",
 		"base_asset_id as counter_asset_id",
 		"base_amount as counter_amount",
-		"base_amount::float/counter_amount as price",
+		"ARRAY[price_d, price_n] as price",
 	)
 }

@@ -2,8 +2,8 @@
 -- PostgreSQL database dump
 --
 
--- Dumped from database version 9.6.3
--- Dumped by pg_dump version 9.6.3
+-- Dumped from database version 9.6.6
+-- Dumped by pg_dump version 9.6.6
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -75,8 +75,12 @@ DROP TABLE IF EXISTS public.history_accounts;
 DROP SEQUENCE IF EXISTS public.history_accounts_id_seq;
 DROP TABLE IF EXISTS public.gorp_migrations;
 DROP TABLE IF EXISTS public.asset_stats;
+DROP AGGREGATE IF EXISTS public.min_price(numeric[]);
+DROP AGGREGATE IF EXISTS public.max_price(numeric[]);
 DROP AGGREGATE IF EXISTS public.last(anyelement);
 DROP AGGREGATE IF EXISTS public.first(anyelement);
+DROP FUNCTION IF EXISTS public.min_price_agg(numeric[], numeric[]);
+DROP FUNCTION IF EXISTS public.max_price_agg(numeric[], numeric[]);
 DROP FUNCTION IF EXISTS public.last_agg(anyelement, anyelement);
 DROP FUNCTION IF EXISTS public.first_agg(anyelement, anyelement);
 DROP SCHEMA IF EXISTS public;
@@ -115,6 +119,26 @@ CREATE FUNCTION last_agg(anyelement, anyelement) RETURNS anyelement
 
 
 --
+-- Name: max_price_agg(numeric[], numeric[]); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION max_price_agg(numeric[], numeric[]) RETURNS numeric[]
+    LANGUAGE sql IMMUTABLE STRICT
+    AS $_$ SELECT (
+  CASE WHEN $1[1]/$1[2]>$2[1]/$2[2] THEN $1 ELSE $2 END) $_$;
+
+
+--
+-- Name: min_price_agg(numeric[], numeric[]); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION min_price_agg(numeric[], numeric[]) RETURNS numeric[]
+    LANGUAGE sql IMMUTABLE STRICT
+    AS $_$ SELECT (
+  CASE WHEN $1[1]/$1[2]<$2[1]/$2[2] THEN $1 ELSE $2 END) $_$;
+
+
+--
 -- Name: first(anyelement); Type: AGGREGATE; Schema: public; Owner: -
 --
 
@@ -131,6 +155,26 @@ CREATE AGGREGATE first(anyelement) (
 CREATE AGGREGATE last(anyelement) (
     SFUNC = last_agg,
     STYPE = anyelement
+);
+
+
+--
+-- Name: max_price(numeric[]); Type: AGGREGATE; Schema: public; Owner: -
+--
+
+CREATE AGGREGATE max_price(numeric[]) (
+    SFUNC = max_price_agg,
+    STYPE = numeric[]
+);
+
+
+--
+-- Name: min_price(numeric[]); Type: AGGREGATE; Schema: public; Owner: -
+--
+
+CREATE AGGREGATE min_price(numeric[]) (
+    SFUNC = min_price_agg,
+    STYPE = numeric[]
 );
 
 
@@ -312,6 +356,8 @@ CREATE TABLE history_trades (
     counter_asset_id bigint NOT NULL,
     counter_amount bigint NOT NULL,
     base_is_seller boolean,
+    price_n bigint,
+    price_d bigint,
     CONSTRAINT history_trades_base_amount_check CHECK ((base_amount > 0)),
     CONSTRAINT history_trades_check CHECK ((base_asset_id < counter_asset_id)),
     CONSTRAINT history_trades_counter_amount_check CHECK ((counter_amount > 0))
@@ -405,16 +451,17 @@ ALTER TABLE ONLY history_transaction_participants ALTER COLUMN id SET DEFAULT ne
 -- Data for Name: gorp_migrations; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-INSERT INTO gorp_migrations VALUES ('1_initial_schema.sql', '2017-12-15 13:25:00.27835-06');
-INSERT INTO gorp_migrations VALUES ('2_index_participants_by_toid.sql', '2017-12-15 13:25:00.284847-06');
-INSERT INTO gorp_migrations VALUES ('3_use_sequence_in_history_accounts.sql', '2017-12-15 13:25:00.287761-06');
-INSERT INTO gorp_migrations VALUES ('4_add_protocol_version.sql', '2017-12-15 13:25:00.296332-06');
-INSERT INTO gorp_migrations VALUES ('5_create_trades_table.sql', '2017-12-15 13:25:00.303579-06');
-INSERT INTO gorp_migrations VALUES ('6_create_assets_table.sql', '2017-12-15 13:25:00.308494-06');
-INSERT INTO gorp_migrations VALUES ('7_modify_trades_table.sql', '2017-12-15 13:25:00.315896-06');
-INSERT INTO gorp_migrations VALUES ('8_add_aggregators.sql', '2017-12-15 13:25:00.317593-06');
-INSERT INTO gorp_migrations VALUES ('8_create_asset_stats_table.sql', '2017-12-15 13:25:00.322275-06');
-INSERT INTO gorp_migrations VALUES ('9_add_header_xdr.sql', '2017-12-15 13:25:00.324723-06');
+INSERT INTO gorp_migrations VALUES ('1_initial_schema.sql', '2018-02-13 15:41:22.294729-08');
+INSERT INTO gorp_migrations VALUES ('2_index_participants_by_toid.sql', '2018-02-13 15:41:22.314242-08');
+INSERT INTO gorp_migrations VALUES ('3_use_sequence_in_history_accounts.sql', '2018-02-13 15:41:22.320616-08');
+INSERT INTO gorp_migrations VALUES ('4_add_protocol_version.sql', '2018-02-13 15:41:22.360168-08');
+INSERT INTO gorp_migrations VALUES ('5_create_trades_table.sql', '2018-02-13 15:41:22.387454-08');
+INSERT INTO gorp_migrations VALUES ('6_create_assets_table.sql', '2018-02-13 15:41:22.407776-08');
+INSERT INTO gorp_migrations VALUES ('7_modify_trades_table.sql', '2018-02-13 15:41:22.445522-08');
+INSERT INTO gorp_migrations VALUES ('8_add_aggregators.sql', '2018-02-13 15:41:22.452985-08');
+INSERT INTO gorp_migrations VALUES ('8_create_asset_stats_table.sql', '2018-02-13 15:41:22.468047-08');
+INSERT INTO gorp_migrations VALUES ('9_add_header_xdr.sql', '2018-02-13 15:41:22.476629-08');
+INSERT INTO gorp_migrations VALUES ('10_add_trades_price.sql', '2018-02-13 15:41:22.482553-08');
 
 
 --
