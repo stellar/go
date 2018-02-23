@@ -135,15 +135,11 @@ func TestTradeActions_Aggregation(t *testing.T) {
 
 	dbQ := &Q{ht.HorizonSession()}
 	ass1, ass2, err := PopulateTestTrades(dbQ, start, numOfTrades, minute, 0)
-	if !ht.Assert.NoError(err) {
-		return
-	}
+	ht.Require.NoError(err)
 
 	//add other trades as noise, to ensure asset filtering is working
 	_, _, err = PopulateTestTrades(dbQ, start, numOfTrades, minute, numOfTrades)
-	if !ht.Assert.NoError(err) {
-		return
-	}
+	ht.Require.NoError(err)
 
 	var records []resource.TradeAggregation
 	var record resource.TradeAggregation

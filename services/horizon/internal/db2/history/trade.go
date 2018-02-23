@@ -223,11 +223,16 @@ func (q *Q) InsertTrade(
 	var baseAmount, counterAmount xdr.Int64
 
 	if orderPreserved {
-		baseAccountId, baseAmount, counterAccountId, counterAmount =
-			sellerAccountId, trade.AmountSold, buyerAccountId, trade.AmountBought
+		baseAccountId = sellerAccountId
+		baseAmount = trade.AmountSold
+		counterAccountId = buyerAccountId
+		counterAmount = trade.AmountBought
 	} else {
-		baseAccountId, baseAmount, counterAccountId, counterAmount, price =
-			buyerAccountId, trade.AmountBought, sellerAccountId, trade.AmountSold, xdr.Price{price.D, price.N}
+		baseAccountId = buyerAccountId
+		baseAmount = trade.AmountBought
+		counterAccountId = sellerAccountId
+		counterAmount = trade.AmountSold
+		price = xdr.Price{price.D, price.N}
 	}
 
 	sql := tradesInsert.Values(

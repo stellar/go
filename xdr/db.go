@@ -46,10 +46,16 @@ func (t *Price) Scan(src interface{}) error {
 	// assuming the price is represented as a two-element array [n,d]
 	arr := pq.Int64Array{}
 	err := arr.Scan(src)
-	if err != nil || len(arr)!=2 {
+
+	if err != nil {
 		return err
 	}
-	*t = Price{Int32(arr[0]),Int32(arr[1])}
+
+	if len(arr) != 2 {
+		return errors.New("price array should have exactly 2 elements")
+	}
+
+	*t = Price{Int32(arr[0]), Int32(arr[1])}
 	return nil
 }
 
