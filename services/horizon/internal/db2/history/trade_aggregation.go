@@ -5,9 +5,18 @@ import (
 
 	sq "github.com/Masterminds/squirrel"
 	"github.com/stellar/go/services/horizon/internal/db2"
+	"github.com/stellar/go/support/errors"
 	. "github.com/stellar/go/support/time"
 	"github.com/stellar/go/xdr"
 )
+
+var AllowedResolutions = map[int64]struct{}{
+	60000:     {}, //1 minute
+	900000:    {}, //15 minutes
+	3600000:   {}, //1 hour
+	86400000:  {}, //day
+	604800000: {}, //week
+}
 
 // Trade aggregation represents an aggregation of trades from the trades table
 type TradeAggregation struct {
@@ -34,13 +43,19 @@ type TradeAggregationsQ struct {
 }
 
 // GetTradeAggregationsQ initializes a TradeAggregationsQ query builder based on the required parameters
-func (q Q) GetTradeAggregationsQ(baseAssetId int64, counterAssetId int64, resolution int64, pagingParams db2.PageQuery) *TradeAggregationsQ {
+func (q Q) GetTradeAggregationsQ(baseAssetId int64, counterAssetId int64, resolution int64, pagingParams db2.PageQuery) (*TradeAggregationsQ, error) {
+
+	//check if resolution allowed
+	if _, ok := AllowedResolutions[resolution]; !ok {
+		return &TradeAggregationsQ{}, errors.New("resolution is not allowed")
+	}
+
 	return &TradeAggregationsQ{
 		baseAssetId:    baseAssetId,
 		counterAssetId: counterAssetId,
 		resolution:     resolution,
 		pagingParams:   pagingParams,
-	}
+	}, nil
 }
 
 // WithStartTime adds an optional lower time boundary filter to the trades being aggregated
