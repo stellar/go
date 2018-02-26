@@ -45,7 +45,7 @@ deploy:
     name: Snapshots $(date --utc +'%F-%T')
     on:
       branch: master
-      go: '1.8'
+      go: '1.9'
   #tagged releases
   - provider: releases
     skip_cleanup: true
