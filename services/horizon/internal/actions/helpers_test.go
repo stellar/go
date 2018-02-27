@@ -51,6 +51,17 @@ func TestGetAsset(t *testing.T) {
 	// bad path
 	action.GetAsset("cursor")
 	tt.Assert.Error(action.Err)
+
+	// regression #298:  GetAsset panics when asset_code is longer than allowes
+	tt.Assert.NotPanics(func() {
+		action.Err = nil
+		action.GetAsset("long_4_")
+	})
+
+	tt.Assert.NotPanics(func() {
+		action.Err = nil
+		action.GetAsset("long_12_")
+	})
 }
 
 func TestGetAssetType(t *testing.T) {
@@ -276,19 +287,25 @@ func makeAction(path string, body map[string]string) *Base {
 
 func testURLParams() map[string]string {
 	return map[string]string{
-		"blank":             "",
-		"zero":              "0",
-		"two":               "2",
-		"32min":             fmt.Sprint(math.MinInt32),
-		"32max":             fmt.Sprint(math.MaxInt32),
-		"64min":             fmt.Sprint(math.MinInt64),
-		"64max":             fmt.Sprint(math.MaxInt64),
-		"native_asset_type": "native",
-		"4_asset_type":      "credit_alphanum4",
-		"4_asset_code":      "USD",
-		"4_asset_issuer":    "GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H",
-		"12_asset_type":     "credit_alphanum12",
-		"12_asset_code":     "USD",
-		"12_asset_issuer":   "GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H",
+		"blank":                "",
+		"zero":                 "0",
+		"two":                  "2",
+		"32min":                fmt.Sprint(math.MinInt32),
+		"32max":                fmt.Sprint(math.MaxInt32),
+		"64min":                fmt.Sprint(math.MinInt64),
+		"64max":                fmt.Sprint(math.MaxInt64),
+		"native_asset_type":    "native",
+		"4_asset_type":         "credit_alphanum4",
+		"4_asset_code":         "USD",
+		"4_asset_issuer":       "GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H",
+		"12_asset_type":        "credit_alphanum12",
+		"12_asset_code":        "USD",
+		"12_asset_issuer":      "GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H",
+		"long_4_asset_type":    "credit_alphanum4",
+		"long_4_asset_code":    "SPOOON",
+		"long_4_asset_issuer":  "GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H",
+		"long_12_asset_type":   "credit_alphanum12",
+		"long_12_asset_code":   "OHMYGODITSSOLONG",
+		"long_12_asset_issuer": "GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H",
 	}
 }
