@@ -7,7 +7,8 @@ import (
 	"net/url"
 	"time"
 
-	"github.com/go-errors/errors"
+	proto "github.com/stellar/go/protocols/stellarcore"
+	"github.com/stellar/go/support/errors"
 )
 
 const (
@@ -24,13 +25,6 @@ func NewDefaultSubmitter(h *http.Client, url string) Submitter {
 		http:    h,
 		coreURL: url,
 	}
-}
-
-// coreSubmissionResponse is the json response from stellar-core's tx endpoint
-type coreSubmissionResponse struct {
-	Exception string `json:"exception"`
-	Error     string `json:"error"`
-	Status    string `json:"status"`
 }
 
 // submitter is the default implementation for the Submitter interface.  It
@@ -50,7 +44,7 @@ func (sub *submitter) Submit(ctx context.Context, env string) (result Submission
 	// construct the request
 	u, err := url.Parse(sub.coreURL)
 	if err != nil {
-		result.Err = errors.Wrap(err, 1)
+		result.Err = errors.Wrap(err, "failed to parse core url")
 		return
 	}
 
@@ -61,23 +55,23 @@ func (sub *submitter) Submit(ctx context.Context, env string) (result Submission
 
 	req, err := http.NewRequest("GET", u.String(), nil)
 	if err != nil {
-		result.Err = errors.Wrap(err, 1)
+		result.Err = errors.Wrap(err, "failed to create http request")
 		return
 	}
 
 	// perform the submission
 	resp, err := sub.http.Do(req)
 	if err != nil {
-		result.Err = errors.Wrap(err, 1)
+		result.Err = errors.Wrap(err, "failed to submit http request")
 		return
 	}
 	defer resp.Body.Close()
 
 	// parse response
-	var cresp coreSubmissionResponse
+	var cresp proto.TxResponse
 	err = json.NewDecoder(resp.Body).Decode(&cresp)
 	if err != nil {
-		result.Err = errors.Wrap(err, 1)
+		result.Err = errors.Wrap(err, "failed to decode response")
 		return
 	}
 

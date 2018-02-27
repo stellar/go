@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	proto "github.com/stellar/go/protocols/stellarcore"
 	"github.com/stellar/go/support/errors"
 )
 
@@ -27,7 +28,7 @@ type Client struct {
 
 // Info calls the `info` command on the connected stellar core and returns the
 // provided response
-func (c *Client) Info(ctx context.Context) (resp *InfoResponse, err error) {
+func (c *Client) Info(ctx context.Context) (resp *proto.InfoResponse, err error) {
 	req, err := c.simpleGet(ctx, "info", nil)
 	hresp, err := c.http().Do(req)
 	if err != nil {
