@@ -275,7 +275,7 @@ func (base *Base) GetAsset(prefix string) (result xdr.Asset) {
 
 		c := base.GetString(prefix + "asset_code")
 		if len(c) > len(a.AssetCode) {
-			base.SetInvalidField(prefix+"asset_code", nil)
+			base.SetInvalidField(prefix+"asset_code", errors.New("code too long"))
 			return
 		}
 
@@ -287,7 +287,7 @@ func (base *Base) GetAsset(prefix string) (result xdr.Asset) {
 
 		c := base.GetString(prefix + "asset_code")
 		if len(c) > len(a.AssetCode) {
-			base.SetInvalidField(prefix+"asset_code", nil)
+			base.SetInvalidField(prefix+"asset_code", errors.New("code too long"))
 			return
 		}
 
