@@ -11,7 +11,6 @@ import (
 	"strings"
 	"time"
 
-	opentracing "github.com/opentracing/opentracing-go"
 	proto "github.com/stellar/go/protocols/stellarcore"
 	"github.com/stellar/go/support/errors"
 )
@@ -30,10 +29,13 @@ type Client struct {
 // Info calls the `info` command on the connected stellar core and returns the
 // provided response
 func (c *Client) Info(ctx context.Context) (resp *proto.InfoResponse, err error) {
-	span, ctx := opentracing.StartSpanFromContext(ctx, "clients/stellarcore.Info")
-	defer span.Finish()
 
 	req, err := c.simpleGet(ctx, "info", nil)
+	if err != nil {
+		err = errors.Wrap(err, "failed to create request")
+		return
+	}
+
 	hresp, err := c.http().Do(req)
 	if err != nil {
 		err = errors.Wrap(err, "http request errored")
@@ -88,8 +90,6 @@ func (c *Client) SetCursor(ctx context.Context, id string, cursor int32) error {
 
 // SubmitTransaction calls the `tx` command on the connected stellar core with the provided envelope
 func (c *Client) SubmitTransaction(ctx context.Context, envelope string) (resp *proto.TXResponse, err error) {
-	span, ctx := opentracing.StartSpanFromContext(ctx, "clients/stellarcore.SubmitTransaction")
-	defer span.Finish()
 
 	q := url.Values{}
 	q.Set("blob", envelope)
@@ -120,8 +120,6 @@ func (c *Client) SubmitTransaction(ctx context.Context, envelope string) (resp *
 // WaitForNetworkSync continually polls the connected stellar-core until it
 // receives a response that indicated the node has synced with the network
 func (c *Client) WaitForNetworkSync(ctx context.Context) error {
-	span, ctx := opentracing.StartSpanFromContext(ctx, "clients/stellarcore.WaitForSync")
-	defer span.Finish()
 
 	for {
 		info, err := c.Info(ctx)
