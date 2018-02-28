@@ -291,9 +291,9 @@ func TestTradeActions_AggregationOrdering(t *testing.T) {
 	setAssetQuery(&q, "counter_", ass2)
 
 	q.Add("start_time", "0")
-	q.Add("end_time", "10")
+	q.Add("end_time", "60000")
 	q.Add("order", "asc")
-	q.Add("resolution", "10")
+	q.Add("resolution", "60000")
 
 	var records []resource.TradeAggregation
 	w := ht.GetWithParams("/trade_aggregations", q)
