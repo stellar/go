@@ -101,15 +101,21 @@ func (b *S3ArchiveBackend) CanListFiles() bool {
 	return true
 }
 
-func MakeS3Backend(bucket string, prefix string, opts *ConnectOptions) ArchiveBackend {
-	cfg := aws.Config{}
-	if opts != nil && opts.S3Region != "" {
-		cfg.Region = aws.String(opts.S3Region)
+func MakeS3Backend(bucket string, prefix string, opts ConnectOptions) (ArchiveBackend, error) {
+	cfg := aws.Config{
+		Region:   aws.String(opts.S3Region),
+		Endpoint: aws.String(opts.S3Endpoint),
 	}
-	sess := session.New(&cfg)
-	return &S3ArchiveBackend{
+
+	sess, err := session.NewSession(&cfg)
+	if err != nil {
+		return nil, err
+	}
+
+	backend := S3ArchiveBackend{
 		svc:    s3.New(sess),
 		bucket: bucket,
 		prefix: prefix,
 	}
+	return &backend, nil
 }
