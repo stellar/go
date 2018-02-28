@@ -8,14 +8,15 @@ import (
 	"github.com/stellar/go/support/errors"
 	. "github.com/stellar/go/support/time"
 	"github.com/stellar/go/xdr"
+	"time"
 )
 
-var AllowedResolutions = map[int64]struct{}{
-	60000:     {}, //1 minute
-	900000:    {}, //15 minutes
-	3600000:   {}, //1 hour
-	86400000:  {}, //day
-	604800000: {}, //week
+var AllowedResolutions = map[time.Duration]struct{}{
+	time.Minute:        {}, //1 minute
+	time.Minute * 15:   {}, //15 minutes
+	time.Hour:          {}, //1 hour
+	time.Hour * 24:     {}, //day
+	time.Hour * 24 * 7: {}, //week
 }
 
 // Trade aggregation represents an aggregation of trades from the trades table
@@ -45,8 +46,11 @@ type TradeAggregationsQ struct {
 // GetTradeAggregationsQ initializes a TradeAggregationsQ query builder based on the required parameters
 func (q Q) GetTradeAggregationsQ(baseAssetId int64, counterAssetId int64, resolution int64, pagingParams db2.PageQuery) (*TradeAggregationsQ, error) {
 
+	//convert resolution to a duration struct
+	resolutionDuration := time.Duration(resolution)*time.Millisecond
+
 	//check if resolution allowed
-	if _, ok := AllowedResolutions[resolution]; !ok {
+	if _, ok := AllowedResolutions[resolutionDuration]; !ok {
 		return &TradeAggregationsQ{}, errors.New("resolution is not allowed")
 	}
 
