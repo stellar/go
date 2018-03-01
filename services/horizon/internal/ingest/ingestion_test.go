@@ -40,13 +40,10 @@ func TestEmptySignature(t *testing.T) {
 
 	transactionFee := &core.TransactionFee{}
 
-	builder := ingestion.transactionInsertBuilder(1, transaction, transactionFee)
-	sql, args, err := builder.ToSql()
-	assert.Equal(t, "INSERT INTO history_transactions (id,transaction_hash,ledger_sequence,application_order,account,account_sequence,fee_paid,operation_count,tx_envelope,tx_result,tx_meta,tx_fee_meta,signatures,time_bounds,memo_type,memo,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?::character varying[],?,?,?,?,?)", sql)
-	assert.Equal(t, `{"8qkkeKaKfsbgInyIkzXJhqJE5/Ufxri2LdxmyKkgkT6I3sPmvrs5cPWQSzEQyhV750IW2ds97xTHqTpOfuZCAg==",""}`, args[12])
-	assert.NoError(t, err)
+	ingestion.Transaction(1, transaction, transactionFee)
+	assert.Equal(t, 1, len(ingestion.builders[TransactionsTableName].rows))
 
-	err = ingestion.Transaction(1, transaction, transactionFee)
+	err := ingestion.Flush()
 	assert.NoError(t, err)
 
 	err = ingestion.Close()

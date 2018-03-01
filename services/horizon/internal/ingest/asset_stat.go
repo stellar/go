@@ -84,7 +84,7 @@ func (assetsModified AssetsModified) UpdateAssetStats(is *Session) {
 
 		if assetStat != nil {
 			hasValue = true
-			is.Ingestion.assetStats = is.Ingestion.assetStats.Values(
+			is.Ingestion.builders[AssetStatsTableName].Values(
 				assetStat.ID,
 				assetStat.Amount,
 				assetStat.NumAccounts,
@@ -104,7 +104,7 @@ func (assetsModified AssetsModified) UpdateAssetStats(is *Session) {
 		// can perform a direct upsert if postgres > 9.4
 		// is.Ingestion.assetStats = is.Ingestion.assetStats.
 		// 	Suffix("ON CONFLICT (id) DO UPDATE SET (amount, num_accounts, flags, toml) = (excluded.amount, excluded.num_accounts, excluded.flags, excluded.toml)")
-		_, is.Err = is.Ingestion.DB.Exec(is.Ingestion.assetStats)
+		is.Err = is.Ingestion.builders[AssetStatsTableName].Exec(is.Ingestion.DB)
 	}
 }
 
