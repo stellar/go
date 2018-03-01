@@ -320,16 +320,12 @@ func (is *Session) ingestLedger() {
 	}
 
 	start := time.Now()
-	is.Err = is.Ingestion.Ledger(
+	is.Ingestion.Ledger(
 		is.Cursor.LedgerID(),
 		is.Cursor.Ledger(),
 		is.Cursor.SuccessfulTransactionCount(),
 		is.Cursor.SuccessfulLedgerOperationCount(),
 	)
-
-	if is.Err != nil {
-		return
-	}
 
 	for is.Cursor.NextTx() {
 		is.ingestTransaction()
@@ -386,10 +382,7 @@ func (is *Session) ingestOperationParticipants() {
 		return
 	}
 
-	is.Err = is.Ingestion.OperationParticipants(is.Cursor.OperationID(), p)
-	if is.Err != nil {
-		return
-	}
+	is.Ingestion.OperationParticipants(is.Cursor.OperationID(), p)
 }
 
 func (is *Session) ingestSignerEffects(effects *EffectIngestion, op xdr.SetOptionsOp) {
@@ -551,14 +544,11 @@ func (is *Session) ingestTransaction() {
 	if !is.Cursor.Transaction().IsSuccessful() {
 		return
 	}
-	is.Err = is.Ingestion.Transaction(
+	is.Ingestion.Transaction(
 		is.Cursor.TransactionID(),
 		is.Cursor.Transaction(),
 		is.Cursor.TransactionFee(),
 	)
-	if is.Err != nil {
-		return
-	}
 
 	for is.Cursor.NextOp() {
 		is.ingestOperation()
@@ -583,11 +573,7 @@ func (is *Session) ingestTransactionParticipants() {
 		return
 	}
 
-	is.Err = is.Ingestion.TransactionParticipants(is.Cursor.TransactionID(), p)
-	if is.Err != nil {
-		return
-	}
-
+	is.Ingestion.TransactionParticipants(is.Cursor.TransactionID(), p)
 }
 
 // assetDetails sets the details for `a` on `result` using keys with `prefix`

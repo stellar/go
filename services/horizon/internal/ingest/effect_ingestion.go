@@ -8,21 +8,13 @@ import (
 // Add writes an effect to the database while automatically tracking the index
 // to use.
 func (ei *EffectIngestion) Add(aid xdr.AccountId, typ history.EffectType, details interface{}) bool {
-	q := history.Q{Session: ei.parent.DB}
-
 	if ei.err != nil {
 		return false
 	}
 
 	ei.added++
-	var haid int64
 
-	haid, ei.err = q.GetCreateAccountID(aid)
-	if ei.err != nil {
-		return false
-	}
-
-	ei.err = ei.Dest.Effect(haid, ei.OperationID, ei.added, typ, details)
+	ei.err = ei.Dest.Effect(Address(aid.Address()), ei.OperationID, ei.added, typ, details)
 	if ei.err != nil {
 		return false
 	}

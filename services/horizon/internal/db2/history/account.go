@@ -47,6 +47,26 @@ func (q *AccountsQ) Select(dest interface{}) error {
 	return q.Err
 }
 
+// AccountsByAddresses loads a rows from `history_accounts`, by addresses
+func (q *Q) AccountsByAddresses(dest interface{}, addresses []string) error {
+	sql := selectAccount.Where(map[string]interface{}{
+		"ha.address": addresses, // ha.address IN (...)
+	})
+	return q.Select(dest, sql)
+}
+
+// CreateAccounts creates rows for addresses in history_accounts table and
+// put
+func (q *Q) CreateAccounts(dest interface{}, addresses []string) error {
+	sql := sq.Insert("history_accounts").Columns("address")
+	for _, address := range addresses {
+		sql = sql.Values(address)
+	}
+	sql = sql.Suffix("RETURNING *")
+
+	return q.Select(dest, sql)
+}
+
 // Return id for account. If account doesn't exist, it will be created and the new id returned.
 func (q *Q) GetCreateAccountID(
 	aid xdr.AccountId,
