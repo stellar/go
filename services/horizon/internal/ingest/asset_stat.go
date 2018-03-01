@@ -179,7 +179,7 @@ func computeAssetStat(is *Session, asset *xdr.Asset) *history.AssetStat {
 		return nil
 	}
 
-	coreQ := &core.Q{Session: is.Cursor.DB}
+	coreQ := &core.Q{Session: is.Cursor.CoreDB}
 
 	numAccounts, amount, err := statTrustlinesInfo(coreQ, assetType, assetCode, assetIssuer)
 	if err != nil {

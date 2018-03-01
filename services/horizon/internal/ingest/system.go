@@ -76,42 +76,32 @@ func (i *System) RebaseHistory(sequence int32) error {
 // ReingestAll re-ingests all ledgers
 func (i *System) ReingestAll() (int, error) {
 
-	err := i.trimAbandondedLedgers()
+	var elder int32
+	var latest int32
+	q := history.Q{Session: i.CoreDB}
+
+	err := q.ElderLedger(&elder)
 	if err != nil {
-		return 0, err
+		return 0, errors.Wrap(err, "load history elder ledger failed")
 	}
 
-	var coreElder int32
-	var coreLatest int32
-	cq := core.Q{Session: i.CoreDB}
-
-	err = cq.ElderLedger(&coreElder)
+	err = q.LatestLedger(&latest)
 	if err != nil {
-		return 0, errors.Wrap(err, "load core elder ledger failed")
-	}
-
-	err = cq.LatestLedger(&coreLatest)
-	if err != nil {
-		return 0, errors.Wrap(err, "load core elder ledger failed")
+		return 0, errors.Wrap(err, "load history latest ledger failed")
 	}
 
 	log.
-		WithField("start", coreLatest).
-		WithField("end", coreElder).
+		WithField("start", latest).
+		WithField("end", elder).
 		Info("reingest: all")
 
-	return i.ReingestRange(coreLatest, coreElder)
+	return i.ReingestRange(latest, elder)
 }
 
 // ReingestOutdated finds old ledgers and reimports them.
 func (i *System) ReingestOutdated() (n int, err error) {
 
 	q := history.Q{Session: i.HorizonDB}
-
-	err = i.trimAbandondedLedgers()
-	if err != nil {
-		return
-	}
 
 	// NOTE: this loop will never terminate if some bug were cause a ledger
 	// reingestion to silently fail.
