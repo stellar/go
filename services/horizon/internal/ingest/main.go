@@ -22,7 +22,7 @@ const (
 	// Scripts, that have yet to be ported to this codebase can then be leveraged
 	// to re-ingest old data with the new algorithm, providing a seamless
 	// transition when the ingested data's structure changes.
-	CurrentVersion = 11
+	CurrentVersion = 12
 )
 
 // Address is a type of a param provided to BatchInsertBuilder that gets exchanged
