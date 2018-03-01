@@ -96,11 +96,11 @@ func (i *System) ReingestAll() (int, error) {
 	}
 
 	log.
-		WithField("start", coreElder).
-		WithField("end", coreLatest).
+		WithField("start", coreLatest).
+		WithField("end", coreElder).
 		Info("reingest: all")
 
-	return i.ReingestRange(coreElder, coreLatest)
+	return i.ReingestRange(coreLatest, coreElder)
 }
 
 // ReingestOutdated finds old ledgers and reimports them.
