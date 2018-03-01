@@ -78,7 +78,7 @@ func (i *System) ReingestAll() (int, error) {
 
 	var elder int32
 	var latest int32
-	q := history.Q{Session: i.CoreDB}
+	q := history.Q{Session: i.HorizonDB}
 
 	err := q.ElderLedger(&elder)
 	if err != nil {
