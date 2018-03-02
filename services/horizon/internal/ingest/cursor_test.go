@@ -14,7 +14,7 @@ func TestCursor(t *testing.T) {
 	c := Cursor{
 		FirstLedger: 7,
 		LastLedger:  10,
-		DB:          tt.CoreSession(),
+		CoreDB:      tt.CoreSession(),
 	}
 
 	// Ledger 7
@@ -61,7 +61,7 @@ func TestCursor(t *testing.T) {
 	c = Cursor{
 		FirstLedger: 10,
 		LastLedger:  7,
-		DB:          tt.CoreSession(),
+		CoreDB:      tt.CoreSession(),
 	}
 
 	tt.Require.True(c.NextLedger())

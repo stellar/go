@@ -22,7 +22,7 @@ const (
 	// Scripts, that have yet to be ported to this codebase can then be leveraged
 	// to re-ingest old data with the new algorithm, providing a seamless
 	// transition when the ingested data's structure changes.
-	CurrentVersion = 11
+	CurrentVersion = 12
 )
 
 // Address is a type of a param provided to BatchInsertBuilder that gets exchanged
@@ -50,8 +50,9 @@ type Cursor struct {
 	// LastLedger is the end of the range of ledgers (inclusive) that will
 	// attempt to be ingested in this session.
 	LastLedger int32
-	// DB is the stellar-core db that data is ingested from.
-	DB *db.Session
+
+	// CoreDB is the stellar-core db that data is ingested from.
+	CoreDB *db.Session
 
 	Metrics        *IngesterMetrics
 	AssetsModified AssetsModified
@@ -203,7 +204,7 @@ func NewCursor(first, last int32, i *System) *Cursor {
 	return &Cursor{
 		FirstLedger:    first,
 		LastLedger:     last,
-		DB:             i.CoreDB,
+		CoreDB:         i.CoreDB,
 		Metrics:        &i.Metrics,
 		AssetsModified: AssetsModified(make(map[string]xdr.Asset)),
 	}

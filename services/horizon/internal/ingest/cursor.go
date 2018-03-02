@@ -90,7 +90,7 @@ func (c *Cursor) NextLedger() bool {
 
 	c.data = &LedgerBundle{Sequence: c.lg}
 	start := time.Now()
-	c.Err = c.data.Load(c.DB)
+	c.Err = c.data.Load(c.CoreDB)
 	if c.Err != nil {
 		return false
 	}
