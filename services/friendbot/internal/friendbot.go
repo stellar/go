@@ -1,6 +1,7 @@
 package internal
 
 import (
+	"fmt"
 	"strconv"
 	"sync"
 
@@ -17,64 +18,81 @@ type Bot struct {
 	Network         string
 	StartingBalance string
 
-	sequence uint64
-	lock     sync.Mutex
+	// uninitialized
+	sequence             uint64
+	forceRefreshSequence bool
+	lock                 sync.Mutex
 }
 
 // Pay funds the account at `destAddress`
 func (bot *Bot) Pay(destAddress string) (*horizon.TransactionSuccess, error) {
+	channel := make(chan interface{})
+	shouldReadChannel, result, err := bot.lockedPay(channel, destAddress)
+	if !shouldReadChannel {
+		return result, err
+	}
+
+	v := <-channel
+	switch tv := v.(type) {
+	case horizon.TransactionSuccess:
+		return &tv, nil
+	case error:
+		return nil, tv
+	default:
+		return nil, fmt.Errorf("failed to submit async txn")
+	}
+}
+
+func (bot *Bot) lockedPay(channel chan interface{}, destAddress string) (bool, *horizon.TransactionSuccess, error) {
+	bot.lock.Lock()
+	defer bot.lock.Unlock()
+
 	err := bot.checkSequenceRefresh()
 	if err != nil {
-		return nil, err
+		return false, nil, err
 	}
 
 	signed, err := bot.makeTx(destAddress)
 	if err != nil {
-		return nil, err
+		return false, nil, err
 	}
 
+	go bot.asyncSubmitTransaction(channel, signed)
+	return true, nil, nil
+}
+
+func (bot *Bot) asyncSubmitTransaction(channel chan interface{}, signed string) {
 	result, err := bot.Horizon.SubmitTransaction(signed)
 	if err != nil {
 		switch e := err.(type) {
 		case *horizon.Error:
 			bot.checkHandleBadSequence(e)
 		}
+
+		channel <- err
+	} else {
+		channel <- result
 	}
-	return &result, err
 }
 
 func (bot *Bot) checkHandleBadSequence(err *horizon.Error) {
-	if err.Problem.Type != "tx_bad_seq" {
+	resCode, e := err.ResultCodes()
+	isTxBadSeqCode := e == nil && resCode.TransactionCode == "tx_bad_seq"
+	if !isTxBadSeqCode {
 		return
 	}
-
-	// force refresh sequence for bad sequence errors
-	bot.lock.Lock()
-	defer bot.lock.Unlock()
-	bot.refreshSequence()
+	bot.forceRefreshSequence = true
 }
 
 // establish initial sequence if needed
 func (bot *Bot) checkSequenceRefresh() error {
-	if bot.sequence != 0 {
+	if bot.sequence != 0 && !bot.forceRefreshSequence {
 		return nil
 	}
-
-	bot.lock.Lock()
-	defer bot.lock.Unlock()
-
-	// short-circuit here if the thread that previously had the lock was successful in refreshing the sequence
-	if bot.sequence != 0 {
-		return nil
-	}
-
 	return bot.refreshSequence()
 }
 
 func (bot *Bot) makeTx(destAddress string) (string, error) {
-	bot.lock.Lock()
-	defer bot.lock.Unlock()
-
 	txn, err := b.Transaction(
 		b.SourceAccount{AddressOrSeed: bot.Secret},
 		b.Sequence{Sequence: bot.sequence + 1},
@@ -111,13 +129,14 @@ func (bot *Bot) refreshSequence() error {
 		return err
 	}
 
-	seq, err := strconv.ParseInt(botAccount.Sequence, 10, 0)
+	seq, err := strconv.ParseInt(botAccount.Sequence, 10, 64)
 	if err != nil {
 		bot.sequence = 0
 		return err
 	}
 
 	bot.sequence = uint64(seq)
+	bot.forceRefreshSequence = false
 	return nil
 }
 
