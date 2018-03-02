@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
+	"reflect"
 	"time"
 
 	"github.com/stellar/go/clients/stellarcore"
@@ -199,6 +200,14 @@ func (is *Session) ingestEffects() {
 
 		if len(flagDetails) > 0 {
 			effects.Add(source, history.EffectAccountFlagsUpdated, flagDetails)
+		}
+
+		if op.InflationDest != nil {
+			effects.Add(source, history.EffectAccountInflationDestinationUpdated,
+				map[string]interface{}{
+					"inflation_destination": op.InflationDest.Address(),
+				},
+			)
 		}
 
 		is.ingestSignerEffects(effects, op)
@@ -397,6 +406,7 @@ func (is *Session) ingestSignerEffects(effects *EffectIngestion, op xdr.SetOptio
 	// HACK (scott) 2017-11-27:  Prevent crashes when BeforeAndAfter fails to
 	// correctly work.
 	if be == nil || ae == nil {
+		// TODO (scott) 2018-03-02: log some info to help us track down the crash, doofus
 		return
 	}
 
@@ -405,6 +415,11 @@ func (is *Session) ingestSignerEffects(effects *EffectIngestion, op xdr.SetOptio
 
 	before := beforeAccount.SignerSummary()
 	after := afterAccount.SignerSummary()
+
+	// if before and after are the same, the signers have not changed
+	if reflect.DeepEqual(before, after) {
+		return
+	}
 
 	for addy := range before {
 		weight, ok := after[addy]
