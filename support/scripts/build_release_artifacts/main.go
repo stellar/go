@@ -184,7 +184,7 @@ func buildSnapshots() {
 			//WARNING - DIRTY FILTHY HACK
 			//hardcode non-linux bifrost out of the snapshots build
 			//TODO: find alternative
-			if pkg=="services/bifrost" && !(cfg.OS=="linux" && cfg.Arch=="amd64"){
+			if pkg == "services/bifrost" && !(cfg.OS == "linux" && cfg.Arch == "amd64") {
 				log.Info("ignoring biforst for non linux/amd64")
 				continue
 			}
@@ -284,7 +284,8 @@ func packageName(binName string) string {
 		}
 
 		if result != "" {
-			panic("sourceDir() found multiple results!")
+			msg := fmt.Sprintf("sourceDir() found multiple results!: binName: %s", binName)
+			panic(msg)
 		}
 
 		result = t

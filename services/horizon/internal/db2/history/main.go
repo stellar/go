@@ -39,6 +39,10 @@ const (
 	// account flags, either clearing or setting.
 	EffectAccountFlagsUpdated EffectType = 6 // from set_options
 
+	// EffectAccountInflationDestinationUpdated effects occur when an account changes its
+	// inflation destination.
+	EffectAccountInflationDestinationUpdated EffectType = 7 // from set_options
+
 	// signer effects
 
 	// EffectSignerCreated occurs when an account gains a signer

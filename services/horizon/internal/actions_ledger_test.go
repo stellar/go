@@ -36,6 +36,7 @@ func TestLedgerActions_Show(t *testing.T) {
 	err := json.Unmarshal(w.Body.Bytes(), &result)
 	if ht.Assert.NoError(err) {
 		ht.Assert.Equal(int32(1), result.Sequence)
+		ht.Assert.NotEmpty(result.HeaderXDR)
 	}
 
 	// ledger higher than history
