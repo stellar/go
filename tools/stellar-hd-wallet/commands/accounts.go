@@ -32,15 +32,14 @@ var AccountsCmd = &cobra.Command{
 		words := make([]string, wordsCount)
 		for i := uint32(0); i < wordsCount; i++ {
 			printf("Enter word #%-4d", i+1)
-			words[i] = readString()
+			words[i], _ = readString("", false)
 			if !wordsRegexp.MatchString(words[i]) {
 				println("Invalid word, try again.")
 				i--
 			}
 		}
 
-		printf("Enter password (leave empty if none): ")
-		password := readString()
+		password := savePassword()
 
 		mnemonic := strings.Join(words, " ")
 		println("Mnemonic:", mnemonic)

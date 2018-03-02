@@ -28,7 +28,7 @@ var NewCmd = &cobra.Command{
 		words := strings.Split(mnemonic, " ")
 		for i := 0; i < len(words); i++ {
 			printf("word %02d/24: %10s", i+1, words[i])
-			readString()
+			readString("", false)
 		}
 
 		println("WARNING! Store the words above in a safe place!")
