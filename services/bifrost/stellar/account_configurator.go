@@ -31,15 +31,6 @@ func (ac *AccountConfigurator) Start() error {
 
 	ac.signerPublicKey = kp.Address()
 
-	kp, err = keypair.Parse(ac.TemporaryAccountSignerSecretKey)
-	if err != nil || (err == nil && ac.TemporaryAccountSignerSecretKey[0] != 'S') {
-		err = errors.Wrap(err, "Invalid TemporaryAccountSignerSecretKey")
-		ac.log.Error(err)
-		return err
-	}
-
-	ac.temporaryAccountSignerPublicKey = kp.Address()
-
 	root, err := ac.Horizon.Root()
 	if err != nil {
 		err = errors.Wrap(err, "Error loading Horizon root")
@@ -51,7 +42,7 @@ func (ac *AccountConfigurator) Start() error {
 		return errors.Errorf("Invalid network passphrase (have=%s, want=%s)", root.NetworkPassphrase, ac.NetworkPassphrase)
 	}
 
-	err = ac.updateSequence()
+	err = ac.updateSignerSequence()
 	if err != nil {
 		err = errors.Wrap(err, "Error loading issuer sequence number")
 		ac.log.Error(err)
@@ -145,8 +136,15 @@ func (ac *AccountConfigurator) ConfigureAccount(destination, assetCode, amount s
 		return
 	}
 
-	if ac.OnAccountCredited != nil {
-		ac.OnAccountCredited(destination, assetCode, amount)
+	if ac.OnExchanged != nil {
+		ac.OnExchanged(destination)
+	}
+
+	localLog.Info("Removing temporary signer")
+	err = ac.removeTemporarySigner(destination)
+	if err != nil {
+		localLog.WithField("err", err).Error("Error removing temporary signer")
+		return
 	}
 
 	localLog.Info("Account successully configured")
@@ -166,11 +164,22 @@ func (ac *AccountConfigurator) getAccount(account string) (horizon.Account, bool
 }
 
 // signerExistsOnly returns true if account has exactly one signer and it's
-// equal to `temporaryAccountSignerPublicKey`.
+// equal to `signerPublicKey`.
 func (ac *AccountConfigurator) signerExistsOnly(account horizon.Account) bool {
-	if len(account.Signers) != 1 {
-		return false
+	tempSignerFound := false
+
+	for _, signer := range account.Signers {
+		if signer.PublicKey == ac.signerPublicKey {
+			if signer.Weight == 1 {
+				tempSignerFound = true
+			}
+		} else {
+			// For each other signer, weight should be equal 0
+			if signer.Weight != 0 {
+				return false
+			}
+		}
 	}
 
-	return account.Signers[0].PublicKey == ac.temporaryAccountSignerPublicKey
+	return tempSignerFound
 }

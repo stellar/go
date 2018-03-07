@@ -1,5 +1,9 @@
 package config
 
+import (
+	"github.com/stellar/go/keypair"
+)
+
 type Config struct {
 	Port                           int             `valid:"required"`
 	UsingProxy                     bool            `valid:"optional" toml:"using_proxy"`
@@ -12,8 +16,6 @@ type Config struct {
 		NetworkPassphrase string `valid:"required" toml:"network_passphrase"`
 		// TokenAssetCode is asset code of token that will be purchased using BTC or ETH.
 		TokenAssetCode string `valid:"required" toml:"token_asset_code"`
-		// TokenPrice TODO
-		TokenPrice string `valid:"required" toml:"token_asset_code"`
 		// NeedsAuthorize should be set to true if issuers's authorization required flag is set.
 		NeedsAuthorize bool `valid:"optional" toml:"needs_authorize"`
 		// IssuerPublicKey is public key of the assets issuer or hot wallet.
@@ -24,8 +26,6 @@ type Config struct {
 		// https://www.stellar.org/developers/guides/channels.html
 		// Signer's sequence number will be consumed in transaction's sequence number.
 		SignerSecretKey string `valid:"required" toml:"signer_secret_key"`
-		// TemporaryAccountSignerSecretKey TODO
-		TemporaryAccountSignerSecretKey string `valid:"required" toml:"temporary_account_signer_secret_key"`
 		// StartingBalance is the starting amount of XLM for newly created accounts.
 		// Default value is 41. Increase it if you need Data records / other custom entities on new account.
 		StartingBalance string `valid:"optional,numeric" toml:"starting_balance"`
@@ -41,6 +41,8 @@ type bitcoinConfig struct {
 	// Minimum value of transaction accepted by Bifrost in BTC.
 	// Everything below will be ignored.
 	MinimumValueBtc string `valid:"required" toml:"minimum_value_btc"`
+	// TokenPrice is a price of one token in BTC
+	TokenPrice string `valid:"required" toml:"token_price"`
 	// Host only
 	RpcServer string `valid:"required" toml:"rpc_server"`
 	RpcUser   string `valid:"optional" toml:"rpc_user"`
@@ -54,6 +56,13 @@ type ethereumConfig struct {
 	// Minimum value of transaction accepted by Bifrost in ETH.
 	// Everything below will be ignored.
 	MinimumValueEth string `valid:"required" toml:"minimum_value_eth"`
+	// TokenPrice is a price of one token in ETH
+	TokenPrice string `valid:"required" toml:"token_price"`
 	// Host only
 	RpcServer string `valid:"required" toml:"rpc_server"`
+}
+
+func (c Config) SignerPublicKey() string {
+	kp := keypair.MustParse(c.Stellar.SignerSecretKey)
+	return kp.Address()
 }

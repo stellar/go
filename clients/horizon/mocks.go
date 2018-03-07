@@ -3,6 +3,7 @@ package horizon
 import (
 	"context"
 
+	"github.com/stellar/go/xdr"
 	"github.com/stretchr/testify/mock"
 )
 
@@ -72,6 +73,12 @@ func (m *MockClient) LoadOrderBook(
 ) (orderBook OrderBookSummary, err error) {
 	a := m.Called(selling, buying, params)
 	return a.Get(0).(OrderBookSummary), a.Error(1)
+}
+
+// SequenceForAccount is a mocking a method
+func (m *MockClient) SequenceForAccount(accountID string) (xdr.SequenceNumber, error) {
+	a := m.Called(accountID)
+	return a.Get(0).(xdr.SequenceNumber), a.Error(1)
 }
 
 // StreamLedgers is a mocking a method

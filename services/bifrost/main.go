@@ -276,7 +276,9 @@ func createServer(cfg config.Config, stressTest bool) *server.Server {
 		os.Exit(-1)
 	}
 
-	server := &server.Server{}
+	server := &server.Server{
+		SignerPublicKey: cfg.SignerPublicKey(),
+	}
 
 	bitcoinClient := &rpcclient.Client{}
 	bitcoinListener := &bitcoin.Listener{}
@@ -355,18 +357,24 @@ func createServer(cfg config.Config, stressTest bool) *server.Server {
 	}
 
 	stellarAccountConfigurator := &stellar.AccountConfigurator{
-		NetworkPassphrase:               cfg.Stellar.NetworkPassphrase,
-		IssuerPublicKey:                 cfg.Stellar.IssuerPublicKey,
-		SignerSecretKey:                 cfg.Stellar.SignerSecretKey,
-		TemporaryAccountSignerSecretKey: cfg.Stellar.TemporaryAccountSignerSecretKey,
-		NeedsAuthorize:                  cfg.Stellar.NeedsAuthorize,
-		TokenAssetCode:                  cfg.Stellar.TokenAssetCode,
-		TokenPrice:                      cfg.Stellar.TokenPrice,
-		StartingBalance:                 cfg.Stellar.StartingBalance,
+		NetworkPassphrase: cfg.Stellar.NetworkPassphrase,
+		IssuerPublicKey:   cfg.Stellar.IssuerPublicKey,
+		SignerSecretKey:   cfg.Stellar.SignerSecretKey,
+		NeedsAuthorize:    cfg.Stellar.NeedsAuthorize,
+		TokenAssetCode:    cfg.Stellar.TokenAssetCode,
+		StartingBalance:   cfg.Stellar.StartingBalance,
 	}
 
 	if cfg.Stellar.StartingBalance == "" {
 		stellarAccountConfigurator.StartingBalance = "41"
+	}
+
+	if cfg.Bitcoin != nil {
+		stellarAccountConfigurator.TokenPriceBTC = cfg.Bitcoin.TokenPrice
+	}
+
+	if cfg.Ethereum != nil {
+		stellarAccountConfigurator.TokenPriceETH = cfg.Ethereum.TokenPrice
 	}
 
 	horizonClient := &horizon.Client{
