@@ -56,103 +56,103 @@ func init() {
 		},
 	}
 
-	rootCmd.Flags().String(
+	rootCmd.PersistentFlags().String(
 		"db-url",
 		"",
 		"horizon postgres database to connect with",
 	)
 
-	rootCmd.Flags().String(
+	rootCmd.PersistentFlags().String(
 		"stellar-core-db-url",
 		"",
 		"stellar-core postgres database to connect with",
 	)
 
-	rootCmd.Flags().String(
+	rootCmd.PersistentFlags().String(
 		"stellar-core-url",
 		"",
 		"stellar-core to connect with (for http commands)",
 	)
 
-	rootCmd.Flags().Int(
+	rootCmd.PersistentFlags().Int(
 		"port",
 		8000,
 		"tcp port to listen on for http requests",
 	)
 
-	rootCmd.Flags().Int(
+	rootCmd.PersistentFlags().Int(
 		"per-hour-rate-limit",
 		3600,
 		"max count of requests allowed in a one hour period, by remote ip address",
 	)
 
-	rootCmd.Flags().String(
+	rootCmd.PersistentFlags().String(
 		"redis-url",
 		"",
 		"redis to connect with, for rate limiting",
 	)
 
-	rootCmd.Flags().String(
+	rootCmd.PersistentFlags().String(
 		"friendbot-url",
 		"",
 		"friendbot service to redirect to",
 	)
 
-	rootCmd.Flags().String(
+	rootCmd.PersistentFlags().String(
 		"log-level",
 		"info",
 		"Minimum log severity (debug, info, warn, error) to log",
 	)
 
-	rootCmd.Flags().String(
+	rootCmd.PersistentFlags().String(
 		"sentry-dsn",
 		"",
 		"Sentry URL to which panics and errors should be reported",
 	)
 
-	rootCmd.Flags().String(
+	rootCmd.PersistentFlags().String(
 		"loggly-token",
 		"",
 		"Loggly token, used to configure log forwarding to loggly",
 	)
 
-	rootCmd.Flags().String(
+	rootCmd.PersistentFlags().String(
 		"loggly-host",
 		"",
 		"Hostname to be added to every loggly log event",
 	)
 
-	rootCmd.Flags().String(
+	rootCmd.PersistentFlags().String(
 		"tls-cert",
 		"",
 		"The TLS certificate file to use for securing connections to horizon",
 	)
 
-	rootCmd.Flags().String(
+	rootCmd.PersistentFlags().String(
 		"tls-key",
 		"",
 		"The TLS private key file to use for securing connections to horizon",
 	)
 
-	rootCmd.Flags().Bool(
+	rootCmd.PersistentFlags().Bool(
 		"ingest",
 		false,
 		"causes this horizon process to ingest data from stellar-core into horizon's db",
 	)
 
-	rootCmd.Flags().String(
+	rootCmd.PersistentFlags().String(
 		"network-passphrase",
 		"",
 		"Override the network passphrase",
 	)
 
-	rootCmd.Flags().Uint(
+	rootCmd.PersistentFlags().Uint(
 		"history-retention-count",
 		0,
 		"the minimum number of ledgers to maintain within horizon's history tables.  0 signifies an unlimited number of ledgers will be retained",
 	)
 
-	rootCmd.Flags().Uint(
+	rootCmd.PersistentFlags().Uint(
 		"history-stale-threshold",
 		0,
 		"the maximum number of ledgers the history db is allowed to be out of date from the connected stellar-core db before horizon considers history stale",
@@ -160,7 +160,7 @@ func init() {
 
 	rootCmd.AddCommand(dbCmd)
 
-	viper.BindPFlags(rootCmd.Flags())
+	viper.BindPFlags(rootCmd.PersistentFlags())
 }
 
 func initApp(cmd *cobra.Command, args []string) {
