@@ -7,8 +7,8 @@ import (
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/services/horizon/internal/httpx"
 	"github.com/stellar/go/services/horizon/internal/render/hal"
-	"golang.org/x/net/context"
 	"github.com/stellar/go/xdr"
+	"golang.org/x/net/context"
 )
 
 // Populate fills out the details of a trade using a row from the history_trades
@@ -32,7 +32,14 @@ func (res *Trade) Populate(
 	res.CounterAmount = amount.String(row.CounterAmount)
 	res.LedgerCloseTime = row.LedgerCloseTime
 	res.BaseIsSeller = row.BaseIsSeller
-	res.Price = xdr.Price{row.PriceN, row.PriceD}
+
+	if row.HasPrice() {
+		res.Price = xdr.Price{
+			N: xdr.Int32(row.PriceN.Int64),
+			D: xdr.Int32(row.PriceD.Int64),
+		}
+	}
+
 	res.populateLinks(ctx, row.HistoryOperationID)
 	return
 }
