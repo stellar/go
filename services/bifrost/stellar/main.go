@@ -13,8 +13,9 @@ type AccountConfigurator struct {
 	Horizon               horizon.ClientInterface `inject:""`
 	NetworkPassphrase     string
 	IssuerPublicKey       string
-	LockUnixTimestamp     uint64
+	DistributionPublicKey string
 	SignerSecretKey       string
+	LockUnixTimestamp     uint64
 	NeedsAuthorize        bool
 	TokenAssetCode        string
 	TokenPriceBTC         string
@@ -24,10 +25,10 @@ type AccountConfigurator struct {
 	OnExchanged           func(destination string)
 	OnExchangedTimelocked func(destination, transaction string)
 
-	signerPublicKey      string
-	signerSequence       uint64
-	signerSequenceMutex  sync.Mutex
-	processingCount      int
-	processingCountMutex sync.Mutex
-	log                  *log.Entry
+	signerPublicKey           string
+	distributionSequence      uint64
+	distributionSequenceMutex sync.Mutex
+	processingCount           int
+	processingCountMutex      sync.Mutex
+	log                       *log.Entry
 }

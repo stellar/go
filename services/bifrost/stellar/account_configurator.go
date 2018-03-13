@@ -22,6 +22,13 @@ func (ac *AccountConfigurator) Start() error {
 		return err
 	}
 
+	_, err = keypair.Parse(ac.DistributionPublicKey)
+	if err != nil || (err == nil && ac.DistributionPublicKey[0] != 'G') {
+		err = errors.Wrap(err, "Invalid DistributionPublicKey")
+		ac.log.Error(err)
+		return err
+	}
+
 	kp, err := keypair.Parse(ac.SignerSecretKey)
 	if err != nil || (err == nil && ac.SignerSecretKey[0] != 'S') {
 		err = errors.Wrap(err, "Invalid SignerSecretKey")
@@ -62,7 +69,7 @@ func (ac *AccountConfigurator) logStats() {
 
 // ConfigureAccount configures a new account that participated in ICO.
 // * First it creates a new account.
-// * Once a trusline exists, it credits it with received number of ETH or BTC.
+// * Once a signer is replaced on the account, it creates trust lines and exchanges assets.
 func (ac *AccountConfigurator) ConfigureAccount(destination, assetCode, amount string) {
 	localLog := ac.log.WithFields(log.F{
 		"destination": destination,

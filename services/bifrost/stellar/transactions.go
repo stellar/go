@@ -11,8 +11,8 @@ import (
 
 func (ac *AccountConfigurator) createAccountTransaction(destination string) error {
 	transaction, err := ac.buildTransaction(
-		ac.signerPublicKey,
-		[]string{ac.SignerSecretKey},
+		ac.DistributionPublicKey,
+		ac.SignerSecretKey,
 		build.CreateAccount(
 			build.Destination{destination},
 			build.NativeAmount{ac.StartingBalance},
@@ -71,7 +71,7 @@ func (ac *AccountConfigurator) configureAccountTransaction(destination, intermed
 		mutators,
 		// Send BTC/ETH
 		build.Payment(
-			build.SourceAccount{ac.IssuerPublicKey},
+			build.SourceAccount{ac.DistributionPublicKey},
 			build.Destination{destination},
 			build.CreditAmount{
 				Code:   intermediateAssetCode,
@@ -90,7 +90,7 @@ func (ac *AccountConfigurator) configureAccountTransaction(destination, intermed
 		),
 	)
 
-	transaction, err := ac.buildTransaction(destination, []string{ac.SignerSecretKey}, mutators...)
+	transaction, err := ac.buildTransaction(destination, ac.SignerSecretKey, mutators...)
 	if err != nil {
 		return errors.Wrap(err, "Error building a transaction")
 	}
@@ -113,7 +113,7 @@ func (ac *AccountConfigurator) removeTemporarySigner(destination string) error {
 		),
 	}
 
-	transaction, err := ac.buildTransaction(destination, []string{ac.SignerSecretKey}, mutators...)
+	transaction, err := ac.buildTransaction(destination, ac.SignerSecretKey, mutators...)
 	if err != nil {
 		return errors.Wrap(err, "Error building a transaction")
 	}
@@ -139,10 +139,10 @@ func (ac *AccountConfigurator) buildUnlockAccountTransaction(source string) (str
 		),
 	}
 
-	return ac.buildTransaction(source, []string{ac.SignerSecretKey}, mutators...)
+	return ac.buildTransaction(source, ac.SignerSecretKey, mutators...)
 }
 
-func (ac *AccountConfigurator) buildTransaction(source string, signers []string, mutators ...build.TransactionMutator) (string, error) {
+func (ac *AccountConfigurator) buildTransaction(source string, signer string, mutators ...build.TransactionMutator) (string, error) {
 	muts := []build.TransactionMutator{
 		build.SourceAccount{source},
 		build.Network{ac.NetworkPassphrase},
@@ -159,7 +159,7 @@ func (ac *AccountConfigurator) buildTransaction(source string, signers []string,
 	if err != nil {
 		return "", err
 	}
-	txe, err := tx.Sign(signers...)
+	txe, err := tx.Sign(signer)
 	if err != nil {
 		return "", err
 	}
@@ -186,19 +186,19 @@ func (ac *AccountConfigurator) submitTransaction(transaction string) error {
 }
 
 func (ac *AccountConfigurator) updateSignerSequence() error {
-	ac.signerSequenceMutex.Lock()
-	defer ac.signerSequenceMutex.Unlock()
+	ac.distributionSequenceMutex.Lock()
+	defer ac.distributionSequenceMutex.Unlock()
 
-	account, err := ac.Horizon.LoadAccount(ac.signerPublicKey)
+	account, err := ac.Horizon.LoadAccount(ac.DistributionPublicKey)
 	if err != nil {
 		err = errors.Wrap(err, "Error loading issuing account")
 		ac.log.Error(err)
 		return err
 	}
 
-	ac.signerSequence, err = strconv.ParseUint(account.Sequence, 10, 64)
+	ac.distributionSequence, err = strconv.ParseUint(account.Sequence, 10, 64)
 	if err != nil {
-		err = errors.Wrap(err, "Invalid account.Sequence")
+		err = errors.Wrap(err, "Invalid DistributionPublicKey sequence")
 		ac.log.Error(err)
 		return err
 	}
@@ -207,9 +207,9 @@ func (ac *AccountConfigurator) updateSignerSequence() error {
 }
 
 func (ac *AccountConfigurator) getSignerSequence() uint64 {
-	ac.signerSequenceMutex.Lock()
-	defer ac.signerSequenceMutex.Unlock()
-	ac.signerSequence++
-	sequence := ac.signerSequence
+	ac.distributionSequenceMutex.Lock()
+	defer ac.distributionSequenceMutex.Unlock()
+	ac.distributionSequence++
+	sequence := ac.distributionSequence
 	return sequence
 }

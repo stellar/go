@@ -375,13 +375,14 @@ func createServer(cfg config.Config, stressTest bool) *server.Server {
 	}
 
 	stellarAccountConfigurator := &stellar.AccountConfigurator{
-		NetworkPassphrase: cfg.Stellar.NetworkPassphrase,
-		IssuerPublicKey:   cfg.Stellar.IssuerPublicKey,
-		SignerSecretKey:   cfg.Stellar.SignerSecretKey,
-		NeedsAuthorize:    cfg.Stellar.NeedsAuthorize,
-		TokenAssetCode:    cfg.Stellar.TokenAssetCode,
-		StartingBalance:   cfg.Stellar.StartingBalance,
-		LockUnixTimestamp: cfg.Stellar.LockUnixTimestamp,
+		NetworkPassphrase:     cfg.Stellar.NetworkPassphrase,
+		IssuerPublicKey:       cfg.Stellar.IssuerPublicKey,
+		DistributionPublicKey: cfg.Stellar.DistributionPublicKey,
+		SignerSecretKey:       cfg.Stellar.SignerSecretKey,
+		NeedsAuthorize:        cfg.Stellar.NeedsAuthorize,
+		TokenAssetCode:        cfg.Stellar.TokenAssetCode,
+		StartingBalance:       cfg.Stellar.StartingBalance,
+		LockUnixTimestamp:     cfg.Stellar.LockUnixTimestamp,
 	}
 
 	if cfg.Stellar.StartingBalance == "" {
