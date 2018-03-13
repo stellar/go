@@ -10,17 +10,19 @@ import (
 // AccountConfigurator is responsible for configuring new Stellar accounts that
 // participate in ICO.
 type AccountConfigurator struct {
-	Horizon           horizon.ClientInterface `inject:""`
-	NetworkPassphrase string
-	IssuerPublicKey   string
-	SignerSecretKey   string
-	NeedsAuthorize    bool
-	TokenAssetCode    string
-	TokenPriceBTC     string
-	TokenPriceETH     string
-	StartingBalance   string
-	OnAccountCreated  func(destination string)
-	OnExchanged       func(destination string)
+	Horizon               horizon.ClientInterface `inject:""`
+	NetworkPassphrase     string
+	IssuerPublicKey       string
+	LockUnixTimestamp     uint64
+	SignerSecretKey       string
+	NeedsAuthorize        bool
+	TokenAssetCode        string
+	TokenPriceBTC         string
+	TokenPriceETH         string
+	StartingBalance       string
+	OnAccountCreated      func(destination string)
+	OnExchanged           func(destination string)
+	OnExchangedTimelocked func(destination, transaction string)
 
 	signerPublicKey      string
 	signerSequence       uint64

@@ -136,15 +136,28 @@ func (ac *AccountConfigurator) ConfigureAccount(destination, assetCode, amount s
 		return
 	}
 
-	if ac.OnExchanged != nil {
-		ac.OnExchanged(destination)
-	}
+	if ac.LockUnixTimestamp == 0 {
+		localLog.Info("Removing temporary signer")
+		err = ac.removeTemporarySigner(destination)
+		if err != nil {
+			localLog.WithField("err", err).Error("Error removing temporary signer")
+			return
+		}
 
-	localLog.Info("Removing temporary signer")
-	err = ac.removeTemporarySigner(destination)
-	if err != nil {
-		localLog.WithField("err", err).Error("Error removing temporary signer")
-		return
+		if ac.OnExchanged != nil {
+			ac.OnExchanged(destination)
+		}
+	} else {
+		localLog.Info("Creating unlock transaction to remove temporary signer")
+		transaction, err := ac.buildUnlockAccountTransaction(destination)
+		if err != nil {
+			localLog.WithField("err", err).Error("Error creating unlock transaction")
+			return
+		}
+
+		if ac.OnExchangedTimelocked != nil {
+			ac.OnExchangedTimelocked(destination, transaction)
+		}
 	}
 
 	localLog.Info("Account successully configured")

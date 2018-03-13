@@ -258,13 +258,31 @@ func readConfig(cfgPath string) config.Config {
 	return cfg
 }
 
+// createDatabase opens a DB connection and imports schema if DB is empty.
 func createDatabase(dsn string) (*database.PostgresDatabase, error) {
 	db := &database.PostgresDatabase{}
 	err := db.Open(dsn)
 	if err != nil {
 		return nil, err
 	}
-	return db, err
+
+	currentSchemaVersion, err := db.GetSchemaVersion()
+	if err != nil {
+		return nil, err
+	}
+
+	if currentSchemaVersion == 0 {
+		// DB clean, import
+		err := db.Import()
+		if err != nil {
+			return nil, errors.Wrap(err, "Error importing DB schema")
+		}
+	} else if currentSchemaVersion != database.SchemaVersion {
+		// Schema version invalid
+		return nil, errors.New("Schema version is invalid. Please create an empty DB and start Bifrost again.")
+	}
+
+	return db, nil
 }
 
 func createServer(cfg config.Config, stressTest bool) *server.Server {
@@ -363,6 +381,7 @@ func createServer(cfg config.Config, stressTest bool) *server.Server {
 		NeedsAuthorize:    cfg.Stellar.NeedsAuthorize,
 		TokenAssetCode:    cfg.Stellar.TokenAssetCode,
 		StartingBalance:   cfg.Stellar.StartingBalance,
+		LockUnixTimestamp: cfg.Stellar.LockUnixTimestamp,
 	}
 
 	if cfg.Stellar.StartingBalance == "" {

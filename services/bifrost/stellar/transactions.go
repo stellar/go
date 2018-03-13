@@ -126,6 +126,22 @@ func (ac *AccountConfigurator) removeTemporarySigner(destination string) error {
 	return nil
 }
 
+// buildUnlockAccountTransaction creates and returns unlock account transaction.
+func (ac *AccountConfigurator) buildUnlockAccountTransaction(source string) (string, error) {
+	// Remove signer
+	mutators := []build.TransactionMutator{
+		build.TimeBounds{
+			MinTime: ac.LockUnixTimestamp,
+		},
+		build.SetOptions(
+			build.MasterWeight(1),
+			build.RemoveSigner(ac.signerPublicKey),
+		),
+	}
+
+	return ac.buildTransaction(source, []string{ac.SignerSecretKey}, mutators...)
+}
+
 func (ac *AccountConfigurator) buildTransaction(source string, signers []string, mutators ...build.TransactionMutator) (string, error) {
 	muts := []build.TransactionMutator{
 		build.SourceAccount{source},

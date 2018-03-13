@@ -34,6 +34,7 @@ func (s *Server) Start() error {
 	s.EthereumListener.TransactionHandler = s.onNewEthereumTransaction
 	s.StellarAccountConfigurator.OnAccountCreated = s.onStellarAccountCreated
 	s.StellarAccountConfigurator.OnExchanged = s.onExchanged
+	s.StellarAccountConfigurator.OnExchangedTimelocked = s.OnExchangedTimelocked
 
 	if !s.BitcoinListener.Enabled && !s.EthereumListener.Enabled {
 		return errors.New("At least one listener (BitcoinListener or EthereumListener) must be enabled")

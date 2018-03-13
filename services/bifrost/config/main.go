@@ -29,6 +29,8 @@ type Config struct {
 		// StartingBalance is the starting amount of XLM for newly created accounts.
 		// Default value is 41. Increase it if you need Data records / other custom entities on new account.
 		StartingBalance string `valid:"optional,numeric" toml:"starting_balance"`
+		// LockUnixTimestamp defines unix timestamp when user account will be unlocked.
+		LockUnixTimestamp uint64 `valid:"optional" toml:"lock_unix_timestamp"`
 	} `valid:"required" toml:"stellar"`
 	Database struct {
 		Type string `valid:"matches(^postgres$)"`

@@ -317,3 +317,12 @@ func (m BaseFee) MutateTransaction(o *TransactionBuilder) error {
 
 	return nil
 }
+
+// MutateTransaction for TimeBounds sets the time bounds
+func (m TimeBounds) MutateTransaction(o *TransactionBuilder) error {
+	o.TX.TimeBounds = &xdr.TimeBounds{
+		MinTime: xdr.Uint64(m.MinTime),
+		MaxTime: xdr.Uint64(m.MaxTime),
+	}
+	return nil
+}
