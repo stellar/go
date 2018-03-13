@@ -16,6 +16,11 @@ func (r *Trade) PagingToken() string {
 	return fmt.Sprintf("%d-%d", r.HistoryOperationID, r.Order)
 }
 
+// HasPrice returns true if the trade has non-null price data
+func (r *Trade) HasPrice() bool {
+	return r.PriceN.Valid && r.PriceD.Valid
+}
+
 // Trades provides a helper to filter rows from the `history_trades` table
 // with pre-defined filters.  See `TradesQ` methods for the available filters.
 func (q *Q) Trades() *TradesQ {

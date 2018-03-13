@@ -153,7 +153,6 @@ func TestTradeActions_Aggregation(t *testing.T) {
 	q.Add("end_time", strconv.FormatInt(start+hour, 10))
 	q.Add("order", "asc")
 
-
 	//test illegal resolution
 	q.Add("resolution", strconv.FormatInt(hour/2, 10))
 	w := ht.GetWithParams(aggregationPath, q)
@@ -253,19 +252,32 @@ func TestTradeActions_Aggregation(t *testing.T) {
 }
 
 func TestTradeActions_IndexRegressions(t *testing.T) {
-	ht := StartHTTPTest(t, "trades")
-	defer ht.Finish()
+	t.Run("Regression:  https://github.com/stellar/go/services/horizon/internal/issues/318", func(t *testing.T) {
+		ht := StartHTTPTest(t, "trades")
+		defer ht.Finish()
 
-	// Regression:  https://github.com/stellar/go/services/horizon/internal/issues/318
-	var q = make(url.Values)
-	q.Add("base_asset_type", "credit_alphanum4")
-	q.Add("base_asset_code", "EUR")
-	q.Add("base_asset_issuer", "GCQPYGH4K57XBDENKKX55KDTWOTK5WDWRQOH2LHEDX3EKVIQRLMESGBG")
-	q.Add("counter_asset_type", "native")
+		var q = make(url.Values)
+		q.Add("base_asset_type", "credit_alphanum4")
+		q.Add("base_asset_code", "EUR")
+		q.Add("base_asset_issuer", "GCQPYGH4K57XBDENKKX55KDTWOTK5WDWRQOH2LHEDX3EKVIQRLMESGBG")
+		q.Add("counter_asset_type", "native")
 
-	w := ht.Get("/trades?" + q.Encode())
+		w := ht.Get("/trades?" + q.Encode())
 
-	ht.Assert.Equal(404, w.Code) //This used to be 200 with length 0
+		ht.Assert.Equal(404, w.Code) //This used to be 200 with length 0
+	})
+
+	t.Run("Regression for nil prices: https://github.com/stellar/go/issues/357", func(t *testing.T) {
+		ht := StartHTTPTest(t, "trades")
+		defer ht.Finish()
+
+		w := ht.Get("/trades")
+		ht.Require.Equal(200, w.Code)
+
+		_ = ht.HorizonDB.MustExec("UPDATE history_trades SET price_n = NULL, price_d = NULL")
+		w = ht.Get("/trades")
+		ht.Assert.Equal(200, w.Code, "nil-price trades failed")
+	})
 }
 
 // TestTradeActions_AggregationOrdering checks that open/close aggregation

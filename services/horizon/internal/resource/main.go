@@ -6,10 +6,10 @@ import (
 	"time"
 
 	"github.com/stellar/go/services/horizon/internal/db2/history"
+	"github.com/stellar/go/services/horizon/internal/render/hal"
 	"github.com/stellar/go/services/horizon/internal/resource/base"
 	"github.com/stellar/go/services/horizon/internal/resource/effects"
 	"github.com/stellar/go/services/horizon/internal/resource/operations"
-	"github.com/stellar/go/services/horizon/internal/render/hal"
 	"github.com/stellar/go/strkey"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
@@ -224,7 +224,7 @@ type Trade struct {
 	CounterAssetCode   string    `json:"counter_asset_code,omitempty"`
 	CounterAssetIssuer string    `json:"counter_asset_issuer,omitempty"`
 	BaseIsSeller       bool      `json:"base_is_seller"`
-	Price              xdr.Price `json:"price"`
+	Price              *Price    `json:"price"`
 }
 
 // TradeEffect represents a trade effect resource.  NOTE (scott, 2017-12-08):

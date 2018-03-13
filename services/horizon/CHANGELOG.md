@@ -6,7 +6,17 @@ file.  This project adheres to [Semantic Versioning](http://semver.org/).
 As this project is pre 1.0, breaking changes may happen for minor version
 bumps.  A breaking change will get clearly notified in this log.
 
-## [v0.12.0] - 2017-03-08
+## v0.12.1 - 2017-03-13
+
+This release is a bug fix release for v0.12.0.  *Please see the upgrade notes below if you did not already migrate your db for v0.12.0*
+
+### Bug fixes
+
+- Fixed an issue caused by un-migrated trade rows. (https://github.com/stellar/go/issues/357)
+- Command line flags are now useable for subcommands of horizon.
+
+
+## v0.12.0 - 2017-03-08
 
 Big release this time for horizon:  We've made a number of breaking changes since v0.11.0 and have revised both our database schema as well as our data ingestion system.  We recommend that you take a backup of your horizon database prior to upgrading, just in case.  
 
@@ -223,7 +233,6 @@ This release contains the initial implementation of the "Abridged History System
 ### Added
 - Github releases are created from tagged travis builds automatically
 
-[Unreleased]: https://github.com/stellar/horizon/compare/v0.11.0...master
 [v0.11.0]: https://github.com/stellar/horizon/compare/v0.10.1...v0.11.0
 [v0.10.1]: https://github.com/stellar/horizon/compare/v0.10.0...v0.10.1
 [v0.10.0]: https://github.com/stellar/horizon/compare/v0.9.1...v0.10.0
