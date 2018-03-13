@@ -7,7 +7,6 @@ import (
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/services/horizon/internal/httpx"
 	"github.com/stellar/go/services/horizon/internal/render/hal"
-	"github.com/stellar/go/xdr"
 	"golang.org/x/net/context"
 )
 
@@ -34,9 +33,9 @@ func (res *Trade) Populate(
 	res.BaseIsSeller = row.BaseIsSeller
 
 	if row.HasPrice() {
-		res.Price = xdr.Price{
-			N: xdr.Int32(row.PriceN.Int64),
-			D: xdr.Int32(row.PriceD.Int64),
+		res.Price = &Price{
+			N: int32(row.PriceN.Int64),
+			D: int32(row.PriceD.Int64),
 		}
 	}
 
