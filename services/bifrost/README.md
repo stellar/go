@@ -29,10 +29,9 @@ Download the binary from [the release page](https://github.com/stellar/go/releas
 1. User selects what cryptocurrency she wants to move to Stellar network.
 1. A receiving Bitcoin/Ethereum address is generated.
 1. User sends funds in Bitcoin/Ethereum network.
-1. Bifrost listens to Bitcoin and Ethereum network events. When payment arrives it creates a Stellar [account](https://www.stellar.org/developers/guides/concepts/accounts.html) for the user.
-1. User creates a [trust line](https://www.stellar.org/developers/guides/concepts/assets.html) to BTC/ETH issued by Bifrost account.
-1. Bifrost sends corresponding amount of BTC/ETH to user's Stellar account.
-1. As an optional step, web application can also exchange BTC/ETH to other token in Stellar network at a given rate.
+1. Bifrost listens to Bitcoin and Ethereum network events. When payment arrives it creates a Stellar [account](https://www.stellar.org/developers/guides/concepts/accounts.html) for the user who later adds a temporary signer on the account.
+1. Using a temporary signer Bifrost creates necessary [trust lines](https://www.stellar.org/developers/guides/concepts/assets.html) and sends corresponding amount of BTC/ETH to user's Stellar account. It also exchanges BTC/ETH to the final token at a given rate.
+1. Finally a temporary signer is removed.
 
 ## Demo
 
@@ -51,6 +50,7 @@ https://bifrost.stellar.org/
 
 * `port` - bifrost server listening port
 * `using_proxy` (default `false`) - set to `true` if bifrost lives behind a proxy or load balancer
+* `access_control_allow_origin_header` (default `*`) - value of `Access-Control-Allow-Origin` headers sent by Bifrost
 * `bitcoin`
   * `master_public_key` - master public key for bitcoin keys derivation (read more in [BIP-0032](https://github.com/bitcoin/bips/blob/master/bip-0032.mediawiki))
   * `rpc_server` - URL of [bitcoin-core](https://github.com/bitcoin/bitcoin) >= 0.15.0 RPC server
@@ -58,18 +58,22 @@ https://bifrost.stellar.org/
   * `rpc_pass` (default empty) - password for RPC server (if any)
   * `testnet` (default `false`) - set to `true` if you're testing bifrost in ethereum
   * `minimum_value_btc` - minimum transaction value in BTC that will be accepted by Bifrost, everything below will be ignored.
+  * `token_price` - a price of one BTC in terms of final token (`stellar.token_asset_code`)
 * `ethereum`
   * `master_public_key` - master public key for bitcoin keys derivation (read more in [BIP-0032](https://github.com/bitcoin/bips/blob/master/bip-0032.mediawiki))
   * `rpc_server` - URL of [geth](https://github.com/ethereum/go-ethereum) >= 1.7.1 RPC server
   * `network_id` - network ID (`3` - Ropsten testnet, `1` - live Ethereum network)
   * `minimum_value_eth` - minimum transaction value in ETH that will be accepted by Bifrost, everything below will be ignored.
+  * `token_price` - a price of one ETH in terms of final token (`stellar.token_asset_code`)
 * `stellar`
   * `token_asset_code` - asset code for the token that will be distributed
-  * `issuer_public_key` - public key of the assets issuer or hot wallet,
-  * `signer_secret_key` - issuer's secret key if only one instance of Bifrost is deployed OR [channel](https://www.stellar.org/developers/guides/channels.html)'s secret key if more than one instance of Bifrost is deployed. Signer's sequence number will be consumed in transaction's sequence number.
+  * `issuer_public_key` - public key of the assets issuer (see "Account configuration" section),
+  * `distribution_public_key` - public key of the distribution account, it can be the same as issuer but it's recommended to use a separate account, it's also used to fund new accounts (see "Account configuration" section)
+  * `signer_secret_key` - distribuions accounts's secret key if only one instance of Bifrost is deployed OR [channel](https://www.stellar.org/developers/guides/channels.html)'s secret key if more than one instance of Bifrost is deployed, signer is also used as a temporary signer in new accounts (see "Account configuration" section)
   * `horizon` - URL to [horizon](https://github.com/stellar/go/tree/master/services/horizon) server
   * `network_passphrase` - Stellar network passphrase (`Public Global Stellar Network ; September 2015` for production network, `Test SDF Network ; September 2015` for test network)
   * `starting_balance` - Stellar XLM amount issued to created account (41 by default)
+  * `lock_unix_timestamp` - Unix timestamp of a date until funds will be locked in a new account (helpful if you want to disallow trading during token sale)
 * `database`
   * `type` - currently the only supported database type is: `postgres`
   * `dsn` - data source name for postgres connection (`postgres://user:password@host/dbname?sslmode=sslmode` - [more info](https://godoc.org/github.com/lib/pq#hdr-Connection_String_Parameters))
@@ -87,6 +91,26 @@ We recommend the latter.
 Here's the proposed architecture diagram of high-availability deployment:
 
 ![Architecture](./images/architecture.png)
+
+## Account configuration
+
+Issuing, Distribution and Signer Accounts can be configured in many different ways, it all depends on your needs.
+
+### Issuing Account Only
+
+This is the most basic configuration but it is not recommended. In this configuration only one account is responsible for everything: issuing and distributing assets and creating new accounts. In this configuration `stellar.issuer_public_key`, `stellar.distribution_public_key` and `stellar.signer_secret_key` represent a single account.
+
+### Issuing and Distribution Accounts
+
+Sometimes you want to have a limited supply of your token so you create a distribution account, send all the tokens to distribution (and other accounts, ex. vesting) and lock the issuing account so no new tokens can be created. In this configuration `stellar.distribution_public_key` and `stellar.signer_secret_key` represent a separate account used to distribute funds in a token sale. This account will also be used to create new accounts.
+
+### Distribution Account with multiple signers
+
+If you expect really high load you should deploy multiple Bifrost servers. To prevent Bifrost instances from consuming the same sequence numbers of the Distribution account you should use [channels](https://www.stellar.org/developers/guides/channels.html). Each Bifrost server will contain a secret key of one of the signers of Distribution account and will use Signer account as a [transaction source](https://www.stellar.org/developers/guides/concepts/transactions.html#source-account) when creating new accounts.
+
+In this configuration all servers have the same `stellar.issuer_public_key` and `stellar.distribution_public_key` values but each server has a separate `stellar.signer_secret_key` which is a signer of `stellar.distribution_public_key` account (and needs to exist in Stellar ledger).
+
+![Accounts](./images/accounts.png)
 
 ## Going to production
 

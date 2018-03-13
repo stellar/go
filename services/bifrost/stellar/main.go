@@ -25,10 +25,10 @@ type AccountConfigurator struct {
 	OnExchanged           func(destination string)
 	OnExchangedTimelocked func(destination, transaction string)
 
-	signerPublicKey           string
-	distributionSequence      uint64
-	distributionSequenceMutex sync.Mutex
-	processingCount           int
-	processingCountMutex      sync.Mutex
-	log                       *log.Entry
+	signerPublicKey      string
+	signerSequence       uint64
+	signerSequenceMutex  sync.Mutex
+	processingCount      int
+	processingCountMutex sync.Mutex
+	log                  *log.Entry
 }

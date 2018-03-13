@@ -11,9 +11,10 @@ import (
 
 func (ac *AccountConfigurator) createAccountTransaction(destination string) error {
 	transaction, err := ac.buildTransaction(
-		ac.DistributionPublicKey,
+		ac.signerPublicKey,
 		ac.SignerSecretKey,
 		build.CreateAccount(
+			build.SourceAccount{ac.DistributionPublicKey},
 			build.Destination{destination},
 			build.NativeAmount{ac.StartingBalance},
 		),
@@ -186,17 +187,17 @@ func (ac *AccountConfigurator) submitTransaction(transaction string) error {
 }
 
 func (ac *AccountConfigurator) updateSignerSequence() error {
-	ac.distributionSequenceMutex.Lock()
-	defer ac.distributionSequenceMutex.Unlock()
+	ac.signerSequenceMutex.Lock()
+	defer ac.signerSequenceMutex.Unlock()
 
-	account, err := ac.Horizon.LoadAccount(ac.DistributionPublicKey)
+	account, err := ac.Horizon.LoadAccount(ac.signerPublicKey)
 	if err != nil {
 		err = errors.Wrap(err, "Error loading issuing account")
 		ac.log.Error(err)
 		return err
 	}
 
-	ac.distributionSequence, err = strconv.ParseUint(account.Sequence, 10, 64)
+	ac.signerSequence, err = strconv.ParseUint(account.Sequence, 10, 64)
 	if err != nil {
 		err = errors.Wrap(err, "Invalid DistributionPublicKey sequence")
 		ac.log.Error(err)
@@ -207,9 +208,9 @@ func (ac *AccountConfigurator) updateSignerSequence() error {
 }
 
 func (ac *AccountConfigurator) getSignerSequence() uint64 {
-	ac.distributionSequenceMutex.Lock()
-	defer ac.distributionSequenceMutex.Unlock()
-	ac.distributionSequence++
-	sequence := ac.distributionSequence
+	ac.signerSequenceMutex.Lock()
+	defer ac.signerSequenceMutex.Unlock()
+	ac.signerSequence++
+	sequence := ac.signerSequence
 	return sequence
 }
