@@ -2,15 +2,17 @@ package history
 
 import (
 	"fmt"
+	"time"
 
 	sq "github.com/Masterminds/squirrel"
 	"github.com/stellar/go/services/horizon/internal/db2"
 	"github.com/stellar/go/support/errors"
-	. "github.com/stellar/go/support/time"
+	strtime "github.com/stellar/go/support/time"
 	"github.com/stellar/go/xdr"
-	"time"
 )
 
+// AllowedResolutions is the set of trade aggregation time windows allowed to be used as the
+// `resolution` parameter.
 var AllowedResolutions = map[time.Duration]struct{}{
 	time.Minute:        {}, //1 minute
 	time.Minute * 15:   {}, //15 minutes
@@ -19,7 +21,11 @@ var AllowedResolutions = map[time.Duration]struct{}{
 	time.Hour * 24 * 7: {}, //week
 }
 
-// Trade aggregation represents an aggregation of trades from the trades table
+// StrictResolutionFiltering represents a simple feature flag to determine whether only
+// predetermined resolutions of trade aggregations are allowed.
+var StrictResolutionFiltering = false
+
+// TradeAggregation represents an aggregation of trades from the trades table
 type TradeAggregation struct {
 	Timestamp     int64     `db:"timestamp"`
 	TradeCount    int64     `db:"count"`
@@ -35,70 +41,72 @@ type TradeAggregation struct {
 // TradeAggregationsQ is a helper struct to aid in configuring queries to
 // bucket and aggregate trades
 type TradeAggregationsQ struct {
-	baseAssetId    int64
-	counterAssetId int64
+	baseAssetID    int64
+	counterAssetID int64
 	resolution     int64
-	startTime      Millis
-	endTime        Millis
+	startTime      strtime.Millis
+	endTime        strtime.Millis
 	pagingParams   db2.PageQuery
 }
 
 // GetTradeAggregationsQ initializes a TradeAggregationsQ query builder based on the required parameters
-func (q Q) GetTradeAggregationsQ(baseAssetId int64, counterAssetId int64, resolution int64, pagingParams db2.PageQuery) (*TradeAggregationsQ, error) {
+func (q Q) GetTradeAggregationsQ(baseAssetID int64, counterAssetID int64, resolution int64, pagingParams db2.PageQuery) (*TradeAggregationsQ, error) {
 
 	//convert resolution to a duration struct
-	resolutionDuration := time.Duration(resolution)*time.Millisecond
+	resolutionDuration := time.Duration(resolution) * time.Millisecond
 
 	//check if resolution allowed
-	if _, ok := AllowedResolutions[resolutionDuration]; !ok {
-		return &TradeAggregationsQ{}, errors.New("resolution is not allowed")
+	if StrictResolutionFiltering {
+		if _, ok := AllowedResolutions[resolutionDuration]; !ok {
+			return &TradeAggregationsQ{}, errors.New("resolution is not allowed")
+		}
 	}
 
 	return &TradeAggregationsQ{
-		baseAssetId:    baseAssetId,
-		counterAssetId: counterAssetId,
+		baseAssetID:    baseAssetID,
+		counterAssetID: counterAssetID,
 		resolution:     resolution,
 		pagingParams:   pagingParams,
 	}, nil
 }
 
 // WithStartTime adds an optional lower time boundary filter to the trades being aggregated
-func (q *TradeAggregationsQ) WithStartTime(startTime Millis) *TradeAggregationsQ {
+func (q *TradeAggregationsQ) WithStartTime(startTime strtime.Millis) *TradeAggregationsQ {
 	// Round lower boundary up, if start time is in the middle of a bucket
 	q.startTime = startTime.RoundUp(q.resolution)
 	return q
 }
 
 // WithEndTime adds an upper optional time boundary filter to the trades being aggregated
-func (q *TradeAggregationsQ) WithEndTime(endTime Millis) *TradeAggregationsQ {
+func (q *TradeAggregationsQ) WithEndTime(endTime strtime.Millis) *TradeAggregationsQ {
 	// Round upper boundary down, to not deliver partial bucket
 	q.endTime = endTime.RoundDown(q.resolution)
 	return q
 }
 
-// Generate a sql statement to aggregate Trades based on given parameters
+// GetSql generates a sql statement to aggregate Trades based on given parameters
 func (q *TradeAggregationsQ) GetSql() sq.SelectBuilder {
 	var orderPreserved bool
-	orderPreserved, q.baseAssetId, q.counterAssetId = getCanonicalAssetOrder(q.baseAssetId, q.counterAssetId)
+	orderPreserved, q.baseAssetID, q.counterAssetID = getCanonicalAssetOrder(q.baseAssetID, q.counterAssetID)
 
-	var bucketSql sq.SelectBuilder
+	var bucketSQL sq.SelectBuilder
 	if orderPreserved {
-		bucketSql = bucketTrades(q.resolution)
+		bucketSQL = bucketTrades(q.resolution)
 	} else {
-		bucketSql = reverseBucketTrades(q.resolution)
+		bucketSQL = reverseBucketTrades(q.resolution)
 	}
 
-	bucketSql = bucketSql.From("history_trades").
-		Where(sq.Eq{"base_asset_id": q.baseAssetId, "counter_asset_id": q.counterAssetId})
+	bucketSQL = bucketSQL.From("history_trades").
+		Where(sq.Eq{"base_asset_id": q.baseAssetID, "counter_asset_id": q.counterAssetID})
 
 	//adjust time range and apply time filters
-	bucketSql = bucketSql.Where(sq.GtOrEq{"ledger_closed_at": q.startTime.ToTime()})
+	bucketSQL = bucketSQL.Where(sq.GtOrEq{"ledger_closed_at": q.startTime.ToTime()})
 	if !q.endTime.IsNil() {
-		bucketSql = bucketSql.Where(sq.Lt{"ledger_closed_at": q.endTime.ToTime()})
+		bucketSQL = bucketSQL.Where(sq.Lt{"ledger_closed_at": q.endTime.ToTime()})
 	}
 
 	//ensure open/close order for cases when multiple trades occur in the same ledger
-	bucketSql = bucketSql.OrderBy("history_operation_id ", "\"order\"")
+	bucketSQL = bucketSQL.OrderBy("history_operation_id ", "\"order\"")
 
 	return sq.Select(
 		"timestamp",
@@ -111,7 +119,7 @@ func (q *TradeAggregationsQ) GetSql() sq.SelectBuilder {
 		"first(price)  as open",
 		"last(price) as close",
 	).
-		FromSelect(bucketSql, "htrd").
+		FromSelect(bucketSQL, "htrd").
 		GroupBy("timestamp").
 		Limit(q.pagingParams.Limit).
 		OrderBy("timestamp " + q.pagingParams.Order)
