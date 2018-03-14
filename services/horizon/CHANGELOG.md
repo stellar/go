@@ -12,7 +12,7 @@ This release is a bug fix release for v0.12.1 and v0.12.2.  *Please see the upgr
 
 ### Changes
 
-- Remove strict validation on the `resolution` parameter for trade aggregations endpoint.  We will add htis feature back in to the next major release. 
+- Remove strict validation on the `resolution` parameter for trade aggregations endpoint.  We will add this feature back in to the next major release. 
 
 
 ## v0.12.1 - 2017-03-13
