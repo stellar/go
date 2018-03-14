@@ -256,14 +256,10 @@ func (m MemoText) MutateTransaction(o *TransactionBuilder) (err error) {
 	return
 }
 
-func (m MinTimeBound) MutateTransaction(o *TransactionBuilder) (err error) {
-    o.TX.MinTime, err = xdr.NewTimeBound(xdr.MinTime, m.Value)
-    return
-}
-
-func (m MaxTimeBound) MutateTransaction(o *TransactionBuilder) (err error) {
-    o.TX.MaxTime, err = xdr.NewTimeBound(xdr.MaxTime, m.Value)
-    return
+func (m Timebounds) MutateTransaction(o *TransactionBuilder) error {
+    o.TX.TimeBounds.MinTime = m.Mintime
+    o.TX.TimeBounds.MaxTime = m.Maxtime
+    return nil
 }
 
 // MutateTransaction for Network sets the Network ID to use when signing this transaction
