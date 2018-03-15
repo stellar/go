@@ -257,7 +257,7 @@ func (m MemoText) MutateTransaction(o *TransactionBuilder) (err error) {
 }
 
 func (m Timebounds) MutateTransaction(o *TransactionBuilder) error {
-    o.TX.TimeBounds = &xdr.TimeBounds{MinTime: xdr.Uint64(m.Mintime), MaxTime: xdr.Uint64(m.Maxtime)}
+    o.TX.TimeBounds = &xdr.TimeBounds{MinTime: xdr.Uint64(m.MinTime), MaxTime: xdr.Uint64(m.MaxTime)}
     return nil
 }
 
