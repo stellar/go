@@ -8,6 +8,7 @@ import (
 
 	"github.com/BurntSushi/toml"
 	"github.com/asaskevich/govalidator"
+	"github.com/stellar/go/amount"
 	"github.com/stellar/go/strkey"
 	"github.com/stellar/go/support/errors"
 )
@@ -64,7 +65,24 @@ func init() {
 	govalidator.SetFieldsRequiredByDefault(true)
 	govalidator.CustomTypeTagMap.Set("stellar_accountid", govalidator.CustomTypeValidator(isStellarAccountID))
 	govalidator.CustomTypeTagMap.Set("stellar_seed", govalidator.CustomTypeValidator(isStellarSeed))
+	govalidator.CustomTypeTagMap.Set("stellar_amount", govalidator.CustomTypeValidator(isStellarAmount))
 
+}
+
+func isStellarAmount(i interface{}, context interface{}) bool {
+	enc, ok := i.(string)
+
+	if !ok {
+		return false
+	}
+
+	_, err := amount.Parse(enc)
+
+	if err == nil {
+		return true
+	}
+
+	return false
 }
 
 func isStellarAccountID(i interface{}, context interface{}) bool {
