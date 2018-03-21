@@ -6,6 +6,13 @@ file.  This project adheres to [Semantic Versioning](http://semver.org/).
 As this project is pre 1.0, breaking changes may happen for minor version
 bumps.  A breaking change will get clearly notified in this log.
 
+## v0.12.3 - 2017-03-20
+
+### Bug fixes
+
+- Fix a service stutter caused by excessive `info` commands being issued from the root endpoint.
+
+
 ## v0.12.2 - 2017-03-14
 
 This release is a bug fix release for v0.12.1 and v0.12.2.  *Please see the upgrade notes below if you did not already migrate your db for v0.12.0*

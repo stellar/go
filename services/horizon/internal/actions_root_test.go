@@ -23,6 +23,7 @@ func TestRootAction(t *testing.T) {
 
 	ht.App.horizonVersion = "test-horizon"
 	ht.App.config.StellarCoreURL = server.URL
+	ht.App.UpdateStellarCoreInfo()
 
 	w := ht.Get("/")
 	if ht.Assert.Equal(200, w.Code) {
