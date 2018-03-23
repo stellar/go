@@ -208,7 +208,7 @@ func (i *System) runOnce() {
 		if rec := recover(); rec != nil {
 			err := herr.FromPanic(rec)
 			log.Errorf("import session panicked: %s", err)
-			errors.ReportToSentry(err, nil)
+			herr.ReportToSentry(err, nil)
 		}
 	}()
 
