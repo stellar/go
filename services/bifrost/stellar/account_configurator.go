@@ -56,13 +56,15 @@ func (ac *AccountConfigurator) Start() error {
 		return err
 	}
 
+	ac.accountStatus = make(map[string]Status)
+
 	go ac.logStats()
 	return nil
 }
 
 func (ac *AccountConfigurator) logStats() {
 	for {
-		ac.log.WithField("currently_processing", ac.processingCount).Info("Stats")
+		ac.log.WithField("statuses", ac.accountStatus).Info("Stats")
 		time.Sleep(15 * time.Second)
 	}
 }
@@ -78,14 +80,9 @@ func (ac *AccountConfigurator) ConfigureAccount(destination, assetCode, amount s
 	})
 	localLog.Info("Configuring Stellar account")
 
-	ac.processingCountMutex.Lock()
-	ac.processingCount++
-	ac.processingCountMutex.Unlock()
-
+	ac.setAccountStatus(destination, StatusCreatingAccount)
 	defer func() {
-		ac.processingCountMutex.Lock()
-		ac.processingCount--
-		ac.processingCountMutex.Unlock()
+		ac.removeAccountStatus(destination)
 	}()
 
 	// Check if account exists. If it is, skip creating it.
@@ -116,6 +113,8 @@ func (ac *AccountConfigurator) ConfigureAccount(destination, assetCode, amount s
 		ac.OnAccountCreated(destination)
 	}
 
+	ac.setAccountStatus(destination, StatusWaitingForSigner)
+
 	// Wait for signer changes...
 	for {
 		account, err := ac.Horizon.LoadAccount(destination)
@@ -134,6 +133,8 @@ func (ac *AccountConfigurator) ConfigureAccount(destination, assetCode, amount s
 
 	localLog.Info("Signer found")
 
+	ac.setAccountStatus(destination, StatusConfiguringAccount)
+
 	// When signer was created we can configure account in Bifrost without requiring
 	// the user to share the account's secret key.
 	localLog.Info("Sending token")
@@ -142,6 +143,8 @@ func (ac *AccountConfigurator) ConfigureAccount(destination, assetCode, amount s
 		localLog.WithField("err", err).Error("Error configuring an account")
 		return
 	}
+
+	ac.setAccountStatus(destination, StatusRemovingSigner)
 
 	if ac.LockUnixTimestamp == 0 {
 		localLog.Info("Removing temporary signer")
@@ -168,6 +171,18 @@ func (ac *AccountConfigurator) ConfigureAccount(destination, assetCode, amount s
 	}
 
 	localLog.Info("Account successully configured")
+}
+
+func (ac *AccountConfigurator) setAccountStatus(account string, status Status) {
+	ac.accountStatusMutex.Lock()
+	defer ac.accountStatusMutex.Unlock()
+	ac.accountStatus[account] = status
+}
+
+func (ac *AccountConfigurator) removeAccountStatus(account string) {
+	ac.accountStatusMutex.Lock()
+	defer ac.accountStatusMutex.Unlock()
+	delete(ac.accountStatus, account)
 }
 
 func (ac *AccountConfigurator) getAccount(account string) (horizon.Account, bool, error) {

@@ -117,7 +117,7 @@ In this configuration all servers have the same `stellar.issuer_public_key` and 
 * Remember that everyone with master public key and **any** child private key can recover your **master** private key. Do not share your master public key and obviously any private keys. Treat your master public key as if it was a private key. Read more in BIP-0032 [Security](https://github.com/bitcoin/bips/blob/master/bip-0032.mediawiki#security) section.
 * Make sure "Sell [your token] for BTC" and/or "Sell [your token] for ETH" exist in Stellar production network. If not, you can create an offer by sending a transaction with `manage_offer` operation.
 * Make sure you don't use account from `stellar.issuer_secret_key` anywhere else than bifrost. Otherwise, sequence numbers will go out of sync and bifrost will stop working. It's good idea to create a new signer on issuing account.
-* Check if public master key correct. Use CLI tool (`bifrost check-keys`) to generate a few addresses and ensure you have corresponding private keys! You should probably send test transactions to some of these addresses and check if you can withdraw funds.
+* Check if public master key is correct. Use CLI tool (`bifrost check-keys`) to generate a few addresses and ensure you have corresponding private keys! You should probably send test transactions to some of these addresses and check if you can withdraw funds.
 * Make sure `using_proxy` variable is set to correct value. Otherwise you will see your proxy IP instead of users' IPs in logs.
 * Make sure you're not connecting to testnets.
 * Deploy at least 2 bifrost, bitcoin-core, geth, stellar-core and horizon servers. Use multi-AZ database.
@@ -128,4 +128,5 @@ In this configuration all servers have the same `stellar.issuer_public_key` and 
 * Make sure you are using geth >= 1.7.1 and bitcoin-core >= 0.15.0.
 * Increase horizon rate limiting to handle expected load.
 * Make sure you configured minimum accepted value for Bitcoin and Ethereum transactions to the value you really want.
-* Make sure you start from a fresh Bifrost DB in production. If Bifrost was running, you stopped it and then started it again then all the Bitcoin and Ethereum blocks mined during that period will be processed which can take a lot of time.
+* Make sure you start from a fresh Bifrost DB in production. If Bifrost was running, you stopped it and then started it again, all the Bitcoin and Ethereum blocks mined during that period will be processed which can take a lot of time.
+* Make sure that `lock_unix_timestamp` is correct and test it. If the value is too far in the future users will be locked out of their funds.
