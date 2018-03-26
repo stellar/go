@@ -109,6 +109,12 @@ func WriteEvent(ctx context.Context, w http.ResponseWriter, e Event) {
 	w.(http.Flusher).Flush()
 }
 
+// WriteHeartbeat emits a "heartbeat" comment into the sse stream.  Low traffic connections will be
+// kept alive longer if a regular heartbeat is sent regularly.
+func WriteHeartbeat(ctx context.Context, w http.ResponseWriter) {
+	WriteEvent(ctx, w, heartbeatEvent)
+}
+
 // Upon successful completion of a query (i.e. the client didn't disconnect
 // and we didn't error) we send a "Goodbye" event.  This is a dummy event
 // so that we can set a low retry value so that the client will immediately
@@ -126,6 +132,12 @@ var helloEvent = Event{
 	Data:  "hello",
 	Event: "open",
 	Retry: 1000,
+}
+
+// heartbeatEvent represents a comment line that can be sent to the client to keep a long lived
+// connection alive.
+var heartbeatEvent = Event{
+	Comment: "bu-bump",
 }
 
 var lock sync.Mutex

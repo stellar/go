@@ -66,6 +66,7 @@ func (base *Base) Execute(action interface{}) {
 		stream := sse.NewStream(base.Ctx, base.W, base.R)
 
 		for {
+			prevSent := stream.SentCount()
 			action.SSE(stream)
 
 			if base.Err != nil {
@@ -82,6 +83,12 @@ func (base *Base) Execute(action interface{}) {
 
 			if stream.IsDone() {
 				return
+			}
+
+			// If we did not send any data this iteration (i.e. the sent counts are the same) send a
+			// heartbeat instead
+			if prevSent == stream.SentCount() {
+				stream.SendHeartbeat()
 			}
 
 			select {

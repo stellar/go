@@ -8,6 +8,7 @@ import (
 
 // Stream represents an output stream that data can be written to
 type Stream interface {
+	SendHeartbeat()
 	Send(Event)
 	SentCount() int
 	Done()
@@ -42,6 +43,16 @@ func (s *stream) Send(e Event) {
 
 	WriteEvent(s.ctx, s.w, e)
 	s.sent++
+}
+
+func (s *stream) SendHeartbeat() {
+
+	// don't send a heartbeat if we haven't even sent the preamble or an event yet
+	if s.sent == 0 {
+		return
+	}
+
+	WriteHeartbeat(s.ctx, s.w)
 }
 
 func (s *stream) SentCount() int {

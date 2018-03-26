@@ -1,6 +1,7 @@
 package sse
 
 import (
+	"context"
 	"errors"
 	"net/http/httptest"
 	"testing"
@@ -9,7 +10,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestSsePackage(t *testing.T) {
+func TestWriteEvent(t *testing.T) {
 	ctx, log := test.ContextWithLogBuffer()
 
 	t.Run("sse.WriteEvent responses", func(t *testing.T) {
@@ -39,4 +40,10 @@ func TestSsePackage(t *testing.T) {
 		assert.Contains(t, log.String(), "level=error")
 		assert.Contains(t, log.String(), "busted")
 	})
+}
+
+func TestWriteHeartbeat(t *testing.T) {
+	w := httptest.NewRecorder()
+	WriteHeartbeat(context.Background(), w)
+	assert.Equal(t, w.Body.String(), ": bu-bump\n\n")
 }
