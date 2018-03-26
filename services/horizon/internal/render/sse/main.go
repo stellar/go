@@ -13,11 +13,12 @@ import (
 // Event is the packet of data that gets sent over the wire to a connected
 // client.
 type Event struct {
-	Data  interface{}
-	Error error
-	ID    string
-	Event string
-	Retry int
+	Data    interface{}
+	Error   error
+	ID      string
+	Event   string
+	Comment string
+	Retry   int
 }
 
 // SseEvent returns the SSE compatible form of the Event... itself.
@@ -75,6 +76,8 @@ func WritePreamble(ctx context.Context, w http.ResponseWriter) bool {
 // WriteEvent does the actual work of formatting an SSE compliant message
 // sending it over the provided ResponseWriter and flushing.
 func WriteEvent(ctx context.Context, w http.ResponseWriter, e Event) {
+
+	// If the event has the error field set, emit the error and exit early
 	if e.Error != nil {
 		fmt.Fprint(w, "event: err\n")
 		fmt.Fprintf(w, "data: %s\n\n", e.Error.Error())
@@ -83,7 +86,13 @@ func WriteEvent(ctx context.Context, w http.ResponseWriter, e Event) {
 		return
 	}
 
-	// TODO: add tests to ensure retry get's properly rendered
+	// If the event has the comment field set, emit the comment and exit early
+	if e.Comment != "" {
+		fmt.Fprintf(w, ": %s\n\n", e.Comment)
+		w.(http.Flusher).Flush()
+		return
+	}
+
 	if e.Retry != 0 {
 		fmt.Fprintf(w, "retry: %d\n", e.Retry)
 	}
