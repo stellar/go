@@ -13,11 +13,12 @@ func (this Base) PagingToken() string {
 }
 
 // Populate loads this resource from `row`
-func (this *Base) Populate(ctx context.Context, row history.Effect) {
+func (this *Base) Populate(ctx context.Context, row history.Effect, ledger history.Ledger) {
 	this.ID = row.ID()
 	this.PT = row.PagingToken()
 	this.Account = row.Account
 	this.populateType(row)
+	this.LedgerCloseTime = ledger.ClosedAt
 
 	lb := hal.LinkBuilder{httpx.BaseURL(ctx)}
 	this.Links.Operation = lb.Linkf("/operations/%d", row.HistoryOperationID)

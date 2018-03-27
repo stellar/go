@@ -328,8 +328,9 @@ type TransactionSuccess struct {
 func NewEffect(
 	ctx context.Context,
 	row history.Effect,
+	ledger history.Ledger,
 ) (result hal.Pageable, err error) {
-	return effects.New(ctx, row)
+	return effects.New(ctx, row, ledger)
 }
 
 // NewOperation returns a resource of the appropriate sub-type for the provided
