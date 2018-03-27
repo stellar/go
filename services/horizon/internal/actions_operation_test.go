@@ -104,7 +104,7 @@ func TestOperationActions_Regressions(t *testing.T) {
 
 	// #202 - price is not shown on manage_offer operations
 	test.LoadScenario("trades")
-	w = ht.Get("/operations/21474840577")
+	w := ht.Get("/operations/21474840577")
 	if ht.Assert.Equal(200, w.Code) {
 		var result operations.ManageOffer
 		err := json.Unmarshal(w.Body.Bytes(), &result)
