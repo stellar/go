@@ -37,6 +37,7 @@ Should you decide not to use one of our prebuilt releases, you may instead build
 - A compatible distribution of go (we officially support go 1.6 and later)
 - [glide](https://glide.sh/)
 - [git](https://git-scm.com/)
+- [mercurial](https://www.mercurial-scm.org/)
 
 Provided your workstation satisfies the requirements above, follow the steps below:
 

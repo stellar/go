@@ -23,6 +23,8 @@ Horizon requires go 1.6 or higher to build. See (https://golang.org/doc/install)
 
 ## Building
 
+[mercurial](https://www.mercurial-scm.org/) is used during glide build.
+
 [glide](https://glide.sh/) is used for building horizon.
 
 Given you have a running golang installation, you can install this with:
