@@ -1,5 +1,5 @@
-hash: 7eac67607acc35ee775cfd4301d326fa205f7d0e95836f36dd934c5ccd9fc171
-updated: 2017-12-22T11:51:26.139292-09:00
+hash: ae3e24df8056ba43570a85aa614f6dda0f58453bf4c4dd95f79a6da2f2e334b3
+updated: 2018-03-27T16:26:10.452857+02:00
 imports:
 - name: bitbucket.org/ww/goautoneg
   version: 75cd24fc2f2c2a2088577d12123ddee5f54e0675
@@ -43,6 +43,8 @@ imports:
   - private/waiter
   - service/s3
   - service/sts
+- name: github.com/bartekn/go-bip39
+  version: a05967ea095d81c8fe4833776774cfaff8e5036c
 - name: github.com/btcsuite/btcd
   version: 4803a8291c92a1d2d41041b942a9a9e37deab065
   subpackages:
@@ -104,6 +106,8 @@ imports:
 - name: github.com/fatih/structs
   version: a720dfa8df582c51dee1b36feabb906bde1588bd
   repo: https://github.com/fatih/structs
+- name: github.com/fsnotify/fsnotify
+  version: c2828203cd70a50dcccfb2761f8b1f8ceef9a8e9
 - name: github.com/garyburd/redigo
   version: 8b1d80a45a732e6d95e22dcc2e067312c664936c
   repo: https://github.com/garyburd/redigo
@@ -131,6 +135,8 @@ imports:
   repo: https://github.com/go-sql-driver/mysql
 - name: github.com/go-stack/stack
   version: 817915b46b97fd7bb80e8ab6b69f01a53ac3eebf
+- name: github.com/goji/httpauth
+  version: 2da839ab0f4df05a6db5eb277995589dadbd4fb9
 - name: github.com/golang/groupcache
   version: 604ed5785183e59ae2789449d89e73f3a2a77987
   repo: https://github.com/golang/groupcache
@@ -148,6 +154,18 @@ imports:
   version: 572209b26df66a638573023571b5ce80983214eb
   subpackages:
   - secp256k1-go2
+- name: github.com/hashicorp/hcl
+  version: f40e974e75af4e271d97ce0fc917af5898ae7bda
+  subpackages:
+  - hcl/ast
+  - hcl/parser
+  - hcl/printer
+  - hcl/scanner
+  - hcl/strconv
+  - hcl/token
+  - json/parser
+  - json/scanner
+  - json/token
 - name: github.com/howeyc/gopass
   version: bf9dde6d0d2c004a008c27aaee91170c786f6db8
   repo: https://github.com/howeyc/gopass
@@ -228,7 +246,7 @@ imports:
   subpackages:
   - xdr3
 - name: github.com/onsi/ginkgo
-  version: 6c46eb8334b30dc55b42f1a1c725d5ce97375390
+  version: 03ffd3f46debf00c49ed76d5dbb564ef4839adfe
   subpackages:
   - config
   - extensions/table
@@ -249,7 +267,7 @@ imports:
   - reporters/stenographer/support/go-isatty
   - types
 - name: github.com/onsi/gomega
-  version: d35dcfdbfd01eaabf8da0b6b36f111ff953b68cb
+  version: 649b44d988ce182cabcda7dba01fcf3b6179ad19
   subpackages:
   - format
   - internal/assertion
@@ -262,6 +280,8 @@ imports:
   - matchers/support/goraph/node
   - matchers/support/goraph/util
   - types
+- name: github.com/pelletier/go-toml
+  version: 66540cf1fcd2c3aee6f6787dfa32a6ae9a870f12
 - name: github.com/pkg/errors
   version: 645ef00459ed84a119197bfb8d8205042c6df63d
   repo: https://github.com/pkg/errors
@@ -318,8 +338,12 @@ imports:
   - convey
   - convey/gotest
   - convey/reporting
+- name: github.com/spf13/afero
+  version: a880a37ed1804d98f64b3b7d58b5e3f8fbf421c4
+  subpackages:
+  - mem
 - name: github.com/spf13/cast
-  version: 4d07383ffe94b5e5a6fa3af9211374a4507a0184
+  version: 8965335b8c7107321228e3e3702cab9832751bac
   repo: https://github.com/spf13/cast
 - name: github.com/spf13/cobra
   version: 9c28e4bbd74e5c3ed7aacbc552b2cab7cfdfe744
@@ -331,7 +355,7 @@ imports:
   version: 4bd69631f4750a9df249ee317f4536e02cbc3c65
   repo: https://github.com/spf13/pflag
 - name: github.com/spf13/viper
-  version: db7ff930a189b98d602179d9001d33345f42b8c7
+  version: b5e8006cbee93ec955a89ab31e0e3ce3204f3736
   repo: https://github.com/spf13/viper
 - name: github.com/stretchr/objx
   version: 1a9d0bb9f541897e62256577b352fdbc1fb4fd94
@@ -348,6 +372,9 @@ imports:
   version: 2c9cfd17756470a0b7c3e4b7954bae7d11035504
 - name: github.com/bartekn/go-bip39
   version: a05967ea095d81c8fe4833776774cfaff8e5036c
+- name: github.com/tylerb/graceful
+  version: 7116c7a8115899e80197cd9e0b97998c0f97ed8e
+  repo: https://github.com/tylerb/graceful
 - name: github.com/valyala/bytebufferpool
   version: e746df99fe4a3986f4d4f79e13c1e0117ce9c2f7
   repo: https://github.com/valyala/bytebufferpool
@@ -367,7 +394,7 @@ imports:
   version: f06f290571ce81ab347174c6f7ad2e1865af41a7
   repo: https://github.com/xeipuuv/gojsonschema
 - name: github.com/y0ssar1an/q
-  version: 392ac3089fcf8c70ebbe85f4c29778b7ebe27a9f
+  version: a594777528d69da7978e1e90b205d6cdd7dda29f
 - name: github.com/yalp/jsonpath
   version: 31a79c7593bb93eb10b163650d4a3e6ca190e4dc
   repo: https://github.com/yalp/jsonpath
@@ -404,6 +431,25 @@ imports:
   version: 1f5e250e1174502017917628cc48b52fdc25b531
   subpackages:
   - unix
+- name: golang.org/x/text
+  version: 1cbadb444a806fd9430d14ad08967ed91da4fa0a
+  subpackages:
+  - encoding
+  - encoding/charmap
+  - encoding/htmlindex
+  - encoding/internal
+  - encoding/internal/identifier
+  - encoding/japanese
+  - encoding/korean
+  - encoding/simplifiedchinese
+  - encoding/traditionalchinese
+  - encoding/unicode
+  - internal/tag
+  - internal/utf8internal
+  - language
+  - runes
+  - transform
+  - unicode/norm
 - name: gopkg.in/fatih/set.v0
   version: 27c40922c40b43fe04554d8223a402af3ea333f3
 - name: gopkg.in/gavv/httpexpect.v1
@@ -424,22 +470,4 @@ imports:
 - name: gopkg.in/yaml.v2
   version: 7ad95dd0798a40da1ccdff6dff35fd177b5edf40
   repo: https://gopkg.in/yaml.v2
-testImports:
-- name: golang.org/x/text
-  version: 1cbadb444a806fd9430d14ad08967ed91da4fa0a
-  subpackages:
-  - encoding
-  - encoding/charmap
-  - encoding/htmlindex
-  - encoding/internal
-  - encoding/internal/identifier
-  - encoding/japanese
-  - encoding/korean
-  - encoding/simplifiedchinese
-  - encoding/traditionalchinese
-  - encoding/unicode
-  - internal/tag
-  - internal/utf8internal
-  - language
-  - runes
-  - transform
+testImports: []

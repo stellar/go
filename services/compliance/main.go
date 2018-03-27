@@ -2,98 +2,214 @@ package main
 
 import (
 	"fmt"
+	"net/http"
 	"os"
+	"runtime"
+	"time"
 
-	"github.com/go-chi/chi"
+	log "github.com/sirupsen/logrus"
+
+	"github.com/facebookgo/inject"
+	"github.com/goji/httpauth"
 	"github.com/spf13/cobra"
-	complianceHandler "github.com/stellar/go/handlers/compliance"
-	complianceProtocol "github.com/stellar/go/protocols/compliance"
-	"github.com/stellar/go/support/app"
-	"github.com/stellar/go/support/config"
-	"github.com/stellar/go/support/errors"
-	"github.com/stellar/go/support/http"
-	"github.com/stellar/go/support/log"
+	"github.com/spf13/viper"
+	"github.com/stellar/go/clients/federation"
+	"github.com/stellar/go/clients/stellartoml"
+	"github.com/stellar/go/services/bridge/crypto"
+	"github.com/stellar/go/services/bridge/db"
+	"github.com/stellar/go/services/bridge/db/drivers/mysql"
+	"github.com/stellar/go/services/bridge/db/drivers/postgres"
+	"github.com/stellar/go/services/bridge/server"
+	"github.com/stellar/go/services/compliance/config"
+	"github.com/stellar/go/services/compliance/handlers"
+	"github.com/zenazn/goji/graceful"
+	"github.com/zenazn/goji/web"
 )
 
-// Config represents the configuration of a federation server
-type Config struct {
-	ExternalPort      int    `valid:"required" toml:"external_port"`
-	InternalPort      int    `valid:"required" toml:"internal_port"`
-	NeedsAuth         bool   `valid:"required" toml:"needs_auth"`
-	NetworkPassphrase string `valid:"required" toml:"network_passphrase"`
-	Keys              struct {
-		SigningSeed string `valid:"stellar_seed,required" toml:"signing_seed"`
-	} `valid:"required"`
-	Callbacks struct {
-		Sanctions   string `valid:"url,optional" toml:"sanctions"`
-		AskUser     string `valid:"url,optional" toml:"ask_user"`
-		GetUserData string `valid:"url,optional" toml:"get_user_data"`
-	} `valid:"optional"`
-	TLS *config.TLS `valid:"optional"`
-}
+var app *App
+var rootCmd *cobra.Command
+var migrateFlag bool
+var configFile string
+var versionFlag bool
+var version = "N/A"
 
 func main() {
-	rootCmd := &cobra.Command{
-		Use:   "compliance",
-		Short: "stellar compliance server",
-		Long:  "",
-		Run:   run,
-	}
-
-	rootCmd.PersistentFlags().String("conf", "./compliance.cfg", "config file path")
+	runtime.GOMAXPROCS(runtime.NumCPU())
 	rootCmd.Execute()
 }
 
-func run(cmd *cobra.Command, args []string) {
-	var (
-		cfg     Config
-		cfgPath = cmd.PersistentFlags().Lookup("conf").Value.String()
-	)
-	err := config.Read(cfgPath, &cfg)
-	log.SetLevel(log.InfoLevel)
-
-	if err != nil {
-		switch cause := errors.Cause(err).(type) {
-		case *config.InvalidConfigError:
-			log.Error("config file: ", cause)
-		default:
-			log.Error(err)
-		}
-		os.Exit(1)
+func init() {
+	rootCmd = &cobra.Command{
+		Use:   "compliance",
+		Short: "stellar compliance server",
+		Long:  `stellar compliance server`,
+		Run:   run,
 	}
 
-	strategy := &complianceHandler.CallbackStrategy{
-		SanctionsCheckURL: cfg.Callbacks.Sanctions,
-		GetUserDataURL:    cfg.Callbacks.GetUserData,
-	}
-
-	mux := initMux(strategy)
-	addr := fmt.Sprintf("0.0.0.0:%d", cfg.ExternalPort)
-
-	http.Run(http.Config{
-		ListenAddr: addr,
-		Handler:    mux,
-		TLS:        cfg.TLS,
-		OnStarting: func() {
-			log.Infof("starting compliance server - %s", app.Version())
-			log.Infof("listening on %s", addr)
-		},
-	})
+	rootCmd.Flags().BoolVarP(&migrateFlag, "migrate-db", "", false, "migrate DB to the newest schema version")
+	rootCmd.Flags().StringVarP(&configFile, "config", "c", "compliance.cfg", "path to config file")
+	rootCmd.Flags().BoolVarP(&versionFlag, "version", "v", false, "displays compliance server version")
 }
 
-func initMux(strategy complianceHandler.Strategy) *chi.Mux {
-	mux := http.NewAPIMux(false)
-
-	authHandler := &complianceHandler.AuthHandler{
-		Strategy: strategy,
-		PersistTransaction: func(data complianceProtocol.AuthData) error {
-			fmt.Println("Persist")
-			return nil
-		},
+func run(cmd *cobra.Command, args []string) {
+	viper.SetConfigFile(configFile)
+	viper.SetConfigType("toml")
+	err := viper.ReadInConfig()
+	if err != nil {
+		log.Fatal("Error reading "+configFile+" file: ", err)
 	}
 
-	mux.Post("/auth", authHandler.ServeHTTP)
-	mux.Post("/auth/", authHandler.ServeHTTP)
+	var config config.Config
+	err = viper.Unmarshal(&config)
 
-	return mux
+	err = config.Validate()
+	if err != nil {
+		log.Fatal(err.Error())
+		return
+	}
+
+	if config.LogFormat == "json" {
+		log.SetFormatter(&log.JSONFormatter{})
+	}
+
+	app, err = NewApp(config, migrateFlag, versionFlag, version)
+
+	if err != nil {
+		log.Fatal(err.Error())
+		return
+	}
+
+	app.Serve()
+}
+
+// App is the application object
+type App struct {
+	config         config.Config
+	requestHandler handlers.RequestHandler
+}
+
+// NewApp constructs an new App instance from the provided config.
+func NewApp(config config.Config, migrateFlag bool, versionFlag bool, version string) (app *App, err error) {
+	var g inject.Graph
+
+	var driver db.Driver
+	switch config.Database.Type {
+	case "mysql":
+		driver = &mysql.Driver{}
+	case "postgres":
+		driver = &postgres.Driver{}
+	default:
+		return nil, fmt.Errorf("%s database has no driver", config.Database.Type)
+	}
+
+	err = driver.Init(config.Database.URL)
+	if err != nil {
+		return
+	}
+
+	entityManager := db.NewEntityManager(driver)
+	repository := db.NewRepository(driver)
+
+	if migrateFlag {
+		var migrationsApplied int
+		migrationsApplied, err = driver.MigrateUp("compliance")
+		if err != nil {
+			return
+		}
+
+		log.Info("Applied migrations: ", migrationsApplied)
+		os.Exit(0)
+		return
+	}
+
+	if versionFlag {
+		fmt.Printf("Compliance Server Version: %s \n", version)
+		os.Exit(0)
+		return
+	}
+
+	requestHandler := handlers.RequestHandler{}
+
+	httpClientWithTimeout := http.Client{
+		Timeout: 10 * time.Second,
+	}
+
+	stellartomlClient := stellartoml.Client{
+		HTTP: &httpClientWithTimeout,
+	}
+
+	federationClient := federation.Client{
+		HTTP:        &httpClientWithTimeout,
+		StellarTOML: &stellartomlClient,
+	}
+
+	err = g.Provide(
+		&inject.Object{Value: &requestHandler},
+		&inject.Object{Value: &config},
+		&inject.Object{Value: &entityManager},
+		&inject.Object{Value: &repository},
+		&inject.Object{Value: &crypto.SignerVerifier{}},
+		&inject.Object{Value: &stellartomlClient},
+		&inject.Object{Value: &federationClient},
+		&inject.Object{Value: &httpClientWithTimeout},
+		&inject.Object{Value: &handlers.NonceGenerator{}},
+	)
+
+	if err != nil {
+		log.Fatal("Injector: ", err)
+	}
+
+	if err := g.Populate(); err != nil {
+		log.Fatal("Injector: ", err)
+	}
+
+	app = &App{
+		config:         config,
+		requestHandler: requestHandler,
+	}
+	return
+}
+
+// Serve starts the server
+func (a *App) Serve() {
+	// External endpoints
+	external := web.New()
+	external.Use(server.StripTrailingSlashMiddleware())
+	external.Use(server.HeadersMiddleware())
+	external.Post("/", a.requestHandler.HandlerAuth)
+	external.Get("/tx_status", httpauth.SimpleBasicAuth(a.config.TxStatusAuth.Username, a.config.TxStatusAuth.Password)(http.HandlerFunc(a.requestHandler.HandlerTxStatus)))
+	externalPortString := fmt.Sprintf(":%d", *a.config.ExternalPort)
+	log.Println("Starting external server on", externalPortString)
+	go func() {
+		var err error
+		if a.config.TLS.CertificateFile != "" && a.config.TLS.PrivateKeyFile != "" {
+			err = graceful.ListenAndServeTLS(
+				externalPortString,
+				a.config.TLS.CertificateFile,
+				a.config.TLS.PrivateKeyFile,
+				external,
+			)
+		} else {
+			err = graceful.ListenAndServe(externalPortString, external)
+		}
+
+		if err != nil {
+			log.Fatal(err)
+		}
+	}()
+
+	// Internal endpoints
+	internal := web.New()
+	internal.Use(server.StripTrailingSlashMiddleware())
+	internal.Use(server.HeadersMiddleware())
+	internal.Post("/send", a.requestHandler.HandlerSend)
+	internal.Post("/receive", a.requestHandler.HandlerReceive)
+	internal.Post("/allow_access", a.requestHandler.HandlerAllowAccess)
+	internal.Post("/remove_access", a.requestHandler.HandlerRemoveAccess)
+	internalPortString := fmt.Sprintf(":%d", *a.config.InternalPort)
+	log.Println("Starting internal server on", internalPortString)
+	err := graceful.ListenAndServe(internalPortString, internal)
+	if err != nil {
+		log.Fatal(err)
+	}
 }
