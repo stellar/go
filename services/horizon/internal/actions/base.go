@@ -66,18 +66,9 @@ func (base *Base) Execute(action interface{}) {
 		stream := sse.NewStream(base.Ctx, base.W, base.R)
 
 		for {
-			prevSent := stream.SentCount()
 			action.SSE(stream)
 
 			if base.Err != nil {
-				// in the case that we haven't yet sent an event, is also means we
-				// havent sent the preamble, meaning we should simply return the normal
-				// error.
-				if stream.SentCount() == 0 {
-					problem.Render(base.Ctx, base.W, base.Err)
-					return
-				}
-
 				stream.Err(base.Err)
 			}
 
@@ -85,11 +76,7 @@ func (base *Base) Execute(action interface{}) {
 				return
 			}
 
-			// If we did not send any data this iteration (i.e. the sent counts are the same) send a
-			// heartbeat instead
-			if prevSent == stream.SentCount() {
-				stream.SendHeartbeat()
-			}
+			stream.TrySendHeartbeat()
 
 			select {
 			case <-base.Ctx.Done():

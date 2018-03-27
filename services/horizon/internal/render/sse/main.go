@@ -1,14 +1,19 @@
 package sse
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"sync"
+	"time"
 
 	"github.com/stellar/go/support/log"
-	"golang.org/x/net/context"
 )
+
+// HeartbeatDelay represents the amount of time a stream will wait before sending a new heartbeat
+// down an idle stream.
+const HeartbeatDelay = 5 * time.Second
 
 // Event is the packet of data that gets sent over the wire to a connected
 // client.
