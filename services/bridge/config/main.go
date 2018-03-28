@@ -10,41 +10,41 @@ import (
 
 // Config contains config params of the bridge server
 type Config struct {
-	Port              *int
-	Horizon           string
-	Compliance        string
-	LogFormat         string `mapstructure:"log_format"`
-	MACKey            string `mapstructure:"mac_key"`
-	APIKey            string `mapstructure:"api_key"`
-	NetworkPassphrase string `mapstructure:"network_passphrase"`
-	Develop           bool
-	Assets            []Asset
+	Port              *int    `valid:"required"`
+	Horizon           string  `valid:"optional"`
+	Compliance        string  `valid:"optional"`
+	LogFormat         string  `valid:"optional" toml:"log_format"`
+	MACKey            string  `valid:"optional" toml:"mac_key"`
+	APIKey            string  `valid:"optional" toml:"api_key"`
+	NetworkPassphrase string  `valid:"optional" toml:"network_passphrase"`
+	Develop           bool    `valid:"optional"`
+	Assets            []Asset `valid:"optional"`
 	Database          struct {
-		Type string
-		URL  string
-	}
-	Accounts
-	Callbacks
+		Type string `valid:"required"`
+		URL  string `valid:"required"`
+	} `valid:"optional"`
+	Accounts  `valid:"optional" toml:"accounts"`
+	Callbacks `valid:"optional" toml:"callbacks"`
 }
 
 // Asset represents credit asset
 type Asset struct {
-	Code   string
-	Issuer string
+	Code   string `valid:"required"`
+	Issuer string `valid:"optional"`
 }
 
 // Accounts contains values of `accounts` config group
 type Accounts struct {
-	AuthorizingSeed    string `mapstructure:"authorizing_seed"`
-	BaseSeed           string `mapstructure:"base_seed"`
-	IssuingAccountID   string `mapstructure:"issuing_account_id"`
-	ReceivingAccountID string `mapstructure:"receiving_account_id"`
+	AuthorizingSeed    string `valid:"optional" toml:"authorizing_seed"`
+	BaseSeed           string `valid:"optional" toml:"base_seed"`
+	IssuingAccountID   string `valid:"optional" toml:"issuing_account_id"`
+	ReceivingAccountID string `valid:"optional" toml:"receiving_account_id"`
 }
 
 // Callbacks contains values of `callbacks` config group
 type Callbacks struct {
-	Receive string
-	Error   string
+	Receive string `valid:"optional"`
+	Error   string `valid:"optional"`
 }
 
 // Validate validates config and returns error if any of config values is incorrect

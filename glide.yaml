@@ -216,7 +216,7 @@ import:
   subpackages:
   - convey
 - package: github.com/spf13/cast
-  version: 8965335b8c7107321228e3e3702cab9832751bac
+  version: 4d07383ffe94b5e5a6fa3af9211374a4507a0184
   repo: https://github.com/spf13/cast
 - package: github.com/spf13/jwalterweatherman
   version: 3d60171a64319ef63c78bd45bd60e6eab1e75f8b
@@ -225,7 +225,7 @@ import:
   version: 4bd69631f4750a9df249ee317f4536e02cbc3c65
   repo: https://github.com/spf13/pflag
 - package: github.com/spf13/viper
-  version: b5e8006cbee93ec955a89ab31e0e3ce3204f3736
+  version: db7ff930a189b98d602179d9001d33345f42b8c7
   repo: https://github.com/spf13/viper
 - package: github.com/stretchr/objx
   version: 1a9d0bb9f541897e62256577b352fdbc1fb4fd94

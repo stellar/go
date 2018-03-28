@@ -12,7 +12,6 @@ import (
 	"github.com/facebookgo/inject"
 	"github.com/goji/httpauth"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 	"github.com/stellar/go/clients/federation"
 	"github.com/stellar/go/clients/stellartoml"
 	"github.com/stellar/go/services/bridge/crypto"
@@ -22,6 +21,8 @@ import (
 	"github.com/stellar/go/services/bridge/server"
 	"github.com/stellar/go/services/compliance/config"
 	"github.com/stellar/go/services/compliance/handlers"
+	supportConfig "github.com/stellar/go/support/config"
+	"github.com/stellar/go/support/errors"
 	"github.com/zenazn/goji/graceful"
 	"github.com/zenazn/goji/web"
 )
@@ -52,27 +53,30 @@ func init() {
 }
 
 func run(cmd *cobra.Command, args []string) {
-	viper.SetConfigFile(configFile)
-	viper.SetConfigType("toml")
-	err := viper.ReadInConfig()
+	var cfg config.Config
+
+	err := supportConfig.Read(configFile, &cfg)
 	if err != nil {
-		log.Fatal("Error reading "+configFile+" file: ", err)
+		switch cause := errors.Cause(err).(type) {
+		case *supportConfig.InvalidConfigError:
+			log.Error("config file: ", cause)
+		default:
+			log.Error(err)
+		}
+		os.Exit(-1)
 	}
 
-	var config config.Config
-	err = viper.Unmarshal(&config)
-
-	err = config.Validate()
+	err = cfg.Validate()
 	if err != nil {
 		log.Fatal(err.Error())
 		return
 	}
 
-	if config.LogFormat == "json" {
+	if cfg.LogFormat == "json" {
 		log.SetFormatter(&log.JSONFormatter{})
 	}
 
-	app, err = NewApp(config, migrateFlag, versionFlag, version)
+	app, err = NewApp(cfg, migrateFlag, versionFlag, version)
 
 	if err != nil {
 		log.Fatal(err.Error())
