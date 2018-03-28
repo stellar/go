@@ -7,6 +7,7 @@ import (
 	"goji.io"
 	"goji.io/pat"
 
+	"github.com/go-chi/chi/middleware"
 	"github.com/rs/cors"
 	"github.com/spf13/cobra"
 	"github.com/stellar/go/handlers/federation"
@@ -138,8 +139,9 @@ func initMux(driver federation.Driver) *goji.Mux {
 	})
 	mux.Use(c.Handler)
 	mux.Use(log.HTTPMiddleware)
+	mux.Use(middleware.DefaultCompress)
 
-	fed := &federation.Handler{driver}
+	fed := &federation.Handler{Driver: driver}
 
 	mux.Handle(pat.Get("/federation"), fed)
 	mux.Handle(pat.Get("/federation/"), fed)
