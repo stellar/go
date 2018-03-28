@@ -1,10 +1,11 @@
 package resource
 
 import (
+	"context"
+
 	"github.com/stellar/go/services/horizon/internal/httpx"
 	"github.com/stellar/go/services/horizon/internal/ledger"
 	"github.com/stellar/go/services/horizon/internal/render/hal"
-	"golang.org/x/net/context"
 )
 
 // Populate fills in the details

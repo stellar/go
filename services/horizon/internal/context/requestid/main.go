@@ -3,9 +3,10 @@
 package requestid
 
 import (
+	"context"
+
 	"github.com/zenazn/goji/web"
 	"github.com/zenazn/goji/web/middleware"
-	"golang.org/x/net/context"
 )
 
 var key = 0

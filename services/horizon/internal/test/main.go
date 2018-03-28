@@ -5,6 +5,7 @@ package test
 
 import (
 	"bytes"
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -15,7 +16,6 @@ import (
 	tdb "github.com/stellar/go/services/horizon/internal/test/db"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"golang.org/x/net/context"
 )
 
 // StaticMockServer is a test helper that records it's last request

@@ -1,11 +1,11 @@
 package problem
 
 import (
+	"context"
 	"net/http"
 
 	"github.com/stellar/go/services/horizon/internal/context/requestid"
 	"github.com/stellar/go/support/render/problem"
-	"golang.org/x/net/context"
 )
 
 // Inflate expands a problem with contextal information, including setting basic info.

@@ -1,10 +1,9 @@
 package httpx
 
 import (
+	"context"
 	"net/http"
 	"testing"
-
-	"golang.org/x/net/context"
 
 	. "github.com/smartystreets/goconvey/convey"
 )

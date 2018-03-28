@@ -2,11 +2,11 @@ package effects
 
 import (
 	"time"
+	"context"
 
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/services/horizon/internal/render/hal"
 	"github.com/stellar/go/services/horizon/internal/resource/base"
-	"golang.org/x/net/context"
 )
 
 var TypeNames = map[history.EffectType]string{

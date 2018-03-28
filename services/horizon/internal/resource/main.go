@@ -3,6 +3,7 @@
 package resource
 
 import (
+	"context"
 	"time"
 
 	"github.com/stellar/go/services/horizon/internal/db2/history"
@@ -13,7 +14,6 @@ import (
 	"github.com/stellar/go/strkey"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
-	"golang.org/x/net/context"
 )
 
 // KeyTypeNames maps from strkey version bytes into json string values to use in
