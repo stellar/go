@@ -2,10 +2,9 @@ package log
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"testing"
-
-	"golang.org/x/net/context"
 
 	ge "github.com/go-errors/errors"
 	"github.com/sirupsen/logrus"

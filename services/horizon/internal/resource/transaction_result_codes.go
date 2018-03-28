@@ -1,8 +1,9 @@
 package resource
 
 import (
+	"context"
+
 	"github.com/stellar/go/services/horizon/internal/txsub"
-	"golang.org/x/net/context"
 )
 
 // Populate fills out the details

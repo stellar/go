@@ -1,13 +1,13 @@
 package resource
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/stellar/go/amount"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/services/horizon/internal/httpx"
 	"github.com/stellar/go/services/horizon/internal/render/hal"
-	"golang.org/x/net/context"
 )
 
 // Populate fills out the details of a trade using a row from the history_trades

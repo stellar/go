@@ -1,6 +1,7 @@
 package stress
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -16,7 +17,6 @@ import (
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/services/bifrost/common"
 	"github.com/stellar/go/services/bifrost/server"
-	"golang.org/x/net/context"
 )
 
 func (u *Users) Start(accounts chan<- server.GenerateAddressResponse) {

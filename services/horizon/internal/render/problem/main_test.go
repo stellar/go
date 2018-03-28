@@ -1,13 +1,13 @@
 package problem
 
 import (
+	"context"
 	"net/http/httptest"
 	"testing"
 
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stellar/go/services/horizon/internal/context/requestid"
 	"github.com/stellar/go/support/render/problem"
-	"golang.org/x/net/context"
 )
 
 func TestProblemPackage(t *testing.T) {

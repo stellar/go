@@ -1,19 +1,17 @@
 package horizon
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"runtime"
 	"sync"
 	"time"
 
-	"github.com/stellar/go/clients/stellarcore"
-
-	"github.com/stellar/go/support/app"
-
 	"github.com/garyburd/redigo/redis"
 	metrics "github.com/rcrowley/go-metrics"
 	"github.com/stellar/go/build"
+	"github.com/stellar/go/clients/stellarcore"
 	"github.com/stellar/go/services/horizon/internal/db2/core"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/services/horizon/internal/ingest"
@@ -21,10 +19,10 @@ import (
 	"github.com/stellar/go/services/horizon/internal/log"
 	"github.com/stellar/go/services/horizon/internal/paths"
 	"github.com/stellar/go/services/horizon/internal/reap"
-	"github.com/stellar/go/services/horizon/internal/txsub"
 	"github.com/stellar/go/services/horizon/internal/render/sse"
+	"github.com/stellar/go/services/horizon/internal/txsub"
+	"github.com/stellar/go/support/app"
 	"github.com/stellar/go/support/db"
-	"golang.org/x/net/context"
 	"golang.org/x/net/http2"
 	graceful "gopkg.in/tylerb/graceful.v1"
 )
