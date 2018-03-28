@@ -1,13 +1,14 @@
 package sse
 
 import (
+	"context"
 	"net/http"
-
-	"golang.org/x/net/context"
+	"time"
 )
 
 // Stream represents an output stream that data can be written to
 type Stream interface {
+	TrySendHeartbeat()
 	Send(Event)
 	SentCount() int
 	Done()
@@ -18,30 +19,36 @@ type Stream interface {
 
 // NewStream creates a new stream against the provided response writer
 func NewStream(ctx context.Context, w http.ResponseWriter, r *http.Request) Stream {
-	result := &stream{ctx, w, r, false, 0, 0}
+	result := &stream{ctx, w, r, false, 0, 0, time.Now()}
+	result.init()
 	return result
 }
 
 type stream struct {
-	ctx   context.Context
-	w     http.ResponseWriter
-	r     *http.Request
-	done  bool
-	sent  int
-	limit int
+	ctx         context.Context
+	w           http.ResponseWriter
+	r           *http.Request
+	done        bool
+	sent        int
+	limit       int
+	lastWriteAt time.Time
 }
 
 func (s *stream) Send(e Event) {
-	if s.sent == 0 {
-		ok := WritePreamble(s.ctx, s.w)
-		if !ok {
-			s.done = true
-			return
-		}
+	WriteEvent(s.ctx, s.w, e)
+	s.lastWriteAt = time.Now()
+	s.sent++
+}
+
+// TrySendHeartbeat will send
+func (s *stream) TrySendHeartbeat() {
+
+	if time.Since(s.lastWriteAt) < HeartbeatDelay {
+		return
 	}
 
-	WriteEvent(s.ctx, s.w, e)
-	s.sent++
+	WriteHeartbeat(s.ctx, s.w)
+	s.lastWriteAt = time.Now()
 }
 
 func (s *stream) SentCount() int {
@@ -68,4 +75,13 @@ func (s *stream) IsDone() bool {
 func (s *stream) Err(err error) {
 	WriteEvent(s.ctx, s.w, Event{Error: err})
 	s.done = true
+}
+
+func (s *stream) init() {
+	ok := WritePreamble(s.ctx, s.w)
+	if !ok {
+		s.done = true
+	}
+
+	return
 }
