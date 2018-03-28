@@ -1,13 +1,13 @@
 package operations
 
 import (
+	"context"
 	"time"
 
 	"github.com/stellar/go/services/horizon/internal/db2/history"
-	"github.com/stellar/go/services/horizon/internal/resource/base"
 	"github.com/stellar/go/services/horizon/internal/render/hal"
+	"github.com/stellar/go/services/horizon/internal/resource/base"
 	"github.com/stellar/go/xdr"
-	"golang.org/x/net/context"
 )
 
 // TypeNames maps from operation type to the string used to represent that type

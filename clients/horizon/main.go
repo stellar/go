@@ -7,13 +7,13 @@
 package horizon
 
 import (
+	"context"
 	"net/http"
 	"net/url"
 	"sync"
 
 	"github.com/stellar/go/build"
 	"github.com/stellar/go/support/errors"
-	"golang.org/x/net/context"
 )
 
 // DefaultTestNetClient is a default client to connect to test network

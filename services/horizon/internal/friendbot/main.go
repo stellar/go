@@ -1,13 +1,13 @@
 package friendbot
 
 import (
+	"context"
 	"errors"
 	"sync"
 
 	. "github.com/stellar/go/build"
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/services/horizon/internal/txsub"
-	"golang.org/x/net/context"
 )
 
 // Bot represents the friendbot subsystem.

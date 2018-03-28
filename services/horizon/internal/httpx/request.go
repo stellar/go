@@ -1,9 +1,8 @@
 package httpx
 
 import (
+	"context"
 	"net/http"
-
-	"golang.org/x/net/context"
 )
 
 var requestContextKey = 0

@@ -1,16 +1,15 @@
 package actions
 
 import (
+	"context"
 	"net/http"
 
 	gctx "github.com/goji/context"
-
 	"github.com/stellar/go/services/horizon/internal/render"
 	hProblem "github.com/stellar/go/services/horizon/internal/render/problem"
 	"github.com/stellar/go/services/horizon/internal/render/sse"
 	"github.com/stellar/go/support/render/problem"
 	"github.com/zenazn/goji/web"
-	"golang.org/x/net/context"
 )
 
 // Base is a helper struct you can use as part of a custom action via

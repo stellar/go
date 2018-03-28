@@ -1,11 +1,11 @@
 package requestid
 
 import (
+	"context"
 	"testing"
 
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/zenazn/goji/web"
-	"golang.org/x/net/context"
 )
 
 func TestRequestId(t *testing.T) {

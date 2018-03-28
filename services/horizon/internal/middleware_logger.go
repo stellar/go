@@ -1,11 +1,10 @@
 package horizon
 
 import (
+	"context"
 	"net/http"
 	"strings"
 	"time"
-
-	"golang.org/x/net/context"
 
 	gctx "github.com/goji/context"
 	"github.com/stellar/go/services/horizon/internal/log"

@@ -1,13 +1,13 @@
 package problem
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
 
 	"github.com/go-errors/errors"
 	"github.com/stellar/go/support/log"
-	"golang.org/x/net/context"
 )
 
 // P is a struct that represents an error response to be rendered to a connected

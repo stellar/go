@@ -1,8 +1,9 @@
 package resource
 
 import (
+	"context"
+
 	"github.com/stellar/go/xdr"
-	"golang.org/x/net/context"
 )
 
 func (this *Asset) Populate(ctx context.Context, asset xdr.Asset) error {
