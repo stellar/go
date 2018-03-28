@@ -236,9 +236,6 @@ import:
 - package: github.com/stretchr/objx
   version: 1a9d0bb9f541897e62256577b352fdbc1fb4fd94
   repo: https://github.com/stretchr/objx
-- package: github.com/tylerb/graceful
-  version: 7116c7a8115899e80197cd9e0b97998c0f97ed8e
-  repo: https://github.com/tylerb/graceful
 - package: github.com/valyala/bytebufferpool
   version: e746df99fe4a3986f4d4f79e13c1e0117ce9c2f7
   repo: https://github.com/valyala/bytebufferpool

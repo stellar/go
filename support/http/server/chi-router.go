@@ -7,8 +7,8 @@ import (
 
 	"github.com/go-chi/chi"
 	"github.com/stellar/go/support/log"
-	"github.com/tylerb/graceful"
 	"golang.org/x/net/http2"
+	"gopkg.in/tylerb/graceful.v1"
 )
 
 // TLSConfig specifies the TLS portion of a config
