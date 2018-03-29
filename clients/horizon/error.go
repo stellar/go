@@ -53,6 +53,39 @@ func (herr *Error) Envelope() (*xdr.TransactionEnvelope, error) {
 	return &result, nil
 }
 
+// Result extracts the transaction result.
+func (herr *Error) Result() (*xdr.TransactionResult, error) {
+	b64, err := herr.ResultString()
+	if err != nil {
+		return nil, err
+	}
+
+	var result xdr.TransactionResult
+	err = xdr.SafeUnmarshalBase64(b64, &result)
+	if err != nil {
+		return nil, errors.Wrap(err, "xdr decode failed")
+	}
+
+	return &result, nil
+}
+
+// ResultString extracts the transaction result as a string.
+func (herr *Error) ResultString() (string, error) {
+	raw, ok := herr.Problem.Extras["result_xdr"]
+	if !ok {
+		return "", ErrResultNotPopulated
+	}
+
+	var b64 string
+
+	err := json.Unmarshal(raw, &b64)
+	if err != nil {
+		return "", errors.Wrap(err, "json decode failed")
+	}
+
+	return b64, nil
+}
+
 // ResultCodes extracts a result code summary from the error, if possible.
 func (herr *Error) ResultCodes() (*TransactionResultCodes, error) {
 

@@ -7,6 +7,7 @@ package http
 
 import (
 	stdhttp "net/http"
+	"net/url"
 	"os"
 	"time"
 
@@ -31,6 +32,12 @@ const DefaultListenAddr = "0.0.0.0:8080"
 // believe that most servers should use a sane timeout and prefer one for the
 // default configuration.
 const DefaultShutdownGracePeriod = 10 * time.Second
+
+// SimpleHTTPClientInterface helps mocking http.Client in tests
+type SimpleHTTPClientInterface interface {
+	PostForm(url string, data url.Values) (*stdhttp.Response, error)
+	Get(url string) (*stdhttp.Response, error)
+}
 
 // Config represents the configuration of an http server that can be provided to
 // `Run`.

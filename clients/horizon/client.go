@@ -222,13 +222,25 @@ func (c *Client) LoadTrades(
 }
 
 func addAssetToQuery(v map[string][]string, assetPrefix string, asset Asset) {
-	if (asset.Type == "native") {
-		v[assetPrefix+"_asset_type"] = []string{asset.Type};
+	if asset.Type == "native" {
+		v[assetPrefix+"_asset_type"] = []string{asset.Type}
 	} else {
-		v[assetPrefix+"_asset_type"] = []string{asset.Type};
-		v[assetPrefix+"_asset_code"] = []string{asset.Code};
-		v[assetPrefix+"_asset_issuer"] = []string{asset.Issuer};
+		v[assetPrefix+"_asset_type"] = []string{asset.Type}
+		v[assetPrefix+"_asset_code"] = []string{asset.Code}
+		v[assetPrefix+"_asset_issuer"] = []string{asset.Issuer}
 	}
+}
+
+// LoadOperation loads a single operation from Horizon server
+func (c *Client) LoadOperation(operationID string) (payment Payment, err error) {
+	c.fixURLOnce.Do(c.fixURL)
+	resp, err := c.HTTP.Get(c.URL + "/operations/" + operationID)
+	if err != nil {
+		return
+	}
+
+	err = decodeResponse(resp, &payment)
+	return
 }
 
 // LoadMemo loads memo for a transaction in Payment
@@ -239,6 +251,33 @@ func (c *Client) LoadMemo(p *Payment) (err error) {
 	}
 	defer res.Body.Close()
 	return json.NewDecoder(res.Body).Decode(&p.Memo)
+}
+
+// LoadAccountMergeAmount loads `account_merge` operation amount from it's effects
+func (c *Client) LoadAccountMergeAmount(p *Payment) error {
+	if p.Type != "account_merge" {
+		return errors.New("Not `account_merge` operation")
+	}
+
+	res, err := c.HTTP.Get(p.Links.Effects.Href)
+	if err != nil {
+		return errors.Wrap(err, "Error getting effects for operation")
+	}
+	defer res.Body.Close()
+	var page EffectsPage
+	err = json.NewDecoder(res.Body).Decode(&page)
+	if err != nil {
+		return errors.Wrap(err, "Error decoding effects page")
+	}
+
+	for _, effect := range page.Embedded.Records {
+		if effect.Type == "account_credited" {
+			p.Amount = effect.Amount
+			return nil
+		}
+	}
+
+	return errors.New("Could not find `account_credited` effect in `account_merge` operation effects")
 }
 
 // SequenceForAccount implements build.SequenceProvider

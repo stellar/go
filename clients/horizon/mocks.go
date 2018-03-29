@@ -73,10 +73,22 @@ func (m *MockClient) LoadTrades(
 	return a.Get(0).(TradesPage), a.Error(1)
 }
 
+// LoadAccountMergeAmount is a mocking a method
+func (m *MockClient) LoadAccountMergeAmount(p *Payment) error {
+	a := m.Called(p)
+	return a.Error(0)
+}
+
 // LoadMemo is a mocking a method
 func (m *MockClient) LoadMemo(p *Payment) error {
 	a := m.Called(p)
 	return a.Error(0)
+}
+
+// LoadMemo is a mocking a method
+func (m *MockClient) LoadOperation(operationID string) (payment Payment, err error) {
+	a := m.Called(operationID)
+	return a.Get(0).(Payment), a.Error(1)
 }
 
 // LoadOrderBook is a mocking a method

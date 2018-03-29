@@ -119,6 +119,21 @@ type Balance struct {
 	Asset
 }
 
+// EffectsPageResponse contains page of effects returned by Horizon.
+// Currently used by LoadAccountMergeAmount only.
+type EffectsPage struct {
+	Embedded struct {
+		Records []Effect
+	} `json:"_embedded"`
+}
+
+// EffectResponse contains effect data returned by Horizon.
+// Currently used by LoadAccountMergeAmount only.
+type Effect struct {
+	Type   string `json:"type"`
+	Amount string `json:"amount"`
+}
+
 type HistoryAccount struct {
 	ID        string `json:"id"`
 	PT        string `json:"paging_token"`
@@ -287,6 +302,9 @@ type Payment struct {
 	PagingToken string `json:"paging_token"`
 
 	Links struct {
+		Effects struct {
+			Href string `json:"href"`
+		} `json:"effects"`
 		Transaction struct {
 			Href string `json:"href"`
 		} `json:"transaction"`
@@ -314,8 +332,12 @@ type Payment struct {
 	AssetIssuer string `json:"asset_issuer"`
 	Amount      string `json:"amount"`
 
+	// account_merge
+	Into string `json:"into"`
+
 	// transaction fields
-	Memo struct {
+	TransactionHash string `json:"transaction_hash"`
+	Memo            struct {
 		Type  string `json:"memo_type"`
 		Value string `json:"memo"`
 	}

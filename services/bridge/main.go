@@ -12,16 +12,16 @@ import (
 	"github.com/facebookgo/inject"
 	"github.com/spf13/cobra"
 	"github.com/stellar/go/clients/federation"
+	"github.com/stellar/go/clients/horizon"
 	"github.com/stellar/go/clients/stellartoml"
-	"github.com/stellar/go/services/bridge/config"
-	"github.com/stellar/go/services/bridge/db"
-	"github.com/stellar/go/services/bridge/db/drivers/mysql"
-	"github.com/stellar/go/services/bridge/db/drivers/postgres"
-	"github.com/stellar/go/services/bridge/handlers"
-	"github.com/stellar/go/services/bridge/horizon"
-	"github.com/stellar/go/services/bridge/listener"
-	"github.com/stellar/go/services/bridge/server"
-	"github.com/stellar/go/services/bridge/submitter"
+	"github.com/stellar/go/services/bridge/internal/config"
+	"github.com/stellar/go/services/bridge/internal/db"
+	"github.com/stellar/go/services/bridge/internal/db/drivers/mysql"
+	"github.com/stellar/go/services/bridge/internal/db/drivers/postgres"
+	"github.com/stellar/go/services/bridge/internal/handlers"
+	"github.com/stellar/go/services/bridge/internal/listener"
+	"github.com/stellar/go/services/bridge/internal/server"
+	"github.com/stellar/go/services/bridge/internal/submitter"
 	supportConfig "github.com/stellar/go/support/config"
 	"github.com/stellar/go/support/errors"
 	"github.com/zenazn/goji/graceful"
@@ -148,7 +148,21 @@ func NewApp(config config.Config, migrateFlag bool, versionFlag bool, version st
 		return
 	}
 
-	h := horizon.New(config.Horizon)
+	if len(config.APIKey) > 0 && len(config.APIKey) < 15 {
+		err = errors.New("api-key have to be at least 15 chars long")
+		return
+	}
+
+	requestHandler := handlers.RequestHandler{}
+
+	httpClientWithTimeout := http.Client{
+		Timeout: 60 * time.Second,
+	}
+
+	h := horizon.Client{
+		URL:  config.Horizon,
+		HTTP: &httpClientWithTimeout,
+	}
 
 	log.Print("Creating and initializing TransactionSubmitter")
 	ts := submitter.NewTransactionSubmitter(&h, entityManager, config.NetworkPassphrase, time.Now)
@@ -156,11 +170,10 @@ func NewApp(config config.Config, migrateFlag bool, versionFlag bool, version st
 		return
 	}
 
-	log.Print("Initializing Authorizing account")
-
 	if config.Accounts.AuthorizingSeed == "" {
 		log.Warning("No accounts.authorizing_seed param. Skipping...")
 	} else {
+		log.Print("Initializing Authorizing account")
 		err = ts.InitAccount(config.Accounts.AuthorizingSeed)
 		if err != nil {
 			return
@@ -198,17 +211,6 @@ func NewApp(config config.Config, migrateFlag bool, versionFlag bool, version st
 		}
 
 		log.Print("PaymentListener created")
-	}
-
-	if len(config.APIKey) > 0 && len(config.APIKey) < 15 {
-		err = errors.New("api-key have to be at least 15 chars long")
-		return
-	}
-
-	requestHandler := handlers.RequestHandler{}
-
-	httpClientWithTimeout := http.Client{
-		Timeout: 10 * time.Second,
 	}
 
 	stellartomlClient := stellartoml.Client{
