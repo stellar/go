@@ -351,9 +351,6 @@ imports:
   version: 2c9cfd17756470a0b7c3e4b7954bae7d11035504
 - name: github.com/bartekn/go-bip39
   version: a05967ea095d81c8fe4833776774cfaff8e5036c
-- name: github.com/tylerb/graceful
-  version: 7116c7a8115899e80197cd9e0b97998c0f97ed8e
-  repo: https://github.com/tylerb/graceful
 - name: github.com/valyala/bytebufferpool
   version: e746df99fe4a3986f4d4f79e13c1e0117ce9c2f7
   repo: https://github.com/valyala/bytebufferpool

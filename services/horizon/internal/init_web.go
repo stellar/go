@@ -1,12 +1,14 @@
 package horizon
 
 import (
+	"compress/flate"
 	"database/sql"
 	"net/http"
 	"strings"
 
 	"github.com/PuerkitoBio/throttled"
 	"github.com/PuerkitoBio/throttled/store"
+	chimiddleware "github.com/go-chi/chi/middleware"
 	metrics "github.com/rcrowley/go-metrics"
 	"github.com/rs/cors"
 	"github.com/sebest/xff"
@@ -61,6 +63,7 @@ func initWebMiddleware(app *App) {
 	r.Use(requestMetricsMiddleware)
 	r.Use(RecoverMiddleware)
 	r.Use(middleware.AutomaticOptions)
+	r.Use(chimiddleware.Compress(flate.DefaultCompression, "application/hal+json"))
 
 	c := cors.New(cors.Options{
 		AllowedOrigins: []string{"*"},
