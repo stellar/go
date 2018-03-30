@@ -31,8 +31,8 @@ type Config struct {
 		ReverseFederation string `toml:"reverse-federation" valid:"optional"`
 	} `valid:"required"`
 	TLS struct {
-		CertificateFile string `toml:"certificate-file" valid:"required"`
-		PrivateKeyFile  string `toml:"private-key-file" valid:"required"`
+		CertificateFile string `toml:"certificate-file" valid:"optional"`
+		PrivateKeyFile  string `toml:"private-key-file" valid:"optional"`
 	} `valid:"optional"`
 }
 
