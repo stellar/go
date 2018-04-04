@@ -224,9 +224,19 @@ type Payment struct {
 		} `json:"transaction"`
 	} `json:"_links"`
 
+	TransactionHash string `json:"transaction_hash"`
+	SourceAccount   string `json:"source_account"`
+	CreatedAt       string `json:"created_at"`
+
+	// create_account and account_merge field
+	Account string `json:"account"`
+
 	// create_account fields
-	Account         string `json:"account"`
+	Funder          string `json:"funder"`
 	StartingBalance string `json:"starting_balance"`
+
+	// account_merge fields
+	Into string `json:into"`
 
 	// payment/path_payment fields
 	From        string `json:"from"`
