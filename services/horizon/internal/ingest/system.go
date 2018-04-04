@@ -56,18 +56,32 @@ func (i *System) ClearAll() error {
 	return nil
 }
 
-// RebaseHistory re-establishes horizon's history database using the provided
-// sequence as a starting point.
-func (i *System) RebaseHistory(sequence int32) error {
+// RebaseHistory re-establishes horizon's history database by clearing it, ingesting the latest ledger in stellar-core then backfilling as many ledgers as possible
+func (i *System) RebaseHistory() error {
+	var latest int32
+	var elder int32
 
-	err := i.ClearAll()
+	q := core.Q{Session: i.CoreDB}
+	err := q.LatestLedger(&latest)
+	if err != nil {
+		return errors.Wrap(err, "load core latest ledger failed")
+	}
+
+	err = q.ElderLedger(&elder)
+	if err != nil {
+		return errors.Wrap(err, "load core elder ledger failed")
+	}
+
+	err = i.ClearAll()
 	if err != nil {
 		return errors.Wrap(err, "failed to  clear db")
 	}
 
-	err = i.ReingestSingle(sequence)
+	log.Infof("rebasing history using ledgers %d-%d", elder, latest)
+
+	_, err = i.ReingestRange(latest, elder)
 	if err != nil {
-		return errors.Wrap(err, "failed to reingest new base")
+		return errors.Wrap(err, "failed to ingest latest ledger segment")
 	}
 
 	return nil
