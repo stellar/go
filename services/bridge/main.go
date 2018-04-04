@@ -16,8 +16,6 @@ import (
 	"github.com/stellar/go/clients/stellartoml"
 	"github.com/stellar/go/services/bridge/internal/config"
 	"github.com/stellar/go/services/bridge/internal/db"
-	"github.com/stellar/go/services/bridge/internal/db/drivers/mysql"
-	"github.com/stellar/go/services/bridge/internal/db/drivers/postgres"
 	"github.com/stellar/go/services/bridge/internal/handlers"
 	"github.com/stellar/go/services/bridge/internal/listener"
 	"github.com/stellar/go/services/bridge/internal/server"
@@ -98,48 +96,32 @@ type App struct {
 func NewApp(config config.Config, migrateFlag bool, versionFlag bool, version string) (app *App, err error) {
 	var g inject.Graph
 
-	var driver db.Driver
-	switch config.Database.Type {
-	case "mysql":
-		driver = &mysql.Driver{}
-	case "postgres":
-		driver = &postgres.Driver{}
-	case "":
-		// Allow to start gateway server with a single endpoint: /payment
-		break
-	default:
-		return nil, fmt.Errorf("%s database has no driver", config.Database.Type)
-	}
+	var database db.PostgresDatabase
 
-	var entityManager db.EntityManagerInterface
-	var repository db.Repository
-
-	if driver != nil {
-		err = driver.Init(config.Database.URL)
+	if config.Database.URL != "" {
+		err = database.Open(config.Database.URL)
 		if err != nil {
 			err = fmt.Errorf("Cannot connect to a DB: %s", err)
 			return
 		}
-
-		entityManager = db.NewEntityManager(driver)
-		repository = db.NewRepository(driver)
 	}
 
 	if migrateFlag {
-		if driver == nil {
-			log.Fatal("No database driver.")
-			return
-		}
+		// TODO
+		// if driver == nil {
+		// 	log.Fatal("No database driver.")
+		// 	return
+		// }
 
-		var migrationsApplied int
-		migrationsApplied, err = driver.MigrateUp("gateway")
-		if err != nil {
-			return
-		}
+		// var migrationsApplied int
+		// migrationsApplied, err = driver.MigrateUp("gateway")
+		// if err != nil {
+		// 	return
+		// }
 
-		log.Info("Applied migrations: ", migrationsApplied)
-		os.Exit(0)
-		return
+		// log.Info("Applied migrations: ", migrationsApplied)
+		// os.Exit(0)
+		// return
 	}
 
 	if versionFlag {
@@ -165,7 +147,7 @@ func NewApp(config config.Config, migrateFlag bool, versionFlag bool, version st
 	}
 
 	log.Print("Creating and initializing TransactionSubmitter")
-	ts := submitter.NewTransactionSubmitter(&h, entityManager, config.NetworkPassphrase, time.Now)
+	ts := submitter.NewTransactionSubmitter(&h, &database, config.NetworkPassphrase, time.Now)
 	if err != nil {
 		return
 	}
@@ -201,7 +183,7 @@ func NewApp(config config.Config, migrateFlag bool, versionFlag bool, version st
 	} else if config.Callbacks.Receive == "" {
 		log.Warning("No callbacks.receive param. Skipping...")
 	} else {
-		paymentListener, err = listener.NewPaymentListener(&config, entityManager, &h, repository, time.Now)
+		paymentListener, err = listener.NewPaymentListener(&config, &database, &h, time.Now)
 		if err != nil {
 			return
 		}
@@ -228,8 +210,7 @@ func NewApp(config config.Config, migrateFlag bool, versionFlag bool, version st
 		&inject.Object{Value: &stellartomlClient},
 		&inject.Object{Value: &federationClient},
 		&inject.Object{Value: &h},
-		&inject.Object{Value: &repository},
-		&inject.Object{Value: driver},
+		&inject.Object{Value: &database},
 		&inject.Object{Value: &ts},
 		&inject.Object{Value: &paymentListener},
 		&inject.Object{Value: &httpClientWithTimeout},

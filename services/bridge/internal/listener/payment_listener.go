@@ -8,7 +8,6 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
-	"strconv"
 	"strings"
 	"time"
 
@@ -19,7 +18,6 @@ import (
 	"github.com/stellar/go/protocols/compliance"
 	"github.com/stellar/go/services/bridge/internal/config"
 	"github.com/stellar/go/services/bridge/internal/db"
-	"github.com/stellar/go/services/bridge/internal/db/entities"
 	callback "github.com/stellar/go/services/bridge/internal/protocols/compliance"
 	"github.com/stellar/go/strkey"
 	"github.com/stellar/go/support/errors"
@@ -27,13 +25,12 @@ import (
 
 // PaymentListener is listening for a new payments received by ReceivingAccount
 type PaymentListener struct {
-	client        HTTP
-	config        *config.Config
-	entityManager db.EntityManagerInterface
-	horizon       horizon.ClientInterface
-	log           *logrus.Entry
-	repository    db.RepositoryInterface
-	now           func() time.Time
+	client   HTTP
+	config   *config.Config
+	database db.Database
+	horizon  horizon.ClientInterface
+	log      *logrus.Entry
+	now      func() time.Time
 }
 
 // HTTP represents an http client that a payment listener can use to make HTTP
@@ -47,18 +44,16 @@ const callbackTimeout = 60 * time.Second
 // NewPaymentListener creates a new PaymentListener
 func NewPaymentListener(
 	config *config.Config,
-	entityManager db.EntityManagerInterface,
+	database db.Database,
 	horizon horizon.ClientInterface,
-	repository db.RepositoryInterface,
 	now func() time.Time,
 ) (pl PaymentListener, err error) {
 	pl.client = &http.Client{
 		Timeout: callbackTimeout,
 	}
 	pl.config = config
-	pl.entityManager = entityManager
+	pl.database = database
 	pl.horizon = horizon
-	pl.repository = repository
 	pl.now = now
 	pl.log = logrus.WithFields(logrus.Fields{
 		"service": "PaymentListener",
@@ -77,7 +72,7 @@ func (pl *PaymentListener) Listen() (err error) {
 
 	go func() {
 		for {
-			cursorValue, err := pl.repository.GetLastCursorValue()
+			cursorValue, err := pl.database.GetLastCursorValue()
 			if err != nil {
 				pl.log.WithFields(logrus.Fields{"error": err}).Error("Could not load last cursor from the DB")
 				return
@@ -111,13 +106,7 @@ func (pl *PaymentListener) Listen() (err error) {
 func (pl *PaymentListener) ReprocessPayment(payment horizon.Payment, force bool) error {
 	pl.log.WithFields(logrus.Fields{"id": payment.ID}).Info("Reprocessing a payment")
 
-	id, err := strconv.ParseInt(payment.ID, 10, 64)
-	if err != nil {
-		pl.log.WithFields(logrus.Fields{"err": err}).Error("Error converting ID to int64")
-		return err
-	}
-
-	existingPayment, err := pl.repository.GetReceivedPaymentByOperationID(id)
+	existingPayment, err := pl.database.GetReceivedPaymentByOperationID(payment.ID)
 	if err != nil {
 		pl.log.WithFields(logrus.Fields{"err": err}).Error("Error checking if receive payment exists")
 		return err
@@ -136,7 +125,7 @@ func (pl *PaymentListener) ReprocessPayment(payment horizon.Payment, force bool)
 	existingPayment.Status = "Reprocessing..."
 	existingPayment.ProcessedAt = pl.now()
 
-	err = pl.entityManager.Persist(existingPayment)
+	err = pl.database.UpdateReceivedPayment(existingPayment)
 	if err != nil {
 		return err
 	}
@@ -151,19 +140,13 @@ func (pl *PaymentListener) ReprocessPayment(payment horizon.Payment, force bool)
 		existingPayment.Status = "Success"
 	}
 
-	return pl.entityManager.Persist(existingPayment)
+	return pl.database.UpdateReceivedPayment(existingPayment)
 }
 
 func (pl *PaymentListener) onPayment(payment horizon.Payment) {
 	pl.log.WithFields(logrus.Fields{"id": payment.ID}).Info("New received payment")
 
-	id, err := strconv.ParseInt(payment.ID, 10, 64)
-	if err != nil {
-		pl.log.WithFields(logrus.Fields{"err": err}).Error("Error converting ID to int64")
-		return
-	}
-
-	existingPayment, err := pl.repository.GetReceivedPaymentByOperationID(id)
+	existingPayment, err := pl.database.GetReceivedPaymentByOperationID(payment.ID)
 	if err != nil {
 		pl.log.WithFields(logrus.Fields{"err": err}).Error("Error checking if receive payment exists")
 		return
@@ -174,7 +157,7 @@ func (pl *PaymentListener) onPayment(payment horizon.Payment) {
 		return
 	}
 
-	dbPayment := &entities.ReceivedPayment{
+	dbPayment := &db.ReceivedPayment{
 		OperationID:   payment.ID,
 		TransactionID: payment.TransactionHash,
 		ProcessedAt:   pl.now(),
@@ -182,7 +165,7 @@ func (pl *PaymentListener) onPayment(payment horizon.Payment) {
 		Status:        "Processing...",
 	}
 
-	err = pl.entityManager.Persist(dbPayment)
+	err = pl.database.InsertReceivedPayment(dbPayment)
 	if err != nil {
 		return
 	}
@@ -203,7 +186,11 @@ func (pl *PaymentListener) onPayment(payment horizon.Payment) {
 		}
 	}
 
-	pl.entityManager.Persist(dbPayment)
+	err = pl.database.UpdateReceivedPayment(dbPayment)
+	if err != nil {
+		pl.log.WithFields(logrus.Fields{"err": err}).Error("Error updating payment")
+		return
+	}
 }
 
 // shouldProcessPayment returns false and text status if payment should not be processed

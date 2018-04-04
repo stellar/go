@@ -10,7 +10,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/stellar/go/clients/horizon"
 	"github.com/stellar/go/protocols/compliance"
-	"github.com/stellar/go/services/bridge/internal/db/entities"
+	"github.com/stellar/go/services/bridge/internal/db"
 	"github.com/stellar/go/services/bridge/internal/protocols"
 	callback "github.com/stellar/go/services/bridge/internal/protocols/compliance"
 	"github.com/stellar/go/services/bridge/internal/server"
@@ -20,19 +20,18 @@ import (
 
 // AdminReceivedPayment implements /admin/received-payments/{id} endpoint
 func (rh *RequestHandler) AdminReceivedPayment(c web.C, w http.ResponseWriter, r *http.Request) {
-	object, err := rh.Driver.GetOne(&entities.ReceivedPayment{}, "id = ?", c.URLParams["id"])
+	id, _ := strconv.ParseInt(c.URLParams["id"], 10, 64)
+	payment, err := rh.Database.GetReceivedPaymentByID(id)
 	if err != nil {
 		log.WithFields(log.Fields{"err": err}).Error("Error getting ReceivedPayments")
 		server.Write(w, protocols.InternalServerError)
 		return
 	}
 
-	if object == nil {
+	if payment == nil {
 		w.WriteHeader(http.StatusNotFound)
 		return
 	}
-
-	payment := object.(*entities.ReceivedPayment)
 
 	paymentResponse, err := rh.Horizon.LoadOperation(payment.OperationID)
 	if err != nil {
@@ -59,9 +58,9 @@ func (rh *RequestHandler) AdminReceivedPayment(c web.C, w http.ResponseWriter, r
 	}
 
 	response := struct {
-		Payment   *entities.ReceivedPayment `json:"payment"`
-		Operation horizon.Payment           `json:"operation"`
-		AuthData  *compliance.AuthData      `json:"auth_data"`
+		Payment   *db.ReceivedPayment  `json:"payment"`
+		Operation horizon.Payment      `json:"operation"`
+		AuthData  *compliance.AuthData `json:"auth_data"`
 	}{payment, paymentResponse, authData}
 
 	encoder := json.NewEncoder(w)
@@ -118,7 +117,7 @@ func (rh *RequestHandler) AdminReceivedPayments(w http.ResponseWriter, r *http.R
 	page, _ := strconv.Atoi(r.URL.Query().Get("page"))
 	limit := 10
 
-	payments, err := rh.Repository.GetReceivedPayments(page, limit)
+	payments, err := rh.Database.GetReceivedPayments(uint64(page), uint64(limit))
 	if err != nil {
 		log.WithFields(log.Fields{"err": err}).Error("Error loading ReceivedPayments")
 		server.Write(w, protocols.InternalServerError)
@@ -139,7 +138,7 @@ func (rh *RequestHandler) AdminSentTransactions(w http.ResponseWriter, r *http.R
 	page, _ := strconv.Atoi(r.URL.Query().Get("page"))
 	limit := 10
 
-	transactions, err := rh.Repository.GetSentTransactions(page, limit)
+	transactions, err := rh.Database.GetSentTransactions(uint64(page), uint64(limit))
 	if err != nil {
 		log.WithFields(log.Fields{"err": err}).Error("Error loading SentTransactions")
 		server.Write(w, protocols.InternalServerError)

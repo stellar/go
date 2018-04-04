@@ -41,7 +41,7 @@ func (rh *RequestHandler) Payment(w http.ResponseWriter, r *http.Request) {
 	var paymentID *string
 
 	if request.ID != "" {
-		sentTransaction, err := rh.Repository.GetSentTransactionByPaymentID(request.ID)
+		sentTransaction, err := rh.Database.GetSentTransactionByPaymentID(request.ID)
 		if err != nil {
 			log.WithFields(log.Fields{"err": err}).Error("Error getting sent transaction")
 			server.Write(w, protocols.InternalServerError)

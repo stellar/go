@@ -16,8 +16,7 @@ type RequestHandler struct {
 	Config               *config.Config                          `inject:""`
 	Client               http.SimpleHTTPClientInterface          `inject:""`
 	Horizon              horizon.ClientInterface                 `inject:""`
-	Driver               db.Driver                               `inject:""`
-	Repository           db.RepositoryInterface                  `inject:""`
+	Database             db.Database                             `inject:""`
 	StellarTomlResolver  stellartoml.ClientInterface             `inject:""`
 	FederationResolver   federation.ClientInterface              `inject:""`
 	TransactionSubmitter submitter.TransactionSubmitterInterface `inject:""`

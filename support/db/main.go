@@ -46,8 +46,9 @@ type DeleteBuilder struct {
 type InsertBuilder struct {
 	Table *Table
 
-	rows []interface{}
-	sql  squirrel.InsertBuilder
+	rows        []interface{}
+	ignoredCols map[string]bool
+	sql         squirrel.InsertBuilder
 }
 
 // GetBuilder is a helper struct used to construct sql queries of the SELECT

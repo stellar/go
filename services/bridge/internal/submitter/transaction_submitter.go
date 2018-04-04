@@ -14,7 +14,6 @@ import (
 	"github.com/stellar/go/hash"
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/services/bridge/internal/db"
-	"github.com/stellar/go/services/bridge/internal/db/entities"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
 )
@@ -30,7 +29,7 @@ type TransactionSubmitter struct {
 	Horizon       horizon.ClientInterface
 	Accounts      map[string]*Account // seed => *Account
 	AccountsMutex sync.Mutex
-	EntityManager db.EntityManagerInterface
+	Database      db.Database
 	Network       build.Network
 	log           *logrus.Entry
 	now           func() time.Time
@@ -47,12 +46,12 @@ type Account struct {
 // NewTransactionSubmitter creates a new TransactionSubmitter
 func NewTransactionSubmitter(
 	horizon horizon.ClientInterface,
-	entityManager db.EntityManagerInterface,
+	database db.Database,
 	networkPassphrase string,
 	now func() time.Time,
 ) (ts TransactionSubmitter) {
 	ts.Horizon = horizon
-	ts.EntityManager = entityManager
+	ts.Database = database
 	ts.Accounts = make(map[string]*Account)
 	ts.Network = build.Network{networkPassphrase}
 	ts.log = logrus.WithFields(logrus.Fields{
@@ -156,15 +155,15 @@ func (ts *TransactionSubmitter) SignAndSubmitRawTransaction(paymentID *string, s
 		return
 	}
 
-	sentTransaction := &entities.SentTransaction{
+	sentTransaction := &db.SentTransaction{
 		PaymentID:     paymentID,
 		TransactionID: hex.EncodeToString(transactionHashBytes[:]),
-		Status:        entities.SentTransactionStatusSending,
+		Status:        db.SentTransactionStatusSending,
 		Source:        account.Keypair.Address(),
 		SubmittedAt:   ts.now(),
 		EnvelopeXdr:   txeB64,
 	}
-	err = ts.EntityManager.Persist(sentTransaction)
+	err = ts.Database.InsertSentTransaction(sentTransaction)
 	if err != nil {
 		return
 	}
@@ -173,7 +172,10 @@ func (ts *TransactionSubmitter) SignAndSubmitRawTransaction(paymentID *string, s
 	var herr *horizon.Error
 	response, err = ts.Horizon.SubmitTransaction(txeB64)
 	if err == nil {
-		sentTransaction.MarkSucceeded(response.Ledger)
+		sentTransaction.Status = db.SentTransactionStatusSuccess
+		sentTransaction.Ledger = &response.Ledger
+		now := time.Now()
+		sentTransaction.SucceededAt = &now
 	} else {
 		herr, isHorizonError := err.(*horizon.Error)
 		if !isHorizonError {
@@ -185,10 +187,11 @@ func (ts *TransactionSubmitter) SignAndSubmitRawTransaction(paymentID *string, s
 		if err != nil {
 			result = errors.Wrap(err, "Error getting tx result").Error()
 		}
-		sentTransaction.MarkFailed(result)
+		sentTransaction.Status = db.SentTransactionStatusFailure
+		sentTransaction.ResultXdr = &result
 	}
 
-	err = ts.EntityManager.Persist(sentTransaction)
+	err = ts.Database.UpdateSentTransaction(sentTransaction)
 	if err != nil {
 		return
 	}
