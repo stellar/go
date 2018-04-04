@@ -1,6 +1,6 @@
 GIT
   remote: https://github.com/stellar/stellar_core_commander.git
-  revision: 2a6d83e147069188afba52f751edaca45985d07a
+  revision: 1484815a5a53382e9d42b28e66e5ca1a917b824c
   branch: master
   specs:
     stellar_core_commander (0.0.12)
@@ -48,7 +48,7 @@ GEM
       multipart-post (>= 1.2, < 3)
     faraday_middleware (0.9.2)
       faraday (>= 0.7.4, < 0.10)
-    ffi (1.9.21)
+    ffi (1.9.23)
     i18n (0.9.3)
       concurrent-ruby (~> 1.0)
     memoist (0.11.0)
@@ -74,7 +74,7 @@ GEM
       faraday (~> 0.8, < 1.0)
     sequel (5.5.0)
     slop (3.6.0)
-    stellar-base (0.12.0)
+    stellar-base (0.13.0)
       activesupport (>= 4.2.7)
       base32
       digest-crc
