@@ -131,9 +131,9 @@ var dbReapCmd = &cobra.Command{
 }
 
 var dbRebaseCmd = &cobra.Command{
-	Use:   "rebase [SEQUENCE]",
-	Short: "rebases horizon history at ledger SEQUENCE",
-	Long:  "rebases clears the horizon history db and ingests the ledger at SEQUENCE",
+	Use:   "rebase",
+	Short: "rebases clears the horizon db and ingests the latest ledger segment from stellar-core",
+	Long:  "...",
 	Run: func(cmd *cobra.Command, args []string) {
 		initConfig()
 		hlog.DefaultLogger.Logger.Level = config.LogLevel
@@ -141,12 +141,7 @@ var dbRebaseCmd = &cobra.Command{
 		i := ingestSystem()
 		i.SkipCursorUpdate = true
 
-		parsed, err := strconv.ParseInt(args[0], 10, 32)
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		err = i.RebaseHistory(int32(parsed))
+		err := i.RebaseHistory()
 		if err != nil {
 			log.Fatal(err)
 		}
