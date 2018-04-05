@@ -11,30 +11,30 @@ import (
 	"github.com/stellar/go/address"
 	b "github.com/stellar/go/build"
 	"github.com/stellar/go/clients/horizon"
+	"github.com/stellar/go/protocols"
+	"github.com/stellar/go/protocols/bridge"
 	"github.com/stellar/go/protocols/compliance"
+	callback "github.com/stellar/go/protocols/compliance/server"
 	"github.com/stellar/go/protocols/federation"
-	"github.com/stellar/go/services/bridge/internal/protocols"
-	"github.com/stellar/go/services/bridge/internal/protocols/bridge"
-	callback "github.com/stellar/go/services/bridge/internal/protocols/compliance"
-	"github.com/stellar/go/services/bridge/internal/server"
 	"github.com/stellar/go/xdr"
 )
 
 // Payment implements /payment endpoint
 func (rh *RequestHandler) Payment(w http.ResponseWriter, r *http.Request) {
 	request := &bridge.PaymentRequest{}
-	err := request.FromRequest(r)
+	err := protocols.FromRequest(r, request)
 	if err != nil {
 		log.Error(err.Error())
-		server.Write(w, protocols.InvalidParameterError)
+		protocols.Write(w, protocols.InvalidParameterError)
 		return
 	}
 
 	err = request.Validate()
 	if err != nil {
 		errorResponse := err.(*protocols.ErrorResponse)
-		log.WithFields(errorResponse.LogData).Error(errorResponse.Error())
-		server.Write(w, errorResponse)
+		// TODO
+		// log.WithFields(errorResponse.LogData).Error(errorResponse.Error())
+		protocols.Write(w, errorResponse)
 		return
 	}
 
@@ -44,7 +44,7 @@ func (rh *RequestHandler) Payment(w http.ResponseWriter, r *http.Request) {
 		sentTransaction, err := rh.Database.GetSentTransactionByPaymentID(request.ID)
 		if err != nil {
 			log.WithFields(log.Fields{"err": err}).Error("Error getting sent transaction")
-			server.Write(w, protocols.InternalServerError)
+			protocols.Write(w, protocols.InternalServerError)
 			return
 		}
 
@@ -79,11 +79,11 @@ func (rh *RequestHandler) complianceProtocolPayment(w http.ResponseWriter, reque
 
 	resp, err := rh.Client.PostForm(
 		rh.Config.Compliance+"/send",
-		sendRequest.ToValues(),
+		protocols.ToValues(sendRequest),
 	)
 	if err != nil {
 		log.WithFields(log.Fields{"err": err}).Error("Error sending request to compliance server")
-		server.Write(w, protocols.InternalServerError)
+		protocols.Write(w, protocols.InternalServerError)
 		return
 	}
 
@@ -91,7 +91,7 @@ func (rh *RequestHandler) complianceProtocolPayment(w http.ResponseWriter, reque
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		log.Error("Error reading compliance server response")
-		server.Write(w, protocols.InternalServerError)
+		protocols.Write(w, protocols.InternalServerError)
 		return
 	}
 
@@ -100,7 +100,7 @@ func (rh *RequestHandler) complianceProtocolPayment(w http.ResponseWriter, reque
 			"status": resp.StatusCode,
 			"body":   string(body),
 		}).Error("Error response from compliance server")
-		server.Write(w, protocols.InternalServerError)
+		protocols.Write(w, protocols.InternalServerError)
 		return
 	}
 
@@ -108,21 +108,21 @@ func (rh *RequestHandler) complianceProtocolPayment(w http.ResponseWriter, reque
 	err = json.Unmarshal(body, &callbackSendResponse)
 	if err != nil {
 		log.Error("Error unmarshalling from compliance server")
-		server.Write(w, protocols.InternalServerError)
+		protocols.Write(w, protocols.InternalServerError)
 		return
 	}
 
 	if callbackSendResponse.AuthResponse.InfoStatus == compliance.AuthStatusPending ||
 		callbackSendResponse.AuthResponse.TxStatus == compliance.AuthStatusPending {
 		log.WithFields(log.Fields{"response": callbackSendResponse}).Info("Compliance response pending")
-		server.Write(w, bridge.NewPaymentPendingError(callbackSendResponse.AuthResponse.Pending))
+		protocols.Write(w, bridge.NewPaymentPendingError(callbackSendResponse.AuthResponse.Pending))
 		return
 	}
 
 	if callbackSendResponse.AuthResponse.InfoStatus == compliance.AuthStatusDenied ||
 		callbackSendResponse.AuthResponse.TxStatus == compliance.AuthStatusDenied {
 		log.WithFields(log.Fields{"response": callbackSendResponse}).Info("Compliance response denied")
-		server.Write(w, bridge.PaymentDenied)
+		protocols.Write(w, bridge.PaymentDenied)
 		return
 	}
 
@@ -130,7 +130,7 @@ func (rh *RequestHandler) complianceProtocolPayment(w http.ResponseWriter, reque
 	err = xdr.SafeUnmarshalBase64(callbackSendResponse.TransactionXdr, &tx)
 	if err != nil {
 		log.Error("Error unmarshalling transaction returned by compliance server")
-		server.Write(w, protocols.InternalServerError)
+		protocols.Write(w, protocols.InternalServerError)
 		return
 	}
 
@@ -150,7 +150,7 @@ func (rh *RequestHandler) standardPayment(w http.ResponseWriter, request *bridge
 			destinationObject, err = rh.FederationResolver.LookupByAddress(request.Destination)
 			if err != nil {
 				log.WithFields(log.Fields{"destination": request.Destination, "err": err}).Print("Cannot resolve address")
-				server.Write(w, bridge.PaymentCannotResolveDestination)
+				protocols.Write(w, bridge.PaymentCannotResolveDestination)
 				return
 			}
 		}
@@ -158,16 +158,17 @@ func (rh *RequestHandler) standardPayment(w http.ResponseWriter, request *bridge
 		destinationObject, err = rh.FederationResolver.ForwardRequest(request.ForwardDestination.Domain, request.ForwardDestination.Fields)
 		if err != nil {
 			log.WithFields(log.Fields{"destination": request.Destination, "err": err}).Print("Cannot resolve address")
-			server.Write(w, bridge.PaymentCannotResolveDestination)
+			protocols.Write(w, bridge.PaymentCannotResolveDestination)
 			return
 		}
 	}
 
-	if !protocols.IsValidAccountID(destinationObject.AccountID) {
-		log.WithFields(log.Fields{"AccountId": destinationObject.AccountID}).Print("Invalid AccountId in destination")
-		server.Write(w, protocols.NewInvalidParameterError("destination", request.Destination, "Destination public key must start with `G`."))
-		return
-	}
+	// TODO
+	// if !protocols.IsValidAccountID(destinationObject.AccountID) {
+	// 	log.WithFields(log.Fields{"AccountId": destinationObject.AccountID}).Print("Invalid AccountId in destination")
+	// 	protocols.Write(w, protocols.NewInvalidParameterError("destination", request.Destination, "Destination public key must start with `G`."))
+	// 	return
+	// }
 
 	var payWithMutator *b.PayWithPath
 
@@ -228,7 +229,7 @@ func (rh *RequestHandler) standardPayment(w http.ResponseWriter, request *bridge
 	if destinationObject.MemoType != "" {
 		if request.MemoType != "" {
 			log.Print("Memo given in request but federation returned memo fields.")
-			server.Write(w, bridge.PaymentCannotUseMemo)
+			protocols.Write(w, bridge.PaymentCannotUseMemo)
 			return
 		}
 
@@ -244,7 +245,7 @@ func (rh *RequestHandler) standardPayment(w http.ResponseWriter, request *bridge
 		id, err := strconv.ParseUint(memo, 10, 64)
 		if err != nil {
 			log.WithFields(log.Fields{"memo": memo}).Print("Cannot convert memo_id value to uint64")
-			server.Write(w, protocols.NewInvalidParameterError("memo", request.Memo, "Memo.id must be a number"))
+			protocols.Write(w, protocols.NewInvalidParameterError("memo", request.Memo, "Memo.id must be a number"))
 			return
 		}
 		memoMutator = b.MemoID{id}
@@ -254,7 +255,7 @@ func (rh *RequestHandler) standardPayment(w http.ResponseWriter, request *bridge
 		memoBytes, err := hex.DecodeString(memo)
 		if err != nil || len(memoBytes) != 32 {
 			log.WithFields(log.Fields{"memo": memo}).Print("Cannot decode hash memo value")
-			server.Write(w, protocols.NewInvalidParameterError("memo", request.Memo, "Memo.hash must be 32 bytes and hex encoded."))
+			protocols.Write(w, protocols.NewInvalidParameterError("memo", request.Memo, "Memo.hash must be 32 bytes and hex encoded."))
 			return
 		}
 		var b32 [32]byte
@@ -263,7 +264,7 @@ func (rh *RequestHandler) standardPayment(w http.ResponseWriter, request *bridge
 		memoMutator = b.MemoHash{hash}
 	default:
 		log.Print("Not supported memo type: ", memoType)
-		server.Write(w, protocols.NewInvalidParameterError("memo", request.Memo, "Memo type not supported"))
+		protocols.Write(w, protocols.NewInvalidParameterError("memo", request.Memo, "Memo type not supported"))
 		return
 	}
 
@@ -278,7 +279,7 @@ func (rh *RequestHandler) handleTransactionSubmitResponse(w http.ResponseWriter,
 		herr, isHorizonError := err.(*horizon.Error)
 		if !isHorizonError {
 			log.WithFields(log.Fields{"err": err}).Error("Error submitting transaction")
-			server.Write(w, protocols.InternalServerError)
+			protocols.Write(w, protocols.InternalServerError)
 			return
 		}
 
@@ -286,7 +287,7 @@ func (rh *RequestHandler) handleTransactionSubmitResponse(w http.ResponseWriter,
 		err := jsonEncoder.Encode(herr.Problem)
 		if err != nil {
 			log.WithFields(log.Fields{"err": err}).Error("Error encoding response")
-			server.Write(w, protocols.InternalServerError)
+			protocols.Write(w, protocols.InternalServerError)
 			return
 		}
 
@@ -296,7 +297,7 @@ func (rh *RequestHandler) handleTransactionSubmitResponse(w http.ResponseWriter,
 	err = jsonEncoder.Encode(submitResponse)
 	if err != nil {
 		log.WithFields(log.Fields{"err": err}).Error("Error encoding response")
-		server.Write(w, protocols.InternalServerError)
+		protocols.Write(w, protocols.InternalServerError)
 		return
 	}
 }

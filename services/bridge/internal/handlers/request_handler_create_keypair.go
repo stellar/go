@@ -6,8 +6,7 @@ import (
 	"net/http"
 
 	"github.com/stellar/go/keypair"
-	"github.com/stellar/go/services/bridge/internal/protocols"
-	"github.com/stellar/go/services/bridge/internal/server"
+	"github.com/stellar/go/protocols"
 )
 
 // KeyPair struct contains key pair public and private key
@@ -21,13 +20,13 @@ func (rh *RequestHandler) CreateKeypair(w http.ResponseWriter, r *http.Request) 
 	kp, err := keypair.Random()
 	if err != nil {
 		log.WithFields(log.Fields{"err": err}).Error("Error generating random keypair")
-		server.Write(w, protocols.InternalServerError)
+		protocols.Write(w, protocols.InternalServerError)
 	}
 
 	response, err := json.Marshal(KeyPair{kp.Address(), kp.Seed()})
 	if err != nil {
 		log.WithFields(log.Fields{"err": err}).Error("Error marshalling random keypair")
-		server.Write(w, protocols.InternalServerError)
+		protocols.Write(w, protocols.InternalServerError)
 	}
 
 	w.Write(response)

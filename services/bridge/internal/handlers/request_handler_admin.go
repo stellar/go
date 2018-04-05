@@ -9,11 +9,10 @@ import (
 
 	log "github.com/sirupsen/logrus"
 	"github.com/stellar/go/clients/horizon"
+	"github.com/stellar/go/protocols"
 	"github.com/stellar/go/protocols/compliance"
+	callback "github.com/stellar/go/protocols/compliance/server"
 	"github.com/stellar/go/services/bridge/internal/db"
-	"github.com/stellar/go/services/bridge/internal/protocols"
-	callback "github.com/stellar/go/services/bridge/internal/protocols/compliance"
-	"github.com/stellar/go/services/bridge/internal/server"
 	"github.com/stellar/go/support/errors"
 	"github.com/zenazn/goji/web"
 )
@@ -24,7 +23,7 @@ func (rh *RequestHandler) AdminReceivedPayment(c web.C, w http.ResponseWriter, r
 	payment, err := rh.Database.GetReceivedPaymentByID(id)
 	if err != nil {
 		log.WithFields(log.Fields{"err": err}).Error("Error getting ReceivedPayments")
-		server.Write(w, protocols.InternalServerError)
+		protocols.Write(w, protocols.InternalServerError)
 		return
 	}
 
@@ -36,14 +35,14 @@ func (rh *RequestHandler) AdminReceivedPayment(c web.C, w http.ResponseWriter, r
 	paymentResponse, err := rh.Horizon.LoadOperation(payment.OperationID)
 	if err != nil {
 		log.WithFields(log.Fields{"err": err}).Error("Error getting operation from Horizon")
-		server.Write(w, protocols.InternalServerError)
+		protocols.Write(w, protocols.InternalServerError)
 		return
 	}
 
 	err = rh.Horizon.LoadMemo(&paymentResponse)
 	if err != nil {
 		log.WithFields(log.Fields{"err": err}).Error("Error loading memo")
-		server.Write(w, protocols.InternalServerError)
+		protocols.Write(w, protocols.InternalServerError)
 		return
 	}
 
@@ -52,7 +51,7 @@ func (rh *RequestHandler) AdminReceivedPayment(c web.C, w http.ResponseWriter, r
 		authData, err = rh.getComplianceData(paymentResponse.Memo.Value)
 		if err != nil {
 			log.WithFields(log.Fields{"err": err}).Error("Error loading compliance data")
-			server.Write(w, protocols.InternalServerError)
+			protocols.Write(w, protocols.InternalServerError)
 			return
 		}
 	}
@@ -67,7 +66,7 @@ func (rh *RequestHandler) AdminReceivedPayment(c web.C, w http.ResponseWriter, r
 	err = encoder.Encode(response)
 	if err != nil {
 		log.WithFields(log.Fields{"err": err, "payments": payment}).Error("Error encoding ReceivedPayment")
-		server.Write(w, protocols.InternalServerError)
+		protocols.Write(w, protocols.InternalServerError)
 		return
 	}
 }
@@ -120,7 +119,7 @@ func (rh *RequestHandler) AdminReceivedPayments(w http.ResponseWriter, r *http.R
 	payments, err := rh.Database.GetReceivedPayments(uint64(page), uint64(limit))
 	if err != nil {
 		log.WithFields(log.Fields{"err": err}).Error("Error loading ReceivedPayments")
-		server.Write(w, protocols.InternalServerError)
+		protocols.Write(w, protocols.InternalServerError)
 		return
 	}
 
@@ -128,7 +127,7 @@ func (rh *RequestHandler) AdminReceivedPayments(w http.ResponseWriter, r *http.R
 	err = encoder.Encode(payments)
 	if err != nil {
 		log.WithFields(log.Fields{"err": err, "payments": payments}).Error("Error encoding ReceivedPayments")
-		server.Write(w, protocols.InternalServerError)
+		protocols.Write(w, protocols.InternalServerError)
 		return
 	}
 }
@@ -141,7 +140,7 @@ func (rh *RequestHandler) AdminSentTransactions(w http.ResponseWriter, r *http.R
 	transactions, err := rh.Database.GetSentTransactions(uint64(page), uint64(limit))
 	if err != nil {
 		log.WithFields(log.Fields{"err": err}).Error("Error loading SentTransactions")
-		server.Write(w, protocols.InternalServerError)
+		protocols.Write(w, protocols.InternalServerError)
 		return
 	}
 
@@ -149,7 +148,7 @@ func (rh *RequestHandler) AdminSentTransactions(w http.ResponseWriter, r *http.R
 	err = encoder.Encode(transactions)
 	if err != nil {
 		log.WithFields(log.Fields{"err": err, "transactions": transactions}).Error("Error encoding SentTransactions")
-		server.Write(w, protocols.InternalServerError)
+		protocols.Write(w, protocols.InternalServerError)
 		return
 	}
 }

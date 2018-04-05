@@ -15,12 +15,12 @@ import (
 
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stellar/go/protocols/compliance"
+	callback "github.com/stellar/go/protocols/compliance/server"
 	"github.com/stellar/go/services/bridge/internal/config"
 	"github.com/stellar/go/services/bridge/internal/db/entities"
 	"github.com/stellar/go/services/bridge/internal/horizon"
 	"github.com/stellar/go/services/bridge/internal/mocks"
 	"github.com/stellar/go/services/bridge/internal/net"
-	callback "github.com/stellar/go/services/bridge/internal/protocols/compliance"
 	"github.com/stellar/go/strkey"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"

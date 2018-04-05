@@ -14,15 +14,13 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/stellar/go/clients/federation"
 	"github.com/stellar/go/clients/stellartoml"
-	"github.com/stellar/go/services/bridge/internal/server"
 	"github.com/stellar/go/services/compliance/internal/config"
 	"github.com/stellar/go/services/compliance/internal/crypto"
 	"github.com/stellar/go/services/compliance/internal/db"
-	"github.com/stellar/go/services/compliance/internal/db/drivers/mysql"
-	"github.com/stellar/go/services/compliance/internal/db/drivers/postgres"
 	"github.com/stellar/go/services/compliance/internal/handlers"
 	supportConfig "github.com/stellar/go/support/config"
 	"github.com/stellar/go/support/errors"
+	"github.com/stellar/go/support/http/server"
 	"github.com/zenazn/goji/graceful"
 	"github.com/zenazn/goji/web"
 )
@@ -96,23 +94,15 @@ type App struct {
 func NewApp(config config.Config, migrateFlag bool, versionFlag bool, version string) (app *App, err error) {
 	var g inject.Graph
 
-	var driver db.Driver
-	switch config.Database.Type {
-	case "mysql":
-		driver = &mysql.Driver{}
-	case "postgres":
-		driver = &postgres.Driver{}
-	default:
-		return nil, fmt.Errorf("%s database has no driver", config.Database.Type)
-	}
+	var database db.PostgresDatabase
 
-	err = driver.Init(config.Database.URL)
-	if err != nil {
-		return
+	if config.Database.URL != "" {
+		err = database.Open(config.Database.URL)
+		if err != nil {
+			err = fmt.Errorf("Cannot connect to a DB: %s", err)
+			return
+		}
 	}
-
-	entityManager := db.NewEntityManager(driver)
-	repository := db.NewRepository(driver)
 
 	if migrateFlag {
 		var migrationsApplied int
@@ -178,8 +168,14 @@ func NewApp(config config.Config, migrateFlag bool, versionFlag bool, version st
 func (a *App) Serve() {
 	// External endpoints
 	external := web.New()
+
+	// Middlewares
+	var headers http.Header
+	headers.Set("Content-Type", "application/json")
+
 	external.Use(server.StripTrailingSlashMiddleware())
-	external.Use(server.HeadersMiddleware())
+	external.Use(server.HeadersMiddleware(headers))
+
 	external.Post("/", a.requestHandler.HandlerAuth)
 	external.Get("/tx_status", httpauth.SimpleBasicAuth(a.config.TxStatusAuth.Username, a.config.TxStatusAuth.Password)(http.HandlerFunc(a.requestHandler.HandlerTxStatus)))
 	externalPortString := fmt.Sprintf(":%d", *a.config.ExternalPort)
@@ -204,8 +200,10 @@ func (a *App) Serve() {
 
 	// Internal endpoints
 	internal := web.New()
-	internal.Use(server.StripTrailingSlashMiddleware())
-	internal.Use(server.HeadersMiddleware())
+
+	internal.Use(server.StripTrailingSlashMiddleware("/admin"))
+	internal.Use(server.HeadersMiddleware(headers, "/admin/"))
+
 	internal.Post("/send", a.requestHandler.HandlerSend)
 	internal.Post("/receive", a.requestHandler.HandlerReceive)
 	internal.Post("/allow_access", a.requestHandler.HandlerAllowAccess)

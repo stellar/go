@@ -7,26 +7,26 @@ import (
 	log "github.com/sirupsen/logrus"
 	b "github.com/stellar/go/build"
 	"github.com/stellar/go/clients/horizon"
-	"github.com/stellar/go/services/bridge/internal/protocols"
-	"github.com/stellar/go/services/bridge/internal/protocols/bridge"
-	"github.com/stellar/go/services/bridge/internal/server"
+	"github.com/stellar/go/protocols"
+	"github.com/stellar/go/protocols/bridge"
 )
 
 // Authorize implements /authorize endpoint
 func (rh *RequestHandler) Authorize(w http.ResponseWriter, r *http.Request) {
 	request := &bridge.AuthorizeRequest{}
-	err := request.FromRequest(r)
+	err := protocols.FromRequest(r, request)
 	if err != nil {
 		log.Error(err.Error())
-		server.Write(w, protocols.InvalidParameterError)
+		protocols.Write(w, protocols.InvalidParameterError)
 		return
 	}
 
-	err = request.Validate(rh.Config.Assets, rh.Config.Accounts.IssuingAccountID)
+	err = request.Validate( /*TODO rh.Config.Assets,*/ rh.Config.Accounts.IssuingAccountID)
 	if err != nil {
+		// TODO
 		errorResponse := err.(*protocols.ErrorResponse)
-		log.WithFields(errorResponse.LogData).Error(errorResponse.Error())
-		server.Write(w, errorResponse)
+		// log.WithFields(errorResponse.LogData).Error(errorResponse.Error())
+		protocols.Write(w, errorResponse)
 		return
 	}
 
@@ -49,7 +49,7 @@ func (rh *RequestHandler) Authorize(w http.ResponseWriter, r *http.Request) {
 		herr, isHorizonError := err.(*horizon.Error)
 		if !isHorizonError {
 			log.WithFields(log.Fields{"err": err}).Error("Error submitting transaction")
-			server.Write(w, protocols.InternalServerError)
+			protocols.Write(w, protocols.InternalServerError)
 			return
 		}
 
@@ -57,7 +57,7 @@ func (rh *RequestHandler) Authorize(w http.ResponseWriter, r *http.Request) {
 		err := jsonEncoder.Encode(herr.Problem)
 		if err != nil {
 			log.WithFields(log.Fields{"err": err}).Error("Error encoding response")
-			server.Write(w, protocols.InternalServerError)
+			protocols.Write(w, protocols.InternalServerError)
 			return
 		}
 
@@ -67,7 +67,7 @@ func (rh *RequestHandler) Authorize(w http.ResponseWriter, r *http.Request) {
 	err = jsonEncoder.Encode(submitResponse)
 	if err != nil {
 		log.WithFields(log.Fields{"err": err}).Error("Error encoding response")
-		server.Write(w, protocols.InternalServerError)
+		protocols.Write(w, protocols.InternalServerError)
 		return
 	}
 }

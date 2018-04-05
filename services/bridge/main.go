@@ -18,10 +18,10 @@ import (
 	"github.com/stellar/go/services/bridge/internal/db"
 	"github.com/stellar/go/services/bridge/internal/handlers"
 	"github.com/stellar/go/services/bridge/internal/listener"
-	"github.com/stellar/go/services/bridge/internal/server"
 	"github.com/stellar/go/services/bridge/internal/submitter"
 	supportConfig "github.com/stellar/go/support/config"
 	"github.com/stellar/go/support/errors"
+	"github.com/stellar/go/support/http/server"
 	"github.com/zenazn/goji/graceful"
 	"github.com/zenazn/goji/web"
 	"github.com/zenazn/goji/web/middleware"
@@ -239,10 +239,15 @@ func (a *App) Serve() {
 	bridge := web.New()
 
 	bridge.Abandon(middleware.Logger)
-	bridge.Use(server.StripTrailingSlashMiddleware())
-	bridge.Use(server.HeadersMiddleware())
+
+	// Middlewares
+	var headers http.Header
+	headers.Set("Content-Type", "application/json")
+	bridge.Use(server.StripTrailingSlashMiddleware("/admin"))
+	bridge.Use(server.HeadersMiddleware(headers, "/admin/"))
+
 	if a.config.APIKey != "" {
-		bridge.Use(server.APIKeyMiddleware(a.config.APIKey))
+		bridge.Use(apiKeyMiddleware(a.config.APIKey))
 	}
 
 	if a.config.Accounts.AuthorizingSeed != "" {
@@ -264,5 +269,20 @@ func (a *App) Serve() {
 	err := graceful.ListenAndServe(portString, bridge)
 	if err != nil {
 		log.Fatal(err)
+	}
+}
+
+// apiKeyMiddleware checks for apiKey in a request and writes http.StatusForbidden if it's incorrect.
+func apiKeyMiddleware(apiKey string) func(next http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		fn := func(w http.ResponseWriter, r *http.Request) {
+			k := r.PostFormValue("apiKey")
+			if k != apiKey {
+				http.Error(w, "Forbidden", http.StatusForbidden)
+				return
+			}
+			next.ServeHTTP(w, r)
+		}
+		return http.HandlerFunc(fn)
 	}
 }

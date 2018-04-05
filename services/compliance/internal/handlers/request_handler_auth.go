@@ -20,7 +20,7 @@ import (
 	callback "github.com/stellar/go/services/bridge/internal/protocols/compliance"
 	"github.com/stellar/go/services/bridge/internal/server"
 	"github.com/stellar/go/services/bridge/internal/submitter"
-	"github.com/stellar/go/services/compliance/internal/db/entities"
+	"github.com/stellar/go/services/compliance/internal/db"
 	"github.com/stellar/go/xdr"
 	"github.com/zenazn/goji/web"
 )
@@ -385,7 +385,7 @@ func (rh *RequestHandler) HandlerAuth(c web.C, w http.ResponseWriter, r *http.Re
 
 	if response.TxStatus == compliance.AuthStatusOk && response.InfoStatus == compliance.AuthStatusOk {
 		w.WriteHeader(http.StatusOK)
-		authorizedTransaction := &entities.AuthorizedTransaction{
+		authorizedTransaction := &db.AuthorizedTransaction{
 			TransactionID:  hex.EncodeToString(transactionHash[:]),
 			Memo:           base64.StdEncoding.EncodeToString(memoBytes[:]),
 			TransactionXdr: authData.Tx,

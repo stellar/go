@@ -7,7 +7,7 @@ import (
 
 	"github.com/stellar/go/services/bridge/internal/protocols"
 	"github.com/stellar/go/services/bridge/internal/server"
-	"github.com/stellar/go/services/compliance/internal/db/entities"
+	"github.com/stellar/go/services/compliance/internal/db"
 	"github.com/zenazn/goji/web"
 )
 
@@ -23,7 +23,7 @@ func (rh *RequestHandler) HandlerAllowAccess(c web.C, w http.ResponseWriter, r *
 	var err error
 
 	if userID != "" {
-		entity := &entities.AllowedUser{
+		entity := &db.AllowedUser{
 			FiName:      name,
 			FiDomain:    domain,
 			FiPublicKey: publicKey,
@@ -32,7 +32,7 @@ func (rh *RequestHandler) HandlerAllowAccess(c web.C, w http.ResponseWriter, r *
 		}
 		err = rh.EntityManager.Persist(entity)
 	} else {
-		entity := &entities.AllowedFi{
+		entity := &db.AllowedFi{
 			Name:      name,
 			Domain:    domain,
 			PublicKey: publicKey,
