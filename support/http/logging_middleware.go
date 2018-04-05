@@ -14,7 +14,11 @@ import (
 func LoggingMiddleware(next stdhttp.Handler) stdhttp.Handler {
 	return stdhttp.HandlerFunc(func(w stdhttp.ResponseWriter, r *stdhttp.Request) {
 		mw := mutil.WrapWriter(w)
-		ctx := r.Context()
+		ctx := log.PushContext(r.Context(), func(l *log.Entry) *log.Entry {
+			return l.WithFields(log.F{
+				"req": middleware.GetReqID(r.Context()),
+			})
+		})
 
 		logStartOfRequest(ctx, r)
 
@@ -22,7 +26,7 @@ func LoggingMiddleware(next stdhttp.Handler) stdhttp.Handler {
 		next.ServeHTTP(mw, r)
 		duration := time.Since(then)
 
-		logEndOfRequest(ctx, duration, mw)
+		logEndOfRequest(ctx, r, duration, mw)
 	})
 }
 
@@ -38,18 +42,20 @@ func logStartOfRequest(
 		"method": r.Method,
 		"ip":     r.RemoteAddr,
 		"host":   r.Host,
-		"req":    middleware.GetReqID(ctx),
 	}).Info("starting request")
 }
 
 // logEndOfRequest emits the logline for the end of the request
 func logEndOfRequest(
 	ctx context.Context,
+	r *stdhttp.Request,
 	duration time.Duration,
 	mw mutil.WriterProxy,
 ) {
 	log.Ctx(ctx).WithFields(log.F{
 		"subsys":   "http",
+		"path":     r.URL.String(),
+		"method":   r.Method,
 		"status":   mw.Status(),
 		"bytes":    mw.BytesWritten(),
 		"duration": duration,
