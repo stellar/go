@@ -2,18 +2,12 @@ package txsub
 
 import (
 	"context"
-	"encoding/json"
 	"net/http"
-	"net/url"
 	"time"
 
-	"github.com/go-errors/errors"
-)
-
-const (
-	StatusError     = "ERROR"
-	StatusPending   = "PENDING"
-	StatusDuplicate = "DUPLICATE"
+	"github.com/stellar/go/clients/stellarcore"
+	proto "github.com/stellar/go/protocols/stellarcore"
+	"github.com/stellar/go/support/errors"
 )
 
 // NewDefaultSubmitter returns a new, simple Submitter implementation
@@ -21,24 +15,18 @@ const (
 // `h`.
 func NewDefaultSubmitter(h *http.Client, url string) Submitter {
 	return &submitter{
-		http:    h,
-		coreURL: url,
+		StellarCore: &stellarcore.Client{
+			HTTP: h,
+			URL:  url,
+		},
 	}
-}
-
-// coreSubmissionResponse is the json response from stellar-core's tx endpoint
-type coreSubmissionResponse struct {
-	Exception string `json:"exception"`
-	Error     string `json:"error"`
-	Status    string `json:"status"`
 }
 
 // submitter is the default implementation for the Submitter interface.  It
 // submits directly to the configured stellar-core instance using the
 // configured http client.
 type submitter struct {
-	http    *http.Client
-	coreURL string
+	StellarCore *stellarcore.Client
 }
 
 // Submit sends the provided envelope to stellar-core and parses the response into
@@ -47,50 +35,22 @@ func (sub *submitter) Submit(ctx context.Context, env string) (result Submission
 	start := time.Now()
 	defer func() { result.Duration = time.Since(start) }()
 
-	// construct the request
-	u, err := url.Parse(sub.coreURL)
+	cresp, err := sub.StellarCore.SubmitTransaction(ctx, env)
 	if err != nil {
-		result.Err = errors.Wrap(err, 1)
-		return
-	}
-
-	u.Path = "/tx"
-	q := u.Query()
-	q.Add("blob", env)
-	u.RawQuery = q.Encode()
-
-	req, err := http.NewRequest("GET", u.String(), nil)
-	if err != nil {
-		result.Err = errors.Wrap(err, 1)
-		return
-	}
-
-	// perform the submission
-	resp, err := sub.http.Do(req)
-	if err != nil {
-		result.Err = errors.Wrap(err, 1)
-		return
-	}
-	defer resp.Body.Close()
-
-	// parse response
-	var cresp coreSubmissionResponse
-	err = json.NewDecoder(resp.Body).Decode(&cresp)
-	if err != nil {
-		result.Err = errors.Wrap(err, 1)
+		result.Err = errors.Wrap(err, "failed to submit")
 		return
 	}
 
 	// interpet response
-	if cresp.Exception != "" {
+	if cresp.IsException() {
 		result.Err = errors.Errorf("stellar-core exception: %s", cresp.Exception)
 		return
 	}
 
 	switch cresp.Status {
-	case StatusError:
+	case proto.TXStatusError:
 		result.Err = &FailedTransactionError{cresp.Error}
-	case StatusPending, StatusDuplicate:
+	case proto.TXStatusPending, proto.TXStatusDuplicate:
 		//noop.  A nil Err indicates success
 	default:
 		result.Err = errors.Errorf("Unrecognized stellar-core status response: %s", cresp.Status)

@@ -2,7 +2,6 @@ package main
 
 import (
 	"log"
-	"runtime"
 
 	"github.com/PuerkitoBio/throttled"
 	"github.com/sirupsen/logrus"
@@ -18,7 +17,6 @@ var config horizon.Config
 var rootCmd *cobra.Command
 
 func main() {
-	runtime.GOMAXPROCS(runtime.NumCPU())
 	rootCmd.Execute()
 }
 

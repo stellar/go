@@ -26,9 +26,6 @@ func TestFriendbot_makeTx(t *testing.T) {
 		"zNV2yXevMYKzm7OhXX2gYwmLZ5V37yeRHUX3Vhb6eT8wkUtpj2vJsUwzLWjdKMyGonFCPkaG4twRFUVqBRLEH"
 	assert.Equal(t, expectedTxn, txn)
 
-	// ensure we're race free. NOTE:  presently, gb can't
-	// run with -race on... we'll confirm this works when
-	// horizon is in the monorepo
 	var wg sync.WaitGroup
 	wg.Add(2)
 	go func() {
