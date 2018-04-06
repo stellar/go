@@ -236,6 +236,13 @@ func String(code interface{}) (string, error) {
 		case xdr.InflationResultCodeInflationNotTime:
 			return "op_not_time", nil
 		}
+	case xdr.BumpSequenceResultCode:
+		switch code {
+		case xdr.BumpSequenceResultCodeBumpSequenceSuccess:
+			return OpSuccess, nil
+		case xdr.BumpSequenceResultCodeBumpSequenceBadSeq:
+			return "op_bad_seq", nil
+		}
 	}
 
 	return "", errors.New(ErrUnknownCode)
