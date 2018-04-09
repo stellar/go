@@ -63,6 +63,11 @@ type AccountFlagsUpdated struct {
 	AuthRevokable *bool `json:"auth_revokable_flag,omitempty"`
 }
 
+type SequenceBumped struct {
+	Base
+	NewSeq int64 `json:"new_seq"`
+}
+
 type SignerCreated struct {
 	Base
 	Weight    int32  `json:"weight"`
@@ -134,4 +139,3 @@ type Trade struct {
 var _ base.Rehydratable = &SignerCreated{}
 var _ base.Rehydratable = &SignerRemoved{}
 var _ base.Rehydratable = &SignerUpdated{}
-

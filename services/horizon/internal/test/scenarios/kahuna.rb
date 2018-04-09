@@ -365,5 +365,15 @@ close_ledger #47
   create_account :bumper
   close_ledger
 
-  bump_sequence :bumper, 20000000000
+  bump_sequence :bumper, 300000000000 #should work
+  close_ledger
+
+  #all the following should ingest as operations but have no effects
+  bump_sequence :bumper, 100
+  close_ledger
+
+  bump_sequence :bumper, next_sequence(:bumper)-1
+  close_ledger
+
+  bump_sequence :bumper, next_sequence(:bumper)
   close_ledger

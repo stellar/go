@@ -35,6 +35,7 @@ var EffectTypeNames = map[history.EffectType]string{
 	history.EffectDataCreated:                        "data_created",
 	history.EffectDataRemoved:                        "data_removed",
 	history.EffectDataUpdated:                        "data_updated",
+	history.EffectSequenceBumped:                     "sequence_bumped",
 }
 
 // NewEffect creates a new effect resource from the provided database representation
@@ -107,6 +108,10 @@ func NewEffect(
 		result = e
 	case history.EffectTrade:
 		e := effects.Trade{Base: basev}
+		err = row.UnmarshalDetails(&e)
+		result = e
+	case history.EffectSequenceBumped:
+		e := SequenceBumped{Base: basev}
 		err = row.UnmarshalDetails(&e)
 		result = e
 	default:
