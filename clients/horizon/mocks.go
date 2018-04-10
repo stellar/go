@@ -44,6 +44,12 @@ func (m *MockClient) LoadAccountOffers(accountID string, params ...interface{}) 
 	return a.Get(0).(OffersPage), a.Error(1)
 }
 
+// LoadTradeAggregations is a mocking a method
+func (m *MockClient) LoadTradeAggregations(selling Asset, buying Asset, resolution int64, params ...interface{}) (tradeAggrs TradeAggregations, err error) {
+	// TODO add mock
+	return
+}
+
 // LoadMemo is a mocking a method
 func (m *MockClient) LoadMemo(p *Payment) error {
 	a := m.Called(p)

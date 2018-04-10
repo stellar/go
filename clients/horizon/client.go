@@ -105,6 +105,67 @@ func (c *Client) LoadAccountOffers(accountID string, params ...interface{}) (off
 	return
 }
 
+// LoadTradeAggregations loads the trade aggregation from horizon.
+func (c *Client) LoadTradeAggregations(
+	baseAsset Asset,
+	counterAsset Asset,
+	resolution int64,
+	params ...interface{}) (
+	tradeAggrs TradeAggregations,
+	err error) {
+
+	c.fixURLOnce.Do(c.fixURL)
+	endpoint := ""
+	query := url.Values{}
+
+	query.Add("base_asset_type", baseAsset.Type)
+	query.Add("base_asset_code", baseAsset.Code)
+	query.Add("base_asset_issuer", baseAsset.Issuer)
+
+	query.Add("counter_asset_type", counterAsset.Type)
+	query.Add("counter_asset_code", counterAsset.Code)
+	query.Add("counter_asset_issuer", counterAsset.Issuer)
+
+	query.Add("resolution", strconv.FormatInt(resolution, 10))
+
+	// TODO: support start_time and end_time as paramters
+	for _, param := range params {
+		switch param := param.(type) {
+		case Limit:
+			query.Add("limit", strconv.Itoa(int(param)))
+		case Order:
+			query.Add("order", string(param))
+		default:
+			err = fmt.Errorf("Undefined parameter (%T): %+v", param, param)
+			return
+		}
+	}
+
+	if endpoint == "" {
+		endpoint = fmt.Sprintf(
+			"%s/trade_aggregations/?%s",
+			c.URL,
+			query.Encode(),
+		)
+	}
+
+	// ensure our endpoint is a real url
+	_, err = url.Parse(endpoint)
+	if err != nil {
+		err = errors.Wrap(err, "failed to parse endpoint")
+		return
+	}
+
+	resp, err := c.HTTP.Get(endpoint)
+	if err != nil {
+		err = errors.Wrap(err, "failed to load endpoint")
+		return
+	}
+
+	err = decodeResponse(resp, &tradeAggrs)
+	return
+}
+
 // LoadMemo loads memo for a transaction in Payment
 func (c *Client) LoadMemo(p *Payment) (err error) {
 	res, err := c.HTTP.Get(p.Links.Transaction.Href)
