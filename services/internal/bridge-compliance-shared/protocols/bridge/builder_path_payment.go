@@ -40,9 +40,9 @@ func (op *PathPaymentOperationBody) FromRequestSpecial(r *http.Request, destinat
 		issuer := r.PostFormValue(issuerFieldName)
 
 		if code == "" && issuer == "" {
-			path = append(path, protocols.Asset{Type: "native"})
+			path = append(path, protocols.Asset{})
 		} else {
-			path = append(path, protocols.Asset{"credit", code, issuer})
+			path = append(path, protocols.Asset{code, issuer})
 		}
 	}
 

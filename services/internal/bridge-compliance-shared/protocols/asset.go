@@ -8,7 +8,7 @@ import (
 
 // ToBaseAsset transforms Asset to github.com/stellar/go-stellar-base/build.Asset
 func (a Asset) ToBaseAsset() build.Asset {
-	if a.Type == "native" {
+	if a.Code == "" && a.Issuer == "" {
 		return build.NativeAsset()
 	}
 	return build.CreditAsset(a.Code, a.Issuer)

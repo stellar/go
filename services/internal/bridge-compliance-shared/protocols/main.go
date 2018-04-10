@@ -6,7 +6,6 @@ import (
 
 // Asset represents asset
 type Asset struct {
-	Type   string `name:"asset_type" json:"type"`
 	Code   string `name:"asset_code" json:"code"`
 	Issuer string `name:"asset_issuer" json:"issuer"`
 }
