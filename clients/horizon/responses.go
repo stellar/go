@@ -170,7 +170,7 @@ type Offer struct {
 	Price   string `json:"price"`
 }
 
-type TradeAggregations struct {
+type TradeAggregationsPage struct {
 	Links struct {
 		Self Link `json:"self"`
 		Next Link `json:"next"`

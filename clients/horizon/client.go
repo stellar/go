@@ -58,7 +58,10 @@ func (c *Client) LoadAccount(accountID string) (account Account, err error) {
 
 // LoadAccountOffers loads the account offers from horizon. err can be either
 // error object or horizon.Error object.
-func (c *Client) LoadAccountOffers(accountID string, params ...interface{}) (offers OffersPage, err error) {
+func (c *Client) LoadAccountOffers(
+	accountID string,
+	params ...interface{},
+) (offers OffersPage, err error) {
 	c.fixURLOnce.Do(c.fixURL)
 	endpoint := ""
 	query := url.Values{}
@@ -110,10 +113,8 @@ func (c *Client) LoadTradeAggregations(
 	baseAsset Asset,
 	counterAsset Asset,
 	resolution int64,
-	params ...interface{}) (
-	tradeAggrs TradeAggregations,
-	err error) {
-
+	params ...interface{},
+) (tradeAggrs TradeAggregationsPage, err error) {
 	c.fixURLOnce.Do(c.fixURL)
 	query := url.Values{}
 
@@ -192,7 +193,11 @@ func (c *Client) SequenceForAccount(
 }
 
 // LoadOrderBook loads order book for given selling and buying assets.
-func (c *Client) LoadOrderBook(selling Asset, buying Asset, params ...interface{}) (orderBook OrderBookSummary, err error) {
+func (c *Client) LoadOrderBook(
+	selling Asset,
+	buying Asset,
+	params ...interface{},
+) (orderBook OrderBookSummary, err error) {
 	c.fixURLOnce.Do(c.fixURL)
 	query := url.Values{}
 
@@ -223,7 +228,12 @@ func (c *Client) LoadOrderBook(selling Asset, buying Asset, params ...interface{
 	return
 }
 
-func (c *Client) stream(ctx context.Context, baseURL string, cursor *Cursor, handler func(data []byte) error) error {
+func (c *Client) stream(
+	ctx context.Context,
+	baseURL string,
+	cursor *Cursor,
+	handler func(data []byte) error,
+) error {
 	query := url.Values{}
 	if cursor != nil {
 		query.Set("cursor", string(*cursor))
@@ -315,7 +325,11 @@ func (c *Client) stream(ctx context.Context, baseURL string, cursor *Cursor, han
 
 // StreamLedgers streams incoming ledgers. Use context.WithCancel to stop streaming or
 // context.Background() if you want to stream indefinitely.
-func (c *Client) StreamLedgers(ctx context.Context, cursor *Cursor, handler LedgerHandler) (err error) {
+func (c *Client) StreamLedgers(
+	ctx context.Context,
+	cursor *Cursor,
+	handler LedgerHandler,
+) (err error) {
 	c.fixURLOnce.Do(c.fixURL)
 	url := fmt.Sprintf("%s/ledgers", c.URL)
 	return c.stream(ctx, url, cursor, func(data []byte) error {
@@ -331,7 +345,12 @@ func (c *Client) StreamLedgers(ctx context.Context, cursor *Cursor, handler Ledg
 
 // StreamPayments streams incoming payments. Use context.WithCancel to stop streaming or
 // context.Background() if you want to stream indefinitely.
-func (c *Client) StreamPayments(ctx context.Context, accountID string, cursor *Cursor, handler PaymentHandler) (err error) {
+func (c *Client) StreamPayments(
+	ctx context.Context,
+	accountID string,
+	cursor *Cursor,
+	handler PaymentHandler,
+) (err error) {
 	c.fixURLOnce.Do(c.fixURL)
 	url := fmt.Sprintf("%s/accounts/%s/payments", c.URL, accountID)
 	return c.stream(ctx, url, cursor, func(data []byte) error {
@@ -347,7 +366,12 @@ func (c *Client) StreamPayments(ctx context.Context, accountID string, cursor *C
 
 // StreamTransactions streams incoming transactions. Use context.WithCancel to stop streaming or
 // context.Background() if you want to stream indefinitely.
-func (c *Client) StreamTransactions(ctx context.Context, accountID string, cursor *Cursor, handler TransactionHandler) (err error) {
+func (c *Client) StreamTransactions(
+	ctx context.Context,
+	accountID string,
+	cursor *Cursor,
+	handler TransactionHandler,
+) (err error) {
 	c.fixURLOnce.Do(c.fixURL)
 	url := fmt.Sprintf("%s/accounts/%s/transactions", c.URL, accountID)
 	return c.stream(ctx, url, cursor, func(data []byte) error {
@@ -362,7 +386,9 @@ func (c *Client) StreamTransactions(ctx context.Context, accountID string, curso
 }
 
 // SubmitTransaction submits a transaction to the network. err can be either error object or horizon.Error object.
-func (c *Client) SubmitTransaction(transactionEnvelopeXdr string) (response TransactionSuccess, err error) {
+func (c *Client) SubmitTransaction(
+	transactionEnvelopeXdr string,
+) (response TransactionSuccess, err error) {
 	c.fixURLOnce.Do(c.fixURL)
 	v := url.Values{}
 	v.Set("tx", transactionEnvelopeXdr)
