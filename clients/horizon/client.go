@@ -115,7 +115,6 @@ func (c *Client) LoadTradeAggregations(
 	err error) {
 
 	c.fixURLOnce.Do(c.fixURL)
-	endpoint := ""
 	query := url.Values{}
 
 	query.Add("base_asset_type", baseAsset.Type)
@@ -141,13 +140,11 @@ func (c *Client) LoadTradeAggregations(
 		}
 	}
 
-	if endpoint == "" {
-		endpoint = fmt.Sprintf(
-			"%s/trade_aggregations/?%s",
-			c.URL,
-			query.Encode(),
-		)
-	}
+	endpoint := fmt.Sprintf(
+		"%s/trade_aggregations/?%s",
+		c.URL,
+		query.Encode(),
+	)
 
 	// ensure our endpoint is a real url
 	_, err = url.Parse(endpoint)
