@@ -20,7 +20,7 @@ import (
 	"github.com/stellar/go/services/compliance/internal/handlers"
 	supportConfig "github.com/stellar/go/support/config"
 	"github.com/stellar/go/support/errors"
-	"github.com/stellar/go/support/http/server"
+	supportHttp "github.com/stellar/go/support/http"
 	"github.com/zenazn/goji/graceful"
 	"github.com/zenazn/goji/web"
 )
@@ -172,8 +172,8 @@ func (a *App) Serve() {
 	var headers http.Header
 	headers.Set("Content-Type", "application/json")
 
-	external.Use(server.StripTrailingSlashMiddleware())
-	external.Use(server.HeadersMiddleware(headers))
+	external.Use(supportHttp.StripTrailingSlashMiddleware())
+	external.Use(supportHttp.HeadersMiddleware(headers))
 
 	external.Post("/", a.requestHandler.HandlerAuth)
 	external.Get("/tx_status", httpauth.SimpleBasicAuth(a.config.TxStatusAuth.Username, a.config.TxStatusAuth.Password)(http.HandlerFunc(a.requestHandler.HandlerTxStatus)))
@@ -200,8 +200,8 @@ func (a *App) Serve() {
 	// Internal endpoints
 	internal := web.New()
 
-	internal.Use(server.StripTrailingSlashMiddleware("/admin"))
-	internal.Use(server.HeadersMiddleware(headers, "/admin/"))
+	internal.Use(supportHttp.StripTrailingSlashMiddleware("/admin"))
+	internal.Use(supportHttp.HeadersMiddleware(headers, "/admin/"))
 
 	internal.Post("/send", a.requestHandler.HandlerSend)
 	internal.Post("/receive", a.requestHandler.HandlerReceive)

@@ -21,7 +21,7 @@ import (
 	"github.com/stellar/go/services/bridge/internal/submitter"
 	supportConfig "github.com/stellar/go/support/config"
 	"github.com/stellar/go/support/errors"
-	"github.com/stellar/go/support/http/server"
+	supportHttp "github.com/stellar/go/support/http"
 	"github.com/zenazn/goji/graceful"
 	"github.com/zenazn/goji/web"
 	"github.com/zenazn/goji/web/middleware"
@@ -243,8 +243,8 @@ func (a *App) Serve() {
 	// Middlewares
 	var headers http.Header
 	headers.Set("Content-Type", "application/json")
-	bridge.Use(server.StripTrailingSlashMiddleware("/admin"))
-	bridge.Use(server.HeadersMiddleware(headers, "/admin/"))
+	bridge.Use(supportHttp.StripTrailingSlashMiddleware("/admin"))
+	bridge.Use(supportHttp.HeadersMiddleware(headers, "/admin/"))
 
 	if a.config.APIKey != "" {
 		bridge.Use(apiKeyMiddleware(a.config.APIKey))

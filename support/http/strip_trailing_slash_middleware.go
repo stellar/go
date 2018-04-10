@@ -1,14 +1,14 @@
-package server
+package http
 
 import (
-	"net/http"
+	stdhttp "net/http"
 	"strings"
 )
 
 // StripTrailingSlashMiddleware strips trailing slash.
-func StripTrailingSlashMiddleware(ignoredPrefixes ...string) func(next http.Handler) http.Handler {
-	return func(next http.Handler) http.Handler {
-		fn := func(w http.ResponseWriter, r *http.Request) {
+func StripTrailingSlashMiddleware(ignoredPrefixes ...string) func(next stdhttp.Handler) stdhttp.Handler {
+	return func(next stdhttp.Handler) stdhttp.Handler {
+		fn := func(w stdhttp.ResponseWriter, r *stdhttp.Request) {
 			path := r.URL.Path
 
 			// Do not change ignored prefixes
@@ -29,6 +29,6 @@ func StripTrailingSlashMiddleware(ignoredPrefixes ...string) func(next http.Hand
 
 			next.ServeHTTP(w, r)
 		}
-		return http.HandlerFunc(fn)
+		return stdhttp.HandlerFunc(fn)
 	}
 }
