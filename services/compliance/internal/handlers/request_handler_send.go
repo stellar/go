@@ -10,10 +10,9 @@ import (
 	b "github.com/stellar/go/build"
 	"github.com/stellar/go/protocols/compliance"
 	"github.com/stellar/go/protocols/federation"
-	"github.com/stellar/go/services/bridge/internal/protocols"
-	callback "github.com/stellar/go/services/bridge/internal/protocols/compliance"
-	"github.com/stellar/go/services/bridge/internal/server"
-	"github.com/stellar/go/services/bridge/internal/submitter"
+	shared "github.com/stellar/go/services/internal/bridge-compliance-shared"
+	"github.com/stellar/go/services/internal/bridge-compliance-shared/http/helpers"
+	callback "github.com/stellar/go/services/internal/bridge-compliance-shared/protocols/compliance"
 	"github.com/stellar/go/xdr"
 	"github.com/zenazn/goji/web"
 )
@@ -21,18 +20,19 @@ import (
 // HandlerSend implements /send endpoint
 func (rh *RequestHandler) HandlerSend(c web.C, w http.ResponseWriter, r *http.Request) {
 	request := &callback.SendRequest{}
-	err := request.FromRequest(r)
+	err := helpers.FromRequest(r, request)
 	if err != nil {
 		log.Error(err.Error())
-		server.Write(w, protocols.InvalidParameterError)
+		helpers.Write(w, helpers.InvalidParameterError)
 		return
 	}
 
 	err = request.Validate()
 	if err != nil {
-		errorResponse := err.(*protocols.ErrorResponse)
-		log.WithFields(errorResponse.LogData).Error(errorResponse.Error())
-		server.Write(w, errorResponse)
+		errorResponse := err.(*helpers.ErrorResponse)
+		// TODO
+		// log.WithFields(errorResponse.LogData).Error(errorResponse.Error())
+		helpers.Write(w, errorResponse)
 		return
 	}
 
@@ -46,7 +46,7 @@ func (rh *RequestHandler) HandlerSend(c web.C, w http.ResponseWriter, r *http.Re
 				"destination": request.Destination,
 				"err":         err,
 			}).Print("Cannot resolve address")
-			server.Write(w, callback.CannotResolveDestination)
+			helpers.Write(w, callback.CannotResolveDestination)
 			return
 		}
 
@@ -56,7 +56,7 @@ func (rh *RequestHandler) HandlerSend(c web.C, w http.ResponseWriter, r *http.Re
 				"destination": request.Destination,
 				"err":         err,
 			}).Print("Cannot resolve address")
-			server.Write(w, callback.CannotResolveDestination)
+			helpers.Write(w, callback.CannotResolveDestination)
 			return
 		}
 	} else {
@@ -66,7 +66,7 @@ func (rh *RequestHandler) HandlerSend(c web.C, w http.ResponseWriter, r *http.Re
 				"destination": request.Destination,
 				"err":         err,
 			}).Print("Cannot resolve address")
-			server.Write(w, callback.CannotResolveDestination)
+			helpers.Write(w, callback.CannotResolveDestination)
 			return
 		}
 
@@ -79,13 +79,13 @@ func (rh *RequestHandler) HandlerSend(c web.C, w http.ResponseWriter, r *http.Re
 			"destination": request.Destination,
 			"err":         err,
 		}).Print("Cannot resolve address")
-		server.Write(w, callback.CannotResolveDestination)
+		helpers.Write(w, callback.CannotResolveDestination)
 		return
 	}
 
 	if stellarToml.AuthServer == "" {
 		log.Print("No AUTH_SERVER in stellar.toml")
-		server.Write(w, callback.AuthServerNotDefined)
+		helpers.Write(w, callback.AuthServerNotDefined)
 		return
 	}
 
@@ -100,7 +100,7 @@ func (rh *RequestHandler) HandlerSend(c web.C, w http.ResponseWriter, r *http.Re
 			sendAsset = b.NativeAsset()
 		} else {
 			log.Print("Missing send asset param.")
-			server.Write(w, protocols.MissingParameterError)
+			helpers.Write(w, helpers.NewMissingParameter("send asset"))
 			return
 		}
 
@@ -135,7 +135,7 @@ func (rh *RequestHandler) HandlerSend(c web.C, w http.ResponseWriter, r *http.Re
 		log.WithFields(log.Fields{
 			"err": operationMutator.Err,
 		}).Error("Error creating operation")
-		server.Write(w, protocols.InternalServerError)
+		helpers.Write(w, helpers.InternalServerError)
 		return
 	}
 
@@ -146,14 +146,14 @@ func (rh *RequestHandler) HandlerSend(c web.C, w http.ResponseWriter, r *http.Re
 		fetchInfoRequest := callback.FetchInfoRequest{Address: request.Sender}
 		resp, err := rh.Client.PostForm(
 			rh.Config.Callbacks.FetchInfo,
-			fetchInfoRequest.ToValues(),
+			helpers.ToValues(fetchInfoRequest),
 		)
 		if err != nil {
 			log.WithFields(log.Fields{
 				"fetch_info": rh.Config.Callbacks.FetchInfo,
 				"err":        err,
 			}).Error("Error sending request to fetch_info server")
-			server.Write(w, protocols.InternalServerError)
+			helpers.Write(w, helpers.InternalServerError)
 			return
 		}
 
@@ -164,7 +164,7 @@ func (rh *RequestHandler) HandlerSend(c web.C, w http.ResponseWriter, r *http.Re
 				"fetch_info": rh.Config.Callbacks.FetchInfo,
 				"err":        err,
 			}).Error("Error reading fetch_info server response")
-			server.Write(w, protocols.InternalServerError)
+			helpers.Write(w, helpers.InternalServerError)
 			return
 		}
 
@@ -174,7 +174,7 @@ func (rh *RequestHandler) HandlerSend(c web.C, w http.ResponseWriter, r *http.Re
 				"status":     resp.StatusCode,
 				"body":       string(body),
 			}).Error("Error response from fetch_info server")
-			server.Write(w, protocols.InternalServerError)
+			helpers.Write(w, helpers.InternalServerError)
 			return
 		}
 
@@ -184,7 +184,7 @@ func (rh *RequestHandler) HandlerSend(c web.C, w http.ResponseWriter, r *http.Re
 				"fetch_info": rh.Config.Callbacks.FetchInfo,
 				"err":        err,
 			}).Error("Error unmarshalling sender_info server response")
-			server.Write(w, protocols.InternalServerError)
+			helpers.Write(w, helpers.InternalServerError)
 			return
 		}
 	}
@@ -201,18 +201,18 @@ func (rh *RequestHandler) HandlerSend(c web.C, w http.ResponseWriter, r *http.Re
 	attachmentJSON, err := attachment.Marshal()
 	if err != nil {
 		log.WithFields(log.Fields{"err": err}).Error("Error marshalling attachment")
-		server.Write(w, protocols.InternalServerError)
+		helpers.Write(w, helpers.InternalServerError)
 		return
 	}
 	attachmentHashBytes, err := attachment.Hash()
 	if err != nil {
 		log.WithFields(log.Fields{"err": err}).Error("Error hashing attachment")
-		server.Write(w, protocols.InternalServerError)
+		helpers.Write(w, helpers.InternalServerError)
 		return
 	}
 	memoMutator := &b.MemoHash{xdr.Hash(attachmentHashBytes)}
 
-	transaction, err := submitter.BuildTransaction(
+	transaction, err := shared.BuildTransaction(
 		request.Source,
 		rh.Config.NetworkPassphrase,
 		operationMutator,
@@ -222,7 +222,7 @@ func (rh *RequestHandler) HandlerSend(c web.C, w http.ResponseWriter, r *http.Re
 	txBase64, err := xdr.MarshalBase64(transaction)
 	if err != nil {
 		log.WithFields(log.Fields{"err": err}).Error("Error mashaling transaction")
-		server.Write(w, protocols.InternalServerError)
+		helpers.Write(w, helpers.InternalServerError)
 		return
 	}
 
@@ -236,13 +236,13 @@ func (rh *RequestHandler) HandlerSend(c web.C, w http.ResponseWriter, r *http.Re
 	data, err := authData.Marshal()
 	if err != nil {
 		log.Error("Error mashaling authData")
-		server.Write(w, protocols.InternalServerError)
+		helpers.Write(w, helpers.InternalServerError)
 		return
 	}
 	sig, err := rh.SignatureSignerVerifier.Sign(rh.Config.Keys.SigningSeed, data)
 	if err != nil {
 		log.Error("Error signing authData")
-		server.Write(w, protocols.InternalServerError)
+		helpers.Write(w, helpers.InternalServerError)
 		return
 	}
 
@@ -259,7 +259,7 @@ func (rh *RequestHandler) HandlerSend(c web.C, w http.ResponseWriter, r *http.Re
 			"auth_server": stellarToml.AuthServer,
 			"err":         err,
 		}).Error("Error sending request to auth server")
-		server.Write(w, protocols.InternalServerError)
+		helpers.Write(w, helpers.InternalServerError)
 		return
 	}
 
@@ -267,7 +267,7 @@ func (rh *RequestHandler) HandlerSend(c web.C, w http.ResponseWriter, r *http.Re
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		log.Error("Error reading auth server response")
-		server.Write(w, protocols.InternalServerError)
+		helpers.Write(w, helpers.InternalServerError)
 		return
 	}
 
@@ -276,7 +276,7 @@ func (rh *RequestHandler) HandlerSend(c web.C, w http.ResponseWriter, r *http.Re
 			"status": resp.StatusCode,
 			"body":   string(body),
 		}).Error("Error response from auth server")
-		server.Write(w, protocols.InternalServerError)
+		helpers.Write(w, helpers.InternalServerError)
 		return
 	}
 
@@ -287,7 +287,7 @@ func (rh *RequestHandler) HandlerSend(c web.C, w http.ResponseWriter, r *http.Re
 			"status": resp.StatusCode,
 			"body":   string(body),
 		}).Error("Error unmarshalling auth response")
-		server.Write(w, protocols.InternalServerError)
+		helpers.Write(w, helpers.InternalServerError)
 		return
 	}
 
@@ -295,5 +295,5 @@ func (rh *RequestHandler) HandlerSend(c web.C, w http.ResponseWriter, r *http.Re
 		AuthResponse:   authResponse,
 		TransactionXdr: txBase64,
 	}
-	server.Write(w, &response)
+	helpers.Write(w, &response)
 }

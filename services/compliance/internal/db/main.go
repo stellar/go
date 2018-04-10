@@ -7,9 +7,16 @@ import (
 )
 
 type Database interface {
-	GetAuthorizedTransactionByMemo(memo string) (*entities.AuthorizedTransaction, error)
-	GetAllowedFiByDomain(domain string) (*entities.AllowedFi, error)
-	GetAllowedUserByDomainAndUserID(domain, userID string) (*entities.AllowedUser, error)
+	InsertAuthorizedTransaction(transaction *AuthorizedTransaction) error
+	GetAuthorizedTransactionByMemo(memo string) (*AuthorizedTransaction, error)
+
+	InsertAllowedFI(fi *AllowedFI) error
+	GetAllowedFIByDomain(domain string) (*AllowedFI, error)
+	DeleteAllowedFIByDomain(domain string) error
+
+	InsertAllowedUser(user *AllowedUser) error
+	GetAllowedUserByDomainAndUserID(domain, userID string) (*AllowedUser, error)
+	DeleteAllowedUserByDomainAndUserID(domain, userID string) error
 }
 
 type PostgresDatabase struct {
@@ -18,8 +25,7 @@ type PostgresDatabase struct {
 
 // AllowedFI represents allowed FI
 type AllowedFI struct {
-	exists    bool
-	ID        *int64    `db:"id"`
+	ID        int64     `db:"id"`
 	Name      string    `db:"name"`
 	Domain    string    `db:"domain"`
 	PublicKey string    `db:"public_key"`
@@ -28,8 +34,7 @@ type AllowedFI struct {
 
 // AllowedUser represents allowed user
 type AllowedUser struct {
-	exists      bool
-	ID          *int64    `db:"id"`
+	ID          int64     `db:"id"`
 	FiName      string    `db:"fi_name"`
 	FiDomain    string    `db:"fi_domain"`
 	FiPublicKey string    `db:"fi_public_key"`
@@ -39,8 +44,7 @@ type AllowedUser struct {
 
 // AuthorizedTransaction represents authorized transaction
 type AuthorizedTransaction struct {
-	exists         bool
-	ID             *int64    `db:"id"`
+	ID             int64     `db:"id"`
 	TransactionID  string    `db:"transaction_id"`
 	Memo           string    `db:"memo"`
 	TransactionXdr string    `db:"transaction_xdr"`

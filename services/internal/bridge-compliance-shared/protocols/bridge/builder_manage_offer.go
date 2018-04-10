@@ -4,7 +4,7 @@ import (
 	"strconv"
 
 	b "github.com/stellar/go/build"
-	"github.com/stellar/go/protocols"
+	"github.com/stellar/go/services/internal/bridge-compliance-shared/protocols"
 )
 
 // ManageOfferOperationBody represents manage_offer operation

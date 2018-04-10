@@ -16,9 +16,9 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/stellar/go/clients/horizon"
 	"github.com/stellar/go/protocols/compliance"
-	callback "github.com/stellar/go/protocols/compliance/server"
 	"github.com/stellar/go/services/bridge/internal/config"
 	"github.com/stellar/go/services/bridge/internal/db"
+	callback "github.com/stellar/go/services/internal/bridge-compliance-shared/protocols/compliance"
 	"github.com/stellar/go/strkey"
 	"github.com/stellar/go/support/errors"
 )

@@ -4,8 +4,9 @@ import (
 	"encoding/json"
 	"strings"
 
-	"github.com/stellar/go/protocols"
 	"github.com/stellar/go/protocols/compliance"
+	"github.com/stellar/go/services/internal/bridge-compliance-shared/http/helpers"
+	"github.com/stellar/go/services/internal/bridge-compliance-shared/protocols"
 )
 
 // SendRequest represents request sent to /send endpoint of compliance server
@@ -75,6 +76,7 @@ func validateStellarAddress(address string) bool {
 
 // SendResponse represents response returned by /send endpoint
 type SendResponse struct {
+	helpers.SuccessResponse
 	compliance.AuthResponse `json:"auth_response"`
 	// xdr.Transaction base64-encoded. Sequence number of this transaction will be equal 0.
 	TransactionXdr string `json:"transaction_xdr,omitempty"`

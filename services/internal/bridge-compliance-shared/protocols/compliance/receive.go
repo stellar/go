@@ -2,6 +2,8 @@ package compliance
 
 import (
 	"encoding/json"
+
+	"github.com/stellar/go/services/internal/bridge-compliance-shared/http/helpers"
 )
 
 // ReceiveRequest represents request sent to /receive endpoint of compliance server
@@ -21,6 +23,7 @@ func (request *ReceiveRequest) Validate() error {
 
 // ReceiveResponse represents response returned by /receive endpoint
 type ReceiveResponse struct {
+	helpers.SuccessResponse
 	// The AuthData hash of this memo.
 	Data string `json:"data"`
 }

@@ -1,9 +1,7 @@
 package submitter
 
 import (
-	"bytes"
 	"encoding/hex"
-	"fmt"
 	"strconv"
 	"sync"
 	"time"
@@ -11,9 +9,9 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/stellar/go/build"
 	"github.com/stellar/go/clients/horizon"
-	"github.com/stellar/go/hash"
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/services/bridge/internal/db"
+	shared "github.com/stellar/go/services/internal/bridge-compliance-shared"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
 )
@@ -126,7 +124,7 @@ func (ts *TransactionSubmitter) SignAndSubmitRawTransaction(paymentID *string, s
 	tx.SeqNum = xdr.SequenceNumber(account.SequenceNumber)
 	account.Mutex.Unlock()
 
-	hash, err := TransactionHash(tx, ts.Network.Passphrase)
+	hash, err := shared.TransactionHash(tx, ts.Network.Passphrase)
 	if err != nil {
 		ts.log.Print("Error calculating transaction hash")
 		return
@@ -149,7 +147,7 @@ func (ts *TransactionSubmitter) SignAndSubmitRawTransaction(paymentID *string, s
 		return
 	}
 
-	transactionHashBytes, err := TransactionHash(tx, ts.Network.Passphrase)
+	transactionHashBytes, err := shared.TransactionHash(tx, ts.Network.Passphrase)
 	if err != nil {
 		ts.log.WithFields(logrus.Fields{"err": err}).Warn("Error calculating tx hash")
 		return
@@ -259,54 +257,4 @@ func (ts *TransactionSubmitter) SubmitTransaction(paymentID *string, seed string
 	}
 
 	return ts.SignAndSubmitRawTransaction(paymentID, seed, txBuilder.TX)
-}
-
-// BuildTransaction is used in compliance server. The sequence number in built transaction will be equal 0!
-func BuildTransaction(accountID, networkPassphrase string, operation, memo interface{}) (transaction *xdr.Transaction, err error) {
-	operationMutator, ok := operation.(build.TransactionMutator)
-	if !ok {
-		err = errors.New("Cannot cast operationMutator to build.TransactionMutator")
-		return
-	}
-
-	mutators := []build.TransactionMutator{
-		build.SourceAccount{accountID},
-		build.Sequence{0},
-		build.Network{networkPassphrase},
-		operationMutator,
-	}
-
-	if memo != nil {
-		memoMutator, ok := memo.(build.TransactionMutator)
-		if !ok {
-			err = errors.New("Cannot cast memo to build.TransactionMutator")
-			return
-		}
-		mutators = append(mutators, memoMutator)
-	}
-
-	txBuilder, err := build.Transaction(mutators...)
-	return txBuilder.TX, err
-}
-
-// TransactionHash returns transaction hash for a given Transaction based on the network
-func TransactionHash(tx *xdr.Transaction, networkPassphrase string) ([32]byte, error) {
-	var txBytes bytes.Buffer
-
-	_, err := fmt.Fprintf(&txBytes, "%s", hash.Hash([]byte(networkPassphrase)))
-	if err != nil {
-		return [32]byte{}, err
-	}
-
-	_, err = xdr.Marshal(&txBytes, xdr.EnvelopeTypeEnvelopeTypeTx)
-	if err != nil {
-		return [32]byte{}, err
-	}
-
-	_, err = xdr.Marshal(&txBytes, tx)
-	if err != nil {
-		return [32]byte{}, err
-	}
-
-	return hash.Hash(txBytes.Bytes()), nil
 }

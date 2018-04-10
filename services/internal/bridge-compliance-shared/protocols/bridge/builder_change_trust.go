@@ -2,7 +2,7 @@ package bridge
 
 import (
 	b "github.com/stellar/go/build"
-	"github.com/stellar/go/protocols"
+	"github.com/stellar/go/services/internal/bridge-compliance-shared/protocols"
 )
 
 // ChangeTrustOperationBody represents change_trust operation
@@ -37,17 +37,17 @@ func (op ChangeTrustOperationBody) ToTransactionMutator() b.TransactionMutator {
 func (op ChangeTrustOperationBody) Validate() error {
 	panic("TODO")
 	// if !op.Asset.Validate() {
-	// 	return protocols.NewInvalidParameterError("asset", op.Asset.String(), "Asset is invalid.")
+	// 	return helpers.NewInvalidParameterError("asset", op.Asset.String(), "Asset is invalid.")
 	// }
 
 	// if op.Limit != nil {
-	// 	if !protocols.IsValidAmount(*op.Limit) {
-	// 		return protocols.NewInvalidParameterError("limit", *op.Limit, "Limit is not a valid amount.")
+	// 	if !helpers.IsValidAmount(*op.Limit) {
+	// 		return helpers.NewInvalidParameterError("limit", *op.Limit, "Limit is not a valid amount.")
 	// 	}
 	// }
 
-	// if op.Source != nil && !protocols.IsValidAccountID(*op.Source) {
-	// 	return protocols.NewInvalidParameterError("source", *op.Source, "Source must be a public key (starting with `G`).")
+	// if op.Source != nil && !helpers.IsValidAccountID(*op.Source) {
+	// 	return helpers.NewInvalidParameterError("source", *op.Source, "Source must be a public key (starting with `G`).")
 	// }
 
 	// return nil

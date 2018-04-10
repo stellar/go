@@ -5,9 +5,8 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/stellar/go/services/bridge/internal/protocols"
-	"github.com/stellar/go/services/bridge/internal/server"
 	"github.com/stellar/go/services/compliance/internal/db"
+	"github.com/stellar/go/services/internal/bridge-compliance-shared/http/helpers"
 	"github.com/zenazn/goji/web"
 )
 
@@ -30,20 +29,20 @@ func (rh *RequestHandler) HandlerAllowAccess(c web.C, w http.ResponseWriter, r *
 			UserID:      userID,
 			AllowedAt:   time.Now(),
 		}
-		err = rh.EntityManager.Persist(entity)
+		err = rh.Database.InsertAllowedUser(entity)
 	} else {
-		entity := &db.AllowedFi{
+		entity := &db.AllowedFI{
 			Name:      name,
 			Domain:    domain,
 			PublicKey: publicKey,
 			AllowedAt: time.Now(),
 		}
-		err = rh.EntityManager.Persist(entity)
+		err = rh.Database.InsertAllowedFI(entity)
 	}
 
 	if err != nil {
 		log.WithFields(log.Fields{"err": err}).Warn("Error persisting /allow entity")
-		server.Write(w, protocols.InternalServerError)
+		helpers.Write(w, helpers.InternalServerError)
 		return
 	}
 

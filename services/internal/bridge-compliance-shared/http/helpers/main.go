@@ -1,4 +1,4 @@
-package protocols
+package helpers
 
 import (
 	"net/http"
@@ -23,12 +23,6 @@ var (
 type SpecialValuesConvertable interface {
 	FromRequestSpecial(r *http.Request, destination interface{}) error
 	ToValuesSpecial(values url.Values)
-}
-
-// ForwardDestination contains fields required to create forward federation request
-type ForwardDestination struct {
-	Domain string     `name:"domain"`
-	Fields url.Values `name:"fields"`
 }
 
 // Response represents response that can be returned by a server
@@ -67,11 +61,4 @@ type ErrorResponse struct {
 	MoreInfo string `json:"more_info,omitempty"`
 	// Error data that will be returned to API consumer
 	Data map[string]interface{} `json:"data,omitempty"`
-}
-
-// Asset represents asset
-type Asset struct {
-	Type   string `name:"asset_type" json:"type"`
-	Code   string `name:"asset_code" json:"code"`
-	Issuer string `name:"asset_issuer" json:"issuer"`
 }

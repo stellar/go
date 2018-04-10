@@ -34,8 +34,19 @@ func (d *PostgresDatabase) getTable(name string, session *db.Session) *db.Table 
 	}
 }
 
+// InsertAuthorizedTransaction inserts a new authorized transaction into DB.
+func (d *PostgresDatabase) InsertAuthorizedTransaction(transaction *AuthorizedTransaction) error {
+	authorizedTransactionTable := d.getTable(authorizedTransactionTableName, nil)
+	_, err := authorizedTransactionTable.Insert(transaction).IgnoreCols("id").Exec()
+	if err != nil {
+		return errors.Wrap(err, "Error inserting authorized trasaction")
+	}
+
+	return nil
+}
+
 // GetAuthorizedTransactionByMemo returns authorized transaction searching by memo
-func (r Repository) GetAuthorizedTransactionByMemo(memo string) (*AuthorizedTransaction, error) {
+func (d *PostgresDatabase) GetAuthorizedTransactionByMemo(memo string) (*AuthorizedTransaction, error) {
 	authorizedTransactionTable := d.getTable(authorizedTransactionTableName, nil)
 	var authorizedTransaction AuthorizedTransaction
 	err := authorizedTransactionTable.Get(&authorizedTransaction, map[string]interface{}{"memo": memo}).Exec()
@@ -51,8 +62,19 @@ func (r Repository) GetAuthorizedTransactionByMemo(memo string) (*AuthorizedTran
 	return &authorizedTransaction, nil
 }
 
-// GetAllowedFiByDomain returns allowed FI by a domain
-func (r Repository) GetAllowedFiByDomain(domain string) (*AllowedFI, error) {
+// InsertAllowedFI inserts a new allowed FI into DB.
+func (d *PostgresDatabase) InsertAllowedFI(fi *AllowedFI) error {
+	allowedFITable := d.getTable(allowedFITableName, nil)
+	_, err := allowedFITable.Insert(fi).IgnoreCols("id").Exec()
+	if err != nil {
+		return errors.Wrap(err, "Error inserting allowed FI")
+	}
+
+	return nil
+}
+
+// GetAllowedFIByDomain returns allowed FI by a domain
+func (d *PostgresDatabase) GetAllowedFIByDomain(domain string) (*AllowedFI, error) {
 	allowedFITable := d.getTable(allowedFITableName, nil)
 	var allowedFI AllowedFI
 	err := allowedFITable.Get(&allowedFI, map[string]interface{}{"domain": domain}).Exec()
@@ -68,8 +90,26 @@ func (r Repository) GetAllowedFiByDomain(domain string) (*AllowedFI, error) {
 	return &allowedFI, nil
 }
 
+// DeleteAllowedFIByDomain deletes allowed FI by a domain
+func (d *PostgresDatabase) DeleteAllowedFIByDomain(domain string) error {
+	allowedFITable := d.getTable(allowedFITableName, nil)
+	_, err := allowedFITable.Delete(map[string]interface{}{"domain": domain}).Exec()
+	return errors.Wrap(err, "Error removing allowed FI by domain")
+}
+
+// InsertAllowedUser inserts a new allowed user into DB.
+func (d *PostgresDatabase) InsertAllowedUser(user *AllowedUser) error {
+	allowedUserTable := d.getTable(allowedUserTableName, nil)
+	_, err := allowedUserTable.Insert(user).IgnoreCols("id").Exec()
+	if err != nil {
+		return errors.Wrap(err, "Error inserting allowed user")
+	}
+
+	return nil
+}
+
 // GetAllowedUserByDomainAndUserID returns allowed user by domain and userID
-func (r Repository) GetAllowedUserByDomainAndUserID(domain, userID string) (*AllowedUser, error) {
+func (d *PostgresDatabase) GetAllowedUserByDomainAndUserID(domain, userID string) (*AllowedUser, error) {
 	allowedUserTable := d.getTable(allowedUserTableName, nil)
 	var allowedUser AllowedUser
 	err := allowedUserTable.Get(&allowedUser, map[string]interface{}{"fi_domain": domain, "user_id": userID}).Exec()
@@ -83,4 +123,11 @@ func (r Repository) GetAllowedUserByDomainAndUserID(domain, userID string) (*All
 	}
 
 	return &allowedUser, nil
+}
+
+// DeleteAllowedUserByDomainAndUserID deletes allowed user by domain and userID
+func (d *PostgresDatabase) DeleteAllowedUserByDomainAndUserID(domain, userID string) error {
+	allowedUserTable := d.getTable(allowedUserTableName, nil)
+	_, err := allowedUserTable.Delete(map[string]interface{}{"fi_domain": domain, "user_id": userID}).Exec()
+	return errors.Wrap(err, "Error removing allowed user by domain and userID")
 }

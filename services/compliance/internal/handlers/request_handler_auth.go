@@ -16,11 +16,10 @@ import (
 
 	baseAmount "github.com/stellar/go/amount"
 	"github.com/stellar/go/protocols/compliance"
-	"github.com/stellar/go/services/bridge/internal/protocols"
-	callback "github.com/stellar/go/services/bridge/internal/protocols/compliance"
-	"github.com/stellar/go/services/bridge/internal/server"
-	"github.com/stellar/go/services/bridge/internal/submitter"
 	"github.com/stellar/go/services/compliance/internal/db"
+	shared "github.com/stellar/go/services/internal/bridge-compliance-shared"
+	httpHelpers "github.com/stellar/go/services/internal/bridge-compliance-shared/http/helpers"
+	callback "github.com/stellar/go/services/internal/bridge-compliance-shared/protocols/compliance"
 	"github.com/stellar/go/xdr"
 	"github.com/zenazn/goji/web"
 )
@@ -37,38 +36,40 @@ func (rh *RequestHandler) HandlerAuth(c web.C, w http.ResponseWriter, r *http.Re
 	err := authreq.Validate()
 	if err != nil {
 		log.WithFields(log.Fields{"err": err}).Info(err.Error())
-		server.Write(w, protocols.NewInvalidParameterError("", "", err.Error()))
+		httpHelpers.Write(w, httpHelpers.NewInvalidParameterError("", "", err.Error()))
 		return
 	}
 
 	authData, err := authreq.Data()
 	if err != nil {
 		log.WithFields(log.Fields{"err": err}).Error(err.Error())
-		server.Write(w, protocols.InternalServerError)
+		httpHelpers.Write(w, httpHelpers.InternalServerError)
 		return
 	}
 
 	senderStellarToml, err := rh.StellarTomlResolver.GetStellarTomlByAddress(authData.Sender)
 	if err != nil {
 		log.WithFields(log.Fields{"err": err, "sender": authData.Sender}).Warn("Cannot get stellar.toml of sender")
-		errorResponse := protocols.NewInvalidParameterError("data.sender", authData.Sender, "Cannot get stellar.toml of sender")
-		server.Write(w, errorResponse)
+		errorResponse := httpHelpers.NewInvalidParameterError("data.sender", authData.Sender, "Cannot get stellar.toml of sender")
+		httpHelpers.Write(w, errorResponse)
 		return
 	}
 
-	if !protocols.IsValidAccountID(senderStellarToml.SigningKey) {
-		errorResponse := protocols.NewInvalidParameterError("data.sender", authData.Sender, "SIGNING_KEY in stellar.toml of sender is invalid")
-		log.WithFields(errorResponse.LogData).Warn("SIGNING_KEY in stellar.toml of sender is invalid")
-		server.Write(w, errorResponse)
+	if !shared.IsValidAccountID(senderStellarToml.SigningKey) {
+		errorResponse := httpHelpers.NewInvalidParameterError("data.sender", authData.Sender, "SIGNING_KEY in stellar.toml of sender is invalid")
+		// TODO
+		// log.WithFields(errorResponse.LogData).Warn("SIGNING_KEY in stellar.toml of sender is invalid")
+		httpHelpers.Write(w, errorResponse)
 		return
 	}
 
 	// Verify signature
 	signatureBytes, err := base64.StdEncoding.DecodeString(authreq.Signature)
 	if err != nil {
-		errorResponse := protocols.NewInvalidParameterError("sig", authreq.Signature, "Invalid base64 string.")
-		log.WithFields(errorResponse.LogData).Warn("Error decoding signature")
-		server.Write(w, errorResponse)
+		errorResponse := httpHelpers.NewInvalidParameterError("sig", authreq.Signature, "Invalid base64 string.")
+		// TODO
+		// log.WithFields(errorResponse.LogData).Warn("Error decoding signature")
+		httpHelpers.Write(w, errorResponse)
 		return
 	}
 	err = rh.SignatureSignerVerifier.Verify(senderStellarToml.SigningKey, []byte(authreq.DataJSON), signatureBytes)
@@ -78,8 +79,8 @@ func (rh *RequestHandler) HandlerAuth(c web.C, w http.ResponseWriter, r *http.Re
 			"data":        authreq.Data,
 			"sig":         authreq.Signature,
 		}).Warn("Invalid signature")
-		errorResponse := protocols.NewInvalidParameterError("sig", authreq.Signature, "Invalid signature.")
-		server.Write(w, errorResponse)
+		errorResponse := httpHelpers.NewInvalidParameterError("sig", authreq.Signature, "Invalid signature.")
+		httpHelpers.Write(w, errorResponse)
 		return
 	}
 
@@ -87,19 +88,19 @@ func (rh *RequestHandler) HandlerAuth(c web.C, w http.ResponseWriter, r *http.Re
 	var tx xdr.Transaction
 	_, err = xdr.Unmarshal(b64r, &tx)
 	if err != nil {
-		errorResponse := protocols.NewInvalidParameterError("data.tx", authData.Tx, "Error decoding Transaction XDR")
+		errorResponse := httpHelpers.NewInvalidParameterError("data.tx", authData.Tx, "Error decoding Transaction XDR")
 		log.WithFields(log.Fields{
 			"err": err,
 			"tx":  authData.Tx,
 		}).Warn("Error decoding Transaction XDR")
-		server.Write(w, errorResponse)
+		httpHelpers.Write(w, errorResponse)
 		return
 	}
 
 	if tx.Memo.Hash == nil {
-		errorResponse := protocols.NewInvalidParameterError("data.tx", authData.Tx, "Transaction does not contain Memo.Hash")
+		errorResponse := httpHelpers.NewInvalidParameterError("data.tx", authData.Tx, "Transaction does not contain Memo.Hash")
 		log.WithFields(log.Fields{"tx": authData.Tx}).Warn("Transaction does not contain Memo.Hash")
-		server.Write(w, errorResponse)
+		httpHelpers.Write(w, errorResponse)
 		return
 	}
 
@@ -115,30 +116,30 @@ func (rh *RequestHandler) HandlerAuth(c web.C, w http.ResponseWriter, r *http.Re
 		_, err = xdr.Marshal(&txBytes, tx)
 		if err != nil {
 			log.Error("Error mashaling transaction")
-			errorResponse := protocols.NewInvalidParameterError("data.tx", authData.Tx, "Error marshaling transaction")
-			server.Write(w, errorResponse)
+			errorResponse := httpHelpers.NewInvalidParameterError("data.tx", authData.Tx, "Error marshaling transaction")
+			httpHelpers.Write(w, errorResponse)
 			return
 		}
 
 		expectedTx := base64.StdEncoding.EncodeToString(txBytes.Bytes())
 
 		log.WithFields(log.Fields{"tx": authData.Tx, "expected_tx": expectedTx}).Warn("Memo preimage hash does not equal tx Memo.Hash")
-		errorResponse := protocols.NewInvalidParameterError("data.tx", authData.Tx, "Memo preimage hash does not equal tx Memo.Hash")
-		server.Write(w, errorResponse)
+		errorResponse := httpHelpers.NewInvalidParameterError("data.tx", authData.Tx, "Memo preimage hash does not equal tx Memo.Hash")
+		httpHelpers.Write(w, errorResponse)
 		return
 	}
 
 	attachment, err := authData.Attachment()
 	if err != nil {
 		log.WithFields(log.Fields{"err": err}).Error("Error getting attachment")
-		server.Write(w, protocols.InternalServerError)
+		httpHelpers.Write(w, httpHelpers.InternalServerError)
 		return
 	}
 
-	transactionHash, err := submitter.TransactionHash(&tx, rh.Config.NetworkPassphrase)
+	transactionHash, err := shared.TransactionHash(&tx, rh.Config.NetworkPassphrase)
 	if err != nil {
 		log.WithFields(log.Fields{"err": err}).Warn("Error calculating tx hash")
-		server.Write(w, protocols.InternalServerError)
+		httpHelpers.Write(w, httpHelpers.InternalServerError)
 		return
 	}
 
@@ -164,7 +165,7 @@ func (rh *RequestHandler) HandlerAuth(c web.C, w http.ResponseWriter, r *http.Re
 				"sanctions": rh.Config.Callbacks.Sanctions,
 				"err":       err,
 			}).Error("Error sending request to sanctions server")
-			server.Write(w, protocols.InternalServerError)
+			httpHelpers.Write(w, httpHelpers.InternalServerError)
 			return
 		}
 
@@ -172,7 +173,7 @@ func (rh *RequestHandler) HandlerAuth(c web.C, w http.ResponseWriter, r *http.Re
 		body, err := ioutil.ReadAll(resp.Body)
 		if err != nil {
 			log.Error("Error reading sanctions server response")
-			server.Write(w, protocols.InternalServerError)
+			httpHelpers.Write(w, httpHelpers.InternalServerError)
 			return
 		}
 
@@ -210,7 +211,7 @@ func (rh *RequestHandler) HandlerAuth(c web.C, w http.ResponseWriter, r *http.Re
 				"status": resp.StatusCode,
 				"body":   string(body),
 			}).Error("Error response from sanctions server")
-			server.Write(w, protocols.InternalServerError)
+			httpHelpers.Write(w, httpHelpers.InternalServerError)
 			return
 		}
 	}
@@ -226,23 +227,23 @@ func (rh *RequestHandler) HandlerAuth(c web.C, w http.ResponseWriter, r *http.Re
 				log.WithFields(log.Fields{
 					"sender": authData.Sender,
 				}).Warn("Invalid stellar address")
-				server.Write(w, protocols.InternalServerError)
+				httpHelpers.Write(w, httpHelpers.InternalServerError)
 				return
 			}
 
-			allowedFi, err := rh.Repository.GetAllowedFiByDomain(tokens[1])
+			allowedFi, err := rh.Database.GetAllowedFIByDomain(tokens[1])
 			if err != nil {
 				log.WithFields(log.Fields{"err": err}).Error("Error getting AllowedFi from DB")
-				server.Write(w, protocols.InternalServerError)
+				httpHelpers.Write(w, httpHelpers.InternalServerError)
 				return
 			}
 
 			if allowedFi == nil {
 				// FI not found check AllowedUser
-				allowedUser, err := rh.Repository.GetAllowedUserByDomainAndUserID(tokens[1], tokens[0])
+				allowedUser, err := rh.Database.GetAllowedUserByDomainAndUserID(tokens[1], tokens[0])
 				if err != nil {
 					log.WithFields(log.Fields{"err": err}).Error("Error getting AllowedUser from DB")
-					server.Write(w, protocols.InternalServerError)
+					httpHelpers.Write(w, httpHelpers.InternalServerError)
 					return
 				}
 
@@ -289,7 +290,7 @@ func (rh *RequestHandler) HandlerAuth(c web.C, w http.ResponseWriter, r *http.Re
 					"ask_user": rh.Config.Callbacks.AskUser,
 					"err":      err,
 				}).Error("Error sending request to ask_user server")
-				server.Write(w, protocols.InternalServerError)
+				httpHelpers.Write(w, httpHelpers.InternalServerError)
 				return
 			}
 
@@ -297,7 +298,7 @@ func (rh *RequestHandler) HandlerAuth(c web.C, w http.ResponseWriter, r *http.Re
 			body, err := ioutil.ReadAll(resp.Body)
 			if err != nil {
 				log.Error("Error reading ask_user server response")
-				server.Write(w, protocols.InternalServerError)
+				httpHelpers.Write(w, httpHelpers.InternalServerError)
 				return
 			}
 
@@ -335,7 +336,7 @@ func (rh *RequestHandler) HandlerAuth(c web.C, w http.ResponseWriter, r *http.Re
 					"status": resp.StatusCode,
 					"body":   string(body),
 				}).Error("Error response from ask_user server")
-				server.Write(w, protocols.InternalServerError)
+				httpHelpers.Write(w, httpHelpers.InternalServerError)
 				return
 			}
 		}
@@ -343,16 +344,17 @@ func (rh *RequestHandler) HandlerAuth(c web.C, w http.ResponseWriter, r *http.Re
 		if response.InfoStatus == compliance.AuthStatusOk {
 			// Fetch Info
 			fetchInfoRequest := callback.FetchInfoRequest{Address: string(attachment.Transaction.Route)}
+			fetchInfoValues := httpHelpers.ToValues(fetchInfoRequest)
 			resp, err := rh.Client.PostForm(
 				rh.Config.Callbacks.FetchInfo,
-				fetchInfoRequest.ToValues(),
+				fetchInfoValues,
 			)
 			if err != nil {
 				log.WithFields(log.Fields{
 					"fetch_info": rh.Config.Callbacks.FetchInfo,
 					"err":        err,
 				}).Error("Error sending request to fetch_info server")
-				server.Write(w, protocols.InternalServerError)
+				httpHelpers.Write(w, httpHelpers.InternalServerError)
 				return
 			}
 
@@ -363,7 +365,7 @@ func (rh *RequestHandler) HandlerAuth(c web.C, w http.ResponseWriter, r *http.Re
 					"fetch_info": rh.Config.Callbacks.FetchInfo,
 					"err":        err,
 				}).Error("Error reading fetch_info server response")
-				server.Write(w, protocols.InternalServerError)
+				httpHelpers.Write(w, httpHelpers.InternalServerError)
 				return
 			}
 
@@ -373,7 +375,7 @@ func (rh *RequestHandler) HandlerAuth(c web.C, w http.ResponseWriter, r *http.Re
 					"status":     resp.StatusCode,
 					"body":       string(body),
 				}).Error("Error response from fetch_info server")
-				server.Write(w, protocols.InternalServerError)
+				httpHelpers.Write(w, httpHelpers.InternalServerError)
 				return
 			}
 
@@ -392,10 +394,10 @@ func (rh *RequestHandler) HandlerAuth(c web.C, w http.ResponseWriter, r *http.Re
 			AuthorizedAt:   time.Now(),
 			Data:           authreq.DataJSON,
 		}
-		err = rh.EntityManager.Persist(authorizedTransaction)
+		err = rh.Database.InsertAuthorizedTransaction(authorizedTransaction)
 		if err != nil {
 			log.WithFields(log.Fields{"err": err}).Warn("Error persisting AuthorizedTransaction")
-			server.Write(w, protocols.InternalServerError)
+			httpHelpers.Write(w, httpHelpers.InternalServerError)
 			return
 		}
 	} else if response.TxStatus == compliance.AuthStatusDenied || response.InfoStatus == compliance.AuthStatusDenied {

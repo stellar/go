@@ -2,7 +2,7 @@ package bridge
 
 import (
 	b "github.com/stellar/go/build"
-	"github.com/stellar/go/protocols"
+	"github.com/stellar/go/services/internal/bridge-compliance-shared/protocols"
 )
 
 // PaymentOperationBody represents payment operation

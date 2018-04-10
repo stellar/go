@@ -16,8 +16,7 @@ import (
 type RequestHandler struct {
 	Config                  *config.Config                 `inject:""`
 	Client                  http.SimpleHTTPClientInterface `inject:""`
-	EntityManager           db.EntityManagerInterface      `inject:""`
-	Repository              db.RepositoryInterface         `inject:""`
+	Database                db.Database                    `inject:""`
 	SignatureSignerVerifier crypto.SignerVerifierInterface `inject:""`
 	StellarTomlResolver     stellartoml.ClientInterface    `inject:""`
 	FederationResolver      federation.ClientInterface     `inject:""`

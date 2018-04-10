@@ -105,15 +105,15 @@ func NewApp(config config.Config, migrateFlag bool, versionFlag bool, version st
 	}
 
 	if migrateFlag {
-		var migrationsApplied int
-		migrationsApplied, err = driver.MigrateUp("compliance")
-		if err != nil {
-			return
-		}
+		// var migrationsApplied int
+		// migrationsApplied, err = driver.MigrateUp("compliance")
+		// if err != nil {
+		// 	return
+		// }
 
-		log.Info("Applied migrations: ", migrationsApplied)
-		os.Exit(0)
-		return
+		// log.Info("Applied migrations: ", migrationsApplied)
+		// os.Exit(0)
+		// return
 	}
 
 	if versionFlag {
@@ -140,8 +140,7 @@ func NewApp(config config.Config, migrateFlag bool, versionFlag bool, version st
 	err = g.Provide(
 		&inject.Object{Value: &requestHandler},
 		&inject.Object{Value: &config},
-		&inject.Object{Value: &entityManager},
-		&inject.Object{Value: &repository},
+		&inject.Object{Value: &database},
 		&inject.Object{Value: &crypto.SignerVerifier{}},
 		&inject.Object{Value: &stellartomlClient},
 		&inject.Object{Value: &federationClient},

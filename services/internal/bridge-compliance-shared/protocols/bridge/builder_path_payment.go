@@ -6,7 +6,7 @@ import (
 	"net/url"
 
 	b "github.com/stellar/go/build"
-	"github.com/stellar/go/protocols"
+	"github.com/stellar/go/services/internal/bridge-compliance-shared/protocols"
 )
 
 // PathPaymentOperationBody represents path_payment operation

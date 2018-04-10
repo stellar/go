@@ -7,26 +7,26 @@ import (
 	log "github.com/sirupsen/logrus"
 	b "github.com/stellar/go/build"
 	"github.com/stellar/go/clients/horizon"
-	"github.com/stellar/go/protocols"
-	"github.com/stellar/go/protocols/bridge"
+	"github.com/stellar/go/services/internal/bridge-compliance-shared/http/helpers"
+	"github.com/stellar/go/services/internal/bridge-compliance-shared/protocols/bridge"
 )
 
 // Authorize implements /authorize endpoint
 func (rh *RequestHandler) Authorize(w http.ResponseWriter, r *http.Request) {
 	request := &bridge.AuthorizeRequest{}
-	err := protocols.FromRequest(r, request)
+	err := helpers.FromRequest(r, request)
 	if err != nil {
 		log.Error(err.Error())
-		protocols.Write(w, protocols.InvalidParameterError)
+		helpers.Write(w, helpers.InvalidParameterError)
 		return
 	}
 
 	err = request.Validate( /*TODO rh.Config.Assets,*/ rh.Config.Accounts.IssuingAccountID)
 	if err != nil {
 		// TODO
-		errorResponse := err.(*protocols.ErrorResponse)
+		errorResponse := err.(*helpers.ErrorResponse)
 		// log.WithFields(errorResponse.LogData).Error(errorResponse.Error())
-		protocols.Write(w, errorResponse)
+		helpers.Write(w, errorResponse)
 		return
 	}
 
@@ -49,7 +49,7 @@ func (rh *RequestHandler) Authorize(w http.ResponseWriter, r *http.Request) {
 		herr, isHorizonError := err.(*horizon.Error)
 		if !isHorizonError {
 			log.WithFields(log.Fields{"err": err}).Error("Error submitting transaction")
-			protocols.Write(w, protocols.InternalServerError)
+			helpers.Write(w, helpers.InternalServerError)
 			return
 		}
 
@@ -57,7 +57,7 @@ func (rh *RequestHandler) Authorize(w http.ResponseWriter, r *http.Request) {
 		err := jsonEncoder.Encode(herr.Problem)
 		if err != nil {
 			log.WithFields(log.Fields{"err": err}).Error("Error encoding response")
-			protocols.Write(w, protocols.InternalServerError)
+			helpers.Write(w, helpers.InternalServerError)
 			return
 		}
 
@@ -67,7 +67,7 @@ func (rh *RequestHandler) Authorize(w http.ResponseWriter, r *http.Request) {
 	err = jsonEncoder.Encode(submitResponse)
 	if err != nil {
 		log.WithFields(log.Fields{"err": err}).Error("Error encoding response")
-		protocols.Write(w, protocols.InternalServerError)
+		helpers.Write(w, helpers.InternalServerError)
 		return
 	}
 }

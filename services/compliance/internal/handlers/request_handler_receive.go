@@ -4,43 +4,43 @@ import (
 	log "github.com/sirupsen/logrus"
 	"net/http"
 
-	"github.com/stellar/go/services/bridge/internal/protocols"
-	callback "github.com/stellar/go/services/bridge/internal/protocols/compliance"
-	"github.com/stellar/go/services/bridge/internal/server"
+	"github.com/stellar/go/services/internal/bridge-compliance-shared/http/helpers"
+	callback "github.com/stellar/go/services/internal/bridge-compliance-shared/protocols/compliance"
 	"github.com/zenazn/goji/web"
 )
 
 // HandlerReceive implements /receive endpoint
 func (rh *RequestHandler) HandlerReceive(c web.C, w http.ResponseWriter, r *http.Request) {
 	request := &callback.ReceiveRequest{}
-	err := request.FromRequest(r)
+	err := helpers.FromRequest(r, request)
 	if err != nil {
 		log.Error(err.Error())
-		server.Write(w, protocols.InvalidParameterError)
+		helpers.Write(w, helpers.InvalidParameterError)
 		return
 	}
 
 	err = request.Validate()
 	if err != nil {
-		errorResponse := err.(*protocols.ErrorResponse)
-		log.WithFields(errorResponse.LogData).Error(errorResponse.Error())
-		server.Write(w, errorResponse)
+		errorResponse := err.(*helpers.ErrorResponse)
+		// TODO
+		// log.WithFields(errorResponse.LogData).Error(errorResponse.Error())
+		helpers.Write(w, errorResponse)
 		return
 	}
 
-	authorizedTransaction, err := rh.Repository.GetAuthorizedTransactionByMemo(request.Memo)
+	authorizedTransaction, err := rh.Database.GetAuthorizedTransactionByMemo(request.Memo)
 	if err != nil {
 		log.WithFields(log.Fields{"err": err}).Error("Error getting authorizedTransaction")
-		server.Write(w, protocols.InternalServerError)
+		helpers.Write(w, helpers.InternalServerError)
 		return
 	}
 
 	if authorizedTransaction == nil {
 		log.WithFields(log.Fields{"memo": request.Memo}).Warn("authorizedTransaction not found")
-		server.Write(w, callback.TransactionNotFoundError)
+		helpers.Write(w, callback.TransactionNotFoundError)
 		return
 	}
 
 	response := callback.ReceiveResponse{Data: authorizedTransaction.Data}
-	server.Write(w, &response)
+	helpers.Write(w, &response)
 }

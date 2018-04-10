@@ -8,8 +8,8 @@ import (
 	log "github.com/sirupsen/logrus"
 
 	b "github.com/stellar/go/build"
-	"github.com/stellar/go/protocols"
-	"github.com/stellar/go/protocols/bridge"
+	"github.com/stellar/go/services/internal/bridge-compliance-shared/http/helpers"
+	"github.com/stellar/go/services/internal/bridge-compliance-shared/protocols/bridge"
 )
 
 // Builder implements /builder endpoint
@@ -21,25 +21,25 @@ func (rh *RequestHandler) Builder(w http.ResponseWriter, r *http.Request) {
 	err := decoder.Decode(&request)
 	if err != nil {
 		log.WithFields(log.Fields{"err": err}).Error("Error decoding request")
-		protocols.Write(w, protocols.NewInvalidParameterError("", "", "Request body is not a valid JSON"))
+		helpers.Write(w, helpers.NewInvalidParameterError("", "", "Request body is not a valid JSON"))
 		return
 	}
 
 	err = request.Process()
 	if err != nil {
-		errorResponse := err.(*protocols.ErrorResponse)
+		errorResponse := err.(*helpers.ErrorResponse)
 		// TODO
 		// log.WithFields(errorResponse.LogData).Error(errorResponse.Error())
-		protocols.Write(w, errorResponse)
+		helpers.Write(w, errorResponse)
 		return
 	}
 
 	err = request.Validate()
 	if err != nil {
-		errorResponse := err.(*protocols.ErrorResponse)
+		errorResponse := err.(*helpers.ErrorResponse)
 		// TODO
 		// log.WithFields(errorResponse.LogData).Error(errorResponse.Error())
-		protocols.Write(w, errorResponse)
+		helpers.Write(w, errorResponse)
 		return
 	}
 
@@ -47,7 +47,7 @@ func (rh *RequestHandler) Builder(w http.ResponseWriter, r *http.Request) {
 		accountResponse, err := rh.Horizon.LoadAccount(request.Source)
 		if err != nil {
 			log.WithFields(log.Fields{"err": err}).Error("Error when loading account")
-			protocols.Write(w, protocols.InternalServerError)
+			helpers.Write(w, helpers.InternalServerError)
 			return
 		}
 		sequenceNumber, err = strconv.ParseUint(accountResponse.Sequence, 10, 64)
@@ -60,10 +60,10 @@ func (rh *RequestHandler) Builder(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err != nil {
-		errorResponse := protocols.NewInvalidParameterError("sequence_number", request.SequenceNumber, "Sequence number must be a number")
+		errorResponse := helpers.NewInvalidParameterError("sequence_number", request.SequenceNumber, "Sequence number must be a number")
 		// TODO
 		// log.WithFields(errorResponse.LogData).Error(errorResponse.Error())
-		protocols.Write(w, errorResponse)
+		helpers.Write(w, errorResponse)
 		return
 	}
 
@@ -81,23 +81,23 @@ func (rh *RequestHandler) Builder(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 		log.WithFields(log.Fields{"err": err, "request": request}).Error("TransactionBuilder returned error")
-		protocols.Write(w, protocols.InternalServerError)
+		helpers.Write(w, helpers.InternalServerError)
 		return
 	}
 
 	txe, err := tx.Sign(request.Signers...)
 	if err != nil {
 		log.WithFields(log.Fields{"err": err, "request": request}).Error("Error signing transaction")
-		protocols.Write(w, protocols.InternalServerError)
+		helpers.Write(w, helpers.InternalServerError)
 		return
 	}
 
 	txeB64, err := txe.Base64()
 	if err != nil {
 		log.WithFields(log.Fields{"err": err, "request": request}).Error("Error encoding transaction envelope")
-		protocols.Write(w, protocols.InternalServerError)
+		helpers.Write(w, helpers.InternalServerError)
 		return
 	}
 
-	protocols.Write(w, &bridge.BuilderResponse{TransactionEnvelope: txeB64})
+	helpers.Write(w, &bridge.BuilderResponse{TransactionEnvelope: txeB64})
 }
