@@ -255,7 +255,7 @@ type TradeEffect struct {
 	LedgerCloseTime   time.Time `json:"created_at"`
 }
 
-// Transaction represents trade data aggregation over a period of time
+// TradeAggregation represents trade data aggregation over a period of time
 type TradeAggregation struct {
 	Timestamp     int64     `json:"timestamp"`
 	TradeCount    int64     `json:"trade_count"`
