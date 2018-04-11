@@ -104,4 +104,4 @@ Here's the proposed architecture diagram of high-availability deployment:
 * Make sure you are using geth >= 1.7.1 and bitcoin-core >= 0.15.0.
 * Increase horizon rate limiting to handle expected load.
 * Make sure you configured minimum accepted value for Bitcoin and Ethereum transactions to the value you really want.
-* Make sure you start from a fresh Bifrost DB in production. If Bifrost was running, you stopped bitcoin-core or geth and then started it again then all the Bitcoin and Ethereum blocks mined during that period will be processed which can take a lot of time.
+* Make sure you start from a fresh Bifrost DB in production. If Bifrost was running, you stopped it and then started it again then all the Bitcoin and Ethereum blocks mined during that period will be processed which can take a lot of time.
