@@ -131,6 +131,10 @@ func (c *Client) LoadTradeAggregations(
 	// TODO: support start_time and end_time as paramters
 	for _, param := range params {
 		switch param := param.(type) {
+		case StartTime:
+			query.Add("start_time", strconv.Itoa(int(param)))
+		case EndTime:
+			query.Add("end_time", strconv.Itoa(int(param)))
 		case Limit:
 			query.Add("limit", strconv.Itoa(int(param)))
 		case Order:

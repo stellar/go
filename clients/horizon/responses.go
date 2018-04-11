@@ -170,6 +170,8 @@ type Offer struct {
 	Price   string `json:"price"`
 }
 
+// TradeAggregationsPage returns a list of aggregated trade records,
+// aggregated by specific resolution
 type TradeAggregationsPage struct {
 	Links struct {
 		Self Link `json:"self"`
