@@ -41,8 +41,10 @@ type Limit uint
 // Order represents `order` param in queries
 type Order string
 
-// StartTime and EndTime are integer values of timestamp
+// StartTime is an integer values of timestamp
 type StartTime int64
+
+// EndTime is an integer values of timestamp
 type EndTime int64
 
 const (

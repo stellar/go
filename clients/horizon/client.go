@@ -128,7 +128,6 @@ func (c *Client) LoadTradeAggregations(
 
 	query.Add("resolution", strconv.FormatInt(resolution, 10))
 
-	// TODO: support start_time and end_time as paramters
 	for _, param := range params {
 		switch param := param.(type) {
 		case StartTime:
