@@ -117,7 +117,7 @@ func (m AutoSequence) MutateTransaction(o *TransactionBuilder) error {
 
 	seq, err := m.SequenceForAccount(source.Address())
 	if err != nil {
-		return errors.Wrap(err, fmt.Sprint("couldn't load account for auto sequence"))
+		return errors.Wrap(err, "couldn't load account for auto sequence")
 	}
 
 	o.TX.SeqNum = seq + 1
