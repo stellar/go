@@ -25,11 +25,11 @@ func GetTestS3Archive() *Archive {
 		panic(e)
 	}
 	return MustConnect(fmt.Sprintf("s3://history-stg.stellar.org/dev/archivist/test-%s", r),
-		&ConnectOptions{S3Region: "eu-west-1"})
+		ConnectOptions{S3Region: "eu-west-1"})
 }
 
 func GetTestMockArchive() *Archive {
-	return MustConnect("mock://test", nil)
+	return MustConnect("mock://test", ConnectOptions{})
 }
 
 var tmpdirs []string
@@ -44,7 +44,7 @@ func GetTestFileArchive() *Archive {
 	} else {
 		tmpdirs = append(tmpdirs, d)
 	}
-	return MustConnect("file://"+d, nil)
+	return MustConnect("file://"+d, ConnectOptions{})
 }
 
 func cleanup() {

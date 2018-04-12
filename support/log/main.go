@@ -1,14 +1,11 @@
 package log
 
 import (
-	"net/http"
+	"context"
 	"os"
-	"time"
 
 	"github.com/segmentio/go-loggly"
 	"github.com/sirupsen/logrus"
-	"github.com/stellar/go/support/http/mutil"
-	"golang.org/x/net/context"
 )
 
 // DefaultLogger represents the default logger that is not bound to any specific
@@ -42,14 +39,10 @@ type LogglyHook struct {
 
 // New creates a new logger, starting at a WARN level and including the current
 // processes pid as a field.
-func New() (result *Entry) {
+func New() *Entry {
 	l := logrus.New()
 	l.Level = logrus.WarnLevel
-
-	result = &Entry{
-		Entry: *logrus.NewEntry(l).WithField("pid", os.Getpid()),
-	}
-	return
+	return &Entry{Entry: *logrus.NewEntry(l).WithField("pid", os.Getpid())}
 }
 
 // Set establishes a new context to which the provided sub-logger is bound
@@ -60,34 +53,16 @@ func Set(parent context.Context, logger *Entry) context.Context {
 // Ctx returns the logger bound to the provided context, otherwise
 // providing the default logger.
 func Ctx(ctx context.Context) *Entry {
-	found := ctx.Value(&contextKey)
+	if ctx == nil {
+		return DefaultLogger
+	}
 
+	found := ctx.Value(&contextKey)
 	if found == nil {
 		return DefaultLogger
 	}
 
 	return found.(*Entry)
-}
-
-// HTTPMiddleware is a middleware function that wraps the provided handler in a
-// middleware that logs requests to the default logger.
-func HTTPMiddleware(in http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		mw := mutil.WrapWriter(w)
-		// TODO: migrate to go 1.7 context
-		ctx := context.TODO()
-
-		// TODO: add request id support
-		// logger := log.WithField("req", middleware.GetReqID(*c))
-
-		logStartOfRequest(ctx, r)
-
-		then := time.Now()
-		in.ServeHTTP(mw, r)
-		duration := time.Now().Sub(then)
-
-		logEndOfRequest(ctx, duration, mw)
-	})
 }
 
 // PushContext is a helper method to derive a new context with a modified logger

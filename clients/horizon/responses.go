@@ -15,6 +15,28 @@ type Problem struct {
 	Extras   map[string]json.RawMessage `json:"extras,omitempty"`
 }
 
+type Root struct {
+	Links struct {
+		Account             Link `json:"account"`
+		AccountTransactions Link `json:"account_transactions"`
+		Friendbot           Link `json:"friendbot"`
+		Metrics             Link `json:"metrics"`
+		OrderBook           Link `json:"order_book"`
+		Self                Link `json:"self"`
+		Transaction         Link `json:"transaction"`
+		Transactions        Link `json:"transactions"`
+	} `json:"_links"`
+
+	HorizonVersion       string `json:"horizon_version"`
+	StellarCoreVersion   string `json:"core_version"`
+	HorizonSequence      int32  `json:"history_latest_ledger"`
+	HistoryElderSequence int32  `json:"history_elder_ledger"`
+	CoreSequence         int32  `json:"core_latest_ledger"`
+	CoreElderSequence    int32  `json:"core_elder_ledger"`
+	NetworkPassphrase    string `json:"network_passphrase"`
+	ProtocolVersion      int32  `json:"protocol_version"`
+}
+
 type Account struct {
 	Links struct {
 		Self         Link `json:"self"`
@@ -40,6 +62,16 @@ type Account struct {
 func (a Account) GetNativeBalance() string {
 	for _, balance := range a.Balances {
 		if balance.Asset.Type == "native" {
+			return balance.Balance
+		}
+	}
+
+	return "0"
+}
+
+func (a Account) GetCreditBalance(code, issuer string) string {
+	for _, balance := range a.Balances {
+		if balance.Asset.Code == code && balance.Asset.Issuer == issuer {
 			return balance.Balance
 		}
 	}
@@ -111,8 +143,8 @@ type Ledger struct {
 	ClosedAt         time.Time `json:"closed_at"`
 	TotalCoins       string    `json:"total_coins"`
 	FeePool          string    `json:"fee_pool"`
-	BaseFee          int32     `json:"base_fee"`
-	BaseReserve      string    `json:"base_reserve"`
+	BaseFee          int32     `json:"base_fee_in_stroops"`
+	BaseReserve      int32     `json:"base_reserve_in_stroops"`
 	MaxTxSetSize     int32     `json:"max_tx_set_size"`
 	ProtocolVersion  int32     `json:"protocol_version"`
 }
@@ -136,6 +168,35 @@ type Offer struct {
 	Amount  string `json:"amount"`
 	PriceR  Price  `json:"price_r"`
 	Price   string `json:"price"`
+}
+
+// TradeAggregationsPage returns a list of aggregated trade records,
+// aggregated by specific resolution
+type TradeAggregationsPage struct {
+	Links struct {
+		Self Link `json:"self"`
+		Next Link `json:"next"`
+		Prev Link `json:"prev"`
+	} `json:"_links"`
+	Embedded struct {
+		Records []TradeAggregation `json:"records"`
+	} `json:"_embedded"`
+}
+
+type TradeAggregation struct {
+	Timestamp     int64  `json:"timestamp"`
+	TradeCount    int64  `json:"trade_count"`
+	BaseVolume    string `json:"base_volume"`
+	CounterVolume string `json:"counter_volume"`
+	Average       string `json:"avg"`
+	High          string `json:"high"`
+	HighR         Price  `json:"high_r"`
+	Low           string `json:"low"`
+	LowR          Price  `json:"low_r"`
+	Open          string `json:"open"`
+	OpenR         Price  `json:"open_r"`
+	Close         string `json:"close"`
+	CloseR        Price  `json:"close_r"`
 }
 
 type OrderBookSummary struct {
@@ -191,6 +252,20 @@ type Payment struct {
 			Href string `json:"href"`
 		} `json:"transaction"`
 	} `json:"_links"`
+
+	TransactionHash string `json:"transaction_hash"`
+	SourceAccount   string `json:"source_account"`
+	CreatedAt       string `json:"created_at"`
+
+	// create_account and account_merge field
+	Account string `json:"account"`
+
+	// create_account fields
+	Funder          string `json:"funder"`
+	StartingBalance string `json:"starting_balance"`
+
+	// account_merge fields
+	Into string `json:into"`
 
 	// payment/path_payment fields
 	From        string `json:"from"`

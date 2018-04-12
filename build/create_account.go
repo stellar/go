@@ -7,7 +7,7 @@ import (
 )
 
 // CreateAccount groups the creation of a new CreateAccountBuilder with a call
-// to Mutate.
+// to Mutate. Requires the Destination and NativeAmount mutators to be set.
 func CreateAccount(muts ...interface{}) (result CreateAccountBuilder) {
 	result.Mutate(muts...)
 	return
@@ -41,7 +41,7 @@ func (b *CreateAccountBuilder) Mutate(muts ...interface{}) {
 		}
 
 		if err != nil {
-			b.Err = err
+			b.Err = errors.Wrap(err, "CreateAccountBuilder error")
 			return
 		}
 	}

@@ -5,16 +5,16 @@
 package archivist
 
 import (
+	"bytes"
+	"encoding/json"
+	"errors"
 	"io"
 	"io/ioutil"
+	"log"
+	"net/url"
 	"path"
-	"encoding/json"
 	"regexp"
 	"strconv"
-	"net/url"
-	"errors"
-	"log"
-	"bytes"
 	"sync"
 )
 
@@ -23,15 +23,16 @@ const rootHASPath = ".well-known/stellar-history.json"
 
 type CommandOptions struct {
 	Concurrency int
-	Range Range
-	DryRun bool
-	Force bool
-	Verify bool
-	Thorough bool
+	Range       Range
+	DryRun      bool
+	Force       bool
+	Verify      bool
+	Thorough    bool
 }
 
 type ConnectOptions struct {
-	S3Region string
+	S3Region   string
+	S3Endpoint string
 }
 
 type ArchiveBackend interface {
@@ -42,25 +43,24 @@ type ArchiveBackend interface {
 	CanListFiles() bool
 }
 
-
 type Archive struct {
-	mutex sync.Mutex
-	checkpointFiles map[string](map[uint32]bool)
-	allBuckets map[Hash]bool
+	mutex             sync.Mutex
+	checkpointFiles   map[string](map[uint32]bool)
+	allBuckets        map[Hash]bool
 	referencedBuckets map[Hash]bool
 
-	expectLedgerHashes map[uint32]Hash
-	actualLedgerHashes map[uint32]Hash
-	expectTxSetHashes map[uint32]Hash
-	actualTxSetHashes map[uint32]Hash
+	expectLedgerHashes      map[uint32]Hash
+	actualLedgerHashes      map[uint32]Hash
+	expectTxSetHashes       map[uint32]Hash
+	actualTxSetHashes       map[uint32]Hash
 	expectTxResultSetHashes map[uint32]Hash
 	actualTxResultSetHashes map[uint32]Hash
 
 	missingBuckets int
 	invalidBuckets int
 
-	invalidLedgers int
-	invalidTxSets int
+	invalidLedgers      int
+	invalidTxSets       int
 	invalidTxResultSets int
 
 	backend ArchiveBackend
@@ -169,20 +169,17 @@ func (a *Archive) ListCategoryCheckpoints(cat string, pth string) (chan uint32, 
 	return ch, errs
 }
 
-func Connect(u string, opts *ConnectOptions) (*Archive, error) {
+func Connect(u string, opts ConnectOptions) (*Archive, error) {
 	arch := Archive{
-		checkpointFiles:make(map[string](map[uint32]bool)),
-		allBuckets:make(map[Hash]bool),
-		referencedBuckets:make(map[Hash]bool),
-		expectLedgerHashes:make(map[uint32]Hash),
-		actualLedgerHashes:make(map[uint32]Hash),
-		expectTxSetHashes:make(map[uint32]Hash),
-		actualTxSetHashes:make(map[uint32]Hash),
-		expectTxResultSetHashes:make(map[uint32]Hash),
-		actualTxResultSetHashes:make(map[uint32]Hash),
-	}
-	if opts == nil {
-		opts = new(ConnectOptions)
+		checkpointFiles:         make(map[string](map[uint32]bool)),
+		allBuckets:              make(map[Hash]bool),
+		referencedBuckets:       make(map[Hash]bool),
+		expectLedgerHashes:      make(map[uint32]Hash),
+		actualLedgerHashes:      make(map[uint32]Hash),
+		expectTxSetHashes:       make(map[uint32]Hash),
+		actualTxSetHashes:       make(map[uint32]Hash),
+		expectTxResultSetHashes: make(map[uint32]Hash),
+		actualTxResultSetHashes: make(map[uint32]Hash),
 	}
 	for _, cat := range Categories() {
 		arch.checkpointFiles[cat] = make(map[uint32]bool)
@@ -197,7 +194,7 @@ func Connect(u string, opts *ConnectOptions) (*Archive, error) {
 		if len(pth) > 0 && pth[0] == '/' {
 			pth = pth[1:]
 		}
-		arch.backend = MakeS3Backend(parsed.Host, pth, opts)
+		arch.backend, err = MakeS3Backend(parsed.Host, pth, opts)
 	} else if parsed.Scheme == "file" {
 		pth = path.Join(parsed.Host, pth)
 		arch.backend = MakeFsBackend(pth, opts)
@@ -211,7 +208,7 @@ func Connect(u string, opts *ConnectOptions) (*Archive, error) {
 	return &arch, err
 }
 
-func MustConnect(u string, opts *ConnectOptions) *Archive {
+func MustConnect(u string, opts ConnectOptions) *Archive {
 	arch, err := Connect(u, opts)
 	if err != nil {
 		log.Fatal(err)

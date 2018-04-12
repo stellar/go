@@ -12,11 +12,11 @@ import (
 	"os"
 
 	"github.com/spf13/cobra"
-	archivist "github.com/stellar/go/tools/stellar-archivist/internal"
+	"github.com/stellar/go/tools/stellar-archivist/internal"
 )
 
 func status(a string, opts *Options) {
-	arch := archivist.MustConnect(a, &opts.ConnectOpts)
+	arch := archivist.MustConnect(a, opts.ConnectOpts)
 	state, e := arch.GetRootHAS()
 	if e != nil {
 		log.Fatal(e)
@@ -66,7 +66,7 @@ func (opts *Options) MaybeProfile() {
 }
 
 func scan(a string, opts *Options) {
-	arch := archivist.MustConnect(a, &opts.ConnectOpts)
+	arch := archivist.MustConnect(a, opts.ConnectOpts)
 	opts.SetRange(arch)
 	e1 := arch.Scan(&opts.CommandOpts)
 	e2 := arch.ReportMissing(&opts.CommandOpts)
@@ -83,8 +83,8 @@ func scan(a string, opts *Options) {
 }
 
 func mirror(src string, dst string, opts *Options) {
-	srcArch := archivist.MustConnect(src, &opts.ConnectOpts)
-	dstArch := archivist.MustConnect(dst, &opts.ConnectOpts)
+	srcArch := archivist.MustConnect(src, opts.ConnectOpts)
+	dstArch := archivist.MustConnect(dst, opts.ConnectOpts)
 	opts.SetRange(srcArch)
 	log.Printf("mirroring %v -> %v\n", src, dst)
 	e := archivist.Mirror(srcArch, dstArch, &opts.CommandOpts)
@@ -94,8 +94,8 @@ func mirror(src string, dst string, opts *Options) {
 }
 
 func repair(src string, dst string, opts *Options) {
-	srcArch := archivist.MustConnect(src, &opts.ConnectOpts)
-	dstArch := archivist.MustConnect(dst, &opts.ConnectOpts)
+	srcArch := archivist.MustConnect(src, opts.ConnectOpts)
+	dstArch := archivist.MustConnect(dst, opts.ConnectOpts)
 	opts.SetRange(srcArch)
 	log.Printf("repairing %v -> %v\n", src, dst)
 	e := archivist.Repair(srcArch, dstArch, &opts.CommandOpts)
@@ -151,6 +151,13 @@ func main() {
 		"s3region",
 		"us-east-1",
 		"S3 region to connect to",
+	)
+
+	rootCmd.PersistentFlags().StringVar(
+		&opts.ConnectOpts.S3Endpoint,
+		"s3endpoint",
+		"",
+		"S3 endpoint to use",
 	)
 
 	rootCmd.PersistentFlags().BoolVarP(

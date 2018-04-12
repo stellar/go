@@ -12,12 +12,12 @@
 package db
 
 import (
+	"context"
 	"database/sql"
 
 	"github.com/Masterminds/squirrel"
 	"github.com/jmoiron/sqlx"
 	"github.com/stellar/go/support/errors"
-	"golang.org/x/net/context"
 
 	// Enable mysql
 	_ "github.com/go-sql-driver/mysql"

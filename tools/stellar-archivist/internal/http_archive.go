@@ -5,17 +5,17 @@
 package archivist
 
 import (
-	"io"
-	"path"
+	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
-	"errors"
+	"path"
 )
 
 type HttpArchiveBackend struct {
 	client http.Client
-	base url.URL
+	base   url.URL
 }
 
 func checkResp(r *http.Response) error {
@@ -75,7 +75,7 @@ func (b *HttpArchiveBackend) CanListFiles() bool {
 	return false
 }
 
-func MakeHttpBackend(base *url.URL, opts *ConnectOptions) ArchiveBackend {
+func MakeHttpBackend(base *url.URL, opts ConnectOptions) ArchiveBackend {
 	return &HttpArchiveBackend{
 		base: *base,
 	}

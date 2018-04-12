@@ -3,3 +3,5 @@
 /dist
 /local-archive
 /.vscode/*.sql
+.idea
+debug

@@ -135,7 +135,7 @@ type MemoText struct {
 }
 
 // NativeAmount is a mutator that configures a payment to be using native
-// currency and have the amount provided.
+// currency and have the amount provided (in lumens).
 type NativeAmount struct {
 	Amount string
 }
@@ -217,6 +217,11 @@ type Thresholds struct {
 	High   *uint32
 }
 
+type Timebounds struct {
+    MinTime uint64
+    MaxTime uint64
+}
+
 // Trustor is a mutator capable of setting the trustor on
 // allow_trust operation.
 type Trustor struct {
@@ -232,4 +237,9 @@ type Network struct {
 // ID returns the network ID derived from this struct's Passphrase
 func (n *Network) ID() [32]byte {
 	return network.ID(n.Passphrase)
+}
+
+// BaseFee is a mutator capable of setting the base fee
+type BaseFee struct {
+	Amount uint64
 }

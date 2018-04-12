@@ -4,10 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	"goji.io"
-	"goji.io/pat"
-
-	"github.com/rs/cors"
+	"github.com/go-chi/chi"
 	"github.com/spf13/cobra"
 	complianceHandler "github.com/stellar/go/handlers/compliance"
 	complianceProtocol "github.com/stellar/go/protocols/compliance"
@@ -88,16 +85,8 @@ func run(cmd *cobra.Command, args []string) {
 	})
 }
 
-func initMux(strategy complianceHandler.Strategy) *goji.Mux {
-	mux := goji.NewMux()
-
-	c := cors.New(cors.Options{
-		AllowedOrigins: []string{"*"},
-		AllowedHeaders: []string{"*"},
-		AllowedMethods: []string{"*"},
-	})
-	mux.Use(c.Handler)
-	mux.Use(log.HTTPMiddleware)
+func initMux(strategy complianceHandler.Strategy) *chi.Mux {
+	mux := http.NewAPIMux(false)
 
 	authHandler := &complianceHandler.AuthHandler{
 		Strategy: strategy,
@@ -107,8 +96,8 @@ func initMux(strategy complianceHandler.Strategy) *goji.Mux {
 		},
 	}
 
-	mux.Handle(pat.Post("/auth"), authHandler)
-	mux.Handle(pat.Post("/auth/"), authHandler)
+	mux.Post("/auth", authHandler.ServeHTTP)
+	mux.Post("/auth/", authHandler.ServeHTTP)
 
 	return mux
 }

@@ -26,16 +26,24 @@ func main() {
 	// seed: SDLJZXOSOMKPWAK4OCWNNVOYUEYEESPGCWK53PT7QMG4J4KGDAUIL5LG
 	to := "GA3A7AD7ZR4PIYW6A52SP6IK7UISESICPMMZVJGNUTVIZ5OUYOPBTK6X"
 
-	tx := b.Transaction(
-		b.SourceAccount{from},
-		b.AutoSequence{horizon.DefaultTestNetClient},
+	tx, err := b.Transaction(
+		b.SourceAccount{AddressOrSeed: from},
+		b.TestNetwork,
+		b.AutoSequence{SequenceProvider: horizon.DefaultTestNetClient},
 		b.Payment(
-			b.Destination{to},
-			b.NativeAmount{"0.1"},
+			b.Destination{AddressOrSeed: to},
+			b.NativeAmount{Amount: "0.1"},
 		),
 	)
+	if err != nil {
+		panic(err)
+	}
 
-	txe := tx.Sign(from)
+	txe, err := tx.Sign(from)
+	if err != nil {
+		panic(err)
+	}
+
 	txeB64, err := txe.Base64()
 
 	if err != nil {

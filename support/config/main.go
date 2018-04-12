@@ -12,6 +12,12 @@ import (
 	"github.com/stellar/go/support/errors"
 )
 
+// TLS represents a common configuration snippet for configuring TLS in a server process
+type TLS struct {
+	CertificateFile string `toml:"certificate-file" valid:"required"`
+	PrivateKeyFile  string `toml:"private-key-file" valid:"required"`
+}
+
 // InvalidConfigError is the error that is returned when an invalid
 // configuration is encountered by the `Read` func.
 type InvalidConfigError struct {

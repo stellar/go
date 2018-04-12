@@ -7,12 +7,13 @@
 package horizon
 
 import (
+	"context"
 	"net/http"
 	"net/url"
+	"sync"
 
 	"github.com/stellar/go/build"
 	"github.com/stellar/go/support/errors"
-	"golang.org/x/net/context"
 )
 
 // DefaultTestNetClient is a default client to connect to test network
@@ -40,6 +41,12 @@ type Limit uint
 // Order represents `order` param in queries
 type Order string
 
+// StartTime is an integer values of timestamp
+type StartTime int64
+
+// EndTime is an integer values of timestamp
+type EndTime int64
+
 const (
 	OrderAsc  Order = "asc"
 	OrderDesc Order = "desc"
@@ -64,13 +71,18 @@ type Client struct {
 
 	// HTTP client to make requests with
 	HTTP HTTP
+
+	fixURLOnce sync.Once
 }
 
 type ClientInterface interface {
+	Root() (Root, error)
+	HomeDomainForAccount(aid string) (string, error)
 	LoadAccount(accountID string) (Account, error)
 	LoadAccountOffers(accountID string, params ...interface{}) (offers OffersPage, err error)
+	LoadTradeAggregations(selling Asset, buying Asset, resolution int64, params ...interface{}) (tradeAggrs TradeAggregationsPage, err error)
 	LoadMemo(p *Payment) error
-	LoadOrderBook(selling Asset, buying Asset) (orderBook OrderBookSummary, err error)
+	LoadOrderBook(selling Asset, buying Asset, params ...interface{}) (orderBook OrderBookSummary, err error)
 	StreamLedgers(ctx context.Context, cursor *Cursor, handler LedgerHandler) error
 	StreamPayments(ctx context.Context, accountID string, cursor *Cursor, handler PaymentHandler) error
 	StreamTransactions(ctx context.Context, accountID string, cursor *Cursor, handler TransactionHandler) error
