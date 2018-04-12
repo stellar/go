@@ -18,6 +18,8 @@ It solves many problems connected to moving tokens to Stellar network:
 
 We are releasing the **alpha version** of this software. We encourage our community of developers to test and improve it.
 
+Before running `bifrost`, execute `database/migrations/01_init.sql` SQL queries in your DB. Future Bifrost version will do it automatically.
+
 Download the binary from [the release page](https://github.com/stellar/go/releases/tag/bifrost-v0.0.1) and use it with it's [Bifrost JS SDK](https://github.com/stellar/bifrost-js-sdk).
 
 ## How it works
@@ -102,4 +104,4 @@ Here's the proposed architecture diagram of high-availability deployment:
 * Make sure you are using geth >= 1.7.1 and bitcoin-core >= 0.15.0.
 * Increase horizon rate limiting to handle expected load.
 * Make sure you configured minimum accepted value for Bitcoin and Ethereum transactions to the value you really want.
-* Make sure you start from a fresh Bifrost DB in production. If Bifrost was running, you stopped bitcoin-core or geth and then started it again then all the Bitcoin and Ethereum blocks mined during that period will be processed which can take a lot of time.
+* Make sure you start from a fresh Bifrost DB in production. If Bifrost was running, you stopped it and then started it again then all the Bitcoin and Ethereum blocks mined during that period will be processed which can take a lot of time.
