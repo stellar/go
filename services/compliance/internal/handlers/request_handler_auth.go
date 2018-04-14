@@ -36,7 +36,7 @@ func (rh *RequestHandler) HandlerAuth(c web.C, w http.ResponseWriter, r *http.Re
 	err := authreq.Validate()
 	if err != nil {
 		log.WithFields(log.Fields{"err": err}).Info(err.Error())
-		httpHelpers.Write(w, httpHelpers.NewInvalidParameterError("", "", err.Error()))
+		httpHelpers.Write(w, httpHelpers.NewInvalidParameterError("", err.Error()))
 		return
 	}
 
@@ -50,13 +50,13 @@ func (rh *RequestHandler) HandlerAuth(c web.C, w http.ResponseWriter, r *http.Re
 	senderStellarToml, err := rh.StellarTomlResolver.GetStellarTomlByAddress(authData.Sender)
 	if err != nil {
 		log.WithFields(log.Fields{"err": err, "sender": authData.Sender}).Warn("Cannot get stellar.toml of sender")
-		errorResponse := httpHelpers.NewInvalidParameterError("data.sender", authData.Sender, "Cannot get stellar.toml of sender")
+		errorResponse := httpHelpers.NewInvalidParameterError("data.sender", "Cannot get stellar.toml of sender")
 		httpHelpers.Write(w, errorResponse)
 		return
 	}
 
 	if !shared.IsValidAccountID(senderStellarToml.SigningKey) {
-		errorResponse := httpHelpers.NewInvalidParameterError("data.sender", authData.Sender, "SIGNING_KEY in stellar.toml of sender is invalid")
+		errorResponse := httpHelpers.NewInvalidParameterError("data.sender", "SIGNING_KEY in stellar.toml of sender is invalid")
 		// TODO
 		// log.WithFields(errorResponse.LogData).Warn("SIGNING_KEY in stellar.toml of sender is invalid")
 		httpHelpers.Write(w, errorResponse)
@@ -66,7 +66,7 @@ func (rh *RequestHandler) HandlerAuth(c web.C, w http.ResponseWriter, r *http.Re
 	// Verify signature
 	signatureBytes, err := base64.StdEncoding.DecodeString(authreq.Signature)
 	if err != nil {
-		errorResponse := httpHelpers.NewInvalidParameterError("sig", authreq.Signature, "Invalid base64 string.")
+		errorResponse := httpHelpers.NewInvalidParameterError("sig", "Invalid base64 string.")
 		// TODO
 		// log.WithFields(errorResponse.LogData).Warn("Error decoding signature")
 		httpHelpers.Write(w, errorResponse)
@@ -79,7 +79,7 @@ func (rh *RequestHandler) HandlerAuth(c web.C, w http.ResponseWriter, r *http.Re
 			"data":        authreq.Data,
 			"sig":         authreq.Signature,
 		}).Warn("Invalid signature")
-		errorResponse := httpHelpers.NewInvalidParameterError("sig", authreq.Signature, "Invalid signature.")
+		errorResponse := httpHelpers.NewInvalidParameterError("sig", "Invalid signature.")
 		httpHelpers.Write(w, errorResponse)
 		return
 	}
@@ -88,7 +88,7 @@ func (rh *RequestHandler) HandlerAuth(c web.C, w http.ResponseWriter, r *http.Re
 	var tx xdr.Transaction
 	_, err = xdr.Unmarshal(b64r, &tx)
 	if err != nil {
-		errorResponse := httpHelpers.NewInvalidParameterError("data.tx", authData.Tx, "Error decoding Transaction XDR")
+		errorResponse := httpHelpers.NewInvalidParameterError("data.tx", "Error decoding Transaction XDR")
 		log.WithFields(log.Fields{
 			"err": err,
 			"tx":  authData.Tx,
@@ -98,7 +98,7 @@ func (rh *RequestHandler) HandlerAuth(c web.C, w http.ResponseWriter, r *http.Re
 	}
 
 	if tx.Memo.Hash == nil {
-		errorResponse := httpHelpers.NewInvalidParameterError("data.tx", authData.Tx, "Transaction does not contain Memo.Hash")
+		errorResponse := httpHelpers.NewInvalidParameterError("data.tx", "Transaction does not contain Memo.Hash")
 		log.WithFields(log.Fields{"tx": authData.Tx}).Warn("Transaction does not contain Memo.Hash")
 		httpHelpers.Write(w, errorResponse)
 		return
@@ -116,7 +116,7 @@ func (rh *RequestHandler) HandlerAuth(c web.C, w http.ResponseWriter, r *http.Re
 		_, err = xdr.Marshal(&txBytes, tx)
 		if err != nil {
 			log.Error("Error mashaling transaction")
-			errorResponse := httpHelpers.NewInvalidParameterError("data.tx", authData.Tx, "Error marshaling transaction")
+			errorResponse := httpHelpers.NewInvalidParameterError("data.tx", "Error marshaling transaction")
 			httpHelpers.Write(w, errorResponse)
 			return
 		}
@@ -124,7 +124,7 @@ func (rh *RequestHandler) HandlerAuth(c web.C, w http.ResponseWriter, r *http.Re
 		expectedTx := base64.StdEncoding.EncodeToString(txBytes.Bytes())
 
 		log.WithFields(log.Fields{"tx": authData.Tx, "expected_tx": expectedTx}).Warn("Memo preimage hash does not equal tx Memo.Hash")
-		errorResponse := httpHelpers.NewInvalidParameterError("data.tx", authData.Tx, "Memo preimage hash does not equal tx Memo.Hash")
+		errorResponse := httpHelpers.NewInvalidParameterError("data.tx", "Memo preimage hash does not equal tx Memo.Hash")
 		httpHelpers.Write(w, errorResponse)
 		return
 	}

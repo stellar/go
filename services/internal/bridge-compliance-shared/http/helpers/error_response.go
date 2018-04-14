@@ -20,7 +20,7 @@ func (error *ErrorResponse) Error() string {
 }
 
 // NewInvalidParameterError creates and returns a new InvalidParameterError
-func NewInvalidParameterError(name, value, moreInfo string) *ErrorResponse {
+func NewInvalidParameterError(name, moreInfo string) *ErrorResponse {
 	data := map[string]interface{}{}
 	if name != "" {
 		data["name"] = name

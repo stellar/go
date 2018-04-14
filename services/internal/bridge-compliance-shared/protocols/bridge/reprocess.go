@@ -7,20 +7,14 @@ import (
 
 // ReprocessRequest represents request made to /reprocess endpoint of bridge server
 type ReprocessRequest struct {
-	OperationID string `name:"operation_id" required:""`
+	OperationID string `form:"operation_id" valid:"required"`
 	// Force is required for reprocessing successful payments. Please use with caution!
-	Force bool `name:"force"`
+	Force bool `form:"force" valid:"-"`
 }
 
-// Validate validates if request fields are valid. Useful when checking if a request is correct.
-func (request *ReprocessRequest) Validate() error {
-	panic("TODO")
-	// err := request.FormRequest.CheckRequired(request)
-	// if err != nil {
-	// 	return err
-	// }
-
-	// return nil
+func (r ReprocessRequest) Validate(params ...interface{}) error {
+	// No custom validations
+	return nil
 }
 
 // ReprocessResponse represents a response returned by /reprocess endpoint

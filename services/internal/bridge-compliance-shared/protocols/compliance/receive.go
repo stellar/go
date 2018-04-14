@@ -8,17 +8,12 @@ import (
 
 // ReceiveRequest represents request sent to /receive endpoint of compliance server
 type ReceiveRequest struct {
-	Memo string `name:"memo" required:""`
+	Memo string `form:"memo" valid:"required"`
 }
 
-// Validate validates if request fields are valid. Useful when checking if a request is correct.
-func (request *ReceiveRequest) Validate() error {
-	panic("TODO")
-	// err := request.formRequest.CheckRequired(request)
-	// if err != nil {
-	// 	return err
-	// }
-	// return nil
+// Validate is additional validation method to validate special fields.
+func (request *ReceiveRequest) Validate(params ...interface{}) error {
+	return nil
 }
 
 // ReceiveResponse represents response returned by /receive endpoint

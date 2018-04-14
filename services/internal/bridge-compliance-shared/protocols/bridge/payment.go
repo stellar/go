@@ -4,12 +4,12 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
-	"strings"
 
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/services/internal/bridge-compliance-shared/http/helpers"
 	"github.com/stellar/go/services/internal/bridge-compliance-shared/protocols"
 	complianceServer "github.com/stellar/go/services/internal/bridge-compliance-shared/protocols/compliance"
+	"github.com/stellar/go/support/errors"
 )
 
 var (
@@ -62,37 +62,37 @@ var (
 // PaymentRequest represents request made to /payment endpoint of the bridge server
 type PaymentRequest struct {
 	// Payment ID
-	ID string `name:"id"`
+	ID string `form:"id" valid:"optional"`
 	// Source account secret
-	Source string `name:"source"`
+	Source string `form:"source" valid:"optional,stellar_seed"`
 	// Sender address (like alice*stellar.org)
-	Sender string `name:"sender"`
+	Sender string `form:"sender" valid:"optional,stellar_address"`
 	// Destination address (like bob*stellar.org)
-	Destination string `name:"destination"`
+	Destination string `form:"destination" valid:"optional,stellar_destination"`
 	// ForwardDestination
-	ForwardDestination *protocols.ForwardDestination `name:"forward_destination"`
+	ForwardDestination *protocols.ForwardDestination `form:"forward_destination" valid:"-"`
 	// Memo type
-	MemoType string `name:"memo_type"`
+	MemoType string `form:"memo_type" valid:"optional"`
 	// Memo value
-	Memo string `name:"memo"`
+	Memo string `form:"memo" valid:"optional"`
 	// Amount destination should receive
-	Amount string `name:"amount" required:""`
+	Amount string `form:"amount" valid:"required,stellar_amount"`
 	// Code of the asset destination should receive
-	AssetCode string `name:"asset_code"`
+	AssetCode string `form:"asset_code" valid:"optional,stellar_asset_code"`
 	// Issuer of the asset destination should receive
-	AssetIssuer string `name:"asset_issuer"`
+	AssetIssuer string `form:"asset_issuer" valid:"optional,stellar_accountid"`
 	// Only for path_payment
-	SendMax string `name:"send_max"`
+	SendMax string `form:"send_max" valid:"optional,stellar_amount"`
 	// Only for path_payment
-	SendAssetCode string `name:"send_asset_code"`
+	SendAssetCode string `form:"send_asset_code" valid:"optional,stellar_asset_code"`
 	// Only for path_payment
-	SendAssetIssuer string `name:"send_asset_issuer"`
+	SendAssetIssuer string `form:"send_asset_issuer" valid:"optional,stellar_accountid"`
 	// path[n][asset_code] path[n][asset_issuer]
-	Path []protocols.Asset `name:"path"`
+	Path []protocols.Asset `form:"path" valid:"optional"`
 	// Determined whether to use compliance protocol or to send a simple payment.
-	UseCompliance bool `name:"use_compliance"`
+	UseCompliance bool `form:"use_compliance" valid:"-"`
 	// Extra memo. If set, UseCompliance value will be ignored and it will use compliance.
-	ExtraMemo string `name:"extra_memo"`
+	ExtraMemo string `form:"extra_memo" valid:"-"`
 }
 
 // ToValuesSpecial converts special values from http.Request to struct
@@ -107,7 +107,7 @@ func (request *PaymentRequest) FromRequestSpecial(r *http.Request, destination i
 	}
 
 	for key := range r.PostForm {
-		matches := federationDestinationFieldName.FindStringSubmatch(key)
+		matches := protocols.FederationDestinationFieldName.FindStringSubmatch(key)
 		if len(matches) < 2 {
 			continue
 		}
@@ -119,18 +119,45 @@ func (request *PaymentRequest) FromRequestSpecial(r *http.Request, destination i
 	if forwardDestination.Domain != "" && len(forwardDestination.Fields) > 0 {
 		request.ForwardDestination = &forwardDestination
 	}
+
+	var path []protocols.Asset
+
+	for i := 0; i < 5; i++ {
+		codeFieldName := fmt.Sprintf(protocols.PathCodeField, i)
+		issuerFieldName := fmt.Sprintf(protocols.PathIssuerField, i)
+
+		// If the element does not exist in PostForm break the loop
+		if _, exists := r.PostForm[codeFieldName]; !exists {
+			break
+		}
+
+		code := r.PostFormValue(codeFieldName)
+		issuer := r.PostFormValue(issuerFieldName)
+
+		if code == "" && issuer == "" {
+			path = append(path, protocols.Asset{})
+		} else {
+			path = append(path, protocols.Asset{code, issuer})
+		}
+	}
+
+	request.Path = path
+
 	return nil
 }
 
 // ToValuesSpecial adds special values (not easily convertable) to given url.Values
 func (request PaymentRequest) ToValuesSpecial(values url.Values) {
-	if request.ForwardDestination == nil {
-		return
+	if request.ForwardDestination != nil {
+		values.Add("forward_destination[domain]", request.ForwardDestination.Domain)
+		for key := range request.ForwardDestination.Fields {
+			values.Add(fmt.Sprintf("forward_destination[fields][%s]", key), request.ForwardDestination.Fields.Get(key))
+		}
 	}
 
-	values.Add("forward_destination[domain]", request.ForwardDestination.Domain)
-	for key := range request.ForwardDestination.Fields {
-		values.Add(fmt.Sprintf("forward_destination[fields][%s]", key), request.ForwardDestination.Fields.Get(key))
+	for i, asset := range request.Path {
+		values.Set(fmt.Sprintf(protocols.PathCodeField, i), asset.Code)
+		values.Set(fmt.Sprintf(protocols.PathIssuerField, i), asset.Issuer)
 	}
 }
 
@@ -154,98 +181,42 @@ func (request *PaymentRequest) ToComplianceSendRequest() complianceServer.SendRe
 	}
 }
 
-// Validate validates if request fields are valid. Useful when checking if a request is correct.
-func (request *PaymentRequest) Validate() error {
-	panic("TODO")
-	// err := request.FormRequest.CheckRequired(request)
-	// if err != nil {
-	// 	return err
-	// }
+// Validate is additional validation method to validate special fields.
+func (request *PaymentRequest) Validate(params ...interface{}) error {
+	baseSeed, ok := params[0].(string)
+	if !ok {
+		return errors.New("Invalid `baseSeed` validation param provided")
+	}
 
-	// if request.Source != "" {
-	// 	_, err = keypair.Parse(request.Source)
-	// 	if err != nil {
-	// 		return protocols.NewInvalidParameterError("source", request.Source, "Source must be a public key (starting with `G`).")
-	// 	}
-	// }
+	// If baseSeed is empty then request.Source is required
+	if baseSeed == "" && request.Source == "" {
+		return helpers.NewMissingParameter("source")
+	}
 
-	// if request.Destination == "" && request.ForwardDestination == nil {
-	// 	return protocols.NewMissingParameter("destination")
-	// }
+	if request.Destination == "" && request.ForwardDestination == nil {
+		return helpers.NewMissingParameter("destination")
+	}
 
-	// if !protocols.IsValidAmount(request.Amount) {
-	// 	return protocols.NewInvalidParameterError("amount", request.Amount, "Invalid amount.")
-	// }
+	asset := protocols.Asset{request.AssetCode, request.AssetIssuer}
+	err := asset.Validate()
+	if err != nil {
+		return helpers.NewInvalidParameterError("asset", err.Error())
+	}
 
-	// if request.SendMax != "" {
-	// 	if !protocols.IsValidAmount(request.SendMax) {
-	// 		return protocols.NewInvalidParameterError("send_max", request.SendMax, "Invalid amount.")
-	// 	}
-	// }
+	sendAsset := protocols.Asset{request.SendAssetCode, request.SendAssetIssuer}
+	err = sendAsset.Validate()
+	if err != nil {
+		return helpers.NewInvalidParameterError("asset", err.Error())
+	}
 
-	// // Memo
-	// if request.MemoType == "" && request.Memo != "" {
-	// 	return protocols.NewMissingParameter("memo_type")
-	// }
+	for i, asset := range request.Path {
+		err := asset.Validate()
+		if err != nil {
+			return helpers.NewInvalidParameterError(fmt.Sprintf("path[%d]", i), err.Error())
+		}
+	}
 
-	// if request.MemoType != "" && request.Memo == "" {
-	// 	return protocols.NewMissingParameter("memo")
-	// }
-
-	// // Destination Asset
-	// if request.AssetCode == "" && request.AssetIssuer != "" {
-	// 	return protocols.NewMissingParameter("asset_code")
-	// }
-
-	// if request.AssetCode != "" && request.AssetIssuer == "" {
-	// 	return protocols.NewMissingParameter("asset_issuer")
-	// }
-
-	// destinationAsset := protocols.Asset{
-	// 	Code:   request.AssetCode,
-	// 	Issuer: request.AssetIssuer,
-	// }
-
-	// if !destinationAsset.Validate() {
-	// 	return protocols.NewInvalidParameterError("asset", destinationAsset.String(), "Invalid asset.")
-	// }
-
-	// if request.AssetIssuer != "" {
-	// 	if !protocols.IsValidAccountID(request.AssetIssuer) {
-	// 		return protocols.NewInvalidParameterError("asset_issuer", request.AssetIssuer, "Asset issuer must be a public key (starting with `G`).")
-	// 	}
-	// }
-
-	// // Send Asset
-	// if request.SendAssetCode == "" && request.SendAssetIssuer != "" {
-	// 	return protocols.NewMissingParameter("send_asset_code")
-	// }
-
-	// if request.SendAssetCode != "" && request.SendAssetIssuer == "" {
-	// 	return protocols.NewMissingParameter("send_asset_issuer")
-	// }
-
-	// sendAsset := protocols.Asset{
-	// 	Code:   request.AssetCode,
-	// 	Issuer: request.AssetIssuer,
-	// }
-
-	// if !sendAsset.Validate() {
-	// 	return protocols.NewInvalidParameterError("asset", sendAsset.String(), "Invalid asset.")
-	// }
-
-	// if request.SendAssetIssuer != "" {
-	// 	if !protocols.IsValidAccountID(request.SendAssetIssuer) {
-	// 		return protocols.NewInvalidParameterError("send_asset_issuer", request.SendAssetIssuer, "Send asset issuer must be a public key (starting with `G`).")
-	// 	}
-	// }
-
-	// return nil
-}
-
-func validateStellarAddress(address string) bool {
-	tokens := strings.Split(address, "*")
-	return len(tokens) == 2
+	return nil
 }
 
 // NewPaymentPendingError creates a new PaymentPending error

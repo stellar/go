@@ -2,6 +2,8 @@ package bridge
 
 import (
 	b "github.com/stellar/go/build"
+	shared "github.com/stellar/go/services/internal/bridge-compliance-shared"
+	"github.com/stellar/go/services/internal/bridge-compliance-shared/http/helpers"
 )
 
 // SetOptionsOperationBody represents set_options operation
@@ -76,20 +78,19 @@ func (op SetOptionsOperationBody) ToTransactionMutator() b.TransactionMutator {
 
 // Validate validates if operation body is valid.
 func (op SetOptionsOperationBody) Validate() error {
-	panic("TODO")
-	// if op.InflationDest != nil && !protocols.IsValidAccountID(*op.InflationDest) {
-	// 	return protocols.NewInvalidParameterError("inflation_dest", *op.InflationDest, "Inflation destination must be a public key (starting with `G`).")
-	// }
+	if op.InflationDest != nil && !shared.IsValidAccountID(*op.InflationDest) {
+		return helpers.NewInvalidParameterError("inflation_dest", "Inflation destination must be a public key (starting with `G`).")
+	}
 
-	// if op.Signer != nil {
-	// 	if !protocols.IsValidAccountID(op.Signer.PublicKey) {
-	// 		return protocols.NewInvalidParameterError("signer.public_key", op.Signer.PublicKey, "Public key invlaid, must start with `G`.")
-	// 	}
-	// }
+	if op.Signer != nil {
+		if !shared.IsValidAccountID(op.Signer.PublicKey) {
+			return helpers.NewInvalidParameterError("signer.public_key", "Public key invlaid, must start with `G`.")
+		}
+	}
 
-	// if op.Source != nil && !protocols.IsValidAccountID(*op.Source) {
-	// 	return protocols.NewInvalidParameterError("source", *op.Source, "Source must be a public key (starting with `G`).")
-	// }
+	if op.Source != nil && !shared.IsValidAccountID(*op.Source) {
+		return helpers.NewInvalidParameterError("source", "Source must be a public key (starting with `G`).")
+	}
 
-	// return nil
+	return nil
 }

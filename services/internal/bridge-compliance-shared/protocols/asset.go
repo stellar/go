@@ -4,6 +4,8 @@ import (
 	"fmt"
 
 	"github.com/stellar/go/build"
+	shared "github.com/stellar/go/services/internal/bridge-compliance-shared"
+	"github.com/stellar/go/support/errors"
 )
 
 // ToBaseAsset transforms Asset to github.com/stellar/go-stellar-base/build.Asset
@@ -20,15 +22,20 @@ func (a Asset) String() string {
 }
 
 // Validate checks if asset params are correct.
-func (a Asset) Validate() bool {
-	panic("TODO")
-	// if a.Code != "" && a.Issuer != "" {
-	// 	// Credit
-	// 	return IsValidAssetCode(a.Code) && IsValidAccountID(a.Issuer)
-	// } else if a.Code == "" && a.Issuer == "" {
-	// 	// Native
-	// 	return true
-	// } else {
-	// 	return false
-	// }
+func (a Asset) Validate() error {
+	if a.Code != "" && a.Issuer != "" {
+		if !shared.IsValidAssetCode(a.Code) {
+			return errors.New("Invalid asset_code")
+		}
+		if !shared.IsValidAccountID(a.Issuer) {
+			return errors.New("Invalid asset_issuer")
+		}
+	} else if a.Code == "" && a.Issuer == "" {
+		// Native
+		return nil
+	} else {
+		return errors.New("Asset code or issuer is missing")
+	}
+
+	return nil
 }

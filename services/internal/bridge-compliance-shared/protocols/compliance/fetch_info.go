@@ -2,7 +2,7 @@ package compliance
 
 // FetchInfoRequest represents a request sent to fetch_info callback
 type FetchInfoRequest struct {
-	Address string `name:"address" required:""`
+	Address string `form:"address"`
 }
 
 // FetchInfoResponse represents a response returned by fetch_info callback

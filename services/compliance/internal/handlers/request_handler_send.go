@@ -27,12 +27,15 @@ func (rh *RequestHandler) HandlerSend(c web.C, w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	err = request.Validate()
+	err = helpers.Validate(request)
 	if err != nil {
-		errorResponse := err.(*helpers.ErrorResponse)
-		// TODO
-		// log.WithFields(errorResponse.LogData).Error(errorResponse.Error())
-		helpers.Write(w, errorResponse)
+		switch err := err.(type) {
+		case *helpers.ErrorResponse:
+			helpers.Write(w, err)
+		default:
+			log.Error(err)
+			helpers.Write(w, helpers.InternalServerError)
+		}
 		return
 	}
 

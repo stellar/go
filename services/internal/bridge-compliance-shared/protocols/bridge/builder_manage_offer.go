@@ -4,6 +4,9 @@ import (
 	"strconv"
 
 	b "github.com/stellar/go/build"
+
+	shared "github.com/stellar/go/services/internal/bridge-compliance-shared"
+	"github.com/stellar/go/services/internal/bridge-compliance-shared/http/helpers"
 	"github.com/stellar/go/services/internal/bridge-compliance-shared/protocols"
 )
 
@@ -46,17 +49,16 @@ func (op ManageOfferOperationBody) ToTransactionMutator() b.TransactionMutator {
 
 // Validate validates if operation body is valid.
 func (op ManageOfferOperationBody) Validate() error {
-	panic("TODO")
-	// if op.OfferID != nil {
-	// 	_, err := strconv.ParseUint(*op.OfferID, 10, 64)
-	// 	if err != nil {
-	// 		return protocols.NewInvalidParameterError("offer_id", *op.OfferID, "Not a number.")
-	// 	}
-	// }
+	if op.OfferID != nil {
+		_, err := strconv.ParseUint(*op.OfferID, 10, 64)
+		if err != nil {
+			return helpers.NewInvalidParameterError("offer_id", "Not a number.")
+		}
+	}
 
-	// if op.Source != nil && !protocols.IsValidAccountID(*op.Source) {
-	// 	return protocols.NewInvalidParameterError("source", *op.Source, "Source must be a public key (starting with `G`).")
-	// }
+	if op.Source != nil && !shared.IsValidAccountID(*op.Source) {
+		return helpers.NewInvalidParameterError("source", "Source must be a public key (starting with `G`).")
+	}
 
-	// return nil
+	return nil
 }

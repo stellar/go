@@ -88,3 +88,11 @@ func IsValidSecret(secret string) bool {
 
 	return true
 }
+
+// IsValidAssetCode returns true if asset code is valid
+func IsValidAssetCode(code string) bool {
+	if len(code) < 1 || len(code) > 12 {
+		return false
+	}
+	return true
+}

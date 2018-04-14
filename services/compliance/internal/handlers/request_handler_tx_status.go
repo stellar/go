@@ -13,7 +13,6 @@ import (
 
 // HandlerTxStatus implements /tx_status endpoint
 func (rh *RequestHandler) HandlerTxStatus(w http.ResponseWriter, r *http.Request) {
-
 	txid := r.URL.Query().Get("id")
 	if txid == "" {
 		log.Info("unable to get query parameter")

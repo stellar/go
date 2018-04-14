@@ -2,6 +2,14 @@ package protocols
 
 import (
 	"net/url"
+	"regexp"
+)
+
+var FederationDestinationFieldName = regexp.MustCompile("forward_destination\\[fields\\]\\[([a-z_-]+)\\]")
+
+const (
+	PathCodeField   = "path[%d][asset_code]"
+	PathIssuerField = "path[%d][asset_issuer]"
 )
 
 // Asset represents asset

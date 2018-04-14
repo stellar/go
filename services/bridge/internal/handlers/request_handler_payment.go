@@ -13,6 +13,7 @@ import (
 	"github.com/stellar/go/clients/horizon"
 	"github.com/stellar/go/protocols/compliance"
 	"github.com/stellar/go/protocols/federation"
+	shared "github.com/stellar/go/services/internal/bridge-compliance-shared"
 	"github.com/stellar/go/services/internal/bridge-compliance-shared/http/helpers"
 	"github.com/stellar/go/services/internal/bridge-compliance-shared/protocols/bridge"
 	callback "github.com/stellar/go/services/internal/bridge-compliance-shared/protocols/compliance"
@@ -29,12 +30,15 @@ func (rh *RequestHandler) Payment(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = request.Validate()
+	err = helpers.Validate(request, rh.Config.Accounts.BaseSeed)
 	if err != nil {
-		errorResponse := err.(*helpers.ErrorResponse)
-		// TODO
-		// log.WithFields(errorResponse.LogData).Error(errorResponse.Error())
-		helpers.Write(w, errorResponse)
+		switch err := err.(type) {
+		case *helpers.ErrorResponse:
+			helpers.Write(w, err)
+		default:
+			log.Error(err)
+			helpers.Write(w, helpers.InternalServerError)
+		}
 		return
 	}
 
@@ -163,12 +167,11 @@ func (rh *RequestHandler) standardPayment(w http.ResponseWriter, request *bridge
 		}
 	}
 
-	// TODO
-	// if !helpers.IsValidAccountID(destinationObject.AccountID) {
-	// 	log.WithFields(log.Fields{"AccountId": destinationObject.AccountID}).Print("Invalid AccountId in destination")
-	// 	helpers.Write(w, helpers.NewInvalidParameterError("destination", request.Destination, "Destination public key must start with `G`."))
-	// 	return
-	// }
+	if !shared.IsValidAccountID(destinationObject.AccountID) {
+		log.WithFields(log.Fields{"AccountId": destinationObject.AccountID}).Print("Invalid AccountId in destination")
+		helpers.Write(w, helpers.NewInvalidParameterError("destination", "Destination public key must start with `G`."))
+		return
+	}
 
 	var payWithMutator *b.PayWithPath
 
@@ -245,7 +248,7 @@ func (rh *RequestHandler) standardPayment(w http.ResponseWriter, request *bridge
 		id, err := strconv.ParseUint(memo, 10, 64)
 		if err != nil {
 			log.WithFields(log.Fields{"memo": memo}).Print("Cannot convert memo_id value to uint64")
-			helpers.Write(w, helpers.NewInvalidParameterError("memo", request.Memo, "Memo.id must be a number"))
+			helpers.Write(w, helpers.NewInvalidParameterError("memo", "Memo.id must be a number"))
 			return
 		}
 		memoMutator = b.MemoID{id}
@@ -255,7 +258,7 @@ func (rh *RequestHandler) standardPayment(w http.ResponseWriter, request *bridge
 		memoBytes, err := hex.DecodeString(memo)
 		if err != nil || len(memoBytes) != 32 {
 			log.WithFields(log.Fields{"memo": memo}).Print("Cannot decode hash memo value")
-			helpers.Write(w, helpers.NewInvalidParameterError("memo", request.Memo, "Memo.hash must be 32 bytes and hex encoded."))
+			helpers.Write(w, helpers.NewInvalidParameterError("memo", "Memo.hash must be 32 bytes and hex encoded."))
 			return
 		}
 		var b32 [32]byte
@@ -264,7 +267,7 @@ func (rh *RequestHandler) standardPayment(w http.ResponseWriter, request *bridge
 		memoMutator = b.MemoHash{hash}
 	default:
 		log.Print("Not supported memo type: ", memoType)
-		helpers.Write(w, helpers.NewInvalidParameterError("memo", request.Memo, "Memo type not supported"))
+		helpers.Write(w, helpers.NewInvalidParameterError("memo", "Memo type not supported"))
 		return
 	}
 

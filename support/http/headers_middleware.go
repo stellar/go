@@ -17,7 +17,10 @@ func HeadersMiddleware(headers stdhttp.Header, ignoredPrefixes ...string) func(n
 				}
 			}
 
-			headers.Write(w)
+			// headers.Write(w)
+			for key := range headers {
+				w.Header().Set(key, headers.Get(key))
+			}
 			next.ServeHTTP(w, r)
 		}
 		return stdhttp.HandlerFunc(fn)

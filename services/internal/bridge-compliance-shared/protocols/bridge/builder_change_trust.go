@@ -1,7 +1,10 @@
 package bridge
 
 import (
+	"github.com/stellar/go/amount"
 	b "github.com/stellar/go/build"
+	shared "github.com/stellar/go/services/internal/bridge-compliance-shared"
+	"github.com/stellar/go/services/internal/bridge-compliance-shared/http/helpers"
 	"github.com/stellar/go/services/internal/bridge-compliance-shared/protocols"
 )
 
@@ -35,20 +38,21 @@ func (op ChangeTrustOperationBody) ToTransactionMutator() b.TransactionMutator {
 
 // Validate validates if operation body is valid.
 func (op ChangeTrustOperationBody) Validate() error {
-	panic("TODO")
-	// if !op.Asset.Validate() {
-	// 	return helpers.NewInvalidParameterError("asset", op.Asset.String(), "Asset is invalid.")
-	// }
+	err := op.Asset.Validate()
+	if err != nil {
+		return helpers.NewInvalidParameterError("asset", err.Error())
+	}
 
-	// if op.Limit != nil {
-	// 	if !helpers.IsValidAmount(*op.Limit) {
-	// 		return helpers.NewInvalidParameterError("limit", *op.Limit, "Limit is not a valid amount.")
-	// 	}
-	// }
+	if op.Limit != nil {
+		_, err := amount.Parse(*op.Limit)
+		if err != nil {
+			return helpers.NewInvalidParameterError("limit", "Limit is not a valid amount.")
+		}
+	}
 
-	// if op.Source != nil && !helpers.IsValidAccountID(*op.Source) {
-	// 	return helpers.NewInvalidParameterError("source", *op.Source, "Source must be a public key (starting with `G`).")
-	// }
+	if op.Source != nil && !shared.IsValidAccountID(*op.Source) {
+		return helpers.NewInvalidParameterError("source", "Source must be a public key (starting with `G`).")
+	}
 
-	// return nil
+	return nil
 }

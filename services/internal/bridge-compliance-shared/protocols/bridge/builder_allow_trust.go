@@ -2,6 +2,8 @@ package bridge
 
 import (
 	b "github.com/stellar/go/build"
+	shared "github.com/stellar/go/services/internal/bridge-compliance-shared"
+	"github.com/stellar/go/services/internal/bridge-compliance-shared/http/helpers"
 )
 
 // AllowTrustOperationBody represents allow_trust operation
@@ -29,18 +31,17 @@ func (op AllowTrustOperationBody) ToTransactionMutator() b.TransactionMutator {
 
 // Validate validates if operation body is valid.
 func (op AllowTrustOperationBody) Validate() error {
-	panic("TODO")
-	// if !protocols.IsValidAssetCode(op.AssetCode) {
-	// 	return protocols.NewInvalidParameterError("asset_code", op.AssetCode, "Asset code is invalid")
-	// }
+	if !shared.IsValidAssetCode(op.AssetCode) {
+		return helpers.NewInvalidParameterError("asset_code", "Asset code is invalid")
+	}
 
-	// if !protocols.IsValidAccountID(op.Trustor) {
-	// 	return protocols.NewInvalidParameterError("trustor", op.Trustor, "Trustor must be a public key (starting with `G`).")
-	// }
+	if !shared.IsValidAccountID(op.Trustor) {
+		return helpers.NewInvalidParameterError("trustor", "Trustor must be a public key (starting with `G`).")
+	}
 
-	// if op.Source != nil && !protocols.IsValidAccountID(*op.Source) {
-	// 	return protocols.NewInvalidParameterError("source", *op.Source, "Source must be a public key (starting with `G`).")
-	// }
+	if op.Source != nil && !shared.IsValidAccountID(*op.Source) {
+		return helpers.NewInvalidParameterError("source", "Source must be a public key (starting with `G`).")
+	}
 
-	// return nil
+	return nil
 }

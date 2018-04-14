@@ -14,7 +14,7 @@ func FromRequest(r *http.Request, destination interface{}) error {
 	rvalue := reflect.ValueOf(destination).Elem()
 	typ := rvalue.Type()
 	for i := 0; i < rvalue.NumField(); i++ {
-		tag := typ.Field(i).Tag.Get("name")
+		tag := typ.Field(i).Tag.Get("form")
 		switch tag {
 		case "":
 		case "-":
@@ -58,7 +58,7 @@ func ToValues(source interface{}) url.Values {
 	typ := rvalue.Type()
 	for i := 0; i < rvalue.NumField(); i++ {
 		field := rvalue.Field(i)
-		tag := typ.Field(i).Tag.Get("name")
+		tag := typ.Field(i).Tag.Get("form")
 		if tag == "" || tag == "-" {
 			continue
 		}

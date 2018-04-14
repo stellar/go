@@ -25,6 +25,11 @@ type SpecialValuesConvertable interface {
 	ToValuesSpecial(values url.Values)
 }
 
+// Response represents request. Params are additional parameters required to validate the request.
+type Request interface {
+	Validate(params ...interface{}) error
+}
+
 // Response represents response that can be returned by a server
 type Response interface {
 	HTTPStatus() int

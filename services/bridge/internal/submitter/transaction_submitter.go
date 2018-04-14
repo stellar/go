@@ -116,6 +116,7 @@ func (ts *TransactionSubmitter) InitAccount(seed string) (err error) {
 func (ts *TransactionSubmitter) SignAndSubmitRawTransaction(paymentID *string, seed string, tx *xdr.Transaction) (response horizon.TransactionSuccess, err error) {
 	account, err := ts.LoadAccount(seed)
 	if err != nil {
+		ts.log.WithFields(logrus.Fields{"err": err}).Error("Error calculating transaction hash")
 		return
 	}
 
@@ -126,13 +127,13 @@ func (ts *TransactionSubmitter) SignAndSubmitRawTransaction(paymentID *string, s
 
 	hash, err := shared.TransactionHash(tx, ts.Network.Passphrase)
 	if err != nil {
-		ts.log.Print("Error calculating transaction hash")
+		ts.log.WithFields(logrus.Fields{"err": err}).Error("Error calculating transaction hash")
 		return
 	}
 
 	sig, err := account.Keypair.SignDecorated(hash[:])
 	if err != nil {
-		ts.log.Print("Error signing a transaction")
+		ts.log.WithFields(logrus.Fields{"err": err}).Error("Error signing a transaction")
 		return
 	}
 
@@ -163,10 +164,12 @@ func (ts *TransactionSubmitter) SignAndSubmitRawTransaction(paymentID *string, s
 	}
 	err = ts.Database.InsertSentTransaction(sentTransaction)
 	if err != nil {
+		ts.log.WithFields(logrus.Fields{"err": err}).Error("Error inserting sent transaction")
 		return
 	}
 
 	ts.log.WithFields(logrus.Fields{"tx": txeB64}).Info("Submitting transaction")
+
 	var herr *horizon.Error
 	response, err = ts.Horizon.SubmitTransaction(txeB64)
 	if err == nil {
@@ -177,7 +180,7 @@ func (ts *TransactionSubmitter) SignAndSubmitRawTransaction(paymentID *string, s
 	} else {
 		herr, isHorizonError := err.(*horizon.Error)
 		if !isHorizonError {
-			ts.log.Error("Error submitting transaction ", err)
+			ts.log.WithFields(logrus.Fields{"err": err}).Error("Error submitting transaction ", err)
 			return
 		}
 
@@ -191,6 +194,7 @@ func (ts *TransactionSubmitter) SignAndSubmitRawTransaction(paymentID *string, s
 
 	err = ts.Database.UpdateSentTransaction(sentTransaction)
 	if err != nil {
+		ts.log.WithFields(logrus.Fields{"err": err}).Error("Error updating sent transaction")
 		return
 	}
 

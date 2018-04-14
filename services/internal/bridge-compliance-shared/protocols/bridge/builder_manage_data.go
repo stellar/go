@@ -4,6 +4,8 @@ import (
 	"encoding/base64"
 
 	b "github.com/stellar/go/build"
+	shared "github.com/stellar/go/services/internal/bridge-compliance-shared"
+	"github.com/stellar/go/services/internal/bridge-compliance-shared/http/helpers"
 )
 
 // ManageDataOperationBody represents manage_data operation
@@ -34,19 +36,18 @@ func (op ManageDataOperationBody) ToTransactionMutator() b.TransactionMutator {
 
 // Validate validates if operation body is valid.
 func (op ManageDataOperationBody) Validate() error {
-	panic("TODO")
-	// if len(op.Name) > 64 {
-	// 	return protocols.NewInvalidParameterError("name", op.Name, "Name must be less than or equal 64 characters.")
-	// }
+	if len(op.Name) > 64 {
+		return helpers.NewInvalidParameterError("name", "Name must be less than or equal 64 characters.")
+	}
 
-	// data, err := base64.StdEncoding.DecodeString(op.Data)
-	// if err != nil || len(data) > 64 {
-	// 	return protocols.NewInvalidParameterError("data", op.Data, "Not a valid base64 string.")
-	// }
+	data, err := base64.StdEncoding.DecodeString(op.Data)
+	if err != nil || len(data) > 64 {
+		return helpers.NewInvalidParameterError("data", "Not a valid base64 string.")
+	}
 
-	// if op.Source != nil && !protocols.IsValidAccountID(*op.Source) {
-	// 	return protocols.NewInvalidParameterError("source", *op.Source, "Source must be a public key (starting with `G`).")
-	// }
+	if op.Source != nil && !shared.IsValidAccountID(*op.Source) {
+		return helpers.NewInvalidParameterError("source", "Source must be a public key (starting with `G`).")
+	}
 
-	// return nil
+	return nil
 }

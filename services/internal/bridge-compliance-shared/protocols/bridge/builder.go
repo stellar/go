@@ -5,6 +5,7 @@ import (
 	"strconv"
 
 	b "github.com/stellar/go/build"
+	shared "github.com/stellar/go/services/internal/bridge-compliance-shared"
 	"github.com/stellar/go/services/internal/bridge-compliance-shared/http/helpers"
 )
 
@@ -97,11 +98,11 @@ func (r BuilderRequest) Process() error {
 			err = json.Unmarshal(operation.RawBody, &manageData)
 			operationBody = manageData
 		default:
-			return helpers.NewInvalidParameterError("operations["+strconv.Itoa(i)+"][type]", string(operation.Type), "Invalid operation type.")
+			return helpers.NewInvalidParameterError("operations["+strconv.Itoa(i)+"][type]", "Invalid operation type.")
 		}
 
 		if err != nil {
-			return helpers.NewInvalidParameterError("operations["+strconv.Itoa(i)+"][body]", "", "Operation is invalid: "+err.Error())
+			return helpers.NewInvalidParameterError("operations["+strconv.Itoa(i)+"][body]", "Operation is invalid: "+err.Error())
 		}
 
 		r.Operations[i].Body = operationBody
@@ -112,25 +113,24 @@ func (r BuilderRequest) Process() error {
 
 // Validate validates if the request is correct.
 func (r BuilderRequest) Validate() error {
-	panic("TODO")
-	// if !helpers.IsValidAccountID(r.Source) {
-	// 	return helpers.NewInvalidParameterError("source", r.Source, "Source parameter must start with `G`.")
-	// }
+	if !shared.IsValidAccountID(r.Source) {
+		return helpers.NewInvalidParameterError("source", "Source parameter must start with `G`.")
+	}
 
-	// for i, signer := range r.Signers {
-	// 	if !helpers.IsValidSecret(signer) {
-	// 		return helpers.NewInvalidParameterError("signers["+strconv.Itoa(i)+"]", signer, "Signer must start with `S`.")
-	// 	}
-	// }
+	for i, signer := range r.Signers {
+		if !shared.IsValidSecret(signer) {
+			return helpers.NewInvalidParameterError("signers["+strconv.Itoa(i)+"]", "Signer must start with `S`.")
+		}
+	}
 
-	// for _, operation := range r.Operations {
-	// 	err := operation.Body.Validate()
-	// 	if err != nil {
-	// 		return err
-	// 	}
-	// }
+	for _, operation := range r.Operations {
+		err := operation.Body.Validate()
+		if err != nil {
+			return err
+		}
+	}
 
-	// return nil
+	return nil
 }
 
 // Operation struct contains operation type and body

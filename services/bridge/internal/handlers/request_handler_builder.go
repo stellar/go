@@ -21,25 +21,30 @@ func (rh *RequestHandler) Builder(w http.ResponseWriter, r *http.Request) {
 	err := decoder.Decode(&request)
 	if err != nil {
 		log.WithFields(log.Fields{"err": err}).Error("Error decoding request")
-		helpers.Write(w, helpers.NewInvalidParameterError("", "", "Request body is not a valid JSON"))
+		helpers.Write(w, helpers.NewInvalidParameterError("", "Request body is not a valid JSON"))
 		return
 	}
 
 	err = request.Process()
 	if err != nil {
-		errorResponse := err.(*helpers.ErrorResponse)
-		// TODO
-		// log.WithFields(errorResponse.LogData).Error(errorResponse.Error())
-		helpers.Write(w, errorResponse)
+		switch err := err.(type) {
+		case *helpers.ErrorResponse:
+			helpers.Write(w, err)
+		default:
+			log.Error(err)
+			helpers.Write(w, helpers.InternalServerError)
+		}
 		return
 	}
 
-	err = request.Validate()
 	if err != nil {
-		errorResponse := err.(*helpers.ErrorResponse)
-		// TODO
-		// log.WithFields(errorResponse.LogData).Error(errorResponse.Error())
-		helpers.Write(w, errorResponse)
+		switch err := err.(type) {
+		case *helpers.ErrorResponse:
+			helpers.Write(w, err)
+		default:
+			log.Error(err)
+			helpers.Write(w, helpers.InternalServerError)
+		}
 		return
 	}
 
@@ -60,9 +65,7 @@ func (rh *RequestHandler) Builder(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err != nil {
-		errorResponse := helpers.NewInvalidParameterError("sequence_number", request.SequenceNumber, "Sequence number must be a number")
-		// TODO
-		// log.WithFields(errorResponse.LogData).Error(errorResponse.Error())
+		errorResponse := helpers.NewInvalidParameterError("sequence_number", "Sequence number must be a number")
 		helpers.Write(w, errorResponse)
 		return
 	}

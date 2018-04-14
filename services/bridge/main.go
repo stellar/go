@@ -241,7 +241,7 @@ func (a *App) Serve() {
 	bridge.Abandon(middleware.Logger)
 
 	// Middlewares
-	var headers http.Header
+	headers := make(http.Header)
 	headers.Set("Content-Type", "application/json")
 	bridge.Use(supportHttp.StripTrailingSlashMiddleware("/admin"))
 	bridge.Use(supportHttp.HeadersMiddleware(headers, "/admin/"))

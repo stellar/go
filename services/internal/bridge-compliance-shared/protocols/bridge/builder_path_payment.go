@@ -5,7 +5,10 @@ import (
 	"net/http"
 	"net/url"
 
+	"github.com/stellar/go/amount"
 	b "github.com/stellar/go/build"
+	shared "github.com/stellar/go/services/internal/bridge-compliance-shared"
+	"github.com/stellar/go/services/internal/bridge-compliance-shared/http/helpers"
 	"github.com/stellar/go/services/internal/bridge-compliance-shared/protocols"
 )
 
@@ -28,8 +31,8 @@ func (op *PathPaymentOperationBody) FromRequestSpecial(r *http.Request, destinat
 	var path []protocols.Asset
 
 	for i := 0; i < 5; i++ {
-		codeFieldName := fmt.Sprintf(pathCodeField, i)
-		issuerFieldName := fmt.Sprintf(pathIssuerField, i)
+		codeFieldName := fmt.Sprintf(protocols.PathCodeField, i)
+		issuerFieldName := fmt.Sprintf(protocols.PathIssuerField, i)
 
 		// If the element does not exist in PostForm break the loop
 		if _, exists := r.PostForm[codeFieldName]; !exists {
@@ -53,8 +56,8 @@ func (op *PathPaymentOperationBody) FromRequestSpecial(r *http.Request, destinat
 // ToValuesSpecial adds special values (not easily convertable) to given url.Values
 func (op PathPaymentOperationBody) ToValuesSpecial(values url.Values) {
 	for i, asset := range op.Path {
-		values.Set(fmt.Sprintf(pathCodeField, i), asset.Code)
-		values.Set(fmt.Sprintf(pathIssuerField, i), asset.Issuer)
+		values.Set(fmt.Sprintf(protocols.PathCodeField, i), asset.Code)
+		values.Set(fmt.Sprintf(protocols.PathIssuerField, i), asset.Issuer)
 	}
 }
 
@@ -99,36 +102,40 @@ func (op PathPaymentOperationBody) ToTransactionMutator() b.TransactionMutator {
 
 // Validate validates if operation body is valid.
 func (op PathPaymentOperationBody) Validate() error {
-	panic("TODO")
-	// if !protocols.IsValidAccountID(op.Destination) {
-	// 	return protocols.NewInvalidParameterError("destination", op.Destination, "Destination must be a public key (starting with `G`).")
-	// }
+	if !shared.IsValidAccountID(op.Destination) {
+		return helpers.NewInvalidParameterError("destination", "Destination must be a public key (starting with `G`).")
+	}
 
-	// if !protocols.IsValidAmount(op.SendMax) {
-	// 	return protocols.NewInvalidParameterError("send_max", op.SendMax, "Not a valid amount.")
-	// }
+	_, err := amount.Parse(op.SendMax)
+	if err != nil {
+		return helpers.NewInvalidParameterError("send_max", "Not a valid amount.")
+	}
 
-	// if !protocols.IsValidAmount(op.DestinationAmount) {
-	// 	return protocols.NewInvalidParameterError("destination_amount", op.DestinationAmount, "Not a valid amount.")
-	// }
+	_, err = amount.Parse(op.DestinationAmount)
+	if err != nil {
+		return helpers.NewInvalidParameterError("destination_amount", "Not a valid amount.")
+	}
 
-	// if !op.SendAsset.Validate() {
-	// 	return protocols.NewInvalidParameterError("send_asset", op.SendAsset.String(), "Invalid asset.")
-	// }
+	err = op.SendAsset.Validate()
+	if err != nil {
+		return helpers.NewInvalidParameterError("send_asset", err.Error())
+	}
 
-	// if !op.DestinationAsset.Validate() {
-	// 	return protocols.NewInvalidParameterError("destination_asset", op.DestinationAsset.String(), "Invalid asset.")
-	// }
+	err = op.DestinationAsset.Validate()
+	if err != nil {
+		return helpers.NewInvalidParameterError("destination_asset", err.Error())
+	}
 
-	// if op.Source != nil && !protocols.IsValidAccountID(*op.Source) {
-	// 	return protocols.NewInvalidParameterError("source", *op.Source, "Source must be a public key (starting with `G`).")
-	// }
+	if op.Source != nil && !shared.IsValidAccountID(*op.Source) {
+		return helpers.NewInvalidParameterError("source", "Source must be a public key (starting with `G`).")
+	}
 
-	// for i, asset := range op.Path {
-	// 	if !asset.Validate() {
-	// 		return protocols.NewInvalidParameterError("path["+strconv.Itoa(i)+"]", asset.String(), "Invalid asset.")
-	// 	}
-	// }
+	for i, asset := range op.Path {
+		err := asset.Validate()
+		if err != nil {
+			return helpers.NewInvalidParameterError(fmt.Sprintf("path[%d]", i), err.Error())
+		}
+	}
 
-	// return nil
+	return nil
 }

@@ -2,7 +2,9 @@ package compliance
 
 import (
 	"encoding/json"
-	"strings"
+	"fmt"
+	"net/http"
+	"net/url"
 
 	"github.com/stellar/go/protocols/compliance"
 	"github.com/stellar/go/services/internal/bridge-compliance-shared/http/helpers"
@@ -12,66 +14,123 @@ import (
 // SendRequest represents request sent to /send endpoint of compliance server
 type SendRequest struct {
 	// Source account ID
-	Source string `name:"source" required:""`
+	Source string `form:"source" valid:"required,stellar_accountid"`
 	// Sender address (like alice*stellar.org)
-	Sender string `name:"sender"`
+	Sender string `form:"sender" valid:"required,stellar_address"`
 	// Destination address (like bob*stellar.org)
-	Destination string `name:"destination"`
+	Destination string `form:"destination" valid:"required,stellar_address"`
 	// ForwardDestination
-	ForwardDestination *protocols.ForwardDestination `name:"forward_destination"`
+	ForwardDestination *protocols.ForwardDestination `form:"forward_destination" valid:"-"`
 	// Amount destination should receive
-	Amount string `name:"amount" required:""`
+	Amount string `form:"amount" valid:"required,stellar_amount"`
 	// Code of the asset destination should receive
-	AssetCode string `name:"asset_code" required:""`
+	AssetCode string `form:"asset_code"  valid:"required,stellar_assetcode"`
 	// Issuer of the asset destination should receive
-	AssetIssuer string `name:"asset_issuer" required:""`
+	AssetIssuer string `form:"asset_issuer" valid:"optional,stellar_accountid"`
 	// Only for path_payment
-	SendMax string `name:"send_max"`
+	SendMax string `form:"send_max" valid:"optional,stellar_amount"`
 	// Only for path_payment
-	SendAssetCode string `name:"send_asset_code"`
+	SendAssetCode string `form:"send_asset_code" valid:"optional,stellar_assetcode"`
 	// Only for path_payment
-	SendAssetIssuer string `name:"send_asset_issuer"`
+	SendAssetIssuer string `form:"send_asset_issuer" valid:"optional,stellar_accountid"`
 	// path[n][asset_code] path[n][asset_issuer]
-	Path []protocols.Asset `name:"path"`
+	Path []protocols.Asset `form:"path" valid:"-"`
 	// Extra memo
-	ExtraMemo string `name:"extra_memo"`
+	ExtraMemo string `form:"extra_memo" valid:"-"`
 }
 
-// Validate validates if request fields are valid. Useful when checking if a request is correct.
-func (request *SendRequest) Validate() error {
-	panic("TODO")
-	// err := request.FormRequest.CheckRequired(request)
-	// if err != nil {
-	// 	return err
-	// }
+// ToValuesSpecial converts special values from http.Request to struct
+func (request *SendRequest) FromRequestSpecial(r *http.Request, destination interface{}) error {
+	var forwardDestination protocols.ForwardDestination
+	forwardDestination.Domain = r.PostFormValue("forward_destination[domain]")
+	forwardDestination.Fields = make(url.Values)
 
-	// if !protocols.IsValidAccountID(request.Source) {
-	// 	return protocols.NewInvalidParameterError("source", request.Source, "Source must be a public key (starting with `G`).")
-	// }
+	err := r.ParseForm()
+	if err != nil {
+		return err
+	}
 
-	// if !validateStellarAddress(request.Sender) {
-	// 	return protocols.NewInvalidParameterError("sender", request.Sender, "Not a valid stellar address.")
-	// }
+	for key := range r.PostForm {
+		matches := protocols.FederationDestinationFieldName.FindStringSubmatch(key)
+		if len(matches) < 2 {
+			continue
+		}
 
-	// if request.Destination == "" && request.ForwardDestination == nil {
-	// 	return protocols.NewMissingParameter("destination")
-	// }
+		fieldName := matches[1]
+		forwardDestination.Fields.Add(fieldName, r.PostFormValue(key))
+	}
 
-	// if request.Destination != "" && !validateStellarAddress(request.Destination) {
-	// 	return protocols.NewInvalidParameterError("destination", request.Destination, "Not a valid stellar address.")
-	// }
+	if forwardDestination.Domain != "" && len(forwardDestination.Fields) > 0 {
+		request.ForwardDestination = &forwardDestination
+	}
 
-	// _, err = keypair.Parse(request.AssetIssuer)
-	// if !protocols.IsValidAccountID(request.AssetIssuer) {
-	// 	return protocols.NewInvalidParameterError("asset_issuer", request.AssetIssuer, "Asset issuer must be a public key (starting with `G`).")
-	// }
+	var path []protocols.Asset
 
-	// return nil
+	for i := 0; i < 5; i++ {
+		codeFieldName := fmt.Sprintf(protocols.PathCodeField, i)
+		issuerFieldName := fmt.Sprintf(protocols.PathIssuerField, i)
+
+		// If the element does not exist in PostForm break the loop
+		if _, exists := r.PostForm[codeFieldName]; !exists {
+			break
+		}
+
+		code := r.PostFormValue(codeFieldName)
+		issuer := r.PostFormValue(issuerFieldName)
+
+		if code == "" && issuer == "" {
+			path = append(path, protocols.Asset{})
+		} else {
+			path = append(path, protocols.Asset{code, issuer})
+		}
+	}
+
+	request.Path = path
+
+	return nil
 }
 
-func validateStellarAddress(address string) bool {
-	tokens := strings.Split(address, "*")
-	return len(tokens) == 2
+// ToValuesSpecial adds special values (not easily convertable) to given url.Values
+func (request SendRequest) ToValuesSpecial(values url.Values) {
+	if request.ForwardDestination != nil {
+		values.Add("forward_destination[domain]", request.ForwardDestination.Domain)
+		for key := range request.ForwardDestination.Fields {
+			values.Add(fmt.Sprintf("forward_destination[fields][%s]", key), request.ForwardDestination.Fields.Get(key))
+		}
+	}
+
+	for i, asset := range request.Path {
+		values.Set(fmt.Sprintf(protocols.PathCodeField, i), asset.Code)
+		values.Set(fmt.Sprintf(protocols.PathIssuerField, i), asset.Issuer)
+	}
+}
+
+// Validate is additional validation method to validate special fields.
+func (request *SendRequest) Validate(params ...interface{}) error {
+	if request.Destination == "" && request.ForwardDestination == nil {
+		return helpers.NewMissingParameter("destination")
+	}
+
+	asset := protocols.Asset{request.AssetCode, request.AssetIssuer}
+	err := asset.Validate()
+	if err != nil {
+		return helpers.NewInvalidParameterError("asset", err.Error())
+	}
+
+	sendAsset := protocols.Asset{request.SendAssetCode, request.SendAssetIssuer}
+	err = sendAsset.Validate()
+	if err != nil {
+		return helpers.NewInvalidParameterError("asset", err.Error())
+	}
+
+	for i, asset := range request.Path {
+		err := asset.Validate()
+		if err != nil {
+			return helpers.NewInvalidParameterError(fmt.Sprintf("path[%d]", i), err.Error())
+		}
+	}
+
+	return nil
 }
 
 // SendResponse represents response returned by /send endpoint

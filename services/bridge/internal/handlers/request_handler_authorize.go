@@ -21,12 +21,15 @@ func (rh *RequestHandler) Authorize(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = request.Validate( /*TODO rh.Config.Assets,*/ rh.Config.Accounts.IssuingAccountID)
+	err = helpers.Validate(request)
 	if err != nil {
-		// TODO
-		errorResponse := err.(*helpers.ErrorResponse)
-		// log.WithFields(errorResponse.LogData).Error(errorResponse.Error())
-		helpers.Write(w, errorResponse)
+		switch err := err.(type) {
+		case *helpers.ErrorResponse:
+			helpers.Write(w, err)
+		default:
+			log.Error(err)
+			helpers.Write(w, helpers.InternalServerError)
+		}
 		return
 	}
 
