@@ -116,7 +116,7 @@ func (ts *TransactionSubmitter) InitAccount(seed string) (err error) {
 func (ts *TransactionSubmitter) SignAndSubmitRawTransaction(paymentID *string, seed string, tx *xdr.Transaction) (response horizon.TransactionSuccess, err error) {
 	account, err := ts.LoadAccount(seed)
 	if err != nil {
-		ts.log.WithFields(logrus.Fields{"err": err}).Error("Error calculating transaction hash")
+		ts.log.WithFields(logrus.Fields{"err": err}).Error("Error loading account")
 		return
 	}
 
@@ -178,7 +178,8 @@ func (ts *TransactionSubmitter) SignAndSubmitRawTransaction(paymentID *string, s
 		now := time.Now()
 		sentTransaction.SucceededAt = &now
 	} else {
-		herr, isHorizonError := err.(*horizon.Error)
+		var isHorizonError bool
+		herr, isHorizonError = err.(*horizon.Error)
 		if !isHorizonError {
 			ts.log.WithFields(logrus.Fields{"err": err}).Error("Error submitting transaction ", err)
 			return
@@ -202,11 +203,11 @@ func (ts *TransactionSubmitter) SignAndSubmitRawTransaction(paymentID *string, s
 	if herr != nil {
 		codes, rerr := herr.ResultCodes()
 		if rerr != nil {
-			return
+			return response, herr
 		}
 
 		if codes.TransactionCode != "tx_bad_seq" {
-			return
+			return response, herr
 		}
 
 		account.Mutex.Lock()
@@ -225,17 +226,16 @@ func (ts *TransactionSubmitter) SignAndSubmitRawTransaction(paymentID *string, s
 }
 
 // SubmitTransaction builds and submits transaction to Stellar network
-func (ts *TransactionSubmitter) SubmitTransaction(paymentID *string, seed string, operation, memo interface{}) (response horizon.TransactionSuccess, err error) {
+func (ts *TransactionSubmitter) SubmitTransaction(paymentID *string, seed string, operation, memo interface{}) (horizon.TransactionSuccess, error) {
 	account, err := ts.LoadAccount(seed)
 	if err != nil {
-		return
+		return horizon.TransactionSuccess{}, errors.Wrap(err, "Error loading an account")
 	}
 
 	operationMutator, ok := operation.(build.TransactionMutator)
 	if !ok {
 		ts.log.Error("Cannot cast operationMutator to build.TransactionMutator")
-		err = errors.New("Cannot cast operationMutator to build.TransactionMutator")
-		return
+		return horizon.TransactionSuccess{}, errors.New("Cannot cast operationMutator to build.TransactionMutator")
 	}
 
 	mutators := []build.TransactionMutator{
@@ -248,16 +248,14 @@ func (ts *TransactionSubmitter) SubmitTransaction(paymentID *string, seed string
 		memoMutator, ok := memo.(build.TransactionMutator)
 		if !ok {
 			ts.log.Error("Cannot cast memo to build.TransactionMutator")
-			err = errors.New("Cannot cast memo to build.TransactionMutator")
-			return
+			return horizon.TransactionSuccess{}, errors.New("Cannot cast memo to build.TransactionMutator")
 		}
 		mutators = append(mutators, memoMutator)
 	}
 
 	txBuilder, err := build.Transaction(mutators...)
-
 	if err != nil {
-		return
+		return horizon.TransactionSuccess{}, errors.Wrap(err, "Error building a transaction")
 	}
 
 	return ts.SignAndSubmitRawTransaction(paymentID, seed, txBuilder.TX)

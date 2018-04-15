@@ -30,33 +30,6 @@ var (
 	PaymentPending = &helpers.ErrorResponse{Code: "pending", Message: "Transaction pending. Repeat your request after given time.", Status: http.StatusAccepted}
 	// PaymentDenied is an error response
 	PaymentDenied = &helpers.ErrorResponse{Code: "denied", Message: "Transaction denied by destination.", Status: http.StatusForbidden}
-
-	// payment op errors
-
-	// PaymentMalformed is an error response
-	PaymentMalformed = &helpers.ErrorResponse{Code: "payment_malformed", Message: "Operation is malformed.", Status: http.StatusBadRequest}
-	// PaymentUnderfunded is an error response
-	PaymentUnderfunded = &helpers.ErrorResponse{Code: "payment_underfunded", Message: "Not enough funds to send this transaction.", Status: http.StatusBadRequest}
-	// PaymentSrcNoTrust is an error response
-	PaymentSrcNoTrust = &helpers.ErrorResponse{Code: "payment_src_no_trust", Message: "No trustline on source account.", Status: http.StatusBadRequest}
-	// PaymentSrcNotAuthorized is an error response
-	PaymentSrcNotAuthorized = &helpers.ErrorResponse{Code: "payment_src_not_authorized", Message: "Source not authorized to transfer.", Status: http.StatusBadRequest}
-	// PaymentNoDestination is an error response
-	PaymentNoDestination = &helpers.ErrorResponse{Code: "payment_no_destination", Message: "Destination account does not exist.", Status: http.StatusBadRequest}
-	// PaymentNoTrust is an error response
-	PaymentNoTrust = &helpers.ErrorResponse{Code: "payment_no_trust", Message: "Destination missing a trust line for asset.", Status: http.StatusBadRequest}
-	// PaymentNotAuthorized is an error response
-	PaymentNotAuthorized = &helpers.ErrorResponse{Code: "payment_not_authorized", Message: "Destination not authorized to trust asset. It needs to be allowed first by using /authorize endpoint.", Status: http.StatusBadRequest}
-	// PaymentLineFull is an error response
-	PaymentLineFull = &helpers.ErrorResponse{Code: "payment_line_full", Message: "Sending this payment would make a destination go above their limit.", Status: http.StatusBadRequest}
-	// PaymentNoIssuer is an error response
-	PaymentNoIssuer = &helpers.ErrorResponse{Code: "payment_no_issuer", Message: "Missing issuer on asset.", Status: http.StatusBadRequest}
-	// PaymentTooFewOffers is an error response
-	PaymentTooFewOffers = &helpers.ErrorResponse{Code: "payment_too_few_offers", Message: "Not enough offers to satisfy path.", Status: http.StatusBadRequest}
-	// PaymentOfferCrossSelf is an error response
-	PaymentOfferCrossSelf = &helpers.ErrorResponse{Code: "payment_offer_cross_self", Message: "would cross one of its own offers.", Status: http.StatusBadRequest}
-	// PaymentOverSendmax is an error response
-	PaymentOverSendmax = &helpers.ErrorResponse{Code: "payment_over_sendmax", Message: "Could not satisfy sendmax.", Status: http.StatusBadRequest}
 )
 
 // PaymentRequest represents request made to /payment endpoint of the bridge server

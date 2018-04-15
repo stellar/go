@@ -8,7 +8,7 @@ import (
 
 // Scan implements database/sql.Scanner interface
 func (s *SentTransactionStatus) Scan(src interface{}) error {
-	value, ok := src.([]byte)
+	value, ok := src.(string)
 	if !ok {
 		return errors.New("Cannot convert value to SentTransactionStatus")
 	}
