@@ -16,6 +16,7 @@ import (
 	"github.com/stellar/go/support/render/problem"
 	"github.com/stellar/go/support/time"
 	"github.com/stellar/go/xdr"
+	"fmt"
 )
 
 const (
@@ -43,6 +44,13 @@ func (base *Base) GetCursor(name string) string {
 
 	if lei := base.R.Header.Get("Last-Event-ID"); lei != "" {
 		cursor = lei
+	}
+
+	// In case cursor is negative value, return InvalidField error
+	cursorInt, err := strconv.Atoi(cursor)
+	if err == nil && cursorInt < 0 {
+		msg := fmt.Sprintf("the cursor %d is a negative number: ", cursorInt)
+		base.SetInvalidField("cursor", errors.New(msg))
 	}
 
 	return cursor

@@ -36,7 +36,7 @@ func (base *Base) Prepare(c web.C, w http.ResponseWriter, r *http.Request) {
 	base.R = r
 }
 
-// Execute trigger content negottion and the actual execution of one of the
+// Execute trigger content negotiation and the actual execution of one of the
 // action's handlers.
 func (base *Base) Execute(action interface{}) {
 	contentType := render.Negotiate(base.Ctx, base.R)
