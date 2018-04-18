@@ -131,7 +131,7 @@ func (ac *AccountConfigurator) removeTemporarySigner(destination string) error {
 func (ac *AccountConfigurator) buildUnlockAccountTransaction(source string) (string, error) {
 	// Remove signer
 	mutators := []build.TransactionMutator{
-		build.TimeBounds{
+		build.Timebounds{
 			MinTime: ac.LockUnixTimestamp,
 		},
 		build.SetOptions(

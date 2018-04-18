@@ -210,12 +210,6 @@ type SourceAccount struct {
 	AddressOrSeed string
 }
 
-// TimeBounds is a mutator capable of setting transaction time bounds
-type TimeBounds struct {
-	MinTime uint64
-	MaxTime uint64
-}
-
 // Thresholds is a mutator capable of setting account thresholds
 type Thresholds struct {
 	Low    *uint32
@@ -224,8 +218,8 @@ type Thresholds struct {
 }
 
 type Timebounds struct {
-    MinTime uint64
-    MaxTime uint64
+	MinTime uint64
+	MaxTime uint64
 }
 
 // Trustor is a mutator capable of setting the trustor on
