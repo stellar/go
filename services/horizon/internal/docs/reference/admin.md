@@ -41,7 +41,7 @@ Should you decide not to use one of our prebuilt releases, you may instead build
 
 Provided your workstation satisfies the requirements above, follow the steps below:
 
-1. Clone horizon's source:  `git clone https://github.com/stellar/go.git && cd go`
+1. Get the horizon source: `go get https://github.com/stellar/go.git && cd $HOME/go/src/github.com/stellar/go"
 2. Download external dependencies: `glide install`
 3. Build the binary: `go install github.com/stellar/go/services/horizon`
 
