@@ -1,4 +1,10 @@
-CREATE TYPE chain AS ENUM ('bitcoin', 'ethereum');
+package database
+
+import (
+	"fmt"
+)
+
+var schema = fmt.Sprintf(`CREATE TYPE chain AS ENUM ('bitcoin', 'ethereum');
 
 CREATE TABLE address_association (
   chain chain NOT NULL,
@@ -17,6 +23,8 @@ CREATE TABLE key_value_store (
   value varchar(255) NOT NULL,
   PRIMARY KEY (key)
 );
+
+INSERT INTO key_value_store (key, value) VALUES ('schema_version', '%d');
 
 INSERT INTO key_value_store (key, value) VALUES ('ethereum_address_index', '0');
 INSERT INTO key_value_store (key, value) VALUES ('ethereum_last_block', '0');
@@ -53,7 +61,7 @@ CREATE TABLE transactions_queue (
   CONSTRAINT valid_stellar_public_key CHECK (char_length(stellar_public_key) = 56)
 );
 
-CREATE TYPE event AS ENUM ('transaction_received', 'account_created', 'account_credited');
+CREATE TYPE event AS ENUM ('transaction_received', 'account_created', 'exchanged', 'exchanged_timelocked');
 
 CREATE TABLE broadcasted_event (
   id bigserial,
@@ -61,7 +69,7 @@ CREATE TABLE broadcasted_event (
   /* ethereum 42 characters */
   address varchar(42) NOT NULL,
   event event NOT NULL,
-  data varchar(255) NOT NULL,
+  data text NOT NULL,
   PRIMARY KEY (id),
   UNIQUE (address, event)
 );
@@ -71,4 +79,4 @@ CREATE TABLE recovery_transaction (
   envelope_xdr text NOT NULL
 );
 
-CREATE INDEX source_index ON recovery_transaction (source);
+CREATE INDEX source_index ON recovery_transaction (source);`, SchemaVersion)

@@ -14,6 +14,7 @@ import (
 
 	"github.com/stellar/go/build"
 	"github.com/stellar/go/support/errors"
+	"github.com/stellar/go/xdr"
 )
 
 // DefaultTestNetClient is a default client to connect to test network
@@ -83,6 +84,7 @@ type ClientInterface interface {
 	LoadTradeAggregations(selling Asset, buying Asset, resolution int64, params ...interface{}) (tradeAggrs TradeAggregationsPage, err error)
 	LoadMemo(p *Payment) error
 	LoadOrderBook(selling Asset, buying Asset, params ...interface{}) (orderBook OrderBookSummary, err error)
+	SequenceForAccount(accountID string) (xdr.SequenceNumber, error)
 	StreamLedgers(ctx context.Context, cursor *Cursor, handler LedgerHandler) error
 	StreamPayments(ctx context.Context, accountID string, cursor *Cursor, handler PaymentHandler) error
 	StreamTransactions(ctx context.Context, accountID string, cursor *Cursor, handler TransactionHandler) error
