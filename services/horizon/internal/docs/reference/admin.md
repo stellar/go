@@ -45,7 +45,7 @@ Provided your workstation satisfies the requirements above, follow the steps bel
 2. Download external dependencies: `glide install`
 3. Build the binary: `go install github.com/stellar/go/services/horizon`
 
-After running the above commands have succeeded, the built horizon will have be written into the `bin` subdirectory of the current directory.
+After the above commands have succeeded, the built horizon will have been written into the `bin` subdirectory of the current directory.
 
 Note:  Building directly on windows is not supported.
 
