@@ -32,7 +32,7 @@ type Config struct {
 		// Signer's sequence number will be consumed in transaction's sequence number.
 		SignerSecretKey string `valid:"required,stellar_seed" toml:"signer_secret_key"`
 		// StartingBalance is the starting amount of XLM for newly created accounts.
-		// Default value is 41. Increase it if you need Data records / other custom entities on new account.
+		// Default value is 2.1. Increase it if you need Data records / other custom entities on new account.
 		StartingBalance string `valid:"optional,stellar_amount" toml:"starting_balance"`
 		// LockUnixTimestamp defines unix timestamp when user account will be unlocked.
 		LockUnixTimestamp uint64 `valid:"optional" toml:"lock_unix_timestamp"`
