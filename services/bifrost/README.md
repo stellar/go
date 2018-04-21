@@ -72,7 +72,7 @@ https://bifrost.stellar.org/
   * `signer_secret_key` - distribuions accounts's secret key if only one instance of Bifrost is deployed OR [channel](https://www.stellar.org/developers/guides/channels.html)'s secret key if more than one instance of Bifrost is deployed, signer is also used as a temporary signer in new accounts (see "Account configuration" section)
   * `horizon` - URL to [horizon](https://github.com/stellar/go/tree/master/services/horizon) server
   * `network_passphrase` - Stellar network passphrase (`Public Global Stellar Network ; September 2015` for production network, `Test SDF Network ; September 2015` for test network)
-  * `starting_balance` - Stellar XLM amount issued to created account (41 by default)
+  * `starting_balance` - Stellar XLM amount issued to created account (2.1 by default)
   * `lock_unix_timestamp` - Unix timestamp of a date until funds will be locked in a new account (helpful if you want to disallow trading during token sale)
 * `database`
   * `type` - currently the only supported database type is: `postgres`
