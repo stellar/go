@@ -96,7 +96,7 @@ func initWebActions(app *App) {
 	r.Get("/accounts/:account_id/payments", &PaymentsIndexAction{})
 	r.Get("/accounts/:account_id/effects", &EffectIndexAction{})
 	r.Get("/accounts/:account_id/offers", &OffersByAccountAction{})
-	r.Get("/accounts/:account_id/trades", &TradeEffectIndexAction{})
+	r.Get("/accounts/:account_id/trades", &TradeIndexAction{})
 	r.Get("/accounts/:account_id/data/:key", &DataShowAction{})
 
 	// transaction history actions

@@ -66,6 +66,18 @@ func (q *TradesQ) forAssetPair(baseAssetId int64, counterAssetId int64) *TradesQ
 	return q
 }
 
+//filter Trades by account id
+func (q *TradesQ) ForAccount(aid string) *TradesQ {
+	var account Account
+	q.Err = q.parent.AccountByAddress(&account, aid)
+	if q.Err != nil {
+		return q
+	}
+
+	q.sql = q.sql.Where("htrd.base_account_id = ? OR htrd.counter_account_id = ?", account.ID, account.ID)
+	return q
+}
+
 func (q *TradesQ) InLedgerOrder() *TradesQ {
 	q.sql = q.sql.OrderBy("htrd.history_operation_id ", "htrd.\"order\"")
 	return q

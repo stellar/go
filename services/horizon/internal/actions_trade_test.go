@@ -92,6 +92,10 @@ func TestTradeActions_Index(t *testing.T) {
 	w = ht.Get("/accounts/GCXKG6RN4ONIEPCMNFB732A436Z5PNDSRLGWK7GBLCMQLIFO4S7EYWVU/trades")
 	if ht.Assert.Equal(200, w.Code) {
 		ht.Assert.PageOf(1, w.Body)
+		records := []map[string]interface{}{}
+		ht.UnmarshalPage(w.Body, &records)
+		ht.Assert.Contains(records[0], "base_amount")
+		ht.Assert.Contains(records[0], "counter_amount")
 	}
 }
 
