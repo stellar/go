@@ -19,7 +19,7 @@ Alternatively, you can [build](#building) the binary yourself.
 
 ## Dependencies
 
-Horizon requires go 1.6 or higher to build. See (https://golang.org/doc/install) for installation instructions.
+Horizon requires go 1.8 or higher to build. See (https://golang.org/doc/install) for installation instructions.
 
 ## Building
 
