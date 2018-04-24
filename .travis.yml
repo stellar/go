@@ -57,4 +57,5 @@ deploy:
     on:
       repo: stellar/go
       tags: true
+      condition: $TRAVIS_TAG != snapshots
       go: '1.9'
