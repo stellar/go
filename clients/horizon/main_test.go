@@ -10,6 +10,7 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/support/http/httptest"
+	"github.com/stretchr/testify/assert"
 )
 
 func ExampleClient_StreamLedgers() {
@@ -305,6 +306,31 @@ var _ = Describe("Horizon", func() {
 		})
 	})
 })
+
+// TestLoadTrades use test object to make assertions about some target code we are testing.
+func TestLoadTrades(t *testing.T) {
+	// create an instance of our test object
+	testObj := new(MockClient)
+
+	// setup expectations
+	testObj.On(
+		"LoadTrades",
+		Asset{}, Asset{}, int(0), int(300000), Limit(3), Order(OrderAsc),
+	).Return(TradesPage{}, nil)
+
+	// call the code we are testing
+	var trades, _ = DefaultTestNetClient.LoadTrades(
+		Asset{Type: "native"},
+		Asset{"credit_alphanum4", "SLT", "GCKA6K5PCQ6PNF5RQBF7PQDJWRHO6UOGFMRLK3DYHDOI244V47XKQ4GP"},
+		0,
+		300000,
+		Limit(3), Order(OrderAsc),
+	)
+	assert.NotNil(t, trades)
+
+	// assert that the expectations were met
+	testObj.AssertExpectations(t)
+}
 
 var accountResponse = `{
   "_links": {
