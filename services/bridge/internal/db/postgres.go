@@ -22,6 +22,14 @@ func (d *PostgresDatabase) Open(dsn string) error {
 	return nil
 }
 
+func (d *PostgresDatabase) GetDB() *sql.DB {
+	if d.session == nil {
+		return nil
+	}
+
+	return d.session.DB.DB
+}
+
 func (d *PostgresDatabase) getTable(name string, session *db.Session) *db.Table {
 	if session == nil {
 		session = d.session

@@ -19,6 +19,7 @@ import (
 	"github.com/stellar/go/services/compliance/internal/db"
 	"github.com/stellar/go/services/compliance/internal/handlers"
 	supportConfig "github.com/stellar/go/support/config"
+	"github.com/stellar/go/support/db/schema"
 	"github.com/stellar/go/support/errors"
 	supportHttp "github.com/stellar/go/support/http"
 	"github.com/zenazn/goji/graceful"
@@ -105,15 +106,20 @@ func NewApp(config config.Config, migrateFlag bool, versionFlag bool, version st
 	}
 
 	if migrateFlag {
-		// var migrationsApplied int
-		// migrationsApplied, err = driver.MigrateUp("compliance")
-		// if err != nil {
-		// 	return
-		// }
+		var migrationsApplied int
+		migrationsApplied, err = schema.Migrate(
+			database.GetDB(),
+			db.Migrations,
+			schema.MigrateUp,
+			0,
+		)
+		if err != nil {
+			return
+		}
 
-		// log.Info("Applied migrations: ", migrationsApplied)
-		// os.Exit(0)
-		// return
+		log.Info("Applied migrations: ", migrationsApplied)
+		os.Exit(0)
+		return
 	}
 
 	if versionFlag {

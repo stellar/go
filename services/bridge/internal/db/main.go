@@ -3,8 +3,18 @@ package db
 import (
 	"time"
 
+	migrate "github.com/rubenv/sql-migrate"
 	"github.com/stellar/go/support/db"
 )
+
+//go:generate go-bindata -ignore .+\.go$ -pkg db -o bindata.go ./...
+
+// Migrations represents all of the schema migration
+var Migrations migrate.MigrationSource = &migrate.AssetMigrationSource{
+	Asset:    Asset,
+	AssetDir: AssetDir,
+	Dir:      "migrations",
+}
 
 type Database interface {
 	GetLastCursorValue() (cursor *string, err error)
