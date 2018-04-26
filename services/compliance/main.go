@@ -175,7 +175,7 @@ func (a *App) Serve() {
 	external := web.New()
 
 	// Middlewares
-	var headers http.Header
+	headers := http.Header{}
 	headers.Set("Content-Type", "application/json")
 
 	external.Use(supportHttp.StripTrailingSlashMiddleware())
