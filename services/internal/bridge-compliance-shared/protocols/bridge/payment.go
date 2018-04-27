@@ -135,9 +135,9 @@ func (request PaymentRequest) ToValuesSpecial(values url.Values) {
 }
 
 // ToComplianceSendRequest transforms PaymentRequest to complianceServer.SendRequest
-func (request *PaymentRequest) ToComplianceSendRequest() complianceServer.SendRequest {
+func (request *PaymentRequest) ToComplianceSendRequest() *complianceServer.SendRequest {
 	sourceKeypair, _ := keypair.Parse(request.Source)
-	return complianceServer.SendRequest{
+	return &complianceServer.SendRequest{
 		// Compliance does not sign transaction, it just needs public key
 		Source:             sourceKeypair.Address(),
 		Sender:             request.Sender,
