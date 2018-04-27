@@ -24,7 +24,7 @@ type SendRequest struct {
 	// Amount destination should receive
 	Amount string `form:"amount" valid:"required,stellar_amount"`
 	// Code of the asset destination should receive
-	AssetCode string `form:"asset_code"  valid:"required,stellar_assetcode"`
+	AssetCode string `form:"asset_code" valid:"optional,stellar_assetcode"`
 	// Issuer of the asset destination should receive
 	AssetIssuer string `form:"asset_issuer" valid:"optional,stellar_accountid"`
 	// Only for path_payment

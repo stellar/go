@@ -122,11 +122,19 @@ func (rh *RequestHandler) HandlerSend(c web.C, w http.ResponseWriter, r *http.Re
 
 	mutators := []interface{}{
 		b.Destination{destinationObject.AccountID},
-		b.CreditAmount{
+	}
+
+	if request.AssetCode == "" {
+		mutators = append(mutators, b.NativeAmount{
+			request.Amount,
+		})
+
+	} else {
+		mutators = append(mutators, b.CreditAmount{
 			request.AssetCode,
 			request.AssetIssuer,
 			request.Amount,
-		},
+		})
 	}
 
 	if payWithMutator != nil {
@@ -274,7 +282,7 @@ func (rh *RequestHandler) HandlerSend(c web.C, w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	if resp.StatusCode != 200 {
+	if resp.StatusCode != 200 && resp.StatusCode != 202 && resp.StatusCode != 403 {
 		log.WithFields(log.Fields{
 			"status": resp.StatusCode,
 			"body":   string(body),
