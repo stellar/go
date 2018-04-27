@@ -1,6 +1,7 @@
 package db
 
 import (
+	"database/sql"
 	"time"
 
 	migrate "github.com/rubenv/sql-migrate"
@@ -60,7 +61,7 @@ const (
 // SentTransaction represents transaction sent by the gateway server
 type SentTransaction struct {
 	ID            int64                 `db:"id" json:"id"`
-	PaymentID     *string               `db:"payment_id" json:"payment_id"`
+	PaymentID     sql.NullString        `db:"payment_id" json:"payment_id"`
 	TransactionID string                `db:"transaction_id" json:"transaction_id"`
 	Status        SentTransactionStatus `db:"status" json:"status"` // sending/success/failure
 	Source        string                `db:"source" json:"source"`

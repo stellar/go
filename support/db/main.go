@@ -43,6 +43,9 @@ type DeleteBuilder struct {
 
 // InsertBuilder is a helper struct used to construct sql queries of the INSERT
 // variety.
+// NOTE: InsertBuilder will use "zero" value of a type in case of nil pointer values.
+// If you need to insert `NULL` use sql.Null* or build your own type that implements
+// database/sql/driver.Valuer.
 type InsertBuilder struct {
 	Table *Table
 

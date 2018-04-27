@@ -1,6 +1,7 @@
 package submitter
 
 import (
+	"database/sql"
 	"encoding/hex"
 	"strconv"
 	"sync"
@@ -154,8 +155,16 @@ func (ts *TransactionSubmitter) SignAndSubmitRawTransaction(paymentID *string, s
 		return
 	}
 
+	nullPaymentID := sql.NullString{Valid: false}
+	if paymentID != nil {
+		nullPaymentID = sql.NullString{
+			String: *paymentID,
+			Valid:  true,
+		}
+	}
+
 	sentTransaction := &db.SentTransaction{
-		PaymentID:     paymentID,
+		PaymentID:     nullPaymentID,
 		TransactionID: hex.EncodeToString(transactionHashBytes[:]),
 		Status:        db.SentTransactionStatusSending,
 		Source:        account.Keypair.Address(),

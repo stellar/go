@@ -50,7 +50,7 @@ func (d *PostgresDatabase) InsertSentTransaction(transaction *SentTransaction) e
 		return errors.Wrap(err, "Error inserting sent transaction")
 	}
 
-	newTransaction, err := d.GetSentTransactionByPaymentID(*transaction.PaymentID)
+	newTransaction, err := d.GetSentTransactionByHash(transaction.TransactionID)
 	if err != nil {
 		return errors.Wrap(err, "Error getting new transaction")
 	}
@@ -134,6 +134,23 @@ func (d *PostgresDatabase) GetSentTransactionByPaymentID(paymentID string) (*Sen
 			return nil, nil
 		default:
 			return nil, errors.Wrap(err, "Error getting sent transaction by payment ID")
+		}
+	}
+
+	return &transaction, nil
+}
+
+// GetSentTransactionByHash returns sent transaction searching by hash
+func (d *PostgresDatabase) GetSentTransactionByHash(hash string) (*SentTransaction, error) {
+	sentTransactionTable := d.getTable(sentTransactionTableName, nil)
+	var transaction SentTransaction
+	err := sentTransactionTable.Get(&transaction, map[string]interface{}{"transaction_id": hash}).Exec()
+	if err != nil {
+		switch errors.Cause(err) {
+		case sql.ErrNoRows:
+			return nil, nil
+		default:
+			return nil, errors.Wrap(err, "Error getting sent transaction by hash")
 		}
 	}
 
