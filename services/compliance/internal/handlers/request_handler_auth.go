@@ -343,11 +343,10 @@ func (rh *RequestHandler) HandlerAuth(c web.C, w http.ResponseWriter, r *http.Re
 
 		if response.InfoStatus == compliance.AuthStatusOk {
 			// Fetch Info
-			fetchInfoRequest := callback.FetchInfoRequest{Address: string(attachment.Transaction.Route)}
-			fetchInfoValues := httpHelpers.ToValues(fetchInfoRequest)
+			fetchInfoRequest := &callback.FetchInfoRequest{Address: string(attachment.Transaction.Route)}
 			resp, err := rh.Client.PostForm(
 				rh.Config.Callbacks.FetchInfo,
-				fetchInfoValues,
+				httpHelpers.ToValues(fetchInfoRequest),
 			)
 			if err != nil {
 				log.WithFields(log.Fields{

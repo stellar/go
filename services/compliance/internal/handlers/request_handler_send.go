@@ -146,7 +146,7 @@ func (rh *RequestHandler) HandlerSend(c web.C, w http.ResponseWriter, r *http.Re
 	senderInfo := make(map[string]string)
 
 	if rh.Config.Callbacks.FetchInfo != "" {
-		fetchInfoRequest := callback.FetchInfoRequest{Address: request.Sender}
+		fetchInfoRequest := &callback.FetchInfoRequest{Address: request.Sender}
 		resp, err := rh.Client.PostForm(
 			rh.Config.Callbacks.FetchInfo,
 			helpers.ToValues(fetchInfoRequest),
