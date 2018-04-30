@@ -28,6 +28,8 @@ type OperationIndexAction struct {
 	LedgerFilter      int32
 	AccountFilter     string
 	TransactionFilter string
+	AssetCodeFilter   string
+	AssetIssuerFilter string
 	PagingParams      db2.PageQuery
 	Records           []history.Operation
 	Ledgers           history.LedgerCache
@@ -91,6 +93,8 @@ func (action *OperationIndexAction) loadParams() {
 	action.AccountFilter = action.GetString("account_id")
 	action.LedgerFilter = action.GetInt32("ledger_id")
 	action.TransactionFilter = action.GetString("tx_id")
+	action.AssetCodeFilter = action.GetString("asset_code")
+	action.AssetIssuerFilter = action.GetString("asset_issuer")
 	action.PagingParams = action.GetPageQuery()
 }
 
@@ -105,6 +109,10 @@ func (action *OperationIndexAction) loadRecords() {
 		ops.ForLedger(action.LedgerFilter)
 	case action.TransactionFilter != "":
 		ops.ForTransaction(action.TransactionFilter)
+	case action.AssetCodeFilter != "" && action.AssetIssuerFilter != "":
+		ops.ForAsset(action.AssetIssuerFilter, action.AssetCodeFilter)
+	case action.AssetIssuerFilter != "":
+		ops.ForIssuer(action.AssetIssuerFilter)
 	}
 
 	action.Err = ops.Page(action.PagingParams).Select(&action.Records)
