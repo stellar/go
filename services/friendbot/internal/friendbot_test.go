@@ -10,10 +10,13 @@ import (
 )
 
 func TestFriendbot_Pay(t *testing.T) {
-	mockSubmitTransaction := func(bot *Bot, channel chan interface{}, signed string) {
+	mockSubmitTransaction := func(bot *Bot, channel chan TxResult, signed string) {
 		txSuccess := horizon.TransactionSuccess{Env: signed}
 		// we don't want to actually submit the tx here but emulate a success instead
-		channel <- txSuccess
+		channel <- TxResult{
+			maybeTransactionSuccess: &txSuccess,
+			maybeErr:                nil,
+		}
 	}
 
 	fb := &Bot{

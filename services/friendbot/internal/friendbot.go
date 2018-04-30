@@ -1,7 +1,6 @@
 package internal
 
 import (
-	"fmt"
 	"strconv"
 	"sync"
 
@@ -11,13 +10,19 @@ import (
 	"github.com/stellar/go/support/errors"
 )
 
+// TxResult is the result from the asynchronous submit transaction method over a channel
+type TxResult struct {
+	maybeTransactionSuccess *horizon.TransactionSuccess
+	maybeErr                error
+}
+
 // Bot represents the friendbot subsystem.
 type Bot struct {
 	Horizon           *horizon.Client
 	Secret            string
 	Network           string
 	StartingBalance   string
-	SubmitTransaction func(bot *Bot, channel chan interface{}, signed string)
+	SubmitTransaction func(bot *Bot, channel chan TxResult, signed string)
 
 	// uninitialized
 	sequence             uint64
@@ -27,24 +32,17 @@ type Bot struct {
 
 // Pay funds the account at `destAddress`
 func (bot *Bot) Pay(destAddress string) (*horizon.TransactionSuccess, error) {
-	channel := make(chan interface{})
+	channel := make(chan TxResult)
 	err := bot.lockedPay(channel, destAddress)
 	if err != nil {
 		return nil, err
 	}
 
 	v := <-channel
-	switch tv := v.(type) {
-	case horizon.TransactionSuccess:
-		return &tv, nil
-	case error:
-		return nil, tv
-	default:
-		return nil, fmt.Errorf("failed to submit async txn")
-	}
+	return v.maybeTransactionSuccess, v.maybeErr
 }
 
-func (bot *Bot) lockedPay(channel chan interface{}, destAddress string) error {
+func (bot *Bot) lockedPay(channel chan TxResult, destAddress string) error {
 	bot.lock.Lock()
 	defer bot.lock.Unlock()
 
@@ -63,7 +61,7 @@ func (bot *Bot) lockedPay(channel chan interface{}, destAddress string) error {
 }
 
 // AsyncSubmitTransaction should be passed into the bot
-func AsyncSubmitTransaction(bot *Bot, channel chan interface{}, signed string) {
+func AsyncSubmitTransaction(bot *Bot, channel chan TxResult, signed string) {
 	result, err := bot.Horizon.SubmitTransaction(signed)
 	if err != nil {
 		switch e := err.(type) {
@@ -71,9 +69,15 @@ func AsyncSubmitTransaction(bot *Bot, channel chan interface{}, signed string) {
 			bot.checkHandleBadSequence(e)
 		}
 
-		channel <- err
+		channel <- TxResult{
+			maybeTransactionSuccess: nil,
+			maybeErr:                err,
+		}
 	} else {
-		channel <- result
+		channel <- TxResult{
+			maybeTransactionSuccess: &result,
+			maybeErr:                nil,
+		}
 	}
 }
 
