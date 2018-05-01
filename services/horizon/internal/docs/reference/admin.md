@@ -45,7 +45,7 @@ Provided your workstation satisfies the requirements above, follow the steps bel
 2. Under the project folder, download external dependencies: `glide install`
 3. Build the binary: `go install /services/horizon`
 
-After running the above commands have succeeded, the built horizon will have be written into the `bin` subdirectory of your $GOPATH.
+After running the above commands have succeeded, the built horizon will have been written into the `bin` subdirectory of your $GOPATH.
 
 Note:  Building directly on windows is not supported.
 
@@ -95,7 +95,7 @@ To enable ingestion, you must either pass `--ingest=true` on the command line or
 
 ### Managing storage for historical data
 
-Given an empty horizon database, any and all available history on the attached stellar-core instance will be ingested. Over time, this recorded history will grow unbounded, increasing storage used by the database.  To keep you costs down, you may configure horizon to only retain a certain number of ledgers in the historical database.  This is done using the `--history-retention-count` flag or the `HISTORY_RETENTION_COUNT` environment variable.  Set the value to the number of recent ledgers you with to keep around, and every hour the horizon subsystem will reap expired data.  Alternatively, you may execute the command `horizon db reap` to force a collection.
+Given an empty horizon database, any and all available history on the attached stellar-core instance will be ingested. Over time, this recorded history will grow unbounded, increasing storage used by the database.  To keep your costs down, you may configure horizon to only retain a certain number of ledgers in the historical database.  This is done using the `--history-retention-count` flag or the `HISTORY_RETENTION_COUNT` environment variable.  Set the value to the number of recent ledgers you wish to keep around, and every hour the horizon subsystem will reap expired data.  Alternatively, you may execute the command `horizon db reap` to force a collection.
 
 ### Surviving stellar-core downtime
 
@@ -127,7 +127,7 @@ To help applications that cannot tolerate lag, horizon provides a configurable "
 
 To ensure that your instance of horizon is performing correctly we encourage you to monitor it, and provide both logs and metrics to do so.  
 
-Horizon will output logs to standard out.  Information about what requests are coming in will be reported, but more importantly and warnings or errors will also be emitted by default.  A correctly running horizon instance will not ouput any warning or error log entries.
+Horizon will output logs to standard out.  Information about what requests are coming in will be reported, but more importantly, warnings or errors will also be emitted by default.  A correctly running horizon instance will not ouput any warning or error log entries.
 
 Metrics are collected while a horizon process is running and they are exposed at the `/metrics` path.  You can see an example at (https://horizon-testnet.stellar.org/metrics).
 
