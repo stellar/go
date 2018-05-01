@@ -95,7 +95,7 @@ To enable ingestion, you must either pass `--ingest=true` on the command line or
 
 ### Managing storage for historical data
 
-Given an empty horizon database, any and all available history on the attached stellar-core instance will be ingested. Over time, this recorded history will grow unbounded, increasing storage used by the database.  To keep you costs down, you may configure horizon to only retain a certain number of ledgers in the historical database.  This is done using the `--history-retention-count` flag or the `HISTORY_RETENTION_COUNT` environment variable.  Set the value to the number of recent ledgers you wish to keep around, and every hour the horizon subsystem will reap expired data.  Alternatively, you may execute the command `horizon db reap` to force a collection.
+Given an empty horizon database, any and all available history on the attached stellar-core instance will be ingested. Over time, this recorded history will grow unbounded, increasing storage used by the database.  To keep your costs down, you may configure horizon to only retain a certain number of ledgers in the historical database.  This is done using the `--history-retention-count` flag or the `HISTORY_RETENTION_COUNT` environment variable.  Set the value to the number of recent ledgers you wish to keep around, and every hour the horizon subsystem will reap expired data.  Alternatively, you may execute the command `horizon db reap` to force a collection.
 
 ### Surviving stellar-core downtime
 
