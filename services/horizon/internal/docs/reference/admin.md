@@ -127,7 +127,7 @@ To help applications that cannot tolerate lag, horizon provides a configurable "
 
 To ensure that your instance of horizon is performing correctly we encourage you to monitor it, and provide both logs and metrics to do so.  
 
-Horizon will output logs to standard out.  Information about what requests are coming in will be reported, but more importantly, warnings or errors will also be emitted by default.  A correctly running horizon instance will not ouput any warning or error log entries.
+Horizon will output logs to standard out.  Information about what requests are coming in will be reported, but more importantly, warnings or errors will also be emitted by default.  A correctly running horizon instance will not output any warning or error log entries.
 
 Metrics are collected while a horizon process is running and they are exposed at the `/metrics` path.  You can see an example at (https://horizon-testnet.stellar.org/metrics).
 
