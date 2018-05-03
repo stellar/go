@@ -4,8 +4,8 @@ import (
 	"testing"
 
 	"github.com/stellar/go/services/horizon/internal/db2/history"
-	"github.com/stellar/go/services/horizon/internal/resource/effects"
 	"github.com/stellar/go/services/horizon/internal/test"
+	"github.com/stellar/go/protocols/resource/effects"
 )
 
 func TestEffectActions_Index(t *testing.T) {
@@ -82,7 +82,7 @@ func TestEffectActions_Index(t *testing.T) {
 		// created_at
 		w := ht.Get("/ledgers/2/effects")
 		if ht.Assert.Equal(200, w.Code) {
-			var result []effects.Base
+			var result []effects.BaseEffect
 			_ = ht.UnmarshalPage(w.Body, &result)
 			ht.Require.NotEmpty(result, "unexpected empty response")
 

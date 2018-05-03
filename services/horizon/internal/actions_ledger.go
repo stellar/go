@@ -4,11 +4,11 @@ import (
 	"github.com/stellar/go/services/horizon/internal/db2"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/services/horizon/internal/ledger"
-	"github.com/stellar/go/services/horizon/internal/render/hal"
+	"github.com/stellar/go/services/horizon/internal/resourceadapter"
+	"github.com/stellar/go/protocols/resource"
+	"github.com/stellar/go/support/render/hal"
 	"github.com/stellar/go/services/horizon/internal/render/problem"
 	"github.com/stellar/go/services/horizon/internal/render/sse"
-	"github.com/stellar/go/services/horizon/internal/resource"
-	halRender "github.com/stellar/go/support/render/hal"
 )
 
 // This file contains the actions:
@@ -33,7 +33,7 @@ func (action *LedgerIndexAction) JSON() {
 		action.ValidateCursorWithinHistory,
 		action.loadRecords,
 		action.loadPage,
-		func() { halRender.Render(action.W, action.Page) },
+		func() { hal.Render(action.W, action.Page) },
 	)
 }
 
@@ -52,7 +52,7 @@ func (action *LedgerIndexAction) SSE(stream sse.Stream) {
 
 			for _, record := range records {
 				var res resource.Ledger
-				res.Populate(action.R.Context(), record)
+				resourceadapter.PopulateLedger(action.Ctx, &res, record)
 				stream.Send(sse.Event{ID: res.PagingToken(), Data: res})
 			}
 		},
@@ -73,7 +73,7 @@ func (action *LedgerIndexAction) loadRecords() {
 func (action *LedgerIndexAction) loadPage() {
 	for _, record := range action.Records {
 		var res resource.Ledger
-		res.Populate(action.R.Context(), record)
+		resourceadapter.PopulateLedger(action.Ctx, &res, record)
 		action.Page.Add(res)
 	}
 
@@ -100,8 +100,8 @@ func (action *LedgerShowAction) JSON() {
 		action.loadRecord,
 		func() {
 			var res resource.Ledger
-			res.Populate(action.R.Context(), action.Record)
-			halRender.Render(action.W, res)
+			resourceadapter.PopulateLedger(action.Ctx, &res, action.Record)
+			hal.Render(action.W, res)
 		},
 	)
 }

@@ -6,11 +6,11 @@ import (
 
 	"github.com/stellar/go/services/horizon/internal/db2"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
-	"github.com/stellar/go/services/horizon/internal/render/hal"
-	"github.com/stellar/go/services/horizon/internal/resource"
-	halRender "github.com/stellar/go/support/render/hal"
+	"github.com/stellar/go/services/horizon/internal/resourceadapter"
 	"github.com/stellar/go/support/time"
 	"github.com/stellar/go/xdr"
+	"github.com/stellar/go/protocols/resource"
+	"github.com/stellar/go/support/render/hal"
 )
 
 type TradeIndexAction struct {
@@ -34,7 +34,7 @@ func (action *TradeIndexAction) JSON() {
 		action.loadRecords,
 		action.loadPage,
 		func() {
-			halRender.Render(action.W, action.Page)
+			hal.Render(action.W, action.Page)
 		},
 	)
 }
@@ -90,7 +90,8 @@ func (action *TradeIndexAction) loadPage() {
 	for _, record := range action.Records {
 		var res resource.Trade
 
-		action.Err = res.Populate(action.R.Context(), record)
+		action.Err = resourceadapter.PopulateTrade(action.Ctx, &res, record)
+
 		if action.Err != nil {
 			return
 		}
@@ -125,7 +126,7 @@ func (action *TradeAggregateIndexAction) JSON() {
 		action.loadRecords,
 		action.loadPage,
 		func() {
-			halRender.Render(action.W, action.Page)
+			hal.Render(action.W, action.Page)
 		},
 	)
 }
@@ -180,7 +181,8 @@ func (action *TradeAggregateIndexAction) loadPage() {
 	for _, record := range action.Records {
 		var res resource.TradeAggregation
 
-		action.Err = res.Populate(action.R.Context(), record)
+		action.Err = resourceadapter.PopulateTradeAggregation(action.Ctx, &res, record)
+
 		if action.Err != nil {
 			return
 		}

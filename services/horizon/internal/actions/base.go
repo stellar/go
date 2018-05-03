@@ -9,7 +9,7 @@ import (
 	"github.com/stellar/go/support/render/problem"
 )
 
-// Base is a helper struct you can use as part of a custom action via
+// BaseEffect is a helper struct you can use as part of a custom action via
 // composition.
 //
 // TODO: example usage

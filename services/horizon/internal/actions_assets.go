@@ -5,9 +5,9 @@ import (
 
 	"github.com/stellar/go/services/horizon/internal/db2"
 	"github.com/stellar/go/services/horizon/internal/db2/assets"
-	"github.com/stellar/go/services/horizon/internal/render/hal"
-	"github.com/stellar/go/services/horizon/internal/resource"
-	halRender "github.com/stellar/go/support/render/hal"
+	"github.com/stellar/go/services/horizon/internal/resourceadapter"
+	"github.com/stellar/go/protocols/resource"
+	"github.com/stellar/go/support/render/hal"
 )
 
 // This file contains the actions:
@@ -33,7 +33,7 @@ func (action *AssetsAction) JSON() {
 		action.loadRecords,
 		action.loadPage,
 		func() {
-			halRender.Render(action.W, action.Page)
+			hal.Render(action.W, action.Page)
 		},
 	)
 }
@@ -71,7 +71,7 @@ func (action *AssetsAction) loadRecords() {
 func (action *AssetsAction) loadPage() {
 	for _, record := range action.Records {
 		var res resource.AssetStat
-		res.Populate(action.R.Context(), record)
+		resourceadapter.PopulateAssetStat(action.Ctx, &res, record)
 		action.Page.Add(res)
 	}
 

@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/stellar/go/services/horizon/internal/db2/history"
-	"github.com/stellar/go/services/horizon/internal/resource/operations"
+	"github.com/stellar/go/protocols/resource/operations"
 )
 
 func TestPaymentActions(t *testing.T) {
@@ -63,7 +63,7 @@ func TestPayment_CreatedAt(t *testing.T) {
 	defer ht.Finish()
 
 	w := ht.Get("/ledgers/3/payments")
-	records := []operations.Base{}
+	records := []operations.BaseOperation{}
 	ht.UnmarshalPage(w.Body, &records)
 
 	l := history.Ledger{}

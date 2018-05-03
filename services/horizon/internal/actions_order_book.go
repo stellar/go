@@ -4,11 +4,12 @@ import (
 	"net/http"
 
 	"github.com/stellar/go/services/horizon/internal/db2/core"
-	"github.com/stellar/go/services/horizon/internal/render/sse"
-	"github.com/stellar/go/services/horizon/internal/resource"
-	"github.com/stellar/go/support/render/hal"
+	"github.com/stellar/go/services/horizon/internal/resourceadapter"
 	"github.com/stellar/go/support/render/problem"
 	"github.com/stellar/go/xdr"
+	"github.com/stellar/go/protocols/resource"
+	"github.com/stellar/go/services/horizon/internal/render/sse"
+	"github.com/stellar/go/support/render/hal"
 )
 
 // OrderBookShowAction renders a account summary found by its address.
@@ -53,8 +54,9 @@ func (action *OrderBookShowAction) LoadRecord() {
 
 // LoadResource populates action.Record
 func (action *OrderBookShowAction) LoadResource() {
-	action.Err = action.Resource.Populate(
-		action.R.Context(),
+	action.Err = resourceadapter.PopulateOrderBookSummary(
+		action.Ctx,
+		&action.Resource,
 		action.Selling,
 		action.Buying,
 		action.Record,

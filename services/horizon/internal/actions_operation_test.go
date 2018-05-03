@@ -6,8 +6,8 @@ import (
 	"time"
 
 	"github.com/stellar/go/services/horizon/internal/db2/history"
-	"github.com/stellar/go/services/horizon/internal/resource/operations"
 	"github.com/stellar/go/services/horizon/internal/test"
+	"github.com/stellar/go/protocols/resource/operations"
 )
 
 func TestOperationActions_Index(t *testing.T) {
@@ -81,7 +81,7 @@ func TestOperationActions_Show(t *testing.T) {
 	// exists
 	w := ht.Get("/operations/8589938689")
 	if ht.Assert.Equal(200, w.Code) {
-		var result operations.Base
+		var result operations.BaseOperation
 		err := json.Unmarshal(w.Body.Bytes(), &result)
 		ht.Require.NoError(err, "failed to parse body")
 		ht.Assert.Equal("8589938689", result.PT)
@@ -120,7 +120,7 @@ func TestOperation_CreatedAt(t *testing.T) {
 	defer ht.Finish()
 
 	w := ht.Get("/ledgers/3/operations")
-	records := []operations.Base{}
+	records := []operations.BaseOperation{}
 	ht.UnmarshalPage(w.Body, &records)
 
 	l := history.Ledger{}

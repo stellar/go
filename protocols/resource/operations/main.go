@@ -1,98 +1,13 @@
 package operations
 
 import (
-	"context"
+	"github.com/stellar/go/protocols/resource/base"
+	"github.com/stellar/go/support/render/hal"
 	"time"
-
-	"github.com/stellar/go/services/horizon/internal/db2/history"
-	"github.com/stellar/go/services/horizon/internal/render/hal"
-	"github.com/stellar/go/services/horizon/internal/resource/base"
-	"github.com/stellar/go/xdr"
 )
 
-// TypeNames maps from operation type to the string used to represent that type
-// in horizon's JSON responses
-var TypeNames = map[xdr.OperationType]string{
-	xdr.OperationTypeCreateAccount:      "create_account",
-	xdr.OperationTypePayment:            "payment",
-	xdr.OperationTypePathPayment:        "path_payment",
-	xdr.OperationTypeManageOffer:        "manage_offer",
-	xdr.OperationTypeCreatePassiveOffer: "create_passive_offer",
-	xdr.OperationTypeSetOptions:         "set_options",
-	xdr.OperationTypeChangeTrust:        "change_trust",
-	xdr.OperationTypeAllowTrust:         "allow_trust",
-	xdr.OperationTypeAccountMerge:       "account_merge",
-	xdr.OperationTypeInflation:          "inflation",
-	xdr.OperationTypeManageData:         "manage_data",
-}
-
-// New creates a new operation resource, finding the appropriate type to use
-// based upon the row's type.
-func New(
-	ctx context.Context,
-	row history.Operation,
-	ledger history.Ledger,
-) (result hal.Pageable, err error) {
-
-	base := Base{}
-	base.Populate(ctx, row, ledger)
-
-	switch row.Type {
-	case xdr.OperationTypeCreateAccount:
-		e := CreateAccount{Base: base}
-		err = row.UnmarshalDetails(&e)
-		result = e
-	case xdr.OperationTypePayment:
-		e := Payment{Base: base}
-		err = row.UnmarshalDetails(&e)
-		result = e
-	case xdr.OperationTypePathPayment:
-		e := PathPayment{}
-		e.Payment.Base = base
-		err = row.UnmarshalDetails(&e)
-		result = e
-	case xdr.OperationTypeManageOffer:
-		e := ManageOffer{}
-		e.CreatePassiveOffer.Base = base
-		err = row.UnmarshalDetails(&e)
-		result = e
-	case xdr.OperationTypeCreatePassiveOffer:
-		e := CreatePassiveOffer{Base: base}
-		err = row.UnmarshalDetails(&e)
-		result = e
-	case xdr.OperationTypeSetOptions:
-		e := SetOptions{Base: base}
-		err = row.UnmarshalDetails(&e)
-		result = e
-	case xdr.OperationTypeChangeTrust:
-		e := ChangeTrust{Base: base}
-		err = row.UnmarshalDetails(&e)
-		result = e
-	case xdr.OperationTypeAllowTrust:
-		e := AllowTrust{Base: base}
-		err = row.UnmarshalDetails(&e)
-		result = e
-	case xdr.OperationTypeAccountMerge:
-		e := AccountMerge{Base: base}
-		err = row.UnmarshalDetails(&e)
-		result = e
-	case xdr.OperationTypeInflation:
-		e := Inflation{Base: base}
-		err = row.UnmarshalDetails(&e)
-		result = e
-	case xdr.OperationTypeManageData:
-		e := ManageData{Base: base}
-		err = row.UnmarshalDetails(&e)
-		result = e
-	default:
-		result = base
-	}
-
-	return
-}
-
-// Base represents the common attributes of an operation resource
-type Base struct {
+// BaseEffect represents the common attributes of an operation resource
+type BaseOperation struct {
 	Links struct {
 		Self        hal.Link `json:"self"`
 		Transaction hal.Link `json:"transaction"`
@@ -110,10 +25,16 @@ type Base struct {
 	TransactionHash string    `json:"transaction_hash"`
 }
 
+// PagingToken implements hal.Pageable
+func (this BaseOperation) PagingToken() string {
+	return this.PT
+}
+
+
 // CreateAccount is the json resource representing a single operation whose type
 // is CreateAccount.
 type CreateAccount struct {
-	Base
+	BaseOperation
 	StartingBalance string `json:"starting_balance"`
 	Funder          string `json:"funder"`
 	Account         string `json:"account"`
@@ -122,7 +43,7 @@ type CreateAccount struct {
 // Payment is the json resource representing a single operation whose type is
 // Payment.
 type Payment struct {
-	Base
+	BaseOperation
 	base.Asset
 	From   string `json:"from"`
 	To     string `json:"to"`
@@ -144,7 +65,7 @@ type PathPayment struct {
 // ManageData represents a ManageData operation as it is serialized into json
 // for the horizon API.
 type ManageData struct {
-	Base
+	BaseOperation
 	Name  string `json:"name"`
 	Value string `json:"value"`
 }
@@ -152,7 +73,7 @@ type ManageData struct {
 // CreatePassiveOffer is the json resource representing a single operation whose
 // type is CreatePassiveOffer.
 type CreatePassiveOffer struct {
-	Base
+	BaseOperation
 	Amount             string     `json:"amount"`
 	Price              string     `json:"price"`
 	PriceR             base.Price `json:"price_r"`
@@ -174,7 +95,7 @@ type ManageOffer struct {
 // SetOptions is the json resource representing a single operation whose type is
 // SetOptions.
 type SetOptions struct {
-	Base
+	BaseOperation
 	HomeDomain    string `json:"home_domain,omitempty"`
 	InflationDest string `json:"inflation_dest,omitempty"`
 
@@ -195,7 +116,7 @@ type SetOptions struct {
 // ChangeTrust is the json resource representing a single operation whose type
 // is ChangeTrust.
 type ChangeTrust struct {
-	Base
+	BaseOperation
 	base.Asset
 	Limit   string `json:"limit"`
 	Trustee string `json:"trustee"`
@@ -205,7 +126,7 @@ type ChangeTrust struct {
 // AllowTrust is the json resource representing a single operation whose type is
 // AllowTrust.
 type AllowTrust struct {
-	Base
+	BaseOperation
 	base.Asset
 	Trustee   string `json:"trustee"`
 	Trustor   string `json:"trustor"`
@@ -215,7 +136,7 @@ type AllowTrust struct {
 // AccountMerge is the json resource representing a single operation whose type
 // is AccountMerge.
 type AccountMerge struct {
-	Base
+	BaseOperation
 	Account string `json:"account"`
 	Into    string `json:"into"`
 }
@@ -223,5 +144,5 @@ type AccountMerge struct {
 // Inflation is the json resource representing a single operation whose type is
 // Inflation.
 type Inflation struct {
-	Base
+	BaseOperation
 }

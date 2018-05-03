@@ -4,7 +4,8 @@ import (
 	"github.com/stellar/go/services/horizon/internal/db2/core"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/services/horizon/internal/render/sse"
-	"github.com/stellar/go/services/horizon/internal/resource"
+	"github.com/stellar/go/services/horizon/internal/resourceadapter"
+	"github.com/stellar/go/protocols/resource"
 	"github.com/stellar/go/support/render/hal"
 )
 
@@ -93,8 +94,9 @@ func (action *AccountShowAction) loadRecord() {
 }
 
 func (action *AccountShowAction) loadResource() {
-	action.Err = action.Resource.Populate(
-		action.R.Context(),
+	action.Err = resourceadapter.PopulateAccount(
+		action.Ctx,
+		&action.Resource,
 		action.CoreRecord,
 		action.CoreData,
 		action.CoreSigners,

@@ -5,13 +5,13 @@ import (
 
 	"github.com/stellar/go/services/horizon/internal/db2"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
-	"github.com/stellar/go/services/horizon/internal/render/hal"
+	"github.com/stellar/go/services/horizon/internal/resourceadapter"
 	hProblem "github.com/stellar/go/services/horizon/internal/render/problem"
-	"github.com/stellar/go/services/horizon/internal/render/sse"
-	"github.com/stellar/go/services/horizon/internal/resource"
 	"github.com/stellar/go/services/horizon/internal/txsub"
-	halRender "github.com/stellar/go/support/render/hal"
 	"github.com/stellar/go/support/render/problem"
+	"github.com/stellar/go/protocols/resource"
+	"github.com/stellar/go/support/render/hal"
+	"github.com/stellar/go/services/horizon/internal/render/sse"
 )
 
 // This file contains the actions:
@@ -39,7 +39,7 @@ func (action *TransactionIndexAction) JSON() {
 		action.loadRecords,
 		action.loadPage,
 		func() {
-			halRender.Render(action.W, action.Page)
+			hal.Render(action.W, action.Page)
 		},
 	)
 }
@@ -59,7 +59,7 @@ func (action *TransactionIndexAction) SSE(stream sse.Stream) {
 
 			for _, record := range records {
 				var res resource.Transaction
-				res.Populate(action.R.Context(), record)
+				resourceadapter.PopulateTransaction(action.Ctx, &res, record)
 				stream.Send(sse.Event{ID: res.PagingToken(), Data: res})
 			}
 		},
@@ -90,7 +90,7 @@ func (action *TransactionIndexAction) loadRecords() {
 func (action *TransactionIndexAction) loadPage() {
 	for _, record := range action.Records {
 		var res resource.Transaction
-		res.Populate(action.R.Context(), record)
+		resourceadapter.PopulateTransaction(action.Ctx, &res, record)
 		action.Page.Add(res)
 	}
 
@@ -110,7 +110,7 @@ type TransactionShowAction struct {
 }
 
 func (action *TransactionShowAction) loadParams() {
-	action.Hash = action.GetString("tx_id")
+	action.Hash = action.GetString("id")
 }
 
 func (action *TransactionShowAction) loadRecord() {
@@ -118,7 +118,7 @@ func (action *TransactionShowAction) loadRecord() {
 }
 
 func (action *TransactionShowAction) loadResource() {
-	action.Resource.Populate(action.R.Context(), action.Record)
+	resourceadapter.PopulateTransaction(action.Ctx, &action.Resource, action.Record)
 }
 
 // JSON is a method for actions.JSON
@@ -128,7 +128,7 @@ func (action *TransactionShowAction) JSON() {
 		action.loadParams,
 		action.loadRecord,
 		action.loadResource,
-		func() { halRender.Render(action.W, action.Resource) },
+		func() { hal.Render(action.W, action.Resource) },
 	)
 }
 
@@ -149,7 +149,7 @@ func (action *TransactionCreateAction) JSON() {
 		action.loadResource,
 
 		func() {
-			halRender.Render(action.W, action.Resource)
+			hal.Render(action.W, action.Resource)
 		})
 }
 
@@ -159,19 +159,19 @@ func (action *TransactionCreateAction) loadTX() {
 }
 
 func (action *TransactionCreateAction) loadResult() {
-	submission := action.App.submitter.Submit(action.R.Context(), action.TX)
+	submission := action.App.submitter.Submit(action.Ctx, action.TX)
 
 	select {
 	case result := <-submission:
 		action.Result = result
-	case <-action.R.Context().Done():
+	case <-action.Ctx.Done():
 		action.Err = &hProblem.Timeout
 	}
 }
 
 func (action *TransactionCreateAction) loadResource() {
 	if action.Result.Err == nil {
-		action.Resource.Populate(action.R.Context(), action.Result)
+		resourceadapter.PopulateTransactionSuccess(action.Ctx, &action.Resource, action.Result)
 		return
 	}
 
@@ -188,7 +188,7 @@ func (action *TransactionCreateAction) loadResource() {
 	switch err := action.Result.Err.(type) {
 	case *txsub.FailedTransactionError:
 		rcr := resource.TransactionResultCodes{}
-		rcr.Populate(action.R.Context(), err)
+		resourceadapter.PopulateTransactionResultCodes(action.Ctx, &rcr, err)
 
 		action.Err = &problem.P{
 			Type:   "transaction_failed",
