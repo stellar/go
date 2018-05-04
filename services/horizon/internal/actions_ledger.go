@@ -5,7 +5,7 @@ import (
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/services/horizon/internal/ledger"
 	"github.com/stellar/go/services/horizon/internal/resourceadapter"
-	"github.com/stellar/go/protocols/resource"
+	"github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/support/render/hal"
 	"github.com/stellar/go/services/horizon/internal/render/problem"
 	"github.com/stellar/go/services/horizon/internal/render/sse"
@@ -51,7 +51,7 @@ func (action *LedgerIndexAction) SSE(stream sse.Stream) {
 			records := action.Records[stream.SentCount():]
 
 			for _, record := range records {
-				var res resource.Ledger
+				var res horizon.Ledger
 				resourceadapter.PopulateLedger(action.Ctx, &res, record)
 				stream.Send(sse.Event{ID: res.PagingToken(), Data: res})
 			}
@@ -72,7 +72,7 @@ func (action *LedgerIndexAction) loadRecords() {
 
 func (action *LedgerIndexAction) loadPage() {
 	for _, record := range action.Records {
-		var res resource.Ledger
+		var res horizon.Ledger
 		resourceadapter.PopulateLedger(action.Ctx, &res, record)
 		action.Page.Add(res)
 	}
@@ -99,7 +99,7 @@ func (action *LedgerShowAction) JSON() {
 		action.verifyWithinHistory,
 		action.loadRecord,
 		func() {
-			var res resource.Ledger
+			var res horizon.Ledger
 			resourceadapter.PopulateLedger(action.Ctx, &res, action.Record)
 			hal.Render(action.W, res)
 		},

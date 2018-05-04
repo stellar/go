@@ -1,7 +1,7 @@
 package operations
 
 import (
-	"github.com/stellar/go/protocols/resource/base"
+	"github.com/stellar/go/protocols/horizon/base"
 	"github.com/stellar/go/support/render/hal"
 	"time"
 )

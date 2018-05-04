@@ -6,7 +6,7 @@ import (
 	"github.com/stellar/go/services/horizon/internal/db2"
 	"github.com/stellar/go/services/horizon/internal/db2/assets"
 	"github.com/stellar/go/services/horizon/internal/resourceadapter"
-	"github.com/stellar/go/protocols/resource"
+	"github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/support/render/hal"
 )
 
@@ -70,7 +70,7 @@ func (action *AssetsAction) loadRecords() {
 
 func (action *AssetsAction) loadPage() {
 	for _, record := range action.Records {
-		var res resource.AssetStat
+		var res horizon.AssetStat
 		resourceadapter.PopulateAssetStat(action.Ctx, &res, record)
 		action.Page.Add(res)
 	}

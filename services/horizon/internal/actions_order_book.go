@@ -7,7 +7,7 @@ import (
 	"github.com/stellar/go/services/horizon/internal/resourceadapter"
 	"github.com/stellar/go/support/render/problem"
 	"github.com/stellar/go/xdr"
-	"github.com/stellar/go/protocols/resource"
+	"github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/services/horizon/internal/render/sse"
 	"github.com/stellar/go/support/render/hal"
 )
@@ -18,7 +18,7 @@ type OrderBookShowAction struct {
 	Selling  xdr.Asset
 	Buying   xdr.Asset
 	Record   core.OrderBookSummary
-	Resource resource.OrderBookSummary
+	Resource horizon.OrderBookSummary
 	Limit    uint64
 }
 

@@ -1,12 +1,12 @@
 // Package resource contains the type definitions for all of horizons
 // response resources.
-package resource
+package horizon
 
 import (
 	"time"
 
 	"github.com/stellar/go/support/render/hal"
-	"github.com/stellar/go/protocols/resource/base"
+	"github.com/stellar/go/protocols/horizon/base"
 	"github.com/stellar/go/strkey"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"

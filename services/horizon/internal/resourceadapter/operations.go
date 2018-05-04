@@ -3,7 +3,7 @@ package resourceadapter
 import (
 	"context"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
-	"github.com/stellar/go/protocols/resource/operations"
+	"github.com/stellar/go/protocols/horizon/operations"
 	"github.com/stellar/go/xdr"
 	"github.com/stellar/go/support/render/hal"
 	"fmt"

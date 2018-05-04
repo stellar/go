@@ -7,7 +7,7 @@ import (
 	"github.com/stellar/go/services/horizon/internal/assets"
 	"github.com/stellar/go/services/horizon/internal/db2/core"
 	"github.com/stellar/go/xdr"
-	. "github.com/stellar/go/protocols/resource"
+	. "github.com/stellar/go/protocols/horizon"
 )
 
 func PopulateBalance(ctx context.Context, dest *Balance, row core.Trustline) (err error) {

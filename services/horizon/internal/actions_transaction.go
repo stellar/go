@@ -9,7 +9,7 @@ import (
 	hProblem "github.com/stellar/go/services/horizon/internal/render/problem"
 	"github.com/stellar/go/services/horizon/internal/txsub"
 	"github.com/stellar/go/support/render/problem"
-	"github.com/stellar/go/protocols/resource"
+	"github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/support/render/hal"
 	"github.com/stellar/go/services/horizon/internal/render/sse"
 )
@@ -58,7 +58,7 @@ func (action *TransactionIndexAction) SSE(stream sse.Stream) {
 			records := action.Records[stream.SentCount():]
 
 			for _, record := range records {
-				var res resource.Transaction
+				var res horizon.Transaction
 				resourceadapter.PopulateTransaction(action.Ctx, &res, record)
 				stream.Send(sse.Event{ID: res.PagingToken(), Data: res})
 			}
@@ -89,7 +89,7 @@ func (action *TransactionIndexAction) loadRecords() {
 
 func (action *TransactionIndexAction) loadPage() {
 	for _, record := range action.Records {
-		var res resource.Transaction
+		var res horizon.Transaction
 		resourceadapter.PopulateTransaction(action.Ctx, &res, record)
 		action.Page.Add(res)
 	}
@@ -106,7 +106,7 @@ type TransactionShowAction struct {
 	Action
 	Hash     string
 	Record   history.Transaction
-	Resource resource.Transaction
+	Resource horizon.Transaction
 }
 
 func (action *TransactionShowAction) loadParams() {
@@ -138,7 +138,7 @@ type TransactionCreateAction struct {
 	Action
 	TX       string
 	Result   txsub.Result
-	Resource resource.TransactionSuccess
+	Resource horizon.TransactionSuccess
 }
 
 // JSON format action handler
@@ -187,7 +187,7 @@ func (action *TransactionCreateAction) loadResource() {
 
 	switch err := action.Result.Err.(type) {
 	case *txsub.FailedTransactionError:
-		rcr := resource.TransactionResultCodes{}
+		rcr := horizon.TransactionResultCodes{}
 		resourceadapter.PopulateTransactionResultCodes(action.Ctx, &rcr, err)
 
 		action.Err = &problem.P{

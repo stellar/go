@@ -4,7 +4,7 @@ import (
 	"context"
 
 	"github.com/stellar/go/xdr"
-	. "github.com/stellar/go/protocols/resource"
+	. "github.com/stellar/go/protocols/horizon"
 
 )
 

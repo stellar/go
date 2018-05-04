@@ -7,7 +7,7 @@ import (
 	"github.com/stellar/go/services/horizon/internal/assets"
 	"github.com/stellar/go/services/horizon/internal/db2/core"
 	"github.com/stellar/go/services/horizon/internal/httpx"
-	. "github.com/stellar/go/protocols/resource"
+	. "github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/support/render/hal"
 )
 

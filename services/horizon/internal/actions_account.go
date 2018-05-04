@@ -5,7 +5,7 @@ import (
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/services/horizon/internal/render/sse"
 	"github.com/stellar/go/services/horizon/internal/resourceadapter"
-	"github.com/stellar/go/protocols/resource"
+	"github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/support/render/hal"
 )
 
@@ -22,7 +22,7 @@ type AccountShowAction struct {
 	CoreRecord     core.Account
 	CoreSigners    []core.Signer
 	CoreTrustlines []core.Trustline
-	Resource       resource.Account
+	Resource       horizon.Account
 }
 
 // JSON is a method for actions.JSON

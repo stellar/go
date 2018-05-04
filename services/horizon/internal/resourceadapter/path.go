@@ -5,7 +5,7 @@ import (
 
 	"github.com/stellar/go/amount"
 	"github.com/stellar/go/services/horizon/internal/paths"
-	. "github.com/stellar/go/protocols/resource"
+	. "github.com/stellar/go/protocols/horizon"
 )
 
 func PopulatePath(ctx context.Context, dest *Path, q paths.Query, p paths.Path) (err error) {

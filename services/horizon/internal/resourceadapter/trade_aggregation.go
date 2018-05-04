@@ -6,7 +6,7 @@ import (
 	"github.com/stellar/go/amount"
 	"github.com/stellar/go/price"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
-	. "github.com/stellar/go/protocols/resource"
+	. "github.com/stellar/go/protocols/horizon"
 )
 
 // Populate fills out the details of a trade using a row from the history_trades

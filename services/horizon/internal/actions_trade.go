@@ -9,7 +9,7 @@ import (
 	"github.com/stellar/go/services/horizon/internal/resourceadapter"
 	"github.com/stellar/go/support/time"
 	"github.com/stellar/go/xdr"
-	"github.com/stellar/go/protocols/resource"
+	"github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/support/render/hal"
 )
 
@@ -88,7 +88,7 @@ func (action *TradeIndexAction) loadRecords() {
 // loadPage populates action.Page
 func (action *TradeIndexAction) loadPage() {
 	for _, record := range action.Records {
-		var res resource.Trade
+		var res horizon.Trade
 
 		action.Err = resourceadapter.PopulateTrade(action.Ctx, &res, record)
 
@@ -179,7 +179,7 @@ func (action *TradeAggregateIndexAction) loadRecords() {
 func (action *TradeAggregateIndexAction) loadPage() {
 	action.Page.Init()
 	for _, record := range action.Records {
-		var res resource.TradeAggregation
+		var res horizon.TradeAggregation
 
 		action.Err = resourceadapter.PopulateTradeAggregation(action.Ctx, &res, record)
 

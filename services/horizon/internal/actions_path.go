@@ -3,7 +3,7 @@ package horizon
 import (
 	"github.com/stellar/go/services/horizon/internal/paths"
 	"github.com/stellar/go/services/horizon/internal/resourceadapter"
-	"github.com/stellar/go/protocols/resource"
+	"github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/support/render/hal"
 )
 
@@ -49,7 +49,7 @@ func (action *PathIndexAction) loadRecords() {
 func (action *PathIndexAction) loadPage() {
 	action.Page.Init()
 	for _, p := range action.Records {
-		var res resource.Path
+		var res horizon.Path
 		action.Err = resourceadapter.PopulatePath(action.Ctx, &res, action.Query, p)
 
 		if action.Err != nil {
