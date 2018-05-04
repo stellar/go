@@ -63,7 +63,7 @@ func TestPayment_CreatedAt(t *testing.T) {
 	defer ht.Finish()
 
 	w := ht.Get("/ledgers/3/payments")
-	records := []operations.BaseOperation{}
+	records := []operations.Base{}
 	ht.UnmarshalPage(w.Body, &records)
 
 	l := history.Ledger{}

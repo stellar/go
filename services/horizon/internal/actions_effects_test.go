@@ -82,7 +82,7 @@ func TestEffectActions_Index(t *testing.T) {
 		// created_at
 		w := ht.Get("/ledgers/2/effects")
 		if ht.Assert.Equal(200, w.Code) {
-			var result []effects.BaseEffect
+			var result []effects.Base
 			_ = ht.UnmarshalPage(w.Body, &result)
 			ht.Require.NotEmpty(result, "unexpected empty response")
 

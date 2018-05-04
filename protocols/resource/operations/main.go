@@ -6,8 +6,8 @@ import (
 	"time"
 )
 
-// BaseEffect represents the common attributes of an operation resource
-type BaseOperation struct {
+// Base represents the common attributes of an operation resource
+type Base struct {
 	Links struct {
 		Self        hal.Link `json:"self"`
 		Transaction hal.Link `json:"transaction"`
@@ -26,7 +26,7 @@ type BaseOperation struct {
 }
 
 // PagingToken implements hal.Pageable
-func (this BaseOperation) PagingToken() string {
+func (this Base) PagingToken() string {
 	return this.PT
 }
 
@@ -34,7 +34,7 @@ func (this BaseOperation) PagingToken() string {
 // CreateAccount is the json resource representing a single operation whose type
 // is CreateAccount.
 type CreateAccount struct {
-	BaseOperation
+	Base
 	StartingBalance string `json:"starting_balance"`
 	Funder          string `json:"funder"`
 	Account         string `json:"account"`
@@ -43,7 +43,7 @@ type CreateAccount struct {
 // Payment is the json resource representing a single operation whose type is
 // Payment.
 type Payment struct {
-	BaseOperation
+	Base
 	base.Asset
 	From   string `json:"from"`
 	To     string `json:"to"`
@@ -65,7 +65,7 @@ type PathPayment struct {
 // ManageData represents a ManageData operation as it is serialized into json
 // for the horizon API.
 type ManageData struct {
-	BaseOperation
+	Base
 	Name  string `json:"name"`
 	Value string `json:"value"`
 }
@@ -73,7 +73,7 @@ type ManageData struct {
 // CreatePassiveOffer is the json resource representing a single operation whose
 // type is CreatePassiveOffer.
 type CreatePassiveOffer struct {
-	BaseOperation
+	Base
 	Amount             string     `json:"amount"`
 	Price              string     `json:"price"`
 	PriceR             base.Price `json:"price_r"`
@@ -95,7 +95,7 @@ type ManageOffer struct {
 // SetOptions is the json resource representing a single operation whose type is
 // SetOptions.
 type SetOptions struct {
-	BaseOperation
+	Base
 	HomeDomain    string `json:"home_domain,omitempty"`
 	InflationDest string `json:"inflation_dest,omitempty"`
 
@@ -116,7 +116,7 @@ type SetOptions struct {
 // ChangeTrust is the json resource representing a single operation whose type
 // is ChangeTrust.
 type ChangeTrust struct {
-	BaseOperation
+	Base
 	base.Asset
 	Limit   string `json:"limit"`
 	Trustee string `json:"trustee"`
@@ -126,7 +126,7 @@ type ChangeTrust struct {
 // AllowTrust is the json resource representing a single operation whose type is
 // AllowTrust.
 type AllowTrust struct {
-	BaseOperation
+	Base
 	base.Asset
 	Trustee   string `json:"trustee"`
 	Trustor   string `json:"trustor"`
@@ -136,7 +136,7 @@ type AllowTrust struct {
 // AccountMerge is the json resource representing a single operation whose type
 // is AccountMerge.
 type AccountMerge struct {
-	BaseOperation
+	Base
 	Account string `json:"account"`
 	Into    string `json:"into"`
 }
@@ -144,5 +144,5 @@ type AccountMerge struct {
 // Inflation is the json resource representing a single operation whose type is
 // Inflation.
 type Inflation struct {
-	BaseOperation
+	Base
 }

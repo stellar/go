@@ -3,7 +3,7 @@ package resourceadapter
 import (
 	"context"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
-	. "github.com/stellar/go/protocols/resource/operations"
+	"github.com/stellar/go/protocols/resource/operations"
 	"github.com/stellar/go/xdr"
 	"github.com/stellar/go/support/render/hal"
 	"fmt"
@@ -34,54 +34,54 @@ func NewOperation(
 	ledger history.Ledger,
 ) (result hal.Pageable, err error) {
 
-	base := BaseOperation{}
+	base := operations.Base{}
 	PopulateBaseOperation(ctx, &base, row, ledger)
 
 	switch row.Type {
 	case xdr.OperationTypeCreateAccount:
-		e := CreateAccount{BaseOperation: base}
+		e := operations.CreateAccount{Base: base}
 		err = row.UnmarshalDetails(&e)
 		result = e
 	case xdr.OperationTypePayment:
-		e := Payment{BaseOperation: base}
+		e := operations.Payment{Base: base}
 		err = row.UnmarshalDetails(&e)
 		result = e
 	case xdr.OperationTypePathPayment:
-		e := PathPayment{}
-		e.Payment.BaseOperation = base
+		e := operations.PathPayment{}
+		e.Payment.Base = base
 		err = row.UnmarshalDetails(&e)
 		result = e
 	case xdr.OperationTypeManageOffer:
-		e := ManageOffer{}
-		e.CreatePassiveOffer.BaseOperation = base
+		e := operations.ManageOffer{}
+		e.CreatePassiveOffer.Base = base
 		err = row.UnmarshalDetails(&e)
 		result = e
 	case xdr.OperationTypeCreatePassiveOffer:
-		e := CreatePassiveOffer{BaseOperation: base}
+		e := operations.CreatePassiveOffer{Base: base}
 		err = row.UnmarshalDetails(&e)
 		result = e
 	case xdr.OperationTypeSetOptions:
-		e := SetOptions{BaseOperation: base}
+		e := operations.SetOptions{Base: base}
 		err = row.UnmarshalDetails(&e)
 		result = e
 	case xdr.OperationTypeChangeTrust:
-		e := ChangeTrust{BaseOperation: base}
+		e := operations.ChangeTrust{Base: base}
 		err = row.UnmarshalDetails(&e)
 		result = e
 	case xdr.OperationTypeAllowTrust:
-		e := AllowTrust{BaseOperation: base}
+		e := operations.AllowTrust{Base: base}
 		err = row.UnmarshalDetails(&e)
 		result = e
 	case xdr.OperationTypeAccountMerge:
-		e := AccountMerge{BaseOperation: base}
+		e := operations.AccountMerge{Base: base}
 		err = row.UnmarshalDetails(&e)
 		result = e
 	case xdr.OperationTypeInflation:
-		e := Inflation{BaseOperation: base}
+		e := operations.Inflation{Base: base}
 		err = row.UnmarshalDetails(&e)
 		result = e
 	case xdr.OperationTypeManageData:
-		e := ManageData{BaseOperation: base}
+		e := operations.ManageData{Base: base}
 		err = row.UnmarshalDetails(&e)
 		result = e
 	default:
@@ -94,7 +94,7 @@ func NewOperation(
 // Populate fills out this resource using `row` as the source.
 func PopulateBaseOperation(
 	ctx context.Context,
-	dest *BaseOperation,
+	dest *operations.Base,
 	row history.Operation,
 	ledger history.Ledger,
 ) {
@@ -114,7 +114,7 @@ func PopulateBaseOperation(
 	dest.Links.Effects = lb.Link(self, "effects")
 }
 
-func populateOperationType(dest *BaseOperation, row history.Operation) {
+func populateOperationType(dest *operations.Base, row history.Operation) {
 	var ok bool
 	dest.TypeI = int32(row.Type)
 	dest.Type, ok = OperationTypeNames[row.Type]

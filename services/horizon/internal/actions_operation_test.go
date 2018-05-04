@@ -81,7 +81,7 @@ func TestOperationActions_Show(t *testing.T) {
 	// exists
 	w := ht.Get("/operations/8589938689")
 	if ht.Assert.Equal(200, w.Code) {
-		var result operations.BaseOperation
+		var result operations.Base
 		err := json.Unmarshal(w.Body.Bytes(), &result)
 		ht.Require.NoError(err, "failed to parse body")
 		ht.Assert.Equal("8589938689", result.PT)
@@ -120,7 +120,7 @@ func TestOperation_CreatedAt(t *testing.T) {
 	defer ht.Finish()
 
 	w := ht.Get("/ledgers/3/operations")
-	records := []operations.BaseOperation{}
+	records := []operations.Base{}
 	ht.UnmarshalPage(w.Body, &records)
 
 	l := history.Ledger{}

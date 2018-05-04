@@ -7,7 +7,7 @@ import (
 	"github.com/stellar/go/services/horizon/internal/httpx"
 	"github.com/stellar/go/support/render/hal"
 	"github.com/stellar/go/protocols/resource/base"
-	. "github.com/stellar/go/protocols/resource/effects"
+	"github.com/stellar/go/protocols/resource/effects"
 )
 
 
@@ -45,68 +45,68 @@ func NewEffect(
 	ledger history.Ledger,
 ) (result hal.Pageable, err error) {
 
-	basev := BaseEffect{}
+	basev := effects.Base{}
 	PopulateBaseEffect(ctx, &basev, row, ledger)
 
 	switch row.Type {
 	case history.EffectAccountCreated:
-		e := AccountCreated{BaseEffect: basev}
+		e := effects.AccountCreated{Base: basev}
 		err = row.UnmarshalDetails(&e)
 		result = e
 	case history.EffectAccountCredited:
-		e := AccountCredited{BaseEffect: basev}
+		e := effects.AccountCredited{Base: basev}
 		err = row.UnmarshalDetails(&e)
 		result = e
 	case history.EffectAccountDebited:
-		e := AccountDebited{BaseEffect: basev}
+		e := effects.AccountDebited{Base: basev}
 		err = row.UnmarshalDetails(&e)
 		result = e
 	case history.EffectAccountThresholdsUpdated:
-		e := AccountThresholdsUpdated{BaseEffect: basev}
+		e := effects.AccountThresholdsUpdated{Base: basev}
 		err = row.UnmarshalDetails(&e)
 		result = e
 	case history.EffectAccountHomeDomainUpdated:
-		e := AccountHomeDomainUpdated{BaseEffect: basev}
+		e := effects.AccountHomeDomainUpdated{Base: basev}
 		err = row.UnmarshalDetails(&e)
 		result = e
 	case history.EffectAccountFlagsUpdated:
-		e := AccountFlagsUpdated{BaseEffect: basev}
+		e := effects.AccountFlagsUpdated{Base: basev}
 		err = row.UnmarshalDetails(&e)
 		result = e
 	case history.EffectSignerCreated:
-		e := SignerCreated{BaseEffect: basev}
+		e := effects.SignerCreated{Base: basev}
 		err = row.UnmarshalDetails(&e)
 		result = e
 	case history.EffectSignerUpdated:
-		e := SignerUpdated{BaseEffect: basev}
+		e := effects.SignerUpdated{Base: basev}
 		err = row.UnmarshalDetails(&e)
 		result = e
 	case history.EffectSignerRemoved:
-		e := SignerRemoved{BaseEffect: basev}
+		e := effects.SignerRemoved{Base: basev}
 		err = row.UnmarshalDetails(&e)
 		result = e
 	case history.EffectTrustlineCreated:
-		e := TrustlineCreated{BaseEffect: basev}
+		e := effects.TrustlineCreated{Base: basev}
 		err = row.UnmarshalDetails(&e)
 		result = e
 	case history.EffectTrustlineUpdated:
-		e := TrustlineUpdated{BaseEffect: basev}
+		e := effects.TrustlineUpdated{Base: basev}
 		err = row.UnmarshalDetails(&e)
 		result = e
 	case history.EffectTrustlineRemoved:
-		e := TrustlineRemoved{BaseEffect: basev}
+		e := effects.TrustlineRemoved{Base: basev}
 		err = row.UnmarshalDetails(&e)
 		result = e
 	case history.EffectTrustlineAuthorized:
-		e := TrustlineAuthorized{BaseEffect: basev}
+		e := effects.TrustlineAuthorized{Base: basev}
 		err = row.UnmarshalDetails(&e)
 		result = e
 	case history.EffectTrustlineDeauthorized:
-		e := TrustlineDeauthorized{BaseEffect: basev}
+		e := effects.TrustlineDeauthorized{Base: basev}
 		err = row.UnmarshalDetails(&e)
 		result = e
 	case history.EffectTrade:
-		e := Trade{BaseEffect: basev}
+		e := effects.Trade{Base: basev}
 		err = row.UnmarshalDetails(&e)
 		result = e
 	default:
@@ -129,7 +129,7 @@ func NewEffect(
 
 
 // Populate loads this resource from `row`
-func PopulateBaseEffect(ctx context.Context, this *BaseEffect, row history.Effect, ledger history.Ledger) {
+func PopulateBaseEffect(ctx context.Context, this *effects.Base, row history.Effect, ledger history.Ledger) {
 	this.ID = row.ID()
 	this.PT = row.PagingToken()
 	this.Account = row.Account
@@ -142,7 +142,7 @@ func PopulateBaseEffect(ctx context.Context, this *BaseEffect, row history.Effec
 	this.Links.Precedes = lb.Linkf("/effects?order=asc&cursor=%s", this.PT)
 }
 
-func populateEffectType(this *BaseEffect, row history.Effect) {
+func populateEffectType(this *effects.Base, row history.Effect) {
 	var ok bool
 	this.TypeI = int32(row.Type)
 	this.Type, ok = EffectTypeNames[row.Type]
