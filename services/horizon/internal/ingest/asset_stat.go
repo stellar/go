@@ -203,7 +203,7 @@ func computeAssetStat(is *Session, asset *xdr.Asset) *history.AssetStat {
 }
 
 // statTrustlinesInfo fetches all the stats from the trustlines table
-func statTrustlinesInfo(coreQ *core.Q, assetType xdr.AssetType, assetCode string, assetIssuer string) (int32, int64, error) {
+func statTrustlinesInfo(coreQ *core.Q, assetType xdr.AssetType, assetCode string, assetIssuer string) (int32, string, error) {
 	return coreQ.BalancesForAsset(int32(assetType), assetCode, assetIssuer)
 }
 
