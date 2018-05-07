@@ -28,35 +28,35 @@ func (ingest *Ingestion) Clear(start int64, end int64) error {
 
 	err := clear(start, end, "history_effects", "history_operation_id")
 	if err != nil {
-		return err
+		return errors.Wrap(err, "Error clearing history_effects")
 	}
 	err = clear(start, end, "history_operation_participants", "history_operation_id")
 	if err != nil {
-		return err
+		return errors.Wrap(err, "Error clearing history_operation_participants")
 	}
 	err = clear(start, end, "history_operations", "id")
 	if err != nil {
-		return err
+		return errors.Wrap(err, "Error clearing history_operations")
 	}
 	err = clear(start, end, "history_transaction_participants", "history_transaction_id")
 	if err != nil {
-		return err
+		return errors.Wrap(err, "Error clearing history_transaction_participants")
 	}
 	err = clear(start, end, "history_transactions", "id")
 	if err != nil {
-		return err
+		return errors.Wrap(err, "Error clearing history_transactions")
 	}
 	err = clear(start, end, "history_ledgers", "id")
 	if err != nil {
-		return err
+		return errors.Wrap(err, "Error clearing history_ledgers")
 	}
 	err = clear(start, end, "history_trades", "history_operation_id")
 	if err != nil {
-		return err
+		return errors.Wrap(err, "Error clearing history_trades")
 	}
 	err = clear(start, end, "asset_stats", "id")
 	if err != nil {
-		return err
+		return errors.Wrap(err, "Error clearing asset_stats")
 	}
 
 	return nil
@@ -71,7 +71,7 @@ func (ingest *Ingestion) Close() error {
 func (ingest *Ingestion) Effect(address Address, opid int64, order int, typ history.EffectType, details interface{}) error {
 	djson, err := json.Marshal(details)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "Error marshaling details")
 	}
 
 	ingest.builders[EffectsTableName].Values(address, opid, order, typ, djson)
@@ -105,7 +105,7 @@ func (ingest *Ingestion) Flush() error {
 
 	err = ingest.commit()
 	if err != nil {
-		return err
+		return errors.Wrap(err, "ingest.commit error")
 	}
 
 	return ingest.Start()
@@ -137,7 +137,7 @@ func (ingest *Ingestion) UpdateAccountIDs(tables []TableName) error {
 	dbAccounts := make([]history.Account, 0, len(addresses))
 	err := q.AccountsByAddresses(&dbAccounts, addresses)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "q.AccountsByAddresses error")
 	}
 
 	for _, row := range dbAccounts {
@@ -157,7 +157,7 @@ func (ingest *Ingestion) UpdateAccountIDs(tables []TableName) error {
 		dbAccounts = make([]history.Account, 0, len(addresses))
 		err = q.CreateAccounts(&dbAccounts, addresses)
 		if err != nil {
-			return err
+			return errors.Wrap(err, "q.CreateAccounts error")
 		}
 
 		for _, row := range dbAccounts {
@@ -214,7 +214,7 @@ func (ingest *Ingestion) Operation(
 ) error {
 	djson, err := json.Marshal(details)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "Error marshaling details")
 	}
 
 	ingest.builders[OperationsTableName].Values(id, txid, order, source.Address(), typ, djson)
