@@ -102,7 +102,7 @@ SET default_with_oids = false;
 
 CREATE TABLE asset_stats (
     id bigint NOT NULL,
-    amount bigint NOT NULL,
+    amount character varying NOT NULL,
     num_accounts integer NOT NULL,
     flags smallint NOT NULL,
     toml character varying(64) NOT NULL
