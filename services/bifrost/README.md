@@ -18,8 +18,6 @@ It solves many problems connected to moving tokens to Stellar network:
 
 We are releasing the **alpha version** of this software. We encourage our community of developers to test and improve it.
 
-Before running `bifrost`, execute `database/migrations/01_init.sql` SQL queries in your DB. Future Bifrost version will do it automatically.
-
 Download the binary from [the release page](https://github.com/stellar/go/releases/tag/bifrost-v0.0.1) and use it with it's [Bifrost JS SDK](https://github.com/stellar/bifrost-js-sdk).
 
 ## How it works
