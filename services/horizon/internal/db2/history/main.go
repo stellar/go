@@ -128,7 +128,7 @@ type Asset struct {
 // AssetStat is a row in the asset_stats table representing the stats per Asset
 type AssetStat struct {
 	ID          int64  `db:"id"`
-	Amount      int64  `db:"amount"`
+	Amount      string `db:"amount"`
 	NumAccounts int32  `db:"num_accounts"`
 	Flags       int8   `db:"flags"`
 	Toml        string `db:"toml"`

@@ -68,6 +68,21 @@ func ParseInt64(v string) (int64, error) {
 	return i, nil
 }
 
+// IntStringToAmount converts string integer value and converts it to stellar
+// "amount". In other words, it divides the given string integer value by 10^7
+// and returns the string representation of that number.
+// It is safe to use with values exceeding int64 limits.
+func IntStringToAmount(v string) (string, error) {
+	r := &big.Rat{}
+	if _, ok := r.SetString(v); !ok {
+		return "", errors.Errorf("cannot parse amount: %s", v)
+	}
+
+	r.Quo(r, bigOne)
+
+	return r.FloatString(7), nil
+}
+
 // String returns an "amount string" from the provided raw xdr.Int64 value `v`.
 func String(v xdr.Int64) string {
 	return StringFromInt64(int64(v))

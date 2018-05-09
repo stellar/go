@@ -102,7 +102,7 @@ SET default_with_oids = false;
 
 CREATE TABLE asset_stats (
     id bigint NOT NULL,
-    amount bigint NOT NULL,
+    amount character varying NOT NULL,
     num_accounts integer NOT NULL,
     flags smallint NOT NULL,
     toml character varying(64) NOT NULL
@@ -377,6 +377,7 @@ INSERT INTO gorp_migrations VALUES ('8_create_asset_stats_table.sql', '2018-04-2
 INSERT INTO gorp_migrations VALUES ('9_add_header_xdr.sql', '2018-04-23 13:49:41.516755-07');
 INSERT INTO gorp_migrations VALUES ('10_add_trades_price.sql', '2018-04-23 13:49:41.522753-07');
 INSERT INTO gorp_migrations VALUES ('11_add_trades_account_index.sql', '2018-04-23 13:49:41.533861-07');
+INSERT INTO gorp_migrations VALUES ('12_asset_stats_amount_string.sql', '2018-05-09 19:14:41.628472+02');
 
 
 --
