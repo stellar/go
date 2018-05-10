@@ -418,7 +418,7 @@ func (is *Session) ingestSignerEffects(effects *EffectIngestion, op xdr.SetOptio
 
 	be, ae, err := is.Cursor.BeforeAndAfter(source.LedgerKey())
 	if err != nil {
-		is.Err = errors.Wrap(is.Err, "Cursor.BeforeAndAfter error")
+		is.Err = errors.Wrap(err, "Cursor.BeforeAndAfter error")
 		return
 	}
 
@@ -515,7 +515,7 @@ func (is *Session) ingestTrades() {
 		key.SetOffer(trade.SellerId, uint64(trade.OfferId))
 		before, _, err := is.Cursor.BeforeAndAfter(key)
 		if err != nil {
-			is.Err = errors.Wrap(is.Err, "Cursor.BeforeAndAfter error")
+			is.Err = errors.Wrap(err, "Cursor.BeforeAndAfter error")
 			return
 		}
 		offerPrice := before.Data.Offer.Price
