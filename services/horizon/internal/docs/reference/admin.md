@@ -20,7 +20,6 @@ Horizon is dependent upon a stellar-core server.  Horizon needs access to both t
 In addition to the two prerequisites above, you may optionally install a redis server to be used for rate limiting requests.
 
 ## Installing
-## Installing
 
 To install horizon, you have a choice: either downloading a [prebuilt release for your target architecture](https://github.com/stellar/go/releases) and operation system, or [building horizon yourself](#Building).  When either approach is complete, you will find yourself with a directory containing a file named `horizon`.  This file is a native binary.
 
