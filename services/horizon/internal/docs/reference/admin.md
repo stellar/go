@@ -42,7 +42,7 @@ Provided your workstation satisfies the requirements above, follow the steps bel
 
 1. Clone horizon's source:  `go get github.com/stellar/go && cd $GOPATH/src/github.com/stellar/go/`
 2. Under the project folder, download external dependencies: `glide install`
-3. Build the binary: `go install /services/horizon`
+3. Build the binary: `go install github.com/stellar/go/services/horizon`
 
 After running the above commands have succeeded, the built horizon will have been written into the `bin` subdirectory of your $GOPATH.
 
