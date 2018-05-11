@@ -70,7 +70,7 @@ func (g *RandomEthereumClient) generateBlocks() {
 				uint64(i),
 				g.randomAddress(),
 				g.randomAmount(),
-				uint64(1),
+				big.NewInt(1),
 				big.NewInt(2),
 				[]byte{0, 0, 0, 0},
 			)

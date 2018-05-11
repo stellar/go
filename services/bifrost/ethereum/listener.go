@@ -76,7 +76,7 @@ func (l *Listener) processBlocks(blockNumber uint64) {
 
 		if block.NumberU64() == 0 {
 			l.log.Error("Etheruem node is not synced yet. Unable to process blocks")
-			time.Sleep(1 * time.Second)
+			time.Sleep(30 * time.Second)
 			continue
 		}
 
