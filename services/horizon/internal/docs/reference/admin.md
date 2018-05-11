@@ -14,12 +14,11 @@ The stellar development foundation runs two horizon servers, one for the public 
 
 ## Prerequisites
 
-Horizon is a dependent upon a stellar-core server.  Horizon needs access to both the SQL database and the HTTP API that is published by stellar-core. See [the administration guide](https://www.stellar.org/developers/stellar-core/learn/admin.html
-) to learn how to set up and administer a stellar-core server.  Secondly, horizon is dependent upon a postgresql server, which it uses to store processed core data for ease of use. Horizon requires postgres version >= 9.3.
+Horizon is dependent upon a stellar-core server.  Horizon needs access to both the SQL database and the HTTP API that is published by stellar-core. See [the administration guide](https://www.stellar.org/developers/stellar-core/learn/admin.html
+) to learn how to set up and administer a stellar-core server.  Secondly, horizon is dependent upon a postgres server, which it uses to store processed core data for ease of use. Horizon requires postgres version >= 9.3.
 
-In addition to the two required prerequisites above, you may optionally install a redis server to be used for rate limiting requests.
+In addition to the two prerequisites above, you may optionally install a redis server to be used for rate limiting requests.
 
-## Installing
 ## Installing
 
 To install horizon, you have a choice: either downloading a [prebuilt release for your target architecture](https://github.com/stellar/go/releases) and operation system, or [building horizon yourself](#Building).  When either approach is complete, you will find yourself with a directory containing a file named `horizon`.  This file is a native binary.
@@ -43,7 +42,7 @@ Provided your workstation satisfies the requirements above, follow the steps bel
 
 1. Clone horizon's source:  `go get github.com/stellar/go && cd $GOPATH/src/github.com/stellar/go/`
 2. Under the project folder, download external dependencies: `glide install`
-3. Build the binary: `go install /services/horizon`
+3. Build the binary: `go install github.com/stellar/go/services/horizon`
 
 After running the above commands have succeeded, the built horizon will have been written into the `bin` subdirectory of your $GOPATH.
 
