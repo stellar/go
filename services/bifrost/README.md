@@ -71,7 +71,7 @@ https://bifrost.stellar.org/
   * `horizon` - URL to [horizon](https://github.com/stellar/go/tree/master/services/horizon) server
   * `network_passphrase` - Stellar network passphrase (`Public Global Stellar Network ; September 2015` for production network, `Test SDF Network ; September 2015` for test network)
   * `starting_balance` - Stellar XLM amount issued to created account (41 by default)
-  * `lock_unix_timestamp` - Unix timestamp of a date until funds will be locked in a new account (helpful if you want to disallow trading during token sale)
+  * `lock_unix_timestamp` - Unix timestamp (in seconds) of a date until funds will be locked in a new account (helpful if you want to disallow trading during token sale)
 * `database`
   * `type` - currently the only supported database type is: `postgres`
   * `dsn` - data source name for postgres connection (`postgres://user:password@host/dbname?sslmode=sslmode` - [more info](https://godoc.org/github.com/lib/pq#hdr-Connection_String_Parameters))
