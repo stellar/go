@@ -16,6 +16,7 @@ bumps.  A breaking change will get clearly notified in this log.
 
 - BREAKING CHANGE: Streaming connections will no longer wait until the first SSE message before sending the SSE preamble and establishing the streaming connection.
 - BREAKING CHANGE: SSE requests will no longer respond with regular HTTP error (i.e. a non-200 status) if the error occurred prior to sending the first SSE message.
+- Above changes have been reverted in [#446](https://github.com/stellar/go/pull/446).
 
 ## v0.12.3 - 2017-03-20
 
