@@ -6,18 +6,6 @@ file.  This project adheres to [Semantic Versioning](http://semver.org/).
 As this project is pre 1.0, breaking changes may happen for minor version
 bumps.  A breaking change will get clearly notified in this log.
 
-## Unreleases
-
-### Added
-
-- Streaming connections now emit a heartbeat message once per five seconds to keep client connections alive.  The heartbeat takes the form of an SSE comment.
-
-### Changes
-
-- BREAKING CHANGE: Streaming connections will no longer wait until the first SSE message before sending the SSE preamble and establishing the streaming connection.
-- BREAKING CHANGE: SSE requests will no longer respond with regular HTTP error (i.e. a non-200 status) if the error occurred prior to sending the first SSE message.
-- Above changes have been reverted in [#446](https://github.com/stellar/go/pull/446).
-
 ## v0.12.3 - 2017-03-20
 
 ### Bug fixes

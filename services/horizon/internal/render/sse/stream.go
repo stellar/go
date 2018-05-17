@@ -1,14 +1,13 @@
 package sse
 
 import (
-	"context"
 	"net/http"
-	"time"
+
+	"golang.org/x/net/context"
 )
 
 // Stream represents an output stream that data can be written to
 type Stream interface {
-	TrySendHeartbeat()
 	Send(Event)
 	SentCount() int
 	Done()
@@ -19,18 +18,17 @@ type Stream interface {
 
 // NewStream creates a new stream against the provided response writer
 func NewStream(ctx context.Context, w http.ResponseWriter, r *http.Request) Stream {
-	result := &stream{ctx, w, r, false, 0, 0, time.Now()}
+	result := &stream{ctx, w, r, false, 0, 0}
 	return result
 }
 
 type stream struct {
-	ctx         context.Context
-	w           http.ResponseWriter
-	r           *http.Request
-	done        bool
-	sent        int
-	limit       int
-	lastWriteAt time.Time
+	ctx   context.Context
+	w     http.ResponseWriter
+	r     *http.Request
+	done  bool
+	sent  int
+	limit int
 }
 
 func (s *stream) Send(e Event) {
@@ -43,19 +41,7 @@ func (s *stream) Send(e Event) {
 	}
 
 	WriteEvent(s.ctx, s.w, e)
-	s.lastWriteAt = time.Now()
 	s.sent++
-}
-
-// TrySendHeartbeat will send
-func (s *stream) TrySendHeartbeat() {
-
-	if time.Since(s.lastWriteAt) < HeartbeatDelay {
-		return
-	}
-
-	WriteHeartbeat(s.ctx, s.w)
-	s.lastWriteAt = time.Now()
 }
 
 func (s *stream) SentCount() int {
