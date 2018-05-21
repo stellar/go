@@ -4,8 +4,8 @@ import (
 	"context"
 	"testing"
 
+	"github.com/go-chi/chi/middleware"
 	. "github.com/smartystreets/goconvey/convey"
-	"github.com/zenazn/goji/web"
 )
 
 func TestRequestId(t *testing.T) {
@@ -19,15 +19,11 @@ func TestRequestId(t *testing.T) {
 		So(ctx2.Value(&key), ShouldEqual, "3")
 	})
 
-	Convey("requestid.ContextFromC", t, func() {
-		gojiC := web.C{
-			Env: make(map[interface{}]interface{}),
-		}
+	Convey("requestid.ContextFromCHI", t, func() {
+		ctx := context.WithValue(context.Background(), middleware.RequestIDKey, "foobar")
 
-		gojiC.Env["reqID"] = "foobar"
-
-		ctx := ContextFromC(context.Background(), &gojiC)
-		So(FromContext(ctx), ShouldEqual, "foobar")
+		ctx2 := ContextFromChi(ctx)
+		So(FromContext(ctx2), ShouldEqual, "foobar")
 	})
 
 	Convey("requestid.FromContext", t, func() {
