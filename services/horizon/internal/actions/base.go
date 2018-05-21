@@ -4,12 +4,10 @@ import (
 	"context"
 	"net/http"
 
-	gctx "github.com/goji/context"
 	"github.com/stellar/go/services/horizon/internal/render"
 	hProblem "github.com/stellar/go/services/horizon/internal/render/problem"
 	"github.com/stellar/go/services/horizon/internal/render/sse"
 	"github.com/stellar/go/support/render/problem"
-	"github.com/zenazn/goji/web"
 )
 
 // Base is a helper struct you can use as part of a custom action via
@@ -17,11 +15,10 @@ import (
 //
 // TODO: example usage
 type Base struct {
-	Ctx     context.Context
-	GojiCtx web.C
-	W       http.ResponseWriter
-	R       *http.Request
-	Err     error
+	Ctx context.Context
+	W   http.ResponseWriter
+	R   *http.Request
+	Err error
 
 	isSetup bool
 }
@@ -29,9 +26,8 @@ type Base struct {
 // Prepare established the common attributes that get used in nearly every
 // action.  "Child" actions may override this method to extend action, but it
 // is advised you also call this implementation to maintain behavior.
-func (base *Base) Prepare(c web.C, w http.ResponseWriter, r *http.Request) {
-	base.Ctx = gctx.FromC(c)
-	base.GojiCtx = c
+func (base *Base) Prepare(w http.ResponseWriter, r *http.Request) {
+	base.Ctx = r.Context()
 	base.W = w
 	base.R = r
 }

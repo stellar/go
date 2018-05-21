@@ -13,7 +13,6 @@ import (
 	"github.com/stellar/go/services/horizon/internal/log"
 	"github.com/stellar/go/services/horizon/internal/render/problem"
 	"github.com/stellar/go/services/horizon/internal/toid"
-	"github.com/zenazn/goji/web"
 )
 
 // Action is the "base type" for all actions in horizon.  It provides
@@ -50,12 +49,11 @@ func (action *Action) HistoryQ() *history.Q {
 	return action.hq
 }
 
-// Prepare sets the action's App field based upon the goji context
-func (action *Action) Prepare(c web.C, w http.ResponseWriter, r *http.Request) {
+// Prepare sets the action's App field based upon the context
+func (action *Action) Prepare(w http.ResponseWriter, r *http.Request) {
 	base := &action.Base
-	base.Prepare(c, w, r)
-	action.App = action.GojiCtx.Env["app"].(*App)
-
+	base.Prepare(w, r)
+	action.App = AppFromContext(r.Context())
 	if action.Ctx != nil {
 		action.Log = log.Ctx(action.Ctx)
 	} else {
