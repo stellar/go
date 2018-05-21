@@ -110,7 +110,7 @@ type TransactionShowAction struct {
 }
 
 func (action *TransactionShowAction) loadParams() {
-	action.Hash = action.GetString("id")
+	action.Hash = action.GetString("tx_id")
 }
 
 func (action *TransactionShowAction) loadRecord() {

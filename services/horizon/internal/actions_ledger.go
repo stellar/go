@@ -107,7 +107,7 @@ func (action *LedgerShowAction) JSON() {
 }
 
 func (action *LedgerShowAction) loadParams() {
-	action.Sequence = action.GetInt32("id")
+	action.Sequence = action.GetInt32("ledger_id")
 }
 
 func (action *LedgerShowAction) loadRecord() {
