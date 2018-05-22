@@ -5,6 +5,9 @@ import (
 	"net/url"
 	"strconv"
 
+	"fmt"
+
+	"github.com/go-chi/chi"
 	"github.com/stellar/go/amount"
 	"github.com/stellar/go/services/horizon/internal/assets"
 	"github.com/stellar/go/services/horizon/internal/db2"
@@ -16,7 +19,6 @@ import (
 	"github.com/stellar/go/support/render/problem"
 	"github.com/stellar/go/support/time"
 	"github.com/stellar/go/xdr"
-	"fmt"
 )
 
 const (
@@ -63,11 +65,10 @@ func (base *Base) GetString(name string) string {
 		return ""
 	}
 
-	fromURL, ok := base.GojiCtx.URLParams[name]
+	fromURL := chi.URLParamFromCtx(base.Ctx, name)
 
-	if ok {
-		// TODO: switch to `PathUnescape` when using a go version that has it
-		ret, err := url.QueryUnescape(fromURL)
+	if fromURL != "" {
+		ret, err := url.PathUnescape(fromURL)
 		if err != nil {
 			base.SetInvalidField(name, err)
 			return ""

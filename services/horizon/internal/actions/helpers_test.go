@@ -1,18 +1,19 @@
 package actions
 
 import (
+	"context"
 	"fmt"
 	"math"
 	"net/http"
 	"net/url"
 	"testing"
 
+	"github.com/go-chi/chi"
 	"github.com/stellar/go/services/horizon/internal/ledger"
 	"github.com/stellar/go/services/horizon/internal/test"
 	"github.com/stellar/go/services/horizon/internal/toid"
 	"github.com/stellar/go/support/render/problem"
 	"github.com/stellar/go/xdr"
-	"github.com/zenazn/goji/web"
 )
 
 func TestGetAccountID(t *testing.T) {
@@ -273,14 +274,16 @@ func makeTestAction() *Base {
 }
 
 func makeAction(path string, body map[string]string) *Base {
+	rctx := chi.NewRouteContext()
+	for k, v := range body {
+		rctx.URLParams.Add(k, v)
+	}
+
 	r, _ := http.NewRequest("GET", path, nil)
+	r = r.WithContext(context.WithValue(r.Context(), chi.RouteCtxKey, rctx))
 	action := &Base{
-		Ctx: test.Context(),
-		GojiCtx: web.C{
-			URLParams: body,
-			Env:       map[interface{}]interface{}{},
-		},
-		R: r,
+		Ctx: r.Context(),
+		R:   r,
 	}
 	return action
 }
