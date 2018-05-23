@@ -30,7 +30,7 @@ func NewAPIMux(behindProxy bool) *chi.Mux {
 	c := cors.New(cors.Options{
 		AllowedOrigins: []string{"*"},
 		AllowedHeaders: []string{"*"},
-		AllowedMethods: []string{"*"},
+		AllowedMethods: []string{"GET", "PUT", "POST", "PATCH", "DELETE", "HEAD", "OPTIONS"},
 	})
 
 	mux.Use(c.Handler)
