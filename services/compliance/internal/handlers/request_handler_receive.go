@@ -6,11 +6,10 @@ import (
 
 	"github.com/stellar/go/services/internal/bridge-compliance-shared/http/helpers"
 	callback "github.com/stellar/go/services/internal/bridge-compliance-shared/protocols/compliance"
-	"github.com/zenazn/goji/web"
 )
 
 // HandlerReceive implements /receive endpoint
-func (rh *RequestHandler) HandlerReceive(c web.C, w http.ResponseWriter, r *http.Request) {
+func (rh *RequestHandler) HandlerReceive(w http.ResponseWriter, r *http.Request) {
 	request := &callback.ReceiveRequest{}
 	err := helpers.FromRequest(r, request)
 	if err != nil {

@@ -7,11 +7,10 @@ import (
 
 	"github.com/stellar/go/services/compliance/internal/db"
 	"github.com/stellar/go/services/internal/bridge-compliance-shared/http/helpers"
-	"github.com/zenazn/goji/web"
 )
 
 // HandlerAllowAccess implements /allow_access endpoint
-func (rh *RequestHandler) HandlerAllowAccess(c web.C, w http.ResponseWriter, r *http.Request) {
+func (rh *RequestHandler) HandlerAllowAccess(w http.ResponseWriter, r *http.Request) {
 	name := r.PostFormValue("name")
 	domain := r.PostFormValue("domain")
 	publicKey := r.PostFormValue("public_key")

@@ -1,7 +1,6 @@
 package main
 
 import (
-	"flag"
 	"fmt"
 	log "github.com/sirupsen/logrus"
 	"net/http"
@@ -23,9 +22,6 @@ import (
 	"github.com/stellar/go/support/db/schema"
 	"github.com/stellar/go/support/errors"
 	supportHttp "github.com/stellar/go/support/http"
-	"github.com/zenazn/goji/graceful"
-	"github.com/zenazn/goji/web"
-	"github.com/zenazn/goji/web/middleware"
 )
 
 var app *App
@@ -233,43 +229,42 @@ func NewApp(config config.Config, migrateFlag bool, versionFlag bool, version st
 
 // Serve starts the server
 func (a *App) Serve() {
-	portString := fmt.Sprintf(":%d", *a.config.Port)
-	flag.Set("bind", portString)
-
-	bridge := web.New()
-
-	bridge.Abandon(middleware.Logger)
+	mux := supportHttp.NewAPIMux(false)
 
 	// Middlewares
 	headers := make(http.Header)
 	headers.Set("Content-Type", "application/json")
-	bridge.Use(supportHttp.StripTrailingSlashMiddleware("/admin"))
-	bridge.Use(supportHttp.HeadersMiddleware(headers, "/admin/"))
+	mux.Use(supportHttp.StripTrailingSlashMiddleware("/admin"))
+	mux.Use(supportHttp.HeadersMiddleware(headers, "/admin/"))
 
 	if a.config.APIKey != "" {
-		bridge.Use(apiKeyMiddleware(a.config.APIKey))
+		mux.Use(apiKeyMiddleware(a.config.APIKey))
 	}
 
 	if a.config.Accounts.AuthorizingSeed != "" {
-		bridge.Post("/authorize", a.requestHandler.Authorize)
+		mux.Post("/authorize", a.requestHandler.Authorize)
 	} else {
 		log.Warning("accounts.authorizing_seed not provided. /authorize endpoint will not be available.")
 	}
 
-	bridge.Post("/create-keypair", a.requestHandler.CreateKeypair)
-	bridge.Post("/builder", a.requestHandler.Builder)
-	bridge.Post("/payment", a.requestHandler.Payment)
-	bridge.Get("/payment", a.requestHandler.Payment)
-	bridge.Post("/reprocess", a.requestHandler.Reprocess)
+	mux.Post("/create-keypair", a.requestHandler.CreateKeypair)
+	mux.Post("/builder", a.requestHandler.Builder)
+	mux.Post("/payment", a.requestHandler.Payment)
+	mux.Get("/payment", a.requestHandler.Payment)
+	mux.Post("/reprocess", a.requestHandler.Reprocess)
 
-	bridge.Get("/admin/received-payments", a.requestHandler.AdminReceivedPayments)
-	bridge.Get("/admin/received-payments/:id", a.requestHandler.AdminReceivedPayment)
-	bridge.Get("/admin/sent-transactions", a.requestHandler.AdminSentTransactions)
+	mux.Get("/admin/received-payments", a.requestHandler.AdminReceivedPayments)
+	mux.Get("/admin/received-payments/{id}", a.requestHandler.AdminReceivedPayment)
+	mux.Get("/admin/sent-transactions", a.requestHandler.AdminSentTransactions)
 
-	err := graceful.ListenAndServe(portString, bridge)
-	if err != nil {
-		log.Fatal(err)
-	}
+	supportHttp.Run(supportHttp.Config{
+		ListenAddr: fmt.Sprintf(":%d", *a.config.Port),
+		Handler:    mux,
+		OnStarting: func() {
+			log.Infof("starting bridge server")
+			log.Infof("listening on %d", *a.config.Port)
+		},
+	})
 }
 
 // apiKeyMiddleware checks for apiKey in a request and writes http.StatusForbidden if it's incorrect.

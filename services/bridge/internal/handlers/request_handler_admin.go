@@ -7,6 +7,7 @@ import (
 	"net/url"
 	"strconv"
 
+	"github.com/go-chi/chi"
 	log "github.com/sirupsen/logrus"
 	"github.com/stellar/go/clients/horizon"
 	"github.com/stellar/go/protocols/compliance"
@@ -14,12 +15,11 @@ import (
 	"github.com/stellar/go/services/internal/bridge-compliance-shared/http/helpers"
 	callback "github.com/stellar/go/services/internal/bridge-compliance-shared/protocols/compliance"
 	"github.com/stellar/go/support/errors"
-	"github.com/zenazn/goji/web"
 )
 
 // AdminReceivedPayment implements /admin/received-payments/{id} endpoint
-func (rh *RequestHandler) AdminReceivedPayment(c web.C, w http.ResponseWriter, r *http.Request) {
-	id, _ := strconv.ParseInt(c.URLParams["id"], 10, 64)
+func (rh *RequestHandler) AdminReceivedPayment(w http.ResponseWriter, r *http.Request) {
+	id, _ := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
 	payment, err := rh.Database.GetReceivedPaymentByID(id)
 	if err != nil {
 		log.WithFields(log.Fields{"err": err}).Error("Error getting ReceivedPayments")

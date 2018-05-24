@@ -22,8 +22,6 @@ import (
 	"github.com/stellar/go/support/db/schema"
 	"github.com/stellar/go/support/errors"
 	supportHttp "github.com/stellar/go/support/http"
-	"github.com/zenazn/goji/graceful"
-	"github.com/zenazn/goji/web"
 )
 
 var app *App
@@ -172,7 +170,7 @@ func NewApp(config config.Config, migrateFlag bool, versionFlag bool, version st
 // Serve starts the server
 func (a *App) Serve() {
 	// External endpoints
-	external := web.New()
+	external := supportHttp.NewAPIMux(false)
 
 	// Middlewares
 	headers := http.Header{}
@@ -182,29 +180,21 @@ func (a *App) Serve() {
 	external.Use(supportHttp.HeadersMiddleware(headers))
 
 	external.Post("/", a.requestHandler.HandlerAuth)
-	external.Get("/tx_status", httpauth.SimpleBasicAuth(a.config.TxStatusAuth.Username, a.config.TxStatusAuth.Password)(http.HandlerFunc(a.requestHandler.HandlerTxStatus)))
-	externalPortString := fmt.Sprintf(":%d", *a.config.ExternalPort)
-	log.Println("Starting external server on", externalPortString)
+	external.Method("GET", "/tx_status", httpauth.SimpleBasicAuth(a.config.TxStatusAuth.Username, a.config.TxStatusAuth.Password)(http.HandlerFunc(a.requestHandler.HandlerTxStatus)))
 	go func() {
-		var err error
-		if a.config.TLS.CertificateFile != "" && a.config.TLS.PrivateKeyFile != "" {
-			err = graceful.ListenAndServeTLS(
-				externalPortString,
-				a.config.TLS.CertificateFile,
-				a.config.TLS.PrivateKeyFile,
-				external,
-			)
-		} else {
-			err = graceful.ListenAndServe(externalPortString, external)
-		}
-
-		if err != nil {
-			log.Fatal(err)
-		}
+		supportHttp.Run(supportHttp.Config{
+			ListenAddr: fmt.Sprintf(":%d", *a.config.ExternalPort),
+			Handler:    external,
+			TLSCert:    a.config.TLS.CertificateFile,
+			TLSKey:     a.config.TLS.PrivateKeyFile,
+			OnStarting: func() {
+				log.Infof("External server listening on %d", *a.config.ExternalPort)
+			},
+		})
 	}()
 
 	// Internal endpoints
-	internal := web.New()
+	internal := supportHttp.NewAPIMux(false)
 
 	internal.Use(supportHttp.StripTrailingSlashMiddleware("/admin"))
 	internal.Use(supportHttp.HeadersMiddleware(headers, "/admin/"))
@@ -213,10 +203,12 @@ func (a *App) Serve() {
 	internal.Post("/receive", a.requestHandler.HandlerReceive)
 	internal.Post("/allow_access", a.requestHandler.HandlerAllowAccess)
 	internal.Post("/remove_access", a.requestHandler.HandlerRemoveAccess)
-	internalPortString := fmt.Sprintf(":%d", *a.config.InternalPort)
-	log.Println("Starting internal server on", internalPortString)
-	err := graceful.ListenAndServe(internalPortString, internal)
-	if err != nil {
-		log.Fatal(err)
-	}
+
+	supportHttp.Run(supportHttp.Config{
+		ListenAddr: fmt.Sprintf(":%d", *a.config.InternalPort),
+		Handler:    internal,
+		OnStarting: func() {
+			log.Infof("Internal server listening on %d", *a.config.InternalPort)
+		},
+	})
 }

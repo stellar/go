@@ -21,11 +21,10 @@ import (
 	httpHelpers "github.com/stellar/go/services/internal/bridge-compliance-shared/http/helpers"
 	callback "github.com/stellar/go/services/internal/bridge-compliance-shared/protocols/compliance"
 	"github.com/stellar/go/xdr"
-	"github.com/zenazn/goji/web"
 )
 
 // HandlerAuth implements authorize endpoint
-func (rh *RequestHandler) HandlerAuth(c web.C, w http.ResponseWriter, r *http.Request) {
+func (rh *RequestHandler) HandlerAuth(w http.ResponseWriter, r *http.Request) {
 	authreq := &compliance.AuthRequest{
 		DataJSON:  r.PostFormValue("data"),
 		Signature: r.PostFormValue("sig"),

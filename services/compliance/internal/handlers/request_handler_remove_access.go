@@ -5,11 +5,10 @@ import (
 	"net/http"
 
 	"github.com/stellar/go/services/internal/bridge-compliance-shared/http/helpers"
-	"github.com/zenazn/goji/web"
 )
 
 // HandlerRemoveAccess implements /remove_access endpoint
-func (rh *RequestHandler) HandlerRemoveAccess(c web.C, w http.ResponseWriter, r *http.Request) {
+func (rh *RequestHandler) HandlerRemoveAccess(w http.ResponseWriter, r *http.Request) {
 	domain := r.PostFormValue("domain")
 	userID := r.PostFormValue("user_id")
 
