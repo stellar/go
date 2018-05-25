@@ -46,23 +46,6 @@ server.transactions()
   })
 ```
 
-### JavaScript Example Request
-
-```js
-var StellarSdk = require('stellar-sdk');
-var server = new StellarSdk.Server('https://horizon-testnet.stellar.org');
-
-server.transactions()
-  .forAccount("GCEZWKCA5VLDNRLN3RPRJMRZOX3Z6G5CHCGSNFHEYVXM3XOJMDS674JZ")
-  .call()
-  .then(function (accountResult) {
-    console.log(accountResult);
-  })
-  .catch(function (err) {
-    console.error(err);
-  })
-```
-
 ## Response
 
 This endpoint responds with a list of transactions that changed a given account's state. See [transaction resource](../resources/transaction.md) for reference.
