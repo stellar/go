@@ -128,14 +128,15 @@ type Offer struct {
 		OfferMaker hal.Link `json:"offer_maker"`
 	} `json:"_links"`
 
-	ID      int64  `json:"id"`
-	PT      string `json:"paging_token"`
-	Seller  string `json:"seller"`
-	Selling Asset  `json:"selling"`
-	Buying  Asset  `json:"buying"`
-	Amount  string `json:"amount"`
-	PriceR  Price  `json:"price_r"`
-	Price   string `json:"price"`
+	ID           int64     `json:"id"`
+	PT           string    `json:"paging_token"`
+	Seller       string    `json:"seller"`
+	Selling      Asset     `json:"selling"`
+	Buying       Asset     `json:"buying"`
+	Amount       string    `json:"amount"`
+	PriceR       Price     `json:"price_r"`
+	Price        string    `json:"price"`
+	LastModified time.Time `json:"last_modified"`
 }
 
 // OrderBookSummary represents a snapshot summary of a given order book

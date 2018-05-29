@@ -72,3 +72,8 @@ func Now() Millis {
 func (t Millis) String() string {
 	return strconv.FormatInt(t.ToInt64(), 10)
 }
+
+//Seconds to Time converts a "seconds since epoch" timestamp to a go time struct
+func SecondsToTime(secs int64) goTime.Time {
+	return MillisFromSeconds(secs).ToTime()
+}

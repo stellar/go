@@ -14,5 +14,10 @@ func TestOfferActions_Index(t *testing.T) {
 
 	if ht.Assert.Equal(200, w.Code) {
 		ht.Assert.PageOf(3, w.Body)
+
+		//test last modified timestamp
+		var records []map[string]interface{}
+		ht.UnmarshalPage(w.Body, &records)
+		ht.Assert.Equal("1970-01-01T00:00:05Z", records[2]["last_modified"])
 	}
 }

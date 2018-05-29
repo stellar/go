@@ -92,7 +92,8 @@ The list of offers.
           "n": 387,
           "d": 50
         },
-        "price": "7.7400000"
+        "price": "7.7400000",
+        "last_modified": "1970-01-01T00:00:05Z"
       },
       {
         "_links": {
@@ -121,7 +122,8 @@ The list of offers.
           "n": 779,
           "d": 100
         },
-        "price": "7.7900000"
+        "price": "7.7900000",
+        "last_modified": "1970-01-01T00:00:06Z"
       }
     ]
   }
