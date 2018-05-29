@@ -134,6 +134,7 @@ type Payment struct {
 type PathPayment struct {
 	Payment
 	Path              []base.Asset `json:"path"`
+	SourceAmount      string       `json:"source_amount"`
 	SourceMax         string       `json:"source_max"`
 	SourceAssetType   string       `json:"source_asset_type"`
 	SourceAssetCode   string       `json:"source_asset_code,omitempty"`
