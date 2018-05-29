@@ -170,8 +170,7 @@ type Offer struct {
 	Price   string `json:"price"`
 }
 
-// TradeAggregationsPage returns a list of aggregated trade records,
-// aggregated by specific resolution
+// TradeAggregationsPage returns a list of aggregated trade records, aggregated by resolution
 type TradeAggregationsPage struct {
 	Links struct {
 		Self Link `json:"self"`
@@ -183,6 +182,7 @@ type TradeAggregationsPage struct {
 	} `json:"_embedded"`
 }
 
+// TradeAggregation represents trade data aggregation over a period of time
 type TradeAggregation struct {
 	Timestamp     int64  `json:"timestamp"`
 	TradeCount    int64  `json:"trade_count"`
@@ -197,6 +197,45 @@ type TradeAggregation struct {
 	OpenR         Price  `json:"open_r"`
 	Close         string `json:"close"`
 	CloseR        Price  `json:"close_r"`
+}
+
+// TradesPage returns a list of trade records
+type TradesPage struct {
+	Links struct {
+		Self Link `json:"self"`
+		Next Link `json:"next"`
+		Prev Link `json:"prev"`
+	} `json:"_links"`
+	Embedded struct {
+		Records []Trade `json:"records"`
+	} `json:"_embedded"`
+}
+
+// Trade represents a horizon digested trade
+type Trade struct {
+	Links struct {
+		Self      Link `json:"self"`
+		Base      Link `json:"base"`
+		Counter   Link `json:"counter"`
+		Operation Link `json:"operation"`
+	} `json:"_links"`
+
+	ID                 string    `json:"id"`
+	PT                 string    `json:"paging_token"`
+	LedgerCloseTime    time.Time `json:"ledger_close_time"`
+	OfferID            string    `json:"offer_id"`
+	BaseAccount        string    `json:"base_account"`
+	BaseAmount         string    `json:"base_amount"`
+	BaseAssetType      string    `json:"base_asset_type"`
+	BaseAssetCode      string    `json:"base_asset_code,omitempty"`
+	BaseAssetIssuer    string    `json:"base_asset_issuer,omitempty"`
+	CounterAccount     string    `json:"counter_account"`
+	CounterAmount      string    `json:"counter_amount"`
+	CounterAssetType   string    `json:"counter_asset_type"`
+	CounterAssetCode   string    `json:"counter_asset_code,omitempty"`
+	CounterAssetIssuer string    `json:"counter_asset_issuer,omitempty"`
+	BaseIsSeller       bool      `json:"base_is_seller"`
+	Price              *Price    `json:"price"`
 }
 
 type OrderBookSummary struct {

@@ -81,7 +81,19 @@ type ClientInterface interface {
 	HomeDomainForAccount(aid string) (string, error)
 	LoadAccount(accountID string) (Account, error)
 	LoadAccountOffers(accountID string, params ...interface{}) (offers OffersPage, err error)
-	LoadTradeAggregations(selling Asset, buying Asset, resolution int64, params ...interface{}) (tradeAggrs TradeAggregationsPage, err error)
+	LoadTradeAggregations(
+		baseAsset Asset,
+		counterAsset Asset,
+		resolution int64,
+		params ...interface{},
+	) (tradeAggrs TradeAggregationsPage, err error)
+	LoadTrades(
+		baseAsset Asset,
+		counterAsset Asset,
+		offerID int64,
+		resolution int64,
+		params ...interface{},
+	) (tradesPage TradesPage, err error)
 	LoadMemo(p *Payment) error
 	LoadOrderBook(selling Asset, buying Asset, params ...interface{}) (orderBook OrderBookSummary, err error)
 	SequenceForAccount(accountID string) (xdr.SequenceNumber, error)
