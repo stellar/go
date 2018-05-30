@@ -1,6 +1,7 @@
 package amount_test
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/stellar/go/amount"
@@ -57,4 +58,46 @@ func TestString(t *testing.T) {
 			t.Errorf("%d stringified to %s, not %s", v.I, o, v.S)
 		}
 	}
+}
+
+func TestIntStringToAmount(t *testing.T) {
+	var testCases = []struct {
+		Output string
+		Input  string
+		Valid  bool
+	}{
+		{"100.0000000", "1000000000", true},
+		{"-100.0000000", "-1000000000", true},
+		{"100.0000001", "1000000001", true},
+		{"123.0000001", "1230000001", true},
+		{"922337203685.4775807", "9223372036854775807", true},
+		{"922337203685.4775808", "9223372036854775808", true},
+		{"92233.7203686", "922337203686", true},
+		{"-922337203685.4775808", "-9223372036854775808", true},
+		{"-922337203685.4775809", "-9223372036854775809", true},
+		{"-92233.7203686", "-922337203686", true},
+		{"1000000000000.0000000", "10000000000000000000", true},
+		{"0.0000000", "0", true},
+		{"", "nan", false},
+	}
+
+	for _, tc := range testCases {
+		t.Run(fmt.Sprintf("%s to %s (valid = %t)", tc.Input, tc.Output, tc.Valid), func(t *testing.T) {
+			o, err := amount.IntStringToAmount(tc.Input)
+
+			if !tc.Valid && err == nil {
+				t.Errorf("expected err for input %s (output: %s)", tc.Input, tc.Output)
+				return
+			}
+			if tc.Valid && err != nil {
+				t.Errorf("couldn't parse %s: %v", tc.Input, err)
+				return
+			}
+
+			if o != tc.Output {
+				t.Errorf("%s converted to %s, not %s", tc.Input, o, tc.Output)
+			}
+		})
+	}
+
 }

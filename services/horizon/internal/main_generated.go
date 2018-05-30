@@ -132,13 +132,6 @@ func (action TradeAggregateIndexAction) ServeHTTPC(c web.C, w http.ResponseWrite
 }
 
 // ServeHTTPC is a method for web.Handler
-func (action TradeEffectIndexAction) ServeHTTPC(c web.C, w http.ResponseWriter, r *http.Request) {
-	ap := &action.Action
-	ap.Prepare(c, w, r)
-	ap.Execute(&action)
-}
-
-// ServeHTTPC is a method for web.Handler
 func (action TradeIndexAction) ServeHTTPC(c web.C, w http.ResponseWriter, r *http.Request) {
 	ap := &action.Action
 	ap.Prepare(c, w, r)

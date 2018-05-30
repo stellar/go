@@ -30,6 +30,7 @@ func (is *Session) Run() {
 
 	is.Err = is.Ingestion.Start()
 	if is.Err != nil {
+		is.Err = errors.Wrap(is.Err, "Ingestion.Start error")
 		return
 	}
 
@@ -59,10 +60,11 @@ func (is *Session) Run() {
 
 	is.Err = is.Ingestion.Close()
 	if is.Err != nil {
+		is.Err = errors.Wrap(is.Err, "Ingestion.Close error")
 		return
 	}
 
-	is.Err = is.reportCursorState()
+	is.Err = errors.Wrap(is.reportCursorState(), "reportCursorState error")
 }
 
 func (is *Session) clearLedger() {
@@ -75,6 +77,10 @@ func (is *Session) clearLedger() {
 	}
 	start := time.Now()
 	is.Err = is.Ingestion.Clear(is.Cursor.LedgerRange())
+	if is.Err != nil {
+		is.Err = errors.Wrap(is.Err, "Ingestion.Clear error")
+	}
+
 	if is.Metrics != nil {
 		is.Metrics.ClearLedgerTimer.Update(time.Since(start))
 	}
@@ -101,6 +107,9 @@ func (is *Session) flush() {
 		return
 	}
 	is.Err = is.Ingestion.Flush()
+	if is.Err != nil {
+		is.Err = errors.Wrap(is.Err, "Ingestion.Flush error")
+	}
 }
 
 func (is *Session) ingestEffects() {
@@ -232,7 +241,7 @@ func (is *Session) ingestEffects() {
 		}
 
 		if err != nil {
-			is.Err = err
+			is.Err = errors.Wrap(err, "is.Cursor.BeforeAndAfter error")
 			return
 		}
 
@@ -292,7 +301,7 @@ func (is *Session) ingestEffects() {
 
 		before, after, err := is.Cursor.BeforeAndAfter(key)
 		if err != nil {
-			is.Err = err
+			is.Err = errors.Wrap(err, "is.Cursor.BeforeAndAfter error")
 			return
 		}
 
@@ -320,6 +329,9 @@ func (is *Session) ingestEffects() {
 	}
 
 	is.Err = effects.Finish()
+	if is.Err != nil {
+		is.Err = errors.Wrap(is.Err, "effects.Finish error")
+	}
 }
 
 // ingestLedger ingests the current ledger
@@ -362,6 +374,7 @@ func (is *Session) ingestOperation() {
 		is.operationDetails(),
 	)
 	if is.Err != nil {
+		is.Err = errors.Wrap(is.Err, "Ingestion.Operation error")
 		return
 	}
 
@@ -374,6 +387,11 @@ func (is *Session) ingestOperation() {
 		&is.Cursor.Transaction().Envelope.Tx.SourceAccount,
 		&core.Q{Session: is.Ingestion.DB},
 	)
+
+	if is.Err != nil {
+		is.Err = errors.Wrap(is.Err, "Cursor.AssetsModified.IngestOperation error")
+		return
+	}
 }
 
 func (is *Session) ingestOperationParticipants() {
@@ -388,6 +406,7 @@ func (is *Session) ingestOperationParticipants() {
 		is.Cursor.Operation(),
 	)
 	if is.Err != nil {
+		is.Err = errors.Wrap(is.Err, "participants.ForOperation error")
 		return
 	}
 
@@ -399,7 +418,7 @@ func (is *Session) ingestSignerEffects(effects *EffectIngestion, op xdr.SetOptio
 
 	be, ae, err := is.Cursor.BeforeAndAfter(source.LedgerKey())
 	if err != nil {
-		is.Err = err
+		is.Err = errors.Wrap(err, "Cursor.BeforeAndAfter error")
 		return
 	}
 
@@ -496,7 +515,7 @@ func (is *Session) ingestTrades() {
 		key.SetOffer(trade.SellerId, uint64(trade.OfferId))
 		before, _, err := is.Cursor.BeforeAndAfter(key)
 		if err != nil {
-			is.Err = err
+			is.Err = errors.Wrap(err, "Cursor.BeforeAndAfter error")
 			return
 		}
 		offerPrice := before.Data.Offer.Price
@@ -510,6 +529,7 @@ func (is *Session) ingestTrades() {
 			sTime.MillisFromSeconds(is.Cursor.Ledger().CloseTime),
 		)
 		if is.Err != nil {
+			is.Err = errors.Wrap(is.Err, "q.InsertTrade error")
 			return
 		}
 	}
@@ -585,6 +605,7 @@ func (is *Session) ingestTransactionParticipants() {
 		&is.Cursor.TransactionFee().Changes,
 	)
 	if is.Err != nil {
+		is.Err = errors.Wrap(is.Err, "participants.ForTransaction error")
 		return
 	}
 
@@ -600,6 +621,7 @@ func (is *Session) assetDetails(result map[string]interface{}, a xdr.Asset, pref
 	)
 	err := a.Extract(&t, &code, &i)
 	if err != nil {
+		err = errors.Wrap(err, "xdr.Asset.Extract error")
 		return err
 	}
 	result[prefix+"asset_type"] = t

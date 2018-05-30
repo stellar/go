@@ -11,7 +11,7 @@ type AssetStatsR struct {
 	Type        string `db:"asset_type"`
 	Code        string `db:"asset_code"`
 	Issuer      string `db:"asset_issuer"`
-	Amount      int64  `db:"amount"`
+	Amount      string `db:"amount"`
 	NumAccounts int32  `db:"num_accounts"`
 	Flags       int8   `db:"flags"`
 	Toml        string `db:"toml"`

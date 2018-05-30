@@ -28,7 +28,8 @@ func initFriendbot(
 			URL:  horizonURL,
 			HTTP: http.DefaultClient,
 		},
-		Network:         networkPassphrase,
-		StartingBalance: startingBalance,
+		Network:           networkPassphrase,
+		StartingBalance:   startingBalance,
+		SubmitTransaction: internal.AsyncSubmitTransaction,
 	}
 }

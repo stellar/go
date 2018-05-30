@@ -14,12 +14,11 @@ The stellar development foundation runs two horizon servers, one for the public 
 
 ## Prerequisites
 
-Horizon is a dependent upon a stellar-core server.  Horizon needs access to both the SQL database and the HTTP API that is published by stellar-core. See [the administration guide](https://www.stellar.org/developers/stellar-core/learn/admin.html
-) to learn how to set up and administer a stellar-core server.  Secondly, horizon is dependent upon a postgresql server, which it uses to store processed core data for ease of use. Horizon requires postgres version >= 9.3.
+Horizon is dependent upon a stellar-core server.  Horizon needs access to both the SQL database and the HTTP API that is published by stellar-core. See [the administration guide](https://www.stellar.org/developers/stellar-core/learn/admin.html
+) to learn how to set up and administer a stellar-core server.  Secondly, horizon is dependent upon a postgres server, which it uses to store processed core data for ease of use. Horizon requires postgres version >= 9.3.
 
-In addition to the two required prerequisites above, you may optionally install a redis server to be used for rate limiting requests.
+In addition to the two prerequisites above, you may optionally install a redis server to be used for rate limiting requests.
 
-## Installing
 ## Installing
 
 To install horizon, you have a choice: either downloading a [prebuilt release for your target architecture](https://github.com/stellar/go/releases) and operation system, or [building horizon yourself](#Building).  When either approach is complete, you will find yourself with a directory containing a file named `horizon`.  This file is a native binary.
@@ -43,9 +42,9 @@ Provided your workstation satisfies the requirements above, follow the steps bel
 
 1. Clone horizon's source:  `go get github.com/stellar/go && cd $GOPATH/src/github.com/stellar/go/`
 2. Under the project folder, download external dependencies: `glide install`
-3. Build the binary: `go install /services/horizon`
+3. Build the binary: `go install github.com/stellar/go/services/horizon`
 
-After running the above commands have succeeded, the built horizon will have be written into the `bin` subdirectory of your $GOPATH.
+After running the above commands have succeeded, the built horizon will have been written into the `bin` subdirectory of your $GOPATH.
 
 Note:  Building directly on windows is not supported.
 
@@ -95,7 +94,7 @@ To enable ingestion, you must either pass `--ingest=true` on the command line or
 
 ### Managing storage for historical data
 
-Given an empty horizon database, any and all available history on the attached stellar-core instance will be ingested. Over time, this recorded history will grow unbounded, increasing storage used by the database.  To keep you costs down, you may configure horizon to only retain a certain number of ledgers in the historical database.  This is done using the `--history-retention-count` flag or the `HISTORY_RETENTION_COUNT` environment variable.  Set the value to the number of recent ledgers you with to keep around, and every hour the horizon subsystem will reap expired data.  Alternatively, you may execute the command `horizon db reap` to force a collection.
+Given an empty horizon database, any and all available history on the attached stellar-core instance will be ingested. Over time, this recorded history will grow unbounded, increasing storage used by the database.  To keep your costs down, you may configure horizon to only retain a certain number of ledgers in the historical database.  This is done using the `--history-retention-count` flag or the `HISTORY_RETENTION_COUNT` environment variable.  Set the value to the number of recent ledgers you wish to keep around, and every hour the horizon subsystem will reap expired data.  Alternatively, you may execute the command `horizon db reap` to force a collection.
 
 ### Surviving stellar-core downtime
 
@@ -103,7 +102,7 @@ Horizon tries to maintain a gap-free window into the history of the stellar-netw
 
 To ensure that the metadata required by horizon is maintained, you have several options: You may either set the `CATCHUP_COMPLETE` stellar-core configuration option to `true` or configure `CATCHUP_RECENT` to determine the amount of time your stellar-core can be offline without having to rebuild your horizon database.
 
-We _do not_ recommend using the `CATCHUP_COMPLETE` method, as this will force stellar-core to apply every transaction from the beginning of the ledger, which will take an ever increasing amount of time.  Instead, we recommend you set the `CATCHUP_RECENT` config value.  To do this, determine how long of a downtime you would like to survive (expressed in seconds) and divide by ten.  This roughly equates to the number of ledgers that occur within you desired grace period (ledgers roughly close at a rate of one every ten seconds).  With this value set, stellar-core will replay transactions for ledgers that are recent enough, ensuring that the metadata needed by horizon is present.
+We _do not_ recommend using the `CATCHUP_COMPLETE` method, as this will force stellar-core to apply every transaction from the beginning of the ledger, which will take an ever increasing amount of time.  Instead, we recommend you set the `CATCHUP_RECENT` config value.  To do this, determine how long of a downtime you would like to survive (expressed in seconds) and divide by ten.  This roughly equates to the number of ledgers that occur within your desired grace period (ledgers roughly close at a rate of one every ten seconds).  With this value set, stellar-core will replay transactions for ledgers that are recent enough, ensuring that the metadata needed by horizon is present.
 
 ### Correcting gaps in historical data
 
@@ -127,7 +126,7 @@ To help applications that cannot tolerate lag, horizon provides a configurable "
 
 To ensure that your instance of horizon is performing correctly we encourage you to monitor it, and provide both logs and metrics to do so.  
 
-Horizon will output logs to standard out.  Information about what requests are coming in will be reported, but more importantly and warnings or errors will also be emitted by default.  A correctly running horizon instance will not ouput any warning or error log entries.
+Horizon will output logs to standard out.  Information about what requests are coming in will be reported, but more importantly, warnings or errors will also be emitted by default.  A correctly running horizon instance will not output any warning or error log entries.
 
 Metrics are collected while a horizon process is running and they are exposed at the `/metrics` path.  You can see an example at (https://horizon-testnet.stellar.org/metrics).
 

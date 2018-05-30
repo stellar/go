@@ -48,7 +48,7 @@ func (q *Q) BalancesForAsset(
 	assetType int32,
 	assetCode string,
 	assetIssuer string,
-) (int32, int64, error) {
+) (int32, string, error) {
 	sql := selectBalances.Where(sq.Eq{
 		"assettype": assetType,
 		"assetcode": assetCode,
@@ -56,8 +56,8 @@ func (q *Q) BalancesForAsset(
 		"flags":     1,
 	})
 	result := struct {
-		Count int32 `db:"count"`
-		Sum   int64 `db:"sum"`
+		Count int32  `db:"count"`
+		Sum   string `db:"sum"`
 	}{}
 	err := q.Get(&result, sql)
 	return result.Count, result.Sum, err

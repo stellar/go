@@ -20,7 +20,6 @@ type Stream interface {
 // NewStream creates a new stream against the provided response writer
 func NewStream(ctx context.Context, w http.ResponseWriter, r *http.Request) Stream {
 	result := &stream{ctx, w, r, false, 0, 0, time.Now()}
-	result.init()
 	return result
 }
 
@@ -35,6 +34,14 @@ type stream struct {
 }
 
 func (s *stream) Send(e Event) {
+	if s.sent == 0 {
+		ok := WritePreamble(s.ctx, s.w)
+		if !ok {
+			s.done = true
+			return
+		}
+	}
+
 	WriteEvent(s.ctx, s.w, e)
 	s.lastWriteAt = time.Now()
 	s.sent++
@@ -75,13 +82,4 @@ func (s *stream) IsDone() bool {
 func (s *stream) Err(err error) {
 	WriteEvent(s.ctx, s.w, Event{Error: err})
 	s.done = true
-}
-
-func (s *stream) init() {
-	ok := WritePreamble(s.ctx, s.w)
-	if !ok {
-		s.done = true
-	}
-
-	return
 }

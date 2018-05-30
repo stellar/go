@@ -46,23 +46,6 @@ server.transactions()
   })
 ```
 
-### JavaScript Example Request
-
-```js
-var StellarSdk = require('stellar-sdk');
-var server = new StellarSdk.Server('https://horizon-testnet.stellar.org');
-
-server.transactions()
-  .forAccount("GCEZWKCA5VLDNRLN3RPRJMRZOX3Z6G5CHCGSNFHEYVXM3XOJMDS674JZ")
-  .call()
-  .then(function (accountResult) {
-    console.log(accountResult);
-  })
-  .catch(function (err) {
-    console.error(err);
-  })
-```
-
 ## Response
 
 This endpoint responds with a list of transactions that changed a given account's state. See [transaction resource](../resources/transaction.md) for reference.
@@ -108,8 +91,6 @@ This endpoint responds with a list of transactions that changed a given account'
         "max_fee": 0,
         "fee_paid": 0,
         "operation_count": 1,
-        "result_code": 0,
-        "result_code_s": "tx_success",
         "envelope_xdr": "AAAAAGL8HQvQkbK2HA3WVjRrKmjX00fG8sLI7m0ERwJW/AX3AAAACgAAAAAAAAABAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAZc2EuuEa2W1PAKmaqVquHuzUMHaEiRs//+ODOfgWiz8AAFrzEHpAAAAAAAAAAAABVvwF9wAAAEAhwIlmkDnlvOaUnj5NMyGlu7XlGLUqUoigWbbMwLS0Em99ZrEh/Gd85pz7hGtAxNMj335utvGDUOAm9WAewEYE",
         "result_xdr": "KivrFj4saL0jd6qyQ9aCJWJtcCY0RKhVVuxycdTkbgMAAAAAAAAACgAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAA==",
         "result_meta_xdr": "AAAAAAAAAAEAAAABAAAAIQAAAAAAAAAAYvwdC9CRsrYcDdZWNGsqaNfTR8bywsjubQRHAlb8BfcBY0V4XYn/9gAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAABAAAAAgAAAAAAAAAhAAAAAAAAAABlzYS64RrZbU8AqZqpWq4e7NQwdoSJGz//44M5+BaLPwAAWvMQekAAAAAAIQAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAEAAAAhAAAAAAAAAABi/B0L0JGythwN1lY0aypo19NHxvLCyO5tBEcCVvwF9wFi6oVND7/2AAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAA=="
@@ -169,8 +150,6 @@ This endpoint responds with a list of transactions that changed a given account'
   "max_fee": 0,
   "fee_paid": 0,
   "operation_count": 1,
-  "result_code": 0,
-  "result_code_s": "tx_success",
   "envelope_xdr": "AAAAAGXNhLrhGtltTwCpmqlarh7s1DB2hIkbP//jgzn4Fos/AAAACgAAAEEAAABnAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAA2ddmTOFAgr21Crs2RXRGLhiAKxicZb/IERyEZL/Y2kUAAAAXSHboAAAAAAAAAAAB+BaLPwAAAECDEEZmzbgBr5fc3mfJsCjWPDtL6H8/vf16me121CC09ONyWJZnw0PUvp4qusmRwC6ZKfLDdk8F3Rq41s+yOgQD",
   "result_xdr": "AAAAAAAAAAoAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAA=",
   "result_meta_xdr": "AAAAAAAAAAEAAAACAAAAAAACPhoAAAAAAAAAANnXZkzhQIK9tQq7NkV0Ri4YgCsYnGW/yBEchGS/2NpFAAAAF0h26AAAAj4aAAAAAAAAAAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAQACPhoAAAAAAAAAAGXNhLrhGtltTwCpmqlarh7s1DB2hIkbP//jgzn4Fos/AABT8kS2c/oAAABBAAAAZwAAAAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAAAA"

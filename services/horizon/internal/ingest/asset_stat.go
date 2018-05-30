@@ -7,6 +7,7 @@ import (
 	"github.com/stellar/go/services/horizon/internal/db2/core"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/support/db"
+	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
 )
 
@@ -96,7 +97,7 @@ func (assetsModified AssetsModified) UpdateAssetStats(is *Session) {
 
 	if hasValue {
 		// perform a delete first since upsert is not supported if postgres < 9.5
-		is.Err = assetsModified.deleteRows(is.Ingestion.DB)
+		is.Err = errors.Wrap(assetsModified.deleteRows(is.Ingestion.DB), "Error deleting asset_stats row")
 		if is.Err != nil {
 			return
 		}
@@ -104,7 +105,7 @@ func (assetsModified AssetsModified) UpdateAssetStats(is *Session) {
 		// can perform a direct upsert if postgres > 9.4
 		// is.Ingestion.assetStats = is.Ingestion.assetStats.
 		// 	Suffix("ON CONFLICT (id) DO UPDATE SET (amount, num_accounts, flags, toml) = (excluded.amount, excluded.num_accounts, excluded.flags, excluded.toml)")
-		is.Err = is.Ingestion.builders[AssetStatsTableName].Exec(is.Ingestion.DB)
+		is.Err = errors.Wrap(is.Ingestion.builders[AssetStatsTableName].Exec(is.Ingestion.DB), "Error inserting asset_stats row")
 	}
 }
 
@@ -167,7 +168,7 @@ func computeAssetStat(is *Session, asset *xdr.Asset) *history.AssetStat {
 	historyQ := history.Q{Session: is.Ingestion.DB}
 	assetID, err := historyQ.GetCreateAssetID(*asset)
 	if err != nil {
-		is.Err = err
+		is.Err = errors.Wrap(err, "historyQ.GetCreateAssetID error")
 		return nil
 	}
 
@@ -175,7 +176,7 @@ func computeAssetStat(is *Session, asset *xdr.Asset) *history.AssetStat {
 	var assetCode, assetIssuer string
 	err = asset.Extract(&assetType, &assetCode, &assetIssuer)
 	if err != nil {
-		is.Err = err
+		is.Err = errors.Wrap(err, "asset.Extract error")
 		return nil
 	}
 
@@ -183,13 +184,13 @@ func computeAssetStat(is *Session, asset *xdr.Asset) *history.AssetStat {
 
 	numAccounts, amount, err := statTrustlinesInfo(coreQ, assetType, assetCode, assetIssuer)
 	if err != nil {
-		is.Err = err
+		is.Err = errors.Wrap(err, "statTrustlinesInfo error")
 		return nil
 	}
 
 	flags, toml, err := statAccountInfo(coreQ, assetIssuer)
 	if err != nil {
-		is.Err = err
+		is.Err = errors.Wrap(err, "statAccountInfo error")
 		return nil
 	}
 
@@ -203,7 +204,7 @@ func computeAssetStat(is *Session, asset *xdr.Asset) *history.AssetStat {
 }
 
 // statTrustlinesInfo fetches all the stats from the trustlines table
-func statTrustlinesInfo(coreQ *core.Q, assetType xdr.AssetType, assetCode string, assetIssuer string) (int32, int64, error) {
+func statTrustlinesInfo(coreQ *core.Q, assetType xdr.AssetType, assetCode string, assetIssuer string) (int32, string, error) {
 	return coreQ.BalancesForAsset(int32(assetType), assetCode, assetIssuer)
 }
 
@@ -212,7 +213,7 @@ func statAccountInfo(coreQ *core.Q, accountID string) (int8, string, error) {
 	var account core.Account
 	err := coreQ.AccountByAddress(&account, accountID)
 	if err != nil {
-		return -1, "", err
+		return -1, "", errors.Wrap(err, "coreQ.AccountByAddress error")
 	}
 
 	var toml string

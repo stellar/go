@@ -19,7 +19,7 @@ func TestStatTrustlinesInfo(t *testing.T) {
 		assetCode       string
 		assetIssuer     string
 		wantNumAccounts int32
-		wantAmount      int64
+		wantAmount      string
 	}
 
 	testCases := []struct {
@@ -33,7 +33,7 @@ func TestStatTrustlinesInfo(t *testing.T) {
 				"USD",
 				"GC23QF2HUE52AMXUFUH3AYJAXXGXXV2VHXYYR6EYXETPKDXZSAW67XO4",
 				1,
-				0,
+				"0",
 			}},
 		}, {
 			"asset_stat_trustlines_2",
@@ -42,7 +42,7 @@ func TestStatTrustlinesInfo(t *testing.T) {
 				"USD",
 				"GC23QF2HUE52AMXUFUH3AYJAXXGXXV2VHXYYR6EYXETPKDXZSAW67XO4",
 				1,
-				0,
+				"0",
 			}},
 		}, {
 			"asset_stat_trustlines_3",
@@ -51,13 +51,13 @@ func TestStatTrustlinesInfo(t *testing.T) {
 				"USD1",
 				"GC23QF2HUE52AMXUFUH3AYJAXXGXXV2VHXYYR6EYXETPKDXZSAW67XO4",
 				1,
-				0,
+				"0",
 			}, {
 				xdr.AssetTypeAssetTypeCreditAlphanum4,
 				"USD2",
 				"GC23QF2HUE52AMXUFUH3AYJAXXGXXV2VHXYYR6EYXETPKDXZSAW67XO4",
 				1,
-				0,
+				"0",
 			}},
 		}, {
 			"asset_stat_trustlines_4",
@@ -66,13 +66,13 @@ func TestStatTrustlinesInfo(t *testing.T) {
 				"USD",
 				"GC23QF2HUE52AMXUFUH3AYJAXXGXXV2VHXYYR6EYXETPKDXZSAW67XO4",
 				1,
-				0,
+				"0",
 			}, {
 				xdr.AssetTypeAssetTypeCreditAlphanum4,
 				"USD",
 				"GCXKG6RN4ONIEPCMNFB732A436Z5PNDSRLGWK7GBLCMQLIFO4S7EYWVU",
 				1,
-				0,
+				"0",
 			}},
 		}, {
 			"asset_stat_trustlines_5",
@@ -81,7 +81,7 @@ func TestStatTrustlinesInfo(t *testing.T) {
 				"USD",
 				"GC23QF2HUE52AMXUFUH3AYJAXXGXXV2VHXYYR6EYXETPKDXZSAW67XO4",
 				1,
-				0,
+				"0",
 			}},
 		}, {
 			"asset_stat_trustlines_6",
@@ -90,7 +90,7 @@ func TestStatTrustlinesInfo(t *testing.T) {
 				"USD",
 				"GC23QF2HUE52AMXUFUH3AYJAXXGXXV2VHXYYR6EYXETPKDXZSAW67XO4",
 				1,
-				1012345000,
+				"1012345000",
 			}},
 		}, {
 			"asset_stat_trustlines_7",
@@ -99,7 +99,7 @@ func TestStatTrustlinesInfo(t *testing.T) {
 				"USD",
 				"GC23QF2HUE52AMXUFUH3AYJAXXGXXV2VHXYYR6EYXETPKDXZSAW67XO4",
 				2,
-				1012345000,
+				"1012345000",
 			}},
 		}, {
 			"allow_trust",
@@ -108,7 +108,7 @@ func TestStatTrustlinesInfo(t *testing.T) {
 				"USD",
 				"GC23QF2HUE52AMXUFUH3AYJAXXGXXV2VHXYYR6EYXETPKDXZSAW67XO4",
 				1, // assets with the auth_required flag should only be counted for authorized accounts
-				0,
+				"0",
 			}},
 		},
 	}

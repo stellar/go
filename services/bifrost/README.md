@@ -18,9 +18,7 @@ It solves many problems connected to moving tokens to Stellar network:
 
 We are releasing the **alpha version** of this software. We encourage our community of developers to test and improve it.
 
-Before running `bifrost`, execute `database/migrations/01_init.sql` SQL queries in your DB. Future Bifrost version will do it automatically.
-
-Download the binary from [the release page](https://github.com/stellar/go/releases/tag/bifrost-v0.0.1) and use it with it's [Bifrost JS SDK](https://github.com/stellar/bifrost-js-sdk).
+Download the binary from [the release page](https://github.com/stellar/go/releases/tag/bifrost-v0.0.2) and use it with it's [Bifrost JS SDK](https://github.com/stellar/bifrost-js-sdk).
 
 ## How it works
 
@@ -60,7 +58,7 @@ https://bifrost.stellar.org/
   * `minimum_value_btc` - minimum transaction value in BTC that will be accepted by Bifrost, everything below will be ignored.
   * `token_price` - a price of one BTC in terms of final token (`stellar.token_asset_code`)
 * `ethereum`
-  * `master_public_key` - master public key for bitcoin keys derivation (read more in [BIP-0032](https://github.com/bitcoin/bips/blob/master/bip-0032.mediawiki))
+  * `master_public_key` - master public key for ethereum keys derivation (read more in [BIP-0032](https://github.com/bitcoin/bips/blob/master/bip-0032.mediawiki))
   * `rpc_server` - URL of [geth](https://github.com/ethereum/go-ethereum) >= 1.7.1 RPC server
   * `network_id` - network ID (`3` - Ropsten testnet, `1` - live Ethereum network)
   * `minimum_value_eth` - minimum transaction value in ETH that will be accepted by Bifrost, everything below will be ignored.
@@ -73,7 +71,7 @@ https://bifrost.stellar.org/
   * `horizon` - URL to [horizon](https://github.com/stellar/go/tree/master/services/horizon) server
   * `network_passphrase` - Stellar network passphrase (`Public Global Stellar Network ; September 2015` for production network, `Test SDF Network ; September 2015` for test network)
   * `starting_balance` - Stellar XLM amount issued to created account (2.1 by default)
-  * `lock_unix_timestamp` - Unix timestamp of a date until funds will be locked in a new account (helpful if you want to disallow trading during token sale)
+  * `lock_unix_timestamp` - Unix timestamp (in seconds) of a date until funds will be locked in a new account (helpful if you want to disallow trading during token sale)
 * `database`
   * `type` - currently the only supported database type is: `postgres`
   * `dsn` - data source name for postgres connection (`postgres://user:password@host/dbname?sslmode=sslmode` - [more info](https://godoc.org/github.com/lib/pq#hdr-Connection_String_Parameters))

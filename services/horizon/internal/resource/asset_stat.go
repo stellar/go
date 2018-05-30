@@ -18,7 +18,10 @@ func (res *AssetStat) Populate(
 	res.Asset.Type = row.Type
 	res.Asset.Code = row.Code
 	res.Asset.Issuer = row.Issuer
-	res.Amount = amount.StringFromInt64(row.Amount)
+	res.Amount, err = amount.IntStringToAmount(row.Amount)
+	if err != nil {
+		return err
+	}
 	res.NumAccounts = row.NumAccounts
 	res.Flags = AccountFlags{
 		(row.Flags & int8(xdr.AccountFlagsAuthRequiredFlag)) != 0,

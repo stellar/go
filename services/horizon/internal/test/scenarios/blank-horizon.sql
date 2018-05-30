@@ -38,6 +38,8 @@ DROP INDEX IF EXISTS public.htrd_pid;
 DROP INDEX IF EXISTS public.htrd_pair_time_lookup;
 DROP INDEX IF EXISTS public.htrd_counter_lookup;
 DROP INDEX IF EXISTS public.htrd_by_offer;
+DROP INDEX IF EXISTS public.htrd_by_counter_account;
+DROP INDEX IF EXISTS public.htrd_by_base_account;
 DROP INDEX IF EXISTS public.htp_by_htid;
 DROP INDEX IF EXISTS public.hs_transaction_by_id;
 DROP INDEX IF EXISTS public.hs_ledger_by_id;
@@ -451,17 +453,18 @@ ALTER TABLE ONLY history_transaction_participants ALTER COLUMN id SET DEFAULT ne
 -- Data for Name: gorp_migrations; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-INSERT INTO gorp_migrations VALUES ('1_initial_schema.sql', '2018-02-13 15:41:22.294729-08');
-INSERT INTO gorp_migrations VALUES ('2_index_participants_by_toid.sql', '2018-02-13 15:41:22.314242-08');
-INSERT INTO gorp_migrations VALUES ('3_use_sequence_in_history_accounts.sql', '2018-02-13 15:41:22.320616-08');
-INSERT INTO gorp_migrations VALUES ('4_add_protocol_version.sql', '2018-02-13 15:41:22.360168-08');
-INSERT INTO gorp_migrations VALUES ('5_create_trades_table.sql', '2018-02-13 15:41:22.387454-08');
-INSERT INTO gorp_migrations VALUES ('6_create_assets_table.sql', '2018-02-13 15:41:22.407776-08');
-INSERT INTO gorp_migrations VALUES ('7_modify_trades_table.sql', '2018-02-13 15:41:22.445522-08');
-INSERT INTO gorp_migrations VALUES ('8_add_aggregators.sql', '2018-02-13 15:41:22.452985-08');
-INSERT INTO gorp_migrations VALUES ('8_create_asset_stats_table.sql', '2018-02-13 15:41:22.468047-08');
-INSERT INTO gorp_migrations VALUES ('9_add_header_xdr.sql', '2018-02-13 15:41:22.476629-08');
-INSERT INTO gorp_migrations VALUES ('10_add_trades_price.sql', '2018-02-13 15:41:22.482553-08');
+INSERT INTO gorp_migrations VALUES ('1_initial_schema.sql', '2018-04-23 13:49:41.331534-07');
+INSERT INTO gorp_migrations VALUES ('2_index_participants_by_toid.sql', '2018-04-23 13:49:41.346024-07');
+INSERT INTO gorp_migrations VALUES ('3_use_sequence_in_history_accounts.sql', '2018-04-23 13:49:41.351718-07');
+INSERT INTO gorp_migrations VALUES ('4_add_protocol_version.sql', '2018-04-23 13:49:41.388382-07');
+INSERT INTO gorp_migrations VALUES ('5_create_trades_table.sql', '2018-04-23 13:49:41.412591-07');
+INSERT INTO gorp_migrations VALUES ('6_create_assets_table.sql', '2018-04-23 13:49:41.430454-07');
+INSERT INTO gorp_migrations VALUES ('7_modify_trades_table.sql', '2018-04-23 13:49:41.489276-07');
+INSERT INTO gorp_migrations VALUES ('8_add_aggregators.sql', '2018-04-23 13:49:41.495208-07');
+INSERT INTO gorp_migrations VALUES ('8_create_asset_stats_table.sql', '2018-04-23 13:49:41.508549-07');
+INSERT INTO gorp_migrations VALUES ('9_add_header_xdr.sql', '2018-04-23 13:49:41.516755-07');
+INSERT INTO gorp_migrations VALUES ('10_add_trades_price.sql', '2018-04-23 13:49:41.522753-07');
+INSERT INTO gorp_migrations VALUES ('11_add_trades_account_index.sql', '2018-04-23 13:49:41.533861-07');
 
 
 --
@@ -683,6 +686,20 @@ CREATE UNIQUE INDEX hs_transaction_by_id ON history_transactions USING btree (id
 --
 
 CREATE INDEX htp_by_htid ON history_transaction_participants USING btree (history_transaction_id);
+
+
+--
+-- Name: htrd_by_base_account; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX htrd_by_base_account ON history_trades USING btree (base_account_id);
+
+
+--
+-- Name: htrd_by_counter_account; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX htrd_by_counter_account ON history_trades USING btree (counter_account_id);
 
 
 --
