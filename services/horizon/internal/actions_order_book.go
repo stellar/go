@@ -54,7 +54,7 @@ func (action *OrderBookShowAction) LoadRecord() {
 // LoadResource populates action.Record
 func (action *OrderBookShowAction) LoadResource() {
 	action.Err = action.Resource.Populate(
-		action.Ctx,
+		action.R.Context(),
 		action.Selling,
 		action.Buying,
 		action.Record,

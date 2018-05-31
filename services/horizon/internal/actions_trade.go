@@ -90,7 +90,7 @@ func (action *TradeIndexAction) loadPage() {
 	for _, record := range action.Records {
 		var res resource.Trade
 
-		action.Err = res.Populate(action.Ctx, record)
+		action.Err = res.Populate(action.R.Context(), record)
 		if action.Err != nil {
 			return
 		}
@@ -180,7 +180,7 @@ func (action *TradeAggregateIndexAction) loadPage() {
 	for _, record := range action.Records {
 		var res resource.TradeAggregation
 
-		action.Err = res.Populate(action.Ctx, record)
+		action.Err = res.Populate(action.R.Context(), record)
 		if action.Err != nil {
 			return
 		}

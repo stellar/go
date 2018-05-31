@@ -282,8 +282,7 @@ func makeAction(path string, body map[string]string) *Base {
 	r, _ := http.NewRequest("GET", path, nil)
 	r = r.WithContext(context.WithValue(r.Context(), chi.RouteCtxKey, rctx))
 	action := &Base{
-		Ctx: r.Context(),
-		R:   r,
+		R: r,
 	}
 	return action
 }

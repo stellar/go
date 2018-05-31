@@ -17,5 +17,5 @@ func (action RateLimitExceededAction) ServeHTTP(w http.ResponseWriter, r *http.R
 	ap := &action.Action
 	ap.Prepare(w, r)
 	ap.App = action.App
-	problem.Render(action.Ctx, action.W, hProblem.RateLimitExceeded)
+	problem.Render(action.R.Context(), action.W, hProblem.RateLimitExceeded)
 }

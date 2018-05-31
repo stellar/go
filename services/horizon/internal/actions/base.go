@@ -1,7 +1,6 @@
 package actions
 
 import (
-	"context"
 	"net/http"
 
 	"github.com/stellar/go/services/horizon/internal/render"
@@ -15,7 +14,6 @@ import (
 //
 // TODO: example usage
 type Base struct {
-	Ctx context.Context
 	W   http.ResponseWriter
 	R   *http.Request
 	Err error
@@ -27,7 +25,6 @@ type Base struct {
 // action.  "Child" actions may override this method to extend action, but it
 // is advised you also call this implementation to maintain behavior.
 func (base *Base) Prepare(w http.ResponseWriter, r *http.Request) {
-	base.Ctx = r.Context()
 	base.W = w
 	base.R = r
 }
@@ -35,7 +32,8 @@ func (base *Base) Prepare(w http.ResponseWriter, r *http.Request) {
 // Execute trigger content negotiation and the actual execution of one of the
 // action's handlers.
 func (base *Base) Execute(action interface{}) {
-	contentType := render.Negotiate(base.Ctx, base.R)
+	ctx := base.R.Context()
+	contentType := render.Negotiate(base.R)
 
 	switch contentType {
 	case render.MimeHal, render.MimeJSON:
@@ -48,7 +46,7 @@ func (base *Base) Execute(action interface{}) {
 		action.JSON()
 
 		if base.Err != nil {
-			problem.Render(base.Ctx, base.W, base.Err)
+			problem.Render(ctx, base.W, base.Err)
 			return
 		}
 
@@ -58,14 +56,14 @@ func (base *Base) Execute(action interface{}) {
 			goto NotAcceptable
 		}
 
-		stream := sse.NewStream(base.Ctx, base.W, base.R)
+		stream := sse.NewStream(ctx, base.W, base.R)
 
 		for {
 			action.SSE(stream)
 
 			if base.Err != nil {
 				if stream.SentCount() == 0 {
-					problem.Render(base.Ctx, base.W, base.Err)
+					problem.Render(ctx, base.W, base.Err)
 					return
 				} else {
 					stream.Err(base.Err)
@@ -79,7 +77,7 @@ func (base *Base) Execute(action interface{}) {
 			stream.TrySendHeartbeat()
 
 			select {
-			case <-base.Ctx.Done():
+			case <-ctx.Done():
 				return
 			case <-sse.Pumped():
 				//no-op, continue onto the next iteration
@@ -95,7 +93,7 @@ func (base *Base) Execute(action interface{}) {
 		action.Raw()
 
 		if base.Err != nil {
-			problem.Render(base.Ctx, base.W, base.Err)
+			problem.Render(ctx, base.W, base.Err)
 			return
 		}
 	default:
@@ -104,7 +102,7 @@ func (base *Base) Execute(action interface{}) {
 	return
 
 NotAcceptable:
-	problem.Render(base.Ctx, base.W, hProblem.NotAcceptable)
+	problem.Render(ctx, base.W, hProblem.NotAcceptable)
 	return
 }
 

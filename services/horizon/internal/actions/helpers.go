@@ -65,7 +65,7 @@ func (base *Base) GetString(name string) string {
 		return ""
 	}
 
-	fromURL := chi.URLParamFromCtx(base.Ctx, name)
+	fromURL := chi.URLParamFromCtx(base.R.Context(), name)
 
 	if fromURL != "" {
 		ret, err := url.PathUnescape(fromURL)

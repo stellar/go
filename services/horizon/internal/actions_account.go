@@ -94,7 +94,7 @@ func (action *AccountShowAction) loadRecord() {
 
 func (action *AccountShowAction) loadResource() {
 	action.Err = action.Resource.Populate(
-		action.Ctx,
+		action.R.Context(),
 		action.CoreRecord,
 		action.CoreData,
 		action.CoreSigners,
