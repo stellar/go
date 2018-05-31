@@ -5,33 +5,37 @@ import (
 	"testing"
 
 	"github.com/go-chi/chi/middleware"
-	. "github.com/smartystreets/goconvey/convey"
+	"github.com/stellar/go/services/horizon/internal/test"
 )
 
-func TestRequestId(t *testing.T) {
-	Convey("requestid.Context", t, func() {
-		ctx := Context(context.Background(), "2")
-		So(ctx.Value(&key), ShouldEqual, "2")
+func TestRequestContext(t *testing.T) {
+	tt := test.Start(t)
+	defer tt.Finish()
 
-		ctx2 := Context(ctx, "3")
+	ctx := Context(context.Background(), "2")
+	tt.Assert.Equal(ctx.Value(&key), "2")
 
-		So(ctx.Value(&key), ShouldEqual, "2")
-		So(ctx2.Value(&key), ShouldEqual, "3")
-	})
+	ctx2 := Context(ctx, "3")
+	tt.Assert.Equal(ctx2.Value(&key), "3")
+	tt.Assert.Equal(ctx.Value(&key), "2")
+}
 
-	Convey("requestid.ContextFromCHI", t, func() {
-		ctx := context.WithValue(context.Background(), middleware.RequestIDKey, "foobar")
+func TestRequestContextFromCHI(t *testing.T) {
+	tt := test.Start(t)
+	defer tt.Finish()
 
-		ctx2 := ContextFromChi(ctx)
-		So(FromContext(ctx2), ShouldEqual, "foobar")
-	})
+	ctx := context.WithValue(context.Background(), middleware.RequestIDKey, "foobar")
+	ctx2 := ContextFromChi(ctx)
+	tt.Assert.Equal(FromContext(ctx2), "foobar")
+}
 
-	Convey("requestid.FromContext", t, func() {
-		ctx := Context(context.Background(), "2")
-		ctx2 := Context(ctx, "3")
+func TestRequestFromContext(t *testing.T) {
+	tt := test.Start(t)
+	defer tt.Finish()
 
-		So(FromContext(context.Background()), ShouldEqual, "")
-		So(FromContext(ctx), ShouldEqual, "2")
-		So(FromContext(ctx2), ShouldEqual, "3")
-	})
+	ctx := Context(context.Background(), "2")
+	ctx2 := Context(ctx, "3")
+	tt.Assert.Equal(FromContext(context.Background()), "")
+	tt.Assert.Equal(FromContext(ctx), "2")
+	tt.Assert.Equal(FromContext(ctx2), "3")
 }
