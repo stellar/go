@@ -269,6 +269,26 @@ func TestPath(t *testing.T) {
 	tt.Assert.Equal("/foo-bar/blah", action.Path())
 }
 
+func TestGetURLParam(t *testing.T) {
+	tt := test.Start(t)
+	defer tt.Finish()
+	action := makeTestAction()
+
+	val, ok := action.GetURLParam("two")
+	tt.Assert.Equal("2", val)
+	tt.Assert.Equal(true, ok)
+
+	// valid empty string
+	val, ok = action.GetURLParam("blank")
+	tt.Assert.Equal("", val)
+	tt.Assert.Equal(true, ok)
+
+	// url param not found
+	val, ok = action.GetURLParam("foobarcursor")
+	tt.Assert.Equal("", val)
+	tt.Assert.Equal(false, ok)
+}
+
 func makeTestAction() *Base {
 	return makeAction("/foo-bar/blah?limit=2&cursor=hello", testURLParams())
 }

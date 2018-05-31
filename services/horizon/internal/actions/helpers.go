@@ -65,9 +65,9 @@ func (base *Base) GetString(name string) string {
 		return ""
 	}
 
-	fromURL := chi.URLParamFromCtx(base.R.Context(), name)
+	fromURL, ok := base.GetURLParam(name)
 
-	if fromURL != "" {
+	if ok {
 		ret, err := url.PathUnescape(fromURL)
 		if err != nil {
 			base.SetInvalidField(name, err)
@@ -347,6 +347,21 @@ func (base *Base) GetTimeMillis(name string) (timeMillis time.Millis) {
 	}
 
 	return
+}
+
+// GetURLParam returns the corresponding URL parameter value from the request
+// routing context and an additional boolean reflecting whether or not the
+// param was found. This is ported from Chi since the Chi version returns ""
+// for params not found. This is undesirable since "" also is a valid url param.
+// Ref: https://github.com/go-chi/chi/blob/d132b31857e5922a2cc7963f4fcfd8f46b3f2e97/context.go#L69
+func (base *Base) GetURLParam(key string) (string, bool) {
+	rctx := chi.RouteContext(base.R.Context())
+	for k := len(rctx.URLParams.Keys) - 1; k >= 0; k-- {
+		if rctx.URLParams.Keys[k] == key {
+			return rctx.URLParams.Values[k], true
+		}
+	}
+	return "", false
 }
 
 // SetInvalidField establishes an error response triggered by an invalid
