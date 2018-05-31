@@ -70,7 +70,7 @@ func (action *OperationIndexAction) SSE(stream sse.Stream) {
 					return
 				}
 
-				res, err := resource.NewOperation(action.Ctx, record, ledger)
+				res, err := resource.NewOperation(action.R.Context(), record, ledger)
 
 				if err != nil {
 					stream.Err(err)
@@ -130,7 +130,7 @@ func (action *OperationIndexAction) loadPage() {
 		}
 
 		var res hal.Pageable
-		res, action.Err = resource.NewOperation(action.Ctx, record, ledger)
+		res, action.Err = resource.NewOperation(action.R.Context(), record, ledger)
 		if action.Err != nil {
 			return
 		}
@@ -166,7 +166,7 @@ func (action *OperationShowAction) loadLedger() {
 }
 
 func (action *OperationShowAction) loadResource() {
-	action.Resource, action.Err = resource.NewOperation(action.Ctx, action.Record, action.Ledger)
+	action.Resource, action.Err = resource.NewOperation(action.R.Context(), action.Record, action.Ledger)
 }
 
 // JSON is a method for actions.JSON

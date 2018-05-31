@@ -1,15 +1,12 @@
 package actions
 
 import (
-	"context"
 	"net/http"
 
-	gctx "github.com/goji/context"
 	"github.com/stellar/go/services/horizon/internal/render"
 	hProblem "github.com/stellar/go/services/horizon/internal/render/problem"
 	"github.com/stellar/go/services/horizon/internal/render/sse"
 	"github.com/stellar/go/support/render/problem"
-	"github.com/zenazn/goji/web"
 )
 
 // Base is a helper struct you can use as part of a custom action via
@@ -17,11 +14,9 @@ import (
 //
 // TODO: example usage
 type Base struct {
-	Ctx     context.Context
-	GojiCtx web.C
-	W       http.ResponseWriter
-	R       *http.Request
-	Err     error
+	W   http.ResponseWriter
+	R   *http.Request
+	Err error
 
 	isSetup bool
 }
@@ -29,9 +24,7 @@ type Base struct {
 // Prepare established the common attributes that get used in nearly every
 // action.  "Child" actions may override this method to extend action, but it
 // is advised you also call this implementation to maintain behavior.
-func (base *Base) Prepare(c web.C, w http.ResponseWriter, r *http.Request) {
-	base.Ctx = gctx.FromC(c)
-	base.GojiCtx = c
+func (base *Base) Prepare(w http.ResponseWriter, r *http.Request) {
 	base.W = w
 	base.R = r
 }
@@ -39,7 +32,8 @@ func (base *Base) Prepare(c web.C, w http.ResponseWriter, r *http.Request) {
 // Execute trigger content negotiation and the actual execution of one of the
 // action's handlers.
 func (base *Base) Execute(action interface{}) {
-	contentType := render.Negotiate(base.Ctx, base.R)
+	ctx := base.R.Context()
+	contentType := render.Negotiate(base.R)
 
 	switch contentType {
 	case render.MimeHal, render.MimeJSON:
@@ -52,7 +46,7 @@ func (base *Base) Execute(action interface{}) {
 		action.JSON()
 
 		if base.Err != nil {
-			problem.Render(base.Ctx, base.W, base.Err)
+			problem.Render(ctx, base.W, base.Err)
 			return
 		}
 
@@ -62,14 +56,14 @@ func (base *Base) Execute(action interface{}) {
 			goto NotAcceptable
 		}
 
-		stream := sse.NewStream(base.Ctx, base.W, base.R)
+		stream := sse.NewStream(ctx, base.W, base.R)
 
 		for {
 			action.SSE(stream)
 
 			if base.Err != nil {
 				if stream.SentCount() == 0 {
-					problem.Render(base.Ctx, base.W, base.Err)
+					problem.Render(ctx, base.W, base.Err)
 					return
 				} else {
 					stream.Err(base.Err)
@@ -83,7 +77,7 @@ func (base *Base) Execute(action interface{}) {
 			stream.TrySendHeartbeat()
 
 			select {
-			case <-base.Ctx.Done():
+			case <-ctx.Done():
 				return
 			case <-sse.Pumped():
 				//no-op, continue onto the next iteration
@@ -99,7 +93,7 @@ func (base *Base) Execute(action interface{}) {
 		action.Raw()
 
 		if base.Err != nil {
-			problem.Render(base.Ctx, base.W, base.Err)
+			problem.Render(ctx, base.W, base.Err)
 			return
 		}
 	default:
@@ -108,7 +102,7 @@ func (base *Base) Execute(action interface{}) {
 	return
 
 NotAcceptable:
-	problem.Render(base.Ctx, base.W, hProblem.NotAcceptable)
+	problem.Render(ctx, base.W, hProblem.NotAcceptable)
 	return
 }
 

@@ -71,7 +71,6 @@ func NewApp(config Config) (*App, error) {
 // the shutdown signals.
 func (a *App) Serve() {
 
-	a.web.router.Compile()
 	http.Handle("/", a.web.router)
 
 	addr := fmt.Sprintf(":%d", a.config.Port)
@@ -276,4 +275,32 @@ func (a *App) run() {
 			return
 		}
 	}
+}
+
+var appkey = 0
+
+// Context create a context on from the App type.
+func (a *App) Context(ctx context.Context) context.Context {
+	return context.WithValue(ctx, &appkey, a)
+}
+
+// AppFromContext returns the set app, if one has been set, from the
+// provided context returns nil if no app has been set.
+func AppFromContext(ctx context.Context) *App {
+	if ctx == nil {
+		return nil
+	}
+
+	val := ctx.Value(&appkey)
+	if val == nil {
+		return nil
+	}
+
+	result, ok := val.(*App)
+
+	if ok {
+		return result
+	}
+
+	return nil
 }

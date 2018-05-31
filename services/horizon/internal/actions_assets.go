@@ -71,7 +71,7 @@ func (action *AssetsAction) loadRecords() {
 func (action *AssetsAction) loadPage() {
 	for _, record := range action.Records {
 		var res resource.AssetStat
-		res.Populate(action.Ctx, record)
+		res.Populate(action.R.Context(), record)
 		action.Page.Add(res)
 	}
 

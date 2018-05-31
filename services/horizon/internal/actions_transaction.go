@@ -59,7 +59,7 @@ func (action *TransactionIndexAction) SSE(stream sse.Stream) {
 
 			for _, record := range records {
 				var res resource.Transaction
-				res.Populate(action.Ctx, record)
+				res.Populate(action.R.Context(), record)
 				stream.Send(sse.Event{ID: res.PagingToken(), Data: res})
 			}
 		},
@@ -90,7 +90,7 @@ func (action *TransactionIndexAction) loadRecords() {
 func (action *TransactionIndexAction) loadPage() {
 	for _, record := range action.Records {
 		var res resource.Transaction
-		res.Populate(action.Ctx, record)
+		res.Populate(action.R.Context(), record)
 		action.Page.Add(res)
 	}
 
@@ -110,7 +110,7 @@ type TransactionShowAction struct {
 }
 
 func (action *TransactionShowAction) loadParams() {
-	action.Hash = action.GetString("id")
+	action.Hash = action.GetString("tx_id")
 }
 
 func (action *TransactionShowAction) loadRecord() {
@@ -118,7 +118,7 @@ func (action *TransactionShowAction) loadRecord() {
 }
 
 func (action *TransactionShowAction) loadResource() {
-	action.Resource.Populate(action.Ctx, action.Record)
+	action.Resource.Populate(action.R.Context(), action.Record)
 }
 
 // JSON is a method for actions.JSON
@@ -159,19 +159,19 @@ func (action *TransactionCreateAction) loadTX() {
 }
 
 func (action *TransactionCreateAction) loadResult() {
-	submission := action.App.submitter.Submit(action.Ctx, action.TX)
+	submission := action.App.submitter.Submit(action.R.Context(), action.TX)
 
 	select {
 	case result := <-submission:
 		action.Result = result
-	case <-action.Ctx.Done():
+	case <-action.R.Context().Done():
 		action.Err = &hProblem.Timeout
 	}
 }
 
 func (action *TransactionCreateAction) loadResource() {
 	if action.Result.Err == nil {
-		action.Resource.Populate(action.Ctx, action.Result)
+		action.Resource.Populate(action.R.Context(), action.Result)
 		return
 	}
 
@@ -188,7 +188,7 @@ func (action *TransactionCreateAction) loadResource() {
 	switch err := action.Result.Err.(type) {
 	case *txsub.FailedTransactionError:
 		rcr := resource.TransactionResultCodes{}
-		rcr.Populate(action.Ctx, err)
+		rcr.Populate(action.R.Context(), err)
 
 		action.Err = &problem.P{
 			Type:   "transaction_failed",

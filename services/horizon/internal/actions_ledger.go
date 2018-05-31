@@ -52,7 +52,7 @@ func (action *LedgerIndexAction) SSE(stream sse.Stream) {
 
 			for _, record := range records {
 				var res resource.Ledger
-				res.Populate(action.Ctx, record)
+				res.Populate(action.R.Context(), record)
 				stream.Send(sse.Event{ID: res.PagingToken(), Data: res})
 			}
 		},
@@ -73,7 +73,7 @@ func (action *LedgerIndexAction) loadRecords() {
 func (action *LedgerIndexAction) loadPage() {
 	for _, record := range action.Records {
 		var res resource.Ledger
-		res.Populate(action.Ctx, record)
+		res.Populate(action.R.Context(), record)
 		action.Page.Add(res)
 	}
 
@@ -100,14 +100,14 @@ func (action *LedgerShowAction) JSON() {
 		action.loadRecord,
 		func() {
 			var res resource.Ledger
-			res.Populate(action.Ctx, action.Record)
+			res.Populate(action.R.Context(), action.Record)
 			halRender.Render(action.W, res)
 		},
 	)
 }
 
 func (action *LedgerShowAction) loadParams() {
-	action.Sequence = action.GetInt32("id")
+	action.Sequence = action.GetInt32("ledger_id")
 }
 
 func (action *LedgerShowAction) loadRecord() {

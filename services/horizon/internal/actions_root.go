@@ -16,7 +16,7 @@ type RootAction struct {
 func (action *RootAction) JSON() {
 	var res resource.Root
 	res.Populate(
-		action.Ctx,
+		action.R.Context(),
 		ledger.CurrentState(),
 		action.App.horizonVersion,
 		action.App.coreVersion,

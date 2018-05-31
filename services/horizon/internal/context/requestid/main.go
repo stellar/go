@@ -5,8 +5,7 @@ package requestid
 import (
 	"context"
 
-	"github.com/zenazn/goji/web"
-	"github.com/zenazn/goji/web/middleware"
+	"github.com/go-chi/chi/middleware"
 )
 
 var key = 0
@@ -17,10 +16,9 @@ func Context(ctx context.Context, reqid string) context.Context {
 	return context.WithValue(ctx, &key, reqid)
 }
 
-// ContextFromC returns a new context bound with the value of the request id in
-// the provide goji context
-func ContextFromC(ctx context.Context, c *web.C) context.Context {
-	reqid := middleware.GetReqID(*c)
+// ContextFromChi returns a new context bound with the value of the request id.
+func ContextFromChi(ctx context.Context) context.Context {
+	reqid := middleware.GetReqID(ctx)
 	return Context(ctx, reqid)
 }
 

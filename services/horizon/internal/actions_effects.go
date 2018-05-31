@@ -72,7 +72,7 @@ func (action *EffectIndexAction) SSE(stream sse.Stream) {
 					return
 				}
 
-				res, err := resource.NewEffect(action.Ctx, record, ledger)
+				res, err := resource.NewEffect(action.R.Context(), record, ledger)
 
 				if err != nil {
 					stream.Err(action.Err)
@@ -136,7 +136,7 @@ func (action *EffectIndexAction) loadPage() {
 		}
 
 		var res hal.Pageable
-		res, action.Err = resource.NewEffect(action.Ctx, record, ledger)
+		res, action.Err = resource.NewEffect(action.R.Context(), record, ledger)
 		if action.Err != nil {
 			return
 		}
