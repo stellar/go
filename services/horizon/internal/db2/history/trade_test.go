@@ -16,7 +16,7 @@ func TestTradeQueries(t *testing.T) {
 	var trades []Trade
 
 	// All trades
-	err := q.Trades().Select(&trades)
+	err := q.Trades().Page(db2.MustPageQuery("", "asc", 100)).Select(&trades)
 	if tt.Assert.NoError(err) {
 		tt.Assert.Len(trades, 4)
 	}
@@ -34,7 +34,7 @@ func TestTradeQueries(t *testing.T) {
 
 	// Cursor bounds checking
 	pq = db2.MustPageQuery("", "desc", 1)
-	err = q.Trades().InLedgerOrder().Page(pq).Select(&pt)
+	err = q.Trades().Page(pq).Select(&pt)
 	tt.Require.NoError(err)
 
 	// test for asset pairs
@@ -52,7 +52,7 @@ func TestTradeQueries(t *testing.T) {
 	tt.Assert.Equal(true, trades[0].BaseIsSeller)
 
 	// reverse assets
-	err = q.TradesForAssetPair(4, 1).InLedgerOrder().Select(&trades)
+	err = q.TradesForAssetPair(4, 1).Select(&trades)
 	tt.Require.NoError(err)
 	tt.Assert.Len(trades, 1)
 
