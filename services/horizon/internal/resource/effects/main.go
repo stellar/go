@@ -1,8 +1,8 @@
 package effects
 
 import (
-	"time"
 	"context"
+	"time"
 
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/services/horizon/internal/render/hal"
@@ -33,6 +33,7 @@ var TypeNames = map[history.EffectType]string{
 	history.EffectDataCreated:                        "data_created",
 	history.EffectDataRemoved:                        "data_removed",
 	history.EffectDataUpdated:                        "data_updated",
+	history.EffectSequenceBumped:                     "sequence_bumped",
 }
 
 // New creates a new effect resource from the provided database representation
@@ -105,6 +106,10 @@ func New(
 		result = e
 	case history.EffectTrade:
 		e := Trade{Base: basev}
+		err = row.UnmarshalDetails(&e)
+		result = e
+	case history.EffectSequenceBumped:
+		e := SequenceBumped{Base: basev}
 		err = row.UnmarshalDetails(&e)
 		result = e
 	default:
@@ -226,6 +231,11 @@ type TrustlineDeauthorized struct {
 	Trustor   string `json:"trustor"`
 	AssetType string `json:"asset_type"`
 	AssetCode string `json:"asset_code,omitempty"`
+}
+
+type SequenceBumped struct {
+	Base
+	NewSeq int64 `json:"new_seq"`
 }
 
 type Trade struct {

@@ -357,3 +357,23 @@ close_ledger #47
   payment :selfpay, :selfpay, [:native, "10.0"]
   close_ledger
 
+# bumpseq
+  # Public Key	GCQZP3IU7XU6EJ63JZXKCQOYT2RNXN3HB5CNHENNUEUHSMA4VUJJJSEN
+  # Secret Key	SB7M6CWQLVEAMCJMYNVURRVXQDBBEDEAYFXUSP5B4XCG4FRMALD7CWCG
+
+  account :bumper, KP.from_seed("SB7M6CWQLVEAMCJMYNVURRVXQDBBEDEAYFXUSP5B4XCG4FRMALD7CWCG")
+  create_account :bumper
+  close_ledger
+
+  bump_sequence :bumper, 300000000000 #should work
+  close_ledger
+
+  #all the following should ingest as operations but have no effects
+  bump_sequence :bumper, 100
+  close_ledger
+
+  bump_sequence :bumper, next_sequence(:bumper)-1
+  close_ledger
+
+  bump_sequence :bumper, next_sequence(:bumper)
+  close_ledger

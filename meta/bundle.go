@@ -104,6 +104,16 @@ func (b *Bundle) StateBefore(key xdr.LedgerKey, opidx int) (*xdr.LedgerEntry, er
 	}
 }
 
+//OperationMetas retrieves all operation metas from a transaction bundle
+func (b *Bundle) OperationsMetas() []xdr.OperationMeta {
+	switch b.TransactionMeta.V {
+	case 0:
+		return b.TransactionMeta.MustOperations()
+	default:
+		return b.TransactionMeta.V1.Operations
+	}
+}
+
 //filterChanges takes a LedgerEntryChange slice and filters out changes that don't match the given target ledger key
 func filterChanges(changes []xdr.LedgerEntryChange, target xdr.LedgerKey) (filteredChanges []xdr.LedgerEntryChange) {
 	for _, change := range changes {
@@ -125,17 +135,11 @@ func (b *Bundle) changes(target xdr.LedgerKey, maxOp int) []xdr.LedgerEntryChang
 	//allChanges accumulates all ledger changes
 	allChanges := b.FeeMeta
 
-	var operationMetas []xdr.OperationMeta
-
-	switch b.TransactionMeta.V {
-	case 0:
-		operationMetas = b.TransactionMeta.MustOperations()
-	case 1:
-		operationMetas = b.TransactionMeta.V1.Operations
+	if b.TransactionMeta.V > 0 {
 		allChanges = append(allChanges, b.TransactionMeta.V1.TxChanges...)
 	}
 
-	for i, op := range operationMetas {
+	for i, op := range b.OperationsMetas() {
 		if i > maxOp {
 			break
 		}
