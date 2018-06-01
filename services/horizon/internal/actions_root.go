@@ -17,7 +17,7 @@ type RootAction struct {
 func (action *RootAction) JSON() {
 	var res horizon.Root
 	resourceadapter.PopulateRoot(
-		action.Ctx,
+		action.R.Context(),
 		&res,
 		ledger.CurrentState(),
 		action.App.horizonVersion,

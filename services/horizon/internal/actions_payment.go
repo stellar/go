@@ -61,7 +61,7 @@ func (action *PaymentsIndexAction) SSE(stream sse.Stream) {
 					return
 				}
 
-				res, err := resourceadapter.NewOperation(action.Ctx, record, ledger)
+				res, err := resourceadapter.NewOperation(action.R.Context(), record, ledger)
 
 				if err != nil {
 					stream.Err(err)
@@ -120,7 +120,7 @@ func (action *PaymentsIndexAction) loadPage() {
 			return
 		}
 
-		res, action.Err = resourceadapter.NewOperation(action.Ctx, record, ledger)
+		res, action.Err = resourceadapter.NewOperation(action.R.Context(), record, ledger)
 		if action.Err != nil {
 			return
 		}

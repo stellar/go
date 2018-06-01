@@ -7,27 +7,25 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	. "github.com/stellar/go/services/horizon/internal/db2/history"
 	. "github.com/stellar/go/services/horizon/internal/test/trades"
 	"github.com/stellar/go/xdr"
-	"github.com/stellar/go/protocols/horizon"
 )
 
 func TestTradeActions_Index(t *testing.T) {
 	ht := StartHTTPTest(t, "trades")
 	defer ht.Finish()
-	var records []resource.Trade
-	var firstTrade resource.Trade
+	var records []horizon.Trade
+	var firstTrade horizon.Trade
 
 	// All trades
 	w := ht.Get("/trades")
 	if ht.Assert.Equal(200, w.Code) {
 		ht.Assert.PageOf(2, w.Body)
 
-	// 	ensure created_at is populated correctly
-	records := []horizon.Trade{}
-	ht.UnmarshalPage(w.Body, &records)
+		// 	ensure created_at is populated correctly
 		ht.UnmarshalPage(w.Body, &records)
 		firstTrade = records[0]
 

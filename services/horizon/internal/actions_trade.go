@@ -90,7 +90,7 @@ func (action *TradeIndexAction) loadPage() {
 	for _, record := range action.Records {
 		var res horizon.Trade
 
-		action.Err = resourceadapter.PopulateTrade(action.Ctx, &res, record)
+		action.Err = resourceadapter.PopulateTrade(action.R.Context(), &res, record)
 
 		if action.Err != nil {
 			return
@@ -181,7 +181,7 @@ func (action *TradeAggregateIndexAction) loadPage() {
 	for _, record := range action.Records {
 		var res horizon.TradeAggregation
 
-		action.Err = resourceadapter.PopulateTradeAggregation(action.Ctx, &res, record)
+		action.Err = resourceadapter.PopulateTradeAggregation(action.R.Context(), &res, record)
 
 		if action.Err != nil {
 			return

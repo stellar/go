@@ -11,24 +11,27 @@ import (
 )
 
 // PopulateAssetStat fills out the details
+//func PopulateAssetStat(
 func PopulateAssetStat(
 	ctx context.Context,
-	dest *AssetStat,
+	res *AssetStat,
 	row assets.AssetStatsR,
 ) (err error) {
 
-	dest.Asset.Type = row.Type
-	dest.Asset.Code = row.Code
-	dest.Asset.Issuer = row.Issuer
-	dest.Amount = amount.StringFromInt64(row.Amount)
-	dest.NumAccounts = row.NumAccounts
-	dest.Flags = AccountFlags{
+	res.Asset.Type = row.Type
+	res.Asset.Code = row.Code
+	res.Asset.Issuer = row.Issuer
+	res.Amount, err = amount.IntStringToAmount(row.Amount)
+	if err != nil {
+		return err
+	}
+	res.NumAccounts = row.NumAccounts
+	res.Flags = AccountFlags{
 		(row.Flags & int8(xdr.AccountFlagsAuthRequiredFlag)) != 0,
 		(row.Flags & int8(xdr.AccountFlagsAuthRevocableFlag)) != 0,
 	}
-	dest.PT = row.SortKey
+	res.PT = row.SortKey
 
-	dest.Links.Toml = hal.NewLink(row.Toml)
+	res.Links.Toml = hal.NewLink(row.Toml)
 	return
 }
-

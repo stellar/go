@@ -95,7 +95,7 @@ func (action *AccountShowAction) loadRecord() {
 
 func (action *AccountShowAction) loadResource() {
 	action.Err = resourceadapter.PopulateAccount(
-		action.Ctx,
+		action.R.Context(),
 		&action.Resource,
 		action.CoreRecord,
 		action.CoreData,

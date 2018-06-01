@@ -55,7 +55,7 @@ func (action *OrderBookShowAction) LoadRecord() {
 // LoadResource populates action.Record
 func (action *OrderBookShowAction) LoadResource() {
 	action.Err = resourceadapter.PopulateOrderBookSummary(
-		action.Ctx,
+		action.R.Context(),
 		&action.Resource,
 		action.Selling,
 		action.Buying,

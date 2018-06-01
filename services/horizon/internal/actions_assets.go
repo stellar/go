@@ -71,7 +71,7 @@ func (action *AssetsAction) loadRecords() {
 func (action *AssetsAction) loadPage() {
 	for _, record := range action.Records {
 		var res horizon.AssetStat
-		resourceadapter.PopulateAssetStat(action.Ctx, &res, record)
+		resourceadapter.PopulateAssetStat(action.R.Context(), &res, record)
 		action.Page.Add(res)
 	}
 

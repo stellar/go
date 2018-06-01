@@ -9,6 +9,7 @@ import (
 	"github.com/stellar/go/services/horizon/internal/httpx"
 	. "github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/support/render/hal"
+	"time"
 )
 
 func PopulateOffer(ctx context.Context, dest *Offer, row core.Offer) {
@@ -29,7 +30,7 @@ func PopulateOffer(ctx context.Context, dest *Offer, row core.Offer) {
 		Code:   row.SellingAssetCode.String,
 		Issuer: row.SellingIssuer.String,
 	}
-
+	dest.LastModified = time.Unix(int64(row.Lastmodified), 0).UTC()
 	lb := hal.LinkBuilder{httpx.BaseURL(ctx)}
 	dest.Links.Self = lb.Linkf("/offers/%d", row.OfferID)
 	dest.Links.OfferMaker = lb.Linkf("/accounts/%s", row.SellerID)

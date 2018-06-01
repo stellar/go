@@ -50,7 +50,7 @@ func (action *PathIndexAction) loadPage() {
 	action.Page.Init()
 	for _, p := range action.Records {
 		var res horizon.Path
-		action.Err = resourceadapter.PopulatePath(action.Ctx, &res, action.Query, p)
+		action.Err = resourceadapter.PopulatePath(action.R.Context(), &res, action.Query, p)
 
 		if action.Err != nil {
 			return

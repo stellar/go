@@ -43,7 +43,7 @@ func (action *OffersByAccountAction) SSE(stream sse.Stream) {
 			stream.SetLimit(int(action.PageQuery.Limit))
 			for _, record := range action.Records[stream.SentCount():] {
 				var res horizon.Offer
-				resourceadapter.PopulateOffer(action.Ctx, &res, record)
+				resourceadapter.PopulateOffer(action.R.Context(), &res, record)
 				stream.Send(sse.Event{ID: res.PagingToken(), Data: res})
 			}
 		},
@@ -66,7 +66,7 @@ func (action *OffersByAccountAction) loadRecords() {
 func (action *OffersByAccountAction) loadPage() {
 	for _, record := range action.Records {
 		var res horizon.Offer
-		resourceadapter.PopulateOffer(action.Ctx, &res, record)
+		resourceadapter.PopulateOffer(action.R.Context(), &res, record)
 		action.Page.Add(res)
 	}
 

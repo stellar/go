@@ -5,12 +5,12 @@ package horizon
 import (
 	"time"
 
-	"github.com/stellar/go/support/render/hal"
+	"encoding/base64"
 	"github.com/stellar/go/protocols/horizon/base"
 	"github.com/stellar/go/strkey"
 	"github.com/stellar/go/support/errors"
+	"github.com/stellar/go/support/render/hal"
 	"github.com/stellar/go/xdr"
-	"encoding/base64"
 )
 
 // KeyTypeNames maps from strkey version bytes into json string values to use in
@@ -63,7 +63,6 @@ func (this *Account) MustGetData(key string) []byte {
 func (this *Account) GetData(key string) ([]byte, error) {
 	return base64.StdEncoding.DecodeString(this.Data[key])
 }
-
 
 // AccountFlags represents the state of an account's flags
 type AccountFlags struct {
@@ -167,7 +166,6 @@ func (this Offer) PagingToken() string {
 	return this.PT
 }
 
-
 // OrderBookSummary represents a snapshot summary of a given order book
 type OrderBookSummary struct {
 	Bids    []PriceLevel `json:"bids"`
@@ -267,7 +265,6 @@ func (res Trade) PagingToken() string {
 	return res.PT
 }
 
-
 // TradeEffect represents a trade effect resource.  NOTE (scott, 2017-12-08):
 // this resource is being added back in temporarily to deal with a deploy snafu.
 // I didn't properly message the community that we were changing the response
@@ -317,7 +314,6 @@ type TradeAggregation struct {
 func (res TradeAggregation) PagingToken() string {
 	return string(res.Timestamp)
 }
-
 
 // Transaction represents a single, successful transaction
 type Transaction struct {

@@ -17,6 +17,11 @@ type AssetStatsR struct {
 	Toml        string `db:"toml"`
 }
 
+// PagingToken implementation for hal.Pageable
+//func (res AssetStat) PagingToken() string {
+//	return res.PT
+//}
+
 // AssetStatsQ is the query to fetch all assets in the system
 type AssetStatsQ struct {
 	AssetCode   *string
