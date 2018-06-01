@@ -3,10 +3,10 @@ package horizon
 import (
 	"github.com/stellar/go/services/horizon/internal/db2"
 	"github.com/stellar/go/services/horizon/internal/db2/core"
-	"github.com/stellar/go/services/horizon/internal/render/hal"
+	"github.com/stellar/go/services/horizon/internal/resourceadapter"
+	"github.com/stellar/go/protocols/horizon"
+	"github.com/stellar/go/support/render/hal"
 	"github.com/stellar/go/services/horizon/internal/render/sse"
-	"github.com/stellar/go/services/horizon/internal/resource"
-	halRender "github.com/stellar/go/support/render/hal"
 )
 
 // This file contains the actions:
@@ -29,7 +29,7 @@ func (action *OffersByAccountAction) JSON() {
 		action.loadRecords,
 		action.loadPage,
 		func() {
-			halRender.Render(action.W, action.Page)
+			hal.Render(action.W, action.Page)
 		},
 	)
 }
@@ -42,8 +42,8 @@ func (action *OffersByAccountAction) SSE(stream sse.Stream) {
 		func() {
 			stream.SetLimit(int(action.PageQuery.Limit))
 			for _, record := range action.Records[stream.SentCount():] {
-				var res resource.Offer
-				res.Populate(action.R.Context(), record)
+				var res horizon.Offer
+				resourceadapter.PopulateOffer(action.R.Context(), &res, record)
 				stream.Send(sse.Event{ID: res.PagingToken(), Data: res})
 			}
 		},
@@ -65,8 +65,8 @@ func (action *OffersByAccountAction) loadRecords() {
 
 func (action *OffersByAccountAction) loadPage() {
 	for _, record := range action.Records {
-		var res resource.Offer
-		res.Populate(action.R.Context(), record)
+		var res horizon.Offer
+		resourceadapter.PopulateOffer(action.R.Context(), &res, record)
 		action.Page.Add(res)
 	}
 

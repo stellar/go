@@ -1,17 +1,20 @@
-package resource
+package resourceadapter
 
 import (
 	"context"
 
 	"github.com/stellar/go/amount"
 	"github.com/stellar/go/services/horizon/internal/db2/assets"
-	"github.com/stellar/go/services/horizon/internal/render/hal"
 	"github.com/stellar/go/xdr"
+	. "github.com/stellar/go/protocols/horizon"
+	"github.com/stellar/go/support/render/hal"
 )
 
-// Populate fills out the details
-func (res *AssetStat) Populate(
+// PopulateAssetStat fills out the details
+//func PopulateAssetStat(
+func PopulateAssetStat(
 	ctx context.Context,
+	res *AssetStat,
 	row assets.AssetStatsR,
 ) (err error) {
 
@@ -31,9 +34,4 @@ func (res *AssetStat) Populate(
 
 	res.Links.Toml = hal.NewLink(row.Toml)
 	return
-}
-
-// PagingToken implementation for hal.Pageable
-func (res AssetStat) PagingToken() string {
-	return res.PT
 }

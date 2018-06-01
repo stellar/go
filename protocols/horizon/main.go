@@ -1,18 +1,15 @@
 // Package resource contains the type definitions for all of horizons
 // response resources.
-package resource
+package horizon
 
 import (
-	"context"
 	"time"
 
-	"github.com/stellar/go/services/horizon/internal/db2/history"
-	"github.com/stellar/go/services/horizon/internal/render/hal"
-	"github.com/stellar/go/services/horizon/internal/resource/base"
-	"github.com/stellar/go/services/horizon/internal/resource/effects"
-	"github.com/stellar/go/services/horizon/internal/resource/operations"
+	"encoding/base64"
+	"github.com/stellar/go/protocols/horizon/base"
 	"github.com/stellar/go/strkey"
 	"github.com/stellar/go/support/errors"
+	"github.com/stellar/go/support/render/hal"
 	"github.com/stellar/go/xdr"
 )
 
@@ -50,6 +47,23 @@ type Account struct {
 	Data                 map[string]string `json:"data"`
 }
 
+// MustGetData returns decoded value for a given key. If the key does
+// not exist, empty slice will be returned. If there is an error
+// decoding a value, it will panic.
+func (this *Account) MustGetData(key string) []byte {
+	bytes, err := this.GetData(key)
+	if err != nil {
+		panic(err)
+	}
+	return bytes
+}
+
+// GetData returns decoded value for a given key. If the key does
+// not exist, empty slice will be returned.
+func (this *Account) GetData(key string) ([]byte, error) {
+	return base64.StdEncoding.DecodeString(this.Data[key])
+}
+
 // AccountFlags represents the state of an account's flags
 type AccountFlags struct {
 	AuthRequired  bool `json:"auth_required"`
@@ -78,6 +92,11 @@ type AssetStat struct {
 	Amount      string       `json:"amount"`
 	NumAccounts int32        `json:"num_accounts"`
 	Flags       AccountFlags `json:"flags"`
+}
+
+// PagingToken implementation for hal.Pageable
+func (res AssetStat) PagingToken() string {
+	return res.PT
 }
 
 // Balance represents an account's holdings for a single currency type
@@ -121,6 +140,10 @@ type Ledger struct {
 	HeaderXDR        string    `json:"header_xdr"`
 }
 
+func (this Ledger) PagingToken() string {
+	return this.PT
+}
+
 // Offer is the display form of an offer to trade currency.
 type Offer struct {
 	Links struct {
@@ -137,6 +160,10 @@ type Offer struct {
 	PriceR       Price     `json:"price_r"`
 	Price        string    `json:"price"`
 	LastModified time.Time `json:"last_modified"`
+}
+
+func (this Offer) PagingToken() string {
+	return this.PT
 }
 
 // OrderBookSummary represents a snapshot summary of a given order book
@@ -158,6 +185,11 @@ type Path struct {
 	DestinationAssetIssuer string  `json:"destination_asset_issuer,omitempty"`
 	DestinationAmount      string  `json:"destination_amount"`
 	Path                   []Asset `json:"path"`
+}
+
+// stub implementation to satisfy pageable interface
+func (this Path) PagingToken() string {
+	return ""
 }
 
 // Price represents a price
@@ -228,6 +260,11 @@ type Trade struct {
 	Price              *Price    `json:"price"`
 }
 
+// PagingToken implementation for hal.Pageable
+func (res Trade) PagingToken() string {
+	return res.PT
+}
+
 // TradeEffect represents a trade effect resource.  NOTE (scott, 2017-12-08):
 // this resource is being added back in temporarily to deal with a deploy snafu.
 // I didn't properly message the community that we were changing the response
@@ -273,6 +310,11 @@ type TradeAggregation struct {
 	CloseR        xdr.Price `json:"close_r"`
 }
 
+// PagingToken implementation for hal.Pageable. Not actually used
+func (res TradeAggregation) PagingToken() string {
+	return string(res.Timestamp)
+}
+
 // Transaction represents a single, successful transaction
 type Transaction struct {
 	Links struct {
@@ -304,6 +346,11 @@ type Transaction struct {
 	ValidBefore     string    `json:"valid_before,omitempty"`
 }
 
+// PagingToken implementation for hal.Pageable
+func (res Transaction) PagingToken() string {
+	return res.PT
+}
+
 // TransactionResultCodes represent a summary of result codes returned from
 // a single xdr TransactionResult
 type TransactionResultCodes struct {
@@ -322,26 +369,6 @@ type TransactionSuccess struct {
 	Env    string `json:"envelope_xdr"`
 	Result string `json:"result_xdr"`
 	Meta   string `json:"result_meta_xdr"`
-}
-
-// NewEffect returns a resource of the appropriate sub-type for the provided
-// effect record.
-func NewEffect(
-	ctx context.Context,
-	row history.Effect,
-	ledger history.Ledger,
-) (result hal.Pageable, err error) {
-	return effects.New(ctx, row, ledger)
-}
-
-// NewOperation returns a resource of the appropriate sub-type for the provided
-// operation record.
-func NewOperation(
-	ctx context.Context,
-	row history.Operation,
-	ledger history.Ledger,
-) (result hal.Pageable, err error) {
-	return operations.New(ctx, row, ledger)
 }
 
 // KeyTypeFromAddress converts the version byte of the provided strkey encoded

@@ -1,95 +1,10 @@
 package operations
 
 import (
-	"context"
+	"github.com/stellar/go/protocols/horizon/base"
+	"github.com/stellar/go/support/render/hal"
 	"time"
-
-	"github.com/stellar/go/services/horizon/internal/db2/history"
-	"github.com/stellar/go/services/horizon/internal/render/hal"
-	"github.com/stellar/go/services/horizon/internal/resource/base"
-	"github.com/stellar/go/xdr"
 )
-
-// TypeNames maps from operation type to the string used to represent that type
-// in horizon's JSON responses
-var TypeNames = map[xdr.OperationType]string{
-	xdr.OperationTypeCreateAccount:      "create_account",
-	xdr.OperationTypePayment:            "payment",
-	xdr.OperationTypePathPayment:        "path_payment",
-	xdr.OperationTypeManageOffer:        "manage_offer",
-	xdr.OperationTypeCreatePassiveOffer: "create_passive_offer",
-	xdr.OperationTypeSetOptions:         "set_options",
-	xdr.OperationTypeChangeTrust:        "change_trust",
-	xdr.OperationTypeAllowTrust:         "allow_trust",
-	xdr.OperationTypeAccountMerge:       "account_merge",
-	xdr.OperationTypeInflation:          "inflation",
-	xdr.OperationTypeManageData:         "manage_data",
-}
-
-// New creates a new operation resource, finding the appropriate type to use
-// based upon the row's type.
-func New(
-	ctx context.Context,
-	row history.Operation,
-	ledger history.Ledger,
-) (result hal.Pageable, err error) {
-
-	base := Base{}
-	base.Populate(ctx, row, ledger)
-
-	switch row.Type {
-	case xdr.OperationTypeCreateAccount:
-		e := CreateAccount{Base: base}
-		err = row.UnmarshalDetails(&e)
-		result = e
-	case xdr.OperationTypePayment:
-		e := Payment{Base: base}
-		err = row.UnmarshalDetails(&e)
-		result = e
-	case xdr.OperationTypePathPayment:
-		e := PathPayment{}
-		e.Payment.Base = base
-		err = row.UnmarshalDetails(&e)
-		result = e
-	case xdr.OperationTypeManageOffer:
-		e := ManageOffer{}
-		e.CreatePassiveOffer.Base = base
-		err = row.UnmarshalDetails(&e)
-		result = e
-	case xdr.OperationTypeCreatePassiveOffer:
-		e := CreatePassiveOffer{Base: base}
-		err = row.UnmarshalDetails(&e)
-		result = e
-	case xdr.OperationTypeSetOptions:
-		e := SetOptions{Base: base}
-		err = row.UnmarshalDetails(&e)
-		result = e
-	case xdr.OperationTypeChangeTrust:
-		e := ChangeTrust{Base: base}
-		err = row.UnmarshalDetails(&e)
-		result = e
-	case xdr.OperationTypeAllowTrust:
-		e := AllowTrust{Base: base}
-		err = row.UnmarshalDetails(&e)
-		result = e
-	case xdr.OperationTypeAccountMerge:
-		e := AccountMerge{Base: base}
-		err = row.UnmarshalDetails(&e)
-		result = e
-	case xdr.OperationTypeInflation:
-		e := Inflation{Base: base}
-		err = row.UnmarshalDetails(&e)
-		result = e
-	case xdr.OperationTypeManageData:
-		e := ManageData{Base: base}
-		err = row.UnmarshalDetails(&e)
-		result = e
-	default:
-		result = base
-	}
-
-	return
-}
 
 // Base represents the common attributes of an operation resource
 type Base struct {
@@ -109,6 +24,12 @@ type Base struct {
 	LedgerCloseTime time.Time `json:"created_at"`
 	TransactionHash string    `json:"transaction_hash"`
 }
+
+// PagingToken implements hal.Pageable
+func (this Base) PagingToken() string {
+	return this.PT
+}
+
 
 // CreateAccount is the json resource representing a single operation whose type
 // is CreateAccount.

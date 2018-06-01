@@ -19,12 +19,12 @@ import (
 	"github.com/stellar/go/services/horizon/internal/log"
 	"github.com/stellar/go/services/horizon/internal/paths"
 	"github.com/stellar/go/services/horizon/internal/reap"
-	"github.com/stellar/go/services/horizon/internal/render/sse"
 	"github.com/stellar/go/services/horizon/internal/txsub"
 	"github.com/stellar/go/support/app"
 	"github.com/stellar/go/support/db"
 	"golang.org/x/net/http2"
 	graceful "gopkg.in/tylerb/graceful.v1"
+	"github.com/stellar/go/services/horizon/internal/render/sse"
 )
 
 // App represents the root of the state of a horizon instance.

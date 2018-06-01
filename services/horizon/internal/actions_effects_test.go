@@ -4,8 +4,8 @@ import (
 	"testing"
 
 	"github.com/stellar/go/services/horizon/internal/db2/history"
-	"github.com/stellar/go/services/horizon/internal/resource/effects"
 	"github.com/stellar/go/services/horizon/internal/test"
+	"github.com/stellar/go/protocols/horizon/effects"
 )
 
 func TestEffectActions_Index(t *testing.T) {

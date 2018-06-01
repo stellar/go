@@ -6,8 +6,8 @@ import (
 	"time"
 
 	"github.com/stellar/go/services/horizon/internal/db2/history"
-	"github.com/stellar/go/services/horizon/internal/resource/operations"
 	"github.com/stellar/go/services/horizon/internal/test"
+	"github.com/stellar/go/protocols/horizon/operations"
 )
 
 func TestOperationActions_Index(t *testing.T) {

@@ -1,35 +1,37 @@
-package resource
+package resourceadapter
 
 import (
 	"context"
 
 	"github.com/stellar/go/services/horizon/internal/db2/core"
 	"github.com/stellar/go/xdr"
+	. "github.com/stellar/go/protocols/horizon"
 )
 
-func (this *OrderBookSummary) Populate(
+func PopulateOrderBookSummary(
 	ctx context.Context,
+	dest *OrderBookSummary,
 	selling xdr.Asset,
 	buying xdr.Asset,
 	row core.OrderBookSummary,
 ) error {
 
-	err := this.Selling.Populate(ctx, selling)
+	err := PopulateAsset(ctx, &dest.Selling, selling)
 	if err != nil {
 		return err
 	}
-	err = this.Buying.Populate(ctx, buying)
+	err = PopulateAsset(ctx, &dest.Buying, buying)
 	if err != nil {
 		return err
 	}
 
-	this.populateLevels(&this.Bids, row.Bids())
-	this.populateLevels(&this.Asks, row.Asks())
+	populatePriceLevels(&dest.Bids, row.Bids())
+	populatePriceLevels(&dest.Asks, row.Asks())
 
 	return nil
 }
 
-func (this *OrderBookSummary) populateLevels(destp *[]PriceLevel, rows []core.OrderBookSummaryPriceLevel) {
+func populatePriceLevels(destp *[]PriceLevel, rows []core.OrderBookSummaryPriceLevel) {
 	*destp = make([]PriceLevel, len(rows))
 	dest := *destp
 

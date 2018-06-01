@@ -7,9 +7,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	. "github.com/stellar/go/services/horizon/internal/db2/history"
-	"github.com/stellar/go/services/horizon/internal/resource"
 	. "github.com/stellar/go/services/horizon/internal/test/trades"
 	"github.com/stellar/go/xdr"
 )
@@ -17,14 +17,15 @@ import (
 func TestTradeActions_Index(t *testing.T) {
 	ht := StartHTTPTest(t, "trades")
 	defer ht.Finish()
-	var records []resource.Trade
-	var firstTrade resource.Trade
+	var records []horizon.Trade
+	var firstTrade horizon.Trade
 
 	// All trades
 	w := ht.Get("/trades")
 	if ht.Assert.Equal(200, w.Code) {
 		ht.Assert.PageOf(2, w.Body)
 
+		// 	ensure created_at is populated correctly
 		ht.UnmarshalPage(w.Body, &records)
 		firstTrade = records[0]
 
@@ -128,7 +129,7 @@ func testPrice(t *HTTPT, priceStr string, priceR xdr.Price) {
 	}
 }
 
-func testTradeAggregationPrices(t *HTTPT, record resource.TradeAggregation) {
+func testTradeAggregationPrices(t *HTTPT, record horizon.TradeAggregation) {
 	testPrice(t, record.High, record.HighR)
 	testPrice(t, record.Low, record.LowR)
 	testPrice(t, record.Open, record.OpenR)
@@ -157,8 +158,8 @@ func TestTradeActions_Aggregation(t *testing.T) {
 	_, _, err = PopulateTestTrades(dbQ, start, numOfTrades, minute, numOfTrades)
 	ht.Require.NoError(err)
 
-	var records []resource.TradeAggregation
-	var record resource.TradeAggregation
+	var records []horizon.TradeAggregation
+	var record horizon.TradeAggregation
 	var nextLink string
 
 	q := make(url.Values)
@@ -326,7 +327,7 @@ func TestTradeActions_AggregationOrdering(t *testing.T) {
 	q.Add("order", "asc")
 	q.Add("resolution", "60000")
 
-	var records []resource.TradeAggregation
+	var records []horizon.TradeAggregation
 	w := ht.GetWithParams("/trade_aggregations", q)
 	if ht.Assert.Equal(200, w.Code) {
 		ht.Assert.PageOf(1, w.Body)

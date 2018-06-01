@@ -4,38 +4,29 @@ import (
 	"context"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/go-chi/chi/middleware"
-	"github.com/stellar/go/services/horizon/internal/test"
 )
 
 func TestRequestContext(t *testing.T) {
-	tt := test.Start(t)
-	defer tt.Finish()
-
 	ctx := Context(context.Background(), "2")
-	tt.Assert.Equal(ctx.Value(&key), "2")
+	assert.Equal(t, "2", ctx.Value(&key))
 
 	ctx2 := Context(ctx, "3")
-	tt.Assert.Equal(ctx2.Value(&key), "3")
-	tt.Assert.Equal(ctx.Value(&key), "2")
+	assert.Equal(t,"3", ctx2.Value(&key))
+	assert.Equal(t,"2", ctx.Value(&key))
 }
 
 func TestRequestContextFromCHI(t *testing.T) {
-	tt := test.Start(t)
-	defer tt.Finish()
-
 	ctx := context.WithValue(context.Background(), middleware.RequestIDKey, "foobar")
 	ctx2 := ContextFromChi(ctx)
-	tt.Assert.Equal(FromContext(ctx2), "foobar")
+	assert.Equal(t, "foobar", FromContext(ctx2))
 }
 
 func TestRequestFromContext(t *testing.T) {
-	tt := test.Start(t)
-	defer tt.Finish()
-
 	ctx := Context(context.Background(), "2")
 	ctx2 := Context(ctx, "3")
-	tt.Assert.Equal(FromContext(context.Background()), "")
-	tt.Assert.Equal(FromContext(ctx), "2")
-	tt.Assert.Equal(FromContext(ctx2), "3")
+	assert.Equal(t, "", FromContext(context.Background()))
+	assert.Equal(t, "2", FromContext(ctx))
+	assert.Equal(t, "3", FromContext(ctx2))
 }

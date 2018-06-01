@@ -2,9 +2,9 @@ package horizon
 
 import (
 	"github.com/stellar/go/services/horizon/internal/paths"
-	"github.com/stellar/go/services/horizon/internal/render/hal"
-	"github.com/stellar/go/services/horizon/internal/resource"
-	halRender "github.com/stellar/go/support/render/hal"
+	"github.com/stellar/go/services/horizon/internal/resourceadapter"
+	"github.com/stellar/go/protocols/horizon"
+	"github.com/stellar/go/support/render/hal"
 )
 
 // PathIndexAction provides path finding
@@ -23,7 +23,7 @@ func (action *PathIndexAction) JSON() {
 		action.loadRecords,
 		action.loadPage,
 		func() {
-			halRender.Render(action.W, action.Page)
+			hal.Render(action.W, action.Page)
 		},
 	)
 }
@@ -49,8 +49,9 @@ func (action *PathIndexAction) loadRecords() {
 func (action *PathIndexAction) loadPage() {
 	action.Page.Init()
 	for _, p := range action.Records {
-		var res resource.Path
-		action.Err = res.Populate(action.R.Context(), action.Query, p)
+		var res horizon.Path
+		action.Err = resourceadapter.PopulatePath(action.R.Context(), &res, action.Query, p)
+
 		if action.Err != nil {
 			return
 		}
