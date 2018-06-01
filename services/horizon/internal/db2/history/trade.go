@@ -28,7 +28,7 @@ func (q *Q) Trades() *TradesQ {
 		parent: q,
 		sql:    selectTrade,
 	}
-	return trades.JoinAccounts().JoinAssets().InLedgerOrder()
+	return trades.JoinAccounts().JoinAssets()
 }
 
 // ReverseTrades provides a helper to filter rows from the `history_trades` table
@@ -38,7 +38,7 @@ func (q *Q) ReverseTrades() *TradesQ {
 		parent: q,
 		sql:    selectReverseTrade,
 	}
-	return trades.JoinAccounts().JoinAssets().InLedgerOrder()
+	return trades.JoinAccounts().JoinAssets()
 }
 
 // TradesForAssetPair provides a helper to filter rows from the `history_trades` table
@@ -75,11 +75,6 @@ func (q *TradesQ) ForAccount(aid string) *TradesQ {
 	}
 
 	q.sql = q.sql.Where("htrd.base_account_id = ? OR htrd.counter_account_id = ?", account.ID, account.ID)
-	return q
-}
-
-func (q *TradesQ) InLedgerOrder() *TradesQ {
-	q.sql = q.sql.OrderBy("htrd.history_operation_id ", "htrd.\"order\"")
 	return q
 }
 
