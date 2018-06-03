@@ -1,7 +1,6 @@
 package horizon
 
 import (
-	"errors"
 	"strconv"
 
 	"github.com/stellar/go/services/horizon/internal/db2"
@@ -16,9 +15,7 @@ import (
 type TradeIndexAction struct {
 	Action
 	BaseAssetFilter       xdr.Asset
-	HasBaseAssetFilter    bool
 	CounterAssetFilter    xdr.Asset
-	HasCounterAssetFilter bool
 	OfferFilter           int64
 	AccountFilter         string
 	PagingParams          db2.PageQuery
@@ -42,8 +39,8 @@ func (action *TradeIndexAction) JSON() {
 // loadParams sets action.Query from the request params
 func (action *TradeIndexAction) loadParams() {
 	action.PagingParams = action.GetPageQuery()
-	action.BaseAssetFilter, action.HasBaseAssetFilter = action.MaybeGetAsset("base_")
-	action.CounterAssetFilter, action.HasCounterAssetFilter = action.MaybeGetAsset("counter_")
+	action.BaseAssetFilter = action.GetAsset("base_")
+	action.CounterAssetFilter = action.GetAsset("counter_")
 	action.OfferFilter = action.GetInt64("offer_id")
 	action.AccountFilter = action.GetString("account_id")
 }
@@ -56,27 +53,18 @@ func (action *TradeIndexAction) loadRecords() {
 		trades.ForAccount(action.AccountFilter)
 	}
 
-	if action.HasBaseAssetFilter {
-
-		baseAssetId, err := action.HistoryQ().GetAssetID(action.BaseAssetFilter)
-		if err != nil {
-			action.Err = err
-			return
-		}
-
-		if action.HasCounterAssetFilter {
-
-			counterAssetId, err := action.HistoryQ().GetAssetID(action.CounterAssetFilter)
-			if err != nil {
-				action.Err = err
-				return
-			}
-			trades = action.HistoryQ().TradesForAssetPair(baseAssetId, counterAssetId)
-		} else {
-			action.Err = errors.New("this endpoint supports asset pairs but only one asset supplied")
-			return
-		}
+	baseAssetId, err := action.HistoryQ().GetAssetID(action.BaseAssetFilter)
+	if err != nil {
+		action.Err = err
+		return
 	}
+
+	counterAssetId, err := action.HistoryQ().GetAssetID(action.CounterAssetFilter)
+	if err != nil {
+		action.Err = err
+		return
+	}
+	trades = action.HistoryQ().TradesForAssetPair(baseAssetId, counterAssetId)
 
 	if action.OfferFilter > int64(0) {
 		trades = trades.ForOffer(action.OfferFilter)
