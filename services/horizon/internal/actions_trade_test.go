@@ -170,17 +170,22 @@ func TestTradeActions_Aggregation(t *testing.T) {
 	q.Add("end_time", strconv.FormatInt(start+hour, 10))
 	q.Add("order", "asc")
 
-	//test illegal resolution
 
+	//test no resolution provided
+	w := ht.GetWithParams(aggregationPath, q)
+	println(w.Body.String())
+	ht.Assert.Equal(400, w.Code)
+
+	//test illegal resolution
 	if history.StrictResolutionFiltering {
 		q.Add("resolution", strconv.FormatInt(hour/2, 10))
-		w := ht.GetWithParams(aggregationPath, q)
-		ht.Assert.Equal(500, w.Code)
+		w = ht.GetWithParams(aggregationPath, q)
+		ht.Assert.Equal(400, w.Code)
 	}
 
 	//test one bucket for all trades
 	q.Set("resolution", strconv.FormatInt(hour, 10))
-	w := ht.GetWithParams(aggregationPath, q)
+	w = ht.GetWithParams(aggregationPath, q)
 	if ht.Assert.Equal(200, w.Code) {
 		ht.Assert.PageOf(1, w.Body)
 		ht.UnmarshalPage(w.Body, &records)

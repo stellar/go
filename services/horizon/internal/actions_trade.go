@@ -8,6 +8,7 @@ import (
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/services/horizon/internal/resourceadapter"
 	"github.com/stellar/go/support/time"
+	gTime "time"
 	"github.com/stellar/go/xdr"
 	"github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/support/render/hal"
@@ -138,6 +139,16 @@ func (action *TradeAggregateIndexAction) loadParams() {
 	action.StartTimeFilter = action.GetTimeMillis("start_time")
 	action.EndTimeFilter = action.GetTimeMillis("end_time")
 	action.ResolutionFilter = action.GetInt64("resolution")
+
+	//check if resolution is legal
+	resolutionDuration := gTime.Duration(action.ResolutionFilter) * gTime.Millisecond
+	if history.StrictResolutionFiltering{
+		if _, ok := history.AllowedResolutions[resolutionDuration]; !ok {
+			action.SetInvalidField("resolution", errors.New("illegal or missing resolution. " +
+				"allowed resolutions are: 1 minute (60000), 5 minutes (300000), 15 minutes (900000), 1 hour (3600000), " +
+				"1 day (86400000) and 1 week (604800000)"))
+		}
+	}
 }
 
 // loadRecords populates action.Records
