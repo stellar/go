@@ -17,9 +17,7 @@ import (
 type TradeIndexAction struct {
 	Action
 	BaseAssetFilter       xdr.Asset
-	HasBaseAssetFilter    bool
 	CounterAssetFilter    xdr.Asset
-	HasCounterAssetFilter bool
 	OfferFilter           int64
 	AccountFilter         string
 	PagingParams          db2.PageQuery
