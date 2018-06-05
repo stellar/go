@@ -53,7 +53,7 @@ import:
   version: a62a804a8a009876ca59105f7899938a1349f4b3
   repo: https://github.com/rs/cors
 - package: github.com/asaskevich/govalidator
-  repo: https://github.com/stellar/govalidator.git
+  repo: https://github.com/asaskevich/govalidator.git
 - package: github.com/BurntSushi/toml
   version: 99064174e013895bbd9b025c31100bd1d9b590ca
   repo: https://github.com/BurntSushi/toml

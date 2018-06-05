@@ -12,8 +12,8 @@ imports:
   version: 523a5da1a92f01b01f840b61689c0340a0243532
   repo: https://github.com/ajg/form
 - name: github.com/asaskevich/govalidator
-  version: f0666aa80d7dcf75bd564ae8717b952d74a29d6a
-  repo: https://github.com/stellar/govalidator.git
+  version: 7d2e70ef918f16bd6455529af38304d6d025c952
+  repo: https://github.com/asaskevich/govalidator.git
 - name: github.com/aws/aws-sdk-go
   version: 8649d278323ebf6bd20c9cd56ecb152b1c617375
   repo: https://github.com/aws/aws-sdk-go
