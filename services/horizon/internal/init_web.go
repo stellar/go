@@ -54,6 +54,7 @@ func initWebMiddleware(app *App) {
 	r := app.web.router
 	r.Use(chimiddleware.StripSlashes)
 	r.Use(app.Middleware)
+	r.Use(requestCacheHeadersMiddleware)
 	r.Use(chimiddleware.RequestID)
 	r.Use(contextMiddleware(app.ctx))
 	r.Use(xff.Handler)
