@@ -6,6 +6,28 @@ file.  This project adheres to [Semantic Versioning](http://semver.org/).
 As this project is pre 1.0, breaking changes may happen for minor version
 bumps.  A breaking change will get clearly notified in this log.
 
+## v0.13.0 - 2018-06-06
+
+### Breaking changes
+
+- `amount` field in `/assets` is now a String (to support Stellar amounts larger than `int64`).
+
+### Changes
+
+- Effect resource contains a new `created_at` field.
+- Horizon responses are compressed.
+- Ingestion errors have been improved.
+- `horizon rebase` command was improved.
+
+### Bug fixes
+
+- Horizon now returns `400 Bad Request` for negative `cursor` values.
+
+**Upgrade notes**
+
+DB migrations add a new indexes on `history_trades`. This is very large table so migration may take a long time (depending on your DB hardware). Please test the migrations execution time on the copy of your production DB first.
+
+
 ## v0.12.3 - 2017-03-20
 
 ### Bug fixes
