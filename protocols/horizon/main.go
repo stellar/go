@@ -151,15 +151,16 @@ type Offer struct {
 		OfferMaker hal.Link `json:"offer_maker"`
 	} `json:"_links"`
 
-	ID           int64     `json:"id"`
-	PT           string    `json:"paging_token"`
-	Seller       string    `json:"seller"`
-	Selling      Asset     `json:"selling"`
-	Buying       Asset     `json:"buying"`
-	Amount       string    `json:"amount"`
-	PriceR       Price     `json:"price_r"`
-	Price        string    `json:"price"`
-	LastModified time.Time `json:"last_modified"`
+	ID                 int64     `json:"id"`
+	PT                 string    `json:"paging_token"`
+	Seller             string    `json:"seller"`
+	Selling            Asset     `json:"selling"`
+	Buying             Asset     `json:"buying"`
+	Amount             string    `json:"amount"`
+	PriceR             Price     `json:"price_r"`
+	Price              string    `json:"price"`
+	LastModifiedLedger int32     `json:"last_modified_ledger"`
+	LastModifiedTime   time.Time `json:"last_modified_time"`
 }
 
 func (this Offer) PagingToken() string {

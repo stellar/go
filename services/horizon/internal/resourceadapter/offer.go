@@ -9,10 +9,10 @@ import (
 	"github.com/stellar/go/services/horizon/internal/httpx"
 	. "github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/support/render/hal"
-	"time"
+	"github.com/stellar/go/services/horizon/internal/db2/history"
 )
 
-func PopulateOffer(ctx context.Context, dest *Offer, row core.Offer) {
+func PopulateOffer(ctx context.Context, dest *Offer, row core.Offer, ledger history.Ledger) {
 	dest.ID = row.OfferID
 	dest.PT = row.PagingToken()
 	dest.Seller = row.SellerID
@@ -30,7 +30,8 @@ func PopulateOffer(ctx context.Context, dest *Offer, row core.Offer) {
 		Code:   row.SellingAssetCode.String,
 		Issuer: row.SellingIssuer.String,
 	}
-	dest.LastModified = time.Unix(int64(row.Lastmodified), 0).UTC()
+	dest.LastModifiedLedger = row.Lastmodified
+	dest.LastModifiedTime = ledger.ClosedAt
 	lb := hal.LinkBuilder{httpx.BaseURL(ctx)}
 	dest.Links.Self = lb.Linkf("/offers/%d", row.OfferID)
 	dest.Links.OfferMaker = lb.Linkf("/accounts/%s", row.SellerID)
