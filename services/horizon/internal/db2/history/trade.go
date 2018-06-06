@@ -74,7 +74,7 @@ func (q *TradesQ) ForAccount(aid string) *TradesQ {
 		return q
 	}
 
-	q.sql = q.sql.Where("htrd.base_account_id = ? OR htrd.counter_account_id = ?", account.ID, account.ID)
+	q.sql = q.sql.Where("(htrd.base_account_id = ? OR htrd.counter_account_id = ?)", account.ID, account.ID)
 	return q
 }
 
