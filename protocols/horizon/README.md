@@ -78,7 +78,7 @@ For each new version we will only track changes from the previous version.
 | `GET /operations/{op_id}/effects`             | `created_at` field added                     | +                              | 0.8.2 <sup>2</sup> | x                                                 |
 | `GET /operations/{op_id}/effects` SSE         | `created_at` field added                     | +                              | 0.8.2 <sup>2</sup> | x                                                 |
 | `GET /effects`                                | `created_at` field added                     | +                              | 0.8.2 <sup>2</sup> | x                                                 |
-| `GET /effects` SSE                            | `created_at` field ad                        |                                |                    |                                                   |ded | +                              | 0.8.2 <sup>2</sup> | x                                                 |
+| `GET /effects` SSE                            | `created_at` field added                     | +                              | 0.8.2 <sup>2</sup> | x                                                 |
 
 <sup>1</sup> We don't do proper versioning for GO SDK yet. `+` means implemented in `master` branch.
 
