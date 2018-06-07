@@ -5,6 +5,8 @@ import (
 
 	"github.com/stellar/go/xdr"
 	"github.com/stretchr/testify/mock"
+
+	. "github.com/stellar/go/protocols/horizon"
 )
 
 // MockClient is a mockable horizon client.

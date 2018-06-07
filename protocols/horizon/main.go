@@ -47,6 +47,26 @@ type Account struct {
 	Data                 map[string]string `json:"data"`
 }
 
+func (a Account) GetNativeBalance() string {
+	for _, balance := range a.Balances {
+		if balance.Asset.Type == "native" {
+			return balance.Balance
+		}
+	}
+	panic(errors.New("account is missing native balance"))
+}
+
+
+//TODO: remove this?
+func (a Account) GetCreditBalance(code, issuer string) string {
+	for _, balance := range a.Balances {
+		if balance.Asset.Code == code && balance.Asset.Issuer == issuer {
+			return balance.Balance
+		}
+	}
+	return "0"
+}
+
 // MustGetData returns decoded value for a given key. If the key does
 // not exist, empty slice will be returned. If there is an error
 // decoding a value, it will panic.

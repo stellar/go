@@ -4,11 +4,12 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/stellar/go/clients/horizon"
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/services/bifrost/common"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/support/log"
+	hClient "github.com/stellar/go/clients/horizon"
+	hProtocol "github.com/stellar/go/protocols/horizon"
 )
 
 func (ac *AccountConfigurator) Start() error {
@@ -185,11 +186,11 @@ func (ac *AccountConfigurator) removeAccountStatus(account string) {
 	delete(ac.accountStatus, account)
 }
 
-func (ac *AccountConfigurator) getAccount(account string) (horizon.Account, bool, error) {
-	var hAccount horizon.Account
+func (ac *AccountConfigurator) getAccount(account string) (hProtocol.Account, bool, error) {
+	var hAccount hProtocol.Account
 	hAccount, err := ac.Horizon.LoadAccount(account)
 	if err != nil {
-		if err, ok := err.(*horizon.Error); ok && err.Response.StatusCode == http.StatusNotFound {
+		if err, ok := err.(*hClient.Error); ok && err.Response.StatusCode == http.StatusNotFound {
 			return hAccount, false, nil
 		}
 		return hAccount, false, err
@@ -200,7 +201,7 @@ func (ac *AccountConfigurator) getAccount(account string) (horizon.Account, bool
 
 // signerExistsOnly returns true if account has exactly one signer and it's
 // equal to `signerPublicKey`.
-func (ac *AccountConfigurator) signerExistsOnly(account horizon.Account) bool {
+func (ac *AccountConfigurator) signerExistsOnly(account hProtocol.Account) bool {
 	tempSignerFound := false
 
 	for _, signer := range account.Signers {

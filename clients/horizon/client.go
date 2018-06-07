@@ -13,6 +13,7 @@ import (
 
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
+	. "github.com/stellar/go/protocols/horizon"
 )
 
 // HomeDomainForAccount returns the home domain for the provided strkey-encoded

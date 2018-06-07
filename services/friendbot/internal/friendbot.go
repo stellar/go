@@ -5,20 +5,21 @@ import (
 	"sync"
 
 	b "github.com/stellar/go/build"
-	"github.com/stellar/go/clients/horizon"
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/support/errors"
+	hProtocol "github.com/stellar/go/protocols/horizon"
+	hClient "github.com/stellar/go/clients/horizon"
 )
 
 // TxResult is the result from the asynchronous submit transaction method over a channel
 type TxResult struct {
-	maybeTransactionSuccess *horizon.TransactionSuccess
+	maybeTransactionSuccess *hProtocol.TransactionSuccess
 	maybeErr                error
 }
 
 // Bot represents the friendbot subsystem.
 type Bot struct {
-	Horizon           *horizon.Client
+	Horizon           hClient.Client
 	Secret            string
 	Network           string
 	StartingBalance   string
@@ -31,7 +32,7 @@ type Bot struct {
 }
 
 // Pay funds the account at `destAddress`
-func (bot *Bot) Pay(destAddress string) (*horizon.TransactionSuccess, error) {
+func (bot *Bot) Pay(destAddress string) (*hProtocol.TransactionSuccess, error) {
 	channel := make(chan TxResult)
 	err := bot.lockedPay(channel, destAddress)
 	if err != nil {
@@ -65,7 +66,7 @@ func AsyncSubmitTransaction(bot *Bot, channel chan TxResult, signed string) {
 	result, err := bot.Horizon.SubmitTransaction(signed)
 	if err != nil {
 		switch e := err.(type) {
-		case *horizon.Error:
+		case *hClient.Error:
 			bot.checkHandleBadSequence(e)
 		}
 
@@ -81,7 +82,7 @@ func AsyncSubmitTransaction(bot *Bot, channel chan TxResult, signed string) {
 	}
 }
 
-func (bot *Bot) checkHandleBadSequence(err *horizon.Error) {
+func (bot *Bot) checkHandleBadSequence(err *hClient.Error) {
 	resCode, e := err.ResultCodes()
 	isTxBadSeqCode := e == nil && resCode.TransactionCode == "tx_bad_seq"
 	if !isTxBadSeqCode {

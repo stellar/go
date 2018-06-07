@@ -10,6 +10,8 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/support/http/httptest"
+
+	. "github.com/stellar/go/protocols/horizon"
 )
 
 func ExampleClient_StreamLedgers() {

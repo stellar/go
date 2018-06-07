@@ -13,7 +13,8 @@ import (
 	"time"
 
 	"github.com/stellar/go/build"
-	"github.com/stellar/go/clients/horizon"
+	hClient "github.com/stellar/go/clients/horizon"
+	hProtocol "github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/services/bifrost/common"
 	"github.com/stellar/go/services/bifrost/server"
@@ -25,7 +26,7 @@ func (u *Users) Start(accounts chan<- server.GenerateAddressResponse) {
 	u.users = map[string]*User{}
 
 	go func() {
-		cursor := horizon.Cursor("now")
+		cursor := hClient.Cursor("now")
 		err := u.Horizon.StreamPayments(context.Background(), u.IssuerPublicKey, &cursor, u.onNewPayment)
 		if err != nil {
 			panic(err)
@@ -56,7 +57,7 @@ func (u *Users) Start(accounts chan<- server.GenerateAddressResponse) {
 	}
 }
 
-func (u *Users) onNewPayment(payment horizon.Payment) {
+func (u *Users) onNewPayment(payment hClient.Payment) {
 	var destination string
 
 	switch payment.Type {
@@ -239,7 +240,7 @@ func (u *Users) newUser(kp *keypair.Full) server.GenerateAddressResponse {
 
 		_, err = u.Horizon.SubmitTransaction(txeB64)
 		if err != nil {
-			if herr, ok := err.(*horizon.Error); ok {
+			if herr, ok := err.(*hClient.Error); ok {
 				fmt.Println(herr.Problem)
 			}
 			panic(err)
@@ -280,11 +281,11 @@ func (u *Users) updateUserState(publicKey string, state UserState) {
 	user.State = state
 }
 
-func (u *Users) getAccount(account string) (horizon.Account, bool, error) {
-	var hAccount horizon.Account
+func (u *Users) getAccount(account string) (hProtocol.Account, bool, error) {
+	var hAccount hProtocol.Account
 	hAccount, err := u.Horizon.LoadAccount(account)
 	if err != nil {
-		if err, ok := err.(*horizon.Error); ok && err.Response.StatusCode == http.StatusNotFound {
+		if err, ok := err.(*hClient.Error); ok && err.Response.StatusCode == http.StatusNotFound {
 			return hAccount, false, nil
 		}
 		return hAccount, false, err

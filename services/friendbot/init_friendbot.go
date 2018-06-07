@@ -3,9 +3,9 @@ package main
 import (
 	"net/http"
 
-	"github.com/stellar/go/clients/horizon"
 	"github.com/stellar/go/services/friendbot/internal"
 	"github.com/stellar/go/strkey"
+	hClient "github.com/stellar/go/clients/horizon"
 )
 
 func initFriendbot(
@@ -24,7 +24,7 @@ func initFriendbot(
 
 	return &internal.Bot{
 		Secret: friendbotSecret,
-		Horizon: &horizon.Client{
+		Horizon: hClient.Client{
 			URL:  horizonURL,
 			HTTP: http.DefaultClient,
 		},

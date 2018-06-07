@@ -7,6 +7,8 @@ import (
 	"github.com/stellar/go/support/http/httptest"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	. "github.com/stellar/go/protocols/horizon"
 )
 
 func TestClient(t *testing.T) {

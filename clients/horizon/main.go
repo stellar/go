@@ -15,6 +15,9 @@ import (
 	"github.com/stellar/go/build"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
+
+	. "github.com/stellar/go/protocols/horizon"
+	"github.com/stellar/go/support/render/problem"
 )
 
 // DefaultTestNetClient is a default client to connect to test network
@@ -106,7 +109,7 @@ type ClientInterface interface {
 // Error struct contains the problem returned by Horizon
 type Error struct {
 	Response *http.Response
-	Problem  Problem
+	Problem  problem.P
 }
 
 // HTTP represents the HTTP client that a horizon client uses to communicate
