@@ -4,7 +4,24 @@ import (
 	"github.com/stellar/go/protocols/horizon/base"
 	"github.com/stellar/go/support/render/hal"
 	"time"
+	"github.com/stellar/go/xdr"
 )
+
+// OperationTypeNames maps from operation type to the string used to represent that type
+// in horizon's JSON responses
+var TypeNames = map[xdr.OperationType]string{
+	xdr.OperationTypeCreateAccount:      "create_account",
+	xdr.OperationTypePayment:            "payment",
+	xdr.OperationTypePathPayment:        "path_payment",
+	xdr.OperationTypeManageOffer:        "manage_offer",
+	xdr.OperationTypeCreatePassiveOffer: "create_passive_offer",
+	xdr.OperationTypeSetOptions:         "set_options",
+	xdr.OperationTypeChangeTrust:        "change_trust",
+	xdr.OperationTypeAllowTrust:         "allow_trust",
+	xdr.OperationTypeAccountMerge:       "account_merge",
+	xdr.OperationTypeInflation:          "inflation",
+	xdr.OperationTypeManageData:         "manage_data",
+}
 
 // Base represents the common attributes of an operation resource
 type Base struct {

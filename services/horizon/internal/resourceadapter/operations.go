@@ -10,22 +10,6 @@ import (
 	"github.com/stellar/go/services/horizon/internal/httpx"
 )
 
-// TypeNames maps from operation type to the string used to represent that type
-// in horizon's JSON responses
-var OperationTypeNames = map[xdr.OperationType]string{
-	xdr.OperationTypeCreateAccount:      "create_account",
-	xdr.OperationTypePayment:            "payment",
-	xdr.OperationTypePathPayment:        "path_payment",
-	xdr.OperationTypeManageOffer:        "manage_offer",
-	xdr.OperationTypeCreatePassiveOffer: "create_passive_offer",
-	xdr.OperationTypeSetOptions:         "set_options",
-	xdr.OperationTypeChangeTrust:        "change_trust",
-	xdr.OperationTypeAllowTrust:         "allow_trust",
-	xdr.OperationTypeAccountMerge:       "account_merge",
-	xdr.OperationTypeInflation:          "inflation",
-	xdr.OperationTypeManageData:         "manage_data",
-}
-
 // NewOperation creates a new operation resource, finding the appropriate type to use
 // based upon the row's type.
 func NewOperation(
@@ -117,7 +101,7 @@ func PopulateBaseOperation(
 func populateOperationType(dest *operations.Base, row history.Operation) {
 	var ok bool
 	dest.TypeI = int32(row.Type)
-	dest.Type, ok = OperationTypeNames[row.Type]
+	dest.Type, ok = operations.TypeNames[row.Type]
 
 	if !ok {
 		dest.Type = "unknown"
