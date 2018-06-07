@@ -19,12 +19,12 @@ import (
 
 // Config represents the configuration of a friendbot server
 type Config struct {
-	Port              int        `toml:"port" valid:"required"`
-	FriendbotSecret   string     `toml:"friendbot_secret" valid:"required"`
-	NetworkPassphrase string     `toml:"network_passphrase" valid:"required"`
-	HorizonURL        string     `toml:"horizon_url" valid:"required"`
-	StartingBalance   string     `toml:"starting_balance" valid:"required"`
-	TLS               config.TLS `valid:"optional"`
+	Port              int         `toml:"port" valid:"required"`
+	FriendbotSecret   string      `toml:"friendbot_secret" valid:"required"`
+	NetworkPassphrase string      `toml:"network_passphrase" valid:"required"`
+	HorizonURL        string      `toml:"horizon_url" valid:"required"`
+	StartingBalance   string      `toml:"starting_balance" valid:"required"`
+	TLS               *config.TLS `valid:"optional"`
 }
 
 func main() {
@@ -67,8 +67,7 @@ func run(cmd *cobra.Command, args []string) {
 	http.Run(http.Config{
 		ListenAddr: addr,
 		Handler:    router,
-		TLSCert:    cfg.TLS.CertificateFile,
-		TLSKey:     cfg.TLS.PrivateKeyFile,
+		TLS:        cfg.TLS,
 		OnStarting: func() {
 			log.Infof("starting friendbot server - %s", app.Version())
 			log.Infof("listening on %s", addr)
