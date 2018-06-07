@@ -6,10 +6,9 @@ import (
 	"testing"
 	"time"
 
-	. "github.com/onsi/ginkgo"
-	. "github.com/onsi/gomega"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/support/http/httptest"
+	"github.com/stretchr/testify/assert"
 )
 
 func ExampleClient_StreamLedgers() {
@@ -56,255 +55,259 @@ func ExampleClient_SubmitTransaction() {
 	fmt.Println(response)
 }
 
-func TestHorizon(t *testing.T) {
-	RegisterFailHandler(Fail)
-	RunSpecs(t, "Package: github.com/stellar/go/horizon")
+func TestLoadAccount(t *testing.T) {
+	hmock := httptest.NewClient()
+	client := &Client{
+		URL:  "https://localhost",
+		HTTP: hmock,
+	}
+
+	// happy path
+	hmock.On(
+		"GET",
+		"https://localhost/accounts/GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H",
+	).ReturnString(200, accountResponse)
+
+	account, err := client.LoadAccount("GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H")
+	if assert.NoError(t, err) {
+		assert.Equal(t, account.ID, "GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H")
+		assert.Equal(t, account.PT, "1")
+		assert.Equal(t, account.Signers[0].Key, "XBT5HNPK6DAL6222MAWTLHNOZSDKPJ2AKNEQ5Q324CHHCNQFQ7EHBHZN")
+		assert.Equal(t, account.Signers[0].Type, "sha256_hash")
+		assert.Equal(t, account.Data["test"], "R0NCVkwzU1FGRVZLUkxQNkFKNDdVS0tXWUVCWTQ1V0hBSkhDRVpLVldNVEdNQ1Q0SDROS1FZTEg=")
+		assert.Equal(t, account.GetNativeBalance(), "948522307.6146000")
+	}
+
+	// failure response
+	hmock.On(
+		"GET",
+		"https://localhost/accounts/GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H",
+	).ReturnString(404, notFoundResponse)
+
+	_, err = client.LoadAccount("GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H")
+	if assert.Error(t, err) {
+		assert.Contains(t, err.Error(), "Horizon error")
+		horizonError, ok := err.(*Error)
+		assert.Equal(t, ok, true)
+		assert.Equal(t, horizonError.Problem.Title, "Resource Missing")
+	}
+
+	// connection error
+	hmock.On(
+		"GET",
+		"https://localhost/accounts/GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H",
+	).ReturnError("http.Client error")
+
+	_, err = client.LoadAccount("GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H")
+	if assert.Error(t, err) {
+		assert.Contains(t, err.Error(), "http.Client error")
+		_, ok := err.(*Error)
+		assert.Equal(t, ok, false)
+	}
 }
 
-var _ = Describe("Horizon", func() {
-	var (
-		client *Client
-		hmock  *httptest.Client
-	)
+func TestLoadAccountOffers(t *testing.T) {
+	hmock := httptest.NewClient()
+	client := &Client{
+		URL:  "https://localhost",
+		HTTP: hmock,
+	}
 
-	BeforeEach(func() {
-		hmock = httptest.NewClient()
-		client = &Client{
-			URL:  "https://localhost",
-			HTTP: hmock,
-		}
-	})
+	// happy path
+	hmock.On(
+		"GET",
+		"https://localhost/accounts/GC2BQYBXFOVPRDH35D5HT2AFVCDGXJM5YVTAF5THFSAISYOWAJQKRESK/offers?cursor=a&limit=50&order=desc",
+	).ReturnString(200, accountOffersResponse)
 
-	Describe("LoadAccount", func() {
-		It("success response", func() {
-			hmock.On(
-				"GET",
-				"https://localhost/accounts/GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H",
-			).ReturnString(200, accountResponse)
+	offers, err := client.LoadAccountOffers("GC2BQYBXFOVPRDH35D5HT2AFVCDGXJM5YVTAF5THFSAISYOWAJQKRESK", Cursor("a"), Limit(50), OrderDesc)
+	if assert.NoError(t, err) {
+		assert.Equal(t, len(offers.Embedded.Records), 2)
+		assert.Equal(t, offers.Embedded.Records[0].ID, int64(161))
+		assert.Equal(t, offers.Embedded.Records[0].Seller, "GC2BQYBXFOVPRDH35D5HT2AFVCDGXJM5YVTAF5THFSAISYOWAJQKRESK")
+		assert.Equal(t, offers.Embedded.Records[0].Price, "450000.0000000")
+		assert.Equal(t, offers.Embedded.Records[0].Buying.Type, "native")
+		assert.Equal(t, offers.Embedded.Records[0].Selling.Type, "credit_alphanum4")
+		assert.Equal(t, offers.Embedded.Records[0].Selling.Code, "XBT")
+		assert.Equal(t, offers.Embedded.Records[0].Selling.Issuer, "GDI73WJ4SX7LOG3XZDJC3KCK6ED6E5NBYK2JUBQSPBCNNWEG3ZN7T75U")
+	}
 
-			account, err := client.LoadAccount("GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H")
-			Expect(err).To(BeNil())
-			Expect(account.ID).To(Equal("GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H"))
-			Expect(account.PT).To(Equal("1"))
-			Expect(account.Signers[0].Key).To(Equal("XBT5HNPK6DAL6222MAWTLHNOZSDKPJ2AKNEQ5Q324CHHCNQFQ7EHBHZN"))
-			Expect(account.Signers[0].Type).To(Equal("sha256_hash"))
-			Expect(account.Data["test"]).To(Equal("R0NCVkwzU1FGRVZLUkxQNkFKNDdVS0tXWUVCWTQ1V0hBSkhDRVpLVldNVEdNQ1Q0SDROS1FZTEg="))
-			Expect(account.GetNativeBalance()).To(Equal("948522307.6146000"))
-		})
+	// failure response
+	hmock.On(
+		"GET",
+		"https://localhost/accounts/GC2BQYBXFOVPRDH35D5HT2AFVCDGXJM5YVTAF5THFSAISYOWAJQKRESK/offers",
+	).ReturnString(404, notFoundResponse)
 
-		It("failure response", func() {
-			hmock.On(
-				"GET",
-				"https://localhost/accounts/GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H",
-			).ReturnString(404, notFoundResponse)
+	_, err = client.LoadAccountOffers("GC2BQYBXFOVPRDH35D5HT2AFVCDGXJM5YVTAF5THFSAISYOWAJQKRESK")
+	if assert.Error(t, err) {
+		assert.Contains(t, err.Error(), "Horizon error")
+		horizonError, ok := err.(*Error)
+		assert.Equal(t, ok, true)
+		assert.Equal(t, horizonError.Problem.Title, "Resource Missing")
+	}
 
-			_, err := client.LoadAccount("GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H")
-			Expect(err).NotTo(BeNil())
-			Expect(err.Error()).To(HavePrefix("Horizon error"))
-			horizonError, ok := err.(*Error)
-			Expect(ok).To(BeTrue())
-			Expect(horizonError.Problem.Title).To(Equal("Resource Missing"))
-		})
+	// connection error
+	hmock.On(
+		"GET",
+		"https://localhost/accounts/GC2BQYBXFOVPRDH35D5HT2AFVCDGXJM5YVTAF5THFSAISYOWAJQKRESK/offers",
+	).ReturnError("http.Client error")
 
-		It("connection error", func() {
-			hmock.On(
-				"GET",
-				"https://localhost/accounts/GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H",
-			).ReturnError("http.Client error")
+	_, err = client.LoadAccountOffers("GC2BQYBXFOVPRDH35D5HT2AFVCDGXJM5YVTAF5THFSAISYOWAJQKRESK")
+	if assert.Error(t, err) {
+		assert.Contains(t, err.Error(), "http.Client error")
+		_, ok := err.(*Error)
+		assert.Equal(t, ok, false)
+	}
 
-			_, err := client.LoadAccount("GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H")
-			Expect(err).NotTo(BeNil())
-			Expect(err.Error()).To(ContainSubstring("http.Client error"))
-			_, ok := err.(*Error)
-			Expect(ok).To(BeFalse())
-		})
-	})
+	// overridden location
+	hmock.On(
+		"GET",
+		"https://localhost/beepboop",
+	).ReturnString(200, accountOffersResponse)
 
-	Describe("LoadAccountOffers", func() {
-		It("success response", func() {
-			hmock.On(
-				"GET",
-				"https://localhost/accounts/GC2BQYBXFOVPRDH35D5HT2AFVCDGXJM5YVTAF5THFSAISYOWAJQKRESK/offers?cursor=a&limit=50&order=desc",
-			).ReturnString(200, accountOffersResponse)
+	offers, err = client.LoadAccountOffers("GC2BQYBXFOVPRDH35D5HT2AFVCDGXJM5YVTAF5THFSAISYOWAJQKRESK", At("https://localhost/beepboop"))
+	if assert.NoError(t, err) {
+		assert.Equal(t, len(offers.Embedded.Records), 2)
+		assert.Equal(t, offers.Embedded.Records[0].ID, int64(161))
+		assert.Equal(t, offers.Embedded.Records[0].Seller, "GC2BQYBXFOVPRDH35D5HT2AFVCDGXJM5YVTAF5THFSAISYOWAJQKRESK")
+		assert.Equal(t, offers.Embedded.Records[0].Price, "450000.0000000")
+		assert.Equal(t, offers.Embedded.Records[0].Buying.Type, "native")
+		assert.Equal(t, offers.Embedded.Records[0].Selling.Type, "credit_alphanum4")
+		assert.Equal(t, offers.Embedded.Records[0].Selling.Code, "XBT")
+		assert.Equal(t, offers.Embedded.Records[0].Selling.Issuer, "GDI73WJ4SX7LOG3XZDJC3KCK6ED6E5NBYK2JUBQSPBCNNWEG3ZN7T75U")
+	}
 
-			offers, err := client.LoadAccountOffers("GC2BQYBXFOVPRDH35D5HT2AFVCDGXJM5YVTAF5THFSAISYOWAJQKRESK", Cursor("a"), Limit(50), OrderDesc)
-			Expect(err).To(BeNil())
-			Expect(len(offers.Embedded.Records)).To(Equal(2))
-			Expect(offers.Embedded.Records[0].ID).To(Equal(int64(161)))
-			Expect(offers.Embedded.Records[0].Seller).To(Equal("GC2BQYBXFOVPRDH35D5HT2AFVCDGXJM5YVTAF5THFSAISYOWAJQKRESK"))
-			Expect(offers.Embedded.Records[0].Price).To(Equal("450000.0000000"))
-			Expect(offers.Embedded.Records[0].Buying.Type).To(Equal("native"))
-			Expect(offers.Embedded.Records[0].Selling.Type).To(Equal("credit_alphanum4"))
-			Expect(offers.Embedded.Records[0].Selling.Code).To(Equal("XBT"))
-			Expect(offers.Embedded.Records[0].Selling.Issuer).To(Equal("GDI73WJ4SX7LOG3XZDJC3KCK6ED6E5NBYK2JUBQSPBCNNWEG3ZN7T75U"))
-		})
+}
+func TestLoadOrderBook(t *testing.T) {
+	hmock := httptest.NewClient()
+	client := &Client{
+		URL:  "https://localhost",
+		HTTP: hmock,
+	}
 
-		It("failure response", func() {
-			hmock.On(
-				"GET",
-				"https://localhost/accounts/GC2BQYBXFOVPRDH35D5HT2AFVCDGXJM5YVTAF5THFSAISYOWAJQKRESK/offers",
-			).ReturnString(404, notFoundResponse)
+	// happy path
+	hmock.On(
+		"GET",
+		"https://localhost/order_book?buying_asset_code=DEMO&buying_asset_issuer=GBAMBOOZDWZPVV52RCLJQYMQNXOBLOXWNQAY2IF2FREV2WL46DBCH3BE&buying_asset_type=credit_alphanum4&selling_asset_code=&selling_asset_issuer=&selling_asset_type=native",
+	).ReturnString(200, orderBookResponse)
 
-			_, err := client.LoadAccountOffers("GC2BQYBXFOVPRDH35D5HT2AFVCDGXJM5YVTAF5THFSAISYOWAJQKRESK")
-			Expect(err).NotTo(BeNil())
-			Expect(err.Error()).To(HavePrefix("Horizon error"))
-			horizonError, ok := err.(*Error)
-			Expect(ok).To(BeTrue())
-			Expect(horizonError.Problem.Title).To(Equal("Resource Missing"))
-		})
+	orderBook, err := client.LoadOrderBook(Asset{Type: "native"}, Asset{"credit_alphanum4", "DEMO", "GBAMBOOZDWZPVV52RCLJQYMQNXOBLOXWNQAY2IF2FREV2WL46DBCH3BE"})
+	if assert.NoError(t, err) {
+		assert.Equal(t, orderBook.Selling.Type, "native")
+		assert.Equal(t, orderBook.Buying.Type, "credit_alphanum4")
+		assert.Equal(t, orderBook.Buying.Code, "DEMO")
+		assert.Equal(t, orderBook.Buying.Issuer, "GBAMBOOZDWZPVV52RCLJQYMQNXOBLOXWNQAY2IF2FREV2WL46DBCH3BE")
 
-		It("connection error", func() {
-			hmock.On(
-				"GET",
-				"https://localhost/accounts/GC2BQYBXFOVPRDH35D5HT2AFVCDGXJM5YVTAF5THFSAISYOWAJQKRESK/offers",
-			).ReturnError("http.Client error")
+		assert.Equal(t, len(orderBook.Bids), 20)
+		assert.Equal(t, orderBook.Bids[0].Price, "0.0024937")
+		assert.Equal(t, orderBook.Bids[0].Amount, "0.4363975")
+		assert.Equal(t, orderBook.Bids[0].PriceR.N, int32(24937))
+		assert.Equal(t, orderBook.Bids[0].PriceR.D, int32(10000000))
 
-			_, err := client.LoadAccountOffers("GC2BQYBXFOVPRDH35D5HT2AFVCDGXJM5YVTAF5THFSAISYOWAJQKRESK")
-			Expect(err).NotTo(BeNil())
-			Expect(err.Error()).To(ContainSubstring("http.Client error"))
-			_, ok := err.(*Error)
-			Expect(ok).To(BeFalse())
-		})
+		assert.Equal(t, len(orderBook.Asks), 20)
+		assert.Equal(t, orderBook.Asks[0].Price, "0.0025093")
+		assert.Equal(t, orderBook.Asks[0].Amount, "1248.9663104")
+		assert.Equal(t, orderBook.Asks[0].PriceR.N, int32(2017413))
+		assert.Equal(t, orderBook.Asks[0].PriceR.D, int32(803984111))
+	}
 
-		It("overridden location", func() {
-			hmock.On(
-				"GET",
-				"https://localhost/beepboop",
-			).ReturnString(200, accountOffersResponse)
+	// happy path with limit
+	hmock.On(
+		"GET",
+		"https://localhost/order_book?buying_asset_code=DEMO&buying_asset_issuer=GBAMBOOZDWZPVV52RCLJQYMQNXOBLOXWNQAY2IF2FREV2WL46DBCH3BE&buying_asset_type=credit_alphanum4&limit=20&selling_asset_code=&selling_asset_issuer=&selling_asset_type=native",
+	).ReturnString(200, orderBookResponse)
 
-			offers, err := client.LoadAccountOffers("GC2BQYBXFOVPRDH35D5HT2AFVCDGXJM5YVTAF5THFSAISYOWAJQKRESK", At("https://localhost/beepboop"))
-			Expect(err).To(BeNil())
-			Expect(len(offers.Embedded.Records)).To(Equal(2))
-			Expect(offers.Embedded.Records[0].ID).To(Equal(int64(161)))
-			Expect(offers.Embedded.Records[0].Seller).To(Equal("GC2BQYBXFOVPRDH35D5HT2AFVCDGXJM5YVTAF5THFSAISYOWAJQKRESK"))
-			Expect(offers.Embedded.Records[0].Price).To(Equal("450000.0000000"))
-			Expect(offers.Embedded.Records[0].Buying.Type).To(Equal("native"))
-			Expect(offers.Embedded.Records[0].Selling.Type).To(Equal("credit_alphanum4"))
-			Expect(offers.Embedded.Records[0].Selling.Code).To(Equal("XBT"))
-			Expect(offers.Embedded.Records[0].Selling.Issuer).To(Equal("GDI73WJ4SX7LOG3XZDJC3KCK6ED6E5NBYK2JUBQSPBCNNWEG3ZN7T75U"))
-		})
-	})
+	orderBook, err = client.LoadOrderBook(Asset{Type: "native"}, Asset{"credit_alphanum4", "DEMO", "GBAMBOOZDWZPVV52RCLJQYMQNXOBLOXWNQAY2IF2FREV2WL46DBCH3BE"}, Limit(20))
+	if assert.NoError(t, err) {
+		assert.Equal(t, orderBook.Selling.Type, "native")
+		assert.Equal(t, orderBook.Buying.Type, "credit_alphanum4")
+		assert.Equal(t, orderBook.Buying.Code, "DEMO")
+		assert.Equal(t, orderBook.Buying.Issuer, "GBAMBOOZDWZPVV52RCLJQYMQNXOBLOXWNQAY2IF2FREV2WL46DBCH3BE")
 
-	Describe("LoadOrderBook", func() {
-		It("success response", func() {
-			hmock.On(
-				"GET",
-				"https://localhost/order_book?buying_asset_code=DEMO&buying_asset_issuer=GBAMBOOZDWZPVV52RCLJQYMQNXOBLOXWNQAY2IF2FREV2WL46DBCH3BE&buying_asset_type=credit_alphanum4&selling_asset_code=&selling_asset_issuer=&selling_asset_type=native",
-			).ReturnString(200, orderBookResponse)
+		assert.Equal(t, len(orderBook.Bids), 20)
+		assert.Equal(t, orderBook.Bids[0].Price, "0.0024937")
+		assert.Equal(t, orderBook.Bids[0].Amount, "0.4363975")
+		assert.Equal(t, orderBook.Bids[0].PriceR.N, int32(24937))
+		assert.Equal(t, orderBook.Bids[0].PriceR.D, int32(10000000))
 
-			orderBook, err := client.LoadOrderBook(Asset{Type: "native"}, Asset{"credit_alphanum4", "DEMO", "GBAMBOOZDWZPVV52RCLJQYMQNXOBLOXWNQAY2IF2FREV2WL46DBCH3BE"})
-			Expect(err).To(BeNil())
-			Expect(orderBook.Selling.Type).To(Equal("native"))
-			Expect(orderBook.Buying.Type).To(Equal("credit_alphanum4"))
-			Expect(orderBook.Buying.Code).To(Equal("DEMO"))
-			Expect(orderBook.Buying.Issuer).To(Equal("GBAMBOOZDWZPVV52RCLJQYMQNXOBLOXWNQAY2IF2FREV2WL46DBCH3BE"))
+		assert.Equal(t, len(orderBook.Asks), 20)
+		assert.Equal(t, orderBook.Asks[0].Price, "0.0025093")
+		assert.Equal(t, orderBook.Asks[0].Amount, "1248.9663104")
+		assert.Equal(t, orderBook.Asks[0].PriceR.N, int32(2017413))
+		assert.Equal(t, orderBook.Asks[0].PriceR.D, int32(803984111))
+	}
 
-			Expect(len(orderBook.Bids)).To(Equal(20))
-			Expect(orderBook.Bids[0].Price).To(Equal("0.0024937"))
-			Expect(orderBook.Bids[0].Amount).To(Equal("0.4363975"))
-			Expect(orderBook.Bids[0].PriceR.N).To(Equal(int32(24937)))
-			Expect(orderBook.Bids[0].PriceR.D).To(Equal(int32(10000000)))
+	// failure response
+	hmock.On(
+		"GET",
+		"https://localhost/order_book?buying_asset_code=DEMO&buying_asset_issuer=GBAMBOOZDWZPVV52RCLJQYMQNXOBLOXWNQAY2IF2FREV2WL46DBCH3BE&buying_asset_type=credit_alphanum4&limit=20&selling_asset_code=&selling_asset_issuer=&selling_asset_type=native",
+	).ReturnString(404, notFoundResponse)
 
-			Expect(len(orderBook.Asks)).To(Equal(20))
-			Expect(orderBook.Asks[0].Price).To(Equal("0.0025093"))
-			Expect(orderBook.Asks[0].Amount).To(Equal("1248.9663104"))
-			Expect(orderBook.Asks[0].PriceR.N).To(Equal(int32(2017413)))
-			Expect(orderBook.Asks[0].PriceR.D).To(Equal(int32(803984111)))
-		})
+	_, err = client.LoadOrderBook(Asset{Type: "native"}, Asset{"credit_alphanum4", "DEMO", "GBAMBOOZDWZPVV52RCLJQYMQNXOBLOXWNQAY2IF2FREV2WL46DBCH3BE"}, Limit(20))
+	if assert.Error(t, err) {
+		assert.Contains(t, err.Error(), "Horizon error")
+		horizonError, ok := err.(*Error)
+		assert.Equal(t, ok, true)
+		assert.Equal(t, horizonError.Problem.Title, "Resource Missing")
+	}
 
-		It("success response with limit", func() {
-			hmock.On(
-				"GET",
-				"https://localhost/order_book?buying_asset_code=DEMO&buying_asset_issuer=GBAMBOOZDWZPVV52RCLJQYMQNXOBLOXWNQAY2IF2FREV2WL46DBCH3BE&buying_asset_type=credit_alphanum4&limit=20&selling_asset_code=&selling_asset_issuer=&selling_asset_type=native",
-			).ReturnString(200, orderBookResponse)
+	// connection error
+	hmock.On(
+		"GET",
+		"https://localhost/order_book?buying_asset_code=DEMO&buying_asset_issuer=GBAMBOOZDWZPVV52RCLJQYMQNXOBLOXWNQAY2IF2FREV2WL46DBCH3BE&buying_asset_type=credit_alphanum4&limit=20&selling_asset_code=&selling_asset_issuer=&selling_asset_type=native",
+	).ReturnError("http.Client error")
 
-			orderBook, err := client.LoadOrderBook(Asset{Type: "native"}, Asset{"credit_alphanum4", "DEMO", "GBAMBOOZDWZPVV52RCLJQYMQNXOBLOXWNQAY2IF2FREV2WL46DBCH3BE"}, Limit(20))
-			Expect(err).To(BeNil())
-			Expect(orderBook.Selling.Type).To(Equal("native"))
-			Expect(orderBook.Buying.Type).To(Equal("credit_alphanum4"))
-			Expect(orderBook.Buying.Code).To(Equal("DEMO"))
-			Expect(orderBook.Buying.Issuer).To(Equal("GBAMBOOZDWZPVV52RCLJQYMQNXOBLOXWNQAY2IF2FREV2WL46DBCH3BE"))
+	_, err = client.LoadOrderBook(Asset{Type: "native"}, Asset{"credit_alphanum4", "DEMO", "GBAMBOOZDWZPVV52RCLJQYMQNXOBLOXWNQAY2IF2FREV2WL46DBCH3BE"}, Limit(20))
+	if assert.Error(t, err) {
+		assert.Contains(t, err.Error(), "http.Client error")
+		_, ok := err.(*Error)
+		assert.Equal(t, ok, false)
+	}
 
-			Expect(len(orderBook.Bids)).To(Equal(20))
-			Expect(orderBook.Bids[0].Price).To(Equal("0.0024937"))
-			Expect(orderBook.Bids[0].Amount).To(Equal("0.4363975"))
-			Expect(orderBook.Bids[0].PriceR.N).To(Equal(int32(24937)))
-			Expect(orderBook.Bids[0].PriceR.D).To(Equal(int32(10000000)))
+}
 
-			Expect(len(orderBook.Asks)).To(Equal(20))
-			Expect(orderBook.Asks[0].Price).To(Equal("0.0025093"))
-			Expect(orderBook.Asks[0].Amount).To(Equal("1248.9663104"))
-			Expect(orderBook.Asks[0].PriceR.N).To(Equal(int32(2017413)))
-			Expect(orderBook.Asks[0].PriceR.D).To(Equal(int32(803984111)))
-		})
+func TestSubmitTransaction(t *testing.T) {
+	hmock := httptest.NewClient()
+	client := &Client{
+		URL:  "https://localhost",
+		HTTP: hmock,
+	}
+	var tx = "AAAAADSMMRmQGDH6EJzkgi/7PoKhphMHyNGQgDp2tlS/dhGXAAAAZAAT3TUAAAAwAAAAAAAAAAAAAAABAAAAAAAAAAMAAAABSU5SAAAAAAA0jDEZkBgx+hCc5IIv+z6CoaYTB8jRkIA6drZUv3YRlwAAAAFVU0QAAAAAADSMMRmQGDH6EJzkgi/7PoKhphMHyNGQgDp2tlS/dhGXAAAAAAX14QAAAAAKAAAAAQAAAAAAAAAAAAAAAAAAAAG/dhGXAAAAQLuStfImg0OeeGAQmvLkJSZ1MPSkCzCYNbGqX5oYNuuOqZ5SmWhEsC7uOD9ha4V7KengiwNlc0oMNqBVo22S7gk="
 
-		It("failure response", func() {
-			hmock.On(
-				"GET",
-				"https://localhost/order_book?buying_asset_code=DEMO&buying_asset_issuer=GBAMBOOZDWZPVV52RCLJQYMQNXOBLOXWNQAY2IF2FREV2WL46DBCH3BE&buying_asset_type=credit_alphanum4&limit=20&selling_asset_code=&selling_asset_issuer=&selling_asset_type=native",
-			).ReturnString(404, notFoundResponse)
+	// happy path
+	hmock.
+		On("POST", "https://localhost/transactions").
+		ReturnString(200, submitResponse)
 
-			_, err := client.LoadOrderBook(Asset{Type: "native"}, Asset{"credit_alphanum4", "DEMO", "GBAMBOOZDWZPVV52RCLJQYMQNXOBLOXWNQAY2IF2FREV2WL46DBCH3BE"}, Limit(20))
-			Expect(err).NotTo(BeNil())
-			Expect(err.Error()).To(HavePrefix("Horizon error"))
-			horizonError, ok := err.(*Error)
-			Expect(ok).To(BeTrue())
-			Expect(horizonError.Problem.Title).To(Equal("Resource Missing"))
-		})
+	account, err := client.SubmitTransaction(tx)
+	if assert.NoError(t, err) {
+		assert.Equal(t, account.Ledger, int32(3128812))
+	}
 
-		It("connection error", func() {
-			hmock.On(
-				"GET",
-				"https://localhost/order_book?buying_asset_code=DEMO&buying_asset_issuer=GBAMBOOZDWZPVV52RCLJQYMQNXOBLOXWNQAY2IF2FREV2WL46DBCH3BE&buying_asset_type=credit_alphanum4&limit=20&selling_asset_code=&selling_asset_issuer=&selling_asset_type=native",
-			).ReturnError("http.Client error")
+	// failure response
+	hmock.
+		On("POST", "https://localhost/transactions").
+		ReturnString(400, transactionFailure)
 
-			_, err := client.LoadOrderBook(Asset{Type: "native"}, Asset{"credit_alphanum4", "DEMO", "GBAMBOOZDWZPVV52RCLJQYMQNXOBLOXWNQAY2IF2FREV2WL46DBCH3BE"}, Limit(20))
-			Expect(err).NotTo(BeNil())
-			Expect(err.Error()).To(ContainSubstring("http.Client error"))
-			_, ok := err.(*Error)
-			Expect(ok).To(BeFalse())
-		})
-	})
+	_, err = client.SubmitTransaction(tx)
+	if assert.Error(t, err) {
+		assert.Contains(t, err.Error(), "Horizon error")
+		horizonError, ok := errors.Cause(err).(*Error)
+		assert.Equal(t, ok, true)
+		assert.Equal(t, horizonError.Problem.Title, "Transaction Failed")
+	}
 
-	Describe("SubmitTransaction", func() {
-		var tx = "AAAAADSMMRmQGDH6EJzkgi/7PoKhphMHyNGQgDp2tlS/dhGXAAAAZAAT3TUAAAAwAAAAAAAAAAAAAAABAAAAAAAAAAMAAAABSU5SAAAAAAA0jDEZkBgx+hCc5IIv+z6CoaYTB8jRkIA6drZUv3YRlwAAAAFVU0QAAAAAADSMMRmQGDH6EJzkgi/7PoKhphMHyNGQgDp2tlS/dhGXAAAAAAX14QAAAAAKAAAAAQAAAAAAAAAAAAAAAAAAAAG/dhGXAAAAQLuStfImg0OeeGAQmvLkJSZ1MPSkCzCYNbGqX5oYNuuOqZ5SmWhEsC7uOD9ha4V7KengiwNlc0oMNqBVo22S7gk="
+	// connection error
+	hmock.
+		On("POST", "https://localhost/transactions").
+		ReturnError("http.Client error")
 
-		It("success response", func() {
-			hmock.
-				On("POST", "https://localhost/transactions").
-				ReturnString(200, submitResponse)
-
-			account, err := client.SubmitTransaction(tx)
-			Expect(err).To(BeNil())
-			Expect(account.Ledger).To(Equal(int32(3128812)))
-		})
-
-		It("failure response", func() {
-			hmock.
-				On("POST", "https://localhost/transactions").
-				ReturnString(400, transactionFailure)
-
-			_, err := client.SubmitTransaction(tx)
-			Expect(err).NotTo(BeNil())
-			Expect(err.Error()).To(ContainSubstring("Horizon error"))
-			horizonError, ok := errors.Cause(err).(*Error)
-			Expect(ok).To(BeTrue())
-			Expect(horizonError.Problem.Title).To(Equal("Transaction Failed"))
-		})
-
-		It("connection error", func() {
-			hmock.
-				On("POST", "https://localhost/transactions").
-				ReturnError("http.Client error")
-
-			_, err := client.SubmitTransaction(tx)
-			Expect(err).NotTo(BeNil())
-			Expect(err.Error()).To(ContainSubstring("http.Client error"))
-			_, ok := err.(*Error)
-			Expect(ok).To(BeFalse())
-		})
-	})
-})
+	_, err = client.SubmitTransaction(tx)
+	if assert.Error(t, err) {
+		assert.Contains(t, err.Error(), "http.Client error")
+		_, ok := err.(*Error)
+		assert.Equal(t, ok, false)
+	}
+}
 
 var accountResponse = `{
   "_links": {
