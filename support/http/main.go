@@ -10,6 +10,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/stellar/go/support/config"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/support/log"
 	"golang.org/x/net/http2"
@@ -36,8 +37,7 @@ const DefaultShutdownGracePeriod = 10 * time.Second
 type Config struct {
 	Handler             stdhttp.Handler
 	ListenAddr          string
-	TLSCert             string
-	TLSKey              string
+	TLS                 *config.TLS
 	ShutdownGracePeriod time.Duration
 	OnStarting          func()
 	OnStopping          func()
@@ -59,8 +59,8 @@ func Run(conf Config) {
 	}
 
 	var err error
-	if conf.TLSCert != "" {
-		err = srv.ListenAndServeTLS(conf.TLSCert, conf.TLSKey)
+	if conf.TLS != nil {
+		err = srv.ListenAndServeTLS(conf.TLS.CertificateFile, conf.TLS.PrivateKeyFile)
 	} else {
 		err = srv.ListenAndServe()
 	}

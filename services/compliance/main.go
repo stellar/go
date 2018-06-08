@@ -29,10 +29,7 @@ type Config struct {
 		AskUser     string `valid:"url,optional" toml:"ask_user"`
 		GetUserData string `valid:"url,optional" toml:"get_user_data"`
 	} `valid:"optional"`
-	TLS struct {
-		CertificateFile string `valid:"required" toml:"certificate_file"`
-		PrivateKeyFile  string `valid:"required" toml:"private_key_file"`
-	} `valid:"required"`
+	TLS *config.TLS `valid:"optional"`
 }
 
 func main() {
@@ -76,8 +73,7 @@ func run(cmd *cobra.Command, args []string) {
 	http.Run(http.Config{
 		ListenAddr: addr,
 		Handler:    mux,
-		TLSCert:    cfg.TLS.CertificateFile,
-		TLSKey:     cfg.TLS.PrivateKeyFile,
+		TLS:        cfg.TLS,
 		OnStarting: func() {
 			log.Infof("starting compliance server - %s", app.Version())
 			log.Infof("listening on %s", addr)

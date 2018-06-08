@@ -26,7 +26,7 @@ type Config struct {
 		Federation        string `valid:"required"`
 		ReverseFederation string `toml:"reverse-federation" valid:"optional"`
 	} `valid:"required"`
-	TLS config.TLS `valid:"optional"`
+	TLS *config.TLS `valid:"optional"`
 }
 
 func main() {
@@ -76,8 +76,7 @@ func run(cmd *cobra.Command, args []string) {
 	http.Run(http.Config{
 		ListenAddr: addr,
 		Handler:    mux,
-		TLSCert:    cfg.TLS.CertificateFile,
-		TLSKey:     cfg.TLS.PrivateKeyFile,
+		TLS:        cfg.TLS,
 		OnStarting: func() {
 			log.Infof("starting federation server - %s", app.Version())
 			log.Infof("listening on %s", addr)
