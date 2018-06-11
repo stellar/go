@@ -78,7 +78,7 @@ func (p *pathNode) Cost(amount xdr.Int64) (result xdr.Int64, err error) {
 
 	for cur.Tail != nil {
 		ob := cur.OrderBook()
-		result, err = ob.Cost(cur.Tail.Asset, result)
+		result, err = ob.CostToConsumeLiquidity(result)
 		if err != nil {
 			return
 		}
@@ -120,8 +120,8 @@ func (p *pathNode) OrderBook() *orderBook {
 	}
 
 	return &orderBook{
-		Selling: p.Tail.Asset,
-		Buying:  p.Asset,
+		Selling: p.Tail.Asset, // offer is selling this asset
+		Buying:  p.Asset,      // offer is buying this asset
 		Q:       p.Q,
 	}
 }

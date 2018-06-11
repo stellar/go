@@ -5,7 +5,6 @@ import (
 	"math/big"
 
 	sq "github.com/Masterminds/squirrel"
-	"github.com/stellar/go/services/horizon/internal/assets"
 	"github.com/stellar/go/services/horizon/internal/db2/core"
 	"github.com/stellar/go/xdr"
 )
@@ -15,15 +14,49 @@ import (
 // requested amount.
 var ErrNotEnough = errors.New("not enough depth")
 
+// orderbook represents a one-way orderbook that is selling you a specific asset (ob.Selling)
 type orderBook struct {
-	Selling xdr.Asset
-	Buying  xdr.Asset
+	Selling xdr.Asset // the offers are selling this asset
+	Buying  xdr.Asset // the offers are buying this asset
 	Q       *core.Q
 }
 
-func (ob *orderBook) Cost(source xdr.Asset, sourceAmount xdr.Int64) (result xdr.Int64, err error) {
-	// load offers from the two assets
+// CostToConsumeLiquidity returns the buyingAmount (ob.Buying) needed to consume the sellingAmount (ob.Selling)
+func (ob *orderBook) CostToConsumeLiquidity(sellingAmount xdr.Int64) (xdr.Int64, error) {
+	// load orderbook from core's db
+	sql, e := ob.query()
+	if e != nil {
+		return 0, e
+	}
+	rows, e := ob.Q.Query(sql)
+	if e != nil {
+		return 0, e
+	}
+	defer rows.Close()
 
+	// remaining is the units of ob.Selling that we want to consume
+	remaining := int64(sellingAmount)
+	var buyingAmount int64
+	for rows.Next() {
+		// load data from the row
+		var offerAmount, pricen, priced, offerid int64
+		e = rows.Scan(&offerAmount, &pricen, &priced, &offerid)
+		if e != nil {
+			return 0, e
+		}
+
+		if offerAmount >= remaining {
+			buyingAmount += mul(remaining, pricen, priced)
+			return xdr.Int64(buyingAmount), nil
+		}
+
+		buyingAmount += mul(offerAmount, pricen, priced)
+		remaining -= offerAmount
+	}
+	return 0, ErrNotEnough
+}
+
+func (ob *orderBook) query() (sq.SelectBuilder, error) {
 	var (
 		// selling/buying types
 		st, bt xdr.AssetType
@@ -32,15 +65,13 @@ func (ob *orderBook) Cost(source xdr.Asset, sourceAmount xdr.Int64) (result xdr.
 		// selling/buying issuers
 		si, bi string
 	)
-
-	err = ob.Selling.Extract(&st, &sc, &si)
-	if err != nil {
-		return
+	e := ob.Selling.Extract(&st, &sc, &si)
+	if e != nil {
+		return sq.SelectBuilder{}, e
 	}
-
-	err = ob.Buying.Extract(&bt, &bc, &bi)
-	if err != nil {
-		return
+	e = ob.Buying.Extract(&bt, &bc, &bi)
+	if e != nil {
+		return sq.SelectBuilder{}, e
 	}
 
 	sql := sq.
@@ -53,52 +84,9 @@ func (ob *orderBook) Cost(source xdr.Asset, sourceAmount xdr.Int64) (result xdr.
 		Where(sq.Eq{
 			"buyingassettype":               bt,
 			"COALESCE(buyingassetcode, '')": bc,
-			"COALESCE(buyingissuer, '')":    bi})
-
-	inverted := assets.Equals(source, ob.Buying)
-
-	if !inverted {
-		sql = sql.OrderBy("price ASC")
-	} else {
-		sql = sql.OrderBy("price DESC")
-	}
-
-	rows, err := ob.Q.Query(sql)
-	if err != nil {
-		return
-	}
-	defer rows.Close()
-
-	var (
-		needed = int64(sourceAmount)
-		cost   int64
-	)
-
-	for rows.Next() {
-		// load data from the row
-		var available, pricen, priced, offerid int64
-		if inverted {
-			err = rows.Scan(&available, &priced, &pricen, &offerid)
-			available = mul(available, pricen, priced)
-		} else {
-			err = rows.Scan(&available, &pricen, &priced, &offerid)
-		}
-		if err != nil {
-			return
-		}
-
-		if available >= needed {
-			cost += mul(needed, pricen, priced)
-			result = xdr.Int64(cost)
-			return
-		}
-
-		cost += mul(available, pricen, priced)
-		needed -= available
-	}
-
-	err = ErrNotEnough
-	return
+			"COALESCE(buyingissuer, '')":    bi}).
+		OrderBy("price ASC")
+	return sql, nil
 }
 
 // mul multiplies the input amount by the input price
