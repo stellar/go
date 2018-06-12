@@ -67,51 +67,45 @@ func (p *pathNode) Path() []xdr.Asset {
 }
 
 // Cost implements the paths.Path.Cost interface method
-func (p *pathNode) Cost(amount xdr.Int64) (result xdr.Int64, err error) {
-	result = amount
-
+func (p *pathNode) Cost(amount xdr.Int64) (xdr.Int64, error) {
 	if p.Tail == nil {
-		return
+		return amount, nil
 	}
 
+	result := amount
+	var err error
 	cur := p
-
 	for cur.Tail != nil {
 		ob := cur.OrderBook()
 		result, err = ob.CostToConsumeLiquidity(result)
 		if err != nil {
-			return
+			return result, err
 		}
 		cur = cur.Tail
 	}
-
-	return
+	return result, nil
 }
 
 // Depth returns the length of the list
 func (p *pathNode) Depth() int {
 	depth := 0
 	cur := p
-	for {
-		if cur == nil {
-			return depth
-		}
+	for cur != nil {
 		cur = cur.Tail
 		depth++
 	}
+	return depth
 }
 
 // Flatten walks the list and returns a slice of assets
-func (p *pathNode) Flatten() (result []xdr.Asset) {
+func (p *pathNode) Flatten() []xdr.Asset {
+	result := []xdr.Asset{}
 	cur := p
-
-	for {
-		if cur == nil {
-			return
-		}
+	for cur != nil {
 		result = append(result, cur.Asset)
 		cur = cur.Tail
 	}
+	return result
 }
 
 func (p *pathNode) OrderBook() *orderBook {
