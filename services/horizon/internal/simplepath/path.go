@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	"github.com/stellar/go/services/horizon/internal/db2/core"
-	"github.com/stellar/go/services/horizon/internal/paths"
 	"github.com/stellar/go/xdr"
 )
 
@@ -16,9 +15,6 @@ type pathNode struct {
 	Tail  *pathNode
 	Q     *core.Q
 }
-
-// check interface compatibility
-var _ paths.Path = &pathNode{}
 
 func (p *pathNode) String() string {
 	if p == nil {

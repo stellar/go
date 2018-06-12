@@ -21,7 +21,7 @@ type search struct {
 
 	// Fields below are initialized by a call to Init() after
 	// setting the fields above
-	queue   []*pathNode
+	queue   []computedNode
 	targets map[string]bool
 	visited map[string]bool
 
@@ -30,16 +30,41 @@ type search struct {
 	Results []paths.Path
 }
 
+// computedNode represents a pathNode with the computed cost
+type computedNode struct {
+	path pathNode
+	cost xdr.Int64
+}
+
+func (c computedNode) asPath() paths.Path {
+	return paths.Path{
+		Path:        c.path.Path(),
+		Source:      c.path.Source(),
+		Destination: c.path.Destination(),
+		Cost:        c.cost,
+	}
+}
+
 const maxResults = 20
 
 // Init initialized the search, setting fields on the struct used to
 // hold state needed during the actual search.
 func (s *search) Init() {
-	s.queue = []*pathNode{
-		&pathNode{
-			Asset: s.Query.DestinationAsset,
-			Tail:  nil,
-			Q:     s.Finder.Q,
+	p0 := pathNode{
+		Asset: s.Query.DestinationAsset,
+		Tail:  nil,
+		Q:     s.Finder.Q,
+	}
+	var c0 xdr.Int64
+	c0, s.Err = p0.Cost(s.Query.DestinationAmount)
+	if s.Err != nil {
+		return
+	}
+
+	s.queue = []computedNode{
+		computedNode{
+			path: p0,
+			cost: c0,
 		},
 	}
 
@@ -69,7 +94,7 @@ func (s *search) Run() {
 }
 
 // pop removes the head from the search queue, returning it to the caller
-func (s *search) pop() *pathNode {
+func (s *search) pop() computedNode {
 	next := s.queue[0]
 	s.queue = s.queue[1:]
 	return next
@@ -110,10 +135,10 @@ func (s *search) shouldVisit(id string) bool {
 // and extending the search as necessary.
 func (s *search) runOnce() {
 	cur := s.pop()
-	id := cur.Asset.String()
+	id := cur.path.Asset.String()
 
 	if s.isTarget(id) {
-		s.Results = append(s.Results, cur)
+		s.Results = append(s.Results, cur.asPath())
 	}
 
 	if !s.shouldVisit(id) {
@@ -123,31 +148,31 @@ func (s *search) runOnce() {
 	// A PathPaymentOp's path cannot be over 5 elements in length, and so
 	// we abort our search if the current linked list is over 7 (since the list
 	// includes both source and destination in addition to the path)
-	if cur.Depth() > 7 {
+	if cur.path.Depth() > 7 {
 		return
 	}
 
-	s.extendSearch(cur)
-
+	s.extendSearch(cur.path)
 }
 
-func (s *search) extendSearch(cur *pathNode) {
+func (s *search) extendSearch(p pathNode) {
 	// find connected assets
 	var connected []xdr.Asset
-	s.Err = s.Finder.Q.ConnectedAssets(&connected, cur.Asset)
+	s.Err = s.Finder.Q.ConnectedAssets(&connected, p.Asset)
 	if s.Err != nil {
 		return
 	}
 
 	for _, a := range connected {
-		newPath := &pathNode{
+		newPath := pathNode{
 			Asset: a,
-			Tail:  cur,
+			Tail:  &p,
 			Q:     s.Finder.Q,
 		}
 
 		var hasEnough bool
-		hasEnough, s.Err = s.hasEnoughDepth(newPath)
+		var cost xdr.Int64
+		hasEnough, cost, s.Err = s.hasEnoughDepth(&newPath)
 		if s.Err != nil {
 			return
 		}
@@ -156,14 +181,14 @@ func (s *search) extendSearch(cur *pathNode) {
 			continue
 		}
 
-		s.queue = append(s.queue, newPath)
+		s.queue = append(s.queue, computedNode{newPath, cost})
 	}
 }
 
-func (s *search) hasEnoughDepth(path *pathNode) (bool, error) {
-	_, err := path.Cost(s.Query.DestinationAmount)
+func (s *search) hasEnoughDepth(path *pathNode) (bool, xdr.Int64, error) {
+	cost, err := path.Cost(s.Query.DestinationAmount)
 	if err == ErrNotEnough {
-		return false, nil
+		return false, 0, nil
 	}
-	return true, err
+	return true, cost, err
 }
