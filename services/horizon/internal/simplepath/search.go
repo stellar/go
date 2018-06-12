@@ -95,9 +95,9 @@ func (s *search) isTarget(id string) bool {
 	return found
 }
 
-// visit returns true if the asset id provided has not been
+// shouldVisit returns true if the asset id provided has not been
 // visited on this search, after marking the id as visited
-func (s *search) visit(id string) bool {
+func (s *search) shouldVisit(id string) bool {
 	if _, found := s.visited[id]; found {
 		return false
 	}
@@ -116,7 +116,7 @@ func (s *search) runOnce() {
 		s.Results = append(s.Results, cur)
 	}
 
-	if !s.visit(id) {
+	if !s.shouldVisit(id) {
 		return
 	}
 

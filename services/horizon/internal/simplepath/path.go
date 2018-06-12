@@ -12,9 +12,10 @@ import (
 // pathNode implements the paths.Path interface and represents a path
 // as a linked list pointing from source to destination.
 type pathNode struct {
-	Asset xdr.Asset
-	Tail  *pathNode
-	Q     *core.Q
+	Asset     xdr.Asset
+	Tail      *pathNode
+	Q         *core.Q
+	costCache map[xdr.Int64]xdr.Int64
 }
 
 // check interface compatibility
@@ -66,52 +67,64 @@ func (p *pathNode) Path() []xdr.Asset {
 	return path[1 : len(path)-1]
 }
 
-// Cost implements the paths.Path.Cost interface method
-func (p *pathNode) Cost(amount xdr.Int64) (result xdr.Int64, err error) {
-	result = amount
+func (p *pathNode) init() {
+	p.costCache = make(map[xdr.Int64]xdr.Int64)
+}
 
-	if p.Tail == nil {
-		return
+// Cost implements the paths.Path.Cost interface method
+func (p *pathNode) Cost(amount xdr.Int64) (xdr.Int64, error) {
+	if p.costCache == nil {
+		p.init()
 	}
 
+	result := amount
+	var err error
 	cur := p
-
 	for cur.Tail != nil {
 		ob := cur.OrderBook()
 		result, err = ob.CostToConsumeLiquidity(result)
 		if err != nil {
-			return
+			return result, err
 		}
 		cur = cur.Tail
 	}
 
-	return
+	p.costCache[amount] = result
+	return result, nil
+}
+
+// CachedCost impl, returns a cached version for the provided amount or nil if not cached
+func (p *pathNode) CachedCost(amount xdr.Int64) *xdr.Int64 {
+	if p.costCache == nil {
+		return nil
+	}
+
+	if cached, ok := p.costCache[amount]; ok {
+		return &cached
+	}
+	return nil
 }
 
 // Depth returns the length of the list
 func (p *pathNode) Depth() int {
 	depth := 0
 	cur := p
-	for {
-		if cur == nil {
-			return depth
-		}
+	for cur != nil {
 		cur = cur.Tail
 		depth++
 	}
+	return depth
 }
 
 // Flatten walks the list and returns a slice of assets
-func (p *pathNode) Flatten() (result []xdr.Asset) {
+func (p *pathNode) Flatten() []xdr.Asset {
+	result := []xdr.Asset{}
 	cur := p
-
-	for {
-		if cur == nil {
-			return
-		}
+	for cur != nil {
 		result = append(result, cur.Asset)
 		cur = cur.Tail
 	}
+	return result
 }
 
 func (p *pathNode) OrderBook() *orderBook {

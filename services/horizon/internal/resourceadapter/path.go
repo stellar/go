@@ -4,18 +4,24 @@ import (
 	"context"
 
 	"github.com/stellar/go/amount"
-	"github.com/stellar/go/services/horizon/internal/paths"
 	. "github.com/stellar/go/protocols/horizon"
+	"github.com/stellar/go/services/horizon/internal/paths"
+	"github.com/stellar/go/xdr"
 )
 
 func PopulatePath(ctx context.Context, dest *Path, q paths.Query, p paths.Path) (err error) {
-
 	dest.DestinationAmount = amount.String(q.DestinationAmount)
-	cost, err := p.Cost(q.DestinationAmount)
-	if err != nil {
-		return
-	}
 
+	// check if cost is cached first before recomputing
+	var cost xdr.Int64
+	if cachedCost := p.CachedCost(q.DestinationAmount); cachedCost != nil {
+		cost = *cachedCost
+	} else {
+		cost, err = p.Cost(q.DestinationAmount)
+		if err != nil {
+			return
+		}
+	}
 	dest.SourceAmount = amount.String(cost)
 
 	err = p.Source().Extract(
