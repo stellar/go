@@ -57,11 +57,8 @@ For each new version we will only track changes from the previous version.
 | `GET /payments` SSE                           |                                              | +                              | 0.8.2              | 0.2.0                                             |
 | `GET /effects`                                |                                              | -                              | 0.8.2              | 0.2.0<br />(no support for data, inflation types) |
 | `GET /effects` SSE                            |                                              | -                              | 0.8.2              | 0.2.0<br />(no support for data, inflation types) |
-| `GET /trades`                                 |                                              | +                              | 0.8.2              | 0.2.0                                             |
+| `GET /trades`                                 |                                              | +                              | 0.8.2              | 0.2.0<br />(no `price` field)                     |
 | `GET /trades_aggregations`                    |                                              | +                              | 0.8.2              | 0.2.0                                             |
-| `GET /offers`                                 |                                              | -                              | -                  | 0.2.0                                             |
-| `GET /offers` SSE                             |                                              | -                              | -                  | -                                                 |
-| `GET /offers/{offer_id}`                      |                                              | -                              | -                  | -                                                 |
 | `GET /offers/{offer_id}/trades`               |                                              | -                              | 0.8.2              | -                                                 |
 | `GET /order_book`                             |                                              | +                              | 0.8.2              | 0.2.0                                             |
 | `GET /order_book` SSE                         |                                              | -                              | 0.8.2              | -                                                 |
