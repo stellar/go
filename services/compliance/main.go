@@ -185,8 +185,7 @@ func (a *App) Serve() {
 		supportHttp.Run(supportHttp.Config{
 			ListenAddr: fmt.Sprintf(":%d", *a.config.ExternalPort),
 			Handler:    external,
-			TLSCert:    a.config.TLS.CertificateFile,
-			TLSKey:     a.config.TLS.PrivateKeyFile,
+			TLS:        a.config.TLS,
 			OnStarting: func() {
 				log.Infof("External server listening on %d", *a.config.ExternalPort)
 			},
