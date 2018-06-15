@@ -17,7 +17,8 @@ type Path struct {
 	Path        []xdr.Asset
 	Source      xdr.Asset
 	Destination xdr.Asset
-	Cost        xdr.Int64 // delimited in the Source assets, to be used as `sendMax` field for a `PathPaymentOp` struct.
+	// represents the source assets to be used as `sendMax` field for a `PathPaymentOp` struct
+	Cost xdr.Int64
 }
 
 // Finder finds paths.
