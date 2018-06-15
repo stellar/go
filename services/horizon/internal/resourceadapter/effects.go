@@ -111,7 +111,7 @@ func NewEffect(
 		err = row.UnmarshalDetails(&e)
 		result = e
 	case history.EffectSequenceBumped:
-		e := SequenceBumped{Base: basev}
+		e := effects.SequenceBumped{Base: basev}
 		err = row.UnmarshalDetails(&e)
 		result = e
 	default:
