@@ -2,6 +2,7 @@ package db
 
 import (
 	"database/sql"
+	"reflect"
 
 	"github.com/stellar/go/support/errors"
 )
@@ -61,6 +62,28 @@ func (ub *UpdateBuilder) Set(column string, value interface{}) *UpdateBuilder {
 // https://godoc.org/github.com/Masterminds/squirrel#UpdateBuilder.Suffix
 func (ub *UpdateBuilder) SetMap(clauses map[string]interface{}) *UpdateBuilder {
 	ub.sql = ub.sql.SetMap(clauses)
+	return ub
+}
+
+// SetStruct is using `db` tag on the struct and updates the query with struct
+// values for each field (except `ignored` fields).
+func (ub *UpdateBuilder) SetStruct(s interface{}, ignored []string) *UpdateBuilder {
+	ignoredMap := map[string]bool{}
+	for _, ig := range ignored {
+		ignoredMap[ig] = true
+	}
+
+	cols := columnsForStruct(s)
+	row := reflect.ValueOf(s)
+	rvals := mapper.FieldsByName(row, cols)
+
+	for i, col := range cols {
+		if ignoredMap[col] {
+			continue
+		}
+		ub.Set(col, rvals[i].Interface())
+	}
+
 	return ub
 }
 

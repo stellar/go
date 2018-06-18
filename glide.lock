@@ -1,5 +1,5 @@
-hash: 7eac67607acc35ee775cfd4301d326fa205f7d0e95836f36dd934c5ccd9fc171
-updated: 2017-12-22T11:51:26.139292-09:00
+hash: 3a69f7dec811d688c2dfd07680009338742cb8aa3c7b6ae261be0a685a8e0cac
+updated: 2018-05-25T14:42:36.178951+02:00
 imports:
 - name: bitbucket.org/ww/goautoneg
   version: 75cd24fc2f2c2a2088577d12123ddee5f54e0675
@@ -43,6 +43,8 @@ imports:
   - private/waiter
   - service/s3
   - service/sts
+- name: github.com/bartekn/go-bip39
+  version: a05967ea095d81c8fe4833776774cfaff8e5036c
 - name: github.com/btcsuite/btcd
   version: 4803a8291c92a1d2d41041b942a9a9e37deab065
   subpackages:
@@ -131,6 +133,8 @@ imports:
   repo: https://github.com/go-sql-driver/mysql
 - name: github.com/go-stack/stack
   version: 817915b46b97fd7bb80e8ab6b69f01a53ac3eebf
+- name: github.com/goji/httpauth
+  version: 2da839ab0f4df05a6db5eb277995589dadbd4fb9
 - name: github.com/golang/groupcache
   version: 604ed5785183e59ae2789449d89e73f3a2a77987
   repo: https://github.com/golang/groupcache
@@ -228,7 +232,7 @@ imports:
   subpackages:
   - xdr3
 - name: github.com/onsi/ginkgo
-  version: 6c46eb8334b30dc55b42f1a1c725d5ce97375390
+  version: 26d21430af911e84459ee38099f0a07e57a7f9b0
   subpackages:
   - config
   - extensions/table
@@ -249,7 +253,7 @@ imports:
   - reporters/stenographer/support/go-isatty
   - types
 - name: github.com/onsi/gomega
-  version: d35dcfdbfd01eaabf8da0b6b36f111ff953b68cb
+  version: 649b44d988ce182cabcda7dba01fcf3b6179ad19
   subpackages:
   - format
   - internal/assertion
@@ -346,8 +350,6 @@ imports:
   - suite
 - name: github.com/tyler-smith/go-bip32
   version: 2c9cfd17756470a0b7c3e4b7954bae7d11035504
-- name: github.com/bartekn/go-bip39
-  version: a05967ea095d81c8fe4833776774cfaff8e5036c
 - name: github.com/valyala/bytebufferpool
   version: e746df99fe4a3986f4d4f79e13c1e0117ce9c2f7
   repo: https://github.com/valyala/bytebufferpool
@@ -367,7 +369,7 @@ imports:
   version: f06f290571ce81ab347174c6f7ad2e1865af41a7
   repo: https://github.com/xeipuuv/gojsonschema
 - name: github.com/y0ssar1an/q
-  version: 392ac3089fcf8c70ebbe85f4c29778b7ebe27a9f
+  version: a594777528d69da7978e1e90b205d6cdd7dda29f
 - name: github.com/yalp/jsonpath
   version: 31a79c7593bb93eb10b163650d4a3e6ca190e4dc
   repo: https://github.com/yalp/jsonpath
