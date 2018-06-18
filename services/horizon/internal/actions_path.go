@@ -1,9 +1,9 @@
 package horizon
 
 import (
+	"github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/services/horizon/internal/paths"
 	"github.com/stellar/go/services/horizon/internal/resourceadapter"
-	"github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/support/render/hal"
 )
 
@@ -32,7 +32,6 @@ func (action *PathIndexAction) loadQuery() {
 	action.Query.DestinationAmount = action.GetAmount("destination_amount")
 	action.Query.DestinationAddress = action.GetAddress("destination_account")
 	action.Query.DestinationAsset = action.GetAsset("destination_")
-
 }
 
 func (action *PathIndexAction) loadSourceAssets() {
