@@ -5,9 +5,9 @@ import (
 
 	"github.com/stellar/go/services/horizon/internal/db2/core"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
-	"github.com/stellar/go/services/horizon/internal/txsub"
-	results "github.com/stellar/go/services/horizon/internal/txsub/results/db"
-	"github.com/stellar/go/services/horizon/internal/txsub/sequence"
+	"github.com/stellar/go/support/txsub"
+	results "github.com/stellar/go/support/txsub/results/db"
+	"github.com/stellar/go/support/txsub/sequence"
 )
 
 func initSubmissionSystem(app *App) {
