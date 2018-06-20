@@ -7,9 +7,9 @@ import (
 	"context"
 	"encoding/base64"
 
+	"github.com/stellar/go/protocols/horizon/ledger"
 	"github.com/stellar/go/services/horizon/internal/db2/core"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
-	"github.com/stellar/go/services/horizon/internal/ledger"
 	"github.com/stellar/go/support/txsub"
 	"github.com/stellar/go/xdr"
 )

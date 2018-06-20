@@ -9,9 +9,9 @@ import (
 
 	"github.com/go-chi/chi"
 	"github.com/stellar/go/amount"
+	"github.com/stellar/go/protocols/horizon/ledger"
 	"github.com/stellar/go/services/horizon/internal/assets"
 	"github.com/stellar/go/services/horizon/internal/db2"
-	"github.com/stellar/go/services/horizon/internal/ledger"
 	hProblem "github.com/stellar/go/services/horizon/internal/render/problem"
 	"github.com/stellar/go/services/horizon/internal/toid"
 	"github.com/stellar/go/strkey"

@@ -3,8 +3,8 @@ package reap
 import (
 	"time"
 
+	"github.com/stellar/go/protocols/horizon/ledger"
 	"github.com/stellar/go/services/horizon/internal/errors"
-	"github.com/stellar/go/services/horizon/internal/ledger"
 	"github.com/stellar/go/services/horizon/internal/log"
 	"github.com/stellar/go/services/horizon/internal/toid"
 )
