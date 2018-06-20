@@ -5,8 +5,8 @@ import (
 
 	"github.com/stellar/go/services/horizon/internal/db2/core"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
+	results "github.com/stellar/go/services/horizon/internal/results/db"
 	"github.com/stellar/go/support/txsub"
-	results "github.com/stellar/go/support/txsub/results/db"
 	"github.com/stellar/go/support/txsub/sequence"
 )
 
