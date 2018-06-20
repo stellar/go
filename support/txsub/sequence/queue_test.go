@@ -5,12 +5,9 @@ import (
 	"time"
 
 	. "github.com/smartystreets/goconvey/convey"
-	"github.com/stellar/go/services/horizon/internal/test"
 )
 
 func TestQueue(t *testing.T) {
-	ctx := test.Context()
-	_ = ctx
 	Convey("Queue", t, func() {
 		queue := NewQueue()
 
