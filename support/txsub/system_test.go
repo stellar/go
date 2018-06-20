@@ -7,13 +7,12 @@ import (
 
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stellar/go/build"
-	"github.com/stellar/go/services/horizon/internal/test"
 	"github.com/stellar/go/support/txsub/sequence"
 )
 
 func TestTxsub(t *testing.T) {
 	Convey("txsub.System", t, func() {
-		ctx := test.Context()
+		ctx := NewTestContext()
 		submitter := &MockSubmitter{}
 		results := &MockResultProvider{}
 		sequences := &MockSequenceProvider{}

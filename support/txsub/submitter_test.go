@@ -5,16 +5,15 @@ import (
 	"testing"
 
 	. "github.com/smartystreets/goconvey/convey"
-	"github.com/stellar/go/services/horizon/internal/test"
 )
 
 func TestDefaultSubmitter(t *testing.T) {
-	ctx := test.Context()
+	ctx := NewTestContext()
 
 	Convey("submitter (The default Submitter implementation)", t, func() {
 
 		Convey("submits to the configured stellar-core instance correctly", func() {
-			server := test.NewStaticMockServer(`{
+			server := NewStaticMockServer(`{
 				"status": "PENDING",
 				"error": null
 				}`)
@@ -28,7 +27,7 @@ func TestDefaultSubmitter(t *testing.T) {
 		})
 
 		Convey("succeeds when the stellar-core responds with DUPLICATE status", func() {
-			server := test.NewStaticMockServer(`{
+			server := NewStaticMockServer(`{
 				"status": "DUPLICATE",
 				"error": null
 				}`)
@@ -58,7 +57,7 @@ func TestDefaultSubmitter(t *testing.T) {
 		})
 
 		Convey("errors when the stellar-core returns an unparseable response", func() {
-			server := test.NewStaticMockServer(`{`)
+			server := NewStaticMockServer(`{`)
 			defer server.Close()
 
 			s := NewDefaultSubmitter(http.DefaultClient, server.URL)
@@ -67,7 +66,7 @@ func TestDefaultSubmitter(t *testing.T) {
 		})
 
 		Convey("errors when the stellar-core returns an exception response", func() {
-			server := test.NewStaticMockServer(`{"exception": "Invalid XDR"}`)
+			server := NewStaticMockServer(`{"exception": "Invalid XDR"}`)
 			defer server.Close()
 
 			s := NewDefaultSubmitter(http.DefaultClient, server.URL)
@@ -77,7 +76,7 @@ func TestDefaultSubmitter(t *testing.T) {
 		})
 
 		Convey("errors when the stellar-core returns an unrecognized status", func() {
-			server := test.NewStaticMockServer(`{"status": "NOTREAL"}`)
+			server := NewStaticMockServer(`{"status": "NOTREAL"}`)
 			defer server.Close()
 
 			s := NewDefaultSubmitter(http.DefaultClient, server.URL)
@@ -87,7 +86,7 @@ func TestDefaultSubmitter(t *testing.T) {
 		})
 
 		Convey("errors when the stellar-core returns an error response", func() {
-			server := test.NewStaticMockServer(`{"status": "ERROR", "error": "1234"}`)
+			server := NewStaticMockServer(`{"status": "ERROR", "error": "1234"}`)
 			defer server.Close()
 
 			s := NewDefaultSubmitter(http.DefaultClient, server.URL)

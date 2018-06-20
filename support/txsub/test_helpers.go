@@ -8,6 +8,11 @@ package txsub
 
 import (
 	"context"
+	"fmt"
+	"net/http"
+	"net/http/httptest"
+
+	"github.com/stellar/go/support/log"
 )
 
 // MockSubmitter is a test helper that simplements the Submitter interface
@@ -50,4 +55,25 @@ type MockSequenceProvider struct {
 // Get implements `txsub.SequenceProvider`
 func (results *MockSequenceProvider) Get(addresses []string) (map[string]uint64, error) {
 	return results.Results, results.Err
+}
+
+// StaticMockServer is a test helper that records it's last request
+type StaticMockServer struct {
+	*httptest.Server
+	LastRequest *http.Request
+}
+
+func NewStaticMockServer(response string) *StaticMockServer {
+	result := &StaticMockServer{}
+	result.Server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		result.LastRequest = r
+		fmt.Fprintln(w, response)
+	}))
+
+	return result
+}
+
+func NewTestContext() context.Context {
+	var logger *log.Entry
+	return log.Set(context.Background(), logger)
 }

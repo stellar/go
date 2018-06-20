@@ -5,11 +5,10 @@ import (
 	"time"
 
 	. "github.com/smartystreets/goconvey/convey"
-	"github.com/stellar/go/services/horizon/internal/test"
 )
 
 func TestDefaultSubmissionList(t *testing.T) {
-	ctx := test.Context()
+	ctx := NewTestContext()
 
 	Convey("submissionList (The default OpenSubmissionList implementation)", t, func() {
 		list := NewDefaultSubmissionList()
