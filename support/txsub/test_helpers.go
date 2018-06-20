@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 
+	"github.com/sirupsen/logrus"
 	"github.com/stellar/go/support/log"
 )
 
@@ -74,6 +75,8 @@ func NewStaticMockServer(response string) *StaticMockServer {
 }
 
 func NewTestContext() context.Context {
-	var logger *log.Entry
-	return log.Set(context.Background(), logger)
+	testLogger := log.New()
+	testLogger.Entry.Logger.Formatter.(*logrus.TextFormatter).DisableColors = true
+	testLogger.Entry.Logger.Level = logrus.DebugLevel
+	return log.Set(context.Background(), testLogger)
 }
