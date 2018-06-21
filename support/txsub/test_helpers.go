@@ -58,12 +58,15 @@ func (results *MockSequenceProvider) Get(addresses []string) (map[string]uint64,
 	return results.Results, results.Err
 }
 
-// StaticMockServer is a test helper that records it's last request
+// StaticMockServer is a test helper that records it's last request. This is ported
+// from /services/horizon/internal/test.
 type StaticMockServer struct {
 	*httptest.Server
 	LastRequest *http.Request
 }
 
+// NewStaticMockServer creates a new mock server that always responds with. This is ported
+// from /services/horizon/internal/tests.
 func NewStaticMockServer(response string) *StaticMockServer {
 	result := &StaticMockServer{}
 	result.Server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -74,9 +77,11 @@ func NewStaticMockServer(response string) *StaticMockServer {
 	return result
 }
 
+// NewTestContext mimics the test.Context() functionality from /services/horizon/internal/tests.
 func NewTestContext() context.Context {
 	testLogger := log.New()
 	testLogger.Entry.Logger.Formatter.(*logrus.TextFormatter).DisableColors = true
 	testLogger.Entry.Logger.Level = logrus.DebugLevel
+
 	return log.Set(context.Background(), testLogger)
 }
