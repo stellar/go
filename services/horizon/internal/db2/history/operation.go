@@ -61,6 +61,8 @@ func (q *OperationsQ) ForAccount(aid string) *OperationsQ {
 			"hopp.history_operation_id = hop.id",
 	).Where("hopp.history_account_id = ?", account.ID)
 
+	q.forAccount = true
+
 	return q
 }
 
@@ -124,7 +126,12 @@ func (q *OperationsQ) Page(page db2.PageQuery) *OperationsQ {
 		return q
 	}
 
-	q.sql, q.Err = page.ApplyTo(q.sql, "hop.id")
+	column := "hop.id"
+	if q.forAccount {
+		column = "hopp.history_operation_id"
+	}
+
+	q.sql, q.Err = page.ApplyTo(q.sql, column)
 	return q
 }
 

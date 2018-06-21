@@ -208,9 +208,10 @@ type Operation struct {
 // OperationsQ is a helper struct to aid in configuring queries that loads
 // slices of Operation structs.
 type OperationsQ struct {
-	Err    error
-	parent *Q
-	sql    sq.SelectBuilder
+	Err        error
+	forAccount bool
+	parent     *Q
+	sql        sq.SelectBuilder
 }
 
 // Q is a helper struct on which to hang common_trades queries against a history
