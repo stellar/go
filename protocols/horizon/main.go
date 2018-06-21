@@ -47,6 +47,28 @@ type Account struct {
 	Data                 map[string]string `json:"data"`
 }
 
+// GetNativeBalance returns the native balance of the account
+func (a Account) GetNativeBalance() (string, error){
+	for _, balance := range a.Balances {
+		if balance.Asset.Type == "native" {
+			return balance.Balance, nil
+		}
+	}
+
+	return "0", errors.New("account does not have a native balance")
+}
+
+// GetCreditBalance returns the balance for given code and issuer
+func (a Account) GetCreditBalance(code string, issuer string) string {
+	for _, balance := range a.Balances {
+		if balance.Asset.Code == code && balance.Asset.Issuer == issuer {
+			return balance.Balance
+		}
+	}
+
+	return "0"
+}
+
 // MustGetData returns decoded value for a given key. If the key does
 // not exist, empty slice will be returned. If there is an error
 // decoding a value, it will panic.
