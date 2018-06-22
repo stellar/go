@@ -4,96 +4,94 @@ import (
 	"net/http"
 	"testing"
 
-	. "github.com/smartystreets/goconvey/convey"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestDefaultSubmitter(t *testing.T) {
 	ctx := NewTestContext()
 
-	Convey("submitter (The default Submitter implementation)", t, func() {
+	t.Run("submits to the configured stellar-core instance correctly", func(t *testing.T) {
+		server := NewStaticMockServer(`{
+			"status": "PENDING",
+			"error": null
+			}`)
+		defer server.Close()
 
-		Convey("submits to the configured stellar-core instance correctly", func() {
-			server := NewStaticMockServer(`{
-				"status": "PENDING",
-				"error": null
-				}`)
-			defer server.Close()
+		s := NewDefaultSubmitter(http.DefaultClient, server.URL)
+		sr := s.Submit(ctx, "hello")
+		assert.Nil(t, sr.Err)
+		assert.True(t, sr.Duration > 0)
+		assert.Equal(t, "hello", server.LastRequest.URL.Query().Get("blob"))
+	})
 
-			s := NewDefaultSubmitter(http.DefaultClient, server.URL)
-			sr := s.Submit(ctx, "hello")
-			So(sr.Err, ShouldBeNil)
-			So(sr.Duration, ShouldBeGreaterThan, 0)
-			So(server.LastRequest.URL.Query().Get("blob"), ShouldEqual, "hello")
-		})
+	t.Run("succeeds when the stellar-core responds with DUPLICATE status", func(t *testing.T) {
+		server := NewStaticMockServer(`{
+			"status": "DUPLICATE",
+			"error": null
+			}`)
+		defer server.Close()
 
-		Convey("succeeds when the stellar-core responds with DUPLICATE status", func() {
-			server := NewStaticMockServer(`{
-				"status": "DUPLICATE",
-				"error": null
-				}`)
-			defer server.Close()
+		s := NewDefaultSubmitter(http.DefaultClient, server.URL)
+		sr := s.Submit(ctx, "hello")
+		assert.Nil(t, sr.Err)
+	})
 
-			s := NewDefaultSubmitter(http.DefaultClient, server.URL)
-			sr := s.Submit(ctx, "hello")
-			So(sr.Err, ShouldBeNil)
-		})
+	t.Run("errors when the stellar-core url is empty", func(t *testing.T) {
+		s := NewDefaultSubmitter(http.DefaultClient, "")
+		sr := s.Submit(ctx, "hello")
+		assert.NotNil(t, sr.Err)
 
-		Convey("errors when the stellar-core url is empty", func() {
-			s := NewDefaultSubmitter(http.DefaultClient, "")
-			sr := s.Submit(ctx, "hello")
-			So(sr.Err, ShouldNotBeNil)
-		})
+	})
 
-		Convey("errors when the stellar-core url is not parseable", func() {
-			s := NewDefaultSubmitter(http.DefaultClient, "http://Not a url")
-			sr := s.Submit(ctx, "hello")
-			So(sr.Err, ShouldNotBeNil)
-		})
+	t.Run("errors when the stellar-core url is not parseable", func(t *testing.T) {
+		s := NewDefaultSubmitter(http.DefaultClient, "http://Not a url")
+		sr := s.Submit(ctx, "hello")
+		assert.NotNil(t, sr.Err)
+	})
 
-		Convey("errors when the stellar-core url is not reachable", func() {
-			s := NewDefaultSubmitter(http.DefaultClient, "http://127.0.0.1:65535")
-			sr := s.Submit(ctx, "hello")
-			So(sr.Err, ShouldNotBeNil)
-		})
+	t.Run("errors when the stellar-core url is not reachable", func(t *testing.T) {
+		s := NewDefaultSubmitter(http.DefaultClient, "http://127.0.0.1:65535")
+		sr := s.Submit(ctx, "hello")
+		assert.NotNil(t, sr.Err)
+	})
 
-		Convey("errors when the stellar-core returns an unparseable response", func() {
-			server := NewStaticMockServer(`{`)
-			defer server.Close()
+	t.Run("errors when the stellar-core returns an unparseable response", func(t *testing.T) {
+		server := NewStaticMockServer(`{`)
+		defer server.Close()
 
-			s := NewDefaultSubmitter(http.DefaultClient, server.URL)
-			sr := s.Submit(ctx, "hello")
-			So(sr.Err, ShouldNotBeNil)
-		})
+		s := NewDefaultSubmitter(http.DefaultClient, server.URL)
+		sr := s.Submit(ctx, "hello")
+		assert.NotNil(t, sr.Err)
+	})
 
-		Convey("errors when the stellar-core returns an exception response", func() {
-			server := NewStaticMockServer(`{"exception": "Invalid XDR"}`)
-			defer server.Close()
+	t.Run("errors when the stellar-core returns an exception response", func(t *testing.T) {
+		server := NewStaticMockServer(`{"exception": "Invalid XDR"}`)
+		defer server.Close()
 
-			s := NewDefaultSubmitter(http.DefaultClient, server.URL)
-			sr := s.Submit(ctx, "hello")
-			So(sr.Err, ShouldNotBeNil)
-			So(sr.Err.Error(), ShouldContainSubstring, "Invalid XDR")
-		})
+		s := NewDefaultSubmitter(http.DefaultClient, server.URL)
+		sr := s.Submit(ctx, "hello")
+		assert.NotNil(t, sr.Err)
+		assert.Contains(t, sr.Err.Error(), "Invalid XDR")
+	})
 
-		Convey("errors when the stellar-core returns an unrecognized status", func() {
-			server := NewStaticMockServer(`{"status": "NOTREAL"}`)
-			defer server.Close()
+	t.Run("errors when the stellar-core returns an unrecognized status", func(t *testing.T) {
+		server := NewStaticMockServer(`{"status": "NOTREAL"}`)
+		defer server.Close()
 
-			s := NewDefaultSubmitter(http.DefaultClient, server.URL)
-			sr := s.Submit(ctx, "hello")
-			So(sr.Err, ShouldNotBeNil)
-			So(sr.Err.Error(), ShouldContainSubstring, "NOTREAL")
-		})
+		s := NewDefaultSubmitter(http.DefaultClient, server.URL)
+		sr := s.Submit(ctx, "hello")
+		assert.NotNil(t, sr.Err)
+		assert.Contains(t, sr.Err.Error(), "NOTREAL")
+	})
 
-		Convey("errors when the stellar-core returns an error response", func() {
-			server := NewStaticMockServer(`{"status": "ERROR", "error": "1234"}`)
-			defer server.Close()
+	t.Run("errors when the stellar-core returns an error response", func(t *testing.T) {
+		server := NewStaticMockServer(`{"status": "ERROR", "error": "1234"}`)
+		defer server.Close()
 
-			s := NewDefaultSubmitter(http.DefaultClient, server.URL)
-			sr := s.Submit(ctx, "hello")
-			So(sr.Err, ShouldHaveSameTypeAs, &FailedTransactionError{})
-			ferr := sr.Err.(*FailedTransactionError)
-			So(ferr.ResultXDR, ShouldEqual, "1234")
-		})
+		s := NewDefaultSubmitter(http.DefaultClient, server.URL)
+		sr := s.Submit(ctx, "hello")
+		assert.IsType(t, &FailedTransactionError{}, sr.Err)
+		ferr := sr.Err.(*FailedTransactionError)
+		assert.Equal(t, "1234", ferr.ResultXDR)
 	})
 }
