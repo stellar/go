@@ -336,6 +336,19 @@ func TestTradeActions_IndexRegressions(t *testing.T) {
 		w = ht.Get("/trades")
 		ht.Assert.Equal(200, w.Code, "nil-price trades failed")
 	})
+
+	t.Run("Regression for https://github.com/stellar/go/issues/466", func(t *testing.T) {
+		ht := StartHTTPTest(t, "trades")
+		defer ht.Finish()
+
+		var q = make(url.Values)
+		q.Add("base_asset_code", "EUR")
+		q.Add("base_asset_issuer", "GCQPYGH4K57XBDENKKX55KDTWOTK5WDWRQOH2LHEDX3EKVIQRLMESGBG")
+		q.Add("counter_asset_type", "native")
+
+		w := ht.Get("/trades?" + q.Encode())
+		ht.Assert.Equal(400, w.Code)
+	})
 }
 
 // TestTradeActions_AggregationOrdering checks that open/close aggregation

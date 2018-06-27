@@ -57,6 +57,25 @@ func (action *TradeIndexAction) loadRecords() {
 		trades.ForAccount(action.AccountFilter)
 	}
 
+	// If only one of the asset pair is provided, invalid parameter for request
+	if (action.HasBaseAssetFilter != action.HasCounterAssetFilter) {
+		if (!action.HasBaseAssetFilter) {
+			action.SetInvalidField(
+			"base_asset_type", errors.New("invalid asset type: was not one of 'native', 'credit_alphanum4', 'credit_alphanum12'"),
+			);
+		}
+
+		if (!action.HasCounterAssetFilter) {
+			action.SetInvalidField(
+				"counter_asset_type", errors.New("invalid asset type: was not one of 'native', 'credit_alphanum4', 'credit_alphanum12'"),
+			);
+		}
+
+		return
+	}
+
+	// For Trades endpoint, both assets should be provided
+	// For All Trades endpoint, none of the assets are needed
 	if action.HasBaseAssetFilter {
 
 		baseAssetId, err := action.HistoryQ().GetAssetID(action.BaseAssetFilter)
@@ -73,9 +92,6 @@ func (action *TradeIndexAction) loadRecords() {
 				return
 			}
 			trades = action.HistoryQ().TradesForAssetPair(baseAssetId, counterAssetId)
-		} else {
-			action.Err = errors.New("this endpoint supports asset pairs but only one asset supplied")
-			return
 		}
 	}
 
