@@ -42,7 +42,7 @@ For each new version we will only track changes from the previous version.
 | `POST /transactions`                          |                                              | -                              | 0.8.2              | 0.2.0                                             |
 | `GET /transactions`                           |                                              | +                              | 0.8.2              | 0.2.0                                             |
 | `GET /transactions` SSE                       |                                              | +                              | 0.8.2              | 0.2.0                                             |
-| `GET /transactions/{tx_id}`                   |                                              | -                              | 0.8.2              | 0.2.0                                             |
+| `GET /transactions/{tx_id}`                   |                                              | +                              | 0.8.2              | 0.2.0                                             |
 | `GET /transactions/{tx_id}/operations`        |                                              | -                              | 0.8.2              | 0.2.0                                             |
 | `GET /transactions/{tx_id}/operations` SSE    |                                              | -                              | 0.8.2              | -                                                 |
 | `GET /transactions/{tx_id}/payments`          |                                              | -                              | 0.8.2              | 0.2.0                                             |

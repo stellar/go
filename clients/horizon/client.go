@@ -221,6 +221,18 @@ func (c *Client) LoadTrades(
 	return
 }
 
+// LoadTransaction loads a single transaction from Horizon server
+func (c *Client) LoadTransaction(transactionID string) (transaction Transaction, err error) {
+	c.fixURLOnce.Do(c.fixURL)
+	resp, err := c.HTTP.Get(c.URL + "/transactions/" + transactionID)
+	if err != nil {
+		return
+	}
+
+	err = decodeResponse(resp, &transaction)
+	return
+}
+
 func addAssetToQuery(v map[string][]string, assetPrefix string, asset Asset) {
 	if asset.Type == "native" {
 		v[assetPrefix+"_asset_type"] = []string{asset.Type}
