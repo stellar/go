@@ -2,13 +2,13 @@ package txsub
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"strconv"
 	"time"
 
 	"github.com/stellar/go/clients/horizon"
 	"github.com/stellar/go/support/errors"
+	"github.com/stellar/go/support/http/httptest"
 	"github.com/stellar/go/support/txsub"
 	"github.com/stellar/go/support/txsub/sequence"
 )
@@ -33,8 +33,22 @@ func InitHorizonProxyDriver(horizonUrl, networkPassphrase string) HorizonProxyDr
 	return driver
 }
 
+func InitHorizonProxyDriverMock(client horizon.Client, h httptest.Client) HorizonProxyDriver {
+	txsub := &txsub.System{
+		Pending:           txsub.NewDefaultSubmissionList(),
+		Submitter:         &HorizonProxySubmitterProvider{client: client},
+		SubmissionQueue:   sequence.NewManager(),
+		Results:           &HorizonProxyResultProvider{client: client},
+		Sequences:         &HorizonProxySequenceProvider{client: client},
+		NetworkPassphrase: "test",
+	}
+
+	driver := HorizonProxyDriver{submissionSystem: txsub}
+
+	return driver
+}
+
 func (d HorizonProxyDriver) SubmitTransaction(ctx context.Context, env string) (result <-chan txsub.Result) {
-	fmt.Println("Inside")
 	return d.submissionSystem.Submit(ctx, env)
 }
 
