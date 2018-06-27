@@ -6,10 +6,9 @@ import (
 
 	"github.com/stellar/go/services/horizon/internal/db2"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
-	"github.com/stellar/go/services/horizon/internal/render/hal"
+	"github.com/stellar/go/support/render/hal"
 	"github.com/stellar/go/services/horizon/internal/render/sse"
-	"github.com/stellar/go/services/horizon/internal/resource"
-	halRender "github.com/stellar/go/support/render/hal"
+	"github.com/stellar/go/services/horizon/internal/resourceadapter"
 )
 
 // PaymentsIndexAction returns a paged slice of payments based upon the provided
@@ -36,7 +35,7 @@ func (action *PaymentsIndexAction) JSON() {
 		action.loadPage,
 	)
 	action.Do(func() {
-		halRender.Render(action.W, action.Page)
+		hal.Render(action.W, action.Page)
 	})
 }
 
@@ -62,7 +61,7 @@ func (action *PaymentsIndexAction) SSE(stream sse.Stream) {
 					return
 				}
 
-				res, err := resource.NewOperation(action.Ctx, record, ledger)
+				res, err := resourceadapter.NewOperation(action.R.Context(), record, ledger)
 
 				if err != nil {
 					stream.Err(err)
@@ -121,7 +120,7 @@ func (action *PaymentsIndexAction) loadPage() {
 			return
 		}
 
-		res, action.Err = resource.NewOperation(action.Ctx, record, ledger)
+		res, action.Err = resourceadapter.NewOperation(action.R.Context(), record, ledger)
 		if action.Err != nil {
 			return
 		}

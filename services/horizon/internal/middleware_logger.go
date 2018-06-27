@@ -6,30 +6,27 @@ import (
 	"strings"
 	"time"
 
-	gctx "github.com/goji/context"
+	"github.com/go-chi/chi/middleware"
+	chimiddleware "github.com/go-chi/chi/middleware"
 	"github.com/stellar/go/services/horizon/internal/log"
 	"github.com/stellar/go/services/horizon/internal/render"
-	"github.com/zenazn/goji/web"
-	"github.com/zenazn/goji/web/middleware"
-	"github.com/zenazn/goji/web/mutil"
 )
 
 // LoggerMiddleware is the middleware that logs http requests and resposnes
 // to the logging subsytem of horizon.
-func LoggerMiddleware(c *web.C, h http.Handler) http.Handler {
+func LoggerMiddleware(h http.Handler) http.Handler {
 	fn := func(w http.ResponseWriter, r *http.Request) {
-		ctx := gctx.FromC(*c)
-		mw := mutil.WrapWriter(w)
+		ctx := r.Context()
+		mw := middleware.NewWrapResponseWriter(w, r.ProtoMajor)
 
-		logger := log.WithField("req", middleware.GetReqID(*c))
+		logger := log.WithField("req", chimiddleware.GetReqID(ctx))
 
 		ctx = log.Set(ctx, logger)
-		gctx.Set(c, ctx)
 
 		logStartOfRequest(ctx, r)
 
 		then := time.Now()
-		h.ServeHTTP(mw, r)
+		h.ServeHTTP(mw, r.WithContext(ctx))
 		duration := time.Now().Sub(then)
 		// Checking `Accept` header from user request because if the streaming connection
 		// is reset before sending the first event no Content-Type header is sent in a response.
@@ -50,7 +47,7 @@ func logStartOfRequest(ctx context.Context, r *http.Request) {
 	}).Info("Starting request")
 }
 
-func logEndOfRequest(ctx context.Context, r *http.Request, duration time.Duration, mw mutil.WriterProxy, streaming bool) {
+func logEndOfRequest(ctx context.Context, r *http.Request, duration time.Duration, mw middleware.WrapResponseWriter, streaming bool) {
 	log.Ctx(ctx).WithFields(log.F{
 		"path":      r.URL.String(),
 		"method":    r.Method,

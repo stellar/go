@@ -128,3 +128,25 @@ In this configuration all servers have the same `stellar.issuer_public_key` and 
 * Make sure you configured minimum accepted value for Bitcoin and Ethereum transactions to the value you really want.
 * Make sure you start from a fresh Bifrost DB in production. If Bifrost was running, you stopped it and then started it again, all the Bitcoin and Ethereum blocks mined during that period will be processed which can take a lot of time.
 * Make sure that `lock_unix_timestamp` is correct and test it. If the value is too far in the future users will be locked out of their funds.
+
+## FAQ
+
+#### Transactions are not processed by Bifrost
+
+Here is a list of possible reasons why Bifrost may not process transactions:
+
+* Bifrost is detecting transactions but there's a proxy between client and Bifrost server and it's blocking SSE (Server-Sent Events) sent by Bifrost. Solution for this can be found [here](https://serverfault.com/a/801629).
+* There's a long queue of blocks Bifrost needs to process. During the first start of Bifrost, it starts processing blocks from the latest block available. If Bifrost was turned off for a longer time or `geth` is still catchup up it may cause delays. To solve this, recreate Bifrost DB so it resets data or (if you don't want to delete data in a DB) set `ethereum_last_block` value in `key_value_store` table to `0`.
+* You are sending a transaction with amount below `minimum_value_eth`.
+* Geth is connected to one network and you're sending ETH in another network.
+
+#### How do I unlock the account when `lock_unix_timestamp` is set?
+
+You need to submit a special transaction that "unlocks" the account by removing the temporary signer and adding back user's master key. This can be done by everyone: user or organization that runs Bifrost. Transaction can be found in:
+
+* `Bifrost.ExchangedTimelockedEvent` [event](https://github.com/stellar/bifrost-js-sdk#oneventevent-data). You can display it to the user if you want your users to unlock accounts.
+* In database: `recovery_transaction` table. These transactions are independent so you can submit them in any order / at the same time.
+
+#### I don't see answer to my question. What do I do?
+
+Check [Stellar Stack Exchange](https://stellar.stackexchange.com/questions/tagged/bifrost/) to find similar questions or add the new question with the `bifrost` tag.

@@ -6,11 +6,10 @@ import (
 
 	"github.com/stellar/go/services/horizon/internal/db2"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
-	"github.com/stellar/go/services/horizon/internal/render/hal"
-	"github.com/stellar/go/services/horizon/internal/render/sse"
-	"github.com/stellar/go/services/horizon/internal/resource"
 	"github.com/stellar/go/support/errors"
-	halRender "github.com/stellar/go/support/render/hal"
+	"github.com/stellar/go/support/render/hal"
+	"github.com/stellar/go/services/horizon/internal/render/sse"
+	"github.com/stellar/go/services/horizon/internal/resourceadapter"
 )
 
 // This file contains the actions:
@@ -45,7 +44,7 @@ func (action *EffectIndexAction) JSON() {
 	)
 
 	action.Do(func() {
-		halRender.Render(action.W, action.Page)
+		hal.Render(action.W, action.Page)
 	})
 }
 
@@ -72,7 +71,7 @@ func (action *EffectIndexAction) SSE(stream sse.Stream) {
 					return
 				}
 
-				res, err := resource.NewEffect(action.Ctx, record, ledger)
+				res, err := resourceadapter.NewEffect(action.R.Context(), record, ledger)
 
 				if err != nil {
 					stream.Err(action.Err)
@@ -136,7 +135,7 @@ func (action *EffectIndexAction) loadPage() {
 		}
 
 		var res hal.Pageable
-		res, action.Err = resource.NewEffect(action.Ctx, record, ledger)
+		res, action.Err = resourceadapter.NewEffect(action.R.Context(), record, ledger)
 		if action.Err != nil {
 			return
 		}

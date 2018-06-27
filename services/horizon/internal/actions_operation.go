@@ -7,12 +7,11 @@ import (
 	"github.com/stellar/go/services/horizon/internal/db2"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/services/horizon/internal/ledger"
-	"github.com/stellar/go/services/horizon/internal/render/hal"
-	"github.com/stellar/go/services/horizon/internal/render/problem"
 	"github.com/stellar/go/services/horizon/internal/render/sse"
-	"github.com/stellar/go/services/horizon/internal/resource"
+	"github.com/stellar/go/services/horizon/internal/render/problem"
 	"github.com/stellar/go/services/horizon/internal/toid"
-	halRender "github.com/stellar/go/support/render/hal"
+	"github.com/stellar/go/services/horizon/internal/resourceadapter"
+	"github.com/stellar/go/support/render/hal"
 )
 
 // This file contains the actions:
@@ -44,7 +43,7 @@ func (action *OperationIndexAction) JSON() {
 		action.loadLedgers,
 		action.loadPage)
 	action.Do(func() {
-		halRender.Render(action.W, action.Page)
+		hal.Render(action.W, action.Page)
 	})
 }
 
@@ -70,7 +69,7 @@ func (action *OperationIndexAction) SSE(stream sse.Stream) {
 					return
 				}
 
-				res, err := resource.NewOperation(action.Ctx, record, ledger)
+				res, err := resourceadapter.NewOperation(action.R.Context(), record, ledger)
 
 				if err != nil {
 					stream.Err(err)
@@ -130,7 +129,7 @@ func (action *OperationIndexAction) loadPage() {
 		}
 
 		var res hal.Pageable
-		res, action.Err = resource.NewOperation(action.Ctx, record, ledger)
+		res, action.Err = resourceadapter.NewOperation(action.R.Context(), record, ledger)
 		if action.Err != nil {
 			return
 		}
@@ -166,7 +165,7 @@ func (action *OperationShowAction) loadLedger() {
 }
 
 func (action *OperationShowAction) loadResource() {
-	action.Resource, action.Err = resource.NewOperation(action.Ctx, action.Record, action.Ledger)
+	action.Resource, action.Err = resourceadapter.NewOperation(action.R.Context(), action.Record, action.Ledger)
 }
 
 // JSON is a method for actions.JSON
@@ -180,7 +179,7 @@ func (action *OperationShowAction) JSON() {
 		action.loadResource,
 	)
 	action.Do(func() {
-		halRender.Render(action.W, action.Resource)
+		hal.Render(action.W, action.Resource)
 	})
 }
 

@@ -1,5 +1,5 @@
-hash: 7eac67607acc35ee775cfd4301d326fa205f7d0e95836f36dd934c5ccd9fc171
-updated: 2017-12-22T11:51:26.139292-09:00
+hash: 7c490f2ade006098026a8431a7d8152b326e3bef9dff07011d2854e4e2302225
+updated: 2018-06-19T11:08:10.285034+02:00
 imports:
 - name: bitbucket.org/ww/goautoneg
   version: 75cd24fc2f2c2a2088577d12123ddee5f54e0675
@@ -12,8 +12,8 @@ imports:
   version: 523a5da1a92f01b01f840b61689c0340a0243532
   repo: https://github.com/ajg/form
 - name: github.com/asaskevich/govalidator
-  version: f0666aa80d7dcf75bd564ae8717b952d74a29d6a
-  repo: https://github.com/stellar/govalidator.git
+  version: 7d2e70ef918f16bd6455529af38304d6d025c952
+  repo: https://github.com/asaskevich/govalidator.git
 - name: github.com/aws/aws-sdk-go
   version: 8649d278323ebf6bd20c9cd56ecb152b1c617375
   repo: https://github.com/aws/aws-sdk-go
@@ -131,9 +131,8 @@ imports:
   repo: https://github.com/go-sql-driver/mysql
 - name: github.com/go-stack/stack
   version: 817915b46b97fd7bb80e8ab6b69f01a53ac3eebf
-- name: github.com/goji/context
-  version: cc5d214cefa9d50beb2cdbf2344eb8c4bd14709b
-  repo: https://github.com/goji/context
+- name: github.com/goji/httpauth
+  version: 2da839ab0f4df05a6db5eb277995589dadbd4fb9
 - name: github.com/golang/groupcache
   version: 604ed5785183e59ae2789449d89e73f3a2a77987
   repo: https://github.com/golang/groupcache
@@ -231,7 +230,7 @@ imports:
   subpackages:
   - xdr3
 - name: github.com/onsi/ginkgo
-  version: 6c46eb8334b30dc55b42f1a1c725d5ce97375390
+  version: c73579c58881b5ba90d3b08f6ac59cb1c909d6dd
   subpackages:
   - config
   - extensions/table
@@ -252,7 +251,7 @@ imports:
   - reporters/stenographer/support/go-isatty
   - types
 - name: github.com/onsi/gomega
-  version: d35dcfdbfd01eaabf8da0b6b36f111ff953b68cb
+  version: 649b44d988ce182cabcda7dba01fcf3b6179ad19
   subpackages:
   - format
   - internal/assertion
@@ -349,8 +348,8 @@ imports:
   - suite
 - name: github.com/tyler-smith/go-bip32
   version: 2c9cfd17756470a0b7c3e4b7954bae7d11035504
-- name: github.com/bartekn/go-bip39
-  version: a05967ea095d81c8fe4833776774cfaff8e5036c
+- name: github.com/tyler-smith/go-bip39
+  version: 52158e4697b87de16ed390e1bdaf813e581008fa
 - name: github.com/valyala/bytebufferpool
   version: e746df99fe4a3986f4d4f79e13c1e0117ce9c2f7
   repo: https://github.com/valyala/bytebufferpool
@@ -370,7 +369,7 @@ imports:
   version: f06f290571ce81ab347174c6f7ad2e1865af41a7
   repo: https://github.com/xeipuuv/gojsonschema
 - name: github.com/y0ssar1an/q
-  version: 392ac3089fcf8c70ebbe85f4c29778b7ebe27a9f
+  version: 4b5d05b1e093249d7f51e3a72677a7003a534b40
 - name: github.com/yalp/jsonpath
   version: 31a79c7593bb93eb10b163650d4a3e6ca190e4dc
   repo: https://github.com/yalp/jsonpath
@@ -382,22 +381,6 @@ imports:
 - name: github.com/yudai/golcs
   version: d1c525dea8ce39ea9a783d33cf08932305373f2c
   repo: https://github.com/yudai/golcs
-- name: github.com/zenazn/goji
-  version: bf843a174a08e846246b8945f8a9a853d84a256a
-  repo: https://github.com/zenazn/goji
-  subpackages:
-  - bind
-  - graceful
-  - web
-  - web/middleware
-  - web/mutil
-- name: goji.io
-  version: e355964ac565b94cf0fc7f218346626529125086
-  repo: https://github.com/goji/goji
-  subpackages:
-  - internal
-  - pat
-  - pattern
 - name: golang.org/x/crypto
   version: 1f22c0103821b9390939b6776727195525381532
   repo: https://go.googlesource.com/crypto

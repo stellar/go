@@ -6,6 +6,12 @@ file.  This project adheres to [Semantic Versioning](http://semver.org/).
 As this project is pre 1.0, breaking changes may happen for minor version
 bumps.  A breaking change will get clearly notified in this log.
 
+## Unreleases
+
+### Changes
+
+- dropped support for go1.8 since we need big.IsInt64 from math/big in our findpaths calculations
+
 ## v0.13.0 - 2018-06-06
 
 ### Breaking changes
@@ -26,7 +32,6 @@ bumps.  A breaking change will get clearly notified in this log.
 **Upgrade notes**
 
 DB migrations add a new indexes on `history_trades`. This is very large table so migration may take a long time (depending on your DB hardware). Please test the migrations execution time on the copy of your production DB first.
-
 
 ## v0.12.3 - 2017-03-20
 

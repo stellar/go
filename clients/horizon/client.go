@@ -167,6 +167,82 @@ func (c *Client) LoadTradeAggregations(
 	return
 }
 
+// LoadTrades loads the /trades endpoint from horizon.
+func (c *Client) LoadTrades(
+	baseAsset Asset,
+	counterAsset Asset,
+	offerID int64,
+	resolution int64,
+	params ...interface{},
+) (tradesPage TradesPage, err error) {
+	c.fixURLOnce.Do(c.fixURL)
+	query := url.Values{}
+
+	addAssetToQuery(query, "base", baseAsset)
+	addAssetToQuery(query, "counter", counterAsset)
+
+	query.Add("offer_id", strconv.FormatInt(offerID, 10))
+	query.Add("resolution", strconv.FormatInt(resolution, 10))
+
+	for _, param := range params {
+		switch param := param.(type) {
+		case Cursor:
+			query.Add("cursor", string(param))
+		case Limit:
+			query.Add("limit", strconv.Itoa(int(param)))
+		case Order:
+			query.Add("order", string(param))
+		default:
+			err = fmt.Errorf("Undefined parameter (%T): %+v", param, param)
+			return
+		}
+	}
+
+	endpoint := fmt.Sprintf(
+		"%s/trades/?%s",
+		c.URL,
+		query.Encode(),
+	)
+
+	// ensure our endpoint is a real url
+	_, err = url.Parse(endpoint)
+	if err != nil {
+		err = errors.Wrap(err, "failed to parse endpoint")
+		return
+	}
+
+	resp, err := c.HTTP.Get(endpoint)
+	if err != nil {
+		err = errors.Wrap(err, "failed to load endpoint")
+		return
+	}
+
+	err = decodeResponse(resp, &tradesPage)
+	return
+}
+
+func addAssetToQuery(v map[string][]string, assetPrefix string, asset Asset) {
+	if asset.Type == "native" {
+		v[assetPrefix+"_asset_type"] = []string{asset.Type}
+	} else {
+		v[assetPrefix+"_asset_type"] = []string{asset.Type}
+		v[assetPrefix+"_asset_code"] = []string{asset.Code}
+		v[assetPrefix+"_asset_issuer"] = []string{asset.Issuer}
+	}
+}
+
+// LoadOperation loads a single operation from Horizon server
+func (c *Client) LoadOperation(operationID string) (payment Payment, err error) {
+	c.fixURLOnce.Do(c.fixURL)
+	resp, err := c.HTTP.Get(c.URL + "/operations/" + operationID)
+	if err != nil {
+		return
+	}
+
+	err = decodeResponse(resp, &payment)
+	return
+}
+
 // LoadMemo loads memo for a transaction in Payment
 func (c *Client) LoadMemo(p *Payment) (err error) {
 	res, err := c.HTTP.Get(p.Links.Transaction.Href)
@@ -175,6 +251,33 @@ func (c *Client) LoadMemo(p *Payment) (err error) {
 	}
 	defer res.Body.Close()
 	return json.NewDecoder(res.Body).Decode(&p.Memo)
+}
+
+// LoadAccountMergeAmount loads `account_merge` operation amount from it's effects
+func (c *Client) LoadAccountMergeAmount(p *Payment) error {
+	if p.Type != "account_merge" {
+		return errors.New("Not `account_merge` operation")
+	}
+
+	res, err := c.HTTP.Get(p.Links.Effects.Href)
+	if err != nil {
+		return errors.Wrap(err, "Error getting effects for operation")
+	}
+	defer res.Body.Close()
+	var page EffectsPage
+	err = json.NewDecoder(res.Body).Decode(&page)
+	if err != nil {
+		return errors.Wrap(err, "Error decoding effects page")
+	}
+
+	for _, effect := range page.Embedded.Records {
+		if effect.Type == "account_credited" {
+			p.Amount = effect.Amount
+			return nil
+		}
+	}
+
+	return errors.New("Could not find `account_credited` effect in `account_merge` operation effects")
 }
 
 // SequenceForAccount implements build.SequenceProvider
@@ -242,6 +345,8 @@ func (c *Client) stream(
 		query.Set("cursor", string(*cursor))
 	}
 
+	client := http.Client{}
+
 	for {
 		req, err := http.NewRequest("GET", fmt.Sprintf("%s?%s", baseURL, query.Encode()), nil)
 		if err != nil {
@@ -249,7 +354,8 @@ func (c *Client) stream(
 		}
 		req.Header.Set("Accept", "text/event-stream")
 
-		resp, err := c.HTTP.Do(req)
+		// Make sure we don't use c.HTTP that can have Timeout set.
+		resp, err := client.Do(req)
 		if err != nil {
 			return err
 		}

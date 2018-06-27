@@ -1,7 +1,6 @@
 package render
 
 import (
-	"context"
 	"net/http"
 
 	"bitbucket.org/ww/goautoneg"
@@ -10,7 +9,8 @@ import (
 
 // Negotiate inspects the Accept header of the provided request and determines
 // what the most appropriate response type should be.  Defaults to HAL.
-func Negotiate(ctx context.Context, r *http.Request) string {
+func Negotiate(r *http.Request) string {
+	ctx := r.Context()
 	alternatives := []string{MimeHal, MimeJSON, MimeEventStream, MimeRaw}
 	accept := r.Header.Get("Accept")
 

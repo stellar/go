@@ -7,24 +7,26 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	. "github.com/stellar/go/services/horizon/internal/db2/history"
-	"github.com/stellar/go/services/horizon/internal/resource"
 	. "github.com/stellar/go/services/horizon/internal/test/trades"
 	"github.com/stellar/go/xdr"
+	"github.com/stellar/go/support/render/hal"
 )
 
 func TestTradeActions_Index(t *testing.T) {
 	ht := StartHTTPTest(t, "trades")
 	defer ht.Finish()
-	var records []resource.Trade
-	var firstTrade resource.Trade
+	var records []horizon.Trade
+	var firstTrade horizon.Trade
 
 	// All trades
 	w := ht.Get("/trades")
 	if ht.Assert.Equal(200, w.Code) {
 		ht.Assert.PageOf(2, w.Body)
 
+		// 	ensure created_at is populated correctly
 		ht.UnmarshalPage(w.Body, &records)
 		firstTrade = records[0]
 
@@ -101,6 +103,7 @@ func TestTradeActions_Index(t *testing.T) {
 		ht.Assert.PageOf(2, w.Body)
 	}
 
+	// for other account
 	w = ht.Get("/accounts/GCXKG6RN4ONIEPCMNFB732A436Z5PNDSRLGWK7GBLCMQLIFO4S7EYWVU/trades")
 	if ht.Assert.Equal(200, w.Code) {
 		ht.Assert.PageOf(2, w.Body)
@@ -108,6 +111,37 @@ func TestTradeActions_Index(t *testing.T) {
 		ht.UnmarshalPage(w.Body, &records)
 		ht.Assert.Contains(records[0], "base_amount")
 		ht.Assert.Contains(records[0], "counter_amount")
+	}
+
+	//test paging from account 1
+	w = ht.Get("/accounts/GA5WBPYA5Y4WAEHXWR2UKO2UO4BUGHUQ74EUPKON2QHV4WRHOIRNKKH2/trades?order=desc&limit=1")
+	var links hal.Links
+	if ht.Assert.Equal(200, w.Code) {
+		ht.Assert.PageOf(1, w.Body)
+		links = ht.UnmarshalPage(w.Body, &records)
+	}
+
+	w = ht.Get(links.Next.Href)
+	if ht.Assert.Equal(200, w.Code) {
+		ht.Assert.PageOf(1, w.Body)
+		prevRecord := records[0]
+		links = ht.UnmarshalPage(w.Body, &records)
+		ht.Assert.NotEqual(prevRecord, records[0])
+	}
+
+	//test paging from account 2
+	w = ht.Get("/accounts/GCXKG6RN4ONIEPCMNFB732A436Z5PNDSRLGWK7GBLCMQLIFO4S7EYWVU/trades?order=desc&limit=1")
+	if ht.Assert.Equal(200, w.Code) {
+		ht.Assert.PageOf(1, w.Body)
+		links = ht.UnmarshalPage(w.Body, &records)
+	}
+
+	w = ht.Get(links.Next.Href)
+	if ht.Assert.Equal(200, w.Code) {
+		ht.Assert.PageOf(1, w.Body)
+		prevRecord := records[0]
+		links = ht.UnmarshalPage(w.Body, &records)
+		ht.Assert.NotEqual(prevRecord, records[0])
 	}
 }
 
@@ -128,7 +162,7 @@ func testPrice(t *HTTPT, priceStr string, priceR xdr.Price) {
 	}
 }
 
-func testTradeAggregationPrices(t *HTTPT, record resource.TradeAggregation) {
+func testTradeAggregationPrices(t *HTTPT, record horizon.TradeAggregation) {
 	testPrice(t, record.High, record.HighR)
 	testPrice(t, record.Low, record.LowR)
 	testPrice(t, record.Open, record.OpenR)
@@ -157,8 +191,8 @@ func TestTradeActions_Aggregation(t *testing.T) {
 	_, _, err = PopulateTestTrades(dbQ, start, numOfTrades, minute, numOfTrades)
 	ht.Require.NoError(err)
 
-	var records []resource.TradeAggregation
-	var record resource.TradeAggregation
+	var records []horizon.TradeAggregation
+	var record horizon.TradeAggregation
 	var nextLink string
 
 	q := make(url.Values)
@@ -169,17 +203,22 @@ func TestTradeActions_Aggregation(t *testing.T) {
 	q.Add("end_time", strconv.FormatInt(start+hour, 10))
 	q.Add("order", "asc")
 
-	//test illegal resolution
 
+	//test no resolution provided
+	w := ht.GetWithParams(aggregationPath, q)
+	println(w.Body.String())
+	ht.Assert.Equal(400, w.Code)
+
+	//test illegal resolution
 	if history.StrictResolutionFiltering {
 		q.Add("resolution", strconv.FormatInt(hour/2, 10))
-		w := ht.GetWithParams(aggregationPath, q)
-		ht.Assert.Equal(500, w.Code)
+		w = ht.GetWithParams(aggregationPath, q)
+		ht.Assert.Equal(400, w.Code)
 	}
 
 	//test one bucket for all trades
 	q.Set("resolution", strconv.FormatInt(hour, 10))
-	w := ht.GetWithParams(aggregationPath, q)
+	w = ht.GetWithParams(aggregationPath, q)
 	if ht.Assert.Equal(200, w.Code) {
 		ht.Assert.PageOf(1, w.Body)
 		ht.UnmarshalPage(w.Body, &records)
@@ -326,7 +365,7 @@ func TestTradeActions_AggregationOrdering(t *testing.T) {
 	q.Add("order", "asc")
 	q.Add("resolution", "60000")
 
-	var records []resource.TradeAggregation
+	var records []horizon.TradeAggregation
 	w := ht.GetWithParams("/trade_aggregations", q)
 	if ht.Assert.Equal(200, w.Code) {
 		ht.Assert.PageOf(1, w.Body)
