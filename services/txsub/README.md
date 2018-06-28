@@ -28,6 +28,10 @@ horizon_url = "https://horizon_url.com"
 network_passphrase = "Some network passphrase"
 ```
 
+### #2: Stellar Core Mode
+
+*Coming Soon!*
+
 ## Usage
 
 ```

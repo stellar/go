@@ -17,7 +17,7 @@ import (
 	"github.com/stellar/go/handlers/txsub"
 )
 
-// Config represents the configuration of a transctions submission server
+// Config represents the configuration of a transctions submission service
 type Config struct {
 	Port              int    `valid:"required"`
 	Horizonurl        string `valid:"required"`
@@ -27,10 +27,10 @@ type Config struct {
 func main() {
 	rootCmd := &cobra.Command{
 		Use:   "txsub",
-		Short: "stellar transaction submission server",
+		Short: "stellar transaction submission service",
 		Long: `
-The Stellar transaction submission server let's you easilly submit transactions
-to a configurable horizon server.
+The Stellar transaction submission service let's you easilly submit transactions
+to a configurable horizon server or a configurable stellar core client.
     `,
 		Run: run,
 	}
@@ -66,7 +66,7 @@ func run(cmd *cobra.Command, args []string) {
 		ListenAddr: addr,
 		Handler:    mux,
 		OnStarting: func() {
-			log.Infof("starting txsub server - %s", app.Version())
+			log.Infof("starting txsub service - %s", app.Version())
 			log.Infof("listening on %s", addr)
 		},
 	})
