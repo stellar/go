@@ -8,16 +8,30 @@ bumps.  A breaking change will get clearly notified in this log.
 
 ## Unreleases
 
-### Added
+### Changes
 
-- Streaming connections now emit a heartbeat message once per five seconds to keep client connections alive.  The heartbeat takes the form of an SSE comment.
+- dropped support for go1.8 since we need big.IsInt64 from math/big in our findpaths calculations
+
+## v0.13.0 - 2018-06-06
+
+### Breaking changes
+
+- `amount` field in `/assets` is now a String (to support Stellar amounts larger than `int64`).
 
 ### Changes
 
-- BREAKING CHANGE: Streaming connections will no longer wait until the first SSE message before sending the SSE preamble and establishing the streaming connection.
-- BREAKING CHANGE: SSE requests will no longer respond with regular HTTP error (i.e. a non-200 status) if the error occurred prior to sending the first SSE message.
-- Above changes have been reverted in [#446](https://github.com/stellar/go/pull/446).
-- dropped support for go1.8 since we need big.IsInt64 from math/big in our findpaths calculations
+- Effect resource contains a new `created_at` field.
+- Horizon responses are compressed.
+- Ingestion errors have been improved.
+- `horizon rebase` command was improved.
+
+### Bug fixes
+
+- Horizon now returns `400 Bad Request` for negative `cursor` values.
+
+**Upgrade notes**
+
+DB migrations add a new indexes on `history_trades`. This is very large table so migration may take a long time (depending on your DB hardware). Please test the migrations execution time on the copy of your production DB first.
 
 ## v0.12.3 - 2017-03-20
 
