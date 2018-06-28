@@ -23,6 +23,7 @@ type Handler struct {
 	Err      error
 	Ticks    *time.Ticker
 	Resource horizon.TransactionSuccess
+	Source   string
 }
 
 // Driver is a wrapper around the configurable parts of txsub.System. By requiring

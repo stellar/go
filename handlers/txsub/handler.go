@@ -3,6 +3,7 @@ package txsub
 import (
 	"mime"
 	"net/http"
+	"net/url"
 	"sync"
 
 	"github.com/stellar/go/clients/horizon"
@@ -80,7 +81,7 @@ func (h *Handler) validateBodyType(r *http.Request) {
 
 func (h *Handler) loadResource() {
 	if h.Result.Err == nil {
-		populateTransactionSuccess(h.Context, &h.Resource, h.Result)
+		h.populateTransactionSuccess(&h.Resource, h.Result)
 		return
 	}
 
@@ -98,7 +99,7 @@ func (h *Handler) loadResource() {
 	switch err := h.Result.Err.(type) {
 	case *txsub.FailedTransactionError:
 		rcr := horizon.TransactionResultCodes{}
-		populateTransactionResultCodes(h.Context, &rcr, err)
+		h.populateTransactionResultCodes(&rcr, err)
 
 		h.Err = &problem.P{
 			Type:   "transaction_failed",
@@ -158,4 +159,36 @@ func (h *Handler) tick() {
 
 	// finally, update metrics
 	log.Debug("finished ticking app")
+}
+
+func (h *Handler) populateTransactionResultCodes(
+	dest *horizon.TransactionResultCodes,
+	fail *txsub.FailedTransactionError,
+) (err error) {
+
+	dest.TransactionCode, err = fail.TransactionResultCode()
+	if err != nil {
+		return
+	}
+
+	dest.OperationCodes, err = fail.OperationResultCodes()
+	if err != nil {
+		return
+	}
+
+	return
+}
+
+// Populate fills out the details
+func (h *Handler) populateTransactionSuccess(dest *horizon.TransactionSuccess, result txsub.Result) {
+	dest.Hash = result.Hash
+	dest.Ledger = result.LedgerSequence
+	dest.Env = result.EnvelopeXDR
+	dest.Result = result.ResultXDR
+	dest.Meta = result.ResultMetaXDR
+
+	u, _ := url.Parse(h.Source)
+	lb := hal.LinkBuilder{u}
+	dest.Links.Transaction = lb.Link("/transactions", result.Hash)
+	return
 }

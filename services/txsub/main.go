@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	htttpp "net/http"
 	"os"
 	"time"
 
@@ -58,9 +59,7 @@ func run(cmd *cobra.Command, args []string) {
 		os.Exit(1)
 	}
 
-	driver := initDriver(cfg)
-
-	mux := initMux(driver)
+	mux := initMux(cfg)
 	addr := fmt.Sprintf("0.0.0.0:%d", cfg.Port)
 
 	http.Run(http.Config{
@@ -73,21 +72,21 @@ func run(cmd *cobra.Command, args []string) {
 	})
 }
 
-func initDriver(cfg Config) txsub.Driver {
+func initMux(cfg Config) *chi.Mux {
 	client := horizon.Client{
 		URL:  cfg.Horizonurl,
-		HTTP: http.DefaultClient,
+		HTTP: htttpp.DefaultClient,
 	}
-	return txsub.InitHorizonProxyDriver(client, cfg.Networkpassphrase)
-}
 
-func initMux(driver txsub.Driver) *chi.Mux {
+	driver := txsub.InitHorizonProxyDriver(client, cfg.Networkpassphrase)
+
 	mux := http.NewAPIMux(false)
 
 	t := txsub.Handler{
 		Driver:  driver,
 		Ticks:   time.NewTicker(1 * time.Second),
 		Context: context.Background(),
+		Source:  cfg.Horizonurl,
 	}
 
 	mux.Post("/tx", t.ServeHTTP)
