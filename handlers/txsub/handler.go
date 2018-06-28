@@ -1,72 +1,27 @@
 package txsub
 
 import (
-	"context"
 	"mime"
 	"net/http"
-	"net/url"
 	"sync"
 
 	"github.com/stellar/go/clients/horizon"
-	phorizon "github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/support/log"
 	"github.com/stellar/go/support/render/hal"
 	"github.com/stellar/go/support/render/problem"
 	"github.com/stellar/go/support/txsub"
 )
 
-// Run is the function that runs in the background that triggers Tick each
-// second.
-func (h *Handler) Run() {
-	for {
-		select {
-		case <-h.Ticks.C:
-			h.Tick()
-		case <-h.Context.Done():
-			log.Info("finished background ticker")
-			return
-		}
-	}
-}
-
-// Tick triggers txsub to update all of it's background processes.
-func (h *Handler) Tick() {
-	var wg sync.WaitGroup
-	log.Debug("ticking app")
-
-	wg.Add(1)
-	go func() { h.Driver.Tick(h.Context); wg.Done() }()
-	wg.Wait()
-
-	// finally, update metrics
-	log.Debug("finished ticking app")
-}
-
 func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// 1. Validate body type is `application/x-www-form-urlencoded`
-	c := r.Header.Get("Content-Type")
-	mt, _, err := mime.ParseMediaType(c)
-	if err != nil {
-		h.Err = err
-	}
-	switch {
-	case mt == "application/x-www-form-urlencoded":
-		break
-	case mt == "multipart/form-data":
-		break
-	default:
-		h.Err = problem.P{
-			Type:   "unsupported_media_type",
-			Title:  "Unsupported Media Type",
-			Status: http.StatusUnsupportedMediaType,
-			Detail: "The request has an unsupported content type. Presently, the " +
-				"only supported content type is application/x-www-form-urlencoded.",
-		}
-	}
+	h.validateBodyType(r)
+
 	// 2. Get tx envelope string from form
 	tx := r.FormValue("tx")
+
 	// 3. submit tx via submission system
 	submission := h.Driver.SubmitTransaction(r.Context(), tx)
+
 	// 4. deal with submission result
 	select {
 	case result := <-submission:
@@ -80,20 +35,57 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				"request again.",
 		}
 	}
-	// 5. load resource
+
+	// 5. load resource struct with appropriate response
 	h.loadResource()
-	// 6. write hal
-	hal.Render(w, h.Resource)
+
+	// 6. write hal to return
+	if h.Err != nil {
+		hal.Render(w, h.Err)
+	} else {
+		hal.Render(w, h.Resource)
+	}
+
 }
 
-func (action *Handler) loadResource() {
-	if action.Result.Err == nil {
-		PopulateTransactionSuccess(action.Context, &action.Resource, action.Result)
+func (h *Handler) validateBodyType(r *http.Request) {
+	c := r.Header.Get("Content-Type")
+	if c == "" {
 		return
 	}
 
-	if action.Result.Err == txsub.ErrTimeout {
-		action.Err = &problem.P{
+	mt, _, err := mime.ParseMediaType(c)
+
+	if err != nil {
+		h.Err = err
+	}
+
+	switch {
+	case mt == "application/x-www-form-urlencoded":
+		return
+	case mt == "multipart/form-data":
+		return
+	default:
+		h.Err = problem.P{
+			Type:   "unsupported_media_type",
+			Title:  "Unsupported Media Type",
+			Status: http.StatusUnsupportedMediaType,
+			Detail: "The request has an unsupported content type. Presently, the " +
+				"only supported content type is application/x-www-form-urlencoded.",
+		}
+	}
+
+	return
+}
+
+func (h *Handler) loadResource() {
+	if h.Result.Err == nil {
+		populateTransactionSuccess(h.Context, &h.Resource, h.Result)
+		return
+	}
+
+	if h.Result.Err == txsub.ErrTimeout || h.Result.Err == txsub.ErrCanceled {
+		h.Err = &problem.P{
 			Type:   "timeout",
 			Title:  "Timeout",
 			Status: http.StatusGatewayTimeout,
@@ -103,23 +95,12 @@ func (action *Handler) loadResource() {
 		return
 	}
 
-	if action.Result.Err == txsub.ErrCanceled {
-		action.Err = &problem.P{
-			Type:   "timeout",
-			Title:  "Timeout",
-			Status: http.StatusGatewayTimeout,
-			Detail: "Your request timed out before completing.  Please try your " +
-				"request again.",
-		}
-		return
-	}
-
-	switch err := action.Result.Err.(type) {
+	switch err := h.Result.Err.(type) {
 	case *txsub.FailedTransactionError:
 		rcr := horizon.TransactionResultCodes{}
-		PopulateTransactionResultCodes(action.Context, &rcr, err)
+		populateTransactionResultCodes(h.Context, &rcr, err)
 
-		action.Err = &problem.P{
+		h.Err = &problem.P{
 			Type:   "transaction_failed",
 			Title:  "Transaction Failed",
 			Status: http.StatusBadRequest,
@@ -128,13 +109,13 @@ func (action *Handler) loadResource() {
 				"details.  Descriptions of each code can be found at: " +
 				"https://www.stellar.org/developers/learn/concepts/list-of-operations.html",
 			Extras: map[string]interface{}{
-				"envelope_xdr": action.Result.EnvelopeXDR,
+				"envelope_xdr": h.Result.EnvelopeXDR,
 				"result_xdr":   err.ResultXDR,
 				"result_codes": rcr,
 			},
 		}
 	case *txsub.MalformedTransactionError:
-		action.Err = &problem.P{
+		h.Err = &problem.P{
 			Type:   "transaction_malformed",
 			Title:  "Transaction Malformed",
 			Status: http.StatusBadRequest,
@@ -148,74 +129,33 @@ func (action *Handler) loadResource() {
 			},
 		}
 	default:
-		action.Err = err
+		h.Err = err
 	}
 }
 
-func PopulateTransactionResultCodes(ctx context.Context,
-	dest *phorizon.TransactionResultCodes,
-	fail *txsub.FailedTransactionError,
-) (err error) {
-
-	dest.TransactionCode, err = fail.TransactionResultCode()
-	if err != nil {
-		return
-	}
-
-	dest.OperationCodes, err = fail.OperationResultCodes()
-	if err != nil {
-		return
-	}
-
-	return
-}
-
-// Populate fills out the details
-func PopulateTransactionSuccess(ctx context.Context, dest *phorizon.TransactionSuccess, result txsub.Result) {
-	dest.Hash = result.Hash
-	dest.Ledger = result.LedgerSequence
-	dest.Env = result.EnvelopeXDR
-	dest.Result = result.ResultXDR
-	dest.Meta = result.ResultMetaXDR
-
-	lb := hal.LinkBuilder{BaseURL(ctx)}
-	dest.Links.Transaction = lb.Link("/transactions", result.Hash)
-	return
-}
-
-// BaseURL returns the "base" url for this request, defined as a url containing
-// the Host and Scheme portions of the request uri.
-func BaseURL(ctx context.Context) *url.URL {
-	r := RequestFromContext(ctx)
-
-	if r == nil {
-		return nil
-	}
-
-	var scheme string
-	switch {
-	case r.Header.Get("X-Forwarded-Proto") != "":
-		scheme = r.Header.Get("X-Forwarded-Proto")
-	case r.TLS != nil:
-		scheme = "https"
-	default:
-		scheme = "http"
-	}
-
-	return &url.URL{
-		Scheme: scheme,
-		Host:   r.Host,
+// Run is the function that runs in the background that triggers Tick each
+// second.
+func (h *Handler) Run() {
+	for {
+		select {
+		case <-h.Ticks.C:
+			h.tick()
+		case <-h.Context.Done():
+			log.Info("finished background ticker")
+			return
+		}
 	}
 }
 
-var RequestContextKey = 0
+// Tick triggers txsub to update all of it's background processes.
+func (h *Handler) tick() {
+	var wg sync.WaitGroup
+	log.Debug("ticking app")
 
-func RequestFromContext(ctx context.Context) *http.Request {
-	found := ctx.Value(&RequestContextKey)
+	wg.Add(1)
+	go func() { h.Driver.Tick(h.Context); wg.Done() }()
+	wg.Wait()
 
-	if found == nil {
-		return nil
-	}
-
-	return found.(*http.Request)
+	// finally, update metrics
+	log.Debug("finished ticking app")
 }

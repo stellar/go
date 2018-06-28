@@ -8,6 +8,7 @@ import (
 
 	"github.com/go-chi/chi"
 	"github.com/spf13/cobra"
+	"github.com/stellar/go/clients/horizon"
 	"github.com/stellar/go/support/app"
 	"github.com/stellar/go/support/config"
 	"github.com/stellar/go/support/errors"
@@ -73,7 +74,11 @@ func run(cmd *cobra.Command, args []string) {
 }
 
 func initDriver(cfg Config) txsub.Driver {
-	return txsub.InitHorizonProxyDriver(cfg.Horizonurl, cfg.Networkpassphrase)
+	client := horizon.Client{
+		URL:  cfg.Horizonurl,
+		HTTP: http.DefaultClient,
+	}
+	return txsub.InitHorizonProxyDriver(client, cfg.Networkpassphrase)
 }
 
 func initMux(driver txsub.Driver) *chi.Mux {

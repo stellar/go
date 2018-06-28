@@ -2,23 +2,18 @@ package txsub
 
 import (
 	"context"
-	"net/http"
 	"strconv"
 	"time"
 
 	"github.com/stellar/go/clients/horizon"
 	"github.com/stellar/go/support/errors"
-	"github.com/stellar/go/support/http/httptest"
 	"github.com/stellar/go/support/txsub"
 	"github.com/stellar/go/support/txsub/sequence"
 )
 
-func InitHorizonProxyDriver(horizonUrl, networkPassphrase string) HorizonProxyDriver {
-	client := horizon.Client{
-		URL:  horizonUrl,
-		HTTP: http.DefaultClient,
-	}
-
+// InitHorizonProxyDriver utilizes the config params to construct and
+// return a full initialized HorizonProxyDriver.
+func InitHorizonProxyDriver(client horizon.Client, networkPassphrase string) HorizonProxyDriver {
 	txsub := &txsub.System{
 		Pending:           txsub.NewDefaultSubmissionList(),
 		Submitter:         &HorizonProxySubmitterProvider{client: client},
@@ -33,14 +28,16 @@ func InitHorizonProxyDriver(horizonUrl, networkPassphrase string) HorizonProxyDr
 	return driver
 }
 
-func InitHorizonProxyDriverMock(client horizon.Client, h httptest.Client) HorizonProxyDriver {
+// InitHorizonProxyDriverMock constructs a HorizonProxyDriver sufficient for testing,
+// taking in a mock horizon upstream client.
+func InitHorizonProxyDriverMock(client horizon.Client, networkPassphrase string) HorizonProxyDriver {
 	txsub := &txsub.System{
 		Pending:           txsub.NewDefaultSubmissionList(),
 		Submitter:         &HorizonProxySubmitterProvider{client: client},
 		SubmissionQueue:   sequence.NewManager(),
 		Results:           &HorizonProxyResultProvider{client: client},
 		Sequences:         &HorizonProxySequenceProvider{client: client},
-		NetworkPassphrase: "test",
+		NetworkPassphrase: networkPassphrase,
 	}
 
 	driver := HorizonProxyDriver{submissionSystem: txsub}
@@ -48,34 +45,34 @@ func InitHorizonProxyDriverMock(client horizon.Client, h httptest.Client) Horizo
 	return driver
 }
 
+// SubmitTransaction is a wrapper around the txsub.System's default submission method.
 func (d HorizonProxyDriver) SubmitTransaction(ctx context.Context, env string) (result <-chan txsub.Result) {
 	return d.submissionSystem.Submit(ctx, env)
 }
 
+// Tick is a wrapper around the txsub.System's default tick method.
 func (d HorizonProxyDriver) Tick(ctx context.Context) {
 	d.submissionSystem.Tick(ctx)
 }
 
+// ResultByHash implements txsub.ResultProvider, utilizing an upstream horizon instance.
 func (d *HorizonProxyResultProvider) ResultByHash(cts context.Context, transactionID string) txsub.Result {
-	hr, err := d.client.LoadTransaction(transactionID)
+	tx, err := d.client.LoadTransaction(transactionID)
 	if err == nil {
-		return txResultFromHistory(hr)
+		return txsub.Result{
+			Hash:           tx.Hash,
+			LedgerSequence: tx.Ledger,
+			EnvelopeXDR:    tx.EnvelopeXdr,
+			ResultXDR:      tx.ResultXdr,
+			ResultMetaXDR:  tx.ResultMetaXdr,
+		}
 	}
 
 	// if no result was found, return ErrNoResults
 	return txsub.Result{Err: txsub.ErrNoResults}
 }
 
-func txResultFromHistory(tx horizon.Transaction) txsub.Result {
-	return txsub.Result{
-		Hash:           tx.Hash,
-		LedgerSequence: tx.Ledger,
-		EnvelopeXDR:    tx.EnvelopeXdr,
-		ResultXDR:      tx.ResultXdr,
-		ResultMetaXDR:  tx.ResultMetaXdr,
-	}
-}
-
+// Get txsub.SequenceProvider, tilizing an upstream horizon instance.
 func (d *HorizonProxySequenceProvider) Get(addys []string) (map[string]uint64, error) {
 	results := make(map[string]uint64)
 
@@ -96,6 +93,8 @@ func (d *HorizonProxySequenceProvider) Get(addys []string) (map[string]uint64, e
 	return results, nil
 }
 
+// Submit sends the provided envelope to an upstream horizon and parses the response into
+// a txsub.SubmissionResult.
 func (d *HorizonProxySubmitterProvider) Submit(ctx context.Context, env string) (result txsub.SubmissionResult) {
 	start := time.Now()
 	defer func() { result.Duration = time.Since(start) }()

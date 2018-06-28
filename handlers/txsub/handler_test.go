@@ -2,6 +2,7 @@ package txsub
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"testing"
@@ -9,11 +10,11 @@ import (
 
 	"github.com/stellar/go/clients/horizon"
 	"github.com/stellar/go/support/http/httptest"
+	"github.com/stellar/go/support/render/problem"
 	"github.com/stretchr/testify/assert"
 )
 
-func TestHandler(t *testing.T) {
-	// happy path with limit
+func TestHandler_HappyPath(t *testing.T) {
 	// Mock the upstream horizon
 	hmock := httptest.NewClient()
 	client := &horizon.Client{
@@ -22,8 +23,7 @@ func TestHandler(t *testing.T) {
 	}
 
 	// Mock the horizon proxy transaction submission service
-	proxymock := httptest.NewClient()
-	driver := InitHorizonProxyDriverMock(*client, *proxymock)
+	driver := InitHorizonProxyDriverMock(*client, "test")
 	handler := &Handler{
 		Driver:  driver,
 		Ticks:   time.NewTicker(1 * time.Second),
@@ -38,7 +38,6 @@ func TestHandler(t *testing.T) {
 	// Delay transaction "confirmation"
 	go func(hmock *httptest.Client) {
 		time.Sleep(2 * time.Second)
-		fmt.Println("Changed")
 		hmock.On(
 			"GET",
 			fmt.Sprintf("https://localhost/transactions/cb323b02148e231570c3573b7a563dfea0c8cdb1c15cdd5aaf04acf4ce4b702a"),
@@ -48,41 +47,48 @@ func TestHandler(t *testing.T) {
 	hmock.On(
 		"POST",
 		fmt.Sprintf("https://localhost/transactions"),
-	).ReturnString(200, transactionResponse)
+	).ReturnString(200, "{}")
 
 	hmock.On(
 		"GET",
 		"https://localhost/accounts/GBCHJCAATUZPVNOMRGQ7GJOMLB7IEMNSVCKADFKHNTHQLHU2GOJKUMDW",
 	).ReturnString(200, accountResponse)
 
-	z := server.POST("/tx").
+	s := server.POST("/tx").
 		WithFormField("tx", tx).
 		Expect().
 		Status(http.StatusOK).
 		ContentType("application/hal+json").
 		Body().Raw()
 
-	assert.Equal(t, z, expectedResponseSuccess)
-	fmt.Println("Passed happy path")
+	var w horizon.TransactionSuccess
 
-	// Transaction Already submitted
+	json.Unmarshal([]byte(s), &w)
+
+	assert.Equal(t, "cb323b02148e231570c3573b7a563dfea0c8cdb1c15cdd5aaf04acf4ce4b702a", w.Hash)
+	assert.Equal(t, int32(17425656), w.Ledger)
+	assert.Equal(t, "AAAAAAAAAAEAAAADAAAAAAEJ5PgAAAAAAAAAAFiLZ2umH5uJrt2gaLmOiZKv7FTGWZmCqfmG3m7u+AuGAAAAAACYloABCeT4AAAAAAAAAAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAwEJ5PgAAAAAAAAAAGG+6AIbvDIZHNScjgxB93jfh+MDXcjIJgdFlbOc/0UGAAAAAAIWDlwBCeTPAAAAAQAAAAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAQEJ5PgAAAAAAAAAAGG+6AIbvDIZHNScjgxB93jfh+MDXcjIJgdFlbOc/0UGAAAAAAF9d9wBCeTPAAAAAQAAAAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAAAA", w.Meta)
+	assert.Equal(t, "AAAAAAAAAGQAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAA=", w.Result)
+
+}
+
+func TestHandler_AlreadySubmitted(t *testing.T) {
 	// Mock the upstream horizon
-	hmock = httptest.NewClient()
-	client = &horizon.Client{
+	hmock := httptest.NewClient()
+	client := &horizon.Client{
 		URL:  "https://localhost",
 		HTTP: hmock,
 	}
 
 	// Mock the horizon proxy transaction submission service
-	proxymock = httptest.NewClient()
-	driver = InitHorizonProxyDriverMock(*client, *proxymock)
-	handler = &Handler{
+	driver := InitHorizonProxyDriverMock(*client, "test")
+	handler := &Handler{
 		Driver:  driver,
 		Ticks:   time.NewTicker(1 * time.Second),
 		Context: context.Background(),
 	}
 
-	server = httptest.NewServer(t, handler)
+	server := httptest.NewServer(t, handler)
 	defer server.Close()
 
 	go handler.Run()
@@ -90,7 +96,7 @@ func TestHandler(t *testing.T) {
 	hmock.On(
 		"POST",
 		fmt.Sprintf("https://localhost/transactions"),
-	).ReturnString(200, transactionResponse)
+	).ReturnString(200, "{}")
 
 	hmock.On(
 		"GET",
@@ -102,34 +108,40 @@ func TestHandler(t *testing.T) {
 		fmt.Sprintf("https://localhost/transactions/cb323b02148e231570c3573b7a563dfea0c8cdb1c15cdd5aaf04acf4ce4b702a"),
 	).ReturnString(200, transactionResponse)
 
-	z = server.POST("/tx").
+	s := server.POST("/tx").
 		WithFormField("tx", tx).
 		Expect().
 		Status(http.StatusOK).
 		ContentType("application/hal+json").
 		Body().Raw()
 
-	assert.Equal(t, z, expectedResponseSuccess)
-	fmt.Println("Passed already submitted")
+	var w horizon.TransactionSuccess
 
-	// Transaction Bad Sequence
+	json.Unmarshal([]byte(s), &w)
+
+	assert.Equal(t, "cb323b02148e231570c3573b7a563dfea0c8cdb1c15cdd5aaf04acf4ce4b702a", w.Hash)
+	assert.Equal(t, int32(17425656), w.Ledger)
+	assert.Equal(t, "AAAAAAAAAAEAAAADAAAAAAEJ5PgAAAAAAAAAAFiLZ2umH5uJrt2gaLmOiZKv7FTGWZmCqfmG3m7u+AuGAAAAAACYloABCeT4AAAAAAAAAAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAwEJ5PgAAAAAAAAAAGG+6AIbvDIZHNScjgxB93jfh+MDXcjIJgdFlbOc/0UGAAAAAAIWDlwBCeTPAAAAAQAAAAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAQEJ5PgAAAAAAAAAAGG+6AIbvDIZHNScjgxB93jfh+MDXcjIJgdFlbOc/0UGAAAAAAF9d9wBCeTPAAAAAQAAAAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAAAA", w.Meta)
+	assert.Equal(t, "AAAAAAAAAGQAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAA=", w.Result)
+}
+
+func TestHandler_BadSequence(t *testing.T) {
 	// Mock the upstream horizon
-	hmock = httptest.NewClient()
-	client = &horizon.Client{
+	hmock := httptest.NewClient()
+	client := &horizon.Client{
 		URL:  "https://localhost",
 		HTTP: hmock,
 	}
 
 	// Mock the horizon proxy transaction submission service
-	proxymock = httptest.NewClient()
-	driver = InitHorizonProxyDriverMock(*client, *proxymock)
-	handler = &Handler{
+	driver := InitHorizonProxyDriverMock(*client, "test")
+	handler := &Handler{
 		Driver:  driver,
 		Ticks:   time.NewTicker(1 * time.Second),
 		Context: context.Background(),
 	}
 
-	server = httptest.NewServer(t, handler)
+	server := httptest.NewServer(t, handler)
 	defer server.Close()
 
 	go handler.Run()
@@ -137,41 +149,48 @@ func TestHandler(t *testing.T) {
 	hmock.On(
 		"POST",
 		fmt.Sprintf("https://localhost/transactions"),
-	).ReturnString(200, transactionResponse)
+	).ReturnString(200, "{}")
 
 	hmock.On(
 		"GET",
 		"https://localhost/accounts/GBCHJCAATUZPVNOMRGQ7GJOMLB7IEMNSVCKADFKHNTHQLHU2GOJKUMDW",
 	).ReturnString(200, accountResponse2)
 
-	z = server.POST("/tx").
+	s := server.POST("/tx").
 		WithFormField("tx", tx).
 		Expect().
 		Status(http.StatusOK).
 		ContentType("application/hal+json").
 		Body().Raw()
 
-	assert.Equal(t, z, expectedResponseBadSequence)
-	fmt.Println("Passed bad sequence")
+	var p problem.P
+	json.Unmarshal([]byte(s), &p)
 
-	// Transaction Timedout
+	assert.Equal(t, "transaction_failed", p.Type)
+	assert.Equal(t, "Transaction Failed", p.Title)
+	assert.Equal(t, int(400), p.Status)
+	assert.Equal(t, "The transaction failed when submitted to the stellar network. The `extras.result_codes` field on this response contains further details.  Descriptions of each code can be found at: https://www.stellar.org/developers/learn/concepts/list-of-operations.html", p.Detail)
+	assert.Equal(t, "AAAAAER0iACdMvq1zImh8yXMWH6CMbKolAGVR2zPBZ6aM5KqAAAAZACUWO8AAAACAAAAAAAAAAAAAAABAAAAAAAAAAEAAAAARHSIAJ0y+rXMiaHzJcxYfoIxsqiUAZVHbM8FnpozkqoAAAAAAAAAAAX14QAAAAAAAAAAAZozkqoAAABA3kweRZ9OTHXS4r7uRjbOUCu/7uOHkqIp5/dIVhCGeqzlDQJXqaLICt441Nj+C40dyDigTlQfmrZ3NLZXDR+nAQ==", p.Extras["envelope_xdr"])
+	assert.Equal(t, map[string]interface{}{"transaction": "tx_bad_seq"}, p.Extras["result_codes"])
+}
+
+func TestHandler_Timeout(t *testing.T) {
 	// Mock the upstream horizon
-	hmock = httptest.NewClient()
-	client = &horizon.Client{
+	hmock := httptest.NewClient()
+	client := &horizon.Client{
 		URL:  "https://localhost",
 		HTTP: hmock,
 	}
 
 	// Mock the horizon proxy transaction submission service
-	proxymock = httptest.NewClient()
-	driver = InitHorizonProxyDriverMock(*client, *proxymock)
-	handler = &Handler{
+	driver := InitHorizonProxyDriverMock(*client, "test")
+	handler := &Handler{
 		Driver:  driver,
 		Ticks:   time.NewTicker(1 * time.Second),
 		Context: context.Background(),
 	}
 
-	server = httptest.NewServer(t, handler)
+	server := httptest.NewServer(t, handler)
 	defer server.Close()
 
 	go handler.Run()
@@ -179,23 +198,27 @@ func TestHandler(t *testing.T) {
 	hmock.On(
 		"POST",
 		fmt.Sprintf("https://localhost/transactions"),
-	).ReturnString(200, transactionResponse)
+	).ReturnString(200, "{}")
 
 	hmock.On(
 		"GET",
 		"https://localhost/accounts/GBCHJCAATUZPVNOMRGQ7GJOMLB7IEMNSVCKADFKHNTHQLHU2GOJKUMDW",
 	).ReturnString(200, accountResponse)
 
-	z = server.POST("/tx").
+	s := server.POST("/tx").
 		WithFormField("tx", tx).
 		Expect().
 		Status(http.StatusOK).
 		ContentType("application/hal+json").
 		Body().Raw()
 
-	assert.Equal(t, z, expectedResponseTimeout)
-	fmt.Println("Passed timed out")
+	var p problem.P
+	json.Unmarshal([]byte(s), &p)
 
+	assert.Equal(t, "timeout", p.Type)
+	assert.Equal(t, "Timeout", p.Title)
+	assert.Equal(t, int(504), p.Status)
+	assert.Equal(t, "Your request timed out before completing.  Please try your request again.", p.Detail)
 }
 
 var tx = "AAAAAER0iACdMvq1zImh8yXMWH6CMbKolAGVR2zPBZ6aM5KqAAAAZACUWO8AAAACAAAAAAAAAAAAAAABAAAAAAAAAAEAAAAARHSIAJ0y+rXMiaHzJcxYfoIxsqiUAZVHbM8FnpozkqoAAAAAAAAAAAX14QAAAAAAAAAAAZozkqoAAABA3kweRZ9OTHXS4r7uRjbOUCu/7uOHkqIp5/dIVhCGeqzlDQJXqaLICt441Nj+C40dyDigTlQfmrZ3NLZXDR+nAQ=="
@@ -374,7 +397,3 @@ var transactionResponse = `{
 	  "f7n61iRg9WHlb6MaJLvVOglkE1CDvUhn+zZ22WOdE5+/qTTrTbJWctG2JQGm0oKAnydmV0ZgzLnvb/Z6xbCxAA=="
 	]
   }`
-
-var expectedResponseSuccess = "{\n  \"Err\": null,\n  \"Hash\": \"cb323b02148e231570c3573b7a563dfea0c8cdb1c15cdd5aaf04acf4ce4b702a\",\n  \"LedgerSequence\": 17425656,\n  \"EnvelopeXDR\": \"AAAAAGG+6AIbvDIZHNScjgxB93jfh+MDXcjIJgdFlbOc/0UGAAAAZAEJ5M8AAAABAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAWItna6Yfm4mu3aBouY6Jkq/sVMZZmYKp+Ybebu74C4YAAAAAAJiWgAAAAAAAAAABnP9FBgAAAEB/ufrWJGD1YeVvoxoku9U6CWQTUIO9SGf7NnbZY50Tn7+pNOtNslZy0bYlAabSgoCfJ2ZXRmDMue9v9nrFsLEA\",\n  \"ResultXDR\": \"AAAAAAAAAGQAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAA=\",\n  \"ResultMetaXDR\": \"AAAAAAAAAAEAAAADAAAAAAEJ5PgAAAAAAAAAAFiLZ2umH5uJrt2gaLmOiZKv7FTGWZmCqfmG3m7u+AuGAAAAAACYloABCeT4AAAAAAAAAAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAwEJ5PgAAAAAAAAAAGG+6AIbvDIZHNScjgxB93jfh+MDXcjIJgdFlbOc/0UGAAAAAAIWDlwBCeTPAAAAAQAAAAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAQEJ5PgAAAAAAAAAAGG+6AIbvDIZHNScjgxB93jfh+MDXcjIJgdFlbOc/0UGAAAAAAF9d9wBCeTPAAAAAQAAAAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAAAA\"\n}"
-var expectedResponseBadSequence = "{\n  \"Err\": {\n    \"ResultXDR\": \"AAAAAAAAAAD////7AAAAAA==\"\n  },\n  \"Hash\": \"\",\n  \"LedgerSequence\": 0,\n  \"EnvelopeXDR\": \"AAAAAER0iACdMvq1zImh8yXMWH6CMbKolAGVR2zPBZ6aM5KqAAAAZACUWO8AAAACAAAAAAAAAAAAAAABAAAAAAAAAAEAAAAARHSIAJ0y+rXMiaHzJcxYfoIxsqiUAZVHbM8FnpozkqoAAAAAAAAAAAX14QAAAAAAAAAAAZozkqoAAABA3kweRZ9OTHXS4r7uRjbOUCu/7uOHkqIp5/dIVhCGeqzlDQJXqaLICt441Nj+C40dyDigTlQfmrZ3NLZXDR+nAQ==\",\n  \"ResultXDR\": \"\",\n  \"ResultMetaXDR\": \"\"\n}"
-var expectedResponseTimeout = "{\n  \"Err\": {},\n  \"Hash\": \"\",\n  \"LedgerSequence\": 0,\n  \"EnvelopeXDR\": \"\",\n  \"ResultXDR\": \"\",\n  \"ResultMetaXDR\": \"\"\n}"
