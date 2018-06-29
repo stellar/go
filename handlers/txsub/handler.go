@@ -3,7 +3,6 @@ package txsub
 import (
 	"mime"
 	"net/http"
-	"net/url"
 	"sync"
 
 	"github.com/stellar/go/clients/horizon"
@@ -81,7 +80,11 @@ func (h *Handler) validateBodyType(r *http.Request) {
 
 func (h *Handler) loadResource() {
 	if h.Result.Err == nil {
-		h.populateTransactionSuccess(&h.Resource, h.Result)
+		h.Resource.Hash = h.Result.Hash
+		h.Resource.Ledger = h.Result.LedgerSequence
+		h.Resource.Env = h.Result.EnvelopeXDR
+		h.Resource.Result = h.Result.ResultXDR
+		h.Resource.Meta = h.Result.ResultMetaXDR
 		return
 	}
 
@@ -99,7 +102,7 @@ func (h *Handler) loadResource() {
 	switch err := h.Result.Err.(type) {
 	case *txsub.FailedTransactionError:
 		rcr := horizon.TransactionResultCodes{}
-		h.populateTransactionResultCodes(&rcr, err)
+		populateTransactionResultCodes(&rcr, err)
 
 		h.Err = &problem.P{
 			Type:   "transaction_failed",
@@ -161,7 +164,7 @@ func (h *Handler) tick() {
 	log.Debug("finished ticking app")
 }
 
-func (h *Handler) populateTransactionResultCodes(
+func populateTransactionResultCodes(
 	dest *horizon.TransactionResultCodes,
 	fail *txsub.FailedTransactionError,
 ) (err error) {
@@ -176,19 +179,5 @@ func (h *Handler) populateTransactionResultCodes(
 		return
 	}
 
-	return
-}
-
-// Populate fills out the details
-func (h *Handler) populateTransactionSuccess(dest *horizon.TransactionSuccess, result txsub.Result) {
-	dest.Hash = result.Hash
-	dest.Ledger = result.LedgerSequence
-	dest.Env = result.EnvelopeXDR
-	dest.Result = result.ResultXDR
-	dest.Meta = result.ResultMetaXDR
-
-	u, _ := url.Parse(h.Source)
-	lb := hal.LinkBuilder{u}
-	dest.Links.Transaction = lb.Link("/transactions", result.Hash)
 	return
 }

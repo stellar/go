@@ -16,14 +16,17 @@ import (
 	"github.com/stellar/go/support/txsub"
 )
 
+// Handler represents an http handler that can service http requests that
+// conform to the Stellar txsub servuce.  This handler should be added to
+// your chosen mux at the path `/tx` (and for good measure `/tx/` if your
+// middleware doesn't normalize trailing slashes).
 type Handler struct {
 	Driver   Driver
 	Context  context.Context
 	Result   txsub.Result
 	Err      error
 	Ticks    *time.Ticker
-	Resource horizon.TransactionSuccess
-	Source   string
+	Resource TransactionSuccess
 }
 
 // Driver is a wrapper around the configurable parts of txsub.System. By requiring
@@ -59,4 +62,13 @@ type HorizonProxySequenceProvider struct {
 // an upstream horizon" provider.
 type HorizonProxySubmitterProvider struct {
 	client horizon.Client
+}
+
+// TransactionSuccess without the links.
+type TransactionSuccess struct {
+	Hash   string `json:"hash"`
+	Ledger int32  `json:"ledger"`
+	Env    string `json:"envelope_xdr"`
+	Result string `json:"result_xdr"`
+	Meta   string `json:"result_meta_xdr"`
 }

@@ -59,7 +59,9 @@ func run(cmd *cobra.Command, args []string) {
 		os.Exit(1)
 	}
 
-	mux := initMux(cfg)
+	driver := initDriver(cfg)
+
+	mux := initMux(driver)
 	addr := fmt.Sprintf("0.0.0.0:%d", cfg.Port)
 
 	http.Run(http.Config{
@@ -72,21 +74,22 @@ func run(cmd *cobra.Command, args []string) {
 	})
 }
 
-func initMux(cfg Config) *chi.Mux {
+func initDriver(cfg Config) txsub.Driver {
 	client := horizon.Client{
 		URL:  cfg.Horizonurl,
 		HTTP: htttpp.DefaultClient,
 	}
 
-	driver := txsub.InitHorizonProxyDriver(client, cfg.Networkpassphrase)
+	return txsub.InitHorizonProxyDriver(client, cfg.Networkpassphrase)
+}
 
+func initMux(driver txsub.Driver) *chi.Mux {
 	mux := http.NewAPIMux(false)
 
 	t := txsub.Handler{
 		Driver:  driver,
 		Ticks:   time.NewTicker(1 * time.Second),
 		Context: context.Background(),
-		Source:  cfg.Horizonurl,
 	}
 
 	mux.Post("/tx", t.ServeHTTP)
