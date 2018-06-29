@@ -12,7 +12,7 @@ import (
 )
 
 // NewHorizonProxyDriver utilizes the config params to construct and
-// return a full initialized HorizonProxyDriver.
+// return a fully initialized HorizonProxyDriver.
 func NewHorizonProxyDriver(client *horizon.Client, networkPassphrase string) HorizonProxyDriver {
 	txsub := &txsub.System{
 		Pending:           txsub.NewDefaultSubmissionList(),

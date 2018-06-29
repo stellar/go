@@ -13,16 +13,10 @@ import (
 )
 
 func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	// 1. Validate body type is `application/x-www-form-urlencoded`
 	h.validateBodyType(r)
-
-	// 2. Get tx envelope string from form
 	tx := r.FormValue("tx")
 
-	// 3. submit tx via submission system
 	submission := h.Driver.SubmitTransaction(r.Context(), tx)
-
-	// 4. deal with submission result
 	select {
 	case result := <-submission:
 		h.Result = result
@@ -36,16 +30,13 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// 5. load resource struct with appropriate response
 	h.loadResource()
 
-	// 6. write hal to return
 	if h.Err != nil {
 		hal.Render(w, h.Err)
 	} else {
 		hal.Render(w, h.Resource)
 	}
-
 }
 
 func (h *Handler) validateBodyType(r *http.Request) {
@@ -137,6 +128,24 @@ func (h *Handler) loadResource() {
 	}
 }
 
+func populateTransactionResultCodes(
+	dest *horizon.TransactionResultCodes,
+	fail *txsub.FailedTransactionError,
+) (err error) {
+
+	dest.TransactionCode, err = fail.TransactionResultCode()
+	if err != nil {
+		return
+	}
+
+	dest.OperationCodes, err = fail.OperationResultCodes()
+	if err != nil {
+		return
+	}
+
+	return
+}
+
 // Run is the function that runs in the background that triggers Tick each
 // second.
 func (h *Handler) Run() {
@@ -162,22 +171,4 @@ func (h *Handler) tick() {
 
 	// finally, update metrics
 	log.Debug("finished ticking app")
-}
-
-func populateTransactionResultCodes(
-	dest *horizon.TransactionResultCodes,
-	fail *txsub.FailedTransactionError,
-) (err error) {
-
-	dest.TransactionCode, err = fail.TransactionResultCode()
-	if err != nil {
-		return
-	}
-
-	dest.OperationCodes, err = fail.OperationResultCodes()
-	if err != nil {
-		return
-	}
-
-	return
 }

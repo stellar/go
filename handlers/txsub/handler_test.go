@@ -14,13 +14,23 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestHandler_HappyPath(t *testing.T) {
+func TestHandler_HorizonProxy_HappyPath(t *testing.T) {
 	// Mock the upstream horizon
 	hmock := httptest.NewClient()
 	client := &horizon.Client{
 		URL:  "https://localhost",
 		HTTP: hmock,
 	}
+
+	hmock.On(
+		"POST",
+		fmt.Sprintf("https://localhost/transactions"),
+	).ReturnString(200, "{}")
+
+	hmock.On(
+		"GET",
+		"https://localhost/accounts/GBCHJCAATUZPVNOMRGQ7GJOMLB7IEMNSVCKADFKHNTHQLHU2GOJKUMDW",
+	).ReturnString(200, accountResponse)
 
 	// Mock the horizon proxy transaction submission service
 	driver := NewHorizonProxyDriver(client, "test")
@@ -35,7 +45,7 @@ func TestHandler_HappyPath(t *testing.T) {
 
 	go handler.Run()
 
-	// Delay transaction "confirmation"
+	// Delayed transaction "confirmation"
 	go func(hmock *httptest.Client) {
 		time.Sleep(2 * time.Second)
 		hmock.On(
@@ -43,16 +53,6 @@ func TestHandler_HappyPath(t *testing.T) {
 			fmt.Sprintf("https://localhost/transactions/cb323b02148e231570c3573b7a563dfea0c8cdb1c15cdd5aaf04acf4ce4b702a"),
 		).ReturnString(200, transactionResponse)
 	}(hmock)
-
-	hmock.On(
-		"POST",
-		fmt.Sprintf("https://localhost/transactions"),
-	).ReturnString(200, "{}")
-
-	hmock.On(
-		"GET",
-		"https://localhost/accounts/GBCHJCAATUZPVNOMRGQ7GJOMLB7IEMNSVCKADFKHNTHQLHU2GOJKUMDW",
-	).ReturnString(200, accountResponse)
 
 	s := server.POST("/tx").
 		WithFormField("tx", tx).
@@ -72,26 +72,13 @@ func TestHandler_HappyPath(t *testing.T) {
 
 }
 
-func TestHandler_AlreadySubmitted(t *testing.T) {
+func TestHandler_HorizonProxy_AlreadySubmitted(t *testing.T) {
 	// Mock the upstream horizon
 	hmock := httptest.NewClient()
 	client := &horizon.Client{
 		URL:  "https://localhost",
 		HTTP: hmock,
 	}
-
-	// Mock the horizon proxy transaction submission service
-	driver := NewHorizonProxyDriver(client, "test")
-	handler := &Handler{
-		Driver:  driver,
-		Ticks:   time.NewTicker(1 * time.Second),
-		Context: context.Background(),
-	}
-
-	server := httptest.NewServer(t, handler)
-	defer server.Close()
-
-	go handler.Run()
 
 	hmock.On(
 		"POST",
@@ -108,6 +95,19 @@ func TestHandler_AlreadySubmitted(t *testing.T) {
 		fmt.Sprintf("https://localhost/transactions/cb323b02148e231570c3573b7a563dfea0c8cdb1c15cdd5aaf04acf4ce4b702a"),
 	).ReturnString(200, transactionResponse)
 
+	// Mock the horizon proxy transaction submission service
+	driver := NewHorizonProxyDriver(client, "test")
+	handler := &Handler{
+		Driver:  driver,
+		Ticks:   time.NewTicker(1 * time.Second),
+		Context: context.Background(),
+	}
+
+	server := httptest.NewServer(t, handler)
+	defer server.Close()
+
+	go handler.Run()
+
 	s := server.POST("/tx").
 		WithFormField("tx", tx).
 		Expect().
@@ -125,13 +125,23 @@ func TestHandler_AlreadySubmitted(t *testing.T) {
 	assert.Equal(t, "AAAAAAAAAGQAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAA=", w.Result)
 }
 
-func TestHandler_BadSequence(t *testing.T) {
+func TestHandler_HorizonProxy_BadSequence(t *testing.T) {
 	// Mock the upstream horizon
 	hmock := httptest.NewClient()
 	client := &horizon.Client{
 		URL:  "https://localhost",
 		HTTP: hmock,
 	}
+
+	hmock.On(
+		"POST",
+		fmt.Sprintf("https://localhost/transactions"),
+	).ReturnString(200, "{}")
+
+	hmock.On(
+		"GET",
+		"https://localhost/accounts/GBCHJCAATUZPVNOMRGQ7GJOMLB7IEMNSVCKADFKHNTHQLHU2GOJKUMDW",
+	).ReturnString(200, accountResponse2)
 
 	// Mock the horizon proxy transaction submission service
 	driver := NewHorizonProxyDriver(client, "test")
@@ -145,16 +155,6 @@ func TestHandler_BadSequence(t *testing.T) {
 	defer server.Close()
 
 	go handler.Run()
-
-	hmock.On(
-		"POST",
-		fmt.Sprintf("https://localhost/transactions"),
-	).ReturnString(200, "{}")
-
-	hmock.On(
-		"GET",
-		"https://localhost/accounts/GBCHJCAATUZPVNOMRGQ7GJOMLB7IEMNSVCKADFKHNTHQLHU2GOJKUMDW",
-	).ReturnString(200, accountResponse2)
 
 	s := server.POST("/tx").
 		WithFormField("tx", tx).
@@ -174,13 +174,23 @@ func TestHandler_BadSequence(t *testing.T) {
 	assert.Equal(t, map[string]interface{}{"transaction": "tx_bad_seq"}, p.Extras["result_codes"])
 }
 
-func TestHandler_Timeout(t *testing.T) {
+func TestHandler_HorizonProxy_Timeout(t *testing.T) {
 	// Mock the upstream horizon
 	hmock := httptest.NewClient()
 	client := &horizon.Client{
 		URL:  "https://localhost",
 		HTTP: hmock,
 	}
+
+	hmock.On(
+		"POST",
+		fmt.Sprintf("https://localhost/transactions"),
+	).ReturnString(200, "{}")
+
+	hmock.On(
+		"GET",
+		"https://localhost/accounts/GBCHJCAATUZPVNOMRGQ7GJOMLB7IEMNSVCKADFKHNTHQLHU2GOJKUMDW",
+	).ReturnString(200, accountResponse)
 
 	// Mock the horizon proxy transaction submission service
 	driver := NewHorizonProxyDriver(client, "test")
@@ -194,16 +204,6 @@ func TestHandler_Timeout(t *testing.T) {
 	defer server.Close()
 
 	go handler.Run()
-
-	hmock.On(
-		"POST",
-		fmt.Sprintf("https://localhost/transactions"),
-	).ReturnString(200, "{}")
-
-	hmock.On(
-		"GET",
-		"https://localhost/accounts/GBCHJCAATUZPVNOMRGQ7GJOMLB7IEMNSVCKADFKHNTHQLHU2GOJKUMDW",
-	).ReturnString(200, accountResponse)
 
 	s := server.POST("/tx").
 		WithFormField("tx", tx).

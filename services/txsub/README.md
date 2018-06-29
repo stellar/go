@@ -19,7 +19,7 @@ By default this server uses a config file named `txsub.cfg` in the current worki
 ## Example `txsub.cfg`
 In this section you can find config examples for the two main ways of setting up a txsub service.
 
-### #1: Horizon Proxy Mode
+### #1: Horizon Proxy mode
 
 In the case you'll utilize an upstream horizon instance to submit transactions and query data:
 
@@ -30,7 +30,7 @@ network_passphrase = "Some network passphrase"
 mode = "horizon proxy"
 ```
 
-### #2: Stellar Core Mode
+### #2: Stellar Core mode
 
 *Coming Soon!*
 

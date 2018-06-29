@@ -3,7 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
-	htttpp "net/http"
+	h "net/http"
 	"os"
 	"time"
 
@@ -32,8 +32,8 @@ func main() {
 		Use:   "txsub",
 		Short: "stellar transaction submission service",
 		Long: `
-The Stellar transaction submission service let's you easilly submit transactions
-to a configurable horizon server or a configurable stellar core client.
+The Stellar transaction submission service allows you to easily submit transactions
+to the Stellar network using a configurable backend.
     `,
 		Run: run,
 	}
@@ -84,10 +84,10 @@ func initDriver(cfg Config) (txsub.Driver, error) {
 	case "horizon proxy":
 		client := horizon.Client{
 			URL:  cfg.Horizonurl,
-			HTTP: htttpp.DefaultClient,
+			HTTP: h.DefaultClient,
 		}
 
-		return txsub.NewHorizonProxyDriver(client, cfg.Networkpassphrase), nil
+		return txsub.NewHorizonProxyDriver(&client, cfg.Networkpassphrase), nil
 	case "stellar core":
 		return nil, errors.Errorf("To be implemented, please check back soon!")
 	default:
