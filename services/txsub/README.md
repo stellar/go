@@ -14,6 +14,7 @@ By default this server uses a config file named `txsub.cfg` in the current worki
 * `port` - server listening port
 * `horizon_url` - url of the upstream horizon instance for reference and transaction submission
 * `network_passphrase` - specify which network to use
+* `mode` - specify which mode to use. Currently supports `horizon proxy` with plans to also support `stellar core`
 
 ## Example `txsub.cfg`
 In this section you can find config examples for the two main ways of setting up a txsub service.
@@ -26,6 +27,7 @@ In the case you'll utilize an upstream horizon instance to submit transactions a
 port = 8000
 horizon_url = "https://horizon_url.com"
 network_passphrase = "Some network passphrase"
+mode = "horizon proxy"
 ```
 
 ### #2: Stellar Core Mode

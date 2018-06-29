@@ -24,6 +24,7 @@ type Config struct {
 	Port              int    `valid:"required"`
 	Horizonurl        string `valid:"required"`
 	Networkpassphrase string `valid:"required"`
+	Mode              string `valid:"required"`
 }
 
 func main() {
@@ -59,7 +60,11 @@ func run(cmd *cobra.Command, args []string) {
 		os.Exit(1)
 	}
 
-	driver := initDriver(cfg)
+	driver, err := initDriver(cfg)
+	if err != nil {
+		log.Error(err)
+		os.Exit(1)
+	}
 
 	mux := initMux(driver)
 	addr := fmt.Sprintf("0.0.0.0:%d", cfg.Port)
@@ -74,13 +79,21 @@ func run(cmd *cobra.Command, args []string) {
 	})
 }
 
-func initDriver(cfg Config) txsub.Driver {
-	client := horizon.Client{
-		URL:  cfg.Horizonurl,
-		HTTP: htttpp.DefaultClient,
+func initDriver(cfg Config) (txsub.Driver, error) {
+	switch cfg.Mode {
+	case "horizon proxy":
+		client := horizon.Client{
+			URL:  cfg.Horizonurl,
+			HTTP: htttpp.DefaultClient,
+		}
+
+		return txsub.InitHorizonProxyDriver(client, cfg.Networkpassphrase), nil
+	case "stellar core":
+		return nil, errors.Errorf("To be implemented, please check back soon!")
+	default:
+		return nil, errors.Errorf("Invalid mode %s.", cfg.Mode)
 	}
 
-	return txsub.InitHorizonProxyDriver(client, cfg.Networkpassphrase)
 }
 
 func initMux(driver txsub.Driver) *chi.Mux {
