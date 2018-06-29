@@ -59,6 +59,8 @@ func (d *HorizonProxyResultProvider) ResultByHash(cts context.Context, transacti
 func (d *HorizonProxySequenceProvider) Get(addys []string) (map[string]uint64, error) {
 	results := make(map[string]uint64)
 
+	// TODO: this is inefficient.
+	// https://github.com/stellar/go/issues/522
 	for _, addy := range addys {
 		a, err := d.client.LoadAccount(addy)
 		if err != nil {
