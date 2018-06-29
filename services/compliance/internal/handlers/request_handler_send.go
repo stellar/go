@@ -10,6 +10,7 @@ import (
 	b "github.com/stellar/go/build"
 	"github.com/stellar/go/protocols/compliance"
 	"github.com/stellar/go/protocols/federation"
+	"github.com/stellar/go/services/compliance/internal/db"
 	shared "github.com/stellar/go/services/internal/bridge-compliance-shared"
 	"github.com/stellar/go/services/internal/bridge-compliance-shared/http/helpers"
 	callback "github.com/stellar/go/services/internal/bridge-compliance-shared/protocols/compliance"
@@ -35,6 +36,34 @@ func (rh *RequestHandler) HandlerSend(w http.ResponseWriter, r *http.Request) {
 			log.Error(err)
 			helpers.Write(w, helpers.InternalServerError)
 		}
+		return
+	}
+
+	authDataEntity, err := rh.Database.GetAuthData(request.ID)
+	if err != nil {
+		log.Error(err.Error())
+		helpers.Write(w, helpers.InternalServerError)
+		return
+	}
+
+	if authDataEntity != nil {
+		stellarToml, err := rh.StellarTomlResolver.GetStellarToml(authDataEntity.Domain)
+		if err != nil {
+			log.WithFields(log.Fields{
+				"destination": request.Destination,
+				"err":         err,
+			}).Print("Cannot resolve address")
+			helpers.Write(w, callback.CannotResolveDestination)
+			return
+		}
+
+		if stellarToml.AuthServer == "" {
+			log.Print("No AUTH_SERVER in stellar.toml")
+			helpers.Write(w, callback.AuthServerNotDefined)
+			return
+		}
+
+		rh.sendAuthData(w, stellarToml.AuthServer, []byte(authDataEntity.AuthData))
 		return
 	}
 
@@ -249,6 +278,31 @@ func (rh *RequestHandler) HandlerSend(w http.ResponseWriter, r *http.Request) {
 		helpers.Write(w, helpers.InternalServerError)
 		return
 	}
+
+	authDataEntity = &db.AuthData{
+		RequestID: request.ID,
+		Domain:    domain,
+		AuthData:  string(data),
+	}
+	err = rh.Database.InsertAuthData(authDataEntity)
+	if err != nil {
+		log.WithFields(log.Fields{"err": err}).Warn("Error persisting authDataEntity")
+		helpers.Write(w, helpers.InternalServerError)
+		return
+	}
+
+	rh.sendAuthData(w, stellarToml.AuthServer, data)
+}
+
+func (rh *RequestHandler) sendAuthData(w http.ResponseWriter, authServer string, data []byte) {
+	var authData compliance.AuthData
+	err := json.Unmarshal(data, &authData)
+	if err != nil {
+		log.Error(err)
+		helpers.Write(w, helpers.InternalServerError)
+		return
+	}
+
 	sig, err := rh.SignatureSignerVerifier.Sign(rh.Config.Keys.SigningSeed, data)
 	if err != nil {
 		log.Error("Error signing authData")
@@ -261,12 +315,12 @@ func (rh *RequestHandler) HandlerSend(w http.ResponseWriter, r *http.Request) {
 		Signature: sig,
 	}
 	resp, err := rh.Client.PostForm(
-		stellarToml.AuthServer,
+		authServer,
 		authRequest.ToURLValues(),
 	)
 	if err != nil {
 		log.WithFields(log.Fields{
-			"auth_server": stellarToml.AuthServer,
+			"auth_server": authServer,
 			"err":         err,
 		}).Error("Error sending request to auth server")
 		helpers.Write(w, helpers.InternalServerError)
@@ -303,7 +357,7 @@ func (rh *RequestHandler) HandlerSend(w http.ResponseWriter, r *http.Request) {
 
 	response := callback.SendResponse{
 		AuthResponse:   authResponse,
-		TransactionXdr: txBase64,
+		TransactionXdr: authData.Tx,
 	}
 	helpers.Write(w, &response)
 }

@@ -27,6 +27,9 @@ type Database interface {
 	InsertAllowedUser(user *AllowedUser) error
 	GetAllowedUserByDomainAndUserID(domain, userID string) (*AllowedUser, error)
 	DeleteAllowedUserByDomainAndUserID(domain, userID string) error
+
+	InsertAuthData(authData *AuthData) error
+	GetAuthData(requestID string) (*AuthData, error)
 }
 
 type PostgresDatabase struct {
@@ -60,4 +63,12 @@ type AuthorizedTransaction struct {
 	TransactionXdr string    `db:"transaction_xdr"`
 	AuthorizedAt   time.Time `db:"authorized_at"`
 	Data           string    `db:"data"`
+}
+
+// AuthData represents auth data
+type AuthData struct {
+	ID        int64  `db:"id"`
+	RequestID string `db:"request_id"`
+	Domain    string `db:"domain"`
+	AuthData  string `db:"auth_data"`
 }

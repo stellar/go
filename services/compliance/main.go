@@ -180,7 +180,9 @@ func (a *App) Serve() {
 	external.Use(supportHttp.HeadersMiddleware(headers))
 
 	external.Post("/", a.requestHandler.HandlerAuth)
-	external.Method("GET", "/tx_status", httpauth.SimpleBasicAuth(a.config.TxStatusAuth.Username, a.config.TxStatusAuth.Password)(http.HandlerFunc(a.requestHandler.HandlerTxStatus)))
+	if a.config.TxStatusAuth != nil {
+		external.Method("GET", "/tx_status", httpauth.SimpleBasicAuth(a.config.TxStatusAuth.Username, a.config.TxStatusAuth.Password)(http.HandlerFunc(a.requestHandler.HandlerTxStatus)))
+	}
 	go func() {
 		supportHttp.Run(supportHttp.Config{
 			ListenAddr: fmt.Sprintf(":%d", *a.config.ExternalPort),

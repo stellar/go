@@ -10,22 +10,21 @@ import (
 
 // Config contains config params of the compliance server
 type Config struct {
-	ExternalPort      *int   `valid:"required" toml:"external_port"`
-	InternalPort      *int   `valid:"required" toml:"internal_port"`
-	LogFormat         string `valid:"optional" toml:"log_format"`
-	NeedsAuth         bool   `valid:"optional" toml:"needs_auth"`
-	NetworkPassphrase string `valid:"required" toml:"network_passphrase"`
-	Database          struct {
-		Type string `valid:"required"`
-		URL  string `valid:"required"`
-	} `valid:"required"`
-	Keys         `valid:"required" toml:"keys"`
-	Callbacks    `valid:"optional" toml:"callbacks"`
-	TLS          *config.TLS `valid:"optional"`
-	TxStatusAuth struct {
-		Username string `valid:"required" toml:"username"`
-		Password string `valid:"required" toml:"password"`
-	} `valid:"optional" toml:"tx_status_auth"`
+	ExternalPort      *int          `valid:"required" toml:"external_port"`
+	InternalPort      *int          `valid:"required" toml:"internal_port"`
+	LogFormat         string        `valid:"optional" toml:"log_format"`
+	NeedsAuth         bool          `valid:"optional" toml:"needs_auth"`
+	NetworkPassphrase string        `valid:"required" toml:"network_passphrase"`
+	Database          Database      `valid:"required"`
+	Keys              Keys          `valid:"required" toml:"keys"`
+	Callbacks         Callbacks     `valid:"optional" toml:"callbacks"`
+	TLS               *config.TLS   `valid:"optional"`
+	TxStatusAuth      *TxStatusAuth `valid:"optional" toml:"tx_status_auth"`
+}
+
+type TxStatusAuth struct {
+	Username string `valid:"required" toml:"username"`
+	Password string `valid:"required" toml:"password"`
 }
 
 // Keys contains values of `keys` config group
@@ -39,6 +38,12 @@ type Callbacks struct {
 	AskUser   string `valid:"optional" toml:"ask_user"`
 	FetchInfo string `valid:"optional" toml:"fetch_info"`
 	TxStatus  string `valid:"optional" toml:"tx_status"`
+}
+
+// Database contains values of `database` config group
+type Database struct {
+	Type string `valid:"required"`
+	URL  string `valid:"required"`
 }
 
 // Validate validates config and returns error if any of config values is incorrect

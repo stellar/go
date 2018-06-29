@@ -138,7 +138,8 @@ func (request PaymentRequest) ToValuesSpecial(values url.Values) {
 func (request *PaymentRequest) ToComplianceSendRequest() *complianceServer.SendRequest {
 	sourceKeypair, _ := keypair.Parse(request.Source)
 	return &complianceServer.SendRequest{
-		// Compliance does not sign transaction, it just needs public key
+		ID: request.ID,
+		// Compliance does not sign the transaction, it just needs a public key
 		Source:             sourceKeypair.Address(),
 		Sender:             request.Sender,
 		Destination:        request.Destination,

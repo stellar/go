@@ -11,6 +11,7 @@ const (
 	authorizedTransactionTableName = "authorized_transaction"
 	allowedFITableName             = "allowed_fi"
 	allowedUserTableName           = "allowed_user"
+	authDataTableName              = "auth_data"
 )
 
 func (d *PostgresDatabase) Open(dsn string) error {
@@ -138,4 +139,32 @@ func (d *PostgresDatabase) DeleteAllowedUserByDomainAndUserID(domain, userID str
 	allowedUserTable := d.getTable(allowedUserTableName, nil)
 	_, err := allowedUserTable.Delete(map[string]interface{}{"fi_domain": domain, "user_id": userID}).Exec()
 	return errors.Wrap(err, "Error removing allowed user by domain and userID")
+}
+
+// InsertAuthData inserts a new auth data into DB.
+func (d *PostgresDatabase) InsertAuthData(authData *AuthData) error {
+	authDataTable := d.getTable(authDataTableName, nil)
+	_, err := authDataTable.Insert(authData).IgnoreCols("id").Exec()
+	if err != nil {
+		return errors.Wrap(err, "Error inserting auth data")
+	}
+
+	return nil
+}
+
+// GetAuthData gets auth data by request ID
+func (d *PostgresDatabase) GetAuthData(requestID string) (*AuthData, error) {
+	authDataTable := d.getTable(authDataTableName, nil)
+	var authData AuthData
+	err := authDataTable.Get(&authData, map[string]interface{}{"request_id": requestID}).Exec()
+	if err != nil {
+		switch errors.Cause(err) {
+		case sql.ErrNoRows:
+			return nil, nil
+		default:
+			return nil, errors.Wrap(err, "Error getting auth data by request ID")
+		}
+	}
+
+	return &authData, nil
 }
