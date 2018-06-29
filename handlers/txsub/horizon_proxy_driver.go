@@ -11,26 +11,9 @@ import (
 	"github.com/stellar/go/support/txsub/sequence"
 )
 
-// InitHorizonProxyDriver utilizes the config params to construct and
+// NewHorizonProxyDriver utilizes the config params to construct and
 // return a full initialized HorizonProxyDriver.
-func InitHorizonProxyDriver(client horizon.Client, networkPassphrase string) HorizonProxyDriver {
-	txsub := &txsub.System{
-		Pending:           txsub.NewDefaultSubmissionList(),
-		Submitter:         &HorizonProxySubmitterProvider{client: client},
-		SubmissionQueue:   sequence.NewManager(),
-		Results:           &HorizonProxyResultProvider{client: client},
-		Sequences:         &HorizonProxySequenceProvider{client: client},
-		NetworkPassphrase: networkPassphrase,
-	}
-
-	driver := HorizonProxyDriver{submissionSystem: txsub}
-
-	return driver
-}
-
-// InitHorizonProxyDriverMock constructs a HorizonProxyDriver sufficient for testing,
-// taking in a mock horizon upstream client.
-func InitHorizonProxyDriverMock(client horizon.Client, networkPassphrase string) HorizonProxyDriver {
+func NewHorizonProxyDriver(client horizon.Client, networkPassphrase string) HorizonProxyDriver {
 	txsub := &txsub.System{
 		Pending:           txsub.NewDefaultSubmissionList(),
 		Submitter:         &HorizonProxySubmitterProvider{client: client},

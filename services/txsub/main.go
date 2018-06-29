@@ -87,7 +87,7 @@ func initDriver(cfg Config) (txsub.Driver, error) {
 			HTTP: htttpp.DefaultClient,
 		}
 
-		return txsub.InitHorizonProxyDriver(client, cfg.Networkpassphrase), nil
+		return txsub.NewHorizonProxyDriver(client, cfg.Networkpassphrase), nil
 	case "stellar core":
 		return nil, errors.Errorf("To be implemented, please check back soon!")
 	default:
