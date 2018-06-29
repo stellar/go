@@ -23,7 +23,7 @@ func TestHandler_HappyPath(t *testing.T) {
 	}
 
 	// Mock the horizon proxy transaction submission service
-	driver := NewHorizonProxyDriver(*client, "test")
+	driver := NewHorizonProxyDriver(client, "test")
 	handler := &Handler{
 		Driver:  driver,
 		Ticks:   time.NewTicker(1 * time.Second),
@@ -81,7 +81,7 @@ func TestHandler_AlreadySubmitted(t *testing.T) {
 	}
 
 	// Mock the horizon proxy transaction submission service
-	driver := NewHorizonProxyDriver(*client, "test")
+	driver := NewHorizonProxyDriver(client, "test")
 	handler := &Handler{
 		Driver:  driver,
 		Ticks:   time.NewTicker(1 * time.Second),
@@ -134,7 +134,7 @@ func TestHandler_BadSequence(t *testing.T) {
 	}
 
 	// Mock the horizon proxy transaction submission service
-	driver := NewHorizonProxyDriver(*client, "test")
+	driver := NewHorizonProxyDriver(client, "test")
 	handler := &Handler{
 		Driver:  driver,
 		Ticks:   time.NewTicker(1 * time.Second),
@@ -183,7 +183,7 @@ func TestHandler_Timeout(t *testing.T) {
 	}
 
 	// Mock the horizon proxy transaction submission service
-	driver := NewHorizonProxyDriver(*client, "test")
+	driver := NewHorizonProxyDriver(client, "test")
 	handler := &Handler{
 		Driver:  driver,
 		Ticks:   time.NewTicker(1 * time.Second),

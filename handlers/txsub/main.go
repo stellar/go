@@ -50,19 +50,19 @@ type HorizonProxyDriver struct {
 // HorizonProxyResultProvider represents a Horizon Proxy that can lookup Result objects
 // by transaction hash or by [address,sequence] pairs.
 type HorizonProxyResultProvider struct {
-	client horizon.Client
+	client *horizon.Client
 }
 
 // HorizonProxySequenceProvider represents a Horizon proxy that can lookup the current
 // sequence number of an account.
 type HorizonProxySequenceProvider struct {
-	client horizon.Client
+	client *horizon.Client
 }
 
 // HorizonProxySubmitterProvider represents the high-level "submit a transaction to
 // an upstream horizon" provider.
 type HorizonProxySubmitterProvider struct {
-	client horizon.Client
+	client *horizon.Client
 }
 
 // TransactionSuccess is ported from protocols/horizon without the links. Here links are
