@@ -2,10 +2,9 @@
 // transaction submission implementation defined in support/txsub. Add an
 // instance of `Handler` onto your router to allow a server to satisfy the protocol.
 //
-// The central type in this package is the "Driver" interfaces.  Implementing
-// these interfaces allows a developer to plug in their own back end and
-// submission service. It also allows a developer to query public infastructure
-// such as SDF's horizon.stellar.org.
+// The central type in this package is the "Driver" interface.  Implementing
+// this interface allows a developer to plug in their own back end for the
+// submission service.
 package txsub
 
 import (
@@ -31,7 +30,9 @@ type Handler struct {
 
 // Driver is a wrapper around the configurable parts of txsub.System. By requiring
 // that the following methods are implemented, we have essentially created an
-// interface for the txsub.System struct.
+// interface for the txsub.System struct. You may notice we have not included the
+// SubmitOnce() method here, that is because that method does not need to be
+// exposed to the Hanlder struct.
 type Driver interface {
 	// SubmitTransaction submits the provided base64 encoded transaction envelope
 	// to the network using this submission system.
@@ -64,7 +65,11 @@ type HorizonProxySubmitterProvider struct {
 	client horizon.Client
 }
 
-// TransactionSuccess without the links.
+// TransactionSuccess is ported from protocols/horizon without the links. Here links are
+// not needed since a) it is not necessarilly clear which domain to fill in (in the
+// horizon implementation of txsub, context was used to grab the local horizon domain)
+// and b) the hash is returned and that is sufficient to query the transaction in
+// question.
 type TransactionSuccess struct {
 	Hash   string `json:"hash"`
 	Ledger int32  `json:"ledger"`
