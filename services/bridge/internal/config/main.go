@@ -10,21 +10,18 @@ import (
 
 // Config contains config params of the bridge server
 type Config struct {
-	Port              *int    `valid:"required"`
-	Horizon           string  `valid:"optional"`
-	Compliance        string  `valid:"optional"`
-	LogFormat         string  `valid:"optional" toml:"log_format"`
-	MACKey            string  `valid:"optional" toml:"mac_key"`
-	APIKey            string  `valid:"optional" toml:"api_key"`
-	NetworkPassphrase string  `valid:"optional" toml:"network_passphrase"`
-	Develop           bool    `valid:"optional"`
-	Assets            []Asset `valid:"optional"`
-	Database          struct {
-		Type string `valid:"required"`
-		URL  string `valid:"required"`
-	} `valid:"optional"`
-	Accounts  `valid:"optional" toml:"accounts"`
-	Callbacks `valid:"optional" toml:"callbacks"`
+	Port              *int      `valid:"required"`
+	Horizon           string    `valid:"optional"`
+	Compliance        string    `valid:"optional"`
+	LogFormat         string    `valid:"optional" toml:"log_format"`
+	MACKey            string    `valid:"optional" toml:"mac_key"`
+	APIKey            string    `valid:"optional" toml:"api_key"`
+	NetworkPassphrase string    `valid:"optional" toml:"network_passphrase"`
+	Develop           bool      `valid:"optional"`
+	Assets            []Asset   `valid:"optional"`
+	Database          *Database `valid:"optional"`
+	Accounts          Accounts  `valid:"optional" toml:"accounts"`
+	Callbacks         Callbacks `valid:"optional" toml:"callbacks"`
 }
 
 // Asset represents credit asset
@@ -45,6 +42,12 @@ type Accounts struct {
 type Callbacks struct {
 	Receive string `valid:"optional"`
 	Error   string `valid:"optional"`
+}
+
+// Database contains values of `database` config group
+type Database struct {
+	Type string `valid:"required"`
+	URL  string `valid:"required"`
 }
 
 // Validate validates config and returns error if any of config values is incorrect

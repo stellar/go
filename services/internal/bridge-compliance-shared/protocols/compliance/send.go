@@ -13,6 +13,8 @@ import (
 
 // SendRequest represents request sent to /send endpoint of compliance server
 type SendRequest struct {
+	// Payment ID - used to resubmit auth request in case of `pending` response.
+	ID string `form:"id" valid:"required"`
 	// Source account ID
 	Source string `form:"source" valid:"required,stellar_accountid"`
 	// Sender address (like alice*stellar.org)
@@ -24,13 +26,13 @@ type SendRequest struct {
 	// Amount destination should receive
 	Amount string `form:"amount" valid:"required,stellar_amount"`
 	// Code of the asset destination should receive
-	AssetCode string `form:"asset_code" valid:"optional,stellar_assetcode"`
+	AssetCode string `form:"asset_code" valid:"optional,stellar_asset_code"`
 	// Issuer of the asset destination should receive
 	AssetIssuer string `form:"asset_issuer" valid:"optional,stellar_accountid"`
 	// Only for path_payment
 	SendMax string `form:"send_max" valid:"optional,stellar_amount"`
 	// Only for path_payment
-	SendAssetCode string `form:"send_asset_code" valid:"optional,stellar_assetcode"`
+	SendAssetCode string `form:"send_asset_code" valid:"optional,stellar_asset_code"`
 	// Only for path_payment
 	SendAssetIssuer string `form:"send_asset_issuer" valid:"optional,stellar_accountid"`
 	// path[n][asset_code] path[n][asset_issuer]

@@ -42,26 +42,6 @@ func (rh *RequestHandler) Payment(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var paymentID *string
-
-	if request.ID != "" {
-		sentTransaction, err := rh.Database.GetSentTransactionByPaymentID(request.ID)
-		if err != nil {
-			log.WithFields(log.Fields{"err": err}).Error("Error getting sent transaction")
-			helpers.Write(w, helpers.InternalServerError)
-			return
-		}
-
-		if sentTransaction == nil {
-			paymentID = &request.ID
-		} else {
-			log.WithFields(log.Fields{"paymentID": request.ID, "tx": sentTransaction.EnvelopeXdr}).Info("Transaction with given ID already exists, resubmitting...")
-			submitResponse, err := rh.Horizon.SubmitTransaction(sentTransaction.EnvelopeXdr)
-			rh.handleTransactionSubmitResponse(w, submitResponse, err)
-			return
-		}
-	}
-
 	if request.Source == "" {
 		request.Source = rh.Config.Accounts.BaseSeed
 	}
@@ -71,13 +51,18 @@ func (rh *RequestHandler) Payment(w http.ResponseWriter, r *http.Request) {
 	// * User explicitly wants to use compliance protocol
 	if rh.Config.Compliance != "" &&
 		(request.ExtraMemo != "" || (request.ExtraMemo == "" && request.UseCompliance)) {
-		rh.complianceProtocolPayment(w, request, paymentID)
+		rh.complianceProtocolPayment(w, request)
 	} else {
-		rh.standardPayment(w, request, paymentID)
+		rh.standardPayment(w, request)
 	}
 }
 
-func (rh *RequestHandler) complianceProtocolPayment(w http.ResponseWriter, request *bridge.PaymentRequest, paymentID *string) {
+func (rh *RequestHandler) complianceProtocolPayment(w http.ResponseWriter, request *bridge.PaymentRequest) {
+	var paymentID *string
+	if request.ID != "" {
+		paymentID = &request.ID
+	}
+
 	// Compliance server part
 	sendRequest := request.ToComplianceSendRequest()
 
@@ -142,7 +127,33 @@ func (rh *RequestHandler) complianceProtocolPayment(w http.ResponseWriter, reque
 	rh.handleTransactionSubmitResponse(w, submitResponse, err)
 }
 
-func (rh *RequestHandler) standardPayment(w http.ResponseWriter, request *bridge.PaymentRequest, paymentID *string) {
+func (rh *RequestHandler) standardPayment(w http.ResponseWriter, request *bridge.PaymentRequest) {
+	var paymentID *string
+
+	if request.ID != "" {
+		sentTransaction, err := rh.Database.GetSentTransactionByPaymentID(request.ID)
+		if err != nil {
+			log.WithFields(log.Fields{"err": err}).Error("Error getting sent transaction")
+			helpers.Write(w, helpers.InternalServerError)
+			return
+		}
+
+		if sentTransaction == nil {
+			paymentID = &request.ID
+		} else {
+			log.WithFields(log.Fields{"paymentID": request.ID, "tx": sentTransaction.EnvelopeXdr}).Info("Transaction with given ID already exists, resubmitting...")
+			submitResponse, err := rh.Horizon.SubmitTransaction(sentTransaction.EnvelopeXdr)
+			if err != nil {
+				log.WithFields(log.Fields{"error": err}).Error("Error submitting transaction")
+				helpers.Write(w, helpers.InternalServerError)
+				return
+			}
+
+			rh.handleTransactionSubmitResponse(w, submitResponse, err)
+			return
+		}
+	}
+
 	destinationObject := &federation.NameResponse{}
 	var err error
 

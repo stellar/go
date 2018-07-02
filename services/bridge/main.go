@@ -95,7 +95,7 @@ func NewApp(config config.Config, migrateFlag bool, versionFlag bool, version st
 
 	var database db.PostgresDatabase
 
-	if config.Database.URL != "" {
+	if config.Database != nil {
 		err = database.Open(config.Database.URL)
 		if err != nil {
 			err = fmt.Errorf("Cannot connect to a DB: %s", err)
