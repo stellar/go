@@ -103,6 +103,7 @@ type ClientInterface interface {
 	LoadMemo(p *Payment) error
 	LoadOperation(operationID string) (payment Payment, err error)
 	LoadOrderBook(selling Asset, buying Asset, params ...interface{}) (orderBook OrderBookSummary, err error)
+	LoadTransaction(transactionID string) (transaction Transaction, err error)
 	SequenceForAccount(accountID string) (xdr.SequenceNumber, error)
 	StreamLedgers(ctx context.Context, cursor *Cursor, handler LedgerHandler) error
 	StreamPayments(ctx context.Context, accountID string, cursor *Cursor, handler PaymentHandler) error

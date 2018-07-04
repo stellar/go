@@ -101,6 +101,12 @@ func (m *MockClient) LoadOrderBook(
 	return a.Get(0).(OrderBookSummary), a.Error(1)
 }
 
+// LoadTransaction is a mocking a method
+func (m *MockClient) LoadTransaction(transactionID string) (transaction Transaction, err error) {
+	a := m.Called(transactionID)
+	return a.Get(0).(Transaction), a.Error(1)
+}
+
 // SequenceForAccount is a mocking a method
 func (m *MockClient) SequenceForAccount(accountID string) (xdr.SequenceNumber, error) {
 	a := m.Called(accountID)
