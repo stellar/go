@@ -5,23 +5,43 @@ import (
 	"net/http"
 	"sync"
 
-	"github.com/stellar/go/clients/horizon"
 	"github.com/stellar/go/support/log"
 	"github.com/stellar/go/support/render/hal"
 	"github.com/stellar/go/support/render/problem"
-	"github.com/stellar/go/support/txsub"
 )
 
 func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	h.validateBodyType(r)
+	hr := HandlerResponse{}
+
+	// Validate body type
+	c := r.Header.Get("Content-Type")
+	if c != "" {
+		mt, _, err := mime.ParseMediaType(c)
+
+		if err != nil {
+			hr.Err = err
+		}
+
+		if mt != "application/x-www-form-urlencoded" && mt != "multipart/form-data" {
+			hr.Err = problem.P{
+				Type:   "unsupported_media_type",
+				Title:  "Unsupported Media Type",
+				Status: http.StatusUnsupportedMediaType,
+				Detail: "The request has an unsupported content type. Presently, the " +
+					"only supported content type is application/x-www-form-urlencoded.",
+			}
+		}
+	}
+
 	tx := r.FormValue("tx")
 
 	submission := h.Driver.SubmitTransaction(r.Context(), tx)
 	select {
 	case result := <-submission:
-		h.Result = result
-	case <-h.Context.Done():
-		h.Err = &problem.P{
+		hr.Result = result
+
+	case <-r.Context().Done():
+		hr.Err = &problem.P{
 			Type:   "timeout",
 			Title:  "Timeout",
 			Status: http.StatusGatewayTimeout,
@@ -30,120 +50,13 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	h.loadResource()
+	hr.LoadResource()
 
-	if h.Err != nil {
-		hal.Render(w, h.Err)
+	if hr.Err != nil {
+		hal.Render(w, hr.Err)
 	} else {
-		hal.Render(w, h.Resource)
+		hal.Render(w, hr.Resource)
 	}
-}
-
-func (h *Handler) validateBodyType(r *http.Request) {
-	c := r.Header.Get("Content-Type")
-	if c == "" {
-		return
-	}
-
-	mt, _, err := mime.ParseMediaType(c)
-
-	if err != nil {
-		h.Err = err
-	}
-
-	switch {
-	case mt == "application/x-www-form-urlencoded":
-		return
-	case mt == "multipart/form-data":
-		return
-	default:
-		h.Err = problem.P{
-			Type:   "unsupported_media_type",
-			Title:  "Unsupported Media Type",
-			Status: http.StatusUnsupportedMediaType,
-			Detail: "The request has an unsupported content type. Presently, the " +
-				"only supported content type is application/x-www-form-urlencoded.",
-		}
-	}
-
-	return
-}
-
-func (h *Handler) loadResource() {
-	if h.Result.Err == nil {
-		h.Resource.Hash = h.Result.Hash
-		h.Resource.Ledger = h.Result.LedgerSequence
-		h.Resource.Env = h.Result.EnvelopeXDR
-		h.Resource.Result = h.Result.ResultXDR
-		h.Resource.Meta = h.Result.ResultMetaXDR
-		return
-	}
-
-	if h.Result.Err == txsub.ErrTimeout || h.Result.Err == txsub.ErrCanceled {
-		h.Err = &problem.P{
-			Type:   "timeout",
-			Title:  "Timeout",
-			Status: http.StatusGatewayTimeout,
-			Detail: "Your request timed out before completing.  Please try your " +
-				"request again.",
-		}
-		return
-	}
-
-	switch err := h.Result.Err.(type) {
-	case *txsub.FailedTransactionError:
-		rcr := horizon.TransactionResultCodes{}
-		populateTransactionResultCodes(&rcr, err)
-
-		h.Err = &problem.P{
-			Type:   "transaction_failed",
-			Title:  "Transaction Failed",
-			Status: http.StatusBadRequest,
-			Detail: "The transaction failed when submitted to the stellar network. " +
-				"The `extras.result_codes` field on this response contains further " +
-				"details.  Descriptions of each code can be found at: " +
-				"https://www.stellar.org/developers/learn/concepts/list-of-operations.html",
-			Extras: map[string]interface{}{
-				"envelope_xdr": h.Result.EnvelopeXDR,
-				"result_xdr":   err.ResultXDR,
-				"result_codes": rcr,
-			},
-		}
-	case *txsub.MalformedTransactionError:
-		h.Err = &problem.P{
-			Type:   "transaction_malformed",
-			Title:  "Transaction Malformed",
-			Status: http.StatusBadRequest,
-			Detail: "Horizon could not decode the transaction envelope in this " +
-				"request. A transaction should be an XDR TransactionEnvelope struct " +
-				"encoded using base64.  The envelope read from this request is " +
-				"echoed in the `extras.envelope_xdr` field of this response for your " +
-				"convenience.",
-			Extras: map[string]interface{}{
-				"envelope_xdr": err.EnvelopeXDR,
-			},
-		}
-	default:
-		h.Err = err
-	}
-}
-
-func populateTransactionResultCodes(
-	dest *horizon.TransactionResultCodes,
-	fail *txsub.FailedTransactionError,
-) (err error) {
-
-	dest.TransactionCode, err = fail.TransactionResultCode()
-	if err != nil {
-		return
-	}
-
-	dest.OperationCodes, err = fail.OperationResultCodes()
-	if err != nil {
-		return
-	}
-
-	return
 }
 
 // Run is the function that runs in the background that triggers Tick each

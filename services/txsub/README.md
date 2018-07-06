@@ -3,18 +3,18 @@
 
 Plug and play transaction submission micro-service. This will ultimately have two modes:
 
-1. Horizon proxy mode
-2. Stellar core mode
+1. horizon proxy mode
+2. stellar core mode
 
 
 ## Config
 
-By default this server uses a config file named `txsub.cfg` in the current working directory. This configuration file should be [TOML](https://github.com/toml-lang/toml) and the following fields are supported:
+By default this server uses a config file named `txsub.cfg` in the current working directory. This configuration file should be a [TOML](https://github.com/toml-lang/toml) file. The following fields are supported:
 
 * `port` - server listening port
 * `horizon_url` - url of the upstream horizon instance for reference and transaction submission
 * `network_passphrase` - specify which network to use
-* `mode` - specify which mode to use. Currently supports `horizon proxy` with plans to also support `stellar core`
+* `mode` - specify which mode to use. Currently supports *horizon proxy* with plans to also support *stellar core*
 
 ## Example `txsub.cfg`
 In this section you can find config examples for the two main ways of setting up a txsub service.

@@ -19,7 +19,7 @@ import (
 	"github.com/stellar/go/handlers/txsub"
 )
 
-// Config represents the configuration of a transctions submission service
+// Config represents the configuration of a transction submission service
 type Config struct {
 	Port              int    `valid:"required"`
 	Horizonurl        string `valid:"required"`

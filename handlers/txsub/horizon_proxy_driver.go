@@ -3,10 +3,12 @@ package txsub
 import (
 	"context"
 	"strconv"
+	"sync"
 	"time"
 
 	"github.com/stellar/go/clients/horizon"
 	"github.com/stellar/go/support/errors"
+	"github.com/stellar/go/support/render/problem"
 	"github.com/stellar/go/support/txsub"
 	"github.com/stellar/go/support/txsub/sequence"
 )
@@ -39,7 +41,7 @@ func (d HorizonProxyDriver) Tick(ctx context.Context) {
 }
 
 // ResultByHash implements txsub.ResultProvider, utilizing an upstream horizon instance.
-func (d *HorizonProxyResultProvider) ResultByHash(cts context.Context, transactionID string) txsub.Result {
+func (d *HorizonProxyResultProvider) ResultByHash(ctx context.Context, transactionID string) txsub.Result {
 	tx, err := d.client.LoadTransaction(transactionID)
 	if err == nil {
 		return txsub.Result{
@@ -51,31 +53,58 @@ func (d *HorizonProxyResultProvider) ResultByHash(cts context.Context, transacti
 		}
 	}
 
-	// if no result was found, return ErrNoResults
-	return txsub.Result{Err: txsub.ErrNoResults}
+	switch e := err.(type) {
+	case *horizon.Error:
+		p := e.Problem.ToProblem()
+
+		if p.Title == problem.NotFound.Title {
+			return txsub.Result{Err: txsub.ErrNoResults}
+		}
+		return txsub.Result{Err: p}
+	default:
+		return txsub.Result{Err: err}
+	}
 }
 
-// Get txsub.SequenceProvider, tilizing an upstream horizon instance.
+// Get txsub.SequenceProvider, utilizing an upstream horizon instance.
 func (d *HorizonProxySequenceProvider) Get(addys []string) (map[string]uint64, error) {
 	results := make(map[string]uint64)
+	var mainError error
 
-	// TODO: this is inefficient.
-	// https://github.com/stellar/go/issues/522
+	var wg sync.WaitGroup
+
+	var resultsMutex sync.Mutex
+	var errorMutex sync.Mutex
+
 	for _, addy := range addys {
-		a, err := d.client.LoadAccount(addy)
-		if err != nil {
-			return nil, err
-		}
+		wg.Add(1)
+		go func(addy string) {
+			defer wg.Done()
 
-		seq, err := strconv.ParseUint(a.Sequence, 10, 64)
-		if err != nil {
-			return nil, err
-		}
+			a, err := d.client.LoadAccount(addy)
+			if err != nil {
+				errorMutex.Lock()
+				mainError = err
+				errorMutex.Unlock()
+				return
+			}
 
-		results[addy] = seq
+			seq, err := strconv.ParseUint(a.Sequence, 10, 64)
+			if err != nil {
+				errorMutex.Lock()
+				mainError = err
+				errorMutex.Unlock()
+				return
+			}
+
+			resultsMutex.Lock()
+			results[addy] = seq
+			resultsMutex.Unlock()
+		}(addy)
 	}
 
-	return results, nil
+	wg.Wait()
+	return results, mainError
 }
 
 // Submit sends the provided envelope to an upstream horizon and parses the response into

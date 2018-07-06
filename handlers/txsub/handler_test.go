@@ -17,6 +17,7 @@ import (
 func TestHandler_HorizonProxy_HappyPath(t *testing.T) {
 	// Mock the upstream horizon
 	hmock := httptest.NewClient()
+
 	client := &horizon.Client{
 		URL:  "https://localhost",
 		HTTP: hmock,
@@ -31,6 +32,11 @@ func TestHandler_HorizonProxy_HappyPath(t *testing.T) {
 		"GET",
 		"https://localhost/accounts/GBCHJCAATUZPVNOMRGQ7GJOMLB7IEMNSVCKADFKHNTHQLHU2GOJKUMDW",
 	).ReturnString(200, accountResponse)
+
+	hmock.On(
+		"GET",
+		fmt.Sprintf("https://localhost/transactions/cb323b02148e231570c3573b7a563dfea0c8cdb1c15cdd5aaf04acf4ce4b702a"),
+	).ReturnString(404, resourceMissingResponse)
 
 	// Mock the horizon proxy transaction submission service
 	driver := NewHorizonProxyDriver(client, "test")
@@ -143,6 +149,11 @@ func TestHandler_HorizonProxy_BadSequence(t *testing.T) {
 		"https://localhost/accounts/GBCHJCAATUZPVNOMRGQ7GJOMLB7IEMNSVCKADFKHNTHQLHU2GOJKUMDW",
 	).ReturnString(200, accountResponse2)
 
+	hmock.On(
+		"GET",
+		fmt.Sprintf("https://localhost/transactions/cb323b02148e231570c3573b7a563dfea0c8cdb1c15cdd5aaf04acf4ce4b702a"),
+	).ReturnString(404, resourceMissingResponse)
+
 	// Mock the horizon proxy transaction submission service
 	driver := NewHorizonProxyDriver(client, "test")
 	handler := &Handler{
@@ -191,6 +202,11 @@ func TestHandler_HorizonProxy_Timeout(t *testing.T) {
 		"GET",
 		"https://localhost/accounts/GBCHJCAATUZPVNOMRGQ7GJOMLB7IEMNSVCKADFKHNTHQLHU2GOJKUMDW",
 	).ReturnString(200, accountResponse)
+
+	hmock.On(
+		"GET",
+		fmt.Sprintf("https://localhost/transactions/cb323b02148e231570c3573b7a563dfea0c8cdb1c15cdd5aaf04acf4ce4b702a"),
+	).ReturnString(404, resourceMissingResponse)
 
 	// Mock the horizon proxy transaction submission service
 	driver := NewHorizonProxyDriver(client, "test")
@@ -397,3 +413,10 @@ var transactionResponse = `{
 	  "f7n61iRg9WHlb6MaJLvVOglkE1CDvUhn+zZ22WOdE5+/qTTrTbJWctG2JQGm0oKAnydmV0ZgzLnvb/Z6xbCxAA=="
 	]
   }`
+
+var resourceMissingResponse = `{
+  "type": "https://stellar.org/horizon-errors/not_found",
+  "title": "Resource Missing",
+  "status": 404,
+  "detail": "The resource at the url requested was not found.  This is usually occurs for one of two reasons:  The url requested is not valid, or no data in our database could be found with the parameters provided."
+}`
