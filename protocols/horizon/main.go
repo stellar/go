@@ -48,7 +48,7 @@ type Account struct {
 }
 
 // GetNativeBalance returns the native balance of the account
-func (a Account) GetNativeBalance() (string, error){
+func (a Account) GetNativeBalance() (string, error) {
 	for _, balance := range a.Balances {
 		if balance.Asset.Type == "native" {
 			return balance.Balance, nil
@@ -123,8 +123,10 @@ func (res AssetStat) PagingToken() string {
 
 // Balance represents an account's holdings for a single currency type
 type Balance struct {
-	Balance string `json:"balance"`
-	Limit   string `json:"limit,omitempty"`
+	Balance            string `json:"balance"`
+	Limit              string `json:"limit,omitempty"`
+	BuyingLiabilities  string `json:"buying_liabilities"`
+	SellingLiabilities string `json:"selling_liabilities"`
 	base.Asset
 }
 

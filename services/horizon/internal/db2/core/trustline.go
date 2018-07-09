@@ -71,5 +71,7 @@ var selectTrustline = sq.Select(
 	"tl.tlimit",
 	"tl.balance",
 	"tl.flags",
+	"tl.buyingliabilities",
+	"tl.sellingliabilities",
 ).From("trustlines tl")
 var selectBalances = sq.Select("COUNT(*)", "COALESCE(SUM(balance), 0) as sum").From("trustlines")
