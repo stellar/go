@@ -71,7 +71,9 @@ var selectTrustline = sq.Select(
 	"tl.tlimit",
 	"tl.balance",
 	"tl.flags",
-	"tl.buyingliabilities",
-	"tl.sellingliabilities",
+	// Liabilities can be NULL so can error without `coalesce`:
+	// `Invalid value for xdr.Int64`
+	"coalesce(tl.buyingliabilities, 0) as buyingliabilities",
+	"coalesce(tl.sellingliabilities, 0) as sellingliabilities",
 ).From("trustlines tl")
 var selectBalances = sq.Select("COUNT(*)", "COALESCE(SUM(balance), 0) as sum").From("trustlines")
