@@ -352,10 +352,10 @@ close_ledger #47
 
   account :selfpay, KP.from_seed("SAN5MUUVD2B3WJPIFDT7FQRLGNTD7LYFT7S7ULOKYBFC6ZUFIOSC2YRP")
   create_account :selfpay
-  close_ledger
+  close_ledger #55
 
   payment :selfpay, :selfpay, [:native, "10.0"]
-  close_ledger
+  close_ledger #56
 
 # bumpseq
   # Public Key	GCQZP3IU7XU6EJ63JZXKCQOYT2RNXN3HB5CNHENNUEUHSMA4VUJJJSEN
@@ -363,17 +363,40 @@ close_ledger #47
 
   account :bumper, KP.from_seed("SB7M6CWQLVEAMCJMYNVURRVXQDBBEDEAYFXUSP5B4XCG4FRMALD7CWCG")
   create_account :bumper
-  close_ledger
+  close_ledger #57
 
   bump_sequence :bumper, 300000000000 #should work
-  close_ledger
+  close_ledger #58
 
   #all the following should ingest as operations but have no effects
   bump_sequence :bumper, 100
-  close_ledger
+  close_ledger #59
 
   bump_sequence :bumper, next_sequence(:bumper)-1
-  close_ledger
+  close_ledger #60
 
   bump_sequence :bumper, next_sequence(:bumper)
-  close_ledger
+  close_ledger #61
+
+# one-time signer bing consumed
+
+# Public Key	GD6NTRJW5Z6NCWH4USWMNEYF77RUR2MTO6NP4KEDVJATTCUXDRO3YIFS
+# Secret Key	SAOCKUHEWRFMHSDBG33XFOUZDOXRZPKIXR3FUBS5QJ4IVKBGZDZPMLT3
+
+account :onetime, KP.from_seed("SAOCKUHEWRFMHSDBG33XFOUZDOXRZPKIXR3FUBS5QJ4IVKBGZDZPMLT3")
+create_account :onetime
+close_ledger #62
+
+# add one time add_signer
+
+require 'digest'
+x = Digest::SHA256.digest("hello world")
+hash_x = Digest::SHA256.digest(x)
+
+sk = Stellar::SignerKey.new :signer_key_type_hash_x, hash_x
+
+set_options account, signer: Stellar::Signer.new({
+  key:    sk,
+  weight: 1
+})
+close_ledger #63
