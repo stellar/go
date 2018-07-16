@@ -4,13 +4,13 @@ title: Timeout
 
 If you are encountering this error it means that either:
 
-* Horizon has not received a confirmation from the Core server that transaction you are trying to submit to the network was included in a ledger in a timely manner or:
-* Horizon has not send a response to a reverse-proxy before in a specified time.
+* Horizon has not received a confirmation from the Core server that the transaction you are trying to submit to the network was included in a ledger in a timely manner or:
+* Horizon has not sent a response to a reverse-proxy before in a specified time.
 
 The former case may happen because there was no room for your transaction in the 3 consecutive ledgers. In such case, Core server removes a transaction from a queue. To solve this you can:
 
 * Keep resubmitting the same transaction (with the same sequence number) and wait until it finally is added to a new ledger or:
-* Increase a [fee](/developers/guides/concepts/fees.html).
+* Increase the [fee](/developers/guides/concepts/fees.html).
 
 ## Attributes
 
