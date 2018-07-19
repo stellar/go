@@ -8,6 +8,10 @@ bumps.  A breaking change will get clearly notified in this log.
 
 ## Unreleases
 
+### Added
+
+- Path payment operations now generate credit/debit effects.
+
 ### Changes
 
 - dropped support for go1.8 since we need big.IsInt64 from math/big in our findpaths calculations

@@ -151,12 +151,24 @@ func (is *Session) ingestEffects() {
 
 	case xdr.OperationTypePayment:
 		op := opbody.MustPaymentOp()
+
 		dets := map[string]interface{}{"amount": amount.String(op.Amount)}
 		is.assetDetails(dets, op.Asset, "")
 		effects.Add(op.Destination, history.EffectAccountCredited, dets)
 		effects.Add(source, history.EffectAccountDebited, dets)
+
 	case xdr.OperationTypePathPayment:
+		op := opbody.MustPathPaymentOp()
 		result := is.Cursor.OperationResult().MustPathPaymentResult().MustSuccess()
+
+		dets := map[string]interface{}{"amount": amount.String(op.DestAmount)}
+		is.assetDetails(dets, op.DestAsset, "")
+		effects.Add(op.Destination, history.EffectAccountCredited, dets)
+
+		dets = map[string]interface{}{"amount": amount.String(result.Last.Amount)}
+		is.assetDetails(dets, op.SendAsset, "")
+		effects.Add(source, history.EffectAccountDebited, dets)
+
 		is.ingestTradeEffects(effects, source, result.Offers)
 	case xdr.OperationTypeManageOffer:
 		result := is.Cursor.OperationResult().MustManageOfferResult().MustSuccess()
