@@ -3,6 +3,7 @@ package ingest
 import (
 	"testing"
 
+	"github.com/stellar/go/services/horizon/internal/db2"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/services/horizon/internal/test"
 )
@@ -34,13 +35,42 @@ func Test_ingestOperationEffects(t *testing.T) {
 	s := ingest(tt)
 	tt.Require.NoError(s.Err)
 
-	// ensure inflation destination change is correctly recorded
 	q := &history.Q{Session: tt.HorizonSession()}
 	var effects []history.Effect
+
+	// ensure inflation destination change is correctly recorded
 	err := q.Effects().ForLedger(3).Select(&effects)
 	tt.Require.NoError(err)
 
 	if tt.Assert.Len(effects, 1) {
 		tt.Assert.Equal(history.EffectAccountInflationDestinationUpdated, effects[0].Type)
 	}
+
+	// HACK(scott): switch to kahuna recipe mid-stream.  We need to integrate our test scenario loader to be compatible with go subtests/
+	tt.ScenarioWithoutHorizon("kahuna")
+	s = ingest(tt)
+	tt.Require.NoError(s.Err)
+	pq, err := db2.NewPageQuery("", "asc", 200)
+	tt.Require.NoError(err)
+
+	// ensure payments get the payment effects
+	err = q.Effects().ForLedger(15).Page(pq).Select(&effects)
+	tt.Require.NoError(err)
+
+	if tt.Assert.Len(effects, 2) {
+		tt.Assert.Equal(history.EffectAccountCredited, effects[0].Type)
+		tt.Assert.Equal(history.EffectAccountDebited, effects[1].Type)
+	}
+
+	// ensure path payments get the payment effects
+	err = q.Effects().ForLedger(20).Page(pq).Select(&effects)
+	tt.Require.NoError(err)
+
+	if tt.Assert.Len(effects, 4) {
+		tt.Assert.Equal(history.EffectAccountCredited, effects[0].Type)
+		tt.Assert.Equal(history.EffectAccountDebited, effects[1].Type)
+		tt.Assert.Equal(history.EffectTrade, effects[2].Type)
+		tt.Assert.Equal(history.EffectTrade, effects[3].Type)
+	}
+
 }
