@@ -18,22 +18,22 @@ GET /accounts/{account}
 
 | name | notes | description | example |
 | ---- | ----- | ----------- | ------- |
-| `account` | required, string | Account ID | GA2HGBJIJKI6O4XEM7CZWY5PS6GKSXL6D34ERAJYQSPYA6X6AI7HYW36 |
+| `account` | required, string | Account ID | GBWRID7MPYUDBTNQPEHUN4XOBVVDPJOHYXAVW3UTOD2RG7BDAY6O3PHW  |
 
 ### curl Example Request
 
 ```sh
-curl "https://horizon-testnet.stellar.org/accounts/GCEZWKCA5VLDNRLN3RPRJMRZOX3Z6G5CHCGSNFHEYVXM3XOJMDS674JZ"
+curl "https://horizon-testnet.stellar.org/accounts/GBWRID7MPYUDBTNQPEHUN4XOBVVDPJOHYXAVW3UTOD2RG7BDAY6O3PHW "
 ```
 
 ### JavaScript Example Request
 
-```js
+```javascript
 var StellarSdk = require('stellar-sdk');
 var server = new StellarSdk.Server('https://horizon-testnet.stellar.org');
 
 server.accounts()
-  .accountId("GCEZWKCA5VLDNRLN3RPRJMRZOX3Z6G5CHCGSNFHEYVXM3XOJMDS674JZ")
+  .accountId("GBWRID7MPYUDBTNQPEHUN4XOBVVDPJOHYXAVW3UTOD2RG7BDAY6O3PHW ")
   .call()
   .then(function (accountResult) {
     console.log(accountResult);
@@ -52,34 +52,42 @@ This endpoint responds with the details of a single account for a given ID. See 
 {
   "_links": {
     "self": {
-      "href": "https://horizon-testnet.stellar.org/accounts/GD42RQNXTRIW6YR3E2HXV5T2AI27LBRHOERV2JIYNFMXOBA234SWLQQB"
+      "href": "https://horizon-testnet.stellar.org/accounts/GBWRID7MPYUDBTNQPEHUN4XOBVVDPJOHYXAVW3UTOD2RG7BDAY6O3PHW"
     },
     "transactions": {
-      "href": "https://horizon-testnet.stellar.org/accounts/GD42RQNXTRIW6YR3E2HXV5T2AI27LBRHOERV2JIYNFMXOBA234SWLQQB/transactions{?cursor,limit,order}",
+      "href": "https://horizon-testnet.stellar.org/accounts/GBWRID7MPYUDBTNQPEHUN4XOBVVDPJOHYXAVW3UTOD2RG7BDAY6O3PHW/transactions{?cursor,limit,order}",
       "templated": true
     },
     "operations": {
-      "href": "https://horizon-testnet.stellar.org/accounts/GD42RQNXTRIW6YR3E2HXV5T2AI27LBRHOERV2JIYNFMXOBA234SWLQQB/operations{?cursor,limit,order}",
+      "href": "https://horizon-testnet.stellar.org/accounts/GBWRID7MPYUDBTNQPEHUN4XOBVVDPJOHYXAVW3UTOD2RG7BDAY6O3PHW/operations{?cursor,limit,order}",
       "templated": true
     },
     "payments": {
-      "href": "https://horizon-testnet.stellar.org/accounts/GD42RQNXTRIW6YR3E2HXV5T2AI27LBRHOERV2JIYNFMXOBA234SWLQQB/payments{?cursor,limit,order}",
+      "href": "https://horizon-testnet.stellar.org/accounts/GBWRID7MPYUDBTNQPEHUN4XOBVVDPJOHYXAVW3UTOD2RG7BDAY6O3PHW/payments{?cursor,limit,order}",
       "templated": true
     },
     "effects": {
-      "href": "https://horizon-testnet.stellar.org/accounts/GD42RQNXTRIW6YR3E2HXV5T2AI27LBRHOERV2JIYNFMXOBA234SWLQQB/effects{?cursor,limit,order}",
+      "href": "https://horizon-testnet.stellar.org/accounts/GBWRID7MPYUDBTNQPEHUN4XOBVVDPJOHYXAVW3UTOD2RG7BDAY6O3PHW/effects{?cursor,limit,order}",
       "templated": true
     },
     "offers": {
-      "href": "https://horizon-testnet.stellar.org/accounts/GD42RQNXTRIW6YR3E2HXV5T2AI27LBRHOERV2JIYNFMXOBA234SWLQQB/offers{?cursor,limit,order}",
+      "href": "https://horizon-testnet.stellar.org/accounts/GBWRID7MPYUDBTNQPEHUN4XOBVVDPJOHYXAVW3UTOD2RG7BDAY6O3PHW/offers{?cursor,limit,order}",
+      "templated": true
+    },
+    "trades": {
+      "href": "https://horizon-testnet.stellar.org/accounts/GBWRID7MPYUDBTNQPEHUN4XOBVVDPJOHYXAVW3UTOD2RG7BDAY6O3PHW/trades{?cursor,limit,order}",
+      "templated": true
+    },
+    "data": {
+      "href": "https://horizon-testnet.stellar.org/accounts/GBWRID7MPYUDBTNQPEHUN4XOBVVDPJOHYXAVW3UTOD2RG7BDAY6O3PHW/data/{key}",
       "templated": true
     }
   },
-  "id": "GD42RQNXTRIW6YR3E2HXV5T2AI27LBRHOERV2JIYNFMXOBA234SWLQQB",
-  "paging_token": "7275146318450689",
-  "account_id": "GD42RQNXTRIW6YR3E2HXV5T2AI27LBRHOERV2JIYNFMXOBA234SWLQQB",
-  "sequence": 7275146318446606,
-  "subentry_count": 5,
+  "id": "GBWRID7MPYUDBTNQPEHUN4XOBVVDPJOHYXAVW3UTOD2RG7BDAY6O3PHW",
+  "paging_token": "",
+  "account_id": "GBWRID7MPYUDBTNQPEHUN4XOBVVDPJOHYXAVW3UTOD2RG7BDAY6O3PHW",
+  "sequence": "43692723777044483",
+  "subentry_count": 3,
   "thresholds": {
     "low_threshold": 0,
     "med_threshold": 0,
@@ -91,32 +99,38 @@ This endpoint responds with the details of a single account for a given ID. See 
   },
   "balances": [
     {
-      "balance": "126.8107491",
-      "limit": "5000.0000000",
-      "asset_type": "credit_alphanum4",
-      "asset_code": "BAR",
-      "asset_issuer": "GBAUUA74H4XOQYRSOW2RZUA4QL5PB37U3JS5NE3RTB2ELJVMIF5RLMAG"
-    },
-    {
-      "balance": "294.0000000",
-      "limit": "922337203685.4775807",
-      "asset_type": "credit_alphanum4",
-      "asset_code": "FOO",
-      "asset_issuer": "GBAUUA74H4XOQYRSOW2RZUA4QL5PB37U3JS5NE3RTB2ELJVMIF5RLMAG"
-    },
-    {
-      "balance": "9997.6802725",
+      "balance": "9999.9999700",
       "asset_type": "native"
     }
   ],
   "signers": [
     {
-      "public_key": "GD42RQNXTRIW6YR3E2HXV5T2AI27LBRHOERV2JIYNFMXOBA234SWLQQB",
-      "weight": 1
+      "public_key": "GDLEPBJBC2VSKJCLJB264F2WDK63X4NKOG774A3QWVH2U6PERGDPUCS4",
+      "weight": 1,
+      "key": "GDLEPBJBC2VSKJCLJB264F2WDK63X4NKOG774A3QWVH2U6PERGDPUCS4",
+      "type": "ed25519_public_key"
+    },
+    {
+      "public_key": "XCPNCUKYDHPMMH6TMHK73K5VP5A6ZTQ2L7Q74JR3TDANNFB3TMRS5OKG",
+      "weight": 1,
+      "key": "XCPNCUKYDHPMMH6TMHK73K5VP5A6ZTQ2L7Q74JR3TDANNFB3TMRS5OKG",
+      "type": "sha256_hash"
+    },
+    {
+      "public_key": "TABGGIW6EXOVOSNJ2O27U2DUX7RWHSRBGOKQLGYDTOXPANEX6LXBX7O7",
+      "weight": 1,
+      "key": "TABGGIW6EXOVOSNJ2O27U2DUX7RWHSRBGOKQLGYDTOXPANEX6LXBX7O7",
+      "type": "preauth_tx"
+    },
+    {
+      "public_key": "GBWRID7MPYUDBTNQPEHUN4XOBVVDPJOHYXAVW3UTOD2RG7BDAY6O3PHW",
+      "weight": 1,
+      "key": "GBWRID7MPYUDBTNQPEHUN4XOBVVDPJOHYXAVW3UTOD2RG7BDAY6O3PHW",
+      "type": "ed25519_public_key"
     }
   ],
   "data": {
-    "club": "MTAw"
+    
   }
 }
 ```

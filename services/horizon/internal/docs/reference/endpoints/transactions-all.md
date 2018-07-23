@@ -31,7 +31,7 @@ curl "https://horizon-testnet.stellar.org/transactions?limit=200&order=desc"
 
 ### JavaScript Example Request
 
-```js
+```javascript
 var StellarSdk = require('stellar-sdk');
 var server = new StellarSdk.Server('https://horizon-testnet.stellar.org');
 
@@ -48,6 +48,22 @@ server.transactions()
   .catch(function (err) {
     console.log(err)
   })
+```
+
+### JavaScript Streaming Example
+
+```javascript
+var StellarSdk = require('stellar-sdk')
+var server = new StellarSdk.Server('https://horizon-testnet.stellar.org');
+
+var txHandler = function (txResponse) {
+    console.log(txResponse);
+};
+
+var es = server.transactions()
+    .stream({
+        onmessage: txHandler
+    })
 ```
 
 ## Response

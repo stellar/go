@@ -21,17 +21,17 @@ GET /accounts/{account}/data/{key}
 ### curl Example Request
 
 ```sh
-curl "https://horizon-testnet.stellar.org/accounts/GA2HGBJIJKI6O4XEM7CZWY5PS6GKSXL6D34ERAJYQSPYA6X6AI7HYW36/data/user-id"
+curl "https://horizon-testnet.stellar.org/accounts/GCY3SMRZV3R7SNJKFZQHHZEPU4TUJULHSIPMJGKA6APL6O5F5RWCRZCM/data/user-id"
 ```
 
 ### JavaScript Example Request
 
-```js
+```javascript
 var StellarSdk = require('stellar-sdk');
 var server = new StellarSdk.Server('https://horizon-testnet.stellar.org');
 
 server.accounts()
-  .accountId("GAKLBGHNHFQ3BMUYG5KU4BEWO6EYQHZHAXEWC33W34PH2RBHZDSQBD75")
+  .accountId("GCY3SMRZV3R7SNJKFZQHHZEPU4TUJULHSIPMJGKA6APL6O5F5RWCRZCM")
   .call()
   .then(function (account) {
     return account.data({key: 'user-id'})
@@ -52,7 +52,7 @@ This endpoint responds with a value of the data field for the given account. See
 
 ```json
 {
-  "value": "MTAw"
+  "value": "MTIz"
 }
 ```
 

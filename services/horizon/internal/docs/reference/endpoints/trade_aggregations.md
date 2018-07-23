@@ -32,13 +32,35 @@ GET /trade_aggregations?base_asset_type={base_asset_type}&base_asset_code={base_
 curl https://horizon.stellar.org/trade_aggregations?base_asset_type=native&counter_asset_code=SLT&counter_asset_issuer=GCKA6K5PCQ6PNF5RQBF7PQDJWRHO6UOGFMRLK3DYHDOI244V47XKQ4GP&counter_asset_type=credit_alphanum4&limit=200&order=asc&resolution=3600000&start_time=1517521726000&end_time=1517532526000
 ```
 
+### JavaScript Example Request
+
+```javascript
+var StellarSdk = require('stellar-sdk');
+var server = new StellarSdk.Server('https://horizon.stellar.org');
+
+var base = new StellarSdk.Asset.native();
+var counter = new StellarSdk.Asset("SLT", "GCKA6K5PCQ6PNF5RQBF7PQDJWRHO6UOGFMRLK3DYHDOI244V47XKQ4GP");
+var startTime = 1517521726000;
+var endTime = 1517532526000;
+var resolution = 3600000;
+
+server.tradeAggregation(base, counter, startTime, endTime, resolution)
+  .call()
+  .then(function (tradeAggregation) {
+    console.log(tradeAggregation);
+  })
+  .catch(function (err) {
+    console.log(err);
+  })
+```
+
 ## Response
 
 A list of collected trade aggregations.
 
 Note
 - Segments that fit into the time range but have 0 trades in them, will not be included.
-- Partial segments, in the beginning and end of the time range, will not be included.
+- Partial segments, in the beginning and end of the time range, will not be included. Thus if your start time is noon Wednesday, your end time is noon Thursday, and your resolution is one day, you will not receive back any data. Instead, you would want to either start at midnight Wednesday and midnight Thursday, or shorten the resolution interval to better cover your time frame. 
 
 ### Example Response
 ```json

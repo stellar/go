@@ -42,7 +42,7 @@ curl "https://horizon-testnet.stellar.org/payments?cursor=1234&order=desc"
 
 ### JavaScript Example Request
 
-```js
+```javascript
 var StellarSdk = require('stellar-sdk');
 var server = new StellarSdk.Server('https://horizon-testnet.stellar.org');
 
@@ -55,6 +55,23 @@ server.payments()
     console.log(err)
   })
 ```
+
+### JavaScript Streaming Example
+
+```javascript
+var StellarSdk = require('stellar-sdk')
+var server = new StellarSdk.Server('https://horizon-testnet.stellar.org');
+
+var paymentHandler = function (paymentResponse) {
+    console.log(paymentResponse);
+};
+
+var es = server.payments()
+    .stream({
+        onmessage: paymentHandler
+    })
+```
+
 ## Response
 
 This endpoint responds with a list of payments. See [operation resource](../resources/operation.md) for more information about operations (and payment operations).

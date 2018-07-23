@@ -18,7 +18,7 @@ GET /accounts/{account}/offers{?cursor,limit,order}
 
 | name | notes | description | example |
 | ---- | ----- | ----------- | ------- |
-| `account` | required, string | Account ID | `GA2HGBJIJKI6O4XEM7CZWY5PS6GKSXL6D34ERAJYQSPYA6X6AI7HYW36` |
+| `account` | required, string | Account ID | `GBYTR4MC5JAX4ALGUBJD7EIKZVM7CUGWKXIUJMRSMK573XH2O7VAK3SR` |
 | `?cursor` | optional, any, default _null_ | A paging token, specifying where to start returning records from. | `12884905984` |
 | `?order`  | optional, string, default `asc` | The order in which to return rows, "asc" or "desc". | `asc` |
 | `?limit`  | optional, number, default: `10` | Maximum number of records to return. | `200` |
@@ -26,16 +26,16 @@ GET /accounts/{account}/offers{?cursor,limit,order}
 ### curl Example Request
 
 ```sh
-curl "https://horizon-testnet.stellar.org/accounts/GCJ34JYMXNI7N55YREWAACMMZECOMTPIYDTFCQBWPUP7BLJQDDTVGUW4/offers"
+curl "https://horizon-testnet.stellar.org/accounts/GBYTR4MC5JAX4ALGUBJD7EIKZVM7CUGWKXIUJMRSMK573XH2O7VAK3SR/offers"
 ```
 
 ### JavaScript Example Request
 
-```js
+```javascript
 var StellarSdk = require('stellar-sdk');
 var server = new StellarSdk.Server('https://horizon-testnet.stellar.org');
 
-server.offers('accounts', 'GCJ34JYMXNI7N55YREWAACMMZECOMTPIYDTFCQBWPUP7BLJQDDTVGUW4')
+server.offers('accounts', 'GBYTR4MC5JAX4ALGUBJD7EIKZVM7CUGWKXIUJMRSMK573XH2O7VAK3SR')
   .call()
   .then(function (offerResult) {
     console.log(offerResult);
@@ -43,6 +43,22 @@ server.offers('accounts', 'GCJ34JYMXNI7N55YREWAACMMZECOMTPIYDTFCQBWPUP7BLJQDDTVG
   .catch(function (err) {
     console.error(err);
   })
+```
+
+### JavaScript Streaming Example
+
+```javascript
+var StellarSdk = require('stellar-sdk')
+var server = new StellarSdk.Server('https://horizon-testnet.stellar.org');
+
+var offerHandler = function (offerResponse) {
+    console.log(offerResponse);
+};
+
+var es = server.offers('accounts', 'GBYTR4MC5JAX4ALGUBJD7EIKZVM7CUGWKXIUJMRSMK573XH2O7VAK3SR')
+    .stream({
+        onmessage: offerHandler
+    })
 ```
 
 ## Response
@@ -55,13 +71,13 @@ The list of offers.
 {
   "_links": {
     "self": {
-      "href": "https://horizon-testnet.stellar.org/accounts/GCJ34JYMXNI7N55YREWAACMMZECOMTPIYDTFCQBWPUP7BLJQDDTVGUW4/offers?order=asc&limit=10&cursor="
+      "href": "https://horizon-testnet.stellar.org/accounts/GBYTR4MC5JAX4ALGUBJD7EIKZVM7CUGWKXIUJMRSMK573XH2O7VAK3SR/offers?cursor=\u0026limit=10\u0026order=asc"
     },
     "next": {
-      "href": "https://horizon-testnet.stellar.org/accounts/GCJ34JYMXNI7N55YREWAACMMZECOMTPIYDTFCQBWPUP7BLJQDDTVGUW4/offers?order=asc&limit=10&cursor=122"
+      "href": "https://horizon-testnet.stellar.org/accounts/GBYTR4MC5JAX4ALGUBJD7EIKZVM7CUGWKXIUJMRSMK573XH2O7VAK3SR/offers?cursor=8\u0026limit=10\u0026order=asc"
     },
     "prev": {
-      "href": "https://horizon-testnet.stellar.org/accounts/GCJ34JYMXNI7N55YREWAACMMZECOMTPIYDTFCQBWPUP7BLJQDDTVGUW4/offers?order=desc&limit=10&cursor=121"
+      "href": "https://horizon-testnet.stellar.org/accounts/GBYTR4MC5JAX4ALGUBJD7EIKZVM7CUGWKXIUJMRSMK573XH2O7VAK3SR/offers?cursor=8\u0026limit=10\u0026order=desc"
     }
   },
   "_embedded": {
@@ -69,62 +85,29 @@ The list of offers.
       {
         "_links": {
           "self": {
-            "href": "https://horizon-testnet.stellar.org/offers/121"
+            "href": "https://horizon-testnet.stellar.org/offers/8"
           },
           "offer_maker": {
-            "href": "https://horizon-testnet.stellar.org/accounts/GCJ34JYMXNI7N55YREWAACMMZECOMTPIYDTFCQBWPUP7BLJQDDTVGUW4"
+            "href": "https://horizon-testnet.stellar.org/accounts/GBYTR4MC5JAX4ALGUBJD7EIKZVM7CUGWKXIUJMRSMK573XH2O7VAK3SR"
           }
         },
-        "id": 121,
-        "paging_token": "121",
-        "seller": "GCJ34JYMXNI7N55YREWAACMMZECOMTPIYDTFCQBWPUP7BLJQDDTVGUW4",
+        "id": 8,
+        "paging_token": "8",
+        "seller": "GBYTR4MC5JAX4ALGUBJD7EIKZVM7CUGWKXIUJMRSMK573XH2O7VAK3SR",
         "selling": {
           "asset_type": "credit_alphanum4",
-          "asset_code": "BAR",
-          "asset_issuer": "GBAUUA74H4XOQYRSOW2RZUA4QL5PB37U3JS5NE3RTB2ELJVMIF5RLMAG"
+          "asset_code": "BTC",
+          "asset_issuer": "GB6FN4C7ZLWKENAOZDLZOQHNIOK4RDMV6EKLR53LWCHEBR6LVXOEKDZH"
         },
         "buying": {
-          "asset_type": "credit_alphanum4",
-          "asset_code": "FOO",
-          "asset_issuer": "GBAUUA74H4XOQYRSOW2RZUA4QL5PB37U3JS5NE3RTB2ELJVMIF5RLMAG"
+          "asset_type": "native"
         },
-        "amount": "23.6692509",
+        "amount": "8.0000000",
         "price_r": {
-          "n": 387,
-          "d": 50
+          "n": 1,
+          "d": 1
         },
-        "price": "7.7400000",
-        "last_modified": "1970-01-01T00:00:05Z"
-      },
-      {
-        "_links": {
-          "self": {
-            "href": "https://horizon-testnet.stellar.org/offers/122"
-          },
-          "offer_maker": {
-            "href": "https://horizon-testnet.stellar.org/accounts/GCJ34JYMXNI7N55YREWAACMMZECOMTPIYDTFCQBWPUP7BLJQDDTVGUW4"
-          }
-        },
-        "id": 122,
-        "paging_token": "122",
-        "seller": "GCJ34JYMXNI7N55YREWAACMMZECOMTPIYDTFCQBWPUP7BLJQDDTVGUW4",
-        "selling": {
-          "asset_type": "credit_alphanum4",
-          "asset_code": "BAR",
-          "asset_issuer": "GBAUUA74H4XOQYRSOW2RZUA4QL5PB37U3JS5NE3RTB2ELJVMIF5RLMAG"
-        },
-        "buying": {
-          "asset_type": "credit_alphanum4",
-          "asset_code": "FOO",
-          "asset_issuer": "GBAUUA74H4XOQYRSOW2RZUA4QL5PB37U3JS5NE3RTB2ELJVMIF5RLMAG"
-        },
-        "amount": "72.0000000",
-        "price_r": {
-          "n": 779,
-          "d": 100
-        },
-        "price": "7.7900000",
-        "last_modified": "1970-01-01T00:00:06Z"
+        "price": "1.0000000"
       }
     ]
   }

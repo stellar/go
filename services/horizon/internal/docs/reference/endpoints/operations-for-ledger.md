@@ -16,7 +16,7 @@ GET /ledgers/{id}/operations{?cursor,limit,order}
 
 | name     | notes                          | description                                                      | example      |
 | ------   | -------                        | -----------                                                      | -------      |
-| `id`     | required, number               | Ledger ID                                                        | `69859`      |
+| `id`     | required, number               | Ledger ID                                                        | `6985922`    |
 | `?cursor`| optional, default _null_       | A paging token, specifying where to start returning records from.| `12884905984`|
 | `?order` | optional, string, default `asc`| The order in which to return rows, "asc" or "desc".              | `asc`        |
 | `?limit` | optional, number, default `10` | Maximum number of records to return.                             | `200`        |
@@ -24,17 +24,17 @@ GET /ledgers/{id}/operations{?cursor,limit,order}
 ### curl Example Request
 
 ```sh
-curl "https://horizon-testnet.stellar.org/ledgers/69859/operations"
+curl "https://horizon-testnet.stellar.org/ledgers/6985922/operations?limit=1"
 ```
 
 ### JavaScript Example Request
 
-```js
+```javascript
 var StellarSdk = require('stellar-sdk');
 var server = new StellarSdk.Server('https://horizon-testnet.stellar.org');
 
 server.operations()
-  .forLedger("10866")
+  .forLedger("6985922")
   .call()
   .then(function (operationsResult) {
     console.log(operationsResult.records);
@@ -52,47 +52,57 @@ This endpoint responds with a list of operations in a given ledger.  See [operat
 
 ```json
 {
+  "_links": {
+    "self": {
+      "href": "https://horizon-testnet.stellar.org/ledgers/6985922/operations?cursor=\u0026limit=1\u0026order=asc"
+    },
+    "next": {
+      "href": "https://horizon-testnet.stellar.org/ledgers/6985922/operations?cursor=30004306522411009\u0026limit=1\u0026order=asc"
+    },
+    "prev": {
+      "href": "https://horizon-testnet.stellar.org/ledgers/6985922/operations?cursor=30004306522411009\u0026limit=1\u0026order=desc"
+    }
+  },
   "_embedded": {
     "records": [
       {
         "_links": {
-          "effects": {
-            "href": "/operations/77309415424/effects/{?cursor,limit,order}",
-            "templated": true
-          },
-          "precedes": {
-            "href": "/operations?cursor=77309415424&order=asc"
-          },
           "self": {
-            "href": "/operations/77309415424"
+            "href": "https://horizon-testnet.stellar.org/operations/30004306522411009"
+          },
+          "transaction": {
+            "href": "https://horizon-testnet.stellar.org/transactions/ca375ca4c5f084c9654459fd5c84cfa58c627adad6a91ffb848585a7989be044"
+          },
+          "effects": {
+            "href": "https://horizon-testnet.stellar.org/operations/30004306522411009/effects"
           },
           "succeeds": {
-            "href": "/operations?cursor=77309415424&order=desc"
+            "href": "https://horizon-testnet.stellar.org/effects?order=desc\u0026cursor=30004306522411009"
           },
-          "transactions": {
-            "href": "/transactions/77309415424"
+          "precedes": {
+            "href": "https://horizon-testnet.stellar.org/effects?order=asc\u0026cursor=30004306522411009"
           }
         },
-        "account": "GBIA4FH6TV64KSPDAJCNUQSM7PFL4ILGUVJDPCLUOPJ7ONMKBBVUQHRO",
-        "funder": "GCEZWKCA5VLDNRLN3RPRJMRZOX3Z6G5CHCGSNFHEYVXM3XOJMDS674JZ",
-        "id": 77309415424,
-        "paging_token": "77309415424",
-        "starting_balance": 1e+14,
-        "type_i": 0,
-        "type": "create_account"
+        "id": "30004306522411009",
+        "paging_token": "30004306522411009",
+        "source_account": "GBLMPWYW2R7ICYRM62GSLW5B567ETK5O64N34VPT4RWH6PMWPMIG3FHT",
+        "type": "manage_offer",
+        "type_i": 3,
+        "created_at": "2018-01-29T02:39:49Z",
+        "transaction_hash": "ca375ca4c5f084c9654459fd5c84cfa58c627adad6a91ffb848585a7989be044",
+        "amount": "0.0999454",
+        "price": "19776.0950519",
+        "price_r": {
+          "n": 703020403,
+          "d": 35549
+        },
+        "buying_asset_type": "native",
+        "selling_asset_type": "credit_alphanum4",
+        "selling_asset_code": "BTC",
+        "selling_asset_issuer": "GCNSGHUCG5VMGLT5RIYYZSO7VQULQKAJ62QA33DBC5PPBSO57LFWVV6P",
+        "offer_id": 81843
       }
     ]
-  },
-  "_links": {
-    "next": {
-      "href": "/ledgers/18/operations?order=asc&limit=10&cursor=77309415424"
-    },
-    "prev": {
-      "href": "/ledgers/18/operations?order=desc&limit=10&cursor=77309415424"
-    },
-    "self": {
-      "href": "/ledgers/18/operations?order=asc&limit=10&cursor="
-    }
   }
 }
 ```

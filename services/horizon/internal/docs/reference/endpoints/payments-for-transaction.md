@@ -30,17 +30,17 @@ GET /transactions/{hash}/payments{?cursor,limit,order}
 ### curl Example Request
 
 ```sh
-curl "https://horizon-testnet.stellar.org/transactions/3c8ef808df9d5d240ba0d495629df9da5653b1be2daf05d43b49c5bcbfe099bd/payments"
+curl "https://horizon-testnet.stellar.org/transactions/622d566df3ee61848be3c3211f614310082f4a09c959cbee7be6990b0dccdba8/payments"
 ```
 
 ### JavaScript Example Request
 
-```js
+```javascript
 var StellarSdk = require('stellar-sdk');
 var server = new StellarSdk.Server('https://horizon-testnet.stellar.org');
 
 server.payments()
-  .forTransaction("3c8ef808df9d5d240ba0d495629df9da5653b1be2daf05d43b49c5bcbfe099bd")
+  .forTransaction("622d566df3ee61848be3c3211f614310082f4a09c959cbee7be6990b0dccdba8")
   .call()
   .then(function (paymentResult) {
     console.log(paymentResult.records);
@@ -49,6 +49,7 @@ server.payments()
     console.log(err);
   })
 ```
+
 ## Response
 
 This endpoint responds with a list of payments operations that are part of a given transaction. See [operation resource](../resources/operation.md) for more information about operations (and payment operations).
@@ -57,47 +58,52 @@ This endpoint responds with a list of payments operations that are part of a giv
 
 ```json
 {
+  "_links": {
+    "self": {
+      "href": "https://horizon-testnet.stellar.org/transactions/622d566df3ee61848be3c3211f614310082f4a09c959cbee7be6990b0dccdba8/payments?cursor=\u0026limit=10\u0026order=asc"
+    },
+    "next": {
+      "href": "https://horizon-testnet.stellar.org/transactions/622d566df3ee61848be3c3211f614310082f4a09c959cbee7be6990b0dccdba8/payments?cursor=43456504870744065\u0026limit=10\u0026order=asc"
+    },
+    "prev": {
+      "href": "https://horizon-testnet.stellar.org/transactions/622d566df3ee61848be3c3211f614310082f4a09c959cbee7be6990b0dccdba8/payments?cursor=43456504870744065\u0026limit=10\u0026order=desc"
+    }
+  },
   "_embedded": {
     "records": [
       {
         "_links": {
-          "effects": {
-            "href": "/operations/46428596473856/effects/{?cursor,limit,order}",
-            "templated": true
-          },
-          "precedes": {
-            "href": "/operations?cursor=46428596473856&order=asc"
-          },
           "self": {
-            "href": "/operations/46428596473856"
+            "href": "https://horizon-testnet.stellar.org/operations/43456504870744065"
+          },
+          "transaction": {
+            "href": "https://horizon-testnet.stellar.org/transactions/622d566df3ee61848be3c3211f614310082f4a09c959cbee7be6990b0dccdba8"
+          },
+          "effects": {
+            "href": "https://horizon-testnet.stellar.org/operations/43456504870744065/effects"
           },
           "succeeds": {
-            "href": "/operations?cursor=46428596473856&order=desc"
+            "href": "https://horizon-testnet.stellar.org/effects?order=desc\u0026cursor=43456504870744065"
           },
-          "transactions": {
-            "href": "/transactions/46428596473856"
+          "precedes": {
+            "href": "https://horizon-testnet.stellar.org/effects?order=asc\u0026cursor=43456504870744065"
           }
         },
-        "account": "GAKLBGHNHFQ3BMUYG5KU4BEWO6EYQHZHAXEWC33W34PH2RBHZDSQBD75",
-        "funder": "GBIA4FH6TV64KSPDAJCNUQSM7PFL4ILGUVJDPCLUOPJ7ONMKBBVUQHRO",
-        "id": 46428596473856,
-        "paging_token": "46428596473856",
-        "starting_balance": 1e+09,
-        "type_i": 0,
-        "type": "create_account"
+        "id": "43456504870744065",
+        "paging_token": "43456504870744065",
+        "source_account": "GCEDON5M2HFQ5P5MVWYGKH3K4S3ZKQFZ5AYLWNXPSGVOHLJUXQRYL35Z",
+        "type": "payment",
+        "type_i": 1,
+        "created_at": "2018-07-20T16:12:46Z",
+        "transaction_hash": "622d566df3ee61848be3c3211f614310082f4a09c959cbee7be6990b0dccdba8",
+        "asset_type": "credit_alphanum12",
+        "asset_code": "nCntGameCoin",
+        "asset_issuer": "GDLMDXI6EVVUIXWRU4S2YVZRMELHUEX3WKOX6XFW77QQC6KZJ4CZ7NRB",
+        "from": "GCEDON5M2HFQ5P5MVWYGKH3K4S3ZKQFZ5AYLWNXPSGVOHLJUXQRYL35Z",
+        "to": "GAWHFIIG2LTBO4Q5ZCTMPGYVV3FSQE4TCXPFTL44V5BN5FLR3GRGJB5G",
+        "amount": "1.0000000"
       }
     ]
-  },
-  "_links": {
-    "next": {
-      "href": "?order=asc&limit=10&cursor=46428596473856"
-    },
-    "prev": {
-      "href": "?order=desc&limit=10&cursor=46428596473856"
-    },
-    "self": {
-      "href": "?order=asc&limit=10&cursor="
-    }
   }
 }
 ```

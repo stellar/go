@@ -37,14 +37,34 @@ curl "https://horizon-testnet.stellar.org/order_book?selling_asset_type=native&b
 
 ### JavaScript Example Request
 
-```js
+```javascript
 var StellarSdk = require('stellar-sdk');
 var server = new StellarSdk.Server('https://horizon-testnet.stellar.org');
 
 server.orderbook(new StellarSdk.Asset.native(), new StellarSdk.Asset('FOO', 'GBAUUA74H4XOQYRSOW2RZUA4QL5PB37U3JS5NE3RTB2ELJVMIF5RLMAG'))
   .call()
-  .then(function(resp) { console.log(resp); })
-  .catch(function(err) { console.log(err); })
+  .then(function(resp) { 
+  	console.log(resp); 
+  })
+  .catch(function(err) { 
+  	console.log(err); 
+  })
+```
+
+### JavaScript Streaming Example
+
+```javascript
+var StellarSdk = require('stellar-sdk')
+var server = new StellarSdk.Server('https://horizon-testnet.stellar.org');
+
+var orderbookHandler = function (orderbookResponse) {
+    console.log(orderbookResponse);
+};
+
+var es = server.orderbook(new StellarSdk.Asset.native(), new StellarSdk.Asset('FOO', 'GBAUUA74H4XOQYRSOW2RZUA4QL5PB37U3JS5NE3RTB2ELJVMIF5RLMAG'))
+    .stream({
+        onmessage: orderbookHandler
+    })
 ```
 
 ## Response

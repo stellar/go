@@ -27,7 +27,7 @@ GET /accounts/{account}/effects{?cursor,limit,order}
 ### curl Example Request
 
 ```sh
-curl "https://horizon-testnet.stellar.org/accounts/GA2HGBJIJKI6O4XEM7CZWY5PS6GKSXL6D34ERAJYQSPYA6X6AI7HYW36/effects"
+curl "https://horizon-testnet.stellar.org/accounts/GA2HGBJIJKI6O4XEM7CZWY5PS6GKSXL6D34ERAJYQSPYA6X6AI7HYW36/effects?limit=1"
 ```
 
 ### JavaScript Example Request
@@ -37,7 +37,7 @@ var StellarSdk = require('stellar-sdk');
 var server = new StellarSdk.Server('https://horizon-testnet.stellar.org');
 
 server.effects()
-  .forAccount("GD6VWBXI6NY3AOOR55RLVQ4MNIDSXE5JSAVXUTF35FRRI72LYPI3WL6Z")
+  .forAccount("GA2HGBJIJKI6O4XEM7CZWY5PS6GKSXL6D34ERAJYQSPYA6X6AI7HYW36")
   .call()
   .then(function (effectResults) {
     //page 1
@@ -49,6 +49,23 @@ server.effects()
 
 ```
 
+### JavaScript Streaming Example
+
+```javascript
+var StellarSdk = require('stellar-sdk')
+var server = new StellarSdk.Server('https://horizon-testnet.stellar.org');
+
+var effectHandler = function (effectResponse) {
+    console.log(effectResponse);
+};
+
+var es = server.effects()
+    .forAccount("GA2HGBJIJKI6O4XEM7CZWY5PS6GKSXL6D34ERAJYQSPYA6X6AI7HYW36")
+    .stream({
+        onmessage: effectHandler
+    })
+```
+
 ## Response
 
 The list of effects.
@@ -57,57 +74,40 @@ The list of effects.
 
 ```json
 {
+  "_links": {
+    "self": {
+      "href": "https://horizon-testnet.stellar.org/accounts/GA2HGBJIJKI6O4XEM7CZWY5PS6GKSXL6D34ERAJYQSPYA6X6AI7HYW36/effects?cursor=\u0026limit=1\u0026order=asc"
+    },
+    "next": {
+      "href": "https://horizon-testnet.stellar.org/accounts/GA2HGBJIJKI6O4XEM7CZWY5PS6GKSXL6D34ERAJYQSPYA6X6AI7HYW36/effects?cursor=34517561236262913-1\u0026limit=1\u0026order=asc"
+    },
+    "prev": {
+      "href": "https://horizon-testnet.stellar.org/accounts/GA2HGBJIJKI6O4XEM7CZWY5PS6GKSXL6D34ERAJYQSPYA6X6AI7HYW36/effects?cursor=34517561236262913-1\u0026limit=1\u0026order=desc"
+    }
+  },
   "_embedded": {
     "records": [
       {
         "_links": {
           "operation": {
-            "href": "/operations/214748368897"
-          },
-          "precedes": {
-            "href": "/effects?cursor=214748368897-1\u0026order=asc"
+            "href": "https://horizon-testnet.stellar.org/operations/34517561236262913"
           },
           "succeeds": {
-            "href": "/effects?cursor=214748368897-1\u0026order=desc"
+            "href": "https://horizon-testnet.stellar.org/effects?order=desc\u0026cursor=34517561236262913-1"
+          },
+          "precedes": {
+            "href": "https://horizon-testnet.stellar.org/effects?order=asc\u0026cursor=34517561236262913-1"
           }
         },
-        "account": "GC6NFQDTVH2YMVZSXJIVLCRHLFAOVOT32JMDFZJZ34QFSSVT7M5G2XFK",
-        "paging_token": "214748368897-1",
-        "starting_balance": "100.0",
+        "id": "0034517561236262913-0000000001",
+        "paging_token": "34517561236262913-1",
+        "account": "GA2HGBJIJKI6O4XEM7CZWY5PS6GKSXL6D34ERAJYQSPYA6X6AI7HYW36",
+        "type": "account_created",
         "type_i": 0,
-        "type": "account_created"
-      },
-      {
-        "_links": {
-          "operation": {
-            "href": "/operations/214748368897"
-          },
-          "precedes": {
-            "href": "/effects?cursor=214748368897-3\u0026order=asc"
-          },
-          "succeeds": {
-            "href": "/effects?cursor=214748368897-3\u0026order=desc"
-          }
-        },
-        "account": "GC6NFQDTVH2YMVZSXJIVLCRHLFAOVOT32JMDFZJZ34QFSSVT7M5G2XFK",
-        "paging_token": "214748368897-3",
-        "public_key": "GC6NFQDTVH2YMVZSXJIVLCRHLFAOVOT32JMDFZJZ34QFSSVT7M5G2XFK",
-        "type_i": 10,
-        "type": "signer_created",
-        "weight": 2
+        "created_at": "2018-03-22T02:46:34Z",
+        "starting_balance": "10000.0000000"
       }
     ]
-  },
-  "_links": {
-    "next": {
-      "href": "/accounts/GC6NFQDTVH2YMVZSXJIVLCRHLFAOVOT32JMDFZJZ34QFSSVT7M5G2XFK/effects?order=asc\u0026limit=10\u0026cursor=214748368897-3"
-    },
-    "prev": {
-      "href": "/accounts/GC6NFQDTVH2YMVZSXJIVLCRHLFAOVOT32JMDFZJZ34QFSSVT7M5G2XFK/effects?order=desc\u0026limit=10\u0026cursor=214748368897-1"
-    },
-    "self": {
-      "href": "/accounts/GC6NFQDTVH2YMVZSXJIVLCRHLFAOVOT32JMDFZJZ34QFSSVT7M5G2XFK/effects?order=asc\u0026limit=10\u0026cursor="
-    }
   }
 }
 ```

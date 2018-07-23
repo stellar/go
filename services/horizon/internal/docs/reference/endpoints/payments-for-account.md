@@ -39,7 +39,7 @@ curl "https://horizon-testnet.stellar.org/accounts/GCEZWKCA5VLDNRLN3RPRJMRZOX3Z6
 
 ### JavaScript Example Request
 
-```js
+```javascript
 var StellarSdk = require('stellar-sdk');
 var server = new StellarSdk.Server('https://horizon-testnet.stellar.org');
 
@@ -53,6 +53,24 @@ server.payments()
     console.error(err);
   })
 ```
+
+### JavaScript Streaming Example
+
+```javascript
+var StellarSdk = require('stellar-sdk')
+var server = new StellarSdk.Server('https://horizon-testnet.stellar.org');
+
+var paymentHandler = function (paymentResponse) {
+    console.log(paymentResponse);
+};
+
+var es = server.payments()
+    .forAccount("GCEZWKCA5VLDNRLN3RPRJMRZOX3Z6G5CHCGSNFHEYVXM3XOJMDS674JZ")
+    .stream({
+        onmessage: paymentHandler
+    })
+```
+
 ## Response
 
 This endpoint responds with a [page](../resources/page.md) of [payment operations](../resources/operation.md).

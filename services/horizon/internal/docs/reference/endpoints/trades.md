@@ -4,7 +4,7 @@ title: Trades
 
 People on the Stellar network can make [offers](../resources/offer.md) to buy or sell assets. When an offer is fully or partially fulfilled, a [trade](../resources/trade.md) happens.
 
-Trades can be filtered for specific orderbook, defined by an asset pair: `base` and `counter`. 
+Trades can be filtered for a specific orderbook, defined by an asset pair: `base` and `counter`. 
 
 ## Request
 
@@ -30,6 +30,22 @@ GET /trades?base_asset_type={base_asset_type}&base_asset_code={base_asset_code}&
 ### curl Example Request
 ```sh 
 curl https://horizon.stellar.org/trades?base_asset_type=native&counter_asset_code=SLT&counter_asset_issuer=GCKA6K5PCQ6PNF5RQBF7PQDJWRHO6UOGFMRLK3DYHDOI244V47XKQ4GP&counter_asset_type=credit_alphanum4&limit=2&order=desc
+```
+
+### JavaScript Example Request
+
+```javascript
+var StellarSdk = require('stellar-sdk');
+var server = new StellarSdk.Server('https://horizon-testnet.stellar.org');
+
+server.trades()
+  .call()
+  .then(function (tradesResult) {
+    console.log(tradesResult.records);
+  })
+  .catch(function (err) {
+    console.log(err)
+  })
 ```
 
 ## Response

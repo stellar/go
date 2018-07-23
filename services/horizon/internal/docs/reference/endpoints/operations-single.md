@@ -16,22 +16,22 @@ GET /operations/{id}
 
 |  name  |  notes  | description | example |
 | ------ | ------- | ----------- | ------- |
-| `id` | required, number | An operation ID. | 77309415424 |
+| `id` | required, number | An operation ID. | 43685160339648551 |
 
 ### curl Example Request
 
 ```sh
-curl https://horizon-testnet.stellar.org/operations/77309415424
+curl https://horizon-testnet.stellar.org/operations/43685160339648551
 ```
 
 ### JavaScript Example Request
 
-```js
+```javascript
 var StellarSdk = require('stellar-sdk');
 var server = new StellarSdk.Server('https://horizon-testnet.stellar.org');
 
 server.operations()
-  .operation('77309415424')
+  .operation('43685160339648551')
   .call()
   .then(function (operationsResult) {
     console.log(operationsResult)
@@ -52,30 +52,40 @@ This endpoint responds with a single Operation.  See [operation resource](../res
 ```json
 {
   "_links": {
-    "effects": {
-      "href": "/operations/77309415424/effects/{?cursor,limit,order}",
-      "templated": true
-    },
-    "precedes": {
-      "href": "/operations?cursor=77309415424&order=asc"
-    },
     "self": {
-      "href": "/operations/77309415424"
+      "href": "https://horizon-testnet.stellar.org/operations/43685160339648551"
+    },
+    "transaction": {
+      "href": "https://horizon-testnet.stellar.org/transactions/3d13f059842c775096a20d7132bf4ac6c962811cb0313ff43c7c4881ee9119f3"
+    },
+    "effects": {
+      "href": "https://horizon-testnet.stellar.org/operations/43685160339648551/effects"
     },
     "succeeds": {
-      "href": "/operations?cursor=77309415424&order=desc"
+      "href": "https://horizon-testnet.stellar.org/effects?order=desc\u0026cursor=43685160339648551"
     },
-    "transactions": {
-      "href": "/transactions/77309415424"
+    "precedes": {
+      "href": "https://horizon-testnet.stellar.org/effects?order=asc\u0026cursor=43685160339648551"
     }
   },
-  "account": "GBIA4FH6TV64KSPDAJCNUQSM7PFL4ILGUVJDPCLUOPJ7ONMKBBVUQHRO",
-  "funder": "GCEZWKCA5VLDNRLN3RPRJMRZOX3Z6G5CHCGSNFHEYVXM3XOJMDS674JZ",
-  "id": 77309415424,
-  "paging_token": "77309415424",
-  "starting_balance": 1e+14,
-  "type_i": 0,
-  "type": "create_account"
+  "id": "43685160339648551",
+  "paging_token": "43685160339648551",
+  "source_account": "GDWGJSTUVRNFTR7STPUUHFWQYAN6KBVWCZT2YN7MY276GCSSXSWPS6JY",
+  "type": "manage_offer",
+  "type_i": 3,
+  "created_at": "2018-07-23T18:14:46Z",
+  "transaction_hash": "3d13f059842c775096a20d7132bf4ac6c962811cb0313ff43c7c4881ee9119f3",
+  "amount": "828.3700000",
+  "price": "0.2898700",
+  "price_r": {
+    "n": 28987,
+    "d": 100000
+  },
+  "buying_asset_type": "credit_alphanum4",
+  "buying_asset_code": "USD",
+  "buying_asset_issuer": "GA7RXKBZOUA3FCUUS65JRLU5SZD3XBQUGRWL7NVQWU5QOXQW2LUZNBFZ",
+  "selling_asset_type": "native",
+  "offer_id": 526476
 }
 ```
 

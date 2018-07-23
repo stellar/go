@@ -22,7 +22,7 @@ GET /ledgers/{id}/payments{?cursor,limit,order}
 
 |  name  |  notes  | description | example |
 | ------ | ------- | ----------- | ------- |
-| `id` | required, number | Ledger ID | `69859` |
+| `id` | required, number | Ledger ID | `10009866` |
 | `?cursor` | optional, default _null_ | A paging token, specifying where to start returning records from. | `12884905984` |
 | `?order`  | optional, string, default `asc` | The order in which to return rows, "asc" or "desc". | `asc` |
 | `?limit`  | optional, number, default `10` | Maximum number of records to return. | `200` |
@@ -30,17 +30,17 @@ GET /ledgers/{id}/payments{?cursor,limit,order}
 ### curl Example Request
 
 ```sh
-curl "https://horizon-testnet.stellar.org/ledgers/69859/payments"
+curl "https://horizon-testnet.stellar.org/ledgers/10009866/payments?limit=1"
 ```
 
 ### JavaScript Example Request
 
-```js
+```javascript
 var StellarSdk = require('stellar-sdk')
 var server = new StellarSdk.Server('https://horizon-testnet.stellar.org');
 
 server.payments()
-  .forLedger("10866")
+  .forLedger("10009866")
   .call()
   .then(function (paymentResult) {
     console.log(paymentResult)
@@ -58,47 +58,52 @@ This endpoint responds with a list of payment operations in a given ledger.  See
 
 ```json
 {
+  "_links": {
+    "self": {
+      "href": "https://horizon-testnet.stellar.org/ledgers/10009866/payments?cursor=\u0026limit=1\u0026order=asc"
+    },
+    "next": {
+      "href": "https://horizon-testnet.stellar.org/ledgers/10009866/payments?cursor=42992047107346433\u0026limit=1\u0026order=asc"
+    },
+    "prev": {
+      "href": "https://horizon-testnet.stellar.org/ledgers/10009866/payments?cursor=42992047107346433\u0026limit=1\u0026order=desc"
+    }
+  },
   "_embedded": {
     "records": [
       {
         "_links": {
-          "effects": {
-            "href": "/operations/77309415424/effects/{?cursor,limit,order}",
-            "templated": true
-          },
-          "precedes": {
-            "href": "/operations?cursor=77309415424&order=asc"
-          },
           "self": {
-            "href": "/operations/77309415424"
+            "href": "https://horizon-testnet.stellar.org/operations/42992047107346433"
+          },
+          "transaction": {
+            "href": "https://horizon-testnet.stellar.org/transactions/e235cf90e6cc5c84ec6912dc3cbd13b627f43eca8ac59eae34872c224c5a728c"
+          },
+          "effects": {
+            "href": "https://horizon-testnet.stellar.org/operations/42992047107346433/effects"
           },
           "succeeds": {
-            "href": "/operations?cursor=77309415424&order=desc"
+            "href": "https://horizon-testnet.stellar.org/effects?order=desc\u0026cursor=42992047107346433"
           },
-          "transactions": {
-            "href": "/transactions/77309415424"
+          "precedes": {
+            "href": "https://horizon-testnet.stellar.org/effects?order=asc\u0026cursor=42992047107346433"
           }
         },
-        "account": "GBIA4FH6TV64KSPDAJCNUQSM7PFL4ILGUVJDPCLUOPJ7ONMKBBVUQHRO",
-        "funder": "GCEZWKCA5VLDNRLN3RPRJMRZOX3Z6G5CHCGSNFHEYVXM3XOJMDS674JZ",
-        "id": 77309415424,
-        "paging_token": "77309415424",
-        "starting_balance": 1e+14,
-        "type_i": 0,
-        "type": "create_account"
+        "id": "42992047107346433",
+        "paging_token": "42992047107346433",
+        "source_account": "GCANEDZUIL7MBBWWCTQ25534UMCOIQLEH3IPOCU7W7H6LK7I35WAE7BI",
+        "type": "payment",
+        "type_i": 1,
+        "created_at": "2018-07-14T09:59:20Z",
+        "transaction_hash": "e235cf90e6cc5c84ec6912dc3cbd13b627f43eca8ac59eae34872c224c5a728c",
+        "asset_type": "credit_alphanum12",
+        "asset_code": "nCntGameCoin",
+        "asset_issuer": "GDLMDXI6EVVUIXWRU4S2YVZRMELHUEX3WKOX6XFW77QQC6KZJ4CZ7NRB",
+        "from": "GCANEDZUIL7MBBWWCTQ25534UMCOIQLEH3IPOCU7W7H6LK7I35WAE7BI",
+        "to": "GC25MF2YFV2KTBVVVL7HT3PHAMGV7N46DVL75MJU4IVXSXVTAOIIHKCM",
+        "amount": "1.0000000"
       }
     ]
-  },
-  "_links": {
-    "next": {
-      "href": "?order=asc&limit=10&cursor=77309415424"
-    },
-    "prev": {
-      "href": "?order=desc&limit=10&cursor=77309415424"
-    },
-    "self": {
-      "href": "?order=asc&limit=10&cursor="
-    }
   }
 }
 ```

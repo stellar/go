@@ -17,7 +17,7 @@ When horizon returns information about an account it uses the following format:
 | subentry_count     | number           | The number of [account subentries](https://www.stellar.org/developers/guides/concepts/ledger.html#ledger-entries). |
 | balances     | array of objects | An array of the native asset or credits this account holds.                                                          |
 | thresholds     | object | An object of account flags. |
-| signers     | array of objects | An array of account signers with their weights. |
+| signers     | array of objects | An array of [account signers](https://www.stellar.org/developers/guides/concepts/multi-sig.html#additional-signing-keys) with their weights. *Note: `public_key` attribute for signer is [deprecated](https://github.com/stellar/go/blob/master/services/horizon/CHANGELOG.md#deprecated), use `key` attribute.* |
 | data     | object | An array of account data fields. |
 
 ## Links
@@ -38,42 +38,42 @@ When horizon returns information about an account it uses the following format:
 {
   "_links": {
     "self": {
-      "href": "https://horizon-testnet.stellar.org/accounts/GBRTWTVW65NO4AER7W6G5CTVWGZCLQJIKJTAX523Q5GPU6TNJONXOR23"
+      "href": "https://horizon-testnet.stellar.org/accounts/GBWRID7MPYUDBTNQPEHUN4XOBVVDPJOHYXAVW3UTOD2RG7BDAY6O3PHW"
     },
     "transactions": {
-      "href": "https://horizon-testnet.stellar.org/accounts/GBRTWTVW65NO4AER7W6G5CTVWGZCLQJIKJTAX523Q5GPU6TNJONXOR23/transactions{?cursor,limit,order}",
+      "href": "https://horizon-testnet.stellar.org/accounts/GBWRID7MPYUDBTNQPEHUN4XOBVVDPJOHYXAVW3UTOD2RG7BDAY6O3PHW/transactions{?cursor,limit,order}",
       "templated": true
     },
     "operations": {
-      "href": "https://horizon-testnet.stellar.org/accounts/GBRTWTVW65NO4AER7W6G5CTVWGZCLQJIKJTAX523Q5GPU6TNJONXOR23/operations{?cursor,limit,order}",
+      "href": "https://horizon-testnet.stellar.org/accounts/GBWRID7MPYUDBTNQPEHUN4XOBVVDPJOHYXAVW3UTOD2RG7BDAY6O3PHW/operations{?cursor,limit,order}",
       "templated": true
     },
     "payments": {
-      "href": "https://horizon-testnet.stellar.org/accounts/GBRTWTVW65NO4AER7W6G5CTVWGZCLQJIKJTAX523Q5GPU6TNJONXOR23/payments{?cursor,limit,order}",
+      "href": "https://horizon-testnet.stellar.org/accounts/GBWRID7MPYUDBTNQPEHUN4XOBVVDPJOHYXAVW3UTOD2RG7BDAY6O3PHW/payments{?cursor,limit,order}",
       "templated": true
     },
     "effects": {
-      "href": "https://horizon-testnet.stellar.org/accounts/GBRTWTVW65NO4AER7W6G5CTVWGZCLQJIKJTAX523Q5GPU6TNJONXOR23/effects{?cursor,limit,order}",
+      "href": "https://horizon-testnet.stellar.org/accounts/GBWRID7MPYUDBTNQPEHUN4XOBVVDPJOHYXAVW3UTOD2RG7BDAY6O3PHW/effects{?cursor,limit,order}",
       "templated": true
     },
     "offers": {
-      "href": "https://horizon-testnet.stellar.org/accounts/GBRTWTVW65NO4AER7W6G5CTVWGZCLQJIKJTAX523Q5GPU6TNJONXOR23/offers{?cursor,limit,order}",
+      "href": "https://horizon-testnet.stellar.org/accounts/GBWRID7MPYUDBTNQPEHUN4XOBVVDPJOHYXAVW3UTOD2RG7BDAY6O3PHW/offers{?cursor,limit,order}",
       "templated": true
     },
     "trades": {
-      "href": "https://horizon-testnet.stellar.org/accounts/GBRTWTVW65NO4AER7W6G5CTVWGZCLQJIKJTAX523Q5GPU6TNJONXOR23/trades{?cursor,limit,order}",
+      "href": "https://horizon-testnet.stellar.org/accounts/GBWRID7MPYUDBTNQPEHUN4XOBVVDPJOHYXAVW3UTOD2RG7BDAY6O3PHW/trades{?cursor,limit,order}",
       "templated": true
     },
     "data": {
-      "href": "https://horizon-testnet.stellar.org/accounts/GBRTWTVW65NO4AER7W6G5CTVWGZCLQJIKJTAX523Q5GPU6TNJONXOR23/data/{key}",
+      "href": "https://horizon-testnet.stellar.org/accounts/GBWRID7MPYUDBTNQPEHUN4XOBVVDPJOHYXAVW3UTOD2RG7BDAY6O3PHW/data/{key}",
       "templated": true
     }
   },
-  "id": "GBRTWTVW65NO4AER7W6G5CTVWGZCLQJIKJTAX523Q5GPU6TNJONXOR23",
+  "id": "GBWRID7MPYUDBTNQPEHUN4XOBVVDPJOHYXAVW3UTOD2RG7BDAY6O3PHW",
   "paging_token": "",
-  "account_id": "GBRTWTVW65NO4AER7W6G5CTVWGZCLQJIKJTAX523Q5GPU6TNJONXOR23",
-  "sequence": "26509955490119684",
-  "subentry_count": 1,
+  "account_id": "GBWRID7MPYUDBTNQPEHUN4XOBVVDPJOHYXAVW3UTOD2RG7BDAY6O3PHW",
+  "sequence": "43692723777044483",
+  "subentry_count": 3,
   "thresholds": {
     "low_threshold": 0,
     "med_threshold": 0,
@@ -85,18 +85,38 @@ When horizon returns information about an account it uses the following format:
   },
   "balances": [
     {
-      "balance": "9999.9999600",
+      "balance": "9999.9999700",
       "asset_type": "native"
     }
   ],
   "signers": [
     {
-      "public_key": "GBRTWTVW65NO4AER7W6G5CTVWGZCLQJIKJTAX523Q5GPU6TNJONXOR23",
-      "weight": 1
+      "public_key": "GDLEPBJBC2VSKJCLJB264F2WDK63X4NKOG774A3QWVH2U6PERGDPUCS4",
+      "weight": 1,
+      "key": "GDLEPBJBC2VSKJCLJB264F2WDK63X4NKOG774A3QWVH2U6PERGDPUCS4",
+      "type": "ed25519_public_key"
+    },
+    {
+      "public_key": "XCPNCUKYDHPMMH6TMHK73K5VP5A6ZTQ2L7Q74JR3TDANNFB3TMRS5OKG",
+      "weight": 1,
+      "key": "XCPNCUKYDHPMMH6TMHK73K5VP5A6ZTQ2L7Q74JR3TDANNFB3TMRS5OKG",
+      "type": "sha256_hash"
+    },
+    {
+      "public_key": "TABGGIW6EXOVOSNJ2O27U2DUX7RWHSRBGOKQLGYDTOXPANEX6LXBX7O7",
+      "weight": 1,
+      "key": "TABGGIW6EXOVOSNJ2O27U2DUX7RWHSRBGOKQLGYDTOXPANEX6LXBX7O7",
+      "type": "preauth_tx"
+    },
+    {
+      "public_key": "GBWRID7MPYUDBTNQPEHUN4XOBVVDPJOHYXAVW3UTOD2RG7BDAY6O3PHW",
+      "weight": 1,
+      "key": "GBWRID7MPYUDBTNQPEHUN4XOBVVDPJOHYXAVW3UTOD2RG7BDAY6O3PHW",
+      "type": "ed25519_public_key"
     }
   ],
   "data": {
-    "club": "MTAw"
+    
   }
 }
 ```

@@ -33,6 +33,23 @@ GET /assets{?asset_code,asset_issuer,cursor,limit,order}
 curl "https://horizon-testnet.stellar.org/assets?limit=200&order=desc"
 ```
 
+### JavaScript Example Request
+
+```javascript
+var StellarSdk = require('stellar-sdk');
+var server = new StellarSdk.Server('https://horizon-testnet.stellar.org');
+
+server.assets()
+  .call()
+  .then(function (result) {
+    console.log(result.records);
+  })
+  .catch(function (err) {
+    console.log(err)
+  })
+```
+
+
 ## Response
 
 If called normally this endpoint responds with a [page](../resources/page.md) of assets.

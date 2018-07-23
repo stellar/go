@@ -16,7 +16,7 @@ GET /transactions/{hash}/effects{?cursor,limit,order}
 
 | name     | notes                          | description                                                      | example                                                           |
 | ------   | -------                        | -----------                                                      | -------                                                           |
-| `hash`   | required, string               | A transaction hash, hex-encoded                                  | `6391dd190f15f7d1665ba53c63842e368f485651a53d8d852ed442a446d1c69a`|
+| `hash`   | required, string               | A transaction hash, hex-encoded                                  | `17a670bc424ff5ce3b386dbfaae9990b66a2a37b4fbe51547e8794962a3f9e6a`|
 | `?cursor`| optional, default _null_       | A paging token, specifying where to start returning records from.| `12884905984`                                                     |
 | `?order` | optional, string, default `asc`| The order in which to return rows, "asc" or "desc".              | `asc`                                                             |
 | `?limit` | optional, number, default `10` | Maximum number of records to return.                             | `200`                                                             |
@@ -24,7 +24,7 @@ GET /transactions/{hash}/effects{?cursor,limit,order}
 ### curl Example Request
 
 ```sh
-curl "https://horizon-testnet.stellar.org/transactions/6391dd190f15f7d1665ba53c63842e368f485651a53d8d852ed442a446d1c69a/effects"
+curl "https://horizon-testnet.stellar.org/transactions/17a670bc424ff5ce3b386dbfaae9990b66a2a37b4fbe51547e8794962a3f9e6a/effects?limit=1"
 ```
 
 ### JavaScript Example Request
@@ -34,7 +34,7 @@ var StellarSdk = require('stellar-sdk');
 var server = new StellarSdk.Server('https://horizon-testnet.stellar.org');
 
 server.effects()
-  .forTransaction("2ca4cb42fda85f4f0b4bc0a0dc6517a7f109761d0da784cb7c38fb6ee378b1b5")
+  .forTransaction("17a670bc424ff5ce3b386dbfaae9990b66a2a37b4fbe51547e8794962a3f9e6a")
   .call()
   .then(function (effectResults) {
     //page 1
@@ -54,76 +54,40 @@ This endpoint responds with a list of effects on the ledger as a result of a giv
 
 ```json
 {
+  "_links": {
+    "self": {
+      "href": "https://horizon-testnet.stellar.org/transactions/17a670bc424ff5ce3b386dbfaae9990b66a2a37b4fbe51547e8794962a3f9e6a/effects?cursor=&limit=1&order=asc"
+    },
+    "next": {
+      "href": "https://horizon-testnet.stellar.org/transactions/17a670bc424ff5ce3b386dbfaae9990b66a2a37b4fbe51547e8794962a3f9e6a/effects?cursor=10157597659137-1&limit=1&order=asc"
+    },
+    "prev": {
+      "href": "https://horizon-testnet.stellar.org/transactions/17a670bc424ff5ce3b386dbfaae9990b66a2a37b4fbe51547e8794962a3f9e6a/effects?cursor=10157597659137-1&limit=1&order=desc"
+    }
+  },
   "_embedded": {
     "records": [
       {
         "_links": {
           "operation": {
-            "href": "/operations/141733924865"
-          },
-          "precedes": {
-            "href": "/effects?cursor=141733924865-1\u0026order=asc"
+            "href": "https://horizon-testnet.stellar.org/operations/10157597659137"
           },
           "succeeds": {
-            "href": "/effects?cursor=141733924865-1\u0026order=desc"
+            "href": "https://horizon-testnet.stellar.org/effects?order=desc&cursor=10157597659137-1"
+          },
+          "precedes": {
+            "href": "https://horizon-testnet.stellar.org/effects?order=asc&cursor=10157597659137-1"
           }
         },
+        "id": "0000010157597659137-0000000001",
+        "paging_token": "10157597659137-1",
         "account": "GBS43BF24ENNS3KPACUZVKK2VYPOZVBQO2CISGZ777RYGOPYC2FT6S3K",
-        "paging_token": "141733924865-1",
-        "starting_balance": "10000000.0",
+        "type": "account_created",
         "type_i": 0,
-        "type": "account_created"
-      },
-      {
-        "_links": {
-          "operation": {
-            "href": "/operations/141733924865"
-          },
-          "precedes": {
-            "href": "/effects?cursor=141733924865-2\u0026order=asc"
-          },
-          "succeeds": {
-            "href": "/effects?cursor=141733924865-2\u0026order=desc"
-          }
-        },
-        "account": "GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H",
-        "amount": "10000000.0",
-        "asset_type": "native",
-        "paging_token": "141733924865-2",
-        "type_i": 3,
-        "type": "account_debited"
-      },
-      {
-        "_links": {
-          "operation": {
-            "href": "/operations/141733924865"
-          },
-          "precedes": {
-            "href": "/effects?cursor=141733924865-3\u0026order=asc"
-          },
-          "succeeds": {
-            "href": "/effects?cursor=141733924865-3\u0026order=desc"
-          }
-        },
-        "account": "GBS43BF24ENNS3KPACUZVKK2VYPOZVBQO2CISGZ777RYGOPYC2FT6S3K",
-        "paging_token": "141733924865-3",
-        "public_key": "GBS43BF24ENNS3KPACUZVKK2VYPOZVBQO2CISGZ777RYGOPYC2FT6S3K",
-        "type_i": 10,
-        "type": "signer_created",
-        "weight": 2
+        "created_at": "2017-03-20T19:50:52Z",
+        "starting_balance": "50000000.0000000"
       }
     ]
-  },
-  "_links": {
-    "next": {
-      "href": "/transactions/2a2beb163e2c68bd2377aab243d68225626d70263444a85556ec7271d4e46e03/effects?order=asc\u0026limit=10\u0026cursor=141733924865-3"
-    },
-    "prev": {
-      "href": "/transactions/2a2beb163e2c68bd2377aab243d68225626d70263444a85556ec7271d4e46e03/effects?order=desc\u0026limit=10\u0026cursor=141733924865-1"
-    },
-    "self": {
-      "href": "/transactions/2a2beb163e2c68bd2377aab243d68225626d70263444a85556ec7271d4e46e03/effects?order=asc\u0026limit=10\u0026cursor="
-    }
   }
 }
 ```
