@@ -52,14 +52,14 @@ func (ub *UpdateBuilder) Prefix(
 }
 
 // Set is a passthrough call to the squirrel.  See
-// https://godoc.org/github.com/Masterminds/squirrel#UpdateBuilder.Suffix
+// https://godoc.org/github.com/Masterminds/squirrel#UpdateBuilder.Set
 func (ub *UpdateBuilder) Set(column string, value interface{}) *UpdateBuilder {
 	ub.sql = ub.sql.Set(column, value)
 	return ub
 }
 
 // SetMap is a passthrough call to the squirrel.  See
-// https://godoc.org/github.com/Masterminds/squirrel#UpdateBuilder.Suffix
+// https://godoc.org/github.com/Masterminds/squirrel#UpdateBuilder.SetMap
 func (ub *UpdateBuilder) SetMap(clauses map[string]interface{}) *UpdateBuilder {
 	ub.sql = ub.sql.SetMap(clauses)
 	return ub
