@@ -2,6 +2,7 @@ package horizon
 
 import (
 	"bufio"
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -385,7 +386,7 @@ func (c *Client) stream(
 			// requires much more complicated code.
 			// We could also write our own `sse` package that works fine with streams directly
 			// (github.com/manucorporat/sse is just using io/ioutils.ReadAll).
-			var sb strings.Builder
+			var buffer bytes.Buffer
 			nonEmptylinesRead := 0
 			for {
 				// Check if ctx is not cancelled
@@ -412,7 +413,7 @@ func (c *Client) stream(
 					}
 				}
 
-				sb.WriteString(line)
+				buffer.WriteString(line)
 
 				if strings.TrimRight(line, "\n\r") == "" {
 					break
@@ -421,7 +422,7 @@ func (c *Client) stream(
 				nonEmptylinesRead++
 			}
 
-			events, err := sse.Decode(strings.NewReader(sb.String()))
+			events, err := sse.Decode(strings.NewReader(buffer.String()))
 			if err != nil {
 				return err
 			}
