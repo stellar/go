@@ -11,6 +11,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/manucorporat/sse"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
 )
@@ -372,74 +373,83 @@ func (c *Client) stream(
 			return err
 		}
 		defer resp.Body.Close()
-		scanner := bufio.NewScanner(resp.Body)
-		scanner.Split(splitSSE)
 
-		var objectBytes []byte
+		reader := bufio.NewReader(resp.Body)
 
-		for scanner.Scan() {
-			// Check if ctx is not cancelled
-			select {
-			case <-ctx.Done():
-				return nil
-			default:
-				// Continue streaming
+		// Read events one by one. Break this loop when there is no more data to be
+		// read from resp.Body (io.EOF).
+	Events:
+		for {
+			// Read until empty line = event delimiter. The perfect solution would be to read
+			// as many bytes as possible and forward them to sse.Decode. However this
+			// requires much more complicated code.
+			// We could also write our own `sse` package that works fine with streams directly
+			// (github.com/manucorporat/sse is just using io/ioutils.ReadAll).
+			var sb strings.Builder
+			nonEmptylinesRead := 0
+			for {
+				// Check if ctx is not cancelled
+				select {
+				case <-ctx.Done():
+					return nil
+				default:
+					// Continue
+				}
+
+				line, err := reader.ReadString('\n')
+				if err != nil {
+					if err == io.EOF {
+						// Currently Horizon appends a new line after the last event so this is not really
+						// needed. We have this code here in case this behaviour is changed in a future.
+						// From spec:
+						// > Once the end of the file is reached, the user agent must dispatch the
+						// > event one final time, as defined below.
+						if nonEmptylinesRead == 0 {
+							break Events
+						}
+					} else {
+						return err
+					}
+				}
+
+				sb.WriteString(line)
+
+				if strings.TrimRight(line, "\n\r") == "" {
+					break
+				}
+
+				nonEmptylinesRead++
 			}
 
-			if len(scanner.Bytes()) == 0 {
-				continue
-			}
-
-			ev, err := parseEvent(scanner.Bytes())
+			events, err := sse.Decode(strings.NewReader(sb.String()))
 			if err != nil {
 				return err
 			}
 
-			if ev.Event != "message" {
-				continue
+			// Right now len(events) should always be 1. This loop will be helpful after writing
+			// new SSE decoder that can handle io.Reader without using ioutils.ReadAll().
+			for _, event := range events {
+				if event.Event != "message" {
+					continue
+				}
+
+				// Update cursor with event ID
+				if event.Id != "" {
+					query.Set("cursor", event.Id)
+				}
+
+				switch data := event.Data.(type) {
+				case string:
+					err = handler([]byte(data))
+				case []byte:
+					err = handler(data)
+				default:
+					err = errors.New("Invalid event.Data type")
+				}
+				if err != nil {
+					return err
+				}
 			}
-
-			switch data := ev.Data.(type) {
-			case string:
-				err = handler([]byte(data))
-				objectBytes = []byte(data)
-			case []byte:
-				err = handler(data)
-				objectBytes = data
-			default:
-				err = errors.New("Invalid ev.Data type")
-			}
-			if err != nil {
-				return err
-			}
-		}
-
-		err = scanner.Err()
-
-		// Start streaming from the next object:
-		// - if there was no error OR
-		// - if connection was lost
-		if err == nil || err == io.ErrUnexpectedEOF {
-			object := struct {
-				PT string `json:"paging_token"`
-			}{}
-
-			err := json.Unmarshal(objectBytes, &object)
-			if err != nil {
-				return errors.Wrap(err, "Error unmarshaling objectBytes")
-			}
-
-			if object.PT != "" {
-				query.Set("cursor", object.PT)
-			} else {
-				return errors.New("no paging_token in object: cannot continue")
-			}
-
-			continue
-		}
-
-		if err != nil {
-			return err
 		}
 	}
 }
