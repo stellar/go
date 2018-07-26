@@ -2,17 +2,16 @@
 -- PostgreSQL database dump
 --
 
--- Dumped from database version 9.6.6
--- Dumped by pg_dump version 9.6.6
+-- Dumped from database version 10.4
+-- Dumped by pg_dump version 10.4
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
 SET client_encoding = 'UTF8';
 SET standard_conforming_strings = on;
+SELECT pg_catalog.set_config('search_path', '', false);
 SET check_function_bodies = false;
 SET client_min_messages = warning;
-
-SET search_path = public, pg_catalog;
 
 ALTER TABLE IF EXISTS ONLY public.history_trades DROP CONSTRAINT IF EXISTS history_trades_counter_asset_id_fkey;
 ALTER TABLE IF EXISTS ONLY public.history_trades DROP CONSTRAINT IF EXISTS history_trades_counter_account_id_fkey;
@@ -115,13 +114,11 @@ CREATE EXTENSION IF NOT EXISTS plpgsql WITH SCHEMA pg_catalog;
 COMMENT ON EXTENSION plpgsql IS 'PL/pgSQL procedural language';
 
 
-SET search_path = public, pg_catalog;
-
 --
 -- Name: first_agg(anyelement, anyelement); Type: FUNCTION; Schema: public; Owner: -
 --
 
-CREATE FUNCTION first_agg(anyelement, anyelement) RETURNS anyelement
+CREATE FUNCTION public.first_agg(anyelement, anyelement) RETURNS anyelement
     LANGUAGE sql IMMUTABLE STRICT
     AS $_$ SELECT $1 $_$;
 
@@ -130,7 +127,7 @@ CREATE FUNCTION first_agg(anyelement, anyelement) RETURNS anyelement
 -- Name: last_agg(anyelement, anyelement); Type: FUNCTION; Schema: public; Owner: -
 --
 
-CREATE FUNCTION last_agg(anyelement, anyelement) RETURNS anyelement
+CREATE FUNCTION public.last_agg(anyelement, anyelement) RETURNS anyelement
     LANGUAGE sql IMMUTABLE STRICT
     AS $_$ SELECT $2 $_$;
 
@@ -139,7 +136,7 @@ CREATE FUNCTION last_agg(anyelement, anyelement) RETURNS anyelement
 -- Name: max_price_agg(numeric[], numeric[]); Type: FUNCTION; Schema: public; Owner: -
 --
 
-CREATE FUNCTION max_price_agg(numeric[], numeric[]) RETURNS numeric[]
+CREATE FUNCTION public.max_price_agg(numeric[], numeric[]) RETURNS numeric[]
     LANGUAGE sql IMMUTABLE STRICT
     AS $_$ SELECT (
   CASE WHEN $1[1]/$1[2]>$2[1]/$2[2] THEN $1 ELSE $2 END) $_$;
@@ -149,7 +146,7 @@ CREATE FUNCTION max_price_agg(numeric[], numeric[]) RETURNS numeric[]
 -- Name: min_price_agg(numeric[], numeric[]); Type: FUNCTION; Schema: public; Owner: -
 --
 
-CREATE FUNCTION min_price_agg(numeric[], numeric[]) RETURNS numeric[]
+CREATE FUNCTION public.min_price_agg(numeric[], numeric[]) RETURNS numeric[]
     LANGUAGE sql IMMUTABLE STRICT
     AS $_$ SELECT (
   CASE WHEN $1[1]/$1[2]<$2[1]/$2[2] THEN $1 ELSE $2 END) $_$;
@@ -159,8 +156,8 @@ CREATE FUNCTION min_price_agg(numeric[], numeric[]) RETURNS numeric[]
 -- Name: first(anyelement); Type: AGGREGATE; Schema: public; Owner: -
 --
 
-CREATE AGGREGATE first(anyelement) (
-    SFUNC = first_agg,
+CREATE AGGREGATE public.first(anyelement) (
+    SFUNC = public.first_agg,
     STYPE = anyelement
 );
 
@@ -169,8 +166,8 @@ CREATE AGGREGATE first(anyelement) (
 -- Name: last(anyelement); Type: AGGREGATE; Schema: public; Owner: -
 --
 
-CREATE AGGREGATE last(anyelement) (
-    SFUNC = last_agg,
+CREATE AGGREGATE public.last(anyelement) (
+    SFUNC = public.last_agg,
     STYPE = anyelement
 );
 
@@ -179,8 +176,8 @@ CREATE AGGREGATE last(anyelement) (
 -- Name: max_price(numeric[]); Type: AGGREGATE; Schema: public; Owner: -
 --
 
-CREATE AGGREGATE max_price(numeric[]) (
-    SFUNC = max_price_agg,
+CREATE AGGREGATE public.max_price(numeric[]) (
+    SFUNC = public.max_price_agg,
     STYPE = numeric[]
 );
 
@@ -189,8 +186,8 @@ CREATE AGGREGATE max_price(numeric[]) (
 -- Name: min_price(numeric[]); Type: AGGREGATE; Schema: public; Owner: -
 --
 
-CREATE AGGREGATE min_price(numeric[]) (
-    SFUNC = min_price_agg,
+CREATE AGGREGATE public.min_price(numeric[]) (
+    SFUNC = public.min_price_agg,
     STYPE = numeric[]
 );
 
@@ -203,7 +200,7 @@ SET default_with_oids = false;
 -- Name: asset_stats; Type: TABLE; Schema: public; Owner: -
 --
 
-CREATE TABLE asset_stats (
+CREATE TABLE public.asset_stats (
     id bigint NOT NULL,
     amount character varying NOT NULL,
     num_accounts integer NOT NULL,
@@ -216,7 +213,7 @@ CREATE TABLE asset_stats (
 -- Name: gorp_migrations; Type: TABLE; Schema: public; Owner: -
 --
 
-CREATE TABLE gorp_migrations (
+CREATE TABLE public.gorp_migrations (
     id text NOT NULL,
     applied_at timestamp with time zone
 );
@@ -226,7 +223,7 @@ CREATE TABLE gorp_migrations (
 -- Name: history_accounts_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
-CREATE SEQUENCE history_accounts_id_seq
+CREATE SEQUENCE public.history_accounts_id_seq
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
@@ -238,8 +235,8 @@ CREATE SEQUENCE history_accounts_id_seq
 -- Name: history_accounts; Type: TABLE; Schema: public; Owner: -
 --
 
-CREATE TABLE history_accounts (
-    id bigint DEFAULT nextval('history_accounts_id_seq'::regclass) NOT NULL,
+CREATE TABLE public.history_accounts (
+    id bigint DEFAULT nextval('public.history_accounts_id_seq'::regclass) NOT NULL,
     address character varying(64)
 );
 
@@ -248,7 +245,7 @@ CREATE TABLE history_accounts (
 -- Name: history_assets; Type: TABLE; Schema: public; Owner: -
 --
 
-CREATE TABLE history_assets (
+CREATE TABLE public.history_assets (
     id integer NOT NULL,
     asset_type character varying(64) NOT NULL,
     asset_code character varying(12) NOT NULL,
@@ -260,7 +257,7 @@ CREATE TABLE history_assets (
 -- Name: history_assets_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
-CREATE SEQUENCE history_assets_id_seq
+CREATE SEQUENCE public.history_assets_id_seq
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
@@ -272,14 +269,14 @@ CREATE SEQUENCE history_assets_id_seq
 -- Name: history_assets_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
 --
 
-ALTER SEQUENCE history_assets_id_seq OWNED BY history_assets.id;
+ALTER SEQUENCE public.history_assets_id_seq OWNED BY public.history_assets.id;
 
 
 --
 -- Name: history_effects; Type: TABLE; Schema: public; Owner: -
 --
 
-CREATE TABLE history_effects (
+CREATE TABLE public.history_effects (
     history_account_id bigint NOT NULL,
     history_operation_id bigint NOT NULL,
     "order" integer NOT NULL,
@@ -292,7 +289,7 @@ CREATE TABLE history_effects (
 -- Name: history_ledgers; Type: TABLE; Schema: public; Owner: -
 --
 
-CREATE TABLE history_ledgers (
+CREATE TABLE public.history_ledgers (
     sequence integer NOT NULL,
     ledger_hash character varying(64) NOT NULL,
     previous_ledger_hash character varying(64),
@@ -317,7 +314,7 @@ CREATE TABLE history_ledgers (
 -- Name: history_operation_participants; Type: TABLE; Schema: public; Owner: -
 --
 
-CREATE TABLE history_operation_participants (
+CREATE TABLE public.history_operation_participants (
     id integer NOT NULL,
     history_operation_id bigint NOT NULL,
     history_account_id bigint NOT NULL
@@ -328,7 +325,7 @@ CREATE TABLE history_operation_participants (
 -- Name: history_operation_participants_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
-CREATE SEQUENCE history_operation_participants_id_seq
+CREATE SEQUENCE public.history_operation_participants_id_seq
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
@@ -340,14 +337,14 @@ CREATE SEQUENCE history_operation_participants_id_seq
 -- Name: history_operation_participants_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
 --
 
-ALTER SEQUENCE history_operation_participants_id_seq OWNED BY history_operation_participants.id;
+ALTER SEQUENCE public.history_operation_participants_id_seq OWNED BY public.history_operation_participants.id;
 
 
 --
 -- Name: history_operations; Type: TABLE; Schema: public; Owner: -
 --
 
-CREATE TABLE history_operations (
+CREATE TABLE public.history_operations (
     id bigint NOT NULL,
     transaction_id bigint NOT NULL,
     application_order integer NOT NULL,
@@ -361,7 +358,7 @@ CREATE TABLE history_operations (
 -- Name: history_trades; Type: TABLE; Schema: public; Owner: -
 --
 
-CREATE TABLE history_trades (
+CREATE TABLE public.history_trades (
     history_operation_id bigint NOT NULL,
     "order" integer NOT NULL,
     ledger_closed_at timestamp without time zone NOT NULL,
@@ -385,7 +382,7 @@ CREATE TABLE history_trades (
 -- Name: history_transaction_participants; Type: TABLE; Schema: public; Owner: -
 --
 
-CREATE TABLE history_transaction_participants (
+CREATE TABLE public.history_transaction_participants (
     id integer NOT NULL,
     history_transaction_id bigint NOT NULL,
     history_account_id bigint NOT NULL
@@ -396,7 +393,7 @@ CREATE TABLE history_transaction_participants (
 -- Name: history_transaction_participants_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
-CREATE SEQUENCE history_transaction_participants_id_seq
+CREATE SEQUENCE public.history_transaction_participants_id_seq
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
@@ -408,14 +405,14 @@ CREATE SEQUENCE history_transaction_participants_id_seq
 -- Name: history_transaction_participants_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
 --
 
-ALTER SEQUENCE history_transaction_participants_id_seq OWNED BY history_transaction_participants.id;
+ALTER SEQUENCE public.history_transaction_participants_id_seq OWNED BY public.history_transaction_participants.id;
 
 
 --
 -- Name: history_transactions; Type: TABLE; Schema: public; Owner: -
 --
 
-CREATE TABLE history_transactions (
+CREATE TABLE public.history_transactions (
     transaction_hash character varying(64) NOT NULL,
     ledger_sequence integer NOT NULL,
     application_order integer NOT NULL,
@@ -441,149 +438,128 @@ CREATE TABLE history_transactions (
 -- Name: history_assets id; Type: DEFAULT; Schema: public; Owner: -
 --
 
-ALTER TABLE ONLY history_assets ALTER COLUMN id SET DEFAULT nextval('history_assets_id_seq'::regclass);
+ALTER TABLE ONLY public.history_assets ALTER COLUMN id SET DEFAULT nextval('public.history_assets_id_seq'::regclass);
 
 
 --
 -- Name: history_operation_participants id; Type: DEFAULT; Schema: public; Owner: -
 --
 
-ALTER TABLE ONLY history_operation_participants ALTER COLUMN id SET DEFAULT nextval('history_operation_participants_id_seq'::regclass);
+ALTER TABLE ONLY public.history_operation_participants ALTER COLUMN id SET DEFAULT nextval('public.history_operation_participants_id_seq'::regclass);
 
 
 --
 -- Name: history_transaction_participants id; Type: DEFAULT; Schema: public; Owner: -
 --
 
-ALTER TABLE ONLY history_transaction_participants ALTER COLUMN id SET DEFAULT nextval('history_transaction_participants_id_seq'::regclass);
+ALTER TABLE ONLY public.history_transaction_participants ALTER COLUMN id SET DEFAULT nextval('public.history_transaction_participants_id_seq'::regclass);
 
 
 --
 -- Data for Name: asset_stats; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-INSERT INTO asset_stats VALUES (1, '1012345000', 2, 0, '');
+INSERT INTO public.asset_stats VALUES (1, '1012345000', 2, 0, '');
 
 
 --
 -- Data for Name: gorp_migrations; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-INSERT INTO gorp_migrations VALUES ('1_initial_schema.sql', '2018-04-23 13:49:41.331534-07');
-INSERT INTO gorp_migrations VALUES ('2_index_participants_by_toid.sql', '2018-04-23 13:49:41.346024-07');
-INSERT INTO gorp_migrations VALUES ('3_use_sequence_in_history_accounts.sql', '2018-04-23 13:49:41.351718-07');
-INSERT INTO gorp_migrations VALUES ('4_add_protocol_version.sql', '2018-04-23 13:49:41.388382-07');
-INSERT INTO gorp_migrations VALUES ('5_create_trades_table.sql', '2018-04-23 13:49:41.412591-07');
-INSERT INTO gorp_migrations VALUES ('6_create_assets_table.sql', '2018-04-23 13:49:41.430454-07');
-INSERT INTO gorp_migrations VALUES ('7_modify_trades_table.sql', '2018-04-23 13:49:41.489276-07');
-INSERT INTO gorp_migrations VALUES ('8_add_aggregators.sql', '2018-04-23 13:49:41.495208-07');
-INSERT INTO gorp_migrations VALUES ('8_create_asset_stats_table.sql', '2018-04-23 13:49:41.508549-07');
-INSERT INTO gorp_migrations VALUES ('9_add_header_xdr.sql', '2018-04-23 13:49:41.516755-07');
-INSERT INTO gorp_migrations VALUES ('10_add_trades_price.sql', '2018-04-23 13:49:41.522753-07');
-INSERT INTO gorp_migrations VALUES ('11_add_trades_account_index.sql', '2018-04-23 13:49:41.533861-07');
-INSERT INTO gorp_migrations VALUES ('12_asset_stats_amount_string.sql', '2018-05-09 10:14:41.628472-07');
+INSERT INTO public.gorp_migrations VALUES ('1_initial_schema.sql', '2018-04-23 12:49:41.331534-08');
+INSERT INTO public.gorp_migrations VALUES ('2_index_participants_by_toid.sql', '2018-04-23 12:49:41.346024-08');
+INSERT INTO public.gorp_migrations VALUES ('3_use_sequence_in_history_accounts.sql', '2018-04-23 12:49:41.351718-08');
+INSERT INTO public.gorp_migrations VALUES ('4_add_protocol_version.sql', '2018-04-23 12:49:41.388382-08');
+INSERT INTO public.gorp_migrations VALUES ('5_create_trades_table.sql', '2018-04-23 12:49:41.412591-08');
+INSERT INTO public.gorp_migrations VALUES ('6_create_assets_table.sql', '2018-04-23 12:49:41.430454-08');
+INSERT INTO public.gorp_migrations VALUES ('7_modify_trades_table.sql', '2018-04-23 12:49:41.489276-08');
+INSERT INTO public.gorp_migrations VALUES ('8_add_aggregators.sql', '2018-04-23 12:49:41.495208-08');
+INSERT INTO public.gorp_migrations VALUES ('8_create_asset_stats_table.sql', '2018-04-23 12:49:41.508549-08');
+INSERT INTO public.gorp_migrations VALUES ('9_add_header_xdr.sql', '2018-04-23 12:49:41.516755-08');
+INSERT INTO public.gorp_migrations VALUES ('10_add_trades_price.sql', '2018-04-23 12:49:41.522753-08');
+INSERT INTO public.gorp_migrations VALUES ('11_add_trades_account_index.sql', '2018-04-23 12:49:41.533861-08');
+INSERT INTO public.gorp_migrations VALUES ('12_asset_stats_amount_string.sql', '2018-05-09 09:14:41.628472-08');
 
 
 --
 -- Data for Name: history_accounts; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-INSERT INTO history_accounts VALUES (1, 'GA5WBPYA5Y4WAEHXWR2UKO2UO4BUGHUQ74EUPKON2QHV4WRHOIRNKKH2');
-INSERT INTO history_accounts VALUES (2, 'GCXKG6RN4ONIEPCMNFB732A436Z5PNDSRLGWK7GBLCMQLIFO4S7EYWVU');
-INSERT INTO history_accounts VALUES (3, 'GC23QF2HUE52AMXUFUH3AYJAXXGXXV2VHXYYR6EYXETPKDXZSAW67XO4');
-INSERT INTO history_accounts VALUES (4, 'GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H');
-
-
---
--- Name: history_accounts_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
---
-
-SELECT pg_catalog.setval('history_accounts_id_seq', 4, true);
+INSERT INTO public.history_accounts VALUES (1, 'GA5WBPYA5Y4WAEHXWR2UKO2UO4BUGHUQ74EUPKON2QHV4WRHOIRNKKH2');
+INSERT INTO public.history_accounts VALUES (2, 'GCXKG6RN4ONIEPCMNFB732A436Z5PNDSRLGWK7GBLCMQLIFO4S7EYWVU');
+INSERT INTO public.history_accounts VALUES (3, 'GC23QF2HUE52AMXUFUH3AYJAXXGXXV2VHXYYR6EYXETPKDXZSAW67XO4');
+INSERT INTO public.history_accounts VALUES (4, 'GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H');
 
 
 --
 -- Data for Name: history_assets; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-INSERT INTO history_assets VALUES (1, 'credit_alphanum4', 'USD', 'GC23QF2HUE52AMXUFUH3AYJAXXGXXV2VHXYYR6EYXETPKDXZSAW67XO4');
-
-
---
--- Name: history_assets_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
---
-
-SELECT pg_catalog.setval('history_assets_id_seq', 1, true);
+INSERT INTO public.history_assets VALUES (1, 'credit_alphanum4', 'USD', 'GC23QF2HUE52AMXUFUH3AYJAXXGXXV2VHXYYR6EYXETPKDXZSAW67XO4');
 
 
 --
 -- Data for Name: history_effects; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-INSERT INTO history_effects VALUES (1, 21474840577, 1, 2, '{"amount": "10.1230000", "asset_code": "USD", "asset_type": "credit_alphanum4", "asset_issuer": "GC23QF2HUE52AMXUFUH3AYJAXXGXXV2VHXYYR6EYXETPKDXZSAW67XO4"}');
-INSERT INTO history_effects VALUES (2, 21474840577, 2, 3, '{"amount": "10.1230000", "asset_code": "USD", "asset_type": "credit_alphanum4", "asset_issuer": "GC23QF2HUE52AMXUFUH3AYJAXXGXXV2VHXYYR6EYXETPKDXZSAW67XO4"}');
-INSERT INTO history_effects VALUES (2, 17179873281, 1, 2, '{"amount": "101.2345000", "asset_code": "USD", "asset_type": "credit_alphanum4", "asset_issuer": "GC23QF2HUE52AMXUFUH3AYJAXXGXXV2VHXYYR6EYXETPKDXZSAW67XO4"}');
-INSERT INTO history_effects VALUES (3, 17179873281, 2, 3, '{"amount": "101.2345000", "asset_code": "USD", "asset_type": "credit_alphanum4", "asset_issuer": "GC23QF2HUE52AMXUFUH3AYJAXXGXXV2VHXYYR6EYXETPKDXZSAW67XO4"}');
-INSERT INTO history_effects VALUES (1, 12884905985, 1, 20, '{"limit": "922337203685.4775807", "asset_code": "USD", "asset_type": "credit_alphanum4", "asset_issuer": "GC23QF2HUE52AMXUFUH3AYJAXXGXXV2VHXYYR6EYXETPKDXZSAW67XO4"}');
-INSERT INTO history_effects VALUES (2, 12884910081, 1, 20, '{"limit": "922337203685.4775807", "asset_code": "USD", "asset_type": "credit_alphanum4", "asset_issuer": "GC23QF2HUE52AMXUFUH3AYJAXXGXXV2VHXYYR6EYXETPKDXZSAW67XO4"}');
-INSERT INTO history_effects VALUES (3, 8589938689, 1, 0, '{"starting_balance": "1000.0000000"}');
-INSERT INTO history_effects VALUES (4, 8589938689, 2, 3, '{"amount": "1000.0000000", "asset_type": "native"}');
-INSERT INTO history_effects VALUES (3, 8589938689, 3, 10, '{"weight": 1, "public_key": "GC23QF2HUE52AMXUFUH3AYJAXXGXXV2VHXYYR6EYXETPKDXZSAW67XO4"}');
-INSERT INTO history_effects VALUES (2, 8589942785, 1, 0, '{"starting_balance": "1000.0000000"}');
-INSERT INTO history_effects VALUES (4, 8589942785, 2, 3, '{"amount": "1000.0000000", "asset_type": "native"}');
-INSERT INTO history_effects VALUES (2, 8589942785, 3, 10, '{"weight": 1, "public_key": "GCXKG6RN4ONIEPCMNFB732A436Z5PNDSRLGWK7GBLCMQLIFO4S7EYWVU"}');
-INSERT INTO history_effects VALUES (1, 8589946881, 1, 0, '{"starting_balance": "1000.0000000"}');
-INSERT INTO history_effects VALUES (4, 8589946881, 2, 3, '{"amount": "1000.0000000", "asset_type": "native"}');
-INSERT INTO history_effects VALUES (1, 8589946881, 3, 10, '{"weight": 1, "public_key": "GA5WBPYA5Y4WAEHXWR2UKO2UO4BUGHUQ74EUPKON2QHV4WRHOIRNKKH2"}');
+INSERT INTO public.history_effects VALUES (1, 21474840577, 1, 2, '{"amount": "10.1230000", "asset_code": "USD", "asset_type": "credit_alphanum4", "asset_issuer": "GC23QF2HUE52AMXUFUH3AYJAXXGXXV2VHXYYR6EYXETPKDXZSAW67XO4"}');
+INSERT INTO public.history_effects VALUES (2, 21474840577, 2, 3, '{"amount": "10.1230000", "asset_code": "USD", "asset_type": "credit_alphanum4", "asset_issuer": "GC23QF2HUE52AMXUFUH3AYJAXXGXXV2VHXYYR6EYXETPKDXZSAW67XO4"}');
+INSERT INTO public.history_effects VALUES (2, 17179873281, 1, 2, '{"amount": "101.2345000", "asset_code": "USD", "asset_type": "credit_alphanum4", "asset_issuer": "GC23QF2HUE52AMXUFUH3AYJAXXGXXV2VHXYYR6EYXETPKDXZSAW67XO4"}');
+INSERT INTO public.history_effects VALUES (3, 17179873281, 2, 3, '{"amount": "101.2345000", "asset_code": "USD", "asset_type": "credit_alphanum4", "asset_issuer": "GC23QF2HUE52AMXUFUH3AYJAXXGXXV2VHXYYR6EYXETPKDXZSAW67XO4"}');
+INSERT INTO public.history_effects VALUES (2, 12884905985, 1, 20, '{"limit": "922337203685.4775807", "asset_code": "USD", "asset_type": "credit_alphanum4", "asset_issuer": "GC23QF2HUE52AMXUFUH3AYJAXXGXXV2VHXYYR6EYXETPKDXZSAW67XO4"}');
+INSERT INTO public.history_effects VALUES (1, 12884910081, 1, 20, '{"limit": "922337203685.4775807", "asset_code": "USD", "asset_type": "credit_alphanum4", "asset_issuer": "GC23QF2HUE52AMXUFUH3AYJAXXGXXV2VHXYYR6EYXETPKDXZSAW67XO4"}');
+INSERT INTO public.history_effects VALUES (3, 8589938689, 1, 0, '{"starting_balance": "1000.0000000"}');
+INSERT INTO public.history_effects VALUES (4, 8589938689, 2, 3, '{"amount": "1000.0000000", "asset_type": "native"}');
+INSERT INTO public.history_effects VALUES (3, 8589938689, 3, 10, '{"weight": 1, "public_key": "GC23QF2HUE52AMXUFUH3AYJAXXGXXV2VHXYYR6EYXETPKDXZSAW67XO4"}');
+INSERT INTO public.history_effects VALUES (2, 8589942785, 1, 0, '{"starting_balance": "1000.0000000"}');
+INSERT INTO public.history_effects VALUES (4, 8589942785, 2, 3, '{"amount": "1000.0000000", "asset_type": "native"}');
+INSERT INTO public.history_effects VALUES (2, 8589942785, 3, 10, '{"weight": 1, "public_key": "GCXKG6RN4ONIEPCMNFB732A436Z5PNDSRLGWK7GBLCMQLIFO4S7EYWVU"}');
+INSERT INTO public.history_effects VALUES (1, 8589946881, 1, 0, '{"starting_balance": "1000.0000000"}');
+INSERT INTO public.history_effects VALUES (4, 8589946881, 2, 3, '{"amount": "1000.0000000", "asset_type": "native"}');
+INSERT INTO public.history_effects VALUES (1, 8589946881, 3, 10, '{"weight": 1, "public_key": "GA5WBPYA5Y4WAEHXWR2UKO2UO4BUGHUQ74EUPKON2QHV4WRHOIRNKKH2"}');
 
 
 --
 -- Data for Name: history_ledgers; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-INSERT INTO history_ledgers VALUES (6, 'c46e7d048b0f4ac78a6dab1b062a30d3e72af92ed1ad63d81c155c7661ea150d', '6641cab86ea954a4a6a61a3242aa7a7c3124f76f58c907d2e5579b04ed6f2277', 0, 0, '2018-06-01 17:11:05', '2018-06-01 17:11:04.595157', '2018-06-01 17:11:04.595157', 25769803776, 13, 1000000000000000000, 700, 100, 100000000, 10000, 10, 'AAAACmZByrhuqVSkpqYaMkKqenwxJPdvWMkH0uVXmwTtbyJ3GBg8isE0tpiJpWlxkaYKNAXa38gZOPah318RB+X4ciAAAAAAWxF+KQAAAAAAAAAA3z9hmASpL9tAVxktxD3XSOp3itxSvEmM6AUkwBS4ERlBENAF8HXCY+X3L69BqVvNRiCCoE3xxsZGzkYyX0nCygAAAAYN4Lazp2QAAAAAAAAAAAK8AAAAAAAAAAAAAAAAAAAAZAX14QAAACcQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA');
-INSERT INTO history_ledgers VALUES (5, '6641cab86ea954a4a6a61a3242aa7a7c3124f76f58c907d2e5579b04ed6f2277', '9f9b717f46cedd87d84f9726326216292806846c430b9d38b2c007fc3bafdf5f', 1, 1, '2018-06-01 17:11:04', '2018-06-01 17:11:04.599066', '2018-06-01 17:11:04.599066', 21474836480, 13, 1000000000000000000, 700, 100, 100000000, 10000, 10, 'AAAACp+bcX9Gzt2H2E+XJjJiFikoBoRsQwudOLLAB/w7r99fFPXvW12+D2q69BiUo2kSvtTlg69KldEOTJzblwysYXMAAAAAWxF+KAAAAAAAAAAAuMBMcxg1gTklVN8u2mY/OPQmKCMsWP3OArGw6LUyTllNqpvc6fwRVNb55YnIzLnxC0mdE7Z8swPS8o5GzCuUXgAAAAUN4Lazp2QAAAAAAAAAAAK8AAAAAAAAAAAAAAAAAAAAZAX14QAAACcQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA');
-INSERT INTO history_ledgers VALUES (4, '9f9b717f46cedd87d84f9726326216292806846c430b9d38b2c007fc3bafdf5f', 'e4e045cf8653a4a69ff545506be92622d52a71b3d8a4321c2d84704fc9153f23', 1, 1, '2018-06-01 17:11:03', '2018-06-01 17:11:04.606936', '2018-06-01 17:11:04.606936', 17179869184, 13, 1000000000000000000, 600, 100, 100000000, 10000, 10, 'AAAACuTgRc+GU6Smn/VFUGvpJiLVKnGz2KQyHC2EcE/JFT8jIrPj0x1rAWAqpFT3z4rCDZXAlwiRyCr0VnJ4asFAXxYAAAAAWxF+JwAAAAAAAAAAD7vJ2GXYn9oO/fo5QrmHKnTVIqBarv7BmCtsbOtbf6SHEgJo6haIxShzQSubRkyhGrQvEsTo+ZwuFiGnk8Iq7AAAAAQN4Lazp2QAAAAAAAAAAAJYAAAAAAAAAAAAAAAAAAAAZAX14QAAACcQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA');
-INSERT INTO history_ledgers VALUES (3, 'e4e045cf8653a4a69ff545506be92622d52a71b3d8a4321c2d84704fc9153f23', '02c1a474ee08f628f269b750f6f52c1b4f0578853e34b411ffe6bd427fc723e8', 2, 2, '2018-06-01 17:11:02', '2018-06-01 17:11:04.612601', '2018-06-01 17:11:04.612601', 12884901888, 13, 1000000000000000000, 500, 100, 100000000, 10000, 10, 'AAAACgLBpHTuCPYo8mm3UPb1LBtPBXiFPjS0Ef/mvUJ/xyPoU4R6dp948OvCW6VeFOFOmSHhiYOCpXG5EbGzo29NlWcAAAAAWxF+JgAAAAAAAAAACZ7JC4EHnY0GXRNEwciolY7p1One+T5tlBKrlCdwa0D9Vp/QE6H4frerMWTqaY/uqXnzJnpLvQtnXXEsDi+X/wAAAAMN4Lazp2QAAAAAAAAAAAH0AAAAAAAAAAAAAAAAAAAAZAX14QAAACcQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA');
-INSERT INTO history_ledgers VALUES (2, '02c1a474ee08f628f269b750f6f52c1b4f0578853e34b411ffe6bd427fc723e8', '63d98f536ee68d1b27b5b89f23af5311b7569a24faf1403ad0b52b633b07be99', 3, 3, '2018-06-01 17:11:01', '2018-06-01 17:11:04.618545', '2018-06-01 17:11:04.618545', 8589934592, 13, 1000000000000000000, 300, 100, 100000000, 10000, 10, 'AAAACmPZj1Nu5o0bJ7W4nyOvUxG3Vpok+vFAOtC1K2M7B76Z9GwX6q8KzxXUDk3+fdZshszCWX2SbuAnJNMiSoulCykAAAAAWxF+JQAAAAIAAAAIAAAAAQAAAAoAAAAIAAAAAwAAJxAAAAAACyk/eWGAYEOhla9SxZHjkxGIQ61pIijmPF9hVp1Qv5rM3994NzVGUEstpSkpCIvCg0ArBNhvBZ2713Y2Pc8QigAAAAIN4Lazp2QAAAAAAAAAAAEsAAAAAAAAAAAAAAAAAAAAZAX14QAAACcQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA');
-INSERT INTO history_ledgers VALUES (1, '63d98f536ee68d1b27b5b89f23af5311b7569a24faf1403ad0b52b633b07be99', NULL, 0, 0, '1970-01-01 00:00:00', '2018-06-01 17:11:04.625071', '2018-06-01 17:11:04.625071', 4294967296, 13, 1000000000000000000, 0, 100, 100000000, 100, 0, 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABXKi4y/ySKB7DnD9H20xjB+s0gtswIwz1XdSWYaBJaFgAAAAEN4Lazp2QAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAZAX14QAAAABkAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA');
+INSERT INTO public.history_ledgers VALUES (6, 'db9ccf6e08a55b435ac02888fd1af222db284548e3aae1fbb7f92f6693d6a931', '177e13c4d61df462a8c1cbbc2a55c84360b1e030ef573b0fe565dc784de9863f', 0, 0, '2018-07-25 23:03:56', '2018-07-25 23:03:54.661633', '2018-07-25 23:03:54.661633', 25769803776, 14, 1000000000000000000, 700, 100, 100000000, 10000, 10, 'AAAAChd+E8TWHfRiqMHLvCpVyENgseAw71c7D+Vl3HhN6YY/FStuM0wA0rcDZObfrK7nqou5IvfK56YvPw10O9pC984AAAAAW1kB3AAAAAAAAAAA3z9hmASpL9tAVxktxD3XSOp3itxSvEmM6AUkwBS4ERlBENAF8HXCY+X3L69BqVvNRiCCoE3xxsZGzkYyX0nCygAAAAYN4Lazp2QAAAAAAAAAAAK8AAAAAAAAAAAAAAAAAAAAZAX14QAAACcQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA');
+INSERT INTO public.history_ledgers VALUES (5, '177e13c4d61df462a8c1cbbc2a55c84360b1e030ef573b0fe565dc784de9863f', '2410f9feaaf65ea7038534bb9f357f70ed28c9a6464c534dc2375f80eb4cdb29', 1, 1, '2018-07-25 23:03:55', '2018-07-25 23:03:54.665517', '2018-07-25 23:03:54.665517', 21474836480, 14, 1000000000000000000, 700, 100, 100000000, 10000, 10, 'AAAACiQQ+f6q9l6nA4U0u581f3DtKMmmRkxTTcI3X4DrTNspi2LAau4gUa5V0xUtsZB0Z9eQ5sRFWnW/PQMsn5/Bt+0AAAAAW1kB2wAAAAAAAAAAuMBMcxg1gTklVN8u2mY/OPQmKCMsWP3OArGw6LUyTllNqpvc6fwRVNb55YnIzLnxC0mdE7Z8swPS8o5GzCuUXgAAAAUN4Lazp2QAAAAAAAAAAAK8AAAAAAAAAAAAAAAAAAAAZAX14QAAACcQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA');
+INSERT INTO public.history_ledgers VALUES (4, '2410f9feaaf65ea7038534bb9f357f70ed28c9a6464c534dc2375f80eb4cdb29', 'c8a15d7735a83307f6d48eb8cc7bf10f64e48199087259ad34ba55161587a0a5', 1, 1, '2018-07-25 23:03:54', '2018-07-25 23:03:54.673254', '2018-07-25 23:03:54.673254', 17179869184, 14, 1000000000000000000, 600, 100, 100000000, 10000, 10, 'AAAACsihXXc1qDMH9tSOuMx78Q9k5IGZCHJZrTS6VRYVh6ClRO0pN8ysPsh2fMQVCcgnew+NmsPB7YLJpLL0ulJ0WrcAAAAAW1kB2gAAAAAAAAAAD7vJ2GXYn9oO/fo5QrmHKnTVIqBarv7BmCtsbOtbf6SHEgJo6haIxShzQSubRkyhGrQvEsTo+ZwuFiGnk8Iq7AAAAAQN4Lazp2QAAAAAAAAAAAJYAAAAAAAAAAAAAAAAAAAAZAX14QAAACcQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA');
+INSERT INTO public.history_ledgers VALUES (3, 'c8a15d7735a83307f6d48eb8cc7bf10f64e48199087259ad34ba55161587a0a5', '2ac10241ab1554fe6718d39c8cd271f0571045b738eb2cf1de1e99a8f6bce352', 2, 2, '2018-07-25 23:03:53', '2018-07-25 23:03:54.677878', '2018-07-25 23:03:54.677878', 12884901888, 14, 1000000000000000000, 500, 100, 100000000, 10000, 10, 'AAAACirBAkGrFVT+ZxjTnIzScfBXEEW3OOss8d4emaj2vONShgez0uvEbh1bZg45vRgXsAXCSnBKLI80MM+UVwSL5EMAAAAAW1kB2QAAAAAAAAAAWT7tDKjTtBEfPxpG2vgmBoyTUE2o5442vJHLhiY6wmn9Vp/QE6H4frerMWTqaY/uqXnzJnpLvQtnXXEsDi+X/wAAAAMN4Lazp2QAAAAAAAAAAAH0AAAAAAAAAAAAAAAAAAAAZAX14QAAACcQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA');
+INSERT INTO public.history_ledgers VALUES (2, '2ac10241ab1554fe6718d39c8cd271f0571045b738eb2cf1de1e99a8f6bce352', '63d98f536ee68d1b27b5b89f23af5311b7569a24faf1403ad0b52b633b07be99', 3, 3, '2018-07-25 23:03:52', '2018-07-25 23:03:54.682654', '2018-07-25 23:03:54.682654', 8589934592, 14, 1000000000000000000, 300, 100, 100000000, 10000, 10, 'AAAACmPZj1Nu5o0bJ7W4nyOvUxG3Vpok+vFAOtC1K2M7B76Z9GwX6q8KzxXUDk3+fdZshszCWX2SbuAnJNMiSoulCykAAAAAW1kB2AAAAAIAAAAIAAAAAQAAAAoAAAAIAAAAAwAAJxAAAAAACyk/eWGAYEOhla9SxZHjkxGIQ61pIijmPF9hVp1Qv5rM3994NzVGUEstpSkpCIvCg0ArBNhvBZ2713Y2Pc8QigAAAAIN4Lazp2QAAAAAAAAAAAEsAAAAAAAAAAAAAAAAAAAAZAX14QAAACcQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA');
+INSERT INTO public.history_ledgers VALUES (1, '63d98f536ee68d1b27b5b89f23af5311b7569a24faf1403ad0b52b633b07be99', NULL, 0, 0, '1970-01-01 00:00:00', '2018-07-25 23:03:54.687977', '2018-07-25 23:03:54.687977', 4294967296, 14, 1000000000000000000, 0, 100, 100000000, 100, 0, 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABXKi4y/ySKB7DnD9H20xjB+s0gtswIwz1XdSWYaBJaFgAAAAEN4Lazp2QAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAZAX14QAAAABkAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA');
 
 
 --
 -- Data for Name: history_operation_participants; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-INSERT INTO history_operation_participants VALUES (1, 21474840577, 2);
-INSERT INTO history_operation_participants VALUES (2, 21474840577, 1);
-INSERT INTO history_operation_participants VALUES (3, 17179873281, 2);
-INSERT INTO history_operation_participants VALUES (4, 17179873281, 3);
-INSERT INTO history_operation_participants VALUES (5, 12884905985, 1);
-INSERT INTO history_operation_participants VALUES (6, 12884910081, 2);
-INSERT INTO history_operation_participants VALUES (7, 8589938689, 4);
-INSERT INTO history_operation_participants VALUES (8, 8589938689, 3);
-INSERT INTO history_operation_participants VALUES (9, 8589942785, 4);
-INSERT INTO history_operation_participants VALUES (10, 8589942785, 2);
-INSERT INTO history_operation_participants VALUES (11, 8589946881, 4);
-INSERT INTO history_operation_participants VALUES (12, 8589946881, 1);
-
-
---
--- Name: history_operation_participants_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
---
-
-SELECT pg_catalog.setval('history_operation_participants_id_seq', 12, true);
+INSERT INTO public.history_operation_participants VALUES (1, 21474840577, 2);
+INSERT INTO public.history_operation_participants VALUES (2, 21474840577, 1);
+INSERT INTO public.history_operation_participants VALUES (3, 17179873281, 3);
+INSERT INTO public.history_operation_participants VALUES (4, 17179873281, 2);
+INSERT INTO public.history_operation_participants VALUES (5, 12884905985, 2);
+INSERT INTO public.history_operation_participants VALUES (6, 12884910081, 1);
+INSERT INTO public.history_operation_participants VALUES (7, 8589938689, 4);
+INSERT INTO public.history_operation_participants VALUES (8, 8589938689, 3);
+INSERT INTO public.history_operation_participants VALUES (9, 8589942785, 4);
+INSERT INTO public.history_operation_participants VALUES (10, 8589942785, 2);
+INSERT INTO public.history_operation_participants VALUES (11, 8589946881, 1);
+INSERT INTO public.history_operation_participants VALUES (12, 8589946881, 4);
 
 
 --
 -- Data for Name: history_operations; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-INSERT INTO history_operations VALUES (21474840577, 21474840576, 1, 1, '{"to": "GA5WBPYA5Y4WAEHXWR2UKO2UO4BUGHUQ74EUPKON2QHV4WRHOIRNKKH2", "from": "GCXKG6RN4ONIEPCMNFB732A436Z5PNDSRLGWK7GBLCMQLIFO4S7EYWVU", "amount": "10.1230000", "asset_code": "USD", "asset_type": "credit_alphanum4", "asset_issuer": "GC23QF2HUE52AMXUFUH3AYJAXXGXXV2VHXYYR6EYXETPKDXZSAW67XO4"}', 'GCXKG6RN4ONIEPCMNFB732A436Z5PNDSRLGWK7GBLCMQLIFO4S7EYWVU');
-INSERT INTO history_operations VALUES (17179873281, 17179873280, 1, 1, '{"to": "GCXKG6RN4ONIEPCMNFB732A436Z5PNDSRLGWK7GBLCMQLIFO4S7EYWVU", "from": "GC23QF2HUE52AMXUFUH3AYJAXXGXXV2VHXYYR6EYXETPKDXZSAW67XO4", "amount": "101.2345000", "asset_code": "USD", "asset_type": "credit_alphanum4", "asset_issuer": "GC23QF2HUE52AMXUFUH3AYJAXXGXXV2VHXYYR6EYXETPKDXZSAW67XO4"}', 'GC23QF2HUE52AMXUFUH3AYJAXXGXXV2VHXYYR6EYXETPKDXZSAW67XO4');
-INSERT INTO history_operations VALUES (12884905985, 12884905984, 1, 6, '{"limit": "922337203685.4775807", "trustee": "GC23QF2HUE52AMXUFUH3AYJAXXGXXV2VHXYYR6EYXETPKDXZSAW67XO4", "trustor": "GA5WBPYA5Y4WAEHXWR2UKO2UO4BUGHUQ74EUPKON2QHV4WRHOIRNKKH2", "asset_code": "USD", "asset_type": "credit_alphanum4", "asset_issuer": "GC23QF2HUE52AMXUFUH3AYJAXXGXXV2VHXYYR6EYXETPKDXZSAW67XO4"}', 'GA5WBPYA5Y4WAEHXWR2UKO2UO4BUGHUQ74EUPKON2QHV4WRHOIRNKKH2');
-INSERT INTO history_operations VALUES (12884910081, 12884910080, 1, 6, '{"limit": "922337203685.4775807", "trustee": "GC23QF2HUE52AMXUFUH3AYJAXXGXXV2VHXYYR6EYXETPKDXZSAW67XO4", "trustor": "GCXKG6RN4ONIEPCMNFB732A436Z5PNDSRLGWK7GBLCMQLIFO4S7EYWVU", "asset_code": "USD", "asset_type": "credit_alphanum4", "asset_issuer": "GC23QF2HUE52AMXUFUH3AYJAXXGXXV2VHXYYR6EYXETPKDXZSAW67XO4"}', 'GCXKG6RN4ONIEPCMNFB732A436Z5PNDSRLGWK7GBLCMQLIFO4S7EYWVU');
-INSERT INTO history_operations VALUES (8589938689, 8589938688, 1, 0, '{"funder": "GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H", "account": "GC23QF2HUE52AMXUFUH3AYJAXXGXXV2VHXYYR6EYXETPKDXZSAW67XO4", "starting_balance": "1000.0000000"}', 'GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H');
-INSERT INTO history_operations VALUES (8589942785, 8589942784, 1, 0, '{"funder": "GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H", "account": "GCXKG6RN4ONIEPCMNFB732A436Z5PNDSRLGWK7GBLCMQLIFO4S7EYWVU", "starting_balance": "1000.0000000"}', 'GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H');
-INSERT INTO history_operations VALUES (8589946881, 8589946880, 1, 0, '{"funder": "GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H", "account": "GA5WBPYA5Y4WAEHXWR2UKO2UO4BUGHUQ74EUPKON2QHV4WRHOIRNKKH2", "starting_balance": "1000.0000000"}', 'GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H');
+INSERT INTO public.history_operations VALUES (21474840577, 21474840576, 1, 1, '{"to": "GA5WBPYA5Y4WAEHXWR2UKO2UO4BUGHUQ74EUPKON2QHV4WRHOIRNKKH2", "from": "GCXKG6RN4ONIEPCMNFB732A436Z5PNDSRLGWK7GBLCMQLIFO4S7EYWVU", "amount": "10.1230000", "asset_code": "USD", "asset_type": "credit_alphanum4", "asset_issuer": "GC23QF2HUE52AMXUFUH3AYJAXXGXXV2VHXYYR6EYXETPKDXZSAW67XO4"}', 'GCXKG6RN4ONIEPCMNFB732A436Z5PNDSRLGWK7GBLCMQLIFO4S7EYWVU');
+INSERT INTO public.history_operations VALUES (17179873281, 17179873280, 1, 1, '{"to": "GCXKG6RN4ONIEPCMNFB732A436Z5PNDSRLGWK7GBLCMQLIFO4S7EYWVU", "from": "GC23QF2HUE52AMXUFUH3AYJAXXGXXV2VHXYYR6EYXETPKDXZSAW67XO4", "amount": "101.2345000", "asset_code": "USD", "asset_type": "credit_alphanum4", "asset_issuer": "GC23QF2HUE52AMXUFUH3AYJAXXGXXV2VHXYYR6EYXETPKDXZSAW67XO4"}', 'GC23QF2HUE52AMXUFUH3AYJAXXGXXV2VHXYYR6EYXETPKDXZSAW67XO4');
+INSERT INTO public.history_operations VALUES (12884905985, 12884905984, 1, 6, '{"limit": "922337203685.4775807", "trustee": "GC23QF2HUE52AMXUFUH3AYJAXXGXXV2VHXYYR6EYXETPKDXZSAW67XO4", "trustor": "GCXKG6RN4ONIEPCMNFB732A436Z5PNDSRLGWK7GBLCMQLIFO4S7EYWVU", "asset_code": "USD", "asset_type": "credit_alphanum4", "asset_issuer": "GC23QF2HUE52AMXUFUH3AYJAXXGXXV2VHXYYR6EYXETPKDXZSAW67XO4"}', 'GCXKG6RN4ONIEPCMNFB732A436Z5PNDSRLGWK7GBLCMQLIFO4S7EYWVU');
+INSERT INTO public.history_operations VALUES (12884910081, 12884910080, 1, 6, '{"limit": "922337203685.4775807", "trustee": "GC23QF2HUE52AMXUFUH3AYJAXXGXXV2VHXYYR6EYXETPKDXZSAW67XO4", "trustor": "GA5WBPYA5Y4WAEHXWR2UKO2UO4BUGHUQ74EUPKON2QHV4WRHOIRNKKH2", "asset_code": "USD", "asset_type": "credit_alphanum4", "asset_issuer": "GC23QF2HUE52AMXUFUH3AYJAXXGXXV2VHXYYR6EYXETPKDXZSAW67XO4"}', 'GA5WBPYA5Y4WAEHXWR2UKO2UO4BUGHUQ74EUPKON2QHV4WRHOIRNKKH2');
+INSERT INTO public.history_operations VALUES (8589938689, 8589938688, 1, 0, '{"funder": "GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H", "account": "GC23QF2HUE52AMXUFUH3AYJAXXGXXV2VHXYYR6EYXETPKDXZSAW67XO4", "starting_balance": "1000.0000000"}', 'GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H');
+INSERT INTO public.history_operations VALUES (8589942785, 8589942784, 1, 0, '{"funder": "GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H", "account": "GCXKG6RN4ONIEPCMNFB732A436Z5PNDSRLGWK7GBLCMQLIFO4S7EYWVU", "starting_balance": "1000.0000000"}', 'GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H');
+INSERT INTO public.history_operations VALUES (8589946881, 8589946880, 1, 0, '{"funder": "GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H", "account": "GA5WBPYA5Y4WAEHXWR2UKO2UO4BUGHUQ74EUPKON2QHV4WRHOIRNKKH2", "starting_balance": "1000.0000000"}', 'GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H');
 
 
 --
@@ -596,45 +572,66 @@ INSERT INTO history_operations VALUES (8589946881, 8589946880, 1, 0, '{"funder":
 -- Data for Name: history_transaction_participants; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-INSERT INTO history_transaction_participants VALUES (1, 21474840576, 2);
-INSERT INTO history_transaction_participants VALUES (2, 21474840576, 1);
-INSERT INTO history_transaction_participants VALUES (3, 17179873280, 3);
-INSERT INTO history_transaction_participants VALUES (4, 17179873280, 2);
-INSERT INTO history_transaction_participants VALUES (5, 12884905984, 1);
-INSERT INTO history_transaction_participants VALUES (6, 12884910080, 2);
-INSERT INTO history_transaction_participants VALUES (7, 8589938688, 4);
-INSERT INTO history_transaction_participants VALUES (8, 8589938688, 3);
-INSERT INTO history_transaction_participants VALUES (9, 8589942784, 4);
-INSERT INTO history_transaction_participants VALUES (10, 8589942784, 2);
-INSERT INTO history_transaction_participants VALUES (11, 8589946880, 4);
-INSERT INTO history_transaction_participants VALUES (12, 8589946880, 1);
-
-
---
--- Name: history_transaction_participants_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
---
-
-SELECT pg_catalog.setval('history_transaction_participants_id_seq', 12, true);
+INSERT INTO public.history_transaction_participants VALUES (1, 21474840576, 2);
+INSERT INTO public.history_transaction_participants VALUES (2, 21474840576, 1);
+INSERT INTO public.history_transaction_participants VALUES (3, 17179873280, 3);
+INSERT INTO public.history_transaction_participants VALUES (4, 17179873280, 2);
+INSERT INTO public.history_transaction_participants VALUES (5, 12884905984, 2);
+INSERT INTO public.history_transaction_participants VALUES (6, 12884910080, 1);
+INSERT INTO public.history_transaction_participants VALUES (7, 8589938688, 3);
+INSERT INTO public.history_transaction_participants VALUES (8, 8589938688, 4);
+INSERT INTO public.history_transaction_participants VALUES (9, 8589942784, 4);
+INSERT INTO public.history_transaction_participants VALUES (10, 8589942784, 2);
+INSERT INTO public.history_transaction_participants VALUES (11, 8589946880, 4);
+INSERT INTO public.history_transaction_participants VALUES (12, 8589946880, 1);
 
 
 --
 -- Data for Name: history_transactions; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-INSERT INTO history_transactions VALUES ('d867852608d9aaf21e1f7bacb98e75fd5cb39be10d70c9cbcc80391d73728869', 5, 1, 'GCXKG6RN4ONIEPCMNFB732A436Z5PNDSRLGWK7GBLCMQLIFO4S7EYWVU', 8589934594, 100, 1, '2018-06-01 17:11:04.599161', '2018-06-01 17:11:04.599161', 21474840576, 'AAAAAK6jei3jmoI8TGlD/egc37PXtHKKzWV8wViZBaCu5L5MAAAAZAAAAAIAAAACAAAAAAAAAAAAAAABAAAAAAAAAAEAAAAAO2C/AO45YBD3tHVFO1R3A0MekP8JR6nN1A9eWidyItUAAAABVVNEAAAAAAC1uBdHoTugMvQtD7BhIL3Ne9dVPfGI+Ji5JvUO+ZAt7wAAAAAGCKWwAAAAAAAAAAGu5L5MAAAAQOduHh8u6n4aETFH/A6BiFlfEPqDszcZVcoCIRvAY33jJ+1aQxY8IyUQpF0oXbcKVegzVZNO81OUEN/9I5F/DgI=', 'AAAAAAAAAGQAAAAAAAAAAQAAAAAAAAABAAAAAAAAAAA=', 'AAAAAQAAAAIAAAADAAAABQAAAAAAAAAArqN6LeOagjxMaUP96Bzfs9e0corNZXzBWJkFoK7kvkwAAAACVAvjOAAAAAIAAAABAAAAAQAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAABAAAABQAAAAAAAAAArqN6LeOagjxMaUP96Bzfs9e0corNZXzBWJkFoK7kvkwAAAACVAvjOAAAAAIAAAACAAAAAQAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAABAAAABAAAAAMAAAADAAAAAQAAAAA7YL8A7jlgEPe0dUU7VHcDQx6Q/wlHqc3UD15aJ3Ii1QAAAAFVU0QAAAAAALW4F0ehO6Ay9C0PsGEgvc1711U98Yj4mLkm9Q75kC3vAAAAAAAAAAB//////////wAAAAEAAAAAAAAAAAAAAAEAAAAFAAAAAQAAAAA7YL8A7jlgEPe0dUU7VHcDQx6Q/wlHqc3UD15aJ3Ii1QAAAAFVU0QAAAAAALW4F0ehO6Ay9C0PsGEgvc1711U98Yj4mLkm9Q75kC3vAAAAAAYIpbB//////////wAAAAEAAAAAAAAAAAAAAAMAAAAEAAAAAQAAAACuo3ot45qCPExpQ/3oHN+z17Ryis1lfMFYmQWgruS+TAAAAAFVU0QAAAAAALW4F0ehO6Ay9C0PsGEgvc1711U98Yj4mLkm9Q75kC3vAAAAADxXKKh//////////wAAAAEAAAAAAAAAAAAAAAEAAAAFAAAAAQAAAACuo3ot45qCPExpQ/3oHN+z17Ryis1lfMFYmQWgruS+TAAAAAFVU0QAAAAAALW4F0ehO6Ay9C0PsGEgvc1711U98Yj4mLkm9Q75kC3vAAAAADZOgvh//////////wAAAAEAAAAAAAAAAA==', 'AAAAAgAAAAMAAAADAAAAAAAAAACuo3ot45qCPExpQ/3oHN+z17Ryis1lfMFYmQWgruS+TAAAAAJUC+OcAAAAAgAAAAEAAAABAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAEAAAAFAAAAAAAAAACuo3ot45qCPExpQ/3oHN+z17Ryis1lfMFYmQWgruS+TAAAAAJUC+M4AAAAAgAAAAEAAAABAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAA==', '{524eHy7qfhoRMUf8DoGIWV8Q+oOzNxlVygIhG8BjfeMn7VpDFjwjJRCkXShdtwpV6DNVk07zU5QQ3/0jkX8OAg==}', 'none', NULL, NULL);
-INSERT INTO history_transactions VALUES ('5243c6934f0fb5017758869aa3bff53ddc389cf81861cfae610cc225aae18ccc', 4, 1, 'GC23QF2HUE52AMXUFUH3AYJAXXGXXV2VHXYYR6EYXETPKDXZSAW67XO4', 8589934593, 100, 1, '2018-06-01 17:11:04.607043', '2018-06-01 17:11:04.607043', 17179873280, 'AAAAALW4F0ehO6Ay9C0PsGEgvc1711U98Yj4mLkm9Q75kC3vAAAAZAAAAAIAAAABAAAAAAAAAAAAAAABAAAAAAAAAAEAAAAArqN6LeOagjxMaUP96Bzfs9e0corNZXzBWJkFoK7kvkwAAAABVVNEAAAAAAC1uBdHoTugMvQtD7BhIL3Ne9dVPfGI+Ji5JvUO+ZAt7wAAAAA8VyioAAAAAAAAAAH5kC3vAAAAQEceJbYupnWlUerU60gfpFg8Nk2a3A6QMSfVgQoNFZOLjN7zc4w7jBxwiFIUi6pyXJNNQpL2OQxTnV4gs9lDrgQ=', 'AAAAAAAAAGQAAAAAAAAAAQAAAAAAAAABAAAAAAAAAAA=', 'AAAAAQAAAAIAAAADAAAABAAAAAAAAAAAtbgXR6E7oDL0LQ+wYSC9zXvXVT3xiPiYuSb1DvmQLe8AAAACVAvjnAAAAAIAAAAAAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAABAAAABAAAAAAAAAAAtbgXR6E7oDL0LQ+wYSC9zXvXVT3xiPiYuSb1DvmQLe8AAAACVAvjnAAAAAIAAAABAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAABAAAAAgAAAAMAAAADAAAAAQAAAACuo3ot45qCPExpQ/3oHN+z17Ryis1lfMFYmQWgruS+TAAAAAFVU0QAAAAAALW4F0ehO6Ay9C0PsGEgvc1711U98Yj4mLkm9Q75kC3vAAAAAAAAAAB//////////wAAAAEAAAAAAAAAAAAAAAEAAAAEAAAAAQAAAACuo3ot45qCPExpQ/3oHN+z17Ryis1lfMFYmQWgruS+TAAAAAFVU0QAAAAAALW4F0ehO6Ay9C0PsGEgvc1711U98Yj4mLkm9Q75kC3vAAAAADxXKKh//////////wAAAAEAAAAAAAAAAA==', 'AAAAAgAAAAMAAAACAAAAAAAAAAC1uBdHoTugMvQtD7BhIL3Ne9dVPfGI+Ji5JvUO+ZAt7wAAAAJUC+QAAAAAAgAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAEAAAAEAAAAAAAAAAC1uBdHoTugMvQtD7BhIL3Ne9dVPfGI+Ji5JvUO+ZAt7wAAAAJUC+OcAAAAAgAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAA==', '{Rx4lti6mdaVR6tTrSB+kWDw2TZrcDpAxJ9WBCg0Vk4uM3vNzjDuMHHCIUhSLqnJck01CkvY5DFOdXiCz2UOuBA==}', 'none', NULL, NULL);
-INSERT INTO history_transactions VALUES ('00ab9cfce2b4c4141d8bb6768dd094bdbb1c7406710dbb3ba0ef98870f63a344', 3, 1, 'GA5WBPYA5Y4WAEHXWR2UKO2UO4BUGHUQ74EUPKON2QHV4WRHOIRNKKH2', 8589934593, 100, 1, '2018-06-01 17:11:04.612735', '2018-06-01 17:11:04.612735', 12884905984, 'AAAAADtgvwDuOWAQ97R1RTtUdwNDHpD/CUepzdQPXlonciLVAAAAZAAAAAIAAAABAAAAAAAAAAAAAAABAAAAAAAAAAYAAAABVVNEAAAAAAC1uBdHoTugMvQtD7BhIL3Ne9dVPfGI+Ji5JvUO+ZAt73//////////AAAAAAAAAAEnciLVAAAAQLVbII+1LeizxgncDI46KHyBt05+H92n1+R328J9zNl2fgJW2nfn3FIoLVs2qV1+CUpr121a2B7AM6HKr4nBLAI=', 'AAAAAAAAAGQAAAAAAAAAAQAAAAAAAAAGAAAAAAAAAAA=', 'AAAAAQAAAAIAAAADAAAAAwAAAAAAAAAAO2C/AO45YBD3tHVFO1R3A0MekP8JR6nN1A9eWidyItUAAAACVAvjnAAAAAIAAAAAAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAABAAAAAwAAAAAAAAAAO2C/AO45YBD3tHVFO1R3A0MekP8JR6nN1A9eWidyItUAAAACVAvjnAAAAAIAAAABAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAABAAAAAwAAAAAAAAADAAAAAQAAAAA7YL8A7jlgEPe0dUU7VHcDQx6Q/wlHqc3UD15aJ3Ii1QAAAAFVU0QAAAAAALW4F0ehO6Ay9C0PsGEgvc1711U98Yj4mLkm9Q75kC3vAAAAAAAAAAB//////////wAAAAEAAAAAAAAAAAAAAAMAAAADAAAAAAAAAAA7YL8A7jlgEPe0dUU7VHcDQx6Q/wlHqc3UD15aJ3Ii1QAAAAJUC+OcAAAAAgAAAAEAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAEAAAADAAAAAAAAAAA7YL8A7jlgEPe0dUU7VHcDQx6Q/wlHqc3UD15aJ3Ii1QAAAAJUC+OcAAAAAgAAAAEAAAABAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAA==', 'AAAAAgAAAAMAAAACAAAAAAAAAAA7YL8A7jlgEPe0dUU7VHcDQx6Q/wlHqc3UD15aJ3Ii1QAAAAJUC+QAAAAAAgAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAEAAAADAAAAAAAAAAA7YL8A7jlgEPe0dUU7VHcDQx6Q/wlHqc3UD15aJ3Ii1QAAAAJUC+OcAAAAAgAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAA==', '{tVsgj7Ut6LPGCdwMjjoofIG3Tn4f3afX5Hfbwn3M2XZ+Albad+fcUigtWzapXX4JSmvXbVrYHsAzocqvicEsAg==}', 'none', NULL, NULL);
-INSERT INTO history_transactions VALUES ('bd486dbdd02d460817671c4a5a7e9d6e865ca29cb41e62d7aaf70a2fee5b36de', 3, 2, 'GCXKG6RN4ONIEPCMNFB732A436Z5PNDSRLGWK7GBLCMQLIFO4S7EYWVU', 8589934593, 100, 1, '2018-06-01 17:11:04.612879', '2018-06-01 17:11:04.612879', 12884910080, 'AAAAAK6jei3jmoI8TGlD/egc37PXtHKKzWV8wViZBaCu5L5MAAAAZAAAAAIAAAABAAAAAAAAAAAAAAABAAAAAAAAAAYAAAABVVNEAAAAAAC1uBdHoTugMvQtD7BhIL3Ne9dVPfGI+Ji5JvUO+ZAt73//////////AAAAAAAAAAGu5L5MAAAAQB9kmKW2q3v7Qfy8PMekEb1TTI5ixqkI0BogXrOt7gO162Qbkh2dSTUfeDovc0PAafhDXxthVAlsLujlBmyjBAY=', 'AAAAAAAAAGQAAAAAAAAAAQAAAAAAAAAGAAAAAAAAAAA=', 'AAAAAQAAAAIAAAADAAAAAwAAAAAAAAAArqN6LeOagjxMaUP96Bzfs9e0corNZXzBWJkFoK7kvkwAAAACVAvjnAAAAAIAAAAAAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAABAAAAAwAAAAAAAAAArqN6LeOagjxMaUP96Bzfs9e0corNZXzBWJkFoK7kvkwAAAACVAvjnAAAAAIAAAABAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAABAAAAAwAAAAAAAAADAAAAAQAAAACuo3ot45qCPExpQ/3oHN+z17Ryis1lfMFYmQWgruS+TAAAAAFVU0QAAAAAALW4F0ehO6Ay9C0PsGEgvc1711U98Yj4mLkm9Q75kC3vAAAAAAAAAAB//////////wAAAAEAAAAAAAAAAAAAAAMAAAADAAAAAAAAAACuo3ot45qCPExpQ/3oHN+z17Ryis1lfMFYmQWgruS+TAAAAAJUC+OcAAAAAgAAAAEAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAEAAAADAAAAAAAAAACuo3ot45qCPExpQ/3oHN+z17Ryis1lfMFYmQWgruS+TAAAAAJUC+OcAAAAAgAAAAEAAAABAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAA==', 'AAAAAgAAAAMAAAACAAAAAAAAAACuo3ot45qCPExpQ/3oHN+z17Ryis1lfMFYmQWgruS+TAAAAAJUC+QAAAAAAgAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAEAAAADAAAAAAAAAACuo3ot45qCPExpQ/3oHN+z17Ryis1lfMFYmQWgruS+TAAAAAJUC+OcAAAAAgAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAA==', '{H2SYpbare/tB/Lw8x6QRvVNMjmLGqQjQGiBes63uA7XrZBuSHZ1JNR94Oi9zQ8Bp+ENfG2FUCWwu6OUGbKMEBg==}', 'none', NULL, NULL);
-INSERT INTO history_transactions VALUES ('db398eb4ae89756325643cad21c94e13bfc074b323ee83e141bf701a5d904f1b', 2, 1, 'GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H', 1, 100, 1, '2018-06-01 17:11:04.618618', '2018-06-01 17:11:04.618619', 8589938688, 'AAAAAGL8HQvQkbK2HA3WVjRrKmjX00fG8sLI7m0ERwJW/AX3AAAAZAAAAAAAAAABAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAtbgXR6E7oDL0LQ+wYSC9zXvXVT3xiPiYuSb1DvmQLe8AAAACVAvkAAAAAAAAAAABVvwF9wAAAEAYjQcPT2G5hqnBmgGGeg9J8l4c1EnUlxklElH9sqZr0971F6OLWfe/m4kpFtI+sI0i1qLit5A0JyWnbhYLW5oD', 'AAAAAAAAAGQAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAA=', 'AAAAAQAAAAAAAAABAAAAAgAAAAAAAAACAAAAAAAAAAC1uBdHoTugMvQtD7BhIL3Ne9dVPfGI+Ji5JvUO+ZAt7wAAAAJUC+QAAAAAAgAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAEAAAACAAAAAAAAAABi/B0L0JGythwN1lY0aypo19NHxvLCyO5tBEcCVvwF9w3gtrFTWBrUAAAAAAAAAAMAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAA==', 'AAAAAgAAAAMAAAABAAAAAAAAAABi/B0L0JGythwN1lY0aypo19NHxvLCyO5tBEcCVvwF9w3gtrOnZAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAEAAAACAAAAAAAAAABi/B0L0JGythwN1lY0aypo19NHxvLCyO5tBEcCVvwF9w3gtrOnY/+cAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAA==', '{GI0HD09huYapwZoBhnoPSfJeHNRJ1JcZJRJR/bKma9Pe9Reji1n3v5uJKRbSPrCNItai4reQNCclp24WC1uaAw==}', 'none', NULL, NULL);
-INSERT INTO history_transactions VALUES ('f97caffab8c16023a37884165cb0b3ff1aa2daf4000fef49d21efc847ddbfbea', 2, 2, 'GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H', 2, 100, 1, '2018-06-01 17:11:04.618742', '2018-06-01 17:11:04.618742', 8589942784, 'AAAAAGL8HQvQkbK2HA3WVjRrKmjX00fG8sLI7m0ERwJW/AX3AAAAZAAAAAAAAAACAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAArqN6LeOagjxMaUP96Bzfs9e0corNZXzBWJkFoK7kvkwAAAACVAvkAAAAAAAAAAABVvwF9wAAAEBmKpSgvrwKO20XCOfYfXsGEEUtwYaaEfqSu6ymJmlDma+IX6I7IggbUZMocQdZ94IMAfKdQANqXbIO7ysweeMC', 'AAAAAAAAAGQAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAA=', 'AAAAAQAAAAAAAAABAAAAAgAAAAAAAAACAAAAAAAAAACuo3ot45qCPExpQ/3oHN+z17Ryis1lfMFYmQWgruS+TAAAAAJUC+QAAAAAAgAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAEAAAACAAAAAAAAAABi/B0L0JGythwN1lY0aypo19NHxvLCyO5tBEcCVvwF9w3gtq7/TDbUAAAAAAAAAAMAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAA==', 'AAAAAgAAAAMAAAACAAAAAAAAAABi/B0L0JGythwN1lY0aypo19NHxvLCyO5tBEcCVvwF9w3gtrOnY/+cAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAEAAAACAAAAAAAAAABi/B0L0JGythwN1lY0aypo19NHxvLCyO5tBEcCVvwF9w3gtrOnY/84AAAAAAAAAAIAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAA==', '{ZiqUoL68CjttFwjn2H17BhBFLcGGmhH6kruspiZpQ5mviF+iOyIIG1GTKHEHWfeCDAHynUADal2yDu8rMHnjAg==}', 'none', NULL, NULL);
-INSERT INTO history_transactions VALUES ('725756b1fbdf83b08127f385efedf0909cc820b6cce71f1c0897d15427cb5add', 2, 3, 'GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H', 3, 100, 1, '2018-06-01 17:11:04.618809', '2018-06-01 17:11:04.61881', 8589946880, 'AAAAAGL8HQvQkbK2HA3WVjRrKmjX00fG8sLI7m0ERwJW/AX3AAAAZAAAAAAAAAADAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAO2C/AO45YBD3tHVFO1R3A0MekP8JR6nN1A9eWidyItUAAAACVAvkAAAAAAAAAAABVvwF9wAAAEBj4gBQ/BAbgqf7qOotatgZUHjDlsOtDNdp7alZR5/Fk9fGj+lxEygAZWzY7/LY1Z3SF6c0qs172LhAkkvV8p0M', 'AAAAAAAAAGQAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAA=', 'AAAAAQAAAAAAAAABAAAAAgAAAAAAAAACAAAAAAAAAAA7YL8A7jlgEPe0dUU7VHcDQx6Q/wlHqc3UD15aJ3Ii1QAAAAJUC+QAAAAAAgAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAEAAAACAAAAAAAAAABi/B0L0JGythwN1lY0aypo19NHxvLCyO5tBEcCVvwF9w3gtqyrQFLUAAAAAAAAAAMAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAA==', 'AAAAAgAAAAMAAAACAAAAAAAAAABi/B0L0JGythwN1lY0aypo19NHxvLCyO5tBEcCVvwF9w3gtrOnY/84AAAAAAAAAAIAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAEAAAACAAAAAAAAAABi/B0L0JGythwN1lY0aypo19NHxvLCyO5tBEcCVvwF9w3gtrOnY/7UAAAAAAAAAAMAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAA==', '{Y+IAUPwQG4Kn+6jqLWrYGVB4w5bDrQzXae2pWUefxZPXxo/pcRMoAGVs2O/y2NWd0henNKrNe9i4QJJL1fKdDA==}', 'none', NULL, NULL);
+INSERT INTO public.history_transactions VALUES ('d867852608d9aaf21e1f7bacb98e75fd5cb39be10d70c9cbcc80391d73728869', 5, 1, 'GCXKG6RN4ONIEPCMNFB732A436Z5PNDSRLGWK7GBLCMQLIFO4S7EYWVU', 8589934594, 100, 1, '2018-07-25 23:03:54.665633', '2018-07-25 23:03:54.665633', 21474840576, 'AAAAAK6jei3jmoI8TGlD/egc37PXtHKKzWV8wViZBaCu5L5MAAAAZAAAAAIAAAACAAAAAAAAAAAAAAABAAAAAAAAAAEAAAAAO2C/AO45YBD3tHVFO1R3A0MekP8JR6nN1A9eWidyItUAAAABVVNEAAAAAAC1uBdHoTugMvQtD7BhIL3Ne9dVPfGI+Ji5JvUO+ZAt7wAAAAAGCKWwAAAAAAAAAAGu5L5MAAAAQOduHh8u6n4aETFH/A6BiFlfEPqDszcZVcoCIRvAY33jJ+1aQxY8IyUQpF0oXbcKVegzVZNO81OUEN/9I5F/DgI=', 'AAAAAAAAAGQAAAAAAAAAAQAAAAAAAAABAAAAAAAAAAA=', 'AAAAAQAAAAIAAAADAAAABQAAAAAAAAAArqN6LeOagjxMaUP96Bzfs9e0corNZXzBWJkFoK7kvkwAAAACVAvjOAAAAAIAAAABAAAAAQAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAABAAAABQAAAAAAAAAArqN6LeOagjxMaUP96Bzfs9e0corNZXzBWJkFoK7kvkwAAAACVAvjOAAAAAIAAAACAAAAAQAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAABAAAABAAAAAMAAAADAAAAAQAAAAA7YL8A7jlgEPe0dUU7VHcDQx6Q/wlHqc3UD15aJ3Ii1QAAAAFVU0QAAAAAALW4F0ehO6Ay9C0PsGEgvc1711U98Yj4mLkm9Q75kC3vAAAAAAAAAAB//////////wAAAAEAAAAAAAAAAAAAAAEAAAAFAAAAAQAAAAA7YL8A7jlgEPe0dUU7VHcDQx6Q/wlHqc3UD15aJ3Ii1QAAAAFVU0QAAAAAALW4F0ehO6Ay9C0PsGEgvc1711U98Yj4mLkm9Q75kC3vAAAAAAYIpbB//////////wAAAAEAAAAAAAAAAAAAAAMAAAAEAAAAAQAAAACuo3ot45qCPExpQ/3oHN+z17Ryis1lfMFYmQWgruS+TAAAAAFVU0QAAAAAALW4F0ehO6Ay9C0PsGEgvc1711U98Yj4mLkm9Q75kC3vAAAAADxXKKh//////////wAAAAEAAAAAAAAAAAAAAAEAAAAFAAAAAQAAAACuo3ot45qCPExpQ/3oHN+z17Ryis1lfMFYmQWgruS+TAAAAAFVU0QAAAAAALW4F0ehO6Ay9C0PsGEgvc1711U98Yj4mLkm9Q75kC3vAAAAADZOgvh//////////wAAAAEAAAAAAAAAAA==', 'AAAAAgAAAAMAAAADAAAAAAAAAACuo3ot45qCPExpQ/3oHN+z17Ryis1lfMFYmQWgruS+TAAAAAJUC+OcAAAAAgAAAAEAAAABAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAEAAAAFAAAAAAAAAACuo3ot45qCPExpQ/3oHN+z17Ryis1lfMFYmQWgruS+TAAAAAJUC+M4AAAAAgAAAAEAAAABAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAA==', '{524eHy7qfhoRMUf8DoGIWV8Q+oOzNxlVygIhG8BjfeMn7VpDFjwjJRCkXShdtwpV6DNVk07zU5QQ3/0jkX8OAg==}', 'none', NULL, NULL);
+INSERT INTO public.history_transactions VALUES ('5243c6934f0fb5017758869aa3bff53ddc389cf81861cfae610cc225aae18ccc', 4, 1, 'GC23QF2HUE52AMXUFUH3AYJAXXGXXV2VHXYYR6EYXETPKDXZSAW67XO4', 8589934593, 100, 1, '2018-07-25 23:03:54.673341', '2018-07-25 23:03:54.673341', 17179873280, 'AAAAALW4F0ehO6Ay9C0PsGEgvc1711U98Yj4mLkm9Q75kC3vAAAAZAAAAAIAAAABAAAAAAAAAAAAAAABAAAAAAAAAAEAAAAArqN6LeOagjxMaUP96Bzfs9e0corNZXzBWJkFoK7kvkwAAAABVVNEAAAAAAC1uBdHoTugMvQtD7BhIL3Ne9dVPfGI+Ji5JvUO+ZAt7wAAAAA8VyioAAAAAAAAAAH5kC3vAAAAQEceJbYupnWlUerU60gfpFg8Nk2a3A6QMSfVgQoNFZOLjN7zc4w7jBxwiFIUi6pyXJNNQpL2OQxTnV4gs9lDrgQ=', 'AAAAAAAAAGQAAAAAAAAAAQAAAAAAAAABAAAAAAAAAAA=', 'AAAAAQAAAAIAAAADAAAABAAAAAAAAAAAtbgXR6E7oDL0LQ+wYSC9zXvXVT3xiPiYuSb1DvmQLe8AAAACVAvjnAAAAAIAAAAAAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAABAAAABAAAAAAAAAAAtbgXR6E7oDL0LQ+wYSC9zXvXVT3xiPiYuSb1DvmQLe8AAAACVAvjnAAAAAIAAAABAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAABAAAAAgAAAAMAAAADAAAAAQAAAACuo3ot45qCPExpQ/3oHN+z17Ryis1lfMFYmQWgruS+TAAAAAFVU0QAAAAAALW4F0ehO6Ay9C0PsGEgvc1711U98Yj4mLkm9Q75kC3vAAAAAAAAAAB//////////wAAAAEAAAAAAAAAAAAAAAEAAAAEAAAAAQAAAACuo3ot45qCPExpQ/3oHN+z17Ryis1lfMFYmQWgruS+TAAAAAFVU0QAAAAAALW4F0ehO6Ay9C0PsGEgvc1711U98Yj4mLkm9Q75kC3vAAAAADxXKKh//////////wAAAAEAAAAAAAAAAA==', 'AAAAAgAAAAMAAAACAAAAAAAAAAC1uBdHoTugMvQtD7BhIL3Ne9dVPfGI+Ji5JvUO+ZAt7wAAAAJUC+QAAAAAAgAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAEAAAAEAAAAAAAAAAC1uBdHoTugMvQtD7BhIL3Ne9dVPfGI+Ji5JvUO+ZAt7wAAAAJUC+OcAAAAAgAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAA==', '{Rx4lti6mdaVR6tTrSB+kWDw2TZrcDpAxJ9WBCg0Vk4uM3vNzjDuMHHCIUhSLqnJck01CkvY5DFOdXiCz2UOuBA==}', 'none', NULL, NULL);
+INSERT INTO public.history_transactions VALUES ('bd486dbdd02d460817671c4a5a7e9d6e865ca29cb41e62d7aaf70a2fee5b36de', 3, 1, 'GCXKG6RN4ONIEPCMNFB732A436Z5PNDSRLGWK7GBLCMQLIFO4S7EYWVU', 8589934593, 100, 1, '2018-07-25 23:03:54.677954', '2018-07-25 23:03:54.677954', 12884905984, 'AAAAAK6jei3jmoI8TGlD/egc37PXtHKKzWV8wViZBaCu5L5MAAAAZAAAAAIAAAABAAAAAAAAAAAAAAABAAAAAAAAAAYAAAABVVNEAAAAAAC1uBdHoTugMvQtD7BhIL3Ne9dVPfGI+Ji5JvUO+ZAt73//////////AAAAAAAAAAGu5L5MAAAAQB9kmKW2q3v7Qfy8PMekEb1TTI5ixqkI0BogXrOt7gO162Qbkh2dSTUfeDovc0PAafhDXxthVAlsLujlBmyjBAY=', 'AAAAAAAAAGQAAAAAAAAAAQAAAAAAAAAGAAAAAAAAAAA=', 'AAAAAQAAAAIAAAADAAAAAwAAAAAAAAAArqN6LeOagjxMaUP96Bzfs9e0corNZXzBWJkFoK7kvkwAAAACVAvjnAAAAAIAAAAAAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAABAAAAAwAAAAAAAAAArqN6LeOagjxMaUP96Bzfs9e0corNZXzBWJkFoK7kvkwAAAACVAvjnAAAAAIAAAABAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAABAAAAAwAAAAAAAAADAAAAAQAAAACuo3ot45qCPExpQ/3oHN+z17Ryis1lfMFYmQWgruS+TAAAAAFVU0QAAAAAALW4F0ehO6Ay9C0PsGEgvc1711U98Yj4mLkm9Q75kC3vAAAAAAAAAAB//////////wAAAAEAAAAAAAAAAAAAAAMAAAADAAAAAAAAAACuo3ot45qCPExpQ/3oHN+z17Ryis1lfMFYmQWgruS+TAAAAAJUC+OcAAAAAgAAAAEAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAEAAAADAAAAAAAAAACuo3ot45qCPExpQ/3oHN+z17Ryis1lfMFYmQWgruS+TAAAAAJUC+OcAAAAAgAAAAEAAAABAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAA==', 'AAAAAgAAAAMAAAACAAAAAAAAAACuo3ot45qCPExpQ/3oHN+z17Ryis1lfMFYmQWgruS+TAAAAAJUC+QAAAAAAgAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAEAAAADAAAAAAAAAACuo3ot45qCPExpQ/3oHN+z17Ryis1lfMFYmQWgruS+TAAAAAJUC+OcAAAAAgAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAA==', '{H2SYpbare/tB/Lw8x6QRvVNMjmLGqQjQGiBes63uA7XrZBuSHZ1JNR94Oi9zQ8Bp+ENfG2FUCWwu6OUGbKMEBg==}', 'none', NULL, NULL);
+INSERT INTO public.history_transactions VALUES ('00ab9cfce2b4c4141d8bb6768dd094bdbb1c7406710dbb3ba0ef98870f63a344', 3, 2, 'GA5WBPYA5Y4WAEHXWR2UKO2UO4BUGHUQ74EUPKON2QHV4WRHOIRNKKH2', 8589934593, 100, 1, '2018-07-25 23:03:54.678063', '2018-07-25 23:03:54.678063', 12884910080, 'AAAAADtgvwDuOWAQ97R1RTtUdwNDHpD/CUepzdQPXlonciLVAAAAZAAAAAIAAAABAAAAAAAAAAAAAAABAAAAAAAAAAYAAAABVVNEAAAAAAC1uBdHoTugMvQtD7BhIL3Ne9dVPfGI+Ji5JvUO+ZAt73//////////AAAAAAAAAAEnciLVAAAAQLVbII+1LeizxgncDI46KHyBt05+H92n1+R328J9zNl2fgJW2nfn3FIoLVs2qV1+CUpr121a2B7AM6HKr4nBLAI=', 'AAAAAAAAAGQAAAAAAAAAAQAAAAAAAAAGAAAAAAAAAAA=', 'AAAAAQAAAAIAAAADAAAAAwAAAAAAAAAAO2C/AO45YBD3tHVFO1R3A0MekP8JR6nN1A9eWidyItUAAAACVAvjnAAAAAIAAAAAAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAABAAAAAwAAAAAAAAAAO2C/AO45YBD3tHVFO1R3A0MekP8JR6nN1A9eWidyItUAAAACVAvjnAAAAAIAAAABAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAABAAAAAwAAAAAAAAADAAAAAQAAAAA7YL8A7jlgEPe0dUU7VHcDQx6Q/wlHqc3UD15aJ3Ii1QAAAAFVU0QAAAAAALW4F0ehO6Ay9C0PsGEgvc1711U98Yj4mLkm9Q75kC3vAAAAAAAAAAB//////////wAAAAEAAAAAAAAAAAAAAAMAAAADAAAAAAAAAAA7YL8A7jlgEPe0dUU7VHcDQx6Q/wlHqc3UD15aJ3Ii1QAAAAJUC+OcAAAAAgAAAAEAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAEAAAADAAAAAAAAAAA7YL8A7jlgEPe0dUU7VHcDQx6Q/wlHqc3UD15aJ3Ii1QAAAAJUC+OcAAAAAgAAAAEAAAABAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAA==', 'AAAAAgAAAAMAAAACAAAAAAAAAAA7YL8A7jlgEPe0dUU7VHcDQx6Q/wlHqc3UD15aJ3Ii1QAAAAJUC+QAAAAAAgAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAEAAAADAAAAAAAAAAA7YL8A7jlgEPe0dUU7VHcDQx6Q/wlHqc3UD15aJ3Ii1QAAAAJUC+OcAAAAAgAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAA==', '{tVsgj7Ut6LPGCdwMjjoofIG3Tn4f3afX5Hfbwn3M2XZ+Albad+fcUigtWzapXX4JSmvXbVrYHsAzocqvicEsAg==}', 'none', NULL, NULL);
+INSERT INTO public.history_transactions VALUES ('db398eb4ae89756325643cad21c94e13bfc074b323ee83e141bf701a5d904f1b', 2, 1, 'GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H', 1, 100, 1, '2018-07-25 23:03:54.682706', '2018-07-25 23:03:54.682706', 8589938688, 'AAAAAGL8HQvQkbK2HA3WVjRrKmjX00fG8sLI7m0ERwJW/AX3AAAAZAAAAAAAAAABAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAtbgXR6E7oDL0LQ+wYSC9zXvXVT3xiPiYuSb1DvmQLe8AAAACVAvkAAAAAAAAAAABVvwF9wAAAEAYjQcPT2G5hqnBmgGGeg9J8l4c1EnUlxklElH9sqZr0971F6OLWfe/m4kpFtI+sI0i1qLit5A0JyWnbhYLW5oD', 'AAAAAAAAAGQAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAA=', 'AAAAAQAAAAAAAAABAAAAAgAAAAAAAAACAAAAAAAAAAC1uBdHoTugMvQtD7BhIL3Ne9dVPfGI+Ji5JvUO+ZAt7wAAAAJUC+QAAAAAAgAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAEAAAACAAAAAAAAAABi/B0L0JGythwN1lY0aypo19NHxvLCyO5tBEcCVvwF9w3gtrFTWBrUAAAAAAAAAAMAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAA==', 'AAAAAgAAAAMAAAABAAAAAAAAAABi/B0L0JGythwN1lY0aypo19NHxvLCyO5tBEcCVvwF9w3gtrOnZAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAEAAAACAAAAAAAAAABi/B0L0JGythwN1lY0aypo19NHxvLCyO5tBEcCVvwF9w3gtrOnY/+cAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAA==', '{GI0HD09huYapwZoBhnoPSfJeHNRJ1JcZJRJR/bKma9Pe9Reji1n3v5uJKRbSPrCNItai4reQNCclp24WC1uaAw==}', 'none', NULL, NULL);
+INSERT INTO public.history_transactions VALUES ('f97caffab8c16023a37884165cb0b3ff1aa2daf4000fef49d21efc847ddbfbea', 2, 2, 'GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H', 2, 100, 1, '2018-07-25 23:03:54.682797', '2018-07-25 23:03:54.682797', 8589942784, 'AAAAAGL8HQvQkbK2HA3WVjRrKmjX00fG8sLI7m0ERwJW/AX3AAAAZAAAAAAAAAACAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAArqN6LeOagjxMaUP96Bzfs9e0corNZXzBWJkFoK7kvkwAAAACVAvkAAAAAAAAAAABVvwF9wAAAEBmKpSgvrwKO20XCOfYfXsGEEUtwYaaEfqSu6ymJmlDma+IX6I7IggbUZMocQdZ94IMAfKdQANqXbIO7ysweeMC', 'AAAAAAAAAGQAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAA=', 'AAAAAQAAAAAAAAABAAAAAgAAAAAAAAACAAAAAAAAAACuo3ot45qCPExpQ/3oHN+z17Ryis1lfMFYmQWgruS+TAAAAAJUC+QAAAAAAgAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAEAAAACAAAAAAAAAABi/B0L0JGythwN1lY0aypo19NHxvLCyO5tBEcCVvwF9w3gtq7/TDbUAAAAAAAAAAMAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAA==', 'AAAAAgAAAAMAAAACAAAAAAAAAABi/B0L0JGythwN1lY0aypo19NHxvLCyO5tBEcCVvwF9w3gtrOnY/+cAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAEAAAACAAAAAAAAAABi/B0L0JGythwN1lY0aypo19NHxvLCyO5tBEcCVvwF9w3gtrOnY/84AAAAAAAAAAIAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAA==', '{ZiqUoL68CjttFwjn2H17BhBFLcGGmhH6kruspiZpQ5mviF+iOyIIG1GTKHEHWfeCDAHynUADal2yDu8rMHnjAg==}', 'none', NULL, NULL);
+INSERT INTO public.history_transactions VALUES ('725756b1fbdf83b08127f385efedf0909cc820b6cce71f1c0897d15427cb5add', 2, 3, 'GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H', 3, 100, 1, '2018-07-25 23:03:54.682863', '2018-07-25 23:03:54.682863', 8589946880, 'AAAAAGL8HQvQkbK2HA3WVjRrKmjX00fG8sLI7m0ERwJW/AX3AAAAZAAAAAAAAAADAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAO2C/AO45YBD3tHVFO1R3A0MekP8JR6nN1A9eWidyItUAAAACVAvkAAAAAAAAAAABVvwF9wAAAEBj4gBQ/BAbgqf7qOotatgZUHjDlsOtDNdp7alZR5/Fk9fGj+lxEygAZWzY7/LY1Z3SF6c0qs172LhAkkvV8p0M', 'AAAAAAAAAGQAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAA=', 'AAAAAQAAAAAAAAABAAAAAgAAAAAAAAACAAAAAAAAAAA7YL8A7jlgEPe0dUU7VHcDQx6Q/wlHqc3UD15aJ3Ii1QAAAAJUC+QAAAAAAgAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAEAAAACAAAAAAAAAABi/B0L0JGythwN1lY0aypo19NHxvLCyO5tBEcCVvwF9w3gtqyrQFLUAAAAAAAAAAMAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAA==', 'AAAAAgAAAAMAAAACAAAAAAAAAABi/B0L0JGythwN1lY0aypo19NHxvLCyO5tBEcCVvwF9w3gtrOnY/84AAAAAAAAAAIAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAEAAAACAAAAAAAAAABi/B0L0JGythwN1lY0aypo19NHxvLCyO5tBEcCVvwF9w3gtrOnY/7UAAAAAAAAAAMAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAA==', '{Y+IAUPwQG4Kn+6jqLWrYGVB4w5bDrQzXae2pWUefxZPXxo/pcRMoAGVs2O/y2NWd0henNKrNe9i4QJJL1fKdDA==}', 'none', NULL, NULL);
+
+
+--
+-- Name: history_accounts_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+--
+
+SELECT pg_catalog.setval('public.history_accounts_id_seq', 4, true);
+
+
+--
+-- Name: history_assets_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+--
+
+SELECT pg_catalog.setval('public.history_assets_id_seq', 1, true);
+
+
+--
+-- Name: history_operation_participants_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+--
+
+SELECT pg_catalog.setval('public.history_operation_participants_id_seq', 12, true);
+
+
+--
+-- Name: history_transaction_participants_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+--
+
+SELECT pg_catalog.setval('public.history_transaction_participants_id_seq', 12, true);
 
 
 --
 -- Name: asset_stats asset_stats_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
-ALTER TABLE ONLY asset_stats
+ALTER TABLE ONLY public.asset_stats
     ADD CONSTRAINT asset_stats_pkey PRIMARY KEY (id);
 
 
@@ -642,7 +639,7 @@ ALTER TABLE ONLY asset_stats
 -- Name: gorp_migrations gorp_migrations_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
-ALTER TABLE ONLY gorp_migrations
+ALTER TABLE ONLY public.gorp_migrations
     ADD CONSTRAINT gorp_migrations_pkey PRIMARY KEY (id);
 
 
@@ -650,7 +647,7 @@ ALTER TABLE ONLY gorp_migrations
 -- Name: history_assets history_assets_asset_code_asset_type_asset_issuer_key; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
-ALTER TABLE ONLY history_assets
+ALTER TABLE ONLY public.history_assets
     ADD CONSTRAINT history_assets_asset_code_asset_type_asset_issuer_key UNIQUE (asset_code, asset_type, asset_issuer);
 
 
@@ -658,7 +655,7 @@ ALTER TABLE ONLY history_assets
 -- Name: history_assets history_assets_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
-ALTER TABLE ONLY history_assets
+ALTER TABLE ONLY public.history_assets
     ADD CONSTRAINT history_assets_pkey PRIMARY KEY (id);
 
 
@@ -666,7 +663,7 @@ ALTER TABLE ONLY history_assets
 -- Name: history_operation_participants history_operation_participants_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
-ALTER TABLE ONLY history_operation_participants
+ALTER TABLE ONLY public.history_operation_participants
     ADD CONSTRAINT history_operation_participants_pkey PRIMARY KEY (id);
 
 
@@ -674,7 +671,7 @@ ALTER TABLE ONLY history_operation_participants
 -- Name: history_transaction_participants history_transaction_participants_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
-ALTER TABLE ONLY history_transaction_participants
+ALTER TABLE ONLY public.history_transaction_participants
     ADD CONSTRAINT history_transaction_participants_pkey PRIMARY KEY (id);
 
 
@@ -682,278 +679,278 @@ ALTER TABLE ONLY history_transaction_participants
 -- Name: asset_by_code; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX asset_by_code ON history_assets USING btree (asset_code);
+CREATE INDEX asset_by_code ON public.history_assets USING btree (asset_code);
 
 
 --
 -- Name: asset_by_issuer; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX asset_by_issuer ON history_assets USING btree (asset_issuer);
+CREATE INDEX asset_by_issuer ON public.history_assets USING btree (asset_issuer);
 
 
 --
 -- Name: by_account; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX by_account ON history_transactions USING btree (account, account_sequence);
+CREATE INDEX by_account ON public.history_transactions USING btree (account, account_sequence);
 
 
 --
 -- Name: by_hash; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX by_hash ON history_transactions USING btree (transaction_hash);
+CREATE INDEX by_hash ON public.history_transactions USING btree (transaction_hash);
 
 
 --
 -- Name: by_ledger; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX by_ledger ON history_transactions USING btree (ledger_sequence, application_order);
+CREATE INDEX by_ledger ON public.history_transactions USING btree (ledger_sequence, application_order);
 
 
 --
 -- Name: hist_e_by_order; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE UNIQUE INDEX hist_e_by_order ON history_effects USING btree (history_operation_id, "order");
+CREATE UNIQUE INDEX hist_e_by_order ON public.history_effects USING btree (history_operation_id, "order");
 
 
 --
 -- Name: hist_e_id; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE UNIQUE INDEX hist_e_id ON history_effects USING btree (history_account_id, history_operation_id, "order");
+CREATE UNIQUE INDEX hist_e_id ON public.history_effects USING btree (history_account_id, history_operation_id, "order");
 
 
 --
 -- Name: hist_op_p_id; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE UNIQUE INDEX hist_op_p_id ON history_operation_participants USING btree (history_account_id, history_operation_id);
+CREATE UNIQUE INDEX hist_op_p_id ON public.history_operation_participants USING btree (history_account_id, history_operation_id);
 
 
 --
 -- Name: hist_tx_p_id; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE UNIQUE INDEX hist_tx_p_id ON history_transaction_participants USING btree (history_account_id, history_transaction_id);
+CREATE UNIQUE INDEX hist_tx_p_id ON public.history_transaction_participants USING btree (history_account_id, history_transaction_id);
 
 
 --
 -- Name: hop_by_hoid; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX hop_by_hoid ON history_operation_participants USING btree (history_operation_id);
+CREATE INDEX hop_by_hoid ON public.history_operation_participants USING btree (history_operation_id);
 
 
 --
 -- Name: hs_ledger_by_id; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE UNIQUE INDEX hs_ledger_by_id ON history_ledgers USING btree (id);
+CREATE UNIQUE INDEX hs_ledger_by_id ON public.history_ledgers USING btree (id);
 
 
 --
 -- Name: hs_transaction_by_id; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE UNIQUE INDEX hs_transaction_by_id ON history_transactions USING btree (id);
+CREATE UNIQUE INDEX hs_transaction_by_id ON public.history_transactions USING btree (id);
 
 
 --
 -- Name: htp_by_htid; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX htp_by_htid ON history_transaction_participants USING btree (history_transaction_id);
+CREATE INDEX htp_by_htid ON public.history_transaction_participants USING btree (history_transaction_id);
 
 
 --
 -- Name: htrd_by_base_account; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX htrd_by_base_account ON history_trades USING btree (base_account_id);
+CREATE INDEX htrd_by_base_account ON public.history_trades USING btree (base_account_id);
 
 
 --
 -- Name: htrd_by_counter_account; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX htrd_by_counter_account ON history_trades USING btree (counter_account_id);
+CREATE INDEX htrd_by_counter_account ON public.history_trades USING btree (counter_account_id);
 
 
 --
 -- Name: htrd_by_offer; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX htrd_by_offer ON history_trades USING btree (offer_id);
+CREATE INDEX htrd_by_offer ON public.history_trades USING btree (offer_id);
 
 
 --
 -- Name: htrd_counter_lookup; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX htrd_counter_lookup ON history_trades USING btree (counter_asset_id);
+CREATE INDEX htrd_counter_lookup ON public.history_trades USING btree (counter_asset_id);
 
 
 --
 -- Name: htrd_pair_time_lookup; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX htrd_pair_time_lookup ON history_trades USING btree (base_asset_id, counter_asset_id, ledger_closed_at);
+CREATE INDEX htrd_pair_time_lookup ON public.history_trades USING btree (base_asset_id, counter_asset_id, ledger_closed_at);
 
 
 --
 -- Name: htrd_pid; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE UNIQUE INDEX htrd_pid ON history_trades USING btree (history_operation_id, "order");
+CREATE UNIQUE INDEX htrd_pid ON public.history_trades USING btree (history_operation_id, "order");
 
 
 --
 -- Name: htrd_time_lookup; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX htrd_time_lookup ON history_trades USING btree (ledger_closed_at);
+CREATE INDEX htrd_time_lookup ON public.history_trades USING btree (ledger_closed_at);
 
 
 --
 -- Name: index_history_accounts_on_address; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE UNIQUE INDEX index_history_accounts_on_address ON history_accounts USING btree (address);
+CREATE UNIQUE INDEX index_history_accounts_on_address ON public.history_accounts USING btree (address);
 
 
 --
 -- Name: index_history_accounts_on_id; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE UNIQUE INDEX index_history_accounts_on_id ON history_accounts USING btree (id);
+CREATE UNIQUE INDEX index_history_accounts_on_id ON public.history_accounts USING btree (id);
 
 
 --
 -- Name: index_history_effects_on_type; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX index_history_effects_on_type ON history_effects USING btree (type);
+CREATE INDEX index_history_effects_on_type ON public.history_effects USING btree (type);
 
 
 --
 -- Name: index_history_ledgers_on_closed_at; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX index_history_ledgers_on_closed_at ON history_ledgers USING btree (closed_at);
+CREATE INDEX index_history_ledgers_on_closed_at ON public.history_ledgers USING btree (closed_at);
 
 
 --
 -- Name: index_history_ledgers_on_id; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE UNIQUE INDEX index_history_ledgers_on_id ON history_ledgers USING btree (id);
+CREATE UNIQUE INDEX index_history_ledgers_on_id ON public.history_ledgers USING btree (id);
 
 
 --
 -- Name: index_history_ledgers_on_importer_version; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX index_history_ledgers_on_importer_version ON history_ledgers USING btree (importer_version);
+CREATE INDEX index_history_ledgers_on_importer_version ON public.history_ledgers USING btree (importer_version);
 
 
 --
 -- Name: index_history_ledgers_on_ledger_hash; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE UNIQUE INDEX index_history_ledgers_on_ledger_hash ON history_ledgers USING btree (ledger_hash);
+CREATE UNIQUE INDEX index_history_ledgers_on_ledger_hash ON public.history_ledgers USING btree (ledger_hash);
 
 
 --
 -- Name: index_history_ledgers_on_previous_ledger_hash; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE UNIQUE INDEX index_history_ledgers_on_previous_ledger_hash ON history_ledgers USING btree (previous_ledger_hash);
+CREATE UNIQUE INDEX index_history_ledgers_on_previous_ledger_hash ON public.history_ledgers USING btree (previous_ledger_hash);
 
 
 --
 -- Name: index_history_ledgers_on_sequence; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE UNIQUE INDEX index_history_ledgers_on_sequence ON history_ledgers USING btree (sequence);
+CREATE UNIQUE INDEX index_history_ledgers_on_sequence ON public.history_ledgers USING btree (sequence);
 
 
 --
 -- Name: index_history_operations_on_id; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE UNIQUE INDEX index_history_operations_on_id ON history_operations USING btree (id);
+CREATE UNIQUE INDEX index_history_operations_on_id ON public.history_operations USING btree (id);
 
 
 --
 -- Name: index_history_operations_on_transaction_id; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX index_history_operations_on_transaction_id ON history_operations USING btree (transaction_id);
+CREATE INDEX index_history_operations_on_transaction_id ON public.history_operations USING btree (transaction_id);
 
 
 --
 -- Name: index_history_operations_on_type; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX index_history_operations_on_type ON history_operations USING btree (type);
+CREATE INDEX index_history_operations_on_type ON public.history_operations USING btree (type);
 
 
 --
 -- Name: index_history_transactions_on_id; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE UNIQUE INDEX index_history_transactions_on_id ON history_transactions USING btree (id);
+CREATE UNIQUE INDEX index_history_transactions_on_id ON public.history_transactions USING btree (id);
 
 
 --
 -- Name: trade_effects_by_order_book; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX trade_effects_by_order_book ON history_effects USING btree (((details ->> 'sold_asset_type'::text)), ((details ->> 'sold_asset_code'::text)), ((details ->> 'sold_asset_issuer'::text)), ((details ->> 'bought_asset_type'::text)), ((details ->> 'bought_asset_code'::text)), ((details ->> 'bought_asset_issuer'::text))) WHERE (type = 33);
+CREATE INDEX trade_effects_by_order_book ON public.history_effects USING btree (((details ->> 'sold_asset_type'::text)), ((details ->> 'sold_asset_code'::text)), ((details ->> 'sold_asset_issuer'::text)), ((details ->> 'bought_asset_type'::text)), ((details ->> 'bought_asset_code'::text)), ((details ->> 'bought_asset_issuer'::text))) WHERE (type = 33);
 
 
 --
 -- Name: asset_stats asset_stats_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
-ALTER TABLE ONLY asset_stats
-    ADD CONSTRAINT asset_stats_id_fkey FOREIGN KEY (id) REFERENCES history_assets(id) ON UPDATE RESTRICT ON DELETE CASCADE;
+ALTER TABLE ONLY public.asset_stats
+    ADD CONSTRAINT asset_stats_id_fkey FOREIGN KEY (id) REFERENCES public.history_assets(id) ON UPDATE RESTRICT ON DELETE CASCADE;
 
 
 --
 -- Name: history_trades history_trades_base_account_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
-ALTER TABLE ONLY history_trades
-    ADD CONSTRAINT history_trades_base_account_id_fkey FOREIGN KEY (base_account_id) REFERENCES history_accounts(id);
+ALTER TABLE ONLY public.history_trades
+    ADD CONSTRAINT history_trades_base_account_id_fkey FOREIGN KEY (base_account_id) REFERENCES public.history_accounts(id);
 
 
 --
 -- Name: history_trades history_trades_base_asset_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
-ALTER TABLE ONLY history_trades
-    ADD CONSTRAINT history_trades_base_asset_id_fkey FOREIGN KEY (base_asset_id) REFERENCES history_assets(id);
+ALTER TABLE ONLY public.history_trades
+    ADD CONSTRAINT history_trades_base_asset_id_fkey FOREIGN KEY (base_asset_id) REFERENCES public.history_assets(id);
 
 
 --
 -- Name: history_trades history_trades_counter_account_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
-ALTER TABLE ONLY history_trades
-    ADD CONSTRAINT history_trades_counter_account_id_fkey FOREIGN KEY (counter_account_id) REFERENCES history_accounts(id);
+ALTER TABLE ONLY public.history_trades
+    ADD CONSTRAINT history_trades_counter_account_id_fkey FOREIGN KEY (counter_account_id) REFERENCES public.history_accounts(id);
 
 
 --
 -- Name: history_trades history_trades_counter_asset_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
-ALTER TABLE ONLY history_trades
-    ADD CONSTRAINT history_trades_counter_asset_id_fkey FOREIGN KEY (counter_asset_id) REFERENCES history_assets(id);
+ALTER TABLE ONLY public.history_trades
+    ADD CONSTRAINT history_trades_counter_asset_id_fkey FOREIGN KEY (counter_asset_id) REFERENCES public.history_assets(id);
 
 
 --

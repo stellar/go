@@ -9,6 +9,7 @@ use_manual_close
 KP = Stellar::KeyPair
 close_ledger #2
 
+
 ## Transaction exercises
 
 # time bounds
@@ -372,31 +373,14 @@ close_ledger #47
   bump_sequence :bumper, 100
   close_ledger #59
 
-  bump_sequence :bumper, next_sequence(:bumper)-1
+  bump_sequence :bumper, next_sequence(get_account(:bumper))-1
   close_ledger #60
 
-  bump_sequence :bumper, next_sequence(:bumper)
+  bump_sequence :bumper, next_sequence(get_account(:bumper))
   close_ledger #61
 
-# one-time signer bing consumed
-
-# Public Key	GD6NTRJW5Z6NCWH4USWMNEYF77RUR2MTO6NP4KEDVJATTCUXDRO3YIFS
-# Secret Key	SAOCKUHEWRFMHSDBG33XFOUZDOXRZPKIXR3FUBS5QJ4IVKBGZDZPMLT3
-
-account :onetime, KP.from_seed("SAOCKUHEWRFMHSDBG33XFOUZDOXRZPKIXR3FUBS5QJ4IVKBGZDZPMLT3")
-create_account :onetime
-close_ledger #62
-
-# add one time add_signer
-
-require 'digest'
-x = Digest::SHA256.digest("hello world")
-hash_x = Digest::SHA256.digest(x)
-
-sk = Stellar::SignerKey.new :signer_key_type_hash_x, hash_x
-
-set_options account, signer: Stellar::Signer.new({
-  key:    sk,
-  weight: 1
-})
-close_ledger #63
+# ====================================================================
+# NOTE:  Do not add any additional commands to this recipe.  Due to an 
+# issue, we can't easily go beyond 64 ledgers in a single recipe.
+return
+# ====================================================================
