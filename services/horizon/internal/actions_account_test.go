@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"testing"
 
-	"github.com/stellar/go/services/horizon/internal/resource"
+	"github.com/stellar/go/protocols/horizon"
 )
 
 func TestAccountActions_Show(t *testing.T) {
@@ -17,7 +17,7 @@ func TestAccountActions_Show(t *testing.T) {
 	)
 	if ht.Assert.Equal(200, w.Code) {
 
-		var result resource.Account
+		var result horizon.Account
 		err := json.Unmarshal(w.Body.Bytes(), &result)
 		ht.Require.NoError(err)
 		ht.Assert.Equal("3", result.Sequence)
@@ -35,7 +35,7 @@ func TestAccountActions_ShowRegressions(t *testing.T) {
 	w := ht.Get(
 		"/accounts/GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H",
 	)
-	var result resource.Account
+	var result horizon.Account
 	err := json.Unmarshal(w.Body.Bytes(), &result)
 	ht.Require.NoError(err)
 

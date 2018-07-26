@@ -52,11 +52,8 @@ import:
 - package: github.com/rs/cors
   version: a62a804a8a009876ca59105f7899938a1349f4b3
   repo: https://github.com/rs/cors
-- package: goji.io
-  version: e355964ac565b94cf0fc7f218346626529125086
-  repo: https://github.com/goji/goji
 - package: github.com/asaskevich/govalidator
-  repo: https://github.com/stellar/govalidator.git
+  repo: https://github.com/asaskevich/govalidator.git
 - package: github.com/BurntSushi/toml
   version: 99064174e013895bbd9b025c31100bd1d9b590ca
   repo: https://github.com/BurntSushi/toml
@@ -129,9 +126,6 @@ import:
 - package: github.com/go-ini/ini
   version: 6f66b0e091edb3c7b380f7c4f0f884274d550b67
   repo: https://github.com/go-ini/ini
-- package: github.com/goji/context
-  version: cc5d214cefa9d50beb2cdbf2344eb8c4bd14709b
-  repo: https://github.com/goji/context
 - package: github.com/golang/groupcache
   version: 604ed5785183e59ae2789449d89e73f3a2a77987
   repo: https://github.com/golang/groupcache
@@ -260,15 +254,6 @@ import:
 - package: github.com/yudai/golcs
   version: d1c525dea8ce39ea9a783d33cf08932305373f2c
   repo: https://github.com/yudai/golcs
-- package: github.com/zenazn/goji
-  version: bf843a174a08e846246b8945f8a9a853d84a256a
-  repo: https://github.com/zenazn/goji
-  subpackages:
-  - bind
-  - graceful
-  - web
-  - web/middleware
-  - web/mutil
 - package: golang.org/x/crypto
   version: 1f22c0103821b9390939b6776727195525381532
   repo: https://go.googlesource.com/crypto
@@ -283,6 +268,8 @@ import:
 - package: github.com/go-chi/chi
   version: ~3.1.5
 - package: github.com/tyler-smith/go-bip32
+- package: github.com/tyler-smith/go-bip39
+  version: 52158e4697b87de16ed390e1bdaf813e581008fa
 - package: github.com/btcsuite/btcd
   subpackages:
   - rpcclient
@@ -292,5 +279,4 @@ import:
   subpackages:
   - socks
 - package: github.com/btcsuite/websocket
-- package: github.com/bartekn/go-bip39
-  version: a05967ea095d81c8fe4833776774cfaff8e5036c
+- package: github.com/goji/httpauth

@@ -15,6 +15,7 @@ import (
 // `resolution` parameter.
 var AllowedResolutions = map[time.Duration]struct{}{
 	time.Minute:        {}, //1 minute
+	time.Minute * 5:    {}, //5 minutes
 	time.Minute * 15:   {}, //15 minutes
 	time.Hour:          {}, //1 hour
 	time.Hour * 24:     {}, //day
@@ -23,7 +24,7 @@ var AllowedResolutions = map[time.Duration]struct{}{
 
 // StrictResolutionFiltering represents a simple feature flag to determine whether only
 // predetermined resolutions of trade aggregations are allowed.
-var StrictResolutionFiltering = false
+var StrictResolutionFiltering = true
 
 // TradeAggregation represents an aggregation of trades from the trades table
 type TradeAggregation struct {

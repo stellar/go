@@ -73,7 +73,3 @@ Read more about paging in following docs:
 - [Page](../reference/resources/page.md)
 - [Paging](./paging.md)
 
-## Streaming
-
-Certain endpoints in Horizon can be called in streaming mode using Server-Sent Events. This mode will keep the connection to horizon open and horizon will continue to return responses as ledgers close. All parameters for the endpoints that allow this mode are the same. The way a caller initiates this mode is by setting `Accept: text/event-stream` in the HTTP header when you make the request.
-You can read an example of using the streaming mode in the [Follow Received Payments](./tutorials/follow-received-payments.md) tutorial.

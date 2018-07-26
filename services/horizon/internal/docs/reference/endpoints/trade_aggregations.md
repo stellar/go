@@ -17,7 +17,7 @@ GET /trade_aggregations?base_asset_type={base_asset_type}&base_asset_code={base_
 | ---- | ----- | ----------- | ------- |
 | `start_time` | long | lower time boundary represented as millis since epoch| 1512689100000 |
 | `end_time` | long | upper time boundary represented as millis since epoch| 1512775500000|
-| `resolution` | long | segment duration as millis since epoch. *Supported values are 5 minutes (300000), 15 minutes (900000), 1 hour (3600000), 1 day (86400000) and 1 week (604800000).*| 300000|
+| `resolution` | long | segment duration as millis since epoch. *Supported values are 1 minute (60000), 5 minutes (300000), 15 minutes (900000), 1 hour (3600000), 1 day (86400000) and 1 week (604800000).*| 300000|
 | `base_asset_type` | string | Type of base asset | `native` |
 | `base_asset_code` | string | Code of base asset, not required if type is `native` | `USD` |
 | `base_asset_issuer` | string | Issuer of base asset, not required if type is `native` | 'GA2HGBJIJKI6O4XEM7CZWY5PS6GKSXL6D34ERAJYQSPYA6X6AI7HYW36' |

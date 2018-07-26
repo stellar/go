@@ -3,9 +3,10 @@ package horizon
 import (
 	"github.com/stellar/go/services/horizon/internal/db2/core"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
-	"github.com/stellar/go/services/horizon/internal/resource"
-	"github.com/stellar/go/support/render/hal"
 	"github.com/stellar/go/services/horizon/internal/render/sse"
+	"github.com/stellar/go/services/horizon/internal/resourceadapter"
+	"github.com/stellar/go/protocols/horizon"
+	"github.com/stellar/go/support/render/hal"
 )
 
 // This file contains the actions:
@@ -21,7 +22,7 @@ type AccountShowAction struct {
 	CoreRecord     core.Account
 	CoreSigners    []core.Signer
 	CoreTrustlines []core.Trustline
-	Resource       resource.Account
+	Resource       horizon.Account
 }
 
 // JSON is a method for actions.JSON
@@ -50,7 +51,7 @@ func (action *AccountShowAction) SSE(stream sse.Stream) {
 }
 
 func (action *AccountShowAction) loadParams() {
-	action.Address = action.GetString("id")
+	action.Address = action.GetString("account_id")
 }
 
 func (action *AccountShowAction) loadRecord() {
@@ -93,8 +94,9 @@ func (action *AccountShowAction) loadRecord() {
 }
 
 func (action *AccountShowAction) loadResource() {
-	action.Err = action.Resource.Populate(
-		action.Ctx,
+	action.Err = resourceadapter.PopulateAccount(
+		action.R.Context(),
+		&action.Resource,
 		action.CoreRecord,
 		action.CoreData,
 		action.CoreSigners,

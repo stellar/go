@@ -13,7 +13,6 @@ import (
 	"github.com/stellar/go/services/horizon/internal/log"
 	"github.com/stellar/go/services/horizon/internal/render/problem"
 	"github.com/stellar/go/services/horizon/internal/toid"
-	"github.com/zenazn/goji/web"
 )
 
 // Action is the "base type" for all actions in horizon.  It provides
@@ -34,7 +33,7 @@ type Action struct {
 // CoreQ provides access to queries that access the stellar core database.
 func (action *Action) CoreQ() *core.Q {
 	if action.cq == nil {
-		action.cq = &core.Q{Session: action.App.CoreSession(action.Ctx)}
+		action.cq = &core.Q{Session: action.App.CoreSession(action.R.Context())}
 	}
 
 	return action.cq
@@ -44,20 +43,19 @@ func (action *Action) CoreQ() *core.Q {
 // horizon's database.
 func (action *Action) HistoryQ() *history.Q {
 	if action.hq == nil {
-		action.hq = &history.Q{Session: action.App.HorizonSession(action.Ctx)}
+		action.hq = &history.Q{Session: action.App.HorizonSession(action.R.Context())}
 	}
 
 	return action.hq
 }
 
-// Prepare sets the action's App field based upon the goji context
-func (action *Action) Prepare(c web.C, w http.ResponseWriter, r *http.Request) {
+// Prepare sets the action's App field based upon the context
+func (action *Action) Prepare(w http.ResponseWriter, r *http.Request) {
 	base := &action.Base
-	base.Prepare(c, w, r)
-	action.App = action.GojiCtx.Env["app"].(*App)
-
-	if action.Ctx != nil {
-		action.Log = log.Ctx(action.Ctx)
+	base.Prepare(w, r)
+	action.App = AppFromContext(r.Context())
+	if action.R.Context() != nil {
+		action.Log = log.Ctx(action.R.Context())
 	} else {
 		action.Log = log.DefaultLogger
 	}
@@ -151,5 +149,5 @@ func (action *Action) FullURL() *url.URL {
 // baseURL returns the base url for this request, defined as a url containing
 // the Host and Scheme portions of the request uri.
 func (action *Action) baseURL() *url.URL {
-	return httpx.BaseURL(action.Ctx)
+	return httpx.BaseURL(action.R.Context())
 }

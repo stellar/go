@@ -1,12 +1,15 @@
 package horizon
 
 import (
+	"github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/services/horizon/internal/db2"
 	"github.com/stellar/go/services/horizon/internal/db2/core"
-	"github.com/stellar/go/services/horizon/internal/render/hal"
+	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/services/horizon/internal/render/sse"
-	"github.com/stellar/go/services/horizon/internal/resource"
-	halRender "github.com/stellar/go/support/render/hal"
+	"github.com/stellar/go/services/horizon/internal/resourceadapter"
+	"github.com/stellar/go/support/render/hal"
+	"fmt"
+	"errors"
 )
 
 // This file contains the actions:
@@ -19,6 +22,7 @@ type OffersByAccountAction struct {
 	Address   string
 	PageQuery db2.PageQuery
 	Records   []core.Offer
+	Ledgers   history.LedgerCache
 	Page      hal.Page
 }
 
@@ -27,9 +31,10 @@ func (action *OffersByAccountAction) JSON() {
 	action.Do(
 		action.loadParams,
 		action.loadRecords,
+		action.loadLedgers,
 		action.loadPage,
 		func() {
-			halRender.Render(action.W, action.Page)
+			hal.Render(action.W, action.Page)
 		},
 	)
 }
@@ -42,8 +47,14 @@ func (action *OffersByAccountAction) SSE(stream sse.Stream) {
 		func() {
 			stream.SetLimit(int(action.PageQuery.Limit))
 			for _, record := range action.Records[stream.SentCount():] {
-				var res resource.Offer
-				res.Populate(action.Ctx, record)
+				ledger, found := action.Ledgers.Records[record.Lastmodified]
+				if !found {
+					msg := fmt.Sprintf("could not find ledger data for sequence %d", record.Lastmodified)
+					stream.Err(errors.New(msg))
+					return
+				}
+				var res horizon.Offer
+				resourceadapter.PopulateOffer(action.R.Context(), &res, record, ledger)
 				stream.Send(sse.Event{ID: res.PagingToken(), Data: res})
 			}
 		},
@@ -53,6 +64,14 @@ func (action *OffersByAccountAction) SSE(stream sse.Stream) {
 func (action *OffersByAccountAction) loadParams() {
 	action.PageQuery = action.GetPageQuery()
 	action.Address = action.GetString("account_id")
+}
+
+// loadLedgers populates the ledger cache for this action
+func (action *OffersByAccountAction) loadLedgers() {
+	for _, offer := range action.Records {
+		action.Ledgers.Queue(offer.Lastmodified)
+	}
+	action.Err = action.Ledgers.Load(action.HistoryQ())
 }
 
 func (action *OffersByAccountAction) loadRecords() {
@@ -65,8 +84,15 @@ func (action *OffersByAccountAction) loadRecords() {
 
 func (action *OffersByAccountAction) loadPage() {
 	for _, record := range action.Records {
-		var res resource.Offer
-		res.Populate(action.Ctx, record)
+		ledger, found := action.Ledgers.Records[record.Lastmodified]
+		if !found {
+			msg := fmt.Sprintf("could not find ledger data for sequence %d", record.Lastmodified)
+			action.Err = errors.New(msg)
+			return
+		}
+
+		var res horizon.Offer
+		resourceadapter.PopulateOffer(action.R.Context(), &res, record, ledger)
 		action.Page.Add(res)
 	}
 

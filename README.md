@@ -7,8 +7,6 @@ This repo is the home for all of the public go code produced by SDF.  In additio
 
 ## Dependencies
 
-*NOTE: this repo presently uses a fork of govalidator that incorporates https://github.com/asaskevich/govalidator/pull/165. Vendored dependencies must be restored (using `glide install`) to get proper behaviour. In other words, this repo is not currently "go gettable"*
-
 This repository depends upon a [number of external dependencies](./glide.yaml), and we use [Glide](https://glide.sh/) to manage them.  Glide is used to populate the [vendor directory](http://glide.readthedocs.io/en/latest/vendor/), ensuring that builds are reproducible even as upstream dependencies are changed. Please see the [Glide](http://glide.sh/) website for installation instructions.
 
 You can use Glide yourself in your project and add stellar go as a vendor'd dependency, or you can just drop this repos as `$GOPATH/src/github.com/stellar/go` to import it the canonical way (you still need to run `glide install`).
