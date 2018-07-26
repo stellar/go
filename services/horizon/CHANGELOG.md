@@ -16,6 +16,12 @@ bumps.  A breaking change will get clearly notified in this log.
 
 - dropped support for go1.8 since we need big.IsInt64 from math/big in our findpaths calculations
 
+## v0.13.1 - 2018-07-26
+
+### Bug fixes
+
+* Fixed a conversion bug when `timebounds.max_time` is set to `INT64_MAX`.
+
 ## v0.13.0 - 2018-06-06
 
 ### Breaking changes
