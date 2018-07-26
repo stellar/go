@@ -6,6 +6,12 @@ file.  This project adheres to [Semantic Versioning](http://semver.org/).
 As this project is pre 1.0, breaking changes may happen for minor version
 bumps.  A breaking change will get clearly notified in this log.
 
+## v0.13.1 - 2018-07-26
+
+### Bug fixes
+
+* Fixed a conversion bug when `timebounds.max_time` is set to `INT64_MAX`.
+
 ## v0.13.0 - 2018-06-06
 
 ### Breaking changes
