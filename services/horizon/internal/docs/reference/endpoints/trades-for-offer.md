@@ -17,7 +17,7 @@ GET /offers/{offer_id}/trades{?cursor,limit,order}
 | name | notes | description | example |
 | ---- | ----- | ----------- | ------- |
 | `offer_id` | required, number | ID of an offer | 323223 |
-| `?cursor` | optional, any, default _null_ | A paging token, specifying where to start returning records from. When streaming this can be set to `now` to stream object created since your request time. | 12884905984 |
+| `?cursor` | optional, any, default _null_ | A paging token, specifying where to start returning records from. | 12884905984 |
 | `?order`  | optional, string, default `asc` | The order in which to return rows, "asc" or "desc". | `asc` |
 | `?limit`  | optional, number, default: `10` | Maximum number of records to return. | `200` |
 
@@ -36,8 +36,8 @@ var server = new StellarSdk.Server('https://horizon-testnet.stellar.org');
 server.trades()
     .forOffer(323223)
     .call()
-    .then(function (accountResult) {
-      console.log(accountResult);
+    .then(function (tradesResult) {
+      console.log(tradesResult);
     })
     .catch(function (err) {
       console.error(err);
@@ -106,4 +106,4 @@ This endpoint responds with a list of trades that consumed a given offer. See th
 ## Possible Errors
 
 - The [standard errors](../errors.md#Standard-Errors).
-- [not_found](../errors/not-found.md): A `not_found` error will be returned if there is no account whose ID matches the `account_id` argument.
+- [not_found](../errors/not-found.md): A `not_found` error will be returned if there is no offer whose ID matches the `offer_id` argument.
