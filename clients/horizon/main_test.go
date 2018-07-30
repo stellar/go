@@ -1,7 +1,9 @@
 package horizon
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"testing"
 	"time"
@@ -101,6 +103,66 @@ func TestLoadAccount(t *testing.T) {
 	).ReturnError("http.Client error")
 
 	_, err = client.LoadAccount("GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H")
+	if assert.Error(t, err) {
+		assert.Contains(t, err.Error(), "http.Client error")
+		_, ok := err.(*Error)
+		assert.Equal(t, ok, false)
+	}
+}
+
+func TestLoadAccountMergeAmount(t *testing.T) {
+	hmock := httptest.NewClient()
+	client := &Client{
+		URL:  "https://localhost",
+		HTTP: hmock,
+	}
+
+	var payment Payment
+	b := bytes.NewBuffer([]byte(accountMergePayment))
+
+	json.NewDecoder(b).Decode(&payment)
+
+	// happy path
+	hmock.On(
+		"GET",
+		"https://localhost/operations/43989725060534273/effects",
+	).ReturnString(200, accountMergeEffectsResponse)
+
+	err := client.LoadAccountMergeAmount(&payment)
+	if assert.NoError(t, err) {
+		assert.Equal(t, "9999.9999900", payment.Amount)
+	}
+
+	// failure response -- decode error on horizon error
+	hmock.On(
+		"GET",
+		"https://localhost/operations/43989725060534273/effects",
+	).ReturnString(500, internalServerError)
+
+	err = client.LoadAccountMergeAmount(&payment)
+	if assert.Error(t, err) {
+		assert.Contains(t, err.Error(), "Internal Server Error")
+		assert.Contains(t, err.Error(), "Error decoding effects page")
+	}
+
+	// failure response -- account_credited not found
+	hmock.On(
+		"GET",
+		"https://localhost/operations/43989725060534273/effects",
+	).ReturnString(200, accountMergeEffectsResponseIncomplete)
+
+	err = client.LoadAccountMergeAmount(&payment)
+	if assert.Error(t, err) {
+		assert.Contains(t, err.Error(), "Could not find `account_credited` effect in `account_merge` operation effects")
+	}
+
+	// connection error
+	hmock.On(
+		"GET",
+		"https://localhost/operations/43989725060534273/effects",
+	).ReturnError("http.Client error")
+
+	err = client.LoadAccountMergeAmount(&payment)
 	if assert.Error(t, err) {
 		assert.Contains(t, err.Error(), "http.Client error")
 		_, ok := err.(*Error)
@@ -336,6 +398,172 @@ func TestSubmitTransaction(t *testing.T) {
 		assert.Equal(t, ok, false)
 	}
 }
+
+var accountMergePayment = `{
+    "_links": {
+      "self": {
+        "href": "https://localhost/operations/43989725060534273"
+      },
+      "transaction": {
+        "href": "https://localhost/transactions/081e3937a98c0ae0ca43400039fb0b5b814ad776cd90abafe9c1919c4fed6745"
+      },
+      "effects": {
+        "href": "https://localhost/operations/43989725060534273/effects"
+      },
+      "succeeds": {
+        "href": "https://localhost/effects?order=desc&cursor=43989725060534273"
+      },
+      "precedes": {
+        "href": "https://localhost/effects?order=asc&cursor=43989725060534273"
+      }
+    },
+    "id": "43989725060534273",
+    "paging_token": "43989725060534273",
+    "source_account": "GANHAS5OMPLKD6VYU4LK7MBHSHB2Q37ZHAYWOBJRUXGDHMPJF3XNT45Y",
+    "type": "account_merge",
+    "type_i": 8,
+    "created_at": "2018-07-27T21:00:12Z",
+    "transaction_hash": "081e3937a98c0ae0ca43400039fb0b5b814ad776cd90abafe9c1919c4fed6745",
+    "account": "GANHAS5OMPLKD6VYU4LK7MBHSHB2Q37ZHAYWOBJRUXGDHMPJF3XNT45Y",
+    "into": "GBO7LQUWCC7M237TU2PAXVPOLLYNHYCYYFCLVMX3RBJCML4WA742X3UB"
+}`
+
+var accountMergeEffectsResponse = `{
+  "_links": {
+    "self": {
+      "href": "https://horizon-testnet.stellar.org/operations/43989725060534273/effects?cursor=&limit=10&order=asc"
+    },
+    "next": {
+      "href": "https://horizon-testnet.stellar.org/operations/43989725060534273/effects?cursor=43989725060534273-3&limit=10&order=asc"
+    },
+    "prev": {
+      "href": "https://horizon-testnet.stellar.org/operations/43989725060534273/effects?cursor=43989725060534273-1&limit=10&order=desc"
+    }
+  },
+  "_embedded": {
+    "records": [
+      {
+        "_links": {
+          "operation": {
+            "href": "https://horizon-testnet.stellar.org/operations/43989725060534273"
+          },
+          "succeeds": {
+            "href": "https://horizon-testnet.stellar.org/effects?order=desc&cursor=43989725060534273-1"
+          },
+          "precedes": {
+            "href": "https://horizon-testnet.stellar.org/effects?order=asc&cursor=43989725060534273-1"
+          }
+        },
+        "id": "0043989725060534273-0000000001",
+        "paging_token": "43989725060534273-1",
+        "account": "GANHAS5OMPLKD6VYU4LK7MBHSHB2Q37ZHAYWOBJRUXGDHMPJF3XNT45Y",
+        "type": "account_debited",
+        "type_i": 3,
+        "created_at": "2018-07-27T21:00:12Z",
+        "asset_type": "native",
+        "amount": "9999.9999900"
+      },
+      {
+        "_links": {
+          "operation": {
+            "href": "https://horizon-testnet.stellar.org/operations/43989725060534273"
+          },
+          "succeeds": {
+            "href": "https://horizon-testnet.stellar.org/effects?order=desc&cursor=43989725060534273-2"
+          },
+          "precedes": {
+            "href": "https://horizon-testnet.stellar.org/effects?order=asc&cursor=43989725060534273-2"
+          }
+        },
+        "id": "0043989725060534273-0000000002",
+        "paging_token": "43989725060534273-2",
+        "account": "GBO7LQUWCC7M237TU2PAXVPOLLYNHYCYYFCLVMX3RBJCML4WA742X3UB",
+        "type": "account_credited",
+        "type_i": 2,
+        "created_at": "2018-07-27T21:00:12Z",
+        "asset_type": "native",
+        "amount": "9999.9999900"
+      },
+      {
+        "_links": {
+          "operation": {
+            "href": "https://horizon-testnet.stellar.org/operations/43989725060534273"
+          },
+          "succeeds": {
+            "href": "https://horizon-testnet.stellar.org/effects?order=desc&cursor=43989725060534273-3"
+          },
+          "precedes": {
+            "href": "https://horizon-testnet.stellar.org/effects?order=asc&cursor=43989725060534273-3"
+          }
+        },
+        "id": "0043989725060534273-0000000003",
+        "paging_token": "43989725060534273-3",
+        "account": "GANHAS5OMPLKD6VYU4LK7MBHSHB2Q37ZHAYWOBJRUXGDHMPJF3XNT45Y",
+        "type": "account_removed",
+        "type_i": 1,
+        "created_at": "2018-07-27T21:00:12Z"
+      }
+    ]
+  }
+}`
+
+var accountMergeEffectsResponseIncomplete = `{
+  "_links": {
+    "self": {
+      "href": "https://horizon-testnet.stellar.org/operations/43989725060534273/effects?cursor=&limit=10&order=asc"
+    },
+    "next": {
+      "href": "https://horizon-testnet.stellar.org/operations/43989725060534273/effects?cursor=43989725060534273-3&limit=10&order=asc"
+    },
+    "prev": {
+      "href": "https://horizon-testnet.stellar.org/operations/43989725060534273/effects?cursor=43989725060534273-1&limit=10&order=desc"
+    }
+  },
+  "_embedded": {
+    "records": [
+      {
+        "_links": {
+          "operation": {
+            "href": "https://horizon-testnet.stellar.org/operations/43989725060534273"
+          },
+          "succeeds": {
+            "href": "https://horizon-testnet.stellar.org/effects?order=desc&cursor=43989725060534273-1"
+          },
+          "precedes": {
+            "href": "https://horizon-testnet.stellar.org/effects?order=asc&cursor=43989725060534273-1"
+          }
+        },
+        "id": "0043989725060534273-0000000001",
+        "paging_token": "43989725060534273-1",
+        "account": "GANHAS5OMPLKD6VYU4LK7MBHSHB2Q37ZHAYWOBJRUXGDHMPJF3XNT45Y",
+        "type": "account_debited",
+        "type_i": 3,
+        "created_at": "2018-07-27T21:00:12Z",
+        "asset_type": "native",
+        "amount": "9999.9999900"
+      },
+      {
+        "_links": {
+          "operation": {
+            "href": "https://horizon-testnet.stellar.org/operations/43989725060534273"
+          },
+          "succeeds": {
+            "href": "https://horizon-testnet.stellar.org/effects?order=desc&cursor=43989725060534273-3"
+          },
+          "precedes": {
+            "href": "https://horizon-testnet.stellar.org/effects?order=asc&cursor=43989725060534273-3"
+          }
+        },
+        "id": "0043989725060534273-0000000003",
+        "paging_token": "43989725060534273-3",
+        "account": "GANHAS5OMPLKD6VYU4LK7MBHSHB2Q37ZHAYWOBJRUXGDHMPJF3XNT45Y",
+        "type": "account_removed",
+        "type_i": 1,
+        "created_at": "2018-07-27T21:00:12Z"
+      }
+    ]
+  }
+}`
 
 var accountResponse = `{
   "_links": {
@@ -888,4 +1116,12 @@ var transactionFailure = `{
     },
     "result_xdr": "AAAAAAAAAAD////4AAAAAA=="
   }
+}`
+
+var internalServerError = `{
+  "type":     "https://www.stellar.org/docs/horizon/problems/server_error",
+  "title":    "Internal Server Error",
+  "status":   500,
+  "details":  "Horizon unavailible",
+  "instance": "d3465740-ec3a-4a0b-9d4a-c9ea734ce58a"
 }`
