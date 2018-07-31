@@ -1,8 +1,9 @@
 package sse
 
 import (
-	"context"
 	"net/http"
+
+	"golang.org/x/net/context"
 )
 
 // Stream represents an output stream that data can be written to
