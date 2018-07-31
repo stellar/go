@@ -279,7 +279,7 @@ func (c *Client) LoadAccountMergeAmount(p *Payment) error {
 	}
 	defer res.Body.Close()
 	var page EffectsPage
-	err = json.NewDecoder(res.Body).Decode(&page)
+	err = decodeResponse(res, &page)
 	if err != nil {
 		return errors.Wrap(err, "Error decoding effects page")
 	}
