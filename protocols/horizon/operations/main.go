@@ -22,6 +22,7 @@ var TypeNames = map[xdr.OperationType]string{
 	xdr.OperationTypeAccountMerge:       "account_merge",
 	xdr.OperationTypeInflation:          "inflation",
 	xdr.OperationTypeManageData:         "manage_data",
+	xdr.OperationTypeBumpSequence:       "bump_sequence",
 }
 
 // Base represents the common attributes of an operation resource
