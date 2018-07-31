@@ -18,7 +18,7 @@ func TestOfferActions_Index(t *testing.T) {
 		//test last modified timestamp
 		var records []map[string]interface{}
 		ht.UnmarshalPage(w.Body, &records)
-		ht.Assert.Equal("2018-06-01T17:10:08Z", records[2]["last_modified_time"])
+		ht.Assert.Equal("2018-07-25T23:03:35Z", records[2]["last_modified_time"])
 		ht.Assert.EqualValues(5, records[2]["last_modified_ledger"])
 	}
 }
