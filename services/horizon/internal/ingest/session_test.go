@@ -6,6 +6,7 @@ import (
 	"github.com/stellar/go/services/horizon/internal/db2"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/services/horizon/internal/test"
+	"github.com/stellar/go/xdr"
 )
 
 func Test_ingestSignerEffects(t *testing.T) {
@@ -73,4 +74,42 @@ func Test_ingestOperationEffects(t *testing.T) {
 		tt.Assert.Equal(history.EffectTrade, effects[3].Type)
 	}
 
+}
+
+func Test_ingestBumpSeq(t *testing.T) {
+	tt := test.Start(t).ScenarioWithoutHorizon("kahuna")
+	defer tt.Finish()
+
+	s := ingest(tt)
+	tt.Require.NoError(s.Err)
+
+	q := &history.Q{Session: tt.HorizonSession()}
+
+	//ensure bumpseq operations
+	var ops []history.Operation
+	err := q.Operations().ForAccount("GCQZP3IU7XU6EJ63JZXKCQOYT2RNXN3HB5CNHENNUEUHSMA4VUJJJSEN").Select(&ops)
+	tt.Require.NoError(err)
+	if tt.Assert.Len(ops, 5) {
+		//first is create account, and then bump sequences
+		tt.Assert.Equal(xdr.OperationTypeCreateAccount, ops[0].Type)
+		for i := 1; i < 5; i++ {
+			tt.Assert.Equal(xdr.OperationTypeBumpSequence, ops[i].Type)
+		}
+	}
+
+	//ensure bumpseq effect
+	var effects []history.Effect
+	err = q.Effects().OfType(history.EffectSequenceBumped).Select(&effects)
+	tt.Require.NoError(err)
+
+	//sample a bumpseq effect
+	if tt.Assert.Len(effects, 1) {
+		testEffect := effects[0]
+		details := struct {
+			NewSq int64 `json:"new_seq"`
+		}{}
+		err = testEffect.UnmarshalDetails(&details)
+		println(details.NewSq)
+		tt.Assert.Equal(int64(300000000000), details.NewSq)
+	}
 }

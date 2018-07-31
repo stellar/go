@@ -101,6 +101,9 @@ const (
 	// EffectDataUpdated occurs when an account changes a data field's value
 	EffectDataUpdated EffectType = 42 // from manage_data
 
+	// EffectSequenceBumped occurs when an account bumps their sequence number
+	EffectSequenceBumped EffectType = 43 // from bump_sequence
+
 )
 
 // Account is a row of data from the `history_accounts` table
