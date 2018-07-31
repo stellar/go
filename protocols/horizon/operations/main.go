@@ -1,9 +1,10 @@
 package operations
 
 import (
+	"time"
+
 	"github.com/stellar/go/protocols/horizon/base"
 	"github.com/stellar/go/support/render/hal"
-	"time"
 	"github.com/stellar/go/xdr"
 )
 
@@ -47,6 +48,12 @@ func (this Base) PagingToken() string {
 	return this.PT
 }
 
+// BumpSequence is the json resource representing a single operation whose type is
+// BumpSequence.
+type BumpSequence struct {
+	Base
+	BumpTo string `json:"bump_to"`
+}
 
 // CreateAccount is the json resource representing a single operation whose type
 // is CreateAccount.

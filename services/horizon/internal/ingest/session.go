@@ -782,7 +782,7 @@ func (is *Session) operationDetails() map[string]interface{} {
 		}
 	case xdr.OperationTypeBumpSequence:
 		op := c.Operation().Body.MustBumpSequenceOp()
-		details["bump_to"] = op.BumpTo
+		details["bump_to"] = fmt.Sprintf("%d", op.BumpTo)
 	default:
 		panic(fmt.Errorf("Unknown operation type: %s", c.OperationType()))
 	}
