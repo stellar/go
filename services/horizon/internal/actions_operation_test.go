@@ -5,9 +5,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stellar/go/protocols/horizon/operations"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/services/horizon/internal/test"
-	"github.com/stellar/go/protocols/horizon/operations"
 )
 
 func TestOperationActions_Index(t *testing.T) {
@@ -135,4 +135,14 @@ func TestOperation_CreatedAt(t *testing.T) {
 	ht.Require.NoError(hq.LedgerBySequence(&l, 3))
 
 	ht.Assert.WithinDuration(l.ClosedAt, records[0].LedgerCloseTime, 1*time.Second)
+}
+
+func TestOperation_Type(t *testing.T) {
+	ht := StartHTTPTest(t, "kahuna")
+	defer ht.Finish()
+
+	w := ht.Get("/accounts/GCQZP3IU7XU6EJ63JZXKCQOYT2RNXN3HB5CNHENNUEUHSMA4VUJJJSEN/operations")
+	if ht.Assert.Equal(200, w.Code) {
+		ht.Assert.PageOf(5, w.Body)
+	}
 }
