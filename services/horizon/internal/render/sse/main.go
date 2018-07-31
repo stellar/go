@@ -1,13 +1,13 @@
 package sse
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"sync"
 
 	"github.com/stellar/go/support/log"
-	"golang.org/x/net/context"
 )
 
 // Event is the packet of data that gets sent over the wire to a connected
