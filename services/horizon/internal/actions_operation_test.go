@@ -137,12 +137,16 @@ func TestOperation_CreatedAt(t *testing.T) {
 	ht.Assert.WithinDuration(l.ClosedAt, records[0].LedgerCloseTime, 1*time.Second)
 }
 
-func TestOperation_Type(t *testing.T) {
+func TestOperation_BumpSequence(t *testing.T) {
 	ht := StartHTTPTest(t, "kahuna")
 	defer ht.Finish()
 
-	w := ht.Get("/accounts/GCQZP3IU7XU6EJ63JZXKCQOYT2RNXN3HB5CNHENNUEUHSMA4VUJJJSEN/operations")
+	w := ht.Get("/operations/261993009153")
 	if ht.Assert.Equal(200, w.Code) {
-		ht.Assert.PageOf(5, w.Body)
+		var result operations.BumpSequence
+		err := json.Unmarshal(w.Body.Bytes(), &result)
+		ht.Require.NoError(err, "failed to parse body")
+		ht.Assert.Equal("bump_sequence", result.Type)
+		ht.Assert.Equal("300000000003", result.BumpTo)
 	}
 }
