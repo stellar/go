@@ -13,6 +13,7 @@ import (
 	"strings"
 
 	"github.com/manucorporat/sse"
+	"github.com/stellar/go/protocols/horizon/operations"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
 )
@@ -246,14 +247,14 @@ func addAssetToQuery(v map[string][]string, assetPrefix string, asset Asset) {
 }
 
 // LoadOperation loads a single operation from Horizon server
-func (c *Client) LoadOperation(operationID string) (payment Payment, err error) {
+func (c *Client) LoadOperation(operationID string) (operation operations.Base, err error) {
 	c.fixURLOnce.Do(c.fixURL)
 	resp, err := c.HTTP.Get(c.URL + "/operations/" + operationID)
 	if err != nil {
 		return
 	}
 
-	err = decodeResponse(resp, &payment)
+	err = decodeResponse(resp, &operation)
 	return
 }
 
