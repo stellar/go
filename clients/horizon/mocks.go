@@ -3,6 +3,7 @@ package horizon
 import (
 	"context"
 
+	"github.com/stellar/go/protocols/horizon/operations"
 	"github.com/stellar/go/xdr"
 	"github.com/stretchr/testify/mock"
 )
@@ -86,9 +87,9 @@ func (m *MockClient) LoadMemo(p *Payment) error {
 }
 
 // LoadMemo is a mocking a method
-func (m *MockClient) LoadOperation(operationID string) (payment Payment, err error) {
+func (m *MockClient) LoadOperation(operationID string) (operation operations.Base, err error) {
 	a := m.Called(operationID)
-	return a.Get(0).(Payment), a.Error(1)
+	return a.Get(0).(operations.Base), a.Error(1)
 }
 
 // LoadOrderBook is a mocking a method

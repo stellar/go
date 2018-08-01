@@ -355,6 +355,57 @@ func TestLoadOrderBook(t *testing.T) {
 
 }
 
+func TestLoadOperation(t *testing.T) {
+	hmock := httptest.NewClient()
+	client := &Client{
+		URL:  "https://localhost",
+		HTTP: hmock,
+	}
+
+	// happy path
+	hmock.On(
+		"GET",
+		"https://localhost/operations/123",
+	).ReturnString(200, operationResponse)
+
+	operation, err := client.LoadOperation("123")
+	if assert.NoError(t, err) {
+		assert.Equal(t, operation.ID, "123")
+		assert.Equal(t, operation.PT, "123")
+		assert.Equal(t, operation.Type, "create_account")
+		assert.Equal(t, operation.TypeI, int32(0))
+		assert.Equal(t, operation.TransactionHash, "17a670bc424ff5ce3b386dbfaae9990b66a2a37b4fbe51547e8794962a3f9e6a")
+
+	}
+
+	// failure response
+	hmock.On(
+		"GET",
+		"https://localhost/operations/123",
+	).ReturnString(404, notFoundResponse)
+
+	_, err = client.LoadOperation("123")
+	if assert.Error(t, err) {
+		assert.Contains(t, err.Error(), "Horizon error")
+		horizonError, ok := err.(*Error)
+		assert.Equal(t, ok, true)
+		assert.Equal(t, horizonError.Problem.Title, "Resource Missing")
+	}
+
+	// connection error
+	hmock.On(
+		"GET",
+		"https://localhost/operations/123",
+	).ReturnError("http.Client error")
+
+	_, err = client.LoadOperation("123")
+	if assert.Error(t, err) {
+		assert.Contains(t, err.Error(), "http.Client error")
+		_, ok := err.(*Error)
+		assert.Equal(t, ok, false)
+	}
+}
+
 func TestSubmitTransaction(t *testing.T) {
 	hmock := httptest.NewClient()
 	client := &Client{
@@ -700,6 +751,35 @@ var accountOffersResponse = `{
       }
     ]
   }
+}`
+
+var operationResponse = `{
+  "_links": {
+    "self": {
+      "href": "https://horizon-testnet.stellar.org/operations/123"
+    },
+    "transaction": {
+      "href": "https://horizon-testnet.stellar.org/transactions/17a670bc424ff5ce3b386dbfaae9990b66a2a37b4fbe51547e8794962a3f9e6a"
+    },
+    "effects": {
+      "href": "https://horizon-testnet.stellar.org/operations/123/effects"
+    },
+    "succeeds": {
+      "href": "https://horizon-testnet.stellar.org/effects?order=desc&cursor=10157597659137"
+    },
+    "precedes": {
+      "href": "https://horizon-testnet.stellar.org/effects?order=asc&cursor=10157597659137"
+    }
+  },
+  "id": "123",
+  "paging_token": "123",
+  "source_account": "GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H",
+  "type": "create_account",
+  "type_i": 0,
+  "transaction_hash": "17a670bc424ff5ce3b386dbfaae9990b66a2a37b4fbe51547e8794962a3f9e6a",
+  "starting_balance": "50000000.0000000",
+  "funder": "GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H",
+  "account": "GBS43BF24ENNS3KPACUZVKK2VYPOZVBQO2CISGZ777RYGOPYC2FT6S3K"
 }`
 
 var transactionResponse = `{

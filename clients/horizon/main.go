@@ -13,6 +13,7 @@ import (
 	"sync"
 
 	"github.com/stellar/go/build"
+	"github.com/stellar/go/protocols/horizon/operations"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
 )
@@ -101,7 +102,7 @@ type ClientInterface interface {
 	) (tradesPage TradesPage, err error)
 	LoadAccountMergeAmount(p *Payment) error
 	LoadMemo(p *Payment) error
-	LoadOperation(operationID string) (payment Payment, err error)
+	LoadOperation(operationID string) (operation operations.Base, err error)
 	LoadOrderBook(selling Asset, buying Asset, params ...interface{}) (orderBook OrderBookSummary, err error)
 	LoadTransaction(transactionID string) (transaction Transaction, err error)
 	SequenceForAccount(accountID string) (xdr.SequenceNumber, error)
