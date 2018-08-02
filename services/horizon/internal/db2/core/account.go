@@ -18,8 +18,16 @@ func (ac Account) IsAuthRevocable() bool {
 }
 
 // AccountByAddress loads a row from `accounts`, by address
-func (q *Q) AccountByAddress(dest interface{}, addy string) error {
-	sql := selectAccount.Limit(1).Where("accountid = ?", addy)
+func (q *Q) AccountByAddress(dest interface{}, addy string, protocolVersion int32) error {
+	var selectQuery sq.SelectBuilder
+
+	if protocolVersion >= 10 {
+		selectQuery = selectAccount
+	} else {
+		selectQuery = selectAccountPreV10
+	}
+
+	sql := selectQuery.Limit(1).Where("accountid = ?", addy)
 
 	return q.Get(dest, sql)
 }
@@ -72,4 +80,15 @@ var selectAccount = sq.Select(
 	// `Invalid value for xdr.Int64`
 	"coalesce(a.buyingliabilities, 0) as buyingliabilities",
 	"coalesce(a.sellingliabilities, 0) as sellingliabilities",
+).From("accounts a")
+
+var selectAccountPreV10 = sq.Select(
+	"a.accountid",
+	"a.balance",
+	"a.seqnum",
+	"a.numsubentries",
+	"a.inflationdest",
+	"a.homedomain",
+	"a.thresholds",
+	"a.flags",
 ).From("accounts a")

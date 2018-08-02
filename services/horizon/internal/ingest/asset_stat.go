@@ -211,7 +211,8 @@ func statTrustlinesInfo(coreQ *core.Q, assetType xdr.AssetType, assetCode string
 // statAccountInfo fetches all the stats from the accounts table
 func statAccountInfo(coreQ *core.Q, accountID string) (int8, string, error) {
 	var account core.Account
-	err := coreQ.AccountByAddress(&account, accountID)
+	// We don't need liabilities data here so let's use the old V9 query
+	err := coreQ.AccountByAddress(&account, accountID, 9)
 	if err != nil {
 		return -1, "", errors.Wrap(err, "coreQ.AccountByAddress error")
 	}
