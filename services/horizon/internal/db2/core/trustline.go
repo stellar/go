@@ -9,10 +9,10 @@ import (
 
 // AssetsForAddress loads `dest` as `[]xdr.Asset` with every asset the account
 // at `addy` can hold.
-func (q *Q) AssetsForAddress(dest interface{}, addy string) error {
+func (q *Q) AssetsForAddress(dest interface{}, addy string, protocolVersion int32) error {
 	var tls []Trustline
 
-	err := q.TrustlinesByAddress(&tls, addy)
+	err := q.TrustlinesByAddress(&tls, addy, protocolVersion)
 	if err != nil {
 		return err
 	}
@@ -38,8 +38,16 @@ func (q *Q) AssetsForAddress(dest interface{}, addy string) error {
 }
 
 // TrustlinesByAddress loads all trustlines for `addy`
-func (q *Q) TrustlinesByAddress(dest interface{}, addy string) error {
-	sql := selectTrustline.Where("accountid = ?", addy)
+func (q *Q) TrustlinesByAddress(dest interface{}, addy string, protocolVersion int32) error {
+	var selectQuery sq.SelectBuilder
+
+	if protocolVersion >= 10 {
+		selectQuery = selectTrustline
+	} else {
+		selectQuery = selectTrustlinePreV10
+	}
+
+	sql := selectQuery.Where("accountid = ?", addy)
 	return q.Select(dest, sql)
 }
 
@@ -71,5 +79,20 @@ var selectTrustline = sq.Select(
 	"tl.tlimit",
 	"tl.balance",
 	"tl.flags",
+	// Liabilities can be NULL so can error without `coalesce`:
+	// `Invalid value for xdr.Int64`
+	"coalesce(tl.buyingliabilities, 0) as buyingliabilities",
+	"coalesce(tl.sellingliabilities, 0) as sellingliabilities",
 ).From("trustlines tl")
+
+var selectTrustlinePreV10 = sq.Select(
+	"tl.accountid",
+	"tl.assettype",
+	"tl.issuer",
+	"tl.assetcode",
+	"tl.tlimit",
+	"tl.balance",
+	"tl.flags",
+).From("trustlines tl")
+
 var selectBalances = sq.Select("COUNT(*)", "COALESCE(SUM(balance), 0) as sum").From("trustlines")

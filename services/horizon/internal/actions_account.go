@@ -1,11 +1,11 @@
 package horizon
 
 import (
+	"github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/services/horizon/internal/db2/core"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/services/horizon/internal/render/sse"
 	"github.com/stellar/go/services/horizon/internal/resourceadapter"
-	"github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/support/render/hal"
 )
 
@@ -55,8 +55,11 @@ func (action *AccountShowAction) loadParams() {
 }
 
 func (action *AccountShowAction) loadRecord() {
+	app := AppFromContext(action.R.Context())
+	protocolVersion := app.protocolVersion
+
 	action.Err = action.CoreQ().
-		AccountByAddress(&action.CoreRecord, action.Address)
+		AccountByAddress(&action.CoreRecord, action.Address, protocolVersion)
 	if action.Err != nil {
 		return
 	}
@@ -74,7 +77,7 @@ func (action *AccountShowAction) loadRecord() {
 	}
 
 	action.Err = action.CoreQ().
-		TrustlinesByAddress(&action.CoreTrustlines, action.Address)
+		TrustlinesByAddress(&action.CoreTrustlines, action.Address, protocolVersion)
 	if action.Err != nil {
 		return
 	}
