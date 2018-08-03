@@ -1,11 +1,11 @@
           // Package xdr is generated from:
           //
-          //  ./Stellar-SCP.x
-//  ./Stellar-ledger-entries.x
-//  ./Stellar-ledger.x
-//  ./Stellar-overlay.x
-//  ./Stellar-transaction.x
-//  ./Stellar-types.x
+          //  ./xdr/Stellar-SCP.x
+//  ./xdr/Stellar-ledger-entries.x
+//  ./xdr/Stellar-ledger.x
+//  ./xdr/Stellar-overlay.x
+//  ./xdr/Stellar-transaction.x
+//  ./xdr/Stellar-types.x
           //
           // DO NOT EDIT or your changes may be overwritten
           package xdr
@@ -6290,7 +6290,9 @@ switch AllowTrustResultCode(code) {
 //        ACCOUNT_MERGE_NO_ACCOUNT = -2,      // destination does not exist
 //        ACCOUNT_MERGE_IMMUTABLE_SET = -3,   // source account has AUTH_IMMUTABLE set
 //        ACCOUNT_MERGE_HAS_SUB_ENTRIES = -4, // account has trust lines/offers
-//        ACCOUNT_MERGE_SEQNUM_TOO_FAR = -5   // sequence number is over max allowed
+//        ACCOUNT_MERGE_SEQNUM_TOO_FAR = -5,  // sequence number is over max allowed
+//        ACCOUNT_MERGE_DEST_FULL = -6        // can't add source balance to
+//                                            // destination balance
 //    };
 //
 type AccountMergeResultCode int32
@@ -6301,6 +6303,7 @@ const (
   AccountMergeResultCodeAccountMergeImmutableSet AccountMergeResultCode = -3
   AccountMergeResultCodeAccountMergeHasSubEntries AccountMergeResultCode = -4
   AccountMergeResultCodeAccountMergeSeqnumTooFar AccountMergeResultCode = -5
+  AccountMergeResultCodeAccountMergeDestFull AccountMergeResultCode = -6
 )
 var accountMergeResultCodeMap = map[int32]string{
   0: "AccountMergeResultCodeAccountMergeSuccess",
@@ -6309,6 +6312,7 @@ var accountMergeResultCodeMap = map[int32]string{
   -3: "AccountMergeResultCodeAccountMergeImmutableSet",
   -4: "AccountMergeResultCodeAccountMergeHasSubEntries",
   -5: "AccountMergeResultCodeAccountMergeSeqnumTooFar",
+  -6: "AccountMergeResultCodeAccountMergeDestFull",
 }
 
 // ValidEnum validates a proposed value for this enum.  Implements
@@ -7703,7 +7707,7 @@ func (u PublicKey) GetEd25519() (result Uint256, ok bool) {
 //    case SIGNER_KEY_TYPE_ED25519:
 //        uint256 ed25519;
 //    case SIGNER_KEY_TYPE_PRE_AUTH_TX:
-//        /* Hash of Transaction structure */
+//        /* SHA-256 Hash of TransactionSignaturePayload structure */
 //        uint256 preAuthTx;
 //    case SIGNER_KEY_TYPE_HASH_X:
 //        /* Hash of random 256 bit preimage X */
