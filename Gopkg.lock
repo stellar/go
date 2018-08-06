@@ -837,7 +837,8 @@
   name = "gopkg.in/fatih/set.v0"
   packages = ["."]
   pruneopts = "T"
-  revision = "27c40922c40b43fe04554d8223a402af3ea333f3"
+  revision = "2c768e3c5489976167bfc42b5c7c92ca783f4389"
+  source = "https://github.com/fatih/set"
 
 [[projects]]
   digest = "1:771526d45c07bce33c1a468c844fd8c438ec94ad9fb660ca74b39e753a2fe76a"
