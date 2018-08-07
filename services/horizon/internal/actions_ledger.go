@@ -2,9 +2,9 @@ package horizon
 
 import (
 	"github.com/stellar/go/protocols/horizon"
-	"github.com/stellar/go/protocols/horizon/ledger"
 	"github.com/stellar/go/services/horizon/internal/db2"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
+	"github.com/stellar/go/services/horizon/internal/ledger"
 	"github.com/stellar/go/services/horizon/internal/render/problem"
 	"github.com/stellar/go/services/horizon/internal/render/sse"
 	"github.com/stellar/go/services/horizon/internal/resourceadapter"

@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"github.com/stellar/go/network"
-	"github.com/stellar/go/protocols/horizon/ledger"
+	"github.com/stellar/go/services/horizon/internal/ledger"
 	"github.com/stellar/go/services/horizon/internal/test"
 )
 

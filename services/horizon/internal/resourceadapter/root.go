@@ -4,8 +4,8 @@ import (
 	"context"
 
 	. "github.com/stellar/go/protocols/horizon"
-	"github.com/stellar/go/protocols/horizon/ledger"
 	"github.com/stellar/go/services/horizon/internal/httpx"
+	"github.com/stellar/go/services/horizon/internal/ledger"
 	"github.com/stellar/go/support/render/hal"
 )
 
