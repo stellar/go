@@ -50,5 +50,9 @@
   name = "gopkg.in/tylerb/graceful.v1"
   version = "1.2.13"
 
+[[constraint]]
+  name = "github.com/sirupsen/logrus"
+  revision = "68cec9f21fbf3ea8d8f98c044bc6ce05f17b267a"
+
 [prune]
   go-tests = true
