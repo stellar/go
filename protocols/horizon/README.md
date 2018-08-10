@@ -26,28 +26,26 @@ For each new version we will only track changes from the previous version.
 
 | Resource                                    | Changes                                    | Go SDK <sup>1</sup> | JS SDK | Java SDK |
 |:--------------------------------------------|:-------------------------------------------|:--------------------|:-------|:---------|
-| [**0.14.0rc1**](#0140)                      |                                            |                     |        |          |
 | `GET /accounts/{account_id}`                | Liabilities fields in Balances collection. | +                   | 0.10.2 | 0.3.1    |
-| `GET /accounts/{account_id}/effects`        | `sequence_bumped` effect                   | +                   | 0.10.2 | 0.3.1    |
-| `GET /accounts/{account_id}/effects` SSE    | `sequence_bumped` effect                   | +                   | 0.10.2 | 0.3.1    |
-| `GET /accounts/{account_id}/offers`         | `last_modified` field removed              | +                   | 0.10.2 | 0.3.1    |
-| `GET /accounts/{account_id}/operations`     | `bump_sequence` operation                  | +                   | 0.10.2 | 0.3.1    |
-| `GET /accounts/{account_id}/operations` SSE | `bump_sequence` operation                  | +                   | 0.10.2 | 0.3.1    |
-| `GET /effects`                              | `sequence_bumped` effect                   | +                   | 0.10.2 | 0.3.1    |
-| `GET /effects` SSE                          | `sequence_bumped` effect                   | +                   | 0.10.2 | 0.3.1    |
-| `GET /operations`                           | `bump_sequence` operation                  | +                   | 0.10.2 | 0.3.1    |
-| `GET /operations` SSE                       | `bump_sequence` operation                  | +                   | 0.10.2 | 0.3.1    |
-| `GET /ledgers/{ledger_id}/operations`       | `bump_sequence` operation                  | +                   | 0.10.2 | 0.3.1    |
-| `GET /ledgers/{ledger_id}/operations` SSE   | `bump_sequence` operation                  | +                   | 0.10.2 | 0.3.1    |
-| `GET /ledgers/{ledger_id}/effects`          | `sequence_bumped` effect                   | +                   | 0.10.2 | 0.3.1    |
-| `GET /ledgers/{ledger_id}/effects` SSE      | `sequence_bumped` effect                   | +                   | 0.10.2 | 0.3.1    |
-| `GET /operations`                           | `bump_sequence` operation                  | +                   | 0.10.2 | 0.3.1    |
-| `GET /operations` SSE                       | `bump_sequence` operation                  | +                   | 0.10.2 | 0.3.1    |
+| `GET /accounts/{account_id}/effects`        | `sequence_bumped` effect                   | -                   | 0.10.2 | 0.3.1    |
+| `GET /accounts/{account_id}/effects` SSE    | `sequence_bumped` effect                   | -                   | 0.10.2 | 0.3.1    |
+| `GET /accounts/{account_id}/offers`         | `last_modified` field removed              | -                   | 0.10.2 | 0.3.1    |
+| `GET /accounts/{account_id}/operations`     | `bump_sequence` operation                  | -                   | 0.10.2 | 0.3.1    |
+| `GET /accounts/{account_id}/operations` SSE | `bump_sequence` operation                  | -                   | 0.10.2 | 0.3.1    |
+| `GET /effects`                              | `sequence_bumped` effect                   | -                   | 0.10.2 | 0.3.1    |
+| `GET /effects` SSE                          | `sequence_bumped` effect                   | -                   | 0.10.2 | 0.3.1    |
+| `GET /ledgers/{ledger_id}/operations`       | `bump_sequence` operation                  | -                   | 0.10.2 | 0.3.1    |
+| `GET /ledgers/{ledger_id}/operations` SSE   | `bump_sequence` operation                  | -                   | 0.10.2 | 0.3.1    |
+| `GET /ledgers/{ledger_id}/effects`          | `sequence_bumped` effect                   | -                   | 0.10.2 | 0.3.1    |
+| `GET /ledgers/{ledger_id}/effects` SSE      | `sequence_bumped` effect                   | -                   | 0.10.2 | 0.3.1    |
+| `GET /operations`                           | `bump_sequence` operation                  | -                   | 0.10.2 | 0.3.1    |
+| `GET /operations` SSE                       | `bump_sequence` operation                  | -                   | 0.10.2 | 0.3.1    |
+| `GET /operations/{op_id}`                   | `bump_sequence` operation                  | +                   | 0.10.2 | 0.3.1    |
 | `GET /trades_aggregations`                  | Only specific time ranges allowed          | +                   | 0.10.2 | 0.3.1    |
-| `GET /transactions/{tx_id}/operations`      | `bump_sequence` operation                  | +                   | 0.10.2 | 0.3.1    |
-| `GET /transactions/{tx_id}/operations` SSE  | `bump_sequence` operation                  | +                   | 0.10.2 | 0.3.1    |
-| `GET /transactions/{tx_id}/effects`         | `sequence_bumped` effect                   | +                   | 0.10.2 | 0.3.1    |
-| `GET /transactions/{tx_id}/effects` SSE     | `sequence_bumped` effect                   | +                   | 0.10.2 | 0.3.1    |
+| `GET /transactions/{tx_id}/operations`      | `bump_sequence` operation                  | -                   | 0.10.2 | 0.3.1    |
+| `GET /transactions/{tx_id}/operations` SSE  | `bump_sequence` operation                  | -                   | 0.10.2 | 0.3.1    |
+| `GET /transactions/{tx_id}/effects`         | `sequence_bumped` effect                   | -                   | 0.10.2 | 0.3.1    |
+| `GET /transactions/{tx_id}/effects` SSE     | `sequence_bumped` effect                   | -                   | 0.10.2 | 0.3.1    |
 
 ### 0.13.0
 
