@@ -64,7 +64,7 @@ We can distinguish 6 effect groups:
 | Data Removed | manage_data |
 | Data Updated | manage_data |
 
-### Data effects
+### Misc effects
 
 | Type          | Operation                                        |
 | --- | --- |
