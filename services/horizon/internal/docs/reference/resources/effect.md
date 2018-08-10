@@ -8,7 +8,7 @@ directly reflected in the [ledger](https://www.stellar.org/developers/learn/conc
 
 ## Effect types
 
-We can distinguish 5 effect groups:
+We can distinguish 6 effect groups:
 - Account effects
 - Signer effects
 - Trustline effects
