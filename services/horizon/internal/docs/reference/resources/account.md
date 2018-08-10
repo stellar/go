@@ -42,6 +42,8 @@ When horizon returns information about an account it uses the following format:
 | Attribute    | Type             |                                                                                                                        |
 |--------------|------------------|------------------------------------------------------------------------------------------------------------------------|
 | balance           | string           | How much of an asset is owned. |
+| buying_liabilities    | string           | The total amount of an asset offered to buy aggregated over all offers owned by this account. |
+| selling_liabilities    | string           | The total amount of an asset offered to sell aggregated over all offers owned by this account. |
 | limit      | optional, number           |  The maximum amount of an asset that this account is willing to accept (this is specified when an account opens a trustline).                                           |
 | asset_type    | string           | Either native, credit_alphanum4, or credit_alphanum12.                        |
 | asset_code     | optional, string           | The code for the asset.                       |
