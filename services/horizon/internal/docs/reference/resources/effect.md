@@ -8,12 +8,13 @@ directly reflected in the [ledger](https://www.stellar.org/developers/learn/conc
 
 ## Effect types
 
-We can distinguish 5 effect groups:
+We can distinguish 6 effect groups:
 - Account effects
 - Signer effects
 - Trustline effects
 - Trading effects
 - Data effects
+- Misc effects
 
 ### Account effects
 
@@ -62,6 +63,12 @@ We can distinguish 5 effect groups:
 | Data Created | manage_data |
 | Data Removed | manage_data |
 | Data Updated | manage_data |
+
+### Misc effects
+
+| Type          | Operation                                        |
+| --- | --- |
+| Sequence Bumped | bump_sequence |
 
 ## Attributes
 
