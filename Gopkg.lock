@@ -109,6 +109,14 @@
   revision = "8649d278323ebf6bd20c9cd56ecb152b1c617375"
 
 [[projects]]
+  branch = "master"
+  digest = "1:09a7f74eb6bb3c0f14d8926610c87f569c5cff68e978d30e9a3540aeb626fdf0"
+  name = "github.com/bartekn/go-bip39"
+  packages = ["."]
+  pruneopts = "T"
+  revision = "a05967ea095d81c8fe4833776774cfaff8e5036c"
+
+[[projects]]
   digest = "1:df45a13368450db7e5a2015aafd8fef7349afd7c9910fb511c74a775ac55a3e8"
   name = "github.com/btcsuite/btcd"
   packages = [
@@ -277,11 +285,11 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:205b3c069003f9d1458e4304427ab3652d8d7bac3bde1568a2d5486451e453bd"
-  name = "github.com/goji/httpauth"
+  digest = "1:02e49372e93c942d1884271731d491bcd26a917a1dea99e27e1dbe9fe9fcdb0b"
+  name = "github.com/goji/context"
   packages = ["."]
   pruneopts = "T"
-  revision = "2da839ab0f4df05a6db5eb277995589dadbd4fb9"
+  revision = "68b83f7b0439800daff361aeff573ecad1b26cbe"
 
 [[projects]]
   digest = "1:d7491e1f92e84bfe31dc29bc276bf7d55f9cb02927ed82cab56a198ec839bc29"
@@ -700,13 +708,6 @@
   revision = "2c9cfd17756470a0b7c3e4b7954bae7d11035504"
 
 [[projects]]
-  digest = "1:e8a3550c8786316675ff54ad6f09d265d129c9d986919af7f541afba50d87ce2"
-  name = "github.com/tyler-smith/go-bip39"
-  packages = ["."]
-  pruneopts = "T"
-  revision = "52158e4697b87de16ed390e1bdaf813e581008fa"
-
-[[projects]]
   branch = "master"
   digest = "1:c468422f334a6b46a19448ad59aaffdfc0a36b08fdcc1c749a0b29b6453d7e59"
   name = "github.com/valyala/bytebufferpool"
@@ -770,6 +771,18 @@
   packages = ["."]
   pruneopts = "T"
   revision = "d1c525dea8ce39ea9a783d33cf08932305373f2c"
+
+[[projects]]
+  digest = "1:032810eab714b07647442d9abc82df1da75f2ca058fc74f9355a6b312df7d1e1"
+  name = "github.com/zenazn/goji"
+  packages = [
+    "web",
+    "web/middleware",
+    "web/mutil",
+  ]
+  pruneopts = "T"
+  revision = "64eb34159fe53473206c2b3e70fe396a639452f2"
+  version = "v1.0"
 
 [[projects]]
   digest = "1:0f2b2cb9f84318c0f71fed3087ff9ac370370f842469b71b00348c3d72a19b44"
@@ -838,7 +851,6 @@
   packages = ["."]
   pruneopts = "T"
   revision = "57907de300222151a123d29255ed17f5ed43fad3"
-  source = "https://github.com/fatih/set"
 
 [[projects]]
   digest = "1:771526d45c07bce33c1a468c844fd8c438ec94ad9fb660ca74b39e753a2fe76a"
@@ -900,6 +912,7 @@
     "github.com/aws/aws-sdk-go/aws",
     "github.com/aws/aws-sdk-go/aws/session",
     "github.com/aws/aws-sdk-go/service/s3",
+    "github.com/bartekn/go-bip39",
     "github.com/btcsuite/btcd/chaincfg",
     "github.com/btcsuite/btcd/chaincfg/chainhash",
     "github.com/btcsuite/btcd/rpcclient",
@@ -917,7 +930,7 @@
     "github.com/go-chi/chi/middleware",
     "github.com/go-errors/errors",
     "github.com/go-sql-driver/mysql",
-    "github.com/goji/httpauth",
+    "github.com/goji/context",
     "github.com/guregu/null",
     "github.com/haltingstate/secp256k1-go",
     "github.com/howeyc/gopass",
@@ -949,7 +962,9 @@
     "github.com/stretchr/testify/require",
     "github.com/stretchr/testify/suite",
     "github.com/tyler-smith/go-bip32",
-    "github.com/tyler-smith/go-bip39",
+    "github.com/zenazn/goji/web",
+    "github.com/zenazn/goji/web/middleware",
+    "github.com/zenazn/goji/web/mutil",
     "golang.org/x/net/http2",
     "gopkg.in/gavv/httpexpect.v1",
     "gopkg.in/tylerb/graceful.v1",

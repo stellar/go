@@ -12,10 +12,6 @@
 
 [[constraint]]
   branch = "master"
-  name = "github.com/goji/httpauth"
-
-[[constraint]]
-  branch = "master"
   name = "github.com/haltingstate/secp256k1-go"
 
 [[constraint]]
