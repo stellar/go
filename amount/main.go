@@ -11,6 +11,7 @@ package amount
 
 import (
 	"math/big"
+	"regexp"
 	"strconv"
 
 	"github.com/stellar/go/support/errors"
@@ -24,7 +25,9 @@ const (
 )
 
 var (
-	bigOne = big.NewRat(One, 1)
+	bigOne         = big.NewRat(One, 1)
+	validAmount    = regexp.MustCompile("^-{0,1}[0-9]{1,19}(\\.[0-9]{1,7}){0,1}$")
+	validIntAmount = regexp.MustCompile("^-{0,1}[0-9]{1,26}$")
 )
 
 // MustParse is the panicking version of Parse.
@@ -51,6 +54,10 @@ func Parse(v string) (xdr.Int64, error) {
 // integer that represents a decimal number with 7 digits of significance in
 // the fractional portion of the number.
 func ParseInt64(v string) (int64, error) {
+	if !validAmount.MatchString(v) {
+		return 0, errors.Errorf("invalid amount format: %s", v)
+	}
+
 	r := &big.Rat{}
 	if _, ok := r.SetString(v); !ok {
 		return 0, errors.Errorf("cannot parse amount: %s", v)
@@ -73,6 +80,10 @@ func ParseInt64(v string) (int64, error) {
 // and returns the string representation of that number.
 // It is safe to use with values exceeding int64 limits.
 func IntStringToAmount(v string) (string, error) {
+	if !validIntAmount.MatchString(v) {
+		return "", errors.Errorf("invalid amount format: %s", v)
+	}
+
 	r := &big.Rat{}
 	if _, ok := r.SetString(v); !ok {
 		return "", errors.Errorf("cannot parse amount: %s", v)
