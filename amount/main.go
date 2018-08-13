@@ -25,9 +25,14 @@ const (
 )
 
 var (
-	bigOne         = big.NewRat(One, 1)
-	validAmount    = regexp.MustCompile("^-{0,1}[0-9]{1,19}(\\.[0-9]{1,7}){0,1}$")
-	validIntAmount = regexp.MustCompile("^-{0,1}[0-9]{1,26}$")
+	bigOne = big.NewRat(One, 1)
+	// validAmountSimple is a simple regular expression checking if a string looks like
+	// a number, more or less. The details will be checked in `math/big` internally.
+	// What we want to prevent is passing very big numbers like `1e9223372036854775807`
+	// to `big.Rat.SetString` triggering long calculations.
+	// Note: {1,20} because the biggest amount you can use in Stellar is:
+	// len("922337203685.4775807") = 20.
+	validAmountSimple = regexp.MustCompile("^-?[.0-9]{1,20}$")
 )
 
 // MustParse is the panicking version of Parse.
@@ -54,7 +59,7 @@ func Parse(v string) (xdr.Int64, error) {
 // integer that represents a decimal number with 7 digits of significance in
 // the fractional portion of the number.
 func ParseInt64(v string) (int64, error) {
-	if !validAmount.MatchString(v) {
+	if !validAmountSimple.MatchString(v) {
 		return 0, errors.Errorf("invalid amount format: %s", v)
 	}
 
@@ -80,7 +85,7 @@ func ParseInt64(v string) (int64, error) {
 // and returns the string representation of that number.
 // It is safe to use with values exceeding int64 limits.
 func IntStringToAmount(v string) (string, error) {
-	if !validIntAmount.MatchString(v) {
+	if !validAmountSimple.MatchString(v) {
 		return "", errors.Errorf("invalid amount format: %s", v)
 	}
 
