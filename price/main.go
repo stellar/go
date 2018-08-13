@@ -9,9 +9,14 @@ import (
 	"fmt"
 	"math"
 	"math/big"
+	"regexp"
 	"strconv"
 
 	"github.com/stellar/go/xdr"
+)
+
+var (
+	validAmount = regexp.MustCompile("^[0-9]{1,19}(\\.[0-9]{1,10}){0,1}$")
 )
 
 // Parse  calculates and returns the best rational approximation of the given
@@ -25,6 +30,10 @@ func Parse(v string) (xdr.Price, error) {
 // continuedFraction calculates and returns the best rational approximation of
 // the given real number.
 func continuedFraction(price string) (xdrPrice xdr.Price, err error) {
+	if !validAmount.MatchString(price) {
+		return xdrPrice, fmt.Errorf("invalid price format: %s", price)
+	}
+
 	number := &big.Rat{}
 	maxInt32 := &big.Rat{}
 	zero := &big.Rat{}

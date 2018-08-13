@@ -2,6 +2,7 @@ package amount_test
 
 import (
 	"fmt"
+	"strings"
 	"testing"
 
 	"github.com/stellar/go/amount"
@@ -26,6 +27,14 @@ var Tests = []struct {
 	{"-922337203686", 0, false},
 	{"1000000000000.0000000", 0, false},
 	{"1000000000000", 0, false},
+	{"-.5", 0, false},
+	{".5", 0, false},
+	{"0.12345678", 0, false},
+	// Expensive inputs:
+	{strings.Repeat("1", 1000000), 0, false},
+	{"1E9223372036854775807", 0, false},
+	{"1e9223372036854775807", 0, false},
+	{"Inf", 0, false},
 }
 
 func TestParse(t *testing.T) {
@@ -79,6 +88,11 @@ func TestIntStringToAmount(t *testing.T) {
 		{"1000000000000.0000000", "10000000000000000000", true},
 		{"0.0000000", "0", true},
 		{"", "nan", false},
+		// Expensive inputs:
+		{"", strings.Repeat("1", 1000000), false},
+		{"", "1E9223372036854775807", false},
+		{"", "1e9223372036854775807", false},
+		{"", "Inf", false},
 	}
 
 	for _, tc := range testCases {
