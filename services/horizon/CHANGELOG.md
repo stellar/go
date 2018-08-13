@@ -6,6 +6,12 @@ file.  This project adheres to [Semantic Versioning](http://semver.org/).
 As this project is pre 1.0, breaking changes may happen for minor version
 bumps.  A breaking change will get clearly notified in this log.
 
+## v0.13.2 - 2018-08-13
+
+### Bug fixes
+
+* Fixed a bug in `amount` and `price` packages triggering long calculations.
+
 ## v0.13.1 - 2018-07-26
 
 ### Bug fixes
