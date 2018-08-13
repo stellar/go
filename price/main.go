@@ -16,7 +16,13 @@ import (
 )
 
 var (
-	validAmount = regexp.MustCompile("^[0-9]{1,19}(\\.[0-9]{1,10}){0,1}$")
+	// validAmountSimple is a simple regular expression checking if a string looks like
+	// a number, more or less. The details will be checked in `math/big` internally.
+	// What we want to prevent is passing very big numbers like `1e9223372036854775807`
+	// to `big.Rat.SetString` triggering long calculations.
+	// Note: {1,20} because the biggest amount you can use in Stellar is:
+	// len("922337203685.4775807") = 20.
+	validAmountSimple = regexp.MustCompile("^-?[.0-9]{1,20}$")
 )
 
 // Parse  calculates and returns the best rational approximation of the given
@@ -30,7 +36,7 @@ func Parse(v string) (xdr.Price, error) {
 // continuedFraction calculates and returns the best rational approximation of
 // the given real number.
 func continuedFraction(price string) (xdrPrice xdr.Price, err error) {
-	if !validAmount.MatchString(price) {
+	if !validAmountSimple.MatchString(price) {
 		return xdrPrice, fmt.Errorf("invalid price format: %s", price)
 	}
 

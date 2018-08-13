@@ -35,6 +35,7 @@ var Tests = []struct {
 	{"4119.0", xdr.Price{4119, 1}, true},
 
 	// Expensive inputs:
+	{strings.Repeat("1", 22), xdr.Price{}, false},
 	{strings.Repeat("1", 1000000), xdr.Price{}, false},
 	{"0." + strings.Repeat("1", 1000000), xdr.Price{}, false},
 	{"1E9223372036854775807", xdr.Price{}, false},
