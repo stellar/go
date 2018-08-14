@@ -13,9 +13,14 @@ For each new version we will only track changes from the previous version.
 
 ## Changes
 
-### 0.14.0
+### 0.14.0 Release candidate
 
-**Release candidate**
+#### SDKs with full support
+
+- [JS SDK 0.10.2](https://github.com/stellar/js-stellar-sdk/releases/tag/v0.10.2)
+- [Java SDK 0.3.1](https://github.com/stellar/java-stellar-sdk/releases/tag/0.3.1)
+
+#### Changes
 
 * New [`bump_sequence`](https://www.stellar.org/developers/horizon/reference/resources/operation.html#bump-sequence) operation.
 * New `sequence_bumped` effect.
@@ -49,9 +54,15 @@ For each new version we will only track changes from the previous version.
 
 ### 0.13.0
 
+#### SDKs with full support
+
+- [JS SDK 0.8.2](https://github.com/stellar/js-stellar-sdk/releases/tag/v0.8.2)
+- [Java SDK 0.2.1](https://github.com/stellar/java-stellar-sdk/releases/tag/0.2.1)
+
+#### Changes
+
 - `amount` field in `/assets` is now a String (to support Stellar amounts larger than `int64`).
 - Effect resource contains a new `created_at` field.
-
 
 | Resource                                 | Changes                                      | Go SDK <sup>1</sup> | JS SDK             | Java SDK |
 |:-----------------------------------------|:---------------------------------------------|:--------------------|:-------------------|:---------|
@@ -68,6 +79,13 @@ For each new version we will only track changes from the previous version.
 | `GET /effects` SSE                       | `created_at` field added                     | +                   | 0.8.2 <sup>2</sup> | 0.2.1    |
 
 ### 0.12.3
+
+#### SDKs with full support
+
+- [JS SDK 0.8.2](https://github.com/stellar/js-stellar-sdk/releases/tag/v0.8.2)
+- [Java SDK 0.2.1](https://github.com/stellar/java-stellar-sdk/releases/tag/0.2.1)
+
+#### Changes
 
 | Resource                                      | Go SDK <sup>1</sup>            | JS SDK | Java SDK                                          |
 |:----------------------------------------------|:-------------------------------|:-------|:--------------------------------------------------|
@@ -93,7 +111,7 @@ For each new version we will only track changes from the previous version.
 | `GET /accounts/{account_id}/payments` SSE     | -                              | 0.8.2  | 0.2.0                                             |
 | `GET /accounts/{account_id}/effects`          | -                              | 0.8.2  | 0.2.0<br />(no support for data, inflation types) |
 | `GET /accounts/{account_id}/effects` SSE      | -                              | 0.8.2  | 0.2.0<br />(no support for data, inflation types) |
-| `GET /accounts/{account_id}/offers`           | +                              | -      | 0.2.0                                             |
+| `GET /accounts/{account_id}/offers`           | +                              | 0.8.2  | 0.2.0                                             |
 | `GET /accounts/{account_id}/trades`           | -                              | 0.8.2  | 0.2.1                                             |
 | `GET /accounts/{account_id}/data/{key}`       | -                              | -      | -                                                 |
 | `POST /transactions`                          | -                              | 0.8.2  | 0.2.0                                             |
