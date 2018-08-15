@@ -17,7 +17,7 @@ type Config struct {
 	FriendbotURL           string
 	LogLevel               logrus.Level
 	SentryDSN              string
-	LogglyHost             string
+	LogglyTag              string
 	LogglyToken            string
 	// TLSCert is a path to a certificate file to use for horizon's TLS config
 	TLSCert string

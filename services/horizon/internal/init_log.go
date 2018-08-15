@@ -34,10 +34,10 @@ func initLogglyLog(app *App) {
 
 	log.WithFields(log.F{
 		"token":       app.config.LogglyToken,
-		"loggly_host": app.config.LogglyHost,
+		"tag": app.config.LogglyTag,
 	}).Info("Initializing loggly hook")
 
-	hook := log.NewLogglyHook(app.config.LogglyToken)
+	hook := log.NewLogglyHook(app.config.LogglyToken, app.config.LogglyTag)
 	log.DefaultLogger.Logger.Hooks.Add(hook)
 
 	go func() {

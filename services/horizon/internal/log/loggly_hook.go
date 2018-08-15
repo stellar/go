@@ -16,8 +16,8 @@ type LogglyHook struct {
 }
 
 // NewLogglyHook creates a new hook
-func NewLogglyHook(token string) *LogglyHook {
-	client := loggly.New(token, "horizon")
+func NewLogglyHook(token, tag string) *LogglyHook {
+	client := loggly.New(token, tag)
 	host, err := os.Hostname()
 
 	if err != nil {

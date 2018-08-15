@@ -35,7 +35,7 @@ func init() {
 	viper.BindEnv("log-level", "LOG_LEVEL")
 	viper.BindEnv("sentry-dsn", "SENTRY_DSN")
 	viper.BindEnv("loggly-token", "LOGGLY_TOKEN")
-	viper.BindEnv("loggly-host", "LOGGLY_HOST")
+	viper.BindEnv("loggly-tag", "LOGGLY_TAG")
 	viper.BindEnv("tls-cert", "TLS_CERT")
 	viper.BindEnv("tls-key", "TLS_KEY")
 	viper.BindEnv("ingest", "INGEST")
@@ -115,9 +115,9 @@ func init() {
 	)
 
 	rootCmd.PersistentFlags().String(
-		"loggly-host",
-		"",
-		"Hostname to be added to every loggly log event",
+		"loggly-tag",
+		"horizon",
+		"Tag to be added to every loggly log event",
 	)
 
 	rootCmd.PersistentFlags().String(
@@ -213,7 +213,7 @@ func initConfig() {
 		LogLevel:               ll,
 		SentryDSN:              viper.GetString("sentry-dsn"),
 		LogglyToken:            viper.GetString("loggly-token"),
-		LogglyHost:             viper.GetString("loggly-host"),
+		LogglyTag:              viper.GetString("loggly-tag"),
 		TLSCert:                cert,
 		TLSKey:                 key,
 		Ingest:                 viper.GetBool("ingest"),
