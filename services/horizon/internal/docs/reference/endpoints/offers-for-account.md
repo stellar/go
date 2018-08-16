@@ -49,6 +49,8 @@ server.offers('accounts', 'GCJ34JYMXNI7N55YREWAACMMZECOMTPIYDTFCQBWPUP7BLJQDDTVG
 
 The list of offers.
 
+**Note:** a response of 200 with an empty records array may either mean there are no offers for `account_id` or `account_id` does not exist.
+
 ### Example Response
 
 ```js
