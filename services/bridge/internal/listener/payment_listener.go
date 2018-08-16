@@ -355,6 +355,7 @@ func (pl *PaymentListener) postForm(
 
 		encMAC := base64.StdEncoding.EncodeToString(rawMAC)
 		req.Header.Set("X_PAYLOAD_MAC", encMAC)
+		req.Header.Set("X-Payload-Mac", encMAC)
 	}
 
 	resp, err := pl.client.Do(req)
