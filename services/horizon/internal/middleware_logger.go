@@ -40,22 +40,24 @@ func LoggerMiddleware(h http.Handler) http.Handler {
 
 func logStartOfRequest(ctx context.Context, r *http.Request) {
 	log.Ctx(ctx).WithFields(log.F{
-		"path":   r.URL.String(),
-		"method": r.Method,
-		"ip":     r.RemoteAddr,
-		"host":   r.Host,
+		"path":         r.URL.String(),
+		"method":       r.Method,
+		"ip":           r.RemoteAddr,
+		"forwarded_ip": r.Header.Get("X-Forwarded-For"),
+		"host":         r.Host,
 	}).Info("Starting request")
 }
 
 func logEndOfRequest(ctx context.Context, r *http.Request, duration time.Duration, mw middleware.WrapResponseWriter, streaming bool) {
 	log.Ctx(ctx).WithFields(log.F{
-		"path":      r.URL.String(),
-		"method":    r.Method,
-		"ip":        r.RemoteAddr,
-		"host":      r.Host,
-		"status":    mw.Status(),
-		"bytes":     mw.BytesWritten(),
-		"duration":  duration,
-		"streaming": streaming,
+		"path":         r.URL.String(),
+		"method":       r.Method,
+		"ip":           r.RemoteAddr,
+		"forwarded_ip": r.Header.Get("X-Forwarded-For"),
+		"host":         r.Host,
+		"status":       mw.Status(),
+		"bytes":        mw.BytesWritten(),
+		"duration":     duration,
+		"streaming":    streaming,
 	}).Info("Finished request")
 }
