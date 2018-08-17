@@ -475,8 +475,8 @@ func (c *Client) StreamLedgers(
 	})
 }
 
-// StreamPayments streams incoming payments. Use context.WithCancel to stop streaming or
-// context.Background() if you want to stream indefinitely.
+// StreamPayments streams payments, for which the given `accountID` was either the sender or receiver.
+// Use context.WithCancel to stop streaming or context.Background() if you want to stream indefinitely.
 func (c *Client) StreamPayments(
 	ctx context.Context,
 	accountID string,
