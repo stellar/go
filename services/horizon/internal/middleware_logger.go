@@ -61,8 +61,7 @@ func logEndOfRequest(ctx context.Context, r *http.Request, duration time.Duratio
 		"host":         r.Host,
 		"status":       mw.Status(),
 		"bytes":        mw.BytesWritten(),
-		"duration":     duration,
-		"duration_s":   duration / time.Second,
+		"duration":     duration.Seconds(),
 		"streaming":    streaming,
 	}).Info("Finished request")
 }
