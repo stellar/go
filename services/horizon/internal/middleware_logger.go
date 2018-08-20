@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
 	chimiddleware "github.com/go-chi/chi/middleware"
 	"github.com/stellar/go/services/horizon/internal/log"
@@ -52,6 +53,7 @@ func logStartOfRequest(ctx context.Context, r *http.Request) {
 func logEndOfRequest(ctx context.Context, r *http.Request, duration time.Duration, mw middleware.WrapResponseWriter, streaming bool) {
 	log.Ctx(ctx).WithFields(log.F{
 		"path":         r.URL.String(),
+		"route":        chi.RouteContext(r.Context()).RoutePattern(),
 		"method":       r.Method,
 		"ip":           remoteAddrIP(r),
 		"ip_port":      r.RemoteAddr,
