@@ -290,6 +290,7 @@ func (i *System) runOnce() {
 	}
 
 	logFields["duration"] = time.Since(ingestStart)
+	logFields["duration_s"] = time.Since(ingestStart) / time.Second
 	log.WithFields(logFields).Info("Finished ingesting ledgers")
 
 	return
