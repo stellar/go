@@ -42,8 +42,9 @@ func logStartOfRequest(ctx context.Context, r *http.Request) {
 	log.Ctx(ctx).WithFields(log.F{
 		"path":         r.URL.String(),
 		"method":       r.Method,
-		"ip":           r.RemoteAddr,
-		"forwarded_ip": r.Header.Get("X-Forwarded-For"),
+		"ip":           remoteAddrIP(r),
+		"ip_port":      r.RemoteAddr,
+		"forwarded_ip": firstXForwardedFor(r),
 		"host":         r.Host,
 	}).Info("Starting request")
 }
@@ -52,8 +53,9 @@ func logEndOfRequest(ctx context.Context, r *http.Request, duration time.Duratio
 	log.Ctx(ctx).WithFields(log.F{
 		"path":         r.URL.String(),
 		"method":       r.Method,
-		"ip":           r.RemoteAddr,
-		"forwarded_ip": r.Header.Get("X-Forwarded-For"),
+		"ip":           remoteAddrIP(r),
+		"ip_port":      r.RemoteAddr,
+		"forwarded_ip": firstXForwardedFor(r),
 		"host":         r.Host,
 		"status":       mw.Status(),
 		"bytes":        mw.BytesWritten(),
