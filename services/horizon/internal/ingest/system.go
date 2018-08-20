@@ -1,14 +1,18 @@
 package ingest
 
 import (
+	"time"
+
 	"github.com/stellar/go/services/horizon/internal/db2/core"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	herr "github.com/stellar/go/services/horizon/internal/errors"
 	"github.com/stellar/go/services/horizon/internal/ledger"
-	"github.com/stellar/go/services/horizon/internal/log"
+	ilog "github.com/stellar/go/services/horizon/internal/log"
 	"github.com/stellar/go/services/horizon/internal/toid"
 	"github.com/stellar/go/support/errors"
 )
+
+var log = ilog.DefaultLogger.WithField("service", "ingest")
 
 // Backfill ingests history in reverse chronological order, from the current
 // horizon elder query for `n` ledgers
@@ -270,11 +274,22 @@ func (i *System) runOnce() {
 	}
 
 	// 3.
+	logFields := ilog.F{
+		"first_ledger": is.Cursor.FirstLedger,
+		"last_ledger":  is.Cursor.LastLedger,
+	}
+	log.WithFields(logFields).Info("Ingesting ledgers...")
+	ingestStart := time.Now()
+
 	is.Run()
 
 	if is.Err != nil {
-		log.Errorf("import session failed: %s", is.Err)
+		log.WithFields(ilog.F{"err": is.Err}).Error("Error ingesting ledgers")
+		return
 	}
+
+	logFields["duration"] = time.Since(ingestStart)
+	log.WithFields(logFields).Info("Finished ingesting ledgers")
 
 	return
 }
