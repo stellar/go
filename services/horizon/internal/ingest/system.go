@@ -284,7 +284,8 @@ func (i *System) runOnce() {
 	is.Run()
 
 	if is.Err != nil {
-		log.WithFields(ilog.F{"err": is.Err}).Error("Error ingesting ledgers")
+		logFields["err"] = is.Err
+		log.WithFields(logFields).Error("Error ingesting ledgers")
 		return
 	}
 
