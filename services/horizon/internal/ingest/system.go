@@ -230,8 +230,6 @@ func (i *System) runOnce() {
 		}
 	}()
 
-	ls := ledger.CurrentState()
-
 	// 1. stash a copy of the current ingestion session (assigned from the tick)
 	// 2. decide what to import
 	// 3. import until none available
@@ -240,6 +238,24 @@ func (i *System) runOnce() {
 	i.lock.Lock()
 	is := i.current
 	i.lock.Unlock()
+
+	// Warning: do not check the current ledger state using ledger.CurrentState()! It is updated
+	// in another go routine and can return the same data for two different ingesiton sessions.
+	var coreLatest, historyLatest int32
+
+	coreQ := core.Q{Session: i.CoreDB}
+	err := coreQ.LatestLedger(&coreLatest)
+	if err != nil {
+		log.WithFields(ilog.F{"err": err}).Error("Error getting core latest ledger")
+		return
+	}
+
+	historyQ := history.Q{Session: i.HorizonDB}
+	err = historyQ.LatestLedger(&historyLatest)
+	if err != nil {
+		log.WithFields(ilog.F{"err": err}).Error("Error getting history latest ledger")
+		return
+	}
 
 	defer func() {
 		i.lock.Lock()
@@ -252,25 +268,25 @@ func (i *System) runOnce() {
 		return
 	}
 
-	if ls.CoreLatest == 1 {
+	if coreLatest == 1 {
 		log.Warn("ingest: waiting for stellar-core sync")
 		return
 	}
 
-	if ls.HistoryLatest == ls.CoreLatest {
+	if historyLatest == coreLatest {
 		log.Debug("ingest: no new ledgers")
 		return
 	}
 
 	// 2.
-	if ls.HistoryLatest == 0 {
+	if historyLatest == 0 {
 		log.Infof(
 			"history db is empty, establishing base at ledger %d",
-			ls.CoreLatest,
+			coreLatest,
 		)
-		is.Cursor = NewCursor(ls.CoreLatest, ls.CoreLatest, i)
+		is.Cursor = NewCursor(coreLatest, coreLatest, i)
 	} else {
-		is.Cursor = NewCursor(ls.HistoryLatest+1, ls.CoreLatest, i)
+		is.Cursor = NewCursor(historyLatest+1, coreLatest, i)
 	}
 
 	// 3.
