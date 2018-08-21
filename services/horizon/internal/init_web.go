@@ -179,6 +179,10 @@ func remoteAddrIP(r *http.Request) string {
 	return ip
 }
 
+func firstXForwardedFor(r *http.Request) string {
+	return strings.TrimSpace(strings.SplitN(r.Header.Get("X-Forwarded-For"), ",", 2)[0])
+}
+
 func init() {
 	appInit.Add(
 		"web.init",

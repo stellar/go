@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
 	chimiddleware "github.com/go-chi/chi/middleware"
 	"github.com/stellar/go/services/horizon/internal/log"
@@ -40,22 +41,27 @@ func LoggerMiddleware(h http.Handler) http.Handler {
 
 func logStartOfRequest(ctx context.Context, r *http.Request) {
 	log.Ctx(ctx).WithFields(log.F{
-		"path":   r.URL.String(),
-		"method": r.Method,
-		"ip":     r.RemoteAddr,
-		"host":   r.Host,
+		"path":         r.URL.String(),
+		"method":       r.Method,
+		"ip":           remoteAddrIP(r),
+		"ip_port":      r.RemoteAddr,
+		"forwarded_ip": firstXForwardedFor(r),
+		"host":         r.Host,
 	}).Info("Starting request")
 }
 
 func logEndOfRequest(ctx context.Context, r *http.Request, duration time.Duration, mw middleware.WrapResponseWriter, streaming bool) {
 	log.Ctx(ctx).WithFields(log.F{
-		"path":      r.URL.String(),
-		"method":    r.Method,
-		"ip":        r.RemoteAddr,
-		"host":      r.Host,
-		"status":    mw.Status(),
-		"bytes":     mw.BytesWritten(),
-		"duration":  duration,
-		"streaming": streaming,
+		"path":         r.URL.String(),
+		"route":        chi.RouteContext(r.Context()).RoutePattern(),
+		"method":       r.Method,
+		"ip":           remoteAddrIP(r),
+		"ip_port":      r.RemoteAddr,
+		"forwarded_ip": firstXForwardedFor(r),
+		"host":         r.Host,
+		"status":       mw.Status(),
+		"bytes":        mw.BytesWritten(),
+		"duration":     duration.Seconds(),
+		"streaming":    streaming,
 	}).Info("Finished request")
 }
