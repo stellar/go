@@ -24,6 +24,12 @@ const (
 	One = 10000000
 )
 
+type Option byte
+
+const (
+	AllowOverInt64 Option = iota
+)
+
 var (
 	bigOne = big.NewRat(One, 1)
 	// validAmountSimple is a simple regular expression checking if a string looks like
@@ -84,8 +90,22 @@ func ParseInt64(v string) (int64, error) {
 // "amount". In other words, it divides the given string integer value by 10^7
 // and returns the string representation of that number.
 // It is safe to use with values exceeding int64 limits.
-func IntStringToAmount(v string) (string, error) {
-	if !validAmountSimple.MatchString(v) {
+//
+// Pass AllowOverInt64 as an option to allow v values over int64. Please note
+// that computations may take much more time.
+//
+// Note: this can be rewritten to not use big.Rat. We should do it if there are
+// serious performance issues.
+func IntStringToAmount(v string, opts ...Option) (string, error) {
+	allowOverInt64 := false
+	for _, opt := range opts {
+		switch opt {
+		case AllowOverInt64:
+			allowOverInt64 = true
+		}
+	}
+
+	if !allowOverInt64 && !validAmountSimple.MatchString(v) {
 		return "", errors.Errorf("invalid amount format: %s", v)
 	}
 

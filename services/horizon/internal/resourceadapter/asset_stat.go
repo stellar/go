@@ -4,10 +4,10 @@ import (
 	"context"
 
 	"github.com/stellar/go/amount"
-	"github.com/stellar/go/services/horizon/internal/db2/assets"
-	"github.com/stellar/go/xdr"
 	. "github.com/stellar/go/protocols/horizon"
+	"github.com/stellar/go/services/horizon/internal/db2/assets"
 	"github.com/stellar/go/support/render/hal"
+	"github.com/stellar/go/xdr"
 )
 
 // PopulateAssetStat fills out the details
@@ -17,11 +17,10 @@ func PopulateAssetStat(
 	res *AssetStat,
 	row assets.AssetStatsR,
 ) (err error) {
-
 	res.Asset.Type = row.Type
 	res.Asset.Code = row.Code
 	res.Asset.Issuer = row.Issuer
-	res.Amount, err = amount.IntStringToAmount(row.Amount)
+	res.Amount, err = amount.IntStringToAmount(row.Amount, amount.AllowOverInt64)
 	if err != nil {
 		return err
 	}
