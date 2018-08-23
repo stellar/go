@@ -87,9 +87,15 @@ func TestIntStringToAmount(t *testing.T) {
 		{"-92233.7203686", "-922337203686", true},
 		{"1000000000000.0000000", "10000000000000000000", true},
 		{"0.0000000", "0", true},
+		// Expensive inputs when using big.Rat:
+		{"10000000000000.0000000", "1" + strings.Repeat("0", 20), true},
+		{"-10000000000000.0000000", "-1" + strings.Repeat("0", 20), true},
+		{"1" + strings.Repeat("0", 1000-7) + ".0000000", "1" + strings.Repeat("0", 1000), true},
+		{"1" + strings.Repeat("0", 1000000-7) + ".0000000", "1" + strings.Repeat("0", 1000000), true},
+		// Invalid inputs
 		{"", "nan", false},
-		// Expensive inputs:
-		{"", strings.Repeat("1", 1000000), false},
+		{"", "", false},
+		{"", "-", false},
 		{"", "1E9223372036854775807", false},
 		{"", "1e9223372036854775807", false},
 		{"", "Inf", false},
