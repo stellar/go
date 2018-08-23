@@ -6,6 +6,12 @@ file.  This project adheres to [Semantic Versioning](http://semver.org/).
 As this project is pre 1.0, breaking changes may happen for minor version
 bumps.  A breaking change will get clearly notified in this log.
 
+## v0.13.3 - 2018-08-23
+
+### Bug fixes
+
+* Fixed large amounts rendering in `/assets`.
+
 ## v0.13.2 - 2018-08-13
 
 ### Bug fixes
