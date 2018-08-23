@@ -17,6 +17,7 @@ go_import_path: github.com/stellar/go
 install:
 - curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh
 script:
+- ./govet.sh
 - dep ensure -v
 - ./support/scripts/run_tests
 

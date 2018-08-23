@@ -148,14 +148,16 @@ func (rh *RequestHandler) HandlerAuth(w http.ResponseWriter, r *http.Request) {
 	if rh.Config.Callbacks.Sanctions == "" {
 		response.TxStatus = compliance.AuthStatusOk
 	} else {
-		senderInfo, err := json.Marshal(attachment.Transaction.SenderInfo)
+		var senderInfo []byte
+		senderInfo, err = json.Marshal(attachment.Transaction.SenderInfo)
 		if err != nil {
 			log.WithFields(log.Fields{"err": err}).Error(err.Error())
 			w.WriteHeader(http.StatusInternalServerError)
 			w.Write([]byte(err.Error()))
 		}
 
-		resp, err := rh.Client.PostForm(
+		var resp *http.Response
+		resp, err = rh.Client.PostForm(
 			rh.Config.Callbacks.Sanctions,
 			url.Values{"sender": {string(senderInfo)}},
 		)
@@ -169,7 +171,8 @@ func (rh *RequestHandler) HandlerAuth(w http.ResponseWriter, r *http.Request) {
 		}
 
 		defer resp.Body.Close()
-		body, err := ioutil.ReadAll(resp.Body)
+		var body []byte
+		body, err = ioutil.ReadAll(resp.Body)
 		if err != nil {
 			log.Error("Error reading sanctions server response")
 			httpHelpers.Write(w, httpHelpers.InternalServerError)
@@ -183,7 +186,7 @@ func (rh *RequestHandler) HandlerAuth(w http.ResponseWriter, r *http.Request) {
 			response.TxStatus = compliance.AuthStatusPending
 
 			callbackResponse := callback.CallbackResponse{}
-			err := json.Unmarshal(body, &callbackResponse)
+			err = json.Unmarshal(body, &callbackResponse)
 			if err != nil {
 				// Set default value
 				response.Pending = 600
@@ -194,7 +197,7 @@ func (rh *RequestHandler) HandlerAuth(w http.ResponseWriter, r *http.Request) {
 			response.TxStatus = compliance.AuthStatusError
 
 			callbackResponse := callback.CallbackResponse{}
-			err := json.Unmarshal(body, &callbackResponse)
+			err = json.Unmarshal(body, &callbackResponse)
 			if err != nil {
 				log.WithFields(log.Fields{
 					"status": resp.StatusCode,
@@ -267,14 +270,16 @@ func (rh *RequestHandler) HandlerAuth(w http.ResponseWriter, r *http.Request) {
 				}
 			}
 
-			senderInfo, err := json.Marshal(attachment.Transaction.SenderInfo)
+			var senderInfo []byte
+			senderInfo, err = json.Marshal(attachment.Transaction.SenderInfo)
 			if err != nil {
 				log.WithFields(log.Fields{"err": err}).Error(err.Error())
 				w.WriteHeader(http.StatusInternalServerError)
 				w.Write([]byte(err.Error()))
 			}
 
-			resp, err := rh.Client.PostForm(
+			var resp *http.Response
+			resp, err = rh.Client.PostForm(
 				rh.Config.Callbacks.AskUser,
 				url.Values{
 					"amount":       {amount},
@@ -294,7 +299,8 @@ func (rh *RequestHandler) HandlerAuth(w http.ResponseWriter, r *http.Request) {
 			}
 
 			defer resp.Body.Close()
-			body, err := ioutil.ReadAll(resp.Body)
+			var body []byte
+			body, err = ioutil.ReadAll(resp.Body)
 			if err != nil {
 				log.Error("Error reading ask_user server response")
 				httpHelpers.Write(w, httpHelpers.InternalServerError)
@@ -308,7 +314,7 @@ func (rh *RequestHandler) HandlerAuth(w http.ResponseWriter, r *http.Request) {
 				response.InfoStatus = compliance.AuthStatusPending
 
 				callbackResponse := callback.CallbackResponse{}
-				err := json.Unmarshal(body, &callbackResponse)
+				err = json.Unmarshal(body, &callbackResponse)
 				if err != nil {
 					// Set default value
 					response.Pending = 600
@@ -319,7 +325,7 @@ func (rh *RequestHandler) HandlerAuth(w http.ResponseWriter, r *http.Request) {
 				response.InfoStatus = compliance.AuthStatusError
 
 				callbackResponse := callback.CallbackResponse{}
-				err := json.Unmarshal(body, &callbackResponse)
+				err = json.Unmarshal(body, &callbackResponse)
 				if err != nil {
 					log.WithFields(log.Fields{
 						"status": resp.StatusCode,
@@ -343,7 +349,8 @@ func (rh *RequestHandler) HandlerAuth(w http.ResponseWriter, r *http.Request) {
 		if response.InfoStatus == compliance.AuthStatusOk {
 			// Fetch Info
 			fetchInfoRequest := &callback.FetchInfoRequest{Address: string(attachment.Transaction.Route)}
-			resp, err := rh.Client.PostForm(
+			var resp *http.Response
+			resp, err = rh.Client.PostForm(
 				rh.Config.Callbacks.FetchInfo,
 				httpHelpers.ToValues(fetchInfoRequest),
 			)
@@ -357,7 +364,8 @@ func (rh *RequestHandler) HandlerAuth(w http.ResponseWriter, r *http.Request) {
 			}
 
 			defer resp.Body.Close()
-			body, err := ioutil.ReadAll(resp.Body)
+			var body []byte
+			body, err = ioutil.ReadAll(resp.Body)
 			if err != nil {
 				log.WithFields(log.Fields{
 					"fetch_info": rh.Config.Callbacks.FetchInfo,
