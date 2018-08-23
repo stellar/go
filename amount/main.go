@@ -13,6 +13,7 @@ import (
 	"math/big"
 	"regexp"
 	"strconv"
+	"strings"
 
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
@@ -32,7 +33,8 @@ var (
 	// to `big.Rat.SetString` triggering long calculations.
 	// Note: {1,20} because the biggest amount you can use in Stellar is:
 	// len("922337203685.4775807") = 20.
-	validAmountSimple = regexp.MustCompile("^-?[.0-9]{1,20}$")
+	validAmountSimple          = regexp.MustCompile("^-?[.0-9]{1,20}$")
+	negativePositiveNumberOnly = regexp.MustCompile("^-?[0-9]+$")
 )
 
 // MustParse is the panicking version of Parse.
@@ -85,18 +87,29 @@ func ParseInt64(v string) (int64, error) {
 // and returns the string representation of that number.
 // It is safe to use with values exceeding int64 limits.
 func IntStringToAmount(v string) (string, error) {
-	if !validAmountSimple.MatchString(v) {
+	if !negativePositiveNumberOnly.MatchString(v) {
 		return "", errors.Errorf("invalid amount format: %s", v)
 	}
 
-	r := &big.Rat{}
-	if _, ok := r.SetString(v); !ok {
-		return "", errors.Errorf("cannot parse amount: %s", v)
+	negative := false
+	if v[0] == '-' {
+		negative = true
+		v = v[1:]
 	}
 
-	r.Quo(r, bigOne)
+	l := len(v)
+	var r string
+	if l <= 7 {
+		r = "0." + strings.Repeat("0", 7-l) + v
+	} else {
+		r = v[0:l-7] + "." + v[l-7:l]
+	}
 
-	return r.FloatString(7), nil
+	if negative {
+		r = "-" + r
+	}
+
+	return r, nil
 }
 
 // String returns an "amount string" from the provided raw xdr.Int64 value `v`.

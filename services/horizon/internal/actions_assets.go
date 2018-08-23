@@ -3,10 +3,10 @@ package horizon
 import (
 	"fmt"
 
+	"github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/services/horizon/internal/db2"
 	"github.com/stellar/go/services/horizon/internal/db2/assets"
 	"github.com/stellar/go/services/horizon/internal/resourceadapter"
-	"github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/support/render/hal"
 )
 
@@ -71,7 +71,11 @@ func (action *AssetsAction) loadRecords() {
 func (action *AssetsAction) loadPage() {
 	for _, record := range action.Records {
 		var res horizon.AssetStat
-		resourceadapter.PopulateAssetStat(action.R.Context(), &res, record)
+		err := resourceadapter.PopulateAssetStat(action.R.Context(), &res, record)
+		if err != nil {
+			action.Err = err
+			return
+		}
 		action.Page.Add(res)
 	}
 
