@@ -6,6 +6,7 @@ import (
 	"github.com/stellar/go/amount"
 	. "github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/services/horizon/internal/db2/assets"
+	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/support/render/hal"
 	"github.com/stellar/go/xdr"
 )
@@ -20,9 +21,9 @@ func PopulateAssetStat(
 	res.Asset.Type = row.Type
 	res.Asset.Code = row.Code
 	res.Asset.Issuer = row.Issuer
-	res.Amount, err = amount.IntStringToAmount(row.Amount, amount.AllowOverInt64)
+	res.Amount, err = amount.IntStringToAmount(row.Amount)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "Invalid amount in PopulateAssetStat")
 	}
 	res.NumAccounts = row.NumAccounts
 	res.Flags = AccountFlags{
