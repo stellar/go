@@ -240,7 +240,7 @@ func (i *System) runOnce() {
 	i.lock.Unlock()
 
 	// Warning: do not check the current ledger state using ledger.CurrentState()! It is updated
-	// in another go routine and can return the same data for two different ingesiton sessions.
+	// in another go routine and can return the same data for two different ingestion sessions.
 	var coreLatest, historyLatest int32
 
 	coreQ := core.Q{Session: i.CoreDB}
