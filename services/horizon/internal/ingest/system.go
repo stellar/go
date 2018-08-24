@@ -239,6 +239,12 @@ func (i *System) runOnce() {
 	is := i.current
 	i.lock.Unlock()
 
+	defer func() {
+		i.lock.Lock()
+		i.current = nil
+		i.lock.Unlock()
+	}()
+
 	// Warning: do not check the current ledger state using ledger.CurrentState()! It is updated
 	// in another go routine and can return the same data for two different ingestion sessions.
 	var coreLatest, historyLatest int32
@@ -256,12 +262,6 @@ func (i *System) runOnce() {
 		log.WithFields(ilog.F{"err": err}).Error("Error getting history latest ledger")
 		return
 	}
-
-	defer func() {
-		i.lock.Lock()
-		i.current = nil
-		i.lock.Unlock()
-	}()
 
 	if is == nil {
 		log.Warn("ingest: runOnce ran with a nil current session")
