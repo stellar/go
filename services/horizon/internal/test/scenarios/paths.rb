@@ -9,7 +9,7 @@ account :trader, Stellar::KeyPair.from_seed("SAAHOOTVIZJVXOEPCTNKYTYOTKZA3MFXJ3A
 
 use_manual_close
 
-create_account :gateway
+create_account :gateway, :master, 10000
 create_account :payer
 create_account :payee
 create_account :trader
