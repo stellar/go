@@ -18,7 +18,7 @@ close_ledger #2
 
   require 'digest'
   x = Digest::SHA256.digest("hello world")
-  key = Stellar::SignerKey.onetime_signer(x)
+  key = Stellar::SignerKey.hash_x(x)
   set_options :onetime, signer: Stellar::Signer.new({
     key: key, 
     weight: 1,
