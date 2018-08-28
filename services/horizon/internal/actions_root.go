@@ -24,6 +24,7 @@ func (action *RootAction) JSON() {
 		action.App.coreVersion,
 		action.App.networkPassphrase,
 		action.App.protocolVersion,
+		action.App.config.FriendbotURL,
 	)
 
 	hal.Render(action.W, res)
