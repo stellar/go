@@ -2,6 +2,7 @@ package horizon
 
 import (
 	"testing"
+	"time"
 )
 
 func TestOfferActions_Index(t *testing.T) {
@@ -18,7 +19,10 @@ func TestOfferActions_Index(t *testing.T) {
 		//test last modified timestamp
 		var records []map[string]interface{}
 		ht.UnmarshalPage(w.Body, &records)
-		ht.Assert.Equal("2018-08-27T18:16:59Z", records[2]["last_modified_time"])
+		t2018, err := time.Parse("2006-01-02", "2018-01-01")
+		ht.Assert.NoError(err)
+		recordTime, err := time.Parse("2006-01-02T15:04:05Z", records[2]["last_modified_time"].(string))
+		ht.Assert.True(recordTime.After(t2018))
 		ht.Assert.EqualValues(5, records[2]["last_modified_ledger"])
 	}
 }
