@@ -32,7 +32,7 @@ func PopulateRoot(
 	dest.Links.Assets = lb.Link("/assets{?asset_code,asset_issuer,cursor,limit,order}")
 	dest.Links.Friendbot = lb.Link("/friendbot{?addr}")
 	dest.Links.Metrics = lb.Link("/metrics")
-	dest.Links.OrderBook = lb.Link("/order_book{?selling_asset_type,selling_asset_code,selling_issuer,buying_asset_type,buying_asset_code,buying_issuer,limit}")
+	dest.Links.OrderBook = lb.Link("/order_book{?selling_asset_type,selling_asset_code,selling_asset_issuer,buying_asset_type,buying_asset_code,buying_asset_issuer,limit}")
 	dest.Links.Self = lb.Link("/")
 	dest.Links.Transaction = lb.Link("/transactions/{hash}")
 	dest.Links.Transactions = lb.PagedLink("/transactions")
