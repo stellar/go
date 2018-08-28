@@ -31,9 +31,7 @@ func PopulateRoot(
 	lb := hal.LinkBuilder{Base: httpx.BaseURL(ctx)}
 	if friendBotURL != nil {
 		friendbotLinkBuild := hal.LinkBuilder{Base: friendBotURL}
-		dest.Links.Friendbot = friendbotLinkBuild.Link("/friendbot{?addr}")
-	} else {
-		panic("friendbotURL is nil")
+		dest.Links.Friendbot = friendbotLinkBuild.Link("{?addr}")
 	}
 	dest.Links.Account = lb.Link("/accounts/{account_id}")
 	dest.Links.AccountTransactions = lb.PagedLink("/accounts/{account_id}/transactions")
