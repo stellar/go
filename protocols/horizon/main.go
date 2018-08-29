@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"encoding/base64"
+
 	"github.com/stellar/go/protocols/horizon/base"
 	"github.com/stellar/go/strkey"
 	"github.com/stellar/go/support/errors"
@@ -230,15 +231,15 @@ type PriceLevel struct {
 // Root is the initial map of links into the api.
 type Root struct {
 	Links struct {
-		Account             hal.Link `json:"account"`
-		AccountTransactions hal.Link `json:"account_transactions"`
-		Assets              hal.Link `json:"assets"`
-		Friendbot           hal.Link `json:"friendbot"`
-		Metrics             hal.Link `json:"metrics"`
-		OrderBook           hal.Link `json:"order_book"`
-		Self                hal.Link `json:"self"`
-		Transaction         hal.Link `json:"transaction"`
-		Transactions        hal.Link `json:"transactions"`
+		Account             hal.Link  `json:"account"`
+		AccountTransactions hal.Link  `json:"account_transactions"`
+		Assets              hal.Link  `json:"assets"`
+		Friendbot           *hal.Link `json:"friendbot,omitempty"`
+		Metrics             hal.Link  `json:"metrics"`
+		OrderBook           hal.Link  `json:"order_book"`
+		Self                hal.Link  `json:"self"`
+		Transaction         hal.Link  `json:"transaction"`
+		Transactions        hal.Link  `json:"transactions"`
 	} `json:"_links"`
 
 	HorizonVersion       string `json:"horizon_version"`
