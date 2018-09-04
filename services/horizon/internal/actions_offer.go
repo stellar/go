@@ -1,6 +1,9 @@
 package horizon
 
 import (
+	"errors"
+	"fmt"
+
 	"github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/services/horizon/internal/db2"
 	"github.com/stellar/go/services/horizon/internal/db2/core"
@@ -8,8 +11,6 @@ import (
 	"github.com/stellar/go/services/horizon/internal/render/sse"
 	"github.com/stellar/go/services/horizon/internal/resourceadapter"
 	"github.com/stellar/go/support/render/hal"
-	"fmt"
-	"errors"
 )
 
 // This file contains the actions:
@@ -44,6 +45,7 @@ func (action *OffersByAccountAction) SSE(stream sse.Stream) {
 	action.Do(
 		action.loadParams,
 		action.loadRecords,
+		action.loadLedgers,
 		func() {
 			stream.SetLimit(int(action.PageQuery.Limit))
 			for _, record := range action.Records[stream.SentCount():] {
