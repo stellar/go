@@ -7,7 +7,14 @@ This repo is the home for all of the public go code produced by SDF.  In additio
 
 ## Dependencies
 
-This repository depends upon a [number of external dependencies](./Gopkg.lock), and we use [dep](https://golang.github.io/dep/) to manage them.  Dep is used to populate the [vendor directory](https://golang.github.io/dep/docs/ensure-mechanics.html), ensuring that builds are reproducible even as upstream dependencies are changed. Please see the [dep](https://golang.github.io/dep/) website for installation instructions.
+This repository depends upon a [number of external dependencies](./Gopkg.lock), and uses [dep](https://golang.github.io/dep/) to manage them (see installation instructions [here](https://golang.github.io/dep/docs/installation.html)).  
+
+To satisfy dependencies and populate the `vendor` directory run: 
+
+```bash
+$ dep ensure -v
+```
+
 
 You can use dep yourself in your project and add stellar go as a vendor'd dependency, or you can just drop this repos as `$GOPATH/src/github.com/stellar/go` to import it the canonical way (you still need to run `dep ensure -v`).
 
