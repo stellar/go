@@ -1,9 +1,9 @@
 package horizon
 
 import (
-	"testing"
-
+	"encoding/json"
 	. "github.com/smartystreets/goconvey/convey"
+	"testing"
 )
 
 func TestAccount(t *testing.T) {
@@ -47,5 +47,52 @@ func TestAccount(t *testing.T) {
 		Convey("Returns error slice if value is invalid", func() {
 			So(func() { account.MustGetData("invalid") }, ShouldPanic)
 		})
+	})
+}
+
+func TestTransactionJSONMarshal(t *testing.T) {
+	Convey("After marshalling and unmarshalling, the resulting struct should be the exact same as the original", t, func() {
+		transaction := Transaction{
+			ID:       "12345",
+			FeePaid:  10,
+			MemoType: "text",
+			Memo:     "",
+		}
+		marshaledTransaction, marshalErr := json.Marshal(transaction)
+		So(marshalErr, ShouldBeNil)
+		var result Transaction
+		json.Unmarshal(marshaledTransaction, &result)
+		So(result, ShouldResemble, transaction)
+	})
+
+	Convey("For text memos, even if memo is an empty string, the resulting JSON should still include memo as a field", t, func() {
+		transaction := Transaction{
+			MemoType: "text",
+			Memo:     "",
+		}
+		marshaledTransaction, marshalErr := json.Marshal(transaction)
+		So(marshalErr, ShouldBeNil)
+		var result struct {
+			Memo *string
+		}
+		json.Unmarshal(marshaledTransaction, &result)
+		if result.Memo == nil {
+			t.Errorf("Memo field is nil")
+		}
+	})
+
+	Convey("If the memo type is None, then memo field should be nil", t, func() {
+		transaction := Transaction{
+			MemoType: "none",
+		}
+		marshaledTransaction, marshalErr := json.Marshal(transaction)
+		So(marshalErr, ShouldBeNil)
+		var result struct {
+			Memo *string
+		}
+		json.Unmarshal(marshaledTransaction, &result)
+		if result.Memo != nil {
+			t.Errorf("MemoType is none, but memo is not nil")
+		}
 	})
 }

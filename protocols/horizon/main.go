@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"encoding/base64"
+	"encoding/json"
 
 	"github.com/stellar/go/protocols/horizon/base"
 	"github.com/stellar/go/strkey"
@@ -370,6 +371,28 @@ type Transaction struct {
 	Signatures      []string  `json:"signatures"`
 	ValidAfter      string    `json:"valid_after,omitempty"`
 	ValidBefore     string    `json:"valid_before,omitempty"`
+}
+
+func (t Transaction) MarshalJSON() ([]byte, error) {
+	type Alias Transaction
+	switch t.MemoType {
+	case "none":
+		return json.Marshal(&struct {
+			Memo *string `json:"memo"`
+			*Alias
+		}{
+			Memo:  nil,
+			Alias: (*Alias)(&t),
+		})
+	default:
+		return json.Marshal(&struct {
+			Memo *string `json:"memo"`
+			*Alias
+		}{
+			Memo:  &t.Memo,
+			Alias: (*Alias)(&t),
+		})
+	}
 }
 
 // PagingToken implementation for hal.Pageable
