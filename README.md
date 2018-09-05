@@ -12,7 +12,7 @@ This repository depends upon a [number of external dependencies](./Gopkg.lock), 
 To satisfy dependencies and populate the `vendor` directory run: 
 
 ```bash
-$ dep ensure
+$ dep ensure -v
 ```
 
 
