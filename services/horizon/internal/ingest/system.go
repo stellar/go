@@ -300,7 +300,9 @@ func (i *System) runOnce() {
 	is.Run()
 
 	if is.Err != nil {
-		logFields["err"] = is.Err
+		// We need to use `Error` method because `is.Err` is `withMessage` struct from
+		// `github.com/pkg/errors` and encodes to `{}` in the logs.
+		logFields["err"] = is.Err.Error()
 		log.WithFields(logFields).Error("Error ingesting ledgers")
 		return
 	}
