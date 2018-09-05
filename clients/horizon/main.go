@@ -71,6 +71,8 @@ var (
 )
 
 // Client struct contains data required to connect to Horizon instance
+// It is okay to call methods on Client concurrently.
+// A Client must not be copied after first use.
 type Client struct {
 	// URL of Horizon server to connect
 	URL string
