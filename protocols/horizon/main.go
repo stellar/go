@@ -375,24 +375,16 @@ type Transaction struct {
 
 func (t Transaction) MarshalJSON() ([]byte, error) {
 	type Alias Transaction
-	switch t.MemoType {
-	case "none":
-		return json.Marshal(&struct {
-			Memo *string `json:"memo"`
-			*Alias
-		}{
-			Memo:  nil,
-			Alias: (*Alias)(&t),
-		})
-	default:
-		return json.Marshal(&struct {
-			Memo *string `json:"memo"`
-			*Alias
-		}{
-			Memo:  &t.Memo,
-			Alias: (*Alias)(&t),
-		})
+	v := &struct {
+		Memo *string `json:"memo,omitempty"`
+		*Alias
+	}{
+		Alias: (*Alias)(&t),
 	}
+	if t.MemoType != "none" {
+		v.Memo = &t.Memo
+	}
+	return json.Marshal(v)
 }
 
 // PagingToken implementation for hal.Pageable
