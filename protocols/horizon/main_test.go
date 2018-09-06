@@ -2,6 +2,7 @@ package horizon
 
 import (
 	"encoding/json"
+	"github.com/stretchr/testify/assert"
 	"testing"
 
 	. "github.com/smartystreets/goconvey/convey"
@@ -51,49 +52,47 @@ func TestAccount(t *testing.T) {
 	})
 }
 
+//After marshalling and unmarshalling, the resulting struct should be the exact same as the original
 func TestTransactionJSONMarshal(t *testing.T) {
-	Convey("After marshalling and unmarshalling, the resulting struct should be the exact same as the original", t, func() {
-		transaction := Transaction{
-			ID:       "12345",
-			FeePaid:  10,
-			MemoType: "text",
-			Memo:     "",
-		}
-		marshaledTransaction, marshalErr := json.Marshal(transaction)
-		So(marshalErr, ShouldBeNil)
-		var result Transaction
-		json.Unmarshal(marshaledTransaction, &result)
-		So(result, ShouldResemble, transaction)
-	})
+	transaction := Transaction{
+		ID:       "12345",
+		FeePaid:  10,
+		MemoType: "text",
+		Memo:     "",
+	}
+	marshaledTransaction, marshalErr := json.Marshal(transaction)
+	assert.Nil(t, marshalErr)
+	var result Transaction
+	json.Unmarshal(marshaledTransaction, &result)
+	assert.Equal(t, result, transaction)
+}
 
-	Convey("For text memos, even if memo is an empty string, the resulting JSON should still include memo as a field", t, func() {
-		transaction := Transaction{
-			MemoType: "text",
-			Memo:     "",
-		}
-		marshaledTransaction, marshalErr := json.Marshal(transaction)
-		So(marshalErr, ShouldBeNil)
-		var result struct {
-			Memo *string
-		}
-		json.Unmarshal(marshaledTransaction, &result)
-		if result.Memo == nil {
-			t.Errorf("Memo field is nil")
-		}
-	})
+//For text memos, even if memo is an empty string, the resulting JSON should
+// still include memo as a field
+func TestTransactionEmptyMemoText(t *testing.T) {
+	transaction := Transaction{
+		MemoType: "text",
+		Memo:     "",
+	}
+	marshaledTransaction, marshalErr := json.Marshal(transaction)
+	assert.Nil(t, marshalErr)
+	var result struct {
+		Memo *string
+	}
+	json.Unmarshal(marshaledTransaction, &result)
+	assert.NotNil(t, result.Memo)
+}
 
-	Convey("If the memo type is None, then memo field should be nil", t, func() {
-		transaction := Transaction{
-			MemoType: "none",
-		}
-		marshaledTransaction, marshalErr := json.Marshal(transaction)
-		So(marshalErr, ShouldBeNil)
-		var result struct {
-			Memo *string
-		}
-		json.Unmarshal(marshaledTransaction, &result)
-		if result.Memo != nil {
-			t.Errorf("MemoType is none, but memo is not nil")
-		}
-	})
+// If a transaction's memo type is None, then memo field should be nil in JSON
+func TestTransactionMemoTypeNone(t *testing.T) {
+	transaction := Transaction{
+		MemoType: "none",
+	}
+	marshaledTransaction, marshalErr := json.Marshal(transaction)
+	assert.Nil(t, marshalErr)
+	var result struct {
+		Memo *string
+	}
+	json.Unmarshal(marshaledTransaction, &result)
+	assert.Nil(t, result.Memo)
 }
