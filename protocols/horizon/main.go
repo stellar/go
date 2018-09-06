@@ -373,6 +373,9 @@ type Transaction struct {
 	ValidBefore     string    `json:"valid_before,omitempty"`
 }
 
+// MarshalJSON implements a custom marshaler for Transaction.
+// The memo field should be omitted if and only if the
+// memo_type is "none".
 func (t Transaction) MarshalJSON() ([]byte, error) {
 	type Alias Transaction
 	v := &struct {
