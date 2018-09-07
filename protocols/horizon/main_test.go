@@ -1,51 +1,63 @@
 package horizon
 
 import (
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/suite"
 	"testing"
-
-	. "github.com/smartystreets/goconvey/convey"
 )
 
-func TestAccount(t *testing.T) {
-	account := Account{
+type AccountTestSuite struct {
+	suite.Suite
+	account Account
+}
+
+// Initialize account with test data
+func (suite *AccountTestSuite) SetupTest() {
+	suite.account = Account{
 		Data: map[string]string{
 			"test":    "aGVsbG8=",
 			"invalid": "a_*&^*",
 		},
 	}
+}
 
-	Convey("Account.GetData", t, func() {
-		Convey("Returns decoded value if the key exists", func() {
-			decoded, err := account.GetData("test")
-			So(err, ShouldBeNil)
-			So(string(decoded), ShouldEqual, "hello")
-		})
+// Should return the decoded value if the key exists
+func (suite *AccountTestSuite) TestGetData() {
+	decoded, err := suite.account.GetData("test")
+	assert.Nil(suite.T(), err)
+	assert.Equal(suite.T(), string(decoded), "hello")
+}
 
-		Convey("Returns empty slice if key doesn't exist", func() {
-			decoded, err := account.GetData("test2")
-			So(err, ShouldBeNil)
-			So(len(decoded), ShouldEqual, 0)
-		})
+// Should return an empty slice if key doesn't exist
+func (suite *AccountTestSuite) TestGetDataNonexistentKey() {
+	decoded, err := suite.account.GetData("test2")
+	assert.Nil(suite.T(), err)
+	assert.Equal(suite.T(), len(decoded), 0)
+}
 
-		Convey("Returns error slice if value is invalid", func() {
-			_, err := account.GetData("invalid")
-			So(err, ShouldNotBeNil)
-		})
-	})
+// Should return error slice if value is invalid
+func (suite *AccountTestSuite) TestGetDataInvalid() {
+	_, err := suite.account.GetData("invalid")
+	assert.NotNil(suite.T(), err)
+}
 
-	Convey("Account.MustGetData", t, func() {
-		Convey("Returns decoded value if the key exists", func() {
-			decoded := account.MustGetData("test")
-			So(string(decoded), ShouldEqual, "hello")
-		})
+// Should return the decoded value if the key exists
+func (suite *AccountTestSuite) TestMustGetData() {
+	decoded := suite.account.MustGetData("test")
+	assert.Equal(suite.T(), string(decoded), "hello")
+}
 
-		Convey("Returns empty slice if key doesn't exist", func() {
-			decoded := account.MustGetData("test2")
-			So(len(decoded), ShouldEqual, 0)
-		})
+// Should return an empty slice if key doesn't exist
+func (suite *AccountTestSuite) TestMustGetDataNonexistentKey() {
+	decoded := suite.account.MustGetData("test2")
+	assert.Equal(suite.T(), len(decoded), 0)
+}
 
-		Convey("Returns error slice if value is invalid", func() {
-			So(func() { account.MustGetData("invalid") }, ShouldPanic)
-		})
-	})
+// Should panic if the value is invalid
+func (suite *AccountTestSuite) TestMustGetDataInvalid() {
+	assert.Panics(suite.T(), func() { suite.account.MustGetData("invalid") })
+}
+
+func TestAccountTestSuite(t *testing.T) {
+	suite.Run(t, new(AccountTestSuite))
 }
