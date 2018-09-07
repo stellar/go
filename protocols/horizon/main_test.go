@@ -1,6 +1,8 @@
 package horizon
 
 import (
+	"encoding/json"
+	"github.com/stretchr/testify/assert"
 	"testing"
 
 	. "github.com/smartystreets/goconvey/convey"
@@ -48,4 +50,49 @@ func TestAccount(t *testing.T) {
 			So(func() { account.MustGetData("invalid") }, ShouldPanic)
 		})
 	})
+}
+
+//After marshalling and unmarshalling, the resulting struct should be the exact same as the original
+func TestTransactionJSONMarshal(t *testing.T) {
+	transaction := Transaction{
+		ID:       "12345",
+		FeePaid:  10,
+		MemoType: "text",
+		Memo:     "",
+	}
+	marshaledTransaction, marshalErr := json.Marshal(transaction)
+	assert.Nil(t, marshalErr)
+	var result Transaction
+	json.Unmarshal(marshaledTransaction, &result)
+	assert.Equal(t, result, transaction)
+}
+
+//For text memos, even if memo is an empty string, the resulting JSON should
+// still include memo as a field
+func TestTransactionEmptyMemoText(t *testing.T) {
+	transaction := Transaction{
+		MemoType: "text",
+		Memo:     "",
+	}
+	marshaledTransaction, marshalErr := json.Marshal(transaction)
+	assert.Nil(t, marshalErr)
+	var result struct {
+		Memo *string
+	}
+	json.Unmarshal(marshaledTransaction, &result)
+	assert.NotNil(t, result.Memo)
+}
+
+// If a transaction's memo type is None, then the memo field should be omitted from JSON
+func TestTransactionMemoTypeNone(t *testing.T) {
+	transaction := Transaction{
+		MemoType: "none",
+	}
+	marshaledTransaction, marshalErr := json.Marshal(transaction)
+	assert.Nil(t, marshalErr)
+	var result struct {
+		Memo *string
+	}
+	json.Unmarshal(marshaledTransaction, &result)
+	assert.Nil(t, result.Memo)
 }

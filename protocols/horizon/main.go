@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"encoding/base64"
+	"encoding/json"
 
 	"github.com/stellar/go/protocols/horizon/base"
 	"github.com/stellar/go/strkey"
@@ -370,6 +371,23 @@ type Transaction struct {
 	Signatures      []string  `json:"signatures"`
 	ValidAfter      string    `json:"valid_after,omitempty"`
 	ValidBefore     string    `json:"valid_before,omitempty"`
+}
+
+// MarshalJSON implements a custom marshaler for Transaction.
+// The memo field should be omitted if and only if the
+// memo_type is "none".
+func (t Transaction) MarshalJSON() ([]byte, error) {
+	type Alias Transaction
+	v := &struct {
+		Memo *string `json:"memo,omitempty"`
+		*Alias
+	}{
+		Alias: (*Alias)(&t),
+	}
+	if t.MemoType != "none" {
+		v.Memo = &t.Memo
+	}
+	return json.Marshal(v)
 }
 
 // PagingToken implementation for hal.Pageable
