@@ -8,13 +8,43 @@ bumps.  A breaking change will get clearly notified in this log.
 
 ## Unreleased
 
-### Added
+## v0.14.0 - 2018-09-06
 
-- Path payment operations now generate credit/debit effects.
+### Breaking changes
+
+* Offer resource `last_modified` field removed (see Bug Fixes section).
+* Trade aggregations endpoint accepts only specific time ranges now (1/5/15 minutes, 1 hour, 1 day, 1 week).
+* Horizon sends `Cache-Control: no-cache, no-store, max-age=0` HTTP header for all responses.
+
+### Deprecations
+
+* Account > Signers collection `public_key` field is deprecated, replaced by `key`.
 
 ### Changes
 
-- dropped support for go1.8 since we need big.IsInt64 from math/big in our findpaths calculations
+* Protocol V10 features:
+  * New `bump_sequence` operation (as in [CAP-0001](https://github.com/stellar/stellar-protocol/blob/master/core/cap-0001.md)).
+    * New [`bump_sequence`](https://www.stellar.org/developers/horizon/reference/resources/operation.html#bump-sequence) operation.
+    * New `sequence_bumped` effect.
+    * Please check [CAP-0001](https://github.com/stellar/stellar-protocol/blob/master/core/cap-0001.md) for new error codes for transaction submission.
+  * Offer liabilities (as in [CAP-0003](https://github.com/stellar/stellar-protocol/blob/master/core/cap-0003.md)):
+    * `/accounts/{id}` resources contain new fields: `buying_liabilities` and `selling_liabilities` for each entry in `balances`.
+    * Please check [CAP-0003](https://github.com/stellar/stellar-protocol/blob/master/core/cap-0003.md) for new error codes for transaction submission.
+* Added `source_amount` field to `path_payment` operations.
+* Added `account_credited` and `account_debited` effects for `path_payment` operations.
+* Friendbot link in Root endpoint is empty if not set in configuration.
+* Improved `ingest` package logging.
+* Improved HTTP logging (`forwarded_ip`, `route` fields, `duration` is always in seconds).
+* `LOGGLY_HOST` env variable has been replaced with `LOGGLY_TAG` and is adding a tag to every log event.
+* Dropped support for Go 1.8.
+
+### Bug fixes
+
+* New fields in Offer resource: `last_modified_ledger` and `last_modified_time`, replace buggy `last_modified` (#478).
+* Fixed pagination in Trades for account endpoint (#486).
+* Fixed a synchronization issue in `ingest` package (#603).
+* Fixed Order Book resource links in Root endpoint.
+* Fixed streaming in Offers for Account endpoint.
 
 ## v0.13.3 - 2018-08-23
 
