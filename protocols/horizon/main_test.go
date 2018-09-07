@@ -83,7 +83,7 @@ func TestTransactionEmptyMemoText(t *testing.T) {
 	assert.NotNil(t, result.Memo)
 }
 
-// If a transaction's memo type is None, then memo field should be nil in JSON
+// If a transaction's memo type is None, then the memo field should be omitted from JSON
 func TestTransactionMemoTypeNone(t *testing.T) {
 	transaction := Transaction{
 		MemoType: "none",
