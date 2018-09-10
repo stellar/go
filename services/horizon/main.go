@@ -2,6 +2,7 @@ package main
 
 import (
 	"log"
+	"net/url"
 
 	"github.com/PuerkitoBio/throttled"
 	"github.com/sirupsen/logrus"
@@ -202,6 +203,15 @@ func initConfig() {
 		log.Fatal("Invalid TLS config: cert not configured")
 	}
 
+	var friendbotURL *url.URL
+	friendbotURLString := viper.GetString("friendbot-url")
+	if friendbotURLString != "" {
+		friendbotURL, err = url.Parse(friendbotURLString)
+		if err != nil {
+			log.Fatalf("Unable to parse URL: %s/%v", friendbotURLString, err)
+		}
+	}
+
 	config = horizon.Config{
 		DatabaseURL:            viper.GetString("db-url"),
 		StellarCoreDatabaseURL: viper.GetString("stellar-core-db-url"),
@@ -209,7 +219,7 @@ func initConfig() {
 		Port:                   viper.GetInt("port"),
 		RateLimit:              throttled.PerHour(viper.GetInt("per-hour-rate-limit")),
 		RedisURL:               viper.GetString("redis-url"),
-		FriendbotURL:           viper.GetString("friendbot-url"),
+		FriendbotURL:           friendbotURL,
 		LogLevel:               ll,
 		SentryDSN:              viper.GetString("sentry-dsn"),
 		LogglyToken:            viper.GetString("loggly-token"),

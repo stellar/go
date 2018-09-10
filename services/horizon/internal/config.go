@@ -1,6 +1,8 @@
 package horizon
 
 import (
+	"net/url"
+
 	"github.com/PuerkitoBio/throttled"
 	"github.com/sirupsen/logrus"
 )
@@ -14,7 +16,7 @@ type Config struct {
 	Port                   int
 	RateLimit              throttled.Quota
 	RedisURL               string
-	FriendbotURL           string
+	FriendbotURL           *url.URL
 	LogLevel               logrus.Level
 	SentryDSN              string
 	LogglyTag              string

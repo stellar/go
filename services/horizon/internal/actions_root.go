@@ -1,9 +1,9 @@
 package horizon
 
 import (
+	"github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/services/horizon/internal/ledger"
 	"github.com/stellar/go/services/horizon/internal/resourceadapter"
-	"github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/support/render/hal"
 )
 
@@ -24,6 +24,7 @@ func (action *RootAction) JSON() {
 		action.App.coreVersion,
 		action.App.networkPassphrase,
 		action.App.protocolVersion,
+		action.App.config.FriendbotURL,
 	)
 
 	hal.Render(action.W, res)
