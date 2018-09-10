@@ -159,6 +159,20 @@ type EffectsQ struct {
 // `history_effects` table.
 type EffectType int
 
+// FeeStats is a row of data from the min, mode aggregate functions over the
+// `history_ledgers` table.
+type FeeStats struct {
+	Min  null.Int `db:"min"`
+	Mode null.Int `db:"mode"`
+}
+
+// LatestLedger represents a response from the raw LatestLedgerBaseFeeAndSequence
+// query.
+type LatestLedger struct {
+	BaseFee  int32 `db:"base_fee"`
+	Sequence int32 `db:"sequence"`
+}
+
 // Ledger is a row of data from the `history_ledgers` table
 type Ledger struct {
 	TotalOrderID
@@ -298,6 +312,16 @@ func (q *Q) ElderLedger(dest interface{}) error {
 // LatestLedger loads the latest known ledger
 func (q *Q) LatestLedger(dest interface{}) error {
 	return q.GetRaw(dest, `SELECT COALESCE(MAX(sequence), 0) FROM history_ledgers`)
+}
+
+// LatestLedgerBaseFeeAndSequence loads the latest known ledger's base fee and
+// sequence number.
+func (q *Q) LatestLedgerBaseFeeAndSequence(dest interface{}) error {
+	return q.GetRaw(dest, `
+		SELECT base_fee, sequence
+		FROM history_ledgers
+		WHERE sequence = (SELECT COALESCE(MAX(sequence), 0) FROM history_ledgers)
+	`)
 }
 
 // OldestOutdatedLedgers populates a slice of ints with the first million

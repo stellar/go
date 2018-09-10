@@ -64,6 +64,12 @@ func (action OffersByAccountAction) Handle(w http.ResponseWriter, r *http.Reques
 	ap.Execute(&action)
 }
 
+func (action OperationFeeStatsAction) Handle(w http.ResponseWriter, r *http.Request) {
+	ap := &action.Action
+	ap.Prepare(w, r)
+	ap.Execute(&action)
+}
+
 func (action OperationIndexAction) Handle(w http.ResponseWriter, r *http.Request) {
 	ap := &action.Action
 	ap.Prepare(w, r)
