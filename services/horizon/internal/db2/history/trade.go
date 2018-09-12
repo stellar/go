@@ -3,6 +3,7 @@ package history
 import (
 	"fmt"
 	"math"
+	"strconv"
 
 	sq "github.com/Masterminds/squirrel"
 	"github.com/stellar/go/services/horizon/internal/db2"
@@ -189,9 +190,11 @@ var tradesInsert = sq.Insert("history_trades").Columns(
 	"\"order\"",
 	"ledger_closed_at",
 	"offer_id",
+	"base_offer_id",
 	"base_account_id",
 	"base_asset_id",
 	"base_amount",
+	"counter_offer_id",
 	"counter_account_id",
 	"counter_asset_id",
 	"counter_amount",
@@ -205,8 +208,10 @@ func (q *Q) InsertTrade(
 	opid int64,
 	order int32,
 	buyer xdr.AccountId,
+	buyOfferExists bool,
+	buyOffer xdr.OfferEntry,
 	trade xdr.ClaimOfferAtom,
-	price xdr.Price,
+	sellPrice xdr.Price,
 	ledgerClosedAt time.Millis,
 ) error {
 	sellerAccountId, err := q.GetCreateAccountID(trade.SellerId)
@@ -229,22 +234,38 @@ func (q *Q) InsertTrade(
 		return errors.Wrap(err, "failed to get bought asset id")
 	}
 
+	sellOfferId := strconv.FormatUint(uint64(trade.OfferId), 10)
+
+	// if there is a buy offer, use it's id's decimal string representation
+	// else, use the operation id's decimal string representation, prefixed with 'O'
+	var buyOfferId string
+	if buyOfferExists {
+		buyOfferId = strconv.FormatUint(uint64(buyOffer.OfferId), 10)
+	} else {
+		buyOfferId = "O" + strconv.FormatInt(opid, 10)
+	}
+
 	orderPreserved, baseAssetId, counterAssetId := getCanonicalAssetOrder(soldAssetId, boughtAssetId)
 
 	var baseAccountId, counterAccountId int64
 	var baseAmount, counterAmount xdr.Int64
+	var baseOfferId, counterOfferId string
 
 	if orderPreserved {
 		baseAccountId = sellerAccountId
 		baseAmount = trade.AmountSold
 		counterAccountId = buyerAccountId
 		counterAmount = trade.AmountBought
+		baseOfferId = sellOfferId
+		counterOfferId = buyOfferId
 	} else {
 		baseAccountId = buyerAccountId
 		baseAmount = trade.AmountBought
 		counterAccountId = sellerAccountId
 		counterAmount = trade.AmountSold
-		price = xdr.Price{price.D, price.N}
+		baseOfferId = buyOfferId
+		counterOfferId = sellOfferId
+		sellPrice = xdr.Price{N: sellPrice.D, D: sellPrice.N}
 	}
 
 	sql := tradesInsert.Values(
@@ -252,21 +273,24 @@ func (q *Q) InsertTrade(
 		order,
 		ledgerClosedAt.ToTime(),
 		trade.OfferId,
+		baseOfferId,
 		baseAccountId,
 		baseAssetId,
 		baseAmount,
+		counterOfferId,
 		counterAccountId,
 		counterAssetId,
 		counterAmount,
 		orderPreserved,
-		price.N,
-		price.D,
+		sellPrice.N,
+		sellPrice.D,
 	)
+
 	_, err = q.Exec(sql)
 	if err != nil {
 		return errors.Wrap(err, "failed to exec sql")
 	}
-
+	fmt.Println("finished executing sql")
 	return nil
 }
 
