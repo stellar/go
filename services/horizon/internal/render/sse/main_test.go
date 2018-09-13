@@ -2,6 +2,7 @@ package sse
 
 import (
 	"errors"
+	"fmt"
 	"net/http/httptest"
 	"testing"
 
@@ -11,9 +12,9 @@ import (
 
 func TestWriteEventOutput(t *testing.T) {
 	ctx, _ := test.ContextWithLogBuffer()
-	expectations := []struct {
-		Event     Event
-		Substring string
+	testCases := []struct {
+		Event Event
+		ExpectedSubstring string
 	}{
 		{Event{Data: "test"}, "data: \"test\"\n\n"},
 		{Event{ID: "1", Data: "test"}, "id: 1\n"},
@@ -22,11 +23,13 @@ func TestWriteEventOutput(t *testing.T) {
 		{Event{Event: "test", Data: "test"}, "event: test\ndata: \"test\"\n\n"},
 	}
 
-	for _, e := range expectations {
-		w := httptest.NewRecorder()
-		WriteEvent(ctx, w, e.Event)
-		bodyString := w.Body.String()
-		assert.Contains(t, bodyString, e.Substring)
+	for _, tc := range testCases {
+		t.Run(fmt.Sprintf("Checking for expected substring %s", tc.ExpectedSubstring), func(t *testing.T) {
+			w := httptest.NewRecorder()
+			WriteEvent(ctx, w, tc.Event)
+			bodyString := w.Body.String()
+			assert.Contains(t, bodyString, tc.ExpectedSubstring)
+		})
 	}
 }
 
