@@ -54,7 +54,3 @@ func (m *Metrics) Levels() []logrus.Level {
 		logrus.PanicLevel,
 	}
 }
-
-func init() {
-	DefaultMetrics = NewMetrics()
-}
