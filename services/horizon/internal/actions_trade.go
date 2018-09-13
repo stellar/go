@@ -2,6 +2,7 @@ package horizon
 
 import (
 	"errors"
+	"github.com/stellar/go/services/horizon/internal/render/sse"
 	"strconv"
 	gTime "time"
 
@@ -36,6 +37,36 @@ func (action *TradeIndexAction) JSON() {
 		action.loadPage,
 		func() {
 			hal.Render(action.W, action.Page)
+		},
+	)
+}
+
+// SSE is a method for actions.SSE
+func (action *TradeIndexAction) SSE(stream sse.Stream) {
+	action.Setup(
+		action.EnsureHistoryFreshness,
+		action.loadParams,
+	)
+	action.Do(
+		action.loadRecords,
+		func() {
+			stream.SetLimit(int(action.PagingParams.Limit))
+			records := action.Records[stream.SentCount():]
+
+			for _, record := range records {
+				var res horizon.Trade
+				err := resourceadapter.PopulateTrade(action.R.Context(), &res, record)
+
+				if err != nil {
+					stream.Err(err)
+					return
+				}
+
+				stream.Send(sse.Event{
+					ID:   res.PagingToken(),
+					Data: res,
+				})
+			}
 		},
 	)
 }

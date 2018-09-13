@@ -16,6 +16,7 @@ NOTE:  this changelog represents the changes that are associated with the librar
 - build: `Signer` learned support for new signer types
 - strkey: added support for new signer types
 - network:  Added the `HashTransaction` helper func to get the hash of a transaction targetted to a specific stellar network.
+- trades: Added Server-Sent Events endpoint to support streaming of trades
 
 ### Changed:
 
