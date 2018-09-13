@@ -2,57 +2,52 @@ package horizon
 
 import (
 	"encoding/json"
-	"github.com/stretchr/testify/assert"
 	"testing"
 
-	. "github.com/smartystreets/goconvey/convey"
+	"github.com/stretchr/testify/assert"
 )
 
-func TestAccount(t *testing.T) {
-	account := Account{
-		Data: map[string]string{
-			"test":    "aGVsbG8=",
-			"invalid": "a_*&^*",
-		},
-	}
-
-	Convey("Account.GetData", t, func() {
-		Convey("Returns decoded value if the key exists", func() {
-			decoded, err := account.GetData("test")
-			So(err, ShouldBeNil)
-			So(string(decoded), ShouldEqual, "hello")
-		})
-
-		Convey("Returns empty slice if key doesn't exist", func() {
-			decoded, err := account.GetData("test2")
-			So(err, ShouldBeNil)
-			So(len(decoded), ShouldEqual, 0)
-		})
-
-		Convey("Returns error slice if value is invalid", func() {
-			_, err := account.GetData("invalid")
-			So(err, ShouldNotBeNil)
-		})
-	})
-
-	Convey("Account.MustGetData", t, func() {
-		Convey("Returns decoded value if the key exists", func() {
-			decoded := account.MustGetData("test")
-			So(string(decoded), ShouldEqual, "hello")
-		})
-
-		Convey("Returns empty slice if key doesn't exist", func() {
-			decoded := account.MustGetData("test2")
-			So(len(decoded), ShouldEqual, 0)
-		})
-
-		Convey("Returns error slice if value is invalid", func() {
-			So(func() { account.MustGetData("invalid") }, ShouldPanic)
-		})
-	})
+// Account Tests
+// An example account to be used in all the Account tests
+var exampleAccount = Account{
+	Data: map[string]string{
+		"test":    "aGVsbG8=",
+		"invalid": "a_*&^*",
+	},
 }
 
-//After marshalling and unmarshalling, the resulting struct should be the exact same as the original
+// Testing the GetData method of Account
+func TestAccount_GetData(t *testing.T) {
+	// Should return the decoded value if the key exists
+	decoded, err := exampleAccount.GetData("test")
+	assert.Nil(t, err)
+	assert.Equal(t, string(decoded), "hello")
+
+	// Should return an empty slice if key doesn't exist
+	decoded, err = exampleAccount.GetData("test2")
+	assert.Nil(t, err)
+	assert.Equal(t, len(decoded), 0)
+
+	// Should return error slice if value is invalid
+	_, err = exampleAccount.GetData("invalid")
+	assert.NotNil(t, err)
+}
+
+func TestAccount_MustGetData(t *testing.T) {
+	// Should return the decoded value if the key exists
+	decoded := exampleAccount.MustGetData("test")
+	assert.Equal(t, string(decoded), "hello")
+
+	// Should return an empty slice if key doesn't exist
+	decoded = exampleAccount.MustGetData("test2")
+	assert.Equal(t, len(decoded), 0)
+
+	// Should panic if the value is invalid
+	assert.Panics(t, func() { exampleAccount.MustGetData("invalid") })
+}
+
+// Transaction Tests
+// After marshalling and unmarshalling, the resulting struct should be the exact same as the original
 func TestTransactionJSONMarshal(t *testing.T) {
 	transaction := Transaction{
 		ID:       "12345",
