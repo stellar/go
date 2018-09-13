@@ -150,11 +150,13 @@ var selectTrade = sq.Select(
 	"htrd.\"order\"",
 	"htrd.ledger_closed_at",
 	"htrd.offer_id",
+	"htrd.base_offer_id",
 	"base_accounts.address as base_account",
 	"base_assets.asset_type as base_asset_type",
 	"base_assets.asset_code as base_asset_code",
 	"base_assets.asset_issuer as base_asset_issuer",
 	"htrd.base_amount",
+	"htrd.counter_offer_id",
 	"counter_accounts.address as counter_account",
 	"counter_assets.asset_type as counter_asset_type",
 	"counter_assets.asset_code as counter_asset_code",
@@ -170,11 +172,13 @@ var selectReverseTrade = sq.Select(
 	"htrd.\"order\"",
 	"htrd.ledger_closed_at",
 	"htrd.offer_id",
+	"htrd.counter_offer_id as base_offer_id",
 	"counter_accounts.address as base_account",
 	"counter_assets.asset_type as base_asset_type",
 	"counter_assets.asset_code as base_asset_code",
 	"counter_assets.asset_issuer as base_asset_issuer",
 	"htrd.counter_amount as base_amount",
+	"htrd.base_offer_id as counter_offer_id",
 	"base_accounts.address as counter_account",
 	"base_assets.asset_type as counter_asset_type",
 	"base_assets.asset_code as counter_asset_code",
@@ -290,7 +294,6 @@ func (q *Q) InsertTrade(
 	if err != nil {
 		return errors.Wrap(err, "failed to exec sql")
 	}
-	fmt.Println("finished executing sql")
 	return nil
 }
 
