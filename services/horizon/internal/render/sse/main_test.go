@@ -1,27 +1,16 @@
 package sse
 
 import (
-	"bytes"
-	"context"
 	"errors"
-	"github.com/stellar/go/support/test"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/suite"
 	"net/http/httptest"
 	"testing"
+
+	"github.com/stellar/go/support/test"
+	"github.com/stretchr/testify/assert"
 )
 
-type SsePackageTestSuite struct {
-	suite.Suite
-	ctx context.Context
-	log *bytes.Buffer
-}
-
-func (suite *SsePackageTestSuite) SetupTest() {
-	suite.ctx, suite.log = test.ContextWithLogBuffer()
-}
-
-func (suite *SsePackageTestSuite) TestWriteEventOutput() {
+func TestWriteEventOutput(t *testing.T) {
+	ctx, _ := test.ContextWithLogBuffer()
 	expectations := []struct {
 		Event     Event
 		Substring string
@@ -35,19 +24,16 @@ func (suite *SsePackageTestSuite) TestWriteEventOutput() {
 
 	for _, e := range expectations {
 		w := httptest.NewRecorder()
-		WriteEvent(suite.ctx, w, e.Event)
+		WriteEvent(ctx, w, e.Event)
 		bodyString := w.Body.String()
-		assert.Equal(suite.T(), e.Substring, bodyString)
+		assert.Contains(t, bodyString, e.Substring)
 	}
 }
 
-func (suite *SsePackageTestSuite) TestWriteEventLogs() {
+func TestWriteEventLogs(t *testing.T) {
+	ctx, log := test.ContextWithLogBuffer()
 	w := httptest.NewRecorder()
-	WriteEvent(suite.ctx, w, Event{Error: errors.New("busted")})
-	assert.Contains(suite.T(), suite.log.String(), "level=error")
-	assert.Contains(suite.T(), suite.log.String(), "busted")
-}
-
-func TestSsePackageTestSuite(t *testing.T) {
-	suite.Run(t, new(SsePackageTestSuite))
+	WriteEvent(ctx, w, Event{Error: errors.New("busted")})
+	assert.Contains(t, log.String(), "level=error")
+	assert.Contains(t, log.String(), "busted")
 }
