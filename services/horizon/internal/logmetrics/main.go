@@ -1,13 +1,30 @@
-package log
+package logmetrics
 
 import (
 	metrics "github.com/rcrowley/go-metrics"
 	"github.com/sirupsen/logrus"
+	"github.com/stellar/go/support/log"
 )
 
 // Metrics is a logrus hook-compliant struct that records metrics about logging
 // when added to a logrus.Logger
 type Metrics map[logrus.Level]metrics.Meter
+
+var DefaultLogger *log.Entry
+var DefaultMetrics *Metrics
+
+func init() {
+	DefaultLogger, DefaultMetrics = New()
+}
+
+// New creates a new logger according to horizon specifications.
+func New() (l *log.Entry, m *Metrics) {
+	m = NewMetrics()
+	l = log.New()
+	l.Level = logrus.WarnLevel
+	l.Logger.Hooks.Add(m)
+	return
+}
 
 // NewMetrics creates a new hook for recording metrics.
 func NewMetrics() *Metrics {

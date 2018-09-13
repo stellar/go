@@ -10,9 +10,10 @@ import (
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/services/horizon/internal/httpx"
 	"github.com/stellar/go/services/horizon/internal/ledger"
-	"github.com/stellar/go/services/horizon/internal/log"
 	"github.com/stellar/go/services/horizon/internal/render/problem"
 	"github.com/stellar/go/services/horizon/internal/toid"
+	"github.com/stellar/go/support/errors"
+	"github.com/stellar/go/support/log"
 )
 
 // Action is the "base type" for all actions in horizon.  It provides
@@ -110,7 +111,7 @@ func (action *Action) ValidateCursorWithinHistory() {
 	}
 
 	if err != nil {
-		action.Err = err
+		action.SetInvalidField("cursor", errors.New("invalid value"))
 		return
 	}
 

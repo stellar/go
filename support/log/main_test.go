@@ -12,10 +12,10 @@ import (
 )
 
 func TestSet(t *testing.T) {
-	assert.Nil(t, context.Background().Value(&contextKey))
+	assert.Nil(t, context.Background().Value(&loggerContextKey))
 	l := New()
 	ctx := Set(context.Background(), l)
-	assert.Equal(t, l, ctx.Value(&contextKey))
+	assert.Equal(t, l, ctx.Value(&loggerContextKey))
 }
 
 func TestCtx(t *testing.T) {

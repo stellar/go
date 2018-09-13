@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/garyburd/redigo/redis"
-	"github.com/stellar/go/services/horizon/internal/log"
+	"github.com/stellar/go/support/log"
 )
 
 func initRedis(app *App) {

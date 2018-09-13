@@ -12,8 +12,8 @@ import (
 	"github.com/spf13/viper"
 	"github.com/stellar/go/services/horizon/internal/db2/schema"
 	"github.com/stellar/go/services/horizon/internal/ingest"
-	hlog "github.com/stellar/go/services/horizon/internal/log"
 	"github.com/stellar/go/support/db"
+	hlog "github.com/stellar/go/support/log"
 )
 
 var dbCmd = &cobra.Command{
