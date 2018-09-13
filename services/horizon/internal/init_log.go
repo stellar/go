@@ -2,6 +2,7 @@ package horizon
 
 import (
 	"github.com/getsentry/raven-go"
+	"github.com/stellar/go/services/horizon/internal/logmetrics"
 	"github.com/stellar/go/support/log"
 )
 
@@ -9,6 +10,7 @@ import (
 // app.logMetrics.  It also configured the logger's level using Config.LogLevel.
 func initLog(app *App) {
 	log.DefaultLogger.Logger.Level = app.config.LogLevel
+	log.DefaultLogger.Logger.Hooks.Add(logmetrics.DefaultMetrics)
 }
 
 // initSentry initialized the default sentry client with the configured DSN
