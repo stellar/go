@@ -3,15 +3,15 @@ package horizon
 import (
 	"errors"
 	"strconv"
+	gTime "time"
 
+	"github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/services/horizon/internal/db2"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/services/horizon/internal/resourceadapter"
-	"github.com/stellar/go/support/time"
-	gTime "time"
-	"github.com/stellar/go/xdr"
-	"github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/support/render/hal"
+	"github.com/stellar/go/support/time"
+	"github.com/stellar/go/xdr"
 )
 
 type TradeIndexAction struct {
@@ -47,6 +47,11 @@ func (action *TradeIndexAction) loadParams() {
 	action.CounterAssetFilter, action.HasCounterAssetFilter = action.MaybeGetAsset("counter_")
 	action.OfferFilter = action.GetInt64("offer_id")
 	action.AccountFilter = action.GetString("account_id")
+
+	if (!action.HasBaseAssetFilter && action.HasCounterAssetFilter) ||
+		(action.HasBaseAssetFilter && !action.HasCounterAssetFilter) {
+		action.SetInvalidField("base_asset_type,counter_asset_type", errors.New("this endpoint supports asset pairs but only one asset supplied"))
+	}
 }
 
 // loadRecords populates action.Records
@@ -142,10 +147,10 @@ func (action *TradeAggregateIndexAction) loadParams() {
 
 	//check if resolution is legal
 	resolutionDuration := gTime.Duration(action.ResolutionFilter) * gTime.Millisecond
-	if history.StrictResolutionFiltering{
+	if history.StrictResolutionFiltering {
 		if _, ok := history.AllowedResolutions[resolutionDuration]; !ok {
-			action.SetInvalidField("resolution", errors.New("illegal or missing resolution. " +
-				"allowed resolutions are: 1 minute (60000), 5 minutes (300000), 15 minutes (900000), 1 hour (3600000), " +
+			action.SetInvalidField("resolution", errors.New("illegal or missing resolution. "+
+				"allowed resolutions are: 1 minute (60000), 5 minutes (300000), 15 minutes (900000), 1 hour (3600000), "+
 				"1 day (86400000) and 1 week (604800000)"))
 		}
 	}

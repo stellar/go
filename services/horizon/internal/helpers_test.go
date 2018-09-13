@@ -7,8 +7,8 @@ import (
 	"log"
 
 	"github.com/PuerkitoBio/throttled"
-	hlog "github.com/stellar/go/services/horizon/internal/log"
 	"github.com/stellar/go/services/horizon/internal/test"
+	supportLog "github.com/stellar/go/support/log"
 )
 
 func NewTestApp() *App {
@@ -26,7 +26,7 @@ func NewTestConfig() Config {
 		DatabaseURL:            test.DatabaseURL(),
 		StellarCoreDatabaseURL: test.StellarCoreDatabaseURL(),
 		RateLimit:              throttled.PerHour(1000),
-		LogLevel:               hlog.InfoLevel,
+		LogLevel:               supportLog.InfoLevel,
 	}
 }
 
