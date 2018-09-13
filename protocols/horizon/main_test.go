@@ -2,67 +2,51 @@ package horizon
 
 import (
 	"encoding/json"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/suite"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
-type AccountTestSuite struct {
-	suite.Suite
-	account Account
+// Account Tests
+// An example account to be used in all the Account tests
+var exampleAccount = Account{
+	Data: map[string]string{
+		"test":    "aGVsbG8=",
+		"invalid": "a_*&^*",
+	},
 }
 
-// Initialize account with test data
-func (suite *AccountTestSuite) SetupTest() {
-	suite.account = Account{
-		Data: map[string]string{
-			"test":    "aGVsbG8=",
-			"invalid": "a_*&^*",
-		},
-	}
+// Testing the GetData method of Account
+func TestAccount_GetData(t *testing.T) {
+	// Should return the decoded value if the key exists
+	decoded, err := exampleAccount.GetData("test")
+	assert.Nil(t, err)
+	assert.Equal(t, string(decoded), "hello")
+
+	// Should return an empty slice if key doesn't exist
+	decoded, err = exampleAccount.GetData("test2")
+	assert.Nil(t, err)
+	assert.Equal(t, len(decoded), 0)
+
+	// Should return error slice if value is invalid
+	_, err = exampleAccount.GetData("invalid")
+	assert.NotNil(t, err)
 }
 
-// Should return the decoded value if the key exists
-func (suite *AccountTestSuite) TestGetData() {
-	decoded, err := suite.account.GetData("test")
-	assert.Nil(suite.T(), err)
-	assert.Equal(suite.T(), string(decoded), "hello")
+func TestAccount_MustGetData(t *testing.T) {
+	// Should return the decoded value if the key exists
+	decoded := exampleAccount.MustGetData("test")
+	assert.Equal(t, string(decoded), "hello")
+
+	// Should return an empty slice if key doesn't exist
+	decoded = exampleAccount.MustGetData("test2")
+	assert.Equal(t, len(decoded), 0)
+
+	// Should panic if the value is invalid
+	assert.Panics(t, func() { exampleAccount.MustGetData("invalid") })
 }
 
-// Should return an empty slice if key doesn't exist
-func (suite *AccountTestSuite) TestGetDataNonexistentKey() {
-	decoded, err := suite.account.GetData("test2")
-	assert.Nil(suite.T(), err)
-	assert.Equal(suite.T(), len(decoded), 0)
-}
-
-// Should return error slice if value is invalid
-func (suite *AccountTestSuite) TestGetDataInvalid() {
-	_, err := suite.account.GetData("invalid")
-	assert.NotNil(suite.T(), err)
-}
-
-// Should return the decoded value if the key exists
-func (suite *AccountTestSuite) TestMustGetData() {
-	decoded := suite.account.MustGetData("test")
-	assert.Equal(suite.T(), string(decoded), "hello")
-}
-
-// Should return an empty slice if key doesn't exist
-func (suite *AccountTestSuite) TestMustGetDataNonexistentKey() {
-	decoded := suite.account.MustGetData("test2")
-	assert.Equal(suite.T(), len(decoded), 0)
-}
-
-// Should panic if the value is invalid
-func (suite *AccountTestSuite) TestMustGetDataInvalid() {
-	assert.Panics(suite.T(), func() { suite.account.MustGetData("invalid") })
-}
-
-func TestAccountTestSuite(t *testing.T) {
-	suite.Run(t, new(AccountTestSuite))
-}
-
+// Transaction Tests
 // After marshalling and unmarshalling, the resulting struct should be the exact same as the original
 func TestTransactionJSONMarshal(t *testing.T) {
 	transaction := Transaction{
