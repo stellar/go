@@ -20,7 +20,7 @@ type TradeIndexAction struct {
 	HasBaseAssetFilter    bool
 	CounterAssetFilter    xdr.Asset
 	HasCounterAssetFilter bool
-	OfferFilter           int64
+	OfferFilter           string
 	AccountFilter         string
 	PagingParams          db2.PageQuery
 	Records               []history.Trade
@@ -45,7 +45,7 @@ func (action *TradeIndexAction) loadParams() {
 	action.PagingParams = action.GetPageQuery()
 	action.BaseAssetFilter, action.HasBaseAssetFilter = action.MaybeGetAsset("base_")
 	action.CounterAssetFilter, action.HasCounterAssetFilter = action.MaybeGetAsset("counter_")
-	action.OfferFilter = action.GetInt64("offer_id")
+	action.OfferFilter = action.GetString("offer_id")
 	action.AccountFilter = action.GetString("account_id")
 }
 
@@ -79,7 +79,7 @@ func (action *TradeIndexAction) loadRecords() {
 		}
 	}
 
-	if action.OfferFilter > int64(0) {
+	if action.OfferFilter != "" {
 		trades = trades.ForOffer(action.OfferFilter)
 	}
 

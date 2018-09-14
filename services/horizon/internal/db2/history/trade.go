@@ -56,8 +56,8 @@ func (q *Q) TradesForAssetPair(baseAssetId int64, counterAssetId int64) *TradesQ
 }
 
 // ForOffer filters the query results by the offer id.
-func (q *TradesQ) ForOffer(id int64) *TradesQ {
-	q.sql = q.sql.Where("htrd.offer_id = ?", id)
+func (q *TradesQ) ForOffer(id string) *TradesQ {
+	q.sql = q.sql.Where("(htrd.base_offer_id = ? OR htrd.counter_offer_id = ?)", id, id)
 	return q
 }
 
