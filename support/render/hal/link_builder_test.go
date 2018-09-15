@@ -1,9 +1,10 @@
 package hal
 
 import (
-	"github.com/stretchr/testify/assert"
 	"net/url"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestLinkBuilder(t *testing.T) {
