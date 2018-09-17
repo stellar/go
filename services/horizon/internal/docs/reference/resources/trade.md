@@ -22,10 +22,12 @@ A trade occurs between two parties - `base` and `counter`. Which is which is eit
 | paging_token | string | A [paging token](./page.md) suitable for use as a `cursor` parameter.|
 | ledger_close_time | string | An ISO 8601 formatted string of when the ledger with this trade was closed.|
 | base_account | string | base party of this trade|
+| base_offer_id | string | the base offer id. If this offer was immediately fully consumed this will be a synthetic id
 | base_amount | string | amount of base asset that was moved from `base_account` to `counter_account`|
 | base_asset_type | string | type of base asset|
 | base_asset_code | string | code of base asset|
 | base_asset_issuer | string | issuer of base asset|
+| counter_offer_id | string | the counter offer id. If this offer was immediately fully consumed this will be a synthetic id
 | counter_account | string | counter party of this trade|
 | counter_amount | string | amount of counter asset that was moved from `counter_account` to `base_account`|
 | counter_asset_type | string | type of counter asset|
