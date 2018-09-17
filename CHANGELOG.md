@@ -16,9 +16,12 @@ NOTE:  this changelog represents the changes that are associated with the librar
 - build: `Signer` learned support for new signer types
 - strkey: added support for new signer types
 - network:  Added the `HashTransaction` helper func to get the hash of a transaction targetted to a specific stellar network.
+- trades: the trade resource now has both `base_offer_id` and `counter_offer_id` properties. In cases where an offer id is not allocated
+in the protocol level (fully consumed offers or path payments) a synthetic one is generated. 
 
 ### Changed:
 
 - build: _BREAKING CHANGE_:  A transaction built and signed using the `build` package no longer default to the test network.
+- trades for offer endpoint will query for trades that match the given offer on either side of trades, rather than just the "sell" offer.
 
 [Unreleased]: https://github.com/stellar/go/commits/master
