@@ -474,13 +474,6 @@
   revision = "4e24498b31dba4683efb9d35c1c8a91e2eda28c8"
 
 [[projects]]
-  digest = "1:6727c92e4758a138667d7f2b3f650a738fc869dcaa14c5d93ced7f0e57214d14"
-  name = "github.com/nullstyle/go-xdr"
-  packages = ["xdr3"]
-  pruneopts = "T"
-  revision = "a875e7c9fa2388ce03279f6b5ba1c2ccd1f9e917"
-
-[[projects]]
   branch = "master"
   digest = "1:58e797548d332abdfdcb87422d79a0cc94982f6ada7881c2aec5dabb22a1a415"
   name = "github.com/onsi/ginkgo"
@@ -671,6 +664,14 @@
   packages = ["."]
   pruneopts = "T"
   revision = "db7ff930a189b98d602179d9001d33345f42b8c7"
+
+[[projects]]
+  branch = "master"
+  digest = "1:8234b16ee9deb574008f7ee4d571533571a06669ac3fd0475ecd467f69a980f1"
+  name = "github.com/stellar/go-xdr"
+  packages = ["xdr3"]
+  pruneopts = "T"
+  revision = "0bc96f33a18ef2f963e75431dbed042129eb421b"
 
 [[projects]]
   digest = "1:1087cae51acd825ff03792b392a34486a261b9673a9514df0b712051edee0c2b"
@@ -927,7 +928,6 @@
     "github.com/lib/pq",
     "github.com/manucorporat/sse",
     "github.com/mattn/go-sqlite3",
-    "github.com/nullstyle/go-xdr/xdr3",
     "github.com/onsi/ginkgo",
     "github.com/onsi/ginkgo/extensions/table",
     "github.com/onsi/gomega",
@@ -944,6 +944,7 @@
     "github.com/smartystreets/goconvey/convey",
     "github.com/spf13/cobra",
     "github.com/spf13/viper",
+    "github.com/stellar/go-xdr/xdr3",
     "github.com/stretchr/testify/assert",
     "github.com/stretchr/testify/mock",
     "github.com/stretchr/testify/require",
