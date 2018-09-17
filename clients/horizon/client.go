@@ -364,14 +364,14 @@ func (c *Client) stream(
 	for {
 		req, err := http.NewRequest("GET", fmt.Sprintf("%s?%s", baseURL, query.Encode()), nil)
 		if err != nil {
-			return err
+			return errors.Wrap(err, "Error creating HTTP request")
 		}
 		req.Header.Set("Accept", "text/event-stream")
 
 		// Make sure we don't use c.HTTP that can have Timeout set.
 		resp, err := client.Do(req)
 		if err != nil {
-			return err
+			return errors.Wrap(err, "Error sending HTTP request")
 		}
 		defer resp.Body.Close()
 
@@ -399,7 +399,7 @@ func (c *Client) stream(
 
 				line, err := reader.ReadString('\n')
 				if err != nil {
-					if err == io.EOF {
+					if err == io.EOF || err == io.ErrUnexpectedEOF {
 						// Currently Horizon appends a new line after the last event so this is not really
 						// needed. We have this code here in case this behaviour is changed in a future.
 						// From spec:
@@ -409,7 +409,7 @@ func (c *Client) stream(
 							break Events
 						}
 					} else {
-						return err
+						return errors.Wrap(err, "Error reading line")
 					}
 				}
 
@@ -424,7 +424,7 @@ func (c *Client) stream(
 
 			events, err := sse.Decode(strings.NewReader(buffer.String()))
 			if err != nil {
-				return err
+				return errors.Wrap(err, "Error decoding event")
 			}
 
 			// Right now len(events) should always be 1. This loop will be helpful after writing
@@ -442,8 +442,10 @@ func (c *Client) stream(
 				switch data := event.Data.(type) {
 				case string:
 					err = handler([]byte(data))
+					err = errors.Wrap(err, "Handler error")
 				case []byte:
 					err = handler(data)
+					err = errors.Wrap(err, "Handler error")
 				default:
 					err = errors.New("Invalid event.Data type")
 				}
