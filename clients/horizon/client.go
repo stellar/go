@@ -400,8 +400,15 @@ func (c *Client) stream(
 				line, err := reader.ReadString('\n')
 				if err != nil {
 					if err == io.EOF || err == io.ErrUnexpectedEOF {
-						// Currently Horizon appends a new line after the last event so this is not really
-						// needed. We have this code here in case this behaviour is changed in a future.
+						// We catch EOF errors to handle two possible situations:
+						// - The last line before closing the stream was not empty. This should never
+						//   happen in Horizon as it always sends an empty line after each event.
+						// - The stream was closed by the server/proxy because the connection was idle.
+						//
+						// In the former case, that (again) should never happen in Horizon, we need to
+						// check if there are any events we need to decode. We do this in the `if`
+						// statement below just in case if Horizon behaviour changes in a future.
+						//
 						// From spec:
 						// > Once the end of the file is reached, the user agent must dispatch the
 						// > event one final time, as defined below.
