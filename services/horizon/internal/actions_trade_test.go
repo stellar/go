@@ -1,6 +1,7 @@
 package horizon
 
 import (
+	"fmt"
 	"net/url"
 	"strconv"
 	"strings"
@@ -372,5 +373,25 @@ func TestTradeActions_AggregationOrdering(t *testing.T) {
 		ht.UnmarshalPage(w.Body, &records)
 		ht.Assert.Equal("1.0000000", records[0].Open)
 		ht.Assert.Equal("3.0000000", records[0].Close)
+	}
+}
+
+// TestTradeActions_SyntheticOfferIds loads the offer_ids scenario and ensures that synthetic offer
+// ids are created when necessary and not when unnecessary
+func TestTradeActions_SyntheticOfferIds(t *testing.T) {
+	ht := StartHTTPTest(t, "offer_ids")
+	defer ht.Finish()
+	var records []horizon.Trade
+	synPrefix := byte('O')
+	w := ht.Get("/trades")
+	if ht.Assert.Equal(200, w.Code) {
+		if ht.Assert.PageOf(4, w.Body) {
+			fmt.Println(w.Body.String())
+			ht.UnmarshalPage(w.Body, &records)
+			ht.Assert.Equal(synPrefix, records[0].CounterOfferID[0])
+			ht.Assert.Equal(synPrefix, records[1].CounterOfferID[0])
+			ht.Assert.NotEqual(synPrefix, records[2].CounterOfferID[0])
+			ht.Assert.NotEqual(synPrefix, records[3].CounterOfferID[0])
+		}
 	}
 }
