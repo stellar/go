@@ -83,6 +83,7 @@ This endpoint responds with a list of trades that changed a given account's stat
         "id": "940258535411713-0",
         "paging_token": "940258535411713-0",
         "ledger_close_time": "2017-03-30T13:20:41Z",
+        "offer_id": "8",
         "base_offer_id": "8",
         "base_account": "GBYTR4MC5JAX4ALGUBJD7EIKZVM7CUGWKXIUJMRSMK573XH2O7VAK3SR",
         "base_amount": "1.0000000",
