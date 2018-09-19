@@ -13,7 +13,7 @@ func TestIngest_Kahuna1(t *testing.T) {
 	tt := test.Start(t).ScenarioWithoutHorizon("kahuna")
 	defer tt.Finish()
 
-	s := ingest(tt)
+	s := ingest(tt, false)
 
 	tt.Require.NoError(s.Err)
 	tt.Assert.Equal(62, s.Ingested)
@@ -34,7 +34,7 @@ func TestIngest_Kahuna2(t *testing.T) {
 	tt := test.Start(t).ScenarioWithoutHorizon("kahuna-2")
 	defer tt.Finish()
 
-	s := ingest(tt)
+	s := ingest(tt, false)
 
 	tt.Require.NoError(s.Err)
 	tt.Assert.Equal(6, s.Ingested)
@@ -52,7 +52,7 @@ func TestIngest_Kahuna2(t *testing.T) {
 func TestTick(t *testing.T) {
 	tt := test.Start(t).ScenarioWithoutHorizon("base")
 	defer tt.Finish()
-	sys := sys(tt)
+	sys := sys(tt, false)
 
 	// ingest by tick
 	s := sys.Tick()
@@ -65,8 +65,8 @@ func TestTick(t *testing.T) {
 	tt.Require.NoError(s.Err)
 }
 
-func ingest(tt *test.T) *Session {
-	sys := sys(tt)
+func ingest(tt *test.T, disableAssetStats bool) *Session {
+	sys := sys(tt, disableAssetStats)
 	s := NewSession(sys)
 	s.Cursor = NewCursor(1, ledger.CurrentState().CoreLatest, sys)
 	s.Run()
@@ -74,11 +74,12 @@ func ingest(tt *test.T) *Session {
 	return s
 }
 
-func sys(tt *test.T) *System {
+func sys(tt *test.T, disableAssetStats bool) *System {
 	return New(
 		network.TestNetworkPassphrase,
 		"",
 		tt.CoreSession(),
 		tt.HorizonSession(),
+		Config{DisableAssetStats: disableAssetStats},
 	)
 }

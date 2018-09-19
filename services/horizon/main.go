@@ -44,6 +44,7 @@ func init() {
 	viper.BindEnv("history-retention-count", "HISTORY_RETENTION_COUNT")
 	viper.BindEnv("history-stale-threshold", "HISTORY_STALE_THRESHOLD")
 	viper.BindEnv("skip-cursor-update", "SKIP_CURSOR_UPDATE")
+	viper.BindEnv("disable-asset-stats", "DISABLE_ASSET_STATS")
 
 	rootCmd = &cobra.Command{
 		Use:   "horizon",
@@ -230,5 +231,6 @@ func initConfig() {
 		HistoryRetentionCount:  uint(viper.GetInt("history-retention-count")),
 		StaleThreshold:         uint(viper.GetInt("history-stale-threshold")),
 		SkipCursorUpdate:       viper.GetBool("skip-cursor-update"),
+		DisableAssetStats:      viper.GetBool("disable-asset-stats"),
 	}
 }

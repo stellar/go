@@ -28,7 +28,7 @@ var dbBackfillCmd = &cobra.Command{
 		initConfig()
 		hlog.DefaultLogger.Logger.Level = config.LogLevel
 
-		i := ingestSystem()
+		i := ingestSystem(ingest.Config{})
 		i.SkipCursorUpdate = true
 		parsed, err := strconv.ParseUint(args[0], 10, 32)
 		if err != nil {
@@ -49,7 +49,7 @@ var dbClearCmd = &cobra.Command{
 		initConfig()
 		hlog.DefaultLogger.Logger.Level = config.LogLevel
 
-		i := ingestSystem()
+		i := ingestSystem(ingest.Config{})
 		err := i.ClearAll()
 		if err != nil {
 			hlog.Error(err)
@@ -138,7 +138,7 @@ var dbRebaseCmd = &cobra.Command{
 		initConfig()
 		hlog.DefaultLogger.Logger.Level = config.LogLevel
 
-		i := ingestSystem()
+		i := ingestSystem(ingest.Config{})
 		i.SkipCursorUpdate = true
 
 		err := i.RebaseHistory()
@@ -156,7 +156,7 @@ var dbReingestCmd = &cobra.Command{
 		initConfig()
 		hlog.DefaultLogger.Logger.Level = config.LogLevel
 
-		i := ingestSystem()
+		i := ingestSystem(ingest.Config{})
 		i.SkipCursorUpdate = true
 		logStatus := func(stage string) {
 			count := i.Metrics.IngestLedgerTimer.Count()
@@ -207,7 +207,7 @@ func init() {
 	dbCmd.AddCommand(dbRebaseCmd)
 }
 
-func ingestSystem() *ingest.System {
+func ingestSystem(ingestConfig ingest.Config) *ingest.System {
 	hdb, err := db.Open("postgres", config.DatabaseURL)
 	if err != nil {
 		log.Fatal(err)
@@ -223,7 +223,7 @@ func ingestSystem() *ingest.System {
 		log.Fatal("network-passphrase is blank: reingestion requires manually setting passphrase")
 	}
 
-	i := ingest.New(passphrase, config.StellarCoreURL, cdb, hdb)
+	i := ingest.New(passphrase, config.StellarCoreURL, cdb, hdb, ingestConfig)
 	return i
 }
 

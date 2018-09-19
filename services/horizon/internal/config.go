@@ -33,13 +33,16 @@ type Config struct {
 	// determining a "retention duration", each ledger roughly corresponds to 10
 	// seconds of real time.
 	HistoryRetentionCount uint
-
 	// StaleThreshold represents the number of ledgers a history database may be
 	// out-of-date by before horizon begins to respond with an error to history
 	// requests.
 	StaleThreshold uint
-
 	// SkipCursorUpdate causes the ingestor to skip reporting the "last imported
 	// ledger" state to stellar-core.
 	SkipCursorUpdate bool
+	// DisableAssetStats is a feature flag that determines whether to calculate
+	// asset stats during the ingestion and expose `/assets` endpoint.
+	// Disabling it will save CPU when ingesting ledgers full of many different
+	// assets related operations.
+	DisableAssetStats bool
 }

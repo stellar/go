@@ -46,7 +46,10 @@ func (is *Session) Run() {
 			break
 		}
 	}
-	is.Cursor.AssetsModified.UpdateAssetStats(is)
+
+	if !is.Config.DisableAssetStats {
+		is.Cursor.AssetsModified.UpdateAssetStats(is)
+	}
 
 	if is.Err != nil {
 		is.Ingestion.Rollback()
