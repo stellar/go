@@ -50,13 +50,18 @@ func (action *OffersByAccountAction) SSE(stream sse.Stream) {
 			stream.SetLimit(int(action.PageQuery.Limit))
 			for _, record := range action.Records[stream.SentCount():] {
 				ledger, found := action.Ledgers.Records[record.Lastmodified]
+				ledgerPtr := &ledger
 				if !found {
-					msg := fmt.Sprintf("could not find ledger data for sequence %d", record.Lastmodified)
-					stream.Err(errors.New(msg))
-					return
+					if action.App.config.AllowEmptyLedgerDataResponses {
+						ledgerPtr = nil
+					} else {
+						msg := fmt.Sprintf("could not find ledger data for sequence %d", record.Lastmodified)
+						stream.Err(errors.New(msg))
+						return
+					}
 				}
 				var res horizon.Offer
-				resourceadapter.PopulateOffer(action.R.Context(), &res, record, ledger)
+				resourceadapter.PopulateOffer(action.R.Context(), &res, record, ledgerPtr)
 				stream.Send(sse.Event{ID: res.PagingToken(), Data: res})
 			}
 		},
@@ -87,14 +92,19 @@ func (action *OffersByAccountAction) loadRecords() {
 func (action *OffersByAccountAction) loadPage() {
 	for _, record := range action.Records {
 		ledger, found := action.Ledgers.Records[record.Lastmodified]
+		ledgerPtr := &ledger
 		if !found {
-			msg := fmt.Sprintf("could not find ledger data for sequence %d", record.Lastmodified)
-			action.Err = errors.New(msg)
-			return
+			if action.App.config.AllowEmptyLedgerDataResponses {
+				ledgerPtr = nil
+			} else {
+				msg := fmt.Sprintf("could not find ledger data for sequence %d", record.Lastmodified)
+				action.Err = errors.New(msg)
+				return
+			}
 		}
 
 		var res horizon.Offer
-		resourceadapter.PopulateOffer(action.R.Context(), &res, record, ledger)
+		resourceadapter.PopulateOffer(action.R.Context(), &res, record, ledgerPtr)
 		action.Page.Add(res)
 	}
 
