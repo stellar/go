@@ -8,6 +8,21 @@ bumps.  A breaking change will get clearly notified in this log.
 
 ## Unreleased
 
+## v0.14.1 - 2018-09-19
+
+This release contains several bug fixes:
+
+* Assets stats can cause high CPU usage on stellar-core DB. If this slows down the database it's now possible to turn off this feature by setting `DISABLE_ASSET_STATS` feature flag. This can be set as environment variable (`DISABLE_ASSET_STATS=true`) or CLI parameter (`--disable-asset-stats=true`).
+* Sometimes `/accounts/{id}/offers` returns `500 Internal Server Error` response when ledger data is not available yet (for new ledgers) or no longer available (`CATCHUP_RECENT` deployments). It's possible to set `ALLOW_EMPTY_LEDGER_DATA_RESPONSES` feature flag as environment variable (`ALLOW_EMPTY_LEDGER_DATA_RESPONSES=true`) or CLI parameter (`--allow-empty-ledger-data-responses=true`). With the flag set to `true` "Offers for Account" endpoint will return `null` in `last_modified_time` field when ledger data is not available, instead of `500 Internal Server Error` error.
+
+### Bug fixes
+
+* Feature flag to disable asset stats (#668).
+* Feature flag to allow null ledger data in responses (#672).
+* Fix empty memo field in JSON when memo_type is text (#635).
+* Improved logging: some bad requests no longer generate `ERROR` level log entries (#654).
+* `/friendbot` endpoint is available only when `FriendbotURL` is set in the config.
+
 ## v0.14.0 - 2018-09-06
 
 ### Breaking changes
