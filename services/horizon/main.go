@@ -45,6 +45,7 @@ func init() {
 	viper.BindEnv("history-stale-threshold", "HISTORY_STALE_THRESHOLD")
 	viper.BindEnv("skip-cursor-update", "SKIP_CURSOR_UPDATE")
 	viper.BindEnv("disable-asset-stats", "DISABLE_ASSET_STATS")
+	viper.BindEnv("allow-empty-ledger-data-responses", "ALLOW_EMPTY_LEDGER_DATA_RESPONSES")
 
 	rootCmd = &cobra.Command{
 		Use:   "horizon",
@@ -214,23 +215,24 @@ func initConfig() {
 	}
 
 	config = horizon.Config{
-		DatabaseURL:            viper.GetString("db-url"),
-		StellarCoreDatabaseURL: viper.GetString("stellar-core-db-url"),
-		StellarCoreURL:         viper.GetString("stellar-core-url"),
-		Port:                   viper.GetInt("port"),
-		RateLimit:              throttled.PerHour(viper.GetInt("per-hour-rate-limit")),
-		RedisURL:               viper.GetString("redis-url"),
-		FriendbotURL:           friendbotURL,
-		LogLevel:               ll,
-		SentryDSN:              viper.GetString("sentry-dsn"),
-		LogglyToken:            viper.GetString("loggly-token"),
-		LogglyTag:              viper.GetString("loggly-tag"),
-		TLSCert:                cert,
-		TLSKey:                 key,
-		Ingest:                 viper.GetBool("ingest"),
-		HistoryRetentionCount:  uint(viper.GetInt("history-retention-count")),
-		StaleThreshold:         uint(viper.GetInt("history-stale-threshold")),
-		SkipCursorUpdate:       viper.GetBool("skip-cursor-update"),
-		DisableAssetStats:      viper.GetBool("disable-asset-stats"),
+		DatabaseURL:                   viper.GetString("db-url"),
+		StellarCoreDatabaseURL:        viper.GetString("stellar-core-db-url"),
+		StellarCoreURL:                viper.GetString("stellar-core-url"),
+		Port:                          viper.GetInt("port"),
+		RateLimit:                     throttled.PerHour(viper.GetInt("per-hour-rate-limit")),
+		RedisURL:                      viper.GetString("redis-url"),
+		FriendbotURL:                  friendbotURL,
+		LogLevel:                      ll,
+		SentryDSN:                     viper.GetString("sentry-dsn"),
+		LogglyToken:                   viper.GetString("loggly-token"),
+		LogglyTag:                     viper.GetString("loggly-tag"),
+		TLSCert:                       cert,
+		TLSKey:                        key,
+		Ingest:                        viper.GetBool("ingest"),
+		HistoryRetentionCount:         uint(viper.GetInt("history-retention-count")),
+		StaleThreshold:                uint(viper.GetInt("history-stale-threshold")),
+		SkipCursorUpdate:              viper.GetBool("skip-cursor-update"),
+		DisableAssetStats:             viper.GetBool("disable-asset-stats"),
+		AllowEmptyLedgerDataResponses: viper.GetBool("allow-empty-ledger-data-responses"),
 	}
 }

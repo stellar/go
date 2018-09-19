@@ -45,4 +45,8 @@ type Config struct {
 	// Disabling it will save CPU when ingesting ledgers full of many different
 	// assets related operations.
 	DisableAssetStats bool
+	// AllowEmptyLedgerDataResponses is a feature flag that sets unavailable
+	// ledger data (like `close_time`) to `nil` instead of returning 500 error
+	// response.
+	AllowEmptyLedgerDataResponses bool
 }
