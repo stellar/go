@@ -35,6 +35,8 @@ type Eventable interface {
 // Pumped returns a channel that will be closed the next time the input pump
 // sends.  It can be used similar to `ctx.Done()`, like so:  `<-sse.Pumped()`
 func Pumped() <-chan struct{} {
+	lock.Lock()
+	defer lock.Unlock()
 	return nextTick
 }
 
@@ -119,8 +121,10 @@ var helloEvent = Event{
 	Retry: 1000,
 }
 
-var lock sync.Mutex
-var nextTick chan struct{}
+var (
+	lock sync.Mutex
+	nextTick = make(chan struct{})
+)
 
 func getJSON(val interface{}) string {
 	js, err := json.Marshal(val)
@@ -130,10 +134,4 @@ func getJSON(val interface{}) string {
 	}
 
 	return string(js)
-}
-
-func init() {
-	lock.Lock()
-	nextTick = make(chan struct{})
-	lock.Unlock()
 }
