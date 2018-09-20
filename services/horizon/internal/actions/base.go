@@ -79,7 +79,10 @@ func (base *Base) Execute(action interface{}) {
 
 			select {
 			case <-ctx.Done():
-				return
+				{
+					stream.Done()
+					return
+				}
 			case <-sse.Pumped():
 				//no-op, continue onto the next iteration
 			}
