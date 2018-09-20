@@ -3,14 +3,14 @@ package txsub
 import (
 	"context"
 	"errors"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/suite"
 	"testing"
 	"time"
 
 	"github.com/stellar/go/build"
 	"github.com/stellar/go/services/horizon/internal/test"
 	"github.com/stellar/go/services/horizon/internal/txsub/sequence"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/suite"
 )
 
 type SystemTestSuite struct {
@@ -74,12 +74,12 @@ func (suite *SystemTestSuite) TestSubmit_NotFoundError() {
 
 	assert.NotNil(suite.T(), r.Err)
 	assert.True(suite.T(), suite.submitter.WasSubmittedTo)
-	assert.Equal(suite.T(), 0, suite.system.Metrics.SuccessfulSubmissionsMeter.Count())
-	assert.Equal(suite.T(), 1, suite.system.Metrics.FailedSubmissionsMeter.Count())
-	assert.Equal(suite.T(), 1, suite.system.Metrics.SubmissionTimer.Count())
+	assert.Equal(suite.T(), int64(0), suite.system.Metrics.SuccessfulSubmissionsMeter.Count())
+	assert.Equal(suite.T(), int64(1), suite.system.Metrics.FailedSubmissionsMeter.Count())
+	assert.Equal(suite.T(), int64(1), suite.system.Metrics.SubmissionTimer.Count())
 }
 
-// If the error is bad_seq and the result at the transaction's sequence number is for the same hash, return result
+// If the error is bad_seq and the result at the transaction's sequence number is for the same hash, return result.
 func (suite *SystemTestSuite) TestSubmit_BadSeq() {
 	suite.submitter.R = suite.badSeq
 	suite.results.Results = []Result{suite.noResults, suite.successTx}
@@ -91,7 +91,7 @@ func (suite *SystemTestSuite) TestSubmit_BadSeq() {
 	assert.True(suite.T(), suite.submitter.WasSubmittedTo)
 }
 
-// If error is bad_seq and no result is found, return error
+// If error is bad_seq and no result is found, return error.
 func (suite *SystemTestSuite) TestSubmit_BadSeqNotFound() {
 	suite.submitter.R = suite.badSeq
 	suite.submitter.R = suite.badSeq
@@ -101,23 +101,23 @@ func (suite *SystemTestSuite) TestSubmit_BadSeqNotFound() {
 	assert.True(suite.T(), suite.submitter.WasSubmittedTo)
 }
 
-// If no result found and no error submitting, add to open transaction list
+// If no result found and no error submitting, add to open transaction list.
 func (suite *SystemTestSuite) TestSubmit_OpenTransactionList() {
 	_ = suite.system.Submit(suite.ctx, suite.successTx.EnvelopeXDR)
 	pending := suite.system.Pending.Pending(suite.ctx)
 	assert.Equal(suite.T(), 1, len(pending))
 	assert.Equal(suite.T(), suite.successTx.Hash, pending[0])
-	assert.Equal(suite.T(), 1, suite.system.Metrics.SuccessfulSubmissionsMeter.Count())
-	assert.Equal(suite.T(), 0, suite.system.Metrics.FailedSubmissionsMeter.Count())
-	assert.Equal(suite.T(), 1, suite.system.Metrics.SubmissionTimer.Count())
+	assert.Equal(suite.T(), int64(1), suite.system.Metrics.SuccessfulSubmissionsMeter.Count())
+	assert.Equal(suite.T(), int64(0), suite.system.Metrics.FailedSubmissionsMeter.Count())
+	assert.Equal(suite.T(), int64(1), suite.system.Metrics.SubmissionTimer.Count())
 }
 
-// No-ops if there are no open submissions
+// Tick should be a no-op if there are no open submissions.
 func (suite *SystemTestSuite) TestTick_Noop() {
 	suite.system.Tick(suite.ctx)
 }
 
-// Finishes any available transactions
+// Test that Tick finishes any available transactions,
 func (suite *SystemTestSuite) TestTick_FinishesTransactions() {
 	l := make(chan Result, 1)
 	suite.system.Pending.Add(suite.ctx, suite.successTx.Hash, l)
@@ -132,7 +132,7 @@ func (suite *SystemTestSuite) TestTick_FinishesTransactions() {
 	assert.Equal(suite.T(), 0, len(suite.system.Pending.Pending(suite.ctx)))
 }
 
-// Removes old submissions that have timed out
+// Test that Tick removes old submissions that have timed out.
 func (suite *SystemTestSuite) TestTick_RemovesStaleSubmissions() {
 	l := make(chan Result, 1)
 	suite.system.SubmissionTimeout = 100 * time.Millisecond
