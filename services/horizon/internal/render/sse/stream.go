@@ -2,6 +2,7 @@ package sse
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"sync"
 	"time"
@@ -52,7 +53,9 @@ func (s *stream) sendHeartbeats() {
 			return
 		}
 		s.mu.Lock()
-		WriteEvent(s.ctx, s.w, Event{Data: ":heartbeat"})
+		//WriteEvent(s.ctx, s.w, Event{Data: ":heartbeat"})
+		fmt.Fprint(s.w, ":heartbeat")
+		s.w.(http.Flusher).Flush()
 		s.mu.Unlock()
 	}
 }
