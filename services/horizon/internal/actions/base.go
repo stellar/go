@@ -1,11 +1,14 @@
 package actions
 
 import (
+	"database/sql"
 	"net/http"
 
 	"github.com/stellar/go/services/horizon/internal/render"
 	hProblem "github.com/stellar/go/services/horizon/internal/render/problem"
 	"github.com/stellar/go/services/horizon/internal/render/sse"
+	"github.com/stellar/go/support/errors"
+	"github.com/stellar/go/support/log"
 	"github.com/stellar/go/support/render/problem"
 )
 
@@ -68,6 +71,13 @@ func (base *Base) Execute(action interface{}) {
 				if stream.SentCount() == 0 {
 					problem.Render(ctx, base.W, base.Err)
 					return
+				}
+
+				if errors.Cause(base.Err) == sql.ErrNoRows {
+					base.Err = errors.New("Object not found")
+				} else {
+					log.Ctx(ctx).Error(base.Err)
+					base.Err = errors.New("Unexpected stream error")
 				}
 
 				stream.Err(base.Err)
