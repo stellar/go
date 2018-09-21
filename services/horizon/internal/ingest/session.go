@@ -37,6 +37,9 @@ func (is *Session) Run() {
 	defer is.Ingestion.Rollback()
 
 	for is.Cursor.NextLedger() {
+		// Ensure no errors in Cursor
+		is.Err = errors.Wrap(is.Cursor.Err, "Cursor.NextLedger error")
+
 		is.validateLedger()
 		is.clearLedger()
 		is.ingestLedger()
