@@ -33,8 +33,6 @@ func TestString(t *testing.T) {
 	}
 }
 
-	//Convey("codes.ForOperationResult", t, func() {
-	//	//TODO: op_inner refers to inner result code
-	//	//TODO: non op_inner uses the outer result code
-	//	//TODO: one test for each operation type
-	//})
+//TODO: op_inner refers to inner result code
+//TODO: non op_inner uses the outer result code
+//TODO: one test for each operation type
