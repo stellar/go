@@ -52,7 +52,7 @@ func (s *stream) sendHeartbeats() {
 			return
 		}
 		s.mu.Lock()
-		WriteEvent(s.ctx, s.w, Event{})
+		WriteEvent(s.ctx, s.w, Event{Data: ":heartbeat"})
 		s.mu.Unlock()
 	}
 }
