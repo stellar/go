@@ -43,7 +43,7 @@ type stream struct {
 	limit int
 }
 
-// Go routine that periodically sends an Event with no data to keep the connection
+// Go routine that periodically sends a comment message to keep the connection
 // alive.
 func (s *stream) sendHeartbeats() {
 	for {
