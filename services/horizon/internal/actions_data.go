@@ -56,7 +56,7 @@ func (action *DataShowAction) SetupAndValidateSSE() {
 
 // SSE is a method for actions.SSE that loads the latest account data and sends them to stream.
 func (action *DataShowAction) SSE(stream sse.Stream) {
-	functionsToExecute := []func(){nil}
+	var functionsToExecute []func()
 	// No point reloading data if Setup was just called.
 	if action.InitialDataIsFresh == false {
 		functionsToExecute = append(functionsToExecute, action.loadParams, action.loadRecord)

@@ -61,7 +61,7 @@ func (action *OperationIndexAction) SetupAndValidateSSE() {
 
 // SSE is a method for actions.SSE that loads the latest operations and sends them to the stream.
 func (action *OperationIndexAction) SSE(stream sse.Stream) {
-	functionsToExecute := []func(){nil}
+	var functionsToExecute []func()
 	// No point reloading data if Setup was just called.
 	if action.InitialDataIsFresh == false {
 		functionsToExecute = append(functionsToExecute, action.loadRecords, action.loadLedgers)

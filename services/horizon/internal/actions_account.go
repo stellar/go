@@ -49,7 +49,7 @@ func (action *AccountShowAction) SetupAndValidateSSE() {
 
 // SSE is a method for actions.SSE that loads the latest resource and sends them to the stream.
 func (action *AccountShowAction) SSE(stream sse.Stream) {
-	functionsToExecute := []func(){nil}
+	var functionsToExecute []func()
 	// No point reloading data if Setup was just called.
 	if action.InitialDataIsFresh == false {
 		functionsToExecute = append(functionsToExecute, action.loadParams, action.loadRecord, action.loadResource)

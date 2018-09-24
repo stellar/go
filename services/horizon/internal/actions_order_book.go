@@ -80,7 +80,7 @@ func (action *OrderBookShowAction) SetupAndValidateSSE() {
 
 // SSE is a method for actions.SSE that loads the latest resources and sends them to the stream.
 func (action *OrderBookShowAction) SSE(stream sse.Stream) {
-	functionsToExecute := []func(){nil}
+	var functionsToExecute []func()
 	// No point reloading data if Setup was just called.
 	if action.InitialDataIsFresh == false {
 		functionsToExecute = append(functionsToExecute, action.LoadQuery, action.LoadRecord, action.LoadResource)

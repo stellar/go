@@ -62,7 +62,7 @@ func (action *EffectIndexAction) SetupAndValidateSSE() {
 
 // SSE is a method for actions.SSE that loads the latest effects and sends them to the Stream
 func (action *EffectIndexAction) SSE(stream sse.Stream) {
-	functionsToExecute := []func(){nil}
+	var functionsToExecute []func()
 	// No point reloading data if Setup was just called.
 	if action.InitialDataIsFresh == false {
 		functionsToExecute = append(functionsToExecute, action.loadRecords, action.loadLedgers)
