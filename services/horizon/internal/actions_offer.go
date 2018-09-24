@@ -52,35 +52,36 @@ func (action *OffersByAccountAction) SetupAndValidateSSE() {
 
 // SSE is a method for actions.SSE that loads the latest offers by account and sends them to the stream.
 func (action *OffersByAccountAction) SSE(stream sse.Stream) {
-	var functionsToExecute []func()
 	// No point reloading data if Setup was just called.
 	if action.InitialDataIsFresh == false {
-		functionsToExecute = append(functionsToExecute, action.loadParams, action.loadRecords, action.loadLedgers)
+		action.Do(
+			action.loadParams,
+			action.loadRecords,
+			action.loadLedgers,
+		)
 	} else {
 		action.InitialDataIsFresh = false
 	}
-	functionsToExecute = append(functionsToExecute,
-		func() {
-			stream.SetLimit(int(action.PageQuery.Limit))
-			for _, record := range action.Records[stream.SentCount():] {
-				ledger, found := action.Ledgers.Records[record.Lastmodified]
-				ledgerPtr := &ledger
-				if !found {
-					if action.App.config.AllowEmptyLedgerDataResponses {
-						ledgerPtr = nil
-					} else {
-						msg := fmt.Sprintf("could not find ledger data for sequence %d", record.Lastmodified)
-						stream.Err(errors.New(msg))
-						return
-					}
+	action.Do(func() {
+		stream.SetLimit(int(action.PageQuery.Limit))
+		for _, record := range action.Records[stream.SentCount():] {
+			ledger, found := action.Ledgers.Records[record.Lastmodified]
+			ledgerPtr := &ledger
+			if !found {
+				if action.App.config.AllowEmptyLedgerDataResponses {
+					ledgerPtr = nil
+				} else {
+					msg := fmt.Sprintf("could not find ledger data for sequence %d", record.Lastmodified)
+					stream.Err(errors.New(msg))
+					return
 				}
-				var res horizon.Offer
-				resourceadapter.PopulateOffer(action.R.Context(), &res, record, ledgerPtr)
-				stream.Send(sse.Event{ID: res.PagingToken(), Data: res})
 			}
-		},
+			var res horizon.Offer
+			resourceadapter.PopulateOffer(action.R.Context(), &res, record, ledgerPtr)
+			stream.Send(sse.Event{ID: res.PagingToken(), Data: res})
+		}
+	},
 	)
-	action.Do(functionsToExecute...)
 }
 
 func (action *OffersByAccountAction) loadParams() {
