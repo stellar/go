@@ -48,8 +48,14 @@ func (action *LedgerIndexAction) SetupAndValidateSSE() {
 
 // SSE is a method for actions.SSE
 func (action *LedgerIndexAction) SSE(stream sse.Stream) {
-	action.Do(
-		action.loadRecords,
+	functionsToExecute := []func(){nil}
+	// No point reloading data if Setup was just called.
+	if action.InitialDataIsFresh == false {
+		functionsToExecute = append(functionsToExecute, action.loadRecords)
+	} else {
+		action.InitialDataIsFresh = false
+	}
+	functionsToExecute = append(functionsToExecute,
 		func() {
 			stream.SetLimit(int(action.PagingParams.Limit))
 			records := action.Records[stream.SentCount():]
@@ -61,6 +67,7 @@ func (action *LedgerIndexAction) SSE(stream sse.Stream) {
 			}
 		},
 	)
+	action.Do(functionsToExecute...)
 }
 
 func (action *LedgerIndexAction) loadParams() {

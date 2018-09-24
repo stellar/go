@@ -53,34 +53,39 @@ func (action *PaymentsIndexAction) SetupAndValidateSSE() {
 
 // SSE is a method for actions.SSE that loads the latest payments and sends them to the stream.
 func (action *PaymentsIndexAction) SSE(stream sse.Stream) {
-	action.Do(
-		action.loadRecords,
-		action.loadLedgers,
-		func() {
-			stream.SetLimit(int(action.PagingParams.Limit))
-			records := action.Records[stream.SentCount():]
+	functionsToExecute := []func(){nil}
+	// No point reloading data if Setup was just called.
+	if action.InitialDataIsFresh == false {
+		functionsToExecute = append(functionsToExecute, action.loadRecords, action.loadLedgers)
+	} else {
+		action.InitialDataIsFresh = false
+	}
+	functionsToExecute = append(functionsToExecute, func() {
+		stream.SetLimit(int(action.PagingParams.Limit))
+		records := action.Records[stream.SentCount():]
 
-			for _, record := range records {
-				ledger, found := action.Ledgers.Records[record.LedgerSequence()]
-				if !found {
-					msg := fmt.Sprintf("could not find ledger data for sequence %d", record.LedgerSequence())
-					stream.Err(errors.New(msg))
-					return
-				}
-
-				res, err := resourceadapter.NewOperation(action.R.Context(), record, ledger)
-
-				if err != nil {
-					stream.Err(err)
-					return
-				}
-
-				stream.Send(sse.Event{
-					ID:   res.PagingToken(),
-					Data: res,
-				})
+		for _, record := range records {
+			ledger, found := action.Ledgers.Records[record.LedgerSequence()]
+			if !found {
+				msg := fmt.Sprintf("could not find ledger data for sequence %d", record.LedgerSequence())
+				stream.Err(errors.New(msg))
+				return
 			}
-		})
+
+			res, err := resourceadapter.NewOperation(action.R.Context(), record, ledger)
+
+			if err != nil {
+				stream.Err(err)
+				return
+			}
+
+			stream.Send(sse.Event{
+				ID:   res.PagingToken(),
+				Data: res,
+			})
+		}
+	})
+	action.Do(functionsToExecute...)
 }
 
 func (action *PaymentsIndexAction) loadParams() {
