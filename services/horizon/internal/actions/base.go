@@ -56,20 +56,18 @@ func (base *Base) Execute(action interface{}) {
 			goto NotAcceptable
 		}
 
+		action.SetupAndValidateSSE()
+		if base.Err != nil {
+			problem.Render(ctx, base.W, base.Err)
+			return
+		}
+
 		stream := sse.NewStream(ctx, base.W, base.R)
 
 		for {
 			action.SSE(stream)
 
 			if base.Err != nil {
-				// in the case that we haven't yet sent an event, is also means we
-				// havent sent the preamble, meaning we should simply return the normal
-				// error.
-				if stream.SentCount() == 0 {
-					problem.Render(ctx, base.W, base.Err)
-					return
-				}
-
 				stream.Err(base.Err)
 			}
 
