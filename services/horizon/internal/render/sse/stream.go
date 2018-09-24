@@ -58,7 +58,7 @@ type stream struct {
 // alive.
 func (s *stream) sendHeartbeats() {
 	for {
-		time.Sleep(heartbeatInterval)
+		time.Sleep(s.interval)
 		if s.IsDone() {
 			return
 		}
