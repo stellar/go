@@ -18,7 +18,7 @@ type Base struct {
 	R   *http.Request
 	Err error
 
-	isSetup bool
+	InitialDataIsFresh bool // Variable that keeps track of whether the data loaded by Setup() is the latest or not
 }
 
 // Prepare established the common attributes that get used in nearly every
@@ -56,20 +56,18 @@ func (base *Base) Execute(action interface{}) {
 			goto NotAcceptable
 		}
 
+		action.SetupAndValidateSSE()
+		if base.Err != nil {
+			problem.Render(ctx, base.W, base.Err)
+			return
+		}
+
 		stream := sse.NewStream(ctx, base.W, base.R)
 
 		for {
 			action.SSE(stream)
 
 			if base.Err != nil {
-				// in the case that we haven't yet sent an event, is also means we
-				// havent sent the preamble, meaning we should simply return the normal
-				// error.
-				if stream.SentCount() == 0 {
-					problem.Render(ctx, base.W, base.Err)
-					return
-				}
-
 				stream.Err(base.Err)
 			}
 
@@ -120,12 +118,8 @@ func (base *Base) Do(fns ...func()) {
 	}
 }
 
-// Setup runs the provided funcs if and only if no call to Setup() has been
-// made previously on this action.
+// Setup runs the provided fns and loads the initial records.
 func (base *Base) Setup(fns ...func()) {
-	if base.isSetup {
-		return
-	}
 	base.Do(fns...)
-	base.isSetup = true
+	base.InitialDataIsFresh = true
 }

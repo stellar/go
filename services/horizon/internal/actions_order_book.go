@@ -3,13 +3,13 @@ package horizon
 import (
 	"net/http"
 
+	"github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/services/horizon/internal/db2/core"
+	"github.com/stellar/go/services/horizon/internal/render/sse"
 	"github.com/stellar/go/services/horizon/internal/resourceadapter"
+	"github.com/stellar/go/support/render/hal"
 	"github.com/stellar/go/support/render/problem"
 	"github.com/stellar/go/xdr"
-	"github.com/stellar/go/protocols/horizon"
-	"github.com/stellar/go/services/horizon/internal/render/sse"
-	"github.com/stellar/go/support/render/hal"
 )
 
 // OrderBookShowAction renders a account summary found by its address.
@@ -72,15 +72,30 @@ func (action *OrderBookShowAction) JSON() {
 	})
 }
 
-// SSE is a method for actions.SSE
+// SetupAndValidateSSE calls the setup functions before we can stream and validates
+// the request parameters. Errors are stored in action.Err.
+func (action *OrderBookShowAction) SetupAndValidateSSE() {
+	action.Setup(action.LoadQuery, action.LoadRecord, action.LoadResource)
+}
+
+// SSE is a method for actions.SSE that loads the latest resources and sends them to the stream.
 func (action *OrderBookShowAction) SSE(stream sse.Stream) {
-	action.Do(action.LoadQuery, action.LoadRecord, action.LoadResource)
-
-	action.Do(func() {
-		stream.SetLimit(10)
-		stream.Send(sse.Event{
-			Data: action.Resource,
-		})
-	})
-
+	// No point reloading data if Setup was just called.
+	if action.InitialDataIsFresh == false {
+		action.Do(
+			action.LoadQuery,
+			action.LoadRecord,
+			action.LoadResource,
+		)
+	} else {
+		action.InitialDataIsFresh = false
+	}
+	action.Do(
+		func() {
+			stream.SetLimit(10)
+			stream.Send(sse.Event{
+				Data: action.Resource,
+			})
+		},
+	)
 }

@@ -2,6 +2,11 @@
 
 As this project is pre 1.0, breaking changes may happen for minor version bumps. A breaking change will get clearly notified in this log.
 
+## Unreleased
+
+## Changes
+* Payload MAC authentication uses `X-Payload-Mac` header (old `X_PAYLOAD_MAC` header is still provided for backward compatibility, but it is deprecated and will be removed in future versions).
+
 ## 0.0.31
 
 ### Breaking changes

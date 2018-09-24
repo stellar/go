@@ -1,7 +1,7 @@
 package main
 
 import (
-	"log"
+	stdLog "log"
 	"net/url"
 
 	"github.com/PuerkitoBio/throttled"
@@ -9,7 +9,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"github.com/stellar/go/services/horizon/internal"
-	hlog "github.com/stellar/go/services/horizon/internal/log"
+	"github.com/stellar/go/support/log"
 )
 
 var app *horizon.App
@@ -44,6 +44,8 @@ func init() {
 	viper.BindEnv("history-retention-count", "HISTORY_RETENTION_COUNT")
 	viper.BindEnv("history-stale-threshold", "HISTORY_STALE_THRESHOLD")
 	viper.BindEnv("skip-cursor-update", "SKIP_CURSOR_UPDATE")
+	viper.BindEnv("disable-asset-stats", "DISABLE_ASSET_STATS")
+	viper.BindEnv("allow-empty-ledger-data-responses", "ALLOW_EMPTY_LEDGER_DATA_RESPONSES")
 
 	rootCmd = &cobra.Command{
 		Use:   "horizon",
@@ -169,38 +171,38 @@ func initApp(cmd *cobra.Command, args []string) {
 	app, err = horizon.NewApp(config)
 
 	if err != nil {
-		log.Fatal(err.Error())
+		stdLog.Fatal(err.Error())
 	}
 }
 
 func initConfig() {
 	if viper.GetString("db-url") == "" {
-		log.Fatal("Invalid config: db-url is blank.  Please specify --db-url on the command line or set the DATABASE_URL environment variable.")
+		stdLog.Fatal("Invalid config: db-url is blank.  Please specify --db-url on the command line or set the DATABASE_URL environment variable.")
 	}
 
 	if viper.GetString("stellar-core-db-url") == "" {
-		log.Fatal("Invalid config: stellar-core-db-url is blank.  Please specify --stellar-core-db-url on the command line or set the STELLAR_CORE_DATABASE_URL environment variable.")
+		stdLog.Fatal("Invalid config: stellar-core-db-url is blank.  Please specify --stellar-core-db-url on the command line or set the STELLAR_CORE_DATABASE_URL environment variable.")
 	}
 
 	if viper.GetString("stellar-core-url") == "" {
-		log.Fatal("Invalid config: stellar-core-url is blank.  Please specify --stellar-core-url on the command line or set the STELLAR_CORE_URL environment variable.")
+		stdLog.Fatal("Invalid config: stellar-core-url is blank.  Please specify --stellar-core-url on the command line or set the STELLAR_CORE_URL environment variable.")
 	}
 
 	ll, err := logrus.ParseLevel(viper.GetString("log-level"))
 
 	if err != nil {
-		log.Fatalf("Could not parse log-level: %v", viper.GetString("log-level"))
+		stdLog.Fatalf("Could not parse log-level: %v", viper.GetString("log-level"))
 	}
 
-	hlog.DefaultLogger.Level = ll
+	log.DefaultLogger.Level = ll
 
 	cert, key := viper.GetString("tls-cert"), viper.GetString("tls-key")
 
 	switch {
 	case cert != "" && key == "":
-		log.Fatal("Invalid TLS config: key not configured")
+		stdLog.Fatal("Invalid TLS config: key not configured")
 	case cert == "" && key != "":
-		log.Fatal("Invalid TLS config: cert not configured")
+		stdLog.Fatal("Invalid TLS config: cert not configured")
 	}
 
 	var friendbotURL *url.URL
@@ -208,27 +210,29 @@ func initConfig() {
 	if friendbotURLString != "" {
 		friendbotURL, err = url.Parse(friendbotURLString)
 		if err != nil {
-			log.Fatalf("Unable to parse URL: %s/%v", friendbotURLString, err)
+			stdLog.Fatalf("Unable to parse URL: %s/%v", friendbotURLString, err)
 		}
 	}
 
 	config = horizon.Config{
-		DatabaseURL:            viper.GetString("db-url"),
-		StellarCoreDatabaseURL: viper.GetString("stellar-core-db-url"),
-		StellarCoreURL:         viper.GetString("stellar-core-url"),
-		Port:                   viper.GetInt("port"),
-		RateLimit:              throttled.PerHour(viper.GetInt("per-hour-rate-limit")),
-		RedisURL:               viper.GetString("redis-url"),
-		FriendbotURL:           friendbotURL,
-		LogLevel:               ll,
-		SentryDSN:              viper.GetString("sentry-dsn"),
-		LogglyToken:            viper.GetString("loggly-token"),
-		LogglyTag:              viper.GetString("loggly-tag"),
-		TLSCert:                cert,
-		TLSKey:                 key,
-		Ingest:                 viper.GetBool("ingest"),
-		HistoryRetentionCount:  uint(viper.GetInt("history-retention-count")),
-		StaleThreshold:         uint(viper.GetInt("history-stale-threshold")),
-		SkipCursorUpdate:       viper.GetBool("skip-cursor-update"),
+		DatabaseURL:                   viper.GetString("db-url"),
+		StellarCoreDatabaseURL:        viper.GetString("stellar-core-db-url"),
+		StellarCoreURL:                viper.GetString("stellar-core-url"),
+		Port:                          viper.GetInt("port"),
+		RateLimit:                     throttled.PerHour(viper.GetInt("per-hour-rate-limit")),
+		RedisURL:                      viper.GetString("redis-url"),
+		FriendbotURL:                  friendbotURL,
+		LogLevel:                      ll,
+		SentryDSN:                     viper.GetString("sentry-dsn"),
+		LogglyToken:                   viper.GetString("loggly-token"),
+		LogglyTag:                     viper.GetString("loggly-tag"),
+		TLSCert:                       cert,
+		TLSKey:                        key,
+		Ingest:                        viper.GetBool("ingest"),
+		HistoryRetentionCount:         uint(viper.GetInt("history-retention-count")),
+		StaleThreshold:                uint(viper.GetInt("history-stale-threshold")),
+		SkipCursorUpdate:              viper.GetBool("skip-cursor-update"),
+		DisableAssetStats:             viper.GetBool("disable-asset-stats"),
+		AllowEmptyLedgerDataResponses: viper.GetBool("allow-empty-ledger-data-responses"),
 	}
 }

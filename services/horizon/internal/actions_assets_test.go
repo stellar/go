@@ -3,8 +3,9 @@ package horizon
 import (
 	"testing"
 
-	"github.com/stellar/go/protocols/horizon/base"
 	"github.com/stellar/go/protocols/horizon"
+	"github.com/stellar/go/protocols/horizon/base"
+	"github.com/stellar/go/services/horizon/internal/test"
 	"github.com/stellar/go/support/render/hal"
 )
 
@@ -270,4 +271,21 @@ func TestInvalidAssetIssuer(t *testing.T) {
 
 	w = ht.Get("/assets?asset_issuer=invalid")
 	ht.Assert.Equal(400, w.Code)
+}
+
+func TestAssetStatsDisabled(t *testing.T) {
+	ht := StartHTTPTest(t, "ingest_asset_stats")
+	defer ht.Finish()
+
+	// Ugly but saves us time needed to change each `StartHTTPTest` occurence.
+	appConfig := NewTestConfig()
+	appConfig.DisableAssetStats = true
+
+	var err error
+	ht.App, err = NewApp(appConfig)
+	ht.Assert.Nil(err)
+	ht.RH = test.NewRequestHelper(ht.App.web.router)
+
+	w := ht.Get("/assets?asset_issuer=GC23QF2HUE52AMXUFUH3AYJAXXGXXV2VHXYYR6EYXETPKDXZSAW67XO4")
+	ht.Assert.Equal(404, w.Code)
 }

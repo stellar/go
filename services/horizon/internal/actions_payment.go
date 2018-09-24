@@ -6,9 +6,9 @@ import (
 
 	"github.com/stellar/go/services/horizon/internal/db2"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
-	"github.com/stellar/go/support/render/hal"
 	"github.com/stellar/go/services/horizon/internal/render/sse"
 	"github.com/stellar/go/services/horizon/internal/resourceadapter"
+	"github.com/stellar/go/support/render/hal"
 )
 
 // PaymentsIndexAction returns a paged slice of payments based upon the provided
@@ -39,16 +39,30 @@ func (action *PaymentsIndexAction) JSON() {
 	})
 }
 
-// SSE is a method for actions.SSE
-func (action *PaymentsIndexAction) SSE(stream sse.Stream) {
+// SetupAndValidateSSE calls the setup functions before we can stream and validates
+// the request parameters. Errors are stored in action.Err.
+func (action *PaymentsIndexAction) SetupAndValidateSSE() {
 	action.Setup(
 		action.EnsureHistoryFreshness,
 		action.loadParams,
 		action.ValidateCursorWithinHistory,
-	)
-	action.Do(
 		action.loadRecords,
 		action.loadLedgers,
+	)
+}
+
+// SSE is a method for actions.SSE that loads the latest payments and sends them to the stream.
+func (action *PaymentsIndexAction) SSE(stream sse.Stream) {
+	// No point reloading data if Setup was just called.
+	if action.InitialDataIsFresh == false {
+		action.Do(
+			action.loadRecords,
+			action.loadLedgers,
+		)
+	} else {
+		action.InitialDataIsFresh = false
+	}
+	action.Do(
 		func() {
 			stream.SetLimit(int(action.PagingParams.Limit))
 			records := action.Records[stream.SentCount():]
@@ -73,7 +87,8 @@ func (action *PaymentsIndexAction) SSE(stream sse.Stream) {
 					Data: res,
 				})
 			}
-		})
+		},
+	)
 }
 
 func (action *PaymentsIndexAction) loadParams() {

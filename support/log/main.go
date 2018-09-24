@@ -47,7 +47,7 @@ func New() *Entry {
 
 // Set establishes a new context to which the provided sub-logger is bound
 func Set(parent context.Context, logger *Entry) context.Context {
-	return context.WithValue(parent, &contextKey, logger)
+	return context.WithValue(parent, &loggerContextKey, logger)
 }
 
 // Ctx returns the logger bound to the provided context, otherwise
@@ -57,7 +57,7 @@ func Ctx(ctx context.Context) *Entry {
 		return DefaultLogger
 	}
 
-	found := ctx.Value(&contextKey)
+	found := ctx.Value(&loggerContextKey)
 	if found == nil {
 		return DefaultLogger
 	}
@@ -149,7 +149,9 @@ func StartTest(level logrus.Level) func() []*logrus.Entry {
 	return DefaultLogger.StartTest(level)
 }
 
-var contextKey = 0
+type contextKey string
+
+var loggerContextKey = contextKey("logger")
 
 func init() {
 	DefaultLogger = New()

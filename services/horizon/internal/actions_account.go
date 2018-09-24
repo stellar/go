@@ -37,17 +37,32 @@ func (action *AccountShowAction) JSON() {
 	)
 }
 
-// SSE is a method for actions.SSE
-func (action *AccountShowAction) SSE(stream sse.Stream) {
-	action.Do(
+// SetupAndValidateSSE calls the setup functions before we can stream and validates
+// the request parameters. Errors are stored in action.Err.
+func (action *AccountShowAction) SetupAndValidateSSE() {
+	action.Setup(
 		action.loadParams,
 		action.loadRecord,
 		action.loadResource,
-		func() {
-			stream.SetLimit(10)
-			stream.Send(sse.Event{Data: action.Resource})
-		},
 	)
+}
+
+// SSE is a method for actions.SSE that loads the latest resource and sends them to the stream.
+func (action *AccountShowAction) SSE(stream sse.Stream) {
+	// No point reloading data if Setup was just called.
+	if action.InitialDataIsFresh == false {
+		action.Do(
+			action.loadParams,
+			action.loadRecord,
+			action.loadResource,
+		)
+	} else {
+		action.InitialDataIsFresh = false
+	}
+	action.Do(func() {
+		stream.SetLimit(10)
+		stream.Send(sse.Event{Data: action.Resource})
+	})
 }
 
 func (action *AccountShowAction) loadParams() {

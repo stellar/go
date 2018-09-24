@@ -37,6 +37,9 @@ func (is *Session) Run() {
 	defer is.Ingestion.Rollback()
 
 	for is.Cursor.NextLedger() {
+		// Ensure no errors in Cursor
+		is.Err = errors.Wrap(is.Cursor.Err, "Cursor.NextLedger error")
+
 		is.validateLedger()
 		is.clearLedger()
 		is.ingestLedger()
@@ -46,7 +49,10 @@ func (is *Session) Run() {
 			break
 		}
 	}
-	is.Cursor.AssetsModified.UpdateAssetStats(is)
+
+	if !is.Config.DisableAssetStats {
+		is.Cursor.AssetsModified.UpdateAssetStats(is)
+	}
 
 	if is.Err != nil {
 		is.Ingestion.Rollback()
