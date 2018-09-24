@@ -45,7 +45,16 @@ func (action *DataShowAction) Raw() {
 	)
 }
 
-// SSE is a method for actions.SSE
+// SetupAndValidateSSE calls the setup functions before we can stream and validates
+// the request parameters. Errors are stored in action.Err.
+func (action *DataShowAction) SetupAndValidateSSE() {
+	action.Setup(
+		action.loadParams,
+		action.loadRecord,
+	)
+}
+
+// SSE is a method for actions.SSE that loads the latest account data and sends them to stream.
 func (action *DataShowAction) SSE(stream sse.Stream) {
 	action.Do(
 		action.loadParams,

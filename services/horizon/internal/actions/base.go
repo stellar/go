@@ -56,6 +56,12 @@ func (base *Base) Execute(action interface{}) {
 			goto NotAcceptable
 		}
 
+		action.SetupAndValidateSSE()
+		if base.Err != nil {
+			problem.Render(ctx, base.W, base.Err)
+			return
+		}
+
 		stream := sse.NewStream(ctx, base.W, base.R)
 		// If WritePreamble fails, it means flush isn't supported by base.W so return immediately.
 		if stream.IsDone() {

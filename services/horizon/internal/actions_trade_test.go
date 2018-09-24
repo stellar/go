@@ -11,8 +11,8 @@ import (
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	. "github.com/stellar/go/services/horizon/internal/db2/history"
 	. "github.com/stellar/go/services/horizon/internal/test/trades"
-	"github.com/stellar/go/xdr"
 	"github.com/stellar/go/support/render/hal"
+	"github.com/stellar/go/xdr"
 )
 
 func TestTradeActions_Index(t *testing.T) {
@@ -202,7 +202,6 @@ func TestTradeActions_Aggregation(t *testing.T) {
 	q.Add("start_time", strconv.FormatInt(start, 10))
 	q.Add("end_time", strconv.FormatInt(start+hour, 10))
 	q.Add("order", "asc")
-
 
 	//test no resolution provided
 	w := ht.GetWithParams(aggregationPath, q)
