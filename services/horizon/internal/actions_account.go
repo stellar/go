@@ -57,11 +57,11 @@ func (action *AccountShowAction) SSE(stream sse.Stream) {
 		action.InitialDataIsFresh = false
 	}
 	functionsToExecute = append(functionsToExecute, func() {
-			stream.SetLimit(10)
-			stream.Send(sse.Event{Data: action.Resource})
-		})
+		stream.SetLimit(10)
+		stream.Send(sse.Event{Data: action.Resource})
+	})
 	action.Do(
-		functionsToExecute...
+		functionsToExecute...,
 	)
 }
 
