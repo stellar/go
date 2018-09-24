@@ -6,10 +6,10 @@ import (
 
 	"github.com/stellar/go/services/horizon/internal/db2"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
-	"github.com/stellar/go/support/errors"
-	"github.com/stellar/go/support/render/hal"
 	"github.com/stellar/go/services/horizon/internal/render/sse"
 	"github.com/stellar/go/services/horizon/internal/resourceadapter"
+	"github.com/stellar/go/support/errors"
+	"github.com/stellar/go/support/render/hal"
 )
 
 // This file contains the actions:
@@ -48,14 +48,20 @@ func (action *EffectIndexAction) JSON() {
 	})
 }
 
-// SSE is a method for actions.SSE
-func (action *EffectIndexAction) SSE(stream sse.Stream) {
+// SetupAndValidateSSE calls the setup functions before we can stream and validates
+// the request parameters. Errors are stored in action.Err
+func (action *EffectIndexAction) SetupAndValidateSSE() {
 	action.Setup(
 		action.EnsureHistoryFreshness,
 		action.loadParams,
 		action.ValidateCursorWithinHistory,
+		action.loadRecords,
+		action.loadLedgers,
 	)
+}
 
+// SSE is a method for actions.SSE that loads the latest effects and sends them to the Stream
+func (action *EffectIndexAction) SSE(stream sse.Stream) {
 	action.Do(
 		action.loadRecords,
 		action.loadLedgers,

@@ -37,7 +37,17 @@ func (action *AccountShowAction) JSON() {
 	)
 }
 
-// SSE is a method for actions.SSE
+// SetupAndValidateSSE calls the setup functions before we can stream and validates
+// the request parameters. Errors are stored in action.Err.
+func (action *AccountShowAction) SetupAndValidateSSE() {
+	action.Setup(
+		action.loadParams,
+		action.loadRecord,
+		action.loadResource,
+	)
+}
+
+// SSE is a method for actions.SSE that loads the latest resource and sends them to the stream.
 func (action *AccountShowAction) SSE(stream sse.Stream) {
 	action.Do(
 		action.loadParams,

@@ -17,5 +17,7 @@ type Raw interface {
 // SSE implementors can respond to a request whose response type was negotiated
 // to be MimeEventStream.
 type SSE interface {
+	// Method for all setup calls and validates the request, e.g. that the requested resource exists.
+	SetupAndValidateSSE()
 	SSE(sse.Stream)
 }
