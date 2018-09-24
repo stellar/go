@@ -60,9 +60,7 @@ func (action *AccountShowAction) SSE(stream sse.Stream) {
 		stream.SetLimit(10)
 		stream.Send(sse.Event{Data: action.Resource})
 	})
-	action.Do(
-		functionsToExecute...,
-	)
+	action.Do(functionsToExecute...)
 }
 
 func (action *AccountShowAction) loadParams() {
