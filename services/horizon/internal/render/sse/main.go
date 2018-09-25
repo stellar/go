@@ -6,8 +6,6 @@ import (
 	"fmt"
 	"net/http"
 	"sync"
-
-	"github.com/stellar/go/support/log"
 )
 
 // Event is the packet of data that gets sent over the wire to a connected
@@ -81,7 +79,6 @@ func WriteEvent(ctx context.Context, w http.ResponseWriter, e Event) {
 		fmt.Fprint(w, "event: err\n")
 		fmt.Fprintf(w, "data: %s\n\n", e.Error.Error())
 		w.(http.Flusher).Flush()
-		log.Ctx(ctx).Error(e.Error)
 		return
 	}
 
@@ -122,7 +119,7 @@ var helloEvent = Event{
 }
 
 var (
-	lock sync.Mutex
+	lock     sync.Mutex
 	nextTick = make(chan struct{})
 )
 

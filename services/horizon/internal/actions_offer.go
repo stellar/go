@@ -10,6 +10,7 @@ import (
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/services/horizon/internal/render/sse"
 	"github.com/stellar/go/services/horizon/internal/resourceadapter"
+	"github.com/stellar/go/support/log"
 	"github.com/stellar/go/support/render/hal"
 )
 
@@ -56,7 +57,13 @@ func (action *OffersByAccountAction) SSE(stream sse.Stream) {
 						ledgerPtr = nil
 					} else {
 						msg := fmt.Sprintf("could not find ledger data for sequence %d", record.Lastmodified)
-						stream.Err(errors.New(msg))
+						err := errors.New(msg)
+						// Warn not Error because it can happen quite often because
+						// offer data is taken directly from stellar-core db.
+						// In other words, it is expected to happen, especially for
+						// recently changed offers.
+						log.Ctx(action.R.Context()).Warn(err)
+						stream.Err(err)
 						return
 					}
 				}

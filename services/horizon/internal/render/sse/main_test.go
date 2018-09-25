@@ -13,7 +13,7 @@ import (
 func TestWriteEventOutput(t *testing.T) {
 	ctx, _ := test.ContextWithLogBuffer()
 	testCases := []struct {
-		Event Event
+		Event             Event
 		ExpectedSubstring string
 	}{
 		{Event{Data: "test"}, "data: \"test\"\n\n"},
@@ -37,6 +37,6 @@ func TestWriteEventLogs(t *testing.T) {
 	ctx, log := test.ContextWithLogBuffer()
 	w := httptest.NewRecorder()
 	WriteEvent(ctx, w, Event{Error: errors.New("busted")})
-	assert.Contains(t, log.String(), "level=error")
-	assert.Contains(t, log.String(), "busted")
+	assert.NotContains(t, log.String(), "level=error")
+	assert.NotContains(t, log.String(), "busted")
 }
