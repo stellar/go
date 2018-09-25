@@ -13,6 +13,7 @@ package xdr
 import (
 	"bytes"
 	"encoding"
+	"encoding/base64"
 	"fmt"
 	"io"
 
@@ -55,6 +56,30 @@ var (
 	_ encoding.BinaryUnmarshaler = (*Value)(nil)
 )
 
+// MarshalText implements encoding.TextMarshaler.
+func (s Value) MarshalText() ([]byte, error) {
+	b := new(bytes.Buffer)
+	e := base64.NewEncoder(base64.StdEncoding, b)
+	_, err := Marshal(e, s)
+	if err != nil {
+		return nil, err
+	}
+	err = e.Close()
+	return b.Bytes(), err
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *Value) UnmarshalText(inp []byte) error {
+	d := base64.NewDecoder(base64.StdEncoding, bytes.NewReader(inp))
+	_, err := Unmarshal(d, s)
+	return err
+}
+
+var (
+	_ encoding.TextMarshaler   = (*Value)(nil)
+	_ encoding.TextUnmarshaler = (*Value)(nil)
+)
+
 // ScpBallot is an XDR Struct defines as:
 //
 //   struct SCPBallot
@@ -84,6 +109,30 @@ func (s *ScpBallot) UnmarshalBinary(inp []byte) error {
 var (
 	_ encoding.BinaryMarshaler   = (*ScpBallot)(nil)
 	_ encoding.BinaryUnmarshaler = (*ScpBallot)(nil)
+)
+
+// MarshalText implements encoding.TextMarshaler.
+func (s ScpBallot) MarshalText() ([]byte, error) {
+	b := new(bytes.Buffer)
+	e := base64.NewEncoder(base64.StdEncoding, b)
+	_, err := Marshal(e, s)
+	if err != nil {
+		return nil, err
+	}
+	err = e.Close()
+	return b.Bytes(), err
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *ScpBallot) UnmarshalText(inp []byte) error {
+	d := base64.NewDecoder(base64.StdEncoding, bytes.NewReader(inp))
+	_, err := Unmarshal(d, s)
+	return err
+}
+
+var (
+	_ encoding.TextMarshaler   = (*ScpBallot)(nil)
+	_ encoding.TextUnmarshaler = (*ScpBallot)(nil)
 )
 
 // ScpStatementType is an XDR Enum defines as:
@@ -143,6 +192,30 @@ var (
 	_ encoding.BinaryUnmarshaler = (*ScpStatementType)(nil)
 )
 
+// MarshalText implements encoding.TextMarshaler.
+func (s ScpStatementType) MarshalText() ([]byte, error) {
+	b := new(bytes.Buffer)
+	e := base64.NewEncoder(base64.StdEncoding, b)
+	_, err := Marshal(e, s)
+	if err != nil {
+		return nil, err
+	}
+	err = e.Close()
+	return b.Bytes(), err
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *ScpStatementType) UnmarshalText(inp []byte) error {
+	d := base64.NewDecoder(base64.StdEncoding, bytes.NewReader(inp))
+	_, err := Unmarshal(d, s)
+	return err
+}
+
+var (
+	_ encoding.TextMarshaler   = (*ScpStatementType)(nil)
+	_ encoding.TextUnmarshaler = (*ScpStatementType)(nil)
+)
+
 // ScpNomination is an XDR Struct defines as:
 //
 //   struct SCPNomination
@@ -174,6 +247,30 @@ func (s *ScpNomination) UnmarshalBinary(inp []byte) error {
 var (
 	_ encoding.BinaryMarshaler   = (*ScpNomination)(nil)
 	_ encoding.BinaryUnmarshaler = (*ScpNomination)(nil)
+)
+
+// MarshalText implements encoding.TextMarshaler.
+func (s ScpNomination) MarshalText() ([]byte, error) {
+	b := new(bytes.Buffer)
+	e := base64.NewEncoder(base64.StdEncoding, b)
+	_, err := Marshal(e, s)
+	if err != nil {
+		return nil, err
+	}
+	err = e.Close()
+	return b.Bytes(), err
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *ScpNomination) UnmarshalText(inp []byte) error {
+	d := base64.NewDecoder(base64.StdEncoding, bytes.NewReader(inp))
+	_, err := Unmarshal(d, s)
+	return err
+}
+
+var (
+	_ encoding.TextMarshaler   = (*ScpNomination)(nil)
+	_ encoding.TextUnmarshaler = (*ScpNomination)(nil)
 )
 
 // ScpStatementPrepare is an XDR NestedStruct defines as:
@@ -215,6 +312,30 @@ var (
 	_ encoding.BinaryUnmarshaler = (*ScpStatementPrepare)(nil)
 )
 
+// MarshalText implements encoding.TextMarshaler.
+func (s ScpStatementPrepare) MarshalText() ([]byte, error) {
+	b := new(bytes.Buffer)
+	e := base64.NewEncoder(base64.StdEncoding, b)
+	_, err := Marshal(e, s)
+	if err != nil {
+		return nil, err
+	}
+	err = e.Close()
+	return b.Bytes(), err
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *ScpStatementPrepare) UnmarshalText(inp []byte) error {
+	d := base64.NewDecoder(base64.StdEncoding, bytes.NewReader(inp))
+	_, err := Unmarshal(d, s)
+	return err
+}
+
+var (
+	_ encoding.TextMarshaler   = (*ScpStatementPrepare)(nil)
+	_ encoding.TextUnmarshaler = (*ScpStatementPrepare)(nil)
+)
+
 // ScpStatementConfirm is an XDR NestedStruct defines as:
 //
 //   struct
@@ -252,6 +373,30 @@ var (
 	_ encoding.BinaryUnmarshaler = (*ScpStatementConfirm)(nil)
 )
 
+// MarshalText implements encoding.TextMarshaler.
+func (s ScpStatementConfirm) MarshalText() ([]byte, error) {
+	b := new(bytes.Buffer)
+	e := base64.NewEncoder(base64.StdEncoding, b)
+	_, err := Marshal(e, s)
+	if err != nil {
+		return nil, err
+	}
+	err = e.Close()
+	return b.Bytes(), err
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *ScpStatementConfirm) UnmarshalText(inp []byte) error {
+	d := base64.NewDecoder(base64.StdEncoding, bytes.NewReader(inp))
+	_, err := Unmarshal(d, s)
+	return err
+}
+
+var (
+	_ encoding.TextMarshaler   = (*ScpStatementConfirm)(nil)
+	_ encoding.TextUnmarshaler = (*ScpStatementConfirm)(nil)
+)
+
 // ScpStatementExternalize is an XDR NestedStruct defines as:
 //
 //   struct
@@ -283,6 +428,30 @@ func (s *ScpStatementExternalize) UnmarshalBinary(inp []byte) error {
 var (
 	_ encoding.BinaryMarshaler   = (*ScpStatementExternalize)(nil)
 	_ encoding.BinaryUnmarshaler = (*ScpStatementExternalize)(nil)
+)
+
+// MarshalText implements encoding.TextMarshaler.
+func (s ScpStatementExternalize) MarshalText() ([]byte, error) {
+	b := new(bytes.Buffer)
+	e := base64.NewEncoder(base64.StdEncoding, b)
+	_, err := Marshal(e, s)
+	if err != nil {
+		return nil, err
+	}
+	err = e.Close()
+	return b.Bytes(), err
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *ScpStatementExternalize) UnmarshalText(inp []byte) error {
+	d := base64.NewDecoder(base64.StdEncoding, bytes.NewReader(inp))
+	_, err := Unmarshal(d, s)
+	return err
+}
+
+var (
+	_ encoding.TextMarshaler   = (*ScpStatementExternalize)(nil)
+	_ encoding.TextUnmarshaler = (*ScpStatementExternalize)(nil)
 )
 
 // ScpStatementPledges is an XDR NestedUnion defines as:
@@ -503,6 +672,30 @@ var (
 	_ encoding.BinaryUnmarshaler = (*ScpStatementPledges)(nil)
 )
 
+// MarshalText implements encoding.TextMarshaler.
+func (s ScpStatementPledges) MarshalText() ([]byte, error) {
+	b := new(bytes.Buffer)
+	e := base64.NewEncoder(base64.StdEncoding, b)
+	_, err := Marshal(e, s)
+	if err != nil {
+		return nil, err
+	}
+	err = e.Close()
+	return b.Bytes(), err
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *ScpStatementPledges) UnmarshalText(inp []byte) error {
+	d := base64.NewDecoder(base64.StdEncoding, bytes.NewReader(inp))
+	_, err := Unmarshal(d, s)
+	return err
+}
+
+var (
+	_ encoding.TextMarshaler   = (*ScpStatementPledges)(nil)
+	_ encoding.TextUnmarshaler = (*ScpStatementPledges)(nil)
+)
+
 // ScpStatement is an XDR Struct defines as:
 //
 //   struct SCPStatement
@@ -568,6 +761,30 @@ var (
 	_ encoding.BinaryUnmarshaler = (*ScpStatement)(nil)
 )
 
+// MarshalText implements encoding.TextMarshaler.
+func (s ScpStatement) MarshalText() ([]byte, error) {
+	b := new(bytes.Buffer)
+	e := base64.NewEncoder(base64.StdEncoding, b)
+	_, err := Marshal(e, s)
+	if err != nil {
+		return nil, err
+	}
+	err = e.Close()
+	return b.Bytes(), err
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *ScpStatement) UnmarshalText(inp []byte) error {
+	d := base64.NewDecoder(base64.StdEncoding, bytes.NewReader(inp))
+	_, err := Unmarshal(d, s)
+	return err
+}
+
+var (
+	_ encoding.TextMarshaler   = (*ScpStatement)(nil)
+	_ encoding.TextUnmarshaler = (*ScpStatement)(nil)
+)
+
 // ScpEnvelope is an XDR Struct defines as:
 //
 //   struct SCPEnvelope
@@ -597,6 +814,30 @@ func (s *ScpEnvelope) UnmarshalBinary(inp []byte) error {
 var (
 	_ encoding.BinaryMarshaler   = (*ScpEnvelope)(nil)
 	_ encoding.BinaryUnmarshaler = (*ScpEnvelope)(nil)
+)
+
+// MarshalText implements encoding.TextMarshaler.
+func (s ScpEnvelope) MarshalText() ([]byte, error) {
+	b := new(bytes.Buffer)
+	e := base64.NewEncoder(base64.StdEncoding, b)
+	_, err := Marshal(e, s)
+	if err != nil {
+		return nil, err
+	}
+	err = e.Close()
+	return b.Bytes(), err
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *ScpEnvelope) UnmarshalText(inp []byte) error {
+	d := base64.NewDecoder(base64.StdEncoding, bytes.NewReader(inp))
+	_, err := Unmarshal(d, s)
+	return err
+}
+
+var (
+	_ encoding.TextMarshaler   = (*ScpEnvelope)(nil)
+	_ encoding.TextUnmarshaler = (*ScpEnvelope)(nil)
 )
 
 // ScpQuorumSet is an XDR Struct defines as:
@@ -630,6 +871,30 @@ func (s *ScpQuorumSet) UnmarshalBinary(inp []byte) error {
 var (
 	_ encoding.BinaryMarshaler   = (*ScpQuorumSet)(nil)
 	_ encoding.BinaryUnmarshaler = (*ScpQuorumSet)(nil)
+)
+
+// MarshalText implements encoding.TextMarshaler.
+func (s ScpQuorumSet) MarshalText() ([]byte, error) {
+	b := new(bytes.Buffer)
+	e := base64.NewEncoder(base64.StdEncoding, b)
+	_, err := Marshal(e, s)
+	if err != nil {
+		return nil, err
+	}
+	err = e.Close()
+	return b.Bytes(), err
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *ScpQuorumSet) UnmarshalText(inp []byte) error {
+	d := base64.NewDecoder(base64.StdEncoding, bytes.NewReader(inp))
+	_, err := Unmarshal(d, s)
+	return err
+}
+
+var (
+	_ encoding.TextMarshaler   = (*ScpQuorumSet)(nil)
+	_ encoding.TextUnmarshaler = (*ScpQuorumSet)(nil)
 )
 
 // AccountId is an XDR Typedef defines as:
@@ -687,6 +952,30 @@ var (
 	_ encoding.BinaryUnmarshaler = (*AccountId)(nil)
 )
 
+// MarshalText implements encoding.TextMarshaler.
+func (s AccountId) MarshalText() ([]byte, error) {
+	b := new(bytes.Buffer)
+	e := base64.NewEncoder(base64.StdEncoding, b)
+	_, err := Marshal(e, s)
+	if err != nil {
+		return nil, err
+	}
+	err = e.Close()
+	return b.Bytes(), err
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *AccountId) UnmarshalText(inp []byte) error {
+	d := base64.NewDecoder(base64.StdEncoding, bytes.NewReader(inp))
+	_, err := Unmarshal(d, s)
+	return err
+}
+
+var (
+	_ encoding.TextMarshaler   = (*AccountId)(nil)
+	_ encoding.TextUnmarshaler = (*AccountId)(nil)
+)
+
 // Thresholds is an XDR Typedef defines as:
 //
 //   typedef opaque Thresholds[4];
@@ -714,6 +1003,30 @@ func (s *Thresholds) UnmarshalBinary(inp []byte) error {
 var (
 	_ encoding.BinaryMarshaler   = (*Thresholds)(nil)
 	_ encoding.BinaryUnmarshaler = (*Thresholds)(nil)
+)
+
+// MarshalText implements encoding.TextMarshaler.
+func (s Thresholds) MarshalText() ([]byte, error) {
+	b := new(bytes.Buffer)
+	e := base64.NewEncoder(base64.StdEncoding, b)
+	_, err := Marshal(e, s)
+	if err != nil {
+		return nil, err
+	}
+	err = e.Close()
+	return b.Bytes(), err
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *Thresholds) UnmarshalText(inp []byte) error {
+	d := base64.NewDecoder(base64.StdEncoding, bytes.NewReader(inp))
+	_, err := Unmarshal(d, s)
+	return err
+}
+
+var (
+	_ encoding.TextMarshaler   = (*Thresholds)(nil)
+	_ encoding.TextUnmarshaler = (*Thresholds)(nil)
 )
 
 // String32 is an XDR Typedef defines as:
@@ -745,6 +1058,30 @@ var (
 	_ encoding.BinaryUnmarshaler = (*String32)(nil)
 )
 
+// MarshalText implements encoding.TextMarshaler.
+func (s String32) MarshalText() ([]byte, error) {
+	b := new(bytes.Buffer)
+	e := base64.NewEncoder(base64.StdEncoding, b)
+	_, err := Marshal(e, s)
+	if err != nil {
+		return nil, err
+	}
+	err = e.Close()
+	return b.Bytes(), err
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *String32) UnmarshalText(inp []byte) error {
+	d := base64.NewDecoder(base64.StdEncoding, bytes.NewReader(inp))
+	_, err := Unmarshal(d, s)
+	return err
+}
+
+var (
+	_ encoding.TextMarshaler   = (*String32)(nil)
+	_ encoding.TextUnmarshaler = (*String32)(nil)
+)
+
 // String64 is an XDR Typedef defines as:
 //
 //   typedef string string64<64>;
@@ -774,6 +1111,30 @@ var (
 	_ encoding.BinaryUnmarshaler = (*String64)(nil)
 )
 
+// MarshalText implements encoding.TextMarshaler.
+func (s String64) MarshalText() ([]byte, error) {
+	b := new(bytes.Buffer)
+	e := base64.NewEncoder(base64.StdEncoding, b)
+	_, err := Marshal(e, s)
+	if err != nil {
+		return nil, err
+	}
+	err = e.Close()
+	return b.Bytes(), err
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *String64) UnmarshalText(inp []byte) error {
+	d := base64.NewDecoder(base64.StdEncoding, bytes.NewReader(inp))
+	_, err := Unmarshal(d, s)
+	return err
+}
+
+var (
+	_ encoding.TextMarshaler   = (*String64)(nil)
+	_ encoding.TextUnmarshaler = (*String64)(nil)
+)
+
 // SequenceNumber is an XDR Typedef defines as:
 //
 //   typedef int64 SequenceNumber;
@@ -796,6 +1157,30 @@ func (s *SequenceNumber) UnmarshalBinary(inp []byte) error {
 var (
 	_ encoding.BinaryMarshaler   = (*SequenceNumber)(nil)
 	_ encoding.BinaryUnmarshaler = (*SequenceNumber)(nil)
+)
+
+// MarshalText implements encoding.TextMarshaler.
+func (s SequenceNumber) MarshalText() ([]byte, error) {
+	b := new(bytes.Buffer)
+	e := base64.NewEncoder(base64.StdEncoding, b)
+	_, err := Marshal(e, s)
+	if err != nil {
+		return nil, err
+	}
+	err = e.Close()
+	return b.Bytes(), err
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *SequenceNumber) UnmarshalText(inp []byte) error {
+	d := base64.NewDecoder(base64.StdEncoding, bytes.NewReader(inp))
+	_, err := Unmarshal(d, s)
+	return err
+}
+
+var (
+	_ encoding.TextMarshaler   = (*SequenceNumber)(nil)
+	_ encoding.TextUnmarshaler = (*SequenceNumber)(nil)
 )
 
 // DataValue is an XDR Typedef defines as:
@@ -825,6 +1210,30 @@ func (s *DataValue) UnmarshalBinary(inp []byte) error {
 var (
 	_ encoding.BinaryMarshaler   = (*DataValue)(nil)
 	_ encoding.BinaryUnmarshaler = (*DataValue)(nil)
+)
+
+// MarshalText implements encoding.TextMarshaler.
+func (s DataValue) MarshalText() ([]byte, error) {
+	b := new(bytes.Buffer)
+	e := base64.NewEncoder(base64.StdEncoding, b)
+	_, err := Marshal(e, s)
+	if err != nil {
+		return nil, err
+	}
+	err = e.Close()
+	return b.Bytes(), err
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *DataValue) UnmarshalText(inp []byte) error {
+	d := base64.NewDecoder(base64.StdEncoding, bytes.NewReader(inp))
+	_, err := Unmarshal(d, s)
+	return err
+}
+
+var (
+	_ encoding.TextMarshaler   = (*DataValue)(nil)
+	_ encoding.TextUnmarshaler = (*DataValue)(nil)
 )
 
 // AssetType is an XDR Enum defines as:
@@ -881,6 +1290,30 @@ var (
 	_ encoding.BinaryUnmarshaler = (*AssetType)(nil)
 )
 
+// MarshalText implements encoding.TextMarshaler.
+func (s AssetType) MarshalText() ([]byte, error) {
+	b := new(bytes.Buffer)
+	e := base64.NewEncoder(base64.StdEncoding, b)
+	_, err := Marshal(e, s)
+	if err != nil {
+		return nil, err
+	}
+	err = e.Close()
+	return b.Bytes(), err
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *AssetType) UnmarshalText(inp []byte) error {
+	d := base64.NewDecoder(base64.StdEncoding, bytes.NewReader(inp))
+	_, err := Unmarshal(d, s)
+	return err
+}
+
+var (
+	_ encoding.TextMarshaler   = (*AssetType)(nil)
+	_ encoding.TextUnmarshaler = (*AssetType)(nil)
+)
+
 // AssetAlphaNum4 is an XDR NestedStruct defines as:
 //
 //   struct
@@ -912,6 +1345,30 @@ var (
 	_ encoding.BinaryUnmarshaler = (*AssetAlphaNum4)(nil)
 )
 
+// MarshalText implements encoding.TextMarshaler.
+func (s AssetAlphaNum4) MarshalText() ([]byte, error) {
+	b := new(bytes.Buffer)
+	e := base64.NewEncoder(base64.StdEncoding, b)
+	_, err := Marshal(e, s)
+	if err != nil {
+		return nil, err
+	}
+	err = e.Close()
+	return b.Bytes(), err
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *AssetAlphaNum4) UnmarshalText(inp []byte) error {
+	d := base64.NewDecoder(base64.StdEncoding, bytes.NewReader(inp))
+	_, err := Unmarshal(d, s)
+	return err
+}
+
+var (
+	_ encoding.TextMarshaler   = (*AssetAlphaNum4)(nil)
+	_ encoding.TextUnmarshaler = (*AssetAlphaNum4)(nil)
+)
+
 // AssetAlphaNum12 is an XDR NestedStruct defines as:
 //
 //   struct
@@ -941,6 +1398,30 @@ func (s *AssetAlphaNum12) UnmarshalBinary(inp []byte) error {
 var (
 	_ encoding.BinaryMarshaler   = (*AssetAlphaNum12)(nil)
 	_ encoding.BinaryUnmarshaler = (*AssetAlphaNum12)(nil)
+)
+
+// MarshalText implements encoding.TextMarshaler.
+func (s AssetAlphaNum12) MarshalText() ([]byte, error) {
+	b := new(bytes.Buffer)
+	e := base64.NewEncoder(base64.StdEncoding, b)
+	_, err := Marshal(e, s)
+	if err != nil {
+		return nil, err
+	}
+	err = e.Close()
+	return b.Bytes(), err
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *AssetAlphaNum12) UnmarshalText(inp []byte) error {
+	d := base64.NewDecoder(base64.StdEncoding, bytes.NewReader(inp))
+	_, err := Unmarshal(d, s)
+	return err
+}
+
+var (
+	_ encoding.TextMarshaler   = (*AssetAlphaNum12)(nil)
+	_ encoding.TextUnmarshaler = (*AssetAlphaNum12)(nil)
 )
 
 // Asset is an XDR Union defines as:
@@ -1085,6 +1566,30 @@ var (
 	_ encoding.BinaryUnmarshaler = (*Asset)(nil)
 )
 
+// MarshalText implements encoding.TextMarshaler.
+func (s Asset) MarshalText() ([]byte, error) {
+	b := new(bytes.Buffer)
+	e := base64.NewEncoder(base64.StdEncoding, b)
+	_, err := Marshal(e, s)
+	if err != nil {
+		return nil, err
+	}
+	err = e.Close()
+	return b.Bytes(), err
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *Asset) UnmarshalText(inp []byte) error {
+	d := base64.NewDecoder(base64.StdEncoding, bytes.NewReader(inp))
+	_, err := Unmarshal(d, s)
+	return err
+}
+
+var (
+	_ encoding.TextMarshaler   = (*Asset)(nil)
+	_ encoding.TextUnmarshaler = (*Asset)(nil)
+)
+
 // Price is an XDR Struct defines as:
 //
 //   struct Price
@@ -1116,6 +1621,30 @@ var (
 	_ encoding.BinaryUnmarshaler = (*Price)(nil)
 )
 
+// MarshalText implements encoding.TextMarshaler.
+func (s Price) MarshalText() ([]byte, error) {
+	b := new(bytes.Buffer)
+	e := base64.NewEncoder(base64.StdEncoding, b)
+	_, err := Marshal(e, s)
+	if err != nil {
+		return nil, err
+	}
+	err = e.Close()
+	return b.Bytes(), err
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *Price) UnmarshalText(inp []byte) error {
+	d := base64.NewDecoder(base64.StdEncoding, bytes.NewReader(inp))
+	_, err := Unmarshal(d, s)
+	return err
+}
+
+var (
+	_ encoding.TextMarshaler   = (*Price)(nil)
+	_ encoding.TextUnmarshaler = (*Price)(nil)
+)
+
 // Liabilities is an XDR Struct defines as:
 //
 //   struct Liabilities
@@ -1145,6 +1674,30 @@ func (s *Liabilities) UnmarshalBinary(inp []byte) error {
 var (
 	_ encoding.BinaryMarshaler   = (*Liabilities)(nil)
 	_ encoding.BinaryUnmarshaler = (*Liabilities)(nil)
+)
+
+// MarshalText implements encoding.TextMarshaler.
+func (s Liabilities) MarshalText() ([]byte, error) {
+	b := new(bytes.Buffer)
+	e := base64.NewEncoder(base64.StdEncoding, b)
+	_, err := Marshal(e, s)
+	if err != nil {
+		return nil, err
+	}
+	err = e.Close()
+	return b.Bytes(), err
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *Liabilities) UnmarshalText(inp []byte) error {
+	d := base64.NewDecoder(base64.StdEncoding, bytes.NewReader(inp))
+	_, err := Unmarshal(d, s)
+	return err
+}
+
+var (
+	_ encoding.TextMarshaler   = (*Liabilities)(nil)
+	_ encoding.TextUnmarshaler = (*Liabilities)(nil)
 )
 
 // ThresholdIndexes is an XDR Enum defines as:
@@ -1204,6 +1757,30 @@ var (
 	_ encoding.BinaryUnmarshaler = (*ThresholdIndexes)(nil)
 )
 
+// MarshalText implements encoding.TextMarshaler.
+func (s ThresholdIndexes) MarshalText() ([]byte, error) {
+	b := new(bytes.Buffer)
+	e := base64.NewEncoder(base64.StdEncoding, b)
+	_, err := Marshal(e, s)
+	if err != nil {
+		return nil, err
+	}
+	err = e.Close()
+	return b.Bytes(), err
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *ThresholdIndexes) UnmarshalText(inp []byte) error {
+	d := base64.NewDecoder(base64.StdEncoding, bytes.NewReader(inp))
+	_, err := Unmarshal(d, s)
+	return err
+}
+
+var (
+	_ encoding.TextMarshaler   = (*ThresholdIndexes)(nil)
+	_ encoding.TextUnmarshaler = (*ThresholdIndexes)(nil)
+)
+
 // LedgerEntryType is an XDR Enum defines as:
 //
 //   enum LedgerEntryType
@@ -1261,6 +1838,30 @@ var (
 	_ encoding.BinaryUnmarshaler = (*LedgerEntryType)(nil)
 )
 
+// MarshalText implements encoding.TextMarshaler.
+func (s LedgerEntryType) MarshalText() ([]byte, error) {
+	b := new(bytes.Buffer)
+	e := base64.NewEncoder(base64.StdEncoding, b)
+	_, err := Marshal(e, s)
+	if err != nil {
+		return nil, err
+	}
+	err = e.Close()
+	return b.Bytes(), err
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *LedgerEntryType) UnmarshalText(inp []byte) error {
+	d := base64.NewDecoder(base64.StdEncoding, bytes.NewReader(inp))
+	_, err := Unmarshal(d, s)
+	return err
+}
+
+var (
+	_ encoding.TextMarshaler   = (*LedgerEntryType)(nil)
+	_ encoding.TextUnmarshaler = (*LedgerEntryType)(nil)
+)
+
 // Signer is an XDR Struct defines as:
 //
 //   struct Signer
@@ -1290,6 +1891,30 @@ func (s *Signer) UnmarshalBinary(inp []byte) error {
 var (
 	_ encoding.BinaryMarshaler   = (*Signer)(nil)
 	_ encoding.BinaryUnmarshaler = (*Signer)(nil)
+)
+
+// MarshalText implements encoding.TextMarshaler.
+func (s Signer) MarshalText() ([]byte, error) {
+	b := new(bytes.Buffer)
+	e := base64.NewEncoder(base64.StdEncoding, b)
+	_, err := Marshal(e, s)
+	if err != nil {
+		return nil, err
+	}
+	err = e.Close()
+	return b.Bytes(), err
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *Signer) UnmarshalText(inp []byte) error {
+	d := base64.NewDecoder(base64.StdEncoding, bytes.NewReader(inp))
+	_, err := Unmarshal(d, s)
+	return err
+}
+
+var (
+	_ encoding.TextMarshaler   = (*Signer)(nil)
+	_ encoding.TextUnmarshaler = (*Signer)(nil)
 )
 
 // AccountFlags is an XDR Enum defines as:
@@ -1351,6 +1976,30 @@ func (s *AccountFlags) UnmarshalBinary(inp []byte) error {
 var (
 	_ encoding.BinaryMarshaler   = (*AccountFlags)(nil)
 	_ encoding.BinaryUnmarshaler = (*AccountFlags)(nil)
+)
+
+// MarshalText implements encoding.TextMarshaler.
+func (s AccountFlags) MarshalText() ([]byte, error) {
+	b := new(bytes.Buffer)
+	e := base64.NewEncoder(base64.StdEncoding, b)
+	_, err := Marshal(e, s)
+	if err != nil {
+		return nil, err
+	}
+	err = e.Close()
+	return b.Bytes(), err
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *AccountFlags) UnmarshalText(inp []byte) error {
+	d := base64.NewDecoder(base64.StdEncoding, bytes.NewReader(inp))
+	_, err := Unmarshal(d, s)
+	return err
+}
+
+var (
+	_ encoding.TextMarshaler   = (*AccountFlags)(nil)
+	_ encoding.TextUnmarshaler = (*AccountFlags)(nil)
 )
 
 // MaskAccountFlags is an XDR Const defines as:
@@ -1415,6 +2064,30 @@ var (
 	_ encoding.BinaryUnmarshaler = (*AccountEntryV1Ext)(nil)
 )
 
+// MarshalText implements encoding.TextMarshaler.
+func (s AccountEntryV1Ext) MarshalText() ([]byte, error) {
+	b := new(bytes.Buffer)
+	e := base64.NewEncoder(base64.StdEncoding, b)
+	_, err := Marshal(e, s)
+	if err != nil {
+		return nil, err
+	}
+	err = e.Close()
+	return b.Bytes(), err
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *AccountEntryV1Ext) UnmarshalText(inp []byte) error {
+	d := base64.NewDecoder(base64.StdEncoding, bytes.NewReader(inp))
+	_, err := Unmarshal(d, s)
+	return err
+}
+
+var (
+	_ encoding.TextMarshaler   = (*AccountEntryV1Ext)(nil)
+	_ encoding.TextUnmarshaler = (*AccountEntryV1Ext)(nil)
+)
+
 // AccountEntryV1 is an XDR NestedStruct defines as:
 //
 //   struct
@@ -1450,6 +2123,30 @@ func (s *AccountEntryV1) UnmarshalBinary(inp []byte) error {
 var (
 	_ encoding.BinaryMarshaler   = (*AccountEntryV1)(nil)
 	_ encoding.BinaryUnmarshaler = (*AccountEntryV1)(nil)
+)
+
+// MarshalText implements encoding.TextMarshaler.
+func (s AccountEntryV1) MarshalText() ([]byte, error) {
+	b := new(bytes.Buffer)
+	e := base64.NewEncoder(base64.StdEncoding, b)
+	_, err := Marshal(e, s)
+	if err != nil {
+		return nil, err
+	}
+	err = e.Close()
+	return b.Bytes(), err
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *AccountEntryV1) UnmarshalText(inp []byte) error {
+	d := base64.NewDecoder(base64.StdEncoding, bytes.NewReader(inp))
+	_, err := Unmarshal(d, s)
+	return err
+}
+
+var (
+	_ encoding.TextMarshaler   = (*AccountEntryV1)(nil)
+	_ encoding.TextUnmarshaler = (*AccountEntryV1)(nil)
 )
 
 // AccountEntryExt is an XDR NestedUnion defines as:
@@ -1555,6 +2252,30 @@ var (
 	_ encoding.BinaryUnmarshaler = (*AccountEntryExt)(nil)
 )
 
+// MarshalText implements encoding.TextMarshaler.
+func (s AccountEntryExt) MarshalText() ([]byte, error) {
+	b := new(bytes.Buffer)
+	e := base64.NewEncoder(base64.StdEncoding, b)
+	_, err := Marshal(e, s)
+	if err != nil {
+		return nil, err
+	}
+	err = e.Close()
+	return b.Bytes(), err
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *AccountEntryExt) UnmarshalText(inp []byte) error {
+	d := base64.NewDecoder(base64.StdEncoding, bytes.NewReader(inp))
+	_, err := Unmarshal(d, s)
+	return err
+}
+
+var (
+	_ encoding.TextMarshaler   = (*AccountEntryExt)(nil)
+	_ encoding.TextUnmarshaler = (*AccountEntryExt)(nil)
+)
+
 // AccountEntry is an XDR Struct defines as:
 //
 //   struct AccountEntry
@@ -1627,6 +2348,30 @@ var (
 	_ encoding.BinaryUnmarshaler = (*AccountEntry)(nil)
 )
 
+// MarshalText implements encoding.TextMarshaler.
+func (s AccountEntry) MarshalText() ([]byte, error) {
+	b := new(bytes.Buffer)
+	e := base64.NewEncoder(base64.StdEncoding, b)
+	_, err := Marshal(e, s)
+	if err != nil {
+		return nil, err
+	}
+	err = e.Close()
+	return b.Bytes(), err
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *AccountEntry) UnmarshalText(inp []byte) error {
+	d := base64.NewDecoder(base64.StdEncoding, bytes.NewReader(inp))
+	_, err := Unmarshal(d, s)
+	return err
+}
+
+var (
+	_ encoding.TextMarshaler   = (*AccountEntry)(nil)
+	_ encoding.TextUnmarshaler = (*AccountEntry)(nil)
+)
+
 // TrustLineFlags is an XDR Enum defines as:
 //
 //   enum TrustLineFlags
@@ -1674,6 +2419,30 @@ func (s *TrustLineFlags) UnmarshalBinary(inp []byte) error {
 var (
 	_ encoding.BinaryMarshaler   = (*TrustLineFlags)(nil)
 	_ encoding.BinaryUnmarshaler = (*TrustLineFlags)(nil)
+)
+
+// MarshalText implements encoding.TextMarshaler.
+func (s TrustLineFlags) MarshalText() ([]byte, error) {
+	b := new(bytes.Buffer)
+	e := base64.NewEncoder(base64.StdEncoding, b)
+	_, err := Marshal(e, s)
+	if err != nil {
+		return nil, err
+	}
+	err = e.Close()
+	return b.Bytes(), err
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *TrustLineFlags) UnmarshalText(inp []byte) error {
+	d := base64.NewDecoder(base64.StdEncoding, bytes.NewReader(inp))
+	_, err := Unmarshal(d, s)
+	return err
+}
+
+var (
+	_ encoding.TextMarshaler   = (*TrustLineFlags)(nil)
+	_ encoding.TextUnmarshaler = (*TrustLineFlags)(nil)
 )
 
 // MaskTrustlineFlags is an XDR Const defines as:
@@ -1738,6 +2507,30 @@ var (
 	_ encoding.BinaryUnmarshaler = (*TrustLineEntryV1Ext)(nil)
 )
 
+// MarshalText implements encoding.TextMarshaler.
+func (s TrustLineEntryV1Ext) MarshalText() ([]byte, error) {
+	b := new(bytes.Buffer)
+	e := base64.NewEncoder(base64.StdEncoding, b)
+	_, err := Marshal(e, s)
+	if err != nil {
+		return nil, err
+	}
+	err = e.Close()
+	return b.Bytes(), err
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *TrustLineEntryV1Ext) UnmarshalText(inp []byte) error {
+	d := base64.NewDecoder(base64.StdEncoding, bytes.NewReader(inp))
+	_, err := Unmarshal(d, s)
+	return err
+}
+
+var (
+	_ encoding.TextMarshaler   = (*TrustLineEntryV1Ext)(nil)
+	_ encoding.TextUnmarshaler = (*TrustLineEntryV1Ext)(nil)
+)
+
 // TrustLineEntryV1 is an XDR NestedStruct defines as:
 //
 //   struct
@@ -1773,6 +2566,30 @@ func (s *TrustLineEntryV1) UnmarshalBinary(inp []byte) error {
 var (
 	_ encoding.BinaryMarshaler   = (*TrustLineEntryV1)(nil)
 	_ encoding.BinaryUnmarshaler = (*TrustLineEntryV1)(nil)
+)
+
+// MarshalText implements encoding.TextMarshaler.
+func (s TrustLineEntryV1) MarshalText() ([]byte, error) {
+	b := new(bytes.Buffer)
+	e := base64.NewEncoder(base64.StdEncoding, b)
+	_, err := Marshal(e, s)
+	if err != nil {
+		return nil, err
+	}
+	err = e.Close()
+	return b.Bytes(), err
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *TrustLineEntryV1) UnmarshalText(inp []byte) error {
+	d := base64.NewDecoder(base64.StdEncoding, bytes.NewReader(inp))
+	_, err := Unmarshal(d, s)
+	return err
+}
+
+var (
+	_ encoding.TextMarshaler   = (*TrustLineEntryV1)(nil)
+	_ encoding.TextUnmarshaler = (*TrustLineEntryV1)(nil)
 )
 
 // TrustLineEntryExt is an XDR NestedUnion defines as:
@@ -1878,6 +2695,30 @@ var (
 	_ encoding.BinaryUnmarshaler = (*TrustLineEntryExt)(nil)
 )
 
+// MarshalText implements encoding.TextMarshaler.
+func (s TrustLineEntryExt) MarshalText() ([]byte, error) {
+	b := new(bytes.Buffer)
+	e := base64.NewEncoder(base64.StdEncoding, b)
+	_, err := Marshal(e, s)
+	if err != nil {
+		return nil, err
+	}
+	err = e.Close()
+	return b.Bytes(), err
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *TrustLineEntryExt) UnmarshalText(inp []byte) error {
+	d := base64.NewDecoder(base64.StdEncoding, bytes.NewReader(inp))
+	_, err := Unmarshal(d, s)
+	return err
+}
+
+var (
+	_ encoding.TextMarshaler   = (*TrustLineEntryExt)(nil)
+	_ encoding.TextUnmarshaler = (*TrustLineEntryExt)(nil)
+)
+
 // TrustLineEntry is an XDR Struct defines as:
 //
 //   struct TrustLineEntry
@@ -1938,6 +2779,30 @@ var (
 	_ encoding.BinaryUnmarshaler = (*TrustLineEntry)(nil)
 )
 
+// MarshalText implements encoding.TextMarshaler.
+func (s TrustLineEntry) MarshalText() ([]byte, error) {
+	b := new(bytes.Buffer)
+	e := base64.NewEncoder(base64.StdEncoding, b)
+	_, err := Marshal(e, s)
+	if err != nil {
+		return nil, err
+	}
+	err = e.Close()
+	return b.Bytes(), err
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *TrustLineEntry) UnmarshalText(inp []byte) error {
+	d := base64.NewDecoder(base64.StdEncoding, bytes.NewReader(inp))
+	_, err := Unmarshal(d, s)
+	return err
+}
+
+var (
+	_ encoding.TextMarshaler   = (*TrustLineEntry)(nil)
+	_ encoding.TextUnmarshaler = (*TrustLineEntry)(nil)
+)
+
 // OfferEntryFlags is an XDR Enum defines as:
 //
 //   enum OfferEntryFlags
@@ -1985,6 +2850,30 @@ func (s *OfferEntryFlags) UnmarshalBinary(inp []byte) error {
 var (
 	_ encoding.BinaryMarshaler   = (*OfferEntryFlags)(nil)
 	_ encoding.BinaryUnmarshaler = (*OfferEntryFlags)(nil)
+)
+
+// MarshalText implements encoding.TextMarshaler.
+func (s OfferEntryFlags) MarshalText() ([]byte, error) {
+	b := new(bytes.Buffer)
+	e := base64.NewEncoder(base64.StdEncoding, b)
+	_, err := Marshal(e, s)
+	if err != nil {
+		return nil, err
+	}
+	err = e.Close()
+	return b.Bytes(), err
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *OfferEntryFlags) UnmarshalText(inp []byte) error {
+	d := base64.NewDecoder(base64.StdEncoding, bytes.NewReader(inp))
+	_, err := Unmarshal(d, s)
+	return err
+}
+
+var (
+	_ encoding.TextMarshaler   = (*OfferEntryFlags)(nil)
+	_ encoding.TextUnmarshaler = (*OfferEntryFlags)(nil)
 )
 
 // MaskOfferentryFlags is an XDR Const defines as:
@@ -2049,6 +2938,30 @@ var (
 	_ encoding.BinaryUnmarshaler = (*OfferEntryExt)(nil)
 )
 
+// MarshalText implements encoding.TextMarshaler.
+func (s OfferEntryExt) MarshalText() ([]byte, error) {
+	b := new(bytes.Buffer)
+	e := base64.NewEncoder(base64.StdEncoding, b)
+	_, err := Marshal(e, s)
+	if err != nil {
+		return nil, err
+	}
+	err = e.Close()
+	return b.Bytes(), err
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *OfferEntryExt) UnmarshalText(inp []byte) error {
+	d := base64.NewDecoder(base64.StdEncoding, bytes.NewReader(inp))
+	_, err := Unmarshal(d, s)
+	return err
+}
+
+var (
+	_ encoding.TextMarshaler   = (*OfferEntryExt)(nil)
+	_ encoding.TextUnmarshaler = (*OfferEntryExt)(nil)
+)
+
 // OfferEntry is an XDR Struct defines as:
 //
 //   struct OfferEntry
@@ -2103,6 +3016,30 @@ func (s *OfferEntry) UnmarshalBinary(inp []byte) error {
 var (
 	_ encoding.BinaryMarshaler   = (*OfferEntry)(nil)
 	_ encoding.BinaryUnmarshaler = (*OfferEntry)(nil)
+)
+
+// MarshalText implements encoding.TextMarshaler.
+func (s OfferEntry) MarshalText() ([]byte, error) {
+	b := new(bytes.Buffer)
+	e := base64.NewEncoder(base64.StdEncoding, b)
+	_, err := Marshal(e, s)
+	if err != nil {
+		return nil, err
+	}
+	err = e.Close()
+	return b.Bytes(), err
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *OfferEntry) UnmarshalText(inp []byte) error {
+	d := base64.NewDecoder(base64.StdEncoding, bytes.NewReader(inp))
+	_, err := Unmarshal(d, s)
+	return err
+}
+
+var (
+	_ encoding.TextMarshaler   = (*OfferEntry)(nil)
+	_ encoding.TextUnmarshaler = (*OfferEntry)(nil)
 )
 
 // DataEntryExt is an XDR NestedUnion defines as:
@@ -2161,6 +3098,30 @@ var (
 	_ encoding.BinaryUnmarshaler = (*DataEntryExt)(nil)
 )
 
+// MarshalText implements encoding.TextMarshaler.
+func (s DataEntryExt) MarshalText() ([]byte, error) {
+	b := new(bytes.Buffer)
+	e := base64.NewEncoder(base64.StdEncoding, b)
+	_, err := Marshal(e, s)
+	if err != nil {
+		return nil, err
+	}
+	err = e.Close()
+	return b.Bytes(), err
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *DataEntryExt) UnmarshalText(inp []byte) error {
+	d := base64.NewDecoder(base64.StdEncoding, bytes.NewReader(inp))
+	_, err := Unmarshal(d, s)
+	return err
+}
+
+var (
+	_ encoding.TextMarshaler   = (*DataEntryExt)(nil)
+	_ encoding.TextUnmarshaler = (*DataEntryExt)(nil)
+)
+
 // DataEntry is an XDR Struct defines as:
 //
 //   struct DataEntry
@@ -2201,6 +3162,30 @@ func (s *DataEntry) UnmarshalBinary(inp []byte) error {
 var (
 	_ encoding.BinaryMarshaler   = (*DataEntry)(nil)
 	_ encoding.BinaryUnmarshaler = (*DataEntry)(nil)
+)
+
+// MarshalText implements encoding.TextMarshaler.
+func (s DataEntry) MarshalText() ([]byte, error) {
+	b := new(bytes.Buffer)
+	e := base64.NewEncoder(base64.StdEncoding, b)
+	_, err := Marshal(e, s)
+	if err != nil {
+		return nil, err
+	}
+	err = e.Close()
+	return b.Bytes(), err
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *DataEntry) UnmarshalText(inp []byte) error {
+	d := base64.NewDecoder(base64.StdEncoding, bytes.NewReader(inp))
+	_, err := Unmarshal(d, s)
+	return err
+}
+
+var (
+	_ encoding.TextMarshaler   = (*DataEntry)(nil)
+	_ encoding.TextUnmarshaler = (*DataEntry)(nil)
 )
 
 // LedgerEntryData is an XDR NestedUnion defines as:
@@ -2401,6 +3386,30 @@ var (
 	_ encoding.BinaryUnmarshaler = (*LedgerEntryData)(nil)
 )
 
+// MarshalText implements encoding.TextMarshaler.
+func (s LedgerEntryData) MarshalText() ([]byte, error) {
+	b := new(bytes.Buffer)
+	e := base64.NewEncoder(base64.StdEncoding, b)
+	_, err := Marshal(e, s)
+	if err != nil {
+		return nil, err
+	}
+	err = e.Close()
+	return b.Bytes(), err
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *LedgerEntryData) UnmarshalText(inp []byte) error {
+	d := base64.NewDecoder(base64.StdEncoding, bytes.NewReader(inp))
+	_, err := Unmarshal(d, s)
+	return err
+}
+
+var (
+	_ encoding.TextMarshaler   = (*LedgerEntryData)(nil)
+	_ encoding.TextUnmarshaler = (*LedgerEntryData)(nil)
+)
+
 // LedgerEntryExt is an XDR NestedUnion defines as:
 //
 //   union switch (int v)
@@ -2457,6 +3466,30 @@ var (
 	_ encoding.BinaryUnmarshaler = (*LedgerEntryExt)(nil)
 )
 
+// MarshalText implements encoding.TextMarshaler.
+func (s LedgerEntryExt) MarshalText() ([]byte, error) {
+	b := new(bytes.Buffer)
+	e := base64.NewEncoder(base64.StdEncoding, b)
+	_, err := Marshal(e, s)
+	if err != nil {
+		return nil, err
+	}
+	err = e.Close()
+	return b.Bytes(), err
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *LedgerEntryExt) UnmarshalText(inp []byte) error {
+	d := base64.NewDecoder(base64.StdEncoding, bytes.NewReader(inp))
+	_, err := Unmarshal(d, s)
+	return err
+}
+
+var (
+	_ encoding.TextMarshaler   = (*LedgerEntryExt)(nil)
+	_ encoding.TextUnmarshaler = (*LedgerEntryExt)(nil)
+)
+
 // LedgerEntry is an XDR Struct defines as:
 //
 //   struct LedgerEntry
@@ -2507,6 +3540,30 @@ func (s *LedgerEntry) UnmarshalBinary(inp []byte) error {
 var (
 	_ encoding.BinaryMarshaler   = (*LedgerEntry)(nil)
 	_ encoding.BinaryUnmarshaler = (*LedgerEntry)(nil)
+)
+
+// MarshalText implements encoding.TextMarshaler.
+func (s LedgerEntry) MarshalText() ([]byte, error) {
+	b := new(bytes.Buffer)
+	e := base64.NewEncoder(base64.StdEncoding, b)
+	_, err := Marshal(e, s)
+	if err != nil {
+		return nil, err
+	}
+	err = e.Close()
+	return b.Bytes(), err
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *LedgerEntry) UnmarshalText(inp []byte) error {
+	d := base64.NewDecoder(base64.StdEncoding, bytes.NewReader(inp))
+	_, err := Unmarshal(d, s)
+	return err
+}
+
+var (
+	_ encoding.TextMarshaler   = (*LedgerEntry)(nil)
+	_ encoding.TextUnmarshaler = (*LedgerEntry)(nil)
 )
 
 // EnvelopeType is an XDR Enum defines as:
@@ -2563,6 +3620,30 @@ var (
 	_ encoding.BinaryUnmarshaler = (*EnvelopeType)(nil)
 )
 
+// MarshalText implements encoding.TextMarshaler.
+func (s EnvelopeType) MarshalText() ([]byte, error) {
+	b := new(bytes.Buffer)
+	e := base64.NewEncoder(base64.StdEncoding, b)
+	_, err := Marshal(e, s)
+	if err != nil {
+		return nil, err
+	}
+	err = e.Close()
+	return b.Bytes(), err
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *EnvelopeType) UnmarshalText(inp []byte) error {
+	d := base64.NewDecoder(base64.StdEncoding, bytes.NewReader(inp))
+	_, err := Unmarshal(d, s)
+	return err
+}
+
+var (
+	_ encoding.TextMarshaler   = (*EnvelopeType)(nil)
+	_ encoding.TextUnmarshaler = (*EnvelopeType)(nil)
+)
+
 // UpgradeType is an XDR Typedef defines as:
 //
 //   typedef opaque UpgradeType<128>;
@@ -2590,6 +3671,30 @@ func (s *UpgradeType) UnmarshalBinary(inp []byte) error {
 var (
 	_ encoding.BinaryMarshaler   = (*UpgradeType)(nil)
 	_ encoding.BinaryUnmarshaler = (*UpgradeType)(nil)
+)
+
+// MarshalText implements encoding.TextMarshaler.
+func (s UpgradeType) MarshalText() ([]byte, error) {
+	b := new(bytes.Buffer)
+	e := base64.NewEncoder(base64.StdEncoding, b)
+	_, err := Marshal(e, s)
+	if err != nil {
+		return nil, err
+	}
+	err = e.Close()
+	return b.Bytes(), err
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *UpgradeType) UnmarshalText(inp []byte) error {
+	d := base64.NewDecoder(base64.StdEncoding, bytes.NewReader(inp))
+	_, err := Unmarshal(d, s)
+	return err
+}
+
+var (
+	_ encoding.TextMarshaler   = (*UpgradeType)(nil)
+	_ encoding.TextUnmarshaler = (*UpgradeType)(nil)
 )
 
 // StellarValueExt is an XDR NestedUnion defines as:
@@ -2648,6 +3753,30 @@ var (
 	_ encoding.BinaryUnmarshaler = (*StellarValueExt)(nil)
 )
 
+// MarshalText implements encoding.TextMarshaler.
+func (s StellarValueExt) MarshalText() ([]byte, error) {
+	b := new(bytes.Buffer)
+	e := base64.NewEncoder(base64.StdEncoding, b)
+	_, err := Marshal(e, s)
+	if err != nil {
+		return nil, err
+	}
+	err = e.Close()
+	return b.Bytes(), err
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *StellarValueExt) UnmarshalText(inp []byte) error {
+	d := base64.NewDecoder(base64.StdEncoding, bytes.NewReader(inp))
+	_, err := Unmarshal(d, s)
+	return err
+}
+
+var (
+	_ encoding.TextMarshaler   = (*StellarValueExt)(nil)
+	_ encoding.TextUnmarshaler = (*StellarValueExt)(nil)
+)
+
 // StellarValue is an XDR Struct defines as:
 //
 //   struct StellarValue
@@ -2694,6 +3823,30 @@ func (s *StellarValue) UnmarshalBinary(inp []byte) error {
 var (
 	_ encoding.BinaryMarshaler   = (*StellarValue)(nil)
 	_ encoding.BinaryUnmarshaler = (*StellarValue)(nil)
+)
+
+// MarshalText implements encoding.TextMarshaler.
+func (s StellarValue) MarshalText() ([]byte, error) {
+	b := new(bytes.Buffer)
+	e := base64.NewEncoder(base64.StdEncoding, b)
+	_, err := Marshal(e, s)
+	if err != nil {
+		return nil, err
+	}
+	err = e.Close()
+	return b.Bytes(), err
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *StellarValue) UnmarshalText(inp []byte) error {
+	d := base64.NewDecoder(base64.StdEncoding, bytes.NewReader(inp))
+	_, err := Unmarshal(d, s)
+	return err
+}
+
+var (
+	_ encoding.TextMarshaler   = (*StellarValue)(nil)
+	_ encoding.TextUnmarshaler = (*StellarValue)(nil)
 )
 
 // LedgerHeaderExt is an XDR NestedUnion defines as:
@@ -2750,6 +3903,30 @@ func (s *LedgerHeaderExt) UnmarshalBinary(inp []byte) error {
 var (
 	_ encoding.BinaryMarshaler   = (*LedgerHeaderExt)(nil)
 	_ encoding.BinaryUnmarshaler = (*LedgerHeaderExt)(nil)
+)
+
+// MarshalText implements encoding.TextMarshaler.
+func (s LedgerHeaderExt) MarshalText() ([]byte, error) {
+	b := new(bytes.Buffer)
+	e := base64.NewEncoder(base64.StdEncoding, b)
+	_, err := Marshal(e, s)
+	if err != nil {
+		return nil, err
+	}
+	err = e.Close()
+	return b.Bytes(), err
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *LedgerHeaderExt) UnmarshalText(inp []byte) error {
+	d := base64.NewDecoder(base64.StdEncoding, bytes.NewReader(inp))
+	_, err := Unmarshal(d, s)
+	return err
+}
+
+var (
+	_ encoding.TextMarshaler   = (*LedgerHeaderExt)(nil)
+	_ encoding.TextUnmarshaler = (*LedgerHeaderExt)(nil)
 )
 
 // LedgerHeader is an XDR Struct defines as:
@@ -2828,6 +4005,30 @@ var (
 	_ encoding.BinaryUnmarshaler = (*LedgerHeader)(nil)
 )
 
+// MarshalText implements encoding.TextMarshaler.
+func (s LedgerHeader) MarshalText() ([]byte, error) {
+	b := new(bytes.Buffer)
+	e := base64.NewEncoder(base64.StdEncoding, b)
+	_, err := Marshal(e, s)
+	if err != nil {
+		return nil, err
+	}
+	err = e.Close()
+	return b.Bytes(), err
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *LedgerHeader) UnmarshalText(inp []byte) error {
+	d := base64.NewDecoder(base64.StdEncoding, bytes.NewReader(inp))
+	_, err := Unmarshal(d, s)
+	return err
+}
+
+var (
+	_ encoding.TextMarshaler   = (*LedgerHeader)(nil)
+	_ encoding.TextUnmarshaler = (*LedgerHeader)(nil)
+)
+
 // LedgerUpgradeType is an XDR Enum defines as:
 //
 //   enum LedgerUpgradeType
@@ -2883,6 +4084,30 @@ func (s *LedgerUpgradeType) UnmarshalBinary(inp []byte) error {
 var (
 	_ encoding.BinaryMarshaler   = (*LedgerUpgradeType)(nil)
 	_ encoding.BinaryUnmarshaler = (*LedgerUpgradeType)(nil)
+)
+
+// MarshalText implements encoding.TextMarshaler.
+func (s LedgerUpgradeType) MarshalText() ([]byte, error) {
+	b := new(bytes.Buffer)
+	e := base64.NewEncoder(base64.StdEncoding, b)
+	_, err := Marshal(e, s)
+	if err != nil {
+		return nil, err
+	}
+	err = e.Close()
+	return b.Bytes(), err
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *LedgerUpgradeType) UnmarshalText(inp []byte) error {
+	d := base64.NewDecoder(base64.StdEncoding, bytes.NewReader(inp))
+	_, err := Unmarshal(d, s)
+	return err
+}
+
+var (
+	_ encoding.TextMarshaler   = (*LedgerUpgradeType)(nil)
+	_ encoding.TextUnmarshaler = (*LedgerUpgradeType)(nil)
 )
 
 // LedgerUpgrade is an XDR Union defines as:
@@ -3083,6 +4308,30 @@ var (
 	_ encoding.BinaryUnmarshaler = (*LedgerUpgrade)(nil)
 )
 
+// MarshalText implements encoding.TextMarshaler.
+func (s LedgerUpgrade) MarshalText() ([]byte, error) {
+	b := new(bytes.Buffer)
+	e := base64.NewEncoder(base64.StdEncoding, b)
+	_, err := Marshal(e, s)
+	if err != nil {
+		return nil, err
+	}
+	err = e.Close()
+	return b.Bytes(), err
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *LedgerUpgrade) UnmarshalText(inp []byte) error {
+	d := base64.NewDecoder(base64.StdEncoding, bytes.NewReader(inp))
+	_, err := Unmarshal(d, s)
+	return err
+}
+
+var (
+	_ encoding.TextMarshaler   = (*LedgerUpgrade)(nil)
+	_ encoding.TextUnmarshaler = (*LedgerUpgrade)(nil)
+)
+
 // LedgerKeyAccount is an XDR NestedStruct defines as:
 //
 //   struct
@@ -3110,6 +4359,30 @@ func (s *LedgerKeyAccount) UnmarshalBinary(inp []byte) error {
 var (
 	_ encoding.BinaryMarshaler   = (*LedgerKeyAccount)(nil)
 	_ encoding.BinaryUnmarshaler = (*LedgerKeyAccount)(nil)
+)
+
+// MarshalText implements encoding.TextMarshaler.
+func (s LedgerKeyAccount) MarshalText() ([]byte, error) {
+	b := new(bytes.Buffer)
+	e := base64.NewEncoder(base64.StdEncoding, b)
+	_, err := Marshal(e, s)
+	if err != nil {
+		return nil, err
+	}
+	err = e.Close()
+	return b.Bytes(), err
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *LedgerKeyAccount) UnmarshalText(inp []byte) error {
+	d := base64.NewDecoder(base64.StdEncoding, bytes.NewReader(inp))
+	_, err := Unmarshal(d, s)
+	return err
+}
+
+var (
+	_ encoding.TextMarshaler   = (*LedgerKeyAccount)(nil)
+	_ encoding.TextUnmarshaler = (*LedgerKeyAccount)(nil)
 )
 
 // LedgerKeyTrustLine is an XDR NestedStruct defines as:
@@ -3143,6 +4416,30 @@ var (
 	_ encoding.BinaryUnmarshaler = (*LedgerKeyTrustLine)(nil)
 )
 
+// MarshalText implements encoding.TextMarshaler.
+func (s LedgerKeyTrustLine) MarshalText() ([]byte, error) {
+	b := new(bytes.Buffer)
+	e := base64.NewEncoder(base64.StdEncoding, b)
+	_, err := Marshal(e, s)
+	if err != nil {
+		return nil, err
+	}
+	err = e.Close()
+	return b.Bytes(), err
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *LedgerKeyTrustLine) UnmarshalText(inp []byte) error {
+	d := base64.NewDecoder(base64.StdEncoding, bytes.NewReader(inp))
+	_, err := Unmarshal(d, s)
+	return err
+}
+
+var (
+	_ encoding.TextMarshaler   = (*LedgerKeyTrustLine)(nil)
+	_ encoding.TextUnmarshaler = (*LedgerKeyTrustLine)(nil)
+)
+
 // LedgerKeyOffer is an XDR NestedStruct defines as:
 //
 //   struct
@@ -3174,6 +4471,30 @@ var (
 	_ encoding.BinaryUnmarshaler = (*LedgerKeyOffer)(nil)
 )
 
+// MarshalText implements encoding.TextMarshaler.
+func (s LedgerKeyOffer) MarshalText() ([]byte, error) {
+	b := new(bytes.Buffer)
+	e := base64.NewEncoder(base64.StdEncoding, b)
+	_, err := Marshal(e, s)
+	if err != nil {
+		return nil, err
+	}
+	err = e.Close()
+	return b.Bytes(), err
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *LedgerKeyOffer) UnmarshalText(inp []byte) error {
+	d := base64.NewDecoder(base64.StdEncoding, bytes.NewReader(inp))
+	_, err := Unmarshal(d, s)
+	return err
+}
+
+var (
+	_ encoding.TextMarshaler   = (*LedgerKeyOffer)(nil)
+	_ encoding.TextUnmarshaler = (*LedgerKeyOffer)(nil)
+)
+
 // LedgerKeyData is an XDR NestedStruct defines as:
 //
 //   struct
@@ -3203,6 +4524,30 @@ func (s *LedgerKeyData) UnmarshalBinary(inp []byte) error {
 var (
 	_ encoding.BinaryMarshaler   = (*LedgerKeyData)(nil)
 	_ encoding.BinaryUnmarshaler = (*LedgerKeyData)(nil)
+)
+
+// MarshalText implements encoding.TextMarshaler.
+func (s LedgerKeyData) MarshalText() ([]byte, error) {
+	b := new(bytes.Buffer)
+	e := base64.NewEncoder(base64.StdEncoding, b)
+	_, err := Marshal(e, s)
+	if err != nil {
+		return nil, err
+	}
+	err = e.Close()
+	return b.Bytes(), err
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *LedgerKeyData) UnmarshalText(inp []byte) error {
+	d := base64.NewDecoder(base64.StdEncoding, bytes.NewReader(inp))
+	_, err := Unmarshal(d, s)
+	return err
+}
+
+var (
+	_ encoding.TextMarshaler   = (*LedgerKeyData)(nil)
+	_ encoding.TextUnmarshaler = (*LedgerKeyData)(nil)
 )
 
 // LedgerKey is an XDR Union defines as:
@@ -3421,6 +4766,30 @@ var (
 	_ encoding.BinaryUnmarshaler = (*LedgerKey)(nil)
 )
 
+// MarshalText implements encoding.TextMarshaler.
+func (s LedgerKey) MarshalText() ([]byte, error) {
+	b := new(bytes.Buffer)
+	e := base64.NewEncoder(base64.StdEncoding, b)
+	_, err := Marshal(e, s)
+	if err != nil {
+		return nil, err
+	}
+	err = e.Close()
+	return b.Bytes(), err
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *LedgerKey) UnmarshalText(inp []byte) error {
+	d := base64.NewDecoder(base64.StdEncoding, bytes.NewReader(inp))
+	_, err := Unmarshal(d, s)
+	return err
+}
+
+var (
+	_ encoding.TextMarshaler   = (*LedgerKey)(nil)
+	_ encoding.TextUnmarshaler = (*LedgerKey)(nil)
+)
+
 // BucketEntryType is an XDR Enum defines as:
 //
 //   enum BucketEntryType
@@ -3470,6 +4839,30 @@ func (s *BucketEntryType) UnmarshalBinary(inp []byte) error {
 var (
 	_ encoding.BinaryMarshaler   = (*BucketEntryType)(nil)
 	_ encoding.BinaryUnmarshaler = (*BucketEntryType)(nil)
+)
+
+// MarshalText implements encoding.TextMarshaler.
+func (s BucketEntryType) MarshalText() ([]byte, error) {
+	b := new(bytes.Buffer)
+	e := base64.NewEncoder(base64.StdEncoding, b)
+	_, err := Marshal(e, s)
+	if err != nil {
+		return nil, err
+	}
+	err = e.Close()
+	return b.Bytes(), err
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *BucketEntryType) UnmarshalText(inp []byte) error {
+	d := base64.NewDecoder(base64.StdEncoding, bytes.NewReader(inp))
+	_, err := Unmarshal(d, s)
+	return err
+}
+
+var (
+	_ encoding.TextMarshaler   = (*BucketEntryType)(nil)
+	_ encoding.TextUnmarshaler = (*BucketEntryType)(nil)
 )
 
 // BucketEntry is an XDR Union defines as:
@@ -3597,6 +4990,30 @@ var (
 	_ encoding.BinaryUnmarshaler = (*BucketEntry)(nil)
 )
 
+// MarshalText implements encoding.TextMarshaler.
+func (s BucketEntry) MarshalText() ([]byte, error) {
+	b := new(bytes.Buffer)
+	e := base64.NewEncoder(base64.StdEncoding, b)
+	_, err := Marshal(e, s)
+	if err != nil {
+		return nil, err
+	}
+	err = e.Close()
+	return b.Bytes(), err
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *BucketEntry) UnmarshalText(inp []byte) error {
+	d := base64.NewDecoder(base64.StdEncoding, bytes.NewReader(inp))
+	_, err := Unmarshal(d, s)
+	return err
+}
+
+var (
+	_ encoding.TextMarshaler   = (*BucketEntry)(nil)
+	_ encoding.TextUnmarshaler = (*BucketEntry)(nil)
+)
+
 // TransactionSet is an XDR Struct defines as:
 //
 //   struct TransactionSet
@@ -3626,6 +5043,30 @@ func (s *TransactionSet) UnmarshalBinary(inp []byte) error {
 var (
 	_ encoding.BinaryMarshaler   = (*TransactionSet)(nil)
 	_ encoding.BinaryUnmarshaler = (*TransactionSet)(nil)
+)
+
+// MarshalText implements encoding.TextMarshaler.
+func (s TransactionSet) MarshalText() ([]byte, error) {
+	b := new(bytes.Buffer)
+	e := base64.NewEncoder(base64.StdEncoding, b)
+	_, err := Marshal(e, s)
+	if err != nil {
+		return nil, err
+	}
+	err = e.Close()
+	return b.Bytes(), err
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *TransactionSet) UnmarshalText(inp []byte) error {
+	d := base64.NewDecoder(base64.StdEncoding, bytes.NewReader(inp))
+	_, err := Unmarshal(d, s)
+	return err
+}
+
+var (
+	_ encoding.TextMarshaler   = (*TransactionSet)(nil)
+	_ encoding.TextUnmarshaler = (*TransactionSet)(nil)
 )
 
 // TransactionResultPair is an XDR Struct defines as:
@@ -3659,6 +5100,30 @@ var (
 	_ encoding.BinaryUnmarshaler = (*TransactionResultPair)(nil)
 )
 
+// MarshalText implements encoding.TextMarshaler.
+func (s TransactionResultPair) MarshalText() ([]byte, error) {
+	b := new(bytes.Buffer)
+	e := base64.NewEncoder(base64.StdEncoding, b)
+	_, err := Marshal(e, s)
+	if err != nil {
+		return nil, err
+	}
+	err = e.Close()
+	return b.Bytes(), err
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *TransactionResultPair) UnmarshalText(inp []byte) error {
+	d := base64.NewDecoder(base64.StdEncoding, bytes.NewReader(inp))
+	_, err := Unmarshal(d, s)
+	return err
+}
+
+var (
+	_ encoding.TextMarshaler   = (*TransactionResultPair)(nil)
+	_ encoding.TextUnmarshaler = (*TransactionResultPair)(nil)
+)
+
 // TransactionResultSet is an XDR Struct defines as:
 //
 //   struct TransactionResultSet
@@ -3686,6 +5151,30 @@ func (s *TransactionResultSet) UnmarshalBinary(inp []byte) error {
 var (
 	_ encoding.BinaryMarshaler   = (*TransactionResultSet)(nil)
 	_ encoding.BinaryUnmarshaler = (*TransactionResultSet)(nil)
+)
+
+// MarshalText implements encoding.TextMarshaler.
+func (s TransactionResultSet) MarshalText() ([]byte, error) {
+	b := new(bytes.Buffer)
+	e := base64.NewEncoder(base64.StdEncoding, b)
+	_, err := Marshal(e, s)
+	if err != nil {
+		return nil, err
+	}
+	err = e.Close()
+	return b.Bytes(), err
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *TransactionResultSet) UnmarshalText(inp []byte) error {
+	d := base64.NewDecoder(base64.StdEncoding, bytes.NewReader(inp))
+	_, err := Unmarshal(d, s)
+	return err
+}
+
+var (
+	_ encoding.TextMarshaler   = (*TransactionResultSet)(nil)
+	_ encoding.TextUnmarshaler = (*TransactionResultSet)(nil)
 )
 
 // TransactionHistoryEntryExt is an XDR NestedUnion defines as:
@@ -3744,6 +5233,30 @@ var (
 	_ encoding.BinaryUnmarshaler = (*TransactionHistoryEntryExt)(nil)
 )
 
+// MarshalText implements encoding.TextMarshaler.
+func (s TransactionHistoryEntryExt) MarshalText() ([]byte, error) {
+	b := new(bytes.Buffer)
+	e := base64.NewEncoder(base64.StdEncoding, b)
+	_, err := Marshal(e, s)
+	if err != nil {
+		return nil, err
+	}
+	err = e.Close()
+	return b.Bytes(), err
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *TransactionHistoryEntryExt) UnmarshalText(inp []byte) error {
+	d := base64.NewDecoder(base64.StdEncoding, bytes.NewReader(inp))
+	_, err := Unmarshal(d, s)
+	return err
+}
+
+var (
+	_ encoding.TextMarshaler   = (*TransactionHistoryEntryExt)(nil)
+	_ encoding.TextUnmarshaler = (*TransactionHistoryEntryExt)(nil)
+)
+
 // TransactionHistoryEntry is an XDR Struct defines as:
 //
 //   struct TransactionHistoryEntry
@@ -3782,6 +5295,30 @@ func (s *TransactionHistoryEntry) UnmarshalBinary(inp []byte) error {
 var (
 	_ encoding.BinaryMarshaler   = (*TransactionHistoryEntry)(nil)
 	_ encoding.BinaryUnmarshaler = (*TransactionHistoryEntry)(nil)
+)
+
+// MarshalText implements encoding.TextMarshaler.
+func (s TransactionHistoryEntry) MarshalText() ([]byte, error) {
+	b := new(bytes.Buffer)
+	e := base64.NewEncoder(base64.StdEncoding, b)
+	_, err := Marshal(e, s)
+	if err != nil {
+		return nil, err
+	}
+	err = e.Close()
+	return b.Bytes(), err
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *TransactionHistoryEntry) UnmarshalText(inp []byte) error {
+	d := base64.NewDecoder(base64.StdEncoding, bytes.NewReader(inp))
+	_, err := Unmarshal(d, s)
+	return err
+}
+
+var (
+	_ encoding.TextMarshaler   = (*TransactionHistoryEntry)(nil)
+	_ encoding.TextUnmarshaler = (*TransactionHistoryEntry)(nil)
 )
 
 // TransactionHistoryResultEntryExt is an XDR NestedUnion defines as:
@@ -3840,6 +5377,30 @@ var (
 	_ encoding.BinaryUnmarshaler = (*TransactionHistoryResultEntryExt)(nil)
 )
 
+// MarshalText implements encoding.TextMarshaler.
+func (s TransactionHistoryResultEntryExt) MarshalText() ([]byte, error) {
+	b := new(bytes.Buffer)
+	e := base64.NewEncoder(base64.StdEncoding, b)
+	_, err := Marshal(e, s)
+	if err != nil {
+		return nil, err
+	}
+	err = e.Close()
+	return b.Bytes(), err
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *TransactionHistoryResultEntryExt) UnmarshalText(inp []byte) error {
+	d := base64.NewDecoder(base64.StdEncoding, bytes.NewReader(inp))
+	_, err := Unmarshal(d, s)
+	return err
+}
+
+var (
+	_ encoding.TextMarshaler   = (*TransactionHistoryResultEntryExt)(nil)
+	_ encoding.TextUnmarshaler = (*TransactionHistoryResultEntryExt)(nil)
+)
+
 // TransactionHistoryResultEntry is an XDR Struct defines as:
 //
 //   struct TransactionHistoryResultEntry
@@ -3878,6 +5439,30 @@ func (s *TransactionHistoryResultEntry) UnmarshalBinary(inp []byte) error {
 var (
 	_ encoding.BinaryMarshaler   = (*TransactionHistoryResultEntry)(nil)
 	_ encoding.BinaryUnmarshaler = (*TransactionHistoryResultEntry)(nil)
+)
+
+// MarshalText implements encoding.TextMarshaler.
+func (s TransactionHistoryResultEntry) MarshalText() ([]byte, error) {
+	b := new(bytes.Buffer)
+	e := base64.NewEncoder(base64.StdEncoding, b)
+	_, err := Marshal(e, s)
+	if err != nil {
+		return nil, err
+	}
+	err = e.Close()
+	return b.Bytes(), err
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *TransactionHistoryResultEntry) UnmarshalText(inp []byte) error {
+	d := base64.NewDecoder(base64.StdEncoding, bytes.NewReader(inp))
+	_, err := Unmarshal(d, s)
+	return err
+}
+
+var (
+	_ encoding.TextMarshaler   = (*TransactionHistoryResultEntry)(nil)
+	_ encoding.TextUnmarshaler = (*TransactionHistoryResultEntry)(nil)
 )
 
 // LedgerHeaderHistoryEntryExt is an XDR NestedUnion defines as:
@@ -3936,6 +5521,30 @@ var (
 	_ encoding.BinaryUnmarshaler = (*LedgerHeaderHistoryEntryExt)(nil)
 )
 
+// MarshalText implements encoding.TextMarshaler.
+func (s LedgerHeaderHistoryEntryExt) MarshalText() ([]byte, error) {
+	b := new(bytes.Buffer)
+	e := base64.NewEncoder(base64.StdEncoding, b)
+	_, err := Marshal(e, s)
+	if err != nil {
+		return nil, err
+	}
+	err = e.Close()
+	return b.Bytes(), err
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *LedgerHeaderHistoryEntryExt) UnmarshalText(inp []byte) error {
+	d := base64.NewDecoder(base64.StdEncoding, bytes.NewReader(inp))
+	_, err := Unmarshal(d, s)
+	return err
+}
+
+var (
+	_ encoding.TextMarshaler   = (*LedgerHeaderHistoryEntryExt)(nil)
+	_ encoding.TextUnmarshaler = (*LedgerHeaderHistoryEntryExt)(nil)
+)
+
 // LedgerHeaderHistoryEntry is an XDR Struct defines as:
 //
 //   struct LedgerHeaderHistoryEntry
@@ -3976,6 +5585,30 @@ var (
 	_ encoding.BinaryUnmarshaler = (*LedgerHeaderHistoryEntry)(nil)
 )
 
+// MarshalText implements encoding.TextMarshaler.
+func (s LedgerHeaderHistoryEntry) MarshalText() ([]byte, error) {
+	b := new(bytes.Buffer)
+	e := base64.NewEncoder(base64.StdEncoding, b)
+	_, err := Marshal(e, s)
+	if err != nil {
+		return nil, err
+	}
+	err = e.Close()
+	return b.Bytes(), err
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *LedgerHeaderHistoryEntry) UnmarshalText(inp []byte) error {
+	d := base64.NewDecoder(base64.StdEncoding, bytes.NewReader(inp))
+	_, err := Unmarshal(d, s)
+	return err
+}
+
+var (
+	_ encoding.TextMarshaler   = (*LedgerHeaderHistoryEntry)(nil)
+	_ encoding.TextUnmarshaler = (*LedgerHeaderHistoryEntry)(nil)
+)
+
 // LedgerScpMessages is an XDR Struct defines as:
 //
 //   struct LedgerSCPMessages
@@ -4007,6 +5640,30 @@ var (
 	_ encoding.BinaryUnmarshaler = (*LedgerScpMessages)(nil)
 )
 
+// MarshalText implements encoding.TextMarshaler.
+func (s LedgerScpMessages) MarshalText() ([]byte, error) {
+	b := new(bytes.Buffer)
+	e := base64.NewEncoder(base64.StdEncoding, b)
+	_, err := Marshal(e, s)
+	if err != nil {
+		return nil, err
+	}
+	err = e.Close()
+	return b.Bytes(), err
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *LedgerScpMessages) UnmarshalText(inp []byte) error {
+	d := base64.NewDecoder(base64.StdEncoding, bytes.NewReader(inp))
+	_, err := Unmarshal(d, s)
+	return err
+}
+
+var (
+	_ encoding.TextMarshaler   = (*LedgerScpMessages)(nil)
+	_ encoding.TextUnmarshaler = (*LedgerScpMessages)(nil)
+)
+
 // ScpHistoryEntryV0 is an XDR Struct defines as:
 //
 //   struct SCPHistoryEntryV0
@@ -4036,6 +5693,30 @@ func (s *ScpHistoryEntryV0) UnmarshalBinary(inp []byte) error {
 var (
 	_ encoding.BinaryMarshaler   = (*ScpHistoryEntryV0)(nil)
 	_ encoding.BinaryUnmarshaler = (*ScpHistoryEntryV0)(nil)
+)
+
+// MarshalText implements encoding.TextMarshaler.
+func (s ScpHistoryEntryV0) MarshalText() ([]byte, error) {
+	b := new(bytes.Buffer)
+	e := base64.NewEncoder(base64.StdEncoding, b)
+	_, err := Marshal(e, s)
+	if err != nil {
+		return nil, err
+	}
+	err = e.Close()
+	return b.Bytes(), err
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *ScpHistoryEntryV0) UnmarshalText(inp []byte) error {
+	d := base64.NewDecoder(base64.StdEncoding, bytes.NewReader(inp))
+	_, err := Unmarshal(d, s)
+	return err
+}
+
+var (
+	_ encoding.TextMarshaler   = (*ScpHistoryEntryV0)(nil)
+	_ encoding.TextUnmarshaler = (*ScpHistoryEntryV0)(nil)
 )
 
 // ScpHistoryEntry is an XDR Union defines as:
@@ -4125,6 +5806,30 @@ var (
 	_ encoding.BinaryUnmarshaler = (*ScpHistoryEntry)(nil)
 )
 
+// MarshalText implements encoding.TextMarshaler.
+func (s ScpHistoryEntry) MarshalText() ([]byte, error) {
+	b := new(bytes.Buffer)
+	e := base64.NewEncoder(base64.StdEncoding, b)
+	_, err := Marshal(e, s)
+	if err != nil {
+		return nil, err
+	}
+	err = e.Close()
+	return b.Bytes(), err
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *ScpHistoryEntry) UnmarshalText(inp []byte) error {
+	d := base64.NewDecoder(base64.StdEncoding, bytes.NewReader(inp))
+	_, err := Unmarshal(d, s)
+	return err
+}
+
+var (
+	_ encoding.TextMarshaler   = (*ScpHistoryEntry)(nil)
+	_ encoding.TextUnmarshaler = (*ScpHistoryEntry)(nil)
+)
+
 // LedgerEntryChangeType is an XDR Enum defines as:
 //
 //   enum LedgerEntryChangeType
@@ -4180,6 +5885,30 @@ func (s *LedgerEntryChangeType) UnmarshalBinary(inp []byte) error {
 var (
 	_ encoding.BinaryMarshaler   = (*LedgerEntryChangeType)(nil)
 	_ encoding.BinaryUnmarshaler = (*LedgerEntryChangeType)(nil)
+)
+
+// MarshalText implements encoding.TextMarshaler.
+func (s LedgerEntryChangeType) MarshalText() ([]byte, error) {
+	b := new(bytes.Buffer)
+	e := base64.NewEncoder(base64.StdEncoding, b)
+	_, err := Marshal(e, s)
+	if err != nil {
+		return nil, err
+	}
+	err = e.Close()
+	return b.Bytes(), err
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *LedgerEntryChangeType) UnmarshalText(inp []byte) error {
+	d := base64.NewDecoder(base64.StdEncoding, bytes.NewReader(inp))
+	_, err := Unmarshal(d, s)
+	return err
+}
+
+var (
+	_ encoding.TextMarshaler   = (*LedgerEntryChangeType)(nil)
+	_ encoding.TextUnmarshaler = (*LedgerEntryChangeType)(nil)
 )
 
 // LedgerEntryChange is an XDR Union defines as:
@@ -4380,6 +6109,30 @@ var (
 	_ encoding.BinaryUnmarshaler = (*LedgerEntryChange)(nil)
 )
 
+// MarshalText implements encoding.TextMarshaler.
+func (s LedgerEntryChange) MarshalText() ([]byte, error) {
+	b := new(bytes.Buffer)
+	e := base64.NewEncoder(base64.StdEncoding, b)
+	_, err := Marshal(e, s)
+	if err != nil {
+		return nil, err
+	}
+	err = e.Close()
+	return b.Bytes(), err
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *LedgerEntryChange) UnmarshalText(inp []byte) error {
+	d := base64.NewDecoder(base64.StdEncoding, bytes.NewReader(inp))
+	_, err := Unmarshal(d, s)
+	return err
+}
+
+var (
+	_ encoding.TextMarshaler   = (*LedgerEntryChange)(nil)
+	_ encoding.TextUnmarshaler = (*LedgerEntryChange)(nil)
+)
+
 // LedgerEntryChanges is an XDR Typedef defines as:
 //
 //   typedef LedgerEntryChange LedgerEntryChanges<>;
@@ -4402,6 +6155,30 @@ func (s *LedgerEntryChanges) UnmarshalBinary(inp []byte) error {
 var (
 	_ encoding.BinaryMarshaler   = (*LedgerEntryChanges)(nil)
 	_ encoding.BinaryUnmarshaler = (*LedgerEntryChanges)(nil)
+)
+
+// MarshalText implements encoding.TextMarshaler.
+func (s LedgerEntryChanges) MarshalText() ([]byte, error) {
+	b := new(bytes.Buffer)
+	e := base64.NewEncoder(base64.StdEncoding, b)
+	_, err := Marshal(e, s)
+	if err != nil {
+		return nil, err
+	}
+	err = e.Close()
+	return b.Bytes(), err
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *LedgerEntryChanges) UnmarshalText(inp []byte) error {
+	d := base64.NewDecoder(base64.StdEncoding, bytes.NewReader(inp))
+	_, err := Unmarshal(d, s)
+	return err
+}
+
+var (
+	_ encoding.TextMarshaler   = (*LedgerEntryChanges)(nil)
+	_ encoding.TextUnmarshaler = (*LedgerEntryChanges)(nil)
 )
 
 // OperationMeta is an XDR Struct defines as:
@@ -4433,6 +6210,30 @@ var (
 	_ encoding.BinaryUnmarshaler = (*OperationMeta)(nil)
 )
 
+// MarshalText implements encoding.TextMarshaler.
+func (s OperationMeta) MarshalText() ([]byte, error) {
+	b := new(bytes.Buffer)
+	e := base64.NewEncoder(base64.StdEncoding, b)
+	_, err := Marshal(e, s)
+	if err != nil {
+		return nil, err
+	}
+	err = e.Close()
+	return b.Bytes(), err
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *OperationMeta) UnmarshalText(inp []byte) error {
+	d := base64.NewDecoder(base64.StdEncoding, bytes.NewReader(inp))
+	_, err := Unmarshal(d, s)
+	return err
+}
+
+var (
+	_ encoding.TextMarshaler   = (*OperationMeta)(nil)
+	_ encoding.TextUnmarshaler = (*OperationMeta)(nil)
+)
+
 // TransactionMetaV1 is an XDR Struct defines as:
 //
 //   struct TransactionMetaV1
@@ -4462,6 +6263,30 @@ func (s *TransactionMetaV1) UnmarshalBinary(inp []byte) error {
 var (
 	_ encoding.BinaryMarshaler   = (*TransactionMetaV1)(nil)
 	_ encoding.BinaryUnmarshaler = (*TransactionMetaV1)(nil)
+)
+
+// MarshalText implements encoding.TextMarshaler.
+func (s TransactionMetaV1) MarshalText() ([]byte, error) {
+	b := new(bytes.Buffer)
+	e := base64.NewEncoder(base64.StdEncoding, b)
+	_, err := Marshal(e, s)
+	if err != nil {
+		return nil, err
+	}
+	err = e.Close()
+	return b.Bytes(), err
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *TransactionMetaV1) UnmarshalText(inp []byte) error {
+	d := base64.NewDecoder(base64.StdEncoding, bytes.NewReader(inp))
+	_, err := Unmarshal(d, s)
+	return err
+}
+
+var (
+	_ encoding.TextMarshaler   = (*TransactionMetaV1)(nil)
+	_ encoding.TextUnmarshaler = (*TransactionMetaV1)(nil)
 )
 
 // TransactionMeta is an XDR Union defines as:
@@ -4588,6 +6413,30 @@ var (
 	_ encoding.BinaryUnmarshaler = (*TransactionMeta)(nil)
 )
 
+// MarshalText implements encoding.TextMarshaler.
+func (s TransactionMeta) MarshalText() ([]byte, error) {
+	b := new(bytes.Buffer)
+	e := base64.NewEncoder(base64.StdEncoding, b)
+	_, err := Marshal(e, s)
+	if err != nil {
+		return nil, err
+	}
+	err = e.Close()
+	return b.Bytes(), err
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *TransactionMeta) UnmarshalText(inp []byte) error {
+	d := base64.NewDecoder(base64.StdEncoding, bytes.NewReader(inp))
+	_, err := Unmarshal(d, s)
+	return err
+}
+
+var (
+	_ encoding.TextMarshaler   = (*TransactionMeta)(nil)
+	_ encoding.TextUnmarshaler = (*TransactionMeta)(nil)
+)
+
 // ErrorCode is an XDR Enum defines as:
 //
 //   enum ErrorCode
@@ -4648,6 +6497,30 @@ var (
 	_ encoding.BinaryUnmarshaler = (*ErrorCode)(nil)
 )
 
+// MarshalText implements encoding.TextMarshaler.
+func (s ErrorCode) MarshalText() ([]byte, error) {
+	b := new(bytes.Buffer)
+	e := base64.NewEncoder(base64.StdEncoding, b)
+	_, err := Marshal(e, s)
+	if err != nil {
+		return nil, err
+	}
+	err = e.Close()
+	return b.Bytes(), err
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *ErrorCode) UnmarshalText(inp []byte) error {
+	d := base64.NewDecoder(base64.StdEncoding, bytes.NewReader(inp))
+	_, err := Unmarshal(d, s)
+	return err
+}
+
+var (
+	_ encoding.TextMarshaler   = (*ErrorCode)(nil)
+	_ encoding.TextUnmarshaler = (*ErrorCode)(nil)
+)
+
 // Error is an XDR Struct defines as:
 //
 //   struct Error
@@ -4677,6 +6550,30 @@ func (s *Error) UnmarshalBinary(inp []byte) error {
 var (
 	_ encoding.BinaryMarshaler   = (*Error)(nil)
 	_ encoding.BinaryUnmarshaler = (*Error)(nil)
+)
+
+// MarshalText implements encoding.TextMarshaler.
+func (s Error) MarshalText() ([]byte, error) {
+	b := new(bytes.Buffer)
+	e := base64.NewEncoder(base64.StdEncoding, b)
+	_, err := Marshal(e, s)
+	if err != nil {
+		return nil, err
+	}
+	err = e.Close()
+	return b.Bytes(), err
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *Error) UnmarshalText(inp []byte) error {
+	d := base64.NewDecoder(base64.StdEncoding, bytes.NewReader(inp))
+	_, err := Unmarshal(d, s)
+	return err
+}
+
+var (
+	_ encoding.TextMarshaler   = (*Error)(nil)
+	_ encoding.TextUnmarshaler = (*Error)(nil)
 )
 
 // AuthCert is an XDR Struct defines as:
@@ -4710,6 +6607,30 @@ func (s *AuthCert) UnmarshalBinary(inp []byte) error {
 var (
 	_ encoding.BinaryMarshaler   = (*AuthCert)(nil)
 	_ encoding.BinaryUnmarshaler = (*AuthCert)(nil)
+)
+
+// MarshalText implements encoding.TextMarshaler.
+func (s AuthCert) MarshalText() ([]byte, error) {
+	b := new(bytes.Buffer)
+	e := base64.NewEncoder(base64.StdEncoding, b)
+	_, err := Marshal(e, s)
+	if err != nil {
+		return nil, err
+	}
+	err = e.Close()
+	return b.Bytes(), err
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *AuthCert) UnmarshalText(inp []byte) error {
+	d := base64.NewDecoder(base64.StdEncoding, bytes.NewReader(inp))
+	_, err := Unmarshal(d, s)
+	return err
+}
+
+var (
+	_ encoding.TextMarshaler   = (*AuthCert)(nil)
+	_ encoding.TextUnmarshaler = (*AuthCert)(nil)
 )
 
 // Hello is an XDR Struct defines as:
@@ -4757,6 +6678,30 @@ var (
 	_ encoding.BinaryUnmarshaler = (*Hello)(nil)
 )
 
+// MarshalText implements encoding.TextMarshaler.
+func (s Hello) MarshalText() ([]byte, error) {
+	b := new(bytes.Buffer)
+	e := base64.NewEncoder(base64.StdEncoding, b)
+	_, err := Marshal(e, s)
+	if err != nil {
+		return nil, err
+	}
+	err = e.Close()
+	return b.Bytes(), err
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *Hello) UnmarshalText(inp []byte) error {
+	d := base64.NewDecoder(base64.StdEncoding, bytes.NewReader(inp))
+	_, err := Unmarshal(d, s)
+	return err
+}
+
+var (
+	_ encoding.TextMarshaler   = (*Hello)(nil)
+	_ encoding.TextUnmarshaler = (*Hello)(nil)
+)
+
 // Auth is an XDR Struct defines as:
 //
 //   struct Auth
@@ -4786,6 +6731,30 @@ func (s *Auth) UnmarshalBinary(inp []byte) error {
 var (
 	_ encoding.BinaryMarshaler   = (*Auth)(nil)
 	_ encoding.BinaryUnmarshaler = (*Auth)(nil)
+)
+
+// MarshalText implements encoding.TextMarshaler.
+func (s Auth) MarshalText() ([]byte, error) {
+	b := new(bytes.Buffer)
+	e := base64.NewEncoder(base64.StdEncoding, b)
+	_, err := Marshal(e, s)
+	if err != nil {
+		return nil, err
+	}
+	err = e.Close()
+	return b.Bytes(), err
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *Auth) UnmarshalText(inp []byte) error {
+	d := base64.NewDecoder(base64.StdEncoding, bytes.NewReader(inp))
+	_, err := Unmarshal(d, s)
+	return err
+}
+
+var (
+	_ encoding.TextMarshaler   = (*Auth)(nil)
+	_ encoding.TextUnmarshaler = (*Auth)(nil)
 )
 
 // IpAddrType is an XDR Enum defines as:
@@ -4837,6 +6806,30 @@ func (s *IpAddrType) UnmarshalBinary(inp []byte) error {
 var (
 	_ encoding.BinaryMarshaler   = (*IpAddrType)(nil)
 	_ encoding.BinaryUnmarshaler = (*IpAddrType)(nil)
+)
+
+// MarshalText implements encoding.TextMarshaler.
+func (s IpAddrType) MarshalText() ([]byte, error) {
+	b := new(bytes.Buffer)
+	e := base64.NewEncoder(base64.StdEncoding, b)
+	_, err := Marshal(e, s)
+	if err != nil {
+		return nil, err
+	}
+	err = e.Close()
+	return b.Bytes(), err
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *IpAddrType) UnmarshalText(inp []byte) error {
+	d := base64.NewDecoder(base64.StdEncoding, bytes.NewReader(inp))
+	_, err := Unmarshal(d, s)
+	return err
+}
+
+var (
+	_ encoding.TextMarshaler   = (*IpAddrType)(nil)
+	_ encoding.TextUnmarshaler = (*IpAddrType)(nil)
 )
 
 // PeerAddressIp is an XDR NestedUnion defines as:
@@ -4963,6 +6956,30 @@ var (
 	_ encoding.BinaryUnmarshaler = (*PeerAddressIp)(nil)
 )
 
+// MarshalText implements encoding.TextMarshaler.
+func (s PeerAddressIp) MarshalText() ([]byte, error) {
+	b := new(bytes.Buffer)
+	e := base64.NewEncoder(base64.StdEncoding, b)
+	_, err := Marshal(e, s)
+	if err != nil {
+		return nil, err
+	}
+	err = e.Close()
+	return b.Bytes(), err
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *PeerAddressIp) UnmarshalText(inp []byte) error {
+	d := base64.NewDecoder(base64.StdEncoding, bytes.NewReader(inp))
+	_, err := Unmarshal(d, s)
+	return err
+}
+
+var (
+	_ encoding.TextMarshaler   = (*PeerAddressIp)(nil)
+	_ encoding.TextUnmarshaler = (*PeerAddressIp)(nil)
+)
+
 // PeerAddress is an XDR Struct defines as:
 //
 //   struct PeerAddress
@@ -5001,6 +7018,30 @@ func (s *PeerAddress) UnmarshalBinary(inp []byte) error {
 var (
 	_ encoding.BinaryMarshaler   = (*PeerAddress)(nil)
 	_ encoding.BinaryUnmarshaler = (*PeerAddress)(nil)
+)
+
+// MarshalText implements encoding.TextMarshaler.
+func (s PeerAddress) MarshalText() ([]byte, error) {
+	b := new(bytes.Buffer)
+	e := base64.NewEncoder(base64.StdEncoding, b)
+	_, err := Marshal(e, s)
+	if err != nil {
+		return nil, err
+	}
+	err = e.Close()
+	return b.Bytes(), err
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *PeerAddress) UnmarshalText(inp []byte) error {
+	d := base64.NewDecoder(base64.StdEncoding, bytes.NewReader(inp))
+	_, err := Unmarshal(d, s)
+	return err
+}
+
+var (
+	_ encoding.TextMarshaler   = (*PeerAddress)(nil)
+	_ encoding.TextUnmarshaler = (*PeerAddress)(nil)
 )
 
 // MessageType is an XDR Enum defines as:
@@ -5094,6 +7135,30 @@ var (
 	_ encoding.BinaryUnmarshaler = (*MessageType)(nil)
 )
 
+// MarshalText implements encoding.TextMarshaler.
+func (s MessageType) MarshalText() ([]byte, error) {
+	b := new(bytes.Buffer)
+	e := base64.NewEncoder(base64.StdEncoding, b)
+	_, err := Marshal(e, s)
+	if err != nil {
+		return nil, err
+	}
+	err = e.Close()
+	return b.Bytes(), err
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *MessageType) UnmarshalText(inp []byte) error {
+	d := base64.NewDecoder(base64.StdEncoding, bytes.NewReader(inp))
+	_, err := Unmarshal(d, s)
+	return err
+}
+
+var (
+	_ encoding.TextMarshaler   = (*MessageType)(nil)
+	_ encoding.TextUnmarshaler = (*MessageType)(nil)
+)
+
 // DontHave is an XDR Struct defines as:
 //
 //   struct DontHave
@@ -5123,6 +7188,30 @@ func (s *DontHave) UnmarshalBinary(inp []byte) error {
 var (
 	_ encoding.BinaryMarshaler   = (*DontHave)(nil)
 	_ encoding.BinaryUnmarshaler = (*DontHave)(nil)
+)
+
+// MarshalText implements encoding.TextMarshaler.
+func (s DontHave) MarshalText() ([]byte, error) {
+	b := new(bytes.Buffer)
+	e := base64.NewEncoder(base64.StdEncoding, b)
+	_, err := Marshal(e, s)
+	if err != nil {
+		return nil, err
+	}
+	err = e.Close()
+	return b.Bytes(), err
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *DontHave) UnmarshalText(inp []byte) error {
+	d := base64.NewDecoder(base64.StdEncoding, bytes.NewReader(inp))
+	_, err := Unmarshal(d, s)
+	return err
+}
+
+var (
+	_ encoding.TextMarshaler   = (*DontHave)(nil)
+	_ encoding.TextUnmarshaler = (*DontHave)(nil)
 )
 
 // StellarMessage is an XDR Union defines as:
@@ -5629,6 +7718,30 @@ var (
 	_ encoding.BinaryUnmarshaler = (*StellarMessage)(nil)
 )
 
+// MarshalText implements encoding.TextMarshaler.
+func (s StellarMessage) MarshalText() ([]byte, error) {
+	b := new(bytes.Buffer)
+	e := base64.NewEncoder(base64.StdEncoding, b)
+	_, err := Marshal(e, s)
+	if err != nil {
+		return nil, err
+	}
+	err = e.Close()
+	return b.Bytes(), err
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *StellarMessage) UnmarshalText(inp []byte) error {
+	d := base64.NewDecoder(base64.StdEncoding, bytes.NewReader(inp))
+	_, err := Unmarshal(d, s)
+	return err
+}
+
+var (
+	_ encoding.TextMarshaler   = (*StellarMessage)(nil)
+	_ encoding.TextUnmarshaler = (*StellarMessage)(nil)
+)
+
 // AuthenticatedMessageV0 is an XDR NestedStruct defines as:
 //
 //   struct
@@ -5660,6 +7773,30 @@ func (s *AuthenticatedMessageV0) UnmarshalBinary(inp []byte) error {
 var (
 	_ encoding.BinaryMarshaler   = (*AuthenticatedMessageV0)(nil)
 	_ encoding.BinaryUnmarshaler = (*AuthenticatedMessageV0)(nil)
+)
+
+// MarshalText implements encoding.TextMarshaler.
+func (s AuthenticatedMessageV0) MarshalText() ([]byte, error) {
+	b := new(bytes.Buffer)
+	e := base64.NewEncoder(base64.StdEncoding, b)
+	_, err := Marshal(e, s)
+	if err != nil {
+		return nil, err
+	}
+	err = e.Close()
+	return b.Bytes(), err
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *AuthenticatedMessageV0) UnmarshalText(inp []byte) error {
+	d := base64.NewDecoder(base64.StdEncoding, bytes.NewReader(inp))
+	_, err := Unmarshal(d, s)
+	return err
+}
+
+var (
+	_ encoding.TextMarshaler   = (*AuthenticatedMessageV0)(nil)
+	_ encoding.TextUnmarshaler = (*AuthenticatedMessageV0)(nil)
 )
 
 // AuthenticatedMessage is an XDR Union defines as:
@@ -5754,6 +7891,30 @@ var (
 	_ encoding.BinaryUnmarshaler = (*AuthenticatedMessage)(nil)
 )
 
+// MarshalText implements encoding.TextMarshaler.
+func (s AuthenticatedMessage) MarshalText() ([]byte, error) {
+	b := new(bytes.Buffer)
+	e := base64.NewEncoder(base64.StdEncoding, b)
+	_, err := Marshal(e, s)
+	if err != nil {
+		return nil, err
+	}
+	err = e.Close()
+	return b.Bytes(), err
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *AuthenticatedMessage) UnmarshalText(inp []byte) error {
+	d := base64.NewDecoder(base64.StdEncoding, bytes.NewReader(inp))
+	_, err := Unmarshal(d, s)
+	return err
+}
+
+var (
+	_ encoding.TextMarshaler   = (*AuthenticatedMessage)(nil)
+	_ encoding.TextUnmarshaler = (*AuthenticatedMessage)(nil)
+)
+
 // DecoratedSignature is an XDR Struct defines as:
 //
 //   struct DecoratedSignature
@@ -5783,6 +7944,30 @@ func (s *DecoratedSignature) UnmarshalBinary(inp []byte) error {
 var (
 	_ encoding.BinaryMarshaler   = (*DecoratedSignature)(nil)
 	_ encoding.BinaryUnmarshaler = (*DecoratedSignature)(nil)
+)
+
+// MarshalText implements encoding.TextMarshaler.
+func (s DecoratedSignature) MarshalText() ([]byte, error) {
+	b := new(bytes.Buffer)
+	e := base64.NewEncoder(base64.StdEncoding, b)
+	_, err := Marshal(e, s)
+	if err != nil {
+		return nil, err
+	}
+	err = e.Close()
+	return b.Bytes(), err
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *DecoratedSignature) UnmarshalText(inp []byte) error {
+	d := base64.NewDecoder(base64.StdEncoding, bytes.NewReader(inp))
+	_, err := Unmarshal(d, s)
+	return err
+}
+
+var (
+	_ encoding.TextMarshaler   = (*DecoratedSignature)(nil)
+	_ encoding.TextUnmarshaler = (*DecoratedSignature)(nil)
 )
 
 // OperationType is an XDR Enum defines as:
@@ -5866,6 +8051,30 @@ var (
 	_ encoding.BinaryUnmarshaler = (*OperationType)(nil)
 )
 
+// MarshalText implements encoding.TextMarshaler.
+func (s OperationType) MarshalText() ([]byte, error) {
+	b := new(bytes.Buffer)
+	e := base64.NewEncoder(base64.StdEncoding, b)
+	_, err := Marshal(e, s)
+	if err != nil {
+		return nil, err
+	}
+	err = e.Close()
+	return b.Bytes(), err
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *OperationType) UnmarshalText(inp []byte) error {
+	d := base64.NewDecoder(base64.StdEncoding, bytes.NewReader(inp))
+	_, err := Unmarshal(d, s)
+	return err
+}
+
+var (
+	_ encoding.TextMarshaler   = (*OperationType)(nil)
+	_ encoding.TextUnmarshaler = (*OperationType)(nil)
+)
+
 // CreateAccountOp is an XDR Struct defines as:
 //
 //   struct CreateAccountOp
@@ -5895,6 +8104,30 @@ func (s *CreateAccountOp) UnmarshalBinary(inp []byte) error {
 var (
 	_ encoding.BinaryMarshaler   = (*CreateAccountOp)(nil)
 	_ encoding.BinaryUnmarshaler = (*CreateAccountOp)(nil)
+)
+
+// MarshalText implements encoding.TextMarshaler.
+func (s CreateAccountOp) MarshalText() ([]byte, error) {
+	b := new(bytes.Buffer)
+	e := base64.NewEncoder(base64.StdEncoding, b)
+	_, err := Marshal(e, s)
+	if err != nil {
+		return nil, err
+	}
+	err = e.Close()
+	return b.Bytes(), err
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *CreateAccountOp) UnmarshalText(inp []byte) error {
+	d := base64.NewDecoder(base64.StdEncoding, bytes.NewReader(inp))
+	_, err := Unmarshal(d, s)
+	return err
+}
+
+var (
+	_ encoding.TextMarshaler   = (*CreateAccountOp)(nil)
+	_ encoding.TextUnmarshaler = (*CreateAccountOp)(nil)
 )
 
 // PaymentOp is an XDR Struct defines as:
@@ -5928,6 +8161,30 @@ func (s *PaymentOp) UnmarshalBinary(inp []byte) error {
 var (
 	_ encoding.BinaryMarshaler   = (*PaymentOp)(nil)
 	_ encoding.BinaryUnmarshaler = (*PaymentOp)(nil)
+)
+
+// MarshalText implements encoding.TextMarshaler.
+func (s PaymentOp) MarshalText() ([]byte, error) {
+	b := new(bytes.Buffer)
+	e := base64.NewEncoder(base64.StdEncoding, b)
+	_, err := Marshal(e, s)
+	if err != nil {
+		return nil, err
+	}
+	err = e.Close()
+	return b.Bytes(), err
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *PaymentOp) UnmarshalText(inp []byte) error {
+	d := base64.NewDecoder(base64.StdEncoding, bytes.NewReader(inp))
+	_, err := Unmarshal(d, s)
+	return err
+}
+
+var (
+	_ encoding.TextMarshaler   = (*PaymentOp)(nil)
+	_ encoding.TextUnmarshaler = (*PaymentOp)(nil)
 )
 
 // PathPaymentOp is an XDR Struct defines as:
@@ -5973,6 +8230,30 @@ var (
 	_ encoding.BinaryUnmarshaler = (*PathPaymentOp)(nil)
 )
 
+// MarshalText implements encoding.TextMarshaler.
+func (s PathPaymentOp) MarshalText() ([]byte, error) {
+	b := new(bytes.Buffer)
+	e := base64.NewEncoder(base64.StdEncoding, b)
+	_, err := Marshal(e, s)
+	if err != nil {
+		return nil, err
+	}
+	err = e.Close()
+	return b.Bytes(), err
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *PathPaymentOp) UnmarshalText(inp []byte) error {
+	d := base64.NewDecoder(base64.StdEncoding, bytes.NewReader(inp))
+	_, err := Unmarshal(d, s)
+	return err
+}
+
+var (
+	_ encoding.TextMarshaler   = (*PathPaymentOp)(nil)
+	_ encoding.TextUnmarshaler = (*PathPaymentOp)(nil)
+)
+
 // ManageOfferOp is an XDR Struct defines as:
 //
 //   struct ManageOfferOp
@@ -6012,6 +8293,30 @@ var (
 	_ encoding.BinaryUnmarshaler = (*ManageOfferOp)(nil)
 )
 
+// MarshalText implements encoding.TextMarshaler.
+func (s ManageOfferOp) MarshalText() ([]byte, error) {
+	b := new(bytes.Buffer)
+	e := base64.NewEncoder(base64.StdEncoding, b)
+	_, err := Marshal(e, s)
+	if err != nil {
+		return nil, err
+	}
+	err = e.Close()
+	return b.Bytes(), err
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *ManageOfferOp) UnmarshalText(inp []byte) error {
+	d := base64.NewDecoder(base64.StdEncoding, bytes.NewReader(inp))
+	_, err := Unmarshal(d, s)
+	return err
+}
+
+var (
+	_ encoding.TextMarshaler   = (*ManageOfferOp)(nil)
+	_ encoding.TextUnmarshaler = (*ManageOfferOp)(nil)
+)
+
 // CreatePassiveOfferOp is an XDR Struct defines as:
 //
 //   struct CreatePassiveOfferOp
@@ -6045,6 +8350,30 @@ func (s *CreatePassiveOfferOp) UnmarshalBinary(inp []byte) error {
 var (
 	_ encoding.BinaryMarshaler   = (*CreatePassiveOfferOp)(nil)
 	_ encoding.BinaryUnmarshaler = (*CreatePassiveOfferOp)(nil)
+)
+
+// MarshalText implements encoding.TextMarshaler.
+func (s CreatePassiveOfferOp) MarshalText() ([]byte, error) {
+	b := new(bytes.Buffer)
+	e := base64.NewEncoder(base64.StdEncoding, b)
+	_, err := Marshal(e, s)
+	if err != nil {
+		return nil, err
+	}
+	err = e.Close()
+	return b.Bytes(), err
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *CreatePassiveOfferOp) UnmarshalText(inp []byte) error {
+	d := base64.NewDecoder(base64.StdEncoding, bytes.NewReader(inp))
+	_, err := Unmarshal(d, s)
+	return err
+}
+
+var (
+	_ encoding.TextMarshaler   = (*CreatePassiveOfferOp)(nil)
+	_ encoding.TextUnmarshaler = (*CreatePassiveOfferOp)(nil)
 )
 
 // SetOptionsOp is an XDR Struct defines as:
@@ -6099,6 +8428,30 @@ var (
 	_ encoding.BinaryUnmarshaler = (*SetOptionsOp)(nil)
 )
 
+// MarshalText implements encoding.TextMarshaler.
+func (s SetOptionsOp) MarshalText() ([]byte, error) {
+	b := new(bytes.Buffer)
+	e := base64.NewEncoder(base64.StdEncoding, b)
+	_, err := Marshal(e, s)
+	if err != nil {
+		return nil, err
+	}
+	err = e.Close()
+	return b.Bytes(), err
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *SetOptionsOp) UnmarshalText(inp []byte) error {
+	d := base64.NewDecoder(base64.StdEncoding, bytes.NewReader(inp))
+	_, err := Unmarshal(d, s)
+	return err
+}
+
+var (
+	_ encoding.TextMarshaler   = (*SetOptionsOp)(nil)
+	_ encoding.TextUnmarshaler = (*SetOptionsOp)(nil)
+)
+
 // ChangeTrustOp is an XDR Struct defines as:
 //
 //   struct ChangeTrustOp
@@ -6130,6 +8483,30 @@ func (s *ChangeTrustOp) UnmarshalBinary(inp []byte) error {
 var (
 	_ encoding.BinaryMarshaler   = (*ChangeTrustOp)(nil)
 	_ encoding.BinaryUnmarshaler = (*ChangeTrustOp)(nil)
+)
+
+// MarshalText implements encoding.TextMarshaler.
+func (s ChangeTrustOp) MarshalText() ([]byte, error) {
+	b := new(bytes.Buffer)
+	e := base64.NewEncoder(base64.StdEncoding, b)
+	_, err := Marshal(e, s)
+	if err != nil {
+		return nil, err
+	}
+	err = e.Close()
+	return b.Bytes(), err
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *ChangeTrustOp) UnmarshalText(inp []byte) error {
+	d := base64.NewDecoder(base64.StdEncoding, bytes.NewReader(inp))
+	_, err := Unmarshal(d, s)
+	return err
+}
+
+var (
+	_ encoding.TextMarshaler   = (*ChangeTrustOp)(nil)
+	_ encoding.TextUnmarshaler = (*ChangeTrustOp)(nil)
 )
 
 // AllowTrustOpAsset is an XDR NestedUnion defines as:
@@ -6260,6 +8637,30 @@ var (
 	_ encoding.BinaryUnmarshaler = (*AllowTrustOpAsset)(nil)
 )
 
+// MarshalText implements encoding.TextMarshaler.
+func (s AllowTrustOpAsset) MarshalText() ([]byte, error) {
+	b := new(bytes.Buffer)
+	e := base64.NewEncoder(base64.StdEncoding, b)
+	_, err := Marshal(e, s)
+	if err != nil {
+		return nil, err
+	}
+	err = e.Close()
+	return b.Bytes(), err
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *AllowTrustOpAsset) UnmarshalText(inp []byte) error {
+	d := base64.NewDecoder(base64.StdEncoding, bytes.NewReader(inp))
+	_, err := Unmarshal(d, s)
+	return err
+}
+
+var (
+	_ encoding.TextMarshaler   = (*AllowTrustOpAsset)(nil)
+	_ encoding.TextUnmarshaler = (*AllowTrustOpAsset)(nil)
+)
+
 // AllowTrustOp is an XDR Struct defines as:
 //
 //   struct AllowTrustOp
@@ -6305,6 +8706,30 @@ var (
 	_ encoding.BinaryUnmarshaler = (*AllowTrustOp)(nil)
 )
 
+// MarshalText implements encoding.TextMarshaler.
+func (s AllowTrustOp) MarshalText() ([]byte, error) {
+	b := new(bytes.Buffer)
+	e := base64.NewEncoder(base64.StdEncoding, b)
+	_, err := Marshal(e, s)
+	if err != nil {
+		return nil, err
+	}
+	err = e.Close()
+	return b.Bytes(), err
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *AllowTrustOp) UnmarshalText(inp []byte) error {
+	d := base64.NewDecoder(base64.StdEncoding, bytes.NewReader(inp))
+	_, err := Unmarshal(d, s)
+	return err
+}
+
+var (
+	_ encoding.TextMarshaler   = (*AllowTrustOp)(nil)
+	_ encoding.TextUnmarshaler = (*AllowTrustOp)(nil)
+)
+
 // ManageDataOp is an XDR Struct defines as:
 //
 //   struct ManageDataOp
@@ -6336,6 +8761,30 @@ var (
 	_ encoding.BinaryUnmarshaler = (*ManageDataOp)(nil)
 )
 
+// MarshalText implements encoding.TextMarshaler.
+func (s ManageDataOp) MarshalText() ([]byte, error) {
+	b := new(bytes.Buffer)
+	e := base64.NewEncoder(base64.StdEncoding, b)
+	_, err := Marshal(e, s)
+	if err != nil {
+		return nil, err
+	}
+	err = e.Close()
+	return b.Bytes(), err
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *ManageDataOp) UnmarshalText(inp []byte) error {
+	d := base64.NewDecoder(base64.StdEncoding, bytes.NewReader(inp))
+	_, err := Unmarshal(d, s)
+	return err
+}
+
+var (
+	_ encoding.TextMarshaler   = (*ManageDataOp)(nil)
+	_ encoding.TextUnmarshaler = (*ManageDataOp)(nil)
+)
+
 // BumpSequenceOp is an XDR Struct defines as:
 //
 //   struct BumpSequenceOp
@@ -6363,6 +8812,30 @@ func (s *BumpSequenceOp) UnmarshalBinary(inp []byte) error {
 var (
 	_ encoding.BinaryMarshaler   = (*BumpSequenceOp)(nil)
 	_ encoding.BinaryUnmarshaler = (*BumpSequenceOp)(nil)
+)
+
+// MarshalText implements encoding.TextMarshaler.
+func (s BumpSequenceOp) MarshalText() ([]byte, error) {
+	b := new(bytes.Buffer)
+	e := base64.NewEncoder(base64.StdEncoding, b)
+	_, err := Marshal(e, s)
+	if err != nil {
+		return nil, err
+	}
+	err = e.Close()
+	return b.Bytes(), err
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *BumpSequenceOp) UnmarshalText(inp []byte) error {
+	d := base64.NewDecoder(base64.StdEncoding, bytes.NewReader(inp))
+	_, err := Unmarshal(d, s)
+	return err
+}
+
+var (
+	_ encoding.TextMarshaler   = (*BumpSequenceOp)(nil)
+	_ encoding.TextUnmarshaler = (*BumpSequenceOp)(nil)
 )
 
 // OperationBody is an XDR NestedUnion defines as:
@@ -6828,6 +9301,30 @@ var (
 	_ encoding.BinaryUnmarshaler = (*OperationBody)(nil)
 )
 
+// MarshalText implements encoding.TextMarshaler.
+func (s OperationBody) MarshalText() ([]byte, error) {
+	b := new(bytes.Buffer)
+	e := base64.NewEncoder(base64.StdEncoding, b)
+	_, err := Marshal(e, s)
+	if err != nil {
+		return nil, err
+	}
+	err = e.Close()
+	return b.Bytes(), err
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *OperationBody) UnmarshalText(inp []byte) error {
+	d := base64.NewDecoder(base64.StdEncoding, bytes.NewReader(inp))
+	_, err := Unmarshal(d, s)
+	return err
+}
+
+var (
+	_ encoding.TextMarshaler   = (*OperationBody)(nil)
+	_ encoding.TextUnmarshaler = (*OperationBody)(nil)
+)
+
 // Operation is an XDR Struct defines as:
 //
 //   struct Operation
@@ -6890,6 +9387,30 @@ var (
 	_ encoding.BinaryUnmarshaler = (*Operation)(nil)
 )
 
+// MarshalText implements encoding.TextMarshaler.
+func (s Operation) MarshalText() ([]byte, error) {
+	b := new(bytes.Buffer)
+	e := base64.NewEncoder(base64.StdEncoding, b)
+	_, err := Marshal(e, s)
+	if err != nil {
+		return nil, err
+	}
+	err = e.Close()
+	return b.Bytes(), err
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *Operation) UnmarshalText(inp []byte) error {
+	d := base64.NewDecoder(base64.StdEncoding, bytes.NewReader(inp))
+	_, err := Unmarshal(d, s)
+	return err
+}
+
+var (
+	_ encoding.TextMarshaler   = (*Operation)(nil)
+	_ encoding.TextUnmarshaler = (*Operation)(nil)
+)
+
 // MemoType is an XDR Enum defines as:
 //
 //   enum MemoType
@@ -6948,6 +9469,30 @@ func (s *MemoType) UnmarshalBinary(inp []byte) error {
 var (
 	_ encoding.BinaryMarshaler   = (*MemoType)(nil)
 	_ encoding.BinaryUnmarshaler = (*MemoType)(nil)
+)
+
+// MarshalText implements encoding.TextMarshaler.
+func (s MemoType) MarshalText() ([]byte, error) {
+	b := new(bytes.Buffer)
+	e := base64.NewEncoder(base64.StdEncoding, b)
+	_, err := Marshal(e, s)
+	if err != nil {
+		return nil, err
+	}
+	err = e.Close()
+	return b.Bytes(), err
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *MemoType) UnmarshalText(inp []byte) error {
+	d := base64.NewDecoder(base64.StdEncoding, bytes.NewReader(inp))
+	_, err := Unmarshal(d, s)
+	return err
+}
+
+var (
+	_ encoding.TextMarshaler   = (*MemoType)(nil)
+	_ encoding.TextUnmarshaler = (*MemoType)(nil)
 )
 
 // Memo is an XDR Union defines as:
@@ -7154,6 +9699,30 @@ var (
 	_ encoding.BinaryUnmarshaler = (*Memo)(nil)
 )
 
+// MarshalText implements encoding.TextMarshaler.
+func (s Memo) MarshalText() ([]byte, error) {
+	b := new(bytes.Buffer)
+	e := base64.NewEncoder(base64.StdEncoding, b)
+	_, err := Marshal(e, s)
+	if err != nil {
+		return nil, err
+	}
+	err = e.Close()
+	return b.Bytes(), err
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *Memo) UnmarshalText(inp []byte) error {
+	d := base64.NewDecoder(base64.StdEncoding, bytes.NewReader(inp))
+	_, err := Unmarshal(d, s)
+	return err
+}
+
+var (
+	_ encoding.TextMarshaler   = (*Memo)(nil)
+	_ encoding.TextUnmarshaler = (*Memo)(nil)
+)
+
 // TimeBounds is an XDR Struct defines as:
 //
 //   struct TimeBounds
@@ -7183,6 +9752,30 @@ func (s *TimeBounds) UnmarshalBinary(inp []byte) error {
 var (
 	_ encoding.BinaryMarshaler   = (*TimeBounds)(nil)
 	_ encoding.BinaryUnmarshaler = (*TimeBounds)(nil)
+)
+
+// MarshalText implements encoding.TextMarshaler.
+func (s TimeBounds) MarshalText() ([]byte, error) {
+	b := new(bytes.Buffer)
+	e := base64.NewEncoder(base64.StdEncoding, b)
+	_, err := Marshal(e, s)
+	if err != nil {
+		return nil, err
+	}
+	err = e.Close()
+	return b.Bytes(), err
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *TimeBounds) UnmarshalText(inp []byte) error {
+	d := base64.NewDecoder(base64.StdEncoding, bytes.NewReader(inp))
+	_, err := Unmarshal(d, s)
+	return err
+}
+
+var (
+	_ encoding.TextMarshaler   = (*TimeBounds)(nil)
+	_ encoding.TextUnmarshaler = (*TimeBounds)(nil)
 )
 
 // TransactionExt is an XDR NestedUnion defines as:
@@ -7241,6 +9834,30 @@ var (
 	_ encoding.BinaryUnmarshaler = (*TransactionExt)(nil)
 )
 
+// MarshalText implements encoding.TextMarshaler.
+func (s TransactionExt) MarshalText() ([]byte, error) {
+	b := new(bytes.Buffer)
+	e := base64.NewEncoder(base64.StdEncoding, b)
+	_, err := Marshal(e, s)
+	if err != nil {
+		return nil, err
+	}
+	err = e.Close()
+	return b.Bytes(), err
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *TransactionExt) UnmarshalText(inp []byte) error {
+	d := base64.NewDecoder(base64.StdEncoding, bytes.NewReader(inp))
+	_, err := Unmarshal(d, s)
+	return err
+}
+
+var (
+	_ encoding.TextMarshaler   = (*TransactionExt)(nil)
+	_ encoding.TextUnmarshaler = (*TransactionExt)(nil)
+)
+
 // Transaction is an XDR Struct defines as:
 //
 //   struct Transaction
@@ -7296,6 +9913,30 @@ func (s *Transaction) UnmarshalBinary(inp []byte) error {
 var (
 	_ encoding.BinaryMarshaler   = (*Transaction)(nil)
 	_ encoding.BinaryUnmarshaler = (*Transaction)(nil)
+)
+
+// MarshalText implements encoding.TextMarshaler.
+func (s Transaction) MarshalText() ([]byte, error) {
+	b := new(bytes.Buffer)
+	e := base64.NewEncoder(base64.StdEncoding, b)
+	_, err := Marshal(e, s)
+	if err != nil {
+		return nil, err
+	}
+	err = e.Close()
+	return b.Bytes(), err
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *Transaction) UnmarshalText(inp []byte) error {
+	d := base64.NewDecoder(base64.StdEncoding, bytes.NewReader(inp))
+	_, err := Unmarshal(d, s)
+	return err
+}
+
+var (
+	_ encoding.TextMarshaler   = (*Transaction)(nil)
+	_ encoding.TextUnmarshaler = (*Transaction)(nil)
 )
 
 // TransactionSignaturePayloadTaggedTransaction is an XDR NestedUnion defines as:
@@ -7386,6 +10027,30 @@ var (
 	_ encoding.BinaryUnmarshaler = (*TransactionSignaturePayloadTaggedTransaction)(nil)
 )
 
+// MarshalText implements encoding.TextMarshaler.
+func (s TransactionSignaturePayloadTaggedTransaction) MarshalText() ([]byte, error) {
+	b := new(bytes.Buffer)
+	e := base64.NewEncoder(base64.StdEncoding, b)
+	_, err := Marshal(e, s)
+	if err != nil {
+		return nil, err
+	}
+	err = e.Close()
+	return b.Bytes(), err
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *TransactionSignaturePayloadTaggedTransaction) UnmarshalText(inp []byte) error {
+	d := base64.NewDecoder(base64.StdEncoding, bytes.NewReader(inp))
+	_, err := Unmarshal(d, s)
+	return err
+}
+
+var (
+	_ encoding.TextMarshaler   = (*TransactionSignaturePayloadTaggedTransaction)(nil)
+	_ encoding.TextUnmarshaler = (*TransactionSignaturePayloadTaggedTransaction)(nil)
+)
+
 // TransactionSignaturePayload is an XDR Struct defines as:
 //
 //   struct TransactionSignaturePayload
@@ -7423,6 +10088,30 @@ var (
 	_ encoding.BinaryUnmarshaler = (*TransactionSignaturePayload)(nil)
 )
 
+// MarshalText implements encoding.TextMarshaler.
+func (s TransactionSignaturePayload) MarshalText() ([]byte, error) {
+	b := new(bytes.Buffer)
+	e := base64.NewEncoder(base64.StdEncoding, b)
+	_, err := Marshal(e, s)
+	if err != nil {
+		return nil, err
+	}
+	err = e.Close()
+	return b.Bytes(), err
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *TransactionSignaturePayload) UnmarshalText(inp []byte) error {
+	d := base64.NewDecoder(base64.StdEncoding, bytes.NewReader(inp))
+	_, err := Unmarshal(d, s)
+	return err
+}
+
+var (
+	_ encoding.TextMarshaler   = (*TransactionSignaturePayload)(nil)
+	_ encoding.TextUnmarshaler = (*TransactionSignaturePayload)(nil)
+)
+
 // TransactionEnvelope is an XDR Struct defines as:
 //
 //   struct TransactionEnvelope
@@ -7454,6 +10143,30 @@ func (s *TransactionEnvelope) UnmarshalBinary(inp []byte) error {
 var (
 	_ encoding.BinaryMarshaler   = (*TransactionEnvelope)(nil)
 	_ encoding.BinaryUnmarshaler = (*TransactionEnvelope)(nil)
+)
+
+// MarshalText implements encoding.TextMarshaler.
+func (s TransactionEnvelope) MarshalText() ([]byte, error) {
+	b := new(bytes.Buffer)
+	e := base64.NewEncoder(base64.StdEncoding, b)
+	_, err := Marshal(e, s)
+	if err != nil {
+		return nil, err
+	}
+	err = e.Close()
+	return b.Bytes(), err
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *TransactionEnvelope) UnmarshalText(inp []byte) error {
+	d := base64.NewDecoder(base64.StdEncoding, bytes.NewReader(inp))
+	_, err := Unmarshal(d, s)
+	return err
+}
+
+var (
+	_ encoding.TextMarshaler   = (*TransactionEnvelope)(nil)
+	_ encoding.TextUnmarshaler = (*TransactionEnvelope)(nil)
 )
 
 // ClaimOfferAtom is an XDR Struct defines as:
@@ -7498,6 +10211,30 @@ func (s *ClaimOfferAtom) UnmarshalBinary(inp []byte) error {
 var (
 	_ encoding.BinaryMarshaler   = (*ClaimOfferAtom)(nil)
 	_ encoding.BinaryUnmarshaler = (*ClaimOfferAtom)(nil)
+)
+
+// MarshalText implements encoding.TextMarshaler.
+func (s ClaimOfferAtom) MarshalText() ([]byte, error) {
+	b := new(bytes.Buffer)
+	e := base64.NewEncoder(base64.StdEncoding, b)
+	_, err := Marshal(e, s)
+	if err != nil {
+		return nil, err
+	}
+	err = e.Close()
+	return b.Bytes(), err
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *ClaimOfferAtom) UnmarshalText(inp []byte) error {
+	d := base64.NewDecoder(base64.StdEncoding, bytes.NewReader(inp))
+	_, err := Unmarshal(d, s)
+	return err
+}
+
+var (
+	_ encoding.TextMarshaler   = (*ClaimOfferAtom)(nil)
+	_ encoding.TextUnmarshaler = (*ClaimOfferAtom)(nil)
 )
 
 // CreateAccountResultCode is an XDR Enum defines as:
@@ -7564,6 +10301,30 @@ var (
 	_ encoding.BinaryUnmarshaler = (*CreateAccountResultCode)(nil)
 )
 
+// MarshalText implements encoding.TextMarshaler.
+func (s CreateAccountResultCode) MarshalText() ([]byte, error) {
+	b := new(bytes.Buffer)
+	e := base64.NewEncoder(base64.StdEncoding, b)
+	_, err := Marshal(e, s)
+	if err != nil {
+		return nil, err
+	}
+	err = e.Close()
+	return b.Bytes(), err
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *CreateAccountResultCode) UnmarshalText(inp []byte) error {
+	d := base64.NewDecoder(base64.StdEncoding, bytes.NewReader(inp))
+	_, err := Unmarshal(d, s)
+	return err
+}
+
+var (
+	_ encoding.TextMarshaler   = (*CreateAccountResultCode)(nil)
+	_ encoding.TextUnmarshaler = (*CreateAccountResultCode)(nil)
+)
+
 // CreateAccountResult is an XDR Union defines as:
 //
 //   union CreateAccountResult switch (CreateAccountResultCode code)
@@ -7623,6 +10384,30 @@ func (s *CreateAccountResult) UnmarshalBinary(inp []byte) error {
 var (
 	_ encoding.BinaryMarshaler   = (*CreateAccountResult)(nil)
 	_ encoding.BinaryUnmarshaler = (*CreateAccountResult)(nil)
+)
+
+// MarshalText implements encoding.TextMarshaler.
+func (s CreateAccountResult) MarshalText() ([]byte, error) {
+	b := new(bytes.Buffer)
+	e := base64.NewEncoder(base64.StdEncoding, b)
+	_, err := Marshal(e, s)
+	if err != nil {
+		return nil, err
+	}
+	err = e.Close()
+	return b.Bytes(), err
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *CreateAccountResult) UnmarshalText(inp []byte) error {
+	d := base64.NewDecoder(base64.StdEncoding, bytes.NewReader(inp))
+	_, err := Unmarshal(d, s)
+	return err
+}
+
+var (
+	_ encoding.TextMarshaler   = (*CreateAccountResult)(nil)
+	_ encoding.TextUnmarshaler = (*CreateAccountResult)(nil)
 )
 
 // PaymentResultCode is an XDR Enum defines as:
@@ -7703,6 +10488,30 @@ var (
 	_ encoding.BinaryUnmarshaler = (*PaymentResultCode)(nil)
 )
 
+// MarshalText implements encoding.TextMarshaler.
+func (s PaymentResultCode) MarshalText() ([]byte, error) {
+	b := new(bytes.Buffer)
+	e := base64.NewEncoder(base64.StdEncoding, b)
+	_, err := Marshal(e, s)
+	if err != nil {
+		return nil, err
+	}
+	err = e.Close()
+	return b.Bytes(), err
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *PaymentResultCode) UnmarshalText(inp []byte) error {
+	d := base64.NewDecoder(base64.StdEncoding, bytes.NewReader(inp))
+	_, err := Unmarshal(d, s)
+	return err
+}
+
+var (
+	_ encoding.TextMarshaler   = (*PaymentResultCode)(nil)
+	_ encoding.TextUnmarshaler = (*PaymentResultCode)(nil)
+)
+
 // PaymentResult is an XDR Union defines as:
 //
 //   union PaymentResult switch (PaymentResultCode code)
@@ -7762,6 +10571,30 @@ func (s *PaymentResult) UnmarshalBinary(inp []byte) error {
 var (
 	_ encoding.BinaryMarshaler   = (*PaymentResult)(nil)
 	_ encoding.BinaryUnmarshaler = (*PaymentResult)(nil)
+)
+
+// MarshalText implements encoding.TextMarshaler.
+func (s PaymentResult) MarshalText() ([]byte, error) {
+	b := new(bytes.Buffer)
+	e := base64.NewEncoder(base64.StdEncoding, b)
+	_, err := Marshal(e, s)
+	if err != nil {
+		return nil, err
+	}
+	err = e.Close()
+	return b.Bytes(), err
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *PaymentResult) UnmarshalText(inp []byte) error {
+	d := base64.NewDecoder(base64.StdEncoding, bytes.NewReader(inp))
+	_, err := Unmarshal(d, s)
+	return err
+}
+
+var (
+	_ encoding.TextMarshaler   = (*PaymentResult)(nil)
+	_ encoding.TextUnmarshaler = (*PaymentResult)(nil)
 )
 
 // PathPaymentResultCode is an XDR Enum defines as:
@@ -7851,6 +10684,30 @@ var (
 	_ encoding.BinaryUnmarshaler = (*PathPaymentResultCode)(nil)
 )
 
+// MarshalText implements encoding.TextMarshaler.
+func (s PathPaymentResultCode) MarshalText() ([]byte, error) {
+	b := new(bytes.Buffer)
+	e := base64.NewEncoder(base64.StdEncoding, b)
+	_, err := Marshal(e, s)
+	if err != nil {
+		return nil, err
+	}
+	err = e.Close()
+	return b.Bytes(), err
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *PathPaymentResultCode) UnmarshalText(inp []byte) error {
+	d := base64.NewDecoder(base64.StdEncoding, bytes.NewReader(inp))
+	_, err := Unmarshal(d, s)
+	return err
+}
+
+var (
+	_ encoding.TextMarshaler   = (*PathPaymentResultCode)(nil)
+	_ encoding.TextUnmarshaler = (*PathPaymentResultCode)(nil)
+)
+
 // SimplePaymentResult is an XDR Struct defines as:
 //
 //   struct SimplePaymentResult
@@ -7884,6 +10741,30 @@ var (
 	_ encoding.BinaryUnmarshaler = (*SimplePaymentResult)(nil)
 )
 
+// MarshalText implements encoding.TextMarshaler.
+func (s SimplePaymentResult) MarshalText() ([]byte, error) {
+	b := new(bytes.Buffer)
+	e := base64.NewEncoder(base64.StdEncoding, b)
+	_, err := Marshal(e, s)
+	if err != nil {
+		return nil, err
+	}
+	err = e.Close()
+	return b.Bytes(), err
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *SimplePaymentResult) UnmarshalText(inp []byte) error {
+	d := base64.NewDecoder(base64.StdEncoding, bytes.NewReader(inp))
+	_, err := Unmarshal(d, s)
+	return err
+}
+
+var (
+	_ encoding.TextMarshaler   = (*SimplePaymentResult)(nil)
+	_ encoding.TextUnmarshaler = (*SimplePaymentResult)(nil)
+)
+
 // PathPaymentResultSuccess is an XDR NestedStruct defines as:
 //
 //   struct
@@ -7913,6 +10794,30 @@ func (s *PathPaymentResultSuccess) UnmarshalBinary(inp []byte) error {
 var (
 	_ encoding.BinaryMarshaler   = (*PathPaymentResultSuccess)(nil)
 	_ encoding.BinaryUnmarshaler = (*PathPaymentResultSuccess)(nil)
+)
+
+// MarshalText implements encoding.TextMarshaler.
+func (s PathPaymentResultSuccess) MarshalText() ([]byte, error) {
+	b := new(bytes.Buffer)
+	e := base64.NewEncoder(base64.StdEncoding, b)
+	_, err := Marshal(e, s)
+	if err != nil {
+		return nil, err
+	}
+	err = e.Close()
+	return b.Bytes(), err
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *PathPaymentResultSuccess) UnmarshalText(inp []byte) error {
+	d := base64.NewDecoder(base64.StdEncoding, bytes.NewReader(inp))
+	_, err := Unmarshal(d, s)
+	return err
+}
+
+var (
+	_ encoding.TextMarshaler   = (*PathPaymentResultSuccess)(nil)
+	_ encoding.TextUnmarshaler = (*PathPaymentResultSuccess)(nil)
 )
 
 // PathPaymentResult is an XDR Union defines as:
@@ -8048,6 +10953,30 @@ var (
 	_ encoding.BinaryUnmarshaler = (*PathPaymentResult)(nil)
 )
 
+// MarshalText implements encoding.TextMarshaler.
+func (s PathPaymentResult) MarshalText() ([]byte, error) {
+	b := new(bytes.Buffer)
+	e := base64.NewEncoder(base64.StdEncoding, b)
+	_, err := Marshal(e, s)
+	if err != nil {
+		return nil, err
+	}
+	err = e.Close()
+	return b.Bytes(), err
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *PathPaymentResult) UnmarshalText(inp []byte) error {
+	d := base64.NewDecoder(base64.StdEncoding, bytes.NewReader(inp))
+	_, err := Unmarshal(d, s)
+	return err
+}
+
+var (
+	_ encoding.TextMarshaler   = (*PathPaymentResult)(nil)
+	_ encoding.TextUnmarshaler = (*PathPaymentResult)(nil)
+)
+
 // ManageOfferResultCode is an XDR Enum defines as:
 //
 //   enum ManageOfferResultCode
@@ -8138,6 +11067,30 @@ var (
 	_ encoding.BinaryUnmarshaler = (*ManageOfferResultCode)(nil)
 )
 
+// MarshalText implements encoding.TextMarshaler.
+func (s ManageOfferResultCode) MarshalText() ([]byte, error) {
+	b := new(bytes.Buffer)
+	e := base64.NewEncoder(base64.StdEncoding, b)
+	_, err := Marshal(e, s)
+	if err != nil {
+		return nil, err
+	}
+	err = e.Close()
+	return b.Bytes(), err
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *ManageOfferResultCode) UnmarshalText(inp []byte) error {
+	d := base64.NewDecoder(base64.StdEncoding, bytes.NewReader(inp))
+	_, err := Unmarshal(d, s)
+	return err
+}
+
+var (
+	_ encoding.TextMarshaler   = (*ManageOfferResultCode)(nil)
+	_ encoding.TextUnmarshaler = (*ManageOfferResultCode)(nil)
+)
+
 // ManageOfferEffect is an XDR Enum defines as:
 //
 //   enum ManageOfferEffect
@@ -8190,6 +11143,30 @@ func (s *ManageOfferEffect) UnmarshalBinary(inp []byte) error {
 var (
 	_ encoding.BinaryMarshaler   = (*ManageOfferEffect)(nil)
 	_ encoding.BinaryUnmarshaler = (*ManageOfferEffect)(nil)
+)
+
+// MarshalText implements encoding.TextMarshaler.
+func (s ManageOfferEffect) MarshalText() ([]byte, error) {
+	b := new(bytes.Buffer)
+	e := base64.NewEncoder(base64.StdEncoding, b)
+	_, err := Marshal(e, s)
+	if err != nil {
+		return nil, err
+	}
+	err = e.Close()
+	return b.Bytes(), err
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *ManageOfferEffect) UnmarshalText(inp []byte) error {
+	d := base64.NewDecoder(base64.StdEncoding, bytes.NewReader(inp))
+	_, err := Unmarshal(d, s)
+	return err
+}
+
+var (
+	_ encoding.TextMarshaler   = (*ManageOfferEffect)(nil)
+	_ encoding.TextUnmarshaler = (*ManageOfferEffect)(nil)
 )
 
 // ManageOfferSuccessResultOffer is an XDR NestedUnion defines as:
@@ -8294,6 +11271,30 @@ var (
 	_ encoding.BinaryUnmarshaler = (*ManageOfferSuccessResultOffer)(nil)
 )
 
+// MarshalText implements encoding.TextMarshaler.
+func (s ManageOfferSuccessResultOffer) MarshalText() ([]byte, error) {
+	b := new(bytes.Buffer)
+	e := base64.NewEncoder(base64.StdEncoding, b)
+	_, err := Marshal(e, s)
+	if err != nil {
+		return nil, err
+	}
+	err = e.Close()
+	return b.Bytes(), err
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *ManageOfferSuccessResultOffer) UnmarshalText(inp []byte) error {
+	d := base64.NewDecoder(base64.StdEncoding, bytes.NewReader(inp))
+	_, err := Unmarshal(d, s)
+	return err
+}
+
+var (
+	_ encoding.TextMarshaler   = (*ManageOfferSuccessResultOffer)(nil)
+	_ encoding.TextUnmarshaler = (*ManageOfferSuccessResultOffer)(nil)
+)
+
 // ManageOfferSuccessResult is an XDR Struct defines as:
 //
 //   struct ManageOfferSuccessResult
@@ -8333,6 +11334,30 @@ func (s *ManageOfferSuccessResult) UnmarshalBinary(inp []byte) error {
 var (
 	_ encoding.BinaryMarshaler   = (*ManageOfferSuccessResult)(nil)
 	_ encoding.BinaryUnmarshaler = (*ManageOfferSuccessResult)(nil)
+)
+
+// MarshalText implements encoding.TextMarshaler.
+func (s ManageOfferSuccessResult) MarshalText() ([]byte, error) {
+	b := new(bytes.Buffer)
+	e := base64.NewEncoder(base64.StdEncoding, b)
+	_, err := Marshal(e, s)
+	if err != nil {
+		return nil, err
+	}
+	err = e.Close()
+	return b.Bytes(), err
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *ManageOfferSuccessResult) UnmarshalText(inp []byte) error {
+	d := base64.NewDecoder(base64.StdEncoding, bytes.NewReader(inp))
+	_, err := Unmarshal(d, s)
+	return err
+}
+
+var (
+	_ encoding.TextMarshaler   = (*ManageOfferSuccessResult)(nil)
+	_ encoding.TextUnmarshaler = (*ManageOfferSuccessResult)(nil)
 )
 
 // ManageOfferResult is an XDR Union defines as:
@@ -8427,6 +11452,30 @@ var (
 	_ encoding.BinaryUnmarshaler = (*ManageOfferResult)(nil)
 )
 
+// MarshalText implements encoding.TextMarshaler.
+func (s ManageOfferResult) MarshalText() ([]byte, error) {
+	b := new(bytes.Buffer)
+	e := base64.NewEncoder(base64.StdEncoding, b)
+	_, err := Marshal(e, s)
+	if err != nil {
+		return nil, err
+	}
+	err = e.Close()
+	return b.Bytes(), err
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *ManageOfferResult) UnmarshalText(inp []byte) error {
+	d := base64.NewDecoder(base64.StdEncoding, bytes.NewReader(inp))
+	_, err := Unmarshal(d, s)
+	return err
+}
+
+var (
+	_ encoding.TextMarshaler   = (*ManageOfferResult)(nil)
+	_ encoding.TextUnmarshaler = (*ManageOfferResult)(nil)
+)
+
 // SetOptionsResultCode is an XDR Enum defines as:
 //
 //   enum SetOptionsResultCode
@@ -8504,6 +11553,30 @@ var (
 	_ encoding.BinaryUnmarshaler = (*SetOptionsResultCode)(nil)
 )
 
+// MarshalText implements encoding.TextMarshaler.
+func (s SetOptionsResultCode) MarshalText() ([]byte, error) {
+	b := new(bytes.Buffer)
+	e := base64.NewEncoder(base64.StdEncoding, b)
+	_, err := Marshal(e, s)
+	if err != nil {
+		return nil, err
+	}
+	err = e.Close()
+	return b.Bytes(), err
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *SetOptionsResultCode) UnmarshalText(inp []byte) error {
+	d := base64.NewDecoder(base64.StdEncoding, bytes.NewReader(inp))
+	_, err := Unmarshal(d, s)
+	return err
+}
+
+var (
+	_ encoding.TextMarshaler   = (*SetOptionsResultCode)(nil)
+	_ encoding.TextUnmarshaler = (*SetOptionsResultCode)(nil)
+)
+
 // SetOptionsResult is an XDR Union defines as:
 //
 //   union SetOptionsResult switch (SetOptionsResultCode code)
@@ -8563,6 +11636,30 @@ func (s *SetOptionsResult) UnmarshalBinary(inp []byte) error {
 var (
 	_ encoding.BinaryMarshaler   = (*SetOptionsResult)(nil)
 	_ encoding.BinaryUnmarshaler = (*SetOptionsResult)(nil)
+)
+
+// MarshalText implements encoding.TextMarshaler.
+func (s SetOptionsResult) MarshalText() ([]byte, error) {
+	b := new(bytes.Buffer)
+	e := base64.NewEncoder(base64.StdEncoding, b)
+	_, err := Marshal(e, s)
+	if err != nil {
+		return nil, err
+	}
+	err = e.Close()
+	return b.Bytes(), err
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *SetOptionsResult) UnmarshalText(inp []byte) error {
+	d := base64.NewDecoder(base64.StdEncoding, bytes.NewReader(inp))
+	_, err := Unmarshal(d, s)
+	return err
+}
+
+var (
+	_ encoding.TextMarshaler   = (*SetOptionsResult)(nil)
+	_ encoding.TextUnmarshaler = (*SetOptionsResult)(nil)
 )
 
 // ChangeTrustResultCode is an XDR Enum defines as:
@@ -8632,6 +11729,30 @@ var (
 	_ encoding.BinaryUnmarshaler = (*ChangeTrustResultCode)(nil)
 )
 
+// MarshalText implements encoding.TextMarshaler.
+func (s ChangeTrustResultCode) MarshalText() ([]byte, error) {
+	b := new(bytes.Buffer)
+	e := base64.NewEncoder(base64.StdEncoding, b)
+	_, err := Marshal(e, s)
+	if err != nil {
+		return nil, err
+	}
+	err = e.Close()
+	return b.Bytes(), err
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *ChangeTrustResultCode) UnmarshalText(inp []byte) error {
+	d := base64.NewDecoder(base64.StdEncoding, bytes.NewReader(inp))
+	_, err := Unmarshal(d, s)
+	return err
+}
+
+var (
+	_ encoding.TextMarshaler   = (*ChangeTrustResultCode)(nil)
+	_ encoding.TextUnmarshaler = (*ChangeTrustResultCode)(nil)
+)
+
 // ChangeTrustResult is an XDR Union defines as:
 //
 //   union ChangeTrustResult switch (ChangeTrustResultCode code)
@@ -8691,6 +11812,30 @@ func (s *ChangeTrustResult) UnmarshalBinary(inp []byte) error {
 var (
 	_ encoding.BinaryMarshaler   = (*ChangeTrustResult)(nil)
 	_ encoding.BinaryUnmarshaler = (*ChangeTrustResult)(nil)
+)
+
+// MarshalText implements encoding.TextMarshaler.
+func (s ChangeTrustResult) MarshalText() ([]byte, error) {
+	b := new(bytes.Buffer)
+	e := base64.NewEncoder(base64.StdEncoding, b)
+	_, err := Marshal(e, s)
+	if err != nil {
+		return nil, err
+	}
+	err = e.Close()
+	return b.Bytes(), err
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *ChangeTrustResult) UnmarshalText(inp []byte) error {
+	d := base64.NewDecoder(base64.StdEncoding, bytes.NewReader(inp))
+	_, err := Unmarshal(d, s)
+	return err
+}
+
+var (
+	_ encoding.TextMarshaler   = (*ChangeTrustResult)(nil)
+	_ encoding.TextUnmarshaler = (*ChangeTrustResult)(nil)
 )
 
 // AllowTrustResultCode is an XDR Enum defines as:
@@ -8759,6 +11904,30 @@ var (
 	_ encoding.BinaryUnmarshaler = (*AllowTrustResultCode)(nil)
 )
 
+// MarshalText implements encoding.TextMarshaler.
+func (s AllowTrustResultCode) MarshalText() ([]byte, error) {
+	b := new(bytes.Buffer)
+	e := base64.NewEncoder(base64.StdEncoding, b)
+	_, err := Marshal(e, s)
+	if err != nil {
+		return nil, err
+	}
+	err = e.Close()
+	return b.Bytes(), err
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *AllowTrustResultCode) UnmarshalText(inp []byte) error {
+	d := base64.NewDecoder(base64.StdEncoding, bytes.NewReader(inp))
+	_, err := Unmarshal(d, s)
+	return err
+}
+
+var (
+	_ encoding.TextMarshaler   = (*AllowTrustResultCode)(nil)
+	_ encoding.TextUnmarshaler = (*AllowTrustResultCode)(nil)
+)
+
 // AllowTrustResult is an XDR Union defines as:
 //
 //   union AllowTrustResult switch (AllowTrustResultCode code)
@@ -8818,6 +11987,30 @@ func (s *AllowTrustResult) UnmarshalBinary(inp []byte) error {
 var (
 	_ encoding.BinaryMarshaler   = (*AllowTrustResult)(nil)
 	_ encoding.BinaryUnmarshaler = (*AllowTrustResult)(nil)
+)
+
+// MarshalText implements encoding.TextMarshaler.
+func (s AllowTrustResult) MarshalText() ([]byte, error) {
+	b := new(bytes.Buffer)
+	e := base64.NewEncoder(base64.StdEncoding, b)
+	_, err := Marshal(e, s)
+	if err != nil {
+		return nil, err
+	}
+	err = e.Close()
+	return b.Bytes(), err
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *AllowTrustResult) UnmarshalText(inp []byte) error {
+	d := base64.NewDecoder(base64.StdEncoding, bytes.NewReader(inp))
+	_, err := Unmarshal(d, s)
+	return err
+}
+
+var (
+	_ encoding.TextMarshaler   = (*AllowTrustResult)(nil)
+	_ encoding.TextUnmarshaler = (*AllowTrustResult)(nil)
 )
 
 // AccountMergeResultCode is an XDR Enum defines as:
@@ -8887,6 +12080,30 @@ func (s *AccountMergeResultCode) UnmarshalBinary(inp []byte) error {
 var (
 	_ encoding.BinaryMarshaler   = (*AccountMergeResultCode)(nil)
 	_ encoding.BinaryUnmarshaler = (*AccountMergeResultCode)(nil)
+)
+
+// MarshalText implements encoding.TextMarshaler.
+func (s AccountMergeResultCode) MarshalText() ([]byte, error) {
+	b := new(bytes.Buffer)
+	e := base64.NewEncoder(base64.StdEncoding, b)
+	_, err := Marshal(e, s)
+	if err != nil {
+		return nil, err
+	}
+	err = e.Close()
+	return b.Bytes(), err
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *AccountMergeResultCode) UnmarshalText(inp []byte) error {
+	d := base64.NewDecoder(base64.StdEncoding, bytes.NewReader(inp))
+	_, err := Unmarshal(d, s)
+	return err
+}
+
+var (
+	_ encoding.TextMarshaler   = (*AccountMergeResultCode)(nil)
+	_ encoding.TextUnmarshaler = (*AccountMergeResultCode)(nil)
 )
 
 // AccountMergeResult is an XDR Union defines as:
@@ -8981,6 +12198,30 @@ var (
 	_ encoding.BinaryUnmarshaler = (*AccountMergeResult)(nil)
 )
 
+// MarshalText implements encoding.TextMarshaler.
+func (s AccountMergeResult) MarshalText() ([]byte, error) {
+	b := new(bytes.Buffer)
+	e := base64.NewEncoder(base64.StdEncoding, b)
+	_, err := Marshal(e, s)
+	if err != nil {
+		return nil, err
+	}
+	err = e.Close()
+	return b.Bytes(), err
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *AccountMergeResult) UnmarshalText(inp []byte) error {
+	d := base64.NewDecoder(base64.StdEncoding, bytes.NewReader(inp))
+	_, err := Unmarshal(d, s)
+	return err
+}
+
+var (
+	_ encoding.TextMarshaler   = (*AccountMergeResult)(nil)
+	_ encoding.TextUnmarshaler = (*AccountMergeResult)(nil)
+)
+
 // InflationResultCode is an XDR Enum defines as:
 //
 //   enum InflationResultCode
@@ -9034,6 +12275,30 @@ var (
 	_ encoding.BinaryUnmarshaler = (*InflationResultCode)(nil)
 )
 
+// MarshalText implements encoding.TextMarshaler.
+func (s InflationResultCode) MarshalText() ([]byte, error) {
+	b := new(bytes.Buffer)
+	e := base64.NewEncoder(base64.StdEncoding, b)
+	_, err := Marshal(e, s)
+	if err != nil {
+		return nil, err
+	}
+	err = e.Close()
+	return b.Bytes(), err
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *InflationResultCode) UnmarshalText(inp []byte) error {
+	d := base64.NewDecoder(base64.StdEncoding, bytes.NewReader(inp))
+	_, err := Unmarshal(d, s)
+	return err
+}
+
+var (
+	_ encoding.TextMarshaler   = (*InflationResultCode)(nil)
+	_ encoding.TextUnmarshaler = (*InflationResultCode)(nil)
+)
+
 // InflationPayout is an XDR Struct defines as:
 //
 //   struct InflationPayout // or use PaymentResultAtom to limit types?
@@ -9063,6 +12328,30 @@ func (s *InflationPayout) UnmarshalBinary(inp []byte) error {
 var (
 	_ encoding.BinaryMarshaler   = (*InflationPayout)(nil)
 	_ encoding.BinaryUnmarshaler = (*InflationPayout)(nil)
+)
+
+// MarshalText implements encoding.TextMarshaler.
+func (s InflationPayout) MarshalText() ([]byte, error) {
+	b := new(bytes.Buffer)
+	e := base64.NewEncoder(base64.StdEncoding, b)
+	_, err := Marshal(e, s)
+	if err != nil {
+		return nil, err
+	}
+	err = e.Close()
+	return b.Bytes(), err
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *InflationPayout) UnmarshalText(inp []byte) error {
+	d := base64.NewDecoder(base64.StdEncoding, bytes.NewReader(inp))
+	_, err := Unmarshal(d, s)
+	return err
+}
+
+var (
+	_ encoding.TextMarshaler   = (*InflationPayout)(nil)
+	_ encoding.TextUnmarshaler = (*InflationPayout)(nil)
 )
 
 // InflationResult is an XDR Union defines as:
@@ -9157,6 +12446,30 @@ var (
 	_ encoding.BinaryUnmarshaler = (*InflationResult)(nil)
 )
 
+// MarshalText implements encoding.TextMarshaler.
+func (s InflationResult) MarshalText() ([]byte, error) {
+	b := new(bytes.Buffer)
+	e := base64.NewEncoder(base64.StdEncoding, b)
+	_, err := Marshal(e, s)
+	if err != nil {
+		return nil, err
+	}
+	err = e.Close()
+	return b.Bytes(), err
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *InflationResult) UnmarshalText(inp []byte) error {
+	d := base64.NewDecoder(base64.StdEncoding, bytes.NewReader(inp))
+	_, err := Unmarshal(d, s)
+	return err
+}
+
+var (
+	_ encoding.TextMarshaler   = (*InflationResult)(nil)
+	_ encoding.TextUnmarshaler = (*InflationResult)(nil)
+)
+
 // ManageDataResultCode is an XDR Enum defines as:
 //
 //   enum ManageDataResultCode
@@ -9221,6 +12534,30 @@ var (
 	_ encoding.BinaryUnmarshaler = (*ManageDataResultCode)(nil)
 )
 
+// MarshalText implements encoding.TextMarshaler.
+func (s ManageDataResultCode) MarshalText() ([]byte, error) {
+	b := new(bytes.Buffer)
+	e := base64.NewEncoder(base64.StdEncoding, b)
+	_, err := Marshal(e, s)
+	if err != nil {
+		return nil, err
+	}
+	err = e.Close()
+	return b.Bytes(), err
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *ManageDataResultCode) UnmarshalText(inp []byte) error {
+	d := base64.NewDecoder(base64.StdEncoding, bytes.NewReader(inp))
+	_, err := Unmarshal(d, s)
+	return err
+}
+
+var (
+	_ encoding.TextMarshaler   = (*ManageDataResultCode)(nil)
+	_ encoding.TextUnmarshaler = (*ManageDataResultCode)(nil)
+)
+
 // ManageDataResult is an XDR Union defines as:
 //
 //   union ManageDataResult switch (ManageDataResultCode code)
@@ -9282,6 +12619,30 @@ var (
 	_ encoding.BinaryUnmarshaler = (*ManageDataResult)(nil)
 )
 
+// MarshalText implements encoding.TextMarshaler.
+func (s ManageDataResult) MarshalText() ([]byte, error) {
+	b := new(bytes.Buffer)
+	e := base64.NewEncoder(base64.StdEncoding, b)
+	_, err := Marshal(e, s)
+	if err != nil {
+		return nil, err
+	}
+	err = e.Close()
+	return b.Bytes(), err
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *ManageDataResult) UnmarshalText(inp []byte) error {
+	d := base64.NewDecoder(base64.StdEncoding, bytes.NewReader(inp))
+	_, err := Unmarshal(d, s)
+	return err
+}
+
+var (
+	_ encoding.TextMarshaler   = (*ManageDataResult)(nil)
+	_ encoding.TextUnmarshaler = (*ManageDataResult)(nil)
+)
+
 // BumpSequenceResultCode is an XDR Enum defines as:
 //
 //   enum BumpSequenceResultCode
@@ -9333,6 +12694,30 @@ func (s *BumpSequenceResultCode) UnmarshalBinary(inp []byte) error {
 var (
 	_ encoding.BinaryMarshaler   = (*BumpSequenceResultCode)(nil)
 	_ encoding.BinaryUnmarshaler = (*BumpSequenceResultCode)(nil)
+)
+
+// MarshalText implements encoding.TextMarshaler.
+func (s BumpSequenceResultCode) MarshalText() ([]byte, error) {
+	b := new(bytes.Buffer)
+	e := base64.NewEncoder(base64.StdEncoding, b)
+	_, err := Marshal(e, s)
+	if err != nil {
+		return nil, err
+	}
+	err = e.Close()
+	return b.Bytes(), err
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *BumpSequenceResultCode) UnmarshalText(inp []byte) error {
+	d := base64.NewDecoder(base64.StdEncoding, bytes.NewReader(inp))
+	_, err := Unmarshal(d, s)
+	return err
+}
+
+var (
+	_ encoding.TextMarshaler   = (*BumpSequenceResultCode)(nil)
+	_ encoding.TextUnmarshaler = (*BumpSequenceResultCode)(nil)
 )
 
 // BumpSequenceResult is an XDR Union defines as:
@@ -9396,6 +12781,30 @@ var (
 	_ encoding.BinaryUnmarshaler = (*BumpSequenceResult)(nil)
 )
 
+// MarshalText implements encoding.TextMarshaler.
+func (s BumpSequenceResult) MarshalText() ([]byte, error) {
+	b := new(bytes.Buffer)
+	e := base64.NewEncoder(base64.StdEncoding, b)
+	_, err := Marshal(e, s)
+	if err != nil {
+		return nil, err
+	}
+	err = e.Close()
+	return b.Bytes(), err
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *BumpSequenceResult) UnmarshalText(inp []byte) error {
+	d := base64.NewDecoder(base64.StdEncoding, bytes.NewReader(inp))
+	_, err := Unmarshal(d, s)
+	return err
+}
+
+var (
+	_ encoding.TextMarshaler   = (*BumpSequenceResult)(nil)
+	_ encoding.TextUnmarshaler = (*BumpSequenceResult)(nil)
+)
+
 // OperationResultCode is an XDR Enum defines as:
 //
 //   enum OperationResultCode
@@ -9452,6 +12861,30 @@ func (s *OperationResultCode) UnmarshalBinary(inp []byte) error {
 var (
 	_ encoding.BinaryMarshaler   = (*OperationResultCode)(nil)
 	_ encoding.BinaryUnmarshaler = (*OperationResultCode)(nil)
+)
+
+// MarshalText implements encoding.TextMarshaler.
+func (s OperationResultCode) MarshalText() ([]byte, error) {
+	b := new(bytes.Buffer)
+	e := base64.NewEncoder(base64.StdEncoding, b)
+	_, err := Marshal(e, s)
+	if err != nil {
+		return nil, err
+	}
+	err = e.Close()
+	return b.Bytes(), err
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *OperationResultCode) UnmarshalText(inp []byte) error {
+	d := base64.NewDecoder(base64.StdEncoding, bytes.NewReader(inp))
+	_, err := Unmarshal(d, s)
+	return err
+}
+
+var (
+	_ encoding.TextMarshaler   = (*OperationResultCode)(nil)
+	_ encoding.TextUnmarshaler = (*OperationResultCode)(nil)
 )
 
 // OperationResultTr is an XDR NestedUnion defines as:
@@ -9948,6 +13381,30 @@ var (
 	_ encoding.BinaryUnmarshaler = (*OperationResultTr)(nil)
 )
 
+// MarshalText implements encoding.TextMarshaler.
+func (s OperationResultTr) MarshalText() ([]byte, error) {
+	b := new(bytes.Buffer)
+	e := base64.NewEncoder(base64.StdEncoding, b)
+	_, err := Marshal(e, s)
+	if err != nil {
+		return nil, err
+	}
+	err = e.Close()
+	return b.Bytes(), err
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *OperationResultTr) UnmarshalText(inp []byte) error {
+	d := base64.NewDecoder(base64.StdEncoding, bytes.NewReader(inp))
+	_, err := Unmarshal(d, s)
+	return err
+}
+
+var (
+	_ encoding.TextMarshaler   = (*OperationResultTr)(nil)
+	_ encoding.TextUnmarshaler = (*OperationResultTr)(nil)
+)
+
 // OperationResult is an XDR Union defines as:
 //
 //   union OperationResult switch (OperationResultCode code)
@@ -10067,6 +13524,30 @@ var (
 	_ encoding.BinaryUnmarshaler = (*OperationResult)(nil)
 )
 
+// MarshalText implements encoding.TextMarshaler.
+func (s OperationResult) MarshalText() ([]byte, error) {
+	b := new(bytes.Buffer)
+	e := base64.NewEncoder(base64.StdEncoding, b)
+	_, err := Marshal(e, s)
+	if err != nil {
+		return nil, err
+	}
+	err = e.Close()
+	return b.Bytes(), err
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *OperationResult) UnmarshalText(inp []byte) error {
+	d := base64.NewDecoder(base64.StdEncoding, bytes.NewReader(inp))
+	_, err := Unmarshal(d, s)
+	return err
+}
+
+var (
+	_ encoding.TextMarshaler   = (*OperationResult)(nil)
+	_ encoding.TextUnmarshaler = (*OperationResult)(nil)
+)
+
 // TransactionResultCode is an XDR Enum defines as:
 //
 //   enum TransactionResultCode
@@ -10149,6 +13630,30 @@ func (s *TransactionResultCode) UnmarshalBinary(inp []byte) error {
 var (
 	_ encoding.BinaryMarshaler   = (*TransactionResultCode)(nil)
 	_ encoding.BinaryUnmarshaler = (*TransactionResultCode)(nil)
+)
+
+// MarshalText implements encoding.TextMarshaler.
+func (s TransactionResultCode) MarshalText() ([]byte, error) {
+	b := new(bytes.Buffer)
+	e := base64.NewEncoder(base64.StdEncoding, b)
+	_, err := Marshal(e, s)
+	if err != nil {
+		return nil, err
+	}
+	err = e.Close()
+	return b.Bytes(), err
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *TransactionResultCode) UnmarshalText(inp []byte) error {
+	d := base64.NewDecoder(base64.StdEncoding, bytes.NewReader(inp))
+	_, err := Unmarshal(d, s)
+	return err
+}
+
+var (
+	_ encoding.TextMarshaler   = (*TransactionResultCode)(nil)
+	_ encoding.TextUnmarshaler = (*TransactionResultCode)(nil)
 )
 
 // TransactionResultResult is an XDR NestedUnion defines as:
@@ -10253,6 +13758,30 @@ var (
 	_ encoding.BinaryUnmarshaler = (*TransactionResultResult)(nil)
 )
 
+// MarshalText implements encoding.TextMarshaler.
+func (s TransactionResultResult) MarshalText() ([]byte, error) {
+	b := new(bytes.Buffer)
+	e := base64.NewEncoder(base64.StdEncoding, b)
+	_, err := Marshal(e, s)
+	if err != nil {
+		return nil, err
+	}
+	err = e.Close()
+	return b.Bytes(), err
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *TransactionResultResult) UnmarshalText(inp []byte) error {
+	d := base64.NewDecoder(base64.StdEncoding, bytes.NewReader(inp))
+	_, err := Unmarshal(d, s)
+	return err
+}
+
+var (
+	_ encoding.TextMarshaler   = (*TransactionResultResult)(nil)
+	_ encoding.TextUnmarshaler = (*TransactionResultResult)(nil)
+)
+
 // TransactionResultExt is an XDR NestedUnion defines as:
 //
 //   union switch (int v)
@@ -10309,6 +13838,30 @@ var (
 	_ encoding.BinaryUnmarshaler = (*TransactionResultExt)(nil)
 )
 
+// MarshalText implements encoding.TextMarshaler.
+func (s TransactionResultExt) MarshalText() ([]byte, error) {
+	b := new(bytes.Buffer)
+	e := base64.NewEncoder(base64.StdEncoding, b)
+	_, err := Marshal(e, s)
+	if err != nil {
+		return nil, err
+	}
+	err = e.Close()
+	return b.Bytes(), err
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *TransactionResultExt) UnmarshalText(inp []byte) error {
+	d := base64.NewDecoder(base64.StdEncoding, bytes.NewReader(inp))
+	_, err := Unmarshal(d, s)
+	return err
+}
+
+var (
+	_ encoding.TextMarshaler   = (*TransactionResultExt)(nil)
+	_ encoding.TextUnmarshaler = (*TransactionResultExt)(nil)
+)
+
 // TransactionResult is an XDR Struct defines as:
 //
 //   struct TransactionResult
@@ -10358,6 +13911,30 @@ var (
 	_ encoding.BinaryUnmarshaler = (*TransactionResult)(nil)
 )
 
+// MarshalText implements encoding.TextMarshaler.
+func (s TransactionResult) MarshalText() ([]byte, error) {
+	b := new(bytes.Buffer)
+	e := base64.NewEncoder(base64.StdEncoding, b)
+	_, err := Marshal(e, s)
+	if err != nil {
+		return nil, err
+	}
+	err = e.Close()
+	return b.Bytes(), err
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *TransactionResult) UnmarshalText(inp []byte) error {
+	d := base64.NewDecoder(base64.StdEncoding, bytes.NewReader(inp))
+	_, err := Unmarshal(d, s)
+	return err
+}
+
+var (
+	_ encoding.TextMarshaler   = (*TransactionResult)(nil)
+	_ encoding.TextUnmarshaler = (*TransactionResult)(nil)
+)
+
 // Hash is an XDR Typedef defines as:
 //
 //   typedef opaque Hash[32];
@@ -10385,6 +13962,30 @@ func (s *Hash) UnmarshalBinary(inp []byte) error {
 var (
 	_ encoding.BinaryMarshaler   = (*Hash)(nil)
 	_ encoding.BinaryUnmarshaler = (*Hash)(nil)
+)
+
+// MarshalText implements encoding.TextMarshaler.
+func (s Hash) MarshalText() ([]byte, error) {
+	b := new(bytes.Buffer)
+	e := base64.NewEncoder(base64.StdEncoding, b)
+	_, err := Marshal(e, s)
+	if err != nil {
+		return nil, err
+	}
+	err = e.Close()
+	return b.Bytes(), err
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *Hash) UnmarshalText(inp []byte) error {
+	d := base64.NewDecoder(base64.StdEncoding, bytes.NewReader(inp))
+	_, err := Unmarshal(d, s)
+	return err
+}
+
+var (
+	_ encoding.TextMarshaler   = (*Hash)(nil)
+	_ encoding.TextUnmarshaler = (*Hash)(nil)
 )
 
 // Uint256 is an XDR Typedef defines as:
@@ -10416,6 +14017,30 @@ var (
 	_ encoding.BinaryUnmarshaler = (*Uint256)(nil)
 )
 
+// MarshalText implements encoding.TextMarshaler.
+func (s Uint256) MarshalText() ([]byte, error) {
+	b := new(bytes.Buffer)
+	e := base64.NewEncoder(base64.StdEncoding, b)
+	_, err := Marshal(e, s)
+	if err != nil {
+		return nil, err
+	}
+	err = e.Close()
+	return b.Bytes(), err
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *Uint256) UnmarshalText(inp []byte) error {
+	d := base64.NewDecoder(base64.StdEncoding, bytes.NewReader(inp))
+	_, err := Unmarshal(d, s)
+	return err
+}
+
+var (
+	_ encoding.TextMarshaler   = (*Uint256)(nil)
+	_ encoding.TextUnmarshaler = (*Uint256)(nil)
+)
+
 // Uint32 is an XDR Typedef defines as:
 //
 //   typedef unsigned int uint32;
@@ -10438,6 +14063,30 @@ func (s *Uint32) UnmarshalBinary(inp []byte) error {
 var (
 	_ encoding.BinaryMarshaler   = (*Uint32)(nil)
 	_ encoding.BinaryUnmarshaler = (*Uint32)(nil)
+)
+
+// MarshalText implements encoding.TextMarshaler.
+func (s Uint32) MarshalText() ([]byte, error) {
+	b := new(bytes.Buffer)
+	e := base64.NewEncoder(base64.StdEncoding, b)
+	_, err := Marshal(e, s)
+	if err != nil {
+		return nil, err
+	}
+	err = e.Close()
+	return b.Bytes(), err
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *Uint32) UnmarshalText(inp []byte) error {
+	d := base64.NewDecoder(base64.StdEncoding, bytes.NewReader(inp))
+	_, err := Unmarshal(d, s)
+	return err
+}
+
+var (
+	_ encoding.TextMarshaler   = (*Uint32)(nil)
+	_ encoding.TextUnmarshaler = (*Uint32)(nil)
 )
 
 // Int32 is an XDR Typedef defines as:
@@ -10464,6 +14113,30 @@ var (
 	_ encoding.BinaryUnmarshaler = (*Int32)(nil)
 )
 
+// MarshalText implements encoding.TextMarshaler.
+func (s Int32) MarshalText() ([]byte, error) {
+	b := new(bytes.Buffer)
+	e := base64.NewEncoder(base64.StdEncoding, b)
+	_, err := Marshal(e, s)
+	if err != nil {
+		return nil, err
+	}
+	err = e.Close()
+	return b.Bytes(), err
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *Int32) UnmarshalText(inp []byte) error {
+	d := base64.NewDecoder(base64.StdEncoding, bytes.NewReader(inp))
+	_, err := Unmarshal(d, s)
+	return err
+}
+
+var (
+	_ encoding.TextMarshaler   = (*Int32)(nil)
+	_ encoding.TextUnmarshaler = (*Int32)(nil)
+)
+
 // Uint64 is an XDR Typedef defines as:
 //
 //   typedef unsigned hyper uint64;
@@ -10488,6 +14161,30 @@ var (
 	_ encoding.BinaryUnmarshaler = (*Uint64)(nil)
 )
 
+// MarshalText implements encoding.TextMarshaler.
+func (s Uint64) MarshalText() ([]byte, error) {
+	b := new(bytes.Buffer)
+	e := base64.NewEncoder(base64.StdEncoding, b)
+	_, err := Marshal(e, s)
+	if err != nil {
+		return nil, err
+	}
+	err = e.Close()
+	return b.Bytes(), err
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *Uint64) UnmarshalText(inp []byte) error {
+	d := base64.NewDecoder(base64.StdEncoding, bytes.NewReader(inp))
+	_, err := Unmarshal(d, s)
+	return err
+}
+
+var (
+	_ encoding.TextMarshaler   = (*Uint64)(nil)
+	_ encoding.TextUnmarshaler = (*Uint64)(nil)
+)
+
 // Int64 is an XDR Typedef defines as:
 //
 //   typedef hyper int64;
@@ -10510,6 +14207,30 @@ func (s *Int64) UnmarshalBinary(inp []byte) error {
 var (
 	_ encoding.BinaryMarshaler   = (*Int64)(nil)
 	_ encoding.BinaryUnmarshaler = (*Int64)(nil)
+)
+
+// MarshalText implements encoding.TextMarshaler.
+func (s Int64) MarshalText() ([]byte, error) {
+	b := new(bytes.Buffer)
+	e := base64.NewEncoder(base64.StdEncoding, b)
+	_, err := Marshal(e, s)
+	if err != nil {
+		return nil, err
+	}
+	err = e.Close()
+	return b.Bytes(), err
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *Int64) UnmarshalText(inp []byte) error {
+	d := base64.NewDecoder(base64.StdEncoding, bytes.NewReader(inp))
+	_, err := Unmarshal(d, s)
+	return err
+}
+
+var (
+	_ encoding.TextMarshaler   = (*Int64)(nil)
+	_ encoding.TextUnmarshaler = (*Int64)(nil)
 )
 
 // CryptoKeyType is an XDR Enum defines as:
@@ -10566,6 +14287,30 @@ var (
 	_ encoding.BinaryUnmarshaler = (*CryptoKeyType)(nil)
 )
 
+// MarshalText implements encoding.TextMarshaler.
+func (s CryptoKeyType) MarshalText() ([]byte, error) {
+	b := new(bytes.Buffer)
+	e := base64.NewEncoder(base64.StdEncoding, b)
+	_, err := Marshal(e, s)
+	if err != nil {
+		return nil, err
+	}
+	err = e.Close()
+	return b.Bytes(), err
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *CryptoKeyType) UnmarshalText(inp []byte) error {
+	d := base64.NewDecoder(base64.StdEncoding, bytes.NewReader(inp))
+	_, err := Unmarshal(d, s)
+	return err
+}
+
+var (
+	_ encoding.TextMarshaler   = (*CryptoKeyType)(nil)
+	_ encoding.TextUnmarshaler = (*CryptoKeyType)(nil)
+)
+
 // PublicKeyType is an XDR Enum defines as:
 //
 //   enum PublicKeyType
@@ -10612,6 +14357,30 @@ func (s *PublicKeyType) UnmarshalBinary(inp []byte) error {
 var (
 	_ encoding.BinaryMarshaler   = (*PublicKeyType)(nil)
 	_ encoding.BinaryUnmarshaler = (*PublicKeyType)(nil)
+)
+
+// MarshalText implements encoding.TextMarshaler.
+func (s PublicKeyType) MarshalText() ([]byte, error) {
+	b := new(bytes.Buffer)
+	e := base64.NewEncoder(base64.StdEncoding, b)
+	_, err := Marshal(e, s)
+	if err != nil {
+		return nil, err
+	}
+	err = e.Close()
+	return b.Bytes(), err
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *PublicKeyType) UnmarshalText(inp []byte) error {
+	d := base64.NewDecoder(base64.StdEncoding, bytes.NewReader(inp))
+	_, err := Unmarshal(d, s)
+	return err
+}
+
+var (
+	_ encoding.TextMarshaler   = (*PublicKeyType)(nil)
+	_ encoding.TextUnmarshaler = (*PublicKeyType)(nil)
 )
 
 // SignerKeyType is an XDR Enum defines as:
@@ -10666,6 +14435,30 @@ func (s *SignerKeyType) UnmarshalBinary(inp []byte) error {
 var (
 	_ encoding.BinaryMarshaler   = (*SignerKeyType)(nil)
 	_ encoding.BinaryUnmarshaler = (*SignerKeyType)(nil)
+)
+
+// MarshalText implements encoding.TextMarshaler.
+func (s SignerKeyType) MarshalText() ([]byte, error) {
+	b := new(bytes.Buffer)
+	e := base64.NewEncoder(base64.StdEncoding, b)
+	_, err := Marshal(e, s)
+	if err != nil {
+		return nil, err
+	}
+	err = e.Close()
+	return b.Bytes(), err
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *SignerKeyType) UnmarshalText(inp []byte) error {
+	d := base64.NewDecoder(base64.StdEncoding, bytes.NewReader(inp))
+	_, err := Unmarshal(d, s)
+	return err
+}
+
+var (
+	_ encoding.TextMarshaler   = (*SignerKeyType)(nil)
+	_ encoding.TextUnmarshaler = (*SignerKeyType)(nil)
 )
 
 // PublicKey is an XDR Union defines as:
@@ -10753,6 +14546,30 @@ func (s *PublicKey) UnmarshalBinary(inp []byte) error {
 var (
 	_ encoding.BinaryMarshaler   = (*PublicKey)(nil)
 	_ encoding.BinaryUnmarshaler = (*PublicKey)(nil)
+)
+
+// MarshalText implements encoding.TextMarshaler.
+func (s PublicKey) MarshalText() ([]byte, error) {
+	b := new(bytes.Buffer)
+	e := base64.NewEncoder(base64.StdEncoding, b)
+	_, err := Marshal(e, s)
+	if err != nil {
+		return nil, err
+	}
+	err = e.Close()
+	return b.Bytes(), err
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *PublicKey) UnmarshalText(inp []byte) error {
+	d := base64.NewDecoder(base64.StdEncoding, bytes.NewReader(inp))
+	_, err := Unmarshal(d, s)
+	return err
+}
+
+var (
+	_ encoding.TextMarshaler   = (*PublicKey)(nil)
+	_ encoding.TextUnmarshaler = (*PublicKey)(nil)
 )
 
 // SignerKey is an XDR Union defines as:
@@ -10918,6 +14735,30 @@ var (
 	_ encoding.BinaryUnmarshaler = (*SignerKey)(nil)
 )
 
+// MarshalText implements encoding.TextMarshaler.
+func (s SignerKey) MarshalText() ([]byte, error) {
+	b := new(bytes.Buffer)
+	e := base64.NewEncoder(base64.StdEncoding, b)
+	_, err := Marshal(e, s)
+	if err != nil {
+		return nil, err
+	}
+	err = e.Close()
+	return b.Bytes(), err
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *SignerKey) UnmarshalText(inp []byte) error {
+	d := base64.NewDecoder(base64.StdEncoding, bytes.NewReader(inp))
+	_, err := Unmarshal(d, s)
+	return err
+}
+
+var (
+	_ encoding.TextMarshaler   = (*SignerKey)(nil)
+	_ encoding.TextUnmarshaler = (*SignerKey)(nil)
+)
+
 // Signature is an XDR Typedef defines as:
 //
 //   typedef opaque Signature<64>;
@@ -10947,6 +14788,30 @@ var (
 	_ encoding.BinaryUnmarshaler = (*Signature)(nil)
 )
 
+// MarshalText implements encoding.TextMarshaler.
+func (s Signature) MarshalText() ([]byte, error) {
+	b := new(bytes.Buffer)
+	e := base64.NewEncoder(base64.StdEncoding, b)
+	_, err := Marshal(e, s)
+	if err != nil {
+		return nil, err
+	}
+	err = e.Close()
+	return b.Bytes(), err
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *Signature) UnmarshalText(inp []byte) error {
+	d := base64.NewDecoder(base64.StdEncoding, bytes.NewReader(inp))
+	_, err := Unmarshal(d, s)
+	return err
+}
+
+var (
+	_ encoding.TextMarshaler   = (*Signature)(nil)
+	_ encoding.TextUnmarshaler = (*Signature)(nil)
+)
+
 // SignatureHint is an XDR Typedef defines as:
 //
 //   typedef opaque SignatureHint[4];
@@ -10974,6 +14839,30 @@ func (s *SignatureHint) UnmarshalBinary(inp []byte) error {
 var (
 	_ encoding.BinaryMarshaler   = (*SignatureHint)(nil)
 	_ encoding.BinaryUnmarshaler = (*SignatureHint)(nil)
+)
+
+// MarshalText implements encoding.TextMarshaler.
+func (s SignatureHint) MarshalText() ([]byte, error) {
+	b := new(bytes.Buffer)
+	e := base64.NewEncoder(base64.StdEncoding, b)
+	_, err := Marshal(e, s)
+	if err != nil {
+		return nil, err
+	}
+	err = e.Close()
+	return b.Bytes(), err
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *SignatureHint) UnmarshalText(inp []byte) error {
+	d := base64.NewDecoder(base64.StdEncoding, bytes.NewReader(inp))
+	_, err := Unmarshal(d, s)
+	return err
+}
+
+var (
+	_ encoding.TextMarshaler   = (*SignatureHint)(nil)
+	_ encoding.TextUnmarshaler = (*SignatureHint)(nil)
 )
 
 // NodeId is an XDR Typedef defines as:
@@ -11031,6 +14920,30 @@ var (
 	_ encoding.BinaryUnmarshaler = (*NodeId)(nil)
 )
 
+// MarshalText implements encoding.TextMarshaler.
+func (s NodeId) MarshalText() ([]byte, error) {
+	b := new(bytes.Buffer)
+	e := base64.NewEncoder(base64.StdEncoding, b)
+	_, err := Marshal(e, s)
+	if err != nil {
+		return nil, err
+	}
+	err = e.Close()
+	return b.Bytes(), err
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *NodeId) UnmarshalText(inp []byte) error {
+	d := base64.NewDecoder(base64.StdEncoding, bytes.NewReader(inp))
+	_, err := Unmarshal(d, s)
+	return err
+}
+
+var (
+	_ encoding.TextMarshaler   = (*NodeId)(nil)
+	_ encoding.TextUnmarshaler = (*NodeId)(nil)
+)
+
 // Curve25519Secret is an XDR Struct defines as:
 //
 //   struct Curve25519Secret
@@ -11058,6 +14971,30 @@ func (s *Curve25519Secret) UnmarshalBinary(inp []byte) error {
 var (
 	_ encoding.BinaryMarshaler   = (*Curve25519Secret)(nil)
 	_ encoding.BinaryUnmarshaler = (*Curve25519Secret)(nil)
+)
+
+// MarshalText implements encoding.TextMarshaler.
+func (s Curve25519Secret) MarshalText() ([]byte, error) {
+	b := new(bytes.Buffer)
+	e := base64.NewEncoder(base64.StdEncoding, b)
+	_, err := Marshal(e, s)
+	if err != nil {
+		return nil, err
+	}
+	err = e.Close()
+	return b.Bytes(), err
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *Curve25519Secret) UnmarshalText(inp []byte) error {
+	d := base64.NewDecoder(base64.StdEncoding, bytes.NewReader(inp))
+	_, err := Unmarshal(d, s)
+	return err
+}
+
+var (
+	_ encoding.TextMarshaler   = (*Curve25519Secret)(nil)
+	_ encoding.TextUnmarshaler = (*Curve25519Secret)(nil)
 )
 
 // Curve25519Public is an XDR Struct defines as:
@@ -11089,6 +15026,30 @@ var (
 	_ encoding.BinaryUnmarshaler = (*Curve25519Public)(nil)
 )
 
+// MarshalText implements encoding.TextMarshaler.
+func (s Curve25519Public) MarshalText() ([]byte, error) {
+	b := new(bytes.Buffer)
+	e := base64.NewEncoder(base64.StdEncoding, b)
+	_, err := Marshal(e, s)
+	if err != nil {
+		return nil, err
+	}
+	err = e.Close()
+	return b.Bytes(), err
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *Curve25519Public) UnmarshalText(inp []byte) error {
+	d := base64.NewDecoder(base64.StdEncoding, bytes.NewReader(inp))
+	_, err := Unmarshal(d, s)
+	return err
+}
+
+var (
+	_ encoding.TextMarshaler   = (*Curve25519Public)(nil)
+	_ encoding.TextUnmarshaler = (*Curve25519Public)(nil)
+)
+
 // HmacSha256Key is an XDR Struct defines as:
 //
 //   struct HmacSha256Key
@@ -11118,6 +15079,30 @@ var (
 	_ encoding.BinaryUnmarshaler = (*HmacSha256Key)(nil)
 )
 
+// MarshalText implements encoding.TextMarshaler.
+func (s HmacSha256Key) MarshalText() ([]byte, error) {
+	b := new(bytes.Buffer)
+	e := base64.NewEncoder(base64.StdEncoding, b)
+	_, err := Marshal(e, s)
+	if err != nil {
+		return nil, err
+	}
+	err = e.Close()
+	return b.Bytes(), err
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *HmacSha256Key) UnmarshalText(inp []byte) error {
+	d := base64.NewDecoder(base64.StdEncoding, bytes.NewReader(inp))
+	_, err := Unmarshal(d, s)
+	return err
+}
+
+var (
+	_ encoding.TextMarshaler   = (*HmacSha256Key)(nil)
+	_ encoding.TextUnmarshaler = (*HmacSha256Key)(nil)
+)
+
 // HmacSha256Mac is an XDR Struct defines as:
 //
 //   struct HmacSha256Mac
@@ -11145,6 +15130,30 @@ func (s *HmacSha256Mac) UnmarshalBinary(inp []byte) error {
 var (
 	_ encoding.BinaryMarshaler   = (*HmacSha256Mac)(nil)
 	_ encoding.BinaryUnmarshaler = (*HmacSha256Mac)(nil)
+)
+
+// MarshalText implements encoding.TextMarshaler.
+func (s HmacSha256Mac) MarshalText() ([]byte, error) {
+	b := new(bytes.Buffer)
+	e := base64.NewEncoder(base64.StdEncoding, b)
+	_, err := Marshal(e, s)
+	if err != nil {
+		return nil, err
+	}
+	err = e.Close()
+	return b.Bytes(), err
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *HmacSha256Mac) UnmarshalText(inp []byte) error {
+	d := base64.NewDecoder(base64.StdEncoding, bytes.NewReader(inp))
+	_, err := Unmarshal(d, s)
+	return err
+}
+
+var (
+	_ encoding.TextMarshaler   = (*HmacSha256Mac)(nil)
+	_ encoding.TextUnmarshaler = (*HmacSha256Mac)(nil)
 )
 
 var fmtTest = fmt.Sprint("this is a dummy usage of fmt")
