@@ -41,14 +41,23 @@ func (action *TradeIndexAction) JSON() {
 	)
 }
 
-// SSE is a method for actions.SSE
-func (action *TradeIndexAction) SSE(stream sse.Stream) {
+// SetupAndValidateSSE calls the setup functions before we can stream and validates
+// the request parameters. Errors are stored in action.Err.
+func (action *TradeIndexAction) SetupAndValidateSSE() {
 	action.Setup(
 		action.EnsureHistoryFreshness,
 		action.loadParams,
+		action.ValidateCursorWithinHistory,
+		action.loadRecords,
+	)
+}
+
+// SSE is a method for actions.SSE
+func (action *TradeIndexAction) SSE(stream sse.Stream) {
+	action.NonSetup(
+		action.loadRecords,
 	)
 	action.Do(
-		action.loadRecords,
 		func() {
 			stream.SetLimit(int(action.PagingParams.Limit))
 			records := action.Records[stream.SentCount():]
