@@ -82,7 +82,6 @@ func (action *OrderBookShowAction) SetupAndValidateSSE() {
 func (action *OrderBookShowAction) SSE(stream sse.Stream) {
 	// No point reloading data if Setup was just called.
 	action.NonSetup(
-		action.LoadQuery,
 		action.LoadRecord,
 		action.LoadResource,
 	)

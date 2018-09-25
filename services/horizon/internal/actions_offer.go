@@ -54,7 +54,6 @@ func (action *OffersByAccountAction) SetupAndValidateSSE() {
 func (action *OffersByAccountAction) SSE(stream sse.Stream) {
 	// No point reloading data if Setup was just called.
 	action.NonSetup(
-		action.loadParams,
 		action.loadRecords,
 		action.loadLedgers,
 	)
