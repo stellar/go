@@ -6,6 +6,9 @@ clientData:
 
 This endpoint represents all [trades](../resources/trade.md) that affect a given [account](../resources/account.md).
 
+This endpoint can also be used in [streaming](../streaming.md) mode, making it possible to listen for new trades that affect the given account as they occur on the Stellar network.
+If called in streaming mode Horizon will start at the earliest known trade unless a `cursor` is set. In that case it will start from the `cursor`. You can also set `cursor` value to `now` to only stream trades created since your request time.
+
 ## Request
 
 ```
@@ -100,6 +103,31 @@ This endpoint responds with a list of trades that changed a given account's stat
       }
     ]
   }
+}
+```
+
+## Example Streaming Event
+```
+{ 
+  _links: 
+    { self: { href: '' },
+      base: { href: '/accounts/GDICGE2CFCNM3ZWRUVOWDJB2RAO667UE7WOSJJ2Z3IMISUA7CJZCE3KO' },
+      counter: { href: '/accounts/GBILENMVJPVPEPXUPUPRBUEAME5OUQWAHIGZAX7TQX65NIQW3G3DGUYX' },
+      operation: { href: '/operations/47274327069954049' } },
+  id: '47274327069954049-0',
+  paging_token: '47274327069954049-0',
+  ledger_close_time: '2018-09-12T00:00:34Z',
+  offer_id: '711437',
+  base_account: 'GDICGE2CFCNM3ZWRUVOWDJB2RAO667UE7WOSJJ2Z3IMISUA7CJZCE3KO',
+  base_amount: '13.0000000',
+  base_asset_type: 'native',
+  counter_account: 'GBILENMVJPVPEPXUPUPRBUEAME5OUQWAHIGZAX7TQX65NIQW3G3DGUYX',
+  counter_amount: '13.0000000',
+  counter_asset_type: 'credit_alphanum4',
+  counter_asset_code: 'CNY',
+  counter_asset_issuer: 'GAREELUB43IRHWEASCFBLKHURCGMHE5IF6XSE7EXDLACYHGRHM43RFOX',
+  base_is_seller: true,
+  price: { n: 1, d: 1 } 
 }
 ```
 
