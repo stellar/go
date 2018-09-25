@@ -48,17 +48,26 @@ func (action *EffectIndexAction) JSON() {
 	})
 }
 
-// SSE is a method for actions.SSE
-func (action *EffectIndexAction) SSE(stream sse.Stream) {
+// SetupAndValidateSSE calls the setup functions before we can stream and validates
+// the request parameters. Errors are stored in action.Err
+func (action *EffectIndexAction) SetupAndValidateSSE() {
 	action.Setup(
 		action.EnsureHistoryFreshness,
 		action.loadParams,
 		action.ValidateCursorWithinHistory,
-	)
-
-	action.Do(
 		action.loadRecords,
 		action.loadLedgers,
+	)
+}
+
+// SSE is a method for actions.SSE that loads the latest effects and sends them to the Stream
+func (action *EffectIndexAction) SSE(stream sse.Stream) {
+	// No point reloading data if Setup was just called.
+	action.NonSetup(
+		action.loadRecords,
+		action.loadLedgers,
+	)
+	action.Do(
 		func() {
 			stream.SetLimit(int(action.PagingParams.Limit))
 			records := action.Records[stream.SentCount():]

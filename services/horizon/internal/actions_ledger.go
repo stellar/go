@@ -1,14 +1,14 @@
 package horizon
 
 import (
+	"github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/services/horizon/internal/db2"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/services/horizon/internal/ledger"
-	"github.com/stellar/go/services/horizon/internal/resourceadapter"
-	"github.com/stellar/go/protocols/horizon"
-	"github.com/stellar/go/support/render/hal"
 	"github.com/stellar/go/services/horizon/internal/render/problem"
 	"github.com/stellar/go/services/horizon/internal/render/sse"
+	"github.com/stellar/go/services/horizon/internal/resourceadapter"
+	"github.com/stellar/go/support/render/hal"
 )
 
 // This file contains the actions:
@@ -37,15 +37,20 @@ func (action *LedgerIndexAction) JSON() {
 	)
 }
 
-// SSE is a method for actions.SSE
-func (action *LedgerIndexAction) SSE(stream sse.Stream) {
+func (action *LedgerIndexAction) SetupAndValidateSSE() {
 	action.Setup(
 		action.EnsureHistoryFreshness,
 		action.loadParams,
 		action.ValidateCursorWithinHistory,
-	)
-	action.Do(
 		action.loadRecords,
+	)
+}
+
+// SSE is a method for actions.SSE
+func (action *LedgerIndexAction) SSE(stream sse.Stream) {
+	// No point reloading data if Setup was just called.
+	action.NonSetup(action.loadRecords)
+	action.Do(
 		func() {
 			stream.SetLimit(int(action.PagingParams.Limit))
 			records := action.Records[stream.SentCount():]

@@ -41,12 +41,24 @@ func (action *OffersByAccountAction) JSON() {
 	)
 }
 
-// SSE is a method for actions.SSE
-func (action *OffersByAccountAction) SSE(stream sse.Stream) {
-	action.Do(
+// SetupAndValidateSSE calls the setup functions before we can stream and validates
+// the request parameters. Errors are stored in action.Err.
+func (action *OffersByAccountAction) SetupAndValidateSSE() {
+	action.Setup(
 		action.loadParams,
 		action.loadRecords,
 		action.loadLedgers,
+	)
+}
+
+// SSE is a method for actions.SSE that loads the latest offers by account and sends them to the stream.
+func (action *OffersByAccountAction) SSE(stream sse.Stream) {
+	// No point reloading data if Setup was just called.
+	action.NonSetup(
+		action.loadRecords,
+		action.loadLedgers,
+	)
+	action.Do(
 		func() {
 			stream.SetLimit(int(action.PageQuery.Limit))
 			for _, record := range action.Records[stream.SentCount():] {

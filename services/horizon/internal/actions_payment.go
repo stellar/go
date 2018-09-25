@@ -39,16 +39,26 @@ func (action *PaymentsIndexAction) JSON() {
 	})
 }
 
-// SSE is a method for actions.SSE
-func (action *PaymentsIndexAction) SSE(stream sse.Stream) {
+// SetupAndValidateSSE calls the setup functions before we can stream and validates
+// the request parameters. Errors are stored in action.Err.
+func (action *PaymentsIndexAction) SetupAndValidateSSE() {
 	action.Setup(
 		action.EnsureHistoryFreshness,
 		action.loadParams,
 		action.ValidateCursorWithinHistory,
-	)
-	action.Do(
 		action.loadRecords,
 		action.loadLedgers,
+	)
+}
+
+// SSE is a method for actions.SSE that loads the latest payments and sends them to the stream.
+func (action *PaymentsIndexAction) SSE(stream sse.Stream) {
+	// No point reloading data if Setup was just called.
+	action.NonSetup(
+		action.loadRecords,
+		action.loadLedgers,
+	)
+	action.Do(
 		func() {
 			stream.SetLimit(int(action.PagingParams.Limit))
 			records := action.Records[stream.SentCount():]
@@ -73,7 +83,8 @@ func (action *PaymentsIndexAction) SSE(stream sse.Stream) {
 					Data: res,
 				})
 			}
-		})
+		},
+	)
 }
 
 func (action *PaymentsIndexAction) loadParams() {

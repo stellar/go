@@ -3,15 +3,15 @@ package horizon
 import (
 	"net/http"
 
+	"github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/services/horizon/internal/db2"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
-	"github.com/stellar/go/services/horizon/internal/resourceadapter"
 	hProblem "github.com/stellar/go/services/horizon/internal/render/problem"
-	"github.com/stellar/go/services/horizon/internal/txsub"
-	"github.com/stellar/go/support/render/problem"
-	"github.com/stellar/go/protocols/horizon"
-	"github.com/stellar/go/support/render/hal"
 	"github.com/stellar/go/services/horizon/internal/render/sse"
+	"github.com/stellar/go/services/horizon/internal/resourceadapter"
+	"github.com/stellar/go/services/horizon/internal/txsub"
+	"github.com/stellar/go/support/render/hal"
+	"github.com/stellar/go/support/render/problem"
 )
 
 // This file contains the actions:
@@ -44,15 +44,22 @@ func (action *TransactionIndexAction) JSON() {
 	)
 }
 
-// SSE is a method for actions.SSE
-func (action *TransactionIndexAction) SSE(stream sse.Stream) {
+// SetupAndValidateSSE calls the setup functions before we can stream and validates
+// the request parameters. Errors are stored in action.Err.
+func (action *TransactionIndexAction) SetupAndValidateSSE() {
 	action.Setup(
 		action.EnsureHistoryFreshness,
 		action.loadParams,
 		action.ValidateCursorWithinHistory,
-	)
-	action.Do(
 		action.loadRecords,
+	)
+}
+
+// SSE is a method for actions.SSE that loads the latest transactions and sends them to the stream.
+func (action *TransactionIndexAction) SSE(stream sse.Stream) {
+	// No point reloading data if Setup was just called.
+	action.NonSetup(action.loadRecords)
+	action.Do(
 		func() {
 			stream.SetLimit(int(action.PagingParams.Limit))
 			records := action.Records[stream.SentCount():]
