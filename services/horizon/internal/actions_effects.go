@@ -1,6 +1,7 @@
 package horizon
 
 import (
+	"chain/testbot/farmer/stream"
 	"fmt"
 	"regexp"
 
@@ -63,14 +64,10 @@ func (action *EffectIndexAction) SetupAndValidateSSE() {
 // SSE is a method for actions.SSE that loads the latest effects and sends them to the Stream
 func (action *EffectIndexAction) SSE(stream sse.Stream) {
 	// No point reloading data if Setup was just called.
-	if action.InitialDataIsFresh == false {
-		action.Do(
-			action.loadRecords,
-			action.loadLedgers,
-		)
-	} else {
-		action.InitialDataIsFresh = false
-	}
+	action.NonSetup(
+		action.loadRecords,
+		action.loadLedgers,
+	)
 	action.Do(
 		func() {
 			stream.SetLimit(int(action.PagingParams.Limit))

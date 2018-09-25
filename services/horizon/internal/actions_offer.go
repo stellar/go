@@ -53,15 +53,11 @@ func (action *OffersByAccountAction) SetupAndValidateSSE() {
 // SSE is a method for actions.SSE that loads the latest offers by account and sends them to the stream.
 func (action *OffersByAccountAction) SSE(stream sse.Stream) {
 	// No point reloading data if Setup was just called.
-	if action.InitialDataIsFresh == false {
-		action.Do(
-			action.loadParams,
-			action.loadRecords,
-			action.loadLedgers,
-		)
-	} else {
-		action.InitialDataIsFresh = false
-	}
+	action.NonSetup(
+		action.loadParams,
+		action.loadRecords,
+		action.loadLedgers,
+	)
 	action.Do(
 		func() {
 			stream.SetLimit(int(action.PageQuery.Limit))

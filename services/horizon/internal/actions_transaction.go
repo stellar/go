@@ -1,6 +1,7 @@
 package horizon
 
 import (
+	"chain/testbot/farmer/stream"
 	"net/http"
 
 	"github.com/stellar/go/protocols/horizon"
@@ -58,11 +59,7 @@ func (action *TransactionIndexAction) SetupAndValidateSSE() {
 // SSE is a method for actions.SSE that loads the latest transactions and sends them to the stream.
 func (action *TransactionIndexAction) SSE(stream sse.Stream) {
 	// No point reloading data if Setup was just called.
-	if action.InitialDataIsFresh == false {
-		action.Do(action.loadRecords)
-	} else {
-		action.InitialDataIsFresh = false
-	}
+	action.NonSetup(action.loadRecords)
 	action.Do(
 		func() {
 			stream.SetLimit(int(action.PagingParams.Limit))
