@@ -16,6 +16,7 @@ import (
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/services/horizon/internal/ingest"
 	"github.com/stellar/go/services/horizon/internal/ledger"
+	"github.com/stellar/go/services/horizon/internal/operationfeestats"
 	"github.com/stellar/go/services/horizon/internal/paths"
 	"github.com/stellar/go/services/horizon/internal/reap"
 	"github.com/stellar/go/services/horizon/internal/render/sse"
@@ -184,6 +185,54 @@ Failed:
 
 }
 
+// UpdateOperationFeeStatsState triggers a refresh of several operation fee metrics
+func (a *App) UpdateOperationFeeStatsState() {
+	var err error
+	var next operationfeestats.State
+
+	var latest history.LatestLedger
+	var feeStats history.FeeStats
+
+	cur := operationfeestats.CurrentState()
+
+	err = a.HistoryQ().LatestLedgerBaseFeeAndSequence(&latest)
+	if err != nil {
+		goto Failed
+	}
+
+	// finish early if no new ledgers
+	if cur.LastLedger == int64(latest.Sequence) {
+		return
+	}
+
+	next.LastBaseFee = int64(latest.BaseFee)
+	next.LastLedger = int64(latest.Sequence)
+
+	err = a.HistoryQ().TransactionsForLastXLedgers(latest.Sequence, &feeStats)
+	if err != nil {
+		goto Failed
+	}
+
+	// if no transactions in last X ledgers, return
+	// latest ledger's base fee for all
+	if !feeStats.Mode.Valid && !feeStats.Min.Valid {
+		next.Min = next.LastBaseFee
+		next.Mode = next.LastBaseFee
+	} else {
+		next.Min = feeStats.Min.Int64
+		next.Mode = feeStats.Mode.Int64
+	}
+
+	operationfeestats.SetState(next)
+	return
+
+Failed:
+	log.WithStack(err).
+		WithField("err", err.Error()).
+		Error("failed to load operation fee stats state")
+
+}
+
 // UpdateStellarCoreInfo updates the value of coreVersion and networkPassphrase
 // from the Stellar core API.
 func (a *App) UpdateStellarCoreInfo() {
@@ -235,9 +284,10 @@ func (a *App) DeleteUnretainedHistory() error {
 func (a *App) Tick() {
 	var wg sync.WaitGroup
 	log.Debug("ticking app")
-	// update ledger state and stellar-core info in parallel
-	wg.Add(2)
+	// update ledger state, operation fee state, and stellar-core info in parallel
+	wg.Add(3)
 	go func() { a.UpdateLedgerState(); wg.Done() }()
+	go func() { a.UpdateOperationFeeStatsState(); wg.Done() }()
 	go func() { a.UpdateStellarCoreInfo(); wg.Done() }()
 	wg.Wait()
 

@@ -6,6 +6,8 @@ clientData:
 
 This endpoint represents all [trades](../resources/trade.md) for a given [offer](../resources/offer.md).
 
+This endpoint can also be used in [streaming](../streaming.md) mode, making it possible to listen for new trades for the given offer as they occur on the Stellar network.
+If called in streaming mode Horizon will start at the earliest known trade unless a `cursor` is set. In that case it will start from the `cursor`. You can also set `cursor` value to `now` to only stream trades created since your request time.
 ## Request
 
 ```
@@ -103,6 +105,33 @@ This endpoint responds with a list of trades that consumed a given offer. See th
 }
 ```
 
+## Example Streaming Event
+```cgo
+{ _links: 
+   { self: { href: '' },
+     base: 
+      { href: '/accounts/GDJNMHET4DTS7HUHU7IG5DB274OSMHUYA7TRRKOD6ZABHPUW5YWJ4SUD' },
+     counter: 
+      { href: '/accounts/GCALYDRCCJEUPMV24TAX2N2N3IBX7NUUYZNM7I5FQS5GIEQ4A7EVKUOP' },
+     operation: { href: '/operations/47261068505915393' } },
+  id: '47261068505915393-0',
+  paging_token: '47261068505915393-0',
+  ledger_close_time: '2018-09-11T19:42:04Z',
+  offer_id: '734529',
+  base_account: 'GDJNMHET4DTS7HUHU7IG5DB274OSMHUYA7TRRKOD6ZABHPUW5YWJ4SUD',
+  base_amount: '0.0175999',
+  base_asset_type: 'credit_alphanum4',
+  base_asset_code: 'BOC',
+  base_asset_issuer: 'GCTS32RGWRH6RJM62UVZ4UT5ZN5L6B2D3LPGO6Z2NM2EOGVQA7TA6SKO',
+  counter_account: 'GCALYDRCCJEUPMV24TAX2N2N3IBX7NUUYZNM7I5FQS5GIEQ4A7EVKUOP',
+  counter_amount: '0.0199998',
+  counter_asset_type: 'credit_alphanum4',
+  counter_asset_code: 'ABC',
+  counter_asset_issuer: 'GCTS32RGWRH6RJM62UVZ4UT5ZN5L6B2D3LPGO6Z2NM2EOGVQA7TA6SKO',
+  base_is_seller: true,
+  price: { n: 2840909, d: 2500000 }
+}
+```
 ## Possible Errors
 
 - The [standard errors](../errors.md#Standard-Errors).

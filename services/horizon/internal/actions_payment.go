@@ -6,9 +6,9 @@ import (
 
 	"github.com/stellar/go/services/horizon/internal/db2"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
-	"github.com/stellar/go/support/render/hal"
 	"github.com/stellar/go/services/horizon/internal/render/sse"
 	"github.com/stellar/go/services/horizon/internal/resourceadapter"
+	"github.com/stellar/go/support/render/hal"
 )
 
 // PaymentsIndexAction returns a paged slice of payments based upon the provided
@@ -57,14 +57,14 @@ func (action *PaymentsIndexAction) SSE(stream sse.Stream) {
 				ledger, found := action.Ledgers.Records[record.LedgerSequence()]
 				if !found {
 					msg := fmt.Sprintf("could not find ledger data for sequence %d", record.LedgerSequence())
-					stream.Err(errors.New(msg))
+					action.Err = errors.New(msg)
 					return
 				}
 
 				res, err := resourceadapter.NewOperation(action.R.Context(), record, ledger)
 
 				if err != nil {
-					stream.Err(err)
+					action.Err = err
 					return
 				}
 

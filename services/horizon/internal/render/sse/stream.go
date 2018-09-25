@@ -10,6 +10,7 @@ import (
 // Stream represents an output stream that data can be written to.
 // Its methods must be safe to call concurrently.
 type Stream interface {
+	Init()
 	Send(Event)
 	SentCount() int
 	Done()
@@ -26,6 +27,7 @@ func NewStream(ctx context.Context, w http.ResponseWriter, r *http.Request) Stre
 		interval: heartbeatInterval,
 		w:     w,
 	}
+
 	return result
 }
 
@@ -36,18 +38,19 @@ type stream struct {
 	r   *http.Request
 	interval time.Duration	// How often to send a heartbeat
 
-	mu    sync.Mutex // Mutex protects the following fields.
-	w     http.ResponseWriter
-	done  bool
-	sent  int
-	limit int
+	initSync sync.Once  // Variable to ensure that Init only writes the preamble once.
+	mu       sync.Mutex // Mutex protects the following fields
+	w        http.ResponseWriter
+	done     bool
+	sent     int
+	limit    int
 }
 
 // Go routine that periodically sends a comment message to keep the connection
 // alive.
 func (s *stream) sendHeartbeats() {
 	for {
-		time.Sleep(heartbeatInterval)
+		time.Sleep(s.interval)
 		if s.IsDone() {
 			return
 		}
@@ -57,18 +60,24 @@ func (s *stream) sendHeartbeats() {
 	}
 }
 
-func (s *stream) Send(e Event) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	if s.sent == 0 {
+// Init function is only executed once. It writes the preamble event which includes the HTTP response code and a
+// hello message. This should be called before any method that writes to the client to ensure that the preamble
+// has been sent first.
+func (s *stream) Init() {
+	s.initSync.Do(func() {
 		ok := WritePreamble(s.ctx, s.w)
 		if !ok {
 			s.done = true
-			return
 		}
 		// Start the go routine that sends heartbeats at regular intervals
 		go s.sendHeartbeats()
-	}
+	})
+}
+
+func (s *stream) Send(e Event) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.Init()
 	WriteEvent(s.ctx, s.w, e)
 	s.sent++
 }
@@ -88,6 +97,7 @@ func (s *stream) SetLimit(limit int) {
 func (s *stream) Done() {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	s.Init()
 	WriteEvent(s.ctx, s.w, goodbyeEvent)
 	s.done = true
 }
@@ -105,6 +115,7 @@ func (s *stream) IsDone() bool {
 func (s *stream) Err(err error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	s.Init()
 	WriteEvent(s.ctx, s.w, Event{Error: err})
 	s.done = true
 }
