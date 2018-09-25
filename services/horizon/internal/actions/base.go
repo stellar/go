@@ -1,14 +1,11 @@
 package actions
 
 import (
-	"database/sql"
 	"net/http"
 
 	"github.com/stellar/go/services/horizon/internal/render"
 	hProblem "github.com/stellar/go/services/horizon/internal/render/problem"
 	"github.com/stellar/go/services/horizon/internal/render/sse"
-	"github.com/stellar/go/support/errors"
-	"github.com/stellar/go/support/log"
 	"github.com/stellar/go/support/render/problem"
 )
 
