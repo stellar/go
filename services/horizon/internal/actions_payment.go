@@ -54,14 +54,10 @@ func (action *PaymentsIndexAction) SetupAndValidateSSE() {
 // SSE is a method for actions.SSE that loads the latest payments and sends them to the stream.
 func (action *PaymentsIndexAction) SSE(stream sse.Stream) {
 	// No point reloading data if Setup was just called.
-	if action.InitialDataIsFresh == false {
-		action.Do(
-			action.loadRecords,
-			action.loadLedgers,
-		)
-	} else {
-		action.InitialDataIsFresh = false
-	}
+	action.NonSetup(
+		action.loadRecords,
+		action.loadLedgers,
+	)
 	action.Do(
 		func() {
 			stream.SetLimit(int(action.PagingParams.Limit))

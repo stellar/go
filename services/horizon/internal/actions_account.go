@@ -50,15 +50,11 @@ func (action *AccountShowAction) SetupAndValidateSSE() {
 // SSE is a method for actions.SSE that loads the latest resource and sends them to the stream.
 func (action *AccountShowAction) SSE(stream sse.Stream) {
 	// No point reloading data if Setup was just called.
-	if action.InitialDataIsFresh == false {
-		action.Do(
-			action.loadParams,
-			action.loadRecord,
-			action.loadResource,
-		)
-	} else {
-		action.InitialDataIsFresh = false
-	}
+	action.NonSetup(
+		action.loadParams,
+		action.loadRecord,
+		action.loadResource,
+	)
 	action.Do(func() {
 		stream.SetLimit(10)
 		stream.Send(sse.Event{Data: action.Resource})
