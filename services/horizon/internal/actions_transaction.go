@@ -1,7 +1,6 @@
 package horizon
 
 import (
-	"chain/testbot/farmer/stream"
 	"net/http"
 
 	"github.com/stellar/go/protocols/horizon"
