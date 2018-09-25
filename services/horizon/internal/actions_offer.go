@@ -63,7 +63,7 @@ func (action *OffersByAccountAction) SSE(stream sse.Stream) {
 						// In other words, it is expected to happen, especially for
 						// recently changed offers.
 						log.Ctx(action.R.Context()).Warn(err)
-						stream.Err(err)
+						action.Err = err
 						return
 					}
 				}
