@@ -9,6 +9,7 @@ import (
 // Stream represents an output stream that data can be written to.
 // Its methods must be safe to call concurrently.
 type Stream interface {
+	Init()
 	Send(Event)
 	SentCount() int
 	Done()
@@ -27,6 +28,7 @@ func NewStream(ctx context.Context, w http.ResponseWriter, r *http.Request) Stre
 		sent:  0,
 		limit: 0,
 	}
+
 	return result
 }
 
@@ -34,26 +36,32 @@ type stream struct {
 	ctx context.Context
 	r   *http.Request
 
-	mu    sync.Mutex // Mutex protects the following fields
-	w     http.ResponseWriter
-	done  bool
-	sent  int
-	limit int
+	initSync sync.Once  // Variable to ensure that Init is only called once
+	mu       sync.Mutex // Mutex protects the following fields
+	w        http.ResponseWriter
+	done     bool
+	sent     int
+	limit    int
+}
+
+// Init function is only called once. It writes the preamble event which includes the HTTP response code and a
+// hello message.
+func (s *stream) Init() {
+	s.initSync.Do(func() {
+		ok := WritePreamble(s.ctx, s.w)
+		if !ok {
+			s.done = true
+		}
+		// Add heartbeat routine here
+	})
 }
 
 func (s *stream) Send(e Event) {
 	s.mu.Lock()
-	defer s.mu.Unlock()
-	if s.sent == 0 {
-		ok := WritePreamble(s.ctx, s.w)
-		if !ok {
-			s.done = true
-			return
-		}
-	}
-
+	s.Init()
 	WriteEvent(s.ctx, s.w, e)
 	s.sent++
+	s.mu.Unlock()
 }
 
 func (s *stream) SentCount() int {

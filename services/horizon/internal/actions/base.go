@@ -83,12 +83,16 @@ func (base *Base) Execute(action interface{}) {
 				stream.Err(base.Err)
 			}
 
+			// Manually send the preamble in case there are no data events in SSE to trigger a stream.Send call
+			stream.Init()
+
 			if stream.IsDone() {
 				return
 			}
 
 			select {
 			case <-ctx.Done():
+				stream.Done()
 				return
 			case <-sse.Pumped():
 				//no-op, continue onto the next iteration
