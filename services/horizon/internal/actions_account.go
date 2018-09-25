@@ -51,7 +51,7 @@ func (action *AccountShowAction) SSE(stream sse.Stream) {
 }
 
 func (action *AccountShowAction) loadParams() {
-	action.Address = action.GetString("account_id")
+	action.Address = action.GetAddress("account_id")
 }
 
 func (action *AccountShowAction) loadRecord() {
