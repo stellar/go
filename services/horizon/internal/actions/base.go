@@ -65,8 +65,8 @@ func (base *Base) Execute(action interface{}) {
 			action.SSE(stream)
 
 			if base.Err != nil {
-				// in the case that we haven't yet sent an event, is also means we
-				// havent sent the preamble, meaning we should simply return the normal
+				// In the case that we haven't yet sent an event, is also means we
+				// haven't sent the preamble, meaning we should simply return the normal HTTP
 				// error.
 				if stream.SentCount() == 0 {
 					problem.Render(ctx, base.W, base.Err)
@@ -80,10 +80,13 @@ func (base *Base) Execute(action interface{}) {
 					base.Err = errors.New("Unexpected stream error")
 				}
 
+				// Send errors through the stream and then close the stream.
 				stream.Err(base.Err)
 			}
 
-			// Manually send the preamble in case there are no data events in SSE to trigger a stream.Send call
+			// Manually send the preamble in case there are no data events in SSE to trigger a stream.Send call.
+			// This method is called every iteration of the loop, but is protected by a sync.Once variable so it's
+			// only executed once.
 			stream.Init()
 
 			if stream.IsDone() {
