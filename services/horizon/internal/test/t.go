@@ -90,6 +90,18 @@ func (t *T) UnmarshalNext(r io.Reader) string {
 	return env.Links.Next.Href
 }
 
+// UnmarshalExtras extracts and returns extras content
+func (t *T) UnmarshalExtras(r io.Reader) map[string]string {
+	var resp struct {
+		Extras map[string]string `json:"extras"`
+	}
+
+	err := json.NewDecoder(r).Decode(&resp)
+	t.Require.NoError(err, "failed to decode page")
+
+	return resp.Extras
+}
+
 // UpdateLedgerState updates the cached ledger state (or panicing on failure).
 func (t *T) UpdateLedgerState() {
 	var next ledger.State
