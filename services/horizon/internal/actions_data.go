@@ -58,7 +58,6 @@ func (action *DataShowAction) SetupAndValidateSSE() {
 func (action *DataShowAction) SSE(stream sse.Stream) {
 	// No point reloading data if Setup was just called.
 	action.NonSetup(
-		action.loadParams,
 		action.loadRecord,
 	)
 	action.Do(
