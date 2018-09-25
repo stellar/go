@@ -58,7 +58,7 @@ func (action *TradeIndexAction) SSE(stream sse.Stream) {
 				err := resourceadapter.PopulateTrade(action.R.Context(), &res, record)
 
 				if err != nil {
-					stream.Err(err)
+					action.Err = err
 					return
 				}
 
