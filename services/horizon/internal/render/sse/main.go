@@ -51,7 +51,7 @@ func Tick() {
 // WriteHeartbeat sends a data-only message containing a heartbeat comment, which is ignored
 // by clients since it starts with a colon character. It serves as a keep-alive message.
 func WriteHeartbeat(w http.ResponseWriter) {
-	fmt.Fprint(w, ":heartbeat")
+	fmt.Fprint(w, ":heartbeat\n\n")
 	w.(http.Flusher).Flush()
 }
 
