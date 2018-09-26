@@ -59,7 +59,7 @@ func (base *Base) Execute(action interface{}) {
 			goto NotAcceptable
 		}
 
-		stream := sse.NewStream(ctx, base.W, base.R)
+		stream := sse.NewStream(ctx, base.W)
 
 		for {
 			action.SSE(stream)

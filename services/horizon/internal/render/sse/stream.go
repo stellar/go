@@ -20,10 +20,9 @@ type Stream interface {
 }
 
 // NewStream creates a new stream against the provided response writer.
-func NewStream(ctx context.Context, w http.ResponseWriter, r *http.Request) Stream {
+func NewStream(ctx context.Context, w http.ResponseWriter) Stream {
 	result := &stream{
 		ctx:      ctx,
-		r:        r,
 		interval: heartbeatInterval,
 		w:        w,
 	}
@@ -35,7 +34,6 @@ const heartbeatInterval = 10 * time.Second
 
 type stream struct {
 	ctx      context.Context
-	r        *http.Request
 	interval time.Duration // How often to send a heartbeat
 
 	initSync sync.Once  // Variable to ensure that Init only writes the preamble once.
