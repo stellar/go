@@ -3,7 +3,6 @@ package sse
 import (
 	"context"
 	"errors"
-	"github.com/stretchr/testify/suite"
 	"net/http/httptest"
 	"strconv"
 	"testing"
@@ -11,12 +10,13 @@ import (
 
 	"github.com/stellar/go/support/test"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/suite"
 )
 
 type StreamTestSuite struct {
 	suite.Suite
-	ctx context.Context
-	w *httptest.ResponseRecorder
+	ctx    context.Context
+	w      *httptest.ResponseRecorder
 	stream Stream
 }
 
@@ -32,12 +32,12 @@ func (suite *StreamTestSuite) checkHeadersAndPreamble() {
 func (suite *StreamTestSuite) SetupTest() {
 	suite.ctx, _ = test.ContextWithLogBuffer()
 	suite.w = httptest.NewRecorder()
-	suite.stream = NewStream(suite.ctx, suite.w, nil)
+	suite.stream = NewStream(suite.ctx, suite.w)
 }
 
 // Tests that the stream sends the preamble before any events and that events are correctly sent.
 func (suite *StreamTestSuite) TestStream_Send() {
-	e := Event{Data:"test message"}
+	e := Event{Data: "test message"}
 	suite.stream.Send(e)
 	suite.stream.Done()
 	// Before sending, it should have sent the preamble first and set the headers.
@@ -50,7 +50,7 @@ func (suite *StreamTestSuite) TestStream_Send() {
 // Tests that heartbeat events are sent by Stream.
 func (suite *StreamTestSuite) TestStream_SendHeartbeats() {
 	// Set heartbeat interval to a low value for testing.
-	suite.stream.(*stream).interval = 500*time.Millisecond
+	suite.stream.(*stream).interval = 500 * time.Millisecond
 	suite.stream.Init()
 	// Wait long enough for heartbeat to send
 	time.Sleep(time.Second)
@@ -68,17 +68,40 @@ func (suite *StreamTestSuite) TestStream_Err() {
 	assert.True(suite.T(), suite.stream.IsDone())
 }
 
-// Tests that SetLimit stops the stream after the limit has been reached.
+// Tests that SetLimit sets stream.done to true after the limit has been reached.
 func (suite *StreamTestSuite) TestStream_SetLimit() {
 	suite.stream.SetLimit(3)
 	// Send more than the limit
 	for i := 0; i < 5; i++ {
 		message := "test message " + strconv.Itoa(i)
-		suite.stream.Send(Event{Data:message})
+		suite.stream.Send(Event{Data: message})
 	}
 	assert.True(suite.T(), suite.stream.IsDone())
-	println(suite.w.Body.String())
 }
+
+// Tests that SentCount reports the correct number.
+func (suite *StreamTestSuite) TestStream_SentCount() {
+	for i := 0; i < 5; i++ {
+		message := "test message " + strconv.Itoa(i)
+		suite.stream.Send(Event{Data: message})
+	}
+	assert.Equal(suite.T(), 5, suite.stream.SentCount())
+	suite.stream.Err(errors.New("example error"))
+	// Make sure that errors don't contribute to the send count
+	assert.Equal(suite.T(), 5, suite.stream.SentCount())
+}
+
+// Tests that calling Done stops the heartbeat goroutine.
+func (suite *StreamTestSuite) TestStream_Done() {
+	suite.stream.(*stream).interval = 500 * time.Millisecond
+	suite.stream.Init()
+	suite.stream.Done()
+	// Wait long enough so that a heartbeat event would have fired.
+	time.Sleep(time.Second)
+	assert.True(suite.T(), suite.stream.IsDone())
+	assert.NotContains(suite.T(), suite.w.Body.String(), ":heartbeat\n")
+}
+
 // Runs the test suite.
 func TestStreamTestSuite(t *testing.T) {
 	suite.Run(t, new(StreamTestSuite))
