@@ -51,10 +51,11 @@ type stream struct {
 func (s *stream) sendHeartbeats() {
 	for {
 		time.Sleep(s.interval)
+		s.mu.Lock()
 		if s.IsDone() {
+			s.mu.Unlock()
 			return
 		}
-		s.mu.Lock()
 		WriteHeartbeat(s.w)
 		s.mu.Unlock()
 	}
@@ -103,8 +104,6 @@ func (s *stream) Done() {
 }
 
 func (s *stream) IsDone() bool {
-	s.mu.Lock()
-	defer s.mu.Unlock()
 	if s.limit == 0 {
 		return s.done
 	}
