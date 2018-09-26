@@ -15,7 +15,6 @@ type Stream interface {
 	SentCount() int
 	Done()
 	SetLimit(limit int)
-	SetHeartbeatInterval(interval time.Duration)
 	IsDone() bool
 	Err(error)
 }
@@ -94,12 +93,6 @@ func (s *stream) SetLimit(limit int) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.limit = limit
-}
-
-func (s *stream) SetHeartbeatInterval(interval time.Duration) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	s.interval = interval
 }
 
 func (s *stream) Done() {

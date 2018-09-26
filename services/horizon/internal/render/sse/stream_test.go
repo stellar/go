@@ -13,9 +13,9 @@ import (
 func TestStream_SendHeartbeats(t *testing.T) {
 	ctx, _ := test.ContextWithLogBuffer()
 	w := httptest.NewRecorder()
-	stream := NewStream(ctx, w, nil)
+	stream := NewStream(ctx, w, nil).(*stream)
 	// Set heartbeat interval to a low value for testing.
-	stream.SetHeartbeatInterval(500 * time.Millisecond)
+	stream.interval = 500 * time.Millisecond
 	stream.Init()
 	// Wait long enough for heartbeat to send
 	time.Sleep(time.Second)
