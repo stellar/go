@@ -1,13 +1,13 @@
 package horizon
 
 import (
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/suite"
 	"strconv"
 	"testing"
 
 	"github.com/PuerkitoBio/throttled"
 	"github.com/stellar/go/services/horizon/internal/test"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/suite"
 )
 
 type RateLimitMiddlewareTestSuite struct {
