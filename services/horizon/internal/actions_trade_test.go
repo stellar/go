@@ -11,8 +11,8 @@ import (
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	. "github.com/stellar/go/services/horizon/internal/db2/history"
 	. "github.com/stellar/go/services/horizon/internal/test/trades"
-	"github.com/stellar/go/xdr"
 	"github.com/stellar/go/support/render/hal"
+	"github.com/stellar/go/xdr"
 )
 
 func TestTradeActions_Index(t *testing.T) {
@@ -203,7 +203,6 @@ func TestTradeActions_Aggregation(t *testing.T) {
 	q.Add("end_time", strconv.FormatInt(start+hour, 10))
 	q.Add("order", "asc")
 
-
 	//test no resolution provided
 	w := ht.GetWithParams(aggregationPath, q)
 	println(w.Body.String())
@@ -249,6 +248,16 @@ func TestTradeActions_Aggregation(t *testing.T) {
 			ht.Assert.Equal("1.0000000", records[0].Average)
 		}
 	}
+
+	// Test that offset works by shifting the start time to the half range.
+	// Half of the results are expected.
+	offset := (numOfTrades / 2) * minute
+	q.Add("offset", strconv.Itoa(offset))
+	w = ht.GetWithParams(aggregationPath, q)
+	if ht.Assert.Equal(200, w.Code) {
+		ht.Assert.PageOf(numOfTrades/2, w.Body)
+	}
+	q.Del("offset")
 
 	//test partial range by modifying endTime to be one minute above half range.
 	//half of the results are expected

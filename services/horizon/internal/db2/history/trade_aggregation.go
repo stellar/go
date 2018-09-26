@@ -45,6 +45,7 @@ type TradeAggregationsQ struct {
 	baseAssetID    int64
 	counterAssetID int64
 	resolution     int64
+	offset		   strtime.Millis
 	startTime      strtime.Millis
 	endTime        strtime.Millis
 	pagingParams   db2.PageQuery
@@ -71,7 +72,13 @@ func (q Q) GetTradeAggregationsQ(baseAssetID int64, counterAssetID int64, resolu
 	}, nil
 }
 
-// WithStartTime adds an optional lower time boundary filter to the trades being aggregated
+// WithOffset adds an optional time offset to apply to the start time (after rounding it to the nearest resolution).
+func (q *TradeAggregationsQ) WithOffset(offset strtime.Millis) *TradeAggregationsQ {
+	q.offset = offset
+	return q
+}
+
+// WithStartTime adds an optional lower time boundary filter to the trades being aggregated.
 func (q *TradeAggregationsQ) WithStartTime(startTime strtime.Millis) *TradeAggregationsQ {
 	// Round lower boundary up, if start time is in the middle of a bucket
 	q.startTime = startTime.RoundUp(q.resolution)
@@ -101,7 +108,7 @@ func (q *TradeAggregationsQ) GetSql() sq.SelectBuilder {
 		Where(sq.Eq{"base_asset_id": q.baseAssetID, "counter_asset_id": q.counterAssetID})
 
 	//adjust time range and apply time filters
-	bucketSQL = bucketSQL.Where(sq.GtOrEq{"ledger_closed_at": q.startTime.ToTime()})
+	bucketSQL = bucketSQL.Where(sq.GtOrEq{"ledger_closed_at": (q.startTime + q.offset).ToTime()})
 	if !q.endTime.IsNil() {
 		bucketSQL = bucketSQL.Where(sq.Lt{"ledger_closed_at": q.endTime.ToTime()})
 	}
