@@ -30,13 +30,10 @@ func TestStream_Send(t *testing.T) {
 }
 
 // Tests that heartbeat events are sent by Stream.
-func TestStream_SendHeartbeats(t *testing.T) {
-	ctx, _ := test.ContextWithLogBuffer()
-	w := httptest.NewRecorder()
-	stream := NewStream(ctx, w).(*stream)
+func (suite *StreamTestSuite) TestStream_SendHeartbeats() {
 	// Set heartbeat interval to a low value for testing.
-	stream.interval = 500 * time.Millisecond
-	stream.Init()
+	suite.stream.(*stream).interval = 500*time.Millisecond
+	suite.stream.Init()
 	// Wait long enough for heartbeat to send
 	time.Sleep(time.Second)
 	suite.stream.Done()
