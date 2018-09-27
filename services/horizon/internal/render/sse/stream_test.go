@@ -55,7 +55,24 @@ func (suite *StreamTestSuite) TestStream_SendHeartbeats() {
 	// Wait long enough for heartbeat to send
 	time.Sleep(time.Second)
 	suite.stream.Done()
-	assert.Contains(suite.T(), suite.w.Body.String(), ":heartbeat\n")
+	assert.Contains(suite.T(), suite.w.Body.String(), "\n:heartbeat")
+}
+
+// Tests that exceeding the send limit stops the heartbeat routine.
+func (suite *StreamTestSuite) TestStream_HeartbeatsLimitExceeded() {
+	// Set heartbeat interval to a low value for testing.
+	suite.stream.(*stream).interval = 500 * time.Millisecond
+	suite.stream.SetLimit(1)
+	suite.stream.Init()
+	// Send more messages than the limit allows
+	for i := 0; i < 2; i++ {
+		message := "test message " + strconv.Itoa(i)
+		suite.stream.Send(Event{Data: message})
+	}
+	// Wait long enough so that a heartbeat event would have fired if the stream wasn't done.
+	time.Sleep(time.Second)
+	assert.True(suite.T(), suite.stream.IsDone())
+	assert.NotContains(suite.T(), suite.w.Body.String(), ":heartbeat")
 }
 
 // Tests that Stream can send error events.
@@ -99,7 +116,7 @@ func (suite *StreamTestSuite) TestStream_Done() {
 	// Wait long enough so that a heartbeat event would have fired.
 	time.Sleep(time.Second)
 	assert.True(suite.T(), suite.stream.IsDone())
-	assert.NotContains(suite.T(), suite.w.Body.String(), ":heartbeat\n")
+	assert.NotContains(suite.T(), suite.w.Body.String(), ":heartbeat")
 }
 
 // Runs the test suite.
