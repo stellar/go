@@ -147,9 +147,9 @@ type TradeAggregateIndexAction struct {
 	Action
 	BaseAssetFilter    xdr.Asset
 	CounterAssetFilter xdr.Asset
-	OffsetFilter       time.Millis
 	StartTimeFilter    time.Millis
 	EndTimeFilter      time.Millis
+	OffsetFilter       int64
 	ResolutionFilter   int64
 	PagingParams       db2.PageQuery
 	Records            []history.TradeAggregation
@@ -173,7 +173,7 @@ func (action *TradeAggregateIndexAction) loadParams() {
 	action.PagingParams = action.GetPageQuery()
 	action.BaseAssetFilter = action.GetAsset("base_")
 	action.CounterAssetFilter = action.GetAsset("counter_")
-	action.OffsetFilter = action.GetTimeMillis("offset")
+	action.OffsetFilter = action.GetInt64("offset")
 	action.StartTimeFilter = action.GetTimeMillis("start_time")
 	action.EndTimeFilter = action.GetTimeMillis("end_time")
 	action.ResolutionFilter = action.GetInt64("resolution")
@@ -214,11 +214,9 @@ func (action *TradeAggregateIndexAction) loadRecords() {
 		return
 	}
 
-	//set time range if supplied
-	if !action.OffsetFilter.IsNil() {
-		tradeAggregationsQ.WithOffset(action.OffsetFilter)
-	}
+	tradeAggregationsQ.WithOffset(action.OffsetFilter)
 
+	//set time range if supplied
 	if !action.StartTimeFilter.IsNil() {
 		tradeAggregationsQ.WithStartTime(action.StartTimeFilter)
 	}
