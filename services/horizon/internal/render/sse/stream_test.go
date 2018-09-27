@@ -20,5 +20,5 @@ func TestStream_SendHeartbeats(t *testing.T) {
 	// Wait long enough for heartbeat to send
 	time.Sleep(time.Second)
 	stream.Done()
-	assert.Contains(t, w.Body.String(), ":heartbeat\n")
+	assert.Contains(t, w.Body.String(), "\n:heartbeat")
 }

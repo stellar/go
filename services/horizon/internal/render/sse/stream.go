@@ -50,7 +50,7 @@ func (s *stream) sendHeartbeats() {
 	for {
 		time.Sleep(s.interval)
 		s.mu.Lock()
-		if s.IsDone() {
+		if s.isDone() {
 			s.mu.Unlock()
 			return
 		}
@@ -101,12 +101,21 @@ func (s *stream) Done() {
 	s.done = true
 }
 
-func (s *stream) IsDone() bool {
+// isDone checks to see if the stream is done. Not safe to call concurrently
+// and meant for internal use (eg in sendHeartbeats).
+func (s *stream) isDone() bool {
 	if s.limit == 0 {
 		return s.done
 	}
 
 	return s.done || s.sent >= s.limit
+}
+
+// IsDone is safe to call concurrently and is exported.
+func (s *stream) IsDone() bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.isDone()
 }
 
 func (s *stream) Err(err error) {
