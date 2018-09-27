@@ -8,6 +8,15 @@ bumps.  A breaking change will get clearly notified in this log.
 
 ## Unreleased
 
+## v0.14.2 - 2018-09-27
+
+### Bug fixes
+
+* Fixed and improved `txsub` package (#695). This should resolve many issues connected to `Timeout` responses.
+* Improve stream error reporting (#680).
+* Checking `ingest.Cursor` errors in `Session` (#679).
+* Added account ID validation in `/account/{id}` endpoints (#684).
+
 ## v0.14.1 - 2018-09-19
 
 This release contains several bug fixes:
