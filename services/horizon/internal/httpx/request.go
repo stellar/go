@@ -3,6 +3,8 @@ package httpx
 import (
 	"context"
 	"net/http"
+
+	"github.com/stellar/go/support/log"
 )
 
 var requestContextKey = 0
@@ -40,6 +42,7 @@ func RequestContext(parent context.Context, w http.ResponseWriter, r *http.Reque
 	go func() {
 		select {
 		case <-closedByClient:
+			log.Ctx(parent).Info("Request closed by client")
 			cancel()
 		case <-ctx.Done():
 			return
