@@ -20,6 +20,7 @@ type StreamTestSuite struct {
 	stream Stream
 }
 
+// Helper method to check that the preamble has been sent and all HTTP response headers are correctly set.
 func (suite *StreamTestSuite) checkHeadersAndPreamble() {
 	assert.Equal(suite.T(), "text/event-stream; charset=utf-8", suite.w.Header().Get("Content-Type"))
 	assert.Equal(suite.T(), "no-cache", suite.w.Header().Get("Cache-Control"))
