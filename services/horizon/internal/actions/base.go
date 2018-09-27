@@ -59,7 +59,7 @@ func (base *Base) Execute(action interface{}) {
 			goto NotAcceptable
 		}
 
-		stream := sse.NewStream(ctx, base.W, base.R)
+		stream := sse.NewStream(ctx, base.W)
 
 		for {
 			action.SSE(stream)
@@ -95,7 +95,7 @@ func (base *Base) Execute(action interface{}) {
 
 			select {
 			case <-ctx.Done():
-				stream.Done()
+				stream.Done() // Call Done on the stream so that it doesn't send any more heartbeats.
 				return
 			case <-sse.Pumped():
 				//no-op, continue onto the next iteration

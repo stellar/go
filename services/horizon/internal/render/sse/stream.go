@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 	"sync"
+	"time"
 )
 
 // Stream represents an output stream that data can be written to.
@@ -18,23 +19,22 @@ type Stream interface {
 	Err(error)
 }
 
-// NewStream creates a new stream against the provided response writer
-func NewStream(ctx context.Context, w http.ResponseWriter, r *http.Request) Stream {
+// NewStream creates a new stream against the provided response writer.
+func NewStream(ctx context.Context, w http.ResponseWriter) Stream {
 	result := &stream{
-		ctx:   ctx,
-		r:     r,
-		w:     w,
-		done:  false,
-		sent:  0,
-		limit: 0,
+		ctx:      ctx,
+		interval: heartbeatInterval,
+		w:        w,
 	}
 
 	return result
 }
 
+const heartbeatInterval = 10 * time.Second
+
 type stream struct {
-	ctx context.Context
-	r   *http.Request
+	ctx      context.Context
+	interval time.Duration // How often to send a heartbeat
 
 	initSync sync.Once  // Variable to ensure that Init only writes the preamble once.
 	mu       sync.Mutex // Mutex protects the following fields
@@ -42,6 +42,21 @@ type stream struct {
 	done     bool
 	sent     int
 	limit    int
+}
+
+// Go routine that periodically sends a comment message to keep the connection
+// alive.
+func (s *stream) sendHeartbeats() {
+	for {
+		time.Sleep(s.interval)
+		s.mu.Lock()
+		if s.isDone() {
+			s.mu.Unlock()
+			return
+		}
+		WriteHeartbeat(s.w)
+		s.mu.Unlock()
+	}
 }
 
 // Init function is only executed once. It writes the preamble event which includes the HTTP response code and a
@@ -53,7 +68,8 @@ func (s *stream) Init() {
 		if !ok {
 			s.done = true
 		}
-		// Add heartbeat routine here
+		// Start the go routine that sends heartbeats at regular intervals
+		go s.sendHeartbeats()
 	})
 }
 
@@ -85,14 +101,21 @@ func (s *stream) Done() {
 	s.done = true
 }
 
-func (s *stream) IsDone() bool {
-	s.mu.Lock()
-	defer s.mu.Unlock()
+// isDone checks to see if the stream is done. Not safe to call concurrently
+// and meant for internal use (eg in sendHeartbeats).
+func (s *stream) isDone() bool {
 	if s.limit == 0 {
 		return s.done
 	}
 
 	return s.done || s.sent >= s.limit
+}
+
+// IsDone is safe to call concurrently and is exported.
+func (s *stream) IsDone() bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.isDone()
 }
 
 func (s *stream) Err(err error) {
