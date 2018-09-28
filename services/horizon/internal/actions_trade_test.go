@@ -466,7 +466,6 @@ func TestTradeActions_AggregationOffset(t *testing.T) {
 				ht.UnmarshalPage(w.Body, &records)
 				if len(records) > 0 {
 					for i, record := range records {
-						println(record.Timestamp / hour)
 						ht.Assert.Equal(tc.expectedTimestamps[i], record.Timestamp)
 					}
 				}
