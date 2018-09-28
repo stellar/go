@@ -187,6 +187,12 @@ func (action *TradeAggregateIndexAction) loadParams() {
 				"1 day (86400000) and 1 week (604800000)"))
 		}
 	}
+	// check if offset is legal
+	offsetDuration := gTime.Duration(action.OffsetFilter) * gTime.Millisecond
+	if offsetDuration%gTime.Hour != 0 || offsetDuration >= gTime.Hour*24 || offsetDuration > resolutionDuration {
+		action.SetInvalidField("offset", errors.New("illegal or missing offset. offset must be a multiple of an"+
+			" hour, less than or equal to the resolution, and less than 24 hours"))
+	}
 }
 
 // loadRecords populates action.Records
@@ -207,21 +213,31 @@ func (action *TradeAggregateIndexAction) loadRecords() {
 
 	//initialize the query builder with required params
 	tradeAggregationsQ, err := historyQ.GetTradeAggregationsQ(
-		baseAssetId, counterAssetId, action.ResolutionFilter, action.PagingParams)
+		baseAssetId, counterAssetId, action.ResolutionFilter, action.OffsetFilter, action.PagingParams)
 
 	if err != nil {
 		action.Err = err
 		return
 	}
 
-	tradeAggregationsQ.WithOffset(action.OffsetFilter)
-
 	//set time range if supplied
 	if !action.StartTimeFilter.IsNil() {
-		tradeAggregationsQ.WithStartTime(action.StartTimeFilter)
+		tradeAggregationsQ, err = tradeAggregationsQ.WithStartTime(action.StartTimeFilter)
+		if err != nil {
+			action.SetInvalidField("start_time", errors.New("illegal start time. adjusted start time must "+
+				"be less than the provided end time if the end time is greater than 0"))
+			action.Err = err
+			return
+		}
 	}
 	if !action.EndTimeFilter.IsNil() {
-		tradeAggregationsQ.WithEndTime(action.EndTimeFilter)
+		tradeAggregationsQ, err = tradeAggregationsQ.WithEndTime(action.EndTimeFilter)
+		if err != nil {
+			action.SetInvalidField("end_time", errors.New("illegal end time. adjusted end time "+
+				"must be greater than the offset and greater than the provided start time"))
+			action.Err = err
+			return
+		}
 	}
 
 	action.Err = historyQ.Select(&action.Records, tradeAggregationsQ.GetSql())
