@@ -226,7 +226,6 @@ func (action *TradeAggregateIndexAction) loadRecords() {
 		if err != nil {
 			action.SetInvalidField("start_time", errors.New("illegal start time. adjusted start time must "+
 				"be less than the provided end time if the end time is greater than 0"))
-			action.Err = err
 			return
 		}
 	}
@@ -235,7 +234,6 @@ func (action *TradeAggregateIndexAction) loadRecords() {
 		if err != nil {
 			action.SetInvalidField("end_time", errors.New("illegal end time. adjusted end time "+
 				"must be greater than the offset and greater than the provided start time"))
-			action.Err = err
 			return
 		}
 	}
