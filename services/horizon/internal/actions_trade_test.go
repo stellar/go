@@ -170,11 +170,10 @@ func testTradeAggregationPrices(t *HTTPT, record horizon.TradeAggregation) {
 	testPrice(t, record.Close, record.CloseR)
 }
 
-const second = int64(1000)
-const minute = int64(60 * second)
-const hour = int64(minute * 60)
-const day = int64(24 * hour)
-const week = int64(7 * day)
+const minute = int64(time.Minute / time.Millisecond)
+const hour = int64(time.Hour / time.Millisecond)
+const day = int64(24 * time.Hour / time.Millisecond)
+const week = int64(7 * 24 * time.Hour / time.Millisecond)
 const aggregationPath = "/trade_aggregations"
 
 func TestTradeActions_Aggregation(t *testing.T) {
@@ -461,7 +460,7 @@ func TestTradeActions_AggregationOffset(t *testing.T) {
 			}
 			w := ht.GetWithParams(aggregationPath, q)
 			if ht.Assert.Equal(200, w.Code) {
-				//ht.Assert.PageOf(len(tc.expectedTimestamps), w.Body)
+				ht.Assert.PageOf(len(tc.expectedTimestamps), w.Body)
 				var records []horizon.TradeAggregation
 				ht.UnmarshalPage(w.Body, &records)
 				if len(records) > 0 {
