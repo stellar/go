@@ -1,7 +1,6 @@
 package horizon
 
 import (
-	"fmt"
 	"net/url"
 	"strconv"
 	"strings"
@@ -12,8 +11,8 @@ import (
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	. "github.com/stellar/go/services/horizon/internal/db2/history"
 	. "github.com/stellar/go/services/horizon/internal/test/trades"
-	"github.com/stellar/go/xdr"
 	"github.com/stellar/go/support/render/hal"
+	"github.com/stellar/go/xdr"
 )
 
 func TestTradeActions_Index(t *testing.T) {
@@ -376,22 +375,26 @@ func TestTradeActions_AggregationOrdering(t *testing.T) {
 	}
 }
 
+func assertOfferType(ht *HTTPT, offerId string, idType OfferIDType) {
+	offerIdInt64, _ := strconv.ParseInt(offerId, 10, 64)
+	_, offerType := DecodeOfferID(offerIdInt64)
+	ht.Assert.Equal(offerType, idType)
+}
+
 // TestTradeActions_SyntheticOfferIds loads the offer_ids scenario and ensures that synthetic offer
 // ids are created when necessary and not when unnecessary
 func TestTradeActions_SyntheticOfferIds(t *testing.T) {
 	ht := StartHTTPTest(t, "offer_ids")
 	defer ht.Finish()
 	var records []horizon.Trade
-	synPrefix := byte('O')
 	w := ht.Get("/trades")
 	if ht.Assert.Equal(200, w.Code) {
 		if ht.Assert.PageOf(4, w.Body) {
-			fmt.Println(w.Body.String())
 			ht.UnmarshalPage(w.Body, &records)
-			ht.Assert.Equal(synPrefix, records[0].CounterOfferID[0])
-			ht.Assert.Equal(synPrefix, records[1].CounterOfferID[0])
-			ht.Assert.NotEqual(synPrefix, records[2].CounterOfferID[0])
-			ht.Assert.NotEqual(synPrefix, records[3].CounterOfferID[0])
+			assertOfferType(ht, records[0].CounterOfferID, TOIDType)
+			assertOfferType(ht, records[1].CounterOfferID, TOIDType)
+			assertOfferType(ht, records[2].CounterOfferID, CoreOfferIDType)
+			assertOfferType(ht, records[3].CounterOfferID, CoreOfferIDType)
 		}
 	}
 }

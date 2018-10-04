@@ -87,7 +87,7 @@ This endpoint responds with a list of trades that consumed a given offer. See th
         "base_account": "GDRCFIQAUEFUQ6GXF5DPRO2M77E4UB7RW7EWI2FTKOW7CWYKZCHSI75K",
         "base_amount": "912.6607285",
         "base_asset_type": "native",
-        "counter_offer_id": "O30064775169",   
+        "counter_offer_id": "4611686044197195777",   
         "counter_account": "GCUD7CBKTQI4D7ZR7IKHMGXZKKVABML7XFBHV4AIYBOEN5UQFZ5DSPPT",
         "counter_amount": "16.5200719",
         "counter_asset_type": "credit_alphanum4",

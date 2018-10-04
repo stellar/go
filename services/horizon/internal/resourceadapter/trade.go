@@ -22,13 +22,13 @@ func PopulateTrade(
 	dest.ID = row.PagingToken()
 	dest.PT = row.PagingToken()
 	dest.OfferID = fmt.Sprintf("%d", row.OfferID)
-	dest.BaseOfferID = row.BaseOfferID
+	dest.BaseOfferID = fmt.Sprintf("%d", row.BaseOfferID)
 	dest.BaseAccount = row.BaseAccount
 	dest.BaseAssetType = row.BaseAssetType
 	dest.BaseAssetCode = row.BaseAssetCode
 	dest.BaseAssetIssuer = row.BaseAssetIssuer
 	dest.BaseAmount = amount.String(row.BaseAmount)
-	dest.CounterOfferID = row.CounterOfferID
+	dest.CounterOfferID = fmt.Sprintf("%d", row.CounterOfferID)
 	dest.CounterAccount = row.CounterAccount
 	dest.CounterAssetType = row.CounterAssetType
 	dest.CounterAssetCode = row.CounterAssetCode

@@ -102,7 +102,7 @@ The list of trades. `base` and `counter` in the records will match the asset pai
         "base_account": "GCUODCZAU6CSXEKKWZZNWQXDITIWLWCDK6M4IZ7H5PACLC3QAWEJSOTR",
         "base_amount": "0.0000050",
         "base_asset_type": "native",
-        "counter_offer_id": "O30064775169",   
+        "counter_offer_id": "4611686044197195777",   
         "counter_account": "GBHKUQDYXGK5IEYORI7DZMMXANOIEHHOF364LNT4Q7EWPUL7FOO2SP6D",
         "counter_amount": "0.0000009",
         "counter_asset_type": "credit_alphanum4",

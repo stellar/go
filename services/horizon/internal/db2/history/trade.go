@@ -2,14 +2,12 @@ package history
 
 import (
 	"fmt"
-	"math"
-	"strconv"
-
 	sq "github.com/Masterminds/squirrel"
 	"github.com/stellar/go/services/horizon/internal/db2"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/support/time"
 	"github.com/stellar/go/xdr"
+	"math"
 )
 
 // PagingToken returns a cursor for this trade
@@ -238,22 +236,22 @@ func (q *Q) InsertTrade(
 		return errors.Wrap(err, "failed to get bought asset id")
 	}
 
-	sellOfferId := strconv.FormatUint(uint64(trade.OfferId), 10)
+	sellOfferId := EncodeOfferId(uint64(trade.OfferId), CoreOfferIDType)
 
 	// if there is a buy offer, use it's id's decimal string representation
 	// else, use the operation id's decimal string representation, prefixed with 'O'
-	var buyOfferId string
+	var buyOfferId int64
 	if buyOfferExists {
-		buyOfferId = strconv.FormatUint(uint64(buyOffer.OfferId), 10)
+		buyOfferId = EncodeOfferId(uint64(buyOffer.OfferId), CoreOfferIDType)
 	} else {
-		buyOfferId = "O" + strconv.FormatInt(opid, 10)
+		buyOfferId = EncodeOfferId(uint64(opid), TOIDType)
 	}
 
 	orderPreserved, baseAssetId, counterAssetId := getCanonicalAssetOrder(soldAssetId, boughtAssetId)
 
 	var baseAccountId, counterAccountId int64
 	var baseAmount, counterAmount xdr.Int64
-	var baseOfferId, counterOfferId string
+	var baseOfferId, counterOfferId int64
 
 	if orderPreserved {
 		baseAccountId = sellerAccountId

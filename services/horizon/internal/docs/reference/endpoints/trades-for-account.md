@@ -90,7 +90,7 @@ This endpoint responds with a list of trades that changed a given account's stat
         "base_asset_type": "credit_alphanum4",
         "base_asset_code": "BTC",
         "base_asset_issuer": "GB6FN4C7ZLWKENAOZDLZOQHNIOK4RDMV6EKLR53LWCHEBR6LVXOEKDZH",
-        "counter_offer_id": "O30064775169",
+        "counter_offer_id": "4611686044197195777",
         "counter_account": "GBOOAYCAJIN7YCUUAHEQJJARNQMRUP4P2WXVO6P4KAMAB27NGA3CYTZU",
         "counter_amount": "1.0000000",
         "counter_asset_type": "native",
