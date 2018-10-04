@@ -11,8 +11,8 @@ import (
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	. "github.com/stellar/go/services/horizon/internal/db2/history"
 	. "github.com/stellar/go/services/horizon/internal/test/trades"
-	"github.com/stellar/go/xdr"
 	"github.com/stellar/go/support/render/hal"
+	"github.com/stellar/go/xdr"
 )
 
 func TestTradeActions_Index(t *testing.T) {
@@ -203,7 +203,6 @@ func TestTradeActions_Aggregation(t *testing.T) {
 	q.Add("end_time", strconv.FormatInt(start+hour, 10))
 	q.Add("order", "asc")
 
-
 	//test no resolution provided
 	w := ht.GetWithParams(aggregationPath, q)
 	println(w.Body.String())
@@ -373,4 +372,19 @@ func TestTradeActions_AggregationOrdering(t *testing.T) {
 		ht.Assert.Equal("1.0000000", records[0].Open)
 		ht.Assert.Equal("3.0000000", records[0].Close)
 	}
+}
+
+func TestTradeActions_AssetValidation(t *testing.T) {
+	ht := StartHTTPTest(t, "trades")
+	defer ht.Finish()
+
+	var q = make(url.Values)
+	q.Add("base_asset_type", "native")
+
+	w := ht.GetWithParams("/trades", q)
+	ht.Assert.Equal(400, w.Code)
+
+	extras := ht.UnmarshalExtras(w.Body)
+	ht.Assert.Equal("base_asset_type,counter_asset_type", extras["invalid_field"])
+	ht.Assert.Equal("this endpoint supports asset pairs but only one asset supplied", extras["reason"])
 }
