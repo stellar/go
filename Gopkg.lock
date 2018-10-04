@@ -364,13 +364,6 @@
   revision = "05b81a7d5d38058e42148dc01f17daf4acba4640"
 
 [[projects]]
-  digest = "1:61ab6e2026ba5c17641fa089e464eb62644c3065554799ea575eba8998fa1853"
-  name = "github.com/jtolds/gls"
-  packages = ["."]
-  pruneopts = "T"
-  revision = "9a4a02dbe491bef4bab3c24fd9f3087d6c4c6690"
-
-[[projects]]
   digest = "1:14d434143144f0f4f3e6c8bc6ff035fa2321da997e32b2700085402260658630"
   name = "github.com/klauspost/compress"
   packages = [
@@ -610,27 +603,6 @@
   revision = "68cec9f21fbf3ea8d8f98c044bc6ce05f17b267a"
 
 [[projects]]
-  digest = "1:fe3e17950061ae748dcbf57408ea936931d488ba1f1923fc5c5087c257c7b64a"
-  name = "github.com/smartystreets/assertions"
-  packages = [
-    ".",
-    "internal/oglematchers",
-  ]
-  pruneopts = "T"
-  revision = "22fd8e1982688f4ff04e8e9ec6feae2c2459460d"
-
-[[projects]]
-  digest = "1:8cf3abd1c2595cb7d7598bd80a0b768225d360007dcde05125a36fce9c601e37"
-  name = "github.com/smartystreets/goconvey"
-  packages = [
-    "convey",
-    "convey/gotest",
-    "convey/reporting",
-  ]
-  pruneopts = "T"
-  revision = "ab7641a0db76b0e88765294b1377b026ec01f26b"
-
-[[projects]]
   digest = "1:e4ea18b52dd9211e7e7b551ecaef4c49c274b2d9d5df4a46f70a03281a8b3c45"
   name = "github.com/spf13/cast"
   packages = ["."]
@@ -839,7 +811,6 @@
   packages = ["."]
   pruneopts = "T"
   revision = "57907de300222151a123d29255ed17f5ed43fad3"
-  source = "https://github.com/fatih/set"
 
 [[projects]]
   digest = "1:771526d45c07bce33c1a468c844fd8c438ec94ad9fb660ca74b39e753a2fe76a"
@@ -941,7 +912,6 @@
     "github.com/segmentio/go-loggly",
     "github.com/sirupsen/logrus",
     "github.com/sirupsen/logrus/hooks/test",
-    "github.com/smartystreets/goconvey/convey",
     "github.com/spf13/cobra",
     "github.com/spf13/viper",
     "github.com/stellar/go-xdr/xdr3",
