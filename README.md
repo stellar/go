@@ -15,6 +15,7 @@ To satisfy dependencies and populate the `vendor` directory run:
 $ dep ensure -v
 ```
 
+Note that if this hangs indefinitely on your machine, you might need to check if mercurial is installed.
 
 You can use dep yourself in your project and add stellar go as a vendor'd dependency, or you can just drop this repos as `$GOPATH/src/github.com/stellar/go` to import it the canonical way (you still need to run `dep ensure -v`).
 
