@@ -206,7 +206,7 @@ func initConfig() {
 
 	lf := viper.GetString("log-file")
 	if lf != "" {
-		logFile, err := os.OpenFile(lf, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
+		logFile, err := os.OpenFile(lf, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 		if err == nil {
 			log.DefaultLogger.Logger.Out = logFile
 		} else {
