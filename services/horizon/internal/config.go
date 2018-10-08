@@ -18,6 +18,7 @@ type Config struct {
 	RedisURL               string
 	FriendbotURL           *url.URL
 	LogLevel               logrus.Level
+	LogFile                string
 	SentryDSN              string
 	LogglyTag              string
 	LogglyToken            string

@@ -3,6 +3,7 @@ package main
 import (
 	stdLog "log"
 	"net/url"
+	"os"
 
 	"github.com/PuerkitoBio/throttled"
 	"github.com/sirupsen/logrus"
@@ -34,6 +35,7 @@ func init() {
 	viper.BindEnv("ruby-horizon-url", "RUBY_HORIZON_URL")
 	viper.BindEnv("friendbot-url", "FRIENDBOT_URL")
 	viper.BindEnv("log-level", "LOG_LEVEL")
+	viper.BindEnv("log-file", "LOG_FILE")
 	viper.BindEnv("sentry-dsn", "SENTRY_DSN")
 	viper.BindEnv("loggly-token", "LOGGLY_TOKEN")
 	viper.BindEnv("loggly-tag", "LOGGLY_TAG")
@@ -103,6 +105,12 @@ func init() {
 		"log-level",
 		"info",
 		"Minimum log severity (debug, info, warn, error) to log",
+	)
+
+	rootCmd.PersistentFlags().String(
+		"log-file",
+		"",
+		"Name of the file where logs will be saved (leave empty to send logs to stdout)",
 	)
 
 	rootCmd.PersistentFlags().String(
@@ -196,6 +204,16 @@ func initConfig() {
 
 	log.DefaultLogger.Level = ll
 
+	lf := viper.GetString("log-file")
+	if lf != "" {
+		logFile, err := os.OpenFile(lf, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+		if err == nil {
+			log.DefaultLogger.Logger.Out = logFile
+		} else {
+			stdLog.Fatal("Failed to log to file")
+		}
+	}
+
 	cert, key := viper.GetString("tls-cert"), viper.GetString("tls-key")
 
 	switch {
@@ -223,6 +241,7 @@ func initConfig() {
 		RedisURL:                      viper.GetString("redis-url"),
 		FriendbotURL:                  friendbotURL,
 		LogLevel:                      ll,
+		LogFile:                       lf,
 		SentryDSN:                     viper.GetString("sentry-dsn"),
 		LogglyToken:                   viper.GetString("loggly-token"),
 		LogglyTag:                     viper.GetString("loggly-tag"),
