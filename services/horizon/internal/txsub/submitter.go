@@ -8,6 +8,7 @@ import (
 	"github.com/stellar/go/clients/stellarcore"
 	proto "github.com/stellar/go/protocols/stellarcore"
 	"github.com/stellar/go/support/errors"
+	"github.com/stellar/go/support/log"
 )
 
 // NewDefaultSubmitter returns a new, simple Submitter implementation
@@ -19,6 +20,7 @@ func NewDefaultSubmitter(h *http.Client, url string) Submitter {
 			HTTP: h,
 			URL:  url,
 		},
+		Log: log.DefaultLogger.WithField("service", "txsub.submitter"),
 	}
 }
 
@@ -27,13 +29,20 @@ func NewDefaultSubmitter(h *http.Client, url string) Submitter {
 // configured http client.
 type submitter struct {
 	StellarCore *stellarcore.Client
+	Log         *log.Entry
 }
 
 // Submit sends the provided envelope to stellar-core and parses the response into
 // a SubmissionResult
 func (sub *submitter) Submit(ctx context.Context, env string) (result SubmissionResult) {
 	start := time.Now()
-	defer func() { result.Duration = time.Since(start) }()
+	defer func() {
+		result.Duration = time.Since(start)
+		sub.Log.Ctx(ctx).WithFields(log.F{
+			"err":      result.Err,
+			"duration": result.Duration.Seconds(),
+		}).Info("Submitter result")
+	}()
 
 	cresp, err := sub.StellarCore.SubmitTransaction(ctx, env)
 	if err != nil {

@@ -6,8 +6,6 @@ import (
 	"fmt"
 	"net/http"
 	"sync"
-
-	"github.com/stellar/go/support/log"
 )
 
 // Event is the packet of data that gets sent over the wire to a connected
@@ -35,6 +33,8 @@ type Eventable interface {
 // Pumped returns a channel that will be closed the next time the input pump
 // sends.  It can be used similar to `ctx.Done()`, like so:  `<-sse.Pumped()`
 func Pumped() <-chan struct{} {
+	lock.Lock()
+	defer lock.Unlock()
 	return nextTick
 }
 
@@ -46,6 +46,13 @@ func Tick() {
 	nextTick = make(chan struct{})
 	lock.Unlock()
 	close(prev)
+}
+
+// WriteHeartbeat sends a data-only message containing a heartbeat comment, which is ignored
+// by clients since it starts with a colon character. It serves as a keep-alive message.
+func WriteHeartbeat(w http.ResponseWriter) {
+	fmt.Fprint(w, ":heartbeat\n\n")
+	w.(http.Flusher).Flush()
 }
 
 // WritePreamble prepares this http connection for streaming using Server Sent
@@ -79,7 +86,6 @@ func WriteEvent(ctx context.Context, w http.ResponseWriter, e Event) {
 		fmt.Fprint(w, "event: err\n")
 		fmt.Fprintf(w, "data: %s\n\n", e.Error.Error())
 		w.(http.Flusher).Flush()
-		log.Ctx(ctx).Error(e.Error)
 		return
 	}
 
@@ -119,8 +125,10 @@ var helloEvent = Event{
 	Retry: 1000,
 }
 
-var lock sync.Mutex
-var nextTick chan struct{}
+var (
+	lock     sync.Mutex
+	nextTick = make(chan struct{})
+)
 
 func getJSON(val interface{}) string {
 	js, err := json.Marshal(val)
@@ -130,10 +138,4 @@ func getJSON(val interface{}) string {
 	}
 
 	return string(js)
-}
-
-func init() {
-	lock.Lock()
-	nextTick = make(chan struct{})
-	lock.Unlock()
 }

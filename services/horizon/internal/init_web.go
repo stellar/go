@@ -143,15 +143,23 @@ func initWebActions(app *App) {
 	r.Post("/transactions", TransactionCreateAction{}.Handle)
 	r.Get("/paths", PathIndexAction{}.Handle)
 
-	// Asset related endpoints
-	r.Get("/assets", AssetsAction{}.Handle)
-	// friendbot
-	redirectFriendbot := func(w http.ResponseWriter, r *http.Request) {
-		redirectURL := app.config.FriendbotURL.String() + "?" + r.URL.RawQuery
-		http.Redirect(w, r, redirectURL, http.StatusTemporaryRedirect)
+	if !app.config.DisableAssetStats {
+		// Asset related endpoints
+		r.Get("/assets", AssetsAction{}.Handle)
 	}
-	r.Post("/friendbot", redirectFriendbot)
-	r.Get("/friendbot", redirectFriendbot)
+
+	// Network state related endpoints
+	r.Get("/operation_fee_stats", OperationFeeStatsAction{}.Handle)
+
+	// friendbot
+	if app.config.FriendbotURL != nil {
+		redirectFriendbot := func(w http.ResponseWriter, r *http.Request) {
+			redirectURL := app.config.FriendbotURL.String() + "?" + r.URL.RawQuery
+			http.Redirect(w, r, redirectURL, http.StatusTemporaryRedirect)
+		}
+		r.Post("/friendbot", redirectFriendbot)
+		r.Get("/friendbot", redirectFriendbot)
+	}
 
 	r.NotFound(NotFoundAction{}.Handle)
 }

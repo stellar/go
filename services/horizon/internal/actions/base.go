@@ -1,11 +1,14 @@
 package actions
 
 import (
+	"database/sql"
 	"net/http"
 
 	"github.com/stellar/go/services/horizon/internal/render"
 	hProblem "github.com/stellar/go/services/horizon/internal/render/problem"
 	"github.com/stellar/go/services/horizon/internal/render/sse"
+	"github.com/stellar/go/support/errors"
+	"github.com/stellar/go/support/log"
 	"github.com/stellar/go/support/render/problem"
 )
 
@@ -56,22 +59,35 @@ func (base *Base) Execute(action interface{}) {
 			goto NotAcceptable
 		}
 
-		stream := sse.NewStream(ctx, base.W, base.R)
+		stream := sse.NewStream(ctx, base.W)
 
 		for {
 			action.SSE(stream)
 
 			if base.Err != nil {
-				// in the case that we haven't yet sent an event, is also means we
-				// havent sent the preamble, meaning we should simply return the normal
+				// In the case that we haven't yet sent an event, is also means we
+				// haven't sent the preamble, meaning we should simply return the normal HTTP
 				// error.
 				if stream.SentCount() == 0 {
 					problem.Render(ctx, base.W, base.Err)
 					return
 				}
 
+				if errors.Cause(base.Err) == sql.ErrNoRows {
+					base.Err = errors.New("Object not found")
+				} else {
+					log.Ctx(ctx).Error(base.Err)
+					base.Err = errors.New("Unexpected stream error")
+				}
+
+				// Send errors through the stream and then close the stream.
 				stream.Err(base.Err)
 			}
+
+			// Manually send the preamble in case there are no data events in SSE to trigger a stream.Send call.
+			// This method is called every iteration of the loop, but is protected by a sync.Once variable so it's
+			// only executed once.
+			stream.Init()
 
 			if stream.IsDone() {
 				return
@@ -79,6 +95,7 @@ func (base *Base) Execute(action interface{}) {
 
 			select {
 			case <-ctx.Done():
+				stream.Done() // Call Done on the stream so that it doesn't send any more heartbeats.
 				return
 			case <-sse.Pumped():
 				//no-op, continue onto the next iteration

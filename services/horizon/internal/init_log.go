@@ -2,13 +2,15 @@ package horizon
 
 import (
 	"github.com/getsentry/raven-go"
-	"github.com/stellar/go/services/horizon/internal/log"
+	"github.com/stellar/go/services/horizon/internal/logmetrics"
+	"github.com/stellar/go/support/log"
 )
 
 // initLog initialized the logging subsystem, attaching app.log and
 // app.logMetrics.  It also configured the logger's level using Config.LogLevel.
 func initLog(app *App) {
 	log.DefaultLogger.Logger.Level = app.config.LogLevel
+	log.DefaultLogger.Logger.Hooks.Add(logmetrics.DefaultMetrics)
 }
 
 // initSentry initialized the default sentry client with the configured DSN
@@ -33,8 +35,8 @@ func initLogglyLog(app *App) {
 	}
 
 	log.WithFields(log.F{
-		"token":       app.config.LogglyToken,
-		"tag": app.config.LogglyTag,
+		"token": app.config.LogglyToken,
+		"tag":   app.config.LogglyTag,
 	}).Info("Initializing loggly hook")
 
 	hook := log.NewLogglyHook(app.config.LogglyToken, app.config.LogglyTag)
