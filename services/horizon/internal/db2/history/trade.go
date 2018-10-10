@@ -2,12 +2,13 @@ package history
 
 import (
 	"fmt"
+	"math"
+
 	sq "github.com/Masterminds/squirrel"
 	"github.com/stellar/go/services/horizon/internal/db2"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/support/time"
 	"github.com/stellar/go/xdr"
-	"math"
 )
 
 // PagingToken returns a cursor for this trade
@@ -54,7 +55,7 @@ func (q *Q) TradesForAssetPair(baseAssetId int64, counterAssetId int64) *TradesQ
 }
 
 // ForOffer filters the query results by the offer id.
-func (q *TradesQ) ForOffer(id string) *TradesQ {
+func (q *TradesQ) ForOffer(id int64) *TradesQ {
 	q.sql = q.sql.Where("(htrd.base_offer_id = ? OR htrd.counter_offer_id = ?)", id, id)
 	return q
 }
@@ -238,8 +239,8 @@ func (q *Q) InsertTrade(
 
 	sellOfferId := EncodeOfferId(uint64(trade.OfferId), CoreOfferIDType)
 
-	// if there is a buy offer, use it's id's decimal string representation
-	// else, use the operation id's decimal string representation, prefixed with 'O'
+	// if the buy offer exists, encode the stellar core generated id as the offer id
+	// if not, encode the toid as the offer id
 	var buyOfferId int64
 	if buyOfferExists {
 		buyOfferId = EncodeOfferId(uint64(buyOffer.OfferId), CoreOfferIDType)
@@ -267,7 +268,7 @@ func (q *Q) InsertTrade(
 		counterAmount = trade.AmountSold
 		baseOfferId = buyOfferId
 		counterOfferId = sellOfferId
-		sellPrice = xdr.Price{N: sellPrice.D, D: sellPrice.N}
+		sellPrice.Invert()
 	}
 
 	sql := tradesInsert.Values(
