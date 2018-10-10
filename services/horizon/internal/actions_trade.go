@@ -115,7 +115,7 @@ func (action *TradeIndexAction) loadRecords() {
 		}
 	}
 
-	if action.OfferFilter > int64(0) {
+	if action.OfferFilter != 0 {
 		trades = trades.ForOffer(action.OfferFilter)
 	}
 

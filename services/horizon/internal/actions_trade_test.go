@@ -376,6 +376,31 @@ func TestTradeActions_AggregationOrdering(t *testing.T) {
 	}
 }
 
+
+func assertOfferType(ht *HTTPT, offerId string, idType OfferIDType) {
+	offerIdInt64, _ := strconv.ParseInt(offerId, 10, 64)
+	_, offerType := DecodeOfferID(offerIdInt64)
+	ht.Assert.Equal(offerType, idType)
+}
+
+// TestTradeActions_SyntheticOfferIds loads the offer_ids scenario and ensures that synthetic offer
+// ids are created when necessary and not when unnecessary
+func TestTradeActions_SyntheticOfferIds(t *testing.T) {
+	ht := StartHTTPTest(t, "offer_ids")
+	defer ht.Finish()
+	var records []horizon.Trade
+	w := ht.Get("/trades")
+	if ht.Assert.Equal(200, w.Code) {
+		if ht.Assert.PageOf(4, w.Body) {
+			ht.UnmarshalPage(w.Body, &records)
+			assertOfferType(ht, records[0].CounterOfferID, TOIDType)
+			assertOfferType(ht, records[1].CounterOfferID, TOIDType)
+			assertOfferType(ht, records[2].CounterOfferID, CoreOfferIDType)
+			assertOfferType(ht, records[3].CounterOfferID, CoreOfferIDType)
+		}
+	}
+}
+
 func TestTradeActions_AssetValidation(t *testing.T) {
 	ht := StartHTTPTest(t, "trades")
 	defer ht.Finish()
