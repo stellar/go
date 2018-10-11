@@ -23,7 +23,7 @@ func PopulateTrade(
 	dest.OfferID = fmt.Sprintf("%d", row.OfferID)
 	dest.BaseOfferID = ""
 	if row.BaseOfferID != nil {
-		dest.BaseOfferID = fmt.Sprintf("%d", row.BaseOfferID)
+		dest.BaseOfferID = fmt.Sprintf("%d", *row.BaseOfferID)
 	}
 	dest.BaseAccount = row.BaseAccount
 	dest.BaseAssetType = row.BaseAssetType
@@ -32,7 +32,7 @@ func PopulateTrade(
 	dest.BaseAmount = amount.String(row.BaseAmount)
 	dest.CounterOfferID = ""
 	if row.CounterOfferID != nil {
-		dest.CounterOfferID = fmt.Sprintf("%d", row.CounterOfferID)
+		dest.CounterOfferID = fmt.Sprintf("%d", *row.CounterOfferID)
 	}
 	dest.CounterAccount = row.CounterAccount
 	dest.CounterAssetType = row.CounterAssetType
