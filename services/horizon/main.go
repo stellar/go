@@ -48,6 +48,7 @@ func init() {
 	viper.BindEnv("skip-cursor-update", "SKIP_CURSOR_UPDATE")
 	viper.BindEnv("disable-asset-stats", "DISABLE_ASSET_STATS")
 	viper.BindEnv("allow-empty-ledger-data-responses", "ALLOW_EMPTY_LEDGER_DATA_RESPONSES")
+	viper.BindEnv("max-path-length", "MAX_PATH_LENGTH")
 
 	rootCmd = &cobra.Command{
 		Use:   "horizon",
@@ -167,6 +168,12 @@ func init() {
 		"the maximum number of ledgers the history db is allowed to be out of date from the connected stellar-core db before horizon considers history stale",
 	)
 
+	rootCmd.PersistentFlags().Uint(
+		"max-path-length",
+		4,
+		"the maximum number of assets on the path in `/paths` endpoint",
+	)
+
 	rootCmd.AddCommand(dbCmd)
 
 	viper.BindPFlags(rootCmd.PersistentFlags())
@@ -242,6 +249,7 @@ func initConfig() {
 		FriendbotURL:                  friendbotURL,
 		LogLevel:                      ll,
 		LogFile:                       lf,
+		MaxPathLength:                 uint(viper.GetInt("max-path-length")),
 		SentryDSN:                     viper.GetString("sentry-dsn"),
 		LogglyToken:                   viper.GetString("loggly-token"),
 		LogglyTag:                     viper.GetString("loggly-tag"),

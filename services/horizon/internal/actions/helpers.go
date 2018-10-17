@@ -237,11 +237,29 @@ func (base *Base) GetAccountID(name string) (result xdr.AccountId) {
 // conventions
 func (base *Base) GetAmount(name string) (result xdr.Int64) {
 	var err error
-	result, err = amount.Parse(base.GetString("destination_amount"))
+	result, err = amount.Parse(base.GetString(name))
 
 	if err != nil {
 		base.SetInvalidField(name, err)
 		return
+	}
+
+	return
+}
+
+// GetPositiveAmount returns a native amount (i.e. 64-bit integer) by parsing
+// the string at the provided name in accordance with the stellar client
+// conventions. Renders error for negative amounts and zero.
+func (base *Base) GetPositiveAmount(name string) (result xdr.Int64) {
+	result = base.GetAmount(name)
+
+	if base.Err != nil {
+		return
+	}
+
+	if result <= 0 {
+		base.SetInvalidField(name, errors.New("Value must be positive"))
+		return xdr.Int64(0)
 	}
 
 	return
