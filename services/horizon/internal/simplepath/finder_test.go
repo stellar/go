@@ -145,7 +145,7 @@ func TestFinder(t *testing.T) {
 	}
 	p, err = finder.Find(query, MaxPathLength)
 	if tt.Assert.NoError(err) {
-		tt.Assert.Len(p, 0)
+		tt.Assert.Len(p, 1)
 
 		tt.Assert.Equal(p[0].Source.String(), aaa.String())
 		tt.Assert.Equal(p[0].Destination.String(), ccc.String())
