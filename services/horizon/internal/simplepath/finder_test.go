@@ -129,8 +129,8 @@ func TestFinder(t *testing.T) {
 	// offer :trader, {for:["AAA", :gateway], sell:["BBB", :gateway]}, 1, 11
 	// offer :trader, {for:["BBB", :gateway], sell:["CCC", :gateway]}, 10, 0.1
 	//
-	// For such order books the old algorithm would not find a path as it would not be
-	// possible to buy 1 BBB for 10 AAA and 1 BBB is needed to buy 10 CCC.
+	// For such order books the old algorithm would not find a path as it is not
+	// possible to buy 1 BBB with 10 AAA and 1 BBB is needed to buy 10 CCC.
 	aaa := makeAsset(
 		xdr.AssetTypeAssetTypeCreditAlphanum4,
 		"AAA",
