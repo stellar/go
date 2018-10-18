@@ -1,6 +1,7 @@
 package simplepath
 
 import (
+	"github.com/stellar/go/services/horizon/internal/db2/core"
 	"github.com/stellar/go/services/horizon/internal/paths"
 	"github.com/stellar/go/xdr"
 )
@@ -21,7 +22,7 @@ const MaxPathLength uint = 7
 //
 type search struct {
 	Query     paths.Query
-	Finder    *Finder
+	Q         *core.Q
 	MaxLength uint
 
 	// Fields below are initialized by a call to Init() after
@@ -57,10 +58,11 @@ func (s *search) Init() {
 	p0 := pathNode{
 		Asset: s.Query.DestinationAsset,
 		Tail:  nil,
-		Q:     s.Finder.Q,
+		Q:     s.Q,
 		Depth: 1,
 	}
 	var c0 xdr.Int64
+	// `Cost` on destination node does not use DB connection.
 	c0, s.Err = p0.Cost(s.Query.DestinationAmount)
 	if s.Err != nil {
 		return
@@ -91,6 +93,22 @@ func (s *search) Run() {
 	if s.Err != nil {
 		return
 	}
+
+	// db.Session does not provide a way to start a transaction with a
+	// specific isolation level. We need REPEATABLE READ here to have a
+	// stable view of the offers table. Without it, it's possible that
+	// search started in ledger X and finished in ledger X+1 would give
+	// invalid results.
+	//
+	// https://www.postgresql.org/docs/9.1/static/transaction-iso.html
+	// > Note that only updating transactions might need to be retried;
+	// > read-only transactions will never have serialization conflicts.
+	_, s.Err = s.Q.ExecRaw("BEGIN ISOLATION LEVEL REPEATABLE READ, READ ONLY")
+	if s.Err != nil {
+		return
+	}
+
+	defer s.Q.ExecRaw("ROLLBACK")
 
 	for s.hasMore() {
 		s.runOnce()
@@ -144,7 +162,7 @@ func (s *search) runOnce() {
 func (s *search) extendSearch(p pathNode) {
 	// find connected assets
 	var connected []xdr.Asset
-	s.Err = s.Finder.Q.ConnectedAssets(&connected, p.Asset)
+	s.Err = s.Q.ConnectedAssets(&connected, p.Asset)
 	if s.Err != nil {
 		return
 	}
@@ -168,7 +186,7 @@ func (s *search) extendSearch(p pathNode) {
 		newPath := pathNode{
 			Asset: a,
 			Tail:  &p,
-			Q:     s.Finder.Q,
+			Q:     s.Q,
 			Depth: p.Depth + 1,
 		}
 

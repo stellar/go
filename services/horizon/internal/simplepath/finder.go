@@ -42,7 +42,7 @@ func (f *Finder) Find(q paths.Query, maxLength uint) (result []paths.Path, err e
 
 	s := &search{
 		Query:     q,
-		Finder:    f,
+		Q:         &core.Q{f.Q.Clone()},
 		MaxLength: maxLength,
 	}
 
