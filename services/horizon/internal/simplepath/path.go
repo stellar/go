@@ -127,17 +127,6 @@ func (p *pathNode) Cost(amount xdr.Int64) (xdr.Int64, error) {
 	return result, nil
 }
 
-// Flatten walks the list and returns a slice of assets
-func (p *pathNode) Flatten() []xdr.Asset {
-	result := []xdr.Asset{}
-	cur := p
-	for cur != nil {
-		result = append(result, cur.Asset)
-		cur = cur.Tail
-	}
-	return result
-}
-
 func (p *pathNode) OrderBook() *orderBook {
 	if p.Tail == nil {
 		return nil
@@ -148,4 +137,15 @@ func (p *pathNode) OrderBook() *orderBook {
 		Buying:  p.Asset,      // offer is buying this asset
 		Q:       p.Q,
 	}
+}
+
+// Flatten walks the list and returns a slice of assets
+func (p *pathNode) Flatten() []xdr.Asset {
+	result := []xdr.Asset{}
+	cur := p
+	for cur != nil {
+		result = append(result, cur.Asset)
+		cur = cur.Tail
+	}
+	return result
 }

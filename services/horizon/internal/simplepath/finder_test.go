@@ -119,11 +119,18 @@ func TestFinder(t *testing.T) {
 		tt.Assert.Len(p, 2)
 	}
 
-	// Extreme example to test the order of trades.
-	// In the past the order of trades was reversed. While it worked for some
-	// paths, for others it introduced rounding errors that accumulated with each
-	// trade.
-	// For example, the previous code would calculate the cost = 23 instead of 1.
+	// In the past the order of trades was reversed, ex. the first trade was to sell
+	// destination amount, selling source, buying second asset on the path. The algorithm
+	// like this is wrong.
+	//
+	// Consider the following path: AAA -> BBB -> CCC, destination amount = 10 and the
+	// following offers:
+	//
+	// offer :trader, {for:["AAA", :gateway], sell:["BBB", :gateway]}, 1, 11
+	// offer :trader, {for:["BBB", :gateway], sell:["CCC", :gateway]}, 10, 0.1
+	//
+	// For such order books the old algorithm would not find a path as it would not be
+	// possible to buy 1 BBB for 10 AAA and 1 BBB is needed to buy 10 CCC.
 	aaa := makeAsset(
 		xdr.AssetTypeAssetTypeCreditAlphanum4,
 		"AAA",
@@ -140,18 +147,18 @@ func TestFinder(t *testing.T) {
 	query = paths.Query{
 		DestinationAddress: "GDSBCQO34HWPGUGQSP3QBFEXVTSR2PW46UIGTHVWGWJGQKH3AFNHXHXN",
 		DestinationAsset:   ccc,
-		DestinationAmount:  xdr.Int64(10000000), // 1.0
+		DestinationAmount:  xdr.Int64(100000000), // 10.0
 		SourceAssets:       []xdr.Asset{aaa},
 	}
 	p, err = finder.Find(query, MaxPathLength)
 	if tt.Assert.NoError(err) {
-		tt.Assert.Len(p, 1)
-
-		tt.Assert.Equal(p[0].Source.String(), aaa.String())
-		tt.Assert.Equal(p[0].Destination.String(), ccc.String())
-		tt.Assert.Equal(p[0].Cost, xdr.Int64(1))
-		if tt.Assert.Len(p[0].Path, 1) {
-			tt.Assert.Equal(p[0].Path[0].String(), bbb.String())
+		if tt.Assert.Len(p, 1) {
+			tt.Assert.Equal(p[0].Source.String(), aaa.String())
+			tt.Assert.Equal(p[0].Destination.String(), ccc.String())
+			tt.Assert.Equal(p[0].Cost, xdr.Int64(110000000)) // 11.0
+			if tt.Assert.Len(p[0].Path, 1) {
+				tt.Assert.Equal(p[0].Path[0].String(), bbb.String())
+			}
 		}
 	}
 }

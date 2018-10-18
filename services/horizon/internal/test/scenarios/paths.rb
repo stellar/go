@@ -75,7 +75,5 @@ offer :trader, {for:["33", :gateway], sell:["EUR", :gateway]}, 40, 2.0
 
 offer :gateway, {for:["USD", :gateway], sell: :native}, 1000, 0.1
 
-offer :trader, {for:["AAA", :gateway], sell:["BBB", :gateway]}, 1000, 0.000000001
-
-offer :trader, {for:["CCC", :gateway], sell:["BBB", :gateway]}, 1000, 0.2723872874673626473826483
-offer :trader, {for:["BBB", :gateway], sell:["CCC", :gateway]}, 1000, 22.12345678
+offer :trader, {for:["AAA", :gateway], sell:["BBB", :gateway]}, 1, 11
+offer :trader, {for:["BBB", :gateway], sell:["CCC", :gateway]}, 10, 0.1
