@@ -1,9 +1,14 @@
 package simplepath
 
 import (
+	"github.com/stellar/go/services/horizon/internal/db2/core"
 	"github.com/stellar/go/services/horizon/internal/paths"
 	"github.com/stellar/go/xdr"
 )
+
+// MaxPathLength is a maximum path length as defined in XDR file (includes source and
+// destination assets).
+const MaxPathLength uint = 7
 
 // search represents a single query against the simple finder.  It provides
 // a place to store the results of the query, mostly for the purposes of code
@@ -16,14 +21,14 @@ import (
 // 3.  Call Run() to perform the search.
 //
 type search struct {
-	Query  paths.Query
-	Finder *Finder
+	Query     paths.Query
+	Q         *core.Q
+	MaxLength uint
 
 	// Fields below are initialized by a call to Init() after
 	// setting the fields above
 	queue   []computedNode
 	targets map[string]bool
-	visited map[string]bool
 
 	//This fields below are initialized after the search is run
 	Err     error
@@ -53,9 +58,11 @@ func (s *search) Init() {
 	p0 := pathNode{
 		Asset: s.Query.DestinationAsset,
 		Tail:  nil,
-		Q:     s.Finder.Q,
+		Q:     s.Q,
+		Depth: 1,
 	}
 	var c0 xdr.Int64
+	// `Cost` on destination node does not use DB connection.
 	c0, s.Err = p0.Cost(s.Query.DestinationAmount)
 	if s.Err != nil {
 		return
@@ -76,7 +83,6 @@ func (s *search) Init() {
 		s.targets[a.String()] = true
 	}
 
-	s.visited = map[string]bool{}
 	s.Err = nil
 	s.Results = nil
 }
@@ -87,6 +93,22 @@ func (s *search) Run() {
 	if s.Err != nil {
 		return
 	}
+
+	// db.Session does not provide a way to start a transaction with a
+	// specific isolation level. We need REPEATABLE READ here to have a
+	// stable view of the offers table. Without it, it's possible that
+	// search started in ledger X and finished in ledger X+1 would give
+	// invalid results.
+	//
+	// https://www.postgresql.org/docs/9.1/static/transaction-iso.html
+	// > Note that only updating transactions might need to be retried;
+	// > read-only transactions will never have serialization conflicts.
+	_, s.Err = s.Q.ExecRaw("BEGIN ISOLATION LEVEL REPEATABLE READ, READ ONLY")
+	if s.Err != nil {
+		return
+	}
+
+	defer s.Q.ExecRaw("ROLLBACK")
 
 	for s.hasMore() {
 		s.runOnce()
@@ -120,17 +142,6 @@ func (s *search) isTarget(id string) bool {
 	return found
 }
 
-// shouldVisit returns true if the asset id provided has not been
-// visited on this search, after marking the id as visited
-func (s *search) shouldVisit(id string) bool {
-	if _, found := s.visited[id]; found {
-		return false
-	}
-
-	s.visited[id] = true
-	return true
-}
-
 // runOnce processes the head of the search queue, findings results
 // and extending the search as necessary.
 func (s *search) runOnce() {
@@ -141,14 +152,7 @@ func (s *search) runOnce() {
 		s.Results = append(s.Results, cur.asPath())
 	}
 
-	if !s.shouldVisit(id) {
-		return
-	}
-
-	// A PathPaymentOp's path cannot be over 5 elements in length, and so
-	// we abort our search if the current linked list is over 7 (since the list
-	// includes both source and destination in addition to the path)
-	if cur.path.Depth() > 7 {
+	if cur.path.Depth == s.MaxLength {
 		return
 	}
 
@@ -158,16 +162,32 @@ func (s *search) runOnce() {
 func (s *search) extendSearch(p pathNode) {
 	// find connected assets
 	var connected []xdr.Asset
-	s.Err = s.Finder.Q.ConnectedAssets(&connected, p.Asset)
+	s.Err = s.Q.ConnectedAssets(&connected, p.Asset)
 	if s.Err != nil {
 		return
 	}
 
 	for _, a := range connected {
+		// If asset already exists on the path, continue to the next one.
+		// We don't want the same asset on the path twice as buying and
+		// then selling the asset will be a bad deal in most cases
+		// (especially A -> B -> A trades).
+		if p.IsOnPath(a) {
+			continue
+		}
+
+		// If the connected asset is not our target and the current length
+		// of the path is MaxLength-1 then it does not make sense to extend
+		// such path.
+		if p.Depth == s.MaxLength-1 && !s.isTarget(a.String()) {
+			continue
+		}
+
 		newPath := pathNode{
 			Asset: a,
 			Tail:  &p,
-			Q:     s.Finder.Q,
+			Q:     s.Q,
+			Depth: p.Depth + 1,
 		}
 
 		var hasEnough bool

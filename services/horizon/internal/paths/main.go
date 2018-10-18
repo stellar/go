@@ -23,5 +23,6 @@ type Path struct {
 
 // Finder finds paths.
 type Finder interface {
-	Find(Query) ([]Path, error)
+	// Returns path for a Query of a maximum length `maxLength`
+	Find(q Query, maxLength uint) ([]Path, error)
 }

@@ -179,6 +179,54 @@ func TestGetInt64(t *testing.T) {
 	tt.Assert.Equal(int64(math.MinInt64), result)
 }
 
+func TestAmount(t *testing.T) {
+	tt := test.Start(t)
+	defer tt.Finish()
+	action := makeTestAction()
+
+	result := action.GetAmount("minus_one")
+	tt.Assert.NoError(action.Err)
+	tt.Assert.Equal(xdr.Int64(-10000000), result)
+
+	result = action.GetAmount("zero")
+	tt.Assert.NoError(action.Err)
+	tt.Assert.Equal(xdr.Int64(0), result)
+
+	result = action.GetAmount("two")
+	tt.Assert.NoError(action.Err)
+	tt.Assert.Equal(xdr.Int64(20000000), result)
+
+	result = action.GetAmount("twenty")
+	tt.Assert.NoError(action.Err)
+	tt.Assert.Equal(xdr.Int64(200000000), result)
+}
+
+func TestPositiveAmount(t *testing.T) {
+	tt := test.Start(t)
+	defer tt.Finish()
+	action := makeTestAction()
+
+	result := action.GetPositiveAmount("minus_one")
+	tt.Assert.Error(action.Err)
+	tt.Assert.Equal(xdr.Int64(0), result)
+	action.Err = nil
+
+	result = action.GetPositiveAmount("zero")
+	tt.Assert.Error(action.Err)
+	tt.Assert.Equal(xdr.Int64(0), result)
+	action.Err = nil
+
+	result = action.GetPositiveAmount("two")
+	tt.Assert.NoError(action.Err)
+	tt.Assert.Equal(xdr.Int64(20000000), result)
+	action.Err = nil
+
+	result = action.GetPositiveAmount("twenty")
+	tt.Assert.NoError(action.Err)
+	tt.Assert.Equal(xdr.Int64(200000000), result)
+	action.Err = nil
+}
+
 func TestGetLimit(t *testing.T) {
 	tt := test.Start(t)
 	defer tt.Finish()
@@ -310,8 +358,10 @@ func makeAction(path string, body map[string]string) *Base {
 func testURLParams() map[string]string {
 	return map[string]string{
 		"blank":                "",
+		"minus_one":            "-1",
 		"zero":                 "0",
 		"two":                  "2",
+		"twenty":               "20",
 		"32min":                fmt.Sprint(math.MinInt32),
 		"32max":                fmt.Sprint(math.MaxInt32),
 		"64min":                fmt.Sprint(math.MinInt64),

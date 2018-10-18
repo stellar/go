@@ -10,9 +10,11 @@ import (
 
 // pathNode represents a path as a linked list pointing from source to destination
 type pathNode struct {
-	Asset xdr.Asset
-	Tail  *pathNode
-	Q     *core.Q
+	Asset      xdr.Asset
+	Tail       *pathNode
+	Q          *core.Q
+	CachedCost *xdr.Int64
+	Depth      uint
 }
 
 func (p *pathNode) String() string {
@@ -42,6 +44,23 @@ func (p *pathNode) Destination() xdr.Asset {
 	return cur.Asset
 }
 
+// IsOnPath returns true if a given asset is in the path.
+func (p *pathNode) IsOnPath(asset xdr.Asset) bool {
+	cur := p
+	for cur.Tail != nil {
+		if asset.Equals(cur.Asset) {
+			return true
+		}
+		cur = cur.Tail
+	}
+
+	if asset.Equals(cur.Asset) {
+		return true
+	}
+
+	return false
+}
+
 // Source returns the source asset in the pathNode
 func (p *pathNode) Source() xdr.Asset {
 	// the destination for path is the head of the linked list
@@ -68,40 +87,44 @@ func (p *pathNode) Cost(amount xdr.Int64) (xdr.Int64, error) {
 		return amount, nil
 	}
 
-	result := amount
-	var err error
+	if p.CachedCost != nil {
+		return *p.CachedCost, nil
+	}
+
+	// The first element of the current path is the current source asset.
+	// The last element (with `Tail` = nil) of the current path is the destination
+	// asset. To make the calculations correct we start by selling destination
+	// asset to the second from the end asset and continue until we reach the current
+	// source asset.
 	cur := p
+	stack := make([]*pathNode, 0, p.Depth)
 	for cur.Tail != nil {
+		stack = append(stack, cur)
+		cur = cur.Tail
+	}
+
+	var err error
+	result := amount
+
+	for i := len(stack) - 1; i >= 0; i-- {
+		cur = stack[i]
+
+		if cur.CachedCost != nil {
+			result = *cur.CachedCost
+			continue
+		}
+
 		ob := cur.OrderBook()
 		result, err = ob.CostToConsumeLiquidity(result)
 		if err != nil {
 			return result, err
 		}
-		cur = cur.Tail
 	}
+
+	// Cache the result
+	cur.CachedCost = &result
+
 	return result, nil
-}
-
-// Depth returns the length of the list
-func (p *pathNode) Depth() int {
-	depth := 0
-	cur := p
-	for cur != nil {
-		cur = cur.Tail
-		depth++
-	}
-	return depth
-}
-
-// Flatten walks the list and returns a slice of assets
-func (p *pathNode) Flatten() []xdr.Asset {
-	result := []xdr.Asset{}
-	cur := p
-	for cur != nil {
-		result = append(result, cur.Asset)
-		cur = cur.Tail
-	}
-	return result
 }
 
 func (p *pathNode) OrderBook() *orderBook {
@@ -114,4 +137,15 @@ func (p *pathNode) OrderBook() *orderBook {
 		Buying:  p.Asset,      // offer is buying this asset
 		Q:       p.Q,
 	}
+}
+
+// Flatten walks the list and returns a slice of assets
+func (p *pathNode) Flatten() []xdr.Asset {
+	result := []xdr.Asset{}
+	cur := p
+	for cur != nil {
+		result = append(result, cur.Asset)
+		cur = cur.Tail
+	}
+	return result
 }
