@@ -94,21 +94,24 @@ func (s *search) Run() {
 		return
 	}
 
-	// db.Session does not provide a way to start a transaction with a
-	// specific isolation level. We need REPEATABLE READ here to have a
-	// stable view of the offers table. Without it, it's possible that
-	// search started in ledger X and finished in ledger X+1 would give
-	// invalid results.
-	//
-	// https://www.postgresql.org/docs/9.1/static/transaction-iso.html
-	// > Note that only updating transactions might need to be retried;
-	// > read-only transactions will never have serialization conflicts.
-	_, s.Err = s.Q.ExecRaw("BEGIN ISOLATION LEVEL REPEATABLE READ, READ ONLY")
+	s.Err = s.Q.Begin()
 	if s.Err != nil {
 		return
 	}
 
-	defer s.Q.ExecRaw("ROLLBACK")
+	defer s.Q.Rollback()
+
+	// We need REPEATABLE READ here to have a stable view of the offers
+	// table. Without it, it's possible that search started in ledger X
+	// and finished in ledger X+1 would give invalid results.
+	//
+	// https://www.postgresql.org/docs/9.1/static/transaction-iso.html
+	// > Note that only updating transactions might need to be retried;
+	// > read-only transactions will never have serialization conflicts.
+	_, s.Err = s.Q.ExecRaw("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ, READ ONLY")
+	if s.Err != nil {
+		return
+	}
 
 	for s.hasMore() {
 		s.runOnce()
