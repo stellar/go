@@ -172,7 +172,7 @@ func init() {
 	viper.BindPFlags(rootCmd.PersistentFlags())
 }
 
-func initApp(cmd *cobra.Command, args []string) {
+func initApp(cmd *cobra.Command, args []string) *horizon.App {
 	initConfig()
 
 	var err error
@@ -181,6 +181,8 @@ func initApp(cmd *cobra.Command, args []string) {
 	if err != nil {
 		stdLog.Fatal(err.Error())
 	}
+
+	return app
 }
 
 func initConfig() {
