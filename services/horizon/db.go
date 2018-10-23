@@ -25,10 +25,12 @@ var dbBackfillCmd = &cobra.Command{
 	Use:   "backfill [COUNT]",
 	Short: "backfills horizon history for COUNT ledgers",
 	Run: func(cmd *cobra.Command, args []string) {
-		initConfig()
+		app := initApp(cmd, args)
+		app.UpdateLedgerState()
+
 		hlog.DefaultLogger.Logger.Level = config.LogLevel
 
-		i := ingestSystem(ingest.Config{})
+		i := ingestSystem(ingest.Config{DisableAssetStats: true})
 		i.SkipCursorUpdate = true
 		parsed, err := strconv.ParseUint(args[0], 10, 32)
 		if err != nil {

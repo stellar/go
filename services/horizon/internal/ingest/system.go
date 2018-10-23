@@ -12,18 +12,22 @@ import (
 	ilog "github.com/stellar/go/support/log"
 )
 
-var log = ilog.DefaultLogger.WithField("service", "ingest")
-
 // Backfill ingests history in reverse chronological order, from the current
 // horizon elder query for `n` ledgers
 func (i *System) Backfill(n uint) error {
-	start := ledger.CurrentState().HistoryElder
-	end := start - int32(n)
+	start := ledger.CurrentState().HistoryElder - 1
+	end := start - int32(n) + 1
 	is := NewSession(i)
 	is.Cursor = NewCursor(start, end, i)
-	is.ClearExisting = true
+
+	log.WithField("start", start).
+		WithField("end", end).
+		WithField("err", is.Err).
+		WithField("ingested", is.Ingested).
+		Info("ingest: backfill start")
 
 	is.Run()
+
 	log.WithField("start", start).
 		WithField("end", end).
 		WithField("err", is.Err).

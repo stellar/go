@@ -16,6 +16,7 @@ import (
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/services/horizon/internal/ingest/participants"
 	"github.com/stellar/go/support/errors"
+	ilog "github.com/stellar/go/support/log"
 	sTime "github.com/stellar/go/support/time"
 	"github.com/stellar/go/xdr"
 )
@@ -36,7 +37,12 @@ func (is *Session) Run() {
 
 	defer is.Ingestion.Rollback()
 
+	var sectionStart, i int32
+
 	for is.Cursor.NextLedger() {
+		if sectionStart == 0 {
+			sectionStart = is.Cursor.LedgerSequence()
+		}
 		// Ensure no errors in Cursor
 		is.Err = errors.Wrap(is.Cursor.Err, "Cursor.NextLedger error")
 
@@ -44,6 +50,17 @@ func (is *Session) Run() {
 		is.clearLedger()
 		is.ingestLedger()
 		is.flush()
+
+		i++
+		if i%100 == 0 {
+			// Print status update every 100 ledgers. Can be helpful when reingesting or
+			// backfilling large number of ledgers.
+			log.WithFields(ilog.F{
+				"start": sectionStart,
+				"end":   is.Cursor.LedgerSequence(),
+			}).Info("Status: ingested ledgers")
+			sectionStart = 0
+		}
 
 		if is.Err != nil {
 			break
@@ -81,6 +98,10 @@ func (is *Session) clearLedger() {
 	if !is.ClearExisting {
 		return
 	}
+
+	startLedger, endLedger := is.Cursor.LedgerRange()
+	log.WithFields(ilog.F{"start": startLedger, "end": endLedger}).Info("Clearing ledgers")
+
 	start := time.Now()
 	is.Err = is.Ingestion.Clear(is.Cursor.LedgerRange())
 	if is.Err != nil {
