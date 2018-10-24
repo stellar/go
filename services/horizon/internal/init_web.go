@@ -6,8 +6,6 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/PuerkitoBio/throttled"
-	"github.com/PuerkitoBio/throttled/store"
 	"github.com/go-chi/chi"
 	chimiddleware "github.com/go-chi/chi/middleware"
 	metrics "github.com/rcrowley/go-metrics"
@@ -17,13 +15,16 @@ import (
 	hProblem "github.com/stellar/go/services/horizon/internal/render/problem"
 	"github.com/stellar/go/services/horizon/internal/txsub/sequence"
 	"github.com/stellar/go/support/render/problem"
+	"github.com/throttled/throttled"
+	"github.com/throttled/throttled/store/memstore"
+	"github.com/throttled/throttled/store/redigostore"
 )
 
 // Web contains the http server related fields for horizon: the router,
 // rate limiter, etc.
 type Web struct {
 	router      *chi.Mux
-	rateLimiter *throttled.Throttler
+	rateLimiter *throttled.HTTPRateLimiter
 
 	requestTimer metrics.Timer
 	failureMeter metrics.Meter
@@ -165,23 +166,28 @@ func initWebActions(app *App) {
 }
 
 func initWebRateLimiter(app *App) {
-	rateLimitStore := store.NewMemStore(1000)
+	var rateLimitStore throttled.GCRAStore
+	rateLimitStore, _ = memstore.New(1000)
 
 	if app.redis != nil {
-		rateLimitStore = store.NewRedisStore(app.redis, "throttle:", 0)
+		rateLimitStore, _ = redigostore.New(app.redis, "throttle:", 0)
 	}
 
-	rateLimiter := throttled.RateLimit(
-		app.config.RateLimit,
-		&throttled.VaryBy{Custom: remoteAddrIP},
-		rateLimitStore,
-	)
-
-	rateLimiter.DeniedHandler = &RateLimitExceededAction{App: app, Action: Action{}}
-	app.web.rateLimiter = rateLimiter
+	rateLimiter, _ := throttled.NewGCRARateLimiter(rateLimitStore, app.config.RateLimit)
+	httpRateLimiter := throttled.HTTPRateLimiter{
+		RateLimiter:   rateLimiter,
+		DeniedHandler: &RateLimitExceededAction{App: app, Action: Action{}},
+	}
+	httpRateLimiter.VaryBy = VaryByRemoteIP{}
+	app.web.rateLimiter = &httpRateLimiter
 }
 
-func remoteAddrIP(r *http.Request) string {
+type VaryByRemoteIP struct{}
+func (v VaryByRemoteIP) Key(r *http.Request) string{
+	return RemoteAddrIP(r)
+}
+
+func RemoteAddrIP(r *http.Request) string {
 	ip := strings.SplitN(r.RemoteAddr, ":", 2)[0]
 	return ip
 }

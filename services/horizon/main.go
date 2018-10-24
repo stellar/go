@@ -1,11 +1,11 @@
 package main
 
 import (
+	"github.com/throttled/throttled"
 	stdLog "log"
 	"net/url"
 	"os"
 
-	"github.com/PuerkitoBio/throttled"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -240,11 +240,14 @@ func initConfig() {
 	}
 
 	config = horizon.Config{
-		DatabaseURL:                   viper.GetString("db-url"),
-		StellarCoreDatabaseURL:        viper.GetString("stellar-core-db-url"),
-		StellarCoreURL:                viper.GetString("stellar-core-url"),
-		Port:                          viper.GetInt("port"),
-		RateLimit:                     throttled.PerHour(viper.GetInt("per-hour-rate-limit")),
+		DatabaseURL:            viper.GetString("db-url"),
+		StellarCoreDatabaseURL: viper.GetString("stellar-core-db-url"),
+		StellarCoreURL:         viper.GetString("stellar-core-url"),
+		Port:                   viper.GetInt("port"),
+		RateLimit: throttled.RateQuota{
+			MaxRate:  throttled.PerHour(viper.GetInt("per-hour-rate-limit")),
+			MaxBurst: 100,
+		},
 		RedisURL:                      viper.GetString("redis-url"),
 		FriendbotURL:                  friendbotURL,
 		LogLevel:                      ll,

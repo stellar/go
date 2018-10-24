@@ -3,8 +3,8 @@ package horizon
 import (
 	"net/url"
 
-	"github.com/PuerkitoBio/throttled"
 	"github.com/sirupsen/logrus"
+	"github.com/throttled/throttled"
 )
 
 // Config is the configuration for horizon.  It get's populated by the
@@ -14,7 +14,7 @@ type Config struct {
 	StellarCoreDatabaseURL string
 	StellarCoreURL         string
 	Port                   int
-	RateLimit              throttled.Quota
+	RateLimit              throttled.RateQuota
 	RedisURL               string
 	FriendbotURL           *url.URL
 	LogLevel               logrus.Level

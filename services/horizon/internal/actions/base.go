@@ -2,6 +2,7 @@ package actions
 
 import (
 	"database/sql"
+	"github.com/stellar/go/services/horizon/internal"
 	"net/http"
 
 	"github.com/stellar/go/services/horizon/internal/render"
@@ -62,6 +63,12 @@ func (base *Base) Execute(action interface{}) {
 		stream := sse.NewStream(ctx, base.W)
 
 		for {
+			// Rate limit the request if it's a call to stream since it queries the DB every second. See
+			// https://github.com/stellar/go/issues/715 for more details.
+			app := horizon.AppFromContext(base.R.Context())
+			r := app.GetRateLimiter()
+			r.RateLimiter.RateLimit(horizon.RemoteAddrIP(base.R), 1)
+			
 			action.SSE(stream)
 
 			if base.Err != nil {
