@@ -2,9 +2,9 @@ package actions
 
 import (
 	"database/sql"
-	"github.com/stellar/go/services/horizon/internal"
 	"net/http"
 
+	"github.com/stellar/go/services/horizon/internal"
 	"github.com/stellar/go/services/horizon/internal/render"
 	hProblem "github.com/stellar/go/services/horizon/internal/render/problem"
 	"github.com/stellar/go/services/horizon/internal/render/sse"
@@ -68,7 +68,7 @@ func (base *Base) Execute(action interface{}) {
 			app := horizon.AppFromContext(base.R.Context())
 			r := app.GetRateLimiter()
 			r.RateLimiter.RateLimit(horizon.RemoteAddrIP(base.R), 1)
-			
+
 			action.SSE(stream)
 
 			if base.Err != nil {
