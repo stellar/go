@@ -3,27 +3,29 @@ package horizon
 import (
 	"compress/flate"
 	"database/sql"
+	"fmt"
 	"net/http"
 	"strings"
 
-	"github.com/PuerkitoBio/throttled"
-	"github.com/PuerkitoBio/throttled/store"
 	"github.com/go-chi/chi"
 	chimiddleware "github.com/go-chi/chi/middleware"
-	metrics "github.com/rcrowley/go-metrics"
+	"github.com/rcrowley/go-metrics"
 	"github.com/rs/cors"
 	"github.com/sebest/xff"
 	"github.com/stellar/go/services/horizon/internal/db2"
 	hProblem "github.com/stellar/go/services/horizon/internal/render/problem"
 	"github.com/stellar/go/services/horizon/internal/txsub/sequence"
 	"github.com/stellar/go/support/render/problem"
+	"github.com/throttled/throttled"
+	"github.com/throttled/throttled/store/memstore"
+	"github.com/throttled/throttled/store/redigostore"
 )
 
 // Web contains the http server related fields for horizon: the router,
 // rate limiter, etc.
 type Web struct {
 	router      *chi.Mux
-	rateLimiter *throttled.Throttler
+	rateLimiter *throttled.HTTPRateLimiter
 
 	requestTimer metrics.Timer
 	failureMeter metrics.Meter
@@ -165,20 +167,33 @@ func initWebActions(app *App) {
 }
 
 func initWebRateLimiter(app *App) {
-	rateLimitStore := store.NewMemStore(1000)
+	var rateLimitStore throttled.GCRAStore
+	rateLimitStore, err := memstore.New(1000)
 
 	if app.redis != nil {
-		rateLimitStore = store.NewRedisStore(app.redis, "throttle:", 0)
+		rateLimitStore, err = redigostore.New(app.redis, "throttle:", 0)
 	}
 
-	rateLimiter := throttled.RateLimit(
-		app.config.RateLimit,
-		&throttled.VaryBy{Custom: remoteAddrIP},
-		rateLimitStore,
-	)
+	if err != nil {
+		panic(fmt.Errorf("unable to initialize store for RateLimiter"))
+	}
 
-	rateLimiter.DeniedHandler = &RateLimitExceededAction{App: app, Action: Action{}}
-	app.web.rateLimiter = rateLimiter
+	rateLimiter, err := throttled.NewGCRARateLimiter(rateLimitStore, app.config.RateLimit)
+	if err != nil {
+		panic(fmt.Errorf("unable to create RateLimiter"))
+	}
+
+	httpRateLimiter := throttled.HTTPRateLimiter{
+		RateLimiter:   rateLimiter,
+		DeniedHandler: &RateLimitExceededAction{App: app, Action: Action{}},
+	}
+	httpRateLimiter.VaryBy = VaryByRemoteIP{}
+	app.web.rateLimiter = &httpRateLimiter
+}
+
+type VaryByRemoteIP struct{}
+func (v VaryByRemoteIP) Key(r *http.Request) string{
+	return remoteAddrIP(r)
 }
 
 func remoteAddrIP(r *http.Request) string {

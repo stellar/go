@@ -39,6 +39,7 @@ func (action *AccountShowAction) JSON() {
 
 // SSE is a method for actions.SSE
 func (action *AccountShowAction) SSE(stream sse.Stream) {
+
 	action.Do(
 		action.loadParams,
 		action.loadRecord,
