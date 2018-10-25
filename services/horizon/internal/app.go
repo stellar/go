@@ -3,7 +3,6 @@ package horizon
 import (
 	"context"
 	"fmt"
-	"github.com/throttled/throttled"
 	"net/http"
 	"runtime"
 	"sync"
@@ -13,6 +12,7 @@ import (
 	"github.com/rcrowley/go-metrics"
 	"github.com/stellar/go/build"
 	"github.com/stellar/go/clients/stellarcore"
+	horizonContext "github.com/stellar/go/services/horizon/internal/context"
 	"github.com/stellar/go/services/horizon/internal/db2/core"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/services/horizon/internal/ingest"
@@ -25,6 +25,7 @@ import (
 	"github.com/stellar/go/support/app"
 	"github.com/stellar/go/support/db"
 	"github.com/stellar/go/support/log"
+	"github.com/throttled/throttled"
 	"golang.org/x/net/http2"
 	"gopkg.in/tylerb/graceful.v1"
 )
@@ -328,11 +329,9 @@ func (a *App) run() {
 	}
 }
 
-var appkey = 0
-
 // Context create a context on from the App type.
 func (a *App) Context(ctx context.Context) context.Context {
-	return context.WithValue(ctx, &appkey, a)
+	return context.WithValue(ctx, &horizonContext.AppContextKey, a)
 }
 
 // GetRateLimiter returns the HTTPRateLimiter of the App.
@@ -347,7 +346,7 @@ func AppFromContext(ctx context.Context) *App {
 		return nil
 	}
 
-	val := ctx.Value(&appkey)
+	val := ctx.Value(&horizonContext.AppContextKey)
 	if val == nil {
 		return nil
 	}

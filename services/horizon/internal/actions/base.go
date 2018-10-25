@@ -2,9 +2,10 @@ package actions
 
 import (
 	"database/sql"
+	"github.com/stellar/go/services/horizon/internal"
 	"net/http"
 
-	"github.com/stellar/go/services/horizon/internal"
+	horizonContext "github.com/stellar/go/services/horizon/internal/context"
 	"github.com/stellar/go/services/horizon/internal/render"
 	hProblem "github.com/stellar/go/services/horizon/internal/render/problem"
 	"github.com/stellar/go/services/horizon/internal/render/sse"
@@ -65,9 +66,12 @@ func (base *Base) Execute(action interface{}) {
 		for {
 			// Rate limit the request if it's a call to stream since it queries the DB every second. See
 			// https://github.com/stellar/go/issues/715 for more details.
-			app := horizon.AppFromContext(base.R.Context())
-			r := app.GetRateLimiter()
-			r.RateLimiter.RateLimit(horizon.RemoteAddrIP(base.R), 1)
+			app := base.R.Context().Value(&horizonContext.AppContextKey)
+			limited, _, err := app.(RateLimiterProvider).GetRateLimiter().RateLimiter.RateLimit(horizon.RemoteAddrIP(base.R), 1)
+			if limited || err != nil {
+				stream.Err(errors.New("rate limit exceeded"))
+				return
+			}
 
 			action.SSE(stream)
 
