@@ -1,7 +1,6 @@
 package main
 
 import (
-	"github.com/throttled/throttled"
 	stdLog "log"
 	"net/url"
 	"os"
@@ -11,6 +10,7 @@ import (
 	"github.com/spf13/viper"
 	"github.com/stellar/go/services/horizon/internal"
 	"github.com/stellar/go/support/log"
+	"github.com/throttled/throttled"
 )
 
 var app *horizon.App

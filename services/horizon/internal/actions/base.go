@@ -3,7 +3,6 @@ package actions
 import (
 	"database/sql"
 	"net/http"
-	"strings"
 
 	horizonContext "github.com/stellar/go/services/horizon/internal/context"
 	"github.com/stellar/go/services/horizon/internal/render"
@@ -67,9 +66,14 @@ func (base *Base) Execute(action interface{}) {
 			// Rate limit the request if it's a call to stream since it queries the DB every second. See
 			// https://github.com/stellar/go/issues/715 for more details.
 			app := base.R.Context().Value(&horizonContext.AppContextKey)
-			key := strings.SplitN(base.R.RemoteAddr, ":", 2)[0]
-			limited, _, err := app.(RateLimiterProvider).GetRateLimiter().RateLimiter.RateLimit(key, 1)
-			if limited || err != nil {
+			rateLimiter := app.(RateLimiterProvider).GetRateLimiter()
+			limited, _, err := rateLimiter.RateLimiter.RateLimit(rateLimiter.VaryBy.Key(base.R), 1)
+			if err != nil {
+				log.Ctx(ctx).Error(errors.Wrap(err, "RateLimiter error"))
+				stream.Err(errors.New("Unexpected stream error"))
+				return
+			}
+			if limited {
 				stream.Err(errors.New("rate limit exceeded"))
 				return
 			}

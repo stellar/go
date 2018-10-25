@@ -3,12 +3,13 @@ package horizon
 import (
 	"compress/flate"
 	"database/sql"
+	"fmt"
 	"net/http"
 	"strings"
 
 	"github.com/go-chi/chi"
 	chimiddleware "github.com/go-chi/chi/middleware"
-	metrics "github.com/rcrowley/go-metrics"
+	"github.com/rcrowley/go-metrics"
 	"github.com/rs/cors"
 	"github.com/sebest/xff"
 	"github.com/stellar/go/services/horizon/internal/db2"
@@ -167,13 +168,21 @@ func initWebActions(app *App) {
 
 func initWebRateLimiter(app *App) {
 	var rateLimitStore throttled.GCRAStore
-	rateLimitStore, _ = memstore.New(1000)
+	rateLimitStore, err := memstore.New(1000)
 
 	if app.redis != nil {
-		rateLimitStore, _ = redigostore.New(app.redis, "throttle:", 0)
+		rateLimitStore, err = redigostore.New(app.redis, "throttle:", 0)
 	}
 
-	rateLimiter, _ := throttled.NewGCRARateLimiter(rateLimitStore, app.config.RateLimit)
+	if err != nil {
+		panic(fmt.Errorf("unable to initialize store for RateLimiter"))
+	}
+
+	rateLimiter, err := throttled.NewGCRARateLimiter(rateLimitStore, app.config.RateLimit)
+	if err != nil {
+		panic(fmt.Errorf("unable to create RateLimiter"))
+	}
+
 	httpRateLimiter := throttled.HTTPRateLimiter{
 		RateLimiter:   rateLimiter,
 		DeniedHandler: &RateLimitExceededAction{App: app, Action: Action{}},
