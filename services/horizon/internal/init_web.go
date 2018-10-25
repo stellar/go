@@ -192,13 +192,19 @@ func initWebRateLimiter(app *App) {
 }
 
 type VaryByRemoteIP struct{}
-func (v VaryByRemoteIP) Key(r *http.Request) string{
+
+func (v VaryByRemoteIP) Key(r *http.Request) string {
 	return remoteAddrIP(r)
 }
 
 func remoteAddrIP(r *http.Request) string {
-	ip := strings.SplitN(r.RemoteAddr, ":", 2)[0]
-	return ip
+	// To support IPv6
+	lastSemicolon := strings.LastIndex(r.RemoteAddr, ":")
+	if lastSemicolon == -1 {
+		return r.RemoteAddr
+	} else {
+		return r.RemoteAddr[0:lastSemicolon]
+	}
 }
 
 func firstXForwardedFor(r *http.Request) string {
