@@ -62,7 +62,7 @@ func (suite *RateLimitMiddlewareTestSuite) TestRateLimit_RemainingHeaders() {
 	}
 }
 
-// Sets X-RateLimit-Reset header correctly.
+// Sets X-RateLimit-Reset header correctly. Should reset after 360 seconds since it's limited to 10 requests/hour.
 func (suite *RateLimitMiddlewareTestSuite) TestRateLimit_ResetHeaders() {
 	w := suite.rh.Get("/")
 	assert.Equal(suite.T(), "360", w.Header().Get("X-RateLimit-Reset"))
