@@ -31,6 +31,7 @@ func init() {
 	viper.BindEnv("stellar-core-db-url", "STELLAR_CORE_DATABASE_URL")
 	viper.BindEnv("stellar-core-url", "STELLAR_CORE_URL")
 	viper.BindEnv("per-hour-rate-limit", "PER_HOUR_RATE_LIMIT")
+	viper.BindEnv("rate-limit-redis-key", "RATE_LIMIT_REDIS_KEY")
 	viper.BindEnv("redis-url", "REDIS_URL")
 	viper.BindEnv("ruby-horizon-url", "RUBY_HORIZON_URL")
 	viper.BindEnv("friendbot-url", "FRIENDBOT_URL")
@@ -88,6 +89,12 @@ func init() {
 		"per-hour-rate-limit",
 		3600,
 		"max count of requests allowed in a one hour period, by remote ip address",
+	)
+
+	rootCmd.PersistentFlags().String(
+		"rate-limit-redis-key",
+		"",
+		"redis key for storing rate limit data, useful when deploying a cluster of Horizons, ignored when redis-url is empty",
 	)
 
 	rootCmd.PersistentFlags().String(
@@ -241,15 +248,22 @@ func initConfig() {
 		}
 	}
 
-	config = horizon.Config{
-		DatabaseURL:            viper.GetString("db-url"),
-		StellarCoreDatabaseURL: viper.GetString("stellar-core-db-url"),
-		StellarCoreURL:         viper.GetString("stellar-core-url"),
-		Port:                   viper.GetInt("port"),
-		RateLimit: throttled.RateQuota{
-			MaxRate:  throttled.PerHour(viper.GetInt("per-hour-rate-limit")),
+	var rateLimit *throttled.RateQuota = nil
+	perHourRateLimit := viper.GetInt("per-hour-rate-limit")
+	if perHourRateLimit != 0 {
+		rateLimit = &throttled.RateQuota{
+			MaxRate:  throttled.PerHour(perHourRateLimit),
 			MaxBurst: 100,
-		},
+		}
+	}
+
+	config = horizon.Config{
+		DatabaseURL:                   viper.GetString("db-url"),
+		StellarCoreDatabaseURL:        viper.GetString("stellar-core-db-url"),
+		StellarCoreURL:                viper.GetString("stellar-core-url"),
+		Port:                          viper.GetInt("port"),
+		RateLimit:                     rateLimit,
+		RateLimitRedisKey:             viper.GetString("rate-limit-redis-key"),
 		RedisURL:                      viper.GetString("redis-url"),
 		FriendbotURL:                  friendbotURL,
 		LogLevel:                      ll,

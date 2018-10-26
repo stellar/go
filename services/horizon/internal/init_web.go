@@ -167,18 +167,27 @@ func initWebActions(app *App) {
 }
 
 func initWebRateLimiter(app *App) {
+	// Disabled
+	if app.config.RateLimit == nil {
+		return
+	}
+
 	var rateLimitStore throttled.GCRAStore
 	rateLimitStore, err := memstore.New(1000)
 
 	if app.redis != nil {
-		rateLimitStore, err = redigostore.New(app.redis, "throttle:", 0)
+		key := "throttle:"
+		if app.config.RateLimitRedisKey != "" {
+			key = app.config.RateLimitRedisKey + ":"
+		}
+		rateLimitStore, err = redigostore.New(app.redis, key, 0)
 	}
 
 	if err != nil {
 		panic(fmt.Errorf("unable to initialize store for RateLimiter"))
 	}
 
-	rateLimiter, err := throttled.NewGCRARateLimiter(rateLimitStore, app.config.RateLimit)
+	rateLimiter, err := throttled.NewGCRARateLimiter(rateLimitStore, *app.config.RateLimit)
 	if err != nil {
 		panic(fmt.Errorf("unable to create RateLimiter"))
 	}

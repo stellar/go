@@ -67,15 +67,17 @@ func (base *Base) Execute(action interface{}) {
 			// https://github.com/stellar/go/issues/715 for more details.
 			app := base.R.Context().Value(&horizonContext.AppContextKey)
 			rateLimiter := app.(RateLimiterProvider).GetRateLimiter()
-			limited, _, err := rateLimiter.RateLimiter.RateLimit(rateLimiter.VaryBy.Key(base.R), 1)
-			if err != nil {
-				log.Ctx(ctx).Error(errors.Wrap(err, "RateLimiter error"))
-				stream.Err(errors.New("Unexpected stream error"))
-				return
-			}
-			if limited {
-				stream.Err(errors.New("rate limit exceeded"))
-				return
+			if rateLimiter != nil {
+				limited, _, err := rateLimiter.RateLimiter.RateLimit(rateLimiter.VaryBy.Key(base.R), 1)
+				if err != nil {
+					log.Ctx(ctx).Error(errors.Wrap(err, "RateLimiter error"))
+					stream.Err(errors.New("Unexpected stream error"))
+					return
+				}
+				if limited {
+					stream.Err(errors.New("rate limit exceeded"))
+					return
+				}
 			}
 
 			action.SSE(stream)

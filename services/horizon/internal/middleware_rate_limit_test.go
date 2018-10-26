@@ -24,8 +24,8 @@ func (suite *RateLimitMiddlewareTestSuite) SetupSuite() {
 
 func (suite *RateLimitMiddlewareTestSuite) SetupTest() {
 	suite.c = NewTestConfig()
-	suite.c.RateLimit = throttled.RateQuota{
-		MaxRate: throttled.PerHour(10),
+	suite.c.RateLimit = &throttled.RateQuota{
+		MaxRate:  throttled.PerHour(10),
 		MaxBurst: 9,
 	}
 	suite.app, _ = NewApp(suite.c)
@@ -118,8 +118,8 @@ func TestRateLimit_Redis(t *testing.T) {
 	ht := StartHTTPTest(t, "base")
 	defer ht.Finish()
 	c := NewTestConfig()
-	c.RateLimit = throttled.RateQuota{
-		MaxRate: throttled.PerHour(10),
+	c.RateLimit = &throttled.RateQuota{
+		MaxRate:  throttled.PerHour(10),
 		MaxBurst: 9,
 	}
 	c.RedisURL = "redis://127.0.0.1:6379/"
