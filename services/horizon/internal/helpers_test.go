@@ -25,11 +25,11 @@ func NewTestConfig() Config {
 	return Config{
 		DatabaseURL:            test.DatabaseURL(),
 		StellarCoreDatabaseURL: test.StellarCoreDatabaseURL(),
-		RateLimit:              throttled.RateQuota{
-			MaxRate: throttled.PerHour(1000),
+		RateLimit: &throttled.RateQuota{
+			MaxRate:  throttled.PerHour(1000),
 			MaxBurst: 100,
 		},
-		LogLevel:               supportLog.InfoLevel,
+		LogLevel: supportLog.InfoLevel,
 	}
 }
 
