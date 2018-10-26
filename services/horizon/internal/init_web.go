@@ -176,7 +176,11 @@ func initWebRateLimiter(app *App) {
 	rateLimitStore, err := memstore.New(1000)
 
 	if app.redis != nil {
-		rateLimitStore, err = redigostore.New(app.redis, "throttle:", 0)
+		key := "throttle:"
+		if app.config.RateLimitRedisKey != "" {
+			key = app.config.RateLimitRedisKey + ":"
+		}
+		rateLimitStore, err = redigostore.New(app.redis, key, 0)
 	}
 
 	if err != nil {
