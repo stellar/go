@@ -51,9 +51,16 @@ func logStartOfRequest(ctx context.Context, r *http.Request) {
 }
 
 func logEndOfRequest(ctx context.Context, r *http.Request, duration time.Duration, mw middleware.WrapResponseWriter, streaming bool) {
+	routePattern := chi.RouteContext(r.Context()).RoutePattern()
+	// Can be empty when request did not reached the final route (ex. blocked by
+	// a middleware). More info: https://github.com/go-chi/chi/issues/270
+	if routePattern == "" {
+		routePattern = "undefined"
+	}
+
 	log.Ctx(ctx).WithFields(log.F{
 		"path":         r.URL.String(),
-		"route":        chi.RouteContext(r.Context()).RoutePattern(),
+		"route":        routePattern,
 		"method":       r.Method,
 		"ip":           remoteAddrIP(r),
 		"ip_port":      r.RemoteAddr,
