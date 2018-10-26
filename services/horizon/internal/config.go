@@ -14,7 +14,7 @@ type Config struct {
 	StellarCoreDatabaseURL string
 	StellarCoreURL         string
 	Port                   int
-	RateLimit              throttled.RateQuota
+	RateLimit              *throttled.RateQuota
 	RedisURL               string
 	FriendbotURL           *url.URL
 	LogLevel               logrus.Level

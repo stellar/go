@@ -241,15 +241,21 @@ func initConfig() {
 		}
 	}
 
-	config = horizon.Config{
-		DatabaseURL:            viper.GetString("db-url"),
-		StellarCoreDatabaseURL: viper.GetString("stellar-core-db-url"),
-		StellarCoreURL:         viper.GetString("stellar-core-url"),
-		Port:                   viper.GetInt("port"),
-		RateLimit: throttled.RateQuota{
-			MaxRate:  throttled.PerHour(viper.GetInt("per-hour-rate-limit")),
+	var rateLimit *throttled.RateQuota = nil
+	perHourRateLimit := viper.GetInt("per-hour-rate-limit")
+	if perHourRateLimit != 0 {
+		rateLimit = &throttled.RateQuota{
+			MaxRate:  throttled.PerHour(perHourRateLimit),
 			MaxBurst: 100,
-		},
+		}
+	}
+
+	config = horizon.Config{
+		DatabaseURL:                   viper.GetString("db-url"),
+		StellarCoreDatabaseURL:        viper.GetString("stellar-core-db-url"),
+		StellarCoreURL:                viper.GetString("stellar-core-url"),
+		Port:                          viper.GetInt("port"),
+		RateLimit:                     rateLimit,
 		RedisURL:                      viper.GetString("redis-url"),
 		FriendbotURL:                  friendbotURL,
 		LogLevel:                      ll,
