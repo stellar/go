@@ -71,9 +71,9 @@ type Cursor struct {
 
 // Config allows passing some configuration values to System and Session.
 type Config struct {
-	// DisableAssetStats is a feature flag that determines whether to calculate
+	// EnableAssetStats is a feature flag that determines whether to calculate
 	// asset stats in this ingestion system.
-	DisableAssetStats bool
+	EnableAssetStats bool
 }
 
 // EffectIngestion is a helper struct to smooth the ingestion of effects.  this

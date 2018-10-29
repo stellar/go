@@ -47,7 +47,7 @@ func init() {
 	viper.BindEnv("history-retention-count", "HISTORY_RETENTION_COUNT")
 	viper.BindEnv("history-stale-threshold", "HISTORY_STALE_THRESHOLD")
 	viper.BindEnv("skip-cursor-update", "SKIP_CURSOR_UPDATE")
-	viper.BindEnv("disable-asset-stats", "DISABLE_ASSET_STATS")
+	viper.BindEnv("enable-asset-stats", "ENABLE_ASSET_STATS")
 	viper.BindEnv("max-path-length", "MAX_PATH_LENGTH")
 
 	rootCmd = &cobra.Command{
@@ -174,6 +174,12 @@ func init() {
 		"the maximum number of ledgers the history db is allowed to be out of date from the connected stellar-core db before horizon considers history stale",
 	)
 
+	rootCmd.PersistentFlags().Bool(
+		"enable-asset-stats",
+		false,
+		"enables asset stats during the ingestion and expose `/assets` endpoint,  Enabling it has a negative impact on CPU",
+	)
+
 	rootCmd.PersistentFlags().Uint(
 		"max-path-length",
 		4,
@@ -277,6 +283,6 @@ func initConfig() {
 		HistoryRetentionCount:  uint(viper.GetInt("history-retention-count")),
 		StaleThreshold:         uint(viper.GetInt("history-stale-threshold")),
 		SkipCursorUpdate:       viper.GetBool("skip-cursor-update"),
-		DisableAssetStats:      viper.GetBool("disable-asset-stats"),
+		EnableAssetStats:       viper.GetBool("enable-asset-stats"),
 	}
 }

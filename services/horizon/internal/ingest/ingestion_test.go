@@ -55,7 +55,7 @@ func TestAssetIngest(t *testing.T) {
 
 	tt := test.Start(t).ScenarioWithoutHorizon("kahuna")
 	defer tt.Finish()
-	s := ingest(tt, false)
+	s := ingest(tt, true)
 	tt.Require.NoError(s.Err)
 	q := history.Q{Session: s.Ingestion.DB}
 
@@ -75,7 +75,7 @@ func TestAssetIngest(t *testing.T) {
 func TestAssetStatsIngest(t *testing.T) {
 	tt := test.Start(t).ScenarioWithoutHorizon("ingest_asset_stats")
 	defer tt.Finish()
-	s := ingest(tt, false)
+	s := ingest(tt, true)
 	tt.Require.NoError(s.Err)
 	q := history.Q{Session: s.Ingestion.DB}
 
@@ -142,7 +142,7 @@ func TestAssetStatsIngest(t *testing.T) {
 func TestAssetStatsDisabledIngest(t *testing.T) {
 	tt := test.Start(t).ScenarioWithoutHorizon("ingest_asset_stats")
 	defer tt.Finish()
-	s := ingest(tt, true)
+	s := ingest(tt, false)
 	tt.Require.NoError(s.Err)
 	q := history.Q{Session: s.Ingestion.DB}
 

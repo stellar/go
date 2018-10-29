@@ -30,7 +30,7 @@ var dbBackfillCmd = &cobra.Command{
 
 		hlog.DefaultLogger.Logger.Level = config.LogLevel
 
-		i := ingestSystem(ingest.Config{DisableAssetStats: true})
+		i := ingestSystem(ingest.Config{})
 		i.SkipCursorUpdate = true
 		parsed, err := strconv.ParseUint(args[0], 10, 32)
 		if err != nil {

@@ -67,7 +67,7 @@ func (is *Session) Run() {
 		}
 	}
 
-	if !is.Config.DisableAssetStats {
+	if is.Config.EnableAssetStats {
 		is.Cursor.AssetsModified.UpdateAssetStats(is)
 	}
 

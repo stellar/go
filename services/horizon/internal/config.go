@@ -44,9 +44,9 @@ type Config struct {
 	// SkipCursorUpdate causes the ingestor to skip reporting the "last imported
 	// ledger" state to stellar-core.
 	SkipCursorUpdate bool
-	// DisableAssetStats is a feature flag that determines whether to calculate
+	// EnableAssetStats is a feature flag that determines whether to calculate
 	// asset stats during the ingestion and expose `/assets` endpoint.
-	// Disabling it will save CPU when ingesting ledgers full of many different
-	// assets related operations.
-	DisableAssetStats bool
+	// Enabling it has a negative impact on CPU when ingesting ledgers full of
+	// many different assets related operations.
+	EnableAssetStats bool
 }

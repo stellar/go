@@ -145,7 +145,7 @@ func initWebActions(app *App) {
 	r.Post("/transactions", TransactionCreateAction{}.Handle)
 	r.Get("/paths", PathIndexAction{}.Handle)
 
-	if !app.config.DisableAssetStats {
+	if app.config.EnableAssetStats {
 		// Asset related endpoints
 		r.Get("/assets", AssetsAction{}.Handle)
 	}
