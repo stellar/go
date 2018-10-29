@@ -1,16 +1,12 @@
 package horizon
 
 import (
-	"errors"
-	"fmt"
-
 	"github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/services/horizon/internal/db2"
 	"github.com/stellar/go/services/horizon/internal/db2/core"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/services/horizon/internal/render/sse"
 	"github.com/stellar/go/services/horizon/internal/resourceadapter"
-	"github.com/stellar/go/support/log"
 	"github.com/stellar/go/support/render/hal"
 )
 
@@ -53,19 +49,7 @@ func (action *OffersByAccountAction) SSE(stream sse.Stream) {
 				ledger, found := action.Ledgers.Records[record.Lastmodified]
 				ledgerPtr := &ledger
 				if !found {
-					if action.App.config.AllowEmptyLedgerDataResponses {
-						ledgerPtr = nil
-					} else {
-						msg := fmt.Sprintf("could not find ledger data for sequence %d", record.Lastmodified)
-						err := errors.New(msg)
-						// Warn not Error because it can happen quite often because
-						// offer data is taken directly from stellar-core db.
-						// In other words, it is expected to happen, especially for
-						// recently changed offers.
-						log.Ctx(action.R.Context()).Warn(err)
-						action.Err = err
-						return
-					}
+					ledgerPtr = nil
 				}
 				var res horizon.Offer
 				resourceadapter.PopulateOffer(action.R.Context(), &res, record, ledgerPtr)
@@ -101,13 +85,7 @@ func (action *OffersByAccountAction) loadPage() {
 		ledger, found := action.Ledgers.Records[record.Lastmodified]
 		ledgerPtr := &ledger
 		if !found {
-			if action.App.config.AllowEmptyLedgerDataResponses {
-				ledgerPtr = nil
-			} else {
-				msg := fmt.Sprintf("could not find ledger data for sequence %d", record.Lastmodified)
-				action.Err = errors.New(msg)
-				return
-			}
+			ledgerPtr = nil
 		}
 
 		var res horizon.Offer
