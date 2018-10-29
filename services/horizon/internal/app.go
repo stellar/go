@@ -2,6 +2,7 @@ package horizon
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"net/http"
 	"runtime"
@@ -229,6 +230,11 @@ func (a *App) UpdateOperationFeeStatsState() {
 	return
 
 Failed:
+	// If DB is empty ignore the error
+	if err == sql.ErrNoRows {
+		return
+	}
+
 	log.WithStack(err).
 		WithField("err", err.Error()).
 		Error("failed to load operation fee stats state")
