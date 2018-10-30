@@ -173,7 +173,7 @@ func initWebRateLimiter(app *App) {
 	}
 
 	var rateLimitStore throttled.GCRAStore
-	rateLimitStore, err := memstore.New(1000)
+	rateLimitStore, err := memstore.New(50000)
 
 	if app.redis != nil {
 		key := "throttle:"
