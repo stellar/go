@@ -13,6 +13,7 @@ import (
 	"sync"
 
 	"github.com/stellar/go/build"
+	"github.com/stellar/go/protocols/horizon/operations"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
 )
@@ -109,6 +110,7 @@ type ClientInterface interface {
 	SequenceForAccount(accountID string) (xdr.SequenceNumber, error)
 	StreamLedgers(ctx context.Context, cursor *Cursor, handler LedgerHandler) error
 	StreamPayments(ctx context.Context, accountID string, cursor *Cursor, handler PaymentHandler) error
+	StreamOperations(ctx context.Context, cursor *Cursor, handler OperationHandler) error
 	StreamTransactions(ctx context.Context, accountID string, cursor *Cursor, handler TransactionHandler) error
 	SubmitTransaction(txeBase64 string) (TransactionSuccess, error)
 }
@@ -134,6 +136,9 @@ type PaymentHandler func(Payment)
 
 // TransactionHandler is a function that is called when a new transaction is received
 type TransactionHandler func(Transaction)
+
+// OperationHandler is a function that is called when a new operation is received
+type OperationHandler func(operations.Base)
 
 // ensure that the horizon client can be used as a SequenceProvider
 var _ build.SequenceProvider = &Client{}
