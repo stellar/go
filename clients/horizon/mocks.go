@@ -85,7 +85,7 @@ func (m *MockClient) LoadMemo(p *Payment) error {
 	return a.Error(0)
 }
 
-// LoadMemo is a mocking a method
+// LoadOperation is a mocking a method
 func (m *MockClient) LoadOperation(operationID string) (payment Payment, err error) {
 	a := m.Called(operationID)
 	return a.Get(0).(Payment), a.Error(1)
@@ -142,6 +142,16 @@ func (m *MockClient) StreamTransactions(
 	handler TransactionHandler,
 ) error {
 	a := m.Called(ctx, accountID, cursor, handler)
+	return a.Error(0)
+}
+
+// StreamOperations is a mocking a method
+func (m *MockClient) StreamOperations(
+	ctx context.Context,
+	cursor *Cursor,
+	handler OperationHandler,
+) error {
+	a := m.Called(ctx, cursor, handler)
 	return a.Error(0)
 }
 
