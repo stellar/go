@@ -2,6 +2,7 @@ package horizon
 
 import (
 	"encoding/json"
+
 	hProtocol "github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/support/render/hal"
 )
@@ -63,7 +64,7 @@ type Effect struct {
 
 // TradeAggregationsPage returns a list of aggregated trade records, aggregated by resolution
 type TradeAggregationsPage struct {
-	Links hal.Links `json:"_links"`
+	Links    hal.Links `json:"_links"`
 	Embedded struct {
 		Records []TradeAggregation `json:"records"`
 	} `json:"_embedded"`
@@ -74,7 +75,7 @@ type TradeAggregation = hProtocol.TradeAggregation
 
 // TradesPage returns a list of trade records
 type TradesPage struct {
-	Links hal.Links `json:"_links"`
+	Links    hal.Links `json:"_links"`
 	Embedded struct {
 		Records []Trade `json:"records"`
 	} `json:"_embedded"`
@@ -97,7 +98,7 @@ type Signer = hProtocol.Signer
 
 // OffersPage returns a list of offers
 type OffersPage struct {
-	Links hal.Links `json:"_links"`
+	Links    hal.Links `json:"_links"`
 	Embedded struct {
 		Records []Offer `json:"records"`
 	} `json:"_embedded"`
