@@ -375,6 +375,18 @@ type Transaction struct {
 	ValidBefore     string    `json:"valid_before,omitempty"`
 }
 
+// Transactions
+type Transactions struct {
+	Links struct {
+		Self       hal.Link `json:"self"`
+		// TODO: next
+		// TODO: prev
+	} `json:"_links"`
+	Embedded struct {
+		Records []Transaction `json:"records"`
+	} `json:"_embedded"`
+}
+
 // MarshalJSON implements a custom marshaler for Transaction.
 // The memo field should be omitted if and only if the
 // memo_type is "none".

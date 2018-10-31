@@ -245,6 +245,28 @@ func addAssetToQuery(v map[string][]string, assetPrefix string, asset Asset) {
 	}
 }
 
+func (c *Client) LoadTransactions(
+	ctx context.Context,
+	accountID string,
+	cursor *Cursor,
+	// TODO: Pass limit
+	// TODO: Pass *Transaction
+) (err error) {
+	c.fixURLOnce.Do(c.fixURL)
+	// TODO: User cursor in URL
+	resp, err := c.HTTP.Get(c.URL + "/accounts/" + accountID + "/transactions?order=desc&limit=150")
+	if err != nil {
+		return
+	}
+	transactions := Transactions{}
+
+	err = decodeResponse(resp, &transactions)
+	l.Printf("OXIO>>>>>%+v", transactions)
+	l.Printf("OXIO len>>>>>%+v", len(transactions.Embedded.Transactions))
+	return err
+}
+
+
 // LoadOperation loads a single operation from Horizon server
 func (c *Client) LoadOperation(operationID string) (payment Payment, err error) {
 	c.fixURLOnce.Do(c.fixURL)
