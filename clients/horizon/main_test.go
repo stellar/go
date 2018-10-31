@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stellar/go/protocols/horizon/operations"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/support/http/httptest"
 	"github.com/stretchr/testify/assert"
@@ -42,7 +43,7 @@ func ExampleClient_StreamOperations() {
 		time.Sleep(60 * time.Second)
 		cancel()
 	}()
-	err := client.StreamOperations(ctx, &cursor, func(o operation.Base) {
+	err := client.StreamOperations(ctx, &cursor, func(o operations.Base) {
 		fmt.Println(o.Type)
 	})
 	if err != nil {
