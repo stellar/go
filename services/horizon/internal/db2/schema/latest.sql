@@ -148,7 +148,7 @@ CREATE TABLE history_accounts (
 CREATE TABLE history_assets (
     id integer NOT NULL,
     asset_type character varying(64) NOT NULL,
-    asset_code character varying(12) NOT NULL,
+    asset_code character varying(64) NOT NULL,
     asset_issuer character varying(56) NOT NULL
 );
 

@@ -10,12 +10,12 @@ CREATE TABLE history_trades (
 
     sold_asset_type character varying(64) NOT NULL,
     sold_asset_issuer character varying(56) NOT NULL,
-    sold_asset_code character varying(12) NOT NULL,
+    sold_asset_code character varying(64) NOT NULL,
     sold_amount bigint NOT NULL CHECK (sold_amount > 0),
 
     bought_asset_type character varying(64) NOT NULL,
     bought_asset_issuer character varying(56) NOT NULL,
-    bought_asset_code character varying(12) NOT NULL,
+    bought_asset_code character varying(64) NOT NULL,
     bought_amount bigint NOT NULL CHECK (bought_amount > 0)
 );
 

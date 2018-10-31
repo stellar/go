@@ -27,7 +27,12 @@ func (a *Asset) SetCredit(code string, issuer AccountId) error {
 	case length >= 5 && length <= 12:
 		newbody := AssetAlphaNum12{Issuer: issuer}
 		copy(newbody.AssetCode[:], []byte(code)[:length])
-		typ = AssetTypeAssetTypeCreditAlphanum4
+		typ = AssetTypeAssetTypeCreditAlphanum12
+		body = newbody
+	case length >= 13 && length <= 64:
+		newbody := AssetAlphaNum64{Issuer: issuer}
+		copy(newbody.AssetCode[:], []byte(code)[:length])
+		typ = AssetTypeAssetTypeCreditAlphanum64
 		body = newbody
 	default:
 		return errors.New("Asset code length is invalid")
@@ -80,6 +85,10 @@ func (a Asset) Equals(other Asset) bool {
 		l := a.MustAlphaNum12()
 		r := other.MustAlphaNum12()
 		return l.AssetCode == r.AssetCode && l.Issuer.Equals(r.Issuer)
+	case AssetTypeAssetTypeCreditAlphanum64:
+		l := a.MustAlphaNum64()
+		r := other.MustAlphaNum64()
+		return l.AssetCode == r.AssetCode && l.Issuer.Equals(r.Issuer)
 	default:
 		panic(fmt.Errorf("Unknown asset type: %v", a.Type))
 	}
@@ -102,6 +111,8 @@ func (a Asset) Extract(typ interface{}, code interface{}, issuer interface{}) er
 			*typ = "credit_alphanum4"
 		case AssetTypeAssetTypeCreditAlphanum12:
 			*typ = "credit_alphanum12"
+		case AssetTypeAssetTypeCreditAlphanum64:
+			*typ = "credit_alphanum64"
 		}
 	default:
 		return errors.New("can't extract type")
@@ -116,6 +127,9 @@ func (a Asset) Extract(typ interface{}, code interface{}, issuer interface{}) er
 				*code = strings.TrimRight(string(an.AssetCode[:]), "\x00")
 			case AssetTypeAssetTypeCreditAlphanum12:
 				an := a.MustAlphaNum12()
+				*code = strings.TrimRight(string(an.AssetCode[:]), "\x00")
+			case AssetTypeAssetTypeCreditAlphanum64:
+				an := a.MustAlphaNum64()
 				*code = strings.TrimRight(string(an.AssetCode[:]), "\x00")
 			}
 		default:
@@ -133,6 +147,10 @@ func (a Asset) Extract(typ interface{}, code interface{}, issuer interface{}) er
 				*issuer = strkey.MustEncode(strkey.VersionByteAccountID, raw[:])
 			case AssetTypeAssetTypeCreditAlphanum12:
 				an := a.MustAlphaNum12()
+				raw := an.Issuer.MustEd25519()
+				*issuer = strkey.MustEncode(strkey.VersionByteAccountID, raw[:])
+			case AssetTypeAssetTypeCreditAlphanum64:
+				an := a.MustAlphaNum64()
 				raw := an.Issuer.MustEd25519()
 				*issuer = strkey.MustEncode(strkey.VersionByteAccountID, raw[:])
 			}

@@ -2,7 +2,7 @@
 CREATE TABLE history_assets (
     id SERIAL PRIMARY KEY ,
     asset_type VARCHAR(64) NOT NULL,
-    asset_code VARCHAR(12) NOT NULL,
+    asset_code VARCHAR(64) NOT NULL,
     asset_issuer VARCHAR(56) NOT NULL,
     UNIQUE(asset_code, asset_type, asset_issuer)
 );
