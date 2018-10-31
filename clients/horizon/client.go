@@ -13,6 +13,7 @@ import (
 	"strings"
 
 	"github.com/manucorporat/sse"
+	"github.com/stellar/go/protocols/horizon/operations"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
 )
@@ -539,7 +540,7 @@ func (c *Client) StreamOperations(
 	c.fixURLOnce.Do(c.fixURL)
 	url := fmt.Sprintf("%s/operations", c.URL)
 	return c.stream(ctx, url, cursor, func(data []byte) error {
-		var o operation.Base
+		var o operations.Base
 		err = json.Unmarshal(data, &o)
 		if err != nil {
 			return errors.Wrap(err, "Error unmarshaling data")
