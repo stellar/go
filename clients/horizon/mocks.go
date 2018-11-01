@@ -148,10 +148,11 @@ func (m *MockClient) StreamTransactions(
 // StreamOperations is a mocking a method
 func (m *MockClient) StreamOperations(
 	ctx context.Context,
+	accountID string,
 	cursor *Cursor,
 	handler OperationHandler,
 ) error {
-	a := m.Called(ctx, cursor, handler)
+	a := m.Called(ctx, accountID, cursor, handler)
 	return a.Error(0)
 }
 

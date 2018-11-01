@@ -43,7 +43,7 @@ func ExampleClient_StreamOperations() {
 		time.Sleep(60 * time.Second)
 		cancel()
 	}()
-	err := client.StreamOperations(ctx, &cursor, func(o operations.Base) {
+	err := client.StreamOperations(ctx, "", &cursor, func(o operations.Base) {
 		fmt.Println(o.Type)
 	})
 	if err != nil {

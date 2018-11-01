@@ -531,14 +531,21 @@ func (c *Client) StreamTransactions(
 }
 
 // StreamOperations streams incoming operations. Use context.WithCancel to stop streaming or
-// context.Background() if you want to stream indefinitely.
+// context.Background() if you want to stream indefinitely. Send empty string for accountID to
+// stream every operation.
 func (c *Client) StreamOperations(
 	ctx context.Context,
+	accountID string,
 	cursor *Cursor,
 	handler OperationHandler,
 ) (err error) {
+	var url string
 	c.fixURLOnce.Do(c.fixURL)
-	url := fmt.Sprintf("%s/operations", c.URL)
+	if accountID == "" {
+		url = fmt.Sprintf("%s/operations", c.URL)
+	} else {
+		url = fmt.Sprintf("%s/accounts/%s/operations", c.URL, accountID)
+	}
 	return c.stream(ctx, url, cursor, func(data []byte) error {
 		var o operations.Base
 		err = json.Unmarshal(data, &o)
