@@ -13,7 +13,6 @@ import (
 	"sync"
 
 	"github.com/stellar/go/build"
-	"github.com/stellar/go/protocols/horizon/operations"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
 )
@@ -138,7 +137,7 @@ type PaymentHandler func(Payment)
 type TransactionHandler func(Transaction)
 
 // OperationHandler is a function that is called when a new operation is received
-type OperationHandler func(operations.Base)
+type OperationHandler func(interface{})
 
 // ensure that the horizon client can be used as a SequenceProvider
 var _ build.SequenceProvider = &Client{}
