@@ -660,16 +660,12 @@
   revision = "976c720a22c8eb4eb6a0b4348ad85ad12491a506"
 
 [[projects]]
-  digest = "1:513b53b1a9d42d32d2bbf1e67701ed384c74c020a5a701e8da2d4dc751192876"
+  digest = "1:a6dd23012ca65b72dbca7b3e06dac44a9bb33b018221a26f213b1802cddfc337"
   name = "github.com/throttled/throttled"
-  packages = [
-    ".",
-    "store/memstore",
-    "store/redigostore",
-  ]
+  packages = ["."]
   pruneopts = "T"
-  revision = "ee00e877b953e232c5b0fff46f75cdc56b984524"
-  version = "v2.2.2"
+  revision = "c99eef3ad70a3be5a983770523e0e379699c805c"
+  source = "https://github.com/bartekn/throttled.git"
 
 [[projects]]
   branch = "master"
@@ -925,8 +921,6 @@
     "github.com/stretchr/testify/require",
     "github.com/stretchr/testify/suite",
     "github.com/throttled/throttled",
-    "github.com/throttled/throttled/store/memstore",
-    "github.com/throttled/throttled/store/redigostore",
     "github.com/tyler-smith/go-bip32",
     "github.com/tyler-smith/go-bip39",
     "golang.org/x/net/http2",

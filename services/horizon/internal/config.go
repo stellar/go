@@ -2,6 +2,7 @@ package horizon
 
 import (
 	"net/url"
+	"time"
 
 	"github.com/sirupsen/logrus"
 	"github.com/throttled/throttled"
@@ -14,6 +15,8 @@ type Config struct {
 	StellarCoreDatabaseURL string
 	StellarCoreURL         string
 	Port                   int
+	MaxDBConnections       int
+	SSEUpdateFrequency     time.Duration
 	RateLimit              *throttled.RateQuota
 	RateLimitRedisKey      string
 	RedisURL               string

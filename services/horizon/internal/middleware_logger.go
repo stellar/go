@@ -21,25 +21,24 @@ func LoggerMiddleware(h http.Handler) http.Handler {
 		mw := middleware.NewWrapResponseWriter(w, r.ProtoMajor)
 
 		logger := log.WithField("req", chimiddleware.GetReqID(ctx))
-
 		ctx = log.Set(ctx, logger)
 
-		logStartOfRequest(ctx, r)
-
-		then := time.Now()
-		h.ServeHTTP(mw, r.WithContext(ctx))
-		duration := time.Now().Sub(then)
 		// Checking `Accept` header from user request because if the streaming connection
 		// is reset before sending the first event no Content-Type header is sent in a response.
 		acceptHeader := r.Header.Get("Accept")
 		streaming := strings.Contains(acceptHeader, render.MimeEventStream)
+
+		logStartOfRequest(ctx, r, streaming)
+		then := time.Now()
+		h.ServeHTTP(mw, r.WithContext(ctx))
+		duration := time.Now().Sub(then)
 		logEndOfRequest(ctx, r, duration, mw, streaming)
 	}
 
 	return http.HandlerFunc(fn)
 }
 
-func logStartOfRequest(ctx context.Context, r *http.Request) {
+func logStartOfRequest(ctx context.Context, r *http.Request, streaming bool) {
 	log.Ctx(ctx).WithFields(log.F{
 		"path":         r.URL.String(),
 		"method":       r.Method,
@@ -47,6 +46,7 @@ func logStartOfRequest(ctx context.Context, r *http.Request) {
 		"ip_port":      r.RemoteAddr,
 		"forwarded_ip": firstXForwardedFor(r),
 		"host":         r.Host,
+		"streaming":    streaming,
 	}).Info("Starting request")
 }
 

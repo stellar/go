@@ -54,5 +54,10 @@
   name = "github.com/sirupsen/logrus"
   revision = "68cec9f21fbf3ea8d8f98c044bc6ce05f17b267a"
 
+[[constraint]]
+  name = "github.com/throttled/throttled"
+  source = "https://github.com/bartekn/throttled.git"
+  revision = "c99eef3ad70a3be5a983770523e0e379699c805c"
+
 [prune]
   go-tests = true

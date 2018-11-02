@@ -4,6 +4,7 @@ import (
 	stdLog "log"
 	"net/url"
 	"os"
+	"time"
 
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -30,6 +31,8 @@ func init() {
 	viper.BindEnv("db-url", "DATABASE_URL")
 	viper.BindEnv("stellar-core-db-url", "STELLAR_CORE_DATABASE_URL")
 	viper.BindEnv("stellar-core-url", "STELLAR_CORE_URL")
+	viper.BindEnv("max-db-connections", "MAX_DB_CONNECTIONS")
+	viper.BindEnv("sse-update-frequency", "SSE_UPDATE_FREQUENCY")
 	viper.BindEnv("per-hour-rate-limit", "PER_HOUR_RATE_LIMIT")
 	viper.BindEnv("rate-limit-redis-key", "RATE_LIMIT_REDIS_KEY")
 	viper.BindEnv("redis-url", "REDIS_URL")
@@ -88,6 +91,18 @@ func init() {
 		"per-hour-rate-limit",
 		3600,
 		"max count of requests allowed in a one hour period, by remote ip address",
+	)
+
+	rootCmd.PersistentFlags().Int(
+		"max-db-connections",
+		20,
+		"max db connections (per DB), may need to be increased when responses are slow but DB CPU is normal",
+	)
+
+	rootCmd.PersistentFlags().Int(
+		"sse-update-frequency",
+		5,
+		"defines how often streams should check if there's a new ledger (in seconds), may need to increase in case of big number of streams",
 	)
 
 	rootCmd.PersistentFlags().String(
@@ -267,6 +282,8 @@ func initConfig() {
 		StellarCoreDatabaseURL: viper.GetString("stellar-core-db-url"),
 		StellarCoreURL:         viper.GetString("stellar-core-url"),
 		Port:                   viper.GetInt("port"),
+		MaxDBConnections:       viper.GetInt("max-db-connections"),
+		SSEUpdateFrequency:     time.Duration(viper.GetInt("sse-update-frequency")) * time.Second,
 		RateLimit:              rateLimit,
 		RateLimitRedisKey:      viper.GetString("rate-limit-redis-key"),
 		RedisURL:               viper.GetString("redis-url"),

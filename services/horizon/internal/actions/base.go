@@ -3,8 +3,10 @@ package actions
 import (
 	"database/sql"
 	"net/http"
+	"time"
 
 	horizonContext "github.com/stellar/go/services/horizon/internal/context"
+	"github.com/stellar/go/services/horizon/internal/ledger"
 	"github.com/stellar/go/services/horizon/internal/render"
 	hProblem "github.com/stellar/go/services/horizon/internal/render/problem"
 	"github.com/stellar/go/services/horizon/internal/render/sse"
@@ -22,15 +24,17 @@ type Base struct {
 	R   *http.Request
 	Err error
 
-	isSetup bool
+	sseUpdateFrequency time.Duration
+	isSetup            bool
 }
 
 // Prepare established the common attributes that get used in nearly every
 // action.  "Child" actions may override this method to extend action, but it
 // is advised you also call this implementation to maintain behavior.
-func (base *Base) Prepare(w http.ResponseWriter, r *http.Request) {
+func (base *Base) Prepare(w http.ResponseWriter, r *http.Request, sseUpdateFrequency time.Duration) {
 	base.W = w
 	base.R = r
+	base.sseUpdateFrequency = sseUpdateFrequency
 }
 
 // Execute trigger content negotiation and the actual execution of one of the
@@ -63,6 +67,8 @@ func (base *Base) Execute(action interface{}) {
 		stream := sse.NewStream(ctx, base.W)
 
 		for {
+			lastLedgerState := ledger.CurrentState()
+
 			// Rate limit the request if it's a call to stream since it queries the DB every second. See
 			// https://github.com/stellar/go/issues/715 for more details.
 			app := base.R.Context().Value(&horizonContext.AppContextKey)
@@ -111,12 +117,24 @@ func (base *Base) Execute(action interface{}) {
 				return
 			}
 
+			newLedgers := make(chan bool)
+			go func() {
+				for {
+					time.Sleep(base.sseUpdateFrequency)
+					currentLedgerState := ledger.CurrentState()
+					if currentLedgerState.HistoryLatest >= lastLedgerState.HistoryLatest+1 {
+						newLedgers <- true
+						return
+					}
+				}
+			}()
+
 			select {
 			case <-ctx.Done():
 				stream.Done() // Call Done on the stream so that it doesn't send any more heartbeats.
 				return
-			case <-sse.Pumped():
-				//no-op, continue onto the next iteration
+			case <-newLedgers:
+				continue
 			}
 		}
 	case render.MimeRaw:

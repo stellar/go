@@ -17,8 +17,6 @@ import (
 	"github.com/stellar/go/services/horizon/internal/txsub/sequence"
 	"github.com/stellar/go/support/render/problem"
 	"github.com/throttled/throttled"
-	"github.com/throttled/throttled/store/memstore"
-	"github.com/throttled/throttled/store/redigostore"
 )
 
 // Web contains the http server related fields for horizon: the router,
@@ -172,22 +170,7 @@ func initWebRateLimiter(app *App) {
 		return
 	}
 
-	var rateLimitStore throttled.GCRAStore
-	rateLimitStore, err := memstore.New(50000)
-
-	if app.redis != nil {
-		key := "throttle:"
-		if app.config.RateLimitRedisKey != "" {
-			key = app.config.RateLimitRedisKey + ":"
-		}
-		rateLimitStore, err = redigostore.New(app.redis, key, 0)
-	}
-
-	if err != nil {
-		panic(fmt.Errorf("unable to initialize store for RateLimiter"))
-	}
-
-	rateLimiter, err := throttled.NewGCRARateLimiter(rateLimitStore, *app.config.RateLimit)
+	rateLimiter, err := throttled.NewGCRARateLimiter(50000, *app.config.RateLimit)
 	if err != nil {
 		panic(fmt.Errorf("unable to create RateLimiter"))
 	}
