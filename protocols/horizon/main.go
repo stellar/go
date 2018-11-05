@@ -92,6 +92,7 @@ func (this *Account) GetData(key string) ([]byte, error) {
 type AccountFlags struct {
 	AuthRequired  bool `json:"auth_required"`
 	AuthRevocable bool `json:"auth_revocable"`
+	AuthImmutable bool `json:"auth_immutable"`
 }
 
 // AccountThresholds represents an accounts "thresholds", the numerical values

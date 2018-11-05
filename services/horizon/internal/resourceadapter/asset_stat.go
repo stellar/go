@@ -29,6 +29,7 @@ func PopulateAssetStat(
 	res.Flags = AccountFlags{
 		(row.Flags & int8(xdr.AccountFlagsAuthRequiredFlag)) != 0,
 		(row.Flags & int8(xdr.AccountFlagsAuthRevocableFlag)) != 0,
+		(row.Flags & int8(xdr.AccountFlagsAuthImmutableFlag)) != 0,
 	}
 	res.PT = row.SortKey
 
