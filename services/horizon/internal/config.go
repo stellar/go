@@ -17,6 +17,7 @@ type Config struct {
 	Port                   int
 	MaxDBConnections       int
 	SSEUpdateFrequency     time.Duration
+	ConnectionTimeout      time.Duration
 	RateLimit              *throttled.RateQuota
 	RateLimitRedisKey      string
 	RedisURL               string

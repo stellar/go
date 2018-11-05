@@ -4,7 +4,6 @@ import (
 	"context"
 	"net/http"
 	"sync"
-	"time"
 )
 
 // Stream represents an output stream that data can be written to.
@@ -22,19 +21,15 @@ type Stream interface {
 // NewStream creates a new stream against the provided response writer.
 func NewStream(ctx context.Context, w http.ResponseWriter) Stream {
 	result := &stream{
-		ctx:      ctx,
-		interval: heartbeatInterval,
-		w:        w,
+		ctx: ctx,
+		w:   w,
 	}
 
 	return result
 }
 
-const heartbeatInterval = 10 * time.Second
-
 type stream struct {
-	ctx      context.Context
-	interval time.Duration // How often to send a heartbeat
+	ctx context.Context
 
 	initSync sync.Once  // Variable to ensure that Init only writes the preamble once.
 	mu       sync.Mutex // Mutex protects the following fields
@@ -42,21 +37,6 @@ type stream struct {
 	done     bool
 	sent     int
 	limit    int
-}
-
-// Go routine that periodically sends a comment message to keep the connection
-// alive.
-func (s *stream) sendHeartbeats() {
-	for {
-		time.Sleep(s.interval)
-		s.mu.Lock()
-		if s.isDone() {
-			s.mu.Unlock()
-			return
-		}
-		WriteHeartbeat(s.w)
-		s.mu.Unlock()
-	}
 }
 
 // Init function is only executed once. It writes the preamble event which includes the HTTP response code and a
@@ -68,8 +48,6 @@ func (s *stream) Init() {
 		if !ok {
 			s.done = true
 		}
-		// Start the go routine that sends heartbeats at regular intervals
-		go s.sendHeartbeats()
 	})
 }
 
@@ -102,7 +80,7 @@ func (s *stream) Done() {
 }
 
 // isDone checks to see if the stream is done. Not safe to call concurrently
-// and meant for internal use (eg in sendHeartbeats).
+// and meant for internal use.
 func (s *stream) isDone() bool {
 	if s.limit == 0 {
 		return s.done

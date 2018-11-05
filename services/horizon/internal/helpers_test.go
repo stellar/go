@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"time"
 
 	"github.com/stellar/go/services/horizon/internal/test"
 	supportLog "github.com/stellar/go/support/log"
@@ -29,7 +30,8 @@ func NewTestConfig() Config {
 			MaxRate:  throttled.PerHour(1000),
 			MaxBurst: 100,
 		},
-		LogLevel: supportLog.InfoLevel,
+		ConnectionTimeout: 55 * time.Second, // Default
+		LogLevel:          supportLog.InfoLevel,
 	}
 }
 

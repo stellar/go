@@ -131,7 +131,7 @@ func (base *Base) Execute(action interface{}) {
 
 			select {
 			case <-ctx.Done():
-				stream.Done() // Call Done on the stream so that it doesn't send any more heartbeats.
+				stream.Done()
 				return
 			case <-newLedgers:
 				continue

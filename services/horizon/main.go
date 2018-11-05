@@ -33,6 +33,7 @@ func init() {
 	viper.BindEnv("stellar-core-url", "STELLAR_CORE_URL")
 	viper.BindEnv("max-db-connections", "MAX_DB_CONNECTIONS")
 	viper.BindEnv("sse-update-frequency", "SSE_UPDATE_FREQUENCY")
+	viper.BindEnv("connection-timeout", "CONNECTION_TIMEOUT")
 	viper.BindEnv("per-hour-rate-limit", "PER_HOUR_RATE_LIMIT")
 	viper.BindEnv("rate-limit-redis-key", "RATE_LIMIT_REDIS_KEY")
 	viper.BindEnv("redis-url", "REDIS_URL")
@@ -103,6 +104,12 @@ func init() {
 		"sse-update-frequency",
 		5,
 		"defines how often streams should check if there's a new ledger (in seconds), may need to increase in case of big number of streams",
+	)
+
+	rootCmd.PersistentFlags().Int(
+		"connection-timeout",
+		55,
+		"defines the timeout of connection after which 504 response will be sent or stream will be closed, if Horizon is behind a load balancer with idle connection timeout, this should be set to a few seconds less that idle timeout",
 	)
 
 	rootCmd.PersistentFlags().String(
@@ -284,6 +291,7 @@ func initConfig() {
 		Port:                   viper.GetInt("port"),
 		MaxDBConnections:       viper.GetInt("max-db-connections"),
 		SSEUpdateFrequency:     time.Duration(viper.GetInt("sse-update-frequency")) * time.Second,
+		ConnectionTimeout:      time.Duration(viper.GetInt("connection-timeout")) * time.Second,
 		RateLimit:              rateLimit,
 		RateLimitRedisKey:      viper.GetString("rate-limit-redis-key"),
 		RedisURL:               viper.GetString("redis-url"),
