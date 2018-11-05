@@ -82,8 +82,9 @@ func (a *App) Serve() {
 		Timeout: 10 * time.Second,
 
 		Server: &http.Server{
-			Addr:    addr,
-			Handler: http.DefaultServeMux,
+			Addr:              addr,
+			Handler:           http.DefaultServeMux,
+			ReadHeaderTimeout: 5 * time.Second,
 		},
 
 		ShutdownInitiated: func() {
