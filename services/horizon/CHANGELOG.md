@@ -19,7 +19,7 @@ This release contains several bug fixes and improvements:
 * Connections (including streams) are closed after timeout defined using `--connection-timeout` CLI param or `CONNECTION_TIMEOUT` environment variable. If Horizon is behind a load balancer with idle timeout set, it is recommended to set this to a value equal a few seconds less than idle timeout so streams can be properly closed by Horizon.
 * Streams have been improved to check for updates every `--sse-update-frequency` CLI param or `SSE_UPDATE_FREQUENCY` environment variable seconds. If a new ledger has been closed in this period, new events will be sent to a stream. Previously streams checked for new events every 1 second, even when there were no new ledgers.
 * Rate limiting algorithm has been changed to [GCRA](https://brandur.org/rate-limiting#gcra).
-* Rate limiting in streams has been changed to be more fair. Now 1 *credit* has to be *paid* every second of a stream instead of per request.
+* Rate limiting in streams has been changed to be more fair. Now 1 *credit* has to be *paid* every time there's a new ledger instead of per request.
 * Rate limiting can be disabled completely by setting `--per-hour-rate-limit=0` CLI param or `PER_HOUR_RATE_LIMIT=0` environment variable.
 * Account flags now display `auth_immutable` value.
 * Logs can be sent to a file. Destination file can be set using an environment variable (`LOG_FILE={file}`) or CLI parameter (`--log-file={file}`).
