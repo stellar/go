@@ -117,7 +117,10 @@ func (base *Base) Execute(action interface{}) {
 				return
 			}
 
-			newLedgers := make(chan bool)
+			// Make sure this is buffered channel of size 1. Otherwise, the go routine below
+			// will never return if `newLedgers` channel is not read. From Effective Go:
+			// > If the channel is unbuffered, the sender blocks until the receiver has received the value.
+			newLedgers := make(chan bool, 1)
 			go func() {
 				for {
 					time.Sleep(base.sseUpdateFrequency)
