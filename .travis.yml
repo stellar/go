@@ -8,6 +8,7 @@ addons:
 go:
 - '1.9'
 - '1.10'
+- '1.11'
 - tip
 go_import_path: github.com/stellar/go
 install:
@@ -42,7 +43,7 @@ deploy:
     name: Snapshots $(date --utc +'%F-%T')
     on:
       branch: master
-      go: '1.9'
+      go: '1.11'
   #tagged releases
   - provider: releases
     skip_cleanup: true
@@ -55,4 +56,4 @@ deploy:
       repo: stellar/go
       tags: true
       condition: $TRAVIS_TAG != snapshots
-      go: '1.9'
+      go: '1.11'
