@@ -145,7 +145,14 @@ func (e *Entry) StartTest(level logrus.Level) func() []*logrus.Entry {
 		e.Logger.Out = old
 		e.removeHook(hook)
 		e.isTesting = false
-		return hook.Entries
+
+		entries := []*logrus.Entry{}
+
+		for _, entry := range hook.Entries {
+			entries = append(entries, &entry)
+		}
+
+		return entries
 	}
 }
 
