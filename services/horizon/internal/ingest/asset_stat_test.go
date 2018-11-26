@@ -6,7 +6,6 @@ import (
 	"testing"
 
 	"github.com/stellar/go/keypair"
-	"github.com/stellar/go/services/horizon/internal/db2/core"
 	"github.com/stellar/go/services/horizon/internal/test"
 	"github.com/stellar/go/support/db"
 	"github.com/stellar/go/xdr"
@@ -119,10 +118,9 @@ func TestStatTrustlinesInfo(t *testing.T) {
 			defer tt.Finish()
 
 			session := &db.Session{DB: tt.CoreDB}
-			coreQ := &core.Q{Session: session}
 
 			for i, asset := range kase.assetState {
-				numAccounts, amount, err := statTrustlinesInfo(coreQ, asset.assetType, asset.assetCode, asset.assetIssuer)
+				numAccounts, amount, err := statTrustlinesInfo(session, asset.assetType, asset.assetCode, asset.assetIssuer)
 
 				tt.Require.NoError(err)
 				tt.Assert.Equal(asset.wantNumAccounts, numAccounts, fmt.Sprintf("asset index: %d", i))
@@ -163,9 +161,8 @@ func TestStatAccountInfo(t *testing.T) {
 			defer tt.Finish()
 
 			session := &db.Session{DB: tt.CoreDB}
-			coreQ := &core.Q{Session: session}
 
-			flags, toml, err := statAccountInfo(coreQ, kase.account)
+			flags, toml, err := statAccountInfo(session, kase.account)
 			tt.Require.NoError(err)
 			tt.Assert.Equal(kase.wantFlags, flags)
 			tt.Assert.Equal(kase.wantToml, toml)
@@ -349,24 +346,21 @@ func TestAssetModified(t *testing.T) {
 
 	for _, kase := range testCases {
 		t.Run(kase.opBody.Type.String(), func(t *testing.T) {
-			var coreQ *core.Q
+			var session *db.Session
 			if kase.needsCoreQ {
 				tt := test.Start(t).ScenarioWithoutHorizon("asset_stat_operations")
 				defer tt.Finish()
-				session := &db.Session{DB: tt.CoreDB}
-				coreQ = &core.Q{Session: session}
+				session = &db.Session{DB: tt.CoreDB}
 			}
 
-			assetsModified := AssetsModified(make(map[string]xdr.Asset))
-			assetsModified.IngestOperation(
-				nil,
+			assetsStats := AssetStats{CoreSession: session}
+			assetsStats.IngestOperation(
 				&xdr.Operation{
 					SourceAccount: &sourceAccount,
 					Body:          kase.opBody,
 				},
-				&sourceAccount,
-				coreQ)
-			assert.Equal(t, kase.wantAssets, extractKeys(assetsModified))
+				&sourceAccount)
+			assert.Equal(t, kase.wantAssets, extractKeys(assetsStats.toUpdate))
 		})
 	}
 }
@@ -387,17 +381,15 @@ func TestSourceAccountForAllowTrust(t *testing.T) {
 	})
 	wantAssets := []string{"credit_alphanum4/CAT/GCYLTPOU7IVYHHA3XKQF4YB4W4ZWHFERMOQ7K47IWANKNBFBNJJNEOG5"} // issued by anotherAccount
 
-	assetsModified := AssetsModified(make(map[string]xdr.Asset))
-	assetsModified.IngestOperation(
-		nil,
+	assetsStats := AssetStats{}
+	assetsStats.IngestOperation(
 		&xdr.Operation{
 			// this is the difference between this test and the table-driven case above
 			SourceAccount: nil,
 			Body:          opBody,
 		},
-		&sourceAccount,
-		nil)
-	assert.Equal(t, wantAssets, extractKeys(assetsModified))
+		&sourceAccount)
+	assert.Equal(t, wantAssets, extractKeys(assetsStats.toUpdate))
 }
 
 func makeAccount(secret string, code string) (xdr.AccountId, xdr.Asset) {
