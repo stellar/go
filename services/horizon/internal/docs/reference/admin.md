@@ -77,7 +77,7 @@ To prepare a database for horizon's use, first you must ensure the database is b
 
 ### Postgres configuration
 
-It is recommended to set `random_page_cost=1` in Postgres configuration if you are using SSD storage.
+It is recommended to set `random_page_cost=1` in Postgres configuration if you are using SSD storage. With this setting Query Planner will make a better use of indexes, expecially for `JOIN` queries. We have noticed a huge speed improvement for some queries.
 
 ## Running
 
