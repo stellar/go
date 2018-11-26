@@ -54,10 +54,6 @@ func (ingest *Ingestion) Clear(start int64, end int64) error {
 	if err != nil {
 		return errors.Wrap(err, "Error clearing history_trades")
 	}
-	err = clear(start, end, "asset_stats", "id")
-	if err != nil {
-		return errors.Wrap(err, "Error clearing asset_stats")
-	}
 
 	return nil
 }
@@ -450,17 +446,6 @@ func (ingest *Ingestion) createInsertBuilders() {
 			"counter_asset_id",
 			"counter_amount",
 			"base_is_seller",
-		},
-	}
-
-	ingest.builders[AssetStatsTableName] = &BatchInsertBuilder{
-		TableName: AssetStatsTableName,
-		Columns: []string{
-			"id",
-			"amount",
-			"num_accounts",
-			"flags",
-			"toml",
 		},
 	}
 }

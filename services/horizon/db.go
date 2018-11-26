@@ -44,6 +44,48 @@ var dbBackfillCmd = &cobra.Command{
 	},
 }
 
+var dbInitAssetStatsCmd = &cobra.Command{
+	Use:   "init-asset-stats",
+	Short: "initializes values for assets stats",
+	Run: func(cmd *cobra.Command, args []string) {
+		// Check config
+		initApp(cmd, args)
+
+		hlog.DefaultLogger.Logger.Level = config.LogLevel
+
+		hdb, err := db.Open("postgres", config.DatabaseURL)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		cdb, err := db.Open("postgres", config.StellarCoreDatabaseURL)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		assetStats := ingest.AssetStats{
+			CoreSession:    cdb,
+			HistorySession: hdb,
+		}
+
+		log.Println("Getting assets from core DB...")
+
+		count, err := assetStats.AddAllAssetsFromCore()
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		log.Println(fmt.Sprintf("Updating %d assets...", count))
+
+		err = assetStats.UpdateAssetStats()
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		log.Println(fmt.Sprintf("Added stats for %d assets...", count))
+	},
+}
+
 var dbClearCmd = &cobra.Command{
 	Use:   "clear",
 	Short: "clears all imported historical data",
@@ -201,6 +243,7 @@ var dbReingestCmd = &cobra.Command{
 
 func init() {
 	dbCmd.AddCommand(dbInitCmd)
+	dbCmd.AddCommand(dbInitAssetStatsCmd)
 	dbCmd.AddCommand(dbBackfillCmd)
 	dbCmd.AddCommand(dbClearCmd)
 	dbCmd.AddCommand(dbMigrateCmd)

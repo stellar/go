@@ -12,7 +12,6 @@ import (
 	"github.com/stellar/go/amount"
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/meta"
-	"github.com/stellar/go/services/horizon/internal/db2/core"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/services/horizon/internal/ingest/participants"
 	"github.com/stellar/go/support/errors"
@@ -67,8 +66,8 @@ func (is *Session) Run() {
 		}
 	}
 
-	if is.Config.EnableAssetStats {
-		is.Cursor.AssetsModified.UpdateAssetStats(is)
+	if is.Config.EnableAssetStats && is.Err == nil {
+		is.Err = is.AssetStats.UpdateAssetStats()
 	}
 
 	if is.Err != nil {
@@ -100,7 +99,7 @@ func (is *Session) clearLedger() {
 	}
 
 	startLedger, endLedger := is.Cursor.LedgerRange()
-	log.WithFields(ilog.F{"start": startLedger, "end": endLedger}).Info("Clearing ledgers")
+	log.WithFields(ilog.F{"toid_start": startLedger, "toid_end": endLedger}).Info("Clearing ledgers")
 
 	start := time.Now()
 	is.Err = is.Ingestion.Clear(is.Cursor.LedgerRange())
@@ -428,12 +427,12 @@ func (is *Session) ingestOperation() {
 	is.ingestOperationParticipants()
 	is.ingestEffects()
 	is.ingestTrades()
-	is.Err = is.Cursor.AssetsModified.IngestOperation(
-		is.Err,
-		is.Cursor.Operation(),
-		&is.Cursor.Transaction().Envelope.Tx.SourceAccount,
-		&core.Q{Session: is.Ingestion.DB},
-	)
+	if is.Config.EnableAssetStats && is.Err == nil {
+		is.Err = is.AssetStats.IngestOperation(
+			is.Cursor.Operation(),
+			&is.Cursor.Transaction().Envelope.Tx.SourceAccount,
+		)
+	}
 
 	if is.Err != nil {
 		is.Err = errors.Wrap(is.Err, "Cursor.AssetsModified.IngestOperation error")
