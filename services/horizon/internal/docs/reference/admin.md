@@ -75,6 +75,10 @@ Before the horizon server can be run, we must first prepare the horizon database
 
 To prepare a database for horizon's use, first you must ensure the database is blank.  It's easiest to simply create a new database on your postgres server specifically for horizon's use.  Next you must install the schema by running `horizon db init`.  Remember to use the appropriate command line flags or environment variables to configure horizon as explained in [Configuring ](#Configuring).  This command will log any errors that occur.
 
+### Postgres configuration
+
+It is recommended to set `random_page_cost=1` in Postgres configuration if you are using SSD storage. With this setting Query Planner will make a better use of indexes, expecially for `JOIN` queries. We have noticed a huge speed improvement for some queries.
+
 ## Running
 
 Once your horizon database is configured, you're ready to run horizon.  To run horizon you simply run `horizon` or `horizon serve`, both of which start the HTTP server and start logging to standard out.  When run, you should see some output that similar to:
