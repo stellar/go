@@ -56,6 +56,6 @@ To learn more about the concept of assets in the Stellar network, take a look at
 
 ## Endpoints
 
-|  Resource                      |    Type    |    Resource URI Template     |
-| ------------------------------ | ---------- | ---------------------------- |
-| [All Assets](../assets-all.md) | Collection | `/assets` (`GET`)            |
+|  Resource                                |    Type    |    Resource URI Template     |
+| ---------------------------------------- | ---------- | ---------------------------- |
+| [All Assets](../endpoints/assets-all.md) | Collection | `/assets` (`GET`)            |
