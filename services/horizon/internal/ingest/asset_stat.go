@@ -1,6 +1,7 @@
 package ingest
 
 import (
+	"database/sql"
 	"strings"
 
 	sq "github.com/Masterminds/squirrel"
@@ -242,6 +243,13 @@ func statAccountInfo(coreSession *db.Session, accountID string) (int8, string, e
 	coreQ := &core.Q{Session: coreSession}
 	err := coreQ.AccountByAddress(&account, accountID, 9)
 	if err != nil {
+		// It is possible that issuer account has been deleted but issued assets
+		// are still in circulation. In such case we return default values in 0.15.x
+		// but a new field (`deleted`?) should be introduced in 0.16.0.
+		// See: https://github.com/stellar/stellar-core/issues/1835
+		if err == sql.ErrNoRows {
+			return 0, "", nil
+		}
 		return -1, "", errors.Wrap(err, "coreQ.AccountByAddress error")
 	}
 
