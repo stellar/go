@@ -58,18 +58,17 @@ with all of the results having a `ledger_sequence` attribute equal to 1.
 The `transactions` link is also _templated_, which means that the `href`
 attribute of the link is actually a URI template, as specified by  [RFC
 6570](https://tools.ietf.org/html/rfc6570).  We use URI templates to show you
-what parameters a give resource can take. You must evaluate the template to a
+what parameters a given resource can take. You must evaluate the template to a
 valid URI before navigating to it.
 
 ## Pages
 
-Pages represent a subset of a larger collection of objects.
+Pages represent a subset of a larger collection of objects.  
 As an example, it would be unfeasible to provide the
-[All Transactions](../reference/transactions-all.md) endpoint without paging.  Over time there
-will be millions of transactions in the Stellar network's ledger and returning
-them all over a single request would be unfeasible.
+[All Transactions](../reference/transactions-all.md) endpoint without paging.  
+Over time there will be millions of transactions in the Stellar network's ledger
+and returning them all over a single request would be unfeasible.
 
 Read more about paging in following docs:
 - [Page](../reference/resources/page.md)
 - [Paging](./paging.md)
-
