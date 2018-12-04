@@ -23,20 +23,15 @@ Horizon requires go 1.9 or higher to build. See (https://golang.org/doc/install)
 
 ## Building
 
-[mercurial](https://www.mercurial-scm.org/) is used during glide build.
+[dep](https://golang.github.io/dep/) is used for building horizon.
 
-[glide](https://glide.sh/) is used for building horizon.
-
-Given you have a running golang installation, you can install this with:
-
-```bash
-curl https://glide.sh/get | sh
-```
+Please, follow the [dep installation guide](https://golang.github.io/dep/docs/installation.html) to get the `dep` on your
+system. 
 
 Next, you must download the source for packages that horizon depends upon. From within the project directory, run:
 
 ```bash
-glide install
+dep ensure -v
 ```
 
 Then, simply run `go install github.com/stellar/go/services/horizon`.  After successful
