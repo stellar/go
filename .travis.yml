@@ -1,3 +1,4 @@
+dist: xenial
 language: go
 services:
 - mysql
@@ -5,6 +6,8 @@ services:
 - redis-server
 addons:
   postgresql: '9.4'
+  ssh_known_hosts:
+  - bitbucket.org
 go:
 - '1.9'
 - '1.10'
