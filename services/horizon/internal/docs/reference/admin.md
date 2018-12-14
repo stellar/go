@@ -90,15 +90,19 @@ INFO[0000] Starting horizon on :8000                     pid=29013
 The log line above announces that horizon is ready to serve client requests. Note: the numbers shown above may be different for your installation.  Next we can confirm that horizon is responding correctly by loading the root resource.  In the example above, that URL would be [http://127.0.0.1:8000/] and simply running `curl http://127.0.0.1:8000/` shows you that the root resource can be loaded correctly.
 
 
-## Ingesting stellar-core data
+## Ingesting live stellar-core data
 
 Horizon provides most of its utility through ingested data.  Your horizon server can be configured to listen for and ingest transaction results from the connected stellar-core.  We recommend that within your infrastructure you run one (and only one) horizon process that is configured in this way.   While running multiple ingestion processes will not corrupt the horizon database, your error logs will quickly fill up as the two instances race to ingest the data from stellar-core.  We may develop a system that coordinates multiple horizon processes in the future, but we would also be happy to include an external contribution that accomplishes this.
 
 To enable ingestion, you must either pass `--ingest=true` on the command line or set the `INGEST` environment variable to "true".
 
+### Ingesting historical data
+
+To enable ingestion of historical data from stellar-core you need to run `horizon db backfill NUM_LEDGERS`. If you're running a full validator with published history archive, for example, you might want to ingest all of history. In this case your `NUM_LEDGERS` should be slightly higher than the current ledger id on the network. You can run this process in the background while your horizon server is up. This continuously decrements the `history.elder_ledger` in your /metrics endpoint until `NUM_LEDGERS` is reached and the backfill is complete. 
+
 ### Managing storage for historical data
 
-Given an empty horizon database, any and all available history on the attached stellar-core instance will be ingested. Over time, this recorded history will grow unbounded, increasing storage used by the database.  To keep your costs down, you may configure horizon to only retain a certain number of ledgers in the historical database.  This is done using the `--history-retention-count` flag or the `HISTORY_RETENTION_COUNT` environment variable.  Set the value to the number of recent ledgers you wish to keep around, and every hour the horizon subsystem will reap expired data.  Alternatively, you may execute the command `horizon db reap` to force a collection.
+Over time, the recorded network history will grow unbounded, increasing storage used by the database. Horizon expands the data ingested from stellar-core and needs sufficient disk space. Unless you need to maintain a history archive you may configure horizon to only retain a certain number of ledgers in the database. This is done using the `--history-retention-count` flag or the `HISTORY_RETENTION_COUNT` environment variable. Set the value to the number of recent ledgers you wish to keep around, and every hour the horizon subsystem will reap expired data.  Alternatively, you may execute the command `horizon db reap` to force a collection.
 
 ### Surviving stellar-core downtime
 
@@ -106,7 +110,7 @@ Horizon tries to maintain a gap-free window into the history of the stellar-netw
 
 To ensure that the metadata required by horizon is maintained, you have several options: You may either set the `CATCHUP_COMPLETE` stellar-core configuration option to `true` or configure `CATCHUP_RECENT` to determine the amount of time your stellar-core can be offline without having to rebuild your horizon database.
 
-We _do not_ recommend using the `CATCHUP_COMPLETE` method, as this will force stellar-core to apply every transaction from the beginning of the ledger, which will take an ever increasing amount of time.  Instead, we recommend you set the `CATCHUP_RECENT` config value.  To do this, determine how long of a downtime you would like to survive (expressed in seconds) and divide by ten.  This roughly equates to the number of ledgers that occur within your desired grace period (ledgers roughly close at a rate of one every ten seconds).  With this value set, stellar-core will replay transactions for ledgers that are recent enough, ensuring that the metadata needed by horizon is present.
+Unless your node is a full validator and archive publisher we _do not_ recommend using the `CATCHUP_COMPLETE` method, as this will force stellar-core to apply every transaction from the beginning of the ledger, which will take an ever increasing amount of time. Instead, we recommend you set the `CATCHUP_RECENT` config value. To do this, determine how long of a downtime you would like to survive (expressed in seconds) and divide by ten.  This roughly equates to the number of ledgers that occur within your desired grace period (ledgers roughly close at a rate of one every ten seconds).  With this value set, stellar-core will replay transactions for ledgers that are recent enough, ensuring that the metadata needed by horizon is present.
 
 ### Correcting gaps in historical data
 
