@@ -13,15 +13,41 @@ For each new version we will only track changes from the previous version.
 
 ## Changes
 
-### 0.15.0 Release candidate
+### 0.15.0
+
+#### SDKs with full support
+
+- [JS SDK 0.10.2](https://github.com/stellar/js-stellar-sdk/releases/tag/v0.10.2)
+- [Java SDK 0.4.0](https://github.com/stellar/java-stellar-sdk/releases/tag/0.4.0)
 
 #### Changes
 
-- Trades: the trade resource now has both `base_offer_id` and `counter_offer_id` properties which relate to the 
-respective side of the trade. The current `offer_id`, which related to the "sell" offer, remains for backward 
-compatibility.
+* Assets stats are disabled by default. This can be changed using an environment variable (`ENABLE_ASSET_STATS=true`) or
+CLI parameter (`--enable-asset-stats=true`). Please note that it has a negative impact on a DB and ingestion time.
+* In ["Offers for Account"](https://www.stellar.org/developers/horizon/reference/endpoints/offers-for-account.html),
+`last_modified_time` field  endpoint can be `null` when ledger data is not available (has not been ingested yet).
+* ["Trades for Offer"](https://www.stellar.org/developers/horizon/reference/endpoints/trades-for-offer.html) endpoint
+will query for trades that match the given offer on either side of trades, rather than just the "sell" offer.
+Offer IDs are now [synthetic](https://www.stellar.org/developers/horizon/reference/resources/trade.html#synthetic-offer-ids).
+* New `/operation_fee_stats` endpoint includes fee stats for the last 5 ledgers.
+* ["Trades"](https://www.stellar.org/developers/horizon/reference/endpoints/trades.html) endpoint can now be streamed.
+* In ["Trade Aggregations"](https://www.stellar.org/developers/horizon/reference/endpoints/trade_aggregations.html) endpoint,
+`offset` parameter has been added.
+* Account flags now display `auth_immutable` value.
+* Rate limiting in streams has been changed to be more fair. Now 1 *credit* has to be *paid* every time there's a new ledger
+instead of per request.
 
-### 0.14.0 Release candidate
+| Resource                            | Changes                                  | Go SDK <sup>1</sup> | JS SDK | Java SDK |
+|:------------------------------------|:-----------------------------------------|:--------------------|:-------|:---------|
+| `GET /assets`                       | Disabled by default.                     | +                   | 0.10.2 | 0.4.0    |
+| `GET /accounts/{account_id}/offers` | `last_modified_time` field can be `null` | -                   | 0.10.2 | 0.4.0    |
+| `GET /offers/{offer_id}/trades`     | Query fields and syntetic IDs            | -                   | 0.10.2 | 0.4.0    |
+| `GET /trades` SSE                   | Can be streamed                          | -                   | -      | 0.4.0    |
+| `GET /operation_fee_stats`          | New endpoint                             | -                   | -      | 0.4.0    |
+| `GET /trade_aggregations`           | New `offset` parameter                   | -                   | -      | 0.4.0    |
+| `GET /accounts/{account_id}`        | Displaying `auth_immutable` flag         | -                   | 0.10.2 | 0.4.0    |
+
+### 0.14.0
 
 #### SDKs with full support
 
