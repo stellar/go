@@ -99,7 +99,7 @@ func (action *EffectIndexAction) loadLedgers() {
 func (action *EffectIndexAction) loadParams() {
 	action.ValidateCursor()
 	action.PagingParams = action.GetPageQuery()
-	action.AccountFilter = action.GetString("account_id")
+	action.AccountFilter = action.GetAddress("account_id")
 	action.LedgerFilter = action.GetInt32("ledger_id")
 	action.TransactionFilter = action.GetString("tx_id")
 	action.OperationFilter = action.GetInt64("op_id")

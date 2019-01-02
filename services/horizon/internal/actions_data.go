@@ -57,7 +57,7 @@ func (action *DataShowAction) SSE(stream sse.Stream) {
 }
 
 func (action *DataShowAction) loadParams() {
-	action.Address = action.GetString("account_id")
+	action.Address = action.GetAddress("account_id")
 	action.Key = action.GetString("key")
 }
 

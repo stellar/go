@@ -77,7 +77,7 @@ func (action *TradeIndexAction) loadParams() {
 	action.BaseAssetFilter, action.HasBaseAssetFilter = action.MaybeGetAsset("base_")
 	action.CounterAssetFilter, action.HasCounterAssetFilter = action.MaybeGetAsset("counter_")
 	action.OfferFilter = action.GetInt64("offer_id")
-	action.AccountFilter = action.GetString("account_id")
+	action.AccountFilter = action.GetAddress("account_id")
 
 	if (!action.HasBaseAssetFilter && action.HasCounterAssetFilter) ||
 		(action.HasBaseAssetFilter && !action.HasCounterAssetFilter) {
