@@ -30,6 +30,13 @@ const (
 	ParamLimit = "limit"
 )
 
+type Opt int
+
+const (
+	// DisableCursorValidation disables cursor validation in GetPageQuery
+	DisableCursorValidation Opt = iota
+)
+
 // GetCursor retrieves a string from either the URLParams, form or query string.
 // This method uses the priority (URLParams, Form, Query).
 func (base *Base) GetCursor(name string) string {
@@ -102,7 +109,7 @@ func (base *Base) GetInt64(name string) int64 {
 	asI64, err := strconv.ParseInt(asStr, 10, 64)
 
 	if err != nil {
-		base.SetInvalidField(name, err)
+		base.SetInvalidField(name, errors.New("unparseable value"))
 		return 0
 	}
 
@@ -125,7 +132,7 @@ func (base *Base) GetInt32(name string) int32 {
 	asI64, err := strconv.ParseInt(asStr, 10, 32)
 
 	if err != nil {
-		base.SetInvalidField(name, err)
+		base.SetInvalidField(name, errors.New("unparseable value"))
 		return 0
 	}
 
@@ -148,6 +155,11 @@ func (base *Base) GetLimit(name string, def uint64, max uint64) uint64 {
 
 	asI64, err := strconv.ParseInt(limit, 10, 64)
 
+	if err != nil {
+		base.SetInvalidField(name, errors.New("unparseable value"))
+		return 0
+	}
+
 	if asI64 <= 0 {
 		err = errors.New("invalid limit: non-positive value provided")
 	}
@@ -166,7 +178,16 @@ func (base *Base) GetLimit(name string, def uint64, max uint64) uint64 {
 
 // GetPageQuery is a helper that returns a new db.PageQuery struct initialized
 // using the results from a call to GetPagingParams()
-func (base *Base) GetPageQuery() db2.PageQuery {
+func (base *Base) GetPageQuery(opts ...Opt) db2.PageQuery {
+	disableCursorValidation := false
+
+	for opt := range opts {
+		switch Opt(opt) {
+		case DisableCursorValidation:
+			disableCursorValidation = true
+		}
+	}
+
 	if base.Err != nil {
 		return db2.PageQuery{}
 	}
@@ -179,10 +200,14 @@ func (base *Base) GetPageQuery() db2.PageQuery {
 		return db2.PageQuery{}
 	}
 
-	r, err := db2.NewPageQuery(cursor, order, limit)
+	r, err := db2.NewPageQuery(cursor, !disableCursorValidation, order, limit)
 
 	if err != nil {
-		base.Err = err
+		if invalidFieldError, ok := err.(*db2.InvalidFieldError); ok {
+			base.SetInvalidField(invalidFieldError.Name, err)
+		} else {
+			base.Err = problem.BadRequest
+		}
 	}
 
 	return r
@@ -200,7 +225,7 @@ func (base *Base) GetAddress(name string) (result string) {
 	_, err := strkey.Decode(strkey.VersionByteAccountID, result)
 
 	if err != nil {
-		base.SetInvalidField(name, err)
+		base.SetInvalidField(name, errors.New("invalid address"))
 	}
 
 	return result
@@ -209,14 +234,14 @@ func (base *Base) GetAddress(name string) (result string) {
 // GetAccountID retireves an xdr.AccountID by attempting to decode a stellar
 // address at the provided name.
 func (base *Base) GetAccountID(name string) (result xdr.AccountId) {
-	raw, err := strkey.Decode(strkey.VersionByteAccountID, base.GetString(name))
-
 	if base.Err != nil {
 		return
 	}
 
+	raw, err := strkey.Decode(strkey.VersionByteAccountID, base.GetString(name))
+
 	if err != nil {
-		base.SetInvalidField(name, err)
+		base.SetInvalidField(name, errors.New("invalid address"))
 		return
 	}
 
@@ -225,7 +250,7 @@ func (base *Base) GetAccountID(name string) (result xdr.AccountId) {
 
 	result, err = xdr.NewAccountId(xdr.PublicKeyTypePublicKeyTypeEd25519, key)
 	if err != nil {
-		base.SetInvalidField(name, err)
+		base.SetInvalidField(name, errors.New("invalid address"))
 		return
 	}
 
@@ -236,11 +261,15 @@ func (base *Base) GetAccountID(name string) (result xdr.AccountId) {
 // the string at the provided name in accordance with the stellar client
 // conventions
 func (base *Base) GetAmount(name string) (result xdr.Int64) {
+	if base.Err != nil {
+		return
+	}
+
 	var err error
 	result, err = amount.Parse(base.GetString(name))
 
 	if err != nil {
-		base.SetInvalidField(name, err)
+		base.SetInvalidField(name, errors.New("invalid amount"))
 		return
 	}
 
@@ -251,11 +280,11 @@ func (base *Base) GetAmount(name string) (result xdr.Int64) {
 // the string at the provided name in accordance with the stellar client
 // conventions. Renders error for negative amounts and zero.
 func (base *Base) GetPositiveAmount(name string) (result xdr.Int64) {
-	result = base.GetAmount(name)
-
 	if base.Err != nil {
 		return
 	}
+
+	result = base.GetAmount(name)
 
 	if result <= 0 {
 		base.SetInvalidField(name, errors.New("Value must be positive"))

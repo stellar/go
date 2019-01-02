@@ -279,7 +279,7 @@ func TestGetPageQuery(t *testing.T) {
 	// happy path
 	pq := action.GetPageQuery()
 	tt.Assert.NoError(action.Err)
-	tt.Assert.Equal("hello", pq.Cursor)
+	tt.Assert.Equal("123456", pq.Cursor)
 	tt.Assert.Equal(uint64(2), pq.Limit)
 	tt.Assert.Equal("asc", pq.Order)
 
@@ -302,7 +302,7 @@ func TestGetString(t *testing.T) {
 	defer tt.Finish()
 	action := makeTestAction()
 
-	tt.Assert.Equal("hello", action.GetString("cursor"))
+	tt.Assert.Equal("123456", action.GetString("cursor"))
 	action.R.Form = url.Values{
 		"cursor": {"goodbye"},
 	}
@@ -338,7 +338,7 @@ func TestGetURLParam(t *testing.T) {
 }
 
 func makeTestAction() *Base {
-	return makeAction("/foo-bar/blah?limit=2&cursor=hello", testURLParams())
+	return makeAction("/foo-bar/blah?limit=2&cursor=123456", testURLParams())
 }
 
 func makeAction(path string, body map[string]string) *Base {
