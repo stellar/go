@@ -6,6 +6,11 @@ file.  This project adheres to [Semantic Versioning](http://semver.org/).
 As this project is pre 1.0, breaking changes may happen for minor version
 bumps.  A breaking change will get clearly notified in this log.
 
+## v0.15.3 - 2019-01-07
+
+* Fixed a bug in Horizon DB reaping code.
+* Fixed query checking code that generated `ERROR`-level log entries for invalid input.
+
 ## v0.15.2 - 2018-12-13
 
 * Added `horizon db init-asset-stats` command to initialize `asset_stats` table. This command should be run once before starting ingestion if asset stats are enabled (`ENABLE_ASSET_STATS=true`).
