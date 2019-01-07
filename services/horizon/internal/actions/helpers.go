@@ -1,11 +1,11 @@
 package actions
 
 import (
+	"fmt"
 	"mime"
 	"net/url"
 	"strconv"
-
-	"fmt"
+	"unicode/utf8"
 
 	"github.com/go-chi/chi"
 	"github.com/stellar/go/amount"
@@ -35,6 +35,9 @@ type Opt int
 const (
 	// DisableCursorValidation disables cursor validation in GetPageQuery
 	DisableCursorValidation Opt = iota
+	// RequiredParam is used in Get* methods and defines a required parameter
+	// (errors if value is empty).
+	RequiredParam
 )
 
 // GetCursor retrieves a string from either the URLParams, form or query string.
@@ -65,6 +68,14 @@ func (base *Base) GetCursor(name string) string {
 	return cursor
 }
 
+// checkUTF8 checks if value is a valid UTF-8 string, otherwise sets
+// error to `action.Err`.
+func (base *Base) checkUTF8(name, value string) {
+	if !utf8.ValidString(value) {
+		base.SetInvalidField(name, errors.New("invalid value"))
+	}
+}
+
 // GetString retrieves a string from either the URLParams, form or query string.
 // This method uses the priority (URLParams, Form, Query).
 func (base *Base) GetString(name string) string {
@@ -81,16 +92,20 @@ func (base *Base) GetString(name string) string {
 			return ""
 		}
 
+		base.checkUTF8(name, ret)
 		return ret
 	}
 
 	fromForm := base.R.FormValue(name)
 
 	if fromForm != "" {
+		base.checkUTF8(name, fromForm)
 		return fromForm
 	}
 
-	return base.R.URL.Query().Get(name)
+	value := base.R.URL.Query().Get(name)
+	base.checkUTF8(name, value)
+	return value
 }
 
 // GetInt64 retrieves an int64 from the action parameter of the given name.
@@ -215,12 +230,24 @@ func (base *Base) GetPageQuery(opts ...Opt) db2.PageQuery {
 
 // GetAddress retrieves a stellar address.  It confirms the value loaded is a
 // valid stellar address, setting an invalid field error if it is not.
-func (base *Base) GetAddress(name string) (result string) {
+func (base *Base) GetAddress(name string, opts ...Opt) (result string) {
 	if base.Err != nil {
 		return
 	}
 
+	requiredParam := false
+	for opt := range opts {
+		switch Opt(opt) {
+		case RequiredParam:
+			requiredParam = true
+		}
+	}
+
 	result = base.GetString(name)
+
+	if result == "" && !requiredParam {
+		return result
+	}
 
 	_, err := strkey.Decode(strkey.VersionByteAccountID, result)
 

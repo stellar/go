@@ -1,6 +1,7 @@
 package horizon
 
 import (
+	"github.com/stellar/go/services/horizon/internal/actions"
 	"github.com/stellar/go/services/horizon/internal/db2/core"
 	"github.com/stellar/go/services/horizon/internal/render/sse"
 	"github.com/stellar/go/support/render/hal"
@@ -57,7 +58,7 @@ func (action *DataShowAction) SSE(stream sse.Stream) {
 }
 
 func (action *DataShowAction) loadParams() {
-	action.Address = action.GetString("account_id")
+	action.Address = action.GetAddress("account_id", actions.RequiredParam)
 	action.Key = action.GetString("key")
 }
 

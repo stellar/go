@@ -61,7 +61,7 @@ func (action *OffersByAccountAction) SSE(stream sse.Stream) {
 
 func (action *OffersByAccountAction) loadParams() {
 	action.PageQuery = action.GetPageQuery()
-	action.Address = action.GetString("account_id")
+	action.Address = action.GetAddress("account_id")
 }
 
 // loadLedgers populates the ledger cache for this action

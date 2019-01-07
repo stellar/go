@@ -87,7 +87,7 @@ func (action *OperationIndexAction) SSE(stream sse.Stream) {
 
 func (action *OperationIndexAction) loadParams() {
 	action.ValidateCursorAsDefault()
-	action.AccountFilter = action.GetString("account_id")
+	action.AccountFilter = action.GetAddress("account_id")
 	action.LedgerFilter = action.GetInt32("ledger_id")
 	action.TransactionFilter = action.GetString("tx_id")
 	action.PagingParams = action.GetPageQuery()

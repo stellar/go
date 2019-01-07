@@ -104,7 +104,7 @@ func TestOperationActions_Regressions(t *testing.T) {
 
 	// ensure that trying to stream ops from an account that doesn't exist
 	// fails before streaming the hello message.  Regression test for #285
-	w := ht.Get("/accounts/foo/operations?limit=1", test.RequestHelperStreaming)
+	w := ht.Get("/accounts/GAS2FZOQRFVHIDY35TUSBWFGCROPLWPZVFRN5JZEOUUVRGDRZGHPBLYZ/operations?limit=1", test.RequestHelperStreaming)
 	if ht.Assert.Equal(404, w.Code) {
 		ht.Assert.ProblemType(w.Body, "not_found")
 	}
