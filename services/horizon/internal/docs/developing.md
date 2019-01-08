@@ -4,7 +4,7 @@ title: Horizon Development Guide
 
 This document contains topics related to the development of Horizon.
 
-- [Initial set up]($setup)
+- [Initial set up](#setup)
 - [Regenerating generated code](#regen)
 - [Running tests](#tests)
 - [Logging](#logging)
