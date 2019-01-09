@@ -105,7 +105,7 @@ CREATE TABLE asset_stats (
     amount character varying NOT NULL,
     num_accounts integer NOT NULL,
     flags smallint NOT NULL,
-    toml character varying(64) NOT NULL
+    toml character varying(255) NOT NULL
 );
 
 
@@ -193,7 +193,7 @@ CREATE TABLE history_ledgers (
     sequence integer NOT NULL,
     ledger_hash character varying(64) NOT NULL,
     previous_ledger_hash character varying(64),
-    transaction_count integer DEFAULT 0 NOT NULL,
+    successful_transaction_count integer DEFAULT 0 NOT NULL,
     operation_count integer DEFAULT 0 NOT NULL,
     closed_at timestamp without time zone NOT NULL,
     created_at timestamp without time zone,
@@ -206,7 +206,8 @@ CREATE TABLE history_ledgers (
     base_reserve integer NOT NULL,
     max_tx_set_size integer NOT NULL,
     protocol_version integer DEFAULT 0 NOT NULL,
-    ledger_header text
+    ledger_header text,
+    failed_transaction_count integer
 );
 
 
@@ -367,20 +368,22 @@ ALTER TABLE ONLY history_transaction_participants ALTER COLUMN id SET DEFAULT ne
 -- Data for Name: gorp_migrations; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-INSERT INTO gorp_migrations VALUES ('1_initial_schema.sql', '2018-10-03 15:44:05.416502-07');
-INSERT INTO gorp_migrations VALUES ('2_index_participants_by_toid.sql', '2018-10-03 15:44:05.431815-07');
-INSERT INTO gorp_migrations VALUES ('3_use_sequence_in_history_accounts.sql', '2018-10-03 15:44:05.438632-07');
-INSERT INTO gorp_migrations VALUES ('4_add_protocol_version.sql', '2018-10-03 15:44:05.477444-07');
-INSERT INTO gorp_migrations VALUES ('5_create_trades_table.sql', '2018-10-03 15:44:05.503326-07');
-INSERT INTO gorp_migrations VALUES ('6_create_assets_table.sql', '2018-10-03 15:44:05.526011-07');
-INSERT INTO gorp_migrations VALUES ('7_modify_trades_table.sql', '2018-10-03 15:44:05.55837-07');
-INSERT INTO gorp_migrations VALUES ('8_add_aggregators.sql', '2018-10-03 15:44:05.564786-07');
-INSERT INTO gorp_migrations VALUES ('8_create_asset_stats_table.sql', '2018-10-03 15:44:05.580696-07');
-INSERT INTO gorp_migrations VALUES ('9_add_header_xdr.sql', '2018-10-03 15:44:05.587113-07');
-INSERT INTO gorp_migrations VALUES ('10_add_trades_price.sql', '2018-10-03 15:44:05.590289-07');
-INSERT INTO gorp_migrations VALUES ('11_add_trades_account_index.sql', '2018-10-03 15:44:05.599825-07');
-INSERT INTO gorp_migrations VALUES ('12_asset_stats_amount_string.sql', '2018-10-03 15:44:05.619644-07');
-INSERT INTO gorp_migrations VALUES ('13_trade_offer_ids.sql', '2018-10-03 15:44:05.637197-07');
+INSERT INTO gorp_migrations VALUES ('1_initial_schema.sql', '2018-12-12 14:16:03.671767-08');
+INSERT INTO gorp_migrations VALUES ('2_index_participants_by_toid.sql', '2018-12-12 14:16:03.686112-08');
+INSERT INTO gorp_migrations VALUES ('3_use_sequence_in_history_accounts.sql', '2018-12-12 14:16:03.700053-08');
+INSERT INTO gorp_migrations VALUES ('4_add_protocol_version.sql', '2018-12-12 14:16:03.749506-08');
+INSERT INTO gorp_migrations VALUES ('5_create_trades_table.sql', '2018-12-12 14:16:03.77589-08');
+INSERT INTO gorp_migrations VALUES ('6_create_assets_table.sql', '2018-12-12 14:16:03.796408-08');
+INSERT INTO gorp_migrations VALUES ('7_modify_trades_table.sql', '2018-12-12 14:16:03.834529-08');
+INSERT INTO gorp_migrations VALUES ('8_add_aggregators.sql', '2018-12-12 14:16:03.841316-08');
+INSERT INTO gorp_migrations VALUES ('8_create_asset_stats_table.sql', '2018-12-12 14:16:03.856269-08');
+INSERT INTO gorp_migrations VALUES ('9_add_header_xdr.sql', '2018-12-12 14:16:03.865587-08');
+INSERT INTO gorp_migrations VALUES ('10_add_trades_price.sql', '2018-12-12 14:16:03.871129-08');
+INSERT INTO gorp_migrations VALUES ('11_add_trades_account_index.sql', '2018-12-12 14:16:03.882776-08');
+INSERT INTO gorp_migrations VALUES ('12_asset_stats_amount_string.sql', '2018-12-12 14:16:03.908009-08');
+INSERT INTO gorp_migrations VALUES ('13_trade_offer_ids.sql', '2018-12-12 14:16:03.922562-08');
+INSERT INTO gorp_migrations VALUES ('14_ledger_failed_txs.sql', '2018-12-12 14:16:03.926529-08');
+INSERT INTO gorp_migrations VALUES ('14_fix_asset_toml_field.sql', '2018-12-12 14:16:03.929409-08');
 
 
 --

@@ -392,6 +392,7 @@ func (is *Session) ingestLedger() {
 		is.Cursor.LedgerID(),
 		is.Cursor.Ledger(),
 		is.Cursor.SuccessfulTransactionCount(),
+		is.Cursor.FailedTransactionCount(),
 		is.Cursor.SuccessfulLedgerOperationCount(),
 	)
 
