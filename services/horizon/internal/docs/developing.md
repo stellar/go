@@ -32,11 +32,6 @@ start a redis server on port `6379`
 redis-server
 ```
 
-NOTE: It's not clear whether the following two steps are needed.
-1. Generate code using the one template in Horizon: `go generate github.com/stellar/go/services/horizon/internal/`
-2. Create and update the database: `bash services/horizon/internal/scripts/rebuild_schema.bash`
-
-
 then, run the all the Go monorepo tests like so (assuming you are at stellar/go, or run from stellar/go/services/horizon for just the Horizon subset):
 
 ```bash

@@ -33,14 +33,14 @@ To test the installation, simply run `horizon --help` from a terminal.  If the h
 Should you decide not to use one of our prebuilt releases, you may instead build Horizon from source.  To do so, you need to install some developer tools:
 
 - A unix-like operating system with the common core commands (cp, tar, mkdir, bash, etc.)
-- A compatible distribution of Go (we officially support Go 1.6 and later)
+- A compatible distribution of Go (we officially support Go 1.9 and later)
 - [go-dep](https://golang.github.io/dep/)
 - [git](https://git-scm.com/)
 - [mercurial](https://www.mercurial-scm.org/)
 
 
-1. Clone the Stellar Go monorepo:  `go get github.com/stellar/go`. You should see the repository cloned at `$GOPATH/src/github.com/stellar/go`.
-2. Set your [GOPATH](https://github.com/golang/go/wiki/GOPATH) environment variable, if you haven't already. The default `GOPATH` is `$HOME/go`.
+1. Set your [GOPATH](https://github.com/golang/go/wiki/GOPATH) environment variable, if you haven't already. The default `GOPATH` is `$HOME/go`.
+2. Clone the Stellar Go monorepo:  `go get github.com/stellar/go`. You should see the repository cloned at `$GOPATH/src/github.com/stellar/go`.
 3. Enter the source dir: `cd $GOPATH/src/github.com/stellar/go`, and download external dependencies: `dep ensure -v`. You should see the downloaded third party dependencies in `$GOPATH/pkg`.
 4. Compile the Horizon binary: `cd $GOPATH; go install github.com/stellar/go/services/horizon`. You should see the `horizon` binary in `$GOPATH/bin`.
 5. Add Go binaries to your PATH in your `bashrc` or equivalent, for easy access: `export PATH=${GOPATH//://bin:}/bin:$PATH`
@@ -115,9 +115,9 @@ Unless your node is a full validator and archive publisher we _do not_ recommend
 
 ### Correcting gaps in historical data
 
-In the section above, we mentioned that Horizon _tries_ to maintain a gap-free window.  Unfortunately, it cannot directly control the state of stellar-core and so gaps may form due to extended down time.  When a gap is encountered, Horizon will stop ingesting historical data and complain loudly in the log with error messages (log lines will include "ledger gap detected").  To resolve this situation, you must re-establish the expected state of the stellar-core database and purge historical data from Horizon's database.  We leave the details of this process up to the reader as it is dependent upon your operating needs and configuration, but we offer one potential solution:
+In the section above, we mentioned that Horizon _tries_ to maintain a gap-free window.  Unfortunately, it cannot directly control the state of stellar-core and [so gaps may form](https://www.stellar.org/developers/software/known-issues.html#gaps-detected) due to extended down time.  When a gap is encountered, Horizon will stop ingesting historical data and complain loudly in the log with error messages (log lines will include "ledger gap detected").  To resolve this situation, you must re-establish the expected state of the stellar-core database and purge historical data from Horizon's database.  We leave the details of this process up to the reader as it is dependent upon your operating needs and configuration, but we offer one potential solution:
 
-We recommend you configure the HISTORY_RETENTION_COUNT in Horizon to a value less than or equal to the configured value for CATCHUP_RECENT in stellar-core.  Given this situation any downtime that would cause a ledger gap will require a downtime greater than the amount of historical data retained by Horizon.  To re-establish continuity, simply:
+We recommend you configure the HISTORY_RETENTION_COUNT in Horizon to a value less than or equal to the configured value for CATCHUP_RECENT in stellar-core.  Given this situation any downtime that would cause a ledger gap will require a downtime greater than the amount of historical data retained by Horizon.  To re-establish continuity:
 
 1.  Stop Horizon.
 2.  run `horizon db reap` to clear the historical database.
