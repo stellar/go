@@ -9,7 +9,9 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-	"github.com/stellar/go/services/horizon/internal"
+	horizon "github.com/stellar/go/services/horizon/internal"
+	"github.com/stellar/go/services/horizon/internal/db2/schema"
+	apkg "github.com/stellar/go/support/app"
 	"github.com/stellar/go/support/log"
 	"github.com/throttled/throttled"
 )
@@ -238,6 +240,12 @@ func initConfig() {
 	if viper.GetString("stellar-core-url") == "" {
 		stdLog.Fatal("Invalid config: stellar-core-url is blank.  Please specify --stellar-core-url on the command line or set the STELLAR_CORE_URL environment variable.")
 	}
+
+	migrationDir, migrations := schema.GetMigrations(viper.GetString("db-url"))
+	if len(migrations) > 0 {
+		stdLog.Fatalf("A database migration is required to run this version (%v) of Horizon. Run \"horizon db migrate %v\" to update your DB. Consult the Changelog (https://github.com/stellar/horizon/blob/master/CHANGELOG.md) for more information.", apkg.Version(), migrationDir)
+	}
+	stdLog.Fatal("Bye bye")
 
 	ll, err := logrus.ParseLevel(viper.GetString("log-level"))
 

@@ -3,6 +3,7 @@ package schema
 import (
 	"database/sql"
 	"errors"
+	stdLog "log"
 
 	migrate "github.com/rubenv/sql-migrate"
 	"github.com/stellar/go/support/db"
@@ -67,4 +68,28 @@ func Migrate(db *sql.DB, dir MigrateDir, count int) (int, error) {
 	default:
 		return 0, errors.New("Invalid migration direction")
 	}
+}
+
+// Return the direction of migration, and an array of any necessary migrations
+func GetMigrations(dbUrl string) (dirStr string, result []*migrate.PlannedMigration) {
+	db, err := sql.Open("postgres", dbUrl)
+	if err != nil {
+		stdLog.Fatal(err)
+	}
+
+	directions := map[string]migrate.MigrationDirection{
+		"up":   migrate.Up,
+		"down": migrate.Down,
+	}
+	for dirStr, dir := range directions {
+		result, _, migrateErr := migrate.PlanMigration(db, "postgres", Migrations, dir, 0)
+		if migrateErr != nil {
+			stdLog.Fatal(migrateErr)
+		}
+
+		if len(result) > 0 {
+			return dirStr, result
+		}
+	}
+	return "none", result
 }
