@@ -57,8 +57,8 @@ type Cursor struct {
 	// CoreDB is the stellar-core db that data is ingested from.
 	CoreDB *db.Session
 
-	Metrics        *IngesterMetrics
-	AssetsModified AssetsModified
+	Metrics    *IngesterMetrics
+	AssetStats *AssetStats
 
 	// Err is the error that caused this iteration to fail, if any.
 	Err error
@@ -71,9 +71,9 @@ type Cursor struct {
 
 // Config allows passing some configuration values to System and Session.
 type Config struct {
-	// DisableAssetStats is a feature flag that determines whether to calculate
+	// EnableAssetStats is a feature flag that determines whether to calculate
 	// asset stats in this ingestion system.
-	DisableAssetStats bool
+	EnableAssetStats bool
 }
 
 // EffectIngestion is a helper struct to smooth the ingestion of effects.  this
@@ -142,8 +142,15 @@ type BatchInsertBuilder struct {
 	insertBuilder sq.InsertBuilder
 }
 
-// AssetsModified tracks all the assets modified during a cycle of ingestion
-type AssetsModified map[string]xdr.Asset
+// AssetStats tracks and updates all the assets modified during a cycle of ingestion.
+type AssetStats struct {
+	CoreSession    *db.Session
+	HistorySession *db.Session
+
+	batchInsertBuilder *BatchInsertBuilder
+	toUpdate           map[string]xdr.Asset
+	initOnce           sync.Once
+}
 
 // Ingestion receives write requests from a Session
 type Ingestion struct {
@@ -174,6 +181,8 @@ type Session struct {
 	SkipCursorUpdate bool
 	// Metrics is a reference to where the session should record its metric information
 	Metrics *IngesterMetrics
+	// AssetStats calculates asset stats
+	AssetStats *AssetStats
 
 	//
 	// Results fields
@@ -206,16 +215,16 @@ func New(network string, coreURL string, core, horizon *db.Session, config Confi
 // NewCursor initializes a new ingestion cursor
 func NewCursor(first, last int32, i *System) *Cursor {
 	return &Cursor{
-		FirstLedger:    first,
-		LastLedger:     last,
-		CoreDB:         i.CoreDB,
-		Metrics:        &i.Metrics,
-		AssetsModified: AssetsModified(make(map[string]xdr.Asset)),
+		FirstLedger: first,
+		LastLedger:  last,
+		CoreDB:      i.CoreDB,
+		Metrics:     &i.Metrics,
 	}
 }
 
 // NewSession initialize a new ingestion session
 func NewSession(i *System) *Session {
+	cdb := i.CoreDB.Clone()
 	hdb := i.HorizonDB.Clone()
 
 	return &Session{
@@ -227,5 +236,9 @@ func NewSession(i *System) *Session {
 		StellarCoreURL:   i.StellarCoreURL,
 		SkipCursorUpdate: i.SkipCursorUpdate,
 		Metrics:          &i.Metrics,
+		AssetStats: &AssetStats{
+			CoreSession:    cdb,
+			HistorySession: hdb,
+		},
 	}
 }

@@ -12,7 +12,6 @@ import (
 	"github.com/stellar/go/amount"
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/meta"
-	"github.com/stellar/go/services/horizon/internal/db2/core"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/services/horizon/internal/ingest/participants"
 	"github.com/stellar/go/support/errors"
@@ -67,8 +66,8 @@ func (is *Session) Run() {
 		}
 	}
 
-	if !is.Config.DisableAssetStats {
-		is.Cursor.AssetsModified.UpdateAssetStats(is)
+	if is.Config.EnableAssetStats && is.Err == nil {
+		is.Err = is.AssetStats.UpdateAssetStats()
 	}
 
 	if is.Err != nil {
@@ -100,7 +99,7 @@ func (is *Session) clearLedger() {
 	}
 
 	startLedger, endLedger := is.Cursor.LedgerRange()
-	log.WithFields(ilog.F{"start": startLedger, "end": endLedger}).Info("Clearing ledgers")
+	log.WithFields(ilog.F{"toid_start": startLedger, "toid_end": endLedger}).Info("Clearing ledgers")
 
 	start := time.Now()
 	is.Err = is.Ingestion.Clear(is.Cursor.LedgerRange())
@@ -428,12 +427,12 @@ func (is *Session) ingestOperation() {
 	is.ingestOperationParticipants()
 	is.ingestEffects()
 	is.ingestTrades()
-	is.Err = is.Cursor.AssetsModified.IngestOperation(
-		is.Err,
-		is.Cursor.Operation(),
-		&is.Cursor.Transaction().Envelope.Tx.SourceAccount,
-		&core.Q{Session: is.Ingestion.DB},
-	)
+	if is.Config.EnableAssetStats && is.Err == nil {
+		is.Err = is.AssetStats.IngestOperation(
+			is.Cursor.Operation(),
+			&is.Cursor.Transaction().Envelope.Tx.SourceAccount,
+		)
+	}
 
 	if is.Err != nil {
 		is.Err = errors.Wrap(is.Err, "Cursor.AssetsModified.IngestOperation error")
@@ -521,30 +520,39 @@ func (is *Session) ingestTrades() {
 		return
 	}
 
-	buyer := is.Cursor.OperationSourceAccount()
-	trades := []xdr.ClaimOfferAtom{}
+	cursor := is.Cursor
+	buyer := cursor.OperationSourceAccount()
+	buyOfferExists := false
+	buyOffer := xdr.OfferEntry{}
+	var trades []xdr.ClaimOfferAtom
 
-	switch is.Cursor.OperationType() {
+	switch cursor.OperationType() {
 	case xdr.OperationTypePathPayment:
-		trades = is.Cursor.OperationResult().
+		trades = cursor.OperationResult().
 			MustPathPaymentResult().
 			MustSuccess().
 			Offers
 
 	case xdr.OperationTypeManageOffer:
-		trades = is.Cursor.OperationResult().MustManageOfferResult().MustSuccess().OffersClaimed
+		manageOfferResult := cursor.OperationResult().MustManageOfferResult().MustSuccess()
+		trades = manageOfferResult.OffersClaimed
+		buyOffer, buyOfferExists = manageOfferResult.Offer.GetOffer()
+
 	case xdr.OperationTypeCreatePassiveOffer:
-		result := is.Cursor.OperationResult()
+		result := cursor.OperationResult()
 
 		// KNOWN ISSUE:  stellar-core creates results for CreatePassiveOffer operations
 		// with the wrong result arm set.
 		if result.Type == xdr.OperationTypeManageOffer {
-			trades = result.MustManageOfferResult().MustSuccess().OffersClaimed
+			manageOfferResult := result.MustManageOfferResult().MustSuccess()
+			trades = manageOfferResult.OffersClaimed
+			buyOffer, buyOfferExists = manageOfferResult.Offer.GetOffer()
 		} else {
-			trades = result.MustCreatePassiveOfferResult().MustSuccess().OffersClaimed
+			passiveOfferResult := result.MustCreatePassiveOfferResult().MustSuccess()
+			trades = passiveOfferResult.OffersClaimed
+			buyOffer, buyOfferExists = passiveOfferResult.Offer.GetOffer()
 		}
 	}
-
 	q := history.Q{Session: is.Ingestion.DB}
 	for i, trade := range trades {
 		// stellar-core will opportunisticly garbage collect invalid offers (in the
@@ -565,14 +573,16 @@ func (is *Session) ingestTrades() {
 			is.Err = errors.Wrap(err, "Cursor.BeforeAndAfter error")
 			return
 		}
-		offerPrice := before.Data.Offer.Price
+		sellOfferPrice := before.Data.Offer.Price
 
 		is.Err = q.InsertTrade(
 			is.Cursor.OperationID(),
 			int32(i),
 			buyer,
+			buyOfferExists,
+			buyOffer,
 			trade,
-			offerPrice,
+			sellOfferPrice,
 			sTime.MillisFromSeconds(is.Cursor.Ledger().CloseTime),
 		)
 		if is.Err != nil {

@@ -40,16 +40,6 @@
   revision = "20f192218cf52a73397fa2df45bdda720f3e47c8"
 
 [[projects]]
-  digest = "1:409c6b044ddccdcb281f06d461ec8fe440ff47cd0e2e0235374057dd5cd38523"
-  name = "github.com/PuerkitoBio/throttled"
-  packages = [
-    ".",
-    "store",
-  ]
-  pruneopts = "T"
-  revision = "1c8297c643b774435df8df65f7502b37d014fb6b"
-
-[[projects]]
   digest = "1:99851d69cfb33fc9e027ae5190748dfca08457942386a3359abd42ef0d73d20f"
   name = "github.com/agl/ed25519"
   packages = [
@@ -211,16 +201,6 @@
   version = "v1.0"
 
 [[projects]]
-  digest = "1:1dba21b5c876bf139d415909c3e20cbd754b7fd6e35d1775023502c971600780"
-  name = "github.com/garyburd/redigo"
-  packages = [
-    "internal",
-    "redis",
-  ]
-  pruneopts = "T"
-  revision = "8b1d80a45a732e6d95e22dcc2e067312c664936c"
-
-[[projects]]
   digest = "1:3cffcaa76937c4207f2b0e7d2a9c5ed452e1062e6f07dd288808cdb03ed64d0d"
   name = "github.com/gavv/monotime"
   packages = ["."]
@@ -284,11 +264,15 @@
   revision = "2da839ab0f4df05a6db5eb277995589dadbd4fb9"
 
 [[projects]]
-  digest = "1:d7491e1f92e84bfe31dc29bc276bf7d55f9cb02927ed82cab56a198ec839bc29"
-  name = "github.com/golang/groupcache"
-  packages = ["lru"]
+  digest = "1:eca5b59a68125905e4f62d6f5072f01740a7648a808e93f6d76c5334ff948601"
+  name = "github.com/gomodule/redigo"
+  packages = [
+    "internal",
+    "redis",
+  ]
   pruneopts = "T"
-  revision = "604ed5785183e59ae2789449d89e73f3a2a77987"
+  revision = "9c11da706d9b7902c6da69c592f75637793fe121"
+  version = "v2.0.0"
 
 [[projects]]
   digest = "1:d9ddf73f04fe521d71675d2c11c0694d138ad08a58d730e7c32fb387abafabbe"
@@ -314,6 +298,17 @@
   ]
   pruneopts = "T"
   revision = "572209b26df66a638573023571b5ce80983214eb"
+
+[[projects]]
+  digest = "1:8ec8d88c248041a6df5f6574b87bc00e7e0b493881dad2e7ef47b11dc69093b5"
+  name = "github.com/hashicorp/golang-lru"
+  packages = [
+    ".",
+    "simplelru",
+  ]
+  pruneopts = "T"
+  revision = "20f1fb78b0740ba8c3cb143a61e86ba5c8669768"
+  version = "v0.5.0"
 
 [[projects]]
   branch = "master"
@@ -665,6 +660,14 @@
   revision = "976c720a22c8eb4eb6a0b4348ad85ad12491a506"
 
 [[projects]]
+  digest = "1:a6dd23012ca65b72dbca7b3e06dac44a9bb33b018221a26f213b1802cddfc337"
+  name = "github.com/throttled/throttled"
+  packages = ["."]
+  pruneopts = "T"
+  revision = "c99eef3ad70a3be5a983770523e0e379699c805c"
+  source = "https://github.com/bartekn/throttled.git"
+
+[[projects]]
   branch = "master"
   digest = "1:ec528a786fa75556deed44de7118a74ced456360e782786a20aed292a03955a5"
   name = "github.com/tyler-smith/go-bip32"
@@ -865,8 +868,6 @@
     "bitbucket.org/ww/goautoneg",
     "github.com/BurntSushi/toml",
     "github.com/Masterminds/squirrel",
-    "github.com/PuerkitoBio/throttled",
-    "github.com/PuerkitoBio/throttled/store",
     "github.com/agl/ed25519",
     "github.com/asaskevich/govalidator",
     "github.com/aws/aws-sdk-go/aws",
@@ -883,13 +884,13 @@
     "github.com/ethereum/go-ethereum/crypto",
     "github.com/ethereum/go-ethereum/ethclient",
     "github.com/facebookgo/inject",
-    "github.com/garyburd/redigo/redis",
     "github.com/getsentry/raven-go",
     "github.com/go-chi/chi",
     "github.com/go-chi/chi/middleware",
     "github.com/go-errors/errors",
     "github.com/go-sql-driver/mysql",
     "github.com/goji/httpauth",
+    "github.com/gomodule/redigo/redis",
     "github.com/guregu/null",
     "github.com/haltingstate/secp256k1-go",
     "github.com/howeyc/gopass",
@@ -919,6 +920,7 @@
     "github.com/stretchr/testify/mock",
     "github.com/stretchr/testify/require",
     "github.com/stretchr/testify/suite",
+    "github.com/throttled/throttled",
     "github.com/tyler-smith/go-bip32",
     "github.com/tyler-smith/go-bip39",
     "golang.org/x/net/http2",

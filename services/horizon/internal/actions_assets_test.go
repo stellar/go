@@ -232,6 +232,15 @@ func TestAssetsActions(t *testing.T) {
 			ht := StartHTTPTest(t, "ingest_asset_stats")
 			defer ht.Finish()
 
+			// Ugly but saves us time needed to change each `StartHTTPTest` occurence.
+			appConfig := NewTestConfig()
+			appConfig.EnableAssetStats = true
+
+			var err error
+			ht.App, err = NewApp(appConfig)
+			ht.Assert.Nil(err)
+			ht.RH = test.NewRequestHelper(ht.App.web.router)
+
 			w := ht.Get(kase.path)
 			ht.Assert.Equal(200, w.Code)
 			ht.Assert.PageOf(len(kase.wantItems), w.Body)
@@ -255,6 +264,15 @@ func TestInvalidAssetCode(t *testing.T) {
 	ht := StartHTTPTest(t, "ingest_asset_stats")
 	defer ht.Finish()
 
+	// Ugly but saves us time needed to change each `StartHTTPTest` occurence.
+	appConfig := NewTestConfig()
+	appConfig.EnableAssetStats = true
+
+	var err error
+	ht.App, err = NewApp(appConfig)
+	ht.Assert.Nil(err)
+	ht.RH = test.NewRequestHelper(ht.App.web.router)
+
 	w := ht.Get("/assets?asset_code=ABCDEFGHIJKL")
 	ht.Assert.Equal(200, w.Code)
 
@@ -266,6 +284,15 @@ func TestInvalidAssetIssuer(t *testing.T) {
 	ht := StartHTTPTest(t, "ingest_asset_stats")
 	defer ht.Finish()
 
+	// Ugly but saves us time needed to change each `StartHTTPTest` occurence.
+	appConfig := NewTestConfig()
+	appConfig.EnableAssetStats = true
+
+	var err error
+	ht.App, err = NewApp(appConfig)
+	ht.Assert.Nil(err)
+	ht.RH = test.NewRequestHelper(ht.App.web.router)
+
 	w := ht.Get("/assets?asset_issuer=GC23QF2HUE52AMXUFUH3AYJAXXGXXV2VHXYYR6EYXETPKDXZSAW67XO4")
 	ht.Assert.Equal(200, w.Code)
 
@@ -273,18 +300,9 @@ func TestInvalidAssetIssuer(t *testing.T) {
 	ht.Assert.Equal(400, w.Code)
 }
 
-func TestAssetStatsDisabled(t *testing.T) {
+func TestAssetStatsDisabledByDefault(t *testing.T) {
 	ht := StartHTTPTest(t, "ingest_asset_stats")
 	defer ht.Finish()
-
-	// Ugly but saves us time needed to change each `StartHTTPTest` occurence.
-	appConfig := NewTestConfig()
-	appConfig.DisableAssetStats = true
-
-	var err error
-	ht.App, err = NewApp(appConfig)
-	ht.Assert.Nil(err)
-	ht.RH = test.NewRequestHelper(ht.App.web.router)
 
 	w := ht.Get("/assets?asset_issuer=GC23QF2HUE52AMXUFUH3AYJAXXGXXV2VHXYYR6EYXETPKDXZSAW67XO4")
 	ht.Assert.Equal(404, w.Code)

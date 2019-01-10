@@ -53,8 +53,8 @@ func (action *Action) HistoryQ() *history.Q {
 // Prepare sets the action's App field based upon the context
 func (action *Action) Prepare(w http.ResponseWriter, r *http.Request) {
 	base := &action.Base
-	base.Prepare(w, r)
 	action.App = AppFromContext(r.Context())
+	base.Prepare(w, r, action.App.config.SSEUpdateFrequency)
 	if action.R.Context() != nil {
 		action.Log = log.Ctx(action.R.Context())
 	} else {

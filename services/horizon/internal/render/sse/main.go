@@ -30,24 +30,6 @@ type Eventable interface {
 	SseEvent() Event
 }
 
-// Pumped returns a channel that will be closed the next time the input pump
-// sends.  It can be used similar to `ctx.Done()`, like so:  `<-sse.Pumped()`
-func Pumped() <-chan struct{} {
-	lock.Lock()
-	defer lock.Unlock()
-	return nextTick
-}
-
-// Tick triggers any open SSE streams to tick by replacing and closing the
-// `nextTick` trigger channel.
-func Tick() {
-	lock.Lock()
-	prev := nextTick
-	nextTick = make(chan struct{})
-	lock.Unlock()
-	close(prev)
-}
-
 // WritePreamble prepares this http connection for streaming using Server Sent
 // Events.  It sends the initial http response with the appropriate headers to
 // do so.

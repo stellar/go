@@ -4,7 +4,7 @@ clientData:
   laboratoryUrl: https://www.stellar.org/laboratory/#explorer?resource=transactions&endpoint=for_ledger
 ---
 
-This endpoint represents all [transactions](../resources/transaction.md) in a given [ledger](../resources/ledger.md).
+This endpoint represents successful [transactions](../resources/transaction.md) in a given [ledger](../resources/ledger.md).
 
 ## Request
 

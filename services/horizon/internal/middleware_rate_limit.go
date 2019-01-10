@@ -5,5 +5,8 @@ import (
 )
 
 func (web *Web) RateLimitMiddleware(next http.Handler) http.Handler {
-	return web.rateLimiter.Throttle(next)
+	if web.rateLimiter == nil {
+		return next
+	}
+	return web.rateLimiter.RateLimit(next)
 }

@@ -2,6 +2,7 @@ package horizon
 
 import (
 	"github.com/stellar/go/protocols/horizon"
+	"github.com/stellar/go/services/horizon/internal/actions"
 	"github.com/stellar/go/services/horizon/internal/db2/core"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/services/horizon/internal/render/sse"
@@ -39,6 +40,7 @@ func (action *AccountShowAction) JSON() {
 
 // SSE is a method for actions.SSE
 func (action *AccountShowAction) SSE(stream sse.Stream) {
+
 	action.Do(
 		action.loadParams,
 		action.loadRecord,
@@ -51,7 +53,7 @@ func (action *AccountShowAction) SSE(stream sse.Stream) {
 }
 
 func (action *AccountShowAction) loadParams() {
-	action.Address = action.GetAddress("account_id")
+	action.Address = action.GetAddress("account_id", actions.RequiredParam)
 }
 
 func (action *AccountShowAction) loadRecord() {

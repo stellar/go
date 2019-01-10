@@ -5,10 +5,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"time"
 
-	"github.com/PuerkitoBio/throttled"
 	"github.com/stellar/go/services/horizon/internal/test"
 	supportLog "github.com/stellar/go/support/log"
+	"github.com/throttled/throttled"
 )
 
 func NewTestApp() *App {
@@ -25,8 +26,12 @@ func NewTestConfig() Config {
 	return Config{
 		DatabaseURL:            test.DatabaseURL(),
 		StellarCoreDatabaseURL: test.StellarCoreDatabaseURL(),
-		RateLimit:              throttled.PerHour(1000),
-		LogLevel:               supportLog.InfoLevel,
+		RateLimit: &throttled.RateQuota{
+			MaxRate:  throttled.PerHour(1000),
+			MaxBurst: 100,
+		},
+		ConnectionTimeout: 55 * time.Second, // Default
+		LogLevel:          supportLog.InfoLevel,
 	}
 }
 

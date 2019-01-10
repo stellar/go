@@ -16,13 +16,13 @@ func TestTradeQueries(t *testing.T) {
 	var trades []Trade
 
 	// All trades
-	err := q.Trades().Page(db2.MustPageQuery("", "asc", 100)).Select(&trades)
+	err := q.Trades().Page(db2.MustPageQuery("", false, "asc", 100)).Select(&trades)
 	if tt.Assert.NoError(err) {
 		tt.Assert.Len(trades, 4)
 	}
 
 	// Paging
-	pq := db2.MustPageQuery(trades[0].PagingToken(), "asc", 1)
+	pq := db2.MustPageQuery(trades[0].PagingToken(), false, "asc", 1)
 	var pt []Trade
 
 	err = q.Trades().Page(pq).Select(&pt)
@@ -33,7 +33,7 @@ func TestTradeQueries(t *testing.T) {
 	}
 
 	// Cursor bounds checking
-	pq = db2.MustPageQuery("", "desc", 1)
+	pq = db2.MustPageQuery("", false, "desc", 1)
 	err = q.Trades().Page(pq).Select(&pt)
 	tt.Require.NoError(err)
 

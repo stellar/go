@@ -65,8 +65,8 @@ func TestTick(t *testing.T) {
 	tt.Require.NoError(s.Err)
 }
 
-func ingest(tt *test.T, disableAssetStats bool) *Session {
-	sys := sys(tt, disableAssetStats)
+func ingest(tt *test.T, enableAssetStats bool) *Session {
+	sys := sys(tt, enableAssetStats)
 	s := NewSession(sys)
 	s.Cursor = NewCursor(1, ledger.CurrentState().CoreLatest, sys)
 	s.Run()
@@ -74,12 +74,12 @@ func ingest(tt *test.T, disableAssetStats bool) *Session {
 	return s
 }
 
-func sys(tt *test.T, disableAssetStats bool) *System {
+func sys(tt *test.T, enableAssetStats bool) *System {
 	return New(
 		network.TestNetworkPassphrase,
 		"",
 		tt.CoreSession(),
 		tt.HorizonSession(),
-		Config{DisableAssetStats: disableAssetStats},
+		Config{EnableAssetStats: enableAssetStats},
 	)
 }

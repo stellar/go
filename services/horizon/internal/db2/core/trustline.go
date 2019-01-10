@@ -37,6 +37,38 @@ func (q *Q) AssetsForAddress(dest interface{}, addy string, protocolVersion int3
 	return err
 }
 
+// AllAssets loads all (unique) assets from core DB
+func (q *Q) AllAssets(dest interface{}) error {
+	var tls []Trustline
+
+	sql := sq.Select(
+		"tl.assettype",
+		"tl.issuer",
+		"tl.assetcode",
+	).From("trustlines tl").GroupBy("(tl.assettype, tl.issuer, tl.assetcode)")
+	err := q.Select(&tls, sql)
+	if err != nil {
+		return err
+	}
+
+	dtl, ok := dest.(*[]xdr.Asset)
+	if !ok {
+		return errors.New("Invalid destination")
+	}
+
+	result := make([]xdr.Asset, len(tls))
+	*dtl = result
+
+	for i, tl := range tls {
+		result[i], err = AssetFromDB(tl.Assettype, tl.Assetcode, tl.Issuer)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 // TrustlinesByAddress loads all trustlines for `addy`
 func (q *Q) TrustlinesByAddress(dest interface{}, addy string, protocolVersion int32) error {
 	var selectQuery sq.SelectBuilder

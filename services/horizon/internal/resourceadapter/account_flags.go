@@ -8,4 +8,5 @@ import (
 func PopulateAccountFlags(dest *AccountFlags, row core.Account) {
 	dest.AuthRequired = row.IsAuthRequired()
 	dest.AuthRevocable = row.IsAuthRevocable()
+	dest.AuthImmutable = row.IsAuthImmutable()
 }

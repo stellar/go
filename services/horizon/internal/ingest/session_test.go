@@ -51,7 +51,7 @@ func Test_ingestOperationEffects(t *testing.T) {
 	tt.ScenarioWithoutHorizon("kahuna")
 	s = ingest(tt, false)
 	tt.Require.NoError(s.Err)
-	pq, err := db2.NewPageQuery("", "asc", 200)
+	pq, err := db2.NewPageQuery("", true, "asc", 200)
 	tt.Require.NoError(err)
 
 	// ensure payments get the payment effects

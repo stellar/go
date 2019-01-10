@@ -40,7 +40,7 @@ func (r *System) DeleteUnretainedHistory() error {
 // Tick triggers the reaper system to update itself, deleted unretained history
 // if it is the appropriate time.
 func (r *System) Tick() {
-	if time.Now().After(r.nextRun) {
+	if time.Now().Before(r.nextRun) {
 		return
 	}
 

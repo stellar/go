@@ -25,12 +25,17 @@ var dbBackfillCmd = &cobra.Command{
 	Use:   "backfill [COUNT]",
 	Short: "backfills horizon history for COUNT ledgers",
 	Run: func(cmd *cobra.Command, args []string) {
+		if len(args) == 0 {
+			log.Println("Missing COUNT. Usage: backfill [COUNT].")
+			return
+		}
+
 		app := initApp(cmd, args)
 		app.UpdateLedgerState()
 
 		hlog.DefaultLogger.Logger.Level = config.LogLevel
 
-		i := ingestSystem(ingest.Config{DisableAssetStats: true})
+		i := ingestSystem(ingest.Config{})
 		i.SkipCursorUpdate = true
 		parsed, err := strconv.ParseUint(args[0], 10, 32)
 		if err != nil {
@@ -41,6 +46,48 @@ var dbBackfillCmd = &cobra.Command{
 		if err != nil {
 			log.Fatal(err)
 		}
+	},
+}
+
+var dbInitAssetStatsCmd = &cobra.Command{
+	Use:   "init-asset-stats",
+	Short: "initializes values for assets stats",
+	Run: func(cmd *cobra.Command, args []string) {
+		// Check config
+		initApp(cmd, args)
+
+		hlog.DefaultLogger.Logger.Level = config.LogLevel
+
+		hdb, err := db.Open("postgres", config.DatabaseURL)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		cdb, err := db.Open("postgres", config.StellarCoreDatabaseURL)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		assetStats := ingest.AssetStats{
+			CoreSession:    cdb,
+			HistorySession: hdb,
+		}
+
+		log.Println("Getting assets from core DB...")
+
+		count, err := assetStats.AddAllAssetsFromCore()
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		log.Println(fmt.Sprintf("Updating %d assets...", count))
+
+		err = assetStats.UpdateAssetStats()
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		log.Println(fmt.Sprintf("Added stats for %d assets...", count))
 	},
 }
 
@@ -65,13 +112,13 @@ var dbInitCmd = &cobra.Command{
 	Short: "install schema",
 	Long:  "init initializes the postgres database used by horizon.",
 	Run: func(cmd *cobra.Command, args []string) {
-		db, err := db.Open("postgres", viper.GetString("db-url"))
+		dbConn, err := db.Open("postgres", viper.GetString("db-url"))
 		if err != nil {
 			hlog.Error(err)
 			os.Exit(1)
 		}
 
-		err = schema.Init(db)
+		err = schema.Init(dbConn)
 		if err != nil {
 			hlog.Error(err)
 			os.Exit(1)
@@ -201,6 +248,7 @@ var dbReingestCmd = &cobra.Command{
 
 func init() {
 	dbCmd.AddCommand(dbInitCmd)
+	dbCmd.AddCommand(dbInitAssetStatsCmd)
 	dbCmd.AddCommand(dbBackfillCmd)
 	dbCmd.AddCommand(dbClearCmd)
 	dbCmd.AddCommand(dbMigrateCmd)

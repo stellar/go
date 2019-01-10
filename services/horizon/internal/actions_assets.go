@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/stellar/go/protocols/horizon"
+	"github.com/stellar/go/services/horizon/internal/actions"
 	"github.com/stellar/go/services/horizon/internal/db2"
 	"github.com/stellar/go/services/horizon/internal/db2/assets"
 	"github.com/stellar/go/services/horizon/internal/resourceadapter"
@@ -52,7 +53,7 @@ func (action *AssetsAction) loadParams() {
 		}
 		action.AssetIssuer = issuerAccount.Address()
 	}
-	action.PagingParams = action.GetPageQuery()
+	action.PagingParams = action.GetPageQuery(actions.DisableCursorValidation)
 }
 
 func (action *AssetsAction) loadRecords() {

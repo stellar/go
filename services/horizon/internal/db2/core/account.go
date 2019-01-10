@@ -17,6 +17,13 @@ func (ac Account) IsAuthRevocable() bool {
 	return (ac.Flags & xdr.AccountFlagsAuthRevocableFlag) != 0
 }
 
+// IsAuthImmutable returns true if the account has the "AUTH_IMMUTABLE" option
+// turned on.
+func (ac Account) IsAuthImmutable() bool {
+	return (ac.Flags & xdr.AccountFlagsAuthImmutableFlag) != 0
+}
+
+
 // AccountByAddress loads a row from `accounts`, by address
 func (q *Q) AccountByAddress(dest interface{}, addy string, protocolVersion int32) error {
 	var selectQuery sq.SelectBuilder

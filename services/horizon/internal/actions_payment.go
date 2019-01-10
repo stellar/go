@@ -20,7 +20,7 @@ type PaymentsIndexAction struct {
 	TransactionFilter string
 	PagingParams      db2.PageQuery
 	Records           []history.Operation
-	Ledgers           history.LedgerCache
+	Ledgers           *history.LedgerCache
 	Page              hal.Page
 }
 
@@ -78,7 +78,7 @@ func (action *PaymentsIndexAction) SSE(stream sse.Stream) {
 
 func (action *PaymentsIndexAction) loadParams() {
 	action.ValidateCursorAsDefault()
-	action.AccountFilter = action.GetString("account_id")
+	action.AccountFilter = action.GetAddress("account_id")
 	action.LedgerFilter = action.GetInt32("ledger_id")
 	action.TransactionFilter = action.GetString("tx_id")
 	action.PagingParams = action.GetPageQuery()
@@ -102,6 +102,8 @@ func (action *PaymentsIndexAction) loadRecords() {
 
 // loadLedgers populates the ledger cache for this action
 func (action *PaymentsIndexAction) loadLedgers() {
+	action.Ledgers = &history.LedgerCache{}
+
 	for _, op := range action.Records {
 		action.Ledgers.Queue(op.LedgerSequence())
 	}

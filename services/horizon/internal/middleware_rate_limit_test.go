@@ -4,10 +4,10 @@ import (
 	"strconv"
 	"testing"
 
-	"github.com/PuerkitoBio/throttled"
 	"github.com/stellar/go/services/horizon/internal/test"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
+	"github.com/throttled/throttled"
 )
 
 type RateLimitMiddlewareTestSuite struct {
@@ -24,7 +24,10 @@ func (suite *RateLimitMiddlewareTestSuite) SetupSuite() {
 
 func (suite *RateLimitMiddlewareTestSuite) SetupTest() {
 	suite.c = NewTestConfig()
-	suite.c.RateLimit = throttled.PerHour(10)
+	suite.c.RateLimit = &throttled.RateQuota{
+		MaxRate:  throttled.PerHour(10),
+		MaxBurst: 9,
+	}
 	suite.app, _ = NewApp(suite.c)
 	suite.rh = NewRequestHelper(suite.app)
 }
@@ -59,10 +62,10 @@ func (suite *RateLimitMiddlewareTestSuite) TestRateLimit_RemainingHeaders() {
 	}
 }
 
-// Sets X-RateLimit-Reset header correctly.
+// Sets X-RateLimit-Reset header correctly. Should reset after 360 seconds since it's limited to 10 requests/hour.
 func (suite *RateLimitMiddlewareTestSuite) TestRateLimit_ResetHeaders() {
 	w := suite.rh.Get("/")
-	assert.Equal(suite.T(), "3599", w.Header().Get("X-RateLimit-Reset"))
+	assert.Equal(suite.T(), "360", w.Header().Get("X-RateLimit-Reset"))
 }
 
 // Restricts based on RemoteAddr IP after too many requests.
@@ -115,7 +118,10 @@ func TestRateLimit_Redis(t *testing.T) {
 	ht := StartHTTPTest(t, "base")
 	defer ht.Finish()
 	c := NewTestConfig()
-	c.RateLimit = throttled.PerHour(10)
+	c.RateLimit = &throttled.RateQuota{
+		MaxRate:  throttled.PerHour(10),
+		MaxBurst: 9,
+	}
 	c.RedisURL = "redis://127.0.0.1:6379/"
 	app, _ := NewApp(c)
 	defer app.Close()
