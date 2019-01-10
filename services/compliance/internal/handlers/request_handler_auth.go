@@ -233,18 +233,18 @@ func (rh *RequestHandler) HandlerAuth(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 
-			allowedFi, err := rh.Database.GetAllowedFIByDomain(tokens[1])
-			if err != nil {
-				log.WithFields(log.Fields{"err": err}).Error("Error getting AllowedFi from DB")
+			allowedFi, err2 := rh.Database.GetAllowedFIByDomain(tokens[1])
+			if err2 != nil {
+				log.WithFields(log.Fields{"err": err2}).Error("Error getting AllowedFi from DB")
 				httpHelpers.Write(w, httpHelpers.InternalServerError)
 				return
 			}
 
 			if allowedFi == nil {
 				// FI not found check AllowedUser
-				allowedUser, err := rh.Database.GetAllowedUserByDomainAndUserID(tokens[1], tokens[0])
-				if err != nil {
-					log.WithFields(log.Fields{"err": err}).Error("Error getting AllowedUser from DB")
+				allowedUser, err2 := rh.Database.GetAllowedUserByDomainAndUserID(tokens[1], tokens[0])
+				if err2 != nil {
+					log.WithFields(log.Fields{"err": err2}).Error("Error getting AllowedUser from DB")
 					httpHelpers.Write(w, httpHelpers.InternalServerError)
 					return
 				}
