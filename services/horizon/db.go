@@ -25,6 +25,11 @@ var dbBackfillCmd = &cobra.Command{
 	Use:   "backfill [COUNT]",
 	Short: "backfills horizon history for COUNT ledgers",
 	Run: func(cmd *cobra.Command, args []string) {
+		if len(args) == 0 {
+			log.Println("Missing COUNT. Usage: backfill [COUNT].")
+			return
+		}
+
 		app := initApp(cmd, args)
 		app.UpdateLedgerState()
 
