@@ -83,6 +83,23 @@ func GetMigrations(dbUrl string) (dirStr string, result []*migrate.PlannedMigrat
 	}
 	for dirStr, dir := range directions {
 		result, _, migrateErr := migrate.PlanMigration(db, "postgres", Migrations, dir, 0)
+		stdLog.Println("dirStr, dir", dirStr, dir)
+		stdLog.Println("len(result)", len(result))
+		for i, m := range result {
+			var a = *m
+			var b = a.Id
+			stdLog.Println(i)
+			stdLog.Println("bbbbbb", b)
+		}
+
+		records, err2 := migrate.GetMigrationRecords(db, "postgres")
+		stdLog.Println(err2)
+		stdLog.Println("len(records)", len(records))
+		for i, m := range records {
+			stdLog.Println(i)
+			stdLog.Println("mmmmm", *m)
+		}
+
 		if migrateErr != nil {
 			stdLog.Fatal(migrateErr)
 		}
