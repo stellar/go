@@ -71,42 +71,72 @@ func Migrate(db *sql.DB, dir MigrateDir, count int) (int, error) {
 }
 
 // Return the direction of migration, and an array of any necessary migrations
-func GetMigrations(dbUrl string) (dirStr string, result []*migrate.PlannedMigration) {
-	db, err := sql.Open("postgres", dbUrl)
-	if err != nil {
-		stdLog.Fatal(err)
-	}
-
+func GetMigrations(dbUrl, dirStr string) (result []string) {
+	// Migrations can be either to later schema versions (up) or earlier (down)
 	directions := map[string]migrate.MigrationDirection{
 		"up":   migrate.Up,
 		"down": migrate.Down,
 	}
-	for dirStr, dir := range directions {
-		result, _, migrateErr := migrate.PlanMigration(db, "postgres", Migrations, dir, 0)
-		stdLog.Println("dirStr, dir", dirStr, dir)
-		stdLog.Println("len(result)", len(result))
-		for i, m := range result {
-			var a = *m
-			var b = a.Id
-			stdLog.Println(i)
-			stdLog.Println("bbbbbb", b)
-		}
 
-		records, err2 := migrate.GetMigrationRecords(db, "postgres")
-		stdLog.Println(err2)
-		stdLog.Println("len(records)", len(records))
-		for i, m := range records {
-			stdLog.Println(i)
-			stdLog.Println("mmmmm", *m)
-		}
+	if _, ok := directions[dirStr]; !ok {
+		stdLog.Fatalf("Invalid migration direction \"%v\": must be \"up\" or \"down\"", dirStr)
+	}
 
-		if migrateErr != nil {
-			stdLog.Fatal(migrateErr)
-		}
+	// Get a DB handle
+	db, dbErr := sql.Open("postgres", dbUrl)
+	if dbErr != nil {
+		stdLog.Fatal(dbErr)
+	}
 
-		if len(result) > 0 {
-			return dirStr, result
+	dir := directions[dirStr]
+	// Get the possible migrations in the given direction
+	possibleMigrations, _, migrateErr := migrate.PlanMigration(db, "postgres", Migrations, dir, 0)
+	if migrateErr != nil {
+		stdLog.Fatal(migrateErr)
+	}
+	stdLog.Println("dirStr, dir", dirStr, dir)
+	stdLog.Println("len(result)", len(possibleMigrations))
+
+	// Extract a list of the possible migration names
+	var possibleIds []string
+	for i, m := range possibleMigrations {
+		stdLog.Println(i)
+		stdLog.Println("bbbbbb", (*m).Id)
+		possibleIds = append(possibleIds, (*m).Id)
+	}
+
+	// Get the set of migrations recorded in the database
+	migrationRecords, recordErr := migrate.GetMigrationRecords(db, "postgres")
+	if recordErr != nil {
+		stdLog.Fatal(recordErr)
+	}
+	stdLog.Println("len(records)", len(migrationRecords))
+
+	// Extract a list of names of the previously applied migrations
+	var migrationRecordIds []string
+	for i, m := range migrationRecords {
+		stdLog.Println(i)
+		stdLog.Println("mmmmm", (*m).Id)
+		migrationRecordIds = append(migrationRecordIds, (*m).Id)
+	}
+
+	// Find any migrations that need to be applied in this direction
+	migrationsToApply := difference(possibleIds, migrationRecordIds)
+
+	return migrationsToApply
+}
+
+// Return the elements in a that aren't in b
+func difference(a, b []string) []string {
+	mb := map[string]bool{}
+	for _, x := range b {
+		mb[x] = true
+	}
+	ab := []string{}
+	for _, x := range a {
+		if _, ok := mb[x]; !ok {
+			ab = append(ab, x)
 		}
 	}
-	return "none", result
+	return ab
 }

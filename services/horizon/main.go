@@ -241,10 +241,22 @@ func initConfig() {
 		stdLog.Fatal("Invalid config: stellar-core-url is blank.  Please specify --stellar-core-url on the command line or set the STELLAR_CORE_URL environment variable.")
 	}
 
-	migrationDir, migrations := schema.GetMigrations(viper.GetString("db-url"))
-	if len(migrations) > 0 {
-		stdLog.Fatalf("A database migration is required to run this version (%v) of Horizon. Run \"horizon db migrate %v\" to update your DB. Consult the Changelog (https://github.com/stellar/horizon/blob/master/CHANGELOG.md) for more information.", apkg.Version(), migrationDir)
+	migrationNeeded := false
+	for _, migrationDir := range []string{"up", "down"} {
+		migrationsToApply := schema.GetMigrations(viper.GetString("db-url"), migrationDir)
+		if len(migrationsToApply) > 0 {
+			migrationNeeded = true
+			stdLog.Printf("There are %v migrations to apply in the \"%v\" direction", len(migrationsToApply), migrationDir)
+			stdLog.Printf("The necessary migrations are:")
+			for _, migrationName := range migrationsToApply {
+				stdLog.Printf("    %v", migrationName)
+			}
+		}
 	}
+	if migrationNeeded {
+		stdLog.Fatalf("A database migration is required to run this version (%v) of Horizon. Run \"horizon db migrate DIRECTION\" to update your DB. Consult the Changelog (https://github.com/stellar/horizon/blob/master/CHANGELOG.md) for more information.", apkg.Version())
+	}
+
 	stdLog.Fatal("Bye bye")
 
 	ll, err := logrus.ParseLevel(viper.GetString("log-level"))
