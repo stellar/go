@@ -70,7 +70,8 @@ func Migrate(db *sql.DB, dir MigrateDir, count int) (int, error) {
 	}
 }
 
-// Return the direction of migration, and an array of any necessary migrations
+// Find the names of any migrations needed in the "up" or "down" directions
+// The differencing step is necessary to handle the "down" case correctly
 func GetMigrations(dbUrl, dirStr string) (result []string) {
 	// Migrations can be either to later schema versions (up) or earlier (down)
 	directions := map[string]migrate.MigrationDirection{
@@ -88,20 +89,16 @@ func GetMigrations(dbUrl, dirStr string) (result []string) {
 		stdLog.Fatal(dbErr)
 	}
 
-	dir := directions[dirStr]
 	// Get the possible migrations in the given direction
+	dir := directions[dirStr]
 	possibleMigrations, _, migrateErr := migrate.PlanMigration(db, "postgres", Migrations, dir, 0)
 	if migrateErr != nil {
 		stdLog.Fatal(migrateErr)
 	}
-	stdLog.Println("dirStr, dir", dirStr, dir)
-	stdLog.Println("len(result)", len(possibleMigrations))
 
 	// Extract a list of the possible migration names
 	var possibleIds []string
-	for i, m := range possibleMigrations {
-		stdLog.Println(i)
-		stdLog.Println("bbbbbb", (*m).Id)
+	for _, m := range possibleMigrations {
 		possibleIds = append(possibleIds, (*m).Id)
 	}
 
@@ -110,13 +107,10 @@ func GetMigrations(dbUrl, dirStr string) (result []string) {
 	if recordErr != nil {
 		stdLog.Fatal(recordErr)
 	}
-	stdLog.Println("len(records)", len(migrationRecords))
 
 	// Extract a list of names of the previously applied migrations
 	var migrationRecordIds []string
-	for i, m := range migrationRecords {
-		stdLog.Println(i)
-		stdLog.Println("mmmmm", (*m).Id)
+	for _, m := range migrationRecords {
 		migrationRecordIds = append(migrationRecordIds, (*m).Id)
 	}
 
