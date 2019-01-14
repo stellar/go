@@ -121,7 +121,9 @@ func (a *App) Close() {
 	a.ticks.Stop()
 }
 
-// CloseDB closes DB connections.
+// CloseDB closes DB connections. When using during web server shut down make
+// sure all requests are first properly finished to avoid "sql: database is
+// closed" errors.
 func (a *App) CloseDB() {
 	a.historyQ.Session.DB.Close()
 	a.coreQ.Session.DB.Close()
