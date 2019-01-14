@@ -1,6 +1,7 @@
 package actions
 
 import (
+	"context"
 	"database/sql"
 	"net/http"
 	"time"
@@ -24,6 +25,7 @@ type Base struct {
 	R   *http.Request
 	Err error
 
+	appCtx             context.Context
 	sseUpdateFrequency time.Duration
 	isSetup            bool
 }
@@ -31,10 +33,11 @@ type Base struct {
 // Prepare established the common attributes that get used in nearly every
 // action.  "Child" actions may override this method to extend action, but it
 // is advised you also call this implementation to maintain behavior.
-func (base *Base) Prepare(w http.ResponseWriter, r *http.Request, sseUpdateFrequency time.Duration) {
+func (base *Base) Prepare(w http.ResponseWriter, r *http.Request, appCtx context.Context, sseUpdateFrequency time.Duration) {
 	base.W = w
 	base.R = r
 	base.sseUpdateFrequency = sseUpdateFrequency
+	base.appCtx = appCtx
 }
 
 // Execute trigger content negotiation and the actual execution of one of the
@@ -133,12 +136,14 @@ func (base *Base) Execute(action interface{}) {
 			}()
 
 			select {
-			case <-ctx.Done():
-				stream.Done()
-				return
 			case <-newLedgers:
 				continue
+			case <-ctx.Done():
+			case <-base.appCtx.Done():
 			}
+
+			stream.Done()
+			return
 		}
 	case render.MimeRaw:
 		action, ok := action.(Raw)
