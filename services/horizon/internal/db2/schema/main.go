@@ -70,8 +70,8 @@ func Migrate(db *sql.DB, dir MigrateDir, count int) (int, error) {
 	}
 }
 
-// Find the names of any migrations needed in the "up" or "down" directions
-// The differencing step is necessary to handle the "down" case correctly
+// GetMigrations, finds the names of any migrations needed in the "up" or "down" directions.
+// The differencing step is necessary to handle the "down" case correctly.
 func GetMigrations(dbUrl, dirStr string) (result []string) {
 	// Migrations can be either to later schema versions (up) or earlier (down)
 	directions := map[string]migrate.MigrationDirection{
@@ -80,7 +80,7 @@ func GetMigrations(dbUrl, dirStr string) (result []string) {
 	}
 
 	if _, ok := directions[dirStr]; !ok {
-		stdLog.Fatalf("Invalid migration direction \"%v\": must be \"up\" or \"down\"", dirStr)
+		stdLog.Fatalf(`Invalid migration direction "%v": must be "up" or "down"`, dirStr)
 	}
 
 	// Get a DB handle
@@ -99,7 +99,7 @@ func GetMigrations(dbUrl, dirStr string) (result []string) {
 	// Extract a list of the possible migration names
 	var possibleIds []string
 	for _, m := range possibleMigrations {
-		possibleIds = append(possibleIds, (*m).Id)
+		possibleIds = append(possibleIds, m.Id)
 	}
 
 	// Get the set of migrations recorded in the database
@@ -115,7 +115,8 @@ func GetMigrations(dbUrl, dirStr string) (result []string) {
 	}
 
 	// Find any migrations that need to be applied in this direction
-	migrationsToApply := difference(possibleIds, migrationRecordIds)
+	// migrationsToApply := difference(possibleIds, migrationRecordIds)
+	migrationsToApply := migrationRecordIds[len(possibleIds):]
 
 	return migrationsToApply
 }

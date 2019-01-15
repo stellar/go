@@ -243,12 +243,16 @@ func initConfig() {
 
 	for _, migrationDir := range []string{"up", "down"} {
 		migrationsToApply := schema.GetMigrations(viper.GetString("db-url"), migrationDir)
-		if len(migrationsToApply) > 0 {
+		nMigrations := len(migrationsToApply)
+		if nMigrations > 0 {
 			stdLog.Printf("A database migration is required to run this version (%v) of Horizon. Run \"horizon db migrate DIRECTION\" to update your DB. Consult the Changelog (https://github.com/stellar/horizon/blob/master/CHANGELOG.md) for more information.", apkg.Version())
-			stdLog.Printf("There are %v migrations to apply in the \"%v\" direction", len(migrationsToApply), migrationDir)
+			stdLog.Printf("There are %v migrations to apply in the \"%v\" direction", nMigrations, migrationDir)
 			stdLog.Printf("The necessary migrations are:")
 			for _, migrationName := range migrationsToApply {
 				stdLog.Printf("    %v", migrationName)
+			}
+			if migrationDir == "down" {
+				stdLog.Printf("In order to migrate the database down, using the HIGHEST version of Horizon you have installed, run \"horizon db migrate down %v\"", nMigrations)
 			}
 			os.Exit(1)
 		}
