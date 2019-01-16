@@ -65,7 +65,7 @@ You can find more recipes in [`scc` examples](https://github.com/stellar/stellar
 
 1. Create a new or modify existing recipe. All new recipes should be added to [horizon test scenarios](https://github.com/stellar/go/tree/master/services/horizon/internal/test/scenarios) directory.
 2. In `stellar/go` repository root directory run `./services/horizon/internal/scripts/build_test_scenarios.bash`.
-3. The command above will rebuild all test scenarios. If need to rebuild only one scenario modify `PACKAGES` environment variable temporarily in the script.
+3. The command above will rebuild all test scenarios. If you need to rebuild only one scenario modify `PACKAGES` environment variable temporarily in the script.
 
 ### Using test scenarios
 
