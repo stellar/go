@@ -239,6 +239,10 @@ func initConfig() {
 		stdLog.Fatal("Invalid config: stellar-core-url is blank.  Please specify --stellar-core-url on the command line or set the STELLAR_CORE_URL environment variable.")
 	}
 
+	if viper.GetString("network-passphrase") == "" {
+		stdLog.Fatal("Invalid config: network-passphrase is blank.  Please specify --network-passphrase on the command line or set the NETWORK_PASSPHRASE environment variable.")
+	}
+
 	ll, err := logrus.ParseLevel(viper.GetString("log-level"))
 
 	if err != nil {
@@ -299,6 +303,7 @@ func initConfig() {
 		LogLevel:               ll,
 		LogFile:                lf,
 		MaxPathLength:          uint(viper.GetInt("max-path-length")),
+		NetworkPassphrase:      viper.GetString("network-passphrase"),
 		SentryDSN:              viper.GetString("sentry-dsn"),
 		LogglyToken:            viper.GetString("loggly-token"),
 		LogglyTag:              viper.GetString("loggly-tag"),

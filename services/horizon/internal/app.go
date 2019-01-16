@@ -5,13 +5,13 @@ import (
 	"database/sql"
 	"fmt"
 	"net/http"
+	"os"
 	"runtime"
 	"sync"
 	"time"
 
 	"github.com/gomodule/redigo/redis"
 	"github.com/rcrowley/go-metrics"
-	"github.com/stellar/go/build"
 	"github.com/stellar/go/clients/stellarcore"
 	horizonContext "github.com/stellar/go/services/horizon/internal/context"
 	"github.com/stellar/go/services/horizon/internal/db2/core"
@@ -64,7 +64,7 @@ func NewApp(config Config) (*App, error) {
 
 	result := &App{config: config}
 	result.horizonVersion = app.Version()
-	result.networkPassphrase = build.TestNetwork.Passphrase
+	result.networkPassphrase = config.NetworkPassphrase
 	result.ticks = time.NewTicker(1 * time.Second)
 	result.init()
 	return result, nil
@@ -268,6 +268,13 @@ func (a *App) UpdateStellarCoreInfo() {
 	if err != nil {
 		fail(err)
 		return
+	}
+
+	// Check if NetworkPassphrase is different, if so exit Horizon as it can break the
+	// state of the application.
+	if resp.Info.Network != a.networkPassphrase {
+		log.Error("Network passhprase of stellar-core does not match Horizon configuration. Exiting...")
+		os.Exit(1)
 	}
 
 	a.coreVersion = resp.Info.Build
