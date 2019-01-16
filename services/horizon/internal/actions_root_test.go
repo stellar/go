@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 	"testing"
 
-	"github.com/stellar/go/services/horizon/internal/test"
 	"github.com/stellar/go/protocols/horizon"
+	"github.com/stellar/go/services/horizon/internal/test"
 )
 
 func TestRootAction(t *testing.T) {
@@ -21,6 +21,7 @@ func TestRootAction(t *testing.T) {
 		}`)
 	defer server.Close()
 
+	ht.App.networkPassphrase = "test"
 	ht.App.horizonVersion = "test-horizon"
 	ht.App.config.StellarCoreURL = server.URL
 	ht.App.UpdateStellarCoreInfo()
