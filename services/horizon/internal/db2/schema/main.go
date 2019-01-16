@@ -70,18 +70,9 @@ func Migrate(db *sql.DB, dir MigrateDir, count int) (int, error) {
 	}
 }
 
-// GetMigrations, finds the names of any migrations needed in the "up" or "down" directions.
-// The differencing step is necessary to handle the "down" case correctly.
-func GetMigrations(dbUrl, dirStr string) (result []string) {
-	// Migrations can be either to later schema versions (up) or earlier (down)
-	directions := map[string]migrate.MigrationDirection{
-		"up":   migrate.Up,
-		"down": migrate.Down,
-	}
-
-	if _, ok := directions[dirStr]; !ok {
-		stdLog.Fatalf(`Invalid migration direction "%v": must be "up" or "down"`, dirStr)
-	}
+// GetMigrationsUp returns a list of names of any migrations needed in the
+// "up" direction (more recent schema versions).
+func GetMigrationsUp(dbUrl string) (migrationNames []string) {
 
 	// Get a DB handle
 	db, dbErr := sql.Open("postgres", dbUrl)
@@ -89,17 +80,30 @@ func GetMigrations(dbUrl, dirStr string) (result []string) {
 		stdLog.Fatal(dbErr)
 	}
 
-	// Get the possible migrations in the given direction
-	dir := directions[dirStr]
-	possibleMigrations, _, migrateErr := migrate.PlanMigration(db, "postgres", Migrations, dir, 0)
+	// Get the possible migrations
+	possibleMigrations, _, migrateErr := migrate.PlanMigration(db, "postgres", Migrations, migrate.Up, 0)
 	if migrateErr != nil {
 		stdLog.Fatal(migrateErr)
 	}
 
 	// Extract a list of the possible migration names
-	var possibleIds []string
 	for _, m := range possibleMigrations {
-		possibleIds = append(possibleIds, m.Id)
+		migrationNames = append(migrationNames, m.Id)
+	}
+
+	return migrationNames
+}
+
+// GetMigrationsDown returns the number of migrations to apply in the
+// "down" direction  to return to the older schema version expected by this
+// version of Horizon. To keep the code simple, it does not provide a list of
+// migration names.
+func GetMigrationsDown(dbUrl string) (nMigrations int) {
+
+	// Get a DB handle
+	db, dbErr := sql.Open("postgres", dbUrl)
+	if dbErr != nil {
+		stdLog.Fatal(dbErr)
 	}
 
 	// Get the set of migrations recorded in the database
@@ -108,30 +112,12 @@ func GetMigrations(dbUrl, dirStr string) (result []string) {
 		stdLog.Fatal(recordErr)
 	}
 
-	// Extract a list of names of the previously applied migrations
-	var migrationRecordIds []string
-	for _, m := range migrationRecords {
-		migrationRecordIds = append(migrationRecordIds, (*m).Id)
+	// Get the list of migrations needed by this version of Horizon
+	allNeededMigrations, _, migrateErr := migrate.PlanMigration(db, "postgres", Migrations, migrate.Down, 0)
+	if migrateErr != nil {
+		stdLog.Fatal(migrateErr)
 	}
 
-	// Find any migrations that need to be applied in this direction
-	// migrationsToApply := difference(possibleIds, migrationRecordIds)
-	migrationsToApply := migrationRecordIds[len(possibleIds):]
-
-	return migrationsToApply
-}
-
-// Return the elements in a that aren't in b
-func difference(a, b []string) []string {
-	mb := map[string]bool{}
-	for _, x := range b {
-		mb[x] = true
-	}
-	ab := []string{}
-	for _, x := range a {
-		if _, ok := mb[x]; !ok {
-			ab = append(ab, x)
-		}
-	}
-	return ab
+	// Return the size difference between the two sets of migrations
+	return len(migrationRecords) - len(allNeededMigrations)
 }

@@ -241,21 +241,22 @@ func initConfig() {
 		stdLog.Fatal("Invalid config: stellar-core-url is blank.  Please specify --stellar-core-url on the command line or set the STELLAR_CORE_URL environment variable.")
 	}
 
-	for _, migrationDir := range []string{"up", "down"} {
-		migrationsToApply := schema.GetMigrations(viper.GetString("db-url"), migrationDir)
-		nMigrations := len(migrationsToApply)
-		if nMigrations > 0 {
-			stdLog.Printf("A database migration is required to run this version (%v) of Horizon. Run \"horizon db migrate DIRECTION\" to update your DB. Consult the Changelog (https://github.com/stellar/horizon/blob/master/CHANGELOG.md) for more information.", apkg.Version())
-			stdLog.Printf("There are %v migrations to apply in the \"%v\" direction", nMigrations, migrationDir)
-			stdLog.Printf("The necessary migrations are:")
-			for _, migrationName := range migrationsToApply {
-				stdLog.Printf("    %v", migrationName)
-			}
-			if migrationDir == "down" {
-				stdLog.Printf("In order to migrate the database down, using the HIGHEST version of Horizon you have installed, run \"horizon db migrate down %v\"", nMigrations)
-			}
-			os.Exit(1)
+	migrationsToApplyUp := schema.GetMigrationsUp(viper.GetString("db-url"))
+	if len(migrationsToApplyUp) > 0 {
+		stdLog.Printf("There are %v migrations to apply in the \"up\" direction.", len(migrationsToApplyUp))
+		stdLog.Printf("The necessary migrations are:")
+		for _, migrationName := range migrationsToApplyUp {
+			stdLog.Printf("    %v", migrationName)
 		}
+		stdLog.Printf("A database migration is required to run this version (%v) of Horizon. Run \"horizon db migrate up\" to update your DB. Consult the Changelog (https://github.com/stellar/horizon/blob/master/CHANGELOG.md) for more information.", apkg.Version())
+		os.Exit(1)
+	}
+
+	nMigrationsDown := schema.GetMigrationsDown(viper.GetString("db-url"))
+	if nMigrationsDown > 0 {
+		stdLog.Printf("A database migration DOWN to an earlier version of the schema is required to run this version (%v) of Horizon. Consult the Changelog (https://github.com/stellar/horizon/blob/master/CHANGELOG.md) for more information.", apkg.Version())
+		stdLog.Printf("In order to migrate the database DOWN, using the HIGHEST version number of Horizon you have installed (not this binary), run \"horizon db migrate down %v\".", nMigrationsDown)
+		os.Exit(1)
 	}
 
 	ll, err := logrus.ParseLevel(viper.GetString("log-level"))
