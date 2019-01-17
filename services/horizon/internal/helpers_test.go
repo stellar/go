@@ -7,6 +7,7 @@ import (
 	"log"
 	"time"
 
+	"github.com/stellar/go/network"
 	"github.com/stellar/go/services/horizon/internal/test"
 	supportLog "github.com/stellar/go/support/log"
 	"github.com/throttled/throttled"
@@ -32,6 +33,7 @@ func NewTestConfig() Config {
 		},
 		ConnectionTimeout: 55 * time.Second, // Default
 		LogLevel:          supportLog.InfoLevel,
+		NetworkPassphrase: network.TestNetworkPassphrase,
 	}
 }
 
