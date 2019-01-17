@@ -6,6 +6,7 @@ This document contains topics related to the development of Horizon.
 
 - [Initial set up](#setup)
 - [Regenerating generated code](#regen)
+- [Adding and rebuilding test scenarios](#scenarios)
 - [Running tests](#tests)
 - [Logging](#logging)
 
@@ -23,6 +24,68 @@ Horizon uses two Go tools you'll need to install:
 2. [go-codegen](https://github.com/nullstyle/go-codegen) is used to generate some boilerplate code
 
 After the above are installed, run `go generate github.com/stellar/go/services/horizon/...`. This will look for any `.tmpl` files in the directory and use them to generate code when annotated structs are found in the package source.
+
+## <a name="scenarios"></a> Adding, rebuilding and using test scenarios
+
+In order to simulate ledgers Horizon uses [`stellar-core-commander`](https://github.com/stellar/stellar_core_commander) recipe files  to add transactions and operations to ledgers using stellar-core test framework.
+
+In order to add a new scenario or rebuild existing scenarios you need:
+
+1. [`stellar-core-commander`](https://github.com/stellar/stellar_core_commander) (in short: `scc`) installed and [configured](https://github.com/stellar/stellar_core_commander#assumptions-about-environment).
+2. [`stellar-core`](https://github.com/stellar/stellar-core) binary.
+3. This repository cloned locally.
+
+`scc` allows you to write scripts/recipes that are later executed in `stellar-core` isolated network. After executing a recipe you can then export `stellar-core` database to be able to run Horizon ingestion system against it (this repository contains a script that does this for you - read below).
+
+### Example recipe
+
+Here's an example of recipe file with comments:
+```rb
+# Define two accounts test accounts
+account :scott, Stellar::KeyPair.from_seed("SBZWG33UOQQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAPSA")
+account :bartek, Stellar::KeyPair.from_seed("SBRGC4TUMVVSAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCBDHV")
+
+# use_manual_close causes scc to run a process with MANUAL_CLOSE=true
+use_manual_close
+
+# Create 2 accounts `scott` and `bartek`
+create_account :scott,  :master, 100
+create_account :bartek, :master, 100
+
+# Close ledger
+close_ledger
+
+# Send 5 XLM from `scott` to `bartek`
+payment :scott, :bartek,  [:native, 5]
+```
+
+You can find more recipes in [`scc` examples](https://github.com/stellar/stellar_core_commander/tree/84d5ffb97202ecc3a0ed34a739c98e69536c0c2c/examples) and [horizon test scenarios](https://github.com/stellar/go/tree/master/services/horizon/internal/test/scenarios).
+
+### Rebuilding scenarios
+
+1. Create a new or modify existing recipe. All new recipes should be added to [horizon test scenarios](https://github.com/stellar/go/tree/master/services/horizon/internal/test/scenarios) directory.
+2. In `stellar/go` repository root directory run `./services/horizon/internal/scripts/build_test_scenarios.bash`.
+3. The command above will rebuild all test scenarios. If you need to rebuild only one scenario modify `PACKAGES` environment variable temporarily in the script.
+
+### Using test scenarios
+
+In your `Test*` function execute:
+
+```go
+ht := StartHTTPTest(t, scenarioName)
+defer ht.Finish()
+```
+where `scenarioName` is the name of the scenario you want to use. This will start test Horizon server with data loaded from the recipe.
+
+When testing ingestion you can load scenario data without Horizon database like:
+
+```go
+tt := test.Start(t).ScenarioWithoutHorizon("kahuna")
+defer tt.Finish()
+s := ingest(tt, true)
+```
+
+Check existing tests for more examples.
 
 ## <a name="tests"></a> Running Tests
 
