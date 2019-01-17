@@ -21,9 +21,9 @@ func TestRootAction(t *testing.T) {
 		}`)
 	defer server.Close()
 
-	ht.App.networkPassphrase = "test"
 	ht.App.horizonVersion = "test-horizon"
 	ht.App.config.StellarCoreURL = server.URL
+	ht.App.config.NetworkPassphrase = "test"
 	ht.App.UpdateStellarCoreInfo()
 
 	w := ht.Get("/")
