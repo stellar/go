@@ -9,10 +9,10 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+	"github.com/stellar/go/network"
 	horizon "github.com/stellar/go/services/horizon/internal"
 	"github.com/stellar/go/services/horizon/internal/db2/schema"
 	apkg "github.com/stellar/go/support/app"
-	"github.com/stellar/go/network"
 	"github.com/stellar/go/support/log"
 	"github.com/throttled/throttled"
 )
@@ -242,9 +242,9 @@ func initConfig() {
 		stdLog.Fatal("Invalid config: stellar-core-url is blank.  Please specify --stellar-core-url on the command line or set the STELLAR_CORE_URL environment variable.")
 	}
 
-  if viper.GetString("network-passphrase") == "" {
+	if viper.GetString("network-passphrase") == "" {
 		stdLog.Fatal("Invalid config: network-passphrase is blank.  Please specify --network-passphrase on the command line or set the NETWORK_PASSPHRASE environment variable.")
-  }
+	}
 
 	migrationsToApplyUp := schema.GetMigrationsUp(viper.GetString("db-url"))
 	if len(migrationsToApplyUp) > 0 {
