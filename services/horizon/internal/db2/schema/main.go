@@ -93,7 +93,7 @@ func GetMigrationsUp(dbUrl string) (migrationIds []string) {
 	return migrationIds
 }
 
-// GetMigrationsDown returns the number of migrations to apply in the
+// GetNumMigrationsDown returns the number of migrations to apply in the
 // "down" direction to return to the older schema version expected by this
 // version of Horizon. To keep the code simple, it does not provide a list of
 // migration names.
