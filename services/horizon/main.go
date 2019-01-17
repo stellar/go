@@ -243,16 +243,13 @@ func initConfig() {
 
 	migrationsToApplyUp := schema.GetMigrationsUp(viper.GetString("db-url"))
 	if len(migrationsToApplyUp) > 0 {
-		stdLog.Printf("There are %v migrations to apply in the \"up\" direction.", len(migrationsToApplyUp))
-		stdLog.Printf("The necessary migrations are:")
-		for _, migrationName := range migrationsToApplyUp {
-			stdLog.Printf("    %v", migrationName)
-		}
+		stdLog.Printf(`There are %v migrations to apply in the "up" direction.`, len(migrationsToApplyUp))
+		stdLog.Printf("The necessary migrations are: %v", migrationsToApplyUp)
 		stdLog.Printf("A database migration is required to run this version (%v) of Horizon. Run \"horizon db migrate up\" to update your DB. Consult the Changelog (https://github.com/stellar/horizon/blob/master/CHANGELOG.md) for more information.", apkg.Version())
 		os.Exit(1)
 	}
 
-	nMigrationsDown := schema.GetMigrationsDown(viper.GetString("db-url"))
+	nMigrationsDown := schema.GetNumMigrationsDown(viper.GetString("db-url"))
 	if nMigrationsDown > 0 {
 		stdLog.Printf("A database migration DOWN to an earlier version of the schema is required to run this version (%v) of Horizon. Consult the Changelog (https://github.com/stellar/horizon/blob/master/CHANGELOG.md) for more information.", apkg.Version())
 		stdLog.Printf("In order to migrate the database DOWN, using the HIGHEST version number of Horizon you have installed (not this binary), run \"horizon db migrate down %v\".", nMigrationsDown)

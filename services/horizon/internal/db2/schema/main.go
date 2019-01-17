@@ -72,8 +72,7 @@ func Migrate(db *sql.DB, dir MigrateDir, count int) (int, error) {
 
 // GetMigrationsUp returns a list of names of any migrations needed in the
 // "up" direction (more recent schema versions).
-func GetMigrationsUp(dbUrl string) (migrationNames []string) {
-
+func GetMigrationsUp(dbUrl string) (migrationIds []string) {
 	// Get a DB handle
 	db, dbErr := sql.Open("postgres", dbUrl)
 	if dbErr != nil {
@@ -88,18 +87,17 @@ func GetMigrationsUp(dbUrl string) (migrationNames []string) {
 
 	// Extract a list of the possible migration names
 	for _, m := range possibleMigrations {
-		migrationNames = append(migrationNames, m.Id)
+		migrationIds = append(migrationIds, m.Id)
 	}
 
-	return migrationNames
+	return migrationIds
 }
 
 // GetMigrationsDown returns the number of migrations to apply in the
-// "down" direction  to return to the older schema version expected by this
+// "down" direction to return to the older schema version expected by this
 // version of Horizon. To keep the code simple, it does not provide a list of
 // migration names.
-func GetMigrationsDown(dbUrl string) (nMigrations int) {
-
+func GetNumMigrationsDown(dbUrl string) (nMigrations int) {
 	// Get a DB handle
 	db, dbErr := sql.Open("postgres", dbUrl)
 	if dbErr != nil {
