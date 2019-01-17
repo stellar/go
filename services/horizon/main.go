@@ -12,6 +12,7 @@ import (
 	horizon "github.com/stellar/go/services/horizon/internal"
 	"github.com/stellar/go/services/horizon/internal/db2/schema"
 	apkg "github.com/stellar/go/support/app"
+	"github.com/stellar/go/network"
 	"github.com/stellar/go/support/log"
 	"github.com/throttled/throttled"
 )
@@ -182,7 +183,7 @@ func init() {
 
 	rootCmd.PersistentFlags().String(
 		"network-passphrase",
-		"",
+		network.TestNetworkPassphrase,
 		"Override the network passphrase",
 	)
 
@@ -240,6 +241,10 @@ func initConfig() {
 	if viper.GetString("stellar-core-url") == "" {
 		stdLog.Fatal("Invalid config: stellar-core-url is blank.  Please specify --stellar-core-url on the command line or set the STELLAR_CORE_URL environment variable.")
 	}
+
+  if viper.GetString("network-passphrase") == "" {
+		stdLog.Fatal("Invalid config: network-passphrase is blank.  Please specify --network-passphrase on the command line or set the NETWORK_PASSPHRASE environment variable.")
+  }
 
 	migrationsToApplyUp := schema.GetMigrationsUp(viper.GetString("db-url"))
 	if len(migrationsToApplyUp) > 0 {
@@ -316,6 +321,7 @@ func initConfig() {
 		LogLevel:               ll,
 		LogFile:                lf,
 		MaxPathLength:          uint(viper.GetInt("max-path-length")),
+		NetworkPassphrase:      viper.GetString("network-passphrase"),
 		SentryDSN:              viper.GetString("sentry-dsn"),
 		LogglyToken:            viper.GetString("loggly-token"),
 		LogglyTag:              viper.GetString("loggly-tag"),
