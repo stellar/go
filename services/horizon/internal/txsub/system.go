@@ -179,26 +179,40 @@ func (sys *System) submitOnce(ctx context.Context, env string) SubmissionResult 
 	return sr
 }
 
+// setTickInProgress sets `tickInProgress` to `true` if it's not
+// `false`. Returns `true` if `tickInProgress` has been switched
+// to `true` inside this method and `Tick()` should continue.
+func (sys *System) setTickInProgress(ctx context.Context) bool {
+	sys.tickMutex.Lock()
+	defer sys.tickMutex.Unlock()
+
+	if sys.tickInProgress {
+		logger := log.Ctx(ctx)
+		logger.Info("ticking in progress")
+		return false
+	}
+
+	sys.tickInProgress = true
+	return true
+}
+
+func (sys *System) unsetTickInProgress() {
+	sys.tickMutex.Lock()
+	defer sys.tickMutex.Unlock()
+	sys.tickInProgress = false
+}
+
 // Tick triggers the system to update itself with any new data available.
 func (sys *System) Tick(ctx context.Context) {
 	sys.Init()
 	logger := log.Ctx(ctx)
 
 	// Make sure Tick is not run concurrently
-	sys.tickMutex.Lock()
-	if sys.tickInProgress {
-		logger.Info("ticking in progress")
-		sys.tickMutex.Unlock()
+	if !sys.setTickInProgress(ctx) {
 		return
 	}
-	sys.tickInProgress = true
-	sys.tickMutex.Unlock()
 
-	defer func() {
-		sys.tickMutex.Lock()
-		sys.tickInProgress = false
-		sys.tickMutex.Unlock()
-	}()
+	defer sys.unsetTickInProgress()
 
 	logger.
 		WithField("queued", sys.SubmissionQueue.String()).
