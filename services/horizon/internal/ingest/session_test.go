@@ -3,6 +3,7 @@ package ingest
 import (
 	"testing"
 
+	protocolEffects "github.com/stellar/go/protocols/horizon/effects"
 	"github.com/stellar/go/services/horizon/internal/db2"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/services/horizon/internal/test"
@@ -74,6 +75,13 @@ func Test_ingestOperationEffects(t *testing.T) {
 		tt.Assert.Equal(history.EffectTrade, effects[3].Type)
 	}
 
+	err = q.Effects().ForOperation(81604382721).Page(pq).Select(&effects)
+	tt.Require.NoError(err)
+
+	var ad protocolEffects.AccountDebited
+	err = effects[1].UnmarshalDetails(&ad)
+	tt.Require.NoError(err)
+	tt.Assert.Equal("100.0000000", ad.Amount)
 }
 
 func Test_ingestBumpSeq(t *testing.T) {
