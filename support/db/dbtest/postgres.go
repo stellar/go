@@ -22,6 +22,9 @@ func Postgres(t *testing.T) *DB {
 
 	// create the db
 	err := exec.Command("createdb", name).Run()
+	if err != nil {
+		t.Errorf("postgres returnd error: %v", err)
+	}
 	require.NoError(t, err)
 
 	result.closer = func() {
