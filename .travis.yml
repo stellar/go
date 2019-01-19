@@ -5,7 +5,7 @@ services:
 - postgres
 - redis-server
 addons:
-  postgresql: '9.4'
+  postgresql: '10'
   ssh_known_hosts:
   - bitbucket.org
 go:
