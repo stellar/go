@@ -85,6 +85,7 @@ func (action *OrderBookShowAction) SSE(stream sse.Stream) {
 	resource, err := json.Marshal(action.Resource)
 	if err != nil {
 		action.Err = err
+		return
 	}
 
 	// We use fnv-1a hash function here for uniqueness and speed
@@ -92,14 +93,15 @@ func (action *OrderBookShowAction) SSE(stream sse.Stream) {
 	h := fnv.New128a()
 	h.Write(resource)
 	nextHash := h.Sum(nil)
-
-	if !bytes.Equal(action.ResourceHash, nextHash) {
-		action.ResourceHash = nextHash
-		action.Do(func() {
-			stream.SetLimit(10)
-			stream.Send(sse.Event{
-				Data: action.Resource,
-			})
-		})
+	if bytes.Equal(action.ResourceHash, nextHash) {
+		return
 	}
+
+	action.ResourceHash = nextHash
+	action.Do(func() {
+		stream.SetLimit(10)
+		stream.Send(sse.Event{
+			Data: action.Resource,
+		})
+	})
 }
