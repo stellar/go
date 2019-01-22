@@ -1,25 +1,29 @@
 package horizon
 
 import (
+	"bytes"
+	"encoding/json"
+	"hash/fnv"
 	"net/http"
 
+	"github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/services/horizon/internal/db2/core"
+	"github.com/stellar/go/services/horizon/internal/render/sse"
 	"github.com/stellar/go/services/horizon/internal/resourceadapter"
+	"github.com/stellar/go/support/render/hal"
 	"github.com/stellar/go/support/render/problem"
 	"github.com/stellar/go/xdr"
-	"github.com/stellar/go/protocols/horizon"
-	"github.com/stellar/go/services/horizon/internal/render/sse"
-	"github.com/stellar/go/support/render/hal"
 )
 
 // OrderBookShowAction renders a account summary found by its address.
 type OrderBookShowAction struct {
 	Action
-	Selling  xdr.Asset
-	Buying   xdr.Asset
-	Record   core.OrderBookSummary
-	Resource horizon.OrderBookSummary
-	Limit    uint64
+	Selling      xdr.Asset
+	Buying       xdr.Asset
+	Record       core.OrderBookSummary
+	Resource     horizon.OrderBookSummary
+	ResourceHash []byte
+	Limit        uint64
 }
 
 // LoadQuery sets action.Query from the request params
@@ -76,11 +80,26 @@ func (action *OrderBookShowAction) JSON() {
 func (action *OrderBookShowAction) SSE(stream sse.Stream) {
 	action.Do(action.LoadQuery, action.LoadRecord, action.LoadResource)
 
-	action.Do(func() {
-		stream.SetLimit(10)
-		stream.Send(sse.Event{
-			Data: action.Resource,
-		})
-	})
+	// Store the hash of the current orderbook. We will only send a new event
+	// if the next orderbook is different than the current one.
+	resource, err := json.Marshal(action.Resource)
+	if err != nil {
+		action.Err = err
+	}
 
+	// We use fnv-1a hash function here for uniqueness and speed
+	// https://softwareengineering.stackexchange.com/questions/49550/which-hashing-algorithm-is-best-for-uniqueness-and-speed
+	h := fnv.New128a()
+	h.Write(resource)
+	nextHash := h.Sum(nil)
+
+	if !bytes.Equal(action.ResourceHash, nextHash) {
+		action.ResourceHash = nextHash
+		action.Do(func() {
+			stream.SetLimit(10)
+			stream.Send(sse.Event{
+				Data: action.Resource,
+			})
+		})
+	}
 }
