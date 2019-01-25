@@ -2,8 +2,6 @@ package horizon
 
 import (
 	"bytes"
-	"encoding/json"
-	"hash/fnv"
 	"net/http"
 
 	"github.com/stellar/go/protocols/horizon"
@@ -76,32 +74,25 @@ func (action *OrderBookShowAction) JSON() {
 	})
 }
 
-// SSE is a method for actions.SSE
-func (action *OrderBookShowAction) SSE(stream sse.Stream) {
+func (action *OrderBookShowAction) LoadEvent() sse.Event {
 	action.Do(action.LoadQuery, action.LoadRecord, action.LoadResource)
+	return sse.Event{Data: action.Resource}
+}
 
-	// Store the hash of the current orderbook. We will only send a new event
-	// if the next orderbook is different than the current one.
-	resource, err := json.Marshal(action.Resource)
-	if err != nil {
-		action.Err = err
-		return
-	}
-
-	// We use fnv-1a hash function here for uniqueness and speed
-	// https://softwareengineering.stackexchange.com/questions/49550/which-hashing-algorithm-is-best-for-uniqueness-and-speed
-	h := fnv.New128a()
-	h.Write(resource)
-	nextHash := h.Sum(nil)
-	if bytes.Equal(action.ResourceHash, nextHash) {
-		return
-	}
-
-	action.ResourceHash = nextHash
+func (action *OrderBookShowAction) SendEvent(stream sse.Stream) {
 	action.Do(func() {
 		stream.SetLimit(10)
 		stream.Send(sse.Event{
 			Data: action.Resource,
 		})
 	})
+}
+
+func (action *OrderBookShowAction) UpdateResourceHash(nextHash []byte) bool {
+	if bytes.Equal(action.ResourceHash, nextHash) {
+		return false
+	}
+
+	action.ResourceHash = nextHash
+	return true
 }

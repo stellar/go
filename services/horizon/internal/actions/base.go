@@ -3,6 +3,8 @@ package actions
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
+	"hash/fnv"
 	"net/http"
 	"time"
 
@@ -61,8 +63,9 @@ func (base *Base) Execute(action interface{}) {
 		}
 
 	case render.MimeEventStream:
-		action, ok := action.(SSE)
-		if !ok {
+		switch action.(type) {
+		case SSE, SingleObjectStreamer:
+		default:
 			goto NotAcceptable
 		}
 
@@ -88,7 +91,25 @@ func (base *Base) Execute(action interface{}) {
 				}
 			}
 
-			action.SSE(stream)
+			switch ac := action.(type) {
+			case SSE:
+				ac.SSE(stream)
+
+			case SingleObjectStreamer:
+				newEvent := ac.LoadEvent()
+				resource, err := json.Marshal(newEvent.Data)
+				if err != nil {
+					stream.Err(errors.Wrap(err, "unable to marshal next action resource"))
+				}
+				// We use fnv-1a hash function here for uniqueness and speed
+				// https://softwareengineering.stackexchange.com/questions/49550/which-hashing-algorithm-is-best-for-uniqueness-and-speed
+				h := fnv.New128a()
+				h.Write(resource)
+				nextHash := h.Sum(nil)
+				if ac.UpdateResourceHash(nextHash) {
+					ac.SendEvent(stream)
+				}
+			}
 
 			if base.Err != nil {
 				// In the case that we haven't yet sent an event, is also means we
@@ -146,7 +167,6 @@ func (base *Base) Execute(action interface{}) {
 		}
 	case render.MimeRaw:
 		action, ok := action.(Raw)
-
 		if !ok {
 			goto NotAcceptable
 		}
