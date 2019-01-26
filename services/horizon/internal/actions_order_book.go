@@ -79,15 +79,6 @@ func (action *OrderBookShowAction) LoadEvent() sse.Event {
 	return sse.Event{Data: action.Resource}
 }
 
-func (action *OrderBookShowAction) SendEvent(stream sse.Stream) {
-	action.Do(func() {
-		stream.SetLimit(10)
-		stream.Send(sse.Event{
-			Data: action.Resource,
-		})
-	})
-}
-
 func (action *OrderBookShowAction) UpdateResourceHash(nextHash []byte) bool {
 	if bytes.Equal(action.ResourceHash, nextHash) {
 		return false

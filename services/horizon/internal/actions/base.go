@@ -107,7 +107,8 @@ func (base *Base) Execute(action interface{}) {
 				h.Write(resource)
 				nextHash := h.Sum(nil)
 				if ac.UpdateResourceHash(nextHash) {
-					ac.SendEvent(stream)
+					stream.SetLimit(10)
+					stream.Send(newEvent)
 				}
 			}
 
