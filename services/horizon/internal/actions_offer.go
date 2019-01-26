@@ -45,7 +45,7 @@ func (action *OffersByAccountAction) SSE(stream sse.Stream) {
 		action.loadLedgers,
 		func() {
 			stream.SetLimit(int(action.PageQuery.Limit))
-			for _, record := range action.Records[stream.SentCount():] {
+			for _, record := range action.Records {
 				ledger, found := action.Ledgers.Records[record.Lastmodified]
 				ledgerPtr := &ledger
 				if !found {
