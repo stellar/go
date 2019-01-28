@@ -1,10 +1,11 @@
 package actions
 
 import (
+	"bytes"
 	"context"
+	"crypto/sha256"
 	"database/sql"
 	"encoding/json"
-	"hash/fnv"
 	"net/http"
 	"time"
 
@@ -71,6 +72,7 @@ func (base *Base) Execute(action interface{}) {
 
 		stream := sse.NewStream(ctx, base.W)
 
+		var oldHash []byte
 		for {
 			lastLedgerState := ledger.CurrentState()
 
@@ -99,14 +101,16 @@ func (base *Base) Execute(action interface{}) {
 				newEvent := ac.LoadEvent()
 				resource, err := json.Marshal(newEvent.Data)
 				if err != nil {
-					stream.Err(errors.Wrap(err, "unable to marshal next action resource"))
+					log.Ctx(ctx).Error(errors.Wrap(err, "unable to marshal next action resource"))
+					stream.Err(errors.New("Unexpected stream error"))
+					return
 				}
-				// We use fnv-1a hash function here for uniqueness and speed
-				// https://softwareengineering.stackexchange.com/questions/49550/which-hashing-algorithm-is-best-for-uniqueness-and-speed
-				h := fnv.New128a()
+
+				h := sha256.New()
 				h.Write(resource)
 				nextHash := h.Sum(nil)
-				if ac.UpdateResourceHash(nextHash) {
+				if !bytes.Equal(nextHash, oldHash) {
+					oldHash = nextHash
 					stream.SetLimit(10)
 					stream.Send(newEvent)
 				}

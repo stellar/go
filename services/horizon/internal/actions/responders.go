@@ -23,5 +23,4 @@ type SSE interface {
 type SingleObjectStreamer interface {
 	JSON
 	LoadEvent() sse.Event
-	UpdateResourceHash(nextHash []byte) bool
 }

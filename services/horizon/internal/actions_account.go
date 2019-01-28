@@ -1,8 +1,6 @@
 package horizon
 
 import (
-	"bytes"
-
 	"github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/services/horizon/internal/actions"
 	"github.com/stellar/go/services/horizon/internal/db2/core"
@@ -26,7 +24,6 @@ type AccountShowAction struct {
 	CoreSigners    []core.Signer
 	CoreTrustlines []core.Trustline
 	Resource       horizon.Account
-	ResourceHash   []byte
 }
 
 // JSON is a method for actions.JSON
@@ -44,15 +41,6 @@ func (action *AccountShowAction) JSON() {
 func (action *AccountShowAction) LoadEvent() sse.Event {
 	action.Do(action.loadParams, action.loadRecord, action.loadResource)
 	return sse.Event{Data: action.Resource}
-}
-
-func (action *AccountShowAction) UpdateResourceHash(nextHash []byte) bool {
-	if bytes.Equal(action.ResourceHash, nextHash) {
-		return false
-	}
-
-	action.ResourceHash = nextHash
-	return true
 }
 
 func (action *AccountShowAction) loadParams() {

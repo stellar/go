@@ -1,7 +1,6 @@
 package horizon
 
 import (
-	"bytes"
 	"net/http"
 
 	"github.com/stellar/go/protocols/horizon"
@@ -16,12 +15,11 @@ import (
 // OrderBookShowAction renders a account summary found by its address.
 type OrderBookShowAction struct {
 	Action
-	Selling      xdr.Asset
-	Buying       xdr.Asset
-	Record       core.OrderBookSummary
-	Resource     horizon.OrderBookSummary
-	ResourceHash []byte
-	Limit        uint64
+	Selling  xdr.Asset
+	Buying   xdr.Asset
+	Record   core.OrderBookSummary
+	Resource horizon.OrderBookSummary
+	Limit    uint64
 }
 
 // LoadQuery sets action.Query from the request params
@@ -77,13 +75,4 @@ func (action *OrderBookShowAction) JSON() {
 func (action *OrderBookShowAction) LoadEvent() sse.Event {
 	action.Do(action.LoadQuery, action.LoadRecord, action.LoadResource)
 	return sse.Event{Data: action.Resource}
-}
-
-func (action *OrderBookShowAction) UpdateResourceHash(nextHash []byte) bool {
-	if bytes.Equal(action.ResourceHash, nextHash) {
-		return false
-	}
-
-	action.ResourceHash = nextHash
-	return true
 }
