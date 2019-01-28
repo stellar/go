@@ -72,7 +72,7 @@ func (base *Base) Execute(action interface{}) {
 
 		stream := sse.NewStream(ctx, base.W)
 
-		var oldHash []byte
+		var oldHash [32]byte
 		for {
 			lastLedgerState := ledger.CurrentState()
 
@@ -98,7 +98,10 @@ func (base *Base) Execute(action interface{}) {
 				ac.SSE(stream)
 
 			case SingleObjectStreamer:
-				newEvent := ac.LoadEvent()
+				newEvent, err := ac.LoadEvent()
+				if err != nil {
+					break
+				}
 				resource, err := json.Marshal(newEvent.Data)
 				if err != nil {
 					log.Ctx(ctx).Error(errors.Wrap(err, "unable to marshal next action resource"))
@@ -106,20 +109,20 @@ func (base *Base) Execute(action interface{}) {
 					return
 				}
 
-				h := sha256.New()
-				h.Write(resource)
-				nextHash := h.Sum(nil)
-				if !bytes.Equal(nextHash, oldHash) {
-					oldHash = nextHash
-					stream.SetLimit(10)
-					stream.Send(newEvent)
+				nextHash := sha256.Sum256(resource)
+				if bytes.Equal(nextHash[:], oldHash[:]) {
+					break
 				}
-			}
 
+				oldHash = nextHash
+				stream.SetLimit(10)
+				stream.Send(newEvent)
+			}
+			// TODO: better error handling. We should probably handle the error immediately in the error case above
+			// instead of breaking out from the switch statement.
 			if base.Err != nil {
-				// In the case that we haven't yet sent an event, is also means we
-				// haven't sent the preamble, meaning we should simply return the normal HTTP
-				// error.
+				// If we haven't sent an event, we should simply return the normal HTTP
+				// error because it means that we haven't sent the preamble.
 				if stream.SentCount() == 0 {
 					problem.Render(ctx, base.W, base.Err)
 					return

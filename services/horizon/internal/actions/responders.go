@@ -22,5 +22,5 @@ type SSE interface {
 
 type SingleObjectStreamer interface {
 	JSON
-	LoadEvent() sse.Event
+	LoadEvent() (sse.Event, error)
 }
