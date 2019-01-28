@@ -261,6 +261,7 @@ type Root struct {
 
 // Signer represents one of an account's signers.
 type Signer struct {
+	// Deprecated - remove in: horizon-v0.17.0
 	PublicKey string `json:"public_key"`
 	Weight    int32  `json:"weight"`
 	Key       string `json:"key"`
