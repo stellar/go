@@ -58,7 +58,7 @@ func (action *AccountShowAction) loadParams() {
 
 func (action *AccountShowAction) loadRecord() {
 	app := AppFromContext(action.R.Context())
-	protocolVersion := app.protocolVersion
+	protocolVersion := app.coreSupportedProtocolVersion
 
 	action.Err = action.CoreQ().
 		AccountByAddress(&action.CoreRecord, action.Address, protocolVersion)

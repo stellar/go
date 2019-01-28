@@ -252,7 +252,10 @@ type Root struct {
 	HistoryElderSequence int32  `json:"history_elder_ledger"`
 	CoreSequence         int32  `json:"core_latest_ledger"`
 	NetworkPassphrase    string `json:"network_passphrase"`
-	ProtocolVersion      int32  `json:"protocol_version"`
+	// Deprecated - remove in: horizon-v0.17.0
+	ProtocolVersion              int32 `json:"protocol_version"`
+	CurrentProtocolVersion       int32 `json:"current_protocol_version"`
+	CoreSupportedProtocolVersion int32 `json:"core_supported_protocol_version"`
 }
 
 // Signer represents one of an account's signers.
