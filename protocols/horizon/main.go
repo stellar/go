@@ -150,12 +150,13 @@ type Ledger struct {
 		Payments     hal.Link `json:"payments"`
 		Effects      hal.Link `json:"effects"`
 	} `json:"_links"`
-	ID                         string    `json:"id"`
-	PT                         string    `json:"paging_token"`
-	Hash                       string    `json:"hash"`
-	PrevHash                   string    `json:"prev_hash,omitempty"`
-	Sequence                   int32     `json:"sequence"`
-	TransactionCount           int32     `json:"transaction_count"` // DEPRECATED: use SuccessfulTransactionCount
+	ID       string `json:"id"`
+	PT       string `json:"paging_token"`
+	Hash     string `json:"hash"`
+	PrevHash string `json:"prev_hash,omitempty"`
+	Sequence int32  `json:"sequence"`
+	// Deprecated - remove in: horizon-v0.17.0
+	TransactionCount           int32     `json:"transaction_count"`
 	SuccessfulTransactionCount int32     `json:"successful_transaction_count"`
 	FailedTransactionCount     *int32    `json:"failed_transaction_count"`
 	OperationCount             int32     `json:"operation_count"`
@@ -260,6 +261,7 @@ type Root struct {
 
 // Signer represents one of an account's signers.
 type Signer struct {
+	// Deprecated - remove in: horizon-v0.17.0
 	PublicKey string `json:"public_key"`
 	Weight    int32  `json:"weight"`
 	Key       string `json:"key"`
