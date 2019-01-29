@@ -19,3 +19,8 @@ type Raw interface {
 type SSE interface {
 	SSE(sse.Stream)
 }
+
+type SingleObjectStreamer interface {
+	JSON
+	LoadEvent() sse.Event
+}

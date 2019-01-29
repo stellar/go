@@ -3,13 +3,13 @@ package horizon
 import (
 	"net/http"
 
+	"github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/services/horizon/internal/db2/core"
+	"github.com/stellar/go/services/horizon/internal/render/sse"
 	"github.com/stellar/go/services/horizon/internal/resourceadapter"
+	"github.com/stellar/go/support/render/hal"
 	"github.com/stellar/go/support/render/problem"
 	"github.com/stellar/go/xdr"
-	"github.com/stellar/go/protocols/horizon"
-	"github.com/stellar/go/services/horizon/internal/render/sse"
-	"github.com/stellar/go/support/render/hal"
 )
 
 // OrderBookShowAction renders a account summary found by its address.
@@ -72,15 +72,7 @@ func (action *OrderBookShowAction) JSON() {
 	})
 }
 
-// SSE is a method for actions.SSE
-func (action *OrderBookShowAction) SSE(stream sse.Stream) {
+func (action *OrderBookShowAction) LoadEvent() sse.Event {
 	action.Do(action.LoadQuery, action.LoadRecord, action.LoadResource)
-
-	action.Do(func() {
-		stream.SetLimit(10)
-		stream.Send(sse.Event{
-			Data: action.Resource,
-		})
-	})
-
+	return sse.Event{Data: action.Resource}
 }
