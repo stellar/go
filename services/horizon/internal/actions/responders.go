@@ -20,7 +20,9 @@ type SSE interface {
 	SSE(sse.Stream)
 }
 
+// SingleObjectStreamer implementors can respond to a request whose response
+// type was negotiated to be MimeEventStream. A SingleObjectStreamer loads an
+// object whenever a ledger is closed.
 type SingleObjectStreamer interface {
-	JSON
 	LoadEvent() sse.Event
 }
