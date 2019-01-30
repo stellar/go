@@ -53,6 +53,7 @@ func (action *OffersByAccountAction) SSE(stream sse.Stream) {
 				}
 				var res horizon.Offer
 				resourceadapter.PopulateOffer(action.R.Context(), &res, record, ledgerPtr)
+				action.PageQuery.Cursor = res.PagingToken()
 				stream.Send(sse.Event{ID: res.PagingToken(), Data: res})
 			}
 		},
@@ -60,7 +61,9 @@ func (action *OffersByAccountAction) SSE(stream sse.Stream) {
 }
 
 func (action *OffersByAccountAction) loadParams() {
-	action.PageQuery = action.GetPageQuery()
+	if action.PageQuery.Cursor == "" {
+		action.PageQuery = action.GetPageQuery()
+	}
 	action.Address = action.GetAddress("account_id")
 }
 
