@@ -39,8 +39,14 @@ func (action *OffersByAccountAction) JSON() {
 
 // SSE is a method for actions.SSE
 func (action *OffersByAccountAction) SSE(stream sse.Stream) {
+	if action.PageQuery.Cursor == "" {
+		action.loadParams()
+		if action.Err != nil {
+			return
+		}
+	}
+
 	action.Do(
-		action.loadParams,
 		action.loadRecords,
 		action.loadLedgers,
 		func() {
@@ -61,9 +67,7 @@ func (action *OffersByAccountAction) SSE(stream sse.Stream) {
 }
 
 func (action *OffersByAccountAction) loadParams() {
-	if action.PageQuery.Cursor == "" {
-		action.PageQuery = action.GetPageQuery()
-	}
+	action.PageQuery = action.GetPageQuery()
 	action.Address = action.GetAddress("account_id")
 }
 
