@@ -17,7 +17,7 @@ type ConfigOption struct {
 	Name           string              // e.g. "db-url"
 	EnvVar         string              // e.g. "DATABASE_URL". Defaults to uppercase/underscore representation of name
 	OptType        types.BasicKind     // The type of this option, e.g. types.Bool
-	FlagDefault    interface{}         // A default if no option is provided. Set to "" if no default
+	FlagDefault    interface{}         // A default if no option is provided. Omit or set to `nil` if no default
 	Required       bool                // Whether this option must be set for Horizon to run
 	Usage          string              // Help text
 	CustomSetValue func(*ConfigOption) // Optional function for custom validation/transformation
