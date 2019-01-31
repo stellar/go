@@ -232,8 +232,8 @@ func (base *Base) GetAddress(name string, opts ...Opt) (result string) {
 	}
 
 	requiredParam := false
-	for opt := range opts {
-		switch Opt(opt) {
+	for _, opt := range opts {
+		switch opt {
 		case RequiredParam:
 			requiredParam = true
 		}
