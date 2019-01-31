@@ -70,6 +70,7 @@ var selectLedger = sq.Select(
 	"hl.importer_version",
 	"hl.ledger_hash",
 	"hl.previous_ledger_hash",
+	"hl.transaction_count",
 	"hl.successful_transaction_count",
 	"hl.failed_transaction_count",
 	"hl.operation_count",
