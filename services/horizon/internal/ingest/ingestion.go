@@ -191,7 +191,8 @@ func (ingest *Ingestion) Ledger(
 		time.Unix(header.CloseTime, 0).UTC(),
 		time.Now().UTC(),
 		time.Now().UTC(),
-		successTxs,
+		successTxs, // `transaction_count`
+		successTxs, // `successful_transaction_count`
 		failedTxs,
 		ops,
 		header.Data.LedgerVersion,
@@ -364,6 +365,7 @@ func (ingest *Ingestion) createInsertBuilders() {
 			"closed_at",
 			"created_at",
 			"updated_at",
+			"transaction_count",
 			"successful_transaction_count",
 			"failed_transaction_count",
 			"operation_count",

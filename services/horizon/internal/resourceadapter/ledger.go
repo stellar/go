@@ -5,11 +5,11 @@ import (
 	"fmt"
 
 	"github.com/stellar/go/amount"
+	. "github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/services/horizon/internal/httpx"
-	"github.com/stellar/go/xdr"
-	. "github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/support/render/hal"
+	"github.com/stellar/go/xdr"
 )
 
 func PopulateLedger(ctx context.Context, dest *Ledger, row history.Ledger) {
@@ -18,8 +18,13 @@ func PopulateLedger(ctx context.Context, dest *Ledger, row history.Ledger) {
 	dest.Hash = row.LedgerHash
 	dest.PrevHash = row.PreviousLedgerHash.String
 	dest.Sequence = row.Sequence
-	dest.TransactionCount = row.SuccessfulTransactionCount
-	dest.SuccessfulTransactionCount = row.SuccessfulTransactionCount
+	dest.TransactionCount = row.TransactionCount
+	if row.SuccessfulTransactionCount == nil {
+		// Default to `transaction_count` as it's the same data.
+		dest.SuccessfulTransactionCount = row.TransactionCount
+	} else {
+		dest.SuccessfulTransactionCount = *row.SuccessfulTransactionCount
+	}
 	dest.FailedTransactionCount = row.FailedTransactionCount
 	dest.OperationCount = row.OperationCount
 	dest.ClosedAt = row.ClosedAt
