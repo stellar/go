@@ -19,10 +19,9 @@ func PopulateLedger(ctx context.Context, dest *Ledger, row history.Ledger) {
 	dest.PrevHash = row.PreviousLedgerHash.String
 	dest.Sequence = row.Sequence
 	dest.TransactionCount = row.TransactionCount
-	if row.SuccessfulTransactionCount == nil {
-		// Default to `transaction_count` as it's the same data.
-		dest.SuccessfulTransactionCount = row.TransactionCount
-	} else {
+	// Default to `transaction_count`
+	dest.SuccessfulTransactionCount = row.TransactionCount
+	if row.SuccessfulTransactionCount != nil {
 		dest.SuccessfulTransactionCount = *row.SuccessfulTransactionCount
 	}
 	dest.FailedTransactionCount = row.FailedTransactionCount
