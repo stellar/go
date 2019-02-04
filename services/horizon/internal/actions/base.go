@@ -98,8 +98,8 @@ func (base *Base) Execute(action interface{}) {
 				ac.SSE(stream)
 
 			case SingleObjectStreamer:
-				newEvent := ac.LoadEvent()
-				if base.Err != nil {
+				newEvent, err := ac.LoadEvent()
+				if err != nil {
 					break
 				}
 				resource, err := json.Marshal(newEvent.Data)

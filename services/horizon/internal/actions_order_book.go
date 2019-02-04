@@ -72,7 +72,7 @@ func (action *OrderBookShowAction) JSON() {
 	})
 }
 
-func (action *OrderBookShowAction) LoadEvent() sse.Event {
+func (action *OrderBookShowAction) LoadEvent() (sse.Event, error) {
 	action.Do(action.LoadQuery, action.LoadRecord, action.LoadResource)
-	return sse.Event{Data: action.Resource}
+	return sse.Event{Data: action.Resource}, action.Err
 }

@@ -38,9 +38,9 @@ func (action *AccountShowAction) JSON() {
 	)
 }
 
-func (action *AccountShowAction) LoadEvent() sse.Event {
+func (action *AccountShowAction) LoadEvent() (sse.Event, error) {
 	action.Do(action.loadParams, action.loadRecord, action.loadResource)
-	return sse.Event{Data: action.Resource}
+	return sse.Event{Data: action.Resource}, action.Err
 }
 
 func (action *AccountShowAction) loadParams() {

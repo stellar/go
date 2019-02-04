@@ -24,5 +24,5 @@ type SSE interface {
 // type was negotiated to be MimeEventStream. A SingleObjectStreamer loads an
 // object whenever a ledger is closed.
 type SingleObjectStreamer interface {
-	LoadEvent() sse.Event
+	LoadEvent() (sse.Event, error)
 }
