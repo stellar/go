@@ -39,6 +39,8 @@ func (action *OffersByAccountAction) JSON() {
 
 // SSE is a method for actions.SSE
 func (action *OffersByAccountAction) SSE(stream sse.Stream) {
+	// Load the page query params the first time SSE() is called. We update
+	// the pagination cursor below before sending each event to the stream.
 	if action.PageQuery.Cursor == "" {
 		action.loadParams()
 		if action.Err != nil {
