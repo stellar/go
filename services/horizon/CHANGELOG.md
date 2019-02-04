@@ -6,6 +6,15 @@ file.  This project adheres to [Semantic Versioning](http://semver.org/).
 As this project is pre 1.0, breaking changes may happen for minor version
 bumps.  A breaking change will get clearly notified in this log.
 
+## v0.16.0 - 2019-02-04
+
+* Improved `horizon db migrate` script. It will now either success or show a detailed message ragarding why it failed.
+* Fixed effects ingestion of circular payments.
+* Improved account query performances for payments and operations.
+* Added `successful transaction count` and `failed transaction count` to `ledger` resource.
+* Fixed the wrong protocol version displayed in `root` resource.
+* Improved streaming for single objects. It won't send an event back if the current event is the same as the last event sent.
+
 ## v0.15.4 - 2019-01-17
 
 * Fixed multiple issues in transaction submission subsystem.
