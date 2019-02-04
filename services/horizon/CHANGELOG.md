@@ -8,12 +8,13 @@ bumps.  A breaking change will get clearly notified in this log.
 
 ## v0.16.0 - 2019-02-04
 
-* Improved `horizon db migrate` script. It will now either success or show a detailed message ragarding why it failed.
+* Improved `horizon db migrate` script. It will now either success or show a detailed message regarding why it failed.
 * Fixed effects ingestion of circular payments.
 * Improved account query performances for payments and operations.
-* Added `successful transaction count` and `failed transaction count` to `ledger` resource.
-* Fixed the wrong protocol version displayed in `root` resource.
+* Added `successful_transaction_count` and `failed_transaction_count` to `ledger` resource. Admins need to reingest old ledgers.
+* Fixed the wrong protocol version displayed in `root` resource by adding `current_protocol_version` and `core_supported_protocol_version` .`protocol_version` will be deprecated in v0.17.0.
 * Improved streaming for single objects. It won't send an event back if the current event is the same as the last event sent.
+* Fixed ingesting effects of emtpy trades. Empty trades will be ignored during ingestion.
 
 ## v0.15.4 - 2019-01-17
 
