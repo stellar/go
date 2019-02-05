@@ -8,7 +8,7 @@ bumps.  A breaking change will get clearly notified in this log.
 
 ## v0.16.0 - 2019-02-04
 
-### Upgrate notes
+### Upgrade notes
 
 * Ledger > Admins need to reingest old ledgers because we introduced `successful_transaction_count` and `failed_transaction_count`.
 
