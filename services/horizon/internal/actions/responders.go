@@ -17,7 +17,7 @@ type Raw interface {
 // SSE implementors can respond to a request whose response type was negotiated
 // to be MimeEventStream.
 type SSE interface {
-	SSE(sse.Stream)
+	SSE(*sse.Stream)
 }
 
 // SingleObjectStreamer implementors can respond to a request whose response

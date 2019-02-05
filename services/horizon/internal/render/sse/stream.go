@@ -6,29 +6,8 @@ import (
 	"sync"
 )
 
-// Stream represents an output stream that data can be written to.
-// Its methods must be safe to call concurrently.
-type Stream interface {
-	Init()
-	Send(Event)
-	SentCount() int
-	Done()
-	SetLimit(limit int)
-	IsDone() bool
-	Err(error)
-}
-
-// NewStream creates a new stream against the provided response writer.
-func NewStream(ctx context.Context, w http.ResponseWriter) *stream {
-	return &stream{
-		ctx: ctx,
-		w:   w,
-	}
-}
-
-type stream struct {
-	ctx context.Context
-
+type Stream struct {
+	ctx      context.Context
 	initSync sync.Once  // Variable to ensure that Init only writes the preamble once.
 	mu       sync.Mutex // Mutex protects the following fields
 	w        http.ResponseWriter
@@ -37,10 +16,18 @@ type stream struct {
 	limit    int
 }
 
+// NewStream creates a new stream against the provided response writer.
+func NewStream(ctx context.Context, w http.ResponseWriter) *Stream {
+	return &Stream{
+		ctx: ctx,
+		w:   w,
+	}
+}
+
 // Init function is only executed once. It writes the preamble event which includes the HTTP response code and a
 // hello message. This should be called before any method that writes to the client to ensure that the preamble
 // has been sent first.
-func (s *stream) Init() {
+func (s *Stream) Init() {
 	s.initSync.Do(func() {
 		ok := WritePreamble(s.ctx, s.w)
 		if !ok {
@@ -49,7 +36,7 @@ func (s *stream) Init() {
 	})
 }
 
-func (s *stream) Send(e Event) {
+func (s *Stream) Send(e Event) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.Init()
@@ -57,19 +44,19 @@ func (s *stream) Send(e Event) {
 	s.sent++
 }
 
-func (s *stream) SentCount() int {
+func (s *Stream) SentCount() int {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	return s.sent
 }
 
-func (s *stream) SetLimit(limit int) {
+func (s *Stream) SetLimit(limit int) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.limit = limit
 }
 
-func (s *stream) Done() {
+func (s *Stream) Done() {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.Init()
@@ -79,7 +66,7 @@ func (s *stream) Done() {
 
 // isDone checks to see if the stream is done. Not safe to call concurrently
 // and meant for internal use.
-func (s *stream) isDone() bool {
+func (s *Stream) isDone() bool {
 	if s.limit == 0 {
 		return s.done
 	}
@@ -88,13 +75,13 @@ func (s *stream) isDone() bool {
 }
 
 // IsDone is safe to call concurrently and is exported.
-func (s *stream) IsDone() bool {
+func (s *Stream) IsDone() bool {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	return s.isDone()
 }
 
-func (s *stream) Err(err error) {
+func (s *Stream) Err(err error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.Init()
