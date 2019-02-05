@@ -1,3 +1,6 @@
+---
+title: Horizon Development Guide
+---
 ## Horizon Development Guide
 
 This document describes how to build Horizon from source, so that you can test and edit the code locally to develop bug fixes and new features.
@@ -51,7 +54,7 @@ The simplest way to set up Stellar Core is using the [Stellar Quickstart Docker 
 4. Download and run the Stellar Quickstart container, replacing `USER` with your username:
 
 ```bash
-docker run --rm -it -p "8000:8000" -p "11626:11626" -p "11625:11625" -p"8002:5432" -v /home/USER/stellar:/opt/stellar --name stellar stellar/quickstart --testnet
+docker run --rm -it -p "8000:8000" -p "11626:11626" -p "11625:11625" -p"8002:5432" -v $HOME/stellar:/opt/stellar --name stellar stellar/quickstart --testnet
 ```
 
 In this example we run the container in interactive mode. We map the container's Horizon HTTP port (`8000`), the `stellar-core` HTTP port (`11626`), and the `stellar-core` peer node port (`11625`) from the container to the corresponding ports on `localhost`. Importantly, we map the container's `postgresql` port (`5432`) to a custom port (`8002`) on `localhost`, so that it doesn't clash with our local Postgres install.
@@ -65,10 +68,10 @@ stop horizon
 ```
 
 ## Check Stellar Core status
-Stellar Core takes some time to synchronise with the rest of the network. The default configuration will pull roughly a couple of day's worth of ledgers, and may take 15 - 30 minutes to catch up. You can check the progress by monitoring logs:
+Stellar Core takes some time to synchronise with the rest of the network. The default configuration will pull roughly a couple of day's worth of ledgers, and may take 15 - 30 minutes to catch up. Logs are stored in the container at `/var/log/supervisor`. You can check the progress by monitoring logs with `supervisorctl`:
 ```bash
 docker exec -it stellar /bin/bash
-tail -f var/log/supervisor/stellar-core-stdout---supervisor-aywkVK.log
+supervisorctl tail -f stellar-core
 ```
 
 You can also check status by looking at the HTTP endpoint, e.g. by visiting http://localhost:11626 in your browser.
@@ -82,7 +85,7 @@ Now run your development version of Horizon (which is outside of the container),
 horizon --db-url="postgres://localhost/horizon_dev" --stellar-core-db-url="postgres://stellar:postgres@localhost:8002/core" --stellar-core-url="http://localhost:11626" --port 8001 --network-passphrase "Test SDF Network ; September 2015" --ingest
 ```
 
-If all is well, you should see ingest logs written to standard out. You can test your Horizon instance with a query like: http://localhost:8001/transactions?cursor=&limit=10&order=asc. Use the [Stellar Laboratory](https://www.stellar.org/laboratory/) to craft other queries to try out,
+If all is well, you should see ingest logs written to standard out. You can test your Horizon instance with a query like: http://localhost:8001/transactions?limit=10&order=asc. Use the [Stellar Laboratory](https://www.stellar.org/laboratory/) to craft other queries to try out,
 and read about the available endpoints and see examples in the [Horizon API reference](https://www.stellar.org/developers/horizon/reference/).
 
 ## The development cycle
