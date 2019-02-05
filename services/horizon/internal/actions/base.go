@@ -19,6 +19,8 @@ import (
 	"github.com/stellar/go/support/render/problem"
 )
 
+var errBadStream = errors.New("Unexpected stream error")
+
 // Base is a helper struct you can use as part of a custom action via
 // composition.
 //
@@ -84,7 +86,7 @@ func (base *Base) Execute(action interface{}) {
 				limited, _, err := rateLimiter.RateLimiter.RateLimit(rateLimiter.VaryBy.Key(base.R), 1)
 				if err != nil {
 					log.Ctx(ctx).Error(errors.Wrap(err, "RateLimiter error"))
-					stream.Err(errors.New("Unexpected stream error"))
+					stream.Err(errBadStream)
 					return
 				}
 				if limited {
@@ -105,7 +107,7 @@ func (base *Base) Execute(action interface{}) {
 				resource, err := json.Marshal(newEvent.Data)
 				if err != nil {
 					log.Ctx(ctx).Error(errors.Wrap(err, "unable to marshal next action resource"))
-					stream.Err(errors.New("Unexpected stream error"))
+					stream.Err(errBadStream)
 					return
 				}
 
@@ -132,7 +134,7 @@ func (base *Base) Execute(action interface{}) {
 					base.Err = errors.New("Object not found")
 				} else {
 					log.Ctx(ctx).Error(base.Err)
-					base.Err = errors.New("Unexpected stream error")
+					base.Err = errBadStream
 				}
 
 				// Send errors through the stream and then close the stream.

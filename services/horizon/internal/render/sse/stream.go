@@ -19,13 +19,11 @@ type Stream interface {
 }
 
 // NewStream creates a new stream against the provided response writer.
-func NewStream(ctx context.Context, w http.ResponseWriter) Stream {
-	result := &stream{
+func NewStream(ctx context.Context, w http.ResponseWriter) *stream {
+	return &stream{
 		ctx: ctx,
 		w:   w,
 	}
-
-	return result
 }
 
 type stream struct {
