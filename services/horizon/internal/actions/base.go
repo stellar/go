@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"crypto/sha256"
-	"database/sql"
 	"encoding/json"
 	"net/http"
 	"time"
@@ -15,11 +14,8 @@ import (
 	hProblem "github.com/stellar/go/services/horizon/internal/render/problem"
 	"github.com/stellar/go/services/horizon/internal/render/sse"
 	"github.com/stellar/go/support/errors"
-	"github.com/stellar/go/support/log"
 	"github.com/stellar/go/support/render/problem"
 )
-
-var errBadStream = errors.New("Unexpected stream error")
 
 // Base is a helper struct you can use as part of a custom action via
 // composition.
@@ -85,29 +81,32 @@ func (base *Base) Execute(action interface{}) {
 			if rateLimiter != nil {
 				limited, _, err := rateLimiter.RateLimiter.RateLimit(rateLimiter.VaryBy.Key(base.R), 1)
 				if err != nil {
-					log.Ctx(ctx).Error(errors.Wrap(err, "RateLimiter error"))
-					stream.Err(errBadStream)
+					stream.Err(errors.Wrap(err, "RateLimiter error"))
 					return
 				}
 				if limited {
-					stream.Err(errors.New("rate limit exceeded"))
+					stream.Err(sse.ErrRateLimited)
 					return
 				}
 			}
 
 			switch ac := action.(type) {
 			case SSE:
-				ac.SSE(stream)
+				err := ac.SSE(stream)
+				if err != nil {
+					stream.Err(err)
+					return
+				}
 
 			case SingleObjectStreamer:
 				newEvent, err := ac.LoadEvent()
 				if err != nil {
-					break
+					stream.Err(err)
+					return
 				}
 				resource, err := json.Marshal(newEvent.Data)
 				if err != nil {
-					log.Ctx(ctx).Error(errors.Wrap(err, "unable to marshal next action resource"))
-					stream.Err(errBadStream)
+					stream.Err(errors.Wrap(err, "unable to marshal next action resource"))
 					return
 				}
 
@@ -119,26 +118,6 @@ func (base *Base) Execute(action interface{}) {
 				oldHash = nextHash
 				stream.SetLimit(10)
 				stream.Send(newEvent)
-			}
-			// TODO: better error handling. We should probably handle the error immediately in the error case above
-			// instead of breaking out from the switch statement.
-			if base.Err != nil {
-				// If we haven't sent an event, we should simply return the normal HTTP
-				// error because it means that we haven't sent the preamble.
-				if stream.SentCount() == 0 {
-					problem.Render(ctx, base.W, base.Err)
-					return
-				}
-
-				if errors.Cause(base.Err) == sql.ErrNoRows {
-					base.Err = errors.New("Object not found")
-				} else {
-					log.Ctx(ctx).Error(base.Err)
-					base.Err = errBadStream
-				}
-
-				// Send errors through the stream and then close the stream.
-				stream.Err(base.Err)
 			}
 
 			// Manually send the preamble in case there are no data events in SSE to trigger a stream.Send call.

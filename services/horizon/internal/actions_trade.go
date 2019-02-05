@@ -42,7 +42,7 @@ func (action *TradeIndexAction) JSON() {
 }
 
 // SSE is a method for actions.SSE
-func (action *TradeIndexAction) SSE(stream sse.Stream) {
+func (action *TradeIndexAction) SSE(stream *sse.Stream) error {
 	action.Setup(
 		action.EnsureHistoryFreshness,
 		action.loadParams,
@@ -56,10 +56,8 @@ func (action *TradeIndexAction) SSE(stream sse.Stream) {
 			for _, record := range records {
 				var res horizon.Trade
 				err := resourceadapter.PopulateTrade(action.R.Context(), &res, record)
-
 				if err != nil {
 					action.Err = err
-					return
 				}
 
 				stream.Send(sse.Event{
@@ -69,6 +67,8 @@ func (action *TradeIndexAction) SSE(stream sse.Stream) {
 			}
 		},
 	)
+
+	return action.Err
 }
 
 // loadParams sets action.Query from the request params

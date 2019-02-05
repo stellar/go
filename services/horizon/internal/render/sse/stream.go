@@ -2,9 +2,28 @@ package sse
 
 import (
 	"context"
+	"database/sql"
 	"net/http"
 	"sync"
+
+	"github.com/pkg/errors"
+	"github.com/stellar/go/support/log"
+	"github.com/stellar/go/support/render/problem"
 )
+
+var (
+	// default error
+	errBadStream = errors.New("Unexpected stream error")
+
+	// known error
+	errNoObject    = errors.New("Object not found")
+	ErrRateLimited = errors.New("Rate limit exceeded")
+)
+
+var errorMap = map[error]struct{}{
+	errNoObject:    struct{}{},
+	ErrRateLimited: struct{}{},
+}
 
 type Stream struct {
 	ctx      context.Context
@@ -84,6 +103,24 @@ func (s *Stream) IsDone() bool {
 func (s *Stream) Err(err error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+
+	// If we haven't sent an event, we should simply return the normal HTTP
+	// error because it means that we haven't sent the preamble.
+	if s.sent == 0 {
+		problem.Render(s.ctx, s.w, err)
+		return
+	}
+
+	if errors.Cause(err) == sql.ErrNoRows {
+		err = errNoObject
+	}
+
+	_, ok := errorMap[err]
+	if !ok {
+		log.Ctx(s.ctx).Error(err)
+		err = errBadStream
+	}
+
 	s.Init()
 	WriteEvent(s.ctx, s.w, Event{Error: err})
 	s.done = true

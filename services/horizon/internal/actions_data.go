@@ -47,7 +47,7 @@ func (action *DataShowAction) Raw() {
 }
 
 // SSE is a method for actions.SSE
-func (action *DataShowAction) SSE(stream sse.Stream) {
+func (action *DataShowAction) SSE(stream *sse.Stream) error {
 	action.Do(
 		action.loadParams,
 		action.loadRecord,
@@ -55,6 +55,8 @@ func (action *DataShowAction) SSE(stream sse.Stream) {
 			stream.Send(sse.Event{Data: action.Data.Value})
 		},
 	)
+
+	return action.Err
 }
 
 func (action *DataShowAction) loadParams() {

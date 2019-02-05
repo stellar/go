@@ -40,7 +40,7 @@ func (action *PaymentsIndexAction) JSON() {
 }
 
 // SSE is a method for actions.SSE
-func (action *PaymentsIndexAction) SSE(stream sse.Stream) {
+func (action *PaymentsIndexAction) SSE(stream *sse.Stream) error {
 	action.Setup(
 		action.EnsureHistoryFreshness,
 		action.loadParams,
@@ -56,16 +56,12 @@ func (action *PaymentsIndexAction) SSE(stream sse.Stream) {
 			for _, record := range records {
 				ledger, found := action.Ledgers.Records[record.LedgerSequence()]
 				if !found {
-					msg := fmt.Sprintf("could not find ledger data for sequence %d", record.LedgerSequence())
-					action.Err = errors.New(msg)
-					return
+					action.Err = errors.New(fmt.Sprintf("could not find ledger data for sequence %d", record.LedgerSequence()))
 				}
 
 				res, err := resourceadapter.NewOperation(action.R.Context(), record, ledger)
-
 				if err != nil {
 					action.Err = err
-					return
 				}
 
 				stream.Send(sse.Event{
@@ -73,7 +69,10 @@ func (action *PaymentsIndexAction) SSE(stream sse.Stream) {
 					Data: res,
 				})
 			}
-		})
+		},
+	)
+
+	return action.Err
 }
 
 func (action *PaymentsIndexAction) loadParams() {

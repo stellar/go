@@ -38,7 +38,7 @@ func (action *LedgerIndexAction) JSON() {
 }
 
 // SSE is a method for actions.SSE
-func (action *LedgerIndexAction) SSE(stream sse.Stream) {
+func (action *LedgerIndexAction) SSE(stream *sse.Stream) error {
 	action.Setup(
 		action.EnsureHistoryFreshness,
 		action.loadParams,
@@ -57,6 +57,8 @@ func (action *LedgerIndexAction) SSE(stream sse.Stream) {
 			}
 		},
 	)
+
+	return action.Err
 }
 
 func (action *LedgerIndexAction) loadParams() {
