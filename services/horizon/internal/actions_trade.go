@@ -55,11 +55,7 @@ func (action *TradeIndexAction) SSE(stream *sse.Stream) error {
 
 			for _, record := range records {
 				var res horizon.Trade
-				err := resourceadapter.PopulateTrade(action.R.Context(), &res, record)
-				if err != nil {
-					action.Err = err
-				}
-
+				resourceadapter.PopulateTrade(action.R.Context(), &res, record)
 				stream.Send(sse.Event{
 					ID:   res.PagingToken(),
 					Data: res,
@@ -126,13 +122,7 @@ func (action *TradeIndexAction) loadRecords() {
 func (action *TradeIndexAction) loadPage() {
 	for _, record := range action.Records {
 		var res horizon.Trade
-
-		action.Err = resourceadapter.PopulateTrade(action.R.Context(), &res, record)
-
-		if action.Err != nil {
-			return
-		}
-
+		resourceadapter.PopulateTrade(action.R.Context(), &res, record)
 		action.Page.Add(res)
 	}
 

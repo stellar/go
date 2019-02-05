@@ -67,11 +67,13 @@ func (action *EffectIndexAction) SSE(stream *sse.Stream) error {
 				ledger, found := action.Ledgers.Records[record.LedgerSequence()]
 				if !found {
 					action.Err = errors.New(fmt.Sprintf("could not find ledger data for sequence %d", record.LedgerSequence()))
+					return
 				}
 
 				res, err := resourceadapter.NewEffect(action.R.Context(), record, ledger)
 				if err != nil {
 					action.Err = err
+					return
 				}
 
 				stream.Send(sse.Event{
