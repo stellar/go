@@ -1,8 +1,15 @@
 package horizon
 
 import (
+	"context"
+	"net/http/httptest"
 	"testing"
 	"time"
+
+	"github.com/go-chi/chi"
+	"github.com/stellar/go/services/horizon/internal/actions"
+	"github.com/stellar/go/services/horizon/internal/render/sse"
+	"github.com/stellar/go/services/horizon/internal/test"
 )
 
 func TestOfferActions_Index(t *testing.T) {
@@ -49,4 +56,29 @@ func TestOfferActions_IndexNoLedgerData(t *testing.T) {
 		ht.Assert.NotEmpty(records[2]["last_modified_ledger"])
 		ht.Assert.Nil(records[2]["last_modified_time"])
 	}
+}
+
+func TestOfferActions_SSE(t *testing.T) {
+	tt := test.Start(t).Scenario("trades")
+	defer tt.Finish()
+
+	ctx := context.Background()
+	stream := sse.NewStream(ctx, httptest.NewRecorder())
+	oa := OffersByAccountAction{}
+	oa.App = NewTestApp()
+	oa.Base = actions.Base{
+		R: httptest.NewRequest("GET", "/foo/bar?account_id=GA5WBPYA5Y4WAEHXWR2UKO2UO4BUGHUQ74EUPKON2QHV4WRHOIRNKKH2", nil).WithContext(context.WithValue(ctx, chi.RouteCtxKey, chi.NewRouteContext())),
+	}
+
+	oa.SSE(stream)
+	tt.Require.NoError(oa.Err)
+
+	_, err := tt.CoreSession().ExecRaw(
+		`DELETE FROM offers WHERE sellerid = ?`,
+		"GA5WBPYA5Y4WAEHXWR2UKO2UO4BUGHUQ74EUPKON2QHV4WRHOIRNKKH2",
+	)
+	tt.Require.NoError(err)
+
+	oa.SSE(stream)
+	tt.Require.NoError(oa.Err)
 }
