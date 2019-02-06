@@ -12,6 +12,10 @@ bumps.  A breaking change will get clearly notified in this log.
 
 * Ledger > Admins need to reingest old ledgers because we introduced `successful_transaction_count` and `failed_transaction_count`.
 
+### Database migration notes
+
+Previous versions work fine with Horizon 0.16.0 schema so you can migrate (`horizon db migrate up`) database without stopping the Horizon process. To reingest ledgers run `horizon db reingest` using Horizon 0.16.0 binary.
+
 ### Deprecations
 
 * Root > `protocol_version` will be deprecated in v0.17.0. It is relaced by `current_protocol_version` and `core_supported_protocol_version`.
