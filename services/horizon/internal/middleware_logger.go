@@ -51,7 +51,13 @@ func getClientData(r *http.Request, headerName string) string {
 		return value
 	}
 
-	return r.URL.Query().Get(headerName)
+	value = r.URL.Query().Get(headerName)
+
+	if value == "" {
+		value = "undefined"
+	}
+
+	return value
 }
 
 func logStartOfRequest(ctx context.Context, r *http.Request, streaming bool) {
