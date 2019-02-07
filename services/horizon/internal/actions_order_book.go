@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/stellar/go/protocols/horizon"
+	"github.com/stellar/go/services/horizon/internal/actions"
 	"github.com/stellar/go/services/horizon/internal/db2/core"
 	"github.com/stellar/go/services/horizon/internal/render/sse"
 	"github.com/stellar/go/services/horizon/internal/resourceadapter"
@@ -11,6 +12,9 @@ import (
 	"github.com/stellar/go/support/render/problem"
 	"github.com/stellar/go/xdr"
 )
+
+// Interface verifications
+var _ actions.SingleObjectStreamer = (*OrderBookShowAction)(nil)
 
 // OrderBookShowAction renders a account summary found by its address.
 type OrderBookShowAction struct {

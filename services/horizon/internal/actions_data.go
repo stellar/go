@@ -7,6 +7,9 @@ import (
 	"github.com/stellar/go/support/render/hal"
 )
 
+// Interface verifications
+var _ actions.SSE = (*DataShowAction)(nil)
+
 // DataShowAction renders a account summary found by its address.
 type DataShowAction struct {
 	Action

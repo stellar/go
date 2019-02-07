@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/stellar/go/services/horizon/internal/actions"
 	"github.com/stellar/go/services/horizon/internal/db2"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/services/horizon/internal/ledger"
@@ -18,6 +19,9 @@ import (
 //
 // OperationIndexAction: pages of operations
 // OperationShowAction: single operation by id
+
+// Interface verifications
+var _ actions.SSE = (*OperationIndexAction)(nil)
 
 // OperationIndexAction renders a page of operations resources, identified by
 // a normal page query and optionally filtered by an account, ledger, or

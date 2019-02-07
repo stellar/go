@@ -5,6 +5,7 @@ import (
 	gTime "time"
 
 	"github.com/stellar/go/protocols/horizon"
+	"github.com/stellar/go/services/horizon/internal/actions"
 	"github.com/stellar/go/services/horizon/internal/db2"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/services/horizon/internal/render/sse"
@@ -14,6 +15,9 @@ import (
 	"github.com/stellar/go/support/time"
 	"github.com/stellar/go/xdr"
 )
+
+// Interface verifications
+var _ actions.SSE = (*TradeIndexAction)(nil)
 
 type TradeIndexAction struct {
 	Action

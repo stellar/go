@@ -15,12 +15,12 @@ var (
 	// default error
 	errBadStream = errors.New("Unexpected stream error")
 
-	// known error
+	// known errors
 	errNoObject    = errors.New("Object not found")
 	ErrRateLimited = errors.New("Rate limit exceeded")
 )
 
-var errorMap = map[error]struct{}{
+var knownErrors = map[error]struct{}{
 	errNoObject:    struct{}{},
 	ErrRateLimited: struct{}{},
 }
@@ -115,7 +115,7 @@ func (s *Stream) Err(err error) {
 		err = errNoObject
 	}
 
-	_, ok := errorMap[err]
+	_, ok := knownErrors[errors.Cause(err)]
 	if !ok {
 		log.Ctx(s.ctx).Error(err)
 		err = errBadStream

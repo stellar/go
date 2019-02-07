@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"regexp"
 
+	"github.com/stellar/go/services/horizon/internal/actions"
 	"github.com/stellar/go/services/horizon/internal/db2"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/services/horizon/internal/render/sse"
@@ -15,6 +16,9 @@ import (
 // This file contains the actions:
 //
 // EffectIndexAction: pages of effects
+
+// Interface verifications
+var _ actions.SSE = (*EffectIndexAction)(nil)
 
 // EffectIndexAction renders a page of effect resources, identified by
 // a normal page query and optionally filtered by an account, ledger,

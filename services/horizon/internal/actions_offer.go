@@ -2,6 +2,7 @@ package horizon
 
 import (
 	"github.com/stellar/go/protocols/horizon"
+	"github.com/stellar/go/services/horizon/internal/actions"
 	"github.com/stellar/go/services/horizon/internal/db2"
 	"github.com/stellar/go/services/horizon/internal/db2/core"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
@@ -11,6 +12,9 @@ import (
 )
 
 // This file contains the actions:
+
+// Interface verifications
+var _ actions.SSE = (*OffersByAccountAction)(nil)
 
 // OffersByAccountAction renders a page of offer resources, for a given
 // account.  These offers are present in the ledger as of the latest validated

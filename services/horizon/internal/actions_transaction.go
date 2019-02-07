@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/stellar/go/protocols/horizon"
+	"github.com/stellar/go/services/horizon/internal/actions"
 	"github.com/stellar/go/services/horizon/internal/db2"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	hProblem "github.com/stellar/go/services/horizon/internal/render/problem"
@@ -18,6 +19,9 @@ import (
 //
 // TransactionIndexAction: pages of transactions
 // TransactionShowAction: single transaction by sequence, by hash or id
+
+// Interface verifications
+var _ actions.SSE = (*TransactionIndexAction)(nil)
 
 // TransactionIndexAction renders a page of ledger resources, identified by
 // a normal page query.

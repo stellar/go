@@ -14,6 +14,9 @@ import (
 //
 // AccountShowAction: details for single account (including stellar-core state)
 
+// Interface verifications
+var _ actions.SingleObjectStreamer = (*AccountShowAction)(nil)
+
 // AccountShowAction renders a account summary found by its address.
 type AccountShowAction struct {
 	Action

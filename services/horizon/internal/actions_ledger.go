@@ -2,6 +2,7 @@ package horizon
 
 import (
 	"github.com/stellar/go/protocols/horizon"
+	"github.com/stellar/go/services/horizon/internal/actions"
 	"github.com/stellar/go/services/horizon/internal/db2"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/services/horizon/internal/ledger"
@@ -15,6 +16,9 @@ import (
 //
 // LedgerIndexAction: pages of ledgers
 // LedgerShowAction: single ledger by sequence
+
+// Interface verifications
+var _ actions.SSE = (*LedgerIndexAction)(nil)
 
 // LedgerIndexAction renders a page of ledger resources, identified by
 // a normal page query.
