@@ -39,13 +39,21 @@ func (action *OffersByAccountAction) JSON() {
 
 // SSE is a method for actions.SSE
 func (action *OffersByAccountAction) SSE(stream sse.Stream) {
+	// Load the page query params the first time SSE() is called. We update
+	// the pagination cursor below before sending each event to the stream.
+	if action.PageQuery.Cursor == "" {
+		action.loadParams()
+		if action.Err != nil {
+			return
+		}
+	}
+
 	action.Do(
-		action.loadParams,
 		action.loadRecords,
 		action.loadLedgers,
 		func() {
 			stream.SetLimit(int(action.PageQuery.Limit))
-			for _, record := range action.Records[stream.SentCount():] {
+			for _, record := range action.Records {
 				ledger, found := action.Ledgers.Records[record.Lastmodified]
 				ledgerPtr := &ledger
 				if !found {
@@ -53,6 +61,7 @@ func (action *OffersByAccountAction) SSE(stream sse.Stream) {
 				}
 				var res horizon.Offer
 				resourceadapter.PopulateOffer(action.R.Context(), &res, record, ledgerPtr)
+				action.PageQuery.Cursor = res.PagingToken()
 				stream.Send(sse.Event{ID: res.PagingToken(), Data: res})
 			}
 		},
