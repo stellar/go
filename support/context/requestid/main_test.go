@@ -4,8 +4,8 @@ import (
 	"context"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
 	"github.com/go-chi/chi/middleware"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestRequestContext(t *testing.T) {
@@ -13,8 +13,8 @@ func TestRequestContext(t *testing.T) {
 	assert.Equal(t, "2", ctx.Value(&key))
 
 	ctx2 := Context(ctx, "3")
-	assert.Equal(t,"3", ctx2.Value(&key))
-	assert.Equal(t,"2", ctx.Value(&key))
+	assert.Equal(t, "3", ctx2.Value(&key))
+	assert.Equal(t, "2", ctx.Value(&key))
 }
 
 func TestRequestContextFromCHI(t *testing.T) {
