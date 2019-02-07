@@ -6,8 +6,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/go-chi/chi"
-	"github.com/stellar/go/services/horizon/internal/actions"
 	"github.com/stellar/go/services/horizon/internal/render/sse"
 	"github.com/stellar/go/services/horizon/internal/test"
 )
@@ -64,11 +62,7 @@ func TestOfferActions_SSE(t *testing.T) {
 
 	ctx := context.Background()
 	stream := sse.NewStream(ctx, httptest.NewRecorder())
-	oa := OffersByAccountAction{}
-	oa.App = NewTestApp()
-	oa.Base = actions.Base{
-		R: httptest.NewRequest("GET", "/foo/bar?account_id=GA5WBPYA5Y4WAEHXWR2UKO2UO4BUGHUQ74EUPKON2QHV4WRHOIRNKKH2", nil).WithContext(context.WithValue(ctx, chi.RouteCtxKey, chi.NewRouteContext())),
-	}
+	oa := OffersByAccountAction{Action: *NewTestAction(ctx, "/foo/bar?account_id=GA5WBPYA5Y4WAEHXWR2UKO2UO4BUGHUQ74EUPKON2QHV4WRHOIRNKKH2")}
 
 	oa.SSE(stream)
 	tt.Require.NoError(oa.Err)
