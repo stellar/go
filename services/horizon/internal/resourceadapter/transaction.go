@@ -7,9 +7,9 @@ import (
 	"time"
 
 	"github.com/guregu/null"
+	. "github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/services/horizon/internal/httpx"
-	. "github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/support/render/hal"
 )
 
@@ -49,7 +49,6 @@ func PopulateTransaction(
 	dest.Links.Precedes = lb.Linkf("/transactions?order=asc&cursor=%s", dest.PT)
 	return
 }
-
 
 func timeString(res *Transaction, in null.Int) string {
 	if !in.Valid {

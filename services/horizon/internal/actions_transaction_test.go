@@ -5,9 +5,9 @@ import (
 	"net/url"
 	"testing"
 
+	"github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/services/horizon/internal/txsub"
 	"github.com/stellar/go/services/horizon/internal/txsub/sequence"
-	"github.com/stellar/go/protocols/horizon"
 )
 
 func TestTransactionActions_Show(t *testing.T) {
