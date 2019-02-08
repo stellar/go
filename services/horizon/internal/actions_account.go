@@ -14,6 +14,9 @@ import (
 //
 // AccountShowAction: details for single account (including stellar-core state)
 
+// Interface verifications
+var _ actions.SingleObjectStreamer = (*AccountShowAction)(nil)
+
 // AccountShowAction renders a account summary found by its address.
 type AccountShowAction struct {
 	Action
@@ -38,9 +41,9 @@ func (action *AccountShowAction) JSON() {
 	)
 }
 
-func (action *AccountShowAction) LoadEvent() sse.Event {
+func (action *AccountShowAction) LoadEvent() (sse.Event, error) {
 	action.Do(action.loadParams, action.loadRecord, action.loadResource)
-	return sse.Event{Data: action.Resource}
+	return sse.Event{Data: action.Resource}, action.Err
 }
 
 func (action *AccountShowAction) loadParams() {

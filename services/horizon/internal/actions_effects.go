@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"regexp"
 
+	"github.com/stellar/go/services/horizon/internal/actions"
 	"github.com/stellar/go/services/horizon/internal/db2"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/services/horizon/internal/render/sse"
@@ -15,6 +16,9 @@ import (
 // This file contains the actions:
 //
 // EffectIndexAction: pages of effects
+
+// Interface verifications
+var _ actions.SSE = (*EffectIndexAction)(nil)
 
 // EffectIndexAction renders a page of effect resources, identified by
 // a normal page query and optionally filtered by an account, ledger,
@@ -49,7 +53,7 @@ func (action *EffectIndexAction) JSON() {
 }
 
 // SSE is a method for actions.SSE
-func (action *EffectIndexAction) SSE(stream sse.Stream) {
+func (action *EffectIndexAction) SSE(stream *sse.Stream) error {
 	action.Setup(
 		action.EnsureHistoryFreshness,
 		action.loadParams,
@@ -66,13 +70,11 @@ func (action *EffectIndexAction) SSE(stream sse.Stream) {
 			for _, record := range records {
 				ledger, found := action.Ledgers.Records[record.LedgerSequence()]
 				if !found {
-					msg := fmt.Sprintf("could not find ledger data for sequence %d", record.LedgerSequence())
-					action.Err = errors.New(msg)
+					action.Err = errors.New(fmt.Sprintf("could not find ledger data for sequence %d", record.LedgerSequence()))
 					return
 				}
 
 				res, err := resourceadapter.NewEffect(action.R.Context(), record, ledger)
-
 				if err != nil {
 					action.Err = err
 					return
@@ -85,6 +87,8 @@ func (action *EffectIndexAction) SSE(stream sse.Stream) {
 			}
 		},
 	)
+
+	return action.Err
 }
 
 // loadLedgers populates the ledger cache for this action

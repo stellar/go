@@ -5,6 +5,7 @@ import (
 	gTime "time"
 
 	"github.com/stellar/go/protocols/horizon"
+	"github.com/stellar/go/services/horizon/internal/actions"
 	"github.com/stellar/go/services/horizon/internal/db2"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/services/horizon/internal/render/sse"
@@ -14,6 +15,9 @@ import (
 	"github.com/stellar/go/support/time"
 	"github.com/stellar/go/xdr"
 )
+
+// Interface verifications
+var _ actions.SSE = (*TradeIndexAction)(nil)
 
 type TradeIndexAction struct {
 	Action
@@ -42,7 +46,7 @@ func (action *TradeIndexAction) JSON() {
 }
 
 // SSE is a method for actions.SSE
-func (action *TradeIndexAction) SSE(stream sse.Stream) {
+func (action *TradeIndexAction) SSE(stream *sse.Stream) error {
 	action.Setup(
 		action.EnsureHistoryFreshness,
 		action.loadParams,
@@ -55,13 +59,7 @@ func (action *TradeIndexAction) SSE(stream sse.Stream) {
 
 			for _, record := range records {
 				var res horizon.Trade
-				err := resourceadapter.PopulateTrade(action.R.Context(), &res, record)
-
-				if err != nil {
-					action.Err = err
-					return
-				}
-
+				resourceadapter.PopulateTrade(action.R.Context(), &res, record)
 				stream.Send(sse.Event{
 					ID:   res.PagingToken(),
 					Data: res,
@@ -69,6 +67,8 @@ func (action *TradeIndexAction) SSE(stream sse.Stream) {
 			}
 		},
 	)
+
+	return action.Err
 }
 
 // loadParams sets action.Query from the request params
@@ -126,13 +126,7 @@ func (action *TradeIndexAction) loadRecords() {
 func (action *TradeIndexAction) loadPage() {
 	for _, record := range action.Records {
 		var res horizon.Trade
-
-		action.Err = resourceadapter.PopulateTrade(action.R.Context(), &res, record)
-
-		if action.Err != nil {
-			return
-		}
-
+		resourceadapter.PopulateTrade(action.R.Context(), &res, record)
 		action.Page.Add(res)
 	}
 
