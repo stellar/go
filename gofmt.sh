@@ -1,8 +1,8 @@
 #! /bin/bash
 set -e
 
-OUTPUT=$(find . -maxdepth 1 -mindepth 1 -type d \
-  | egrep -v '^\.\/vendor|^.\/docs|^\.\/\..*' \
+OUTPUT=$(ls -d */ \
+  | egrep -v '^vendor|^docs' \
   | xargs -I {} -P 4 gofmt -l {})
 
 if [[ $OUTPUT ]]; then
