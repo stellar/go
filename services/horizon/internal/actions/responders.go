@@ -8,10 +8,10 @@ type JSONer interface {
 	JSON() error
 }
 
-// Raw implementors can respond to a request whose response type was negotiated
+// Rawer implementors can respond to a request whose response type was negotiated
 // to be MimeRaw.
-type Raw interface {
-	Raw()
+type Rawer interface {
+	Raw() error
 }
 
 // SSE implementors can respond to a request whose response type was negotiated

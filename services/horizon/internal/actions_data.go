@@ -9,6 +9,7 @@ import (
 
 // Interface verifications
 var _ actions.JSONer = (*DataShowAction)(nil)
+var _ actions.Rawer = (*DataShowAction)(nil)
 var _ actions.SSE = (*DataShowAction)(nil)
 
 // DataShowAction renders a account summary found by its address.
@@ -34,7 +35,7 @@ func (action *DataShowAction) JSON() error {
 }
 
 // Raw is a method for actions.Raw
-func (action *DataShowAction) Raw() {
+func (action *DataShowAction) Raw() error {
 	action.Do(
 		action.loadParams,
 		action.loadRecord,
@@ -48,6 +49,7 @@ func (action *DataShowAction) Raw() {
 			action.W.Write(raw)
 		},
 	)
+	return action.Err
 }
 
 // SSE is a method for actions.SSE

@@ -154,15 +154,14 @@ func (base *Base) Execute(action interface{}) {
 			return
 		}
 	case render.MimeRaw:
-		action, ok := action.(Raw)
+		action, ok := action.(Rawer)
 		if !ok {
 			goto NotAcceptable
 		}
 
-		action.Raw()
-
-		if base.Err != nil {
-			problem.Render(ctx, base.W, base.Err)
+		err := action.Raw()
+		if err != nil {
+			problem.Render(ctx, base.W, err)
 			return
 		}
 	default:
