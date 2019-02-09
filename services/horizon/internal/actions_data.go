@@ -8,7 +8,7 @@ import (
 )
 
 // Interface verifications
-var _ actions.JSON = (*DataShowAction)(nil)
+var _ actions.JSONer = (*DataShowAction)(nil)
 var _ actions.SSE = (*DataShowAction)(nil)
 
 // DataShowAction renders a account summary found by its address.

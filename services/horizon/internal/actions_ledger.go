@@ -18,7 +18,7 @@ import (
 // LedgerShowAction: single ledger by sequence
 
 // Interface verifications
-var _ actions.JSON = (*LedgerIndexAction)(nil)
+var _ actions.JSONer = (*LedgerIndexAction)(nil)
 var _ actions.SSE = (*LedgerIndexAction)(nil)
 
 // LedgerIndexAction renders a page of ledger resources, identified by
@@ -90,7 +90,7 @@ func (action *LedgerIndexAction) loadPage() {
 }
 
 // Interface verification
-var _ actions.JSON = (*LedgerShowAction)(nil)
+var _ actions.JSONer = (*LedgerShowAction)(nil)
 
 // LedgerShowAction renders a ledger found by its sequence number.
 type LedgerShowAction struct {

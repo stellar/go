@@ -6,7 +6,7 @@ import (
 )
 
 // Interface verification
-var _ actions.JSON = (*NotFoundAction)(nil)
+var _ actions.JSONer = (*NotFoundAction)(nil)
 
 // NotFoundAction renders a 404 response
 type NotFoundAction struct {

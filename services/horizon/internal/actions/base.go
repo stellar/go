@@ -49,7 +49,7 @@ func (base *Base) Execute(action interface{}) {
 
 	switch contentType {
 	case render.MimeHal, render.MimeJSON:
-		action, ok := action.(JSON)
+		action, ok := action.(JSONer)
 		if !ok {
 			goto NotAcceptable
 		}

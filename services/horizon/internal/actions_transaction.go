@@ -21,7 +21,7 @@ import (
 // TransactionShowAction: single transaction by sequence, by hash or id
 
 // Interface verifications
-var _ actions.JSON = (*TransactionIndexAction)(nil)
+var _ actions.JSONer = (*TransactionIndexAction)(nil)
 var _ actions.SSE = (*TransactionIndexAction)(nil)
 
 // TransactionIndexAction renders a page of ledger resources, identified by
@@ -108,7 +108,7 @@ func (action *TransactionIndexAction) loadPage() {
 }
 
 // Interface verification
-var _ actions.JSON = (*TransactionShowAction)(nil)
+var _ actions.JSONer = (*TransactionShowAction)(nil)
 
 // TransactionShowAction renders a ledger found by its sequence number.
 type TransactionShowAction struct {
@@ -143,7 +143,7 @@ func (action *TransactionShowAction) JSON() error {
 }
 
 // Interface verification
-var _ actions.JSON = (*TransactionCreateAction)(nil)
+var _ actions.JSONer = (*TransactionCreateAction)(nil)
 
 // TransactionCreateAction submits a transaction to the stellar-core network
 // on behalf of the requesting client.

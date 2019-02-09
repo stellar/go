@@ -17,7 +17,7 @@ import (
 )
 
 // Interface verifications
-var _ actions.JSON = (*TradeIndexAction)(nil)
+var _ actions.JSONer = (*TradeIndexAction)(nil)
 var _ actions.SSE = (*TradeIndexAction)(nil)
 
 type TradeIndexAction struct {
@@ -138,7 +138,7 @@ func (action *TradeIndexAction) loadPage() {
 }
 
 // Interface verification
-var _ actions.JSON = (*TradeAggregateIndexAction)(nil)
+var _ actions.JSONer = (*TradeAggregateIndexAction)(nil)
 
 type TradeAggregateIndexAction struct {
 	Action

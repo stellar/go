@@ -14,7 +14,7 @@ import (
 )
 
 // Interface verifications
-var _ actions.JSON = (*OrderBookShowAction)(nil)
+var _ actions.JSONer = (*OrderBookShowAction)(nil)
 var _ actions.SingleObjectStreamer = (*OrderBookShowAction)(nil)
 
 // OrderBookShowAction renders a account summary found by its address.

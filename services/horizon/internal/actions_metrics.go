@@ -7,7 +7,7 @@ import (
 )
 
 // Interface verification
-var _ actions.JSON = (*MetricsAction)(nil)
+var _ actions.JSONer = (*MetricsAction)(nil)
 
 // MetricsAction collects and renders a snapshot from the metrics system that
 // will inlude any previously registered metrics.

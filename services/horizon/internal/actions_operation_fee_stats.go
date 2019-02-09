@@ -12,7 +12,7 @@ import (
 //
 // OperationFeeStatsAction: stats representing current state of network fees
 
-var _ actions.JSON = (*OperationFeeStatsAction)(nil)
+var _ actions.JSONer = (*OperationFeeStatsAction)(nil)
 
 // OperationFeeStatsAction renders a few useful statistics that describe the
 // current state of operation fees on the network.

@@ -9,7 +9,7 @@ import (
 )
 
 // Interface verification
-var _ actions.JSON = (*RootAction)(nil)
+var _ actions.JSONer = (*RootAction)(nil)
 
 // RootAction provides a summary of the horizon instance and links to various
 // useful endpoints

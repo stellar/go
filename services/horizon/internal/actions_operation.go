@@ -21,7 +21,7 @@ import (
 // OperationShowAction: single operation by id
 
 // Interface verifications
-var _ actions.JSON = (*OperationIndexAction)(nil)
+var _ actions.JSONer = (*OperationIndexAction)(nil)
 var _ actions.SSE = (*OperationIndexAction)(nil)
 
 // OperationIndexAction renders a page of operations resources, identified by
@@ -147,7 +147,7 @@ func (action *OperationIndexAction) loadPage() {
 }
 
 // Interface verification
-var _ actions.JSON = (*OperationShowAction)(nil)
+var _ actions.JSONer = (*OperationShowAction)(nil)
 
 // OperationShowAction renders a ledger found by its sequence number.
 type OperationShowAction struct {

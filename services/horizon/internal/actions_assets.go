@@ -16,7 +16,7 @@ import (
 // AssetsAction: pages of assets
 
 // Interface verification
-var _ actions.JSON = (*AssetsAction)(nil)
+var _ actions.JSONer = (*AssetsAction)(nil)
 
 // AssetsAction renders a page of Assets
 type AssetsAction struct {

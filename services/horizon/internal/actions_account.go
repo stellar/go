@@ -15,7 +15,7 @@ import (
 // AccountShowAction: details for single account (including stellar-core state)
 
 // Interface verifications
-var _ actions.JSON = (*AccountShowAction)(nil)
+var _ actions.JSONer = (*AccountShowAction)(nil)
 var _ actions.SingleObjectStreamer = (*AccountShowAction)(nil)
 
 // AccountShowAction renders a account summary found by its address.

@@ -7,7 +7,7 @@ import (
 )
 
 // Interface verification
-var _ actions.JSON = (*NotImplementedAction)(nil)
+var _ actions.JSONer = (*NotImplementedAction)(nil)
 
 // NotImplementedAction renders a NotImplemented prblem
 type NotImplementedAction struct {

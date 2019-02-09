@@ -9,7 +9,7 @@ import (
 )
 
 // Interface verification
-var _ actions.JSON = (*PathIndexAction)(nil)
+var _ actions.JSONer = (*PathIndexAction)(nil)
 
 // PathIndexAction provides path finding
 type PathIndexAction struct {

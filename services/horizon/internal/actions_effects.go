@@ -18,7 +18,7 @@ import (
 // EffectIndexAction: pages of effects
 
 // Interface verifications
-var _ actions.JSON = (*EffectIndexAction)(nil)
+var _ actions.JSONer = (*EffectIndexAction)(nil)
 var _ actions.SSE = (*EffectIndexAction)(nil)
 
 // EffectIndexAction renders a page of effect resources, identified by

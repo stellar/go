@@ -13,7 +13,7 @@ import (
 )
 
 // Interface verifications
-var _ actions.JSON = (*PaymentsIndexAction)(nil)
+var _ actions.JSONer = (*PaymentsIndexAction)(nil)
 var _ actions.SSE = (*PaymentsIndexAction)(nil)
 
 // PaymentsIndexAction returns a paged slice of payments based upon the provided

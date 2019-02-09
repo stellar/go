@@ -14,7 +14,7 @@ import (
 // This file contains the actions:
 
 // Interface verifications
-var _ actions.JSON = (*OffersByAccountAction)(nil)
+var _ actions.JSONer = (*OffersByAccountAction)(nil)
 var _ actions.SSE = (*OffersByAccountAction)(nil)
 
 // OffersByAccountAction renders a page of offer resources, for a given
