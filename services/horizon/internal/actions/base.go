@@ -54,10 +54,9 @@ func (base *Base) Execute(action interface{}) {
 			goto NotAcceptable
 		}
 
-		action.JSON()
-
-		if base.Err != nil {
-			problem.Render(ctx, base.W, base.Err)
+		err := action.JSON()
+		if err != nil {
+			problem.Render(ctx, base.W, err)
 			return
 		}
 

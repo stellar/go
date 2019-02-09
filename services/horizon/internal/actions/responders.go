@@ -5,7 +5,7 @@ import "github.com/stellar/go/services/horizon/internal/render/sse"
 // JSON implementors can respond to a request whose response type was negotiated
 // to be MimeHal or MimeJSON.
 type JSON interface {
-	JSON()
+	JSON() error
 }
 
 // Raw implementors can respond to a request whose response type was negotiated
