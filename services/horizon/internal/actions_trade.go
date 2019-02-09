@@ -18,7 +18,7 @@ import (
 
 // Interface verifications
 var _ actions.JSONer = (*TradeIndexAction)(nil)
-var _ actions.SSE = (*TradeIndexAction)(nil)
+var _ actions.EventStreamer = (*TradeIndexAction)(nil)
 
 type TradeIndexAction struct {
 	Action

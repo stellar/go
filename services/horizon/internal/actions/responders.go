@@ -8,15 +8,15 @@ type JSONer interface {
 	JSON() error
 }
 
-// Rawer implementors can respond to a request whose response type was negotiated
+// RawDataResponder implementors can respond to a request whose response type was negotiated
 // to be MimeRaw.
-type Rawer interface {
+type RawDataResponder interface {
 	Raw() error
 }
 
-// SSE implementors can respond to a request whose response type was negotiated
+// EventStreamer implementors can respond to a request whose response type was negotiated
 // to be MimeEventStream.
-type SSE interface {
+type EventStreamer interface {
 	SSE(*sse.Stream) error
 }
 

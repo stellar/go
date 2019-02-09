@@ -9,8 +9,8 @@ import (
 
 // Interface verifications
 var _ actions.JSONer = (*DataShowAction)(nil)
-var _ actions.Rawer = (*DataShowAction)(nil)
-var _ actions.SSE = (*DataShowAction)(nil)
+var _ actions.RawDataResponder = (*DataShowAction)(nil)
+var _ actions.EventStreamer = (*DataShowAction)(nil)
 
 // DataShowAction renders a account summary found by its address.
 type DataShowAction struct {

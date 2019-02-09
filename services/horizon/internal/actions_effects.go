@@ -19,7 +19,7 @@ import (
 
 // Interface verifications
 var _ actions.JSONer = (*EffectIndexAction)(nil)
-var _ actions.SSE = (*EffectIndexAction)(nil)
+var _ actions.EventStreamer = (*EffectIndexAction)(nil)
 
 // EffectIndexAction renders a page of effect resources, identified by
 // a normal page query and optionally filtered by an account, ledger,

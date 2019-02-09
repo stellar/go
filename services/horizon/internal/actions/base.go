@@ -62,7 +62,7 @@ func (base *Base) Execute(action interface{}) {
 
 	case render.MimeEventStream:
 		switch action.(type) {
-		case SSE, SingleObjectStreamer:
+		case EventStreamer, SingleObjectStreamer:
 		default:
 			goto NotAcceptable
 		}
@@ -90,7 +90,7 @@ func (base *Base) Execute(action interface{}) {
 			}
 
 			switch ac := action.(type) {
-			case SSE:
+			case EventStreamer:
 				err := ac.SSE(stream)
 				if err != nil {
 					stream.Err(err)
@@ -154,7 +154,7 @@ func (base *Base) Execute(action interface{}) {
 			return
 		}
 	case render.MimeRaw:
-		action, ok := action.(Rawer)
+		action, ok := action.(RawDataResponder)
 		if !ok {
 			goto NotAcceptable
 		}

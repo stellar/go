@@ -22,7 +22,7 @@ import (
 
 // Interface verifications
 var _ actions.JSONer = (*TransactionIndexAction)(nil)
-var _ actions.SSE = (*TransactionIndexAction)(nil)
+var _ actions.EventStreamer = (*TransactionIndexAction)(nil)
 
 // TransactionIndexAction renders a page of ledger resources, identified by
 // a normal page query.

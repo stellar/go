@@ -22,7 +22,7 @@ import (
 
 // Interface verifications
 var _ actions.JSONer = (*OperationIndexAction)(nil)
-var _ actions.SSE = (*OperationIndexAction)(nil)
+var _ actions.EventStreamer = (*OperationIndexAction)(nil)
 
 // OperationIndexAction renders a page of operations resources, identified by
 // a normal page query and optionally filtered by an account, ledger, or

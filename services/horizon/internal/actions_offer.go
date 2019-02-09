@@ -15,7 +15,7 @@ import (
 
 // Interface verifications
 var _ actions.JSONer = (*OffersByAccountAction)(nil)
-var _ actions.SSE = (*OffersByAccountAction)(nil)
+var _ actions.EventStreamer = (*OffersByAccountAction)(nil)
 
 // OffersByAccountAction renders a page of offer resources, for a given
 // account.  These offers are present in the ledger as of the latest validated

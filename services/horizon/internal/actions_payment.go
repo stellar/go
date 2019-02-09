@@ -14,7 +14,7 @@ import (
 
 // Interface verifications
 var _ actions.JSONer = (*PaymentsIndexAction)(nil)
-var _ actions.SSE = (*PaymentsIndexAction)(nil)
+var _ actions.EventStreamer = (*PaymentsIndexAction)(nil)
 
 // PaymentsIndexAction returns a paged slice of payments based upon the provided
 // filters
