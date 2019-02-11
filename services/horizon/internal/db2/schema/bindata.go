@@ -7,6 +7,7 @@
 // migrations/13_trade_offer_ids.sql
 // migrations/14_fix_asset_toml_field.sql
 // migrations/15_ledger_failed_txs.sql
+// migrations/16_ingest_failed_transactions.sql
 // migrations/1_initial_schema.sql
 // migrations/2_index_participants_by_toid.sql
 // migrations/3_use_sequence_in_history_accounts.sql
@@ -99,7 +100,7 @@ func latestSql() (*asset, error) {
 		return nil, err
 	}
 
-	info := bindataFileInfo{name: "latest.sql", size: 21159, mode: os.FileMode(420), modTime: time.Unix(1548955647, 0)}
+	info := bindataFileInfo{name: "latest.sql", size: 21159, mode: os.FileMode(420), modTime: time.Unix(1549313787, 0)}
 	a := &asset{bytes: bytes, info: info}
 	return a, nil
 }
@@ -219,7 +220,27 @@ func migrations15_ledger_failed_txsSql() (*asset, error) {
 		return nil, err
 	}
 
-	info := bindataFileInfo{name: "migrations/15_ledger_failed_txs.sql", size: 333, mode: os.FileMode(420), modTime: time.Unix(1548950152, 0)}
+	info := bindataFileInfo{name: "migrations/15_ledger_failed_txs.sql", size: 333, mode: os.FileMode(420), modTime: time.Unix(1549313787, 0)}
+	a := &asset{bytes: bytes, info: info}
+	return a, nil
+}
+
+var _migrations16_ingest_failed_transactionsSql = []byte("\x1f\x8b\x08\x00\x00\x00\x00\x00\x00\xff\x8c\xcd\x31\x0e\xc2\x20\x14\x06\xe0\x9d\x53\xfc\xbb\xe9\x09\x3a\xa1\xaf\x4e\x68\x4d\x03\xb3\x41\x82\x4a\x52\x79\x86\xf7\x88\xf1\xf6\xae\x1d\xbd\xc0\xf7\x0d\x03\x76\xaf\xf2\x68\x51\x33\xc2\xdb\x18\xeb\xfc\xb4\xc0\xdb\xbd\x9b\xf0\x2c\xa2\xdc\xbe\x57\x6d\xb1\x4a\x4c\x5a\xb8\x0a\x2c\x11\xa4\xa7\x94\x45\xee\x7d\xc5\x8d\x79\xcd\xb1\x82\xa6\xa3\x0d\xce\x43\x5b\xcf\xa3\x31\x5b\x96\xf8\x53\xff\x80\x69\x99\x2f\x38\xcc\x2e\x9c\xce\x9b\x60\x34\xbf\x00\x00\x00\xff\xff\x2f\x1a\xde\x7c\xa2\x00\x00\x00")
+
+func migrations16_ingest_failed_transactionsSqlBytes() ([]byte, error) {
+	return bindataRead(
+		_migrations16_ingest_failed_transactionsSql,
+		"migrations/16_ingest_failed_transactions.sql",
+	)
+}
+
+func migrations16_ingest_failed_transactionsSql() (*asset, error) {
+	bytes, err := migrations16_ingest_failed_transactionsSqlBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "migrations/16_ingest_failed_transactions.sql", size: 162, mode: os.FileMode(420), modTime: time.Unix(1549887792, 0)}
 	a := &asset{bytes: bytes, info: info}
 	return a, nil
 }
@@ -476,23 +497,24 @@ func AssetNames() []string {
 
 // _bindata is a table, holding each asset generator, mapped to its name.
 var _bindata = map[string]func() (*asset, error){
-	"latest.sql":                                        latestSql,
-	"migrations/10_add_trades_price.sql":                migrations10_add_trades_priceSql,
-	"migrations/11_add_trades_account_index.sql":        migrations11_add_trades_account_indexSql,
-	"migrations/12_asset_stats_amount_string.sql":       migrations12_asset_stats_amount_stringSql,
-	"migrations/13_trade_offer_ids.sql":                 migrations13_trade_offer_idsSql,
-	"migrations/14_fix_asset_toml_field.sql":            migrations14_fix_asset_toml_fieldSql,
-	"migrations/15_ledger_failed_txs.sql":               migrations15_ledger_failed_txsSql,
-	"migrations/1_initial_schema.sql":                   migrations1_initial_schemaSql,
-	"migrations/2_index_participants_by_toid.sql":       migrations2_index_participants_by_toidSql,
+	"latest.sql": latestSql,
+	"migrations/10_add_trades_price.sql": migrations10_add_trades_priceSql,
+	"migrations/11_add_trades_account_index.sql": migrations11_add_trades_account_indexSql,
+	"migrations/12_asset_stats_amount_string.sql": migrations12_asset_stats_amount_stringSql,
+	"migrations/13_trade_offer_ids.sql": migrations13_trade_offer_idsSql,
+	"migrations/14_fix_asset_toml_field.sql": migrations14_fix_asset_toml_fieldSql,
+	"migrations/15_ledger_failed_txs.sql": migrations15_ledger_failed_txsSql,
+	"migrations/16_ingest_failed_transactions.sql": migrations16_ingest_failed_transactionsSql,
+	"migrations/1_initial_schema.sql": migrations1_initial_schemaSql,
+	"migrations/2_index_participants_by_toid.sql": migrations2_index_participants_by_toidSql,
 	"migrations/3_use_sequence_in_history_accounts.sql": migrations3_use_sequence_in_history_accountsSql,
-	"migrations/4_add_protocol_version.sql":             migrations4_add_protocol_versionSql,
-	"migrations/5_create_trades_table.sql":              migrations5_create_trades_tableSql,
-	"migrations/6_create_assets_table.sql":              migrations6_create_assets_tableSql,
-	"migrations/7_modify_trades_table.sql":              migrations7_modify_trades_tableSql,
-	"migrations/8_add_aggregators.sql":                  migrations8_add_aggregatorsSql,
-	"migrations/8_create_asset_stats_table.sql":         migrations8_create_asset_stats_tableSql,
-	"migrations/9_add_header_xdr.sql":                   migrations9_add_header_xdrSql,
+	"migrations/4_add_protocol_version.sql": migrations4_add_protocol_versionSql,
+	"migrations/5_create_trades_table.sql": migrations5_create_trades_tableSql,
+	"migrations/6_create_assets_table.sql": migrations6_create_assets_tableSql,
+	"migrations/7_modify_trades_table.sql": migrations7_modify_trades_tableSql,
+	"migrations/8_add_aggregators.sql": migrations8_add_aggregatorsSql,
+	"migrations/8_create_asset_stats_table.sql": migrations8_create_asset_stats_tableSql,
+	"migrations/9_add_header_xdr.sql": migrations9_add_header_xdrSql,
 }
 
 // AssetDir returns the file names below a certain
@@ -534,26 +556,26 @@ type bintree struct {
 	Func     func() (*asset, error)
 	Children map[string]*bintree
 }
-
 var _bintree = &bintree{nil, map[string]*bintree{
 	"latest.sql": &bintree{latestSql, map[string]*bintree{}},
 	"migrations": &bintree{nil, map[string]*bintree{
-		"10_add_trades_price.sql":                &bintree{migrations10_add_trades_priceSql, map[string]*bintree{}},
-		"11_add_trades_account_index.sql":        &bintree{migrations11_add_trades_account_indexSql, map[string]*bintree{}},
-		"12_asset_stats_amount_string.sql":       &bintree{migrations12_asset_stats_amount_stringSql, map[string]*bintree{}},
-		"13_trade_offer_ids.sql":                 &bintree{migrations13_trade_offer_idsSql, map[string]*bintree{}},
-		"14_fix_asset_toml_field.sql":            &bintree{migrations14_fix_asset_toml_fieldSql, map[string]*bintree{}},
-		"15_ledger_failed_txs.sql":               &bintree{migrations15_ledger_failed_txsSql, map[string]*bintree{}},
-		"1_initial_schema.sql":                   &bintree{migrations1_initial_schemaSql, map[string]*bintree{}},
-		"2_index_participants_by_toid.sql":       &bintree{migrations2_index_participants_by_toidSql, map[string]*bintree{}},
+		"10_add_trades_price.sql": &bintree{migrations10_add_trades_priceSql, map[string]*bintree{}},
+		"11_add_trades_account_index.sql": &bintree{migrations11_add_trades_account_indexSql, map[string]*bintree{}},
+		"12_asset_stats_amount_string.sql": &bintree{migrations12_asset_stats_amount_stringSql, map[string]*bintree{}},
+		"13_trade_offer_ids.sql": &bintree{migrations13_trade_offer_idsSql, map[string]*bintree{}},
+		"14_fix_asset_toml_field.sql": &bintree{migrations14_fix_asset_toml_fieldSql, map[string]*bintree{}},
+		"15_ledger_failed_txs.sql": &bintree{migrations15_ledger_failed_txsSql, map[string]*bintree{}},
+		"16_ingest_failed_transactions.sql": &bintree{migrations16_ingest_failed_transactionsSql, map[string]*bintree{}},
+		"1_initial_schema.sql": &bintree{migrations1_initial_schemaSql, map[string]*bintree{}},
+		"2_index_participants_by_toid.sql": &bintree{migrations2_index_participants_by_toidSql, map[string]*bintree{}},
 		"3_use_sequence_in_history_accounts.sql": &bintree{migrations3_use_sequence_in_history_accountsSql, map[string]*bintree{}},
-		"4_add_protocol_version.sql":             &bintree{migrations4_add_protocol_versionSql, map[string]*bintree{}},
-		"5_create_trades_table.sql":              &bintree{migrations5_create_trades_tableSql, map[string]*bintree{}},
-		"6_create_assets_table.sql":              &bintree{migrations6_create_assets_tableSql, map[string]*bintree{}},
-		"7_modify_trades_table.sql":              &bintree{migrations7_modify_trades_tableSql, map[string]*bintree{}},
-		"8_add_aggregators.sql":                  &bintree{migrations8_add_aggregatorsSql, map[string]*bintree{}},
-		"8_create_asset_stats_table.sql":         &bintree{migrations8_create_asset_stats_tableSql, map[string]*bintree{}},
-		"9_add_header_xdr.sql":                   &bintree{migrations9_add_header_xdrSql, map[string]*bintree{}},
+		"4_add_protocol_version.sql": &bintree{migrations4_add_protocol_versionSql, map[string]*bintree{}},
+		"5_create_trades_table.sql": &bintree{migrations5_create_trades_tableSql, map[string]*bintree{}},
+		"6_create_assets_table.sql": &bintree{migrations6_create_assets_tableSql, map[string]*bintree{}},
+		"7_modify_trades_table.sql": &bintree{migrations7_modify_trades_tableSql, map[string]*bintree{}},
+		"8_add_aggregators.sql": &bintree{migrations8_add_aggregatorsSql, map[string]*bintree{}},
+		"8_create_asset_stats_table.sql": &bintree{migrations8_create_asset_stats_tableSql, map[string]*bintree{}},
+		"9_add_header_xdr.sql": &bintree{migrations9_add_header_xdrSql, map[string]*bintree{}},
 	}},
 }}
 
@@ -603,3 +625,4 @@ func _filePath(dir, name string) string {
 	cannonicalName := strings.Replace(name, "\\", "/", -1)
 	return filepath.Join(append([]string{dir}, strings.Split(cannonicalName, "/")...)...)
 }
+

@@ -427,8 +427,12 @@ func (is *Session) ingestOperation() {
 	}
 
 	is.ingestOperationParticipants()
-	is.ingestEffects()
-	is.ingestTrades()
+
+	if is.Cursor.Transaction().IsSuccessful() {
+		is.ingestEffects()
+		is.ingestTrades()
+	}
+
 	if is.Config.EnableAssetStats && is.Err == nil {
 		is.Err = is.AssetStats.IngestOperation(
 			is.Cursor.Operation(),
@@ -638,11 +642,8 @@ func (is *Session) ingestTransaction() {
 		return
 	}
 
-	// skip ingesting failed transactions
-	if !is.Cursor.Transaction().IsSuccessful() {
-		return
-	}
 	is.Ingestion.Transaction(
+		is.Cursor.Transaction().IsSuccessful(),
 		is.Cursor.TransactionID(),
 		is.Cursor.Transaction(),
 		is.Cursor.TransactionFee(),

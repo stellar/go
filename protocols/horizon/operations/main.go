@@ -37,6 +37,7 @@ type Base struct {
 
 	ID              string    `json:"id"`
 	PT              string    `json:"paging_token"`
+	Successful      bool      `json:"successful"`
 	SourceAccount   string    `json:"source_account"`
 	Type            string    `json:"type"`
 	TypeI           int32     `json:"type_i"`

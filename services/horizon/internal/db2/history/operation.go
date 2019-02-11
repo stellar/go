@@ -122,6 +122,13 @@ func (q *OperationsQ) OnlyPayments() *OperationsQ {
 	return q
 }
 
+// IncludeFailed changes the query to include failed transactions.
+func (q *OperationsQ) SuccessfulOnly() *OperationsQ {
+	q.sql = q.sql.
+		Where("ht.successful = ?", true)
+	return q
+}
+
 // Page specifies the paging constraints for the query being built by `q`.
 func (q *OperationsQ) Page(page db2.PageQuery) *OperationsQ {
 	if q.Err != nil {
@@ -149,6 +156,7 @@ var selectOperation = sq.Select(
 		"hop.type, " +
 		"hop.details, " +
 		"hop.source_account, " +
-		"ht.transaction_hash").
+		"ht.transaction_hash, " +
+		"ht.successful").
 	From("history_operations hop").
 	LeftJoin("history_transactions ht ON ht.id = hop.transaction_id")

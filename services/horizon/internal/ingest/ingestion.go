@@ -308,6 +308,7 @@ func (ingest *Ingestion) Trade(
 // Transaction ingests the provided transaction data into a new row in the
 // `history_transactions` table
 func (ingest *Ingestion) Transaction(
+	successful bool,
 	id int64,
 	tx *core.Transaction,
 	fee *core.TransactionFee,
@@ -334,6 +335,7 @@ func (ingest *Ingestion) Transaction(
 		tx.Memo(),
 		time.Now().UTC(),
 		time.Now().UTC(),
+		successful,
 	)
 }
 
@@ -395,6 +397,7 @@ func (ingest *Ingestion) createInsertBuilders() {
 			"memo",
 			"created_at",
 			"updated_at",
+			"successful",
 		},
 	}
 
