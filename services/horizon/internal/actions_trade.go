@@ -17,7 +17,8 @@ import (
 )
 
 // Interface verifications
-var _ actions.SSE = (*TradeIndexAction)(nil)
+var _ actions.JSONer = (*TradeIndexAction)(nil)
+var _ actions.EventStreamer = (*TradeIndexAction)(nil)
 
 type TradeIndexAction struct {
 	Action
@@ -33,16 +34,15 @@ type TradeIndexAction struct {
 }
 
 // JSON is a method for actions.JSON
-func (action *TradeIndexAction) JSON() {
+func (action *TradeIndexAction) JSON() error {
 	action.Do(
 		action.EnsureHistoryFreshness,
 		action.loadParams,
 		action.loadRecords,
 		action.loadPage,
-		func() {
-			hal.Render(action.W, action.Page)
-		},
+		func() { hal.Render(action.W, action.Page) },
 	)
+	return action.Err
 }
 
 // SSE is a method for actions.SSE
@@ -137,6 +137,9 @@ func (action *TradeIndexAction) loadPage() {
 	action.Page.PopulateLinks()
 }
 
+// Interface verification
+var _ actions.JSONer = (*TradeAggregateIndexAction)(nil)
+
 type TradeAggregateIndexAction struct {
 	Action
 	BaseAssetFilter    xdr.Asset
@@ -151,16 +154,15 @@ type TradeAggregateIndexAction struct {
 }
 
 // JSON is a method for actions.JSON
-func (action *TradeAggregateIndexAction) JSON() {
+func (action *TradeAggregateIndexAction) JSON() error {
 	action.Do(
 		action.EnsureHistoryFreshness,
 		action.loadParams,
 		action.loadRecords,
 		action.loadPage,
-		func() {
-			hal.Render(action.W, action.Page)
-		},
+		func() { hal.Render(action.W, action.Page) },
 	)
+	return action.Err
 }
 
 func (action *TradeAggregateIndexAction) loadParams() {
@@ -208,7 +210,6 @@ func (action *TradeAggregateIndexAction) loadRecords() {
 	//initialize the query builder with required params
 	tradeAggregationsQ, err := historyQ.GetTradeAggregationsQ(
 		baseAssetId, counterAssetId, action.ResolutionFilter, action.OffsetFilter, action.PagingParams)
-
 	if err != nil {
 		action.Err = err
 		return
@@ -241,7 +242,6 @@ func (action *TradeAggregateIndexAction) loadPage() {
 		var res horizon.TradeAggregation
 
 		action.Err = resourceadapter.PopulateTradeAggregation(action.R.Context(), &res, record)
-
 		if action.Err != nil {
 			return
 		}

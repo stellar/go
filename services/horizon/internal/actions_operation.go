@@ -21,7 +21,8 @@ import (
 // OperationShowAction: single operation by id
 
 // Interface verifications
-var _ actions.SSE = (*OperationIndexAction)(nil)
+var _ actions.JSONer = (*OperationIndexAction)(nil)
+var _ actions.EventStreamer = (*OperationIndexAction)(nil)
 
 // OperationIndexAction renders a page of operations resources, identified by
 // a normal page query and optionally filtered by an account, ledger, or
@@ -38,17 +39,17 @@ type OperationIndexAction struct {
 }
 
 // JSON is a method for actions.JSON
-func (action *OperationIndexAction) JSON() {
+func (action *OperationIndexAction) JSON() error {
 	action.Do(
 		action.EnsureHistoryFreshness,
 		action.loadParams,
 		action.ValidateCursorWithinHistory,
 		action.loadRecords,
 		action.loadLedgers,
-		action.loadPage)
-	action.Do(func() {
-		hal.Render(action.W, action.Page)
-	})
+		action.loadPage,
+		func() { hal.Render(action.W, action.Page) },
+	)
+	return action.Err
 }
 
 // SSE is a method for actions.SSE
@@ -64,7 +65,6 @@ func (action *OperationIndexAction) SSE(stream *sse.Stream) error {
 		func() {
 			stream.SetLimit(int(action.PagingParams.Limit))
 			records := action.Records[stream.SentCount():]
-
 			for _, record := range records {
 				ledger, found := action.Ledgers.Records[record.LedgerSequence()]
 				if !found {
@@ -116,17 +116,14 @@ func (action *OperationIndexAction) loadRecords() {
 // loadLedgers populates the ledger cache for this action
 func (action *OperationIndexAction) loadLedgers() {
 	action.Ledgers = &history.LedgerCache{}
-
 	for _, op := range action.Records {
 		action.Ledgers.Queue(op.LedgerSequence())
 	}
-
 	action.Err = action.Ledgers.Load(action.HistoryQ())
 }
 
 func (action *OperationIndexAction) loadPage() {
 	for _, record := range action.Records {
-
 		ledger, found := action.Ledgers.Records[record.LedgerSequence()]
 		if !found {
 			msg := fmt.Sprintf("could not find ledger data for sequence %d", record.LedgerSequence())
@@ -148,6 +145,9 @@ func (action *OperationIndexAction) loadPage() {
 	action.Page.Order = action.PagingParams.Order
 	action.Page.PopulateLinks()
 }
+
+// Interface verification
+var _ actions.JSONer = (*OperationShowAction)(nil)
 
 // OperationShowAction renders a ledger found by its sequence number.
 type OperationShowAction struct {
@@ -175,7 +175,7 @@ func (action *OperationShowAction) loadResource() {
 }
 
 // JSON is a method for actions.JSON
-func (action *OperationShowAction) JSON() {
+func (action *OperationShowAction) JSON() error {
 	action.Do(
 		action.EnsureHistoryFreshness,
 		action.loadParams,
@@ -183,10 +183,9 @@ func (action *OperationShowAction) JSON() {
 		action.loadRecord,
 		action.loadLedger,
 		action.loadResource,
+		func() { hal.Render(action.W, action.Resource) },
 	)
-	action.Do(func() {
-		hal.Render(action.W, action.Resource)
-	})
+	return action.Err
 }
 
 func (action *OperationShowAction) verifyWithinHistory() {

@@ -14,6 +14,7 @@ import (
 )
 
 // Interface verifications
+var _ actions.JSONer = (*OrderBookShowAction)(nil)
 var _ actions.SingleObjectStreamer = (*OrderBookShowAction)(nil)
 
 // OrderBookShowAction renders a account summary found by its address.
@@ -68,12 +69,14 @@ func (action *OrderBookShowAction) LoadResource() {
 }
 
 // JSON is a method for actions.JSON
-func (action *OrderBookShowAction) JSON() {
-	action.Do(action.LoadQuery, action.LoadRecord, action.LoadResource)
-
-	action.Do(func() {
-		hal.Render(action.W, action.Resource)
-	})
+func (action *OrderBookShowAction) JSON() error {
+	action.Do(
+		action.LoadQuery,
+		action.LoadRecord,
+		action.LoadResource,
+		func() { hal.Render(action.W, action.Resource) },
+	)
+	return action.Err
 }
 
 func (action *OrderBookShowAction) LoadEvent() (sse.Event, error) {

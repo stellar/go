@@ -49,21 +49,20 @@ func (base *Base) Execute(action interface{}) {
 
 	switch contentType {
 	case render.MimeHal, render.MimeJSON:
-		action, ok := action.(JSON)
+		action, ok := action.(JSONer)
 		if !ok {
 			goto NotAcceptable
 		}
 
-		action.JSON()
-
-		if base.Err != nil {
-			problem.Render(ctx, base.W, base.Err)
+		err := action.JSON()
+		if err != nil {
+			problem.Render(ctx, base.W, err)
 			return
 		}
 
 	case render.MimeEventStream:
 		switch action.(type) {
-		case SSE, SingleObjectStreamer:
+		case EventStreamer, SingleObjectStreamer:
 		default:
 			goto NotAcceptable
 		}
@@ -91,7 +90,7 @@ func (base *Base) Execute(action interface{}) {
 			}
 
 			switch ac := action.(type) {
-			case SSE:
+			case EventStreamer:
 				err := ac.SSE(stream)
 				if err != nil {
 					stream.Err(err)
@@ -155,15 +154,14 @@ func (base *Base) Execute(action interface{}) {
 			return
 		}
 	case render.MimeRaw:
-		action, ok := action.(Raw)
+		action, ok := action.(RawDataResponder)
 		if !ok {
 			goto NotAcceptable
 		}
 
-		action.Raw()
-
-		if base.Err != nil {
-			problem.Render(ctx, base.W, base.Err)
+		err := action.Raw()
+		if err != nil {
+			problem.Render(ctx, base.W, err)
 			return
 		}
 	default:

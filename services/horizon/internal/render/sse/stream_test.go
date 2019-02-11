@@ -61,7 +61,7 @@ func (suite *StreamTestSuite) TestStream_Err() {
 	suite.stream.Err(err)
 	suite.checkHeadersAndPreamble()
 
-	// Reset the tream to test the scenario where an event has been sent.
+	// Reset the stream to test the scenario where an event has been sent.
 	suite.w = httptest.NewRecorder()
 	suite.stream = NewStream(suite.ctx, suite.w)
 	suite.stream.sent++

@@ -18,7 +18,8 @@ import (
 // EffectIndexAction: pages of effects
 
 // Interface verifications
-var _ actions.SSE = (*EffectIndexAction)(nil)
+var _ actions.JSONer = (*EffectIndexAction)(nil)
+var _ actions.EventStreamer = (*EffectIndexAction)(nil)
 
 // EffectIndexAction renders a page of effect resources, identified by
 // a normal page query and optionally filtered by an account, ledger,
@@ -37,7 +38,7 @@ type EffectIndexAction struct {
 }
 
 // JSON is a method for actions.JSON
-func (action *EffectIndexAction) JSON() {
+func (action *EffectIndexAction) JSON() error {
 	action.Do(
 		action.EnsureHistoryFreshness,
 		action.loadParams,
@@ -45,11 +46,9 @@ func (action *EffectIndexAction) JSON() {
 		action.loadRecords,
 		action.loadLedgers,
 		action.loadPage,
+		func() { hal.Render(action.W, action.Page) },
 	)
-
-	action.Do(func() {
-		hal.Render(action.W, action.Page)
-	})
+	return action.Err
 }
 
 // SSE is a method for actions.SSE
@@ -132,7 +131,6 @@ func (action *EffectIndexAction) loadRecords() {
 // loadPage populates action.Page
 func (action *EffectIndexAction) loadPage() {
 	for _, record := range action.Records {
-
 		ledger, found := action.Ledgers.Records[record.LedgerSequence()]
 		if !found {
 			msg := fmt.Sprintf("could not find ledger data for sequence %d", record.LedgerSequence())
@@ -160,7 +158,6 @@ func (action *EffectIndexAction) loadPage() {
 // represents the the cursor directly after the last closed ledger
 func (action *EffectIndexAction) ValidateCursor() {
 	c := action.GetString("cursor")
-
 	if c == "" {
 		return
 	}
@@ -173,8 +170,5 @@ func (action *EffectIndexAction) ValidateCursor() {
 
 	if !ok {
 		action.SetInvalidField("cursor", errors.New("invalid format"))
-		return
 	}
-
-	return
 }

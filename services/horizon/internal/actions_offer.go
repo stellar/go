@@ -14,7 +14,8 @@ import (
 // This file contains the actions:
 
 // Interface verifications
-var _ actions.SSE = (*OffersByAccountAction)(nil)
+var _ actions.JSONer = (*OffersByAccountAction)(nil)
+var _ actions.EventStreamer = (*OffersByAccountAction)(nil)
 
 // OffersByAccountAction renders a page of offer resources, for a given
 // account.  These offers are present in the ledger as of the latest validated
@@ -29,16 +30,15 @@ type OffersByAccountAction struct {
 }
 
 // JSON is a method for actions.JSON
-func (action *OffersByAccountAction) JSON() {
+func (action *OffersByAccountAction) JSON() error {
 	action.Do(
 		action.loadParams,
 		action.loadRecords,
 		action.loadLedgers,
 		action.loadPage,
-		func() {
-			hal.Render(action.W, action.Page)
-		},
+		func() { hal.Render(action.W, action.Page) },
 	)
+	return action.Err
 }
 
 // SSE is a method for actions.SSE

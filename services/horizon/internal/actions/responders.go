@@ -2,21 +2,21 @@ package actions
 
 import "github.com/stellar/go/services/horizon/internal/render/sse"
 
-// JSON implementors can respond to a request whose response type was negotiated
+// JSONer implementors can respond to a request whose response type was negotiated
 // to be MimeHal or MimeJSON.
-type JSON interface {
-	JSON()
+type JSONer interface {
+	JSON() error
 }
 
-// Raw implementors can respond to a request whose response type was negotiated
+// RawDataResponder implementors can respond to a request whose response type was negotiated
 // to be MimeRaw.
-type Raw interface {
-	Raw()
+type RawDataResponder interface {
+	Raw() error
 }
 
-// SSE implementors can respond to a request whose response type was negotiated
+// EventStreamer implementors can respond to a request whose response type was negotiated
 // to be MimeEventStream.
-type SSE interface {
+type EventStreamer interface {
 	SSE(*sse.Stream) error
 }
 
