@@ -1,4 +1,4 @@
-package main
+package cmd
 
 import (
 	"database/sql"
@@ -30,7 +30,7 @@ var dbBackfillCmd = &cobra.Command{
 			return
 		}
 
-		app := initApp(cmd, args)
+		app := initApp()
 		app.UpdateLedgerState()
 
 		hlog.DefaultLogger.Logger.Level = config.LogLevel
@@ -53,9 +53,6 @@ var dbInitAssetStatsCmd = &cobra.Command{
 	Use:   "init-asset-stats",
 	Short: "initializes values for assets stats",
 	Run: func(cmd *cobra.Command, args []string) {
-		// Check config
-		initApp(cmd, args)
-
 		hlog.DefaultLogger.Logger.Level = config.LogLevel
 
 		hdb, err := db.Open("postgres", config.DatabaseURL)
@@ -170,8 +167,7 @@ var dbReapCmd = &cobra.Command{
 	Short: "reaps (i.e. removes) any reapable history data",
 	Long:  "reap removes any historical data that is earlier than the configured retention cutoff",
 	Run: func(cmd *cobra.Command, args []string) {
-		initApp(cmd, args)
-
+		app := initApp()
 		err := app.DeleteUnretainedHistory()
 		if err != nil {
 			log.Fatal(err)
@@ -247,6 +243,7 @@ var dbReingestCmd = &cobra.Command{
 }
 
 func init() {
+	rootCmd.AddCommand(dbCmd)
 	dbCmd.AddCommand(dbInitCmd)
 	dbCmd.AddCommand(dbInitAssetStatsCmd)
 	dbCmd.AddCommand(dbBackfillCmd)

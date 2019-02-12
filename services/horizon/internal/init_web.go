@@ -9,7 +9,7 @@ import (
 
 	"github.com/go-chi/chi"
 	chimiddleware "github.com/go-chi/chi/middleware"
-	"github.com/rcrowley/go-metrics"
+	metrics "github.com/rcrowley/go-metrics"
 	"github.com/rs/cors"
 	"github.com/sebest/xff"
 	"github.com/stellar/go/services/horizon/internal/db2"
@@ -50,7 +50,6 @@ func initWeb(app *App) {
 // initWebMiddleware installs the middleware stack used for horizon onto the
 // provided app.
 func initWebMiddleware(app *App) {
-
 	r := app.web.router
 	r.Use(chimiddleware.Timeout(app.config.ConnectionTimeout))
 	r.Use(chimiddleware.StripSlashes)
@@ -76,7 +75,6 @@ func initWebMiddleware(app *App) {
 // initWebActions installs the routing configuration of horizon onto the
 // provided app.  All route registration should be implemented here.
 func initWebActions(app *App) {
-
 	r := app.web.router
 	r.Get("/", RootAction{}.Handle)
 	r.Get("/metrics", MetricsAction{}.Handle)
@@ -208,27 +206,23 @@ func init() {
 	appInit.Add(
 		"web.init",
 		initWeb,
-
 		"app-context",
 	)
 
 	appInit.Add(
 		"web.rate-limiter",
 		initWebRateLimiter,
-
 		"web.init",
 	)
 	appInit.Add(
 		"web.middleware",
 		initWebMiddleware,
-
 		"web.init",
 		"web.rate-limiter",
 	)
 	appInit.Add(
 		"web.actions",
 		initWebActions,
-
 		"web.init",
 	)
 }
