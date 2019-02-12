@@ -92,7 +92,6 @@ var dbClearCmd = &cobra.Command{
 	Use:   "clear",
 	Short: "clears all imported historical data",
 	Run: func(cmd *cobra.Command, args []string) {
-		initConfig()
 		hlog.DefaultLogger.Logger.Level = config.LogLevel
 
 		i := ingestSystem(ingest.Config{})
@@ -179,7 +178,6 @@ var dbRebaseCmd = &cobra.Command{
 	Short: "rebases clears the horizon db and ingests the latest ledger segment from stellar-core",
 	Long:  "...",
 	Run: func(cmd *cobra.Command, args []string) {
-		initConfig()
 		hlog.DefaultLogger.Logger.Level = config.LogLevel
 
 		i := ingestSystem(ingest.Config{})
@@ -197,7 +195,6 @@ var dbReingestCmd = &cobra.Command{
 	Short: "imports all data",
 	Long:  "reingest runs the ingestion pipeline over every ledger",
 	Run: func(cmd *cobra.Command, args []string) {
-		initConfig()
 		hlog.DefaultLogger.Logger.Level = config.LogLevel
 
 		i := ingestSystem(ingest.Config{})
@@ -208,9 +205,7 @@ var dbReingestCmd = &cobra.Command{
 			loadMean := time.Duration(i.Metrics.LoadLedgerTimer.Mean())
 			ingestMean := time.Duration(i.Metrics.IngestLedgerTimer.Mean())
 			clearMean := time.Duration(i.Metrics.IngestLedgerTimer.Mean())
-			hlog.
-				WithField("count", count).
-				WithField("rate", rate).
+			hlog.WithField("count", count).WithField("rate", rate).
 				WithField("means", fmt.Sprintf("load: %s clear: %s ingest: %s", loadMean, clearMean, ingestMean)).
 				Infof("reingest: %s", stage)
 		}
@@ -262,19 +257,16 @@ func ingestSystem(ingestConfig ingest.Config) *ingest.System {
 		log.Fatal("network-passphrase is blank: reingestion requires manually setting passphrase")
 	}
 
-	i := ingest.New(passphrase, config.StellarCoreURL, cdb, hdb, ingestConfig)
-	return i
+	return ingest.New(passphrase, config.StellarCoreURL, cdb, hdb, ingestConfig)
 }
 
 func reingest(i *ingest.System, args []string) (int, error) {
 	if len(args) == 0 {
-		count, err := i.ReingestAll()
-		return count, err
+		return i.ReingestAll()
 	}
 
 	if len(args) == 1 && args[0] == "outdated" {
-		count, err := i.ReingestOutdated()
-		return count, err
+		return i.ReingestOutdated()
 	}
 
 	for idx, arg := range args {
