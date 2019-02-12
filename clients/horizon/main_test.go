@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 	"testing"
 	"time"
 
@@ -57,9 +58,36 @@ func ExampleClient_SubmitTransaction() {
 	fmt.Println(response)
 }
 
+func TestClientXLoadOperation(t *testing.T) {
+	hmock := httptest.NewClient()
+	clientx := &ClientX{
+		URL: "https://localhost",
+		OperationCallBuilder: &OperationCallBuilder{
+			CallBuilder: &CallBuilder{
+				URL: "https://localhost", HTTP: hmock},
+		},
+	}
+
+	// payment operation
+	hmock.On(
+		"GET",
+		"https://localhost/operations/96422947803136001",
+	).ReturnString(200, paymentResponse)
+
+	clientx.OperationCallBuilder.ForId("96422947803136001")
+	operation, err := clientx.OperationCallBuilder.Call()
+	if err != nil {
+		log.Print("op err: ", err)
+	}
+	// to do:
+	// assert types based on operation types?
+	log.Print(operation)
+
+}
+
 func TestClientXLoadAccount(t *testing.T) {
 	hmock := httptest.NewClient()
-	client := &ClientX{
+	clientx := &ClientX{
 		URL: "https://localhost",
 		AccountCallBuilder: &AccountCallBuilder{
 			CallBuilder: &CallBuilder{
@@ -73,7 +101,7 @@ func TestClientXLoadAccount(t *testing.T) {
 		"https://localhost/accounts/GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H",
 	).ReturnString(200, accountResponse)
 
-	account, err := client.LoadAccount("GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H")
+	account, err := clientx.LoadAccount("GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H")
 
 	// log.Print(account)
 
@@ -94,7 +122,7 @@ func TestClientXLoadAccount(t *testing.T) {
 		"https://localhost/accounts/GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H",
 	).ReturnString(404, notFoundResponse)
 
-	_, err = client.LoadAccount("GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H")
+	_, err = clientx.LoadAccount("GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H")
 	if assert.Error(t, err) {
 		assert.Contains(t, err.Error(), "Horizon error")
 		horizonError, ok := err.(*Error)
@@ -108,7 +136,7 @@ func TestClientXLoadAccount(t *testing.T) {
 		"https://localhost/accounts/GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H",
 	).ReturnError("http.Client error")
 
-	_, err = client.LoadAccount("GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H")
+	_, err = clientx.LoadAccount("GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H")
 	if assert.Error(t, err) {
 		assert.Contains(t, err.Error(), "http.Client error")
 		_, ok := err.(*Error)
@@ -1183,4 +1211,35 @@ var internalServerError = `{
   "status":   500,
   "details":  "Horizon unavailible",
   "instance": "d3465740-ec3a-4a0b-9d4a-c9ea734ce58a"
+}`
+
+var paymentResponse = `{
+  "_links": {
+    "self": {
+      "href": "https://horizon.stellar.org/operations/96422947803136001"
+    },
+    "transaction": {
+      "href": "https://horizon.stellar.org/transactions/618cac7ae4a9ab4d4e1791ed281044527295a1181bd9723270deb8062f7e19ab"
+    },
+    "effects": {
+      "href": "https://horizon.stellar.org/operations/96422947803136001/effects"
+    },
+    "succeeds": {
+      "href": "https://horizon.stellar.org/effects?order=desc&cursor=96422947803136001"
+    },
+    "precedes": {
+      "href": "https://horizon.stellar.org/effects?order=asc&cursor=96422947803136001"
+    }
+  },
+  "id": "96422947803136001",
+  "paging_token": "96422947803136001",
+  "source_account": "GA5XIGA5C7QTPTWXQHY6MCJRMTRZDOSHR6EFIBNDQTCQHG262N4GGKTM",
+  "type": "payment",
+  "type_i": 1,
+  "created_at": "2019-02-12T18:37:50Z",
+  "transaction_hash": "618cac7ae4a9ab4d4e1791ed281044527295a1181bd9723270deb8062f7e19ab",
+  "asset_type": "native",
+  "from": "GA5XIGA5C7QTPTWXQHY6MCJRMTRZDOSHR6EFIBNDQTCQHG262N4GGKTM",
+  "to": "GDDVZO3LXDD4AZSSDADHYZEZJKYNUSGO6DFOQTJAJGBUGOYUQ5JDXXMM",
+  "amount": "124.9999800"
 }`

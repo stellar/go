@@ -146,6 +146,7 @@ type ClientX struct {
 	// URL of Horizon server to connect
 	URL string
 	*AccountCallBuilder
+	*OperationCallBuilder
 }
 
 type CallBuilder struct {
