@@ -24,7 +24,7 @@ var rootCmd = &cobra.Command{
 	Short: "client-facing api server for the stellar network",
 	Long:  "client-facing api server for the stellar network",
 	Run: func(cmd *cobra.Command, args []string) {
-		app := initApp(cmd, args)
+		app := initApp()
 		app.Serve()
 	},
 }
@@ -265,7 +265,7 @@ func init() {
 	viper.BindPFlags(rootCmd.PersistentFlags())
 }
 
-func initApp(cmd *cobra.Command, args []string) *horizon.App {
+func initApp() *horizon.App {
 	app, err := horizon.NewApp(config)
 	if err != nil {
 		stdLog.Fatal(err.Error())

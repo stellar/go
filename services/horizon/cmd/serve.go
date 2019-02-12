@@ -9,7 +9,7 @@ var serveCmd = &cobra.Command{
 	Short: "run horizon server",
 	Long:  "serve initializes then starts the horizon HTTP server",
 	Run: func(cmd *cobra.Command, args []string) {
-		app := initApp(cmd, args)
+		app := initApp()
 		app.Serve()
 	},
 }

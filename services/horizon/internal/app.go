@@ -71,7 +71,6 @@ func NewApp(config Config) (*App, error) {
 // Serve starts the horizon web server, binding it to a socket, setting up
 // the shutdown signals.
 func (a *App) Serve() {
-
 	http.Handle("/", a.web.router)
 
 	addr := fmt.Sprintf(":%d", a.config.Port)
