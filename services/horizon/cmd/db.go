@@ -128,7 +128,6 @@ var dbMigrateCmd = &cobra.Command{
 	Short: "migrate schema",
 	Long:  "performs a schema migration command",
 	Run: func(cmd *cobra.Command, args []string) {
-
 		// Allow invokations with 1 or 2 args.  All other args counts are erroneous.
 		if len(args) < 1 || len(args) > 2 {
 			cmd.Usage()
@@ -244,14 +243,7 @@ var dbReingestCmd = &cobra.Command{
 
 func init() {
 	rootCmd.AddCommand(dbCmd)
-	dbCmd.AddCommand(dbInitCmd)
-	dbCmd.AddCommand(dbInitAssetStatsCmd)
-	dbCmd.AddCommand(dbBackfillCmd)
-	dbCmd.AddCommand(dbClearCmd)
-	dbCmd.AddCommand(dbMigrateCmd)
-	dbCmd.AddCommand(dbReapCmd)
-	dbCmd.AddCommand(dbReingestCmd)
-	dbCmd.AddCommand(dbRebaseCmd)
+	dbCmd.AddCommand(dbInitCmd, dbInitAssetStatsCmd, dbBackfillCmd, dbClearCmd, dbMigrateCmd, dbReapCmd, dbReingestCmd, dbRebaseCmd)
 }
 
 func ingestSystem(ingestConfig ingest.Config) *ingest.System {
