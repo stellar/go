@@ -30,10 +30,9 @@ var dbBackfillCmd = &cobra.Command{
 			return
 		}
 
-		app := initApp()
-		app.UpdateLedgerState()
-
 		hlog.DefaultLogger.Logger.Level = config.LogLevel
+
+		initApp().UpdateLedgerState()
 
 		i := ingestSystem(ingest.Config{})
 		i.SkipCursorUpdate = true
@@ -94,8 +93,7 @@ var dbClearCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		hlog.DefaultLogger.Logger.Level = config.LogLevel
 
-		i := ingestSystem(ingest.Config{})
-		err := i.ClearAll()
+		err := ingestSystem(ingest.Config{}).ClearAll()
 		if err != nil {
 			hlog.Error(err)
 			os.Exit(1)
@@ -165,8 +163,7 @@ var dbReapCmd = &cobra.Command{
 	Short: "reaps (i.e. removes) any reapable history data",
 	Long:  "reap removes any historical data that is earlier than the configured retention cutoff",
 	Run: func(cmd *cobra.Command, args []string) {
-		app := initApp()
-		err := app.DeleteUnretainedHistory()
+		err := initApp().DeleteUnretainedHistory()
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -205,7 +202,8 @@ var dbReingestCmd = &cobra.Command{
 			loadMean := time.Duration(i.Metrics.LoadLedgerTimer.Mean())
 			ingestMean := time.Duration(i.Metrics.IngestLedgerTimer.Mean())
 			clearMean := time.Duration(i.Metrics.IngestLedgerTimer.Mean())
-			hlog.WithField("count", count).WithField("rate", rate).
+			hlog.WithField("count", count).
+				WithField("rate", rate).
 				WithField("means", fmt.Sprintf("load: %s clear: %s ingest: %s", loadMean, clearMean, ingestMean)).
 				Infof("reingest: %s", stage)
 		}
