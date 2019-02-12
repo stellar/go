@@ -57,6 +57,65 @@ func ExampleClient_SubmitTransaction() {
 	fmt.Println(response)
 }
 
+func TestClientXLoadAccount(t *testing.T) {
+	hmock := httptest.NewClient()
+	client := &ClientX{
+		URL: "https://localhost",
+		AccountCallBuilder: &AccountCallBuilder{
+			CallBuilder: &CallBuilder{
+				URL: "https://localhost", HTTP: hmock},
+		},
+	}
+
+	// happy path
+	hmock.On(
+		"GET",
+		"https://localhost/accounts/GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H",
+	).ReturnString(200, accountResponse)
+
+	account, err := client.LoadAccount("GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H")
+
+	// log.Print(account)
+
+	if assert.NoError(t, err) {
+		assert.Equal(t, account.ID, "GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H")
+		assert.Equal(t, account.PT, "1")
+		assert.Equal(t, account.Signers[0].Key, "XBT5HNPK6DAL6222MAWTLHNOZSDKPJ2AKNEQ5Q324CHHCNQFQ7EHBHZN")
+		assert.Equal(t, account.Signers[0].Type, "sha256_hash")
+		assert.Equal(t, account.Data["test"], "R0NCVkwzU1FGRVZLUkxQNkFKNDdVS0tXWUVCWTQ1V0hBSkhDRVpLVldNVEdNQ1Q0SDROS1FZTEg=")
+		balance, err := account.GetNativeBalance()
+		assert.Nil(t, err)
+		assert.Equal(t, balance, "948522307.6146000")
+	}
+
+	// failure response
+	hmock.On(
+		"GET",
+		"https://localhost/accounts/GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H",
+	).ReturnString(404, notFoundResponse)
+
+	_, err = client.LoadAccount("GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H")
+	if assert.Error(t, err) {
+		assert.Contains(t, err.Error(), "Horizon error")
+		horizonError, ok := err.(*Error)
+		assert.Equal(t, ok, true)
+		assert.Equal(t, horizonError.Problem.Title, "Resource Missing")
+	}
+
+	// connection error
+	hmock.On(
+		"GET",
+		"https://localhost/accounts/GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H",
+	).ReturnError("http.Client error")
+
+	_, err = client.LoadAccount("GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H")
+	if assert.Error(t, err) {
+		assert.Contains(t, err.Error(), "http.Client error")
+		_, ok := err.(*Error)
+		assert.Equal(t, ok, false)
+	}
+}
+
 func TestLoadAccount(t *testing.T) {
 	hmock := httptest.NewClient()
 	client := &Client{

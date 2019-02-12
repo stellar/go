@@ -140,3 +140,43 @@ var _ build.SequenceProvider = &Client{}
 
 // ensure that the horizon client implements ClientInterface
 var _ ClientInterface = &Client{}
+
+// ClientX is an experimental horizon client that uses call builder pattern
+type ClientX struct {
+	// URL of Horizon server to connect
+	URL string
+	*AccountCallBuilder
+}
+
+type CallBuilder struct {
+	URL             string
+	HTTP            HTTP
+	endpoint        string
+	params          map[string]string
+	fixURLOnce      sync.Once
+	HorizonResponse interface{}
+}
+
+type CallBuilderInterface interface {
+	addEndpoint(endpoint string)
+	addParam(key string, value string)
+	buildUrl()
+	Call() (interface{}, error)
+	Cursor(cursor string)
+}
+
+type AccountCallBuilder struct {
+	*CallBuilder
+}
+
+type OperationCallBuilder struct {
+	*CallBuilder
+}
+
+type AccountCallBuilderInterface interface {
+	LoadAccount(accountID string) (interface{}, error)
+}
+
+type OperationCallBuilderInterface interface {
+	ForId(operationID string) (interface{}, error)
+}
