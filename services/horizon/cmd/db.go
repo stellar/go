@@ -1,4 +1,4 @@
-package main
+package cmd
 
 import (
 	"database/sql"
@@ -170,8 +170,7 @@ var dbReapCmd = &cobra.Command{
 	Short: "reaps (i.e. removes) any reapable history data",
 	Long:  "reap removes any historical data that is earlier than the configured retention cutoff",
 	Run: func(cmd *cobra.Command, args []string) {
-		initApp(cmd, args)
-
+		app := initApp(cmd, args)
 		err := app.DeleteUnretainedHistory()
 		if err != nil {
 			log.Fatal(err)
@@ -247,6 +246,7 @@ var dbReingestCmd = &cobra.Command{
 }
 
 func init() {
+	rootCmd.AddCommand(dbCmd)
 	dbCmd.AddCommand(dbInitCmd)
 	dbCmd.AddCommand(dbInitAssetStatsCmd)
 	dbCmd.AddCommand(dbBackfillCmd)
