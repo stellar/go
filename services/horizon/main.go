@@ -276,7 +276,6 @@ func initApp(cmd *cobra.Command, args []string) *horizon.App {
 
 	var err error
 	app, err = horizon.NewApp(config)
-
 	if err != nil {
 		stdLog.Fatal(err.Error())
 	}
