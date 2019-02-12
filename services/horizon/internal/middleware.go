@@ -17,9 +17,9 @@ import (
 	"github.com/stellar/go/support/render/problem"
 )
 
-// Adds the "app" context into every request, so that subsequence middleware
+// middleware adds the "app" context into every request, so that subsequence middleware
 // or handlers can retrieve a horizon.App instance
-func (app *App) Middleware(h http.Handler) http.Handler {
+func (app *App) middleware(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx := app.Context(r.Context())
 		h.ServeHTTP(w, r.WithContext(ctx))
@@ -56,8 +56,7 @@ const (
 	clientVersionHeader = "X-Client-Version"
 )
 
-// LoggerMiddleware is the middleware that logs http requests and resposnes
-// to the logging subsytem of horizon.
+// LoggerMiddleware logs http requests and resposnes to the logging subsytem of horizon.
 func LoggerMiddleware(h http.Handler) http.Handler {
 	fn := func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
@@ -150,7 +149,6 @@ func RecoverMiddleware(h http.Handler) http.Handler {
 	fn := func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 		defer func() {
-
 			if rec := recover(); rec != nil {
 				err := errors.FromPanic(rec)
 				errors.ReportToSentry(err, r)
@@ -164,9 +162,7 @@ func RecoverMiddleware(h http.Handler) http.Handler {
 	return http.HandlerFunc(fn)
 }
 
-// Middleware that records metrics.
-//
-// It records success and failures using a meter, and times every request
+// requestMetricsMiddleware records success and failures using a meter, and times every request
 func requestMetricsMiddleware(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		app := AppFromContext(r.Context())
@@ -183,6 +179,5 @@ func requestMetricsMiddleware(h http.Handler) http.Handler {
 			// a success is in [400, 600)
 			app.web.failureMeter.Mark(1)
 		}
-
 	})
 }

@@ -53,7 +53,7 @@ func initWebMiddleware(app *App) {
 	r := app.web.router
 	r.Use(chimiddleware.Timeout(app.config.ConnectionTimeout))
 	r.Use(chimiddleware.StripSlashes)
-	r.Use(app.Middleware)
+	r.Use(app.middleware)
 	r.Use(requestCacheHeadersMiddleware)
 	r.Use(chimiddleware.RequestID)
 	r.Use(contextMiddleware(app.ctx))
