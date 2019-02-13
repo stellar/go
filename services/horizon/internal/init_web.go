@@ -53,14 +53,14 @@ func initWebMiddleware(app *App) {
 	r := app.web.router
 	r.Use(chimiddleware.Timeout(app.config.ConnectionTimeout))
 	r.Use(chimiddleware.StripSlashes)
-	r.Use(app.Middleware)
+	r.Use(app.middleware)
 	r.Use(requestCacheHeadersMiddleware)
 	r.Use(chimiddleware.RequestID)
-	r.Use(contextMiddleware(app.ctx))
+	r.Use(contextMiddleware)
 	r.Use(xff.Handler)
-	r.Use(LoggerMiddleware)
+	r.Use(loggerMiddleware)
 	r.Use(requestMetricsMiddleware)
-	r.Use(RecoverMiddleware)
+	r.Use(recoverMiddleware)
 	r.Use(chimiddleware.Compress(flate.DefaultCompression, "application/hal+json"))
 
 	c := cors.New(cors.Options{
