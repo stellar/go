@@ -256,7 +256,6 @@ var configOpts = []*support.ConfigOption{
 }
 
 func init() {
-	cobra.OnInitialize(initConfig)
 	for _, co := range configOpts {
 		err := co.Init(rootCmd)
 		if err != nil {
@@ -268,6 +267,7 @@ func init() {
 }
 
 func initApp() *horizon.App {
+	initConfig()
 	return horizon.NewApp(config)
 }
 
