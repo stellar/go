@@ -55,7 +55,7 @@ const (
 
 // LoggerMiddleware logs http requests and resposnes to the logging subsytem of horizon.
 func LoggerMiddleware(h http.Handler) http.Handler {
-	fn := func(w http.ResponseWriter, r *http.Request) {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 		mw := middleware.NewWrapResponseWriter(w, r.ProtoMajor)
 
@@ -69,12 +69,12 @@ func LoggerMiddleware(h http.Handler) http.Handler {
 
 		logStartOfRequest(ctx, r, streaming)
 		then := time.Now()
+
 		h.ServeHTTP(mw, r.WithContext(ctx))
+
 		duration := time.Now().Sub(then)
 		logEndOfRequest(ctx, r, duration, mw, streaming)
-	}
-
-	return http.HandlerFunc(fn)
+	})
 }
 
 // getClientData gets client data (name or version) from header or GET parameter
@@ -143,7 +143,7 @@ func (web *Web) RateLimitMiddleware(next http.Handler) http.Handler {
 // no request can fully bring down the horizon server, and it also logs the
 // panics to the logging subsystem.
 func RecoverMiddleware(h http.Handler) http.Handler {
-	fn := func(w http.ResponseWriter, r *http.Request) {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 		defer func() {
 			if rec := recover(); rec != nil {
@@ -154,9 +154,7 @@ func RecoverMiddleware(h http.Handler) http.Handler {
 		}()
 
 		h.ServeHTTP(w, r)
-	}
-
-	return http.HandlerFunc(fn)
+	})
 }
 
 // requestMetricsMiddleware records success and failures using a meter, and times every request
