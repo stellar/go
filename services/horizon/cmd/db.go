@@ -30,10 +30,9 @@ var dbBackfillCmd = &cobra.Command{
 			return
 		}
 
-		app := initApp()
-		app.UpdateLedgerState()
-
 		hlog.DefaultLogger.Logger.Level = config.LogLevel
+
+		initApp().UpdateLedgerState()
 
 		i := ingestSystem(ingest.Config{})
 		i.SkipCursorUpdate = true
@@ -92,11 +91,9 @@ var dbClearCmd = &cobra.Command{
 	Use:   "clear",
 	Short: "clears all imported historical data",
 	Run: func(cmd *cobra.Command, args []string) {
-		initConfig()
 		hlog.DefaultLogger.Logger.Level = config.LogLevel
 
-		i := ingestSystem(ingest.Config{})
-		err := i.ClearAll()
+		err := ingestSystem(ingest.Config{}).ClearAll()
 		if err != nil {
 			hlog.Error(err)
 			os.Exit(1)
@@ -128,7 +125,6 @@ var dbMigrateCmd = &cobra.Command{
 	Short: "migrate schema",
 	Long:  "performs a schema migration command",
 	Run: func(cmd *cobra.Command, args []string) {
-
 		// Allow invokations with 1 or 2 args.  All other args counts are erroneous.
 		if len(args) < 1 || len(args) > 2 {
 			cmd.Usage()
@@ -167,8 +163,7 @@ var dbReapCmd = &cobra.Command{
 	Short: "reaps (i.e. removes) any reapable history data",
 	Long:  "reap removes any historical data that is earlier than the configured retention cutoff",
 	Run: func(cmd *cobra.Command, args []string) {
-		app := initApp()
-		err := app.DeleteUnretainedHistory()
+		err := initApp().DeleteUnretainedHistory()
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -180,7 +175,6 @@ var dbRebaseCmd = &cobra.Command{
 	Short: "rebases clears the horizon db and ingests the latest ledger segment from stellar-core",
 	Long:  "...",
 	Run: func(cmd *cobra.Command, args []string) {
-		initConfig()
 		hlog.DefaultLogger.Logger.Level = config.LogLevel
 
 		i := ingestSystem(ingest.Config{})
@@ -198,7 +192,6 @@ var dbReingestCmd = &cobra.Command{
 	Short: "imports all data",
 	Long:  "reingest runs the ingestion pipeline over every ledger",
 	Run: func(cmd *cobra.Command, args []string) {
-		initConfig()
 		hlog.DefaultLogger.Logger.Level = config.LogLevel
 
 		i := ingestSystem(ingest.Config{})
@@ -209,8 +202,7 @@ var dbReingestCmd = &cobra.Command{
 			loadMean := time.Duration(i.Metrics.LoadLedgerTimer.Mean())
 			ingestMean := time.Duration(i.Metrics.IngestLedgerTimer.Mean())
 			clearMean := time.Duration(i.Metrics.IngestLedgerTimer.Mean())
-			hlog.
-				WithField("count", count).
+			hlog.WithField("count", count).
 				WithField("rate", rate).
 				WithField("means", fmt.Sprintf("load: %s clear: %s ingest: %s", loadMean, clearMean, ingestMean)).
 				Infof("reingest: %s", stage)
@@ -244,14 +236,16 @@ var dbReingestCmd = &cobra.Command{
 
 func init() {
 	rootCmd.AddCommand(dbCmd)
-	dbCmd.AddCommand(dbInitCmd)
-	dbCmd.AddCommand(dbInitAssetStatsCmd)
-	dbCmd.AddCommand(dbBackfillCmd)
-	dbCmd.AddCommand(dbClearCmd)
-	dbCmd.AddCommand(dbMigrateCmd)
-	dbCmd.AddCommand(dbReapCmd)
-	dbCmd.AddCommand(dbReingestCmd)
-	dbCmd.AddCommand(dbRebaseCmd)
+	dbCmd.AddCommand(
+		dbInitCmd,
+		dbInitAssetStatsCmd,
+		dbBackfillCmd,
+		dbClearCmd,
+		dbMigrateCmd,
+		dbReapCmd,
+		dbReingestCmd,
+		dbRebaseCmd,
+	)
 }
 
 func ingestSystem(ingestConfig ingest.Config) *ingest.System {
@@ -270,19 +264,16 @@ func ingestSystem(ingestConfig ingest.Config) *ingest.System {
 		log.Fatal("network-passphrase is blank: reingestion requires manually setting passphrase")
 	}
 
-	i := ingest.New(passphrase, config.StellarCoreURL, cdb, hdb, ingestConfig)
-	return i
+	return ingest.New(passphrase, config.StellarCoreURL, cdb, hdb, ingestConfig)
 }
 
 func reingest(i *ingest.System, args []string) (int, error) {
 	if len(args) == 0 {
-		count, err := i.ReingestAll()
-		return count, err
+		return i.ReingestAll()
 	}
 
 	if len(args) == 1 && args[0] == "outdated" {
-		count, err := i.ReingestOutdated()
-		return count, err
+		return i.ReingestOutdated()
 	}
 
 	for idx, arg := range args {

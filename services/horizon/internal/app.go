@@ -164,32 +164,31 @@ func (a *App) IsHistoryStale() bool {
 // UpdateLedgerState triggers a refresh of several metrics gauges, such as open
 // db connections and ledger state
 func (a *App) UpdateLedgerState() {
-	var err error
 	var next ledger.State
 
-	err = a.CoreQ().LatestLedger(&next.CoreLatest)
+	logErr := func(err error, msg string) {
+		log.WithStack(err).WithField("err", err.Error()).Error(msg)
+	}
+
+	err := a.CoreQ().LatestLedger(&next.CoreLatest)
 	if err != nil {
-		goto Failed
+		logErr(err, "failed to load the latest known ledger state from core DB")
+		return
 	}
 
 	err = a.HistoryQ().LatestLedger(&next.HistoryLatest)
 	if err != nil {
-		goto Failed
+		logErr(err, "failed to load the latest known ledger state from history DB")
+		return
 	}
 
 	err = a.HistoryQ().ElderLedger(&next.HistoryElder)
 	if err != nil {
-		goto Failed
+		logErr(err, "failed to load the oldest known ledger state from history DB")
+		return
 	}
 
 	ledger.SetState(next)
-	return
-
-Failed:
-	log.WithStack(err).
-		WithField("err", err.Error()).
-		Error("failed to load ledger state")
-
 }
 
 // UpdateOperationFeeStatsState triggers a refresh of several operation fee metrics
