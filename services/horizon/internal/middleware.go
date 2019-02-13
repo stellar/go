@@ -37,18 +37,15 @@ func requestCacheHeadersMiddleware(h http.Handler) http.Handler {
 	})
 }
 
-func contextMiddleware(parent context.Context) func(next http.Handler) http.Handler {
-	return func(next http.Handler) http.Handler {
-		fn := func(w http.ResponseWriter, r *http.Request) {
-			ctx := r.Context()
-			ctx = requestid.ContextFromChi(ctx)
-			ctx, cancel := httpx.RequestContext(ctx, w, r)
+func contextMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+		ctx = requestid.ContextFromChi(ctx)
+		ctx, cancel := httpx.RequestContext(ctx, w, r)
+		defer cancel()
 
-			defer cancel()
-			next.ServeHTTP(w, r.WithContext(ctx))
-		}
-		return http.HandlerFunc(fn)
-	}
+		next.ServeHTTP(w, r.WithContext(ctx))
+	})
 }
 
 const (

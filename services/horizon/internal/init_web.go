@@ -56,7 +56,7 @@ func initWebMiddleware(app *App) {
 	r.Use(app.middleware)
 	r.Use(requestCacheHeadersMiddleware)
 	r.Use(chimiddleware.RequestID)
-	r.Use(contextMiddleware(app.ctx))
+	r.Use(contextMiddleware)
 	r.Use(xff.Handler)
 	r.Use(LoggerMiddleware)
 	r.Use(requestMetricsMiddleware)
