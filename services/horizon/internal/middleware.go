@@ -53,8 +53,8 @@ const (
 	clientVersionHeader = "X-Client-Version"
 )
 
-// LoggerMiddleware logs http requests and resposnes to the logging subsytem of horizon.
-func LoggerMiddleware(h http.Handler) http.Handler {
+// loggerMiddleware logs http requests and resposnes to the logging subsytem of horizon.
+func loggerMiddleware(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 		mw := middleware.NewWrapResponseWriter(w, r.ProtoMajor)
@@ -139,10 +139,10 @@ func (web *Web) RateLimitMiddleware(next http.Handler) http.Handler {
 	return web.rateLimiter.RateLimit(next)
 }
 
-// RecoverMiddleware helps the server recover from panics.  It ensures that
+// recoverMiddleware helps the server recover from panics. It ensures that
 // no request can fully bring down the horizon server, and it also logs the
 // panics to the logging subsystem.
-func RecoverMiddleware(h http.Handler) http.Handler {
+func recoverMiddleware(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 		defer func() {
