@@ -49,6 +49,7 @@ func initWeb(app *App) {
 
 // initWebMiddleware installs the middleware stack used for horizon onto the
 // provided app.
+// Note that a request will go through the middlewares from top to bottom.
 func initWebMiddleware(app *App) {
 	r := app.web.router
 	r.Use(chimiddleware.Timeout(app.config.ConnectionTimeout))
