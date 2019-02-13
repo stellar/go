@@ -5,7 +5,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log"
 	"net/http/httptest"
 	"time"
 
@@ -18,12 +17,7 @@ import (
 )
 
 func NewTestApp() *App {
-	app, err := NewApp(NewTestConfig())
-	if err != nil {
-		log.Panic(err)
-	}
-
-	return app
+	return NewApp(NewTestConfig())
 }
 
 func NewTestConfig() Config {

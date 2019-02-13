@@ -268,12 +268,7 @@ func init() {
 }
 
 func initApp() *horizon.App {
-	app, err := horizon.NewApp(config)
-	if err != nil {
-		stdLog.Fatal(err.Error())
-	}
-
-	return app
+	return horizon.NewApp(config)
 }
 
 func initConfig() {
