@@ -166,27 +166,25 @@ func (a *App) IsHistoryStale() bool {
 func (a *App) UpdateLedgerState() {
 	var next ledger.State
 
+	logErr := func(err error, msg string) {
+		log.WithStack(err).WithField("err", err.Error()).Error(msg)
+	}
+
 	err := a.CoreQ().LatestLedger(&next.CoreLatest)
 	if err != nil {
-		log.WithStack(err).
-			WithField("err", err.Error()).
-			Error("failed to load the latest known ledger state from core DB")
+		logErr(err, "failed to load the latest known ledger state from core DB")
 		return
 	}
 
 	err = a.HistoryQ().LatestLedger(&next.HistoryLatest)
 	if err != nil {
-		log.WithStack(err).
-			WithField("err", err.Error()).
-			Error("failed to load the latest known ledger state from history DB")
+		logErr(err, "failed to load the latest known ledger state from history DB")
 		return
 	}
 
 	err = a.HistoryQ().ElderLedger(&next.HistoryElder)
 	if err != nil {
-		log.WithStack(err).
-			WithField("err", err.Error()).
-			Error("failed to load the oldest known ledger state from history DB")
+		logErr(err, "failed to load the oldest known ledger state from history DB")
 		return
 	}
 

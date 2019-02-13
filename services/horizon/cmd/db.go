@@ -236,7 +236,16 @@ var dbReingestCmd = &cobra.Command{
 
 func init() {
 	rootCmd.AddCommand(dbCmd)
-	dbCmd.AddCommand(dbInitCmd, dbInitAssetStatsCmd, dbBackfillCmd, dbClearCmd, dbMigrateCmd, dbReapCmd, dbReingestCmd, dbRebaseCmd)
+	dbCmd.AddCommand(
+		dbInitCmd,
+		dbInitAssetStatsCmd,
+		dbBackfillCmd,
+		dbClearCmd,
+		dbMigrateCmd,
+		dbReapCmd,
+		dbReingestCmd,
+		dbRebaseCmd,
+	)
 }
 
 func ingestSystem(ingestConfig ingest.Config) *ingest.System {
