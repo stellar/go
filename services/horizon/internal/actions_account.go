@@ -1,6 +1,8 @@
 package horizon
 
 import (
+	"context"
+
 	"github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/services/horizon/internal/actions"
 	"github.com/stellar/go/services/horizon/internal/db2/core"
@@ -28,6 +30,10 @@ type AccountShowAction struct {
 	CoreSigners    []core.Signer
 	CoreTrustlines []core.Trustline
 	Resource       horizon.Account
+}
+
+func (a *App) getAccountInfo(ctx context.Context) (interface{}, error) {
+
 }
 
 // JSON is a method for actions.JSON

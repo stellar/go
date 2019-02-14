@@ -15,6 +15,7 @@ import (
 	"github.com/stellar/go/services/horizon/internal/db2"
 	hProblem "github.com/stellar/go/services/horizon/internal/render/problem"
 	"github.com/stellar/go/services/horizon/internal/txsub/sequence"
+	"github.com/stellar/go/support/render/hal"
 	"github.com/stellar/go/support/render/problem"
 	"github.com/throttled/throttled"
 )
@@ -95,7 +96,7 @@ func initWebActions(app *App) {
 	// account actions
 	r.Route("/accounts", func(r chi.Router) {
 		r.Route("/{account_id}", func(r chi.Router) {
-			r.Get("/", AccountShowAction{}.Handle)
+			r.Get("/", hal.Handler(a.getAccountInfo))
 			r.Get("/transactions", TransactionIndexAction{}.Handle)
 			r.Get("/operations", OperationIndexAction{}.Handle)
 			r.Get("/payments", PaymentsIndexAction{}.Handle)
