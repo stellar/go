@@ -37,7 +37,7 @@ func TestCommonProblems(t *testing.T) {
 
 func TestInflate(t *testing.T) {
 	// Sets Instance to the request id based on the context
-	ctx2 := requestid.Context(ctx, "2")
+	ctx2 := requestid.WithRequestID(ctx, "2")
 	p := problem.P{}
 
 	Inflate(ctx2, &p)

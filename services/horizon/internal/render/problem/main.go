@@ -12,7 +12,7 @@ import (
 // At present it adds the request's id as the problem's Instance, if available.
 func Inflate(ctx context.Context, p *problem.P) {
 	problem.Inflate(p)
-	p.Instance = requestid.FromContext(ctx)
+	p.Instance = requestid.RequestID(ctx)
 }
 
 // Well-known and reused problems below:
