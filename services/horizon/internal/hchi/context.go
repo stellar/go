@@ -1,4 +1,4 @@
-// Package requestid provides functions to support embedded and retrieving
+// Package hchi provides functions to support embedded and retrieving
 // a request id from a go context tree
 package hchi
 
