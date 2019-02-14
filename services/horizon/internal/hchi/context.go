@@ -1,6 +1,6 @@
 // Package requestid provides functions to support embedded and retrieving
 // a request id from a go context tree
-package requestid
+package hchi
 
 import (
 	"context"
@@ -21,8 +21,8 @@ func WithRequestID(ctx context.Context, reqid string) context.Context {
 	return context.WithValue(ctx, reqidKey, reqid)
 }
 
-// ContextFromChi returns a new context bound with the value of the request id.
-func ContextFromChi(ctx context.Context) context.Context {
+// WithChiRequestID returns a new context bound with the value of the request id.
+func WithChiRequestID(ctx context.Context) context.Context {
 	reqid := middleware.GetReqID(ctx)
 	return WithRequestID(ctx, reqid)
 }

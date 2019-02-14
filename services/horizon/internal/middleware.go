@@ -10,9 +10,9 @@ import (
 	"github.com/go-chi/chi/middleware"
 	chimiddleware "github.com/go-chi/chi/middleware"
 	"github.com/stellar/go/services/horizon/internal/errors"
+	"github.com/stellar/go/services/horizon/internal/hchi"
 	"github.com/stellar/go/services/horizon/internal/httpx"
 	"github.com/stellar/go/services/horizon/internal/render"
-	"github.com/stellar/go/support/context/requestid"
 	"github.com/stellar/go/support/log"
 	"github.com/stellar/go/support/render/problem"
 )
@@ -40,7 +40,7 @@ func requestCacheHeadersMiddleware(h http.Handler) http.Handler {
 func contextMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
-		ctx = requestid.ContextFromChi(ctx)
+		ctx = hchi.WithChiRequestID(ctx)
 		ctx, cancel := httpx.RequestContext(ctx, w, r)
 		defer cancel()
 

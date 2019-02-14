@@ -1,4 +1,4 @@
-package requestid
+package hchi
 
 import (
 	"context"
@@ -19,7 +19,7 @@ func TestRequestContext(t *testing.T) {
 
 func TestRequestContextFromCHI(t *testing.T) {
 	ctx := context.WithValue(context.Background(), middleware.RequestIDKey, "foobar")
-	ctx2 := ContextFromChi(ctx)
+	ctx2 := WithChiRequestID(ctx)
 	assert.Equal(t, "foobar", RequestID(ctx2))
 }
 
