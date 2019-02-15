@@ -14,6 +14,7 @@ type key int
 
 const (
 	reqidKey key = iota
+	accKey
 )
 
 // WithRequestID create a context from the provided parent and the provided request id string.
@@ -35,5 +36,18 @@ func RequestID(ctx context.Context) string {
 	}
 
 	val, _ := ctx.Value(reqidKey).(string)
+	return val
+}
+
+func WithAccountID(ctx context.Context, accountID string) context.Context {
+	return context.WithValue(ctx, accKey, accountID)
+}
+
+func AccountID(ctx context.Context) string {
+	if ctx == nil {
+		return ""
+	}
+
+	val, _ := ctx.Value(accKey).(string)
 	return val
 }

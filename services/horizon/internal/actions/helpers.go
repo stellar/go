@@ -1,7 +1,6 @@
 package actions
 
 import (
-	"context"
 	"fmt"
 	"mime"
 	"net/url"
@@ -76,13 +75,6 @@ func (base *Base) checkUTF8(name, value string) {
 	}
 }
 
-func checkUTF8(key, val string) error {
-	if !utf8.ValidString(val) {
-		// TODO: add errInvalidValue
-		return problem.MakeInvalidFieldProblem(key, errors.New("invalid value"))
-	}
-}
-
 // GetString retrieves a string from either the URLParams, form or query string.
 // This method uses the priority (URLParams, Form, Query).
 func (base *Base) GetString(name string) string {
@@ -111,24 +103,6 @@ func (base *Base) GetString(name string) string {
 	value := base.R.URL.Query().Get(name)
 	base.checkUTF8(name, value)
 	return value
-}
-
-func getStringFromURL(ctx context.Context, key string) (string, error) {
-	val := chi.URLParamFromCtx(ctx, key)
-	if val != "" {
-		val, err := url.PathUnescape(val)
-		if err != nil {
-			return "", problem.MakeInvalidFieldProblem(key, err)
-		}
-
-		return val, checkUTF8(key, val)
-	}
-
-	val = ctx.FormValue(key)
-	if val != "" {
-		return val, checkUTF8(key, val)
-	}
-
 }
 
 // GetInt64 retrieves an int64 from the action parameter of the given name.
@@ -253,6 +227,7 @@ func (base *Base) GetAddress(name string, opts ...Opt) (result string) {
 		}
 	}
 
+	// We should check base.Err after this call. This is why it's better to remove base.Err.
 	result = base.GetString(name)
 	if result == "" && !requiredParam {
 		return result

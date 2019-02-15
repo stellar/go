@@ -33,7 +33,7 @@ type AccountShowAction struct {
 }
 
 func (a *App) getAccountInfo(ctx context.Context) (interface{}, error) {
-
+	return nil, nil
 }
 
 // JSON is a method for actions.JSON

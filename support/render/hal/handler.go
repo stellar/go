@@ -7,24 +7,17 @@ import (
 	"github.com/stellar/go/support/render/problem"
 )
 
-// handler is an http.Handler that calls a function for each request.
-type handler struct {
-	fn func(context.Context) (interface{}, error)
-}
-
-// Handler returns an HTTP handler for function fn.
+// HandlerFunc returns an HTTP HandlerFunc for function fn.
 // If fn returns a non-nil error, the handler will use problem.Render.
-func Handler(fn func(context.Context) (interface{}, error)) http.Handler {
-	return &handler{fn}
-}
+func HandlerFunc(fn func(context.Context) (interface{}, error)) http.HandlerFunc {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
 
-func (h *handler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
-	ctx := req.Context()
+		res, err := fn(ctx)
+		if err != nil {
+			problem.Render(ctx, w, err)
+		}
 
-	res, err := h.fn(ctx)
-	if err != nil {
-		problem.Render(ctx, w, err)
-	}
-
-	Render(w, res)
+		Render(w, res)
+	})
 }
