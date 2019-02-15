@@ -1,19 +1,29 @@
 package horizon
 
 import (
+	"bytes"
+	"context"
+	"crypto/sha256"
+	"encoding/json"
 	"net/http"
 	"net/url"
 	"strings"
+	"time"
 
 	"github.com/stellar/go/services/horizon/internal/actions"
+	horizonContext "github.com/stellar/go/services/horizon/internal/context"
 	"github.com/stellar/go/services/horizon/internal/db2/core"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/services/horizon/internal/httpx"
 	"github.com/stellar/go/services/horizon/internal/ledger"
-	"github.com/stellar/go/services/horizon/internal/render/problem"
+	"github.com/stellar/go/services/horizon/internal/render"
+	hProblem "github.com/stellar/go/services/horizon/internal/render/problem"
+	"github.com/stellar/go/services/horizon/internal/render/sse"
 	"github.com/stellar/go/services/horizon/internal/toid"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/support/log"
+	"github.com/stellar/go/support/render/hal"
+	"github.com/stellar/go/support/render/problem"
 )
 
 // Action is the "base type" for all actions in horizon.  It provides
@@ -118,7 +128,7 @@ func (action *Action) ValidateCursorWithinHistory() {
 	elder := toid.New(ledger.CurrentState().HistoryElder, 0, 0)
 
 	if cursor <= elder.ToInt64() {
-		action.Err = &problem.BeforeHistory
+		action.Err = &hProblem.BeforeHistory
 	}
 }
 
@@ -130,7 +140,7 @@ func (action *Action) EnsureHistoryFreshness() {
 
 	if action.App.IsHistoryStale() {
 		ls := ledger.CurrentState()
-		err := problem.StaleHistory
+		err := hProblem.StaleHistory
 		err.Extras = map[string]interface{}{
 			"history_latest_ledger": ls.HistoryLatest,
 			"core_latest_ledger":    ls.CoreLatest,
@@ -151,4 +161,127 @@ func (action *Action) FullURL() *url.URL {
 // the Host and Scheme portions of the request uri.
 func (action *Action) baseURL() *url.URL {
 	return httpx.BaseURL(action.R.Context())
+}
+
+type jsonResponderFunc func(context.Context) (interface{}, error)
+type streamFunc func(context.Context, *sse.Stream) error
+type singleObjectStreamFunc func(context.Context) (sse.Event, error)
+
+func streamableEndpointHandlerFunc(appCtx context.Context, jfn jsonResponderFunc, sfn streamFunc, sosfn singleObjectStreamFunc, sseUpdateFrequency time.Duration) http.HandlerFunc {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+		contentType := render.Negotiate(r)
+
+		switch contentType {
+		case render.MimeHal, render.MimeJSON:
+			if jfn == nil {
+				problem.Render(ctx, w, hProblem.NotAcceptable)
+				return
+			}
+
+			hal.HandlerFunc(jfn).ServeHTTP(w, r)
+			return
+
+		case render.MimeEventStream:
+			if sfn == nil && sosfn == nil {
+				problem.Render(ctx, w, hProblem.NotAcceptable)
+				return
+			}
+
+			streamHandlerFunc(appCtx, sfn, sosfn, sseUpdateFrequency).ServeHTTP(w, r)
+			return
+		}
+
+		problem.Render(ctx, w, hProblem.NotAcceptable)
+		return
+	})
+}
+
+func streamHandlerFunc(appCtx context.Context, sfn streamFunc, sosfn singleObjectStreamFunc, sseUpdateFrequency time.Duration) http.HandlerFunc {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+
+		stream := sse.NewStream(ctx, w)
+		var oldHash [32]byte
+		for {
+			lastLedgerState := ledger.CurrentState()
+
+			// Rate limit the request if it's a call to stream since it queries the DB every second. See
+			// https://github.com/stellar/go/issues/715 for more details.
+			app := ctx.Value(&horizonContext.AppContextKey)
+			rateLimiter := app.(actions.RateLimiterProvider).GetRateLimiter()
+			if rateLimiter != nil {
+				limited, _, err := rateLimiter.RateLimiter.RateLimit(rateLimiter.VaryBy.Key(r), 1)
+				if err != nil {
+					stream.Err(errors.Wrap(err, "RateLimiter error"))
+					return
+				}
+				if limited {
+					stream.Err(sse.ErrRateLimited)
+					return
+				}
+			}
+
+			if sfn != nil {
+				err := sfn(ctx, stream)
+				if err != nil {
+					stream.Err(err)
+					return
+				}
+			} else if sosfn != nil {
+				newEvent, err := sosfn(ctx)
+				if err != nil {
+					stream.Err(err)
+					return
+				}
+				resource, err := json.Marshal(newEvent.Data)
+				if err != nil {
+					stream.Err(errors.Wrap(err, "unable to marshal next action resource"))
+					return
+				}
+
+				nextHash := sha256.Sum256(resource)
+				if !bytes.Equal(nextHash[:], oldHash[:]) {
+					oldHash = nextHash
+					stream.SetLimit(10)
+					stream.Send(newEvent)
+
+				}
+			}
+
+			// Manually send the preamble in case there are no data events in SSE to trigger a stream.Send call.
+			// This method is called every iteration of the loop, but is protected by a sync.Once variable so it's
+			// only executed once.
+			stream.Init()
+
+			if stream.IsDone() {
+				return
+			}
+
+			// Make sure this is buffered channel of size 1. Otherwise, the go routine below
+			// will never return if `newLedgers` channel is not read. From Effective Go:
+			// > If the channel is unbuffered, the sender blocks until the receiver has received the value.
+			newLedgers := make(chan bool, 1)
+			go func() {
+				for {
+					time.Sleep(sseUpdateFrequency)
+					currentLedgerState := ledger.CurrentState()
+					if currentLedgerState.HistoryLatest >= lastLedgerState.HistoryLatest+1 {
+						newLedgers <- true
+						return
+					}
+				}
+			}()
+
+			select {
+			case <-newLedgers:
+				continue
+			case <-ctx.Done():
+			case <-appCtx.Done():
+			}
+
+			stream.Done()
+			return
+		}
+	})
 }
