@@ -51,7 +51,7 @@ func AccountInfo(ctx context.Context, cq *core.Q, hq *history.Q, protocolVersion
 	err = hq.AccountByAddress(&historyRecord, addr)
 	// Do not fail when we cannot find the history record... it probably just
 	// means that the account was created outside of our known history range.
-	if !hq.NoRows(err) {
+	if err != nil && !hq.NoRows(err) {
 		return nil, errors.Wrap(err, "getting history record")
 	}
 
