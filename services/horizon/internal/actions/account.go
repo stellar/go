@@ -15,7 +15,7 @@ import (
 func AccountInfo(ctx context.Context, cq *core.Q, hq *history.Q, protocolVersion int32) (*pHorizon.Account, error) {
 	addr := hchi.AccountID(ctx)
 	if addr == "" {
-		// This should be impossible because of accountIdMiddleware
+		// This should be impossible because of accountIdHandler
 		return nil, errors.New("account address is empty")
 	}
 

@@ -288,7 +288,12 @@ func streamHandlerFunc(appCtx context.Context, sfn streamFunc, sosfn singleObjec
 	})
 }
 
-func accountIdMiddleware(h http.Handler) http.HandlerFunc {
+// accountIdHandler gets the account address from the request. If the
+// request path does't start with `accounts`, we simply bypass this handler.
+// Note that we cannot put this handler in the middleware stack because of
+// Chi's routing mechanism. A request will have to reach the end of the route
+// in order to have a valid route pattern in Chi.
+func accountIdHandler(h http.Handler) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		parts := strings.SplitN(strings.TrimPrefix(r.URL.Path, "/"), "/", 2)
 		if parts[0] != "accounts" {
