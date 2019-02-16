@@ -286,6 +286,11 @@ func streamHandlerFunc(appCtx context.Context, sfn streamFunc, sosfn singleObjec
 	})
 }
 
-func (a *API) getAccountInfo(ctx context.Context) (interface{}, error) {
+func (a *App) getAccountInfo(ctx context.Context) (interface{}, error) {
 	return actions.AccountInfo(ctx, &core.Q{a.CoreSession(ctx)}, &history.Q{a.HorizonSession(ctx)}, a.coreSupportedProtocolVersion)
+}
+
+func (a *App) loadAccountEvent(ctx context.Context) (sse.Event, error) {
+	res, err := a.getAccountInfo(ctx)
+	return sse.Event{Data: res}, err
 }

@@ -96,7 +96,7 @@ func initWebActions(app *App) {
 	// account actions
 	r.Route("/accounts", func(r chi.Router) {
 		r.Route("/{account_id}", func(r chi.Router) {
-			r.Get("/", streamableEndpointHandlerFunc(app.ctx, app.getAccountInfo, nil, nil, app.config.SSEUpdateFrequency))
+			r.Get("/", streamableEndpointHandlerFunc(app.ctx, app.getAccountInfo, nil, app.loadAccountEvent, app.config.SSEUpdateFrequency))
 			r.Get("/transactions", TransactionIndexAction{}.Handle)
 			r.Get("/operations", OperationIndexAction{}.Handle)
 			r.Get("/payments", PaymentsIndexAction{}.Handle)
