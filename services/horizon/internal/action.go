@@ -14,12 +14,14 @@ import (
 	horizonContext "github.com/stellar/go/services/horizon/internal/context"
 	"github.com/stellar/go/services/horizon/internal/db2/core"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
+	"github.com/stellar/go/services/horizon/internal/hchi"
 	"github.com/stellar/go/services/horizon/internal/httpx"
 	"github.com/stellar/go/services/horizon/internal/ledger"
 	"github.com/stellar/go/services/horizon/internal/render"
 	hProblem "github.com/stellar/go/services/horizon/internal/render/problem"
 	"github.com/stellar/go/services/horizon/internal/render/sse"
 	"github.com/stellar/go/services/horizon/internal/toid"
+	"github.com/stellar/go/strkey"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/support/log"
 	"github.com/stellar/go/support/render/hal"
@@ -284,6 +286,45 @@ func streamHandlerFunc(appCtx context.Context, sfn streamFunc, sosfn singleObjec
 			return
 		}
 	})
+}
+
+func accountIdMiddleware(h http.Handler) http.HandlerFunc {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		parts := strings.SplitN(strings.TrimPrefix(r.URL.Path, "/"), "/", 2)
+		if parts[0] != "accounts" {
+			h.ServeHTTP(w, r)
+			return
+		}
+
+		ctx := r.Context()
+		addr, err := getAddress(r, "account_id", true)
+		if err != nil {
+			problem.Render(ctx, w, err)
+			return
+		}
+
+		ctx = hchi.WithAccountID(ctx, addr)
+		h.ServeHTTP(w, r.WithContext(ctx))
+	})
+}
+
+func getAddress(r *http.Request, key string, required bool) (string, error) {
+	val, err := hchi.GetStringFromURL(r, key)
+	if err != nil {
+		return "", err
+	}
+
+	if val == "" && !required {
+		return val, nil
+	}
+
+	_, err = strkey.Decode(strkey.VersionByteAccountID, val)
+	if err != nil {
+		// TODO: add errInvalidValue
+		return "", problem.MakeInvalidFieldProblem(key, errors.New("invalid address"))
+	}
+
+	return val, nil
 }
 
 func (a *App) getAccountInfo(ctx context.Context) (interface{}, error) {

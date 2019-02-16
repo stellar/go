@@ -71,7 +71,6 @@ func initWebMiddleware(app *App) {
 	r.Use(c.Handler)
 
 	r.Use(app.web.RateLimitMiddleware)
-	r.Use(accountIdMiddleware)
 }
 
 // initWebActions installs the routing configuration of horizon onto the
@@ -96,7 +95,7 @@ func initWebActions(app *App) {
 	// account actions
 	r.Route("/accounts", func(r chi.Router) {
 		r.Route("/{account_id}", func(r chi.Router) {
-			r.Get("/", streamableEndpointHandlerFunc(app.ctx, app.getAccountInfo, nil, app.loadAccountEvent, app.config.SSEUpdateFrequency))
+			r.Get("/", accountIdMiddleware(streamableEndpointHandlerFunc(app.ctx, app.getAccountInfo, nil, app.loadAccountEvent, app.config.SSEUpdateFrequency)))
 			r.Get("/transactions", TransactionIndexAction{}.Handle)
 			r.Get("/operations", OperationIndexAction{}.Handle)
 			r.Get("/payments", PaymentsIndexAction{}.Handle)
