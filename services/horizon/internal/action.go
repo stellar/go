@@ -169,7 +169,7 @@ type jsonResponderFunc func(context.Context) (interface{}, error)
 type streamFunc func(context.Context, *sse.Stream) error
 type singleObjectStreamFunc func(context.Context) (sse.Event, error)
 
-func streamableEndpointHandlerFunc(appCtx context.Context, jfn jsonResponderFunc, sfn streamFunc, sosfn singleObjectStreamFunc, sseUpdateFrequency time.Duration) http.HandlerFunc {
+func streamableEndpointHandler(appCtx context.Context, jfn jsonResponderFunc, sfn streamFunc, sosfn singleObjectStreamFunc, sseUpdateFrequency time.Duration) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 		contentType := render.Negotiate(r)
@@ -190,7 +190,7 @@ func streamableEndpointHandlerFunc(appCtx context.Context, jfn jsonResponderFunc
 				return
 			}
 
-			streamHandlerFunc(appCtx, sfn, sosfn, sseUpdateFrequency).ServeHTTP(w, r)
+			streamHandler(appCtx, sfn, sosfn, sseUpdateFrequency).ServeHTTP(w, r)
 			return
 		}
 
@@ -199,7 +199,7 @@ func streamableEndpointHandlerFunc(appCtx context.Context, jfn jsonResponderFunc
 	})
 }
 
-func streamHandlerFunc(appCtx context.Context, sfn streamFunc, sosfn singleObjectStreamFunc, sseUpdateFrequency time.Duration) http.HandlerFunc {
+func streamHandler(appCtx context.Context, sfn streamFunc, sosfn singleObjectStreamFunc, sseUpdateFrequency time.Duration) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 
