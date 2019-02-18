@@ -13,12 +13,12 @@ import (
 func GetStringFromURL(r *http.Request, key string) (string, error) {
 	val, ok := getChiURLParam(r, key)
 	if ok {
-		val, err := url.PathUnescape(val)
+		unescapedVal, err := url.PathUnescape(val)
 		if err != nil {
 			return "", problem.MakeInvalidFieldProblem(key, err)
 		}
 
-		return val, checkUTF8(key, val)
+		return unescapedVal, checkUTF8(key, unescapedVal)
 	}
 
 	val = r.FormValue(key)
