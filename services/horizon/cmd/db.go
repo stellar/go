@@ -34,7 +34,9 @@ var dbBackfillCmd = &cobra.Command{
 
 		initApp().UpdateLedgerState()
 
-		i := ingestSystem(ingest.Config{})
+		i := ingestSystem(ingest.Config{
+			IngestFailedTransactions: config.IngestFailedTransactions,
+		})
 		i.SkipCursorUpdate = true
 		parsed, err := strconv.ParseUint(args[0], 10, 32)
 		if err != nil {
@@ -95,8 +97,9 @@ var dbClearCmd = &cobra.Command{
 		initConfig()
 		hlog.DefaultLogger.Logger.Level = config.LogLevel
 
-		i := ingestSystem(ingest.Config{})
-		err := i.ClearAll()
+		err := ingestSystem(ingest.Config{
+			IngestFailedTransactions: config.IngestFailedTransactions,
+		}).ClearAll()
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -181,7 +184,9 @@ var dbRebaseCmd = &cobra.Command{
 		initConfig()
 		hlog.DefaultLogger.Logger.Level = config.LogLevel
 
-		i := ingestSystem(ingest.Config{})
+		i := ingestSystem(ingest.Config{
+			IngestFailedTransactions: config.IngestFailedTransactions,
+		})
 		i.SkipCursorUpdate = true
 
 		err := i.RebaseHistory()
@@ -200,7 +205,9 @@ var dbReingestCmd = &cobra.Command{
 		initConfig()
 		hlog.DefaultLogger.Logger.Level = config.LogLevel
 
-		i := ingestSystem(ingest.Config{})
+		i := ingestSystem(ingest.Config{
+			IngestFailedTransactions: config.IngestFailedTransactions,
+		})
 		i.SkipCursorUpdate = true
 		logStatus := func(stage string) {
 			count := i.Metrics.IngestLedgerTimer.Count()

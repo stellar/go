@@ -74,6 +74,9 @@ type Config struct {
 	// EnableAssetStats is a feature flag that determines whether to calculate
 	// asset stats in this ingestion system.
 	EnableAssetStats bool
+	// IngestFailedTransactions is a feature flag that determines if system
+	// should ingest failed transactions.
+	IngestFailedTransactions bool
 }
 
 // EffectIngestion is a helper struct to smooth the ingestion of effects.  this
@@ -119,6 +122,8 @@ type System struct {
 	// keep in the history database, working backwards from the latest core
 	// ledger.  0 represents "all ledgers".
 	HistoryRetentionCount uint
+	// IngestFailedTransactions toggles whether to ingest failed transactions
+	IngestFailedTransactions bool
 
 	lock    sync.Mutex
 	current *Session
