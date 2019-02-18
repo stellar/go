@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"github.com/stellar/go/services/horizon/internal/actions"
-	horizonContext "github.com/stellar/go/services/horizon/internal/context"
 	"github.com/stellar/go/services/horizon/internal/db2/core"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/services/horizon/internal/hchi"
@@ -26,6 +25,7 @@ import (
 	"github.com/stellar/go/support/log"
 	"github.com/stellar/go/support/render/hal"
 	"github.com/stellar/go/support/render/problem"
+	"github.com/throttled/throttled"
 )
 
 // Action is the "base type" for all actions in horizon.  It provides
@@ -169,7 +169,7 @@ type jsonResponderFunc func(context.Context) (interface{}, error)
 type streamFunc func(context.Context, *sse.Stream) error
 type singleObjectStreamFunc func(context.Context) (sse.Event, error)
 
-func streamableEndpointHandler(appCtx context.Context, jfn jsonResponderFunc, sfn streamFunc, sosfn singleObjectStreamFunc, sseUpdateFrequency time.Duration) http.HandlerFunc {
+func streamableEndpointHandler(appCtx context.Context, jfn jsonResponderFunc, sfn streamFunc, sosfn singleObjectStreamFunc, sseUpdateFrequency time.Duration, rateLimiter *throttled.HTTPRateLimiter) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 		contentType := render.Negotiate(r)
@@ -190,16 +190,15 @@ func streamableEndpointHandler(appCtx context.Context, jfn jsonResponderFunc, sf
 				return
 			}
 
-			streamHandler(appCtx, sfn, sosfn, sseUpdateFrequency).ServeHTTP(w, r)
+			streamHandler(appCtx, sfn, sosfn, sseUpdateFrequency, rateLimiter).ServeHTTP(w, r)
 			return
 		}
 
 		problem.Render(ctx, w, hProblem.NotAcceptable)
-		return
 	})
 }
 
-func streamHandler(appCtx context.Context, sfn streamFunc, sosfn singleObjectStreamFunc, sseUpdateFrequency time.Duration) http.HandlerFunc {
+func streamHandler(appCtx context.Context, sfn streamFunc, sosfn singleObjectStreamFunc, sseUpdateFrequency time.Duration, rateLimiter *throttled.HTTPRateLimiter) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 
@@ -210,8 +209,6 @@ func streamHandler(appCtx context.Context, sfn streamFunc, sosfn singleObjectStr
 
 			// Rate limit the request if it's a call to stream since it queries the DB every second. See
 			// https://github.com/stellar/go/issues/715 for more details.
-			app := ctx.Value(&horizonContext.AppContextKey)
-			rateLimiter := app.(actions.RateLimiterProvider).GetRateLimiter()
 			if rateLimiter != nil {
 				limited, _, err := rateLimiter.RateLimiter.RateLimit(rateLimiter.VaryBy.Key(r), 1)
 				if err != nil {
@@ -247,7 +244,6 @@ func streamHandler(appCtx context.Context, sfn streamFunc, sosfn singleObjectStr
 					oldHash = nextHash
 					stream.SetLimit(10)
 					stream.Send(newEvent)
-
 				}
 			}
 
