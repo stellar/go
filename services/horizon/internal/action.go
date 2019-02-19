@@ -181,7 +181,7 @@ func streamableEndpointHandler(appCtx context.Context, jfn jsonResponderFunc, sf
 				return
 			}
 
-			hal.HandlerFunc(jfn).ServeHTTP(w, r)
+			hal.Handler(jfn).ServeHTTP(w, r)
 			return
 
 		case render.MimeEventStream:
