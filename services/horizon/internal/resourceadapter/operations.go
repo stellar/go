@@ -89,7 +89,7 @@ func PopulateBaseOperation(
 ) {
 	dest.ID = fmt.Sprintf("%d", row.ID)
 	dest.PT = row.PagingToken()
-	dest.Successful = row.Successful
+	dest.TransactionSuccessful = row.TransactionSuccessful
 	dest.SourceAccount = row.SourceAccount
 	populateOperationType(dest, row)
 	dest.LedgerCloseTime = ledger.ClosedAt

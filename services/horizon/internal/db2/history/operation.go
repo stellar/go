@@ -122,7 +122,7 @@ func (q *OperationsQ) OnlyPayments() *OperationsQ {
 	return q
 }
 
-// IncludeFailed changes the query to include failed transactions.
+// SuccessfulOnly changes the query to include successful operations only.
 func (q *OperationsQ) SuccessfulOnly() *OperationsQ {
 	q.sql = q.sql.
 		Where("ht.successful = ?", true)
@@ -157,6 +157,6 @@ var selectOperation = sq.Select(
 		"hop.details, " +
 		"hop.source_account, " +
 		"ht.transaction_hash, " +
-		"ht.successful").
+		"ht.successful as transaction_successful").
 	From("history_operations hop").
 	LeftJoin("history_transactions ht ON ht.id = hop.transaction_id")

@@ -216,13 +216,13 @@ type LedgersQ struct {
 // Operation is a row of data from the `history_operations` table
 type Operation struct {
 	TotalOrderID
-	TransactionID    int64             `db:"transaction_id"`
-	TransactionHash  string            `db:"transaction_hash"`
-	ApplicationOrder int32             `db:"application_order"`
-	Type             xdr.OperationType `db:"type"`
-	DetailsString    null.String       `db:"details"`
-	SourceAccount    string            `db:"source_account"`
-	Successful       bool              `db:"successful"`
+	TransactionID         int64             `db:"transaction_id"`
+	TransactionHash       string            `db:"transaction_hash"`
+	ApplicationOrder      int32             `db:"application_order"`
+	Type                  xdr.OperationType `db:"type"`
+	DetailsString         null.String       `db:"details"`
+	SourceAccount         string            `db:"source_account"`
+	TransactionSuccessful bool              `db:"transaction_successful"`
 }
 
 // OperationsQ is a helper struct to aid in configuring queries that loads

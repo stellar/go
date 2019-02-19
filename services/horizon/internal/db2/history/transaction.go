@@ -72,7 +72,7 @@ func (q *TransactionsQ) ForLedger(seq int32) *TransactionsQ {
 	return q
 }
 
-// IncludeFailed changes the query to include failed transactions.
+// SuccessfulOnly changes the query to include successful transactions only.
 func (q *TransactionsQ) SuccessfulOnly() *TransactionsQ {
 	q.sql = q.sql.
 		Where("ht.successful = ?", true)
