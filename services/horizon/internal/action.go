@@ -25,7 +25,6 @@ import (
 	"github.com/stellar/go/support/log"
 	"github.com/stellar/go/support/render/hal"
 	"github.com/stellar/go/support/render/problem"
-	"github.com/throttled/throttled"
 )
 
 // Action is the "base type" for all actions in horizon.  It provides
@@ -169,7 +168,7 @@ type jsonResponderFunc func(context.Context) (interface{}, error)
 type streamFunc func(context.Context, *sse.Stream) error
 type singleObjectStreamFunc func(context.Context) (sse.Event, error)
 
-func streamableEndpointHandler(appCtx context.Context, jfn jsonResponderFunc, sfn streamFunc, sosfn singleObjectStreamFunc, sseUpdateFrequency time.Duration, rateLimiter *throttled.HTTPRateLimiter) http.HandlerFunc {
+func (a *App) streamableEndpointHandler(jfn jsonResponderFunc, sfn streamFunc, sosfn singleObjectStreamFunc) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 		contentType := render.Negotiate(r)
@@ -190,7 +189,7 @@ func streamableEndpointHandler(appCtx context.Context, jfn jsonResponderFunc, sf
 				return
 			}
 
-			streamHandler(appCtx, sfn, sosfn, sseUpdateFrequency, rateLimiter).ServeHTTP(w, r)
+			a.streamHandler(sfn, sosfn).ServeHTTP(w, r)
 			return
 		}
 
@@ -198,7 +197,7 @@ func streamableEndpointHandler(appCtx context.Context, jfn jsonResponderFunc, sf
 	})
 }
 
-func streamHandler(appCtx context.Context, sfn streamFunc, sosfn singleObjectStreamFunc, sseUpdateFrequency time.Duration, rateLimiter *throttled.HTTPRateLimiter) http.HandlerFunc {
+func (a *App) streamHandler(sfn streamFunc, sosfn singleObjectStreamFunc) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 
@@ -209,6 +208,7 @@ func streamHandler(appCtx context.Context, sfn streamFunc, sosfn singleObjectStr
 
 			// Rate limit the request if it's a call to stream since it queries the DB every second. See
 			// https://github.com/stellar/go/issues/715 for more details.
+			rateLimiter := a.web.rateLimiter
 			if rateLimiter != nil {
 				limited, _, err := rateLimiter.RateLimiter.RateLimit(rateLimiter.VaryBy.Key(r), 1)
 				if err != nil {
@@ -262,7 +262,7 @@ func streamHandler(appCtx context.Context, sfn streamFunc, sosfn singleObjectStr
 			newLedgers := make(chan bool, 1)
 			go func() {
 				for {
-					time.Sleep(sseUpdateFrequency)
+					time.Sleep(a.config.SSEUpdateFrequency)
 					currentLedgerState := ledger.CurrentState()
 					if currentLedgerState.HistoryLatest >= lastLedgerState.HistoryLatest+1 {
 						newLedgers <- true
@@ -275,7 +275,7 @@ func streamHandler(appCtx context.Context, sfn streamFunc, sosfn singleObjectStr
 			case <-newLedgers:
 				continue
 			case <-ctx.Done():
-			case <-appCtx.Done():
+			case <-a.ctx.Done():
 			}
 
 			stream.Done()
