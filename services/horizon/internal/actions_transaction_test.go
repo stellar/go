@@ -32,7 +32,7 @@ func TestTransactionActions_Show(t *testing.T) {
 	ht.Assert.Equal(404, w.Code)
 }
 
-func TestTransactionActions_Show_NotFoundFailed(t *testing.T) {
+func TestTransactionActions_Show_Failed(t *testing.T) {
 	ht := StartHTTPTest(t, "failed_transactions")
 	defer ht.Finish()
 
