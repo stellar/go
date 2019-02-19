@@ -392,8 +392,8 @@ func TestTradeActions_SyntheticOfferIds(t *testing.T) {
 	if ht.Assert.Equal(200, w.Code) {
 		if ht.Assert.PageOf(4, w.Body) {
 			ht.UnmarshalPage(w.Body, &records)
-			assertOfferType(ht, records[0].CounterOfferID, TOIDType)
-			assertOfferType(ht, records[1].CounterOfferID, TOIDType)
+			assertOfferType(ht, records[0].BaseOfferID, TOIDType)
+			assertOfferType(ht, records[1].BaseOfferID, TOIDType)
 			assertOfferType(ht, records[2].BaseOfferID, CoreOfferIDType)
 			assertOfferType(ht, records[3].BaseOfferID, CoreOfferIDType)
 		}
