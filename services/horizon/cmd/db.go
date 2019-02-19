@@ -52,7 +52,7 @@ var dbInitAssetStatsCmd = &cobra.Command{
 	Use:   "init-asset-stats",
 	Short: "initializes values for assets stats",
 	Run: func(cmd *cobra.Command, args []string) {
-		hlog.DefaultLogger.Logger.Level = config.LogLevel
+		initConfig()
 
 		hdb, err := db.Open("postgres", config.DatabaseURL)
 		if err != nil {
@@ -92,11 +92,11 @@ var dbClearCmd = &cobra.Command{
 	Short: "clears all imported historical data",
 	Run: func(cmd *cobra.Command, args []string) {
 		hlog.DefaultLogger.Logger.Level = config.LogLevel
+		initConfig()
 
 		err := ingestSystem(ingest.Config{}).ClearAll()
 		if err != nil {
-			hlog.Error(err)
-			os.Exit(1)
+			log.Fatal(err)
 		}
 	},
 }
@@ -108,14 +108,12 @@ var dbInitCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		dbConn, err := db.Open("postgres", viper.GetString("db-url"))
 		if err != nil {
-			hlog.Error(err)
-			os.Exit(1)
+			log.Fatal(err)
 		}
 
 		err = schema.Init(dbConn)
 		if err != nil {
-			hlog.Error(err)
-			os.Exit(1)
+			log.Fatal(err)
 		}
 	},
 }
@@ -176,6 +174,7 @@ var dbRebaseCmd = &cobra.Command{
 	Long:  "...",
 	Run: func(cmd *cobra.Command, args []string) {
 		hlog.DefaultLogger.Logger.Level = config.LogLevel
+		initConfig()
 
 		i := ingestSystem(ingest.Config{})
 		i.SkipCursorUpdate = true
@@ -193,6 +192,7 @@ var dbReingestCmd = &cobra.Command{
 	Long:  "reingest runs the ingestion pipeline over every ledger",
 	Run: func(cmd *cobra.Command, args []string) {
 		hlog.DefaultLogger.Logger.Level = config.LogLevel
+		initConfig()
 
 		i := ingestSystem(ingest.Config{})
 		i.SkipCursorUpdate = true

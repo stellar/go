@@ -60,12 +60,15 @@ type App struct {
 }
 
 // NewApp constructs an new App instance from the provided config.
-func NewApp(config Config) (*App, error) {
-	result := &App{config: config}
-	result.horizonVersion = app.Version()
-	result.ticks = time.NewTicker(1 * time.Second)
-	result.init()
-	return result, nil
+func NewApp(config Config) *App {
+	a := &App{
+		config:         config,
+		horizonVersion: app.Version(),
+		ticks:          time.NewTicker(1 * time.Second),
+	}
+
+	a.init()
+	return a
 }
 
 // Serve starts the horizon web server, binding it to a socket, setting up
