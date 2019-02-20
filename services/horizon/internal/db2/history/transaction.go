@@ -21,7 +21,20 @@ func (q *Q) TransactionByHash(dest interface{}, hash string) error {
 // future this may be configurable.
 func (q *Q) TransactionsForLastXLedgers(currentSeq int32, dest interface{}) error {
 	return q.GetRaw(dest, `
-		SELECT min(fee_paid/operation_count),  mode() within group (order by fee_paid/operation_count)
+		SELECT
+			min(fee_paid/operation_count),
+			mode() within group (order by fee_paid/operation_count),
+			percentile_cont(0.10) WITHIN GROUP (ORDER BY fee_paid/operation_count) AS "p10",
+			percentile_cont(0.20) WITHIN GROUP (ORDER BY fee_paid/operation_count) AS "p20",
+			percentile_cont(0.30) WITHIN GROUP (ORDER BY fee_paid/operation_count) AS "p30",
+			percentile_cont(0.40) WITHIN GROUP (ORDER BY fee_paid/operation_count) AS "p40",
+			percentile_cont(0.50) WITHIN GROUP (ORDER BY fee_paid/operation_count) AS "p50",
+			percentile_cont(0.60) WITHIN GROUP (ORDER BY fee_paid/operation_count) AS "p60",
+			percentile_cont(0.70) WITHIN GROUP (ORDER BY fee_paid/operation_count) AS "p70",
+			percentile_cont(0.80) WITHIN GROUP (ORDER BY fee_paid/operation_count) AS "p80",
+			percentile_cont(0.90) WITHIN GROUP (ORDER BY fee_paid/operation_count) AS "p90",
+			percentile_cont(0.95) WITHIN GROUP (ORDER BY fee_paid/operation_count) AS "p95",
+			percentile_cont(0.99) WITHIN GROUP (ORDER BY fee_paid/operation_count) AS "p99"
 		FROM history_transactions
 		WHERE ledger_sequence > $1 AND ledger_sequence <= $2
 	`, currentSeq-5, currentSeq)

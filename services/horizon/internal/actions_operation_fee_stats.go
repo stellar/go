@@ -20,6 +20,17 @@ type OperationFeeStatsAction struct {
 	Action
 	Min         int64
 	Mode        int64
+	P10         int64
+	P20         int64
+	P30         int64
+	P40         int64
+	P50         int64
+	P60         int64
+	P70         int64
+	P80         int64
+	P90         int64
+	P95         int64
+	P99         int64
 	LastBaseFee int64
 	LastLedger  int64
 }
@@ -32,6 +43,17 @@ func (action *OperationFeeStatsAction) JSON() error {
 			hal.Render(action.W, map[string]string{
 				"min_accepted_fee":     fmt.Sprint(action.Min),
 				"mode_accepted_fee":    fmt.Sprint(action.Mode),
+				"p10_accepted_fee":     fmt.Sprint(action.P10),
+				"p20_accepted_fee":     fmt.Sprint(action.P20),
+				"p30_accepted_fee":     fmt.Sprint(action.P30),
+				"p40_accepted_fee":     fmt.Sprint(action.P40),
+				"p50_accepted_fee":     fmt.Sprint(action.P50),
+				"p60_accepted_fee":     fmt.Sprint(action.P60),
+				"p70_accepted_fee":     fmt.Sprint(action.P70),
+				"p80_accepted_fee":     fmt.Sprint(action.P80),
+				"p90_accepted_fee":     fmt.Sprint(action.P90),
+				"p95_accepted_fee":     fmt.Sprint(action.P95),
+				"p99_accepted_fee":     fmt.Sprint(action.P99),
 				"last_ledger_base_fee": fmt.Sprint(action.LastBaseFee),
 				"last_ledger":          fmt.Sprint(action.LastLedger),
 			})
@@ -46,4 +68,15 @@ func (action *OperationFeeStatsAction) loadRecords() {
 	action.Mode = cur.Mode
 	action.LastBaseFee = cur.LastBaseFee
 	action.LastLedger = cur.LastLedger
+	action.P10 = cur.P10
+	action.P20 = cur.P20
+	action.P30 = cur.P30
+	action.P40 = cur.P40
+	action.P50 = cur.P50
+	action.P60 = cur.P60
+	action.P70 = cur.P70
+	action.P80 = cur.P80
+	action.P90 = cur.P90
+	action.P95 = cur.P95
+	action.P99 = cur.P99
 }
