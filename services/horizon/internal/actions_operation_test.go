@@ -78,7 +78,51 @@ func TestOperationActions_Show_Failed(t *testing.T) {
 	ht := StartHTTPTest(t, "failed_transactions")
 	defer ht.Finish()
 
-	w := ht.Get("/transactions/aa168f12124b7c196c0adaee7c73a64d37f99428cacb59a91ff389626845e7cf/operations")
+	// Should show successful transactions only
+	w := ht.Get("/operations?limit=200")
+
+	if ht.Assert.Equal(200, w.Code) {
+		records := []operations.Base{}
+		ht.UnmarshalPage(w.Body, &records)
+
+		successful := 0
+		failed := 0
+
+		for _, op := range records {
+			if op.TransactionSuccessful {
+				successful++
+			} else {
+				failed++
+			}
+		}
+
+		ht.Assert.Equal(8, successful)
+		ht.Assert.Equal(0, failed)
+	}
+
+	// Should show all transactions: both successful and failed
+	w = ht.Get("/operations?limit=200&include_failed=true")
+
+	if ht.Assert.Equal(200, w.Code) {
+		records := []operations.Base{}
+		ht.UnmarshalPage(w.Body, &records)
+
+		successful := 0
+		failed := 0
+
+		for _, op := range records {
+			if op.TransactionSuccessful {
+				successful++
+			} else {
+				failed++
+			}
+		}
+
+		ht.Assert.Equal(8, successful)
+		ht.Assert.Equal(1, failed)
+	}
+
+	w = ht.Get("/transactions/aa168f12124b7c196c0adaee7c73a64d37f99428cacb59a91ff389626845e7cf/operations")
 
 	if ht.Assert.Equal(200, w.Code) {
 		records := []operations.Base{}
