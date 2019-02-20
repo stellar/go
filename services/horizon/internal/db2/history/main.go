@@ -164,6 +164,17 @@ type EffectType int
 type FeeStats struct {
 	Min  null.Int `db:"min"`
 	Mode null.Int `db:"mode"`
+	P10  null.Int `db:"p10"`
+	P20  null.Int `db:"p20"`
+	P30  null.Int `db:"p30"`
+	P40  null.Int `db:"p40"`
+	P50  null.Int `db:"p50"`
+	P60  null.Int `db:"p60"`
+	P70  null.Int `db:"p70"`
+	P80  null.Int `db:"p80"`
+	P90  null.Int `db:"p90"`
+	P95  null.Int `db:"p95"`
+	P99  null.Int `db:"p99"`
 }
 
 // LatestLedger represents a response from the raw LatestLedgerBaseFeeAndSequence

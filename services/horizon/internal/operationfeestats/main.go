@@ -14,6 +14,17 @@ import (
 type State struct {
 	Min         int64
 	Mode        int64
+	P10         int64
+	P20         int64
+	P30         int64
+	P40         int64
+	P50         int64
+	P60         int64
+	P70         int64
+	P80         int64
+	P90         int64
+	P95         int64
+	P99         int64
 	LastBaseFee int64
 	LastLedger  int64
 }

@@ -228,9 +228,31 @@ func (a *App) UpdateOperationFeeStatsState() {
 	if !feeStats.Mode.Valid && !feeStats.Min.Valid {
 		next.Min = next.LastBaseFee
 		next.Mode = next.LastBaseFee
+		next.P10 = next.LastBaseFee
+		next.P20 = next.LastBaseFee
+		next.P30 = next.LastBaseFee
+		next.P40 = next.LastBaseFee
+		next.P50 = next.LastBaseFee
+		next.P60 = next.LastBaseFee
+		next.P70 = next.LastBaseFee
+		next.P80 = next.LastBaseFee
+		next.P90 = next.LastBaseFee
+		next.P95 = next.LastBaseFee
+		next.P99 = next.LastBaseFee
 	} else {
 		next.Min = feeStats.Min.Int64
 		next.Mode = feeStats.Mode.Int64
+		next.P10 = feeStats.P10.Int64
+		next.P20 = feeStats.P20.Int64
+		next.P30 = feeStats.P30.Int64
+		next.P40 = feeStats.P40.Int64
+		next.P50 = feeStats.P50.Int64
+		next.P60 = feeStats.P60.Int64
+		next.P70 = feeStats.P70.Int64
+		next.P80 = feeStats.P80.Int64
+		next.P90 = feeStats.P90.Int64
+		next.P95 = feeStats.P95.Int64
+		next.P99 = feeStats.P99.Int64
 	}
 
 	operationfeestats.SetState(next)
