@@ -21,7 +21,12 @@ func PopulateTransaction(
 ) {
 	dest.ID = row.TransactionHash
 	dest.PT = row.PagingToken()
-	dest.Successful = row.Successful
+	// Check db2/history.Transaction.Successful field comment for more information.
+	if row.Successful == nil {
+		dest.Successful = true
+	} else {
+		dest.Successful = *row.Successful
+	}
 	dest.Hash = row.TransactionHash
 	dest.Ledger = row.LedgerSequence
 	dest.LedgerCloseTime = row.LedgerCloseTime

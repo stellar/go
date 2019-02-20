@@ -125,7 +125,7 @@ func (q *OperationsQ) OnlyPayments() *OperationsQ {
 // SuccessfulOnly changes the query to include successful operations only.
 func (q *OperationsQ) SuccessfulOnly() *OperationsQ {
 	q.sql = q.sql.
-		Where("ht.successful = ?", true)
+		Where("(ht.successful = true OR ht.successful IS NULL)")
 	return q
 }
 

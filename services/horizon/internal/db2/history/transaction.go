@@ -88,7 +88,7 @@ func (q *TransactionsQ) ForLedger(seq int32) *TransactionsQ {
 // SuccessfulOnly changes the query to include successful transactions only.
 func (q *TransactionsQ) SuccessfulOnly() *TransactionsQ {
 	q.sql = q.sql.
-		Where("ht.successful = ?", true)
+		Where("(ht.successful = true OR ht.successful IS NULL)")
 	return q
 }
 

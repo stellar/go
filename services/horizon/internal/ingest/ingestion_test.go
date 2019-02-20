@@ -187,12 +187,12 @@ func TestIngestFailedTransactionsEnabled(t *testing.T) {
 	tx := history.Transaction{}
 	err := q.TransactionByHash(&tx, "aa168f12124b7c196c0adaee7c73a64d37f99428cacb59a91ff389626845e7cf")
 	tt.Require.NoError(err)
-	tt.Assert.False(tx.Successful)
+	tt.Assert.False(*tx.Successful)
 
 	tx = history.Transaction{}
 	err = q.TransactionByHash(&tx, "56e3216045d579bea40f2d35a09406de3a894ecb5be70dbda5ec9c0427a0d5a1")
 	tt.Require.NoError(err)
-	tt.Assert.True(tx.Successful)
+	tt.Assert.True(*tx.Successful)
 }
 
 func TestIngestFailedTransactionsDisabled(t *testing.T) {
@@ -210,7 +210,7 @@ func TestIngestFailedTransactionsDisabled(t *testing.T) {
 	tx = history.Transaction{}
 	err = q.TransactionByHash(&tx, "56e3216045d579bea40f2d35a09406de3a894ecb5be70dbda5ec9c0427a0d5a1")
 	tt.Require.NoError(err)
-	tt.Assert.True(tx.Successful)
+	tt.Assert.True(*tx.Successful)
 }
 
 func TestTradeIngestTimestamp(t *testing.T) {

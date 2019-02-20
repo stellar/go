@@ -313,7 +313,12 @@ type Transaction struct {
 	ValidBefore      null.Int    `db:"valid_before"`
 	CreatedAt        time.Time   `db:"created_at"`
 	UpdatedAt        time.Time   `db:"updated_at"`
-	Successful       bool        `db:"successful"`
+	// NULL indicates successful transaction. We wanted a migration to be fast
+	// however Postgres performs a table rewrite if a new column has a default
+	// non-null value. We need `NULL` to indicate successful transaction because
+	// otherwise all existing transactions would be interpreted as failed until
+	// ledger is reingested.
+	Successful *bool `db:"successful"`
 }
 
 // TransactionsQ is a helper struct to aid in configuring queries that loads

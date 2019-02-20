@@ -100,6 +100,22 @@ func TestTransactionActions_Show_Failed(t *testing.T) {
 		ht.Assert.True(actual.Successful)
 	}
 
+	// NULL value
+	_, err := ht.HorizonSession().ExecRaw(
+		`UPDATE history_transactions SET successful = NULL WHERE transaction_hash = ?`,
+		"56e3216045d579bea40f2d35a09406de3a894ecb5be70dbda5ec9c0427a0d5a1",
+	)
+	ht.Require.NoError(err)
+
+	w = ht.Get("/transactions/56e3216045d579bea40f2d35a09406de3a894ecb5be70dbda5ec9c0427a0d5a1")
+
+	if ht.Assert.Equal(200, w.Code) {
+		var actual horizon.Transaction
+		err := json.Unmarshal(w.Body.Bytes(), &actual)
+		ht.Require.NoError(err)
+
+		ht.Assert.True(actual.Successful)
+	}
 }
 
 func TestTransactionActions_Index(t *testing.T) {
