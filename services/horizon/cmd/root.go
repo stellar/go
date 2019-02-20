@@ -24,10 +24,7 @@ var rootCmd = &cobra.Command{
 	Short: "client-facing api server for the stellar network",
 	Long:  "client-facing api server for the stellar network. It acts as the interface between Stellar Core and applications that want to access the Stellar network. It allows you to submit transactions to the network, check the status of accounts, subscribe to event streams and more.",
 	Run: func(cmd *cobra.Command, args []string) {
-		if len(args) < 1 {
-			cmd.Usage()
-			os.Exit(1)
-		}
+		initApp().Serve()
 	},
 }
 
