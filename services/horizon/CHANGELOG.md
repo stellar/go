@@ -10,8 +10,6 @@ bumps.  A breaking change will get clearly notified in this log.
 
 ### Breaking changes
 
-* horizon command now requires at least one argument. As a result, users will have to do `horizon serve` to launch horizon.
-
 ### Changes
 
 * Fixed a bug causing slice bounds out of range at offer-by-account endpoint during streaming.
