@@ -104,21 +104,24 @@ func (s *Stream) Err(err error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	// If we haven't sent an event, we should simply return the normal HTTP
-	// error because it means that we haven't sent the preamble.
-	if s.sent == 0 {
-		problem.Render(s.ctx, s.w, err)
-		return
-	}
+	rootErr := errors.Cause(err)
+	if rootErr != ErrRateLimited {
+		// If we haven't sent an event, we should simply return the normal HTTP
+		// error because it means that we haven't sent the preamble.
+		if s.sent == 0 {
+			problem.Render(s.ctx, s.w, err)
+			return
+		}
 
-	if errors.Cause(err) == sql.ErrNoRows {
-		err = errNoObject
-	}
+		if rootErr == sql.ErrNoRows {
+			err = errNoObject
+		}
 
-	_, ok := knownErrors[errors.Cause(err)]
-	if !ok {
-		log.Ctx(s.ctx).Error(err)
-		err = errBadStream
+		_, ok := knownErrors[rootErr]
+		if !ok {
+			log.Ctx(s.ctx).Error(err)
+			err = errBadStream
+		}
 	}
 
 	s.Init()
