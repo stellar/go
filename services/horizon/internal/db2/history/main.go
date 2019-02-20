@@ -227,16 +227,19 @@ type LedgersQ struct {
 // Operation is a row of data from the `history_operations` table
 type Operation struct {
 	TotalOrderID
-	TransactionID    int64             `db:"transaction_id"`
-	TransactionHash  string            `db:"transaction_hash"`
-	ApplicationOrder int32             `db:"application_order"`
-	Type             xdr.OperationType `db:"type"`
-	DetailsString    null.String       `db:"details"`
-	SourceAccount    string            `db:"source_account"`
+	TransactionID         int64             `db:"transaction_id"`
+	TransactionHash       string            `db:"transaction_hash"`
+	ApplicationOrder      int32             `db:"application_order"`
+	Type                  xdr.OperationType `db:"type"`
+	DetailsString         null.String       `db:"details"`
+	SourceAccount         string            `db:"source_account"`
+	TransactionSuccessful bool              `db:"transaction_successful"`
 }
 
 // OperationsQ is a helper struct to aid in configuring queries that loads
 // slices of Operation structs.
+// WARNING: returns successful and failed operations! Use `SuccessfulOnly`
+// to return successful transactions only.
 type OperationsQ struct {
 	Err     error
 	parent  *Q
@@ -310,10 +313,13 @@ type Transaction struct {
 	ValidBefore      null.Int    `db:"valid_before"`
 	CreatedAt        time.Time   `db:"created_at"`
 	UpdatedAt        time.Time   `db:"updated_at"`
+	Successful       bool        `db:"successful"`
 }
 
 // TransactionsQ is a helper struct to aid in configuring queries that loads
 // slices of transaction structs.
+// WARNING: returns successful and failed transactions! Use `SuccessfulOnly`
+// to return successful transactions only.
 type TransactionsQ struct {
 	Err    error
 	parent *Q

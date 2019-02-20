@@ -33,6 +33,7 @@ type TransactionIndexAction struct {
 	PagingParams  db2.PageQuery
 	Records       []history.Transaction
 	Page          hal.Page
+	IncludeFailed bool
 }
 
 // JSON is a method for actions.JSON
@@ -77,6 +78,7 @@ func (action *TransactionIndexAction) loadParams() {
 	action.AccountFilter = action.GetAddress("account_id")
 	action.LedgerFilter = action.GetInt32("ledger_id")
 	action.PagingParams = action.GetPageQuery()
+	action.IncludeFailed = action.GetBool("include_failed")
 }
 
 func (action *TransactionIndexAction) loadRecords() {
@@ -88,6 +90,10 @@ func (action *TransactionIndexAction) loadRecords() {
 		txs.ForAccount(action.AccountFilter)
 	case action.LedgerFilter > 0:
 		txs.ForLedger(action.LedgerFilter)
+	}
+
+	if !action.IncludeFailed {
+		txs.SuccessfulOnly()
 	}
 
 	action.Err = txs.Page(action.PagingParams).Select(&action.Records)

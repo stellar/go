@@ -365,6 +365,7 @@ type Transaction struct {
 	} `json:"_links"`
 	ID              string    `json:"id"`
 	PT              string    `json:"paging_token"`
+	Successful      bool      `json:"successful"`
 	Hash            string    `json:"hash"`
 	Ledger          int32     `json:"ledger"`
 	LedgerCloseTime time.Time `json:"created_at"`

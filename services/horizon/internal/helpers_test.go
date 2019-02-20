@@ -28,9 +28,10 @@ func NewTestConfig() Config {
 			MaxRate:  throttled.PerHour(1000),
 			MaxBurst: 100,
 		},
-		ConnectionTimeout: 55 * time.Second, // Default
-		LogLevel:          supportLog.InfoLevel,
-		NetworkPassphrase: network.TestNetworkPassphrase,
+		ConnectionTimeout:        55 * time.Second, // Default
+		LogLevel:                 supportLog.InfoLevel,
+		NetworkPassphrase:        network.TestNetworkPassphrase,
+		IngestFailedTransactions: true,
 	}
 }
 

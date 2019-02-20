@@ -224,6 +224,13 @@ var configOpts = []*support.ConfigOption{
 		Usage:       "causes this horizon process to ingest data from stellar-core into horizon's db",
 	},
 	&support.ConfigOption{
+		Name:        "ingest-failed-transactions",
+		ConfigKey:   &config.IngestFailedTransactions,
+		OptType:     types.Bool,
+		FlagDefault: false,
+		Usage:       "causes this horizon process to ingest failed transactions data",
+	},
+	&support.ConfigOption{
 		Name:        "history-retention-count",
 		ConfigKey:   &config.HistoryRetentionCount,
 		OptType:     types.Uint,

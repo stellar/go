@@ -21,6 +21,7 @@ func PopulateTransaction(
 ) {
 	dest.ID = row.TransactionHash
 	dest.PT = row.PagingToken()
+	dest.Successful = row.Successful
 	dest.Hash = row.TransactionHash
 	dest.Ledger = row.LedgerSequence
 	dest.LedgerCloseTime = row.LedgerCloseTime

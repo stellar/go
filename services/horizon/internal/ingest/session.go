@@ -427,13 +427,17 @@ func (is *Session) ingestOperation() {
 	}
 
 	is.ingestOperationParticipants()
-	is.ingestEffects()
-	is.ingestTrades()
-	if is.Config.EnableAssetStats && is.Err == nil {
-		is.Err = is.AssetStats.IngestOperation(
-			is.Cursor.Operation(),
-			&is.Cursor.Transaction().Envelope.Tx.SourceAccount,
-		)
+
+	if is.Cursor.Transaction().IsSuccessful() {
+		is.ingestEffects()
+		is.ingestTrades()
+
+		if is.Config.EnableAssetStats && is.Err == nil {
+			is.Err = is.AssetStats.IngestOperation(
+				is.Cursor.Operation(),
+				&is.Cursor.Transaction().Envelope.Tx.SourceAccount,
+			)
+		}
 	}
 
 	if is.Err != nil {
@@ -638,11 +642,12 @@ func (is *Session) ingestTransaction() {
 		return
 	}
 
-	// skip ingesting failed transactions
-	if !is.Cursor.Transaction().IsSuccessful() {
+	if !is.Config.IngestFailedTransactions && !is.Cursor.Transaction().IsSuccessful() {
 		return
 	}
+
 	is.Ingestion.Transaction(
+		is.Cursor.Transaction().IsSuccessful(),
 		is.Cursor.TransactionID(),
 		is.Cursor.Transaction(),
 		is.Cursor.TransactionFee(),
@@ -722,13 +727,16 @@ func (is *Session) operationDetails() map[string]interface{} {
 		details["from"] = source.Address()
 		details["to"] = op.Destination.Address()
 
-		result := c.OperationResult().MustPathPaymentResult()
-
 		details["amount"] = amount.String(op.DestAmount)
-		details["source_amount"] = amount.String(result.SendAmount())
+		details["source_amount"] = amount.String(0)
 		details["source_max"] = amount.String(op.SendMax)
 		is.assetDetails(details, op.DestAsset, "")
 		is.assetDetails(details, op.SendAsset, "source_")
+
+		if c.Transaction().IsSuccessful() {
+			result := c.OperationResult().MustPathPaymentResult()
+			details["source_amount"] = amount.String(result.SendAmount())
+		}
 
 		var path = make([]map[string]interface{}, len(op.Path))
 		for i := range op.Path {

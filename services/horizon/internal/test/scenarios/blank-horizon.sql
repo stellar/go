@@ -424,7 +424,8 @@ CREATE TABLE history_transactions (
     signatures character varying(96)[] DEFAULT '{}'::character varying[] NOT NULL,
     memo_type character varying DEFAULT 'none'::character varying NOT NULL,
     memo character varying,
-    time_bounds int8range
+    time_bounds int8range,
+    successful boolean DEFAULT true
 );
 
 
@@ -459,22 +460,23 @@ ALTER TABLE ONLY history_transaction_participants ALTER COLUMN id SET DEFAULT ne
 -- Data for Name: gorp_migrations; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-INSERT INTO gorp_migrations VALUES ('1_initial_schema.sql', '2019-01-31 18:27:26.713477+01');
-INSERT INTO gorp_migrations VALUES ('2_index_participants_by_toid.sql', '2019-01-31 18:27:26.726446+01');
-INSERT INTO gorp_migrations VALUES ('3_use_sequence_in_history_accounts.sql', '2019-01-31 18:27:26.730946+01');
-INSERT INTO gorp_migrations VALUES ('4_add_protocol_version.sql', '2019-01-31 18:27:26.741471+01');
-INSERT INTO gorp_migrations VALUES ('5_create_trades_table.sql', '2019-01-31 18:27:26.755266+01');
-INSERT INTO gorp_migrations VALUES ('6_create_assets_table.sql', '2019-01-31 18:27:26.761602+01');
-INSERT INTO gorp_migrations VALUES ('7_modify_trades_table.sql', '2019-01-31 18:27:26.775197+01');
-INSERT INTO gorp_migrations VALUES ('8_create_asset_stats_table.sql', '2019-01-31 18:27:26.782053+01');
-INSERT INTO gorp_migrations VALUES ('8_add_aggregators.sql', '2019-01-31 18:27:26.784662+01');
-INSERT INTO gorp_migrations VALUES ('9_add_header_xdr.sql', '2019-01-31 18:27:26.787483+01');
-INSERT INTO gorp_migrations VALUES ('10_add_trades_price.sql', '2019-01-31 18:27:26.790524+01');
-INSERT INTO gorp_migrations VALUES ('11_add_trades_account_index.sql', '2019-01-31 18:27:26.795202+01');
-INSERT INTO gorp_migrations VALUES ('12_asset_stats_amount_string.sql', '2019-01-31 18:27:26.801587+01');
-INSERT INTO gorp_migrations VALUES ('13_trade_offer_ids.sql', '2019-01-31 18:27:26.809634+01');
-INSERT INTO gorp_migrations VALUES ('14_fix_asset_toml_field.sql', '2019-01-31 18:27:26.811268+01');
-INSERT INTO gorp_migrations VALUES ('15_ledger_failed_txs.sql', '2019-01-31 18:27:26.81283+01');
+INSERT INTO gorp_migrations VALUES ('1_initial_schema.sql', '2019-02-19 17:47:23.817595+01');
+INSERT INTO gorp_migrations VALUES ('2_index_participants_by_toid.sql', '2019-02-19 17:47:23.829789+01');
+INSERT INTO gorp_migrations VALUES ('3_use_sequence_in_history_accounts.sql', '2019-02-19 17:47:23.83392+01');
+INSERT INTO gorp_migrations VALUES ('4_add_protocol_version.sql', '2019-02-19 17:47:23.842508+01');
+INSERT INTO gorp_migrations VALUES ('5_create_trades_table.sql', '2019-02-19 17:47:23.852404+01');
+INSERT INTO gorp_migrations VALUES ('6_create_assets_table.sql', '2019-02-19 17:47:23.860173+01');
+INSERT INTO gorp_migrations VALUES ('7_modify_trades_table.sql', '2019-02-19 17:47:23.872759+01');
+INSERT INTO gorp_migrations VALUES ('8_create_asset_stats_table.sql', '2019-02-19 17:47:23.878913+01');
+INSERT INTO gorp_migrations VALUES ('8_add_aggregators.sql', '2019-02-19 17:47:23.882101+01');
+INSERT INTO gorp_migrations VALUES ('9_add_header_xdr.sql', '2019-02-19 17:47:23.885346+01');
+INSERT INTO gorp_migrations VALUES ('10_add_trades_price.sql', '2019-02-19 17:47:23.888037+01');
+INSERT INTO gorp_migrations VALUES ('11_add_trades_account_index.sql', '2019-02-19 17:47:23.892008+01');
+INSERT INTO gorp_migrations VALUES ('12_asset_stats_amount_string.sql', '2019-02-19 17:47:23.89917+01');
+INSERT INTO gorp_migrations VALUES ('13_trade_offer_ids.sql', '2019-02-19 17:47:23.90389+01');
+INSERT INTO gorp_migrations VALUES ('14_fix_asset_toml_field.sql', '2019-02-19 17:47:23.905933+01');
+INSERT INTO gorp_migrations VALUES ('15_ledger_failed_txs.sql', '2019-02-19 17:47:23.907795+01');
+INSERT INTO gorp_migrations VALUES ('16_ingest_failed_transactions.sql', '2019-02-19 17:47:23.915262+01');
 
 
 --
