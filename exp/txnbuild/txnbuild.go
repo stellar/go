@@ -2,9 +2,12 @@ package txnbuild
 
 import (
 	"log"
+	"strconv"
 
 	"github.com/stellar/go/clients/horizon"
 	"github.com/stellar/go/network"
+	"github.com/stellar/go/support/errors"
+	"github.com/stellar/go/xdr"
 )
 
 // StellarNetwork ...
@@ -39,11 +42,44 @@ type CreateAccount struct {
 type Transaction struct {
 	SourceAccount horizon.Account
 	Operations    []Operation
+	TX            *xdr.Transaction
+	BaseFee       uint64
 }
 
 // Build ...
-func (tx *Transaction) Build() (Transaction, error) {
-	return *tx, nil
+func (tx *Transaction) Build() error {
+	// Skipped: Create TX struct
+
+	// Initialise TX (XDR) struct if needed
+	if tx.TX == nil {
+		tx.TX = &xdr.Transaction{}
+	}
+
+	// Skipped: Set network passphrase (in XDR?)
+
+	// Set account ID in TX
+	tx.TX.SourceAccount.SetAddress(tx.SourceAccount.ID)
+
+	// Set sequence number in TX
+	seqNum, err := seqNumFromAccount(tx.SourceAccount)
+	if err != nil {
+		return err
+	}
+	tx.TX.SeqNum = seqNum + 1
+
+	// Run through operations sequentially
+	// Create operation body
+
+	// TODO: Generalise, remove hard-coded inflation type
+	body, err := xdr.NewOperationBody(xdr.OperationTypeInflation, nil)
+	if err != nil {
+		return errors.Wrap(err, "Failed to create XDR")
+	}
+	// Append relevant operation to TX.operations
+	operation := xdr.Operation{Body: body}
+	tx.TX.Operations = append(tx.TX.Operations, operation)
+
+	return nil
 }
 
 // Sign ...
@@ -74,10 +110,10 @@ func ExampleCreateAccount(client *horizon.Client) (horizon.TransactionSuccess, e
 		Operations:    []Operation{createAccount},
 	}
 
-	txe, err := tx.Build()
+	err = tx.Build()
 	checkError(err)
 
-	txe, err = txe.Sign(secretSeed)
+	txe, err := tx.Sign(secretSeed)
 	checkError(err)
 
 	txeBase64, err := txe.Base64()
@@ -113,4 +149,14 @@ func printTransactionSuccess(resp horizon.TransactionSuccess) {
 	log.Println("Result:", resp.Result)
 	log.Println("Meta:", resp.Meta)
 	log.Println("")
+}
+
+func seqNumFromAccount(account horizon.Account) (xdr.SequenceNumber, error) {
+	seqNum, err := strconv.ParseUint(account.Sequence, 10, 64)
+
+	if err != nil {
+		return 0, errors.Wrap(err, "Failed to parse account sequence number")
+	}
+
+	return xdr.SequenceNumber(seqNum), nil
 }
