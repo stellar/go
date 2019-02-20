@@ -1,5 +1,8 @@
 package main
 
+// This is a file of useful experiments with the Go SDK, for reference
+// as the new SDK is implemented. It is not production code!
+
 import (
 	"fmt"
 	"io/ioutil"
@@ -14,6 +17,7 @@ import (
 type key struct {
 	Seed    string
 	Address string
+	Keypair keypair.KP
 }
 
 // createKeypair constructs a new keypair
@@ -120,7 +124,7 @@ func createNewAccount(sourceSeed string) (horizon.TransactionSuccess, *keypair.F
 	return resp, destinationKeypair, err
 }
 
-func sendLumens(source, destination, amount string) (horizon.TransactionSuccess, error) {
+func sendLumens(sourceSeed, sourceAddress, destination, amount string) (horizon.TransactionSuccess, error) {
 	// Make sure destination account exists
 	if _, err := horizon.DefaultTestNetClient.LoadAccount(destination); err != nil {
 		log.Fatal("Fatal error:", err)
@@ -130,7 +134,7 @@ func sendLumens(source, destination, amount string) (horizon.TransactionSuccess,
 
 	tx, err := build.Transaction(
 		build.TestNetwork,
-		build.SourceAccount{AddressOrSeed: source},
+		build.SourceAccount{AddressOrSeed: sourceAddress}, // No need to pass secret seed here!
 		build.AutoSequence{SequenceProvider: horizon.DefaultTestNetClient},
 		build.Payment(
 			build.Destination{AddressOrSeed: destination},
@@ -139,7 +143,7 @@ func sendLumens(source, destination, amount string) (horizon.TransactionSuccess,
 	)
 	checkError(err)
 
-	txe, err := tx.Sign(source)
+	txe, err := tx.Sign(sourceSeed)
 	checkError(err)
 
 	txeB64, err := txe.Base64()
@@ -162,13 +166,22 @@ func main() {
 		},
 	}
 
+	for i, k := range keys {
+		myKeypair, err := keypair.Parse(k.Seed)
+		checkError(err)
+		keys[i].Keypair = myKeypair
+	}
+
+	// log.Fatal("Keypair seed:", keys[0].Keypair.(*keypair.Full).Seed())
+
 	sourceSeed := keys[0].Seed
 	sourceAddress := keys[0].Address
 	// destinationSeed := keys[1].Seed
 	destinationAddress := keys[1].Address
 
 	// resp, destinationKeypair, err := createNewAccount(sourceSeed)
-	resp, err := sendLumens(sourceSeed, destinationAddress, "10")
+	// resp, err := sendLumens(sourceSeed, destinationAddress, "10")
+	resp, err := sendLumens(sourceSeed, sourceAddress, destinationAddress, "10")
 
 	// Check how we did
 	checkError(err)
