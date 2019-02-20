@@ -14,6 +14,7 @@ import (
 	"github.com/sebest/xff"
 	"github.com/stellar/go/services/horizon/internal/db2"
 	hProblem "github.com/stellar/go/services/horizon/internal/render/problem"
+	"github.com/stellar/go/services/horizon/internal/render/sse"
 	"github.com/stellar/go/services/horizon/internal/txsub/sequence"
 	"github.com/stellar/go/support/render/problem"
 	"github.com/throttled/throttled"
@@ -45,6 +46,7 @@ func initWeb(app *App) {
 	problem.RegisterError(db2.ErrInvalidCursor, problem.BadRequest)
 	problem.RegisterError(db2.ErrInvalidLimit, problem.BadRequest)
 	problem.RegisterError(db2.ErrInvalidOrder, problem.BadRequest)
+	problem.RegisterError(sse.ErrRateLimited, hProblem.RateLimitExceeded)
 }
 
 // initWebMiddleware installs the middleware stack used for horizon onto the
