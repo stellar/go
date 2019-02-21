@@ -61,3 +61,16 @@ func TestElderLedger(t *testing.T) {
 		tt.Assert.Equal(elder, int32(20))
 	}
 }
+
+func TestSchemaVersion8(t *testing.T) {
+	tt := test.Start(t).ScenarioWithoutHorizon("core_database_schema_version_8")
+	defer tt.Finish()
+	q := &Q{tt.CoreSession()}
+
+	var account Account
+	err := q.AccountByAddress(&account, "GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H")
+	if tt.Assert.NoError(err) {
+		tt.Assert.True(account.HomeDomain.Valid)
+		tt.Assert.Equal("stellar.org", account.HomeDomain.String)
+	}
+}
