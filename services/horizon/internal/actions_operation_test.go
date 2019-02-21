@@ -144,6 +144,23 @@ func TestOperationActions_Show_Failed(t *testing.T) {
 		}
 	}
 
+	// NULL value
+	_, err := ht.HorizonSession().ExecRaw(
+		`UPDATE history_transactions SET successful = NULL WHERE transaction_hash = ?`,
+		"56e3216045d579bea40f2d35a09406de3a894ecb5be70dbda5ec9c0427a0d5a1",
+	)
+	ht.Require.NoError(err)
+
+	w = ht.Get("/transactions/56e3216045d579bea40f2d35a09406de3a894ecb5be70dbda5ec9c0427a0d5a1/operations")
+
+	if ht.Assert.Equal(200, w.Code) {
+		records := []operations.Base{}
+		ht.UnmarshalPage(w.Body, &records)
+
+		for _, op := range records {
+			ht.Assert.True(op.TransactionSuccessful)
+		}
+	}
 }
 
 func TestOperationActions_Show(t *testing.T) {
