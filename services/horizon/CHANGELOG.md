@@ -10,7 +10,7 @@ bumps.  A breaking change will get clearly notified in this log.
 
 ### Breaking changes
 
-* Since this Horizon version no longer supports Core <10.0.0. Horizon can still ingest version <10 ledgers.
+* This Horizon version no longer supports Core <10.0.0. Horizon can still ingest version <10 ledgers.
 
 ### Changes
 
