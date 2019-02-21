@@ -3,6 +3,8 @@
 package core
 
 import (
+	"strconv"
+
 	"github.com/guregu/null"
 	"github.com/stellar/go/strkey"
 	"github.com/stellar/go/support/db"
@@ -207,4 +209,15 @@ func (q *Q) ElderLedger(dest *int32) error {
 // LatestLedger loads the latest known ledger
 func (q *Q) LatestLedger(dest interface{}) error {
 	return q.GetRaw(dest, `SELECT COALESCE(MAX(ledgerseq), 0) FROM ledgerheaders`)
+}
+
+// SchemaVersion returns Core DB schema version
+func (q *Q) SchemaVersion() (int, error) {
+	var version string
+	err := q.GetRaw(&version, `SELECT state FROM storestate WHERE statename = 'databaseschema'`)
+	if err != nil {
+		return 0, err
+	}
+
+	return strconv.Atoi(version)
 }
