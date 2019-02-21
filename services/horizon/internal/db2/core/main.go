@@ -8,6 +8,7 @@ import (
 	"github.com/guregu/null"
 	"github.com/stellar/go/strkey"
 	"github.com/stellar/go/support/db"
+	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
 )
 
@@ -216,7 +217,7 @@ func (q *Q) SchemaVersion() (int, error) {
 	var version string
 	err := q.GetRaw(&version, `SELECT state FROM storestate WHERE statename = 'databaseschema'`)
 	if err != nil {
-		return 0, err
+		return 0, errors.Wrap(err, "Error getting 'databaseschema'")
 	}
 
 	return strconv.Atoi(version)

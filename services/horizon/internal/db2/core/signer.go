@@ -2,6 +2,8 @@ package core
 
 import (
 	sq "github.com/Masterminds/squirrel"
+	"github.com/stellar/go/support/errors"
+	"github.com/stellar/go/xdr"
 )
 
 // SignersByAddress loads all signer rows for `addy`
@@ -12,13 +14,30 @@ func (q *Q) SignersByAddress(dest interface{}, addy string) error {
 	}
 
 	if schemaVersion >= 9 {
-		result := struct {
-			signers string `db:"signers"`
-		}{}
+		var signersXDRString string
 		sql := selectSignerVersion9.Where("accountid = ?", addy)
-		return q.Select(&result, sql)
+		err2 := q.Get(&signersXDRString, sql)
+		if err2 != nil {
+			return err2
+		}
 
-		// TODO xdr decode signers
+		var signersXDR []xdr.Signer
+		err2 = xdr.SafeUnmarshalBase64(signersXDRString, &signersXDR)
+		if err2 != nil {
+			return errors.Wrap(err2, "Error decoding []xdr.Signer")
+		}
+
+		signers := make([]Signer, 0, len(signersXDR))
+		for _, signer := range signersXDR {
+			signers = append(signers, Signer{
+				Accountid: addy,
+				Publickey: signer.Key.Address(),
+				Weight:    int32(signer.Weight),
+			})
+		}
+
+		*dest.(*[]Signer) = signers
+		return nil
 	} else {
 		sql := selectSigner.Where("accountid = ?", addy)
 		return q.Select(dest, sql)
