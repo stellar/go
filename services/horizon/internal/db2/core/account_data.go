@@ -20,26 +20,25 @@ func (q *Q) AccountDataByKey(dest *AccountData, addy string, key string) error {
 		return err
 	}
 
+	queryKey := key
 	if schemaVersion >= 9 {
 		// Since schema version 9, keys are base64 encoded.
-		key = base64.StdEncoding.EncodeToString([]byte(key))
+		queryKey = base64.StdEncoding.EncodeToString([]byte(key))
 	}
 
 	sql := selectAccountData.Limit(1).
 		Where("accountid = ?", addy).
-		Where("dataname = ?", key)
+		Where("dataname = ?", queryKey)
 
 	err = q.Get(dest, sql)
 	if err != nil {
 		return err
 	}
 
-	decoded, err := base64.StdEncoding.DecodeString(dest.Key)
-	if err != nil {
-		return errors.Wrap(err, fmt.Sprintf("Error decoding data entry: %s", dest.Key))
+	if schemaVersion >= 9 {
+		dest.Key = key
 	}
 
-	dest.Key = string(decoded)
 	return nil
 }
 
