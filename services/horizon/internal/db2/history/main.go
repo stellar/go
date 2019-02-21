@@ -227,13 +227,14 @@ type LedgersQ struct {
 // Operation is a row of data from the `history_operations` table
 type Operation struct {
 	TotalOrderID
-	TransactionID         int64             `db:"transaction_id"`
-	TransactionHash       string            `db:"transaction_hash"`
-	ApplicationOrder      int32             `db:"application_order"`
-	Type                  xdr.OperationType `db:"type"`
-	DetailsString         null.String       `db:"details"`
-	SourceAccount         string            `db:"source_account"`
-	TransactionSuccessful bool              `db:"transaction_successful"`
+	TransactionID    int64             `db:"transaction_id"`
+	TransactionHash  string            `db:"transaction_hash"`
+	ApplicationOrder int32             `db:"application_order"`
+	Type             xdr.OperationType `db:"type"`
+	DetailsString    null.String       `db:"details"`
+	SourceAccount    string            `db:"source_account"`
+	// Check db2/history.Transaction.Successful field comment for more information.
+	TransactionSuccessful *bool `db:"transaction_successful"`
 }
 
 // OperationsQ is a helper struct to aid in configuring queries that loads
@@ -313,7 +314,12 @@ type Transaction struct {
 	ValidBefore      null.Int    `db:"valid_before"`
 	CreatedAt        time.Time   `db:"created_at"`
 	UpdatedAt        time.Time   `db:"updated_at"`
-	Successful       bool        `db:"successful"`
+	// NULL indicates successful transaction. We wanted a migration to be fast
+	// however Postgres performs a table rewrite if a new column has a default
+	// non-null value. We need `NULL` to indicate successful transaction because
+	// otherwise all existing transactions would be interpreted as failed until
+	// ledger is reingested.
+	Successful *bool `db:"successful"`
 }
 
 // TransactionsQ is a helper struct to aid in configuring queries that loads

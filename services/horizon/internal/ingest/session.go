@@ -646,12 +646,16 @@ func (is *Session) ingestTransaction() {
 		return
 	}
 
-	is.Ingestion.Transaction(
+	is.Err = is.Ingestion.Transaction(
 		is.Cursor.Transaction().IsSuccessful(),
 		is.Cursor.TransactionID(),
 		is.Cursor.Transaction(),
 		is.Cursor.TransactionFee(),
 	)
+
+	if is.Err != nil {
+		return
+	}
 
 	for is.Cursor.NextOp() {
 		is.ingestOperation()

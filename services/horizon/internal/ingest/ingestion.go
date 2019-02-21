@@ -312,11 +312,11 @@ func (ingest *Ingestion) Transaction(
 	id int64,
 	tx *core.Transaction,
 	fee *core.TransactionFee,
-) {
+) error {
 	// Enquote empty signatures
 	signatures := tx.Base64Signatures()
 
-	ingest.builders[TransactionsTableName].Values(
+	return ingest.builders[TransactionsTableName].Values(
 		id,
 		tx.TransactionHash,
 		tx.LedgerSequence,

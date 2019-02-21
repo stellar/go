@@ -13,6 +13,7 @@ import (
 	"github.com/stellar/go/services/horizon/internal/resourceadapter"
 	"github.com/stellar/go/services/horizon/internal/toid"
 	"github.com/stellar/go/support/render/hal"
+	supportProblem "github.com/stellar/go/support/render/problem"
 )
 
 // This file contains the actions:
@@ -97,6 +98,13 @@ func (action *OperationIndexAction) loadParams() {
 	action.TransactionFilter = action.GetString("tx_id")
 	action.PagingParams = action.GetPageQuery()
 	action.IncludeFailed = action.GetBool("include_failed")
+
+	if action.IncludeFailed == true && !action.App.config.IngestFailedTransactions {
+		err := errors.New("`include_failed` parameter is unavailable when Horizon is not ingesting failed " +
+			"transactions. Set `INGEST_FAILED_TRANSACTIONS=true` to start ingesting them.")
+		action.Err = supportProblem.MakeInvalidFieldProblem("include_failed", err)
+		return
+	}
 }
 
 func (action *OperationIndexAction) loadRecords() {
