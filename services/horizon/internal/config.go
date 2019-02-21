@@ -15,15 +15,19 @@ type Config struct {
 	StellarCoreDatabaseURL string
 	StellarCoreURL         string
 	Port                   uint
-	MaxDBConnections       int
-	SSEUpdateFrequency     time.Duration
-	ConnectionTimeout      time.Duration
-	RateQuota              *throttled.RateQuota
-	RateLimitRedisKey      string
-	RedisURL               string
-	FriendbotURL           *url.URL
-	LogLevel               logrus.Level
-	LogFile                string
+	// Database connection pool configuration
+	HorizonDBMaxOpenConnections int
+	HorizonDBMaxIdleConnections int
+	CoreDBMaxOpenConnections    int
+	CoreDBMaxIdleConnections    int
+	SSEUpdateFrequency          time.Duration
+	ConnectionTimeout           time.Duration
+	RateQuota                   *throttled.RateQuota
+	RateLimitRedisKey           string
+	RedisURL                    string
+	FriendbotURL                *url.URL
+	LogLevel                    logrus.Level
+	LogFile                     string
 	// MaxPathLength is the maximum length of the path returned by `/paths` endpoint.
 	MaxPathLength     uint
 	NetworkPassphrase string
