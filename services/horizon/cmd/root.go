@@ -24,8 +24,7 @@ var rootCmd = &cobra.Command{
 	Short: "client-facing api server for the stellar network",
 	Long:  "client-facing api server for the stellar network",
 	Run: func(cmd *cobra.Command, args []string) {
-		app := initApp()
-		app.Serve()
+		initApp().Serve()
 	},
 }
 

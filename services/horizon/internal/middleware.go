@@ -126,7 +126,7 @@ func logEndOfRequest(ctx context.Context, r *http.Request, duration time.Duratio
 		"ip_port":        r.RemoteAddr,
 		"method":         r.Method,
 		"path":           r.URL.String(),
-		"route":          chi.RouteContext(r.Context()).RoutePattern(),
+		"route":          routePattern,
 		"status":         mw.Status(),
 		"streaming":      streaming,
 	}).Info("Finished request")
