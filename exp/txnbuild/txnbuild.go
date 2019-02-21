@@ -44,6 +44,7 @@ type Transaction struct {
 	Operations    []Operation
 	TX            *xdr.Transaction
 	BaseFee       uint64
+	Envelope      *xdr.TransactionEnvelope
 }
 
 // Build ...
@@ -67,7 +68,7 @@ func (tx *Transaction) Build() error {
 	}
 	tx.TX.SeqNum = seqNum + 1
 
-	// Run through operations sequentially
+	// TODO: Loop through operations sequentially
 	// Create operation body
 
 	// TODO: Generalise, remove hard-coded inflation type
@@ -84,6 +85,17 @@ func (tx *Transaction) Build() error {
 
 // Sign ...
 func (tx *Transaction) Sign(seed string) (Transaction, error) {
+	// Initialise transaction envelope
+	if tx.Envelope == nil {
+		tx.Envelope = &xdr.TransactionEnvelope{}
+	}
+	// TODO: Next steps:
+	// 1) Untangle the connections between EnvelopeBuilder and TransactionBuilder
+	// 2) Determine what needs to be new, what can be kept
+
+	// Hash the transaction
+	// Sign the hash
+	// Append the signature to the envelope
 	return *tx, nil
 }
 
