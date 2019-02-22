@@ -51,10 +51,7 @@ func (action *AccountShowAction) loadParams() {
 }
 
 func (action *AccountShowAction) loadRecord() {
-	app := AppFromContext(action.R.Context())
-	protocolVersion := app.coreSupportedProtocolVersion
-
-	action.Err = action.CoreQ().AccountByAddress(&action.CoreRecord, action.Address, protocolVersion)
+	action.Err = action.CoreQ().AccountByAddress(&action.CoreRecord, action.Address)
 	if action.Err != nil {
 		return
 	}
@@ -69,7 +66,7 @@ func (action *AccountShowAction) loadRecord() {
 		return
 	}
 
-	action.Err = action.CoreQ().TrustlinesByAddress(&action.CoreTrustlines, action.Address, protocolVersion)
+	action.Err = action.CoreQ().TrustlinesByAddress(&action.CoreTrustlines, action.Address)
 	if action.Err != nil {
 		return
 	}

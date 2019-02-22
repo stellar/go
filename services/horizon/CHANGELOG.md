@@ -10,6 +10,8 @@ bumps.  A breaking change will get clearly notified in this log.
 
 ### Breaking changes
 
+* This Horizon version no longer supports Core <10.0.0. Horizon can still ingest version <10 ledgers.
+
 ### Changes
 
 * Fixed a bug causing slice bounds out of range at offer-by-account endpoint during streaming.

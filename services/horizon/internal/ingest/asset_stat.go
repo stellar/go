@@ -241,7 +241,7 @@ func statAccountInfo(coreSession *db.Session, accountID string) (int8, string, e
 	var account core.Account
 	// We don't need liabilities data here so let's use the old V9 query
 	coreQ := &core.Q{Session: coreSession}
-	err := coreQ.AccountByAddress(&account, accountID, 9)
+	err := coreQ.AccountByAddress(&account, accountID)
 	if err != nil {
 		// It is possible that issuer account has been deleted but issued assets
 		// are still in circulation. In such case we return default values in 0.15.x

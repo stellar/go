@@ -1,7 +1,10 @@
 package core
 
 import (
+	"encoding/base64"
+
 	sq "github.com/Masterminds/squirrel"
+	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
 )
 
@@ -24,18 +27,28 @@ func (ac Account) IsAuthImmutable() bool {
 }
 
 // AccountByAddress loads a row from `accounts`, by address
-func (q *Q) AccountByAddress(dest interface{}, addy string, protocolVersion int32) error {
-	var selectQuery sq.SelectBuilder
-
-	if protocolVersion >= 10 {
-		selectQuery = selectAccount
-	} else {
-		selectQuery = selectAccountPreV10
+func (q *Q) AccountByAddress(dest *Account, addy string) error {
+	sql := selectAccount.Limit(1).Where("accountid = ?", addy)
+	err := q.Get(dest, sql)
+	if err != nil {
+		return err
 	}
 
-	sql := selectQuery.Limit(1).Where("accountid = ?", addy)
+	schemaVersion, err := q.SchemaVersion()
+	if err != nil {
+		return err
+	}
 
-	return q.Get(dest, sql)
+	if schemaVersion >= 9 {
+		// Since schema version 9, home_domain is base64 encoded.
+		decoded, err := base64.StdEncoding.DecodeString(dest.HomeDomain.String)
+		if err != nil {
+			return errors.Wrap(err, "Unable to base64 decode HomeDomain")
+		}
+		dest.HomeDomain.String = string(decoded)
+	}
+
+	return nil
 }
 
 // SequencesForAddresses loads the current sequence number for every accountid
@@ -86,15 +99,4 @@ var selectAccount = sq.Select(
 	// `Invalid value for xdr.Int64`
 	"coalesce(a.buyingliabilities, 0) as buyingliabilities",
 	"coalesce(a.sellingliabilities, 0) as sellingliabilities",
-).From("accounts a")
-
-var selectAccountPreV10 = sq.Select(
-	"a.accountid",
-	"a.balance",
-	"a.seqnum",
-	"a.numsubentries",
-	"a.inflationdest",
-	"a.homedomain",
-	"a.thresholds",
-	"a.flags",
 ).From("accounts a")
