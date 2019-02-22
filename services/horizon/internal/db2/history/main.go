@@ -159,8 +159,8 @@ type EffectsQ struct {
 // `history_effects` table.
 type EffectType int
 
-// FeeStats is a row of data from the min, mode aggregate functions over the
-// `history_ledgers` table.
+// FeeStats is a row of data from the min, mode, percentile aggregate functions over the
+// `history_transactions` table.
 type FeeStats struct {
 	Min  null.Int `db:"min"`
 	Mode null.Int `db:"mode"`
@@ -205,6 +205,11 @@ type Ledger struct {
 	MaxTxSetSize               int32       `db:"max_tx_set_size"`
 	ProtocolVersion            int32       `db:"protocol_version"`
 	LedgerHeaderXDR            null.String `db:"ledger_header"`
+}
+
+// LedgerCapacityUsageStats contains ledgers fullness stats.
+type LedgerCapacityUsageStats struct {
+	CapacityUsage null.String `db:"ledger_capacity_usage"`
 }
 
 // LedgerCache is a helper struct to load ledger data related to a batch of

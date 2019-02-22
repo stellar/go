@@ -8,21 +8,22 @@ import (
 func TestOperationFeeTestsActions_Show(t *testing.T) {
 
 	testCases := []struct {
-		scenario    string
-		lastbasefee string
-		min         string
-		mode        string
-		p10         string
-		p20         string
-		p30         string
-		p40         string
-		p50         string
-		p60         string
-		p70         string
-		p80         string
-		p90         string
-		p95         string
-		p99         string
+		scenario            string
+		lastbasefee         string
+		min                 string
+		mode                string
+		p10                 string
+		p20                 string
+		p30                 string
+		p40                 string
+		p50                 string
+		p60                 string
+		p70                 string
+		p80                 string
+		p90                 string
+		p95                 string
+		p99                 string
+		ledgerCapacityUsage string
 	}{
 		// happy path
 		{
@@ -41,6 +42,7 @@ func TestOperationFeeTestsActions_Show(t *testing.T) {
 			"100",
 			"100",
 			"100",
+			"0.04",
 		},
 		// no transactions in last 5 ledgers
 		{
@@ -59,6 +61,7 @@ func TestOperationFeeTestsActions_Show(t *testing.T) {
 			"100",
 			"100",
 			"100",
+			"0.00",
 		},
 		// transactions with varying fees
 		{
@@ -77,6 +80,7 @@ func TestOperationFeeTestsActions_Show(t *testing.T) {
 			"400",
 			"400",
 			"400",
+			"0.03",
 		},
 	}
 
@@ -84,6 +88,10 @@ func TestOperationFeeTestsActions_Show(t *testing.T) {
 		t.Run("/operation_fee_stats", func(t *testing.T) {
 			ht := StartHTTPTest(t, kase.scenario)
 			defer ht.Finish()
+
+			// Update max_tx_set_size on ledgers
+			_, err := ht.HorizonSession().ExecRaw("UPDATE history_ledgers SET max_tx_set_size = 50")
+			ht.Require.NoError(err)
 
 			ht.App.UpdateOperationFeeStatsState()
 
@@ -107,6 +115,7 @@ func TestOperationFeeTestsActions_Show(t *testing.T) {
 				ht.Assert.Equal(kase.p90, result["p90_accepted_fee"], "p90")
 				ht.Assert.Equal(kase.p95, result["p95_accepted_fee"], "p95")
 				ht.Assert.Equal(kase.p99, result["p99_accepted_fee"], "p99")
+				ht.Assert.Equal(kase.ledgerCapacityUsage, result["ledger_capacity_usage"], "ledger_capacity_usage")
 			}
 		})
 	}

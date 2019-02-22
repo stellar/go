@@ -16,30 +16,6 @@ func (q *Q) TransactionByHash(dest interface{}, hash string) error {
 	return q.Get(dest, sql)
 }
 
-// TransactionsForLastXLedgers filters the query to only the last X ledgers worth of transactions.
-// Currently, we hard code the query to return the last 5 ledgers worth of transactions. In the
-// future this may be configurable.
-func (q *Q) TransactionsForLastXLedgers(currentSeq int32, dest interface{}) error {
-	return q.GetRaw(dest, `
-		SELECT
-			ceil(min(fee_paid/operation_count)) AS "min",
-			ceil(mode() within group (order by fee_paid/operation_count)) AS "mode",
-			ceil(percentile_cont(0.10) WITHIN GROUP (ORDER BY fee_paid/operation_count)) AS "p10",
-			ceil(percentile_cont(0.20) WITHIN GROUP (ORDER BY fee_paid/operation_count)) AS "p20",
-			ceil(percentile_cont(0.30) WITHIN GROUP (ORDER BY fee_paid/operation_count)) AS "p30",
-			ceil(percentile_cont(0.40) WITHIN GROUP (ORDER BY fee_paid/operation_count)) AS "p40",
-			ceil(percentile_cont(0.50) WITHIN GROUP (ORDER BY fee_paid/operation_count)) AS "p50",
-			ceil(percentile_cont(0.60) WITHIN GROUP (ORDER BY fee_paid/operation_count)) AS "p60",
-			ceil(percentile_cont(0.70) WITHIN GROUP (ORDER BY fee_paid/operation_count)) AS "p70",
-			ceil(percentile_cont(0.80) WITHIN GROUP (ORDER BY fee_paid/operation_count)) AS "p80",
-			ceil(percentile_cont(0.90) WITHIN GROUP (ORDER BY fee_paid/operation_count)) AS "p90",
-			ceil(percentile_cont(0.95) WITHIN GROUP (ORDER BY fee_paid/operation_count)) AS "p95",
-			ceil(percentile_cont(0.99) WITHIN GROUP (ORDER BY fee_paid/operation_count)) AS "p99"
-		FROM history_transactions
-		WHERE ledger_sequence > $1 AND ledger_sequence <= $2
-	`, currentSeq-5, currentSeq)
-}
-
 // Transactions provides a helper to filter rows from the `history_transactions`
 // table with pre-defined filters.  See `TransactionsQ` methods for the
 // available filters.
