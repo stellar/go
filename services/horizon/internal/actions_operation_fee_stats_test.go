@@ -6,7 +6,6 @@ import (
 )
 
 func TestOperationFeeTestsActions_Show(t *testing.T) {
-
 	testCases := []struct {
 		scenario            string
 		lastbasefee         string

@@ -44,10 +44,10 @@ func (q *Q) LedgersBySequence(dest interface{}, seqs ...int32) error {
 	return q.Select(dest, sql)
 }
 
-// LedgerCapacityUsageStatsForXLedgers returns ledger capacity stats for the last 5 ledgers.
-// Currently, we hard code the query to return the last 5 ledgers. In the future this
-// may be configurable.
-func (q *Q) LedgerCapacityUsageStatsForXLedgers(currentSeq int32, dest *LedgerCapacityUsageStats) error {
+// LedgerCapacityUsageStats returns ledger capacity stats for the last 5 ledgers.
+// Currently, we hard code the query to return the last 5 ledgers.
+// TODO: make the number of ledgers configurable.
+func (q *Q) LedgerCapacityUsageStats(currentSeq int32, dest *LedgerCapacityUsageStats) error {
 	return q.GetRaw(dest, `
 		SELECT
 			round(avg(

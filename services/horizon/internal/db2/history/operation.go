@@ -30,10 +30,10 @@ func (r *Operation) UnmarshalDetails(dest interface{}) error {
 	return err
 }
 
-// OperationFeeStatsForXLedgers returns operation fee stats for the last 5 ledgers.
-// Currently, we hard code the query to return the last 5 ledgers worth of transactions. In the
-// future this may be configurable.
-func (q *Q) OperationFeeStatsForXLedgers(currentSeq int32, dest *FeeStats) error {
+// OperationFeeStats returns operation fee stats for the last 5 ledgers.
+// Currently, we hard code the query to return the last 5 ledgers worth of transactions.
+// TODO: make the number of ledgers configurable.
+func (q *Q) OperationFeeStats(currentSeq int32, dest *FeeStats) error {
 	return q.GetRaw(dest, `
 		SELECT
 			ceil(min(fee_paid/operation_count)) AS "min",

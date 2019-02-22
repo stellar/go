@@ -24,6 +24,7 @@ import (
 	"github.com/stellar/go/services/horizon/internal/txsub"
 	"github.com/stellar/go/support/app"
 	"github.com/stellar/go/support/db"
+	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/support/log"
 	"github.com/throttled/throttled"
 	"golang.org/x/net/http2"
@@ -195,20 +196,30 @@ Failed:
 
 }
 
-// UpdateOperationFeeStatsState triggers a refresh of several operation fee metrics
+// UpdateOperationFeeStatsState triggers a refresh of several operation fee metrics.
 func (a *App) UpdateOperationFeeStatsState() {
-	var err error
-	var next operationfeestats.State
+	var (
+		next          operationfeestats.State
+		latest        history.LatestLedger
+		feeStats      history.FeeStats
+		capacityStats history.LedgerCapacityUsageStats
+	)
 
-	var latest history.LatestLedger
-	var feeStats history.FeeStats
-	var capacityStats history.LedgerCapacityUsageStats
+	logErr := func(err error, msg string) {
+		// If DB is empty ignore the error
+		if errors.Cause(err) == sql.ErrNoRows {
+			return
+		}
+
+		log.WithStack(err).WithField("err", err.Error()).Error(msg)
+	}
 
 	cur := operationfeestats.CurrentState()
 
-	err = a.HistoryQ().LatestLedgerBaseFeeAndSequence(&latest)
+	err := a.HistoryQ().LatestLedgerBaseFeeAndSequence(&latest)
 	if err != nil {
-		goto Failed
+		logErr(err, "failed to load the latest known ledger's base fee and sequence number")
+		return
 	}
 
 	// finish early if no new ledgers
@@ -219,19 +230,21 @@ func (a *App) UpdateOperationFeeStatsState() {
 	next.LastBaseFee = int64(latest.BaseFee)
 	next.LastLedger = int64(latest.Sequence)
 
-	err = a.HistoryQ().OperationFeeStatsForXLedgers(latest.Sequence, &feeStats)
+	err = a.HistoryQ().OperationFeeStats(latest.Sequence, &feeStats)
 	if err != nil {
-		goto Failed
+		logErr(err, "failed to load operation fee stats")
+		return
 	}
 
-	err = a.HistoryQ().LedgerCapacityUsageStatsForXLedgers(latest.Sequence, &capacityStats)
+	err = a.HistoryQ().LedgerCapacityUsageStats(latest.Sequence, &capacityStats)
 	if err != nil {
-		goto Failed
+		logErr(err, "failed to load ledger capacity usage stats")
+		return
 	}
 
 	next.LedgerCapacityUsage = capacityStats.CapacityUsage.String
 
-	// if no transactions in last X ledgers, return
+	// if no transactions in last 5 ledgers, return
 	// latest ledger's base fee for all
 	if !feeStats.Mode.Valid && !feeStats.Min.Valid {
 		next.FeeMin = next.LastBaseFee
@@ -264,18 +277,6 @@ func (a *App) UpdateOperationFeeStatsState() {
 	}
 
 	operationfeestats.SetState(next)
-	return
-
-Failed:
-	// If DB is empty ignore the error
-	if err == sql.ErrNoRows {
-		return
-	}
-
-	log.WithStack(err).
-		WithField("err", err.Error()).
-		Error("failed to load operation fee stats state")
-
 }
 
 // UpdateStellarCoreInfo updates the value of coreVersion,
