@@ -29,7 +29,7 @@ func WithChiRequestID(ctx context.Context) context.Context {
 	return WithRequestID(ctx, reqid)
 }
 
-// RequestID returns the request id carries in the context, if any. It returns
+// RequestID returns the request id carried in the context, if any. It returns
 // "" if no request id has been set or the context is nil.
 func RequestID(ctx context.Context) string {
 	if ctx == nil {
@@ -45,7 +45,7 @@ func WithAccountID(ctx context.Context, accountID string) context.Context {
 	return context.WithValue(ctx, accKey, accountID)
 }
 
-// AccountID returns the account id carries in the context, if any. It returns
+// AccountID returns the account id carried in the context, if any. It returns
 // "" if no account id has been set or the context is nil.
 func AccountID(ctx context.Context) string {
 	if ctx == nil {
