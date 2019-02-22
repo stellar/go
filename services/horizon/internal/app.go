@@ -202,6 +202,7 @@ func (a *App) UpdateOperationFeeStatsState() {
 
 	var latest history.LatestLedger
 	var feeStats history.FeeStats
+	var capacityStats history.LedgerCapacityUsageStats
 
 	cur := operationfeestats.CurrentState()
 
@@ -218,41 +219,48 @@ func (a *App) UpdateOperationFeeStatsState() {
 	next.LastBaseFee = int64(latest.BaseFee)
 	next.LastLedger = int64(latest.Sequence)
 
-	err = a.HistoryQ().TransactionsForLastXLedgers(latest.Sequence, &feeStats)
+	err = a.HistoryQ().OperationFeeStatsForXLedgers(latest.Sequence, &feeStats)
 	if err != nil {
 		goto Failed
 	}
 
+	err = a.HistoryQ().LedgerCapacityUsageStatsForXLedgers(latest.Sequence, &capacityStats)
+	if err != nil {
+		goto Failed
+	}
+
+	next.LedgerCapacityUsage = capacityStats.CapacityUsage.String
+
 	// if no transactions in last X ledgers, return
 	// latest ledger's base fee for all
 	if !feeStats.Mode.Valid && !feeStats.Min.Valid {
-		next.Min = next.LastBaseFee
-		next.Mode = next.LastBaseFee
-		next.P10 = next.LastBaseFee
-		next.P20 = next.LastBaseFee
-		next.P30 = next.LastBaseFee
-		next.P40 = next.LastBaseFee
-		next.P50 = next.LastBaseFee
-		next.P60 = next.LastBaseFee
-		next.P70 = next.LastBaseFee
-		next.P80 = next.LastBaseFee
-		next.P90 = next.LastBaseFee
-		next.P95 = next.LastBaseFee
-		next.P99 = next.LastBaseFee
+		next.FeeMin = next.LastBaseFee
+		next.FeeMode = next.LastBaseFee
+		next.FeeP10 = next.LastBaseFee
+		next.FeeP20 = next.LastBaseFee
+		next.FeeP30 = next.LastBaseFee
+		next.FeeP40 = next.LastBaseFee
+		next.FeeP50 = next.LastBaseFee
+		next.FeeP60 = next.LastBaseFee
+		next.FeeP70 = next.LastBaseFee
+		next.FeeP80 = next.LastBaseFee
+		next.FeeP90 = next.LastBaseFee
+		next.FeeP95 = next.LastBaseFee
+		next.FeeP99 = next.LastBaseFee
 	} else {
-		next.Min = feeStats.Min.Int64
-		next.Mode = feeStats.Mode.Int64
-		next.P10 = feeStats.P10.Int64
-		next.P20 = feeStats.P20.Int64
-		next.P30 = feeStats.P30.Int64
-		next.P40 = feeStats.P40.Int64
-		next.P50 = feeStats.P50.Int64
-		next.P60 = feeStats.P60.Int64
-		next.P70 = feeStats.P70.Int64
-		next.P80 = feeStats.P80.Int64
-		next.P90 = feeStats.P90.Int64
-		next.P95 = feeStats.P95.Int64
-		next.P99 = feeStats.P99.Int64
+		next.FeeMin = feeStats.Min.Int64
+		next.FeeMode = feeStats.Mode.Int64
+		next.FeeP10 = feeStats.P10.Int64
+		next.FeeP20 = feeStats.P20.Int64
+		next.FeeP30 = feeStats.P30.Int64
+		next.FeeP40 = feeStats.P40.Int64
+		next.FeeP50 = feeStats.P50.Int64
+		next.FeeP60 = feeStats.P60.Int64
+		next.FeeP70 = feeStats.P70.Int64
+		next.FeeP80 = feeStats.P80.Int64
+		next.FeeP90 = feeStats.P90.Int64
+		next.FeeP95 = feeStats.P95.Int64
+		next.FeeP99 = feeStats.P99.Int64
 	}
 
 	operationfeestats.SetState(next)

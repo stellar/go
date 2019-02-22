@@ -8,6 +8,10 @@ bumps.  A breaking change will get clearly notified in this log.
 
 ## Unreleased
 
+### Deprecations
+
+* `/operation_fee_stats` is deprecated in favour of `/fee_stats`. Will be removed in v0.18.0.
+
 ### Breaking changes
 
 * This Horizon version no longer supports Core <10.0.0. Horizon can still ingest version <10 ledgers.

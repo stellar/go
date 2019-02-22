@@ -12,21 +12,22 @@ import (
 // State represents a snapshot of horizon's view of the state of operation fee's
 // on the network.
 type State struct {
-	Min         int64
-	Mode        int64
-	P10         int64
-	P20         int64
-	P30         int64
-	P40         int64
-	P50         int64
-	P60         int64
-	P70         int64
-	P80         int64
-	P90         int64
-	P95         int64
-	P99         int64
-	LastBaseFee int64
-	LastLedger  int64
+	FeeMin              int64
+	FeeMode             int64
+	FeeP10              int64
+	FeeP20              int64
+	FeeP30              int64
+	FeeP40              int64
+	FeeP50              int64
+	FeeP60              int64
+	FeeP70              int64
+	FeeP80              int64
+	FeeP90              int64
+	FeeP95              int64
+	FeeP99              int64
+	LedgerCapacityUsage string
+	LastBaseFee         int64
+	LastLedger          int64
 }
 
 // CurrentState returns the cached snapshot of operation fee state

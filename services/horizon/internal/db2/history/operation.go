@@ -30,6 +30,30 @@ func (r *Operation) UnmarshalDetails(dest interface{}) error {
 	return err
 }
 
+// OperationFeeStatsForXLedgers returns operation fee stats for the last 5 ledgers.
+// Currently, we hard code the query to return the last 5 ledgers worth of transactions. In the
+// future this may be configurable.
+func (q *Q) OperationFeeStatsForXLedgers(currentSeq int32, dest *FeeStats) error {
+	return q.GetRaw(dest, `
+		SELECT
+			ceil(min(fee_paid/operation_count)) AS "min",
+			ceil(mode() within group (order by fee_paid/operation_count)) AS "mode",
+			ceil(percentile_cont(0.10) WITHIN GROUP (ORDER BY fee_paid/operation_count)) AS "p10",
+			ceil(percentile_cont(0.20) WITHIN GROUP (ORDER BY fee_paid/operation_count)) AS "p20",
+			ceil(percentile_cont(0.30) WITHIN GROUP (ORDER BY fee_paid/operation_count)) AS "p30",
+			ceil(percentile_cont(0.40) WITHIN GROUP (ORDER BY fee_paid/operation_count)) AS "p40",
+			ceil(percentile_cont(0.50) WITHIN GROUP (ORDER BY fee_paid/operation_count)) AS "p50",
+			ceil(percentile_cont(0.60) WITHIN GROUP (ORDER BY fee_paid/operation_count)) AS "p60",
+			ceil(percentile_cont(0.70) WITHIN GROUP (ORDER BY fee_paid/operation_count)) AS "p70",
+			ceil(percentile_cont(0.80) WITHIN GROUP (ORDER BY fee_paid/operation_count)) AS "p80",
+			ceil(percentile_cont(0.90) WITHIN GROUP (ORDER BY fee_paid/operation_count)) AS "p90",
+			ceil(percentile_cont(0.95) WITHIN GROUP (ORDER BY fee_paid/operation_count)) AS "p95",
+			ceil(percentile_cont(0.99) WITHIN GROUP (ORDER BY fee_paid/operation_count)) AS "p99"
+		FROM history_transactions
+		WHERE ledger_sequence > $1 AND ledger_sequence <= $2
+	`, currentSeq-5, currentSeq)
+}
+
 // Operations provides a helper to filter the operations table with pre-defined
 // filters.  See `OperationsQ` for the available filters.
 func (q *Q) Operations() *OperationsQ {
