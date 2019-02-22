@@ -51,7 +51,7 @@ The simplest way to set up Stellar Core is using the [Stellar Quickstart Docker 
 1. Install [Docker](https://www.docker.com/get-started).
 2. Verify your Docker installation works: `docker run hello-world`
 3. Create a local directory that the container can use to record state. This is helpful because it can take a few minutes to sync a new `stellar-core` with enough data for testing, and because it allows you to inspect and modify the configuration if needed. Here, we create a directory called `stellar` to use as the persistent volume: `cd $HOME; mkdir stellar`
-4. Download and run the Stellar Quickstart container, replacing `USER` with your username:
+4. Download and run the Stellar Quickstart container:
 
 ```bash
 docker run --rm -it -p "8000:8000" -p "11626:11626" -p "11625:11625" -p"8002:5432" -v $HOME/stellar:/opt/stellar --name stellar stellar/quickstart --testnet

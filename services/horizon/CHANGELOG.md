@@ -6,6 +6,14 @@ file.  This project adheres to [Semantic Versioning](http://semver.org/).
 As this project is pre 1.0, breaking changes may happen for minor version
 bumps.  A breaking change will get clearly notified in this log.
 
+## Unreleased
+
+### Breaking changes
+
+### Changes
+
+* Fixed a bug causing slice bounds out of range at offer-by-account endpoint during streaming.
+
 ## v0.16.0 - 2019-02-04
 
 ### Upgrade notes
