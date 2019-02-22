@@ -16,6 +16,7 @@ func Handler(fn func(context.Context) (interface{}, error)) http.HandlerFunc {
 		res, err := fn(ctx)
 		if err != nil {
 			problem.Render(ctx, w, err)
+			return
 		}
 
 		Render(w, res)

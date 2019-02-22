@@ -164,15 +164,31 @@ func (action *Action) baseURL() *url.URL {
 	return httpx.BaseURL(action.R.Context())
 }
 
+// jsonResponderFunc represents the signature of the function that handles
+// requests to which the server responds in json format.
 type jsonResponderFunc func(context.Context) (interface{}, error)
+
+// streamFunc represents the signature of the function that handles requests
+// with stream mode turned on using server-sent events.
 type streamFunc func(context.Context, *sse.Stream) error
+
+// singleObjectStreamFunc represents the signature of the function that handles
+// requests with stream mode turned on using server-sent events. The difference
+// between this function and streamFunc is that this one only loads an event. The
+// server will not send an event out if the current event is same as the last one.
+// Please see the implementation of streamHandler for more details.
 type singleObjectStreamFunc func(context.Context) (sse.Event, error)
 
+// streamableEndpointHandler handles endpoints that have the stream mode
+// available. It inspects the Accept header to determine which function to be
+// executed. If it's "application/hal+json" or "application/json", then jfn
+// will be executed. If it's "text/event-stream", then either sfn or sosfn will
+// be executed with the streamHandler.
 func (a *App) streamableEndpointHandler(jfn jsonResponderFunc, sfn streamFunc, sosfn singleObjectStreamFunc) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
-		contentType := render.Negotiate(r)
 
+		contentType := render.Negotiate(r)
 		switch contentType {
 		case render.MimeHal, render.MimeJSON:
 			if jfn == nil {
@@ -197,6 +213,10 @@ func (a *App) streamableEndpointHandler(jfn jsonResponderFunc, sfn streamFunc, s
 	})
 }
 
+// streamHandler handles requests with stream mode turned on using server-sent
+// events. It will execute one of the provided streaming functions. Note that
+// we don't return an error if both sfn and sosfn are not nil. sfn will simply
+// take precedence.
 func (a *App) streamHandler(sfn streamFunc, sosfn singleObjectStreamFunc) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
