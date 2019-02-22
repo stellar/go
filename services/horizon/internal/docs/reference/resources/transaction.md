@@ -19,7 +19,7 @@ To learn more about the concept of transactions in the Stellar network, take a l
 | ledger           | number | Sequence number of the ledger in which this transaction was applied.       |
 | created_at       | ISO8601 string | |
 | source_account   | string |                                                                                                                                |
-| source_account_sequence | number |                                                                                                                                |
+| source_account_sequence | string |                                                                                                                                |
 | fee_paid         | number | The fee paid by the source account of this transaction when the transaction was applied to the ledger.                         |
 | operation_count  | number | The number of operations that are contained within this transaction.                                                           |
 | envelope_xdr     | string | A base64 encoded string of the raw `TransactionEnvelope` xdr struct for this transaction                                       |
@@ -30,6 +30,7 @@ To learn more about the concept of transactions in the Stellar network, take a l
 | memo             | string | |
 | signatures | string[] | An array of signatures used to sign this transaction |
 | valid_after | ISO8601 string | |
+| valid_before | ISO8601 string | |
 
 ## Links
 
