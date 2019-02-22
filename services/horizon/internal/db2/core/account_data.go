@@ -62,11 +62,10 @@ func (q *Q) AllDataByAddress(dest interface{}, addy string) error {
 			return errors.New("Cannot ensure []AccountData type")
 		}
 
-		for i, _ := range *d {
-			var err2 error
-			decoded, err2 := base64.StdEncoding.DecodeString((*d)[i].Key)
-			if err2 != nil {
-				return errors.Wrap(err2, fmt.Sprintf("Error decoding data entry: %s", (*d)[i].Key))
+		for i, val := range *d {
+			decoded, err := base64.StdEncoding.DecodeString(val.Key)
+			if err != nil {
+				return errors.Wrap(err, fmt.Sprintf("Error decoding data entry: %s", val.Key))
 			}
 			(*d)[i].Key = string(decoded)
 		}

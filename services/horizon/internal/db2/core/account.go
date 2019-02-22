@@ -30,25 +30,22 @@ func (ac Account) IsAuthImmutable() bool {
 func (q *Q) AccountByAddress(dest *Account, addy string) error {
 	sql := selectAccount.Limit(1).Where("accountid = ?", addy)
 	err := q.Get(dest, sql)
-
 	if err != nil {
 		return err
 	}
 
-	if dest.HomeDomain.Valid {
-		schemaVersion, err := q.SchemaVersion()
-		if err != nil {
-			return err
-		}
+	schemaVersion, err := q.SchemaVersion()
+	if err != nil {
+		return err
+	}
 
-		if schemaVersion >= 9 {
-			// Since schema version 9, home_domain is base64 encoded.
-			decoded, err2 := base64.StdEncoding.DecodeString(dest.HomeDomain.String)
-			if err2 != nil {
-				return errors.Wrap(err2, "Unable to base64 decode HomeDomain")
-			}
-			dest.HomeDomain.String = string(decoded)
+	if schemaVersion >= 9 {
+		// Since schema version 9, home_domain is base64 encoded.
+		decoded, err := base64.StdEncoding.DecodeString(dest.HomeDomain.String)
+		if err != nil {
+			return errors.Wrap(err, "Unable to base64 decode HomeDomain")
 		}
+		dest.HomeDomain.String = string(decoded)
 	}
 
 	return nil

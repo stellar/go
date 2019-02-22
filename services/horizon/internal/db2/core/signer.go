@@ -13,35 +13,35 @@ func (q *Q) SignersByAddress(dest interface{}, addy string) error {
 		return err
 	}
 
-	if schemaVersion >= 9 {
-		var signersXDRString string
-		sql := selectSignerVersion9.Where("accountid = ?", addy)
-		err2 := q.Get(&signersXDRString, sql)
-		if err2 != nil {
-			return err2
-		}
-
-		var signersXDR []xdr.Signer
-		err2 = xdr.SafeUnmarshalBase64(signersXDRString, &signersXDR)
-		if err2 != nil {
-			return errors.Wrap(err2, "Error decoding []xdr.Signer")
-		}
-
-		signers := make([]Signer, 0, len(signersXDR))
-		for _, signer := range signersXDR {
-			signers = append(signers, Signer{
-				Accountid: addy,
-				Publickey: signer.Key.Address(),
-				Weight:    int32(signer.Weight),
-			})
-		}
-
-		*dest.(*[]Signer) = signers
-		return nil
-	} else {
+	if schemaVersion < 9 {
 		sql := selectSigner.Where("accountid = ?", addy)
 		return q.Select(dest, sql)
 	}
+
+	var signersXDRString string
+	sql := selectSignerVersion9.Where("accountid = ?", addy)
+	err = q.Get(&signersXDRString, sql)
+	if err != nil {
+		return err
+	}
+
+	var signersXDR []xdr.Signer
+	err = xdr.SafeUnmarshalBase64(signersXDRString, &signersXDR)
+	if err != nil {
+		return errors.Wrap(err, "Error decoding []xdr.Signer")
+	}
+
+	signers := make([]Signer, 0, len(signersXDR))
+	for _, signer := range signersXDR {
+		signers = append(signers, Signer{
+			Accountid: addy,
+			Publickey: signer.Key.Address(),
+			Weight:    int32(signer.Weight),
+		})
+	}
+
+	*dest.(*[]Signer) = signers
+	return nil
 }
 
 var selectSigner = sq.Select(
