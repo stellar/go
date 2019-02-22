@@ -22,7 +22,8 @@ GET /accounts/{account}/operations{?cursor,limit,order}
 | `account`| required, string               | Account ID                                                  | `GA2HGBJIJKI6O4XEM7CZWY5PS6GKSXL6D34ERAJYQSPYA6X6AI7HYW36`|
 | `?cursor`| optional, default _null_       | A paging token, specifying where to start returning records from.  When streaming this can be set to `now` to stream object created since your request time. | `12884905984`                                             |
 | `?order` | optional, string, default `asc`| The order in which to return rows, "asc" or "desc".              | `asc`                                                     |
-| `?limit` | optional, number, default `10` | Maximum number of records to return.                             | `200`                                                     |
+| `?limit` | optional, number, default `10` | Maximum number of records to return.                             | `200`
+| `?include_failed` | optional, bool, default: `false` | Set to `true` to include operations of failed transactions in results. | `true` |                                                     |
 
 ### curl Example Request
 
@@ -81,6 +82,7 @@ This endpoint responds with a list of operations that affected the given account
         "id": 46316927324160,
         "paging_token": "46316927324160",
         "starting_balance": 1e+09,
+        "transaction_successful": true,
         "type_i": 0,
         "type": "create_account"
       }
@@ -126,7 +128,8 @@ This endpoint responds with a list of operations that affected the given account
   "funder": "GCEZWKCA5VLDNRLN3RPRJMRZOX3Z6G5CHCGSNFHEYVXM3XOJMDS674JZ",
   "id": 77309415424,
   "paging_token": "77309415424",
-  "starting_balance": 1e+14,
+  "starting_balance": "1000.0000000",
+  "transaction_successful": true,
   "type_i": 0,
   "type": "create_account"
 }

@@ -22,6 +22,7 @@ GET /accounts/{account_id}/transactions{?cursor,limit,order}
 | `?cursor` | optional, any, default _null_ | A paging token, specifying where to start returning records from. When streaming this can be set to `now` to stream object created since your request time. | 12884905984 |
 | `?order`  | optional, string, default `asc` | The order in which to return rows, "asc" or "desc". | `asc` |
 | `?limit`  | optional, number, default: `10` | Maximum number of records to return. | `200` |
+| `?include_failed` | optional, bool, default: `false` | Set to `true` to include failed transactions in results. | `true` |
 
 ### curl Example Request
 
@@ -83,6 +84,7 @@ This endpoint responds with a list of transactions that changed a given account'
         },
         "id": "2a2beb163e2c68bd2377aab243d68225626d70263444a85556ec7271d4e46e03",
         "paging_token": "141733924864",
+        "successful": true,
         "hash": "2a2beb163e2c68bd2377aab243d68225626d70263444a85556ec7271d4e46e03",
         "ledger": 33,
         "created_at": "2015-09-09T02:46:44Z",
@@ -142,6 +144,7 @@ This endpoint responds with a list of transactions that changed a given account'
   },
   "id": "fa78cb43d72171fdb2c6376be12d57daa787b1fa1a9fdd0e9453e1f41ee5f15a",
   "paging_token": "631231343497216",
+  "successful": true,
   "hash": "fa78cb43d72171fdb2c6376be12d57daa787b1fa1a9fdd0e9453e1f41ee5f15a",
   "ledger": 146970,
   "created_at": "2015-09-24T10:07:09Z",
