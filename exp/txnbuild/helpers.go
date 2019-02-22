@@ -7,8 +7,6 @@ import (
 	"github.com/stellar/go/clients/horizon"
 )
 
-// TODO: Consider package heirarchy, rename as needed
-
 func PrintTransactionSuccess(resp horizon.TransactionSuccess) {
 	log.Println("TransactionSuccess:")
 	log.Println("")
