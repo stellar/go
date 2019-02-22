@@ -1,12 +1,8 @@
-// package txnbuild
-package main
+package txnbuild
 
 import (
 	"bytes"
 	"encoding/base64"
-	"encoding/json"
-	"log"
-	"os"
 	"strconv"
 
 	"github.com/stellar/go/clients/horizon"
@@ -92,7 +88,7 @@ func (tx *Transaction) Build() error {
 	tx.TX.SourceAccount.SetAddress(tx.SourceAccount.ID)
 
 	// Set sequence number in TX
-	seqNum, err := seqNumFromAccount(tx.SourceAccount)
+	seqNum, err := SeqNumFromAccount(tx.SourceAccount)
 	if err != nil {
 		return err
 	}
@@ -130,10 +126,6 @@ func (tx *Transaction) Sign(seed string) error {
 		tx.Envelope.Tx = *tx.TX
 	}
 
-	// TODO: Next steps:
-	// 1) Untangle the connections between EnvelopeBuilder and TransactionBuilder
-	// 2) Determine what needs to be new, what can be kept
-
 	// Hash the transaction
 	hash, err := tx.Hash()
 	if err != nil {
@@ -158,104 +150,7 @@ func (tx *Transaction) Sign(seed string) error {
 	return nil
 }
 
-// ExampleCreateAccount ...
-func ExampleCreateAccount(client *horizon.Client) (horizon.TransactionSuccess, error) {
-	secretSeed := "SBPQUZ6G4FZNWFHKUWC5BEYWF6R52E3SEP7R3GWYSM2XTKGF5LNTWW4R"
-	sourceAddress := "GDQNY3PBOJOKYZSRMK2S7LHHGWZIUISD4QORETLMXEWXBI7KFZZMKTL3"
-	sourceAccount, err := client.LoadAccount(sourceAddress)
-	checkError("loadaccount", err)
-
-	createAccount := CreateAccount{
-		Destination: "G...",
-		Amount:      "10",
-		Asset:       "native",
-	}
-
-	tx := Transaction{
-		SourceAccount: sourceAccount,
-		Operations:    []Operation{createAccount},
-	}
-
-	err = tx.Build()
-	checkError("build", err)
-
-	err = tx.Sign(secretSeed)
-	checkError("sign", err)
-
-	txeBase64, err := tx.Base64()
-	checkError("base64", err)
-
-	log.Println("Base 64 TX: ", txeBase64)
-
-	resp, err := client.SubmitTransaction(txeBase64)
-	if err != nil {
-		bad := err.(*horizon.Error)
-		printHorizonError(bad)
-		os.Exit(1)
-	}
-
-	return resp, err
-}
-
-func main() {
-	client := horizon.DefaultTestNetClient
-	UseTestNetwork()
-
-	resp, err := ExampleCreateAccount(client)
-	printTransactionSuccess(resp)
-	checkError("examplecreateaccount", err)
-
-}
-
-func checkError(desc string, err error) {
-	if err != nil {
-		log.Fatalf("Fatal error (%s): %s", desc, err)
-	}
-}
-
-func printTransactionSuccess(resp horizon.TransactionSuccess) {
-	log.Println("TransactionSuccess:")
-	log.Println("")
-	log.Println("Links:", resp.Links)
-	log.Println("Hash:", resp.Hash)
-	log.Println("Ledger:", resp.Ledger)
-	log.Println("Env:", resp.Env)
-	log.Println("Result:", resp.Result)
-	log.Println("Meta:", resp.Meta)
-	log.Println("")
-}
-
-func printHorizonError(hError *horizon.Error) {
-	problem := hError.Problem
-	log.Println("Error type:", problem.Type)
-	log.Println("Error title:", problem.Title)
-	log.Println("Error status:", problem.Status)
-	log.Println("Error detail:", problem.Detail)
-	log.Println("Error instance:", problem.Instance)
-
-	var decodedResultCodes map[string]interface{}
-	var decodedResult string
-	var decodedEnvelope string
-	var err error
-
-	// err = json.Unmarshal(problem.Extras["envelope_xdr"], &decoded)
-	// checkError("json unmarshal horizon.Error.Problem.Extras[\"envelope_xdr\"]", err)
-	// log.Println("Error extras envelope XDR:", decoded)
-
-	err = json.Unmarshal(problem.Extras["result_codes"], &decodedResultCodes)
-	checkError("json unmarshal horizon.Error.Problem.Extras[\"result_codes\"]", err)
-	log.Println("Error extras result codes:", decodedResultCodes)
-
-	err = json.Unmarshal(problem.Extras["result_xdr"], &decodedResult)
-	checkError("json unmarshal horizon.Error.Problem.Extras[\"result_xdr\"]", err)
-	log.Println("Error extras result (TransactionResult) XDR:", decodedResult)
-
-	err = json.Unmarshal(problem.Extras["envelope_xdr"], &decodedEnvelope)
-	checkError("json unmarshal horizon.Error.Problem.Extras[\"envelope_xdr\"]", err)
-	log.Println("Error extras envelope (TransactionEnvelope) XDR:", decodedEnvelope)
-}
-
-func seqNumFromAccount(account horizon.Account) (xdr.SequenceNumber, error) {
+func SeqNumFromAccount(account horizon.Account) (xdr.SequenceNumber, error) {
 	seqNum, err := strconv.ParseUint(account.Sequence, 10, 64)
 
 	if err != nil {
