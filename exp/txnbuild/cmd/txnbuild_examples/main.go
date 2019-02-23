@@ -2,57 +2,94 @@ package main
 
 import (
 	"log"
-	"os"
 
 	"github.com/stellar/go/clients/horizon"
 	"github.com/stellar/go/exp/txnbuild"
+	"github.com/stellar/go/keypair"
 )
 
 func main() {
 	client := horizon.DefaultTestNetClient
 	txnbuild.UseTestNetwork()
 
-	resp, err := ExampleCreateAccount(client)
+	resp := exampleCreateAccount(client)
 	txnbuild.PrintTransactionSuccess(resp)
-	txnbuild.CheckError("examplecreateaccount", err)
-
 }
 
-// ExampleCreateAccount ...
-func ExampleCreateAccount(client *horizon.Client) (horizon.TransactionSuccess, error) {
+func exampleCreateAccount(client *horizon.Client) horizon.TransactionSuccess {
 	secretSeed := "SBPQUZ6G4FZNWFHKUWC5BEYWF6R52E3SEP7R3GWYSM2XTKGF5LNTWW4R"
 	sourceAddress := "GDQNY3PBOJOKYZSRMK2S7LHHGWZIUISD4QORETLMXEWXBI7KFZZMKTL3"
 	sourceAccount, err := client.LoadAccount(sourceAddress)
-	txnbuild.CheckError("loadaccount", err)
+	dieIfError("loadaccount", err)
 
-	createAccount := txnbuild.CreateAccount{
-		Destination: "G...",
-		Amount:      "10",
-		Asset:       "native",
-	}
+	// newAccountKeypair := createKeypair()
+	// createAccount := txnbuild.CreateAccount{
+	// 	Destination: newAccountKeypair.Address(),
+	// 	Amount:      "10",
+	// 	Asset:       "native",
+	// }
+	inflation := txnbuild.Inflation{}
 
 	tx := txnbuild.Transaction{
 		SourceAccount: sourceAccount,
-		Operations:    []txnbuild.Operation{createAccount},
+		// Operations:    []txnbuild.Operation{inflation, createAccount},
+		Operations: []txnbuild.Operation{inflation},
 	}
 
 	err = tx.Build()
-	txnbuild.CheckError("build", err)
+	dieIfError("build", err)
 
 	err = tx.Sign(secretSeed)
-	txnbuild.CheckError("sign", err)
+	dieIfError("sign", err)
 
 	txeBase64, err := tx.Base64()
-	txnbuild.CheckError("base64", err)
+	dieIfError("base64", err)
 
 	log.Println("Base 64 TX: ", txeBase64)
 
-	resp, err := client.SubmitTransaction(txeBase64)
-	if err != nil {
-		bad := err.(*horizon.Error)
-		txnbuild.PrintHorizonError(bad)
-		os.Exit(1)
-	}
+	// resp, err := client.SubmitTransaction(txeBase64)
+	// if err != nil {
+	// 	bad := err.(*horizon.Error)
+	// 	txnbuild.PrintHorizonError(bad)
+	// 	os.Exit(1)
+	// }
 
-	return resp, err
+	verify(txeBase64)
+	resp := mockSuccess()
+
+	return resp
+}
+
+func dieIfError(desc string, err error) {
+	if err != nil {
+		log.Fatalf("Fatal error (%s): %s", desc, err)
+	}
+}
+
+func mockSuccess() horizon.TransactionSuccess {
+	resp := horizon.TransactionSuccess{}
+
+	return resp
+}
+
+func verify(received string) {
+	expected := "AAAAAODcbeFyXKxmUWK1L6znNbKKIkPkHRJNbLktcKPqLnLFAAAAZAAiII0AAAAWAAAAAAAAAAAAAAABAAAAAAAAAAkAAAAAAAAAAeoucsUAAABAOT7JB5aEckZsFYz4s0yh7IXoq09LqlAqw5HSgO83fk75NTYRiGt+gDebUiO1TUw/6HxZegJTZDu1Rw55m7uYCA=="
+
+	if received != expected {
+		log.Println("Assert failed!")
+		log.Println("Expected: ", expected)
+		log.Fatal("Received: ", received)
+	}
+}
+
+// createKeypair constructs a new keypair
+func createKeypair() *keypair.Full {
+	pair, err := keypair.Random()
+	if err != nil {
+		log.Fatal(err)
+	}
+	log.Println("Seed:", pair.Seed())
+	log.Println("Address:", pair.Address())
+
+	return pair
 }

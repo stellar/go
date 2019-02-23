@@ -25,6 +25,29 @@ func UsePublicNetwork() {
 	StellarNetwork = network.PublicNetworkPassphrase
 }
 
+// OperationTypeCreateAccount      OperationType = 0
+// OperationTypePayment            OperationType = 1
+// OperationTypePathPayment        OperationType = 2
+// OperationTypeManageOffer        OperationType = 3
+// OperationTypeCreatePassiveOffer OperationType = 4
+// OperationTypeSetOptions         OperationType = 5
+// OperationTypeChangeTrust        OperationType = 6
+// OperationTypeAllowTrust         OperationType = 7
+// OperationTypeAccountMerge       OperationType = 8
+// OperationTypeInflation          OperationType = 9
+// OperationTypeManageData         OperationType = 10
+// OperationTypeBumpSequence       OperationType = 11
+func getXDROpType(op Operation) (xdr.OperationType, error) {
+	switch t := op.(type) {
+	case CreateAccount:
+		return xdr.OperationTypeCreateAccount, nil
+	case Inflation:
+		return xdr.OperationTypeInflation, nil
+	default:
+		return 0, errors.Errorf("initialiseOperation: Bad operation type '%T'", t)
+	}
+}
+
 // type Account struct {
 // 	AccountID string
 // 	Sequence  string
@@ -32,6 +55,11 @@ func UsePublicNetwork() {
 
 // Operation ...
 type Operation interface{}
+
+// Inflation ...
+type Inflation struct {
+	xdrOp xdr.OperationType
+}
 
 // CreateAccount ...
 type CreateAccount struct {
@@ -75,14 +103,24 @@ func (tx *Transaction) Base64() (string, error) {
 	return base64.StdEncoding.EncodeToString(bs), nil
 }
 
+// SetDefaults ...
+func (tx *Transaction) SetDefaultFee() {
+	// TODO: Check if default base fee used elsewhere - otherwise just use int
+	var DefaultBaseFee uint64 = 100
+	if tx.BaseFee == 0 {
+		tx.BaseFee = DefaultBaseFee
+	}
+	if tx.TX.Fee == 0 {
+		tx.TX.Fee = xdr.Uint32(int(tx.BaseFee) * len(tx.TX.Operations))
+	}
+}
+
 // Build ...
 func (tx *Transaction) Build() error {
 	// Initialise TX (XDR) struct if needed
 	if tx.TX == nil {
 		tx.TX = &xdr.Transaction{}
 	}
-
-	// Skipped: Set network passphrase (in XDR?)
 
 	// Set account ID in TX
 	tx.TX.SourceAccount.SetAddress(tx.SourceAccount.ID)
@@ -94,26 +132,20 @@ func (tx *Transaction) Build() error {
 	}
 	tx.TX.SeqNum = seqNum + 1
 
-	// TODO: Loop through operations sequentially
-	// Create operation body
+	for _, op := range tx.Operations {
+		// Create operation body
+		opType, err := getXDROpType(op)
+		body, err := xdr.NewOperationBody(opType, nil)
+		if err != nil {
+			return errors.Wrap(err, "Failed to create XDR")
+		}
+		// Append relevant operation to TX.operations
+		xdrOperation := xdr.Operation{Body: body}
+		tx.TX.Operations = append(tx.TX.Operations, xdrOperation)
+	}
 
-	// TODO: Generalise, remove hard-coded inflation type
-	body, err := xdr.NewOperationBody(xdr.OperationTypeInflation, nil)
-	if err != nil {
-		return errors.Wrap(err, "Failed to create XDR")
-	}
-	// Append relevant operation to TX.operations
-	operation := xdr.Operation{Body: body}
-	tx.TX.Operations = append(tx.TX.Operations, operation)
-
-	// Set defaults
-	var DefaultBaseFee uint64 = 100
-	if tx.BaseFee == 0 {
-		tx.BaseFee = DefaultBaseFee
-	}
-	if tx.TX.Fee == 0 {
-		tx.TX.Fee = xdr.Uint32(int(tx.BaseFee) * len(tx.TX.Operations))
-	}
+	// Set a default fee, if it hasn't been set yet
+	tx.SetDefaultFee()
 
 	return nil
 }
@@ -150,6 +182,7 @@ func (tx *Transaction) Sign(seed string) error {
 	return nil
 }
 
+// SeqNumFromAccount ...
 func SeqNumFromAccount(account horizon.Account) (xdr.SequenceNumber, error) {
 	seqNum, err := strconv.ParseUint(account.Sequence, 10, 64)
 
