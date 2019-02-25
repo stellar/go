@@ -32,9 +32,9 @@ Previous versions work fine with Horizon 0.16.0 schema so you can migrate (`hori
 
 ### Deprecations
 
-* Root > `protocol_version` will be deprecated in v0.17.0. It is relaced by `current_protocol_version` and `core_supported_protocol_version`.
-* Ledger > `transaction_count` will be deprecated in v0.17.0.
-* Signer > `public_key` will be deprecated in v0.17.0.
+* Root > `protocol_version` will be removed in v0.17.0. It is relaced by `current_protocol_version` and `core_supported_protocol_version`.
+* Ledger > `transaction_count` will be removed in v0.17.0.
+* Signer > `public_key` will be removed in v0.17.0.
 
 ### Changes
 

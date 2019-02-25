@@ -20,6 +20,7 @@ GET /ledgers/{id}/transactions{?cursor,limit,order}
 | `?cursor` | optional, default _null_ | A paging token, specifying where to start returning records from. | `12884905984` |
 | `?order`  | optional, string, default `asc` | The order in which to return rows, "asc" or "desc". | `asc` |
 | `?limit`  | optional, number, default `10` | Maximum number of records to return. | `200` |
+| `?include_failed` | optional, bool, default: `false` | Set to `true` to include failed transactions in results. | `true` |
 
 ### curl Example Request
 
@@ -82,6 +83,7 @@ This endpoint responds with a list of transactions in a given ledger.  See [tran
         },
         "id": "fa78cb43d72171fdb2c6376be12d57daa787b1fa1a9fdd0e9453e1f41ee5f15a",
         "paging_token": "631231343497216",
+        "successful": true,
         "hash": "fa78cb43d72171fdb2c6376be12d57daa787b1fa1a9fdd0e9453e1f41ee5f15a",
         "ledger": 146970,
         "created_at": "2015-09-24T10:07:09Z",

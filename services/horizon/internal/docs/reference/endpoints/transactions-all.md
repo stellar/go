@@ -5,7 +5,8 @@ clientData:
 ---
 
 This endpoint represents all successful [transactions](../resources/transaction.md).
-Please note that this endpoint does not return failed transactions that are included in the ledger.
+Please note that this endpoint returns failed transactions that are included in the ledger if `include_failed` parameter is `true`
+and Horizon is ingesting failed transactions.
 This endpoint can also be used in [streaming](../streaming.md) mode. This makes it possible to use it to listen for new transactions as they get made in the Stellar network.
 If called in streaming mode Horizon will start at the earliest known transaction unless a `cursor` is set. In that case it will start from the `cursor`. You can also set `cursor` value to `now` to only stream transaction created since your request time.
 
@@ -22,6 +23,7 @@ GET /transactions{?cursor,limit,order}
 | `?cursor` | optional, any, default _null_ | A paging token, specifying where to start returning records from. When streaming this can be set to `now` to stream object created since your request time. | `12884905984` |
 | `?order`  | optional, string, default `asc` | The order in which to return rows, "asc" or "desc". | `asc` |
 | `?limit`  | optional, number, default: `10` | Maximum number of records to return. | `200` |
+| `?include_failed` | optional, bool, default: `false` | Set to `true` to include failed transactions in results. | `true` |
 
 ### curl Example Request
 
@@ -91,6 +93,7 @@ See [transaction resource](../resources/transaction.md) for reference.
         },
         "id": "fa78cb43d72171fdb2c6376be12d57daa787b1fa1a9fdd0e9453e1f41ee5f15a",
         "paging_token": "631231343497216",
+        "successful": true,
         "hash": "fa78cb43d72171fdb2c6376be12d57daa787b1fa1a9fdd0e9453e1f41ee5f15a",
         "ledger": 146970,
         "created_at": "2015-09-24T10:07:09Z",
@@ -131,6 +134,7 @@ See [transaction resource](../resources/transaction.md) for reference.
         },
         "id": "90ad6cfc9b0911bdbf202cace78ae7ecf50989c424288670dadb69bf8237c1b3",
         "paging_token": "621902674530304",
+        "successful": false,
         "hash": "90ad6cfc9b0911bdbf202cace78ae7ecf50989c424288670dadb69bf8237c1b3",
         "ledger": 144798,
         "created_at": "2015-09-24T07:49:38Z",
@@ -190,6 +194,7 @@ See [transaction resource](../resources/transaction.md) for reference.
   },
   "id": "fa78cb43d72171fdb2c6376be12d57daa787b1fa1a9fdd0e9453e1f41ee5f15a",
   "paging_token": "631231343497216",
+  "successful": true,
   "hash": "fa78cb43d72171fdb2c6376be12d57daa787b1fa1a9fdd0e9453e1f41ee5f15a",
   "ledger": 146970,
   "created_at": "2015-09-24T10:07:09Z",

@@ -15,9 +15,9 @@ To learn more about the concept of ledgers in the Stellar network, take a look a
 | hash                         | string | A hex-encoded SHA-256 hash of the ledger's [XDR](../../learn/xdr.md)-encoded form.                                            |
 | prev_hash                    | string | The hash of the ledger that chronologically came before this one.                                                             |
 | sequence                     | number | Sequence number of this ledger, suitable for use as the as the :id parameter for url templates that require a ledger number.  |
-| transaction_count            | number | *DEPRECATED: USE `successful_transaction_count` INSTEAD*. The number of successful transactions in this ledger.               |
-| successful_transaction_count | number | The number of successful transactions in this ledger.                                                                         |
-| failed_transaction_count     | number | The number of failed transactions in this ledger.                                                                             |
+| transaction_count            | number | *REMOVED in 0.17.0: USE `successful_transaction_count` INSTEAD*. The number of successful transactions in this ledger.               |
+| successful_transaction_count | number | *From 0.16.0* The number of successful transactions in this ledger.                                                                         |
+| failed_transaction_count     | number | *From 0.16.0* The number of failed transactions in this ledger.                                                                             |
 | operation_count              | number | The number of operations applied in this ledger.                                                                              |
 | closed_at                    | string | An [ISO 8601](https://en.wikipedia.org/wiki/ISO_8601) formatted string of when this ledger was closed.                        |
 | total_coins                  | string | The total number of lumens in circulation.                                                                                    |
