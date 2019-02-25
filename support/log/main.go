@@ -4,7 +4,7 @@ import (
 	"context"
 	"os"
 
-	"github.com/segmentio/go-loggly"
+	loggly "github.com/segmentio/go-loggly"
 	"github.com/sirupsen/logrus"
 )
 
@@ -147,7 +147,7 @@ func Panic(args ...interface{}) {
 
 // StartTest shifts the default logger into "test" mode.  See Entry's
 // documentation for the StartTest() method for more info.
-func StartTest(level logrus.Level) func() []*logrus.Entry {
+func StartTest(level logrus.Level) func() []logrus.Entry {
 	return DefaultLogger.StartTest(level)
 }
 
