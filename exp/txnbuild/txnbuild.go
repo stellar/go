@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"strconv"
 
+	"github.com/stellar/go/amount"
 	"github.com/stellar/go/clients/horizon"
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/network"
@@ -37,16 +38,6 @@ func UsePublicNetwork() {
 // OperationTypeInflation          OperationType = 9
 // OperationTypeManageData         OperationType = 10
 // OperationTypeBumpSequence       OperationType = 11
-func getXDROpType(op Operation) (xdr.OperationType, error) {
-	switch t := op.(type) {
-	case CreateAccount:
-		return xdr.OperationTypeCreateAccount, nil
-	case Inflation:
-		return xdr.OperationTypeInflation, nil
-	default:
-		return 0, errors.Errorf("initialiseOperation: Bad operation type '%T'", t)
-	}
-}
 
 // type Account struct {
 // 	AccountID string
@@ -54,18 +45,59 @@ func getXDROpType(op Operation) (xdr.OperationType, error) {
 // }
 
 // Operation ...
-type Operation interface{}
+type Operation interface {
+	NewXDROperationBody() (xdr.OperationBody, error)
+}
 
 // Inflation ...
 type Inflation struct {
-	xdrOp xdr.OperationType
+	xdrOp struct{}
+}
+
+// NewXDROperationBody ...
+func (inf *Inflation) NewXDROperationBody() (xdr.OperationBody, error) {
+	// TODO: Better name
+	// TODO: Remove switch, move info in here
+	// TODO: Add next two lines in here
+
+	opType := xdr.OperationTypeInflation
+	body, err := xdr.NewOperationBody(opType, nil)
+
+	return body, err
 }
 
 // CreateAccount ...
 type CreateAccount struct {
-	Destination string
-	Amount      string
-	Asset       string
+	destAccountID xdr.AccountId
+	Destination   string
+	Amount        string
+	Asset         string // TODO: Not used yet
+	xdrOp         xdr.CreateAccountOp
+}
+
+// NewXDROperationBody ...
+func (ca *CreateAccount) NewXDROperationBody() (xdr.OperationBody, error) {
+	// TODO: Better name
+	// TODO: Remove switch, move info in here
+	// TODO: Add next two lines in here
+	// TODO: Check both errors
+
+	err := ca.Build()
+	opType := xdr.OperationTypeCreateAccount
+	body, err := xdr.NewOperationBody(opType, ca.xdrOp)
+
+	return body, err
+}
+
+// Build ...
+func (ca *CreateAccount) Build() error {
+	err := ca.destAccountID.SetAddress(ca.Destination)
+	ca.xdrOp.Destination = ca.destAccountID
+
+	// TODO: Wrap error
+	ca.xdrOp.StartingBalance, err = amount.Parse(ca.Amount)
+
+	return err
 }
 
 // Transaction ...
@@ -103,7 +135,7 @@ func (tx *Transaction) Base64() (string, error) {
 	return base64.StdEncoding.EncodeToString(bs), nil
 }
 
-// SetDefaults ...
+// SetDefaultFee ...
 func (tx *Transaction) SetDefaultFee() {
 	// TODO: Check if default base fee used elsewhere - otherwise just use int
 	var DefaultBaseFee uint64 = 100
@@ -123,6 +155,10 @@ func (tx *Transaction) Build() error {
 	}
 
 	// Set account ID in TX
+	// TODO: For createAccount, destination is a factor - how does this fit in?
+	// TODO: Need to get XDR operation struct for relevant operation (this is nil
+	// for inflation) - map inside switch statement?
+	// TODO: Validate provided key before going further
 	tx.TX.SourceAccount.SetAddress(tx.SourceAccount.ID)
 
 	// Set sequence number in TX
@@ -134,8 +170,7 @@ func (tx *Transaction) Build() error {
 
 	for _, op := range tx.Operations {
 		// Create operation body
-		opType, err := getXDROpType(op)
-		body, err := xdr.NewOperationBody(opType, nil)
+		body, err := op.NewXDROperationBody()
 		if err != nil {
 			return errors.Wrap(err, "Failed to create XDR")
 		}

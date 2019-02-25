@@ -2,6 +2,7 @@ package main
 
 import (
 	"log"
+	"os"
 
 	"github.com/stellar/go/clients/horizon"
 	"github.com/stellar/go/exp/txnbuild"
@@ -22,18 +23,17 @@ func exampleCreateAccount(client *horizon.Client) horizon.TransactionSuccess {
 	sourceAccount, err := client.LoadAccount(sourceAddress)
 	dieIfError("loadaccount", err)
 
-	// newAccountKeypair := createKeypair()
-	// createAccount := txnbuild.CreateAccount{
-	// 	Destination: newAccountKeypair.Address(),
-	// 	Amount:      "10",
-	// 	Asset:       "native",
-	// }
+	newAccountKeypair := createKeypair()
+	createAccount := txnbuild.CreateAccount{
+		Destination: newAccountKeypair.Address(),
+		Amount:      "10",
+		Asset:       "native",
+	}
 	inflation := txnbuild.Inflation{}
 
 	tx := txnbuild.Transaction{
 		SourceAccount: sourceAccount,
-		// Operations:    []txnbuild.Operation{inflation, createAccount},
-		Operations: []txnbuild.Operation{inflation},
+		Operations:    []txnbuild.Operation{&inflation, &createAccount},
 	}
 
 	err = tx.Build()
@@ -47,15 +47,15 @@ func exampleCreateAccount(client *horizon.Client) horizon.TransactionSuccess {
 
 	log.Println("Base 64 TX: ", txeBase64)
 
-	// resp, err := client.SubmitTransaction(txeBase64)
-	// if err != nil {
-	// 	bad := err.(*horizon.Error)
-	// 	txnbuild.PrintHorizonError(bad)
-	// 	os.Exit(1)
-	// }
+	resp, err := client.SubmitTransaction(txeBase64)
+	if err != nil {
+		bad := err.(*horizon.Error)
+		txnbuild.PrintHorizonError(bad)
+		os.Exit(1)
+	}
 
-	verify(txeBase64)
-	resp := mockSuccess()
+	// verify(txeBase64)
+	// resp := mockSuccess()
 
 	return resp
 }
