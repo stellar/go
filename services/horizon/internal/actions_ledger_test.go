@@ -37,7 +37,6 @@ func TestLedgerActions_Show(t *testing.T) {
 	if ht.Assert.NoError(err) {
 		ht.Assert.Equal(int32(2), result.Sequence)
 		ht.Assert.NotEmpty(result.HeaderXDR)
-		ht.Assert.Equal(int32(3), result.TransactionCount)
 		ht.Assert.Equal(int32(3), result.SuccessfulTransactionCount)
 		ht.Assert.Equal(int32(0), *result.FailedTransactionCount)
 	}
@@ -58,7 +57,6 @@ func TestLedgerActions_Show(t *testing.T) {
 	if ht.Assert.NoError(err) {
 		ht.Assert.Equal(int32(2), result.Sequence)
 		ht.Assert.NotEmpty(result.HeaderXDR)
-		ht.Assert.Equal(int32(3), result.TransactionCount)
 		ht.Assert.Equal(int32(3), result.SuccessfulTransactionCount)
 		ht.Assert.Nil(result.FailedTransactionCount)
 	}

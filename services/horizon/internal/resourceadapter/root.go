@@ -27,7 +27,6 @@ func PopulateRoot(
 	dest.HorizonVersion = hVersion
 	dest.StellarCoreVersion = cVersion
 	dest.NetworkPassphrase = passphrase
-	dest.ProtocolVersion = currentProtocolVersion
 	dest.CurrentProtocolVersion = currentProtocolVersion
 	dest.CoreSupportedProtocolVersion = coreSupportedProtocolVersion
 
