@@ -56,7 +56,7 @@ func WritePreamble(ctx context.Context, w http.ResponseWriter) bool {
 // sending it over the provided ResponseWriter and flushing.
 func WriteEvent(ctx context.Context, w http.ResponseWriter, e Event) {
 	if e.Error != nil {
-		fmt.Fprint(w, "event: err\n")
+		fmt.Fprint(w, "event: error\n")
 		fmt.Fprintf(w, "data: %s\n\n", e.Error.Error())
 		w.(http.Flusher).Flush()
 		return

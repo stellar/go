@@ -4,8 +4,9 @@ clientData:
   laboratoryUrl: https://www.stellar.org/laboratory/#explorer?resource=operations&endpoint=all
 ---
 
-This endpoint represents successful [operations](../resources/operation.md) that are part of validated [transactions](../resources/transaction.md).
-Please note that this endpoint does not return operations from failed transactions that are included in the ledger.
+This endpoint represents [operations](../resources/operation.md) that are part of successfully validated [transactions](../resources/transaction.md).
+Please note that this endpoint returns operations that are part of failed transactions if `include_failed` parameter is `true`
+and Horizon is ingesting failed transactions.
 This endpoint can also be used in [streaming](../streaming.md) mode so it is possible to use it to listen as operations are processed in the Stellar network.
 If called in streaming mode Horizon will start at the earliest known operation unless a `cursor` is set. In that case it will start from the `cursor`. You can also set `cursor` value to `now` to only stream operations created since your request time.
 
@@ -22,6 +23,7 @@ GET /operations{?cursor,limit,order}
 | `?cursor` | optional, any, default _null_ | A paging token, specifying where to start returning records from. When streaming this can be set to `now` to stream object created since your request time. | `12884905984` |
 | `?order`  | optional, string, default `asc` | The order in which to return rows, "asc" or "desc". | `asc` |
 | `?limit`  | optional, number, default: `10` | Maximum number of records to return. | `200` |
+| `?include_failed` | optional, bool, default: `false` | Set to `true` to include operations of failed transactions in results. | `true` |
 
 ### curl Example Request
 
@@ -84,7 +86,8 @@ This endpoint responds with a list of operations. See [operation resource](../re
         "funder": "GCEZWKCA5VLDNRLN3RPRJMRZOX3Z6G5CHCGSNFHEYVXM3XOJMDS674JZ",
         "id": 77309415424,
         "paging_token": "77309415424",
-        "starting_balance": 1e+14,
+        "starting_balance": "1000.0000000",
+        "transaction_successful": true,
         "type_i": 0,
         "type": "create_account"
       },
@@ -111,7 +114,8 @@ This endpoint responds with a list of operations. See [operation resource](../re
         "funder": "GBIA4FH6TV64KSPDAJCNUQSM7PFL4ILGUVJDPCLUOPJ7ONMKBBVUQHRO",
         "id": 463856472064,
         "paging_token": "463856472064",
-        "starting_balance": 1e+09,
+        "starting_balance": "1000.0000000",
+        "transaction_successful": true,
         "type_i": 0,
         "type": "create_account"
       }
@@ -157,7 +161,8 @@ This endpoint responds with a list of operations. See [operation resource](../re
   "funder": "GCEZWKCA5VLDNRLN3RPRJMRZOX3Z6G5CHCGSNFHEYVXM3XOJMDS674JZ",
   "id": 77309415424,
   "paging_token": "77309415424",
-  "starting_balance": 1e+14,
+  "starting_balance": "1000.0000000",
+  "transaction_successful": true,
   "type_i": 0,
   "type": "create_account"
 }

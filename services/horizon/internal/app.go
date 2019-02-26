@@ -24,6 +24,7 @@ import (
 	"github.com/stellar/go/services/horizon/internal/txsub"
 	"github.com/stellar/go/support/app"
 	"github.com/stellar/go/support/db"
+	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/support/log"
 	"github.com/throttled/throttled"
 	"golang.org/x/net/http2"
@@ -167,46 +168,58 @@ func (a *App) IsHistoryStale() bool {
 // UpdateLedgerState triggers a refresh of several metrics gauges, such as open
 // db connections and ledger state
 func (a *App) UpdateLedgerState() {
+	var err error
 	var next ledger.State
 
-	logErr := func(err error, msg string) {
-		log.WithStack(err).WithField("err", err.Error()).Error(msg)
-	}
-
-	err := a.CoreQ().LatestLedger(&next.CoreLatest)
+	err = a.CoreQ().LatestLedger(&next.CoreLatest)
 	if err != nil {
-		logErr(err, "failed to load the latest known ledger state from core DB")
-		return
+		goto Failed
 	}
 
 	err = a.HistoryQ().LatestLedger(&next.HistoryLatest)
 	if err != nil {
-		logErr(err, "failed to load the latest known ledger state from history DB")
-		return
+		goto Failed
 	}
 
 	err = a.HistoryQ().ElderLedger(&next.HistoryElder)
 	if err != nil {
-		logErr(err, "failed to load the oldest known ledger state from history DB")
-		return
+		goto Failed
 	}
 
 	ledger.SetState(next)
+	return
+
+Failed:
+	log.WithStack(err).
+		WithField("err", err.Error()).
+		Error("failed to load ledger state")
+
 }
 
-// UpdateOperationFeeStatsState triggers a refresh of several operation fee metrics
+// UpdateOperationFeeStatsState triggers a refresh of several operation fee metrics.
 func (a *App) UpdateOperationFeeStatsState() {
-	var err error
-	var next operationfeestats.State
+	var (
+		next          operationfeestats.State
+		latest        history.LatestLedger
+		feeStats      history.FeeStats
+		capacityStats history.LedgerCapacityUsageStats
+	)
 
-	var latest history.LatestLedger
-	var feeStats history.FeeStats
+	logErr := func(err error, msg string) {
+		// If DB is empty ignore the error
+		if errors.Cause(err) == sql.ErrNoRows {
+			return
+		}
+
+		log.WithStack(err).WithField("err", err.Error()).Error(msg)
+	}
 
 	cur := operationfeestats.CurrentState()
 
-	err = a.HistoryQ().LatestLedgerBaseFeeAndSequence(&latest)
+	err := a.HistoryQ().LatestLedgerBaseFeeAndSequence(&latest)
 	if err != nil {
-		goto Failed
+		logErr(err, "failed to load the latest known ledger's base fee and sequence number")
+		return
 	}
 
 	// finish early if no new ledgers
@@ -217,34 +230,53 @@ func (a *App) UpdateOperationFeeStatsState() {
 	next.LastBaseFee = int64(latest.BaseFee)
 	next.LastLedger = int64(latest.Sequence)
 
-	err = a.HistoryQ().TransactionsForLastXLedgers(latest.Sequence, &feeStats)
+	err = a.HistoryQ().OperationFeeStats(latest.Sequence, &feeStats)
 	if err != nil {
-		goto Failed
-	}
-
-	// if no transactions in last X ledgers, return
-	// latest ledger's base fee for all
-	if !feeStats.Mode.Valid && !feeStats.Min.Valid {
-		next.Min = next.LastBaseFee
-		next.Mode = next.LastBaseFee
-	} else {
-		next.Min = feeStats.Min.Int64
-		next.Mode = feeStats.Mode.Int64
-	}
-
-	operationfeestats.SetState(next)
-	return
-
-Failed:
-	// If DB is empty ignore the error
-	if err == sql.ErrNoRows {
+		logErr(err, "failed to load operation fee stats")
 		return
 	}
 
-	log.WithStack(err).
-		WithField("err", err.Error()).
-		Error("failed to load operation fee stats state")
+	err = a.HistoryQ().LedgerCapacityUsageStats(latest.Sequence, &capacityStats)
+	if err != nil {
+		logErr(err, "failed to load ledger capacity usage stats")
+		return
+	}
 
+	next.LedgerCapacityUsage = capacityStats.CapacityUsage.String
+
+	// if no transactions in last 5 ledgers, return
+	// latest ledger's base fee for all
+	if !feeStats.Mode.Valid && !feeStats.Min.Valid {
+		next.FeeMin = next.LastBaseFee
+		next.FeeMode = next.LastBaseFee
+		next.FeeP10 = next.LastBaseFee
+		next.FeeP20 = next.LastBaseFee
+		next.FeeP30 = next.LastBaseFee
+		next.FeeP40 = next.LastBaseFee
+		next.FeeP50 = next.LastBaseFee
+		next.FeeP60 = next.LastBaseFee
+		next.FeeP70 = next.LastBaseFee
+		next.FeeP80 = next.LastBaseFee
+		next.FeeP90 = next.LastBaseFee
+		next.FeeP95 = next.LastBaseFee
+		next.FeeP99 = next.LastBaseFee
+	} else {
+		next.FeeMin = feeStats.Min.Int64
+		next.FeeMode = feeStats.Mode.Int64
+		next.FeeP10 = feeStats.P10.Int64
+		next.FeeP20 = feeStats.P20.Int64
+		next.FeeP30 = feeStats.P30.Int64
+		next.FeeP40 = feeStats.P40.Int64
+		next.FeeP50 = feeStats.P50.Int64
+		next.FeeP60 = feeStats.P60.Int64
+		next.FeeP70 = feeStats.P70.Int64
+		next.FeeP80 = feeStats.P80.Int64
+		next.FeeP90 = feeStats.P90.Int64
+		next.FeeP95 = feeStats.P95.Int64
+		next.FeeP99 = feeStats.P99.Int64
+	}
+
+	operationfeestats.SetState(next)
 }
 
 // UpdateStellarCoreInfo updates the value of coreVersion,

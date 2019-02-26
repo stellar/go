@@ -20,9 +20,9 @@ import (
 var config horizon.Config
 
 var rootCmd = &cobra.Command{
-	Use:   "horizon [db|serve|version]",
+	Use:   "horizon",
 	Short: "client-facing api server for the stellar network",
-	Long:  "client-facing api server for the stellar network. It acts as the interface between Stellar Core and applications that want to access the Stellar network. It allows you to submit transactions to the network, check the status of accounts, subscribe to event streams and more.",
+	Long:  "client-facing api server for the stellar network",
 	Run: func(cmd *cobra.Command, args []string) {
 		initApp().Serve()
 	},
@@ -31,10 +31,10 @@ var rootCmd = &cobra.Command{
 // validateBothOrNeither ensures that both options are provided, if either is provided
 func validateBothOrNeither(option1, option2 string) {
 	arg1, arg2 := viper.GetString(option1), viper.GetString(option2)
-	if arg1 != "" && arg2 == "" {
+	switch {
+	case arg1 != "" && arg2 == "":
 		stdLog.Fatalf("Invalid config: %s = %s, but corresponding option %s is not configured", option1, arg1, option2)
-	}
-	if arg1 == "" && arg2 != "" {
+	case arg1 == "" && arg2 != "":
 		stdLog.Fatalf("Invalid config: %s = %s, but corresponding option %s is not configured", option2, arg2, option1)
 	}
 }
@@ -221,6 +221,13 @@ var configOpts = []*support.ConfigOption{
 		OptType:     types.Bool,
 		FlagDefault: false,
 		Usage:       "causes this horizon process to ingest data from stellar-core into horizon's db",
+	},
+	&support.ConfigOption{
+		Name:        "ingest-failed-transactions",
+		ConfigKey:   &config.IngestFailedTransactions,
+		OptType:     types.Bool,
+		FlagDefault: false,
+		Usage:       "causes this horizon process to ingest failed transactions data",
 	},
 	&support.ConfigOption{
 		Name:        "history-retention-count",

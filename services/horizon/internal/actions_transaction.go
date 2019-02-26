@@ -11,6 +11,7 @@ import (
 	"github.com/stellar/go/services/horizon/internal/render/sse"
 	"github.com/stellar/go/services/horizon/internal/resourceadapter"
 	"github.com/stellar/go/services/horizon/internal/txsub"
+	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/support/render/hal"
 	"github.com/stellar/go/support/render/problem"
 )
@@ -33,6 +34,7 @@ type TransactionIndexAction struct {
 	PagingParams  db2.PageQuery
 	Records       []history.Transaction
 	Page          hal.Page
+	IncludeFailed bool
 }
 
 // JSON is a method for actions.JSON
@@ -77,6 +79,14 @@ func (action *TransactionIndexAction) loadParams() {
 	action.AccountFilter = action.GetAddress("account_id")
 	action.LedgerFilter = action.GetInt32("ledger_id")
 	action.PagingParams = action.GetPageQuery()
+	action.IncludeFailed = action.GetBool("include_failed")
+
+	if action.IncludeFailed == true && !action.App.config.IngestFailedTransactions {
+		err := errors.New("`include_failed` parameter is unavailable when Horizon is not ingesting failed " +
+			"transactions. Set `INGEST_FAILED_TRANSACTIONS=true` to start ingesting them.")
+		action.Err = problem.MakeInvalidFieldProblem("include_failed", err)
+		return
+	}
 }
 
 func (action *TransactionIndexAction) loadRecords() {
@@ -88,6 +98,10 @@ func (action *TransactionIndexAction) loadRecords() {
 		txs.ForAccount(action.AccountFilter)
 	case action.LedgerFilter > 0:
 		txs.ForLedger(action.LedgerFilter)
+	}
+
+	if !action.IncludeFailed {
+		txs.SuccessfulOnly()
 	}
 
 	action.Err = txs.Page(action.PagingParams).Select(&action.Records)

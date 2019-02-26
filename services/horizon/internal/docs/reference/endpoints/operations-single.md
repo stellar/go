@@ -73,7 +73,8 @@ This endpoint responds with a single Operation.  See [operation resource](../res
   "funder": "GCEZWKCA5VLDNRLN3RPRJMRZOX3Z6G5CHCGSNFHEYVXM3XOJMDS674JZ",
   "id": 77309415424,
   "paging_token": "77309415424",
-  "starting_balance": 1e+14,
+  "starting_balance": "1000.0000000",
+  "transaction_successful": true,
   "type_i": 0,
   "type": "create_account"
 }

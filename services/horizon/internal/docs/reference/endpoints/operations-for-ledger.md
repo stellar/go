@@ -20,6 +20,7 @@ GET /ledgers/{id}/operations{?cursor,limit,order}
 | `?cursor`| optional, default _null_       | A paging token, specifying where to start returning records from.| `12884905984`|
 | `?order` | optional, string, default `asc`| The order in which to return rows, "asc" or "desc".              | `asc`        |
 | `?limit` | optional, number, default `10` | Maximum number of records to return.                             | `200`        |
+| `?include_failed` | optional, bool, default: `false` | Set to `true` to include operations of failed transactions in results. | `true` |
 
 ### curl Example Request
 
@@ -77,7 +78,8 @@ This endpoint responds with a list of operations in a given ledger.  See [operat
         "funder": "GCEZWKCA5VLDNRLN3RPRJMRZOX3Z6G5CHCGSNFHEYVXM3XOJMDS674JZ",
         "id": 77309415424,
         "paging_token": "77309415424",
-        "starting_balance": 1e+14,
+        "starting_balance": "1000.0000000",
+        "transaction_successful": true,
         "type_i": 0,
         "type": "create_account"
       }
