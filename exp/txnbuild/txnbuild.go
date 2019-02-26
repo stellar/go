@@ -3,7 +3,7 @@ package txnbuild
 import (
 	"bytes"
 	"encoding/base64"
-	"strconv"
+	"fmt"
 
 	"github.com/stellar/go/clients/horizon"
 	"github.com/stellar/go/keypair"
@@ -12,58 +12,41 @@ import (
 	"github.com/stellar/go/xdr"
 )
 
-// StellarNetwork ...
+// StellarNetwork is a global setting that sets the choice of network to use.
 var StellarNetwork = network.TestNetworkPassphrase
 
-// UseTestNetwork ...
+// UseTestNetwork sets the global network setting to use the Stellar TestNet.
 func UseTestNetwork() {
 	StellarNetwork = network.TestNetworkPassphrase
 }
 
-// UsePublicNetwork ...
+// UseTestNetwork sets the global network setting to use the Stellar Public network
+// (i.e. production).
 func UsePublicNetwork() {
 	StellarNetwork = network.PublicNetworkPassphrase
 }
 
-// OperationTypeCreateAccount      OperationType = 0
-// OperationTypePayment            OperationType = 1
-// OperationTypePathPayment        OperationType = 2
-// OperationTypeManageOffer        OperationType = 3
-// OperationTypeCreatePassiveOffer OperationType = 4
-// OperationTypeSetOptions         OperationType = 5
-// OperationTypeChangeTrust        OperationType = 6
-// OperationTypeAllowTrust         OperationType = 7
-// OperationTypeAccountMerge       OperationType = 8
-// OperationTypeInflation          OperationType = 9
-// OperationTypeManageData         OperationType = 10
-// OperationTypeBumpSequence       OperationType = 11
-
+// TODO: Replace use of Horizon Account with simpler Account object here
 // type Account struct {
 // 	AccountID string
 // 	Sequence  string
 // }
 
-// Operation ...
-type Operation interface {
-	Build() (xdr.Operation, error)
-	NewXDROperationBody() (xdr.OperationBody, error)
-}
-
-// Transaction ...
+// Transaction represents a Stellar Transaction.
 type Transaction struct {
 	SourceAccount horizon.Account
 	Operations    []Operation
 	TX            *xdr.Transaction
-	BaseFee       uint64
+	BaseFee       uint64 // TODO: Why is this a uint 64? Can it be a plain int?
 	Envelope      *xdr.TransactionEnvelope
 }
 
-// Hash ...
+// Hash provides a signable object representing the Transaction on the specified network.
 func (tx *Transaction) Hash() ([32]byte, error) {
 	return network.HashTransaction(tx.TX, StellarNetwork)
 }
 
-// Bytes ...
+// Bytes returns the binary XDR representation of the Transaction.
 func (tx *Transaction) Bytes() ([]byte, error) {
 	var txBytes bytes.Buffer
 	_, err := xdr.Marshal(&txBytes, tx.Envelope)
@@ -74,7 +57,7 @@ func (tx *Transaction) Bytes() ([]byte, error) {
 	return txBytes.Bytes(), nil
 }
 
-// Base64 ...
+// Base64 returns the base 64 XDR representation of the Transaction.
 func (tx *Transaction) Base64() (string, error) {
 	bs, err := tx.Bytes()
 	if err != nil {
@@ -84,9 +67,11 @@ func (tx *Transaction) Base64() (string, error) {
 	return base64.StdEncoding.EncodeToString(bs), nil
 }
 
-// SetDefaultFee ...
+// SetDefaultFee sets a sensible minimum default for the Transaction fee. It is
+// a linear function of the number of Operations in the Transaction.
 func (tx *Transaction) SetDefaultFee() {
 	// TODO: Check if default base fee used elsewhere - otherwise just use int
+	// TODO: Generalise to pull this from a client call
 	var DefaultBaseFee uint64 = 100
 	if tx.BaseFee == 0 {
 		tx.BaseFee = DefaultBaseFee
@@ -96,7 +81,8 @@ func (tx *Transaction) SetDefaultFee() {
 	}
 }
 
-// Build ...
+// Build for Transaction completely configures the Transaction. After calling Build,
+// the Transaction is ready to be serialised or signed.
 func (tx *Transaction) Build() error {
 	// Initialise TX (XDR) struct if needed
 	if tx.TX == nil {
@@ -104,25 +90,20 @@ func (tx *Transaction) Build() error {
 	}
 
 	// Set account ID in TX
-	// TODO: For createAccount, destination is a factor - how does this fit in?
-	// TODO: Need to get XDR operation struct for relevant operation (this is nil
-	// for inflation) - map inside switch statement?
 	// TODO: Validate provided key before going further
 	tx.TX.SourceAccount.SetAddress(tx.SourceAccount.ID)
 
 	// Set sequence number in TX
 	seqNum, err := SeqNumFromAccount(tx.SourceAccount)
-	// TODO: Wrap and return error
 	if err != nil {
 		return err
 	}
 	tx.TX.SeqNum = seqNum + 1
 
 	for _, op := range tx.Operations {
-		xdrOperation, err := op.Build()
-		// TODO: Wrap and return error
+		xdrOperation, err := BuildOperation(op)
 		if err != nil {
-			return err
+			return errors.Wrap(err, fmt.Sprintf("Failed to build operation %T", op))
 		}
 		tx.TX.Operations = append(tx.TX.Operations, xdrOperation)
 	}
@@ -133,8 +114,10 @@ func (tx *Transaction) Build() error {
 	return nil
 }
 
-// Sign ...
+// Sign for Transaction signs a previously built transaction. A signed transaction may be
+// submitted to the network.
 func (tx *Transaction) Sign(seed string) error {
+	// TODO: Only sign if Transaction has been previously built
 	// Initialise transaction envelope
 	if tx.Envelope == nil {
 		tx.Envelope = &xdr.TransactionEnvelope{}
@@ -163,15 +146,4 @@ func (tx *Transaction) Sign(seed string) error {
 	tx.Envelope.Signatures = append(tx.Envelope.Signatures, sig)
 
 	return nil
-}
-
-// SeqNumFromAccount ...
-func SeqNumFromAccount(account horizon.Account) (xdr.SequenceNumber, error) {
-	seqNum, err := strconv.ParseUint(account.Sequence, 10, 64)
-
-	if err != nil {
-		return 0, errors.Wrap(err, "Failed to parse account sequence number")
-	}
-
-	return xdr.SequenceNumber(seqNum), nil
 }

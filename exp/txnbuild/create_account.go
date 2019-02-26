@@ -6,7 +6,8 @@ import (
 	"github.com/stellar/go/xdr"
 )
 
-// CreateAccount ...
+// CreateAccount represents the Stellar create account operation. See
+// https://www.stellar.org/developers/guides/concepts/list-of-operations.html
 type CreateAccount struct {
 	destAccountID xdr.AccountId
 	Destination   string
@@ -15,39 +16,24 @@ type CreateAccount struct {
 	xdrOp         xdr.CreateAccountOp
 }
 
-// Build ...
-func (ca *CreateAccount) Build() (xdr.Operation, error) {
-	// Create operation body
-	body, err := ca.NewXDROperationBody()
-	if err != nil {
-		return xdr.Operation{}, errors.Wrap(err, "Failed to create XDR")
-	}
-	// Append relevant operation to TX.operations
-	xdrOperation := xdr.Operation{Body: body}
-
-	return xdrOperation, nil
-}
-
-// NewXDROperationBody ...
-func (ca *CreateAccount) NewXDROperationBody() (xdr.OperationBody, error) {
-	// TODO: Better name
-	// TODO: Add next two lines in here
-	// TODO: Check both errors
-
-	err := ca.Init()
-	opType := xdr.OperationTypeCreateAccount
-	body, err := xdr.NewOperationBody(opType, ca.xdrOp)
-
-	return body, err
-}
-
-// Init ...
+// Init for CreateAccount initialises the required XDR fields for this operation.
 func (ca *CreateAccount) Init() error {
 	err := ca.destAccountID.SetAddress(ca.Destination)
+	if err != nil {
+		return errors.Wrap(err, "Failed to set destination address")
+	}
 	ca.xdrOp.Destination = ca.destAccountID
 
-	// TODO: Wrap error
 	ca.xdrOp.StartingBalance, err = amount.Parse(ca.Amount)
+	if err != nil {
+		return errors.Wrap(err, "Failed to parse amount")
+	}
 
 	return err
+}
+
+// NewXDROperationBody for CreateAccount initialises the corresponding XDR body.
+func (ca *CreateAccount) NewXDROperationBody() (xdr.OperationBody, error) {
+	opType := xdr.OperationTypeCreateAccount
+	return xdr.NewOperationBody(opType, ca.xdrOp)
 }

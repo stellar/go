@@ -49,6 +49,7 @@ func exampleCreateAccount(client *horizon.Client) horizon.TransactionSuccess {
 
 	log.Println("Base 64 TX: ", txeBase64)
 
+	// TODO: Add client method to convert to base 64 internally.
 	// resp, err := client.SubmitTransaction(txeBase64)
 	// if err != nil {
 	// 	bad := err.(*horizon.Error)
