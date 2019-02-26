@@ -9,6 +9,8 @@ import (
 	"log"
 	"net/http"
 
+	"github.com/stellar/go/exp/txnbuild"
+
 	"github.com/stellar/go/build"
 	"github.com/stellar/go/clients/horizon"
 	"github.com/stellar/go/keypair"
@@ -178,7 +180,7 @@ func main() {
 
 	// Check how we did
 	checkError(err)
-	printTransactionSuccess(resp)
+	txnbuild.PrintTransactionSuccess(resp)
 
 	// Print final balances
 	printAcctBalance(sourceAddress)
