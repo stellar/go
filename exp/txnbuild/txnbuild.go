@@ -5,7 +5,6 @@ import (
 	"encoding/base64"
 	"strconv"
 
-	"github.com/stellar/go/amount"
 	"github.com/stellar/go/clients/horizon"
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/network"
@@ -46,56 +45,8 @@ func UsePublicNetwork() {
 
 // Operation ...
 type Operation interface {
+	Build() (xdr.Operation, error)
 	NewXDROperationBody() (xdr.OperationBody, error)
-}
-
-// Inflation ...
-type Inflation struct {
-	xdrOp struct{}
-}
-
-// NewXDROperationBody ...
-func (inf *Inflation) NewXDROperationBody() (xdr.OperationBody, error) {
-	// TODO: Better name
-	// TODO: Add next two lines in here
-
-	opType := xdr.OperationTypeInflation
-	body, err := xdr.NewOperationBody(opType, nil)
-
-	return body, err
-}
-
-// CreateAccount ...
-type CreateAccount struct {
-	destAccountID xdr.AccountId
-	Destination   string
-	Amount        string
-	Asset         string // TODO: Not used yet
-	xdrOp         xdr.CreateAccountOp
-}
-
-// NewXDROperationBody ...
-func (ca *CreateAccount) NewXDROperationBody() (xdr.OperationBody, error) {
-	// TODO: Better name
-	// TODO: Add next two lines in here
-	// TODO: Check both errors
-
-	err := ca.Build()
-	opType := xdr.OperationTypeCreateAccount
-	body, err := xdr.NewOperationBody(opType, ca.xdrOp)
-
-	return body, err
-}
-
-// Build ...
-func (ca *CreateAccount) Build() error {
-	err := ca.destAccountID.SetAddress(ca.Destination)
-	ca.xdrOp.Destination = ca.destAccountID
-
-	// TODO: Wrap error
-	ca.xdrOp.StartingBalance, err = amount.Parse(ca.Amount)
-
-	return err
 }
 
 // Transaction ...
@@ -161,19 +112,18 @@ func (tx *Transaction) Build() error {
 
 	// Set sequence number in TX
 	seqNum, err := SeqNumFromAccount(tx.SourceAccount)
+	// TODO: Wrap and return error
 	if err != nil {
 		return err
 	}
 	tx.TX.SeqNum = seqNum + 1
 
 	for _, op := range tx.Operations {
-		// Create operation body
-		body, err := op.NewXDROperationBody()
+		xdrOperation, err := op.Build()
+		// TODO: Wrap and return error
 		if err != nil {
-			return errors.Wrap(err, "Failed to create XDR")
+			return err
 		}
-		// Append relevant operation to TX.operations
-		xdrOperation := xdr.Operation{Body: body}
 		tx.TX.Operations = append(tx.TX.Operations, xdrOperation)
 	}
 
