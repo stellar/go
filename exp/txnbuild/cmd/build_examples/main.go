@@ -74,18 +74,6 @@ func printAcctBalance(address string) {
 	}
 }
 
-func printTransactionSuccess(resp horizon.TransactionSuccess) {
-	log.Println("TransactionSuccess:")
-	log.Println("")
-	log.Println("Links:", resp.Links)
-	log.Println("Hash:", resp.Hash)
-	log.Println("Ledger:", resp.Ledger)
-	log.Println("Env:", resp.Env)
-	log.Println("Result:", resp.Result)
-	log.Println("Meta:", resp.Meta)
-	log.Println("")
-}
-
 func checkError(err error) {
 	if err != nil {
 		log.Fatal("Fatal error:", err)
