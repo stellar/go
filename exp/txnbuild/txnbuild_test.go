@@ -8,7 +8,6 @@ import (
 )
 
 func TestInflation(t *testing.T) {
-	assert := assert.New(t)
 	var err error
 
 	secretSeed := "SBPQUZ6G4FZNWFHKUWC5BEYWF6R52E3SEP7R3GWYSM2XTKGF5LNTWW4R"
@@ -26,21 +25,20 @@ func TestInflation(t *testing.T) {
 	}
 
 	err = tx.Build()
-	assert.Nil(err)
+	assert.Nil(t, err)
 
 	err = tx.Sign(secretSeed)
-	assert.Nil(err)
+	assert.Nil(t, err)
 
 	txeBase64, err := tx.Base64()
-	assert.Nil(err)
+	assert.Nil(t, err)
 
 	expected := "AAAAAODcbeFyXKxmUWK1L6znNbKKIkPkHRJNbLktcKPqLnLFAAAAZAAiII0AAAAaAAAAAAAAAAAAAAABAAAAAAAAAAkAAAAAAAAAAeoucsUAAABAWqznvTxLfn6Q+zIloGmLDXCJQWsFPlfIf/EVFF+FfpL/gNbsvTC/U2G/ZtxMTgvqTLsBJfZAailGvPS04rfYCw=="
 
-	assert.Equal(expected, txeBase64, "Base 64 XDR should match")
+	assert.Equal(t, expected, txeBase64, "Base 64 XDR should match")
 }
 
 func TestCreateAccount(t *testing.T) {
-	assert := assert.New(t)
 	var err error
 
 	secretSeed := "SBPQUZ6G4FZNWFHKUWC5BEYWF6R52E3SEP7R3GWYSM2XTKGF5LNTWW4R"
@@ -62,15 +60,15 @@ func TestCreateAccount(t *testing.T) {
 	}
 
 	err = tx.Build()
-	assert.Nil(err)
+	assert.Nil(t, err)
 
 	err = tx.Sign(secretSeed)
-	assert.Nil(err)
+	assert.Nil(t, err)
 
 	txeBase64, err := tx.Base64()
-	assert.Nil(err)
+	assert.Nil(t, err)
 
 	expected := "AAAAAODcbeFyXKxmUWK1L6znNbKKIkPkHRJNbLktcKPqLnLFAAAAZAAiII0AAAAaAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAhODe2rwbSS+e+giFk8xgmxj70pVXzEADo3GG0rEhdlQAAAAABfXhAAAAAAAAAAAB6i5yxQAAAEBa4swhXSxQ2SYXoT0FcwIrrslFrv/Q/pnXK2+f6XigqjxW0yjNQwIrpVZuNz4zNGXB3DULxyYkUi8wDwwbiKIB"
 
-	assert.Equal(expected, txeBase64, "Base 64 XDR should match")
+	assert.Equal(t, expected, txeBase64, "Base 64 XDR should match")
 }
