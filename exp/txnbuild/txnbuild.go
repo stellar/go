@@ -14,7 +14,7 @@ import (
 )
 
 // StellarNetwork ...
-var StellarNetwork string
+var StellarNetwork = network.TestNetworkPassphrase
 
 // UseTestNetwork ...
 func UseTestNetwork() {
@@ -57,7 +57,6 @@ type Inflation struct {
 // NewXDROperationBody ...
 func (inf *Inflation) NewXDROperationBody() (xdr.OperationBody, error) {
 	// TODO: Better name
-	// TODO: Remove switch, move info in here
 	// TODO: Add next two lines in here
 
 	opType := xdr.OperationTypeInflation
@@ -78,7 +77,6 @@ type CreateAccount struct {
 // NewXDROperationBody ...
 func (ca *CreateAccount) NewXDROperationBody() (xdr.OperationBody, error) {
 	// TODO: Better name
-	// TODO: Remove switch, move info in here
 	// TODO: Add next two lines in here
 	// TODO: Check both errors
 
