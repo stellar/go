@@ -23,17 +23,19 @@ func exampleCreateAccount(client *horizon.Client) horizon.TransactionSuccess {
 	dieIfError("loadaccount", err)
 
 	// newAccountKeypair := createKeypair()
-	// createAccount := txnbuild.CreateAccount{
-	// 	Destination: newAccountKeypair.Address(),
-	// 	Amount:      "10",
-	// 	Asset:       "native",
-	// }
-	inflation := txnbuild.Inflation{}
+	createAccount := txnbuild.CreateAccount{
+		// Destination: newAccountKeypair.Address(),
+		Destination: "GCCOBXW2XQNUSL467IEILE6MMCNRR66SSVL4YQADUNYYNUVREF3FIV2Z",
+		Amount:      "10",
+		Asset:       "native",
+	}
+	// inflation := txnbuild.Inflation{}
 
 	tx := txnbuild.Transaction{
 		SourceAccount: sourceAccount,
-		Operations:    []txnbuild.Operation{&inflation},
-		// Operations:    []txnbuild.Operation{&inflation, &createAccount},
+		// Operations:    []txnbuild.Operation{&inflation},
+		// Operations: []txnbuild.Operation{&inflation, &createAccount},
+		Operations: []txnbuild.Operation{&createAccount},
 	}
 
 	err = tx.Build()

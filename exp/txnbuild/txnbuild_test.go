@@ -38,3 +38,39 @@ func TestInflation(t *testing.T) {
 
 	assert.Equal(expected, txeBase64, "Base 64 XDR should match")
 }
+
+func TestCreateAccount(t *testing.T) {
+	assert := assert.New(t)
+	var err error
+
+	secretSeed := "SBPQUZ6G4FZNWFHKUWC5BEYWF6R52E3SEP7R3GWYSM2XTKGF5LNTWW4R"
+	sourceAddress := "GDQNY3PBOJOKYZSRMK2S7LHHGWZIUISD4QORETLMXEWXBI7KFZZMKTL3"
+	sourceAccount := horizon.Account{
+		HistoryAccount: horizon.HistoryAccount{ID: sourceAddress},
+		Sequence:       "9605939170639897",
+	}
+
+	createAccount := CreateAccount{
+		Destination: "GCCOBXW2XQNUSL467IEILE6MMCNRR66SSVL4YQADUNYYNUVREF3FIV2Z",
+		Amount:      "10",
+		Asset:       "native",
+	}
+
+	tx := Transaction{
+		SourceAccount: sourceAccount,
+		Operations:    []Operation{&createAccount},
+	}
+
+	err = tx.Build()
+	assert.Nil(err)
+
+	err = tx.Sign(secretSeed)
+	assert.Nil(err)
+
+	txeBase64, err := tx.Base64()
+	assert.Nil(err)
+
+	expected := "AAAAAODcbeFyXKxmUWK1L6znNbKKIkPkHRJNbLktcKPqLnLFAAAAZAAiII0AAAAaAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAhODe2rwbSS+e+giFk8xgmxj70pVXzEADo3GG0rEhdlQAAAAABfXhAAAAAAAAAAAB6i5yxQAAAEBa4swhXSxQ2SYXoT0FcwIrrslFrv/Q/pnXK2+f6XigqjxW0yjNQwIrpVZuNz4zNGXB3DULxyYkUi8wDwwbiKIB"
+
+	assert.Equal(expected, txeBase64, "Base 64 XDR should match")
+}
