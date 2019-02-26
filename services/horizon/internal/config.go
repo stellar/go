@@ -36,6 +36,8 @@ type Config struct {
 	TLSKey string
 	// Ingest toggles whether this horizon instance should run the data ingestion subsystem.
 	Ingest bool
+	// IngestFailedTransactions toggles whether to ingest failed transactions
+	IngestFailedTransactions bool
 	// HistoryRetentionCount represents the minimum number of ledgers worth of
 	// history data to retain in the horizon database. For the purposes of
 	// determining a "retention duration", each ledger roughly corresponds to 10

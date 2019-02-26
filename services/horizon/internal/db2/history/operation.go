@@ -30,6 +30,30 @@ func (r *Operation) UnmarshalDetails(dest interface{}) error {
 	return err
 }
 
+// OperationFeeStats returns operation fee stats for the last 5 ledgers.
+// Currently, we hard code the query to return the last 5 ledgers worth of transactions.
+// TODO: make the number of ledgers configurable.
+func (q *Q) OperationFeeStats(currentSeq int32, dest *FeeStats) error {
+	return q.GetRaw(dest, `
+		SELECT
+			ceil(min(fee_paid/operation_count))::bigint AS "min",
+			ceil(mode() within group (order by fee_paid/operation_count))::bigint AS "mode",
+			ceil(percentile_cont(0.10) WITHIN GROUP (ORDER BY fee_paid/operation_count))::bigint AS "p10",
+			ceil(percentile_cont(0.20) WITHIN GROUP (ORDER BY fee_paid/operation_count))::bigint AS "p20",
+			ceil(percentile_cont(0.30) WITHIN GROUP (ORDER BY fee_paid/operation_count))::bigint AS "p30",
+			ceil(percentile_cont(0.40) WITHIN GROUP (ORDER BY fee_paid/operation_count))::bigint AS "p40",
+			ceil(percentile_cont(0.50) WITHIN GROUP (ORDER BY fee_paid/operation_count))::bigint AS "p50",
+			ceil(percentile_cont(0.60) WITHIN GROUP (ORDER BY fee_paid/operation_count))::bigint AS "p60",
+			ceil(percentile_cont(0.70) WITHIN GROUP (ORDER BY fee_paid/operation_count))::bigint AS "p70",
+			ceil(percentile_cont(0.80) WITHIN GROUP (ORDER BY fee_paid/operation_count))::bigint AS "p80",
+			ceil(percentile_cont(0.90) WITHIN GROUP (ORDER BY fee_paid/operation_count))::bigint AS "p90",
+			ceil(percentile_cont(0.95) WITHIN GROUP (ORDER BY fee_paid/operation_count))::bigint AS "p95",
+			ceil(percentile_cont(0.99) WITHIN GROUP (ORDER BY fee_paid/operation_count))::bigint AS "p99"
+		FROM history_transactions
+		WHERE ledger_sequence > $1 AND ledger_sequence <= $2
+	`, currentSeq-5, currentSeq)
+}
+
 // Operations provides a helper to filter the operations table with pre-defined
 // filters.  See `OperationsQ` for the available filters.
 func (q *Q) Operations() *OperationsQ {
@@ -122,6 +146,13 @@ func (q *OperationsQ) OnlyPayments() *OperationsQ {
 	return q
 }
 
+// SuccessfulOnly changes the query to include successful operations only.
+func (q *OperationsQ) SuccessfulOnly() *OperationsQ {
+	q.sql = q.sql.
+		Where("(ht.successful = true OR ht.successful IS NULL)")
+	return q
+}
+
 // Page specifies the paging constraints for the query being built by `q`.
 func (q *OperationsQ) Page(page db2.PageQuery) *OperationsQ {
 	if q.Err != nil {
@@ -149,6 +180,7 @@ var selectOperation = sq.Select(
 		"hop.type, " +
 		"hop.details, " +
 		"hop.source_account, " +
-		"ht.transaction_hash").
+		"ht.transaction_hash, " +
+		"ht.successful as transaction_successful").
 	From("history_operations hop").
 	LeftJoin("history_transactions ht ON ht.id = hop.transaction_id")

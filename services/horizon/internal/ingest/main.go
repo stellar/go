@@ -25,7 +25,7 @@ const (
 	// Scripts, that have yet to be ported to this codebase can then be leveraged
 	// to re-ingest old data with the new algorithm, providing a seamless
 	// transition when the ingested data's structure changes.
-	CurrentVersion = 15
+	CurrentVersion = 16
 )
 
 // Address is a type of a param provided to BatchInsertBuilder that gets exchanged
@@ -74,6 +74,9 @@ type Config struct {
 	// EnableAssetStats is a feature flag that determines whether to calculate
 	// asset stats in this ingestion system.
 	EnableAssetStats bool
+	// IngestFailedTransactions is a feature flag that determines if system
+	// should ingest failed transactions.
+	IngestFailedTransactions bool
 }
 
 // EffectIngestion is a helper struct to smooth the ingestion of effects.  this
@@ -119,6 +122,8 @@ type System struct {
 	// keep in the history database, working backwards from the latest core
 	// ledger.  0 represents "all ledgers".
 	HistoryRetentionCount uint
+	// IngestFailedTransactions toggles whether to ingest failed transactions
+	IngestFailedTransactions bool
 
 	lock    sync.Mutex
 	current *Session

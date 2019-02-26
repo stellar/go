@@ -89,6 +89,12 @@ func PopulateBaseOperation(
 ) {
 	dest.ID = fmt.Sprintf("%d", row.ID)
 	dest.PT = row.PagingToken()
+	// Check db2/history.Transaction.Successful field comment for more information.
+	if row.TransactionSuccessful == nil {
+		dest.TransactionSuccessful = true
+	} else {
+		dest.TransactionSuccessful = *row.TransactionSuccessful
+	}
 	dest.SourceAccount = row.SourceAccount
 	populateOperationType(dest, row)
 	dest.LedgerCloseTime = ledger.ClosedAt

@@ -32,7 +32,9 @@ var dbBackfillCmd = &cobra.Command{
 
 		initApp().UpdateLedgerState()
 
-		i := ingestSystem(ingest.Config{})
+		i := ingestSystem(ingest.Config{
+			IngestFailedTransactions: config.IngestFailedTransactions,
+		})
 		i.SkipCursorUpdate = true
 		parsed, err := strconv.ParseUint(args[0], 10, 32)
 		if err != nil {
@@ -89,9 +91,12 @@ var dbClearCmd = &cobra.Command{
 	Use:   "clear",
 	Short: "clears all imported historical data",
 	Run: func(cmd *cobra.Command, args []string) {
+		hlog.DefaultLogger.Logger.Level = config.LogLevel
 		initConfig()
 
-		err := ingestSystem(ingest.Config{}).ClearAll()
+		err := ingestSystem(ingest.Config{
+			IngestFailedTransactions: config.IngestFailedTransactions,
+		}).ClearAll()
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -170,9 +175,12 @@ var dbRebaseCmd = &cobra.Command{
 	Short: "rebases clears the horizon db and ingests the latest ledger segment from stellar-core",
 	Long:  "...",
 	Run: func(cmd *cobra.Command, args []string) {
+		hlog.DefaultLogger.Logger.Level = config.LogLevel
 		initConfig()
 
-		i := ingestSystem(ingest.Config{})
+		i := ingestSystem(ingest.Config{
+			IngestFailedTransactions: config.IngestFailedTransactions,
+		})
 		i.SkipCursorUpdate = true
 
 		err := i.RebaseHistory()
@@ -187,9 +195,12 @@ var dbReingestCmd = &cobra.Command{
 	Short: "imports all data",
 	Long:  "reingest runs the ingestion pipeline over every ledger",
 	Run: func(cmd *cobra.Command, args []string) {
+		hlog.DefaultLogger.Logger.Level = config.LogLevel
 		initConfig()
 
-		i := ingestSystem(ingest.Config{})
+		i := ingestSystem(ingest.Config{
+			IngestFailedTransactions: config.IngestFailedTransactions,
+		})
 		i.SkipCursorUpdate = true
 		logStatus := func(stage string) {
 			count := i.Metrics.IngestLedgerTimer.Count()
@@ -269,6 +280,20 @@ func reingest(i *ingest.System, args []string) (int, error) {
 
 	if len(args) == 1 && args[0] == "outdated" {
 		return i.ReingestOutdated()
+	}
+
+	if len(args) >= 1 && args[0] == "range" {
+		from, err := strconv.Atoi(args[1])
+		if err != nil {
+			return 0, err
+		}
+
+		to, err := strconv.Atoi(args[2])
+		if err != nil {
+			return 0, err
+		}
+
+		return i.ReingestRange(int32(from), int32(to))
 	}
 
 	for idx, arg := range args {

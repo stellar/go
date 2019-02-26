@@ -25,7 +25,7 @@ When horizon returns information about an account it uses the following format:
 
 | Attribute    | Type             |                                                                                                                        |
 |--------------|------------------|------------------------------------------------------------------------------------------------------------------------|
-| public_key           | string           | **Deprecated:** replaced by `key`. |
+| public_key           | string           | *REMOVED in 0.17.0: USE `key` INSTEAD*. |
 | weight      | number           | The numerical weight of a signer, necessary to determine whether a transaction meets the threshold requirements.                                                   |
 | key     | string           | Different depending on the type of the signer.                            |
 | type     | string           | See below. |

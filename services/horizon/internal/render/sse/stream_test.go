@@ -67,7 +67,7 @@ func (suite *StreamTestSuite) TestStream_Err() {
 	suite.stream.sent++
 	suite.stream.Err(err)
 	suite.checkHeadersAndPreamble()
-	assert.Contains(suite.T(), suite.w.Body.String(), "event: err\ndata: Unexpected stream error\n\n")
+	assert.Contains(suite.T(), suite.w.Body.String(), "event: error\ndata: Unexpected stream error\n\n")
 	assert.True(suite.T(), suite.stream.IsDone())
 }
 

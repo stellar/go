@@ -35,13 +35,16 @@ type Base struct {
 		Precedes    hal.Link `json:"precedes"`
 	} `json:"_links"`
 
-	ID              string    `json:"id"`
-	PT              string    `json:"paging_token"`
-	SourceAccount   string    `json:"source_account"`
-	Type            string    `json:"type"`
-	TypeI           int32     `json:"type_i"`
-	LedgerCloseTime time.Time `json:"created_at"`
-	TransactionHash string    `json:"transaction_hash"`
+	ID string `json:"id"`
+	PT string `json:"paging_token"`
+	// TransactionSuccessful defines if this operation is part of
+	// successful transaction.
+	TransactionSuccessful bool      `json:"transaction_successful"`
+	SourceAccount         string    `json:"source_account"`
+	Type                  string    `json:"type"`
+	TypeI                 int32     `json:"type_i"`
+	LedgerCloseTime       time.Time `json:"created_at"`
+	TransactionHash       string    `json:"transaction_hash"`
 }
 
 // PagingToken implements hal.Pageable

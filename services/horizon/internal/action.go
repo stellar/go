@@ -156,7 +156,7 @@ func (action *Action) baseURL() *url.URL {
 }
 
 func (a *App) getAccountInfo(ctx context.Context) (interface{}, error) {
-	return actions.AccountInfo(ctx, &core.Q{a.CoreSession(ctx)}, &history.Q{a.HorizonSession(ctx)}, a.coreSupportedProtocolVersion)
+	return actions.AccountInfo(ctx, &core.Q{a.CoreSession(ctx)}, &history.Q{a.HorizonSession(ctx)})
 }
 
 func (a *App) loadAccountEvent(ctx context.Context) (sse.Event, error) {

@@ -150,13 +150,11 @@ type Ledger struct {
 		Payments     hal.Link `json:"payments"`
 		Effects      hal.Link `json:"effects"`
 	} `json:"_links"`
-	ID       string `json:"id"`
-	PT       string `json:"paging_token"`
-	Hash     string `json:"hash"`
-	PrevHash string `json:"prev_hash,omitempty"`
-	Sequence int32  `json:"sequence"`
-	// Deprecated - remove in: horizon-v0.17.0
-	TransactionCount           int32     `json:"transaction_count"`
+	ID                         string    `json:"id"`
+	PT                         string    `json:"paging_token"`
+	Hash                       string    `json:"hash"`
+	PrevHash                   string    `json:"prev_hash,omitempty"`
+	Sequence                   int32     `json:"sequence"`
 	SuccessfulTransactionCount int32     `json:"successful_transaction_count"`
 	FailedTransactionCount     *int32    `json:"failed_transaction_count"`
 	OperationCount             int32     `json:"operation_count"`
@@ -247,25 +245,21 @@ type Root struct {
 		Transactions        hal.Link  `json:"transactions"`
 	} `json:"_links"`
 
-	HorizonVersion       string `json:"horizon_version"`
-	StellarCoreVersion   string `json:"core_version"`
-	HorizonSequence      int32  `json:"history_latest_ledger"`
-	HistoryElderSequence int32  `json:"history_elder_ledger"`
-	CoreSequence         int32  `json:"core_latest_ledger"`
-	NetworkPassphrase    string `json:"network_passphrase"`
-	// Deprecated - remove in: horizon-v0.17.0
-	ProtocolVersion              int32 `json:"protocol_version"`
-	CurrentProtocolVersion       int32 `json:"current_protocol_version"`
-	CoreSupportedProtocolVersion int32 `json:"core_supported_protocol_version"`
+	HorizonVersion               string `json:"horizon_version"`
+	StellarCoreVersion           string `json:"core_version"`
+	HorizonSequence              int32  `json:"history_latest_ledger"`
+	HistoryElderSequence         int32  `json:"history_elder_ledger"`
+	CoreSequence                 int32  `json:"core_latest_ledger"`
+	NetworkPassphrase            string `json:"network_passphrase"`
+	CurrentProtocolVersion       int32  `json:"current_protocol_version"`
+	CoreSupportedProtocolVersion int32  `json:"core_supported_protocol_version"`
 }
 
 // Signer represents one of an account's signers.
 type Signer struct {
-	// Deprecated - remove in: horizon-v0.17.0
-	PublicKey string `json:"public_key"`
-	Weight    int32  `json:"weight"`
-	Key       string `json:"key"`
-	Type      string `json:"type"`
+	Weight int32  `json:"weight"`
+	Key    string `json:"key"`
+	Type   string `json:"type"`
 }
 
 // Trade represents a horizon digested trade
@@ -365,6 +359,7 @@ type Transaction struct {
 	} `json:"_links"`
 	ID              string    `json:"id"`
 	PT              string    `json:"paging_token"`
+	Successful      bool      `json:"successful"`
 	Hash            string    `json:"hash"`
 	Ledger          int32     `json:"ledger"`
 	LedgerCloseTime time.Time `json:"created_at"`

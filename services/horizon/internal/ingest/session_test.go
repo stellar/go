@@ -14,7 +14,7 @@ func Test_ingestSignerEffects(t *testing.T) {
 	tt := test.Start(t).ScenarioWithoutHorizon("set_options")
 	defer tt.Finish()
 
-	s := ingest(tt, false)
+	s := ingest(tt, Config{EnableAssetStats: false})
 	tt.Require.NoError(s.Err)
 
 	q := &history.Q{Session: tt.HorizonSession()}
@@ -34,7 +34,7 @@ func Test_ingestOperationEffects(t *testing.T) {
 	tt := test.Start(t).ScenarioWithoutHorizon("set_options")
 	defer tt.Finish()
 
-	s := ingest(tt, false)
+	s := ingest(tt, Config{EnableAssetStats: false})
 	tt.Require.NoError(s.Err)
 
 	q := &history.Q{Session: tt.HorizonSession()}
@@ -50,7 +50,7 @@ func Test_ingestOperationEffects(t *testing.T) {
 
 	// HACK(scott): switch to kahuna recipe mid-stream.  We need to integrate our test scenario loader to be compatible with go subtests/
 	tt.ScenarioWithoutHorizon("kahuna")
-	s = ingest(tt, false)
+	s = ingest(tt, Config{EnableAssetStats: false})
 	tt.Require.NoError(s.Err)
 	pq, err := db2.NewPageQuery("", true, "asc", 200)
 	tt.Require.NoError(err)
@@ -88,7 +88,7 @@ func Test_ingestBumpSeq(t *testing.T) {
 	tt := test.Start(t).ScenarioWithoutHorizon("kahuna")
 	defer tt.Finish()
 
-	s := ingest(tt, false)
+	s := ingest(tt, Config{EnableAssetStats: false})
 	tt.Require.NoError(s.Err)
 
 	q := &history.Q{Session: tt.HorizonSession()}

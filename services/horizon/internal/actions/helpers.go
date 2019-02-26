@@ -147,6 +147,31 @@ func (base *Base) GetInt32(name string) int32 {
 	return int32(asI64)
 }
 
+// GetBool retrieves a bool from the action parameter of the given name.
+// Populates err if the value is not a valid bool.
+// Defaults to `false` in case of an empty string. WARNING, do not change
+// this behaviour without checking other modules, ex. this is critical
+// that failed transactions are not included (`false`) by default.
+func (base *Base) GetBool(name string) bool {
+	if base.Err != nil {
+		return false
+	}
+
+	asStr := base.GetString(name)
+	if asStr == "" {
+		return false
+	}
+
+	if asStr == "true" {
+		return true
+	} else if asStr == "false" || asStr == "" {
+		return false
+	} else {
+		base.SetInvalidField(name, errors.New("unparseable value"))
+		return false
+	}
+}
+
 // GetLimit retrieves a uint64 limit from the action parameter of the given
 // name. Populates err if the value is not a valid limit.  Uses the provided
 // default value if the limit parameter is a blank string.

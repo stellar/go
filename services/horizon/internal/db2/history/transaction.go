@@ -16,17 +16,6 @@ func (q *Q) TransactionByHash(dest interface{}, hash string) error {
 	return q.Get(dest, sql)
 }
 
-// TransactionsForLastXLedgers filters the query to only the last X ledgers worth of transactions.
-// Currently, we hard code the query to return the last 5 ledgers worth of transactions. In the
-// future this may be configurable.
-func (q *Q) TransactionsForLastXLedgers(currentSeq int32, dest interface{}) error {
-	return q.GetRaw(dest, `
-		SELECT min(fee_paid/operation_count),  mode() within group (order by fee_paid/operation_count)
-		FROM history_transactions
-		WHERE ledger_sequence > $1 AND ledger_sequence <= $2
-	`, currentSeq-5, currentSeq)
-}
-
 // Transactions provides a helper to filter rows from the `history_transactions`
 // table with pre-defined filters.  See `TransactionsQ` methods for the
 // available filters.
@@ -72,6 +61,13 @@ func (q *TransactionsQ) ForLedger(seq int32) *TransactionsQ {
 	return q
 }
 
+// SuccessfulOnly changes the query to include successful transactions only.
+func (q *TransactionsQ) SuccessfulOnly() *TransactionsQ {
+	q.sql = q.sql.
+		Where("(ht.successful = true OR ht.successful IS NULL)")
+	return q
+}
+
 // Page specifies the paging constraints for the query being built by `q`.
 func (q *TransactionsQ) Page(page db2.PageQuery) *TransactionsQ {
 	if q.Err != nil {
@@ -107,6 +103,7 @@ var selectTransaction = sq.Select(
 		"ht.tx_fee_meta, " +
 		"ht.created_at, " +
 		"ht.updated_at, " +
+		"ht.successful, " +
 		"array_to_string(ht.signatures, ',') AS signatures, " +
 		"ht.memo_type, " +
 		"ht.memo, " +

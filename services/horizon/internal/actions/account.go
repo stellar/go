@@ -12,7 +12,7 @@ import (
 	"github.com/stellar/go/support/errors"
 )
 
-func AccountInfo(ctx context.Context, cq *core.Q, hq *history.Q, protocolVersion int32) (*pHorizon.Account, error) {
+func AccountInfo(ctx context.Context, cq *core.Q, hq *history.Q) (*pHorizon.Account, error) {
 	addr := hchi.AccountID(ctx)
 	if addr == "" {
 		// This should be impossible because of accountIdHandler
@@ -28,7 +28,7 @@ func AccountInfo(ctx context.Context, cq *core.Q, hq *history.Q, protocolVersion
 		resource       horizon.Account
 	)
 
-	err := cq.AccountByAddress(&coreRecord, addr, protocolVersion)
+	err := cq.AccountByAddress(&coreRecord, addr)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting core account record")
 	}
@@ -43,7 +43,7 @@ func AccountInfo(ctx context.Context, cq *core.Q, hq *history.Q, protocolVersion
 		return nil, errors.Wrap(err, "getting core signer")
 	}
 
-	err = cq.TrustlinesByAddress(&coreTrustlines, addr, protocolVersion)
+	err = cq.TrustlinesByAddress(&coreTrustlines, addr)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting core trustline")
 	}

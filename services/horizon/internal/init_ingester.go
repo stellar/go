@@ -21,7 +21,8 @@ func initIngester(app *App) {
 		app.CoreSession(nil),
 		app.HorizonSession(nil),
 		ingest.Config{
-			EnableAssetStats: app.config.EnableAssetStats,
+			EnableAssetStats:         app.config.EnableAssetStats,
+			IngestFailedTransactions: app.config.IngestFailedTransactions,
 		},
 	)
 
