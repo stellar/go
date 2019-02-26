@@ -6,7 +6,11 @@ file.  This project adheres to [Semantic Versioning](http://semver.org/).
 As this project is pre 1.0, breaking changes may happen for minor version
 bumps.  A breaking change will get clearly notified in this log.
 
-## Unreleased
+## v0.17.0 - 2019-02-26
+
+### Upgrade notes
+
+This release introduces ingestion of failed transactions. This feature is turned off by default. To turn it on set environment variable: `INGEST_FAILED_TRANSACTIONS=true` or CLI param: `--ingest-failed-transactions=true`. Please note that ingesting failed transactions can double DB space requirements (especially important for full history deployments).
 
 ### Deprecations
 
@@ -14,11 +18,20 @@ bumps.  A breaking change will get clearly notified in this log.
 
 ### Breaking changes
 
+* Fields removed in this version:
+  * Root > `protocol_version`, use `current_protocol_version` and `core_supported_protocol_version`.
+  * Ledger > `transaction_count`, use `successful_transaction_count` and `failed_transaction_count`.
+  * Signer > `public_key`, use `key`.
 * This Horizon version no longer supports Core <10.0.0. Horizon can still ingest version <10 ledgers.
+* Error event name during streaming changed to `error` to follow W3C specification.
 
 ### Changes
 
-* Fixed a bug causing slice bounds out of range at offer-by-account endpoint during streaming.
+* Added ingestion of failed transactions (see Upgrade notes). Use `include_failed=true` GET parameter to display failed transactions and operations in collection endpoints.
+* `/fee_stats` endpoint has been extended with fee percentiles and ledger capacity usage. Both are useful in transaction fee estimations.
+* Fixed a bug causing slice bounds out of range at `/account/{id}/offers` endpoint during streaming.
+* Added `horizon db reingest range X Y` that reingests ledgers between X and Y sequence number (closed intervals).
+* Many code improvements.
 
 ## v0.16.0 - 2019-02-04
 
@@ -32,7 +45,7 @@ Previous versions work fine with Horizon 0.16.0 schema so you can migrate (`hori
 
 ### Deprecations
 
-* Root > `protocol_version` will be removed in v0.17.0. It is relaced by `current_protocol_version` and `core_supported_protocol_version`.
+* Root > `protocol_version` will be removed in v0.17.0. It is replaced by `current_protocol_version` and `core_supported_protocol_version`.
 * Ledger > `transaction_count` will be removed in v0.17.0.
 * Signer > `public_key` will be removed in v0.17.0.
 
