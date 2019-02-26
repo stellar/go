@@ -1,5 +1,7 @@
 package main
 
+// This is a scratch pad for testing new operations. Please DO NOT review!
+
 import (
 	"log"
 

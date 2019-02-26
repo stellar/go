@@ -1,7 +1,7 @@
 package main
 
 // This is a file of useful experiments with the original Go SDK (build lib), for reference
-// as the new SDK is implemented. It is not production code!
+// as the new SDK is implemented. Please DO NOT review!
 
 import (
 	"fmt"
