@@ -204,7 +204,7 @@ func (ac *AccountConfigurator) signerExistsOnly(account horizon.Account) bool {
 	tempSignerFound := false
 
 	for _, signer := range account.Signers {
-		if signer.PublicKey == ac.signerPublicKey {
+		if signer.Key == ac.signerPublicKey {
 			if signer.Weight == 1 {
 				tempSignerFound = true
 			}
