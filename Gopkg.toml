@@ -59,6 +59,10 @@
   source = "https://github.com/bartekn/throttled.git"
   revision = "c99eef3ad70a3be5a983770523e0e379699c805c"
 
+[[constraint]]
+  name = "golang.org/x/crypto"
+  revision = "7f87c0fbb88b590338857bcb720678c2583d4dea"
+
 [[override]]
   name = "golang.org/x/sys"
   revision = "cc5685c2db1239775905f3911f0067c0fa74762f"
