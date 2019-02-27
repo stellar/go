@@ -47,8 +47,41 @@ func main() {
 	txnbuild.UseTestNetwork()
 
 	// resp := exampleCreateAccount(client)
-	resp := exampleSendLumens(client, true)
+	// resp := exampleSendLumens(client, true)
+	resp := exampleBumpSequence(client, true)
 	txnbuild.PrintTransactionSuccess(resp)
+}
+
+func exampleBumpSequence(client *horizon.Client, mock bool) horizon.TransactionSuccess {
+	keys := initKeys()
+	sourceAccount, err := client.LoadAccount(keys[1].Address)
+	dieIfError("loadaccount", err)
+
+	bumpSequence := txnbuild.BumpSequence{
+		BumpTo: 9606132444168300,
+	}
+
+	tx := txnbuild.Transaction{
+		SourceAccount: sourceAccount,
+		Operations:    []txnbuild.Operation{&bumpSequence},
+	}
+
+	txeBase64 := buildSignEncode(tx, keys[1].Seed)
+	log.Println("Base 64 TX: ", txeBase64)
+
+	var resp horizon.TransactionSuccess
+	if mock == true {
+		resp = mockSuccess()
+	} else {
+		resp, err = client.SubmitTransaction(txeBase64)
+		if err != nil {
+			bad := err.(*horizon.Error)
+			txnbuild.PrintHorizonError(bad)
+			os.Exit(1)
+		}
+	}
+
+	return resp
 }
 
 func exampleSendLumens(client *horizon.Client, mock bool) horizon.TransactionSuccess {

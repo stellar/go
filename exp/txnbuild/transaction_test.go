@@ -106,3 +106,36 @@ func TestPayment(t *testing.T) {
 
 	assert.Equal(t, expected, txeBase64, "Base 64 XDR should match")
 }
+
+func TestBumpSequence(t *testing.T) {
+	var err error
+
+	secretSeed := "SBMSVD4KKELKGZXHBUQTIROWUAPQASDX7KEJITARP4VMZ6KLUHOGPTYW"
+	sourceAddress := "GAS4V4O2B7DW5T7IQRPEEVCRXMDZESKISR7DVIGKZQYYV3OSQ5SH5LVP"
+	sourceAccount := horizon.Account{
+		HistoryAccount: horizon.HistoryAccount{ID: sourceAddress},
+		Sequence:       "9606132444168199",
+	}
+
+	BumpSequence := BumpSequence{
+		BumpTo: 9606132444168300,
+	}
+
+	tx := Transaction{
+		SourceAccount: sourceAccount,
+		Operations:    []Operation{&BumpSequence},
+	}
+
+	err = tx.Build()
+	assert.Nil(t, err)
+
+	err = tx.Sign(secretSeed)
+	assert.Nil(t, err)
+
+	txeBase64, err := tx.Base64()
+	assert.Nil(t, err)
+
+	expected := "AAAAACXK8doPx27P6IReQlRRuweSSUiUfjqgyswxiu3Sh2R+AAAAZAAiILoAAAAIAAAAAAAAAAAAAAABAAAAAAAAAAsAIiC6AAAAbAAAAAAAAAAB0odkfgAAAEDLsgDc3tPETqlKxVMF16UePDbSXQ1X0i5b3U3DRHDEchU91YwsDb4oMZrCj0mwKhkiXzCUyg9pPmUG/vKtQVQD"
+
+	assert.Equal(t, expected, txeBase64, "Base 64 XDR should match")
+}
