@@ -1,21 +1,24 @@
 ---
-title: Operation Fee Stats
+title: Fee Stats
 clientData:
   laboratoryUrl:
 ---
 
-This endpoint gives useful information about fee stats in the last 5 ledgers. It can be used to predict a fee set on the transaction that will be submitted to the network.
+This endpoint gives useful information about fee stats in the last 5 ledgers. It can be used to
+predict a fee set on the transaction that will be submitted to the network.
+
+Note: This endpoint was originally `/operation_fee_stats`, and is subject for removal in `0.18.0`.
 
 ## Request
 
 ```
-GET /operation_fee_stats
+GET /fee_stats
 ```
 
 ### curl Example Request
 
 ```sh
-curl "https://horizon-testnet.stellar.org/operation_fee_stats"
+curl "https://horizon-testnet.stellar.org/fee_stats"
 ```
 
 ## Response
