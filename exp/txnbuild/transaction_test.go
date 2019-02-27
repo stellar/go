@@ -117,13 +117,13 @@ func TestBumpSequence(t *testing.T) {
 		Sequence:       "9606132444168199",
 	}
 
-	BumpSequence := BumpSequence{
+	bumpSequence := BumpSequence{
 		BumpTo: 9606132444168300,
 	}
 
 	tx := Transaction{
 		SourceAccount: sourceAccount,
-		Operations:    []Operation{&BumpSequence},
+		Operations:    []Operation{&bumpSequence},
 	}
 
 	err = tx.Build()
