@@ -5,9 +5,9 @@ import (
 	"encoding/base64"
 	"fmt"
 
-	"github.com/stellar/go/clients/horizon"
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/network"
+	"github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
 )
@@ -80,7 +80,7 @@ func (tx *Transaction) Build() error {
 	tx.xdrTransaction.SourceAccount.SetAddress(tx.SourceAccount.ID)
 
 	// Set sequence number in XDR
-	seqNum, err := SeqNumFromAccount(tx.SourceAccount)
+	seqNum, err := tx.SourceAccount.GetSequenceNumber()
 	if err != nil {
 		return err
 	}

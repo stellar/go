@@ -4,6 +4,7 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
 	"os"
 
@@ -48,10 +49,10 @@ func main() {
 	client := horizon.DefaultTestNetClient
 	txnbuild.UseTestNetwork()
 
-	resp := exampleCreateAccount(client, false)
-	// resp := exampleSendLumens(client, true)
+	// resp := exampleCreateAccount(client, false)
+	resp := exampleSendLumens(client, false)
 	// resp := exampleBumpSequence(client, true)
-	txnbuild.PrintTransactionSuccess(resp)
+	fmt.Println(resp.PrintTransactionSuccess())
 }
 
 func exampleBumpSequence(client *horizon.Client, mock bool) horizon.TransactionSuccess {
@@ -71,17 +72,7 @@ func exampleBumpSequence(client *horizon.Client, mock bool) horizon.TransactionS
 	txeBase64 := buildSignEncode(tx, keys[1].Seed)
 	log.Println("Base 64 TX: ", txeBase64)
 
-	var resp horizon.TransactionSuccess
-	if mock == true {
-		resp = mockSuccess()
-	} else {
-		resp, err = client.SubmitTransaction(txeBase64)
-		if err != nil {
-			bad := err.(*horizon.Error)
-			txnbuild.PrintHorizonError(bad)
-			os.Exit(1)
-		}
-	}
+	resp := submit(client, txeBase64, mock)
 
 	return resp
 }
@@ -92,7 +83,7 @@ func exampleSendLumens(client *horizon.Client, mock bool) horizon.TransactionSuc
 	dieIfError("loadaccount", err)
 
 	payment := txnbuild.Payment{
-		Destination: keys[2].Address,
+		Destination: keys[1].Address,
 		Amount:      "10",
 	}
 
@@ -143,7 +134,7 @@ func submit(client *horizon.Client, txeBase64 string, mock bool) (resp horizon.T
 		resp, err = client.SubmitTransaction(txeBase64)
 		if err != nil {
 			bad := err.(*horizon.Error)
-			txnbuild.PrintHorizonError(bad)
+			PrintHorizonError(bad)
 			os.Exit(1)
 		}
 	}
