@@ -104,7 +104,6 @@ func (s *Stream) Err(err error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	rootErr := errors.Cause(err)
 	// If we haven't sent an event, we should simply return the normal HTTP
 	// error because it means that we haven't sent the preamble.
 	if s.sent == 0 {
@@ -112,8 +111,9 @@ func (s *Stream) Err(err error) {
 		return
 	}
 
+	rootErr := errors.Cause(err)
 	if rootErr == sql.ErrNoRows {
-		err = errNoObject
+		rootErr = errNoObject
 	}
 
 	_, ok := knownErrors[rootErr]
