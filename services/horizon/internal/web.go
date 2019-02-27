@@ -202,7 +202,3 @@ func remoteAddrIP(r *http.Request) string {
 		return r.RemoteAddr[0:lastSemicolon]
 	}
 }
-
-func firstXForwardedFor(r *http.Request) string {
-	return strings.TrimSpace(strings.SplitN(r.Header.Get("X-Forwarded-For"), ",", 2)[0])
-}
