@@ -20,22 +20,22 @@ import (
 
 // Transaction represents a Stellar Transaction.
 type Transaction struct {
-	SourceAccount horizon.Account
-	Operations    []Operation
-	TX            *xdr.Transaction
-	BaseFee       uint64 // TODO: Why is this a uint 64? Can it be a plain int?
-	Envelope      *xdr.TransactionEnvelope
+	SourceAccount  horizon.Account
+	Operations     []Operation
+	xdrTransaction *xdr.Transaction
+	BaseFee        uint64 // TODO: Why is this a uint 64? Can it be a plain int?
+	xdrEnvelope    *xdr.TransactionEnvelope
 }
 
 // Hash provides a signable object representing the Transaction on the specified network.
 func (tx *Transaction) Hash() ([32]byte, error) {
-	return network.HashTransaction(tx.TX, StellarNetwork)
+	return network.HashTransaction(tx.xdrTransaction, StellarNetwork)
 }
 
 // Bytes returns the binary XDR representation of the Transaction.
 func (tx *Transaction) Bytes() ([]byte, error) {
 	var txBytes bytes.Buffer
-	_, err := xdr.Marshal(&txBytes, tx.Envelope)
+	_, err := xdr.Marshal(&txBytes, tx.xdrEnvelope)
 	if err != nil {
 		return nil, errors.Wrap(err, "Failed to marshal XDR")
 	}
@@ -62,36 +62,36 @@ func (tx *Transaction) SetDefaultFee() {
 	if tx.BaseFee == 0 {
 		tx.BaseFee = DefaultBaseFee
 	}
-	if tx.TX.Fee == 0 {
-		tx.TX.Fee = xdr.Uint32(int(tx.BaseFee) * len(tx.TX.Operations))
+	if tx.xdrTransaction.Fee == 0 {
+		tx.xdrTransaction.Fee = xdr.Uint32(int(tx.BaseFee) * len(tx.xdrTransaction.Operations))
 	}
 }
 
 // Build for Transaction completely configures the Transaction. After calling Build,
 // the Transaction is ready to be serialised or signed.
 func (tx *Transaction) Build() error {
-	// Initialise TX (XDR) struct if needed
-	if tx.TX == nil {
-		tx.TX = &xdr.Transaction{}
+	// Initialise XDR Transaction struct if needed
+	if tx.xdrTransaction == nil {
+		tx.xdrTransaction = &xdr.Transaction{}
 	}
 
-	// Set account ID in TX
+	// Set account ID in XDR
 	// TODO: Validate provided key before going further
-	tx.TX.SourceAccount.SetAddress(tx.SourceAccount.ID)
+	tx.xdrTransaction.SourceAccount.SetAddress(tx.SourceAccount.ID)
 
-	// Set sequence number in TX
+	// Set sequence number in XDR
 	seqNum, err := SeqNumFromAccount(tx.SourceAccount)
 	if err != nil {
 		return err
 	}
-	tx.TX.SeqNum = seqNum + 1
+	tx.xdrTransaction.SeqNum = seqNum + 1
 
 	for _, op := range tx.Operations {
 		xdrOperation, err := BuildOperation(op)
 		if err != nil {
 			return errors.Wrap(err, fmt.Sprintf("Failed to build operation %T", op))
 		}
-		tx.TX.Operations = append(tx.TX.Operations, xdrOperation)
+		tx.xdrTransaction.Operations = append(tx.xdrTransaction.Operations, xdrOperation)
 	}
 
 	// Set a default fee, if it hasn't been set yet
@@ -105,9 +105,9 @@ func (tx *Transaction) Build() error {
 func (tx *Transaction) Sign(seed string) error {
 	// TODO: Only sign if Transaction has been previously built
 	// Initialise transaction envelope
-	if tx.Envelope == nil {
-		tx.Envelope = &xdr.TransactionEnvelope{}
-		tx.Envelope.Tx = *tx.TX
+	if tx.xdrEnvelope == nil {
+		tx.xdrEnvelope = &xdr.TransactionEnvelope{}
+		tx.xdrEnvelope.Tx = *tx.xdrTransaction
 	}
 
 	// Hash the transaction
@@ -129,7 +129,7 @@ func (tx *Transaction) Sign(seed string) error {
 	}
 
 	// Append the signature to the envelope
-	tx.Envelope.Signatures = append(tx.Envelope.Signatures, sig)
+	tx.xdrEnvelope.Signatures = append(tx.xdrEnvelope.Signatures, sig)
 
 	return nil
 }
