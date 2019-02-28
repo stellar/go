@@ -21,7 +21,6 @@ type reingestType int
 const (
 	byAll reingestType = iota
 	bySeq
-	byRange
 	byOutdated
 )
 
@@ -226,30 +225,6 @@ var dbReingestCmd = &cobra.Command{
 	},
 }
 
-var dbReingestRangeCmd = &cobra.Command{
-	Use:   "range [Start sequence number] [End sequence number]",
-	Short: "reingests ledgers within a range",
-	Long:  "reingests ledgers between X and Y sequence number (closed intervals)",
-	Run: func(cmd *cobra.Command, args []string) {
-		if len(args) != 2 {
-			cmd.Usage()
-			os.Exit(1)
-		}
-
-		argsInt32 := make([]int32, 0, len(args))
-		for _, arg := range args {
-			seq, err := strconv.Atoi(arg)
-			if err != nil {
-				cmd.Usage()
-				log.Fatalf(`Invalid sequence number "%s"`, arg)
-			}
-			argsInt32 = append(argsInt32, int32(seq))
-		}
-
-		reingest(byRange, argsInt32...)
-	},
-}
-
 var dbReingestOutdatedCmd = &cobra.Command{
 	Use:   "outdated",
 	Short: "reingests all outdated ledgers",
@@ -275,7 +250,7 @@ func init() {
 		dbReingestCmd,
 		dbRebaseCmd,
 	)
-	dbReingestCmd.AddCommand(dbReingestRangeCmd, dbReingestOutdatedCmd)
+	dbReingestCmd.AddCommand(dbReingestOutdatedCmd)
 }
 
 func ingestSystem(ingestConfig ingest.Config) *ingest.System {
@@ -333,14 +308,6 @@ func reingest(cmd reingestType, args ...int32) {
 					break
 				}
 			}
-
-		case byRange:
-			// should already be checked by the caller
-			if len(args) != 2 {
-				log.Fatal(`"horizon db reingest range" command requires 2 sequence numbers after "range"`)
-			}
-
-			_, err = i.ReingestRange(args[0], args[1])
 
 		case byOutdated:
 			_, err = i.ReingestOutdated()
