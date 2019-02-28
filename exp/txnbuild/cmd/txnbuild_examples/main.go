@@ -52,6 +52,7 @@ func main() {
 	// resp := exampleCreateAccount(client, false)
 	resp := exampleSendLumens(client, false)
 	// resp := exampleBumpSequence(client, true)
+	// comment to trigger build
 	fmt.Println(resp.TransactionSuccessToString())
 }
 
