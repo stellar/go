@@ -3,9 +3,8 @@ package ingest
 import (
 	"encoding/json"
 	"fmt"
-	"time"
-
 	"math"
+	"time"
 
 	sq "github.com/Masterminds/squirrel"
 	"github.com/guregu/null"
@@ -476,5 +475,10 @@ func (ingest *Ingestion) formatTimeBounds(bounds *xdr.TimeBounds) interface{} {
 		return sq.Expr("int8range(?,?)", bounds.MinTime, nil)
 	}
 
-	return sq.Expr("int8range(?,?)", bounds.MinTime, bounds.MaxTime)
+	maxTime := bounds.MaxTime
+	if maxTime > math.MaxInt64 {
+		maxTime = math.MaxInt64
+	}
+
+	return sq.Expr("int8range(?,?)", bounds.MinTime, maxTime)
 }
