@@ -25,6 +25,11 @@ var dbReingestRangeCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		initConfig()
 
+		if from == 0 || to == 0 || workers == 0 || size == 0 {
+			cmd.Help()
+			os.Exit(0)
+		}
+
 		if to < from {
 			log.Error("Invalid range")
 			os.Exit(1)
