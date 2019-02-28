@@ -33,8 +33,8 @@ func (tx *Transaction) Hash() ([32]byte, error) {
 	return network.HashTransaction(tx.xdrTransaction, tx.Network)
 }
 
-// Bytes returns the binary XDR representation of the Transaction.
-func (tx *Transaction) Bytes() ([]byte, error) {
+// MarshalBinary returns the binary XDR representation of the Transaction.
+func (tx *Transaction) MarshalBinary() ([]byte, error) {
 	var txBytes bytes.Buffer
 	_, err := xdr.Marshal(&txBytes, tx.xdrEnvelope)
 	if err != nil {
@@ -46,7 +46,7 @@ func (tx *Transaction) Bytes() ([]byte, error) {
 
 // Base64 returns the base 64 XDR representation of the Transaction.
 func (tx *Transaction) Base64() (string, error) {
-	bs, err := tx.Bytes()
+	bs, err := tx.MarshalBinary()
 	if err != nil {
 		return "", errors.Wrap(err, "Failed to get XDR bytestring")
 	}
