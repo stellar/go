@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/stellar/go/clients/horizon"
+	"github.com/stellar/go/keypair"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -17,6 +18,10 @@ func TestInflation(t *testing.T) {
 		Sequence:       "9605939170639897",
 	}
 
+	sourceKeypair, err := keypair.Parse(secretSeed)
+	assert.Nil(t, err)
+	signer := sourceKeypair.(*keypair.Full)
+
 	inflation := Inflation{}
 
 	tx := Transaction{
@@ -28,7 +33,7 @@ func TestInflation(t *testing.T) {
 	err = tx.Build()
 	assert.Nil(t, err)
 
-	err = tx.Sign(secretSeed)
+	err = tx.Sign(signer)
 	assert.Nil(t, err)
 
 	txeBase64, err := tx.Base64()
@@ -48,6 +53,9 @@ func TestCreateAccount(t *testing.T) {
 		HistoryAccount: horizon.HistoryAccount{ID: sourceAddress},
 		Sequence:       "9605939170639897",
 	}
+	sourceKeypair, err := keypair.Parse(secretSeed)
+	assert.Nil(t, err)
+	signer := sourceKeypair.(*keypair.Full)
 
 	createAccount := CreateAccount{
 		Destination: "GCCOBXW2XQNUSL467IEILE6MMCNRR66SSVL4YQADUNYYNUVREF3FIV2Z",
@@ -64,7 +72,7 @@ func TestCreateAccount(t *testing.T) {
 	err = tx.Build()
 	assert.Nil(t, err)
 
-	err = tx.Sign(secretSeed)
+	err = tx.Sign(signer)
 	assert.Nil(t, err)
 
 	txeBase64, err := tx.Base64()
@@ -84,6 +92,9 @@ func TestPayment(t *testing.T) {
 		HistoryAccount: horizon.HistoryAccount{ID: sourceAddress},
 		Sequence:       "9605939170639898",
 	}
+	sourceKeypair, err := keypair.Parse(secretSeed)
+	assert.Nil(t, err)
+	signer := sourceKeypair.(*keypair.Full)
 
 	payment := Payment{
 		Destination: "GB7BDSZU2Y27LYNLALKKALB52WS2IZWYBDGY6EQBLEED3TJOCVMZRH7H",
@@ -99,7 +110,7 @@ func TestPayment(t *testing.T) {
 	err = tx.Build()
 	assert.Nil(t, err)
 
-	err = tx.Sign(secretSeed)
+	err = tx.Sign(signer)
 	assert.Nil(t, err)
 
 	txeBase64, err := tx.Base64()
@@ -119,6 +130,9 @@ func TestBumpSequence(t *testing.T) {
 		HistoryAccount: horizon.HistoryAccount{ID: sourceAddress},
 		Sequence:       "9606132444168199",
 	}
+	sourceKeypair, err := keypair.Parse(secretSeed)
+	assert.Nil(t, err)
+	signer := sourceKeypair.(*keypair.Full)
 
 	bumpSequence := BumpSequence{
 		BumpTo: 9606132444168300,
@@ -133,7 +147,7 @@ func TestBumpSequence(t *testing.T) {
 	err = tx.Build()
 	assert.Nil(t, err)
 
-	err = tx.Sign(secretSeed)
+	err = tx.Sign(signer)
 	assert.Nil(t, err)
 
 	txeBase64, err := tx.Base64()

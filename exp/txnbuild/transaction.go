@@ -98,7 +98,7 @@ func (tx *Transaction) Build() error {
 
 // Sign for Transaction signs a previously built transaction. A signed transaction may be
 // submitted to the network.
-func (tx *Transaction) Sign(seed string) error {
+func (tx *Transaction) Sign(kp *keypair.Full) error {
 	// TODO: Only sign if Transaction has been previously built
 	// TODO: Validate network set before sign
 	// Initialise transaction envelope
@@ -115,11 +115,6 @@ func (tx *Transaction) Sign(seed string) error {
 
 	// Sign the hash
 	// TODO: Allow multiple signers
-	kp, err := keypair.Parse(seed)
-	if err != nil {
-		return errors.Wrap(err, "Failed to parse seed")
-	}
-
 	sig, err := kp.SignDecorated(hash[:])
 	if err != nil {
 		return errors.Wrap(err, "Failed to sign transaction")

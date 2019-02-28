@@ -17,7 +17,7 @@ import (
 type key struct {
 	Seed    string
 	Address string
-	Keypair keypair.KP
+	Keypair *keypair.Full
 }
 
 func initKeys() []key {
@@ -39,7 +39,7 @@ func initKeys() []key {
 	for i, k := range keys {
 		myKeypair, err := keypair.Parse(k.Seed)
 		dieIfError("keypair didn't parse!", err)
-		keys[i].Keypair = myKeypair
+		keys[i].Keypair = myKeypair.(*keypair.Full)
 	}
 
 	return keys
@@ -70,7 +70,7 @@ func exampleBumpSequence(client *horizon.Client, mock bool) horizon.TransactionS
 		Network:       txnbuild.UseTestNetwork(),
 	}
 
-	txeBase64 := buildSignEncode(tx, keys[1].Seed)
+	txeBase64 := buildSignEncode(tx, keys[1].Keypair)
 	log.Println("Base 64 TX: ", txeBase64)
 
 	resp := submit(client, txeBase64, mock)
@@ -94,7 +94,7 @@ func exampleSendLumens(client *horizon.Client, mock bool) horizon.TransactionSuc
 		Network:       txnbuild.UseTestNetwork(),
 	}
 
-	txeBase64 := buildSignEncode(tx, keys[0].Seed)
+	txeBase64 := buildSignEncode(tx, keys[0].Keypair)
 	log.Println("Base 64 TX: ", txeBase64)
 
 	resp := submit(client, txeBase64, mock)
@@ -121,7 +121,7 @@ func exampleCreateAccount(client *horizon.Client, mock bool) horizon.Transaction
 		Network:       txnbuild.UseTestNetwork(),
 	}
 
-	txeBase64 := buildSignEncode(tx, keys[0].Seed)
+	txeBase64 := buildSignEncode(tx, keys[0].Keypair)
 	log.Println("Base 64 TX: ", txeBase64)
 
 	resp := submit(client, txeBase64, mock)
@@ -145,12 +145,12 @@ func submit(client *horizon.Client, txeBase64 string, mock bool) (resp horizon.T
 	return
 }
 
-func buildSignEncode(tx txnbuild.Transaction, secretSeed string) string {
+func buildSignEncode(tx txnbuild.Transaction, keypair *keypair.Full) string {
 	var err error
 	err = tx.Build()
 	dieIfError("build", err)
 
-	err = tx.Sign(secretSeed)
+	err = tx.Sign(keypair)
 	dieIfError("sign", err)
 
 	txeBase64, err := tx.Base64()
