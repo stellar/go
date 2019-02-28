@@ -52,7 +52,7 @@ func main() {
 	// resp := exampleCreateAccount(client, false)
 	resp := exampleSendLumens(client, false)
 	// resp := exampleBumpSequence(client, true)
-	fmt.Println(resp.PrintTransactionSuccess())
+	fmt.Println(resp.TransactionSuccessToString())
 }
 
 func exampleBumpSequence(client *horizon.Client, mock bool) horizon.TransactionSuccess {

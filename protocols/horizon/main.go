@@ -440,7 +440,7 @@ type TransactionSuccess struct {
 }
 
 // PrintTransactionSuccess prints the fields of a Horizon response.
-func (resp TransactionSuccess) PrintTransactionSuccess() (s string) {
+func (resp TransactionSuccess) TransactionSuccessToString() (s string) {
 	s += fmt.Sprintln("***TransactionSuccess dump***")
 	s += fmt.Sprintln("    Links:", resp.Links)
 	s += fmt.Sprintln("    Hash:", resp.Hash)
