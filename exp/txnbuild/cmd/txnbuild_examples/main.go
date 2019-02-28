@@ -67,6 +67,7 @@ func exampleBumpSequence(client *horizon.Client, mock bool) horizon.TransactionS
 	tx := txnbuild.Transaction{
 		SourceAccount: sourceAccount,
 		Operations:    []txnbuild.Operation{&bumpSequence},
+		Network:       txnbuild.UseTestNetwork(),
 	}
 
 	txeBase64 := buildSignEncode(tx, keys[1].Seed)
@@ -90,6 +91,7 @@ func exampleSendLumens(client *horizon.Client, mock bool) horizon.TransactionSuc
 	tx := txnbuild.Transaction{
 		SourceAccount: sourceAccount,
 		Operations:    []txnbuild.Operation{&payment},
+		Network:       txnbuild.UseTestNetwork(),
 	}
 
 	txeBase64 := buildSignEncode(tx, keys[0].Seed)
@@ -116,6 +118,7 @@ func exampleCreateAccount(client *horizon.Client, mock bool) horizon.Transaction
 	tx := txnbuild.Transaction{
 		SourceAccount: sourceAccount,
 		Operations:    []txnbuild.Operation{&createAccount},
+		Network:       txnbuild.UseTestNetwork(),
 	}
 
 	txeBase64 := buildSignEncode(tx, keys[0].Seed)

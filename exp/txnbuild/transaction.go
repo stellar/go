@@ -25,11 +25,12 @@ type Transaction struct {
 	xdrTransaction *xdr.Transaction
 	BaseFee        uint64 // TODO: Why is this a uint 64? Can it be a plain int?
 	xdrEnvelope    *xdr.TransactionEnvelope
+	Network        string
 }
 
 // Hash provides a signable object representing the Transaction on the specified network.
 func (tx *Transaction) Hash() ([32]byte, error) {
-	return network.HashTransaction(tx.xdrTransaction, StellarNetwork)
+	return network.HashTransaction(tx.xdrTransaction, tx.Network)
 }
 
 // Bytes returns the binary XDR representation of the Transaction.
@@ -104,6 +105,7 @@ func (tx *Transaction) Build() error {
 // submitted to the network.
 func (tx *Transaction) Sign(seed string) error {
 	// TODO: Only sign if Transaction has been previously built
+	// TODO: Validate network set before sign
 	// Initialise transaction envelope
 	if tx.xdrEnvelope == nil {
 		tx.xdrEnvelope = &xdr.TransactionEnvelope{}

@@ -22,6 +22,7 @@ func TestInflation(t *testing.T) {
 	tx := Transaction{
 		SourceAccount: sourceAccount,
 		Operations:    []Operation{&inflation},
+		Network:       UseTestNetwork(),
 	}
 
 	err = tx.Build()
@@ -57,6 +58,7 @@ func TestCreateAccount(t *testing.T) {
 	tx := Transaction{
 		SourceAccount: sourceAccount,
 		Operations:    []Operation{&createAccount},
+		Network:       UseTestNetwork(),
 	}
 
 	err = tx.Build()
@@ -91,6 +93,7 @@ func TestPayment(t *testing.T) {
 	tx := Transaction{
 		SourceAccount: sourceAccount,
 		Operations:    []Operation{&payment},
+		Network:       UseTestNetwork(),
 	}
 
 	err = tx.Build()
@@ -124,6 +127,7 @@ func TestBumpSequence(t *testing.T) {
 	tx := Transaction{
 		SourceAccount: sourceAccount,
 		Operations:    []Operation{&bumpSequence},
+		Network:       UseTestNetwork(),
 	}
 
 	err = tx.Build()
