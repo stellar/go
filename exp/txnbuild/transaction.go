@@ -22,7 +22,7 @@ import (
 type Transaction struct {
 	SourceAccount  horizon.Account
 	Operations     []Operation
-	xdrTransaction *xdr.Transaction
+	xdrTransaction xdr.Transaction
 	BaseFee        uint64 // TODO: Why is this a uint 64? Can it be a plain int?
 	xdrEnvelope    *xdr.TransactionEnvelope
 	Network        string
@@ -30,7 +30,7 @@ type Transaction struct {
 
 // Hash provides a signable object representing the Transaction on the specified network.
 func (tx *Transaction) Hash() ([32]byte, error) {
-	return network.HashTransaction(tx.xdrTransaction, tx.Network)
+	return network.HashTransaction(&tx.xdrTransaction, tx.Network)
 }
 
 // MarshalBinary returns the binary XDR representation of the Transaction.
@@ -71,11 +71,6 @@ func (tx *Transaction) SetDefaultFee() {
 // Build for Transaction completely configures the Transaction. After calling Build,
 // the Transaction is ready to be serialised or signed.
 func (tx *Transaction) Build() error {
-	// Initialise XDR Transaction struct if needed
-	if tx.xdrTransaction == nil {
-		tx.xdrTransaction = &xdr.Transaction{}
-	}
-
 	// Set account ID in XDR
 	// TODO: Validate provided key before going further
 	tx.xdrTransaction.SourceAccount.SetAddress(tx.SourceAccount.ID)
@@ -109,7 +104,7 @@ func (tx *Transaction) Sign(seed string) error {
 	// Initialise transaction envelope
 	if tx.xdrEnvelope == nil {
 		tx.xdrEnvelope = &xdr.TransactionEnvelope{}
-		tx.xdrEnvelope.Tx = *tx.xdrTransaction
+		tx.xdrEnvelope.Tx = tx.xdrTransaction
 	}
 
 	// Hash the transaction
