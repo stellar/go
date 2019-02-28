@@ -54,8 +54,8 @@ func (tx *Transaction) Base64() (string, error) {
 	return base64.StdEncoding.EncodeToString(bs), nil
 }
 
-// SetDefaultFee sets a sensible minimum default for the Transaction fee. It is
-// a linear function of the number of Operations in the Transaction.
+// SetDefaultFee sets a sensible minimum default for the Transaction fee, if one has not
+// already been set. It is a linear function of the number of Operations in the Transaction.
 func (tx *Transaction) SetDefaultFee() {
 	// TODO: Check if default base fee used elsewhere - otherwise just use int
 	// TODO: Generalise to pull this from a client call
