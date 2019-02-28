@@ -6,15 +6,12 @@ file.  This project adheres to [Semantic Versioning](http://semver.org/).
 As this project is pre 1.0, breaking changes may happen for minor version
 bumps.  A breaking change will get clearly notified in this log.
 
-## Unreleased
-
-### Deprecations
-
-### Breaking changes
+## v0.17.1 - 2019-02-28
 
 ### Changes
 
-* Account detail endpoint (/accounts/:account-id) includes `last_modified_ledger` field for account and for each non-native asset balance.
+* Fixes high severity error in ingestion system.
+* Account detail endpoint (`/accounts/{id}`) includes `last_modified_ledger` field for account and for each non-native asset balance.
 
 ## v0.17.0 - 2019-02-26
 
