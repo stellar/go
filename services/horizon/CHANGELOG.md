@@ -6,6 +6,10 @@ file.  This project adheres to [Semantic Versioning](http://semver.org/).
 As this project is pre 1.0, breaking changes may happen for minor version
 bumps.  A breaking change will get clearly notified in this log.
 
+## v0.17.2 - 2019-02-28
+
+* Critical fix bug
+
 ## v0.17.1 - 2019-02-28
 
 ### Changes
