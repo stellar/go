@@ -202,4 +202,6 @@ func TestTransactionActions_PostFailed(t *testing.T) {
 
 	w := ht.Post("/transactions", form)
 	ht.Assert.Equal(400, w.Code)
+	ht.Assert.Contains(string(w.Body.Bytes()), "op_underfunded")
+	ht.Assert.Contains(string(w.Body.Bytes()), "AAAAAAAAAGT/////AAAAAQAAAAAAAAAB/////gAAAAA=")
 }
