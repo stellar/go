@@ -6,6 +6,10 @@ clientData:
 
 The operation details endpoint provides information on a single [operation](../resources/operation.md). The operation ID provided in the `id` argument specifies which operation to load.
 
+### Warning - failed transactions
+
+Operations can be part of successful or failed transactions (failed transactions are also included in Stellar ledger). Always check operation status using `transaction_successful` field!
+
 ## Request
 
 ```

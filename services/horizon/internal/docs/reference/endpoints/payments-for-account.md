@@ -29,6 +29,7 @@ GET /accounts/{id}/payments{?cursor,limit,order}
 | `?cursor` | optional, default _null_ | A payment paging token specifying from where to begin results. When streaming this can be set to `now` to stream object created since your request time. | `8589934592`                                          |
 | `?limit`  | optional, number, default `10`  | Specifies the count of records at most to return. | `200` |
 | `?order` | optional, string, default `asc` | Specifies order of returned results. `asc` means older payments first, `desc` mean newer payments first. | `desc` |
+| `?include_failed` | optional, bool, default: `false` | Set to `true` to include payments of failed transactions in results. | `true` |
 
 ### curl Example Request
 
