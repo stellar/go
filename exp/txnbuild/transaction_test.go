@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/stellar/go/keypair"
+	"github.com/stellar/go/network"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -46,7 +47,7 @@ func TestInflation(t *testing.T) {
 	tx := Transaction{
 		SourceAccount: sourceAccount,
 		Operations:    []Operation{&inflation},
-		Network:       UseTestNetwork(),
+		Network:       network.TestNetworkPassphrase,
 	}
 
 	received := buildSignEncode(tx, kp0, t)
@@ -71,7 +72,7 @@ func TestCreateAccount(t *testing.T) {
 	tx := Transaction{
 		SourceAccount: sourceAccount,
 		Operations:    []Operation{&createAccount},
-		Network:       UseTestNetwork(),
+		Network:       network.TestNetworkPassphrase,
 	}
 
 	received := buildSignEncode(tx, kp0, t)
@@ -94,7 +95,7 @@ func TestPayment(t *testing.T) {
 	tx := Transaction{
 		SourceAccount: sourceAccount,
 		Operations:    []Operation{&payment},
-		Network:       UseTestNetwork(),
+		Network:       network.TestNetworkPassphrase,
 	}
 
 	received := buildSignEncode(tx, kp0, t)
@@ -116,7 +117,7 @@ func TestBumpSequence(t *testing.T) {
 	tx := Transaction{
 		SourceAccount: sourceAccount,
 		Operations:    []Operation{&bumpSequence},
-		Network:       UseTestNetwork(),
+		Network:       network.TestNetworkPassphrase,
 	}
 
 	received := buildSignEncode(tx, kp1, t)
@@ -139,7 +140,7 @@ func TestMultipleOperations(t *testing.T) {
 	tx := Transaction{
 		SourceAccount: sourceAccount,
 		Operations:    []Operation{&inflation, &bumpSequence},
-		Network:       UseTestNetwork(),
+		Network:       network.TestNetworkPassphrase,
 	}
 
 	received := buildSignEncode(tx, kp1, t)

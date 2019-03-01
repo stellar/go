@@ -11,6 +11,7 @@ import (
 	"github.com/stellar/go/clients/horizon"
 	"github.com/stellar/go/exp/txnbuild"
 	"github.com/stellar/go/keypair"
+	"github.com/stellar/go/network"
 	"github.com/stellar/go/support/errors"
 )
 
@@ -47,7 +48,6 @@ func initKeys() []key {
 
 func main() {
 	client := horizon.DefaultTestNetClient
-	txnbuild.UseTestNetwork()
 
 	// resp := exampleCreateAccount(client, false)
 	resp := exampleSendLumens(client, false)
@@ -69,7 +69,7 @@ func exampleBumpSequence(client *horizon.Client, mock bool) horizon.TransactionS
 	tx := txnbuild.Transaction{
 		SourceAccount: sourceAccount,
 		Operations:    []txnbuild.Operation{&bumpSequence},
-		Network:       txnbuild.UseTestNetwork(),
+		Network:       network.TestNetworkPassphrase,
 	}
 
 	txeBase64 := buildSignEncode(tx, keys[1].Keypair)
@@ -94,7 +94,7 @@ func exampleSendLumens(client *horizon.Client, mock bool) horizon.TransactionSuc
 	tx := txnbuild.Transaction{
 		SourceAccount: sourceAccount,
 		Operations:    []txnbuild.Operation{&payment},
-		Network:       txnbuild.UseTestNetwork(),
+		Network:       network.TestNetworkPassphrase,
 	}
 
 	txeBase64 := buildSignEncode(tx, keys[0].Keypair)
@@ -122,7 +122,7 @@ func exampleCreateAccount(client *horizon.Client, mock bool) horizon.Transaction
 	tx := txnbuild.Transaction{
 		SourceAccount: sourceAccount,
 		Operations:    []txnbuild.Operation{&createAccount},
-		Network:       txnbuild.UseTestNetwork(),
+		Network:       network.TestNetworkPassphrase,
 	}
 
 	txeBase64 := buildSignEncode(tx, keys[0].Keypair)
