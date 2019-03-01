@@ -23,6 +23,10 @@ bumps.  A breaking change will get clearly notified in this log.
 
 This release introduces ingestion of failed transactions. This feature is turned off by default. To turn it on set environment variable: `INGEST_FAILED_TRANSACTIONS=true` or CLI param: `--ingest-failed-transactions=true`. Please note that ingesting failed transactions can double DB space requirements (especially important for full history deployments).
 
+### Database migration notes
+
+Previous versions work fine with new schema so you can migrate (`horizon db migrate up` using new binary) database without stopping the Horizon process. To reingest ledgers run `horizon db reingest` using Horizon 0.17.0 binary. You can take advantage of the new `horizon db reingest range` for parallel reingestion.
+
 ### Deprecations
 
 * `/operation_fee_stats` is deprecated in favour of `/fee_stats`. Will be removed in v0.18.0.
