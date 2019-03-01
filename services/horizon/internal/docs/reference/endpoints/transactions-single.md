@@ -6,6 +6,10 @@ clientData:
 
 The transaction details endpoint provides information on a single [transaction](../resources/transaction.md). The transaction hash provided in the `hash` argument specifies which transaction to load.
 
+### Warning - failed transactions
+
+Transaction can be successful or failed (failed transactions are also included in Stellar ledger). Always check it's status using `successful` field!
+
 ## Request
 
 ```

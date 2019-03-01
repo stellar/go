@@ -6,6 +6,10 @@ clientData:
 
 This endpoint represents successful [operations](../resources/operation.md) that are part of a given [transaction](../resources/transaction.md).
 
+### Warning - failed transactions
+
+"Operations for Transaction" endpoint returns list of payments of successful or failed transactions (that are also included in Stellar ledger). Always check the operation status in this endpoint using `transaction_successful` field!
+
 ## Request
 
 ```
