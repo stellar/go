@@ -6,10 +6,11 @@ import (
 	"github.com/stellar/go/services/horizon/internal/db2/core"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/services/horizon/internal/test"
+	"github.com/stellar/go/services/horizon/internal/txsub"
 )
 
 func TestResultProvider(t *testing.T) {
-	tt := test.Start(t).ScenarioWithoutHorizon("base")
+	tt := test.Start(t).Scenario("base")
 	defer tt.Finish()
 
 	rp := &DB{
@@ -23,5 +24,30 @@ func TestResultProvider(t *testing.T) {
 	ret := rp.ResultByHash(tt.Ctx, hash)
 
 	tt.Require.NoError(ret.Err)
+	tt.Assert.Equal(hash, ret.Hash)
+}
+
+func TestResultFailed(t *testing.T) {
+	tt := test.Start(t).Scenario("failed_transactions")
+	defer tt.Finish()
+
+	rp := &DB{
+		Core:    &core.Q{Session: tt.CoreSession()},
+		History: &history.Q{Session: tt.HorizonSession()},
+	}
+
+	hash := "aa168f12124b7c196c0adaee7c73a64d37f99428cacb59a91ff389626845e7cf"
+
+	// Ignore core db results
+	_, err := tt.CoreSession().ExecRaw(
+		`DELETE FROM txhistory WHERE txid = ?`,
+		hash,
+	)
+	tt.Require.NoError(err)
+
+	ret := rp.ResultByHash(tt.Ctx, hash)
+
+	tt.Require.Error(ret.Err)
+	tt.Assert.Equal("AAAAAAAAAGT/////AAAAAQAAAAAAAAAB/////gAAAAA=", ret.Err.(*txsub.FailedTransactionError).ResultXDR)
 	tt.Assert.Equal(hash, ret.Hash)
 }
