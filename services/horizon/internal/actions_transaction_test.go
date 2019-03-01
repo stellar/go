@@ -193,6 +193,18 @@ func TestTransactionActions_Post(t *testing.T) {
 	ht.Assert.Equal(503, w.Code)
 }
 
+func TestTransactionActions_PostSuccessful(t *testing.T) {
+	ht := StartHTTPTest(t, "failed_transactions")
+	defer ht.Finish()
+
+	// 56e3216045d579bea40f2d35a09406de3a894ecb5be70dbda5ec9c0427a0d5a1
+	form := url.Values{"tx": []string{"AAAAAK6jei3jmoI8TGlD/egc37PXtHKKzWV8wViZBaCu5L5MAAAAZAAAAAIAAAABAAAAAAAAAAAAAAABAAAAAAAAAAEAAAAAbmgm1V2dg5V1mq1elMcG1txjSYKZ9wEgoSBaeW8UiFoAAAABVVNEAAAAAACuo3ot45qCPExpQ/3oHN+z17Ryis1lfMFYmQWgruS+TAAAAAA7msoAAAAAAAAAAAGu5L5MAAAAQEnKDbDYvKkJjYK0arvhFln+GK0+7Ay6g0a+1hjRRelEAe4wmjeqNcRg2m4Cn7t4AjJzAsDQI0iXahGboJPINAw="}}
+
+	w := ht.Post("/transactions", form)
+	ht.Assert.Equal(200, w.Code)
+	ht.Assert.Contains(string(w.Body.Bytes()), `"result_xdr": "AAAAAAAAAGQAAAAAAAAAAQAAAAAAAAABAAAAAAAAAAA="`)
+}
+
 func TestTransactionActions_PostFailed(t *testing.T) {
 	ht := StartHTTPTest(t, "failed_transactions")
 	defer ht.Finish()
@@ -203,5 +215,5 @@ func TestTransactionActions_PostFailed(t *testing.T) {
 	w := ht.Post("/transactions", form)
 	ht.Assert.Equal(400, w.Code)
 	ht.Assert.Contains(string(w.Body.Bytes()), "op_underfunded")
-	ht.Assert.Contains(string(w.Body.Bytes()), "AAAAAAAAAGT/////AAAAAQAAAAAAAAAB/////gAAAAA=")
+	ht.Assert.Contains(string(w.Body.Bytes()), `"result_xdr": "AAAAAAAAAGT/////AAAAAQAAAAAAAAAB/////gAAAAA="`)
 }
