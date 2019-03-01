@@ -123,3 +123,26 @@ func TestBumpSequence(t *testing.T) {
 	expected := "AAAAACXK8doPx27P6IReQlRRuweSSUiUfjqgyswxiu3Sh2R+AAAAZAAiILoAAAAIAAAAAAAAAAAAAAABAAAAAAAAAAsAIiC6AAAAbAAAAAAAAAAB0odkfgAAAEDLsgDc3tPETqlKxVMF16UePDbSXQ1X0i5b3U3DRHDEchU91YwsDb4oMZrCj0mwKhkiXzCUyg9pPmUG/vKtQVQD"
 	assert.Equal(t, expected, received, "Base 64 XDR should match")
 }
+
+func TestMultipleOperations(t *testing.T) {
+	kp1 := newKeypair1()
+	sourceAccount := Account{
+		ID:             kp1.Address(),
+		SequenceNumber: 9606132444168199,
+	}
+
+	inflation := Inflation{}
+	bumpSequence := BumpSequence{
+		BumpTo: 9606132444168300,
+	}
+
+	tx := Transaction{
+		SourceAccount: sourceAccount,
+		Operations:    []Operation{&inflation, &bumpSequence},
+		Network:       UseTestNetwork(),
+	}
+
+	received := buildSignEncode(tx, kp1, t)
+	expected := "AAAAACXK8doPx27P6IReQlRRuweSSUiUfjqgyswxiu3Sh2R+AAAAyAAiILoAAAAIAAAAAAAAAAAAAAACAAAAAAAAAAkAAAAAAAAACwAiILoAAABsAAAAAAAAAAHSh2R+AAAAQGx5xAPuF3rH3/KSHXduYYvE/Qw4CAseF2F0oSacIYi8e320OW07lr9VF8XEcDqMSVNhkFopoh5P0ZSixcTxyQI="
+	assert.Equal(t, expected, received, "Base 64 XDR should match")
+}
