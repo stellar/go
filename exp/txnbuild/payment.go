@@ -17,28 +17,6 @@ type Payment struct {
 	xdrOp         xdr.PaymentOp
 }
 
-// Init for Payment initialises the required XDR fields for this operation.
-func (p *Payment) Init() error {
-	err := p.destAccountID.SetAddress(p.Destination)
-	if err != nil {
-		return errors.Wrap(err, "Failed to set destination address")
-	}
-	p.xdrOp.Destination = p.destAccountID
-
-	p.xdrOp.Amount, err = amount.Parse(p.Amount)
-	if err != nil {
-		return errors.Wrap(err, "Failed to parse amount")
-	}
-
-	// TODO: Generalise to non-native currencies
-	p.xdrAsset, err = xdr.NewAsset(xdr.AssetTypeAssetTypeNative, nil)
-	if err != nil {
-		return errors.Wrap(err, "Failed to set asset type")
-	}
-
-	return err
-}
-
 // BuildXDR for Payment returns a fully configured XDR Operation.
 func (p *Payment) BuildXDR() (xdr.Operation, error) {
 	err := p.destAccountID.SetAddress(p.Destination)

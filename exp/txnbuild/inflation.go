@@ -11,11 +11,6 @@ type Inflation struct {
 	xdrOp struct{}
 }
 
-// Init for Inflation is a no-op to match the txnbuild.Operation interface.
-func (inf *Inflation) Init() error {
-	return nil
-}
-
 // BuildXDR for Inflation returns a fully configured XDR Operation.
 func (inf *Inflation) BuildXDR() (xdr.Operation, error) {
 	opType := xdr.OperationTypeInflation
