@@ -57,8 +57,10 @@ func main() {
 
 func exampleBumpSequence(client *horizon.Client, mock bool) horizon.TransactionSuccess {
 	keys := initKeys()
-	sourceAccount, err := client.LoadAccount(keys[1].Address)
+
+	horizonSourceAccount, err := client.LoadAccount(keys[1].Address)
 	dieIfError("loadaccount", err)
+	sourceAccount := mapAccounts(horizonSourceAccount)
 
 	bumpSequence := txnbuild.BumpSequence{
 		BumpTo: 9606132444168300,
@@ -80,8 +82,9 @@ func exampleBumpSequence(client *horizon.Client, mock bool) horizon.TransactionS
 
 func exampleSendLumens(client *horizon.Client, mock bool) horizon.TransactionSuccess {
 	keys := initKeys()
-	sourceAccount, err := client.LoadAccount(keys[0].Address)
+	horizonSourceAccount, err := client.LoadAccount(keys[0].Address)
 	dieIfError("loadaccount", err)
+	sourceAccount := mapAccounts(horizonSourceAccount)
 
 	payment := txnbuild.Payment{
 		Destination: keys[1].Address,
@@ -104,8 +107,9 @@ func exampleSendLumens(client *horizon.Client, mock bool) horizon.TransactionSuc
 
 func exampleCreateAccount(client *horizon.Client, mock bool) horizon.TransactionSuccess {
 	keys := initKeys()
-	sourceAccount, err := client.LoadAccount(keys[0].Address)
+	horizonSourceAccount, err := client.LoadAccount(keys[0].Address)
 	dieIfError("loadaccount", err)
+	sourceAccount := mapAccounts(horizonSourceAccount)
 
 	// newAccountKeypair := createKeypair()
 	createAccount := txnbuild.CreateAccount{
@@ -191,6 +195,17 @@ func createKeypair() *keypair.Full {
 	log.Println("Address:", pair.Address())
 
 	return pair
+}
+
+func mapAccounts(horizonAccount horizon.Account) txnbuild.Account {
+	myAccount := txnbuild.Account{
+		ID: horizonAccount.ID,
+	}
+	var err error
+	myAccount.SequenceNumber, err = horizonAccount.GetSequenceNumber()
+	dieIfError("GetSequenceNumber", err)
+
+	return myAccount
 }
 
 // PrintHorizonError decodes and prints the contents of horizon.Error.Problem.

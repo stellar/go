@@ -7,20 +7,19 @@ import (
 
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/network"
-	"github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
 )
 
 // TODO: Replace use of Horizon Account with simpler Account object here
-// type Account struct {
-// 	AccountID string
-// 	Sequence  string
-// }
+type Account struct {
+	ID             string
+	SequenceNumber xdr.SequenceNumber
+}
 
 // Transaction represents a Stellar Transaction.
 type Transaction struct {
-	SourceAccount  horizon.Account
+	SourceAccount  Account
 	Operations     []Operation
 	xdrTransaction xdr.Transaction
 	BaseFee        uint64 // TODO: Why is this a uint 64? Can it be a plain int?
@@ -75,12 +74,8 @@ func (tx *Transaction) Build() error {
 	// TODO: Validate provided key before going further
 	tx.xdrTransaction.SourceAccount.SetAddress(tx.SourceAccount.ID)
 
-	// Set sequence number in XDR
-	seqNum, err := tx.SourceAccount.GetSequenceNumber()
-	if err != nil {
-		return err
-	}
-	tx.xdrTransaction.SeqNum = seqNum + 1
+	// TODO: Validate Seq Num is present in struct
+	tx.xdrTransaction.SeqNum = tx.SourceAccount.SequenceNumber + 1
 
 	for _, op := range tx.Operations {
 		xdrOperation, err := BuildOperation(op)

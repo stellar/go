@@ -3,7 +3,6 @@ package txnbuild
 import (
 	"testing"
 
-	"github.com/stellar/go/clients/horizon"
 	"github.com/stellar/go/keypair"
 	"github.com/stretchr/testify/assert"
 )
@@ -13,9 +12,9 @@ func TestInflation(t *testing.T) {
 
 	secretSeed := "SBPQUZ6G4FZNWFHKUWC5BEYWF6R52E3SEP7R3GWYSM2XTKGF5LNTWW4R"
 	sourceAddress := "GDQNY3PBOJOKYZSRMK2S7LHHGWZIUISD4QORETLMXEWXBI7KFZZMKTL3"
-	sourceAccount := horizon.Account{
-		HistoryAccount: horizon.HistoryAccount{ID: sourceAddress},
-		Sequence:       "9605939170639897",
+	sourceAccount := Account{
+		ID:             sourceAddress,
+		SequenceNumber: 9605939170639897,
 	}
 
 	sourceKeypair, err := keypair.Parse(secretSeed)
@@ -49,9 +48,9 @@ func TestCreateAccount(t *testing.T) {
 
 	secretSeed := "SBPQUZ6G4FZNWFHKUWC5BEYWF6R52E3SEP7R3GWYSM2XTKGF5LNTWW4R"
 	sourceAddress := "GDQNY3PBOJOKYZSRMK2S7LHHGWZIUISD4QORETLMXEWXBI7KFZZMKTL3"
-	sourceAccount := horizon.Account{
-		HistoryAccount: horizon.HistoryAccount{ID: sourceAddress},
-		Sequence:       "9605939170639897",
+	sourceAccount := Account{
+		ID:             sourceAddress,
+		SequenceNumber: 9605939170639897,
 	}
 	sourceKeypair, err := keypair.Parse(secretSeed)
 	assert.Nil(t, err)
@@ -88,9 +87,9 @@ func TestPayment(t *testing.T) {
 
 	secretSeed := "SBPQUZ6G4FZNWFHKUWC5BEYWF6R52E3SEP7R3GWYSM2XTKGF5LNTWW4R"
 	sourceAddress := "GDQNY3PBOJOKYZSRMK2S7LHHGWZIUISD4QORETLMXEWXBI7KFZZMKTL3"
-	sourceAccount := horizon.Account{
-		HistoryAccount: horizon.HistoryAccount{ID: sourceAddress},
-		Sequence:       "9605939170639898",
+	sourceAccount := Account{
+		ID:             sourceAddress,
+		SequenceNumber: 9605939170639898,
 	}
 	sourceKeypair, err := keypair.Parse(secretSeed)
 	assert.Nil(t, err)
@@ -126,9 +125,9 @@ func TestBumpSequence(t *testing.T) {
 
 	secretSeed := "SBMSVD4KKELKGZXHBUQTIROWUAPQASDX7KEJITARP4VMZ6KLUHOGPTYW"
 	sourceAddress := "GAS4V4O2B7DW5T7IQRPEEVCRXMDZESKISR7DVIGKZQYYV3OSQ5SH5LVP"
-	sourceAccount := horizon.Account{
-		HistoryAccount: horizon.HistoryAccount{ID: sourceAddress},
-		Sequence:       "9606132444168199",
+	sourceAccount := Account{
+		ID:             sourceAddress,
+		SequenceNumber: 9606132444168199,
 	}
 	sourceKeypair, err := keypair.Parse(secretSeed)
 	assert.Nil(t, err)
