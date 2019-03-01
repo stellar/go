@@ -192,3 +192,14 @@ func TestTransactionActions_Post(t *testing.T) {
 	w = ht.Post("/transactions", form)
 	ht.Assert.Equal(503, w.Code)
 }
+
+func TestTransactionActions_PostFailed(t *testing.T) {
+	ht := StartHTTPTest(t, "failed_transactions")
+	defer ht.Finish()
+
+	// aa168f12124b7c196c0adaee7c73a64d37f99428cacb59a91ff389626845e7cf
+	form := url.Values{"tx": []string{"AAAAAG5oJtVdnYOVdZqtXpTHBtbcY0mCmfcBIKEgWnlvFIhaAAAAZAAAAAIAAAACAAAAAAAAAAAAAAABAAAAAAAAAAEAAAAAO2C/AO45YBD3tHVFO1R3A0MekP8JR6nN1A9eWidyItUAAAABVVNEAAAAAACuo3ot45qCPExpQ/3oHN+z17Ryis1lfMFYmQWgruS+TAAAAAB3NZQAAAAAAAAAAAFvFIhaAAAAQKcGS9OsVnVHCVIH04C9ZKzzKYBRdCmy+Jwmzld7QcALOxZUcAgkuGfoSdvXpH38mNvrqQiaMsSNmTJWYRzHvgo="}}
+
+	w := ht.Post("/transactions", form)
+	ht.Assert.Equal(400, w.Code)
+}

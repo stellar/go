@@ -65,7 +65,18 @@ func (rp *DB) ResultByHash(ctx context.Context, hash string) txsub.Result {
 }
 
 func txResultFromHistory(tx history.Transaction) txsub.Result {
+	var txResult xdr.TransactionResult
+	err := xdr.SafeUnmarshalBase64(tx.TxResult, &txResult)
+	if err == nil {
+		if txResult.Result.Code != xdr.TransactionResultCodeTxSuccess {
+			err = &txsub.FailedTransactionError{
+				ResultXDR: tx.TxResult,
+			}
+		}
+	}
+
 	return txsub.Result{
+		Err:            err,
 		Hash:           tx.TransactionHash,
 		LedgerSequence: tx.LedgerSequence,
 		EnvelopeXDR:    tx.TxEnvelope,
