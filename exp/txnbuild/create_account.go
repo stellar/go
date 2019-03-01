@@ -16,24 +16,24 @@ type CreateAccount struct {
 	xdrOp         xdr.CreateAccountOp
 }
 
-// Init for CreateAccount initialises the required XDR fields for this operation.
-func (ca *CreateAccount) Init() error {
+// BuildXDR for CreateAccount returns a fully configured XDR Operation.
+func (ca *CreateAccount) BuildXDR() (xdr.Operation, error) {
 	err := ca.destAccountID.SetAddress(ca.Destination)
 	if err != nil {
-		return errors.Wrap(err, "Failed to set destination address")
+		return xdr.Operation{}, errors.Wrap(err, "Failed to set destination address")
 	}
 	ca.xdrOp.Destination = ca.destAccountID
 
 	ca.xdrOp.StartingBalance, err = amount.Parse(ca.Amount)
 	if err != nil {
-		return errors.Wrap(err, "Failed to parse amount")
+		return xdr.Operation{}, errors.Wrap(err, "Failed to parse amount")
 	}
 
-	return err
-}
-
-// NewXDROperationBody for CreateAccount initialises the corresponding XDR body.
-func (ca *CreateAccount) NewXDROperationBody() (xdr.OperationBody, error) {
 	opType := xdr.OperationTypeCreateAccount
-	return xdr.NewOperationBody(opType, ca.xdrOp)
+	body, err := xdr.NewOperationBody(opType, ca.xdrOp)
+	if err != nil {
+		return xdr.Operation{}, errors.Wrap(err, "Failed to build XDR OperationBody")
+	}
+
+	return xdr.Operation{Body: body}, nil
 }

@@ -39,8 +39,30 @@ func (p *Payment) Init() error {
 	return err
 }
 
-// NewXDROperationBody for Payment initialises the corresponding XDR body.
-func (p *Payment) NewXDROperationBody() (xdr.OperationBody, error) {
+// BuildXDR for Payment returns a fully configured XDR Operation.
+func (p *Payment) BuildXDR() (xdr.Operation, error) {
+	err := p.destAccountID.SetAddress(p.Destination)
+	if err != nil {
+		return xdr.Operation{}, errors.Wrap(err, "Failed to set destination address")
+	}
+	p.xdrOp.Destination = p.destAccountID
+
+	p.xdrOp.Amount, err = amount.Parse(p.Amount)
+	if err != nil {
+		return xdr.Operation{}, errors.Wrap(err, "Failed to parse amount")
+	}
+
+	// TODO: Generalise to non-native currencies
+	p.xdrAsset, err = xdr.NewAsset(xdr.AssetTypeAssetTypeNative, nil)
+	if err != nil {
+		return xdr.Operation{}, errors.Wrap(err, "Failed to set asset type")
+	}
+
 	opType := xdr.OperationTypePayment
-	return xdr.NewOperationBody(opType, p.xdrOp)
+	body, err := xdr.NewOperationBody(opType, p.xdrOp)
+	if err != nil {
+		return xdr.Operation{}, errors.Wrap(err, "Failed to build XDR OperationBody")
+	}
+
+	return xdr.Operation{Body: body}, nil
 }

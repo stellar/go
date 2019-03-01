@@ -78,7 +78,7 @@ func (tx *Transaction) Build() error {
 	tx.xdrTransaction.SeqNum = tx.SourceAccount.SequenceNumber + 1
 
 	for _, op := range tx.Operations {
-		xdrOperation, err := BuildOperation(op)
+		xdrOperation, err := op.BuildXDR()
 		if err != nil {
 			return errors.Wrap(err, fmt.Sprintf("Failed to build operation %T", op))
 		}

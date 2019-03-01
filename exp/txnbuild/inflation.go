@@ -1,6 +1,7 @@
 package txnbuild
 
 import (
+	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
 )
 
@@ -15,8 +16,13 @@ func (inf *Inflation) Init() error {
 	return nil
 }
 
-// NewXDROperationBody for Inflation initialises the corresponding XDR body.
-func (inf *Inflation) NewXDROperationBody() (xdr.OperationBody, error) {
+// BuildXDR for Inflation returns a fully configured XDR Operation.
+func (inf *Inflation) BuildXDR() (xdr.Operation, error) {
 	opType := xdr.OperationTypeInflation
-	return xdr.NewOperationBody(opType, nil)
+	body, err := xdr.NewOperationBody(opType, nil)
+	if err != nil {
+		return xdr.Operation{}, errors.Wrap(err, "Failed to build XDR OperationBody")
+	}
+
+	return xdr.Operation{Body: body}, nil
 }
