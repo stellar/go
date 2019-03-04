@@ -4,10 +4,10 @@ clientData:
   laboratoryUrl:
 ---
 
-This endpoint gives useful information about fee stats in the last 5 ledgers. It can be used to
+This endpoint gives useful information about per-operation fee stats in the last 5 ledgers. It can be used to
 predict a fee set on the transaction that will be submitted to the network.
 
-Note: This endpoint was originally `/operation_fee_stats`, and is subject for removal in `0.18.0`.
+Note: This endpoint was originally `/operation_fee_stats`, which is subject for removal in `0.18.0`.
 
 ## Request
 
@@ -29,7 +29,7 @@ Response contains the following fields:
 | - | - |
 | last_ledger | Last ledger sequence number |
 | last_ledger_base_fee | Base fee as defined in the last ledger |
-| ledger_capacity_usage | Average capacity usage in the last 5 ledgers. |
+| ledger_capacity_usage | Average capacity usage in the last 5 ledgers. (0 is no usage, 1.0 is completely full ledgers) |
 | min_accepted_fee | Minimum accepted fee in the last 5 ledger. |
 | mode_accepted_fee | Mode accepted fee in the last 5 ledger. |
 | p10_accepted_fee | 10th percentile accepted fee in the last 5 ledger. |
