@@ -18,9 +18,11 @@ import (
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/services/horizon/internal/ingest"
 	"github.com/stellar/go/services/horizon/internal/ledger"
+	"github.com/stellar/go/services/horizon/internal/logmetrics"
 	"github.com/stellar/go/services/horizon/internal/operationfeestats"
 	"github.com/stellar/go/services/horizon/internal/paths"
 	"github.com/stellar/go/services/horizon/internal/reap"
+	"github.com/stellar/go/services/horizon/internal/simplepath"
 	"github.com/stellar/go/services/horizon/internal/txsub"
 	"github.com/stellar/go/support/app"
 	"github.com/stellar/go/support/db"
@@ -360,7 +362,70 @@ func (a *App) Tick() {
 // Init initializes app, using the config to populate db connections and
 // whatnot.
 func (a *App) init() {
-	appInit.Run(a)
+	// app-context
+	a.ctx, a.cancel = context.WithCancel(context.Background())
+
+	// log
+	log.DefaultLogger.Logger.Level = a.config.LogLevel
+	log.DefaultLogger.Logger.Hooks.Add(logmetrics.DefaultMetrics)
+
+	// sentry
+	initSentry(a)
+
+	// loggly
+	initLogglyLog(a)
+
+	// stellarCoreInfo
+	a.UpdateStellarCoreInfo()
+
+	// horizon-db and core-db
+	initHorizonDb(a)
+	initCoreDb(a)
+
+	// ingester
+	initIngester(a)
+
+	// txsub
+	initSubmissionSystem(a)
+
+	// path-finder
+	a.paths = &simplepath.Finder{a.CoreQ()}
+
+	// reaper
+	a.reaper = reap.New(a.config.HistoryRetentionCount, a.HorizonSession(nil))
+
+	// web.init
+	initWeb(a)
+
+	// web.rate-limiter
+	initWebRateLimiter(a)
+
+	// web.middleware
+	initWebMiddleware(a)
+
+	// web.actions
+	initWebActions(a)
+
+	// metrics and log.metrics
+	a.metrics = metrics.NewRegistry()
+	for level, meter := range *logmetrics.DefaultMetrics {
+		a.metrics.Register(fmt.Sprintf("logging.%s", level), meter)
+	}
+
+	// db-metrics
+	initDbMetrics(a)
+
+	// web.metrics
+	initWebMetrics(a)
+
+	// txsub.metrics
+	initTxSubMetrics(a)
+
+	// ingester.metrics
+	initIngesterMetrics(a)
+
+	// redis
+	initRedis(a)
 }
 
 // run is the function that runs in the background that triggers Tick each
