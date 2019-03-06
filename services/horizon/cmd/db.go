@@ -204,7 +204,7 @@ var dbReingestCmd = &cobra.Command{
 			rate := i.Metrics.IngestLedgerTimer.RateMean()
 			loadMean := time.Duration(i.Metrics.LoadLedgerTimer.Mean())
 			ingestMean := time.Duration(i.Metrics.IngestLedgerTimer.Mean())
-			clearMean := time.Duration(i.Metrics.IngestLedgerTimer.Mean())
+			clearMean := time.Duration(i.Metrics.ClearLedgerTimer.Mean())
 			hlog.WithField("count", count).
 				WithField("rate", rate).
 				WithField("means", fmt.Sprintf("load: %s clear: %s ingest: %s", loadMean, clearMean, ingestMean)).
