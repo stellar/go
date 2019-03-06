@@ -358,5 +358,4 @@ func reingest(cmd reingestType, args ...int32) {
 			os.Exit(0)
 		}
 	}
-
 }
