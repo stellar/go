@@ -91,7 +91,6 @@ var dbClearCmd = &cobra.Command{
 	Use:   "clear",
 	Short: "clears all imported historical data",
 	Run: func(cmd *cobra.Command, args []string) {
-		hlog.DefaultLogger.Logger.Level = config.LogLevel
 		initConfig()
 
 		err := ingestSystem(ingest.Config{
@@ -175,7 +174,6 @@ var dbRebaseCmd = &cobra.Command{
 	Short: "rebases clears the horizon db and ingests the latest ledger segment from stellar-core",
 	Long:  "...",
 	Run: func(cmd *cobra.Command, args []string) {
-		hlog.DefaultLogger.Logger.Level = config.LogLevel
 		initConfig()
 
 		i := ingestSystem(ingest.Config{
@@ -195,7 +193,6 @@ var dbReingestCmd = &cobra.Command{
 	Short: "imports all data",
 	Long:  "reingest runs the ingestion pipeline over every ledger",
 	Run: func(cmd *cobra.Command, args []string) {
-		hlog.DefaultLogger.Logger.Level = config.LogLevel
 		initConfig()
 
 		i := ingestSystem(ingest.Config{
