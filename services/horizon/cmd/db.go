@@ -16,6 +16,15 @@ import (
 	hlog "github.com/stellar/go/support/log"
 )
 
+type reingestType int
+
+const (
+	byAll reingestType = iota
+	bySeq
+	byRange
+	byOutdated
+)
+
 var dbCmd = &cobra.Command{
 	Use:   "db [command]",
 	Short: "commands to manage horizon's postgres db",
@@ -193,47 +202,38 @@ var dbReingestCmd = &cobra.Command{
 	Short: "imports all data",
 	Long:  "reingest runs the ingestion pipeline over every ledger",
 	Run: func(cmd *cobra.Command, args []string) {
-		initConfig()
+		if len(args) == 0 {
+			reingest(byAll)
+		} else {
+			reingest(bySeq, args...)
+		}
+	},
+}
 
-		i := ingestSystem(ingest.Config{
-			IngestFailedTransactions: config.IngestFailedTransactions,
-		})
-		i.SkipCursorUpdate = true
-		logStatus := func(stage string) {
-			count := i.Metrics.IngestLedgerTimer.Count()
-			rate := i.Metrics.IngestLedgerTimer.RateMean()
-			loadMean := time.Duration(i.Metrics.LoadLedgerTimer.Mean())
-			ingestMean := time.Duration(i.Metrics.IngestLedgerTimer.Mean())
-			clearMean := time.Duration(i.Metrics.ClearLedgerTimer.Mean())
-			hlog.WithField("count", count).
-				WithField("rate", rate).
-				WithField("means", fmt.Sprintf("load: %s clear: %s ingest: %s", loadMean, clearMean, ingestMean)).
-				Infof("reingest: %s", stage)
+var dbReingestRangeCmd = &cobra.Command{
+	Use:   "range [Start sequence number] [End sequence number]",
+	Short: "reingests ledgers within a range",
+	Long:  "reingests ledgers between X and Y sequence number (closed intervals)",
+	Run: func(cmd *cobra.Command, args []string) {
+		if len(args) != 2 {
+			cmd.Usage()
+			os.Exit(1)
 		}
 
-		done := make(chan error, 1)
+		reingest(byRange, args...)
+	},
+}
 
-		// run ingestion in separate goroutine
-		go func() {
-			_, err := reingest(i, args)
-			done <- err
-			logStatus("complete")
-		}()
-
-		// output metrics
-		metrics := time.Tick(2 * time.Second)
-		for {
-			select {
-			case <-metrics:
-				logStatus("status")
-
-			case err := <-done:
-				if err != nil {
-					log.Fatal(err)
-				}
-				os.Exit(0)
-			}
+var dbReingestOutdatedCmd = &cobra.Command{
+	Use:   "outdated",
+	Short: "reingests all outdated ledgers",
+	Long:  "reingests ledgers whose version is less than the current version up to a million ledgers",
+	Run: func(cmd *cobra.Command, args []string) {
+		if len(args) > 0 {
+			log.Println("ignoring args...")
 		}
+
+		reingest(byOutdated)
 	},
 }
 
@@ -249,6 +249,7 @@ func init() {
 		dbReingestCmd,
 		dbRebaseCmd,
 	)
+	dbReingestCmd.AddCommand(dbReingestRangeCmd, dbReingestOutdatedCmd)
 }
 
 func ingestSystem(ingestConfig ingest.Config) *ingest.System {
@@ -270,39 +271,89 @@ func ingestSystem(ingestConfig ingest.Config) *ingest.System {
 	return ingest.New(passphrase, config.StellarCoreURL, cdb, hdb, ingestConfig)
 }
 
-func reingest(i *ingest.System, args []string) (int, error) {
-	if len(args) == 0 {
-		return i.ReingestAll()
+func reingest(cmd reingestType, args ...string) {
+	initConfig()
+
+	i := ingestSystem(ingest.Config{
+		IngestFailedTransactions: config.IngestFailedTransactions,
+	})
+	i.SkipCursorUpdate = true
+
+	logStatus := func(stage string) {
+		count := i.Metrics.IngestLedgerTimer.Count()
+		rate := i.Metrics.IngestLedgerTimer.RateMean()
+		loadMean := time.Duration(i.Metrics.LoadLedgerTimer.Mean())
+		ingestMean := time.Duration(i.Metrics.IngestLedgerTimer.Mean())
+		clearMean := time.Duration(i.Metrics.ClearLedgerTimer.Mean())
+		hlog.WithField("count", count).
+			WithField("rate", rate).
+			WithField("means", fmt.Sprintf("load: %s clear: %s ingest: %s", loadMean, clearMean, ingestMean)).
+			Infof("reingest: %s", stage)
 	}
 
-	if len(args) == 1 && args[0] == "outdated" {
-		return i.ReingestOutdated()
+	done := make(chan error, 1)
+
+	// run ingestion in separate goroutine
+	go func() {
+		var err error
+		switch cmd {
+		case byAll:
+			_, err = i.ReingestAll()
+
+		case bySeq:
+			var seq int
+			for _, arg := range args {
+				seq, err = strconv.Atoi(arg)
+				if err != nil {
+					break
+				}
+
+				err = i.ReingestSingle(int32(seq))
+				if err != nil {
+					break
+				}
+			}
+
+		case byRange:
+			// should already be checked by the caller
+			if len(args) != 2 {
+				log.Fatal(`"horizon db reingest range" command requires 2 sequence numbers after "range"`)
+			}
+
+			var from, to int
+			from, err = strconv.Atoi(args[0])
+			if err != nil {
+				break
+			}
+
+			to, err = strconv.Atoi(args[1])
+			if err != nil {
+				break
+			}
+
+			_, err = i.ReingestRange(int32(from), int32(to))
+
+		case byOutdated:
+			_, err = i.ReingestOutdated()
+		}
+
+		done <- err
+		logStatus("complete")
+	}()
+
+	// output metrics
+	metrics := time.Tick(2 * time.Second)
+	for {
+		select {
+		case <-metrics:
+			logStatus("status")
+
+		case err := <-done:
+			if err != nil {
+				log.Fatal(err)
+			}
+			os.Exit(0)
+		}
 	}
 
-	if len(args) >= 1 && args[0] == "range" {
-		from, err := strconv.Atoi(args[1])
-		if err != nil {
-			return 0, err
-		}
-
-		to, err := strconv.Atoi(args[2])
-		if err != nil {
-			return 0, err
-		}
-
-		return i.ReingestRange(int32(from), int32(to))
-	}
-
-	for idx, arg := range args {
-		seq, err := strconv.Atoi(arg)
-		if err != nil {
-			return idx, err
-		}
-
-		err = i.ReingestSingle(int32(seq))
-		if err != nil {
-			return idx, err
-		}
-	}
-	return len(args), nil
 }
