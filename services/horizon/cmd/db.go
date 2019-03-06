@@ -198,14 +198,24 @@ var dbRebaseCmd = &cobra.Command{
 }
 
 var dbReingestCmd = &cobra.Command{
-	Use:   "reingest",
-	Short: "imports all data",
-	Long:  "reingest runs the ingestion pipeline over every ledger",
+	Use:   "reingest [Ledger sequence numbers (leave it empty for reingesting from the very beginning)]",
+	Short: "reingest all ledgers or ledgers specified by individual sequence numbers",
+	Long:  "reingest runs the ingestion pipeline over every ledger or ledgers specified by individual sequence numbers",
 	Run: func(cmd *cobra.Command, args []string) {
 		if len(args) == 0 {
 			reingest(byAll)
 		} else {
-			reingest(bySeq, args...)
+			argsInt32 := make([]int32, 0, len(args))
+			for _, arg := range args {
+				seq, err := strconv.Atoi(arg)
+				if err != nil {
+					cmd.Usage()
+					log.Fatalf(`Invalid sequence number "%s"`, arg)
+				}
+				argsInt32 = append(argsInt32, int32(seq))
+			}
+
+			reingest(bySeq, argsInt32...)
 		}
 	},
 }
@@ -220,7 +230,17 @@ var dbReingestRangeCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
-		reingest(byRange, args...)
+		argsInt32 := make([]int32, 0, len(args))
+		for _, arg := range args {
+			seq, err := strconv.Atoi(arg)
+			if err != nil {
+				cmd.Usage()
+				log.Fatalf(`Invalid sequence number "%s"`, arg)
+			}
+			argsInt32 = append(argsInt32, int32(seq))
+		}
+
+		reingest(byRange, argsInt32...)
 	},
 }
 
@@ -271,7 +291,7 @@ func ingestSystem(ingestConfig ingest.Config) *ingest.System {
 	return ingest.New(passphrase, config.StellarCoreURL, cdb, hdb, ingestConfig)
 }
 
-func reingest(cmd reingestType, args ...string) {
+func reingest(cmd reingestType, args ...int32) {
 	initConfig()
 
 	i := ingestSystem(ingest.Config{
@@ -301,14 +321,8 @@ func reingest(cmd reingestType, args ...string) {
 			_, err = i.ReingestAll()
 
 		case bySeq:
-			var seq int
-			for _, arg := range args {
-				seq, err = strconv.Atoi(arg)
-				if err != nil {
-					break
-				}
-
-				err = i.ReingestSingle(int32(seq))
+			for _, seq := range args {
+				err = i.ReingestSingle(seq)
 				if err != nil {
 					break
 				}
@@ -320,18 +334,7 @@ func reingest(cmd reingestType, args ...string) {
 				log.Fatal(`"horizon db reingest range" command requires 2 sequence numbers after "range"`)
 			}
 
-			var from, to int
-			from, err = strconv.Atoi(args[0])
-			if err != nil {
-				break
-			}
-
-			to, err = strconv.Atoi(args[1])
-			if err != nil {
-				break
-			}
-
-			_, err = i.ReingestRange(int32(from), int32(to))
+			_, err = i.ReingestRange(args[0], args[1])
 
 		case byOutdated:
 			_, err = i.ReingestOutdated()
