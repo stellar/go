@@ -9,7 +9,7 @@ This endpoint represents successful [transactions](../resources/transaction.md) 
 ## Request
 
 ```
-GET /ledgers/{id}/transactions{?cursor,limit,order}
+GET /ledgers/{id}/transactions{?cursor,limit,order,include_failed}
 ```
 
 ### Arguments

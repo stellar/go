@@ -40,7 +40,6 @@ func (i *System) Backfill(n uint) error {
 // ClearAll removes all previously ingested historical data from the horizon
 // database.
 func (i *System) ClearAll() error {
-
 	hdb := i.HorizonDB.Clone()
 	ingestion := &Ingestion{DB: hdb}
 
@@ -122,7 +121,6 @@ func (i *System) ReingestAll() (int, error) {
 
 // ReingestOutdated finds old ledgers and reimports them.
 func (i *System) ReingestOutdated() (n int, err error) {
-
 	q := history.Q{Session: i.HorizonDB}
 
 	// NOTE: this loop will never terminate if some bug were cause a ledger

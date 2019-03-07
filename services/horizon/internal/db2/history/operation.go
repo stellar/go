@@ -10,6 +10,14 @@ import (
 	"github.com/stellar/go/xdr"
 )
 
+func (t *Operation) IsTransactionSuccessful() bool {
+	if t.TransactionSuccessful == nil {
+		return true
+	}
+
+	return *t.TransactionSuccessful
+}
+
 // LedgerSequence return the ledger in which the effect occurred.
 func (r *Operation) LedgerSequence() int32 {
 	id := toid.Parse(r.ID)
@@ -58,9 +66,10 @@ func (q *Q) OperationFeeStats(currentSeq int32, dest *FeeStats) error {
 // filters.  See `OperationsQ` for the available filters.
 func (q *Q) Operations() *OperationsQ {
 	return &OperationsQ{
-		parent:  q,
-		sql:     selectOperation,
-		opIdCol: "hop.id",
+		parent:        q,
+		sql:           selectOperation,
+		opIdCol:       "hop.id",
+		includeFailed: false,
 	}
 }
 
@@ -146,10 +155,9 @@ func (q *OperationsQ) OnlyPayments() *OperationsQ {
 	return q
 }
 
-// SuccessfulOnly changes the query to include successful operations only.
-func (q *OperationsQ) SuccessfulOnly() *OperationsQ {
-	q.sql = q.sql.
-		Where("(ht.successful = true OR ht.successful IS NULL)")
+// IncludeFailed changes the query to include failed transactions.
+func (q *OperationsQ) IncludeFailed() *OperationsQ {
+	q.includeFailed = true
 	return q
 }
 
@@ -169,8 +177,49 @@ func (q *OperationsQ) Select(dest interface{}) error {
 		return q.Err
 	}
 
+	if q.includeFailed == false {
+		q.sql = q.sql.
+			Where("(ht.successful = true OR ht.successful IS NULL)")
+	}
+
 	q.Err = q.parent.Select(dest, q.sql)
-	return q.Err
+	if q.Err != nil {
+		return q.Err
+	}
+
+	operations, ok := dest.(*[]Operation)
+	if !ok {
+		return errors.New("dest is not *[]Operation")
+	}
+
+	for _, o := range *operations {
+		var resultXDR xdr.TransactionResult
+		err := xdr.SafeUnmarshalBase64(o.TxResult, &resultXDR)
+		if err != nil {
+			return err
+		}
+
+		if !q.includeFailed {
+			if !o.IsTransactionSuccessful() {
+				return errors.Errorf("Corrupted data! `include_failed=false` but returned transaction is failed: %s", o.TransactionHash)
+			}
+
+			if resultXDR.Result.Code != xdr.TransactionResultCodeTxSuccess {
+				return errors.Errorf("Corrupted data! `include_failed=false` but returned transaction is failed: %s %s", o.TransactionHash, o.TxResult)
+			}
+		}
+
+		// Check if `successful` equals resultXDR
+		if o.IsTransactionSuccessful() && resultXDR.Result.Code != xdr.TransactionResultCodeTxSuccess {
+			return errors.Errorf("Corrupted data! `successful=true` but returned transaction is not success: %s %s", o.TransactionHash, o.TxResult)
+		}
+
+		if !o.IsTransactionSuccessful() && resultXDR.Result.Code == xdr.TransactionResultCodeTxSuccess {
+			return errors.Errorf("Corrupted data! `successful=false` but returned transaction is success: %s %s", o.TransactionHash, o.TxResult)
+		}
+	}
+
+	return nil
 }
 
 var selectOperation = sq.Select(
@@ -181,6 +230,7 @@ var selectOperation = sq.Select(
 		"hop.details, " +
 		"hop.source_account, " +
 		"ht.transaction_hash, " +
+		"ht.tx_result, " +
 		"ht.successful as transaction_successful").
 	From("history_operations hop").
 	LeftJoin("history_transactions ht ON ht.id = hop.transaction_id")

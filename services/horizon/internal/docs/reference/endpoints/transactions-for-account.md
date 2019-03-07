@@ -11,7 +11,7 @@ If called in streaming mode Horizon will start at the earliest known transaction
 ## Request
 
 ```
-GET /accounts/{account_id}/transactions{?cursor,limit,order}
+GET /accounts/{account_id}/transactions{?cursor,limit,order,include_failed}
 ```
 
 ### Arguments

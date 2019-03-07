@@ -18,15 +18,20 @@ func (q *Q) SignersByAddress(dest interface{}, addy string) error {
 		return q.Select(dest, sql)
 	}
 
-	var signersXDRString string
+	var signersXDRString *string
 	sql := selectSignerVersion9.Where("accountid = ?", addy)
 	err = q.Get(&signersXDRString, sql)
 	if err != nil {
 		return err
 	}
 
+	if signersXDRString == nil {
+		*dest.(*[]Signer) = []Signer{}
+		return nil
+	}
+
 	var signersXDR []xdr.Signer
-	err = xdr.SafeUnmarshalBase64(signersXDRString, &signersXDR)
+	err = xdr.SafeUnmarshalBase64(*signersXDRString, &signersXDR)
 	if err != nil {
 		return errors.Wrap(err, "Error decoding []xdr.Signer")
 	}

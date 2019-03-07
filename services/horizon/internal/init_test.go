@@ -3,38 +3,31 @@ package horizon
 import (
 	"testing"
 
-	"github.com/stellar/go/services/horizon/internal/test"
+	"github.com/gomodule/redigo/redis"
+	"github.com/stretchr/testify/assert"
 )
 
-func TestAppInit(t *testing.T) {
-	tt := test.Start(t)
-	defer tt.Finish()
+func TestInitRedis(t *testing.T) {
+	c := NewTestConfig()
 
-	// panics when a cycle is present
-	init := &initializerSet{}
-	init.Add("a", func(app *App) { t.Log("a") }, "b")
-	init.Add("b", func(app *App) { t.Log("b") }, "c")
-	init.Add("c", func(app *App) { t.Log("c") }, "a")
-	tt.Assert.Panics(func() { init.Run(&App{}) })
+	// app.redis is nil when no RedisURL is set
+	c.RedisURL = ""
+	app := NewApp(c)
+	assert.Nil(t, app.redis)
+	app.Close()
 
-	// runs in the right order
-	init = &initializerSet{}
-	order := []string{}
-	init.Add("a", func(app *App) { order = append(order, "a") })
-	init.Add("b", func(app *App) { order = append(order, "b") }, "a")
-	init.Add("c", func(app *App) { order = append(order, "c") }, "b")
+	// app.redis gets set when RedisURL is set
+	c.RedisURL = "redis://127.0.0.1:6379/"
+	app = NewApp(c)
+	assert.NotNil(t, app.redis)
 
-	init.Run(&App{})
-	tt.Assert.Equal([]string{"a", "b", "c"}, order)
+	// redis connection works
+	conn := app.redis.Get()
+	conn.Do("SET", "hello", "World")
+	world, _ := redis.String(conn.Do("GET", "hello"))
 
-	// only runs an initializer once
-	init = &initializerSet{}
-	count := 0
-	init.Add("a", func(app *App) { count++ })
-	init.Add("b", func(app *App) {}, "a")
-	init.Add("c", func(app *App) {}, "a")
+	assert.Equal(t, "World", world)
 
-	init.Run(&App{})
-	tt.Assert.Equal(1, count)
-
+	conn.Close()
+	app.Close()
 }

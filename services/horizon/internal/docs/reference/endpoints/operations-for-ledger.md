@@ -9,7 +9,7 @@ This endpoint returns successful [operations](../resources/operation.md) that oc
 ## Request
 
 ```
-GET /ledgers/{id}/operations{?cursor,limit,order}
+GET /ledgers/{id}/operations{?cursor,limit,order,include_failed}
 ```
 
 ### Arguments

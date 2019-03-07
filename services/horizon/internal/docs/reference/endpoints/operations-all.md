@@ -13,7 +13,7 @@ If called in streaming mode Horizon will start at the earliest known operation u
 ## Request
 
 ```
-GET /operations{?cursor,limit,order}
+GET /operations{?cursor,limit,order,include_failed}
 ```
 
 ### Arguments

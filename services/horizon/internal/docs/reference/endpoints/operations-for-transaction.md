@@ -6,6 +6,10 @@ clientData:
 
 This endpoint represents successful [operations](../resources/operation.md) that are part of a given [transaction](../resources/transaction.md).
 
+### Warning - failed transactions
+
+"Operations for Transaction" endpoint returns list of payments of successful or failed transactions (that are also included in Stellar ledger). Always check the operation status in this endpoint using `transaction_successful` field!
+
 ## Request
 
 ```
@@ -20,7 +24,6 @@ GET /transactions/{hash}/operations{?cursor,limit,order}
 | `?cursor`| optional, default _null_       | A paging token, specifying where to start returning records from.| `12884905984`                                                     |
 | `?order` | optional, string, default `asc`| The order in which to return rows, "asc" or "desc".              | `asc`                                                             |
 | `?limit` | optional, number, default `10` | Maximum number of records to return.                             | `200`                                                             |
-| `?include_failed` | optional, bool, default: `false` | Set to `true` to include operations of failed transactions in results. | `true` |
 
 ### curl Example Request
 

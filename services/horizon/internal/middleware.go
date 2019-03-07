@@ -132,6 +132,10 @@ func logEndOfRequest(ctx context.Context, r *http.Request, duration time.Duratio
 	}).Info("Finished request")
 }
 
+func firstXForwardedFor(r *http.Request) string {
+	return strings.TrimSpace(strings.SplitN(r.Header.Get("X-Forwarded-For"), ",", 2)[0])
+}
+
 func (web *Web) RateLimitMiddleware(next http.Handler) http.Handler {
 	if web.rateLimiter == nil {
 		return next

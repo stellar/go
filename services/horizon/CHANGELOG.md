@@ -6,11 +6,30 @@ file.  This project adheres to [Semantic Versioning](http://semver.org/).
 As this project is pre 1.0, breaking changes may happen for minor version
 bumps.  A breaking change will get clearly notified in this log.
 
+## v0.17.3 - 2019-03-01
+
+* Fix a bug in `txsub` package that caused returning invalid status when resubmitting old transactions (#969).
+
+## v0.17.2 - 2019-02-28
+
+* Critical fix bug
+
+## v0.17.1 - 2019-02-28
+
+### Changes
+
+* Fixes high severity error in ingestion system.
+* Account detail endpoint (`/accounts/{id}`) includes `last_modified_ledger` field for account and for each non-native asset balance.
+
 ## v0.17.0 - 2019-02-26
 
 ### Upgrade notes
 
 This release introduces ingestion of failed transactions. This feature is turned off by default. To turn it on set environment variable: `INGEST_FAILED_TRANSACTIONS=true` or CLI param: `--ingest-failed-transactions=true`. Please note that ingesting failed transactions can double DB space requirements (especially important for full history deployments).
+
+### Database migration notes
+
+Previous versions work fine with new schema so you can migrate (`horizon db migrate up` using new binary) database without stopping the Horizon process. To reingest ledgers run `horizon db reingest` using Horizon 0.17.0 binary. You can take advantage of the new `horizon db reingest range` for parallel reingestion.
 
 ### Deprecations
 

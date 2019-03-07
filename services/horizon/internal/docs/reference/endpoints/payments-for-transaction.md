@@ -12,6 +12,10 @@ The operations that can be returned in by this endpoint are:
 - `path_payment`
 - `account_merge`
 
+### Warning - failed transactions
+
+"Payments for Transaction" endpoint returns list of payments of successful or failed transactions (that are also included in Stellar ledger). Always check the payment status in this endpoint using `transaction_successful` field!
+
 ## Request
 
 ```

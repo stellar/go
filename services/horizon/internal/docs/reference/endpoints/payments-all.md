@@ -16,7 +16,7 @@ The operations that can be returned in by this endpoint are:
 ## Request
 
 ```
-GET /payments{?cursor,limit,order}
+GET /payments{?cursor,limit,order,include_failed}
 ```
 
 ### Arguments
@@ -26,6 +26,7 @@ GET /payments{?cursor,limit,order}
 | `?cursor` | optional, any, default _null_ | A paging token, specifying where to start returning records from. When streaming this can be set to `now` to stream object created since your request time. | `12884905984` |
 | `?order`  | optional, string, default `asc` | The order in which to return rows, "asc" or "desc". | `asc` |
 | `?limit`  | optional, number, default: `10` | Maximum number of records to return. | `200` |
+| `?include_failed` | optional, bool, default: `false` | Set to `true` to include payments of failed transactions in results. | `true` |
 
 ### curl Example Request
 
