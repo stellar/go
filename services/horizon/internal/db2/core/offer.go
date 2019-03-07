@@ -5,7 +5,6 @@ import (
 	"math/big"
 
 	sq "github.com/Masterminds/squirrel"
-	"github.com/guregu/null"
 	"github.com/stellar/go/services/horizon/internal/db2"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
@@ -144,6 +143,8 @@ func (q *Q) OffersByAddress(dest interface{}, addy string, pq db2.PageQuery) err
 		return err
 	}
 
+	offers := []internalOffer{}
+
 	sql := sq.Select("co.*").
 		From("offers co").
 		Where("co.sellerid = ?", addy).
@@ -161,66 +162,50 @@ func (q *Q) OffersByAddress(dest interface{}, addy string, pq db2.PageQuery) err
 		sql = sql.Where("co.offerid < ?", cursor).OrderBy("co.offerid desc")
 	}
 
-	err = q.Select(dest, sql)
+	err = q.Select(&offers, sql)
 	if err != nil {
 		return err
 	}
 
-	if schemaVersion < 9 {
+	newOffers := make([]Offer, len(offers))
+
+	for i, offer := range offers {
+		newOffers[i] = offer.get()
+	}
+
+	if schemaVersion >= 9 {
+		*dest.(*[]Offer) = newOffers
 		return nil
 	}
 
-	// In schema 9 we need to decode XDR-encoded assets
-	offers, ok := dest.(*[]Offer)
-	if !ok {
-		return errors.New("dest is not []Offer")
-	}
-
-	newOffers := make([]Offer, len(*offers))
-	for i, offer := range *offers {
+	// Convert schema 8 results to xdr.Assets
+	for i, offer := range offers {
 		var sellingAsset, buyingAsset xdr.Asset
 
-		err = xdr.SafeUnmarshalBase64(offer.SellingAsset, &sellingAsset)
-		if err != nil {
-			return errors.Wrap(err, "Error decoding sellingasset")
+		if offer.SellingAssetType == xdr.AssetTypeAssetTypeNative {
+			sellingAsset.SetNative()
+		} else {
+			var account xdr.AccountId
+			err := account.SetAddress(offer.SellingIssuer.String)
+			if err != nil {
+				return errors.Wrap(err, "Error setting offer.SellingIssuer")
+			}
+			sellingAsset.SetCredit(offer.SellingAssetCode.String, account)
 		}
 
-		err = xdr.SafeUnmarshalBase64(offer.BuyingAsset, &buyingAsset)
-		if err != nil {
-			return errors.Wrap(err, "Error decoding buyingasset")
+		if offer.BuyingAssetType == xdr.AssetTypeAssetTypeNative {
+			buyingAsset.SetNative()
+		} else {
+			var account xdr.AccountId
+			err := account.SetAddress(offer.BuyingIssuer.String)
+			if err != nil {
+				return errors.Wrap(err, "Error setting offer.BuyingIssuer")
+			}
+			buyingAsset.SetCredit(offer.BuyingAssetCode.String, account)
 		}
 
-		newOffers[i] = offer
-
-		var sellingAssetCode, sellingIssuer string
-		err = sellingAsset.Extract(
-			&newOffers[i].SellingAssetType,
-			&sellingAssetCode,
-			&sellingIssuer,
-		)
-		if err != nil {
-			return errors.Wrap(err, "Error extracting sellingasset")
-		}
-
-		if newOffers[i].SellingAssetType != xdr.AssetTypeAssetTypeNative {
-			newOffers[i].SellingAssetCode = null.StringFrom(sellingAssetCode)
-			newOffers[i].SellingIssuer = null.StringFrom(sellingIssuer)
-		}
-
-		var buyingAssetCode, buyingIssuer string
-		err = buyingAsset.Extract(
-			&newOffers[i].BuyingAssetType,
-			&buyingAssetCode,
-			&buyingIssuer,
-		)
-		if err != nil {
-			return errors.Wrap(err, "Error extracting buyingasset")
-		}
-
-		if newOffers[i].BuyingAssetType != xdr.AssetTypeAssetTypeNative {
-			newOffers[i].BuyingAssetCode = null.StringFrom(buyingAssetCode)
-			newOffers[i].BuyingIssuer = null.StringFrom(buyingIssuer)
-		}
+		newOffers[i].SellingAsset = sellingAsset
+		newOffers[i].BuyingAsset = buyingAsset
 	}
 
 	*dest.(*[]Offer) = newOffers

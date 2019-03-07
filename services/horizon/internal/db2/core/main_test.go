@@ -111,30 +111,17 @@ func TestSchemaVersion8(t *testing.T) {
 	err = q.OffersByAddress(&offers, "GAXMF43TGZHW3QN3REOUA2U5PW5BTARXGGYJ3JIFHW3YT6QRKRL3CPPU", pq)
 	if tt.Assert.NoError(err) {
 		tt.Assert.Equal(1, len(offers))
-		tt.Assert.Equal(xdr.AssetTypeAssetTypeNative, offers[0].SellingAssetType)
-		tt.Assert.False(offers[0].SellingAssetCode.Valid)
-		tt.Assert.False(offers[0].SellingIssuer.Valid)
-
-		tt.Assert.Equal(xdr.AssetTypeAssetTypeCreditAlphanum4, offers[0].BuyingAssetType)
-		tt.Assert.True(offers[0].BuyingAssetCode.Valid)
-		tt.Assert.Equal("USD", offers[0].BuyingAssetCode.String)
-		tt.Assert.True(offers[0].BuyingIssuer.Valid)
-		tt.Assert.Equal("GAXMF43TGZHW3QN3REOUA2U5PW5BTARXGGYJ3JIFHW3YT6QRKRL3CPPU", offers[0].BuyingIssuer.String)
+		tt.Assert.True(offers[0].SellingAsset.Equals(xdr.MustNewNativeAsset()))
+		tt.Assert.True(offers[0].BuyingAsset.Equals(xdr.MustNewCreditAsset("USD", "GAXMF43TGZHW3QN3REOUA2U5PW5BTARXGGYJ3JIFHW3YT6QRKRL3CPPU")))
 	}
 
 	offers = []Offer{}
 	err = q.OffersByAddress(&offers, "GB2QIYT2IAUFMRXKLSLLPRECC6OCOGJMADSPTRK7TGNT2SFR2YGWDARD", pq)
 	if tt.Assert.NoError(err) {
 		tt.Assert.Equal(4, len(offers))
-		tt.Assert.Equal(xdr.AssetTypeAssetTypeCreditAlphanum4, offers[0].SellingAssetType)
-		tt.Assert.True(offers[0].SellingAssetCode.Valid)
-		tt.Assert.Equal("USD", offers[0].SellingAssetCode.String)
-		tt.Assert.True(offers[0].SellingIssuer.Valid)
-		tt.Assert.Equal("GB2QIYT2IAUFMRXKLSLLPRECC6OCOGJMADSPTRK7TGNT2SFR2YGWDARD", offers[0].SellingIssuer.String)
 
-		tt.Assert.Equal(xdr.AssetTypeAssetTypeNative, offers[0].BuyingAssetType)
-		tt.Assert.False(offers[0].BuyingAssetCode.Valid)
-		tt.Assert.False(offers[0].BuyingIssuer.Valid)
+		tt.Assert.True(offers[0].SellingAsset.Equals(xdr.MustNewCreditAsset("USD", "GB2QIYT2IAUFMRXKLSLLPRECC6OCOGJMADSPTRK7TGNT2SFR2YGWDARD")))
+		tt.Assert.True(offers[0].BuyingAsset.Equals(xdr.MustNewNativeAsset()))
 	}
 
 	var assets []xdr.Asset
@@ -225,15 +212,8 @@ func TestSchemaVersion9(t *testing.T) {
 	err = q.OffersByAddress(&offers, "GAXMF43TGZHW3QN3REOUA2U5PW5BTARXGGYJ3JIFHW3YT6QRKRL3CPPU", pq)
 	if tt.Assert.NoError(err) {
 		tt.Assert.Equal(1, len(offers))
-		tt.Assert.Equal(xdr.AssetTypeAssetTypeNative, offers[0].SellingAssetType)
-		tt.Assert.False(offers[0].SellingAssetCode.Valid)
-		tt.Assert.False(offers[0].SellingIssuer.Valid)
-
-		tt.Assert.Equal(xdr.AssetTypeAssetTypeCreditAlphanum4, offers[0].BuyingAssetType)
-		tt.Assert.True(offers[0].BuyingAssetCode.Valid)
-		tt.Assert.Equal("USD", offers[0].BuyingAssetCode.String)
-		tt.Assert.True(offers[0].BuyingIssuer.Valid)
-		tt.Assert.Equal("GAXMF43TGZHW3QN3REOUA2U5PW5BTARXGGYJ3JIFHW3YT6QRKRL3CPPU", offers[0].BuyingIssuer.String)
+		tt.Assert.True(offers[0].SellingAsset.Equals(xdr.MustNewNativeAsset()))
+		tt.Assert.True(offers[0].BuyingAsset.Equals(xdr.MustNewCreditAsset("USD", "GAXMF43TGZHW3QN3REOUA2U5PW5BTARXGGYJ3JIFHW3YT6QRKRL3CPPU")))
 	}
 
 	offers = []Offer{}
@@ -241,21 +221,19 @@ func TestSchemaVersion9(t *testing.T) {
 	if tt.Assert.NoError(err) {
 		tt.Assert.Equal(4, len(offers))
 
-		tt.Assert.Equal(xdr.AssetTypeAssetTypeCreditAlphanum4, offers[0].SellingAssetType)
-		tt.Assert.True(offers[0].SellingAssetCode.Valid)
-		tt.Assert.Equal("USD", offers[0].SellingAssetCode.String)
-		tt.Assert.True(offers[0].SellingIssuer.Valid)
-		tt.Assert.Equal("GB2QIYT2IAUFMRXKLSLLPRECC6OCOGJMADSPTRK7TGNT2SFR2YGWDARD", offers[0].SellingIssuer.String)
+		tt.Assert.Equal(4, len(offers))
 
-		tt.Assert.Equal(xdr.AssetTypeAssetTypeNative, offers[0].BuyingAssetType)
-		tt.Assert.False(offers[0].BuyingAssetCode.Valid)
-		tt.Assert.False(offers[0].BuyingIssuer.Valid)
+		tt.Assert.True(offers[0].SellingAsset.Equals(xdr.MustNewCreditAsset("USD", "GB2QIYT2IAUFMRXKLSLLPRECC6OCOGJMADSPTRK7TGNT2SFR2YGWDARD")))
+		tt.Assert.True(offers[0].BuyingAsset.Equals(xdr.MustNewNativeAsset()))
 
-		tt.Assert.Equal(xdr.AssetTypeAssetTypeCreditAlphanum4, offers[1].SellingAssetType)
-		tt.Assert.True(offers[1].SellingAssetCode.Valid)
-		tt.Assert.Equal("USD", offers[1].SellingAssetCode.String)
-		tt.Assert.True(offers[1].SellingIssuer.Valid)
-		tt.Assert.Equal("GB2QIYT2IAUFMRXKLSLLPRECC6OCOGJMADSPTRK7TGNT2SFR2YGWDARD", offers[1].SellingIssuer.String)
+		tt.Assert.True(offers[1].SellingAsset.Equals(xdr.MustNewCreditAsset("USD", "GB2QIYT2IAUFMRXKLSLLPRECC6OCOGJMADSPTRK7TGNT2SFR2YGWDARD")))
+		tt.Assert.True(offers[1].BuyingAsset.Equals(xdr.MustNewNativeAsset()))
+
+		tt.Assert.True(offers[2].SellingAsset.Equals(xdr.MustNewNativeAsset()))
+		tt.Assert.True(offers[2].BuyingAsset.Equals(xdr.MustNewCreditAsset("USD", "GB2QIYT2IAUFMRXKLSLLPRECC6OCOGJMADSPTRK7TGNT2SFR2YGWDARD")))
+
+		tt.Assert.True(offers[3].SellingAsset.Equals(xdr.MustNewNativeAsset()))
+		tt.Assert.True(offers[3].BuyingAsset.Equals(xdr.MustNewCreditAsset("USD", "GB2QIYT2IAUFMRXKLSLLPRECC6OCOGJMADSPTRK7TGNT2SFR2YGWDARD")))
 	}
 
 	var assets []xdr.Asset
