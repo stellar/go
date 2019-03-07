@@ -5,7 +5,6 @@ import (
 
 	"github.com/stellar/go/amount"
 	. "github.com/stellar/go/protocols/horizon"
-	"github.com/stellar/go/services/horizon/internal/assets"
 	"github.com/stellar/go/services/horizon/internal/db2/core"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/services/horizon/internal/httpx"
@@ -20,16 +19,10 @@ func PopulateOffer(ctx context.Context, dest *Offer, row core.Offer, ledger *his
 	dest.PriceR.N = row.Pricen
 	dest.PriceR.D = row.Priced
 	dest.Price = row.PriceAsString()
-	dest.Buying = Asset{
-		Type:   assets.MustString(row.BuyingAssetType),
-		Code:   row.BuyingAssetCode.String,
-		Issuer: row.BuyingIssuer.String,
-	}
-	dest.Selling = Asset{
-		Type:   assets.MustString(row.SellingAssetType),
-		Code:   row.SellingAssetCode.String,
-		Issuer: row.SellingIssuer.String,
-	}
+
+	row.SellingAsset.MustExtract(&dest.Selling.Type, &dest.Selling.Code, &dest.Selling.Issuer)
+	row.BuyingAsset.MustExtract(&dest.Buying.Type, &dest.Buying.Code, &dest.Buying.Issuer)
+
 	dest.LastModifiedLedger = row.Lastmodified
 	if ledger != nil {
 		dest.LastModifiedTime = &ledger.ClosedAt

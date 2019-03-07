@@ -71,6 +71,19 @@ func willAddOverflow(a int64, b int64) bool {
 }
 
 func (ob *orderBook) query() (sq.SelectBuilder, error) {
+	schemaVersion, err := ob.Q.SchemaVersion()
+	if err != nil {
+		return sq.SelectBuilder{}, err
+	}
+
+	if schemaVersion < 9 {
+		return ob.querySchema8()
+	} else {
+		return ob.querySchema9()
+	}
+}
+
+func (ob *orderBook) querySchema8() (sq.SelectBuilder, error) {
 	var (
 		// selling/buying types
 		st, bt xdr.AssetType
@@ -99,6 +112,28 @@ func (ob *orderBook) query() (sq.SelectBuilder, error) {
 			"buyingassettype":               bt,
 			"COALESCE(buyingassetcode, '')": bc,
 			"COALESCE(buyingissuer, '')":    bi}).
+		OrderBy("price ASC")
+	return sql, nil
+}
+
+func (ob *orderBook) querySchema9() (sq.SelectBuilder, error) {
+	var sellingXDRString, buyingXDRString string
+
+	sellingXDRString, err := xdr.MarshalBase64(ob.Selling)
+	if err != nil {
+		return sq.SelectBuilder{}, err
+	}
+
+	buyingXDRString, err = xdr.MarshalBase64(ob.Buying)
+	if err != nil {
+		return sq.SelectBuilder{}, err
+	}
+
+	sql := sq.
+		Select("amount", "pricen", "priced", "offerid").
+		From("offers").
+		Where(sq.Eq{"sellingasset": sellingXDRString}).
+		Where(sq.Eq{"buyingasset": buyingXDRString}).
 		OrderBy("price ASC")
 	return sql, nil
 }

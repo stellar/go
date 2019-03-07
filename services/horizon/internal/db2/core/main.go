@@ -49,13 +49,8 @@ type Offer struct {
 	SellerID string `db:"sellerid"`
 	OfferID  int64  `db:"offerid"`
 
-	SellingAssetType xdr.AssetType `db:"sellingassettype"`
-	SellingAssetCode null.String   `db:"sellingassetcode"`
-	SellingIssuer    null.String   `db:"sellingissuer"`
-
-	BuyingAssetType xdr.AssetType `db:"buyingassettype"`
-	BuyingAssetCode null.String   `db:"buyingassetcode"`
-	BuyingIssuer    null.String   `db:"buyingissuer"`
+	SellingAsset xdr.Asset `db:"sellingasset"`
+	BuyingAsset  xdr.Asset `db:"buyingasset"`
 
 	Amount       xdr.Int64 `db:"amount"`
 	Pricen       int32     `db:"pricen"`
@@ -63,6 +58,26 @@ type Offer struct {
 	Price        float64   `db:"price"`
 	Flags        int32     `db:"flags"`
 	Lastmodified int32     `db:"lastmodified"`
+}
+
+// get returns Offer. Useful in `internalOffer` context, when Offer is embedded.
+func (o Offer) get() Offer {
+	return o
+}
+
+// internalOffer is row of data from the `offers` table from stellar-core used
+// internally only to support schema <=8.
+type internalOffer struct {
+	Offer
+
+	// Schema v8 fields, for compatibility only.
+	SellingAssetType xdr.AssetType `db:"sellingassettype"`
+	SellingAssetCode null.String   `db:"sellingassetcode"`
+	SellingIssuer    null.String   `db:"sellingissuer"`
+
+	BuyingAssetType xdr.AssetType `db:"buyingassettype"`
+	BuyingAssetCode null.String   `db:"buyingassetcode"`
+	BuyingIssuer    null.String   `db:"buyingissuer"`
 }
 
 // OrderBookSummaryPriceLevel is a collapsed view of multiple offers at the same price that
