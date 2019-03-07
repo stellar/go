@@ -1,7 +1,6 @@
 package horizon
 
 import (
-	"errors"
 	"fmt"
 
 	"github.com/stellar/go/services/horizon/internal/actions"
@@ -9,8 +8,10 @@ import (
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/services/horizon/internal/render/sse"
 	"github.com/stellar/go/services/horizon/internal/resourceadapter"
+	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/support/render/hal"
 	supportProblem "github.com/stellar/go/support/render/problem"
+	"github.com/stellar/go/xdr"
 )
 
 // Interface verifications
@@ -113,13 +114,36 @@ func (action *PaymentsIndexAction) loadRecords() {
 	}
 
 	// When querying operations for transaction return both successful
-	// and failed operations. We asume that because user is querying
+	// and failed operations. We assume that because user is querying
 	// this specific transactions, she knows it's status.
-	if action.TransactionFilter == "" && !action.IncludeFailed {
-		ops.SuccessfulOnly()
+	if action.TransactionFilter != "" || action.IncludeFailed {
+		ops.IncludeFailed()
 	}
 
 	action.Err = ops.Page(action.PagingParams).Select(&action.Records)
+	if action.Err != nil {
+		return
+	}
+
+	for _, o := range action.Records {
+		if !action.IncludeFailed && action.TransactionFilter == "" {
+			if !o.IsTransactionSuccessful() {
+				action.Err = errors.Errorf("Corrupted data! `include_failed=false` but returned transaction in /payments is failed: %s", o.TransactionHash)
+				return
+			}
+
+			var resultXDR xdr.TransactionResult
+			action.Err = xdr.SafeUnmarshalBase64(o.TxResult, &resultXDR)
+			if action.Err != nil {
+				return
+			}
+
+			if resultXDR.Result.Code != xdr.TransactionResultCodeTxSuccess {
+				action.Err = errors.Errorf("Corrupted data! `include_failed=false` but returned transaction /payments is failed: %s %s", o.TransactionHash, o.TxResult)
+				return
+			}
+		}
+	}
 }
 
 // loadLedgers populates the ledger cache for this action

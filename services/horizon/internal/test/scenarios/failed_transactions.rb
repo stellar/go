@@ -27,6 +27,7 @@ offer :anchor, {buy:["USD", :anchor], with: :native}, "200.0", "2.0"
 
 close_ledger
 
+# this should fail
 payment :user1, :user2,
   ["USD", :anchor, "200.0"],
   path:[:native]

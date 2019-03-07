@@ -128,8 +128,10 @@ func TestOperationActions_Show_Failed(t *testing.T) {
 		records := []operations.Base{}
 		ht.UnmarshalPage(w.Body, &records)
 
+		ht.Assert.Equal(1, len(records))
 		for _, op := range records {
 			ht.Assert.False(op.TransactionSuccessful)
+			ht.Assert.Equal("aa168f12124b7c196c0adaee7c73a64d37f99428cacb59a91ff389626845e7cf", op.TransactionHash)
 		}
 	}
 
@@ -139,6 +141,7 @@ func TestOperationActions_Show_Failed(t *testing.T) {
 		records := []operations.Base{}
 		ht.UnmarshalPage(w.Body, &records)
 
+		ht.Assert.Equal(1, len(records))
 		for _, op := range records {
 			ht.Assert.True(op.TransactionSuccessful)
 		}
@@ -157,6 +160,7 @@ func TestOperationActions_Show_Failed(t *testing.T) {
 		records := []operations.Base{}
 		ht.UnmarshalPage(w.Body, &records)
 
+		ht.Assert.Equal(1, len(records))
 		for _, op := range records {
 			ht.Assert.True(op.TransactionSuccessful)
 		}

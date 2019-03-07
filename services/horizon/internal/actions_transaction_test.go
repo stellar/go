@@ -36,8 +36,40 @@ func TestTransactionActions_Show_Failed(t *testing.T) {
 	ht := StartHTTPTest(t, "failed_transactions")
 	defer ht.Finish()
 
+	// Failed single
+	w := ht.Get("/transactions/aa168f12124b7c196c0adaee7c73a64d37f99428cacb59a91ff389626845e7cf")
+
+	if ht.Assert.Equal(200, w.Code) {
+		var actual horizon.Transaction
+		err := json.Unmarshal(w.Body.Bytes(), &actual)
+		ht.Require.NoError(err)
+
+		ht.Assert.Equal(
+			"aa168f12124b7c196c0adaee7c73a64d37f99428cacb59a91ff389626845e7cf",
+			actual.Hash,
+		)
+
+		ht.Assert.False(actual.Successful)
+	}
+
+	// Successful single
+	w = ht.Get("/transactions/56e3216045d579bea40f2d35a09406de3a894ecb5be70dbda5ec9c0427a0d5a1")
+
+	if ht.Assert.Equal(200, w.Code) {
+		var actual horizon.Transaction
+		err := json.Unmarshal(w.Body.Bytes(), &actual)
+		ht.Require.NoError(err)
+
+		ht.Assert.Equal(
+			"56e3216045d579bea40f2d35a09406de3a894ecb5be70dbda5ec9c0427a0d5a1",
+			actual.Hash,
+		)
+
+		ht.Assert.True(actual.Successful)
+	}
+
 	// Should show successful transactions only
-	w := ht.Get("/transactions?limit=200")
+	w = ht.Get("/transactions?limit=200")
 
 	if ht.Assert.Equal(200, w.Code) {
 		records := []horizon.Transaction{}

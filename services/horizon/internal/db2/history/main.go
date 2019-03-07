@@ -234,6 +234,7 @@ type Operation struct {
 	TotalOrderID
 	TransactionID    int64             `db:"transaction_id"`
 	TransactionHash  string            `db:"transaction_hash"`
+	TxResult         string            `db:"tx_result"`
 	ApplicationOrder int32             `db:"application_order"`
 	Type             xdr.OperationType `db:"type"`
 	DetailsString    null.String       `db:"details"`
@@ -244,13 +245,12 @@ type Operation struct {
 
 // OperationsQ is a helper struct to aid in configuring queries that loads
 // slices of Operation structs.
-// WARNING: returns successful and failed operations! Use `SuccessfulOnly`
-// to return successful transactions only.
 type OperationsQ struct {
-	Err     error
-	parent  *Q
-	sql     sq.SelectBuilder
-	opIdCol string
+	Err           error
+	parent        *Q
+	sql           sq.SelectBuilder
+	opIdCol       string
+	includeFailed bool
 }
 
 // Q is a helper struct on which to hang common_trades queries against a history
@@ -329,12 +329,11 @@ type Transaction struct {
 
 // TransactionsQ is a helper struct to aid in configuring queries that loads
 // slices of transaction structs.
-// WARNING: returns successful and failed transactions! Use `SuccessfulOnly`
-// to return successful transactions only.
 type TransactionsQ struct {
-	Err    error
-	parent *Q
-	sql    sq.SelectBuilder
+	Err           error
+	parent        *Q
+	sql           sq.SelectBuilder
+	includeFailed bool
 }
 
 // ElderLedger loads the oldest ledger known to the history database
