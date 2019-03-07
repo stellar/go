@@ -40,7 +40,6 @@ func (i *System) Backfill(n uint) error {
 // ClearAll removes all previously ingested historical data from the horizon
 // database.
 func (i *System) ClearAll() error {
-
 	hdb := i.HorizonDB.Clone()
 	ingestion := &Ingestion{DB: hdb}
 
