@@ -53,7 +53,7 @@ func (q *Q) connectedAssetsSchema9(dest interface{}, selling xdr.Asset) error {
 		GroupBy("buyingasset")
 
 	var rows []struct {
-		Asset string `db:"buyingasset"`
+		Asset xdr.Asset `db:"buyingasset"`
 	}
 
 	err = q.Select(&rows, sql)
@@ -66,13 +66,7 @@ func (q *Q) connectedAssetsSchema9(dest interface{}, selling xdr.Asset) error {
 	*assets = results
 
 	for i, r := range rows {
-		var asset xdr.Asset
-		err = xdr.SafeUnmarshalBase64(r.Asset, &asset)
-		if err != nil {
-			return errors.Wrap(err, "Error decoding asset")
-		}
-
-		results[i] = asset
+		results[i] = r.Asset
 	}
 
 	return nil
