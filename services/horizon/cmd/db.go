@@ -159,7 +159,7 @@ var dbMigrateCmd = &cobra.Command{
 			log.Fatal(err)
 		}
 
-		numMigrationsRun, err = schema.Migrate(db, dir, count)
+		numMigrationsRun, err := schema.Migrate(db, dir, count)
 		if err != nil {
 			log.Fatal(err)
 		}
