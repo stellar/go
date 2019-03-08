@@ -334,7 +334,7 @@ func TestLedgerDetail(t *testing.T) {
 	).ReturnString(200, ledgerResponse)
 
 	_, err := client.LedgerDetail(sequence)
-	// error case: invlaid sequence
+	// error case: invalid sequence
 	if assert.Error(t, err) {
 		assert.Contains(t, err.Error(), "Invalid sequence number provided")
 	}
@@ -353,9 +353,7 @@ func TestLedgerDetail(t *testing.T) {
 		assert.Equal(t, ledger.ID, "71a40c0581d8d7c1158e1d9368024c5f9fd70de17a8d277cdd96781590cc10fb")
 		assert.Equal(t, ledger.PT, "300042120331264")
 		assert.Equal(t, ledger.Sequence, int32(69859))
-		// to do: Why is Ledger.FailedTransactionCount a pointer in protocols/horizon ??
 		assert.Equal(t, ledger.FailedTransactionCount, &ftc)
-
 	}
 
 	// failure response
