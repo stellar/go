@@ -9,11 +9,11 @@ import (
 
 // Handler returns an HTTP Handler for function fn.
 // If fn returns a non-nil error, the handler will use problem.Render.
-func Handler(fn func(context.Context) (interface{}, error)) http.HandlerFunc {
+func Handler(fn func(context.Context, string) (interface{}, error), id string) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 
-		res, err := fn(ctx)
+		res, err := fn(ctx, id)
 		if err != nil {
 			problem.Render(ctx, w, err)
 			return

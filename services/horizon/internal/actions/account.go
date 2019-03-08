@@ -7,18 +7,11 @@ import (
 	pHorizon "github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/services/horizon/internal/db2/core"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
-	"github.com/stellar/go/services/horizon/internal/hchi"
 	"github.com/stellar/go/services/horizon/internal/resourceadapter"
 	"github.com/stellar/go/support/errors"
 )
 
-func AccountInfo(ctx context.Context, cq *core.Q, hq *history.Q) (*pHorizon.Account, error) {
-	addr := hchi.AccountID(ctx)
-	if addr == "" {
-		// This should be impossible because of accountIdHandler
-		return nil, errors.New("account address is empty")
-	}
-
+func AccountInfo(ctx context.Context, cq *core.Q, hq *history.Q, addr string) (*pHorizon.Account, error) {
 	var (
 		coreRecord     core.Account
 		coreData       []core.AccountData

@@ -6,7 +6,6 @@ import (
 	"crypto/sha256"
 	"encoding/json"
 	"net/http"
-	"strings"
 	"time"
 
 	"github.com/stellar/go/services/horizon/internal/hchi"
@@ -22,7 +21,7 @@ import (
 
 // jsonResponderFunc represents the signature of the function that handles
 // requests to which the server responds in json format.
-type jsonResponderFunc func(context.Context) (interface{}, error)
+type jsonResponderFunc func(context.Context, string) (interface{}, error)
 
 // streamFunc represents the signature of the function that handles requests
 // with stream mode turned on using server-sent events.
@@ -33,14 +32,14 @@ type streamFunc func(context.Context, *sse.Stream) error
 // between this function and streamFunc is that this one only loads an event. The
 // server will not send an event out if the current event is same as the last one.
 // Please see the implementation of streamHandler for more details.
-type singleObjectStreamFunc func(context.Context) (sse.Event, error)
+type singleObjectStreamFunc func(context.Context, string) (sse.Event, error)
 
 // streamableEndpointHandler handles endpoints that have the stream mode
 // available. It inspects the Accept header to determine which function to be
 // executed. If it's "application/hal+json" or "application/json", then jfn
 // will be executed. If it's "text/event-stream", then either sfn or sosfn will
 // be executed with the streamHandler.
-func (a *App) streamableEndpointHandler(jfn jsonResponderFunc, sfn streamFunc, sosfn singleObjectStreamFunc) http.HandlerFunc {
+func (a *App) streamableEndpointHandler(jfn jsonResponderFunc, sfn streamFunc, sosfn singleObjectStreamFunc, id string) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 
@@ -52,7 +51,7 @@ func (a *App) streamableEndpointHandler(jfn jsonResponderFunc, sfn streamFunc, s
 				return
 			}
 
-			hal.Handler(jfn).ServeHTTP(w, r)
+			hal.Handler(jfn, id).ServeHTTP(w, r)
 			return
 
 		case render.MimeEventStream:
@@ -61,7 +60,7 @@ func (a *App) streamableEndpointHandler(jfn jsonResponderFunc, sfn streamFunc, s
 				return
 			}
 
-			a.streamHandler(sfn, sosfn).ServeHTTP(w, r)
+			a.streamHandler(sfn, sosfn, id).ServeHTTP(w, r)
 			return
 		}
 
@@ -73,7 +72,7 @@ func (a *App) streamableEndpointHandler(jfn jsonResponderFunc, sfn streamFunc, s
 // events. It will execute one of the provided streaming functions. Note that
 // we don't return an error if both sfn and sosfn are not nil. sfn will simply
 // take precedence.
-func (a *App) streamHandler(sfn streamFunc, sosfn singleObjectStreamFunc) http.HandlerFunc {
+func (a *App) streamHandler(sfn streamFunc, sosfn singleObjectStreamFunc, id string) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 
@@ -104,7 +103,7 @@ func (a *App) streamHandler(sfn streamFunc, sosfn singleObjectStreamFunc) http.H
 					return
 				}
 			} else if sosfn != nil {
-				newEvent, err := sosfn(ctx)
+				newEvent, err := sosfn(ctx, id)
 				if err != nil {
 					stream.Err(err)
 					return
@@ -160,19 +159,13 @@ func (a *App) streamHandler(sfn streamFunc, sosfn singleObjectStreamFunc) http.H
 	})
 }
 
-// accountIdHandler gets the account address from the request. If the
-// request path does't start with `accounts`, we simply bypass this handler.
+// accountHandler gets the account address from the request and pass it on to
+// streamableEndpointHandler.
 // Note that we cannot put this handler in the middleware stack because of
 // Chi's routing mechanism. A request will have to reach the end of the route
 // in order to have a valid route pattern in Chi.
-func accountIdHandler(h http.Handler) http.HandlerFunc {
+func (a *App) accountHandler(jfn jsonResponderFunc, sosfn singleObjectStreamFunc) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		parts := strings.SplitN(strings.TrimPrefix(r.URL.Path, "/"), "/", 2)
-		if parts[0] != "accounts" {
-			h.ServeHTTP(w, r)
-			return
-		}
-
 		ctx := r.Context()
 		addr, err := getAddress(r, "account_id", true)
 		if err != nil {
@@ -180,8 +173,7 @@ func accountIdHandler(h http.Handler) http.HandlerFunc {
 			return
 		}
 
-		ctx = hchi.WithAccountID(ctx, addr)
-		h.ServeHTTP(w, r.WithContext(ctx))
+		a.streamableEndpointHandler(jfn, nil, sosfn, addr).ServeHTTP(w, r)
 	})
 }
 

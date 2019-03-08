@@ -155,11 +155,11 @@ func (action *Action) baseURL() *url.URL {
 	return httpx.BaseURL(action.R.Context())
 }
 
-func (a *App) getAccountInfo(ctx context.Context) (interface{}, error) {
-	return actions.AccountInfo(ctx, &core.Q{a.CoreSession(ctx)}, &history.Q{a.HorizonSession(ctx)})
+func (a *App) getAccountInfo(ctx context.Context, addr string) (interface{}, error) {
+	return actions.AccountInfo(ctx, &core.Q{a.CoreSession(ctx)}, &history.Q{a.HorizonSession(ctx)}, addr)
 }
 
-func (a *App) loadAccountEvent(ctx context.Context) (sse.Event, error) {
-	res, err := a.getAccountInfo(ctx)
+func (a *App) loadAccountEvent(ctx context.Context, addr string) (sse.Event, error) {
+	res, err := a.getAccountInfo(ctx, addr)
 	return sse.Event{Data: res}, err
 }

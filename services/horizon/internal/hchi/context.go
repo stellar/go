@@ -14,7 +14,6 @@ type key int
 
 const (
 	reqidKey key = iota
-	accKey
 )
 
 // WithRequestID sets the reqid in a new context and returns that context.
@@ -37,21 +36,5 @@ func RequestID(ctx context.Context) string {
 	}
 
 	val, _ := ctx.Value(reqidKey).(string)
-	return val
-}
-
-// WithAccountID sets the accountID in a new context and returns that context.
-func WithAccountID(ctx context.Context, accountID string) context.Context {
-	return context.WithValue(ctx, accKey, accountID)
-}
-
-// AccountID returns the account id carried in the context, if any. It returns
-// "" if no account id has been set or the context is nil.
-func AccountID(ctx context.Context) string {
-	if ctx == nil {
-		return ""
-	}
-
-	val, _ := ctx.Value(accKey).(string)
 	return val
 }
