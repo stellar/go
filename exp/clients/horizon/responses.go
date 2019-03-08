@@ -57,6 +57,7 @@ type EffectsPage struct {
 
 // EffectResponse contains effect data returned by Horizon.
 // Currently used by LoadAccountMergeAmount only.
+// To Do: Have a more generic Effect struct that supports all effects
 type Effect struct {
 	Type   string `json:"type"`
 	Amount string `json:"amount"`
@@ -165,7 +166,16 @@ type AssetStat = hProtocol.AssetStat
 
 // AssetsPage contains page of assets returned by Horizon.
 type AssetsPage struct {
+	Links    hal.Links `json:"_links"`
 	Embedded struct {
 		Records []AssetStat
+	} `json:"_embedded"`
+}
+
+// LedgersPage contains page of ledger information returned by Horizon
+type LedgersPage struct {
+	Links    hal.Links `json:"_links"`
+	Embedded struct {
+		Records []Ledger
 	} `json:"_embedded"`
 }

@@ -2,6 +2,7 @@
 package horizonclient
 
 import (
+	"context"
 	"errors"
 	"net/http"
 	"net/url"
@@ -69,6 +70,9 @@ type ClientInterface interface {
 	AccountData(request AccountRequest) (AccountData, error)
 	Effects(request EffectRequest) (EffectsPage, error)
 	Assets(request AssetRequest) (AssetsPage, error)
+	Ledgers(request LedgerRequest) (LedgersPage, error)
+	LedgerDetail(sequence uint32) (Ledger, error)
+	Stream(ctx context.Context, request StreamRequest, handler func(interface{})) error
 }
 
 // DefaultTestNetClient is a default client to connect to test network
@@ -83,8 +87,14 @@ var DefaultPublicNetClient = &Client{
 	HTTP:       http.DefaultClient,
 }
 
+// HorizonRequest contains methods implemented by request structs for horizon endpoints
 type HorizonRequest interface {
 	BuildUrl() (string, error)
+}
+
+// HorizonRequest contains methods implemented by request structs for endpoints that support streaming
+type StreamRequest interface {
+	Stream(ctx context.Context, horizonURL string, handler func(interface{})) error
 }
 
 // AccountRequest struct contains data for making requests to the accounts endpoint of an horizon server
@@ -106,10 +116,19 @@ type EffectRequest struct {
 	Limit          Limit
 }
 
+// AssetRequest struct contains data for getting asset details from an horizon server.
 type AssetRequest struct {
 	ForAssetCode   AssetCode
 	ForAssetIssuer AssetIssuer
 	Order          Order
 	Cursor         Cursor
 	Limit          Limit
+}
+
+// LedgerRequest struct contains data for getting ledger details from an horizon server.
+type LedgerRequest struct {
+	Order       Order
+	Cursor      Cursor
+	Limit       Limit
+	forSequence uint32
 }

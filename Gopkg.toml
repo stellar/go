@@ -64,6 +64,10 @@
   revision = "7f87c0fbb88b590338857bcb720678c2583d4dea"
 
 [[override]]
+  name = "gopkg.in/fsnotify.v1"
+  source = "gopkg.in/fsnotify/fsnotify.v1"  
+
+[[override]]
   name = "golang.org/x/sys"
   revision = "cc5685c2db1239775905f3911f0067c0fa74762f"
 

@@ -1,8 +1,10 @@
 package horizonclient
 
 import (
+	"context"
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/stellar/go/support/http/httptest"
 	"github.com/stretchr/testify/assert"
@@ -64,6 +66,49 @@ func ExampleClient_Assets() {
 		return
 	}
 	fmt.Print(asset)
+}
+
+func ExampleClient_Stream() {
+	// stream effects
+
+	client := DefaultPublicNetClient
+	effectRequest := EffectRequest{Cursor: "now"}
+
+	ctx, cancel := context.WithCancel(context.Background())
+
+	go func() {
+		// Stop streaming after 60 seconds.
+		time.Sleep(60 * time.Second)
+		cancel()
+	}()
+
+	// to do: can `e interface{}` be `e Effect` ?? Then we won't have type assertion.
+	err := client.Stream(ctx, effectRequest, func(e interface{}) {
+
+		resp, ok := e.(Effect)
+		if ok {
+			fmt.Println(resp.Type)
+		}
+
+	})
+
+	if err != nil {
+		fmt.Println(err)
+	}
+}
+
+func ExampleClient_LedgerDetail() {
+
+	client := DefaultPublicNetClient
+	// details for a ledger
+	sequence := uint32(12345)
+	ledger, err := client.LedgerDetail(sequence)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	fmt.Print(ledger)
+
 }
 
 func TestAccountDetail(t *testing.T) {
@@ -274,6 +319,71 @@ func TestAssetsRequest(t *testing.T) {
 
 }
 
+func TestLedgerDetail(t *testing.T) {
+	hmock := httptest.NewClient()
+	client := &Client{
+		HorizonURL: "https://localhost/",
+		HTTP:       hmock,
+	}
+
+	// invalid parameters
+	var sequence uint32 = 0
+	hmock.On(
+		"GET",
+		"https://localhost/ledgers/",
+	).ReturnString(200, ledgerResponse)
+
+	_, err := client.LedgerDetail(sequence)
+	// error case: invalid sequence
+	if assert.Error(t, err) {
+		assert.Contains(t, err.Error(), "Invalid sequence number provided")
+	}
+
+	// happy path
+	hmock.On(
+		"GET",
+		"https://localhost/ledgers/69859",
+	).ReturnString(200, ledgerResponse)
+
+	sequence = 69859
+	ledger, err := client.LedgerDetail(sequence)
+	ftc := int32(1)
+
+	if assert.NoError(t, err) {
+		assert.Equal(t, ledger.ID, "71a40c0581d8d7c1158e1d9368024c5f9fd70de17a8d277cdd96781590cc10fb")
+		assert.Equal(t, ledger.PT, "300042120331264")
+		assert.Equal(t, ledger.Sequence, int32(69859))
+		assert.Equal(t, ledger.FailedTransactionCount, &ftc)
+	}
+
+	// failure response
+	hmock.On(
+		"GET",
+		"https://localhost/ledgers/69859",
+	).ReturnString(404, notFoundResponse)
+
+	_, err = client.LedgerDetail(sequence)
+	if assert.Error(t, err) {
+		assert.Contains(t, err.Error(), "Horizon error")
+		horizonError, ok := err.(*Error)
+		assert.Equal(t, ok, true)
+		assert.Equal(t, horizonError.Problem.Title, "Resource Missing")
+	}
+
+	// connection error
+	hmock.On(
+		"GET",
+		"https://localhost/ledgers/69859",
+	).ReturnError("http.Client error")
+
+	_, err = client.LedgerDetail(sequence)
+	if assert.Error(t, err) {
+		assert.Contains(t, err.Error(), "http.Client error")
+		_, ok := err.(*Error)
+		assert.Equal(t, ok, false)
+	}
+}
+
 var accountResponse = `{
   "_links": {
     "self": {
@@ -469,4 +579,44 @@ var assetsResponse = `{
             }
         ]
     }
+}`
+
+var ledgerResponse = `{
+  "_links": {
+    "self": {
+      "href": "https://horizon-testnet.stellar.org/ledgers/69859"
+    },
+    "transactions": {
+      "href": "https://horizon-testnet.stellar.org/ledgers/69859/transactions{?cursor,limit,order}",
+      "templated": true
+    },
+    "operations": {
+      "href": "https://horizon-testnet.stellar.org/ledgers/69859/operations{?cursor,limit,order}",
+      "templated": true
+    },
+    "payments": {
+      "href": "https://horizon-testnet.stellar.org/ledgers/69859/payments{?cursor,limit,order}",
+      "templated": true
+    },
+    "effects": {
+      "href": "https://horizon-testnet.stellar.org/ledgers/69859/effects{?cursor,limit,order}",
+      "templated": true
+    }
+  },
+  "id": "71a40c0581d8d7c1158e1d9368024c5f9fd70de17a8d277cdd96781590cc10fb",
+  "paging_token": "300042120331264",
+  "hash": "71a40c0581d8d7c1158e1d9368024c5f9fd70de17a8d277cdd96781590cc10fb",
+  "prev_hash": "78979bed15463bfc3b0c1915acc6aec866565d360ba6565d26ffbb3dc484f18c",
+  "sequence": 69859,
+  "successful_transaction_count": 0,
+  "failed_transaction_count": 1,
+  "operation_count": 0,
+  "closed_at": "2019-03-03T13:38:16Z",
+  "total_coins": "100000000000.0000000",
+  "fee_pool": "10.7338093",
+  "base_fee_in_stroops": 100,
+  "base_reserve_in_stroops": 5000000,
+  "max_tx_set_size": 100,
+  "protocol_version": 10,
+  "header_xdr": "AAAACniXm+0VRjv8OwwZFazGrshmVl02C6ZWXSb/uz3EhPGMLuFhI0sVqAG57WnGMUKmOUk/J8TAktUB97VgrgEsZuEAAAAAXHvYyAAAAAAAAAAAcvWzXsmT72oXZ7QPC1nZLJei+lFwYRXF4FIz/PQguubMDKGRJrT/0ofTHlZjWAMWjABeGgup7zhfZkm0xrthCAABEOMN4Lazp2QAAAAAAAAGZdltAAAAAAAAAAAABOqvAAAAZABMS0AAAABk4Vse3u3dDM9UWfoH9ooQLLSXYEee8xiHu/k9p6YLlWR2KT4hYGehoHGmp04rhMRMAEp+GHE+KXv0UUxAPmmNmwGYK2HFCnl5a931YmTQYrHQzEeCHx+aI4+TLjTlFjMqAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
 }`
