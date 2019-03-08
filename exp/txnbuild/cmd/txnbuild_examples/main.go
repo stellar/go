@@ -58,7 +58,7 @@ func main() {
 	// resp := exampleAccountMerge(client, true)
 	// resp := exampleManageData(client, false)
 	// resp := exampleManageDataRemoveDataEntry(client, false)
-	resp := exampleSetOptions(client, false)
+	resp := exampleSetOptions(client, true)
 	fmt.Println(resp.TransactionSuccessToString())
 }
 
@@ -76,8 +76,8 @@ func exampleSetOptions(client *horizon.Client, mock bool) horizon.TransactionSuc
 		// LowThreshold:    txnbuild.NewThreshold(1),
 		// MediumThreshold: txnbuild.NewThreshold(2),
 		// HighThreshold:   txnbuild.NewThreshold(2),
-		// HomeDomain: "LovelyLumensLookLuminous.com",
-		Signer: &txnbuild.Signer{Address: keys[1].Address, Weight: *txnbuild.NewThreshold(0)},
+		HomeDomain: txnbuild.NewHomeDomain("LovelyLumensLookLuminousLately.com"),
+		// Signer: &txnbuild.Signer{Address: keys[1].Address, Weight: *txnbuild.NewThreshold(0)},
 	}
 
 	tx := txnbuild.Transaction{
