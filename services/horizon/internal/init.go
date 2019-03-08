@@ -77,7 +77,7 @@ func initSentry(app *App) {
 	log.WithField("dsn", app.config.SentryDSN).Info("Initializing sentry")
 	err := raven.SetDSN(app.config.SentryDSN)
 	if err != nil {
-		log.Fatal(err)
+		log.Panic(err)
 	}
 }
 
