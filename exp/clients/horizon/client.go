@@ -88,16 +88,18 @@ func (c *Client) Ledgers(request LedgerRequest) (ledgers LedgersPage, err error)
 	return
 }
 
-// LedgerDetails returns information about a particular ledger
+// LedgerDetails returns information about a particular ledger for a given sequence number
 // See https://www.stellar.org/developers/horizon/reference/endpoints/ledgers-single.html
-func (c *Client) LedgerDetail(request LedgerRequest) (ledger Ledger, err error) {
-	if request.ForSequence <= 0 {
+func (c *Client) LedgerDetail(sequence uint32) (ledger Ledger, err error) {
+	if sequence <= 0 {
 		err = errors.New("Invalid sequence number provided")
 	}
 
 	if err != nil {
 		return
 	}
+
+	request := LedgerRequest{forSequence: sequence}
 
 	err = c.sendRequest(request, &ledger)
 	return

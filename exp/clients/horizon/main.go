@@ -71,7 +71,7 @@ type ClientInterface interface {
 	Effects(request EffectRequest) (EffectsPage, error)
 	Assets(request AssetRequest) (AssetsPage, error)
 	Ledgers(request LedgerRequest) (LedgersPage, error)
-	LedgerDetail(request LedgerRequest) (Ledger, error)
+	LedgerDetail(sequence uint32) (Ledger, error)
 	Stream(ctx context.Context, request StreamRequest, handler func(interface{})) error
 }
 
@@ -127,8 +127,8 @@ type AssetRequest struct {
 
 // LedgerRequest struct contains data for getting ledger details from an horizon server.
 type LedgerRequest struct {
-	ForSequence uint
 	Order       Order
 	Cursor      Cursor
 	Limit       Limit
+	forSequence uint32
 }

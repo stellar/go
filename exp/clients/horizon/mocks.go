@@ -48,8 +48,8 @@ func (m *MockClient) Ledgers(request LedgerRequest) (LedgersPage, error) {
 	return a.Get(0).(LedgersPage), a.Error(1)
 }
 
-func (m *MockClient) LedgerDetail(request LedgerRequest) (Ledger, error) {
-	a := m.Called(request)
+func (m *MockClient) LedgerDetail(sequence uint32) (Ledger, error) {
+	a := m.Called(sequence)
 	return a.Get(0).(Ledger), a.Error(1)
 }
 

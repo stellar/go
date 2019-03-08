@@ -83,7 +83,6 @@ func ExampleClient_Stream() {
 	}()
 
 	// to do: can `e interface{}` be `e Effect` ?? Then we won't have type assertion.
-	//
 	err := client.Stream(ctx, effectRequest, func(e interface{}) {
 
 		resp, ok := e.(Effect)
@@ -102,9 +101,8 @@ func ExampleClient_LedgerDetail() {
 
 	client := DefaultPublicNetClient
 	// details for a ledger
-	// No need to initialise the complete struct
-	ledgerRequest := LedgerRequest{ForSequence: 12345}
-	ledger, err := client.LedgerDetail(ledgerRequest)
+	sequence := uint32(12345)
+	ledger, err := client.LedgerDetail(sequence)
 	if err != nil {
 		fmt.Println(err)
 		return
@@ -328,14 +326,14 @@ func TestLedgerDetail(t *testing.T) {
 		HTTP:       hmock,
 	}
 
-	// no parameters
-	ledgerRequest := LedgerRequest{}
+	// invalid parameters
+	var sequence uint32 = 0
 	hmock.On(
 		"GET",
 		"https://localhost/ledgers/",
 	).ReturnString(200, ledgerResponse)
 
-	_, err := client.LedgerDetail(ledgerRequest)
+	_, err := client.LedgerDetail(sequence)
 	// error case: invlaid sequence
 	if assert.Error(t, err) {
 		assert.Contains(t, err.Error(), "Invalid sequence number provided")
@@ -347,8 +345,8 @@ func TestLedgerDetail(t *testing.T) {
 		"https://localhost/ledgers/69859",
 	).ReturnString(200, ledgerResponse)
 
-	ledgerRequest = LedgerRequest{ForSequence: 69859}
-	ledger, err := client.LedgerDetail(ledgerRequest)
+	sequence = 69859
+	ledger, err := client.LedgerDetail(sequence)
 	ftc := int32(1)
 
 	if assert.NoError(t, err) {
@@ -366,7 +364,7 @@ func TestLedgerDetail(t *testing.T) {
 		"https://localhost/ledgers/69859",
 	).ReturnString(404, notFoundResponse)
 
-	_, err = client.LedgerDetail(ledgerRequest)
+	_, err = client.LedgerDetail(sequence)
 	if assert.Error(t, err) {
 		assert.Contains(t, err.Error(), "Horizon error")
 		horizonError, ok := err.(*Error)
@@ -380,7 +378,7 @@ func TestLedgerDetail(t *testing.T) {
 		"https://localhost/ledgers/69859",
 	).ReturnError("http.Client error")
 
-	_, err = client.LedgerDetail(ledgerRequest)
+	_, err = client.LedgerDetail(sequence)
 	if assert.Error(t, err) {
 		assert.Contains(t, err.Error(), "http.Client error")
 		_, ok := err.(*Error)
