@@ -17,11 +17,11 @@ import (
 	"github.com/stellar/go/support/render/problem"
 )
 
-// middleware adds the "app" context into every request, so that subsequence middleware
+// appContextMiddleware adds the "app" context into every request, so that subsequence appContextMiddleware
 // or handlers can retrieve a horizon.App instance
-func (app *App) middleware(h http.Handler) http.Handler {
+func (app *App) appContextMiddleware(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		ctx := app.Context(r.Context())
+		ctx := withAppContext(r.Context(), app)
 		h.ServeHTTP(w, r.WithContext(ctx))
 	})
 }

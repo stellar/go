@@ -81,7 +81,10 @@ func initWebMiddleware(app *App) {
 	r := app.web.router
 	r.Use(chimiddleware.Timeout(app.config.ConnectionTimeout))
 	r.Use(chimiddleware.StripSlashes)
-	r.Use(app.middleware)
+
+	//TODO: remove this middleware
+	r.Use(app.appContextMiddleware)
+
 	r.Use(requestCacheHeadersMiddleware)
 	r.Use(chimiddleware.RequestID)
 	r.Use(contextMiddleware)
@@ -100,9 +103,9 @@ func initWebMiddleware(app *App) {
 	r.Use(app.web.RateLimitMiddleware)
 }
 
-// mustInstallWebActions installs the routing configuration of horizon onto the
+// installActions installs the routing configuration of horizon onto the
 // provided app.  All route registration should be implemented here.
-func mustInstallWebActions(w *web, enableAssetStats bool, friendbotURL *url.URL) {
+func (w *web) installActions(enableAssetStats bool, friendbotURL *url.URL) {
 	if w == nil {
 		log.Fatal("missing web instance for installing web actions")
 	}
