@@ -33,7 +33,7 @@ func NewResponse(domain, path string) *Response {
 		panic(err)
 	}
 
-	if resp.StatusCode != http.StatusOK {
+	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusNotFound {
 		panic(resp.StatusCode)
 	}
 

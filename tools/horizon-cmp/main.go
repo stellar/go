@@ -14,8 +14,8 @@ import (
 	cmp "github.com/stellar/go/tools/horizon-cmp/internal"
 )
 
-const HorizonOld = "https://horizon.stellar.org"
-const HorizonNew = "https://horizon-dev-pubnet.stellar.org"
+const HorizonOld = "http://localhost:8000"
+const HorizonNew = "http://localhost:8001"
 
 const MaxLevels = 3
 
@@ -38,8 +38,17 @@ var paths []PathWithLevel = []PathWithLevel{
 	PathWithLevel{"/ledgers?order=desc", 0},
 	PathWithLevel{"/effects?order=desc", 0},
 	PathWithLevel{"/trades?order=desc", 0},
-	PathWithLevel{"/assets", 0},
+	// PathWithLevel{"/assets", 0},
 	PathWithLevel{"/fee_stats", 0},
+
+	// Pubnet markets
+	PathWithLevel{"/order_book?selling_asset_type=native&buying_asset_type=credit_alphanum4&buying_asset_code=LTC&buying_asset_issuer=GCSTRLTC73UVXIYPHYTTQUUSDTQU2KQW5VKCE4YCMEHWF44JKDMQAL23", 0},
+	PathWithLevel{"/order_book?selling_asset_type=native&buying_asset_type=credit_alphanum4&buying_asset_code=XRP&buying_asset_issuer=GCSTRLTC73UVXIYPHYTTQUUSDTQU2KQW5VKCE4YCMEHWF44JKDMQAL23", 0},
+	PathWithLevel{"/order_book?selling_asset_type=native&buying_asset_type=credit_alphanum4&buying_asset_code=BTC&buying_asset_issuer=GCSTRLTC73UVXIYPHYTTQUUSDTQU2KQW5VKCE4YCMEHWF44JKDMQAL23", 0},
+	PathWithLevel{"/order_book?selling_asset_type=native&buying_asset_type=credit_alphanum4&buying_asset_code=USD&buying_asset_issuer=GBSTRUSD7IRX73RQZBL3RQUH6KS3O4NYFY3QCALDLZD77XMZOPWAVTUK", 0},
+	PathWithLevel{"/order_book?selling_asset_type=native&buying_asset_type=credit_alphanum4&buying_asset_code=SLT&buying_asset_issuer=GCKA6K5PCQ6PNF5RQBF7PQDJWRHO6UOGFMRLK3DYHDOI244V47XKQ4GP", 0},
+
+	PathWithLevel{"/trade_aggregations?base_asset_type=native&counter_asset_code=USD&counter_asset_issuer=GBSTRUSD7IRX73RQZBL3RQUH6KS3O4NYFY3QCALDLZD77XMZOPWAVTUK&counter_asset_type=credit_alphanum4&end_time=1551866400000&limit=200&order=desc&resolution=900000&start_time=1514764800", 0},
 }
 
 var visitedPaths map[string]bool
@@ -92,6 +101,8 @@ func main() {
 
 		visitedPaths[p] = true
 
+		fmt.Printf("%s ", p)
+
 		p = getPathWithCursor(p, cursor)
 
 		a := cmp.NewResponse(HorizonOld, p)
@@ -105,7 +116,7 @@ func main() {
 		} else {
 			status = "diff"
 		}
-		fmt.Println(status, p)
+		fmt.Println(status)
 		if status == "diff" {
 			a.SaveDiff(outputDir, b)
 		}
@@ -114,7 +125,7 @@ func main() {
 		for _, newPath := range newPaths {
 			// Such links can get recent ledgers data that may be different
 			// if Horizon nodes are not at the same ledger.
-			if strings.Contains(newPath, "desc=asc") {
+			if strings.Contains(newPath, "order=asc") {
 				continue
 			}
 
