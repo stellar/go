@@ -110,6 +110,16 @@ func (e *Entry) Error(args ...interface{}) {
 	e.Entry.Error(args...)
 }
 
+// Fatalf logs a message at the Fatal severity.
+func (e *Entry) Fatalf(format string, args ...interface{}) {
+	e.Entry.Fatalf(format, args...)
+}
+
+// Fatal logs a message at the Fatal severity.
+func (e *Entry) Fatal(args ...interface{}) {
+	e.Entry.Fatal(args...)
+}
+
 // Panicf logs a message at the Panic severity.
 func (e *Entry) Panicf(format string, args ...interface{}) {
 	e.Entry.Panicf(format, args...)

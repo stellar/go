@@ -379,8 +379,8 @@ func (a *App) init() {
 	a.UpdateStellarCoreInfo()
 
 	// horizon-db and core-db
-	initHorizonDb(a)
-	initCoreDb(a)
+	mustInitHorizonDB(a)
+	mustInitCoreDB(a)
 
 	// ingester
 	initIngester(a)

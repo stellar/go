@@ -3,7 +3,6 @@ package horizon
 import (
 	"net/http"
 	"net/url"
-	"os"
 	"time"
 
 	raven "github.com/getsentry/raven-go"
@@ -19,10 +18,10 @@ import (
 	"github.com/stellar/go/support/log"
 )
 
-func initHorizonDb(app *App) {
+func mustInitHorizonDB(app *App) {
 	session, err := db.Open("postgres", app.config.DatabaseURL)
 	if err != nil {
-		log.Panic(err)
+		log.Fatalf("cannot open Horizon DB: %v", err)
 	}
 
 	// Make sure MaxIdleConns is equal MaxOpenConns. In case of high variance
@@ -32,10 +31,10 @@ func initHorizonDb(app *App) {
 	app.historyQ = &history.Q{session}
 }
 
-func initCoreDb(app *App) {
+func mustInitCoreDB(app *App) {
 	session, err := db.Open("postgres", app.config.StellarCoreDatabaseURL)
 	if err != nil {
-		log.Panic(err)
+		log.Fatalf("cannot open Core DB: %v", err)
 	}
 
 	// Make sure MaxIdleConns is equal MaxOpenConns. In case of high variance
@@ -51,8 +50,7 @@ func initIngester(app *App) {
 	}
 
 	if app.config.NetworkPassphrase == "" {
-		log.Error("Cannot start ingestion without network passphrase. Please confirm connectivity with stellar-core.")
-		os.Exit(1)
+		log.Fatal("Cannot start ingestion without network passphrase. Please confirm connectivity with stellar-core.")
 	}
 
 	app.ingester = ingest.New(
@@ -79,7 +77,7 @@ func initSentry(app *App) {
 	log.WithField("dsn", app.config.SentryDSN).Info("Initializing sentry")
 	err := raven.SetDSN(app.config.SentryDSN)
 	if err != nil {
-		panic(err)
+		log.Panic(err)
 	}
 }
 
@@ -152,7 +150,7 @@ func initRedis(app *App) {
 
 	redisURL, err := url.Parse(app.config.RedisURL)
 	if err != nil {
-		log.Panic(err)
+		log.Fatal(err)
 	}
 
 	app.redis = &redis.Pool{
@@ -171,7 +169,7 @@ func initRedis(app *App) {
 
 	_, err = c.Do("PING")
 	if err != nil {
-		log.Panic(err)
+		log.Fatal(err)
 	}
 }
 

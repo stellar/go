@@ -135,6 +135,16 @@ func Error(args ...interface{}) {
 	DefaultLogger.Error(args...)
 }
 
+// Fatalf logs a message at the Fatal severity.
+func Fatalf(format string, args ...interface{}) {
+	DefaultLogger.Fatalf(format, args...)
+}
+
+// Fatal logs a message at the Fatal severity.
+func Fatal(args ...interface{}) {
+	DefaultLogger.Fatal(args...)
+}
+
 // Panicf logs a message at the Panic severity.
 func Panicf(format string, args ...interface{}) {
 	DefaultLogger.Panicf(format, args...)
