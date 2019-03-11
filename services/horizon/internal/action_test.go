@@ -16,56 +16,54 @@ import (
 func TestGetAccountInfo(t *testing.T) {
 	tt := test.Start(t).Scenario("allow_trust")
 	defer tt.Finish()
-	assert := &Assertions{tt.Assert}
 
 	w := mustNewWeb(context.Background(), &history.Q{tt.HorizonSession()}, &core.Q{tt.CoreSession()}, time.Duration(5))
 
 	res, err := w.getAccountInfo(tt.Ctx, "GCXKG6RN4ONIEPCMNFB732A436Z5PNDSRLGWK7GBLCMQLIFO4S7EYWVU")
-	assert.NoError(err)
+	tt.Assert.NoError(err)
 
 	account, ok := res.(*horizon.Account)
 	if !ok {
-		assert.FailNow("type assertion failed when getting account info")
+		tt.Assert.FailNow("type assertion failed when getting account info")
 	}
 
-	assert.Equal("8589934593", account.Sequence)
-	assert.NotEqual(0, account.LastModifiedLedger)
+	tt.Assert.Equal("8589934593", account.Sequence)
+	tt.Assert.NotEqual(0, account.LastModifiedLedger)
 
 	for _, balance := range account.Balances {
 		if balance.Type == "native" {
-			assert.Equal(uint32(0), balance.LastModifiedLedger)
+			tt.Assert.Equal(uint32(0), balance.LastModifiedLedger)
 		} else {
-			assert.NotEqual(uint32(0), balance.LastModifiedLedger)
+			tt.Assert.NotEqual(uint32(0), balance.LastModifiedLedger)
 		}
 	}
 
 	_, err = w.getAccountInfo(tt.Ctx, "GDBAPLDCAEJV6LSEDFEAUDAVFYSNFRUYZ4X75YYJJMMX5KFVUOHX46SQ")
-	assert.Equal(errors.Cause(err), sql.ErrNoRows)
+	tt.Assert.Equal(errors.Cause(err), sql.ErrNoRows)
 }
 
 func TestLoadAccountEvent(t *testing.T) {
 	tt := test.Start(t).Scenario("allow_trust")
 	defer tt.Finish()
-	assert := &Assertions{tt.Assert}
 
 	w := mustNewWeb(context.Background(), &history.Q{tt.HorizonSession()}, &core.Q{tt.CoreSession()}, time.Duration(5))
 
 	event, err := w.loadAccountEvent(tt.Ctx, "GCXKG6RN4ONIEPCMNFB732A436Z5PNDSRLGWK7GBLCMQLIFO4S7EYWVU")
-	assert.NoError(err)
+	tt.Assert.NoError(err)
 
 	account, ok := event.Data.(*horizon.Account)
 	if !ok {
-		assert.FailNow("type assertion failed when getting account info")
+		tt.Assert.FailNow("type assertion failed when getting account info")
 	}
 
-	assert.Equal("8589934593", event.Data.(*horizon.Account).Sequence)
-	assert.NotEqual(0, account.LastModifiedLedger)
+	tt.Assert.Equal("8589934593", event.Data.(*horizon.Account).Sequence)
+	tt.Assert.NotEqual(0, account.LastModifiedLedger)
 
 	for _, balance := range account.Balances {
 		if balance.Type == "native" {
-			assert.Equal(uint32(0), balance.LastModifiedLedger)
+			tt.Assert.Equal(uint32(0), balance.LastModifiedLedger)
 		} else {
-			assert.NotEqual(uint32(0), balance.LastModifiedLedger)
+			tt.Assert.NotEqual(uint32(0), balance.LastModifiedLedger)
 		}
 	}
 }
