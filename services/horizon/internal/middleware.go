@@ -136,11 +136,11 @@ func firstXForwardedFor(r *http.Request) string {
 	return strings.TrimSpace(strings.SplitN(r.Header.Get("X-Forwarded-For"), ",", 2)[0])
 }
 
-func (web *Web) RateLimitMiddleware(next http.Handler) http.Handler {
-	if web.rateLimiter == nil {
+func (w *web) RateLimitMiddleware(next http.Handler) http.Handler {
+	if w.rateLimiter == nil {
 		return next
 	}
-	return web.rateLimiter.RateLimit(next)
+	return w.rateLimiter.RateLimit(next)
 }
 
 // recoverMiddleware helps the server recover from panics. It ensures that

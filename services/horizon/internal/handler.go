@@ -39,7 +39,7 @@ type singleObjectStreamFunc func(context.Context, string) (sse.Event, error)
 // executed. If it's "application/hal+json" or "application/json", then jfn
 // will be executed. If it's "text/event-stream", then either sfn or sosfn will
 // be executed with the streamHandler.
-func (a *App) streamableEndpointHandler(jfn jsonResponderFunc, sfn streamFunc, sosfn singleObjectStreamFunc, id string) http.HandlerFunc {
+func (we *web) streamableEndpointHandler(jfn jsonResponderFunc, sfn streamFunc, sosfn singleObjectStreamFunc, id string) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 
@@ -60,7 +60,7 @@ func (a *App) streamableEndpointHandler(jfn jsonResponderFunc, sfn streamFunc, s
 				return
 			}
 
-			a.streamHandler(sfn, sosfn, id).ServeHTTP(w, r)
+			we.streamHandler(sfn, sosfn, id).ServeHTTP(w, r)
 			return
 		}
 
@@ -72,7 +72,7 @@ func (a *App) streamableEndpointHandler(jfn jsonResponderFunc, sfn streamFunc, s
 // events. It will execute one of the provided streaming functions. Note that
 // we don't return an error if both sfn and sosfn are not nil. sfn will simply
 // take precedence.
-func (a *App) streamHandler(sfn streamFunc, sosfn singleObjectStreamFunc, id string) http.HandlerFunc {
+func (we *web) streamHandler(sfn streamFunc, sosfn singleObjectStreamFunc, id string) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 
@@ -83,7 +83,7 @@ func (a *App) streamHandler(sfn streamFunc, sosfn singleObjectStreamFunc, id str
 
 			// Rate limit the request if it's a call to stream since it queries the DB every second. See
 			// https://github.com/stellar/go/issues/715 for more details.
-			rateLimiter := a.web.rateLimiter
+			rateLimiter := we.rateLimiter
 			if rateLimiter != nil {
 				limited, _, err := rateLimiter.RateLimiter.RateLimit(rateLimiter.VaryBy.Key(r), 1)
 				if err != nil {
@@ -137,7 +137,7 @@ func (a *App) streamHandler(sfn streamFunc, sosfn singleObjectStreamFunc, id str
 			newLedgers := make(chan bool, 1)
 			go func() {
 				for {
-					time.Sleep(a.config.SSEUpdateFrequency)
+					time.Sleep(we.sseUpdateFrequency)
 					currentLedgerState := ledger.CurrentState()
 					if currentLedgerState.HistoryLatest >= lastLedgerState.HistoryLatest+1 {
 						newLedgers <- true
@@ -150,7 +150,7 @@ func (a *App) streamHandler(sfn streamFunc, sosfn singleObjectStreamFunc, id str
 			case <-newLedgers:
 				continue
 			case <-ctx.Done():
-			case <-a.ctx.Done():
+			case <-we.appCtx.Done():
 			}
 
 			stream.Done()
@@ -164,7 +164,7 @@ func (a *App) streamHandler(sfn streamFunc, sosfn singleObjectStreamFunc, id str
 // Note that we cannot put this handler in the middleware stack because of
 // Chi's routing mechanism. A request will have to reach the end of the route
 // in order to have a valid route pattern in Chi.
-func (a *App) accountHandler(jfn jsonResponderFunc, sosfn singleObjectStreamFunc) http.HandlerFunc {
+func (we *web) accountHandler(jfn jsonResponderFunc, sosfn singleObjectStreamFunc) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 		addr, err := getAddress(r, "account_id", true)
@@ -173,7 +173,7 @@ func (a *App) accountHandler(jfn jsonResponderFunc, sosfn singleObjectStreamFunc
 			return
 		}
 
-		a.streamableEndpointHandler(jfn, nil, sosfn, addr).ServeHTTP(w, r)
+		we.streamableEndpointHandler(jfn, nil, sosfn, addr).ServeHTTP(w, r)
 	})
 }
 
