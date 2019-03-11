@@ -35,6 +35,9 @@ func initKeys() []key {
 		// test2
 		key{Seed: "SBZVMB74Z76QZ3ZOY7UTDFYKMEGKW5XFJEB6PFKBF4UYSSWHG4EDH7PY",
 			Address: "GB7BDSZU2Y27LYNLALKKALB52WS2IZWYBDGY6EQBLEED3TJOCVMZRH7H"},
+		// dev-null
+		key{Seed: "SD3ZKHOPXV6V2QPLCNNH7JWGKYWYKDFPFRNQSKSFF3Q5NJFPAB5VSO6D",
+			Address: "GBAQPADEYSKYMYXTMASBUIS5JI3LMOAWSTM2CHGDBJ3QDDPNCSO3DVAA"},
 	}
 
 	for i, k := range keys {
@@ -50,9 +53,118 @@ func main() {
 	client := horizon.DefaultTestNetClient
 
 	// resp := exampleCreateAccount(client, false)
-	resp := exampleSendLumens(client, false)
-	// resp := exampleBumpSequence(client, true)
+	// resp := exampleSendLumens(client, false)
+	// resp := exampleBumpSequence(client, false)
+	// resp := exampleAccountMerge(client, true)
+	// resp := exampleManageData(client, false)
+	// resp := exampleManageDataRemoveDataEntry(client, false)
+	resp := exampleSetOptions(client, true)
 	fmt.Println(resp.TransactionSuccessToString())
+}
+
+func exampleSetOptions(client *horizon.Client, mock bool) horizon.TransactionSuccess {
+	keys := initKeys()
+
+	horizonSourceAccount, err := client.LoadAccount(keys[0].Address)
+	dieIfError("loadaccount", err)
+	sourceAccount := mapAccounts(horizonSourceAccount)
+
+	setOptions := txnbuild.SetOptions{
+		// InflationDestination: keys[1].Address,
+		// ClearFlags: []txnbuild.AccountFlag{txnbuild.AuthRequired, txnbuild.AuthRevocable},
+		// MasterWeight: txnbuild.NewThreshold(255),
+		// LowThreshold:    txnbuild.NewThreshold(1),
+		// MediumThreshold: txnbuild.NewThreshold(2),
+		// HighThreshold:   txnbuild.NewThreshold(2),
+		HomeDomain: txnbuild.NewHomeDomain("LovelyLumensLookLuminousLately.com"),
+		// Signer: &txnbuild.Signer{Address: keys[1].Address, Weight: *txnbuild.NewThreshold(0)},
+	}
+
+	tx := txnbuild.Transaction{
+		SourceAccount: sourceAccount,
+		Operations:    []txnbuild.Operation{&setOptions},
+		Network:       network.TestNetworkPassphrase,
+	}
+
+	txeBase64 := buildSignEncode(tx, keys[0].Keypair)
+	log.Println("Base 64 TX: ", txeBase64)
+
+	resp := submit(client, txeBase64, mock)
+	return resp
+}
+
+func exampleManageDataRemoveDataEntry(client *horizon.Client, mock bool) horizon.TransactionSuccess {
+	keys := initKeys()
+
+	horizonSourceAccount, err := client.LoadAccount(keys[0].Address)
+	dieIfError("loadaccount", err)
+	sourceAccount := mapAccounts(horizonSourceAccount)
+
+	manageData := txnbuild.ManageData{
+		Name: "Fruit preference",
+		// Value: nil,
+	}
+
+	tx := txnbuild.Transaction{
+		SourceAccount: sourceAccount,
+		Operations:    []txnbuild.Operation{&manageData},
+		Network:       network.TestNetworkPassphrase,
+	}
+
+	txeBase64 := buildSignEncode(tx, keys[0].Keypair)
+	log.Println("Base 64 TX: ", txeBase64)
+
+	resp := submit(client, txeBase64, mock)
+	return resp
+}
+
+func exampleManageData(client *horizon.Client, mock bool) horizon.TransactionSuccess {
+	keys := initKeys()
+
+	horizonSourceAccount, err := client.LoadAccount(keys[0].Address)
+	dieIfError("loadaccount", err)
+	sourceAccount := mapAccounts(horizonSourceAccount)
+
+	manageData := txnbuild.ManageData{
+		Name:  "Fruit preference",
+		Value: []byte("Apple"),
+	}
+
+	tx := txnbuild.Transaction{
+		SourceAccount: sourceAccount,
+		Operations:    []txnbuild.Operation{&manageData},
+		Network:       network.TestNetworkPassphrase,
+	}
+
+	txeBase64 := buildSignEncode(tx, keys[0].Keypair)
+	log.Println("Base 64 TX: ", txeBase64)
+
+	resp := submit(client, txeBase64, mock)
+	return resp
+}
+
+func exampleAccountMerge(client *horizon.Client, mock bool) horizon.TransactionSuccess {
+	keys := initKeys()
+
+	horizonSourceAccount, err := client.LoadAccount(keys[0].Address)
+	dieIfError("loadaccount", err)
+	sourceAccount := mapAccounts(horizonSourceAccount)
+
+	accountMerge := txnbuild.AccountMerge{
+		Destination: keys[1].Address,
+	}
+
+	tx := txnbuild.Transaction{
+		SourceAccount: sourceAccount,
+		Operations:    []txnbuild.Operation{&accountMerge},
+		Network:       network.TestNetworkPassphrase,
+	}
+
+	txeBase64 := buildSignEncode(tx, keys[0].Keypair)
+	log.Println("Base 64 TX: ", txeBase64)
+
+	resp := submit(client, txeBase64, mock)
+	return resp
 }
 
 func exampleBumpSequence(client *horizon.Client, mock bool) horizon.TransactionSuccess {
@@ -63,7 +175,8 @@ func exampleBumpSequence(client *horizon.Client, mock bool) horizon.TransactionS
 	sourceAccount := mapAccounts(horizonSourceAccount)
 
 	bumpSequence := txnbuild.BumpSequence{
-		BumpTo: 9606132444168300,
+		// BumpTo: 41137196761087,
+		BumpTo: -1,
 	}
 
 	tx := txnbuild.Transaction{
@@ -76,19 +189,18 @@ func exampleBumpSequence(client *horizon.Client, mock bool) horizon.TransactionS
 	log.Println("Base 64 TX: ", txeBase64)
 
 	resp := submit(client, txeBase64, mock)
-
 	return resp
 }
 
 func exampleSendLumens(client *horizon.Client, mock bool) horizon.TransactionSuccess {
 	keys := initKeys()
-	horizonSourceAccount, err := client.LoadAccount(keys[0].Address)
+	horizonSourceAccount, err := client.LoadAccount(keys[1].Address)
 	dieIfError("loadaccount", err)
 	sourceAccount := mapAccounts(horizonSourceAccount)
 
 	payment := txnbuild.Payment{
-		Destination: keys[1].Address,
-		Amount:      "10",
+		Destination: keys[0].Address,
+		Amount:      "80",
 	}
 
 	tx := txnbuild.Transaction{
@@ -117,7 +229,6 @@ func exampleCreateAccount(client *horizon.Client, mock bool) horizon.Transaction
 		Amount:      "10",
 		Asset:       "native",
 	}
-	// inflation := txnbuild.Inflation{}
 
 	tx := txnbuild.Transaction{
 		SourceAccount: sourceAccount,

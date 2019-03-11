@@ -1,3 +1,7 @@
+/*
+Package txnbuild implements transactions and operations on the Stellar network.
+TODO: More explanation + links here
+*/
 package txnbuild
 
 import (
@@ -11,7 +15,7 @@ import (
 	"github.com/stellar/go/xdr"
 )
 
-// TODO: Replace use of Horizon Account with simpler Account object here
+// Account represents a Stellar Account from the perspective of a Transaction.
 type Account struct {
 	ID             string
 	SequenceNumber xdr.SequenceNumber
