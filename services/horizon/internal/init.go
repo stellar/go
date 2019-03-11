@@ -21,7 +21,7 @@ import (
 func mustInitHorizonDB(app *App) {
 	session, err := db.Open("postgres", app.config.DatabaseURL)
 	if err != nil {
-		log.Fatalf("cannot open Horizon DB due to error %v", err)
+		log.Fatalf("cannot open Horizon DB: %v", err)
 	}
 
 	// Make sure MaxIdleConns is equal MaxOpenConns. In case of high variance
@@ -34,7 +34,7 @@ func mustInitHorizonDB(app *App) {
 func mustInitCoreDB(app *App) {
 	session, err := db.Open("postgres", app.config.StellarCoreDatabaseURL)
 	if err != nil {
-		log.Fatalf("cannot open core DB due to error %v", err)
+		log.Fatalf("cannot open Core DB: %v", err)
 	}
 
 	// Make sure MaxIdleConns is equal MaxOpenConns. In case of high variance
