@@ -3,7 +3,6 @@ package horizon
 import (
 	"compress/flate"
 	"database/sql"
-	"fmt"
 	"net/http"
 	"strings"
 
@@ -16,6 +15,7 @@ import (
 	hProblem "github.com/stellar/go/services/horizon/internal/render/problem"
 	"github.com/stellar/go/services/horizon/internal/render/sse"
 	"github.com/stellar/go/services/horizon/internal/txsub/sequence"
+	"github.com/stellar/go/support/log"
 	"github.com/stellar/go/support/render/problem"
 	"github.com/throttled/throttled"
 )
@@ -168,23 +168,23 @@ func initWebActions(app *App) {
 	r.NotFound(NotFoundAction{}.Handle)
 }
 
-func initWebRateLimiter(app *App) {
+func initWebRateLimiter(rateQuota *throttled.RateQuota) *throttled.HTTPRateLimiter {
 	// Disabled
-	if app.config.RateLimit == nil {
-		return
+	if rateQuota == nil {
+		return nil
 	}
 
-	rateLimiter, err := throttled.NewGCRARateLimiter(50000, *app.config.RateLimit)
+	rateLimiter, err := throttled.NewGCRARateLimiter(50000, *rateQuota)
 	if err != nil {
-		panic(fmt.Errorf("unable to create RateLimiter"))
+		log.Fatalf("unable to create RateLimiter: %v", err)
 	}
 
 	httpRateLimiter := throttled.HTTPRateLimiter{
 		RateLimiter:   rateLimiter,
-		DeniedHandler: &RateLimitExceededAction{App: app, Action: Action{}},
+		DeniedHandler: &RateLimitExceededAction{Action{}},
 	}
 	httpRateLimiter.VaryBy = VaryByRemoteIP{}
-	app.web.rateLimiter = &httpRateLimiter
+	return &httpRateLimiter
 }
 
 type VaryByRemoteIP struct{}

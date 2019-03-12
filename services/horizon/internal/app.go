@@ -398,7 +398,7 @@ func (a *App) init() {
 	initWeb(a)
 
 	// web.rate-limiter
-	initWebRateLimiter(a)
+	a.web.rateLimiter = initWebRateLimiter(a.config.RateLimit)
 
 	// web.middleware
 	initWebMiddleware(a)
