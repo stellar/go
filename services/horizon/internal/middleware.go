@@ -19,11 +19,13 @@ import (
 
 // appContextMiddleware adds the "app" context into every request, so that subsequence appContextMiddleware
 // or handlers can retrieve a horizon.App instance
-func (app *App) appContextMiddleware(h http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		ctx := withAppContext(r.Context(), app)
-		h.ServeHTTP(w, r.WithContext(ctx))
-	})
+func appContextMiddleware(app *App) func(http.Handler) http.Handler {
+	return func(h http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			ctx := withAppContext(r.Context(), app)
+			h.ServeHTTP(w, r.WithContext(ctx))
+		})
+	}
 }
 
 // requestCacheHeadersMiddleware adds caching headers to each response.

@@ -74,16 +74,16 @@ func mustNewWeb(ctx context.Context, hq *history.Q, cq *core.Q, suf time.Duratio
 	}
 }
 
-// initWebMiddleware installs the middleware stack used for horizon onto the
+// installMiddleware installs the middleware stack used for horizon onto the
 // provided app.
 // Note that a request will go through the middlewares from top to bottom.
-func initWebMiddleware(app *App) {
-	r := app.web.router
-	r.Use(chimiddleware.Timeout(app.config.ConnectionTimeout))
+func (w *web) installMiddleware(app *App, connTimeout time.Duration) {
+	r := w.router
+	r.Use(chimiddleware.Timeout(connTimeout))
 	r.Use(chimiddleware.StripSlashes)
 
 	//TODO: remove this middleware
-	r.Use(app.appContextMiddleware)
+	r.Use(appContextMiddleware(app))
 
 	r.Use(requestCacheHeadersMiddleware)
 	r.Use(chimiddleware.RequestID)
@@ -100,7 +100,7 @@ func initWebMiddleware(app *App) {
 	})
 	r.Use(c.Handler)
 
-	r.Use(app.web.RateLimitMiddleware)
+	r.Use(w.RateLimitMiddleware)
 }
 
 // installActions installs the routing configuration of horizon onto the

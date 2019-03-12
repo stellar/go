@@ -401,7 +401,7 @@ func (a *App) init() {
 	initWebRateLimiter(a)
 
 	// web.middleware
-	initWebMiddleware(a)
+	a.web.installMiddleware(a, a.config.ConnectionTimeout)
 
 	// web.actions
 	a.web.installActions(a.config.EnableAssetStats, a.config.FriendbotURL)
