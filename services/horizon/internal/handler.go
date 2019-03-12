@@ -39,7 +39,7 @@ type singleObjectStreamFunc func(context.Context, string) (sse.Event, error)
 // executed. If it's "application/hal+json" or "application/json", then jfn
 // will be executed. If it's "text/event-stream", then either sfn or sosfn will
 // be executed with the streamHandler.
-func (we *web) streamableEndpointHandler(jfn jsonResponderFunc, sfn streamFunc, sosfn singleObjectStreamFunc, id string) http.HandlerFunc {
+func (we *web) streamableEndpointHandler(jfn jsonResponderFunc, sfn streamFunc, sosfn singleObjectStreamFunc, singleObjectId string) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 
@@ -51,7 +51,7 @@ func (we *web) streamableEndpointHandler(jfn jsonResponderFunc, sfn streamFunc, 
 				return
 			}
 
-			hal.Handler(jfn, id).ServeHTTP(w, r)
+			hal.Handler(jfn, singleObjectId).ServeHTTP(w, r)
 			return
 
 		case render.MimeEventStream:
@@ -60,7 +60,7 @@ func (we *web) streamableEndpointHandler(jfn jsonResponderFunc, sfn streamFunc, 
 				return
 			}
 
-			we.streamHandler(sfn, sosfn, id).ServeHTTP(w, r)
+			we.streamHandler(sfn, sosfn, singleObjectId).ServeHTTP(w, r)
 			return
 		}
 
@@ -72,7 +72,7 @@ func (we *web) streamableEndpointHandler(jfn jsonResponderFunc, sfn streamFunc, 
 // events. It will execute one of the provided streaming functions. Note that
 // we don't return an error if both sfn and sosfn are not nil. sfn will simply
 // take precedence.
-func (we *web) streamHandler(sfn streamFunc, sosfn singleObjectStreamFunc, id string) http.HandlerFunc {
+func (we *web) streamHandler(sfn streamFunc, sosfn singleObjectStreamFunc, singleObjectId string) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 
@@ -103,7 +103,7 @@ func (we *web) streamHandler(sfn streamFunc, sosfn singleObjectStreamFunc, id st
 					return
 				}
 			} else if sosfn != nil {
-				newEvent, err := sosfn(ctx, id)
+				newEvent, err := sosfn(ctx, singleObjectId)
 				if err != nil {
 					stream.Err(err)
 					return
