@@ -27,6 +27,9 @@ install:
 - curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh
 script:
 - dep ensure -v && ./support/scripts/run_tests
+cache:
+  directories:
+    - $GOPATH/pkg/dep # cache dep downloaded dependencies
 before_deploy:
 - go run ./support/scripts/build_release_artifacts/main.go
 - ./support/scripts/push_snapshots_tag.sh
