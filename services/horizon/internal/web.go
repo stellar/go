@@ -53,8 +53,8 @@ func init() {
 	problem.RegisterError(sse.ErrRateLimited, hProblem.RateLimitExceeded)
 }
 
-// mustNewWeb installed a new Web instance onto the provided app object.
-func mustNewWeb(ctx context.Context, hq *history.Q, cq *core.Q, suf time.Duration) *web {
+// mustInitWeb installed a new Web instance onto the provided app object.
+func mustInitWeb(ctx context.Context, hq *history.Q, cq *core.Q, suf time.Duration) *web {
 	if hq == nil {
 		log.Fatal("missing history DB for installing the web instance")
 	}
