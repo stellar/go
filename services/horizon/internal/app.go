@@ -397,14 +397,14 @@ func (a *App) init() {
 	// web.init
 	a.web = mustNewWeb(a.ctx, a.historyQ, a.coreQ, a.config.SSEUpdateFrequency)
 
-	// web.actions
-	a.web.installActions(a.config.EnableAssetStats, a.config.FriendbotURL)
-
 	// web.rate-limiter
 	initWebRateLimiter(a)
 
 	// web.middleware
 	initWebMiddleware(a)
+
+	// web.actions
+	a.web.installActions(a.config.EnableAssetStats, a.config.FriendbotURL)
 
 	// metrics and log.metrics
 	a.metrics = metrics.NewRegistry()
