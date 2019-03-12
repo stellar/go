@@ -168,7 +168,7 @@ func initWebActions(app *App) {
 	r.NotFound(NotFoundAction{}.Handle)
 }
 
-func initWebRateLimiter(rateQuota *throttled.RateQuota) *throttled.HTTPRateLimiter {
+func maybeInitWebRateLimiter(rateQuota *throttled.RateQuota) *throttled.HTTPRateLimiter {
 	// Disabled
 	if rateQuota == nil {
 		return nil
