@@ -18,7 +18,7 @@ type Config struct {
 	MaxDBConnections       int
 	SSEUpdateFrequency     time.Duration
 	ConnectionTimeout      time.Duration
-	RateLimitQuota         *throttled.RateQuota
+	RateQuota              *throttled.RateQuota
 	RateLimitRedisKey      string
 	RedisURL               string
 	FriendbotURL           *url.URL
