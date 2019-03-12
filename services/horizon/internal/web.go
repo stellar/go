@@ -179,12 +179,11 @@ func maybeInitWebRateLimiter(rateQuota *throttled.RateQuota) *throttled.HTTPRate
 		log.Fatalf("unable to create RateLimiter: %v", err)
 	}
 
-	httpRateLimiter := throttled.HTTPRateLimiter{
+	return &throttled.HTTPRateLimiter{
 		RateLimiter:   rateLimiter,
 		DeniedHandler: &RateLimitExceededAction{Action{}},
+		VaryBy:        VaryByRemoteIP{},
 	}
-	httpRateLimiter.VaryBy = VaryByRemoteIP{}
-	return &httpRateLimiter
 }
 
 type VaryByRemoteIP struct{}
