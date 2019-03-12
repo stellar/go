@@ -20,6 +20,8 @@ import (
 	"github.com/throttled/throttled"
 )
 
+const LRUCacheSize = 50000
+
 // Web contains the http server related fields for horizon: the router,
 // rate limiter, etc.
 type Web struct {
@@ -174,7 +176,7 @@ func maybeInitWebRateLimiter(rateQuota *throttled.RateQuota) *throttled.HTTPRate
 		return nil
 	}
 
-	rateLimiter, err := throttled.NewGCRARateLimiter(50000, *rateQuota)
+	rateLimiter, err := throttled.NewGCRARateLimiter(LRUCacheSize, *rateQuota)
 	if err != nil {
 		log.Fatalf("unable to create RateLimiter: %v", err)
 	}
