@@ -17,6 +17,7 @@ import (
 	"github.com/stellar/go/services/horizon/internal/db2"
 	"github.com/stellar/go/services/horizon/internal/db2/core"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
+	"github.com/stellar/go/services/horizon/internal/ledger"
 	hProblem "github.com/stellar/go/services/horizon/internal/render/problem"
 	"github.com/stellar/go/services/horizon/internal/render/sse"
 	"github.com/stellar/go/services/horizon/internal/txsub/sequence"
@@ -35,6 +36,7 @@ type web struct {
 	router             *chi.Mux
 	rateLimiter        *throttled.HTTPRateLimiter
 	sseUpdateFrequency time.Duration
+	staleThreshold     uint
 
 	historyQ *history.Q
 	coreQ    *core.Q
@@ -55,7 +57,7 @@ func init() {
 }
 
 // mustInitWeb installed a new Web instance onto the provided app object.
-func mustInitWeb(ctx context.Context, hq *history.Q, cq *core.Q, suf time.Duration) *web {
+func mustInitWeb(ctx context.Context, hq *history.Q, cq *core.Q, suf time.Duration, st uint) *web {
 	if hq == nil {
 		log.Fatal("missing history DB for installing the web instance")
 	}
@@ -69,6 +71,7 @@ func mustInitWeb(ctx context.Context, hq *history.Q, cq *core.Q, suf time.Durati
 		historyQ:           hq,
 		coreQ:              cq,
 		sseUpdateFrequency: suf,
+		staleThreshold:     st,
 		requestTimer:       metrics.NewTimer(),
 		failureMeter:       metrics.NewMeter(),
 		successMeter:       metrics.NewMeter(),
@@ -249,4 +252,15 @@ func (w *web) horizonSession(ctx context.Context) *db.Session {
 // database. The returned session is bound to `ctx`.
 func (w *web) coreSession(ctx context.Context) *db.Session {
 	return &db.Session{DB: w.coreQ.Session.DB, Ctx: ctx}
+}
+
+// isHistoryStale returns true if the latest history ledger is more than
+// `StaleThreshold` ledgers behind the latest core ledger
+func (w *web) isHistoryStale() bool {
+	if w.staleThreshold == 0 {
+		return false
+	}
+
+	ls := ledger.CurrentState()
+	return (ls.CoreLatest - ls.HistoryLatest) > int32(w.staleThreshold)
 }

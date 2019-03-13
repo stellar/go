@@ -141,6 +141,20 @@ func (action *Action) EnsureHistoryFreshness() {
 	}
 }
 
+func errorIfHistoryIsStale(isStale bool) error {
+	if !isStale {
+		return nil
+	}
+
+	ls := ledger.CurrentState()
+	err := problem.StaleHistory
+	err.Extras = map[string]interface{}{
+		"history_latest_ledger": ls.HistoryLatest,
+		"core_latest_ledger":    ls.CoreLatest,
+	}
+	return err
+}
+
 // FullURL returns the full url for this request
 func (action *Action) FullURL() *url.URL {
 	result := action.baseURL()
@@ -162,4 +176,8 @@ func (w *web) getAccountInfo(ctx context.Context, addr string) (interface{}, err
 func (w *web) loadAccountEvent(ctx context.Context, addr string) (sse.Event, error) {
 	res, err := w.getAccountInfo(ctx, addr)
 	return sse.Event{Data: res}, err
+}
+
+func (w *web) getTransactionPageByAccount(ctx context.Context, addr string) (interface{}, error) {
+	return actions.AccountInfo(ctx, &core.Q{w.coreSession(ctx)}, &history.Q{w.horizonSession(ctx)}, addr)
 }

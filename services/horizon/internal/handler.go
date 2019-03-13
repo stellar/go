@@ -6,8 +6,10 @@ import (
 	"crypto/sha256"
 	"encoding/json"
 	"net/http"
+	"strconv"
 	"time"
 
+	"github.com/stellar/go/services/horizon/internal/actions"
 	"github.com/stellar/go/services/horizon/internal/hchi"
 	"github.com/stellar/go/services/horizon/internal/ledger"
 	"github.com/stellar/go/services/horizon/internal/render"
@@ -167,7 +169,7 @@ func (we *web) streamHandler(sfn streamFunc, sosfn singleObjectStreamFunc, singl
 func (we *web) accountHandler(jfn jsonResponderFunc, sosfn singleObjectStreamFunc) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
-		addr, err := getAddress(r, "account_id", true)
+		addr, err := getAccountID(r, "account_id", true)
 		if err != nil {
 			problem.Render(ctx, w, err)
 			return
@@ -177,7 +179,7 @@ func (we *web) accountHandler(jfn jsonResponderFunc, sosfn singleObjectStreamFun
 	})
 }
 
-func getAddress(r *http.Request, key string, required bool) (string, error) {
+func getAccountID(r *http.Request, key string, required bool) (string, error) {
 	val, err := hchi.GetStringFromURL(r, key)
 	if err != nil {
 		return "", err
@@ -194,4 +196,75 @@ func getAddress(r *http.Request, key string, required bool) (string, error) {
 	}
 
 	return val, nil
+}
+
+func (we *web) transactionHandler(jfn jsonResponderFunc, sfn streamFunc) http.HandlerFunc {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+
+		err := errorIfHistoryIsStale(we.isHistoryStale())
+		if err != nil {
+			problem.Render(ctx, w, err)
+			return
+
+		}
+
+		_, err = loadTransactionParams(r)
+		if err != nil {
+			problem.Render(ctx, w, err)
+			return
+		}
+
+		we.streamableEndpointHandler(jfn, sfn, nil, "").ServeHTTP(w, r)
+	})
+}
+
+func validateCursorAsDefault(r *http.Request) error {
+	val, err := hchi.GetStringFromURL(r, actions.ParamCursor)
+	if err != nil {
+		return errors.Wrap(err, "loading cursor from URL")
+	}
+
+	if val == "now" {
+		return nil
+	}
+
+	_, err = strconv.ParseInt(val, 10, 64)
+	// TODO: add errInvalidValue
+	return problem.MakeInvalidFieldProblem(actions.ParamCursor, errors.New("invalid int64 value"))
+}
+
+func loadTransactionParams(r *http.Request) (*actions.TransactionParams, error) {
+	err := validateCursorAsDefault(r)
+	if err != nil {
+		return nil, errors.Wrap(err, "validating param cursor")
+	}
+
+	addr, err := getAccountID(r, "account_id", false)
+	if err != nil {
+		return nil, errors.Wrap(err, "getting account address")
+	}
+
+	lid, err := getInt32(r, "ledger_id")
+	if err != nil {
+		return nil, errors.Wrap(err, "getting ledger id")
+	}
+
+	return &actions.TransactionParams{
+		AccountFilter: addr,
+		LedgerFilter:  lid,
+	}, nil
+
+}
+
+func getInt32(r *http.Request, key string) (int32, error) {
+	val, err := hchi.GetStringFromURL(r, key)
+	if err != nil {
+		return 0, errors.Wrapf(err, "loading %s from URL", key)
+	}
+
+	asI64, err := strconv.ParseInt(val, 10, 32)
+	// TODO: add errInvalidValue
+	return int32(asI64), problem.MakeInvalidFieldProblem(key, errors.New("invalid int32 value"))
+
 }
