@@ -390,3 +390,54 @@ func TestMultipleOperations(t *testing.T) {
 	expected := "AAAAACXK8doPx27P6IReQlRRuweSSUiUfjqgyswxiu3Sh2R+AAAAyAAiILoAAAAIAAAAAAAAAAAAAAACAAAAAAAAAAkAAAAAAAAACwAiILoAAABsAAAAAAAAAAHSh2R+AAAAQGx5xAPuF3rH3/KSHXduYYvE/Qw4CAseF2F0oSacIYi8e320OW07lr9VF8XEcDqMSVNhkFopoh5P0ZSixcTxyQI="
 	assert.Equal(t, expected, received, "Base 64 XDR should match")
 }
+
+func TestChangeTrust(t *testing.T) {
+	kp0 := newKeypair0()
+	kp1 := newKeypair1()
+
+	sourceAccount := Account{
+		ID:             kp0.Address(),
+		SequenceNumber: 40385577484348,
+	}
+
+	issuerAsset := NewAsset("ABCD", kp1.Address())
+	changeTrust := ChangeTrust{
+		Line:  issuerAsset,
+		Limit: "10",
+	}
+
+	tx := Transaction{
+		SourceAccount: sourceAccount,
+		Operations:    []Operation{&changeTrust},
+		Network:       network.TestNetworkPassphrase,
+	}
+
+	received := buildSignEncode(tx, kp0, t)
+	expected := "AAAAAODcbeFyXKxmUWK1L6znNbKKIkPkHRJNbLktcKPqLnLFAAAAZAAAJLsAAAA9AAAAAAAAAAAAAAABAAAAAAAAAAYAAAABQUJDRAAAAAAlyvHaD8duz+iEXkJUUbsHkklIlH46oMrMMYrt0odkfgAAAAAF9eEAAAAAAAAAAAHqLnLFAAAAQCOIEK9f3CMCfb5CzB2G2q6PBNx1P0R71v1hf8JXEIICXjWwy6hT140PP8EV4/VcARlA9a09a4Rr8dRNnpeOwAI="
+	assert.Equal(t, expected, received, "Base 64 XDR should match")
+}
+
+func TestChangeTrustNativeAssetNotAllowed(t *testing.T) {
+	kp0 := newKeypair0()
+
+	sourceAccount := Account{
+		ID:             kp0.Address(),
+		SequenceNumber: 40385577484348,
+	}
+
+	issuerAsset := NewNativeAsset()
+	changeTrust := ChangeTrust{
+		Line:  issuerAsset,
+		Limit: "10",
+	}
+
+	tx := Transaction{
+		SourceAccount: sourceAccount,
+		Operations:    []Operation{&changeTrust},
+		Network:       network.TestNetworkPassphrase,
+	}
+
+	err := tx.Build()
+	expectedErrMsg := "Failed to build operation *txnbuild.ChangeTrust: Trustline cannot be extended to a native (XLM) asset"
+	require.EqualError(t, err, expectedErrMsg, "No trustlines for native assets")
+}

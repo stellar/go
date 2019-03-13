@@ -54,13 +54,40 @@ func main() {
 
 	// resp := exampleCreateAccount(client, false)
 	// resp := exampleSendLumens(client, false)
-	resp := exampleSendNonNative(client, false)
+	// resp := exampleSendNonNative(client, false)
 	// resp := exampleBumpSequence(client, false)
 	// resp := exampleAccountMerge(client, true)
 	// resp := exampleManageData(client, false)
 	// resp := exampleManageDataRemoveDataEntry(client, false)
 	// resp := exampleSetOptions(client, true)
+	resp := exampleChangeTrust(client, true)
 	fmt.Println(resp.TransactionSuccessToString())
+}
+
+func exampleChangeTrust(client *horizon.Client, mock bool) horizon.TransactionSuccess {
+	keys := initKeys()
+	horizonSourceAccount, err := client.LoadAccount(keys[0].Address)
+	dieIfError("loadaccount", err)
+	sourceAccount := mapAccounts(horizonSourceAccount)
+
+	issuer := txnbuild.NewAsset("ABCD", keys[1].Address)
+	changeTrust := txnbuild.ChangeTrust{
+		Line:  issuer,
+		Limit: "10",
+	}
+
+	tx := txnbuild.Transaction{
+		SourceAccount: sourceAccount,
+		Operations:    []txnbuild.Operation{&changeTrust},
+		Network:       network.TestNetworkPassphrase,
+	}
+
+	txeBase64 := buildSignEncode(tx, keys[0].Keypair)
+	log.Println("Base 64 TX: ", txeBase64)
+
+	resp := submit(client, txeBase64, mock)
+
+	return resp
 }
 
 func exampleSetOptions(client *horizon.Client, mock bool) horizon.TransactionSuccess {

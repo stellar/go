@@ -26,12 +26,17 @@ func NewAsset(code, issuer string) *Asset {
 	return &a
 }
 
+// IsNative for Asset returns true if this is an XLM asset.
+func (a *Asset) IsNative() bool {
+	// Native (Lumens) has no code or issuer
+	return a.Code == "" && a.Issuer == ""
+}
+
 // ToXDR for Asset produces a corresponding XDR asset.
 func (a *Asset) ToXDR() (xdr.Asset, error) {
 	xdrAsset := xdr.Asset{}
 	var err error
-	// Native (Lumens) has no code or issuer, and is a no-op
-	if a.Code == "" && a.Issuer == "" {
+	if a.IsNative() {
 		err = xdrAsset.SetNative()
 		if err != nil {
 			return xdr.Asset{}, err
