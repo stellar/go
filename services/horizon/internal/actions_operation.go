@@ -116,6 +116,12 @@ func (action *OperationIndexAction) loadParams() {
 		return
 	}
 
+	// Double check TransactionFilter as it's used to determine if failed txs should be returned
+	if action.TransactionFilter != "" && !isValidTransactionHash(action.TransactionFilter) {
+		action.Err = supportProblem.MakeInvalidFieldProblem("tx_id", errors.New("Invalid transaction hash"))
+		return
+	}
+
 	if action.IncludeFailed == true && !action.App.config.IngestFailedTransactions {
 		err := errors.New("`include_failed` parameter is unavailable when Horizon is not ingesting failed " +
 			"transactions. Set `INGEST_FAILED_TRANSACTIONS=true` to start ingesting them.")

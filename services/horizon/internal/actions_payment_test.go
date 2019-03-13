@@ -43,6 +43,19 @@ func TestPaymentActions(t *testing.T) {
 		ht.Assert.PageOf(0, w.Body)
 	}
 
+	// 400 for invalid tx hash
+	w = ht.Get("/transactions/ /payments")
+	ht.Assert.Equal(400, w.Code)
+
+	w = ht.Get("/transactions/invalid/payments")
+	ht.Assert.Equal(400, w.Code)
+
+	w = ht.Get("/transactions/1d2a4be72470658f68db50eef29ea0af3f985ce18b5c218f03461d40c47dc29/payments")
+	ht.Assert.Equal(400, w.Code)
+
+	w = ht.Get("/transactions/1d2a4be72470658f68db50eef29ea0af3f985ce18b5c218f03461d40c47dc29222/payments")
+	ht.Assert.Equal(400, w.Code)
+
 	w = ht.Get("/transactions/1d2a4be72470658f68db50eef29ea0af3f985ce18b5c218f03461d40c47dc292/payments")
 	if ht.Assert.Equal(200, w.Code) {
 		ht.Assert.PageOf(1, w.Body)

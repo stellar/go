@@ -63,6 +63,19 @@ func TestOperationActions_Index(t *testing.T) {
 		ht.Assert.PageOf(1, w.Body)
 	}
 
+	// 400 for invalid tx hash
+	w = ht.Get("/transactions/ /operations")
+	ht.Assert.Equal(400, w.Code)
+
+	w = ht.Get("/transactions/invalid/operations")
+	ht.Assert.Equal(400, w.Code)
+
+	w = ht.Get("/transactions/1d2a4be72470658f68db50eef29ea0af3f985ce18b5c218f03461d40c47dc29/operations")
+	ht.Assert.Equal(400, w.Code)
+
+	w = ht.Get("/transactions/1d2a4be72470658f68db50eef29ea0af3f985ce18b5c218f03461d40c47dc29222/operations")
+	ht.Assert.Equal(400, w.Code)
+
 	// filtered by ledger
 	w = ht.Get("/ledgers/3/operations")
 	if ht.Assert.Equal(200, w.Code) {
