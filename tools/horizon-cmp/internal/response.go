@@ -10,6 +10,11 @@ import (
 )
 
 var findResultMetaXDR = regexp.MustCompile(`"result_meta_xdr": "(.*)",`)
+var succ1 = regexp.MustCompile(`\s*"transaction_successful": true,`)
+var succ2 = regexp.MustCompile(`\s*"successful": true,`)
+var succ3 = regexp.MustCompile(`\s*"transaction_count": [0-9]+,`)
+var succ4 = regexp.MustCompile(`\s*"last_modified_ledger": [0-9]+,`)
+var succ5 = regexp.MustCompile(`\s*"public_key": "G.*",`)
 
 type Response struct {
 	Domain string
@@ -49,6 +54,12 @@ func NewResponse(domain, path string) *Response {
 	normalizedBody = findResultMetaXDR.ReplaceAllString(normalizedBody, "")
 	// Remove Horizon URL from the _links
 	normalizedBody = strings.Replace(normalizedBody, domain, "", -1)
+
+	normalizedBody = succ1.ReplaceAllString(normalizedBody, "")
+	normalizedBody = succ2.ReplaceAllString(normalizedBody, "")
+	normalizedBody = succ3.ReplaceAllString(normalizedBody, "")
+	normalizedBody = succ4.ReplaceAllString(normalizedBody, "")
+	normalizedBody = succ5.ReplaceAllString(normalizedBody, "")
 
 	response.NormalizedBody = normalizedBody
 	return response

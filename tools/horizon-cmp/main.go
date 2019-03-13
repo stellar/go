@@ -27,13 +27,13 @@ type PathWithLevel struct {
 // Starting corpus of paths to test
 var paths []PathWithLevel = []PathWithLevel{
 	PathWithLevel{"/transactions?order=desc", 0},
-	PathWithLevel{"/transactions?order=desc&include_failed=true", 0},
+	// PathWithLevel{"/transactions?order=desc&include_failed=true", 0},
 
 	PathWithLevel{"/operations?order=desc", 0},
-	PathWithLevel{"/operations?order=desc&include_failed=true", 0},
+	// PathWithLevel{"/operations?order=desc&include_failed=true", 0},
 
 	PathWithLevel{"/payments?order=desc", 0},
-	PathWithLevel{"/payments?order=desc&include_failed=true", 0},
+	// PathWithLevel{"/payments?order=desc&include_failed=true", 0},
 
 	PathWithLevel{"/ledgers?order=desc", 0},
 	PathWithLevel{"/effects?order=desc", 0},
@@ -49,6 +49,8 @@ var paths []PathWithLevel = []PathWithLevel{
 	PathWithLevel{"/order_book?selling_asset_type=native&buying_asset_type=credit_alphanum4&buying_asset_code=SLT&buying_asset_issuer=GCKA6K5PCQ6PNF5RQBF7PQDJWRHO6UOGFMRLK3DYHDOI244V47XKQ4GP", 0},
 
 	PathWithLevel{"/trade_aggregations?base_asset_type=native&counter_asset_code=USD&counter_asset_issuer=GBSTRUSD7IRX73RQZBL3RQUH6KS3O4NYFY3QCALDLZD77XMZOPWAVTUK&counter_asset_type=credit_alphanum4&end_time=1551866400000&limit=200&order=desc&resolution=900000&start_time=1514764800", 0},
+
+	PathWithLevel{"/metrics", 0},
 }
 
 var visitedPaths map[string]bool
