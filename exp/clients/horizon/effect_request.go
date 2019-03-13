@@ -12,12 +12,13 @@ import (
 	"strings"
 
 	"github.com/manucorporat/sse"
+	"github.com/stellar/go/protocols/horizon/effects"
 	"github.com/stellar/go/support/app"
 	"github.com/stellar/go/support/errors"
 )
 
 // EffectHandler is a function that is called when a new effect is received
-type EffectHandler func(Effect)
+type EffectHandler func(effects.Base)
 
 // BuildUrl creates the endpoint to be queried based on the data in the EffectRequest struct.
 // If no data is set, it defaults to the build the URL for all effects
@@ -213,7 +214,7 @@ func (er EffectRequest) Stream(
 
 	url := fmt.Sprintf("%s/effects", horizonURL)
 	return stream(ctx, url, &er.Cursor, func(data []byte) error {
-		var effect Effect
+		var effect effects.Base
 		err = json.Unmarshal(data, &effect)
 		if err != nil {
 			return errors.Wrap(err, "Error unmarshaling data")

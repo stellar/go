@@ -3,6 +3,7 @@ package horizonclient
 import (
 	"context"
 
+	hProtocol "github.com/stellar/go/protocols/horizon"
 	"github.com/stretchr/testify/mock"
 )
 
@@ -12,27 +13,27 @@ type MockClient struct {
 }
 
 // AccountDetail is a mocking method
-func (m *MockClient) AccountDetail(request AccountRequest) (Account, error) {
+func (m *MockClient) AccountDetail(request AccountRequest) (hProtocol.Account, error) {
 	a := m.Called(request)
-	return a.Get(0).(Account), a.Error(1)
+	return a.Get(0).(hProtocol.Account), a.Error(1)
 }
 
 // AccountData is a mocking method
-func (m *MockClient) AccountData(request AccountRequest) (AccountData, error) {
+func (m *MockClient) AccountData(request AccountRequest) (hProtocol.AccountData, error) {
 	a := m.Called(request)
-	return a.Get(0).(AccountData), a.Error(1)
+	return a.Get(0).(hProtocol.AccountData), a.Error(1)
 }
 
 // Effects is a mocking method
-func (m *MockClient) Effects(request EffectRequest) (EffectsPage, error) {
+func (m *MockClient) Effects(request EffectRequest) (hProtocol.EffectsPage, error) {
 	a := m.Called(request)
-	return a.Get(0).(EffectsPage), a.Error(1)
+	return a.Get(0).(hProtocol.EffectsPage), a.Error(1)
 }
 
 // Assets is a mocking method
-func (m *MockClient) Assets(request AssetRequest) (AssetsPage, error) {
+func (m *MockClient) Assets(request AssetRequest) (hProtocol.AssetsPage, error) {
 	a := m.Called(request)
-	return a.Get(0).(AssetsPage), a.Error(1)
+	return a.Get(0).(hProtocol.AssetsPage), a.Error(1)
 }
 
 func (m *MockClient) Stream(ctx context.Context,
@@ -43,19 +44,19 @@ func (m *MockClient) Stream(ctx context.Context,
 	return a.Error(0)
 }
 
-func (m *MockClient) Ledgers(request LedgerRequest) (LedgersPage, error) {
+func (m *MockClient) Ledgers(request LedgerRequest) (hProtocol.LedgersPage, error) {
 	a := m.Called(request)
-	return a.Get(0).(LedgersPage), a.Error(1)
+	return a.Get(0).(hProtocol.LedgersPage), a.Error(1)
 }
 
-func (m *MockClient) LedgerDetail(sequence uint32) (Ledger, error) {
+func (m *MockClient) LedgerDetail(sequence uint32) (hProtocol.Ledger, error) {
 	a := m.Called(sequence)
-	return a.Get(0).(Ledger), a.Error(1)
+	return a.Get(0).(hProtocol.Ledger), a.Error(1)
 }
 
-func (m *MockClient) Metrics() (Metrics, error) {
+func (m *MockClient) Metrics() (hProtocol.Metrics, error) {
 	a := m.Called()
-	return a.Get(0).(Metrics), a.Error(1)
+	return a.Get(0).(hProtocol.Metrics), a.Error(1)
 }
 
 // ensure that the MockClient implements ClientInterface

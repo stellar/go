@@ -3,30 +3,13 @@ package horizonclient
 import (
 	"encoding/json"
 
+	hProtocol "github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/support/errors"
-	"github.com/stellar/go/support/render/problem"
 	"github.com/stellar/go/xdr"
 )
 
 func (herr Error) Error() string {
 	return `Horizon error: "` + herr.Problem.Title + `". Check horizon.Error.Problem for more information.`
-}
-
-// ToProblem converts the Prolem to a problem.P
-func (prob Problem) ToProblem() problem.P {
-	extras := make(map[string]interface{})
-	for k, v := range prob.Extras {
-		extras[k] = v
-	}
-
-	return problem.P{
-		Type:     prob.Type,
-		Title:    prob.Title,
-		Status:   prob.Status,
-		Detail:   prob.Detail,
-		Instance: prob.Instance,
-		Extras:   extras,
-	}
 }
 
 // Envelope extracts the transaction envelope that triggered this error from the
@@ -71,14 +54,14 @@ func (herr *Error) ResultString() (string, error) {
 }
 
 // ResultCodes extracts a result code summary from the error, if possible.
-func (herr *Error) ResultCodes() (*TransactionResultCodes, error) {
+func (herr *Error) ResultCodes() (*hProtocol.TransactionResultCodes, error) {
 
 	raw, ok := herr.Problem.Extras["result_codes"]
 	if !ok {
 		return nil, ErrResultCodesNotPopulated
 	}
 
-	var result TransactionResultCodes
+	var result hProtocol.TransactionResultCodes
 	err := json.Unmarshal(raw, &result)
 	if err != nil {
 		return nil, errors.Wrap(err, "json decode failed")

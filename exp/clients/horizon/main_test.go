@@ -6,6 +6,8 @@ import (
 	"testing"
 	"time"
 
+	hProtocol "github.com/stellar/go/protocols/horizon"
+	"github.com/stellar/go/protocols/horizon/effects"
 	"github.com/stellar/go/support/http/httptest"
 	"github.com/stretchr/testify/assert"
 )
@@ -85,7 +87,7 @@ func ExampleClient_Stream() {
 	// to do: can `e interface{}` be `e Effect` ?? Then we won't have type assertion.
 	err := client.Stream(ctx, effectRequest, func(e interface{}) {
 
-		resp, ok := e.(Effect)
+		resp, ok := e.(effects.Base)
 		if ok {
 			fmt.Println(resp.Type)
 		}
@@ -271,7 +273,7 @@ func TestEffectsRequest(t *testing.T) {
 
 	effects, err := client.Effects(effectRequest)
 	if assert.NoError(t, err) {
-		assert.IsType(t, effects, EffectsPage{})
+		assert.IsType(t, effects, hProtocol.EffectsPage{})
 
 	}
 
@@ -283,7 +285,7 @@ func TestEffectsRequest(t *testing.T) {
 
 	effects, err = client.Effects(effectRequest)
 	if assert.NoError(t, err) {
-		assert.IsType(t, effects, EffectsPage{})
+		assert.IsType(t, effects, hProtocol.EffectsPage{})
 	}
 
 	// too many parameters
@@ -318,7 +320,7 @@ func TestAssetsRequest(t *testing.T) {
 
 	assets, err := client.Assets(assetRequest)
 	if assert.NoError(t, err) {
-		assert.IsType(t, assets, AssetsPage{})
+		assert.IsType(t, assets, hProtocol.AssetsPage{})
 		record := assets.Embedded.Records[0]
 		assert.Equal(t, record.Asset.Code, "ABC")
 		assert.Equal(t, record.Asset.Issuer, "GCLWGQPMKXQSPF776IU33AH4PZNOOWNAWGGKVTBQMIC5IMKUNP3E6NVU")
