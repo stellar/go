@@ -11,6 +11,7 @@ import (
 	"encoding/json"
 
 	"github.com/stellar/go/protocols/horizon/base"
+	"github.com/stellar/go/protocols/horizon/effects"
 	"github.com/stellar/go/strkey"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/support/render/hal"
@@ -474,4 +475,110 @@ func MustKeyTypeFromAddress(address string) string {
 	}
 
 	return ret
+}
+
+// AccountData represents a single data object stored on by an account
+type AccountData struct {
+	Value string `json:"value"`
+}
+
+// EffectsPage contains page of effects returned by Horizon.
+type EffectsPage struct {
+	Embedded struct {
+		Records []effects.Base
+	} `json:"_embedded"`
+}
+
+// TradeAggregationsPage returns a list of aggregated trade records, aggregated by resolution
+type TradeAggregationsPage struct {
+	Links    hal.Links `json:"_links"`
+	Embedded struct {
+		Records []TradeAggregation `json:"records"`
+	} `json:"_embedded"`
+}
+
+// TradesPage returns a list of trade records
+type TradesPage struct {
+	Links    hal.Links `json:"_links"`
+	Embedded struct {
+		Records []Trade `json:"records"`
+	} `json:"_embedded"`
+}
+
+// OffersPage returns a list of offers
+type OffersPage struct {
+	Links    hal.Links `json:"_links"`
+	Embedded struct {
+		Records []Offer `json:"records"`
+	} `json:"_embedded"`
+}
+
+// AssetsPage contains page of assets returned by Horizon.
+type AssetsPage struct {
+	Links    hal.Links `json:"_links"`
+	Embedded struct {
+		Records []AssetStat
+	} `json:"_embedded"`
+}
+
+// LedgersPage contains page of ledger information returned by Horizon
+type LedgersPage struct {
+	Links    hal.Links `json:"_links"`
+	Embedded struct {
+		Records []Ledger
+	} `json:"_embedded"`
+}
+
+// SingleMetric represents a metric with a single value
+type SingleMetric struct {
+	Value int `json:"value"`
+}
+
+// LogMetric represents metrics that are logged by horizon for each log level
+type LogMetric struct {
+	Rate15m  float64 `json:"15m.rate"`
+	Rate1m   float64 `json:"1m.rate"`
+	Rate5m   float64 `json:"5m.rate"`
+	Count    int     `json:"count"`
+	MeanRate float64 `json:"mean.rate"`
+}
+
+// LogTotalMetric represents total metrics logged for ingester, requests and submitted transactions
+type LogTotalMetric struct {
+	LogMetric
+	Percent75   float64 `json:"75%"`
+	Percent95   float64 `json:"95%"`
+	Percent99   float64 `json:"99%"`
+	Percent99_9 float64 `json:"99.9%"`
+	Max         float64 `json:"max"`
+	Mean        float64 `json:"mean"`
+	Median      float64 `json:"median"`
+	Min         float64 `json:"min"`
+	StdDev      float64 `json:"stddev"`
+}
+
+// Metrics represents a response of metrics from horizon
+type Metrics struct {
+	Links                  hal.Links      `json:"_links"`
+	GoRoutines             SingleMetric   `json:"goroutines"`
+	HistoryElderLedger     SingleMetric   `json:"history.elder_ledger"`
+	HistoryLatestLedger    SingleMetric   `json:"history.latest_ledger"`
+	HistoryOpenConnections SingleMetric   `json:"history.open_connections"`
+	IngesterIngestLedger   LogTotalMetric `json:"ingester.ingest_ledger"`
+	IngesterClearLedger    LogTotalMetric `json:"ingester.clear_ledger"`
+	LoggingDebug           LogMetric      `json:"logging.debug"`
+	LoggingError           LogMetric      `json:"logging.error"`
+	LoggingInfo            LogMetric      `json:"logging.info"`
+	LoggingPanic           LogMetric      `json:"logging.panic"`
+	LoggingWarning         LogMetric      `json:"logging.warning"`
+	RequestsFailed         LogMetric      `json:"requests.failed"`
+	RequestsSucceeded      LogMetric      `json:"requests.succeeded"`
+	RequestsTotal          LogTotalMetric `json:"requests.total"`
+	CoreLatestLedger       SingleMetric   `json:"stellar_core.latest_ledger"`
+	CoreOpenConnections    SingleMetric   `json:"stellar_core.open_connections"`
+	TxsubBuffered          SingleMetric   `json:"txsub.buffered"`
+	TxsubFailed            LogMetric      `json:"txsub.failed"`
+	TxsubOpen              SingleMetric   `json:"txsub.open"`
+	TxsubSucceeded         LogMetric      `json:"txsub.succeeded"`
+	TxsubTotal             LogTotalMetric `json:"txsub.total"`
 }

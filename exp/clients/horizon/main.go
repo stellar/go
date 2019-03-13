@@ -6,6 +6,9 @@ import (
 	"errors"
 	"net/http"
 	"net/url"
+
+	hProtocol "github.com/stellar/go/protocols/horizon"
+	"github.com/stellar/go/support/render/problem"
 )
 
 // Cursor represents `cursor` param in queries
@@ -31,7 +34,7 @@ const (
 // Error struct contains the problem returned by Horizon
 type Error struct {
 	Response *http.Response
-	Problem  Problem
+	Problem  problem.P
 }
 
 var (
@@ -66,13 +69,13 @@ type Client struct {
 
 // ClientInterface contains methods implemented by the horizon client
 type ClientInterface interface {
-	AccountDetail(request AccountRequest) (Account, error)
-	AccountData(request AccountRequest) (AccountData, error)
-	Effects(request EffectRequest) (EffectsPage, error)
-	Assets(request AssetRequest) (AssetsPage, error)
-	Ledgers(request LedgerRequest) (LedgersPage, error)
-	LedgerDetail(sequence uint32) (Ledger, error)
-	Metrics() (Metrics, error)
+	AccountDetail(request AccountRequest) (hProtocol.Account, error)
+	AccountData(request AccountRequest) (hProtocol.AccountData, error)
+	Effects(request EffectRequest) (hProtocol.EffectsPage, error)
+	Assets(request AssetRequest) (hProtocol.AssetsPage, error)
+	Ledgers(request LedgerRequest) (hProtocol.LedgersPage, error)
+	LedgerDetail(sequence uint32) (hProtocol.Ledger, error)
+	Metrics() (hProtocol.Metrics, error)
 	Stream(ctx context.Context, request StreamRequest, handler func(interface{})) error
 }
 

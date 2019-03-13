@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 
+	hProtocol "github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/support/app"
 	"github.com/stellar/go/support/errors"
 )
@@ -32,7 +33,7 @@ func (c *Client) sendRequest(hr HorizonRequest, a interface{}) (err error) {
 
 // AccountDetail returns information for a single account.
 // See https://www.stellar.org/developers/horizon/reference/endpoints/accounts-single.html
-func (c *Client) AccountDetail(request AccountRequest) (account Account, err error) {
+func (c *Client) AccountDetail(request AccountRequest) (account hProtocol.Account, err error) {
 	if request.AccountId == "" {
 		err = errors.New("No account ID provided")
 	}
@@ -47,7 +48,7 @@ func (c *Client) AccountDetail(request AccountRequest) (account Account, err err
 
 // AccountData returns a single data associated with a given account
 // See https://www.stellar.org/developers/horizon/reference/endpoints/data-for-account.html
-func (c *Client) AccountData(request AccountRequest) (accountData AccountData, err error) {
+func (c *Client) AccountData(request AccountRequest) (accountData hProtocol.AccountData, err error) {
 	if request.AccountId == "" || request.DataKey == "" {
 		err = errors.New("Too few parameters")
 	}
@@ -62,14 +63,14 @@ func (c *Client) AccountData(request AccountRequest) (accountData AccountData, e
 
 // Effects returns effects(https://www.stellar.org/developers/horizon/reference/resources/effect.html)
 // It can be used to return effects for an account, a ledger, an operation, a transaction and all effects on the network.
-func (c *Client) Effects(request EffectRequest) (effects EffectsPage, err error) {
+func (c *Client) Effects(request EffectRequest) (effects hProtocol.EffectsPage, err error) {
 	err = c.sendRequest(request, &effects)
 	return
 }
 
 // Assets returns asset information.
 // See https://www.stellar.org/developers/horizon/reference/endpoints/assets-all.html
-func (c *Client) Assets(request AssetRequest) (assets AssetsPage, err error) {
+func (c *Client) Assets(request AssetRequest) (assets hProtocol.AssetsPage, err error) {
 	err = c.sendRequest(request, &assets)
 	return
 }
@@ -83,14 +84,14 @@ func (c *Client) Stream(ctx context.Context, request StreamRequest, handler func
 
 // Ledgers returns information about all ledgers.
 // See https://www.stellar.org/developers/horizon/reference/endpoints/ledgers-all.html
-func (c *Client) Ledgers(request LedgerRequest) (ledgers LedgersPage, err error) {
+func (c *Client) Ledgers(request LedgerRequest) (ledgers hProtocol.LedgersPage, err error) {
 	err = c.sendRequest(request, &ledgers)
 	return
 }
 
 // LedgerDetails returns information about a particular ledger for a given sequence number
 // See https://www.stellar.org/developers/horizon/reference/endpoints/ledgers-single.html
-func (c *Client) LedgerDetail(sequence uint32) (ledger Ledger, err error) {
+func (c *Client) LedgerDetail(sequence uint32) (ledger hProtocol.Ledger, err error) {
 	if sequence <= 0 {
 		err = errors.New("Invalid sequence number provided")
 	}
@@ -107,7 +108,7 @@ func (c *Client) LedgerDetail(sequence uint32) (ledger Ledger, err error) {
 
 // Metrics returns monitoring information about a horizon server
 // See https://www.stellar.org/developers/horizon/reference/endpoints/metrics.html
-func (c *Client) Metrics() (metrics Metrics, err error) {
+func (c *Client) Metrics() (metrics hProtocol.Metrics, err error) {
 	request := metricsRequest{endpoint: "metrics"}
 	err = c.sendRequest(request, &metrics)
 	return
