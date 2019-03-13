@@ -401,6 +401,8 @@ func (a *App) init() {
 	a.web.rateLimiter = maybeInitWebRateLimiter(a.config.RateQuota)
 
 	// web.middleware
+	// Note that we passed in `a` here for putting the whole App in the context.
+	// This parameter will be removed soon.
 	a.web.installMiddleware(a, a.config.ConnectionTimeout)
 
 	// web.actions
