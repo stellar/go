@@ -402,7 +402,7 @@ func TestChangeTrust(t *testing.T) {
 
 	issuerAsset := NewAsset("ABCD", kp1.Address())
 	changeTrust := ChangeTrust{
-		Line:  *issuerAsset,
+		Line:  issuerAsset,
 		Limit: "10",
 	}
 
@@ -427,7 +427,7 @@ func TestChangeTrustNativeAssetNotAllowed(t *testing.T) {
 
 	issuerAsset := NewNativeAsset()
 	changeTrust := ChangeTrust{
-		Line:  *issuerAsset,
+		Line:  issuerAsset,
 		Limit: "10",
 	}
 

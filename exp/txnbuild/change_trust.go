@@ -9,7 +9,7 @@ import (
 // ChangeTrust represents the Stellar change trust operation. See
 // https://www.stellar.org/developers/guides/concepts/list-of-operations.html
 type ChangeTrust struct {
-	Line  Asset
+	Line  *Asset
 	Limit string
 	xdrOp xdr.ChangeTrustOp
 }
@@ -22,7 +22,7 @@ func (ct *ChangeTrust) BuildXDR() (xdr.Operation, error) {
 	}
 	ct.xdrOp.Line, err = ct.Line.ToXDR()
 	if err != nil {
-		return xdr.Operation{}, errors.Wrap(err, "Can't convert trustline to XDR")
+		return xdr.Operation{}, errors.Wrap(err, "Can't convert asset for trustline to XDR")
 	}
 
 	ct.xdrOp.Limit, err = amount.Parse(ct.Limit)

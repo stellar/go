@@ -72,7 +72,7 @@ func exampleChangeTrust(client *horizon.Client, mock bool) horizon.TransactionSu
 
 	issuer := txnbuild.NewAsset("ABCD", keys[1].Address)
 	changeTrust := txnbuild.ChangeTrust{
-		Line:  *issuer,
+		Line:  issuer,
 		Limit: "10",
 	}
 
