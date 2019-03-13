@@ -3,7 +3,6 @@ package horizon
 import (
 	"compress/flate"
 	"database/sql"
-	"fmt"
 	"net/http"
 	"strings"
 
@@ -16,9 +15,12 @@ import (
 	hProblem "github.com/stellar/go/services/horizon/internal/render/problem"
 	"github.com/stellar/go/services/horizon/internal/render/sse"
 	"github.com/stellar/go/services/horizon/internal/txsub/sequence"
+	"github.com/stellar/go/support/log"
 	"github.com/stellar/go/support/render/problem"
 	"github.com/throttled/throttled"
 )
+
+const LRUCacheSize = 50000
 
 // Web contains the http server related fields for horizon: the router,
 // rate limiter, etc.
@@ -168,23 +170,22 @@ func initWebActions(app *App) {
 	r.NotFound(NotFoundAction{}.Handle)
 }
 
-func initWebRateLimiter(app *App) {
+func maybeInitWebRateLimiter(rateQuota *throttled.RateQuota) *throttled.HTTPRateLimiter {
 	// Disabled
-	if app.config.RateLimit == nil {
-		return
+	if rateQuota == nil {
+		return nil
 	}
 
-	rateLimiter, err := throttled.NewGCRARateLimiter(50000, *app.config.RateLimit)
+	rateLimiter, err := throttled.NewGCRARateLimiter(LRUCacheSize, *rateQuota)
 	if err != nil {
-		panic(fmt.Errorf("unable to create RateLimiter"))
+		log.Fatalf("unable to create RateLimiter: %v", err)
 	}
 
-	httpRateLimiter := throttled.HTTPRateLimiter{
+	return &throttled.HTTPRateLimiter{
 		RateLimiter:   rateLimiter,
-		DeniedHandler: &RateLimitExceededAction{App: app, Action: Action{}},
+		DeniedHandler: &RateLimitExceededAction{Action{}},
+		VaryBy:        VaryByRemoteIP{},
 	}
-	httpRateLimiter.VaryBy = VaryByRemoteIP{}
-	app.web.rateLimiter = &httpRateLimiter
 }
 
 type VaryByRemoteIP struct{}

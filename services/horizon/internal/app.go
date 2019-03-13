@@ -379,8 +379,8 @@ func (a *App) init() {
 	a.UpdateStellarCoreInfo()
 
 	// horizon-db and core-db
-	initHorizonDb(a)
-	initCoreDb(a)
+	mustInitHorizonDB(a)
+	mustInitCoreDB(a)
 
 	// ingester
 	initIngester(a)
@@ -398,7 +398,7 @@ func (a *App) init() {
 	initWeb(a)
 
 	// web.rate-limiter
-	initWebRateLimiter(a)
+	a.web.rateLimiter = maybeInitWebRateLimiter(a.config.RateQuota)
 
 	// web.middleware
 	initWebMiddleware(a)

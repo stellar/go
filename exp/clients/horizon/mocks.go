@@ -53,5 +53,10 @@ func (m *MockClient) LedgerDetail(sequence uint32) (Ledger, error) {
 	return a.Get(0).(Ledger), a.Error(1)
 }
 
+func (m *MockClient) Metrics() (Metrics, error) {
+	a := m.Called()
+	return a.Get(0).(Metrics), a.Error(1)
+}
+
 // ensure that the MockClient implements ClientInterface
 var _ ClientInterface = &MockClient{}
