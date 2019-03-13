@@ -60,7 +60,8 @@ func main() {
 	// resp := exampleManageData(client, false)
 	// resp := exampleManageDataRemoveDataEntry(client, false)
 	// resp := exampleSetOptions(client, true)
-	resp := exampleChangeTrust(client, true)
+	// resp := exampleChangeTrust(client, false)
+	resp := exampleChangeTrustDeleteTrustline(client, true)
 	fmt.Println(resp.TransactionSuccessToString())
 }
 
@@ -79,6 +80,29 @@ func exampleChangeTrust(client *horizon.Client, mock bool) horizon.TransactionSu
 	tx := txnbuild.Transaction{
 		SourceAccount: sourceAccount,
 		Operations:    []txnbuild.Operation{&changeTrust},
+		Network:       network.TestNetworkPassphrase,
+	}
+
+	txeBase64 := buildSignEncode(tx, keys[0].Keypair)
+	log.Println("Base 64 TX: ", txeBase64)
+
+	resp := submit(client, txeBase64, mock)
+
+	return resp
+}
+
+func exampleChangeTrustDeleteTrustline(client *horizon.Client, mock bool) horizon.TransactionSuccess {
+	keys := initKeys()
+	horizonSourceAccount, err := client.LoadAccount(keys[0].Address)
+	dieIfError("loadaccount", err)
+	sourceAccount := mapAccounts(horizonSourceAccount)
+
+	issuedAsset := txnbuild.NewAsset("ABCD", keys[1].Address)
+	removeTrust := txnbuild.NewRemoveTrust(issuedAsset)
+
+	tx := txnbuild.Transaction{
+		SourceAccount: sourceAccount,
+		Operations:    []txnbuild.Operation{&removeTrust},
 		Network:       network.TestNetworkPassphrase,
 	}
 

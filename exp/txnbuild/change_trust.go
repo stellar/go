@@ -14,6 +14,14 @@ type ChangeTrust struct {
 	xdrOp xdr.ChangeTrustOp
 }
 
+// NewRemoveTrust returns a ChangeTrust operation to remove the trustline of the described asset.
+func NewRemoveTrust(issuedAsset *Asset) ChangeTrust {
+	return ChangeTrust{
+		Line:  issuedAsset,
+		Limit: "0",
+	}
+}
+
 // BuildXDR for ChangeTrust returns a fully configured XDR Operation.
 func (ct *ChangeTrust) BuildXDR() (xdr.Operation, error) {
 	var err error
