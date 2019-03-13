@@ -63,6 +63,19 @@ func TestOperationActions_Index(t *testing.T) {
 		ht.Assert.PageOf(1, w.Body)
 	}
 
+	// 400 for invalid tx hash
+	w = ht.Get("/transactions/ /operations")
+	ht.Assert.Equal(400, w.Code)
+
+	w = ht.Get("/transactions/invalid/operations")
+	ht.Assert.Equal(400, w.Code)
+
+	w = ht.Get("/transactions/1d2a4be72470658f68db50eef29ea0af3f985ce18b5c218f03461d40c47dc29/operations")
+	ht.Assert.Equal(400, w.Code)
+
+	w = ht.Get("/transactions/1d2a4be72470658f68db50eef29ea0af3f985ce18b5c218f03461d40c47dc29222/operations")
+	ht.Assert.Equal(400, w.Code)
+
 	// filtered by ledger
 	w = ht.Get("/ledgers/3/operations")
 	if ht.Assert.Equal(200, w.Code) {
@@ -241,5 +254,34 @@ func TestOperation_BumpSequence(t *testing.T) {
 		ht.Require.NoError(err, "failed to parse body")
 		ht.Assert.Equal("bump_sequence", result.Type)
 		ht.Assert.Equal("300000000003", result.BumpTo)
+	}
+}
+
+// TestOperationActions_Show_Extra_TxID tests if failed transactions are not returned
+// when `tx_id` GET param is present. This was happening because `base.GetString()`
+// method retuns values from the query when URL param is not present.
+func TestOperationActions_Show_Extra_TxID(t *testing.T) {
+	ht := StartHTTPTest(t, "failed_transactions")
+	defer ht.Finish()
+
+	w := ht.Get("/accounts/GBXGQJWVLWOYHFLVTKWV5FGHA3LNYY2JQKM7OAJAUEQFU6LPCSEFVXON/operations?limit=200&tx_id=abc")
+
+	if ht.Assert.Equal(200, w.Code) {
+		records := []operations.Base{}
+		ht.UnmarshalPage(w.Body, &records)
+
+		successful := 0
+		failed := 0
+
+		for _, op := range records {
+			if op.TransactionSuccessful {
+				successful++
+			} else {
+				failed++
+			}
+		}
+
+		ht.Assert.Equal(3, successful)
+		ht.Assert.Equal(0, failed)
 	}
 }

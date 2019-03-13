@@ -75,6 +75,27 @@ func (base *Base) checkUTF8(name, value string) {
 	}
 }
 
+// GetStringFromURLParam retrieves a string from the URLParams.
+func (base *Base) GetStringFromURLParam(name string) string {
+	if base.Err != nil {
+		return ""
+	}
+
+	fromURL, ok := base.GetURLParam(name)
+	if ok {
+		ret, err := url.PathUnescape(fromURL)
+		if err != nil {
+			base.SetInvalidField(name, err)
+			return ""
+		}
+
+		base.checkUTF8(name, ret)
+		return ret
+	}
+
+	return ""
+}
+
 // GetString retrieves a string from either the URLParams, form or query string.
 // This method uses the priority (URLParams, Form, Query).
 func (base *Base) GetString(name string) string {
@@ -147,7 +168,7 @@ func (base *Base) GetInt32(name string) int32 {
 	return int32(asI64)
 }
 
-// GetBool retrieves a bool from the action parameter of the given name.
+// GetBool retrieves a bool from the query parameter for the given name.
 // Populates err if the value is not a valid bool.
 // Defaults to `false` in case of an empty string. WARNING, do not change
 // this behaviour without checking other modules, ex. this is critical
@@ -157,7 +178,7 @@ func (base *Base) GetBool(name string) bool {
 		return false
 	}
 
-	asStr := base.GetString(name)
+	asStr := base.R.URL.Query().Get(name)
 	if asStr == "" {
 		return false
 	}
