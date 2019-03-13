@@ -202,10 +202,7 @@ func exampleSendNonNative(client *horizon.Client, mock bool) horizon.Transaction
 	payment := txnbuild.Payment{
 		Destination: keys[1].Address,
 		Amount:      "100",
-		Asset: txnbuild.Asset{
-			Code:   "ABCD",
-			Issuer: keys[0].Address,
-		},
+		Asset:       txnbuild.NewAsset("ABCD", keys[0].Address),
 	}
 
 	tx := txnbuild.Transaction{
