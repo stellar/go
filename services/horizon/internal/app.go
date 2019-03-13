@@ -403,10 +403,10 @@ func (a *App) init() {
 	// web.middleware
 	// Note that we passed in `a` here for putting the whole App in the context.
 	// This parameter will be removed soon.
-	a.web.installMiddleware(a, a.config.ConnectionTimeout)
+	a.web.mustInstallMiddlewares(a, a.config.ConnectionTimeout)
 
 	// web.actions
-	a.web.installActions(a.config.EnableAssetStats, a.config.FriendbotURL)
+	a.web.mustInstallActions(a.config.EnableAssetStats, a.config.FriendbotURL)
 
 	// metrics and log.metrics
 	a.metrics = metrics.NewRegistry()

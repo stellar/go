@@ -75,10 +75,14 @@ func mustInitWeb(ctx context.Context, hq *history.Q, cq *core.Q, suf time.Durati
 	}
 }
 
-// installMiddleware installs the middleware stack used for horizon onto the
+// mustInstallMiddlewares installs the middleware stack used for horizon onto the
 // provided app.
 // Note that a request will go through the middlewares from top to bottom.
-func (w *web) installMiddleware(app *App, connTimeout time.Duration) {
+func (w *web) mustInstallMiddlewares(app *App, connTimeout time.Duration) {
+	if w == nil {
+		log.Fatal("missing web instance for installing middlewares")
+	}
+
 	r := w.router
 	r.Use(chimiddleware.Timeout(connTimeout))
 	r.Use(chimiddleware.StripSlashes)
@@ -104,9 +108,9 @@ func (w *web) installMiddleware(app *App, connTimeout time.Duration) {
 	r.Use(w.RateLimitMiddleware)
 }
 
-// installActions installs the routing configuration of horizon onto the
+// mustInstallActions installs the routing configuration of horizon onto the
 // provided app.  All route registration should be implemented here.
-func (w *web) installActions(enableAssetStats bool, friendbotURL *url.URL) {
+func (w *web) mustInstallActions(enableAssetStats bool, friendbotURL *url.URL) {
 	if w == nil {
 		log.Fatal("missing web instance for installing web actions")
 	}
