@@ -400,9 +400,8 @@ func TestChangeTrust(t *testing.T) {
 		SequenceNumber: 40385577484348,
 	}
 
-	issuedAsset := NewAsset("ABCD", kp1.Address())
 	changeTrust := ChangeTrust{
-		Line:  issuedAsset,
+		Line:  NewAsset("ABCD", kp1.Address()),
 		Limit: "10",
 	}
 
@@ -425,9 +424,8 @@ func TestChangeTrustNativeAssetNotAllowed(t *testing.T) {
 		SequenceNumber: 40385577484348,
 	}
 
-	issuedAsset := NewNativeAsset()
 	changeTrust := ChangeTrust{
-		Line:  issuedAsset,
+		Line:  NewNativeAsset(),
 		Limit: "10",
 	}
 
@@ -452,7 +450,7 @@ func TestChangeTrustDeleteTrustline(t *testing.T) {
 	}
 
 	issuedAsset := NewAsset("ABCD", kp1.Address())
-	removeTrust := NewRemoveTrust(issuedAsset)
+	removeTrust := NewRemoveTrustlineOp(issuedAsset)
 
 	tx := Transaction{
 		SourceAccount: sourceAccount,
