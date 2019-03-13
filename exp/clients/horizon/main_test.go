@@ -126,6 +126,31 @@ func ExampleClient_Metrics() {
 
 }
 
+func ExampleClient_FeeStats() {
+
+	client := DefaultPublicNetClient
+	// horizon fees
+	fees, err := client.FeeStats()
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	fmt.Print(fees)
+
+}
+
+func ExampleClient_AccountOffers() {
+
+	client := DefaultPublicNetClient
+	offerRequest := OfferRequest{ForAccount: "GCLWGQPMKXQSPF776IU33AH4PZNOOWNAWGGKVTBQMIC5IMKUNP3E6NVU", Cursor: "now", Order: OrderDesc}
+	offers, err := client.AccountOffers(offerRequest)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	fmt.Print(offers)
+}
+
 func TestAccountDetail(t *testing.T) {
 	hmock := httptest.NewClient()
 	client := &Client{
@@ -450,6 +475,84 @@ func TestMetrics(t *testing.T) {
 		_, ok := err.(*Error)
 		assert.Equal(t, ok, false)
 	}
+}
+
+func TestFeeStats(t *testing.T) {
+	hmock := httptest.NewClient()
+	client := &Client{
+		HorizonURL: "https://localhost/",
+		HTTP:       hmock,
+	}
+
+	// happy path
+	hmock.On(
+		"GET",
+		"https://localhost/fee_stats",
+	).ReturnString(200, feesResponse)
+
+	fees, err := client.FeeStats()
+
+	if assert.NoError(t, err) {
+		assert.Equal(t, fees.LastLedger, 22606298)
+		assert.Equal(t, fees.LastLedgerBaseFee, 100)
+		assert.Equal(t, fees.LedgerCapacityUsage, 0.97)
+		assert.Equal(t, fees.MinAcceptedFee, 100)
+		assert.Equal(t, fees.ModeAcceptedFee, 250)
+		assert.Equal(t, fees.P10AcceptedFee, 100)
+		assert.Equal(t, fees.P20AcceptedFee, 100)
+		assert.Equal(t, fees.P30AcceptedFee, 250)
+		assert.Equal(t, fees.P40AcceptedFee, 250)
+		assert.Equal(t, fees.P50AcceptedFee, 250)
+		assert.Equal(t, fees.P60AcceptedFee, 1210)
+		assert.Equal(t, fees.P70AcceptedFee, 1221)
+		assert.Equal(t, fees.P80AcceptedFee, 1225)
+		assert.Equal(t, fees.P90AcceptedFee, 1225)
+		assert.Equal(t, fees.P95AcceptedFee, 1225)
+		assert.Equal(t, fees.P99AcceptedFee, 8000)
+
+	}
+
+	// connection error
+	hmock.On(
+		"GET",
+		"https://localhost/metrics",
+	).ReturnError("http.Client error")
+
+	_, err = client.Metrics()
+	if assert.Error(t, err) {
+		assert.Contains(t, err.Error(), "http.Client error")
+		_, ok := err.(*Error)
+		assert.Equal(t, ok, false)
+	}
+}
+
+func TestOfferRequest(t *testing.T) {
+	hmock := httptest.NewClient()
+	client := &Client{
+		HorizonURL: "https://localhost/",
+		HTTP:       hmock,
+	}
+
+	offersRequest := OfferRequest{ForAccount: "GDOJCPYIB66RY4XNDLRRHQQXB27YLNNAGAYV5HMHEYNYY4KUNV5FDV2F"}
+
+	// account offers
+	hmock.On(
+		"GET",
+		"https://localhost/accounts/GDOJCPYIB66RY4XNDLRRHQQXB27YLNNAGAYV5HMHEYNYY4KUNV5FDV2F/offers",
+	).ReturnString(200, offersResponse)
+
+	offers, err := client.AccountOffers(offersRequest)
+	if assert.NoError(t, err) {
+		assert.IsType(t, offers, hProtocol.OffersPage{})
+		record := offers.Embedded.Records[0]
+		assert.Equal(t, record.ID, int64(432323))
+		assert.Equal(t, record.Seller, "GDOJCPYIB66RY4XNDLRRHQQXB27YLNNAGAYV5HMHEYNYY4KUNV5FDV2F")
+		assert.Equal(t, record.PT, "432323")
+		assert.Equal(t, record.Selling.Code, "ABC")
+		assert.Equal(t, record.Amount, "1999979.8700000")
+		assert.Equal(t, record.LastModifiedLedger, int32(103307))
+	}
+
 }
 
 var accountResponse = `{
@@ -845,5 +948,71 @@ var metricsResponse = `{
     "median": 18950996.5,
     "min": 3156355,
     "stddev": 79193338.90936844
+  }
+}`
+
+var feesResponse = `{
+  "last_ledger": "22606298",
+  "last_ledger_base_fee": "100",
+  "ledger_capacity_usage": "0.97",
+  "min_accepted_fee": "100",
+  "mode_accepted_fee": "250",
+  "p10_accepted_fee": "100",
+  "p20_accepted_fee": "100",
+  "p30_accepted_fee": "250",
+  "p40_accepted_fee": "250",
+  "p50_accepted_fee": "250",
+  "p60_accepted_fee": "1210",
+  "p70_accepted_fee": "1221",
+  "p80_accepted_fee": "1225",
+  "p90_accepted_fee": "1225",
+  "p95_accepted_fee": "1225",
+  "p99_accepted_fee": "8000"
+}`
+
+var offersResponse = `{
+  "_links": {
+    "self": {
+      "href": "https://horizon-testnet.stellar.org/accounts/GDOJCPYIB66RY4XNDLRRHQQXB27YLNNAGAYV5HMHEYNYY4KUNV5FDV2F/offers?cursor=&limit=10&order=asc"
+    },
+    "next": {
+      "href": "https://horizon-testnet.stellar.org/accounts/GDOJCPYIB66RY4XNDLRRHQQXB27YLNNAGAYV5HMHEYNYY4KUNV5FDV2F/offers?cursor=432323&limit=10&order=asc"
+    },
+    "prev": {
+      "href": "https://horizon-testnet.stellar.org/accounts/GDOJCPYIB66RY4XNDLRRHQQXB27YLNNAGAYV5HMHEYNYY4KUNV5FDV2F/offers?cursor=432323&limit=10&order=desc"
+    }
+  },
+  "_embedded": {
+    "records": [
+      {
+        "_links": {
+          "self": {
+            "href": "https://horizon-testnet.stellar.org/offers/432323"
+          },
+          "offer_maker": {
+            "href": "https://horizon-testnet.stellar.org/accounts/GDOJCPYIB66RY4XNDLRRHQQXB27YLNNAGAYV5HMHEYNYY4KUNV5FDV2F"
+          }
+        },
+        "id": 432323,
+        "paging_token": "432323",
+        "seller": "GDOJCPYIB66RY4XNDLRRHQQXB27YLNNAGAYV5HMHEYNYY4KUNV5FDV2F",
+        "selling": {
+          "asset_type": "credit_alphanum4",
+          "asset_code": "ABC",
+          "asset_issuer": "GDP6QEA4A5CRNGUIGYHHFETDPNEESIZFW53RVISXGSALI7KXNUC4YBWD"
+        },
+        "buying": {
+          "asset_type": "native"
+        },
+        "amount": "1999979.8700000",
+        "price_r": {
+          "n": 100,
+          "d": 1
+        },
+        "price": "100.0000000",
+        "last_modified_ledger": 103307,
+        "last_modified_time": "2019-03-05T13:23:50Z"
+      }
+    ]
   }
 }`
