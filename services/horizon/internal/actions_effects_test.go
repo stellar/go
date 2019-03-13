@@ -68,6 +68,12 @@ func TestEffectActions_Index(t *testing.T) {
 			ht.Assert.PageOf(3, w.Body)
 		}
 
+		// Check extra params
+		w = ht.Get("/ledgers/100/effects?account_id=GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H")
+		ht.Assert.Equal(400, w.Code)
+		w = ht.Get("/accounts/GCXKG6RN4ONIEPCMNFB732A436Z5PNDSRLGWK7GBLCMQLIFO4S7EYWVU/effects?ledger_id=5")
+		ht.Assert.Equal(400, w.Code)
+
 		// before history
 		ht.ReapHistory(1)
 		w = ht.Get("/effects?order=desc&cursor=8589938689-1")

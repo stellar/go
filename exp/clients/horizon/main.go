@@ -2,9 +2,13 @@
 package horizonclient
 
 import (
+	"context"
 	"errors"
 	"net/http"
 	"net/url"
+
+	hProtocol "github.com/stellar/go/protocols/horizon"
+	"github.com/stellar/go/support/render/problem"
 )
 
 // Cursor represents `cursor` param in queries
@@ -30,7 +34,7 @@ const (
 // Error struct contains the problem returned by Horizon
 type Error struct {
 	Response *http.Response
-	Problem  Problem
+	Problem  problem.P
 }
 
 var (
@@ -65,10 +69,14 @@ type Client struct {
 
 // ClientInterface contains methods implemented by the horizon client
 type ClientInterface interface {
-	AccountDetail(request AccountRequest) (Account, error)
-	AccountData(request AccountRequest) (AccountData, error)
-	Effects(request EffectRequest) (EffectsPage, error)
-	Assets(request AssetRequest) (AssetsPage, error)
+	AccountDetail(request AccountRequest) (hProtocol.Account, error)
+	AccountData(request AccountRequest) (hProtocol.AccountData, error)
+	Effects(request EffectRequest) (hProtocol.EffectsPage, error)
+	Assets(request AssetRequest) (hProtocol.AssetsPage, error)
+	Ledgers(request LedgerRequest) (hProtocol.LedgersPage, error)
+	LedgerDetail(sequence uint32) (hProtocol.Ledger, error)
+	Metrics() (hProtocol.Metrics, error)
+	Stream(ctx context.Context, request StreamRequest, handler func(interface{})) error
 }
 
 // DefaultTestNetClient is a default client to connect to test network
@@ -83,8 +91,14 @@ var DefaultPublicNetClient = &Client{
 	HTTP:       http.DefaultClient,
 }
 
+// HorizonRequest contains methods implemented by request structs for horizon endpoints
 type HorizonRequest interface {
 	BuildUrl() (string, error)
+}
+
+// HorizonRequest contains methods implemented by request structs for endpoints that support streaming
+type StreamRequest interface {
+	Stream(ctx context.Context, horizonURL string, handler func(interface{})) error
 }
 
 // AccountRequest struct contains data for making requests to the accounts endpoint of an horizon server
@@ -106,10 +120,23 @@ type EffectRequest struct {
 	Limit          Limit
 }
 
+// AssetRequest struct contains data for getting asset details from an horizon server.
 type AssetRequest struct {
 	ForAssetCode   AssetCode
 	ForAssetIssuer AssetIssuer
 	Order          Order
 	Cursor         Cursor
 	Limit          Limit
+}
+
+// LedgerRequest struct contains data for getting ledger details from an horizon server.
+type LedgerRequest struct {
+	Order       Order
+	Cursor      Cursor
+	Limit       Limit
+	forSequence uint32
+}
+
+type metricsRequest struct {
+	endpoint string
 }

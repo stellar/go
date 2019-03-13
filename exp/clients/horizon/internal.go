@@ -31,16 +31,6 @@ func decodeResponse(resp *http.Response, object interface{}) (err error) {
 	return
 }
 
-// deprecated. To do: remove from new client package
-func loadMemo(p *Payment) error {
-	res, err := http.Get(p.Links.Transaction.Href)
-	if err != nil {
-		return err
-	}
-	defer res.Body.Close()
-	return json.NewDecoder(res.Body).Decode(&p.Memo)
-}
-
 func countParams(params ...interface{}) int {
 	counter := 0
 	for _, param := range params {

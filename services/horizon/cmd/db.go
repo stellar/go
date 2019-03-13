@@ -85,14 +85,14 @@ var dbInitAssetStatsCmd = &cobra.Command{
 			log.Fatal(err)
 		}
 
-		log.Println(fmt.Sprintf("Updating %d assets...", count))
+		log.Printf("Updating %d assets...\n", count)
 
 		err = assetStats.UpdateAssetStats()
 		if err != nil {
 			log.Fatal(err)
 		}
 
-		log.Println(fmt.Sprintf("Added stats for %d assets...", count))
+		log.Printf("Added stats for %d assets...\n", count)
 	},
 }
 
@@ -159,9 +159,15 @@ var dbMigrateCmd = &cobra.Command{
 			log.Fatal(err)
 		}
 
-		_, err = schema.Migrate(db, dir, count)
+		numMigrationsRun, err := schema.Migrate(db, dir, count)
 		if err != nil {
 			log.Fatal(err)
+		}
+
+		if numMigrationsRun == 0 {
+			log.Println("No migrations applied.")
+		} else {
+			log.Printf("Successfully applied %d migrations.\n", numMigrationsRun)
 		}
 	},
 }

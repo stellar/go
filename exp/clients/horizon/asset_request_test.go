@@ -28,5 +28,4 @@ func TestAssetRequestBuildUrl(t *testing.T) {
 	// It should return valid assets endpoint and no errors
 	require.NoError(t, err)
 	assert.Equal(t, "assets?asset_code=ABC&asset_issuer=GCLWGQPMKXQSPF776IU33AH4PZNOOWNAWGGKVTBQMIC5IMKUNP3E6NVU&order=desc", endpoint)
-
 }
