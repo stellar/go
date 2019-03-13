@@ -115,7 +115,7 @@ var configOpts = []*support.ConfigOption{
 	},
 	&support.ConfigOption{
 		Name:        "per-hour-rate-limit",
-		ConfigKey:   &config.RateLimit,
+		ConfigKey:   &config.RateQuota,
 		OptType:     types.Int,
 		FlagDefault: 3600,
 		CustomSetValue: func(co *support.ConfigOption) {
