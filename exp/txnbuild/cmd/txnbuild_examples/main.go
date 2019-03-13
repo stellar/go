@@ -54,20 +54,13 @@ func main() {
 
 	// resp := exampleCreateAccount(client, false)
 	// resp := exampleSendLumens(client, false)
-<<<<<<< HEAD
 	// resp := exampleSendNonNative(client, false)
-=======
-	resp := exampleSendNonNative(client, false)
->>>>>>> master
 	// resp := exampleBumpSequence(client, false)
 	// resp := exampleAccountMerge(client, true)
 	// resp := exampleManageData(client, false)
 	// resp := exampleManageDataRemoveDataEntry(client, false)
 	// resp := exampleSetOptions(client, true)
-<<<<<<< HEAD
 	resp := exampleChangeTrust(client, true)
-=======
->>>>>>> master
 	fmt.Println(resp.TransactionSuccessToString())
 }
 
