@@ -43,6 +43,19 @@ func TestPaymentActions(t *testing.T) {
 		ht.Assert.PageOf(0, w.Body)
 	}
 
+	// 400 for invalid tx hash
+	w = ht.Get("/transactions/ /payments")
+	ht.Assert.Equal(400, w.Code)
+
+	w = ht.Get("/transactions/invalid/payments")
+	ht.Assert.Equal(400, w.Code)
+
+	w = ht.Get("/transactions/1d2a4be72470658f68db50eef29ea0af3f985ce18b5c218f03461d40c47dc29/payments")
+	ht.Assert.Equal(400, w.Code)
+
+	w = ht.Get("/transactions/1d2a4be72470658f68db50eef29ea0af3f985ce18b5c218f03461d40c47dc29222/payments")
+	ht.Assert.Equal(400, w.Code)
+
 	w = ht.Get("/transactions/1d2a4be72470658f68db50eef29ea0af3f985ce18b5c218f03461d40c47dc292/payments")
 	if ht.Assert.Equal(200, w.Code) {
 		ht.Assert.PageOf(1, w.Body)
@@ -163,4 +176,33 @@ func TestPayment_CreatedAt(t *testing.T) {
 	ht.Require.NoError(hq.LedgerBySequence(&l, 3))
 
 	ht.Assert.WithinDuration(l.ClosedAt, records[0].LedgerCloseTime, 1*time.Second)
+}
+
+// TestPaymentActions_Show_Extra_TxID tests if failed transactions are not returned
+// when `tx_id` GET param is present. This was happening because `base.GetString()`
+// method retuns values from the query when URL param is not present.
+func TestPaymentActions_Show_Extra_TxID(t *testing.T) {
+	ht := StartHTTPTest(t, "failed_transactions")
+	defer ht.Finish()
+
+	w := ht.Get("/accounts/GBXGQJWVLWOYHFLVTKWV5FGHA3LNYY2JQKM7OAJAUEQFU6LPCSEFVXON/payments?limit=200&tx_id=abc")
+
+	if ht.Assert.Equal(200, w.Code) {
+		records := []operations.Base{}
+		ht.UnmarshalPage(w.Body, &records)
+
+		successful := 0
+		failed := 0
+
+		for _, op := range records {
+			if op.TransactionSuccessful {
+				successful++
+			} else {
+				failed++
+			}
+		}
+
+		ht.Assert.Equal(2, successful)
+		ht.Assert.Equal(0, failed)
+	}
 }

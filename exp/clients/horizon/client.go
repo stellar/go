@@ -104,3 +104,11 @@ func (c *Client) LedgerDetail(sequence uint32) (ledger Ledger, err error) {
 	err = c.sendRequest(request, &ledger)
 	return
 }
+
+// Metrics returns monitoring information about a horizon server
+// See https://www.stellar.org/developers/horizon/reference/endpoints/metrics.html
+func (c *Client) Metrics() (metrics Metrics, err error) {
+	request := metricsRequest{endpoint: "metrics"}
+	err = c.sendRequest(request, &metrics)
+	return
+}
