@@ -164,7 +164,11 @@ var dbMigrateCmd = &cobra.Command{
 			log.Fatal(err)
 		}
 
-		log.Printf("Successfully applied %d migrations.\n", numMigrationsRun)
+		if numMigrationsRun == 0 {
+			log.Println("No migrations applied.")
+		} else {
+			log.Printf("Successfully applied %d migrations.\n", numMigrationsRun)
+		}
 	},
 }
 
