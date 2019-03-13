@@ -478,11 +478,12 @@ func MustKeyTypeFromAddress(address string) string {
 	return ret
 }
 
+// AccountData represents a single data object stored on by an account
 type AccountData struct {
 	Value string `json:"value"`
 }
 
-// EffectsPageResponse contains page of effects returned by Horizon.
+// EffectsPage contains page of effects returned by Horizon.
 type EffectsPage struct {
 	Embedded struct {
 		Records []effects.Base
@@ -583,6 +584,7 @@ type Metrics struct {
 	TxsubTotal             LogTotalMetric `json:"txsub.total"`
 }
 
+// Problem represents an error response from horizon
 type Problem struct {
 	Type     string                     `json:"type"`
 	Title    string                     `json:"title"`
@@ -592,7 +594,8 @@ type Problem struct {
 	Extras   map[string]json.RawMessage `json:"extras,omitempty"`
 }
 
-// ToProblem converts the Prolem to a problem.P
+// ToProblem converts the Prolem to a problem.P that represents an error response
+// to be rendered to a connected client.
 func (prob Problem) ToProblem() problem.P {
 	extras := make(map[string]interface{})
 	for k, v := range prob.Extras {
