@@ -109,33 +109,38 @@ func (action *EffectIndexAction) loadParams() {
 	action.LedgerFilter = action.GetInt32("ledger_id")
 	action.TransactionFilter = action.GetString("tx_id")
 	action.OperationFilter = action.GetInt64("op_id")
+
+	filters, err := countNonEmpty(
+		action.AccountFilter,
+		action.LedgerFilter,
+		action.TransactionFilter,
+		action.OperationFilter,
+	)
+
+	if err != nil {
+		action.Err = errors.Wrap(err, "Error in countNonEmpty")
+		return
+	}
+
+	if filters > 1 {
+		action.Err = supportProblem.BadRequest
+		return
+	}
 }
 
 // loadRecords populates action.Records
 func (action *EffectIndexAction) loadRecords() {
 	effects := action.HistoryQ().Effects()
 
-	filters := 0
-	if action.AccountFilter != "" {
+	switch {
+	case action.AccountFilter != "":
 		effects.ForAccount(action.AccountFilter)
-		filters++
-	}
-	if action.LedgerFilter > 0 {
+	case action.LedgerFilter > 0:
 		effects.ForLedger(action.LedgerFilter)
-		filters++
-	}
-	if action.OperationFilter > 0 {
+	case action.OperationFilter > 0:
 		effects.ForOperation(action.OperationFilter)
-		filters++
-	}
-	if action.TransactionFilter != "" {
+	case action.TransactionFilter != "":
 		effects.ForTransaction(action.TransactionFilter)
-		filters++
-	}
-
-	if filters > 1 {
-		action.Err = problem.BadRequest
-		return
 	}
 
 	action.Err = effects.Page(action.PagingParams).Select(&action.Records)
