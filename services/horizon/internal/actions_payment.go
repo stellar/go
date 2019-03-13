@@ -88,9 +88,31 @@ func (action *PaymentsIndexAction) loadParams() {
 	action.ValidateCursorAsDefault()
 	action.AccountFilter = action.GetAddress("account_id")
 	action.LedgerFilter = action.GetInt32("ledger_id")
-	action.TransactionFilter = action.GetString("tx_id")
+	action.TransactionFilter = action.GetStringFromURLParam("tx_id")
 	action.PagingParams = action.GetPageQuery()
 	action.IncludeFailed = action.GetBool("include_failed")
+
+	filters, err := countNonEmpty(
+		action.AccountFilter,
+		action.LedgerFilter,
+		action.TransactionFilter,
+	)
+
+	if err != nil {
+		action.Err = errors.Wrap(err, "Error in countNonEmpty")
+		return
+	}
+
+	if filters > 1 {
+		action.Err = supportProblem.BadRequest
+		return
+	}
+
+	// Double check TransactionFilter as it's used to determine if failed txs should be returned
+	if action.TransactionFilter != "" && !isValidTransactionHash(action.TransactionFilter) {
+		action.Err = supportProblem.MakeInvalidFieldProblem("tx_id", errors.New("Invalid transaction hash"))
+		return
+	}
 
 	if action.IncludeFailed == true && !action.App.config.IngestFailedTransactions {
 		err := errors.New("`include_failed` parameter is unavailable when Horizon is not ingesting failed " +
