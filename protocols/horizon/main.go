@@ -15,7 +15,6 @@ import (
 	"github.com/stellar/go/strkey"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/support/render/hal"
-	"github.com/stellar/go/support/render/problem"
 	"github.com/stellar/go/xdr"
 )
 
@@ -582,32 +581,4 @@ type Metrics struct {
 	TxsubOpen              SingleMetric   `json:"txsub.open"`
 	TxsubSucceeded         LogMetric      `json:"txsub.succeeded"`
 	TxsubTotal             LogTotalMetric `json:"txsub.total"`
-}
-
-// Problem represents an error response from horizon
-type Problem struct {
-	Type     string                     `json:"type"`
-	Title    string                     `json:"title"`
-	Status   int                        `json:"status"`
-	Detail   string                     `json:"detail,omitempty"`
-	Instance string                     `json:"instance,omitempty"`
-	Extras   map[string]json.RawMessage `json:"extras,omitempty"`
-}
-
-// ToProblem converts the Prolem to a problem.P that represents an error response
-// to be rendered to a connected client.
-func (prob Problem) ToProblem() problem.P {
-	extras := make(map[string]interface{})
-	for k, v := range prob.Extras {
-		extras[k] = v
-	}
-
-	return problem.P{
-		Type:     prob.Type,
-		Title:    prob.Title,
-		Status:   prob.Status,
-		Detail:   prob.Detail,
-		Instance: prob.Instance,
-		Extras:   extras,
-	}
 }

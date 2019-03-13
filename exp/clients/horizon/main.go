@@ -8,6 +8,7 @@ import (
 	"net/url"
 
 	hProtocol "github.com/stellar/go/protocols/horizon"
+	"github.com/stellar/go/support/render/problem"
 )
 
 // Cursor represents `cursor` param in queries
@@ -33,7 +34,7 @@ const (
 // Error struct contains the problem returned by Horizon
 type Error struct {
 	Response *http.Response
-	Problem  hProtocol.Problem
+	Problem  problem.P
 }
 
 var (

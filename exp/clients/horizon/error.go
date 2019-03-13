@@ -22,8 +22,12 @@ func (herr *Error) Envelope() (*xdr.TransactionEnvelope, error) {
 
 	var b64 string
 	var result xdr.TransactionEnvelope
+	rawB, ok := raw.([]byte)
+	if !ok {
+		return nil, errors.New("type assertion failed")
+	}
 
-	err := json.Unmarshal(raw, &b64)
+	err := json.Unmarshal(rawB, &b64)
 	if err != nil {
 		return nil, errors.Wrap(err, "json decode failed")
 	}
@@ -44,8 +48,12 @@ func (herr *Error) ResultString() (string, error) {
 	}
 
 	var b64 string
+	rawB, ok := raw.([]byte)
+	if !ok {
+		return "", errors.New("type assertion failed")
+	}
 
-	err := json.Unmarshal(raw, &b64)
+	err := json.Unmarshal(rawB, &b64)
 	if err != nil {
 		return "", errors.Wrap(err, "json decode failed")
 	}
@@ -61,8 +69,13 @@ func (herr *Error) ResultCodes() (*hProtocol.TransactionResultCodes, error) {
 		return nil, ErrResultCodesNotPopulated
 	}
 
+	rawB, ok := raw.([]byte)
+	if !ok {
+		return nil, errors.New("type assertion failed")
+	}
+
 	var result hProtocol.TransactionResultCodes
-	err := json.Unmarshal(raw, &result)
+	err := json.Unmarshal(rawB, &result)
 	if err != nil {
 		return nil, errors.Wrap(err, "json decode failed")
 	}
