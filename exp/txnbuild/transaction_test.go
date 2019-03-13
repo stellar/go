@@ -3,37 +3,10 @@ package txnbuild
 import (
 	"testing"
 
-	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/network"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
-
-func newKeypair0() *keypair.Full {
-	return newKeypair("SBPQUZ6G4FZNWFHKUWC5BEYWF6R52E3SEP7R3GWYSM2XTKGF5LNTWW4R")
-}
-
-func newKeypair1() *keypair.Full {
-	return newKeypair("SBMSVD4KKELKGZXHBUQTIROWUAPQASDX7KEJITARP4VMZ6KLUHOGPTYW")
-}
-
-func newKeypair(seed string) *keypair.Full {
-	myKeypair, _ := keypair.Parse(seed)
-	return myKeypair.(*keypair.Full)
-}
-
-func buildSignEncode(tx Transaction, kp *keypair.Full, t *testing.T) (txeBase64 string) {
-	var err error
-	err = tx.Build()
-	assert.Nil(t, err)
-
-	err = tx.Sign(kp)
-	assert.Nil(t, err)
-
-	txeBase64, err = tx.Base64()
-	assert.Nil(t, err)
-
-	return
-}
 
 func TestInflation(t *testing.T) {
 	kp0 := newKeypair0()
@@ -90,6 +63,7 @@ func TestPayment(t *testing.T) {
 	payment := Payment{
 		Destination: "GB7BDSZU2Y27LYNLALKKALB52WS2IZWYBDGY6EQBLEED3TJOCVMZRH7H",
 		Amount:      "10",
+		Asset:       NewNativeAsset(),
 	}
 
 	tx := Transaction{
@@ -101,6 +75,29 @@ func TestPayment(t *testing.T) {
 	received := buildSignEncode(tx, kp0, t)
 	expected := "AAAAAODcbeFyXKxmUWK1L6znNbKKIkPkHRJNbLktcKPqLnLFAAAAZAAiII0AAAAbAAAAAAAAAAAAAAABAAAAAAAAAAEAAAAAfhHLNNY19eGrAtSgLD3VpaRm2AjNjxIBWQg9zS4VWZgAAAAAAAAAAAX14QAAAAAAAAAAAeoucsUAAABA5rSL7gy8OGiMq2Rocvv6l6HwOdePwhIMw2aJ2j5mVumAmeADjMeeCcGQIj3A7bISo6eWoF49w3qcd7uBS4j6AQ=="
 	assert.Equal(t, expected, received, "Base 64 XDR should match")
+}
+
+func TestPaymentFailsIfNoAssetSpecified(t *testing.T) {
+	kp0 := newKeypair0()
+	sourceAccount := Account{
+		ID:             kp0.Address(),
+		SequenceNumber: 9605939170639898,
+	}
+
+	payment := Payment{
+		Destination: "GB7BDSZU2Y27LYNLALKKALB52WS2IZWYBDGY6EQBLEED3TJOCVMZRH7H",
+		Amount:      "10",
+	}
+
+	tx := Transaction{
+		SourceAccount: sourceAccount,
+		Operations:    []Operation{&payment},
+		Network:       network.TestNetworkPassphrase,
+	}
+
+	err := tx.Build()
+	expectedErrMsg := "Failed to build operation *txnbuild.Payment: You must specify an asset for payment"
+	require.EqualError(t, err, expectedErrMsg, "An asset is required")
 }
 
 func TestBumpSequence(t *testing.T) {

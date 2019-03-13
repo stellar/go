@@ -50,7 +50,6 @@ func NewInflationDestination(ai string) *string {
 // SetOptions represents the Stellar set options operation. See
 // https://www.stellar.org/developers/guides/concepts/list-of-operations.html
 type SetOptions struct {
-	destAccountID        xdr.AccountId
 	InflationDestination *string
 	SetFlags             []AccountFlag
 	ClearFlags           []AccountFlag
