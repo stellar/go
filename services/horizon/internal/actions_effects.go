@@ -123,7 +123,7 @@ func (action *EffectIndexAction) loadParams() {
 	}
 
 	if filters > 1 {
-		action.Err = supportProblem.BadRequest
+		action.Err = problem.BadRequest
 		return
 	}
 }
