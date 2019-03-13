@@ -100,6 +100,22 @@ func (action *OperationIndexAction) loadParams() {
 	action.PagingParams = action.GetPageQuery()
 	action.IncludeFailed = action.GetBool("include_failed")
 
+	filters, err := countNonEmpty(
+		action.AccountFilter,
+		action.LedgerFilter,
+		action.TransactionFilter,
+	)
+
+	if err != nil {
+		action.Err = errors.Wrap(err, "Error in countNonEmpty")
+		return
+	}
+
+	if filters > 1 {
+		action.Err = supportProblem.BadRequest
+		return
+	}
+
 	if action.IncludeFailed == true && !action.App.config.IngestFailedTransactions {
 		err := errors.New("`include_failed` parameter is unavailable when Horizon is not ingesting failed " +
 			"transactions. Set `INGEST_FAILED_TRANSACTIONS=true` to start ingesting them.")
@@ -112,23 +128,13 @@ func (action *OperationIndexAction) loadRecords() {
 	q := action.HistoryQ()
 	ops := q.Operations()
 
-	filters := 0
-	if action.AccountFilter != "" {
+	switch {
+	case action.AccountFilter != "":
 		ops.ForAccount(action.AccountFilter)
-		filters++
-	}
-	if action.LedgerFilter > 0 {
+	case action.LedgerFilter > 0:
 		ops.ForLedger(action.LedgerFilter)
-		filters++
-	}
-	if action.TransactionFilter != "" {
+	case action.TransactionFilter != "":
 		ops.ForTransaction(action.TransactionFilter)
-		filters++
-	}
-
-	if filters > 1 {
-		action.Err = supportProblem.BadRequest
-		return
 	}
 
 	// When querying operations for transaction return both successful
