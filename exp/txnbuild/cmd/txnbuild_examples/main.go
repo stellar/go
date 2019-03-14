@@ -60,7 +60,8 @@ func main() {
 	// resp := exampleManageData(client, false)
 	// resp := exampleManageDataRemoveDataEntry(client, false)
 	// resp := exampleSetOptions(client, true)
-	resp := exampleChangeTrust(client, true)
+	// resp := exampleChangeTrust(client, false)
+	resp := exampleChangeTrustDeleteTrustline(client, true)
 	fmt.Println(resp.TransactionSuccessToString())
 }
 
@@ -79,6 +80,29 @@ func exampleChangeTrust(client *horizon.Client, mock bool) horizon.TransactionSu
 	tx := txnbuild.Transaction{
 		SourceAccount: sourceAccount,
 		Operations:    []txnbuild.Operation{&changeTrust},
+		Network:       network.TestNetworkPassphrase,
+	}
+
+	txeBase64 := buildSignEncode(tx, keys[0].Keypair)
+	log.Println("Base 64 TX: ", txeBase64)
+
+	resp := submit(client, txeBase64, mock)
+
+	return resp
+}
+
+func exampleChangeTrustDeleteTrustline(client *horizon.Client, mock bool) horizon.TransactionSuccess {
+	keys := initKeys()
+	horizonSourceAccount, err := client.LoadAccount(keys[0].Address)
+	dieIfError("loadaccount", err)
+	sourceAccount := mapAccounts(horizonSourceAccount)
+
+	issuedAsset := txnbuild.NewAsset("ABCD", keys[1].Address)
+	removeTrust := txnbuild.NewRemoveTrustlineOp(issuedAsset)
+
+	tx := txnbuild.Transaction{
+		SourceAccount: sourceAccount,
+		Operations:    []txnbuild.Operation{&removeTrust},
 		Network:       network.TestNetworkPassphrase,
 	}
 
@@ -142,8 +166,7 @@ func exampleManageDataRemoveDataEntry(client *horizon.Client, mock bool) horizon
 	txeBase64 := buildSignEncode(tx, keys[0].Keypair)
 	log.Println("Base 64 TX: ", txeBase64)
 
-	resp := submit(client, txeBase64, mock)
-	return resp
+	return submit(client, txeBase64, mock)
 }
 
 func exampleManageData(client *horizon.Client, mock bool) horizon.TransactionSuccess {
@@ -167,8 +190,7 @@ func exampleManageData(client *horizon.Client, mock bool) horizon.TransactionSuc
 	txeBase64 := buildSignEncode(tx, keys[0].Keypair)
 	log.Println("Base 64 TX: ", txeBase64)
 
-	resp := submit(client, txeBase64, mock)
-	return resp
+	return submit(client, txeBase64, mock)
 }
 
 func exampleAccountMerge(client *horizon.Client, mock bool) horizon.TransactionSuccess {
@@ -191,8 +213,7 @@ func exampleAccountMerge(client *horizon.Client, mock bool) horizon.TransactionS
 	txeBase64 := buildSignEncode(tx, keys[0].Keypair)
 	log.Println("Base 64 TX: ", txeBase64)
 
-	resp := submit(client, txeBase64, mock)
-	return resp
+	return submit(client, txeBase64, mock)
 }
 
 func exampleBumpSequence(client *horizon.Client, mock bool) horizon.TransactionSuccess {
@@ -216,8 +237,7 @@ func exampleBumpSequence(client *horizon.Client, mock bool) horizon.TransactionS
 	txeBase64 := buildSignEncode(tx, keys[1].Keypair)
 	log.Println("Base 64 TX: ", txeBase64)
 
-	resp := submit(client, txeBase64, mock)
-	return resp
+	return submit(client, txeBase64, mock)
 }
 
 func exampleSendNonNative(client *horizon.Client, mock bool) horizon.TransactionSuccess {
@@ -241,9 +261,7 @@ func exampleSendNonNative(client *horizon.Client, mock bool) horizon.Transaction
 	txeBase64 := buildSignEncode(tx, keys[0].Keypair)
 	log.Println("Base 64 TX: ", txeBase64)
 
-	resp := submit(client, txeBase64, mock)
-
-	return resp
+	return submit(client, txeBase64, mock)
 }
 
 func exampleSendLumens(client *horizon.Client, mock bool) horizon.TransactionSuccess {
@@ -266,9 +284,7 @@ func exampleSendLumens(client *horizon.Client, mock bool) horizon.TransactionSuc
 	txeBase64 := buildSignEncode(tx, keys[0].Keypair)
 	log.Println("Base 64 TX: ", txeBase64)
 
-	resp := submit(client, txeBase64, mock)
-
-	return resp
+	return submit(client, txeBase64, mock)
 }
 
 func exampleCreateAccount(client *horizon.Client, mock bool) horizon.TransactionSuccess {
@@ -293,9 +309,7 @@ func exampleCreateAccount(client *horizon.Client, mock bool) horizon.Transaction
 	txeBase64 := buildSignEncode(tx, keys[0].Keypair)
 	log.Println("Base 64 TX: ", txeBase64)
 
-	resp := submit(client, txeBase64, mock)
-
-	return resp
+	return submit(client, txeBase64, mock)
 }
 
 func submit(client *horizon.Client, txeBase64 string, mock bool) (resp horizon.TransactionSuccess) {
@@ -335,9 +349,7 @@ func dieIfError(desc string, err error) {
 }
 
 func mockSuccess() horizon.TransactionSuccess {
-	resp := horizon.TransactionSuccess{}
-
-	return resp
+	return horizon.TransactionSuccess{}
 }
 
 func verify(received string) {

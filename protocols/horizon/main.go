@@ -582,3 +582,24 @@ type Metrics struct {
 	TxsubSucceeded         LogMetric      `json:"txsub.succeeded"`
 	TxsubTotal             LogTotalMetric `json:"txsub.total"`
 }
+
+// FeeStats represents a response of fees from horizon
+// To do: implement fee suggestions if agreement is reached in https://github.com/stellar/go/issues/926
+type FeeStats struct {
+	LastLedger          int     `json:"last_ledger,string"`
+	LastLedgerBaseFee   int     `json:"last_ledger_base_fee,string"`
+	LedgerCapacityUsage float64 `json:"ledger_capacity_usage,string"`
+	MinAcceptedFee      int     `json:"min_accepted_fee,string"`
+	ModeAcceptedFee     int     `json:"mode_accepted_fee,string"`
+	P10AcceptedFee      int     `json:"p10_accepted_fee,string"`
+	P20AcceptedFee      int     `json:"p20_accepted_fee,string"`
+	P30AcceptedFee      int     `json:"p30_accepted_fee,string"`
+	P40AcceptedFee      int     `json:"p40_accepted_fee,string"`
+	P50AcceptedFee      int     `json:"p50_accepted_fee,string"`
+	P60AcceptedFee      int     `json:"p60_accepted_fee,string"`
+	P70AcceptedFee      int     `json:"p70_accepted_fee,string"`
+	P80AcceptedFee      int     `json:"p80_accepted_fee,string"`
+	P90AcceptedFee      int     `json:"p90_accepted_fee,string"`
+	P95AcceptedFee      int     `json:"p95_accepted_fee,string"`
+	P99AcceptedFee      int     `json:"p99_accepted_fee,string"`
+}

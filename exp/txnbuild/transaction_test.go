@@ -400,9 +400,8 @@ func TestChangeTrust(t *testing.T) {
 		SequenceNumber: 40385577484348,
 	}
 
-	issuerAsset := NewAsset("ABCD", kp1.Address())
 	changeTrust := ChangeTrust{
-		Line:  issuerAsset,
+		Line:  NewAsset("ABCD", kp1.Address()),
 		Limit: "10",
 	}
 
@@ -425,9 +424,8 @@ func TestChangeTrustNativeAssetNotAllowed(t *testing.T) {
 		SequenceNumber: 40385577484348,
 	}
 
-	issuerAsset := NewNativeAsset()
 	changeTrust := ChangeTrust{
-		Line:  issuerAsset,
+		Line:  NewNativeAsset(),
 		Limit: "10",
 	}
 
@@ -440,4 +438,27 @@ func TestChangeTrustNativeAssetNotAllowed(t *testing.T) {
 	err := tx.Build()
 	expectedErrMsg := "Failed to build operation *txnbuild.ChangeTrust: Trustline cannot be extended to a native (XLM) asset"
 	require.EqualError(t, err, expectedErrMsg, "No trustlines for native assets")
+}
+
+func TestChangeTrustDeleteTrustline(t *testing.T) {
+	kp0 := newKeypair0()
+	kp1 := newKeypair1()
+
+	sourceAccount := Account{
+		ID:             kp0.Address(),
+		SequenceNumber: 40385577484354,
+	}
+
+	issuedAsset := NewAsset("ABCD", kp1.Address())
+	removeTrust := NewRemoveTrustlineOp(issuedAsset)
+
+	tx := Transaction{
+		SourceAccount: sourceAccount,
+		Operations:    []Operation{&removeTrust},
+		Network:       network.TestNetworkPassphrase,
+	}
+
+	received := buildSignEncode(tx, kp0, t)
+	expected := "AAAAAODcbeFyXKxmUWK1L6znNbKKIkPkHRJNbLktcKPqLnLFAAAAZAAAJLsAAABDAAAAAAAAAAAAAAABAAAAAAAAAAYAAAABQUJDRAAAAAAlyvHaD8duz+iEXkJUUbsHkklIlH46oMrMMYrt0odkfgAAAAAAAAAAAAAAAAAAAAHqLnLFAAAAQEop/qQ5+2GTSQxZWzL4BPKsAi47VVNxnbtWgSAZvJOqz0yG0GJaTpUUYskuEo1haBg0UDbQF4M0PIK4l0Pzegg="
+	assert.Equal(t, expected, received, "Base 64 XDR should match")
 }
