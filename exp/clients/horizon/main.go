@@ -77,6 +77,8 @@ type ClientInterface interface {
 	LedgerDetail(sequence uint32) (hProtocol.Ledger, error)
 	Metrics() (hProtocol.Metrics, error)
 	Stream(ctx context.Context, request StreamRequest, handler func(interface{})) error
+	FeeStats() (hProtocol.FeeStats, error)
+	Offers(request OfferRequest) (hProtocol.OffersPage, error)
 }
 
 // DefaultTestNetClient is a default client to connect to test network
@@ -139,4 +141,16 @@ type LedgerRequest struct {
 
 type metricsRequest struct {
 	endpoint string
+}
+
+type feeStatsRequest struct {
+	endpoint string
+}
+
+// OfferRequest struct contains data for getting offers made by an account from an horizon server
+type OfferRequest struct {
+	ForAccount string
+	Order      Order
+	Cursor     Cursor
+	Limit      Limit
 }

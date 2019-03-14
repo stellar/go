@@ -59,5 +59,15 @@ func (m *MockClient) Metrics() (hProtocol.Metrics, error) {
 	return a.Get(0).(hProtocol.Metrics), a.Error(1)
 }
 
+func (m *MockClient) FeeStats() (hProtocol.FeeStats, error) {
+	a := m.Called()
+	return a.Get(0).(hProtocol.FeeStats), a.Error(1)
+}
+
+func (m *MockClient) Offers(request OfferRequest) (hProtocol.OffersPage, error) {
+	a := m.Called(request)
+	return a.Get(0).(hProtocol.OffersPage), a.Error(1)
+}
+
 // ensure that the MockClient implements ClientInterface
 var _ ClientInterface = &MockClient{}

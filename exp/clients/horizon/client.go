@@ -113,3 +113,26 @@ func (c *Client) Metrics() (metrics hProtocol.Metrics, err error) {
 	err = c.sendRequest(request, &metrics)
 	return
 }
+
+// FeeStats returns information about fees in the last 5 ledgers.
+// See https://www.stellar.org/developers/horizon/reference/endpoints/fee-stats.html
+func (c *Client) FeeStats() (feestats hProtocol.FeeStats, err error) {
+	request := feeStatsRequest{endpoint: "fee_stats"}
+	err = c.sendRequest(request, &feestats)
+	return
+}
+
+// Offers returns information about offers made on the SDEX.
+// See https://www.stellar.org/developers/horizon/reference/endpoints/offers-for-account.html
+func (c *Client) Offers(request OfferRequest) (offers hProtocol.OffersPage, err error) {
+	if request.ForAccount == "" {
+		err = errors.New("`ForAccount` parameter required")
+	}
+
+	if err != nil {
+		return
+	}
+
+	err = c.sendRequest(request, &offers)
+	return
+}
