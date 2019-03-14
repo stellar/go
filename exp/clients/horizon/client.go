@@ -122,9 +122,9 @@ func (c *Client) FeeStats() (feestats hProtocol.FeeStats, err error) {
 	return
 }
 
-// AccountOffers returns information about offers made by an account on the SDEX
+// Offers returns information about offers made on the SDEX.
 // See https://www.stellar.org/developers/horizon/reference/endpoints/offers-for-account.html
-func (c *Client) AccountOffers(request OfferRequest) (offers hProtocol.OffersPage, err error) {
+func (c *Client) Offers(request OfferRequest) (offers hProtocol.OffersPage, err error) {
 	if request.ForAccount == "" {
 		err = errors.New("`ForAccount` parameter required")
 	}

@@ -78,7 +78,7 @@ type ClientInterface interface {
 	Metrics() (hProtocol.Metrics, error)
 	Stream(ctx context.Context, request StreamRequest, handler func(interface{})) error
 	FeeStats() (hProtocol.FeeStats, error)
-	AccountOffers(request OfferRequest) (hProtocol.OffersPage, error)
+	Offers(request OfferRequest) (hProtocol.OffersPage, error)
 }
 
 // DefaultTestNetClient is a default client to connect to test network

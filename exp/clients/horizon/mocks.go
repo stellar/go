@@ -64,7 +64,7 @@ func (m *MockClient) FeeStats() (hProtocol.FeeStats, error) {
 	return a.Get(0).(hProtocol.FeeStats), a.Error(1)
 }
 
-func (m *MockClient) AccountOffers(request OfferRequest) (hProtocol.OffersPage, error) {
+func (m *MockClient) Offers(request OfferRequest) (hProtocol.OffersPage, error) {
 	a := m.Called(request)
 	return a.Get(0).(hProtocol.OffersPage), a.Error(1)
 }

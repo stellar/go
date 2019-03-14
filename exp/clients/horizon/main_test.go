@@ -139,11 +139,11 @@ func ExampleClient_FeeStats() {
 
 }
 
-func ExampleClient_AccountOffers() {
+func ExampleClient_Offers() {
 
 	client := DefaultPublicNetClient
 	offerRequest := OfferRequest{ForAccount: "GCLWGQPMKXQSPF776IU33AH4PZNOOWNAWGGKVTBQMIC5IMKUNP3E6NVU", Cursor: "now", Order: OrderDesc}
-	offers, err := client.AccountOffers(offerRequest)
+	offers, err := client.Offers(offerRequest)
 	if err != nil {
 		fmt.Println(err)
 		return
@@ -496,20 +496,19 @@ func TestFeeStats(t *testing.T) {
 		assert.Equal(t, fees.LastLedger, 22606298)
 		assert.Equal(t, fees.LastLedgerBaseFee, 100)
 		assert.Equal(t, fees.LedgerCapacityUsage, 0.97)
-		assert.Equal(t, fees.MinAcceptedFee, 100)
+		assert.Equal(t, fees.MinAcceptedFee, 130)
 		assert.Equal(t, fees.ModeAcceptedFee, 250)
-		assert.Equal(t, fees.P10AcceptedFee, 100)
-		assert.Equal(t, fees.P20AcceptedFee, 100)
-		assert.Equal(t, fees.P30AcceptedFee, 250)
-		assert.Equal(t, fees.P40AcceptedFee, 250)
-		assert.Equal(t, fees.P50AcceptedFee, 250)
-		assert.Equal(t, fees.P60AcceptedFee, 1210)
-		assert.Equal(t, fees.P70AcceptedFee, 1221)
-		assert.Equal(t, fees.P80AcceptedFee, 1225)
-		assert.Equal(t, fees.P90AcceptedFee, 1225)
-		assert.Equal(t, fees.P95AcceptedFee, 1225)
+		assert.Equal(t, fees.P10AcceptedFee, 150)
+		assert.Equal(t, fees.P20AcceptedFee, 200)
+		assert.Equal(t, fees.P30AcceptedFee, 300)
+		assert.Equal(t, fees.P40AcceptedFee, 400)
+		assert.Equal(t, fees.P50AcceptedFee, 500)
+		assert.Equal(t, fees.P60AcceptedFee, 1000)
+		assert.Equal(t, fees.P70AcceptedFee, 2000)
+		assert.Equal(t, fees.P80AcceptedFee, 3000)
+		assert.Equal(t, fees.P90AcceptedFee, 4000)
+		assert.Equal(t, fees.P95AcceptedFee, 5000)
 		assert.Equal(t, fees.P99AcceptedFee, 8000)
-
 	}
 
 	// connection error
@@ -541,7 +540,7 @@ func TestOfferRequest(t *testing.T) {
 		"https://localhost/accounts/GDOJCPYIB66RY4XNDLRRHQQXB27YLNNAGAYV5HMHEYNYY4KUNV5FDV2F/offers",
 	).ReturnString(200, offersResponse)
 
-	offers, err := client.AccountOffers(offersRequest)
+	offers, err := client.Offers(offersRequest)
 	if assert.NoError(t, err) {
 		assert.IsType(t, offers, hProtocol.OffersPage{})
 		record := offers.Embedded.Records[0]
@@ -552,7 +551,6 @@ func TestOfferRequest(t *testing.T) {
 		assert.Equal(t, record.Amount, "1999979.8700000")
 		assert.Equal(t, record.LastModifiedLedger, int32(103307))
 	}
-
 }
 
 var accountResponse = `{
@@ -955,18 +953,18 @@ var feesResponse = `{
   "last_ledger": "22606298",
   "last_ledger_base_fee": "100",
   "ledger_capacity_usage": "0.97",
-  "min_accepted_fee": "100",
+  "min_accepted_fee": "130",
   "mode_accepted_fee": "250",
-  "p10_accepted_fee": "100",
-  "p20_accepted_fee": "100",
-  "p30_accepted_fee": "250",
-  "p40_accepted_fee": "250",
-  "p50_accepted_fee": "250",
-  "p60_accepted_fee": "1210",
-  "p70_accepted_fee": "1221",
-  "p80_accepted_fee": "1225",
-  "p90_accepted_fee": "1225",
-  "p95_accepted_fee": "1225",
+  "p10_accepted_fee": "150",
+  "p20_accepted_fee": "200",
+  "p30_accepted_fee": "300",
+  "p40_accepted_fee": "400",
+  "p50_accepted_fee": "500",
+  "p60_accepted_fee": "1000",
+  "p70_accepted_fee": "2000",
+  "p80_accepted_fee": "3000",
+  "p90_accepted_fee": "4000",
+  "p95_accepted_fee": "5000",
   "p99_accepted_fee": "8000"
 }`
 
