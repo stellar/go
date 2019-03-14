@@ -368,6 +368,9 @@ func getInt32ParamFromURL(r *http.Request, key string) (int32, error) {
 	if err != nil {
 		return 0, errors.Wrapf(err, "loading %s from URL", key)
 	}
+	if val == "" {
+		return int32(0), nil
+	}
 
 	asI64, err := strconv.ParseInt(val, 10, 32)
 	// TODO: add errInvalidValue
