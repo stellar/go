@@ -1,6 +1,7 @@
 package actions
 
 import (
+	"context"
 	"fmt"
 	"mime"
 	"net/url"
@@ -11,6 +12,7 @@ import (
 	"github.com/stellar/go/amount"
 	"github.com/stellar/go/services/horizon/internal/assets"
 	"github.com/stellar/go/services/horizon/internal/db2"
+	"github.com/stellar/go/services/horizon/internal/httpx"
 	"github.com/stellar/go/services/horizon/internal/ledger"
 	hProblem "github.com/stellar/go/services/horizon/internal/render/problem"
 	"github.com/stellar/go/services/horizon/internal/toid"
@@ -21,6 +23,7 @@ import (
 	"github.com/stellar/go/xdr"
 )
 
+// TODO: move these to urlparam.go
 const (
 	// ParamCursor is a query string param name
 	ParamCursor = "cursor"
@@ -493,4 +496,12 @@ func (base *Base) ValidateBodyType() {
 	if mt != "application/x-www-form-urlencoded" && mt != "multipart/form-data" {
 		base.Err = &hProblem.UnsupportedMediaType
 	}
+}
+
+func fullURL(ctx context.Context) *url.URL {
+	url := httpx.BaseURL(ctx)
+	r := httpx.RequestFromContext(ctx)
+	url.Path = r.URL.Path
+	url.RawQuery = r.URL.RawQuery
+	return url
 }
