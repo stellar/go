@@ -205,7 +205,6 @@ func (we *web) transactionHandler(jfn jsonResponderFunc, sfn streamFunc) http.Ha
 		if err != nil {
 			problem.Render(ctx, w, err)
 			return
-
 		}
 
 		params, err := loadTransactionParams(r, we.ingestFailedTx)

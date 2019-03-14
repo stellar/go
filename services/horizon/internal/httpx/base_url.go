@@ -9,7 +9,6 @@ import (
 // the Host and Scheme portions of the request uri.
 func BaseURL(ctx context.Context) *url.URL {
 	r := RequestFromContext(ctx)
-
 	if r == nil {
 		return nil
 	}
