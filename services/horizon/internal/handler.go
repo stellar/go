@@ -225,7 +225,7 @@ func (we *web) transactionHandler(jfn jsonResponderFunc, sfn streamFunc) http.Ha
 			return
 		}
 
-		we.streamableEndpointHandler(jfn, sfn, nil, "").ServeHTTP(w, r)
+		we.streamableEndpointHandler(jfn, sfn, nil, params).ServeHTTP(w, r)
 	})
 }
 

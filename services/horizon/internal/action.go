@@ -183,7 +183,7 @@ func (w *web) loadAccountEvent(ctx context.Context, param interface{}) (sse.Even
 }
 
 func (w *web) getTransactionPageByAccount(ctx context.Context, params interface{}) (interface{}, error) {
-	tp, ok := params.(actions.TransactionParams)
+	tp, ok := params.(*actions.TransactionParams)
 	if !ok {
 		return nil, errors.New("Invalid param type for getTransactionPageByAccount func")
 	}
