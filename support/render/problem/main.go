@@ -143,10 +143,6 @@ var BadRequest = P{
 
 // MakeInvalidFieldProblem is a helper function to make a BadRequest with extras
 func MakeInvalidFieldProblem(name string, reason error) *P {
-	if reason == nil {
-		return nil
-	}
-
 	br := BadRequest
 	br.Extras = map[string]interface{}{
 		"invalid_field": name,
