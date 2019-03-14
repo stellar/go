@@ -243,6 +243,10 @@ func getCursor(r *http.Request) (string, error) {
 		cursor = lastEventID
 	}
 
+	if cursor == "" {
+		return "", nil
+	}
+
 	curInt64, err := strconv.ParseInt(cursor, 10, 64)
 	if err != nil {
 		return "", problem.MakeInvalidFieldProblem(actions.ParamCursor, errors.New("invalid int64 value"))
@@ -373,8 +377,11 @@ func getInt32ParamFromURL(r *http.Request, key string) (int32, error) {
 	}
 
 	asI64, err := strconv.ParseInt(val, 10, 32)
-	// TODO: add errInvalidValue
-	return int32(asI64), problem.MakeInvalidFieldProblem(key, errors.New("invalid int32 value"))
+	if err != nil {
+		return int32(0), problem.MakeInvalidFieldProblem(key, errors.New("invalid int32 value"))
+	}
+
+	return int32(asI64), nil
 }
 
 func getBoolParamFromURL(r *http.Request, key string) (bool, error) {
