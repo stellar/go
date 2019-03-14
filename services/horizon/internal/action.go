@@ -190,3 +190,12 @@ func (w *web) getTransactionPageByAccount(ctx context.Context, params interface{
 
 	return actions.TransactionPageByAccount(ctx, &history.Q{w.horizonSession(ctx)}, tp.AccountFilter, tp.IncludeFailed, tp.PagingParams)
 }
+
+func (w *web) streamTransactionByAccount(ctx context.Context, s *sse.Stream, params interface{}) error {
+	tp, ok := params.(*actions.TransactionParams)
+	if !ok {
+		return errors.New("Invalid param type for streamTransactionByAccount func")
+	}
+
+	return actions.StreamTransactionByAccount(ctx, s, &history.Q{w.horizonSession(ctx)}, tp.AccountFilter, tp.IncludeFailed, tp.PagingParams)
+}

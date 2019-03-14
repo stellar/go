@@ -8,6 +8,7 @@ import (
 	"github.com/stellar/go/services/horizon/internal/db2"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/services/horizon/internal/httpx"
+	"github.com/stellar/go/services/horizon/internal/render/sse"
 	"github.com/stellar/go/services/horizon/internal/resourceadapter"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/support/render/hal"
@@ -78,6 +79,24 @@ func loadTransactionRecordByAccount(hq *history.Q, addr string, includeFailedTx 
 	}
 
 	return records, nil
+}
+
+func StreamTransactionByAccount(ctx context.Context, s *sse.Stream, hq *history.Q, addr string, includeFailedTx bool, pq db2.PageQuery) error {
+	allRecords, err := loadTransactionRecordByAccount(hq, addr, includeFailedTx, pq)
+	if err != nil {
+		return errors.Wrap(err, "loading transaction records by account")
+	}
+
+	s.SetLimit(int(pq.Limit))
+	records := allRecords[s.SentCount():]
+
+	for _, record := range records {
+		var res horizon.Transaction
+		resourceadapter.PopulateTransaction(ctx, &res, record)
+		s.Send(sse.Event{ID: res.PagingToken(), Data: res})
+	}
+
+	return nil
 }
 
 func fullURL(ctx context.Context) *url.URL {

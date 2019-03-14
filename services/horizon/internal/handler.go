@@ -31,7 +31,7 @@ type jsonResponderFunc func(context.Context, interface{}) (interface{}, error)
 
 // streamFunc represents the signature of the function that handles requests
 // with stream mode turned on using server-sent events.
-type streamFunc func(context.Context, *sse.Stream) error
+type streamFunc func(context.Context, *sse.Stream, interface{}) error
 
 // singleObjectStreamFunc represents the signature of the function that handles
 // requests with stream mode turned on using server-sent events. The difference
@@ -103,7 +103,7 @@ func (we *web) streamHandler(sfn streamFunc, sosfn singleObjectStreamFunc, param
 			}
 
 			if sfn != nil {
-				err := sfn(ctx, stream)
+				err := sfn(ctx, stream, params)
 				if err != nil {
 					stream.Err(err)
 					return
