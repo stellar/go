@@ -169,15 +169,24 @@ func (action *Action) baseURL() *url.URL {
 	return httpx.BaseURL(action.R.Context())
 }
 
-func (w *web) getAccountInfo(ctx context.Context, addr string) (interface{}, error) {
+func (w *web) getAccountInfo(ctx context.Context, param interface{}) (interface{}, error) {
+	addr, ok := param.(string)
+	if !ok {
+		return nil, errors.New("Invalid param type for getAccountInfo func")
+	}
 	return actions.AccountInfo(ctx, &core.Q{w.coreSession(ctx)}, &history.Q{w.horizonSession(ctx)}, addr)
 }
 
-func (w *web) loadAccountEvent(ctx context.Context, addr string) (sse.Event, error) {
-	res, err := w.getAccountInfo(ctx, addr)
+func (w *web) loadAccountEvent(ctx context.Context, param interface{}) (sse.Event, error) {
+	res, err := w.getAccountInfo(ctx, param)
 	return sse.Event{Data: res}, err
 }
 
-func (w *web) getTransactionPageByAccount(ctx context.Context, addr string) (interface{}, error) {
-	return actions.AccountInfo(ctx, &core.Q{w.coreSession(ctx)}, &history.Q{w.horizonSession(ctx)}, addr)
+func (w *web) getTransactionPageByAccount(ctx context.Context, params interface{}) (interface{}, error) {
+	tp, ok := params.(actions.TransactionParams)
+	if !ok {
+		return nil, errors.New("Invalid param type for getTransactionPageByAccount func")
+	}
+
+	return actions.TransactionPageByAccount(ctx, &history.Q{w.horizonSession(ctx)}, tp.AccountFilter, tp.IncludeFailed, tp.PagingParams)
 }

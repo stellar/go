@@ -27,7 +27,7 @@ import (
 
 // jsonResponderFunc represents the signature of the function that handles
 // requests to which the server responds in json format.
-type jsonResponderFunc func(context.Context, string) (interface{}, error)
+type jsonResponderFunc func(context.Context, interface{}) (interface{}, error)
 
 // streamFunc represents the signature of the function that handles requests
 // with stream mode turned on using server-sent events.
@@ -38,14 +38,14 @@ type streamFunc func(context.Context, *sse.Stream) error
 // between this function and streamFunc is that this one only loads an event. The
 // server will not send an event out if the current event is same as the last one.
 // Please see the implementation of streamHandler for more details.
-type singleObjectStreamFunc func(context.Context, string) (sse.Event, error)
+type singleObjectStreamFunc func(context.Context, interface{}) (sse.Event, error)
 
 // streamableEndpointHandler handles endpoints that have the stream mode
 // available. It inspects the Accept header to determine which function to be
 // executed. If it's "application/hal+json" or "application/json", then jfn
 // will be executed. If it's "text/event-stream", then either sfn or sosfn will
 // be executed with the streamHandler.
-func (we *web) streamableEndpointHandler(jfn jsonResponderFunc, sfn streamFunc, sosfn singleObjectStreamFunc, singleObjectId string) http.HandlerFunc {
+func (we *web) streamableEndpointHandler(jfn jsonResponderFunc, sfn streamFunc, sosfn singleObjectStreamFunc, params interface{}) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 
@@ -57,7 +57,7 @@ func (we *web) streamableEndpointHandler(jfn jsonResponderFunc, sfn streamFunc, 
 				return
 			}
 
-			hal.Handler(jfn, singleObjectId).ServeHTTP(w, r)
+			hal.Handler(jfn, params).ServeHTTP(w, r)
 			return
 
 		case render.MimeEventStream:
@@ -66,7 +66,7 @@ func (we *web) streamableEndpointHandler(jfn jsonResponderFunc, sfn streamFunc, 
 				return
 			}
 
-			we.streamHandler(sfn, sosfn, singleObjectId).ServeHTTP(w, r)
+			we.streamHandler(sfn, sosfn, params).ServeHTTP(w, r)
 			return
 		}
 
@@ -78,7 +78,7 @@ func (we *web) streamableEndpointHandler(jfn jsonResponderFunc, sfn streamFunc, 
 // events. It will execute one of the provided streaming functions. Note that
 // we don't return an error if both sfn and sosfn are not nil. sfn will simply
 // take precedence.
-func (we *web) streamHandler(sfn streamFunc, sosfn singleObjectStreamFunc, singleObjectId string) http.HandlerFunc {
+func (we *web) streamHandler(sfn streamFunc, sosfn singleObjectStreamFunc, params interface{}) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 
@@ -109,7 +109,7 @@ func (we *web) streamHandler(sfn streamFunc, sosfn singleObjectStreamFunc, singl
 					return
 				}
 			} else if sosfn != nil {
-				newEvent, err := sosfn(ctx, singleObjectId)
+				newEvent, err := sosfn(ctx, params)
 				if err != nil {
 					stream.Err(err)
 					return
