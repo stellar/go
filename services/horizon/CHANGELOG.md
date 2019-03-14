@@ -6,6 +6,12 @@ file.  This project adheres to [Semantic Versioning](http://semver.org/).
 As this project is pre 1.0, breaking changes may happen for minor version
 bumps.  A breaking change will get clearly notified in this log.
 
+## v0.17.4 - 2019-03-14
+
+* Support for Stellar-Core 10.3.0 (new database schema v9).
+* Fix a bug in `horizon db reingest` command (no log output).
+* Multiple code improvements.
+
 ## v0.17.3 - 2019-03-01
 
 * Fix a bug in `txsub` package that caused returning invalid status when resubmitting old transactions (#969).
