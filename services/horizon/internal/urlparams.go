@@ -1,7 +1,6 @@
 package horizon
 
 import (
-	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
@@ -39,7 +38,7 @@ func getCursor(r *http.Request) (string, error) {
 		return "", problem.MakeInvalidFieldProblem(actions.ParamCursor, errors.New("invalid int64 value"))
 	}
 	if curInt64 < 0 {
-		return "", problem.MakeInvalidFieldProblem(actions.ParamCursor, errors.New(fmt.Sprintf("cursor %d is a negative number: ", curInt64)))
+		return "", problem.MakeInvalidFieldProblem(actions.ParamCursor, errors.Errorf("cursor %d is a negative number: ", curInt64))
 	}
 
 	return cursor, nil
@@ -76,10 +75,10 @@ func getLimit(r *http.Request, defaultSize, maxSize uint64) (uint64, error) {
 		return 0, problem.MakeInvalidFieldProblem(actions.ParamLimit, errors.New("invalid int64 value"))
 	}
 	if limitInt64 <= 0 {
-		return 0, problem.MakeInvalidFieldProblem(actions.ParamLimit, errors.New(fmt.Sprintf("limit %d is a non-positive number: ", limitInt64)))
+		return 0, problem.MakeInvalidFieldProblem(actions.ParamLimit, errors.Errorf("limit %d is a non-positive number: ", limitInt64))
 	}
 	if limitInt64 > int64(maxSize) {
-		return 0, problem.MakeInvalidFieldProblem(actions.ParamLimit, errors.New(fmt.Sprintf("limit %d is greater than limit max of %d", limitInt64, maxSize)))
+		return 0, problem.MakeInvalidFieldProblem(actions.ParamLimit, errors.Errorf("limit %d is greater than limit max of %d", limitInt64, maxSize))
 	}
 
 	return uint64(limitInt64), nil
