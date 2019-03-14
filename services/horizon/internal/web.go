@@ -37,6 +37,7 @@ type web struct {
 	rateLimiter        *throttled.HTTPRateLimiter
 	sseUpdateFrequency time.Duration
 	staleThreshold     uint
+	ingestFailedTx     bool
 
 	historyQ *history.Q
 	coreQ    *core.Q
@@ -57,7 +58,7 @@ func init() {
 }
 
 // mustInitWeb installed a new Web instance onto the provided app object.
-func mustInitWeb(ctx context.Context, hq *history.Q, cq *core.Q, suf time.Duration, st uint) *web {
+func mustInitWeb(ctx context.Context, hq *history.Q, cq *core.Q, suf time.Duration, st uint, ift bool) *web {
 	if hq == nil {
 		log.Fatal("missing history DB for installing the web instance")
 	}
@@ -72,6 +73,7 @@ func mustInitWeb(ctx context.Context, hq *history.Q, cq *core.Q, suf time.Durati
 		coreQ:              cq,
 		sseUpdateFrequency: suf,
 		staleThreshold:     st,
+		ingestFailedTx:     ift,
 		requestTimer:       metrics.NewTimer(),
 		failureMeter:       metrics.NewMeter(),
 		successMeter:       metrics.NewMeter(),
