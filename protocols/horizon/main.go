@@ -49,6 +49,7 @@ type Account struct {
 	Thresholds           AccountThresholds `json:"thresholds"`
 	Flags                AccountFlags      `json:"flags"`
 	Balances             []Balance         `json:"balances"`
+	UnauthorizedBalances []Balance         `json:"unauthorized_balances"`
 	Signers              []Signer          `json:"signers"`
 	Data                 map[string]string `json:"data"`
 }

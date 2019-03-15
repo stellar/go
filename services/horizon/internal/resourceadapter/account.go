@@ -32,19 +32,30 @@ func PopulateAccount(
 	PopulateAccountFlags(&dest.Flags, ca)
 	PopulateAccountThresholds(&dest.Thresholds, ca)
 
+	authedTls, unauthedTls := splitTrustlines(ct)
+
 	// populate balances
-	dest.Balances = make([]Balance, len(ct)+1)
-	for i, tl := range ct {
+	dest.Balances = make([]Balance, len(authedTls)+1)
+	for i, tl := range authedTls {
 		err = PopulateBalance(ctx, &dest.Balances[i], tl)
 		if err != nil {
-			return
+			return err
+		}
+	}
+
+	// populate unauthorized balances
+	dest.UnauthorizedBalances = make([]Balance, len(unauthedTls))
+	for i, tl := range unauthedTls {
+		err = PopulateBalance(ctx, &dest.UnauthorizedBalances[i], tl)
+		if err != nil {
+			return err
 		}
 	}
 
 	// add native balance
 	err = PopulateNativeBalance(&dest.Balances[len(dest.Balances)-1], ca.Balance, ca.BuyingLiabilities, ca.SellingLiabilities)
 	if err != nil {
-		return
+		return err
 	}
 
 	// populate data
@@ -72,5 +83,21 @@ func PopulateAccount(
 	dest.Links.Trades = lb.PagedLink(self, "trades")
 	dest.Links.Data = lb.Link(self, "data/{key}")
 	dest.Links.Data.PopulateTemplated()
-	return
+	return nil
+}
+
+// splitTrustlines splits trustlines into authorized/unauthorized slices
+func splitTrustlines(ct []core.Trustline) ([]core.Trustline, []core.Trustline) {
+	authorized := make([]core.Trustline, 0, len(ct))
+	unauthorized := make([]core.Trustline, 0, len(ct))
+
+	for _, tl := range ct {
+		if tl.IsAuthorized() {
+			authorized = append(authorized, tl)
+		} else {
+			unauthorized = append(unauthorized, tl)
+		}
+	}
+
+	return authorized, unauthorized
 }
