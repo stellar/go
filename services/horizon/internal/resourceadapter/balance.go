@@ -21,9 +21,8 @@ func PopulateBalance(dest *Balance, row core.Trustline) (err error) {
 	dest.Issuer = row.Issuer
 	dest.Code = row.Assetcode
 	dest.LastModifiedLedger = row.LastModified
-	if row.IsAuthorized() {
-		dest.IsAuthorized = true
-	}
+	isAuthorized := row.IsAuthorized()
+	dest.IsAuthorized = &isAuthorized
 	return
 }
 
@@ -40,6 +39,6 @@ func PopulateNativeBalance(dest *Balance, stroops, buyingLiabilities, sellingLia
 	dest.Limit = ""
 	dest.Issuer = ""
 	dest.Code = ""
-	dest.IsAuthorized = true
+	dest.IsAuthorized = nil
 	return
 }
