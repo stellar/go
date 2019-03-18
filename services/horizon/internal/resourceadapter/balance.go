@@ -1,8 +1,6 @@
 package resourceadapter
 
 import (
-	"context"
-
 	"github.com/stellar/go/amount"
 	. "github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/services/horizon/internal/assets"
@@ -10,7 +8,7 @@ import (
 	"github.com/stellar/go/xdr"
 )
 
-func PopulateBalance(ctx context.Context, dest *Balance, row core.Trustline) (err error) {
+func PopulateBalance(dest *Balance, row core.Trustline) (err error) {
 	dest.Type, err = assets.String(row.Assettype)
 	if err != nil {
 		return
@@ -23,6 +21,9 @@ func PopulateBalance(ctx context.Context, dest *Balance, row core.Trustline) (er
 	dest.Issuer = row.Issuer
 	dest.Code = row.Assetcode
 	dest.LastModifiedLedger = row.LastModified
+	if row.IsAuthorized() {
+		dest.IsAuthorized = true
+	}
 	return
 }
 
@@ -39,5 +40,6 @@ func PopulateNativeBalance(dest *Balance, stroops, buyingLiabilities, sellingLia
 	dest.Limit = ""
 	dest.Issuer = ""
 	dest.Code = ""
+	dest.IsAuthorized = true
 	return
 }

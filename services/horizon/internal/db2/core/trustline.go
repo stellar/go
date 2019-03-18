@@ -7,6 +7,10 @@ import (
 	"github.com/stellar/go/xdr"
 )
 
+func (tl Trustline) IsAuthorized() bool {
+	return (tl.Flags & int32(xdr.TrustLineFlagsAuthorizedFlag)) != 0
+}
+
 // AssetsForAddress loads `dest` as `[]xdr.Asset` with every asset the account
 // at `addy` can hold.
 func (q *Q) AssetsForAddress(dest interface{}, addy string) error {
