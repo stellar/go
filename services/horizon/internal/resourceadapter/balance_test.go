@@ -1,7 +1,6 @@
 package resourceadapter
 
 import (
-	"context"
 	"testing"
 
 	. "github.com/stellar/go/protocols/horizon"
@@ -11,7 +10,6 @@ import (
 )
 
 func TestPopulateBalance(t *testing.T) {
-	ctx := context.Background()
 	testAssetCode1 := "TEST_ASSET_1"
 	testAssetCode2 := "TEST_ASSET_2"
 	authorizedTrustline := core.Trustline{
@@ -35,7 +33,7 @@ func TestPopulateBalance(t *testing.T) {
 
 	want := Balance{}
 
-	err := PopulateBalance(ctx, &want, authorizedTrustline)
+	err := PopulateBalance(&want, authorizedTrustline)
 	assert.NoError(t, err)
 	assert.Equal(t, "credit_alphanum12", want.Type)
 	assert.Equal(t, "0.0000010", want.Balance)
@@ -45,7 +43,7 @@ func TestPopulateBalance(t *testing.T) {
 	assert.Equal(t, true, want.IsAuthorized)
 
 	want = Balance{}
-	err = PopulateBalance(ctx, &want, unauthorizedTrustline)
+	err = PopulateBalance(&want, unauthorizedTrustline)
 	assert.NoError(t, err)
 	assert.Equal(t, "credit_alphanum12", want.Type)
 	assert.Equal(t, "0.0000010", want.Balance)

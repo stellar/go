@@ -1,7 +1,6 @@
 package resourceadapter
 
 import (
-	"context"
 	"fmt"
 
 	"github.com/stellar/go/amount"
@@ -11,7 +10,7 @@ import (
 	"github.com/stellar/go/xdr"
 )
 
-func PopulateBalance(ctx context.Context, dest *Balance, row core.Trustline) (err error) {
+func PopulateBalance(dest *Balance, row core.Trustline) (err error) {
 	dest.Type, err = assets.String(row.Assettype)
 	if err != nil {
 		return

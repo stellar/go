@@ -35,7 +35,7 @@ func PopulateAccount(
 	// populate balances
 	dest.Balances = make([]Balance, len(ct)+1)
 	for i, tl := range ct {
-		err = PopulateBalance(ctx, &dest.Balances[i], tl)
+		err = PopulateBalance(&dest.Balances[i], tl)
 		if err != nil {
 			return err
 		}
