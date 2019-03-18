@@ -608,10 +608,18 @@ func TestOperationsRequest(t *testing.T) {
 	ops, err := client.Operations(operationRequest)
 	if assert.NoError(t, err) {
 		assert.IsType(t, ops, operations.OperationsPage{})
-		recordC := ops.Embedded.Records[2]
-		assert.IsType(t, recordC, operations.CreateAccount{}, "record.Operation should be of type CreateAccount")
-		// assert.Equal(t, recordC.ID, "1103965508866049")
+		paymentOp := ops.Embedded.Records[0]
+		mangageOfferOp := ops.Embedded.Records[1]
+		createAccountOp := ops.Embedded.Records[2]
+		assert.IsType(t, paymentOp, operations.Payment{})
+		assert.IsType(t, mangageOfferOp, operations.ManageOffer{})
+		assert.IsType(t, createAccountOp, operations.CreateAccount{})
 
+		c, err := createAccountOp.GetCreateAccount(createAccountOp)
+		assert.Nil(t, err)
+		assert.Equal(t, c.ID, "98455906148208641")
+		assert.Equal(t, c.StartingBalance, "2.0000000")
+		assert.Equal(t, c.TransactionHash, "ade3c60f1b581e8744596673d95bffbdb8f68f199e0e2f7d63b7c3af9fd8d868")
 	}
 
 	operationRequest = OperationRequest{ForAccount: "GCLWGQPMKXQSPF776IU33AH4PZNOOWNAWGGKVTBQMIC5IMKUNP3E6NVU"}
@@ -639,27 +647,20 @@ func TestOperationsRequest(t *testing.T) {
 	}
 
 	// operation detail
-	// opId := uint(1103965508866049)
-	// hmock.On(
-	// 	"GET",
-	// 	"https://localhost/operations/1103965508866049",
-	// ).ReturnString(200, opsResponse)
+	opId := uint(1103965508866049)
+	hmock.On(
+		"GET",
+		"https://localhost/operations/1103965508866049",
+	).ReturnString(200, opsResponse)
 
-	// opDetail, err := client.OperationDetail(opId)
-	// if assert.NoError(t, err) {
-	// 	assert.IsType(t, opDetail, operations.Base{})
-	// 	record := opDetail.Embedded.Records[0]
+	record, err := client.OperationDetail(opId)
+	if assert.NoError(t, err) {
+		assert.IsType(t, record, operations.Base{})
+		assert.Equal(t, record.ID, "1103965508866049")
+		assert.Equal(t, record.TransactionSuccessful, true)
+		assert.Equal(t, record.TransactionHash, "93c2755ec61c8b01ac11daa4d8d7a012f56be172bdfcaf77a6efd683319ca96d")
 
-	// 	assert.IsType(t, record, operations.ChangeTrust{})
-
-	// 	// orx, ok := record.(operations.ChangeTrust{})
-	// 	// assert.Equal(t, ok, true)
-	// 	// assert.Equal(t, orx.ID, "1103965508866049")
-	// 	// assert.Equal(t, orx.PT, "1103965508866049")
-	// 	// assert.Equal(t, orx.TransactionSuccessful, false)
-	// 	// assert.Equal(t, orx.SourceAccount, "GBMVGXJXJ7ZBHIWMXHKR6IVPDTYKHJPXC2DHZDPJBEZWZYAC7NKII7IB")
-
-	// }
+	}
 
 }
 

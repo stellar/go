@@ -75,9 +75,9 @@ func (m *MockClient) Operations(request OperationRequest) (operations.Operations
 	return a.Get(0).(operations.OperationsPage), a.Error(1)
 }
 
-func (m *MockClient) OperationDetail(id uint) (operations.OperationsPage, error) {
+func (m *MockClient) OperationDetail(id uint) (operations.Base, error) {
 	a := m.Called(id)
-	return a.Get(0).(operations.OperationsPage), a.Error(1)
+	return a.Get(0).(operations.Base), a.Error(1)
 }
 
 // ensure that the MockClient implements ClientInterface

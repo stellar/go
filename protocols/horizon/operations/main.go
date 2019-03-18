@@ -2,6 +2,7 @@ package operations
 
 import (
 	"encoding/json"
+	"errors"
 	"time"
 
 	"github.com/stellar/go/protocols/horizon/base"
@@ -176,10 +177,70 @@ type Inflation struct {
 	Base
 }
 
+// Operation interface contains methods implemented by the operation types
+type Operation interface {
+	PagingToken() string
+	GetType() string
+	GetOperation() Base
+	GetCreateAccount(object interface{}) (CreateAccount, error)
+	GetPayment(object interface{}) (Payment, error)
+	GetManageOffer(object interface{}) (ManageOffer, error)
+	GetChangeTrust(object interface{}) (ChangeTrust, error)
+}
+
+// GetType returns the type of operation
+func (this Base) GetType() string {
+	return this.Type
+}
+
+// GetOperation returns details that is generic for all operation type. This is
+// represented as the Base operation struct
+func (this Base) GetOperation() Base {
+	return this
+}
+
+// GetCreateAccount returns a json resource for create account operation type
+func (this Base) GetCreateAccount(object interface{}) (CreateAccount, error) {
+	c, ok := object.(CreateAccount)
+	if !ok {
+		return CreateAccount{}, errors.New("operation is not of type create_account")
+	}
+	return c, nil
+}
+
+// GetPayment returns a json resource for payment operation type
+func (this Base) GetPayment(object interface{}) (Payment, error) {
+	c, ok := object.(Payment)
+	if !ok {
+		return Payment{}, errors.New("operation is not of type payment")
+	}
+	return c, nil
+}
+
+// GetChangeTrust returns a json resource for change trust operation type
+func (this Base) GetChangeTrust(object interface{}) (ChangeTrust, error) {
+	c, ok := object.(ChangeTrust)
+	if !ok {
+		return ChangeTrust{}, errors.New("operation is not of type change_trust")
+	}
+	return c, nil
+}
+
+// GetManageOffer returns a json resource for manage offer operation type
+func (this Base) GetManageOffer(object interface{}) (ManageOffer, error) {
+	c, ok := object.(ManageOffer)
+	if !ok {
+		return ManageOffer{}, errors.New("operation is not of type manage_offer")
+	}
+	return c, nil
+}
+
+// OperationsPage is the json resource representing a page of operations.
+// OperationsPage.Record can contain various operation types.
 type OperationsPage struct {
 	Links    hal.Links `json:"_links"`
 	Embedded struct {
-		Records []interface{}
+		Records []Operation
 	} `json:"_embedded"`
 }
 
@@ -195,7 +256,8 @@ func (ops *OperationsPage) UnmarshalJSON(data []byte) error {
 		return err
 	}
 
-	for i, j := range opsPage.Embedded.Records {
+	// to do: add more operation types
+	for _, j := range opsPage.Embedded.Records {
 		var b Base
 		dataString, err := json.Marshal(j)
 		if err != nil {
@@ -211,13 +273,23 @@ func (ops *OperationsPage) UnmarshalJSON(data []byte) error {
 			if err := json.Unmarshal(dataString, &op); err != nil {
 				return err
 			}
-			opsPage.Embedded.Records[i] = op
+			ops.Embedded.Records = append(ops.Embedded.Records, op)
+		case TypeNames[xdr.OperationTypePayment]:
+			var op Payment
+			if err := json.Unmarshal(dataString, &op); err != nil {
+				return err
+			}
+			ops.Embedded.Records = append(ops.Embedded.Records, op)
+		case TypeNames[xdr.OperationTypeManageOffer]:
+			var op ManageOffer
+			if err := json.Unmarshal(dataString, &op); err != nil {
+				return err
+			}
+			ops.Embedded.Records = append(ops.Embedded.Records, op)
 		default:
 		}
 
 	}
-
-	ops.Embedded.Records = opsPage.Embedded.Records
 
 	return nil
 }

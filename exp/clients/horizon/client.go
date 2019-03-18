@@ -147,7 +147,7 @@ func (c *Client) Operations(request OperationRequest) (ops operations.Operations
 
 // OperationDetail returns a single stellar operations(https://www.stellar.org/developers/horizon/reference/resources/operation.html)
 // for a given operaion id
-func (c *Client) OperationDetail(id uint) (ops operations.OperationsPage, err error) {
+func (c *Client) OperationDetail(id uint) (ops operations.Base, err error) {
 	if id <= 0 {
 		err = errors.New("Invalid operation id provided")
 	}
