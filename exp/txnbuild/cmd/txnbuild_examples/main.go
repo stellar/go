@@ -59,19 +59,45 @@ func main() {
 	// resp := exampleAccountMerge(client, true)
 	// resp := exampleManageData(client, false)
 	// resp := exampleManageDataRemoveDataEntry(client, false)
-	// resp := exampleSetOptions(client, true)
+	// resp := exampleSetOptions(client, false)
 	// resp := exampleChangeTrust(client, false)
-	resp := exampleChangeTrustDeleteTrustline(client, true)
+	// resp := exampleChangeTrustDeleteTrustline(client, false)
+	resp := exampleAllowTrust(client, false)
 	fmt.Println(resp.TransactionSuccessToString())
 }
 
-func exampleChangeTrust(client *horizon.Client, mock bool) horizon.TransactionSuccess {
+func exampleAllowTrust(client *horizon.Client, mock bool) horizon.TransactionSuccess {
 	keys := initKeys()
 	horizonSourceAccount, err := client.LoadAccount(keys[0].Address)
 	dieIfError("loadaccount", err)
 	sourceAccount := mapAccounts(horizonSourceAccount)
 
-	issuer := txnbuild.NewAsset("ABCD", keys[1].Address)
+	issued := txnbuild.NewAsset("ABCD", keys[0].Address)
+	allowTrust := txnbuild.AllowTrust{
+		Trustor:   keys[1].Address,
+		Type:      issued,
+		Authorize: true,
+	}
+
+	tx := txnbuild.Transaction{
+		SourceAccount: sourceAccount,
+		Operations:    []txnbuild.Operation{&allowTrust},
+		Network:       network.TestNetworkPassphrase,
+	}
+
+	txeBase64 := buildSignEncode(tx, keys[0].Keypair)
+	log.Println("Base 64 TX: ", txeBase64)
+
+	return submit(client, txeBase64, mock)
+}
+
+func exampleChangeTrust(client *horizon.Client, mock bool) horizon.TransactionSuccess {
+	keys := initKeys()
+	horizonSourceAccount, err := client.LoadAccount(keys[1].Address)
+	dieIfError("loadaccount", err)
+	sourceAccount := mapAccounts(horizonSourceAccount)
+
+	issuer := txnbuild.NewAsset("ABCD", keys[0].Address)
 	changeTrust := txnbuild.ChangeTrust{
 		Line:  issuer,
 		Limit: "10",
@@ -83,12 +109,10 @@ func exampleChangeTrust(client *horizon.Client, mock bool) horizon.TransactionSu
 		Network:       network.TestNetworkPassphrase,
 	}
 
-	txeBase64 := buildSignEncode(tx, keys[0].Keypair)
+	txeBase64 := buildSignEncode(tx, keys[1].Keypair)
 	log.Println("Base 64 TX: ", txeBase64)
 
-	resp := submit(client, txeBase64, mock)
-
-	return resp
+	return submit(client, txeBase64, mock)
 }
 
 func exampleChangeTrustDeleteTrustline(client *horizon.Client, mock bool) horizon.TransactionSuccess {
@@ -109,9 +133,7 @@ func exampleChangeTrustDeleteTrustline(client *horizon.Client, mock bool) horizo
 	txeBase64 := buildSignEncode(tx, keys[0].Keypair)
 	log.Println("Base 64 TX: ", txeBase64)
 
-	resp := submit(client, txeBase64, mock)
-
-	return resp
+	return submit(client, txeBase64, mock)
 }
 
 func exampleSetOptions(client *horizon.Client, mock bool) horizon.TransactionSuccess {
@@ -124,11 +146,12 @@ func exampleSetOptions(client *horizon.Client, mock bool) horizon.TransactionSuc
 	setOptions := txnbuild.SetOptions{
 		// InflationDestination: keys[1].Address,
 		// ClearFlags: []txnbuild.AccountFlag{txnbuild.AuthRequired, txnbuild.AuthRevocable},
+		SetFlags: []txnbuild.AccountFlag{txnbuild.AuthRequired, txnbuild.AuthRevocable},
 		// MasterWeight: txnbuild.NewThreshold(255),
 		// LowThreshold:    txnbuild.NewThreshold(1),
 		// MediumThreshold: txnbuild.NewThreshold(2),
 		// HighThreshold:   txnbuild.NewThreshold(2),
-		HomeDomain: txnbuild.NewHomeDomain("LovelyLumensLookLuminousLately.com"),
+		// HomeDomain: txnbuild.NewHomeDomain("LovelyLumensLookLuminousLately.com"),
 		// Signer: &txnbuild.Signer{Address: keys[1].Address, Weight: *txnbuild.NewThreshold(0)},
 	}
 
@@ -141,8 +164,7 @@ func exampleSetOptions(client *horizon.Client, mock bool) horizon.TransactionSuc
 	txeBase64 := buildSignEncode(tx, keys[0].Keypair)
 	log.Println("Base 64 TX: ", txeBase64)
 
-	resp := submit(client, txeBase64, mock)
-	return resp
+	return submit(client, txeBase64, mock)
 }
 
 func exampleManageDataRemoveDataEntry(client *horizon.Client, mock bool) horizon.TransactionSuccess {
