@@ -230,7 +230,7 @@ func (ops *OperationsPage) UnmarshalJSON(data []byte) error {
 		if err != nil {
 			return err
 		}
-		if err := json.Unmarshal(dataString, &b); err != nil {
+		if err = json.Unmarshal(dataString, &b); err != nil {
 			return err
 		}
 
