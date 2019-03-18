@@ -75,7 +75,7 @@ func (m *MockClient) Operations(request OperationRequest) (operations.Operations
 	return a.Get(0).(operations.OperationsPage), a.Error(1)
 }
 
-func (m *MockClient) OperationDetail(id uint) (operations.Operation, error) {
+func (m *MockClient) OperationDetail(id string) (operations.Operation, error) {
 	a := m.Called(id)
 	return a.Get(0).(operations.Operation), a.Error(1)
 }
