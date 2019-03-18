@@ -12,23 +12,23 @@ import (
 	"github.com/stellar/go/support/render/problem"
 )
 
-// Cursor represents `cursor` param in queries
-type Cursor string
+// cursor represents `cursor` param in queries
+type cursor string
 
-// Limit represents `limit` param in queries
-type Limit uint
+// limit represents `limit` param in queries
+type limit uint
 
 // Order represents `order` param in queries
 type Order string
 
-// AssetCode represets `asset_code` param in queries
-type AssetCode string
+// assetCode represets `asset_code` param in queries
+type assetCode string
 
-// AssetIssuer represents `asset_issuer` param in queries
-type AssetIssuer string
+// assetIssuer represents `asset_issuer` param in queries
+type assetIssuer string
 
-// IncludeFailed represents `include_failed` param in queries
-type IncludeFailed bool
+// includeFailed represents `include_failed` param in queries
+type includeFailed bool
 
 const (
 	OrderAsc  Order = "asc"
@@ -124,24 +124,24 @@ type EffectRequest struct {
 	ForOperation   string
 	ForTransaction string
 	Order          Order
-	Cursor         Cursor
-	Limit          Limit
+	Cursor         cursor
+	Limit          limit
 }
 
 // AssetRequest struct contains data for getting asset details from an horizon server.
 type AssetRequest struct {
-	ForAssetCode   AssetCode
-	ForAssetIssuer AssetIssuer
+	ForAssetCode   assetCode
+	ForAssetIssuer assetIssuer
 	Order          Order
-	Cursor         Cursor
-	Limit          Limit
+	Cursor         cursor
+	Limit          limit
 }
 
 // LedgerRequest struct contains data for getting ledger details from an horizon server.
 type LedgerRequest struct {
 	Order       Order
-	Cursor      Cursor
-	Limit       Limit
+	Cursor      cursor
+	Limit       limit
 	forSequence uint32
 }
 
@@ -157,8 +157,8 @@ type feeStatsRequest struct {
 type OfferRequest struct {
 	ForAccount string
 	Order      Order
-	Cursor     Cursor
-	Limit      Limit
+	Cursor     cursor
+	Limit      limit
 }
 
 // OperationRequest struct contains data for getting operation details from an horizon servers
@@ -168,7 +168,7 @@ type OperationRequest struct {
 	ForTransaction string
 	forOperationId string
 	Order          Order
-	Cursor         Cursor
-	Limit          Limit
-	IncludeFailed  IncludeFailed
+	Cursor         cursor
+	Limit          limit
+	IncludeFailed  includeFailed
 }

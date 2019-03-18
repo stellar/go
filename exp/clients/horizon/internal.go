@@ -62,7 +62,7 @@ func addQueryParams(params ...interface{}) string {
 
 	for _, param := range params {
 		switch param := param.(type) {
-		case Cursor:
+		case cursor:
 			if param != "" {
 				query.Add("cursor", string(param))
 			}
@@ -70,19 +70,19 @@ func addQueryParams(params ...interface{}) string {
 			if param != "" {
 				query.Add("order", string(param))
 			}
-		case Limit:
+		case limit:
 			if param != 0 {
 				query.Add("limit", strconv.Itoa(int(param)))
 			}
-		case AssetCode:
+		case assetCode:
 			if param != "" {
 				query.Add("asset_code", string(param))
 			}
-		case AssetIssuer:
+		case assetIssuer:
 			if param != "" {
 				query.Add("asset_issuer", string(param))
 			}
-		case IncludeFailed:
+		case includeFailed:
 			if param {
 				query.Add("include_failed", "true")
 			}

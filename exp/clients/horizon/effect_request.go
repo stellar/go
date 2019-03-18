@@ -85,7 +85,7 @@ func (er EffectRequest) BuildUrl() (endpoint string, err error) {
 func stream(
 	ctx context.Context,
 	baseURL string,
-	cursor *Cursor,
+	cursor *cursor,
 	handler func(data []byte) error,
 ) error {
 	query := url.Values{}
