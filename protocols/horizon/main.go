@@ -49,7 +49,6 @@ type Account struct {
 	Thresholds           AccountThresholds `json:"thresholds"`
 	Flags                AccountFlags      `json:"flags"`
 	Balances             []Balance         `json:"balances"`
-	UnauthorizedBalances []Balance         `json:"unauthorized_balances"`
 	Signers              []Signer          `json:"signers"`
 	Data                 map[string]string `json:"data"`
 }
@@ -148,6 +147,7 @@ type Balance struct {
 	BuyingLiabilities  string `json:"buying_liabilities"`
 	SellingLiabilities string `json:"selling_liabilities"`
 	LastModifiedLedger uint32 `json:"last_modified_ledger,omitempty"`
+	IsAuthorized       bool   `json:"is_authorized,omitempty"`
 	base.Asset
 }
 

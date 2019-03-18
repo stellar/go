@@ -32,21 +32,10 @@ func PopulateAccount(
 	PopulateAccountFlags(&dest.Flags, ca)
 	PopulateAccountThresholds(&dest.Thresholds, ca)
 
-	authedTls, unauthedTls := splitTrustlines(ct)
-
 	// populate balances
-	dest.Balances = make([]Balance, len(authedTls)+1)
-	for i, tl := range authedTls {
+	dest.Balances = make([]Balance, len(ct)+1)
+	for i, tl := range ct {
 		err = PopulateBalance(ctx, &dest.Balances[i], tl)
-		if err != nil {
-			return err
-		}
-	}
-
-	// populate unauthorized balances
-	dest.UnauthorizedBalances = make([]Balance, len(unauthedTls))
-	for i, tl := range unauthedTls {
-		err = PopulateBalance(ctx, &dest.UnauthorizedBalances[i], tl)
 		if err != nil {
 			return err
 		}
@@ -84,20 +73,4 @@ func PopulateAccount(
 	dest.Links.Data = lb.Link(self, "data/{key}")
 	dest.Links.Data.PopulateTemplated()
 	return nil
-}
-
-// splitTrustlines splits trustlines into authorized/unauthorized slices
-func splitTrustlines(ct []core.Trustline) ([]core.Trustline, []core.Trustline) {
-	authorized := make([]core.Trustline, 0, len(ct))
-	unauthorized := make([]core.Trustline, 0, len(ct))
-
-	for _, tl := range ct {
-		if tl.IsAuthorized() {
-			authorized = append(authorized, tl)
-		} else {
-			unauthorized = append(unauthorized, tl)
-		}
-	}
-
-	return authorized, unauthorized
 }

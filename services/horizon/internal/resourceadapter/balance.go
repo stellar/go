@@ -2,6 +2,7 @@ package resourceadapter
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/stellar/go/amount"
 	. "github.com/stellar/go/protocols/horizon"
@@ -17,12 +18,16 @@ func PopulateBalance(ctx context.Context, dest *Balance, row core.Trustline) (er
 	}
 
 	dest.Balance = amount.String(row.Balance)
+	fmt.Printf("balance in balance: %s, blance in trust: %d\n", dest.Balance, row.Balance)
 	dest.BuyingLiabilities = amount.String(row.BuyingLiabilities)
 	dest.SellingLiabilities = amount.String(row.SellingLiabilities)
 	dest.Limit = amount.String(row.Tlimit)
 	dest.Issuer = row.Issuer
 	dest.Code = row.Assetcode
 	dest.LastModifiedLedger = row.LastModified
+	if row.IsAuthorized() {
+		dest.IsAuthorized = true
+	}
 	return
 }
 
@@ -39,5 +44,6 @@ func PopulateNativeBalance(dest *Balance, stroops, buyingLiabilities, sellingLia
 	dest.Limit = ""
 	dest.Issuer = ""
 	dest.Code = ""
+	dest.IsAuthorized = true
 	return
 }
