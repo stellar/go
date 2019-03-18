@@ -489,3 +489,55 @@ func TestAllowTrust(t *testing.T) {
 	expected := "AAAAAODcbeFyXKxmUWK1L6znNbKKIkPkHRJNbLktcKPqLnLFAAAAZAAAJLsAAABPAAAAAAAAAAAAAAABAAAAAAAAAAcAAAAAJcrx2g/Hbs/ohF5CVFG7B5JJSJR+OqDKzDGK7dKHZH4AAAABQUJDRAAAAAEAAAAAAAAAAeoucsUAAABAlP4A5hdKUQU18MY6wmf4GugGNnCUklsV9/aRoTv8Q2yw7skm5nkFExnjhgEya6AM7iCR6oaf2C0VhrU4oEEODQ=="
 	assert.Equal(t, expected, received, "Base 64 XDR should match")
 }
+
+func TestManageOfferNewOffer(t *testing.T) {
+	kp0 := newKeypair0()
+	kp1 := newKeypair1()
+
+	sourceAccount := Account{
+		ID:             kp1.Address(),
+		SequenceNumber: 41137196761092,
+	}
+
+	selling := NewNativeAsset()
+	buying := NewAsset("ABCD", kp0.Address())
+	sellAmount := "100"
+	price := "0.01"
+	createOffer := NewCreateOfferOp(selling, buying, sellAmount, price)
+
+	tx := Transaction{
+		SourceAccount: sourceAccount,
+		Operations:    []Operation{&createOffer},
+		Network:       network.TestNetworkPassphrase,
+	}
+
+	received := buildSignEncode(tx, kp1, t)
+	expected := "AAAAACXK8doPx27P6IReQlRRuweSSUiUfjqgyswxiu3Sh2R+AAAAZAAAJWoAAAAFAAAAAAAAAAAAAAABAAAAAAAAAAMAAAAAAAAAAUFCQ0QAAAAA4Nxt4XJcrGZRYrUvrOc1sooiQ+QdEk1suS1wo+oucsUAAAAAO5rKAAAAAAEAAABkAAAAAAAAAAAAAAAAAAAAAdKHZH4AAABAe/TZt+6EAWp8BxbOa+x8xZ+oKF83SKghhzfMaih0gn9Ark2kE+ZOdiftY+DDjLF8RVzbzWGFvHgGBCt5pY5lCg=="
+	assert.Equal(t, expected, received, "Base 64 XDR should match")
+}
+
+func TestManageOfferDeleteOffer(t *testing.T) {
+	kp0 := newKeypair0()
+	kp1 := newKeypair1()
+
+	sourceAccount := Account{
+		ID:             kp1.Address(),
+		SequenceNumber: 41137196761094,
+	}
+
+	selling := NewNativeAsset()
+	buying := NewAsset("ABCD", kp0.Address())
+	price := "0.01"
+	offerID := uint64(2363097)
+	createOffer := NewDeleteOfferOp(selling, buying, price, offerID)
+
+	tx := Transaction{
+		SourceAccount: sourceAccount,
+		Operations:    []Operation{&createOffer},
+		Network:       network.TestNetworkPassphrase,
+	}
+
+	received := buildSignEncode(tx, kp1, t)
+	expected := "AAAAACXK8doPx27P6IReQlRRuweSSUiUfjqgyswxiu3Sh2R+AAAAZAAAJWoAAAAHAAAAAAAAAAAAAAABAAAAAAAAAAMAAAAAAAAAAUFCQ0QAAAAA4Nxt4XJcrGZRYrUvrOc1sooiQ+QdEk1suS1wo+oucsUAAAAAAAAAAAAAAAEAAABkAAAAAAAkDtkAAAAAAAAAAdKHZH4AAABA2QUk7WuqGq92J5djfEA2XE8LogteFRozN/3pY5KpA2ilYj+FQBtAGM8g+Ni8ZbofCgjTrQefqpv/pWneaDj1CA=="
+	assert.Equal(t, expected, received, "Base 64 XDR should match")
+}

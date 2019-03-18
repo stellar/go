@@ -62,8 +62,66 @@ func main() {
 	// resp := exampleSetOptions(client, false)
 	// resp := exampleChangeTrust(client, false)
 	// resp := exampleChangeTrustDeleteTrustline(client, false)
-	resp := exampleAllowTrust(client, false)
+	// resp := exampleAllowTrust(client, false)
+	// resp := exampleManageOfferNewOffer(client, false)
+	resp := exampleManageOfferDeleteOffer(client, false)
 	fmt.Println(resp.TransactionSuccessToString())
+}
+
+func exampleManageOfferDeleteOffer(client *horizon.Client, mock bool) horizon.TransactionSuccess {
+	keys := initKeys()
+	horizonSourceAccount, err := client.LoadAccount(keys[1].Address)
+	dieIfError("loadaccount", err)
+	sourceAccount := mapAccounts(horizonSourceAccount)
+
+	selling := txnbuild.NewNativeAsset()
+	buying := txnbuild.Asset{
+		Code:   "ABCD",
+		Issuer: keys[0].Address,
+	}
+	price := "0.01"
+	offerID := uint64(2363097)
+
+	deleteOffer := txnbuild.NewDeleteOfferOp(selling, &buying, price, offerID)
+
+	tx := txnbuild.Transaction{
+		SourceAccount: sourceAccount,
+		Operations:    []txnbuild.Operation{&deleteOffer},
+		Network:       network.TestNetworkPassphrase,
+	}
+
+	txeBase64 := buildSignEncode(tx, keys[1].Keypair)
+	log.Println("Base 64 TX: ", txeBase64)
+
+	return submit(client, txeBase64, mock)
+}
+
+func exampleManageOfferNewOffer(client *horizon.Client, mock bool) horizon.TransactionSuccess {
+	keys := initKeys()
+	horizonSourceAccount, err := client.LoadAccount(keys[1].Address)
+	dieIfError("loadaccount", err)
+	sourceAccount := mapAccounts(horizonSourceAccount)
+
+	selling := txnbuild.NewNativeAsset()
+	buying := txnbuild.Asset{
+		Code:   "ABCD",
+		Issuer: keys[0].Address,
+	}
+	sellAmount := "100"
+	price := "0.01"
+
+	createOffer := txnbuild.NewCreateOfferOp(selling, &buying, sellAmount, price)
+
+	tx := txnbuild.Transaction{
+		SourceAccount: sourceAccount,
+		Operations:    []txnbuild.Operation{&createOffer},
+		Network:       network.TestNetworkPassphrase,
+	}
+
+	txeBase64 := buildSignEncode(tx, keys[1].Keypair)
+	log.Println("Base 64 TX: ", txeBase64)
+
+	return submit(client, txeBase64, mock)
 }
 
 func exampleAllowTrust(client *horizon.Client, mock bool) horizon.TransactionSuccess {
@@ -146,7 +204,7 @@ func exampleSetOptions(client *horizon.Client, mock bool) horizon.TransactionSuc
 	setOptions := txnbuild.SetOptions{
 		// InflationDestination: keys[1].Address,
 		// ClearFlags: []txnbuild.AccountFlag{txnbuild.AuthRequired, txnbuild.AuthRevocable},
-		SetFlags: []txnbuild.AccountFlag{txnbuild.AuthRequired, txnbuild.AuthRevocable},
+		// SetFlags: []txnbuild.AccountFlag{txnbuild.AuthRequired, txnbuild.AuthRevocable},
 		// MasterWeight: txnbuild.NewThreshold(255),
 		// LowThreshold:    txnbuild.NewThreshold(1),
 		// MediumThreshold: txnbuild.NewThreshold(2),

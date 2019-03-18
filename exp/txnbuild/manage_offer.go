@@ -15,6 +15,30 @@ func NewCreateOfferOp(selling, buying *Asset, amount, price string) ManageOffer 
 		Buying:  buying,
 		Amount:  amount,
 		Price:   price,
+		OfferID: 0,
+	}
+}
+
+//NewUpdateOfferOp returns a ManageOffer operation to update a new offer.
+func NewUpdateOfferOp(selling, buying *Asset, amount, price string, offerID uint64) ManageOffer {
+	return ManageOffer{
+		Selling: selling,
+		Buying:  buying,
+		Amount:  amount,
+		Price:   price,
+		OfferID: offerID,
+	}
+}
+
+//NewDeleteOfferOp returns a ManageOffer operation to delete a new offer, by
+// setting the Amount to "0".
+func NewDeleteOfferOp(selling, buying *Asset, price string, offerID uint64) ManageOffer {
+	return ManageOffer{
+		Selling: selling,
+		Buying:  buying,
+		Amount:  "0",
+		Price:   price,
+		OfferID: offerID,
 	}
 }
 
