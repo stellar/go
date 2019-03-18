@@ -1,8 +1,6 @@
 package resourceadapter
 
 import (
-	"fmt"
-
 	"github.com/stellar/go/amount"
 	. "github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/services/horizon/internal/assets"
@@ -17,7 +15,6 @@ func PopulateBalance(dest *Balance, row core.Trustline) (err error) {
 	}
 
 	dest.Balance = amount.String(row.Balance)
-	fmt.Printf("balance in balance: %s, blance in trust: %d\n", dest.Balance, row.Balance)
 	dest.BuyingLiabilities = amount.String(row.BuyingLiabilities)
 	dest.SellingLiabilities = amount.String(row.SellingLiabilities)
 	dest.Limit = amount.String(row.Tlimit)

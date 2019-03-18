@@ -32,7 +32,6 @@ func TestPopulateBalance(t *testing.T) {
 	}
 
 	want := Balance{}
-
 	err := PopulateBalance(&want, authorizedTrustline)
 	assert.NoError(t, err)
 	assert.Equal(t, "credit_alphanum12", want.Type)
@@ -55,7 +54,6 @@ func TestPopulateBalance(t *testing.T) {
 
 func TestPopulateNativeBalance(t *testing.T) {
 	want := Balance{}
-
 	err := PopulateNativeBalance(&want, 10, 10, 10)
 	assert.NoError(t, err)
 	assert.Equal(t, "native", want.Type)
