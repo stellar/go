@@ -37,9 +37,9 @@ func (op OperationRequest) BuildUrl() (endpoint string, err error) {
 		)
 	}
 
-	if op.forOperationId > 0 {
+	if op.forOperationId != "" {
 		endpoint = fmt.Sprintf(
-			"operations/%d",
+			"operations/%s",
 			op.forOperationId,
 		)
 	}
