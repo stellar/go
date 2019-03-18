@@ -531,20 +531,12 @@
   revision = "a5cfc242a56ba7fa70b785f678d6214837bf93b9"
 
 [[projects]]
-  digest = "1:613400d7688f0486bec153e7f6bb5323b7446a2a064e4246e0378bf77ea91deb"
+  digest = "1:1401e01c949948034a12d9e8723c46ce6b40d9c39ec097fb30bd9df73b9dd7d4"
   name = "github.com/rs/cors"
   packages = ["."]
   pruneopts = "T"
-  revision = "a62a804a8a009876ca59105f7899938a1349f4b3"
-  version = "v1.0"
-
-[[projects]]
-  digest = "1:570245f4c0d1fda215c2ace54b00d148564eefb0ba068c4d2aac7b91766f0a7e"
-  name = "github.com/rs/xhandler"
-  packages = ["."]
-  pruneopts = "T"
-  revision = "ed27b6fd65218132ee50cd95f38474a3d8a2cd12"
-  version = "v.11"
+  revision = "feef513b9575b32f84bafa580aad89b011259019"
+  version = "v1.3.0"
 
 [[projects]]
   digest = "1:aeebf12d5c8463faab36c6f9904e36cc9d825a7a3c735ad160a0abd09c71017d"
