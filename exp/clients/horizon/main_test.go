@@ -172,6 +172,19 @@ func ExampleClient_Operations() {
 		return
 	}
 	fmt.Print(ops)
+	records := ops.Embedded.Records
+
+	for _, value := range records {
+		// prints the type
+		fmt.Print(value.GetType())
+		// for example if the type is change_trust
+		c, err := value.GetChangeTrust(value)
+		if err != nil {
+			// access ChangeTrust fields
+			fmt.Print(c.Trustee)
+		}
+
+	}
 }
 
 func ExampleClient_OperationDetail() {
@@ -655,10 +668,17 @@ func TestOperationsRequest(t *testing.T) {
 
 	record, err := client.OperationDetail(opId)
 	if assert.NoError(t, err) {
-		assert.IsType(t, record, operations.Base{})
-		assert.Equal(t, record.ID, "1103965508866049")
-		assert.Equal(t, record.TransactionSuccessful, true)
-		assert.Equal(t, record.TransactionHash, "93c2755ec61c8b01ac11daa4d8d7a012f56be172bdfcaf77a6efd683319ca96d")
+		assert.Equal(t, record.GetType(), "change_trust")
+		c, err := record.GetChangeTrust(record)
+		assert.Nil(t, err)
+		assert.Equal(t, c.ID, "1103965508866049")
+		assert.Equal(t, c.TransactionSuccessful, true)
+		assert.Equal(t, c.TransactionHash, "93c2755ec61c8b01ac11daa4d8d7a012f56be172bdfcaf77a6efd683319ca96d")
+		assert.Equal(t, c.Asset.Code, "UAHd")
+		assert.Equal(t, c.Asset.Issuer, "GDDETPGV4OJVNBTB6GQICCPGH5DZRYYB7XQCSAZO2ZQH6HO7SWXHKKJN")
+		assert.Equal(t, c.Limit, "922337203685.4775807")
+		assert.Equal(t, c.Trustee, "GDDETPGV4OJVNBTB6GQICCPGH5DZRYYB7XQCSAZO2ZQH6HO7SWXHKKJN")
+		assert.Equal(t, c.Trustor, "GBMVGXJXJ7ZBHIWMXHKR6IVPDTYKHJPXC2DHZDPJBEZWZYAC7NKII7IB")
 
 	}
 
