@@ -39,7 +39,8 @@ func TestPopulateBalance(t *testing.T) {
 	assert.Equal(t, "0.0000100", want.Limit)
 	assert.Equal(t, "", want.Issuer)
 	assert.Equal(t, testAssetCode1, want.Code)
-	assert.Equal(t, true, want.IsAuthorized)
+	vTrue := true
+	assert.Equal(t, &vTrue, want.IsAuthorized)
 
 	want = Balance{}
 	err = PopulateBalance(&want, unauthorizedTrustline)
@@ -49,7 +50,8 @@ func TestPopulateBalance(t *testing.T) {
 	assert.Equal(t, "0.0000100", want.Limit)
 	assert.Equal(t, "", want.Issuer)
 	assert.Equal(t, testAssetCode2, want.Code)
-	assert.Equal(t, false, want.IsAuthorized)
+	vFalse := false
+	assert.Equal(t, &vFalse, want.IsAuthorized)
 }
 
 func TestPopulateNativeBalance(t *testing.T) {
@@ -63,5 +65,5 @@ func TestPopulateNativeBalance(t *testing.T) {
 	assert.Equal(t, "", want.Limit)
 	assert.Equal(t, "", want.Issuer)
 	assert.Equal(t, "", want.Code)
-	assert.Equal(t, true, want.IsAuthorized)
+	assert.Nil(t, want.IsAuthorized)
 }
