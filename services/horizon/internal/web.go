@@ -67,13 +67,7 @@ func initWebMiddleware(app *App) {
 	r.Use(requestMetricsMiddleware)
 	r.Use(recoverMiddleware)
 	r.Use(chimiddleware.Compress(flate.DefaultCompression, "application/hal+json"))
-
-	c := cors.New(cors.Options{
-		AllowedOrigins: []string{"*"},
-		AllowedHeaders: []string{"*"},
-	})
-	r.Use(c.Handler)
-
+	r.Use(cors.Default().Handler)
 	r.Use(app.web.RateLimitMiddleware)
 }
 

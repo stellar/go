@@ -35,7 +35,7 @@ func TestGenericHTTPFeatures(t *testing.T) {
 
 	if ht.Assert.Equal(200, w.Code) {
 		ht.Assert.Equal(
-			"somewhere.com",
+			"*",
 			w.HeaderMap.Get("Access-Control-Allow-Origin"),
 		)
 	}
