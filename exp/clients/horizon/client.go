@@ -9,7 +9,6 @@ import (
 	"github.com/stellar/go/protocols/horizon/operations"
 	"github.com/stellar/go/support/app"
 	"github.com/stellar/go/support/errors"
-	"github.com/stellar/go/xdr"
 )
 
 func (c *Client) sendRequest(hr HorizonRequest, a interface{}) (err error) {
@@ -140,17 +139,17 @@ func (c *Client) Offers(request OfferRequest) (offers hProtocol.OffersPage, err 
 	return
 }
 
-// Operations returns stellar operations(https://www.stellar.org/developers/horizon/reference/resources/operation.html)
+// Operations returns stellar operations (https://www.stellar.org/developers/horizon/reference/resources/operation.html)
 // It can be used to return operations for an account, a ledger, a transaction and all operations on the network.
 func (c *Client) Operations(request OperationRequest) (ops operations.OperationsPage, err error) {
 	err = c.sendRequest(request, &ops)
 	return
 }
 
-// OperationDetail returns a single stellar operations(https://www.stellar.org/developers/horizon/reference/resources/operation.html)
-// for a given operaion id
-func (c *Client) OperationDetail(id uint) (ops operations.Operation, err error) {
-	if id <= 0 {
+// OperationDetail returns a single stellar operations (https://www.stellar.org/developers/horizon/reference/resources/operation.html)
+// for a given operation id
+func (c *Client) OperationDetail(id string) (ops operations.Operation, err error) {
+	if id == "" {
 		err = errors.New("Invalid operation id provided")
 	}
 
@@ -179,34 +178,11 @@ func (c *Client) OperationDetail(id uint) (ops operations.Operation, err error) 
 	}
 
 	// unmarshal to the correct json struct based on operation type
-	// to do add more types
-	switch baseRecord.GetType() {
-	case operations.TypeNames[xdr.OperationTypeCreateAccount]:
-		var op operations.CreateAccount
-		if err = json.Unmarshal(dataString, &op); err != nil {
-			return
-		}
-		ops = op
-	case operations.TypeNames[xdr.OperationTypePayment]:
-		var op operations.Payment
-		if err = json.Unmarshal(dataString, &op); err != nil {
-			return
-		}
-		ops = op
-	case operations.TypeNames[xdr.OperationTypeManageOffer]:
-		var op operations.ManageOffer
-		if err = json.Unmarshal(dataString, &op); err != nil {
-			return
-		}
-		ops = op
-	case operations.TypeNames[xdr.OperationTypeChangeTrust]:
-		var op operations.ChangeTrust
-		if err = json.Unmarshal(dataString, &op); err != nil {
-			return
-		}
-		ops = op
-	default:
+	op, err := operations.UnmarshalOperation(baseRecord.GetType(), dataString)
+	if err != nil {
+		return
 	}
+	ops = op
 
 	return
 }

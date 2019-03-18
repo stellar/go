@@ -178,8 +178,8 @@ func ExampleClient_Operations() {
 		// prints the type
 		fmt.Print(value.GetType())
 		// for example if the type is change_trust
-		c, err := value.GetChangeTrust(value)
-		if err != nil {
+		c, ok := value.(operations.ChangeTrust)
+		if ok {
 			// access ChangeTrust fields
 			fmt.Print(c.Trustee)
 		}
@@ -190,7 +190,7 @@ func ExampleClient_Operations() {
 func ExampleClient_OperationDetail() {
 
 	client := DefaultPublicNetClient
-	opId := uint(123456)
+	opId := "123456"
 	// operation details for an id
 	ops, err := client.OperationDetail(opId)
 	if err != nil {
@@ -628,8 +628,8 @@ func TestOperationsRequest(t *testing.T) {
 		assert.IsType(t, mangageOfferOp, operations.ManageOffer{})
 		assert.IsType(t, createAccountOp, operations.CreateAccount{})
 
-		c, err := createAccountOp.GetCreateAccount(createAccountOp)
-		assert.Nil(t, err)
+		c, ok := createAccountOp.(operations.CreateAccount)
+		assert.Equal(t, ok, true)
 		assert.Equal(t, c.ID, "98455906148208641")
 		assert.Equal(t, c.StartingBalance, "2.0000000")
 		assert.Equal(t, c.TransactionHash, "ade3c60f1b581e8744596673d95bffbdb8f68f199e0e2f7d63b7c3af9fd8d868")
@@ -660,7 +660,7 @@ func TestOperationsRequest(t *testing.T) {
 	}
 
 	// operation detail
-	opId := uint(1103965508866049)
+	opId := "1103965508866049"
 	hmock.On(
 		"GET",
 		"https://localhost/operations/1103965508866049",
@@ -669,8 +669,8 @@ func TestOperationsRequest(t *testing.T) {
 	record, err := client.OperationDetail(opId)
 	if assert.NoError(t, err) {
 		assert.Equal(t, record.GetType(), "change_trust")
-		c, err := record.GetChangeTrust(record)
-		assert.Nil(t, err)
+		c, ok := record.(operations.ChangeTrust)
+		assert.Equal(t, ok, true)
 		assert.Equal(t, c.ID, "1103965508866049")
 		assert.Equal(t, c.TransactionSuccessful, true)
 		assert.Equal(t, c.TransactionHash, "93c2755ec61c8b01ac11daa4d8d7a012f56be172bdfcaf77a6efd683319ca96d")

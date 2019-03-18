@@ -50,6 +50,7 @@ func countParams(params ...interface{}) int {
 		case bool:
 			counter++
 		default:
+			panic("Unknown parameter type")
 		}
 
 	}
@@ -81,7 +82,12 @@ func addQueryParams(params ...interface{}) string {
 			if param != "" {
 				query.Add("asset_issuer", string(param))
 			}
+		case IncludeFailed:
+			if param {
+				query.Add("include_failed", "true")
+			}
 		default:
+			panic("Unknown parameter type")
 		}
 	}
 

@@ -181,11 +181,9 @@ type Inflation struct {
 type Operation interface {
 	PagingToken() string
 	GetType() string
-	GetOperation() Base
-	GetCreateAccount(object interface{}) (CreateAccount, error)
-	GetPayment(object interface{}) (Payment, error)
-	GetManageOffer(object interface{}) (ManageOffer, error)
-	GetChangeTrust(object interface{}) (ChangeTrust, error)
+	GetID() string
+	GetTransactionHash() string
+	IsTransactionSuccessful() bool
 }
 
 // GetType returns the type of operation
@@ -193,46 +191,16 @@ func (this Base) GetType() string {
 	return this.Type
 }
 
-// GetOperation returns details that is generic for all operation type. This is
-// represented as the Base operation struct
-func (this Base) GetOperation() Base {
-	return this
+func (this Base) GetID() string {
+	return this.ID
 }
 
-// GetCreateAccount returns a json resource for create account operation type
-func (this Base) GetCreateAccount(object interface{}) (CreateAccount, error) {
-	c, ok := object.(CreateAccount)
-	if !ok {
-		return CreateAccount{}, errors.New("operation is not of type create_account")
-	}
-	return c, nil
+func (this Base) GetTransactionHash() string {
+	return this.TransactionHash
 }
 
-// GetPayment returns a json resource for payment operation type
-func (this Base) GetPayment(object interface{}) (Payment, error) {
-	c, ok := object.(Payment)
-	if !ok {
-		return Payment{}, errors.New("operation is not of type payment")
-	}
-	return c, nil
-}
-
-// GetChangeTrust returns a json resource for change trust operation type
-func (this Base) GetChangeTrust(object interface{}) (ChangeTrust, error) {
-	c, ok := object.(ChangeTrust)
-	if !ok {
-		return ChangeTrust{}, errors.New("operation is not of type change_trust")
-	}
-	return c, nil
-}
-
-// GetManageOffer returns a json resource for manage offer operation type
-func (this Base) GetManageOffer(object interface{}) (ManageOffer, error) {
-	c, ok := object.(ManageOffer)
-	if !ok {
-		return ManageOffer{}, errors.New("operation is not of type manage_offer")
-	}
-	return c, nil
+func (this Base) IsTransactionSuccessful() bool {
+	return this.TransactionSuccessful
 }
 
 // OperationsPage is the json resource representing a page of operations.
@@ -256,7 +224,6 @@ func (ops *OperationsPage) UnmarshalJSON(data []byte) error {
 		return err
 	}
 
-	// to do: add more operation types
 	for _, j := range opsPage.Embedded.Records {
 		var b Base
 		dataString, err := json.Marshal(j)
@@ -267,29 +234,95 @@ func (ops *OperationsPage) UnmarshalJSON(data []byte) error {
 			return err
 		}
 
-		switch b.Type {
-		case TypeNames[xdr.OperationTypeCreateAccount]:
-			var op CreateAccount
-			if err := json.Unmarshal(dataString, &op); err != nil {
-				return err
-			}
-			ops.Embedded.Records = append(ops.Embedded.Records, op)
-		case TypeNames[xdr.OperationTypePayment]:
-			var op Payment
-			if err := json.Unmarshal(dataString, &op); err != nil {
-				return err
-			}
-			ops.Embedded.Records = append(ops.Embedded.Records, op)
-		case TypeNames[xdr.OperationTypeManageOffer]:
-			var op ManageOffer
-			if err := json.Unmarshal(dataString, &op); err != nil {
-				return err
-			}
-			ops.Embedded.Records = append(ops.Embedded.Records, op)
-		default:
+		op, err := UnmarshalOperation(b.Type, dataString)
+		if err != nil {
+			return err
 		}
 
+		ops.Embedded.Records = append(ops.Embedded.Records, op)
 	}
 
 	return nil
+}
+
+// UnmarshalOperation decodes responses to the correct operation struct
+func UnmarshalOperation(operationType string, dataString []byte) (ops Operation, err error) {
+	switch operationType {
+	case TypeNames[xdr.OperationTypeCreateAccount]:
+		var op CreateAccount
+		if err = json.Unmarshal(dataString, &op); err != nil {
+			return
+		}
+		ops = op
+	case TypeNames[xdr.OperationTypePathPayment]:
+		var op PathPayment
+		if err = json.Unmarshal(dataString, &op); err != nil {
+			return
+		}
+		ops = op
+	case TypeNames[xdr.OperationTypePayment]:
+		var op Payment
+		if err = json.Unmarshal(dataString, &op); err != nil {
+			return
+		}
+		ops = op
+	case TypeNames[xdr.OperationTypeManageOffer]:
+		var op ManageOffer
+		if err = json.Unmarshal(dataString, &op); err != nil {
+			return
+		}
+		ops = op
+	case TypeNames[xdr.OperationTypeCreatePassiveOffer]:
+		var op CreatePassiveOffer
+		if err = json.Unmarshal(dataString, &op); err != nil {
+			return
+		}
+		ops = op
+	case TypeNames[xdr.OperationTypeSetOptions]:
+		var op SetOptions
+		if err = json.Unmarshal(dataString, &op); err != nil {
+			return
+		}
+		ops = op
+	case TypeNames[xdr.OperationTypeChangeTrust]:
+		var op ChangeTrust
+		if err = json.Unmarshal(dataString, &op); err != nil {
+			return
+		}
+		ops = op
+	case TypeNames[xdr.OperationTypeAllowTrust]:
+		var op AllowTrust
+		if err = json.Unmarshal(dataString, &op); err != nil {
+			return
+		}
+		ops = op
+	case TypeNames[xdr.OperationTypeAccountMerge]:
+		var op AccountMerge
+		if err = json.Unmarshal(dataString, &op); err != nil {
+			return
+		}
+		ops = op
+	case TypeNames[xdr.OperationTypeInflation]:
+		var op Inflation
+		if err = json.Unmarshal(dataString, &op); err != nil {
+			return
+		}
+		ops = op
+	case TypeNames[xdr.OperationTypeManageData]:
+		var op ManageData
+		if err = json.Unmarshal(dataString, &op); err != nil {
+			return
+		}
+		ops = op
+	case TypeNames[xdr.OperationTypeBumpSequence]:
+		var op BumpSequence
+		if err = json.Unmarshal(dataString, &op); err != nil {
+			return
+		}
+		ops = op
+	default:
+		err = errors.New("Invalid operation format, unable to unmarshal json response")
+	}
+
+	return
 }
