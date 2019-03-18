@@ -112,7 +112,7 @@ func stream(
 		}
 
 		// Expected statusCode are 200-299
-		if resp.StatusCode >= 200 && resp.StatusCode < 300 {
+		if resp.StatusCode < 200 && resp.StatusCode >= 300 {
 			return fmt.Errorf("Got bad HTTP status code %d", resp.StatusCode)
 		}
 		defer resp.Body.Close()
