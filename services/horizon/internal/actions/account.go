@@ -11,6 +11,7 @@ import (
 	"github.com/stellar/go/support/errors"
 )
 
+// AccountInfo returns the information about an account identified by addr.
 func AccountInfo(ctx context.Context, cq *core.Q, hq *history.Q, addr string) (*pHorizon.Account, error) {
 	var (
 		coreRecord     core.Account

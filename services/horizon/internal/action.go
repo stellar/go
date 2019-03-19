@@ -141,6 +141,7 @@ func (action *Action) EnsureHistoryFreshness() {
 	}
 }
 
+// errorIfHistoryIsStale returns a formatted error if isStale is true.
 func errorIfHistoryIsStale(isStale bool) error {
 	if !isStale {
 		return nil
@@ -169,6 +170,8 @@ func (action *Action) baseURL() *url.URL {
 	return httpx.BaseURL(action.R.Context())
 }
 
+// getAccountInfo returns the information about an account based on the provided param.
+// The expected param here is the account id, which has a string type.
 func (w *web) getAccountInfo(ctx context.Context, param interface{}) (interface{}, error) {
 	addr, ok := param.(string)
 	if !ok {
@@ -177,11 +180,15 @@ func (w *web) getAccountInfo(ctx context.Context, param interface{}) (interface{
 	return actions.AccountInfo(ctx, &core.Q{w.coreSession(ctx)}, &history.Q{w.horizonSession(ctx)}, addr)
 }
 
+// loadAccountEvent loads the information about an account based on the provided param into a server-sent event.
+// The expected param here is the account id, which has a string type.
 func (w *web) loadAccountEvent(ctx context.Context, param interface{}) (sse.Event, error) {
 	res, err := w.getAccountInfo(ctx, param)
 	return sse.Event{Data: res}, err
 }
 
+// getTransactionPageByAccount returns a page containing the transaction records of an account.
+// The expected param here is a pointer to TransactionParams.
 func (w *web) getTransactionPageByAccount(ctx context.Context, params interface{}) (interface{}, error) {
 	tp, ok := params.(*actions.TransactionParams)
 	if !ok {
@@ -191,6 +198,8 @@ func (w *web) getTransactionPageByAccount(ctx context.Context, params interface{
 	return actions.TransactionPageByAccount(ctx, &history.Q{w.horizonSession(ctx)}, tp.AccountFilter, tp.IncludeFailed, tp.PagingParams)
 }
 
+// streamTransactionByAccount streams the transaction records of an account.
+// The expected param here is a pointer to TransactionParams.
 func (w *web) streamTransactionByAccount(ctx context.Context, s *sse.Stream, params interface{}) error {
 	tp, ok := params.(*actions.TransactionParams)
 	if !ok {

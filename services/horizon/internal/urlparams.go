@@ -3,18 +3,18 @@ package horizon
 import (
 	"net/http"
 	"strconv"
-	"strings"
 
 	"github.com/stellar/go/services/horizon/internal/actions"
 	"github.com/stellar/go/services/horizon/internal/db2"
 	"github.com/stellar/go/services/horizon/internal/hchi"
 	"github.com/stellar/go/services/horizon/internal/ledger"
-	hProblem "github.com/stellar/go/services/horizon/internal/render/problem"
 	"github.com/stellar/go/services/horizon/internal/toid"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/support/render/problem"
 )
 
+// getCursor gets the param cursor from either the request URL or the request
+// header and validates it.
 func getCursor(r *http.Request) (string, error) {
 	cursor, err := hchi.GetStringFromURL(r, actions.ParamCursor)
 	if err != nil {
@@ -44,6 +44,7 @@ func getCursor(r *http.Request) (string, error) {
 	return cursor, nil
 }
 
+// getOrder gets the param order from the request URL and validates it.
 func getOrder(r *http.Request) (string, error) {
 	order, err := hchi.GetStringFromURL(r, actions.ParamOrder)
 	if err != nil {
@@ -61,6 +62,7 @@ func getOrder(r *http.Request) (string, error) {
 	return order, nil
 }
 
+// getLimit gets the param limit from the request URL and validates it.
 func getLimit(r *http.Request, defaultSize, maxSize uint64) (uint64, error) {
 	limit, err := hchi.GetStringFromURL(r, actions.ParamLimit)
 	if err != nil {
@@ -84,6 +86,7 @@ func getLimit(r *http.Request, defaultSize, maxSize uint64) (uint64, error) {
 	return uint64(limitInt64), nil
 }
 
+// getPageQuery gets the page query and does the validation if disableCursorValidation is false.
 func getPageQuery(r *http.Request, disableCursorValidation bool) (db2.PageQuery, error) {
 	cursor, err := getCursor(r)
 	if err != nil {
@@ -115,6 +118,8 @@ func getPageQuery(r *http.Request, disableCursorValidation bool) (db2.PageQuery,
 	return pq, nil
 }
 
+// getInt32ParamFromURL gets the int32 param with the provided key. It errors
+// if the param value cannot be parsed as int32.
 func getInt32ParamFromURL(r *http.Request, key string) (int32, error) {
 	val, err := hchi.GetStringFromURL(r, key)
 	if err != nil {
@@ -132,45 +137,20 @@ func getInt32ParamFromURL(r *http.Request, key string) (int32, error) {
 	return int32(asI64), nil
 }
 
+// getBoolParamFromURL gets the bool param with the provided key. It errors if
+// the value is not "true" or "false" or "".
 func getBoolParamFromURL(r *http.Request, key string) (bool, error) {
-	asStr := r.URL.Query().Get(key)
-	if asStr == "true" {
+	val, err := hchi.GetStringFromURL(r, key)
+	if err != nil {
+		return false, errors.Wrapf(err, "loading %s from URL", key)
+	}
+
+	if val == "true" {
 		return true, nil
 	}
-	if asStr == "false" || asStr == "" {
+	if val == "false" || val == "" {
 		return false, nil
 	}
 
 	return false, problem.MakeInvalidFieldProblem(key, errors.New("invalid bool value"))
-}
-
-func validateCursorWithinHistory(pq db2.PageQuery) error {
-	// an ascending query should never return a gone response:  An ascending query
-	// prior to known history should return results at the beginning of history,
-	// and an ascending query beyond the end of history should not error out but
-	// rather return an empty page (allowing code that tracks the procession of
-	// some resource more easily).
-	if pq.Order != "desc" {
-		return nil
-	}
-
-	var (
-		cursor int64
-		err    error
-	)
-	if strings.Contains(pq.Cursor, "-") {
-		cursor, _, err = pq.CursorInt64Pair("-")
-	} else {
-		cursor, err = pq.CursorInt64()
-	}
-	if err != nil {
-		return problem.MakeInvalidFieldProblem(actions.ParamCursor, errors.New("invalid value"))
-	}
-
-	elder := toid.New(ledger.CurrentState().HistoryElder, 0, 0)
-	if cursor <= elder.ToInt64() {
-		return &hProblem.BeforeHistory
-	}
-
-	return nil
 }

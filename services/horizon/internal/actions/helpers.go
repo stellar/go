@@ -23,7 +23,8 @@ import (
 	"github.com/stellar/go/xdr"
 )
 
-// TODO: move these to urlparam.go
+// TODO: move these constants to urlparam.go as we should parse the params with http handlers
+// in the upper level package.
 const (
 	// ParamCursor is a query string param name
 	ParamCursor = "cursor"
@@ -498,6 +499,8 @@ func (base *Base) ValidateBodyType() {
 	}
 }
 
+// fullURL returns a URL containing the information regarding the original
+// request stored in the context.
 func fullURL(ctx context.Context) *url.URL {
 	url := httpx.BaseURL(ctx)
 	r := httpx.RequestFromContext(ctx)

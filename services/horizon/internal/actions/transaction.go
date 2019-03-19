@@ -20,6 +20,9 @@ type TransactionParams struct {
 	IncludeFailed bool
 }
 
+// TransactionPageByAccount returns a paga containing the transaction records
+// of an account identified by the provided addr into a page based on pq and
+// includeFailedTx.
 func TransactionPageByAccount(ctx context.Context, hq *history.Q, addr string, includeFailedTx bool, pq db2.PageQuery) (hal.Page, error) {
 	page := hal.Page{
 		Cursor: pq.Cursor,
@@ -32,6 +35,7 @@ func TransactionPageByAccount(ctx context.Context, hq *history.Q, addr string, i
 	}
 
 	for _, record := range records {
+		// TODO: make PopulateTransaction return horizon.Transaction directly.
 		var res horizon.Transaction
 		resourceadapter.PopulateTransaction(ctx, &res, record)
 		page.Add(res)
@@ -43,6 +47,8 @@ func TransactionPageByAccount(ctx context.Context, hq *history.Q, addr string, i
 	return page, nil
 }
 
+// loadTransactionRecordByAccount returns a slice of transaction records of an
+// account identified by addr based on pq and includeFailedTx.
 func loadTransactionRecordByAccount(hq *history.Q, addr string, includeFailedTx bool, pq db2.PageQuery) ([]history.Transaction, error) {
 	var records []history.Transaction
 
@@ -79,6 +85,8 @@ func loadTransactionRecordByAccount(hq *history.Q, addr string, includeFailedTx 
 	return records, nil
 }
 
+// StreamTransactionByAccount streams transaction records of an account
+// identified by addr based on pq and includeFailedTx.
 func StreamTransactionByAccount(ctx context.Context, s *sse.Stream, hq *history.Q, addr string, includeFailedTx bool, pq db2.PageQuery) error {
 	allRecords, err := loadTransactionRecordByAccount(hq, addr, includeFailedTx, pq)
 	if err != nil {

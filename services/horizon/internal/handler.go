@@ -6,14 +6,17 @@ import (
 	"crypto/sha256"
 	"encoding/json"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/stellar/go/services/horizon/internal/actions"
+	"github.com/stellar/go/services/horizon/internal/db2"
 	"github.com/stellar/go/services/horizon/internal/hchi"
 	"github.com/stellar/go/services/horizon/internal/ledger"
 	"github.com/stellar/go/services/horizon/internal/render"
 	hProblem "github.com/stellar/go/services/horizon/internal/render/problem"
 	"github.com/stellar/go/services/horizon/internal/render/sse"
+	"github.com/stellar/go/services/horizon/internal/toid"
 	"github.com/stellar/go/strkey"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/support/render/hal"
@@ -38,8 +41,8 @@ type singleObjectStreamFunc func(context.Context, interface{}) (sse.Event, error
 // streamableEndpointHandler handles endpoints that have the stream mode
 // available. It inspects the Accept header to determine which function to be
 // executed. If it's "application/hal+json" or "application/json", then jfn
-// will be executed. If it's "text/event-stream", then either sfn or sosfn will
-// be executed with the streamHandler.
+// will be executed with params. If it's "text/event-stream", then either sfn
+// or sosfn will be executed with the streamHandler with params.
 func (we *web) streamableEndpointHandler(jfn jsonResponderFunc, sfn streamFunc, sosfn singleObjectStreamFunc, params interface{}) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
@@ -70,8 +73,9 @@ func (we *web) streamableEndpointHandler(jfn jsonResponderFunc, sfn streamFunc, 
 }
 
 // streamHandler handles requests with stream mode turned on using server-sent
-// events. It will execute one of the provided streaming functions. Note that
-// we don't return an error if both sfn and sosfn are not nil. sfn will simply
+// events. It will execute one of the provided streaming functions with the
+// provided params.
+// Note that we don't return an error if both sfn and sosfn are not nil. sfn will simply
 // take precedence.
 func (we *web) streamHandler(sfn streamFunc, sosfn singleObjectStreamFunc, params interface{}) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -178,6 +182,10 @@ func (we *web) accountHandler(jfn jsonResponderFunc, sosfn singleObjectStreamFun
 	})
 }
 
+// getAccountID retrieves the account id by the provided key. The key is
+// usually "account_id", "source_account", and "destination_account". The
+// function would return an error if the account id is empty and the required
+// flag is true.
 func getAccountID(r *http.Request, key string, required bool) (string, error) {
 	val, err := hchi.GetStringFromURL(r, key)
 	if err != nil {
@@ -197,6 +205,10 @@ func getAccountID(r *http.Request, key string, required bool) (string, error) {
 	return val, nil
 }
 
+// transactionHandler checks whether the history is stale, loads the required
+// params for transaction endpoints from the URL, validates the cursor is within
+// history, and finally pass the transaction params to the more general purpose
+// streamableEndpointHandler.
 func (we *web) transactionHandler(jfn jsonResponderFunc, sfn streamFunc) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
@@ -223,6 +235,7 @@ func (we *web) transactionHandler(jfn jsonResponderFunc, sfn streamFunc) http.Ha
 	})
 }
 
+// loadTransactionParams loads the available params for transaction endpoints.
 func loadTransactionParams(r *http.Request, ingestFailedTransactions bool) (*actions.TransactionParams, error) {
 	addr, err := getAccountID(r, "account_id", false)
 	if err != nil {
@@ -234,6 +247,7 @@ func loadTransactionParams(r *http.Request, ingestFailedTransactions bool) (*act
 		return nil, errors.Wrap(err, "getting ledger id")
 	}
 
+	// account_id and ledger_id are mutually excludesive.
 	if addr != "" && lid != int32(0) {
 		return nil, problem.BadRequest
 	}
@@ -259,4 +273,38 @@ func loadTransactionParams(r *http.Request, ingestFailedTransactions bool) (*act
 		PagingParams:  pq,
 		IncludeFailed: includeFailedTx,
 	}, nil
+}
+
+// validateCursorWithinHistory first checks whether the cursor in the page
+// param is valid basesd on the order then verifies whether the cursor is
+// within history.
+func validateCursorWithinHistory(pq db2.PageQuery) error {
+	// an ascending query should never return a gone response:  An ascending query
+	// prior to known history should return results at the beginning of history,
+	// and an ascending query beyond the end of history should not error out but
+	// rather return an empty page (allowing code that tracks the procession of
+	// some resource more easily).
+	if pq.Order != "desc" {
+		return nil
+	}
+
+	var (
+		cursor int64
+		err    error
+	)
+	if strings.Contains(pq.Cursor, db2.DefaultPairSep) {
+		cursor, _, err = pq.CursorInt64Pair(db2.DefaultPairSep)
+	} else {
+		cursor, err = pq.CursorInt64()
+	}
+	if err != nil {
+		return problem.MakeInvalidFieldProblem(actions.ParamCursor, errors.New("invalid value"))
+	}
+
+	elder := toid.New(ledger.CurrentState().HistoryElder, 0, 0)
+	if cursor <= elder.ToInt64() {
+		return &hProblem.BeforeHistory
+	}
+
+	return nil
 }
