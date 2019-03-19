@@ -568,3 +568,29 @@ func TestManageOfferUpdateOffer(t *testing.T) {
 	expected := "AAAAACXK8doPx27P6IReQlRRuweSSUiUfjqgyswxiu3Sh2R+AAAAZAAAJWoAAAAKAAAAAAAAAAAAAAABAAAAAAAAAAMAAAAAAAAAAUFCQ0QAAAAA4Nxt4XJcrGZRYrUvrOc1sooiQ+QdEk1suS1wo+oucsUAAAAAHc1lAAAAAAEAAAAyAAAAAAAmHFwAAAAAAAAAAdKHZH4AAABA7j/x1HuvyMiH9Q59sjLmFLak76hJGQvjx6ckTzuuI0tpBrB/7Wfra8JrWrzajTJGMoQGwdDND5rEi/jTxWMjCQ=="
 	assert.Equal(t, expected, received, "Base 64 XDR should match")
 }
+
+func TestCreatePassiveOffer(t *testing.T) {
+	kp0 := newKeypair0()
+	kp1 := newKeypair1()
+
+	sourceAccount := Account{
+		ID:             kp1.Address(),
+		SequenceNumber: 41137196761100,
+	}
+
+	createPassiveOffer := CreatePassiveOffer{
+		Selling: NewNativeAsset(),
+		Buying:  NewAsset("ABCD", kp0.Address()),
+		Amount:  "10",
+		Price:   "1.0"}
+
+	tx := Transaction{
+		SourceAccount: sourceAccount,
+		Operations:    []Operation{&createPassiveOffer},
+		Network:       network.TestNetworkPassphrase,
+	}
+
+	received := buildSignEncode(tx, kp1, t)
+	expected := "AAAAACXK8doPx27P6IReQlRRuweSSUiUfjqgyswxiu3Sh2R+AAAAZAAAJWoAAAANAAAAAAAAAAAAAAABAAAAAAAAAAQAAAAAAAAAAUFCQ0QAAAAA4Nxt4XJcrGZRYrUvrOc1sooiQ+QdEk1suS1wo+oucsUAAAAABfXhAAAAAAEAAAABAAAAAAAAAAHSh2R+AAAAQIDB0yw4eH14RDnUI4Ef5eyTbkRYl2adTPAOgbZmodkhOsmXOZITw1B6RnwdDCIRSLk2ZPvq2FU8Mk50l0eK+Ag="
+	assert.Equal(t, expected, received, "Base 64 XDR should match")
+}

@@ -65,8 +65,41 @@ func main() {
 	// resp := exampleAllowTrust(client, false)
 	// resp := exampleManageOfferNewOffer(client, false)
 	// resp := exampleManageOfferDeleteOffer(client, false)
-	resp := exampleManageOfferUpdateOffer(client, false)
+	// resp := exampleManageOfferUpdateOffer(client, false)
+	resp := exampleCreatePassiveOffer(client, false)
 	fmt.Println(resp.TransactionSuccessToString())
+}
+
+func exampleCreatePassiveOffer(client *horizon.Client, mock bool) horizon.TransactionSuccess {
+	keys := initKeys()
+	horizonSourceAccount, err := client.LoadAccount(keys[1].Address)
+	dieIfError("loadaccount", err)
+	sourceAccount := mapAccounts(horizonSourceAccount)
+
+	selling := txnbuild.NewNativeAsset()
+	buying := txnbuild.Asset{
+		Code:   "ABCD",
+		Issuer: keys[0].Address,
+	}
+	sellAmount := "10"
+	price := "1.0"
+
+	createPassiveOffer := txnbuild.CreatePassiveOffer{
+		Selling: selling,
+		Buying:  &buying,
+		Amount:  sellAmount,
+		Price:   price}
+
+	tx := txnbuild.Transaction{
+		SourceAccount: sourceAccount,
+		Operations:    []txnbuild.Operation{&createPassiveOffer},
+		Network:       network.TestNetworkPassphrase,
+	}
+
+	txeBase64 := buildSignEncode(tx, keys[1].Keypair)
+	log.Println("Base 64 TX: ", txeBase64)
+
+	return submit(client, txeBase64, mock)
 }
 
 func exampleManageOfferUpdateOffer(client *horizon.Client, mock bool) horizon.TransactionSuccess {
@@ -110,7 +143,7 @@ func exampleManageOfferDeleteOffer(client *horizon.Client, mock bool) horizon.Tr
 		Issuer: keys[0].Address,
 	}
 	price := "0.01"
-	offerID := uint64(2363097)
+	offerID := uint64(2497628)
 
 	deleteOffer := txnbuild.NewDeleteOfferOp(selling, &buying, price, offerID)
 
