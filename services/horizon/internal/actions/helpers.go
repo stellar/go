@@ -504,7 +504,9 @@ func (base *Base) ValidateBodyType() {
 func fullURL(ctx context.Context) *url.URL {
 	url := httpx.BaseURL(ctx)
 	r := httpx.RequestFromContext(ctx)
-	url.Path = r.URL.Path
-	url.RawQuery = r.URL.RawQuery
+	if r != nil {
+		url.Path = r.URL.Path
+		url.RawQuery = r.URL.RawQuery
+	}
 	return url
 }
