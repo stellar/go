@@ -10,7 +10,6 @@ import (
 // BuildUrl creates the endpoint to be queried based on the data in the OperationRequest struct.
 // If no data is set, it defaults to the build the URL for all operations
 func (op OperationRequest) BuildUrl() (endpoint string, err error) {
-
 	nParams := countParams(op.ForAccount, op.ForLedger, op.forOperationId, op.ForTransaction)
 
 	if nParams > 1 {

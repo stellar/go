@@ -164,6 +164,7 @@ func (c *Client) OperationDetail(id string) (ops operations.Operation, err error
 	err = c.sendRequest(request, &record)
 
 	if err != nil {
+		err = errors.Wrap(err, "Error when sending request to horizon")
 		return
 	}
 
@@ -171,15 +172,18 @@ func (c *Client) OperationDetail(id string) (ops operations.Operation, err error
 
 	dataString, err := json.Marshal(record)
 	if err != nil {
+		err = errors.Wrap(err, "Error when marshaling json")
 		return
 	}
 	if err = json.Unmarshal(dataString, &baseRecord); err != nil {
+		err = errors.Wrap(err, "Error when unmarshaling json")
 		return
 	}
 
 	// unmarshal to the correct json struct based on operation type
 	op, err := operations.UnmarshalOperation(baseRecord.GetType(), dataString)
 	if err != nil {
+		err = errors.Wrap(err, "Error when unmarshaling to the correct operation type")
 		return
 	}
 	ops = op
