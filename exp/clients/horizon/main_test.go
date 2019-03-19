@@ -621,6 +621,13 @@ func TestOperationsRequest(t *testing.T) {
 	ops, err := client.Operations(operationRequest)
 	if assert.NoError(t, err) {
 		assert.IsType(t, ops, operations.OperationsPage{})
+		links := ops.Links
+		assert.Equal(t, links.Self.Href, "https://horizon.stellar.org/transactions/b63307ef92bb253df13361a72095156d19fc0713798bc2e6c3bd9ee63cc3ca53/operations?cursor=&limit=10&order=asc")
+
+		assert.Equal(t, links.Next.Href, "https://horizon.stellar.org/transactions/b63307ef92bb253df13361a72095156d19fc0713798bc2e6c3bd9ee63cc3ca53/operations?cursor=98447788659970049&limit=10&order=asc")
+
+		assert.Equal(t, links.Prev.Href, "https://horizon.stellar.org/transactions/b63307ef92bb253df13361a72095156d19fc0713798bc2e6c3bd9ee63cc3ca53/operations?cursor=98447788659970049&limit=10&order=desc")
+
 		paymentOp := ops.Embedded.Records[0]
 		mangageOfferOp := ops.Embedded.Records[1]
 		createAccountOp := ops.Embedded.Records[2]
@@ -679,7 +686,13 @@ func TestOperationsRequest(t *testing.T) {
 		assert.Equal(t, c.Limit, "922337203685.4775807")
 		assert.Equal(t, c.Trustee, "GDDETPGV4OJVNBTB6GQICCPGH5DZRYYB7XQCSAZO2ZQH6HO7SWXHKKJN")
 		assert.Equal(t, c.Trustor, "GBMVGXJXJ7ZBHIWMXHKR6IVPDTYKHJPXC2DHZDPJBEZWZYAC7NKII7IB")
+		assert.Equal(t, c.Links.Self.Href, "https://horizon-testnet.stellar.org/operations/1103965508866049")
+		assert.Equal(t, c.Links.Effects.Href, "https://horizon-testnet.stellar.org/operations/1103965508866049/effects")
+		assert.Equal(t, c.Links.Transaction.Href, "https://horizon-testnet.stellar.org/transactions/93c2755ec61c8b01ac11daa4d8d7a012f56be172bdfcaf77a6efd683319ca96d")
 
+		assert.Equal(t, c.Links.Succeeds.Href, "https://horizon-testnet.stellar.org/effects?order=desc\u0026cursor=1103965508866049")
+
+		assert.Equal(t, c.Links.Precedes.Href, "https://horizon-testnet.stellar.org/effects?order=asc\u0026cursor=1103965508866049")
 	}
 
 }

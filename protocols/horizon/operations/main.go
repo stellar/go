@@ -240,6 +240,7 @@ func (ops *OperationsPage) UnmarshalJSON(data []byte) error {
 		}
 
 		ops.Embedded.Records = append(ops.Embedded.Records, op)
+		ops.Links = opsPage.Links
 	}
 
 	return nil
