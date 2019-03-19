@@ -22,7 +22,7 @@ func TestAssetRequestBuildUrl(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "assets?asset_issuer=GCLWGQPMKXQSPF776IU33AH4PZNOOWNAWGGKVTBQMIC5IMKUNP3E6NVU", endpoint)
 
-	er = AssetRequest{ForAssetIssuer: "GCLWGQPMKXQSPF776IU33AH4PZNOOWNAWGGKVTBQMIC5IMKUNP3E6NVU", ForAssetCode: "ABC", RequestParams: RequestParams{Order: OrderDesc}}
+	er = AssetRequest{ForAssetIssuer: "GCLWGQPMKXQSPF776IU33AH4PZNOOWNAWGGKVTBQMIC5IMKUNP3E6NVU", ForAssetCode: "ABC", Order: OrderDesc}
 	endpoint, err = er.BuildUrl()
 
 	// It should return valid assets endpoint and no errors

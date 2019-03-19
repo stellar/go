@@ -22,14 +22,14 @@ func TestLedgerRequestBuildUrl(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "ledgers/123", endpoint)
 
-	lr = LedgerRequest{forSequence: 123, RequestParams: RequestParams{Cursor: "now", Order: OrderDesc}}
+	lr = LedgerRequest{forSequence: 123, Cursor: "now", Order: OrderDesc}
 	endpoint, err = lr.BuildUrl()
 
 	// It should return valid ledger detail endpoint, with no cursor or order
 	require.NoError(t, err)
 	assert.Equal(t, "ledgers/123", endpoint)
 
-	lr = LedgerRequest{RequestParams: RequestParams{Cursor: "now", Order: OrderDesc}}
+	lr = LedgerRequest{Cursor: "now", Order: OrderDesc}
 	endpoint, err = lr.BuildUrl()
 
 	// It should return valid ledgers endpoint, with cursor and order

@@ -64,7 +64,7 @@ func (er EffectRequest) BuildUrl() (endpoint string, err error) {
 		)
 	}
 
-	queryParams := addQueryParams(cursor(er.Cursor), limit(er.Limit), er.Order)
+	queryParams := addQueryParams(er.Cursor, er.Limit, er.Order)
 	if queryParams != "" {
 		endpoint = fmt.Sprintf(
 			"%s?%s",
@@ -212,10 +212,8 @@ func (er EffectRequest) Stream(
 	handler func(interface{}),
 ) (err error) {
 
-	cx := cursor(er.Cursor)
-
 	url := fmt.Sprintf("%s/effects", horizonURL)
-	return stream(ctx, url, &cx, func(data []byte) error {
+	return stream(ctx, url, &er.Cursor, func(data []byte) error {
 		var effect effects.Base
 		err = json.Unmarshal(data, &effect)
 		if err != nil {
