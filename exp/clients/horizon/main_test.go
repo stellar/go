@@ -75,7 +75,7 @@ func ExampleClient_Stream() {
 	// stream effects
 
 	client := DefaultPublicNetClient
-	effectRequest := EffectRequest{Cursor: "now"}
+	effectRequest := EffectRequest{RequestParams: RequestParams{Cursor: "now"}}
 
 	ctx, cancel := context.WithCancel(context.Background())
 
@@ -143,7 +143,7 @@ func ExampleClient_FeeStats() {
 func ExampleClient_Offers() {
 
 	client := DefaultPublicNetClient
-	offerRequest := OfferRequest{ForAccount: "GCLWGQPMKXQSPF776IU33AH4PZNOOWNAWGGKVTBQMIC5IMKUNP3E6NVU", Cursor: "now", Order: OrderDesc}
+	offerRequest := OfferRequest{ForAccount: "GCLWGQPMKXQSPF776IU33AH4PZNOOWNAWGGKVTBQMIC5IMKUNP3E6NVU", RequestParams: RequestParams{Cursor: "now", Order: OrderDesc}}
 	offers, err := client.Offers(offerRequest)
 	if err != nil {
 		fmt.Println(err)
@@ -165,7 +165,7 @@ func ExampleClient_Operations() {
 	fmt.Print(ops)
 
 	// all operations
-	opRequest = OperationRequest{Cursor: "now"}
+	opRequest = OperationRequest{RequestParams: RequestParams{Cursor: "now"}}
 	ops, err = client.Operations(opRequest)
 	if err != nil {
 		fmt.Println(err)

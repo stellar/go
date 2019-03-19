@@ -19,7 +19,7 @@ func (lr LedgerRequest) BuildUrl() (endpoint string, err error) {
 			lr.forSequence,
 		)
 	} else {
-		queryParams := addQueryParams(lr.Cursor, lr.Limit, lr.Order)
+		queryParams := addQueryParams(cursor(lr.Cursor), limit(lr.Limit), lr.Order)
 		if queryParams != "" {
 			endpoint = fmt.Sprintf(
 				"%s?%s",

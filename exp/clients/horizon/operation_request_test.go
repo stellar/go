@@ -51,7 +51,7 @@ func TestOperationRequestBuildUrl(t *testing.T) {
 		assert.Contains(t, err.Error(), "Invalid request. Too many parameters")
 	}
 
-	op = OperationRequest{Cursor: "123456", Limit: 30, Order: OrderAsc}
+	op = OperationRequest{RequestParams: RequestParams{Cursor: "123456", Limit: 30, Order: OrderAsc}}
 	endpoint, err = op.BuildUrl()
 	// It should return valid all operations endpoint with query params and no errors
 	require.NoError(t, err)

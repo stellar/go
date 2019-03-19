@@ -109,6 +109,13 @@ type StreamRequest interface {
 	Stream(ctx context.Context, horizonURL string, handler func(interface{})) error
 }
 
+// RequestParams contains common request parameters
+type RequestParams struct {
+	Order  Order
+	Cursor string
+	Limit  uint
+}
+
 // AccountRequest struct contains data for making requests to the accounts endpoint of an horizon server
 type AccountRequest struct {
 	AccountId string
@@ -123,25 +130,19 @@ type EffectRequest struct {
 	ForLedger      string
 	ForOperation   string
 	ForTransaction string
-	Order          Order
-	Cursor         cursor
-	Limit          limit
+	RequestParams
 }
 
 // AssetRequest struct contains data for getting asset details from an horizon server.
 type AssetRequest struct {
-	ForAssetCode   assetCode
-	ForAssetIssuer assetIssuer
-	Order          Order
-	Cursor         cursor
-	Limit          limit
+	ForAssetCode   string
+	ForAssetIssuer string
+	RequestParams
 }
 
 // LedgerRequest struct contains data for getting ledger details from an horizon server.
 type LedgerRequest struct {
-	Order       Order
-	Cursor      cursor
-	Limit       limit
+	RequestParams
 	forSequence uint32
 }
 
@@ -156,9 +157,7 @@ type feeStatsRequest struct {
 // OfferRequest struct contains data for getting offers made by an account from an horizon server
 type OfferRequest struct {
 	ForAccount string
-	Order      Order
-	Cursor     cursor
-	Limit      limit
+	RequestParams
 }
 
 // OperationRequest struct contains data for getting operation details from an horizon servers
@@ -167,8 +166,6 @@ type OperationRequest struct {
 	ForLedger      int
 	ForTransaction string
 	forOperationId string
-	Order          Order
-	Cursor         cursor
-	Limit          limit
-	IncludeFailed  includeFailed
+	RequestParams
+	IncludeFailed bool
 }
