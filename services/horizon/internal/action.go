@@ -141,21 +141,6 @@ func (action *Action) EnsureHistoryFreshness() {
 	}
 }
 
-// errorIfHistoryIsStale returns a formatted error if isStale is true.
-func errorIfHistoryIsStale(isStale bool) error {
-	if !isStale {
-		return nil
-	}
-
-	ls := ledger.CurrentState()
-	err := problem.StaleHistory
-	err.Extras = map[string]interface{}{
-		"history_latest_ledger": ls.HistoryLatest,
-		"core_latest_ledger":    ls.CoreLatest,
-	}
-	return err
-}
-
 // FullURL returns the full url for this request
 func (action *Action) FullURL() *url.URL {
 	result := action.baseURL()

@@ -7,10 +7,13 @@ import (
 	"time"
 
 	"github.com/stellar/go/protocols/horizon"
+	"github.com/stellar/go/services/horizon/internal/actions"
+	"github.com/stellar/go/services/horizon/internal/db2"
 	"github.com/stellar/go/services/horizon/internal/db2/core"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/services/horizon/internal/test"
 	"github.com/stellar/go/support/errors"
+	"github.com/stellar/go/support/render/hal"
 )
 
 func TestGetAccountInfo(t *testing.T) {
@@ -66,4 +69,29 @@ func TestLoadAccountEvent(t *testing.T) {
 			tt.Assert.NotEqual(uint32(0), balance.LastModifiedLedger)
 		}
 	}
+}
+
+func TestGetTransactionPageByAccount(t *testing.T) {
+	tt := test.Start(t).Scenario("base")
+	defer tt.Finish()
+
+	w := mustInitWeb(context.Background(), &history.Q{tt.HorizonSession()}, &core.Q{tt.CoreSession()}, time.Duration(5), 0, true)
+
+	params := &actions.TransactionParams{
+		AccountFilter: "GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H",
+		PagingParams: db2.PageQuery{
+			Order:  db2.OrderAscending,
+			Limit:  db2.DefaultPageSize,
+			Cursor: "",
+		},
+		IncludeFailed: true,
+	}
+
+	page, err := w.getTransactionPageByAccount(context.Background(), params)
+	pageVal, ok := page.(hal.Page)
+	if !ok {
+		tt.Assert.FailNow("returned type mismatch")
+	}
+	tt.Assert.NoError(err)
+	tt.Assert.Equal(3, len(pageVal.Embedded.Records))
 }

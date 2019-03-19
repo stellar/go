@@ -235,6 +235,21 @@ func (we *web) transactionHandler(jfn jsonResponderFunc, sfn streamFunc) http.Ha
 	})
 }
 
+// errorIfHistoryIsStale returns a formatted error if isStale is true.
+func errorIfHistoryIsStale(isStale bool) error {
+	if !isStale {
+		return nil
+	}
+
+	ls := ledger.CurrentState()
+	err := hProblem.StaleHistory
+	err.Extras = map[string]interface{}{
+		"history_latest_ledger": ls.HistoryLatest,
+		"core_latest_ledger":    ls.CoreLatest,
+	}
+	return err
+}
+
 // loadTransactionParams loads the available params for transaction endpoints.
 func loadTransactionParams(r *http.Request, ingestFailedTransactions bool) (*actions.TransactionParams, error) {
 	addr, err := getAccountID(r, "account_id", false)

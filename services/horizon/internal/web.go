@@ -58,7 +58,7 @@ func init() {
 }
 
 // mustInitWeb installed a new Web instance onto the provided app object.
-func mustInitWeb(ctx context.Context, hq *history.Q, cq *core.Q, suf time.Duration, st uint, ift bool) *web {
+func mustInitWeb(ctx context.Context, hq *history.Q, cq *core.Q, updateFreq time.Duration, threshold uint, ingest bool) *web {
 	if hq == nil {
 		log.Fatal("missing history DB for installing the web instance")
 	}
@@ -71,9 +71,9 @@ func mustInitWeb(ctx context.Context, hq *history.Q, cq *core.Q, suf time.Durati
 		router:             chi.NewRouter(),
 		historyQ:           hq,
 		coreQ:              cq,
-		sseUpdateFrequency: suf,
-		staleThreshold:     st,
-		ingestFailedTx:     ift,
+		sseUpdateFrequency: updateFreq,
+		staleThreshold:     threshold,
+		ingestFailedTx:     ingest,
 		requestTimer:       metrics.NewTimer(),
 		failureMeter:       metrics.NewMeter(),
 		successMeter:       metrics.NewMeter(),
