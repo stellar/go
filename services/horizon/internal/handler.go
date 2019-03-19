@@ -292,7 +292,7 @@ func validateCursorWithinHistory(pq db2.PageQuery) error {
 		cursor int64
 		err    error
 	)
-	// cursor from effect streaming endpoint may contains the DefaultPairSep.
+	// cursor from effect streaming endpoint may contain the DefaultPairSep.
 	if strings.Contains(pq.Cursor, db2.DefaultPairSep) {
 		cursor, _, err = pq.CursorInt64Pair(db2.DefaultPairSep)
 	} else {

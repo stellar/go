@@ -43,7 +43,6 @@ func TransactionPageByAccount(ctx context.Context, hq *history.Q, addr string, i
 
 	page.FullURL = fullURL(ctx)
 	page.PopulateLinks()
-
 	return page, nil
 }
 
@@ -95,7 +94,6 @@ func StreamTransactionByAccount(ctx context.Context, s *sse.Stream, hq *history.
 
 	s.SetLimit(int(pq.Limit))
 	records := allRecords[s.SentCount():]
-
 	for _, record := range records {
 		var res horizon.Transaction
 		resourceadapter.PopulateTransaction(ctx, &res, record)
