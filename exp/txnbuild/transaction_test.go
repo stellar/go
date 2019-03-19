@@ -529,15 +529,42 @@ func TestManageOfferDeleteOffer(t *testing.T) {
 	buying := NewAsset("ABCD", kp0.Address())
 	price := "0.01"
 	offerID := uint64(2363097)
-	createOffer := NewDeleteOfferOp(selling, buying, price, offerID)
+	deleteOffer := NewDeleteOfferOp(selling, buying, price, offerID)
 
 	tx := Transaction{
 		SourceAccount: sourceAccount,
-		Operations:    []Operation{&createOffer},
+		Operations:    []Operation{&deleteOffer},
 		Network:       network.TestNetworkPassphrase,
 	}
 
 	received := buildSignEncode(tx, kp1, t)
 	expected := "AAAAACXK8doPx27P6IReQlRRuweSSUiUfjqgyswxiu3Sh2R+AAAAZAAAJWoAAAAHAAAAAAAAAAAAAAABAAAAAAAAAAMAAAAAAAAAAUFCQ0QAAAAA4Nxt4XJcrGZRYrUvrOc1sooiQ+QdEk1suS1wo+oucsUAAAAAAAAAAAAAAAEAAABkAAAAAAAkDtkAAAAAAAAAAdKHZH4AAABA2QUk7WuqGq92J5djfEA2XE8LogteFRozN/3pY5KpA2ilYj+FQBtAGM8g+Ni8ZbofCgjTrQefqpv/pWneaDj1CA=="
+	assert.Equal(t, expected, received, "Base 64 XDR should match")
+}
+
+func TestManageOfferUpdateOffer(t *testing.T) {
+	kp0 := newKeypair0()
+	kp1 := newKeypair1()
+
+	sourceAccount := Account{
+		ID:             kp1.Address(),
+		SequenceNumber: 41137196761097,
+	}
+
+	selling := NewNativeAsset()
+	buying := NewAsset("ABCD", kp0.Address())
+	sellAmount := "50"
+	price := "0.02"
+	offerID := uint64(2497628)
+	updateOffer := NewUpdateOfferOp(selling, buying, sellAmount, price, offerID)
+
+	tx := Transaction{
+		SourceAccount: sourceAccount,
+		Operations:    []Operation{&updateOffer},
+		Network:       network.TestNetworkPassphrase,
+	}
+
+	received := buildSignEncode(tx, kp1, t)
+	expected := "AAAAACXK8doPx27P6IReQlRRuweSSUiUfjqgyswxiu3Sh2R+AAAAZAAAJWoAAAAKAAAAAAAAAAAAAAABAAAAAAAAAAMAAAAAAAAAAUFCQ0QAAAAA4Nxt4XJcrGZRYrUvrOc1sooiQ+QdEk1suS1wo+oucsUAAAAAHc1lAAAAAAEAAAAyAAAAAAAmHFwAAAAAAAAAAdKHZH4AAABA7j/x1HuvyMiH9Q59sjLmFLak76hJGQvjx6ckTzuuI0tpBrB/7Wfra8JrWrzajTJGMoQGwdDND5rEi/jTxWMjCQ=="
 	assert.Equal(t, expected, received, "Base 64 XDR should match")
 }
