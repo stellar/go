@@ -1,6 +1,7 @@
 #! /bin/bash
 set -e
 
+printf "Is this thing on?"
 # Only run format checks on the recommended developer version of Go
 if [ $TRAVIS_GO_VERSION != '1.11' ]; then
     printf "Skipping gofmt checks for this version of Go..."
