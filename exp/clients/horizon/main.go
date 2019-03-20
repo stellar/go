@@ -89,13 +89,13 @@ type ClientInterface interface {
 
 // DefaultTestNetClient is a default client to connect to test network
 var DefaultTestNetClient = &Client{
-	HorizonURL: "https://horizon-testnet.stellar.org",
+	HorizonURL: "https://horizon-testnet.stellar.org/",
 	HTTP:       http.DefaultClient,
 }
 
 // DefaultPublicNetClient is a default client to connect to public network
 var DefaultPublicNetClient = &Client{
-	HorizonURL: "https://horizon.stellar.org",
+	HorizonURL: "https://horizon.stellar.org/",
 	HTTP:       http.DefaultClient,
 }
 
