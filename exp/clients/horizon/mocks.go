@@ -4,6 +4,7 @@ import (
 	"context"
 
 	hProtocol "github.com/stellar/go/protocols/horizon"
+	"github.com/stellar/go/protocols/horizon/operations"
 	"github.com/stretchr/testify/mock"
 )
 
@@ -67,6 +68,16 @@ func (m *MockClient) FeeStats() (hProtocol.FeeStats, error) {
 func (m *MockClient) Offers(request OfferRequest) (hProtocol.OffersPage, error) {
 	a := m.Called(request)
 	return a.Get(0).(hProtocol.OffersPage), a.Error(1)
+}
+
+func (m *MockClient) Operations(request OperationRequest) (operations.OperationsPage, error) {
+	a := m.Called(request)
+	return a.Get(0).(operations.OperationsPage), a.Error(1)
+}
+
+func (m *MockClient) OperationDetail(id string) (operations.Operation, error) {
+	a := m.Called(id)
+	return a.Get(0).(operations.Operation), a.Error(1)
 }
 
 // ensure that the MockClient implements ClientInterface

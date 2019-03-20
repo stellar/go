@@ -11,7 +11,7 @@ import (
 // If no data is set, it defaults to the build the URL for all assets
 func (ar AssetRequest) BuildUrl() (endpoint string, err error) {
 	endpoint = "assets"
-	queryParams := addQueryParams(ar.ForAssetCode, ar.ForAssetIssuer, ar.Cursor, ar.Limit, ar.Order)
+	queryParams := addQueryParams(assetCode(ar.ForAssetCode), assetIssuer(ar.ForAssetIssuer), cursor(ar.Cursor), limit(ar.Limit), ar.Order)
 	if queryParams != "" {
 		endpoint = fmt.Sprintf(
 			"%s?%s",
