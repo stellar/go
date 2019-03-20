@@ -35,16 +35,16 @@ func PopulateAccount(
 	// populate balances
 	dest.Balances = make([]Balance, len(ct)+1)
 	for i, tl := range ct {
-		err = PopulateBalance(ctx, &dest.Balances[i], tl)
+		err = PopulateBalance(&dest.Balances[i], tl)
 		if err != nil {
-			return
+			return err
 		}
 	}
 
 	// add native balance
 	err = PopulateNativeBalance(&dest.Balances[len(dest.Balances)-1], ca.Balance, ca.BuyingLiabilities, ca.SellingLiabilities)
 	if err != nil {
-		return
+		return err
 	}
 
 	// populate data
@@ -72,5 +72,5 @@ func PopulateAccount(
 	dest.Links.Trades = lb.PagedLink(self, "trades")
 	dest.Links.Data = lb.Link(self, "data/{key}")
 	dest.Links.Data.PopulateTemplated()
-	return
+	return nil
 }

@@ -25,6 +25,7 @@ func TestAccountActions_Show(t *testing.T) {
 		for _, balance := range result.Balances {
 			if balance.Type == "native" {
 				ht.Assert.Equal(uint32(0), balance.LastModifiedLedger)
+				ht.Assert.Nil(balance.IsAuthorized)
 			} else {
 				ht.Assert.NotEqual(uint32(0), balance.LastModifiedLedger)
 			}
