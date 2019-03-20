@@ -124,8 +124,8 @@ type EffectRequest struct {
 	ForOperation   string
 	ForTransaction string
 	Order          Order
-	Cursor         cursor
-	Limit          limit
+	Cursor         string
+	Limit          uint
 }
 
 // AssetRequest struct contains data for getting asset details from an horizon server.
@@ -133,15 +133,15 @@ type AssetRequest struct {
 	ForAssetCode   assetCode
 	ForAssetIssuer assetIssuer
 	Order          Order
-	Cursor         cursor
-	Limit          limit
+	Cursor         string
+	Limit          uint
 }
 
 // LedgerRequest struct contains data for getting ledger details from an horizon server.
 type LedgerRequest struct {
 	Order       Order
-	Cursor      cursor
-	Limit       limit
+	Cursor      string
+	Limit       uint
 	forSequence uint32
 }
 
@@ -157,8 +157,8 @@ type feeStatsRequest struct {
 type OfferRequest struct {
 	ForAccount string
 	Order      Order
-	Cursor     cursor
-	Limit      limit
+	Cursor     string
+	Limit      uint
 }
 
 // OperationRequest struct contains data for getting operation details from an horizon servers
@@ -168,7 +168,7 @@ type OperationRequest struct {
 	ForTransaction string
 	forOperationId string
 	Order          Order
-	Cursor         cursor
-	Limit          limit
-	IncludeFailed  includeFailed
+	Cursor         string
+	Limit          uint
+	IncludeFailed  bool
 }
