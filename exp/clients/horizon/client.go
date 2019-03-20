@@ -150,11 +150,7 @@ func (c *Client) Operations(request OperationRequest) (ops operations.Operations
 // for a given operation id
 func (c *Client) OperationDetail(id string) (ops operations.Operation, err error) {
 	if id == "" {
-		err = errors.New("Invalid operation id provided")
-	}
-
-	if err != nil {
-		return ops, err
+		return ops, errors.New("Invalid operation id provided")
 	}
 
 	request := OperationRequest{forOperationId: id}
@@ -162,31 +158,19 @@ func (c *Client) OperationDetail(id string) (ops operations.Operation, err error
 	var record interface{}
 
 	err = c.sendRequest(request, &record)
-
 	if err != nil {
-		err = errors.Wrap(err, "Sending request to horizon")
-		return ops, err
+		return ops, errors.Wrap(err, "Sending request to horizon")
 	}
 
 	var baseRecord operations.Base
-
 	dataString, err := json.Marshal(record)
 	if err != nil {
-		err = errors.Wrap(err, "Marshaling json")
-		return ops, err
+		return ops, errors.Wrap(err, "Marshaling json")
 	}
 	if err = json.Unmarshal(dataString, &baseRecord); err != nil {
-		err = errors.Wrap(err, "Unmarshaling json")
-		return ops, err
+		return ops, errors.Wrap(err, "Unmarshaling json")
 	}
 
-	// unmarshal to the correct json struct based on operation type
-	op, err := operations.UnmarshalOperation(baseRecord.GetType(), dataString)
-	if err != nil {
-		err = errors.Wrap(err, "Unmarshaling to the correct operation type")
-		return ops, err
-	}
-	ops = op
-
-	return ops, err
+	ops, err = operations.UnmarshalOperation(baseRecord.GetType(), dataString)
+	return ops, errors.Wrap(err, "Unmarshaling to the correct operation type")
 }
