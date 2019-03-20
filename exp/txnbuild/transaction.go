@@ -5,7 +5,7 @@ TODO: More explanation + links here
 package txnbuild
 
 import (
-	"bytes"
+			"bytes"
 	"encoding/base64"
 	"fmt"
 
