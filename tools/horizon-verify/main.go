@@ -8,6 +8,7 @@ import (
 	"os"
 	"sync"
 
+	"github.com/spf13/cobra"
 	"github.com/stellar/go/xdr"
 )
 
@@ -47,89 +48,108 @@ type LedgersPage struct {
 	} `json:"_embedded"`
 }
 
-func main() {
-	ledgerCursor := ""
+var horizonURL string
+var startSequence uint
+var count uint
 
-	HorizonURL := os.Args[1]
+func init() {
+	rootCmd.PersistentFlags().StringVarP(&horizonURL, "url", "u", "", "Horizon server URL")
+	rootCmd.PersistentFlags().UintVarP(&startSequence, "start", "s", 0, "Sequence number of a start ledger (follows descending order)")
+	rootCmd.PersistentFlags().UintVarP(&count, "count", "c", 10000, "Number of ledgers to check")
+}
 
-	for {
-		body := getBody(HorizonURL + fmt.Sprintf("/ledgers?order=desc&limit=200&cursor=%s", ledgerCursor))
+var rootCmd = &cobra.Command{
+	Use:   "horizon-verify",
+	Short: "tool to check horizon data consistency",
+	Run: func(cmd *cobra.Command, args []string) {
+		ledgerCursor := ""
 
-		ledgersPage := LedgersPage{}
-		err := json.Unmarshal(body, &ledgersPage)
-		if err != nil {
-			panic(err)
-		}
+		for {
+			body := getBody(horizonURL + fmt.Sprintf("/ledgers?order=desc&limit=200&cursor=%s", ledgerCursor))
 
-		if len(ledgersPage.Embedded.Records) == 0 {
-			fmt.Println("Done")
-			return
-		}
-
-		for _, ledger := range ledgersPage.Embedded.Records {
-			fmt.Printf("Checking ledger: %d (successful=%d failed=%d)\n", ledger.Sequence, ledger.SuccessfulTransactionCount, ledger.FailedTransactionCount)
-
-			ledgerCursor = ledger.PagingToken
-
-			body := getBody(HorizonURL + fmt.Sprintf("/ledgers/%d/transactions?limit=200&include_failed=true", ledger.Sequence))
-			transactionsPage := TransactionsPage{}
-			err = json.Unmarshal(body, &transactionsPage)
+			ledgersPage := LedgersPage{}
+			err := json.Unmarshal(body, &ledgersPage)
 			if err != nil {
 				panic(err)
 			}
 
-			var wg sync.WaitGroup
+			if len(ledgersPage.Embedded.Records) == 0 {
+				fmt.Println("Done")
+				return
+			}
 
-			successful := 0
-			failed := 0
+			for _, ledger := range ledgersPage.Embedded.Records {
+				fmt.Printf("Checking ledger: %d (successful=%d failed=%d)\n", ledger.Sequence, ledger.SuccessfulTransactionCount, ledger.FailedTransactionCount)
 
-			for _, transaction := range transactionsPage.Embedded.Records {
-				wg.Add(1)
+				ledgerCursor = ledger.PagingToken
 
-				if transaction.Successful {
-					successful++
-				} else {
-					failed++
+				body := getBody(horizonURL + fmt.Sprintf("/ledgers/%d/transactions?limit=200&include_failed=true", ledger.Sequence))
+				transactionsPage := TransactionsPage{}
+				err = json.Unmarshal(body, &transactionsPage)
+				if err != nil {
+					panic(err)
 				}
 
-				go func(transaction Transaction) {
-					defer wg.Done()
+				var wg sync.WaitGroup
 
-					var resultXDR xdr.TransactionResult
-					err = xdr.SafeUnmarshalBase64(transaction.TxResult, &resultXDR)
-					if err != nil {
-						return
+				successful := 0
+				failed := 0
+
+				for _, transaction := range transactionsPage.Embedded.Records {
+					wg.Add(1)
+
+					if transaction.Successful {
+						successful++
+					} else {
+						failed++
 					}
 
-					if transaction.Successful && resultXDR.Result.Code != xdr.TransactionResultCodeTxSuccess {
-						panic(fmt.Sprintf("Corrupted data! %s %s", transaction.Hash, transaction.TxResult))
-						return
-					}
+					go func(transaction Transaction) {
+						defer wg.Done()
 
-					if !transaction.Successful && resultXDR.Result.Code == xdr.TransactionResultCodeTxSuccess {
-						panic(fmt.Sprintf("Corrupted data! %s %s", transaction.Hash, transaction.TxResult))
-						return
-					}
+						var resultXDR xdr.TransactionResult
+						err = xdr.SafeUnmarshalBase64(transaction.TxResult, &resultXDR)
+						if err != nil {
+							return
+						}
 
-					body := getBody(HorizonURL + fmt.Sprintf("/transactions/%s/operations?limit=200", transaction.Hash))
-					operationsPage := OperationsPage{}
-					err = json.Unmarshal(body, &operationsPage)
-					if err != nil {
-						panic(err)
-					}
+						if transaction.Successful && resultXDR.Result.Code != xdr.TransactionResultCodeTxSuccess {
+							panic(fmt.Sprintf("Corrupted data! %s %s", transaction.Hash, transaction.TxResult))
+							return
+						}
 
-					if len(operationsPage.Embedded.Records) != transaction.OperationCount {
-						panic(fmt.Sprintf("Corrupted data! %s operations count %d vs %d (body=%s)", transaction.Hash, len(operationsPage.Embedded.Records), transaction.OperationCount, string(body)))
-					}
-				}(transaction)
-			}
+						if !transaction.Successful && resultXDR.Result.Code == xdr.TransactionResultCodeTxSuccess {
+							panic(fmt.Sprintf("Corrupted data! %s %s", transaction.Hash, transaction.TxResult))
+							return
+						}
 
-			wg.Wait()
+						body := getBody(horizonURL + fmt.Sprintf("/transactions/%s/operations?limit=200", transaction.Hash))
+						operationsPage := OperationsPage{}
+						err = json.Unmarshal(body, &operationsPage)
+						if err != nil {
+							panic(err)
+						}
 
-			if successful != ledger.SuccessfulTransactionCount || failed != ledger.FailedTransactionCount {
-				panic(fmt.Sprintf("Invalid ledger counters %d", ledger.Sequence))
+						if len(operationsPage.Embedded.Records) != transaction.OperationCount {
+							panic(fmt.Sprintf("Corrupted data! %s operations count %d vs %d (body=%s)", transaction.Hash, len(operationsPage.Embedded.Records), transaction.OperationCount, string(body)))
+						}
+					}(transaction)
+				}
+
+				wg.Wait()
+
+				if successful != ledger.SuccessfulTransactionCount || failed != ledger.FailedTransactionCount {
+					panic(fmt.Sprintf("Invalid ledger counters %d", ledger.Sequence))
+				}
 			}
 		}
+	},
+}
+
+func main() {
+	if err := rootCmd.Execute(); err != nil {
+		fmt.Println(err)
+		os.Exit(1)
 	}
 }
 
