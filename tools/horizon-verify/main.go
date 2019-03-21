@@ -86,6 +86,8 @@ var rootCmd = &cobra.Command{
 			ledgerCursor = ledger.PagingToken()
 		}
 
+		fmt.Printf("%s: Checking %d ledgers starting from cursor \"%s\"\n\n", horizonURL, count, ledgerCursor)
+
 		for {
 			ledgersPage, err := client.Ledgers(horizonclient.LedgerRequest{
 				Limit:  200,
@@ -103,7 +105,7 @@ var rootCmd = &cobra.Command{
 			}
 
 			for _, ledger := range ledgersPage.Embedded.Records {
-				fmt.Printf("Checking ledger: %d (successful=%d failed=%d)\n", ledger.Sequence, ledger.SuccessfulTransactionCount, ledger.FailedTransactionCount)
+				fmt.Printf("Checking ledger: %d (successful=%d failed=%d)\n", ledger.Sequence, ledger.SuccessfulTransactionCount, *ledger.FailedTransactionCount)
 
 				ledgerCursor = ledger.PagingToken()
 
