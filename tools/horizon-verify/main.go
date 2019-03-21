@@ -9,6 +9,7 @@ import (
 	"sync"
 
 	"github.com/spf13/cobra"
+	"github.com/stellar/go/exp/clients/horizon"
 	"github.com/stellar/go/xdr"
 )
 
@@ -49,12 +50,12 @@ type LedgersPage struct {
 }
 
 var horizonURL string
-var startSequence uint
+var startSequence uint32
 var count uint
 
 func init() {
 	rootCmd.PersistentFlags().StringVarP(&horizonURL, "url", "u", "", "Horizon server URL")
-	rootCmd.PersistentFlags().UintVarP(&startSequence, "start", "s", 0, "Sequence number of a start ledger (follows descending order)")
+	rootCmd.PersistentFlags().Uint32VarP(&startSequence, "start", "s", 0, "Sequence number of a start ledger (follows descending order, defaults to the latest ledger)")
 	rootCmd.PersistentFlags().UintVarP(&count, "count", "c", 10000, "Number of ledgers to check")
 }
 
@@ -62,13 +63,36 @@ var rootCmd = &cobra.Command{
 	Use:   "horizon-verify",
 	Short: "tool to check horizon data consistency",
 	Run: func(cmd *cobra.Command, args []string) {
+		if horizonURL == "" {
+			cmd.Help()
+			return
+		}
+
+		client := horizonclient.Client{
+			HorizonURL: horizonURL,
+			HTTP:       http.DefaultClient,
+		}
+
 		ledgerCursor := ""
 
-		for {
-			body := getBody(horizonURL + fmt.Sprintf("/ledgers?order=desc&limit=200&cursor=%s", ledgerCursor))
+		if startSequence != 0 {
+			startSequence++
 
-			ledgersPage := LedgersPage{}
-			err := json.Unmarshal(body, &ledgersPage)
+			ledger, err := client.LedgerDetail(startSequence)
+			if err != nil {
+				panic(err)
+			}
+
+			ledgerCursor = ledger.PagingToken()
+		}
+
+		for {
+			ledgersPage, err := client.Ledgers(horizonclient.LedgerRequest{
+				Limit:  200,
+				Order:  horizonclient.OrderDesc,
+				Cursor: ledgerCursor,
+			})
+
 			if err != nil {
 				panic(err)
 			}
@@ -81,7 +105,7 @@ var rootCmd = &cobra.Command{
 			for _, ledger := range ledgersPage.Embedded.Records {
 				fmt.Printf("Checking ledger: %d (successful=%d failed=%d)\n", ledger.Sequence, ledger.SuccessfulTransactionCount, ledger.FailedTransactionCount)
 
-				ledgerCursor = ledger.PagingToken
+				ledgerCursor = ledger.PagingToken()
 
 				body := getBody(horizonURL + fmt.Sprintf("/ledgers/%d/transactions?limit=200&include_failed=true", ledger.Sequence))
 				transactionsPage := TransactionsPage{}
@@ -92,8 +116,7 @@ var rootCmd = &cobra.Command{
 
 				var wg sync.WaitGroup
 
-				successful := 0
-				failed := 0
+				var successful, failed int32
 
 				for _, transaction := range transactionsPage.Embedded.Records {
 					wg.Add(1)
@@ -138,8 +161,14 @@ var rootCmd = &cobra.Command{
 
 				wg.Wait()
 
-				if successful != ledger.SuccessfulTransactionCount || failed != ledger.FailedTransactionCount {
+				if successful != ledger.SuccessfulTransactionCount || failed != *ledger.FailedTransactionCount {
 					panic(fmt.Sprintf("Invalid ledger counters %d", ledger.Sequence))
+				}
+
+				count--
+				if count == 0 {
+					fmt.Println("Done")
+					return
 				}
 			}
 		}
