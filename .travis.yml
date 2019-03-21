@@ -12,6 +12,7 @@ go:
 - '1.9'
 - '1.10'
 - '1.11'
+- '1.12'
 - tip
 go_import_path: github.com/stellar/go
 before_install:
@@ -21,7 +22,14 @@ before_install:
     echo "Searching for deprecated values in Horizon..."
     ! egrep -irn -A 1 --include=*.go "Deprecated.+-.+remove.+in:.+$TRAVIS_TAG" ./services/horizon/ ./protocols/horizon/
   fi
-- ./gofmt.sh
+- |
+  # Only run format checks on the recommended developer version of Go
+  DEVEL_GO_VERSION='1.12'
+  if [ "$TRAVIS_GO_VERSION" != "$DEVEL_GO_VERSION" ]; then
+    echo "Skipping gofmt checks for this version of Go..."
+  else
+    ./gofmt.sh
+  fi
 - ./govet.sh
 install:
 - curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh
