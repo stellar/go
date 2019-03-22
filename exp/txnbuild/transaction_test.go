@@ -517,19 +517,15 @@ func TestManageOfferNewOffer(t *testing.T) {
 }
 
 func TestManageOfferDeleteOffer(t *testing.T) {
-	kp0 := newKeypair0()
 	kp1 := newKeypair1()
 
 	sourceAccount := Account{
 		ID:             kp1.Address(),
-		SequenceNumber: 41137196761094,
+		SequenceNumber: 41137196761105,
 	}
 
-	selling := NewNativeAsset()
-	buying := NewAsset("ABCD", kp0.Address())
-	price := "0.01"
-	offerID := uint64(2363097)
-	deleteOffer := NewDeleteOfferOp(selling, buying, price, offerID)
+	offerID := uint64(2921622)
+	deleteOffer := NewDeleteOfferOp(offerID)
 
 	tx := Transaction{
 		SourceAccount: sourceAccount,
@@ -538,7 +534,7 @@ func TestManageOfferDeleteOffer(t *testing.T) {
 	}
 
 	received := buildSignEncode(tx, kp1, t)
-	expected := "AAAAACXK8doPx27P6IReQlRRuweSSUiUfjqgyswxiu3Sh2R+AAAAZAAAJWoAAAAHAAAAAAAAAAAAAAABAAAAAAAAAAMAAAAAAAAAAUFCQ0QAAAAA4Nxt4XJcrGZRYrUvrOc1sooiQ+QdEk1suS1wo+oucsUAAAAAAAAAAAAAAAEAAABkAAAAAAAkDtkAAAAAAAAAAdKHZH4AAABA2QUk7WuqGq92J5djfEA2XE8LogteFRozN/3pY5KpA2ilYj+FQBtAGM8g+Ni8ZbofCgjTrQefqpv/pWneaDj1CA=="
+	expected := "AAAAACXK8doPx27P6IReQlRRuweSSUiUfjqgyswxiu3Sh2R+AAAAZAAAJWoAAAASAAAAAAAAAAAAAAABAAAAAAAAAAMAAAAAAAAAAUZBS0UAAAAAQQeAZMSVhmLzYCQaIl1KNrY4FpTZoRzDCncBje0UnbEAAAAAAAAAAAAAAAEAAAABAAAAAAAslJYAAAAAAAAAAdKHZH4AAABAkj1T85v1atBk0k0QenWxbcDxRAJs3PdkijBFFGVGhGJYcaMdQoEBpvb8hJEzpaJ/feK9pa00YCMGyizGfr4rDw=="
 	assert.Equal(t, expected, received, "Base 64 XDR should match")
 }
 

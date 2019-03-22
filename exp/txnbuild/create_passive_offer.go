@@ -14,37 +14,35 @@ type CreatePassiveOffer struct {
 	Buying  *Asset
 	Amount  string
 	Price   string // TODO: Extend to include number, and n/d fraction. See package 'amount'
-	xdrOp   xdr.CreatePassiveOfferOp
 }
 
 // BuildXDR for CreatePassiveOffer returns a fully configured XDR Operation.
 func (cpo *CreatePassiveOffer) BuildXDR() (xdr.Operation, error) {
-	xdrSelling, err := cpo.Selling.ToXDR()
+	var err error
+	var xdrOp xdr.CreatePassiveOfferOp
+
+	xdrOp.Selling, err = cpo.Selling.ToXDR()
 	if err != nil {
 		return xdr.Operation{}, errors.Wrap(err, "Failed to set XDR 'Selling' field")
 	}
-	cpo.xdrOp.Selling = xdrSelling
 
-	xdrBuying, err := cpo.Buying.ToXDR()
+	xdrOp.Buying, err = cpo.Buying.ToXDR()
 	if err != nil {
 		return xdr.Operation{}, errors.Wrap(err, "Failed to set XDR 'Buying' field")
 	}
-	cpo.xdrOp.Buying = xdrBuying
 
-	xdrAmount, err := amount.Parse(cpo.Amount)
+	xdrOp.Amount, err = amount.Parse(cpo.Amount)
 	if err != nil {
 		return xdr.Operation{}, errors.Wrap(err, "Failed to parse 'Amount'")
 	}
-	cpo.xdrOp.Amount = xdrAmount
 
-	xdrPrice, err := price.Parse(cpo.Price)
+	xdrOp.Price, err = price.Parse(cpo.Price)
 	if err != nil {
 		return xdr.Operation{}, errors.Wrap(err, "Failed to parse 'Price'")
 	}
-	cpo.xdrOp.Price = xdrPrice
 
 	opType := xdr.OperationTypeCreatePassiveOffer
-	body, err := xdr.NewOperationBody(opType, cpo.xdrOp)
+	body, err := xdr.NewOperationBody(opType, xdrOp)
 	if err != nil {
 		return xdr.Operation{}, errors.Wrap(err, "Failed to build XDR OperationBody")
 	}

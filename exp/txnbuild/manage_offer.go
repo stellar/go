@@ -32,12 +32,16 @@ func NewUpdateOfferOp(selling, buying *Asset, amount, price string, offerID uint
 
 //NewDeleteOfferOp returns a ManageOffer operation to delete an offer, by
 // setting the Amount to "0".
-func NewDeleteOfferOp(selling, buying *Asset, price string, offerID uint64) ManageOffer {
+func NewDeleteOfferOp(offerID uint64) ManageOffer {
+	// It turns out Stellar core doesn't care about any of these fields except the amount.
+	// However, Horizon will reject ManageOffer if it is missing fields.
+	// Horizon will also reject if Buying == Selling.
+	// Therefore unfortunately we have to make up some dummy values here.
 	return ManageOffer{
-		Selling: selling,
-		Buying:  buying,
+		Selling: NewNativeAsset(),
+		Buying:  NewAsset("FAKE", "GBAQPADEYSKYMYXTMASBUIS5JI3LMOAWSTM2CHGDBJ3QDDPNCSO3DVAA"),
 		Amount:  "0",
-		Price:   price,
+		Price:   "1",
 		OfferID: offerID,
 	}
 }

@@ -137,15 +137,9 @@ func exampleManageOfferDeleteOffer(client *horizon.Client, mock bool) horizon.Tr
 	dieIfError("loadaccount", err)
 	sourceAccount := mapAccounts(horizonSourceAccount)
 
-	selling := txnbuild.NewNativeAsset()
-	buying := txnbuild.Asset{
-		Code:   "ABCD",
-		Issuer: keys[0].Address,
-	}
-	price := "0.01"
 	offerID := uint64(2497628)
 
-	deleteOffer := txnbuild.NewDeleteOfferOp(selling, &buying, price, offerID)
+	deleteOffer := txnbuild.NewDeleteOfferOp(offerID)
 
 	tx := txnbuild.Transaction{
 		SourceAccount: sourceAccount,
