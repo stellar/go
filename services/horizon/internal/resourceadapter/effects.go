@@ -7,6 +7,7 @@ import (
 	"github.com/stellar/go/protocols/horizon/effects"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/services/horizon/internal/httpx"
+	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/support/render/hal"
 )
 
@@ -39,95 +40,81 @@ var EffectTypeNames = map[history.EffectType]string{
 
 // NewEffect creates a new effect resource from the provided database representation
 // of the effect.
-func NewEffect(
-	ctx context.Context,
-	row history.Effect,
-	ledger history.Ledger,
-) (result hal.Pageable, err error) {
-
+func NewEffect(ctx context.Context, row history.Effect, ledger history.Ledger) (hal.Pageable, error) {
 	basev := effects.Base{}
 	PopulateBaseEffect(ctx, &basev, row, ledger)
 
+	var (
+		e      interface{}
+		result hal.Pageable
+	)
 	switch row.Type {
 	case history.EffectAccountCreated:
-		e := effects.AccountCreated{Base: basev}
-		err = row.UnmarshalDetails(&e)
-		result = e
+		e = effects.AccountCreated{Base: basev}
+
 	case history.EffectAccountCredited:
-		e := effects.AccountCredited{Base: basev}
-		err = row.UnmarshalDetails(&e)
-		result = e
+		e = effects.AccountCredited{Base: basev}
+
 	case history.EffectAccountDebited:
-		e := effects.AccountDebited{Base: basev}
-		err = row.UnmarshalDetails(&e)
-		result = e
+		e = effects.AccountDebited{Base: basev}
+
 	case history.EffectAccountThresholdsUpdated:
-		e := effects.AccountThresholdsUpdated{Base: basev}
-		err = row.UnmarshalDetails(&e)
-		result = e
+		e = effects.AccountThresholdsUpdated{Base: basev}
+
 	case history.EffectAccountHomeDomainUpdated:
-		e := effects.AccountHomeDomainUpdated{Base: basev}
-		err = row.UnmarshalDetails(&e)
-		result = e
+		e = effects.AccountHomeDomainUpdated{Base: basev}
+
 	case history.EffectAccountFlagsUpdated:
-		e := effects.AccountFlagsUpdated{Base: basev}
-		err = row.UnmarshalDetails(&e)
-		result = e
+		e = effects.AccountFlagsUpdated{Base: basev}
+
 	case history.EffectSignerCreated:
-		e := effects.SignerCreated{Base: basev}
-		err = row.UnmarshalDetails(&e)
-		result = e
+		e = effects.SignerCreated{Base: basev}
+
 	case history.EffectSignerUpdated:
-		e := effects.SignerUpdated{Base: basev}
-		err = row.UnmarshalDetails(&e)
-		result = e
+		e = effects.SignerUpdated{Base: basev}
+
 	case history.EffectSignerRemoved:
-		e := effects.SignerRemoved{Base: basev}
-		err = row.UnmarshalDetails(&e)
-		result = e
+		e = effects.SignerRemoved{Base: basev}
+
 	case history.EffectTrustlineCreated:
-		e := effects.TrustlineCreated{Base: basev}
-		err = row.UnmarshalDetails(&e)
-		result = e
+		e = effects.TrustlineCreated{Base: basev}
+
 	case history.EffectTrustlineUpdated:
-		e := effects.TrustlineUpdated{Base: basev}
-		err = row.UnmarshalDetails(&e)
-		result = e
+		e = effects.TrustlineUpdated{Base: basev}
+
 	case history.EffectTrustlineRemoved:
-		e := effects.TrustlineRemoved{Base: basev}
-		err = row.UnmarshalDetails(&e)
-		result = e
+		e = effects.TrustlineRemoved{Base: basev}
+
 	case history.EffectTrustlineAuthorized:
-		e := effects.TrustlineAuthorized{Base: basev}
-		err = row.UnmarshalDetails(&e)
-		result = e
+		e = effects.TrustlineAuthorized{Base: basev}
+
 	case history.EffectTrustlineDeauthorized:
-		e := effects.TrustlineDeauthorized{Base: basev}
-		err = row.UnmarshalDetails(&e)
-		result = e
+		e = effects.TrustlineDeauthorized{Base: basev}
+
 	case history.EffectTrade:
-		e := effects.Trade{Base: basev}
-		err = row.UnmarshalDetails(&e)
-		result = e
+		e = effects.Trade{Base: basev}
+
 	case history.EffectSequenceBumped:
-		e := effects.SequenceBumped{Base: basev}
-		err = row.UnmarshalDetails(&e)
-		result = e
+		e = effects.SequenceBumped{Base: basev}
+
 	default:
 		result = basev
 	}
 
+	err := row.UnmarshalDetails(&e)
 	if err != nil {
-		return
+		return result, errors.Wrap(err, "unmarshaling effect details")
 	}
 
-	rh, ok := result.(base.Rehydratable)
+	result = e.(hal.Pageable)
 
+	rh, ok := result.(base.Rehydratable)
 	if ok {
+		// TODO: remove the returned error as it's always nil
 		err = rh.Rehydrate()
 	}
 
-	return
+	return result, errors.Wrap(err, "rehydrating")
 }
 
 // Populate loads this resource from `row`

@@ -41,7 +41,7 @@ func (b *BatchInsertBuilder) Values(params ...interface{}) error {
 	b.initOnce.Do(b.init)
 
 	if len(params) != len(b.Columns) {
-		return errors.New(fmt.Sprintf("Number of values doesn't match columns in %s", b.TableName))
+		return errors.Errorf("Number of values doesn't match columns in %s", b.TableName)
 	}
 
 	b.rows = append(b.rows, params)

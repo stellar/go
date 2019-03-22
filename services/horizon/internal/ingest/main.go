@@ -85,9 +85,10 @@ type Config struct {
 type EffectIngestion struct {
 	Dest        *Ingestion
 	OperationID int64
-	err         error
-	added       int
-	parent      *Ingestion
+	// TODO: take err out
+	err    error
+	added  int
+	parent *Ingestion
 }
 
 // LedgerBundle represents a single ledger's worth of novelty created by one
@@ -193,6 +194,7 @@ type Session struct {
 	// Results fields
 	//
 
+	// TODO: take Err out
 	// Err is the error that caused this session to fail, if any.
 	Err error
 	// Ingested is the number of ledgers that were successfully ingested during
