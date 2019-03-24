@@ -530,6 +530,14 @@ type LedgersPage struct {
 	} `json:"_embedded"`
 }
 
+// PaymentsPage returns a list of payments
+type OffersPage struct {
+	Links    hal.Links `json:"_links"`
+	Embedded struct {
+		Records []Payment `json:"records"`
+	} `json:"_embedded"`
+}
+
 // SingleMetric represents a metric with a single value
 type SingleMetric struct {
 	Value int `json:"value"`
