@@ -531,7 +531,7 @@ type LedgersPage struct {
 }
 
 // PaymentsPage returns a list of payments
-type OffersPage struct {
+type PaymentsPage struct {
 	Links    hal.Links `json:"_links"`
 	Embedded struct {
 		Records []Payment `json:"records"`
