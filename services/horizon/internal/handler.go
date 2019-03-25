@@ -33,7 +33,7 @@ type streamFunc func(context.Context, *sse.Stream, interface{}) error
 
 // singleObjectStreamFunc represents the signature of the function that handles
 // requests with stream mode turned on using server-sent events. The difference
-// between this function and streamFunc is that this one only loads an event. The
+// between this function and streamFunc is that this one only gets an event. The
 // server will not send an event out if the current event is same as the last one.
 // Please see the implementation of streamHandler for more details.
 type singleObjectStreamFunc func(context.Context, interface{}) (sse.Event, error)
@@ -205,7 +205,7 @@ func getAccountID(r *http.Request, key string, required bool) (string, error) {
 	return val, nil
 }
 
-// transactionHandler checks whether the history is stale, loads the required
+// transactionHandler checks whether the history is stale, gets the required
 // params for transaction endpoints from the URL, validates the cursor is within
 // history, and finally pass the transaction params to the more general purpose
 // streamableEndpointHandler.
@@ -213,13 +213,7 @@ func (we *web) transactionHandler(jfn jsonResponderFunc, sfn streamFunc) http.Ha
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 
-		err := errorIfHistoryIsStale(we.isHistoryStale())
-		if err != nil {
-			problem.Render(ctx, w, err)
-			return
-		}
-
-		params, err := loadTransactionParams(r, we.ingestFailedTx)
+		params, err := getTransactionQueryParams(r, we.ingestFailedTx)
 		if err != nil {
 			problem.Render(ctx, w, err)
 			return
@@ -235,23 +229,8 @@ func (we *web) transactionHandler(jfn jsonResponderFunc, sfn streamFunc) http.Ha
 	})
 }
 
-// errorIfHistoryIsStale returns a formatted error if isStale is true.
-func errorIfHistoryIsStale(isStale bool) error {
-	if !isStale {
-		return nil
-	}
-
-	ls := ledger.CurrentState()
-	err := hProblem.StaleHistory
-	err.Extras = map[string]interface{}{
-		"history_latest_ledger": ls.HistoryLatest,
-		"core_latest_ledger":    ls.CoreLatest,
-	}
-	return err
-}
-
-// loadTransactionParams loads the available params for transaction endpoints.
-func loadTransactionParams(r *http.Request, ingestFailedTransactions bool) (*actions.TransactionParams, error) {
+// getTransactionQueryParams gets the available query params for transaction endpoints.
+func getTransactionQueryParams(r *http.Request, ingestFailedTransactions bool) (*actions.TransactionParams, error) {
 	addr, err := getAccountID(r, "account_id", false)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting account address")

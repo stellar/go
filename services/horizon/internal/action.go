@@ -162,12 +162,16 @@ func (w *web) getAccountInfo(ctx context.Context, param interface{}) (interface{
 	if !ok {
 		return nil, errors.New("Invalid param type for getAccountInfo func")
 	}
-	return actions.AccountInfo(ctx, &core.Q{w.coreSession(ctx)}, &history.Q{w.horizonSession(ctx)}, addr)
+	horizonSession, err := w.horizonSession(ctx)
+	if err != nil {
+		return nil, errors.Wrap(err, "getting horizon db session")
+	}
+	return actions.AccountInfo(ctx, &core.Q{w.coreSession(ctx)}, &history.Q{horizonSession}, addr)
 }
 
-// loadAccountEvent loads the information about an account based on the provided param into a server-sent event.
+// getAccountEvent gets the information about an account based on the provided param into a server-sent event.
 // The expected param here is the account id, which has a string type.
-func (w *web) loadAccountEvent(ctx context.Context, param interface{}) (sse.Event, error) {
+func (w *web) getAccountEvent(ctx context.Context, param interface{}) (sse.Event, error) {
 	res, err := w.getAccountInfo(ctx, param)
 	return sse.Event{Data: res}, err
 }
@@ -179,8 +183,12 @@ func (w *web) getTransactionPageByAccount(ctx context.Context, params interface{
 	if !ok {
 		return nil, errors.New("Invalid param type for getTransactionPageByAccount func")
 	}
+	horizonSession, err := w.horizonSession(ctx)
+	if err != nil {
+		return nil, errors.Wrap(err, "getting horizon db session")
+	}
 
-	return actions.TransactionPageByAccount(ctx, &history.Q{w.horizonSession(ctx)}, tp.AccountFilter, tp.IncludeFailed, tp.PagingParams)
+	return actions.TransactionPageByAccount(ctx, &history.Q{horizonSession}, tp.AccountFilter, tp.IncludeFailed, tp.PagingParams)
 }
 
 // streamTransactionByAccount streams the transaction records of an account.
@@ -190,6 +198,10 @@ func (w *web) streamTransactionByAccount(ctx context.Context, s *sse.Stream, par
 	if !ok {
 		return errors.New("Invalid param type for streamTransactionByAccount func")
 	}
+	horizonSession, err := w.horizonSession(ctx)
+	if err != nil {
+		return errors.Wrap(err, "getting horizon db session")
+	}
 
-	return actions.StreamTransactionByAccount(ctx, s, &history.Q{w.horizonSession(ctx)}, tp.AccountFilter, tp.IncludeFailed, tp.PagingParams)
+	return actions.StreamTransactionByAccount(ctx, s, &history.Q{horizonSession}, tp.AccountFilter, tp.IncludeFailed, tp.PagingParams)
 }

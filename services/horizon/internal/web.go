@@ -139,7 +139,7 @@ func (w *web) mustInstallActions(enableAssetStats bool, friendbotURL *url.URL) {
 	// account actions
 	r.Route("/accounts", func(r chi.Router) {
 		r.Route("/{account_id}", func(r chi.Router) {
-			r.Get("/", w.accountHandler(w.getAccountInfo, w.loadAccountEvent))
+			r.Get("/", w.accountHandler(w.getAccountInfo, w.getAccountEvent))
 			r.Get("/transactions", w.transactionHandler(w.getTransactionPageByAccount, w.streamTransactionByAccount))
 			r.Get("/operations", OperationIndexAction{}.Handle)
 			r.Get("/payments", PaymentsIndexAction{}.Handle)
@@ -246,8 +246,13 @@ func remoteAddrIP(r *http.Request) string {
 
 // horizonSession returns a new session that loads data from the horizon
 // database. The returned session is bound to `ctx`.
-func (w *web) horizonSession(ctx context.Context) *db.Session {
-	return &db.Session{DB: w.historyQ.Session.DB, Ctx: ctx}
+func (w *web) horizonSession(ctx context.Context) (*db.Session, error) {
+	err := errorIfHistoryIsStale(w.isHistoryStale())
+	if err != nil {
+		return nil, err
+	}
+
+	return &db.Session{DB: w.historyQ.Session.DB, Ctx: ctx}, nil
 }
 
 // coreSession returns a new session that loads data from the stellar core
@@ -265,4 +270,19 @@ func (w *web) isHistoryStale() bool {
 
 	ls := ledger.CurrentState()
 	return (ls.CoreLatest - ls.HistoryLatest) > int32(w.staleThreshold)
+}
+
+// errorIfHistoryIsStale returns a formatted error if isStale is true.
+func errorIfHistoryIsStale(isStale bool) error {
+	if !isStale {
+		return nil
+	}
+
+	ls := ledger.CurrentState()
+	err := hProblem.StaleHistory
+	err.Extras = map[string]interface{}{
+		"history_latest_ledger": ls.HistoryLatest,
+		"core_latest_ledger":    ls.CoreLatest,
+	}
+	return err
 }

@@ -51,7 +51,7 @@ func TestLoadAccountEvent(t *testing.T) {
 
 	w := mustInitWeb(context.Background(), &history.Q{tt.HorizonSession()}, &core.Q{tt.CoreSession()}, time.Duration(5), 0, true)
 
-	event, err := w.loadAccountEvent(tt.Ctx, "GCXKG6RN4ONIEPCMNFB732A436Z5PNDSRLGWK7GBLCMQLIFO4S7EYWVU")
+	event, err := w.getAccountEvent(tt.Ctx, "GCXKG6RN4ONIEPCMNFB732A436Z5PNDSRLGWK7GBLCMQLIFO4S7EYWVU")
 	tt.Assert.NoError(err)
 
 	account, ok := event.Data.(*horizon.Account)
