@@ -100,5 +100,11 @@ func (m *MockClient) Transactions(request TransactionRequest) (hProtocol.Transac
 	return a.Get(0).(hProtocol.TransactionsPage), a.Error(1)
 }
 
+// TransactionDetail is a mocking method
+func (m *MockClient) TransactionDetail(txHash string) (hProtocol.Transaction, error) {
+	a := m.Called(txHash)
+	return a.Get(0).(hProtocol.Transaction), a.Error(1)
+}
+
 // ensure that the MockClient implements ClientInterface
 var _ ClientInterface = &MockClient{}
