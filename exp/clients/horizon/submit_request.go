@@ -7,7 +7,7 @@ import (
 	"github.com/stellar/go/support/errors"
 )
 
-// BuildUrl returns the url for submitting transactions a running horizon instance
+// BuildUrl returns the url for submitting transactions to a running horizon instance
 func (sr submitRequest) BuildUrl() (endpoint string, err error) {
 	if sr.endpoint == "" || sr.transactionXdr == "" {
 		return endpoint, errors.New("Invalid request. Too few parameters")
