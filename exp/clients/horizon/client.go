@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+	"strings"
+	"time"
 
 	hProtocol "github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/protocols/horizon/operations"
@@ -17,20 +19,53 @@ func (c *Client) sendRequest(hr HorizonRequest, a interface{}) (err error) {
 		return
 	}
 
-	req, err := http.NewRequest("GET", c.HorizonURL+endpoint, nil)
+	c.HorizonURL = c.getHorizonURL()
+	var req *http.Request
+	// check if it is a submitRequest
+	_, ok := hr.(submitRequest)
+	if ok {
+		req, err = http.NewRequest("POST", c.HorizonURL+endpoint, nil)
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded; param=value")
+	} else {
+		req, err = http.NewRequest("GET", c.HorizonURL+endpoint, nil)
+	}
+
 	if err != nil {
 		return errors.Wrap(err, "Error creating HTTP request")
 	}
 	req.Header.Set("X-Client-Name", "go-stellar-sdk")
 	req.Header.Set("X-Client-Version", app.Version())
 
-	resp, err := c.HTTP.Do(req)
+	if c.horizonTimeOut == 0 {
+		c.horizonTimeOut = HorizonTimeOut
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*c.horizonTimeOut)
+
+	resp, err := c.HTTP.Do(req.WithContext(ctx))
 	if err != nil {
+		cancel()
 		return
 	}
 
 	err = decodeResponse(resp, &a)
+	cancel()
 	return
+}
+
+// getHorizonUrl strips all slashes(/) at the end of HorizonURL if any, then adds a single slash
+func (c *Client) getHorizonURL() string {
+	return strings.TrimRight(c.HorizonURL, "/") + "/"
+}
+
+// SetHorizonTimeOut allows users to set the number of seconds before a horizon request is cancelled.
+func (c *Client) SetHorizonTimeOut(t uint) *Client {
+	c.horizonTimeOut = time.Duration(t)
+	return c
+}
+
+// GetHorizonTimeOut returns the current timeout for an horizon client
+func (c *Client) GetHorizonTimeOut() time.Duration {
+	return c.horizonTimeOut
 }
 
 // AccountDetail returns information for a single account.
@@ -80,7 +115,7 @@ func (c *Client) Assets(request AssetRequest) (assets hProtocol.AssetsPage, err 
 // Stream is for endpoints that support streaming
 func (c *Client) Stream(ctx context.Context, request StreamRequest, handler func(interface{})) (err error) {
 
-	err = request.Stream(ctx, c.HorizonURL, handler)
+	err = request.Stream(ctx, c.getHorizonURL(), handler)
 	return
 }
 
@@ -91,7 +126,7 @@ func (c *Client) Ledgers(request LedgerRequest) (ledgers hProtocol.LedgersPage, 
 	return
 }
 
-// LedgerDetails returns information about a particular ledger for a given sequence number
+// LedgerDetail returns information about a particular ledger for a given sequence number
 // See https://www.stellar.org/developers/horizon/reference/endpoints/ledgers-single.html
 func (c *Client) LedgerDetail(sequence uint32) (ledger hProtocol.Ledger, err error) {
 	if sequence <= 0 {
@@ -173,4 +208,14 @@ func (c *Client) OperationDetail(id string) (ops operations.Operation, err error
 
 	ops, err = operations.UnmarshalOperation(baseRecord.GetType(), dataString)
 	return ops, errors.Wrap(err, "Unmarshaling to the correct operation type")
+}
+
+// SubmitTransaction submits a transaction to the network. err can be either error object or horizon.Error object.
+// See https://www.stellar.org/developers/horizon/reference/endpoints/transactions-create.html
+func (c *Client) SubmitTransaction(transactionXdr string) (txSuccess hProtocol.TransactionSuccess,
+	err error) {
+	request := submitRequest{endpoint: "transactions", transactionXdr: transactionXdr}
+	err = c.sendRequest(request, &txSuccess)
+	return
+
 }
