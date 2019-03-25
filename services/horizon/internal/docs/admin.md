@@ -75,7 +75,7 @@ Specifying command line flags every time you invoke Horizon can be cumbersome, a
 
 ## Preparing the database
 
-Before the Horizon server can be run, we must first prepare the Horizon database.  This database will be used for all of the information produced by Horizon, notably historical information about successful transactions that have occurred on the stellar network.  
+Before the Horizon server can be run, we must first prepare the Horizon database.  This database will be used for all of the information produced by Horizon, notably historical information about successful transactions that have occurred on the stellar network.
 
 To prepare a database for Horizon's use, first you must ensure the database is blank.  It's easiest to simply create a new database on your postgres server specifically for Horizon's use.  Next you must install the schema by running `horizon db init`.  Remember to use the appropriate command line flags or environment variables to configure Horizon as explained in [Configuring ](#Configuring).  This command will log any errors that occur.
 
@@ -96,13 +96,36 @@ The log line above announces that Horizon is ready to serve client requests. Not
 
 ## Ingesting live stellar-core data
 
-Horizon provides most of its utility through ingested data.  Your Horizon server can be configured to listen for and ingest transaction results from the connected stellar-core.  We recommend that within your infrastructure you run one (and only one) Horizon process that is configured in this way.   While running multiple ingestion processes will not corrupt the Horizon database, your error logs will quickly fill up as the two instances race to ingest the data from stellar-core.  We may develop a system that coordinates multiple Horizon processes in the future, but we would also be happy to include an external contribution that accomplishes this.
+Horizon provides most of its utility through ingested data.  Your Horizon server can be configured
+to listen for and ingest transaction results from the connected stellar-core.  We recommend that
+within your infrastructure you run one (and only one) Horizon process that is configured in this
+way. While running multiple ingestion processes will not corrupt the Horizon database, your error
+logs will quickly fill up as the two instances race to ingest the data from stellar-core. A notable
+exception to this is when you are reingesting data, which we recommend using multiple processes for
+speed (more on this below).
 
-To enable ingestion, you must either pass `--ingest=true` on the command line or set the `INGEST` environment variable to "true".
+To enable ingestion, you must either pass `--ingest=true` on the command line or set the `INGEST`
+environment variable to "true".
 
 ### Ingesting historical data
 
-To enable ingestion of historical data from stellar-core you need to run `horizon db backfill NUM_LEDGERS`. If you're running a full validator with published history archive, for example, you might want to ingest all of history. In this case your `NUM_LEDGERS` should be slightly higher than the current ledger id on the network. You can run this process in the background while your Horizon server is up. This continuously decrements the `history.elder_ledger` in your /metrics endpoint until `NUM_LEDGERS` is reached and the backfill is complete. 
+To enable ingestion of historical data from stellar-core you need to run `horizon db backfill NUM_LEDGERS`. If you're running a full validator with published history archive, for example, you might want to ingest all of history. In this case your `NUM_LEDGERS` should be slightly higher than the current ledger id on the network. You can run this process in the background while your Horizon server is up. This continuously decrements the `history.elder_ledger` in your /metrics endpoint until `NUM_LEDGERS` is reached and the backfill is complete.
+
+### Reingesting Ledgers
+A notable exception to running only a single Horizon process is when you are reingesting ledgers,
+which we recommend you run multiple processes for in order to dramatically speed up re-ingestion
+time. This is done through the `horizon db range [START_LEDGER] [END_LEDGER]` command, which could
+be run as follows:
+
+```
+horizon1> horizon db reingest range 1 10000
+horizon2> horizon db reingest range 10001 20000
+horizon3> horizon db reingest range 20001 30000
+# ... etc.
+```
+
+This allows reingestion to be split up and done in parallel by multiple Horizon processes, and is
+available as of Horizon [0.17.4](https://github.com/stellar/go/releases/tag/horizon-v0.17.4).
 
 ### Managing storage for historical data
 
@@ -123,10 +146,10 @@ In the section above, we mentioned that Horizon _tries_ to maintain a gap-free w
 We recommend you configure the HISTORY_RETENTION_COUNT in Horizon to a value less than or equal to the configured value for CATCHUP_RECENT in stellar-core.  Given this situation any downtime that would cause a ledger gap will require a downtime greater than the amount of historical data retained by Horizon.  To re-establish continuity:
 
 1.  Stop Horizon.
-2.  run `horizon db reap` to clear the historical database.
+2.  Run `horizon db reap` to clear the historical database.
 3.  Clear the cursor for Horizon by running `stellar-core -c "dropcursor?id=HORIZON"` (ensure capitilization is maintained).
 4.  Clear ledger metadata from before the gap by running `stellar-core -c "maintenance?queue=true"`.
-5.  Restart Horizon.    
+5.  Restart Horizon.
 
 ## Managing Stale Historical Data
 
@@ -136,7 +159,7 @@ To help applications that cannot tolerate lag, Horizon provides a configurable "
 
 ## Monitoring
 
-To ensure that your instance of Horizon is performing correctly we encourage you to monitor it, and provide both logs and metrics to do so.  
+To ensure that your instance of Horizon is performing correctly we encourage you to monitor it, and provide both logs and metrics to do so.
 
 Horizon will output logs to standard out.  Information about what requests are coming in will be reported, but more importantly, warnings or errors will also be emitted by default.  A correctly running Horizon instance will not output any warning or error log entries.
 
@@ -144,4 +167,8 @@ Metrics are collected while a Horizon process is running and they are exposed at
 
 ## I'm Stuck! Help!
 
-If any of the above steps don't work or you are otherwise prevented from correctly setting up Horizon, please come to our community and tell us.  Either [post a question at our Stack Exchange](https://stellar.stackexchange.com/) or [chat with us on slack](http://slack.stellar.org/) to ask for help.
+If any of the above steps don't work or you are otherwise prevented from correctly setting up
+Horizon, please come to our community and tell us. Either
+[post a question at our Stack Exchange](https://stellar.stackexchange.com/) or
+[chat with us on Keybase in #dev_discussion](https://keybase.io/team/stellar.public) to ask for
+help.
