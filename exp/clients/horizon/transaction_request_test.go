@@ -44,10 +44,10 @@ func TestTransactionRequestBuildUrl(t *testing.T) {
 		assert.Contains(t, err.Error(), "Invalid request. Too many parameters")
 	}
 
-	tr = TransactionRequest{Cursor: "123456", Limit: 30, Order: OrderAsc}
+	tr = TransactionRequest{Cursor: "123456", Limit: 30, Order: OrderAsc, IncludeFailed: true}
 	endpoint, err = tr.BuildUrl()
 	// It should return valid all transactions endpoint with query params and no errors
 	require.NoError(t, err)
-	assert.Equal(t, "transactions?cursor=123456&limit=30&order=asc", endpoint)
+	assert.Equal(t, "transactions?cursor=123456&include_failed=true&limit=30&order=asc", endpoint)
 
 }
