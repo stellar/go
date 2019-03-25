@@ -96,7 +96,8 @@ The list of offers.
           "d": 50
         },
         "price": "7.7400000",
-        "last_modified": "1970-01-01T00:00:05Z"
+        "last_modified_time": "1970-01-01T00:00:05Z",
+        "last_modified_ledger": 22379074,
       },
       {
         "_links": {
@@ -126,7 +127,8 @@ The list of offers.
           "d": 100
         },
         "price": "7.7900000",
-        "last_modified": "1970-01-01T00:00:06Z"
+        "last_modified_time": "1970-01-01T00:00:06Z",
+        "last_modified_ledger": 22379074,
       }
     ]
   }

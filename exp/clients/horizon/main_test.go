@@ -8,6 +8,8 @@ import (
 
 	hProtocol "github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/protocols/horizon/effects"
+	"github.com/stellar/go/protocols/horizon/operations"
+	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/support/http/httptest"
 	"github.com/stretchr/testify/assert"
 )
@@ -149,6 +151,90 @@ func ExampleClient_Offers() {
 		return
 	}
 	fmt.Print(offers)
+}
+
+func ExampleClient_Operations() {
+
+	client := DefaultPublicNetClient
+	// operations for an account
+	opRequest := OperationRequest{ForAccount: "GCLWGQPMKXQSPF776IU33AH4PZNOOWNAWGGKVTBQMIC5IMKUNP3E6NVU"}
+	ops, err := client.Operations(opRequest)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	fmt.Print(ops)
+
+	// all operations
+	opRequest = OperationRequest{Cursor: "now"}
+	ops, err = client.Operations(opRequest)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	fmt.Print(ops)
+	records := ops.Embedded.Records
+
+	for _, value := range records {
+		// prints the type
+		fmt.Print(value.GetType())
+		// for example if the type is change_trust
+		c, ok := value.(operations.ChangeTrust)
+		if ok {
+			// access ChangeTrust fields
+			fmt.Print(c.Trustee)
+		}
+
+	}
+}
+
+func ExampleClient_OperationDetail() {
+
+	client := DefaultPublicNetClient
+	opId := "123456"
+	// operation details for an id
+	ops, err := client.OperationDetail(opId)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	fmt.Print(ops)
+}
+
+func ExampleClient_SubmitTransaction() {
+
+	client := DefaultTestNetClient
+	// https://www.stellar.org/laboratory/#xdr-viewer?input=AAAAABB90WssODNIgi6BHveqzxTRmIpvAFRyVNM%2BHm2GVuCcAAAAZAAABD0AAuV%2FAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAyTBGxOgfSApppsTnb%2FYRr6gOR8WT0LZNrhLh4y3FCgoAAAAXSHboAAAAAAAAAAABhlbgnAAAAEAivKe977CQCxMOKTuj%2BcWTFqc2OOJU8qGr9afrgu2zDmQaX5Q0cNshc3PiBwe0qw%2F%2BD%2FqJk5QqM5dYeSUGeDQP&type=TransactionEnvelope&network=test
+	txXdr := `AAAAABB90WssODNIgi6BHveqzxTRmIpvAFRyVNM+Hm2GVuCcAAAAZAAABD0AAuV/AAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAyTBGxOgfSApppsTnb/YRr6gOR8WT0LZNrhLh4y3FCgoAAAAXSHboAAAAAAAAAAABhlbgnAAAAEAivKe977CQCxMOKTuj+cWTFqc2OOJU8qGr9afrgu2zDmQaX5Q0cNshc3PiBwe0qw/+D/qJk5QqM5dYeSUGeDQP`
+
+	// submit transaction
+	resp, err := client.SubmitTransaction(txXdr)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	// To do: remove output. It will fail when testnet is reset
+
+	fmt.Print(resp)
+	// Output: {{{https://horizon-testnet.stellar.org/transactions/bcc7a97264dca0a51a63f7ea971b5e7458e334489673078bb2a34eb0cce910ca false}} bcc7a97264dca0a51a63f7ea971b5e7458e334489673078bb2a34eb0cce910ca 354811 AAAAABB90WssODNIgi6BHveqzxTRmIpvAFRyVNM+Hm2GVuCcAAAAZAAABD0AAuV/AAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAyTBGxOgfSApppsTnb/YRr6gOR8WT0LZNrhLh4y3FCgoAAAAXSHboAAAAAAAAAAABhlbgnAAAAEAivKe977CQCxMOKTuj+cWTFqc2OOJU8qGr9afrgu2zDmQaX5Q0cNshc3PiBwe0qw/+D/qJk5QqM5dYeSUGeDQP AAAAAAAAAGQAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAA= AAAAAQAAAAIAAAADAAVp+wAAAAAAAAAAEH3Rayw4M0iCLoEe96rPFNGYim8AVHJU0z4ebYZW4JwACBP/TuycHAAABD0AAuV+AAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAABAAVp+wAAAAAAAAAAEH3Rayw4M0iCLoEe96rPFNGYim8AVHJU0z4ebYZW4JwACBP/TuycHAAABD0AAuV/AAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAABAAAAAwAAAAMABWn7AAAAAAAAAAAQfdFrLDgzSIIugR73qs8U0ZiKbwBUclTTPh5thlbgnAAIE/9O7JwcAAAEPQAC5X8AAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAEABWn7AAAAAAAAAAAQfdFrLDgzSIIugR73qs8U0ZiKbwBUclTTPh5thlbgnAAIE+gGdbQcAAAEPQAC5X8AAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAABWn7AAAAAAAAAADJMEbE6B9ICmmmxOdv9hGvqA5HxZPQtk2uEuHjLcUKCgAAABdIdugAAAVp+wAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAA==}
+}
+
+func ExampleClient_SetHorizonTimeOut() {
+
+	client := DefaultTestNetClient
+
+	// https://www.stellar.org/laboratory/#xdr-viewer?input=AAAAABB90WssODNIgi6BHveqzxTRmIpvAFRyVNM%2BHm2GVuCcAAAAZAAABD0AAuV%2FAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAyTBGxOgfSApppsTnb%2FYRr6gOR8WT0LZNrhLh4y3FCgoAAAAXSHboAAAAAAAAAAABhlbgnAAAAEAivKe977CQCxMOKTuj%2BcWTFqc2OOJU8qGr9afrgu2zDmQaX5Q0cNshc3PiBwe0qw%2F%2BD%2FqJk5QqM5dYeSUGeDQP&type=TransactionEnvelope&network=test
+	txXdr := `AAAAABB90WssODNIgi6BHveqzxTRmIpvAFRyVNM+Hm2GVuCcAAAAZAAABD0AAuV/AAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAyTBGxOgfSApppsTnb/YRr6gOR8WT0LZNrhLh4y3FCgoAAAAXSHboAAAAAAAAAAABhlbgnAAAAEAivKe977CQCxMOKTuj+cWTFqc2OOJU8qGr9afrgu2zDmQaX5Q0cNshc3PiBwe0qw/+D/qJk5QqM5dYeSUGeDQP`
+
+	// test user timeout
+	client = client.SetHorizonTimeOut(30)
+	resp, err := client.SubmitTransaction(txXdr)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	fmt.Print(resp)
 }
 
 func TestAccountDetail(t *testing.T) {
@@ -550,6 +636,154 @@ func TestOfferRequest(t *testing.T) {
 		assert.Equal(t, record.Selling.Code, "ABC")
 		assert.Equal(t, record.Amount, "1999979.8700000")
 		assert.Equal(t, record.LastModifiedLedger, int32(103307))
+	}
+}
+
+func TestOperationsRequest(t *testing.T) {
+	hmock := httptest.NewClient()
+	client := &Client{
+		HorizonURL: "https://localhost/",
+		HTTP:       hmock,
+	}
+
+	operationRequest := OperationRequest{}
+
+	// all operations
+	hmock.On(
+		"GET",
+		"https://localhost/operations",
+	).ReturnString(200, multipleOpsResponse)
+
+	ops, err := client.Operations(operationRequest)
+	if assert.NoError(t, err) {
+		assert.IsType(t, ops, operations.OperationsPage{})
+		links := ops.Links
+		assert.Equal(t, links.Self.Href, "https://horizon.stellar.org/transactions/b63307ef92bb253df13361a72095156d19fc0713798bc2e6c3bd9ee63cc3ca53/operations?cursor=&limit=10&order=asc")
+
+		assert.Equal(t, links.Next.Href, "https://horizon.stellar.org/transactions/b63307ef92bb253df13361a72095156d19fc0713798bc2e6c3bd9ee63cc3ca53/operations?cursor=98447788659970049&limit=10&order=asc")
+
+		assert.Equal(t, links.Prev.Href, "https://horizon.stellar.org/transactions/b63307ef92bb253df13361a72095156d19fc0713798bc2e6c3bd9ee63cc3ca53/operations?cursor=98447788659970049&limit=10&order=desc")
+
+		paymentOp := ops.Embedded.Records[0]
+		mangageOfferOp := ops.Embedded.Records[1]
+		createAccountOp := ops.Embedded.Records[2]
+		assert.IsType(t, paymentOp, operations.Payment{})
+		assert.IsType(t, mangageOfferOp, operations.ManageOffer{})
+		assert.IsType(t, createAccountOp, operations.CreateAccount{})
+
+		c, ok := createAccountOp.(operations.CreateAccount)
+		assert.Equal(t, ok, true)
+		assert.Equal(t, c.ID, "98455906148208641")
+		assert.Equal(t, c.StartingBalance, "2.0000000")
+		assert.Equal(t, c.TransactionHash, "ade3c60f1b581e8744596673d95bffbdb8f68f199e0e2f7d63b7c3af9fd8d868")
+	}
+
+	operationRequest = OperationRequest{ForAccount: "GCLWGQPMKXQSPF776IU33AH4PZNOOWNAWGGKVTBQMIC5IMKUNP3E6NVU"}
+	hmock.On(
+		"GET",
+		"https://localhost/accounts/GCLWGQPMKXQSPF776IU33AH4PZNOOWNAWGGKVTBQMIC5IMKUNP3E6NVU/operations",
+	).ReturnString(200, multipleOpsResponse)
+
+	ops, err = client.Operations(operationRequest)
+	if assert.NoError(t, err) {
+		assert.IsType(t, ops, operations.OperationsPage{})
+	}
+
+	// too many parameters
+	operationRequest = OperationRequest{ForAccount: "GCLWGQPMKXQSPF776IU33AH4PZNOOWNAWGGKVTBQMIC5IMKUNP3E6NVU", ForLedger: 123}
+	hmock.On(
+		"GET",
+		"https://localhost/operations",
+	).ReturnString(200, multipleOpsResponse)
+
+	_, err = client.Operations(operationRequest)
+	// error case
+	if assert.Error(t, err) {
+		assert.Contains(t, err.Error(), "Too many parameters")
+	}
+
+	// operation detail
+	opId := "1103965508866049"
+	hmock.On(
+		"GET",
+		"https://localhost/operations/1103965508866049",
+	).ReturnString(200, opsResponse)
+
+	record, err := client.OperationDetail(opId)
+	if assert.NoError(t, err) {
+		assert.Equal(t, record.GetType(), "change_trust")
+		c, ok := record.(operations.ChangeTrust)
+		assert.Equal(t, ok, true)
+		assert.Equal(t, c.ID, "1103965508866049")
+		assert.Equal(t, c.TransactionSuccessful, true)
+		assert.Equal(t, c.TransactionHash, "93c2755ec61c8b01ac11daa4d8d7a012f56be172bdfcaf77a6efd683319ca96d")
+		assert.Equal(t, c.Asset.Code, "UAHd")
+		assert.Equal(t, c.Asset.Issuer, "GDDETPGV4OJVNBTB6GQICCPGH5DZRYYB7XQCSAZO2ZQH6HO7SWXHKKJN")
+		assert.Equal(t, c.Limit, "922337203685.4775807")
+		assert.Equal(t, c.Trustee, "GDDETPGV4OJVNBTB6GQICCPGH5DZRYYB7XQCSAZO2ZQH6HO7SWXHKKJN")
+		assert.Equal(t, c.Trustor, "GBMVGXJXJ7ZBHIWMXHKR6IVPDTYKHJPXC2DHZDPJBEZWZYAC7NKII7IB")
+		assert.Equal(t, c.Links.Self.Href, "https://horizon-testnet.stellar.org/operations/1103965508866049")
+		assert.Equal(t, c.Links.Effects.Href, "https://horizon-testnet.stellar.org/operations/1103965508866049/effects")
+		assert.Equal(t, c.Links.Transaction.Href, "https://horizon-testnet.stellar.org/transactions/93c2755ec61c8b01ac11daa4d8d7a012f56be172bdfcaf77a6efd683319ca96d")
+
+		assert.Equal(t, c.Links.Succeeds.Href, "https://horizon-testnet.stellar.org/effects?order=desc\u0026cursor=1103965508866049")
+
+		assert.Equal(t, c.Links.Precedes.Href, "https://horizon-testnet.stellar.org/effects?order=asc\u0026cursor=1103965508866049")
+	}
+
+	_, err = client.SubmitTransaction(`AAAAABB90WssODNIgi6BHveqzxTRmIpvAFRyVNM+Hm2GVuCcAAAAZAAABD0AAuV/AAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAyTBGxOgfSApppsTnb/YRr6gOR8WT0LZNrhLh4y3FCgoAAAAXSHboAAAAAAAAAAABhlbgnAAAAEAivKe977CQCxMOKTuj+cWTFqc2OOJU8qGr9afrgu2zDmQaX5Q0cNshc3PiBwe0qw/+D/qJk5QqM5dYeSUGeDQP`)
+
+}
+
+func TestSubmitRequest(t *testing.T) {
+	hmock := httptest.NewClient()
+	client := &Client{
+		HorizonURL: "https://localhost/",
+		HTTP:       hmock,
+	}
+
+	txXdr := `AAAAABB90WssODNIgi6BHveqzxTRmIpvAFRyVNM+Hm2GVuCcAAAAZAAABD0AAuV/AAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAyTBGxOgfSApppsTnb/YRr6gOR8WT0LZNrhLh4y3FCgoAAAAXSHboAAAAAAAAAAABhlbgnAAAAEAivKe977CQCxMOKTuj+cWTFqc2OOJU8qGr9afrgu2zDmQaX5Q0cNshc3PiBwe0qw/+D/qJk5QqM5dYeSUGeDQP`
+
+	// failure response
+	hmock.
+		On("POST", "https://localhost/transactions").
+		ReturnString(400, transactionFailure)
+
+	_, err := client.SubmitTransaction(txXdr)
+	if assert.Error(t, err) {
+		assert.Contains(t, err.Error(), "Horizon error")
+		horizonError, ok := errors.Cause(err).(*Error)
+		assert.Equal(t, ok, true)
+		assert.Equal(t, horizonError.Problem.Title, "Transaction Failed")
+	}
+
+	// connection error
+	hmock.
+		On("POST", "https://localhost/transactions").
+		ReturnError("http.Client error")
+
+	_, err = client.SubmitTransaction(txXdr)
+	if assert.Error(t, err) {
+		assert.Contains(t, err.Error(), "http.Client error")
+		_, ok := err.(*Error)
+		assert.Equal(t, ok, false)
+	}
+
+	// successful tx
+	hmock.On(
+		"POST",
+		"https://localhost/transactions?tx=AAAAABB90WssODNIgi6BHveqzxTRmIpvAFRyVNM%2BHm2GVuCcAAAAZAAABD0AAuV%2FAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAyTBGxOgfSApppsTnb%2FYRr6gOR8WT0LZNrhLh4y3FCgoAAAAXSHboAAAAAAAAAAABhlbgnAAAAEAivKe977CQCxMOKTuj%2BcWTFqc2OOJU8qGr9afrgu2zDmQaX5Q0cNshc3PiBwe0qw%2F%2BD%2FqJk5QqM5dYeSUGeDQP",
+	).ReturnString(200, txSuccess)
+
+	resp, err := client.SubmitTransaction(txXdr)
+	if assert.NoError(t, err) {
+		assert.IsType(t, resp, hProtocol.TransactionSuccess{})
+		assert.Equal(t, resp.Links.Transaction.Href, "https://horizon-testnet.stellar.org/transactions/bcc7a97264dca0a51a63f7ea971b5e7458e334489673078bb2a34eb0cce910ca")
+		assert.Equal(t, resp.Hash, "bcc7a97264dca0a51a63f7ea971b5e7458e334489673078bb2a34eb0cce910ca")
+		assert.Equal(t, resp.Ledger, int32(354811))
+		assert.Equal(t, resp.Env, `AAAAABB90WssODNIgi6BHveqzxTRmIpvAFRyVNM+Hm2GVuCcAAAAZAAABD0AAuV/AAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAyTBGxOgfSApppsTnb/YRr6gOR8WT0LZNrhLh4y3FCgoAAAAXSHboAAAAAAAAAAABhlbgnAAAAEAivKe977CQCxMOKTuj+cWTFqc2OOJU8qGr9afrgu2zDmQaX5Q0cNshc3PiBwe0qw/+D/qJk5QqM5dYeSUGeDQP`)
+		assert.Equal(t, resp.Result, "AAAAAAAAAGQAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAA=")
+		assert.Equal(t, resp.Meta, `AAAAAQAAAAIAAAADAAVp+wAAAAAAAAAAEH3Rayw4M0iCLoEe96rPFNGYim8AVHJU0z4ebYZW4JwACBP/TuycHAAABD0AAuV+AAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAABAAVp+wAAAAAAAAAAEH3Rayw4M0iCLoEe96rPFNGYim8AVHJU0z4ebYZW4JwACBP/TuycHAAABD0AAuV/AAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAABAAAAAwAAAAMABWn7AAAAAAAAAAAQfdFrLDgzSIIugR73qs8U0ZiKbwBUclTTPh5thlbgnAAIE/9O7JwcAAAEPQAC5X8AAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAEABWn7AAAAAAAAAAAQfdFrLDgzSIIugR73qs8U0ZiKbwBUclTTPh5thlbgnAAIE+gGdbQcAAAEPQAC5X8AAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAABWn7AAAAAAAAAADJMEbE6B9ICmmmxOdv9hGvqA5HxZPQtk2uEuHjLcUKCgAAABdIdugAAAVp+wAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAA==`)
 	}
 }
 
@@ -1012,5 +1246,186 @@ var offersResponse = `{
         "last_modified_time": "2019-03-05T13:23:50Z"
       }
     ]
+  }
+}`
+
+var multipleOpsResponse = `{
+  "_links": {
+    "self": {
+      "href": "https://horizon.stellar.org/transactions/b63307ef92bb253df13361a72095156d19fc0713798bc2e6c3bd9ee63cc3ca53/operations?cursor=&limit=10&order=asc"
+    },
+    "next": {
+      "href": "https://horizon.stellar.org/transactions/b63307ef92bb253df13361a72095156d19fc0713798bc2e6c3bd9ee63cc3ca53/operations?cursor=98447788659970049&limit=10&order=asc"
+    },
+    "prev": {
+      "href": "https://horizon.stellar.org/transactions/b63307ef92bb253df13361a72095156d19fc0713798bc2e6c3bd9ee63cc3ca53/operations?cursor=98447788659970049&limit=10&order=desc"
+    }
+  },
+  "_embedded": {
+    "records": [
+      {
+        "_links": {
+          "self": {
+            "href": "https://horizon.stellar.org/operations/98447788659970049"
+          },
+          "transaction": {
+            "href": "https://horizon.stellar.org/transactions/b63307ef92bb253df13361a72095156d19fc0713798bc2e6c3bd9ee63cc3ca53"
+          },
+          "effects": {
+            "href": "https://horizon.stellar.org/operations/98447788659970049/effects"
+          },
+          "succeeds": {
+            "href": "https://horizon.stellar.org/effects?order=desc&cursor=98447788659970049"
+          },
+          "precedes": {
+            "href": "https://horizon.stellar.org/effects?order=asc&cursor=98447788659970049"
+          }
+        },
+        "id": "98447788659970049",
+        "paging_token": "98447788659970049",
+        "transaction_successful": true,
+        "source_account": "GDZST3XVCDTUJ76ZAV2HA72KYQODXXZ5PTMAPZGDHZ6CS7RO7MGG3DBM",
+        "type": "payment",
+        "type_i": 1,
+        "created_at": "2019-03-14T09:44:26Z",
+        "transaction_hash": "b63307ef92bb253df13361a72095156d19fc0713798bc2e6c3bd9ee63cc3ca53",
+        "asset_type": "credit_alphanum4",
+        "asset_code": "DRA",
+        "asset_issuer": "GCJKSAQECBGSLPQWAU7ME4LVQVZ6IDCNUA5NVTPPCUWZWBN5UBFMXZ53",
+        "from": "GDZST3XVCDTUJ76ZAV2HA72KYQODXXZ5PTMAPZGDHZ6CS7RO7MGG3DBM",
+        "to": "GDTCW47BX2ELQ76KAZIA5Z6V4IEHUUD44ABJ66JTRZRMINEJY3OUCNEO",
+        "amount": "1.1200000"
+      },
+      {
+        "_links": {
+          "self": {
+            "href": "https://horizon.stellar.org/operations/98448467264811009"
+          },
+          "transaction": {
+            "href": "https://horizon.stellar.org/transactions/af68055329e570bf461f384e2cd40db023be32f1c38a756ba2db08b6baf66148"
+          },
+          "effects": {
+            "href": "https://horizon.stellar.org/operations/98448467264811009/effects"
+          },
+          "succeeds": {
+            "href": "https://horizon.stellar.org/effects?order=desc&cursor=98448467264811009"
+          },
+          "precedes": {
+            "href": "https://horizon.stellar.org/effects?order=asc&cursor=98448467264811009"
+          }
+        },
+        "id": "98448467264811009",
+        "paging_token": "98448467264811009",
+        "transaction_successful": true,
+        "source_account": "GDD7ABRF7BCK76W33RXDQG5Q3WXVSQYVLGEMXSOWRGZ6Z3G3M2EM2TCP",
+        "type": "manage_offer",
+        "type_i": 3,
+        "created_at": "2019-03-14T09:58:33Z",
+        "transaction_hash": "af68055329e570bf461f384e2cd40db023be32f1c38a756ba2db08b6baf66148",
+        "amount": "7775.0657728",
+        "price": "3.0058511",
+        "price_r": {
+          "n": 30058511,
+          "d": 10000000
+        },
+        "buying_asset_type": "native",
+        "selling_asset_type": "credit_alphanum4",
+        "selling_asset_code": "XRP",
+        "selling_asset_issuer": "GBVOL67TMUQBGL4TZYNMY3ZQ5WGQYFPFD5VJRWXR72VA33VFNL225PL5",
+        "offer_id": 73938565
+      },  
+      {
+        "_links": {
+          "self": {
+            "href": "http://horizon-mon.stellar-ops.com/operations/98455906148208641"
+          },
+          "transaction": {
+            "href": "http://horizon-mon.stellar-ops.com/transactions/ade3c60f1b581e8744596673d95bffbdb8f68f199e0e2f7d63b7c3af9fd8d868"
+          },
+          "effects": {
+            "href": "http://horizon-mon.stellar-ops.com/operations/98455906148208641/effects"
+          },
+          "succeeds": {
+            "href": "http://horizon-mon.stellar-ops.com/effects?order=desc\u0026cursor=98455906148208641"
+          },
+          "precedes": {
+            "href": "http://horizon-mon.stellar-ops.com/effects?order=asc\u0026cursor=98455906148208641"
+          }
+        },
+        "id": "98455906148208641",
+        "paging_token": "98455906148208641",
+        "transaction_successful": true,
+        "source_account": "GD7C4MQJDM3AHXKO2Z2OF7BK3FYL6QMNBGVEO4H2DHM65B7JMHD2IU2E",
+        "type": "create_account",
+        "type_i": 0,
+        "created_at": "2019-03-14T12:30:40Z",
+        "transaction_hash": "ade3c60f1b581e8744596673d95bffbdb8f68f199e0e2f7d63b7c3af9fd8d868",
+        "starting_balance": "2.0000000",
+        "funder": "GD7C4MQJDM3AHXKO2Z2OF7BK3FYL6QMNBGVEO4H2DHM65B7JMHD2IU2E",
+        "account": "GD6LCN37TNJZW3JF2R7N5EYGQGVWRPMSGQHR6RZD4X4NATEQLP7RFAMA"
+      }          
+    ]
+  }
+}`
+
+var opsResponse = `{
+  "_links": {
+    "self": {
+      "href": "https://horizon-testnet.stellar.org/operations/1103965508866049"
+    },
+    "transaction": {
+      "href": "https://horizon-testnet.stellar.org/transactions/93c2755ec61c8b01ac11daa4d8d7a012f56be172bdfcaf77a6efd683319ca96d"
+    },
+    "effects": {
+      "href": "https://horizon-testnet.stellar.org/operations/1103965508866049/effects"
+    },
+    "succeeds": {
+      "href": "https://horizon-testnet.stellar.org/effects?order=desc\u0026cursor=1103965508866049"
+    },
+    "precedes": {
+      "href": "https://horizon-testnet.stellar.org/effects?order=asc\u0026cursor=1103965508866049"
+    }
+  },
+  "id": "1103965508866049",
+  "paging_token": "1103965508866049",
+  "transaction_successful": true,
+  "source_account": "GBMVGXJXJ7ZBHIWMXHKR6IVPDTYKHJPXC2DHZDPJBEZWZYAC7NKII7IB",
+  "type": "change_trust",
+  "type_i": 6,
+  "created_at": "2019-03-14T15:58:57Z",
+  "transaction_hash": "93c2755ec61c8b01ac11daa4d8d7a012f56be172bdfcaf77a6efd683319ca96d",
+  "asset_type": "credit_alphanum4",
+  "asset_code": "UAHd",
+  "asset_issuer": "GDDETPGV4OJVNBTB6GQICCPGH5DZRYYB7XQCSAZO2ZQH6HO7SWXHKKJN",
+  "limit": "922337203685.4775807",
+  "trustee": "GDDETPGV4OJVNBTB6GQICCPGH5DZRYYB7XQCSAZO2ZQH6HO7SWXHKKJN",
+  "trustor": "GBMVGXJXJ7ZBHIWMXHKR6IVPDTYKHJPXC2DHZDPJBEZWZYAC7NKII7IB"
+}`
+
+var txSuccess = `{
+    "_links": {
+        "transaction": {
+            "href": "https://horizon-testnet.stellar.org/transactions/bcc7a97264dca0a51a63f7ea971b5e7458e334489673078bb2a34eb0cce910ca"
+        }
+    },
+    "hash": "bcc7a97264dca0a51a63f7ea971b5e7458e334489673078bb2a34eb0cce910ca",
+    "ledger": 354811,
+    "envelope_xdr": "AAAAABB90WssODNIgi6BHveqzxTRmIpvAFRyVNM+Hm2GVuCcAAAAZAAABD0AAuV/AAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAyTBGxOgfSApppsTnb/YRr6gOR8WT0LZNrhLh4y3FCgoAAAAXSHboAAAAAAAAAAABhlbgnAAAAEAivKe977CQCxMOKTuj+cWTFqc2OOJU8qGr9afrgu2zDmQaX5Q0cNshc3PiBwe0qw/+D/qJk5QqM5dYeSUGeDQP",
+    "result_xdr": "AAAAAAAAAGQAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAA=",
+    "result_meta_xdr": "AAAAAQAAAAIAAAADAAVp+wAAAAAAAAAAEH3Rayw4M0iCLoEe96rPFNGYim8AVHJU0z4ebYZW4JwACBP/TuycHAAABD0AAuV+AAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAABAAVp+wAAAAAAAAAAEH3Rayw4M0iCLoEe96rPFNGYim8AVHJU0z4ebYZW4JwACBP/TuycHAAABD0AAuV/AAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAABAAAAAwAAAAMABWn7AAAAAAAAAAAQfdFrLDgzSIIugR73qs8U0ZiKbwBUclTTPh5thlbgnAAIE/9O7JwcAAAEPQAC5X8AAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAEABWn7AAAAAAAAAAAQfdFrLDgzSIIugR73qs8U0ZiKbwBUclTTPh5thlbgnAAIE+gGdbQcAAAEPQAC5X8AAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAABWn7AAAAAAAAAADJMEbE6B9ICmmmxOdv9hGvqA5HxZPQtk2uEuHjLcUKCgAAABdIdugAAAVp+wAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAA=="
+}`
+
+var transactionFailure = `{
+  "type": "https://stellar.org/horizon-errors/transaction_failed",
+  "title": "Transaction Failed",
+  "status": 400,
+  "detail": "The transaction failed when submitted to the stellar network. The extras.result_codes field on this response contains further details.  Descriptions of each code can be found at: https://www.stellar.org/developers/learn/concepts/list-of-operations.html",
+  "instance": "horizon-testnet-001.prd.stellar001.internal.stellar-ops.com/4elYz2fHhC-528285",
+  "extras": {
+    "envelope_xdr": "AAAAAKpmDL6Z4hvZmkTBkYpHftan4ogzTaO4XTB7joLgQnYYAAAAZAAAAAAABeoyAAAAAAAAAAEAAAAAAAAAAQAAAAAAAAABAAAAAD3sEVVGZGi/NoC3ta/8f/YZKMzyi9ZJpOi0H47x7IqYAAAAAAAAAAAF9eEAAAAAAAAAAAA=",
+    "result_codes": {
+      "transaction": "tx_no_source_account"
+    },
+    "result_xdr": "AAAAAAAAAAD////4AAAAAA=="
   }
 }`

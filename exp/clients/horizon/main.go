@@ -6,25 +6,30 @@ import (
 	"errors"
 	"net/http"
 	"net/url"
+	"time"
 
 	hProtocol "github.com/stellar/go/protocols/horizon"
+	"github.com/stellar/go/protocols/horizon/operations"
 	"github.com/stellar/go/support/render/problem"
 )
 
-// Cursor represents `cursor` param in queries
-type Cursor string
+// cursor represents `cursor` param in queries
+type cursor string
 
-// Limit represents `limit` param in queries
-type Limit uint
+// limit represents `limit` param in queries
+type limit uint
 
 // Order represents `order` param in queries
 type Order string
 
-// AssetCode represets `asset_code` param in queries
-type AssetCode string
+// assetCode represets `asset_code` param in queries
+type assetCode string
 
-// AssetIssuer represents `asset_issuer` param in queries
-type AssetIssuer string
+// assetIssuer represents `asset_issuer` param in queries
+type assetIssuer string
+
+// includeFailed represents `include_failed` param in queries
+type includeFailed bool
 
 const (
 	OrderAsc  Order = "asc"
@@ -52,6 +57,9 @@ var (
 	// Result() against a `Problem` value that doesn't have the
 	// "result_xdr" extra field populated when it is expected to be.
 	ErrResultNotPopulated = errors.New("result_xdr not populated")
+
+	// HorizonTimeout is the default number of seconds before a request to horizon times out.
+	HorizonTimeOut = time.Duration(60)
 )
 
 // HTTP represents the HTTP client that a horizon client uses to communicate
@@ -63,8 +71,9 @@ type HTTP interface {
 
 // Client struct contains data for creating an horizon client that connects to the stellar network
 type Client struct {
-	HorizonURL string
-	HTTP       HTTP
+	HorizonURL     string
+	HTTP           HTTP
+	horizonTimeOut time.Duration
 }
 
 // ClientInterface contains methods implemented by the horizon client
@@ -79,18 +88,23 @@ type ClientInterface interface {
 	Stream(ctx context.Context, request StreamRequest, handler func(interface{})) error
 	FeeStats() (hProtocol.FeeStats, error)
 	Offers(request OfferRequest) (hProtocol.OffersPage, error)
+	Operations(request OperationRequest) (operations.OperationsPage, error)
+	OperationDetail(id string) (operations.Operation, error)
+	SubmitTransaction(transactionXdr string) (hProtocol.TransactionSuccess, error)
 }
 
 // DefaultTestNetClient is a default client to connect to test network
 var DefaultTestNetClient = &Client{
-	HorizonURL: "https://horizon-testnet.stellar.org",
-	HTTP:       http.DefaultClient,
+	HorizonURL:     "https://horizon-testnet.stellar.org/",
+	HTTP:           http.DefaultClient,
+	horizonTimeOut: HorizonTimeOut,
 }
 
 // DefaultPublicNetClient is a default client to connect to public network
 var DefaultPublicNetClient = &Client{
-	HorizonURL: "https://horizon.stellar.org",
-	HTTP:       http.DefaultClient,
+	HorizonURL:     "https://horizon.stellar.org/",
+	HTTP:           http.DefaultClient,
+	horizonTimeOut: HorizonTimeOut,
 }
 
 // HorizonRequest contains methods implemented by request structs for horizon endpoints
@@ -98,7 +112,7 @@ type HorizonRequest interface {
 	BuildUrl() (string, error)
 }
 
-// HorizonRequest contains methods implemented by request structs for endpoints that support streaming
+// StreamRequest contains methods implemented by request structs for endpoints that support streaming
 type StreamRequest interface {
 	Stream(ctx context.Context, horizonURL string, handler func(interface{})) error
 }
@@ -118,24 +132,24 @@ type EffectRequest struct {
 	ForOperation   string
 	ForTransaction string
 	Order          Order
-	Cursor         Cursor
-	Limit          Limit
+	Cursor         string
+	Limit          uint
 }
 
 // AssetRequest struct contains data for getting asset details from an horizon server.
 type AssetRequest struct {
-	ForAssetCode   AssetCode
-	ForAssetIssuer AssetIssuer
+	ForAssetCode   string
+	ForAssetIssuer string
 	Order          Order
-	Cursor         Cursor
-	Limit          Limit
+	Cursor         string
+	Limit          uint
 }
 
 // LedgerRequest struct contains data for getting ledger details from an horizon server.
 type LedgerRequest struct {
 	Order       Order
-	Cursor      Cursor
-	Limit       Limit
+	Cursor      string
+	Limit       uint
 	forSequence uint32
 }
 
@@ -151,6 +165,23 @@ type feeStatsRequest struct {
 type OfferRequest struct {
 	ForAccount string
 	Order      Order
-	Cursor     Cursor
-	Limit      Limit
+	Cursor     string
+	Limit      uint
+}
+
+// OperationRequest struct contains data for getting operation details from an horizon servers
+type OperationRequest struct {
+	ForAccount     string
+	ForLedger      int
+	ForTransaction string
+	forOperationId string
+	Order          Order
+	Cursor         string
+	Limit          uint
+	IncludeFailed  bool
+}
+
+type submitRequest struct {
+	endpoint       string
+	transactionXdr string
 }

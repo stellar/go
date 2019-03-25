@@ -14,7 +14,7 @@ func (or OfferRequest) BuildUrl() (endpoint string, err error) {
 		or.ForAccount,
 	)
 
-	queryParams := addQueryParams(or.Cursor, or.Limit, or.Order)
+	queryParams := addQueryParams(cursor(or.Cursor), limit(or.Limit), or.Order)
 	if queryParams != "" {
 		endpoint = fmt.Sprintf(
 			"%s?%s",
