@@ -224,7 +224,7 @@ func ExampleClient_SetHorizonTimeout() {
 	txXdr := `AAAAABB90WssODNIgi6BHveqzxTRmIpvAFRyVNM+Hm2GVuCcAAAAZAAABD0AAuV/AAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAyTBGxOgfSApppsTnb/YRr6gOR8WT0LZNrhLh4y3FCgoAAAAXSHboAAAAAAAAAAABhlbgnAAAAEAivKe977CQCxMOKTuj+cWTFqc2OOJU8qGr9afrgu2zDmQaX5Q0cNshc3PiBwe0qw/+D/qJk5QqM5dYeSUGeDQP`
 
 	// test user timeout
-	client = client.SetHorizonTimeout(30)
+	client = client.SetHorizonTimeOut(30)
 	resp, err := client.SubmitTransaction(txXdr)
 	if err != nil {
 		fmt.Println(err)

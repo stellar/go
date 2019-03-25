@@ -59,7 +59,7 @@ var (
 	ErrResultNotPopulated = errors.New("result_xdr not populated")
 
 	// HorizonTimeout is the default number of seconds before a request to horizon times out.
-	HorizonTimeout = time.Duration(60)
+	HorizonTimeOut = time.Duration(60)
 )
 
 // HTTP represents the HTTP client that a horizon client uses to communicate
@@ -97,14 +97,14 @@ type ClientInterface interface {
 var DefaultTestNetClient = &Client{
 	HorizonURL:     "https://horizon-testnet.stellar.org/",
 	HTTP:           http.DefaultClient,
-	horizonTimeOut: HorizonTimeout,
+	horizonTimeOut: HorizonTimeOut,
 }
 
 // DefaultPublicNetClient is a default client to connect to public network
 var DefaultPublicNetClient = &Client{
 	HorizonURL:     "https://horizon.stellar.org/",
 	HTTP:           http.DefaultClient,
-	horizonTimeOut: HorizonTimeout,
+	horizonTimeOut: HorizonTimeOut,
 }
 
 // HorizonRequest contains methods implemented by request structs for horizon endpoints
@@ -112,7 +112,7 @@ type HorizonRequest interface {
 	BuildUrl() (string, error)
 }
 
-// HorizonRequest contains methods implemented by request structs for endpoints that support streaming
+// StreamRequest contains methods implemented by request structs for endpoints that support streaming
 type StreamRequest interface {
 	Stream(ctx context.Context, horizonURL string, handler func(interface{})) error
 }
