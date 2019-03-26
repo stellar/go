@@ -219,3 +219,22 @@ func (c *Client) SubmitTransaction(transactionXdr string) (txSuccess hProtocol.T
 	return
 
 }
+
+// Transactions returns stellar transactions (https://www.stellar.org/developers/horizon/reference/resources/transaction.html)
+// It can be used to return transactions for an account, a ledger,and all transactions on the network.
+func (c *Client) Transactions(request TransactionRequest) (txs hProtocol.TransactionsPage, err error) {
+	err = c.sendRequest(request, &txs)
+	return
+}
+
+// TransactionDetail returns information about a particular transaction for a given transaction hash
+// See https://www.stellar.org/developers/horizon/reference/endpoints/transactions-single.html
+func (c *Client) TransactionDetail(txHash string) (tx hProtocol.Transaction, err error) {
+	if txHash == "" {
+		return tx, errors.New("No transaction hash provided")
+	}
+
+	request := TransactionRequest{forTransactionHash: txHash}
+	err = c.sendRequest(request, &tx)
+	return
+}
