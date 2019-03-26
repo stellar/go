@@ -31,19 +31,12 @@ type jsonResponderFunc func(context.Context, interface{}) (interface{}, error)
 // with stream mode turned on using server-sent events.
 type streamFunc func(context.Context, *sse.Stream, interface{}) error
 
-// singleObjectStreamFunc represents the signature of the function that handles
-// requests with stream mode turned on using server-sent events. The difference
-// between this function and streamFunc is that this one only gets an event. The
-// server will not send an event out if the current event is same as the last one.
-// Please see the implementation of streamHandler for more details.
-type singleObjectStreamFunc func(context.Context, interface{}) (sse.Event, error)
-
 // streamableEndpointHandler handles endpoints that have the stream mode
 // available. It inspects the Accept header to determine which function to be
 // executed. If it's "application/hal+json" or "application/json", then jfn
 // will be executed with params. If it's "text/event-stream", then either sfn
-// or sosfn will be executed with the streamHandler with params.
-func (we *web) streamableEndpointHandler(jfn jsonResponderFunc, sfn streamFunc, sosfn singleObjectStreamFunc, params interface{}) http.HandlerFunc {
+// or jfn will be executed with the streamHandler with params.
+func (we *web) streamableEndpointHandler(jfn jsonResponderFunc, streamSingleObjectEnabled bool, sfn streamFunc, params interface{}) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 
@@ -59,12 +52,12 @@ func (we *web) streamableEndpointHandler(jfn jsonResponderFunc, sfn streamFunc, 
 			return
 
 		case render.MimeEventStream:
-			if sfn == nil && sosfn == nil {
+			if sfn == nil && !streamSingleObjectEnabled {
 				problem.Render(ctx, w, hProblem.NotAcceptable)
 				return
 			}
 
-			we.streamHandler(sfn, sosfn, params).ServeHTTP(w, r)
+			we.streamHandler(jfn, sfn, params).ServeHTTP(w, r)
 			return
 		}
 
@@ -75,9 +68,9 @@ func (we *web) streamableEndpointHandler(jfn jsonResponderFunc, sfn streamFunc, 
 // streamHandler handles requests with stream mode turned on using server-sent
 // events. It will execute one of the provided streaming functions with the
 // provided params.
-// Note that we don't return an error if both sfn and sosfn are not nil. sfn will simply
-// take precedence.
-func (we *web) streamHandler(sfn streamFunc, sosfn singleObjectStreamFunc, params interface{}) http.HandlerFunc {
+// Note that we don't return an error if both jfn and sfn are not nil. sfn will
+// simply take precedence.
+func (we *web) streamHandler(jfn jsonResponderFunc, sfn streamFunc, params interface{}) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 
@@ -107,13 +100,13 @@ func (we *web) streamHandler(sfn streamFunc, sosfn singleObjectStreamFunc, param
 					stream.Err(err)
 					return
 				}
-			} else if sosfn != nil {
-				newEvent, err := sosfn(ctx, params)
+			} else if jfn != nil {
+				data, err := jfn(ctx, params)
 				if err != nil {
 					stream.Err(err)
 					return
 				}
-				resource, err := json.Marshal(newEvent.Data)
+				resource, err := json.Marshal(data)
 				if err != nil {
 					stream.Err(errors.Wrap(err, "unable to marshal next action resource"))
 					return
@@ -123,7 +116,7 @@ func (we *web) streamHandler(sfn streamFunc, sosfn singleObjectStreamFunc, param
 				if !bytes.Equal(nextHash[:], oldHash[:]) {
 					oldHash = nextHash
 					stream.SetLimit(10)
-					stream.Send(newEvent)
+					stream.Send(sse.Event{Data: data})
 				}
 			}
 
@@ -169,7 +162,7 @@ func (we *web) streamHandler(sfn streamFunc, sosfn singleObjectStreamFunc, param
 // Note that we cannot put this handler in the middleware stack because of
 // Chi's routing mechanism. A request will have to reach the end of the route
 // in order to have a valid route pattern in Chi.
-func (we *web) accountHandler(jfn jsonResponderFunc, sosfn singleObjectStreamFunc) http.HandlerFunc {
+func (we *web) accountHandler(jfn jsonResponderFunc) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 		addr, err := getAccountID(r, "account_id", true)
@@ -178,7 +171,7 @@ func (we *web) accountHandler(jfn jsonResponderFunc, sosfn singleObjectStreamFun
 			return
 		}
 
-		we.streamableEndpointHandler(jfn, nil, sosfn, addr).ServeHTTP(w, r)
+		we.streamableEndpointHandler(jfn, true, nil, addr).ServeHTTP(w, r)
 	})
 }
 
@@ -225,7 +218,7 @@ func (we *web) transactionHandler(jfn jsonResponderFunc, sfn streamFunc) http.Ha
 			return
 		}
 
-		we.streamableEndpointHandler(jfn, sfn, nil, params).ServeHTTP(w, r)
+		we.streamableEndpointHandler(jfn, false, sfn, params).ServeHTTP(w, r)
 	})
 }
 

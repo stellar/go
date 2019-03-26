@@ -169,13 +169,6 @@ func (w *web) getAccountInfo(ctx context.Context, param interface{}) (interface{
 	return actions.AccountInfo(ctx, &core.Q{w.coreSession(ctx)}, &history.Q{horizonSession}, addr)
 }
 
-// getAccountEvent gets the information about an account based on the provided param into a server-sent event.
-// The expected param here is the account id, which has a string type.
-func (w *web) getAccountEvent(ctx context.Context, param interface{}) (sse.Event, error) {
-	res, err := w.getAccountInfo(ctx, param)
-	return sse.Event{Data: res}, err
-}
-
 // getTransactionPageByAccount returns a page containing the transaction records of an account.
 // The expected param here is a pointer to TransactionParams.
 func (w *web) getTransactionPageByAccount(ctx context.Context, params interface{}) (interface{}, error) {
