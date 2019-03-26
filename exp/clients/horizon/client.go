@@ -238,3 +238,9 @@ func (c *Client) TransactionDetail(txHash string) (tx hProtocol.Transaction, err
 	err = c.sendRequest(request, &tx)
 	return
 }
+
+// OrderBook returns the orderbook for an asset pair (https://www.stellar.org/developers/horizon/reference/resources/orderbook.html)
+func (c *Client) OrderBook(request OrderBookRequest) (obs hProtocol.OrderBookSummary, err error) {
+	err = c.sendRequest(request, &obs)
+	return
+}
