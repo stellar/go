@@ -80,5 +80,10 @@ func (m *MockClient) OperationDetail(id string) (operations.Operation, error) {
 	return a.Get(0).(operations.Operation), a.Error(1)
 }
 
+func (m *MockClient) SubmitTransaction(transactionXdr string) (hProtocol.TransactionSuccess, error) {
+	a := m.Called(transactionXdr)
+	return a.Get(0).(hProtocol.TransactionSuccess), a.Error(1)
+}
+
 // ensure that the MockClient implements ClientInterface
 var _ ClientInterface = &MockClient{}
