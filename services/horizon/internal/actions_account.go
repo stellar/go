@@ -4,7 +4,6 @@ import (
 	"github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/services/horizon/internal/actions"
 	"github.com/stellar/go/services/horizon/internal/db2/core"
-	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/services/horizon/internal/render/sse"
 	"github.com/stellar/go/services/horizon/internal/resourceadapter"
 	"github.com/stellar/go/support/render/hal"
@@ -22,7 +21,6 @@ var _ actions.SingleObjectStreamer = (*AccountShowAction)(nil)
 type AccountShowAction struct {
 	Action
 	Address        string
-	HistoryRecord  history.Account
 	CoreData       []core.AccountData
 	CoreRecord     core.Account
 	CoreSigners    []core.Signer
@@ -67,16 +65,6 @@ func (action *AccountShowAction) loadRecord() {
 	}
 
 	action.Err = action.CoreQ().TrustlinesByAddress(&action.CoreTrustlines, action.Address)
-	if action.Err != nil {
-		return
-	}
-
-	action.Err = action.HistoryQ().AccountByAddress(&action.HistoryRecord, action.Address)
-	// Do not fail when we cannot find the history record... it probably just
-	// means that the account was created outside of our known history range.
-	if action.HistoryQ().NoRows(action.Err) {
-		action.Err = nil
-	}
 }
 
 func (action *AccountShowAction) loadResource() {
@@ -87,6 +75,5 @@ func (action *AccountShowAction) loadResource() {
 		action.CoreData,
 		action.CoreSigners,
 		action.CoreTrustlines,
-		action.HistoryRecord,
 	)
 }
