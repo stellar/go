@@ -5,13 +5,14 @@ import (
 	. "github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/services/horizon/internal/assets"
 	"github.com/stellar/go/services/horizon/internal/db2/core"
+	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
 )
 
 func PopulateBalance(dest *Balance, row core.Trustline) (err error) {
 	dest.Type, err = assets.String(row.Assettype)
 	if err != nil {
-		return
+		return errors.Wrap(err, "getting the string representation from the provided xdr asset type")
 	}
 
 	dest.Balance = amount.String(row.Balance)
@@ -29,7 +30,7 @@ func PopulateBalance(dest *Balance, row core.Trustline) (err error) {
 func PopulateNativeBalance(dest *Balance, stroops, buyingLiabilities, sellingLiabilities xdr.Int64) (err error) {
 	dest.Type, err = assets.String(xdr.AssetTypeAssetTypeNative)
 	if err != nil {
-		return
+		return errors.Wrap(err, "getting the string representation from the provided xdr asset type")
 	}
 
 	dest.Balance = amount.String(stroops)

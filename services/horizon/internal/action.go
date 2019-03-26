@@ -162,11 +162,8 @@ func (w *web) getAccountInfo(ctx context.Context, param interface{}) (interface{
 	if !ok {
 		return nil, errors.New("Invalid param type for getAccountInfo func")
 	}
-	horizonSession, err := w.horizonSession(ctx)
-	if err != nil {
-		return nil, errors.Wrap(err, "getting horizon db session")
-	}
-	return actions.AccountInfo(ctx, &core.Q{w.coreSession(ctx)}, &history.Q{horizonSession}, addr)
+
+	return actions.AccountInfo(ctx, &core.Q{w.coreSession(ctx)}, addr)
 }
 
 // getTransactionPageByAccount returns a page containing the transaction records of an account.

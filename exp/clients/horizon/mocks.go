@@ -37,6 +37,7 @@ func (m *MockClient) Assets(request AssetRequest) (hProtocol.AssetsPage, error) 
 	return a.Get(0).(hProtocol.AssetsPage), a.Error(1)
 }
 
+// Stream is a mocking method
 func (m *MockClient) Stream(ctx context.Context,
 	request StreamRequest,
 	handler func(interface{}),
@@ -45,44 +46,64 @@ func (m *MockClient) Stream(ctx context.Context,
 	return a.Error(0)
 }
 
+// Ledgers is a mocking method
 func (m *MockClient) Ledgers(request LedgerRequest) (hProtocol.LedgersPage, error) {
 	a := m.Called(request)
 	return a.Get(0).(hProtocol.LedgersPage), a.Error(1)
 }
 
+// LedgerDetail is a mocking method
 func (m *MockClient) LedgerDetail(sequence uint32) (hProtocol.Ledger, error) {
 	a := m.Called(sequence)
 	return a.Get(0).(hProtocol.Ledger), a.Error(1)
 }
 
+// Metrics is a mocking method
 func (m *MockClient) Metrics() (hProtocol.Metrics, error) {
 	a := m.Called()
 	return a.Get(0).(hProtocol.Metrics), a.Error(1)
 }
 
+// FeeStats is a mocking method
 func (m *MockClient) FeeStats() (hProtocol.FeeStats, error) {
 	a := m.Called()
 	return a.Get(0).(hProtocol.FeeStats), a.Error(1)
 }
 
+// Offers is a mocking method
 func (m *MockClient) Offers(request OfferRequest) (hProtocol.OffersPage, error) {
 	a := m.Called(request)
 	return a.Get(0).(hProtocol.OffersPage), a.Error(1)
 }
 
+// Operations is a mocking method
 func (m *MockClient) Operations(request OperationRequest) (operations.OperationsPage, error) {
 	a := m.Called(request)
 	return a.Get(0).(operations.OperationsPage), a.Error(1)
 }
 
+// OperationDetail is a mocking method
 func (m *MockClient) OperationDetail(id string) (operations.Operation, error) {
 	a := m.Called(id)
 	return a.Get(0).(operations.Operation), a.Error(1)
 }
 
+// SubmitTransaction is a mocking method
 func (m *MockClient) SubmitTransaction(transactionXdr string) (hProtocol.TransactionSuccess, error) {
 	a := m.Called(transactionXdr)
 	return a.Get(0).(hProtocol.TransactionSuccess), a.Error(1)
+}
+
+// Transactions is a mocking method
+func (m *MockClient) Transactions(request TransactionRequest) (hProtocol.TransactionsPage, error) {
+	a := m.Called(request)
+	return a.Get(0).(hProtocol.TransactionsPage), a.Error(1)
+}
+
+// TransactionDetail is a mocking method
+func (m *MockClient) TransactionDetail(txHash string) (hProtocol.Transaction, error) {
+	a := m.Called(txHash)
+	return a.Get(0).(hProtocol.Transaction), a.Error(1)
 }
 
 // ensure that the MockClient implements ClientInterface

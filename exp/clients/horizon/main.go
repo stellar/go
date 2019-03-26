@@ -58,7 +58,7 @@ var (
 	// "result_xdr" extra field populated when it is expected to be.
 	ErrResultNotPopulated = errors.New("result_xdr not populated")
 
-	// HorizonTimeout is the default number of seconds before a request to horizon times out.
+	// HorizonTimeOut is the default number of seconds before a request to horizon times out.
 	HorizonTimeOut = time.Duration(60)
 )
 
@@ -91,6 +91,8 @@ type ClientInterface interface {
 	Operations(request OperationRequest) (operations.OperationsPage, error)
 	OperationDetail(id string) (operations.Operation, error)
 	SubmitTransaction(transactionXdr string) (hProtocol.TransactionSuccess, error)
+	Transactions(request TransactionRequest) (hProtocol.TransactionsPage, error)
+	TransactionDetail(txHash string) (hProtocol.Transaction, error)
 }
 
 // DefaultTestNetClient is a default client to connect to test network
@@ -172,7 +174,7 @@ type OfferRequest struct {
 // OperationRequest struct contains data for getting operation details from an horizon servers
 type OperationRequest struct {
 	ForAccount     string
-	ForLedger      int
+	ForLedger      uint
 	ForTransaction string
 	forOperationId string
 	Order          Order
@@ -184,4 +186,15 @@ type OperationRequest struct {
 type submitRequest struct {
 	endpoint       string
 	transactionXdr string
+}
+
+// TransactionRequest struct contains data for getting transaction details from an horizon server
+type TransactionRequest struct {
+	ForAccount         string
+	ForLedger          uint
+	forTransactionHash string
+	Order              Order
+	Cursor             string
+	Limit              uint
+	IncludeFailed      bool
 }

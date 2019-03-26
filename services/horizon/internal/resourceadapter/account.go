@@ -6,8 +6,8 @@ import (
 
 	. "github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/services/horizon/internal/db2/core"
-	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/services/horizon/internal/httpx"
+	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/support/render/hal"
 )
 
@@ -19,8 +19,7 @@ func PopulateAccount(
 	cd []core.AccountData,
 	cs []core.Signer,
 	ct []core.Trustline,
-	ha history.Account,
-) (err error) {
+) error {
 	dest.ID = ca.Accountid
 	dest.AccountID = ca.Accountid
 	dest.Sequence = ca.Seqnum
@@ -35,16 +34,16 @@ func PopulateAccount(
 	// populate balances
 	dest.Balances = make([]Balance, len(ct)+1)
 	for i, tl := range ct {
-		err = PopulateBalance(&dest.Balances[i], tl)
+		err := PopulateBalance(&dest.Balances[i], tl)
 		if err != nil {
-			return err
+			return errors.Wrap(err, "populating balance")
 		}
 	}
 
 	// add native balance
-	err = PopulateNativeBalance(&dest.Balances[len(dest.Balances)-1], ca.Balance, ca.BuyingLiabilities, ca.SellingLiabilities)
+	err := PopulateNativeBalance(&dest.Balances[len(dest.Balances)-1], ca.Balance, ca.BuyingLiabilities, ca.SellingLiabilities)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "populating native balance")
 	}
 
 	// populate data
