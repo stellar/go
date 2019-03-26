@@ -45,68 +45,82 @@ func NewEffect(ctx context.Context, row history.Effect, ledger history.Ledger) (
 	PopulateBaseEffect(ctx, &basev, row, ledger)
 
 	var (
-		e      interface{}
+		err    error
 		result hal.Pageable
 	)
 	switch row.Type {
 	case history.EffectAccountCreated:
-		e = effects.AccountCreated{Base: basev}
-
+		e := effects.AccountCreated{Base: basev}
+		err = row.UnmarshalDetails(&e)
+		result = e
 	case history.EffectAccountCredited:
-		e = effects.AccountCredited{Base: basev}
-
+		e := effects.AccountCredited{Base: basev}
+		err = row.UnmarshalDetails(&e)
+		result = e
 	case history.EffectAccountDebited:
-		e = effects.AccountDebited{Base: basev}
-
+		e := effects.AccountDebited{Base: basev}
+		err = row.UnmarshalDetails(&e)
+		result = e
 	case history.EffectAccountThresholdsUpdated:
-		e = effects.AccountThresholdsUpdated{Base: basev}
-
+		e := effects.AccountThresholdsUpdated{Base: basev}
+		err = row.UnmarshalDetails(&e)
+		result = e
 	case history.EffectAccountHomeDomainUpdated:
-		e = effects.AccountHomeDomainUpdated{Base: basev}
-
+		e := effects.AccountHomeDomainUpdated{Base: basev}
+		err = row.UnmarshalDetails(&e)
+		result = e
 	case history.EffectAccountFlagsUpdated:
-		e = effects.AccountFlagsUpdated{Base: basev}
-
+		e := effects.AccountFlagsUpdated{Base: basev}
+		err = row.UnmarshalDetails(&e)
+		result = e
 	case history.EffectSignerCreated:
-		e = effects.SignerCreated{Base: basev}
-
+		e := effects.SignerCreated{Base: basev}
+		err = row.UnmarshalDetails(&e)
+		result = e
 	case history.EffectSignerUpdated:
-		e = effects.SignerUpdated{Base: basev}
-
+		e := effects.SignerUpdated{Base: basev}
+		err = row.UnmarshalDetails(&e)
+		result = e
 	case history.EffectSignerRemoved:
-		e = effects.SignerRemoved{Base: basev}
-
+		e := effects.SignerRemoved{Base: basev}
+		err = row.UnmarshalDetails(&e)
+		result = e
 	case history.EffectTrustlineCreated:
-		e = effects.TrustlineCreated{Base: basev}
-
+		e := effects.TrustlineCreated{Base: basev}
+		err = row.UnmarshalDetails(&e)
+		result = e
 	case history.EffectTrustlineUpdated:
-		e = effects.TrustlineUpdated{Base: basev}
-
+		e := effects.TrustlineUpdated{Base: basev}
+		err = row.UnmarshalDetails(&e)
+		result = e
 	case history.EffectTrustlineRemoved:
-		e = effects.TrustlineRemoved{Base: basev}
-
+		e := effects.TrustlineRemoved{Base: basev}
+		err = row.UnmarshalDetails(&e)
+		result = e
 	case history.EffectTrustlineAuthorized:
-		e = effects.TrustlineAuthorized{Base: basev}
-
+		e := effects.TrustlineAuthorized{Base: basev}
+		err = row.UnmarshalDetails(&e)
+		result = e
 	case history.EffectTrustlineDeauthorized:
-		e = effects.TrustlineDeauthorized{Base: basev}
-
+		e := effects.TrustlineDeauthorized{Base: basev}
+		err = row.UnmarshalDetails(&e)
+		result = e
 	case history.EffectTrade:
-		e = effects.Trade{Base: basev}
+		e := effects.Trade{Base: basev}
+		err = row.UnmarshalDetails(&e)
+		result = e
 
 	case history.EffectSequenceBumped:
-		e = effects.SequenceBumped{Base: basev}
-
+		e := effects.SequenceBumped{Base: basev}
+		err = row.UnmarshalDetails(&e)
+		result = e
 	default:
 		result = basev
 	}
 
-	err := row.UnmarshalDetails(&e)
 	if err != nil {
-		return result, errors.Wrap(err, "unmarshaling effect details")
+		return nil, errors.Wrap(err, "unmarshaling effect details")
 	}
-
-	result = e.(hal.Pageable)
 
 	rh, ok := result.(base.Rehydratable)
 	if ok {
