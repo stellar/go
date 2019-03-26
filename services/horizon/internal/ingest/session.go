@@ -617,23 +617,23 @@ func (is *Session) ingestTradeEffects(effects *EffectIngestion, buyer xdr.Accoun
 		effects.Add(seller, history.EffectTrade, sd)
 	}
 
-	// in case of path payments
-	if offer == nil {
+	if offer == nil || (*offer).Offer == nil {
 		return
 	}
 
+	offerEntry := (*offer).Offer
 	offerDetails := map[string]interface{}{
-		"offer_id": (*offer).Offer.OfferId,
-		"seller":   (*offer).Offer.SellerId.Address(),
-		"amount":   amount.String((*offer).Offer.Amount),
-		"price":    (*offer).Offer.Price.String(),
+		"offer_id": offerEntry.OfferId,
+		"seller":   offerEntry.SellerId.Address(),
+		"amount":   amount.String(offerEntry.Amount),
+		"price":    offerEntry.Price.String(),
 		"price_r": map[string]interface{}{
-			"n": (*offer).Offer.Price.N,
-			"d": (*offer).Offer.Price.D,
+			"n": offerEntry.Price.N,
+			"d": offerEntry.Price.D,
 		},
 	}
-	is.assetDetails(offerDetails, (*offer).Offer.Buying, "buying_")
-	is.assetDetails(offerDetails, (*offer).Offer.Selling, "selling_")
+	is.assetDetails(offerDetails, offerEntry.Buying, "buying_")
+	is.assetDetails(offerDetails, offerEntry.Selling, "selling_")
 
 	switch (*offer).Effect {
 	case xdr.ManageOfferEffectManageOfferCreated:
