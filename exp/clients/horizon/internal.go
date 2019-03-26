@@ -2,6 +2,7 @@ package horizonclient
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -86,7 +87,14 @@ func addQueryParams(params ...interface{}) string {
 			if param {
 				query.Add("include_failed", "true")
 			}
+		case map[string]string:
+			for key, value := range param {
+				if value != "" {
+					query.Add(key, value)
+				}
+			}
 		default:
+			fmt.Printf("param is of type %T\n", param)
 			panic("Unknown parameter type")
 		}
 	}
