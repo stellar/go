@@ -85,6 +85,40 @@ func Test_ingestOperationEffects(t *testing.T) {
 	tt.Assert.Equal("100.0000000", ad.Amount)
 }
 
+func TestIngestTradeEffects(t *testing.T) {
+	tt := test.Start(t).ScenarioWithoutHorizon("kahuna")
+	defer tt.Finish()
+
+	s := ingest(tt, Config{EnableAssetStats: false})
+	tt.Require.NoError(s.Err)
+
+	q := &history.Q{Session: tt.HorizonSession()}
+
+	var effects []history.Effect
+	err := q.Effects().ForLedger(23).Select(&effects)
+	tt.Require.NoError(err)
+
+	if tt.Assert.Len(effects, 1) {
+		tt.Assert.Equal(history.EffectOfferCreated, effects[0].Type)
+	}
+
+	// reset effects
+	effects = nil
+	err = q.Effects().ForLedger(24).Select(&effects)
+	tt.Require.NoError(err)
+
+	if tt.Assert.Len(effects, 3) {
+		tt.Assert.Equal(history.EffectTrade, effects[0].Type)
+
+		if tt.Assert.Equal(history.EffectOfferCreated, effects[1].Type) {
+			tt.Assert.Equal(`{"price": "1.0000000", "amount": "10.0000000", "seller": "GB2QIYT2IAUFMRXKLSLLPRECC6OCOGJMADSPTRK7TGNT2SFR2YGWDARD", "price_r": {"d": 1, "n": 1}, "offer_id": 4, "buying_asset_type": "native", "selling_asset_code": "USD", "selling_asset_type": "credit_alphanum4", "selling_asset_issuer": "GB2QIYT2IAUFMRXKLSLLPRECC6OCOGJMADSPTRK7TGNT2SFR2YGWDARD"}`, effects[1].DetailsString.String)
+		}
+
+		tt.Assert.Equal(history.EffectTrade, effects[2].Type)
+	}
+
+}
+
 func Test_ingestBumpSeq(t *testing.T) {
 	tt := test.Start(t).ScenarioWithoutHorizon("kahuna")
 	defer tt.Finish()
