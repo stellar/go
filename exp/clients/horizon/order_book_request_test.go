@@ -16,14 +16,14 @@ func TestOrderBookRequestBuildUrl(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "order_book", endpoint)
 
-	obr = OrderBookRequest{SellingAssetType: "native", BuyingAssetType: "native"}
+	obr = OrderBookRequest{SellingAssetType: AssetTypeNative, BuyingAssetType: AssetTypeNative}
 	endpoint, err = obr.BuildUrl()
 
 	// It should return valid assets endpoint and no errors
 	require.NoError(t, err)
 	assert.Equal(t, "order_book?buying_asset_type=native&selling_asset_type=native", endpoint)
 
-	obr = OrderBookRequest{SellingAssetType: "native", BuyingAssetType: AssetType4, BuyingAssetCode: "ABC", BuyingAssetIssuer: "GCLWGQPMKXQSPF776IU33AH4PZNOOWNAWGGKVTBQMIC5IMKUNP3E6NVU"}
+	obr = OrderBookRequest{SellingAssetType: AssetTypeNative, BuyingAssetType: AssetType4, BuyingAssetCode: "ABC", BuyingAssetIssuer: "GCLWGQPMKXQSPF776IU33AH4PZNOOWNAWGGKVTBQMIC5IMKUNP3E6NVU"}
 	endpoint, err = obr.BuildUrl()
 
 	// It should return valid assets endpoint and no errors

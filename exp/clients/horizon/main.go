@@ -31,17 +31,20 @@ type assetIssuer string
 // includeFailed represents `include_failed` param in queries
 type includeFailed bool
 
+// AssetType represents `asset_type` param in queries
+type AssetType string
+
 const (
 	// OrderAsc represents an ascending order parameter
 	OrderAsc Order = "asc"
 	// OrderDesc represents an descending order parameter
 	OrderDesc Order = "desc"
 	// AssetType4 represents an asset type that is 4 characters long
-	AssetType4 string = "credit_alphanum4"
+	AssetType4 AssetType = "credit_alphanum4"
 	// AssetType12 represents an asset type that is 12 characters long
-	AssetType12 string = "credit_alphanum12"
+	AssetType12 AssetType = "credit_alphanum12"
 	// AssetTypeNative represents the asset type for Stellar Lumens (XLM)
-	AssetTypeNative string = "native"
+	AssetTypeNative AssetType = "native"
 )
 
 // Error struct contains the problem returned by Horizon
@@ -210,10 +213,10 @@ type TransactionRequest struct {
 
 // OrderBookRequest struct contains data for getting the orderbook for an asset pair from an horizon server
 type OrderBookRequest struct {
-	SellingAssetType   string
+	SellingAssetType   AssetType
 	SellingAssetCode   string
 	SellingAssetIssuer string
-	BuyingAssetType    string
+	BuyingAssetType    AssetType
 	BuyingAssetCode    string
 	BuyingAssetIssuer  string
 	Limit              uint
