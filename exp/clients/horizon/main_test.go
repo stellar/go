@@ -277,6 +277,41 @@ func ExampleClient_OrderBook() {
 	fmt.Print(obs)
 }
 
+func ExampleClient_Payments() {
+
+	client := DefaultPublicNetClient
+	// payments for an account
+	opRequest := OperationRequest{ForAccount: "GCLWGQPMKXQSPF776IU33AH4PZNOOWNAWGGKVTBQMIC5IMKUNP3E6NVU"}
+	ops, err := client.Payments(opRequest)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	fmt.Print(ops)
+
+	// all payments
+	opRequest = OperationRequest{Cursor: "now"}
+	ops, err = client.Payments(opRequest)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	fmt.Print(ops)
+	records := ops.Embedded.Records
+
+	for _, value := range records {
+		// prints the type
+		fmt.Print(value.GetType())
+		// for example if the type is create_account
+		c, ok := value.(operations.CreateAccount)
+		if ok {
+			// access create_account fields
+			fmt.Print(c.StartingBalance)
+		}
+
+	}
+}
+
 func TestAccountDetail(t *testing.T) {
 	hmock := httptest.NewClient()
 	client := &Client{
@@ -718,6 +753,36 @@ func TestOperationsRequest(t *testing.T) {
 		assert.Equal(t, c.TransactionHash, "ade3c60f1b581e8744596673d95bffbdb8f68f199e0e2f7d63b7c3af9fd8d868")
 	}
 
+	// all payments
+	hmock.On(
+		"GET",
+		"https://localhost/payments",
+	).ReturnString(200, paymentsResponse)
+
+	ops, err = client.Payments(operationRequest)
+	if assert.NoError(t, err) {
+		assert.IsType(t, ops, operations.OperationsPage{})
+		links := ops.Links
+		assert.Equal(t, links.Self.Href, "https://horizon-testnet.stellar.org/payments?cursor=&limit=2&order=desc")
+
+		assert.Equal(t, links.Next.Href, "https://horizon-testnet.stellar.org/payments?cursor=2024660468248577&limit=2&order=desc")
+
+		assert.Equal(t, links.Prev.Href, "https://horizon-testnet.stellar.org/payments?cursor=2024660468256769&limit=2&order=asc")
+
+		createAccountOp := ops.Embedded.Records[0]
+		paymentOp := ops.Embedded.Records[1]
+
+		assert.IsType(t, paymentOp, operations.Payment{})
+		assert.IsType(t, createAccountOp, operations.CreateAccount{})
+
+		p, ok := paymentOp.(operations.Payment)
+		assert.Equal(t, ok, true)
+		assert.Equal(t, p.ID, "2024660468248577")
+		assert.Equal(t, p.Amount, "177.0000000")
+		assert.Equal(t, p.TransactionHash, "87d7a29539e7902b14a6c720094856f74a77128ab332d8629432c5a176a9fe7b")
+	}
+
+	// operations for account
 	operationRequest = OperationRequest{ForAccount: "GCLWGQPMKXQSPF776IU33AH4PZNOOWNAWGGKVTBQMIC5IMKUNP3E6NVU"}
 	hmock.On(
 		"GET",
@@ -1792,4 +1857,83 @@ var orderBookNotFound = `{
   "title": "Invalid Order Book Parameters",
   "status": 400,
   "detail": "The parameters that specify what order book to view are invalid in some way. Please ensure that your type parameters (selling_asset_type and buying_asset_type) are one the following valid values: native, credit_alphanum4, credit_alphanum12.  Also ensure that you have specified selling_asset_code and selling_asset_issuer if selling_asset_type is not 'native', as well as buying_asset_code and buying_asset_issuer if buying_asset_type is not 'native'"
+}`
+
+var paymentsResponse = `{
+  "_links": {
+    "self": {
+      "href": "https://horizon-testnet.stellar.org/payments?cursor=&limit=2&order=desc"
+    },
+    "next": {
+      "href": "https://horizon-testnet.stellar.org/payments?cursor=2024660468248577&limit=2&order=desc"
+    },
+    "prev": {
+      "href": "https://horizon-testnet.stellar.org/payments?cursor=2024660468256769&limit=2&order=asc"
+    }
+  },
+  "_embedded": {
+    "records": [
+      {
+        "_links": {
+          "self": {
+            "href": "https://horizon-testnet.stellar.org/operations/2024660468256769"
+          },
+          "transaction": {
+            "href": "https://horizon-testnet.stellar.org/transactions/a0207513c372146bae8cdb299975047216cb1ffb393074b2015b39496e8767c2"
+          },
+          "effects": {
+            "href": "https://horizon-testnet.stellar.org/operations/2024660468256769/effects"
+          },
+          "succeeds": {
+            "href": "https://horizon-testnet.stellar.org/effects?order=desc&cursor=2024660468256769"
+          },
+          "precedes": {
+            "href": "https://horizon-testnet.stellar.org/effects?order=asc&cursor=2024660468256769"
+          }
+        },
+        "id": "2024660468256769",
+        "paging_token": "2024660468256769",
+        "transaction_successful": true,
+        "source_account": "GAIH3ULLFQ4DGSECF2AR555KZ4KNDGEKN4AFI4SU2M7B43MGK3QJZNSR",
+        "type": "create_account",
+        "type_i": 0,
+        "created_at": "2019-03-27T09:55:41Z",
+        "transaction_hash": "a0207513c372146bae8cdb299975047216cb1ffb393074b2015b39496e8767c2",
+        "starting_balance": "10000.0000000",
+        "funder": "GAIH3ULLFQ4DGSECF2AR555KZ4KNDGEKN4AFI4SU2M7B43MGK3QJZNSR",
+        "account": "GB4OHVQE7OZH4HLCHFNR7OHDMZVNKOJT3RCRAXRNGGCNUHFRVGUGKW36"
+      },
+      {
+        "_links": {
+          "self": {
+            "href": "https://horizon-testnet.stellar.org/operations/2024660468248577"
+          },
+          "transaction": {
+            "href": "https://horizon-testnet.stellar.org/transactions/87d7a29539e7902b14a6c720094856f74a77128ab332d8629432c5a176a9fe7b"
+          },
+          "effects": {
+            "href": "https://horizon-testnet.stellar.org/operations/2024660468248577/effects"
+          },
+          "succeeds": {
+            "href": "https://horizon-testnet.stellar.org/effects?order=desc&cursor=2024660468248577"
+          },
+          "precedes": {
+            "href": "https://horizon-testnet.stellar.org/effects?order=asc&cursor=2024660468248577"
+          }
+        },
+        "id": "2024660468248577",
+        "paging_token": "2024660468248577",
+        "transaction_successful": true,
+        "source_account": "GAL6CXEVI3Y4O4J3FIX3KCRF7HSUG5RW2IRQRUUFC6XHZOLNV3NU35TL",
+        "type": "payment",
+        "type_i": 1,
+        "created_at": "2019-03-27T09:55:41Z",
+        "transaction_hash": "87d7a29539e7902b14a6c720094856f74a77128ab332d8629432c5a176a9fe7b",
+        "asset_type": "native",
+        "from": "GAL6CXEVI3Y4O4J3FIX3KCRF7HSUG5RW2IRQRUUFC6XHZOLNV3NU35TL",
+        "to": "GDGEQS64ISS6Y2KDM5V67B6LXALJX4E7VE4MIA54NANSUX5MKGKBZM5G",
+        "amount": "177.0000000"
+      }
+    ]
+  }
 }`
