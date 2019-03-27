@@ -79,9 +79,9 @@ type Config struct {
 	IngestFailedTransactions bool
 }
 
-// EffectIngestion is a helper struct to smooth the ingestion of effects.  this
-// struct will track what the correct operation to use and order to use when
-// adding effects into an ingestion.
+// EffectIngestion is a helper struct to smooth the ingestion of effects. This
+// struct tracks the operation id in order to use it when adding effects into
+// an ingestion.
 type EffectIngestion struct {
 	Dest        *Ingestion
 	OperationID int64

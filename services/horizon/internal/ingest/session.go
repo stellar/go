@@ -632,6 +632,9 @@ func (is *Session) ingestTrades() {
 	}
 }
 
+// ingestTradeEffects adds effects introduced by operations like "Manage
+// Offer", "Create Passive Offer", and "Path Payment" into the batch insert
+// builder.
 func (is *Session) ingestTradeEffects(effects *EffectIngestion, buyer xdr.AccountId, claims []xdr.ClaimOfferAtom, offers []xdr.ManageOfferSuccessResultOffer) {
 	if is.Err != nil {
 		return

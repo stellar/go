@@ -116,7 +116,6 @@ func TestIngestTradeEffects(t *testing.T) {
 
 		tt.Assert.Equal(history.EffectTrade, effects[2].Type)
 	}
-
 }
 
 func Test_ingestBumpSeq(t *testing.T) {
