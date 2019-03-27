@@ -68,11 +68,12 @@ func Test_ingestOperationEffects(t *testing.T) {
 	err = q.Effects().ForLedger(20).Page(pq).Select(&effects)
 	tt.Require.NoError(err)
 
-	if tt.Assert.Len(effects, 4) {
+	if tt.Assert.Len(effects, 5) {
 		tt.Assert.Equal(history.EffectAccountCredited, effects[0].Type)
 		tt.Assert.Equal(history.EffectAccountDebited, effects[1].Type)
 		tt.Assert.Equal(history.EffectTrade, effects[2].Type)
 		tt.Assert.Equal(history.EffectTrade, effects[3].Type)
+		tt.Assert.Equal(history.EffectOfferRemoved, effects[4].Type)
 	}
 
 	err = q.Effects().ForOperation(81604382721).Page(pq).Select(&effects)
