@@ -9,13 +9,8 @@ import (
 )
 
 func RequestFromContext(ctx context.Context) *http.Request {
-	found := ctx.Value(&horizonContext.RequestContextKey)
-
-	if found == nil {
-		return nil
-	}
-
-	return found.(*http.Request)
+	found, _ := ctx.Value(&horizonContext.RequestContextKey).(*http.Request)
+	return found
 }
 
 // RequestContext returns a context representing the provided http action.

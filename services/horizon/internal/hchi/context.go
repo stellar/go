@@ -16,19 +16,20 @@ const (
 	reqidKey key = iota
 )
 
-// WithRequestID create a context from the provided parent and the provided request id string.
+// WithRequestID sets the reqid in a new context and returns that context.
 func WithRequestID(ctx context.Context, reqid string) context.Context {
 	return context.WithValue(ctx, reqidKey, reqid)
 }
 
-// WithChiRequestID returns a new context bound with the value of the request id.
+// WithChiRequestID gets the request id from the chi middleware, sets in a new
+// context and returns the context.
 func WithChiRequestID(ctx context.Context) context.Context {
 	reqid := middleware.GetReqID(ctx)
 	return WithRequestID(ctx, reqid)
 }
 
-// RequestID returns the set request id, if one has been set, from the
-// provided context returns "" if no requestid has been set
+// RequestID returns the request id carried in the context, if any. It returns
+// "" if no request id has been set or the context is nil.
 func RequestID(ctx context.Context) string {
 	if ctx == nil {
 		return ""

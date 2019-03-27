@@ -36,7 +36,7 @@ import (
 // App represents the root of the state of a horizon instance.
 type App struct {
 	config                       Config
-	web                          *Web
+	web                          *web
 	historyQ                     *history.Q
 	coreQ                        *core.Q
 	ctx                          context.Context
@@ -395,16 +395,18 @@ func (a *App) init() {
 	a.reaper = reap.New(a.config.HistoryRetentionCount, a.HorizonSession(nil))
 
 	// web.init
-	initWeb(a)
+	a.web = mustInitWeb(a.ctx, a.historyQ, a.coreQ, a.config.SSEUpdateFrequency, a.config.StaleThreshold, a.config.IngestFailedTransactions)
 
 	// web.rate-limiter
 	a.web.rateLimiter = maybeInitWebRateLimiter(a.config.RateQuota)
 
 	// web.middleware
-	initWebMiddleware(a)
+	// Note that we passed in `a` here for putting the whole App in the context.
+	// This parameter will be removed soon.
+	a.web.mustInstallMiddlewares(a, a.config.ConnectionTimeout)
 
 	// web.actions
-	initWebActions(a)
+	a.web.mustInstallActions(a.config.EnableAssetStats, a.config.FriendbotURL)
 
 	// metrics and log.metrics
 	a.metrics = metrics.NewRegistry()
@@ -442,8 +444,8 @@ func (a *App) run() {
 	}
 }
 
-// Context create a context on from the App type.
-func (a *App) Context(ctx context.Context) context.Context {
+// withAppContext create a context on from the App type.
+func withAppContext(ctx context.Context, a *App) context.Context {
 	return context.WithValue(ctx, &horizonContext.AppContextKey, a)
 }
 

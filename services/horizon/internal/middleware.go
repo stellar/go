@@ -17,13 +17,15 @@ import (
 	"github.com/stellar/go/support/render/problem"
 )
 
-// middleware adds the "app" context into every request, so that subsequence middleware
+// appContextMiddleware adds the "app" context into every request, so that subsequence appContextMiddleware
 // or handlers can retrieve a horizon.App instance
-func (app *App) middleware(h http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		ctx := app.Context(r.Context())
-		h.ServeHTTP(w, r.WithContext(ctx))
-	})
+func appContextMiddleware(app *App) func(http.Handler) http.Handler {
+	return func(h http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			ctx := withAppContext(r.Context(), app)
+			h.ServeHTTP(w, r.WithContext(ctx))
+		})
+	}
 }
 
 // requestCacheHeadersMiddleware adds caching headers to each response.
@@ -136,11 +138,11 @@ func firstXForwardedFor(r *http.Request) string {
 	return strings.TrimSpace(strings.SplitN(r.Header.Get("X-Forwarded-For"), ",", 2)[0])
 }
 
-func (web *Web) RateLimitMiddleware(next http.Handler) http.Handler {
-	if web.rateLimiter == nil {
+func (w *web) RateLimitMiddleware(next http.Handler) http.Handler {
+	if w.rateLimiter == nil {
 		return next
 	}
-	return web.rateLimiter.RateLimit(next)
+	return w.rateLimiter.RateLimit(next)
 }
 
 // recoverMiddleware helps the server recover from panics. It ensures that

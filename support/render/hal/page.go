@@ -1,9 +1,10 @@
 package hal
 
 import (
-	sUrl "github.com/stellar/go/support/url"
 	"net/url"
 	"strconv"
+
+	sUrl "github.com/stellar/go/support/url"
 )
 
 // BasePage represents the simplest page: one with no links and only embedded records.
@@ -53,10 +54,13 @@ func (p *Page) PopulateLinks() {
 	rec := p.Embedded.Records
 
 	//verify paging params
-	selfUrl := sUrl.URL(*p.FullURL).
-		SetParam("cursor", p.Cursor).
-		SetParam("order", p.Order).
-		SetParam("limit", strconv.FormatInt(int64(p.Limit), 10))
+	var selfUrl sUrl.URL
+	if p.FullURL != nil {
+		selfUrl = sUrl.URL(*p.FullURL).
+			SetParam("cursor", p.Cursor).
+			SetParam("order", p.Order).
+			SetParam("limit", strconv.FormatInt(int64(p.Limit), 10))
+	}
 
 	//self: re-encode existing query params
 	p.Links.Self = NewLink(selfUrl.String())

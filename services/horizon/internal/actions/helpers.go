@@ -1,6 +1,7 @@
 package actions
 
 import (
+	"context"
 	"fmt"
 	"mime"
 	"net/url"
@@ -11,6 +12,7 @@ import (
 	"github.com/stellar/go/amount"
 	"github.com/stellar/go/services/horizon/internal/assets"
 	"github.com/stellar/go/services/horizon/internal/db2"
+	"github.com/stellar/go/services/horizon/internal/httpx"
 	"github.com/stellar/go/services/horizon/internal/ledger"
 	hProblem "github.com/stellar/go/services/horizon/internal/render/problem"
 	"github.com/stellar/go/services/horizon/internal/toid"
@@ -21,6 +23,8 @@ import (
 	"github.com/stellar/go/xdr"
 )
 
+// TODO: move these constants to urlparam.go as we should parse the params with http handlers
+// in the upper level package.
 const (
 	// ParamCursor is a query string param name
 	ParamCursor = "cursor"
@@ -273,6 +277,7 @@ func (base *Base) GetAddress(name string, opts ...Opt) (result string) {
 		}
 	}
 
+	// We should check base.Err after this call. This is why it's better to remove base.Err.
 	result = base.GetString(name)
 	if result == "" && !requiredParam {
 		return result
@@ -492,4 +497,16 @@ func (base *Base) ValidateBodyType() {
 	if mt != "application/x-www-form-urlencoded" && mt != "multipart/form-data" {
 		base.Err = &hProblem.UnsupportedMediaType
 	}
+}
+
+// fullURL returns a URL containing the information regarding the original
+// request stored in the context.
+func fullURL(ctx context.Context) *url.URL {
+	url := httpx.BaseURL(ctx)
+	r := httpx.RequestFromContext(ctx)
+	if r != nil {
+		url.Path = r.URL.Path
+		url.RawQuery = r.URL.RawQuery
+	}
+	return url
 }
