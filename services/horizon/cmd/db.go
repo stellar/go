@@ -43,6 +43,7 @@ var dbBackfillCmd = &cobra.Command{
 
 		i := ingestSystem(ingest.Config{
 			IngestFailedTransactions: config.IngestFailedTransactions,
+			IngestOfferEffects:       config.IngestOfferEffects,
 		})
 		i.SkipCursorUpdate = true
 		parsed, err := strconv.ParseUint(args[0], 10, 32)
@@ -104,6 +105,7 @@ var dbClearCmd = &cobra.Command{
 
 		err := ingestSystem(ingest.Config{
 			IngestFailedTransactions: config.IngestFailedTransactions,
+			IngestOfferEffects:       config.IngestOfferEffects,
 		}).ClearAll()
 		if err != nil {
 			log.Fatal(err)
@@ -193,6 +195,7 @@ var dbRebaseCmd = &cobra.Command{
 
 		i := ingestSystem(ingest.Config{
 			IngestFailedTransactions: config.IngestFailedTransactions,
+			IngestOfferEffects:       config.IngestOfferEffects,
 		})
 		i.SkipCursorUpdate = true
 
@@ -302,6 +305,7 @@ func reingest(cmd reingestType, args ...int32) {
 
 	i := ingestSystem(ingest.Config{
 		IngestFailedTransactions: config.IngestFailedTransactions,
+		IngestOfferEffects:       config.IngestOfferEffects,
 	})
 	i.SkipCursorUpdate = true
 

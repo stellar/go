@@ -77,6 +77,9 @@ type Config struct {
 	// IngestFailedTransactions is a feature flag that determines if system
 	// should ingest failed transactions.
 	IngestFailedTransactions bool
+	// IngestOfferEffects is a feature flag that determines if system
+	// should ingest effects for offers.
+	IngestOfferEffects bool
 }
 
 // EffectIngestion is a helper struct to smooth the ingestion of effects. This

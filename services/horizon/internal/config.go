@@ -38,6 +38,8 @@ type Config struct {
 	Ingest bool
 	// IngestFailedTransactions toggles whether to ingest failed transactions
 	IngestFailedTransactions bool
+	// IngestOfferEffects toggles whether to ingest offer effects
+	IngestOfferEffects bool
 	// HistoryRetentionCount represents the minimum number of ledgers worth of
 	// history data to retain in the horizon database. For the purposes of
 	// determining a "retention duration", each ledger roughly corresponds to 10

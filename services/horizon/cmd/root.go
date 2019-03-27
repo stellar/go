@@ -230,6 +230,13 @@ var configOpts = []*support.ConfigOption{
 		Usage:       "causes this horizon process to ingest failed transactions data",
 	},
 	&support.ConfigOption{
+		Name:        "ingest-offer-effects",
+		ConfigKey:   &config.IngestOfferEffects,
+		OptType:     types.Bool,
+		FlagDefault: false,
+		Usage:       "causes this horizon process to ingest offer effects",
+	},
+	&support.ConfigOption{
 		Name:        "history-retention-count",
 		ConfigKey:   &config.HistoryRetentionCount,
 		OptType:     types.Uint,

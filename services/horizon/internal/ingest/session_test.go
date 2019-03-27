@@ -89,13 +89,43 @@ func TestIngestTradeEffects(t *testing.T) {
 	tt := test.Start(t).ScenarioWithoutHorizon("kahuna")
 	defer tt.Finish()
 
-	s := ingest(tt, Config{EnableAssetStats: false})
+	// ingest without offer effects
+	s := ingest(tt, Config{
+		EnableAssetStats:   false,
+		IngestOfferEffects: false,
+	})
 	tt.Require.NoError(s.Err)
 
 	q := &history.Q{Session: tt.HorizonSession()}
 
 	var effects []history.Effect
+
 	err := q.Effects().ForLedger(23).Select(&effects)
+	tt.Require.NoError(err)
+
+	tt.Assert.Len(effects, 0)
+
+	// reset effects
+	effects = nil
+	err = q.Effects().ForLedger(24).Select(&effects)
+	tt.Require.NoError(err)
+
+	if tt.Assert.Len(effects, 2) {
+		tt.Assert.Equal(history.EffectTrade, effects[0].Type)
+		tt.Assert.Equal(history.EffectTrade, effects[1].Type)
+	}
+
+	// ingest with offer effects
+	tt.ScenarioWithoutHorizon("kahuna")
+	s = ingest(tt, Config{
+		EnableAssetStats:   false,
+		IngestOfferEffects: true,
+	})
+	tt.Require.NoError(s.Err)
+
+	// reset effects
+	effects = nil
+	err = q.Effects().ForLedger(23).Select(&effects)
 	tt.Require.NoError(err)
 
 	if tt.Assert.Len(effects, 1) {
