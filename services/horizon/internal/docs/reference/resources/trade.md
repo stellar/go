@@ -13,7 +13,7 @@ Trades can also be caused by successful [path payments](https://www.stellar.org/
 
 Payments are one-way in that afterwards, the source account has a smaller balance and the destination account of the payment has a bigger one.  Trades are two-way; both accounts increase and decrease their balances.
 
-A trade occurs between two parties - `base` and `counter`. Which is which is either arbitrary or determined by the calling query.
+A trade occurs between two parties - `base` and `counter`. Which is either arbitrary or determined by the calling query.
 
 ## Attributes
 | Attribute    | Type             |                                                                                                                        |
