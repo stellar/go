@@ -196,11 +196,42 @@ func (is *Session) ingestEffects() {
 		is.assetDetails(dets, op.SendAsset, "")
 		effects.Add(source, history.EffectAccountDebited, dets)
 
-		is.ingestTradeEffects(effects, source, resultSuccess.Offers, nil)
+		opChanges := is.Cursor.OperationChanges()
+		offerResults := make([]xdr.ManageOfferSuccessResultOffer, 0, len(opChanges))
+		for _, change := range opChanges {
+			switch change.Type {
+			case xdr.LedgerEntryChangeTypeLedgerEntryUpdated:
+				ledgerEntry := change.MustUpdated()
+				offerEntry, ok := ledgerEntry.Data.GetOffer()
+				if !ok {
+					break
+				}
+				offerResults = append(offerResults, xdr.ManageOfferSuccessResultOffer{
+					Effect: xdr.ManageOfferEffectManageOfferUpdated,
+					Offer:  &offerEntry,
+				})
+
+			case xdr.LedgerEntryChangeTypeLedgerEntryRemoved:
+				ledgerKey := change.MustRemoved()
+				ledgerKeyOffer, ok := ledgerKey.GetOffer()
+				if !ok {
+					break
+				}
+				offerResults = append(offerResults, xdr.ManageOfferSuccessResultOffer{
+					Effect: xdr.ManageOfferEffectManageOfferDeleted,
+					Offer: &xdr.OfferEntry{
+						SellerId: ledgerKeyOffer.SellerId,
+						OfferId:  ledgerKeyOffer.OfferId,
+					},
+				})
+			}
+		}
+
+		is.ingestTradeEffects(effects, source, resultSuccess.Offers, offerResults)
 
 	case xdr.OperationTypeManageOffer:
 		result := is.Cursor.OperationResult().MustManageOfferResult().MustSuccess()
-		is.ingestTradeEffects(effects, source, result.OffersClaimed, &result.Offer)
+		is.ingestTradeEffects(effects, source, result.OffersClaimed, []xdr.ManageOfferSuccessResultOffer{result.Offer})
 
 	case xdr.OperationTypeCreatePassiveOffer:
 		var offerSuccess xdr.ManageOfferSuccessResult
@@ -214,7 +245,7 @@ func (is *Session) ingestEffects() {
 			offerSuccess = result.MustCreatePassiveOfferResult().MustSuccess()
 		}
 
-		is.ingestTradeEffects(effects, source, offerSuccess.OffersClaimed, &offerSuccess.Offer)
+		is.ingestTradeEffects(effects, source, offerSuccess.OffersClaimed, []xdr.ManageOfferSuccessResultOffer{offerSuccess.Offer})
 
 	case xdr.OperationTypeSetOptions:
 		op := opbody.MustSetOptionsOp()
@@ -336,9 +367,8 @@ func (is *Session) ingestEffects() {
 	case xdr.OperationTypeManageData:
 		op := opbody.MustManageDataOp()
 		dets := map[string]interface{}{"name": op.DataName}
-		key := xdr.LedgerKey{}
-		effect := history.EffectType(0)
 
+		key := xdr.LedgerKey{}
 		key.SetData(source, string(op.DataName))
 
 		before, after, err := is.Cursor.BeforeAndAfter(key)
@@ -352,6 +382,7 @@ func (is *Session) ingestEffects() {
 			dets["value"] = base64.StdEncoding.EncodeToString(raw)
 		}
 
+		var effect history.EffectType
 		switch {
 		case before == nil && after != nil:
 			effect = history.EffectDataCreated
@@ -601,7 +632,7 @@ func (is *Session) ingestTrades() {
 	}
 }
 
-func (is *Session) ingestTradeEffects(effects *EffectIngestion, buyer xdr.AccountId, claims []xdr.ClaimOfferAtom, offer *xdr.ManageOfferSuccessResultOffer) {
+func (is *Session) ingestTradeEffects(effects *EffectIngestion, buyer xdr.AccountId, claims []xdr.ClaimOfferAtom, offers []xdr.ManageOfferSuccessResultOffer) {
 	if is.Err != nil {
 		return
 	}
@@ -617,33 +648,40 @@ func (is *Session) ingestTradeEffects(effects *EffectIngestion, buyer xdr.Accoun
 		effects.Add(seller, history.EffectTrade, sd)
 	}
 
-	if offer == nil || (*offer).Offer == nil {
-		return
-	}
+	for _, offer := range offers {
+		if offer.Offer == nil {
+			continue
+		}
 
-	offerEntry := (*offer).Offer
-	offerDetails := map[string]interface{}{
-		"offer_id": offerEntry.OfferId,
-		"seller":   offerEntry.SellerId.Address(),
-		"amount":   amount.String(offerEntry.Amount),
-		"price":    offerEntry.Price.String(),
-		"price_r": map[string]interface{}{
-			"n": offerEntry.Price.N,
-			"d": offerEntry.Price.D,
-		},
-	}
-	is.assetDetails(offerDetails, offerEntry.Buying, "buying_")
-	is.assetDetails(offerDetails, offerEntry.Selling, "selling_")
+		offerEntry := offer.Offer
+		offerDetails := map[string]interface{}{
+			"offer_id": offerEntry.OfferId,
+			"seller":   offerEntry.SellerId.Address(),
+		}
 
-	switch (*offer).Effect {
-	case xdr.ManageOfferEffectManageOfferCreated:
-		effects.Add(buyer, history.EffectOfferCreated, offerDetails)
+		switch offer.Effect {
+		case xdr.ManageOfferEffectManageOfferCreated, xdr.ManageOfferEffectManageOfferUpdated:
+			offerDetails["amount"] = amount.String(offerEntry.Amount)
+			offerDetails["price"] = offerEntry.Price.String()
+			offerDetails["price_r"] = map[string]interface{}{
+				"n": offerEntry.Price.N,
+				"d": offerEntry.Price.D,
+			}
 
-	case xdr.ManageOfferEffectManageOfferUpdated:
-		effects.Add(buyer, history.EffectOfferUpdated, offerDetails)
+			is.assetDetails(offerDetails, offerEntry.Buying, "buying_")
+			is.assetDetails(offerDetails, offerEntry.Selling, "selling_")
+		}
 
-	case xdr.ManageOfferEffectManageOfferDeleted:
-		effects.Add(buyer, history.EffectOfferRemoved, offerDetails)
+		switch offer.Effect {
+		case xdr.ManageOfferEffectManageOfferCreated:
+			effects.Add(buyer, history.EffectOfferCreated, offerDetails)
+
+		case xdr.ManageOfferEffectManageOfferUpdated:
+			effects.Add(buyer, history.EffectOfferUpdated, offerDetails)
+
+		case xdr.ManageOfferEffectManageOfferDeleted:
+			effects.Add(buyer, history.EffectOfferRemoved, offerDetails)
+		}
 	}
 }
 

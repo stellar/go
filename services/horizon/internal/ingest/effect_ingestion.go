@@ -12,7 +12,6 @@ func (ei *EffectIngestion) Add(aid xdr.AccountId, typ history.EffectType, detail
 		return false
 	}
 
-	// This variable doesn't seem to be thread safe. Perhaps it doesn't have to be at this moment?
 	ei.added++
 
 	ei.err = ei.Dest.Effect(Address(aid.Address()), ei.OperationID, ei.added, typ, details)
