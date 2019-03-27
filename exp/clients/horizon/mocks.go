@@ -118,5 +118,11 @@ func (m *MockClient) Paths(request PathsRequest) (hProtocol.PathsPage, error) {
 	return a.Get(0).(hProtocol.PathsPage), a.Error(1)
 }
 
+// Payments is a mocking method
+func (m *MockClient) Payments(request OperationRequest) (operations.OperationsPage, error) {
+	a := m.Called(request)
+	return a.Get(0).(operations.OperationsPage), a.Error(1)
+}
+
 // ensure that the MockClient implements ClientInterface
 var _ ClientInterface = &MockClient{}

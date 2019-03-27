@@ -106,6 +106,7 @@ type ClientInterface interface {
 	TransactionDetail(txHash string) (hProtocol.Transaction, error)
 	OrderBook(request OrderBookRequest) (hProtocol.OrderBookSummary, error)
 	Paths(request PathsRequest) (hProtocol.PathsPage, error)
+	Payments(request OperationRequest) (operations.OperationsPage, error)
 }
 
 // DefaultTestNetClient is a default client to connect to test network
@@ -194,6 +195,7 @@ type OperationRequest struct {
 	Cursor         string
 	Limit          uint
 	IncludeFailed  bool
+	endpoint       string
 }
 
 type submitRequest struct {
