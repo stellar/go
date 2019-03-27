@@ -1,6 +1,7 @@
 package horizon
 
 import (
+	"context"
 	"net/http"
 	"net/url"
 	"strings"
@@ -11,6 +12,7 @@ import (
 	"github.com/stellar/go/services/horizon/internal/httpx"
 	"github.com/stellar/go/services/horizon/internal/ledger"
 	"github.com/stellar/go/services/horizon/internal/render/problem"
+	"github.com/stellar/go/services/horizon/internal/render/sse"
 	"github.com/stellar/go/services/horizon/internal/toid"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/support/log"
@@ -151,4 +153,45 @@ func (action *Action) FullURL() *url.URL {
 // the Host and Scheme portions of the request uri.
 func (action *Action) baseURL() *url.URL {
 	return httpx.BaseURL(action.R.Context())
+}
+
+// getAccountInfo returns the information about an account based on the provided param.
+// The expected param here is the account id, which has a string type.
+func (w *web) getAccountInfo(ctx context.Context, param interface{}) (interface{}, error) {
+	addr, ok := param.(string)
+	if !ok {
+		return nil, errors.New("Invalid param type for getAccountInfo func")
+	}
+
+	return actions.AccountInfo(ctx, &core.Q{w.coreSession(ctx)}, addr)
+}
+
+// getTransactionPageByAccount returns a page containing the transaction records of an account.
+// The expected param here is a pointer to TransactionParams.
+func (w *web) getTransactionPageByAccount(ctx context.Context, params interface{}) (interface{}, error) {
+	tp, ok := params.(*actions.TransactionParams)
+	if !ok {
+		return nil, errors.New("Invalid param type for getTransactionPageByAccount func")
+	}
+	horizonSession, err := w.horizonSession(ctx)
+	if err != nil {
+		return nil, errors.Wrap(err, "getting horizon db session")
+	}
+
+	return actions.TransactionPageByAccount(ctx, &history.Q{horizonSession}, tp.AccountFilter, tp.IncludeFailed, tp.PagingParams)
+}
+
+// streamTransactionByAccount streams the transaction records of an account.
+// The expected param here is a pointer to TransactionParams.
+func (w *web) streamTransactionByAccount(ctx context.Context, s *sse.Stream, params interface{}) error {
+	tp, ok := params.(*actions.TransactionParams)
+	if !ok {
+		return errors.New("Invalid param type for streamTransactionByAccount func")
+	}
+	horizonSession, err := w.horizonSession(ctx)
+	if err != nil {
+		return errors.Wrap(err, "getting horizon db session")
+	}
+
+	return actions.StreamTransactionByAccount(ctx, s, &history.Q{horizonSession}, tp.AccountFilter, tp.IncludeFailed, tp.PagingParams)
 }

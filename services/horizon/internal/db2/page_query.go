@@ -160,7 +160,6 @@ func (p PageQuery) CursorInt64() (int64, error) {
 
 // CursorInt64Pair parses this query's Cursor string as two int64s, separated by the provided separator
 func (p PageQuery) CursorInt64Pair(sep string) (l int64, r int64, err error) {
-
 	if p.Cursor == "" {
 		switch p.Order {
 		case OrderAscending:

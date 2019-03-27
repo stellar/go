@@ -612,3 +612,11 @@ type TransactionsPage struct {
 		Records []Transaction
 	} `json:"_embedded"`
 }
+
+// PathsPage contains records of payment paths found by horizon
+type PathsPage struct {
+	Links    hal.Links `json:"_links"`
+	Embedded struct {
+		Records []Path
+	} `json:"_embedded"`
+}
