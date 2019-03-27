@@ -105,6 +105,7 @@ type ClientInterface interface {
 	Transactions(request TransactionRequest) (hProtocol.TransactionsPage, error)
 	TransactionDetail(txHash string) (hProtocol.Transaction, error)
 	OrderBook(request OrderBookRequest) (hProtocol.OrderBookSummary, error)
+	Paths(request PathsRequest) (hProtocol.PathsPage, error)
 }
 
 // DefaultTestNetClient is a default client to connect to test network
@@ -220,4 +221,14 @@ type OrderBookRequest struct {
 	BuyingAssetCode    string
 	BuyingAssetIssuer  string
 	Limit              uint
+}
+
+// PathsRequest struct contains data for getting available payment paths from an horizon server
+type PathsRequest struct {
+	DestinationAccount     string
+	DestinationAssetType   AssetType
+	DestinationAssetCode   string
+	DestinationAssetIssuer string
+	DestinationAmount      string
+	SourceAccount          string
 }

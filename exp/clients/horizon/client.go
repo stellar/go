@@ -244,3 +244,12 @@ func (c *Client) OrderBook(request OrderBookRequest) (obs hProtocol.OrderBookSum
 	err = c.sendRequest(request, &obs)
 	return
 }
+
+// Paths returns the available paths to make a payment. See https://www.stellar.org/developers/horizon/reference/endpoints/path-finding.html
+func (c *Client) Paths(request PathsRequest) (paths hProtocol.PathsPage, err error) {
+	err = c.sendRequest(request, &paths)
+	return
+}
+
+// ensure that the horizon client implements ClientInterface
+var _ ClientInterface = &Client{}
