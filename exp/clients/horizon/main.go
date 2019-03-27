@@ -31,9 +31,20 @@ type assetIssuer string
 // includeFailed represents `include_failed` param in queries
 type includeFailed bool
 
+// AssetType represents `asset_type` param in queries
+type AssetType string
+
 const (
-	OrderAsc  Order = "asc"
+	// OrderAsc represents an ascending order parameter
+	OrderAsc Order = "asc"
+	// OrderDesc represents an descending order parameter
 	OrderDesc Order = "desc"
+	// AssetType4 represents an asset type that is 4 characters long
+	AssetType4 AssetType = "credit_alphanum4"
+	// AssetType12 represents an asset type that is 12 characters long
+	AssetType12 AssetType = "credit_alphanum12"
+	// AssetTypeNative represents the asset type for Stellar Lumens (XLM)
+	AssetTypeNative AssetType = "native"
 )
 
 // Error struct contains the problem returned by Horizon
@@ -93,6 +104,7 @@ type ClientInterface interface {
 	SubmitTransaction(transactionXdr string) (hProtocol.TransactionSuccess, error)
 	Transactions(request TransactionRequest) (hProtocol.TransactionsPage, error)
 	TransactionDetail(txHash string) (hProtocol.Transaction, error)
+	OrderBook(request OrderBookRequest) (hProtocol.OrderBookSummary, error)
 }
 
 // DefaultTestNetClient is a default client to connect to test network
@@ -197,4 +209,15 @@ type TransactionRequest struct {
 	Cursor             string
 	Limit              uint
 	IncludeFailed      bool
+}
+
+// OrderBookRequest struct contains data for getting the orderbook for an asset pair from an horizon server
+type OrderBookRequest struct {
+	SellingAssetType   AssetType
+	SellingAssetCode   string
+	SellingAssetIssuer string
+	BuyingAssetType    AssetType
+	BuyingAssetCode    string
+	BuyingAssetIssuer  string
+	Limit              uint
 }

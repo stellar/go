@@ -86,6 +86,12 @@ func addQueryParams(params ...interface{}) string {
 			if param {
 				query.Add("include_failed", "true")
 			}
+		case map[string]string:
+			for key, value := range param {
+				if value != "" {
+					query.Add(key, value)
+				}
+			}
 		default:
 			panic("Unknown parameter type")
 		}

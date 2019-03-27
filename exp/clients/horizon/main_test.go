@@ -264,6 +264,19 @@ func ExampleClient_Transactions() {
 	}
 }
 
+func ExampleClient_OrderBook() {
+
+	client := DefaultPublicNetClient
+	// orderbook for an asset pair, e.g XLM/NGN
+	obRequest := OrderBookRequest{BuyingAssetType: AssetTypeNative, SellingAssetCode: "USD", SellingAssetType: AssetType4, SellingAssetIssuer: "GCLWGQPMKXQSPF776IU33AH4PZNOOWNAWGGKVTBQMIC5IMKUNP3E6NVU"}
+	obs, err := client.OrderBook(obRequest)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	fmt.Print(obs)
+}
+
 func TestAccountDetail(t *testing.T) {
 	hmock := httptest.NewClient()
 	client := &Client{
@@ -883,6 +896,49 @@ func TestTransactionsRequest(t *testing.T) {
 		assert.Equal(t, record.Hash, "5131aed266a639a6eb4802a92fba310454e711ded830ed899745b9e777d7110c")
 		assert.Equal(t, record.Memo, "2A1V6J5703G47XHY")
 	}
+}
+
+func TestOrderBookRequest(t *testing.T) {
+	hmock := httptest.NewClient()
+	client := &Client{
+		HorizonURL: "https://localhost/",
+		HTTP:       hmock,
+	}
+
+	orderBookRequest := OrderBookRequest{BuyingAssetType: AssetTypeNative, SellingAssetCode: "USD", SellingAssetType: AssetType4, SellingAssetIssuer: "GBVOL67TMUQBGL4TZYNMY3ZQ5WGQYFPFD5VJRWXR72VA33VFNL225PL5"}
+
+	// orderbook for XLM/USD
+	hmock.On(
+		"GET",
+		"https://localhost/order_book?buying_asset_type=native&selling_asset_code=USD&selling_asset_issuer=GBVOL67TMUQBGL4TZYNMY3ZQ5WGQYFPFD5VJRWXR72VA33VFNL225PL5&selling_asset_type=credit_alphanum4",
+	).ReturnString(200, orderbookResponse)
+
+	obs, err := client.OrderBook(orderBookRequest)
+	if assert.NoError(t, err) {
+		assert.IsType(t, obs, hProtocol.OrderBookSummary{})
+		bids := obs.Bids
+		asks := obs.Asks
+		assert.Equal(t, bids[0].Price, "0.0000251")
+		assert.Equal(t, asks[0].Price, "0.0000256")
+		assert.Equal(t, obs.Selling.Type, "native")
+		assert.Equal(t, obs.Buying.Type, "credit_alphanum4")
+	}
+
+	// failure response
+	orderBookRequest = OrderBookRequest{}
+	hmock.On(
+		"GET",
+		"https://localhost/order_book",
+	).ReturnString(400, orderBookNotFound)
+
+	_, err = client.OrderBook(orderBookRequest)
+	if assert.Error(t, err) {
+		assert.Contains(t, err.Error(), "Horizon error")
+		horizonError, ok := err.(*Error)
+		assert.Equal(t, ok, true)
+		assert.Equal(t, horizonError.Problem.Title, "Invalid Order Book Parameters")
+	}
+
 }
 
 var accountResponse = `{
@@ -1682,4 +1738,58 @@ var txDetailResponse = `{
   "signatures": [
     "kOZumR7L/Pxnf2kSdhDC7qyTMRcp0+ymw+dU+4A/dRqqf387ER4pUhqFUsOc7ZrSW9iz+6N20G4mcp0IiT5fAg=="
   ]
+}`
+
+var orderbookResponse = `{
+  "bids": [
+    {
+      "price_r": {
+        "n": 48904,
+        "d": 1949839975
+      },
+      "price": "0.0000251",
+      "amount": "0.0841405"
+    },
+    {
+      "price_r": {
+        "n": 273,
+        "d": 10917280
+      },
+      "price": "0.0000250",
+      "amount": "0.0005749"
+    }
+  ],
+  "asks": [
+    {
+      "price_r": {
+        "n": 2,
+        "d": 78125
+      },
+      "price": "0.0000256",
+      "amount": "3354.7460938"
+    },
+    {
+      "price_r": {
+        "n": 10178,
+        "d": 394234000
+      },
+      "price": "0.0000258",
+      "amount": "1.7314070"
+    }
+  ],
+  "base": {
+    "asset_type": "native"
+  },
+  "counter": {
+    "asset_type": "credit_alphanum4",
+    "asset_code": "BTC",
+    "asset_issuer": "GBVOL67TMUQBGL4TZYNMY3ZQ5WGQYFPFD5VJRWXR72VA33VFNL225PL5"
+  }
+}`
+
+var orderBookNotFound = `{
+  "type": "https://stellar.org/horizon-errors/invalid_order_book",
+  "title": "Invalid Order Book Parameters",
+  "status": 400,
+  "detail": "The parameters that specify what order book to view are invalid in some way. Please ensure that your type parameters (selling_asset_type and buying_asset_type) are one the following valid values: native, credit_alphanum4, credit_alphanum12.  Also ensure that you have specified selling_asset_code and selling_asset_issuer if selling_asset_type is not 'native', as well as buying_asset_code and buying_asset_issuer if buying_asset_type is not 'native'"
 }`

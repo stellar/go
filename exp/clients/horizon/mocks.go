@@ -106,5 +106,11 @@ func (m *MockClient) TransactionDetail(txHash string) (hProtocol.Transaction, er
 	return a.Get(0).(hProtocol.Transaction), a.Error(1)
 }
 
+// OrderBook is a mocking method
+func (m *MockClient) OrderBook(request OrderBookRequest) (hProtocol.OrderBookSummary, error) {
+	a := m.Called(request)
+	return a.Get(0).(hProtocol.OrderBookSummary), a.Error(1)
+}
+
 // ensure that the MockClient implements ClientInterface
 var _ ClientInterface = &MockClient{}
