@@ -258,5 +258,12 @@ func (c *Client) Payments(request OperationRequest) (ops operations.OperationsPa
 	return
 }
 
+// Trades returns stellar trades (https://www.stellar.org/developers/horizon/reference/resources/trade.html)
+// It can be used to return trades for an account, an offer and all trades on the network.
+func (c *Client) Trades(request TradeRequest) (tds hProtocol.TradesPage, err error) {
+	err = c.sendRequest(request, &tds)
+	return
+}
+
 // ensure that the horizon client implements ClientInterface
 var _ ClientInterface = &Client{}

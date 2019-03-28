@@ -124,5 +124,11 @@ func (m *MockClient) Payments(request OperationRequest) (operations.OperationsPa
 	return a.Get(0).(operations.OperationsPage), a.Error(1)
 }
 
+// Trades is a mocking method
+func (m *MockClient) Trades(request TradeRequest) (hProtocol.TradesPage, error) {
+	a := m.Called(request)
+	return a.Get(0).(hProtocol.TradesPage), a.Error(1)
+}
+
 // ensure that the MockClient implements ClientInterface
 var _ ClientInterface = &MockClient{}
