@@ -109,7 +109,6 @@ func NewEffect(ctx context.Context, row history.Effect, ledger history.Ledger) (
 		e := effects.Trade{Base: basev}
 		err = row.UnmarshalDetails(&e)
 		result = e
-
 	case history.EffectSequenceBumped:
 		e := effects.SequenceBumped{Base: basev}
 		err = row.UnmarshalDetails(&e)
