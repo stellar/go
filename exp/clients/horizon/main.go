@@ -238,8 +238,8 @@ type PathsRequest struct {
 
 // TradeAggregationRequest struct contains data for getting trade aggregations from an horizon server
 type TradeAggregationRequest struct {
-	StartTime          string
-	EndTime            string
+	StartTime          time.Time
+	EndTime            time.Time
 	Resolution         string
 	Offset             string
 	BaseAssetType      AssetType

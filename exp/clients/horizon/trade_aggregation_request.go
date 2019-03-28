@@ -3,6 +3,7 @@ package horizonclient
 import (
 	"fmt"
 	"net/url"
+	"strconv"
 
 	"github.com/stellar/go/support/errors"
 )
@@ -10,10 +11,11 @@ import (
 // BuildUrl creates the endpoint to be queried based on the data in the TradeAggregationRequest struct.
 func (ta TradeAggregationRequest) BuildUrl() (endpoint string, err error) {
 	endpoint = "trade_aggregations"
+	fmt.Println("time is: ", ta.StartTime.Unix())
 	// add the parameters for trade aggregations endpoint
 	paramMap := make(map[string]string)
-	paramMap["start_time"] = ta.StartTime
-	paramMap["end_time"] = ta.EndTime
+	paramMap["start_time"] = strconv.FormatInt((ta.StartTime.UnixNano() / 1e6), 10)
+	paramMap["end_time"] = strconv.FormatInt((ta.EndTime.UnixNano() / 1e6), 10)
 	paramMap["resolution"] = ta.Resolution
 	paramMap["offset"] = ta.Offset
 	paramMap["base_asset_type"] = string(ta.BaseAssetType)

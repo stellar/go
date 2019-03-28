@@ -3,6 +3,7 @@ package horizonclient
 import (
 	"fmt"
 	"testing"
+	"time"
 
 	hProtocol "github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/support/http/httptest"
@@ -10,10 +11,17 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+var testTime = time.Unix(int64(1517521726), int64(0))
+
+// var testTime = time.Now()
+// 1553796093000
+// 1553795972695
+// 1517521726000
+
 func TestTradeAggregationRequestBuildUrl(t *testing.T) {
 	ta := TradeAggregationRequest{
-		StartTime:          "1517521726000",
-		EndTime:            "1517521726000",
+		StartTime:          testTime,
+		EndTime:            testTime,
 		Resolution:         "3600000",
 		BaseAssetType:      AssetTypeNative,
 		CounterAssetType:   AssetType4,
@@ -33,8 +41,8 @@ func ExampleClient_TradeAggregations() {
 	client := DefaultPublicNetClient
 	// Find trade aggregations
 	ta := TradeAggregationRequest{
-		StartTime:          "1517521726000",
-		EndTime:            "1517521726000",
+		StartTime:          testTime,
+		EndTime:            testTime,
 		Resolution:         "3600000",
 		BaseAssetType:      AssetTypeNative,
 		CounterAssetType:   AssetType4,
@@ -58,8 +66,8 @@ func TestTradeAggregationsRequest(t *testing.T) {
 	}
 
 	taRequest := TradeAggregationRequest{
-		StartTime:          "1517521726000",
-		EndTime:            "1517521726000",
+		StartTime:          testTime,
+		EndTime:            testTime,
 		Resolution:         "3600000",
 		BaseAssetType:      AssetTypeNative,
 		CounterAssetType:   AssetType4,
@@ -91,8 +99,8 @@ func TestTradeAggregationsRequest(t *testing.T) {
 
 	// failure response
 	taRequest = TradeAggregationRequest{
-		StartTime:          "1517521726000",
-		EndTime:            "1517521726000",
+		StartTime:          testTime,
+		EndTime:            testTime,
 		BaseAssetType:      AssetTypeNative,
 		CounterAssetType:   AssetType4,
 		CounterAssetCode:   "SLT",
