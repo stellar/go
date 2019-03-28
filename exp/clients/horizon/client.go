@@ -177,7 +177,7 @@ func (c *Client) Offers(request OfferRequest) (offers hProtocol.OffersPage, err 
 // Operations returns stellar operations (https://www.stellar.org/developers/horizon/reference/resources/operation.html)
 // It can be used to return operations for an account, a ledger, a transaction and all operations on the network.
 func (c *Client) Operations(request OperationRequest) (ops operations.OperationsPage, err error) {
-	err = c.sendRequest(request, &ops)
+	err = c.sendRequest(request.setEndpoint("operations"), &ops)
 	return
 }
 
@@ -188,7 +188,7 @@ func (c *Client) OperationDetail(id string) (ops operations.Operation, err error
 		return ops, errors.New("Invalid operation id provided")
 	}
 
-	request := OperationRequest{forOperationId: id}
+	request := OperationRequest{forOperationId: id, endpoint: "operations"}
 
 	var record interface{}
 
@@ -248,6 +248,13 @@ func (c *Client) OrderBook(request OrderBookRequest) (obs hProtocol.OrderBookSum
 // Paths returns the available paths to make a payment. See https://www.stellar.org/developers/horizon/reference/endpoints/path-finding.html
 func (c *Client) Paths(request PathsRequest) (paths hProtocol.PathsPage, err error) {
 	err = c.sendRequest(request, &paths)
+	return
+}
+
+// Payments returns stellar account_merge, create_account, path payment and payment operations.
+// It can be used to return payments for an account, a ledger, a transaction and all payments on the network.
+func (c *Client) Payments(request OperationRequest) (ops operations.OperationsPage, err error) {
+	err = c.sendRequest(request.setEndpoint("payments"), &ops)
 	return
 }
 
