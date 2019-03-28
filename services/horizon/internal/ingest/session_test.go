@@ -50,7 +50,10 @@ func Test_ingestOperationEffects(t *testing.T) {
 
 	// HACK(scott): switch to kahuna recipe mid-stream.  We need to integrate our test scenario loader to be compatible with go subtests/
 	tt.ScenarioWithoutHorizon("kahuna")
-	s = ingest(tt, Config{EnableAssetStats: false})
+	s = ingest(tt, Config{
+		EnableAssetStats:   false,
+		IngestOfferEffects: true,
+	})
 	tt.Require.NoError(s.Err)
 	pq, err := db2.NewPageQuery("", true, "asc", 200)
 	tt.Require.NoError(err)
