@@ -258,5 +258,11 @@ func (c *Client) Payments(request OperationRequest) (ops operations.OperationsPa
 	return
 }
 
+// TradeAggregations returns stellar trade aggregations (https://www.stellar.org/developers/horizon/reference/resources/trade_aggregation.html)
+func (c *Client) TradeAggregations(request TradeAggregationRequest) (tds hProtocol.TradeAggregationsPage, err error) {
+	err = c.sendRequest(request, &tds)
+	return
+}
+
 // ensure that the horizon client implements ClientInterface
 var _ ClientInterface = &Client{}

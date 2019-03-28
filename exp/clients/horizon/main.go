@@ -107,6 +107,7 @@ type ClientInterface interface {
 	OrderBook(request OrderBookRequest) (hProtocol.OrderBookSummary, error)
 	Paths(request PathsRequest) (hProtocol.PathsPage, error)
 	Payments(request OperationRequest) (operations.OperationsPage, error)
+	TradeAggregations(request TradeAggregationRequest) (hProtocol.TradeAggregationsPage, error)
 }
 
 // DefaultTestNetClient is a default client to connect to test network
@@ -233,4 +234,20 @@ type PathsRequest struct {
 	DestinationAssetIssuer string
 	DestinationAmount      string
 	SourceAccount          string
+}
+
+// TradeAggregationRequest struct contains data for getting trade aggregations from an horizon server
+type TradeAggregationRequest struct {
+	StartTime          string
+	EndTime            string
+	Resolution         string
+	Offset             string
+	BaseAssetType      AssetType
+	BaseAssetCode      string
+	BaseAssetIssuer    string
+	CounterAssetType   AssetType
+	CounterAssetCode   string
+	CounterAssetIssuer string
+	Order              Order
+	Limit              uint
 }

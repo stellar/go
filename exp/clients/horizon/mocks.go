@@ -124,5 +124,11 @@ func (m *MockClient) Payments(request OperationRequest) (operations.OperationsPa
 	return a.Get(0).(operations.OperationsPage), a.Error(1)
 }
 
+// TradeAggregations is a mocking method
+func (m *MockClient) TradeAggregations(request TradeAggregationRequest) (hProtocol.TradeAggregationsPage, error) {
+	a := m.Called(request)
+	return a.Get(0).(hProtocol.TradeAggregationsPage), a.Error(1)
+}
+
 // ensure that the MockClient implements ClientInterface
 var _ ClientInterface = &MockClient{}
