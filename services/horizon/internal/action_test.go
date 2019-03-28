@@ -16,6 +16,12 @@ import (
 	"github.com/stellar/go/support/render/hal"
 )
 
+var defaultPage db2.PageQuery = db2.PageQuery{
+	Order:  db2.OrderAscending,
+	Limit:  db2.DefaultPageSize,
+	Cursor: "",
+}
+
 func TestGetAccountInfo(t *testing.T) {
 	tt := test.Start(t).Scenario("allow_trust")
 	defer tt.Finish()
@@ -45,27 +51,54 @@ func TestGetAccountInfo(t *testing.T) {
 	tt.Assert.Equal(errors.Cause(err), sql.ErrNoRows)
 }
 
-func TestGetTransactionPageByAccount(t *testing.T) {
+func TestGetTransactionPage(t *testing.T) {
 	tt := test.Start(t).Scenario("base")
 	defer tt.Finish()
 
-	w := mustInitWeb(context.Background(), &history.Q{tt.HorizonSession()}, &core.Q{tt.CoreSession()}, time.Duration(5), 0, true)
+	ctx := context.Background()
+	w := mustInitWeb(ctx, &history.Q{tt.HorizonSession()}, &core.Q{tt.CoreSession()}, time.Duration(5), 0, true)
 
+	// filter by account
 	params := &actions.TransactionParams{
 		AccountFilter: "GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H",
-		PagingParams: db2.PageQuery{
-			Order:  db2.OrderAscending,
-			Limit:  db2.DefaultPageSize,
-			Cursor: "",
-		},
+		PagingParams:  defaultPage,
 		IncludeFailed: true,
 	}
 
-	page, err := w.getTransactionPageByAccount(context.Background(), params)
+	page, err := w.getTransactionPage(ctx, params)
 	pageVal, ok := page.(hal.Page)
 	if !ok {
 		tt.Assert.FailNow("returned type mismatch")
 	}
 	tt.Assert.NoError(err)
 	tt.Assert.Equal(3, len(pageVal.Embedded.Records))
+
+	// filter by ledger
+	params = &actions.TransactionParams{
+		LedgerFilter:  3,
+		PagingParams:  defaultPage,
+		IncludeFailed: true,
+	}
+
+	page, err = w.getTransactionPage(ctx, params)
+	pageVal, ok = page.(hal.Page)
+	if !ok {
+		tt.Assert.FailNow("returned type mismatch")
+	}
+	tt.Assert.NoError(err)
+	tt.Assert.Equal(1, len(pageVal.Embedded.Records))
+
+	// no filter
+	params = &actions.TransactionParams{
+		PagingParams:  defaultPage,
+		IncludeFailed: true,
+	}
+
+	page, err = w.getTransactionPage(ctx, params)
+	pageVal, ok = page.(hal.Page)
+	if !ok {
+		tt.Assert.FailNow("returned type mismatch")
+	}
+	tt.Assert.NoError(err)
+	tt.Assert.Equal(4, len(pageVal.Embedded.Records))
 }

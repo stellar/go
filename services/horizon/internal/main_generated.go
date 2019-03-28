@@ -124,12 +124,6 @@ func (action TransactionCreateAction) Handle(w http.ResponseWriter, r *http.Requ
 	ap.Execute(&action)
 }
 
-func (action TransactionIndexAction) Handle(w http.ResponseWriter, r *http.Request) {
-	ap := &action.Action
-	ap.Prepare(w, r)
-	ap.Execute(&action)
-}
-
 func (action TransactionShowAction) Handle(w http.ResponseWriter, r *http.Request) {
 	ap := &action.Action
 	ap.Prepare(w, r)

@@ -64,17 +64,19 @@ type HasProblem interface {
 // of the `HasProblem` interface, or an error.  Any other value for `p` will
 // panic.
 func Render(ctx context.Context, w http.ResponseWriter, p interface{}) {
-	switch p := p.(type) {
+	unwrapped := errors.Cause(p.(error))
+	switch problem := unwrapped.(type) {
 	case P:
-		render(ctx, w, p)
+		render(ctx, w, problem)
 	case *P:
-		render(ctx, w, *p)
+		render(ctx, w, *problem)
 	case HasProblem:
-		render(ctx, w, p.Problem())
+		render(ctx, w, problem.Problem())
 	case error:
-		renderErr(ctx, w, p)
+		// we want to log the error stack
+		renderErr(ctx, w, p.(error))
 	default:
-		panic(fmt.Sprintf("Invalid problem: %v+", p))
+		panic(fmt.Sprintf("Invalid problem: %v+", problem))
 	}
 }
 

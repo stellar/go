@@ -166,32 +166,34 @@ func (w *web) getAccountInfo(ctx context.Context, param interface{}) (interface{
 	return actions.AccountInfo(ctx, &core.Q{w.coreSession(ctx)}, addr)
 }
 
-// getTransactionPageByAccount returns a page containing the transaction records of an account.
+// getTransactionPage returns a page containing the transaction records of an account or a ledger.
 // The expected param here is a pointer to TransactionParams.
-func (w *web) getTransactionPageByAccount(ctx context.Context, params interface{}) (interface{}, error) {
+func (w *web) getTransactionPage(ctx context.Context, params interface{}) (interface{}, error) {
 	tp, ok := params.(*actions.TransactionParams)
 	if !ok {
-		return nil, errors.New("Invalid param type for getTransactionPageByAccount func")
+		return nil, errors.New("Invalid param type for getTransactionPage func")
 	}
+
 	horizonSession, err := w.horizonSession(ctx)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting horizon db session")
 	}
 
-	return actions.TransactionPageByAccount(ctx, &history.Q{horizonSession}, tp.AccountFilter, tp.IncludeFailed, tp.PagingParams)
+	return actions.TransactionPage(ctx, &history.Q{horizonSession}, tp.AccountFilter, tp.LedgerFilter, tp.IncludeFailed, tp.PagingParams)
 }
 
-// streamTransactionByAccount streams the transaction records of an account.
+// streamTransactions streams the transaction records of an account or a ledger.
 // The expected param here is a pointer to TransactionParams.
-func (w *web) streamTransactionByAccount(ctx context.Context, s *sse.Stream, params interface{}) error {
+func (w *web) streamTransactions(ctx context.Context, s *sse.Stream, params interface{}) error {
 	tp, ok := params.(*actions.TransactionParams)
 	if !ok {
-		return errors.New("Invalid param type for streamTransactionByAccount func")
+		return errors.New("Invalid param type for streamTransactions func")
 	}
+
 	horizonSession, err := w.horizonSession(ctx)
 	if err != nil {
 		return errors.Wrap(err, "getting horizon db session")
 	}
 
-	return actions.StreamTransactionByAccount(ctx, s, &history.Q{horizonSession}, tp.AccountFilter, tp.IncludeFailed, tp.PagingParams)
+	return actions.StreamTransactions(ctx, s, &history.Q{horizonSession}, tp.AccountFilter, tp.LedgerFilter, tp.IncludeFailed, tp.PagingParams)
 }
