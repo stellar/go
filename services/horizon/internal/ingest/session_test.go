@@ -137,17 +137,19 @@ func TestIngestTradeEffects(t *testing.T) {
 
 	// reset effects
 	effects = nil
-	err = q.Effects().ForLedger(24).Select(&effects)
+	pq, err := db2.NewPageQuery("", true, "asc", 200)
+	tt.Require.NoError(err)
+
+	err = q.Effects().ForLedger(24).Page(pq).Select(&effects)
 	tt.Require.NoError(err)
 
 	if tt.Assert.Len(effects, 3) {
 		tt.Assert.Equal(history.EffectTrade, effects[0].Type)
+		tt.Assert.Equal(history.EffectTrade, effects[1].Type)
 
-		if tt.Assert.Equal(history.EffectOfferCreated, effects[1].Type) {
-			tt.Assert.Equal(`{"price": "1.0000000", "amount": "10.0000000", "seller": "GB2QIYT2IAUFMRXKLSLLPRECC6OCOGJMADSPTRK7TGNT2SFR2YGWDARD", "price_r": {"d": 1, "n": 1}, "offer_id": 4, "buying_asset_type": "native", "selling_asset_code": "USD", "selling_asset_type": "credit_alphanum4", "selling_asset_issuer": "GB2QIYT2IAUFMRXKLSLLPRECC6OCOGJMADSPTRK7TGNT2SFR2YGWDARD"}`, effects[1].DetailsString.String)
+		if tt.Assert.Equal(history.EffectOfferCreated, effects[2].Type) {
+			tt.Assert.Equal(`{"price": "1.0000000", "amount": "10.0000000", "seller": "GB2QIYT2IAUFMRXKLSLLPRECC6OCOGJMADSPTRK7TGNT2SFR2YGWDARD", "price_r": {"d": 1, "n": 1}, "offer_id": 4, "buying_asset_type": "native", "selling_asset_code": "USD", "selling_asset_type": "credit_alphanum4", "selling_asset_issuer": "GB2QIYT2IAUFMRXKLSLLPRECC6OCOGJMADSPTRK7TGNT2SFR2YGWDARD"}`, effects[2].DetailsString.String)
 		}
-
-		tt.Assert.Equal(history.EffectTrade, effects[2].Type)
 	}
 }
 
