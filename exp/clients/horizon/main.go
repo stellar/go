@@ -72,22 +72,22 @@ var (
 	// HorizonTimeOut is the default number of seconds before a request to horizon times out.
 	HorizonTimeOut = time.Duration(60)
 
-	// MinuteResolution is represents 1 minute used as `resolution` parameter in trade aggregation
+	// MinuteResolution represents 1 minute used as `resolution` parameter in trade aggregation
 	MinuteResolution = time.Duration(1 * time.Minute)
 
-	// FiveMinuteResolution is represents 5 minute used as `resolution` parameter in trade aggregation
+	// FiveMinuteResolution represents 5 minutes used as `resolution` parameter in trade aggregation
 	FiveMinuteResolution = time.Duration(5 * time.Minute)
 
-	// FifteenMinuteResolution is represents 15 minute used as `resolution` parameter in trade aggregation
+	// FifteenMinuteResolution represents 15 minutes used as `resolution` parameter in trade aggregation
 	FifteenMinuteResolution = time.Duration(15 * time.Minute)
 
-	// HourResolution is represents 1 hour used as `resolution` parameter in trade aggregation
+	// HourResolution represents 1 hour used as `resolution` parameter in trade aggregation
 	HourResolution = time.Duration(1 * time.Hour)
 
-	// DayResolution is represents 1 day used as `resolution` parameter in trade aggregation
+	// DayResolution represents 1 day used as `resolution` parameter in trade aggregation
 	DayResolution = time.Duration(24 * time.Hour)
 
-	// WeekResolution is represents 1 week used as `resolution` parameter in trade aggregation
+	// WeekResolution represents 1 week used as `resolution` parameter in trade aggregation
 	WeekResolution = time.Duration(168 * time.Hour)
 )
 
