@@ -258,6 +258,13 @@ func (c *Client) Payments(request OperationRequest) (ops operations.OperationsPa
 	return
 }
 
+// Trades returns stellar trades (https://www.stellar.org/developers/horizon/reference/resources/trade.html)
+// It can be used to return trades for an account, an offer and all trades on the network.
+func (c *Client) Trades(request TradeRequest) (tds hProtocol.TradesPage, err error) {
+	err = c.sendRequest(request, &tds)
+	return
+}
+
 // TradeAggregations returns stellar trade aggregations (https://www.stellar.org/developers/horizon/reference/resources/trade_aggregation.html)
 func (c *Client) TradeAggregations(request TradeAggregationRequest) (tds hProtocol.TradeAggregationsPage, err error) {
 	err = c.sendRequest(request, &tds)
