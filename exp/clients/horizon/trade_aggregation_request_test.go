@@ -13,16 +13,11 @@ import (
 
 var testTime = time.Unix(int64(1517521726), int64(0))
 
-// var testTime = time.Now()
-// 1553796093000
-// 1553795972695
-// 1517521726000
-
 func TestTradeAggregationRequestBuildUrl(t *testing.T) {
 	ta := TradeAggregationRequest{
 		StartTime:          testTime,
 		EndTime:            testTime,
-		Resolution:         "3600000",
+		Resolution:         HourResolution,
 		BaseAssetType:      AssetTypeNative,
 		CounterAssetType:   AssetType4,
 		CounterAssetCode:   "SLT",
@@ -33,7 +28,7 @@ func TestTradeAggregationRequestBuildUrl(t *testing.T) {
 
 	// It should return valid trade aggregation endpoint and no errors
 	require.NoError(t, err)
-	assert.Equal(t, "trade_aggregations?base_asset_type=native&counter_asset_code=SLT&counter_asset_issuer=GCKA6K5PCQ6PNF5RQBF7PQDJWRHO6UOGFMRLK3DYHDOI244V47XKQ4GP&counter_asset_type=credit_alphanum4&end_time=1517521726000&order=desc&resolution=3600000&start_time=1517521726000", endpoint)
+	assert.Equal(t, "trade_aggregations?base_asset_type=native&counter_asset_code=SLT&counter_asset_issuer=GCKA6K5PCQ6PNF5RQBF7PQDJWRHO6UOGFMRLK3DYHDOI244V47XKQ4GP&counter_asset_type=credit_alphanum4&end_time=1517521726000&offset=0&order=desc&resolution=3600000&start_time=1517521726000", endpoint)
 }
 
 func ExampleClient_TradeAggregations() {
@@ -43,7 +38,7 @@ func ExampleClient_TradeAggregations() {
 	ta := TradeAggregationRequest{
 		StartTime:          testTime,
 		EndTime:            testTime,
-		Resolution:         "3600000",
+		Resolution:         FiveMinuteResolution,
 		BaseAssetType:      AssetTypeNative,
 		CounterAssetType:   AssetType4,
 		CounterAssetCode:   "SLT",
@@ -68,7 +63,7 @@ func TestTradeAggregationsRequest(t *testing.T) {
 	taRequest := TradeAggregationRequest{
 		StartTime:          testTime,
 		EndTime:            testTime,
-		Resolution:         "3600000",
+		Resolution:         DayResolution,
 		BaseAssetType:      AssetTypeNative,
 		CounterAssetType:   AssetType4,
 		CounterAssetCode:   "SLT",
@@ -78,7 +73,7 @@ func TestTradeAggregationsRequest(t *testing.T) {
 
 	hmock.On(
 		"GET",
-		"https://localhost/trade_aggregations?base_asset_type=native&counter_asset_code=SLT&counter_asset_issuer=GCKA6K5PCQ6PNF5RQBF7PQDJWRHO6UOGFMRLK3DYHDOI244V47XKQ4GP&counter_asset_type=credit_alphanum4&end_time=1517521726000&order=desc&resolution=3600000&start_time=1517521726000",
+		"https://localhost/trade_aggregations?base_asset_type=native&counter_asset_code=SLT&counter_asset_issuer=GCKA6K5PCQ6PNF5RQBF7PQDJWRHO6UOGFMRLK3DYHDOI244V47XKQ4GP&counter_asset_type=credit_alphanum4&end_time=1517521726000&offset=0&order=desc&resolution=86400000&start_time=1517521726000",
 	).ReturnString(200, tradeAggsResponse)
 
 	tradeAggs, err := client.TradeAggregations(taRequest)
@@ -110,7 +105,7 @@ func TestTradeAggregationsRequest(t *testing.T) {
 
 	hmock.On(
 		"GET",
-		"https://localhost/trade_aggregations?base_asset_type=native&counter_asset_code=SLT&counter_asset_issuer=GCKA6K5PCQ6PNF5RQBF7PQDJWRHO6UOGFMRLK3DYHDOI244V47XKQ4GP&counter_asset_type=credit_alphanum4&end_time=1517521726000&order=desc&start_time=1517521726000",
+		"https://localhost/trade_aggregations?base_asset_type=native&counter_asset_code=SLT&counter_asset_issuer=GCKA6K5PCQ6PNF5RQBF7PQDJWRHO6UOGFMRLK3DYHDOI244V47XKQ4GP&counter_asset_type=credit_alphanum4&end_time=1517521726000&offset=0&order=desc&resolution=0&start_time=1517521726000",
 	).ReturnString(400, badRequestResponse)
 
 	_, err = client.TradeAggregations(taRequest)
