@@ -71,6 +71,24 @@ var (
 
 	// HorizonTimeOut is the default number of seconds before a request to horizon times out.
 	HorizonTimeOut = time.Duration(60)
+
+	// MinuteResolution represents 1 minute used as `resolution` parameter in trade aggregation
+	MinuteResolution = time.Duration(1 * time.Minute)
+
+	// FiveMinuteResolution represents 5 minutes used as `resolution` parameter in trade aggregation
+	FiveMinuteResolution = time.Duration(5 * time.Minute)
+
+	// FifteenMinuteResolution represents 15 minutes used as `resolution` parameter in trade aggregation
+	FifteenMinuteResolution = time.Duration(15 * time.Minute)
+
+	// HourResolution represents 1 hour used as `resolution` parameter in trade aggregation
+	HourResolution = time.Duration(1 * time.Hour)
+
+	// DayResolution represents 1 day used as `resolution` parameter in trade aggregation
+	DayResolution = time.Duration(24 * time.Hour)
+
+	// WeekResolution represents 1 week used as `resolution` parameter in trade aggregation
+	WeekResolution = time.Duration(168 * time.Hour)
 )
 
 // HTTP represents the HTTP client that a horizon client uses to communicate
@@ -107,6 +125,7 @@ type ClientInterface interface {
 	OrderBook(request OrderBookRequest) (hProtocol.OrderBookSummary, error)
 	Paths(request PathsRequest) (hProtocol.PathsPage, error)
 	Payments(request OperationRequest) (operations.OperationsPage, error)
+	TradeAggregations(request TradeAggregationRequest) (hProtocol.TradeAggregationsPage, error)
 	Trades(request TradeRequest) (hProtocol.TradesPage, error)
 }
 
@@ -248,5 +267,21 @@ type TradeRequest struct {
 	CounterAssetIssuer string
 	Order              Order
 	Cursor             string
+	Limit              uint
+}
+
+// TradeAggregationRequest struct contains data for getting trade aggregations from an horizon server
+type TradeAggregationRequest struct {
+	StartTime          time.Time
+	EndTime            time.Time
+	Resolution         time.Duration
+	Offset             time.Duration
+	BaseAssetType      AssetType
+	BaseAssetCode      string
+	BaseAssetIssuer    string
+	CounterAssetType   AssetType
+	CounterAssetCode   string
+	CounterAssetIssuer string
+	Order              Order
 	Limit              uint
 }
