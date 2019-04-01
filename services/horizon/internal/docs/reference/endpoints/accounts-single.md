@@ -80,6 +80,7 @@ This endpoint responds with the details of a single account for a given ID. See 
   "account_id": "GD42RQNXTRIW6YR3E2HXV5T2AI27LBRHOERV2JIYNFMXOBA234SWLQQB",
   "sequence": 7275146318446606,
   "subentry_count": 5,
+  "last_modified_ledger": 22379074,
   "thresholds": {
     "low_threshold": 0,
     "med_threshold": 0,

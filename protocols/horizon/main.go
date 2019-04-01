@@ -604,3 +604,19 @@ type FeeStats struct {
 	P95AcceptedFee      int     `json:"p95_accepted_fee,string"`
 	P99AcceptedFee      int     `json:"p99_accepted_fee,string"`
 }
+
+// TransactionsPage contains records of transaction information returned by Horizon
+type TransactionsPage struct {
+	Links    hal.Links `json:"_links"`
+	Embedded struct {
+		Records []Transaction
+	} `json:"_embedded"`
+}
+
+// PathsPage contains records of payment paths found by horizon
+type PathsPage struct {
+	Links    hal.Links `json:"_links"`
+	Embedded struct {
+		Records []Path
+	} `json:"_embedded"`
+}
