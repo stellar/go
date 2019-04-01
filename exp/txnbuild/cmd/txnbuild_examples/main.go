@@ -74,7 +74,7 @@ func main() {
 func examplePathPayment(client *horizon.Client, mock bool) horizon.TransactionSuccess {
 	// test0 - distributor of ABCD token
 	// test1 - has a trustline for ABCD
-	// test2 - needs a trustline for ABCD?
+	// test2 - doesn't need a trustline for ABCD
 	keys := initKeys()
 	abcdAsset := txnbuild.Asset{
 		Code:   "ABCD",
