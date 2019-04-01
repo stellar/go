@@ -4,11 +4,13 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"net/http"
-
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/support/log"
+	"net/http"
+	"strings"
 )
+
+const horizonHost = "https://stellar.org/horizon-errors/"
 
 // P is a struct that represents an error response to be rendered to a connected
 // client.
@@ -44,8 +46,10 @@ func RegisterError(err error, p P) {
 func Inflate(p *P) {
 	//TODO: add requesting url to extra info
 
-	//TODO: make this prefix configurable
-	p.Type = "https://stellar.org/horizon-errors/" + p.Type
+	if !strings.HasPrefix(p.Type, horizonHost) {
+		//TODO: make the horizonHost prefix configurable
+		p.Type = horizonHost + p.Type
+	}
 
 	p.Instance = ""
 }
