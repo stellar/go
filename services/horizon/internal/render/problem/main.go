@@ -21,7 +21,7 @@ var (
 	// in your actions.
 	RateLimitExceeded = problem.P{
 		Type:   "rate_limit_exceeded",
-		Title:  "Rate limit exceeded",
+		Title:  "Rate Limit Exceeded",
 		Status: 429,
 		Detail: "The rate limit for the requesting IP address is over its alloted " +
 			"limit.  The allowed limit and requests left per time period are " +
