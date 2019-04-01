@@ -42,7 +42,7 @@ func (m *MockClient) Stream(ctx context.Context,
 	request StreamRequest,
 	handler func(interface{}),
 ) error {
-	a := m.Called(request, ctx, handler)
+	a := m.Called(ctx, request, handler)
 	return a.Error(0)
 }
 

@@ -150,7 +150,7 @@ type HorizonRequest interface {
 
 // StreamRequest contains methods implemented by request structs for endpoints that support streaming
 type StreamRequest interface {
-	Stream(ctx context.Context, horizonURL string, handler func(interface{})) error
+	Stream(ctx context.Context, client *Client, handler func(interface{})) error
 }
 
 // AccountRequest struct contains data for making requests to the accounts endpoint of an horizon server
