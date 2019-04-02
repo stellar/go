@@ -18,27 +18,31 @@ type CreatePassiveOffer struct {
 
 // BuildXDR for CreatePassiveOffer returns a fully configured XDR Operation.
 func (cpo *CreatePassiveOffer) BuildXDR() (xdr.Operation, error) {
-	var err error
-	var xdrOp xdr.CreatePassiveOfferOp
-
-	xdrOp.Selling, err = cpo.Selling.ToXDR()
+	xdrSelling, err := cpo.Selling.ToXDR()
 	if err != nil {
 		return xdr.Operation{}, errors.Wrap(err, "Failed to set XDR 'Selling' field")
 	}
 
-	xdrOp.Buying, err = cpo.Buying.ToXDR()
+	xdrBuying, err := cpo.Buying.ToXDR()
 	if err != nil {
 		return xdr.Operation{}, errors.Wrap(err, "Failed to set XDR 'Buying' field")
 	}
 
-	xdrOp.Amount, err = amount.Parse(cpo.Amount)
+	xdrAmount, err := amount.Parse(cpo.Amount)
 	if err != nil {
 		return xdr.Operation{}, errors.Wrap(err, "Failed to parse 'Amount'")
 	}
 
-	xdrOp.Price, err = price.Parse(cpo.Price)
+	xdrPrice, err := price.Parse(cpo.Price)
 	if err != nil {
 		return xdr.Operation{}, errors.Wrap(err, "Failed to parse 'Price'")
+	}
+
+	xdrOp := xdr.CreatePassiveOfferOp{
+		Selling: xdrSelling,
+		Buying:  xdrBuying,
+		Amount:  xdrAmount,
+		Price:   xdrPrice,
 	}
 
 	opType := xdr.OperationTypeCreatePassiveOffer

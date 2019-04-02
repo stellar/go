@@ -58,35 +58,34 @@ type ManageOffer struct {
 
 // BuildXDR for ManageOffer returns a fully configured XDR Operation.
 func (mo *ManageOffer) BuildXDR() (xdr.Operation, error) {
-	var xdrOp xdr.ManageOfferOp
-
 	xdrSelling, err := mo.Selling.ToXDR()
 	if err != nil {
 		return xdr.Operation{}, errors.Wrap(err, "Failed to set XDR 'Selling' field")
 	}
-	xdrOp.Selling = xdrSelling
 
 	xdrBuying, err := mo.Buying.ToXDR()
 	if err != nil {
 		return xdr.Operation{}, errors.Wrap(err, "Failed to set XDR 'Buying' field")
 	}
-	xdrOp.Buying = xdrBuying
 
 	xdrAmount, err := amount.Parse(mo.Amount)
 	if err != nil {
 		return xdr.Operation{}, errors.Wrap(err, "Failed to parse 'Amount'")
 	}
-	xdrOp.Amount = xdrAmount
 
 	xdrPrice, err := price.Parse(mo.Price)
 	if err != nil {
 		return xdr.Operation{}, errors.Wrap(err, "Failed to parse 'Price'")
 	}
-	xdrOp.Price = xdrPrice
-
-	xdrOp.OfferId = xdr.Uint64(mo.OfferID)
 
 	opType := xdr.OperationTypeManageOffer
+	xdrOp := xdr.ManageOfferOp{
+		Selling: xdrSelling,
+		Buying:  xdrBuying,
+		Amount:  xdrAmount,
+		Price:   xdrPrice,
+		OfferId: xdr.Uint64(mo.OfferID),
+	}
 	body, err := xdr.NewOperationBody(opType, xdrOp)
 
 	return xdr.Operation{Body: body}, errors.Wrap(err, "Failed to build XDR OperationBody")
