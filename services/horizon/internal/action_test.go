@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/stellar/go/protocols/horizon"
-	"github.com/stellar/go/services/horizon/internal/actions"
 	"github.com/stellar/go/services/horizon/internal/db2"
 	"github.com/stellar/go/services/horizon/internal/db2/core"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
@@ -59,10 +58,10 @@ func TestGetTransactionPage(t *testing.T) {
 	w := mustInitWeb(ctx, &history.Q{tt.HorizonSession()}, &core.Q{tt.CoreSession()}, time.Duration(5), 0, true)
 
 	// filter by account
-	params := &actions.TransactionParams{
-		AccountFilter: "GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H",
-		PagingParams:  defaultPage,
-		IncludeFailed: true,
+	params := &indexActionQueryParams{
+		accountID:        "GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H",
+		pagingParams:     defaultPage,
+		includeFailedTxs: true,
 	}
 
 	page, err := w.getTransactionPage(ctx, params)
@@ -74,10 +73,10 @@ func TestGetTransactionPage(t *testing.T) {
 	tt.Assert.Equal(3, len(pageVal.Embedded.Records))
 
 	// filter by ledger
-	params = &actions.TransactionParams{
-		LedgerFilter:  3,
-		PagingParams:  defaultPage,
-		IncludeFailed: true,
+	params = &indexActionQueryParams{
+		ledgerID:         3,
+		pagingParams:     defaultPage,
+		includeFailedTxs: true,
 	}
 
 	page, err = w.getTransactionPage(ctx, params)
@@ -89,9 +88,9 @@ func TestGetTransactionPage(t *testing.T) {
 	tt.Assert.Equal(1, len(pageVal.Embedded.Records))
 
 	// no filter
-	params = &actions.TransactionParams{
-		PagingParams:  defaultPage,
-		IncludeFailed: true,
+	params = &indexActionQueryParams{
+		pagingParams:     defaultPage,
+		includeFailedTxs: true,
 	}
 
 	page, err = w.getTransactionPage(ctx, params)

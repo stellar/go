@@ -5,52 +5,12 @@ import (
 
 	"github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/services/horizon/internal/actions"
-	"github.com/stellar/go/services/horizon/internal/db2/history"
 	hProblem "github.com/stellar/go/services/horizon/internal/render/problem"
 	"github.com/stellar/go/services/horizon/internal/resourceadapter"
 	"github.com/stellar/go/services/horizon/internal/txsub"
 	"github.com/stellar/go/support/render/hal"
 	"github.com/stellar/go/support/render/problem"
 )
-
-// This file contains the action:
-//
-// TransactionShowAction: single transaction by sequence, by hash or id
-
-// Interface verification
-var _ actions.JSONer = (*TransactionShowAction)(nil)
-
-// TransactionShowAction renders a ledger found by its sequence number.
-type TransactionShowAction struct {
-	Action
-	Hash     string
-	Record   history.Transaction
-	Resource horizon.Transaction
-}
-
-func (action *TransactionShowAction) loadParams() {
-	action.Hash = action.GetString("tx_id")
-}
-
-func (action *TransactionShowAction) loadRecord() {
-	action.Err = action.HistoryQ().TransactionByHash(&action.Record, action.Hash)
-}
-
-func (action *TransactionShowAction) loadResource() {
-	resourceadapter.PopulateTransaction(action.R.Context(), &action.Resource, action.Record)
-}
-
-// JSON is a method for actions.JSON
-func (action *TransactionShowAction) JSON() error {
-	action.Do(
-		action.EnsureHistoryFreshness,
-		action.loadParams,
-		action.loadRecord,
-		action.loadResource,
-		func() { hal.Render(action.W, action.Resource) },
-	)
-	return action.Err
-}
 
 // Interface verification
 var _ actions.JSONer = (*TransactionCreateAction)(nil)

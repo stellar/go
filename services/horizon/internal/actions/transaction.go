@@ -13,13 +13,6 @@ import (
 	"github.com/stellar/go/xdr"
 )
 
-type TransactionParams struct {
-	AccountFilter string
-	LedgerFilter  int32
-	PagingParams  db2.PageQuery
-	IncludeFailed bool
-}
-
 // TransactionPage returns a page containing the transaction records of an
 // account/ledger identified by accountID/ledgerID into a page based on pq and
 // includeFailedTx.
@@ -112,4 +105,19 @@ func StreamTransactions(ctx context.Context, s *sse.Stream, hq *history.Q, accou
 	}
 
 	return nil
+}
+
+// TransactionResource returns a single transaction resource identified by txHash.
+func TransactionResource(ctx context.Context, hq *history.Q, txHash string) (horizon.Transaction, error) {
+	var (
+		record   history.Transaction
+		resource horizon.Transaction
+	)
+	err := hq.TransactionByHash(&record, txHash)
+	if err != nil {
+		return resource, errors.Wrap(err, "loading transaction record")
+	}
+
+	resourceadapter.PopulateTransaction(ctx, &resource, record)
+	return resource, nil
 }
