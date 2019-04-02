@@ -66,8 +66,95 @@ func main() {
 	// resp := exampleManageOfferNewOffer(client, false)
 	// resp := exampleManageOfferDeleteOffer(client, false)
 	// resp := exampleManageOfferUpdateOffer(client, false)
-	resp := exampleCreatePassiveOffer(client, false)
+	// resp := exampleCreatePassiveOffer(client, false)
+	resp := examplePathPayment(client, false)
 	fmt.Println(resp.TransactionSuccessToString())
+}
+
+func examplePathPayment(client *horizon.Client, mock bool) horizon.TransactionSuccess {
+	// test0 - distributor of ABCD token
+	// test1 - has a trustline for ABCD
+	// test2 - doesn't need a trustline for ABCD
+	keys := initKeys()
+	abcdAsset := txnbuild.Asset{
+		Code:   "ABCD",
+		Issuer: keys[0].Address,
+	}
+	xlmAsset := txnbuild.NewNativeAsset()
+
+	// test0 creates an offer to sell ABCD
+	horizonSourceAccount0, err := client.LoadAccount(keys[0].Address)
+	dieIfError("loadaccount", err)
+	sourceAccount0 := mapAccounts(horizonSourceAccount0)
+
+	selling1 := &abcdAsset
+	buying1 := xlmAsset
+	sellAmount1 := "5"
+	price1 := "4"
+	offer1 := txnbuild.NewCreateOfferOp(selling1, buying1, sellAmount1, price1)
+
+	// test1 creates an offer to buy ABCD
+	horizonSourceAccount1, err := client.LoadAccount(keys[1].Address)
+	dieIfError("loadaccount", err)
+	sourceAccount1 := mapAccounts(horizonSourceAccount1)
+
+	selling2 := xlmAsset
+	buying2 := &abcdAsset
+	sellAmount2 := "10"
+	price2 := "1"
+	offer2 := txnbuild.NewCreateOfferOp(selling2, buying2, sellAmount2, price2)
+
+	// test2 performs the path payment
+	horizonSourceAccount2, err := client.LoadAccount(keys[2].Address)
+	dieIfError("loadaccount", err)
+	sourceAccount2 := mapAccounts(horizonSourceAccount2)
+
+	pathPayment := txnbuild.PathPayment{
+		SendAsset:   xlmAsset,
+		SendMax:     "10",
+		Destination: keys[2].Address,
+		DestAsset:   xlmAsset,
+		DestAmount:  "1",
+		Path:        []txnbuild.Asset{abcdAsset},
+	}
+
+	var resp horizon.TransactionSuccess
+	// Submit the first offer
+	tx1 := txnbuild.Transaction{
+		SourceAccount: sourceAccount0,
+		Operations:    []txnbuild.Operation{&offer1},
+		Network:       network.TestNetworkPassphrase,
+	}
+	txeBase64_1 := buildSignEncode(tx1, keys[0].Keypair)
+	log.Println("Base 64 TX: ", txeBase64_1)
+
+	resp = submit(client, txeBase64_1, mock)
+	fmt.Println(resp.TransactionSuccessToString())
+
+	// Submit the second offer
+	tx2 := txnbuild.Transaction{
+		SourceAccount: sourceAccount1,
+		Operations:    []txnbuild.Operation{&offer2},
+		Network:       network.TestNetworkPassphrase,
+	}
+	txeBase64_2 := buildSignEncode(tx2, keys[1].Keypair)
+	log.Println("Base 64 TX: ", txeBase64_2)
+
+	resp = submit(client, txeBase64_2, mock)
+	fmt.Println(resp.TransactionSuccessToString())
+
+	// Submit the path payment
+	tx3 := txnbuild.Transaction{
+		SourceAccount: sourceAccount2,
+		Operations:    []txnbuild.Operation{&pathPayment},
+		Network:       network.TestNetworkPassphrase,
+	}
+	txeBase64_3 := buildSignEncode(tx3, keys[2].Keypair)
+	log.Println("Base 64 TX: ", txeBase64_3)
+
+	resp = submit(client, txeBase64_3, mock)
+
+	return resp
 }
 
 func exampleCreatePassiveOffer(client *horizon.Client, mock bool) horizon.TransactionSuccess {
@@ -137,7 +224,7 @@ func exampleManageOfferDeleteOffer(client *horizon.Client, mock bool) horizon.Tr
 	dieIfError("loadaccount", err)
 	sourceAccount := mapAccounts(horizonSourceAccount)
 
-	offerID := uint64(2497628)
+	offerID := uint64(4326054)
 
 	deleteOffer := txnbuild.NewDeleteOfferOp(offerID)
 
@@ -215,7 +302,7 @@ func exampleChangeTrust(client *horizon.Client, mock bool) horizon.TransactionSu
 	issuer := txnbuild.NewAsset("ABCD", keys[0].Address)
 	changeTrust := txnbuild.ChangeTrust{
 		Line:  issuer,
-		Limit: "10",
+		Limit: "1000",
 	}
 
 	tx := txnbuild.Transaction{
