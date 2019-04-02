@@ -169,9 +169,9 @@ type showActionQueryParams struct {
 }
 
 // getAccountInfo returns the information about an account based on the provided param.
-// The expected param here is the account id, which has a string type.
-func (w *web) getAccountInfo(ctx context.Context, param interface{}) (interface{}, error) {
-	qp, ok := param.(*showActionQueryParams)
+// The expected params type is a pointer to showActionQueryParams.
+func (w *web) getAccountInfo(ctx context.Context, params interface{}) (interface{}, error) {
+	qp, ok := params.(*showActionQueryParams)
 	if !ok {
 		return nil, errors.New("Invalid param type for getAccountInfo func")
 	}
@@ -180,9 +180,9 @@ func (w *web) getAccountInfo(ctx context.Context, param interface{}) (interface{
 }
 
 // getTransactionPage returns a page containing the transaction records of an account or a ledger.
-// The expected param here is a pointer to TransactionParams.
+// The expected params type is a pointer to indexActionQueryParams.
 func (w *web) getTransactionPage(ctx context.Context, params interface{}) (interface{}, error) {
-	tp, ok := params.(*indexActionQueryParams)
+	qp, ok := params.(*indexActionQueryParams)
 	if !ok {
 		return nil, errors.New("Invalid param type for getTransactionPage func")
 	}
@@ -192,11 +192,11 @@ func (w *web) getTransactionPage(ctx context.Context, params interface{}) (inter
 		return nil, errors.Wrap(err, "getting horizon db session")
 	}
 
-	return actions.TransactionPage(ctx, &history.Q{horizonSession}, tp.accountID, tp.ledgerID, tp.includeFailedTxs, tp.pagingParams)
+	return actions.TransactionPage(ctx, &history.Q{horizonSession}, qp.accountID, qp.ledgerID, qp.includeFailedTxs, qp.pagingParams)
 }
 
 // getTransactionRecord returns a single transaction resource.
-// The expected param here is the transaction hash, which has a string type.
+// The expected params type is a pointer to showActionQueryParams.
 func (w *web) getTransactionResource(ctx context.Context, params interface{}) (interface{}, error) {
 	qp, ok := params.(*showActionQueryParams)
 	if !ok {
@@ -212,9 +212,9 @@ func (w *web) getTransactionResource(ctx context.Context, params interface{}) (i
 }
 
 // streamTransactions streams the transaction records of an account or a ledger.
-// The expected param here is a pointer to TransactionParams.
+// The expected params type is a pointer to indexActionQueryParams.
 func (w *web) streamTransactions(ctx context.Context, s *sse.Stream, params interface{}) error {
-	tp, ok := params.(*indexActionQueryParams)
+	qp, ok := params.(*indexActionQueryParams)
 	if !ok {
 		return errors.New("Invalid param type for streamTransactions func")
 	}
@@ -224,5 +224,5 @@ func (w *web) streamTransactions(ctx context.Context, s *sse.Stream, params inte
 		return errors.Wrap(err, "getting horizon db session")
 	}
 
-	return actions.StreamTransactions(ctx, s, &history.Q{horizonSession}, tp.accountID, tp.ledgerID, tp.includeFailedTxs, tp.pagingParams)
+	return actions.StreamTransactions(ctx, s, &history.Q{horizonSession}, qp.accountID, qp.ledgerID, qp.includeFailedTxs, qp.pagingParams)
 }
