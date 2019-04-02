@@ -27,7 +27,7 @@ func TestGetAccountInfo(t *testing.T) {
 
 	w := mustInitWeb(context.Background(), &history.Q{tt.HorizonSession()}, &core.Q{tt.CoreSession()}, time.Duration(5), 0, true)
 
-	res, err := w.getAccountInfo(tt.Ctx, "GCXKG6RN4ONIEPCMNFB732A436Z5PNDSRLGWK7GBLCMQLIFO4S7EYWVU")
+	res, err := w.getAccountInfo(tt.Ctx, &showActionQueryParams{accountID: "GCXKG6RN4ONIEPCMNFB732A436Z5PNDSRLGWK7GBLCMQLIFO4S7EYWVU"})
 	tt.Assert.NoError(err)
 
 	account, ok := res.(*horizon.Account)
@@ -46,7 +46,7 @@ func TestGetAccountInfo(t *testing.T) {
 		}
 	}
 
-	_, err = w.getAccountInfo(tt.Ctx, "GDBAPLDCAEJV6LSEDFEAUDAVFYSNFRUYZ4X75YYJJMMX5KFVUOHX46SQ")
+	_, err = w.getAccountInfo(tt.Ctx, &showActionQueryParams{accountID: "GDBAPLDCAEJV6LSEDFEAUDAVFYSNFRUYZ4X75YYJJMMX5KFVUOHX46SQ"})
 	tt.Assert.Equal(errors.Cause(err), sql.ErrNoRows)
 }
 
