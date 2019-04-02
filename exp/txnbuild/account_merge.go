@@ -13,19 +13,15 @@ type AccountMerge struct {
 
 // BuildXDR for AccountMerge returns a fully configured XDR Operation.
 func (am *AccountMerge) BuildXDR() (xdr.Operation, error) {
-	var err error
 	var xdrOp xdr.AccountId
 
-	err = xdrOp.SetAddress(am.Destination)
+	err := xdrOp.SetAddress(am.Destination)
 	if err != nil {
 		return xdr.Operation{}, errors.Wrap(err, "Failed to set destination address")
 	}
 
 	opType := xdr.OperationTypeAccountMerge
 	body, err := xdr.NewOperationBody(opType, xdrOp)
-	if err != nil {
-		return xdr.Operation{}, errors.Wrap(err, "Failed to build XDR OperationBody")
-	}
 
-	return xdr.Operation{Body: body}, nil
+	return xdr.Operation{Body: body}, errors.Wrap(err, "Failed to build XDR OperationBody")
 }

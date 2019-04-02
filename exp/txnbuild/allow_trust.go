@@ -15,11 +15,10 @@ type AllowTrust struct {
 
 // BuildXDR for AllowTrust returns a fully configured XDR Operation.
 func (at *AllowTrust) BuildXDR() (xdr.Operation, error) {
-	var err error
 	var xdrOp xdr.AllowTrustOp
 
 	// Set XDR address associated with the trustline
-	err = xdrOp.Trustor.SetAddress(at.Trustor)
+	err := xdrOp.Trustor.SetAddress(at.Trustor)
 	if err != nil {
 		return xdr.Operation{}, errors.Wrap(err, "Failed to set trustor address")
 	}
@@ -40,9 +39,6 @@ func (at *AllowTrust) BuildXDR() (xdr.Operation, error) {
 
 	opType := xdr.OperationTypeAllowTrust
 	body, err := xdr.NewOperationBody(opType, xdrOp)
-	if err != nil {
-		return xdr.Operation{}, errors.Wrap(err, "Failed to build XDR OperationBody")
-	}
 
-	return xdr.Operation{Body: body}, nil
+	return xdr.Operation{Body: body}, errors.Wrap(err, "Failed to build XDR OperationBody")
 }

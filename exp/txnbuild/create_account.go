@@ -30,9 +30,6 @@ func (ca *CreateAccount) BuildXDR() (xdr.Operation, error) {
 
 	opType := xdr.OperationTypeCreateAccount
 	body, err := xdr.NewOperationBody(opType, xdrOp)
-	if err != nil {
-		return xdr.Operation{}, errors.Wrap(err, "Failed to build XDR OperationBody")
-	}
 
-	return xdr.Operation{Body: body}, nil
+	return xdr.Operation{Body: body}, errors.Wrap(err, "Failed to build XDR OperationBody")
 }

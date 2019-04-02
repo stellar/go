@@ -13,9 +13,6 @@ type Inflation struct{}
 func (inf *Inflation) BuildXDR() (xdr.Operation, error) {
 	opType := xdr.OperationTypeInflation
 	body, err := xdr.NewOperationBody(opType, nil)
-	if err != nil {
-		return xdr.Operation{}, errors.Wrap(err, "Failed to build XDR OperationBody")
-	}
 
-	return xdr.Operation{Body: body}, nil
+	return xdr.Operation{Body: body}, errors.Wrap(err, "Failed to build XDR OperationBody")
 }

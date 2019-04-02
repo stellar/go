@@ -17,10 +17,9 @@ type Payment struct {
 
 // BuildXDR for Payment returns a fully configured XDR Operation.
 func (p *Payment) BuildXDR() (xdr.Operation, error) {
-	var err error
 	var xdrOp xdr.PaymentOp
 
-	err = p.destAccountID.SetAddress(p.Destination)
+	err := p.destAccountID.SetAddress(p.Destination)
 	if err != nil {
 		return xdr.Operation{}, errors.Wrap(err, "Failed to set destination address")
 	}
@@ -42,9 +41,6 @@ func (p *Payment) BuildXDR() (xdr.Operation, error) {
 
 	opType := xdr.OperationTypePayment
 	body, err := xdr.NewOperationBody(opType, xdrOp)
-	if err != nil {
-		return xdr.Operation{}, errors.Wrap(err, "Failed to build XDR OperationBody")
-	}
 
-	return xdr.Operation{Body: body}, nil
+	return xdr.Operation{Body: body}, errors.Wrap(err, "Failed to build XDR OperationBody")
 }

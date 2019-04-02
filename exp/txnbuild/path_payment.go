@@ -19,7 +19,6 @@ type PathPayment struct {
 
 // BuildXDR for Payment returns a fully configured XDR Operation.
 func (pp *PathPayment) BuildXDR() (xdr.Operation, error) {
-	var err error
 	var xdrOp xdr.PathPaymentOp
 
 	// Set XDR send asset
@@ -74,9 +73,6 @@ func (pp *PathPayment) BuildXDR() (xdr.Operation, error) {
 
 	opType := xdr.OperationTypePathPayment
 	body, err := xdr.NewOperationBody(opType, xdrOp)
-	if err != nil {
-		return xdr.Operation{}, errors.Wrap(err, "Failed to build XDR OperationBody")
-	}
 
-	return xdr.Operation{Body: body}, nil
+	return xdr.Operation{Body: body}, errors.Wrap(err, "Failed to build XDR OperationBody")
 }
