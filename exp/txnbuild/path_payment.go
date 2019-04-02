@@ -15,12 +15,12 @@ type PathPayment struct {
 	DestAsset   *Asset
 	DestAmount  string
 	Path        []Asset
-	xdrOp       xdr.PathPaymentOp
 }
 
 // BuildXDR for Payment returns a fully configured XDR Operation.
 func (pp *PathPayment) BuildXDR() (xdr.Operation, error) {
 	var err error
+	var xdrOp xdr.PathPaymentOp
 
 	// Set XDR send asset
 	if pp.SendAsset == nil {
@@ -30,16 +30,16 @@ func (pp *PathPayment) BuildXDR() (xdr.Operation, error) {
 	if err != nil {
 		return xdr.Operation{}, errors.Wrap(err, "Failed to set asset type")
 	}
-	pp.xdrOp.SendAsset = xdrSendAsset
+	xdrOp.SendAsset = xdrSendAsset
 
 	// Set XDR send max
-	pp.xdrOp.SendMax, err = amount.Parse(pp.SendMax)
+	xdrOp.SendMax, err = amount.Parse(pp.SendMax)
 	if err != nil {
 		return xdr.Operation{}, errors.Wrap(err, "Failed to parse maximum amount to send")
 	}
 
 	// Set XDR destination
-	err = pp.xdrOp.Destination.SetAddress(pp.Destination)
+	err = xdrOp.Destination.SetAddress(pp.Destination)
 	if err != nil {
 		return xdr.Operation{}, errors.Wrap(err, "Failed to set destination address")
 	}
@@ -52,10 +52,10 @@ func (pp *PathPayment) BuildXDR() (xdr.Operation, error) {
 	if err != nil {
 		return xdr.Operation{}, errors.Wrap(err, "Failed to set asset type")
 	}
-	pp.xdrOp.DestAsset = xdrDestAsset
+	xdrOp.DestAsset = xdrDestAsset
 
 	// Set XDR destination amount
-	pp.xdrOp.DestAmount, err = amount.Parse(pp.DestAmount)
+	xdrOp.DestAmount, err = amount.Parse(pp.DestAmount)
 	if err != nil {
 		return xdr.Operation{}, errors.Wrap(err, "Failed to parse amount of asset destination account receives")
 	}
@@ -70,10 +70,10 @@ func (pp *PathPayment) BuildXDR() (xdr.Operation, error) {
 		}
 		xdrPath = append(xdrPath, xdrPathAsset)
 	}
-	pp.xdrOp.Path = xdrPath
+	xdrOp.Path = xdrPath
 
 	opType := xdr.OperationTypePathPayment
-	body, err := xdr.NewOperationBody(opType, pp.xdrOp)
+	body, err := xdr.NewOperationBody(opType, xdrOp)
 	if err != nil {
 		return xdr.Operation{}, errors.Wrap(err, "Failed to build XDR OperationBody")
 	}
