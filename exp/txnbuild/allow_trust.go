@@ -11,15 +11,15 @@ type AllowTrust struct {
 	Trustor   string
 	Type      *Asset
 	Authorize bool
-	xdrOp     xdr.AllowTrustOp
 }
 
 // BuildXDR for AllowTrust returns a fully configured XDR Operation.
 func (at *AllowTrust) BuildXDR() (xdr.Operation, error) {
 	var err error
+	var xdrOp xdr.AllowTrustOp
 
 	// Set XDR address associated with the trustline
-	err = at.xdrOp.Trustor.SetAddress(at.Trustor)
+	err = xdrOp.Trustor.SetAddress(at.Trustor)
 	if err != nil {
 		return xdr.Operation{}, errors.Wrap(err, "Failed to set trustor address")
 	}
@@ -30,16 +30,16 @@ func (at *AllowTrust) BuildXDR() (xdr.Operation, error) {
 	}
 
 	// AllowTrust has a special asset type - map to it
-	at.xdrOp.Asset, err = at.Type.ToXDRAllowTrustOpAsset()
+	xdrOp.Asset, err = at.Type.ToXDRAllowTrustOpAsset()
 	if err != nil {
 		return xdr.Operation{}, errors.Wrap(err, "Can't convert asset for trustline to XDR")
 	}
 
 	// Set XDR auth flag
-	at.xdrOp.Authorize = at.Authorize
+	xdrOp.Authorize = at.Authorize
 
 	opType := xdr.OperationTypeAllowTrust
-	body, err := xdr.NewOperationBody(opType, at.xdrOp)
+	body, err := xdr.NewOperationBody(opType, xdrOp)
 	if err != nil {
 		return xdr.Operation{}, errors.Wrap(err, "Failed to build XDR OperationBody")
 	}
