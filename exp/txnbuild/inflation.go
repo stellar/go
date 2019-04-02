@@ -7,9 +7,7 @@ import (
 
 // Inflation represents the Stellar inflation operation. See
 // https://www.stellar.org/developers/guides/concepts/list-of-operations.html
-type Inflation struct {
-	xdrOp struct{}
-}
+type Inflation struct{}
 
 // BuildXDR for Inflation returns a fully configured XDR Operation.
 func (inf *Inflation) BuildXDR() (xdr.Operation, error) {
