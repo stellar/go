@@ -13,18 +13,20 @@ type Payment struct {
 	Amount        string
 	Asset         *Asset
 	destAccountID xdr.AccountId
-	xdrOp         xdr.PaymentOp
 }
 
 // BuildXDR for Payment returns a fully configured XDR Operation.
 func (p *Payment) BuildXDR() (xdr.Operation, error) {
-	err := p.destAccountID.SetAddress(p.Destination)
+	var err error
+	var xdrOp xdr.PaymentOp
+
+	err = p.destAccountID.SetAddress(p.Destination)
 	if err != nil {
 		return xdr.Operation{}, errors.Wrap(err, "Failed to set destination address")
 	}
-	p.xdrOp.Destination = p.destAccountID
+	xdrOp.Destination = p.destAccountID
 
-	p.xdrOp.Amount, err = amount.Parse(p.Amount)
+	xdrOp.Amount, err = amount.Parse(p.Amount)
 	if err != nil {
 		return xdr.Operation{}, errors.Wrap(err, "Failed to parse amount")
 	}
@@ -36,10 +38,10 @@ func (p *Payment) BuildXDR() (xdr.Operation, error) {
 	if err != nil {
 		return xdr.Operation{}, errors.Wrap(err, "Failed to set asset type")
 	}
-	p.xdrOp.Asset = xdrAsset
+	xdrOp.Asset = xdrAsset
 
 	opType := xdr.OperationTypePayment
-	body, err := xdr.NewOperationBody(opType, p.xdrOp)
+	body, err := xdr.NewOperationBody(opType, xdrOp)
 	if err != nil {
 		return xdr.Operation{}, errors.Wrap(err, "Failed to build XDR OperationBody")
 	}
