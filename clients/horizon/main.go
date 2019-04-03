@@ -81,6 +81,9 @@ type Client struct {
 	HTTP HTTP
 
 	fixURLOnce sync.Once
+
+	AppName    string
+	AppVersion string
 }
 
 type ClientInterface interface {
