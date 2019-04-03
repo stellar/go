@@ -72,7 +72,7 @@ func cleanUpAssets(assets []hProtocol.AssetStat) (cleanAssets []hProtocol.AssetS
 }
 
 // retrieveAssets retrieves all existing assets from the Horizon API
-func retrievAssets(c *horizonclient.Client) (assets []hProtocol.AssetStat, err error) {
+func retrieveAssets(c *horizonclient.Client) (assets []hProtocol.AssetStat, err error) {
 	r := horizonclient.AssetRequest{Limit: 200}
 
 	assetsPage, err := c.Assets(r)

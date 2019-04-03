@@ -9,7 +9,7 @@ import (
 
 // FetchAllAssets fetches all assets from the Horizon public net
 func FetchAllAssets(c *horizonclient.Client) (assets []hProtocol.AssetStat, err error) {
-	dirtyAssets, err := retrievAssets(c)
+	dirtyAssets, err := retrieveAssets(c)
 	if err != nil {
 		return
 	}
