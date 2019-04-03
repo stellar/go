@@ -13,11 +13,8 @@ type BumpSequence struct {
 
 // BuildXDR for BumpSequence returns a fully configured XDR Operation.
 func (bs *BumpSequence) BuildXDR() (xdr.Operation, error) {
-	var xdrOp xdr.BumpSequenceOp
-
-	xdrOp.BumpTo = xdr.SequenceNumber(bs.BumpTo)
-
 	opType := xdr.OperationTypeBumpSequence
+	xdrOp := xdr.BumpSequenceOp{BumpTo: xdr.SequenceNumber(bs.BumpTo)}
 	body, err := xdr.NewOperationBody(opType, xdrOp)
 
 	return xdr.Operation{Body: body}, errors.Wrap(err, "Failed to build XDR OperationBody")

@@ -14,9 +14,7 @@ type ManageData struct {
 
 // BuildXDR for ManageData returns a fully configured XDR Operation.
 func (md *ManageData) BuildXDR() (xdr.Operation, error) {
-	var xdrOp xdr.ManageDataOp
-
-	xdrOp.DataName = xdr.String64(md.Name)
+	xdrOp := xdr.ManageDataOp{DataName: xdr.String64(md.Name)}
 
 	// No data value clears the named data entry on the account
 	if md.Value == nil {

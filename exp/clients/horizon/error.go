@@ -2,6 +2,8 @@ package horizonclient
 
 import (
 	"encoding/json"
+	"fmt"
+	"reflect"
 
 	hProtocol "github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/support/errors"
@@ -69,6 +71,9 @@ func (herr *Error) ResultCodes() (*hProtocol.TransactionResultCodes, error) {
 		return nil, ErrResultCodesNotPopulated
 	}
 
+	println(raw)
+	fmt.Println(reflect.TypeOf(raw))
+	fmt.Println(raw)
 	rawB, ok := raw.([]byte)
 	if !ok {
 		return nil, errors.New("type assertion failed")

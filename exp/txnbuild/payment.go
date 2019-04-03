@@ -9,23 +9,21 @@ import (
 // Payment represents the Stellar payment operation. See
 // https://www.stellar.org/developers/guides/concepts/list-of-operations.html
 type Payment struct {
-	Destination   string
-	Amount        string
-	Asset         *Asset
-	destAccountID xdr.AccountId
+	Destination string
+	Amount      string
+	Asset       *Asset
 }
 
 // BuildXDR for Payment returns a fully configured XDR Operation.
 func (p *Payment) BuildXDR() (xdr.Operation, error) {
-	var xdrOp xdr.PaymentOp
+	var destAccountID xdr.AccountId
 
-	err := p.destAccountID.SetAddress(p.Destination)
+	err := destAccountID.SetAddress(p.Destination)
 	if err != nil {
 		return xdr.Operation{}, errors.Wrap(err, "Failed to set destination address")
 	}
-	xdrOp.Destination = p.destAccountID
 
-	xdrOp.Amount, err = amount.Parse(p.Amount)
+	xdrAmount, err := amount.Parse(p.Amount)
 	if err != nil {
 		return xdr.Operation{}, errors.Wrap(err, "Failed to parse amount")
 	}
@@ -37,9 +35,13 @@ func (p *Payment) BuildXDR() (xdr.Operation, error) {
 	if err != nil {
 		return xdr.Operation{}, errors.Wrap(err, "Failed to set asset type")
 	}
-	xdrOp.Asset = xdrAsset
 
 	opType := xdr.OperationTypePayment
+	xdrOp := xdr.PaymentOp{
+		Destination: destAccountID,
+		Amount:      xdrAmount,
+		Asset:       xdrAsset,
+	}
 	body, err := xdr.NewOperationBody(opType, xdrOp)
 
 	return xdr.Operation{Body: body}, errors.Wrap(err, "Failed to build XDR OperationBody")

@@ -19,8 +19,6 @@ type PathPayment struct {
 
 // BuildXDR for Payment returns a fully configured XDR Operation.
 func (pp *PathPayment) BuildXDR() (xdr.Operation, error) {
-	var xdrOp xdr.PathPaymentOp
-
 	// Set XDR send asset
 	if pp.SendAsset == nil {
 		return xdr.Operation{}, errors.New("You must specify an asset to send for payment")
@@ -29,16 +27,16 @@ func (pp *PathPayment) BuildXDR() (xdr.Operation, error) {
 	if err != nil {
 		return xdr.Operation{}, errors.Wrap(err, "Failed to set asset type")
 	}
-	xdrOp.SendAsset = xdrSendAsset
 
 	// Set XDR send max
-	xdrOp.SendMax, err = amount.Parse(pp.SendMax)
+	xdrSendMax, err := amount.Parse(pp.SendMax)
 	if err != nil {
 		return xdr.Operation{}, errors.Wrap(err, "Failed to parse maximum amount to send")
 	}
 
 	// Set XDR destination
-	err = xdrOp.Destination.SetAddress(pp.Destination)
+	var xdrDestination xdr.AccountId
+	err = xdrDestination.SetAddress(pp.Destination)
 	if err != nil {
 		return xdr.Operation{}, errors.Wrap(err, "Failed to set destination address")
 	}
@@ -51,10 +49,9 @@ func (pp *PathPayment) BuildXDR() (xdr.Operation, error) {
 	if err != nil {
 		return xdr.Operation{}, errors.Wrap(err, "Failed to set asset type")
 	}
-	xdrOp.DestAsset = xdrDestAsset
 
 	// Set XDR destination amount
-	xdrOp.DestAmount, err = amount.Parse(pp.DestAmount)
+	xdrDestAmount, err := amount.Parse(pp.DestAmount)
 	if err != nil {
 		return xdr.Operation{}, errors.Wrap(err, "Failed to parse amount of asset destination account receives")
 	}
@@ -69,9 +66,16 @@ func (pp *PathPayment) BuildXDR() (xdr.Operation, error) {
 		}
 		xdrPath = append(xdrPath, xdrPathAsset)
 	}
-	xdrOp.Path = xdrPath
 
 	opType := xdr.OperationTypePathPayment
+	xdrOp := xdr.PathPaymentOp{
+		SendAsset:   xdrSendAsset,
+		SendMax:     xdrSendMax,
+		Destination: xdrDestination,
+		DestAsset:   xdrDestAsset,
+		DestAmount:  xdrDestAmount,
+		Path:        xdrPath,
+	}
 	body, err := xdr.NewOperationBody(opType, xdrOp)
 
 	return xdr.Operation{Body: body}, errors.Wrap(err, "Failed to build XDR OperationBody")
