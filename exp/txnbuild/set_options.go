@@ -64,8 +64,7 @@ type SetOptions struct {
 
 // BuildXDR for SetOptions returns a fully configured XDR Operation.
 func (so *SetOptions) BuildXDR() (xdr.Operation, error) {
-	var err error
-	err = so.handleInflation()
+	err := so.handleInflation()
 	if err != nil {
 		return xdr.Operation{}, errors.Wrap(err, "Failed to set inflation destination address")
 	}
@@ -87,11 +86,8 @@ func (so *SetOptions) BuildXDR() (xdr.Operation, error) {
 
 	opType := xdr.OperationTypeSetOptions
 	body, err := xdr.NewOperationBody(opType, so.xdrOp)
-	if err != nil {
-		return xdr.Operation{}, errors.Wrap(err, "Failed to build XDR OperationBody")
-	}
 
-	return xdr.Operation{Body: body}, nil
+	return xdr.Operation{Body: body}, errors.Wrap(err, "Failed to build XDR OperationBody")
 }
 
 // handleInflation for SetOptions sets the XDR inflation destination.
