@@ -103,6 +103,8 @@ type Client struct {
 	HorizonURL     string
 	HTTP           HTTP
 	horizonTimeOut time.Duration
+	AppName        string
+	AppVersion     string
 }
 
 // ClientInterface contains methods implemented by the horizon client
