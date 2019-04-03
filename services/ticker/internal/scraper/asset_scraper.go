@@ -94,9 +94,55 @@ func fetchTOMLData(asset hProtocol.AssetStat) (data string, err error) {
 	return
 }
 
+func domainsMatch(tomlURL *url.URL, orgURL *url.URL) bool {
+	tomlDomainParts := strings.Split(tomlURL.Host, ".")
+	orgDomainParts := strings.Split(orgURL.Host, ".")
+
+	if len(orgDomainParts) < len(tomlDomainParts) {
+		// Org can only be a subdomain if it has more (or equal)
+		// pieces than the TOML domain
+		return false
+	}
+
+	lenDiff := len(orgDomainParts) - len(tomlDomainParts)
+	orgDomainParts = orgDomainParts[lenDiff:]
+	orgRootDomain := strings.Join(orgDomainParts, ".")
+	if tomlURL.Host != orgRootDomain {
+		return false
+	}
+
+	return true
+}
+
 // isDomainVerified performs some checking to ensure we can trust the Asset's domain
 func isDomainVerified(orgURL string, tomlURL string, hasCurrency bool) bool {
-	// TODO
+	if tomlURL == "" {
+		return false
+	}
+
+	parsedTomlURL, err := url.Parse(tomlURL)
+	if err != nil || parsedTomlURL.Scheme != "https" {
+		return false
+	}
+
+	if !hasCurrency {
+		return false
+	}
+
+	if orgURL == "" {
+		// if no orgURL is provided, we'll simply use tomlURL, so no need
+		// for domain verification
+		return true
+	}
+
+	parsedOrgURL, err := url.Parse(orgURL)
+	if err != nil || parsedOrgURL.Scheme != "https" {
+		return false
+	}
+
+	if !domainsMatch(parsedTomlURL, parsedOrgURL) {
+		return false
+	}
 	return true
 }
 
