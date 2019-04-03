@@ -1,9 +1,12 @@
 package horizonclient
 
 import (
+	"context"
+	"encoding/json"
 	"fmt"
 	"net/url"
 
+	hProtocol "github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/support/errors"
 )
 
@@ -35,4 +38,26 @@ func (lr LedgerRequest) BuildUrl() (endpoint string, err error) {
 	}
 
 	return endpoint, err
+}
+
+// Stream streams incoming ledgers. Use context.WithCancel to stop streaming or
+// context.Background() if you want to stream indefinitely.
+func (lr LedgerRequest) Stream(ctx context.Context, client *Client,
+	handler func(interface{})) (err error) {
+	endpoint, err := lr.BuildUrl()
+	if err != nil {
+		return errors.Wrap(err, "Unable to build endpoint")
+	}
+
+	url := fmt.Sprintf("%s%s", client.getHorizonURL(), endpoint)
+
+	return client.stream(ctx, url, func(data []byte) error {
+		var ledger hProtocol.Ledger
+		err = json.Unmarshal(data, &ledger)
+		if err != nil {
+			return errors.Wrap(err, "Error unmarshaling data")
+		}
+		handler(ledger)
+		return nil
+	})
 }
