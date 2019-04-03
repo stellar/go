@@ -58,6 +58,7 @@ func (c *Client) sendRequest(hr HorizonRequest, a interface{}) (err error) {
 	return
 }
 
+// stream handles connections to endpoints that support streaming on an horizon server
 func (c *Client) stream(
 	ctx context.Context,
 	streamURL string,
