@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 
 	horizonclient "github.com/stellar/go/exp/clients/horizon"
-	"github.com/stellar/go/services/ticker/internal/scraper"
+	"github.com/stellar/go/exp/ticker/internal/scraper"
 )
 
 func check(e error) {
