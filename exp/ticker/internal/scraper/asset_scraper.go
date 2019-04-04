@@ -1,10 +1,16 @@
 package scraper
 
 import (
+	"errors"
 	"fmt"
+	"io/ioutil"
+	"net/http"
 	"net/url"
 	"strconv"
 	"strings"
+	"time"
+
+	"github.com/BurntSushi/toml"
 
 	horizonclient "github.com/stellar/go/exp/clients/horizon"
 	hProtocol "github.com/stellar/go/protocols/horizon"
@@ -58,12 +64,178 @@ func shouldDiscardAsset(asset hProtocol.AssetStat) bool {
 	return false
 }
 
+// decodeTOMLIssuer decodes retrieved TOML issuer data into a TOMLIssuer struct
+func decodeTOMLIssuer(tomlData string) (issuer TOMLIssuer, err error) {
+	_, err = toml.Decode(tomlData, &issuer)
+	return
+}
+
+// fetchTOMLData fetches the TOML data for a given hProtocol.AssetStat
+func fetchTOMLData(asset hProtocol.AssetStat) (data string, err error) {
+	tomlURL := asset.Links.Toml.Href
+
+	if tomlURL == "" {
+		err = errors.New("Asset does not have a TOML URL")
+		return
+	}
+
+	resp, err := http.Get(tomlURL)
+	if err != nil {
+		return
+	}
+	defer resp.Body.Close()
+
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return
+	}
+
+	data = string(body)
+	return
+}
+
+func domainsMatch(tomlURL *url.URL, orgURL *url.URL) bool {
+	tomlDomainParts := strings.Split(tomlURL.Host, ".")
+	orgDomainParts := strings.Split(orgURL.Host, ".")
+
+	if len(orgDomainParts) < len(tomlDomainParts) {
+		// Org can only be a subdomain if it has more (or equal)
+		// pieces than the TOML domain
+		return false
+	}
+
+	lenDiff := len(orgDomainParts) - len(tomlDomainParts)
+	orgDomainParts = orgDomainParts[lenDiff:]
+	orgRootDomain := strings.Join(orgDomainParts, ".")
+	if tomlURL.Host != orgRootDomain {
+		return false
+	}
+
+	return true
+}
+
+// isDomainVerified performs some checking to ensure we can trust the Asset's domain
+func isDomainVerified(orgURL string, tomlURL string, hasCurrency bool) bool {
+	if tomlURL == "" {
+		return false
+	}
+
+	parsedTomlURL, err := url.Parse(tomlURL)
+	if err != nil || parsedTomlURL.Scheme != "https" {
+		return false
+	}
+
+	if !hasCurrency {
+		return false
+	}
+
+	if orgURL == "" {
+		// if no orgURL is provided, we'll simply use tomlURL, so no need
+		// for domain verification
+		return true
+	}
+
+	parsedOrgURL, err := url.Parse(orgURL)
+	if err != nil || parsedOrgURL.Scheme != "https" {
+		return false
+	}
+
+	if !domainsMatch(parsedTomlURL, parsedOrgURL) {
+		return false
+	}
+	return true
+}
+
+// makeTomlAsset aggregates Horizon Data with TOML Data
+func makeTOMLAsset(
+	asset hProtocol.AssetStat,
+	issuer TOMLIssuer,
+	errors []error,
+) (t TOMLAsset, err error) {
+	amount, err := strconv.ParseFloat(asset.Amount, 64)
+	if err != nil {
+		return
+	}
+
+	t = TOMLAsset{
+		Type:          asset.Type,
+		Code:          asset.Code,
+		Issuer:        asset.Issuer,
+		NumAccounts:   asset.NumAccounts,
+		AuthRequired:  asset.Flags.AuthRequired,
+		AuthRevocable: asset.Flags.AuthRevocable,
+		Amount:        amount,
+		IssuerDetails: issuer,
+	}
+
+	hasCurrency := false
+	for _, currency := range t.IssuerDetails.Currencies {
+		if currency.Code == asset.Code && currency.Issuer == asset.Issuer {
+			hasCurrency = true
+			t.AnchorAsset = currency.AnchorAsset
+			t.AnchorAsset = currency.AnchorAsset
+		}
+	}
+	t.AssetControlledByDomain = isDomainVerified(
+		t.IssuerDetails.Documentation.OrgURL,
+		asset.Links.Toml.Href,
+		hasCurrency,
+	)
+
+	// TODO: determine if the asset is valid even if the issuer doesn't have
+	// it listed in its currencies
+
+	now := time.Now()
+	if len(errors) > 0 {
+		t.Error = fmt.Sprintf("%v", errors)
+		t.IsValid = false
+	} else {
+		t.LastValid = now
+		t.IsValid = true
+	}
+	t.LastChecked = now
+	t.AnchorAssetType = strings.ToLower(t.AnchorAssetType)
+
+	return
+}
+
+// processAsset merges data from an AssetStat with data retrieved from its corresponding TOML file
+func processAsset(asset hProtocol.AssetStat) (processedAsset TOMLAsset, err error) {
+	var errors []error
+
+	tomlData, err := fetchTOMLData(asset)
+	if err != nil {
+		errors = append(errors, err)
+	}
+
+	issuer, err := decodeTOMLIssuer(tomlData)
+	if err != nil {
+		errors = append(errors, err)
+	}
+
+	processedAsset, err = makeTOMLAsset(asset, issuer, errors)
+	if err != nil {
+		return
+	}
+
+	return
+}
+
 // cleanUpAssets filters the assets that don't match the shouldDiscardAsset criteria
-func cleanUpAssets(assets []hProtocol.AssetStat) (cleanAssets []hProtocol.AssetStat, numTrash int) {
+func cleanUpAssets(assets []hProtocol.AssetStat) (cleanAssets []TOMLAsset, numTrash int) {
+	fmt.Println("Cleaning up assets")
+	// TODO: use some paralellization here to improve speed?
 	for _, asset := range assets {
 		if !shouldDiscardAsset(asset) {
-			cleanAssets = append(cleanAssets, asset)
+			tomlAsset, err := processAsset(asset)
+			if err != nil {
+				fmt.Println("Error processing asset:", err)
+				continue
+			}
+			fmt.Println(tomlAsset)
+			cleanAssets = append(cleanAssets, tomlAsset)
 		} else {
+			// TODO: define if we should start storing the "Trash" assets as well
 			numTrash++
 		}
 	}
