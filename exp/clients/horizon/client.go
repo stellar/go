@@ -39,10 +39,7 @@ func (c *Client) sendRequest(hr HorizonRequest, a interface{}) (err error) {
 	if err != nil {
 		return errors.Wrap(err, "Error creating HTTP request")
 	}
-	req.Header.Set("X-Client-Name", "go-stellar-sdk")
-	req.Header.Set("X-Client-Version", app.Version())
-	req.Header.Set("X-App-Name", c.AppName)
-	req.Header.Set("X-App-Version", c.AppVersion)
+	c.setClientAppHeaders(req)
 
 	if c.horizonTimeOut == 0 {
 		c.horizonTimeOut = HorizonTimeOut
@@ -85,8 +82,7 @@ func (c *Client) stream(
 		}
 		req.Header.Set("Accept", "text/event-stream")
 		// to do: confirm name and version
-		req.Header.Set("X-Client-Name", "go-stellar-sdk")
-		req.Header.Set("X-Client-Version", app.Version())
+		c.setClientAppHeaders(req)
 
 		// We can use c.HTTP here because we set Timeout per request not on the client. See sendRequest()
 		resp, err := c.HTTP.Do(req)
@@ -187,6 +183,13 @@ func (c *Client) stream(
 			}
 		}
 	}
+}
+
+func (c *Client) setClientAppHeaders(req *http.Request) {
+	req.Header.Set("X-Client-Name", "go-stellar-sdk")
+	req.Header.Set("X-Client-Version", app.Version())
+	req.Header.Set("X-App-Name", c.AppName)
+	req.Header.Set("X-App-Version", c.AppVersion)
 }
 
 // getHorizonUrl strips all slashes(/) at the end of HorizonURL if any, then adds a single slash

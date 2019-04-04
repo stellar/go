@@ -15,13 +15,10 @@ type PathPayment struct {
 	DestAsset   *Asset
 	DestAmount  string
 	Path        []Asset
-	xdrOp       xdr.PathPaymentOp
 }
 
 // BuildXDR for Payment returns a fully configured XDR Operation.
 func (pp *PathPayment) BuildXDR() (xdr.Operation, error) {
-	var err error
-
 	// Set XDR send asset
 	if pp.SendAsset == nil {
 		return xdr.Operation{}, errors.New("You must specify an asset to send for payment")
@@ -30,16 +27,16 @@ func (pp *PathPayment) BuildXDR() (xdr.Operation, error) {
 	if err != nil {
 		return xdr.Operation{}, errors.Wrap(err, "Failed to set asset type")
 	}
-	pp.xdrOp.SendAsset = xdrSendAsset
 
 	// Set XDR send max
-	pp.xdrOp.SendMax, err = amount.Parse(pp.SendMax)
+	xdrSendMax, err := amount.Parse(pp.SendMax)
 	if err != nil {
 		return xdr.Operation{}, errors.Wrap(err, "Failed to parse maximum amount to send")
 	}
 
 	// Set XDR destination
-	err = pp.xdrOp.Destination.SetAddress(pp.Destination)
+	var xdrDestination xdr.AccountId
+	err = xdrDestination.SetAddress(pp.Destination)
 	if err != nil {
 		return xdr.Operation{}, errors.Wrap(err, "Failed to set destination address")
 	}
@@ -52,10 +49,9 @@ func (pp *PathPayment) BuildXDR() (xdr.Operation, error) {
 	if err != nil {
 		return xdr.Operation{}, errors.Wrap(err, "Failed to set asset type")
 	}
-	pp.xdrOp.DestAsset = xdrDestAsset
 
 	// Set XDR destination amount
-	pp.xdrOp.DestAmount, err = amount.Parse(pp.DestAmount)
+	xdrDestAmount, err := amount.Parse(pp.DestAmount)
 	if err != nil {
 		return xdr.Operation{}, errors.Wrap(err, "Failed to parse amount of asset destination account receives")
 	}
@@ -70,13 +66,17 @@ func (pp *PathPayment) BuildXDR() (xdr.Operation, error) {
 		}
 		xdrPath = append(xdrPath, xdrPathAsset)
 	}
-	pp.xdrOp.Path = xdrPath
 
 	opType := xdr.OperationTypePathPayment
-	body, err := xdr.NewOperationBody(opType, pp.xdrOp)
-	if err != nil {
-		return xdr.Operation{}, errors.Wrap(err, "Failed to build XDR OperationBody")
+	xdrOp := xdr.PathPaymentOp{
+		SendAsset:   xdrSendAsset,
+		SendMax:     xdrSendMax,
+		Destination: xdrDestination,
+		DestAsset:   xdrDestAsset,
+		DestAmount:  xdrDestAmount,
+		Path:        xdrPath,
 	}
+	body, err := xdr.NewOperationBody(opType, xdrOp)
 
-	return xdr.Operation{Body: body}, nil
+	return xdr.Operation{Body: body}, errors.Wrap(err, "Failed to build XDR OperationBody")
 }
