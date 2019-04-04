@@ -62,8 +62,9 @@ func TestTransactionRequestStream(t *testing.T) {
 		HorizonURL: "https://localhost/",
 		HTTP:       hmock,
 	}
-	txRequest := TransactionRequest{}
 
+	// all transactions
+	txRequest := TransactionRequest{}
 	ctx, cancel := context.WithCancel(context.Background())
 
 	hmock.On(
@@ -73,6 +74,29 @@ func TestTransactionRequestStream(t *testing.T) {
 
 	var txs []hProtocol.Transaction
 	err := client.Stream(ctx, txRequest, func(tx interface{}) {
+
+		resp, ok := tx.(hProtocol.Transaction)
+		if ok {
+			txs = append(txs, resp)
+		}
+		cancel()
+	})
+
+	if assert.NoError(t, err) {
+		assert.Equal(t, txs[0].Hash, "1534f6507420c6871b557cc2fc800c29fb1ed1e012e694993ffe7a39c824056e")
+		assert.Equal(t, txs[0].Account, "GAIH3ULLFQ4DGSECF2AR555KZ4KNDGEKN4AFI4SU2M7B43MGK3QJZNSR")
+	}
+
+	// transactions for account
+	txRequest = TransactionRequest{ForAccount: "GAIH3ULLFQ4DGSECF2AR555KZ4KNDGEKN4AFI4SU2M7B43MGK3QJZNSR"}
+	ctx, cancel = context.WithCancel(context.Background())
+
+	hmock.On(
+		"GET",
+		"https://localhost/accounts/GAIH3ULLFQ4DGSECF2AR555KZ4KNDGEKN4AFI4SU2M7B43MGK3QJZNSR/transactions?cursor=now",
+	).ReturnString(200, txStreamResponse)
+
+	err = client.Stream(ctx, txRequest, func(tx interface{}) {
 
 		resp, ok := tx.(hProtocol.Transaction)
 		if ok {
