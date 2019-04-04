@@ -1,9 +1,12 @@
 package horizonclient
 
 import (
+	"context"
+	"encoding/json"
 	"fmt"
 	"net/url"
 
+	hProtocol "github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/support/errors"
 )
 
@@ -39,4 +42,25 @@ func (tr TransactionRequest) BuildUrl() (endpoint string, err error) {
 	}
 
 	return endpoint, err
+}
+
+// Stream streams transactions. These can be all transactions on the network or for a specific account.
+// Use context.WithCancel to stop streaming or context.Background() if you want to stream indefinitely.
+func (tr TransactionRequest) Stream(ctx context.Context, client *Client,
+	handler func(interface{})) (err error) {
+	endpoint, err := tr.BuildUrl()
+	if err != nil {
+		return errors.Wrap(err, "Unable to build endpoint")
+	}
+
+	url := fmt.Sprintf("%s%s", client.getHorizonURL(), endpoint)
+	return client.stream(ctx, url, func(data []byte) error {
+		var tx hProtocol.Transaction
+		err = json.Unmarshal(data, &tx)
+		if err != nil {
+			return errors.Wrap(err, "Error unmarshaling data")
+		}
+		handler(tx)
+		return nil
+	})
 }

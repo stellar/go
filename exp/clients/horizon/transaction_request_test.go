@@ -1,8 +1,12 @@
 package horizonclient
 
 import (
+	"context"
 	"testing"
+	"time"
 
+	hProtocol "github.com/stellar/go/protocols/horizon"
+	"github.com/stellar/go/support/http/httptest"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -51,3 +55,64 @@ func TestTransactionRequestBuildUrl(t *testing.T) {
 	assert.Equal(t, "transactions?cursor=123456&include_failed=true&limit=30&order=asc", endpoint)
 
 }
+
+func TestTransactionRequestStream(t *testing.T) {
+	hmock := httptest.NewClient()
+	client := &Client{
+		HorizonURL: "https://localhost/",
+		HTTP:       hmock,
+	}
+	txRequest := TransactionRequest{}
+
+	ctx, cancel := context.WithCancel(context.Background())
+
+	hmock.On(
+		"GET",
+		"https://localhost/transactions?cursor=now",
+	).ReturnString(200, txStreamResponse)
+
+	var txs []hProtocol.Transaction
+	err := client.Stream(ctx, txRequest, func(tx interface{}) {
+
+		resp, ok := tx.(hProtocol.Transaction)
+		if ok {
+			txs = append(txs, resp)
+		}
+		cancel()
+	})
+
+	if assert.NoError(t, err) {
+		assert.Equal(t, txs[0].Hash, "1534f6507420c6871b557cc2fc800c29fb1ed1e012e694993ffe7a39c824056e")
+		assert.Equal(t, txs[0].Account, "GAIH3ULLFQ4DGSECF2AR555KZ4KNDGEKN4AFI4SU2M7B43MGK3QJZNSR")
+	}
+
+	// test error
+	txRequest = TransactionRequest{}
+	ctx, cancel = context.WithCancel(context.Background())
+
+	hmock.On(
+		"GET",
+		"https://localhost/transactions?cursor=now",
+	).ReturnString(500, txStreamResponse)
+
+	go func() {
+		// Stop streaming after 1 second.
+		time.Sleep(1 * time.Second)
+		cancel()
+	}()
+
+	err = client.Stream(ctx, txRequest, func(tx interface{}) {
+		resp, ok := tx.(hProtocol.Transaction)
+		if ok {
+			txs[0] = resp
+		}
+	})
+
+	if assert.Error(t, err) {
+		assert.Contains(t, err.Error(), "Got bad HTTP status code 500")
+	}
+
+}
+
+var txStreamResponse = `data: {"_links":{"self":{"href":"https://horizon-testnet.stellar.org/transactions/1534f6507420c6871b557cc2fc800c29fb1ed1e012e694993ffe7a39c824056e"},"account":{"href":"https://horizon-testnet.stellar.org/accounts/GAIH3ULLFQ4DGSECF2AR555KZ4KNDGEKN4AFI4SU2M7B43MGK3QJZNSR"},"ledger":{"href":"https://horizon-testnet.stellar.org/ledgers/607387"},"operations":{"href":"https://horizon-testnet.stellar.org/transactions/1534f6507420c6871b557cc2fc800c29fb1ed1e012e694993ffe7a39c824056e/operations{?cursor,limit,order}","templated":true},"effects":{"href":"https://horizon-testnet.stellar.org/transactions/1534f6507420c6871b557cc2fc800c29fb1ed1e012e694993ffe7a39c824056e/effects{?cursor,limit,order}","templated":true},"precedes":{"href":"https://horizon-testnet.stellar.org/transactions?order=asc\u0026cursor=2608707301036032"},"succeeds":{"href":"https://horizon-testnet.stellar.org/transactions?order=desc\u0026cursor=2608707301036032"}},"id":"1534f6507420c6871b557cc2fc800c29fb1ed1e012e694993ffe7a39c824056e","paging_token":"2608707301036032","successful":true,"hash":"1534f6507420c6871b557cc2fc800c29fb1ed1e012e694993ffe7a39c824056e","ledger":607387,"created_at":"2019-04-04T12:07:03Z","source_account":"GAIH3ULLFQ4DGSECF2AR555KZ4KNDGEKN4AFI4SU2M7B43MGK3QJZNSR","source_account_sequence":"4660039930473","fee_paid":100,"operation_count":1,"envelope_xdr":"AAAAABB90WssODNIgi6BHveqzxTRmIpvAFRyVNM+Hm2GVuCcAAAAZAAABD0ABlJpAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAmLuzasXDMqsqgFK4xkbLxJLzmQQzkiCF2SnKPD+b1TsAAAAXSHboAAAAAAAAAAABhlbgnAAAAECqxhXduvtzs65keKuTzMtk76cts2WeVB2pZKYdlxlOb1EIbOpFhYizDSXVfQlAvvg18qV6oNRr7ls4nnEm2YIK","result_xdr":"AAAAAAAAAGQAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAA=","result_meta_xdr":"AAAAAQAAAAIAAAADAAlEmwAAAAAAAAAAEH3Rayw4M0iCLoEe96rPFNGYim8AVHJU0z4ebYZW4JwBT3aiixBA2AAABD0ABlJoAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAABAAlEmwAAAAAAAAAAEH3Rayw4M0iCLoEe96rPFNGYim8AVHJU0z4ebYZW4JwBT3aiixBA2AAABD0ABlJpAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAABAAAAAwAAAAMACUSbAAAAAAAAAAAQfdFrLDgzSIIugR73qs8U0ZiKbwBUclTTPh5thlbgnAFPdqKLEEDYAAAEPQAGUmkAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAEACUSbAAAAAAAAAAAQfdFrLDgzSIIugR73qs8U0ZiKbwBUclTTPh5thlbgnAFPdotCmVjYAAAEPQAGUmkAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAACUSbAAAAAAAAAACYu7NqxcMyqyqAUrjGRsvEkvOZBDOSIIXZKco8P5vVOwAAABdIdugAAAlEmwAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAA==","fee_meta_xdr":"AAAAAgAAAAMACUSaAAAAAAAAAAAQfdFrLDgzSIIugR73qs8U0ZiKbwBUclTTPh5thlbgnAFPdqKLEEE8AAAEPQAGUmgAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAEACUSbAAAAAAAAAAAQfdFrLDgzSIIugR73qs8U0ZiKbwBUclTTPh5thlbgnAFPdqKLEEDYAAAEPQAGUmgAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAA==","memo_type":"none","signatures":["qsYV3br7c7OuZHirk8zLZO+nLbNlnlQdqWSmHZcZTm9RCGzqRYWIsw0l1X0JQL74NfKleqDUa+5bOJ5xJtmCCg=="]}
+`
