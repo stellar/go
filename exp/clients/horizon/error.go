@@ -2,8 +2,6 @@ package horizonclient
 
 import (
 	"encoding/json"
-	"fmt"
-	"reflect"
 
 	hProtocol "github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/support/errors"
@@ -24,17 +22,12 @@ func (herr *Error) Envelope() (*xdr.TransactionEnvelope, error) {
 
 	var b64 string
 	var result xdr.TransactionEnvelope
-	rawB, ok := raw.([]byte)
+	b64, ok = raw.(string)
 	if !ok {
 		return nil, errors.New("type assertion failed")
 	}
 
-	err := json.Unmarshal(rawB, &b64)
-	if err != nil {
-		return nil, errors.Wrap(err, "json decode failed")
-	}
-
-	err = xdr.SafeUnmarshalBase64(b64, &result)
+	err := xdr.SafeUnmarshalBase64(b64, &result)
 	if err != nil {
 		return nil, errors.Wrap(err, "xdr decode failed")
 	}
@@ -49,15 +42,9 @@ func (herr *Error) ResultString() (string, error) {
 		return "", ErrResultNotPopulated
 	}
 
-	var b64 string
-	rawB, ok := raw.([]byte)
+	b64, ok := raw.(string)
 	if !ok {
 		return "", errors.New("type assertion failed")
-	}
-
-	err := json.Unmarshal(rawB, &b64)
-	if err != nil {
-		return "", errors.Wrap(err, "json decode failed")
 	}
 
 	return b64, nil
@@ -71,18 +58,15 @@ func (herr *Error) ResultCodes() (*hProtocol.TransactionResultCodes, error) {
 		return nil, ErrResultCodesNotPopulated
 	}
 
-	println(raw)
-	fmt.Println(reflect.TypeOf(raw))
-	fmt.Println(raw)
-	rawB, ok := raw.([]byte)
-	if !ok {
-		return nil, errors.New("type assertion failed")
+	// converts map to []byte
+	dataString, err := json.Marshal(raw)
+	if err != nil {
+		return nil, errors.Wrap(err, "Marshaling failed")
 	}
 
 	var result hProtocol.TransactionResultCodes
-	err := json.Unmarshal(rawB, &result)
-	if err != nil {
-		return nil, errors.Wrap(err, "json decode failed")
+	if err = json.Unmarshal(dataString, &result); err != nil {
+		return nil, errors.Wrap(err, "Unmarshaling failed")
 	}
 
 	return &result, nil
