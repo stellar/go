@@ -1,9 +1,12 @@
 package horizonclient
 
 import (
+	"context"
+	"encoding/json"
 	"fmt"
 	"net/url"
 
+	hProtocol "github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/support/errors"
 )
 
@@ -57,4 +60,26 @@ func (tr TradeRequest) BuildUrl() (endpoint string, err error) {
 	}
 
 	return endpoint, err
+}
+
+// Stream streams executed trades. It can be used to stream all trades, trades for an account and
+// trades for an offer. Use context.WithCancel to stop streaming or context.Background() if you want to stream indefinitely.
+func (tr TradeRequest) Stream(ctx context.Context, client *Client,
+	handler func(interface{})) (err error) {
+	endpoint, err := tr.BuildUrl()
+	if err != nil {
+		return errors.Wrap(err, "Unable to build endpoint")
+	}
+
+	url := fmt.Sprintf("%s%s", client.getHorizonURL(), endpoint)
+
+	return client.stream(ctx, url, func(data []byte) error {
+		var trade hProtocol.Trade
+		err = json.Unmarshal(data, &trade)
+		if err != nil {
+			return errors.Wrap(err, "Error unmarshaling data")
+		}
+		handler(trade)
+		return nil
+	})
 }
