@@ -4,10 +4,12 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
+	"math"
 	"net/http"
 	"net/url"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/BurntSushi/toml"
@@ -79,7 +81,11 @@ func fetchTOMLData(asset hProtocol.AssetStat) (data string, err error) {
 		return
 	}
 
-	resp, err := http.Get(tomlURL)
+	timeout := time.Duration(10 * time.Second)
+	client := http.Client{
+		Timeout: timeout,
+	}
+	resp, err := client.Get(tomlURL)
 	if err != nil {
 		return
 	}
@@ -221,36 +227,82 @@ func processAsset(asset hProtocol.AssetStat) (processedAsset TOMLAsset, err erro
 	return
 }
 
-// cleanUpAssets filters the assets that don't match the shouldDiscardAsset criteria
-func cleanUpAssets(assets []hProtocol.AssetStat) (cleanAssets []TOMLAsset, numTrash int) {
-	fmt.Println("Cleaning up assets")
-	// TODO: use some paralellization here to improve speed?
-	for _, asset := range assets {
-		if !shouldDiscardAsset(asset) {
-			tomlAsset, err := processAsset(asset)
-			if err != nil {
-				fmt.Println("Error processing asset:", err)
-				continue
+// parallelCleanUpAssets filters the assets that don't match the shouldDiscardAsset criteria.
+// The TOML validation is performed in parallel to improve performance.
+func parallelCleanUpAssets(assets []hProtocol.AssetStat, parallelism int) (cleanAssets []TOMLAsset, numTrash int) {
+	queue := make(chan TOMLAsset, parallelism)
+
+	var mutex = &sync.Mutex{}
+	var wg sync.WaitGroup
+	numAssets := len(assets)
+	chunkSize := int(math.Ceil(float64(numAssets) / float64(parallelism)))
+	wg.Add(numAssets)
+
+	// The assets are divided into chunks of chunkSize, and each goroutine is responsible
+	// for cleaning up one chunk
+	for i := 0; i < parallelism; i++ {
+		go func(start int) {
+			end := start + chunkSize
+
+			if end > numAssets {
+				end = numAssets
 			}
-			fmt.Println(tomlAsset)
-			cleanAssets = append(cleanAssets, tomlAsset)
-		} else {
-			// TODO: define if we should start storing the "Trash" assets as well
-			numTrash++
-		}
+
+			for j := start; j < end; j++ {
+				if !shouldDiscardAsset(assets[j]) {
+					tomlAsset, err := processAsset(assets[j])
+					if err != nil {
+						mutex.Lock()
+						numTrash++
+						mutex.Unlock()
+						// Invalid assets are also sent to the queue to preserve
+						// the WaitGroup count
+						queue <- TOMLAsset{IsTrash: true}
+						continue
+					}
+					queue <- tomlAsset
+				} else {
+					mutex.Lock()
+					numTrash++
+					mutex.Unlock()
+					// Discarded assets are also sent to the queue to preserve
+					// the WaitGroup count
+					queue <- TOMLAsset{IsTrash: true}
+				}
+			}
+		}(i * chunkSize)
 	}
+
+	// Whenever a new asset is sent to the channel, it is appended to the cleanAssets
+	// slice. This does not preserve the original order, but shouldn't be an issue
+	// in this case.
+	go func() {
+		count := 0
+		for t := range queue {
+			count++
+			if !t.IsTrash {
+				cleanAssets = append(cleanAssets, t)
+			}
+			fmt.Println("Total assets cleaned up:", count)
+			wg.Done()
+		}
+	}()
+
+	wg.Wait()
 
 	return
 }
 
-// retrieveAssets retrieves all existing assets from the Horizon API
-func retrieveAssets(c *horizonclient.Client) (assets []hProtocol.AssetStat, err error) {
+// retrieveAssets retrieves existing assets from the Horizon API. If limit=0, will fetch all assets.
+func retrieveAssets(c *horizonclient.Client, limit int) (assets []hProtocol.AssetStat, err error) {
 	r := horizonclient.AssetRequest{Limit: 200}
 
 	assetsPage, err := c.Assets(r)
 	if err != nil {
 		return
 	}
+
+	fmt.Println("Fetching assets from Horizon")
 
 	for assetsPage.Links.Next.Href != assetsPage.Links.Self.Href {
 		assetsPage, err = c.Assets(r)
@@ -259,14 +311,24 @@ func retrieveAssets(c *horizonclient.Client) (assets []hProtocol.AssetStat, err 
 		}
 		assets = append(assets, assetsPage.Embedded.Records...)
 
+		if limit != 0 { // for performance reasons, only perform these additional checks when limit != 0
+			numAssets := len(assets)
+			if numAssets >= limit {
+				diff := numAssets - limit
+				assets = assets[0 : numAssets-diff]
+				break
+			}
+		}
+
 		n, err := nextCursor(assetsPage)
 		if err != nil {
 			return assets, err
 		}
-		fmt.Println("Fetching all assets with cursor at:", n)
+		fmt.Println("Cursor currently at:", n)
 
 		r = horizonclient.AssetRequest{Limit: 200, Cursor: n}
 	}
 
+	fmt.Printf("Fetched: %d assets\n", len(assets))
 	return
 }

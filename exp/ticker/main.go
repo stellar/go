@@ -34,7 +34,7 @@ func writeResultsToFile(jsonBytes []byte, filename string) (numBytes int, err er
 func main() {
 	// Temporary main function to run / test packages
 	c := horizonclient.DefaultPublicNetClient
-	tomlAssetList, err := scraper.FetchAllAssets(c)
+	tomlAssetList, err := scraper.FetchAllAssets(c, 0, 500)
 	check(err)
 
 	jsonAssets, err := json.MarshalIndent(tomlAssetList, "", "\t")

@@ -52,16 +52,17 @@ type TOMLAsset struct {
 	IsValid                 bool       `json:"is_valid"`
 	LastValid               time.Time  `json:"last_valid"`
 	LastChecked             time.Time  `json:"last_checked"`
+	IsTrash                 bool       `json:"-"`
 }
 
-// FetchAllAssets fetches all assets from the Horizon public net
-func FetchAllAssets(c *horizonclient.Client) (assets []TOMLAsset, err error) {
-	dirtyAssets, err := retrieveAssets(c)
+// FetchAllAssets fetches assets from the Horizon public net. If limit = 0, will fetch all assets.
+func FetchAllAssets(c *horizonclient.Client, limit int, parallelism int) (assets []TOMLAsset, err error) {
+	dirtyAssets, err := retrieveAssets(c, limit)
 	if err != nil {
 		return
 	}
 
-	assets, numTrash := cleanUpAssets(dirtyAssets)
+	assets, numTrash := parallelCleanUpAssets(dirtyAssets, parallelism)
 
 	fmt.Printf(
 		"Scanned %d entries. Trash: %d. Non-trash: %d\n",
