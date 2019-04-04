@@ -1,13 +1,14 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
+	"time"
 
-	horizonclient "github.com/stellar/go/exp/clients/horizon"
-	"github.com/stellar/go/exp/ticker/internal/scraper"
+	"github.com/jmoiron/sqlx"
+	_ "github.com/lib/pq"
+	"github.com/stellar/go/exp/ticker/internal/tickerdb"
 )
 
 func check(e error) {
@@ -33,12 +34,33 @@ func writeResultsToFile(jsonBytes []byte, filename string) (numBytes int, err er
 
 func main() {
 	// Temporary main function to run / test packages
-	c := horizonclient.DefaultPublicNetClient
-	tomlAssetList, err := scraper.FetchAllAssets(c, 0, 500)
+	// c := horizonclient.DefaultPublicNetClient
+	// tomlAssetList, err := scraper.FetchAllAssets(c, 0, 500)
+	// check(err)
+
+	// jsonAssets, err := json.MarshalIndent(tomlAssetList, "", "\t")
+	// check(err)
+
+	// writeResultsToFile(jsonAssets, "assets.json")
+	dbconn, err := sqlx.Connect("postgres", "user=alexandre dbname=stellarticker01 sslmode=disable")
 	check(err)
 
-	jsonAssets, err := json.MarshalIndent(tomlAssetList, "", "\t")
-	check(err)
+	var session tickerdb.TickerSession
+	session.DB = dbconn
+	asset := tickerdb.Asset{
+		Code:                    "BTC",
+		Issuer:                  "Alexandre Cordeiro",
+		Type:                    "crypto",
+		NumAccounts:             439,
+		AuthRequired:            true,
+		AuthRevocable:           false,
+		Amount:                  1098312903.0931232901,
+		AssetControlledByDomain: true,
+		IsValid:                 true,
+		LastValid:               time.Now(),
+		LastChecked:             time.Now(),
+	}
 
-	writeResultsToFile(jsonAssets, "assets.json")
+	err = session.InsertAsset(&asset)
+	check(err)
 }
