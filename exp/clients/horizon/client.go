@@ -405,7 +405,10 @@ func (c *Client) Trades(request TradeRequest) (tds hProtocol.TradesPage, err err
 	return
 }
 
-// StreamTrades support streaming all trades on the network, for an account or for an offer.
+// StreamTrades streams executed trades. It can be used to stream all trades, trades for an account and
+// trades for an offer. Use context.WithCancel to stop streaming or context.Background() if you want
+// to stream indefinitely. TradeHandler is a function that expects a Trade object parameter.
+// This parameter will contain the streamed trades.
 func (c *Client) StreamTrades(ctx context.Context, request TradeRequest, handler TradeHandler) (err error) {
 	err = request.StreamTrades(ctx, c, handler)
 	return

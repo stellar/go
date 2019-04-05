@@ -141,9 +141,10 @@ func ExampleClient_StreamTrades() {
 		cancel()
 	}()
 
-	err := client.StreamTrades(ctx, tradeRequest, func(tr hProtocol.Trade) {
+	printHandler := func(tr hProtocol.Trade) {
 		fmt.Println(tr)
-	})
+	}
+	err := client.StreamTrades(ctx, tradeRequest, printHandler)
 
 	if err != nil {
 		fmt.Println(err)

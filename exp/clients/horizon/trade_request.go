@@ -66,7 +66,8 @@ func (tr TradeRequest) BuildUrl() (endpoint string, err error) {
 type TradeHandler func(hProtocol.Trade)
 
 // StreamTrades streams executed trades. It can be used to stream all trades, trades for an account and
-// trades for an offer. Use context.WithCancel to stop streaming or context.Background() if you want to stream indefinitely.
+// trades for an offer. Use context.WithCancel to stop streaming or context.Background() if you want
+// to stream indefinitely. TradeHandler is a user-supplied function that is executed for each streamed trade received.
 func (tr TradeRequest) StreamTrades(ctx context.Context, client *Client,
 	handler TradeHandler) (err error) {
 	endpoint, err := tr.BuildUrl()
