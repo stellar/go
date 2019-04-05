@@ -129,6 +129,7 @@ type ClientInterface interface {
 	Payments(request OperationRequest) (operations.OperationsPage, error)
 	TradeAggregations(request TradeAggregationRequest) (hProtocol.TradeAggregationsPage, error)
 	Trades(request TradeRequest) (hProtocol.TradesPage, error)
+	StreamTransactions(ctx context.Context, request TransactionRequest, handler TransactionHandler) error
 }
 
 // DefaultTestNetClient is a default client to connect to test network

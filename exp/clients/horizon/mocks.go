@@ -136,5 +136,14 @@ func (m *MockClient) Trades(request TradeRequest) (hProtocol.TradesPage, error) 
 	return a.Get(0).(hProtocol.TradesPage), a.Error(1)
 }
 
+// StreamTransactions is a mocking method
+func (m *MockClient) StreamTransactions(ctx context.Context,
+	request TransactionRequest,
+	handler TransactionHandler,
+) error {
+	a := m.Called(ctx, request, handler)
+	return a.Error(0)
+}
+
 // ensure that the MockClient implements ClientInterface
 var _ ClientInterface = &MockClient{}
