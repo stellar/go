@@ -4,9 +4,5 @@ package tickerdb
 func (s *TickerSession) InsertAsset(a *Asset) (err error) {
 	tbl := s.GetTable("assets")
 	_, err = tbl.Insert(a).IgnoreCols("id").Exec()
-	if err != nil {
-		return
-	}
-
 	return
 }

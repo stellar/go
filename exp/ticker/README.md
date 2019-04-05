@@ -46,4 +46,4 @@ Database Cleaner: since the Ticker has a limited time range of data, this servic
 1. Instal PostgreSQL: `$ brew install postgresql`
 1. Edit `dbconfig.yml` to reflect your database configuration.
 1. Run migrations `$ sql-migrate up`
-1. Run the project `$ go run main.go`
+1. Run the project `$ DB_INFO="user=<DB_USER> dbname=<DB_NAME> sslmode=disable" go run main.go`
