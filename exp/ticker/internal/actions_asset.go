@@ -25,7 +25,7 @@ func RefreshAssets(s *tickerdb.TickerSession) (err error) {
 
 	for _, tomlAsset := range tomlAssetList {
 		dbAsset := tomlAssetToDBAsset(tomlAsset)
-		err = s.InsertAsset(&dbAsset)
+		err = s.InsertOrUpdateAsset(&dbAsset)
 		if err != nil {
 			fmt.Println("Error inserting asset:", dbAsset, err)
 		}
