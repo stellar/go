@@ -1,8 +1,10 @@
 package horizonclient
 
 import (
+	"context"
 	"fmt"
 	"testing"
+	"time"
 
 	hProtocol "github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/support/http/httptest"
@@ -127,6 +129,115 @@ func TestTradesRequest(t *testing.T) {
 	}
 }
 
+func ExampleClient_StreamTrades() {
+	client := DefaultTestNetClient
+	// all trades
+	tradeRequest := TradeRequest{Cursor: "760209215489"}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	go func() {
+		// Stop streaming after 60 seconds.
+		time.Sleep(60 * time.Second)
+		cancel()
+	}()
+
+	printHandler := func(tr hProtocol.Trade) {
+		fmt.Println(tr)
+	}
+	err := client.StreamTrades(ctx, tradeRequest, printHandler)
+
+	if err != nil {
+		fmt.Println(err)
+	}
+}
+
+func TestTradeRequestStreamTrades(t *testing.T) {
+
+	hmock := httptest.NewClient()
+	client := &Client{
+		HorizonURL: "https://localhost/",
+		HTTP:       hmock,
+	}
+
+	// all trades
+	trRequest := TradeRequest{}
+	ctx, cancel := context.WithCancel(context.Background())
+
+	hmock.On(
+		"GET",
+		"https://localhost/trades?cursor=now",
+	).ReturnString(200, tradeStreamResponse)
+
+	trades := make([]hProtocol.Trade, 1)
+	err := client.StreamTrades(ctx, trRequest, func(tr hProtocol.Trade) {
+		trades[0] = tr
+		cancel()
+	})
+
+	if assert.NoError(t, err) {
+		assert.Equal(t, trades[0].ID, "76909979385857-0")
+		assert.Equal(t, trades[0].OfferID, "494")
+	}
+
+	// trades for accounts
+	trRequest = TradeRequest{ForAccount: "GCRHQBHX7JNBZE4HHPLNOAAYDRDVAGBJKJ4KPGHIID3CBGVALXBD6TVQ"}
+	ctx, cancel = context.WithCancel(context.Background())
+
+	hmock.On(
+		"GET",
+		"https://localhost/accounts/GCRHQBHX7JNBZE4HHPLNOAAYDRDVAGBJKJ4KPGHIID3CBGVALXBD6TVQ/trades?cursor=now",
+	).ReturnString(200, tradeStreamResponse)
+
+	trades = make([]hProtocol.Trade, 1)
+	err = client.StreamTrades(ctx, trRequest, func(tr hProtocol.Trade) {
+		trades[0] = tr
+		cancel()
+	})
+
+	if assert.NoError(t, err) {
+		assert.Equal(t, trades[0].ID, "76909979385857-0")
+		assert.Equal(t, trades[0].OfferID, "494")
+	}
+
+	// trades for offers
+	trRequest = TradeRequest{ForOfferID: "494"}
+	ctx, cancel = context.WithCancel(context.Background())
+
+	hmock.On(
+		"GET",
+		"https://localhost/offers/494/trades?cursor=now",
+	).ReturnString(200, tradeStreamResponse)
+
+	trades = make([]hProtocol.Trade, 1)
+	err = client.StreamTrades(ctx, trRequest, func(tr hProtocol.Trade) {
+		trades[0] = tr
+		cancel()
+	})
+
+	if assert.NoError(t, err) {
+		assert.Equal(t, trades[0].ID, "76909979385857-0")
+		assert.Equal(t, trades[0].OfferID, "494")
+	}
+
+	// test error
+	trRequest = TradeRequest{}
+	ctx, cancel = context.WithCancel(context.Background())
+
+	hmock.On(
+		"GET",
+		"https://localhost/trades?cursor=now",
+	).ReturnString(500, tradeStreamResponse)
+
+	trades = make([]hProtocol.Trade, 1)
+	err = client.StreamTrades(ctx, trRequest, func(tr hProtocol.Trade) {
+		cancel()
+	})
+
+	if assert.Error(t, err) {
+		assert.Contains(t, err.Error(), "Got bad HTTP status code 500")
+	}
+}
+
 var tradesResponse = `{
   "_links": {
     "self": {
@@ -218,3 +329,6 @@ var tradesResponse = `{
     ]
   }
 }`
+
+var tradeStreamResponse = `data: {"_links":{"self":{"href":""},"base":{"href":"https://horizon-testnet.stellar.org/accounts/GCRHQBHX7JNBZE4HHPLNOAAYDRDVAGBJKJ4KPGHIID3CBGVALXBD6TVQ"},"counter":{"href":"https://horizon-testnet.stellar.org/accounts/GAEETTPUI5CO3CSYXXM5CRX4FHLDWJ3KD6XRRJ3GJISWQSCYF5ALN6JC"},"operation":{"href":"https://horizon-testnet.stellar.org/operations/76909979385857"}},"id":"76909979385857-0","paging_token":"76909979385857-0","ledger_close_time":"2019-02-28T11:29:40Z","offer_id":"494","base_offer_id":"4611762928406773761","base_account":"GCRHQBHX7JNBZE4HHPLNOAAYDRDVAGBJKJ4KPGHIID3CBGVALXBD6TVQ","base_amount":"0.0000001","base_asset_type":"native","counter_offer_id":"494","counter_account":"GAEETTPUI5CO3CSYXXM5CRX4FHLDWJ3KD6XRRJ3GJISWQSCYF5ALN6JC","counter_amount":"0.0001000","counter_asset_type":"credit_alphanum4","counter_asset_code":"WTF","counter_asset_issuer":"GAQZKAGUAHCN4OHAMQVQ3PNA5DUHCQ3CEVOSOTPUAXHG3UHTRSSUFHUL","base_is_seller":false,"price":{"n":1000,"d":1}}
+`
