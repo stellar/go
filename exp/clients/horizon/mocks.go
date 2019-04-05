@@ -145,5 +145,14 @@ func (m *MockClient) StreamTransactions(ctx context.Context,
 	return a.Error(0)
 }
 
+// StreamTrades is a mocking method
+func (m *MockClient) StreamTrades(ctx context.Context,
+	request TradeRequest,
+	handler TradeHandler,
+) error {
+	a := m.Called(ctx, request, handler)
+	return a.Error(0)
+}
+
 // ensure that the MockClient implements ClientInterface
 var _ ClientInterface = &MockClient{}
