@@ -422,9 +422,8 @@ func (c *Client) TradeAggregations(request TradeAggregationRequest) (tds hProtoc
 // StreamTransactions streams processed transactions. It can be used to stream all transactions and
 // transactions for an account. Use context.WithCancel to stop streaming or context.Background()
 // if you want to stream indefinitely. TransactionHandler is a user-supplied function that is executed for each streamed transaction received.
-func (c *Client) StreamTransactions(ctx context.Context, request TransactionRequest, handler TransactionHandler) (err error) {
-	err = request.StreamTransactions(ctx, c, handler)
-	return
+func (c *Client) StreamTransactions(ctx context.Context, request TransactionRequest, handler TransactionHandler) error {
+	return request.StreamTransactions(ctx, c, handler)
 }
 
 // ensure that the horizon client implements ClientInterface
