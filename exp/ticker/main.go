@@ -16,6 +16,7 @@ func main() {
 		panic(errors.New("could not start: env var DB_INFO not provided"))
 	}
 	session, err := tickerdb.CreateSession("postgres", dbInfo)
+	defer session.DB.Close()
 	utils.PanicIfError(err)
 
 	err = ticker.RefreshAssets(&session)
