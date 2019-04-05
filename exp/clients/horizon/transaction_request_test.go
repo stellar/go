@@ -73,14 +73,12 @@ func ExampleClient_StreamTransactions() {
 		fmt.Println(tr)
 	}
 	err := client.StreamTransactions(ctx, transactionRequest, printHandler)
-
 	if err != nil {
 		fmt.Println(err)
 	}
 }
 
 func TestTransactionRequestStreamTransactions(t *testing.T) {
-
 	hmock := httptest.NewClient()
 	client := &Client{
 		HorizonURL: "https://localhost/",
