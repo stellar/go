@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"testing"
+	"time"
 
 	hProtocol "github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/support/http/httptest"
@@ -128,7 +129,28 @@ func TestTradesRequest(t *testing.T) {
 	}
 }
 
-func TestTradeRequestStream(t *testing.T) {
+func ExampleClient_StreamTrades() {
+	client := DefaultTestNetClient
+	// all trades
+	tradeRequest := TradeRequest{Cursor: "760209215489"}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	go func() {
+		// Stop streaming after 60 seconds.
+		time.Sleep(60 * time.Second)
+		cancel()
+	}()
+
+	err := client.StreamTrades(ctx, tradeRequest, func(tr hProtocol.Trade) {
+		fmt.Println(tr)
+	})
+
+	if err != nil {
+		fmt.Println(err)
+	}
+}
+
+func TestTradeRequestStreamTrades(t *testing.T) {
 
 	hmock := httptest.NewClient()
 	client := &Client{
@@ -146,11 +168,8 @@ func TestTradeRequestStream(t *testing.T) {
 	).ReturnString(200, tradeStreamResponse)
 
 	trades := make([]hProtocol.Trade, 1)
-	err := client.Stream(ctx, trRequest, func(tr interface{}) {
-		resp, ok := tr.(hProtocol.Trade)
-		if ok {
-			trades[0] = resp
-		}
+	err := client.StreamTrades(ctx, trRequest, func(tr hProtocol.Trade) {
+		trades[0] = tr
 		cancel()
 	})
 
@@ -169,11 +188,8 @@ func TestTradeRequestStream(t *testing.T) {
 	).ReturnString(200, tradeStreamResponse)
 
 	trades = make([]hProtocol.Trade, 1)
-	err = client.Stream(ctx, trRequest, func(tr interface{}) {
-		resp, ok := tr.(hProtocol.Trade)
-		if ok {
-			trades[0] = resp
-		}
+	err = client.StreamTrades(ctx, trRequest, func(tr hProtocol.Trade) {
+		trades[0] = tr
 		cancel()
 	})
 
@@ -192,11 +208,8 @@ func TestTradeRequestStream(t *testing.T) {
 	).ReturnString(200, tradeStreamResponse)
 
 	trades = make([]hProtocol.Trade, 1)
-	err = client.Stream(ctx, trRequest, func(tr interface{}) {
-		resp, ok := tr.(hProtocol.Trade)
-		if ok {
-			trades[0] = resp
-		}
+	err = client.StreamTrades(ctx, trRequest, func(tr hProtocol.Trade) {
+		trades[0] = tr
 		cancel()
 	})
 
@@ -215,7 +228,7 @@ func TestTradeRequestStream(t *testing.T) {
 	).ReturnString(500, tradeStreamResponse)
 
 	trades = make([]hProtocol.Trade, 1)
-	err = client.Stream(ctx, trRequest, func(tx interface{}) {
+	err = client.StreamTrades(ctx, trRequest, func(tr hProtocol.Trade) {
 		cancel()
 	})
 

@@ -405,6 +405,12 @@ func (c *Client) Trades(request TradeRequest) (tds hProtocol.TradesPage, err err
 	return
 }
 
+// StreamTrades support streaming all trades on the network, for an account or for an offer.
+func (c *Client) StreamTrades(ctx context.Context, request TradeRequest, handler TradeHandler) (err error) {
+	err = request.StreamTrades(ctx, c, handler)
+	return
+}
+
 // TradeAggregations returns stellar trade aggregations (https://www.stellar.org/developers/horizon/reference/resources/trade_aggregation.html)
 func (c *Client) TradeAggregations(request TradeAggregationRequest) (tds hProtocol.TradeAggregationsPage, err error) {
 	err = c.sendRequest(request, &tds)
