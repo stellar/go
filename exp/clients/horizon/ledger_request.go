@@ -58,7 +58,7 @@ func (lr LedgerRequest) StreamLedgers(ctx context.Context, client *Client,
 		var ledger hProtocol.Ledger
 		err = json.Unmarshal(data, &ledger)
 		if err != nil {
-			return errors.Wrap(err, "Error unmarshaling data for ledger reques")
+			return errors.Wrap(err, "Error unmarshaling data for ledger request")
 		}
 		handler(ledger)
 		return nil
