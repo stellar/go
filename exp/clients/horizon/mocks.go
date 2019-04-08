@@ -154,5 +154,13 @@ func (m *MockClient) StreamTrades(ctx context.Context,
 	return a.Error(0)
 }
 
+// StreamEffects is a mocking method
+func (m *MockClient) StreamEffects(ctx context.Context,
+	request EffectRequest,
+	handler EffectHandler,
+) error {
+	return m.Called(ctx, request, handler).Error(0)
+}
+
 // ensure that the MockClient implements ClientInterface
 var _ ClientInterface = &MockClient{}

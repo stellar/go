@@ -426,5 +426,12 @@ func (c *Client) StreamTransactions(ctx context.Context, request TransactionRequ
 	return request.StreamTransactions(ctx, c, handler)
 }
 
+// StreamEffects streams horizon effects. It can be used to stream all effects or account specific effects.
+// Use context.WithCancel to stop streaming or context.Background() if you want to stream indefinitely.
+// EffectHandler is a user-supplied function that is executed for each streamed transaction received.
+func (c *Client) StreamEffects(ctx context.Context, request EffectRequest, handler EffectHandler) error {
+	return request.StreamEffects(ctx, c, handler)
+}
+
 // ensure that the horizon client implements ClientInterface
 var _ ClientInterface = &Client{}

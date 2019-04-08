@@ -131,6 +131,7 @@ type ClientInterface interface {
 	Trades(request TradeRequest) (hProtocol.TradesPage, error)
 	StreamTransactions(ctx context.Context, request TransactionRequest, handler TransactionHandler) error
 	StreamTrades(ctx context.Context, request TradeRequest, handler TradeHandler) error
+	StreamEffects(ctx context.Context, request EffectRequest, handler EffectHandler) error
 }
 
 // DefaultTestNetClient is a default client to connect to test network
