@@ -3,6 +3,7 @@ package ticker
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
 
 	horizonclient "github.com/stellar/go/exp/clients/horizon"
 	"github.com/stellar/go/exp/ticker/internal/scraper"
@@ -25,7 +26,7 @@ func RefreshAssets(s *tickerdb.TickerSession) (err error) {
 
 	for _, tomlAsset := range tomlAssetList {
 		dbAsset := tomlAssetToDBAsset(tomlAsset)
-		err = s.InsertOrUpdateAsset(&dbAsset)
+		err = s.InsertOrUpdateAsset(&dbAsset, []string{"code", "public_key"})
 		if err != nil {
 			fmt.Println("Error inserting asset:", dbAsset, err)
 		}
@@ -52,19 +53,32 @@ func writeAssetsToFile(assets []scraper.TOMLAsset, filename string) (err error) 
 // tomlAssetToDBAsset converts a scraper.TOMLAsset to a tickerdb.Asset.
 func tomlAssetToDBAsset(asset scraper.TOMLAsset) tickerdb.Asset {
 	return tickerdb.Asset{
-		Code:                    asset.Code,
-		Issuer:                  asset.Issuer,
-		Type:                    asset.Type,
-		NumAccounts:             asset.NumAccounts,
-		AuthRequired:            asset.AuthRequired,
-		AuthRevocable:           asset.AuthRevocable,
-		Amount:                  asset.Amount,
-		AssetControlledByDomain: asset.AssetControlledByDomain,
-		AnchorAssetCode:         asset.AnchorAsset,
-		AnchorAssetType:         asset.AnchorAssetType,
-		IsValid:                 asset.IsValid,
-		ValidationError:         asset.Error,
-		LastValid:               asset.LastValid,
-		LastChecked:             asset.LastChecked,
+		Code:                        asset.Code,
+		PublicKey:                   asset.Issuer,
+		Type:                        asset.Type,
+		NumAccounts:                 asset.NumAccounts,
+		AuthRequired:                asset.AuthRequired,
+		AuthRevocable:               asset.AuthRevocable,
+		Amount:                      asset.Amount,
+		AssetControlledByDomain:     asset.AssetControlledByDomain,
+		AnchorAssetCode:             asset.AnchorAsset,
+		AnchorAssetType:             asset.AnchorAssetType,
+		IsValid:                     asset.IsValid,
+		ValidationError:             asset.Error,
+		LastValid:                   asset.LastValid,
+		LastChecked:                 asset.LastChecked,
+		DisplayDecimals:             asset.DisplayDecimals,
+		Name:                        asset.Name,
+		Desc:                        asset.Desc,
+		Conditions:                  asset.Conditions,
+		IsAssetAnchored:             asset.IsAssetAnchored,
+		FixedNumber:                 asset.FixedNumber,
+		MaxNumber:                   asset.MaxNumber,
+		IsUnlimited:                 asset.IsUnlimited,
+		RedemptionInstructions:      asset.RedemptionInstructions,
+		CollateralAddresses:         strings.Join(asset.CollateralAddresses, ","),
+		CollateralAddressSignatures: strings.Join(asset.CollateralAddressSignatures, ","),
+		Countries:                   asset.Countries,
+		Status:                      asset.Status,
 	}
 }

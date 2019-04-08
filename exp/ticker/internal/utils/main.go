@@ -26,3 +26,17 @@ func WriteJSONToFile(jsonBytes []byte, filename string) (numBytes int, err error
 
 	return
 }
+
+// SliceDiff returns the elements in `a` that aren't in `b`.
+func SliceDiff(a, b []string) (diff []string) {
+	bmap := map[string]bool{}
+	for _, x := range b {
+		bmap[x] = true
+	}
+	for _, x := range a {
+		if _, ok := bmap[x]; !ok {
+			diff = append(diff, x)
+		}
+	}
+	return
+}

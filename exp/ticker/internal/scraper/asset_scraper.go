@@ -179,7 +179,19 @@ func makeTOMLAsset(
 		if currency.Code == asset.Code && currency.Issuer == asset.Issuer {
 			hasCurrency = true
 			t.AnchorAsset = currency.AnchorAsset
-			t.AnchorAsset = currency.AnchorAsset
+			t.AnchorAssetType = currency.AnchorAssetType
+			t.DisplayDecimals = currency.DisplayDecimals
+			t.Name = currency.Name
+			t.Desc = currency.Desc
+			t.Conditions = currency.Conditions
+			t.IsAssetAnchored = currency.IsAssetAnchored
+			t.FixedNumber = currency.FixedNumber
+			t.MaxNumber = currency.MaxNumber
+			t.IsUnlimited = currency.IsUnlimited
+			t.RedemptionInstructions = currency.RedemptionInstructions
+			t.CollateralAddresses = currency.CollateralAddresses
+			t.CollateralAddressSignatures = currency.CollateralAddressSignatures
+			t.Status = currency.Status
 		}
 	}
 	t.AssetControlledByDomain = isDomainVerified(

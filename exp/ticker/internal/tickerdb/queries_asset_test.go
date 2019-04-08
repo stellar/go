@@ -30,11 +30,11 @@ func TestInsertOrUpdateAsset(t *testing.T) {
 	firstTime := time.Now()
 	a := Asset{
 		Code:        "XLM",
-		Issuer:      "STELLAR DEVELOPMENT FOUNDATION",
+		PublicKey:   "STELLAR DEVELOPMENT FOUNDATION",
 		LastValid:   firstTime,
 		LastChecked: firstTime,
 	}
-	err = session.InsertOrUpdateAsset(&a)
+	err = session.InsertOrUpdateAsset(&a, []string{"code", "public_key"})
 	require.NoError(t, err)
 
 	var dbAsset1 Asset
@@ -46,14 +46,14 @@ func TestInsertOrUpdateAsset(t *testing.T) {
 	)
 	require.NoError(t, err)
 	assert.Equal(t, "XLM", dbAsset1.Code)
-	assert.Equal(t, "STELLAR DEVELOPMENT FOUNDATION", dbAsset1.Issuer)
+	assert.Equal(t, "STELLAR DEVELOPMENT FOUNDATION", dbAsset1.PublicKey)
 	assert.Equal(t, firstTime.Round(0).Local(), dbAsset1.LastValid.Local())
 	assert.Equal(t, firstTime.Round(0).Local(), dbAsset1.LastChecked.Local())
 
 	secondTime := time.Now()
 	a.LastValid = secondTime
 	a.LastChecked = secondTime
-	err = session.InsertOrUpdateAsset(&a)
+	err = session.InsertOrUpdateAsset(&a, []string{"code", "public_key"})
 	require.NoError(t, err)
 
 	var dbAsset2 Asset
@@ -65,10 +65,31 @@ func TestInsertOrUpdateAsset(t *testing.T) {
 	)
 	require.NoError(t, err)
 	assert.Equal(t, dbAsset1.ID, dbAsset2.ID)
-	assert.Equal(t, "XLM", dbAsset1.Code)
-	assert.Equal(t, "STELLAR DEVELOPMENT FOUNDATION", dbAsset1.Issuer)
+	assert.Equal(t, "XLM", dbAsset2.Code)
+	assert.Equal(t, "STELLAR DEVELOPMENT FOUNDATION", dbAsset2.PublicKey)
 	assert.NotEqual(t, firstTime.Round(0).Local(), dbAsset2.LastValid.Local())
 	assert.NotEqual(t, firstTime.Round(0).Local(), dbAsset2.LastChecked.Local())
 	assert.Equal(t, secondTime.Round(0).Local(), dbAsset2.LastValid.Local())
 	assert.Equal(t, secondTime.Round(0).Local(), dbAsset2.LastChecked.Local())
+
+	thirdTime := time.Now()
+	a.LastValid = thirdTime
+	a.LastChecked = thirdTime
+	err = session.InsertOrUpdateAsset(&a, []string{"code", "public_key", "last_valid", "last_checked"})
+	require.NoError(t, err)
+	var dbAsset3 Asset
+	err = session.GetRaw(&dbAsset3, `
+		SELECT *
+		FROM assets
+		ORDER BY id DESC
+		LIMIT 1`,
+	)
+	require.NoError(t, err)
+	assert.Equal(t, dbAsset2.ID, dbAsset3.ID)
+	assert.Equal(t, "XLM", dbAsset3.Code)
+	assert.Equal(t, "STELLAR DEVELOPMENT FOUNDATION", dbAsset3.PublicKey)
+	assert.NotEqual(t, thirdTime.Round(0).Local(), dbAsset3.LastValid.Local())
+	assert.NotEqual(t, thirdTime.Round(0).Local(), dbAsset3.LastChecked.Local())
+	assert.Equal(t, dbAsset2.LastValid.Local(), dbAsset3.LastValid.Local())
+	assert.Equal(t, dbAsset2.LastValid.Local(), dbAsset3.LastChecked.Local())
 }
