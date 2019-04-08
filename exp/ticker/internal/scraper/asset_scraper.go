@@ -153,17 +153,17 @@ func isDomainVerified(orgURL string, tomlURL string, hasCurrency bool) bool {
 }
 
 // makeTomlAsset aggregates Horizon Data with TOML Data
-func makeTOMLAsset(
+func makeFinalAsset(
 	asset hProtocol.AssetStat,
 	issuer TOMLIssuer,
 	errors []error,
-) (t TOMLAsset, err error) {
+) (t FinalAsset, err error) {
 	amount, err := strconv.ParseFloat(asset.Amount, 64)
 	if err != nil {
 		return
 	}
 
-	t = TOMLAsset{
+	t = FinalAsset{
 		Type:          asset.Type,
 		Code:          asset.Code,
 		Issuer:        asset.Issuer,
@@ -192,6 +192,7 @@ func makeTOMLAsset(
 			t.CollateralAddresses = currency.CollateralAddresses
 			t.CollateralAddressSignatures = currency.CollateralAddressSignatures
 			t.Status = currency.Status
+			break
 		}
 	}
 	t.AssetControlledByDomain = isDomainVerified(
@@ -200,8 +201,9 @@ func makeTOMLAsset(
 		hasCurrency,
 	)
 
-	// TODO: determine if the asset is valid even if the issuer doesn't have
-	// it listed in its currencies
+	if !hasCurrency {
+		t.AssetControlledByDomain = false
+	}
 
 	now := time.Now()
 	if len(errors) > 0 {
@@ -218,7 +220,7 @@ func makeTOMLAsset(
 }
 
 // processAsset merges data from an AssetStat with data retrieved from its corresponding TOML file
-func processAsset(asset hProtocol.AssetStat) (processedAsset TOMLAsset, err error) {
+func processAsset(asset hProtocol.AssetStat) (processedAsset FinalAsset, err error) {
 	var errors []error
 
 	tomlData, err := fetchTOMLData(asset)
@@ -231,7 +233,7 @@ func processAsset(asset hProtocol.AssetStat) (processedAsset TOMLAsset, err erro
 		errors = append(errors, err)
 	}
 
-	processedAsset, err = makeTOMLAsset(asset, issuer, errors)
+	processedAsset, err = makeFinalAsset(asset, issuer, errors)
 	if err != nil {
 		return
 	}
@@ -239,10 +241,10 @@ func processAsset(asset hProtocol.AssetStat) (processedAsset TOMLAsset, err erro
 	return
 }
 
-// parallelCleanUpAssets filters the assets that don't match the shouldDiscardAsset criteria.
+// parallelProcessAssets filters the assets that don't match the shouldDiscardAsset criteria.
 // The TOML validation is performed in parallel to improve performance.
-func parallelCleanUpAssets(assets []hProtocol.AssetStat, parallelism int) (cleanAssets []TOMLAsset, numTrash int) {
-	queue := make(chan TOMLAsset, parallelism)
+func parallelProcessAssets(assets []hProtocol.AssetStat, parallelism int) (cleanAssets []FinalAsset, numTrash int) {
+	queue := make(chan FinalAsset, parallelism)
 
 	var mutex = &sync.Mutex{}
 	var wg sync.WaitGroup
@@ -262,24 +264,24 @@ func parallelCleanUpAssets(assets []hProtocol.AssetStat, parallelism int) (clean
 
 			for j := start; j < end; j++ {
 				if !shouldDiscardAsset(assets[j]) {
-					tomlAsset, err := processAsset(assets[j])
+					finalAsset, err := processAsset(assets[j])
 					if err != nil {
 						mutex.Lock()
 						numTrash++
 						mutex.Unlock()
 						// Invalid assets are also sent to the queue to preserve
 						// the WaitGroup count
-						queue <- TOMLAsset{IsTrash: true}
+						queue <- FinalAsset{IsTrash: true}
 						continue
 					}
-					queue <- tomlAsset
+					queue <- finalAsset
 				} else {
 					mutex.Lock()
 					numTrash++
 					mutex.Unlock()
 					// Discarded assets are also sent to the queue to preserve
 					// the WaitGroup count
-					queue <- TOMLAsset{IsTrash: true}
+					queue <- FinalAsset{IsTrash: true}
 				}
 			}
 		}(i * chunkSize)
@@ -301,6 +303,7 @@ func parallelCleanUpAssets(assets []hProtocol.AssetStat, parallelism int) (clean
 	}()
 
 	wg.Wait()
+	close(queue)
 
 	return
 }

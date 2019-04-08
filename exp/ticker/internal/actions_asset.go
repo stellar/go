@@ -14,18 +14,18 @@ import (
 // RefreshAssets scrapes the most recent asset list and ingests then into the db.
 func RefreshAssets(s *tickerdb.TickerSession) (err error) {
 	c := horizonclient.DefaultPublicNetClient
-	tomlAssetList, err := scraper.FetchAllAssets(c, 0, 500)
+	finalAssetList, err := scraper.FetchAllAssets(c, 0, 500)
 	if err != nil {
 		return
 	}
 
-	err = writeAssetsToFile(tomlAssetList, "assets.json")
+	err = writeAssetsToFile(finalAssetList, "assets.json")
 	if err != nil {
 		fmt.Println("Could not write assets to file")
 	}
 
-	for _, tomlAsset := range tomlAssetList {
-		dbAsset := tomlAssetToDBAsset(tomlAsset)
+	for _, finalAsset := range finalAssetList {
+		dbAsset := finalAssetToDBAsset(finalAsset)
 		err = s.InsertOrUpdateAsset(&dbAsset, []string{"code", "public_key"})
 		if err != nil {
 			fmt.Println("Error inserting asset:", dbAsset, err)
@@ -36,7 +36,7 @@ func RefreshAssets(s *tickerdb.TickerSession) (err error) {
 }
 
 // writeAssetsToFile creates a list of assets exported in a JSON file.
-func writeAssetsToFile(assets []scraper.TOMLAsset, filename string) (err error) {
+func writeAssetsToFile(assets []scraper.FinalAsset, filename string) (err error) {
 	jsonAssets, err := json.MarshalIndent(assets, "", "\t")
 	if err != nil {
 		return
@@ -50,8 +50,8 @@ func writeAssetsToFile(assets []scraper.TOMLAsset, filename string) (err error) 
 	return
 }
 
-// tomlAssetToDBAsset converts a scraper.TOMLAsset to a tickerdb.Asset.
-func tomlAssetToDBAsset(asset scraper.TOMLAsset) tickerdb.Asset {
+// finalAssetToDBAsset converts a scraper.FinalAsset to a tickerdb.Asset.
+func finalAssetToDBAsset(asset scraper.FinalAsset) tickerdb.Asset {
 	return tickerdb.Asset{
 		Code:                        asset.Code,
 		PublicKey:                   asset.Issuer,
