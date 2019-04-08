@@ -204,6 +204,8 @@ func String(code interface{}) (string, error) {
 			return "op_invalid_limit", nil
 		case xdr.ChangeTrustResultCodeChangeTrustLowReserve:
 			return OpLowReserve, nil
+		case xdr.ChangeTrustResultCodeChangeTrustSelfNotAllowed:
+			return "op_self_not_allowed", nil
 		}
 	case xdr.AllowTrustResultCode:
 		switch code {
