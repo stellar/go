@@ -1,6 +1,7 @@
 package scraper
 
 import (
+	"net/url"
 	"testing"
 
 	hProtocol "github.com/stellar/go/protocols/horizon"
@@ -67,4 +68,63 @@ func TestShouldDiscardAsset(t *testing.T) {
 	testAsset.Code = "SOMETHINGVALID"
 	testAsset.Links.Toml.Href = "https://www.stellar.org/.well-known/stellar.toml"
 	assert.Equal(t, shouldDiscardAsset(testAsset), false)
+}
+
+func TestDomainsMatch(t *testing.T) {
+	tomlURL, _ := url.Parse("https://stellar.org/stellar.toml")
+	orgURL, _ := url.Parse("https://stellar.org/")
+	assert.True(t, domainsMatch(tomlURL, orgURL))
+
+	tomlURL, _ = url.Parse("https://assets.stellar.org/stellar.toml")
+	orgURL, _ = url.Parse("https://stellar.org/")
+	assert.False(t, domainsMatch(tomlURL, orgURL))
+
+	tomlURL, _ = url.Parse("https://stellar.org/stellar.toml")
+	orgURL, _ = url.Parse("https://home.stellar.org/")
+	assert.True(t, domainsMatch(tomlURL, orgURL))
+
+	tomlURL, _ = url.Parse("https://stellar.org/stellar.toml")
+	orgURL, _ = url.Parse("https://home.stellar.com/")
+	assert.False(t, domainsMatch(tomlURL, orgURL))
+
+	tomlURL, _ = url.Parse("https://stellar.org/stellar.toml")
+	orgURL, _ = url.Parse("https://stellar.com/")
+	assert.False(t, domainsMatch(tomlURL, orgURL))
+}
+
+func TestIsDomainVerified(t *testing.T) {
+	tomlURL := "https://stellar.org/stellar.toml"
+	orgURL := "https://stellar.org/"
+	hasCurrency := true
+	assert.True(t, isDomainVerified(orgURL, tomlURL, hasCurrency))
+
+	tomlURL = "https://stellar.org/stellar.toml"
+	orgURL = ""
+	hasCurrency = true
+	assert.True(t, isDomainVerified(orgURL, tomlURL, hasCurrency))
+
+	tomlURL = ""
+	orgURL = ""
+	hasCurrency = true
+	assert.False(t, isDomainVerified(orgURL, tomlURL, hasCurrency))
+
+	tomlURL = "https://stellar.org/stellar.toml"
+	orgURL = "https://stellar.org/"
+	hasCurrency = false
+	assert.False(t, isDomainVerified(orgURL, tomlURL, hasCurrency))
+
+	tomlURL = "http://stellar.org/stellar.toml"
+	orgURL = "https://stellar.org/"
+	hasCurrency = true
+	assert.False(t, isDomainVerified(orgURL, tomlURL, hasCurrency))
+
+	tomlURL = "https://stellar.org/stellar.toml"
+	orgURL = "http://stellar.org/"
+	hasCurrency = true
+	assert.False(t, isDomainVerified(orgURL, tomlURL, hasCurrency))
+
+	tomlURL = "https://stellar.org/stellar.toml"
+	orgURL = "https://stellar.com/"
+	hasCurrency = true
+	assert.False(t, isDomainVerified(orgURL, tomlURL, hasCurrency))
 }

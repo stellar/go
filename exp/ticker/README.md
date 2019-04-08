@@ -40,3 +40,10 @@ Database Cleaner: since the Ticker has a limited time range of data, this servic
 - [ ] Encapsulate all these services in a Docker container (that might point to an external Postgres db) and configure supervisord.
 - [ ] (Recurring) Add tests.
 - [ ] Improve documentation.
+
+## Running the project (beta)
+1. Install sql-migrate: `$ go get -v github.com/rubenv/sql-migrate/...`
+1. Instal PostgreSQL: `$ brew install postgresql`
+1. Edit `dbconfig.yml` to reflect your database configuration.
+1. Run migrations `$ sql-migrate up`
+1. Run the project `$ DB_INFO="user=<DB_USER> dbname=<DB_NAME> sslmode=disable" go run main.go`
