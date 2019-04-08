@@ -47,8 +47,16 @@ func TestInsertOrUpdateAsset(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "XLM", dbAsset1.Code)
 	assert.Equal(t, "STELLAR DEVELOPMENT FOUNDATION", dbAsset1.PublicKey)
-	assert.Equal(t, firstTime.Round(0).Local(), dbAsset1.LastValid.Local())
-	assert.Equal(t, firstTime.Round(0).Local(), dbAsset1.LastChecked.Local())
+	assert.Equal(
+		t,
+		firstTime.Local().Truncate(time.Microsecond),
+		dbAsset1.LastValid.Local().Truncate(time.Microsecond),
+	)
+	assert.Equal(
+		t,
+		firstTime.Local().Truncate(time.Microsecond),
+		dbAsset1.LastChecked.Local().Truncate(time.Microsecond),
+	)
 
 	secondTime := time.Now()
 	a.LastValid = secondTime
@@ -67,10 +75,25 @@ func TestInsertOrUpdateAsset(t *testing.T) {
 	assert.Equal(t, dbAsset1.ID, dbAsset2.ID)
 	assert.Equal(t, "XLM", dbAsset2.Code)
 	assert.Equal(t, "STELLAR DEVELOPMENT FOUNDATION", dbAsset2.PublicKey)
-	assert.NotEqual(t, firstTime.Round(0).Local(), dbAsset2.LastValid.Local())
-	assert.NotEqual(t, firstTime.Round(0).Local(), dbAsset2.LastChecked.Local())
-	assert.Equal(t, secondTime.Round(0).Local(), dbAsset2.LastValid.Local())
-	assert.Equal(t, secondTime.Round(0).Local(), dbAsset2.LastChecked.Local())
+	assert.NotEqual(
+		t,
+		firstTime.Local().Truncate(time.Microsecond),
+		dbAsset2.LastValid.Local().Truncate(time.Microsecond),
+	)
+	assert.NotEqual(t,
+		firstTime.Local().Truncate(time.Microsecond),
+		dbAsset2.LastChecked.Local().Truncate(time.Microsecond),
+	)
+	assert.Equal(
+		t,
+		secondTime.Local().Truncate(time.Microsecond),
+		dbAsset2.LastValid.Local().Truncate(time.Microsecond),
+	)
+	assert.Equal(
+		t,
+		secondTime.Local().Truncate(time.Microsecond),
+		dbAsset2.LastChecked.Local().Truncate(time.Microsecond),
+	)
 
 	thirdTime := time.Now()
 	a.LastValid = thirdTime
@@ -88,8 +111,23 @@ func TestInsertOrUpdateAsset(t *testing.T) {
 	assert.Equal(t, dbAsset2.ID, dbAsset3.ID)
 	assert.Equal(t, "XLM", dbAsset3.Code)
 	assert.Equal(t, "STELLAR DEVELOPMENT FOUNDATION", dbAsset3.PublicKey)
-	assert.NotEqual(t, thirdTime.Round(0).Local(), dbAsset3.LastValid.Local())
-	assert.NotEqual(t, thirdTime.Round(0).Local(), dbAsset3.LastChecked.Local())
-	assert.Equal(t, dbAsset2.LastValid.Local(), dbAsset3.LastValid.Local())
-	assert.Equal(t, dbAsset2.LastValid.Local(), dbAsset3.LastChecked.Local())
+	assert.NotEqual(
+		t,
+		thirdTime.Local().Truncate(time.Microsecond),
+		dbAsset3.LastValid.Local().Truncate(time.Microsecond),
+	)
+	assert.NotEqual(
+		t,
+		thirdTime.Local().Truncate(time.Microsecond),
+		dbAsset3.LastChecked.Local().Truncate(time.Microsecond),
+	)
+	assert.Equal(
+		t,
+		dbAsset2.LastValid.Local().Truncate(time.Microsecond),
+		dbAsset3.LastValid.Local().Truncate(time.Microsecond),
+	)
+	assert.Equal(
+		t, dbAsset2.LastValid.Local().Truncate(time.Microsecond),
+		dbAsset3.LastChecked.Local().Truncate(time.Microsecond),
+	)
 }
