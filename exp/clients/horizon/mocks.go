@@ -162,6 +162,14 @@ func (m *MockClient) StreamEffects(ctx context.Context,
 	return m.Called(ctx, request, handler).Error(0)
 }
 
+// StreamOffers is a mocking method
+func (m *MockClient) StreamOffers(ctx context.Context,
+	request OfferRequest,
+	handler OfferHandler,
+) error {
+	return m.Called(ctx, request, handler).Error(0)
+}
+
 // StreamLedgers is a mocking method
 func (m *MockClient) StreamLedgers(ctx context.Context,
 	request LedgerRequest,

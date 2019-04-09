@@ -132,6 +132,7 @@ type ClientInterface interface {
 	StreamTransactions(ctx context.Context, request TransactionRequest, handler TransactionHandler) error
 	StreamTrades(ctx context.Context, request TradeRequest, handler TradeHandler) error
 	StreamEffects(ctx context.Context, request EffectRequest, handler EffectHandler) error
+	StreamOffers(ctx context.Context, request OfferRequest, handler OfferHandler) error
 	StreamLedgers(ctx context.Context, request LedgerRequest, handler LedgerHandler) error
 }
 

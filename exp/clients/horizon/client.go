@@ -140,7 +140,6 @@ func (c *Client) stream(
 						return errors.Wrap(err, "Error reading line")
 					}
 				}
-
 				buffer.WriteString(line)
 
 				if strings.TrimRight(line, "\n\r") == "" {
@@ -302,14 +301,6 @@ func (c *Client) FeeStats() (feestats hProtocol.FeeStats, err error) {
 // Offers returns information about offers made on the SDEX.
 // See https://www.stellar.org/developers/horizon/reference/endpoints/offers-for-account.html
 func (c *Client) Offers(request OfferRequest) (offers hProtocol.OffersPage, err error) {
-	if request.ForAccount == "" {
-		err = errors.New("`ForAccount` parameter required")
-	}
-
-	if err != nil {
-		return
-	}
-
 	err = c.sendRequest(request, &offers)
 	return
 }
@@ -431,6 +422,13 @@ func (c *Client) StreamTransactions(ctx context.Context, request TransactionRequ
 // EffectHandler is a user-supplied function that is executed for each streamed transaction received.
 func (c *Client) StreamEffects(ctx context.Context, request EffectRequest, handler EffectHandler) error {
 	return request.StreamEffects(ctx, c, handler)
+}
+
+// StreamOffers streams offers processed by the Stellar network for an account. Use context.WithCancel
+// to stop streaming or context.Background() if you want to stream indefinitely.
+// OfferHandler is a user-supplied function that is executed for each streamed offer received.
+func (c *Client) StreamOffers(ctx context.Context, request OfferRequest, handler OfferHandler) error {
+	return request.StreamOffers(ctx, c, handler)
 }
 
 // StreamLedgers streams stellar ledgers. It can be used to stream all ledgers. Use context.WithCancel
