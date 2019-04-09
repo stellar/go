@@ -59,6 +59,24 @@ type Issuer struct {
 	OrgTwitter       string `db:"org_twitter"`
 }
 
+// Trade represents an entry on the trades table
+type Trade struct {
+	ID              int32     `db:"id"`
+	HorizonID       string    `db:"horizon_id"`
+	LedgerCloseTime time.Time `db:"ledger_close_time"`
+	OfferID         string    `db:"offer_id"`
+	BaseOfferID     string    `db:"base_offer_id"`
+	BaseAccount     string    `db:"base_account"`
+	BaseAmount      float64   `db:"base_amount"`
+	BaseAssetID     int32     `db:"base_asset_id"`
+	CounterOfferID  string    `db:"counter_offer_id"`
+	CounterAccount  string    `db:"counter_account"`
+	CounterAmount   float64   `db:"counter_amount"`
+	CounterAssetID  int32     `db:"counter_asset_id"`
+	BaseIsSeller    bool      `db:"base_is_seller"`
+	Price           float64   `db:"price"`
+}
+
 // CreateSession returns a new TickerSession that connects to the given db settings
 func CreateSession(driverName, dataSourceName string) (session TickerSession, err error) {
 	dbconn, err := sqlx.Connect(driverName, dataSourceName)
