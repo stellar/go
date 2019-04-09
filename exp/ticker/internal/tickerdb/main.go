@@ -30,7 +30,7 @@ type Asset struct {
 	LastChecked                 time.Time `db:"last_checked"`
 	DisplayDecimals             int       `db:"display_decimals"`
 	Name                        string    `db:"name"`
-	Desc                        string    `db:"desc"`
+	Desc                        string    `db:"description"`
 	Conditions                  string    `db:"conditions"`
 	IsAssetAnchored             bool      `db:"is_asset_anchored"`
 	FixedNumber                 int       `db:"fixed_number"`
