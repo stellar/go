@@ -2,7 +2,9 @@ package horizonclient
 
 import (
 	"context"
+	"fmt"
 	"testing"
+	"time"
 
 	hProtocol "github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/support/http/httptest"
@@ -105,7 +107,27 @@ func TestLedgerDetail(t *testing.T) {
 	}
 }
 
-func TestLedgerStream(t *testing.T) {
+func ExampleClient_StreamLedgers() {
+	client := DefaultTestNetClient
+	// all ledgers from now
+	ledgerRequest := LedgerRequest{}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	go func() {
+		// Stop streaming after 60 seconds.
+		time.Sleep(60 * time.Second)
+		cancel()
+	}()
+
+	printHandler := func(ledger hProtocol.Ledger) {
+		fmt.Println(ledger)
+	}
+	err := client.StreamLedgers(ctx, ledgerRequest, printHandler)
+	if err != nil {
+		fmt.Println(err)
+	}
+}
+func TestLedgerRequestStreamLedgers(t *testing.T) {
 	hmock := httptest.NewClient()
 	client := &Client{
 		HorizonURL: "https://localhost/",
@@ -120,11 +142,8 @@ func TestLedgerStream(t *testing.T) {
 	).ReturnString(200, ledgerStreamResponse)
 
 	ledgers := make([]hProtocol.Ledger, 1)
-	err := client.Stream(ctx, ledgerRequest, func(ledger interface{}) {
-		resp, ok := ledger.(hProtocol.Ledger)
-		if ok {
-			ledgers[0] = resp
-		}
+	err := client.StreamLedgers(ctx, ledgerRequest, func(ledger hProtocol.Ledger) {
+		ledgers[0] = ledger
 		cancel()
 
 	})
@@ -142,12 +161,8 @@ func TestLedgerStream(t *testing.T) {
 		"https://localhost/ledgers?cursor=now",
 	).ReturnString(500, ledgerStreamResponse)
 
-	ledgers = make([]hProtocol.Ledger, 1)
-	err = client.Stream(ctx, ledgerRequest, func(ledger interface{}) {
-		resp, ok := ledger.(hProtocol.Ledger)
-		if ok {
-			ledgers[0] = resp
-		}
+	err = client.StreamLedgers(ctx, ledgerRequest, func(ledger hProtocol.Ledger) {
+		ledgers[0] = ledger
 		cancel()
 
 	})

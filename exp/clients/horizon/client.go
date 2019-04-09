@@ -433,5 +433,12 @@ func (c *Client) StreamEffects(ctx context.Context, request EffectRequest, handl
 	return request.StreamEffects(ctx, c, handler)
 }
 
+// StreamLedgers streams stellar ledgers. It can be used to stream all ledgers. Use context.WithCancel
+// to stop streaming or context.Background() if you want to stream indefinitely.
+// LedgerHandler is a user-supplied function that is executed for each streamed ledger received.
+func (c *Client) StreamLedgers(ctx context.Context, request LedgerRequest, handler LedgerHandler) error {
+	return request.StreamLedgers(ctx, c, handler)
+}
+
 // ensure that the horizon client implements ClientInterface
 var _ ClientInterface = &Client{}
