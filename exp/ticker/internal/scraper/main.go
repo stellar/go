@@ -10,7 +10,9 @@ import (
 // TOMLDoc is the interface for storing TOML Issuer Documentation.
 // See: https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0001.md#currency-documentation
 type TOMLDoc struct {
-	OrgURL string `toml:"ORG_URL"`
+	OrgName    string `toml:"ORG_NAME"`
+	OrgURL     string `toml:"ORG_URL"`
+	OrgTwitter string `toml:"ORG_TWITTER"`
 }
 
 // TOMLCurrency is the interface for storing TOML Currency Information.
@@ -45,7 +47,7 @@ type TOMLIssuer struct {
 	DepositServer    string         `toml:"DEPOSIT_SERVER"` // for legacy purposes
 	Documentation    TOMLDoc        `toml:"DOCUMENTATION"`
 	Currencies       []TOMLCurrency `toml:"CURRENCIES"`
-	OrgTwitter       string         `toml:"ORG_TWITTER"`
+	TOMLURL          string         `toml:"-"`
 }
 
 // FinalAsset is the interface to represent the aggregated Asset data.

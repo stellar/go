@@ -51,8 +51,6 @@ func createOnConflictFragment(constraint string, fields []string) (fragment stri
 
 		if i != len(fields)-1 {
 			fragment += ","
-		} else {
-			fragment += ";"
 		}
 	}
 
