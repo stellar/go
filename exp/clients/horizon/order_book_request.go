@@ -43,8 +43,7 @@ type OrderBookHandler func(hProtocol.OrderBookSummary)
 // StreamOrderBooks streams the orderbook for a given asset pair. Use context.WithCancel
 // to stop streaming or context.Background() if you want to stream indefinitely.
 // OrderBookHandler is a user-supplied function that is executed for each streamed order received.
-func (obr OrderBookRequest) StreamOrderBooks(ctx context.Context, client *Client,
-	handler OrderBookHandler) (err error) {
+func (obr OrderBookRequest) StreamOrderBooks(ctx context.Context, client *Client, handler OrderBookHandler) error {
 	endpoint, err := obr.BuildUrl()
 	if err != nil {
 		return errors.Wrap(err, "Unable to build endpoint for orderbook request")
