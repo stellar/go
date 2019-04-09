@@ -178,5 +178,10 @@ func (m *MockClient) StreamLedgers(ctx context.Context,
 	return m.Called(ctx, request, handler).Error(0)
 }
 
+// StreamOrderBooks is a mocking method
+func (m *MockClient) StreamOrderBooks(ctx context.Context, request OrderBookRequest, handler OrderBookHandler) error {
+	return m.Called(ctx, request, handler).Error(0)
+}
+
 // ensure that the MockClient implements ClientInterface
 var _ ClientInterface = &MockClient{}

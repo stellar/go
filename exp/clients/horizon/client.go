@@ -438,5 +438,12 @@ func (c *Client) StreamLedgers(ctx context.Context, request LedgerRequest, handl
 	return request.StreamLedgers(ctx, c, handler)
 }
 
+// StreamOrderBooks streams the orderbook for a given asset pair. Use context.WithCancel
+// to stop streaming or context.Background() if you want to stream indefinitely.
+// OrderBookHandler is a user-supplied function that is executed for each streamed order received.
+func (c *Client) StreamOrderBooks(ctx context.Context, request OrderBookRequest, handler OrderBookHandler) error {
+	return request.StreamOrderBooks(ctx, c, handler)
+}
+
 // ensure that the horizon client implements ClientInterface
 var _ ClientInterface = &Client{}
