@@ -98,3 +98,10 @@ func FetchAllAssets(c *horizonclient.Client, limit int, parallelism int) (assets
 	)
 	return
 }
+
+// FetchAllTrades fetches all trades for a given period, respecting the limit. If limit = 0,
+// will fetch all trades for that given period.
+func FetchAllTrades(c *horizonclient.Client, since time.Time, limit int) (err error) {
+	_, err = retrieveTrades(c, since, limit)
+	return
+}
