@@ -27,7 +27,7 @@ func TestInsertOrUpdateAsset(t *testing.T) {
 	_, err := migrate.Exec(session.DB.DB, "postgres", migrations, migrate.Up)
 	require.NoError(t, err)
 
-	publicKey := "ASOKDASDKMAKSD19023ASDSAD0912309"
+	publicKey := "GCF3TQXKZJNFJK7HCMNE2O2CUNKCJH2Y2ROISTBPLC7C5EIA5NNG2XZB"
 	name := "FOO BAR"
 	code := "XLM"
 
@@ -67,10 +67,19 @@ func TestInsertOrUpdateAsset(t *testing.T) {
 		LIMIT 1`,
 	)
 	require.NoError(t, err)
+
 	assert.Equal(t, code, dbAsset1.Code)
 	assert.Equal(t, dbIssuer.ID, dbAsset1.IssuerID)
-	assert.Equal(t, firstTime.Round(0).Local(), dbAsset1.LastValid.Local())
-	assert.Equal(t, firstTime.Round(0).Local(), dbAsset1.LastChecked.Local())
+	assert.Equal(
+		t,
+		firstTime.Local().Truncate(time.Millisecond),
+		dbAsset1.LastValid.Local().Truncate(time.Millisecond),
+	)
+	assert.Equal(
+		t,
+		firstTime.Local().Truncate(time.Millisecond),
+		dbAsset1.LastChecked.Local().Truncate(time.Millisecond),
+	)
 
 	// Creating Seconde Asset:
 	secondTime := time.Now()
@@ -92,10 +101,25 @@ func TestInsertOrUpdateAsset(t *testing.T) {
 	assert.Equal(t, dbAsset1.ID, dbAsset2.ID)
 	assert.Equal(t, code, dbAsset2.Code)
 	assert.Equal(t, dbIssuer.ID, dbAsset2.IssuerID)
-	assert.NotEqual(t, firstTime.Round(0).Local(), dbAsset2.LastValid.Local())
-	assert.NotEqual(t, firstTime.Round(0).Local(), dbAsset2.LastChecked.Local())
-	assert.Equal(t, secondTime.Round(0).Local(), dbAsset2.LastValid.Local())
-	assert.Equal(t, secondTime.Round(0).Local(), dbAsset2.LastChecked.Local())
+	assert.NotEqual(
+		t,
+		firstTime.Local().Truncate(time.Millisecond),
+		dbAsset2.LastValid.Local().Truncate(time.Millisecond),
+	)
+	assert.NotEqual(t,
+		firstTime.Local().Truncate(time.Millisecond),
+		dbAsset2.LastChecked.Local().Truncate(time.Millisecond),
+	)
+	assert.Equal(
+		t,
+		secondTime.Local().Truncate(time.Millisecond),
+		dbAsset2.LastValid.Local().Truncate(time.Millisecond),
+	)
+	assert.Equal(
+		t,
+		secondTime.Local().Truncate(time.Millisecond),
+		dbAsset2.LastChecked.Local().Truncate(time.Millisecond),
+	)
 
 	// Creating Third Asset:
 	thirdTime := time.Now()
@@ -116,8 +140,23 @@ func TestInsertOrUpdateAsset(t *testing.T) {
 	assert.Equal(t, dbAsset2.ID, dbAsset3.ID)
 	assert.Equal(t, code, dbAsset3.Code)
 	assert.Equal(t, dbIssuer.ID, dbAsset3.IssuerID)
-	assert.NotEqual(t, thirdTime.Round(0).Local(), dbAsset3.LastValid.Local())
-	assert.NotEqual(t, thirdTime.Round(0).Local(), dbAsset3.LastChecked.Local())
-	assert.Equal(t, dbAsset2.LastValid.Local(), dbAsset3.LastValid.Local())
-	assert.Equal(t, dbAsset2.LastValid.Local(), dbAsset3.LastChecked.Local())
+	assert.NotEqual(
+		t,
+		thirdTime.Local().Truncate(time.Millisecond),
+		dbAsset3.LastValid.Local().Truncate(time.Millisecond),
+	)
+	assert.NotEqual(
+		t,
+		thirdTime.Local().Truncate(time.Millisecond),
+		dbAsset3.LastChecked.Local().Truncate(time.Millisecond),
+	)
+	assert.Equal(
+		t,
+		dbAsset2.LastValid.Local().Truncate(time.Millisecond),
+		dbAsset3.LastValid.Local().Truncate(time.Millisecond),
+	)
+	assert.Equal(
+		t, dbAsset2.LastValid.Local().Truncate(time.Millisecond),
+		dbAsset3.LastChecked.Local().Truncate(time.Millisecond),
+	)
 }

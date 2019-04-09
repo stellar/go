@@ -50,8 +50,8 @@ type TOMLIssuer struct {
 	TOMLURL          string         `toml:"-"`
 }
 
-// TOMLAsset is the interface to represent the aggregated Asset data.
-type TOMLAsset struct {
+// FinalAsset is the interface to represent the aggregated Asset data.
+type FinalAsset struct {
 	Code                        string     `json:"code"`
 	Issuer                      string     `json:"issuer"`
 	Type                        string     `json:"type"`
@@ -84,13 +84,13 @@ type TOMLAsset struct {
 }
 
 // FetchAllAssets fetches assets from the Horizon public net. If limit = 0, will fetch all assets.
-func FetchAllAssets(c *horizonclient.Client, limit int, parallelism int) (assets []TOMLAsset, err error) {
+func FetchAllAssets(c *horizonclient.Client, limit int, parallelism int) (assets []FinalAsset, err error) {
 	dirtyAssets, err := retrieveAssets(c, limit)
 	if err != nil {
 		return
 	}
 
-	assets, numTrash := parallelCleanUpAssets(dirtyAssets, parallelism)
+	assets, numTrash := parallelProcessAssets(dirtyAssets, parallelism)
 
 	fmt.Printf(
 		"Scanned %d entries. Trash: %d. Non-trash: %d\n",

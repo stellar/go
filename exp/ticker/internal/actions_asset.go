@@ -14,20 +14,20 @@ import (
 // RefreshAssets scrapes the most recent asset list and ingests then into the db.
 func RefreshAssets(s *tickerdb.TickerSession) (err error) {
 	c := horizonclient.DefaultPublicNetClient
-	tomlAssetList, err := scraper.FetchAllAssets(c, 0, 500)
+	finalAssetList, err := scraper.FetchAllAssets(c, 0, 500)
 	if err != nil {
 		return
 	}
 
-	err = writeAssetsToFile(tomlAssetList, "assets.json")
+	err = writeAssetsToFile(finalAssetList, "assets.json")
 	if err != nil {
 		fmt.Println("Could not write assets to file")
 	}
 
-	for _, tomlAsset := range tomlAssetList {
-		dbIssuer := tomlIssuerToDBIssuer(tomlAsset.IssuerDetails)
+	for _, finalAsset := range finalAssetList {
+		dbIssuer := tomlIssuerToDBIssuer(finalAsset.IssuerDetails)
 		if dbIssuer.PublicKey == "" {
-			dbIssuer.PublicKey = tomlAsset.Issuer
+			dbIssuer.PublicKey = finalAsset.Issuer
 		}
 		issuerID, err := s.InsertOrUpdateIssuer(&dbIssuer, []string{"public_key"})
 		if err != nil {
@@ -35,7 +35,7 @@ func RefreshAssets(s *tickerdb.TickerSession) (err error) {
 			continue
 		}
 
-		dbAsset := tomlAssetToDBAsset(tomlAsset, issuerID)
+		dbAsset := finalAssetToDBAsset(finalAsset, issuerID)
 		err = s.InsertOrUpdateAsset(&dbAsset, []string{"code", "issuer_id"})
 		if err != nil {
 			fmt.Println("Error inserting asset:", dbAsset, err)
@@ -46,7 +46,7 @@ func RefreshAssets(s *tickerdb.TickerSession) (err error) {
 }
 
 // writeAssetsToFile creates a list of assets exported in a JSON file.
-func writeAssetsToFile(assets []scraper.TOMLAsset, filename string) (err error) {
+func writeAssetsToFile(assets []scraper.FinalAsset, filename string) (err error) {
 	jsonAssets, err := json.MarshalIndent(assets, "", "\t")
 	if err != nil {
 		return
@@ -60,8 +60,8 @@ func writeAssetsToFile(assets []scraper.TOMLAsset, filename string) (err error) 
 	return
 }
 
-// tomlAssetToDBAsset converts a scraper.TOMLAsset to a tickerdb.Asset.
-func tomlAssetToDBAsset(asset scraper.TOMLAsset, issuerID int32) tickerdb.Asset {
+// finalAssetToDBAsset converts a scraper.TOMLAsset to a tickerdb.Asset.
+func finalAssetToDBAsset(asset scraper.FinalAsset, issuerID int32) tickerdb.Asset {
 	return tickerdb.Asset{
 		Code:                        asset.Code,
 		IssuerID:                    issuerID,
