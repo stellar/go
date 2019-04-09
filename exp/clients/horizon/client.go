@@ -405,10 +405,39 @@ func (c *Client) Trades(request TradeRequest) (tds hProtocol.TradesPage, err err
 	return
 }
 
+// StreamTrades streams executed trades. It can be used to stream all trades, trades for an account and
+// trades for an offer. Use context.WithCancel to stop streaming or context.Background() if you want
+// to stream indefinitely. TradeHandler is a user-supplied function that is executed for each streamed trade received.
+func (c *Client) StreamTrades(ctx context.Context, request TradeRequest, handler TradeHandler) (err error) {
+	err = request.StreamTrades(ctx, c, handler)
+	return
+}
+
 // TradeAggregations returns stellar trade aggregations (https://www.stellar.org/developers/horizon/reference/resources/trade_aggregation.html)
 func (c *Client) TradeAggregations(request TradeAggregationRequest) (tds hProtocol.TradeAggregationsPage, err error) {
 	err = c.sendRequest(request, &tds)
 	return
+}
+
+// StreamTransactions streams processed transactions. It can be used to stream all transactions and
+// transactions for an account. Use context.WithCancel to stop streaming or context.Background()
+// if you want to stream indefinitely. TransactionHandler is a user-supplied function that is executed for each streamed transaction received.
+func (c *Client) StreamTransactions(ctx context.Context, request TransactionRequest, handler TransactionHandler) error {
+	return request.StreamTransactions(ctx, c, handler)
+}
+
+// StreamEffects streams horizon effects. It can be used to stream all effects or account specific effects.
+// Use context.WithCancel to stop streaming or context.Background() if you want to stream indefinitely.
+// EffectHandler is a user-supplied function that is executed for each streamed transaction received.
+func (c *Client) StreamEffects(ctx context.Context, request EffectRequest, handler EffectHandler) error {
+	return request.StreamEffects(ctx, c, handler)
+}
+
+// StreamLedgers streams stellar ledgers. It can be used to stream all ledgers. Use context.WithCancel
+// to stop streaming or context.Background() if you want to stream indefinitely.
+// LedgerHandler is a user-supplied function that is executed for each streamed ledger received.
+func (c *Client) StreamLedgers(ctx context.Context, request LedgerRequest, handler LedgerHandler) error {
+	return request.StreamLedgers(ctx, c, handler)
 }
 
 // ensure that the horizon client implements ClientInterface
