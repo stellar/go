@@ -22,9 +22,12 @@ func (s *TickerSession) InsertOrUpdateIssuer(issuer *Issuer, preserveFields []st
 	qs += " RETURNING id;"
 
 	rows, err := s.QueryRaw(qs, dbValues...)
+	if err != nil {
+		return
+	}
+
 	for rows.Next() {
 		err = rows.Scan(&id)
 	}
-
 	return
 }
