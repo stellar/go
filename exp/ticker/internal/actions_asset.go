@@ -36,7 +36,7 @@ func RefreshAssets(s *tickerdb.TickerSession) (err error) {
 		}
 
 		dbAsset := finalAssetToDBAsset(finalAsset, issuerID)
-		err = s.InsertOrUpdateAsset(&dbAsset, []string{"code", "issuer_id"})
+		err = s.InsertOrUpdateAsset(&dbAsset, []string{"code", "issuer_account", "issuer_id"})
 		if err != nil {
 			fmt.Println("Error inserting asset:", dbAsset, err)
 		}
