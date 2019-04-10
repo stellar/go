@@ -10,8 +10,8 @@ import (
 	"github.com/stellar/go/support/errors"
 )
 
-// BuildUrl creates the endpoint to be queried based on the data in the OrderBookRequest struct.
-func (obr OrderBookRequest) BuildUrl() (endpoint string, err error) {
+// BuildURL creates the endpoint to be queried based on the data in the OrderBookRequest struct.
+func (obr OrderBookRequest) BuildURL() (endpoint string, err error) {
 	endpoint = "order_book"
 
 	// add the parameters to a map here so it is easier for addQueryParams to populate the parameter list
@@ -44,7 +44,7 @@ type OrderBookHandler func(hProtocol.OrderBookSummary)
 // to stop streaming or context.Background() if you want to stream indefinitely.
 // OrderBookHandler is a user-supplied function that is executed for each streamed order received.
 func (obr OrderBookRequest) StreamOrderBooks(ctx context.Context, client *Client, handler OrderBookHandler) error {
-	endpoint, err := obr.BuildUrl()
+	endpoint, err := obr.BuildURL()
 	if err != nil {
 		return errors.Wrap(err, "Unable to build endpoint for orderbook request")
 	}

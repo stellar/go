@@ -14,42 +14,42 @@ import (
 
 func TestOperationRequestBuildUrl(t *testing.T) {
 	op := OperationRequest{endpoint: "operations"}
-	endpoint, err := op.BuildUrl()
+	endpoint, err := op.BuildURL()
 
 	// It should return valid all operations endpoint and no errors
 	require.NoError(t, err)
 	assert.Equal(t, "operations", endpoint)
 
 	op = OperationRequest{ForAccount: "GCLWGQPMKXQSPF776IU33AH4PZNOOWNAWGGKVTBQMIC5IMKUNP3E6NVU", endpoint: "operations"}
-	endpoint, err = op.BuildUrl()
+	endpoint, err = op.BuildURL()
 
 	// It should return valid account operations endpoint and no errors
 	require.NoError(t, err)
 	assert.Equal(t, "accounts/GCLWGQPMKXQSPF776IU33AH4PZNOOWNAWGGKVTBQMIC5IMKUNP3E6NVU/operations", endpoint)
 
 	op = OperationRequest{ForLedger: 123, endpoint: "operations"}
-	endpoint, err = op.BuildUrl()
+	endpoint, err = op.BuildURL()
 
 	// It should return valid ledger operations endpoint and no errors
 	require.NoError(t, err)
 	assert.Equal(t, "ledgers/123/operations", endpoint)
 
-	op = OperationRequest{forOperationId: "123", endpoint: "operations"}
-	endpoint, err = op.BuildUrl()
+	op = OperationRequest{forOperationID: "123", endpoint: "operations"}
+	endpoint, err = op.BuildURL()
 
 	// It should return valid operation operations endpoint and no errors
 	require.NoError(t, err)
 	assert.Equal(t, "operations/123", endpoint)
 
 	op = OperationRequest{ForTransaction: "123", endpoint: "payments"}
-	endpoint, err = op.BuildUrl()
+	endpoint, err = op.BuildURL()
 
 	// It should return valid transaction payments endpoint and no errors
 	require.NoError(t, err)
 	assert.Equal(t, "transactions/123/payments", endpoint)
 
-	op = OperationRequest{ForLedger: 123, forOperationId: "789", endpoint: "operations"}
-	endpoint, err = op.BuildUrl()
+	op = OperationRequest{ForLedger: 123, forOperationID: "789", endpoint: "operations"}
+	endpoint, err = op.BuildURL()
 
 	// error case: too many parameters for building any operation endpoint
 	if assert.Error(t, err) {
@@ -57,13 +57,13 @@ func TestOperationRequestBuildUrl(t *testing.T) {
 	}
 
 	op = OperationRequest{Cursor: "123456", Limit: 30, Order: OrderAsc, endpoint: "operations"}
-	endpoint, err = op.BuildUrl()
+	endpoint, err = op.BuildURL()
 	// It should return valid all operations endpoint with query params and no errors
 	require.NoError(t, err)
 	assert.Equal(t, "operations?cursor=123456&limit=30&order=asc", endpoint)
 
 	op = OperationRequest{Cursor: "123456", Limit: 30, Order: OrderAsc, endpoint: "payments"}
-	endpoint, err = op.BuildUrl()
+	endpoint, err = op.BuildURL()
 	// It should return valid all operations endpoint with query params and no errors
 	require.NoError(t, err)
 	assert.Equal(t, "payments?cursor=123456&limit=30&order=asc", endpoint)

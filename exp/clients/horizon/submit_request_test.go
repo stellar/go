@@ -9,14 +9,14 @@ import (
 
 func TestSubmitRequestBuildUrl(t *testing.T) {
 	sr := submitRequest{endpoint: "transactions", transactionXdr: "xyzabc"}
-	endpoint, err := sr.BuildUrl()
+	endpoint, err := sr.BuildURL()
 
 	// It should return valid endpoint and no errors
 	require.NoError(t, err)
 	assert.Equal(t, "transactions?tx=xyzabc", endpoint)
 
 	sr = submitRequest{}
-	endpoint, err = sr.BuildUrl()
+	endpoint, err = sr.BuildURL()
 
 	// It should return errors
 	if assert.Error(t, err) {

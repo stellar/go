@@ -10,8 +10,8 @@ import (
 	"github.com/stellar/go/support/errors"
 )
 
-// BuildUrl creates the endpoint to be queried based on the data in the OfferRequest struct.
-func (or OfferRequest) BuildUrl() (endpoint string, err error) {
+// BuildURL creates the endpoint to be queried based on the data in the OfferRequest struct.
+func (or OfferRequest) BuildURL() (endpoint string, err error) {
 	if or.ForAccount == "" {
 		return endpoint, errors.New(`"ForAccount" parameter required`)
 	}
@@ -37,7 +37,7 @@ type OfferHandler func(hProtocol.Offer)
 // to stop streaming or context.Background() if you want to stream indefinitely.
 // OfferHandler is a user-supplied function that is executed for each streamed offer received.
 func (or OfferRequest) StreamOffers(ctx context.Context, client *Client, handler OfferHandler) (err error) {
-	endpoint, err := or.BuildUrl()
+	endpoint, err := or.BuildURL()
 	if err != nil {
 		return errors.Wrap(err, "Unable to build endpoint for offers request")
 	}

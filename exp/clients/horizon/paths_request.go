@@ -7,8 +7,8 @@ import (
 	"github.com/stellar/go/support/errors"
 )
 
-// BuildUrl creates the endpoint to be queried based on the data in the PathsRequest struct.
-func (pr PathsRequest) BuildUrl() (endpoint string, err error) {
+// BuildURL creates the endpoint to be queried based on the data in the PathsRequest struct.
+func (pr PathsRequest) BuildURL() (endpoint string, err error) {
 	endpoint = "paths"
 
 	// add the parameters to a map here so it is easier for addQueryParams to populate the parameter list

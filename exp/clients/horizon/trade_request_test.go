@@ -14,35 +14,35 @@ import (
 
 func TestTradeRequestBuildUrl(t *testing.T) {
 	tr := TradeRequest{}
-	endpoint, err := tr.BuildUrl()
+	endpoint, err := tr.BuildURL()
 
 	// It should return valid all trades endpoint and no errors
 	require.NoError(t, err)
 	assert.Equal(t, "trades", endpoint)
 
 	tr = TradeRequest{ForAccount: "GCLWGQPMKXQSPF776IU33AH4PZNOOWNAWGGKVTBQMIC5IMKUNP3E6NVU"}
-	endpoint, err = tr.BuildUrl()
+	endpoint, err = tr.BuildURL()
 
 	// It should return valid account trades endpoint and no errors
 	require.NoError(t, err)
 	assert.Equal(t, "accounts/GCLWGQPMKXQSPF776IU33AH4PZNOOWNAWGGKVTBQMIC5IMKUNP3E6NVU/trades", endpoint)
 
 	tr = TradeRequest{ForOfferID: "123"}
-	endpoint, err = tr.BuildUrl()
+	endpoint, err = tr.BuildURL()
 
 	// It should return valid offer trades endpoint and no errors
 	require.NoError(t, err)
 	assert.Equal(t, "offers/123/trades", endpoint)
 
 	tr = TradeRequest{Cursor: "123"}
-	endpoint, err = tr.BuildUrl()
+	endpoint, err = tr.BuildURL()
 
 	// It should return valid trades endpoint and no errors
 	require.NoError(t, err)
 	assert.Equal(t, "trades?cursor=123", endpoint)
 
 	tr = TradeRequest{ForOfferID: "123", ForAccount: "GCLWGQPMKXQSPF776IU33AH4PZNOOWNAWGGKVTBQMIC5IMKUNP3E6NVU"}
-	endpoint, err = tr.BuildUrl()
+	endpoint, err = tr.BuildURL()
 
 	// error case: too many parameters for building any operation endpoint
 	if assert.Error(t, err) {
@@ -50,7 +50,7 @@ func TestTradeRequestBuildUrl(t *testing.T) {
 	}
 
 	tr = TradeRequest{Cursor: "123456", Limit: 30, Order: OrderAsc}
-	endpoint, err = tr.BuildUrl()
+	endpoint, err = tr.BuildURL()
 	// It should return valid all trades endpoint with query params and no errors
 	require.NoError(t, err)
 	assert.Equal(t, "trades?cursor=123456&limit=30&order=asc", endpoint)
