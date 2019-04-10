@@ -100,15 +100,10 @@ func TestEffectRequestStreamEffects(t *testing.T) {
 		"https://localhost/effects?cursor=now",
 	).ReturnString(200, effectStreamResponse)
 
-	go func() {
-		// Stop streaming after 1 second.
-		time.Sleep(1 * time.Second)
-		cancel()
-	}()
-
 	effectStream := make([]effects.Base, 1)
 	err := client.StreamEffects(ctx, effectRequest, func(effect effects.Base) {
 		effectStream[0] = effect
+		cancel()
 	})
 
 	if assert.NoError(t, err) {
@@ -124,14 +119,9 @@ func TestEffectRequestStreamEffects(t *testing.T) {
 		"https://localhost/accounts/GBNZN27NAOHRJRCMHQF2ZN2F6TAPVEWKJIGZIRNKIADWIS2HDENIS6CI/effects?cursor=now",
 	).ReturnString(200, effectStreamResponse)
 
-	go func() {
-		// Stop streaming after 1 second.
-		time.Sleep(1 * time.Second)
-		cancel()
-	}()
-
 	err = client.StreamEffects(ctx, effectRequest, func(effect effects.Base) {
 		effectStream[0] = effect
+		cancel()
 	})
 
 	if assert.NoError(t, err) {

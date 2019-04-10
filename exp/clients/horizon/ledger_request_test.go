@@ -50,7 +50,7 @@ func TestLedgerDetail(t *testing.T) {
 	}
 
 	// invalid parameters
-	var sequence uint32 = 0
+	var sequence uint32
 	hmock.On(
 		"GET",
 		"https://localhost/ledgers/",
