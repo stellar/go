@@ -13,8 +13,7 @@ import (
 
 // BackfillTrades ingest the most recent trades (limited to numDays) directly from Horizon
 // into the database.
-func BackfillTrades(s *tickerdb.TickerSession, numDays int, limit int) error {
-	c := horizonclient.DefaultPublicNetClient
+func BackfillTrades(s *tickerdb.TickerSession, c *horizonclient.Client, numDays int, limit int) error {
 	now := time.Now()
 	since := now.AddDate(0, 0, -numDays)
 	trades, err := scraper.FetchAllTrades(c, since, limit)
