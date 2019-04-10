@@ -65,6 +65,7 @@ func finalAssetToDBAsset(asset scraper.FinalAsset, issuerID int32) tickerdb.Asse
 	return tickerdb.Asset{
 		Code:                        asset.Code,
 		IssuerID:                    issuerID,
+		IssuerAccount:               asset.Issuer,
 		Type:                        asset.Type,
 		NumAccounts:                 asset.NumAccounts,
 		AuthRequired:                asset.AuthRequired,
