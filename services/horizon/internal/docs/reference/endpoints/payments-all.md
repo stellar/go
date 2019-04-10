@@ -4,8 +4,14 @@ clientData:
   laboratoryUrl: https://www.stellar.org/laboratory/#explorer?resource=payments&endpoint=all
 ---
 
-This endpoint represents all payment-related [operations](../resources/operation.md) that are part of validated [transactions](../resources/transaction.md). This endpoint can also be used in [streaming](../streaming.md) mode so it is possible to use it to listen for new payments as they get made in the Stellar network.
-If called in streaming mode Horizon will start at the earliest known payment unless a `cursor` is set. In that case it will start from the `cursor`. You can also set `cursor` value to `now` to only stream payments created since your request time.
+This endpoint represents all payment-related [operations](../resources/operation.md) that are part
+of validated [transactions](../resources/transaction.md). This endpoint can also be used in
+[streaming](../streaming.md) mode so it is possible to use it to listen for new payments as they
+get made in the Stellar network.
+
+If called in streaming mode Horizon will start at the earliest known payment unless a `cursor` is
+set. In that case it will start from the `cursor`. You can also set `cursor` value to `now` to only
+stream payments created since your request time.
 
 The operations that can be returned in by this endpoint are:
 - `create_account`
@@ -30,12 +36,12 @@ GET /payments{?cursor,limit,order,include_failed}
 
 ### curl Example Request
 
-```bash
+```sh
 # Retrieve the first 200 payments, ordered chronologically.
 curl "https://horizon-testnet.stellar.org/payments?limit=200"
 ```
 
-```bash
+```sh
 # Retrieve a page of payments to occur immediately before the transaction
 # specified by the paging token "1234".
 curl "https://horizon-testnet.stellar.org/payments?cursor=1234&order=desc"
@@ -43,7 +49,7 @@ curl "https://horizon-testnet.stellar.org/payments?cursor=1234&order=desc"
 
 ### JavaScript Example Request
 
-```js
+```javascript
 var StellarSdk = require('stellar-sdk');
 var server = new StellarSdk.Server('https://horizon-testnet.stellar.org');
 
@@ -56,6 +62,24 @@ server.payments()
     console.log(err)
   })
 ```
+
+### JavaScript Streaming Example
+
+```javascript
+var StellarSdk = require('stellar-sdk')
+var server = new StellarSdk.Server('https://horizon-testnet.stellar.org');
+
+var paymentHandler = function (paymentResponse) {
+  console.log(paymentResponse);
+};
+
+var es = server.payments()
+  .cursor('now')
+  .stream({
+    onmessage: paymentHandler
+  })
+```
+
 ## Response
 
 This endpoint responds with a list of payments. See [operation resource](../resources/operation.md) for more information about operations (and payment operations).
