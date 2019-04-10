@@ -35,8 +35,6 @@ func retrieveTrades(c *horizonclient.Client, since time.Time, limit int) (trades
 		return
 	}
 
-	fmt.Println("Fetching trades from Horizon")
-
 	for tradesPage.Links.Next.Href != tradesPage.Links.Self.Href {
 		// Enforcing time boundaries:
 		last, cleanTrades := checkRecords(tradesPage.Embedded.Records, since)
@@ -71,17 +69,24 @@ func retrieveTrades(c *horizonclient.Client, since time.Time, limit int) (trades
 		}
 	}
 
-	fmt.Println("Last close time ingested:", trades[len(trades)-1].LedgerCloseTime)
-	fmt.Printf("Fetched: %d trades\n", len(trades))
 	return
 }
 
 // streamTrades streams trades directly from horizon and calls the handler function
 // whenever a new trade appears.
-func streamTrades(ctx context.Context, c *horizonclient.Client, h horizonclient.TradeHandler) error {
+func streamTrades(
+	ctx context.Context,
+	c *horizonclient.Client,
+	h horizonclient.TradeHandler,
+	cursor string,
+) error {
+	if cursor == "" {
+		cursor = "now"
+	}
+
 	r := horizonclient.TradeRequest{
 		Limit:  200,
-		Cursor: "now",
+		Cursor: cursor,
 	}
 
 	return r.StreamTrades(ctx, c, h)

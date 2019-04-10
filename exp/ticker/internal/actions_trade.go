@@ -33,7 +33,14 @@ func StreamTrades(ctx context.Context, s *tickerdb.TickerSession, c *horizonclie
 		}
 	}
 
-	return scraper.StreamNewTrades(ctx, c, handler)
+	// Ensure we start streaming from the last stored trade
+	lastTrade, err := s.GetLastTrade()
+	if err != nil {
+		return err
+	}
+
+	cursor := lastTrade.HorizonID
+	return scraper.StreamNewTrades(ctx, c, handler, cursor)
 }
 
 // BackfillTrades ingest the most recent trades (limited to numDays) directly from Horizon
