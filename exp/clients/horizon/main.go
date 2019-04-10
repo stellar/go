@@ -1,4 +1,4 @@
-// package horizonclient is an experimental horizon client that provides access to the horizon server
+// Package horizonclient is an experimental horizon client that provides access to the horizon server
 package horizonclient
 
 import (
@@ -165,7 +165,7 @@ type StreamRequest interface {
 
 // AccountRequest struct contains data for making requests to the accounts endpoint of an horizon server
 type AccountRequest struct {
-	AccountId string
+	AccountID string
 	DataKey   string
 }
 

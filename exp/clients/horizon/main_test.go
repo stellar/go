@@ -14,7 +14,7 @@ import (
 func ExampleClient_AccountDetail() {
 
 	client := DefaultPublicNetClient
-	accountRequest := AccountRequest{AccountId: "GCLWGQPMKXQSPF776IU33AH4PZNOOWNAWGGKVTBQMIC5IMKUNP3E6NVU"}
+	accountRequest := AccountRequest{AccountID: "GCLWGQPMKXQSPF776IU33AH4PZNOOWNAWGGKVTBQMIC5IMKUNP3E6NVU"}
 
 	account, err := client.AccountDetail(accountRequest)
 	if err != nil {
@@ -159,9 +159,9 @@ func ExampleClient_Operations() {
 func ExampleClient_OperationDetail() {
 
 	client := DefaultPublicNetClient
-	opId := "123456"
+	opID := "123456"
 	// operation details for an id
-	ops, err := client.OperationDetail(opId)
+	ops, err := client.OperationDetail(opID)
 	if err != nil {
 		fmt.Println(err)
 		return
@@ -313,7 +313,7 @@ func TestAccountDetail(t *testing.T) {
 		assert.Contains(t, err.Error(), "No account ID provided")
 	}
 
-	accountRequest = AccountRequest{AccountId: "GCLWGQPMKXQSPF776IU33AH4PZNOOWNAWGGKVTBQMIC5IMKUNP3E6NVU"}
+	accountRequest = AccountRequest{AccountID: "GCLWGQPMKXQSPF776IU33AH4PZNOOWNAWGGKVTBQMIC5IMKUNP3E6NVU"}
 
 	// happy path
 	hmock.On(
@@ -383,7 +383,7 @@ func TestAccountData(t *testing.T) {
 	}
 
 	// wrong parameters
-	accountRequest = AccountRequest{AccountId: "GCLWGQPMKXQSPF776IU33AH4PZNOOWNAWGGKVTBQMIC5IMKUNP3E6NVU"}
+	accountRequest = AccountRequest{AccountID: "GCLWGQPMKXQSPF776IU33AH4PZNOOWNAWGGKVTBQMIC5IMKUNP3E6NVU"}
 	hmock.On(
 		"GET",
 		"https://localhost/accounts/GCLWGQPMKXQSPF776IU33AH4PZNOOWNAWGGKVTBQMIC5IMKUNP3E6NVU/data/test",
@@ -395,7 +395,7 @@ func TestAccountData(t *testing.T) {
 		assert.Contains(t, err.Error(), "Too few parameters")
 	}
 
-	accountRequest = AccountRequest{AccountId: "GCLWGQPMKXQSPF776IU33AH4PZNOOWNAWGGKVTBQMIC5IMKUNP3E6NVU", DataKey: "test"}
+	accountRequest = AccountRequest{AccountID: "GCLWGQPMKXQSPF776IU33AH4PZNOOWNAWGGKVTBQMIC5IMKUNP3E6NVU", DataKey: "test"}
 
 	// happy path
 	hmock.On(
@@ -711,13 +711,13 @@ func TestOperationsRequest(t *testing.T) {
 	}
 
 	// operation detail
-	opId := "1103965508866049"
+	opID := "1103965508866049"
 	hmock.On(
 		"GET",
 		"https://localhost/operations/1103965508866049",
 	).ReturnString(200, opsResponse)
 
-	record, err := client.OperationDetail(opId)
+	record, err := client.OperationDetail(opID)
 	if assert.NoError(t, err) {
 		assert.Equal(t, record.GetType(), "change_trust")
 		c, ok := record.(operations.ChangeTrust)

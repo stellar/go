@@ -25,7 +25,7 @@ func TestAccountRequestBuildUrl(t *testing.T) {
 	}
 
 	ar.DataKey = ""
-	ar.AccountId = "GCLWGQPMKXQSPF776IU33AH4PZNOOWNAWGGKVTBQMIC5IMKUNP3E6NVU"
+	ar.AccountID = "GCLWGQPMKXQSPF776IU33AH4PZNOOWNAWGGKVTBQMIC5IMKUNP3E6NVU"
 	endpoint, err = ar.BuildUrl()
 
 	// It should return valid account details endpoint and no errors
@@ -33,7 +33,7 @@ func TestAccountRequestBuildUrl(t *testing.T) {
 	assert.Equal(t, "accounts/GCLWGQPMKXQSPF776IU33AH4PZNOOWNAWGGKVTBQMIC5IMKUNP3E6NVU", endpoint)
 
 	ar.DataKey = "test"
-	ar.AccountId = "GCLWGQPMKXQSPF776IU33AH4PZNOOWNAWGGKVTBQMIC5IMKUNP3E6NVU"
+	ar.AccountID = "GCLWGQPMKXQSPF776IU33AH4PZNOOWNAWGGKVTBQMIC5IMKUNP3E6NVU"
 	endpoint, err = ar.BuildUrl()
 
 	// It should return valid account data endpoint and no errors
