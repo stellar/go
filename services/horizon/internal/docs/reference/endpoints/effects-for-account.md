@@ -65,6 +65,7 @@ var effectHandler = function (effectResponse) {
 
 var es = server.effects()
   .forAccount("GA2HGBJIJKI6O4XEM7CZWY5PS6GKSXL6D34ERAJYQSPYA6X6AI7HYW36")
+  .cursor('now')
   .stream({
     onmessage: effectHandler
   })

@@ -57,6 +57,7 @@ var effectHandler = function (effectResponse) {
 };
 
 var es = server.effects()
+  .cursor('now')
   .stream({
     onmessage: effectHandler
   })
