@@ -34,7 +34,7 @@ func TestOperationRequestBuildUrl(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "ledgers/123/operations", endpoint)
 
-	op = OperationRequest{forOperationId: "123", endpoint: "operations"}
+	op = OperationRequest{forOperationID: "123", endpoint: "operations"}
 	endpoint, err = op.BuildUrl()
 
 	// It should return valid operation operations endpoint and no errors
@@ -48,7 +48,7 @@ func TestOperationRequestBuildUrl(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "transactions/123/payments", endpoint)
 
-	op = OperationRequest{ForLedger: 123, forOperationId: "789", endpoint: "operations"}
+	op = OperationRequest{ForLedger: 123, forOperationID: "789", endpoint: "operations"}
 	endpoint, err = op.BuildUrl()
 
 	// error case: too many parameters for building any operation endpoint

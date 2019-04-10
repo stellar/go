@@ -220,7 +220,7 @@ type OperationRequest struct {
 	ForAccount     string
 	ForLedger      uint
 	ForTransaction string
-	forOperationId string
+	forOperationID string
 	Order          Order
 	Cursor         string
 	Limit          uint

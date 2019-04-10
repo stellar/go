@@ -319,7 +319,7 @@ func (c *Client) OperationDetail(id string) (ops operations.Operation, err error
 		return ops, errors.New("Invalid operation id provided")
 	}
 
-	request := OperationRequest{forOperationId: id, endpoint: "operations"}
+	request := OperationRequest{forOperationID: id, endpoint: "operations"}
 
 	var record interface{}
 
