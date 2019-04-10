@@ -24,6 +24,12 @@ func (s *TickerSession) BulkInsertTrades(trades []Trade) (err error) {
 	return
 }
 
+// GetLastTrade returns the newest Trade object in the database.
+func (s *TickerSession) GetLastTrade() (trade Trade, err error) {
+	err = s.GetRaw(&trade, "SELECT * FROM trades ORDER BY ledger_close_time DESC LIMIT 1")
+	return
+}
+
 // chunkifyDBTrades transforms a slice into a slice of chunks (also slices) of chunkSize
 // e.g.: Chunkify([b, c, d, e, f], 2) = [[b c] [d e] [f]]
 func chunkifyDBTrades(sl []Trade, chunkSize int) [][]Trade {
