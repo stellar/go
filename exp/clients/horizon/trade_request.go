@@ -10,9 +10,9 @@ import (
 	"github.com/stellar/go/support/errors"
 )
 
-// BuildUrl creates the endpoint to be queried based on the data in the TradeRequest struct.
+// BuildURL creates the endpoint to be queried based on the data in the TradeRequest struct.
 // If no data is set, it defaults to the build the URL for all trades
-func (tr TradeRequest) BuildUrl() (endpoint string, err error) {
+func (tr TradeRequest) BuildURL() (endpoint string, err error) {
 	nParams := countParams(tr.ForAccount, tr.ForOfferID)
 
 	if nParams > 1 {
@@ -70,7 +70,7 @@ type TradeHandler func(hProtocol.Trade)
 // to stream indefinitely. TradeHandler is a user-supplied function that is executed for each streamed trade received.
 func (tr TradeRequest) StreamTrades(ctx context.Context, client *Client,
 	handler TradeHandler) (err error) {
-	endpoint, err := tr.BuildUrl()
+	endpoint, err := tr.BuildURL()
 	if err != nil {
 		return errors.Wrap(err, "Unable to build endpoint")
 	}

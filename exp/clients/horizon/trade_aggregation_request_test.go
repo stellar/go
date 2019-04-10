@@ -24,7 +24,7 @@ func TestTradeAggregationRequestBuildUrl(t *testing.T) {
 		CounterAssetIssuer: "GCKA6K5PCQ6PNF5RQBF7PQDJWRHO6UOGFMRLK3DYHDOI244V47XKQ4GP",
 		Order:              OrderDesc,
 	}
-	endpoint, err := ta.BuildUrl()
+	endpoint, err := ta.BuildURL()
 
 	// It should return valid trade aggregation endpoint and no errors
 	require.NoError(t, err)

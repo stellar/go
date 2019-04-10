@@ -155,7 +155,7 @@ var DefaultPublicNetClient = &Client{
 
 // HorizonRequest contains methods implemented by request structs for horizon endpoints
 type HorizonRequest interface {
-	BuildUrl() (string, error)
+	BuildURL() (string, error)
 }
 
 // StreamRequest contains methods implemented by request structs for endpoints that support streaming

@@ -20,7 +20,7 @@ import (
 )
 
 func (c *Client) sendRequest(hr HorizonRequest, a interface{}) (err error) {
-	endpoint, err := hr.BuildUrl()
+	endpoint, err := hr.BuildURL()
 	if err != nil {
 		return
 	}

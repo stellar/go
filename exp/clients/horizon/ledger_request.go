@@ -10,9 +10,9 @@ import (
 	"github.com/stellar/go/support/errors"
 )
 
-// BuildUrl creates the endpoint to be queried based on the data in the LedgerRequest struct.
+// BuildURL creates the endpoint to be queried based on the data in the LedgerRequest struct.
 // If no data is set, it defaults to the build the URL for all ledgers
-func (lr LedgerRequest) BuildUrl() (endpoint string, err error) {
+func (lr LedgerRequest) BuildURL() (endpoint string, err error) {
 	endpoint = "ledgers"
 
 	if lr.forSequence != 0 {
@@ -48,7 +48,7 @@ type LedgerHandler func(hProtocol.Ledger)
 // LedgerHandler is a user-supplied function that is executed for each streamed ledger received.
 func (lr LedgerRequest) StreamLedgers(ctx context.Context, client *Client,
 	handler LedgerHandler) (err error) {
-	endpoint, err := lr.BuildUrl()
+	endpoint, err := lr.BuildURL()
 	if err != nil {
 		return errors.Wrap(err, "Unable to build endpoint for ledger request")
 	}
