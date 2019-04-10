@@ -64,6 +64,7 @@ var txHandler = function (txResponse) {
 
 var es = server.transactions()
   .forAccount("GBS43BF24ENNS3KPACUZVKK2VYPOZVBQO2CISGZ777RYGOPYC2FT6S3K")
+  .cursor('now')
   .stream({
     onmessage: txHandler
   })

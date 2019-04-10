@@ -67,6 +67,7 @@ var txHandler = function (txResponse) {
 };
 
 var es = server.transactions()
+  .cursor('now')
   .stream({
       onmessage: txHandler
   })
