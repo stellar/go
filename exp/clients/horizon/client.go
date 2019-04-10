@@ -308,7 +308,7 @@ func (c *Client) Offers(request OfferRequest) (offers hProtocol.OffersPage, err 
 // Operations returns stellar operations (https://www.stellar.org/developers/horizon/reference/resources/operation.html)
 // It can be used to return operations for an account, a ledger, a transaction and all operations on the network.
 func (c *Client) Operations(request OperationRequest) (ops operations.OperationsPage, err error) {
-	err = c.sendRequest(request.setEndpoint("operations"), &ops)
+	err = c.sendRequest(request.SetOperationsEndpoint(), &ops)
 	return
 }
 
@@ -385,7 +385,7 @@ func (c *Client) Paths(request PathsRequest) (paths hProtocol.PathsPage, err err
 // Payments returns stellar account_merge, create_account, path payment and payment operations.
 // It can be used to return payments for an account, a ledger, a transaction and all payments on the network.
 func (c *Client) Payments(request OperationRequest) (ops operations.OperationsPage, err error) {
-	err = c.sendRequest(request.setEndpoint("payments"), &ops)
+	err = c.sendRequest(request.SetPaymentsEndpoint(), &ops)
 	return
 }
 
@@ -422,6 +422,23 @@ func (c *Client) StreamTransactions(ctx context.Context, request TransactionRequ
 // EffectHandler is a user-supplied function that is executed for each streamed transaction received.
 func (c *Client) StreamEffects(ctx context.Context, request EffectRequest, handler EffectHandler) error {
 	return request.StreamEffects(ctx, c, handler)
+}
+
+// StreamOperations streams stellar operations. It can be used to stream all operations or operations
+// for an account. Use context.WithCancel to stop streaming or context.Background() if you want to
+// stream indefinitely. OperationHandler is a user-supplied function that is executed for each streamed
+//  operation received.
+func (c *Client) StreamOperations(ctx context.Context, request OperationRequest, handler OperationHandler) error {
+	return request.SetOperationsEndpoint().StreamOperations(ctx, c, handler)
+}
+
+// StreamPayments streams stellar payments. It can be used to stream all payments or payments
+// for an account. Payments include create_account, payment, path_payment and account_merge operations.
+// Use context.WithCancel to stop streaming or context.Background() if you want to
+// stream indefinitely. OperationHandler is a user-supplied function that is executed for each streamed
+//  operation received.
+func (c *Client) StreamPayments(ctx context.Context, request OperationRequest, handler OperationHandler) error {
+	return request.SetPaymentsEndpoint().StreamOperations(ctx, c, handler)
 }
 
 // StreamOffers streams offers processed by the Stellar network for an account. Use context.WithCancel
