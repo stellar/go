@@ -25,7 +25,7 @@ func BackfillTrades(s *tickerdb.TickerSession, numDays int, limit int) error {
 	var dbTrades []tickerdb.Trade
 
 	for _, trade := range trades {
-		bFound, bID, err := s.GetAssetByCodeAndPublicKey(
+		bFound, bID, err := s.GetAssetByCodeAndIssuerAccount(
 			trade.BaseAssetCode,
 			trade.BaseAssetIssuer,
 		)
@@ -33,7 +33,7 @@ func BackfillTrades(s *tickerdb.TickerSession, numDays int, limit int) error {
 			return err
 		}
 
-		cFound, cID, err := s.GetAssetByCodeAndPublicKey(
+		cFound, cID, err := s.GetAssetByCodeAndIssuerAccount(
 			trade.CounterAssetCode,
 			trade.CounterAssetIssuer,
 		)

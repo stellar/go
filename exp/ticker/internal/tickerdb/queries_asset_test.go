@@ -166,7 +166,7 @@ func TestInsertOrUpdateAsset(t *testing.T) {
 	)
 }
 
-func TestGetAssetByCode(t *testing.T) {
+func TestGetAssetByCodeAndIssuerAccount(t *testing.T) {
 	db := dbtest.Postgres(t)
 	defer db.Close()
 
@@ -185,6 +185,7 @@ func TestGetAssetByCode(t *testing.T) {
 	publicKey := "GCF3TQXKZJNFJK7HCMNE2O2CUNKCJH2Y2ROISTBPLC7C5EIA5NNG2XZB"
 	name := "FOO BAR"
 	code := "XLM"
+	issuerAccount := "AM2FQXKZJNFJK7HCMNE2O2CUNKCJH2Y2ROISTBPLC7C5EIA5NNG2XZB"
 
 	// Adding a seed issuer to be used later:
 	issuer := Issuer{
@@ -206,12 +207,13 @@ func TestGetAssetByCode(t *testing.T) {
 	// Creating first asset:
 	firstTime := time.Now()
 	a := Asset{
-		Code:        code,
-		IssuerID:    dbIssuer.ID,
-		LastValid:   firstTime,
-		LastChecked: firstTime,
+		Code:          code,
+		IssuerAccount: issuerAccount,
+		IssuerID:      dbIssuer.ID,
+		LastValid:     firstTime,
+		LastChecked:   firstTime,
 	}
-	err = session.InsertOrUpdateAsset(&a, []string{"code", "issuer_id"})
+	err = session.InsertOrUpdateAsset(&a, []string{"code", "issuer_account", "issuer_id"})
 	require.NoError(t, err)
 
 	var dbAsset Asset
@@ -223,13 +225,16 @@ func TestGetAssetByCode(t *testing.T) {
 	)
 
 	// Searching for an asset that exists:
-	found, id, err := session.GetAssetByCodeAndPublicKey(code, dbIssuer.PublicKey)
+	found, id, err := session.GetAssetByCodeAndIssuerAccount(code, issuerAccount)
 	require.NoError(t, err)
 	assert.Equal(t, dbAsset.ID, id)
 	assert.True(t, found)
 
 	// Now searching for an asset that does not exist:
-	found, id, err = session.GetAssetByCodeAndPublicKey("NONEXISTENT CODE", dbIssuer.PublicKey)
+	found, id, err = session.GetAssetByCodeAndIssuerAccount(
+		"NONEXISTENT CODE",
+		issuerAccount,
+	)
 	require.NoError(t, err)
 	assert.False(t, found)
 }

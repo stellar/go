@@ -30,20 +30,21 @@ func (s *TickerSession) InsertOrUpdateAsset(a *Asset, preserveFields []string) (
 	return
 }
 
-// GetAssetByCodeAndPublicKey searches for an Asset with the given code
+// GetAssetByCodeAndIssuerAccount searches for an Asset with the given code
 // and public key, and returns its ID in case it is found.
-func (s *TickerSession) GetAssetByCodeAndPublicKey(
+func (s *TickerSession) GetAssetByCodeAndIssuerAccount(
 	code string,
-	publicKey string,
+	issuerAccount string,
 ) (found bool, id int32, err error) {
 	var assets []Asset
-	err = s.SelectRaw(&assets, `
-		SELECT (assets.id)
-		FROM assets
-		INNER JOIN issuers ON (assets.issuer_id = issuers.id)
-		WHERE assets.code = ? AND issuers.public_key = ?
-	`, code, publicKey)
+	tbl := s.GetTable("assets")
 
+	err = tbl.Select(
+		&assets,
+		"assets.code = ? AND assets.issuer_account = ?",
+		code,
+		issuerAccount,
+	).Exec()
 	if err != nil {
 		return
 	}
@@ -52,6 +53,5 @@ func (s *TickerSession) GetAssetByCodeAndPublicKey(
 		id = assets[0].ID
 		found = true
 	}
-
 	return
 }
