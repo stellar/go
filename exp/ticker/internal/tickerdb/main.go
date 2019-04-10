@@ -16,6 +16,7 @@ type TickerSession struct {
 type Asset struct {
 	ID                          int32     `db:"id"`
 	Code                        string    `db:"code"`
+	IssuerAccount               string    `db:"issuer_account"`
 	Type                        string    `db:"type"`
 	NumAccounts                 int32     `db:"num_accounts"`
 	AuthRequired                bool      `db:"auth_required"`
