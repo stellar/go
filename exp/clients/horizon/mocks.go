@@ -162,11 +162,28 @@ func (m *MockClient) StreamEffects(ctx context.Context,
 	return m.Called(ctx, request, handler).Error(0)
 }
 
+// StreamOperations is a mocking method
+func (m *MockClient) StreamOperations(ctx context.Context, request OperationRequest, handler OperationHandler) error {
+	return m.Called(ctx, request, handler).Error(0)
+}
+
+// StreamPayments is a mocking method
+func (m *MockClient) StreamPayments(ctx context.Context, request OperationRequest, handler OperationHandler) error {
+	return m.Called(ctx, request, handler).Error(0)
+}
+
+// StreamOffers is a mocking method
+func (m *MockClient) StreamOffers(ctx context.Context, request OfferRequest, handler OfferHandler) error {
+	return m.Called(ctx, request, handler).Error(0)
+}
+
 // StreamLedgers is a mocking method
-func (m *MockClient) StreamLedgers(ctx context.Context,
-	request LedgerRequest,
-	handler LedgerHandler,
-) error {
+func (m *MockClient) StreamLedgers(ctx context.Context, request LedgerRequest, handler LedgerHandler) error {
+	return m.Called(ctx, request, handler).Error(0)
+}
+
+// StreamOrderBooks is a mocking method
+func (m *MockClient) StreamOrderBooks(ctx context.Context, request OrderBookRequest, handler OrderBookHandler) error {
 	return m.Called(ctx, request, handler).Error(0)
 }
 

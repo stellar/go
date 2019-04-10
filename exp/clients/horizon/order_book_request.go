@@ -1,9 +1,12 @@
 package horizonclient
 
 import (
+	"context"
+	"encoding/json"
 	"fmt"
 	"net/url"
 
+	hProtocol "github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/support/errors"
 )
 
@@ -32,4 +35,28 @@ func (obr OrderBookRequest) BuildUrl() (endpoint string, err error) {
 	}
 
 	return endpoint, err
+}
+
+// OrderBookHandler is a function that is called when a new order summary is received
+type OrderBookHandler func(hProtocol.OrderBookSummary)
+
+// StreamOrderBooks streams the orderbook for a given asset pair. Use context.WithCancel
+// to stop streaming or context.Background() if you want to stream indefinitely.
+// OrderBookHandler is a user-supplied function that is executed for each streamed order received.
+func (obr OrderBookRequest) StreamOrderBooks(ctx context.Context, client *Client, handler OrderBookHandler) error {
+	endpoint, err := obr.BuildUrl()
+	if err != nil {
+		return errors.Wrap(err, "Unable to build endpoint for orderbook request")
+	}
+
+	url := fmt.Sprintf("%s%s", client.getHorizonURL(), endpoint)
+	return client.stream(ctx, url, func(data []byte) error {
+		var orderbook hProtocol.OrderBookSummary
+		err = json.Unmarshal(data, &orderbook)
+		if err != nil {
+			return errors.Wrap(err, "Error unmarshaling data for orderbook request")
+		}
+		handler(orderbook)
+		return nil
+	})
 }
