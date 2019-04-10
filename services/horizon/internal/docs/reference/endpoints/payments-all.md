@@ -74,6 +74,7 @@ var paymentHandler = function (paymentResponse) {
 };
 
 var es = server.payments()
+  .cursor('now')
   .stream({
     onmessage: paymentHandler
   })

@@ -71,6 +71,7 @@ var paymentHandler = function (paymentResponse) {
 
 var es = server.payments()
   .forAccount("GCEZWKCA5VLDNRLN3RPRJMRZOX3Z6G5CHCGSNFHEYVXM3XOJMDS674JZ")
+  .cursor('now')
   .stream({
     onmessage: paymentHandler
   })
