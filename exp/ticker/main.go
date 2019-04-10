@@ -31,4 +31,5 @@ func main() {
 
 	ctx := context.Background()
 	err = ticker.StreamTrades(ctx, &session, client)
+	utils.PanicIfError(err)
 }

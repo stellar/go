@@ -23,7 +23,14 @@ func WriteJSONToFile(jsonBytes []byte, filename string) (numBytes int, err error
 	defer f.Close()
 
 	numBytes, err = f.Write(jsonBytes)
-	f.Sync()
+	if err != nil {
+		return
+	}
+
+	err = f.Sync()
+	if err != nil {
+		return
+	}
 
 	return
 }
