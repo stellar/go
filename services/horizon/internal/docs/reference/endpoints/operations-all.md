@@ -64,6 +64,7 @@ var operationHandler = function (operationResponse) {
 };
 
 var es = server.operations()
+  .cursor('now')
   .stream({
     onmessage: operationHandler
   })
