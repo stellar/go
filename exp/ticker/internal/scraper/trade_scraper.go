@@ -1,6 +1,7 @@
 package scraper
 
 import (
+	"context"
 	"fmt"
 	"time"
 
@@ -73,4 +74,15 @@ func retrieveTrades(c *horizonclient.Client, since time.Time, limit int) (trades
 	fmt.Println("Last close time ingested:", trades[len(trades)-1].LedgerCloseTime)
 	fmt.Printf("Fetched: %d trades\n", len(trades))
 	return
+}
+
+// streamTrades streams trades directly from horizon and calls the handler function
+// whenever a new trade appears.
+func streamTrades(ctx context.Context, c *horizonclient.Client, h horizonclient.TradeHandler) error {
+	r := horizonclient.TradeRequest{
+		Limit:  200,
+		Cursor: "now",
+	}
+
+	return r.StreamTrades(ctx, c, h)
 }

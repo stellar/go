@@ -1,6 +1,7 @@
 package scraper
 
 import (
+	"context"
 	"fmt"
 	"time"
 
@@ -107,4 +108,10 @@ func FetchAllAssets(c *horizonclient.Client, limit int, parallelism int) (assets
 func FetchAllTrades(c *horizonclient.Client, since time.Time, limit int) (trades []hProtocol.Trade, err error) {
 	trades, err = retrieveTrades(c, since, limit)
 	return
+}
+
+// StreamNewTrades streams trades directly from horizon and calls the handler function
+// whenever a new trade appears.
+func StreamNewTrades(ctx context.Context, c *horizonclient.Client, h horizonclient.TradeHandler) error {
+	return streamTrades(ctx, c, h)
 }

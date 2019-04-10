@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"os"
 
@@ -27,4 +28,7 @@ func main() {
 
 	err = ticker.BackfillTrades(&session, client, 2, 0)
 	utils.PanicIfError(err)
+
+	ctx := context.Background()
+	err = ticker.StreamTrades(ctx, &session, client)
 }

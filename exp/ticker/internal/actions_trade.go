@@ -1,6 +1,8 @@
 package ticker
 
 import (
+	"context"
+	"errors"
 	"fmt"
 	"strconv"
 	"time"
@@ -10,6 +12,29 @@ import (
 	"github.com/stellar/go/exp/ticker/internal/tickerdb"
 	hProtocol "github.com/stellar/go/protocols/horizon"
 )
+
+// StreamTrades constantly streams and ingests new trades directly from horizon.
+// Use context.WithCancel to stop streaming or context.Background() to stream indefinitely.
+func StreamTrades(ctx context.Context, s *tickerdb.TickerSession, c *horizonclient.Client) error {
+	handler := func(trade hProtocol.Trade) {
+		fmt.Print("New trade arrived:", trade.ID, trade.LedgerCloseTime)
+		bID, cID, err := findBaseAndCounter(s, trade)
+		if err != nil {
+			return
+		}
+		dbTrade, err := hProtocolTradeToDBTrade(trade, bID, cID)
+		if err != nil {
+			return
+		}
+
+		err = s.BulkInsertTrades([]tickerdb.Trade{dbTrade})
+		if err != nil {
+			fmt.Println("Could not insert trade in database:", trade.ID)
+		}
+	}
+
+	return scraper.StreamNewTrades(ctx, c, handler)
+}
 
 // BackfillTrades ingest the most recent trades (limited to numDays) directly from Horizon
 // into the database.
@@ -24,23 +49,8 @@ func BackfillTrades(s *tickerdb.TickerSession, c *horizonclient.Client, numDays 
 	var dbTrades []tickerdb.Trade
 
 	for _, trade := range trades {
-		bFound, bID, err := s.GetAssetByCodeAndIssuerAccount(
-			trade.BaseAssetCode,
-			trade.BaseAssetIssuer,
-		)
+		bID, cID, err := findBaseAndCounter(s, trade)
 		if err != nil {
-			return err
-		}
-
-		cFound, cID, err := s.GetAssetByCodeAndIssuerAccount(
-			trade.CounterAssetCode,
-			trade.CounterAssetIssuer,
-		)
-		if err != nil {
-			return err
-		}
-
-		if !bFound || !cFound {
 			continue
 		}
 
@@ -61,6 +71,34 @@ func BackfillTrades(s *tickerdb.TickerSession, c *horizonclient.Client, numDays 
 	return nil
 }
 
+// findBaseAndCounter tries to find the Base and Counter assets IDs in the database,
+// and returns an error if it doesn't find any.
+func findBaseAndCounter(s *tickerdb.TickerSession, trade hProtocol.Trade) (bID int32, cID int32, err error) {
+	bFound, bID, err := s.GetAssetByCodeAndIssuerAccount(
+		trade.BaseAssetCode,
+		trade.BaseAssetIssuer,
+	)
+	if err != nil {
+		return
+	}
+
+	cFound, cID, err := s.GetAssetByCodeAndIssuerAccount(
+		trade.CounterAssetCode,
+		trade.CounterAssetIssuer,
+	)
+	if err != nil {
+		return
+	}
+
+	if !bFound || !cFound {
+		err = errors.New("base or counter asset no found")
+		return
+	}
+
+	return
+}
+
+// hProtocolTradeToDBTrade converts from a hProtocol.Trade to a tickerdb.Trade
 func hProtocolTradeToDBTrade(
 	hpt hProtocol.Trade,
 	baseAssetID int32,
