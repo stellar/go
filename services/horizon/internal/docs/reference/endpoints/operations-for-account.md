@@ -48,6 +48,24 @@ server.operations()
   })
 ```
 
+### JavaScript Streaming Example
+
+```javascript
+var StellarSdk = require('stellar-sdk')
+var server = new StellarSdk.Server('https://horizon-testnet.stellar.org');
+
+var operationHandler = function (operationResponse) {
+    console.log(operationResponse);
+};
+
+var es = server.operations()
+    .forAccount("GAKLBGHNHFQ3BMUYG5KU4BEWO6EYQHZHAXEWC33W34PH2RBHZDSQBD75")
+    .cursor('now')
+    .stream({
+        onmessage: operationHandler
+    })
+```
+
 ## Response
 
 This endpoint responds with a list of operations that affected the given account. See [operation resource](../resources/operation.md) for reference.
