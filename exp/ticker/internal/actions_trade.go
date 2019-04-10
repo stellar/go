@@ -11,11 +11,21 @@ import (
 	"github.com/stellar/go/exp/ticker/internal/scraper"
 	"github.com/stellar/go/exp/ticker/internal/tickerdb"
 	hProtocol "github.com/stellar/go/protocols/horizon"
+	hlog "github.com/stellar/go/support/log"
 )
 
 // StreamTrades constantly streams and ingests new trades directly from horizon.
-// Use context.WithCancel to stop streaming or context.Background() to stream indefinitely.
-func StreamTrades(ctx context.Context, s *tickerdb.TickerSession, c *horizonclient.Client) error {
+func StreamTrades(
+	ctx context.Context,
+	s *tickerdb.TickerSession,
+	c *horizonclient.Client,
+	l *hlog.Entry,
+) error {
+	sc := scraper.ScraperConfig{
+		Client: c,
+		Logger: l,
+		Ctx:    &ctx,
+	}
 	handler := func(trade hProtocol.Trade) {
 		fmt.Print("New trade arrived:", trade.ID, trade.LedgerCloseTime)
 		bID, cID, err := findBaseAndCounter(s, trade)
@@ -40,15 +50,25 @@ func StreamTrades(ctx context.Context, s *tickerdb.TickerSession, c *horizonclie
 	}
 
 	cursor := lastTrade.HorizonID
-	return scraper.StreamNewTrades(ctx, c, handler, cursor)
+	return sc.StreamNewTrades(cursor, handler)
 }
 
 // BackfillTrades ingest the most recent trades (limited to numDays) directly from Horizon
 // into the database.
-func BackfillTrades(s *tickerdb.TickerSession, c *horizonclient.Client, numDays int, limit int) error {
+func BackfillTrades(
+	s *tickerdb.TickerSession,
+	c *horizonclient.Client,
+	l *hlog.Entry,
+	numDays int,
+	limit int,
+) error {
+	sc := scraper.ScraperConfig{
+		Client: c,
+		Logger: l,
+	}
 	now := time.Now()
 	since := now.AddDate(0, 0, -numDays)
-	trades, err := scraper.FetchAllTrades(c, since, limit)
+	trades, err := sc.FetchAllTrades(since, limit)
 	if err != nil {
 		return err
 	}
