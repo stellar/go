@@ -61,6 +61,7 @@ var offerHandler = function (offerResponse) {
 };
 
 var es = server.offers('accounts', 'GBYUUJHG6F4EPJGNLERINATVQLNDOFRUD7SGJZ26YZLG5PAYLG7XUSGF')
+  .cursor('now')
   .stream({
     onmessage: offerHandler
   })

@@ -66,7 +66,9 @@ var tradesHandler = function (tradeResponse) {
   console.log(tradeResponse);
 };
 
-var es = server.trades().stream({
+var es = server.trades()
+  .cursor('now')
+  .stream({
   onmessage: tradesHandler
 })
 ```

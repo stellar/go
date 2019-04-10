@@ -68,6 +68,7 @@ var orderbookHandler = function (orderbookResponse) {
 };
 
 var es = server.orderbook(new StellarSdk.Asset.native(), new StellarSdk.Asset('FOO', 'GBAUUA74H4XOQYRSOW2RZUA4QL5PB37U3JS5NE3RTB2ELJVMIF5RLMAG'))
+  .cursor('now')
   .stream({
     onmessage: orderbookHandler
   })
