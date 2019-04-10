@@ -60,6 +60,7 @@ var ledgerHandler = function (ledgerResponse) {
 };
 
 var es = server.ledgers()
+  .cursor('now')
   .stream({
     onmessage: ledgerHandler
 })
