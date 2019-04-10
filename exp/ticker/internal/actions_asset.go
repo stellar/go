@@ -36,7 +36,7 @@ func RefreshAssets(s *tickerdb.TickerSession) (err error) {
 		}
 
 		dbAsset := finalAssetToDBAsset(finalAsset, issuerID)
-		err = s.InsertOrUpdateAsset(&dbAsset, []string{"code", "issuer_id"})
+		err = s.InsertOrUpdateAsset(&dbAsset, []string{"code", "issuer_account", "issuer_id"})
 		if err != nil {
 			fmt.Println("Error inserting asset:", dbAsset, err)
 		}
@@ -65,6 +65,7 @@ func finalAssetToDBAsset(asset scraper.FinalAsset, issuerID int32) tickerdb.Asse
 	return tickerdb.Asset{
 		Code:                        asset.Code,
 		IssuerID:                    issuerID,
+		IssuerAccount:               asset.Issuer,
 		Type:                        asset.Type,
 		NumAccounts:                 asset.NumAccounts,
 		AuthRequired:                asset.AuthRequired,

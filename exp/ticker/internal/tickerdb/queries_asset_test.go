@@ -28,6 +28,7 @@ func TestInsertOrUpdateAsset(t *testing.T) {
 	require.NoError(t, err)
 
 	publicKey := "GCF3TQXKZJNFJK7HCMNE2O2CUNKCJH2Y2ROISTBPLC7C5EIA5NNG2XZB"
+	issuerAccount := "AM2FQXKZJNFJK7HCMNE2O2CUNKCJH2Y2ROISTBPLC7C5EIA5NNG2XZB"
 	name := "FOO BAR"
 	code := "XLM"
 
@@ -51,12 +52,13 @@ func TestInsertOrUpdateAsset(t *testing.T) {
 	// Creating first asset:
 	firstTime := time.Now()
 	a := Asset{
-		Code:        code,
-		IssuerID:    dbIssuer.ID,
-		LastValid:   firstTime,
-		LastChecked: firstTime,
+		Code:          code,
+		IssuerAccount: issuerAccount,
+		IssuerID:      dbIssuer.ID,
+		LastValid:     firstTime,
+		LastChecked:   firstTime,
 	}
-	err = session.InsertOrUpdateAsset(&a, []string{"code", "issuer_id"})
+	err = session.InsertOrUpdateAsset(&a, []string{"code", "issuer_account", "issuer_id"})
 	require.NoError(t, err)
 
 	var dbAsset1 Asset
@@ -69,6 +71,7 @@ func TestInsertOrUpdateAsset(t *testing.T) {
 	require.NoError(t, err)
 
 	assert.Equal(t, code, dbAsset1.Code)
+	assert.Equal(t, issuerAccount, dbAsset1.IssuerAccount)
 	assert.Equal(t, dbIssuer.ID, dbAsset1.IssuerID)
 	assert.Equal(
 		t,
@@ -85,7 +88,7 @@ func TestInsertOrUpdateAsset(t *testing.T) {
 	secondTime := time.Now()
 	a.LastValid = secondTime
 	a.LastChecked = secondTime
-	err = session.InsertOrUpdateAsset(&a, []string{"code", "issuer_id"})
+	err = session.InsertOrUpdateAsset(&a, []string{"code", "issuer_account", "issuer_id"})
 	require.NoError(t, err)
 
 	var dbAsset2 Asset
@@ -100,6 +103,7 @@ func TestInsertOrUpdateAsset(t *testing.T) {
 	// Validating if changes match what was expected:
 	assert.Equal(t, dbAsset1.ID, dbAsset2.ID)
 	assert.Equal(t, code, dbAsset2.Code)
+	assert.Equal(t, issuerAccount, dbAsset1.IssuerAccount)
 	assert.Equal(t, dbIssuer.ID, dbAsset2.IssuerID)
 	assert.NotEqual(
 		t,
@@ -125,7 +129,7 @@ func TestInsertOrUpdateAsset(t *testing.T) {
 	thirdTime := time.Now()
 	a.LastValid = thirdTime
 	a.LastChecked = thirdTime
-	err = session.InsertOrUpdateAsset(&a, []string{"code", "issuer_id", "last_valid", "last_checked"})
+	err = session.InsertOrUpdateAsset(&a, []string{"code", "issuer_id", "last_valid", "last_checked", "issuer_account"})
 	require.NoError(t, err)
 	var dbAsset3 Asset
 	err = session.GetRaw(&dbAsset3, `
@@ -139,6 +143,7 @@ func TestInsertOrUpdateAsset(t *testing.T) {
 	// Validating if changes match what was expected:
 	assert.Equal(t, dbAsset2.ID, dbAsset3.ID)
 	assert.Equal(t, code, dbAsset3.Code)
+	assert.Equal(t, issuerAccount, dbAsset3.IssuerAccount)
 	assert.Equal(t, dbIssuer.ID, dbAsset3.IssuerID)
 	assert.NotEqual(
 		t,

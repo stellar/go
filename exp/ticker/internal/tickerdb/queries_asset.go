@@ -25,7 +25,7 @@ func (s *TickerSession) InsertOrUpdateAsset(a *Asset, preserveFields []string) (
 
 	qs := "INSERT INTO assets (" + dbFieldsString + ")"
 	qs += " VALUES (" + generatePlaceholders(dbValues) + ")"
-	qs += " " + createOnConflictFragment("assets_code_issuer_key", toUpdateFields) + ";"
+	qs += " " + createOnConflictFragment("assets_code_issuer_account", toUpdateFields) + ";"
 	_, err = s.ExecRaw(qs, dbValues...)
 	return
 }
