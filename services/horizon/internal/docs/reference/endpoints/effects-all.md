@@ -44,7 +44,23 @@ server.effects()
   .catch(function (err) {
     console.log(err)
   })
+```
 
+### JavaScript Streaming Example
+
+```javascript
+var StellarSdk = require('stellar-sdk')
+var server = new StellarSdk.Server('https://horizon-testnet.stellar.org');
+
+var effectHandler = function (effectResponse) {
+  console.log(effectResponse);
+};
+
+var es = server.effects()
+  .cursor('now')
+  .stream({
+    onmessage: effectHandler
+  })
 ```
 
 ## Response
