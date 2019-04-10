@@ -31,7 +31,7 @@ curl "https://horizon-testnet.stellar.org/ledgers?limit=200&order=desc"
 
 ### JavaScript Example Request
 
-```js
+```javascript
 server.ledgers()
   .call()
   .then(function (ledgerResult) {
@@ -47,6 +47,25 @@ server.ledgers()
     console.log(err)
   })
 ```
+
+
+### JavaScript Streaming Example
+
+```javascript
+var StellarSdk = require('stellar-sdk')
+var server = new StellarSdk.Server('https://horizon-testnet.stellar.org');
+
+var ledgerHandler = function (ledgerResponse) {
+  console.log(ledgerResponse);
+};
+
+var es = server.ledgers()
+  .cursor('now')
+  .stream({
+    onmessage: ledgerHandler
+})
+```
+
 ## Response
 
 This endpoint responds with a list of ledgers.  See [ledger resource](../resources/ledger.md) for reference.
