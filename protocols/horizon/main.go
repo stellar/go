@@ -103,8 +103,8 @@ func (a *Account) IncrementSequenceNumber() error {
 // MustGetData returns decoded value for a given key. If the key does
 // not exist, empty slice will be returned. If there is an error
 // decoding a value, it will panic.
-func (this *Account) MustGetData(key string) []byte {
-	bytes, err := this.GetData(key)
+func (a *Account) MustGetData(key string) []byte {
+	bytes, err := a.GetData(key)
 	if err != nil {
 		panic(err)
 	}
@@ -113,8 +113,8 @@ func (this *Account) MustGetData(key string) []byte {
 
 // GetData returns decoded value for a given key. If the key does
 // not exist, empty slice will be returned.
-func (this *Account) GetData(key string) ([]byte, error) {
-	return base64.StdEncoding.DecodeString(this.Data[key])
+func (a *Account) GetData(key string) ([]byte, error) {
+	return base64.StdEncoding.DecodeString(a.Data[key])
 }
 
 // AccountFlags represents the state of an account's flags
@@ -199,8 +199,8 @@ type Ledger struct {
 	HeaderXDR                  string    `json:"header_xdr"`
 }
 
-func (this Ledger) PagingToken() string {
-	return this.PT
+func (l Ledger) PagingToken() string {
+	return l.PT
 }
 
 // Offer is the display form of an offer to trade currency.
@@ -222,8 +222,8 @@ type Offer struct {
 	LastModifiedTime   *time.Time `json:"last_modified_time"`
 }
 
-func (this Offer) PagingToken() string {
-	return this.PT
+func (o Offer) PagingToken() string {
+	return o.PT
 }
 
 // OrderBookSummary represents a snapshot summary of a given order book
@@ -248,7 +248,7 @@ type Path struct {
 }
 
 // stub implementation to satisfy pageable interface
-func (this Path) PagingToken() string {
+func (p Path) PagingToken() string {
 	return ""
 }
 
