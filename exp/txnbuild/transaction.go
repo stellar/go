@@ -18,8 +18,7 @@ import (
 // Account represents the aspects of a Stellar account necessary to construct transactions.
 type Account interface {
 	GetAccountID() string
-	GetSequenceNumber() (xdr.SequenceNumber, error)
-	IncrementSequenceNumber() error
+	IncrementSequenceNumber() (xdr.SequenceNumber, error)
 }
 
 // Transaction represents a Stellar Transaction.
@@ -80,8 +79,7 @@ func (tx *Transaction) Build() error {
 	tx.xdrTransaction.SourceAccount.SetAddress(tx.SourceAccount.GetAccountID())
 
 	// TODO: Validate Seq Num is present in struct
-	tx.SourceAccount.IncrementSequenceNumber()
-	seqnum, err := tx.SourceAccount.GetSequenceNumber()
+	seqnum, err := tx.SourceAccount.IncrementSequenceNumber()
 	if err != nil {
 		return errors.Wrap(err, "Failed to parse sequence number")
 	}
