@@ -598,7 +598,7 @@ func createKeypair() *keypair.Full {
 	return pair
 }
 
-func mapAccounts(horizonAccount horizon.Account) txnbuild.TXNAccount {
+func mapAccounts(horizonAccount horizon.Account) *txnbuild.TXNAccount {
 	myAccount := txnbuild.TXNAccount{
 		ID: horizonAccount.ID,
 	}
@@ -607,7 +607,7 @@ func mapAccounts(horizonAccount horizon.Account) txnbuild.TXNAccount {
 	myAccount.SequenceNumber = horizonAccount.Sequence
 	dieIfError("GetSequenceNumber", err)
 
-	return myAccount
+	return &myAccount
 }
 
 // PrintHorizonError decodes and prints the contents of horizon.Error.Problem.
