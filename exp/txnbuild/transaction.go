@@ -23,12 +23,12 @@ type TXNAccount struct {
 }
 
 // GetAccountID is to be deleted once refactor is complete
-func (t *TXNAccount) GetAccountID() string {
+func (t TXNAccount) GetAccountID() string {
 	return t.ID
 }
 
 // GetSequenceNumber is to be deleted once refactor is complete
-func (t *TXNAccount) GetSequenceNumber() (xdr.SequenceNumber, error) {
+func (t TXNAccount) GetSequenceNumber() (xdr.SequenceNumber, error) {
 	seqNum, err := strconv.ParseUint(t.SequenceNumber, 10, 64)
 
 	if err != nil {
@@ -58,7 +58,7 @@ type Account interface {
 
 // Transaction represents a Stellar Transaction.
 type Transaction struct {
-	SourceAccount  TXNAccount
+	SourceAccount  Account
 	Operations     []Operation
 	xdrTransaction xdr.Transaction
 	BaseFee        uint64 // TODO: Why is this a uint 64? Can it be a plain int?
@@ -111,7 +111,7 @@ func (tx *Transaction) SetDefaultFee() {
 func (tx *Transaction) Build() error {
 	// Set account ID in XDR
 	// TODO: Validate provided key before going further
-	tx.xdrTransaction.SourceAccount.SetAddress(tx.SourceAccount.ID)
+	tx.xdrTransaction.SourceAccount.SetAddress(tx.SourceAccount.GetAccountID())
 
 	// TODO: Validate Seq Num is present in struct
 	tx.SourceAccount.IncrementSequenceNumber()

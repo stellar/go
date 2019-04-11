@@ -3,6 +3,7 @@ package txnbuild
 import (
 	"testing"
 
+	"github.com/stellar/go/clients/horizon"
 	"github.com/stellar/go/network"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -10,20 +11,17 @@ import (
 
 func TestInflation(t *testing.T) {
 	kp0 := newKeypair0()
-	// sourceAccount := horizon.Account{
-	// 	HistoryAccount: horizon.HistoryAccount{
-	// 		AccountID: kp0.Address(),
-	// Sequence: "9605939170639897",
-	// 	},
-	sourceAccount := TXNAccount{
-		ID:             kp0.Address(),
-		SequenceNumber: "9605939170639897",
+	sourceAccount := horizon.Account{
+		HistoryAccount: horizon.HistoryAccount{
+			AccountID: kp0.Address(),
+		},
+		Sequence: "9605939170639897",
 	}
 
 	inflation := Inflation{}
 
 	tx := Transaction{
-		SourceAccount: sourceAccount,
+		SourceAccount: &sourceAccount,
 		Operations:    []Operation{&inflation},
 		Network:       network.TestNetworkPassphrase,
 	}
@@ -48,7 +46,7 @@ func TestCreateAccount(t *testing.T) {
 	}
 
 	tx := Transaction{
-		SourceAccount: sourceAccount,
+		SourceAccount: &sourceAccount,
 		Operations:    []Operation{&createAccount},
 		Network:       network.TestNetworkPassphrase,
 	}
@@ -72,7 +70,7 @@ func TestPayment(t *testing.T) {
 	}
 
 	tx := Transaction{
-		SourceAccount: sourceAccount,
+		SourceAccount: &sourceAccount,
 		Operations:    []Operation{&payment},
 		Network:       network.TestNetworkPassphrase,
 	}
@@ -95,7 +93,7 @@ func TestPaymentFailsIfNoAssetSpecified(t *testing.T) {
 	}
 
 	tx := Transaction{
-		SourceAccount: sourceAccount,
+		SourceAccount: &sourceAccount,
 		Operations:    []Operation{&payment},
 		Network:       network.TestNetworkPassphrase,
 	}
@@ -117,7 +115,7 @@ func TestBumpSequence(t *testing.T) {
 	}
 
 	tx := Transaction{
-		SourceAccount: sourceAccount,
+		SourceAccount: &sourceAccount,
 		Operations:    []Operation{&bumpSequence},
 		Network:       network.TestNetworkPassphrase,
 	}
@@ -140,7 +138,7 @@ func TestAccountMerge(t *testing.T) {
 	}
 
 	tx := Transaction{
-		SourceAccount: sourceAccount,
+		SourceAccount: &sourceAccount,
 		Operations:    []Operation{&accountMerge},
 		Network:       network.TestNetworkPassphrase,
 	}
@@ -163,7 +161,7 @@ func TestManageData(t *testing.T) {
 	}
 
 	tx := Transaction{
-		SourceAccount: sourceAccount,
+		SourceAccount: &sourceAccount,
 		Operations:    []Operation{&manageData},
 		Network:       network.TestNetworkPassphrase,
 	}
@@ -184,7 +182,7 @@ func TestManageDataRemoveDataEntry(t *testing.T) {
 	}
 
 	tx := Transaction{
-		SourceAccount: sourceAccount,
+		SourceAccount: &sourceAccount,
 		Operations:    []Operation{&manageData},
 		Network:       network.TestNetworkPassphrase,
 	}
@@ -207,7 +205,7 @@ func TestSetOptionsInflationDestination(t *testing.T) {
 	}
 
 	tx := Transaction{
-		SourceAccount: sourceAccount,
+		SourceAccount: &sourceAccount,
 		Operations:    []Operation{&setOptions},
 		Network:       network.TestNetworkPassphrase,
 	}
@@ -229,7 +227,7 @@ func TestSetOptionsSetFlags(t *testing.T) {
 	}
 
 	tx := Transaction{
-		SourceAccount: sourceAccount,
+		SourceAccount: &sourceAccount,
 		Operations:    []Operation{&setOptions},
 		Network:       network.TestNetworkPassphrase,
 	}
@@ -251,7 +249,7 @@ func TestSetOptionsClearFlags(t *testing.T) {
 	}
 
 	tx := Transaction{
-		SourceAccount: sourceAccount,
+		SourceAccount: &sourceAccount,
 		Operations:    []Operation{&setOptions},
 		Network:       network.TestNetworkPassphrase,
 	}
@@ -273,7 +271,7 @@ func TestSetOptionsMasterWeight(t *testing.T) {
 	}
 
 	tx := Transaction{
-		SourceAccount: sourceAccount,
+		SourceAccount: &sourceAccount,
 		Operations:    []Operation{&setOptions},
 		Network:       network.TestNetworkPassphrase,
 	}
@@ -297,7 +295,7 @@ func TestSetOptionsThresholds(t *testing.T) {
 	}
 
 	tx := Transaction{
-		SourceAccount: sourceAccount,
+		SourceAccount: &sourceAccount,
 		Operations:    []Operation{&setOptions},
 		Network:       network.TestNetworkPassphrase,
 	}
@@ -319,7 +317,7 @@ func TestSetOptionsHomeDomain(t *testing.T) {
 	}
 
 	tx := Transaction{
-		SourceAccount: sourceAccount,
+		SourceAccount: &sourceAccount,
 		Operations:    []Operation{&setOptions},
 		Network:       network.TestNetworkPassphrase,
 	}
@@ -341,7 +339,7 @@ func TestSetOptionsHomeDomainTooLong(t *testing.T) {
 	}
 
 	tx := Transaction{
-		SourceAccount: sourceAccount,
+		SourceAccount: &sourceAccount,
 		Operations:    []Operation{&setOptions},
 		Network:       network.TestNetworkPassphrase,
 	}
@@ -363,7 +361,7 @@ func TestSetOptionsSigner(t *testing.T) {
 	}
 
 	tx := Transaction{
-		SourceAccount: sourceAccount,
+		SourceAccount: &sourceAccount,
 		Operations:    []Operation{&setOptions},
 		Network:       network.TestNetworkPassphrase,
 	}
@@ -386,7 +384,7 @@ func TestMultipleOperations(t *testing.T) {
 	}
 
 	tx := Transaction{
-		SourceAccount: sourceAccount,
+		SourceAccount: &sourceAccount,
 		Operations:    []Operation{&inflation, &bumpSequence},
 		Network:       network.TestNetworkPassphrase,
 	}
@@ -411,7 +409,7 @@ func TestChangeTrust(t *testing.T) {
 	}
 
 	tx := Transaction{
-		SourceAccount: sourceAccount,
+		SourceAccount: &sourceAccount,
 		Operations:    []Operation{&changeTrust},
 		Network:       network.TestNetworkPassphrase,
 	}
@@ -435,7 +433,7 @@ func TestChangeTrustNativeAssetNotAllowed(t *testing.T) {
 	}
 
 	tx := Transaction{
-		SourceAccount: sourceAccount,
+		SourceAccount: &sourceAccount,
 		Operations:    []Operation{&changeTrust},
 		Network:       network.TestNetworkPassphrase,
 	}
@@ -458,7 +456,7 @@ func TestChangeTrustDeleteTrustline(t *testing.T) {
 	removeTrust := NewRemoveTrustlineOp(issuedAsset)
 
 	tx := Transaction{
-		SourceAccount: sourceAccount,
+		SourceAccount: &sourceAccount,
 		Operations:    []Operation{&removeTrust},
 		Network:       network.TestNetworkPassphrase,
 	}
@@ -485,7 +483,7 @@ func TestAllowTrust(t *testing.T) {
 	}
 
 	tx := Transaction{
-		SourceAccount: sourceAccount,
+		SourceAccount: &sourceAccount,
 		Operations:    []Operation{&allowTrust},
 		Network:       network.TestNetworkPassphrase,
 	}
@@ -511,7 +509,7 @@ func TestManageOfferNewOffer(t *testing.T) {
 	createOffer := NewCreateOfferOp(selling, buying, sellAmount, price)
 
 	tx := Transaction{
-		SourceAccount: sourceAccount,
+		SourceAccount: &sourceAccount,
 		Operations:    []Operation{&createOffer},
 		Network:       network.TestNetworkPassphrase,
 	}
@@ -533,7 +531,7 @@ func TestManageOfferDeleteOffer(t *testing.T) {
 	deleteOffer := NewDeleteOfferOp(offerID)
 
 	tx := Transaction{
-		SourceAccount: sourceAccount,
+		SourceAccount: &sourceAccount,
 		Operations:    []Operation{&deleteOffer},
 		Network:       network.TestNetworkPassphrase,
 	}
@@ -560,7 +558,7 @@ func TestManageOfferUpdateOffer(t *testing.T) {
 	updateOffer := NewUpdateOfferOp(selling, buying, sellAmount, price, offerID)
 
 	tx := Transaction{
-		SourceAccount: sourceAccount,
+		SourceAccount: &sourceAccount,
 		Operations:    []Operation{&updateOffer},
 		Network:       network.TestNetworkPassphrase,
 	}
@@ -586,7 +584,7 @@ func TestCreatePassiveOffer(t *testing.T) {
 		Price:   "1.0"}
 
 	tx := Transaction{
-		SourceAccount: sourceAccount,
+		SourceAccount: &sourceAccount,
 		Operations:    []Operation{&createPassiveOffer},
 		Network:       network.TestNetworkPassphrase,
 	}
@@ -616,7 +614,7 @@ func TestPathPayment(t *testing.T) {
 	}
 
 	tx := Transaction{
-		SourceAccount: sourceAccount,
+		SourceAccount: &sourceAccount,
 		Operations:    []Operation{&pathPayment},
 		Network:       network.TestNetworkPassphrase,
 	}

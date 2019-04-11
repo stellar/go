@@ -53,6 +53,12 @@ type Account struct {
 	Data                 map[string]string `json:"data"`
 }
 
+// GetAccountID returns the Stellar account ID. This exists to satisfy the Account interface
+// of txnbuild.
+func (a Account) GetAccountID() string {
+	return a.AccountID
+}
+
 // GetNativeBalance returns the native balance of the account
 func (a Account) GetNativeBalance() (string, error) {
 	for _, balance := range a.Balances {
