@@ -14,7 +14,7 @@ func Repair(src *Archive, dst *Archive, opts *CommandOptions) error {
 	if e != nil {
 		return e
 	}
-	opts.Range = opts.Range.Clamp(state.Range())
+	opts.Range = opts.Range.clamp(state.Range())
 
 	log.Printf("Starting scan for repair")
 	var errs uint32

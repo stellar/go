@@ -17,7 +17,7 @@ func Mirror(src *Archive, dst *Archive, opts *CommandOptions) error {
 		return e
 	}
 
-	opts.Range = opts.Range.Clamp(rootHAS.Range())
+	opts.Range = opts.Range.clamp(rootHAS.Range())
 
 	log.Printf("copying range %s\n", opts.Range)
 

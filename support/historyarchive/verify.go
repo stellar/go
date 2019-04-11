@@ -30,22 +30,22 @@ import (
 // Moreover, txsets (when sorted) are _not_ hashed by simply hashing the
 // XDR; they have a slightly-more-manual hashing process.
 
-type ByHash struct {
+type byHash struct {
 	txe []xdr.TransactionEnvelope
 	hsh []Hash
 }
 
-func (h *ByHash) Len() int { return len(h.hsh) }
-func (h *ByHash) Swap(i, j int) {
+func (h *byHash) Len() int { return len(h.hsh) }
+func (h *byHash) Swap(i, j int) {
 	h.txe[i], h.txe[j] = h.txe[j], h.txe[i]
 	h.hsh[i], h.hsh[j] = h.hsh[j], h.hsh[i]
 }
-func (h *ByHash) Less(i, j int) bool {
+func (h *byHash) Less(i, j int) bool {
 	return bytes.Compare(h.hsh[i][:], h.hsh[j][:]) < 0
 }
 
 func SortTxsForHash(txset *xdr.TransactionSet) error {
-	bh := &ByHash{
+	bh := &byHash{
 		txe: txset.Txs,
 		hsh: make([]Hash, len(txset.Txs)),
 	}

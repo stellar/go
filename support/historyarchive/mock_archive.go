@@ -72,7 +72,7 @@ func (b *MockArchiveBackend) CanListFiles() bool {
 	return true
 }
 
-func MakeMockBackend(opts ConnectOptions) ArchiveBackend {
+func makeMockBackend(opts ConnectOptions) ArchiveBackend {
 	b := new(MockArchiveBackend)
 	b.files = make(map[string][]byte)
 	return b

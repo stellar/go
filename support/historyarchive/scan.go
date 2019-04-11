@@ -28,7 +28,7 @@ func (arch *Archive) ScanCheckpoints(opts *CommandOptions) error {
 	if e != nil {
 		return e
 	}
-	opts.Range = opts.Range.Clamp(state.Range())
+	opts.Range = opts.Range.clamp(state.Range())
 
 	log.Printf("Scanning checkpoint files in range: %s", opts.Range)
 

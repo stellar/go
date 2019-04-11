@@ -194,14 +194,14 @@ func Connect(u string, opts ConnectOptions) (*Archive, error) {
 		if len(pth) > 0 && pth[0] == '/' {
 			pth = pth[1:]
 		}
-		arch.backend, err = MakeS3Backend(parsed.Host, pth, opts)
+		arch.backend, err = makeS3Backend(parsed.Host, pth, opts)
 	} else if parsed.Scheme == "file" {
 		pth = path.Join(parsed.Host, pth)
-		arch.backend = MakeFsBackend(pth, opts)
+		arch.backend = makeFsBackend(pth, opts)
 	} else if parsed.Scheme == "http" {
-		arch.backend = MakeHttpBackend(parsed, opts)
+		arch.backend = makeHttpBackend(parsed, opts)
 	} else if parsed.Scheme == "mock" {
-		arch.backend = MakeMockBackend(opts)
+		arch.backend = makeMockBackend(opts)
 	} else {
 		err = errors.New("unknown URL scheme: '" + parsed.Scheme + "'")
 	}

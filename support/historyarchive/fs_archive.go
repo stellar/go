@@ -72,7 +72,7 @@ func (b *FsArchiveBackend) CanListFiles() bool {
 	return true
 }
 
-func MakeFsBackend(pth string, opts ConnectOptions) ArchiveBackend {
+func makeFsBackend(pth string, opts ConnectOptions) ArchiveBackend {
 	return &FsArchiveBackend{
 		prefix: pth,
 	}

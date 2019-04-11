@@ -12,10 +12,10 @@ import (
 type DirPrefix [3]uint8
 
 func (d DirPrefix) Path() string {
-	return d.PathPrefix(len(d))
+	return d.pathPrefix(len(d))
 }
 
-func (d DirPrefix) PathPrefix(n int) string {
+func (d DirPrefix) pathPrefix(n int) string {
 	tmp := []string{}
 	for i, b := range d {
 		if i > n {
@@ -56,7 +56,7 @@ func RangePaths(r Range) []string {
 	tmp := lowpre
 	for i := int(lowpre[diff]); i <= int(highpre[diff]); i++ {
 		tmp[diff] = uint8(i)
-		res = append(res, tmp.PathPrefix(diff))
+		res = append(res, tmp.pathPrefix(diff))
 	}
 	return res
 }

@@ -101,7 +101,7 @@ func (b *S3ArchiveBackend) CanListFiles() bool {
 	return true
 }
 
-func MakeS3Backend(bucket string, prefix string, opts ConnectOptions) (ArchiveBackend, error) {
+func makeS3Backend(bucket string, prefix string, opts ConnectOptions) (ArchiveBackend, error) {
 	cfg := aws.Config{
 		Region:   aws.String(opts.S3Region),
 		Endpoint: aws.String(opts.S3Endpoint),
