@@ -81,11 +81,11 @@ func (tx *Transaction) Build() error {
 
 	// TODO: Validate Seq Num is present in struct
 	tx.SourceAccount.IncrementSequenceNumber()
-	var err error
-	tx.xdrTransaction.SeqNum, err = tx.SourceAccount.GetSequenceNumber()
+	seqnum, err := tx.SourceAccount.GetSequenceNumber()
 	if err != nil {
 		return errors.Wrap(err, "Failed to parse sequence number")
 	}
+	tx.xdrTransaction.SeqNum = seqnum
 
 	for _, op := range tx.Operations {
 		xdrOperation, err := op.BuildXDR()
