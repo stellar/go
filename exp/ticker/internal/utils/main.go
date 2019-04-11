@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 )
@@ -39,4 +40,12 @@ func SliceDiff(a, b []string) (diff []string) {
 		}
 	}
 	return
+}
+
+// GetAssetString returns a string representation of an asset
+func GetAssetString(assetType string, code string, issuer string) string {
+	if assetType == "native" {
+		return "native"
+	}
+	return fmt.Sprintf("%s:%s", code, issuer)
 }

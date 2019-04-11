@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/stellar/go/exp/ticker/internal/utils"
+
 	horizonclient "github.com/stellar/go/exp/clients/horizon"
 	hProtocol "github.com/stellar/go/protocols/horizon"
 )
@@ -15,6 +17,7 @@ func checkRecords(trades []hProtocol.Trade, minTime time.Time) (lastPage bool, c
 	lastPage = false
 	for _, t := range trades {
 		if t.LedgerCloseTime.After(minTime) {
+			normalizeTradeAssets(&t)
 			cleanTrades = append(cleanTrades, t)
 		} else {
 			fmt.Println("Reached entries older than the acceptable time range:", t.LedgerCloseTime)
@@ -90,4 +93,50 @@ func streamTrades(
 	}
 
 	return r.StreamTrades(ctx, c, h)
+}
+
+// normalizeTradeAssets enforces the following rules:
+// 1. native asset type refers to a "XLM" code and a "native" issuer
+// 2. native is always the base asset (and if not, base and counter are swapped)
+// 3. when trades are between two non-native, the base is the asset whose string
+// comes first alphabetically.
+func normalizeTradeAssets(t *hProtocol.Trade) {
+	addNativeData(t)
+	if t.BaseAssetType == "native" {
+		return
+	}
+	if t.CounterAssetType == "native" {
+		reverseAssets(t)
+	}
+	bAssetString := utils.GetAssetString(t.BaseAssetType, t.BaseAssetCode, t.BaseAssetIssuer)
+	cAssetString := utils.GetAssetString(t.CounterAssetType, t.CounterAssetCode, t.CounterAssetIssuer)
+	if bAssetString > cAssetString {
+		reverseAssets(t)
+	}
+
+}
+
+// addNativeData adds additional fields when one of the assets is native.
+func addNativeData(trade *hProtocol.Trade) {
+	if trade.BaseAssetType == "native" {
+		trade.BaseAssetCode = "XLM"
+		trade.BaseAssetIssuer = "native"
+	}
+
+	if trade.CounterAssetType == "native" {
+		trade.CounterAssetCode = "XLM"
+		trade.CounterAssetIssuer = "native"
+	}
+}
+
+// reverseAssets swaps out the base and counter assets of a trade.
+func reverseAssets(trade *hProtocol.Trade) {
+	trade.BaseAmount, trade.CounterAmount = trade.CounterAmount, trade.BaseAmount
+	trade.BaseAccount, trade.CounterAccount = trade.CounterAccount, trade.BaseAccount
+	trade.BaseAssetCode, trade.CounterAssetCode = trade.CounterAssetCode, trade.BaseAssetCode
+	trade.BaseAssetType, trade.CounterAssetType = trade.CounterAssetType, trade.BaseAssetType
+	trade.BaseAssetIssuer, trade.CounterAssetIssuer = trade.CounterAssetIssuer, trade.BaseAssetIssuer
+
+	trade.BaseIsSeller = !trade.BaseIsSeller
+	trade.Price.N, trade.Price.D = trade.Price.D, trade.Price.N
 }
