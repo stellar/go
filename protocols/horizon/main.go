@@ -87,6 +87,19 @@ func (a Account) GetSequenceNumber() (xdr.SequenceNumber, error) {
 	return xdr.SequenceNumber(seqNum), nil
 }
 
+// IncrementSequenceNumber increments the internal record of the account's sequence
+// number by 1. This is typically used after a transaction build so that the next
+// transaction to be built will be valid.
+func (a *Account) IncrementSequenceNumber() error {
+	seqNum, err := a.GetSequenceNumber()
+	if err != nil {
+		return err
+	}
+	seqNum++
+	a.Sequence = strconv.FormatInt(int64(seqNum), 10)
+	return nil
+}
+
 // MustGetData returns decoded value for a given key. If the key does
 // not exist, empty slice will be returned. If there is an error
 // decoding a value, it will panic.

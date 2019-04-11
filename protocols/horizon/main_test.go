@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"testing"
 
+	"github.com/stellar/go/xdr"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -14,6 +15,16 @@ var exampleAccount = Account{
 		"test":    "aGVsbG8=",
 		"invalid": "a_*&^*",
 	},
+	Sequence: "3002985298788353",
+}
+
+func TestAccount_IncrementSequenceNumber(t *testing.T) {
+	exampleAccount.IncrementSequenceNumber()
+	seqNum, err := exampleAccount.GetSequenceNumber()
+
+	assert.Nil(t, err)
+	assert.Equal(t, "3002985298788354", exampleAccount.Sequence, "sequence number string was incremented")
+	assert.Equal(t, xdr.SequenceNumber(3002985298788354), seqNum, "incremented sequence number is correct value/type")
 }
 
 // Testing the GetData method of Account
