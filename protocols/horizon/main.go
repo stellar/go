@@ -53,8 +53,8 @@ type Account struct {
 	Data                 map[string]string `json:"data"`
 }
 
-// GetAccountID returns the Stellar account ID. This exists to satisfy the Account interface
-// of txnbuild.
+// GetAccountID returns the Stellar account ID. This is to satisfy the
+// Account interface of txnbuild.
 func (a Account) GetAccountID() string {
 	return a.AccountID
 }

@@ -19,8 +19,7 @@ var exampleAccount = Account{
 }
 
 func TestAccount_IncrementSequenceNumber(t *testing.T) {
-	exampleAccount.IncrementSequenceNumber()
-	seqNum, err := exampleAccount.GetSequenceNumber()
+	seqNum, err := exampleAccount.IncrementSequenceNumber()
 
 	assert.Nil(t, err)
 	assert.Equal(t, "3002985298788354", exampleAccount.Sequence, "sequence number string was incremented")
