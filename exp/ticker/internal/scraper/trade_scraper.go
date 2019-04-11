@@ -107,13 +107,13 @@ func normalizeTradeAssets(t *hProtocol.Trade) {
 	}
 	if t.CounterAssetType == "native" {
 		reverseAssets(t)
+		return
 	}
 	bAssetString := utils.GetAssetString(t.BaseAssetType, t.BaseAssetCode, t.BaseAssetIssuer)
 	cAssetString := utils.GetAssetString(t.CounterAssetType, t.CounterAssetCode, t.CounterAssetIssuer)
 	if bAssetString > cAssetString {
 		reverseAssets(t)
 	}
-
 }
 
 // addNativeData adds additional fields when one of the assets is native.
