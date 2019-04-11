@@ -8,46 +8,12 @@ import (
 	"bytes"
 	"encoding/base64"
 	"fmt"
-	"strconv"
 
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/network"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
 )
-
-// TXNAccount represents a Stellar TXNAccount from the perspective of a Transaction.
-type TXNAccount struct {
-	ID             string
-	SequenceNumber string
-}
-
-// GetAccountID is to be deleted once refactor is complete
-func (t TXNAccount) GetAccountID() string {
-	return t.ID
-}
-
-// GetSequenceNumber is to be deleted once refactor is complete
-func (t TXNAccount) GetSequenceNumber() (xdr.SequenceNumber, error) {
-	seqNum, err := strconv.ParseUint(t.SequenceNumber, 10, 64)
-
-	if err != nil {
-		return 0, errors.Wrap(err, "Failed to parse account sequence number")
-	}
-
-	return xdr.SequenceNumber(seqNum), nil
-}
-
-// IncrementSequenceNumber is to be deleted once refactor is complete
-func (t *TXNAccount) IncrementSequenceNumber() error {
-	seqNum, err := t.GetSequenceNumber()
-	if err != nil {
-		return err
-	}
-	seqNum++
-	t.SequenceNumber = strconv.FormatInt(int64(seqNum), 10)
-	return nil
-}
 
 // Account represents the aspects of a Stellar account necessary to construct transactions.
 type Account interface {
