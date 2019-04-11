@@ -7,9 +7,9 @@ import (
 	"github.com/stellar/go/support/errors"
 )
 
-// BuildUrl creates the endpoint to be queried based on the data in the AssetRequest struct.
+// BuildURL creates the endpoint to be queried based on the data in the AssetRequest struct.
 // If no data is set, it defaults to the build the URL for all assets
-func (ar AssetRequest) BuildUrl() (endpoint string, err error) {
+func (ar AssetRequest) BuildURL() (endpoint string, err error) {
 	endpoint = "assets"
 	queryParams := addQueryParams(assetCode(ar.ForAssetCode), assetIssuer(ar.ForAssetIssuer), cursor(ar.Cursor), limit(ar.Limit), ar.Order)
 	if queryParams != "" {

@@ -137,28 +137,17 @@ func (m *MockClient) Trades(request TradeRequest) (hProtocol.TradesPage, error) 
 }
 
 // StreamTransactions is a mocking method
-func (m *MockClient) StreamTransactions(ctx context.Context,
-	request TransactionRequest,
-	handler TransactionHandler,
-) error {
-	a := m.Called(ctx, request, handler)
-	return a.Error(0)
+func (m *MockClient) StreamTransactions(ctx context.Context, request TransactionRequest, handler TransactionHandler) error {
+	return m.Called(ctx, request, handler).Error(0)
 }
 
 // StreamTrades is a mocking method
-func (m *MockClient) StreamTrades(ctx context.Context,
-	request TradeRequest,
-	handler TradeHandler,
-) error {
-	a := m.Called(ctx, request, handler)
-	return a.Error(0)
+func (m *MockClient) StreamTrades(ctx context.Context, request TradeRequest, handler TradeHandler) error {
+	return m.Called(ctx, request, handler).Error(0)
 }
 
 // StreamEffects is a mocking method
-func (m *MockClient) StreamEffects(ctx context.Context,
-	request EffectRequest,
-	handler EffectHandler,
-) error {
+func (m *MockClient) StreamEffects(ctx context.Context, request EffectRequest, handler EffectHandler) error {
 	return m.Called(ctx, request, handler).Error(0)
 }
 

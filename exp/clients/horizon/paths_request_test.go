@@ -12,7 +12,7 @@ import (
 
 func TestPathsRequestBuildUrl(t *testing.T) {
 	pr := PathsRequest{}
-	endpoint, err := pr.BuildUrl()
+	endpoint, err := pr.BuildURL()
 
 	// It should return no errors and orderbook endpoint
 	// Horizon will return an error though because there are no parameters
@@ -28,7 +28,7 @@ func TestPathsRequestBuildUrl(t *testing.T) {
 		SourceAccount:          "GDZST3XVCDTUJ76ZAV2HA72KYQODXXZ5PTMAPZGDHZ6CS7RO7MGG3DBM",
 	}
 
-	endpoint, err = pr.BuildUrl()
+	endpoint, err = pr.BuildURL()
 
 	// It should return valid assets endpoint and no errors
 	require.NoError(t, err)

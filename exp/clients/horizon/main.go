@@ -1,4 +1,4 @@
-// package horizonclient is an experimental horizon client that provides access to the horizon server
+// Package horizonclient is an experimental horizon client that provides access to the horizon server
 package horizonclient
 
 import (
@@ -155,7 +155,7 @@ var DefaultPublicNetClient = &Client{
 
 // HorizonRequest contains methods implemented by request structs for horizon endpoints
 type HorizonRequest interface {
-	BuildUrl() (string, error)
+	BuildURL() (string, error)
 }
 
 // StreamRequest contains methods implemented by request structs for endpoints that support streaming
@@ -165,7 +165,7 @@ type StreamRequest interface {
 
 // AccountRequest struct contains data for making requests to the accounts endpoint of an horizon server
 type AccountRequest struct {
-	AccountId string
+	AccountID string
 	DataKey   string
 }
 
@@ -220,7 +220,7 @@ type OperationRequest struct {
 	ForAccount     string
 	ForLedger      uint
 	ForTransaction string
-	forOperationId string
+	forOperationID string
 	Order          Order
 	Cursor         string
 	Limit          uint

@@ -10,10 +10,10 @@ import (
 	"github.com/stellar/go/support/errors"
 )
 
-// BuildUrl creates the endpoint to be queried based on the data in the OperationRequest struct.
+// BuildURL creates the endpoint to be queried based on the data in the OperationRequest struct.
 // If no data is set, it defaults to the build the URL for all operations or all payments; depending on thevalue of `op.endpoint`
-func (op OperationRequest) BuildUrl() (endpoint string, err error) {
-	nParams := countParams(op.ForAccount, op.ForLedger, op.forOperationId, op.ForTransaction)
+func (op OperationRequest) BuildURL() (endpoint string, err error) {
+	nParams := countParams(op.ForAccount, op.ForLedger, op.forOperationID, op.ForTransaction)
 
 	if nParams > 1 {
 		return endpoint, errors.New("Invalid request. Too many parameters")
@@ -30,8 +30,8 @@ func (op OperationRequest) BuildUrl() (endpoint string, err error) {
 	if op.ForLedger > 0 {
 		endpoint = fmt.Sprintf("ledgers/%d/%s", op.ForLedger, op.endpoint)
 	}
-	if op.forOperationId != "" {
-		endpoint = fmt.Sprintf("operations/%s", op.forOperationId)
+	if op.forOperationID != "" {
+		endpoint = fmt.Sprintf("operations/%s", op.forOperationID)
 	}
 	if op.ForTransaction != "" {
 		endpoint = fmt.Sprintf("transactions/%s/%s", op.ForTransaction, op.endpoint)
@@ -80,7 +80,7 @@ type OperationHandler func(operations.Operation)
 // stream indefinitely. OperationHandler is a user-supplied function that is executed for each streamed
 //  operation received.
 func (op OperationRequest) StreamOperations(ctx context.Context, client *Client, handler OperationHandler) error {
-	endpoint, err := op.BuildUrl()
+	endpoint, err := op.BuildURL()
 	if err != nil {
 		return errors.Wrap(err, "Unable to build endpoint for operation request")
 	}

@@ -10,9 +10,9 @@ import (
 	"github.com/stellar/go/support/errors"
 )
 
-// BuildUrl creates the endpoint to be queried based on the data in the TransactionRequest struct.
+// BuildURL creates the endpoint to be queried based on the data in the TransactionRequest struct.
 // If no data is set, it defaults to the build the URL for all transactions
-func (tr TransactionRequest) BuildUrl() (endpoint string, err error) {
+func (tr TransactionRequest) BuildURL() (endpoint string, err error) {
 	nParams := countParams(tr.ForAccount, tr.ForLedger, tr.forTransactionHash)
 
 	if nParams > 1 {
@@ -51,7 +51,7 @@ type TransactionHandler func(hProtocol.Transaction)
 // to stream indefinitely. TransactionHandler is a user-supplied function that is executed for each streamed transaction received.
 func (tr TransactionRequest) StreamTransactions(ctx context.Context, client *Client,
 	handler TransactionHandler) (err error) {
-	endpoint, err := tr.BuildUrl()
+	endpoint, err := tr.BuildURL()
 	if err != nil {
 		return errors.Wrap(err, "Unable to build endpoint")
 	}

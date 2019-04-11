@@ -20,7 +20,7 @@ import (
 )
 
 func (c *Client) sendRequest(hr HorizonRequest, a interface{}) (err error) {
-	endpoint, err := hr.BuildUrl()
+	endpoint, err := hr.BuildURL()
 	if err != nil {
 		return
 	}
@@ -210,7 +210,7 @@ func (c *Client) GetHorizonTimeOut() time.Duration {
 // AccountDetail returns information for a single account.
 // See https://www.stellar.org/developers/horizon/reference/endpoints/accounts-single.html
 func (c *Client) AccountDetail(request AccountRequest) (account hProtocol.Account, err error) {
-	if request.AccountId == "" {
+	if request.AccountID == "" {
 		err = errors.New("No account ID provided")
 	}
 
@@ -225,7 +225,7 @@ func (c *Client) AccountDetail(request AccountRequest) (account hProtocol.Accoun
 // AccountData returns a single data associated with a given account
 // See https://www.stellar.org/developers/horizon/reference/endpoints/data-for-account.html
 func (c *Client) AccountData(request AccountRequest) (accountData hProtocol.AccountData, err error) {
-	if request.AccountId == "" || request.DataKey == "" {
+	if request.AccountID == "" || request.DataKey == "" {
 		err = errors.New("Too few parameters")
 	}
 
@@ -319,7 +319,7 @@ func (c *Client) OperationDetail(id string) (ops operations.Operation, err error
 		return ops, errors.New("Invalid operation id provided")
 	}
 
-	request := OperationRequest{forOperationId: id, endpoint: "operations"}
+	request := OperationRequest{forOperationID: id, endpoint: "operations"}
 
 	var record interface{}
 

@@ -14,28 +14,28 @@ import (
 
 func TestLedgerRequestBuildUrl(t *testing.T) {
 	lr := LedgerRequest{}
-	endpoint, err := lr.BuildUrl()
+	endpoint, err := lr.BuildURL()
 
 	// It should return valid all ledgers endpoint and no errors
 	require.NoError(t, err)
 	assert.Equal(t, "ledgers", endpoint)
 
 	lr = LedgerRequest{forSequence: 123}
-	endpoint, err = lr.BuildUrl()
+	endpoint, err = lr.BuildURL()
 
 	// It should return valid ledger detail endpoint and no errors
 	require.NoError(t, err)
 	assert.Equal(t, "ledgers/123", endpoint)
 
 	lr = LedgerRequest{forSequence: 123, Cursor: "now", Order: OrderDesc}
-	endpoint, err = lr.BuildUrl()
+	endpoint, err = lr.BuildURL()
 
 	// It should return valid ledger detail endpoint, with no cursor or order
 	require.NoError(t, err)
 	assert.Equal(t, "ledgers/123", endpoint)
 
 	lr = LedgerRequest{Cursor: "now", Order: OrderDesc}
-	endpoint, err = lr.BuildUrl()
+	endpoint, err = lr.BuildURL()
 
 	// It should return valid ledgers endpoint, with cursor and order
 	require.NoError(t, err)
@@ -50,7 +50,7 @@ func TestLedgerDetail(t *testing.T) {
 	}
 
 	// invalid parameters
-	var sequence uint32 = 0
+	var sequence uint32
 	hmock.On(
 		"GET",
 		"https://localhost/ledgers/",

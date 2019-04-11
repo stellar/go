@@ -9,7 +9,7 @@ import (
 
 func TestAccountRequestBuildUrl(t *testing.T) {
 	ar := AccountRequest{}
-	endpoint, err := ar.BuildUrl()
+	endpoint, err := ar.BuildURL()
 
 	// error case: No parameters
 	if assert.Error(t, err) {
@@ -17,7 +17,7 @@ func TestAccountRequestBuildUrl(t *testing.T) {
 	}
 
 	ar.DataKey = "test"
-	endpoint, err = ar.BuildUrl()
+	endpoint, err = ar.BuildURL()
 
 	// error case: few parameters for building account data endpoint
 	if assert.Error(t, err) {
@@ -25,16 +25,16 @@ func TestAccountRequestBuildUrl(t *testing.T) {
 	}
 
 	ar.DataKey = ""
-	ar.AccountId = "GCLWGQPMKXQSPF776IU33AH4PZNOOWNAWGGKVTBQMIC5IMKUNP3E6NVU"
-	endpoint, err = ar.BuildUrl()
+	ar.AccountID = "GCLWGQPMKXQSPF776IU33AH4PZNOOWNAWGGKVTBQMIC5IMKUNP3E6NVU"
+	endpoint, err = ar.BuildURL()
 
 	// It should return valid account details endpoint and no errors
 	require.NoError(t, err)
 	assert.Equal(t, "accounts/GCLWGQPMKXQSPF776IU33AH4PZNOOWNAWGGKVTBQMIC5IMKUNP3E6NVU", endpoint)
 
 	ar.DataKey = "test"
-	ar.AccountId = "GCLWGQPMKXQSPF776IU33AH4PZNOOWNAWGGKVTBQMIC5IMKUNP3E6NVU"
-	endpoint, err = ar.BuildUrl()
+	ar.AccountID = "GCLWGQPMKXQSPF776IU33AH4PZNOOWNAWGGKVTBQMIC5IMKUNP3E6NVU"
+	endpoint, err = ar.BuildURL()
 
 	// It should return valid account data endpoint and no errors
 	require.NoError(t, err)
