@@ -282,7 +282,7 @@ func (c *ScraperConfig) parallelProcessAssets(assets []hProtocol.AssetStat, para
 			if !t.IsTrash {
 				cleanAssets = append(cleanAssets, t)
 			}
-			c.Logger.Debug("Total assets cleaned up:", count)
+			c.Logger.Debugln("Total assets cleaned up:", count)
 			wg.Done()
 		}
 	}()
@@ -302,7 +302,7 @@ func (c *ScraperConfig) retrieveAssets(limit int) (assets []hProtocol.AssetStat,
 		return
 	}
 
-	c.Logger.Warn("Fetching assets from Horizon")
+	c.Logger.Warnln("Fetching assets from Horizon")
 
 	for assetsPage.Links.Next.Href != assetsPage.Links.Self.Href {
 		assetsPage, err = c.Client.Assets(r)
@@ -325,7 +325,7 @@ func (c *ScraperConfig) retrieveAssets(limit int) (assets []hProtocol.AssetStat,
 		if err != nil {
 			return assets, err
 		}
-		c.Logger.Info("Cursor currently at:", n)
+		c.Logger.Infoln("Cursor currently at:", n)
 
 		r = horizonclient.AssetRequest{Limit: 200, Cursor: n}
 	}

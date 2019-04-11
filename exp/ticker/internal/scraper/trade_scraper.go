@@ -18,7 +18,7 @@ func (c *ScraperConfig) checkRecords(trades []hProtocol.Trade, minTime time.Time
 			normalizeTradeAssets(&t)
 			cleanTrades = append(cleanTrades, t)
 		} else {
-			c.Logger.Info("Reached entries older than the acceptable time range:", t.LedgerCloseTime)
+			c.Logger.Infoln("Reached entries older than the acceptable time range:", t.LedgerCloseTime)
 			lastPage = true
 			return
 		}
@@ -62,7 +62,7 @@ func (c *ScraperConfig) retrieveTrades(since time.Time, limit int) (trades []hPr
 		if err != nil {
 			return trades, err
 		}
-		c.Logger.Info("Cursor currently at:", n)
+		c.Logger.Infoln("Cursor currently at:", n)
 		r.Cursor = n
 		tradesPage, err = c.Client.Trades(r)
 		if err != nil {

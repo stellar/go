@@ -21,11 +21,12 @@ var rootCmd = &cobra.Command{
 }
 
 func init() {
-	rootCmd.PersistentFlags().StringVar(
+	rootCmd.PersistentFlags().StringVarP(
 		&DatabaseURL,
 		"db-url",
+		"d",
 		"postgres://localhost:5432/stellarticker01?sslmode=disable",
-		"Database URL, such as: postgres://user:pass@localhost:5432/ticker",
+		"database URL, such as: postgres://user:pass@localhost:5432/ticker",
 	)
 
 	Logger.SetLevel(logrus.InfoLevel)

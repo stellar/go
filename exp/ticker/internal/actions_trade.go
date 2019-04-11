@@ -27,7 +27,7 @@ func StreamTrades(
 		Ctx:    &ctx,
 	}
 	handler := func(trade hProtocol.Trade) {
-		fmt.Print("New trade arrived:", trade.ID, trade.LedgerCloseTime)
+		l.Infof("New trade arrived. ID: %v; Close Time: %v\n", trade.ID, trade.LedgerCloseTime)
 		bID, cID, err := findBaseAndCounter(s, trade)
 		if err != nil {
 			return
@@ -39,7 +39,7 @@ func StreamTrades(
 
 		err = s.BulkInsertTrades([]tickerdb.Trade{dbTrade})
 		if err != nil {
-			fmt.Println("Could not insert trade in database:", trade.ID)
+			l.Errorln("Could not insert trade in database: ", trade.ID)
 		}
 	}
 
@@ -83,13 +83,13 @@ func BackfillTrades(
 
 		dbTrade, err := hProtocolTradeToDBTrade(trade, bID, cID)
 		if err != nil {
-			fmt.Println("Could not convert entry to DB Trade:", err)
+			l.Errorln("Could not convert entry to DB Trade: ", err)
 			continue
 		}
 		dbTrades = append(dbTrades, dbTrade)
 	}
 
-	fmt.Printf("Inserting %d entries in the database.\n", len(dbTrades))
+	l.Warnf("Inserting %d entries in the database.\n", len(dbTrades))
 	err = s.BulkInsertTrades(dbTrades)
 	if err != nil {
 		fmt.Println(err)
