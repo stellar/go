@@ -598,12 +598,13 @@ func createKeypair() *keypair.Full {
 	return pair
 }
 
-func mapAccounts(horizonAccount horizon.Account) txnbuild.Account {
-	myAccount := txnbuild.Account{
+func mapAccounts(horizonAccount horizon.Account) txnbuild.TXNAccount {
+	myAccount := txnbuild.TXNAccount{
 		ID: horizonAccount.ID,
 	}
 	var err error
-	myAccount.SequenceNumber, err = horizonAccount.GetSequenceNumber()
+	// myAccount.SequenceNumber, err = horizonAccount.GetSequenceNumber()
+	myAccount.SequenceNumber = horizonAccount.Sequence
 	dieIfError("GetSequenceNumber", err)
 
 	return myAccount

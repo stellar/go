@@ -10,9 +10,14 @@ import (
 
 func TestInflation(t *testing.T) {
 	kp0 := newKeypair0()
-	sourceAccount := Account{
+	// sourceAccount := horizon.Account{
+	// 	HistoryAccount: horizon.HistoryAccount{
+	// 		AccountID: kp0.Address(),
+	// Sequence: "9605939170639897",
+	// 	},
+	sourceAccount := TXNAccount{
 		ID:             kp0.Address(),
-		SequenceNumber: 9605939170639897,
+		SequenceNumber: "9605939170639897",
 	}
 
 	inflation := Inflation{}
@@ -31,9 +36,9 @@ func TestInflation(t *testing.T) {
 func TestCreateAccount(t *testing.T) {
 	kp0 := newKeypair0()
 
-	sourceAccount := Account{
+	sourceAccount := TXNAccount{
 		ID:             kp0.Address(),
-		SequenceNumber: 9605939170639897,
+		SequenceNumber: "9605939170639897",
 	}
 
 	createAccount := CreateAccount{
@@ -55,9 +60,9 @@ func TestCreateAccount(t *testing.T) {
 
 func TestPayment(t *testing.T) {
 	kp0 := newKeypair0()
-	sourceAccount := Account{
+	sourceAccount := TXNAccount{
 		ID:             kp0.Address(),
-		SequenceNumber: 9605939170639898,
+		SequenceNumber: "9605939170639898",
 	}
 
 	payment := Payment{
@@ -79,9 +84,9 @@ func TestPayment(t *testing.T) {
 
 func TestPaymentFailsIfNoAssetSpecified(t *testing.T) {
 	kp0 := newKeypair0()
-	sourceAccount := Account{
+	sourceAccount := TXNAccount{
 		ID:             kp0.Address(),
-		SequenceNumber: 9605939170639898,
+		SequenceNumber: "9605939170639898",
 	}
 
 	payment := Payment{
@@ -102,9 +107,9 @@ func TestPaymentFailsIfNoAssetSpecified(t *testing.T) {
 
 func TestBumpSequence(t *testing.T) {
 	kp1 := newKeypair1()
-	sourceAccount := Account{
+	sourceAccount := TXNAccount{
 		ID:             kp1.Address(),
-		SequenceNumber: 9606132444168199,
+		SequenceNumber: "9606132444168199",
 	}
 
 	bumpSequence := BumpSequence{
@@ -125,9 +130,9 @@ func TestBumpSequence(t *testing.T) {
 func TestAccountMerge(t *testing.T) {
 	kp0 := newKeypair0()
 
-	sourceAccount := Account{
+	sourceAccount := TXNAccount{
 		ID:             kp0.Address(),
-		SequenceNumber: 40385577484298,
+		SequenceNumber: "40385577484298",
 	}
 
 	accountMerge := AccountMerge{
@@ -147,9 +152,9 @@ func TestAccountMerge(t *testing.T) {
 
 func TestManageData(t *testing.T) {
 	kp0 := newKeypair0()
-	sourceAccount := Account{
+	sourceAccount := TXNAccount{
 		ID:             kp0.Address(),
-		SequenceNumber: 40385577484298,
+		SequenceNumber: "40385577484298",
 	}
 
 	manageData := ManageData{
@@ -169,9 +174,9 @@ func TestManageData(t *testing.T) {
 }
 func TestManageDataRemoveDataEntry(t *testing.T) {
 	kp0 := newKeypair0()
-	sourceAccount := Account{
+	sourceAccount := TXNAccount{
 		ID:             kp0.Address(),
-		SequenceNumber: 40385577484309,
+		SequenceNumber: "40385577484309",
 	}
 
 	manageData := ManageData{
@@ -192,9 +197,9 @@ func TestManageDataRemoveDataEntry(t *testing.T) {
 func TestSetOptionsInflationDestination(t *testing.T) {
 	kp0 := newKeypair0()
 	kp1 := newKeypair1()
-	sourceAccount := Account{
+	sourceAccount := TXNAccount{
 		ID:             kp0.Address(),
-		SequenceNumber: 40385577484315,
+		SequenceNumber: "40385577484315",
 	}
 
 	setOptions := SetOptions{
@@ -214,9 +219,9 @@ func TestSetOptionsInflationDestination(t *testing.T) {
 
 func TestSetOptionsSetFlags(t *testing.T) {
 	kp0 := newKeypair0()
-	sourceAccount := Account{
+	sourceAccount := TXNAccount{
 		ID:             kp0.Address(),
-		SequenceNumber: 40385577484318,
+		SequenceNumber: "40385577484318",
 	}
 
 	setOptions := SetOptions{
@@ -236,9 +241,9 @@ func TestSetOptionsSetFlags(t *testing.T) {
 
 func TestSetOptionsClearFlags(t *testing.T) {
 	kp0 := newKeypair0()
-	sourceAccount := Account{
+	sourceAccount := TXNAccount{
 		ID:             kp0.Address(),
-		SequenceNumber: 40385577484319,
+		SequenceNumber: "40385577484319",
 	}
 
 	setOptions := SetOptions{
@@ -258,9 +263,9 @@ func TestSetOptionsClearFlags(t *testing.T) {
 
 func TestSetOptionsMasterWeight(t *testing.T) {
 	kp0 := newKeypair0()
-	sourceAccount := Account{
+	sourceAccount := TXNAccount{
 		ID:             kp0.Address(),
-		SequenceNumber: 40385577484320,
+		SequenceNumber: "40385577484320",
 	}
 
 	setOptions := SetOptions{
@@ -280,9 +285,9 @@ func TestSetOptionsMasterWeight(t *testing.T) {
 
 func TestSetOptionsThresholds(t *testing.T) {
 	kp0 := newKeypair0()
-	sourceAccount := Account{
+	sourceAccount := TXNAccount{
 		ID:             kp0.Address(),
-		SequenceNumber: 40385577484322,
+		SequenceNumber: "40385577484322",
 	}
 
 	setOptions := SetOptions{
@@ -304,9 +309,9 @@ func TestSetOptionsThresholds(t *testing.T) {
 
 func TestSetOptionsHomeDomain(t *testing.T) {
 	kp0 := newKeypair0()
-	sourceAccount := Account{
+	sourceAccount := TXNAccount{
 		ID:             kp0.Address(),
-		SequenceNumber: 40385577484325,
+		SequenceNumber: "40385577484325",
 	}
 
 	setOptions := SetOptions{
@@ -326,9 +331,9 @@ func TestSetOptionsHomeDomain(t *testing.T) {
 
 func TestSetOptionsHomeDomainTooLong(t *testing.T) {
 	kp0 := newKeypair0()
-	sourceAccount := Account{
+	sourceAccount := TXNAccount{
 		ID:             kp0.Address(),
-		SequenceNumber: 40385577484323,
+		SequenceNumber: "40385577484323",
 	}
 
 	setOptions := SetOptions{
@@ -348,9 +353,9 @@ func TestSetOptionsHomeDomainTooLong(t *testing.T) {
 func TestSetOptionsSigner(t *testing.T) {
 	kp0 := newKeypair0()
 	kp1 := newKeypair1()
-	sourceAccount := Account{
+	sourceAccount := TXNAccount{
 		ID:             kp0.Address(),
-		SequenceNumber: 40385577484325,
+		SequenceNumber: "40385577484325",
 	}
 
 	setOptions := SetOptions{
@@ -370,9 +375,9 @@ func TestSetOptionsSigner(t *testing.T) {
 
 func TestMultipleOperations(t *testing.T) {
 	kp1 := newKeypair1()
-	sourceAccount := Account{
+	sourceAccount := TXNAccount{
 		ID:             kp1.Address(),
-		SequenceNumber: 9606132444168199,
+		SequenceNumber: "9606132444168199",
 	}
 
 	inflation := Inflation{}
@@ -395,9 +400,9 @@ func TestChangeTrust(t *testing.T) {
 	kp0 := newKeypair0()
 	kp1 := newKeypair1()
 
-	sourceAccount := Account{
+	sourceAccount := TXNAccount{
 		ID:             kp0.Address(),
-		SequenceNumber: 40385577484348,
+		SequenceNumber: "40385577484348",
 	}
 
 	changeTrust := ChangeTrust{
@@ -419,9 +424,9 @@ func TestChangeTrust(t *testing.T) {
 func TestChangeTrustNativeAssetNotAllowed(t *testing.T) {
 	kp0 := newKeypair0()
 
-	sourceAccount := Account{
+	sourceAccount := TXNAccount{
 		ID:             kp0.Address(),
-		SequenceNumber: 40385577484348,
+		SequenceNumber: "40385577484348",
 	}
 
 	changeTrust := ChangeTrust{
@@ -444,9 +449,9 @@ func TestChangeTrustDeleteTrustline(t *testing.T) {
 	kp0 := newKeypair0()
 	kp1 := newKeypair1()
 
-	sourceAccount := Account{
+	sourceAccount := TXNAccount{
 		ID:             kp0.Address(),
-		SequenceNumber: 40385577484354,
+		SequenceNumber: "40385577484354",
 	}
 
 	issuedAsset := NewAsset("ABCD", kp1.Address())
@@ -467,9 +472,9 @@ func TestAllowTrust(t *testing.T) {
 	kp0 := newKeypair0()
 	kp1 := newKeypair1()
 
-	sourceAccount := Account{
+	sourceAccount := TXNAccount{
 		ID:             kp0.Address(),
-		SequenceNumber: 40385577484366,
+		SequenceNumber: "40385577484366",
 	}
 
 	issuedAsset := NewAsset("ABCD", kp1.Address())
@@ -494,9 +499,9 @@ func TestManageOfferNewOffer(t *testing.T) {
 	kp0 := newKeypair0()
 	kp1 := newKeypair1()
 
-	sourceAccount := Account{
+	sourceAccount := TXNAccount{
 		ID:             kp1.Address(),
-		SequenceNumber: 41137196761092,
+		SequenceNumber: "41137196761092",
 	}
 
 	selling := NewNativeAsset()
@@ -519,9 +524,9 @@ func TestManageOfferNewOffer(t *testing.T) {
 func TestManageOfferDeleteOffer(t *testing.T) {
 	kp1 := newKeypair1()
 
-	sourceAccount := Account{
+	sourceAccount := TXNAccount{
 		ID:             kp1.Address(),
-		SequenceNumber: 41137196761105,
+		SequenceNumber: "41137196761105",
 	}
 
 	offerID := uint64(2921622)
@@ -542,9 +547,9 @@ func TestManageOfferUpdateOffer(t *testing.T) {
 	kp0 := newKeypair0()
 	kp1 := newKeypair1()
 
-	sourceAccount := Account{
+	sourceAccount := TXNAccount{
 		ID:             kp1.Address(),
-		SequenceNumber: 41137196761097,
+		SequenceNumber: "41137196761097",
 	}
 
 	selling := NewNativeAsset()
@@ -569,9 +574,9 @@ func TestCreatePassiveOffer(t *testing.T) {
 	kp0 := newKeypair0()
 	kp1 := newKeypair1()
 
-	sourceAccount := Account{
+	sourceAccount := TXNAccount{
 		ID:             kp1.Address(),
-		SequenceNumber: 41137196761100,
+		SequenceNumber: "41137196761100",
 	}
 
 	createPassiveOffer := CreatePassiveOffer{
@@ -595,9 +600,9 @@ func TestPathPayment(t *testing.T) {
 	kp0 := newKeypair0()
 	kp2 := newKeypair2()
 
-	sourceAccount := Account{
+	sourceAccount := TXNAccount{
 		ID:             kp2.Address(),
-		SequenceNumber: 187316408680450,
+		SequenceNumber: "187316408680450",
 	}
 	abcdAsset := NewAsset("ABCD", kp0.Address())
 

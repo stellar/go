@@ -8,6 +8,7 @@ import (
 	"bytes"
 	"encoding/base64"
 	"fmt"
+	"strconv"
 
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/network"
@@ -15,15 +16,49 @@ import (
 	"github.com/stellar/go/xdr"
 )
 
-// Account represents a Stellar Account from the perspective of a Transaction.
-type Account struct {
+// TXNAccount represents a Stellar TXNAccount from the perspective of a Transaction.
+type TXNAccount struct {
 	ID             string
-	SequenceNumber xdr.SequenceNumber
+	SequenceNumber string
+}
+
+// GetAccountID is to be deleted once refactor is complete
+func (t *TXNAccount) GetAccountID() string {
+	return t.ID
+}
+
+// GetSequenceNumber is to be deleted once refactor is complete
+func (t *TXNAccount) GetSequenceNumber() (xdr.SequenceNumber, error) {
+	seqNum, err := strconv.ParseUint(t.SequenceNumber, 10, 64)
+
+	if err != nil {
+		return 0, errors.Wrap(err, "Failed to parse account sequence number")
+	}
+
+	return xdr.SequenceNumber(seqNum), nil
+}
+
+// IncrementSequenceNumber is to be deleted once refactor is complete
+func (t *TXNAccount) IncrementSequenceNumber() error {
+	seqNum, err := t.GetSequenceNumber()
+	if err != nil {
+		return err
+	}
+	seqNum++
+	t.SequenceNumber = strconv.FormatInt(int64(seqNum), 10)
+	return nil
+}
+
+// Account represents the aspects of a Stellar account necessary to construct transactions.
+type Account interface {
+	GetAccountID() string
+	GetSequenceNumber() (xdr.SequenceNumber, error)
+	IncrementSequenceNumber() error
 }
 
 // Transaction represents a Stellar Transaction.
 type Transaction struct {
-	SourceAccount  Account
+	SourceAccount  TXNAccount
 	Operations     []Operation
 	xdrTransaction xdr.Transaction
 	BaseFee        uint64 // TODO: Why is this a uint 64? Can it be a plain int?
@@ -79,7 +114,12 @@ func (tx *Transaction) Build() error {
 	tx.xdrTransaction.SourceAccount.SetAddress(tx.SourceAccount.ID)
 
 	// TODO: Validate Seq Num is present in struct
-	tx.xdrTransaction.SeqNum = tx.SourceAccount.SequenceNumber + 1
+	tx.SourceAccount.IncrementSequenceNumber()
+	var err error
+	tx.xdrTransaction.SeqNum, err = tx.SourceAccount.GetSequenceNumber()
+	if err != nil {
+		return errors.Wrap(err, "Failed to parse sequence number")
+	}
 
 	for _, op := range tx.Operations {
 		xdrOperation, err := op.BuildXDR()
