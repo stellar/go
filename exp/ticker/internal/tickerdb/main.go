@@ -14,9 +14,9 @@ type TickerSession struct {
 
 // Asset represents an entry on the assets table
 type Asset struct {
-	ID                          string    `db:"id"`
+	ID                          int32     `db:"id"`
 	Code                        string    `db:"code"`
-	PublicKey                   string    `db:"public_key"`
+	IssuerAccount               string    `db:"issuer_account"`
 	Type                        string    `db:"type"`
 	NumAccounts                 int32     `db:"num_accounts"`
 	AuthRequired                bool      `db:"auth_required"`
@@ -42,6 +42,22 @@ type Asset struct {
 	CollateralAddressSignatures string    `db:"collateral_address_signatures"`
 	Countries                   string    `db:"countries"`
 	Status                      string    `db:"status"`
+	IssuerID                    int32     `db:"issuer_id"`
+}
+
+// Issuer represents an entry on the issuers table
+type Issuer struct {
+	ID               int32  `db:"id"`
+	PublicKey        string `db:"public_key"`
+	Name             string `db:"name"`
+	URL              string `db:"url"`
+	TOMLURL          string `db:"toml_url"`
+	FederationServer string `db:"federation_server"`
+	AuthServer       string `db:"auth_server"`
+	TransferServer   string `db:"transfer_server"`
+	WebAuthEndpoint  string `db:"web_auth_endpoint"`
+	DepositServer    string `db:"deposit_server"`
+	OrgTwitter       string `db:"org_twitter"`
 }
 
 // CreateSession returns a new TickerSession that connects to the given db settings

@@ -174,6 +174,8 @@ func makeFinalAsset(
 		IssuerDetails: issuer,
 	}
 
+	t.IssuerDetails.TOMLURL = asset.Links.Toml.Href
+
 	hasCurrency := false
 	for _, currency := range t.IssuerDetails.Currencies {
 		if currency.Code == asset.Code && currency.Issuer == asset.Issuer {

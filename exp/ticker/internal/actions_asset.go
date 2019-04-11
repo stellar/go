@@ -25,8 +25,18 @@ func RefreshAssets(s *tickerdb.TickerSession) (err error) {
 	}
 
 	for _, finalAsset := range finalAssetList {
-		dbAsset := finalAssetToDBAsset(finalAsset)
-		err = s.InsertOrUpdateAsset(&dbAsset, []string{"code", "public_key"})
+		dbIssuer := tomlIssuerToDBIssuer(finalAsset.IssuerDetails)
+		if dbIssuer.PublicKey == "" {
+			dbIssuer.PublicKey = finalAsset.Issuer
+		}
+		issuerID, err := s.InsertOrUpdateIssuer(&dbIssuer, []string{"public_key"})
+		if err != nil {
+			fmt.Println("Error inserting issuer:", dbIssuer, err)
+			continue
+		}
+
+		dbAsset := finalAssetToDBAsset(finalAsset, issuerID)
+		err = s.InsertOrUpdateAsset(&dbAsset, []string{"code", "issuer_account", "issuer_id"})
 		if err != nil {
 			fmt.Println("Error inserting asset:", dbAsset, err)
 		}
@@ -50,11 +60,12 @@ func writeAssetsToFile(assets []scraper.FinalAsset, filename string) (err error)
 	return
 }
 
-// finalAssetToDBAsset converts a scraper.FinalAsset to a tickerdb.Asset.
-func finalAssetToDBAsset(asset scraper.FinalAsset) tickerdb.Asset {
+// finalAssetToDBAsset converts a scraper.TOMLAsset to a tickerdb.Asset.
+func finalAssetToDBAsset(asset scraper.FinalAsset, issuerID int32) tickerdb.Asset {
 	return tickerdb.Asset{
 		Code:                        asset.Code,
-		PublicKey:                   asset.Issuer,
+		IssuerID:                    issuerID,
+		IssuerAccount:               asset.Issuer,
 		Type:                        asset.Type,
 		NumAccounts:                 asset.NumAccounts,
 		AuthRequired:                asset.AuthRequired,
