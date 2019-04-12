@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"testing"
 
+	"github.com/stellar/go/xdr"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -14,40 +15,41 @@ var exampleAccount = Account{
 		"test":    "aGVsbG8=",
 		"invalid": "a_*&^*",
 	},
+	Sequence: "3002985298788353",
 }
 
-// Testing the GetData method of Account
+func TestAccount_IncrementSequenceNumber(t *testing.T) {
+	seqNum, err := exampleAccount.IncrementSequenceNumber()
+
+	assert.Nil(t, err)
+	assert.Equal(t, "3002985298788354", exampleAccount.Sequence, "sequence number string was incremented")
+	assert.Equal(t, xdr.SequenceNumber(3002985298788354), seqNum, "incremented sequence number is correct value/type")
+}
+
 func TestAccount_GetData(t *testing.T) {
-	// Should return the decoded value if the key exists
 	decoded, err := exampleAccount.GetData("test")
 	assert.Nil(t, err)
-	assert.Equal(t, string(decoded), "hello")
+	assert.Equal(t, string(decoded), "hello", "returns decoded value when key exists")
 
-	// Should return an empty slice if key doesn't exist
 	decoded, err = exampleAccount.GetData("test2")
 	assert.Nil(t, err)
-	assert.Equal(t, len(decoded), 0)
+	assert.Equal(t, len(decoded), 0, "returns empty slice if key doesn't exist")
 
-	// Should return error slice if value is invalid
 	_, err = exampleAccount.GetData("invalid")
-	assert.NotNil(t, err)
+	assert.NotNil(t, err, "returns error slice if value is invalid")
 }
 
 func TestAccount_MustGetData(t *testing.T) {
-	// Should return the decoded value if the key exists
 	decoded := exampleAccount.MustGetData("test")
-	assert.Equal(t, string(decoded), "hello")
+	assert.Equal(t, string(decoded), "hello", "returns decoded value when the key exists")
 
-	// Should return an empty slice if key doesn't exist
 	decoded = exampleAccount.MustGetData("test2")
-	assert.Equal(t, len(decoded), 0)
+	assert.Equal(t, len(decoded), 0, "returns empty slice if key doesn't exist")
 
-	// Should panic if the value is invalid
-	assert.Panics(t, func() { exampleAccount.MustGetData("invalid") })
+	assert.Panics(t, func() { exampleAccount.MustGetData("invalid") }, "panics on invalid input")
 }
 
 // Transaction Tests
-// After marshalling and unmarshalling, the resulting struct should be the exact same as the original
 func TestTransactionJSONMarshal(t *testing.T) {
 	transaction := Transaction{
 		ID:       "12345",
@@ -59,11 +61,9 @@ func TestTransactionJSONMarshal(t *testing.T) {
 	assert.Nil(t, marshalErr)
 	var result Transaction
 	json.Unmarshal(marshaledTransaction, &result)
-	assert.Equal(t, result, transaction)
+	assert.Equal(t, result, transaction, "data matches original input")
 }
 
-//For text memos, even if memo is an empty string, the resulting JSON should
-// still include memo as a field
 func TestTransactionEmptyMemoText(t *testing.T) {
 	transaction := Transaction{
 		MemoType: "text",
@@ -75,10 +75,9 @@ func TestTransactionEmptyMemoText(t *testing.T) {
 		Memo *string
 	}
 	json.Unmarshal(marshaledTransaction, &result)
-	assert.NotNil(t, result.Memo)
+	assert.NotNil(t, result.Memo, "memo field is present even if input memo was empty string")
 }
 
-// If a transaction's memo type is None, then the memo field should be omitted from JSON
 func TestTransactionMemoTypeNone(t *testing.T) {
 	transaction := Transaction{
 		MemoType: "none",
@@ -89,5 +88,5 @@ func TestTransactionMemoTypeNone(t *testing.T) {
 		Memo *string
 	}
 	json.Unmarshal(marshaledTransaction, &result)
-	assert.Nil(t, result.Memo)
+	assert.Nil(t, result.Memo, "no memo field is present when memo input type was `none`")
 }

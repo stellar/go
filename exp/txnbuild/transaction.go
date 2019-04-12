@@ -15,10 +15,10 @@ import (
 	"github.com/stellar/go/xdr"
 )
 
-// Account represents a Stellar Account from the perspective of a Transaction.
-type Account struct {
-	ID             string
-	SequenceNumber xdr.SequenceNumber
+// Account represents the aspects of a Stellar account necessary to construct transactions.
+type Account interface {
+	GetAccountID() string
+	IncrementSequenceNumber() (xdr.SequenceNumber, error)
 }
 
 // Transaction represents a Stellar Transaction.
@@ -76,10 +76,14 @@ func (tx *Transaction) SetDefaultFee() {
 func (tx *Transaction) Build() error {
 	// Set account ID in XDR
 	// TODO: Validate provided key before going further
-	tx.xdrTransaction.SourceAccount.SetAddress(tx.SourceAccount.ID)
+	tx.xdrTransaction.SourceAccount.SetAddress(tx.SourceAccount.GetAccountID())
 
 	// TODO: Validate Seq Num is present in struct
-	tx.xdrTransaction.SeqNum = tx.SourceAccount.SequenceNumber + 1
+	seqnum, err := tx.SourceAccount.IncrementSequenceNumber()
+	if err != nil {
+		return errors.Wrap(err, "Failed to parse sequence number")
+	}
+	tx.xdrTransaction.SeqNum = seqnum
 
 	for _, op := range tx.Operations {
 		xdrOperation, err := op.BuildXDR()
