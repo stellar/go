@@ -165,3 +165,76 @@ func TestInsertOrUpdateAsset(t *testing.T) {
 		dbAsset3.LastChecked.Local().Truncate(time.Millisecond),
 	)
 }
+
+func TestGetAssetByCodeAndIssuerAccount(t *testing.T) {
+	db := dbtest.Postgres(t)
+	defer db.Close()
+
+	var session TickerSession
+	session.DB = db.Open()
+	defer session.DB.Close()
+
+	// Run migrations to make sure the tests are run
+	// on the most updated schema version
+	migrations := &migrate.FileMigrationSource{
+		Dir: "./migrations",
+	}
+	_, err := migrate.Exec(session.DB.DB, "postgres", migrations, migrate.Up)
+	require.NoError(t, err)
+
+	publicKey := "GCF3TQXKZJNFJK7HCMNE2O2CUNKCJH2Y2ROISTBPLC7C5EIA5NNG2XZB"
+	name := "FOO BAR"
+	code := "XLM"
+	issuerAccount := "AM2FQXKZJNFJK7HCMNE2O2CUNKCJH2Y2ROISTBPLC7C5EIA5NNG2XZB"
+
+	// Adding a seed issuer to be used later:
+	issuer := Issuer{
+		PublicKey: publicKey,
+		Name:      name,
+	}
+	tbl := session.GetTable("issuers")
+	_, err = tbl.Insert(issuer).IgnoreCols("id").Exec()
+	require.NoError(t, err)
+	var dbIssuer Issuer
+	err = session.GetRaw(&dbIssuer, `
+		SELECT *
+		FROM issuers
+		ORDER BY id DESC
+		LIMIT 1`,
+	)
+	require.NoError(t, err)
+
+	// Creating first asset:
+	firstTime := time.Now()
+	a := Asset{
+		Code:          code,
+		IssuerAccount: issuerAccount,
+		IssuerID:      dbIssuer.ID,
+		LastValid:     firstTime,
+		LastChecked:   firstTime,
+	}
+	err = session.InsertOrUpdateAsset(&a, []string{"code", "issuer_account", "issuer_id"})
+	require.NoError(t, err)
+
+	var dbAsset Asset
+	err = session.GetRaw(&dbAsset, `
+		SELECT *
+		FROM assets
+		ORDER BY id DESC
+		LIMIT 1`,
+	)
+
+	// Searching for an asset that exists:
+	found, id, err := session.GetAssetByCodeAndIssuerAccount(code, issuerAccount)
+	require.NoError(t, err)
+	assert.Equal(t, dbAsset.ID, id)
+	assert.True(t, found)
+
+	// Now searching for an asset that does not exist:
+	found, id, err = session.GetAssetByCodeAndIssuerAccount(
+		"NONEXISTENT CODE",
+		issuerAccount,
+	)
+	require.NoError(t, err)
+	assert.False(t, found)
+}

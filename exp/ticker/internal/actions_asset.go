@@ -12,8 +12,7 @@ import (
 )
 
 // RefreshAssets scrapes the most recent asset list and ingests then into the db.
-func RefreshAssets(s *tickerdb.TickerSession) (err error) {
-	c := horizonclient.DefaultPublicNetClient
+func RefreshAssets(s *tickerdb.TickerSession, c *horizonclient.Client) (err error) {
 	finalAssetList, err := scraper.FetchAllAssets(c, 0, 500)
 	if err != nil {
 		return

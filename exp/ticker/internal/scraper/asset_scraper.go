@@ -18,23 +18,6 @@ import (
 	hProtocol "github.com/stellar/go/protocols/horizon"
 )
 
-// nextCursor finds the cursor parameter on the "next" link of an AssetPage
-func nextCursor(assetsPage hProtocol.AssetsPage) (cursor string, err error) {
-	nexturl := assetsPage.Links.Next.Href
-	u, err := url.Parse(nexturl)
-	if err != nil {
-		return
-	}
-
-	m, err := url.ParseQuery(u.RawQuery)
-	if err != nil {
-		return
-	}
-	cursor = m["cursor"][0]
-
-	return
-}
-
 // shouldDiscardAsset maps the criteria for discarding an asset from the asset index
 func shouldDiscardAsset(asset hProtocol.AssetStat) bool {
 	if asset.Amount == "" {
@@ -337,7 +320,8 @@ func retrieveAssets(c *horizonclient.Client, limit int) (assets []hProtocol.Asse
 			}
 		}
 
-		n, err := nextCursor(assetsPage)
+		nextURL := assetsPage.Links.Next.Href
+		n, err := nextCursor(nextURL)
 		if err != nil {
 			return assets, err
 		}

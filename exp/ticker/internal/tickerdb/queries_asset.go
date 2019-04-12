@@ -29,3 +29,29 @@ func (s *TickerSession) InsertOrUpdateAsset(a *Asset, preserveFields []string) (
 	_, err = s.ExecRaw(qs, dbValues...)
 	return
 }
+
+// GetAssetByCodeAndIssuerAccount searches for an Asset with the given code
+// and public key, and returns its ID in case it is found.
+func (s *TickerSession) GetAssetByCodeAndIssuerAccount(
+	code string,
+	issuerAccount string,
+) (found bool, id int32, err error) {
+	var assets []Asset
+	tbl := s.GetTable("assets")
+
+	err = tbl.Select(
+		&assets,
+		"assets.code = ? AND assets.issuer_account = ?",
+		code,
+		issuerAccount,
+	).Exec()
+	if err != nil {
+		return
+	}
+
+	if len(assets) > 0 {
+		id = assets[0].ID
+		found = true
+	}
+	return
+}

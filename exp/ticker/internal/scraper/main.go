@@ -1,10 +1,12 @@
 package scraper
 
 import (
+	"context"
 	"fmt"
 	"time"
 
 	horizonclient "github.com/stellar/go/exp/clients/horizon"
+	hProtocol "github.com/stellar/go/protocols/horizon"
 )
 
 // TOMLDoc is the interface for storing TOML Issuer Documentation.
@@ -99,4 +101,32 @@ func FetchAllAssets(c *horizonclient.Client, limit int, parallelism int) (assets
 		len(assets),
 	)
 	return
+}
+
+// FetchAllTrades fetches all trades for a given period, respecting the limit. If limit = 0,
+// will fetch all trades for that given period.
+func FetchAllTrades(
+	c *horizonclient.Client,
+	since time.Time,
+	limit int,
+) (trades []hProtocol.Trade, err error) {
+	fmt.Println("Fetching trades from Horizon")
+
+	trades, err = retrieveTrades(c, since, limit)
+
+	fmt.Println("Last close time ingested:", trades[len(trades)-1].LedgerCloseTime)
+	fmt.Printf("Fetched: %d trades\n", len(trades))
+	return
+}
+
+// StreamNewTrades streams trades directly from horizon and calls the handler function
+// whenever a new trade appears.
+func StreamNewTrades(
+	ctx context.Context,
+	c *horizonclient.Client,
+	h horizonclient.TradeHandler,
+	cursor string,
+) error {
+	fmt.Println("Starting to stream trades with cursor at:", cursor)
+	return streamTrades(ctx, c, h, cursor)
 }
