@@ -59,7 +59,7 @@ func BackfillTrades(
 	s *tickerdb.TickerSession,
 	c *horizonclient.Client,
 	l *hlog.Entry,
-	numDays int,
+	numHours int,
 	limit int,
 ) error {
 	sc := scraper.ScraperConfig{
@@ -67,7 +67,7 @@ func BackfillTrades(
 		Logger: l,
 	}
 	now := time.Now()
-	since := now.AddDate(0, 0, -numDays)
+	since := now.Add(time.Hour * -time.Duration(numHours))
 	trades, err := sc.FetchAllTrades(since, limit)
 	if err != nil {
 		return err

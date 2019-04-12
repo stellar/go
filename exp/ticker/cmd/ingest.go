@@ -10,7 +10,7 @@ import (
 )
 
 var ShouldStream bool
-var BackfillDays int
+var BackfillHours int
 
 func init() {
 	rootCmd.AddCommand(cmdIngest)
@@ -25,10 +25,10 @@ func init() {
 	)
 
 	cmdIngestTrades.Flags().IntVar(
-		&BackfillDays,
-		"num-days",
-		7,
-		"Number of past days to backfill trade data",
+		&BackfillHours,
+		"num-hours",
+		7*24,
+		"Number of past hours to backfill trade data",
 	)
 }
 
@@ -75,8 +75,13 @@ var cmdIngestTrades = &cobra.Command{
 		}
 		defer session.DB.Close()
 
-		Logger.Warnf("Backfilling Trade data for the past %d day(s)\n", BackfillDays)
-		err = ticker.BackfillTrades(&session, Client, Logger, BackfillDays, 0)
+		numDays := float32(BackfillHours) / 24.0
+		Logger.Warnf(
+			"Backfilling Trade data for the past %d hour(s) [%.2f days]\n",
+			BackfillHours,
+			numDays,
+		)
+		err = ticker.BackfillTrades(&session, Client, Logger, BackfillHours, 0)
 		if err != nil {
 			Logger.Fatal("could not refresh error database:", err)
 		}
