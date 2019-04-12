@@ -4,8 +4,12 @@ import (
 	"time"
 
 	"github.com/jmoiron/sqlx"
+	migrate "github.com/rubenv/sql-migrate"
+	bdata "github.com/stellar/go/exp/ticker/internal/tickerdb/migrations"
 	"github.com/stellar/go/support/db"
 )
+
+//go:generate go-bindata -ignore .+\.go$ -pkg bdata -o migrations/bindata.go ./...
 
 // TickerSession provides helper methods for making queries against `DB`.
 type TickerSession struct {
@@ -87,4 +91,14 @@ func CreateSession(driverName, dataSourceName string) (session TickerSession, er
 
 	session.DB = dbconn
 	return
+}
+
+func MigrateDB(s *TickerSession) (int, error) {
+	migrations := &migrate.AssetMigrationSource{
+		Asset:    bdata.Asset,
+		AssetDir: bdata.AssetDir,
+		Dir:      "migrations",
+	}
+	migrate.SetTable("migrations")
+	return migrate.Exec(s.DB.DB, "postgres", migrations, migrate.Up)
 }

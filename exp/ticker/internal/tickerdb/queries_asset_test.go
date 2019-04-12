@@ -223,6 +223,7 @@ func TestGetAssetByCodeAndIssuerAccount(t *testing.T) {
 		ORDER BY id DESC
 		LIMIT 1`,
 	)
+	require.NoError(t, err)
 
 	// Searching for an asset that exists:
 	found, id, err := session.GetAssetByCodeAndIssuerAccount(code, issuerAccount)
@@ -231,7 +232,7 @@ func TestGetAssetByCodeAndIssuerAccount(t *testing.T) {
 	assert.True(t, found)
 
 	// Now searching for an asset that does not exist:
-	found, id, err = session.GetAssetByCodeAndIssuerAccount(
+	found, _, err = session.GetAssetByCodeAndIssuerAccount(
 		"NONEXISTENT CODE",
 		issuerAccount,
 	)

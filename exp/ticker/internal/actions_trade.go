@@ -11,13 +11,23 @@ import (
 	"github.com/stellar/go/exp/ticker/internal/scraper"
 	"github.com/stellar/go/exp/ticker/internal/tickerdb"
 	hProtocol "github.com/stellar/go/protocols/horizon"
+	hlog "github.com/stellar/go/support/log"
 )
 
 // StreamTrades constantly streams and ingests new trades directly from horizon.
-// Use context.WithCancel to stop streaming or context.Background() to stream indefinitely.
-func StreamTrades(ctx context.Context, s *tickerdb.TickerSession, c *horizonclient.Client) error {
+func StreamTrades(
+	ctx context.Context,
+	s *tickerdb.TickerSession,
+	c *horizonclient.Client,
+	l *hlog.Entry,
+) error {
+	sc := scraper.ScraperConfig{
+		Client: c,
+		Logger: l,
+		Ctx:    &ctx,
+	}
 	handler := func(trade hProtocol.Trade) {
-		fmt.Print("New trade arrived:", trade.ID, trade.LedgerCloseTime)
+		l.Infof("New trade arrived. ID: %v; Close Time: %v\n", trade.ID, trade.LedgerCloseTime)
 		bID, cID, err := findBaseAndCounter(s, trade)
 		if err != nil {
 			return
@@ -29,7 +39,7 @@ func StreamTrades(ctx context.Context, s *tickerdb.TickerSession, c *horizonclie
 
 		err = s.BulkInsertTrades([]tickerdb.Trade{dbTrade})
 		if err != nil {
-			fmt.Println("Could not insert trade in database:", trade.ID)
+			l.Errorln("Could not insert trade in database: ", trade.ID)
 		}
 	}
 
@@ -40,15 +50,25 @@ func StreamTrades(ctx context.Context, s *tickerdb.TickerSession, c *horizonclie
 	}
 
 	cursor := lastTrade.HorizonID
-	return scraper.StreamNewTrades(ctx, c, handler, cursor)
+	return sc.StreamNewTrades(cursor, handler)
 }
 
 // BackfillTrades ingest the most recent trades (limited to numDays) directly from Horizon
 // into the database.
-func BackfillTrades(s *tickerdb.TickerSession, c *horizonclient.Client, numDays int, limit int) error {
+func BackfillTrades(
+	s *tickerdb.TickerSession,
+	c *horizonclient.Client,
+	l *hlog.Entry,
+	numHours int,
+	limit int,
+) error {
+	sc := scraper.ScraperConfig{
+		Client: c,
+		Logger: l,
+	}
 	now := time.Now()
-	since := now.AddDate(0, 0, -numDays)
-	trades, err := scraper.FetchAllTrades(c, since, limit)
+	since := now.Add(time.Hour * -time.Duration(numHours))
+	trades, err := sc.FetchAllTrades(since, limit)
 	if err != nil {
 		return err
 	}
@@ -63,13 +83,13 @@ func BackfillTrades(s *tickerdb.TickerSession, c *horizonclient.Client, numDays 
 
 		dbTrade, err := hProtocolTradeToDBTrade(trade, bID, cID)
 		if err != nil {
-			fmt.Println("Could not convert entry to DB Trade:", err)
+			l.Errorln("Could not convert entry to DB Trade: ", err)
 			continue
 		}
 		dbTrades = append(dbTrades, dbTrade)
 	}
 
-	fmt.Printf("Inserting %d entries in the database.\n", len(dbTrades))
+	l.Infof("Inserting %d entries in the database.\n", len(dbTrades))
 	err = s.BulkInsertTrades(dbTrades)
 	if err != nil {
 		fmt.Println(err)

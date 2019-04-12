@@ -1,8 +1,6 @@
 package scraper
 
 import (
-	"context"
-	"fmt"
 	"time"
 
 	"github.com/stellar/go/exp/ticker/internal/utils"
@@ -13,14 +11,14 @@ import (
 
 // checkRecords check if a list of records contains entries older than minTime. If it does,
 // it will return a filtered page with only the passing records and lastPage = true.
-func checkRecords(trades []hProtocol.Trade, minTime time.Time) (lastPage bool, cleanTrades []hProtocol.Trade) {
+func (c *ScraperConfig) checkRecords(trades []hProtocol.Trade, minTime time.Time) (lastPage bool, cleanTrades []hProtocol.Trade) {
 	lastPage = false
 	for _, t := range trades {
 		if t.LedgerCloseTime.After(minTime) {
 			normalizeTradeAssets(&t)
 			cleanTrades = append(cleanTrades, t)
 		} else {
-			fmt.Println("Reached entries older than the acceptable time range:", t.LedgerCloseTime)
+			c.Logger.Debugln("Reached entries older than the acceptable time range:", t.LedgerCloseTime)
 			lastPage = true
 			return
 		}
@@ -30,17 +28,17 @@ func checkRecords(trades []hProtocol.Trade, minTime time.Time) (lastPage bool, c
 
 // retrieveTrades retrieves trades from the Horizon API for the last timeDelta period.
 // If limit = 0, will fetch all trades within that period.
-func retrieveTrades(c *horizonclient.Client, since time.Time, limit int) (trades []hProtocol.Trade, err error) {
+func (c *ScraperConfig) retrieveTrades(since time.Time, limit int) (trades []hProtocol.Trade, err error) {
 	r := horizonclient.TradeRequest{Limit: 200, Order: horizonclient.OrderDesc}
 
-	tradesPage, err := c.Trades(r)
+	tradesPage, err := c.Client.Trades(r)
 	if err != nil {
 		return
 	}
 
 	for tradesPage.Links.Next.Href != tradesPage.Links.Self.Href {
 		// Enforcing time boundaries:
-		last, cleanTrades := checkRecords(tradesPage.Embedded.Records, since)
+		last, cleanTrades := c.checkRecords(tradesPage.Embedded.Records, since)
 		if last {
 			trades = append(trades, cleanTrades...)
 			break
@@ -64,9 +62,9 @@ func retrieveTrades(c *horizonclient.Client, since time.Time, limit int) (trades
 		if err != nil {
 			return trades, err
 		}
-		fmt.Println("Cursor currently at:", n)
+		c.Logger.Debugln("Cursor currently at:", n)
 		r.Cursor = n
-		tradesPage, err = c.Trades(r)
+		tradesPage, err = c.Client.Trades(r)
 		if err != nil {
 			return trades, err
 		}
@@ -77,12 +75,7 @@ func retrieveTrades(c *horizonclient.Client, since time.Time, limit int) (trades
 
 // streamTrades streams trades directly from horizon and calls the handler function
 // whenever a new trade appears.
-func streamTrades(
-	ctx context.Context,
-	c *horizonclient.Client,
-	h horizonclient.TradeHandler,
-	cursor string,
-) error {
+func (c *ScraperConfig) streamTrades(h horizonclient.TradeHandler, cursor string) error {
 	if cursor == "" {
 		cursor = "now"
 	}
@@ -92,7 +85,7 @@ func streamTrades(
 		Cursor: cursor,
 	}
 
-	return r.StreamTrades(ctx, c, h)
+	return r.StreamTrades(*c.Ctx, c.Client, h)
 }
 
 // normalizeTradeAssets enforces the following rules:

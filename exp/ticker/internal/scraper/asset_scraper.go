@@ -228,7 +228,7 @@ func processAsset(asset hProtocol.AssetStat) (processedAsset FinalAsset, err err
 
 // parallelProcessAssets filters the assets that don't match the shouldDiscardAsset criteria.
 // The TOML validation is performed in parallel to improve performance.
-func parallelProcessAssets(assets []hProtocol.AssetStat, parallelism int) (cleanAssets []FinalAsset, numTrash int) {
+func (c *ScraperConfig) parallelProcessAssets(assets []hProtocol.AssetStat, parallelism int) (cleanAssets []FinalAsset, numTrash int) {
 	queue := make(chan FinalAsset, parallelism)
 
 	var mutex = &sync.Mutex{}
@@ -282,7 +282,7 @@ func parallelProcessAssets(assets []hProtocol.AssetStat, parallelism int) (clean
 			if !t.IsTrash {
 				cleanAssets = append(cleanAssets, t)
 			}
-			fmt.Println("Total assets cleaned up:", count)
+			c.Logger.Debugln("Total assets processed:", count)
 			wg.Done()
 		}
 	}()
@@ -294,18 +294,18 @@ func parallelProcessAssets(assets []hProtocol.AssetStat, parallelism int) (clean
 }
 
 // retrieveAssets retrieves existing assets from the Horizon API. If limit=0, will fetch all assets.
-func retrieveAssets(c *horizonclient.Client, limit int) (assets []hProtocol.AssetStat, err error) {
+func (c *ScraperConfig) retrieveAssets(limit int) (assets []hProtocol.AssetStat, err error) {
 	r := horizonclient.AssetRequest{Limit: 200}
 
-	assetsPage, err := c.Assets(r)
+	assetsPage, err := c.Client.Assets(r)
 	if err != nil {
 		return
 	}
 
-	fmt.Println("Fetching assets from Horizon")
+	c.Logger.Infoln("Fetching assets from Horizon")
 
 	for assetsPage.Links.Next.Href != assetsPage.Links.Self.Href {
-		assetsPage, err = c.Assets(r)
+		assetsPage, err = c.Client.Assets(r)
 		if err != nil {
 			return
 		}
@@ -325,11 +325,11 @@ func retrieveAssets(c *horizonclient.Client, limit int) (assets []hProtocol.Asse
 		if err != nil {
 			return assets, err
 		}
-		fmt.Println("Cursor currently at:", n)
+		c.Logger.Debugln("Cursor currently at:", n)
 
 		r = horizonclient.AssetRequest{Limit: 200, Cursor: n}
 	}
 
-	fmt.Printf("Fetched: %d assets\n", len(assets))
+	c.Logger.Infof("Fetched: %d assets\n", len(assets))
 	return
 }
