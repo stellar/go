@@ -14,7 +14,7 @@ var cmdMigrate = &cobra.Command{
 	Use:   "migrate",
 	Short: "Updates the database to the latest schema version.",
 	Run: func(cmd *cobra.Command, args []string) {
-		Logger.Warn("Refreshing the asset database")
+		Logger.Info("Refreshing the asset database")
 		dbInfo, err := pq.ParseURL(DatabaseURL)
 		if err != nil {
 			Logger.Fatal("could not parse db-url:", err)
@@ -26,11 +26,11 @@ var cmdMigrate = &cobra.Command{
 		}
 		defer session.DB.Close()
 
-		Logger.Warningln("Upgrading the database")
+		Logger.Infoln("Upgrading the database")
 		n, err := tickerdb.MigrateDB(&session)
 		if err != nil {
 			Logger.Fatal("could not upgrade the database:", err)
 		}
-		Logger.Warningf("Database Successfully Upgraded. Applied %d migrations.\n", n)
+		Logger.Infof("Database Successfully Upgraded. Applied %d migrations.\n", n)
 	},
 }

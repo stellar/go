@@ -89,7 +89,7 @@ func BackfillTrades(
 		dbTrades = append(dbTrades, dbTrade)
 	}
 
-	l.Warnf("Inserting %d entries in the database.\n", len(dbTrades))
+	l.Infof("Inserting %d entries in the database.\n", len(dbTrades))
 	err = s.BulkInsertTrades(dbTrades)
 	if err != nil {
 		fmt.Println(err)

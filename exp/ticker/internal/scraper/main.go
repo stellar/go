@@ -100,7 +100,7 @@ func (c *ScraperConfig) FetchAllAssets(limit int, parallelism int) (assets []Fin
 
 	assets, numTrash := c.parallelProcessAssets(dirtyAssets, parallelism)
 
-	c.Logger.Warnf(
+	c.Logger.Infof(
 		"Scanned %d entries. Trash: %d. Non-trash: %d\n",
 		len(dirtyAssets),
 		numTrash,
@@ -112,18 +112,18 @@ func (c *ScraperConfig) FetchAllAssets(limit int, parallelism int) (assets []Fin
 // FetchAllTrades fetches all trades for a given period, respecting the limit. If limit = 0,
 // will fetch all trades for that given period.
 func (c *ScraperConfig) FetchAllTrades(since time.Time, limit int) (trades []hProtocol.Trade, err error) {
-	c.Logger.Warn("Fetching trades from Horizon")
+	c.Logger.Info("Fetching trades from Horizon")
 
 	trades, err = c.retrieveTrades(since, limit)
 
 	c.Logger.Info("Last close time ingested:", trades[len(trades)-1].LedgerCloseTime)
-	c.Logger.Warnf("Fetched: %d trades\n", len(trades))
+	c.Logger.Infof("Fetched: %d trades\n", len(trades))
 	return
 }
 
 // StreamNewTrades streams trades directly from horizon and calls the handler function
 // whenever a new trade appears.
 func (c *ScraperConfig) StreamNewTrades(cursor string, h horizonclient.TradeHandler) error {
-	c.Logger.Warn("Starting to stream trades with cursor at:", cursor)
+	c.Logger.Info("Starting to stream trades with cursor at:", cursor)
 	return c.streamTrades(h, cursor)
 }

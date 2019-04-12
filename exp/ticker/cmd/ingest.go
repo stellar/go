@@ -41,7 +41,7 @@ var cmdIngestAssets = &cobra.Command{
 	Use:   "assets",
 	Short: "Refreshes the asset database with new data retrieved from Horizon.",
 	Run: func(cmd *cobra.Command, args []string) {
-		Logger.Warn("Refreshing the asset database")
+		Logger.Info("Refreshing the asset database")
 		dbInfo, err := pq.ParseURL(DatabaseURL)
 		if err != nil {
 			Logger.Fatal("could not parse db-url:", err)
@@ -76,7 +76,7 @@ var cmdIngestTrades = &cobra.Command{
 		defer session.DB.Close()
 
 		numDays := float32(BackfillHours) / 24.0
-		Logger.Warnf(
+		Logger.Infof(
 			"Backfilling Trade data for the past %d hour(s) [%.2f days]\n",
 			BackfillHours,
 			numDays,
@@ -87,7 +87,7 @@ var cmdIngestTrades = &cobra.Command{
 		}
 
 		if ShouldStream {
-			Logger.Warn("Streaming new data (this is a continuous process)")
+			Logger.Info("Streaming new data (this is a continuous process)")
 			ctx := context.Background()
 			err = ticker.StreamTrades(ctx, &session, Client, Logger)
 			if err != nil {

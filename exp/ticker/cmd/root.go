@@ -29,7 +29,7 @@ func init() {
 		"database URL, such as: postgres://user:pass@localhost:5432/ticker",
 	)
 
-	Logger.SetLevel(logrus.InfoLevel)
+	Logger.SetLevel(logrus.DebugLevel)
 }
 
 func Execute() {
