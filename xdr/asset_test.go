@@ -198,3 +198,33 @@ func TestAssetSetCredit(t *testing.T) {
 	assert.Equal(t, issuer, a.AlphaNum12.Issuer)
 	assert.Equal(t, [12]byte{'U', 'S', 'D', 'U', 'S', 'D', 0, 0, 0, 0, 0, 0}, a.AlphaNum12.AssetCode)
 }
+
+func TestToAllowTrustOpAsset_AlphaNum4(t *testing.T) {
+	a := &Asset{}
+	at, err := a.ToAllowTrustOpAsset("ABCD")
+	if assert.NoError(t, err) {
+		code, ok := at.GetAssetCode4()
+		assert.True(t, ok)
+		var expected [4]byte
+		copy(expected[:], "ABCD")
+		assert.Equal(t, expected, code)
+	}
+}
+
+func TestToAllowTrustOpAsset_AlphaNum12(t *testing.T) {
+	a := &Asset{}
+	at, err := a.ToAllowTrustOpAsset("ABCDEFGHIJKL")
+	if assert.NoError(t, err) {
+		code, ok := at.GetAssetCode12()
+		assert.True(t, ok)
+		var expected [12]byte
+		copy(expected[:], "ABCDEFGHIJKL")
+		assert.Equal(t, expected, code)
+	}
+}
+
+func TestToAllowTrustOpAsset_Error(t *testing.T) {
+	a := &Asset{}
+	_, err := a.ToAllowTrustOpAsset("")
+	assert.EqualError(t, err, "Asset code length is invalid")
+}
