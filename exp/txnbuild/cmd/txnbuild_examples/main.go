@@ -91,7 +91,7 @@ func examplePathPayment(client *horizon.Client, mock bool) horizon.TransactionSu
 	buying1 := xlmAsset
 	sellAmount1 := "5"
 	price1 := "4"
-	offer1 := txnbuild.NewCreateOfferOp(selling1, buying1, sellAmount1, price1)
+	offer1 := txnbuild.CreateOfferOp(selling1, buying1, sellAmount1, price1)
 
 	// test1 creates an offer to buy ABCD
 	horizonSourceAccount1, err := client.LoadAccount(keys[1].Address)
@@ -102,7 +102,7 @@ func examplePathPayment(client *horizon.Client, mock bool) horizon.TransactionSu
 	buying2 := &abcdAsset
 	sellAmount2 := "10"
 	price2 := "1"
-	offer2 := txnbuild.NewCreateOfferOp(selling2, buying2, sellAmount2, price2)
+	offer2 := txnbuild.CreateOfferOp(selling2, buying2, sellAmount2, price2)
 
 	// test2 performs the path payment
 	horizonSourceAccount2, err := client.LoadAccount(keys[2].Address)
@@ -204,7 +204,7 @@ func exampleManageOfferUpdateOffer(client *horizon.Client, mock bool) horizon.Tr
 	price := "0.02"
 	offerID := uint64(2497628)
 
-	updateOffer := txnbuild.NewUpdateOfferOp(selling, &buying, sellAmount, price, offerID)
+	updateOffer := txnbuild.UpdateOfferOp(selling, &buying, sellAmount, price, offerID)
 
 	tx := txnbuild.Transaction{
 		SourceAccount: sourceAccount,
@@ -226,7 +226,7 @@ func exampleManageOfferDeleteOffer(client *horizon.Client, mock bool) horizon.Tr
 
 	offerID := uint64(4326054)
 
-	deleteOffer := txnbuild.NewDeleteOfferOp(offerID)
+	deleteOffer := txnbuild.DeleteOfferOp(offerID)
 
 	tx := txnbuild.Transaction{
 		SourceAccount: sourceAccount,
@@ -254,7 +254,7 @@ func exampleManageOfferNewOffer(client *horizon.Client, mock bool) horizon.Trans
 	sellAmount := "100"
 	price := "0.01"
 
-	createOffer := txnbuild.NewCreateOfferOp(selling, &buying, sellAmount, price)
+	createOffer := txnbuild.CreateOfferOp(selling, &buying, sellAmount, price)
 
 	tx := txnbuild.Transaction{
 		SourceAccount: sourceAccount,
@@ -324,7 +324,7 @@ func exampleChangeTrustDeleteTrustline(client *horizon.Client, mock bool) horizo
 	sourceAccount := mapAccounts(horizonSourceAccount)
 
 	issuedAsset := txnbuild.NewAsset("ABCD", keys[1].Address)
-	removeTrust := txnbuild.NewRemoveTrustlineOp(issuedAsset)
+	removeTrust := txnbuild.RemoveTrustlineOp(issuedAsset)
 
 	tx := txnbuild.Transaction{
 		SourceAccount: sourceAccount,

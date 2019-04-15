@@ -7,9 +7,9 @@ import (
 	"github.com/stellar/go/xdr"
 )
 
-//NewCreateOfferOp returns a ManageOffer operation to create a new offer, by
+//CreateOfferOp returns a ManageOffer operation to create a new offer, by
 // setting the OfferID to "0".
-func NewCreateOfferOp(selling, buying *Asset, amount, price string) ManageOffer {
+func CreateOfferOp(selling, buying *Asset, amount, price string) ManageOffer {
 	return ManageOffer{
 		Selling: selling,
 		Buying:  buying,
@@ -19,8 +19,8 @@ func NewCreateOfferOp(selling, buying *Asset, amount, price string) ManageOffer 
 	}
 }
 
-//NewUpdateOfferOp returns a ManageOffer operation to update an offer.
-func NewUpdateOfferOp(selling, buying *Asset, amount, price string, offerID uint64) ManageOffer {
+//UpdateOfferOp returns a ManageOffer operation to update an offer.
+func UpdateOfferOp(selling, buying *Asset, amount, price string, offerID uint64) ManageOffer {
 	return ManageOffer{
 		Selling: selling,
 		Buying:  buying,
@@ -30,9 +30,9 @@ func NewUpdateOfferOp(selling, buying *Asset, amount, price string, offerID uint
 	}
 }
 
-//NewDeleteOfferOp returns a ManageOffer operation to delete an offer, by
+//DeleteOfferOp returns a ManageOffer operation to delete an offer, by
 // setting the Amount to "0".
-func NewDeleteOfferOp(offerID uint64) ManageOffer {
+func DeleteOfferOp(offerID uint64) ManageOffer {
 	// It turns out Stellar core doesn't care about any of these fields except the amount.
 	// However, Horizon will reject ManageOffer if it is missing fields.
 	// Horizon will also reject if Buying == Selling.

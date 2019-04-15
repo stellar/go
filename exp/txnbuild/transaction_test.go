@@ -396,7 +396,7 @@ func TestChangeTrustDeleteTrustline(t *testing.T) {
 	sourceAccount := makeTestAccount(kp0, "40385577484354")
 
 	issuedAsset := NewAsset("ABCD", kp1.Address())
-	removeTrust := NewRemoveTrustlineOp(issuedAsset)
+	removeTrust := RemoveTrustlineOp(issuedAsset)
 
 	tx := Transaction{
 		SourceAccount: &sourceAccount,
@@ -441,7 +441,7 @@ func TestManageOfferNewOffer(t *testing.T) {
 	buying := NewAsset("ABCD", kp0.Address())
 	sellAmount := "100"
 	price := "0.01"
-	createOffer := NewCreateOfferOp(selling, buying, sellAmount, price)
+	createOffer := CreateOfferOp(selling, buying, sellAmount, price)
 
 	tx := Transaction{
 		SourceAccount: &sourceAccount,
@@ -459,7 +459,7 @@ func TestManageOfferDeleteOffer(t *testing.T) {
 	sourceAccount := makeTestAccount(kp1, "41137196761105")
 
 	offerID := uint64(2921622)
-	deleteOffer := NewDeleteOfferOp(offerID)
+	deleteOffer := DeleteOfferOp(offerID)
 
 	tx := Transaction{
 		SourceAccount: &sourceAccount,
@@ -482,7 +482,7 @@ func TestManageOfferUpdateOffer(t *testing.T) {
 	sellAmount := "50"
 	price := "0.02"
 	offerID := uint64(2497628)
-	updateOffer := NewUpdateOfferOp(selling, buying, sellAmount, price, offerID)
+	updateOffer := UpdateOfferOp(selling, buying, sellAmount, price, offerID)
 
 	tx := Transaction{
 		SourceAccount: &sourceAccount,
