@@ -59,7 +59,7 @@ func GenerateAssetsFile(s *tickerdb.TickerSession, l *hlog.Entry, filename strin
 	}
 	l.Infoln("Asset data successfully retrieved! Writing to: ", filename)
 	assetSummary := AssetSummary{
-		GeneratedAt: time.Now().UnixNano() / 1000000,
+		GeneratedAt: utils.TimeToUnixEpoch(time.Now()),
 		Assets:      assets,
 	}
 	numBytes, err := writeAssetSummaryToFile(assetSummary, filename)
@@ -140,7 +140,7 @@ func dbAssetToAsset(dbAsset tickerdb.Asset) (a Asset) {
 	a.AssetControlledByDomain = dbAsset.AssetControlledByDomain
 	a.AnchorAsset = dbAsset.AnchorAssetCode
 	a.AnchorAssetType = dbAsset.AnchorAssetType
-	a.LastValidTimestamp = dbAsset.LastValid.UnixNano() / 1000000
+	a.LastValidTimestamp = utils.TimeToUnixEpoch(dbAsset.LastValid)
 	a.DisplayDecimals = dbAsset.DisplayDecimals
 	a.Name = dbAsset.Name
 	a.Desc = dbAsset.Desc
