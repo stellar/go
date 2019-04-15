@@ -55,3 +55,16 @@ func (s *TickerSession) GetAssetByCodeAndIssuerAccount(
 	}
 	return
 }
+
+// GetAllValidAssets returns a slice with all assets in the database
+// with is_valid = true
+func (s *TickerSession) GetAllValidAssets() (assets []Asset, err error) {
+	tbl := s.GetTable("assets")
+
+	err = tbl.Select(
+		&assets,
+		"assets.is_valid = TRUE",
+	).Exec()
+
+	return
+}

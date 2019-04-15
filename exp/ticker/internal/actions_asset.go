@@ -2,9 +2,8 @@ package ticker
 
 import (
 	"encoding/json"
-	"os"
-	"path/filepath"
 	"strings"
+	"time"
 
 	horizonclient "github.com/stellar/go/exp/clients/horizon"
 	"github.com/stellar/go/exp/ticker/internal/scraper"
@@ -23,15 +22,6 @@ func RefreshAssets(s *tickerdb.TickerSession, c *horizonclient.Client, l *hlog.E
 	if err != nil {
 		return
 	}
-
-	// TODO: move this to a separate function:
-	filename := "assets.json"
-	numBytes, err := writeAssetsToFile(finalAssetList, filename)
-	if err != nil {
-		l.Error("Could not write assets to file.")
-	}
-	l.Infof("Wrote %d bytes to %s\n", numBytes, filename)
-	// TODO END
 
 	for _, finalAsset := range finalAssetList {
 		dbIssuer := tomlIssuerToDBIssuer(finalAsset.IssuerDetails)
@@ -54,18 +44,40 @@ func RefreshAssets(s *tickerdb.TickerSession, c *horizonclient.Client, l *hlog.E
 	return
 }
 
-// writeAssetsToFile creates a list of assets exported in a JSON file.
-func writeAssetsToFile(assets []scraper.FinalAsset, filename string) (numBytes int, err error) {
-	jsonAssets, err := json.MarshalIndent(assets, "", "\t")
+// GenerateAssetsFile generates a file with the info about all valid scraped Assets
+func GenerateAssetsFile(s *tickerdb.TickerSession, l *hlog.Entry, filename string) error {
+	l.Infoln("Retrieving asset data from db...")
+	var finalAssets []scraper.FinalAsset
+	validAssets, err := s.GetAllValidAssets()
+	if err != nil {
+		return err
+	}
+
+	for _, dbAsset := range validAssets {
+		finalAsset := dbAssetToFinalAsset(dbAsset)
+		finalAssets = append(finalAssets, finalAsset)
+	}
+	l.Infoln("Asset data successfully retrieved! Writing to: ", filename)
+	assetSummary := AssetSummary{
+		GeneratedAt: time.Now().UnixNano() / 1000000,
+		Assets:      finalAssets,
+	}
+	numBytes, err := writeAssetSummaryToFile(assetSummary, filename)
+	if err != nil {
+		return err
+	}
+	l.Infof("Wrote %d bytes to %s\n", numBytes, filename)
+	return nil
+}
+
+// writeAssetSummaryToFile creates a list of assets exported in a JSON file.
+func writeAssetSummaryToFile(assetSummary AssetSummary, filename string) (numBytes int, err error) {
+	jsonAssets, err := json.MarshalIndent(assetSummary, "", "\t")
 	if err != nil {
 		return
 	}
 
-	dirPath := filepath.Join(".", "tmp")
-	_ = os.Mkdir(dirPath, os.ModePerm) // ignore if dir already exists
-	path := filepath.Join(".", "tmp", filename)
-
-	numBytes, err = utils.WriteJSONToFile(jsonAssets, path)
+	numBytes, err = utils.WriteJSONToFile(jsonAssets, filename)
 	if err != nil {
 		return
 	}
@@ -101,6 +113,39 @@ func finalAssetToDBAsset(asset scraper.FinalAsset, issuerID int32) tickerdb.Asse
 		RedemptionInstructions:      asset.RedemptionInstructions,
 		CollateralAddresses:         strings.Join(asset.CollateralAddresses, ","),
 		CollateralAddressSignatures: strings.Join(asset.CollateralAddressSignatures, ","),
+		Countries:                   asset.Countries,
+		Status:                      asset.Status,
+	}
+}
+
+// finalAssetToDBAsset converts a tickerdb.Asset to a scraper.TOMLAsset.
+func dbAssetToFinalAsset(asset tickerdb.Asset) scraper.FinalAsset {
+	return scraper.FinalAsset{
+		Code:                        asset.Code,
+		Issuer:                      asset.IssuerAccount,
+		Type:                        asset.Type,
+		NumAccounts:                 asset.NumAccounts,
+		AuthRequired:                asset.AuthRequired,
+		AuthRevocable:               asset.AuthRevocable,
+		Amount:                      asset.Amount,
+		AssetControlledByDomain:     asset.AssetControlledByDomain,
+		AnchorAsset:                 asset.AnchorAssetCode,
+		AnchorAssetType:             asset.AnchorAssetType,
+		IsValid:                     asset.IsValid,
+		Error:                       asset.ValidationError,
+		LastValid:                   asset.LastValid,
+		LastChecked:                 asset.LastChecked,
+		DisplayDecimals:             asset.DisplayDecimals,
+		Name:                        asset.Name,
+		Desc:                        asset.Desc,
+		Conditions:                  asset.Conditions,
+		IsAssetAnchored:             asset.IsAssetAnchored,
+		FixedNumber:                 asset.FixedNumber,
+		MaxNumber:                   asset.MaxNumber,
+		IsUnlimited:                 asset.IsUnlimited,
+		RedemptionInstructions:      asset.RedemptionInstructions,
+		CollateralAddresses:         strings.Split(asset.CollateralAddresses, ","),
+		CollateralAddressSignatures: strings.Split(asset.CollateralAddressSignatures, ","),
 		Countries:                   asset.Countries,
 		Status:                      asset.Status,
 	}

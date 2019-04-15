@@ -7,17 +7,27 @@ import (
 	"github.com/stellar/go/exp/ticker/internal/tickerdb"
 )
 
-var OutFile string
+var MarketsOutFile string
+var AssetsOutFile string
 
 func init() {
 	rootCmd.AddCommand(cmdGenerate)
 	cmdGenerate.AddCommand(cmdGenerateMarketData)
+	cmdGenerate.AddCommand(cmdGenerateAssetData)
 
 	cmdGenerateMarketData.Flags().StringVarP(
-		&OutFile,
+		&MarketsOutFile,
 		"out-file",
 		"o",
 		"markets.json",
+		"Set the name of the output file",
+	)
+
+	cmdGenerateAssetData.Flags().StringVarP(
+		&AssetsOutFile,
+		"out-file",
+		"o",
+		"assets.json",
 		"Set the name of the output file",
 	)
 }
@@ -41,8 +51,30 @@ var cmdGenerateMarketData = &cobra.Command{
 			Logger.Fatal("could not connect to db:", err)
 		}
 
-		Logger.Infof("Starting market data generation, outputting to: %s\n", OutFile)
-		err = ticker.GenerateMarketSummaryFile(&session, Logger, OutFile)
+		Logger.Infof("Starting market data generation, outputting to: %s\n", MarketsOutFile)
+		err = ticker.GenerateMarketSummaryFile(&session, Logger, MarketsOutFile)
+		if err != nil {
+			Logger.Fatal("could not generate market data:", err)
+		}
+	},
+}
+
+var cmdGenerateAssetData = &cobra.Command{
+	Use:   "asset-data",
+	Short: "Generate the aggregated asset data and outputs to a file.",
+	Run: func(cmd *cobra.Command, args []string) {
+		dbInfo, err := pq.ParseURL(DatabaseURL)
+		if err != nil {
+			Logger.Fatal("could not parse db-url:", err)
+		}
+
+		session, err := tickerdb.CreateSession("postgres", dbInfo)
+		if err != nil {
+			Logger.Fatal("could not connect to db:", err)
+		}
+
+		Logger.Infof("Starting asset data generation, outputting to: %s\n", AssetsOutFile)
+		err = ticker.GenerateAssetsFile(&session, Logger, AssetsOutFile)
 		if err != nil {
 			Logger.Fatal("could not generate market data:", err)
 		}
