@@ -69,5 +69,7 @@ func dbMarketToJSON(m tickerdb.Market) MarketStats {
 		TradeCount7d:       m.TradeCount7d,
 		LastPrice:          m.LastPrice,
 		LastPriceCloseTime: closeTime,
+		PriceChange24h:     m.PriceChange24h,
+		PriceChange7d:      m.PriceChange7d,
 	}
 }

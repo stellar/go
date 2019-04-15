@@ -19,4 +19,6 @@ type MarketStats struct {
 	TradeCount7d       int64   `json:"trade_count_7d"`
 	LastPrice          float64 `json:"price"`
 	LastPriceCloseTime int64   `json:"last_price_close_time"`
+	PriceChange24h     float64 `json:"price_change_24h"`
+	PriceChange7d      float64 `json:"price_change_7d"`
 }

@@ -2,6 +2,7 @@ package tickerdb
 
 import (
 	"fmt"
+	"math"
 	"testing"
 	"time"
 
@@ -188,6 +189,13 @@ func TestRetrieveMarketData(t *testing.T) {
 		xlmbtcMkt.LastPriceCloseTime.Local().Truncate(time.Millisecond),
 	)
 
+	assert.Equal(t, 0.0, xlmbtcMkt.PriceChange24h)
+	// There might be some floating point rounding issues, so this test
+	// needs to be a bit more flexible. Since the change is 0.02, an error
+	// around 0.0000000000001 is acceptable:
+	priceChange7dDiff := math.Abs(0.02 - xlmbtcMkt.PriceChange7d)
+	assert.True(t, priceChange7dDiff < 0.0000000000001)
+
 	assert.Equal(t, 74.0, xlmethMkt.BaseVolume24h)
 	assert.Equal(t, 76.0, xlmethMkt.CounterVolume24h)
 	assert.Equal(t, int64(2), xlmethMkt.TradeCount24h)
@@ -202,4 +210,15 @@ func TestRetrieveMarketData(t *testing.T) {
 		now.Local().Truncate(time.Millisecond),
 		xlmbtcMkt.LastPriceCloseTime.Local().Truncate(time.Millisecond),
 	)
+
+	// There might be some floating point rounding issues, so this test
+	// needs to be a bit more flexible. Since the change is 0.08, an error
+	// around 0.0000000000001 is acceptable:
+	priceChange24hDiff := math.Abs(-0.08 - xlmethMkt.PriceChange24h)
+	assert.True(t, priceChange24hDiff < 0.0000000000001)
+
+	priceChange7dDiff = math.Abs(-0.08 - xlmethMkt.PriceChange7d)
+	assert.True(t, priceChange7dDiff < 0.0000000000001)
+
+	assert.Equal(t, priceChange24hDiff, priceChange7dDiff)
 }
