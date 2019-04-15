@@ -9,7 +9,7 @@ import (
 	hlog "github.com/stellar/go/support/log"
 )
 
-// GenerateMarketSummary generates a MarketSummary with the statistics for all
+// GenerateMarketSummaryFile generates a MarketSummary with the statistics for all
 // valid markets within the database and outputs it to <filename>.
 func GenerateMarketSummaryFile(s *tickerdb.TickerSession, l *hlog.Entry, filename string) error {
 	l.Infoln("Generating market data...")
