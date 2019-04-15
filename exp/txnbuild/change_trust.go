@@ -13,9 +13,9 @@ type ChangeTrust struct {
 	Limit string
 }
 
-// NewRemoveTrustlineOp returns a ChangeTrust operation to remove the trustline of the described asset,
+// RemoveTrustlineOp returns a ChangeTrust operation to remove the trustline of the described asset,
 // by setting the limit to "0".
-func NewRemoveTrustlineOp(issuedAsset *Asset) ChangeTrust {
+func RemoveTrustlineOp(issuedAsset *Asset) ChangeTrust {
 	return ChangeTrust{
 		Line:  issuedAsset,
 		Limit: "0",
