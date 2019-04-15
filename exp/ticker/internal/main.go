@@ -29,6 +29,13 @@ type MarketStats struct {
 
 // Asset Sumary represents the collection of valid assets.
 type AssetSummary struct {
-	GeneratedAt int64                `json:"generated_at"`
-	Assets      []scraper.FinalAsset `json:"assets"`
+	GeneratedAt int64   `json:"generated_at"`
+	Assets      []Asset `json:"assets"`
+}
+
+// Asset represent the aggregated data for a given asset.
+type Asset struct {
+	scraper.FinalAsset
+
+	LastValidTimestamp int64 `json:"last_valid"`
 }

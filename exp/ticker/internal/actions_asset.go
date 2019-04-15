@@ -47,20 +47,20 @@ func RefreshAssets(s *tickerdb.TickerSession, c *horizonclient.Client, l *hlog.E
 // GenerateAssetsFile generates a file with the info about all valid scraped Assets
 func GenerateAssetsFile(s *tickerdb.TickerSession, l *hlog.Entry, filename string) error {
 	l.Infoln("Retrieving asset data from db...")
-	var finalAssets []scraper.FinalAsset
+	var assets []Asset
 	validAssets, err := s.GetAllValidAssets()
 	if err != nil {
 		return err
 	}
 
 	for _, dbAsset := range validAssets {
-		finalAsset := dbAssetToFinalAsset(dbAsset)
-		finalAssets = append(finalAssets, finalAsset)
+		asset := dbAssetToAsset(dbAsset)
+		assets = append(assets, asset)
 	}
 	l.Infoln("Asset data successfully retrieved! Writing to: ", filename)
 	assetSummary := AssetSummary{
 		GeneratedAt: time.Now().UnixNano() / 1000000,
-		Assets:      finalAssets,
+		Assets:      assets,
 	}
 	numBytes, err := writeAssetSummaryToFile(assetSummary, filename)
 	if err != nil {
@@ -118,35 +118,42 @@ func finalAssetToDBAsset(asset scraper.FinalAsset, issuerID int32) tickerdb.Asse
 	}
 }
 
-// finalAssetToDBAsset converts a tickerdb.Asset to a scraper.TOMLAsset.
-func dbAssetToFinalAsset(asset tickerdb.Asset) scraper.FinalAsset {
-	return scraper.FinalAsset{
-		Code:                        asset.Code,
-		Issuer:                      asset.IssuerAccount,
-		Type:                        asset.Type,
-		NumAccounts:                 asset.NumAccounts,
-		AuthRequired:                asset.AuthRequired,
-		AuthRevocable:               asset.AuthRevocable,
-		Amount:                      asset.Amount,
-		AssetControlledByDomain:     asset.AssetControlledByDomain,
-		AnchorAsset:                 asset.AnchorAssetCode,
-		AnchorAssetType:             asset.AnchorAssetType,
-		IsValid:                     asset.IsValid,
-		Error:                       asset.ValidationError,
-		LastValid:                   asset.LastValid,
-		LastChecked:                 asset.LastChecked,
-		DisplayDecimals:             asset.DisplayDecimals,
-		Name:                        asset.Name,
-		Desc:                        asset.Desc,
-		Conditions:                  asset.Conditions,
-		IsAssetAnchored:             asset.IsAssetAnchored,
-		FixedNumber:                 asset.FixedNumber,
-		MaxNumber:                   asset.MaxNumber,
-		IsUnlimited:                 asset.IsUnlimited,
-		RedemptionInstructions:      asset.RedemptionInstructions,
-		CollateralAddresses:         strings.Split(asset.CollateralAddresses, ","),
-		CollateralAddressSignatures: strings.Split(asset.CollateralAddressSignatures, ","),
-		Countries:                   asset.Countries,
-		Status:                      asset.Status,
+// dbAssetToAsset converts a tickerdb.Asset to an Asset.
+func dbAssetToAsset(dbAsset tickerdb.Asset) (a Asset) {
+	collAddrs := strings.Split(dbAsset.CollateralAddresses, ",")
+	if len(collAddrs) == 1 && collAddrs[0] == "" {
+		collAddrs = []string{}
 	}
+
+	collAddrSigns := strings.Split(dbAsset.CollateralAddressSignatures, ",")
+	if len(collAddrSigns) == 1 && collAddrSigns[0] == "" {
+		collAddrSigns = []string{}
+	}
+
+	a.Code = dbAsset.Code
+	a.Issuer = dbAsset.IssuerAccount
+	a.Type = dbAsset.Type
+	a.NumAccounts = dbAsset.NumAccounts
+	a.AuthRequired = dbAsset.AuthRequired
+	a.AuthRevocable = dbAsset.AuthRevocable
+	a.Amount = dbAsset.Amount
+	a.AssetControlledByDomain = dbAsset.AssetControlledByDomain
+	a.AnchorAsset = dbAsset.AnchorAssetCode
+	a.AnchorAssetType = dbAsset.AnchorAssetType
+	a.LastValidTimestamp = dbAsset.LastValid.UnixNano() / 1000000
+	a.DisplayDecimals = dbAsset.DisplayDecimals
+	a.Name = dbAsset.Name
+	a.Desc = dbAsset.Desc
+	a.Conditions = dbAsset.Conditions
+	a.IsAssetAnchored = dbAsset.IsAssetAnchored
+	a.FixedNumber = dbAsset.FixedNumber
+	a.MaxNumber = dbAsset.MaxNumber
+	a.IsUnlimited = dbAsset.IsUnlimited
+	a.RedemptionInstructions = dbAsset.RedemptionInstructions
+	a.CollateralAddresses = collAddrs
+	a.CollateralAddressSignatures = collAddrSigns
+	a.Countries = dbAsset.Countries
+	a.Status = dbAsset.Status
+
+	return
 }

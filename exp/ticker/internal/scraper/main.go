@@ -69,12 +69,12 @@ type FinalAsset struct {
 	Amount                      float64    `json:"amount"`
 	IssuerDetails               TOMLIssuer `json:"-"`
 	AssetControlledByDomain     bool       `json:"asset_controlled_by_domain"`
-	Error                       string     `json:"error"`
+	Error                       string     `json:"-"`
 	AnchorAsset                 string     `json:"anchor_asset"`
 	AnchorAssetType             string     `json:"anchor_asset_type"`
-	IsValid                     bool       `json:"is_valid"`
-	LastValid                   time.Time  `json:"last_valid"`
-	LastChecked                 time.Time  `json:"last_checked"`
+	IsValid                     bool       `json:"-"`
+	LastValid                   time.Time  `json:"-"`
+	LastChecked                 time.Time  `json:"-"`
 	IsTrash                     bool       `json:"-"`
 	DisplayDecimals             int        `json:"display_decimals"`
 	Name                        string     `json:"name"`
