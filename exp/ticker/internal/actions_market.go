@@ -58,6 +58,7 @@ func GenerateMarketSummary(s *tickerdb.TickerSession) (ms MarketSummary, err err
 }
 
 func dbMarketToJSON(m tickerdb.Market) MarketStats {
+	closeTime := m.LastPriceCloseTime.UnixNano() / 1000000
 	return MarketStats{
 		TradePairName:      m.TradePair,
 		BaseVolume24h:      m.BaseVolume24h,
@@ -67,6 +68,6 @@ func dbMarketToJSON(m tickerdb.Market) MarketStats {
 		CounterVolume7d:    m.CounterVolume7d,
 		TradeCount7d:       m.TradeCount7d,
 		LastPrice:          m.LastPrice,
-		LastPriceCloseTime: m.LastPriceCloseTime,
+		LastPriceCloseTime: closeTime,
 	}
 }
