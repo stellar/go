@@ -33,7 +33,11 @@ func (at *AllowTrust) BuildXDR() (xdr.Operation, error) {
 	if err != nil {
 		return xdr.Operation{}, errors.Wrap(err, "Can't convert asset for trustline to XDR")
 	}
+
 	xdrOp.Asset, err = xdrAsset.ToAllowTrustOpAsset(at.Type.Code)
+	if err != nil {
+		return xdr.Operation{}, errors.Wrap(err, "Can't convert asset for trustline to allow trust asset type")
+	}
 
 	// Set XDR auth flag
 	xdrOp.Authorize = at.Authorize
