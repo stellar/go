@@ -1,0 +1,3 @@
+@hourly /opt/stellar/bin/ticker ingest assets --db-url=postgres://127.0.0.1:5432/ticker > /home/stellar/last-ingest-assets.log 2>&1
+@hourly /opt/stellar/bin/ticker generate asset-data --db-url=postgres://127.0.0.1:5432/ticker -o /opt/stellar/www/assets.json > /home/stellar/last-generate-asset-data.log 2>&1
+* * * * * /opt/stellar/bin/ticker generate market-data --db-url=postgres://127.0.0.1:5432/ticker -o /opt/stellar/www/markets.json > /home/stellar/last-generate-asset-data.log 2>&1

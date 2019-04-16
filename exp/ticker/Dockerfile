@@ -16,6 +16,7 @@ RUN /setup
 
 COPY ticker /opt/stellar/bin/ticker
 COPY docker/conf /opt/stellar/conf
+RUN crontab -u stellar /opt/stellar/conf/crontab.txt
 
 COPY docker/start /
 RUN ["chmod", "+x", "/start"]
