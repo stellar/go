@@ -1,0 +1,167 @@
+#!/usr/bin/env bash
+set -e
+
+export STELLAR_HOME="/opt/stellar"
+export CONF_HOME="$STELLAR_HOME/conf"
+export PGHOME="$STELLAR_HOME/postgresql"
+
+export PGBIN="/usr/lib/postgresql/9.6/bin"
+export PGDATA="$PGHOME/data"
+export PGUSER="stellar"
+
+
+function main() {
+	echo ""
+	echo "Initializing Ticker"
+	echo ""
+
+	init_db
+	copy_pgpass
+	stop_postgres
+
+	exec_supervisor
+	# TODO:
+	# 1. Populate initial assets
+	# 2. Populate initial trades
+	# 3. Generate /opt/stellar/www/assets.json
+	# 4. Generate /opt/stellar/www/markets.json
+	# 5. Start all other scripts
+}
+
+
+# run_silent is a utility function that runs a command with an abbreviated
+# output provided it succeeds.
+function run_silent() {
+	local LABEL=$1
+	shift
+	local COMMAND=$1
+	shift
+	local ARGS=$@
+	local OUTFILE="/tmp/run_silent.out"
+
+	echo -n "$LABEL: "
+	set +e
+
+	$COMMAND $ARGS &> $OUTFILE
+
+	if [ $? -eq 0 ]; then
+    echo "ok"
+	else
+	  echo "failed!"
+		echo ""
+		cat $OUTFILE
+		exit 1
+	fi
+
+	set -e
+}
+
+
+function set_pg_password() {
+	read -s -p "Enter New Postgresql Password: " PGPASS
+	echo ""
+	read -s -p "Confirm: " PGPASS_CONFIRMATION
+	echo ""
+
+	if [ -z "$PGPASS" ]; then
+		echo "Password empty" >&2
+		exit 1
+	fi
+
+	if [ "$PGPASS" != "$PGPASS_CONFIRMATION" ]; then
+		echo "Password mistmach" >&2
+		exit 1
+	fi
+}
+
+
+function copy_pgpass() {
+	cp $CONF_HOME/.pgpass /home/stellar
+	chmod 0600 /home/stellar/.pgpass
+	chown stellar:stellar /home/stellar/.pgpass
+}
+
+
+function init_db() {
+	if [ -f $PGHOME/.quickstart-initialized ]; then
+		echo "postgres: already initialized"
+		return 0
+	fi
+	pushd $PGHOME
+
+	# workaround!!!! from: https://github.com/nimiq/docker-postgresql93/issues/2
+	# mkdir /etc/ssl/private-copy; mv /etc/ssl/private/* /etc/ssl/private-copy/; rm -r /etc/ssl/private; mv /etc/ssl/private-copy /etc/ssl/private; chmod -R 0700 /etc/ssl/private; chown -R postgres /etc/ssl/private
+	# end workaround
+
+	echo "postgres user: $PGUSER"
+
+	set_pg_password
+
+	run_silent "finalize-pgpass" sed -ri "s/__PGPASS__/$PGPASS/g" $CONF_HOME/.pgpass
+
+	mkdir -p $PGDATA
+	chown postgres:postgres $PGDATA
+	chmod 0700 $PGDATA
+
+	run_silent "init-postgres" sudo -u postgres $PGBIN/initdb -D $PGDATA
+
+	start_postgres
+	run_silent "create-ticker-db" sudo -u postgres createdb ticker
+	run_silent "stellar-postgres-user" sudo -u postgres psql <<-SQL
+		CREATE USER $PGUSER WITH PASSWORD '$PGPASS';
+		GRANT ALL PRIVILEGES ON DATABASE ticker to $PGUSER;
+	SQL
+
+	touch .quickstart-initialized
+	popd
+}
+
+
+function start_postgres() {
+	if [ ! -z "$CURRENT_POSTGRES_PID" ]; then
+		return 0
+	fi
+
+	sudo -u postgres $PGBIN/postgres -D $PGDATA -c config_file=$CONF_HOME/postgresql.conf &> /dev/null &
+	CURRENT_POSTGRES_PID=$!
+
+	while ! sudo -u postgres psql -c 'select 1' &> /dev/null ; do
+	  echo "Waiting for postgres to be available..."
+	  sleep 1
+	done
+
+	echo "postgres: up"
+}
+
+
+function stop_postgres() {
+	if [ -z "$CURRENT_POSTGRES_PID" ]; then
+		return 0
+	fi
+
+	killall postgres
+	# wait for postgres to die
+	while kill -0 "$CURRENT_POSTGRES_PID" &> /dev/null; do
+		sleep 0.5
+	done
+	echo "postgres: down"
+}
+
+
+function exec_supervisor() {
+	echo "starting supervisor"
+	exec supervisord -n -c $CONF_HOME/supervisord.conf
+}
+
+
+pushd () {
+    command pushd "$@" > /dev/null
+}
+
+
+popd () {
+    command popd "$@" > /dev/null
+}
+
+
+main $@
