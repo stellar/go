@@ -82,6 +82,22 @@ type Trade struct {
 	Price           float64   `db:"price"`
 }
 
+// Market represent the aggregated market data retrieved from the database.
+// Note: this struct does *not* directly maps to a db entity.
+type Market struct {
+	TradePair          string    `db:"trade_pair_name"`
+	BaseVolume24h      float64   `db:"base_volume_24h"`
+	CounterVolume24h   float64   `db:"counter_volume_24h"`
+	TradeCount24h      int64     `db:"trade_count_24h"`
+	BaseVolume7d       float64   `db:"base_volume_7d"`
+	CounterVolume7d    float64   `db:"counter_volume_7d"`
+	TradeCount7d       int64     `db:"trade_count_7d"`
+	LastPrice          float64   `db:"last_price"`
+	LastPriceCloseTime time.Time `db:"close_time"`
+	PriceChange24h     float64   `db:"price_change_24h"`
+	PriceChange7d      float64   `db:"price_change_7d"`
+}
+
 // CreateSession returns a new TickerSession that connects to the given db settings
 func CreateSession(driverName, dataSourceName string) (session TickerSession, err error) {
 	dbconn, err := sqlx.Connect(driverName, dataSourceName)

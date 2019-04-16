@@ -2,6 +2,8 @@ package ticker
 
 import (
 	"encoding/json"
+	"os"
+	"path/filepath"
 	"strings"
 
 	horizonclient "github.com/stellar/go/exp/clients/horizon"
@@ -59,7 +61,11 @@ func writeAssetsToFile(assets []scraper.FinalAsset, filename string) (numBytes i
 		return
 	}
 
-	numBytes, err = utils.WriteJSONToFile(jsonAssets, filename)
+	dirPath := filepath.Join(".", "tmp")
+	_ = os.Mkdir(dirPath, os.ModePerm) // ignore if dir already exists
+	path := filepath.Join(".", "tmp", filename)
+
+	numBytes, err = utils.WriteJSONToFile(jsonAssets, path)
 	if err != nil {
 		return
 	}
