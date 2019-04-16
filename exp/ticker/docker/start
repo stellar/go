@@ -1,18 +1,18 @@
 #!/usr/bin/env bash
 set -e
 
+
 export STELLAR_HOME="/opt/stellar"
 export STELLAR_BIN="$STELLAR_HOME/bin"
 export CONF_HOME="$STELLAR_HOME/conf"
-export PGHOME="$STELLAR_HOME/postgresql"
 export WWW_HOME="$STELLAR_HOME/www"
 
+export PGHOME="$STELLAR_HOME/postgresql"
 export PGBIN="/usr/lib/postgresql/11/bin"
 export PGDATA="$PGHOME/data"
 export PGUSER="stellar"
 export PGDB="ticker"
 export PGURL="postgres://127.0.0.1:5432/$PGDB"
-
 
 
 function main() {
@@ -30,10 +30,6 @@ function main() {
 	populate_trades
 	generate_assets_file
 	generate_markets_file
-
-	# TODO:
-	# 1. Decide if we use crontabs or supervisor to call the
-	# recurrent scripts
 
 	stop_postgres
 	exec_supervisor
