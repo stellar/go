@@ -15,24 +15,31 @@ func (herr Error) Error() string {
 // Envelope extracts the transaction envelope that triggered this error from the
 // extra fields.
 func (herr *Error) Envelope() (*xdr.TransactionEnvelope, error) {
+	b64, err := herr.EnvelopeXDR()
+	if err != nil {
+		return nil, err
+	}
+
+	var result xdr.TransactionEnvelope
+	err = xdr.SafeUnmarshalBase64(b64, &result)
+	return &result, errors.Wrap(err, "xdr decode failed")
+}
+
+// EnvelopeXDR returns the base 64 serialised string representation of the XDR envelope.
+// This can be stored, or decoded in the Stellar Laboratory XDR viewer for example.
+func (herr *Error) EnvelopeXDR() (string, error) {
 	raw, ok := herr.Problem.Extras["envelope_xdr"]
 	if !ok {
-		return nil, ErrEnvelopeNotPopulated
+		return "", ErrEnvelopeNotPopulated
 	}
 
 	var b64 string
-	var result xdr.TransactionEnvelope
 	b64, ok = raw.(string)
 	if !ok {
-		return nil, errors.New("type assertion failed")
+		return "", errors.New("type assertion failed")
 	}
 
-	err := xdr.SafeUnmarshalBase64(b64, &result)
-	if err != nil {
-		return nil, errors.Wrap(err, "xdr decode failed")
-	}
-
-	return &result, nil
+	return b64, nil
 }
 
 // ResultString extracts the transaction result as a string.
