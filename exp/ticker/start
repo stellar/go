@@ -2,12 +2,17 @@
 set -e
 
 export STELLAR_HOME="/opt/stellar"
+export STELLAR_BIN="$STELLAR_HOME/bin"
 export CONF_HOME="$STELLAR_HOME/conf"
 export PGHOME="$STELLAR_HOME/postgresql"
+export WWW_HOME="$STELLAR_HOME/www"
 
-export PGBIN="/usr/lib/postgresql/9.6/bin"
+export PGBIN="/usr/lib/postgresql/11/bin"
 export PGDATA="$PGHOME/data"
 export PGUSER="stellar"
+export PGDB="ticker"
+export PGURL="postgres://127.0.0.1:5432/$PGDB"
+
 
 
 function main() {
@@ -17,15 +22,79 @@ function main() {
 
 	init_db
 	copy_pgpass
-	stop_postgres
 
-	exec_supervisor
+	start_postgres
+	migrate_db
+
+	populate_assets
+	populate_trades
+	generate_assets_file
+	generate_markets_file
+
 	# TODO:
-	# 1. Populate initial assets
-	# 2. Populate initial trades
-	# 3. Generate /opt/stellar/www/assets.json
-	# 4. Generate /opt/stellar/www/markets.json
-	# 5. Start all other scripts
+	# 1. Decide if we use crontabs or supervisor to call the
+	# recurrent scripts
+
+	stop_postgres
+	exec_supervisor
+}
+
+
+function migrate_db() {
+	echo ""
+	echo "Upgrading database to latest version"
+	echo ""
+	sudo -u stellar $STELLAR_BIN/ticker migrate --db-url=$PGURL
+}
+
+
+function populate_assets() {
+	if [ -f $PGHOME/.assets-populated ]; then
+		echo "ticker: assets already pre-populated"
+		return 0
+	fi
+	echo ""
+	echo "Populating initial asset database"
+	echo ""
+	sudo -u stellar $STELLAR_BIN/ticker ingest assets --db-url=$PGURL
+	touch $PGHOME/.assets-populated
+}
+
+
+function populate_trades() {
+	if [ -f $PGHOME/.trades-populated ]; then
+		echo "ticker: trades already pre-populated"
+		return 0
+	fi
+	echo ""
+	echo "Populating initial trade database"
+	echo ""
+	sudo -u stellar $STELLAR_BIN/ticker ingest trades --db-url=$PGURL
+	touch $PGHOME/.trades-populated
+}
+
+
+function generate_assets_file() {
+	if [ -f $STELLAR_HOME/www/assets.json ]; then
+		echo "ticker: assets.json already pre-populated"
+		return 0
+	fi
+	echo ""
+	echo "Creating assets.json file"
+	echo ""
+	sudo -u stellar $STELLAR_BIN/ticker generate asset-data --db-url=$PGURL -o $WWW_HOME/assets.json
+}
+
+
+function generate_markets_file() {
+	if [ -f $STELLAR_HOME/www/markets.json ]; then
+		echo "ticker: markets.json already pre-populated"
+		return 0
+	fi
+	echo ""
+	echo "Creating markets.json file"
+	echo ""
+	sudo -u stellar $STELLAR_BIN/ticker generate market-data --db-url=$PGURL -o $WWW_HOME/markets.json
 }
 
 
@@ -76,7 +145,7 @@ function set_pg_password() {
 
 
 function copy_pgpass() {
-	cp $CONF_HOME/.pgpass /home/stellar
+	cp $PGHOME/.pgpass /home/stellar
 	chmod 0600 /home/stellar/.pgpass
 	chown stellar:stellar /home/stellar/.pgpass
 }
@@ -99,6 +168,8 @@ function init_db() {
 
 	run_silent "finalize-pgpass" sed -ri "s/__PGPASS__/$PGPASS/g" $CONF_HOME/.pgpass
 
+	cp $CONF_HOME/.pgpass $PGHOME/.pgpass
+
 	mkdir -p $PGDATA
 	chown postgres:postgres $PGDATA
 	chmod 0700 $PGDATA
@@ -106,10 +177,10 @@ function init_db() {
 	run_silent "init-postgres" sudo -u postgres $PGBIN/initdb -D $PGDATA
 
 	start_postgres
-	run_silent "create-ticker-db" sudo -u postgres createdb ticker
+	run_silent "create-ticker-db" sudo -u postgres createdb $PGDB
 	run_silent "stellar-postgres-user" sudo -u postgres psql <<-SQL
 		CREATE USER $PGUSER WITH PASSWORD '$PGPASS';
-		GRANT ALL PRIVILEGES ON DATABASE ticker to $PGUSER;
+		GRANT ALL PRIVILEGES ON DATABASE $PGDB to $PGUSER;
 	SQL
 
 	touch .quickstart-initialized
