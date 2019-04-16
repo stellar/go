@@ -3,6 +3,7 @@ package utils
 import (
 	"fmt"
 	"os"
+	"time"
 )
 
 // PanicIfError is an utility function that panics if err != nil
@@ -51,4 +52,9 @@ func GetAssetString(assetType string, code string, issuer string) string {
 		return "native"
 	}
 	return fmt.Sprintf("%s:%s", code, issuer)
+}
+
+// TimeToTimestamp converts a time.Time into a Unix epoch
+func TimeToUnixEpoch(t time.Time) int64 {
+	return t.UnixNano() / 1000000
 }

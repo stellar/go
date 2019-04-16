@@ -1,5 +1,9 @@
 package ticker
 
+import (
+	"github.com/stellar/go/exp/ticker/internal/scraper"
+)
+
 // MarketSummary represents a summary of statistics of all valid markets
 // within a given period of time.
 type MarketSummary struct {
@@ -21,4 +25,17 @@ type MarketStats struct {
 	LastPriceCloseTime int64   `json:"last_price_close_time"`
 	PriceChange24h     float64 `json:"price_change_24h"`
 	PriceChange7d      float64 `json:"price_change_7d"`
+}
+
+// Asset Sumary represents the collection of valid assets.
+type AssetSummary struct {
+	GeneratedAt int64   `json:"generated_at"`
+	Assets      []Asset `json:"assets"`
+}
+
+// Asset represent the aggregated data for a given asset.
+type Asset struct {
+	scraper.FinalAsset
+
+	LastValidTimestamp int64 `json:"last_valid"`
 }

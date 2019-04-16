@@ -38,7 +38,7 @@ func GenerateMarketSummaryFile(s *tickerdb.TickerSession, l *hlog.Entry, filenam
 func GenerateMarketSummary(s *tickerdb.TickerSession) (ms MarketSummary, err error) {
 	var marketStatsSlice []MarketStats
 	now := time.Now()
-	nowMillis := now.UnixNano() / 1000000
+	nowMillis := utils.TimeToUnixEpoch(now)
 
 	dbMarkets, err := s.RetrieveMarketData()
 	if err != nil {
@@ -58,7 +58,7 @@ func GenerateMarketSummary(s *tickerdb.TickerSession) (ms MarketSummary, err err
 }
 
 func dbMarketToJSON(m tickerdb.Market) MarketStats {
-	closeTime := m.LastPriceCloseTime.UnixNano() / 1000000
+	closeTime := utils.TimeToUnixEpoch(m.LastPriceCloseTime)
 	return MarketStats{
 		TradePairName:      m.TradePair,
 		BaseVolume24h:      m.BaseVolume24h,
