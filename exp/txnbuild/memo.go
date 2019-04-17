@@ -29,7 +29,7 @@ type Memo interface {
 // ToXDR for MemoText returns an XDR object representation of a Memo of the same type.
 func (mt MemoText) ToXDR() (xdr.Memo, error) {
 	if len(mt) > MemoTextMaxLength {
-		return xdr.Memo{}, fmt.Errorf("Memo text too long (more than %d bytes", MemoTextMaxLength)
+		return xdr.Memo{}, fmt.Errorf("Memo text can't be longer than %d bytes", MemoTextMaxLength)
 	}
 
 	return xdr.NewMemo(xdr.MemoTypeMemoText, string(mt))

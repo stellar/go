@@ -548,14 +548,10 @@ func TestMemoText(t *testing.T) {
 	kp2 := newKeypair2()
 	sourceAccount := makeTestAccount(kp2, "3428320205078528")
 
-	bumpSequence := BumpSequence{
-		BumpTo: 1,
-	}
-
 	tx := Transaction{
 		SourceAccount: &sourceAccount,
 		Network:       network.TestNetworkPassphrase,
-		Operations:    []Operation{&bumpSequence},
+		Operations:    []Operation{&BumpSequence{BumpTo: 1}},
 		Memo:          MemoText("Twas brillig"),
 	}
 
@@ -569,14 +565,10 @@ func TestMemoID(t *testing.T) {
 	kp2 := newKeypair2()
 	sourceAccount := makeTestAccount(kp2, "3428320205078528")
 
-	bumpSequence := BumpSequence{
-		BumpTo: 1,
-	}
-
 	tx := Transaction{
 		SourceAccount: &sourceAccount,
 		Network:       network.TestNetworkPassphrase,
-		Operations:    []Operation{&bumpSequence},
+		Operations:    []Operation{&BumpSequence{BumpTo: 1}},
 		Memo:          MemoID(314159),
 	}
 
@@ -590,14 +582,10 @@ func TestMemoHash(t *testing.T) {
 	kp2 := newKeypair2()
 	sourceAccount := makeTestAccount(kp2, "3428320205078528")
 
-	bumpSequence := BumpSequence{
-		BumpTo: 1,
-	}
-
 	tx := Transaction{
 		SourceAccount: &sourceAccount,
 		Network:       network.TestNetworkPassphrase,
-		Operations:    []Operation{&bumpSequence},
+		Operations:    []Operation{&BumpSequence{BumpTo: 1}},
 		Memo:          MemoHash([32]byte{0x01}),
 	}
 
@@ -611,14 +599,10 @@ func TestMemoReturn(t *testing.T) {
 	kp2 := newKeypair2()
 	sourceAccount := makeTestAccount(kp2, "3428320205078528")
 
-	bumpSequence := BumpSequence{
-		BumpTo: 1,
-	}
-
 	tx := Transaction{
 		SourceAccount: &sourceAccount,
 		Network:       network.TestNetworkPassphrase,
-		Operations:    []Operation{&bumpSequence},
+		Operations:    []Operation{&BumpSequence{BumpTo: 1}},
 		Memo:          MemoReturn([32]byte{0x01}),
 	}
 
