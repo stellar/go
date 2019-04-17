@@ -9,7 +9,7 @@ import (
 // https://www.stellar.org/developers/guides/concepts/list-of-operations.html
 type AllowTrust struct {
 	Trustor   string
-	Type      *Asset
+	Type      Asset
 	Authorize bool
 }
 
@@ -34,7 +34,7 @@ func (at *AllowTrust) BuildXDR() (xdr.Operation, error) {
 		return xdr.Operation{}, errors.Wrap(err, "Can't convert asset for trustline to XDR")
 	}
 
-	xdrOp.Asset, err = xdrAsset.ToAllowTrustOpAsset(at.Type.Code)
+	xdrOp.Asset, err = xdrAsset.ToAllowTrustOpAsset(at.Type.GetCode())
 	if err != nil {
 		return xdr.Operation{}, errors.Wrap(err, "Can't convert asset for trustline to allow trust asset type")
 	}

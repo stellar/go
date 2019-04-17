@@ -9,13 +9,13 @@ import (
 // ChangeTrust represents the Stellar change trust operation. See
 // https://www.stellar.org/developers/guides/concepts/list-of-operations.html
 type ChangeTrust struct {
-	Line  *Asset
+	Line  Asset
 	Limit string
 }
 
 // RemoveTrustlineOp returns a ChangeTrust operation to remove the trustline of the described asset,
 // by setting the limit to "0".
-func RemoveTrustlineOp(issuedAsset *Asset) ChangeTrust {
+func RemoveTrustlineOp(issuedAsset Asset) ChangeTrust {
 	return ChangeTrust{
 		Line:  issuedAsset,
 		Limit: "0",

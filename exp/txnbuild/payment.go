@@ -11,7 +11,7 @@ import (
 type Payment struct {
 	Destination string
 	Amount      string
-	Asset       *Asset
+	Asset       Asset
 }
 
 // BuildXDR for Payment returns a fully configured XDR Operation.

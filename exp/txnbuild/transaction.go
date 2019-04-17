@@ -26,7 +26,7 @@ type Transaction struct {
 	SourceAccount  Account
 	Operations     []Operation
 	xdrTransaction xdr.Transaction
-	BaseFee        uint64 // TODO: Why is this a uint 64? Can it be a plain int?
+	BaseFee        uint32
 	Memo           Memo
 	xdrEnvelope    *xdr.TransactionEnvelope
 	Network        string
@@ -61,9 +61,8 @@ func (tx *Transaction) Base64() (string, error) {
 // SetDefaultFee sets a sensible minimum default for the Transaction fee, if one has not
 // already been set. It is a linear function of the number of Operations in the Transaction.
 func (tx *Transaction) SetDefaultFee() {
-	// TODO: Check if default base fee used elsewhere - otherwise just use int
 	// TODO: Generalise to pull this from a client call
-	var DefaultBaseFee uint64 = 100
+	var DefaultBaseFee uint32 = 100
 	if tx.BaseFee == 0 {
 		tx.BaseFee = DefaultBaseFee
 	}

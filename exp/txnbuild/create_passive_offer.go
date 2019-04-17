@@ -10,8 +10,8 @@ import (
 // CreatePassiveOffer represents the Stellar create passive offer operation. See
 // https://www.stellar.org/developers/guides/concepts/list-of-operations.html
 type CreatePassiveOffer struct {
-	Selling *Asset
-	Buying  *Asset
+	Selling Asset
+	Buying  Asset
 	Amount  string
 	Price   string // TODO: Extend to include number, and n/d fraction. See package 'amount'
 }

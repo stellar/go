@@ -43,7 +43,6 @@ func TestCreateAccount(t *testing.T) {
 	createAccount := CreateAccount{
 		Destination: "GCCOBXW2XQNUSL467IEILE6MMCNRR66SSVL4YQADUNYYNUVREF3FIV2Z",
 		Amount:      "10",
-		Asset:       "native",
 	}
 
 	tx := Transaction{
@@ -64,7 +63,7 @@ func TestPayment(t *testing.T) {
 	payment := Payment{
 		Destination: "GB7BDSZU2Y27LYNLALKKALB52WS2IZWYBDGY6EQBLEED3TJOCVMZRH7H",
 		Amount:      "10",
-		Asset:       NewNativeAsset(),
+		Asset:       NativeAsset{},
 	}
 
 	tx := Transaction{
@@ -355,7 +354,7 @@ func TestChangeTrust(t *testing.T) {
 	sourceAccount := makeTestAccount(kp0, "40385577484348")
 
 	changeTrust := ChangeTrust{
-		Line:  NewAsset("ABCD", kp1.Address()),
+		Line:  CreditAsset{"ABCD", kp1.Address()},
 		Limit: "10",
 	}
 
@@ -375,7 +374,7 @@ func TestChangeTrustNativeAssetNotAllowed(t *testing.T) {
 	sourceAccount := makeTestAccount(kp0, "40385577484348")
 
 	changeTrust := ChangeTrust{
-		Line:  NewNativeAsset(),
+		Line:  NativeAsset{},
 		Limit: "10",
 	}
 
@@ -395,7 +394,7 @@ func TestChangeTrustDeleteTrustline(t *testing.T) {
 	kp1 := newKeypair1()
 	sourceAccount := makeTestAccount(kp0, "40385577484354")
 
-	issuedAsset := NewAsset("ABCD", kp1.Address())
+	issuedAsset := CreditAsset{"ABCD", kp1.Address()}
 	removeTrust := RemoveTrustlineOp(issuedAsset)
 
 	tx := Transaction{
@@ -414,7 +413,7 @@ func TestAllowTrust(t *testing.T) {
 	kp1 := newKeypair1()
 	sourceAccount := makeTestAccount(kp0, "40385577484366")
 
-	issuedAsset := NewAsset("ABCD", kp1.Address())
+	issuedAsset := CreditAsset{"ABCD", kp1.Address()}
 	allowTrust := AllowTrust{
 		Trustor:   kp1.Address(),
 		Type:      issuedAsset,
@@ -437,8 +436,8 @@ func TestManageOfferNewOffer(t *testing.T) {
 	kp1 := newKeypair1()
 	sourceAccount := makeTestAccount(kp1, "41137196761092")
 
-	selling := NewNativeAsset()
-	buying := NewAsset("ABCD", kp0.Address())
+	selling := NativeAsset{}
+	buying := CreditAsset{"ABCD", kp0.Address()}
 	sellAmount := "100"
 	price := "0.01"
 	createOffer := CreateOfferOp(selling, buying, sellAmount, price)
@@ -477,8 +476,8 @@ func TestManageOfferUpdateOffer(t *testing.T) {
 	kp1 := newKeypair1()
 	sourceAccount := makeTestAccount(kp1, "41137196761097")
 
-	selling := NewNativeAsset()
-	buying := NewAsset("ABCD", kp0.Address())
+	selling := NativeAsset{}
+	buying := CreditAsset{"ABCD", kp0.Address()}
 	sellAmount := "50"
 	price := "0.02"
 	offerID := uint64(2497628)
@@ -501,8 +500,8 @@ func TestCreatePassiveOffer(t *testing.T) {
 	sourceAccount := makeTestAccount(kp1, "41137196761100")
 
 	createPassiveOffer := CreatePassiveOffer{
-		Selling: NewNativeAsset(),
-		Buying:  NewAsset("ABCD", kp0.Address()),
+		Selling: NativeAsset{},
+		Buying:  CreditAsset{"ABCD", kp0.Address()},
 		Amount:  "10",
 		Price:   "1.0"}
 
@@ -522,14 +521,14 @@ func TestPathPayment(t *testing.T) {
 	kp2 := newKeypair2()
 	sourceAccount := makeTestAccount(kp2, "187316408680450")
 
-	abcdAsset := NewAsset("ABCD", kp0.Address())
+	abcdAsset := CreditAsset{"ABCD", kp0.Address()}
 	pathPayment := PathPayment{
-		SendAsset:   NewNativeAsset(),
+		SendAsset:   NativeAsset{},
 		SendMax:     "10",
 		Destination: kp2.Address(),
-		DestAsset:   NewNativeAsset(),
+		DestAsset:   NativeAsset{},
 		DestAmount:  "1",
-		Path:        []Asset{*abcdAsset},
+		Path:        []Asset{abcdAsset},
 	}
 
 	tx := Transaction{

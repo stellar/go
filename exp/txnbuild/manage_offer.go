@@ -9,7 +9,7 @@ import (
 
 //CreateOfferOp returns a ManageOffer operation to create a new offer, by
 // setting the OfferID to "0".
-func CreateOfferOp(selling, buying *Asset, amount, price string) ManageOffer {
+func CreateOfferOp(selling, buying Asset, amount, price string) ManageOffer {
 	return ManageOffer{
 		Selling: selling,
 		Buying:  buying,
@@ -20,7 +20,7 @@ func CreateOfferOp(selling, buying *Asset, amount, price string) ManageOffer {
 }
 
 //UpdateOfferOp returns a ManageOffer operation to update an offer.
-func UpdateOfferOp(selling, buying *Asset, amount, price string, offerID uint64) ManageOffer {
+func UpdateOfferOp(selling, buying Asset, amount, price string, offerID uint64) ManageOffer {
 	return ManageOffer{
 		Selling: selling,
 		Buying:  buying,
@@ -38,8 +38,8 @@ func DeleteOfferOp(offerID uint64) ManageOffer {
 	// Horizon will also reject if Buying == Selling.
 	// Therefore unfortunately we have to make up some dummy values here.
 	return ManageOffer{
-		Selling: NewNativeAsset(),
-		Buying:  NewAsset("FAKE", "GBAQPADEYSKYMYXTMASBUIS5JI3LMOAWSTM2CHGDBJ3QDDPNCSO3DVAA"),
+		Selling: NativeAsset{},
+		Buying:  CreditAsset{Code: "FAKE", Issuer: "GBAQPADEYSKYMYXTMASBUIS5JI3LMOAWSTM2CHGDBJ3QDDPNCSO3DVAA"},
 		Amount:  "0",
 		Price:   "1",
 		OfferID: offerID,
@@ -49,8 +49,8 @@ func DeleteOfferOp(offerID uint64) ManageOffer {
 // ManageOffer represents the Stellar manage offer operation. See
 // https://www.stellar.org/developers/guides/concepts/list-of-operations.html
 type ManageOffer struct {
-	Selling *Asset
-	Buying  *Asset
+	Selling Asset
+	Buying  Asset
 	Amount  string
 	Price   string // TODO: Extend to include number, and n/d fraction. See package 'amount'
 	OfferID uint64

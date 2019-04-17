@@ -76,11 +76,11 @@ func examplePathPayment(client *horizon.Client, mock bool) horizon.TransactionSu
 	// test1 - has a trustline for ABCD
 	// test2 - doesn't need a trustline for ABCD
 	keys := initKeys()
-	abcdAsset := txnbuild.Asset{
+	abcdAsset := txnbuild.CreditAsset{
 		Code:   "ABCD",
 		Issuer: keys[0].Address,
 	}
-	xlmAsset := txnbuild.NewNativeAsset()
+	xlmAsset := txnbuild.NativeAsset{}
 
 	// test0 creates an offer to sell ABCD
 	horizonSourceAccount0, err := client.LoadAccount(keys[0].Address)
@@ -163,8 +163,8 @@ func exampleCreatePassiveOffer(client *horizon.Client, mock bool) horizon.Transa
 	dieIfError("loadaccount", err)
 	sourceAccount := mapAccounts(horizonSourceAccount)
 
-	selling := txnbuild.NewNativeAsset()
-	buying := txnbuild.Asset{
+	selling := txnbuild.NativeAsset{}
+	buying := txnbuild.CreditAsset{
 		Code:   "ABCD",
 		Issuer: keys[0].Address,
 	}
@@ -195,8 +195,8 @@ func exampleManageOfferUpdateOffer(client *horizon.Client, mock bool) horizon.Tr
 	dieIfError("loadaccount", err)
 	sourceAccount := mapAccounts(horizonSourceAccount)
 
-	selling := txnbuild.NewNativeAsset()
-	buying := txnbuild.Asset{
+	selling := txnbuild.NativeAsset{}
+	buying := txnbuild.CreditAsset{
 		Code:   "ABCD",
 		Issuer: keys[0].Address,
 	}
@@ -246,8 +246,8 @@ func exampleManageOfferNewOffer(client *horizon.Client, mock bool) horizon.Trans
 	dieIfError("loadaccount", err)
 	sourceAccount := mapAccounts(horizonSourceAccount)
 
-	selling := txnbuild.NewNativeAsset()
-	buying := txnbuild.Asset{
+	selling := txnbuild.NativeAsset{}
+	buying := txnbuild.CreditAsset{
 		Code:   "ABCD",
 		Issuer: keys[0].Address,
 	}
@@ -274,7 +274,10 @@ func exampleAllowTrust(client *horizon.Client, mock bool) horizon.TransactionSuc
 	dieIfError("loadaccount", err)
 	sourceAccount := mapAccounts(horizonSourceAccount)
 
-	issued := txnbuild.NewAsset("ABCD", keys[0].Address)
+	issued := txnbuild.CreditAsset{
+		Code:   "ABCD",
+		Issuer: keys[0].Address,
+	}
 	allowTrust := txnbuild.AllowTrust{
 		Trustor:   keys[1].Address,
 		Type:      issued,
@@ -299,7 +302,10 @@ func exampleChangeTrust(client *horizon.Client, mock bool) horizon.TransactionSu
 	dieIfError("loadaccount", err)
 	sourceAccount := mapAccounts(horizonSourceAccount)
 
-	issuer := txnbuild.NewAsset("ABCD", keys[0].Address)
+	issuer := txnbuild.CreditAsset{
+		Code:   "ABCD",
+		Issuer: keys[0].Address,
+	}
 	changeTrust := txnbuild.ChangeTrust{
 		Line:  issuer,
 		Limit: "1000",
@@ -323,7 +329,10 @@ func exampleChangeTrustDeleteTrustline(client *horizon.Client, mock bool) horizo
 	dieIfError("loadaccount", err)
 	sourceAccount := mapAccounts(horizonSourceAccount)
 
-	issuedAsset := txnbuild.NewAsset("ABCD", keys[1].Address)
+	issuedAsset := txnbuild.CreditAsset{
+		Code:   "ABCD",
+		Issuer: keys[1].Address,
+	}
 	removeTrust := txnbuild.RemoveTrustlineOp(issuedAsset)
 
 	tx := txnbuild.Transaction{
@@ -473,7 +482,10 @@ func exampleSendNonNative(client *horizon.Client, mock bool) horizon.Transaction
 	payment := txnbuild.Payment{
 		Destination: keys[1].Address,
 		Amount:      "100",
-		Asset:       txnbuild.NewAsset("ABCD", keys[0].Address),
+		Asset: txnbuild.CreditAsset{
+			Code:   "ABCD",
+			Issuer: keys[0].Address,
+		},
 	}
 
 	tx := txnbuild.Transaction{
@@ -521,7 +533,6 @@ func exampleCreateAccount(client *horizon.Client, mock bool) horizon.Transaction
 	createAccount := txnbuild.CreateAccount{
 		Destination: "GAS4V4O2B7DW5T7IQRPEEVCRXMDZESKISR7DVIGKZQYYV3OSQ5SH5LVP",
 		Amount:      "10",
-		Asset:       "native",
 	}
 
 	tx := txnbuild.Transaction{

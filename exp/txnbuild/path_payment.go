@@ -9,10 +9,10 @@ import (
 // PathPayment represents the Stellar path payment operation. See
 // https://www.stellar.org/developers/guides/concepts/list-of-operations.html
 type PathPayment struct {
-	SendAsset   *Asset
+	SendAsset   Asset
 	SendMax     string
 	Destination string
-	DestAsset   *Asset
+	DestAsset   Asset
 	DestAmount  string
 	Path        []Asset
 }
