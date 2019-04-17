@@ -34,9 +34,7 @@ func (na NativeAsset) GetType() (AssetType, error) {
 }
 
 // IsNative for NativeAsset returns true (this is an XLM asset).
-func (na NativeAsset) IsNative() bool {
-	return true
-}
+func (na NativeAsset) IsNative() bool { return true }
 
 // GetCode for NativeAsset returns an empty string (XLM doesn't have a code).
 func (na NativeAsset) GetCode() string { return "" }
@@ -73,9 +71,7 @@ func (ca CreditAsset) GetType() (AssetType, error) {
 }
 
 // IsNative for CreditAsset returns false (this is not an XLM asset).
-func (ca CreditAsset) IsNative() bool {
-	return false
-}
+func (ca CreditAsset) IsNative() bool { return false }
 
 // GetCode for CreditAsset returns the asset code.
 func (ca CreditAsset) GetCode() string { return ca.Code }
