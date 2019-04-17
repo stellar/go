@@ -27,6 +27,7 @@ type Transaction struct {
 	Operations     []Operation
 	xdrTransaction xdr.Transaction
 	BaseFee        uint64 // TODO: Why is this a uint 64? Can it be a plain int?
+	Memo           Memo
 	xdrEnvelope    *xdr.TransactionEnvelope
 	Network        string
 }
@@ -91,6 +92,15 @@ func (tx *Transaction) Build() error {
 			return errors.Wrap(err, fmt.Sprintf("Failed to build operation %T", op))
 		}
 		tx.xdrTransaction.Operations = append(tx.xdrTransaction.Operations, xdrOperation)
+	}
+
+	// Handle the memo, if one is present
+	if tx.Memo != nil {
+		xdrMemo, err := tx.Memo.ToXDR()
+		if err != nil {
+			return errors.Wrap(err, "Couldn't build memo XDR")
+		}
+		tx.xdrTransaction.Memo = xdrMemo
 	}
 
 	// Set a default fee, if it hasn't been set yet
