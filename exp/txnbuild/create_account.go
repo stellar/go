@@ -11,7 +11,6 @@ import (
 type CreateAccount struct {
 	Destination string
 	Amount      string
-	Asset       string // TODO: Not used yet
 }
 
 // BuildXDR for CreateAccount returns a fully configured XDR Operation.

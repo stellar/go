@@ -43,7 +43,6 @@ func TestCreateAccount(t *testing.T) {
 	createAccount := CreateAccount{
 		Destination: "GCCOBXW2XQNUSL467IEILE6MMCNRR66SSVL4YQADUNYYNUVREF3FIV2Z",
 		Amount:      "10",
-		Asset:       "native",
 	}
 
 	tx := Transaction{

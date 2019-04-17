@@ -533,7 +533,6 @@ func exampleCreateAccount(client *horizon.Client, mock bool) horizon.Transaction
 	createAccount := txnbuild.CreateAccount{
 		Destination: "GAS4V4O2B7DW5T7IQRPEEVCRXMDZESKISR7DVIGKZQYYV3OSQ5SH5LVP",
 		Amount:      "10",
-		Asset:       "native",
 	}
 
 	tx := txnbuild.Transaction{
