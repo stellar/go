@@ -1,49 +1,24 @@
-# Stellar Ticker
+# Ticker
+This project aims to provide an easy-to-deploy Stellar ticker.
 
-This project aims to provide an easy-to-deploy Stellar ticker to replace http://ticker.stellar.org.
+## Quick Start
+This project provides a docker setup that makes it easy to get a Ticker up and running (you can check an architecture overview [here](docs/Architecture.md)). In order to get up and running, follow these steps:
 
-## Architecture
+1. Install [Docker](https://hub.docker.com/editions/community/docker-ce-desktop-mac)
+2. Clone the monorepo and `$ cd exp/ticker`
+3. Build the Ticker's docker image: `$ docker build -t ticker`
+4. Run the Ticker: `$ docker run --rm -it -p "8000:8000" ticker` (you'll be asked to enter a PostgreSQL password)
+5. After the initial setup (after the `supervisord started` message), you should be able to visit the two available endpoints: http://localhost:8000/markets.json and http://localhost:8000/assets.json
 
-The proposed solution consists of a set of tasks (which run according to a time schedule) and some services (which run continuously, as daemons) that are put together in order to provide a ticker (via https://ticker.stellar.org) that is highly available and provide data as fresh as possible.
+### Persisting the data
+The quickstart guide creates an efemeral database that will be deleted once the Docker image stops running. If you wish to have a persisting ticker, you'll have to mount a volume inside of it. If you want to do this, replace step `4` with the following steps:
 
-The setup and tools used are focused on creating an environment that is easy to replicate and doesn't depend on AWS specific services, so that Stellar users / developers can easily deploy a ticker of their own if they want. All code created should be open-sourced.
+1. Create a folder for the persisting data `$ mkdir /path/to/data/folder`
+2. Run the ticker with the mounted folder: `$ docker run --rm -it -p "8000:8000" -v "/path/to/data/folder:/opt/stellar/postgresql" ticker` (you'll also be asked to enter a PostgreSQL password in the first time you run, but shouldn't happen the next time you run this command).
+3. Voilà! After the initial setup / population is done, you should be able to visit you should be able to visit the two available endpoints: http://localhost:8000/markets.json and http://localhost:8000/assets.json
 
-The following diagram illustrates the proposed services, tasks, external sources, containers and some of the data flow for the New Stellar ticker:
-
-![Stellar Ticker Architecture Overview](docs/images/StellarTicker.png)
-
-Here is a quick overview of each of the proposed services, tasks and other components:
-- **Trade ingester (service):** connects to the Horizon Trade Stream API in order to stream new trades performed on the Stellar Network and ingest them into the PostgreSQL Database.
-- **Market & Assets Data Ingester:** connects to other Horizon APIs to retrieve other important data, such as assets.
-- **Trade Aggregator:** provides the logic for querying / aggregating trade and market data from the database and outputting it to either the JSON Generator or the GraphQL server.
-JSON Generator: gets the data provided by the trade Aggregator, formats it into the desired JSON format (similar to what we have in http://ticker.stellar.org) and output it to a file.
-- **GraphQL Endpoint:** provides a GraphQL interface for users to retrieve aggregated trade data from the Postgres DB.
-- **Web Server (nginx):** routes the client requests to either a) serve the JSON file ("/") or forward the request to the GraphQL server ("/graphql").
-- **Psql DB:** a PostgreSQL database to store the relational trade / market / asset data.
-Database Cleaner: since the Ticker has a limited time range of data, this service can clear old entries so the database doesn't considerably grow its storage usage throughout time.
-
-### Considerations
-1. All tasks (Market & Assets Data Ingester, JSON Generator,  Database Cleaner) and services (Trade Ingester, GraphQL Endpoint, Web Server) would run within a single container being supervised by supervisord, similarly to what is done in Horizon – enabling a very simple and fast deployment.
-1. We could also split each of the tasks / services into separate containers and orchestrate them, but this might defeat the purpose of making it easy to deploy.
-1. The Postgres database could run inside the container, or alternatively we could point to an external database and use docker-compose for local development.
-1. In this architecture, the output of the JSON Generator is saved in the filesystem, but we could also think about uploading the output to S3 and figure out some smart routing / reverse proxy.
-1. CoinMarketCap uses (at least to some degree) ticker.stellar.org to power its Stellar DEX markets page. Ensure that this keeps working. Hopefully that page will even get better by including more markets.
-
-## Roadmap
-- [ ] Create the basic infrastructure for the project.
-- [ ] Create the database models and the necessary functions to interact with them, as well as the migrations.
-- [ ] Create a service that connects to the Horizon Trade Stream API and constantly ingests new trades to the database. If the service has just started, it should also backfill with the freshest trade data.
-- [ ] Replicate the services from StellarX that calculate aggregations, find assets from Horizon, etc to provide all means to correctly generate the ticker data.
-- [ ] Create a script that generates an output JSON file (in the same format from ticker.stellar.org) every x minutes with the freshest data from the Database (alternatively, always update the JSON file whenever there’s an input from #3), and uploads it to S3 or serve it from the filesystem.
-- [ ] Create a task that cleans up old data from the db (e.g. entries older than 7 days).
-- [ ] Create a GraphQL endpoint to serve custom ticker data, as the StellarX counterpart does.
-- [ ] Encapsulate all these services in a Docker container (that might point to an external Postgres db) and configure supervisord.
-- [ ] (Recurring) Add tests.
-- [ ] Improve documentation.
-
-## Running the project (beta)
-1. Install sql-migrate: `$ go get -v github.com/rubenv/sql-migrate/...`
-1. Instal PostgreSQL: `$ brew install postgresql`
-1. Edit `dbconfig.yml` to reflect your database configuration.
-1. Run migrations `$ sql-migrate up`
-1. Run the project `$ DB_INFO="user=<DB_USER> dbname=<DB_NAME> sslmode=disable" go run main.go`
+## Using the CLI
+You can also test the Ticker locally, without the Docker setup. For that, you'll need a PostgreSQL instance running. In order to build the Ticker project, follow these steps:
+1. Install `go-dep`
+2. Go to the monorepo root and install the dependencies: `$ cd ../.. && dep ensure -v`
+3. After the dependencies are installed, run `$ go run main.go --help` to see the list of available commands.
