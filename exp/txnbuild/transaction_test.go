@@ -543,3 +543,24 @@ func TestPathPayment(t *testing.T) {
 	expected := "AAAAAH4RyzTWNfXhqwLUoCw91aWkZtgIzY8SAVkIPc0uFVmYAAAAZAAAql0AAAADAAAAAAAAAAAAAAABAAAAAAAAAAIAAAAAAAAAAAX14QAAAAAAfhHLNNY19eGrAtSgLD3VpaRm2AjNjxIBWQg9zS4VWZgAAAAAAAAAAACYloAAAAABAAAAAUFCQ0QAAAAA4Nxt4XJcrGZRYrUvrOc1sooiQ+QdEk1suS1wo+oucsUAAAAAAAAAAS4VWZgAAABAZBS66leC0Y7UMg6jPYWh04lLWW9cLOdjWKKIWCjBTwRPmRhb5KyVsRepZdAvl8jmaLnbTk20uJ1yWbenbbbqCw=="
 	assert.Equal(t, expected, received, "Base 64 XDR should match")
 }
+
+func TestMemo(t *testing.T) {
+	kp2 := newKeypair2()
+	sourceAccount := makeTestAccount(kp2, "3428320205078528")
+
+	bumpSequence := BumpSequence{
+		BumpTo: 1,
+	}
+
+	tx := Transaction{
+		SourceAccount: &sourceAccount,
+		Network:       network.TestNetworkPassphrase,
+		Operations:    []Operation{&bumpSequence},
+		Memo:          MemoText("Twas brillig"),
+	}
+
+	received := buildSignEncode(tx, kp2, t)
+	// https://www.stellar.org/laboratory/#xdr-viewer?input=AAAAAH4RyzTWNfXhqwLUoCw91aWkZtgIzY8SAVkIPc0uFVmYAAAAZAAMLgoAAAABAAAAAAAAAAEAAAAMVHdhcyBicmlsbGlnAAAAAQAAAAAAAAALAAAAAAAAAAEAAAAAAAAAAS4VWZgAAABAstxxDHhcXkfmDkHbe2ck2QFjh6w69VlBzqOeHbT0p0ZxS6cQrhlFZBdvBb4T5qlo0RF4D06z04ygqDqrXmiSDg%3D%3D&type=TransactionEnvelope&network=test
+	expected := "AAAAAH4RyzTWNfXhqwLUoCw91aWkZtgIzY8SAVkIPc0uFVmYAAAAZAAMLgoAAAABAAAAAAAAAAEAAAAMVHdhcyBicmlsbGlnAAAAAQAAAAAAAAALAAAAAAAAAAEAAAAAAAAAAS4VWZgAAABAstxxDHhcXkfmDkHbe2ck2QFjh6w69VlBzqOeHbT0p0ZxS6cQrhlFZBdvBb4T5qlo0RF4D06z04ygqDqrXmiSDg=="
+	assert.Equal(t, expected, received, "Base 64 XDR should match")
+}
