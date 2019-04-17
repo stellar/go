@@ -177,10 +177,16 @@ func TestRetrieveMarketData(t *testing.T) {
 	assert.Equal(t, 100.0, xlmbtcMkt.BaseVolume24h)
 	assert.Equal(t, 10.0, xlmbtcMkt.CounterVolume24h)
 	assert.Equal(t, int64(1), xlmbtcMkt.TradeCount24h)
+	assert.Equal(t, 0.1, xlmbtcMkt.OpenPrice24h)
+	assert.Equal(t, 0.1, xlmbtcMkt.LowestPrice24h)
+	assert.Equal(t, 0.1, xlmbtcMkt.HighestPrice24h)
 
 	assert.Equal(t, 150.0, xlmbtcMkt.BaseVolume7d)
 	assert.Equal(t, 16.0, xlmbtcMkt.CounterVolume7d)
 	assert.Equal(t, int64(2), xlmbtcMkt.TradeCount7d)
+	assert.Equal(t, 0.12, xlmbtcMkt.OpenPrice7d)
+	assert.Equal(t, 0.1, xlmbtcMkt.LowestPrice7d)
+	assert.Equal(t, 0.12, xlmbtcMkt.HighestPrice7d)
 
 	assert.Equal(t, 0.1, xlmbtcMkt.LastPrice)
 	assert.Equal(
@@ -199,10 +205,16 @@ func TestRetrieveMarketData(t *testing.T) {
 	assert.Equal(t, 74.0, xlmethMkt.BaseVolume24h)
 	assert.Equal(t, 76.0, xlmethMkt.CounterVolume24h)
 	assert.Equal(t, int64(2), xlmethMkt.TradeCount24h)
+	assert.Equal(t, 0.92, xlmethMkt.OpenPrice24h)
+	assert.Equal(t, 0.92, xlmethMkt.LowestPrice24h)
+	assert.Equal(t, 1.0, xlmethMkt.HighestPrice24h)
 
 	assert.Equal(t, 74.0, xlmethMkt.BaseVolume7d)
 	assert.Equal(t, 76.0, xlmethMkt.CounterVolume7d)
 	assert.Equal(t, int64(2), xlmethMkt.TradeCount7d)
+	assert.Equal(t, 0.92, xlmethMkt.OpenPrice7d)
+	assert.Equal(t, 0.92, xlmethMkt.LowestPrice7d)
+	assert.Equal(t, 1.0, xlmethMkt.HighestPrice7d)
 
 	assert.Equal(t, 1.0, xlmethMkt.LastPrice)
 	assert.Equal(
