@@ -29,6 +29,7 @@ type MarketStats struct {
 	Low7d            float64 `json:"low_7d"`
 	High7d           float64 `json:"high_7d"`
 	Change7d         float64 `json:"change_7d"`
+	Price            float64 `json:"price"`
 	Close            float64 `json:"close"`
 	CloseTime        int64   `json:"close_time"`
 }

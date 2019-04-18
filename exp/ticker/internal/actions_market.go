@@ -75,6 +75,7 @@ func dbMarketToMarketStats(m tickerdb.Market) MarketStats {
 		Low7d:            m.LowestPrice7d,
 		High7d:           m.HighestPrice7d,
 		Change7d:         m.PriceChange7d,
+		Price:            m.LastPrice,
 		Close:            m.LastPrice,
 		CloseTime:        closeTime,
 	}
