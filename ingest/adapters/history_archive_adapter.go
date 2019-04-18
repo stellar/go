@@ -11,6 +11,11 @@ type HistoryArchiveAdapter struct {
 	archive historyarchive.Archive
 }
 
+// MakeHistoryArchiveAdapter is a factory method to make a HistoryArchiveAdapter
+func MakeHistoryArchiveAdapter(archive historyarchive.Archive) *HistoryArchiveAdapter {
+	return &HistoryArchiveAdapter{archive: archive}
+}
+
 // GetLatestLedgerSequence returns the latest ledger sequence or an error
 func (haa *HistoryArchiveAdapter) GetLatestLedgerSequence() (uint32, error) {
 	l, e := haa.archive.GetRootHAS()
