@@ -11,16 +11,21 @@ SELECT
 	COALESCE(t1.base_volume_24h, 0.0) as base_volume_24h,
 	COALESCE(t1.counter_volume_24h, 0.0) as counter_volume_24h,
 	COALESCE(t1.trade_count_24h, 0) as trade_count_24h,
+	COALESCE(t1.highest_price_24h, 0.0) as highest_price_24h,
+	COALESCE(t1.lowest_price_24h, 0.0) as lowest_price_24h,
+	COALESCE(t4.price_24h_ago - last_price, 0.0) as price_change_24h,
+	COALESCE(t4.price_24h_ago, 0.0) as open_price_24h,
 
 	COALESCE(t2.base_volume_7d, 0) as base_volume_7d,
 	COALESCE(t2.counter_volume_7d, 0) as counter_volume_7d,
 	COALESCE(t2.trade_count_7d, 0) as trade_count_7d,
+	COALESCE(t2.highest_price_7d, 0.0) as highest_price_7d,
+	COALESCE(t2.lowest_price_7d, 0.0) as lowest_price_7d,
+	COALESCE(t5.price_7d_ago - last_price, 0.0) as price_change_7d,
+	COALESCE(t5.price_7d_ago, 0.0) as open_price_7d,
 
 	COALESCE(t3.last_price, 0.0) as last_price,
-	COALESCE(t3.last_close_time, now()) as close_time,
-
-	COALESCE(t4.price_24h_ago - last_price, 0.0) as price_change_24h,
-	COALESCE(t5.price_7d_ago - last_price, 0.0) as price_change_7d
+	COALESCE(t3.last_close_time, now()) as close_time
 
 FROM (
 	-- All trades between valid assets in the last 24h aggregated:
@@ -28,6 +33,8 @@ FROM (
 		concat(bAsset.code, '_', cAsset.code) as trade_pair_name,
 		sum(t.base_amount) as base_volume_24h,
 		sum(t.counter_amount) as counter_volume_24h,
+		max(t.price) as highest_price_24h,
+		min(t.price) as lowest_price_24h,
 		count(t.base_amount) as trade_count_24h
 	FROM trades as t
 		JOIN assets as bAsset
@@ -45,6 +52,8 @@ FULL JOIN (
 		concat(bAsset.code, '_', cAsset.code) as trade_pair_name,
 		sum(t.base_amount) as base_volume_7d,
 		sum(t.counter_amount) as counter_volume_7d,
+		max(t.price) as highest_price_7d,
+		min(t.price) as lowest_price_7d,
 		count(t.base_amount) as trade_count_7d
 	FROM trades as t
 		JOIN assets as bAsset
