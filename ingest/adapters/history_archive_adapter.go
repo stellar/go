@@ -18,12 +18,12 @@ func MakeHistoryArchiveAdapter(archive historyarchive.Archive) *HistoryArchiveAd
 
 // GetLatestLedgerSequence returns the latest ledger sequence or an error
 func (haa *HistoryArchiveAdapter) GetLatestLedgerSequence() (uint32, error) {
-	l, e := haa.archive.GetRootHAS()
+	has, e := haa.archive.GetRootHAS()
 	if e != nil {
 		return 0, fmt.Errorf("could not get root HAS: %s", e)
 	}
 
-	return l.CurrentLedger, nil
+	return has.CurrentLedger, nil
 }
 
 // GetState returns a reader with the state of the ledger at the provided sequence number
