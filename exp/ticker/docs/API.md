@@ -27,6 +27,7 @@ are aggregated in the `XLM_BTC` pair.
 * `low_7d`: lowest price in the last 7 days
 * `high_7d`: highest price in the last 7 days
 * `change_7d`: price difference between open and low in the last 7 days
+* `price`: (DEPRECATED) price of the most recent trade in this market
 * `close`: price of the most recent trade in this market
 * `close_time`: ledger close time of the most recent trade in this market
 
@@ -55,6 +56,7 @@ GET `https://ticker.stellar.org/markets.json`
             "low_7d": 0.04348452989055152,
             "high_7d": 0.05100629529387713,
             "change_7d": 0.0059426550206679585,
+            "price": 0.043907793633369926,
             "close": 0.043907793633369926,
             "close_time": 1555484876000
         },
@@ -74,6 +76,7 @@ GET `https://ticker.stellar.org/markets.json`
             "low_7d": 0.04,
             "high_7d": 0.04,
             "change_7d": 0,
+            "price": 0.04,
             "close": 0.04,
             "close_time": 1554943803000
         }
