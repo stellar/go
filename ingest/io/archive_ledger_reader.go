@@ -1,4 +1,4 @@
-package ingestio
+package io
 
 import "github.com/stellar/go/xdr"
 

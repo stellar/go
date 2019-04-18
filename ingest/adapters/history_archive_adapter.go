@@ -3,6 +3,7 @@ package ingestadapters
 import (
 	"fmt"
 
+	"github.com/stellar/go/ingest/io"
 	"github.com/stellar/go/support/historyarchive"
 )
 
