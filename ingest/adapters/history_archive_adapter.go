@@ -9,11 +9,11 @@ import (
 
 // HistoryArchiveAdapter is an adapter for the historyarchive package to read from history archives
 type HistoryArchiveAdapter struct {
-	archive historyarchive.Archive
+	archive *historyarchive.Archive
 }
 
 // MakeHistoryArchiveAdapter is a factory method to make a HistoryArchiveAdapter
-func MakeHistoryArchiveAdapter(archive historyarchive.Archive) *HistoryArchiveAdapter {
+func MakeHistoryArchiveAdapter(archive *historyarchive.Archive) *HistoryArchiveAdapter {
 	return &HistoryArchiveAdapter{archive: archive}
 }
 
