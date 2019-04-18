@@ -1,6 +1,8 @@
 package ingestadapters
 
 import (
+	"fmt"
+
 	"github.com/stellar/go/support/historyarchive"
 )
 
@@ -11,7 +13,12 @@ type HistoryArchiveAdapter struct {
 
 // GetLatestLedgerSequence returns the latest ledger sequence or an error
 func (haa *HistoryArchiveAdapter) GetLatestLedgerSequence() (uint32, error) {
-	return nil, nil
+	l, e := haa.archive.GetRootHAS()
+	if e != nil {
+		return 0, fmt.Errorf("could not get root HAS: %s", e)
+	}
+
+	return l.CurrentLedger, nil
 }
 
 // GetState returns a reader with the state of the ledger at the provided sequence number
