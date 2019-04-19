@@ -1,13 +1,10 @@
 package horizonclient
 
 import (
-	"context"
 	"fmt"
 	"testing"
-	"time"
 
 	hProtocol "github.com/stellar/go/protocols/horizon"
-	"github.com/stellar/go/protocols/horizon/effects"
 	"github.com/stellar/go/protocols/horizon/operations"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/support/http/httptest"
@@ -17,7 +14,7 @@ import (
 func ExampleClient_AccountDetail() {
 
 	client := DefaultPublicNetClient
-	accountRequest := AccountRequest{AccountId: "GCLWGQPMKXQSPF776IU33AH4PZNOOWNAWGGKVTBQMIC5IMKUNP3E6NVU"}
+	accountRequest := AccountRequest{AccountID: "GCLWGQPMKXQSPF776IU33AH4PZNOOWNAWGGKVTBQMIC5IMKUNP3E6NVU"}
 
 	account, err := client.AccountDetail(accountRequest)
 	if err != nil {
@@ -70,35 +67,6 @@ func ExampleClient_Assets() {
 		return
 	}
 	fmt.Print(asset)
-}
-
-func ExampleClient_Stream() {
-	// stream effects
-
-	client := DefaultPublicNetClient
-	effectRequest := EffectRequest{Cursor: "now"}
-
-	ctx, cancel := context.WithCancel(context.Background())
-
-	go func() {
-		// Stop streaming after 60 seconds.
-		time.Sleep(60 * time.Second)
-		cancel()
-	}()
-
-	// to do: can `e interface{}` be `e Effect` ?? Then we won't have type assertion.
-	err := client.Stream(ctx, effectRequest, func(e interface{}) {
-
-		resp, ok := e.(effects.Base)
-		if ok {
-			fmt.Println(resp.Type)
-		}
-
-	})
-
-	if err != nil {
-		fmt.Println(err)
-	}
 }
 
 func ExampleClient_LedgerDetail() {
@@ -191,9 +159,9 @@ func ExampleClient_Operations() {
 func ExampleClient_OperationDetail() {
 
 	client := DefaultPublicNetClient
-	opId := "123456"
+	opID := "123456"
 	// operation details for an id
-	ops, err := client.OperationDetail(opId)
+	ops, err := client.OperationDetail(opID)
 	if err != nil {
 		fmt.Println(err)
 		return
@@ -203,9 +171,9 @@ func ExampleClient_OperationDetail() {
 
 func ExampleClient_SubmitTransaction() {
 
-	client := DefaultTestNetClient
-	// https://www.stellar.org/laboratory/#xdr-viewer?input=AAAAABB90WssODNIgi6BHveqzxTRmIpvAFRyVNM%2BHm2GVuCcAAAAZAAABD0AAuV%2FAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAyTBGxOgfSApppsTnb%2FYRr6gOR8WT0LZNrhLh4y3FCgoAAAAXSHboAAAAAAAAAAABhlbgnAAAAEAivKe977CQCxMOKTuj%2BcWTFqc2OOJU8qGr9afrgu2zDmQaX5Q0cNshc3PiBwe0qw%2F%2BD%2FqJk5QqM5dYeSUGeDQP&type=TransactionEnvelope&network=test
-	txXdr := `AAAAABB90WssODNIgi6BHveqzxTRmIpvAFRyVNM+Hm2GVuCcAAAAZAAABD0AAuV/AAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAyTBGxOgfSApppsTnb/YRr6gOR8WT0LZNrhLh4y3FCgoAAAAXSHboAAAAAAAAAAABhlbgnAAAAEAivKe977CQCxMOKTuj+cWTFqc2OOJU8qGr9afrgu2zDmQaX5Q0cNshc3PiBwe0qw/+D/qJk5QqM5dYeSUGeDQP`
+	client := DefaultPublicNetClient
+	// https://www.stellar.org/laboratory/#xdr-viewer?input=AAAAAOoS%2F5V%2BBiCPXRiVcz8YsnkDdODufq%2Bg7xdqTdIXN8vyAAAE4gFiW0YAAALxAAAAAQAAAAAAAAAAAAAAAFyuBUcAAAABAAAABzIyMjgyNDUAAAAAAQAAAAEAAAAALhsY%2FFdAHXllTmb025DtCVBw06WDSQjq6I9NrCQHOV8AAAABAAAAAHT8zKV7bRQzuGTpk9AO3gjWJ9jVxBXTgguFORkxHVIKAAAAAAAAAAAAOnDwAAAAAAAAAAIkBzlfAAAAQPefqlsOvni6xX1g3AqddvOp1GOM88JYzayGZodbzTfV5toyhxZvL1ZggY3prFsvrereugEpj1kyPJ67z6gcRg0XN8vyAAAAQGwmoTssW49gaze8iQkz%2FUA2E2N%2BBOo%2B6v7YdOSsvIcZnMc37KmXH920nLosKpDLqkNChVztSZFcbVUlHhjbQgA%3D&type=TransactionEnvelope&network=public
+	txXdr := `AAAAAOoS/5V+BiCPXRiVcz8YsnkDdODufq+g7xdqTdIXN8vyAAAE4gFiW0YAAALxAAAAAQAAAAAAAAAAAAAAAFyuBUcAAAABAAAABzIyMjgyNDUAAAAAAQAAAAEAAAAALhsY/FdAHXllTmb025DtCVBw06WDSQjq6I9NrCQHOV8AAAABAAAAAHT8zKV7bRQzuGTpk9AO3gjWJ9jVxBXTgguFORkxHVIKAAAAAAAAAAAAOnDwAAAAAAAAAAIkBzlfAAAAQPefqlsOvni6xX1g3AqddvOp1GOM88JYzayGZodbzTfV5toyhxZvL1ZggY3prFsvrereugEpj1kyPJ67z6gcRg0XN8vyAAAAQGwmoTssW49gaze8iQkz/UA2E2N+BOo+6v7YdOSsvIcZnMc37KmXH920nLosKpDLqkNChVztSZFcbVUlHhjbQgA=`
 
 	// submit transaction
 	resp, err := client.SubmitTransaction(txXdr)
@@ -213,10 +181,9 @@ func ExampleClient_SubmitTransaction() {
 		fmt.Println(err)
 		return
 	}
-	// To do: remove output. It will fail when testnet is reset
 
 	fmt.Print(resp)
-	// Output: {{{https://horizon-testnet.stellar.org/transactions/bcc7a97264dca0a51a63f7ea971b5e7458e334489673078bb2a34eb0cce910ca false}} bcc7a97264dca0a51a63f7ea971b5e7458e334489673078bb2a34eb0cce910ca 354811 AAAAABB90WssODNIgi6BHveqzxTRmIpvAFRyVNM+Hm2GVuCcAAAAZAAABD0AAuV/AAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAyTBGxOgfSApppsTnb/YRr6gOR8WT0LZNrhLh4y3FCgoAAAAXSHboAAAAAAAAAAABhlbgnAAAAEAivKe977CQCxMOKTuj+cWTFqc2OOJU8qGr9afrgu2zDmQaX5Q0cNshc3PiBwe0qw/+D/qJk5QqM5dYeSUGeDQP AAAAAAAAAGQAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAA= AAAAAQAAAAIAAAADAAVp+wAAAAAAAAAAEH3Rayw4M0iCLoEe96rPFNGYim8AVHJU0z4ebYZW4JwACBP/TuycHAAABD0AAuV+AAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAABAAVp+wAAAAAAAAAAEH3Rayw4M0iCLoEe96rPFNGYim8AVHJU0z4ebYZW4JwACBP/TuycHAAABD0AAuV/AAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAABAAAAAwAAAAMABWn7AAAAAAAAAAAQfdFrLDgzSIIugR73qs8U0ZiKbwBUclTTPh5thlbgnAAIE/9O7JwcAAAEPQAC5X8AAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAEABWn7AAAAAAAAAAAQfdFrLDgzSIIugR73qs8U0ZiKbwBUclTTPh5thlbgnAAIE+gGdbQcAAAEPQAC5X8AAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAABWn7AAAAAAAAAADJMEbE6B9ICmmmxOdv9hGvqA5HxZPQtk2uEuHjLcUKCgAAABdIdugAAAVp+wAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAA==}
+	// Output: {{{https://horizon.stellar.org/transactions/f8a09e8a17fc828a1b99814818ddc931876eec0fe9c203f5980d26d92641e1c2 false}} f8a09e8a17fc828a1b99814818ddc931876eec0fe9c203f5980d26d92641e1c2 23350654 AAAAAOoS/5V+BiCPXRiVcz8YsnkDdODufq+g7xdqTdIXN8vyAAAE4gFiW0YAAALxAAAAAQAAAAAAAAAAAAAAAFyuBUcAAAABAAAABzIyMjgyNDUAAAAAAQAAAAEAAAAALhsY/FdAHXllTmb025DtCVBw06WDSQjq6I9NrCQHOV8AAAABAAAAAHT8zKV7bRQzuGTpk9AO3gjWJ9jVxBXTgguFORkxHVIKAAAAAAAAAAAAOnDwAAAAAAAAAAIkBzlfAAAAQPefqlsOvni6xX1g3AqddvOp1GOM88JYzayGZodbzTfV5toyhxZvL1ZggY3prFsvrereugEpj1kyPJ67z6gcRg0XN8vyAAAAQGwmoTssW49gaze8iQkz/UA2E2N+BOo+6v7YdOSsvIcZnMc37KmXH920nLosKpDLqkNChVztSZFcbVUlHhjbQgA= AAAAAAAABOIAAAAAAAAAAQAAAAAAAAABAAAAAAAAAAA= AAAAAQAAAAIAAAADAWRNfgAAAAAAAAAA6hL/lX4GII9dGJVzPxiyeQN04O5+r6DvF2pN0hc3y/IAAAAAAuyTvgFiW0YAAALwAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAABAWRNfgAAAAAAAAAA6hL/lX4GII9dGJVzPxiyeQN04O5+r6DvF2pN0hc3y/IAAAAAAuyTvgFiW0YAAALxAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAABAAAABAAAAAMBZE0IAAAAAAAAAAB0/Myle20UM7hk6ZPQDt4I1ifY1cQV04ILhTkZMR1SCgAAAbZToYkOAToKfwAAAAEAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAEBZE1+AAAAAAAAAAB0/Myle20UM7hk6ZPQDt4I1ifY1cQV04ILhTkZMR1SCgAAAbZT2/n+AToKfwAAAAEAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAMBZE19AAAAAAAAAAAuGxj8V0AdeWVOZvTbkO0JUHDTpYNJCOroj02sJAc5XwAAAACrUfjvARGUKgAApRsAAAAAAAAAAAAAAAAAAAAObnlhbmRldi1pZC5vcmcAAAEAAAAAAAAAAAAAAAAAAAAAAAABAWRNfgAAAAAAAAAALhsY/FdAHXllTmb025DtCVBw06WDSQjq6I9NrCQHOV8AAAAAqxeH/wERlCoAAKUbAAAAAAAAAAAAAAAAAAAADm55YW5kZXYtaWQub3JnAAABAAAAAAAAAAAAAAAAAAAA}
 }
 
 func ExampleClient_SetHorizonTimeOut() {
@@ -277,6 +244,41 @@ func ExampleClient_OrderBook() {
 	fmt.Print(obs)
 }
 
+func ExampleClient_Payments() {
+
+	client := DefaultPublicNetClient
+	// payments for an account
+	opRequest := OperationRequest{ForAccount: "GCLWGQPMKXQSPF776IU33AH4PZNOOWNAWGGKVTBQMIC5IMKUNP3E6NVU"}
+	ops, err := client.Payments(opRequest)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	fmt.Print(ops)
+
+	// all payments
+	opRequest = OperationRequest{Cursor: "now"}
+	ops, err = client.Payments(opRequest)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	fmt.Print(ops)
+	records := ops.Embedded.Records
+
+	for _, value := range records {
+		// prints the type
+		fmt.Print(value.GetType())
+		// for example if the type is create_account
+		c, ok := value.(operations.CreateAccount)
+		if ok {
+			// access create_account fields
+			fmt.Print(c.StartingBalance)
+		}
+
+	}
+}
+
 func TestAccountDetail(t *testing.T) {
 	hmock := httptest.NewClient()
 	client := &Client{
@@ -310,7 +312,7 @@ func TestAccountDetail(t *testing.T) {
 		assert.Contains(t, err.Error(), "No account ID provided")
 	}
 
-	accountRequest = AccountRequest{AccountId: "GCLWGQPMKXQSPF776IU33AH4PZNOOWNAWGGKVTBQMIC5IMKUNP3E6NVU"}
+	accountRequest = AccountRequest{AccountID: "GCLWGQPMKXQSPF776IU33AH4PZNOOWNAWGGKVTBQMIC5IMKUNP3E6NVU"}
 
 	// happy path
 	hmock.On(
@@ -380,7 +382,7 @@ func TestAccountData(t *testing.T) {
 	}
 
 	// wrong parameters
-	accountRequest = AccountRequest{AccountId: "GCLWGQPMKXQSPF776IU33AH4PZNOOWNAWGGKVTBQMIC5IMKUNP3E6NVU"}
+	accountRequest = AccountRequest{AccountID: "GCLWGQPMKXQSPF776IU33AH4PZNOOWNAWGGKVTBQMIC5IMKUNP3E6NVU"}
 	hmock.On(
 		"GET",
 		"https://localhost/accounts/GCLWGQPMKXQSPF776IU33AH4PZNOOWNAWGGKVTBQMIC5IMKUNP3E6NVU/data/test",
@@ -392,7 +394,7 @@ func TestAccountData(t *testing.T) {
 		assert.Contains(t, err.Error(), "Too few parameters")
 	}
 
-	accountRequest = AccountRequest{AccountId: "GCLWGQPMKXQSPF776IU33AH4PZNOOWNAWGGKVTBQMIC5IMKUNP3E6NVU", DataKey: "test"}
+	accountRequest = AccountRequest{AccountID: "GCLWGQPMKXQSPF776IU33AH4PZNOOWNAWGGKVTBQMIC5IMKUNP3E6NVU", DataKey: "test"}
 
 	// happy path
 	hmock.On(
@@ -483,71 +485,6 @@ func TestAssetsRequest(t *testing.T) {
 		assert.Equal(t, record.Flags.AuthImmutable, false)
 	}
 
-}
-
-func TestLedgerDetail(t *testing.T) {
-	hmock := httptest.NewClient()
-	client := &Client{
-		HorizonURL: "https://localhost/",
-		HTTP:       hmock,
-	}
-
-	// invalid parameters
-	var sequence uint32 = 0
-	hmock.On(
-		"GET",
-		"https://localhost/ledgers/",
-	).ReturnString(200, ledgerResponse)
-
-	_, err := client.LedgerDetail(sequence)
-	// error case: invalid sequence
-	if assert.Error(t, err) {
-		assert.Contains(t, err.Error(), "Invalid sequence number provided")
-	}
-
-	// happy path
-	hmock.On(
-		"GET",
-		"https://localhost/ledgers/69859",
-	).ReturnString(200, ledgerResponse)
-
-	sequence = 69859
-	ledger, err := client.LedgerDetail(sequence)
-	ftc := int32(1)
-
-	if assert.NoError(t, err) {
-		assert.Equal(t, ledger.ID, "71a40c0581d8d7c1158e1d9368024c5f9fd70de17a8d277cdd96781590cc10fb")
-		assert.Equal(t, ledger.PT, "300042120331264")
-		assert.Equal(t, ledger.Sequence, int32(69859))
-		assert.Equal(t, ledger.FailedTransactionCount, &ftc)
-	}
-
-	// failure response
-	hmock.On(
-		"GET",
-		"https://localhost/ledgers/69859",
-	).ReturnString(404, notFoundResponse)
-
-	_, err = client.LedgerDetail(sequence)
-	if assert.Error(t, err) {
-		assert.Contains(t, err.Error(), "Horizon error")
-		horizonError, ok := err.(*Error)
-		assert.Equal(t, ok, true)
-		assert.Equal(t, horizonError.Problem.Title, "Resource Missing")
-	}
-
-	// connection error
-	hmock.On(
-		"GET",
-		"https://localhost/ledgers/69859",
-	).ReturnError("http.Client error")
-
-	_, err = client.LedgerDetail(sequence)
-	if assert.Error(t, err) {
-		assert.Contains(t, err.Error(), "http.Client error")
-		_, ok := err.(*Error)
-		assert.Equal(t, ok, false)
-	}
 }
 
 func TestMetrics(t *testing.T) {
@@ -718,6 +655,36 @@ func TestOperationsRequest(t *testing.T) {
 		assert.Equal(t, c.TransactionHash, "ade3c60f1b581e8744596673d95bffbdb8f68f199e0e2f7d63b7c3af9fd8d868")
 	}
 
+	// all payments
+	hmock.On(
+		"GET",
+		"https://localhost/payments",
+	).ReturnString(200, paymentsResponse)
+
+	ops, err = client.Payments(operationRequest)
+	if assert.NoError(t, err) {
+		assert.IsType(t, ops, operations.OperationsPage{})
+		links := ops.Links
+		assert.Equal(t, links.Self.Href, "https://horizon-testnet.stellar.org/payments?cursor=&limit=2&order=desc")
+
+		assert.Equal(t, links.Next.Href, "https://horizon-testnet.stellar.org/payments?cursor=2024660468248577&limit=2&order=desc")
+
+		assert.Equal(t, links.Prev.Href, "https://horizon-testnet.stellar.org/payments?cursor=2024660468256769&limit=2&order=asc")
+
+		createAccountOp := ops.Embedded.Records[0]
+		paymentOp := ops.Embedded.Records[1]
+
+		assert.IsType(t, paymentOp, operations.Payment{})
+		assert.IsType(t, createAccountOp, operations.CreateAccount{})
+
+		p, ok := paymentOp.(operations.Payment)
+		assert.Equal(t, ok, true)
+		assert.Equal(t, p.ID, "2024660468248577")
+		assert.Equal(t, p.Amount, "177.0000000")
+		assert.Equal(t, p.TransactionHash, "87d7a29539e7902b14a6c720094856f74a77128ab332d8629432c5a176a9fe7b")
+	}
+
+	// operations for account
 	operationRequest = OperationRequest{ForAccount: "GCLWGQPMKXQSPF776IU33AH4PZNOOWNAWGGKVTBQMIC5IMKUNP3E6NVU"}
 	hmock.On(
 		"GET",
@@ -743,13 +710,13 @@ func TestOperationsRequest(t *testing.T) {
 	}
 
 	// operation detail
-	opId := "1103965508866049"
+	opID := "1103965508866049"
 	hmock.On(
 		"GET",
 		"https://localhost/operations/1103965508866049",
 	).ReturnString(200, opsResponse)
 
-	record, err := client.OperationDetail(opId)
+	record, err := client.OperationDetail(opID)
 	if assert.NoError(t, err) {
 		assert.Equal(t, record.GetType(), "change_trust")
 		c, ok := record.(operations.ChangeTrust)
@@ -1792,4 +1759,83 @@ var orderBookNotFound = `{
   "title": "Invalid Order Book Parameters",
   "status": 400,
   "detail": "The parameters that specify what order book to view are invalid in some way. Please ensure that your type parameters (selling_asset_type and buying_asset_type) are one the following valid values: native, credit_alphanum4, credit_alphanum12.  Also ensure that you have specified selling_asset_code and selling_asset_issuer if selling_asset_type is not 'native', as well as buying_asset_code and buying_asset_issuer if buying_asset_type is not 'native'"
+}`
+
+var paymentsResponse = `{
+  "_links": {
+    "self": {
+      "href": "https://horizon-testnet.stellar.org/payments?cursor=&limit=2&order=desc"
+    },
+    "next": {
+      "href": "https://horizon-testnet.stellar.org/payments?cursor=2024660468248577&limit=2&order=desc"
+    },
+    "prev": {
+      "href": "https://horizon-testnet.stellar.org/payments?cursor=2024660468256769&limit=2&order=asc"
+    }
+  },
+  "_embedded": {
+    "records": [
+      {
+        "_links": {
+          "self": {
+            "href": "https://horizon-testnet.stellar.org/operations/2024660468256769"
+          },
+          "transaction": {
+            "href": "https://horizon-testnet.stellar.org/transactions/a0207513c372146bae8cdb299975047216cb1ffb393074b2015b39496e8767c2"
+          },
+          "effects": {
+            "href": "https://horizon-testnet.stellar.org/operations/2024660468256769/effects"
+          },
+          "succeeds": {
+            "href": "https://horizon-testnet.stellar.org/effects?order=desc&cursor=2024660468256769"
+          },
+          "precedes": {
+            "href": "https://horizon-testnet.stellar.org/effects?order=asc&cursor=2024660468256769"
+          }
+        },
+        "id": "2024660468256769",
+        "paging_token": "2024660468256769",
+        "transaction_successful": true,
+        "source_account": "GAIH3ULLFQ4DGSECF2AR555KZ4KNDGEKN4AFI4SU2M7B43MGK3QJZNSR",
+        "type": "create_account",
+        "type_i": 0,
+        "created_at": "2019-03-27T09:55:41Z",
+        "transaction_hash": "a0207513c372146bae8cdb299975047216cb1ffb393074b2015b39496e8767c2",
+        "starting_balance": "10000.0000000",
+        "funder": "GAIH3ULLFQ4DGSECF2AR555KZ4KNDGEKN4AFI4SU2M7B43MGK3QJZNSR",
+        "account": "GB4OHVQE7OZH4HLCHFNR7OHDMZVNKOJT3RCRAXRNGGCNUHFRVGUGKW36"
+      },
+      {
+        "_links": {
+          "self": {
+            "href": "https://horizon-testnet.stellar.org/operations/2024660468248577"
+          },
+          "transaction": {
+            "href": "https://horizon-testnet.stellar.org/transactions/87d7a29539e7902b14a6c720094856f74a77128ab332d8629432c5a176a9fe7b"
+          },
+          "effects": {
+            "href": "https://horizon-testnet.stellar.org/operations/2024660468248577/effects"
+          },
+          "succeeds": {
+            "href": "https://horizon-testnet.stellar.org/effects?order=desc&cursor=2024660468248577"
+          },
+          "precedes": {
+            "href": "https://horizon-testnet.stellar.org/effects?order=asc&cursor=2024660468248577"
+          }
+        },
+        "id": "2024660468248577",
+        "paging_token": "2024660468248577",
+        "transaction_successful": true,
+        "source_account": "GAL6CXEVI3Y4O4J3FIX3KCRF7HSUG5RW2IRQRUUFC6XHZOLNV3NU35TL",
+        "type": "payment",
+        "type_i": 1,
+        "created_at": "2019-03-27T09:55:41Z",
+        "transaction_hash": "87d7a29539e7902b14a6c720094856f74a77128ab332d8629432c5a176a9fe7b",
+        "asset_type": "native",
+        "from": "GAL6CXEVI3Y4O4J3FIX3KCRF7HSUG5RW2IRQRUUFC6XHZOLNV3NU35TL",
+        "to": "GDGEQS64ISS6Y2KDM5V67B6LXALJX4E7VE4MIA54NANSUX5MKGKBZM5G",
+        "amount": "177.0000000"
+      }
+    ]
+  }
 }`

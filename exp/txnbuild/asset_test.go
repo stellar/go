@@ -10,7 +10,7 @@ import (
 )
 
 func TestNativeAssetToXDR(t *testing.T) {
-	asset := Asset{}
+	asset := NativeAsset{}
 
 	received, err := asset.ToXDR()
 	assert.Nil(t, err)
@@ -20,7 +20,7 @@ func TestNativeAssetToXDR(t *testing.T) {
 }
 
 func TestAlphaNum4AssetToXDR(t *testing.T) {
-	asset := Asset{
+	asset := CreditAsset{
 		Code:   "USD",
 		Issuer: newKeypair0().Address(),
 	}
@@ -41,7 +41,7 @@ func TestAlphaNum4AssetToXDR(t *testing.T) {
 }
 
 func TestAlphaNum12AssetToXDR(t *testing.T) {
-	asset := Asset{
+	asset := CreditAsset{
 		Code:   "MEGAUSD",
 		Issuer: newKeypair0().Address(),
 	}
@@ -62,7 +62,7 @@ func TestAlphaNum12AssetToXDR(t *testing.T) {
 }
 
 func TestCodeTooShort(t *testing.T) {
-	asset := Asset{
+	asset := CreditAsset{
 		Code:   "",
 		Issuer: newKeypair0().Address(),
 	}
@@ -77,7 +77,7 @@ func TestCodeTooShort(t *testing.T) {
 }
 
 func TestCodeTooLong(t *testing.T) {
-	asset := Asset{
+	asset := CreditAsset{
 		Code:   "THIRTEENCHARS",
 		Issuer: newKeypair0().Address(),
 	}
@@ -92,7 +92,7 @@ func TestCodeTooLong(t *testing.T) {
 }
 
 func TestBadIssuer(t *testing.T) {
-	asset := Asset{
+	asset := CreditAsset{
 		Code:   "USD",
 		Issuer: "DOESNTLOOKLIKEANADDRESS",
 	}

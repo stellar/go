@@ -1,4 +1,4 @@
-// package horizonclient is an experimental horizon client that provides access to the horizon server
+// Package horizonclient is an experimental horizon client that provides access to the horizon server
 package horizonclient
 
 import (
@@ -71,6 +71,24 @@ var (
 
 	// HorizonTimeOut is the default number of seconds before a request to horizon times out.
 	HorizonTimeOut = time.Duration(60)
+
+	// MinuteResolution represents 1 minute used as `resolution` parameter in trade aggregation
+	MinuteResolution = time.Duration(1 * time.Minute)
+
+	// FiveMinuteResolution represents 5 minutes used as `resolution` parameter in trade aggregation
+	FiveMinuteResolution = time.Duration(5 * time.Minute)
+
+	// FifteenMinuteResolution represents 15 minutes used as `resolution` parameter in trade aggregation
+	FifteenMinuteResolution = time.Duration(15 * time.Minute)
+
+	// HourResolution represents 1 hour used as `resolution` parameter in trade aggregation
+	HourResolution = time.Duration(1 * time.Hour)
+
+	// DayResolution represents 1 day used as `resolution` parameter in trade aggregation
+	DayResolution = time.Duration(24 * time.Hour)
+
+	// WeekResolution represents 1 week used as `resolution` parameter in trade aggregation
+	WeekResolution = time.Duration(168 * time.Hour)
 )
 
 // HTTP represents the HTTP client that a horizon client uses to communicate
@@ -85,6 +103,8 @@ type Client struct {
 	HorizonURL     string
 	HTTP           HTTP
 	horizonTimeOut time.Duration
+	AppName        string
+	AppVersion     string
 }
 
 // ClientInterface contains methods implemented by the horizon client
@@ -106,6 +126,17 @@ type ClientInterface interface {
 	TransactionDetail(txHash string) (hProtocol.Transaction, error)
 	OrderBook(request OrderBookRequest) (hProtocol.OrderBookSummary, error)
 	Paths(request PathsRequest) (hProtocol.PathsPage, error)
+	Payments(request OperationRequest) (operations.OperationsPage, error)
+	TradeAggregations(request TradeAggregationRequest) (hProtocol.TradeAggregationsPage, error)
+	Trades(request TradeRequest) (hProtocol.TradesPage, error)
+	StreamTransactions(ctx context.Context, request TransactionRequest, handler TransactionHandler) error
+	StreamTrades(ctx context.Context, request TradeRequest, handler TradeHandler) error
+	StreamEffects(ctx context.Context, request EffectRequest, handler EffectHandler) error
+	StreamOperations(ctx context.Context, request OperationRequest, handler OperationHandler) error
+	StreamPayments(ctx context.Context, request OperationRequest, handler OperationHandler) error
+	StreamOffers(ctx context.Context, request OfferRequest, handler OfferHandler) error
+	StreamLedgers(ctx context.Context, request LedgerRequest, handler LedgerHandler) error
+	StreamOrderBooks(ctx context.Context, request OrderBookRequest, handler OrderBookHandler) error
 }
 
 // DefaultTestNetClient is a default client to connect to test network
@@ -124,17 +155,17 @@ var DefaultPublicNetClient = &Client{
 
 // HorizonRequest contains methods implemented by request structs for horizon endpoints
 type HorizonRequest interface {
-	BuildUrl() (string, error)
+	BuildURL() (string, error)
 }
 
 // StreamRequest contains methods implemented by request structs for endpoints that support streaming
 type StreamRequest interface {
-	Stream(ctx context.Context, horizonURL string, handler func(interface{})) error
+	Stream(ctx context.Context, client *Client, handler func(interface{})) error
 }
 
 // AccountRequest struct contains data for making requests to the accounts endpoint of an horizon server
 type AccountRequest struct {
-	AccountId string
+	AccountID string
 	DataKey   string
 }
 
@@ -189,11 +220,12 @@ type OperationRequest struct {
 	ForAccount     string
 	ForLedger      uint
 	ForTransaction string
-	forOperationId string
+	forOperationID string
 	Order          Order
 	Cursor         string
 	Limit          uint
 	IncludeFailed  bool
+	endpoint       string
 }
 
 type submitRequest struct {
@@ -231,4 +263,35 @@ type PathsRequest struct {
 	DestinationAssetIssuer string
 	DestinationAmount      string
 	SourceAccount          string
+}
+
+// TradeRequest struct contains data for getting trade details from an horizon server
+type TradeRequest struct {
+	ForOfferID         string
+	ForAccount         string
+	BaseAssetType      AssetType
+	BaseAssetCode      string
+	BaseAssetIssuer    string
+	CounterAssetType   AssetType
+	CounterAssetCode   string
+	CounterAssetIssuer string
+	Order              Order
+	Cursor             string
+	Limit              uint
+}
+
+// TradeAggregationRequest struct contains data for getting trade aggregations from an horizon server
+type TradeAggregationRequest struct {
+	StartTime          time.Time
+	EndTime            time.Time
+	Resolution         time.Duration
+	Offset             time.Duration
+	BaseAssetType      AssetType
+	BaseAssetCode      string
+	BaseAssetIssuer    string
+	CounterAssetType   AssetType
+	CounterAssetCode   string
+	CounterAssetIssuer string
+	Order              Order
+	Limit              uint
 }

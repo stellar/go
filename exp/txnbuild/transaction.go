@@ -15,10 +15,10 @@ import (
 	"github.com/stellar/go/xdr"
 )
 
-// Account represents a Stellar Account from the perspective of a Transaction.
-type Account struct {
-	ID             string
-	SequenceNumber xdr.SequenceNumber
+// Account represents the aspects of a Stellar account necessary to construct transactions.
+type Account interface {
+	GetAccountID() string
+	IncrementSequenceNumber() (xdr.SequenceNumber, error)
 }
 
 // Transaction represents a Stellar Transaction.
@@ -26,7 +26,8 @@ type Transaction struct {
 	SourceAccount  Account
 	Operations     []Operation
 	xdrTransaction xdr.Transaction
-	BaseFee        uint64 // TODO: Why is this a uint 64? Can it be a plain int?
+	BaseFee        uint32
+	Memo           Memo
 	xdrEnvelope    *xdr.TransactionEnvelope
 	Network        string
 }
@@ -60,9 +61,8 @@ func (tx *Transaction) Base64() (string, error) {
 // SetDefaultFee sets a sensible minimum default for the Transaction fee, if one has not
 // already been set. It is a linear function of the number of Operations in the Transaction.
 func (tx *Transaction) SetDefaultFee() {
-	// TODO: Check if default base fee used elsewhere - otherwise just use int
 	// TODO: Generalise to pull this from a client call
-	var DefaultBaseFee uint64 = 100
+	var DefaultBaseFee uint32 = 100
 	if tx.BaseFee == 0 {
 		tx.BaseFee = DefaultBaseFee
 	}
@@ -76,10 +76,14 @@ func (tx *Transaction) SetDefaultFee() {
 func (tx *Transaction) Build() error {
 	// Set account ID in XDR
 	// TODO: Validate provided key before going further
-	tx.xdrTransaction.SourceAccount.SetAddress(tx.SourceAccount.ID)
+	tx.xdrTransaction.SourceAccount.SetAddress(tx.SourceAccount.GetAccountID())
 
 	// TODO: Validate Seq Num is present in struct
-	tx.xdrTransaction.SeqNum = tx.SourceAccount.SequenceNumber + 1
+	seqnum, err := tx.SourceAccount.IncrementSequenceNumber()
+	if err != nil {
+		return errors.Wrap(err, "Failed to parse sequence number")
+	}
+	tx.xdrTransaction.SeqNum = seqnum
 
 	for _, op := range tx.Operations {
 		xdrOperation, err := op.BuildXDR()
@@ -87,6 +91,15 @@ func (tx *Transaction) Build() error {
 			return errors.Wrap(err, fmt.Sprintf("Failed to build operation %T", op))
 		}
 		tx.xdrTransaction.Operations = append(tx.xdrTransaction.Operations, xdrOperation)
+	}
+
+	// Handle the memo, if one is present
+	if tx.Memo != nil {
+		xdrMemo, err := tx.Memo.ToXDR()
+		if err != nil {
+			return errors.Wrap(err, "Couldn't build memo XDR")
+		}
+		tx.xdrTransaction.Memo = xdrMemo
 	}
 
 	// Set a default fee, if it hasn't been set yet

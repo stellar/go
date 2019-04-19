@@ -15,29 +15,31 @@ func (herr Error) Error() string {
 // Envelope extracts the transaction envelope that triggered this error from the
 // extra fields.
 func (herr *Error) Envelope() (*xdr.TransactionEnvelope, error) {
+	b64, err := herr.EnvelopeXDR()
+	if err != nil {
+		return nil, err
+	}
+
+	var result xdr.TransactionEnvelope
+	err = xdr.SafeUnmarshalBase64(b64, &result)
+	return &result, errors.Wrap(err, "xdr decode failed")
+}
+
+// EnvelopeXDR returns the base 64 serialised string representation of the XDR envelope.
+// This can be stored, or decoded in the Stellar Laboratory XDR viewer for example.
+func (herr *Error) EnvelopeXDR() (string, error) {
 	raw, ok := herr.Problem.Extras["envelope_xdr"]
 	if !ok {
-		return nil, ErrEnvelopeNotPopulated
+		return "", ErrEnvelopeNotPopulated
 	}
 
 	var b64 string
-	var result xdr.TransactionEnvelope
-	rawB, ok := raw.([]byte)
+	b64, ok = raw.(string)
 	if !ok {
-		return nil, errors.New("type assertion failed")
+		return "", errors.New("type assertion failed")
 	}
 
-	err := json.Unmarshal(rawB, &b64)
-	if err != nil {
-		return nil, errors.Wrap(err, "json decode failed")
-	}
-
-	err = xdr.SafeUnmarshalBase64(b64, &result)
-	if err != nil {
-		return nil, errors.Wrap(err, "xdr decode failed")
-	}
-
-	return &result, nil
+	return b64, nil
 }
 
 // ResultString extracts the transaction result as a string.
@@ -47,15 +49,9 @@ func (herr *Error) ResultString() (string, error) {
 		return "", ErrResultNotPopulated
 	}
 
-	var b64 string
-	rawB, ok := raw.([]byte)
+	b64, ok := raw.(string)
 	if !ok {
 		return "", errors.New("type assertion failed")
-	}
-
-	err := json.Unmarshal(rawB, &b64)
-	if err != nil {
-		return "", errors.Wrap(err, "json decode failed")
 	}
 
 	return b64, nil
@@ -69,15 +65,15 @@ func (herr *Error) ResultCodes() (*hProtocol.TransactionResultCodes, error) {
 		return nil, ErrResultCodesNotPopulated
 	}
 
-	rawB, ok := raw.([]byte)
-	if !ok {
-		return nil, errors.New("type assertion failed")
+	// converts map to []byte
+	dataString, err := json.Marshal(raw)
+	if err != nil {
+		return nil, errors.Wrap(err, "Marshaling failed")
 	}
 
 	var result hProtocol.TransactionResultCodes
-	err := json.Unmarshal(rawB, &result)
-	if err != nil {
-		return nil, errors.Wrap(err, "json decode failed")
+	if err = json.Unmarshal(dataString, &result); err != nil {
+		return nil, errors.Wrap(err, "Unmarshaling failed")
 	}
 
 	return &result, nil

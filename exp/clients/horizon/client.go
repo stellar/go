@@ -1,12 +1,18 @@
 package horizonclient
 
 import (
+	"bufio"
+	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
+	"io"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 
+	"github.com/manucorporat/sse"
 	hProtocol "github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/protocols/horizon/operations"
 	"github.com/stellar/go/support/app"
@@ -14,7 +20,7 @@ import (
 )
 
 func (c *Client) sendRequest(hr HorizonRequest, a interface{}) (err error) {
-	endpoint, err := hr.BuildUrl()
+	endpoint, err := hr.BuildURL()
 	if err != nil {
 		return
 	}
@@ -33,8 +39,7 @@ func (c *Client) sendRequest(hr HorizonRequest, a interface{}) (err error) {
 	if err != nil {
 		return errors.Wrap(err, "Error creating HTTP request")
 	}
-	req.Header.Set("X-Client-Name", "go-stellar-sdk")
-	req.Header.Set("X-Client-Version", app.Version())
+	c.setClientAppHeaders(req)
 
 	if c.horizonTimeOut == 0 {
 		c.horizonTimeOut = HorizonTimeOut
@@ -50,6 +55,140 @@ func (c *Client) sendRequest(hr HorizonRequest, a interface{}) (err error) {
 	err = decodeResponse(resp, &a)
 	cancel()
 	return
+}
+
+// stream handles connections to endpoints that support streaming on an horizon server
+func (c *Client) stream(
+	ctx context.Context,
+	streamURL string,
+	handler func(data []byte) error,
+) error {
+	su, err := url.Parse(streamURL)
+	if err != nil {
+		return errors.Wrap(err, "Error parsing stream url")
+	}
+
+	query := su.Query()
+	if query.Get("cursor") == "" {
+		query.Set("cursor", "now")
+	}
+
+	for {
+		// updates the url with new cursor
+		su.RawQuery = query.Encode()
+		req, err := http.NewRequest("GET", fmt.Sprintf("%s", su), nil)
+		if err != nil {
+			return errors.Wrap(err, "Error creating HTTP request")
+		}
+		req.Header.Set("Accept", "text/event-stream")
+		// to do: confirm name and version
+		c.setClientAppHeaders(req)
+
+		// We can use c.HTTP here because we set Timeout per request not on the client. See sendRequest()
+		resp, err := c.HTTP.Do(req)
+		if err != nil {
+			return errors.Wrap(err, "Error sending HTTP request")
+		}
+
+		// Expected statusCode are 200-299
+		if !(resp.StatusCode >= 200 && resp.StatusCode < 300) {
+			return fmt.Errorf("Got bad HTTP status code %d", resp.StatusCode)
+		}
+		defer resp.Body.Close()
+
+		reader := bufio.NewReader(resp.Body)
+
+		// Read events one by one. Break this loop when there is no more data to be
+		// read from resp.Body (io.EOF).
+	Events:
+		for {
+			// Read until empty line = event delimiter. The perfect solution would be to read
+			// as many bytes as possible and forward them to sse.Decode. However this
+			// requires much more complicated code.
+			// We could also write our own `sse` package that works fine with streams directly
+			// (github.com/manucorporat/sse is just using io/ioutils.ReadAll).
+			var buffer bytes.Buffer
+			nonEmptylinesRead := 0
+			for {
+				// Check if ctx is not cancelled
+				select {
+				case <-ctx.Done():
+					return nil
+				default:
+					// Continue
+				}
+
+				line, err := reader.ReadString('\n')
+				if err != nil {
+					if err == io.EOF || err == io.ErrUnexpectedEOF {
+						// We catch EOF errors to handle two possible situations:
+						// - The last line before closing the stream was not empty. This should never
+						//   happen in Horizon as it always sends an empty line after each event.
+						// - The stream was closed by the server/proxy because the connection was idle.
+						//
+						// In the former case, that (again) should never happen in Horizon, we need to
+						// check if there are any events we need to decode. We do this in the `if`
+						// statement below just in case if Horizon behaviour changes in a future.
+						//
+						// From spec:
+						// > Once the end of the file is reached, the user agent must dispatch the
+						// > event one final time, as defined below.
+						if nonEmptylinesRead == 0 {
+							break Events
+						}
+					} else {
+						return errors.Wrap(err, "Error reading line")
+					}
+				}
+				buffer.WriteString(line)
+
+				if strings.TrimRight(line, "\n\r") == "" {
+					break
+				}
+
+				nonEmptylinesRead++
+			}
+
+			events, err := sse.Decode(strings.NewReader(buffer.String()))
+			if err != nil {
+				return errors.Wrap(err, "Error decoding event")
+			}
+
+			// Right now len(events) should always be 1. This loop will be helpful after writing
+			// new SSE decoder that can handle io.Reader without using ioutils.ReadAll().
+			for _, event := range events {
+				if event.Event != "message" {
+					continue
+				}
+
+				// Update cursor with event ID
+				if event.Id != "" {
+					query.Set("cursor", event.Id)
+				}
+
+				switch data := event.Data.(type) {
+				case string:
+					err = handler([]byte(data))
+					err = errors.Wrap(err, "Handler error")
+				case []byte:
+					err = handler(data)
+					err = errors.Wrap(err, "Handler error")
+				default:
+					err = errors.New("Invalid event.Data type")
+				}
+				if err != nil {
+					return err
+				}
+			}
+		}
+	}
+}
+
+func (c *Client) setClientAppHeaders(req *http.Request) {
+	req.Header.Set("X-Client-Name", "go-stellar-sdk")
+	req.Header.Set("X-Client-Version", app.Version())
+	req.Header.Set("X-App-Name", c.AppName)
+	req.Header.Set("X-App-Version", c.AppVersion)
 }
 
 // getHorizonUrl strips all slashes(/) at the end of HorizonURL if any, then adds a single slash
@@ -71,7 +210,7 @@ func (c *Client) GetHorizonTimeOut() time.Duration {
 // AccountDetail returns information for a single account.
 // See https://www.stellar.org/developers/horizon/reference/endpoints/accounts-single.html
 func (c *Client) AccountDetail(request AccountRequest) (account hProtocol.Account, err error) {
-	if request.AccountId == "" {
+	if request.AccountID == "" {
 		err = errors.New("No account ID provided")
 	}
 
@@ -86,7 +225,7 @@ func (c *Client) AccountDetail(request AccountRequest) (account hProtocol.Accoun
 // AccountData returns a single data associated with a given account
 // See https://www.stellar.org/developers/horizon/reference/endpoints/data-for-account.html
 func (c *Client) AccountData(request AccountRequest) (accountData hProtocol.AccountData, err error) {
-	if request.AccountId == "" || request.DataKey == "" {
+	if request.AccountID == "" || request.DataKey == "" {
 		err = errors.New("Too few parameters")
 	}
 
@@ -115,7 +254,7 @@ func (c *Client) Assets(request AssetRequest) (assets hProtocol.AssetsPage, err 
 // Stream is for endpoints that support streaming
 func (c *Client) Stream(ctx context.Context, request StreamRequest, handler func(interface{})) (err error) {
 
-	err = request.Stream(ctx, c.getHorizonURL(), handler)
+	err = request.Stream(ctx, c, handler)
 	return
 }
 
@@ -162,14 +301,6 @@ func (c *Client) FeeStats() (feestats hProtocol.FeeStats, err error) {
 // Offers returns information about offers made on the SDEX.
 // See https://www.stellar.org/developers/horizon/reference/endpoints/offers-for-account.html
 func (c *Client) Offers(request OfferRequest) (offers hProtocol.OffersPage, err error) {
-	if request.ForAccount == "" {
-		err = errors.New("`ForAccount` parameter required")
-	}
-
-	if err != nil {
-		return
-	}
-
 	err = c.sendRequest(request, &offers)
 	return
 }
@@ -177,7 +308,7 @@ func (c *Client) Offers(request OfferRequest) (offers hProtocol.OffersPage, err 
 // Operations returns stellar operations (https://www.stellar.org/developers/horizon/reference/resources/operation.html)
 // It can be used to return operations for an account, a ledger, a transaction and all operations on the network.
 func (c *Client) Operations(request OperationRequest) (ops operations.OperationsPage, err error) {
-	err = c.sendRequest(request, &ops)
+	err = c.sendRequest(request.SetOperationsEndpoint(), &ops)
 	return
 }
 
@@ -188,7 +319,7 @@ func (c *Client) OperationDetail(id string) (ops operations.Operation, err error
 		return ops, errors.New("Invalid operation id provided")
 	}
 
-	request := OperationRequest{forOperationId: id}
+	request := OperationRequest{forOperationID: id, endpoint: "operations"}
 
 	var record interface{}
 
@@ -249,6 +380,86 @@ func (c *Client) OrderBook(request OrderBookRequest) (obs hProtocol.OrderBookSum
 func (c *Client) Paths(request PathsRequest) (paths hProtocol.PathsPage, err error) {
 	err = c.sendRequest(request, &paths)
 	return
+}
+
+// Payments returns stellar account_merge, create_account, path payment and payment operations.
+// It can be used to return payments for an account, a ledger, a transaction and all payments on the network.
+func (c *Client) Payments(request OperationRequest) (ops operations.OperationsPage, err error) {
+	err = c.sendRequest(request.SetPaymentsEndpoint(), &ops)
+	return
+}
+
+// Trades returns stellar trades (https://www.stellar.org/developers/horizon/reference/resources/trade.html)
+// It can be used to return trades for an account, an offer and all trades on the network.
+func (c *Client) Trades(request TradeRequest) (tds hProtocol.TradesPage, err error) {
+	err = c.sendRequest(request, &tds)
+	return
+}
+
+// StreamTrades streams executed trades. It can be used to stream all trades, trades for an account and
+// trades for an offer. Use context.WithCancel to stop streaming or context.Background() if you want
+// to stream indefinitely. TradeHandler is a user-supplied function that is executed for each streamed trade received.
+func (c *Client) StreamTrades(ctx context.Context, request TradeRequest, handler TradeHandler) (err error) {
+	err = request.StreamTrades(ctx, c, handler)
+	return
+}
+
+// TradeAggregations returns stellar trade aggregations (https://www.stellar.org/developers/horizon/reference/resources/trade_aggregation.html)
+func (c *Client) TradeAggregations(request TradeAggregationRequest) (tds hProtocol.TradeAggregationsPage, err error) {
+	err = c.sendRequest(request, &tds)
+	return
+}
+
+// StreamTransactions streams processed transactions. It can be used to stream all transactions and
+// transactions for an account. Use context.WithCancel to stop streaming or context.Background()
+// if you want to stream indefinitely. TransactionHandler is a user-supplied function that is executed for each streamed transaction received.
+func (c *Client) StreamTransactions(ctx context.Context, request TransactionRequest, handler TransactionHandler) error {
+	return request.StreamTransactions(ctx, c, handler)
+}
+
+// StreamEffects streams horizon effects. It can be used to stream all effects or account specific effects.
+// Use context.WithCancel to stop streaming or context.Background() if you want to stream indefinitely.
+// EffectHandler is a user-supplied function that is executed for each streamed transaction received.
+func (c *Client) StreamEffects(ctx context.Context, request EffectRequest, handler EffectHandler) error {
+	return request.StreamEffects(ctx, c, handler)
+}
+
+// StreamOperations streams stellar operations. It can be used to stream all operations or operations
+// for an account. Use context.WithCancel to stop streaming or context.Background() if you want to
+// stream indefinitely. OperationHandler is a user-supplied function that is executed for each streamed
+//  operation received.
+func (c *Client) StreamOperations(ctx context.Context, request OperationRequest, handler OperationHandler) error {
+	return request.SetOperationsEndpoint().StreamOperations(ctx, c, handler)
+}
+
+// StreamPayments streams stellar payments. It can be used to stream all payments or payments
+// for an account. Payments include create_account, payment, path_payment and account_merge operations.
+// Use context.WithCancel to stop streaming or context.Background() if you want to
+// stream indefinitely. OperationHandler is a user-supplied function that is executed for each streamed
+//  operation received.
+func (c *Client) StreamPayments(ctx context.Context, request OperationRequest, handler OperationHandler) error {
+	return request.SetPaymentsEndpoint().StreamOperations(ctx, c, handler)
+}
+
+// StreamOffers streams offers processed by the Stellar network for an account. Use context.WithCancel
+// to stop streaming or context.Background() if you want to stream indefinitely.
+// OfferHandler is a user-supplied function that is executed for each streamed offer received.
+func (c *Client) StreamOffers(ctx context.Context, request OfferRequest, handler OfferHandler) error {
+	return request.StreamOffers(ctx, c, handler)
+}
+
+// StreamLedgers streams stellar ledgers. It can be used to stream all ledgers. Use context.WithCancel
+// to stop streaming or context.Background() if you want to stream indefinitely.
+// LedgerHandler is a user-supplied function that is executed for each streamed ledger received.
+func (c *Client) StreamLedgers(ctx context.Context, request LedgerRequest, handler LedgerHandler) error {
+	return request.StreamLedgers(ctx, c, handler)
+}
+
+// StreamOrderBooks streams the orderbook for a given asset pair. Use context.WithCancel
+// to stop streaming or context.Background() if you want to stream indefinitely.
+// OrderBookHandler is a user-supplied function that is executed for each streamed order received.
+func (c *Client) StreamOrderBooks(ctx context.Context, request OrderBookRequest, handler OrderBookHandler) error {
+	return request.StreamOrderBooks(ctx, c, handler)
 }
 
 // ensure that the horizon client implements ClientInterface

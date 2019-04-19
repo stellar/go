@@ -138,8 +138,9 @@ func NewApp(config config.Config, migrateFlag bool, versionFlag bool, version st
 	}
 
 	h := horizon.Client{
-		URL:  config.Horizon,
-		HTTP: &httpClientWithTimeout,
+		URL:     config.Horizon,
+		HTTP:    &httpClientWithTimeout,
+		AppName: "bridge-server",
 	}
 
 	log.Print("Creating and initializing TransactionSubmitter")

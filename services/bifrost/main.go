@@ -133,6 +133,7 @@ This command will create 3 server.Server's listening on ports 8000-8002.`,
 				HTTP: &http.Client{
 					Timeout: 60 * time.Second,
 				},
+				AppName: "bifrost",
 			},
 			NetworkPassphrase: cfg.Stellar.NetworkPassphrase,
 			UsersPerSecond:    usersPerSecond,
@@ -402,6 +403,7 @@ func createServer(cfg config.Config, stressTest bool) *server.Server {
 		HTTP: &http.Client{
 			Timeout: 20 * time.Second,
 		},
+		AppName: "bifrost",
 	}
 
 	sseServer := &sse.Server{}
