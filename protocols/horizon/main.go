@@ -53,6 +53,12 @@ type Account struct {
 	Data                 map[string]string `json:"data"`
 }
 
+// GetAccountID returns the Stellar account ID. This is to satisfy the
+// Account interface of txnbuild.
+func (a Account) GetAccountID() string {
+	return a.AccountID
+}
+
 // GetNativeBalance returns the native balance of the account
 func (a Account) GetNativeBalance() (string, error) {
 	for _, balance := range a.Balances {
@@ -87,11 +93,24 @@ func (a Account) GetSequenceNumber() (xdr.SequenceNumber, error) {
 	return xdr.SequenceNumber(seqNum), nil
 }
 
+// IncrementSequenceNumber increments the internal record of the account's sequence
+// number by 1. This is typically used after a transaction build so that the next
+// transaction to be built will be valid.
+func (a *Account) IncrementSequenceNumber() (xdr.SequenceNumber, error) {
+	seqNum, err := a.GetSequenceNumber()
+	if err != nil {
+		return xdr.SequenceNumber(0), err
+	}
+	seqNum++
+	a.Sequence = strconv.FormatInt(int64(seqNum), 10)
+	return a.GetSequenceNumber()
+}
+
 // MustGetData returns decoded value for a given key. If the key does
 // not exist, empty slice will be returned. If there is an error
 // decoding a value, it will panic.
-func (this *Account) MustGetData(key string) []byte {
-	bytes, err := this.GetData(key)
+func (a *Account) MustGetData(key string) []byte {
+	bytes, err := a.GetData(key)
 	if err != nil {
 		panic(err)
 	}
@@ -100,8 +119,8 @@ func (this *Account) MustGetData(key string) []byte {
 
 // GetData returns decoded value for a given key. If the key does
 // not exist, empty slice will be returned.
-func (this *Account) GetData(key string) ([]byte, error) {
-	return base64.StdEncoding.DecodeString(this.Data[key])
+func (a *Account) GetData(key string) ([]byte, error) {
+	return base64.StdEncoding.DecodeString(a.Data[key])
 }
 
 // AccountFlags represents the state of an account's flags
@@ -186,8 +205,8 @@ type Ledger struct {
 	HeaderXDR                  string    `json:"header_xdr"`
 }
 
-func (this Ledger) PagingToken() string {
-	return this.PT
+func (l Ledger) PagingToken() string {
+	return l.PT
 }
 
 // Offer is the display form of an offer to trade currency.
@@ -209,8 +228,8 @@ type Offer struct {
 	LastModifiedTime   *time.Time `json:"last_modified_time"`
 }
 
-func (this Offer) PagingToken() string {
-	return this.PT
+func (o Offer) PagingToken() string {
+	return o.PT
 }
 
 // OrderBookSummary represents a snapshot summary of a given order book
@@ -235,7 +254,7 @@ type Path struct {
 }
 
 // stub implementation to satisfy pageable interface
-func (this Path) PagingToken() string {
+func (p Path) PagingToken() string {
 	return ""
 }
 

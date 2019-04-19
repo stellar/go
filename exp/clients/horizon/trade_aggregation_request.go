@@ -8,8 +8,8 @@ import (
 	"github.com/stellar/go/support/errors"
 )
 
-// BuildUrl creates the endpoint to be queried based on the data in the TradeAggregationRequest struct.
-func (ta TradeAggregationRequest) BuildUrl() (endpoint string, err error) {
+// BuildURL creates the endpoint to be queried based on the data in the TradeAggregationRequest struct.
+func (ta TradeAggregationRequest) BuildURL() (endpoint string, err error) {
 	endpoint = "trade_aggregations"
 	// add the parameters for trade aggregations endpoint
 	paramMap := make(map[string]string)

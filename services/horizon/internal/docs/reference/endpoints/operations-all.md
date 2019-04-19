@@ -53,6 +53,23 @@ server.operations()
   })
 ```
 
+### JavaScript Streaming Example
+
+```javascript
+var StellarSdk = require('stellar-sdk')
+var server = new StellarSdk.Server('https://horizon-testnet.stellar.org');
+
+var operationHandler = function (operationResponse) {
+  console.log(operationResponse);
+};
+
+var es = server.operations()
+  .cursor('now')
+  .stream({
+    onmessage: operationHandler
+  })
+```
+
 ## Response
 
 This endpoint responds with a list of operations. See [operation resource](../resources/operation.md) for reference.

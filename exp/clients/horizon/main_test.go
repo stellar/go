@@ -1,13 +1,10 @@
 package horizonclient
 
 import (
-	"context"
 	"fmt"
 	"testing"
-	"time"
 
 	hProtocol "github.com/stellar/go/protocols/horizon"
-	"github.com/stellar/go/protocols/horizon/effects"
 	"github.com/stellar/go/protocols/horizon/operations"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/support/http/httptest"
@@ -17,7 +14,7 @@ import (
 func ExampleClient_AccountDetail() {
 
 	client := DefaultPublicNetClient
-	accountRequest := AccountRequest{AccountId: "GCLWGQPMKXQSPF776IU33AH4PZNOOWNAWGGKVTBQMIC5IMKUNP3E6NVU"}
+	accountRequest := AccountRequest{AccountID: "GCLWGQPMKXQSPF776IU33AH4PZNOOWNAWGGKVTBQMIC5IMKUNP3E6NVU"}
 
 	account, err := client.AccountDetail(accountRequest)
 	if err != nil {
@@ -70,35 +67,6 @@ func ExampleClient_Assets() {
 		return
 	}
 	fmt.Print(asset)
-}
-
-func ExampleClient_Stream() {
-	// stream effects
-
-	client := DefaultPublicNetClient
-	effectRequest := EffectRequest{Cursor: "now"}
-
-	ctx, cancel := context.WithCancel(context.Background())
-
-	go func() {
-		// Stop streaming after 60 seconds.
-		time.Sleep(60 * time.Second)
-		cancel()
-	}()
-
-	// to do: can `e interface{}` be `e Effect` ?? Then we won't have type assertion.
-	err := client.Stream(ctx, effectRequest, func(e interface{}) {
-
-		resp, ok := e.(effects.Base)
-		if ok {
-			fmt.Println(resp.Type)
-		}
-
-	})
-
-	if err != nil {
-		fmt.Println(err)
-	}
 }
 
 func ExampleClient_LedgerDetail() {
@@ -191,9 +159,9 @@ func ExampleClient_Operations() {
 func ExampleClient_OperationDetail() {
 
 	client := DefaultPublicNetClient
-	opId := "123456"
+	opID := "123456"
 	// operation details for an id
-	ops, err := client.OperationDetail(opId)
+	ops, err := client.OperationDetail(opID)
 	if err != nil {
 		fmt.Println(err)
 		return
@@ -203,9 +171,9 @@ func ExampleClient_OperationDetail() {
 
 func ExampleClient_SubmitTransaction() {
 
-	client := DefaultTestNetClient
-	// https://www.stellar.org/laboratory/#xdr-viewer?input=AAAAABB90WssODNIgi6BHveqzxTRmIpvAFRyVNM%2BHm2GVuCcAAAAZAAABD0AAuV%2FAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAyTBGxOgfSApppsTnb%2FYRr6gOR8WT0LZNrhLh4y3FCgoAAAAXSHboAAAAAAAAAAABhlbgnAAAAEAivKe977CQCxMOKTuj%2BcWTFqc2OOJU8qGr9afrgu2zDmQaX5Q0cNshc3PiBwe0qw%2F%2BD%2FqJk5QqM5dYeSUGeDQP&type=TransactionEnvelope&network=test
-	txXdr := `AAAAABB90WssODNIgi6BHveqzxTRmIpvAFRyVNM+Hm2GVuCcAAAAZAAABD0AAuV/AAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAyTBGxOgfSApppsTnb/YRr6gOR8WT0LZNrhLh4y3FCgoAAAAXSHboAAAAAAAAAAABhlbgnAAAAEAivKe977CQCxMOKTuj+cWTFqc2OOJU8qGr9afrgu2zDmQaX5Q0cNshc3PiBwe0qw/+D/qJk5QqM5dYeSUGeDQP`
+	client := DefaultPublicNetClient
+	// https://www.stellar.org/laboratory/#xdr-viewer?input=AAAAAOoS%2F5V%2BBiCPXRiVcz8YsnkDdODufq%2Bg7xdqTdIXN8vyAAAE4gFiW0YAAALxAAAAAQAAAAAAAAAAAAAAAFyuBUcAAAABAAAABzIyMjgyNDUAAAAAAQAAAAEAAAAALhsY%2FFdAHXllTmb025DtCVBw06WDSQjq6I9NrCQHOV8AAAABAAAAAHT8zKV7bRQzuGTpk9AO3gjWJ9jVxBXTgguFORkxHVIKAAAAAAAAAAAAOnDwAAAAAAAAAAIkBzlfAAAAQPefqlsOvni6xX1g3AqddvOp1GOM88JYzayGZodbzTfV5toyhxZvL1ZggY3prFsvrereugEpj1kyPJ67z6gcRg0XN8vyAAAAQGwmoTssW49gaze8iQkz%2FUA2E2N%2BBOo%2B6v7YdOSsvIcZnMc37KmXH920nLosKpDLqkNChVztSZFcbVUlHhjbQgA%3D&type=TransactionEnvelope&network=public
+	txXdr := `AAAAAOoS/5V+BiCPXRiVcz8YsnkDdODufq+g7xdqTdIXN8vyAAAE4gFiW0YAAALxAAAAAQAAAAAAAAAAAAAAAFyuBUcAAAABAAAABzIyMjgyNDUAAAAAAQAAAAEAAAAALhsY/FdAHXllTmb025DtCVBw06WDSQjq6I9NrCQHOV8AAAABAAAAAHT8zKV7bRQzuGTpk9AO3gjWJ9jVxBXTgguFORkxHVIKAAAAAAAAAAAAOnDwAAAAAAAAAAIkBzlfAAAAQPefqlsOvni6xX1g3AqddvOp1GOM88JYzayGZodbzTfV5toyhxZvL1ZggY3prFsvrereugEpj1kyPJ67z6gcRg0XN8vyAAAAQGwmoTssW49gaze8iQkz/UA2E2N+BOo+6v7YdOSsvIcZnMc37KmXH920nLosKpDLqkNChVztSZFcbVUlHhjbQgA=`
 
 	// submit transaction
 	resp, err := client.SubmitTransaction(txXdr)
@@ -213,10 +181,9 @@ func ExampleClient_SubmitTransaction() {
 		fmt.Println(err)
 		return
 	}
-	// To do: remove output. It will fail when testnet is reset
 
 	fmt.Print(resp)
-	// Output: {{{https://horizon-testnet.stellar.org/transactions/bcc7a97264dca0a51a63f7ea971b5e7458e334489673078bb2a34eb0cce910ca false}} bcc7a97264dca0a51a63f7ea971b5e7458e334489673078bb2a34eb0cce910ca 354811 AAAAABB90WssODNIgi6BHveqzxTRmIpvAFRyVNM+Hm2GVuCcAAAAZAAABD0AAuV/AAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAyTBGxOgfSApppsTnb/YRr6gOR8WT0LZNrhLh4y3FCgoAAAAXSHboAAAAAAAAAAABhlbgnAAAAEAivKe977CQCxMOKTuj+cWTFqc2OOJU8qGr9afrgu2zDmQaX5Q0cNshc3PiBwe0qw/+D/qJk5QqM5dYeSUGeDQP AAAAAAAAAGQAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAA= AAAAAQAAAAIAAAADAAVp+wAAAAAAAAAAEH3Rayw4M0iCLoEe96rPFNGYim8AVHJU0z4ebYZW4JwACBP/TuycHAAABD0AAuV+AAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAABAAVp+wAAAAAAAAAAEH3Rayw4M0iCLoEe96rPFNGYim8AVHJU0z4ebYZW4JwACBP/TuycHAAABD0AAuV/AAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAABAAAAAwAAAAMABWn7AAAAAAAAAAAQfdFrLDgzSIIugR73qs8U0ZiKbwBUclTTPh5thlbgnAAIE/9O7JwcAAAEPQAC5X8AAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAEABWn7AAAAAAAAAAAQfdFrLDgzSIIugR73qs8U0ZiKbwBUclTTPh5thlbgnAAIE+gGdbQcAAAEPQAC5X8AAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAABWn7AAAAAAAAAADJMEbE6B9ICmmmxOdv9hGvqA5HxZPQtk2uEuHjLcUKCgAAABdIdugAAAVp+wAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAA==}
+	// Output: {{{https://horizon.stellar.org/transactions/f8a09e8a17fc828a1b99814818ddc931876eec0fe9c203f5980d26d92641e1c2 false}} f8a09e8a17fc828a1b99814818ddc931876eec0fe9c203f5980d26d92641e1c2 23350654 AAAAAOoS/5V+BiCPXRiVcz8YsnkDdODufq+g7xdqTdIXN8vyAAAE4gFiW0YAAALxAAAAAQAAAAAAAAAAAAAAAFyuBUcAAAABAAAABzIyMjgyNDUAAAAAAQAAAAEAAAAALhsY/FdAHXllTmb025DtCVBw06WDSQjq6I9NrCQHOV8AAAABAAAAAHT8zKV7bRQzuGTpk9AO3gjWJ9jVxBXTgguFORkxHVIKAAAAAAAAAAAAOnDwAAAAAAAAAAIkBzlfAAAAQPefqlsOvni6xX1g3AqddvOp1GOM88JYzayGZodbzTfV5toyhxZvL1ZggY3prFsvrereugEpj1kyPJ67z6gcRg0XN8vyAAAAQGwmoTssW49gaze8iQkz/UA2E2N+BOo+6v7YdOSsvIcZnMc37KmXH920nLosKpDLqkNChVztSZFcbVUlHhjbQgA= AAAAAAAABOIAAAAAAAAAAQAAAAAAAAABAAAAAAAAAAA= AAAAAQAAAAIAAAADAWRNfgAAAAAAAAAA6hL/lX4GII9dGJVzPxiyeQN04O5+r6DvF2pN0hc3y/IAAAAAAuyTvgFiW0YAAALwAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAABAWRNfgAAAAAAAAAA6hL/lX4GII9dGJVzPxiyeQN04O5+r6DvF2pN0hc3y/IAAAAAAuyTvgFiW0YAAALxAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAABAAAABAAAAAMBZE0IAAAAAAAAAAB0/Myle20UM7hk6ZPQDt4I1ifY1cQV04ILhTkZMR1SCgAAAbZToYkOAToKfwAAAAEAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAEBZE1+AAAAAAAAAAB0/Myle20UM7hk6ZPQDt4I1ifY1cQV04ILhTkZMR1SCgAAAbZT2/n+AToKfwAAAAEAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAMBZE19AAAAAAAAAAAuGxj8V0AdeWVOZvTbkO0JUHDTpYNJCOroj02sJAc5XwAAAACrUfjvARGUKgAApRsAAAAAAAAAAAAAAAAAAAAObnlhbmRldi1pZC5vcmcAAAEAAAAAAAAAAAAAAAAAAAAAAAABAWRNfgAAAAAAAAAALhsY/FdAHXllTmb025DtCVBw06WDSQjq6I9NrCQHOV8AAAAAqxeH/wERlCoAAKUbAAAAAAAAAAAAAAAAAAAADm55YW5kZXYtaWQub3JnAAABAAAAAAAAAAAAAAAAAAAA}
 }
 
 func ExampleClient_SetHorizonTimeOut() {
@@ -345,7 +312,7 @@ func TestAccountDetail(t *testing.T) {
 		assert.Contains(t, err.Error(), "No account ID provided")
 	}
 
-	accountRequest = AccountRequest{AccountId: "GCLWGQPMKXQSPF776IU33AH4PZNOOWNAWGGKVTBQMIC5IMKUNP3E6NVU"}
+	accountRequest = AccountRequest{AccountID: "GCLWGQPMKXQSPF776IU33AH4PZNOOWNAWGGKVTBQMIC5IMKUNP3E6NVU"}
 
 	// happy path
 	hmock.On(
@@ -415,7 +382,7 @@ func TestAccountData(t *testing.T) {
 	}
 
 	// wrong parameters
-	accountRequest = AccountRequest{AccountId: "GCLWGQPMKXQSPF776IU33AH4PZNOOWNAWGGKVTBQMIC5IMKUNP3E6NVU"}
+	accountRequest = AccountRequest{AccountID: "GCLWGQPMKXQSPF776IU33AH4PZNOOWNAWGGKVTBQMIC5IMKUNP3E6NVU"}
 	hmock.On(
 		"GET",
 		"https://localhost/accounts/GCLWGQPMKXQSPF776IU33AH4PZNOOWNAWGGKVTBQMIC5IMKUNP3E6NVU/data/test",
@@ -427,7 +394,7 @@ func TestAccountData(t *testing.T) {
 		assert.Contains(t, err.Error(), "Too few parameters")
 	}
 
-	accountRequest = AccountRequest{AccountId: "GCLWGQPMKXQSPF776IU33AH4PZNOOWNAWGGKVTBQMIC5IMKUNP3E6NVU", DataKey: "test"}
+	accountRequest = AccountRequest{AccountID: "GCLWGQPMKXQSPF776IU33AH4PZNOOWNAWGGKVTBQMIC5IMKUNP3E6NVU", DataKey: "test"}
 
 	// happy path
 	hmock.On(
@@ -518,71 +485,6 @@ func TestAssetsRequest(t *testing.T) {
 		assert.Equal(t, record.Flags.AuthImmutable, false)
 	}
 
-}
-
-func TestLedgerDetail(t *testing.T) {
-	hmock := httptest.NewClient()
-	client := &Client{
-		HorizonURL: "https://localhost/",
-		HTTP:       hmock,
-	}
-
-	// invalid parameters
-	var sequence uint32 = 0
-	hmock.On(
-		"GET",
-		"https://localhost/ledgers/",
-	).ReturnString(200, ledgerResponse)
-
-	_, err := client.LedgerDetail(sequence)
-	// error case: invalid sequence
-	if assert.Error(t, err) {
-		assert.Contains(t, err.Error(), "Invalid sequence number provided")
-	}
-
-	// happy path
-	hmock.On(
-		"GET",
-		"https://localhost/ledgers/69859",
-	).ReturnString(200, ledgerResponse)
-
-	sequence = 69859
-	ledger, err := client.LedgerDetail(sequence)
-	ftc := int32(1)
-
-	if assert.NoError(t, err) {
-		assert.Equal(t, ledger.ID, "71a40c0581d8d7c1158e1d9368024c5f9fd70de17a8d277cdd96781590cc10fb")
-		assert.Equal(t, ledger.PT, "300042120331264")
-		assert.Equal(t, ledger.Sequence, int32(69859))
-		assert.Equal(t, ledger.FailedTransactionCount, &ftc)
-	}
-
-	// failure response
-	hmock.On(
-		"GET",
-		"https://localhost/ledgers/69859",
-	).ReturnString(404, notFoundResponse)
-
-	_, err = client.LedgerDetail(sequence)
-	if assert.Error(t, err) {
-		assert.Contains(t, err.Error(), "Horizon error")
-		horizonError, ok := err.(*Error)
-		assert.Equal(t, ok, true)
-		assert.Equal(t, horizonError.Problem.Title, "Resource Missing")
-	}
-
-	// connection error
-	hmock.On(
-		"GET",
-		"https://localhost/ledgers/69859",
-	).ReturnError("http.Client error")
-
-	_, err = client.LedgerDetail(sequence)
-	if assert.Error(t, err) {
-		assert.Contains(t, err.Error(), "http.Client error")
-		_, ok := err.(*Error)
-		assert.Equal(t, ok, false)
-	}
 }
 
 func TestMetrics(t *testing.T) {
@@ -808,13 +710,13 @@ func TestOperationsRequest(t *testing.T) {
 	}
 
 	// operation detail
-	opId := "1103965508866049"
+	opID := "1103965508866049"
 	hmock.On(
 		"GET",
 		"https://localhost/operations/1103965508866049",
 	).ReturnString(200, opsResponse)
 
-	record, err := client.OperationDetail(opId)
+	record, err := client.OperationDetail(opID)
 	if assert.NoError(t, err) {
 		assert.Equal(t, record.GetType(), "change_trust")
 		c, ok := record.(operations.ChangeTrust)

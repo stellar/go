@@ -10,6 +10,7 @@ import (
 
 // This file contains helpers for working with xdr.Asset structs
 
+// MustNewNativeAsset returns a new native asset, panicking if it can't.
 func MustNewNativeAsset() Asset {
 	a := Asset{}
 	err := a.SetNative()
@@ -19,6 +20,7 @@ func MustNewNativeAsset() Asset {
 	return a
 }
 
+// MustNewCreditAsset returns a new general asset, panicking if it can't.
 func MustNewCreditAsset(code string, issuer string) Asset {
 	a := Asset{}
 	accountID := AccountId{}
@@ -69,6 +71,27 @@ func (a *Asset) SetNative() error {
 	}
 	*a = newa
 	return nil
+}
+
+// ToAllowTrustOpAsset for Asset converts the Asset to a corresponding XDR
+// "allow trust" asset, used by the XDR allow trust operation.
+func (a *Asset) ToAllowTrustOpAsset(code string) (AllowTrustOpAsset, error) {
+	length := len(code)
+
+	switch {
+	case length >= 1 && length <= 4:
+		var bytecode [4]byte
+		byteArray := []byte(code)
+		copy(bytecode[:], byteArray[0:length])
+		return NewAllowTrustOpAsset(AssetTypeAssetTypeCreditAlphanum4, bytecode)
+	case length >= 5 && length <= 12:
+		var bytecode [12]byte
+		byteArray := []byte(code)
+		copy(bytecode[:], byteArray[0:length])
+		return NewAllowTrustOpAsset(AssetTypeAssetTypeCreditAlphanum12, bytecode)
+	default:
+		return AllowTrustOpAsset{}, errors.New("Asset code length is invalid")
+	}
 }
 
 // String returns a display friendly form of the asset

@@ -42,7 +42,7 @@ func (m *MockClient) Stream(ctx context.Context,
 	request StreamRequest,
 	handler func(interface{}),
 ) error {
-	a := m.Called(request, ctx, handler)
+	a := m.Called(ctx, request, handler)
 	return a.Error(0)
 }
 
@@ -134,6 +134,46 @@ func (m *MockClient) TradeAggregations(request TradeAggregationRequest) (hProtoc
 func (m *MockClient) Trades(request TradeRequest) (hProtocol.TradesPage, error) {
 	a := m.Called(request)
 	return a.Get(0).(hProtocol.TradesPage), a.Error(1)
+}
+
+// StreamTransactions is a mocking method
+func (m *MockClient) StreamTransactions(ctx context.Context, request TransactionRequest, handler TransactionHandler) error {
+	return m.Called(ctx, request, handler).Error(0)
+}
+
+// StreamTrades is a mocking method
+func (m *MockClient) StreamTrades(ctx context.Context, request TradeRequest, handler TradeHandler) error {
+	return m.Called(ctx, request, handler).Error(0)
+}
+
+// StreamEffects is a mocking method
+func (m *MockClient) StreamEffects(ctx context.Context, request EffectRequest, handler EffectHandler) error {
+	return m.Called(ctx, request, handler).Error(0)
+}
+
+// StreamOperations is a mocking method
+func (m *MockClient) StreamOperations(ctx context.Context, request OperationRequest, handler OperationHandler) error {
+	return m.Called(ctx, request, handler).Error(0)
+}
+
+// StreamPayments is a mocking method
+func (m *MockClient) StreamPayments(ctx context.Context, request OperationRequest, handler OperationHandler) error {
+	return m.Called(ctx, request, handler).Error(0)
+}
+
+// StreamOffers is a mocking method
+func (m *MockClient) StreamOffers(ctx context.Context, request OfferRequest, handler OfferHandler) error {
+	return m.Called(ctx, request, handler).Error(0)
+}
+
+// StreamLedgers is a mocking method
+func (m *MockClient) StreamLedgers(ctx context.Context, request LedgerRequest, handler LedgerHandler) error {
+	return m.Called(ctx, request, handler).Error(0)
+}
+
+// StreamOrderBooks is a mocking method
+func (m *MockClient) StreamOrderBooks(ctx context.Context, request OrderBookRequest, handler OrderBookHandler) error {
+	return m.Called(ctx, request, handler).Error(0)
 }
 
 // ensure that the MockClient implements ClientInterface
