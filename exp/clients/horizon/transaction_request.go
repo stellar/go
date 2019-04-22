@@ -16,7 +16,7 @@ func (tr TransactionRequest) BuildURL() (endpoint string, err error) {
 	nParams := countParams(tr.ForAccount, tr.ForLedger, tr.forTransactionHash)
 
 	if nParams > 1 {
-		return endpoint, errors.New("Invalid request. Too many parameters")
+		return endpoint, errors.New("invalid request: too many parameters")
 	}
 
 	endpoint = "transactions"
@@ -53,7 +53,7 @@ func (tr TransactionRequest) StreamTransactions(ctx context.Context, client *Cli
 	handler TransactionHandler) (err error) {
 	endpoint, err := tr.BuildURL()
 	if err != nil {
-		return errors.Wrap(err, "Unable to build endpoint")
+		return errors.Wrap(err, "unable to build endpoint")
 	}
 
 	url := fmt.Sprintf("%s%s", client.getHorizonURL(), endpoint)
@@ -62,7 +62,7 @@ func (tr TransactionRequest) StreamTransactions(ctx context.Context, client *Cli
 		var transaction hProtocol.Transaction
 		err = json.Unmarshal(data, &transaction)
 		if err != nil {
-			return errors.Wrap(err, "Error unmarshaling data")
+			return errors.Wrap(err, "error unmarshaling data")
 		}
 		handler(transaction)
 		return nil

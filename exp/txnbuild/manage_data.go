@@ -27,5 +27,5 @@ func (md *ManageData) BuildXDR() (xdr.Operation, error) {
 	opType := xdr.OperationTypeManageData
 	body, err := xdr.NewOperationBody(opType, xdrOp)
 
-	return xdr.Operation{Body: body}, errors.Wrap(err, "Failed to build XDR OperationBody")
+	return xdr.Operation{Body: body}, errors.Wrap(err, "failed to build XDR OperationBody")
 }

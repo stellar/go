@@ -37,7 +37,7 @@ func (c *Client) sendRequest(hr HorizonRequest, a interface{}) (err error) {
 	}
 
 	if err != nil {
-		return errors.Wrap(err, "Error creating HTTP request")
+		return errors.Wrap(err, "error creating HTTP request")
 	}
 	c.setClientAppHeaders(req)
 
@@ -65,7 +65,7 @@ func (c *Client) stream(
 ) error {
 	su, err := url.Parse(streamURL)
 	if err != nil {
-		return errors.Wrap(err, "Error parsing stream url")
+		return errors.Wrap(err, "error parsing stream url")
 	}
 
 	query := su.Query()
@@ -78,7 +78,7 @@ func (c *Client) stream(
 		su.RawQuery = query.Encode()
 		req, err := http.NewRequest("GET", fmt.Sprintf("%s", su), nil)
 		if err != nil {
-			return errors.Wrap(err, "Error creating HTTP request")
+			return errors.Wrap(err, "error creating HTTP request")
 		}
 		req.Header.Set("Accept", "text/event-stream")
 		// to do: confirm name and version
@@ -87,12 +87,12 @@ func (c *Client) stream(
 		// We can use c.HTTP here because we set Timeout per request not on the client. See sendRequest()
 		resp, err := c.HTTP.Do(req)
 		if err != nil {
-			return errors.Wrap(err, "Error sending HTTP request")
+			return errors.Wrap(err, "error sending HTTP request")
 		}
 
 		// Expected statusCode are 200-299
 		if !(resp.StatusCode >= 200 && resp.StatusCode < 300) {
-			return fmt.Errorf("Got bad HTTP status code %d", resp.StatusCode)
+			return fmt.Errorf("got bad HTTP status code %d", resp.StatusCode)
 		}
 		defer resp.Body.Close()
 
@@ -137,7 +137,7 @@ func (c *Client) stream(
 							break Events
 						}
 					} else {
-						return errors.Wrap(err, "Error reading line")
+						return errors.Wrap(err, "error reading line")
 					}
 				}
 				buffer.WriteString(line)
@@ -151,7 +151,7 @@ func (c *Client) stream(
 
 			events, err := sse.Decode(strings.NewReader(buffer.String()))
 			if err != nil {
-				return errors.Wrap(err, "Error decoding event")
+				return errors.Wrap(err, "error decoding event")
 			}
 
 			// Right now len(events) should always be 1. This loop will be helpful after writing
@@ -169,12 +169,12 @@ func (c *Client) stream(
 				switch data := event.Data.(type) {
 				case string:
 					err = handler([]byte(data))
-					err = errors.Wrap(err, "Handler error")
+					err = errors.Wrap(err, "handler error")
 				case []byte:
 					err = handler(data)
-					err = errors.Wrap(err, "Handler error")
+					err = errors.Wrap(err, "handler error")
 				default:
-					err = errors.New("Invalid event.Data type")
+					err = errors.New("invalid event.Data type")
 				}
 				if err != nil {
 					return err
@@ -211,7 +211,7 @@ func (c *Client) GetHorizonTimeOut() time.Duration {
 // See https://www.stellar.org/developers/horizon/reference/endpoints/accounts-single.html
 func (c *Client) AccountDetail(request AccountRequest) (account hProtocol.Account, err error) {
 	if request.AccountID == "" {
-		err = errors.New("No account ID provided")
+		err = errors.New("no account ID provided")
 	}
 
 	if err != nil {
@@ -226,7 +226,7 @@ func (c *Client) AccountDetail(request AccountRequest) (account hProtocol.Accoun
 // See https://www.stellar.org/developers/horizon/reference/endpoints/data-for-account.html
 func (c *Client) AccountData(request AccountRequest) (accountData hProtocol.AccountData, err error) {
 	if request.AccountID == "" || request.DataKey == "" {
-		err = errors.New("Too few parameters")
+		err = errors.New("too few parameters")
 	}
 
 	if err != nil {
@@ -269,7 +269,7 @@ func (c *Client) Ledgers(request LedgerRequest) (ledgers hProtocol.LedgersPage, 
 // See https://www.stellar.org/developers/horizon/reference/endpoints/ledgers-single.html
 func (c *Client) LedgerDetail(sequence uint32) (ledger hProtocol.Ledger, err error) {
 	if sequence <= 0 {
-		err = errors.New("Invalid sequence number provided")
+		err = errors.New("invalid sequence number provided")
 	}
 
 	if err != nil {
@@ -316,7 +316,7 @@ func (c *Client) Operations(request OperationRequest) (ops operations.Operations
 // for a given operation id
 func (c *Client) OperationDetail(id string) (ops operations.Operation, err error) {
 	if id == "" {
-		return ops, errors.New("Invalid operation id provided")
+		return ops, errors.New("invalid operation id provided")
 	}
 
 	request := OperationRequest{forOperationID: id, endpoint: "operations"}
@@ -325,20 +325,20 @@ func (c *Client) OperationDetail(id string) (ops operations.Operation, err error
 
 	err = c.sendRequest(request, &record)
 	if err != nil {
-		return ops, errors.Wrap(err, "Sending request to horizon")
+		return ops, errors.Wrap(err, "sending request to horizon")
 	}
 
 	var baseRecord operations.Base
 	dataString, err := json.Marshal(record)
 	if err != nil {
-		return ops, errors.Wrap(err, "Marshaling json")
+		return ops, errors.Wrap(err, "marshaling json")
 	}
 	if err = json.Unmarshal(dataString, &baseRecord); err != nil {
-		return ops, errors.Wrap(err, "Unmarshaling json")
+		return ops, errors.Wrap(err, "unmarshaling json")
 	}
 
 	ops, err = operations.UnmarshalOperation(baseRecord.GetType(), dataString)
-	return ops, errors.Wrap(err, "Unmarshaling to the correct operation type")
+	return ops, errors.Wrap(err, "unmarshaling to the correct operation type")
 }
 
 // SubmitTransaction submits a transaction to the network. err can be either error object or horizon.Error object.
@@ -362,7 +362,7 @@ func (c *Client) Transactions(request TransactionRequest) (txs hProtocol.Transac
 // See https://www.stellar.org/developers/horizon/reference/endpoints/transactions-single.html
 func (c *Client) TransactionDetail(txHash string) (tx hProtocol.Transaction, err error) {
 	if txHash == "" {
-		return tx, errors.New("No transaction hash provided")
+		return tx, errors.New("no transaction hash provided")
 	}
 
 	request := TransactionRequest{forTransactionHash: txHash}

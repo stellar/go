@@ -20,22 +20,22 @@ type CreatePassiveOffer struct {
 func (cpo *CreatePassiveOffer) BuildXDR() (xdr.Operation, error) {
 	xdrSelling, err := cpo.Selling.ToXDR()
 	if err != nil {
-		return xdr.Operation{}, errors.Wrap(err, "Failed to set XDR 'Selling' field")
+		return xdr.Operation{}, errors.Wrap(err, "failed to set XDR 'Selling' field")
 	}
 
 	xdrBuying, err := cpo.Buying.ToXDR()
 	if err != nil {
-		return xdr.Operation{}, errors.Wrap(err, "Failed to set XDR 'Buying' field")
+		return xdr.Operation{}, errors.Wrap(err, "failed to set XDR 'Buying' field")
 	}
 
 	xdrAmount, err := amount.Parse(cpo.Amount)
 	if err != nil {
-		return xdr.Operation{}, errors.Wrap(err, "Failed to parse 'Amount'")
+		return xdr.Operation{}, errors.Wrap(err, "failed to parse 'Amount'")
 	}
 
 	xdrPrice, err := price.Parse(cpo.Price)
 	if err != nil {
-		return xdr.Operation{}, errors.Wrap(err, "Failed to parse 'Price'")
+		return xdr.Operation{}, errors.Wrap(err, "failed to parse 'Price'")
 	}
 
 	xdrOp := xdr.CreatePassiveOfferOp{
@@ -48,5 +48,5 @@ func (cpo *CreatePassiveOffer) BuildXDR() (xdr.Operation, error) {
 	opType := xdr.OperationTypeCreatePassiveOffer
 	body, err := xdr.NewOperationBody(opType, xdrOp)
 
-	return xdr.Operation{Body: body}, errors.Wrap(err, "Failed to build XDR OperationBody")
+	return xdr.Operation{Body: body}, errors.Wrap(err, "failed to build XDR OperationBody")
 }

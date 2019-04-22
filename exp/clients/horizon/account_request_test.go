@@ -13,7 +13,7 @@ func TestAccountRequestBuildUrl(t *testing.T) {
 
 	// error case: No parameters
 	if assert.Error(t, err) {
-		assert.Contains(t, err.Error(), "Invalid request. No parameters")
+		assert.Contains(t, err.Error(), "invalid request: no parameters")
 	}
 
 	ar.DataKey = "test"
@@ -21,7 +21,7 @@ func TestAccountRequestBuildUrl(t *testing.T) {
 
 	// error case: few parameters for building account data endpoint
 	if assert.Error(t, err) {
-		assert.Contains(t, err.Error(), "Invalid request. Too few parameters")
+		assert.Contains(t, err.Error(), "invalid request: too few parameters")
 	}
 
 	ar.DataKey = ""

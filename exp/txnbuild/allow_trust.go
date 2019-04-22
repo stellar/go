@@ -20,23 +20,23 @@ func (at *AllowTrust) BuildXDR() (xdr.Operation, error) {
 	// Set XDR address associated with the trustline
 	err := xdrOp.Trustor.SetAddress(at.Trustor)
 	if err != nil {
-		return xdr.Operation{}, errors.Wrap(err, "Failed to set trustor address")
+		return xdr.Operation{}, errors.Wrap(err, "failed to set trustor address")
 	}
 
 	// Validate this is an issued asset
 	if at.Type.IsNative() {
-		return xdr.Operation{}, errors.New("Trustline doesn't exist for a native (XLM) asset")
+		return xdr.Operation{}, errors.New("trustline doesn't exist for a native (XLM) asset")
 	}
 
 	// AllowTrust has a special asset type - map to it
 	xdrAsset, err := at.Type.ToXDR()
 	if err != nil {
-		return xdr.Operation{}, errors.Wrap(err, "Can't convert asset for trustline to XDR")
+		return xdr.Operation{}, errors.Wrap(err, "can't convert asset for trustline to XDR")
 	}
 
 	xdrOp.Asset, err = xdrAsset.ToAllowTrustOpAsset(at.Type.GetCode())
 	if err != nil {
-		return xdr.Operation{}, errors.Wrap(err, "Can't convert asset for trustline to allow trust asset type")
+		return xdr.Operation{}, errors.Wrap(err, "can't convert asset for trustline to allow trust asset type")
 	}
 
 	// Set XDR auth flag
@@ -45,5 +45,5 @@ func (at *AllowTrust) BuildXDR() (xdr.Operation, error) {
 	opType := xdr.OperationTypeAllowTrust
 	body, err := xdr.NewOperationBody(opType, xdrOp)
 
-	return xdr.Operation{Body: body}, errors.Wrap(err, "Failed to build XDR OperationBody")
+	return xdr.Operation{Body: body}, errors.Wrap(err, "failed to build XDR OperationBody")
 }

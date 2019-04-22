@@ -14,5 +14,5 @@ func (inf *Inflation) BuildXDR() (xdr.Operation, error) {
 	opType := xdr.OperationTypeInflation
 	body, err := xdr.NewOperationBody(opType, nil)
 
-	return xdr.Operation{Body: body}, errors.Wrap(err, "Failed to build XDR OperationBody")
+	return xdr.Operation{Body: body}, errors.Wrap(err, "failed to build XDR OperationBody")
 }

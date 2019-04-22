@@ -53,7 +53,7 @@ func TestOperationRequestBuildUrl(t *testing.T) {
 
 	// error case: too many parameters for building any operation endpoint
 	if assert.Error(t, err) {
-		assert.Contains(t, err.Error(), "Invalid request. Too many parameters")
+		assert.Contains(t, err.Error(), "invalid request: too many parameters")
 	}
 
 	op = OperationRequest{Cursor: "123456", Limit: 30, Order: OrderAsc, endpoint: "operations"}
@@ -172,7 +172,7 @@ func TestOperationRequestStreamOperations(t *testing.T) {
 	})
 
 	if assert.Error(t, err) {
-		assert.Contains(t, err.Error(), "Got bad HTTP status code 500")
+		assert.Contains(t, err.Error(), "got bad HTTP status code 500")
 	}
 }
 

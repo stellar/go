@@ -72,7 +72,7 @@ func TestCodeTooShort(t *testing.T) {
 	require.NoError(t, xdrIssuer.SetAddress(asset.Issuer))
 
 	_, err := asset.ToXDR()
-	expectedErrMsg := "Asset code length must be between 1 and 12 characters: Asset code length is invalid"
+	expectedErrMsg := "asset code length must be between 1 and 12 characters: Asset code length is invalid"
 	require.EqualError(t, err, expectedErrMsg, "Minimum code length should be enforced")
 }
 
@@ -87,7 +87,7 @@ func TestCodeTooLong(t *testing.T) {
 	require.NoError(t, xdrIssuer.SetAddress(asset.Issuer))
 
 	_, err := asset.ToXDR()
-	expectedErrMsg := "Asset code length must be between 1 and 12 characters: Asset code length is invalid"
+	expectedErrMsg := "asset code length must be between 1 and 12 characters: Asset code length is invalid"
 	require.EqualError(t, err, expectedErrMsg, "Maximum code length should be enforced")
 }
 
