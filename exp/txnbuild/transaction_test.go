@@ -28,7 +28,7 @@ func TestInflation(t *testing.T) {
 	tx := Transaction{
 		SourceAccount: &sourceAccount,
 		Operations:    []Operation{&inflation},
-		Timebounds:    SetNoTimeout(0),
+		Timebounds:    NewInfiniteTimeout(),
 		Network:       network.TestNetworkPassphrase,
 	}
 
@@ -50,7 +50,7 @@ func TestCreateAccount(t *testing.T) {
 	tx := Transaction{
 		SourceAccount: &sourceAccount,
 		Operations:    []Operation{&createAccount},
-		Timebounds:    SetNoTimeout(0),
+		Timebounds:    NewInfiniteTimeout(),
 		Network:       network.TestNetworkPassphrase,
 	}
 
@@ -72,7 +72,7 @@ func TestPayment(t *testing.T) {
 	tx := Transaction{
 		SourceAccount: &sourceAccount,
 		Operations:    []Operation{&payment},
-		Timebounds:    SetNoTimeout(0),
+		Timebounds:    NewInfiniteTimeout(),
 		Network:       network.TestNetworkPassphrase,
 	}
 
@@ -93,7 +93,7 @@ func TestPaymentFailsIfNoAssetSpecified(t *testing.T) {
 	tx := Transaction{
 		SourceAccount: &sourceAccount,
 		Operations:    []Operation{&payment},
-		Timebounds:    SetNoTimeout(0),
+		Timebounds:    NewInfiniteTimeout(),
 		Network:       network.TestNetworkPassphrase,
 	}
 
@@ -113,7 +113,7 @@ func TestBumpSequence(t *testing.T) {
 	tx := Transaction{
 		SourceAccount: &sourceAccount,
 		Operations:    []Operation{&bumpSequence},
-		Timebounds:    SetNoTimeout(0),
+		Timebounds:    NewInfiniteTimeout(),
 		Network:       network.TestNetworkPassphrase,
 	}
 
@@ -133,7 +133,7 @@ func TestAccountMerge(t *testing.T) {
 	tx := Transaction{
 		SourceAccount: &sourceAccount,
 		Operations:    []Operation{&accountMerge},
-		Timebounds:    SetNoTimeout(0),
+		Timebounds:    NewInfiniteTimeout(),
 		Network:       network.TestNetworkPassphrase,
 	}
 
@@ -154,7 +154,7 @@ func TestManageData(t *testing.T) {
 	tx := Transaction{
 		SourceAccount: &sourceAccount,
 		Operations:    []Operation{&manageData},
-		Timebounds:    SetNoTimeout(0),
+		Timebounds:    NewInfiniteTimeout(),
 		Network:       network.TestNetworkPassphrase,
 	}
 
@@ -175,7 +175,7 @@ func TestManageDataRemoveDataEntry(t *testing.T) {
 	tx := Transaction{
 		SourceAccount: &sourceAccount,
 		Operations:    []Operation{&manageData},
-		Timebounds:    SetNoTimeout(0),
+		Timebounds:    NewInfiniteTimeout(),
 		Network:       network.TestNetworkPassphrase,
 	}
 
@@ -196,7 +196,7 @@ func TestSetOptionsInflationDestination(t *testing.T) {
 	tx := Transaction{
 		SourceAccount: &sourceAccount,
 		Operations:    []Operation{&setOptions},
-		Timebounds:    SetNoTimeout(0),
+		Timebounds:    NewInfiniteTimeout(),
 		Network:       network.TestNetworkPassphrase,
 	}
 
@@ -216,7 +216,7 @@ func TestSetOptionsSetFlags(t *testing.T) {
 	tx := Transaction{
 		SourceAccount: &sourceAccount,
 		Operations:    []Operation{&setOptions},
-		Timebounds:    SetNoTimeout(0),
+		Timebounds:    NewInfiniteTimeout(),
 		Network:       network.TestNetworkPassphrase,
 	}
 
@@ -236,7 +236,7 @@ func TestSetOptionsClearFlags(t *testing.T) {
 	tx := Transaction{
 		SourceAccount: &sourceAccount,
 		Operations:    []Operation{&setOptions},
-		Timebounds:    SetNoTimeout(0),
+		Timebounds:    NewInfiniteTimeout(),
 		Network:       network.TestNetworkPassphrase,
 	}
 
@@ -256,7 +256,7 @@ func TestSetOptionsMasterWeight(t *testing.T) {
 	tx := Transaction{
 		SourceAccount: &sourceAccount,
 		Operations:    []Operation{&setOptions},
-		Timebounds:    SetNoTimeout(0),
+		Timebounds:    NewInfiniteTimeout(),
 		Network:       network.TestNetworkPassphrase,
 	}
 
@@ -278,7 +278,7 @@ func TestSetOptionsThresholds(t *testing.T) {
 	tx := Transaction{
 		SourceAccount: &sourceAccount,
 		Operations:    []Operation{&setOptions},
-		Timebounds:    SetNoTimeout(0),
+		Timebounds:    NewInfiniteTimeout(),
 		Network:       network.TestNetworkPassphrase,
 	}
 
@@ -298,7 +298,7 @@ func TestSetOptionsHomeDomain(t *testing.T) {
 	tx := Transaction{
 		SourceAccount: &sourceAccount,
 		Operations:    []Operation{&setOptions},
-		Timebounds:    SetNoTimeout(0),
+		Timebounds:    NewInfiniteTimeout(),
 		Network:       network.TestNetworkPassphrase,
 	}
 
@@ -318,7 +318,7 @@ func TestSetOptionsHomeDomainTooLong(t *testing.T) {
 	tx := Transaction{
 		SourceAccount: &sourceAccount,
 		Operations:    []Operation{&setOptions},
-		Timebounds:    SetNoTimeout(0),
+		Timebounds:    NewInfiniteTimeout(),
 		Network:       network.TestNetworkPassphrase,
 	}
 
@@ -338,7 +338,7 @@ func TestSetOptionsSigner(t *testing.T) {
 	tx := Transaction{
 		SourceAccount: &sourceAccount,
 		Operations:    []Operation{&setOptions},
-		Timebounds:    SetNoTimeout(0),
+		Timebounds:    NewInfiniteTimeout(),
 		Network:       network.TestNetworkPassphrase,
 	}
 
@@ -359,7 +359,7 @@ func TestMultipleOperations(t *testing.T) {
 	tx := Transaction{
 		SourceAccount: &sourceAccount,
 		Operations:    []Operation{&inflation, &bumpSequence},
-		Timebounds:    SetNoTimeout(0),
+		Timebounds:    NewInfiniteTimeout(),
 		Network:       network.TestNetworkPassphrase,
 	}
 
@@ -381,7 +381,7 @@ func TestChangeTrust(t *testing.T) {
 	tx := Transaction{
 		SourceAccount: &sourceAccount,
 		Operations:    []Operation{&changeTrust},
-		Timebounds:    SetNoTimeout(0),
+		Timebounds:    NewInfiniteTimeout(),
 		Network:       network.TestNetworkPassphrase,
 	}
 
@@ -402,7 +402,7 @@ func TestChangeTrustNativeAssetNotAllowed(t *testing.T) {
 	tx := Transaction{
 		SourceAccount: &sourceAccount,
 		Operations:    []Operation{&changeTrust},
-		Timebounds:    SetNoTimeout(0),
+		Timebounds:    NewInfiniteTimeout(),
 		Network:       network.TestNetworkPassphrase,
 	}
 
@@ -422,7 +422,7 @@ func TestChangeTrustDeleteTrustline(t *testing.T) {
 	tx := Transaction{
 		SourceAccount: &sourceAccount,
 		Operations:    []Operation{&removeTrust},
-		Timebounds:    SetNoTimeout(0),
+		Timebounds:    NewInfiniteTimeout(),
 		Network:       network.TestNetworkPassphrase,
 	}
 
@@ -446,7 +446,7 @@ func TestAllowTrust(t *testing.T) {
 	tx := Transaction{
 		SourceAccount: &sourceAccount,
 		Operations:    []Operation{&allowTrust},
-		Timebounds:    SetNoTimeout(0),
+		Timebounds:    NewInfiniteTimeout(),
 		Network:       network.TestNetworkPassphrase,
 	}
 
@@ -469,7 +469,7 @@ func TestManageOfferNewOffer(t *testing.T) {
 	tx := Transaction{
 		SourceAccount: &sourceAccount,
 		Operations:    []Operation{&createOffer},
-		Timebounds:    SetNoTimeout(0),
+		Timebounds:    NewInfiniteTimeout(),
 		Network:       network.TestNetworkPassphrase,
 	}
 
@@ -488,7 +488,7 @@ func TestManageOfferDeleteOffer(t *testing.T) {
 	tx := Transaction{
 		SourceAccount: &sourceAccount,
 		Operations:    []Operation{&deleteOffer},
-		Timebounds:    SetNoTimeout(0),
+		Timebounds:    NewInfiniteTimeout(),
 		Network:       network.TestNetworkPassphrase,
 	}
 
@@ -512,7 +512,7 @@ func TestManageOfferUpdateOffer(t *testing.T) {
 	tx := Transaction{
 		SourceAccount: &sourceAccount,
 		Operations:    []Operation{&updateOffer},
-		Timebounds:    SetNoTimeout(0),
+		Timebounds:    NewInfiniteTimeout(),
 		Network:       network.TestNetworkPassphrase,
 	}
 
@@ -535,7 +535,7 @@ func TestCreatePassiveOffer(t *testing.T) {
 	tx := Transaction{
 		SourceAccount: &sourceAccount,
 		Operations:    []Operation{&createPassiveOffer},
-		Timebounds:    SetNoTimeout(0),
+		Timebounds:    NewInfiniteTimeout(),
 		Network:       network.TestNetworkPassphrase,
 	}
 
@@ -562,7 +562,7 @@ func TestPathPayment(t *testing.T) {
 	tx := Transaction{
 		SourceAccount: &sourceAccount,
 		Operations:    []Operation{&pathPayment},
-		Timebounds:    SetNoTimeout(0),
+		Timebounds:    NewInfiniteTimeout(),
 		Network:       network.TestNetworkPassphrase,
 	}
 
@@ -579,7 +579,7 @@ func TestMemoText(t *testing.T) {
 		SourceAccount: &sourceAccount,
 		Operations:    []Operation{&BumpSequence{BumpTo: 1}},
 		Memo:          MemoText("Twas brillig"),
-		Timebounds:    SetNoTimeout(0),
+		Timebounds:    NewInfiniteTimeout(),
 		Network:       network.TestNetworkPassphrase,
 	}
 
@@ -597,7 +597,7 @@ func TestMemoID(t *testing.T) {
 		SourceAccount: &sourceAccount,
 		Operations:    []Operation{&BumpSequence{BumpTo: 1}},
 		Memo:          MemoID(314159),
-		Timebounds:    SetNoTimeout(0),
+		Timebounds:    NewInfiniteTimeout(),
 		Network:       network.TestNetworkPassphrase,
 	}
 
@@ -614,7 +614,7 @@ func TestMemoHash(t *testing.T) {
 		SourceAccount: &sourceAccount,
 		Operations:    []Operation{&BumpSequence{BumpTo: 1}},
 		Memo:          MemoHash([32]byte{0x01}),
-		Timebounds:    SetNoTimeout(0),
+		Timebounds:    NewInfiniteTimeout(),
 		Network:       network.TestNetworkPassphrase,
 	}
 
@@ -631,7 +631,7 @@ func TestMemoReturn(t *testing.T) {
 		SourceAccount: &sourceAccount,
 		Operations:    []Operation{&BumpSequence{BumpTo: 1}},
 		Memo:          MemoReturn([32]byte{0x01}),
-		Timebounds:    SetNoTimeout(0),
+		Timebounds:    NewInfiniteTimeout(),
 		Network:       network.TestNetworkPassphrase,
 	}
 

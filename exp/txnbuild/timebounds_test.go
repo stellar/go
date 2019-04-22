@@ -10,13 +10,13 @@ import (
 func TestTimeboundsRequireConstructor(t *testing.T) {
 	tb := Timebounds{MinTime: -1, MaxTime: 300}
 	err := tb.Validate()
-	expectedErrMsg := "timebounds must be constructed using SetTimebounds(), SetTimeout(), or SetNoTimeout()"
+	expectedErrMsg := "timebounds must be constructed using NewTimebounds(), NewTimeout(), or NewInfiniteTimeout()"
 
 	require.EqualError(t, err, expectedErrMsg, "Default timebounds not allowed")
 }
 
 func TestSetTimeboundsNegativeMinTime(t *testing.T) {
-	tb := SetTimebounds(-1, 300)
+	tb := NewTimebounds(-1, 300)
 	err := tb.Validate()
 	expectedErrMsg := "invalid timebound: minTime cannot be negative"
 
@@ -24,7 +24,7 @@ func TestSetTimeboundsNegativeMinTime(t *testing.T) {
 }
 
 func TestSetTimeboundsNegativeMaxTime(t *testing.T) {
-	tb := SetTimebounds(1, -300)
+	tb := NewTimebounds(1, -300)
 	err := tb.Validate()
 	expectedErrMsg := "invalid timebound: maxTime cannot be negative"
 
@@ -32,7 +32,8 @@ func TestSetTimeboundsNegativeMaxTime(t *testing.T) {
 }
 
 func TestSetTimeoutNegativeWidth(t *testing.T) {
-	tb := SetTimeout(5555624032, 300) // Sometime in 2146
+	tb := NewTimeout(300)
+	tb.MinTime = 5555624032 // Sometime in 2146
 	err := tb.Validate()
 	expectedErrMsg := "invalid timebound: maxTime < minTime"
 
@@ -40,7 +41,8 @@ func TestSetTimeoutNegativeWidth(t *testing.T) {
 }
 
 func TestSetTimeout(t *testing.T) {
-	tb := SetTimeout(1, 300)
+	tb := NewTimeout(300)
+	tb.MinTime = 1
 	err := tb.Validate()
 	if assert.NoError(t, err) {
 		assert.Equal(t, int64(1), tb.MinTime)

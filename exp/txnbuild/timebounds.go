@@ -17,7 +17,7 @@ const TimeoutInfinite = int64(0)
 // With an upper timebound, the submitter has a guaranteed time at which the Transaction is known to have either
 // succeeded or failed, and can then take appropriate action (e.g. to resubmit or mark as resolved).
 //
-// Create a Timebounds struct using one of SetTimebounds(), SetTimeout(), or SetNoTimeout().
+// Create a Timebounds struct using one of NewTimebounds(), NewTimeout(), or NewInfiniteTimeout().
 type Timebounds struct {
 	MinTime  int64
 	MaxTime  int64
@@ -29,7 +29,7 @@ type Timebounds struct {
 // valid - you must explicitly specifiy the Timebound you require.
 func (tb *Timebounds) Validate() error {
 	if !tb.wasBuilt {
-		return errors.New("timebounds must be constructed using SetTimebounds(), SetTimeout(), or SetNoTimeout()")
+		return errors.New("timebounds must be constructed using NewTimebounds(), NewTimeout(), or NewInfiniteTimeout()")
 	}
 	if tb.MinTime < 0 {
 		return errors.New("invalid timebound: minTime cannot be negative")
@@ -48,23 +48,24 @@ func (tb *Timebounds) Validate() error {
 	return nil
 }
 
-// SetTimebounds is a factory method that constructs a Timebounds object from a min and max time.
+// NewTimebounds is a factory method that constructs a Timebounds object from a min and max time.
 // A Transaction cannot be built unless a Timebounds object is provided through a factory method.
-func SetTimebounds(minTime, maxTime int64) Timebounds {
+func NewTimebounds(minTime, maxTime int64) Timebounds {
 	return Timebounds{minTime, maxTime, true}
 }
 
-// SetTimeout is a factory method that sets the minTime, and sets the MaxTime to be the duration in seconds
-// in the future specified by 'timeout'.
+// NewTimeout is a factory method that sets the MaxTime to be the duration in seconds in the
+// future specified by 'timeout'.
 // A Transaction cannot be built unless a Timebounds object is provided through a factory method.
 // This method uses the provided system time - make sure it is accurate.
-func SetTimeout(minTime, timeout int64) Timebounds {
-	return Timebounds{minTime, time.Now().UTC().Unix() + timeout, true}
+func NewTimeout(timeout int64) Timebounds {
+	return Timebounds{0, time.Now().UTC().Unix() + timeout, true}
 }
 
-// SetNoTimeout is a factory method that sets the minTime, and sets the MaxTime to a value representing an indefinite
-// upper time bound. This is rarely needed, but is helpful for certain smart contracts, and for deterministic testing.
-// A Transaction cannot be built unless a Timebounds object is provided through a factory method.
-func SetNoTimeout(minTime int64) Timebounds {
-	return Timebounds{minTime, TimeoutInfinite, true}
+// NewInfiniteTimeout is a factory method that sets the MaxTime to a value representing an indefinite
+// upper time bound. This is rarely needed, but is helpful for certain smart contracts, and for
+// deterministic testing. A Transaction cannot be built unless a Timebounds object is provided through
+// a factory method.
+func NewInfiniteTimeout() Timebounds {
+	return Timebounds{0, TimeoutInfinite, true}
 }
