@@ -6,7 +6,7 @@ import "github.com/stellar/go/support/errors"
 func (mr metricsRequest) BuildURL() (endpoint string, err error) {
 	endpoint = mr.endpoint
 	if endpoint == "" {
-		err = errors.New("Invalid request. Too few parameters")
+		err = errors.New("invalid request: too few parameters")
 	}
 
 	return

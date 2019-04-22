@@ -93,7 +93,7 @@ func TestPaymentFailsIfNoAssetSpecified(t *testing.T) {
 	}
 
 	err := tx.Build()
-	expectedErrMsg := "Failed to build operation *txnbuild.Payment: You must specify an asset for payment"
+	expectedErrMsg := "failed to build operation *txnbuild.Payment: you must specify an asset for payment"
 	require.EqualError(t, err, expectedErrMsg, "An asset is required")
 }
 
@@ -385,7 +385,7 @@ func TestChangeTrustNativeAssetNotAllowed(t *testing.T) {
 	}
 
 	err := tx.Build()
-	expectedErrMsg := "Failed to build operation *txnbuild.ChangeTrust: Trustline cannot be extended to a native (XLM) asset"
+	expectedErrMsg := "failed to build operation *txnbuild.ChangeTrust: trustline cannot be extended to a native (XLM) asset"
 	require.EqualError(t, err, expectedErrMsg, "No trustlines for native assets")
 }
 

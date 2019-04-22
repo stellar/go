@@ -20,20 +20,20 @@ func (p *Payment) BuildXDR() (xdr.Operation, error) {
 
 	err := destAccountID.SetAddress(p.Destination)
 	if err != nil {
-		return xdr.Operation{}, errors.Wrap(err, "Failed to set destination address")
+		return xdr.Operation{}, errors.Wrap(err, "failed to set destination address")
 	}
 
 	xdrAmount, err := amount.Parse(p.Amount)
 	if err != nil {
-		return xdr.Operation{}, errors.Wrap(err, "Failed to parse amount")
+		return xdr.Operation{}, errors.Wrap(err, "failed to parse amount")
 	}
 
 	if p.Asset == nil {
-		return xdr.Operation{}, errors.New("You must specify an asset for payment")
+		return xdr.Operation{}, errors.New("you must specify an asset for payment")
 	}
 	xdrAsset, err := p.Asset.ToXDR()
 	if err != nil {
-		return xdr.Operation{}, errors.Wrap(err, "Failed to set asset type")
+		return xdr.Operation{}, errors.Wrap(err, "failed to set asset type")
 	}
 
 	opType := xdr.OperationTypePayment
@@ -44,5 +44,5 @@ func (p *Payment) BuildXDR() (xdr.Operation, error) {
 	}
 	body, err := xdr.NewOperationBody(opType, xdrOp)
 
-	return xdr.Operation{Body: body}, errors.Wrap(err, "Failed to build XDR OperationBody")
+	return xdr.Operation{Body: body}, errors.Wrap(err, "failed to build XDR OperationBody")
 }

@@ -631,19 +631,19 @@ func PrintHorizonError(hError *horizon.Error) error {
 
 	err = json.Unmarshal(problem.Extras["result_codes"], &decodedResultCodes)
 	if err != nil {
-		return errors.Wrap(err, "Couldn't unmarshal result_codes")
+		return errors.Wrap(err, "couldn't unmarshal result_codes")
 	}
 	log.Println("Error extras result codes:", decodedResultCodes)
 
 	err = json.Unmarshal(problem.Extras["result_xdr"], &decodedResult)
 	if err != nil {
-		return errors.Wrap(err, "Couldn't unmarshal result_xdr")
+		return errors.Wrap(err, "couldn't unmarshal result_xdr")
 	}
 	log.Println("Error extras result (TransactionResult) XDR:", decodedResult)
 
 	err = json.Unmarshal(problem.Extras["envelope_xdr"], &decodedEnvelope)
 	if err != nil {
-		return errors.Wrap(err, "Couldn't unmarshal envelope_xdr")
+		return errors.Wrap(err, "couldn't unmarshal envelope_xdr")
 	}
 	log.Println("Error extras envelope (TransactionEnvelope) XDR:", decodedEnvelope)
 

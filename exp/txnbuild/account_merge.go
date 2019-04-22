@@ -17,11 +17,11 @@ func (am *AccountMerge) BuildXDR() (xdr.Operation, error) {
 
 	err := xdrOp.SetAddress(am.Destination)
 	if err != nil {
-		return xdr.Operation{}, errors.Wrap(err, "Failed to set destination address")
+		return xdr.Operation{}, errors.Wrap(err, "failed to set destination address")
 	}
 
 	opType := xdr.OperationTypeAccountMerge
 	body, err := xdr.NewOperationBody(opType, xdrOp)
 
-	return xdr.Operation{Body: body}, errors.Wrap(err, "Failed to build XDR OperationBody")
+	return xdr.Operation{Body: body}, errors.Wrap(err, "failed to build XDR OperationBody")
 }

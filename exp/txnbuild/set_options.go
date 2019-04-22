@@ -66,7 +66,7 @@ type SetOptions struct {
 func (so *SetOptions) BuildXDR() (xdr.Operation, error) {
 	err := so.handleInflation()
 	if err != nil {
-		return xdr.Operation{}, errors.Wrap(err, "Failed to set inflation destination address")
+		return xdr.Operation{}, errors.Wrap(err, "failed to set inflation destination address")
 	}
 
 	so.handleClearFlags()
@@ -77,17 +77,17 @@ func (so *SetOptions) BuildXDR() (xdr.Operation, error) {
 	so.handleHighThreshold()
 	err = so.handleHomeDomain()
 	if err != nil {
-		return xdr.Operation{}, errors.Wrap(err, "Failed to set home domain")
+		return xdr.Operation{}, errors.Wrap(err, "failed to set home domain")
 	}
 	err = so.handleSigner()
 	if err != nil {
-		return xdr.Operation{}, errors.Wrap(err, "Failed to set signer")
+		return xdr.Operation{}, errors.Wrap(err, "failed to set signer")
 	}
 
 	opType := xdr.OperationTypeSetOptions
 	body, err := xdr.NewOperationBody(opType, so.xdrOp)
 
-	return xdr.Operation{Body: body}, errors.Wrap(err, "Failed to build XDR OperationBody")
+	return xdr.Operation{Body: body}, errors.Wrap(err, "failed to build XDR OperationBody")
 }
 
 // handleInflation for SetOptions sets the XDR inflation destination.
@@ -169,7 +169,7 @@ func (so *SetOptions) handleHighThreshold() {
 func (so *SetOptions) handleHomeDomain() error {
 	if so.HomeDomain != nil {
 		if len(*so.HomeDomain) > 32 {
-			return errors.New("HomeDomain must be 32 characters or less")
+			return errors.New("homeDomain must be 32 characters or less")
 		}
 		xdrHomeDomain := xdr.String32(*so.HomeDomain)
 		so.xdrOp.HomeDomain = &xdrHomeDomain

@@ -13,7 +13,7 @@ import (
 // BuildURL creates the endpoint to be queried based on the data in the OfferRequest struct.
 func (or OfferRequest) BuildURL() (endpoint string, err error) {
 	if or.ForAccount == "" {
-		return endpoint, errors.New(`"ForAccount" parameter required`)
+		return endpoint, errors.New(`parameter "ForAccount" required`)
 	}
 	endpoint = fmt.Sprintf("accounts/%s/offers", or.ForAccount)
 
@@ -39,7 +39,7 @@ type OfferHandler func(hProtocol.Offer)
 func (or OfferRequest) StreamOffers(ctx context.Context, client *Client, handler OfferHandler) (err error) {
 	endpoint, err := or.BuildURL()
 	if err != nil {
-		return errors.Wrap(err, "Unable to build endpoint for offers request")
+		return errors.Wrap(err, "unable to build endpoint for offers request")
 	}
 
 	url := fmt.Sprintf("%s%s", client.getHorizonURL(), endpoint)
@@ -48,7 +48,7 @@ func (or OfferRequest) StreamOffers(ctx context.Context, client *Client, handler
 		var offer hProtocol.Offer
 		err = json.Unmarshal(data, &offer)
 		if err != nil {
-			return errors.Wrap(err, "Error unmarshaling data for offers request")
+			return errors.Wrap(err, "error unmarshaling data for offers request")
 		}
 		handler(offer)
 		return nil

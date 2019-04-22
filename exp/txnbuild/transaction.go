@@ -42,7 +42,7 @@ func (tx *Transaction) MarshalBinary() ([]byte, error) {
 	var txBytes bytes.Buffer
 	_, err := xdr.Marshal(&txBytes, tx.xdrEnvelope)
 	if err != nil {
-		return nil, errors.Wrap(err, "Failed to marshal XDR")
+		return nil, errors.Wrap(err, "failed to marshal XDR")
 	}
 
 	return txBytes.Bytes(), nil
@@ -52,7 +52,7 @@ func (tx *Transaction) MarshalBinary() ([]byte, error) {
 func (tx *Transaction) Base64() (string, error) {
 	bs, err := tx.MarshalBinary()
 	if err != nil {
-		return "", errors.Wrap(err, "Failed to get XDR bytestring")
+		return "", errors.Wrap(err, "failed to get XDR bytestring")
 	}
 
 	return base64.StdEncoding.EncodeToString(bs), nil
@@ -81,14 +81,14 @@ func (tx *Transaction) Build() error {
 	// TODO: Validate Seq Num is present in struct
 	seqnum, err := tx.SourceAccount.IncrementSequenceNumber()
 	if err != nil {
-		return errors.Wrap(err, "Failed to parse sequence number")
+		return errors.Wrap(err, "failed to parse sequence number")
 	}
 	tx.xdrTransaction.SeqNum = seqnum
 
 	for _, op := range tx.Operations {
 		xdrOperation, err := op.BuildXDR()
 		if err != nil {
-			return errors.Wrap(err, fmt.Sprintf("Failed to build operation %T", op))
+			return errors.Wrap(err, fmt.Sprintf("failed to build operation %T", op))
 		}
 		tx.xdrTransaction.Operations = append(tx.xdrTransaction.Operations, xdrOperation)
 	}
@@ -97,7 +97,7 @@ func (tx *Transaction) Build() error {
 	if tx.Memo != nil {
 		xdrMemo, err := tx.Memo.ToXDR()
 		if err != nil {
-			return errors.Wrap(err, "Couldn't build memo XDR")
+			return errors.Wrap(err, "couldn't build memo XDR")
 		}
 		tx.xdrTransaction.Memo = xdrMemo
 	}
@@ -122,14 +122,14 @@ func (tx *Transaction) Sign(kp *keypair.Full) error {
 	// Hash the transaction
 	hash, err := tx.Hash()
 	if err != nil {
-		return errors.Wrap(err, "Failed to hash transaction")
+		return errors.Wrap(err, "failed to hash transaction")
 	}
 
 	// Sign the hash
 	// TODO: Allow multiple signers
 	sig, err := kp.SignDecorated(hash[:])
 	if err != nil {
-		return errors.Wrap(err, "Failed to sign transaction")
+		return errors.Wrap(err, "failed to sign transaction")
 	}
 
 	// Append the signature to the envelope

@@ -10,7 +10,7 @@ import (
 // BuildURL returns the url for submitting transactions to a running horizon instance
 func (sr submitRequest) BuildURL() (endpoint string, err error) {
 	if sr.endpoint == "" || sr.transactionXdr == "" {
-		return endpoint, errors.New("Invalid request. Too few parameters")
+		return endpoint, errors.New("invalid request: too few parameters")
 	}
 
 	query := url.Values{}

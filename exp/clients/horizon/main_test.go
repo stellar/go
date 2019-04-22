@@ -296,7 +296,7 @@ func TestAccountDetail(t *testing.T) {
 	_, err := client.AccountDetail(accountRequest)
 	// error case: no account id
 	if assert.Error(t, err) {
-		assert.Contains(t, err.Error(), "No account ID provided")
+		assert.Contains(t, err.Error(), "no account ID provided")
 	}
 
 	// wrong parameters
@@ -309,7 +309,7 @@ func TestAccountDetail(t *testing.T) {
 	_, err = client.AccountDetail(accountRequest)
 	// error case: no account id
 	if assert.Error(t, err) {
-		assert.Contains(t, err.Error(), "No account ID provided")
+		assert.Contains(t, err.Error(), "no account ID provided")
 	}
 
 	accountRequest = AccountRequest{AccountID: "GCLWGQPMKXQSPF776IU33AH4PZNOOWNAWGGKVTBQMIC5IMKUNP3E6NVU"}
@@ -341,7 +341,7 @@ func TestAccountDetail(t *testing.T) {
 
 	account, err = client.AccountDetail(accountRequest)
 	if assert.Error(t, err) {
-		assert.Contains(t, err.Error(), "Horizon error")
+		assert.Contains(t, err.Error(), "horizon error")
 		horizonError, ok := err.(*Error)
 		assert.Equal(t, ok, true)
 		assert.Equal(t, horizonError.Problem.Title, "Resource Missing")
@@ -378,7 +378,7 @@ func TestAccountData(t *testing.T) {
 	_, err := client.AccountData(accountRequest)
 	// error case: few parameters
 	if assert.Error(t, err) {
-		assert.Contains(t, err.Error(), "Too few parameters")
+		assert.Contains(t, err.Error(), "too few parameters")
 	}
 
 	// wrong parameters
@@ -391,7 +391,7 @@ func TestAccountData(t *testing.T) {
 	_, err = client.AccountData(accountRequest)
 	// error case: few parameters
 	if assert.Error(t, err) {
-		assert.Contains(t, err.Error(), "Too few parameters")
+		assert.Contains(t, err.Error(), "too few parameters")
 	}
 
 	accountRequest = AccountRequest{AccountID: "GCLWGQPMKXQSPF776IU33AH4PZNOOWNAWGGKVTBQMIC5IMKUNP3E6NVU", DataKey: "test"}
@@ -451,7 +451,7 @@ func TestEffectsRequest(t *testing.T) {
 	_, err = client.Effects(effectRequest)
 	// error case
 	if assert.Error(t, err) {
-		assert.Contains(t, err.Error(), "Too many parameters")
+		assert.Contains(t, err.Error(), "too many parameters")
 	}
 
 }
@@ -706,7 +706,7 @@ func TestOperationsRequest(t *testing.T) {
 	_, err = client.Operations(operationRequest)
 	// error case
 	if assert.Error(t, err) {
-		assert.Contains(t, err.Error(), "Too many parameters")
+		assert.Contains(t, err.Error(), "too many parameters")
 	}
 
 	// operation detail
@@ -756,7 +756,7 @@ func TestSubmitRequest(t *testing.T) {
 
 	_, err := client.SubmitTransaction(txXdr)
 	if assert.Error(t, err) {
-		assert.Contains(t, err.Error(), "Horizon error")
+		assert.Contains(t, err.Error(), "horizon error")
 		horizonError, ok := errors.Cause(err).(*Error)
 		assert.Equal(t, ok, true)
 		assert.Equal(t, horizonError.Problem.Title, "Transaction Failed")
@@ -846,7 +846,7 @@ func TestTransactionsRequest(t *testing.T) {
 	_, err = client.Transactions(transactionRequest)
 	// error case
 	if assert.Error(t, err) {
-		assert.Contains(t, err.Error(), "Too many parameters")
+		assert.Contains(t, err.Error(), "too many parameters")
 	}
 
 	// transaction detail
@@ -900,7 +900,7 @@ func TestOrderBookRequest(t *testing.T) {
 
 	_, err = client.OrderBook(orderBookRequest)
 	if assert.Error(t, err) {
-		assert.Contains(t, err.Error(), "Horizon error")
+		assert.Contains(t, err.Error(), "horizon error")
 		horizonError, ok := err.(*Error)
 		assert.Equal(t, ok, true)
 		assert.Equal(t, horizonError.Problem.Title, "Invalid Order Book Parameters")

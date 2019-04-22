@@ -20,7 +20,7 @@ func (er EffectRequest) BuildURL() (endpoint string, err error) {
 	nParams := countParams(er.ForAccount, er.ForLedger, er.ForOperation, er.ForTransaction)
 
 	if nParams > 1 {
-		err = errors.New("Invalid request. Too many parameters")
+		err = errors.New("invalid request: too many parameters")
 	}
 
 	if err != nil {
@@ -84,7 +84,7 @@ func (er EffectRequest) StreamEffects(
 ) (err error) {
 	endpoint, err := er.BuildURL()
 	if err != nil {
-		return errors.Wrap(err, "Unable to build endpoint")
+		return errors.Wrap(err, "unable to build endpoint")
 	}
 
 	url := fmt.Sprintf("%s%s", client.getHorizonURL(), endpoint)
@@ -92,7 +92,7 @@ func (er EffectRequest) StreamEffects(
 		var effect effects.Base
 		err = json.Unmarshal(data, &effect)
 		if err != nil {
-			return errors.Wrap(err, "Error unmarshaling data")
+			return errors.Wrap(err, "error unmarshaling data")
 		}
 		handler(effect)
 		return nil

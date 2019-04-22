@@ -19,16 +19,16 @@ func (ca *CreateAccount) BuildXDR() (xdr.Operation, error) {
 
 	err := xdrOp.Destination.SetAddress(ca.Destination)
 	if err != nil {
-		return xdr.Operation{}, errors.Wrap(err, "Failed to set destination address")
+		return xdr.Operation{}, errors.Wrap(err, "failed to set destination address")
 	}
 
 	xdrOp.StartingBalance, err = amount.Parse(ca.Amount)
 	if err != nil {
-		return xdr.Operation{}, errors.Wrap(err, "Failed to parse amount")
+		return xdr.Operation{}, errors.Wrap(err, "failed to parse amount")
 	}
 
 	opType := xdr.OperationTypeCreateAccount
 	body, err := xdr.NewOperationBody(opType, xdrOp)
 
-	return xdr.Operation{Body: body}, errors.Wrap(err, "Failed to build XDR OperationBody")
+	return xdr.Operation{Body: body}, errors.Wrap(err, "failed to build XDR OperationBody")
 }

@@ -46,7 +46,7 @@ type OrderBookHandler func(hProtocol.OrderBookSummary)
 func (obr OrderBookRequest) StreamOrderBooks(ctx context.Context, client *Client, handler OrderBookHandler) error {
 	endpoint, err := obr.BuildURL()
 	if err != nil {
-		return errors.Wrap(err, "Unable to build endpoint for orderbook request")
+		return errors.Wrap(err, "unable to build endpoint for orderbook request")
 	}
 
 	url := fmt.Sprintf("%s%s", client.getHorizonURL(), endpoint)
@@ -54,7 +54,7 @@ func (obr OrderBookRequest) StreamOrderBooks(ctx context.Context, client *Client
 		var orderbook hProtocol.OrderBookSummary
 		err = json.Unmarshal(data, &orderbook)
 		if err != nil {
-			return errors.Wrap(err, "Error unmarshaling data for orderbook request")
+			return errors.Wrap(err, "error unmarshaling data for orderbook request")
 		}
 		handler(orderbook)
 		return nil

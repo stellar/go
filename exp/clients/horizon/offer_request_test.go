@@ -93,7 +93,7 @@ func TestOfferRequestStreamOffers(t *testing.T) {
 	})
 
 	if assert.Error(t, err) {
-		assert.Contains(t, err.Error(), "Got bad HTTP status code 500")
+		assert.Contains(t, err.Error(), "got bad HTTP status code 500")
 	}
 }
 

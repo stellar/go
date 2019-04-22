@@ -21,39 +21,39 @@ type PathPayment struct {
 func (pp *PathPayment) BuildXDR() (xdr.Operation, error) {
 	// Set XDR send asset
 	if pp.SendAsset == nil {
-		return xdr.Operation{}, errors.New("You must specify an asset to send for payment")
+		return xdr.Operation{}, errors.New("you must specify an asset to send for payment")
 	}
 	xdrSendAsset, err := pp.SendAsset.ToXDR()
 	if err != nil {
-		return xdr.Operation{}, errors.Wrap(err, "Failed to set asset type")
+		return xdr.Operation{}, errors.Wrap(err, "failed to set asset type")
 	}
 
 	// Set XDR send max
 	xdrSendMax, err := amount.Parse(pp.SendMax)
 	if err != nil {
-		return xdr.Operation{}, errors.Wrap(err, "Failed to parse maximum amount to send")
+		return xdr.Operation{}, errors.Wrap(err, "failed to parse maximum amount to send")
 	}
 
 	// Set XDR destination
 	var xdrDestination xdr.AccountId
 	err = xdrDestination.SetAddress(pp.Destination)
 	if err != nil {
-		return xdr.Operation{}, errors.Wrap(err, "Failed to set destination address")
+		return xdr.Operation{}, errors.Wrap(err, "failed to set destination address")
 	}
 
 	// Set XDR destination asset
 	if pp.DestAsset == nil {
-		return xdr.Operation{}, errors.New("You must specify an asset for destination account to receive")
+		return xdr.Operation{}, errors.New("you must specify an asset for destination account to receive")
 	}
 	xdrDestAsset, err := pp.DestAsset.ToXDR()
 	if err != nil {
-		return xdr.Operation{}, errors.Wrap(err, "Failed to set asset type")
+		return xdr.Operation{}, errors.Wrap(err, "failed to set asset type")
 	}
 
 	// Set XDR destination amount
 	xdrDestAmount, err := amount.Parse(pp.DestAmount)
 	if err != nil {
-		return xdr.Operation{}, errors.Wrap(err, "Failed to parse amount of asset destination account receives")
+		return xdr.Operation{}, errors.Wrap(err, "failed to parse amount of asset destination account receives")
 	}
 
 	// Set XDR path
@@ -62,7 +62,7 @@ func (pp *PathPayment) BuildXDR() (xdr.Operation, error) {
 	for _, asset := range pp.Path {
 		xdrPathAsset, err = asset.ToXDR()
 		if err != nil {
-			return xdr.Operation{}, errors.Wrap(err, "Failed to set asset type")
+			return xdr.Operation{}, errors.Wrap(err, "failed to set asset type")
 		}
 		xdrPath = append(xdrPath, xdrPathAsset)
 	}
@@ -78,5 +78,5 @@ func (pp *PathPayment) BuildXDR() (xdr.Operation, error) {
 	}
 	body, err := xdr.NewOperationBody(opType, xdrOp)
 
-	return xdr.Operation{Body: body}, errors.Wrap(err, "Failed to build XDR OperationBody")
+	return xdr.Operation{Body: body}, errors.Wrap(err, "failed to build XDR OperationBody")
 }

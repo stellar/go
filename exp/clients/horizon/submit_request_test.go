@@ -20,6 +20,6 @@ func TestSubmitRequestBuildUrl(t *testing.T) {
 
 	// It should return errors
 	if assert.Error(t, err) {
-		assert.Contains(t, err.Error(), "Invalid request. Too few parameters")
+		assert.Contains(t, err.Error(), "invalid request: too few parameters")
 	}
 }

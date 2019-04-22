@@ -96,7 +96,7 @@ func TestPathsRequest(t *testing.T) {
 
 	_, err = client.Paths(pr)
 	if assert.Error(t, err) {
-		assert.Contains(t, err.Error(), "Horizon error")
+		assert.Contains(t, err.Error(), "horizon error")
 		horizonError, ok := err.(*Error)
 		assert.Equal(t, ok, true)
 		assert.Equal(t, horizonError.Problem.Title, "Bad Request")

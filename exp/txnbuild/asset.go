@@ -66,7 +66,7 @@ func (ca CreditAsset) GetType() (AssetType, error) {
 	case len(ca.Code) >= 5 && len(ca.Code) <= 12:
 		return AssetTypeCreditAlphanum12, nil
 	default:
-		return AssetTypeCreditAlphanum4, errors.New("Invalid asset code")
+		return AssetTypeCreditAlphanum4, errors.New("invalid asset code")
 	}
 }
 
@@ -91,7 +91,7 @@ func (ca CreditAsset) ToXDR() (xdr.Asset, error) {
 
 	err = xdrAsset.SetCredit(ca.Code, issuer)
 	if err != nil {
-		return xdr.Asset{}, errors.Wrap(err, "Asset code length must be between 1 and 12 characters")
+		return xdr.Asset{}, errors.Wrap(err, "asset code length must be between 1 and 12 characters")
 	}
 
 	return xdrAsset, nil
