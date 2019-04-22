@@ -28,8 +28,9 @@ type Transaction struct {
 	xdrTransaction xdr.Transaction
 	BaseFee        uint32
 	Memo           Memo
-	xdrEnvelope    *xdr.TransactionEnvelope
+	Timebounds     Timebounds
 	Network        string
+	xdrEnvelope    *xdr.TransactionEnvelope
 }
 
 // Hash provides a signable object representing the Transaction on the specified network.
@@ -86,12 +87,20 @@ func (tx *Transaction) Build() error {
 	tx.xdrTransaction.SeqNum = seqnum
 
 	for _, op := range tx.Operations {
-		xdrOperation, err := op.BuildXDR()
-		if err != nil {
-			return errors.Wrap(err, fmt.Sprintf("failed to build operation %T", op))
+		xdrOperation, err2 := op.BuildXDR()
+		if err2 != nil {
+			return errors.Wrap(err2, fmt.Sprintf("failed to build operation %T", op))
 		}
 		tx.xdrTransaction.Operations = append(tx.xdrTransaction.Operations, xdrOperation)
 	}
+
+	// Check and set the timebounds
+	err = tx.Timebounds.Validate()
+	if err != nil {
+		return err
+	}
+	tx.xdrTransaction.TimeBounds = &xdr.TimeBounds{MinTime: xdr.Uint64(tx.Timebounds.MinTime),
+		MaxTime: xdr.Uint64(tx.Timebounds.MaxTime)}
 
 	// Handle the memo, if one is present
 	if tx.Memo != nil {
@@ -136,4 +145,25 @@ func (tx *Transaction) Sign(kp *keypair.Full) error {
 	tx.xdrEnvelope.Signatures = append(tx.xdrEnvelope.Signatures, sig)
 
 	return nil
+}
+
+// BuildSignEncode performs all the steps to produce a final transaction suitable
+// for submitting to the network.
+func (tx *Transaction) BuildSignEncode(keypair *keypair.Full) (string, error) {
+	err := tx.Build()
+	if err != nil {
+		return "", errors.Wrap(err, "Couldn't build transaction")
+	}
+
+	err = tx.Sign(keypair)
+	if err != nil {
+		return "", errors.Wrap(err, "Couldn't sign transaction")
+	}
+
+	txeBase64, err := tx.Base64()
+	if err != nil {
+		return "", errors.Wrap(err, "Couldn't encode transaction")
+	}
+
+	return txeBase64, err
 }
