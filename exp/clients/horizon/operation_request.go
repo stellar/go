@@ -16,11 +16,11 @@ func (op OperationRequest) BuildURL() (endpoint string, err error) {
 	nParams := countParams(op.ForAccount, op.ForLedger, op.forOperationID, op.ForTransaction)
 
 	if nParams > 1 {
-		return endpoint, errors.New("Invalid request. Too many parameters")
+		return endpoint, errors.New("invalid request: too many parameters")
 	}
 
 	if op.endpoint == "" {
-		return endpoint, errors.New("Internal error, endpoint not set")
+		return endpoint, errors.New("internal error, endpoint not set")
 	}
 
 	endpoint = op.endpoint
@@ -82,7 +82,7 @@ type OperationHandler func(operations.Operation)
 func (op OperationRequest) StreamOperations(ctx context.Context, client *Client, handler OperationHandler) error {
 	endpoint, err := op.BuildURL()
 	if err != nil {
-		return errors.Wrap(err, "Unable to build endpoint for operation request")
+		return errors.Wrap(err, "unable to build endpoint for operation request")
 	}
 
 	url := fmt.Sprintf("%s%s", client.getHorizonURL(), endpoint)
@@ -90,12 +90,12 @@ func (op OperationRequest) StreamOperations(ctx context.Context, client *Client,
 		var baseRecord operations.Base
 
 		if err = json.Unmarshal(data, &baseRecord); err != nil {
-			return errors.Wrap(err, "Error unmarshaling data for operation request")
+			return errors.Wrap(err, "error unmarshaling data for operation request")
 		}
 
 		ops, err := operations.UnmarshalOperation(baseRecord.GetType(), data)
 		if err != nil {
-			return errors.Wrap(err, "Unmarshaling to the correct operation type")
+			return errors.Wrap(err, "unmarshaling to the correct operation type")
 		}
 
 		handler(ops)

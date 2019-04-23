@@ -28,8 +28,9 @@ type Transaction struct {
 	xdrTransaction xdr.Transaction
 	BaseFee        uint32
 	Memo           Memo
-	xdrEnvelope    *xdr.TransactionEnvelope
+	Timebounds     Timebounds
 	Network        string
+	xdrEnvelope    *xdr.TransactionEnvelope
 }
 
 // Hash provides a signable object representing the Transaction on the specified network.
@@ -42,7 +43,7 @@ func (tx *Transaction) MarshalBinary() ([]byte, error) {
 	var txBytes bytes.Buffer
 	_, err := xdr.Marshal(&txBytes, tx.xdrEnvelope)
 	if err != nil {
-		return nil, errors.Wrap(err, "Failed to marshal XDR")
+		return nil, errors.Wrap(err, "failed to marshal XDR")
 	}
 
 	return txBytes.Bytes(), nil
@@ -52,7 +53,7 @@ func (tx *Transaction) MarshalBinary() ([]byte, error) {
 func (tx *Transaction) Base64() (string, error) {
 	bs, err := tx.MarshalBinary()
 	if err != nil {
-		return "", errors.Wrap(err, "Failed to get XDR bytestring")
+		return "", errors.Wrap(err, "failed to get XDR bytestring")
 	}
 
 	return base64.StdEncoding.EncodeToString(bs), nil
@@ -81,23 +82,31 @@ func (tx *Transaction) Build() error {
 	// TODO: Validate Seq Num is present in struct
 	seqnum, err := tx.SourceAccount.IncrementSequenceNumber()
 	if err != nil {
-		return errors.Wrap(err, "Failed to parse sequence number")
+		return errors.Wrap(err, "failed to parse sequence number")
 	}
 	tx.xdrTransaction.SeqNum = seqnum
 
 	for _, op := range tx.Operations {
-		xdrOperation, err := op.BuildXDR()
-		if err != nil {
-			return errors.Wrap(err, fmt.Sprintf("Failed to build operation %T", op))
+		xdrOperation, err2 := op.BuildXDR()
+		if err2 != nil {
+			return errors.Wrap(err2, fmt.Sprintf("failed to build operation %T", op))
 		}
 		tx.xdrTransaction.Operations = append(tx.xdrTransaction.Operations, xdrOperation)
 	}
+
+	// Check and set the timebounds
+	err = tx.Timebounds.Validate()
+	if err != nil {
+		return err
+	}
+	tx.xdrTransaction.TimeBounds = &xdr.TimeBounds{MinTime: xdr.Uint64(tx.Timebounds.MinTime),
+		MaxTime: xdr.Uint64(tx.Timebounds.MaxTime)}
 
 	// Handle the memo, if one is present
 	if tx.Memo != nil {
 		xdrMemo, err := tx.Memo.ToXDR()
 		if err != nil {
-			return errors.Wrap(err, "Couldn't build memo XDR")
+			return errors.Wrap(err, "couldn't build memo XDR")
 		}
 		tx.xdrTransaction.Memo = xdrMemo
 	}
@@ -122,18 +131,39 @@ func (tx *Transaction) Sign(kp *keypair.Full) error {
 	// Hash the transaction
 	hash, err := tx.Hash()
 	if err != nil {
-		return errors.Wrap(err, "Failed to hash transaction")
+		return errors.Wrap(err, "failed to hash transaction")
 	}
 
 	// Sign the hash
 	// TODO: Allow multiple signers
 	sig, err := kp.SignDecorated(hash[:])
 	if err != nil {
-		return errors.Wrap(err, "Failed to sign transaction")
+		return errors.Wrap(err, "failed to sign transaction")
 	}
 
 	// Append the signature to the envelope
 	tx.xdrEnvelope.Signatures = append(tx.xdrEnvelope.Signatures, sig)
 
 	return nil
+}
+
+// BuildSignEncode performs all the steps to produce a final transaction suitable
+// for submitting to the network.
+func (tx *Transaction) BuildSignEncode(keypair *keypair.Full) (string, error) {
+	err := tx.Build()
+	if err != nil {
+		return "", errors.Wrap(err, "Couldn't build transaction")
+	}
+
+	err = tx.Sign(keypair)
+	if err != nil {
+		return "", errors.Wrap(err, "Couldn't sign transaction")
+	}
+
+	txeBase64, err := tx.Base64()
+	if err != nil {
+		return "", errors.Wrap(err, "Couldn't encode transaction")
+	}
+
+	return txeBase64, err
 }

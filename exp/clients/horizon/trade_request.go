@@ -16,7 +16,7 @@ func (tr TradeRequest) BuildURL() (endpoint string, err error) {
 	nParams := countParams(tr.ForAccount, tr.ForOfferID)
 
 	if nParams > 1 {
-		return endpoint, errors.New("Invalid request. Too many parameters")
+		return endpoint, errors.New("invalid request: too many parameters")
 	}
 
 	endpoint = "trades"
@@ -72,7 +72,7 @@ func (tr TradeRequest) StreamTrades(ctx context.Context, client *Client,
 	handler TradeHandler) (err error) {
 	endpoint, err := tr.BuildURL()
 	if err != nil {
-		return errors.Wrap(err, "Unable to build endpoint")
+		return errors.Wrap(err, "unable to build endpoint")
 	}
 
 	url := fmt.Sprintf("%s%s", client.getHorizonURL(), endpoint)
@@ -81,7 +81,7 @@ func (tr TradeRequest) StreamTrades(ctx context.Context, client *Client,
 		var trade hProtocol.Trade
 		err = json.Unmarshal(data, &trade)
 		if err != nil {
-			return errors.Wrap(err, "Error unmarshaling data")
+			return errors.Wrap(err, "error unmarshaling data")
 		}
 		handler(trade)
 		return nil

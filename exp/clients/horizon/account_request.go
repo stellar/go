@@ -15,11 +15,11 @@ func (ar AccountRequest) BuildURL() (endpoint string, err error) {
 	nParams := countParams(ar.DataKey, ar.AccountID)
 
 	if nParams >= 1 && ar.AccountID == "" {
-		err = errors.New("Invalid request. Too few parameters")
+		err = errors.New("invalid request: too few parameters")
 	}
 
 	if nParams <= 0 {
-		err = errors.New("Invalid request. No parameters")
+		err = errors.New("invalid request: no parameters")
 	}
 
 	if err != nil {

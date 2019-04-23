@@ -169,14 +169,14 @@ func ExampleClient_OperationDetail() {
 	fmt.Print(ops)
 }
 
-func ExampleClient_SubmitTransaction() {
+func ExampleClient_SubmitTransactionXDR() {
 
 	client := DefaultPublicNetClient
 	// https://www.stellar.org/laboratory/#xdr-viewer?input=AAAAAOoS%2F5V%2BBiCPXRiVcz8YsnkDdODufq%2Bg7xdqTdIXN8vyAAAE4gFiW0YAAALxAAAAAQAAAAAAAAAAAAAAAFyuBUcAAAABAAAABzIyMjgyNDUAAAAAAQAAAAEAAAAALhsY%2FFdAHXllTmb025DtCVBw06WDSQjq6I9NrCQHOV8AAAABAAAAAHT8zKV7bRQzuGTpk9AO3gjWJ9jVxBXTgguFORkxHVIKAAAAAAAAAAAAOnDwAAAAAAAAAAIkBzlfAAAAQPefqlsOvni6xX1g3AqddvOp1GOM88JYzayGZodbzTfV5toyhxZvL1ZggY3prFsvrereugEpj1kyPJ67z6gcRg0XN8vyAAAAQGwmoTssW49gaze8iQkz%2FUA2E2N%2BBOo%2B6v7YdOSsvIcZnMc37KmXH920nLosKpDLqkNChVztSZFcbVUlHhjbQgA%3D&type=TransactionEnvelope&network=public
 	txXdr := `AAAAAOoS/5V+BiCPXRiVcz8YsnkDdODufq+g7xdqTdIXN8vyAAAE4gFiW0YAAALxAAAAAQAAAAAAAAAAAAAAAFyuBUcAAAABAAAABzIyMjgyNDUAAAAAAQAAAAEAAAAALhsY/FdAHXllTmb025DtCVBw06WDSQjq6I9NrCQHOV8AAAABAAAAAHT8zKV7bRQzuGTpk9AO3gjWJ9jVxBXTgguFORkxHVIKAAAAAAAAAAAAOnDwAAAAAAAAAAIkBzlfAAAAQPefqlsOvni6xX1g3AqddvOp1GOM88JYzayGZodbzTfV5toyhxZvL1ZggY3prFsvrereugEpj1kyPJ67z6gcRg0XN8vyAAAAQGwmoTssW49gaze8iQkz/UA2E2N+BOo+6v7YdOSsvIcZnMc37KmXH920nLosKpDLqkNChVztSZFcbVUlHhjbQgA=`
 
 	// submit transaction
-	resp, err := client.SubmitTransaction(txXdr)
+	resp, err := client.SubmitTransactionXDR(txXdr)
 	if err != nil {
 		fmt.Println(err)
 		return
@@ -195,7 +195,7 @@ func ExampleClient_SetHorizonTimeOut() {
 
 	// test user timeout
 	client = client.SetHorizonTimeOut(30)
-	resp, err := client.SubmitTransaction(txXdr)
+	resp, err := client.SubmitTransactionXDR(txXdr)
 	if err != nil {
 		fmt.Println(err)
 		return
@@ -296,7 +296,7 @@ func TestAccountDetail(t *testing.T) {
 	_, err := client.AccountDetail(accountRequest)
 	// error case: no account id
 	if assert.Error(t, err) {
-		assert.Contains(t, err.Error(), "No account ID provided")
+		assert.Contains(t, err.Error(), "no account ID provided")
 	}
 
 	// wrong parameters
@@ -309,7 +309,7 @@ func TestAccountDetail(t *testing.T) {
 	_, err = client.AccountDetail(accountRequest)
 	// error case: no account id
 	if assert.Error(t, err) {
-		assert.Contains(t, err.Error(), "No account ID provided")
+		assert.Contains(t, err.Error(), "no account ID provided")
 	}
 
 	accountRequest = AccountRequest{AccountID: "GCLWGQPMKXQSPF776IU33AH4PZNOOWNAWGGKVTBQMIC5IMKUNP3E6NVU"}
@@ -341,7 +341,7 @@ func TestAccountDetail(t *testing.T) {
 
 	account, err = client.AccountDetail(accountRequest)
 	if assert.Error(t, err) {
-		assert.Contains(t, err.Error(), "Horizon error")
+		assert.Contains(t, err.Error(), "horizon error")
 		horizonError, ok := err.(*Error)
 		assert.Equal(t, ok, true)
 		assert.Equal(t, horizonError.Problem.Title, "Resource Missing")
@@ -378,7 +378,7 @@ func TestAccountData(t *testing.T) {
 	_, err := client.AccountData(accountRequest)
 	// error case: few parameters
 	if assert.Error(t, err) {
-		assert.Contains(t, err.Error(), "Too few parameters")
+		assert.Contains(t, err.Error(), "too few parameters")
 	}
 
 	// wrong parameters
@@ -391,7 +391,7 @@ func TestAccountData(t *testing.T) {
 	_, err = client.AccountData(accountRequest)
 	// error case: few parameters
 	if assert.Error(t, err) {
-		assert.Contains(t, err.Error(), "Too few parameters")
+		assert.Contains(t, err.Error(), "too few parameters")
 	}
 
 	accountRequest = AccountRequest{AccountID: "GCLWGQPMKXQSPF776IU33AH4PZNOOWNAWGGKVTBQMIC5IMKUNP3E6NVU", DataKey: "test"}
@@ -451,7 +451,7 @@ func TestEffectsRequest(t *testing.T) {
 	_, err = client.Effects(effectRequest)
 	// error case
 	if assert.Error(t, err) {
-		assert.Contains(t, err.Error(), "Too many parameters")
+		assert.Contains(t, err.Error(), "too many parameters")
 	}
 
 }
@@ -706,7 +706,7 @@ func TestOperationsRequest(t *testing.T) {
 	_, err = client.Operations(operationRequest)
 	// error case
 	if assert.Error(t, err) {
-		assert.Contains(t, err.Error(), "Too many parameters")
+		assert.Contains(t, err.Error(), "too many parameters")
 	}
 
 	// operation detail
@@ -754,9 +754,9 @@ func TestSubmitRequest(t *testing.T) {
 		On("POST", "https://localhost/transactions").
 		ReturnString(400, transactionFailure)
 
-	_, err := client.SubmitTransaction(txXdr)
+	_, err := client.SubmitTransactionXDR(txXdr)
 	if assert.Error(t, err) {
-		assert.Contains(t, err.Error(), "Horizon error")
+		assert.Contains(t, err.Error(), "horizon error")
 		horizonError, ok := errors.Cause(err).(*Error)
 		assert.Equal(t, ok, true)
 		assert.Equal(t, horizonError.Problem.Title, "Transaction Failed")
@@ -767,7 +767,7 @@ func TestSubmitRequest(t *testing.T) {
 		On("POST", "https://localhost/transactions").
 		ReturnError("http.Client error")
 
-	_, err = client.SubmitTransaction(txXdr)
+	_, err = client.SubmitTransactionXDR(txXdr)
 	if assert.Error(t, err) {
 		assert.Contains(t, err.Error(), "http.Client error")
 		_, ok := err.(*Error)
@@ -780,7 +780,7 @@ func TestSubmitRequest(t *testing.T) {
 		"https://localhost/transactions?tx=AAAAABB90WssODNIgi6BHveqzxTRmIpvAFRyVNM%2BHm2GVuCcAAAAZAAABD0AAuV%2FAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAyTBGxOgfSApppsTnb%2FYRr6gOR8WT0LZNrhLh4y3FCgoAAAAXSHboAAAAAAAAAAABhlbgnAAAAEAivKe977CQCxMOKTuj%2BcWTFqc2OOJU8qGr9afrgu2zDmQaX5Q0cNshc3PiBwe0qw%2F%2BD%2FqJk5QqM5dYeSUGeDQP",
 	).ReturnString(200, txSuccess)
 
-	resp, err := client.SubmitTransaction(txXdr)
+	resp, err := client.SubmitTransactionXDR(txXdr)
 	if assert.NoError(t, err) {
 		assert.IsType(t, resp, hProtocol.TransactionSuccess{})
 		assert.Equal(t, resp.Links.Transaction.Href, "https://horizon-testnet.stellar.org/transactions/bcc7a97264dca0a51a63f7ea971b5e7458e334489673078bb2a34eb0cce910ca")
@@ -846,7 +846,7 @@ func TestTransactionsRequest(t *testing.T) {
 	_, err = client.Transactions(transactionRequest)
 	// error case
 	if assert.Error(t, err) {
-		assert.Contains(t, err.Error(), "Too many parameters")
+		assert.Contains(t, err.Error(), "too many parameters")
 	}
 
 	// transaction detail
@@ -900,7 +900,7 @@ func TestOrderBookRequest(t *testing.T) {
 
 	_, err = client.OrderBook(orderBookRequest)
 	if assert.Error(t, err) {
-		assert.Contains(t, err.Error(), "Horizon error")
+		assert.Contains(t, err.Error(), "horizon error")
 		horizonError, ok := err.(*Error)
 		assert.Equal(t, ok, true)
 		assert.Equal(t, horizonError.Problem.Title, "Invalid Order Book Parameters")

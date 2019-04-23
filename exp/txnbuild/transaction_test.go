@@ -21,18 +21,20 @@ func makeTestAccount(kp *keypair.Full, seqnum string) horizon.Account {
 
 func TestInflation(t *testing.T) {
 	kp0 := newKeypair0()
-	sourceAccount := makeTestAccount(kp0, "9605939170639897")
+	sourceAccount := makeTestAccount(kp0, "3556091187167235")
 
 	inflation := Inflation{}
 
 	tx := Transaction{
 		SourceAccount: &sourceAccount,
 		Operations:    []Operation{&inflation},
+		Timebounds:    NewInfiniteTimeout(),
 		Network:       network.TestNetworkPassphrase,
 	}
 
 	received := buildSignEncode(tx, kp0, t)
-	expected := "AAAAAODcbeFyXKxmUWK1L6znNbKKIkPkHRJNbLktcKPqLnLFAAAAZAAiII0AAAAaAAAAAAAAAAAAAAABAAAAAAAAAAkAAAAAAAAAAeoucsUAAABAWqznvTxLfn6Q+zIloGmLDXCJQWsFPlfIf/EVFF+FfpL/gNbsvTC/U2G/ZtxMTgvqTLsBJfZAailGvPS04rfYCw=="
+	// https://www.stellar.org/laboratory/#xdr-viewer?input=AAAAAODcbeFyXKxmUWK1L6znNbKKIkPkHRJNbLktcKPqLnLFAAAAZAAMoj8AAAAEAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAJAAAAAAAAAAHqLnLFAAAAQP3NHWXvzKIHB3%2BjjhHITdc%2FtBPntWYj3SoTjpON%2BdxjKqU5ohFamSHeqi5ONXkhE9Uajr5sVZXjQfUcTTzsWAA%3D&type=TransactionEnvelope
+	expected := "AAAAAODcbeFyXKxmUWK1L6znNbKKIkPkHRJNbLktcKPqLnLFAAAAZAAMoj8AAAAEAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAJAAAAAAAAAAHqLnLFAAAAQP3NHWXvzKIHB3+jjhHITdc/tBPntWYj3SoTjpON+dxjKqU5ohFamSHeqi5ONXkhE9Uajr5sVZXjQfUcTTzsWAA="
 	assert.Equal(t, expected, received, "Base 64 XDR should match")
 }
 
@@ -48,11 +50,12 @@ func TestCreateAccount(t *testing.T) {
 	tx := Transaction{
 		SourceAccount: &sourceAccount,
 		Operations:    []Operation{&createAccount},
+		Timebounds:    NewInfiniteTimeout(),
 		Network:       network.TestNetworkPassphrase,
 	}
 
 	received := buildSignEncode(tx, kp0, t)
-	expected := "AAAAAODcbeFyXKxmUWK1L6znNbKKIkPkHRJNbLktcKPqLnLFAAAAZAAiII0AAAAaAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAhODe2rwbSS+e+giFk8xgmxj70pVXzEADo3GG0rEhdlQAAAAABfXhAAAAAAAAAAAB6i5yxQAAAEBa4swhXSxQ2SYXoT0FcwIrrslFrv/Q/pnXK2+f6XigqjxW0yjNQwIrpVZuNz4zNGXB3DULxyYkUi8wDwwbiKIB"
+	expected := "AAAAAODcbeFyXKxmUWK1L6znNbKKIkPkHRJNbLktcKPqLnLFAAAAZAAiII0AAAAaAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAITg3tq8G0kvnvoIhZPMYJsY+9KVV8xAA6NxhtKxIXZUAAAAAAX14QAAAAAAAAAAAeoucsUAAABAHsyMojA0Q5MiNsR5X5AiNpCn9mlXmqluRsNpTniCR91M4U5TFmrrqVNLkU58/l+Y8hUPwidDTRSzLZKbMUL/Bw=="
 	assert.Equal(t, expected, received, "Base 64 XDR should match")
 }
 
@@ -69,11 +72,12 @@ func TestPayment(t *testing.T) {
 	tx := Transaction{
 		SourceAccount: &sourceAccount,
 		Operations:    []Operation{&payment},
+		Timebounds:    NewInfiniteTimeout(),
 		Network:       network.TestNetworkPassphrase,
 	}
 
 	received := buildSignEncode(tx, kp0, t)
-	expected := "AAAAAODcbeFyXKxmUWK1L6znNbKKIkPkHRJNbLktcKPqLnLFAAAAZAAiII0AAAAbAAAAAAAAAAAAAAABAAAAAAAAAAEAAAAAfhHLNNY19eGrAtSgLD3VpaRm2AjNjxIBWQg9zS4VWZgAAAAAAAAAAAX14QAAAAAAAAAAAeoucsUAAABA5rSL7gy8OGiMq2Rocvv6l6HwOdePwhIMw2aJ2j5mVumAmeADjMeeCcGQIj3A7bISo6eWoF49w3qcd7uBS4j6AQ=="
+	expected := "AAAAAODcbeFyXKxmUWK1L6znNbKKIkPkHRJNbLktcKPqLnLFAAAAZAAiII0AAAAbAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAABAAAAAH4RyzTWNfXhqwLUoCw91aWkZtgIzY8SAVkIPc0uFVmYAAAAAAAAAAAF9eEAAAAAAAAAAAHqLnLFAAAAQNcGQpjNOFCLf9eEmobN+H8SNoDH/jMrfEFPX8kM212ST+TGfirEdXH77GJXvaWplfGKmE3B+UDwLuYLwO+KbQQ="
 	assert.Equal(t, expected, received, "Base 64 XDR should match")
 }
 
@@ -89,11 +93,12 @@ func TestPaymentFailsIfNoAssetSpecified(t *testing.T) {
 	tx := Transaction{
 		SourceAccount: &sourceAccount,
 		Operations:    []Operation{&payment},
+		Timebounds:    NewInfiniteTimeout(),
 		Network:       network.TestNetworkPassphrase,
 	}
 
 	err := tx.Build()
-	expectedErrMsg := "Failed to build operation *txnbuild.Payment: You must specify an asset for payment"
+	expectedErrMsg := "failed to build operation *txnbuild.Payment: you must specify an asset for payment"
 	require.EqualError(t, err, expectedErrMsg, "An asset is required")
 }
 
@@ -108,11 +113,12 @@ func TestBumpSequence(t *testing.T) {
 	tx := Transaction{
 		SourceAccount: &sourceAccount,
 		Operations:    []Operation{&bumpSequence},
+		Timebounds:    NewInfiniteTimeout(),
 		Network:       network.TestNetworkPassphrase,
 	}
 
 	received := buildSignEncode(tx, kp1, t)
-	expected := "AAAAACXK8doPx27P6IReQlRRuweSSUiUfjqgyswxiu3Sh2R+AAAAZAAiILoAAAAIAAAAAAAAAAAAAAABAAAAAAAAAAsAIiC6AAAAbAAAAAAAAAAB0odkfgAAAEDLsgDc3tPETqlKxVMF16UePDbSXQ1X0i5b3U3DRHDEchU91YwsDb4oMZrCj0mwKhkiXzCUyg9pPmUG/vKtQVQD"
+	expected := "AAAAACXK8doPx27P6IReQlRRuweSSUiUfjqgyswxiu3Sh2R+AAAAZAAiILoAAAAIAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAALACIgugAAAGwAAAAAAAAAAdKHZH4AAABAndjSSWeACpbr0ROAEK6jw5CzHiL/rCDpa6AO05+raHDowSUJBckkwlEuCjbBoO/A06tZNRT1Per3liTQrc8fCg=="
 	assert.Equal(t, expected, received, "Base 64 XDR should match")
 }
 
@@ -127,17 +133,18 @@ func TestAccountMerge(t *testing.T) {
 	tx := Transaction{
 		SourceAccount: &sourceAccount,
 		Operations:    []Operation{&accountMerge},
+		Timebounds:    NewInfiniteTimeout(),
 		Network:       network.TestNetworkPassphrase,
 	}
 
 	received := buildSignEncode(tx, kp0, t)
-	expected := "AAAAAODcbeFyXKxmUWK1L6znNbKKIkPkHRJNbLktcKPqLnLFAAAAZAAAJLsAAAALAAAAAAAAAAAAAAABAAAAAAAAAAgAAAAAJcrx2g/Hbs/ohF5CVFG7B5JJSJR+OqDKzDGK7dKHZH4AAAAAAAAAAeoucsUAAABAz5wZN8BluFTXbzGyKYTrQJayT/8Ze5tForHjgkXwY9fIB/hINwHHQ+2wdBN5v6tvA1L6dfS76AytudjkX8CjDg=="
+	expected := "AAAAAODcbeFyXKxmUWK1L6znNbKKIkPkHRJNbLktcKPqLnLFAAAAZAAAJLsAAAALAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAIAAAAACXK8doPx27P6IReQlRRuweSSUiUfjqgyswxiu3Sh2R+AAAAAAAAAAHqLnLFAAAAQJ/UcOgE64+GQpwv0uXXa2jrKtFdmDsyZ6ZZ/udxryPS8cNCm2L784ixPYM4XRgkoQCdxC3YK8n5x5+CXLzrrwA="
 	assert.Equal(t, expected, received, "Base 64 XDR should match")
 }
 
 func TestManageData(t *testing.T) {
 	kp0 := newKeypair0()
-	sourceAccount := makeTestAccount(kp0, "40385577484298")
+	sourceAccount := makeTestAccount(kp0, "3556091187167235")
 
 	manageData := ManageData{
 		Name:  "Fruit preference",
@@ -147,13 +154,16 @@ func TestManageData(t *testing.T) {
 	tx := Transaction{
 		SourceAccount: &sourceAccount,
 		Operations:    []Operation{&manageData},
+		Timebounds:    NewInfiniteTimeout(),
 		Network:       network.TestNetworkPassphrase,
 	}
 
 	received := buildSignEncode(tx, kp0, t)
-	expected := "AAAAAODcbeFyXKxmUWK1L6znNbKKIkPkHRJNbLktcKPqLnLFAAAAZAAAJLsAAAALAAAAAAAAAAAAAAABAAAAAAAAAAoAAAAQRnJ1aXQgcHJlZmVyZW5jZQAAAAEAAAAFQXBwbGUAAAAAAAAAAAAAAeoucsUAAABAncYXM9JYk3FN1rcmjN58P1SoWHgCYSK1ckueZF4Ii7f42HZX5+z/h3CjxhCCwA7QK6s4uZ4n5ba3Ujh0x27YAQ=="
+	// https://www.stellar.org/laboratory/#txsigner?xdr=AAAAAODcbeFyXKxmUWK1L6znNbKKIkPkHRJNbLktcKPqLnLFAAAAZAAMoj8AAAAEAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAKAAAAEEZydWl0IHByZWZlcmVuY2UAAAABAAAABUFwcGxlAAAAAAAAAAAAAAA%3D
+	expected := "AAAAAODcbeFyXKxmUWK1L6znNbKKIkPkHRJNbLktcKPqLnLFAAAAZAAMoj8AAAAEAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAKAAAAEEZydWl0IHByZWZlcmVuY2UAAAABAAAABUFwcGxlAAAAAAAAAAAAAAHqLnLFAAAAQO1ELJBEoqBDyIsS7uSJwe1LOimV/E+09MyF1G/+yrxSggFVPEjD5LXcm/6POze3IsMuIYJU1et5Q2Vt9f73zQo="
 	assert.Equal(t, expected, received, "Base 64 XDR should match")
 }
+
 func TestManageDataRemoveDataEntry(t *testing.T) {
 	kp0 := newKeypair0()
 	sourceAccount := makeTestAccount(kp0, "40385577484309")
@@ -165,11 +175,12 @@ func TestManageDataRemoveDataEntry(t *testing.T) {
 	tx := Transaction{
 		SourceAccount: &sourceAccount,
 		Operations:    []Operation{&manageData},
+		Timebounds:    NewInfiniteTimeout(),
 		Network:       network.TestNetworkPassphrase,
 	}
 
 	received := buildSignEncode(tx, kp0, t)
-	expected := "AAAAAODcbeFyXKxmUWK1L6znNbKKIkPkHRJNbLktcKPqLnLFAAAAZAAAJLsAAAAWAAAAAAAAAAAAAAABAAAAAAAAAAoAAAAQRnJ1aXQgcHJlZmVyZW5jZQAAAAAAAAAAAAAAAeoucsUAAABAvxTjMVAHpIn8EJOznQ5ffLccnaEP1HJcHP/FkVMGzRvtSUOj/F55ABajmUe/WteiU7eJgzbKkgHvIMv1JB5XBw=="
+	expected := "AAAAAODcbeFyXKxmUWK1L6znNbKKIkPkHRJNbLktcKPqLnLFAAAAZAAAJLsAAAAWAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAKAAAAEEZydWl0IHByZWZlcmVuY2UAAAAAAAAAAAAAAAHqLnLFAAAAQB8rkFZgtffUTdCASzwJ3jRcMCzHpVbbuFbye7Ki2dLao6u5d2aSzz3M2ugNJjNFMfSu3io9adCqwVKKjk0UJQA="
 	assert.Equal(t, expected, received, "Base 64 XDR should match")
 }
 
@@ -185,11 +196,12 @@ func TestSetOptionsInflationDestination(t *testing.T) {
 	tx := Transaction{
 		SourceAccount: &sourceAccount,
 		Operations:    []Operation{&setOptions},
+		Timebounds:    NewInfiniteTimeout(),
 		Network:       network.TestNetworkPassphrase,
 	}
 
 	received := buildSignEncode(tx, kp0, t)
-	expected := "AAAAAODcbeFyXKxmUWK1L6znNbKKIkPkHRJNbLktcKPqLnLFAAAAZAAAJLsAAAAcAAAAAAAAAAAAAAABAAAAAAAAAAUAAAABAAAAACXK8doPx27P6IReQlRRuweSSUiUfjqgyswxiu3Sh2R+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAeoucsUAAABAR/HVP3lr4CiR669LU1FZjO1uBQO36TduvYzOnSy786eNNNx+rSEhAt/w1iBdK9fKL8uw9FM+YH4eWOEixRu0Dw=="
+	expected := "AAAAAODcbeFyXKxmUWK1L6znNbKKIkPkHRJNbLktcKPqLnLFAAAAZAAAJLsAAAAcAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAFAAAAAQAAAAAlyvHaD8duz+iEXkJUUbsHkklIlH46oMrMMYrt0odkfgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAHqLnLFAAAAQB0RLe9DjdHzLM22whFja3ZT97L/818lvWpk5EOTETr9lmDH7/A0/EAzeCkTBzZMCi3C6pV1PrGBr0NJdRrPowg="
 	assert.Equal(t, expected, received, "Base 64 XDR should match")
 }
 
@@ -204,11 +216,12 @@ func TestSetOptionsSetFlags(t *testing.T) {
 	tx := Transaction{
 		SourceAccount: &sourceAccount,
 		Operations:    []Operation{&setOptions},
+		Timebounds:    NewInfiniteTimeout(),
 		Network:       network.TestNetworkPassphrase,
 	}
 
 	received := buildSignEncode(tx, kp0, t)
-	expected := "AAAAAODcbeFyXKxmUWK1L6znNbKKIkPkHRJNbLktcKPqLnLFAAAAZAAAJLsAAAAfAAAAAAAAAAAAAAABAAAAAAAAAAUAAAAAAAAAAAAAAAEAAAADAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAHqLnLFAAAAQJ5MwX8wWHVyF/QhY9qkD9+NoSGf9TH1dyfHxc2l9jL3/1sw8cgNYx1XRAEpaMq9BZtpZ0+zLjc0TAq2B+jSKAM="
+	expected := "AAAAAODcbeFyXKxmUWK1L6znNbKKIkPkHRJNbLktcKPqLnLFAAAAZAAAJLsAAAAfAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAFAAAAAAAAAAAAAAABAAAAAwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB6i5yxQAAAECfYTppxtp1A2zSbb6VzkOkyk9D/7xjaXRxR+ZIqgdK3lWkHQRkjyVBj2yaI61J3trdp7CswImptjkjLprt0WIO"
 	assert.Equal(t, expected, received, "Base 64 XDR should match")
 }
 
@@ -223,11 +236,12 @@ func TestSetOptionsClearFlags(t *testing.T) {
 	tx := Transaction{
 		SourceAccount: &sourceAccount,
 		Operations:    []Operation{&setOptions},
+		Timebounds:    NewInfiniteTimeout(),
 		Network:       network.TestNetworkPassphrase,
 	}
 
 	received := buildSignEncode(tx, kp0, t)
-	expected := "AAAAAODcbeFyXKxmUWK1L6znNbKKIkPkHRJNbLktcKPqLnLFAAAAZAAAJLsAAAAgAAAAAAAAAAAAAAABAAAAAAAAAAUAAAAAAAAAAQAAAAMAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAHqLnLFAAAAQK2hb0/FTkNzS/C7CAWbrlgo6Wx5lJZdbt6cup723nGlGrkz92pvcrOQLZUBH3akI9Zdin51Wk4dvihghBFrcA8="
+	expected := "AAAAAODcbeFyXKxmUWK1L6znNbKKIkPkHRJNbLktcKPqLnLFAAAAZAAAJLsAAAAgAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAFAAAAAAAAAAEAAAADAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB6i5yxQAAAEANXPAN+RgvqjGF0kJ6MyNTiMnWaELw5vYNwxhv8+mi3KmGWMzojCxcmMAqni0zBMsEjl9z7H8JT9x05OlQ9nsD"
 	assert.Equal(t, expected, received, "Base 64 XDR should match")
 }
 
@@ -242,11 +256,12 @@ func TestSetOptionsMasterWeight(t *testing.T) {
 	tx := Transaction{
 		SourceAccount: &sourceAccount,
 		Operations:    []Operation{&setOptions},
+		Timebounds:    NewInfiniteTimeout(),
 		Network:       network.TestNetworkPassphrase,
 	}
 
 	received := buildSignEncode(tx, kp0, t)
-	expected := "AAAAAODcbeFyXKxmUWK1L6znNbKKIkPkHRJNbLktcKPqLnLFAAAAZAAAJLsAAAAhAAAAAAAAAAAAAAABAAAAAAAAAAUAAAAAAAAAAAAAAAAAAAABAAAACgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAHqLnLFAAAAQOjpX3xs5uRACzzIJ9JZYyYjTd3kdEhhNNEwTJPS3jqd+gnwefJ/HKsHCL3S6WociUyn1B6nlhO63ZIu/+SPTwc="
+	expected := "AAAAAODcbeFyXKxmUWK1L6znNbKKIkPkHRJNbLktcKPqLnLFAAAAZAAAJLsAAAAhAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAFAAAAAAAAAAAAAAAAAAAAAQAAAAoAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB6i5yxQAAAECIxH2W4XZ5fMsG658hdIEys2nlVSAK1FEjT5GADF6sWEThGFc+Wrmlw6GwKn6ZNAmxVULEgircjQx48aYSgFYD"
 	assert.Equal(t, expected, received, "Base 64 XDR should match")
 }
 
@@ -263,11 +278,12 @@ func TestSetOptionsThresholds(t *testing.T) {
 	tx := Transaction{
 		SourceAccount: &sourceAccount,
 		Operations:    []Operation{&setOptions},
+		Timebounds:    NewInfiniteTimeout(),
 		Network:       network.TestNetworkPassphrase,
 	}
 
 	received := buildSignEncode(tx, kp0, t)
-	expected := "AAAAAODcbeFyXKxmUWK1L6znNbKKIkPkHRJNbLktcKPqLnLFAAAAZAAAJLsAAAAjAAAAAAAAAAAAAAABAAAAAAAAAAUAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAEAAAABAAAAAgAAAAEAAAACAAAAAAAAAAAAAAAAAAAAAeoucsUAAABArWZCMkVyzoKl3ZAh4Pu+7/iy45ffPiC525qXWrFdWcC0NC18SMwg96gmamyIilDxCeN+8Xn+WzhziaSAbGbdBg=="
+	expected := "AAAAAODcbeFyXKxmUWK1L6znNbKKIkPkHRJNbLktcKPqLnLFAAAAZAAAJLsAAAAjAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAFAAAAAAAAAAAAAAAAAAAAAAAAAAEAAAABAAAAAQAAAAIAAAABAAAAAgAAAAAAAAAAAAAAAAAAAAHqLnLFAAAAQFwRcFbzEtxoxZOtWlOQld3nURHZugNj5faEncpv0X/dcrfiQVU7k3fkTYDskiVExFiq78CBsYAr0uuvfH61IQs="
 	assert.Equal(t, expected, received, "Base 64 XDR should match")
 }
 
@@ -282,11 +298,12 @@ func TestSetOptionsHomeDomain(t *testing.T) {
 	tx := Transaction{
 		SourceAccount: &sourceAccount,
 		Operations:    []Operation{&setOptions},
+		Timebounds:    NewInfiniteTimeout(),
 		Network:       network.TestNetworkPassphrase,
 	}
 
 	received := buildSignEncode(tx, kp0, t)
-	expected := "AAAAAODcbeFyXKxmUWK1L6znNbKKIkPkHRJNbLktcKPqLnLFAAAAZAAAJLsAAAAmAAAAAAAAAAAAAAABAAAAAAAAAAUAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAABxMb3ZlbHlMdW1lbnNMb29rTHVtaW5vdXMuY29tAAAAAAAAAAAAAAAB6i5yxQAAAEAXjzYPYoUdQ617Ltn4wwefJLuy0P3S3dOeFTOWlZxi9KeKsVgqOQ+B+hms2JdpSWRodr0N0Nj6LsZhTjLbv4wO"
+	expected := "AAAAAODcbeFyXKxmUWK1L6znNbKKIkPkHRJNbLktcKPqLnLFAAAAZAAAJLsAAAAmAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAFAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEAAAAcTG92ZWx5THVtZW5zTG9va0x1bWlub3VzLmNvbQAAAAAAAAAAAAAAAeoucsUAAABAtC4HZzvRfyphRg5jjmz5jzBn86SANXCZS59GejRE8L1uCOxgXSEVoh1b+UetUEi7JN/n1ECBEVJrXgj0c34eBg=="
 	assert.Equal(t, expected, received, "Base 64 XDR should match")
 }
 
@@ -301,6 +318,7 @@ func TestSetOptionsHomeDomainTooLong(t *testing.T) {
 	tx := Transaction{
 		SourceAccount: &sourceAccount,
 		Operations:    []Operation{&setOptions},
+		Timebounds:    NewInfiniteTimeout(),
 		Network:       network.TestNetworkPassphrase,
 	}
 
@@ -320,11 +338,12 @@ func TestSetOptionsSigner(t *testing.T) {
 	tx := Transaction{
 		SourceAccount: &sourceAccount,
 		Operations:    []Operation{&setOptions},
+		Timebounds:    NewInfiniteTimeout(),
 		Network:       network.TestNetworkPassphrase,
 	}
 
 	received := buildSignEncode(tx, kp0, t)
-	expected := "AAAAAODcbeFyXKxmUWK1L6znNbKKIkPkHRJNbLktcKPqLnLFAAAAZAAAJLsAAAAmAAAAAAAAAAAAAAABAAAAAAAAAAUAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEAAAAAJcrx2g/Hbs/ohF5CVFG7B5JJSJR+OqDKzDGK7dKHZH4AAAAEAAAAAAAAAAHqLnLFAAAAQB1P8K0BXzpWdiXwBoMkGLJ8V/HhFQkq+NXmf7DhFVOHQid8Rz2K9cGvlclXWfUqKB60niWlCPTFtmzrKpWVTQ0="
+	expected := "AAAAAODcbeFyXKxmUWK1L6znNbKKIkPkHRJNbLktcKPqLnLFAAAAZAAAJLsAAAAmAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAFAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAAAAACXK8doPx27P6IReQlRRuweSSUiUfjqgyswxiu3Sh2R+AAAABAAAAAAAAAAB6i5yxQAAAEBfgmUK+wNj8ROz78Sg0rQ2s7lmtvA4r5epHkqc9yoxLDr/GSkmgWneVqoKNxWF0JB9L+Gql1+f8M8p1McF4MsB"
 	assert.Equal(t, expected, received, "Base 64 XDR should match")
 }
 
@@ -340,11 +359,12 @@ func TestMultipleOperations(t *testing.T) {
 	tx := Transaction{
 		SourceAccount: &sourceAccount,
 		Operations:    []Operation{&inflation, &bumpSequence},
+		Timebounds:    NewInfiniteTimeout(),
 		Network:       network.TestNetworkPassphrase,
 	}
 
 	received := buildSignEncode(tx, kp1, t)
-	expected := "AAAAACXK8doPx27P6IReQlRRuweSSUiUfjqgyswxiu3Sh2R+AAAAyAAiILoAAAAIAAAAAAAAAAAAAAACAAAAAAAAAAkAAAAAAAAACwAiILoAAABsAAAAAAAAAAHSh2R+AAAAQGx5xAPuF3rH3/KSHXduYYvE/Qw4CAseF2F0oSacIYi8e320OW07lr9VF8XEcDqMSVNhkFopoh5P0ZSixcTxyQI="
+	expected := "AAAAACXK8doPx27P6IReQlRRuweSSUiUfjqgyswxiu3Sh2R+AAAAyAAiILoAAAAIAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAgAAAAAAAAAJAAAAAAAAAAsAIiC6AAAAbAAAAAAAAAAB0odkfgAAAEDmf3Ag2Hw5NdlvzJpph4Km+aNKy8kfzS1EAhIVdKJwUnMVWhOpfdXSh/aekEVdoxXh2+ioocrxdtkWAZfS3sMF"
 	assert.Equal(t, expected, received, "Base 64 XDR should match")
 }
 
@@ -361,11 +381,12 @@ func TestChangeTrust(t *testing.T) {
 	tx := Transaction{
 		SourceAccount: &sourceAccount,
 		Operations:    []Operation{&changeTrust},
+		Timebounds:    NewInfiniteTimeout(),
 		Network:       network.TestNetworkPassphrase,
 	}
 
 	received := buildSignEncode(tx, kp0, t)
-	expected := "AAAAAODcbeFyXKxmUWK1L6znNbKKIkPkHRJNbLktcKPqLnLFAAAAZAAAJLsAAAA9AAAAAAAAAAAAAAABAAAAAAAAAAYAAAABQUJDRAAAAAAlyvHaD8duz+iEXkJUUbsHkklIlH46oMrMMYrt0odkfgAAAAAF9eEAAAAAAAAAAAHqLnLFAAAAQCOIEK9f3CMCfb5CzB2G2q6PBNx1P0R71v1hf8JXEIICXjWwy6hT140PP8EV4/VcARlA9a09a4Rr8dRNnpeOwAI="
+	expected := "AAAAAODcbeFyXKxmUWK1L6znNbKKIkPkHRJNbLktcKPqLnLFAAAAZAAAJLsAAAA9AAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAGAAAAAUFCQ0QAAAAAJcrx2g/Hbs/ohF5CVFG7B5JJSJR+OqDKzDGK7dKHZH4AAAAABfXhAAAAAAAAAAAB6i5yxQAAAED7YSd1VdewEdtEURAYuyCy8dWbzALEf1vJn88/gCER4CNdIvojOEafJEhYhzZJhdG7oa+95UjfI9vMJO8qdWMK"
 	assert.Equal(t, expected, received, "Base 64 XDR should match")
 }
 
@@ -381,11 +402,12 @@ func TestChangeTrustNativeAssetNotAllowed(t *testing.T) {
 	tx := Transaction{
 		SourceAccount: &sourceAccount,
 		Operations:    []Operation{&changeTrust},
+		Timebounds:    NewInfiniteTimeout(),
 		Network:       network.TestNetworkPassphrase,
 	}
 
 	err := tx.Build()
-	expectedErrMsg := "Failed to build operation *txnbuild.ChangeTrust: Trustline cannot be extended to a native (XLM) asset"
+	expectedErrMsg := "failed to build operation *txnbuild.ChangeTrust: trustline cannot be extended to a native (XLM) asset"
 	require.EqualError(t, err, expectedErrMsg, "No trustlines for native assets")
 }
 
@@ -400,11 +422,12 @@ func TestChangeTrustDeleteTrustline(t *testing.T) {
 	tx := Transaction{
 		SourceAccount: &sourceAccount,
 		Operations:    []Operation{&removeTrust},
+		Timebounds:    NewInfiniteTimeout(),
 		Network:       network.TestNetworkPassphrase,
 	}
 
 	received := buildSignEncode(tx, kp0, t)
-	expected := "AAAAAODcbeFyXKxmUWK1L6znNbKKIkPkHRJNbLktcKPqLnLFAAAAZAAAJLsAAABDAAAAAAAAAAAAAAABAAAAAAAAAAYAAAABQUJDRAAAAAAlyvHaD8duz+iEXkJUUbsHkklIlH46oMrMMYrt0odkfgAAAAAAAAAAAAAAAAAAAAHqLnLFAAAAQEop/qQ5+2GTSQxZWzL4BPKsAi47VVNxnbtWgSAZvJOqz0yG0GJaTpUUYskuEo1haBg0UDbQF4M0PIK4l0Pzegg="
+	expected := "AAAAAODcbeFyXKxmUWK1L6znNbKKIkPkHRJNbLktcKPqLnLFAAAAZAAAJLsAAABDAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAGAAAAAUFCQ0QAAAAAJcrx2g/Hbs/ohF5CVFG7B5JJSJR+OqDKzDGK7dKHZH4AAAAAAAAAAAAAAAAAAAAB6i5yxQAAAECgd2wkK35civvf6NKpsSFDyKpdyo/cs7wL+RYfZ2BCP7eGrUUpu2GfQFtf/Hm6aBwT6nJ+dONTSPXnyp7Dq18L"
 	assert.Equal(t, expected, received, "Base 64 XDR should match")
 }
 
@@ -423,11 +446,12 @@ func TestAllowTrust(t *testing.T) {
 	tx := Transaction{
 		SourceAccount: &sourceAccount,
 		Operations:    []Operation{&allowTrust},
+		Timebounds:    NewInfiniteTimeout(),
 		Network:       network.TestNetworkPassphrase,
 	}
 
 	received := buildSignEncode(tx, kp0, t)
-	expected := "AAAAAODcbeFyXKxmUWK1L6znNbKKIkPkHRJNbLktcKPqLnLFAAAAZAAAJLsAAABPAAAAAAAAAAAAAAABAAAAAAAAAAcAAAAAJcrx2g/Hbs/ohF5CVFG7B5JJSJR+OqDKzDGK7dKHZH4AAAABQUJDRAAAAAEAAAAAAAAAAeoucsUAAABAlP4A5hdKUQU18MY6wmf4GugGNnCUklsV9/aRoTv8Q2yw7skm5nkFExnjhgEya6AM7iCR6oaf2C0VhrU4oEEODQ=="
+	expected := "AAAAAODcbeFyXKxmUWK1L6znNbKKIkPkHRJNbLktcKPqLnLFAAAAZAAAJLsAAABPAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAHAAAAACXK8doPx27P6IReQlRRuweSSUiUfjqgyswxiu3Sh2R+AAAAAUFCQ0QAAAABAAAAAAAAAAHqLnLFAAAAQGGBSKitYxpHNMaVVOE2CIylWFJgwqxjhwnIvWauSSkLapntD18G1pMahLbs8Lqcr3+cEs5WjLI4eBhy6WiJhAk="
 	assert.Equal(t, expected, received, "Base 64 XDR should match")
 }
 
@@ -445,11 +469,12 @@ func TestManageOfferNewOffer(t *testing.T) {
 	tx := Transaction{
 		SourceAccount: &sourceAccount,
 		Operations:    []Operation{&createOffer},
+		Timebounds:    NewInfiniteTimeout(),
 		Network:       network.TestNetworkPassphrase,
 	}
 
 	received := buildSignEncode(tx, kp1, t)
-	expected := "AAAAACXK8doPx27P6IReQlRRuweSSUiUfjqgyswxiu3Sh2R+AAAAZAAAJWoAAAAFAAAAAAAAAAAAAAABAAAAAAAAAAMAAAAAAAAAAUFCQ0QAAAAA4Nxt4XJcrGZRYrUvrOc1sooiQ+QdEk1suS1wo+oucsUAAAAAO5rKAAAAAAEAAABkAAAAAAAAAAAAAAAAAAAAAdKHZH4AAABAe/TZt+6EAWp8BxbOa+x8xZ+oKF83SKghhzfMaih0gn9Ark2kE+ZOdiftY+DDjLF8RVzbzWGFvHgGBCt5pY5lCg=="
+	expected := "AAAAACXK8doPx27P6IReQlRRuweSSUiUfjqgyswxiu3Sh2R+AAAAZAAAJWoAAAAFAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAADAAAAAAAAAAFBQkNEAAAAAODcbeFyXKxmUWK1L6znNbKKIkPkHRJNbLktcKPqLnLFAAAAADuaygAAAAABAAAAZAAAAAAAAAAAAAAAAAAAAAHSh2R+AAAAQAmXf4BnH8bWhy+Tnxf+7zgsij7pV0b7XC4rqfYWi9ZIVUaidWPbrFhaWjiQbXYB1NKdx0XjidzkcAgMInLqDgs="
 	assert.Equal(t, expected, received, "Base 64 XDR should match")
 }
 
@@ -463,11 +488,12 @@ func TestManageOfferDeleteOffer(t *testing.T) {
 	tx := Transaction{
 		SourceAccount: &sourceAccount,
 		Operations:    []Operation{&deleteOffer},
+		Timebounds:    NewInfiniteTimeout(),
 		Network:       network.TestNetworkPassphrase,
 	}
 
 	received := buildSignEncode(tx, kp1, t)
-	expected := "AAAAACXK8doPx27P6IReQlRRuweSSUiUfjqgyswxiu3Sh2R+AAAAZAAAJWoAAAASAAAAAAAAAAAAAAABAAAAAAAAAAMAAAAAAAAAAUZBS0UAAAAAQQeAZMSVhmLzYCQaIl1KNrY4FpTZoRzDCncBje0UnbEAAAAAAAAAAAAAAAEAAAABAAAAAAAslJYAAAAAAAAAAdKHZH4AAABAkj1T85v1atBk0k0QenWxbcDxRAJs3PdkijBFFGVGhGJYcaMdQoEBpvb8hJEzpaJ/feK9pa00YCMGyizGfr4rDw=="
+	expected := "AAAAACXK8doPx27P6IReQlRRuweSSUiUfjqgyswxiu3Sh2R+AAAAZAAAJWoAAAASAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAADAAAAAAAAAAFGQUtFAAAAAEEHgGTElYZi82AkGiJdSja2OBaU2aEcwwp3AY3tFJ2xAAAAAAAAAAAAAAABAAAAAQAAAAAALJSWAAAAAAAAAAHSh2R+AAAAQBSjRfpyEAIMnRQOPf1BBOx8HFC6Lm6bxxdljaegnUts8SmWJGQbZN5a8PQGzOTwGdBKBk9X9d+BIrBVc3kyyQ4="
 	assert.Equal(t, expected, received, "Base 64 XDR should match")
 }
 
@@ -486,11 +512,12 @@ func TestManageOfferUpdateOffer(t *testing.T) {
 	tx := Transaction{
 		SourceAccount: &sourceAccount,
 		Operations:    []Operation{&updateOffer},
+		Timebounds:    NewInfiniteTimeout(),
 		Network:       network.TestNetworkPassphrase,
 	}
 
 	received := buildSignEncode(tx, kp1, t)
-	expected := "AAAAACXK8doPx27P6IReQlRRuweSSUiUfjqgyswxiu3Sh2R+AAAAZAAAJWoAAAAKAAAAAAAAAAAAAAABAAAAAAAAAAMAAAAAAAAAAUFCQ0QAAAAA4Nxt4XJcrGZRYrUvrOc1sooiQ+QdEk1suS1wo+oucsUAAAAAHc1lAAAAAAEAAAAyAAAAAAAmHFwAAAAAAAAAAdKHZH4AAABA7j/x1HuvyMiH9Q59sjLmFLak76hJGQvjx6ckTzuuI0tpBrB/7Wfra8JrWrzajTJGMoQGwdDND5rEi/jTxWMjCQ=="
+	expected := "AAAAACXK8doPx27P6IReQlRRuweSSUiUfjqgyswxiu3Sh2R+AAAAZAAAJWoAAAAKAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAADAAAAAAAAAAFBQkNEAAAAAODcbeFyXKxmUWK1L6znNbKKIkPkHRJNbLktcKPqLnLFAAAAAB3NZQAAAAABAAAAMgAAAAAAJhxcAAAAAAAAAAHSh2R+AAAAQAwqWg2C/oe/zH4D3Y7/yg5SlHqFvF6A3j6GQZ9NPh3ROqutovLyAE62+rvXxM7hqSNz1Rtx4frJaOhOabh6DAg="
 	assert.Equal(t, expected, received, "Base 64 XDR should match")
 }
 
@@ -508,11 +535,12 @@ func TestCreatePassiveOffer(t *testing.T) {
 	tx := Transaction{
 		SourceAccount: &sourceAccount,
 		Operations:    []Operation{&createPassiveOffer},
+		Timebounds:    NewInfiniteTimeout(),
 		Network:       network.TestNetworkPassphrase,
 	}
 
 	received := buildSignEncode(tx, kp1, t)
-	expected := "AAAAACXK8doPx27P6IReQlRRuweSSUiUfjqgyswxiu3Sh2R+AAAAZAAAJWoAAAANAAAAAAAAAAAAAAABAAAAAAAAAAQAAAAAAAAAAUFCQ0QAAAAA4Nxt4XJcrGZRYrUvrOc1sooiQ+QdEk1suS1wo+oucsUAAAAABfXhAAAAAAEAAAABAAAAAAAAAAHSh2R+AAAAQIDB0yw4eH14RDnUI4Ef5eyTbkRYl2adTPAOgbZmodkhOsmXOZITw1B6RnwdDCIRSLk2ZPvq2FU8Mk50l0eK+Ag="
+	expected := "AAAAACXK8doPx27P6IReQlRRuweSSUiUfjqgyswxiu3Sh2R+AAAAZAAAJWoAAAANAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAEAAAAAAAAAAFBQkNEAAAAAODcbeFyXKxmUWK1L6znNbKKIkPkHRJNbLktcKPqLnLFAAAAAAX14QAAAAABAAAAAQAAAAAAAAAB0odkfgAAAEAgUD7M1UL7x2m2m26ySzcSHxIneOT7/r+s/HLsgWDj6CmpSi1GZrlvtBH+CNuegCwvW09TRZJhp7bLywkaFCoK"
 	assert.Equal(t, expected, received, "Base 64 XDR should match")
 }
 
@@ -534,29 +562,30 @@ func TestPathPayment(t *testing.T) {
 	tx := Transaction{
 		SourceAccount: &sourceAccount,
 		Operations:    []Operation{&pathPayment},
+		Timebounds:    NewInfiniteTimeout(),
 		Network:       network.TestNetworkPassphrase,
 	}
 
 	received := buildSignEncode(tx, kp2, t)
-	// https://www.stellar.org/laboratory/#xdr-viewer?input=AAAAAH4RyzTWNfXhqwLUoCw91aWkZtgIzY8SAVkIPc0uFVmYAAAAZAAAql0AAAADAAAAAAAAAAAAAAABAAAAAAAAAAIAAAAAAAAAAAX14QAAAAAAfhHLNNY19eGrAtSgLD3VpaRm2AjNjxIBWQg9zS4VWZgAAAAAAAAAAACYloAAAAABAAAAAUFCQ0QAAAAA4Nxt4XJcrGZRYrUvrOc1sooiQ%2BQdEk1suS1wo%2BoucsUAAAAAAAAAAS4VWZgAAABAZBS66leC0Y7UMg6jPYWh04lLWW9cLOdjWKKIWCjBTwRPmRhb5KyVsRepZdAvl8jmaLnbTk20uJ1yWbenbbbqCw%3D%3D%0A&type=TransactionEnvelope&network=test
-	expected := "AAAAAH4RyzTWNfXhqwLUoCw91aWkZtgIzY8SAVkIPc0uFVmYAAAAZAAAql0AAAADAAAAAAAAAAAAAAABAAAAAAAAAAIAAAAAAAAAAAX14QAAAAAAfhHLNNY19eGrAtSgLD3VpaRm2AjNjxIBWQg9zS4VWZgAAAAAAAAAAACYloAAAAABAAAAAUFCQ0QAAAAA4Nxt4XJcrGZRYrUvrOc1sooiQ+QdEk1suS1wo+oucsUAAAAAAAAAAS4VWZgAAABAZBS66leC0Y7UMg6jPYWh04lLWW9cLOdjWKKIWCjBTwRPmRhb5KyVsRepZdAvl8jmaLnbTk20uJ1yWbenbbbqCw=="
+	expected := "AAAAAH4RyzTWNfXhqwLUoCw91aWkZtgIzY8SAVkIPc0uFVmYAAAAZAAAql0AAAADAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAACAAAAAAAAAAAF9eEAAAAAAH4RyzTWNfXhqwLUoCw91aWkZtgIzY8SAVkIPc0uFVmYAAAAAAAAAAAAmJaAAAAAAQAAAAFBQkNEAAAAAODcbeFyXKxmUWK1L6znNbKKIkPkHRJNbLktcKPqLnLFAAAAAAAAAAEuFVmYAAAAQF2kLUL/RoFIy1cmt+GXdWn2tDUjJYV3YwF4A82zIBhqYSO6ogOoLPNRt3w+IGCAgfR4Q9lpax+wCXWoQERHSw4="
 	assert.Equal(t, expected, received, "Base 64 XDR should match")
 }
 
 func TestMemoText(t *testing.T) {
 	kp2 := newKeypair2()
-	sourceAccount := makeTestAccount(kp2, "3428320205078528")
+	sourceAccount := makeTestAccount(kp2, "3556099777101824")
 
 	tx := Transaction{
 		SourceAccount: &sourceAccount,
-		Network:       network.TestNetworkPassphrase,
 		Operations:    []Operation{&BumpSequence{BumpTo: 1}},
 		Memo:          MemoText("Twas brillig"),
+		Timebounds:    NewInfiniteTimeout(),
+		Network:       network.TestNetworkPassphrase,
 	}
 
 	received := buildSignEncode(tx, kp2, t)
-	// https://www.stellar.org/laboratory/#xdr-viewer?input=AAAAAH4RyzTWNfXhqwLUoCw91aWkZtgIzY8SAVkIPc0uFVmYAAAAZAAMLgoAAAABAAAAAAAAAAEAAAAMVHdhcyBicmlsbGlnAAAAAQAAAAAAAAALAAAAAAAAAAEAAAAAAAAAAS4VWZgAAABAstxxDHhcXkfmDkHbe2ck2QFjh6w69VlBzqOeHbT0p0ZxS6cQrhlFZBdvBb4T5qlo0RF4D06z04ygqDqrXmiSDg%3D%3D&type=TransactionEnvelope&network=test
-	expected := "AAAAAH4RyzTWNfXhqwLUoCw91aWkZtgIzY8SAVkIPc0uFVmYAAAAZAAMLgoAAAABAAAAAAAAAAEAAAAMVHdhcyBicmlsbGlnAAAAAQAAAAAAAAALAAAAAAAAAAEAAAAAAAAAAS4VWZgAAABAstxxDHhcXkfmDkHbe2ck2QFjh6w69VlBzqOeHbT0p0ZxS6cQrhlFZBdvBb4T5qlo0RF4D06z04ygqDqrXmiSDg=="
+	// https://www.stellar.org/laboratory/#txsigner?xdr=AAAAAH4RyzTWNfXhqwLUoCw91aWkZtgIzY8SAVkIPc0uFVmYAAAAZAAMokEAAAABAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAABAAAADFR3YXMgYnJpbGxpZwAAAAEAAAAAAAAACwAAAAAAAAABAAAAAAAAAAA%3D&network=test
+	expected := "AAAAAH4RyzTWNfXhqwLUoCw91aWkZtgIzY8SAVkIPc0uFVmYAAAAZAAMokEAAAABAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAABAAAADFR3YXMgYnJpbGxpZwAAAAEAAAAAAAAACwAAAAAAAAABAAAAAAAAAAEuFVmYAAAAQILT8/7MGTmWkfjMi6Y23n2cVWs+IMY67xOskTivSZehp7wWaDXLIdCbdijmG64+Nz+fPBT9HYMqSRDcLiZYDQ0="
 	assert.Equal(t, expected, received, "Base 64 XDR should match")
 }
 
@@ -566,14 +595,14 @@ func TestMemoID(t *testing.T) {
 
 	tx := Transaction{
 		SourceAccount: &sourceAccount,
-		Network:       network.TestNetworkPassphrase,
 		Operations:    []Operation{&BumpSequence{BumpTo: 1}},
 		Memo:          MemoID(314159),
+		Timebounds:    NewInfiniteTimeout(),
+		Network:       network.TestNetworkPassphrase,
 	}
 
 	received := buildSignEncode(tx, kp2, t)
-	// https://www.stellar.org/laboratory/#xdr-viewer?input=AAAAAH4RyzTWNfXhqwLUoCw91aWkZtgIzY8SAVkIPc0uFVmYAAAAZAAMLgoAAAABAAAAAAAAAAIAAAAAAATLLwAAAAEAAAAAAAAACwAAAAAAAAABAAAAAAAAAAEuFVmYAAAAQCKqa1rqle3g8Ksdvl9J67sKdHoXvVXgsmV2QVMZskO%2BDhGSnyxAZBjGf7MFWuz1JoXr5VMo0zphTBRjtMWQvAA%3D&type=TransactionEnvelope&network=test
-	expected := "AAAAAH4RyzTWNfXhqwLUoCw91aWkZtgIzY8SAVkIPc0uFVmYAAAAZAAMLgoAAAABAAAAAAAAAAIAAAAAAATLLwAAAAEAAAAAAAAACwAAAAAAAAABAAAAAAAAAAEuFVmYAAAAQCKqa1rqle3g8Ksdvl9J67sKdHoXvVXgsmV2QVMZskO+DhGSnyxAZBjGf7MFWuz1JoXr5VMo0zphTBRjtMWQvAA="
+	expected := "AAAAAH4RyzTWNfXhqwLUoCw91aWkZtgIzY8SAVkIPc0uFVmYAAAAZAAMLgoAAAABAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAACAAAAAAAEyy8AAAABAAAAAAAAAAsAAAAAAAAAAQAAAAAAAAABLhVZmAAAAEA5P/V/Veh6pjXj7CnqtWDATh8II+ci1z3/zmNk374XLuVLzx7jRve59AKnPMwIPwDJ8cXwEKz8+fYOIkfEI9AJ"
 	assert.Equal(t, expected, received, "Base 64 XDR should match")
 }
 
@@ -583,14 +612,14 @@ func TestMemoHash(t *testing.T) {
 
 	tx := Transaction{
 		SourceAccount: &sourceAccount,
-		Network:       network.TestNetworkPassphrase,
 		Operations:    []Operation{&BumpSequence{BumpTo: 1}},
 		Memo:          MemoHash([32]byte{0x01}),
+		Timebounds:    NewInfiniteTimeout(),
+		Network:       network.TestNetworkPassphrase,
 	}
 
 	received := buildSignEncode(tx, kp2, t)
-	// https://www.stellar.org/laboratory/#xdr-viewer?input=AAAAAH4RyzTWNfXhqwLUoCw91aWkZtgIzY8SAVkIPc0uFVmYAAAAZAAMLgoAAAABAAAAAAAAAAMBAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAACwAAAAAAAAABAAAAAAAAAAEuFVmYAAAAQJeRgV2MPt3E4IktlsDm6herfaR%2F5VTplcUUwFgBMbPyIxjZW8GEZAIUxjWBV7T9XWjzLrw7pEyldeOcC76PYwc%3D&type=TransactionEnvelope&network=test
-	expected := "AAAAAH4RyzTWNfXhqwLUoCw91aWkZtgIzY8SAVkIPc0uFVmYAAAAZAAMLgoAAAABAAAAAAAAAAMBAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAACwAAAAAAAAABAAAAAAAAAAEuFVmYAAAAQJeRgV2MPt3E4IktlsDm6herfaR/5VTplcUUwFgBMbPyIxjZW8GEZAIUxjWBV7T9XWjzLrw7pEyldeOcC76PYwc="
+	expected := "AAAAAH4RyzTWNfXhqwLUoCw91aWkZtgIzY8SAVkIPc0uFVmYAAAAZAAMLgoAAAABAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAADAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAAAAAAAAAAsAAAAAAAAAAQAAAAAAAAABLhVZmAAAAEAgauaUpqEGF1VeXYtkYg0I19QC3GJVrCPOqDHPIdXvGkQ9N+3Vt6yfKIN0sE/X5NuD6FhArQ3adwvZeaNDilwN"
 	assert.Equal(t, expected, received, "Base 64 XDR should match")
 }
 
@@ -600,13 +629,13 @@ func TestMemoReturn(t *testing.T) {
 
 	tx := Transaction{
 		SourceAccount: &sourceAccount,
-		Network:       network.TestNetworkPassphrase,
 		Operations:    []Operation{&BumpSequence{BumpTo: 1}},
 		Memo:          MemoReturn([32]byte{0x01}),
+		Timebounds:    NewInfiniteTimeout(),
+		Network:       network.TestNetworkPassphrase,
 	}
 
 	received := buildSignEncode(tx, kp2, t)
-	// https://www.stellar.org/laboratory/#xdr-viewer?input=AAAAAH4RyzTWNfXhqwLUoCw91aWkZtgIzY8SAVkIPc0uFVmYAAAAZAAMLgoAAAABAAAAAAAAAAQBAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAACwAAAAAAAAABAAAAAAAAAAEuFVmYAAAAQNhrY46fggs%2BTnOYvh3ILgWqmXjkW0968s00si5RLdxFh2%2FA7TTGgmBTarTEtF21hsAyNmW%2B0YkqVVzJ7eFAXAk%3D&type=TransactionEnvelope&network=test
-	expected := "AAAAAH4RyzTWNfXhqwLUoCw91aWkZtgIzY8SAVkIPc0uFVmYAAAAZAAMLgoAAAABAAAAAAAAAAQBAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAACwAAAAAAAAABAAAAAAAAAAEuFVmYAAAAQNhrY46fggs+TnOYvh3ILgWqmXjkW0968s00si5RLdxFh2/A7TTGgmBTarTEtF21hsAyNmW+0YkqVVzJ7eFAXAk="
+	expected := "AAAAAH4RyzTWNfXhqwLUoCw91aWkZtgIzY8SAVkIPc0uFVmYAAAAZAAMLgoAAAABAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAEAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAAAAAAAAAAsAAAAAAAAAAQAAAAAAAAABLhVZmAAAAEAuLFTunY08pbWKompoepHdazLmr7uePUSOzA4P33+SVRKWiu+h2tngOsP8hga+wpLJXT9l/0uMQ3iziRVUrh0K"
 	assert.Equal(t, expected, received, "Base 64 XDR should match")
 }
