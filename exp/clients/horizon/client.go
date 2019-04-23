@@ -409,6 +409,15 @@ func (c *Client) Trades(request TradeRequest) (tds hProtocol.TradesPage, err err
 	return
 }
 
+// Fund creates a new account funded from friendbot. It only works on test networks. See
+// https://www.stellar.org/developers/guides/get-started/create-account.html for more information.
+func (c *Client) Fund(addr string) (*http.Response, error) {
+	if !c.isTestNet {
+		return nil, errors.New("Can't fund account from friendbot on production network")
+	}
+	return http.Get(c.HorizonURL + "friendbot?addr=" + addr)
+}
+
 // StreamTrades streams executed trades. It can be used to stream all trades, trades for an account and
 // trades for an offer. Use context.WithCancel to stop streaming or context.Background() if you want
 // to stream indefinitely. TradeHandler is a user-supplied function that is executed for each streamed trade received.
