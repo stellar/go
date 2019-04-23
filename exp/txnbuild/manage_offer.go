@@ -7,10 +7,10 @@ import (
 	"github.com/stellar/go/xdr"
 )
 
-//CreateOfferOp returns a ManageOffer operation to create a new offer, by
+//CreateOfferOp returns a ManageSellOffer operation to create a new offer, by
 // setting the OfferID to "0".
-func CreateOfferOp(selling, buying Asset, amount, price string) ManageOffer {
-	return ManageOffer{
+func CreateOfferOp(selling, buying Asset, amount, price string) ManageSellOffer {
+	return ManageSellOffer{
 		Selling: selling,
 		Buying:  buying,
 		Amount:  amount,
@@ -19,9 +19,9 @@ func CreateOfferOp(selling, buying Asset, amount, price string) ManageOffer {
 	}
 }
 
-//UpdateOfferOp returns a ManageOffer operation to update an offer.
-func UpdateOfferOp(selling, buying Asset, amount, price string, offerID uint64) ManageOffer {
-	return ManageOffer{
+//UpdateOfferOp returns a ManageSellOffer operation to update an offer.
+func UpdateOfferOp(selling, buying Asset, amount, price string, offerID int64) ManageSellOffer {
+	return ManageSellOffer{
 		Selling: selling,
 		Buying:  buying,
 		Amount:  amount,
@@ -30,14 +30,14 @@ func UpdateOfferOp(selling, buying Asset, amount, price string, offerID uint64) 
 	}
 }
 
-//DeleteOfferOp returns a ManageOffer operation to delete an offer, by
+//DeleteOfferOp returns a ManageSellOffer operation to delete an offer, by
 // setting the Amount to "0".
-func DeleteOfferOp(offerID uint64) ManageOffer {
+func DeleteOfferOp(offerID int64) ManageSellOffer {
 	// It turns out Stellar core doesn't care about any of these fields except the amount.
-	// However, Horizon will reject ManageOffer if it is missing fields.
+	// However, Horizon will reject ManageSellOffer if it is missing fields.
 	// Horizon will also reject if Buying == Selling.
 	// Therefore unfortunately we have to make up some dummy values here.
-	return ManageOffer{
+	return ManageSellOffer{
 		Selling: NativeAsset{},
 		Buying:  CreditAsset{Code: "FAKE", Issuer: "GBAQPADEYSKYMYXTMASBUIS5JI3LMOAWSTM2CHGDBJ3QDDPNCSO3DVAA"},
 		Amount:  "0",
@@ -46,18 +46,18 @@ func DeleteOfferOp(offerID uint64) ManageOffer {
 	}
 }
 
-// ManageOffer represents the Stellar manage offer operation. See
+// ManageSellOffer represents the Stellar manage offer operation. See
 // https://www.stellar.org/developers/guides/concepts/list-of-operations.html
-type ManageOffer struct {
+type ManageSellOffer struct {
 	Selling Asset
 	Buying  Asset
 	Amount  string
 	Price   string // TODO: Extend to include number, and n/d fraction. See package 'amount'
-	OfferID uint64
+	OfferID int64
 }
 
-// BuildXDR for ManageOffer returns a fully configured XDR Operation.
-func (mo *ManageOffer) BuildXDR() (xdr.Operation, error) {
+// BuildXDR for ManageSellOffer returns a fully configured XDR Operation.
+func (mo *ManageSellOffer) BuildXDR() (xdr.Operation, error) {
 	xdrSelling, err := mo.Selling.ToXDR()
 	if err != nil {
 		return xdr.Operation{}, errors.Wrap(err, "failed to set XDR 'Selling' field")
@@ -78,13 +78,13 @@ func (mo *ManageOffer) BuildXDR() (xdr.Operation, error) {
 		return xdr.Operation{}, errors.Wrap(err, "failed to parse 'Price'")
 	}
 
-	opType := xdr.OperationTypeManageOffer
-	xdrOp := xdr.ManageOfferOp{
+	opType := xdr.OperationTypeManageSellOffer
+	xdrOp := xdr.ManageSellOfferOp{
 		Selling: xdrSelling,
 		Buying:  xdrBuying,
 		Amount:  xdrAmount,
 		Price:   xdrPrice,
-		OfferId: xdr.Uint64(mo.OfferID),
+		OfferId: xdr.Int64(mo.OfferID),
 	}
 	body, err := xdr.NewOperationBody(opType, xdrOp)
 

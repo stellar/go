@@ -526,7 +526,7 @@ func TestCreatePassiveOffer(t *testing.T) {
 	kp1 := newKeypair1()
 	sourceAccount := makeTestAccount(kp1, "41137196761100")
 
-	createPassiveOffer := CreatePassiveOffer{
+	createPassiveOffer := CreatePassiveSellOffer{
 		Selling: NativeAsset{},
 		Buying:  CreditAsset{"ABCD", kp0.Address()},
 		Amount:  "10",

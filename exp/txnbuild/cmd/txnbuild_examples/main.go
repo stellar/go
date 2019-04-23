@@ -171,7 +171,7 @@ func exampleCreatePassiveOffer(client *horizon.Client, mock bool) horizon.Transa
 	sellAmount := "10"
 	price := "1.0"
 
-	createPassiveOffer := txnbuild.CreatePassiveOffer{
+	createPassiveOffer := txnbuild.CreatePassiveSellOffer{
 		Selling: selling,
 		Buying:  &buying,
 		Amount:  sellAmount,
