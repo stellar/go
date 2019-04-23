@@ -16,6 +16,7 @@ To learn more about the concept of operations in the Stellar network, take a loo
 | [PAYMENT](#payment)                                     | 1      | Sends a simple payment between two accounts in Stellar network.
 | [PATH_PAYMENT](#path-payment)                           | 2      | Sends a path payment between two accounts in the Stellar network.
 | [MANAGE_SELL_OFFER](#manage-sell-offer)                 | 3      | Creates, updates or deletes a sell offer in the Stellar network.
+| [MANAGE_BUY_OFFER](#manage-buy-offer)                   | 12     | Creates, updates or deletes a buy offer in the Stellar network.
 | [CREATE_PASSIVE_SELL_OFFER](#create-passive-sell-offer) | 4      | Creates an offer that won't consume a counter offer that exactly matches this offer.
 | [SET_OPTIONS](#set-options)                             | 5      | Sets account options (inflation destination, adding signers, etc.)
 | [CHANGE_TRUST](#change-trust)                           | 6      | Creates, updates or deletes a trust line.
@@ -24,7 +25,7 @@ To learn more about the concept of operations in the Stellar network, take a loo
 | [INFLATION](#inflation)                                 | 9      | Runs inflation.
 | [MANAGE_DATA](#manage-data)                             | 10     | Set, modify or delete a Data Entry (name/value pair) for an account.
 | [BUMP_SEQUENCE](#bump-sequence)                         | 11     | Bumps forward the sequence number of an account.
-| [MANAGE_BUY_OFFER](#manage-buy-offer)                   | 12     | Creates, updates or deletes a buy offer in the Stellar network.
+
 
 
 Every operation type shares a set of common attributes and links, some operations also contain
@@ -225,7 +226,88 @@ A path payment operation represents a payment from one account to another throug
 <a id="manage-sell-offer"></a>
 ### Manage Sell Offer
 
-A "Manage Offer" operation can create, update or delete a sell
+A "Manage Sell Offer" operation can create, update or delete a sell
+offer to trade assets in the Stellar network.
+It specifies an issuer, a price and amount of a given asset to
+buy or sell.
+
+When this operation is applied to the ledger, trades can potentially be executed if
+this offer crosses others that already exist in the ledger.
+
+In the event that there are not enough crossing orders to fill the order completely
+a new "Offer" object will be created in the ledger.  As other accounts make
+offers or payments, this offer can potentially be filled.
+
+#### Sell Offer vs. Buy Offer
+
+A [sell offer](#manage-sell-offer) specifies a certain amount of the `selling` asset that should be sold in exchange for the maximum quantity of the `buying` asset. It additionally only crosses offers where the price is higher than `price`.
+
+A [buy offer](#manage-buy-offer) specifies a certain amount of the `buying` asset that should be bought in exchange for the minimum quantity of the `selling` asset. It additionally only crosses offers where the price is lower than `price`.
+
+Both will fill only partially (or not at all) if there are few (or no) offers that cross them.
+
+#### Attributes
+
+| Field           |  Type  | Description       |
+| --------------- | ------ | ----------------- |
+| offer_id | number | Offer ID. |
+| amount     | string | Amount of asset to be sold. |
+| buying_asset_code | string | The code of asset to buy. |
+| buying_asset_issuer | string | The issuer of asset to buy. |
+| buying_asset_type | string | Type of asset to buy (native / alphanum4 / alphanum12) |
+| price | string | Price of selling_asset in units of buying_asset |
+| price_r | Object | n: price numerator, d: price denominator |
+| selling_asset_code | string | The code of asset to sell. |
+| selling_asset_issuer | string | The issuer of asset to sell. |
+| selling_asset_type | string | Type of asset to sell (native / alphanum4 / alphanum12) |
+
+#### Example
+
+```json
+{
+  "_links": {
+    "effects": {
+      "href": "/operations/592323234762753/effects{?cursor,limit,order}",
+      "templated": true
+    },
+    "precedes": {
+      "href": "/operations?cursor=592323234762753\u0026order=asc"
+    },
+    "self": {
+      "href": "/operations/592323234762753"
+    },
+    "succeeds": {
+      "href": "/operations?cursor=592323234762753\u0026order=desc"
+    },
+    "transaction": {
+      "href": "/transactions/592323234762752"
+    }
+  },
+  "amount": "100.0",
+  "buying_asset_code": "CHP",
+  "buying_asset_issuer": "GAC2ZUXVI5266NMMGDPBMXHH4BTZKJ7MMTGXRZGX2R5YLMFRYLJ7U5EA",
+  "buying_asset_type": "credit_alphanum4",
+  "id": 592323234762753,
+  "offer_id": 8,
+  "paging_token": "592323234762753",
+  "price": "2.0",
+  "price_r": {
+    "d": 1,
+    "n": 2
+  },
+  "selling_asset_code": "YEN",
+  "selling_asset_issuer": "GDVXG2FMFFSUMMMBIUEMWPZAIU2FNCH7QNGJMWRXRD6K5FZK5KJS4DDR",
+  "selling_asset_type": "credit_alphanum4",
+  "transaction_successful": true,
+  "type_i": 3,
+  "type": "manage_offer" // `manage_sell_offer` from v0.18.0
+}
+```
+
+<a id="manage-buy-offer"></a>
+### Manage Buy Offer
+
+A "Manage Buy Offer" operation can create, update or delete a buy
 offer to trade assets in the Stellar network.
 It specifies an issuer, a price and amount of a given asset to
 buy or sell.
@@ -290,8 +372,8 @@ offers or payments, this offer can potentially be filled.
   "selling_asset_issuer": "GDVXG2FMFFSUMMMBIUEMWPZAIU2FNCH7QNGJMWRXRD6K5FZK5KJS4DDR",
   "selling_asset_type": "credit_alphanum4",
   "transaction_successful": true,
-  "type_i": 3,
-  "type": "manage_offer" // `manage_sell_offer` from v0.18.0
+  "type_i": 12,
+  "type": "manage_buy_offer"
 }
 ```
 
@@ -302,7 +384,7 @@ offers or payments, this offer can potentially be filled.
 
 #### Attributes
 
-As in [Manage Offer](#manage-offer) operation.
+As in [Manage Sell Offer](#manage-sell-offer) operation.
 
 #### Example
 
@@ -685,76 +767,3 @@ Bumps forward the sequence number of the source account of the operation, allowi
 | [Ledger Operations](../operations-for-ledger.md)   | Collection | `/ledgers/{id}/operations{?cursor,limit,order}` |
 | [Account Operations](../operations-for-account.md) | Collection | `/accounts/:account_id/operations` |
 | [Account Payments](../payments-for-account.md)     | Collection | `/accounts/:account_id/payments` |
-
-<a id="manage-buy-offer"></a>
-### Manage Buy Offer
-
-A "Manage Buy Offer" operation can create, update or delete a buy
-offer to trade assets in the Stellar network.
-It specifies an issuer, a price and amount of a given asset to
-buy or sell.
-
-When this operation is applied to the ledger, trades can potentially be executed if
-this offer crosses others that already exist in the ledger.
-
-In the event that there are not enough crossing orders to fill the order completely
-a new "Offer" object will be created in the ledger.  As other accounts make
-offers or payments, this offer can potentially be filled.
-
-#### Attributes
-
-| Field           |  Type  | Description       |
-| --------------- | ------ | ----------------- |
-| offer_id | number | Offer ID. |
-| amount     | string | Amount of asset to be sold. |
-| buying_asset_code | string | The code of asset to buy. |
-| buying_asset_issuer | string | The issuer of asset to buy. |
-| buying_asset_type | string | Type of asset to buy (native / alphanum4 / alphanum12) |
-| price | string | Price to buy a buying_asset |
-| price_r | Object | n: price numerator, d: price denominator |
-| selling_asset_code | string | The code of asset to sell. |
-| selling_asset_issuer | string | The issuer of asset to sell. |
-| selling_asset_type | string | Type of asset to sell (native / alphanum4 / alphanum12) |
-
-#### Example
-
-```json
-{
-  "_links": {
-    "effects": {
-      "href": "/operations/592323234762753/effects{?cursor,limit,order}",
-      "templated": true
-    },
-    "precedes": {
-      "href": "/operations?cursor=592323234762753\u0026order=asc"
-    },
-    "self": {
-      "href": "/operations/592323234762753"
-    },
-    "succeeds": {
-      "href": "/operations?cursor=592323234762753\u0026order=desc"
-    },
-    "transaction": {
-      "href": "/transactions/592323234762752"
-    }
-  },
-  "amount": "100.0",
-  "buying_asset_code": "CHP",
-  "buying_asset_issuer": "GAC2ZUXVI5266NMMGDPBMXHH4BTZKJ7MMTGXRZGX2R5YLMFRYLJ7U5EA",
-  "buying_asset_type": "credit_alphanum4",
-  "id": 592323234762753,
-  "offer_id": 8,
-  "paging_token": "592323234762753",
-  "price": "2.0",
-  "price_r": {
-    "d": 1,
-    "n": 2
-  },
-  "selling_asset_code": "YEN",
-  "selling_asset_issuer": "GDVXG2FMFFSUMMMBIUEMWPZAIU2FNCH7QNGJMWRXRD6K5FZK5KJS4DDR",
-  "selling_asset_type": "credit_alphanum4",
-  "transaction_successful": true,
-  "type_i": 11,
-  "type": "manage_buy_offer"
-}
-```
