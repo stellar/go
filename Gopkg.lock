@@ -272,6 +272,28 @@
   revision = "9235644dd9e52eeae6fa48efd539fdc351a0af53"
 
 [[projects]]
+  branch = "master"
+  digest = "1:5cd75acef421262dbd1d2d15dc1b3859e43c78f13046a0c3b468386e215a28e5"
+  name = "github.com/graph-gophers/graphql-go"
+  packages = [
+    ".",
+    "errors",
+    "internal/common",
+    "internal/exec",
+    "internal/exec/packer",
+    "internal/exec/resolvable",
+    "internal/exec/selected",
+    "internal/query",
+    "internal/schema",
+    "internal/validation",
+    "introspection",
+    "log",
+    "trace",
+  ]
+  pruneopts = "T"
+  revision = "3e8838d4614c12ab337e796548521744f921e05d"
+
+[[projects]]
   digest = "1:1645a00815964b8746574a5688974d9e6285519bb053ea06b0758729eb5b2942"
   name = "github.com/guregu/null"
   packages = ["."]
@@ -499,6 +521,18 @@
   ]
   pruneopts = "T"
   revision = "649b44d988ce182cabcda7dba01fcf3b6179ad19"
+
+[[projects]]
+  digest = "1:a88448fcd2802025fa764388e12f31f0a64d5d436b369a71b97a6c9da783fafe"
+  name = "github.com/opentracing/opentracing-go"
+  packages = [
+    ".",
+    "ext",
+    "log",
+  ]
+  pruneopts = "T"
+  revision = "659c90643e714681897ec2521c60567dd21da733"
+  version = "v1.1.0"
 
 [[projects]]
   digest = "1:40e195917a951a8bf867cd05de2a46aaf1806c50cf92eebf4c16f78cd196f747"
@@ -885,6 +919,7 @@
     "github.com/go-sql-driver/mysql",
     "github.com/goji/httpauth",
     "github.com/gomodule/redigo/redis",
+    "github.com/graph-gophers/graphql-go",
     "github.com/guregu/null",
     "github.com/haltingstate/secp256k1-go",
     "github.com/howeyc/gopass",

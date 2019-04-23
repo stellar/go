@@ -234,3 +234,245 @@ func TestRetrieveMarketData(t *testing.T) {
 
 	assert.Equal(t, priceChange24hDiff, priceChange7dDiff)
 }
+
+func TestRetrievePartialMarkets(t *testing.T) {
+	db := dbtest.Postgres(t)
+	defer db.Close()
+
+	var session TickerSession
+	session.DB = db.Open()
+	defer session.DB.Close()
+
+	// Run migrations to make sure the tests are run
+	// on the most updated schema version
+	migrations := &migrate.FileMigrationSource{
+		Dir: "./migrations",
+	}
+	_, err := migrate.Exec(session.DB.DB, "postgres", migrations, migrate.Up)
+	require.NoError(t, err)
+
+	// Adding a seed issuer to be used later:
+	issuer1PK := "GCF3TQXKZJNFJK7HCMNE2O2CUNKCJH2Y2ROISTBPLC7C5EIA5NNG2XZB"
+	tbl := session.GetTable("issuers")
+	_, err = tbl.Insert(Issuer{
+		PublicKey: issuer1PK,
+		Name:      "FOO BAR",
+	}).IgnoreCols("id").Exec()
+	require.NoError(t, err)
+	var issuer1 Issuer
+	err = session.GetRaw(&issuer1, `
+		SELECT *
+		FROM issuers
+		WHERE public_key = ?`,
+		issuer1PK,
+	)
+	require.NoError(t, err)
+
+	// Adding another issuer to be used later:
+	issuer2PK := "ABF3TQXKZJNFJK7HCMNE2O2CUNKCJH2Y2ROISTBPLC7C5EIA5NNG2XZB"
+	_, err = tbl.Insert(Issuer{
+		PublicKey: issuer2PK,
+		Name:      "FOO BAR",
+	}).IgnoreCols("id").Exec()
+	require.NoError(t, err)
+	var issuer2 Issuer
+	err = session.GetRaw(&issuer2, `
+		SELECT *
+		FROM issuers
+		WHERE public_key = ?`,
+		issuer2PK,
+	)
+	require.NoError(t, err)
+
+	// Adding a seed asset to be used later:
+	err = session.InsertOrUpdateAsset(&Asset{
+		Code:          "ETH",
+		IssuerAccount: issuer1PK,
+		IssuerID:      issuer1.ID,
+		IsValid:       true,
+	}, []string{"code", "issuer_id"})
+	require.NoError(t, err)
+	var ethAsset1 Asset
+	err = session.GetRaw(&ethAsset1, `
+		SELECT *
+		FROM assets
+		WHERE code = ?
+		AND issuer_account = ?`,
+		"ETH",
+		issuer1PK,
+	)
+	require.NoError(t, err)
+
+	// Adding a seed asset to be used later:
+	err = session.InsertOrUpdateAsset(&Asset{
+		Code:          "ETH",
+		IssuerAccount: issuer2PK,
+		IssuerID:      issuer2.ID,
+		IsValid:       true,
+	}, []string{"code", "issuer_id"})
+	require.NoError(t, err)
+	var ethAsset2 Asset
+	err = session.GetRaw(&ethAsset2, `
+		SELECT *
+		FROM assets
+		WHERE code = ?
+		AND issuer_account = ?`,
+		"ETH",
+		issuer2PK,
+	)
+	require.NoError(t, err)
+
+	// Adding another asset to be used later:
+	err = session.InsertOrUpdateAsset(&Asset{
+		Code:          "BTC",
+		IssuerAccount: issuer1PK,
+		IssuerID:      issuer1.ID,
+		IsValid:       true,
+	}, []string{"code", "issuer_id"})
+	require.NoError(t, err)
+	var btcAsset Asset
+	err = session.GetRaw(&btcAsset, `
+		SELECT *
+		FROM assets
+		WHERE code = ?
+		AND issuer_account = ?`,
+		"BTC",
+		issuer1PK,
+	)
+	require.NoError(t, err)
+
+	// A few times to be used:
+	now := time.Now()
+	tenMinutesAgo := now.Add(-10 * time.Minute)
+	oneHourAgo := now.Add(-1 * time.Hour)
+	threeDaysAgo := now.AddDate(0, 0, -3)
+
+	// Now let's create the trades:
+	trades := []Trade{
+		Trade{ // BTC_ETH  trade (ETH is from issuer 1)
+			HorizonID:       "hrzid1",
+			BaseAssetID:     btcAsset.ID,
+			BaseAmount:      100.0,
+			CounterAssetID:  ethAsset1.ID,
+			CounterAmount:   10.0,
+			Price:           0.1,
+			LedgerCloseTime: tenMinutesAgo,
+		},
+		Trade{ // BTC_ETH trade (ETH is from issuer 2)
+			HorizonID:       "hrzid3",
+			BaseAssetID:     btcAsset.ID,
+			BaseAmount:      24.0,
+			CounterAssetID:  ethAsset2.ID,
+			CounterAmount:   26.0,
+			Price:           0.92,
+			LedgerCloseTime: now,
+		},
+		Trade{ // BTC_ETH  trade (ETH is from issuer 1)
+			HorizonID:       "hrzid2",
+			BaseAssetID:     btcAsset.ID,
+			BaseAmount:      50.0,
+			CounterAssetID:  ethAsset1.ID,
+			CounterAmount:   50.0,
+			Price:           1.0,
+			LedgerCloseTime: oneHourAgo,
+		},
+		Trade{ // BTC_ETH  trade (ETH is from issuer 1)
+			HorizonID:       "hrzid4",
+			BaseAssetID:     btcAsset.ID,
+			BaseAmount:      50.0,
+			CounterAssetID:  ethAsset1.ID,
+			CounterAmount:   6.0,
+			Price:           0.12,
+			LedgerCloseTime: threeDaysAgo,
+		},
+	}
+	err = session.BulkInsertTrades(trades)
+	require.NoError(t, err)
+
+	partialMkts, err := session.RetrievePartialMarkets(
+		nil, nil, nil, nil, 12,
+	)
+	require.NoError(t, err)
+	assert.Equal(t, 2, len(partialMkts))
+
+	// Mapping the retrieved markets:
+	var btceth1Mkt, btceth2Mkt PartialMarket
+	for _, mkt := range partialMkts {
+		if mkt.CounterAssetIssuer == issuer1PK {
+			btceth1Mkt = mkt
+		}
+
+		if mkt.CounterAssetIssuer == issuer2PK {
+			btceth2Mkt = mkt
+		}
+	}
+	tradePair1 := fmt.Sprintf("BTC:%s / ETH:%s", issuer1PK, issuer1PK)
+	tradePair2 := fmt.Sprintf("BTC:%s / ETH:%s", issuer1PK, issuer2PK)
+
+	assert.Equal(t, tradePair1, btceth1Mkt.TradePairName)
+	assert.Equal(t, tradePair2, btceth2Mkt.TradePairName)
+
+	// Validating the aggregated data
+	assert.Equal(t, 150.0, btceth1Mkt.BaseVolume)
+	assert.Equal(t, 60.0, btceth1Mkt.CounterVolume)
+	assert.Equal(t, int32(2), btceth1Mkt.TradeCount)
+	assert.Equal(t, 1.0, btceth1Mkt.Open)
+	assert.Equal(t, 0.1, btceth1Mkt.Close)
+	assert.Equal(t, -0.9, btceth1Mkt.Change)
+	assert.Equal(t, 1.0, btceth1Mkt.High)
+	assert.Equal(t, 0.1, btceth1Mkt.Low)
+	assert.Equal(
+		t,
+		oneHourAgo.Local().Truncate(time.Millisecond),
+		btceth1Mkt.FirstLedgerCloseTime.Local().Truncate(time.Millisecond),
+	)
+
+	assert.Equal(t, 24.0, btceth2Mkt.BaseVolume)
+	assert.Equal(t, 26.0, btceth2Mkt.CounterVolume)
+	assert.Equal(t, int32(1), btceth2Mkt.TradeCount)
+	assert.Equal(t, 0.92, btceth2Mkt.Open)
+	assert.Equal(t, 0.92, btceth2Mkt.Close)
+	assert.Equal(t, 0.0, btceth2Mkt.Change)
+	assert.Equal(t, 0.92, btceth2Mkt.High)
+	assert.Equal(t, 0.92, btceth2Mkt.Low)
+	assert.Equal(
+		t,
+		now.Local().Truncate(time.Millisecond),
+		btceth2Mkt.FirstLedgerCloseTime.Local().Truncate(time.Millisecond),
+	)
+
+	// Now let's use the same data, but aggregating by asset pair
+	partialAggMkts, err := session.RetrievePartialAggMarkets(nil, 12)
+	require.NoError(t, err)
+	assert.Equal(t, 1, len(partialAggMkts))
+
+	partialAggMkt := partialAggMkts[0]
+
+	assert.Equal(t, "BTC_ETH", partialAggMkt.TradePairName)
+	assert.Equal(t, 174.0, partialAggMkt.BaseVolume)
+	assert.Equal(t, 86.0, partialAggMkt.CounterVolume)
+	assert.Equal(t, int32(3), partialAggMkt.TradeCount)
+	assert.Equal(t, 1.0, partialAggMkt.Open)
+	assert.Equal(t, 0.92, partialAggMkt.Close)
+	assert.Equal(t, 1.0, partialAggMkt.High)
+	assert.Equal(t, 0.1, partialAggMkt.Low)
+	assert.Equal(
+		t,
+		oneHourAgo.Local().Truncate(time.Millisecond),
+		partialAggMkt.FirstLedgerCloseTime.Local().Truncate(time.Millisecond),
+	)
+
+	// There might be some floating point rounding issues, so this test
+	// needs to be a bit more flexible. Since the change is 0.08, an error
+	// around 0.0000000000001 is acceptable:
+	priceDiff := math.Abs(-0.08 - partialAggMkt.Change)
+	assert.True(t, priceDiff < 0.0000000000001)
+
+	// Validate the pair name parsing:
+	pairName := new(string)
+	*pairName = "BTC_ETH"
+	partialAggMkts, err = session.RetrievePartialAggMarkets(pairName, 12)
+	require.NoError(t, err)
+	assert.Equal(t, 1, len(partialAggMkts))
+	assert.Equal(t, int32(3), partialAggMkts[0].TradeCount)
+}

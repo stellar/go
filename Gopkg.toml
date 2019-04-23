@@ -73,3 +73,7 @@
 
 [prune]
   go-tests = true
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/graph-gophers/graphql-go"
