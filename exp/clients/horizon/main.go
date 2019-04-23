@@ -8,6 +8,7 @@ import (
 	"net/url"
 	"time"
 
+	"github.com/stellar/go/exp/txnbuild"
 	hProtocol "github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/protocols/horizon/operations"
 	"github.com/stellar/go/support/render/problem"
@@ -121,7 +122,8 @@ type ClientInterface interface {
 	Offers(request OfferRequest) (hProtocol.OffersPage, error)
 	Operations(request OperationRequest) (operations.OperationsPage, error)
 	OperationDetail(id string) (operations.Operation, error)
-	SubmitTransaction(transactionXdr string) (hProtocol.TransactionSuccess, error)
+	SubmitTransactionXDR(transactionXdr string) (hProtocol.TransactionSuccess, error)
+	SubmitTransaction(transactionXdr txnbuild.Transaction) (hProtocol.TransactionSuccess, error)
 	Transactions(request TransactionRequest) (hProtocol.TransactionsPage, error)
 	TransactionDetail(txHash string) (hProtocol.Transaction, error)
 	OrderBook(request OrderBookRequest) (hProtocol.OrderBookSummary, error)

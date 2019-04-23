@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/manucorporat/sse"
+	"github.com/stellar/go/exp/txnbuild"
 	hProtocol "github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/protocols/horizon/operations"
 	"github.com/stellar/go/support/app"
@@ -341,14 +342,26 @@ func (c *Client) OperationDetail(id string) (ops operations.Operation, err error
 	return ops, errors.Wrap(err, "unmarshaling to the correct operation type")
 }
 
-// SubmitTransaction submits a transaction to the network. err can be either error object or horizon.Error object.
+// SubmitTransactionXDR submits a transaction represented as a base64 XDR string to the network. err can be either error object or horizon.Error object.
 // See https://www.stellar.org/developers/horizon/reference/endpoints/transactions-create.html
-func (c *Client) SubmitTransaction(transactionXdr string) (txSuccess hProtocol.TransactionSuccess,
+func (c *Client) SubmitTransactionXDR(transactionXdr string) (txSuccess hProtocol.TransactionSuccess,
 	err error) {
 	request := submitRequest{endpoint: "transactions", transactionXdr: transactionXdr}
 	err = c.sendRequest(request, &txSuccess)
 	return
+}
 
+// SubmitTransaction submits a transaction to the network. err can be either error object or horizon.Error object.
+// See https://www.stellar.org/developers/horizon/reference/endpoints/transactions-create.html
+func (c *Client) SubmitTransaction(transaction txnbuild.Transaction) (txSuccess hProtocol.TransactionSuccess,
+	err error) {
+	txeBase64, err := transaction.Base64()
+	if err != nil {
+		err = errors.Wrap(err, "Unable to convert transaction object to base64 string")
+		return
+	}
+
+	return c.SubmitTransactionXDR(txeBase64)
 }
 
 // Transactions returns stellar transactions (https://www.stellar.org/developers/horizon/reference/resources/transaction.html)

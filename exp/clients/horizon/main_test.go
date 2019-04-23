@@ -169,14 +169,14 @@ func ExampleClient_OperationDetail() {
 	fmt.Print(ops)
 }
 
-func ExampleClient_SubmitTransaction() {
+func ExampleClient_SubmitTransactionXDR() {
 
 	client := DefaultPublicNetClient
 	// https://www.stellar.org/laboratory/#xdr-viewer?input=AAAAAOoS%2F5V%2BBiCPXRiVcz8YsnkDdODufq%2Bg7xdqTdIXN8vyAAAE4gFiW0YAAALxAAAAAQAAAAAAAAAAAAAAAFyuBUcAAAABAAAABzIyMjgyNDUAAAAAAQAAAAEAAAAALhsY%2FFdAHXllTmb025DtCVBw06WDSQjq6I9NrCQHOV8AAAABAAAAAHT8zKV7bRQzuGTpk9AO3gjWJ9jVxBXTgguFORkxHVIKAAAAAAAAAAAAOnDwAAAAAAAAAAIkBzlfAAAAQPefqlsOvni6xX1g3AqddvOp1GOM88JYzayGZodbzTfV5toyhxZvL1ZggY3prFsvrereugEpj1kyPJ67z6gcRg0XN8vyAAAAQGwmoTssW49gaze8iQkz%2FUA2E2N%2BBOo%2B6v7YdOSsvIcZnMc37KmXH920nLosKpDLqkNChVztSZFcbVUlHhjbQgA%3D&type=TransactionEnvelope&network=public
 	txXdr := `AAAAAOoS/5V+BiCPXRiVcz8YsnkDdODufq+g7xdqTdIXN8vyAAAE4gFiW0YAAALxAAAAAQAAAAAAAAAAAAAAAFyuBUcAAAABAAAABzIyMjgyNDUAAAAAAQAAAAEAAAAALhsY/FdAHXllTmb025DtCVBw06WDSQjq6I9NrCQHOV8AAAABAAAAAHT8zKV7bRQzuGTpk9AO3gjWJ9jVxBXTgguFORkxHVIKAAAAAAAAAAAAOnDwAAAAAAAAAAIkBzlfAAAAQPefqlsOvni6xX1g3AqddvOp1GOM88JYzayGZodbzTfV5toyhxZvL1ZggY3prFsvrereugEpj1kyPJ67z6gcRg0XN8vyAAAAQGwmoTssW49gaze8iQkz/UA2E2N+BOo+6v7YdOSsvIcZnMc37KmXH920nLosKpDLqkNChVztSZFcbVUlHhjbQgA=`
 
 	// submit transaction
-	resp, err := client.SubmitTransaction(txXdr)
+	resp, err := client.SubmitTransactionXDR(txXdr)
 	if err != nil {
 		fmt.Println(err)
 		return
@@ -195,7 +195,7 @@ func ExampleClient_SetHorizonTimeOut() {
 
 	// test user timeout
 	client = client.SetHorizonTimeOut(30)
-	resp, err := client.SubmitTransaction(txXdr)
+	resp, err := client.SubmitTransactionXDR(txXdr)
 	if err != nil {
 		fmt.Println(err)
 		return
@@ -754,7 +754,7 @@ func TestSubmitRequest(t *testing.T) {
 		On("POST", "https://localhost/transactions").
 		ReturnString(400, transactionFailure)
 
-	_, err := client.SubmitTransaction(txXdr)
+	_, err := client.SubmitTransactionXDR(txXdr)
 	if assert.Error(t, err) {
 		assert.Contains(t, err.Error(), "horizon error")
 		horizonError, ok := errors.Cause(err).(*Error)
@@ -767,7 +767,7 @@ func TestSubmitRequest(t *testing.T) {
 		On("POST", "https://localhost/transactions").
 		ReturnError("http.Client error")
 
-	_, err = client.SubmitTransaction(txXdr)
+	_, err = client.SubmitTransactionXDR(txXdr)
 	if assert.Error(t, err) {
 		assert.Contains(t, err.Error(), "http.Client error")
 		_, ok := err.(*Error)
@@ -780,7 +780,7 @@ func TestSubmitRequest(t *testing.T) {
 		"https://localhost/transactions?tx=AAAAABB90WssODNIgi6BHveqzxTRmIpvAFRyVNM%2BHm2GVuCcAAAAZAAABD0AAuV%2FAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAyTBGxOgfSApppsTnb%2FYRr6gOR8WT0LZNrhLh4y3FCgoAAAAXSHboAAAAAAAAAAABhlbgnAAAAEAivKe977CQCxMOKTuj%2BcWTFqc2OOJU8qGr9afrgu2zDmQaX5Q0cNshc3PiBwe0qw%2F%2BD%2FqJk5QqM5dYeSUGeDQP",
 	).ReturnString(200, txSuccess)
 
-	resp, err := client.SubmitTransaction(txXdr)
+	resp, err := client.SubmitTransactionXDR(txXdr)
 	if assert.NoError(t, err) {
 		assert.IsType(t, resp, hProtocol.TransactionSuccess{})
 		assert.Equal(t, resp.Links.Transaction.Href, "https://horizon-testnet.stellar.org/transactions/bcc7a97264dca0a51a63f7ea971b5e7458e334489673078bb2a34eb0cce910ca")

@@ -3,7 +3,9 @@
 /dist
 /local-archive
 /.vscode/*.sql
+/.vscode/settings.json
 .idea
 debug
 .bundle
 *.swp
+
