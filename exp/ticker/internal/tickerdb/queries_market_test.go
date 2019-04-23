@@ -199,7 +199,7 @@ func TestRetrieveMarketData(t *testing.T) {
 	// There might be some floating point rounding issues, so this test
 	// needs to be a bit more flexible. Since the change is 0.02, an error
 	// around 0.0000000000001 is acceptable:
-	priceChange7dDiff := math.Abs(0.02 - xlmbtcMkt.PriceChange7d)
+	priceChange7dDiff := math.Abs(-0.02 - xlmbtcMkt.PriceChange7d)
 	assert.True(t, priceChange7dDiff < 0.0000000000001)
 
 	assert.Equal(t, 74.0, xlmethMkt.BaseVolume24h)
@@ -226,10 +226,10 @@ func TestRetrieveMarketData(t *testing.T) {
 	// There might be some floating point rounding issues, so this test
 	// needs to be a bit more flexible. Since the change is 0.08, an error
 	// around 0.0000000000001 is acceptable:
-	priceChange24hDiff := math.Abs(-0.08 - xlmethMkt.PriceChange24h)
+	priceChange24hDiff := math.Abs(0.08 - xlmethMkt.PriceChange24h)
 	assert.True(t, priceChange24hDiff < 0.0000000000001)
 
-	priceChange7dDiff = math.Abs(-0.08 - xlmethMkt.PriceChange7d)
+	priceChange7dDiff = math.Abs(0.08 - xlmethMkt.PriceChange7d)
 	assert.True(t, priceChange7dDiff < 0.0000000000001)
 
 	assert.Equal(t, priceChange24hDiff, priceChange7dDiff)
