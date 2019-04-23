@@ -105,7 +105,7 @@ type Client struct {
 	horizonTimeOut time.Duration
 	AppName        string
 	AppVersion     string
-	isTest         bool
+	isTestNet      bool
 }
 
 // ClientInterface contains methods implemented by the horizon client
@@ -146,7 +146,7 @@ var DefaultTestNetClient = &Client{
 	HorizonURL:     "https://horizon-testnet.stellar.org/",
 	HTTP:           http.DefaultClient,
 	horizonTimeOut: HorizonTimeOut,
-	isTest:         true,
+	isTestNet:      true,
 }
 
 // DefaultPublicNetClient is a default client to connect to public network
