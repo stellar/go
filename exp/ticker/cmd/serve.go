@@ -12,7 +12,7 @@ var ServerAddr string
 func init() {
 	rootCmd.AddCommand(cmdServe)
 
-	cmdIngestTrades.Flags().StringVar(
+	cmdServe.Flags().StringVar(
 		&ServerAddr,
 		"address",
 		"0.0.0.0:3000",
