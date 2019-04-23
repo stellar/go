@@ -9,6 +9,7 @@ import (
 	"os"
 
 	"github.com/stellar/go/clients/horizon"
+	horizonclient "github.com/stellar/go/exp/clients/horizon"
 	"github.com/stellar/go/exp/txnbuild"
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/network"
@@ -50,7 +51,11 @@ func initKeys() []key {
 }
 
 func main() {
-	client := horizon.DefaultTestNetClient
+	client := horizonclient.DefaultTestNetClient
+	pair := createKeypair()
+	resp, err := client.Fund(pair.Address())
+	fmt.Println(resp)
+	fmt.Println(err)
 
 	// resp := exampleCreateAccount(client, false)
 	// resp := exampleSendLumens(client, false)
@@ -67,8 +72,8 @@ func main() {
 	// resp := exampleManageOfferDeleteOffer(client, false)
 	// resp := exampleManageOfferUpdateOffer(client, false)
 	// resp := exampleCreatePassiveOffer(client, false)
-	resp := examplePathPayment(client, false)
-	fmt.Println(resp.TransactionSuccessToString())
+	// resp := examplePathPayment(client, false)
+	// fmt.Println(resp.TransactionSuccessToString())
 }
 
 func examplePathPayment(client *horizon.Client, mock bool) horizon.TransactionSuccess {

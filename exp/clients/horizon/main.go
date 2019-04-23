@@ -105,6 +105,7 @@ type Client struct {
 	horizonTimeOut time.Duration
 	AppName        string
 	AppVersion     string
+	isTest         bool
 }
 
 // ClientInterface contains methods implemented by the horizon client
@@ -129,6 +130,7 @@ type ClientInterface interface {
 	Payments(request OperationRequest) (operations.OperationsPage, error)
 	TradeAggregations(request TradeAggregationRequest) (hProtocol.TradeAggregationsPage, error)
 	Trades(request TradeRequest) (hProtocol.TradesPage, error)
+	Fund(addr string) (*http.Response, error)
 	StreamTransactions(ctx context.Context, request TransactionRequest, handler TransactionHandler) error
 	StreamTrades(ctx context.Context, request TradeRequest, handler TradeHandler) error
 	StreamEffects(ctx context.Context, request EffectRequest, handler EffectHandler) error
@@ -144,6 +146,7 @@ var DefaultTestNetClient = &Client{
 	HorizonURL:     "https://horizon-testnet.stellar.org/",
 	HTTP:           http.DefaultClient,
 	horizonTimeOut: HorizonTimeOut,
+	isTest:         true,
 }
 
 // DefaultPublicNetClient is a default client to connect to public network

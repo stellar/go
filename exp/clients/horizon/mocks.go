@@ -2,6 +2,7 @@ package horizonclient
 
 import (
 	"context"
+	"net/http"
 
 	hProtocol "github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/protocols/horizon/operations"
@@ -134,6 +135,12 @@ func (m *MockClient) TradeAggregations(request TradeAggregationRequest) (hProtoc
 func (m *MockClient) Trades(request TradeRequest) (hProtocol.TradesPage, error) {
 	a := m.Called(request)
 	return a.Get(0).(hProtocol.TradesPage), a.Error(1)
+}
+
+// Fund is a mocking method
+func (m *MockClient) Fund(addr string) (*http.Response, error) {
+	a := m.Called(addr)
+	return nil, a.Error(1)
 }
 
 // StreamTransactions is a mocking method
