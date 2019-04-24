@@ -219,7 +219,7 @@ func TestOperationActions_Regressions(t *testing.T) {
 	test.LoadScenario("trades")
 	w = ht.Get("/operations/25769807873")
 	if ht.Assert.Equal(200, w.Code) {
-		var result operations.ManageOffer
+		var result operations.ManageSellOffer
 		err := json.Unmarshal(w.Body.Bytes(), &result)
 		ht.Require.NoError(err, "failed to parse body")
 		ht.Assert.Equal("1.0000000", result.Price)

@@ -645,7 +645,7 @@ func TestOperationsRequest(t *testing.T) {
 		mangageOfferOp := ops.Embedded.Records[1]
 		createAccountOp := ops.Embedded.Records[2]
 		assert.IsType(t, paymentOp, operations.Payment{})
-		assert.IsType(t, mangageOfferOp, operations.ManageOffer{})
+		assert.IsType(t, mangageOfferOp, operations.ManageSellOffer{})
 		assert.IsType(t, createAccountOp, operations.CreateAccount{})
 
 		c, ok := createAccountOp.(operations.CreateAccount)

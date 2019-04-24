@@ -84,14 +84,18 @@ func (assetStats *AssetStats) IngestOperation(op *xdr.Operation, source *xdr.Acc
 		for _, asset := range body.PathPaymentOp.Path {
 			assetStats.add(asset)
 		}
-	case xdr.OperationTypeManageOffer:
+	case xdr.OperationTypeManageBuyOffer:
 		// if this gets expensive then we can limit it to only include those assets that includes the issuer
-		assetStats.add(body.ManageOfferOp.Buying)
-		assetStats.add(body.ManageOfferOp.Selling)
-	case xdr.OperationTypeCreatePassiveOffer:
+		assetStats.add(body.ManageBuyOfferOp.Buying)
+		assetStats.add(body.ManageBuyOfferOp.Selling)
+	case xdr.OperationTypeManageSellOffer:
 		// if this gets expensive then we can limit it to only include those assets that includes the issuer
-		assetStats.add(body.CreatePassiveOfferOp.Buying)
-		assetStats.add(body.CreatePassiveOfferOp.Selling)
+		assetStats.add(body.ManageSellOfferOp.Buying)
+		assetStats.add(body.ManageSellOfferOp.Selling)
+	case xdr.OperationTypeCreatePassiveSellOffer:
+		// if this gets expensive then we can limit it to only include those assets that includes the issuer
+		assetStats.add(body.CreatePassiveSellOfferOp.Buying)
+		assetStats.add(body.CreatePassiveSellOfferOp.Selling)
 	case xdr.OperationTypeChangeTrust:
 		assetStats.add(body.ChangeTrustOp.Line)
 	case xdr.OperationTypeAllowTrust:

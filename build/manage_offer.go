@@ -45,8 +45,8 @@ type ManageOfferMutator interface {
 type ManageOfferBuilder struct {
 	PassiveOffer bool
 	O            xdr.Operation
-	MO           xdr.ManageOfferOp
-	PO           xdr.CreatePassiveOfferOp
+	MO           xdr.ManageSellOfferOp
+	PO           xdr.CreatePassiveSellOfferOp
 	Err          error
 }
 
@@ -79,9 +79,9 @@ func (m Amount) MutateManageOffer(o interface{}) (err error) {
 	switch o := o.(type) {
 	default:
 		err = errors.New("Unexpected operation type")
-	case *xdr.ManageOfferOp:
+	case *xdr.ManageSellOfferOp:
 		o.Amount, err = amount.Parse(string(m))
-	case *xdr.CreatePassiveOfferOp:
+	case *xdr.CreatePassiveSellOfferOp:
 		o.Amount, err = amount.Parse(string(m))
 	}
 	return
@@ -92,8 +92,8 @@ func (m OfferID) MutateManageOffer(o interface{}) (err error) {
 	switch o := o.(type) {
 	default:
 		err = errors.New("Unexpected operation type")
-	case *xdr.ManageOfferOp:
-		o.OfferId = xdr.Uint64(m)
+	case *xdr.ManageSellOfferOp:
+		o.OfferId = xdr.Int64(m)
 	}
 	return
 }
@@ -103,7 +103,7 @@ func (m Rate) MutateManageOffer(o interface{}) (err error) {
 	switch o := o.(type) {
 	default:
 		err = errors.New("Unexpected operation type")
-	case *xdr.ManageOfferOp:
+	case *xdr.ManageSellOfferOp:
 		o.Selling, err = m.Selling.ToXDR()
 		if err != nil {
 			return
@@ -115,7 +115,7 @@ func (m Rate) MutateManageOffer(o interface{}) (err error) {
 		}
 
 		o.Price, err = price.Parse(string(m.Price))
-	case *xdr.CreatePassiveOfferOp:
+	case *xdr.CreatePassiveSellOfferOp:
 		o.Selling, err = m.Selling.ToXDR()
 		if err != nil {
 			return

@@ -176,7 +176,7 @@ func exampleCreatePassiveOffer(client *horizon.Client, mock bool) horizon.Transa
 	sellAmount := "10"
 	price := "1.0"
 
-	createPassiveOffer := txnbuild.CreatePassiveOffer{
+	createPassiveOffer := txnbuild.CreatePassiveSellOffer{
 		Selling: selling,
 		Buying:  &buying,
 		Amount:  sellAmount,
@@ -207,7 +207,7 @@ func exampleManageOfferUpdateOffer(client *horizon.Client, mock bool) horizon.Tr
 	}
 	sellAmount := "50"
 	price := "0.02"
-	offerID := uint64(2497628)
+	offerID := int64(2497628)
 
 	updateOffer := txnbuild.UpdateOfferOp(selling, &buying, sellAmount, price, offerID)
 
@@ -229,7 +229,7 @@ func exampleManageOfferDeleteOffer(client *horizon.Client, mock bool) horizon.Tr
 	dieIfError("loadaccount", err)
 	sourceAccount := mapAccounts(horizonSourceAccount)
 
-	offerID := uint64(4326054)
+	offerID := int64(4326054)
 
 	deleteOffer := txnbuild.DeleteOfferOp(offerID)
 

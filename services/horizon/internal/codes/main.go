@@ -74,6 +74,10 @@ func String(code interface{}) (string, error) {
 			return "op_no_source_account", nil
 		case xdr.OperationResultCodeOpNotSupported:
 			return "op_not_supported", nil
+		case xdr.OperationResultCodeOpTooManySubentries:
+			return "op_too_many_subentries", nil
+		case xdr.OperationResultCodeOpExceededWorkLimit:
+			return "op_exceeded_work_limit", nil
 		}
 	case xdr.CreateAccountResultCode:
 		switch code {
@@ -140,33 +144,62 @@ func String(code interface{}) (string, error) {
 		case xdr.PathPaymentResultCodePathPaymentOverSendmax:
 			return "op_over_source_max", nil
 		}
-	case xdr.ManageOfferResultCode:
+	case xdr.ManageBuyOfferResultCode:
 		switch code {
-		case xdr.ManageOfferResultCodeManageOfferSuccess:
+		case xdr.ManageBuyOfferResultCodeManageBuyOfferSuccess:
 			return OpSuccess, nil
-		case xdr.ManageOfferResultCodeManageOfferMalformed:
+		case xdr.ManageBuyOfferResultCodeManageBuyOfferMalformed:
 			return OpMalformed, nil
-		case xdr.ManageOfferResultCodeManageOfferSellNoTrust:
+		case xdr.ManageBuyOfferResultCodeManageBuyOfferSellNoTrust:
 			return "op_sell_no_trust", nil
-		case xdr.ManageOfferResultCodeManageOfferBuyNoTrust:
+		case xdr.ManageBuyOfferResultCodeManageBuyOfferBuyNoTrust:
 			return "op_buy_no_trust", nil
-		case xdr.ManageOfferResultCodeManageOfferSellNotAuthorized:
+		case xdr.ManageBuyOfferResultCodeManageBuyOfferSellNotAuthorized:
 			return "sell_not_authorized", nil
-		case xdr.ManageOfferResultCodeManageOfferBuyNotAuthorized:
+		case xdr.ManageBuyOfferResultCodeManageBuyOfferBuyNotAuthorized:
 			return "buy_not_authorized", nil
-		case xdr.ManageOfferResultCodeManageOfferLineFull:
+		case xdr.ManageBuyOfferResultCodeManageBuyOfferLineFull:
 			return OpLineFull, nil
-		case xdr.ManageOfferResultCodeManageOfferUnderfunded:
+		case xdr.ManageBuyOfferResultCodeManageBuyOfferUnderfunded:
 			return OpUnderfunded, nil
-		case xdr.ManageOfferResultCodeManageOfferCrossSelf:
+		case xdr.ManageBuyOfferResultCodeManageBuyOfferCrossSelf:
 			return "op_cross_self", nil
-		case xdr.ManageOfferResultCodeManageOfferSellNoIssuer:
+		case xdr.ManageBuyOfferResultCodeManageBuyOfferSellNoIssuer:
 			return "op_sell_no_issuer", nil
-		case xdr.ManageOfferResultCodeManageOfferBuyNoIssuer:
+		case xdr.ManageBuyOfferResultCodeManageBuyOfferBuyNoIssuer:
 			return "buy_no_issuer", nil
-		case xdr.ManageOfferResultCodeManageOfferNotFound:
+		case xdr.ManageBuyOfferResultCodeManageBuyOfferNotFound:
 			return "op_offer_not_found", nil
-		case xdr.ManageOfferResultCodeManageOfferLowReserve:
+		case xdr.ManageBuyOfferResultCodeManageBuyOfferLowReserve:
+			return OpLowReserve, nil
+		}
+	case xdr.ManageSellOfferResultCode:
+		switch code {
+		case xdr.ManageSellOfferResultCodeManageSellOfferSuccess:
+			return OpSuccess, nil
+		case xdr.ManageSellOfferResultCodeManageSellOfferMalformed:
+			return OpMalformed, nil
+		case xdr.ManageSellOfferResultCodeManageSellOfferSellNoTrust:
+			return "op_sell_no_trust", nil
+		case xdr.ManageSellOfferResultCodeManageSellOfferBuyNoTrust:
+			return "op_buy_no_trust", nil
+		case xdr.ManageSellOfferResultCodeManageSellOfferSellNotAuthorized:
+			return "sell_not_authorized", nil
+		case xdr.ManageSellOfferResultCodeManageSellOfferBuyNotAuthorized:
+			return "buy_not_authorized", nil
+		case xdr.ManageSellOfferResultCodeManageSellOfferLineFull:
+			return OpLineFull, nil
+		case xdr.ManageSellOfferResultCodeManageSellOfferUnderfunded:
+			return OpUnderfunded, nil
+		case xdr.ManageSellOfferResultCodeManageSellOfferCrossSelf:
+			return "op_cross_self", nil
+		case xdr.ManageSellOfferResultCodeManageSellOfferSellNoIssuer:
+			return "op_sell_no_issuer", nil
+		case xdr.ManageSellOfferResultCodeManageSellOfferBuyNoIssuer:
+			return "buy_no_issuer", nil
+		case xdr.ManageSellOfferResultCodeManageSellOfferNotFound:
+			return "op_offer_not_found", nil
+		case xdr.ManageSellOfferResultCodeManageSellOfferLowReserve:
 			return OpLowReserve, nil
 		}
 	case xdr.SetOptionsResultCode:
@@ -286,10 +319,12 @@ func ForOperationResult(opr xdr.OperationResult) (string, error) {
 		ic = ir.MustPaymentResult().Code
 	case xdr.OperationTypePathPayment:
 		ic = ir.MustPathPaymentResult().Code
-	case xdr.OperationTypeManageOffer:
-		ic = ir.MustManageOfferResult().Code
-	case xdr.OperationTypeCreatePassiveOffer:
-		ic = ir.MustCreatePassiveOfferResult().Code
+	case xdr.OperationTypeManageBuyOffer:
+		ic = ir.MustManageBuyOfferResult().Code
+	case xdr.OperationTypeManageSellOffer:
+		ic = ir.MustManageSellOfferResult().Code
+	case xdr.OperationTypeCreatePassiveSellOffer:
+		ic = ir.MustCreatePassiveSellOfferResult().Code
 	case xdr.OperationTypeSetOptions:
 		ic = ir.MustSetOptionsResult().Code
 	case xdr.OperationTypeChangeTrust:

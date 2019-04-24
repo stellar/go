@@ -49,7 +49,7 @@ var _ = Describe("ManageOffer", func() {
 					Expect(builder.MO.Price.N).To(Equal(xdr.Int32(8253)))
 					Expect(builder.MO.Price.D).To(Equal(xdr.Int32(200)))
 
-					Expect(builder.MO.OfferId).To(Equal(xdr.Uint64(0)))
+					Expect(builder.MO.OfferId).To(Equal(xdr.Int64(0)))
 				})
 			})
 		})
@@ -75,7 +75,7 @@ var _ = Describe("ManageOffer", func() {
 					Expect(builder.MO.Price.N).To(Equal(xdr.Int32(8253)))
 					Expect(builder.MO.Price.D).To(Equal(xdr.Int32(200)))
 
-					Expect(builder.MO.OfferId).To(Equal(xdr.Uint64(5)))
+					Expect(builder.MO.OfferId).To(Equal(xdr.Int64(5)))
 				})
 			})
 		})
@@ -101,7 +101,7 @@ var _ = Describe("ManageOffer", func() {
 					Expect(builder.MO.Price.N).To(Equal(xdr.Int32(8253)))
 					Expect(builder.MO.Price.D).To(Equal(xdr.Int32(200)))
 
-					Expect(builder.MO.OfferId).To(Equal(xdr.Uint64(10)))
+					Expect(builder.MO.OfferId).To(Equal(xdr.Int64(10)))
 				})
 			})
 		})

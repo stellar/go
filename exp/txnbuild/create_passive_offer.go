@@ -7,17 +7,17 @@ import (
 	"github.com/stellar/go/xdr"
 )
 
-// CreatePassiveOffer represents the Stellar create passive offer operation. See
+// CreatePassiveSellOffer represents the Stellar create passive offer operation. See
 // https://www.stellar.org/developers/guides/concepts/list-of-operations.html
-type CreatePassiveOffer struct {
+type CreatePassiveSellOffer struct {
 	Selling Asset
 	Buying  Asset
 	Amount  string
 	Price   string // TODO: Extend to include number, and n/d fraction. See package 'amount'
 }
 
-// BuildXDR for CreatePassiveOffer returns a fully configured XDR Operation.
-func (cpo *CreatePassiveOffer) BuildXDR() (xdr.Operation, error) {
+// BuildXDR for CreatePassiveSellOffer returns a fully configured XDR Operation.
+func (cpo *CreatePassiveSellOffer) BuildXDR() (xdr.Operation, error) {
 	xdrSelling, err := cpo.Selling.ToXDR()
 	if err != nil {
 		return xdr.Operation{}, errors.Wrap(err, "failed to set XDR 'Selling' field")
@@ -38,14 +38,14 @@ func (cpo *CreatePassiveOffer) BuildXDR() (xdr.Operation, error) {
 		return xdr.Operation{}, errors.Wrap(err, "failed to parse 'Price'")
 	}
 
-	xdrOp := xdr.CreatePassiveOfferOp{
+	xdrOp := xdr.CreatePassiveSellOfferOp{
 		Selling: xdrSelling,
 		Buying:  xdrBuying,
 		Amount:  xdrAmount,
 		Price:   xdrPrice,
 	}
 
-	opType := xdr.OperationTypeCreatePassiveOffer
+	opType := xdr.OperationTypeCreatePassiveSellOffer
 	body, err := xdr.NewOperationBody(opType, xdrOp)
 
 	return xdr.Operation{Body: body}, errors.Wrap(err, "failed to build XDR OperationBody")

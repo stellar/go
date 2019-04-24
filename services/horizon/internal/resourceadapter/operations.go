@@ -40,13 +40,19 @@ func NewOperation(
 		e.Payment.Base = base
 		err = row.UnmarshalDetails(&e)
 		result = e
-	case xdr.OperationTypeManageOffer:
-		e := operations.ManageOffer{}
-		e.CreatePassiveOffer.Base = base
+	case xdr.OperationTypeManageBuyOffer:
+		e := operations.ManageBuyOffer{}
+		e.Offer.Base = base
 		err = row.UnmarshalDetails(&e)
 		result = e
-	case xdr.OperationTypeCreatePassiveOffer:
-		e := operations.CreatePassiveOffer{Base: base}
+	case xdr.OperationTypeManageSellOffer:
+		e := operations.ManageSellOffer{}
+		e.Offer.Base = base
+		err = row.UnmarshalDetails(&e)
+		result = e
+	case xdr.OperationTypeCreatePassiveSellOffer:
+		e := operations.CreatePassiveSellOffer{}
+		e.Offer.Base = base
 		err = row.UnmarshalDetails(&e)
 		result = e
 	case xdr.OperationTypeSetOptions:
