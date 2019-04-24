@@ -197,19 +197,22 @@ func (is *Session) ingestEffects() {
 		effects.Add(source, history.EffectAccountDebited, dets)
 
 		is.ingestTradeEffects(effects, source, resultSuccess.Offers)
-	case xdr.OperationTypeManageOffer:
-		result := is.Cursor.OperationResult().MustManageOfferResult().MustSuccess()
+	case xdr.OperationTypeManageBuyOffer:
+		result := is.Cursor.OperationResult().MustManageBuyOfferResult().MustSuccess()
 		is.ingestTradeEffects(effects, source, result.OffersClaimed)
-	case xdr.OperationTypeCreatePassiveOffer:
+	case xdr.OperationTypeManageSellOffer:
+		result := is.Cursor.OperationResult().MustManageSellOfferResult().MustSuccess()
+		is.ingestTradeEffects(effects, source, result.OffersClaimed)
+	case xdr.OperationTypeCreatePassiveSellOffer:
 		claims := []xdr.ClaimOfferAtom{}
 		result := is.Cursor.OperationResult()
 
 		// KNOWN ISSUE:  stellar-core creates results for CreatePassiveOffer operations
 		// with the wrong result arm set.
-		if result.Type == xdr.OperationTypeManageOffer {
-			claims = result.MustManageOfferResult().MustSuccess().OffersClaimed
+		if result.Type == xdr.OperationTypeManageSellOffer {
+			claims = result.MustManageSellOfferResult().MustSuccess().OffersClaimed
 		} else {
-			claims = result.MustCreatePassiveOfferResult().MustSuccess().OffersClaimed
+			claims = result.MustCreatePassiveSellOfferResult().MustSuccess().OffersClaimed
 		}
 
 		is.ingestTradeEffects(effects, source, claims)
@@ -539,22 +542,27 @@ func (is *Session) ingestTrades() {
 			MustSuccess().
 			Offers
 
-	case xdr.OperationTypeManageOffer:
-		manageOfferResult := cursor.OperationResult().MustManageOfferResult().MustSuccess()
+	case xdr.OperationTypeManageBuyOffer:
+		manageOfferResult := cursor.OperationResult().MustManageBuyOfferResult().MustSuccess()
 		trades = manageOfferResult.OffersClaimed
 		buyOffer, buyOfferExists = manageOfferResult.Offer.GetOffer()
 
-	case xdr.OperationTypeCreatePassiveOffer:
+	case xdr.OperationTypeManageSellOffer:
+		manageOfferResult := cursor.OperationResult().MustManageSellOfferResult().MustSuccess()
+		trades = manageOfferResult.OffersClaimed
+		buyOffer, buyOfferExists = manageOfferResult.Offer.GetOffer()
+
+	case xdr.OperationTypeCreatePassiveSellOffer:
 		result := cursor.OperationResult()
 
 		// KNOWN ISSUE:  stellar-core creates results for CreatePassiveOffer operations
 		// with the wrong result arm set.
-		if result.Type == xdr.OperationTypeManageOffer {
-			manageOfferResult := result.MustManageOfferResult().MustSuccess()
+		if result.Type == xdr.OperationTypeManageSellOffer {
+			manageOfferResult := result.MustManageSellOfferResult().MustSuccess()
 			trades = manageOfferResult.OffersClaimed
 			buyOffer, buyOfferExists = manageOfferResult.Offer.GetOffer()
 		} else {
-			passiveOfferResult := result.MustCreatePassiveOfferResult().MustSuccess()
+			passiveOfferResult := result.MustCreatePassiveSellOfferResult().MustSuccess()
 			trades = passiveOfferResult.OffersClaimed
 			buyOffer, buyOfferExists = passiveOfferResult.Offer.GetOffer()
 		}
@@ -748,8 +756,19 @@ func (is *Session) operationDetails() map[string]interface{} {
 			is.assetDetails(path[i], op.Path[i], "")
 		}
 		details["path"] = path
-	case xdr.OperationTypeManageOffer:
-		op := c.Operation().Body.MustManageOfferOp()
+	case xdr.OperationTypeManageBuyOffer:
+		op := c.Operation().Body.MustManageBuyOfferOp()
+		details["offer_id"] = op.OfferId
+		details["amount"] = amount.String(op.BuyAmount)
+		details["price"] = op.Price.String()
+		details["price_r"] = map[string]interface{}{
+			"n": op.Price.N,
+			"d": op.Price.D,
+		}
+		is.assetDetails(details, op.Buying, "buying_")
+		is.assetDetails(details, op.Selling, "selling_")
+	case xdr.OperationTypeManageSellOffer:
+		op := c.Operation().Body.MustManageSellOfferOp()
 		details["offer_id"] = op.OfferId
 		details["amount"] = amount.String(op.Amount)
 		details["price"] = op.Price.String()
@@ -759,9 +778,8 @@ func (is *Session) operationDetails() map[string]interface{} {
 		}
 		is.assetDetails(details, op.Buying, "buying_")
 		is.assetDetails(details, op.Selling, "selling_")
-
-	case xdr.OperationTypeCreatePassiveOffer:
-		op := c.Operation().Body.MustCreatePassiveOfferOp()
+	case xdr.OperationTypeCreatePassiveSellOffer:
+		op := c.Operation().Body.MustCreatePassiveSellOfferOp()
 		details["amount"] = amount.String(op.Amount)
 		details["price"] = op.Price.String()
 		details["price_r"] = map[string]interface{}{

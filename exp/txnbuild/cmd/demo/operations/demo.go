@@ -69,7 +69,7 @@ func Reset(client *horizonclient.Client, keys []key) {
 		// ...and delete them
 		for _, o := range offers.Embedded.Records {
 			fmt.Println("    ", o)
-			txe, err := deleteOffer(k.Account, uint64(o.ID), k)
+			txe, err := deleteOffer(k.Account, o.ID, k)
 			dieIfError("problem building deleteOffer op", err)
 			fmt.Printf("        Deleting offer %d...\n", o.ID)
 			resp := submit(client, txe)
@@ -297,7 +297,7 @@ func deleteTrustline(source *horizon.Account, asset txnbuild.Asset, signer key) 
 	return txeBase64, nil
 }
 
-func deleteOffer(source *horizon.Account, offerID uint64, signer key) (string, error) {
+func deleteOffer(source *horizon.Account, offerID int64, signer key) (string, error) {
 	deleteOffer := txnbuild.DeleteOfferOp(offerID)
 
 	tx := txnbuild.Transaction{
@@ -372,7 +372,7 @@ func InitKeys() []key {
 }
 
 func submit(client *horizonclient.Client, txeBase64 string) (resp horizon.TransactionSuccess) {
-	resp, err := client.SubmitTransaction(txeBase64)
+	resp, err := client.SubmitTransactionXDR(txeBase64)
 	if err != nil {
 		hError := err.(*horizonclient.Error)
 		err = printHorizonError(hError)

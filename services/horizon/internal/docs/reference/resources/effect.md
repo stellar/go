@@ -51,10 +51,10 @@ We can distinguish 6 effect groups:
 
 | Type          | Operation                                        |
 | --- | --- |
-| Offer Created | manage_offer, create_passive_offer               |
-| Offer Removed | manage_offer, create_passive_offer, path_payment |
-| Offer Updated | manage_offer, create_passive_offer, path_payment |
-| Trade         | manage_offer, create_passive_offer, path_payment |
+| Offer Created | manage_buy_offer, manage_offer (manage_sell_offer from v0.18.0), create_passive_offer (create_passive_sell_offer from v0.18.0)               |
+| Offer Removed | manage_buy_offer, manage_offer (manage_sell_offer from v0.18.0), create_passive_offer (create_passive_sell_offer from v0.18.0), path_payment |
+| Offer Updated | manage_buy_offer, manage_offer (manage_sell_offer from v0.18.0), create_passive_offer (create_passive_sell_offer from v0.18.0), path_payment |
+| Trade         | manage_buy_offer, manage_offer (manage_sell_offer from v0.18.0), create_passive_offer (create_passive_sell_offer from v0.18.0), path_payment |
 
 ### Data effects
 

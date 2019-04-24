@@ -541,7 +541,7 @@ func submit(client *horizonclient.Client, txeBase64 string, mock bool) (resp hor
 		resp = mockSuccess()
 	} else {
 		var err error
-		resp, err = client.SubmitTransaction(txeBase64)
+		resp, err = client.SubmitTransactionXDR(txeBase64)
 		if err != nil {
 			bad := err.(*horizonclient.Error)
 			PrintHorizonError(bad)
