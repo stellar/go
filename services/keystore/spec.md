@@ -9,7 +9,6 @@ and handle the encrypted private key themselves.
 
 It is also intended to be the service that wallet SDK talks to.
 
-
 ### Authentication
 
 For simplicity we will have each application spin up their own keystore
@@ -81,7 +80,6 @@ interface StoreKeyResponse {
 TBD
 ```json
 {
-
 	"code": "some error code",
 	"message": "some error message",
 	"retriable": false,
@@ -108,7 +106,6 @@ interface LoadAllKeysResponse {
 TBD
 ```json
 {
-
 	"code": "some error code",
 	"message": "some error message",
 	"retriable": false,
@@ -137,7 +134,6 @@ type LoadKeyResponse = EncryptedKeyData;
 TBD
 ```json
 {
-
 	"code": "some error code",
 	"message": "some error message",
 	"retriable": false,
@@ -166,7 +162,6 @@ type RemoveKeyResponse = EncryptedKeyData;
 TBD
 ```json
 {
-
 	"code": "some error code",
 	"message": "some error message",
 	"retriable": false,
