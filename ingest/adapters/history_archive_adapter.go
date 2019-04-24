@@ -29,10 +29,19 @@ func (haa *HistoryArchiveAdapter) GetLatestLedgerSequence() (uint32, error) {
 
 // GetState returns a reader with the state of the ledger at the provided sequence number
 func (haa *HistoryArchiveAdapter) GetState(sequence uint32) (io.StateReader, error) {
-	return nil, nil
+	if !haa.archive.CategoryCheckpointExists("history", sequence) {
+		return nil, fmt.Errorf("history checkpoint does not exist for ledger %d", sequence)
+	}
+
+	sr, e := io.MakeMemoryStateReader(haa.archive, sequence)
+	if e != nil {
+		return nil, fmt.Errorf("could not make memory state reader: %s", e)
+	}
+
+	return sr, nil
 }
 
 // GetLedger gets a ledger transaction result at the provided sequence number
 func (haa *HistoryArchiveAdapter) GetLedger(sequence uint32) (io.ArchiveLedgerReader, error) {
-	return nil, nil
+	return nil, fmt.Errorf("not implemented yet")
 }
