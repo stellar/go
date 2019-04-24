@@ -324,11 +324,11 @@ offers or payments, this offer can potentially be filled.
 | Field           |  Type  | Description       |
 | --------------- | ------ | ----------------- |
 | offer_id | number | Offer ID. |
-| amount     | string | Amount of asset to be sold. |
+| buy_amount     | string | Amount of asset to be bought. |
 | buying_asset_code | string | The code of asset to buy. |
 | buying_asset_issuer | string | The issuer of asset to buy. |
 | buying_asset_type | string | Type of asset to buy (native / alphanum4 / alphanum12) |
-| price | string | Price to buy a buying_asset |
+| price | string | Price of thing being bought in terms of what you are selling. |
 | price_r | Object | n: price numerator, d: price denominator |
 | selling_asset_code | string | The code of asset to sell. |
 | selling_asset_issuer | string | The issuer of asset to sell. |
