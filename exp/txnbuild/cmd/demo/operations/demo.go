@@ -4,7 +4,6 @@ package demo
 import (
 	"fmt"
 	"log"
-	"net/http"
 	"os"
 
 	"github.com/stellar/go/clients/horizon"
@@ -135,7 +134,7 @@ func Reset(client *horizonclient.Client, keys []key) {
 func Initialise(client *horizonclient.Client, keys []key) {
 	// Fund the first account from friendbot
 	fmt.Printf("    Funding account %s from friendbot...\n", keys[0].Address)
-	_, err := fund(client, keys[0].Address)
+	_, err := client.Fund(keys[0].Address)
 	dieIfError(fmt.Sprintf("couldn't fund account %s from friendbot", keys[0].Address), err)
 
 	keys[0].Account = loadAccount(client, keys[0].Address)
@@ -164,15 +163,6 @@ func TXError(client *horizonclient.Client, keys []key) {
 	// Submit
 	// Inspect and print error
 	fmt.Println(resp.TransactionSuccessToString())
-}
-
-func fund(client *horizonclient.Client, address string) (resp *http.Response, err error) {
-	// resp, err = http.Get("https://friendbot.stellar.org/?addr=" + address)
-	resp, err = http.Get(client.HorizonURL + "friendbot?addr=" + address)
-	if err != nil {
-		return nil, err
-	}
-	return
 }
 
 func bumpSequence(source *horizon.Account, seqNum int64, signer key) (string, error) {
