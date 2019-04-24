@@ -380,7 +380,7 @@ offers or payments, this offer can potentially be filled.
 <a id="create-passive-sell-offer"></a>
 ### Create Passive Sell Offer
 
-“Create Passive Offer” operation creates an offer that won't consume a counter offer that exactly matches this offer. This is useful for offers just used as 1:1 exchanges for path payments. Use Manage Offer to manage this offer after using this operation to create it.
+“Create Passive Sell Offer” operation creates an offer that won't consume a counter offer that exactly matches this offer. This is useful for offers just used as 1:1 exchanges for path payments. Use Manage Sell Offer to manage this offer after using this operation to create it.
 
 #### Attributes
 
