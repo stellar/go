@@ -3,6 +3,7 @@ package cmd
 import (
 	"fmt"
 
+	log "github.com/sirupsen/logrus"
 	horizonclient "github.com/stellar/go/exp/clients/horizon"
 
 	"github.com/spf13/cobra"
@@ -16,7 +17,7 @@ var resetCmd = &cobra.Command{
 	Long: `Run this command before trying other commands in order to have a clean slate
 for testing.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("Resetting TestNet state...")
+		log.Info("Resetting TestNet state...")
 		keys := demo.InitKeys(4)
 		client := horizonclient.DefaultTestNetClient
 

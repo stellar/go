@@ -3,6 +3,7 @@ package cmd
 import (
 	"fmt"
 
+	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	horizonclient "github.com/stellar/go/exp/clients/horizon"
 	demo "github.com/stellar/go/exp/txnbuild/cmd/demo/operations"
@@ -14,7 +15,7 @@ var initCmd = &cobra.Command{
 	Short: "Create and fund some demo accounts on the TestNet",
 	Long:  `This command creates four test accounts for use with further operations.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("Initialising TestNet accounts...")
+		log.Info("Initialising TestNet accounts...")
 		keys := demo.InitKeys(4)
 		client := horizonclient.DefaultTestNetClient
 
