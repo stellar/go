@@ -5,6 +5,7 @@ import (
 
 	. "github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/services/horizon/internal/db2/core"
+	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
 )
 
@@ -25,24 +26,36 @@ func PopulateOrderBookSummary(
 		return err
 	}
 
-	populatePriceLevels(&dest.Bids, row.Bids())
-	populatePriceLevels(&dest.Asks, row.Asks())
+	err = populatePriceLevels(&dest.Bids, row.Bids())
+	if err != nil {
+		return err
+	}
+	err = populatePriceLevels(&dest.Asks, row.Asks())
+	if err != nil {
+		return err
+	}
 
 	return nil
 }
 
-func populatePriceLevels(destp *[]PriceLevel, rows []core.OrderBookSummaryPriceLevel) {
+func populatePriceLevels(destp *[]PriceLevel, rows []core.OrderBookSummaryPriceLevel) error {
 	*destp = make([]PriceLevel, len(rows))
 	dest := *destp
 
 	for i, row := range rows {
+		amount, err := row.AmountAsString()
+		if err != nil {
+			return errors.Wrap(err, "Error converting PriceLevel.Amount: "+row.Amount)
+		}
 		dest[i] = PriceLevel{
 			Price:  row.PriceAsString(),
-			Amount: row.AmountAsString(),
+			Amount: amount,
 			PriceR: Price{
 				N: row.Pricen,
 				D: row.Priced,
 			},
 		}
 	}
+
+	return nil
 }

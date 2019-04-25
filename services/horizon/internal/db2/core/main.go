@@ -103,7 +103,7 @@ type PriceLevel struct {
 	Pricen int32   `db:"pricen"`
 	Priced int32   `db:"priced"`
 	Pricef float64 `db:"pricef"`
-	Amount int64   `db:"amount"`
+	Amount string  `db:"amount"`
 }
 
 // SequenceProvider implements `txsub.SequenceProvider`
