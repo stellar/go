@@ -37,3 +37,9 @@ func buildSignEncode(tx Transaction, kp *keypair.Full, t *testing.T) (txeBase64 
 
 	return
 }
+
+func check(err error) {
+	if err != nil {
+		panic(err)
+	}
+}
