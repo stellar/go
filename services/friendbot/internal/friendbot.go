@@ -22,22 +22,26 @@ type Minion struct {
 
 // TxResult is the result from the asynchronous submit transaction method over a channel.
 type TxResult struct {
+	// XXX: Change this
 	maybeTransactionSuccess *horizon.TransactionSuccess
 	maybeErr                error
 }
 
 // Bot represents the friendbot subsystem.
 type Bot struct {
-	Horizon           *horizon.Client
-	Secret            string
-	Network           string
-	StartingBalance   string
+	// XXX: Change this type
+	Horizon         *horizon.Client
+	Secret          string
+	Network         string
+	StartingBalance string
+	// XXX: Change hclient type
 	SubmitTransaction func(minion *Minion, hclient *horizon.Client, signed string)
 	Minions           []Minion
 	nextMinionIndex   int
 }
 
 // Pay funds the account at `destAddress`.
+// XXX: Change return type
 func (bot *Bot) Pay(destAddress string) (*horizon.TransactionSuccess, error) {
 	minion := bot.Minions[bot.nextMinionIndex]
 	err := minion.checkSequenceRefresh(bot.Horizon)
@@ -57,10 +61,12 @@ func (bot *Bot) Pay(destAddress string) (*horizon.TransactionSuccess, error) {
 }
 
 // AsyncSubmitTransaction should be passed to the bot.
+// XXX: Change second argument type
 func AsyncSubmitTransaction(minion *Minion, hclient *horizon.Client, signed string) {
 	result, err := hclient.SubmitTransaction(signed)
 	if err != nil {
 		switch e := err.(type) {
+		// XXX: Change horizon type
 		case *horizon.Error:
 			minion.checkHandleBadSequence(e)
 		}
@@ -77,6 +83,7 @@ func AsyncSubmitTransaction(minion *Minion, hclient *horizon.Client, signed stri
 	}
 }
 
+// XXX: Change param type
 func (minion *Minion) checkHandleBadSequence(err *horizon.Error) {
 	resCode, e := err.ResultCodes()
 	isTxBadSeqCode := e == nil && resCode.TransactionCode == "tx_bad_seq"
@@ -87,6 +94,7 @@ func (minion *Minion) checkHandleBadSequence(err *horizon.Error) {
 }
 
 // Establishes the minion's initial sequence number, if needed.
+// XXX: Change param type
 func (minion *Minion) checkSequenceRefresh(hclient *horizon.Client) error {
 	if minion.sequence != 0 && !minion.forceRefreshSequence {
 		return nil
@@ -128,6 +136,7 @@ func (minion *Minion) makeTx(destAddress, botSecret, networkPassphrase, initBala
 }
 
 // Refreshes the in-memory sequence number from the minion Stellar account.
+// XXX: Change param type
 func (minion *Minion) refreshSequence(hclient *horizon.Client) error {
 	minionAccount, err := hclient.LoadAccount(minion.address())
 	if err != nil {
