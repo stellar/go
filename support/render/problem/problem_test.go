@@ -71,7 +71,7 @@ func TestServerErrorConversion(t *testing.T) {
 		}, {
 			"rich errors",
 			ge.New("broke"),
-			"main_test.go:",
+			"problem_test.go:",
 		},
 	}
 
