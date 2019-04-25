@@ -3,6 +3,9 @@ package horizonclient
 import (
 	"fmt"
 	"testing"
+	"time"
+
+	"github.com/stellar/go/exp/txnbuild"
 
 	hProtocol "github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/protocols/horizon/operations"
@@ -645,7 +648,7 @@ func TestOperationsRequest(t *testing.T) {
 		mangageOfferOp := ops.Embedded.Records[1]
 		createAccountOp := ops.Embedded.Records[2]
 		assert.IsType(t, paymentOp, operations.Payment{})
-		assert.IsType(t, mangageOfferOp, operations.ManageOffer{})
+		assert.IsType(t, mangageOfferOp, operations.ManageSellOffer{})
 		assert.IsType(t, createAccountOp, operations.CreateAccount{})
 
 		c, ok := createAccountOp.(operations.CreateAccount)
@@ -906,6 +909,26 @@ func TestOrderBookRequest(t *testing.T) {
 		assert.Equal(t, horizonError.Problem.Title, "Invalid Order Book Parameters")
 	}
 
+}
+
+func TestFetchTimebounds(t *testing.T) {
+	client := DefaultPublicNetClient
+	_, err := client.Metrics()
+
+	st, err := client.FetchTimebounds(100)
+	if assert.NoError(t, err) {
+		assert.IsType(t, ServerTimeMap["horizon.stellar.org"], ServerTimeRecord{})
+		assert.Equal(t, st.MinTime, int64(0))
+	}
+
+	newRecord := ServerTimeRecord{ServerTime: 100, LocalTimeRecorded: time.Now().UTC().Unix()}
+
+	ServerTimeMap["horizon.stellar.org"] = newRecord
+	st, err = client.FetchTimebounds(100)
+	assert.IsType(t, st, txnbuild.Timebounds{})
+	assert.Equal(t, st.MinTime, int64(0))
+	// time should be 200, serverTime + 100seconds
+	assert.Equal(t, st.MaxTime, int64(200))
 }
 
 var accountResponse = `{

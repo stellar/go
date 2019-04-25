@@ -288,6 +288,7 @@
     "internal/validation",
     "introspection",
     "log",
+    "relay",
     "trace",
   ]
   pruneopts = "T"
@@ -920,6 +921,7 @@
     "github.com/goji/httpauth",
     "github.com/gomodule/redigo/redis",
     "github.com/graph-gophers/graphql-go",
+    "github.com/graph-gophers/graphql-go/relay",
     "github.com/guregu/null",
     "github.com/haltingstate/secp256k1-go",
     "github.com/howeyc/gopass",

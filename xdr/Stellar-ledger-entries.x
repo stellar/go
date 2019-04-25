@@ -12,6 +12,7 @@ typedef opaque Thresholds[4];
 typedef string string32<32>;
 typedef string string64<64>;
 typedef int64 SequenceNumber;
+typedef uint64 TimePoint;
 typedef opaque DataValue<64>;
 
 enum AssetType
@@ -105,7 +106,6 @@ const MASK_ACCOUNT_FLAGS = 0x7;
     Other ledger entries created require an account.
 
 */
-
 struct AccountEntry
 {
     AccountID accountID;      // master public key for this account
@@ -210,7 +210,7 @@ const MASK_OFFERENTRY_FLAGS = 1;
 struct OfferEntry
 {
     AccountID sellerID;
-    uint64 offerID;
+    int64 offerID;
     Asset selling; // A
     Asset buying;  // B
     int64 amount;  // amount of A
@@ -283,6 +283,7 @@ enum EnvelopeType
 {
     ENVELOPE_TYPE_SCP = 1,
     ENVELOPE_TYPE_TX = 2,
-    ENVELOPE_TYPE_AUTH = 3
+    ENVELOPE_TYPE_AUTH = 3,
+    ENVELOPE_TYPE_SCPVALUE = 4
 };
 }

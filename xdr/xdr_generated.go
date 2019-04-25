@@ -798,6 +798,30 @@ var (
 	_ encoding.BinaryUnmarshaler = (*SequenceNumber)(nil)
 )
 
+// TimePoint is an XDR Typedef defines as:
+//
+//   typedef uint64 TimePoint;
+//
+type TimePoint Uint64
+
+// MarshalBinary implements encoding.BinaryMarshaler.
+func (s TimePoint) MarshalBinary() ([]byte, error) {
+	b := new(bytes.Buffer)
+	_, err := Marshal(b, s)
+	return b.Bytes(), err
+}
+
+// UnmarshalBinary implements encoding.BinaryUnmarshaler.
+func (s *TimePoint) UnmarshalBinary(inp []byte) error {
+	_, err := Unmarshal(bytes.NewReader(inp), s)
+	return err
+}
+
+var (
+	_ encoding.BinaryMarshaler   = (*TimePoint)(nil)
+	_ encoding.BinaryUnmarshaler = (*TimePoint)(nil)
+)
+
 // DataValue is an XDR Typedef defines as:
 //
 //   typedef opaque DataValue<64>;
@@ -2054,7 +2078,7 @@ var (
 //   struct OfferEntry
 //    {
 //        AccountID sellerID;
-//        uint64 offerID;
+//        int64 offerID;
 //        Asset selling; // A
 //        Asset buying;  // B
 //        int64 amount;  // amount of A
@@ -2078,7 +2102,7 @@ var (
 //
 type OfferEntry struct {
 	SellerId AccountId
-	OfferId  Uint64
+	OfferId  Int64
 	Selling  Asset
 	Buying   Asset
 	Amount   Int64
@@ -2515,21 +2539,24 @@ var (
 //    {
 //        ENVELOPE_TYPE_SCP = 1,
 //        ENVELOPE_TYPE_TX = 2,
-//        ENVELOPE_TYPE_AUTH = 3
+//        ENVELOPE_TYPE_AUTH = 3,
+//        ENVELOPE_TYPE_SCPVALUE = 4
 //    };
 //
 type EnvelopeType int32
 
 const (
-	EnvelopeTypeEnvelopeTypeScp  EnvelopeType = 1
-	EnvelopeTypeEnvelopeTypeTx   EnvelopeType = 2
-	EnvelopeTypeEnvelopeTypeAuth EnvelopeType = 3
+	EnvelopeTypeEnvelopeTypeScp      EnvelopeType = 1
+	EnvelopeTypeEnvelopeTypeTx       EnvelopeType = 2
+	EnvelopeTypeEnvelopeTypeAuth     EnvelopeType = 3
+	EnvelopeTypeEnvelopeTypeScpvalue EnvelopeType = 4
 )
 
 var envelopeTypeMap = map[int32]string{
 	1: "EnvelopeTypeEnvelopeTypeScp",
 	2: "EnvelopeTypeEnvelopeTypeTx",
 	3: "EnvelopeTypeEnvelopeTypeAuth",
+	4: "EnvelopeTypeEnvelopeTypeScpvalue",
 }
 
 // ValidEnum validates a proposed value for this enum.  Implements
@@ -2592,16 +2619,101 @@ var (
 	_ encoding.BinaryUnmarshaler = (*UpgradeType)(nil)
 )
 
+// StellarValueType is an XDR Enum defines as:
+//
+//   enum StellarValueType
+//    {
+//        STELLAR_VALUE_BASIC = 0,
+//        STELLAR_VALUE_SIGNED = 1
+//    };
+//
+type StellarValueType int32
+
+const (
+	StellarValueTypeStellarValueBasic  StellarValueType = 0
+	StellarValueTypeStellarValueSigned StellarValueType = 1
+)
+
+var stellarValueTypeMap = map[int32]string{
+	0: "StellarValueTypeStellarValueBasic",
+	1: "StellarValueTypeStellarValueSigned",
+}
+
+// ValidEnum validates a proposed value for this enum.  Implements
+// the Enum interface for StellarValueType
+func (e StellarValueType) ValidEnum(v int32) bool {
+	_, ok := stellarValueTypeMap[v]
+	return ok
+}
+
+// String returns the name of `e`
+func (e StellarValueType) String() string {
+	name, _ := stellarValueTypeMap[int32(e)]
+	return name
+}
+
+// MarshalBinary implements encoding.BinaryMarshaler.
+func (s StellarValueType) MarshalBinary() ([]byte, error) {
+	b := new(bytes.Buffer)
+	_, err := Marshal(b, s)
+	return b.Bytes(), err
+}
+
+// UnmarshalBinary implements encoding.BinaryUnmarshaler.
+func (s *StellarValueType) UnmarshalBinary(inp []byte) error {
+	_, err := Unmarshal(bytes.NewReader(inp), s)
+	return err
+}
+
+var (
+	_ encoding.BinaryMarshaler   = (*StellarValueType)(nil)
+	_ encoding.BinaryUnmarshaler = (*StellarValueType)(nil)
+)
+
+// LedgerCloseValueSignature is an XDR Struct defines as:
+//
+//   struct LedgerCloseValueSignature
+//    {
+//        NodeID nodeID;       // which node introduced the value
+//        Signature signature; // nodeID's signature
+//    };
+//
+type LedgerCloseValueSignature struct {
+	NodeId    NodeId
+	Signature Signature
+}
+
+// MarshalBinary implements encoding.BinaryMarshaler.
+func (s LedgerCloseValueSignature) MarshalBinary() ([]byte, error) {
+	b := new(bytes.Buffer)
+	_, err := Marshal(b, s)
+	return b.Bytes(), err
+}
+
+// UnmarshalBinary implements encoding.BinaryUnmarshaler.
+func (s *LedgerCloseValueSignature) UnmarshalBinary(inp []byte) error {
+	_, err := Unmarshal(bytes.NewReader(inp), s)
+	return err
+}
+
+var (
+	_ encoding.BinaryMarshaler   = (*LedgerCloseValueSignature)(nil)
+	_ encoding.BinaryUnmarshaler = (*LedgerCloseValueSignature)(nil)
+)
+
 // StellarValueExt is an XDR NestedUnion defines as:
 //
 //   union switch (int v)
 //        {
-//        case 0:
+//        case STELLAR_VALUE_BASIC:
 //            void;
+//        case STELLAR_VALUE_SIGNED:
+//            LedgerCloseValueSignature lcValueSignature;
 //        }
 //
 type StellarValueExt struct {
-	V int32
+	V                int32
+	LcValueSignature *LedgerCloseValueSignature
 }
 
 // SwitchFieldName returns the field name in which this union's
@@ -2614,8 +2726,10 @@ func (u StellarValueExt) SwitchFieldName() string {
 // the value for an instance of StellarValueExt
 func (u StellarValueExt) ArmForSwitch(sw int32) (string, bool) {
 	switch int32(sw) {
-	case 0:
+	case int32(StellarValueTypeStellarValueBasic):
 		return "", true
+	case int32(StellarValueTypeStellarValueSigned):
+		return "LcValueSignature", true
 	}
 	return "-", false
 }
@@ -2624,9 +2738,41 @@ func (u StellarValueExt) ArmForSwitch(sw int32) (string, bool) {
 func NewStellarValueExt(v int32, value interface{}) (result StellarValueExt, err error) {
 	result.V = v
 	switch int32(v) {
-	case 0:
+	case int32(StellarValueTypeStellarValueBasic):
 		// void
+	case int32(StellarValueTypeStellarValueSigned):
+		tv, ok := value.(LedgerCloseValueSignature)
+		if !ok {
+			err = fmt.Errorf("invalid value, must be LedgerCloseValueSignature")
+			return
+		}
+		result.LcValueSignature = &tv
 	}
+	return
+}
+
+// MustLcValueSignature retrieves the LcValueSignature value from the union,
+// panicing if the value is not set.
+func (u StellarValueExt) MustLcValueSignature() LedgerCloseValueSignature {
+	val, ok := u.GetLcValueSignature()
+
+	if !ok {
+		panic("arm LcValueSignature is not set")
+	}
+
+	return val
+}
+
+// GetLcValueSignature retrieves the LcValueSignature value from the union,
+// returning ok if the union's switch indicated the value is valid.
+func (u StellarValueExt) GetLcValueSignature() (result LedgerCloseValueSignature, ok bool) {
+	armName, _ := u.ArmForSwitch(int32(u.V))
+
+	if armName == "LcValueSignature" {
+		result = *u.LcValueSignature
+		ok = true
+	}
+
 	return
 }
 
@@ -2652,8 +2798,8 @@ var (
 //
 //   struct StellarValue
 //    {
-//        Hash txSetHash;   // transaction set to apply to previous ledger
-//        uint64 closeTime; // network close time
+//        Hash txSetHash;      // transaction set to apply to previous ledger
+//        TimePoint closeTime; // network close time
 //
 //        // upgrades to apply to the previous ledger (usually empty)
 //        // this is a vector of encoded 'LedgerUpgrade' so that nodes can drop
@@ -2665,15 +2811,17 @@ var (
 //        // reserved for future use
 //        union switch (int v)
 //        {
-//        case 0:
+//        case STELLAR_VALUE_BASIC:
 //            void;
+//        case STELLAR_VALUE_SIGNED:
+//            LedgerCloseValueSignature lcValueSignature;
 //        }
 //        ext;
 //    };
 //
 type StellarValue struct {
 	TxSetHash Hash
-	CloseTime Uint64
+	CloseTime TimePoint
 	Upgrades  []UpgradeType `xdrmaxsize:"6"`
 	Ext       StellarValueExt
 }
@@ -3148,12 +3296,12 @@ var (
 //   struct
 //        {
 //            AccountID sellerID;
-//            uint64 offerID;
+//            int64 offerID;
 //        }
 //
 type LedgerKeyOffer struct {
 	SellerId AccountId
-	OfferId  Uint64
+	OfferId  Int64
 }
 
 // MarshalBinary implements encoding.BinaryMarshaler.
@@ -3226,7 +3374,7 @@ var (
 //        struct
 //        {
 //            AccountID sellerID;
-//            uint64 offerID;
+//            int64 offerID;
 //        } offer;
 //
 //    case DATA:
@@ -3425,20 +3573,28 @@ var (
 //
 //   enum BucketEntryType
 //    {
-//        LIVEENTRY = 0,
-//        DEADENTRY = 1
+//        METAENTRY =
+//            -1, // At-and-after protocol 11: bucket metadata, should come first.
+//        LIVEENTRY = 0, // Before protocol 11: created-or-updated;
+//                       // At-and-after protocol 11: only updated.
+//        DEADENTRY = 1,
+//        INITENTRY = 2 // At-and-after protocol 11: only created.
 //    };
 //
 type BucketEntryType int32
 
 const (
+	BucketEntryTypeMetaentry BucketEntryType = -1
 	BucketEntryTypeLiveentry BucketEntryType = 0
 	BucketEntryTypeDeadentry BucketEntryType = 1
+	BucketEntryTypeInitentry BucketEntryType = 2
 )
 
 var bucketEntryTypeMap = map[int32]string{
-	0: "BucketEntryTypeLiveentry",
-	1: "BucketEntryTypeDeadentry",
+	-1: "BucketEntryTypeMetaentry",
+	0:  "BucketEntryTypeLiveentry",
+	1:  "BucketEntryTypeDeadentry",
+	2:  "BucketEntryTypeInitentry",
 }
 
 // ValidEnum validates a proposed value for this enum.  Implements
@@ -3472,21 +3628,120 @@ var (
 	_ encoding.BinaryUnmarshaler = (*BucketEntryType)(nil)
 )
 
+// BucketMetadataExt is an XDR NestedUnion defines as:
+//
+//   union switch (int v)
+//        {
+//        case 0:
+//            void;
+//        }
+//
+type BucketMetadataExt struct {
+	V int32
+}
+
+// SwitchFieldName returns the field name in which this union's
+// discriminant is stored
+func (u BucketMetadataExt) SwitchFieldName() string {
+	return "V"
+}
+
+// ArmForSwitch returns which field name should be used for storing
+// the value for an instance of BucketMetadataExt
+func (u BucketMetadataExt) ArmForSwitch(sw int32) (string, bool) {
+	switch int32(sw) {
+	case 0:
+		return "", true
+	}
+	return "-", false
+}
+
+// NewBucketMetadataExt creates a new  BucketMetadataExt.
+func NewBucketMetadataExt(v int32, value interface{}) (result BucketMetadataExt, err error) {
+	result.V = v
+	switch int32(v) {
+	case 0:
+		// void
+	}
+	return
+}
+
+// MarshalBinary implements encoding.BinaryMarshaler.
+func (s BucketMetadataExt) MarshalBinary() ([]byte, error) {
+	b := new(bytes.Buffer)
+	_, err := Marshal(b, s)
+	return b.Bytes(), err
+}
+
+// UnmarshalBinary implements encoding.BinaryUnmarshaler.
+func (s *BucketMetadataExt) UnmarshalBinary(inp []byte) error {
+	_, err := Unmarshal(bytes.NewReader(inp), s)
+	return err
+}
+
+var (
+	_ encoding.BinaryMarshaler   = (*BucketMetadataExt)(nil)
+	_ encoding.BinaryUnmarshaler = (*BucketMetadataExt)(nil)
+)
+
+// BucketMetadata is an XDR Struct defines as:
+//
+//   struct BucketMetadata
+//    {
+//        // Indicates the protocol version used to create / merge this bucket.
+//        uint32 ledgerVersion;
+//
+//        // reserved for future use
+//        union switch (int v)
+//        {
+//        case 0:
+//            void;
+//        }
+//        ext;
+//    };
+//
+type BucketMetadata struct {
+	LedgerVersion Uint32
+	Ext           BucketMetadataExt
+}
+
+// MarshalBinary implements encoding.BinaryMarshaler.
+func (s BucketMetadata) MarshalBinary() ([]byte, error) {
+	b := new(bytes.Buffer)
+	_, err := Marshal(b, s)
+	return b.Bytes(), err
+}
+
+// UnmarshalBinary implements encoding.BinaryUnmarshaler.
+func (s *BucketMetadata) UnmarshalBinary(inp []byte) error {
+	_, err := Unmarshal(bytes.NewReader(inp), s)
+	return err
+}
+
+var (
+	_ encoding.BinaryMarshaler   = (*BucketMetadata)(nil)
+	_ encoding.BinaryUnmarshaler = (*BucketMetadata)(nil)
+)
+
 // BucketEntry is an XDR Union defines as:
 //
 //   union BucketEntry switch (BucketEntryType type)
 //    {
 //    case LIVEENTRY:
+//    case INITENTRY:
 //        LedgerEntry liveEntry;
 //
 //    case DEADENTRY:
 //        LedgerKey deadEntry;
+//    case METAENTRY:
+//        BucketMetadata metaEntry;
 //    };
 //
 type BucketEntry struct {
 	Type      BucketEntryType
 	LiveEntry *LedgerEntry
 	DeadEntry *LedgerKey
+	MetaEntry *BucketMetadata
 }
 
 // SwitchFieldName returns the field name in which this union's
@@ -3501,8 +3756,12 @@ func (u BucketEntry) ArmForSwitch(sw int32) (string, bool) {
 	switch BucketEntryType(sw) {
 	case BucketEntryTypeLiveentry:
 		return "LiveEntry", true
+	case BucketEntryTypeInitentry:
+		return "LiveEntry", true
 	case BucketEntryTypeDeadentry:
 		return "DeadEntry", true
+	case BucketEntryTypeMetaentry:
+		return "MetaEntry", true
 	}
 	return "-", false
 }
@@ -3518,6 +3777,13 @@ func NewBucketEntry(aType BucketEntryType, value interface{}) (result BucketEntr
 			return
 		}
 		result.LiveEntry = &tv
+	case BucketEntryTypeInitentry:
+		tv, ok := value.(LedgerEntry)
+		if !ok {
+			err = fmt.Errorf("invalid value, must be LedgerEntry")
+			return
+		}
+		result.LiveEntry = &tv
 	case BucketEntryTypeDeadentry:
 		tv, ok := value.(LedgerKey)
 		if !ok {
@@ -3525,6 +3791,13 @@ func NewBucketEntry(aType BucketEntryType, value interface{}) (result BucketEntr
 			return
 		}
 		result.DeadEntry = &tv
+	case BucketEntryTypeMetaentry:
+		tv, ok := value.(BucketMetadata)
+		if !ok {
+			err = fmt.Errorf("invalid value, must be BucketMetadata")
+			return
+		}
+		result.MetaEntry = &tv
 	}
 	return
 }
@@ -3573,6 +3846,31 @@ func (u BucketEntry) GetDeadEntry() (result LedgerKey, ok bool) {
 
 	if armName == "DeadEntry" {
 		result = *u.DeadEntry
+		ok = true
+	}
+
+	return
+}
+
+// MustMetaEntry retrieves the MetaEntry value from the union,
+// panicing if the value is not set.
+func (u BucketEntry) MustMetaEntry() BucketMetadata {
+	val, ok := u.GetMetaEntry()
+
+	if !ok {
+		panic("arm MetaEntry is not set")
+	}
+
+	return val
+}
+
+// GetMetaEntry retrieves the MetaEntry value from the union,
+// returning ok if the union's switch indicated the value is valid.
+func (u BucketEntry) GetMetaEntry() (result BucketMetadata, ok bool) {
+	armName, _ := u.ArmForSwitch(int32(u.Type))
+
+	if armName == "MetaEntry" {
+		result = *u.MetaEntry
 		ok = true
 	}
 
@@ -4438,7 +4736,7 @@ var (
 //   struct TransactionMetaV1
 //    {
 //        LedgerEntryChanges txChanges; // tx level changes if any
-//        OperationMeta operations<>; // meta for each operation
+//        OperationMeta operations<>;   // meta for each operation
 //    };
 //
 type TransactionMetaV1 struct {
@@ -5792,40 +6090,42 @@ var (
 //        CREATE_ACCOUNT = 0,
 //        PAYMENT = 1,
 //        PATH_PAYMENT = 2,
-//        MANAGE_OFFER = 3,
-//        CREATE_PASSIVE_OFFER = 4,
+//        MANAGE_SELL_OFFER = 3,
+//        CREATE_PASSIVE_SELL_OFFER = 4,
 //        SET_OPTIONS = 5,
 //        CHANGE_TRUST = 6,
 //        ALLOW_TRUST = 7,
 //        ACCOUNT_MERGE = 8,
 //        INFLATION = 9,
 //        MANAGE_DATA = 10,
-//        BUMP_SEQUENCE = 11
+//        BUMP_SEQUENCE = 11,
+//        MANAGE_BUY_OFFER = 12
 //    };
 //
 type OperationType int32
 
 const (
-	OperationTypeCreateAccount      OperationType = 0
-	OperationTypePayment            OperationType = 1
-	OperationTypePathPayment        OperationType = 2
-	OperationTypeManageOffer        OperationType = 3
-	OperationTypeCreatePassiveOffer OperationType = 4
-	OperationTypeSetOptions         OperationType = 5
-	OperationTypeChangeTrust        OperationType = 6
-	OperationTypeAllowTrust         OperationType = 7
-	OperationTypeAccountMerge       OperationType = 8
-	OperationTypeInflation          OperationType = 9
-	OperationTypeManageData         OperationType = 10
-	OperationTypeBumpSequence       OperationType = 11
+	OperationTypeCreateAccount          OperationType = 0
+	OperationTypePayment                OperationType = 1
+	OperationTypePathPayment            OperationType = 2
+	OperationTypeManageSellOffer        OperationType = 3
+	OperationTypeCreatePassiveSellOffer OperationType = 4
+	OperationTypeSetOptions             OperationType = 5
+	OperationTypeChangeTrust            OperationType = 6
+	OperationTypeAllowTrust             OperationType = 7
+	OperationTypeAccountMerge           OperationType = 8
+	OperationTypeInflation              OperationType = 9
+	OperationTypeManageData             OperationType = 10
+	OperationTypeBumpSequence           OperationType = 11
+	OperationTypeManageBuyOffer         OperationType = 12
 )
 
 var operationTypeMap = map[int32]string{
 	0:  "OperationTypeCreateAccount",
 	1:  "OperationTypePayment",
 	2:  "OperationTypePathPayment",
-	3:  "OperationTypeManageOffer",
-	4:  "OperationTypeCreatePassiveOffer",
+	3:  "OperationTypeManageSellOffer",
+	4:  "OperationTypeCreatePassiveSellOffer",
 	5:  "OperationTypeSetOptions",
 	6:  "OperationTypeChangeTrust",
 	7:  "OperationTypeAllowTrust",
@@ -5833,6 +6133,7 @@ var operationTypeMap = map[int32]string{
 	9:  "OperationTypeInflation",
 	10: "OperationTypeManageData",
 	11: "OperationTypeBumpSequence",
+	12: "OperationTypeManageBuyOffer",
 }
 
 // ValidEnum validates a proposed value for this enum.  Implements
@@ -5973,9 +6274,9 @@ var (
 	_ encoding.BinaryUnmarshaler = (*PathPaymentOp)(nil)
 )
 
-// ManageOfferOp is an XDR Struct defines as:
+// ManageSellOfferOp is an XDR Struct defines as:
 //
-//   struct ManageOfferOp
+//   struct ManageSellOfferOp
 //    {
 //        Asset selling;
 //        Asset buying;
@@ -5983,38 +6284,78 @@ var (
 //        Price price;  // price of thing being sold in terms of what you are buying
 //
 //        // 0=create a new offer, otherwise edit an existing offer
-//        uint64 offerID;
+//        int64 offerID;
 //    };
 //
-type ManageOfferOp struct {
+type ManageSellOfferOp struct {
 	Selling Asset
 	Buying  Asset
 	Amount  Int64
 	Price   Price
-	OfferId Uint64
+	OfferId Int64
 }
 
 // MarshalBinary implements encoding.BinaryMarshaler.
-func (s ManageOfferOp) MarshalBinary() ([]byte, error) {
+func (s ManageSellOfferOp) MarshalBinary() ([]byte, error) {
 	b := new(bytes.Buffer)
 	_, err := Marshal(b, s)
 	return b.Bytes(), err
 }
 
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
-func (s *ManageOfferOp) UnmarshalBinary(inp []byte) error {
+func (s *ManageSellOfferOp) UnmarshalBinary(inp []byte) error {
 	_, err := Unmarshal(bytes.NewReader(inp), s)
 	return err
 }
 
 var (
-	_ encoding.BinaryMarshaler   = (*ManageOfferOp)(nil)
-	_ encoding.BinaryUnmarshaler = (*ManageOfferOp)(nil)
+	_ encoding.BinaryMarshaler   = (*ManageSellOfferOp)(nil)
+	_ encoding.BinaryUnmarshaler = (*ManageSellOfferOp)(nil)
 )
 
-// CreatePassiveOfferOp is an XDR Struct defines as:
+// ManageBuyOfferOp is an XDR Struct defines as:
 //
-//   struct CreatePassiveOfferOp
+//   struct ManageBuyOfferOp
+//    {
+//        Asset selling;
+//        Asset buying;
+//        int64 buyAmount; // amount being bought. if set to 0, delete the offer
+//        Price price;     // price of thing being bought in terms of what you are
+//                         // selling
+//
+//        // 0=create a new offer, otherwise edit an existing offer
+//        int64 offerID;
+//    };
+//
+type ManageBuyOfferOp struct {
+	Selling   Asset
+	Buying    Asset
+	BuyAmount Int64
+	Price     Price
+	OfferId   Int64
+}
+
+// MarshalBinary implements encoding.BinaryMarshaler.
+func (s ManageBuyOfferOp) MarshalBinary() ([]byte, error) {
+	b := new(bytes.Buffer)
+	_, err := Marshal(b, s)
+	return b.Bytes(), err
+}
+
+// UnmarshalBinary implements encoding.BinaryUnmarshaler.
+func (s *ManageBuyOfferOp) UnmarshalBinary(inp []byte) error {
+	_, err := Unmarshal(bytes.NewReader(inp), s)
+	return err
+}
+
+var (
+	_ encoding.BinaryMarshaler   = (*ManageBuyOfferOp)(nil)
+	_ encoding.BinaryUnmarshaler = (*ManageBuyOfferOp)(nil)
+)
+
+// CreatePassiveSellOfferOp is an XDR Struct defines as:
+//
+//   struct CreatePassiveSellOfferOp
 //    {
 //        Asset selling; // A
 //        Asset buying;  // B
@@ -6022,7 +6363,7 @@ var (
 //        Price price;   // cost of A in terms of B
 //    };
 //
-type CreatePassiveOfferOp struct {
+type CreatePassiveSellOfferOp struct {
 	Selling Asset
 	Buying  Asset
 	Amount  Int64
@@ -6030,21 +6371,21 @@ type CreatePassiveOfferOp struct {
 }
 
 // MarshalBinary implements encoding.BinaryMarshaler.
-func (s CreatePassiveOfferOp) MarshalBinary() ([]byte, error) {
+func (s CreatePassiveSellOfferOp) MarshalBinary() ([]byte, error) {
 	b := new(bytes.Buffer)
 	_, err := Marshal(b, s)
 	return b.Bytes(), err
 }
 
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
-func (s *CreatePassiveOfferOp) UnmarshalBinary(inp []byte) error {
+func (s *CreatePassiveSellOfferOp) UnmarshalBinary(inp []byte) error {
 	_, err := Unmarshal(bytes.NewReader(inp), s)
 	return err
 }
 
 var (
-	_ encoding.BinaryMarshaler   = (*CreatePassiveOfferOp)(nil)
-	_ encoding.BinaryUnmarshaler = (*CreatePassiveOfferOp)(nil)
+	_ encoding.BinaryMarshaler   = (*CreatePassiveSellOfferOp)(nil)
+	_ encoding.BinaryUnmarshaler = (*CreatePassiveSellOfferOp)(nil)
 )
 
 // SetOptionsOp is an XDR Struct defines as:
@@ -6375,10 +6716,10 @@ var (
 //            PaymentOp paymentOp;
 //        case PATH_PAYMENT:
 //            PathPaymentOp pathPaymentOp;
-//        case MANAGE_OFFER:
-//            ManageOfferOp manageOfferOp;
-//        case CREATE_PASSIVE_OFFER:
-//            CreatePassiveOfferOp createPassiveOfferOp;
+//        case MANAGE_SELL_OFFER:
+//            ManageSellOfferOp manageSellOfferOp;
+//        case CREATE_PASSIVE_SELL_OFFER:
+//            CreatePassiveSellOfferOp createPassiveSellOfferOp;
 //        case SET_OPTIONS:
 //            SetOptionsOp setOptionsOp;
 //        case CHANGE_TRUST:
@@ -6393,21 +6734,24 @@ var (
 //            ManageDataOp manageDataOp;
 //        case BUMP_SEQUENCE:
 //            BumpSequenceOp bumpSequenceOp;
+//        case MANAGE_BUY_OFFER:
+//            ManageBuyOfferOp manageBuyOfferOp;
 //        }
 //
 type OperationBody struct {
-	Type                 OperationType
-	CreateAccountOp      *CreateAccountOp
-	PaymentOp            *PaymentOp
-	PathPaymentOp        *PathPaymentOp
-	ManageOfferOp        *ManageOfferOp
-	CreatePassiveOfferOp *CreatePassiveOfferOp
-	SetOptionsOp         *SetOptionsOp
-	ChangeTrustOp        *ChangeTrustOp
-	AllowTrustOp         *AllowTrustOp
-	Destination          *AccountId
-	ManageDataOp         *ManageDataOp
-	BumpSequenceOp       *BumpSequenceOp
+	Type                     OperationType
+	CreateAccountOp          *CreateAccountOp
+	PaymentOp                *PaymentOp
+	PathPaymentOp            *PathPaymentOp
+	ManageSellOfferOp        *ManageSellOfferOp
+	CreatePassiveSellOfferOp *CreatePassiveSellOfferOp
+	SetOptionsOp             *SetOptionsOp
+	ChangeTrustOp            *ChangeTrustOp
+	AllowTrustOp             *AllowTrustOp
+	Destination              *AccountId
+	ManageDataOp             *ManageDataOp
+	BumpSequenceOp           *BumpSequenceOp
+	ManageBuyOfferOp         *ManageBuyOfferOp
 }
 
 // SwitchFieldName returns the field name in which this union's
@@ -6426,10 +6770,10 @@ func (u OperationBody) ArmForSwitch(sw int32) (string, bool) {
 		return "PaymentOp", true
 	case OperationTypePathPayment:
 		return "PathPaymentOp", true
-	case OperationTypeManageOffer:
-		return "ManageOfferOp", true
-	case OperationTypeCreatePassiveOffer:
-		return "CreatePassiveOfferOp", true
+	case OperationTypeManageSellOffer:
+		return "ManageSellOfferOp", true
+	case OperationTypeCreatePassiveSellOffer:
+		return "CreatePassiveSellOfferOp", true
 	case OperationTypeSetOptions:
 		return "SetOptionsOp", true
 	case OperationTypeChangeTrust:
@@ -6444,6 +6788,8 @@ func (u OperationBody) ArmForSwitch(sw int32) (string, bool) {
 		return "ManageDataOp", true
 	case OperationTypeBumpSequence:
 		return "BumpSequenceOp", true
+	case OperationTypeManageBuyOffer:
+		return "ManageBuyOfferOp", true
 	}
 	return "-", false
 }
@@ -6473,20 +6819,20 @@ func NewOperationBody(aType OperationType, value interface{}) (result OperationB
 			return
 		}
 		result.PathPaymentOp = &tv
-	case OperationTypeManageOffer:
-		tv, ok := value.(ManageOfferOp)
+	case OperationTypeManageSellOffer:
+		tv, ok := value.(ManageSellOfferOp)
 		if !ok {
-			err = fmt.Errorf("invalid value, must be ManageOfferOp")
+			err = fmt.Errorf("invalid value, must be ManageSellOfferOp")
 			return
 		}
-		result.ManageOfferOp = &tv
-	case OperationTypeCreatePassiveOffer:
-		tv, ok := value.(CreatePassiveOfferOp)
+		result.ManageSellOfferOp = &tv
+	case OperationTypeCreatePassiveSellOffer:
+		tv, ok := value.(CreatePassiveSellOfferOp)
 		if !ok {
-			err = fmt.Errorf("invalid value, must be CreatePassiveOfferOp")
+			err = fmt.Errorf("invalid value, must be CreatePassiveSellOfferOp")
 			return
 		}
-		result.CreatePassiveOfferOp = &tv
+		result.CreatePassiveSellOfferOp = &tv
 	case OperationTypeSetOptions:
 		tv, ok := value.(SetOptionsOp)
 		if !ok {
@@ -6531,6 +6877,13 @@ func NewOperationBody(aType OperationType, value interface{}) (result OperationB
 			return
 		}
 		result.BumpSequenceOp = &tv
+	case OperationTypeManageBuyOffer:
+		tv, ok := value.(ManageBuyOfferOp)
+		if !ok {
+			err = fmt.Errorf("invalid value, must be ManageBuyOfferOp")
+			return
+		}
+		result.ManageBuyOfferOp = &tv
 	}
 	return
 }
@@ -6610,50 +6963,50 @@ func (u OperationBody) GetPathPaymentOp() (result PathPaymentOp, ok bool) {
 	return
 }
 
-// MustManageOfferOp retrieves the ManageOfferOp value from the union,
+// MustManageSellOfferOp retrieves the ManageSellOfferOp value from the union,
 // panicing if the value is not set.
-func (u OperationBody) MustManageOfferOp() ManageOfferOp {
-	val, ok := u.GetManageOfferOp()
+func (u OperationBody) MustManageSellOfferOp() ManageSellOfferOp {
+	val, ok := u.GetManageSellOfferOp()
 
 	if !ok {
-		panic("arm ManageOfferOp is not set")
+		panic("arm ManageSellOfferOp is not set")
 	}
 
 	return val
 }
 
-// GetManageOfferOp retrieves the ManageOfferOp value from the union,
+// GetManageSellOfferOp retrieves the ManageSellOfferOp value from the union,
 // returning ok if the union's switch indicated the value is valid.
-func (u OperationBody) GetManageOfferOp() (result ManageOfferOp, ok bool) {
+func (u OperationBody) GetManageSellOfferOp() (result ManageSellOfferOp, ok bool) {
 	armName, _ := u.ArmForSwitch(int32(u.Type))
 
-	if armName == "ManageOfferOp" {
-		result = *u.ManageOfferOp
+	if armName == "ManageSellOfferOp" {
+		result = *u.ManageSellOfferOp
 		ok = true
 	}
 
 	return
 }
 
-// MustCreatePassiveOfferOp retrieves the CreatePassiveOfferOp value from the union,
+// MustCreatePassiveSellOfferOp retrieves the CreatePassiveSellOfferOp value from the union,
 // panicing if the value is not set.
-func (u OperationBody) MustCreatePassiveOfferOp() CreatePassiveOfferOp {
-	val, ok := u.GetCreatePassiveOfferOp()
+func (u OperationBody) MustCreatePassiveSellOfferOp() CreatePassiveSellOfferOp {
+	val, ok := u.GetCreatePassiveSellOfferOp()
 
 	if !ok {
-		panic("arm CreatePassiveOfferOp is not set")
+		panic("arm CreatePassiveSellOfferOp is not set")
 	}
 
 	return val
 }
 
-// GetCreatePassiveOfferOp retrieves the CreatePassiveOfferOp value from the union,
+// GetCreatePassiveSellOfferOp retrieves the CreatePassiveSellOfferOp value from the union,
 // returning ok if the union's switch indicated the value is valid.
-func (u OperationBody) GetCreatePassiveOfferOp() (result CreatePassiveOfferOp, ok bool) {
+func (u OperationBody) GetCreatePassiveSellOfferOp() (result CreatePassiveSellOfferOp, ok bool) {
 	armName, _ := u.ArmForSwitch(int32(u.Type))
 
-	if armName == "CreatePassiveOfferOp" {
-		result = *u.CreatePassiveOfferOp
+	if armName == "CreatePassiveSellOfferOp" {
+		result = *u.CreatePassiveSellOfferOp
 		ok = true
 	}
 
@@ -6810,6 +7163,31 @@ func (u OperationBody) GetBumpSequenceOp() (result BumpSequenceOp, ok bool) {
 	return
 }
 
+// MustManageBuyOfferOp retrieves the ManageBuyOfferOp value from the union,
+// panicing if the value is not set.
+func (u OperationBody) MustManageBuyOfferOp() ManageBuyOfferOp {
+	val, ok := u.GetManageBuyOfferOp()
+
+	if !ok {
+		panic("arm ManageBuyOfferOp is not set")
+	}
+
+	return val
+}
+
+// GetManageBuyOfferOp retrieves the ManageBuyOfferOp value from the union,
+// returning ok if the union's switch indicated the value is valid.
+func (u OperationBody) GetManageBuyOfferOp() (result ManageBuyOfferOp, ok bool) {
+	armName, _ := u.ArmForSwitch(int32(u.Type))
+
+	if armName == "ManageBuyOfferOp" {
+		result = *u.ManageBuyOfferOp
+		ok = true
+	}
+
+	return
+}
+
 // MarshalBinary implements encoding.BinaryMarshaler.
 func (s OperationBody) MarshalBinary() ([]byte, error) {
 	b := new(bytes.Buffer)
@@ -6845,10 +7223,10 @@ var (
 //            PaymentOp paymentOp;
 //        case PATH_PAYMENT:
 //            PathPaymentOp pathPaymentOp;
-//        case MANAGE_OFFER:
-//            ManageOfferOp manageOfferOp;
-//        case CREATE_PASSIVE_OFFER:
-//            CreatePassiveOfferOp createPassiveOfferOp;
+//        case MANAGE_SELL_OFFER:
+//            ManageSellOfferOp manageSellOfferOp;
+//        case CREATE_PASSIVE_SELL_OFFER:
+//            CreatePassiveSellOfferOp createPassiveSellOfferOp;
 //        case SET_OPTIONS:
 //            SetOptionsOp setOptionsOp;
 //        case CHANGE_TRUST:
@@ -6863,6 +7241,8 @@ var (
 //            ManageDataOp manageDataOp;
 //        case BUMP_SEQUENCE:
 //            BumpSequenceOp bumpSequenceOp;
+//        case MANAGE_BUY_OFFER:
+//            ManageBuyOfferOp manageBuyOfferOp;
 //        }
 //        body;
 //    };
@@ -7158,13 +7538,13 @@ var (
 //
 //   struct TimeBounds
 //    {
-//        uint64 minTime;
-//        uint64 maxTime; // 0 here means no maxTime
+//        TimePoint minTime;
+//        TimePoint maxTime; // 0 here means no maxTime
 //    };
 //
 type TimeBounds struct {
-	MinTime Uint64
-	MaxTime Uint64
+	MinTime TimePoint
+	MaxTime TimePoint
 }
 
 // MarshalBinary implements encoding.BinaryMarshaler.
@@ -7184,6 +7564,12 @@ var (
 	_ encoding.BinaryMarshaler   = (*TimeBounds)(nil)
 	_ encoding.BinaryUnmarshaler = (*TimeBounds)(nil)
 )
+
+// MaxOpsPerTx is an XDR Const defines as:
+//
+//   const MAX_OPS_PER_TX = 100;
+//
+const MaxOpsPerTx = 100
 
 // TransactionExt is an XDR NestedUnion defines as:
 //
@@ -7259,7 +7645,7 @@ var (
 //
 //        Memo memo;
 //
-//        Operation operations<100>;
+//        Operation operations<MAX_OPS_PER_TX>;
 //
 //        // reserved for future use
 //        union switch (int v)
@@ -7462,7 +7848,7 @@ var (
 //    {
 //        // emitted to identify the offer
 //        AccountID sellerID; // Account that owns the offer
-//        uint64 offerID;
+//        int64 offerID;
 //
 //        // amount and asset taken from the owner
 //        Asset assetSold;
@@ -7475,7 +7861,7 @@ var (
 //
 type ClaimOfferAtom struct {
 	SellerId     AccountId
-	OfferId      Uint64
+	OfferId      Int64
 	AssetSold    Asset
 	AmountSold   Int64
 	AssetBought  Asset
@@ -8048,94 +8434,94 @@ var (
 	_ encoding.BinaryUnmarshaler = (*PathPaymentResult)(nil)
 )
 
-// ManageOfferResultCode is an XDR Enum defines as:
+// ManageSellOfferResultCode is an XDR Enum defines as:
 //
-//   enum ManageOfferResultCode
+//   enum ManageSellOfferResultCode
 //    {
 //        // codes considered as "success" for the operation
-//        MANAGE_OFFER_SUCCESS = 0,
+//        MANAGE_SELL_OFFER_SUCCESS = 0,
 //
 //        // codes considered as "failure" for the operation
-//        MANAGE_OFFER_MALFORMED = -1,     // generated offer would be invalid
-//        MANAGE_OFFER_SELL_NO_TRUST = -2, // no trust line for what we're selling
-//        MANAGE_OFFER_BUY_NO_TRUST = -3,  // no trust line for what we're buying
-//        MANAGE_OFFER_SELL_NOT_AUTHORIZED = -4, // not authorized to sell
-//        MANAGE_OFFER_BUY_NOT_AUTHORIZED = -5,  // not authorized to buy
-//        MANAGE_OFFER_LINE_FULL = -6,      // can't receive more of what it's buying
-//        MANAGE_OFFER_UNDERFUNDED = -7,    // doesn't hold what it's trying to sell
-//        MANAGE_OFFER_CROSS_SELF = -8,     // would cross an offer from the same user
-//        MANAGE_OFFER_SELL_NO_ISSUER = -9, // no issuer for what we're selling
-//        MANAGE_OFFER_BUY_NO_ISSUER = -10, // no issuer for what we're buying
+//        MANAGE_SELL_OFFER_MALFORMED = -1,     // generated offer would be invalid
+//        MANAGE_SELL_OFFER_SELL_NO_TRUST = -2, // no trust line for what we're selling
+//        MANAGE_SELL_OFFER_BUY_NO_TRUST = -3,  // no trust line for what we're buying
+//        MANAGE_SELL_OFFER_SELL_NOT_AUTHORIZED = -4, // not authorized to sell
+//        MANAGE_SELL_OFFER_BUY_NOT_AUTHORIZED = -5,  // not authorized to buy
+//        MANAGE_SELL_OFFER_LINE_FULL = -6,      // can't receive more of what it's buying
+//        MANAGE_SELL_OFFER_UNDERFUNDED = -7,    // doesn't hold what it's trying to sell
+//        MANAGE_SELL_OFFER_CROSS_SELF = -8,     // would cross an offer from the same user
+//        MANAGE_SELL_OFFER_SELL_NO_ISSUER = -9, // no issuer for what we're selling
+//        MANAGE_SELL_OFFER_BUY_NO_ISSUER = -10, // no issuer for what we're buying
 //
 //        // update errors
-//        MANAGE_OFFER_NOT_FOUND = -11, // offerID does not match an existing offer
+//        MANAGE_SELL_OFFER_NOT_FOUND = -11, // offerID does not match an existing offer
 //
-//        MANAGE_OFFER_LOW_RESERVE = -12 // not enough funds to create a new Offer
+//        MANAGE_SELL_OFFER_LOW_RESERVE = -12 // not enough funds to create a new Offer
 //    };
 //
-type ManageOfferResultCode int32
+type ManageSellOfferResultCode int32
 
 const (
-	ManageOfferResultCodeManageOfferSuccess           ManageOfferResultCode = 0
-	ManageOfferResultCodeManageOfferMalformed         ManageOfferResultCode = -1
-	ManageOfferResultCodeManageOfferSellNoTrust       ManageOfferResultCode = -2
-	ManageOfferResultCodeManageOfferBuyNoTrust        ManageOfferResultCode = -3
-	ManageOfferResultCodeManageOfferSellNotAuthorized ManageOfferResultCode = -4
-	ManageOfferResultCodeManageOfferBuyNotAuthorized  ManageOfferResultCode = -5
-	ManageOfferResultCodeManageOfferLineFull          ManageOfferResultCode = -6
-	ManageOfferResultCodeManageOfferUnderfunded       ManageOfferResultCode = -7
-	ManageOfferResultCodeManageOfferCrossSelf         ManageOfferResultCode = -8
-	ManageOfferResultCodeManageOfferSellNoIssuer      ManageOfferResultCode = -9
-	ManageOfferResultCodeManageOfferBuyNoIssuer       ManageOfferResultCode = -10
-	ManageOfferResultCodeManageOfferNotFound          ManageOfferResultCode = -11
-	ManageOfferResultCodeManageOfferLowReserve        ManageOfferResultCode = -12
+	ManageSellOfferResultCodeManageSellOfferSuccess           ManageSellOfferResultCode = 0
+	ManageSellOfferResultCodeManageSellOfferMalformed         ManageSellOfferResultCode = -1
+	ManageSellOfferResultCodeManageSellOfferSellNoTrust       ManageSellOfferResultCode = -2
+	ManageSellOfferResultCodeManageSellOfferBuyNoTrust        ManageSellOfferResultCode = -3
+	ManageSellOfferResultCodeManageSellOfferSellNotAuthorized ManageSellOfferResultCode = -4
+	ManageSellOfferResultCodeManageSellOfferBuyNotAuthorized  ManageSellOfferResultCode = -5
+	ManageSellOfferResultCodeManageSellOfferLineFull          ManageSellOfferResultCode = -6
+	ManageSellOfferResultCodeManageSellOfferUnderfunded       ManageSellOfferResultCode = -7
+	ManageSellOfferResultCodeManageSellOfferCrossSelf         ManageSellOfferResultCode = -8
+	ManageSellOfferResultCodeManageSellOfferSellNoIssuer      ManageSellOfferResultCode = -9
+	ManageSellOfferResultCodeManageSellOfferBuyNoIssuer       ManageSellOfferResultCode = -10
+	ManageSellOfferResultCodeManageSellOfferNotFound          ManageSellOfferResultCode = -11
+	ManageSellOfferResultCodeManageSellOfferLowReserve        ManageSellOfferResultCode = -12
 )
 
-var manageOfferResultCodeMap = map[int32]string{
-	0:   "ManageOfferResultCodeManageOfferSuccess",
-	-1:  "ManageOfferResultCodeManageOfferMalformed",
-	-2:  "ManageOfferResultCodeManageOfferSellNoTrust",
-	-3:  "ManageOfferResultCodeManageOfferBuyNoTrust",
-	-4:  "ManageOfferResultCodeManageOfferSellNotAuthorized",
-	-5:  "ManageOfferResultCodeManageOfferBuyNotAuthorized",
-	-6:  "ManageOfferResultCodeManageOfferLineFull",
-	-7:  "ManageOfferResultCodeManageOfferUnderfunded",
-	-8:  "ManageOfferResultCodeManageOfferCrossSelf",
-	-9:  "ManageOfferResultCodeManageOfferSellNoIssuer",
-	-10: "ManageOfferResultCodeManageOfferBuyNoIssuer",
-	-11: "ManageOfferResultCodeManageOfferNotFound",
-	-12: "ManageOfferResultCodeManageOfferLowReserve",
+var manageSellOfferResultCodeMap = map[int32]string{
+	0:   "ManageSellOfferResultCodeManageSellOfferSuccess",
+	-1:  "ManageSellOfferResultCodeManageSellOfferMalformed",
+	-2:  "ManageSellOfferResultCodeManageSellOfferSellNoTrust",
+	-3:  "ManageSellOfferResultCodeManageSellOfferBuyNoTrust",
+	-4:  "ManageSellOfferResultCodeManageSellOfferSellNotAuthorized",
+	-5:  "ManageSellOfferResultCodeManageSellOfferBuyNotAuthorized",
+	-6:  "ManageSellOfferResultCodeManageSellOfferLineFull",
+	-7:  "ManageSellOfferResultCodeManageSellOfferUnderfunded",
+	-8:  "ManageSellOfferResultCodeManageSellOfferCrossSelf",
+	-9:  "ManageSellOfferResultCodeManageSellOfferSellNoIssuer",
+	-10: "ManageSellOfferResultCodeManageSellOfferBuyNoIssuer",
+	-11: "ManageSellOfferResultCodeManageSellOfferNotFound",
+	-12: "ManageSellOfferResultCodeManageSellOfferLowReserve",
 }
 
 // ValidEnum validates a proposed value for this enum.  Implements
-// the Enum interface for ManageOfferResultCode
-func (e ManageOfferResultCode) ValidEnum(v int32) bool {
-	_, ok := manageOfferResultCodeMap[v]
+// the Enum interface for ManageSellOfferResultCode
+func (e ManageSellOfferResultCode) ValidEnum(v int32) bool {
+	_, ok := manageSellOfferResultCodeMap[v]
 	return ok
 }
 
 // String returns the name of `e`
-func (e ManageOfferResultCode) String() string {
-	name, _ := manageOfferResultCodeMap[int32(e)]
+func (e ManageSellOfferResultCode) String() string {
+	name, _ := manageSellOfferResultCodeMap[int32(e)]
 	return name
 }
 
 // MarshalBinary implements encoding.BinaryMarshaler.
-func (s ManageOfferResultCode) MarshalBinary() ([]byte, error) {
+func (s ManageSellOfferResultCode) MarshalBinary() ([]byte, error) {
 	b := new(bytes.Buffer)
 	_, err := Marshal(b, s)
 	return b.Bytes(), err
 }
 
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
-func (s *ManageOfferResultCode) UnmarshalBinary(inp []byte) error {
+func (s *ManageSellOfferResultCode) UnmarshalBinary(inp []byte) error {
 	_, err := Unmarshal(bytes.NewReader(inp), s)
 	return err
 }
 
 var (
-	_ encoding.BinaryMarshaler   = (*ManageOfferResultCode)(nil)
-	_ encoding.BinaryUnmarshaler = (*ManageOfferResultCode)(nil)
+	_ encoding.BinaryMarshaler   = (*ManageSellOfferResultCode)(nil)
+	_ encoding.BinaryUnmarshaler = (*ManageSellOfferResultCode)(nil)
 )
 
 // ManageOfferEffect is an XDR Enum defines as:
@@ -8335,43 +8721,43 @@ var (
 	_ encoding.BinaryUnmarshaler = (*ManageOfferSuccessResult)(nil)
 )
 
-// ManageOfferResult is an XDR Union defines as:
+// ManageSellOfferResult is an XDR Union defines as:
 //
-//   union ManageOfferResult switch (ManageOfferResultCode code)
+//   union ManageSellOfferResult switch (ManageSellOfferResultCode code)
 //    {
-//    case MANAGE_OFFER_SUCCESS:
+//    case MANAGE_SELL_OFFER_SUCCESS:
 //        ManageOfferSuccessResult success;
 //    default:
 //        void;
 //    };
 //
-type ManageOfferResult struct {
-	Code    ManageOfferResultCode
+type ManageSellOfferResult struct {
+	Code    ManageSellOfferResultCode
 	Success *ManageOfferSuccessResult
 }
 
 // SwitchFieldName returns the field name in which this union's
 // discriminant is stored
-func (u ManageOfferResult) SwitchFieldName() string {
+func (u ManageSellOfferResult) SwitchFieldName() string {
 	return "Code"
 }
 
 // ArmForSwitch returns which field name should be used for storing
-// the value for an instance of ManageOfferResult
-func (u ManageOfferResult) ArmForSwitch(sw int32) (string, bool) {
-	switch ManageOfferResultCode(sw) {
-	case ManageOfferResultCodeManageOfferSuccess:
+// the value for an instance of ManageSellOfferResult
+func (u ManageSellOfferResult) ArmForSwitch(sw int32) (string, bool) {
+	switch ManageSellOfferResultCode(sw) {
+	case ManageSellOfferResultCodeManageSellOfferSuccess:
 		return "Success", true
 	default:
 		return "", true
 	}
 }
 
-// NewManageOfferResult creates a new  ManageOfferResult.
-func NewManageOfferResult(code ManageOfferResultCode, value interface{}) (result ManageOfferResult, err error) {
+// NewManageSellOfferResult creates a new  ManageSellOfferResult.
+func NewManageSellOfferResult(code ManageSellOfferResultCode, value interface{}) (result ManageSellOfferResult, err error) {
 	result.Code = code
-	switch ManageOfferResultCode(code) {
-	case ManageOfferResultCodeManageOfferSuccess:
+	switch ManageSellOfferResultCode(code) {
+	case ManageSellOfferResultCodeManageSellOfferSuccess:
 		tv, ok := value.(ManageOfferSuccessResult)
 		if !ok {
 			err = fmt.Errorf("invalid value, must be ManageOfferSuccessResult")
@@ -8386,7 +8772,7 @@ func NewManageOfferResult(code ManageOfferResultCode, value interface{}) (result
 
 // MustSuccess retrieves the Success value from the union,
 // panicing if the value is not set.
-func (u ManageOfferResult) MustSuccess() ManageOfferSuccessResult {
+func (u ManageSellOfferResult) MustSuccess() ManageOfferSuccessResult {
 	val, ok := u.GetSuccess()
 
 	if !ok {
@@ -8398,7 +8784,7 @@ func (u ManageOfferResult) MustSuccess() ManageOfferSuccessResult {
 
 // GetSuccess retrieves the Success value from the union,
 // returning ok if the union's switch indicated the value is valid.
-func (u ManageOfferResult) GetSuccess() (result ManageOfferSuccessResult, ok bool) {
+func (u ManageSellOfferResult) GetSuccess() (result ManageOfferSuccessResult, ok bool) {
 	armName, _ := u.ArmForSwitch(int32(u.Code))
 
 	if armName == "Success" {
@@ -8410,21 +8796,203 @@ func (u ManageOfferResult) GetSuccess() (result ManageOfferSuccessResult, ok boo
 }
 
 // MarshalBinary implements encoding.BinaryMarshaler.
-func (s ManageOfferResult) MarshalBinary() ([]byte, error) {
+func (s ManageSellOfferResult) MarshalBinary() ([]byte, error) {
 	b := new(bytes.Buffer)
 	_, err := Marshal(b, s)
 	return b.Bytes(), err
 }
 
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
-func (s *ManageOfferResult) UnmarshalBinary(inp []byte) error {
+func (s *ManageSellOfferResult) UnmarshalBinary(inp []byte) error {
 	_, err := Unmarshal(bytes.NewReader(inp), s)
 	return err
 }
 
 var (
-	_ encoding.BinaryMarshaler   = (*ManageOfferResult)(nil)
-	_ encoding.BinaryUnmarshaler = (*ManageOfferResult)(nil)
+	_ encoding.BinaryMarshaler   = (*ManageSellOfferResult)(nil)
+	_ encoding.BinaryUnmarshaler = (*ManageSellOfferResult)(nil)
+)
+
+// ManageBuyOfferResultCode is an XDR Enum defines as:
+//
+//   enum ManageBuyOfferResultCode
+//    {
+//        // codes considered as "success" for the operation
+//        MANAGE_BUY_OFFER_SUCCESS = 0,
+//
+//        // codes considered as "failure" for the operation
+//        MANAGE_BUY_OFFER_MALFORMED = -1,     // generated offer would be invalid
+//        MANAGE_BUY_OFFER_SELL_NO_TRUST = -2, // no trust line for what we're selling
+//        MANAGE_BUY_OFFER_BUY_NO_TRUST = -3,  // no trust line for what we're buying
+//        MANAGE_BUY_OFFER_SELL_NOT_AUTHORIZED = -4, // not authorized to sell
+//        MANAGE_BUY_OFFER_BUY_NOT_AUTHORIZED = -5,  // not authorized to buy
+//        MANAGE_BUY_OFFER_LINE_FULL = -6,      // can't receive more of what it's buying
+//        MANAGE_BUY_OFFER_UNDERFUNDED = -7,    // doesn't hold what it's trying to sell
+//        MANAGE_BUY_OFFER_CROSS_SELF = -8,     // would cross an offer from the same user
+//        MANAGE_BUY_OFFER_SELL_NO_ISSUER = -9, // no issuer for what we're selling
+//        MANAGE_BUY_OFFER_BUY_NO_ISSUER = -10, // no issuer for what we're buying
+//
+//        // update errors
+//        MANAGE_BUY_OFFER_NOT_FOUND = -11, // offerID does not match an existing offer
+//
+//        MANAGE_BUY_OFFER_LOW_RESERVE = -12 // not enough funds to create a new Offer
+//    };
+//
+type ManageBuyOfferResultCode int32
+
+const (
+	ManageBuyOfferResultCodeManageBuyOfferSuccess           ManageBuyOfferResultCode = 0
+	ManageBuyOfferResultCodeManageBuyOfferMalformed         ManageBuyOfferResultCode = -1
+	ManageBuyOfferResultCodeManageBuyOfferSellNoTrust       ManageBuyOfferResultCode = -2
+	ManageBuyOfferResultCodeManageBuyOfferBuyNoTrust        ManageBuyOfferResultCode = -3
+	ManageBuyOfferResultCodeManageBuyOfferSellNotAuthorized ManageBuyOfferResultCode = -4
+	ManageBuyOfferResultCodeManageBuyOfferBuyNotAuthorized  ManageBuyOfferResultCode = -5
+	ManageBuyOfferResultCodeManageBuyOfferLineFull          ManageBuyOfferResultCode = -6
+	ManageBuyOfferResultCodeManageBuyOfferUnderfunded       ManageBuyOfferResultCode = -7
+	ManageBuyOfferResultCodeManageBuyOfferCrossSelf         ManageBuyOfferResultCode = -8
+	ManageBuyOfferResultCodeManageBuyOfferSellNoIssuer      ManageBuyOfferResultCode = -9
+	ManageBuyOfferResultCodeManageBuyOfferBuyNoIssuer       ManageBuyOfferResultCode = -10
+	ManageBuyOfferResultCodeManageBuyOfferNotFound          ManageBuyOfferResultCode = -11
+	ManageBuyOfferResultCodeManageBuyOfferLowReserve        ManageBuyOfferResultCode = -12
+)
+
+var manageBuyOfferResultCodeMap = map[int32]string{
+	0:   "ManageBuyOfferResultCodeManageBuyOfferSuccess",
+	-1:  "ManageBuyOfferResultCodeManageBuyOfferMalformed",
+	-2:  "ManageBuyOfferResultCodeManageBuyOfferSellNoTrust",
+	-3:  "ManageBuyOfferResultCodeManageBuyOfferBuyNoTrust",
+	-4:  "ManageBuyOfferResultCodeManageBuyOfferSellNotAuthorized",
+	-5:  "ManageBuyOfferResultCodeManageBuyOfferBuyNotAuthorized",
+	-6:  "ManageBuyOfferResultCodeManageBuyOfferLineFull",
+	-7:  "ManageBuyOfferResultCodeManageBuyOfferUnderfunded",
+	-8:  "ManageBuyOfferResultCodeManageBuyOfferCrossSelf",
+	-9:  "ManageBuyOfferResultCodeManageBuyOfferSellNoIssuer",
+	-10: "ManageBuyOfferResultCodeManageBuyOfferBuyNoIssuer",
+	-11: "ManageBuyOfferResultCodeManageBuyOfferNotFound",
+	-12: "ManageBuyOfferResultCodeManageBuyOfferLowReserve",
+}
+
+// ValidEnum validates a proposed value for this enum.  Implements
+// the Enum interface for ManageBuyOfferResultCode
+func (e ManageBuyOfferResultCode) ValidEnum(v int32) bool {
+	_, ok := manageBuyOfferResultCodeMap[v]
+	return ok
+}
+
+// String returns the name of `e`
+func (e ManageBuyOfferResultCode) String() string {
+	name, _ := manageBuyOfferResultCodeMap[int32(e)]
+	return name
+}
+
+// MarshalBinary implements encoding.BinaryMarshaler.
+func (s ManageBuyOfferResultCode) MarshalBinary() ([]byte, error) {
+	b := new(bytes.Buffer)
+	_, err := Marshal(b, s)
+	return b.Bytes(), err
+}
+
+// UnmarshalBinary implements encoding.BinaryUnmarshaler.
+func (s *ManageBuyOfferResultCode) UnmarshalBinary(inp []byte) error {
+	_, err := Unmarshal(bytes.NewReader(inp), s)
+	return err
+}
+
+var (
+	_ encoding.BinaryMarshaler   = (*ManageBuyOfferResultCode)(nil)
+	_ encoding.BinaryUnmarshaler = (*ManageBuyOfferResultCode)(nil)
+)
+
+// ManageBuyOfferResult is an XDR Union defines as:
+//
+//   union ManageBuyOfferResult switch (ManageBuyOfferResultCode code)
+//    {
+//    case MANAGE_BUY_OFFER_SUCCESS:
+//        ManageOfferSuccessResult success;
+//    default:
+//        void;
+//    };
+//
+type ManageBuyOfferResult struct {
+	Code    ManageBuyOfferResultCode
+	Success *ManageOfferSuccessResult
+}
+
+// SwitchFieldName returns the field name in which this union's
+// discriminant is stored
+func (u ManageBuyOfferResult) SwitchFieldName() string {
+	return "Code"
+}
+
+// ArmForSwitch returns which field name should be used for storing
+// the value for an instance of ManageBuyOfferResult
+func (u ManageBuyOfferResult) ArmForSwitch(sw int32) (string, bool) {
+	switch ManageBuyOfferResultCode(sw) {
+	case ManageBuyOfferResultCodeManageBuyOfferSuccess:
+		return "Success", true
+	default:
+		return "", true
+	}
+}
+
+// NewManageBuyOfferResult creates a new  ManageBuyOfferResult.
+func NewManageBuyOfferResult(code ManageBuyOfferResultCode, value interface{}) (result ManageBuyOfferResult, err error) {
+	result.Code = code
+	switch ManageBuyOfferResultCode(code) {
+	case ManageBuyOfferResultCodeManageBuyOfferSuccess:
+		tv, ok := value.(ManageOfferSuccessResult)
+		if !ok {
+			err = fmt.Errorf("invalid value, must be ManageOfferSuccessResult")
+			return
+		}
+		result.Success = &tv
+	default:
+		// void
+	}
+	return
+}
+
+// MustSuccess retrieves the Success value from the union,
+// panicing if the value is not set.
+func (u ManageBuyOfferResult) MustSuccess() ManageOfferSuccessResult {
+	val, ok := u.GetSuccess()
+
+	if !ok {
+		panic("arm Success is not set")
+	}
+
+	return val
+}
+
+// GetSuccess retrieves the Success value from the union,
+// returning ok if the union's switch indicated the value is valid.
+func (u ManageBuyOfferResult) GetSuccess() (result ManageOfferSuccessResult, ok bool) {
+	armName, _ := u.ArmForSwitch(int32(u.Code))
+
+	if armName == "Success" {
+		result = *u.Success
+		ok = true
+	}
+
+	return
+}
+
+// MarshalBinary implements encoding.BinaryMarshaler.
+func (s ManageBuyOfferResult) MarshalBinary() ([]byte, error) {
+	b := new(bytes.Buffer)
+	_, err := Marshal(b, s)
+	return b.Bytes(), err
+}
+
+// UnmarshalBinary implements encoding.BinaryUnmarshaler.
+func (s *ManageBuyOfferResult) UnmarshalBinary(inp []byte) error {
+	_, err := Unmarshal(bytes.NewReader(inp), s)
+	return err
+}
+
+var (
+	_ encoding.BinaryMarshaler   = (*ManageBuyOfferResult)(nil)
+	_ encoding.BinaryUnmarshaler = (*ManageBuyOfferResult)(nil)
 )
 
 // SetOptionsResultCode is an XDR Enum defines as:
@@ -8578,7 +9146,7 @@ var (
 //                                         // cannot create with a limit of 0
 //        CHANGE_TRUST_LOW_RESERVE =
 //            -4, // not enough funds to create a new trust line,
-//        CHANGE_TRUST_SELF_NOT_ALLOWED = -5 // trusting self is not allowed
+//        CHANGE_TRUST_SELF_NOT_ALLOWED = -5  // trusting self is not allowed
 //    };
 //
 type ChangeTrustResultCode int32
@@ -9404,16 +9972,20 @@ var (
 //
 //        opBAD_AUTH = -1,     // too few valid signatures / wrong network
 //        opNO_ACCOUNT = -2,   // source account was not found
-//        opNOT_SUPPORTED = -3 // operation not supported at this time
+//        opNOT_SUPPORTED = -3, // operation not supported at this time
+//        opTOO_MANY_SUBENTRIES = -4, // max number of subentries already reached
+//        opEXCEEDED_WORK_LIMIT = -5  // operation did too much work
 //    };
 //
 type OperationResultCode int32
 
 const (
-	OperationResultCodeOpInner        OperationResultCode = 0
-	OperationResultCodeOpBadAuth      OperationResultCode = -1
-	OperationResultCodeOpNoAccount    OperationResultCode = -2
-	OperationResultCodeOpNotSupported OperationResultCode = -3
+	OperationResultCodeOpInner             OperationResultCode = 0
+	OperationResultCodeOpBadAuth           OperationResultCode = -1
+	OperationResultCodeOpNoAccount         OperationResultCode = -2
+	OperationResultCodeOpNotSupported      OperationResultCode = -3
+	OperationResultCodeOpTooManySubentries OperationResultCode = -4
+	OperationResultCodeOpExceededWorkLimit OperationResultCode = -5
 )
 
 var operationResultCodeMap = map[int32]string{
@@ -9421,6 +9993,8 @@ var operationResultCodeMap = map[int32]string{
 	-1: "OperationResultCodeOpBadAuth",
 	-2: "OperationResultCodeOpNoAccount",
 	-3: "OperationResultCodeOpNotSupported",
+	-4: "OperationResultCodeOpTooManySubentries",
+	-5: "OperationResultCodeOpExceededWorkLimit",
 }
 
 // ValidEnum validates a proposed value for this enum.  Implements
@@ -9464,10 +10038,10 @@ var (
 //            PaymentResult paymentResult;
 //        case PATH_PAYMENT:
 //            PathPaymentResult pathPaymentResult;
-//        case MANAGE_OFFER:
-//            ManageOfferResult manageOfferResult;
-//        case CREATE_PASSIVE_OFFER:
-//            ManageOfferResult createPassiveOfferResult;
+//        case MANAGE_SELL_OFFER:
+//            ManageSellOfferResult manageSellOfferResult;
+//        case CREATE_PASSIVE_SELL_OFFER:
+//            ManageSellOfferResult createPassiveSellOfferResult;
 //        case SET_OPTIONS:
 //            SetOptionsResult setOptionsResult;
 //        case CHANGE_TRUST:
@@ -9482,22 +10056,25 @@ var (
 //            ManageDataResult manageDataResult;
 //        case BUMP_SEQUENCE:
 //            BumpSequenceResult bumpSeqResult;
+//        case MANAGE_BUY_OFFER:
+//    	ManageBuyOfferResult manageBuyOfferResult;
 //        }
 //
 type OperationResultTr struct {
-	Type                     OperationType
-	CreateAccountResult      *CreateAccountResult
-	PaymentResult            *PaymentResult
-	PathPaymentResult        *PathPaymentResult
-	ManageOfferResult        *ManageOfferResult
-	CreatePassiveOfferResult *ManageOfferResult
-	SetOptionsResult         *SetOptionsResult
-	ChangeTrustResult        *ChangeTrustResult
-	AllowTrustResult         *AllowTrustResult
-	AccountMergeResult       *AccountMergeResult
-	InflationResult          *InflationResult
-	ManageDataResult         *ManageDataResult
-	BumpSeqResult            *BumpSequenceResult
+	Type                         OperationType
+	CreateAccountResult          *CreateAccountResult
+	PaymentResult                *PaymentResult
+	PathPaymentResult            *PathPaymentResult
+	ManageSellOfferResult        *ManageSellOfferResult
+	CreatePassiveSellOfferResult *ManageSellOfferResult
+	SetOptionsResult             *SetOptionsResult
+	ChangeTrustResult            *ChangeTrustResult
+	AllowTrustResult             *AllowTrustResult
+	AccountMergeResult           *AccountMergeResult
+	InflationResult              *InflationResult
+	ManageDataResult             *ManageDataResult
+	BumpSeqResult                *BumpSequenceResult
+	ManageBuyOfferResult         *ManageBuyOfferResult
 }
 
 // SwitchFieldName returns the field name in which this union's
@@ -9516,10 +10093,10 @@ func (u OperationResultTr) ArmForSwitch(sw int32) (string, bool) {
 		return "PaymentResult", true
 	case OperationTypePathPayment:
 		return "PathPaymentResult", true
-	case OperationTypeManageOffer:
-		return "ManageOfferResult", true
-	case OperationTypeCreatePassiveOffer:
-		return "CreatePassiveOfferResult", true
+	case OperationTypeManageSellOffer:
+		return "ManageSellOfferResult", true
+	case OperationTypeCreatePassiveSellOffer:
+		return "CreatePassiveSellOfferResult", true
 	case OperationTypeSetOptions:
 		return "SetOptionsResult", true
 	case OperationTypeChangeTrust:
@@ -9534,6 +10111,8 @@ func (u OperationResultTr) ArmForSwitch(sw int32) (string, bool) {
 		return "ManageDataResult", true
 	case OperationTypeBumpSequence:
 		return "BumpSeqResult", true
+	case OperationTypeManageBuyOffer:
+		return "ManageBuyOfferResult", true
 	}
 	return "-", false
 }
@@ -9563,20 +10142,20 @@ func NewOperationResultTr(aType OperationType, value interface{}) (result Operat
 			return
 		}
 		result.PathPaymentResult = &tv
-	case OperationTypeManageOffer:
-		tv, ok := value.(ManageOfferResult)
+	case OperationTypeManageSellOffer:
+		tv, ok := value.(ManageSellOfferResult)
 		if !ok {
-			err = fmt.Errorf("invalid value, must be ManageOfferResult")
+			err = fmt.Errorf("invalid value, must be ManageSellOfferResult")
 			return
 		}
-		result.ManageOfferResult = &tv
-	case OperationTypeCreatePassiveOffer:
-		tv, ok := value.(ManageOfferResult)
+		result.ManageSellOfferResult = &tv
+	case OperationTypeCreatePassiveSellOffer:
+		tv, ok := value.(ManageSellOfferResult)
 		if !ok {
-			err = fmt.Errorf("invalid value, must be ManageOfferResult")
+			err = fmt.Errorf("invalid value, must be ManageSellOfferResult")
 			return
 		}
-		result.CreatePassiveOfferResult = &tv
+		result.CreatePassiveSellOfferResult = &tv
 	case OperationTypeSetOptions:
 		tv, ok := value.(SetOptionsResult)
 		if !ok {
@@ -9626,6 +10205,13 @@ func NewOperationResultTr(aType OperationType, value interface{}) (result Operat
 			return
 		}
 		result.BumpSeqResult = &tv
+	case OperationTypeManageBuyOffer:
+		tv, ok := value.(ManageBuyOfferResult)
+		if !ok {
+			err = fmt.Errorf("invalid value, must be ManageBuyOfferResult")
+			return
+		}
+		result.ManageBuyOfferResult = &tv
 	}
 	return
 }
@@ -9705,50 +10291,50 @@ func (u OperationResultTr) GetPathPaymentResult() (result PathPaymentResult, ok 
 	return
 }
 
-// MustManageOfferResult retrieves the ManageOfferResult value from the union,
+// MustManageSellOfferResult retrieves the ManageSellOfferResult value from the union,
 // panicing if the value is not set.
-func (u OperationResultTr) MustManageOfferResult() ManageOfferResult {
-	val, ok := u.GetManageOfferResult()
+func (u OperationResultTr) MustManageSellOfferResult() ManageSellOfferResult {
+	val, ok := u.GetManageSellOfferResult()
 
 	if !ok {
-		panic("arm ManageOfferResult is not set")
+		panic("arm ManageSellOfferResult is not set")
 	}
 
 	return val
 }
 
-// GetManageOfferResult retrieves the ManageOfferResult value from the union,
+// GetManageSellOfferResult retrieves the ManageSellOfferResult value from the union,
 // returning ok if the union's switch indicated the value is valid.
-func (u OperationResultTr) GetManageOfferResult() (result ManageOfferResult, ok bool) {
+func (u OperationResultTr) GetManageSellOfferResult() (result ManageSellOfferResult, ok bool) {
 	armName, _ := u.ArmForSwitch(int32(u.Type))
 
-	if armName == "ManageOfferResult" {
-		result = *u.ManageOfferResult
+	if armName == "ManageSellOfferResult" {
+		result = *u.ManageSellOfferResult
 		ok = true
 	}
 
 	return
 }
 
-// MustCreatePassiveOfferResult retrieves the CreatePassiveOfferResult value from the union,
+// MustCreatePassiveSellOfferResult retrieves the CreatePassiveSellOfferResult value from the union,
 // panicing if the value is not set.
-func (u OperationResultTr) MustCreatePassiveOfferResult() ManageOfferResult {
-	val, ok := u.GetCreatePassiveOfferResult()
+func (u OperationResultTr) MustCreatePassiveSellOfferResult() ManageSellOfferResult {
+	val, ok := u.GetCreatePassiveSellOfferResult()
 
 	if !ok {
-		panic("arm CreatePassiveOfferResult is not set")
+		panic("arm CreatePassiveSellOfferResult is not set")
 	}
 
 	return val
 }
 
-// GetCreatePassiveOfferResult retrieves the CreatePassiveOfferResult value from the union,
+// GetCreatePassiveSellOfferResult retrieves the CreatePassiveSellOfferResult value from the union,
 // returning ok if the union's switch indicated the value is valid.
-func (u OperationResultTr) GetCreatePassiveOfferResult() (result ManageOfferResult, ok bool) {
+func (u OperationResultTr) GetCreatePassiveSellOfferResult() (result ManageSellOfferResult, ok bool) {
 	armName, _ := u.ArmForSwitch(int32(u.Type))
 
-	if armName == "CreatePassiveOfferResult" {
-		result = *u.CreatePassiveOfferResult
+	if armName == "CreatePassiveSellOfferResult" {
+		result = *u.CreatePassiveSellOfferResult
 		ok = true
 	}
 
@@ -9930,6 +10516,31 @@ func (u OperationResultTr) GetBumpSeqResult() (result BumpSequenceResult, ok boo
 	return
 }
 
+// MustManageBuyOfferResult retrieves the ManageBuyOfferResult value from the union,
+// panicing if the value is not set.
+func (u OperationResultTr) MustManageBuyOfferResult() ManageBuyOfferResult {
+	val, ok := u.GetManageBuyOfferResult()
+
+	if !ok {
+		panic("arm ManageBuyOfferResult is not set")
+	}
+
+	return val
+}
+
+// GetManageBuyOfferResult retrieves the ManageBuyOfferResult value from the union,
+// returning ok if the union's switch indicated the value is valid.
+func (u OperationResultTr) GetManageBuyOfferResult() (result ManageBuyOfferResult, ok bool) {
+	armName, _ := u.ArmForSwitch(int32(u.Type))
+
+	if armName == "ManageBuyOfferResult" {
+		result = *u.ManageBuyOfferResult
+		ok = true
+	}
+
+	return
+}
+
 // MarshalBinary implements encoding.BinaryMarshaler.
 func (s OperationResultTr) MarshalBinary() ([]byte, error) {
 	b := new(bytes.Buffer)
@@ -9961,10 +10572,10 @@ var (
 //            PaymentResult paymentResult;
 //        case PATH_PAYMENT:
 //            PathPaymentResult pathPaymentResult;
-//        case MANAGE_OFFER:
-//            ManageOfferResult manageOfferResult;
-//        case CREATE_PASSIVE_OFFER:
-//            ManageOfferResult createPassiveOfferResult;
+//        case MANAGE_SELL_OFFER:
+//            ManageSellOfferResult manageSellOfferResult;
+//        case CREATE_PASSIVE_SELL_OFFER:
+//            ManageSellOfferResult createPassiveSellOfferResult;
 //        case SET_OPTIONS:
 //            SetOptionsResult setOptionsResult;
 //        case CHANGE_TRUST:
@@ -9979,6 +10590,8 @@ var (
 //            ManageDataResult manageDataResult;
 //        case BUMP_SEQUENCE:
 //            BumpSequenceResult bumpSeqResult;
+//        case MANAGE_BUY_OFFER:
+//    	ManageBuyOfferResult manageBuyOfferResult;
 //        }
 //        tr;
 //    default:
