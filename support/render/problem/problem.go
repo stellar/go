@@ -80,8 +80,6 @@ func Render(ctx context.Context, w http.ResponseWriter, err error) {
 		renderProblem(ctx, w, p.Problem())
 	case error:
 		renderErr(ctx, w, err)
-	default:
-		panic(fmt.Sprintf("Invalid problem: %v+", p))
 	}
 }
 

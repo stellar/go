@@ -18,7 +18,7 @@ import (
 func TestRender(t *testing.T) {
 	testCases := []struct {
 		name     string
-		p        interface{}
+		p        P
 		wantList []string
 		wantCode int
 	}{
@@ -53,26 +53,6 @@ func TestRender(t *testing.T) {
 				assert.Equal(t, kase.wantCode, w.Code)
 			}
 		})
-	}
-}
-
-// TestPanic panics if non-compliant `p` is used
-func TestPanic(t *testing.T) {
-	testCases := []struct {
-		p interface{}
-	}{
-		{nil},
-		{"hello"},
-		{123},
-		{[]byte{}},
-	}
-
-	for _, kase := range testCases {
-		defer func() {
-			r := recover()
-			assert.NotNil(t, r)
-		}()
-		testRender(context.Background(), kase.p)
 	}
 }
 
@@ -121,7 +101,7 @@ func TestServerErrorConversion(t *testing.T) {
 func TestInflate(t *testing.T) {
 	testCase := struct {
 		name string
-		p    interface{}
+		p    P
 		want string
 	}{
 		"renders the type correctly",
@@ -139,8 +119,8 @@ func TestInflate(t *testing.T) {
 	})
 }
 
-func testRender(ctx context.Context, p interface{}) *httptest.ResponseRecorder {
+func testRender(ctx context.Context, err error) *httptest.ResponseRecorder {
 	w := httptest.NewRecorder()
-	Render(ctx, w, p)
+	Render(ctx, w, err)
 	return w
 }
