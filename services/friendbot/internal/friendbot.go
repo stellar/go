@@ -9,18 +9,18 @@ import (
 	"github.com/stellar/go/support/errors"
 )
 
-// Minion contains a Stellar channel account and the needed tools to communicate with friendbot
+// Minion contains a Stellar channel account and Go channels to communicate with friendbot.
 type Minion struct {
 	Secret       string
 	DestAddrChan chan string
 	TxResultChan chan TxResult
 
-	// uninitialized
+	// Uninitialized.
 	sequence             uint64
 	forceRefreshSequence bool
 }
 
-// TxResult is the result from the asynchronous submit transaction method over a channel
+// TxResult is the result from the asynchronous submit transaction method over a channel.
 type TxResult struct {
 	maybeTransactionSuccess *horizon.TransactionSuccess
 	maybeErr                error
@@ -37,24 +37,26 @@ type Bot struct {
 	nextMinionIndex   int
 }
 
-// Pay funds the account at `destAddress`
+// Pay funds the account at `destAddress`.
 func (bot *Bot) Pay(destAddress string) (*horizon.TransactionSuccess, error) {
 	minion := bot.Minions[bot.nextMinionIndex]
 	err := minion.checkSequenceRefresh(bot.Horizon)
 	if err != nil {
 		return nil, err
 	}
+
 	signed, err := minion.makeTx(destAddress, bot.Secret, bot.Network, bot.StartingBalance)
 	if err != nil {
 		return nil, err
 	}
 	go bot.SubmitTransaction(&minion, bot.Horizon, signed)
-	v := <-minion.TxResultChan
 	bot.nextMinionIndex = (bot.nextMinionIndex + 1) % len(bot.Minions)
+
+	v := <-minion.TxResultChan
 	return v.maybeTransactionSuccess, v.maybeErr
 }
 
-// AsyncSubmitTransaction should be passed to the bot
+// AsyncSubmitTransaction should be passed to the bot.
 func AsyncSubmitTransaction(minion *Minion, hclient *horizon.Client, signed string) {
 	result, err := hclient.SubmitTransaction(signed)
 	if err != nil {
@@ -84,7 +86,7 @@ func (minion *Minion) checkHandleBadSequence(err *horizon.Error) {
 	minion.forceRefreshSequence = true
 }
 
-// establish initial sequence if needed
+// Establishes the minion's initial sequence number, if needed.
 func (minion *Minion) checkSequenceRefresh(hclient *horizon.Client) error {
 	if minion.sequence != 0 && !minion.forceRefreshSequence {
 		return nil
@@ -118,14 +120,14 @@ func (minion *Minion) makeTx(destAddress, botSecret, networkPassphrase, initBala
 
 	base64, err := txs.Base64()
 
-	// only increment the in-memory sequence number if we are going to submit the transaction
+	// We only increment the in-memory sequence number if the tx will be submitted.
 	if err == nil {
 		minion.sequence++
 	}
 	return base64, err
 }
 
-// refreshes the sequence from a minion account
+// Refreshes the in-memory sequence number from the minion Stellar account.
 func (minion *Minion) refreshSequence(hclient *horizon.Client) error {
 	minionAccount, err := hclient.LoadAccount(minion.address())
 	if err != nil {
