@@ -11,9 +11,9 @@ import (
 )
 
 var ctx = context.Background()
-var testRender = func(ctx context.Context, p interface{}) *httptest.ResponseRecorder {
+var testRender = func(ctx context.Context, err error) *httptest.ResponseRecorder {
 	w := httptest.NewRecorder()
-	problem.Render(ctx, w, p)
+	problem.Render(ctx, w, err)
 	return w
 }
 

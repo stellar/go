@@ -4,10 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/stellar/go/support/errors"
-	"github.com/stellar/go/support/log"
 	"net/http"
 	"strings"
+
+	"github.com/stellar/go/support/errors"
+	"github.com/stellar/go/support/log"
 )
 
 const horizonHost = "https://stellar.org/horizon-errors/"
@@ -67,27 +68,27 @@ type HasProblem interface {
 // `p` is the problem, which may be either a concrete P struct, an implementor
 // of the `HasProblem` interface, or an error.  Any other value for `p` will
 // panic.
-func Render(ctx context.Context, w http.ResponseWriter, p interface{}) {
-	switch p := p.(type) {
+func Render(ctx context.Context, w http.ResponseWriter, err error) {
+	origErr := errors.Cause(err)
+
+	switch p := origErr.(type) {
 	case P:
-		render(ctx, w, p)
+		renderProblem(ctx, w, p)
 	case *P:
-		render(ctx, w, *p)
+		renderProblem(ctx, w, *p)
 	case HasProblem:
-		render(ctx, w, p.Problem())
+		renderProblem(ctx, w, p.Problem())
 	case error:
-		renderErr(ctx, w, p)
-	default:
-		panic(fmt.Sprintf("Invalid problem: %v+", p))
+		renderErr(ctx, w, err)
 	}
 }
 
-func render(ctx context.Context, w http.ResponseWriter, p P) {
+func renderProblem(ctx context.Context, w http.ResponseWriter, p P) {
 	Inflate(&p)
 
 	w.Header().Set("Content-Type", "application/problem+json; charset=utf-8")
-	js, err := json.MarshalIndent(p, "", "  ")
 
+	js, err := json.MarshalIndent(p, "", "  ")
 	if err != nil {
 		err = errors.Wrap(err, "failed to encode problem")
 		log.Ctx(ctx).WithStack(err).Error(err)
@@ -111,7 +112,7 @@ func renderErr(ctx context.Context, w http.ResponseWriter, err error) {
 		p = ServerError
 	}
 
-	render(ctx, w, p)
+	renderProblem(ctx, w, p)
 }
 
 // ServerError is a well-known problem type. Use it as a shortcut.
