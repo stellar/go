@@ -9,7 +9,7 @@ import (
 
 	log "github.com/sirupsen/logrus"
 
-	horizonclient "github.com/stellar/go/exp/clients/horizon"
+	"github.com/stellar/go/clients/horizonclient"
 	"github.com/stellar/go/exp/txnbuild"
 	"github.com/stellar/go/network"
 	hProtocol "github.com/stellar/go/protocols/horizon"

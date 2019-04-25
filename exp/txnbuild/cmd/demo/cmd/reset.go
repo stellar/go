@@ -4,9 +4,8 @@ import (
 	"fmt"
 
 	log "github.com/sirupsen/logrus"
-	horizonclient "github.com/stellar/go/exp/clients/horizon"
-
 	"github.com/spf13/cobra"
+	"github.com/stellar/go/clients/horizonclient"
 	demo "github.com/stellar/go/exp/txnbuild/cmd/demo/operations"
 )
 

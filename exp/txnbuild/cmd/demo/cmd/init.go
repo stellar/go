@@ -5,7 +5,7 @@ import (
 
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
-	horizonclient "github.com/stellar/go/exp/clients/horizon"
+	"github.com/stellar/go/clients/horizonclient"
 	demo "github.com/stellar/go/exp/txnbuild/cmd/demo/operations"
 )
 
