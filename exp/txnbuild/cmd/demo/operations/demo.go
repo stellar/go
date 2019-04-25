@@ -49,8 +49,8 @@ func InitKeys(n int) []Account {
 			accounts[i] = createKeypair()
 		}
 
-		jsonAccounts, err := json.MarshalIndent(accounts, "", "  ")
-		dieIfError("problem marshalling json accounts", err)
+		jsonAccounts, err2 := json.MarshalIndent(accounts, "", "  ")
+		dieIfError("problem marshalling json accounts", err2)
 		err = ioutil.WriteFile(accountsFile, jsonAccounts, 0644)
 		dieIfError("problem writing json accounts file", err)
 		log.Info("Wrote keypairs to local file", accountsFile)
