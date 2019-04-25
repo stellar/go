@@ -1,3 +1,5 @@
+If you're making a doc PR or something tiny where the below is irrelevant, just delete this template and use a short description.
+
 ### Style
 
 * [ ] This PR has reasonably narrow scope (if not, break it down into smaller PRs)
