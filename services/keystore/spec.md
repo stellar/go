@@ -21,6 +21,9 @@ auth token to the client server.
 Clients will have to configure the their server's address used for
 authentication when booting up the keystore.
 
+An auth token needs to be passed for all requests, and that's why there
+is no need for a userid argument to the endpoints below.
+
 <img src=attachments/2019-04-24-keystore-auth-flows.png>
 
 ### Encrypted Key
@@ -57,9 +60,9 @@ interface EncryptedKeyData {
 }
 ```
 
-### /store-key
+### /store-keys
 
-Store Key Request:
+Store Keys Request:
 
 ```typescript
 interface StoreKeyRequest {
@@ -67,7 +70,7 @@ interface StoreKeyRequest {
 }
 ```
 
-Store Key Response:
+Store Keys Response:
 
 ```typescript
 interface StoreKeyResponse {
