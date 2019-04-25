@@ -15,7 +15,6 @@ import (
 	"github.com/stellar/go/exp/txnbuild"
 
 	"github.com/manucorporat/sse"
-	"github.com/stellar/go/exp/txnbuild"
 	hProtocol "github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/protocols/horizon/operations"
 	"github.com/stellar/go/support/app"
