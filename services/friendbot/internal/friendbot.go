@@ -2,13 +2,23 @@ package internal
 
 import (
 	"strconv"
-	"sync"
 
 	b "github.com/stellar/go/build"
 	"github.com/stellar/go/clients/horizon"
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/support/errors"
 )
+
+// Minion contains a Stellar channel account and the needed tools to communicate with friendbot
+type Minion struct {
+	Secret       string
+	DestAddrChan chan string
+	TxResultChan chan TxResult
+
+	// uninitialized
+	sequence             uint64
+	forceRefreshSequence bool
+}
 
 // TxResult is the result from the asynchronous submit transaction method over a channel
 type TxResult struct {
@@ -22,90 +32,78 @@ type Bot struct {
 	Secret            string
 	Network           string
 	StartingBalance   string
-	SubmitTransaction func(bot *Bot, channel chan TxResult, signed string)
-
-	// uninitialized
-	sequence             uint64
-	forceRefreshSequence bool
-	lock                 sync.Mutex
+	SubmitTransaction func(minion *Minion, hclient *horizon.Client, signed string)
+	Minions           []Minion
+	nextMinionIndex   int
 }
 
 // Pay funds the account at `destAddress`
 func (bot *Bot) Pay(destAddress string) (*horizon.TransactionSuccess, error) {
-	channel := make(chan TxResult)
-	err := bot.lockedPay(channel, destAddress)
+	minion := bot.Minions[bot.nextMinionIndex]
+	err := minion.checkSequenceRefresh(bot.Horizon)
 	if err != nil {
 		return nil, err
 	}
-
-	v := <-channel
+	signed, err := minion.makeTx(destAddress, bot.Secret, bot.Network, bot.StartingBalance)
+	if err != nil {
+		return nil, err
+	}
+	go bot.SubmitTransaction(&minion, bot.Horizon, signed)
+	v := <-minion.TxResultChan
+	bot.nextMinionIndex = (bot.nextMinionIndex + 1) % len(bot.Minions)
 	return v.maybeTransactionSuccess, v.maybeErr
 }
 
-func (bot *Bot) lockedPay(channel chan TxResult, destAddress string) error {
-	bot.lock.Lock()
-	defer bot.lock.Unlock()
-
-	err := bot.checkSequenceRefresh()
-	if err != nil {
-		return err
-	}
-
-	signed, err := bot.makeTx(destAddress)
-	if err != nil {
-		return err
-	}
-
-	go bot.SubmitTransaction(bot, channel, signed)
-	return nil
-}
-
-// AsyncSubmitTransaction should be passed into the bot
-func AsyncSubmitTransaction(bot *Bot, channel chan TxResult, signed string) {
-	result, err := bot.Horizon.SubmitTransaction(signed)
+// AsyncSubmitTransaction should be passed to the bot
+func AsyncSubmitTransaction(minion *Minion, hclient *horizon.Client, signed string) {
+	result, err := hclient.SubmitTransaction(signed)
 	if err != nil {
 		switch e := err.(type) {
 		case *horizon.Error:
-			bot.checkHandleBadSequence(e)
+			minion.checkHandleBadSequence(e)
 		}
 
-		channel <- TxResult{
+		minion.TxResultChan <- TxResult{
 			maybeTransactionSuccess: nil,
 			maybeErr:                err,
 		}
 	} else {
-		channel <- TxResult{
+		minion.TxResultChan <- TxResult{
 			maybeTransactionSuccess: &result,
 			maybeErr:                nil,
 		}
 	}
 }
 
-func (bot *Bot) checkHandleBadSequence(err *horizon.Error) {
+func (minion *Minion) checkHandleBadSequence(err *horizon.Error) {
 	resCode, e := err.ResultCodes()
 	isTxBadSeqCode := e == nil && resCode.TransactionCode == "tx_bad_seq"
 	if !isTxBadSeqCode {
 		return
 	}
-	bot.forceRefreshSequence = true
+	minion.forceRefreshSequence = true
 }
 
 // establish initial sequence if needed
-func (bot *Bot) checkSequenceRefresh() error {
-	if bot.sequence != 0 && !bot.forceRefreshSequence {
+func (minion *Minion) checkSequenceRefresh(hclient *horizon.Client) error {
+	if minion.sequence != 0 && !minion.forceRefreshSequence {
 		return nil
 	}
-	return bot.refreshSequence()
+	return minion.refreshSequence(hclient)
 }
 
-func (bot *Bot) makeTx(destAddress string) (string, error) {
+func (minion *Minion) makeTx(destAddress, botSecret, networkPassphrase, initBalance string) (string, error) {
 	txn, err := b.Transaction(
-		b.SourceAccount{AddressOrSeed: bot.Secret},
-		b.Sequence{Sequence: bot.sequence + 1},
-		b.Network{Passphrase: bot.Network},
+		b.SourceAccount{AddressOrSeed: minion.Secret},
+		b.Sequence{Sequence: minion.sequence + 1},
+		b.Network{Passphrase: networkPassphrase},
 		b.CreateAccount(
 			b.Destination{AddressOrSeed: destAddress},
-			b.NativeAmount{Amount: bot.StartingBalance},
+		),
+		b.Payment(
+			b.SourceAccount{AddressOrSeed: botSecret},
+			b.Destination{AddressOrSeed: destAddress},
+			b.NativeAmount{Amount: initBalance},
 		),
 	)
 
@@ -113,40 +111,38 @@ func (bot *Bot) makeTx(destAddress string) (string, error) {
 		return "", errors.Wrap(err, "Error building a transaction")
 	}
 
-	txs, err := txn.Sign(bot.Secret)
+	txs, err := txn.Sign(botSecret, minion.Secret)
 	if err != nil {
 		return "", errors.Wrap(err, "Error signing a transaction")
 	}
 
 	base64, err := txs.Base64()
 
-	// only increment the in-memory sequence number if we are going to submit the transaction, while we hold the lock
+	// only increment the in-memory sequence number if we are going to submit the transaction
 	if err == nil {
-		bot.sequence++
+		minion.sequence++
 	}
 	return base64, err
 }
 
-// refreshes the sequence from the bot account
-func (bot *Bot) refreshSequence() error {
-	botAccount, err := bot.Horizon.LoadAccount(bot.address())
+// refreshes the sequence from a minion account
+func (minion *Minion) refreshSequence(hclient *horizon.Client) error {
+	minionAccount, err := hclient.LoadAccount(minion.address())
 	if err != nil {
-		bot.sequence = 0
+		minion.sequence = 0
 		return err
 	}
-
-	seq, err := strconv.ParseInt(botAccount.Sequence, 10, 64)
+	seq, err := strconv.ParseInt(minionAccount.Sequence, 10, 64)
 	if err != nil {
-		bot.sequence = 0
+		minion.sequence = 0
 		return err
 	}
-
-	bot.sequence = uint64(seq)
-	bot.forceRefreshSequence = false
+	minion.sequence = uint64(seq)
+	minion.forceRefreshSequence = false
 	return nil
 }
 
-func (bot *Bot) address() string {
-	kp := keypair.MustParse(bot.Secret)
+func (minion *Minion) address() string {
+	kp := keypair.MustParse(minion.Secret)
 	return kp.Address()
 }
