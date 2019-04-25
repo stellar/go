@@ -3,16 +3,16 @@ package txnbuild
 import (
 	"testing"
 
-	"github.com/stellar/go/clients/horizon"
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/network"
+	hProtocol "github.com/stellar/go/protocols/horizon"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-func makeTestAccount(kp *keypair.Full, seqnum string) horizon.Account {
-	return horizon.Account{
-		HistoryAccount: horizon.HistoryAccount{
+func makeTestAccount(kp *keypair.Full, seqnum string) hProtocol.Account {
+	return hProtocol.Account{
+		HistoryAccount: hProtocol.HistoryAccount{
 			AccountID: kp.Address(),
 		},
 		Sequence: seqnum,
