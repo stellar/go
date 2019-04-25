@@ -15,7 +15,7 @@ var initCmd = &cobra.Command{
 	Long:  `This command creates four test accounts for use with further operations.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		fmt.Println("Initialising TestNet accounts...")
-		keys := demo.InitKeys()
+		keys := demo.InitKeys(4)
 		client := horizonclient.DefaultTestNetClient
 
 		demo.Initialise(client, keys)

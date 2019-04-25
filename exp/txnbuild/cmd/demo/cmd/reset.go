@@ -17,7 +17,7 @@ var resetCmd = &cobra.Command{
 for testing.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		fmt.Println("Resetting TestNet state...")
-		keys := demo.InitKeys()
+		keys := demo.InitKeys(4)
 		client := horizonclient.DefaultTestNetClient
 
 		demo.Reset(client, keys)

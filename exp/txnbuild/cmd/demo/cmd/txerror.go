@@ -34,7 +34,7 @@ This application is a tool to generate the needed files
 to quickly create a Cobra application.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		fmt.Println("Demonstrating a bad transaction response...")
-		keys := demo.InitKeys()
+		keys := demo.InitKeys(4)
 		client := horizonclient.DefaultTestNetClient
 
 		demo.TXError(client, keys)
