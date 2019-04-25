@@ -56,7 +56,7 @@ func (tr TransactionRequest) StreamTransactions(ctx context.Context, client *Cli
 		return errors.Wrap(err, "unable to build endpoint")
 	}
 
-	url := fmt.Sprintf("%s%s", client.getHorizonURL(), endpoint)
+	url := fmt.Sprintf("%s%s", client.fixHorizonURL(), endpoint)
 
 	return client.stream(ctx, url, func(data []byte) error {
 		var transaction hProtocol.Transaction

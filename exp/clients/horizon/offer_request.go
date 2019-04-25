@@ -42,7 +42,7 @@ func (or OfferRequest) StreamOffers(ctx context.Context, client *Client, handler
 		return errors.Wrap(err, "unable to build endpoint for offers request")
 	}
 
-	url := fmt.Sprintf("%s%s", client.getHorizonURL(), endpoint)
+	url := fmt.Sprintf("%s%s", client.fixHorizonURL(), endpoint)
 
 	return client.stream(ctx, url, func(data []byte) error {
 		var offer hProtocol.Offer

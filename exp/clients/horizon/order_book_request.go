@@ -49,7 +49,7 @@ func (obr OrderBookRequest) StreamOrderBooks(ctx context.Context, client *Client
 		return errors.Wrap(err, "unable to build endpoint for orderbook request")
 	}
 
-	url := fmt.Sprintf("%s%s", client.getHorizonURL(), endpoint)
+	url := fmt.Sprintf("%s%s", client.fixHorizonURL(), endpoint)
 	return client.stream(ctx, url, func(data []byte) error {
 		var orderbook hProtocol.OrderBookSummary
 		err = json.Unmarshal(data, &orderbook)

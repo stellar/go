@@ -5,13 +5,20 @@ import (
 	"net/http"
 	"net/url"
 	"strconv"
+	"time"
 
 	"github.com/stellar/go/support/errors"
 )
 
+// decodeResponse decodes the response from a request to a horizon server
 func decodeResponse(resp *http.Response, object interface{}) (err error) {
 	defer resp.Body.Close()
 	decoder := json.NewDecoder(resp.Body)
+
+	// resp.Request should not be nil for Client requests
+	if resp.Request != nil {
+		setCurrentServerTime(resp.Request.Host, resp.Header["Date"])
+	}
 
 	if !(resp.StatusCode >= 200 && resp.StatusCode < 300) {
 		horizonError := &Error{
@@ -31,6 +38,7 @@ func decodeResponse(resp *http.Response, object interface{}) (err error) {
 	return
 }
 
+// countParams counts the number of parameters provided
 func countParams(params ...interface{}) int {
 	counter := 0
 	for _, param := range params {
@@ -57,6 +65,7 @@ func countParams(params ...interface{}) int {
 	return counter
 }
 
+// addQueryParams sets query parameters for a url
 func addQueryParams(params ...interface{}) string {
 	query := url.Values{}
 
@@ -98,4 +107,30 @@ func addQueryParams(params ...interface{}) string {
 	}
 
 	return query.Encode()
+}
+
+// setCurrentServerTime saves the current time returned by a horizon server
+func setCurrentServerTime(host string, serverDate []string) {
+	st, err := time.Parse(time.RFC1123, serverDate[0])
+	if err != nil {
+		return
+	}
+	ServerTimeMap[host] = ServerTimeRecord{ServerTime: st.UTC().Unix(), LocalTimeRecorded: time.Now().UTC().Unix()}
+}
+
+// currentServerTime returns the current server time for a given horizon server
+func currentServerTime(host string) int64 {
+	st := ServerTimeMap[host]
+	if &st == nil {
+		return 0
+	}
+
+	currentTime := time.Now().UTC().Unix()
+	// if it has been more than 5 minutes from the last time, then return 0 because the saved
+	// server time is behind.
+	if currentTime-st.LocalTimeRecorded > 60*5 {
+		return 0
+	}
+
+	return currentTime - st.LocalTimeRecorded + st.ServerTime
 }

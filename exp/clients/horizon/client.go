@@ -12,8 +12,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/manucorporat/sse"
 	"github.com/stellar/go/exp/txnbuild"
+
+	"github.com/manucorporat/sse"
 	hProtocol "github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/protocols/horizon/operations"
 	"github.com/stellar/go/support/app"
@@ -26,7 +27,7 @@ func (c *Client) sendRequest(hr HorizonRequest, a interface{}) (err error) {
 		return
 	}
 
-	c.HorizonURL = c.getHorizonURL()
+	c.HorizonURL = c.fixHorizonURL()
 	var req *http.Request
 	// check if it is a submitRequest
 	_, ok := hr.(submitRequest)
@@ -58,7 +59,7 @@ func (c *Client) sendRequest(hr HorizonRequest, a interface{}) (err error) {
 	return
 }
 
-// stream handles connections to endpoints that support streaming on an horizon server
+// stream handles connections to endpoints that support streaming on a horizon server
 func (c *Client) stream(
 	ctx context.Context,
 	streamURL string,
@@ -192,8 +193,8 @@ func (c *Client) setClientAppHeaders(req *http.Request) {
 	req.Header.Set("X-App-Version", c.AppVersion)
 }
 
-// getHorizonUrl strips all slashes(/) at the end of HorizonURL if any, then adds a single slash
-func (c *Client) getHorizonURL() string {
+// fixHorizonURL strips all slashes(/) at the end of HorizonURL if any, then adds a single slash
+func (c *Client) fixHorizonURL() string {
 	return strings.TrimRight(c.HorizonURL, "/") + "/"
 }
 
@@ -203,8 +204,8 @@ func (c *Client) SetHorizonTimeOut(t uint) *Client {
 	return c
 }
 
-// GetHorizonTimeOut returns the current timeout for an horizon client
-func (c *Client) GetHorizonTimeOut() time.Duration {
+// HorizonTimeOut returns the current timeout for a horizon client
+func (c *Client) HorizonTimeOut() time.Duration {
 	return c.horizonTimeOut
 }
 
@@ -482,6 +483,25 @@ func (c *Client) StreamLedgers(ctx context.Context, request LedgerRequest, handl
 // OrderBookHandler is a user-supplied function that is executed for each streamed order received.
 func (c *Client) StreamOrderBooks(ctx context.Context, request OrderBookRequest, handler OrderBookHandler) error {
 	return request.StreamOrderBooks(ctx, c, handler)
+}
+
+// FetchTimebounds provides timebounds for N seconds from now using the server time of the horizon instance.
+// It defaults to localtime when the server time is not available.
+// Note that this will generate your timebounds when you init the transaction, not when you build or submit
+// the transaction! So give yourself enough time to get the transaction built and signed before submitting.
+func (c *Client) FetchTimebounds(seconds int64) (txnbuild.Timebounds, error) {
+	serverURL, err := url.Parse(c.HorizonURL)
+	if err != nil {
+		return txnbuild.Timebounds{}, errors.Wrap(err, "unable to parse horizon url")
+	}
+	currentTime := currentServerTime(serverURL.Hostname())
+	if currentTime != 0 {
+		return txnbuild.NewTimebounds(0, currentTime+seconds), nil
+	}
+
+	// return a timebounds based on local time if no server time has been recorded
+	// to do: query an endpoint to get the most current time. Implement this after we add retry logic to client.
+	return txnbuild.NewTimeout(seconds), nil
 }
 
 // ensure that the horizon client implements ClientInterface
