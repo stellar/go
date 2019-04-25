@@ -87,7 +87,7 @@ func (er EffectRequest) StreamEffects(
 		return errors.Wrap(err, "unable to build endpoint")
 	}
 
-	url := fmt.Sprintf("%s%s", client.getHorizonURL(), endpoint)
+	url := fmt.Sprintf("%s%s", client.fixHorizonURL(), endpoint)
 	return client.stream(ctx, url, func(data []byte) error {
 		var effect effects.Base
 		err = json.Unmarshal(data, &effect)
