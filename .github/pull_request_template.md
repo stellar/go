@@ -1,0 +1,29 @@
+### Style
+
+* [ ] This PR has reasonably narrow scope (if not, break it down into smaller PRs)
+* [ ] This PR avoids mixing refactoring changes with feature changes (split into two PRs otherwise)
+* [ ] This PR's title starts with name of package that is most changed in the PR, ex. `horizon/ingest` 
+
+### Release planning
+
+* [ ] I've updated the relevant CHANGELOG ([here](services/horizon/CHANGELOG.md) for Horizon) if needed with deprecations, added features, breaking changes, and DB schema changes
+* [ ] I've decided if this PR requires a new major/minor version according to [semver](https://semver.org/), or if it's monly a patch change. The PR is targeted at the next release branch if it's not a patch change.
+
+
+## Summary
+
+### Goal and scope
+
+[TODO]
+
+### Summary of changes
+
+[TODO]
+
+### Known limitations & issues
+
+[TODO]
+
+### What shouldn't be reviewed
+
+[TODO]
