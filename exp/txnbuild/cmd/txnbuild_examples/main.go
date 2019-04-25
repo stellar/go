@@ -9,7 +9,7 @@ import (
 	"os"
 
 	"github.com/stellar/go/clients/horizon"
-	horizonclient "github.com/stellar/go/exp/clients/horizon"
+	horizonclient "github.com/stellar/go/clients/horizonclient"
 	"github.com/stellar/go/exp/txnbuild"
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/network"

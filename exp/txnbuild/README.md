@@ -12,7 +12,7 @@ TODO: SHORT EXAMPLE GOES HERE
 This library is aimed at developers building Go applications on top of the [Stellar network](https://www.stellar.org/). Transactions constructed by this library may be submitted to any Horizon instance for processing onto the ledger, using any Stellar SDK client. The recommended client for Go programmers is [horizonclient](https://github.com/stellar/go/tree/master/exp/clients/horizon). Together, these two libraries provide a complete Stellar SDK.
 
 * The [txnbuild API reference](https://godoc.org/github.com/stellar/go/exp/txnbuild).
-* The [horizonclient API reference](https://godoc.org/github.com/stellar/go/exp/clients/horizon).
+* The [horizonclient API reference](https://godoc.org/github.com/stellar/go/clients/horizonclient).
 
 ### Prerequisites
 * Go 1.10 or greater

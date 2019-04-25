@@ -7,7 +7,7 @@ import (
 	"strconv"
 	"time"
 
-	horizonclient "github.com/stellar/go/exp/clients/horizon"
+	horizonclient "github.com/stellar/go/clients/horizonclient"
 	"github.com/stellar/go/exp/ticker/internal/scraper"
 	"github.com/stellar/go/exp/ticker/internal/tickerdb"
 	hProtocol "github.com/stellar/go/protocols/horizon"
