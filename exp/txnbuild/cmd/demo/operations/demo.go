@@ -9,10 +9,10 @@ import (
 
 	log "github.com/sirupsen/logrus"
 
-	"github.com/stellar/go/clients/horizon"
 	horizonclient "github.com/stellar/go/exp/clients/horizon"
 	"github.com/stellar/go/exp/txnbuild"
 	"github.com/stellar/go/network"
+	hProtocol "github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/strkey"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
@@ -29,17 +29,17 @@ const accountsFile = "demo.keys"
 
 // Account represents a Stellar account for this demo.
 type Account struct {
-	Seed     string           `json:"name"`
-	Address  string           `json:"address"`
-	HAccount *horizon.Account `json:"account"`
-	Keypair  *keypair.Full    `json:"keypair"`
-	Exists   bool             `json:"exists"`
+	Seed     string             `json:"name"`
+	Address  string             `json:"address"`
+	HAccount *hProtocol.Account `json:"account"`
+	Keypair  *keypair.Full      `json:"keypair"`
+	Exists   bool               `json:"exists"`
 }
 
 // InitKeys creates n random new keypairs, storing them in a local file. If the file exists,
 // InitKeys reads the file instead to construct the keypairs (and ignores n).
 func InitKeys(n int) []Account {
-	var accounts []Account
+	accounts := make([]Account, n)
 
 	fh, err := os.Open(accountsFile)
 	if os.IsNotExist(err) {
@@ -53,7 +53,7 @@ func InitKeys(n int) []Account {
 		dieIfError("problem marshalling json accounts", err2)
 		err = ioutil.WriteFile(accountsFile, jsonAccounts, 0644)
 		dieIfError("problem writing json accounts file", err)
-		log.Info("Wrote keypairs to local file", accountsFile)
+		log.Info("Wrote keypairs to local file ", accountsFile)
 
 		return accounts
 	}
@@ -76,7 +76,7 @@ func InitKeys(n int) []Account {
 }
 
 // Reset is a command that removes all test accounts created by this demo. All funds are
-// transferred back to Friendbot.
+// transferred back to Friendbot using the account merge operation.
 func Reset(client *horizonclient.Client, keys []Account) {
 	keys = loadAccounts(client, keys)
 	for _, k := range keys {
@@ -85,13 +85,13 @@ func Reset(client *horizonclient.Client, keys []Account) {
 			continue
 		}
 
-		// It exists - so we will proceed to delete it
+		// It exists - so we will proceed to deconstruct any existing account entries, and then merge it
+		// See https://www.stellar.org/developers/guides/concepts/ledger.html#ledger-entries
 		log.Info("Found testnet account with ID:", k.HAccount.ID)
 
 		// Find any offers that need deleting...
 		offerRequest := horizonclient.OfferRequest{
 			ForAccount: k.Address,
-			Cursor:     "now",
 			Order:      horizonclient.OrderDesc,
 		}
 		offers, err := client.Offers(offerRequest)
@@ -188,7 +188,7 @@ func Initialise(client *horizonclient.Client, keys []Account) {
 func TXError(client *horizonclient.Client, keys []Account) {
 	keys = loadAccounts(client, keys)
 	// Create a bump seq operation
-	// Set the seq number to 1 (invalid)
+	// Set the seq number to -1 (invalid)
 	// Create the transaction
 	txe, err := bumpSequence(keys[0].HAccount, -1, keys[0])
 	dieIfError("problem building createAccount op", err)
@@ -202,7 +202,7 @@ func TXError(client *horizonclient.Client, keys []Account) {
 
 /***** Examples of operation building follow *****/
 
-func bumpSequence(source *horizon.Account, seqNum int64, signer Account) (string, error) {
+func bumpSequence(source *hProtocol.Account, seqNum int64, signer Account) (string, error) {
 	bumpSequenceOp := txnbuild.BumpSequence{
 		BumpTo: seqNum,
 	}
@@ -215,14 +215,10 @@ func bumpSequence(source *horizon.Account, seqNum int64, signer Account) (string
 	}
 
 	txeBase64, err := tx.BuildSignEncode(signer.Keypair)
-	if err != nil {
-		return "", errors.Wrap(err, "couldn't serialise transaction")
-	}
-
-	return txeBase64, nil
+	return txeBase64, errors.Wrap(err, "couldn't serialise transaction")
 }
 
-func createAccount(source *horizon.Account, dest string, signer Account) (string, error) {
+func createAccount(source *hProtocol.Account, dest string, signer Account) (string, error) {
 	createAccountOp := txnbuild.CreateAccount{
 		Destination: dest,
 		Amount:      "100",
@@ -236,14 +232,10 @@ func createAccount(source *horizon.Account, dest string, signer Account) (string
 	}
 
 	txeBase64, err := tx.BuildSignEncode(signer.Keypair)
-	if err != nil {
-		return "", errors.Wrap(err, "couldn't serialise transaction")
-	}
-
-	return txeBase64, nil
+	return txeBase64, errors.Wrap(err, "couldn't serialise transaction")
 }
 
-func deleteData(source *horizon.Account, dataKey string, signer Account) (string, error) {
+func deleteData(source *hProtocol.Account, dataKey string, signer Account) (string, error) {
 	manageDataOp := txnbuild.ManageData{
 		Name: dataKey,
 	}
@@ -256,14 +248,10 @@ func deleteData(source *horizon.Account, dataKey string, signer Account) (string
 	}
 
 	txeBase64, err := tx.BuildSignEncode(signer.Keypair)
-	if err != nil {
-		return "", errors.Wrap(err, "couldn't serialise transaction")
-	}
-
-	return txeBase64, nil
+	return txeBase64, errors.Wrap(err, "couldn't serialise transaction")
 }
 
-func manageData(source *horizon.Account, dataKey string, dataValue string, signer Account) (string, error) {
+func manageData(source *hProtocol.Account, dataKey string, dataValue string, signer Account) (string, error) {
 	manageDataOp := txnbuild.ManageData{
 		Name:  dataKey,
 		Value: []byte(dataValue),
@@ -277,14 +265,10 @@ func manageData(source *horizon.Account, dataKey string, dataValue string, signe
 	}
 
 	txeBase64, err := tx.BuildSignEncode(signer.Keypair)
-	if err != nil {
-		return "", errors.Wrap(err, "couldn't serialise transaction")
-	}
-
-	return txeBase64, nil
+	return txeBase64, errors.Wrap(err, "couldn't serialise transaction")
 }
 
-func payment(source *horizon.Account, dest, amount string, asset txnbuild.Asset, signer Account) (string, error) {
+func payment(source *hProtocol.Account, dest, amount string, asset txnbuild.Asset, signer Account) (string, error) {
 	paymentOp := txnbuild.Payment{
 		Destination: dest,
 		Amount:      amount,
@@ -299,14 +283,10 @@ func payment(source *horizon.Account, dest, amount string, asset txnbuild.Asset,
 	}
 
 	txeBase64, err := tx.BuildSignEncode(signer.Keypair)
-	if err != nil {
-		return "", errors.Wrap(err, "couldn't serialise transaction")
-	}
-
-	return txeBase64, nil
+	return txeBase64, errors.Wrap(err, "couldn't serialise transaction")
 }
 
-func deleteTrustline(source *horizon.Account, asset txnbuild.Asset, signer Account) (string, error) {
+func deleteTrustline(source *hProtocol.Account, asset txnbuild.Asset, signer Account) (string, error) {
 	deleteTrustline := txnbuild.RemoveTrustlineOp(asset)
 
 	tx := txnbuild.Transaction{
@@ -317,14 +297,10 @@ func deleteTrustline(source *horizon.Account, asset txnbuild.Asset, signer Accou
 	}
 
 	txeBase64, err := tx.BuildSignEncode(signer.Keypair)
-	if err != nil {
-		return "", errors.Wrap(err, "couldn't serialise transaction")
-	}
-
-	return txeBase64, nil
+	return txeBase64, errors.Wrap(err, "couldn't serialise transaction")
 }
 
-func deleteOffer(source *horizon.Account, offerID int64, signer Account) (string, error) {
+func deleteOffer(source *hProtocol.Account, offerID int64, signer Account) (string, error) {
 	deleteOffer := txnbuild.DeleteOfferOp(offerID)
 
 	tx := txnbuild.Transaction{
@@ -335,14 +311,10 @@ func deleteOffer(source *horizon.Account, offerID int64, signer Account) (string
 	}
 
 	txeBase64, err := tx.BuildSignEncode(signer.Keypair)
-	if err != nil {
-		return "", errors.Wrap(err, "couldn't serialise transaction")
-	}
-
-	return txeBase64, nil
+	return txeBase64, errors.Wrap(err, "couldn't serialise transaction")
 }
 
-func mergeAccount(source *horizon.Account, destAddress string, signer Account) (string, error) {
+func mergeAccount(source *hProtocol.Account, destAddress string, signer Account) (string, error) {
 	accountMerge := txnbuild.AccountMerge{
 		Destination: destAddress,
 	}
@@ -355,11 +327,7 @@ func mergeAccount(source *horizon.Account, destAddress string, signer Account) (
 	}
 
 	txeBase64, err := tx.BuildSignEncode(signer.Keypair)
-	if err != nil {
-		return "", errors.Wrap(err, "couldn't serialise transaction")
-	}
-
-	return txeBase64, nil
+	return txeBase64, errors.Wrap(err, "couldn't serialise transaction")
 }
 
 // createKeypair constructs a new random keypair, and returns it in a DemoAccount.
@@ -378,6 +346,7 @@ func createKeypair() Account {
 	}
 }
 
+// loadAccounts looks up each account in the provided list and stores the returned information.
 func loadAccounts(client *horizonclient.Client, accounts []Account) []Account {
 	for i, a := range accounts {
 		accounts[i].HAccount = loadAccount(client, a.Address)
@@ -388,7 +357,7 @@ func loadAccounts(client *horizonclient.Client, accounts []Account) []Account {
 }
 
 // loadAccount is an example of how to get an account's details from Horizon.
-func loadAccount(client *horizonclient.Client, address string) *horizon.Account {
+func loadAccount(client *horizonclient.Client, address string) *hProtocol.Account {
 	accountRequest := horizonclient.AccountRequest{AccountID: address}
 	horizonSourceAccount, err := client.AccountDetail(accountRequest)
 	if err != nil {
@@ -398,7 +367,7 @@ func loadAccount(client *horizonclient.Client, address string) *horizon.Account 
 	return &horizonSourceAccount
 }
 
-func submit(client *horizonclient.Client, txeBase64 string) (resp horizon.TransactionSuccess) {
+func submit(client *horizonclient.Client, txeBase64 string) (resp hProtocol.TransactionSuccess) {
 	resp, err := client.SubmitTransactionXDR(txeBase64)
 	if err != nil {
 		hError := err.(*horizonclient.Error)
