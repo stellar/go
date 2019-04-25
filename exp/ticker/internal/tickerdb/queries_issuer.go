@@ -31,3 +31,9 @@ func (s *TickerSession) InsertOrUpdateIssuer(issuer *Issuer, preserveFields []st
 	}
 	return
 }
+
+// GetAllIssuers returns a slice with all issuers in the database
+func (s *TickerSession) GetAllIssuers() (issuers []Issuer, err error) {
+	err = s.SelectRaw(&issuers, "SELECT * FROM issuers")
+	return
+}

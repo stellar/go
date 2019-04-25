@@ -12,6 +12,11 @@ const (
 	// TXStatusDuplicate represents the status value returned by stellar-core when a submitted
 	// transaction is a duplicate
 	TXStatusDuplicate = "DUPLICATE"
+
+	// TXStatusTryAgainLater represents the status value returned by stellar-core when a submitted
+	// transaction was not included in the previous 4 ledgers and get banned for being added in the
+	// next few ledgers.
+	TXStatusTryAgainLater = "TRY_AGAIN_LATER"
 )
 
 // TXResponse represents the response returned from a submission request sent to stellar-core's /tx

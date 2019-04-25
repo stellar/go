@@ -8,6 +8,7 @@ import (
 	"net/url"
 	"time"
 
+	"github.com/stellar/go/exp/txnbuild"
 	hProtocol "github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/protocols/horizon/operations"
 	"github.com/stellar/go/support/render/problem"
@@ -98,13 +99,14 @@ type HTTP interface {
 	PostForm(url string, data url.Values) (resp *http.Response, err error)
 }
 
-// Client struct contains data for creating an horizon client that connects to the stellar network
+// Client struct contains data for creating a horizon client that connects to the stellar network
 type Client struct {
 	HorizonURL     string
 	HTTP           HTTP
 	horizonTimeOut time.Duration
 	AppName        string
 	AppVersion     string
+	isTestNet      bool
 }
 
 // ClientInterface contains methods implemented by the horizon client
@@ -121,7 +123,8 @@ type ClientInterface interface {
 	Offers(request OfferRequest) (hProtocol.OffersPage, error)
 	Operations(request OperationRequest) (operations.OperationsPage, error)
 	OperationDetail(id string) (operations.Operation, error)
-	SubmitTransaction(transactionXdr string) (hProtocol.TransactionSuccess, error)
+	SubmitTransactionXDR(transactionXdr string) (hProtocol.TransactionSuccess, error)
+	SubmitTransaction(transactionXdr txnbuild.Transaction) (hProtocol.TransactionSuccess, error)
 	Transactions(request TransactionRequest) (hProtocol.TransactionsPage, error)
 	TransactionDetail(txHash string) (hProtocol.Transaction, error)
 	OrderBook(request OrderBookRequest) (hProtocol.OrderBookSummary, error)
@@ -129,6 +132,7 @@ type ClientInterface interface {
 	Payments(request OperationRequest) (operations.OperationsPage, error)
 	TradeAggregations(request TradeAggregationRequest) (hProtocol.TradeAggregationsPage, error)
 	Trades(request TradeRequest) (hProtocol.TradesPage, error)
+	Fund(addr string) (*http.Response, error)
 	StreamTransactions(ctx context.Context, request TransactionRequest, handler TransactionHandler) error
 	StreamTrades(ctx context.Context, request TradeRequest, handler TradeHandler) error
 	StreamEffects(ctx context.Context, request EffectRequest, handler EffectHandler) error
@@ -144,6 +148,7 @@ var DefaultTestNetClient = &Client{
 	HorizonURL:     "https://horizon-testnet.stellar.org/",
 	HTTP:           http.DefaultClient,
 	horizonTimeOut: HorizonTimeOut,
+	isTestNet:      true,
 }
 
 // DefaultPublicNetClient is a default client to connect to public network
@@ -163,13 +168,13 @@ type StreamRequest interface {
 	Stream(ctx context.Context, client *Client, handler func(interface{})) error
 }
 
-// AccountRequest struct contains data for making requests to the accounts endpoint of an horizon server
+// AccountRequest struct contains data for making requests to the accounts endpoint of a horizon server
 type AccountRequest struct {
 	AccountID string
 	DataKey   string
 }
 
-// EffectRequest struct contains data for getting effects from an horizon server.
+// EffectRequest struct contains data for getting effects from a horizon server.
 // ForAccount, ForLedger, ForOperation and ForTransaction: Not more than one of these can be set at a time. If none are set, the default is to return all effects.
 // The query parameters (Order, Cursor and Limit) can all be set at the same time
 type EffectRequest struct {
@@ -182,7 +187,7 @@ type EffectRequest struct {
 	Limit          uint
 }
 
-// AssetRequest struct contains data for getting asset details from an horizon server.
+// AssetRequest struct contains data for getting asset details from a horizon server.
 type AssetRequest struct {
 	ForAssetCode   string
 	ForAssetIssuer string
@@ -191,7 +196,7 @@ type AssetRequest struct {
 	Limit          uint
 }
 
-// LedgerRequest struct contains data for getting ledger details from an horizon server.
+// LedgerRequest struct contains data for getting ledger details from a horizon server.
 type LedgerRequest struct {
 	Order       Order
 	Cursor      string
@@ -207,7 +212,7 @@ type feeStatsRequest struct {
 	endpoint string
 }
 
-// OfferRequest struct contains data for getting offers made by an account from an horizon server
+// OfferRequest struct contains data for getting offers made by an account from a horizon server
 type OfferRequest struct {
 	ForAccount string
 	Order      Order
@@ -215,7 +220,7 @@ type OfferRequest struct {
 	Limit      uint
 }
 
-// OperationRequest struct contains data for getting operation details from an horizon servers
+// OperationRequest struct contains data for getting operation details from a horizon servers
 type OperationRequest struct {
 	ForAccount     string
 	ForLedger      uint
@@ -233,7 +238,7 @@ type submitRequest struct {
 	transactionXdr string
 }
 
-// TransactionRequest struct contains data for getting transaction details from an horizon server
+// TransactionRequest struct contains data for getting transaction details from a horizon server
 type TransactionRequest struct {
 	ForAccount         string
 	ForLedger          uint
@@ -244,7 +249,7 @@ type TransactionRequest struct {
 	IncludeFailed      bool
 }
 
-// OrderBookRequest struct contains data for getting the orderbook for an asset pair from an horizon server
+// OrderBookRequest struct contains data for getting the orderbook for an asset pair from a horizon server
 type OrderBookRequest struct {
 	SellingAssetType   AssetType
 	SellingAssetCode   string
@@ -255,7 +260,7 @@ type OrderBookRequest struct {
 	Limit              uint
 }
 
-// PathsRequest struct contains data for getting available payment paths from an horizon server
+// PathsRequest struct contains data for getting available payment paths from a horizon server
 type PathsRequest struct {
 	DestinationAccount     string
 	DestinationAssetType   AssetType
@@ -265,7 +270,7 @@ type PathsRequest struct {
 	SourceAccount          string
 }
 
-// TradeRequest struct contains data for getting trade details from an horizon server
+// TradeRequest struct contains data for getting trade details from a horizon server
 type TradeRequest struct {
 	ForOfferID         string
 	ForAccount         string
@@ -280,7 +285,7 @@ type TradeRequest struct {
 	Limit              uint
 }
 
-// TradeAggregationRequest struct contains data for getting trade aggregations from an horizon server
+// TradeAggregationRequest struct contains data for getting trade aggregations from a horizon server
 type TradeAggregationRequest struct {
 	StartTime          time.Time
 	EndTime            time.Time
@@ -295,3 +300,12 @@ type TradeAggregationRequest struct {
 	Order              Order
 	Limit              uint
 }
+
+// ServerTimeRecord contains data for the current unix time of a horizon server instance, and the local time when it was recorded.
+type ServerTimeRecord struct {
+	ServerTime        int64
+	LocalTimeRecorded int64
+}
+
+// ServerTimeMap holds the ServerTimeRecord for different horizon instances.
+var ServerTimeMap = make(map[string]ServerTimeRecord)

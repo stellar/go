@@ -482,7 +482,7 @@ func TestManageOfferDeleteOffer(t *testing.T) {
 	kp1 := newKeypair1()
 	sourceAccount := makeTestAccount(kp1, "41137196761105")
 
-	offerID := uint64(2921622)
+	offerID := int64(2921622)
 	deleteOffer := DeleteOfferOp(offerID)
 
 	tx := Transaction{
@@ -506,7 +506,7 @@ func TestManageOfferUpdateOffer(t *testing.T) {
 	buying := CreditAsset{"ABCD", kp0.Address()}
 	sellAmount := "50"
 	price := "0.02"
-	offerID := uint64(2497628)
+	offerID := int64(2497628)
 	updateOffer := UpdateOfferOp(selling, buying, sellAmount, price, offerID)
 
 	tx := Transaction{
@@ -526,7 +526,7 @@ func TestCreatePassiveOffer(t *testing.T) {
 	kp1 := newKeypair1()
 	sourceAccount := makeTestAccount(kp1, "41137196761100")
 
-	createPassiveOffer := CreatePassiveOffer{
+	createPassiveOffer := CreatePassiveSellOffer{
 		Selling: NativeAsset{},
 		Buying:  CreditAsset{"ABCD", kp0.Address()},
 		Amount:  "10",

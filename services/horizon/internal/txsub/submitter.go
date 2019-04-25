@@ -59,7 +59,7 @@ func (sub *submitter) Submit(ctx context.Context, env string) (result Submission
 	switch cresp.Status {
 	case proto.TXStatusError:
 		result.Err = &FailedTransactionError{cresp.Error}
-	case proto.TXStatusPending, proto.TXStatusDuplicate:
+	case proto.TXStatusPending, proto.TXStatusDuplicate, proto.TXStatusTryAgainLater:
 		//noop.  A nil Err indicates success
 	default:
 		result.Err = errors.Errorf("Unrecognized stellar-core status response: %s", cresp.Status)
