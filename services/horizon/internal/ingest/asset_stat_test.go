@@ -229,7 +229,7 @@ func TestAssetModified(t *testing.T) {
 				"credit_alphanum4/USD/GCFZWN3AOVFQM2BZTZX7P47WSI4QMGJC62LILPKODTNDLVKZZNA5BQJ3", // issuerUSD
 			},
 		}, {
-			opBody: makeOperationBody(xdr.OperationTypeManageOffer, xdr.ManageOfferOp{
+			opBody: makeOperationBody(xdr.OperationTypeManageSellOffer, xdr.ManageSellOfferOp{
 				Selling: sourceUSD,
 				Buying:  anotherUSD,
 				Amount:  1000000,
@@ -241,7 +241,7 @@ func TestAssetModified(t *testing.T) {
 				"credit_alphanum4/USD/GCYLTPOU7IVYHHA3XKQF4YB4W4ZWHFERMOQ7K47IWANKNBFBNJJNEOG5", // sourceUSD
 			},
 		}, {
-			opBody: makeOperationBody(xdr.OperationTypeManageOffer, xdr.ManageOfferOp{
+			opBody: makeOperationBody(xdr.OperationTypeManageSellOffer, xdr.ManageSellOfferOp{
 				Selling: issuerUSD,
 				Buying:  sourceUSD,
 				Amount:  1000000,
@@ -253,7 +253,7 @@ func TestAssetModified(t *testing.T) {
 				"credit_alphanum4/USD/GCYLTPOU7IVYHHA3XKQF4YB4W4ZWHFERMOQ7K47IWANKNBFBNJJNEOG5", // sourceUSD
 			},
 		}, {
-			opBody: makeOperationBody(xdr.OperationTypeManageOffer, xdr.ManageOfferOp{
+			opBody: makeOperationBody(xdr.OperationTypeManageSellOffer, xdr.ManageSellOfferOp{
 				Selling: issuerUSD,
 				Buying:  anotherUSD,
 				Amount:  1000000,
@@ -265,7 +265,7 @@ func TestAssetModified(t *testing.T) {
 				"credit_alphanum4/USD/GCFZWN3AOVFQM2BZTZX7P47WSI4QMGJC62LILPKODTNDLVKZZNA5BQJ3", // issuerUSD
 			},
 		}, {
-			opBody: makeOperationBody(xdr.OperationTypeCreatePassiveOffer, xdr.CreatePassiveOfferOp{
+			opBody: makeOperationBody(xdr.OperationTypeCreatePassiveSellOffer, xdr.CreatePassiveSellOfferOp{
 				Selling: sourceUSD,
 				Buying:  anotherUSD,
 				Amount:  1000000,
@@ -276,7 +276,7 @@ func TestAssetModified(t *testing.T) {
 				"credit_alphanum4/USD/GCYLTPOU7IVYHHA3XKQF4YB4W4ZWHFERMOQ7K47IWANKNBFBNJJNEOG5", // sourceUSD
 			},
 		}, {
-			opBody: makeOperationBody(xdr.OperationTypeCreatePassiveOffer, xdr.CreatePassiveOfferOp{
+			opBody: makeOperationBody(xdr.OperationTypeCreatePassiveSellOffer, xdr.CreatePassiveSellOfferOp{
 				Selling: issuerUSD,
 				Buying:  sourceUSD,
 				Amount:  1000000,
@@ -287,7 +287,7 @@ func TestAssetModified(t *testing.T) {
 				"credit_alphanum4/USD/GCYLTPOU7IVYHHA3XKQF4YB4W4ZWHFERMOQ7K47IWANKNBFBNJJNEOG5", // sourceUSD
 			},
 		}, {
-			opBody: makeOperationBody(xdr.OperationTypeCreatePassiveOffer, xdr.CreatePassiveOfferOp{
+			opBody: makeOperationBody(xdr.OperationTypeCreatePassiveSellOffer, xdr.CreatePassiveSellOfferOp{
 				Selling: issuerUSD,
 				Buying:  anotherUSD,
 				Amount:  1000000,

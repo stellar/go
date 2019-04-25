@@ -9,6 +9,7 @@ import (
 	"os"
 
 	"github.com/stellar/go/clients/horizon"
+	horizonclient "github.com/stellar/go/exp/clients/horizon"
 	"github.com/stellar/go/exp/txnbuild"
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/network"
@@ -50,7 +51,11 @@ func initKeys() []key {
 }
 
 func main() {
-	client := horizon.DefaultTestNetClient
+	client := horizonclient.DefaultTestNetClient
+	pair := createKeypair()
+	resp, err := client.Fund(pair.Address())
+	fmt.Println(resp)
+	fmt.Println(err)
 
 	// resp := exampleCreateAccount(client, false)
 	// resp := exampleSendLumens(client, false)
@@ -67,8 +72,8 @@ func main() {
 	// resp := exampleManageOfferDeleteOffer(client, false)
 	// resp := exampleManageOfferUpdateOffer(client, false)
 	// resp := exampleCreatePassiveOffer(client, false)
-	resp := examplePathPayment(client, false)
-	fmt.Println(resp.TransactionSuccessToString())
+	// resp := examplePathPayment(client, false)
+	// fmt.Println(resp.TransactionSuccessToString())
 }
 
 func examplePathPayment(client *horizon.Client, mock bool) horizon.TransactionSuccess {
@@ -171,7 +176,7 @@ func exampleCreatePassiveOffer(client *horizon.Client, mock bool) horizon.Transa
 	sellAmount := "10"
 	price := "1.0"
 
-	createPassiveOffer := txnbuild.CreatePassiveOffer{
+	createPassiveOffer := txnbuild.CreatePassiveSellOffer{
 		Selling: selling,
 		Buying:  &buying,
 		Amount:  sellAmount,
@@ -202,7 +207,7 @@ func exampleManageOfferUpdateOffer(client *horizon.Client, mock bool) horizon.Tr
 	}
 	sellAmount := "50"
 	price := "0.02"
-	offerID := uint64(2497628)
+	offerID := int64(2497628)
 
 	updateOffer := txnbuild.UpdateOfferOp(selling, &buying, sellAmount, price, offerID)
 
@@ -224,7 +229,7 @@ func exampleManageOfferDeleteOffer(client *horizon.Client, mock bool) horizon.Tr
 	dieIfError("loadaccount", err)
 	sourceAccount := mapAccounts(horizonSourceAccount)
 
-	offerID := uint64(4326054)
+	offerID := int64(4326054)
 
 	deleteOffer := txnbuild.DeleteOfferOp(offerID)
 

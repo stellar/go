@@ -1,8 +1,10 @@
 package tickerdb
 
 import (
+	"errors"
 	"fmt"
 	"reflect"
+	"strings"
 )
 
 // getDBFieldTags returns all "db" tags for a given struct, optionally excluding the "id".
@@ -68,4 +70,48 @@ func generatePlaceholders(fields []interface{}) (placeholder string) {
 		}
 	}
 	return
+}
+
+// optionalVar is a simple struct to represent a query variable that should
+// only be used in a statement if its value is not null
+type optionalVar struct {
+	name string
+	val  *string
+}
+
+// generateWhereClause generates a WHERE clause in the format:
+// "WHERE x = ? AND y = ? AND ..." where the number of conditions is equal
+// to the number of optVars with val != nil. It also returns the valid vals
+// in the args param. This function was created to take advantage of go/sql's
+// sanitization and to prevent possible SQL injections.
+func generateWhereClause(optVars []optionalVar) (clause string, args []string) {
+	for _, ov := range optVars {
+		if ov.val != nil {
+			if clause == "" {
+				clause = fmt.Sprintf("WHERE %s = ?", ov.name)
+			} else {
+				clause += fmt.Sprintf(" AND %s = ?", ov.name)
+			}
+			args = append(args, *ov.val)
+		}
+	}
+	return
+}
+
+// getBaseAndCounterCodes takes an asset pair name string (e.g: XLM_BTC)
+// and returns the parsed asset codes (e.g.: XLM, BTC). It also reverses
+// the assets, according to the following rules:
+// 1. XLM is always the base asset
+// 2. If XLM is not in the pair, the assets should be ordered alphabetically
+func getBaseAndCounterCodes(pairName string) (string, string, error) {
+	assets := strings.Split(pairName, "_")
+	if len(assets) != 2 {
+		return "", "", errors.New("invalid asset pair name")
+	}
+
+	if (assets[1] == "XLM") || (assets[0] != "XLM" && assets[0] > assets[1]) {
+		return assets[1], assets[0], nil
+	}
+
+	return assets[0], assets[1], nil
 }

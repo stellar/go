@@ -243,10 +243,10 @@ func (m ManageOfferBuilder) MutateTransaction(o *TransactionBuilder) error {
 	}
 
 	if m.PassiveOffer {
-		m.O.Body, m.Err = xdr.NewOperationBody(xdr.OperationTypeCreatePassiveOffer, m.PO)
+		m.O.Body, m.Err = xdr.NewOperationBody(xdr.OperationTypeCreatePassiveSellOffer, m.PO)
 		o.TX.Operations = append(o.TX.Operations, m.O)
 	} else {
-		m.O.Body, m.Err = xdr.NewOperationBody(xdr.OperationTypeManageOffer, m.MO)
+		m.O.Body, m.Err = xdr.NewOperationBody(xdr.OperationTypeManageSellOffer, m.MO)
 		o.TX.Operations = append(o.TX.Operations, m.O)
 	}
 	return m.Err
@@ -283,7 +283,7 @@ func (m MemoText) MutateTransaction(o *TransactionBuilder) (err error) {
 }
 
 func (m Timebounds) MutateTransaction(o *TransactionBuilder) error {
-	o.TX.TimeBounds = &xdr.TimeBounds{MinTime: xdr.Uint64(m.MinTime), MaxTime: xdr.Uint64(m.MaxTime)}
+	o.TX.TimeBounds = &xdr.TimeBounds{MinTime: xdr.TimePoint(m.MinTime), MaxTime: xdr.TimePoint(m.MaxTime)}
 	return nil
 }
 
