@@ -13,12 +13,12 @@ It is also intended to be the service that wallet SDK talks to.
 
 For simplicity we will have each application spin up their own keystore
 server, so there won’t be any routing logic in the keystore server that
-directs requests to the correct client server to autheticate. Since we
+directs requests to the correct client server to authenticate. Since we
 don’t anticipate a lot of requests to the keystore from each user, we
 should be able to tolerate having another round trip for relaying the
 auth token to the client server.
 
-Clients will have to configure the their server's address used for
+Clients will have to configure their server's address used for
 authentication when booting up the keystore.
 
 An auth token needs to be passed for all requests, and that's why there
@@ -94,8 +94,8 @@ TBD
 
 Load All Keys Request:
 
-This endpoint currently doesn't not take any parameters.
-We can potentially add some filter in the request.
+This endpoint currently doesn't take any parameters.
+We can potentially add some filters in the request.
 
 Load All Keys Response:
 
