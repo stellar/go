@@ -9,14 +9,24 @@ import (
 	"strings"
 )
 
+const fileLengthLimit = 100
+
 var findResultMetaXDR = regexp.MustCompile(`"result_meta_xdr": "(.*)",`)
 
-// Horizon 0.16.x vs 0.17.0:
-// var succ1 = regexp.MustCompile(`\s*"transaction_successful": true,`)
-// var succ2 = regexp.MustCompile(`\s*"successful": true,`)
-// var succ3 = regexp.MustCompile(`\s*"transaction_count": [0-9]+,`)
-// var succ4 = regexp.MustCompile(`\s*"last_modified_ledger": [0-9]+,`)
-// var succ5 = regexp.MustCompile(`\s*"public_key": "G.*",`)
+// removeRegexps contains a list of regular expressions that, when matched,
+// will be changed to an empty string. This is done to exclude known
+// differences in responses between two Horizon version.
+//
+// Let's say that next Horizon version adds a new bool field:
+// `is_authorized` on account balances list. You want to remove this
+// field so it's not reported for each `/accounts/{id}` response.
+var removeRegexps = []*regexp.Regexp{
+	regexp.MustCompile(`\s*"transaction_successful": true,`),
+	regexp.MustCompile(`\s*"successful": true,`),
+	regexp.MustCompile(`\s*"transaction_count": [0-9]+,`),
+	regexp.MustCompile(`\s*"last_modified_ledger": [0-9]+,`),
+	regexp.MustCompile(`\s*"public_key": "G.*",`),
+}
 
 type Response struct {
 	Domain string
@@ -57,11 +67,9 @@ func NewResponse(domain, path string) *Response {
 	// Remove Horizon URL from the _links
 	normalizedBody = strings.Replace(normalizedBody, domain, "", -1)
 
-	// normalizedBody = succ1.ReplaceAllString(normalizedBody, "")
-	// normalizedBody = succ2.ReplaceAllString(normalizedBody, "")
-	// normalizedBody = succ3.ReplaceAllString(normalizedBody, "")
-	// normalizedBody = succ4.ReplaceAllString(normalizedBody, "")
-	// normalizedBody = succ5.ReplaceAllString(normalizedBody, "")
+	for _, reg := range removeRegexps {
+		normalizedBody = reg.ReplaceAllString(normalizedBody, "")
+	}
 
 	response.NormalizedBody = normalizedBody
 	return response
@@ -78,8 +86,8 @@ func (r *Response) SaveDiff(outputDir string, other *Response) {
 
 	fileName := pathToFileName(r.Path)
 
-	if len(fileName) > 100 {
-		fileName = fileName[0:100]
+	if len(fileName) > fileLengthLimit {
+		fileName = fileName[0:fileLengthLimit]
 	}
 
 	fileA := fmt.Sprintf("%s/%s.old", outputDir, fileName)
@@ -96,10 +104,8 @@ func (r *Response) SaveDiff(outputDir string, other *Response) {
 		panic(err)
 	}
 
-	out, err := exec.Command("diff", fileA, fileB).Output()
-	if err != nil {
-		// Ignore, user will generate diff manually
-	}
+	// Ignore `err`, user will generate diff manually
+	out, _ := exec.Command("diff", fileA, fileB).Output()
 
 	if len(out) != 0 {
 		err = ioutil.WriteFile(fileDiff, out, 0744)

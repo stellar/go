@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -10,44 +9,9 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/stellar/go/exp/clients/horizon"
+	protocol "github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/xdr"
 )
-
-type Operation struct {
-	TransactionSuccessful bool `json:"transaction_successful"`
-}
-
-type OperationsPage struct {
-	Embedded struct {
-		Records []Operation
-	} `json:"_embedded"`
-}
-
-type Transaction struct {
-	Successful     bool   `json:"successful"`
-	TxResult       string `json:"result_xdr"`
-	OperationCount int    `json:"operation_count"`
-	Hash           string `json:"hash"`
-}
-
-type TransactionsPage struct {
-	Embedded struct {
-		Records []Transaction
-	} `json:"_embedded"`
-}
-
-type Ledger struct {
-	Sequence                   int    `json:"sequence"`
-	PagingToken                string `json:"paging_token"`
-	SuccessfulTransactionCount int    `json:"successful_transaction_count"`
-	FailedTransactionCount     int    `json:"failed_transaction_count"`
-}
-
-type LedgersPage struct {
-	Embedded struct {
-		Records []Ledger
-	} `json:"_embedded"`
-}
 
 var horizonURL string
 var startSequence uint32
@@ -109,9 +73,12 @@ var rootCmd = &cobra.Command{
 
 				ledgerCursor = ledger.PagingToken()
 
-				body := getBody(horizonURL + fmt.Sprintf("/ledgers/%d/transactions?limit=200&include_failed=true", ledger.Sequence))
-				transactionsPage := TransactionsPage{}
-				err = json.Unmarshal(body, &transactionsPage)
+				transactionsPage, err := client.Transactions(horizonclient.TransactionRequest{
+					ForLedger:     uint(ledger.Sequence),
+					Limit:         200,
+					IncludeFailed: true,
+				})
+
 				if err != nil {
 					panic(err)
 				}
@@ -129,34 +96,36 @@ var rootCmd = &cobra.Command{
 						failed++
 					}
 
-					go func(transaction Transaction) {
+					go func(transaction protocol.Transaction) {
 						defer wg.Done()
 
 						var resultXDR xdr.TransactionResult
-						err = xdr.SafeUnmarshalBase64(transaction.TxResult, &resultXDR)
+						err = xdr.SafeUnmarshalBase64(transaction.ResultXdr, &resultXDR)
 						if err != nil {
 							return
 						}
 
 						if transaction.Successful && resultXDR.Result.Code != xdr.TransactionResultCodeTxSuccess {
-							panic(fmt.Sprintf("Corrupted data! %s %s", transaction.Hash, transaction.TxResult))
+							panic(fmt.Sprintf("Corrupted data! %s %s", transaction.Hash, transaction.ResultXdr))
 							return
 						}
 
 						if !transaction.Successful && resultXDR.Result.Code == xdr.TransactionResultCodeTxSuccess {
-							panic(fmt.Sprintf("Corrupted data! %s %s", transaction.Hash, transaction.TxResult))
+							panic(fmt.Sprintf("Corrupted data! %s %s", transaction.Hash, transaction.ResultXdr))
 							return
 						}
 
-						body := getBody(horizonURL + fmt.Sprintf("/transactions/%s/operations?limit=200", transaction.Hash))
-						operationsPage := OperationsPage{}
-						err = json.Unmarshal(body, &operationsPage)
+						operationsPage, err := client.Operations(horizonclient.OperationRequest{
+							ForTransaction: transaction.Hash,
+							Limit:          200,
+						})
+
 						if err != nil {
 							panic(err)
 						}
 
-						if len(operationsPage.Embedded.Records) != transaction.OperationCount {
-							panic(fmt.Sprintf("Corrupted data! %s operations count %d vs %d (body=%s)", transaction.Hash, len(operationsPage.Embedded.Records), transaction.OperationCount, string(body)))
+						if len(operationsPage.Embedded.Records) != int(transaction.OperationCount) {
+							panic(fmt.Sprintf("Corrupted data! %s operations count %d vs %d", transaction.Hash, len(operationsPage.Embedded.Records), transaction.OperationCount))
 						}
 					}(transaction)
 				}

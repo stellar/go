@@ -1,72 +1,71 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"net/url"
 	"os"
 	"strings"
 	"time"
 
+	client "github.com/stellar/go/exp/clients/horizon"
 	protocol "github.com/stellar/go/protocols/horizon"
 	cmp "github.com/stellar/go/tools/horizon-cmp/internal"
 )
 
-const HorizonOld = "https://horizon.stellar.org"
-const HorizonNew = "http://localhost:8001"
+const horizonOld = "https://horizon.stellar.org"
+const horizonNew = "http://localhost:8000"
 
-const MaxLevels = 3
+// maxLevels defines the maximum number of levels deep the crawler
+// should go. Here's an example crawl stack:
+// Level 1 = /ledgers?order=desc (finds a link to tx details)
+// Level 2 = /transactions/abcdef (finds a link to a list of operations)
+// Level 3 = /transactions/abcdef/operations (will not follow any links - at level 3)
+const maxLevels = 3
 
-type PathWithLevel struct {
+type pathWithLevel struct {
 	Path  string
 	Level int
 }
 
-// Starting corpus of paths to test
-var paths []PathWithLevel = []PathWithLevel{
-	PathWithLevel{"/transactions?order=desc", 0},
-	PathWithLevel{"/transactions?order=desc&include_failed=false", 0},
-	PathWithLevel{"/transactions?order=desc&include_failed=true", 0},
+// Starting corpus of paths to test. You may want to extend this with a list of
+// paths that you want to ensure are tested.
+var paths []pathWithLevel = []pathWithLevel{
+	pathWithLevel{"/transactions?order=desc", 0},
+	pathWithLevel{"/transactions?order=desc&include_failed=false", 0},
+	pathWithLevel{"/transactions?order=desc&include_failed=true", 0},
 
-	PathWithLevel{"/operations?order=desc", 0},
-	PathWithLevel{"/operations?order=desc&include_failed=false", 0},
-	PathWithLevel{"/operations?order=desc&include_failed=true", 0},
+	pathWithLevel{"/operations?order=desc", 0},
+	pathWithLevel{"/operations?order=desc&include_failed=false", 0},
+	pathWithLevel{"/operations?order=desc&include_failed=true", 0},
 
-	PathWithLevel{"/payments?order=desc", 0},
-	PathWithLevel{"/payments?order=desc&include_failed=false", 0},
-	PathWithLevel{"/payments?order=desc&include_failed=true", 0},
+	pathWithLevel{"/payments?order=desc", 0},
+	pathWithLevel{"/payments?order=desc&include_failed=false", 0},
+	pathWithLevel{"/payments?order=desc&include_failed=true", 0},
 
-	PathWithLevel{"/ledgers?order=desc", 0},
-	PathWithLevel{"/effects?order=desc", 0},
-	PathWithLevel{"/trades?order=desc", 0},
+	pathWithLevel{"/ledgers?order=desc", 0},
+	pathWithLevel{"/effects?order=desc", 0},
+	pathWithLevel{"/trades?order=desc", 0},
 
-	PathWithLevel{"/ledgers/22923641", 0},
-	PathWithLevel{"/ledgers/22923641/transactions?limit=200", 0},
-	PathWithLevel{"/ledgers/22923641/operations?limit=200", 0},
-	PathWithLevel{"/ledgers/22923641/payments?limit=200", 0},
-	PathWithLevel{"/ledgers/22923641/effects?limit=200", 0},
+	pathWithLevel{"/accounts/GAKLCFRTFDXKOEEUSBS23FBSUUVJRMDQHGCHNGGGJZQRK7BCPIMHUC4P/transactions?limit=200", 0},
+	pathWithLevel{"/accounts/GAKLCFRTFDXKOEEUSBS23FBSUUVJRMDQHGCHNGGGJZQRK7BCPIMHUC4P/transactions?limit=200&include_failed=false", 0},
+	pathWithLevel{"/accounts/GAKLCFRTFDXKOEEUSBS23FBSUUVJRMDQHGCHNGGGJZQRK7BCPIMHUC4P/transactions?limit=200&include_failed=true", 0},
 
-	PathWithLevel{"/accounts/GAKLCFRTFDXKOEEUSBS23FBSUUVJRMDQHGCHNGGGJZQRK7BCPIMHUC4P/transactions?limit=200", 0},
-	PathWithLevel{"/accounts/GAKLCFRTFDXKOEEUSBS23FBSUUVJRMDQHGCHNGGGJZQRK7BCPIMHUC4P/transactions?limit=200&include_failed=false", 0},
-	PathWithLevel{"/accounts/GAKLCFRTFDXKOEEUSBS23FBSUUVJRMDQHGCHNGGGJZQRK7BCPIMHUC4P/transactions?limit=200&include_failed=true", 0},
+	pathWithLevel{"/accounts/GAKLCFRTFDXKOEEUSBS23FBSUUVJRMDQHGCHNGGGJZQRK7BCPIMHUC4P/operations?limit=200", 0},
+	pathWithLevel{"/accounts/GAKLCFRTFDXKOEEUSBS23FBSUUVJRMDQHGCHNGGGJZQRK7BCPIMHUC4P/payments?limit=200", 0},
+	pathWithLevel{"/accounts/GAKLCFRTFDXKOEEUSBS23FBSUUVJRMDQHGCHNGGGJZQRK7BCPIMHUC4P/effects?limit=200", 0},
 
-	PathWithLevel{"/accounts/GAKLCFRTFDXKOEEUSBS23FBSUUVJRMDQHGCHNGGGJZQRK7BCPIMHUC4P/operations?limit=200", 0},
-	PathWithLevel{"/accounts/GAKLCFRTFDXKOEEUSBS23FBSUUVJRMDQHGCHNGGGJZQRK7BCPIMHUC4P/payments?limit=200", 0},
-	PathWithLevel{"/accounts/GAKLCFRTFDXKOEEUSBS23FBSUUVJRMDQHGCHNGGGJZQRK7BCPIMHUC4P/effects?limit=200", 0},
-
-	PathWithLevel{"/accounts/GC2ZV6KGGFLQIMDVDWBWCP6LTODUDXYBLUPTUZCFHIMDCWHR43ULZITJ/trades?limit=200", 0},
-	PathWithLevel{"/accounts/GC2ZV6KGGFLQIMDVDWBWCP6LTODUDXYBLUPTUZCFHIMDCWHR43ULZITJ/offers?limit=200", 0},
+	pathWithLevel{"/accounts/GC2ZV6KGGFLQIMDVDWBWCP6LTODUDXYBLUPTUZCFHIMDCWHR43ULZITJ/trades?limit=200", 0},
+	pathWithLevel{"/accounts/GC2ZV6KGGFLQIMDVDWBWCP6LTODUDXYBLUPTUZCFHIMDCWHR43ULZITJ/offers?limit=200", 0},
 
 	// Pubnet markets
-	PathWithLevel{"/order_book?selling_asset_type=native&buying_asset_type=credit_alphanum4&buying_asset_code=LTC&buying_asset_issuer=GCSTRLTC73UVXIYPHYTTQUUSDTQU2KQW5VKCE4YCMEHWF44JKDMQAL23", 0},
-	PathWithLevel{"/order_book?selling_asset_type=native&buying_asset_type=credit_alphanum4&buying_asset_code=XRP&buying_asset_issuer=GCSTRLTC73UVXIYPHYTTQUUSDTQU2KQW5VKCE4YCMEHWF44JKDMQAL23", 0},
-	PathWithLevel{"/order_book?selling_asset_type=native&buying_asset_type=credit_alphanum4&buying_asset_code=BTC&buying_asset_issuer=GCSTRLTC73UVXIYPHYTTQUUSDTQU2KQW5VKCE4YCMEHWF44JKDMQAL23", 0},
-	PathWithLevel{"/order_book?selling_asset_type=native&buying_asset_type=credit_alphanum4&buying_asset_code=USD&buying_asset_issuer=GBSTRUSD7IRX73RQZBL3RQUH6KS3O4NYFY3QCALDLZD77XMZOPWAVTUK", 0},
-	PathWithLevel{"/order_book?selling_asset_type=native&buying_asset_type=credit_alphanum4&buying_asset_code=SLT&buying_asset_issuer=GCKA6K5PCQ6PNF5RQBF7PQDJWRHO6UOGFMRLK3DYHDOI244V47XKQ4GP", 0},
+	pathWithLevel{"/order_book?selling_asset_type=native&buying_asset_type=credit_alphanum4&buying_asset_code=LTC&buying_asset_issuer=GCSTRLTC73UVXIYPHYTTQUUSDTQU2KQW5VKCE4YCMEHWF44JKDMQAL23", 0},
+	pathWithLevel{"/order_book?selling_asset_type=native&buying_asset_type=credit_alphanum4&buying_asset_code=XRP&buying_asset_issuer=GCSTRLTC73UVXIYPHYTTQUUSDTQU2KQW5VKCE4YCMEHWF44JKDMQAL23", 0},
+	pathWithLevel{"/order_book?selling_asset_type=native&buying_asset_type=credit_alphanum4&buying_asset_code=BTC&buying_asset_issuer=GCSTRLTC73UVXIYPHYTTQUUSDTQU2KQW5VKCE4YCMEHWF44JKDMQAL23", 0},
+	pathWithLevel{"/order_book?selling_asset_type=native&buying_asset_type=credit_alphanum4&buying_asset_code=USD&buying_asset_issuer=GBSTRUSD7IRX73RQZBL3RQUH6KS3O4NYFY3QCALDLZD77XMZOPWAVTUK", 0},
+	pathWithLevel{"/order_book?selling_asset_type=native&buying_asset_type=credit_alphanum4&buying_asset_code=SLT&buying_asset_issuer=GCKA6K5PCQ6PNF5RQBF7PQDJWRHO6UOGFMRLK3DYHDOI244V47XKQ4GP", 0},
 
-	PathWithLevel{"/trade_aggregations?base_asset_type=native&counter_asset_code=USD&counter_asset_issuer=GBSTRUSD7IRX73RQZBL3RQUH6KS3O4NYFY3QCALDLZD77XMZOPWAVTUK&counter_asset_type=credit_alphanum4&end_time=1551866400000&limit=200&order=desc&resolution=900000&start_time=1514764800", 0},
+	pathWithLevel{"/trade_aggregations?base_asset_type=native&counter_asset_code=USD&counter_asset_issuer=GBSTRUSD7IRX73RQZBL3RQUH6KS3O4NYFY3QCALDLZD77XMZOPWAVTUK&counter_asset_type=credit_alphanum4&end_time=1551866400000&limit=200&order=desc&resolution=900000&start_time=1514764800", 0},
 }
 
 var visitedPaths map[string]bool
@@ -90,7 +89,7 @@ func main() {
 	outputDir := fmt.Sprintf("%s/horizon-cmp-diff/%d", pwd, time.Now().Unix())
 
 	fmt.Println("Comparing:")
-	fmt.Printf("%s vs %s\n", HorizonOld, HorizonNew)
+	fmt.Printf("%s vs %s\n", horizonOld, horizonNew)
 	fmt.Printf("[ledger=%d cursor=%s outputDir=%s]\n\n", ledger.Sequence, cursor, outputDir)
 
 	err = os.MkdirAll(outputDir, 0744)
@@ -103,13 +102,13 @@ func main() {
 			return
 		}
 
-		var pl PathWithLevel
+		var pl pathWithLevel
 		pl, paths = paths[0], paths[1:]
 
 		p := pl.Path
 		level := pl.Level
 
-		if level > MaxLevels {
+		if level > maxLevels {
 			continue
 		}
 
@@ -123,9 +122,9 @@ func main() {
 
 		p = getPathWithCursor(p, cursor)
 
-		a := cmp.NewResponse(HorizonOld, p)
+		a := cmp.NewResponse(horizonOld, p)
 		fmt.Print(".")
-		b := cmp.NewResponse(HorizonNew, p)
+		b := cmp.NewResponse(horizonNew, p)
 		fmt.Print(".")
 
 		status := ""
@@ -155,43 +154,32 @@ func main() {
 					prefix = "&"
 				}
 
-				paths = append(paths, PathWithLevel{newPath + prefix + "include_failed=false", level + 1})
-				paths = append(paths, PathWithLevel{newPath + prefix + "include_failed=true", level + 1})
+				paths = append(paths, pathWithLevel{newPath + prefix + "include_failed=false", level + 1})
+				paths = append(paths, pathWithLevel{newPath + prefix + "include_failed=true", level + 1})
 				continue
 			}
 
-			paths = append(paths, PathWithLevel{newPath, level + 1})
+			paths = append(paths, pathWithLevel{newPath, level + 1})
 		}
 	}
 }
 
 func getLatestLedger() protocol.Ledger {
-	ledgersResponse := struct {
-		Embedded struct {
-			Records []protocol.Ledger `json:"records"`
-		} `json:"_embedded"`
-	}{}
+	horizon := client.Client{
+		HorizonURL: horizonOld,
+		HTTP:       http.DefaultClient,
+	}
 
-	resp, err := http.Get(HorizonOld + "/ledgers?order=desc&limit=1")
+	ledgers, err := horizon.Ledgers(client.LedgerRequest{
+		Order: client.OrderDesc,
+		Limit: 1,
+	})
+
 	if err != nil {
 		panic(err)
 	}
 
-	if resp.StatusCode != http.StatusOK {
-		panic(resp.StatusCode)
-	}
-
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		panic(err)
-	}
-
-	err = json.Unmarshal(body, &ledgersResponse)
-	if err != nil {
-		panic(err)
-	}
-
-	return ledgersResponse.Embedded.Records[0]
+	return ledgers.Embedded.Records[0]
 }
 
 func getPathWithCursor(path, cursor string) string {
