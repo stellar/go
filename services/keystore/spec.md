@@ -172,3 +172,7 @@ TBD
 ```
 </details>
 
+### Required Changes in Client Server
+
+Applications using the keytore will have to implement an endpoint
+that takes an auth token and returns a userid.
