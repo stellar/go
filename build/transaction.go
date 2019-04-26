@@ -32,6 +32,7 @@ type TransactionMutator interface {
 }
 
 // TransactionBuilder represents a Transaction that is being constructed.
+// Deprecated use txnbuild.Transaction instead
 type TransactionBuilder struct {
 	TX                *xdr.Transaction
 	NetworkPassphrase string
