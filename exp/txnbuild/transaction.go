@@ -25,11 +25,11 @@ type Account interface {
 type Transaction struct {
 	SourceAccount  Account
 	Operations     []Operation
-	xdrTransaction xdr.Transaction
 	BaseFee        uint32
 	Memo           Memo
 	Timebounds     Timebounds
 	Network        string
+	xdrTransaction xdr.Transaction
 	xdrEnvelope    *xdr.TransactionEnvelope
 }
 

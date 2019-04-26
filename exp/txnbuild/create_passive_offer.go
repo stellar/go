@@ -13,7 +13,7 @@ type CreatePassiveSellOffer struct {
 	Selling Asset
 	Buying  Asset
 	Amount  string
-	Price   string // TODO: Extend to include number, and n/d fraction. See package 'amount'
+	Price   string
 }
 
 // BuildXDR for CreatePassiveSellOffer returns a fully configured XDR Operation.
