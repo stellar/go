@@ -4,8 +4,9 @@
 // Create an instance of `Client` to customize the server used, or alternatively
 // use `DefaultTestNetClient` or `DefaultPublicNetClient` to access the SDF run
 // horizon servers.
-// Deprecated: clients/horizon package with all its exported methods and variables will no longer
-// maintained. It will be removed in future versions of the SDK. Use clients/horizonclient instead.
+// Deprecated: clients/horizon package with all its exported methods and variables will no longer be
+// maintained. It will be removed in future versions of the SDK.
+// Use clients/horizonclient (https://godoc.org/github.com/stellar/go/clients/horizonclient) instead.
 package horizon
 
 import (
