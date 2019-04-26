@@ -14,6 +14,8 @@ import (
 type Minion struct {
 	// XXX: Change to Account
 	Secret string
+
+	Keypair *keypair.Full
 	// XXX: Rename field
 	txInputChan chan TxInput
 
@@ -161,6 +163,8 @@ func (minion *Minion) makeTx(input TxInput) error {
 		Operations:    []b.Operation{&createAccountOp, &paymentOp},
 		Network:       input.network,
 	}
+	// XXX: Enable multiple signers.
+	txe, err := txn.BuildSignEncode(minion.Keypair)
 }
 
 func (minion *Minion) makeTxOld(input TxInput) (string, error) {
