@@ -61,6 +61,7 @@ func initIngester(app *App) {
 		ingest.Config{
 			EnableAssetStats:         app.config.EnableAssetStats,
 			IngestFailedTransactions: app.config.IngestFailedTransactions,
+			CursorName:               app.config.CursorName,
 		},
 	)
 
