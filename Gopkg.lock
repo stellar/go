@@ -454,6 +454,14 @@
   revision = "efea85cb9a06f1d4f661649f6beb5fd04597a366"
 
 [[projects]]
+  digest = "1:5d231480e1c64a726869bc4142d270184c419749d34f167646baa21008eb0a79"
+  name = "github.com/mitchellh/go-homedir"
+  packages = ["."]
+  pruneopts = "T"
+  revision = "af06845cf3004701891bf4fdb884bfe4920b3727"
+  version = "v1.1.0"
+
+[[projects]]
   digest = "1:922a47edb4c9b30c8d1e55ececa4fc35c791cccfac6b810c5155fc3a65751597"
   name = "github.com/mitchellh/mapstructure"
   packages = ["."]
@@ -931,6 +939,7 @@
     "github.com/lib/pq",
     "github.com/manucorporat/sse",
     "github.com/mattn/go-sqlite3",
+    "github.com/mitchellh/go-homedir",
     "github.com/onsi/ginkgo",
     "github.com/onsi/ginkgo/extensions/table",
     "github.com/onsi/gomega",
