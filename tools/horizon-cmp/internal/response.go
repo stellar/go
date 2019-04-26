@@ -21,11 +21,12 @@ var findResultMetaXDR = regexp.MustCompile(`"result_meta_xdr": "(.*)",`)
 // `is_authorized` on account balances list. You want to remove this
 // field so it's not reported for each `/accounts/{id}` response.
 var removeRegexps = []*regexp.Regexp{
-	regexp.MustCompile(`\s*"transaction_successful": true,`),
-	regexp.MustCompile(`\s*"successful": true,`),
-	regexp.MustCompile(`\s*"transaction_count": [0-9]+,`),
-	regexp.MustCompile(`\s*"last_modified_ledger": [0-9]+,`),
-	regexp.MustCompile(`\s*"public_key": "G.*",`),
+	// regexp.MustCompile(`\s*"is_authorized": true,`),
+	// regexp.MustCompile(`\s*"is_authorized": false,`),
+	// regexp.MustCompile(`\s*"successful": true,`),
+	// regexp.MustCompile(`\s*"transaction_count": [0-9]+,`),
+	// regexp.MustCompile(`\s*"last_modified_ledger": [0-9]+,`),
+	// regexp.MustCompile(`\s*"public_key": "G.*",`),
 }
 
 type Response struct {

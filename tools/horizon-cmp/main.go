@@ -13,7 +13,7 @@ import (
 	cmp "github.com/stellar/go/tools/horizon-cmp/internal"
 )
 
-const horizonOld = "https://horizon.stellar.org"
+const horizonOld = "http://localhost:8001"
 const horizonNew = "http://localhost:8000"
 
 // maxLevels defines the maximum number of levels deep the crawler
@@ -79,7 +79,7 @@ func main() {
 	ledger := getLatestLedger()
 	cursor := ledger.PagingToken()
 
-	// Sleep for a few sec to make sure second Horizon is up to speed
+	// Sleep for a few seconds to make sure the second Horizon is up to speed
 	time.Sleep(2 * time.Second)
 
 	pwd, err := os.Getwd()

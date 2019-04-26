@@ -19,7 +19,7 @@ var count uint
 
 func init() {
 	rootCmd.PersistentFlags().StringVarP(&horizonURL, "url", "u", "", "Horizon server URL")
-	rootCmd.PersistentFlags().Uint32VarP(&startSequence, "start", "s", 0, "Sequence number of a start ledger (follows descending order, defaults to the latest ledger)")
+	rootCmd.PersistentFlags().Uint32VarP(&startSequence, "start", "s", 0, "Sequence number of the ledger to start with (follows descending order, defaults to the latest ledger)")
 	rootCmd.PersistentFlags().UintVarP(&count, "count", "c", 10000, "Number of ledgers to check")
 }
 
@@ -83,9 +83,10 @@ var rootCmd = &cobra.Command{
 					panic(err)
 				}
 
-				var wg sync.WaitGroup
-
-				var successful, failed int32
+				var (
+					wg                 sync.WaitGroup
+					successful, failed int32
+				)
 
 				for _, transaction := range transactionsPage.Embedded.Records {
 					wg.Add(1)
@@ -102,17 +103,12 @@ var rootCmd = &cobra.Command{
 						var resultXDR xdr.TransactionResult
 						err = xdr.SafeUnmarshalBase64(transaction.ResultXdr, &resultXDR)
 						if err != nil {
-							return
+							panic(err)
 						}
 
-						if transaction.Successful && resultXDR.Result.Code != xdr.TransactionResultCodeTxSuccess {
+						if (transaction.Successful && resultXDR.Result.Code != xdr.TransactionResultCodeTxSuccess) ||
+							(!transaction.Successful && resultXDR.Result.Code == xdr.TransactionResultCodeTxSuccess) {
 							panic(fmt.Sprintf("Corrupted data! %s %s", transaction.Hash, transaction.ResultXdr))
-							return
-						}
-
-						if !transaction.Successful && resultXDR.Result.Code == xdr.TransactionResultCodeTxSuccess {
-							panic(fmt.Sprintf("Corrupted data! %s %s", transaction.Hash, transaction.ResultXdr))
-							return
 						}
 
 						operationsPage, err := client.Operations(horizonclient.OperationRequest{
