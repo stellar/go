@@ -152,17 +152,17 @@ func (tx *Transaction) Sign(kp *keypair.Full) error {
 func (tx *Transaction) BuildSignEncode(keypair *keypair.Full) (string, error) {
 	err := tx.Build()
 	if err != nil {
-		return "", errors.Wrap(err, "Couldn't build transaction")
+		return "", errors.Wrap(err, "couldn't build transaction")
 	}
 
 	err = tx.Sign(keypair)
 	if err != nil {
-		return "", errors.Wrap(err, "Couldn't sign transaction")
+		return "", errors.Wrap(err, "couldn't sign transaction")
 	}
 
 	txeBase64, err := tx.Base64()
 	if err != nil {
-		return "", errors.Wrap(err, "Couldn't encode transaction")
+		return "", errors.Wrap(err, "couldn't encode transaction")
 	}
 
 	return txeBase64, err

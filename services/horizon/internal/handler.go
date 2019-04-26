@@ -226,12 +226,12 @@ func (we *web) transactionHandler(jfn jsonResponderFunc, sfn streamFunc) http.Ha
 func getTransactionQueryParams(r *http.Request, ingestFailedTransactions bool) (*actions.TransactionParams, error) {
 	addr, err := getAccountID(r, "account_id", false)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "getting account address")
 	}
 
 	lid, err := getInt32ParamFromURL(r, "ledger_id")
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "getting ledger id")
 	}
 
 	// account_id and ledger_id are mutually excludesive.
@@ -241,12 +241,12 @@ func getTransactionQueryParams(r *http.Request, ingestFailedTransactions bool) (
 
 	pq, err := getPageQuery(r, false)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "getting page query")
 	}
 
 	includeFailedTx, err := getBoolParamFromURL(r, "include_failed")
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "getting include_failed param")
 	}
 	if includeFailedTx == true && !ingestFailedTransactions {
 		return nil, problem.MakeInvalidFieldProblem("include_failed",

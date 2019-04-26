@@ -5,7 +5,7 @@ import (
 
 	"github.com/stellar/go/exp/ticker/internal/utils"
 
-	horizonclient "github.com/stellar/go/exp/clients/horizon"
+	horizonclient "github.com/stellar/go/clients/horizonclient"
 	hProtocol "github.com/stellar/go/protocols/horizon"
 )
 
