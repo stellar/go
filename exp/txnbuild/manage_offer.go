@@ -52,7 +52,7 @@ type ManageSellOffer struct {
 	Selling Asset
 	Buying  Asset
 	Amount  string
-	Price   string // TODO: Extend to include number, and n/d fraction. See package 'amount'
+	Price   string
 	OfferID int64
 }
 
