@@ -1,16 +1,15 @@
 # horizonclient
 
-To do: update links when package is moved out of `exp`
 
 `horizonclient` is a [Stellar Go SDK](https://www.stellar.org/developers/reference/) package that provides client access to a horizon server. It supports all endpoints exposed by the [horizon API](https://www.stellar.org/developers/horizon/reference/index.html).
 
 This project is maintained by the Stellar Development Foundation.
 
 ## Getting Started
-This library is aimed at developers building Go applications that interact with the [Stellar network](https://www.stellar.org/). It allows users to query the network and submit transactions to the network. The recommended transaction builder for Go programmers is [txnbuild](https://github.com/stellar/go/tree/master/exp/txnbuild). Together, these two libraries provide a complete Stellar SDK.
+This library is aimed at developers building Go applications that interact with the [Stellar network](https://www.stellar.org/). It allows users to query the network and submit transactions to the network. The recommended transaction builder for Go programmers is [txnbuild](https://github.com/stellar/go/tree/master/txnbuild). Together, these two libraries provide a complete Stellar SDK.
 
-* The [txnbuild API reference](https://godoc.org/github.com/stellar/go/exp/txnbuild).
-* The [horizonclient API reference](https://godoc.org/github.com/stellar/go/exp/clients/horizon).
+* The [horizonclient API reference](https://godoc.org/github.com/stellar/go/clients/horizonclient).
+* The [txnbuild API reference](https://godoc.org/github.com/stellar/go/txnbuild).
 
 ### Prerequisites
 * Go 1.10 or greater
@@ -24,7 +23,7 @@ This library is aimed at developers building Go applications that interact with 
 
 ``` golang
     ...
-    import hClient "github.com/stellar/go/exp/clients/horizon"
+    import hClient "github.com/stellar/go/clients/horizonclient"
     ...
 
     // use the default pubnet client
@@ -42,7 +41,7 @@ This library is aimed at developers building Go applications that interact with 
     fmt.Print(account)
 
 ```
-For more examples, refer to the [documentation](https://godoc.org/github.com/stellar/go/exp/clients/horizon)
+For more examples, refer to the [documentation](https://godoc.org/github.com/stellar/go/clients/horizonclient).
 
 ## Running the tests
 Run the unit tests from the package directory: `go test`
