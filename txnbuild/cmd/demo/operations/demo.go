@@ -10,11 +10,11 @@ import (
 	log "github.com/sirupsen/logrus"
 
 	"github.com/stellar/go/clients/horizonclient"
-	"github.com/stellar/go/exp/txnbuild"
 	"github.com/stellar/go/network"
 	hProtocol "github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/strkey"
 	"github.com/stellar/go/support/errors"
+	"github.com/stellar/go/txnbuild"
 	"github.com/stellar/go/xdr"
 
 	"github.com/stellar/go/keypair"

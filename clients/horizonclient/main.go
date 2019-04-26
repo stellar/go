@@ -8,10 +8,10 @@ import (
 	"net/url"
 	"time"
 
-	"github.com/stellar/go/exp/txnbuild"
 	hProtocol "github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/protocols/horizon/operations"
 	"github.com/stellar/go/support/render/problem"
+	"github.com/stellar/go/txnbuild"
 )
 
 // cursor represents `cursor` param in queries
