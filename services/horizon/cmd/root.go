@@ -92,7 +92,6 @@ var configOpts = []*support.ConfigOption{
 	},
 	&support.ConfigOption{
 		Name:        "horizon-db-max-open-connections",
-		EnvVar:      "HORIZON_DB_MAX_OPEN_CONNECTIONS",
 		ConfigKey:   &config.HorizonDBMaxOpenConnections,
 		OptType:     types.Int,
 		FlagDefault: 20,
@@ -100,15 +99,13 @@ var configOpts = []*support.ConfigOption{
 	},
 	&support.ConfigOption{
 		Name:        "horizon-db-max-idle-connections",
-		EnvVar:      "HORIZON_DB_MAX_IDLE_CONNECTIONS",
 		ConfigKey:   &config.HorizonDBMaxIdleConnections,
 		OptType:     types.Int,
 		FlagDefault: 4,
-		Usage:       "max horizon database idle connections. may need to be decreased when responses are slow and DB CPU is normal, because it may indicate that a lot of time is spent closing/opening idle connections. This can happen in case of high variance in number of requests. must be equal or lower than max open connections",
+		Usage:       "max horizon database idle connections. may need to be set to the same value as horizon-db-max-open-connections when responses are slow and DB CPU is normal, because it may indicate that a lot of time is spent closing/opening idle connections. This can happen in case of high variance in number of requests. must be equal or lower than max open connections",
 	},
 	&support.ConfigOption{
 		Name:        "core-db-max-open-connections",
-		EnvVar:      "CORE_DB_MAX_OPEN_CONNECTIONS",
 		ConfigKey:   &config.CoreDBMaxOpenConnections,
 		OptType:     types.Int,
 		FlagDefault: 20,
@@ -116,11 +113,10 @@ var configOpts = []*support.ConfigOption{
 	},
 	&support.ConfigOption{
 		Name:        "core-db-max-idle-connections",
-		EnvVar:      "CORE_DB_MAX_IDLE_CONNECTIONS",
 		ConfigKey:   &config.CoreDBMaxIdleConnections,
 		OptType:     types.Int,
 		FlagDefault: 4,
-		Usage:       "max core database idle connections. may need to be decreased when responses are slow and DB CPU is normal, because it may indicate that a lot of time is spent closing/opening idle connections. This can happen in case of high variance in number of requests. must be equal or lower than max open connections",
+		Usage:       "max core database idle connections. may need to be set to the same value as core-db-max-open-connections when responses are slow and DB CPU is normal, because it may indicate that a lot of time is spent closing/opening idle connections. This can happen in case of high variance in number of requests. must be equal or lower than max open connections",
 	},
 	&support.ConfigOption{
 		Name:           "sse-update-frequency",
