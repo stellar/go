@@ -10,22 +10,22 @@ This project is maintained by the Stellar Development Foundation.
 	import "github.com/stellar/go/network"
 	import "github.com/stellar/go/txnbuild"
 
-  // Make a keypair for a known account from a secret seed
+	// Make a keypair for a known account from a secret seed
 	kp, _ := keypair.Parse("SBPQUZ6G4FZNWFHKUWC5BEYWF6R52E3SEP7R3GWYSM2XTKGF5LNTWW4R")
 
-  // Get the current state of the account from the network
+	// Get the current state of the account from the network
 	client := horizonclient.DefaultTestNetClient
 	ar := horizonclient.AccountRequest{AccountID: kp.Address()}
 	sourceAccount, err := client.AccountDetail(ar)
 	check(err)
 
-  // Build an operation to create and fund a new account
+	// Build an operation to create and fund a new account
 	op := txnbuild.CreateAccount{
 		Destination: "GCCOBXW2XQNUSL467IEILE6MMCNRR66SSVL4YQADUNYYNUVREF3FIV2Z",
 		Amount:      "10",
 	}
 
-  // Construct the transaction that holds the operations to execute on the network
+	// Construct the transaction that holds the operations to execute on the network
 	tx := txnbuild.Transaction{
 		SourceAccount: &sourceAccount,
 		Operations:    []txnbuild.Operation{&op},
@@ -33,11 +33,11 @@ This project is maintained by the Stellar Development Foundation.
 		Network:       network.TestNetworkPassphrase,
 	}
 
-  // Serialise, sign and encode the transaction
+	// Serialise, sign and encode the transaction
 	txe, err := tx.BuildSignEncode(kp.(*keypair.Full))
 	check(err)
 
-  // Send the transaction to the network
+	// Send the transaction to the network
 	resp, err := client.SubmitTransactionXDR(txeBase64)
 	check(err)
 ```
