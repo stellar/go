@@ -6,6 +6,8 @@ top of the Stellar network (https://www.stellar.org/). Transactions constructed 
 to any Horizon instance for processing onto the ledger, using any Stellar SDK client. The recommended client for Go
 programmers is horizonclient (https://github.com/stellar/go/tree/master/clients/horizonclient). Together, these two
 libraries provide a complete Stellar SDK.
+
+For more information and further examples, see https://www.stellar.org/developers/go/reference/index.html.
 */
 package txnbuild
 
