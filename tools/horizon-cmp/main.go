@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	client "github.com/stellar/go/exp/clients/horizon"
+	client "github.com/stellar/go/clients/horizonclient"
 	protocol "github.com/stellar/go/protocols/horizon"
 	cmp "github.com/stellar/go/tools/horizon-cmp/internal"
 )

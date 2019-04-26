@@ -8,7 +8,7 @@ import (
 	"sync"
 
 	"github.com/spf13/cobra"
-	"github.com/stellar/go/exp/clients/horizon"
+	"github.com/stellar/go/clients/horizonclient"
 	protocol "github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/xdr"
 )
