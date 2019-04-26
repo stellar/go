@@ -5,13 +5,14 @@ import (
 
 	"github.com/stellar/go/clients/horizon"
 	"github.com/stellar/go/clients/horizonclient"
-	b "github.com/stellar/go/exp/txnbuild"
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/support/errors"
+	b "github.com/stellar/go/txnbuild"
 )
 
 // Minion contains a Stellar channel account and Go channels to communicate with friendbot.
 type Minion struct {
+	// XXX: Change to Account
 	Secret string
 	// XXX: Rename field
 	txInputChan chan TxInput
@@ -143,7 +144,26 @@ func (minion *Minion) checkSequenceRefresh(hclient *horizonclient.Client) error 
 	return minion.refreshSequence(hclient)
 }
 
-func (minion *Minion) makeTx(input TxInput) (string, error) {
+func (minion *Minion) makeTx(input TxInput) error {
+
+	createAccountOp := b.CreateAccount{
+		Destination: input.destAddress,
+		Amount:      "0.00", // XXX: Should this be input.startingBalance?
+	}
+	// XXX: Source acct for payment should be friendbot, not Stellar channel account.
+	paymentOp := b.Payment{
+		Destination: input.destAddress,
+		Amount:      input.startingBalance,
+		Asset:       b.NativeAsset{},
+	}
+	txn := b.Transaction{
+		SourceAccount: minion.SourceAccount,
+		Operations:    []b.Operation{&createAccountOp, &paymentOp},
+		Network:       input.network,
+	}
+}
+
+func (minion *Minion) makeTxOld(input TxInput) (string, error) {
 	txnOld, err := b.Transaction(
 		b.SourceAccount{AddressOrSeed: minion.Secret},
 		b.Sequence{Sequence: minion.sequence + 1},
