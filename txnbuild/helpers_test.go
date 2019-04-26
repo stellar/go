@@ -27,12 +27,12 @@ func newKeypair(seed string) *keypair.Full {
 	return myKeypair.(*keypair.Full)
 }
 
-func buildSignEncode(tx Transaction, kp *keypair.Full, t *testing.T) (txeBase64 string) {
+func buildSignEncode(t *testing.T, tx Transaction, kps ...*keypair.Full) (txeBase64 string) {
 	var err error
 	err = tx.Build()
 	assert.NoError(t, err)
 
-	err = tx.Sign(kp)
+	err = tx.Sign(kps...)
 	assert.NoError(t, err)
 
 	txeBase64, err = tx.Base64()
