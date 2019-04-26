@@ -5,7 +5,8 @@
 // object (ex. PaymentBuilder, TransactionBuilder) contain an underlying xdr
 // struct that is being iteratively built by having zero or more Mutator structs
 // applied to it. See ExampleTransactionBuilder in main_test.go for an example.
-//
+// Deprecated: build package with all its exported methods and variables will no longer
+// maintained. It will be removed in future versions of the SDK. Use txnbuild instead.
 package build
 
 import (
