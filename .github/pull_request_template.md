@@ -9,6 +9,7 @@ If you're making a doc PR or something tiny where the below is irrelevant, just 
 ### Release planning
 
 * [ ] I've updated the relevant CHANGELOG ([here](services/horizon/CHANGELOG.md) for Horizon) if needed with deprecations, added features, breaking changes, and DB schema changes
+* [ ] I've updated any docs ([developer docs](https://www.stellar.org/developers/reference/), `.md` files, etc...) affected by this change
 * [ ] I've decided if this PR requires a new major/minor version according to [semver](https://semver.org/), or if it's monly a patch change. The PR is targeted at the next release branch if it's not a patch change.
 
 
