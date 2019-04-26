@@ -3,9 +3,9 @@ package txnbuild
 import (
 	"fmt"
 
-	horizonclient "github.com/stellar/go/exp/txnbuild/examplehorizonclient"
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/network"
+	horizonclient "github.com/stellar/go/txnbuild/examplehorizonclient"
 )
 
 func ExampleInflation() {

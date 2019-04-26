@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/stellar/go/exp/txnbuild"
+	"github.com/stellar/go/txnbuild"
 
 	hProtocol "github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/protocols/horizon/operations"
