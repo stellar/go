@@ -12,7 +12,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/stellar/go/exp/txnbuild"
+	"github.com/stellar/go/txnbuild"
 
 	"github.com/manucorporat/sse"
 	hProtocol "github.com/stellar/go/protocols/horizon"

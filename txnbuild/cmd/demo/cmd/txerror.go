@@ -7,7 +7,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/stellar/go/clients/horizonclient"
-	demo "github.com/stellar/go/exp/txnbuild/cmd/demo/operations"
+	demo "github.com/stellar/go/txnbuild/cmd/demo/operations"
 )
 
 // txerrorCmd represents the txerror command
