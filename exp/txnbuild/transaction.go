@@ -1,6 +1,11 @@
 /*
 Package txnbuild implements transactions and operations on the Stellar network.
-TODO: More explanation + links here
+
+This library provides an interface to the Stellar transaction model. It supports the building of Go applications on
+top of the Stellar network (https://www.stellar.org/). Transactions constructed by this library may be submitted
+to any Horizon instance for processing onto the ledger, using any Stellar SDK client. The recommended client for Go
+programmers is horizonclient (https://github.com/stellar/go/tree/master/clients/horizonclient). Together, these two
+libraries provide a complete Stellar SDK.
 */
 package txnbuild
 
@@ -15,21 +20,23 @@ import (
 	"github.com/stellar/go/xdr"
 )
 
-// Account represents the aspects of a Stellar account necessary to construct transactions.
+// Account represents the aspects of a Stellar account necessary to construct transactions. See
+// https://www.stellar.org/developers/guides/concepts/accounts.html
 type Account interface {
 	GetAccountID() string
 	IncrementSequenceNumber() (xdr.SequenceNumber, error)
 }
 
-// Transaction represents a Stellar Transaction.
+// Transaction represents a Stellar transaction. See
+// https://www.stellar.org/developers/guides/concepts/transactions.html
 type Transaction struct {
 	SourceAccount  Account
 	Operations     []Operation
-	xdrTransaction xdr.Transaction
 	BaseFee        uint32
 	Memo           Memo
 	Timebounds     Timebounds
 	Network        string
+	xdrTransaction xdr.Transaction
 	xdrEnvelope    *xdr.TransactionEnvelope
 }
 

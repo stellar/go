@@ -3,16 +3,16 @@ package txnbuild
 import (
 	"testing"
 
-	"github.com/stellar/go/clients/horizon"
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/network"
+	hProtocol "github.com/stellar/go/protocols/horizon"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-func makeTestAccount(kp *keypair.Full, seqnum string) horizon.Account {
-	return horizon.Account{
-		HistoryAccount: horizon.HistoryAccount{
+func makeTestAccount(kp *keypair.Full, seqnum string) hProtocol.Account {
+	return hProtocol.Account{
+		HistoryAccount: hProtocol.HistoryAccount{
 			AccountID: kp.Address(),
 		},
 		Sequence: seqnum,
@@ -455,7 +455,7 @@ func TestAllowTrust(t *testing.T) {
 	assert.Equal(t, expected, received, "Base 64 XDR should match")
 }
 
-func TestManageOfferNewOffer(t *testing.T) {
+func TestManageSellOfferNewOffer(t *testing.T) {
 	kp0 := newKeypair0()
 	kp1 := newKeypair1()
 	sourceAccount := makeTestAccount(kp1, "41137196761092")
@@ -478,7 +478,7 @@ func TestManageOfferNewOffer(t *testing.T) {
 	assert.Equal(t, expected, received, "Base 64 XDR should match")
 }
 
-func TestManageOfferDeleteOffer(t *testing.T) {
+func TestManageSellOfferDeleteOffer(t *testing.T) {
 	kp1 := newKeypair1()
 	sourceAccount := makeTestAccount(kp1, "41137196761105")
 
@@ -497,7 +497,7 @@ func TestManageOfferDeleteOffer(t *testing.T) {
 	assert.Equal(t, expected, received, "Base 64 XDR should match")
 }
 
-func TestManageOfferUpdateOffer(t *testing.T) {
+func TestManageSellOfferUpdateOffer(t *testing.T) {
 	kp0 := newKeypair0()
 	kp1 := newKeypair1()
 	sourceAccount := makeTestAccount(kp1, "41137196761097")
@@ -521,7 +521,7 @@ func TestManageOfferUpdateOffer(t *testing.T) {
 	assert.Equal(t, expected, received, "Base 64 XDR should match")
 }
 
-func TestCreatePassiveOffer(t *testing.T) {
+func TestCreatePassiveSellOffer(t *testing.T) {
 	kp0 := newKeypair0()
 	kp1 := newKeypair1()
 	sourceAccount := makeTestAccount(kp1, "41137196761100")
@@ -530,7 +530,8 @@ func TestCreatePassiveOffer(t *testing.T) {
 		Selling: NativeAsset{},
 		Buying:  CreditAsset{"ABCD", kp0.Address()},
 		Amount:  "10",
-		Price:   "1.0"}
+		Price:   "1.0",
+	}
 
 	tx := Transaction{
 		SourceAccount: &sourceAccount,
