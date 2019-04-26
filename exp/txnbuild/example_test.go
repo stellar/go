@@ -8,7 +8,7 @@ import (
 	"github.com/stellar/go/network"
 )
 
-func ExampleInflation_BuildXDR() {
+func ExampleInflation() {
 	kp, _ := keypair.Parse("SBPQUZ6G4FZNWFHKUWC5BEYWF6R52E3SEP7R3GWYSM2XTKGF5LNTWW4R")
 	client := horizonclient.DefaultTestNetClient
 	ar := horizonclient.AccountRequest{AccountID: kp.Address()}
@@ -20,7 +20,7 @@ func ExampleInflation_BuildXDR() {
 	tx := Transaction{
 		SourceAccount: &sourceAccount,
 		Operations:    []Operation{&inflation},
-		Timebounds:    client.FetchTimebounds(300),
+		Timebounds:    NewInfiniteTimeout(), // Use a real timeout in production!
 		Network:       network.TestNetworkPassphrase,
 	}
 
