@@ -52,7 +52,7 @@ func TestIngest_Kahuna2(t *testing.T) {
 func TestTick(t *testing.T) {
 	tt := test.Start(t).ScenarioWithoutHorizon("base")
 	defer tt.Finish()
-	sys := sys(tt, Config{EnableAssetStats: false})
+	sys := sys(tt, Config{EnableAssetStats: false, CursorName: "HORIZON"})
 
 	// ingest by tick
 	s := sys.Tick()

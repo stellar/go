@@ -200,6 +200,8 @@ func TestTransactionActions_Index(t *testing.T) {
 	ht.Assert.Equal(400, w.Code)
 	w = ht.Get("/accounts/GCXKG6RN4ONIEPCMNFB732A436Z5PNDSRLGWK7GBLCMQLIFO4S7EYWVU/transactions?ledger_id=5")
 	ht.Assert.Equal(400, w.Code)
+	w = ht.Get("/accounts/GCXKG6RN4ONIEPCMNFB732A436Z5PNDSRLGWK7GBLCMQLIFO4S7EYWVU/transactions?cursor=limit=order=")
+	ht.Assert.Equal(400, w.Code)
 
 	// regression: https://github.com/stellar/go/services/horizon/internal/issues/365
 	w = ht.Get("/transactions?limit=200")

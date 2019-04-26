@@ -104,6 +104,29 @@ type Market struct {
 	LastPrice          float64   `db:"last_price"`
 }
 
+// PartialMarket represents the aggregated market data for a
+// specific pair of assets (or asset codes) during an arbitrary
+// time range.
+type PartialMarket struct {
+	TradePairName        string    `db:"trade_pair_name"`
+	BaseAssetID          int32     `db:"base_asset_id"`
+	BaseAssetCode        string    `db:"base_asset_code"`
+	BaseAssetIssuer      string    `db:"base_asset_issuer"`
+	CounterAssetID       int32     `db:"counter_asset_id"`
+	CounterAssetCode     string    `db:"counter_asset_code"`
+	CounterAssetIssuer   string    `db:"counter_asset_issuer"`
+	BaseVolume           float64   `db:"base_volume"`
+	CounterVolume        float64   `db:"counter_volume"`
+	TradeCount           int32     `db:"trade_count"`
+	Open                 float64   `db:"open_price"`
+	Low                  float64   `db:"lowest_price"`
+	High                 float64   `db:"highest_price"`
+	Change               float64   `db:"price_change"`
+	Close                float64   `db:"last_price"`
+	IntervalStart        time.Time `db:"interval_start"`
+	FirstLedgerCloseTime time.Time `db:"first_ledger_close_time"`
+}
+
 // CreateSession returns a new TickerSession that connects to the given db settings
 func CreateSession(driverName, dataSourceName string) (session TickerSession, err error) {
 	dbconn, err := sqlx.Connect(driverName, dataSourceName)

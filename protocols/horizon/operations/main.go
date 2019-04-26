@@ -13,18 +13,23 @@ import (
 // OperationTypeNames maps from operation type to the string used to represent that type
 // in horizon's JSON responses
 var TypeNames = map[xdr.OperationType]string{
-	xdr.OperationTypeCreateAccount:      "create_account",
-	xdr.OperationTypePayment:            "payment",
-	xdr.OperationTypePathPayment:        "path_payment",
-	xdr.OperationTypeManageOffer:        "manage_offer",
-	xdr.OperationTypeCreatePassiveOffer: "create_passive_offer",
-	xdr.OperationTypeSetOptions:         "set_options",
-	xdr.OperationTypeChangeTrust:        "change_trust",
-	xdr.OperationTypeAllowTrust:         "allow_trust",
-	xdr.OperationTypeAccountMerge:       "account_merge",
-	xdr.OperationTypeInflation:          "inflation",
-	xdr.OperationTypeManageData:         "manage_data",
-	xdr.OperationTypeBumpSequence:       "bump_sequence",
+	xdr.OperationTypeCreateAccount: "create_account",
+	xdr.OperationTypePayment:       "payment",
+	xdr.OperationTypePathPayment:   "path_payment",
+	// Deprecated - remove in: horizon-v0.18.0
+	// Change name to `manage_sell_offer`
+	xdr.OperationTypeManageSellOffer: "manage_offer",
+	// Deprecated - remove in: horizon-v0.18.0
+	// Change name to `create_passive_sell_offer`
+	xdr.OperationTypeCreatePassiveSellOffer: "create_passive_offer",
+	xdr.OperationTypeSetOptions:             "set_options",
+	xdr.OperationTypeChangeTrust:            "change_trust",
+	xdr.OperationTypeAllowTrust:             "allow_trust",
+	xdr.OperationTypeAccountMerge:           "account_merge",
+	xdr.OperationTypeInflation:              "inflation",
+	xdr.OperationTypeManageData:             "manage_data",
+	xdr.OperationTypeBumpSequence:           "bump_sequence",
+	xdr.OperationTypeManageBuyOffer:         "manage_buy_offer",
 }
 
 // Base represents the common attributes of an operation resource
@@ -100,9 +105,8 @@ type ManageData struct {
 	Value string `json:"value"`
 }
 
-// CreatePassiveOffer is the json resource representing a single operation whose
-// type is CreatePassiveOffer.
-type CreatePassiveOffer struct {
+// Offer is an embedded resource used in offer type operations.
+type Offer struct {
 	Base
 	Amount             string     `json:"amount"`
 	Price              string     `json:"price"`
@@ -115,10 +119,23 @@ type CreatePassiveOffer struct {
 	SellingAssetIssuer string     `json:"selling_asset_issuer,omitempty"`
 }
 
-// ManageOffer is the json resource representing a single operation whose type
-// is ManageOffer.
-type ManageOffer struct {
-	CreatePassiveOffer
+// CreatePassiveSellOffer is the json resource representing a single operation whose
+// type is CreatePassiveSellOffer.
+type CreatePassiveSellOffer struct {
+	Offer
+}
+
+// ManageSellOffer is the json resource representing a single operation whose type
+// is ManageSellOffer.
+type ManageSellOffer struct {
+	Offer
+	OfferID int64 `json:"offer_id"`
+}
+
+// ManageBuyOffer is the json resource representing a single operation whose type
+// is ManageBuyOffer.
+type ManageBuyOffer struct {
+	Offer
 	OfferID int64 `json:"offer_id"`
 }
 
@@ -267,14 +284,14 @@ func UnmarshalOperation(operationType string, dataString []byte) (ops Operation,
 			return
 		}
 		ops = op
-	case TypeNames[xdr.OperationTypeManageOffer]:
-		var op ManageOffer
+	case TypeNames[xdr.OperationTypeManageSellOffer]:
+		var op ManageSellOffer
 		if err = json.Unmarshal(dataString, &op); err != nil {
 			return
 		}
 		ops = op
-	case TypeNames[xdr.OperationTypeCreatePassiveOffer]:
-		var op CreatePassiveOffer
+	case TypeNames[xdr.OperationTypeCreatePassiveSellOffer]:
+		var op CreatePassiveSellOffer
 		if err = json.Unmarshal(dataString, &op); err != nil {
 			return
 		}
@@ -317,6 +334,12 @@ func UnmarshalOperation(operationType string, dataString []byte) (ops Operation,
 		ops = op
 	case TypeNames[xdr.OperationTypeBumpSequence]:
 		var op BumpSequence
+		if err = json.Unmarshal(dataString, &op); err != nil {
+			return
+		}
+		ops = op
+	case TypeNames[xdr.OperationTypeManageBuyOffer]:
+		var op ManageBuyOffer
 		if err = json.Unmarshal(dataString, &op); err != nil {
 			return
 		}
