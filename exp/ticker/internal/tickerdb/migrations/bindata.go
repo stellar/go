@@ -119,7 +119,7 @@ func bindataMigrations20190404184050initialsql() (*asset, error) {
 		size:        820,
 		md5checksum: "",
 		mode:        os.FileMode(420),
-		modTime:     time.Unix(1556552251, 0),
+		modTime:     time.Unix(1556565465, 0),
 	}
 
 	a := &asset{bytes: bytes, info: info}
@@ -434,7 +434,7 @@ func bindataMigrations20190425110313addorderbookstatssql() (*asset, error) {
 		size:        749,
 		md5checksum: "",
 		mode:        os.FileMode(420),
-		modTime:     time.Unix(1556222869, 0),
+		modTime:     time.Unix(1556565462, 0),
 	}
 
 	a := &asset{bytes: bytes, info: info}
@@ -475,7 +475,7 @@ func bindataMigrations20190426092321addaggregatedorderbookviewsql() (*asset, err
 		size:        831,
 		md5checksum: "",
 		mode:        os.FileMode(420),
-		modTime:     time.Unix(1556281586, 0),
+		modTime:     time.Unix(1556565462, 0),
 	}
 
 	a := &asset{bytes: bytes, info: info}
