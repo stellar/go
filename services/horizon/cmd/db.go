@@ -12,7 +12,9 @@ import (
 	"github.com/spf13/viper"
 	"github.com/stellar/go/services/horizon/internal/db2/schema"
 	"github.com/stellar/go/services/horizon/internal/ingest"
+	"github.com/stellar/go/services/horizon/internal/util"
 	"github.com/stellar/go/support/db"
+	"github.com/stellar/go/support/errors"
 	hlog "github.com/stellar/go/support/log"
 )
 
@@ -20,6 +22,7 @@ type reingestType int
 
 const (
 	byAll reingestType = iota
+	byRange
 	bySeq
 	byOutdated
 )
@@ -225,6 +228,30 @@ var dbReingestCmd = &cobra.Command{
 	},
 }
 
+var dbReingestRangeCmd = &cobra.Command{
+	Use:   "range [Start sequence number] [End sequence number]",
+	Short: "reingests ledgers within a range",
+	Long:  "reingests ledgers between X and Y sequence number (closed intervals)",
+	Run: func(cmd *cobra.Command, args []string) {
+		if len(args) != 2 {
+			cmd.Usage()
+			os.Exit(1)
+		}
+
+		argsInt32 := make([]int32, 0, len(args))
+		for _, arg := range args {
+			seq, err := strconv.Atoi(arg)
+			if err != nil {
+				cmd.Usage()
+				log.Fatalf(`Invalid sequence number "%s"`, arg)
+			}
+			argsInt32 = append(argsInt32, int32(seq))
+		}
+
+		reingest(byRange, argsInt32...)
+	},
+}
+
 var dbReingestOutdatedCmd = &cobra.Command{
 	Use:   "outdated",
 	Short: "reingests all outdated ledgers",
@@ -250,7 +277,7 @@ func init() {
 		dbReingestCmd,
 		dbRebaseCmd,
 	)
-	dbReingestCmd.AddCommand(dbReingestOutdatedCmd)
+	dbReingestCmd.AddCommand(dbReingestRangeCmd, dbReingestOutdatedCmd)
 }
 
 func ingestSystem(ingestConfig ingest.Config) *ingest.System {
@@ -309,6 +336,14 @@ func reingest(cmd reingestType, args ...int32) {
 				}
 			}
 
+		case byRange:
+			// should already be checked by the caller
+			if len(args) != 2 {
+				log.Fatal(`"horizon db reingest range" command requires 2 sequence numbers after "range"`)
+			}
+
+			err = reingestRange(i, args[0], args[1])
+
 		case byOutdated:
 			_, err = i.ReingestOutdated()
 		}
@@ -331,4 +366,67 @@ func reingest(cmd reingestType, args ...int32) {
 			os.Exit(0)
 		}
 	}
+}
+
+type ledgerRange struct {
+	from, to int32
+}
+
+func reingestRange(i *ingest.System, from, to int32) error {
+	if to < from {
+		return errors.New("Invalid range")
+	}
+
+	var (
+		size    int32 = 10000
+		workers int   = 10
+	)
+
+	var pool util.WorkersPool
+	hlog.Info("Creating work...")
+	for current := from; current <= to; current += size {
+		lr := ledgerRange{from: current, to: current + size - 1}
+		if lr.to > to {
+			lr.to = to
+		}
+		pool.AddWork(lr)
+	}
+
+	allJobs := pool.WorkSize()
+
+	pool.SetWorker(func(workerID int, job interface{}) {
+		lr, ok := job.(ledgerRange)
+		if !ok {
+			hlog.Error("job is not a ledgerRange")
+			os.Exit(1)
+		}
+
+		localLog := hlog.WithFields(hlog.F{
+			"id":   workerID,
+			"from": lr.from,
+			"to":   lr.to,
+		})
+
+		localLog.Info("Worker starting range...")
+
+		_, err := i.ReingestRange(lr.from, lr.to)
+		if err != nil {
+			localLog.WithField("err", err).Error("Worker failed range, work will processed again")
+			// Add the work again
+			pool.AddWork(lr)
+			return
+		}
+		localLog.Info("Worker finished range")
+	})
+
+	hlog.Infof("Starting %d workers...", workers)
+	go func() {
+		c := time.Tick(10 * time.Second)
+		for range c {
+			hlog.WithField("progress", float32(allJobs-pool.WorkSize())/float32(allJobs)*100).Info("Work status")
+		}
+	}()
+	pool.Start(workers)
+	hlog.Info("Done")
+	return nil
 }
