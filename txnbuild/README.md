@@ -12,7 +12,7 @@ This project is maintained by the Stellar Development Foundation.
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/network"
 	"github.com/stellar/go/txnbuild"
-  )
+	)
 
 	// Make a keypair for a known account from a secret seed
 	kp, _ := keypair.Parse("SBPQUZ6G4FZNWFHKUWC5BEYWF6R52E3SEP7R3GWYSM2XTKGF5LNTWW4R")
@@ -21,9 +21,9 @@ This project is maintained by the Stellar Development Foundation.
 	client := horizonclient.DefaultTestNetClient
 	ar := horizonclient.AccountRequest{AccountID: kp.Address()}
 	sourceAccount, err := client.AccountDetail(ar)
-  if err != nil {
-    log.Println(err)
-  }
+  	if err != nil {
+    		log.Println(err)
+  	}
 
 	// Build an operation to create and fund a new account
 	op := txnbuild.CreateAccount{
@@ -41,15 +41,15 @@ This project is maintained by the Stellar Development Foundation.
 
 	// Serialise, sign and encode the transaction
 	txe, err := tx.BuildSignEncode(kp.(*keypair.Full))
-  if err != nil {
-    log.Println(err)
-  }
+  	if err != nil {
+    		log.Println(err)
+  	}
 
 	// Send the transaction to the network
 	resp, err := client.SubmitTransactionXDR(txeBase64)
-  if err != nil {
-    log.Println(err)
-  }
+  	if err != nil {
+    		log.Println(err)
+  	}
 ```
 
 ## Getting Started
