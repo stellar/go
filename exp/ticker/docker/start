@@ -8,7 +8,7 @@ export CONF_HOME="$STELLAR_HOME/conf"
 export WWW_HOME="$STELLAR_HOME/www"
 
 export PGHOME="$STELLAR_HOME/postgresql"
-export PGBIN="/usr/lib/postgresql/11/bin"
+export PGBIN="/usr/lib/postgresql/9.5/bin"
 export PGDATA="$PGHOME/data"
 export PGUSER="stellar"
 export PGDB="ticker"

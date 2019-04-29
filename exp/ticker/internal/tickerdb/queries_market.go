@@ -50,6 +50,7 @@ func (s *TickerSession) RetrievePartialAggMarkets(
 	for i, v := range args {
 		argsInterface[i] = v
 	}
+
 	err = s.SelectRaw(&partialMkts, q, argsInterface...)
 	return
 }
