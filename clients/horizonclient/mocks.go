@@ -4,9 +4,9 @@ import (
 	"context"
 	"net/http"
 
-	"github.com/stellar/go/exp/txnbuild"
 	hProtocol "github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/protocols/horizon/operations"
+	"github.com/stellar/go/txnbuild"
 	"github.com/stretchr/testify/mock"
 )
 
@@ -188,6 +188,12 @@ func (m *MockClient) StreamLedgers(ctx context.Context, request LedgerRequest, h
 // StreamOrderBooks is a mocking method
 func (m *MockClient) StreamOrderBooks(ctx context.Context, request OrderBookRequest, handler OrderBookHandler) error {
 	return m.Called(ctx, request, handler).Error(0)
+}
+
+// Root is a mocking method
+func (m *MockClient) Root() (hProtocol.Root, error) {
+	a := m.Called()
+	return a.Get(0).(hProtocol.Root), a.Error(1)
 }
 
 // ensure that the MockClient implements ClientInterface

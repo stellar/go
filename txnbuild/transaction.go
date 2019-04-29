@@ -1,6 +1,13 @@
 /*
 Package txnbuild implements transactions and operations on the Stellar network.
-TODO: More explanation + links here
+
+This library provides an interface to the Stellar transaction model. It supports the building of Go applications on
+top of the Stellar network (https://www.stellar.org/). Transactions constructed by this library may be submitted
+to any Horizon instance for processing onto the ledger, using any Stellar SDK client. The recommended client for Go
+programmers is horizonclient (https://github.com/stellar/go/tree/master/clients/horizonclient). Together, these two
+libraries provide a complete Stellar SDK.
+
+For more information and further examples, see https://www.stellar.org/developers/go/reference/index.html.
 */
 package txnbuild
 
@@ -15,21 +22,23 @@ import (
 	"github.com/stellar/go/xdr"
 )
 
-// Account represents the aspects of a Stellar account necessary to construct transactions.
+// Account represents the aspects of a Stellar account necessary to construct transactions. See
+// https://www.stellar.org/developers/guides/concepts/accounts.html
 type Account interface {
 	GetAccountID() string
 	IncrementSequenceNumber() (xdr.SequenceNumber, error)
 }
 
-// Transaction represents a Stellar Transaction.
+// Transaction represents a Stellar transaction. See
+// https://www.stellar.org/developers/guides/concepts/transactions.html
 type Transaction struct {
 	SourceAccount  Account
 	Operations     []Operation
-	xdrTransaction xdr.Transaction
 	BaseFee        uint32
 	Memo           Memo
 	Timebounds     Timebounds
 	Network        string
+	xdrTransaction xdr.Transaction
 	xdrEnvelope    *xdr.TransactionEnvelope
 }
 
@@ -152,17 +161,17 @@ func (tx *Transaction) Sign(kp *keypair.Full) error {
 func (tx *Transaction) BuildSignEncode(keypair *keypair.Full) (string, error) {
 	err := tx.Build()
 	if err != nil {
-		return "", errors.Wrap(err, "Couldn't build transaction")
+		return "", errors.Wrap(err, "couldn't build transaction")
 	}
 
 	err = tx.Sign(keypair)
 	if err != nil {
-		return "", errors.Wrap(err, "Couldn't sign transaction")
+		return "", errors.Wrap(err, "couldn't sign transaction")
 	}
 
 	txeBase64, err := tx.Base64()
 	if err != nil {
-		return "", errors.Wrap(err, "Couldn't encode transaction")
+		return "", errors.Wrap(err, "couldn't encode transaction")
 	}
 
 	return txeBase64, err

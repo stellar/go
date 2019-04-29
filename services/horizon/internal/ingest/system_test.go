@@ -10,7 +10,7 @@ import (
 func TestBackfill(t *testing.T) {
 	tt := test.Start(t).ScenarioWithoutHorizon("kahuna")
 	defer tt.Finish()
-	is := sys(tt, Config{EnableAssetStats: false})
+	is := sys(tt, Config{EnableAssetStats: false, CursorName: "HORIZON"})
 
 	err := is.ReingestSingle(10)
 	tt.Require.NoError(err)
@@ -34,7 +34,7 @@ func TestBackfill(t *testing.T) {
 func TestClearAll(t *testing.T) {
 	tt := test.Start(t).Scenario("kahuna")
 	defer tt.Finish()
-	is := sys(tt, Config{EnableAssetStats: false})
+	is := sys(tt, Config{EnableAssetStats: false, CursorName: "HORIZON"})
 
 	err := is.ClearAll()
 

@@ -42,6 +42,7 @@ type ManageOfferMutator interface {
 }
 
 // ManageOfferBuilder represents a transaction that is being built.
+// Deprecated use txnbuild.ManageSellOffer instead
 type ManageOfferBuilder struct {
 	PassiveOffer bool
 	O            xdr.Operation
