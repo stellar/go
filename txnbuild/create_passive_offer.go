@@ -10,10 +10,11 @@ import (
 // CreatePassiveSellOffer represents the Stellar create passive offer operation. See
 // https://www.stellar.org/developers/guides/concepts/list-of-operations.html
 type CreatePassiveSellOffer struct {
-	Selling Asset
-	Buying  Asset
-	Amount  string
-	Price   string
+	Selling       Asset
+	Buying        Asset
+	Amount        string
+	Price         string
+	SourceAccount Account
 }
 
 // BuildXDR for CreatePassiveSellOffer returns a fully configured XDR Operation.
@@ -47,6 +48,10 @@ func (cpo *CreatePassiveSellOffer) BuildXDR() (xdr.Operation, error) {
 
 	opType := xdr.OperationTypeCreatePassiveSellOffer
 	body, err := xdr.NewOperationBody(opType, xdrOp)
-
-	return xdr.Operation{Body: body}, errors.Wrap(err, "failed to build XDR OperationBody")
+	if err != nil {
+		return xdr.Operation{}, errors.Wrap(err, "failed to build XDR OperationBody")
+	}
+	op := xdr.Operation{Body: body}
+	SetOpSourceAccount(&op, cpo.SourceAccount)
+	return op, nil
 }

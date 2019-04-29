@@ -6,7 +6,6 @@ import (
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/network"
 	hProtocol "github.com/stellar/go/protocols/horizon"
-	"github.com/stellar/go/xdr"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -82,32 +81,20 @@ func TestPayment(t *testing.T) {
 	assert.Equal(t, expected, received, "Base 64 XDR should match")
 }
 
-func TestPaymentFromDiffSourceAcct(t *testing.T) {
-	kp0 := newKeypair0()
-	txSourceAccount := makeTestAccount(kp0, "9605939170639898")
+// func TestPaymentDummySubmission(t *testing.T) {
+// 	// Address: GD5U32ITNFM2JZY2DFSLPL4AX3YDSCWOFLI2JLOCSQ5A6P4OWKAPRHAF
+// 	kp1 := newKeypair("SDWHV7S72VKAFD4OPHF3JSKIYEYEOM2XI2DBDOPC7DCY2C6FAGWXTXTO")
 
-	kp1 := newKeypair1()
+// 	// Address: GDFNY4GVMPIUMLA2CUBMPJR26XBWVWMGHDOWDLCFSL5CKC7TI2FH6VHR
+// 	kp2 := newKeypair("SBKCK7RAC5Q6WIKKXK3SECHA7I4B3HX2O6ASGSZLBERKLY5T6X3QFSAD")
 
-	var opSourceAcctID xdr.AccountId
-	opSourceAcctID.SetAddress(kp1.Address())
-	payment := Payment{
-		Destination:   "GB7BDSZU2Y27LYNLALKKALB52WS2IZWYBDGY6EQBLEED3TJOCVMZRH7H",
-		Amount:        "10",
-		Asset:         NativeAsset{},
-		SourceAccount: &opSourceAcctID,
-	}
-
-	tx := Transaction{
-		SourceAccount: &txSourceAccount,
-		Operations:    []Operation{&payment},
-		Timebounds:    NewInfiniteTimeout(),
-		Network:       network.TestNetworkPassphrase,
-	}
-
-	received := buildSignEncode(t, tx, kp0, kp1)
-	expected := "AAAAAODcbeFyXKxmUWK1L6znNbKKIkPkHRJNbLktcKPqLnLFAAAAZAAiII0AAAAbAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAEAAAAAJcrx2g/Hbs/ohF5CVFG7B5JJSJR+OqDKzDGK7dKHZH4AAAABAAAAAH4RyzTWNfXhqwLUoCw91aWkZtgIzY8SAVkIPc0uFVmYAAAAAAAAAAAF9eEAAAAAAAAAAALqLnLFAAAAQHzYkZeogiHztanqRvrXXxiNShH/Zf5EUjgabrb6wwgX1eOUBRjp5J92qq8s/o1B1sxrMNiPpViAq40tD/yGfwjSh2R+AAAAQNVC6YLIbAnFs3G/rdf7IxrWYFOxjOKUSZsN0q1Bm/MXk+7ydhcCbYBgq+VGa6eZf8BckgIdAtDI8VNWPoTyhAM="
-	assert.Equal(t, expected, received, "Base 64 XDR should match")
-}
+// 	payment := Payment{
+// 		Destination:   "GB7BDSZU2Y27LYNLALKKALB52WS2IZWYBDGY6EQBLEED3TJOCVMZRH7H",
+// 		Amount:        "10",
+// 		Asset:         NativeAsset{},
+// 		SourceAccount: &opSourceAccount,
+// 	}
+// }
 
 func TestPaymentFailsIfNoAssetSpecified(t *testing.T) {
 	kp0 := newKeypair0()
