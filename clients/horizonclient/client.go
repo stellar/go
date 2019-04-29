@@ -21,21 +21,32 @@ import (
 	"github.com/stellar/go/support/errors"
 )
 
-func (c *Client) sendRequest(hr HorizonRequest, a interface{}) (err error) {
+// sendRequest builds the URL for the given horizon request and sends the url to a horizon server
+func (c *Client) sendRequest(hr HorizonRequest, resp interface{}) (err error) {
 	endpoint, err := hr.BuildURL()
 	if err != nil {
 		return
 	}
 
 	c.HorizonURL = c.fixHorizonURL()
-	var req *http.Request
-	// check if it is a submitRequest
 	_, ok := hr.(submitRequest)
 	if ok {
-		req, err = http.NewRequest("POST", c.HorizonURL+endpoint, nil)
+		return c.sendRequestURL(c.HorizonURL+endpoint, "post", resp)
+	}
+
+	return c.sendRequestURL(c.HorizonURL+endpoint, "get", resp)
+}
+
+// sendRequestURL sends a url to a horizon server.
+// It can be used for requests that do not implement the HorizonRequest interface.
+func (c *Client) sendRequestURL(requestURL string, method string, a interface{}) (err error) {
+	var req *http.Request
+
+	if method == "post" || method == "POST" {
+		req, err = http.NewRequest("POST", requestURL, nil)
 		req.Header.Set("Content-Type", "application/x-www-form-urlencoded; param=value")
 	} else {
-		req, err = http.NewRequest("GET", c.HorizonURL+endpoint, nil)
+		req, err = http.NewRequest("GET", requestURL, nil)
 	}
 
 	if err != nil {
@@ -47,7 +58,6 @@ func (c *Client) sendRequest(hr HorizonRequest, a interface{}) (err error) {
 		c.horizonTimeOut = HorizonTimeOut
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*c.horizonTimeOut)
-
 	resp, err := c.HTTP.Do(req.WithContext(ctx))
 	if err != nil {
 		cancel()
@@ -502,6 +512,12 @@ func (c *Client) FetchTimebounds(seconds int64) (txnbuild.Timebounds, error) {
 	// return a timebounds based on local time if no server time has been recorded
 	// to do: query an endpoint to get the most current time. Implement this after we add retry logic to client.
 	return txnbuild.NewTimeout(seconds), nil
+}
+
+// Root loads the root endpoint of horizon
+func (c *Client) Root() (root hProtocol.Root, err error) {
+	err = c.sendRequestURL(c.fixHorizonURL(), "get", &root)
+	return
 }
 
 // ensure that the horizon client implements ClientInterface

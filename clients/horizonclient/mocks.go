@@ -190,5 +190,11 @@ func (m *MockClient) StreamOrderBooks(ctx context.Context, request OrderBookRequ
 	return m.Called(ctx, request, handler).Error(0)
 }
 
+// Root is a mocking method
+func (m *MockClient) Root() (hProtocol.Root, error) {
+	a := m.Called()
+	return a.Get(0).(hProtocol.Root), a.Error(1)
+}
+
 // ensure that the MockClient implements ClientInterface
 var _ ClientInterface = &MockClient{}
