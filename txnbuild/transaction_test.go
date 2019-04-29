@@ -479,7 +479,8 @@ func TestManageSellOfferNewOffer(t *testing.T) {
 	buying := CreditAsset{"ABCD", kp0.Address()}
 	sellAmount := "100"
 	price := "0.01"
-	createOffer := CreateOfferOp(selling, buying, sellAmount, price)
+	createOffer, err := CreateOfferOp(selling, buying, sellAmount, price)
+	check(err)
 
 	tx := Transaction{
 		SourceAccount: &sourceAccount,
@@ -498,7 +499,8 @@ func TestManageSellOfferDeleteOffer(t *testing.T) {
 	sourceAccount := makeTestAccount(kp1, "41137196761105")
 
 	offerID := int64(2921622)
-	deleteOffer := DeleteOfferOp(offerID)
+	deleteOffer, err := DeleteOfferOp(offerID)
+	check(err)
 
 	tx := Transaction{
 		SourceAccount: &sourceAccount,
@@ -522,7 +524,8 @@ func TestManageSellOfferUpdateOffer(t *testing.T) {
 	sellAmount := "50"
 	price := "0.02"
 	offerID := int64(2497628)
-	updateOffer := UpdateOfferOp(selling, buying, sellAmount, price, offerID)
+	updateOffer, err := UpdateOfferOp(selling, buying, sellAmount, price, offerID)
+	check(err)
 
 	tx := Transaction{
 		SourceAccount: &sourceAccount,

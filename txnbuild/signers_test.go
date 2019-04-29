@@ -1,7 +1,6 @@
 package txnbuild
 
 import (
-	"log"
 	"testing"
 
 	"github.com/stellar/go/network"
@@ -55,7 +54,7 @@ func TestAllowTrustMultSigners(t *testing.T) {
 	}
 
 	received := buildSignEncode(t, tx, kp0, kp1)
-	expected := "AAAAACXK8doPx27P6IReQlRRuweSSUiUfjqgyswxiu3Sh2R+AAAAZAAiILoAAAAIAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAEAAAAA4Nxt4XJcrGZRYrUvrOc1sooiQ+QdEk1suS1wo+oucsUAAAAHAAAAACXK8doPx27P6IReQlRRuweSSUiUfjqgyswxiu3Sh2R+AAAAAUFCQ0QAAAABAAAAAAAAAALqLnLFAAAAQHm+8kcSuOMVfthbNRu5ItzonA0ACvL58h4lC6K0JG6OCSR5gRbLUOMqVu1xpQZu+6t9pHwKN9QoEPoXviT3rgDSh2R+AAAAQCr0qzbX9xroeFOzliJgb7+dZJEjyZMpmF3b90NwlEWtm4KPu+U2Lvr91ImeOYtt1/UGksDlGC+3aFq3FsbKBg8=/Hbs/ohF5CVFG7B5JJSJR+OqDKzDGK7dKHZH4AAAAHAAAAACXK8doPx27P6IReQlRRuweSSUiUfjqgyswxiu3Sh2R+AAAAAUFCQ0QAAAABAAAAAAAAAALqLnLFAAAAQE2INxVmqNTkHunFPurKyaUH6CilHp4fP5egzavinc2k8k8IiWmnycXBTWkHTYQwc1i0pYxqcKRH5k44TnmQTQLSh2R+AAAAQPAlpYHeTIQVX77gkePFVAvuE57QjbvMEJ3qA9hDsyTmQugrvH3ScUizZqRmxa4db7HnLjh8IsQnSoHqsakpMwo="
+	expected := "AAAAACXK8doPx27P6IReQlRRuweSSUiUfjqgyswxiu3Sh2R+AAAAZAAiILoAAAAIAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAEAAAAA4Nxt4XJcrGZRYrUvrOc1sooiQ+QdEk1suS1wo+oucsUAAAAHAAAAACXK8doPx27P6IReQlRRuweSSUiUfjqgyswxiu3Sh2R+AAAAAUFCQ0QAAAABAAAAAAAAAALqLnLFAAAAQHm+8kcSuOMVfthbNRu5ItzonA0ACvL58h4lC6K0JG6OCSR5gRbLUOMqVu1xpQZu+6t9pHwKN9QoEPoXviT3rgDSh2R+AAAAQCr0qzbX9xroeFOzliJgb7+dZJEjyZMpmF3b90NwlEWtm4KPu+U2Lvr91ImeOYtt1/UGksDlGC+3aFq3FsbKBg8="
 	assert.Equal(t, expected, received, "Base 64 XDR should match")
 }
 
@@ -79,7 +78,6 @@ func TestBumpSequenceMultSigners(t *testing.T) {
 	}
 
 	received := buildSignEncode(t, tx, kp0, kp1)
-	log.Print(received)
 	expected := "AAAAAODcbeFyXKxmUWK1L6znNbKKIkPkHRJNbLktcKPqLnLFAAAAZAAiII0AAAAbAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAEAAAAAJcrx2g/Hbs/ohF5CVFG7B5JJSJR+OqDKzDGK7dKHZH4AAAALACIgugAAAGwAAAAAAAAAAuoucsUAAABA5wbLXDFQdTkJ0Oo3mkW6VrcFeylOag0urj6lKXaQV3mGdFQA4J9OezChx5DynW+FxQtuyXbSBYTcgXUADapSCdKHZH4AAABAuuYmmuuwkMBGC3oX4RA6ZkM5PfYrdUuuAhEvOnuanfyynrOgD/RPs0ROOpd7PAOuZiSkWlJZPUCaJTCo8QZdDg=="
 	assert.Equal(t, expected, received, "Base 64 XDR should match")
 }
@@ -129,7 +127,7 @@ func TestCreateAccountMultSigners(t *testing.T) {
 	}
 
 	received := buildSignEncode(t, tx, kp0, kp1)
-	expected := "AAAAAODcbeFyXKxmUWK1L6znNbKKIkPkHRJNbLktcKPqLnLFAAAAZAAiII0AAAAbAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAEAAAAAJcrx2g/Hbs/ohF5CVFG7B5JJSJR+OqDKzDGK7dKHZH4AAAAEAAAAAAAAAAFBQkNEAAAAAODcbeFyXKxmUWK1L6znNbKKIkPkHRJNbLktcKPqLnLFAAAAAAX14QAAAAABAAAAAQAAAAAAAAAC6i5yxQAAAEDQA9vz3Yvc1g/xjJdkyiegE5gw4y1RmGmM6d9Kd+i7FD+i0WdGyzkxf9GjrDprUQj1/iDFGE2HpYOb5Zd5UUcP0odkfgAAAECq+9bggD7neBxaDYO4kxR/ltLjqBucqqAbYcIY7bwnGy32Ca/jvsglwnU2UgX3qhCEHSshN21bsGI/h5f+xcUH"
+	expected := "AAAAAODcbeFyXKxmUWK1L6znNbKKIkPkHRJNbLktcKPqLnLFAAAAZAAiII0AAAAbAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAEAAAAAJcrx2g/Hbs/ohF5CVFG7B5JJSJR+OqDKzDGK7dKHZH4AAAAAAAAAAITg3tq8G0kvnvoIhZPMYJsY+9KVV8xAA6NxhtKxIXZUAAAAAAX14QAAAAAAAAAAAuoucsUAAABANXxsuIht++BXo21iiKkj0lrhVCYNdbD/uBPbL7AXKoleT1cynaR7luA74npsMfzE9AVFr+VclOY+dzQBqIWZDNKHZH4AAABA0EQ/a/U49VgXN6kAHnxMIfy/7rATGCk+stqym2Pa6fcbIKIFyoTRVi+uPTkIcS0u1wL1FvkWuU4YbfbtUPJ5Aw=="
 	assert.Equal(t, expected, received, "Base 64 XDR should match")
 }
 
@@ -219,7 +217,8 @@ func TestManageOfferCreateMultSigners(t *testing.T) {
 	buying := CreditAsset{"ABCD", kp0.Address()}
 	sellAmount := "100"
 	price := "0.01"
-	createOffer := CreateOfferOp(selling, buying, sellAmount, price, &opSourceAccount)
+	createOffer, err := CreateOfferOp(selling, buying, sellAmount, price, &opSourceAccount)
+	check(err)
 
 	tx := Transaction{
 		SourceAccount: &txSourceAccount,
@@ -241,7 +240,8 @@ func TestManageOfferDeleteMultSigners(t *testing.T) {
 	opSourceAccount := makeTestAccount(kp1, "9606132444168199")
 
 	offerID := int64(2921622)
-	deleteOffer := DeleteOfferOp(offerID, &opSourceAccount)
+	deleteOffer, err := DeleteOfferOp(offerID, &opSourceAccount)
+	check(err)
 
 	tx := Transaction{
 		SourceAccount: &txSourceAccount,
@@ -267,7 +267,8 @@ func TestManageOfferUpdateMultSigners(t *testing.T) {
 	sellAmount := "50"
 	price := "0.02"
 	offerID := int64(2497628)
-	updateOffer := UpdateOfferOp(selling, buying, sellAmount, price, offerID, &opSourceAccount)
+	updateOffer, err := UpdateOfferOp(selling, buying, sellAmount, price, offerID, &opSourceAccount)
+	check(err)
 
 	tx := Transaction{
 		SourceAccount: &txSourceAccount,
@@ -307,7 +308,6 @@ func TestPathPaymentMultSigners(t *testing.T) {
 	}
 
 	received := buildSignEncode(t, tx, kp0, kp1)
-	log.Print(received)
 	expected := "AAAAAODcbeFyXKxmUWK1L6znNbKKIkPkHRJNbLktcKPqLnLFAAAAZAAiII0AAAAbAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAEAAAAAJcrx2g/Hbs/ohF5CVFG7B5JJSJR+OqDKzDGK7dKHZH4AAAACAAAAAAAAAAAF9eEAAAAAAODcbeFyXKxmUWK1L6znNbKKIkPkHRJNbLktcKPqLnLFAAAAAAAAAAAAmJaAAAAAAQAAAAFBQkNEAAAAAODcbeFyXKxmUWK1L6znNbKKIkPkHRJNbLktcKPqLnLFAAAAAAAAAALqLnLFAAAAQKYqPzdMAYo7NrrOOE2HnXRzCIBixIT9jWteNysju07WVcGpJhoLJW597UrMlsRVWLB/QJk6e6jw6SzLRDXw5wLSh2R+AAAAQMz9ZqejVTk9KiWZCv0e/hoW+F4ua2mM6tHV/kuzCB9HqVGglbK9xN0aOGnrQwvwlp824cVOYnUkV8+HfwsnQgM="
 
 	assert.Equal(t, expected, received, "Base 64 XDR should match")
