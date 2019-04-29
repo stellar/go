@@ -6,6 +6,11 @@ file.  This project adheres to [Semantic Versioning](http://semver.org/).
 As this project is pre 1.0, breaking changes may happen for minor version
 bumps.  A breaking change will get clearly notified in this log.
 
+## v0.17.6 - 2019-04-29
+
+* Fixed a bug in `/order_book` when sum of amounts at a single price level exceeds `int64_max` (#1037).
+* Fixed a bug generating `ERROR` level log entries for bad requests (#1186).
+
 ## v0.17.5 - 2019-04-24
 
 * Support for stellar-core [v11.0.0](https://github.com/stellar/stellar-core/releases/tag/v11.0.0).
