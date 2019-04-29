@@ -217,7 +217,27 @@ GROUP BY bAsset.id, bAsset.code, bAsset.issuer_account, bAsset.type, cAsset.id, 
 `
 
 var aggMarketQuery = `
-SELECT * FROM (
+SELECT
+	t1.trade_pair_name,
+	t1.base_volume,
+	t1.counter_volume,
+	t1.trade_count,
+	t1.highest_price,
+	t1.lowest_price,
+	t1.open_price,
+	t1.last_price,
+	t1.price_change,
+	t1.interval_start,
+	t1.first_ledger_close_time,
+	COALESCE(aob.base_asset_code, '') as base_asset_code,
+	COALESCE(aob.counter_asset_code, '') as counter_asset_code,
+	COALESCE(aob.num_bids, 0) AS num_bids,
+	COALESCE(aob.bid_volume, 0.0) AS bid_volume,
+	COALESCE(aob.highest_bid, 0.0) AS highest_bid,
+	COALESCE(aob.num_asks, 0) AS num_asks,
+	COALESCE(aob.ask_volume, 0.0) AS ask_volume,
+	COALESCE(aob.lowest_ask, 0.0) AS lowest_ask
+FROM (
 	SELECT
 		concat(bAsset.code, '_', cAsset.code) as trade_pair_name,
 		sum(t.base_amount) AS base_volume,
