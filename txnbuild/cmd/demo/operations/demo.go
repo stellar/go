@@ -301,7 +301,10 @@ func deleteTrustline(source *hProtocol.Account, asset txnbuild.Asset, signer Acc
 }
 
 func deleteOffer(source *hProtocol.Account, offerID int64, signer Account) (string, error) {
-	deleteOffer := txnbuild.DeleteOfferOp(offerID)
+	deleteOffer, err := txnbuild.DeleteOfferOp(offerID)
+	if err != nil {
+		return "", errors.Wrap(err, "building offer")
+	}
 
 	tx := txnbuild.Transaction{
 		SourceAccount: source,
