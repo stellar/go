@@ -1,6 +1,6 @@
 package main
 
-// See README.md for a description of this script
+// This is a build script that Travis uses to build Stellar release packages.
 
 import (
 	"flag"
@@ -148,6 +148,12 @@ func buildByTag() {
 
 	if bin == "" {
 		log.Info("could not extract info from TRAVIS_TAG: skipping artifact packaging")
+		os.Exit(0)
+	}
+
+	// Don't build anything if no package can be found
+	if pkg == "" {
+		log.Infof("could not find `%s` in expected binary locations: skipping artifact packaging", bin)
 		os.Exit(0)
 	}
 
