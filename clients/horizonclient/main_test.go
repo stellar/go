@@ -283,7 +283,6 @@ func ExampleClient_Payments() {
 }
 
 func ExampleClient_Fund() {
-
 	client := DefaultTestNetClient
 	// fund an account
 	resp, err := client.Fund("GCLWGQPMKXQSPF776IU33AH4PZNOOWNAWGGKVTBQMIC5IMKUNP3E6NVU")
