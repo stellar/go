@@ -282,6 +282,75 @@ func ExampleClient_Payments() {
 	}
 }
 
+func ExampleClient_Fund() {
+	client := DefaultTestNetClient
+	// fund an account
+	resp, err := client.Fund("GCLWGQPMKXQSPF776IU33AH4PZNOOWNAWGGKVTBQMIC5IMKUNP3E6NVU")
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	fmt.Print(resp)
+}
+
+func TestClientFund(t *testing.T) {
+	hmock := httptest.NewClient()
+	client := &Client{
+		HorizonURL: "https://localhost/",
+		HTTP:       hmock,
+	}
+
+	testAccount := "GCLWGQPMKXQSPF776IU33AH4PZNOOWNAWGGKVTBQMIC5IMKUNP3E6NVU"
+
+	// not testnet
+	hmock.On(
+		"GET",
+		"https://localhost/friendbot?addr=GCLWGQPMKXQSPF776IU33AH4PZNOOWNAWGGKVTBQMIC5IMKUNP3E6NVU",
+	).ReturnString(200, txSuccess)
+
+	_, err := client.Fund(testAccount)
+	// error case: not testnet
+	if assert.Error(t, err) {
+		assert.Contains(t, err.Error(), "can't fund account from friendbot on production network")
+	}
+
+	// happy path
+	hmock.On(
+		"GET",
+		"https://localhost/friendbot?addr=GCLWGQPMKXQSPF776IU33AH4PZNOOWNAWGGKVTBQMIC5IMKUNP3E6NVU",
+	).ReturnString(200, txSuccess)
+
+	client.isTestNet = true
+	resp, err := client.Fund(testAccount)
+
+	if assert.NoError(t, err) {
+		assert.IsType(t, resp, hProtocol.TransactionSuccess{})
+		assert.Equal(t, resp.Links.Transaction.Href, "https://horizon-testnet.stellar.org/transactions/bcc7a97264dca0a51a63f7ea971b5e7458e334489673078bb2a34eb0cce910ca")
+		assert.Equal(t, resp.Hash, "bcc7a97264dca0a51a63f7ea971b5e7458e334489673078bb2a34eb0cce910ca")
+		assert.Equal(t, resp.Ledger, int32(354811))
+		assert.Equal(t, resp.Env, `AAAAABB90WssODNIgi6BHveqzxTRmIpvAFRyVNM+Hm2GVuCcAAAAZAAABD0AAuV/AAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAyTBGxOgfSApppsTnb/YRr6gOR8WT0LZNrhLh4y3FCgoAAAAXSHboAAAAAAAAAAABhlbgnAAAAEAivKe977CQCxMOKTuj+cWTFqc2OOJU8qGr9afrgu2zDmQaX5Q0cNshc3PiBwe0qw/+D/qJk5QqM5dYeSUGeDQP`)
+		assert.Equal(t, resp.Result, "AAAAAAAAAGQAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAA=")
+		assert.Equal(t, resp.Meta, `AAAAAQAAAAIAAAADAAVp+wAAAAAAAAAAEH3Rayw4M0iCLoEe96rPFNGYim8AVHJU0z4ebYZW4JwACBP/TuycHAAABD0AAuV+AAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAABAAVp+wAAAAAAAAAAEH3Rayw4M0iCLoEe96rPFNGYim8AVHJU0z4ebYZW4JwACBP/TuycHAAABD0AAuV/AAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAABAAAAAwAAAAMABWn7AAAAAAAAAAAQfdFrLDgzSIIugR73qs8U0ZiKbwBUclTTPh5thlbgnAAIE/9O7JwcAAAEPQAC5X8AAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAEABWn7AAAAAAAAAAAQfdFrLDgzSIIugR73qs8U0ZiKbwBUclTTPh5thlbgnAAIE+gGdbQcAAAEPQAC5X8AAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAABWn7AAAAAAAAAADJMEbE6B9ICmmmxOdv9hGvqA5HxZPQtk2uEuHjLcUKCgAAABdIdugAAAVp+wAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAA==`)
+	}
+
+	// failure response
+	hmock.On(
+		"GET",
+		"https://localhost/friendbot?addr=GCLWGQPMKXQSPF776IU33AH4PZNOOWNAWGGKVTBQMIC5IMKUNP3E6NVU",
+	).ReturnString(400, transactionFailure)
+
+	_, err = client.Fund(testAccount)
+	if assert.Error(t, err) {
+		assert.Contains(t, err.Error(), "horizon error")
+		horizonError, ok := errors.Cause(err).(*Error)
+		assert.Equal(t, ok, true)
+		assert.Equal(t, horizonError.Problem.Title, "Transaction Failed")
+		resultString, err := horizonError.ResultString()
+		assert.Nil(t, err)
+		assert.Equal(t, resultString, "AAAAAAAAAAD////4AAAAAA==")
+	}
+}
+
 func TestAccountDetail(t *testing.T) {
 	hmock := httptest.NewClient()
 	client := &Client{

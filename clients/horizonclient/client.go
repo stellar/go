@@ -422,11 +422,13 @@ func (c *Client) Trades(request TradeRequest) (tds hProtocol.TradesPage, err err
 
 // Fund creates a new account funded from friendbot. It only works on test networks. See
 // https://www.stellar.org/developers/guides/get-started/create-account.html for more information.
-func (c *Client) Fund(addr string) (*http.Response, error) {
+func (c *Client) Fund(addr string) (txSuccess hProtocol.TransactionSuccess, err error) {
 	if !c.isTestNet {
-		return nil, errors.New("Can't fund account from friendbot on production network")
+		return txSuccess, errors.New("can't fund account from friendbot on production network")
 	}
-	return http.Get(c.HorizonURL + "friendbot?addr=" + addr)
+	friendbotURL := fmt.Sprintf("%sfriendbot?addr=%s", c.fixHorizonURL(), addr)
+	err = c.sendRequestURL(friendbotURL, "get", &txSuccess)
+	return
 }
 
 // StreamTrades streams executed trades. It can be used to stream all trades, trades for an account and
