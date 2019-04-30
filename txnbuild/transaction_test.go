@@ -81,21 +81,6 @@ func TestPayment(t *testing.T) {
 	assert.Equal(t, expected, received, "Base 64 XDR should match")
 }
 
-// func TestPaymentDummySubmission(t *testing.T) {
-// 	// Address: GD5U32ITNFM2JZY2DFSLPL4AX3YDSCWOFLI2JLOCSQ5A6P4OWKAPRHAF
-// 	kp1 := newKeypair("SDWHV7S72VKAFD4OPHF3JSKIYEYEOM2XI2DBDOPC7DCY2C6FAGWXTXTO")
-
-// 	// Address: GDFNY4GVMPIUMLA2CUBMPJR26XBWVWMGHDOWDLCFSL5CKC7TI2FH6VHR
-// 	kp2 := newKeypair("SBKCK7RAC5Q6WIKKXK3SECHA7I4B3HX2O6ASGSZLBERKLY5T6X3QFSAD")
-
-// 	payment := Payment{
-// 		Destination:   "GB7BDSZU2Y27LYNLALKKALB52WS2IZWYBDGY6EQBLEED3TJOCVMZRH7H",
-// 		Amount:        "10",
-// 		Asset:         NativeAsset{},
-// 		SourceAccount: &opSourceAccount,
-// 	}
-// }
-
 func TestPaymentFailsIfNoAssetSpecified(t *testing.T) {
 	kp0 := newKeypair0()
 	sourceAccount := makeTestAccount(kp0, "9605939170639898")
