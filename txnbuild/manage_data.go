@@ -8,8 +8,9 @@ import (
 // ManageData represents the Stellar manage data operation. See
 // https://www.stellar.org/developers/guides/concepts/list-of-operations.html
 type ManageData struct {
-	Name  string
-	Value []byte
+	Name          string
+	Value         []byte
+	SourceAccount Account
 }
 
 // BuildXDR for ManageData returns a fully configured XDR Operation.
@@ -26,6 +27,10 @@ func (md *ManageData) BuildXDR() (xdr.Operation, error) {
 
 	opType := xdr.OperationTypeManageData
 	body, err := xdr.NewOperationBody(opType, xdrOp)
-
-	return xdr.Operation{Body: body}, errors.Wrap(err, "failed to build XDR OperationBody")
+	if err != nil {
+		return xdr.Operation{}, errors.Wrap(err, "failed to build XDR OperationBody")
+	}
+	op := xdr.Operation{Body: body}
+	SetOpSourceAccount(&op, md.SourceAccount)
+	return op, nil
 }

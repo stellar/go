@@ -128,7 +128,7 @@ func (tx *Transaction) Build() error {
 
 // Sign for Transaction signs a previously built transaction. A signed transaction may be
 // submitted to the network.
-func (tx *Transaction) Sign(kp *keypair.Full) error {
+func (tx *Transaction) Sign(kps ...*keypair.Full) error {
 	// TODO: Only sign if Transaction has been previously built
 	// TODO: Validate network set before sign
 	// Initialise transaction envelope
@@ -144,27 +144,27 @@ func (tx *Transaction) Sign(kp *keypair.Full) error {
 	}
 
 	// Sign the hash
-	// TODO: Allow multiple signers
-	sig, err := kp.SignDecorated(hash[:])
-	if err != nil {
-		return errors.Wrap(err, "failed to sign transaction")
+	for _, kp := range kps {
+		sig, err := kp.SignDecorated(hash[:])
+		if err != nil {
+			return errors.Wrap(err, "failed to sign transaction")
+		}
+		// Append the signature to the envelope
+		tx.xdrEnvelope.Signatures = append(tx.xdrEnvelope.Signatures, sig)
 	}
-
-	// Append the signature to the envelope
-	tx.xdrEnvelope.Signatures = append(tx.xdrEnvelope.Signatures, sig)
 
 	return nil
 }
 
 // BuildSignEncode performs all the steps to produce a final transaction suitable
 // for submitting to the network.
-func (tx *Transaction) BuildSignEncode(keypair *keypair.Full) (string, error) {
+func (tx *Transaction) BuildSignEncode(keypairs ...*keypair.Full) (string, error) {
 	err := tx.Build()
 	if err != nil {
 		return "", errors.Wrap(err, "couldn't build transaction")
 	}
 
-	err = tx.Sign(keypair)
+	err = tx.Sign(keypairs...)
 	if err != nil {
 		return "", errors.Wrap(err, "couldn't sign transaction")
 	}

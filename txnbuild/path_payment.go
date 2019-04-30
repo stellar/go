@@ -9,12 +9,13 @@ import (
 // PathPayment represents the Stellar path payment operation. See
 // https://www.stellar.org/developers/guides/concepts/list-of-operations.html
 type PathPayment struct {
-	SendAsset   Asset
-	SendMax     string
-	Destination string
-	DestAsset   Asset
-	DestAmount  string
-	Path        []Asset
+	SendAsset     Asset
+	SendMax       string
+	Destination   string
+	DestAsset     Asset
+	DestAmount    string
+	Path          []Asset
+	SourceAccount Account
 }
 
 // BuildXDR for Payment returns a fully configured XDR Operation.
@@ -77,6 +78,10 @@ func (pp *PathPayment) BuildXDR() (xdr.Operation, error) {
 		Path:        xdrPath,
 	}
 	body, err := xdr.NewOperationBody(opType, xdrOp)
-
-	return xdr.Operation{Body: body}, errors.Wrap(err, "failed to build XDR OperationBody")
+	if err != nil {
+		return xdr.Operation{}, errors.Wrap(err, "failed to build XDR OperationBody")
+	}
+	op := xdr.Operation{Body: body}
+	SetOpSourceAccount(&op, pp.SourceAccount)
+	return op, nil
 }

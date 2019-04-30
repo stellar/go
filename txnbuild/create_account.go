@@ -9,8 +9,9 @@ import (
 // CreateAccount represents the Stellar create account operation. See
 // https://www.stellar.org/developers/guides/concepts/list-of-operations.html
 type CreateAccount struct {
-	Destination string
-	Amount      string
+	Destination   string
+	Amount        string
+	SourceAccount Account
 }
 
 // BuildXDR for CreateAccount returns a fully configured XDR Operation.
@@ -29,6 +30,10 @@ func (ca *CreateAccount) BuildXDR() (xdr.Operation, error) {
 
 	opType := xdr.OperationTypeCreateAccount
 	body, err := xdr.NewOperationBody(opType, xdrOp)
-
-	return xdr.Operation{Body: body}, errors.Wrap(err, "failed to build XDR OperationBody")
+	if err != nil {
+		return xdr.Operation{}, errors.Wrap(err, "failed to build XDR OperationBody")
+	}
+	op := xdr.Operation{Body: body}
+	SetOpSourceAccount(&op, ca.SourceAccount)
+	return op, nil
 }
