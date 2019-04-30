@@ -20,6 +20,7 @@ type BumpSequenceMutator interface {
 }
 
 // BumpSequenceBuilder helps to build BumpSequenceOp structs.
+// Deprecated use txnbuild.BumpSequence instead
 type BumpSequenceBuilder struct {
 	O   xdr.Operation
 	BS  xdr.BumpSequenceOp

@@ -1,4 +1,13 @@
-// Package horizonclient is an experimental horizon client that provides access to the horizon server
+/*
+Package horizonclient provides client access to a Horizon server, allowing an application to post transactions and look up ledger information.
+
+This library provides an interface to the Stellar Horizon service. It supports the building of Go applications on
+top of the Stellar network (https://www.stellar.org/). Transactions may be constructed using the sister package to
+this one, txnbuild (https://github.com/stellar/go/tree/master/txnbuild), and then submitted with this client to any
+Horizon instance for processing onto the ledger. Together, these two libraries provide a complete Stellar SDK.
+
+For more information and further examples, see https://www.stellar.org/developers/go/reference/index.html.
+*/
 package horizonclient
 
 import (
@@ -141,6 +150,7 @@ type ClientInterface interface {
 	StreamOffers(ctx context.Context, request OfferRequest, handler OfferHandler) error
 	StreamLedgers(ctx context.Context, request LedgerRequest, handler LedgerHandler) error
 	StreamOrderBooks(ctx context.Context, request OrderBookRequest, handler OrderBookHandler) error
+	Root() (hProtocol.Root, error)
 }
 
 // DefaultTestNetClient is a default client to connect to test network
