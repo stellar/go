@@ -4,7 +4,7 @@
 
 This project is maintained by the Stellar Development Foundation.
 
-```
+```golang
   import (
 	"log"
 	
@@ -79,7 +79,9 @@ To see the SDK in action, build and run the demo:
 
 
 ## Contributing
-Please read [CONTRIBUTING](../../CONTRIBUTING.md) for details on our code of conduct, and the process for submitting pull requests to us.
+Please read [Code of Conduct](https://github.com/stellar/.github/blob/master/CODE_OF_CONDUCT.md) to understand this project's communication rules.
+
+To submit improvements and fixes to this library, please see [CONTRIBUTING](../CONTRIBUTING.md).
 
 ## License
 This project is licensed under the Apache License - see the [LICENSE](../../LICENSE-APACHE.txt) file for details.
