@@ -27,7 +27,7 @@ func newKeypair(seed string) *keypair.Full {
 	return myKeypair.(*keypair.Full)
 }
 
-func buildSignEncode(t *testing.T, tx Transaction, kps ...*keypair.Full) (txeBase64 string) {
+func buildSignEncode(t *testing.T, tx Transaction, kps ...*keypair.Full) string {
 	assert.NoError(t, tx.Build())
 	assert.NoError(t, tx.Sign(kps...))
 

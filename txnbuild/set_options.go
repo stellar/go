@@ -87,6 +87,9 @@ func (so *SetOptions) BuildXDR() (xdr.Operation, error) {
 
 	opType := xdr.OperationTypeSetOptions
 	body, err := xdr.NewOperationBody(opType, so.xdrOp)
+	if err != nil {
+		return xdr.Operation{}, errors.Wrap(err, "failed to build XDR OperationBody")
+	}
 
 	op := xdr.Operation{Body: body}
 	SetOpSourceAccount(&op, so.SourceAccount)

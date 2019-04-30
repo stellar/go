@@ -8,10 +8,11 @@ import (
 )
 
 //CreateOfferOp returns a ManageSellOffer operation to create a new offer, by
-// setting the OfferID to "0".
+// setting the OfferID to "0". The sourceAccount is optional, and if not provided,
+// will be that of the surrounding transaction.
 func CreateOfferOp(selling, buying Asset, amount, price string, sourceAccount ...Account) (ManageSellOffer, error) {
 	if len(sourceAccount) > 1 {
-		return ManageSellOffer{}, errors.New("multiple source accounts")
+		return ManageSellOffer{}, errors.New("offer can't have multiple source accounts")
 	}
 	offer := ManageSellOffer{
 		Selling: selling,
@@ -26,10 +27,12 @@ func CreateOfferOp(selling, buying Asset, amount, price string, sourceAccount ..
 	return offer, nil
 }
 
-//UpdateOfferOp returns a ManageSellOffer operation to update an offer.
+// UpdateOfferOp returns a ManageSellOffer operation to update an offer.
+// The sourceAccount is optional, and if not provided, will be that of
+// the surrounding transaction.
 func UpdateOfferOp(selling, buying Asset, amount, price string, offerID int64, sourceAccount ...Account) (ManageSellOffer, error) {
 	if len(sourceAccount) > 1 {
-		return ManageSellOffer{}, errors.New("multiple source accounts")
+		return ManageSellOffer{}, errors.New("offer can't have multiple source accounts")
 	}
 	offer := ManageSellOffer{
 		Selling: selling,
@@ -45,14 +48,15 @@ func UpdateOfferOp(selling, buying Asset, amount, price string, offerID int64, s
 }
 
 //DeleteOfferOp returns a ManageSellOffer operation to delete an offer, by
-// setting the Amount to "0".
+// setting the Amount to "0". The sourceAccount is optional, and if not provided,
+// will be that of the surrounding transaction.
 func DeleteOfferOp(offerID int64, sourceAccount ...Account) (ManageSellOffer, error) {
 	// It turns out Stellar core doesn't care about any of these fields except the amount.
 	// However, Horizon will reject ManageSellOffer if it is missing fields.
 	// Horizon will also reject if Buying == Selling.
 	// Therefore unfortunately we have to make up some dummy values here.
 	if len(sourceAccount) > 1 {
-		return ManageSellOffer{}, errors.New("multiple source accounts")
+		return ManageSellOffer{}, errors.New("offer can't have multiple source accounts")
 	}
 	offer := ManageSellOffer{
 		Selling: NativeAsset{},
