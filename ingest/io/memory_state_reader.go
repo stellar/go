@@ -3,12 +3,17 @@ package io
 import (
 	"fmt"
 	"io"
-	"log"
 	"regexp"
 
 	"github.com/stellar/go/support/historyarchive"
 	"github.com/stellar/go/xdr"
 )
+
+// readResult is the result of reading a bucket value
+type readResult struct {
+	entry xdr.LedgerEntry
+	e     error
+}
 
 // MemoryStateReader is the in-memory representation of HistoryArchiveState
 type MemoryStateReader struct {
@@ -16,13 +21,15 @@ type MemoryStateReader struct {
 	archive         *historyarchive.Archive
 	sequence        uint32
 	bucketHashRegex *regexp.Regexp
+	active          bool
+	readChan        chan readResult
 }
 
 // enforce MemoryStateReader to implement StateReader
 var _ StateReader = &MemoryStateReader{}
 
 // MakeMemoryStateReader is a factory method for MemoryStateReader
-func MakeMemoryStateReader(archive *historyarchive.Archive, sequence uint32) (*MemoryStateReader, error) {
+func MakeMemoryStateReader(archive *historyarchive.Archive, sequence uint32, bufferSize uint16) (*MemoryStateReader, error) {
 	has, e := archive.GetCheckpointHAS(sequence)
 	if e != nil {
 		return nil, fmt.Errorf("unable to get checkpoint HAS at ledger sequence %d: %s", sequence, e)
@@ -38,6 +45,8 @@ func MakeMemoryStateReader(archive *historyarchive.Archive, sequence uint32) (*M
 		archive:         archive,
 		sequence:        sequence,
 		bucketHashRegex: bhr,
+		active:          false,
+		readChan:        make(chan readResult, bufferSize),
 	}, nil
 }
 
@@ -53,75 +62,117 @@ func getBucketPath(r *regexp.Regexp, s string) (string, error) {
 	return matches[1], nil
 }
 
-// GetSequence placeholder
+// BufferReads triggers the streaming logic needed to be done before Read() can actually produce a result
+func (msr *MemoryStateReader) BufferReads() {
+	msr.active = true
+	go msr.bufferNext()
+}
+
+func (msr *MemoryStateReader) bufferNext() {
+	for _, hash := range msr.has.Buckets() {
+		if !msr.archive.BucketExists(hash) {
+			msr.readChan <- readResult{xdr.LedgerEntry{}, fmt.Errorf("bucket hash does not exist: %s", hash)}
+			close(msr.readChan)
+			return
+		}
+
+		// read bucket detail
+		filepathChan, errChan := msr.archive.ListBucket(historyarchive.HashPrefix(hash))
+
+		// read from channels
+		var filepath string
+		var e error
+		var ok bool
+		select {
+		case fp, okb := <-filepathChan:
+			// example filepath: prd/core-testnet/core_testnet_001/bucket/be/3c/bf/bucket-be3cbfc2d7e4272c01a1a22084573a04dad96bf77aa7fc2be4ce2dec8777b4f9.xdr.gz
+			filepath, e, ok = fp, nil, okb
+		case err, okb := <-errChan:
+			filepath, e, ok = "", err, okb
+			// TODO do we need to do anything special if e is nil here?
+		}
+		if !ok {
+			// move on to next bucket when this bucket is fully consumed or empty
+			continue
+		}
+
+		// process values
+		if e != nil {
+			msr.readChan <- readResult{xdr.LedgerEntry{}, fmt.Errorf("received error on errChan when listing buckets for hash '%s': %s", hash, e)}
+			close(msr.readChan)
+			return
+		}
+		shouldContinue := msr.streamBucketContents(filepath, hash)
+		if !shouldContinue {
+			close(msr.readChan)
+			return
+		}
+	}
+
+	close(msr.readChan)
+	return
+}
+
+// streamBucketContents pushes value onto the read channel, returning false when the channel needs to be closed otherwise true
+func (msr *MemoryStateReader) streamBucketContents(filepath string, hash historyarchive.Hash) bool {
+	bucketPath, e := getBucketPath(msr.bucketHashRegex, filepath)
+	if e != nil {
+		msr.readChan <- readResult{xdr.LedgerEntry{}, fmt.Errorf("cannot get bucket path for filepath '%s' with hash '%s': %s", filepath, hash, e)}
+		return false
+	}
+
+	rdr, e := msr.archive.GetXdrStream(bucketPath)
+	if e != nil {
+		msr.readChan <- readResult{xdr.LedgerEntry{}, fmt.Errorf("cannot get xdr stream for file '%s': %s", filepath, e)}
+		return false
+	}
+	defer rdr.Close()
+
+	n := 0
+	for {
+		var entry xdr.BucketEntry
+		if e = rdr.ReadOne(&entry); e != nil {
+			if e == io.EOF {
+				// proceed to the next bucket hash
+				return true
+			}
+			msr.readChan <- readResult{xdr.LedgerEntry{}, fmt.Errorf("Error on XDR record %d of filepath '%s': %s", n, filepath, e)}
+			return false
+		}
+
+		liveEntry, ok := entry.GetLiveEntry()
+		if !ok {
+			msr.readChan <- readResult{xdr.LedgerEntry{}, fmt.Errorf("cannot get live entry on XDR record %d of filepath '%s'", n, filepath)}
+			return false
+		}
+
+		// since readChan is a buffered channel we block here until one item is consumed on the dequeue side.
+		// this is our intended behavior, which ensures we only buffer exactly bufferSize results in the channel.
+		msr.readChan <- readResult{liveEntry, nil}
+		n++
+	}
+}
+
+// GetSequence impl.
 func (msr *MemoryStateReader) GetSequence() uint32 {
 	return msr.sequence
 }
 
-// Read placeholder
+// Read returns a new ledger entry on each call, returning false when the stream ends
 func (msr *MemoryStateReader) Read() (bool, xdr.LedgerEntry, error) {
-	leChan := make(chan xdr.LedgerEntry)
-	for _, hash := range msr.has.Buckets() {
-		if !msr.archive.BucketExists(hash) {
-			return false, xdr.LedgerEntry{}, fmt.Errorf("bucket hash does not exist: %s", hash)
-		}
-
-		sChan, eChan := msr.archive.ListBucket(historyarchive.HashPrefix(hash))
-		go func() {
-			s := <-sChan
-			// example: prd/core-testnet/core_testnet_001/bucket/be/3c/bf/bucket-be3cbfc2d7e4272c01a1a22084573a04dad96bf77aa7fc2be4ce2dec8777b4f9.xdr.gz
-			log.Printf("filename: '%s'", s)
-
-			bucketPath, e := getBucketPath(msr.bucketHashRegex, s)
-			if e != nil {
-				log.Fatalf("cannot get bucket path for file '%s': %s", s, e)
-				// return false, xdr.LedgerEntry{}, log.Fatalf("cannot get bucket path for file '%s': %s", s, e)
-			}
-
-			rdr, e := msr.archive.GetXdrStream(bucketPath)
-			if e != nil {
-				log.Fatalf("cannot get xdr stream for file '%s': %s", s, e)
-				// return false, xdr.LedgerEntry{}, fmt.Errorf("cannot get xdr stream: %s", e)
-			}
-			defer rdr.Close()
-
-			n := 0
-			for {
-				var entry xdr.BucketEntry
-				if e = rdr.ReadOne(&entry); e != nil {
-					if e == io.EOF {
-						break
-					}
-					log.Fatalf("Error on XDR record %d of %s: %s", n, s, e)
-					// return false, xdr.LedgerEntry{}, fmt.Errorf("Error on XDR record %d of %s: %s", n, s, e)
-				}
-				n++
-
-				le, ok := entry.GetLiveEntry()
-				if !ok {
-					log.Fatalf("cannot get live entry, n = %d, filename = %s", n, s)
-					// return false, xdr.LedgerEntry{}, fmt.Errorf("cannot get live entry, n = %d, filename = %s", n, s)
-				}
-
-				leChan <- le
-			}
-		}()
-
-		go func() {
-			e := <-eChan
-			if e != nil {
-				log.Printf("%s", e.Error())
-				panic(e)
-			} else {
-				log.Printf("nil error\n")
-			}
-		}()
-
-		// break here for now so we only do first run
-		break
+	if !msr.active {
+		return false, xdr.LedgerEntry{}, fmt.Errorf("memory state reader not active, need to call BufferReads() before calling Read()")
 	}
 
-	le := <-leChan
+	// blocking call. anytime we consume from this channel, the background goroutine will stream in the next value
+	result, ok := <-msr.readChan
+	if !ok {
+		// when channel is closed then return false with empty values
+		return false, xdr.LedgerEntry{}, nil
+	}
 
-	return true, le, nil
+	if result.e != nil {
+		return true, xdr.LedgerEntry{}, fmt.Errorf("error while reading from background channel: %s", result.e)
+	}
+	return true, result.entry, nil
 }
