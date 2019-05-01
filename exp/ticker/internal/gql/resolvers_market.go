@@ -86,12 +86,12 @@ func validateNumHoursAgo(n *int32) (int, error) {
 func dbMarketToPartialMarket(dbMarket tickerdb.PartialMarket) *partialMarket {
 	spread, spreadMidPoint := utils.CalcSpread(dbMarket.HighestBid, dbMarket.LowestAsk)
 	os := orderbookStats{
-		NumBids:        BigInt(dbMarket.NumBids),
+		BidCount:       BigInt(dbMarket.NumBids),
 		BidVolume:      dbMarket.BidVolume,
-		HighestBid:     dbMarket.HighestBid,
-		NumAsks:        BigInt(dbMarket.NumAsks),
+		BidMax:         dbMarket.HighestBid,
+		AskCount:       BigInt(dbMarket.NumAsks),
 		AskVolume:      dbMarket.AskVolume,
-		LowestAsk:      dbMarket.LowestAsk,
+		AskMin:         dbMarket.LowestAsk,
 		Spread:         spread,
 		SpreadMidPoint: spreadMidPoint,
 	}

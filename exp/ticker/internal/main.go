@@ -32,12 +32,12 @@ type MarketStats struct {
 	Price            float64 `json:"price"`
 	Close            float64 `json:"close"`
 	CloseTime        int64   `json:"close_time"`
-	NumBids          int     `json:"num_bids"`
+	BidCount         int     `json:"bid_count"`
 	BidVolume        float64 `json:"bid_volume"`
-	HighestBid       float64 `json:"highest_bid"`
-	NumAsks          int     `json:"num_asks"`
+	BidMax           float64 `json:"bid_max"`
+	AskCount         int     `json:"ask_count"`
 	AskVolume        float64 `json:"ask_volume"`
-	LowestAsk        float64 `json:"lowest_ask"`
+	AskMin           float64 `json:"ask_min"`
 	Spread           float64 `json:"spread"`
 	SpreadMidPoint   float64 `json:"spread_mid_point"`
 }

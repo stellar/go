@@ -65,12 +65,12 @@ type partialMarket struct {
 // orderbookStats represents the orderbook stats for a
 // specific pair of assets (aggregated or not)
 type orderbookStats struct {
-	NumBids        BigInt
+	BidCount       BigInt
 	BidVolume      float64
-	HighestBid     float64
-	NumAsks        BigInt
+	BidMax         float64
+	AskCount       BigInt
 	AskVolume      float64
-	LowestAsk      float64
+	AskMin         float64
 	Spread         float64
 	SpreadMidPoint float64
 }

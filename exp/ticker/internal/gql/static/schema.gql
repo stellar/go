@@ -94,12 +94,12 @@ type AggregatedMarket {
 }
 
 type OrderbookStats {
- 	numBids: BigInt!
+ 	bidCount: BigInt!
 	bidVolume: Float!
-	highestBid: Float!
-	numAsks: BigInt!
+	bidMax: Float!
+	askCount: BigInt!
 	askVolume: Float!
-	lowestAsk: Float!
+	askMin: Float!
 	spread: Float!
 	spreadMidPoint: Float!
 }
