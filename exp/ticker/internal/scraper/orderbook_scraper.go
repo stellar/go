@@ -22,10 +22,7 @@ func (c *ScraperConfig) fetchOrderbook(bType, bCode, bIssuer, cType, cCode, cIss
 		HighestBid:         math.Inf(-1), // start with -Inf to make sure we catch the correct max bid
 		LowestAsk:          math.Inf(1),  // start with +Inf to make sure we catch the correct min ask
 	}
-	r, err := createOrderbookRequest(bType, bCode, bIssuer, cType, cCode, cIssuer)
-	if err != nil {
-		return obStats, errors.Wrap(err, "could not create a orderbook request")
-	}
+	r := createOrderbookRequest(bType, bCode, bIssuer, cType, cCode, cIssuer)
 	summary, err := c.Client.OrderBook(r)
 	if err != nil {
 		return obStats, errors.Wrap(err, "could not fetch orderbook summary")
@@ -86,38 +83,25 @@ func calcOrderbookStats(obStats *OrderbookStats, summary hProtocol.OrderBookSumm
 
 // createOrderbookRequest generates a horizonclient.OrderBookRequest based on the base
 // and counter asset parameters provided
-func createOrderbookRequest(bType, bCode, bIssuer, cType, cCode, cIssuer string) (horizonclient.OrderBookRequest, error) {
-	r := horizonclient.OrderBookRequest{}
-
-	switch bType {
-	case string(horizonclient.AssetTypeNative):
-		r.SellingAssetType = horizonclient.AssetTypeNative
-	case string(horizonclient.AssetType4):
-		r.SellingAssetType = horizonclient.AssetType4
-		r.SellingAssetCode = bCode
-		r.SellingAssetIssuer = bIssuer
-	case string(horizonclient.AssetType12):
-		r.SellingAssetType = horizonclient.AssetType12
-		r.SellingAssetCode = bCode
-		r.SellingAssetIssuer = bIssuer
-	default:
-		return r, errors.New("invalid base asset type")
+func createOrderbookRequest(bType, bCode, bIssuer, cType, cCode, cIssuer string) horizonclient.OrderBookRequest {
+	r := horizonclient.OrderBookRequest{
+		SellingAssetType: horizonclient.AssetType(bType),
+		BuyingAssetType:  horizonclient.AssetType(cType),
 	}
 
-	switch cType {
-	case string(horizonclient.AssetTypeNative):
-		r.BuyingAssetType = horizonclient.AssetTypeNative
-	case string(horizonclient.AssetType4):
-		r.BuyingAssetType = horizonclient.AssetType4
+	// The Horizon API requires *AssetCode and *AssetIssuer fields to be empty
+	// when an Asset is native. As we store "XLM" as the asset code for native,
+	// we should only add Code and Issuer info in case we're dealing with
+	// non-native assets.
+	// See: https://www.stellar.org/developers/horizon/reference/endpoints/orderbook-details.html
+	if bType != string(horizonclient.AssetTypeNative) {
+		r.SellingAssetCode = bCode
+		r.SellingAssetIssuer = bIssuer
+	}
+	if cType != string(horizonclient.AssetTypeNative) {
 		r.BuyingAssetCode = cCode
 		r.BuyingAssetIssuer = cIssuer
-	case string(horizonclient.AssetType12):
-		r.BuyingAssetType = horizonclient.AssetType12
-		r.BuyingAssetCode = cCode
-		r.BuyingAssetIssuer = cIssuer
-	default:
-		return r, errors.New("invalid counter asset type")
 	}
 
-	return r, nil
+	return r
 }
