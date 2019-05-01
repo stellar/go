@@ -141,14 +141,13 @@ func (msr *MemoryStateReader) streamBucketContents(filepath string, hash history
 		}
 
 		liveEntry, ok := entry.GetLiveEntry()
-		if !ok {
-			msr.readChan <- readResult{xdr.LedgerEntry{}, fmt.Errorf("cannot get live entry on XDR record %d of filepath '%s'", n, filepath)}
-			return false
+		if ok {
+			// since readChan is a buffered channel we block here until one item is consumed on the dequeue side.
+			// this is our intended behavior, which ensures we only buffer exactly bufferSize results in the channel.
+			msr.readChan <- readResult{liveEntry, nil}
 		}
+		// TODO should we do something if we don't have a live entry?
 
-		// since readChan is a buffered channel we block here until one item is consumed on the dequeue side.
-		// this is our intended behavior, which ensures we only buffer exactly bufferSize results in the channel.
-		msr.readChan <- readResult{liveEntry, nil}
 		n++
 	}
 }
