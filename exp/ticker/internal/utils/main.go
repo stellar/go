@@ -2,7 +2,6 @@ package utils
 
 import (
 	"fmt"
-	"math"
 	"os"
 	"time"
 )
@@ -65,7 +64,7 @@ func CalcSpread(bidMax float64, askMin float64) (spread float64, midPoint float6
 	if askMin == 0 || bidMax == 0 {
 		return 0, 0
 	}
-	spread = math.Abs(askMin-bidMax) / askMin
+	spread = (askMin - bidMax) / askMin
 	midPoint = bidMax + spread/2.0
 	return
 }
