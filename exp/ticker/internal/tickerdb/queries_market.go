@@ -129,7 +129,7 @@ SELECT
 	COALESCE(open_price_7d, 0.0) as open_price_7d,
 
 	COALESCE(last_price, 0.0) as last_price,
-	COALESCE(last_close_time, now()) as close_time,
+	COALESCE(last_close_time_24h, last_close_time_7d) as close_time,
 
 	COALESCE(os.num_bids, 0) as num_bids,
 	COALESCE(os.bid_volume, 0.0) as bid_volume,
@@ -149,7 +149,7 @@ FROM (
 			(array_agg(t.price ORDER BY t.ledger_close_time ASC))[1] AS open_price_24h,
 			(array_agg(t.price ORDER BY t.ledger_close_time DESC))[1] AS last_price,
 			((array_agg(t.price ORDER BY t.ledger_close_time DESC))[1] - (array_agg(t.price ORDER BY t.ledger_close_time ASC))[1]) AS price_change_24h,
-			max(t.ledger_close_time) AS last_close_time
+			max(t.ledger_close_time) AS last_close_time_24h
 		FROM trades AS t
 			JOIN assets AS bAsset ON t.base_asset_id = bAsset.id
 			JOIN assets AS cAsset on t.counter_asset_id = cAsset.id
@@ -167,7 +167,8 @@ FROM (
 			max(t.price) AS highest_price_7d,
 			min(t.price) AS lowest_price_7d,
 			(array_agg(t.price ORDER BY t.ledger_close_time ASC))[1] AS open_price_7d,
-			((array_agg(t.price ORDER BY t.ledger_close_time DESC))[1] - (array_agg(t.price ORDER BY t.ledger_close_time ASC))[1]) AS price_change_7d
+			((array_agg(t.price ORDER BY t.ledger_close_time DESC))[1] - (array_agg(t.price ORDER BY t.ledger_close_time ASC))[1]) AS price_change_7d,
+			max(t.ledger_close_time) AS last_close_time_7d
 		FROM trades AS t
 			LEFT JOIN orderbook_stats AS os
 				ON t.base_asset_id = os.base_asset_id AND t.counter_asset_id = os.counter_asset_id
