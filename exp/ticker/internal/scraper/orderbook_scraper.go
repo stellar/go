@@ -41,14 +41,16 @@ func calcOrderbookStats(obStats *OrderbookStats, summary hProtocol.OrderBookSumm
 		obStats.HighestBid = 0
 	}
 	for _, bid := range summary.Bids {
-		pricef, err := strconv.ParseFloat(bid.Price, 64)
-		if err != nil {
-			return errors.Wrap(err, "invalid bid price")
-		}
-		obStats.BidVolume += pricef
+		pricef := float64(bid.PriceR.N) / float64(bid.PriceR.D)
 		if pricef > obStats.HighestBid {
 			obStats.HighestBid = pricef
 		}
+
+		amountf, err := strconv.ParseFloat(bid.Amount, 64)
+		if err != nil {
+			return errors.Wrap(err, "invalid bid amount")
+		}
+		obStats.BidVolume += amountf
 	}
 
 	// Calculate Ask Data:
@@ -57,11 +59,16 @@ func calcOrderbookStats(obStats *OrderbookStats, summary hProtocol.OrderBookSumm
 		obStats.LowestAsk = 0
 	}
 	for _, ask := range summary.Asks {
-		pricef, err := strconv.ParseFloat(ask.Price, 64)
+		pricef := float64(ask.PriceR.N) / float64(ask.PriceR.D)
+		amountf, err := strconv.ParseFloat(ask.Amount, 64)
 		if err != nil {
-			return errors.Wrap(err, "invalid ask price")
+			return errors.Wrap(err, "invalid ask amount")
 		}
-		obStats.AskVolume += pricef
+
+		// On Horizon, Ask prices are in units of counter, but
+		// amount is in units of base. Therefore, real amount = amount * price
+		// See: https://github.com/stellar/go/issues/612
+		obStats.AskVolume += pricef * amountf
 		if pricef < obStats.LowestAsk {
 			obStats.LowestAsk = pricef
 		}
