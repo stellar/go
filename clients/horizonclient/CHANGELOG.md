@@ -10,6 +10,8 @@ file.  This project adheres to [Semantic Versioning](http://semver.org/).
 
 - `Client.Root()` method for querying the root endpoint of a horizon server.
 
-### Changes 
+### Changes
 
 - `Client.Fund()` now returns `TransactionSuccess` instead of a http response pointer.
+
+- Querying the effects endpoint now supports returning the concrete effect type for each effect. This is also supported in streaming mode. See the [docs](https://godoc.org/github.com/stellar/go/clients/horizonclient#Client.Effects) for examples.
