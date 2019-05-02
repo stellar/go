@@ -17,7 +17,6 @@ import (
 	"github.com/manucorporat/sse"
 	hProtocol "github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/protocols/horizon/operations"
-	"github.com/stellar/go/support/app"
 	"github.com/stellar/go/support/errors"
 )
 
@@ -94,7 +93,6 @@ func (c *Client) stream(
 		}
 		req.Header.Set("Accept", "text/event-stream")
 		c.setDefaultClient()
-		// to do: confirm name and version
 		c.setClientAppHeaders(req)
 
 		// We can use c.HTTP here because we set Timeout per request not on the client. See sendRequest()
@@ -199,7 +197,7 @@ func (c *Client) stream(
 
 func (c *Client) setClientAppHeaders(req *http.Request) {
 	req.Header.Set("X-Client-Name", "go-stellar-sdk")
-	req.Header.Set("X-Client-Version", app.Version())
+	req.Header.Set("X-Client-Version", c.Version())
 	req.Header.Set("X-App-Name", c.AppName)
 	req.Header.Set("X-App-Version", c.AppVersion)
 }
@@ -521,6 +519,11 @@ func (c *Client) FetchTimebounds(seconds int64) (txnbuild.Timebounds, error) {
 func (c *Client) Root() (root hProtocol.Root, err error) {
 	err = c.sendRequestURL(c.fixHorizonURL(), "get", &root)
 	return
+}
+
+// Version returns the current version.
+func (c *Client) Version() string {
+	return version
 }
 
 // ensure that the horizon client implements ClientInterface
