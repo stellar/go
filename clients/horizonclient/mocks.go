@@ -38,15 +38,6 @@ func (m *MockClient) Assets(request AssetRequest) (hProtocol.AssetsPage, error) 
 	return a.Get(0).(hProtocol.AssetsPage), a.Error(1)
 }
 
-// Stream is a mocking method
-func (m *MockClient) Stream(ctx context.Context,
-	request StreamRequest,
-	handler func(interface{}),
-) error {
-	a := m.Called(ctx, request, handler)
-	return a.Error(0)
-}
-
 // Ledgers is a mocking method
 func (m *MockClient) Ledgers(request LedgerRequest) (hProtocol.LedgersPage, error) {
 	a := m.Called(request)
