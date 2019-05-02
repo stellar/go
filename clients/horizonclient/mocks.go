@@ -4,6 +4,7 @@ import (
 	"context"
 
 	hProtocol "github.com/stellar/go/protocols/horizon"
+	"github.com/stellar/go/protocols/horizon/effects"
 	"github.com/stellar/go/protocols/horizon/operations"
 	"github.com/stellar/go/txnbuild"
 	"github.com/stretchr/testify/mock"
@@ -27,9 +28,9 @@ func (m *MockClient) AccountData(request AccountRequest) (hProtocol.AccountData,
 }
 
 // Effects is a mocking method
-func (m *MockClient) Effects(request EffectRequest) (hProtocol.EffectsPage, error) {
+func (m *MockClient) Effects(request EffectRequest) (effects.EffectsPage, error) {
 	a := m.Called(request)
-	return a.Get(0).(hProtocol.EffectsPage), a.Error(1)
+	return a.Get(0).(effects.EffectsPage), a.Error(1)
 }
 
 // Assets is a mocking method

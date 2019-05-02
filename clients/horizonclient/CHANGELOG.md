@@ -16,6 +16,7 @@ file.  This project adheres to [Semantic Versioning](http://semver.org/).
 
 - `Client.Fund()` now returns `TransactionSuccess` instead of a http response pointer.
 
+- Querying the effects endpoint now supports returning the concrete effect type for each effect. This is also supported in streaming mode. See the [docs](https://godoc.org/github.com/stellar/go/clients/horizonclient#Client.Effects) for examples.
 
 ## [v1.0.0](https://github.com/stellar/go/releases/tag/horizonclient-v1.0) - 2019-04-26
 
