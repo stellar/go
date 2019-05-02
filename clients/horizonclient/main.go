@@ -108,7 +108,7 @@ type HTTP interface {
 	PostForm(url string, data url.Values) (resp *http.Response, err error)
 }
 
-// Client struct contains data for creating a horizon client that connects to the stellar network
+// Client struct contains data for creating a horizon client that connects to the stellar network.
 type Client struct {
 	// URL of Horizon server to connect
 	HorizonURL string
@@ -159,7 +159,7 @@ type ClientInterface interface {
 	Root() (hProtocol.Root, error)
 }
 
-// DefaultTestNetClient is a default client to connect to test network
+// DefaultTestNetClient is a default client to connect to test network.
 var DefaultTestNetClient = &Client{
 	HorizonURL:     "https://horizon-testnet.stellar.org/",
 	HTTP:           http.DefaultClient,
@@ -167,19 +167,19 @@ var DefaultTestNetClient = &Client{
 	isTestNet:      true,
 }
 
-// DefaultPublicNetClient is a default client to connect to public network
+// DefaultPublicNetClient is a default client to connect to public network.
 var DefaultPublicNetClient = &Client{
 	HorizonURL:     "https://horizon.stellar.org/",
 	HTTP:           http.DefaultClient,
 	horizonTimeOut: HorizonTimeOut,
 }
 
-// HorizonRequest contains methods implemented by request structs for horizon endpoints
+// HorizonRequest contains methods implemented by request structs for horizon endpoints.
 type HorizonRequest interface {
 	BuildURL() (string, error)
 }
 
-// AccountRequest struct contains data for making requests to the accounts endpoint of a horizon server
+// AccountRequest struct contains data for making requests to the accounts endpoint of a horizon server.
 // "AccountID" and "DataKey" fields should both be set when retrieving AccountData.
 // When getting the AccountDetail, only "AccountID" needs to be set.
 type AccountRequest struct {
@@ -229,7 +229,7 @@ type feeStatsRequest struct {
 }
 
 // OfferRequest struct contains data for getting offers made by an account from a horizon server.
-// "ForAccount" is required
+// "ForAccount" is required.
 // The query parameters (Order, Cursor and Limit) are optional. All or none can be set.
 type OfferRequest struct {
 	ForAccount string
@@ -240,7 +240,7 @@ type OfferRequest struct {
 
 // OperationRequest struct contains data for getting operation details from a horizon server.
 // "ForAccount", "ForLedger", "ForTransaction": Only one of these can be set at a time. If none
-// are provided, the default is to return all operations
+// are provided, the default is to return all operations.
 // The query parameters (Order, Cursor, Limit and IncludeFailed) are optional. All or none can be set.
 type OperationRequest struct {
 	ForAccount     string
@@ -285,7 +285,7 @@ type OrderBookRequest struct {
 	Limit              uint
 }
 
-// PathsRequest struct contains data for getting available payment paths from a horizon server
+// PathsRequest struct contains data for getting available payment paths from a horizon server.
 // All parameters are required.
 type PathsRequest struct {
 	DestinationAccount     string
@@ -314,7 +314,7 @@ type TradeRequest struct {
 	Limit              uint
 }
 
-// TradeAggregationRequest struct contains data for getting trade aggregations from a horizon server
+// TradeAggregationRequest struct contains data for getting trade aggregations from a horizon server.
 // The query parameters (Order and Limit) are optional. All or none can be set.
 // All other parameters are required.
 type TradeAggregationRequest struct {
