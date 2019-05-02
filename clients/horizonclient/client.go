@@ -263,13 +263,6 @@ func (c *Client) Assets(request AssetRequest) (assets hProtocol.AssetsPage, err 
 	return
 }
 
-// Stream is for endpoints that support streaming
-func (c *Client) Stream(ctx context.Context, request StreamRequest, handler func(interface{})) (err error) {
-
-	err = request.Stream(ctx, c, handler)
-	return
-}
-
 // Ledgers returns information about all ledgers.
 // See https://www.stellar.org/developers/horizon/reference/endpoints/ledgers-all.html
 func (c *Client) Ledgers(request LedgerRequest) (ledgers hProtocol.LedgersPage, err error) {
