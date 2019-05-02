@@ -94,6 +94,11 @@ func createOrderbookRequest(bType, bCode, bIssuer, cType, cCode, cIssuer string)
 	r := horizonclient.OrderBookRequest{
 		SellingAssetType: horizonclient.AssetType(bType),
 		BuyingAssetType:  horizonclient.AssetType(cType),
+		// NOTE (Alex C, 2019-05-02):
+		// Orderbook requests are currently not paginated on Horizon.
+		// This limit has been added to ensure we capture at least 200
+		// orderbook entries once pagination is added.
+		Limit: 200,
 	}
 
 	// The Horizon API requires *AssetCode and *AssetIssuer fields to be empty
