@@ -2,6 +2,7 @@ package horizonclient
 
 import (
 	"fmt"
+	"net/http"
 	"testing"
 	"time"
 
@@ -291,6 +292,17 @@ func ExampleClient_Fund() {
 		return
 	}
 	fmt.Print(resp)
+}
+
+func TestFixHTTP(t *testing.T) {
+	client := &Client{
+		HorizonURL: "https://localhost/",
+	}
+	// No HTTP client is provided
+	assert.Nil(t, client.HTTP, "client HTTP is nil")
+	client.Root()
+	// When a request is made, default HTTP client is set
+	assert.IsType(t, client.HTTP, &http.Client{})
 }
 
 func TestClientFund(t *testing.T) {

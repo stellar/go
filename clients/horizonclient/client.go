@@ -52,7 +52,7 @@ func (c *Client) sendRequestURL(requestURL string, method string, a interface{})
 		return errors.Wrap(err, "error creating HTTP request")
 	}
 	c.setClientAppHeaders(req)
-
+	c.setDefaultClient()
 	if c.horizonTimeOut == 0 {
 		c.horizonTimeOut = HorizonTimeOut
 	}
@@ -92,6 +92,7 @@ func (c *Client) stream(
 			return errors.Wrap(err, "error creating HTTP request")
 		}
 		req.Header.Set("Accept", "text/event-stream")
+    c.setDefaultClient()
 		c.setClientAppHeaders(req)
 
 		// We can use c.HTTP here because we set Timeout per request not on the client. See sendRequest()
@@ -199,6 +200,13 @@ func (c *Client) setClientAppHeaders(req *http.Request) {
 	req.Header.Set("X-Client-Version", c.Version())
 	req.Header.Set("X-App-Name", c.AppName)
 	req.Header.Set("X-App-Version", c.AppVersion)
+}
+
+// setDefaultClient sets the default HTTP client when none is provided.
+func (c *Client) setDefaultClient() {
+	if c.HTTP == nil {
+		c.HTTP = http.DefaultClient
+	}
 }
 
 // fixHorizonURL strips all slashes(/) at the end of HorizonURL if any, then adds a single slash
