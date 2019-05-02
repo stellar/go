@@ -203,6 +203,7 @@ SELECT
 	((array_agg(t.price ORDER BY t.ledger_close_time DESC))[1] - (array_agg(t.price ORDER BY t.ledger_close_time ASC))[1]) AS price_change,
 	(now() - interval '__NUMHOURS__ hours') AS interval_start,
 	min(t.ledger_close_time) AS first_ledger_close_time,
+	max(t.ledger_close_time) AS ledger_close_time,
 	COALESCE((array_agg(os.num_bids))[1], 0) AS num_bids,
 	COALESCE((array_agg(os.bid_volume))[1], 0.0) AS bid_volume,
 	COALESCE((array_agg(os.highest_bid))[1], 0.0) AS highest_bid,
@@ -230,6 +231,7 @@ SELECT
 	t1.price_change,
 	t1.interval_start,
 	t1.first_ledger_close_time,
+	t1.ledger_close_time,
 	COALESCE(aob.base_asset_code, '') as base_asset_code,
 	COALESCE(aob.counter_asset_code, '') as counter_asset_code,
 	COALESCE(aob.num_bids, 0) AS num_bids,
@@ -250,7 +252,8 @@ FROM (
 		(array_agg(t.price ORDER BY t.ledger_close_time DESC))[1] AS last_price,
 		((array_agg(t.price ORDER BY t.ledger_close_time DESC))[1] - (array_agg(t.price ORDER BY t.ledger_close_time ASC))[1]) AS price_change,
 		(now() - interval '__NUMHOURS__ hours') AS interval_start,
-		min(t.ledger_close_time) AS first_ledger_close_time
+		min(t.ledger_close_time) AS first_ledger_close_time,
+		max(t.ledger_close_time) AS ledger_close_time
 	FROM trades AS t
 		LEFT JOIN orderbook_stats AS os ON t.base_asset_id = os.base_asset_id AND t.counter_asset_id = os.counter_asset_id
 		JOIN assets AS bAsset ON t.base_asset_id = bAsset.id

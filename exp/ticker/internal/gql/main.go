@@ -59,6 +59,7 @@ type partialMarket struct {
 	Close                float64
 	IntervalStart        graphql.Time
 	FirstLedgerCloseTime graphql.Time
+	LedgerCloseTime      graphql.Time
 	OrderbookStats       orderbookStats
 }
 
