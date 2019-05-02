@@ -9,8 +9,9 @@ import (
 // ChangeTrust represents the Stellar change trust operation. See
 // https://www.stellar.org/developers/guides/concepts/list-of-operations.html
 type ChangeTrust struct {
-	Line  Asset
-	Limit string
+	Line          Asset
+	Limit         string
+	SourceAccount Account
 }
 
 // RemoveTrustlineOp returns a ChangeTrust operation to remove the trustline of the described asset,
@@ -43,6 +44,10 @@ func (ct *ChangeTrust) BuildXDR() (xdr.Operation, error) {
 		Limit: xdrLimit,
 	}
 	body, err := xdr.NewOperationBody(opType, xdrOp)
-
-	return xdr.Operation{Body: body}, errors.Wrap(err, "failed to build XDR OperationBody")
+	if err != nil {
+		return xdr.Operation{}, errors.Wrap(err, "failed to build XDR OperationBody")
+	}
+	op := xdr.Operation{Body: body}
+	SetOpSourceAccount(&op, ct.SourceAccount)
+	return xdr.Operation{Body: body}, nil
 }

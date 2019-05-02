@@ -7,12 +7,18 @@ import (
 
 // Inflation represents the Stellar inflation operation. See
 // https://www.stellar.org/developers/guides/concepts/list-of-operations.html
-type Inflation struct{}
+type Inflation struct {
+	SourceAccount Account
+}
 
 // BuildXDR for Inflation returns a fully configured XDR Operation.
 func (inf *Inflation) BuildXDR() (xdr.Operation, error) {
 	opType := xdr.OperationTypeInflation
 	body, err := xdr.NewOperationBody(opType, nil)
-
-	return xdr.Operation{Body: body}, errors.Wrap(err, "failed to build XDR OperationBody")
+	if err != nil {
+		return xdr.Operation{}, errors.Wrap(err, "failed to build XDR OperationBody")
+	}
+	op := xdr.Operation{Body: body}
+	SetOpSourceAccount(&op, inf.SourceAccount)
+	return op, nil
 }
