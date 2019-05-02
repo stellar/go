@@ -268,7 +268,7 @@ type Trade struct {
 	BoughtAssetIssuer string `json:"bought_asset_issuer,omitempty"`
 }
 
-// Effect contains methods that is implemented by all effect types
+// Effect contains methods that are implemented by all effect types.
 type Effect interface {
 	PagingToken() string
 	GetType() string
