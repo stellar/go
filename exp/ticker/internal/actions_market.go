@@ -39,6 +39,7 @@ func GenerateMarketSummary(s *tickerdb.TickerSession) (ms MarketSummary, err err
 	var marketStatsSlice []MarketStats
 	now := time.Now()
 	nowMillis := utils.TimeToUnixEpoch(now)
+	nowRFC339 := utils.TimeToRFC3339(now)
 
 	dbMarkets, err := s.RetrieveMarketData()
 	if err != nil {
@@ -51,14 +52,15 @@ func GenerateMarketSummary(s *tickerdb.TickerSession) (ms MarketSummary, err err
 	}
 
 	ms = MarketSummary{
-		GeneratedAt: nowMillis,
-		Pairs:       marketStatsSlice,
+		GeneratedAt:        nowMillis,
+		GeneratedAtRFC3339: nowRFC339,
+		Pairs:              marketStatsSlice,
 	}
 	return
 }
 
 func dbMarketToMarketStats(m tickerdb.Market) MarketStats {
-	closeTime := utils.TimeToUnixEpoch(m.LastPriceCloseTime)
+	closeTime := utils.TimeToRFC3339(m.LastPriceCloseTime)
 
 	spread, spreadMidPoint := utils.CalcSpread(m.HighestBid, m.LowestAsk)
 	return MarketStats{
