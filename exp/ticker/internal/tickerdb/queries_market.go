@@ -115,10 +115,10 @@ SELECT
 	COALESCE(base_volume_24h, 0.0) as base_volume_24h,
 	COALESCE(counter_volume_24h, 0.0) as counter_volume_24h,
 	COALESCE(trade_count_24h, 0) as trade_count_24h,
-	COALESCE(highest_price_24h, 0.0) as highest_price_24h,
-	COALESCE(lowest_price_24h, 0.0) as lowest_price_24h,
+	COALESCE(highest_price_24h, last_price_7d, 0.0) as highest_price_24h,
+	COALESCE(lowest_price_24h, last_price_7d, 0.0) as lowest_price_24h,
 	COALESCE(price_change_24h, 0.0) as price_change_24h,
-	COALESCE(open_price_24h, 0.0) as open_price_24h,
+	COALESCE(open_price_24h, last_price_7d, 0.0) as open_price_24h,
 
 	COALESCE(base_volume_7d, 0) as base_volume_7d,
 	COALESCE(counter_volume_7d, 0) as counter_volume_7d,
@@ -128,7 +128,7 @@ SELECT
 	COALESCE(price_change_7d, 0.0) as price_change_7d,
 	COALESCE(open_price_7d, 0.0) as open_price_7d,
 
-	COALESCE(last_price, 0.0) as last_price,
+	COALESCE(last_price, last_price_7d, 0.0) as last_price,
 	COALESCE(last_close_time_24h, last_close_time_7d) as close_time,
 
 	COALESCE(os.num_bids, 0) as num_bids,
@@ -167,6 +167,7 @@ FROM (
 			max(t.price) AS highest_price_7d,
 			min(t.price) AS lowest_price_7d,
 			(array_agg(t.price ORDER BY t.ledger_close_time ASC))[1] AS open_price_7d,
+			(array_agg(t.price ORDER BY t.ledger_close_time DESC))[1] AS last_price_7d,
 			((array_agg(t.price ORDER BY t.ledger_close_time DESC))[1] - (array_agg(t.price ORDER BY t.ledger_close_time ASC))[1]) AS price_change_7d,
 			max(t.ledger_close_time) AS last_close_time_7d
 		FROM trades AS t

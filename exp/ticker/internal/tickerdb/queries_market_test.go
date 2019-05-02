@@ -215,7 +215,6 @@ func TestRetrieveMarketData(t *testing.T) {
 
 	markets, err := session.RetrieveMarketData()
 	require.NoError(t, err)
-	fmt.Println(markets)
 	assert.Equal(t, 2, len(markets))
 
 	// Mapping the retrieved markets:
@@ -631,4 +630,109 @@ func TestRetrievePartialMarkets(t *testing.T) {
 	assert.Equal(t, 18, partialAggMkt.NumAsks)
 	assert.Equal(t, 45.0, partialAggMkt.AskVolume)
 	assert.Equal(t, 0.1, partialAggMkt.LowestAsk)
+}
+
+func Test24hStatsFallback(t *testing.T) {
+	db := dbtest.Postgres(t)
+	defer db.Close()
+
+	var session TickerSession
+	session.DB = db.Open()
+	defer session.DB.Close()
+
+	// Run migrations to make sure the tests are run
+	// on the most updated schema version
+	migrations := &migrate.FileMigrationSource{
+		Dir: "./migrations",
+	}
+	_, err := migrate.Exec(session.DB.DB, "postgres", migrations, migrate.Up)
+	require.NoError(t, err)
+
+	// Adding a seed issuer to be used later:
+	tbl := session.GetTable("issuers")
+	_, err = tbl.Insert(Issuer{
+		PublicKey: "GCF3TQXKZJNFJK7HCMNE2O2CUNKCJH2Y2ROISTBPLC7C5EIA5NNG2XZB",
+		Name:      "FOO BAR",
+	}).IgnoreCols("id").Exec()
+	require.NoError(t, err)
+	var issuer Issuer
+	err = session.GetRaw(&issuer, `
+		SELECT *
+		FROM issuers
+		ORDER BY id DESC
+		LIMIT 1`,
+	)
+	require.NoError(t, err)
+
+	// Adding a seed asset to be used later:
+	err = session.InsertOrUpdateAsset(&Asset{
+		Code:     "XLM",
+		IssuerID: issuer.ID,
+		IsValid:  true,
+	}, []string{"code", "issuer_id"})
+	require.NoError(t, err)
+	var xlmAsset Asset
+	err = session.GetRaw(&xlmAsset, `
+		SELECT *
+		FROM assets
+		ORDER BY id DESC
+		LIMIT 1`,
+	)
+	require.NoError(t, err)
+
+	// Adding another asset to be used later:
+	err = session.InsertOrUpdateAsset(&Asset{
+		Code:     "BTC",
+		IssuerID: issuer.ID,
+		IsValid:  true,
+	}, []string{"code", "issuer_id"})
+	require.NoError(t, err)
+	var btcAsset Asset
+	err = session.GetRaw(&btcAsset, `
+		SELECT *
+		FROM assets
+		ORDER BY id DESC
+		LIMIT 1`,
+	)
+	require.NoError(t, err)
+
+	// A few times to be used:
+	now := time.Now()
+	twoDaysAgo := now.AddDate(0, 0, -3)
+	threeDaysAgo := now.AddDate(0, 0, -3)
+
+	// Now let's create the trades:
+	trades := []Trade{
+		Trade{
+			HorizonID:       "hrzid1",
+			BaseAssetID:     xlmAsset.ID,
+			BaseAmount:      1.0,
+			CounterAssetID:  btcAsset.ID,
+			CounterAmount:   1.0,
+			Price:           0.5, // close price & lowest price
+			LedgerCloseTime: twoDaysAgo,
+		},
+		Trade{ // BTC_ETH trade (ETH is from issuer 2)
+			HorizonID:       "hrzid2",
+			BaseAssetID:     xlmAsset.ID,
+			BaseAmount:      1.0,
+			CounterAssetID:  btcAsset.ID,
+			CounterAmount:   1.0,
+			Price:           1.0, // open price & highest price
+			LedgerCloseTime: threeDaysAgo,
+		},
+	}
+	err = session.BulkInsertTrades(trades)
+	require.NoError(t, err)
+
+	markets, err := session.RetrieveMarketData()
+	require.NoError(t, err)
+	assert.Equal(t, 1, len(markets))
+	mkt := markets[0]
+
+	// When there are no 24h data, 24h OHLC should fallback to the 7d close value
+	assert.Equal(t, 0.5, mkt.LastPrice)
+	assert.Equal(t, 0.5, mkt.LowestPrice24h)
+	assert.Equal(t, 0.5, mkt.OpenPrice24h)
+	assert.Equal(t, 0.5, mkt.HighestPrice24h)
 }
