@@ -13,8 +13,8 @@ template and use a short description.
 
 * [ ] This PR adds tests for the most critical parts of the new functionality or fixes.
 * [ ] I've updated any docs ([developer docs](https://www.stellar.org/developers/reference/), `.md`
-  files, etc... affected by this change (take a look in the `docs` folder for a given service, like
-  [this one](https://github.com/stellar/go/tree/master/services/horizon/internal/docs).
+  files, etc... affected by this change — take a look in the `docs` folder for a given service,
+  like [this one](https://github.com/stellar/go/tree/master/services/horizon/internal/docs)).
 
 ### Release planning
 
