@@ -92,7 +92,7 @@ func (c *Client) stream(
 			return errors.Wrap(err, "error creating HTTP request")
 		}
 		req.Header.Set("Accept", "text/event-stream")
-    c.setDefaultClient()
+		c.setDefaultClient()
 		c.setClientAppHeaders(req)
 
 		// We can use c.HTTP here because we set Timeout per request not on the client. See sendRequest()
