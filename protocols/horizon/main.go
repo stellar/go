@@ -11,7 +11,6 @@ import (
 	"encoding/json"
 
 	"github.com/stellar/go/protocols/horizon/base"
-	"github.com/stellar/go/protocols/horizon/effects"
 	"github.com/stellar/go/strkey"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/support/render/hal"
@@ -500,13 +499,6 @@ func MustKeyTypeFromAddress(address string) string {
 // AccountData represents a single data object stored on by an account
 type AccountData struct {
 	Value string `json:"value"`
-}
-
-// EffectsPage contains page of effects returned by Horizon.
-type EffectsPage struct {
-	Embedded struct {
-		Records []effects.Base
-	} `json:"_embedded"`
 }
 
 // TradeAggregationsPage returns a list of aggregated trade records, aggregated by resolution

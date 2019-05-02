@@ -16,6 +16,7 @@ import (
 
 	"github.com/manucorporat/sse"
 	hProtocol "github.com/stellar/go/protocols/horizon"
+	"github.com/stellar/go/protocols/horizon/effects"
 	"github.com/stellar/go/protocols/horizon/operations"
 	"github.com/stellar/go/support/errors"
 )
@@ -257,7 +258,7 @@ func (c *Client) AccountData(request AccountRequest) (accountData hProtocol.Acco
 
 // Effects returns effects(https://www.stellar.org/developers/horizon/reference/resources/effect.html)
 // It can be used to return effects for an account, a ledger, an operation, a transaction and all effects on the network.
-func (c *Client) Effects(request EffectRequest) (effects hProtocol.EffectsPage, err error) {
+func (c *Client) Effects(request EffectRequest) (effects effects.EffectsPage, err error) {
 	err = c.sendRequest(request, &effects)
 	return
 }
