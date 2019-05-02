@@ -127,7 +127,6 @@ type ClientInterface interface {
 	Ledgers(request LedgerRequest) (hProtocol.LedgersPage, error)
 	LedgerDetail(sequence uint32) (hProtocol.Ledger, error)
 	Metrics() (hProtocol.Metrics, error)
-	Stream(ctx context.Context, request StreamRequest, handler func(interface{})) error
 	FeeStats() (hProtocol.FeeStats, error)
 	Offers(request OfferRequest) (hProtocol.OffersPage, error)
 	Operations(request OperationRequest) (operations.OperationsPage, error)
@@ -171,11 +170,6 @@ var DefaultPublicNetClient = &Client{
 // HorizonRequest contains methods implemented by request structs for horizon endpoints
 type HorizonRequest interface {
 	BuildURL() (string, error)
-}
-
-// StreamRequest contains methods implemented by request structs for endpoints that support streaming
-type StreamRequest interface {
-	Stream(ctx context.Context, client *Client, handler func(interface{})) error
 }
 
 // AccountRequest struct contains data for making requests to the accounts endpoint of a horizon server
