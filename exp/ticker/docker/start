@@ -28,6 +28,7 @@ function main() {
 
 	populate_assets
 	populate_trades
+	populate_orderbooks
 	generate_assets_file
 	generate_markets_file
 
@@ -67,6 +68,19 @@ function populate_trades() {
 	echo ""
 	sudo -u stellar $STELLAR_BIN/ticker ingest trades --db-url=$PGURL
 	touch $PGHOME/.trades-populated
+}
+
+
+function populate_orderbooks() {
+	if [ -f $PGHOME/.orderbooks-populated ]; then
+		echo "ticker: orderbooks already pre-populated"
+		return 0
+	fi
+	echo ""
+	echo "Populating initial orderbook database"
+	echo ""
+	sudo -u stellar $STELLAR_BIN/ticker ingest orderbooks --db-url=$PGURL
+	touch $PGHOME/.orderbooks-populated
 }
 
 

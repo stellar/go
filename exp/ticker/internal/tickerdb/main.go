@@ -82,6 +82,22 @@ type Trade struct {
 	Price           float64   `db:"price"`
 }
 
+// OrderbookStats represents an entry on the orderbook_stats table
+type OrderbookStats struct {
+	ID             int32     `db:"id"`
+	BaseAssetID    int32     `db:"base_asset_id"`
+	CounterAssetID int32     `db:"counter_asset_id"`
+	NumBids        int       `db:"num_bids"`
+	BidVolume      float64   `db:"bid_volume"`
+	HighestBid     float64   `db:"highest_bid"`
+	NumAsks        int       `db:"num_asks"`
+	AskVolume      float64   `db:"ask_volume"`
+	LowestAsk      float64   `db:"lowest_ask"`
+	Spread         float64   `db:"spread"`
+	SpreadMidPoint float64   `db:"spread_mid_point"`
+	UpdatedAt      time.Time `db:"updated_at"`
+}
+
 // Market represent the aggregated market data retrieved from the database.
 // Note: this struct does *not* directly map to a db entity.
 type Market struct {
@@ -102,19 +118,28 @@ type Market struct {
 	PriceChange7d      float64   `db:"price_change_7d"`
 	LastPriceCloseTime time.Time `db:"close_time"`
 	LastPrice          float64   `db:"last_price"`
+	NumBids            int       `db:"num_bids"`
+	BidVolume          float64   `db:"bid_volume"`
+	HighestBid         float64   `db:"highest_bid"`
+	NumAsks            int       `db:"num_asks"`
+	AskVolume          float64   `db:"ask_volume"`
+	LowestAsk          float64   `db:"lowest_ask"`
 }
 
 // PartialMarket represents the aggregated market data for a
 // specific pair of assets (or asset codes) during an arbitrary
 // time range.
+// Note: this struct does *not* directly map to a db entity.
 type PartialMarket struct {
 	TradePairName        string    `db:"trade_pair_name"`
 	BaseAssetID          int32     `db:"base_asset_id"`
 	BaseAssetCode        string    `db:"base_asset_code"`
 	BaseAssetIssuer      string    `db:"base_asset_issuer"`
+	BaseAssetType        string    `db:"base_asset_type"`
 	CounterAssetID       int32     `db:"counter_asset_id"`
 	CounterAssetCode     string    `db:"counter_asset_code"`
 	CounterAssetIssuer   string    `db:"counter_asset_issuer"`
+	CounterAssetType     string    `db:"counter_asset_type"`
 	BaseVolume           float64   `db:"base_volume"`
 	CounterVolume        float64   `db:"counter_volume"`
 	TradeCount           int32     `db:"trade_count"`
@@ -123,6 +148,12 @@ type PartialMarket struct {
 	High                 float64   `db:"highest_price"`
 	Change               float64   `db:"price_change"`
 	Close                float64   `db:"last_price"`
+	NumBids              int       `db:"num_bids"`
+	BidVolume            float64   `db:"bid_volume"`
+	HighestBid           float64   `db:"highest_bid"`
+	NumAsks              int       `db:"num_asks"`
+	AskVolume            float64   `db:"ask_volume"`
+	LowestAsk            float64   `db:"lowest_ask"`
 	IntervalStart        time.Time `db:"interval_start"`
 	FirstLedgerCloseTime time.Time `db:"first_ledger_close_time"`
 }

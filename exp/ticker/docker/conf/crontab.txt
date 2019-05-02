@@ -4,6 +4,9 @@
 # Refresh the database of assets, hourly:
 @hourly /opt/stellar/bin/ticker ingest assets --db-url=postgres://127.0.0.1:5432/ticker > /home/stellar/last-ingest-assets.log 2>&1
 
+# Refresh the database of orderbooks, every 10 minutes:
+*/10 * * * * /opt/stellar/bin/ticker ingest orderbooks --db-url=postgres://127.0.0.1:5432/ticker > /home/stellar/last-ingest-orderbooks.log 2>&1
+
 # Backfill the database of trades (including possible new assets), every 6 hours:
 0 */6 * * * /opt/stellar/bin/ticker ingest trades --db-url=postgres://127.0.0.1:5432/ticker > /home/stellar/last-ingest-trades.log 2>&1
 

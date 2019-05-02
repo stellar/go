@@ -32,6 +32,14 @@ type MarketStats struct {
 	Price            float64 `json:"price"`
 	Close            float64 `json:"close"`
 	CloseTime        int64   `json:"close_time"`
+	BidCount         int     `json:"bid_count"`
+	BidVolume        float64 `json:"bid_volume"`
+	BidMax           float64 `json:"bid_max"`
+	AskCount         int     `json:"ask_count"`
+	AskVolume        float64 `json:"ask_volume"`
+	AskMin           float64 `json:"ask_min"`
+	Spread           float64 `json:"spread"`
+	SpreadMidPoint   float64 `json:"spread_mid_point"`
 }
 
 // Asset Sumary represents the collection of valid assets.

@@ -91,6 +91,24 @@ type FinalAsset struct {
 	Status                      string     `json:"status"`
 }
 
+// OrderbookStats represents the Orderbook stats for a given asset
+type OrderbookStats struct {
+	BaseAssetCode      string
+	BaseAssetType      string
+	BaseAssetIssuer    string
+	CounterAssetCode   string
+	CounterAssetType   string
+	CounterAssetIssuer string
+	NumBids            int
+	BidVolume          float64
+	HighestBid         float64
+	NumAsks            int
+	AskVolume          float64
+	LowestAsk          float64
+	Spread             float64
+	SpreadMidPoint     float64
+}
+
 // FetchAllAssets fetches assets from the Horizon public net. If limit = 0, will fetch all assets.
 func (c *ScraperConfig) FetchAllAssets(limit int, parallelism int) (assets []FinalAsset, err error) {
 	dirtyAssets, err := c.retrieveAssets(limit)
@@ -126,4 +144,10 @@ func (c *ScraperConfig) FetchAllTrades(since time.Time, limit int) (trades []hPr
 func (c *ScraperConfig) StreamNewTrades(cursor string, h horizonclient.TradeHandler) error {
 	c.Logger.Info("Starting to stream trades with cursor at:", cursor)
 	return c.streamTrades(h, cursor)
+}
+
+// FetchOrderbookForAssets fetches the orderbook stats for the base and counter assets provided in the parameters
+func (c *ScraperConfig) FetchOrderbookForAssets(bType, bCode, bIssuer, cType, cCode, cIssuer string) (OrderbookStats, error) {
+	c.Logger.Infof("Fetching orderbook info for %s:%s / %s:%s\n", bCode, bIssuer, cCode, cIssuer)
+	return c.fetchOrderbook(bType, bCode, bIssuer, cType, cCode, cIssuer)
 }

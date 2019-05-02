@@ -75,6 +75,7 @@ type Market {
 	close: Float!
 	intervalStart: Time!
 	firstLedgerCloseTime: Time!
+	orderbookStats: OrderbookStats!
 }
 
 type AggregatedMarket {
@@ -89,6 +90,18 @@ type AggregatedMarket {
 	close: Float!
 	intervalStart: Time!
 	firstLedgerCloseTime: Time!
+	orderbookStats: OrderbookStats!
+}
+
+type OrderbookStats {
+ 	bidCount: BigInt!
+	bidVolume: Float!
+	bidMax: Float!
+	askCount: BigInt!
+	askVolume: Float!
+	askMin: Float!
+	spread: Float!
+	spreadMidPoint: Float!
 }
 
 type Issuer {

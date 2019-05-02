@@ -16,6 +16,7 @@ func init() {
 	rootCmd.AddCommand(cmdIngest)
 	cmdIngest.AddCommand(cmdIngestAssets)
 	cmdIngest.AddCommand(cmdIngestTrades)
+	cmdIngest.AddCommand(cmdIngestOrderbooks)
 
 	cmdIngestTrades.Flags().BoolVar(
 		&ShouldStream,
@@ -93,6 +94,29 @@ var cmdIngestTrades = &cobra.Command{
 			if err != nil {
 				Logger.Fatal("could not refresh error database:", err)
 			}
+		}
+	},
+}
+
+var cmdIngestOrderbooks = &cobra.Command{
+	Use:   "orderbooks",
+	Short: "Refreshes the orderbook stats database with new data retrieved from Horizon.",
+	Run: func(cmd *cobra.Command, args []string) {
+		Logger.Info("Refreshing the asset database")
+		dbInfo, err := pq.ParseURL(DatabaseURL)
+		if err != nil {
+			Logger.Fatal("could not parse db-url:", err)
+		}
+
+		session, err := tickerdb.CreateSession("postgres", dbInfo)
+		if err != nil {
+			Logger.Fatal("could not connect to db:", err)
+		}
+		defer session.DB.Close()
+
+		err = ticker.RefreshOrderbookEntries(&session, Client, Logger)
+		if err != nil {
+			Logger.Fatal("could not refresh error database:", err)
 		}
 	},
 }

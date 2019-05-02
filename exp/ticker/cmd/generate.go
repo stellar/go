@@ -76,7 +76,7 @@ var cmdGenerateAssetData = &cobra.Command{
 		Logger.Infof("Starting asset data generation, outputting to: %s\n", AssetsOutFile)
 		err = ticker.GenerateAssetsFile(&session, Logger, AssetsOutFile)
 		if err != nil {
-			Logger.Fatal("could not generate market data:", err)
+			Logger.Fatal("could not generate asset data:", err)
 		}
 	},
 }

@@ -59,6 +59,8 @@ func GenerateMarketSummary(s *tickerdb.TickerSession) (ms MarketSummary, err err
 
 func dbMarketToMarketStats(m tickerdb.Market) MarketStats {
 	closeTime := utils.TimeToUnixEpoch(m.LastPriceCloseTime)
+
+	spread, spreadMidPoint := utils.CalcSpread(m.HighestBid, m.LowestAsk)
 	return MarketStats{
 		TradePairName:    m.TradePair,
 		BaseVolume24h:    m.BaseVolume24h,
@@ -77,6 +79,14 @@ func dbMarketToMarketStats(m tickerdb.Market) MarketStats {
 		Change7d:         m.PriceChange7d,
 		Price:            m.LastPrice,
 		Close:            m.LastPrice,
+		BidCount:         m.NumBids,
+		BidVolume:        m.BidVolume,
+		BidMax:           m.HighestBid,
+		AskCount:         m.NumAsks,
+		AskVolume:        m.AskVolume,
+		AskMin:           m.LowestAsk,
+		Spread:           spread,
+		SpreadMidPoint:   spreadMidPoint,
 		CloseTime:        closeTime,
 	}
 }

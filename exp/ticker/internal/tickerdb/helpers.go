@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"reflect"
 	"strings"
+
+	"github.com/stellar/go/exp/ticker/internal/utils"
 )
 
 // getDBFieldTags returns all "db" tags for a given struct, optionally excluding the "id".
@@ -114,4 +116,22 @@ func getBaseAndCounterCodes(pairName string) (string, string, error) {
 	}
 
 	return assets[0], assets[1], nil
+}
+
+// performUpsertQuery introspects a dbStruct interface{} and performs an insert query
+// (if the conflictConstraint isn't broken), otherwise it updates the instance on the
+// db, preserving the old values for the fields in preserveFields
+func (s *TickerSession) performUpsertQuery(dbStruct interface{}, tableName string, conflictConstraint string, preserveFields []string) error {
+	dbFields := getDBFieldTags(dbStruct, true)
+	dbFieldsString := strings.Join(dbFields, ", ")
+	dbValues := getDBFieldValues(dbStruct, true)
+
+	cleanPreservedFields := sanitizeFieldNames(preserveFields)
+	toUpdateFields := utils.SliceDiff(dbFields, cleanPreservedFields)
+
+	qs := fmt.Sprintf("INSERT INTO %s (", tableName) + dbFieldsString + ")"
+	qs += " VALUES (" + generatePlaceholders(dbValues) + ")"
+	qs += " " + createOnConflictFragment(conflictConstraint, toUpdateFields) + ";"
+	_, err := s.ExecRaw(qs, dbValues...)
+	return err
 }
