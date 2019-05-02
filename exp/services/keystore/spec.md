@@ -65,7 +65,7 @@ interface EncryptedKeyData {
 Store Keys Request:
 
 ```typescript
-interface StoreKeyRequest {
+interface StoreKeysRequest {
 	encryptedKeys: EncryptedKey[];
 }
 ```
@@ -73,7 +73,7 @@ interface StoreKeyRequest {
 Store Keys Response:
 
 ```typescript
-interface StoreKeyResponse {
+interface StoreKeysResponse {
 	encryptedKeys: EncryptedKeyData[];
 }
 ```
@@ -132,6 +132,35 @@ Load Key Response:
 type LoadKeyResponse = EncryptedKeyData;
 ```
 
+<details><summary>Errors</summary>
+
+TBD
+```json
+{
+	"code": "some error code",
+	"message": "some error message",
+	"retriable": false,
+}
+```
+</details>
+
+### /update-keys
+
+Update Keys Request:
+
+```typescript
+interface UpdateKeysRequest {
+	encryptedKeys: EncryptedKey[];
+}
+```
+
+Update Keys Response:
+
+```typescript
+interface UpdateKeysResponse {
+	encryptedKeys: EncryptedKeyData[];
+}
+```
 <details><summary>Errors</summary>
 
 TBD

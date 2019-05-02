@@ -109,13 +109,20 @@ type HTTP interface {
 	PostForm(url string, data url.Values) (resp *http.Response, err error)
 }
 
-// Client struct contains data for creating a horizon client that connects to the stellar network
+// Client struct contains data for creating a horizon client that connects to the stellar network.
 type Client struct {
-	HorizonURL     string
-	HTTP           HTTP
-	horizonTimeOut time.Duration
-	AppName        string
+	// URL of Horizon server to connect
+	HorizonURL string
+
+	// HTTP client to make requests with
+	HTTP HTTP
+
+	// AppName is the name of the application using the horizonclient package
+	AppName string
+
+	// AppVersion is the version of the application using the horizonclient package
 	AppVersion     string
+	horizonTimeOut time.Duration
 	isTestNet      bool
 }
 
@@ -128,7 +135,6 @@ type ClientInterface interface {
 	Ledgers(request LedgerRequest) (hProtocol.LedgersPage, error)
 	LedgerDetail(sequence uint32) (hProtocol.Ledger, error)
 	Metrics() (hProtocol.Metrics, error)
-	Stream(ctx context.Context, request StreamRequest, handler func(interface{})) error
 	FeeStats() (hProtocol.FeeStats, error)
 	Offers(request OfferRequest) (hProtocol.OffersPage, error)
 	Operations(request OperationRequest) (operations.OperationsPage, error)
@@ -154,7 +160,7 @@ type ClientInterface interface {
 	Root() (hProtocol.Root, error)
 }
 
-// DefaultTestNetClient is a default client to connect to test network
+// DefaultTestNetClient is a default client to connect to test network.
 var DefaultTestNetClient = &Client{
 	HorizonURL:     "https://horizon-testnet.stellar.org/",
 	HTTP:           http.DefaultClient,
@@ -162,32 +168,30 @@ var DefaultTestNetClient = &Client{
 	isTestNet:      true,
 }
 
-// DefaultPublicNetClient is a default client to connect to public network
+// DefaultPublicNetClient is a default client to connect to public network.
 var DefaultPublicNetClient = &Client{
 	HorizonURL:     "https://horizon.stellar.org/",
 	HTTP:           http.DefaultClient,
 	horizonTimeOut: HorizonTimeOut,
 }
 
-// HorizonRequest contains methods implemented by request structs for horizon endpoints
+// HorizonRequest contains methods implemented by request structs for horizon endpoints.
 type HorizonRequest interface {
 	BuildURL() (string, error)
 }
 
-// StreamRequest contains methods implemented by request structs for endpoints that support streaming
-type StreamRequest interface {
-	Stream(ctx context.Context, client *Client, handler func(interface{})) error
-}
-
-// AccountRequest struct contains data for making requests to the accounts endpoint of a horizon server
+// AccountRequest struct contains data for making requests to the accounts endpoint of a horizon server.
+// "AccountID" and "DataKey" fields should both be set when retrieving AccountData.
+// When getting the AccountDetail, only "AccountID" needs to be set.
 type AccountRequest struct {
 	AccountID string
 	DataKey   string
 }
 
 // EffectRequest struct contains data for getting effects from a horizon server.
-// ForAccount, ForLedger, ForOperation and ForTransaction: Not more than one of these can be set at a time. If none are set, the default is to return all effects.
-// The query parameters (Order, Cursor and Limit) can all be set at the same time
+// "ForAccount", "ForLedger", "ForOperation" and "ForTransaction": Not more than one of these
+//  can be set at a time. If none are set, the default is to return all effects.
+// The query parameters (Order, Cursor and Limit) are optional. All or none can be set.
 type EffectRequest struct {
 	ForAccount     string
 	ForLedger      string
@@ -199,6 +203,8 @@ type EffectRequest struct {
 }
 
 // AssetRequest struct contains data for getting asset details from a horizon server.
+// If "ForAssetCode" and "ForAssetIssuer" are not set, it returns all assets.
+// The query parameters (Order, Cursor and Limit) are optional. All or none can be set.
 type AssetRequest struct {
 	ForAssetCode   string
 	ForAssetIssuer string
@@ -208,6 +214,7 @@ type AssetRequest struct {
 }
 
 // LedgerRequest struct contains data for getting ledger details from a horizon server.
+// The query parameters (Order, Cursor and Limit) are optional. All or none can be set.
 type LedgerRequest struct {
 	Order       Order
 	Cursor      string
@@ -223,7 +230,9 @@ type feeStatsRequest struct {
 	endpoint string
 }
 
-// OfferRequest struct contains data for getting offers made by an account from a horizon server
+// OfferRequest struct contains data for getting offers made by an account from a horizon server.
+// "ForAccount" is required.
+// The query parameters (Order, Cursor and Limit) are optional. All or none can be set.
 type OfferRequest struct {
 	ForAccount string
 	Order      Order
@@ -231,7 +240,10 @@ type OfferRequest struct {
 	Limit      uint
 }
 
-// OperationRequest struct contains data for getting operation details from a horizon servers
+// OperationRequest struct contains data for getting operation details from a horizon server.
+// "ForAccount", "ForLedger", "ForTransaction": Only one of these can be set at a time. If none
+// are provided, the default is to return all operations.
+// The query parameters (Order, Cursor, Limit and IncludeFailed) are optional. All or none can be set.
 type OperationRequest struct {
 	ForAccount     string
 	ForLedger      uint
@@ -249,7 +261,10 @@ type submitRequest struct {
 	transactionXdr string
 }
 
-// TransactionRequest struct contains data for getting transaction details from a horizon server
+// TransactionRequest struct contains data for getting transaction details from a horizon server.
+// "ForAccount", "ForLedger": Only one of these can be set at a time. If none are provided, the
+// default is to return all transactions.
+// The query parameters (Order, Cursor, Limit and IncludeFailed) are optional. All or none can be set.
 type TransactionRequest struct {
 	ForAccount         string
 	ForLedger          uint
@@ -260,7 +275,8 @@ type TransactionRequest struct {
 	IncludeFailed      bool
 }
 
-// OrderBookRequest struct contains data for getting the orderbook for an asset pair from a horizon server
+// OrderBookRequest struct contains data for getting the orderbook for an asset pair from a horizon server.
+// Limit is optional. All other parameters are required.
 type OrderBookRequest struct {
 	SellingAssetType   AssetType
 	SellingAssetCode   string
@@ -271,7 +287,8 @@ type OrderBookRequest struct {
 	Limit              uint
 }
 
-// PathsRequest struct contains data for getting available payment paths from a horizon server
+// PathsRequest struct contains data for getting available payment paths from a horizon server.
+// All parameters are required.
 type PathsRequest struct {
 	DestinationAccount     string
 	DestinationAssetType   AssetType
@@ -281,7 +298,10 @@ type PathsRequest struct {
 	SourceAccount          string
 }
 
-// TradeRequest struct contains data for getting trade details from a horizon server
+// TradeRequest struct contains data for getting trade details from a horizon server.
+// "ForAccount", "ForOfferID": Only one of these can be set at a time. If none are provided, the
+// default is to return all trades.
+// All other query parameters are optional. All or none can be set.
 type TradeRequest struct {
 	ForOfferID         string
 	ForAccount         string
@@ -296,7 +316,9 @@ type TradeRequest struct {
 	Limit              uint
 }
 
-// TradeAggregationRequest struct contains data for getting trade aggregations from a horizon server
+// TradeAggregationRequest struct contains data for getting trade aggregations from a horizon server.
+// The query parameters (Order and Limit) are optional. All or none can be set.
+// All other parameters are required.
 type TradeAggregationRequest struct {
 	StartTime          time.Time
 	EndTime            time.Time

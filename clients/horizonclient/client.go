@@ -54,7 +54,7 @@ func (c *Client) sendRequestURL(requestURL string, method string, a interface{})
 		return errors.Wrap(err, "error creating HTTP request")
 	}
 	c.setClientAppHeaders(req)
-
+	c.setDefaultClient()
 	if c.horizonTimeOut == 0 {
 		c.horizonTimeOut = HorizonTimeOut
 	}
@@ -94,6 +94,7 @@ func (c *Client) stream(
 			return errors.Wrap(err, "error creating HTTP request")
 		}
 		req.Header.Set("Accept", "text/event-stream")
+		c.setDefaultClient()
 		// to do: confirm name and version
 		c.setClientAppHeaders(req)
 
@@ -204,6 +205,13 @@ func (c *Client) setClientAppHeaders(req *http.Request) {
 	req.Header.Set("X-App-Version", c.AppVersion)
 }
 
+// setDefaultClient sets the default HTTP client when none is provided.
+func (c *Client) setDefaultClient() {
+	if c.HTTP == nil {
+		c.HTTP = http.DefaultClient
+	}
+}
+
 // fixHorizonURL strips all slashes(/) at the end of HorizonURL if any, then adds a single slash
 func (c *Client) fixHorizonURL() string {
 	return strings.TrimRight(c.HorizonURL, "/") + "/"
@@ -261,13 +269,6 @@ func (c *Client) Effects(request EffectRequest) (effects effects.EffectsPage, er
 // See https://www.stellar.org/developers/horizon/reference/endpoints/assets-all.html
 func (c *Client) Assets(request AssetRequest) (assets hProtocol.AssetsPage, err error) {
 	err = c.sendRequest(request, &assets)
-	return
-}
-
-// Stream is for endpoints that support streaming
-func (c *Client) Stream(ctx context.Context, request StreamRequest, handler func(interface{})) (err error) {
-
-	err = request.Stream(ctx, c, handler)
 	return
 }
 

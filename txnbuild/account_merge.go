@@ -8,7 +8,8 @@ import (
 // AccountMerge represents the Stellar merge account operation. See
 // https://www.stellar.org/developers/guides/concepts/list-of-operations.html
 type AccountMerge struct {
-	Destination string
+	Destination   string
+	SourceAccount Account
 }
 
 // BuildXDR for AccountMerge returns a fully configured XDR Operation.
@@ -22,6 +23,10 @@ func (am *AccountMerge) BuildXDR() (xdr.Operation, error) {
 
 	opType := xdr.OperationTypeAccountMerge
 	body, err := xdr.NewOperationBody(opType, xdrOp)
-
-	return xdr.Operation{Body: body}, errors.Wrap(err, "failed to build XDR OperationBody")
+	if err != nil {
+		return xdr.Operation{}, errors.Wrap(err, "failed to build XDR OperationBody")
+	}
+	op := xdr.Operation{Body: body}
+	SetOpSourceAccount(&op, am.SourceAccount)
+	return op, nil
 }

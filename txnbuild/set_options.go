@@ -60,6 +60,7 @@ type SetOptions struct {
 	HomeDomain           *string
 	Signer               *Signer
 	xdrOp                xdr.SetOptionsOp
+	SourceAccount        Account
 }
 
 // BuildXDR for SetOptions returns a fully configured XDR Operation.
@@ -86,8 +87,13 @@ func (so *SetOptions) BuildXDR() (xdr.Operation, error) {
 
 	opType := xdr.OperationTypeSetOptions
 	body, err := xdr.NewOperationBody(opType, so.xdrOp)
+	if err != nil {
+		return xdr.Operation{}, errors.Wrap(err, "failed to build XDR OperationBody")
+	}
 
-	return xdr.Operation{Body: body}, errors.Wrap(err, "failed to build XDR OperationBody")
+	op := xdr.Operation{Body: body}
+	SetOpSourceAccount(&op, so.SourceAccount)
+	return op, nil
 }
 
 // handleInflation for SetOptions sets the XDR inflation destination.
