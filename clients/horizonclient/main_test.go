@@ -9,6 +9,7 @@ import (
 	"github.com/stellar/go/txnbuild"
 
 	hProtocol "github.com/stellar/go/protocols/horizon"
+	"github.com/stellar/go/protocols/horizon/effects"
 	"github.com/stellar/go/protocols/horizon/operations"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/support/http/httptest"
@@ -48,7 +49,14 @@ func ExampleClient_Effects() {
 		fmt.Println(err)
 		return
 	}
-	fmt.Print(effect)
+	records := effect.Embedded.Records
+	if records[0].GetType() == "account_created" {
+		acc, ok := records[0].(effects.AccountCreated)
+		if ok {
+			fmt.Print(acc.Account)
+			fmt.Print(acc.StartingBalance)
+		}
+	}
 }
 
 func ExampleClient_Assets() {
@@ -508,10 +516,30 @@ func TestEffectsRequest(t *testing.T) {
 		"https://localhost/effects",
 	).ReturnString(200, effectsResponse)
 
-	effects, err := client.Effects(effectRequest)
+	effs, err := client.Effects(effectRequest)
 	if assert.NoError(t, err) {
-		assert.IsType(t, effects, hProtocol.EffectsPage{})
+		assert.IsType(t, effs, effects.EffectsPage{})
+		links := effs.Links
+		assert.Equal(t, links.Self.Href, "https://horizon-testnet.stellar.org/operations/43989725060534273/effects?cursor=&limit=10&order=asc")
 
+		assert.Equal(t, links.Next.Href, "https://horizon-testnet.stellar.org/operations/43989725060534273/effects?cursor=43989725060534273-3&limit=10&order=asc")
+
+		assert.Equal(t, links.Prev.Href, "https://horizon-testnet.stellar.org/operations/43989725060534273/effects?cursor=43989725060534273-1&limit=10&order=desc")
+
+		adEffect := effs.Embedded.Records[0]
+		acEffect := effs.Embedded.Records[1]
+		arEffect := effs.Embedded.Records[2]
+		assert.IsType(t, adEffect, effects.AccountDebited{})
+		assert.IsType(t, acEffect, effects.AccountCredited{})
+		// account_removed effect does not have a struct. Defaults to effects.Base
+		assert.IsType(t, arEffect, effects.Base{})
+
+		c, ok := acEffect.(effects.AccountCredited)
+		assert.Equal(t, ok, true)
+		assert.Equal(t, c.ID, "0043989725060534273-0000000002")
+		assert.Equal(t, c.Amount, "9999.9999900")
+		assert.Equal(t, c.Account, "GBO7LQUWCC7M237TU2PAXVPOLLYNHYCYYFCLVMX3RBJCML4WA742X3UB")
+		assert.Equal(t, c.Asset.Type, "native")
 	}
 
 	effectRequest = EffectRequest{ForAccount: "GCLWGQPMKXQSPF776IU33AH4PZNOOWNAWGGKVTBQMIC5IMKUNP3E6NVU"}
@@ -520,9 +548,9 @@ func TestEffectsRequest(t *testing.T) {
 		"https://localhost/accounts/GCLWGQPMKXQSPF776IU33AH4PZNOOWNAWGGKVTBQMIC5IMKUNP3E6NVU/effects",
 	).ReturnString(200, effectsResponse)
 
-	effects, err = client.Effects(effectRequest)
+	effs, err = client.Effects(effectRequest)
 	if assert.NoError(t, err) {
-		assert.IsType(t, effects, hProtocol.EffectsPage{})
+		assert.IsType(t, effs, effects.EffectsPage{})
 	}
 
 	// too many parameters
@@ -537,7 +565,6 @@ func TestEffectsRequest(t *testing.T) {
 	if assert.Error(t, err) {
 		assert.Contains(t, err.Error(), "too many parameters")
 	}
-
 }
 
 func TestAssetsRequest(t *testing.T) {

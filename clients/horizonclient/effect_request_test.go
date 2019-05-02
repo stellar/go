@@ -76,7 +76,7 @@ func ExampleClient_StreamEffects() {
 		cancel()
 	}()
 
-	printHandler := func(e effects.Base) {
+	printHandler := func(e effects.Effect) {
 		fmt.Println(e)
 	}
 	err := client.StreamEffects(ctx, effectRequest, printHandler)
@@ -100,14 +100,14 @@ func TestEffectRequestStreamEffects(t *testing.T) {
 		"https://localhost/effects?cursor=now",
 	).ReturnString(200, effectStreamResponse)
 
-	effectStream := make([]effects.Base, 1)
-	err := client.StreamEffects(ctx, effectRequest, func(effect effects.Base) {
+	effectStream := make([]effects.Effect, 1)
+	err := client.StreamEffects(ctx, effectRequest, func(effect effects.Effect) {
 		effectStream[0] = effect
 		cancel()
 	})
 
 	if assert.NoError(t, err) {
-		assert.Equal(t, effectStream[0].Type, "account_credited")
+		assert.Equal(t, effectStream[0].GetType(), "account_credited")
 	}
 
 	// Account effects
@@ -119,13 +119,13 @@ func TestEffectRequestStreamEffects(t *testing.T) {
 		"https://localhost/accounts/GBNZN27NAOHRJRCMHQF2ZN2F6TAPVEWKJIGZIRNKIADWIS2HDENIS6CI/effects?cursor=now",
 	).ReturnString(200, effectStreamResponse)
 
-	err = client.StreamEffects(ctx, effectRequest, func(effect effects.Base) {
+	err = client.StreamEffects(ctx, effectRequest, func(effect effects.Effect) {
 		effectStream[0] = effect
 		cancel()
 	})
 
 	if assert.NoError(t, err) {
-		assert.Equal(t, effectStream[0].Account, "GBNZN27NAOHRJRCMHQF2ZN2F6TAPVEWKJIGZIRNKIADWIS2HDENIS6CI")
+		assert.Equal(t, effectStream[0].GetAccount(), "GBNZN27NAOHRJRCMHQF2ZN2F6TAPVEWKJIGZIRNKIADWIS2HDENIS6CI")
 	}
 
 	// test error
@@ -137,7 +137,7 @@ func TestEffectRequestStreamEffects(t *testing.T) {
 		"https://localhost/effects?cursor=now",
 	).ReturnString(500, effectStreamResponse)
 
-	err = client.StreamEffects(ctx, effectRequest, func(effect effects.Base) {
+	err = client.StreamEffects(ctx, effectRequest, func(effect effects.Effect) {
 		effectStream[0] = effect
 		cancel()
 	})
