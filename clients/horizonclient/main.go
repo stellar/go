@@ -15,7 +15,6 @@ import (
 	"errors"
 	"net/http"
 	"net/url"
-	"sync"
 	"time"
 
 	hProtocol "github.com/stellar/go/protocols/horizon"
@@ -117,7 +116,6 @@ type Client struct {
 	AppName        string
 	AppVersion     string
 	isTestNet      bool
-	fixHTTPOnce    sync.Once
 }
 
 // ClientInterface contains methods implemented by the horizon client
