@@ -12,6 +12,7 @@ are aggregated in the `XLM_BTC` pair.
 ### Response Fields
 
 * `generated_at`: UNIX timestamp of when data was generated
+* `generated_at_rfc3339 `: RFC 3339 formatted string of when data was generated
 * `name`: name of the trade pair
 * `base_volume`: accumulated amount of base traded in the last 24h
 * `counter_volume`: accumulated amount of counter traded in the last 24h
@@ -30,55 +31,80 @@ are aggregated in the `XLM_BTC` pair.
 * `price`: (DEPRECATED) price of the most recent trade in this market
 * `close`: price of the most recent trade in this market
 * `close_time`: ledger close time of the most recent trade in this market
+* `bid_count`: number of open bids on order book
+* `bid_volume`: volume of open bids on order book
+* `bid_max`: maximum open bid price on order book
+* `ask_count`: number of open asks on order book
+* `ask_volume`: volume of open asks on order book
+* `ask_min`: minimum asked price on order book
+* `spread`: spread between bid_max an ask_min
+* `spread_mid_point`: spread mid point
 
 ### Example
 #### Endpoint
-GET `https://ticker.stellar.org/markets.json`
+GET `https://ticker-v2.stellar.org/markets.json`
 #### Response (application/json)
 
 ```json
 {
-    "generated_at": 1555529876427,
+    "generated_at": 1556828634778,
+    "generated_at_rfc3339": "2019-05-02T17:23:54-03:00",
     "pairs": [
         {
             "name": "ABDT_DOP",
-            "base_volume": 2936.8559372,
-            "counter_volume": 67288.46914140001,
-            "trade_count": 48,
-            "open": 0.043734167043589976,
-            "low": 0.04348452989055152,
-            "high": 0.044444444444444446,
-            "change": -0.0001736265897799502,
-            "base_volume_7d": 93793.14427990005,
-            "counter_volume_7d": 1939718.2717202017,
-            "trade_count_7d": 399,
-            "open_7d": 0.049850448654037885,
-            "low_7d": 0.04348452989055152,
-            "high_7d": 0.05100629529387713,
-            "change_7d": 0.0059426550206679585,
-            "price": 0.043907793633369926,
-            "close": 0.043907793633369926,
-            "close_time": 1555484876000
+            "base_volume": 27933.1306978,
+            "counter_volume": 703779.0492835,
+            "trade_count": 73,
+            "open": 0.03987601218950153,
+            "low": 0.038593480963638155,
+            "high": 0.03989875591737053,
+            "change": -0.0011995715564988227,
+            "base_volume_7d": 199598.77306629982,
+            "counter_volume_7d": 5004887.537185903,
+            "trade_count_7d": 488,
+            "open_7d": 0.03988668687332845,
+            "low_7d": 0.038593480963638155,
+            "high_7d": 0.04145936964569084,
+            "change_7d": -0.0012102462403257436,
+            "price": 0.038676440633002705,
+            "close": 0.038676440633002705,
+            "close_time": "2019-05-02T12:23:57-03:00",
+            "bid_count": 200,
+            "bid_volume": 229694.35403809912,
+            "bid_max": 25.8555333333,
+            "ask_count": 36,
+            "ask_volume": 149041.62309569685,
+            "ask_min": 25.902828723,
+            "spread": 0.0018258774053509135,
+            "spread_mid_point": 25.856446272002675
         },
         {
-            "name": "BTC_ETH",
-            "base_volume": 0,
-            "counter_volume": 0,
-            "trade_count": 0,
-            "open": 0,
-            "low": 0,
-            "high": 0,
-            "change": 0,
-            "base_volume_7d": 0.00001,
-            "counter_volume_7d": 0.00025,
-            "trade_count_7d": 1,
-            "open_7d": 0,
-            "low_7d": 0.04,
-            "high_7d": 0.04,
-            "change_7d": 0,
-            "price": 0.04,
-            "close": 0.04,
-            "close_time": 1554943803000
+            "name": "BTC_CNY",
+            "base_volume": 0.0737282,
+            "counter_volume": 2686.9835871000005,
+            "trade_count": 49,
+            "open": 0.0000276,
+            "low": 0.0000269,
+            "high": 0.0000278,
+            "change": -3.9999999999999956e-7,
+            "base_volume_7d": 0.37105660000000024,
+            "counter_volume_7d": 13616.162691900003,
+            "trade_count_7d": 285,
+            "open_7d": 0.0000264,
+            "low_7d": 0.0000263,
+            "high_7d": 0.000028,
+            "change_7d": 7.999999999999991e-7,
+            "price": 0.0000272,
+            "close": 0.0000272,
+            "close_time": "2019-05-02T12:48:41-03:00",
+            "bid_count": 27,
+            "bid_volume": 22126.4118872,
+            "bid_max": 36630.03663003663,
+            "ask_count": 21,
+            "ask_volume": 4438.404611090742,
+            "ask_min": 36900.36900369004,
+            "spread": 0.007326007326007345,
+            "spread_mid_point": 36630.04029304029
         }
     ]
 }
@@ -88,6 +114,7 @@ Lists all the valid assets within the Stellar network. The provided fields are b
 ### Response Fields
 
 * `generated_at`: UNIX timestamp of when data was generated
+* `generated_at_rfc3339 `: RFC 3339 formatted string of when data was generated
 * `code`: code of the asset
 * `issuer`: token issuer Stellar public key
 * `type`: type of the asset (e.g. `native` or `credit_alphanum4`)
@@ -115,13 +142,14 @@ Lists all the valid assets within the Stellar network. The provided fields are b
 
 ### Example
 #### Endpoint
-GET `https://ticker.stellar.org/assets.json`
+GET `https://ticker-v2.stellar.org/assets.json`
 
 #### Response (application/json)
 
 ```json
 {
-    "generated_at": 1555536150576,
+	"generated_at": 1556828621410,
+	"generated_at_rfc3339": "2019-05-02T17:23:41-03:00",
     "assets": [
         {
             "code": "AngelXYZ",
@@ -180,8 +208,13 @@ GET `https://ticker.stellar.org/assets.json`
 
 ```
 
+## GraphQL interface
+Asset, issuer, markets and ticker data can be queried through a GraphQL interface, which is also provided by the Ticker.
+
+To explore the GraphQL queries, you can access the GraphiQL URL: https://ticker-v2.stellar.org/graphiql
+
 ## Orderbook
-Orderbook data can be retrieved directly from Horizon. In order to retrieve `ask` and `bid` data, you have to provide the following parameters from the asset pairs:
+Apart from the orderbook data provided by `markets.json`, orderbook data can be retrieved directly from Horizon. In order to retrieve `ask` and `bid` data, you have to provide the following parameters from the asset pairs:
 
 - `selling_asset_type`: type of selling asset (e.g. `native`, `credit_alphanum4`)
 - `selling_asset_code`: code of the selling asset. Omit if `selling_asset_type` = `native`
