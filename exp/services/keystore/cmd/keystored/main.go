@@ -11,17 +11,21 @@ import (
 
 	"github.com/stellar/go/exp/services/keystore"
 	"github.com/stellar/go/support/log"
+
+	_ "github.com/lib/pq"
 )
 
 func main() {
 	ctx := context.Background()
 
+	flag.Parse()
 	if len(flag.Args()) < 1 {
 		fmt.Fprintln(os.Stderr, "too few arguments")
 		os.Exit(1)
 	}
 
 	cfg := getConfig()
+	// will read the value from AWS parameter store
 	if cfg.LogFile != "" {
 		logFile, err := os.OpenFile(cfg.LogFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 		if err != nil {
@@ -40,6 +44,13 @@ func main() {
 	}
 	db.SetMaxOpenConns(cfg.MaxOpenDBConns)
 	db.SetMaxIdleConns(cfg.MaxIdleDBConns)
+
+	err = db.Ping()
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "error accessing database", err)
+		os.Exit(1)
+	}
+	fmt.Fprintln(os.Stdout, "Successfully connected to keystore db")
 
 	cmd := flag.Arg(0)
 	switch cmd {
