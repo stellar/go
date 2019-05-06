@@ -76,22 +76,24 @@ func main() {
 			// Handler: keystore.ServeMux(service),
 		}
 
-		ln, err := net.Listen("tcp", addr)
+		listener, err := net.Listen("tcp", addr)
 		if err != nil {
 			fmt.Fprintln(os.Stderr, "error listening", err)
 			os.Exit(1)
 		}
 
-		cer, err := tls.LoadX509KeyPair(*tlsCert, *tlsKey)
-		if err != nil {
-			fmt.Fprintln(os.Stderr, "error parsing TLS keypair", err)
-			os.Exit(1)
+		if *tlsCert != "" {
+			cer, err := tls.LoadX509KeyPair(*tlsCert, *tlsKey)
+			if err != nil {
+				fmt.Fprintln(os.Stderr, "error parsing TLS keypair", err)
+				os.Exit(1)
+			}
+
+			listener = tls.NewListener(listener, &tls.Config{Certificates: []tls.Certificate{cer}})
 		}
 
-		tlsListener := tls.NewListener(ln, &tls.Config{Certificates: []tls.Certificate{cer}})
-
 		go func() {
-			err := server.Serve(tlsListener)
+			err := server.Serve(listener)
 			if err != nil {
 				panic(err)
 			}
