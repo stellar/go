@@ -165,7 +165,7 @@ func (msr *MemoryStateReader) GetSequence() uint32 {
 }
 
 // Read returns a new ledger entry on each call, returning false when the stream ends
-func (msr *MemoryStateReader) Read() (bool, xdr.LedgerEntry, error) {
+func (msr *MemoryStateReader) Read() (xdr.LedgerEntry, error) {
 	msr.once.Do(func() {
 		go msr.bufferNext()
 	})
@@ -174,11 +174,11 @@ func (msr *MemoryStateReader) Read() (bool, xdr.LedgerEntry, error) {
 	result, ok := <-msr.readChan
 	if !ok {
 		// when channel is closed then return false with empty values
-		return false, xdr.LedgerEntry{}, nil
+		return xdr.LedgerEntry{}, EOF
 	}
 
 	if result.e != nil {
-		return true, xdr.LedgerEntry{}, fmt.Errorf("error while reading from background channel: %s", result.e)
+		return xdr.LedgerEntry{}, fmt.Errorf("error while reading from background channel: %s", result.e)
 	}
-	return true, result.entry, nil
+	return result.entry, nil
 }
