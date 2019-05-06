@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"crypto/tls"
 	"database/sql"
 	"flag"
 	"fmt"
@@ -17,10 +18,17 @@ import (
 
 func main() {
 	ctx := context.Background()
+	tlsCert := flag.String("tls-cert", "", "TLS certificate file path")
+	tlsKey := flag.String("tls-key", "", "TLS private key file path")
 
 	flag.Parse()
 	if len(flag.Args()) < 1 {
 		fmt.Fprintln(os.Stderr, "too few arguments")
+		os.Exit(1)
+	}
+
+	if (*tlsCert == "" && *tlsKey != "") || (*tlsCert != "" && *tlsKey == "") {
+		fmt.Fprintln(os.Stderr, "TLS cert and TLS key have to be presented together")
 		os.Exit(1)
 	}
 
@@ -68,16 +76,24 @@ func main() {
 			// Handler: keystore.ServeMux(service),
 		}
 
-		ln, err := net.Listen("tcp", addr)
+		listener, err := net.Listen("tcp", addr)
 		if err != nil {
 			fmt.Fprintln(os.Stderr, "error listening", err)
 			os.Exit(1)
 		}
 
-		//TODO: add tls config
+		if *tlsCert != "" {
+			cer, err := tls.LoadX509KeyPair(*tlsCert, *tlsKey)
+			if err != nil {
+				fmt.Fprintln(os.Stderr, "error parsing TLS keypair", err)
+				os.Exit(1)
+			}
+
+			listener = tls.NewListener(listener, &tls.Config{Certificates: []tls.Certificate{cer}})
+		}
 
 		go func() {
-			err := server.Serve(ln)
+			err := server.Serve(listener)
 			if err != nil {
 				panic(err)
 			}
