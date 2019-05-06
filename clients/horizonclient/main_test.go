@@ -2,12 +2,14 @@ package horizonclient
 
 import (
 	"fmt"
+	"net/http"
 	"testing"
 	"time"
 
 	"github.com/stellar/go/txnbuild"
 
 	hProtocol "github.com/stellar/go/protocols/horizon"
+	"github.com/stellar/go/protocols/horizon/effects"
 	"github.com/stellar/go/protocols/horizon/operations"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/support/http/httptest"
@@ -47,7 +49,14 @@ func ExampleClient_Effects() {
 		fmt.Println(err)
 		return
 	}
-	fmt.Print(effect)
+	records := effect.Embedded.Records
+	if records[0].GetType() == "account_created" {
+		acc, ok := records[0].(effects.AccountCreated)
+		if ok {
+			fmt.Print(acc.Account)
+			fmt.Print(acc.StartingBalance)
+		}
+	}
 }
 
 func ExampleClient_Assets() {
@@ -282,6 +291,86 @@ func ExampleClient_Payments() {
 	}
 }
 
+func ExampleClient_Fund() {
+	client := DefaultTestNetClient
+	// fund an account
+	resp, err := client.Fund("GCLWGQPMKXQSPF776IU33AH4PZNOOWNAWGGKVTBQMIC5IMKUNP3E6NVU")
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	fmt.Print(resp)
+}
+
+func TestFixHTTP(t *testing.T) {
+	client := &Client{
+		HorizonURL: "https://localhost/",
+	}
+	// No HTTP client is provided
+	assert.Nil(t, client.HTTP, "client HTTP is nil")
+	client.Root()
+	// When a request is made, default HTTP client is set
+	assert.IsType(t, client.HTTP, &http.Client{})
+}
+
+func TestClientFund(t *testing.T) {
+	hmock := httptest.NewClient()
+	client := &Client{
+		HorizonURL: "https://localhost/",
+		HTTP:       hmock,
+	}
+
+	testAccount := "GCLWGQPMKXQSPF776IU33AH4PZNOOWNAWGGKVTBQMIC5IMKUNP3E6NVU"
+
+	// not testnet
+	hmock.On(
+		"GET",
+		"https://localhost/friendbot?addr=GCLWGQPMKXQSPF776IU33AH4PZNOOWNAWGGKVTBQMIC5IMKUNP3E6NVU",
+	).ReturnString(200, txSuccess)
+
+	_, err := client.Fund(testAccount)
+	// error case: not testnet
+	if assert.Error(t, err) {
+		assert.Contains(t, err.Error(), "can't fund account from friendbot on production network")
+	}
+
+	// happy path
+	hmock.On(
+		"GET",
+		"https://localhost/friendbot?addr=GCLWGQPMKXQSPF776IU33AH4PZNOOWNAWGGKVTBQMIC5IMKUNP3E6NVU",
+	).ReturnString(200, txSuccess)
+
+	client.isTestNet = true
+	resp, err := client.Fund(testAccount)
+
+	if assert.NoError(t, err) {
+		assert.IsType(t, resp, hProtocol.TransactionSuccess{})
+		assert.Equal(t, resp.Links.Transaction.Href, "https://horizon-testnet.stellar.org/transactions/bcc7a97264dca0a51a63f7ea971b5e7458e334489673078bb2a34eb0cce910ca")
+		assert.Equal(t, resp.Hash, "bcc7a97264dca0a51a63f7ea971b5e7458e334489673078bb2a34eb0cce910ca")
+		assert.Equal(t, resp.Ledger, int32(354811))
+		assert.Equal(t, resp.Env, `AAAAABB90WssODNIgi6BHveqzxTRmIpvAFRyVNM+Hm2GVuCcAAAAZAAABD0AAuV/AAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAyTBGxOgfSApppsTnb/YRr6gOR8WT0LZNrhLh4y3FCgoAAAAXSHboAAAAAAAAAAABhlbgnAAAAEAivKe977CQCxMOKTuj+cWTFqc2OOJU8qGr9afrgu2zDmQaX5Q0cNshc3PiBwe0qw/+D/qJk5QqM5dYeSUGeDQP`)
+		assert.Equal(t, resp.Result, "AAAAAAAAAGQAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAA=")
+		assert.Equal(t, resp.Meta, `AAAAAQAAAAIAAAADAAVp+wAAAAAAAAAAEH3Rayw4M0iCLoEe96rPFNGYim8AVHJU0z4ebYZW4JwACBP/TuycHAAABD0AAuV+AAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAABAAVp+wAAAAAAAAAAEH3Rayw4M0iCLoEe96rPFNGYim8AVHJU0z4ebYZW4JwACBP/TuycHAAABD0AAuV/AAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAABAAAAAwAAAAMABWn7AAAAAAAAAAAQfdFrLDgzSIIugR73qs8U0ZiKbwBUclTTPh5thlbgnAAIE/9O7JwcAAAEPQAC5X8AAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAEABWn7AAAAAAAAAAAQfdFrLDgzSIIugR73qs8U0ZiKbwBUclTTPh5thlbgnAAIE+gGdbQcAAAEPQAC5X8AAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAABWn7AAAAAAAAAADJMEbE6B9ICmmmxOdv9hGvqA5HxZPQtk2uEuHjLcUKCgAAABdIdugAAAVp+wAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAA==`)
+	}
+
+	// failure response
+	hmock.On(
+		"GET",
+		"https://localhost/friendbot?addr=GCLWGQPMKXQSPF776IU33AH4PZNOOWNAWGGKVTBQMIC5IMKUNP3E6NVU",
+	).ReturnString(400, transactionFailure)
+
+	_, err = client.Fund(testAccount)
+	if assert.Error(t, err) {
+		assert.Contains(t, err.Error(), "horizon error")
+		horizonError, ok := errors.Cause(err).(*Error)
+		assert.Equal(t, ok, true)
+		assert.Equal(t, horizonError.Problem.Title, "Transaction Failed")
+		resultString, err := horizonError.ResultString()
+		assert.Nil(t, err)
+		assert.Equal(t, resultString, "AAAAAAAAAAD////4AAAAAA==")
+	}
+}
+
 func TestAccountDetail(t *testing.T) {
 	hmock := httptest.NewClient()
 	client := &Client{
@@ -427,10 +516,30 @@ func TestEffectsRequest(t *testing.T) {
 		"https://localhost/effects",
 	).ReturnString(200, effectsResponse)
 
-	effects, err := client.Effects(effectRequest)
+	effs, err := client.Effects(effectRequest)
 	if assert.NoError(t, err) {
-		assert.IsType(t, effects, hProtocol.EffectsPage{})
+		assert.IsType(t, effs, effects.EffectsPage{})
+		links := effs.Links
+		assert.Equal(t, links.Self.Href, "https://horizon-testnet.stellar.org/operations/43989725060534273/effects?cursor=&limit=10&order=asc")
 
+		assert.Equal(t, links.Next.Href, "https://horizon-testnet.stellar.org/operations/43989725060534273/effects?cursor=43989725060534273-3&limit=10&order=asc")
+
+		assert.Equal(t, links.Prev.Href, "https://horizon-testnet.stellar.org/operations/43989725060534273/effects?cursor=43989725060534273-1&limit=10&order=desc")
+
+		adEffect := effs.Embedded.Records[0]
+		acEffect := effs.Embedded.Records[1]
+		arEffect := effs.Embedded.Records[2]
+		assert.IsType(t, adEffect, effects.AccountDebited{})
+		assert.IsType(t, acEffect, effects.AccountCredited{})
+		// account_removed effect does not have a struct. Defaults to effects.Base
+		assert.IsType(t, arEffect, effects.Base{})
+
+		c, ok := acEffect.(effects.AccountCredited)
+		assert.Equal(t, ok, true)
+		assert.Equal(t, c.ID, "0043989725060534273-0000000002")
+		assert.Equal(t, c.Amount, "9999.9999900")
+		assert.Equal(t, c.Account, "GBO7LQUWCC7M237TU2PAXVPOLLYNHYCYYFCLVMX3RBJCML4WA742X3UB")
+		assert.Equal(t, c.Asset.Type, "native")
 	}
 
 	effectRequest = EffectRequest{ForAccount: "GCLWGQPMKXQSPF776IU33AH4PZNOOWNAWGGKVTBQMIC5IMKUNP3E6NVU"}
@@ -439,9 +548,9 @@ func TestEffectsRequest(t *testing.T) {
 		"https://localhost/accounts/GCLWGQPMKXQSPF776IU33AH4PZNOOWNAWGGKVTBQMIC5IMKUNP3E6NVU/effects",
 	).ReturnString(200, effectsResponse)
 
-	effects, err = client.Effects(effectRequest)
+	effs, err = client.Effects(effectRequest)
 	if assert.NoError(t, err) {
-		assert.IsType(t, effects, hProtocol.EffectsPage{})
+		assert.IsType(t, effs, effects.EffectsPage{})
 	}
 
 	// too many parameters
@@ -456,7 +565,6 @@ func TestEffectsRequest(t *testing.T) {
 	if assert.Error(t, err) {
 		assert.Contains(t, err.Error(), "too many parameters")
 	}
-
 }
 
 func TestAssetsRequest(t *testing.T) {

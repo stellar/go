@@ -2,9 +2,9 @@ package horizonclient
 
 import (
 	"context"
-	"net/http"
 
 	hProtocol "github.com/stellar/go/protocols/horizon"
+	"github.com/stellar/go/protocols/horizon/effects"
 	"github.com/stellar/go/protocols/horizon/operations"
 	"github.com/stellar/go/txnbuild"
 	"github.com/stretchr/testify/mock"
@@ -28,24 +28,15 @@ func (m *MockClient) AccountData(request AccountRequest) (hProtocol.AccountData,
 }
 
 // Effects is a mocking method
-func (m *MockClient) Effects(request EffectRequest) (hProtocol.EffectsPage, error) {
+func (m *MockClient) Effects(request EffectRequest) (effects.EffectsPage, error) {
 	a := m.Called(request)
-	return a.Get(0).(hProtocol.EffectsPage), a.Error(1)
+	return a.Get(0).(effects.EffectsPage), a.Error(1)
 }
 
 // Assets is a mocking method
 func (m *MockClient) Assets(request AssetRequest) (hProtocol.AssetsPage, error) {
 	a := m.Called(request)
 	return a.Get(0).(hProtocol.AssetsPage), a.Error(1)
-}
-
-// Stream is a mocking method
-func (m *MockClient) Stream(ctx context.Context,
-	request StreamRequest,
-	handler func(interface{}),
-) error {
-	a := m.Called(ctx, request, handler)
-	return a.Error(0)
 }
 
 // Ledgers is a mocking method
@@ -145,9 +136,9 @@ func (m *MockClient) Trades(request TradeRequest) (hProtocol.TradesPage, error) 
 }
 
 // Fund is a mocking method
-func (m *MockClient) Fund(addr string) (*http.Response, error) {
+func (m *MockClient) Fund(addr string) (hProtocol.TransactionSuccess, error) {
 	a := m.Called(addr)
-	return nil, a.Error(1)
+	return a.Get(0).(hProtocol.TransactionSuccess), a.Error(1)
 }
 
 // StreamTransactions is a mocking method

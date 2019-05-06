@@ -16,8 +16,8 @@ import (
 
 	"github.com/manucorporat/sse"
 	hProtocol "github.com/stellar/go/protocols/horizon"
+	"github.com/stellar/go/protocols/horizon/effects"
 	"github.com/stellar/go/protocols/horizon/operations"
-	"github.com/stellar/go/support/app"
 	"github.com/stellar/go/support/errors"
 )
 
@@ -53,7 +53,7 @@ func (c *Client) sendRequestURL(requestURL string, method string, a interface{})
 		return errors.Wrap(err, "error creating HTTP request")
 	}
 	c.setClientAppHeaders(req)
-
+	c.setDefaultClient()
 	if c.horizonTimeOut == 0 {
 		c.horizonTimeOut = HorizonTimeOut
 	}
@@ -93,7 +93,7 @@ func (c *Client) stream(
 			return errors.Wrap(err, "error creating HTTP request")
 		}
 		req.Header.Set("Accept", "text/event-stream")
-		// to do: confirm name and version
+		c.setDefaultClient()
 		c.setClientAppHeaders(req)
 
 		// We can use c.HTTP here because we set Timeout per request not on the client. See sendRequest()
@@ -198,9 +198,16 @@ func (c *Client) stream(
 
 func (c *Client) setClientAppHeaders(req *http.Request) {
 	req.Header.Set("X-Client-Name", "go-stellar-sdk")
-	req.Header.Set("X-Client-Version", app.Version())
+	req.Header.Set("X-Client-Version", c.Version())
 	req.Header.Set("X-App-Name", c.AppName)
 	req.Header.Set("X-App-Version", c.AppVersion)
+}
+
+// setDefaultClient sets the default HTTP client when none is provided.
+func (c *Client) setDefaultClient() {
+	if c.HTTP == nil {
+		c.HTTP = http.DefaultClient
+	}
 }
 
 // fixHorizonURL strips all slashes(/) at the end of HorizonURL if any, then adds a single slash
@@ -251,7 +258,7 @@ func (c *Client) AccountData(request AccountRequest) (accountData hProtocol.Acco
 
 // Effects returns effects(https://www.stellar.org/developers/horizon/reference/resources/effect.html)
 // It can be used to return effects for an account, a ledger, an operation, a transaction and all effects on the network.
-func (c *Client) Effects(request EffectRequest) (effects hProtocol.EffectsPage, err error) {
+func (c *Client) Effects(request EffectRequest) (effects effects.EffectsPage, err error) {
 	err = c.sendRequest(request, &effects)
 	return
 }
@@ -260,13 +267,6 @@ func (c *Client) Effects(request EffectRequest) (effects hProtocol.EffectsPage, 
 // See https://www.stellar.org/developers/horizon/reference/endpoints/assets-all.html
 func (c *Client) Assets(request AssetRequest) (assets hProtocol.AssetsPage, err error) {
 	err = c.sendRequest(request, &assets)
-	return
-}
-
-// Stream is for endpoints that support streaming
-func (c *Client) Stream(ctx context.Context, request StreamRequest, handler func(interface{})) (err error) {
-
-	err = request.Stream(ctx, c, handler)
 	return
 }
 
@@ -422,11 +422,13 @@ func (c *Client) Trades(request TradeRequest) (tds hProtocol.TradesPage, err err
 
 // Fund creates a new account funded from friendbot. It only works on test networks. See
 // https://www.stellar.org/developers/guides/get-started/create-account.html for more information.
-func (c *Client) Fund(addr string) (*http.Response, error) {
+func (c *Client) Fund(addr string) (txSuccess hProtocol.TransactionSuccess, err error) {
 	if !c.isTestNet {
-		return nil, errors.New("Can't fund account from friendbot on production network")
+		return txSuccess, errors.New("can't fund account from friendbot on production network")
 	}
-	return http.Get(c.HorizonURL + "friendbot?addr=" + addr)
+	friendbotURL := fmt.Sprintf("%sfriendbot?addr=%s", c.fixHorizonURL(), addr)
+	err = c.sendRequestURL(friendbotURL, "get", &txSuccess)
+	return
 }
 
 // StreamTrades streams executed trades. It can be used to stream all trades, trades for an account and
@@ -518,6 +520,11 @@ func (c *Client) FetchTimebounds(seconds int64) (txnbuild.Timebounds, error) {
 func (c *Client) Root() (root hProtocol.Root, err error) {
 	err = c.sendRequestURL(c.fixHorizonURL(), "get", &root)
 	return
+}
+
+// Version returns the current version.
+func (c *Client) Version() string {
+	return version
 }
 
 // ensure that the horizon client implements ClientInterface
