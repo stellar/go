@@ -9,6 +9,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"time"
 
 	"github.com/stellar/go/exp/services/keystore"
 	"github.com/stellar/go/support/log"
@@ -82,6 +83,7 @@ func main() {
 			os.Exit(1)
 		}
 
+		listener = tcpKeepAliveListener{listener.(*net.TCPListener)}
 		if *tlsCert != "" {
 			cer, err := tls.LoadX509KeyPair(*tlsCert, *tlsKey)
 			if err != nil {
@@ -104,4 +106,19 @@ func main() {
 		// the goroutine containing ListenAndServe is still working
 		select {}
 	}
+}
+
+// https://github.com/golang/go/blob/c5cf6624076a644906aa7ec5c91c4e01ccd375d3/src/net/http/server.go#L3272-L3288
+type tcpKeepAliveListener struct {
+	*net.TCPListener
+}
+
+func (ln tcpKeepAliveListener) Accept() (net.Conn, error) {
+	tc, err := ln.AcceptTCP()
+	if err != nil {
+		return nil, err
+	}
+	tc.SetKeepAlive(true)
+	tc.SetKeepAlivePeriod(3 * time.Minute)
+	return tc, nil
 }
