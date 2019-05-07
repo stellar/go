@@ -11,11 +11,16 @@ import (
 	"os"
 	"time"
 
+	migrate "github.com/rubenv/sql-migrate"
 	"github.com/stellar/go/exp/services/keystore"
 	"github.com/stellar/go/support/log"
 
 	_ "github.com/lib/pq"
 )
+
+var migrations = &migrate.FileMigrationSource{
+	Dir: "migrations",
+}
 
 func main() {
 	ctx := context.Background()
@@ -105,6 +110,30 @@ func main() {
 		// block forever without using any resources so this process won't quit while
 		// the goroutine containing ListenAndServe is still working
 		select {}
+	case "migrate":
+		migrateCmd := flag.Arg(1)
+		switch migrateCmd {
+		case "up":
+			n, err := migrate.Exec(db, "postgres", migrations, migrate.Up)
+			if err != nil {
+				fmt.Fprintln(os.Stderr, "error applying up migrations", err)
+				os.Exit(1)
+			}
+			fmt.Printf("Applied %d up migrations!\n", n)
+
+		case "down":
+			n, err := migrate.Exec(db, "postgres", migrations, migrate.Down)
+			if err != nil {
+				fmt.Fprintln(os.Stderr, "error applying down migrations", err)
+				os.Exit(1)
+			}
+			fmt.Printf("Applied %d down migrations!\n", n)
+		}
+
+	default:
+		fmt.Fprintf(os.Stderr, "unrecognized command: %q\n", cmd)
+		os.Exit(1)
+
 	}
 }
 
