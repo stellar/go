@@ -128,12 +128,15 @@ func main() {
 				os.Exit(1)
 			}
 			fmt.Printf("Applied %d down migrations!\n", n)
+
+		default:
+			fmt.Fprintf(os.Stderr, "unrecognized migration command: %q\n", migrateCmd)
+			os.Exit(1)
 		}
 
 	default:
 		fmt.Fprintf(os.Stderr, "unrecognized command: %q\n", cmd)
 		os.Exit(1)
-
 	}
 }
 
