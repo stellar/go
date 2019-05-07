@@ -8,9 +8,10 @@ import (
 // AllowTrust represents the Stellar allow trust operation. See
 // https://www.stellar.org/developers/guides/concepts/list-of-operations.html
 type AllowTrust struct {
-	Trustor   string
-	Type      Asset
-	Authorize bool
+	Trustor       string
+	Type          Asset
+	Authorize     bool
+	SourceAccount Account
 }
 
 // BuildXDR for AllowTrust returns a fully configured XDR Operation.
@@ -44,6 +45,10 @@ func (at *AllowTrust) BuildXDR() (xdr.Operation, error) {
 
 	opType := xdr.OperationTypeAllowTrust
 	body, err := xdr.NewOperationBody(opType, xdrOp)
-
-	return xdr.Operation{Body: body}, errors.Wrap(err, "failed to build XDR OperationBody")
+	if err != nil {
+		return xdr.Operation{}, errors.Wrap(err, "failed to build XDR OperationBody")
+	}
+	op := xdr.Operation{Body: body}
+	SetOpSourceAccount(&op, at.SourceAccount)
+	return op, nil
 }

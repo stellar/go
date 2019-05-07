@@ -5,6 +5,7 @@ import (
 
 	"github.com/graph-gophers/graphql-go"
 	"github.com/stellar/go/exp/ticker/internal/tickerdb"
+	"github.com/stellar/go/exp/ticker/internal/utils"
 )
 
 // Markets resolves the markets() GraphQL query.
@@ -83,6 +84,18 @@ func validateNumHoursAgo(n *int32) (int, error) {
 
 // dbMarketToPartialMarket converts a tickerdb.PartialMarket to a *partialMarket
 func dbMarketToPartialMarket(dbMarket tickerdb.PartialMarket) *partialMarket {
+	spread, spreadMidPoint := utils.CalcSpread(dbMarket.HighestBid, dbMarket.LowestAsk)
+	os := orderbookStats{
+		BidCount:       BigInt(dbMarket.NumBids),
+		BidVolume:      dbMarket.BidVolume,
+		BidMax:         dbMarket.HighestBid,
+		AskCount:       BigInt(dbMarket.NumAsks),
+		AskVolume:      dbMarket.AskVolume,
+		AskMin:         dbMarket.LowestAsk,
+		Spread:         spread,
+		SpreadMidPoint: spreadMidPoint,
+	}
+
 	return &partialMarket{
 		TradePair:            dbMarket.TradePairName,
 		BaseAssetCode:        dbMarket.BaseAssetCode,
@@ -99,5 +112,6 @@ func dbMarketToPartialMarket(dbMarket tickerdb.PartialMarket) *partialMarket {
 		Close:                dbMarket.Close,
 		IntervalStart:        graphql.Time{Time: dbMarket.IntervalStart},
 		FirstLedgerCloseTime: graphql.Time{Time: dbMarket.FirstLedgerCloseTime},
+		OrderbookStats:       os,
 	}
 }

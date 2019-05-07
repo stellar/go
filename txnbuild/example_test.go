@@ -305,7 +305,8 @@ func ExampleManageSellOffer() {
 	buying := CreditAsset{"ABCD", "GAS4V4O2B7DW5T7IQRPEEVCRXMDZESKISR7DVIGKZQYYV3OSQ5SH5LVP"}
 	sellAmount := "100"
 	price := "0.01"
-	op := CreateOfferOp(selling, buying, sellAmount, price)
+	op, err := CreateOfferOp(selling, buying, sellAmount, price)
+	check(err)
 
 	tx := Transaction{
 		SourceAccount: &sourceAccount,
@@ -329,7 +330,8 @@ func ExampleManageSellOffer_deleteOffer() {
 	check(err)
 
 	offerID := int64(2921622)
-	op := DeleteOfferOp(offerID)
+	op, err := DeleteOfferOp(offerID)
+	check(err)
 
 	tx := Transaction{
 		SourceAccount: &sourceAccount,
@@ -357,7 +359,8 @@ func ExampleManageSellOffer_updateOffer() {
 	sellAmount := "50"
 	price := "0.02"
 	offerID := int64(2497628)
-	op := UpdateOfferOp(selling, buying, sellAmount, price, offerID)
+	op, err := UpdateOfferOp(selling, buying, sellAmount, price, offerID)
+	check(err)
 
 	tx := Transaction{
 		SourceAccount: &sourceAccount,

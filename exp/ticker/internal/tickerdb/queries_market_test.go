@@ -154,6 +154,65 @@ func TestRetrieveMarketData(t *testing.T) {
 	err = session.BulkInsertTrades(trades)
 	require.NoError(t, err)
 
+	// Adding some orderbook stats:
+	obTime := time.Now()
+	orderbookStats := OrderbookStats{
+		BaseAssetID:    xlmAsset.ID,
+		CounterAssetID: ethAsset.ID,
+		NumBids:        15,
+		BidVolume:      0.15,
+		HighestBid:     200.0,
+		NumAsks:        17,
+		AskVolume:      30.0,
+		LowestAsk:      0.1,
+		Spread:         0.93,
+		SpreadMidPoint: 0.35,
+		UpdatedAt:      obTime,
+	}
+	err = session.InsertOrUpdateOrderbookStats(
+		&orderbookStats,
+		[]string{"base_asset_id", "counter_asset_id"},
+	)
+	require.NoError(t, err)
+
+	var obBTCETH1 OrderbookStats
+	err = session.GetRaw(&obBTCETH1, `
+		SELECT *
+		FROM orderbook_stats
+		ORDER BY id DESC
+		LIMIT 1`,
+	)
+	require.NoError(t, err)
+
+	orderbookStats = OrderbookStats{
+		BaseAssetID:    xlmAsset.ID,
+		CounterAssetID: btcAsset.ID,
+		NumBids:        1,
+		BidVolume:      0.1,
+		HighestBid:     20.0,
+		NumAsks:        1,
+		AskVolume:      15.0,
+		LowestAsk:      0.2,
+		Spread:         0.96,
+		SpreadMidPoint: 0.36,
+		UpdatedAt:      obTime,
+	}
+	err = session.InsertOrUpdateOrderbookStats(
+		&orderbookStats,
+		[]string{"base_asset_id", "counter_asset_id"},
+	)
+	require.NoError(t, err)
+
+	var obBTCETH2 OrderbookStats
+	err = session.GetRaw(&obBTCETH2, `
+		SELECT *
+		FROM orderbook_stats
+		ORDER BY id DESC
+		LIMIT 1`,
+	)
+	require.NoError(t, err)
+	assert.NotEqual(t, obBTCETH1.ID, obBTCETH2.ID)
+
 	markets, err := session.RetrieveMarketData()
 	require.NoError(t, err)
 	fmt.Println(markets)
@@ -233,6 +292,21 @@ func TestRetrieveMarketData(t *testing.T) {
 	assert.True(t, priceChange7dDiff < 0.0000000000001)
 
 	assert.Equal(t, priceChange24hDiff, priceChange7dDiff)
+
+	// Analysing aggregated orderbook data:
+	assert.Equal(t, 15, xlmethMkt.NumBids)
+	assert.Equal(t, 0.15, xlmethMkt.BidVolume)
+	assert.Equal(t, 200.0, xlmethMkt.HighestBid)
+	assert.Equal(t, 17, xlmethMkt.NumAsks)
+	assert.Equal(t, 30.0, xlmethMkt.AskVolume)
+	assert.Equal(t, 0.1, xlmethMkt.LowestAsk)
+
+	assert.Equal(t, 1, xlmbtcMkt.NumBids)
+	assert.Equal(t, 0.1, xlmbtcMkt.BidVolume)
+	assert.Equal(t, 20.0, xlmbtcMkt.HighestBid)
+	assert.Equal(t, 1, xlmbtcMkt.NumAsks)
+	assert.Equal(t, 15.0, xlmbtcMkt.AskVolume)
+	assert.Equal(t, 0.2, xlmbtcMkt.LowestAsk)
 }
 
 func TestRetrievePartialMarkets(t *testing.T) {
@@ -389,6 +463,65 @@ func TestRetrievePartialMarkets(t *testing.T) {
 	err = session.BulkInsertTrades(trades)
 	require.NoError(t, err)
 
+	// Adding some orderbook stats:
+	obTime := time.Now()
+	orderbookStats := OrderbookStats{
+		BaseAssetID:    btcAsset.ID,
+		CounterAssetID: ethAsset1.ID,
+		NumBids:        15,
+		BidVolume:      0.15,
+		HighestBid:     200.0,
+		NumAsks:        17,
+		AskVolume:      30.0,
+		LowestAsk:      0.1,
+		Spread:         0.93,
+		SpreadMidPoint: 0.35,
+		UpdatedAt:      obTime,
+	}
+	err = session.InsertOrUpdateOrderbookStats(
+		&orderbookStats,
+		[]string{"base_asset_id", "counter_asset_id"},
+	)
+	require.NoError(t, err)
+
+	var obBTCETH1 OrderbookStats
+	err = session.GetRaw(&obBTCETH1, `
+		SELECT *
+		FROM orderbook_stats
+		ORDER BY id DESC
+		LIMIT 1`,
+	)
+	require.NoError(t, err)
+
+	orderbookStats = OrderbookStats{
+		BaseAssetID:    btcAsset.ID,
+		CounterAssetID: ethAsset2.ID,
+		NumBids:        1,
+		BidVolume:      0.1,
+		HighestBid:     20.0,
+		NumAsks:        1,
+		AskVolume:      15.0,
+		LowestAsk:      0.2,
+		Spread:         0.96,
+		SpreadMidPoint: 0.36,
+		UpdatedAt:      obTime,
+	}
+	err = session.InsertOrUpdateOrderbookStats(
+		&orderbookStats,
+		[]string{"base_asset_id", "counter_asset_id"},
+	)
+	require.NoError(t, err)
+
+	var obBTCETH2 OrderbookStats
+	err = session.GetRaw(&obBTCETH2, `
+		SELECT *
+		FROM orderbook_stats
+		ORDER BY id DESC
+		LIMIT 1`,
+	)
+	require.NoError(t, err)
+	assert.NotEqual(t, obBTCETH1.ID, obBTCETH2.ID)
+
 	partialMkts, err := session.RetrievePartialMarkets(
 		nil, nil, nil, nil, 12,
 	)
@@ -441,6 +574,21 @@ func TestRetrievePartialMarkets(t *testing.T) {
 		btceth2Mkt.FirstLedgerCloseTime.Local().Truncate(time.Millisecond),
 	)
 
+	// Analyzing non-aggregated orderbook data
+	assert.Equal(t, 15, btceth1Mkt.NumBids)
+	assert.Equal(t, 0.15, btceth1Mkt.BidVolume)
+	assert.Equal(t, 200.0, btceth1Mkt.HighestBid)
+	assert.Equal(t, 17, btceth1Mkt.NumAsks)
+	assert.Equal(t, 30.0, btceth1Mkt.AskVolume)
+	assert.Equal(t, 0.1, btceth1Mkt.LowestAsk)
+
+	assert.Equal(t, 1, btceth2Mkt.NumBids)
+	assert.Equal(t, 0.1, btceth2Mkt.BidVolume)
+	assert.Equal(t, 20.0, btceth2Mkt.HighestBid)
+	assert.Equal(t, 1, btceth2Mkt.NumAsks)
+	assert.Equal(t, 15.0, btceth2Mkt.AskVolume)
+	assert.Equal(t, 0.2, btceth2Mkt.LowestAsk)
+
 	// Now let's use the same data, but aggregating by asset pair
 	partialAggMkts, err := session.RetrievePartialAggMarkets(nil, 12)
 	require.NoError(t, err)
@@ -475,4 +623,12 @@ func TestRetrievePartialMarkets(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, 1, len(partialAggMkts))
 	assert.Equal(t, int32(3), partialAggMkts[0].TradeCount)
+
+	// Analyzing aggregated orderbook data:
+	assert.Equal(t, 16, partialAggMkt.NumBids)
+	assert.Equal(t, 0.25, partialAggMkt.BidVolume)
+	assert.Equal(t, 200.0, partialAggMkt.HighestBid)
+	assert.Equal(t, 18, partialAggMkt.NumAsks)
+	assert.Equal(t, 45.0, partialAggMkt.AskVolume)
+	assert.Equal(t, 0.1, partialAggMkt.LowestAsk)
 }
