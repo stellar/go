@@ -38,6 +38,7 @@ type asset struct {
 	Countries                   string
 	Status                      string
 	IssuerID                    int32
+	OrderbookStats              orderbookStats
 }
 
 // partialMarket represents the aggregated market data for a
@@ -58,6 +59,20 @@ type partialMarket struct {
 	Close                float64
 	IntervalStart        graphql.Time
 	FirstLedgerCloseTime graphql.Time
+	OrderbookStats       orderbookStats
+}
+
+// orderbookStats represents the orderbook stats for a
+// specific pair of assets (aggregated or not)
+type orderbookStats struct {
+	BidCount       BigInt
+	BidVolume      float64
+	BidMax         float64
+	AskCount       BigInt
+	AskVolume      float64
+	AskMin         float64
+	Spread         float64
+	SpreadMidPoint float64
 }
 
 type resolver struct {

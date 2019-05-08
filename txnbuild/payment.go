@@ -9,9 +9,10 @@ import (
 // Payment represents the Stellar payment operation. See
 // https://www.stellar.org/developers/guides/concepts/list-of-operations.html
 type Payment struct {
-	Destination string
-	Amount      string
-	Asset       Asset
+	Destination   string
+	Amount        string
+	Asset         Asset
+	SourceAccount Account
 }
 
 // BuildXDR for Payment returns a fully configured XDR Operation.
@@ -43,6 +44,10 @@ func (p *Payment) BuildXDR() (xdr.Operation, error) {
 		Asset:       xdrAsset,
 	}
 	body, err := xdr.NewOperationBody(opType, xdrOp)
-
-	return xdr.Operation{Body: body}, errors.Wrap(err, "failed to build XDR OperationBody")
+	if err != nil {
+		return xdr.Operation{}, errors.Wrap(err, "failed to build XDR Operation")
+	}
+	op := xdr.Operation{Body: body}
+	SetOpSourceAccount(&op, p.SourceAccount)
+	return op, nil
 }
