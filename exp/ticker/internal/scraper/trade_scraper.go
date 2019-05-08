@@ -3,8 +3,6 @@ package scraper
 import (
 	"time"
 
-	"github.com/stellar/go/exp/ticker/internal/utils"
-
 	horizonclient "github.com/stellar/go/clients/horizonclient"
 	hProtocol "github.com/stellar/go/protocols/horizon"
 )
@@ -15,7 +13,7 @@ func (c *ScraperConfig) checkRecords(trades []hProtocol.Trade, minTime time.Time
 	lastPage = false
 	for _, t := range trades {
 		if t.LedgerCloseTime.After(minTime) {
-			normalizeTradeAssets(&t)
+			NormalizeTradeAssets(&t)
 			cleanTrades = append(cleanTrades, t)
 		} else {
 			c.Logger.Debugln("Reached entries older than the acceptable time range:", t.LedgerCloseTime)
@@ -86,27 +84,6 @@ func (c *ScraperConfig) streamTrades(h horizonclient.TradeHandler, cursor string
 	}
 
 	return r.StreamTrades(*c.Ctx, c.Client, h)
-}
-
-// normalizeTradeAssets enforces the following rules:
-// 1. native asset type refers to a "XLM" code and a "native" issuer
-// 2. native is always the base asset (and if not, base and counter are swapped)
-// 3. when trades are between two non-native, the base is the asset whose string
-// comes first alphabetically.
-func normalizeTradeAssets(t *hProtocol.Trade) {
-	addNativeData(t)
-	if t.BaseAssetType == "native" {
-		return
-	}
-	if t.CounterAssetType == "native" {
-		reverseAssets(t)
-		return
-	}
-	bAssetString := utils.GetAssetString(t.BaseAssetType, t.BaseAssetCode, t.BaseAssetIssuer)
-	cAssetString := utils.GetAssetString(t.CounterAssetType, t.CounterAssetCode, t.CounterAssetIssuer)
-	if bAssetString > cAssetString {
-		reverseAssets(t)
-	}
 }
 
 // addNativeData adds additional fields when one of the assets is native.

@@ -28,6 +28,7 @@ func StreamTrades(
 	}
 	handler := func(trade hProtocol.Trade) {
 		l.Infof("New trade arrived. ID: %v; Close Time: %v\n", trade.ID, trade.LedgerCloseTime)
+		scraper.NormalizeTradeAssets(&trade)
 		bID, cID, err := findBaseAndCounter(s, trade)
 		if err != nil {
 			return
