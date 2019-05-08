@@ -31,10 +31,12 @@ func StreamTrades(
 		scraper.NormalizeTradeAssets(&trade)
 		bID, cID, err := findBaseAndCounter(s, trade)
 		if err != nil {
+			l.Errorln(err)
 			return
 		}
 		dbTrade, err := hProtocolTradeToDBTrade(trade, bID, cID)
 		if err != nil {
+			l.Errorln(err)
 			return
 		}
 
