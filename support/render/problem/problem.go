@@ -55,19 +55,9 @@ func Inflate(p *P) {
 	p.Instance = ""
 }
 
-// HasProblem types can be transformed into a problem.
-// Implement it for custom errors.
-type HasProblem interface {
-	Problem() P
-}
-
 // Render writes a http response to `w`, compliant with the "Problem
 // Details for HTTP APIs" RFC:
-//   https://tools.ietf.org/html/draft-ietf-appsawg-http-problem-00
-//
-// `p` is the problem, which may be either a concrete P struct, an implementor
-// of the `HasProblem` interface, or an error.  Any other value for `p` will
-// panic.
+// https://tools.ietf.org/html/draft-ietf-appsawg-http-problem-00
 func Render(ctx context.Context, w http.ResponseWriter, err error) {
 	origErr := errors.Cause(err)
 
@@ -76,8 +66,6 @@ func Render(ctx context.Context, w http.ResponseWriter, err error) {
 		renderProblem(ctx, w, p)
 	case *P:
 		renderProblem(ctx, w, *p)
-	case HasProblem:
-		renderProblem(ctx, w, p.Problem())
 	case error:
 		renderErr(ctx, w, err)
 	}
