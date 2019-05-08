@@ -9,6 +9,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"sort"
 	"time"
 
 	migrate "github.com/rubenv/sql-migrate"
@@ -18,7 +19,7 @@ import (
 	_ "github.com/lib/pq"
 )
 
-var migrations = &migrate.FileMigrationSource{
+var keystoreMigrations = &migrate.FileMigrationSource{
 	Dir: "migrations",
 }
 
@@ -114,20 +115,31 @@ func main() {
 		migrateCmd := flag.Arg(1)
 		switch migrateCmd {
 		case "up":
-			n, err := migrate.Exec(db, "postgres", migrations, migrate.Up)
+			n, err := migrate.Exec(db, "postgres", keystoreMigrations, migrate.Up)
 			if err != nil {
 				fmt.Fprintln(os.Stderr, "error applying up migrations", err)
 				os.Exit(1)
 			}
-			fmt.Printf("Applied %d up migrations!\n", n)
+			fmt.Fprintf(os.Stdout, "Applied %d up migrations!\n", n)
 
 		case "down":
-			n, err := migrate.Exec(db, "postgres", migrations, migrate.Down)
+			n, err := migrate.Exec(db, "postgres", keystoreMigrations, migrate.Down)
 			if err != nil {
 				fmt.Fprintln(os.Stderr, "error applying down migrations", err)
 				os.Exit(1)
 			}
-			fmt.Printf("Applied %d down migrations!\n", n)
+			fmt.Fprintf(os.Stdout, "Applied %d down migrations!\n", n)
+
+		case "status":
+			unappliedMigrations := getUnappliedMigrations(db)
+			if len(unappliedMigrations) > 0 {
+				fmt.Fprintf(os.Stdout, "There are %d unapplied migrations:\n", len(unappliedMigrations))
+				for _, id := range unappliedMigrations {
+					fmt.Fprintln(os.Stdout, id)
+				}
+			} else {
+				fmt.Fprintln(os.Stdout, "All migrations have been unapplied!")
+			}
 
 		default:
 			fmt.Fprintf(os.Stderr, "unrecognized migration command: %q\n", migrateCmd)
@@ -153,4 +165,41 @@ func (ln tcpKeepAliveListener) Accept() (net.Conn, error) {
 	tc.SetKeepAlive(true)
 	tc.SetKeepAlivePeriod(3 * time.Minute)
 	return tc, nil
+}
+
+func getUnappliedMigrations(db *sql.DB) []string {
+	migrations, err := keystoreMigrations.FindMigrations()
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "error getting keystore migrations", err)
+		os.Exit(1)
+	}
+
+	records, err := migrate.GetMigrationRecords(db, "postgres")
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "error getting keystore migrations records", err)
+		os.Exit(1)
+	}
+
+	unappliedMigrations := make(map[string]struct{})
+	for _, m := range migrations {
+		unappliedMigrations[m.Id] = struct{}{}
+	}
+
+	for _, r := range records {
+		if _, ok := unappliedMigrations[r.Id]; !ok {
+			fmt.Fprintf(os.Stdout, "Could not find migration file: %v\n", r.Id)
+			continue
+		}
+
+		delete(unappliedMigrations, r.Id)
+	}
+
+	result := make([]string, 0, len(unappliedMigrations))
+	for id := range unappliedMigrations {
+		result = append(result, id)
+	}
+
+	sort.Strings(result)
+
+	return result
 }
