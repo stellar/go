@@ -23,6 +23,8 @@ var keystoreMigrations = &migrate.FileMigrationSource{
 	Dir: "migrations",
 }
 
+const dbDriverName = "postgres"
+
 func main() {
 	ctx := context.Background()
 	tlsCert := flag.String("tls-cert", "", "TLS certificate file path")
@@ -52,7 +54,7 @@ func main() {
 		log.DefaultLogger.Logger.SetLevel(cfg.LogLevel)
 	}
 
-	db, err := sql.Open("postgres", cfg.DBURL)
+	db, err := sql.Open(dbDriverName, cfg.DBURL)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "error opening database", err)
 		os.Exit(1)
@@ -65,7 +67,6 @@ func main() {
 		fmt.Fprintln(os.Stderr, "error accessing database", err)
 		os.Exit(1)
 	}
-	fmt.Fprintln(os.Stdout, "Successfully connected to keystore db")
 
 	cmd := flag.Arg(0)
 	switch cmd {
@@ -111,24 +112,48 @@ func main() {
 		// block forever without using any resources so this process won't quit while
 		// the goroutine containing ListenAndServe is still working
 		select {}
+
 	case "migrate":
 		migrateCmd := flag.Arg(1)
 		switch migrateCmd {
 		case "up":
-			n, err := migrate.Exec(db, "postgres", keystoreMigrations, migrate.Up)
+			n, err := migrate.Exec(db, dbDriverName, keystoreMigrations, migrate.Up)
 			if err != nil {
 				fmt.Fprintln(os.Stderr, "error applying up migrations", err)
 				os.Exit(1)
 			}
+
 			fmt.Fprintf(os.Stdout, "Applied %d up migrations!\n", n)
 
 		case "down":
-			n, err := migrate.Exec(db, "postgres", keystoreMigrations, migrate.Down)
+			n, err := migrate.Exec(db, dbDriverName, keystoreMigrations, migrate.Down)
 			if err != nil {
 				fmt.Fprintln(os.Stderr, "error applying down migrations", err)
 				os.Exit(1)
 			}
+
 			fmt.Fprintf(os.Stdout, "Applied %d down migrations!\n", n)
+
+		case "redo":
+			migrations, _, err := migrate.PlanMigration(db, dbDriverName, keystoreMigrations, migrate.Down, 1)
+			if len(migrations) == 0 {
+				fmt.Fprintln(os.Stdout, "Nothing to do!")
+				os.Exit(0)
+			}
+
+			_, err = migrate.ExecMax(db, dbDriverName, keystoreMigrations, migrate.Down, 1)
+			if err != nil {
+				fmt.Fprintln(os.Stderr, "error applying the last down migration", err)
+				os.Exit(1)
+			}
+
+			_, err = migrate.ExecMax(db, dbDriverName, keystoreMigrations, migrate.Up, 1)
+			if err != nil {
+				fmt.Fprintln(os.Stderr, "error applying the last up migration", err)
+				os.Exit(1)
+			}
+
+			fmt.Fprintf(os.Stdout, "Reapplied migration %s.\n", migrations[0].Id)
 
 		case "status":
 			unappliedMigrations := getUnappliedMigrations(db)
@@ -174,7 +199,7 @@ func getUnappliedMigrations(db *sql.DB) []string {
 		os.Exit(1)
 	}
 
-	records, err := migrate.GetMigrationRecords(db, "postgres")
+	records, err := migrate.GetMigrationRecords(db, dbDriverName)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "error getting keystore migrations records", err)
 		os.Exit(1)
