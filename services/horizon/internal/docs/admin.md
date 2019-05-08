@@ -97,8 +97,7 @@ If you didn't set up a stellar-core yet, you may see an error like this:
 ```
 ERRO[2019-05-06T16:21:14.126+08:00] Error getting core latest ledger err="get failed: pq: relation \"ledgerheaders\" does not exist"
 ```
-Horizon requires a functional stellar-core. Go back and set up stellar-core as described in the admin guide. In particular,
-you need to initialise the database as [described here](https://www.stellar.org/developers/stellar-core/software/admin.html#database-and-local-state).
+Horizon requires a functional stellar-core. Go back and set up stellar-core as described in the admin guide. In particular, you need to initialise the database as [described here](https://www.stellar.org/developers/stellar-core/software/admin.html#database-and-local-state).
 
 ## Ingesting live stellar-core data
 
