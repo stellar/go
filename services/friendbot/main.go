@@ -58,7 +58,11 @@ func run(cmd *cobra.Command, args []string) {
 		}
 		os.Exit(1)
 	}
-	fb := initFriendbot(cfg.FriendbotSecret, cfg.NetworkPassphrase, cfg.HorizonURL, cfg.StartingBalance, cfg.NumMinions)
+	fb, err := initFriendbot(cfg.FriendbotSecret, cfg.NetworkPassphrase, cfg.HorizonURL, cfg.StartingBalance, cfg.NumMinions)
+	if err != nil {
+		log.Error(err)
+		os.Exit(1)
+	}
 	router := initRouter(fb)
 	registerProblems()
 
