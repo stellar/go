@@ -166,6 +166,7 @@ func (minion *Minion) makeTx(input MinionInput) (*string, error) {
 		SourceAccount: minion.Account,
 		Operations:    []txnbuild.Operation{&createAccountOp, &paymentOp},
 		Network:       input.network,
+		Timebounds:    txnbuild.NewTimebounds(0, 300),
 	}
 	txe, err := txn.BuildSignEncode(minion.Keypair, input.botKeypair)
 	if err != nil {

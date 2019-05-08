@@ -1,9 +1,7 @@
 package main
 
 import (
-	"fmt"
 	"net/http"
-	"strconv"
 
 	"github.com/stellar/go/clients/horizonclient"
 	"github.com/stellar/go/keypair"
@@ -43,11 +41,7 @@ func initFriendbot(
 	botKeypair := botKP.(*keypair.Full)
 	botAccount := internal.Account{AccountID: botKeypair.Address()}
 
-	minionBalance, err := getMinionBalance(startingBalance, numMinions)
-	if err != nil {
-		return nil, errors.Wrap(err, "getting minion balance")
-	}
-	minions, err := createMinionAccounts(botAccount, botKeypair, minionBalance, networkPassphrase, numMinions, hclient)
+	minions, err := createMinionAccounts(botAccount, botKeypair, networkPassphrase, numMinions, hclient)
 	if err != nil {
 		return nil, errors.Wrap(err, "creating minion accounts")
 	}
@@ -64,7 +58,7 @@ func initFriendbot(
 
 }
 
-func createMinionAccounts(botAccount txnbuild.Account, botKeypair *keypair.Full, minionBalance, networkPassphrase string, numMinions uint16, hclient *horizonclient.Client) ([]internal.Minion, error) {
+func createMinionAccounts(botAccount txnbuild.Account, botKeypair *keypair.Full, networkPassphrase string, numMinions uint16, hclient *horizonclient.Client) ([]internal.Minion, error) {
 	var (
 		ops     []txnbuild.Operation
 		minions []internal.Minion
@@ -79,13 +73,13 @@ func createMinionAccounts(botAccount txnbuild.Account, botKeypair *keypair.Full,
 		signers = append(signers, minionKeypair)
 
 		minions = append(minions, internal.Minion{
-			SourceAccount: &internal.Account{AccountID: minionKeypair.Address()},
-			Keypair:       minionKeypair,
+			Account: internal.Account{AccountID: minionKeypair.Address()},
+			Keypair: minionKeypair,
 		})
 
 		ops = append(ops, &txnbuild.CreateAccount{
 			Destination: minionKeypair.Address(),
-			Amount:      minionBalance,
+			Amount:      "0.00",
 		})
 	}
 
@@ -104,13 +98,4 @@ func createMinionAccounts(botAccount txnbuild.Account, botKeypair *keypair.Full,
 		return []internal.Minion{}, errors.Wrap(err, "submitting create accounts tx")
 	}
 	return minions, nil
-}
-
-func getMinionBalance(botBalanceStr string, numMinions uint16) (string, error) {
-	botBalanceFloat, err := strconv.ParseFloat(botBalanceStr, 64)
-	if err != nil {
-		return "", errors.Wrap(err, "parsing bot balance")
-	}
-	minionBalanceStr := fmt.Sprintf("%f", botBalanceFloat/float64(numMinions))
-	return minionBalanceStr, nil
 }
