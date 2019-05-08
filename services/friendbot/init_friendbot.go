@@ -16,9 +16,9 @@ func initFriendbot(
 	networkPassphrase string,
 	horizonURL string,
 	startingBalance string,
-	numMinions uint16,
+	numMinions int,
 ) (*internal.Bot, error) {
-	if friendbotSecret == "" || networkPassphrase == "" || horizonURL == "" || startingBalance == "" {
+	if friendbotSecret == "" || networkPassphrase == "" || horizonURL == "" || startingBalance == "" || numMinions < 0 {
 		return nil, errors.New("invalid input param(s)")
 	}
 
@@ -58,14 +58,14 @@ func initFriendbot(
 
 }
 
-func createMinionAccounts(botAccount txnbuild.Account, botKeypair *keypair.Full, networkPassphrase string, numMinions uint16, hclient *horizonclient.Client) ([]internal.Minion, error) {
+func createMinionAccounts(botAccount txnbuild.Account, botKeypair *keypair.Full, networkPassphrase string, numMinions int, hclient *horizonclient.Client) ([]internal.Minion, error) {
 	var (
 		ops     []txnbuild.Operation
 		minions []internal.Minion
 	)
 	signers := []*keypair.Full{botKeypair}
 
-	for i := uint16(0); i < numMinions; i++ {
+	for i := 0; i < numMinions; i++ {
 		minionKeypair, err := keypair.Random()
 		if err != nil {
 			return []internal.Minion{}, errors.Wrap(err, "making keypair")
