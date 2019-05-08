@@ -9,13 +9,21 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"sort"
 	"time"
 
+	migrate "github.com/rubenv/sql-migrate"
 	"github.com/stellar/go/exp/services/keystore"
 	"github.com/stellar/go/support/log"
 
 	_ "github.com/lib/pq"
 )
+
+var keystoreMigrations = &migrate.FileMigrationSource{
+	Dir: "migrations",
+}
+
+const dbDriverName = "postgres"
 
 func main() {
 	ctx := context.Background()
@@ -38,7 +46,7 @@ func main() {
 	if cfg.LogFile != "" {
 		logFile, err := os.OpenFile(cfg.LogFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 		if err != nil {
-			fmt.Fprintln(os.Stderr, "Failed to open file to log", err)
+			fmt.Fprintf(os.Stderr, "Failed to open file to log: %v\n", err)
 			os.Exit(1)
 		}
 
@@ -46,9 +54,9 @@ func main() {
 		log.DefaultLogger.Logger.SetLevel(cfg.LogLevel)
 	}
 
-	db, err := sql.Open("postgres", cfg.DBURL)
+	db, err := sql.Open(dbDriverName, cfg.DBURL)
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "error opening database", err)
+		fmt.Fprintf(os.Stderr, "error opening database: %v\n", err)
 		os.Exit(1)
 	}
 	db.SetMaxOpenConns(cfg.MaxOpenDBConns)
@@ -56,17 +64,16 @@ func main() {
 
 	err = db.Ping()
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "error accessing database", err)
+		fmt.Fprintf(os.Stderr, "error accessing database: %v\n", err)
 		os.Exit(1)
 	}
-	fmt.Fprintln(os.Stdout, "Successfully connected to keystore db")
 
 	cmd := flag.Arg(0)
 	switch cmd {
 	case "serve":
 		_, err := keystore.NewService(ctx, db)
 		if err != nil {
-			fmt.Fprintln(os.Stderr, "error initializing service object", err)
+			fmt.Fprintf(os.Stderr, "error initializing service object: %v\n", err)
 			os.Exit(1)
 		}
 
@@ -79,7 +86,7 @@ func main() {
 
 		listener, err := net.Listen("tcp", addr)
 		if err != nil {
-			fmt.Fprintln(os.Stderr, "error listening", err)
+			fmt.Fprintf(os.Stderr, "error listening: %v\n", err)
 			os.Exit(1)
 		}
 
@@ -87,7 +94,7 @@ func main() {
 		if *tlsCert != "" {
 			cer, err := tls.LoadX509KeyPair(*tlsCert, *tlsKey)
 			if err != nil {
-				fmt.Fprintln(os.Stderr, "error parsing TLS keypair", err)
+				fmt.Fprintf(os.Stderr, "error parsing TLS keypair: %v\n", err)
 				os.Exit(1)
 			}
 
@@ -105,6 +112,68 @@ func main() {
 		// block forever without using any resources so this process won't quit while
 		// the goroutine containing ListenAndServe is still working
 		select {}
+
+	case "migrate":
+		migrateCmd := flag.Arg(1)
+		switch migrateCmd {
+		case "up":
+			n, err := migrate.Exec(db, dbDriverName, keystoreMigrations, migrate.Up)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "error applying up migrations: %v\n", err)
+				os.Exit(1)
+			}
+
+			fmt.Fprintf(os.Stdout, "Applied %d up migrations!\n", n)
+
+		case "down":
+			n, err := migrate.Exec(db, dbDriverName, keystoreMigrations, migrate.Down)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "error applying down migrations: %v\n", err)
+				os.Exit(1)
+			}
+
+			fmt.Fprintf(os.Stdout, "Applied %d down migrations!\n", n)
+
+		case "redo":
+			migrations, _, err := migrate.PlanMigration(db, dbDriverName, keystoreMigrations, migrate.Down, 1)
+			if len(migrations) == 0 {
+				fmt.Fprintln(os.Stdout, "Nothing to do!")
+				os.Exit(0)
+			}
+
+			_, err = migrate.ExecMax(db, dbDriverName, keystoreMigrations, migrate.Down, 1)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "error applying the last down migration: %v\n", err)
+				os.Exit(1)
+			}
+
+			_, err = migrate.ExecMax(db, dbDriverName, keystoreMigrations, migrate.Up, 1)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "error applying the last up migration: %v\n", err)
+				os.Exit(1)
+			}
+
+			fmt.Fprintf(os.Stdout, "Reapplied migration %s.\n", migrations[0].Id)
+
+		case "status":
+			unappliedMigrations := getUnappliedMigrations(db)
+			if len(unappliedMigrations) > 0 {
+				fmt.Fprintf(os.Stdout, "There are %d unapplied migrations:\n", len(unappliedMigrations))
+				for _, id := range unappliedMigrations {
+					fmt.Fprintln(os.Stdout, id)
+				}
+			} else {
+				fmt.Fprintln(os.Stdout, "All migrations have been applied!")
+			}
+
+		default:
+			fmt.Fprintf(os.Stderr, "unrecognized migration command: %q\n", migrateCmd)
+			os.Exit(1)
+		}
+
+	default:
+		fmt.Fprintf(os.Stderr, "unrecognized command: %q\n", cmd)
+		os.Exit(1)
 	}
 }
 
@@ -121,4 +190,41 @@ func (ln tcpKeepAliveListener) Accept() (net.Conn, error) {
 	tc.SetKeepAlive(true)
 	tc.SetKeepAlivePeriod(3 * time.Minute)
 	return tc, nil
+}
+
+func getUnappliedMigrations(db *sql.DB) []string {
+	migrations, err := keystoreMigrations.FindMigrations()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "error getting keystore migrations: %v\n", err)
+		os.Exit(1)
+	}
+
+	records, err := migrate.GetMigrationRecords(db, dbDriverName)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "error getting keystore migrations records: %v\n", err)
+		os.Exit(1)
+	}
+
+	unappliedMigrations := make(map[string]struct{})
+	for _, m := range migrations {
+		unappliedMigrations[m.Id] = struct{}{}
+	}
+
+	for _, r := range records {
+		if _, ok := unappliedMigrations[r.Id]; !ok {
+			fmt.Fprintf(os.Stdout, "Could not find migration file: %v\n", r.Id)
+			continue
+		}
+
+		delete(unappliedMigrations, r.Id)
+	}
+
+	result := make([]string, 0, len(unappliedMigrations))
+	for id := range unappliedMigrations {
+		result = append(result, id)
+	}
+
+	sort.Strings(result)
+
+	return result
 }

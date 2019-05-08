@@ -19,6 +19,28 @@ cd github.com/stellar/go/exp/services/keystore
 go install ./cmd/keystored
 ```
 
+Set up `keystore` Postgres database locally:
+
+```sh
+createdb keystore
+keystored migrate up
+```
+
+You can undo all migrations by running
+```sh
+keystored migrate down
+```
+
+You can redo the last migration by running
+```sh
+keystored migrate redo
+```
+
+You can check whether there is any unapplied migrations by running
+```sh
+keystored migrate status
+```
+
 Run `keystored` in development:
 
 ```sh
