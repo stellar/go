@@ -1,63 +1,71 @@
 package internal
 
 import (
-	"log"
+	"sync"
 	"testing"
 
-	"github.com/stellar/go/clients/horizon"
+	"github.com/stellar/go/clients/horizonclient"
+	"github.com/stellar/go/keypair"
+	hProtocol "github.com/stellar/go/protocols/horizon"
 	"github.com/stretchr/testify/assert"
-
-	"sync"
 )
 
 func TestFriendbot_Pay(t *testing.T) {
-	mockSubmitTransaction := func(minion *Minion, hclient *horizon.Client, signed string) {
-		txSuccess := horizon.TransactionSuccess{Env: signed}
-		// we don't want to submit the tx but emulate a success instead
-		minion.TxResultChan <- TxResult{
+	mockSubmitTransaction := func(minion *Minion, channel chan SubmitResult, hclient *horizonclient.Client, txXDR string) {
+		// Instead of submitting the tx, we emulate a success.
+		txSuccess := hProtocol.TransactionSuccess{Env: txXDR}
+		channel <- SubmitResult{
 			maybeTransactionSuccess: &txSuccess,
 			maybeErr:                nil,
 		}
 	}
 
-	minions := []Minion{
-		Minion{
-			Secret:       "SC6K74F25SXMNHFLXJDRIIJWBCEOWXDHU3R6RW43RZSZTA2XFIOFYCFT",
-			DestAddrChan: make(chan string),
-			TxResultChan: make(chan TxResult),
-			sequence:     2,
-		},
-	}
-	fb := &Bot{
-		Secret:            "SAQWC7EPIYF3XGILYVJM4LVAVSLZKT27CTEI3AFBHU2VRCMQ3P3INPG5",
-		Network:           "Test SDF Network ; September 2015",
-		StartingBalance:   "100.00",
-		SubmitTransaction: mockSubmitTransaction,
-		Minions:           minions,
-		nextMinionIndex:   0,
-	}
-
-	txSuccess, err := fb.Pay("GDJIN6W6PLTPKLLM57UW65ZH4BITUXUMYQHIMAZFYXF45PZVAWDBI77Z")
+	minionSeed := "SC6K74F25SXMNHFLXJDRIIJWBCEOWXDHU3R6RW43RZSZTA2XFIOFYCFT"
+	minionKeypair, err := keypair.Parse(minionSeed)
 	if !assert.NoError(t, err) {
 		return
 	}
+	minions := []Minion{
+		Minion{
+			Account: Account{
+				AccountID: minionKeypair.Address(),
+				Sequence:  1,
+			},
+			Keypair: minionKeypair.(*keypair.Full),
+		},
+	}
+	botSeed := "SC6K74F25SXMNHFLXJDRIIJWBCEOWXDHU3R6RW43RZSZTA2XFIOFYCFT"
+	botKeypair, err := keypair.Parse(botSeed)
+	if !assert.NoError(t, err) {
+		return
+	}
+	fb := &Bot{
+		Account:           Account{AccountID: botKeypair.Address()},
+		Keypair:           botKeypair.(*keypair.Full),
+		Network:           "Test SDF Network ; September 2015",
+		StartingBalance:   "10000.00",
+		SubmitTransaction: mockSubmitTransaction,
+		Minions:           minions,
+	}
 
-	log.Print(txSuccess.Env)
-
-	expectedTxn := "AAAAAGOiyZ/+kecCdxYBXywkAFwsSrGLYqD4IiVglvKCvaWHAAAAyAAAAAAAAAADAAAAAAAAAAAAAAACAAAAAAAAAAAAAAAA0ob63nrm9S1s7+lvdyfgUTpejMQOhgMlxcvOvzUFhhQAAAAAAAAAAAAAAAEAAAAA+5h/vHsoa8Vf1+MJH1YhqhNffIcljBfplLHrDvoc+MQAAAABAAAAANKG+t565vUtbO/pb3cn4FE6XozEDoYDJcXLzr81BYYUAAAAAAAAAAA7msoAAAAAAAAAAAL6HPjEAAAAQK+pRYAmYSks2TwQI32M5f6l43HD19tr96xfMhTAzt8JBoycWrsqQd2wyBI43SIXAoJyqq/wi9xGf0WReDFF4AuCvaWHAAAAQF3Ipfu8bgH3JNewaJRMAZDNcb+gGLIHoM6+u7lsqWkhkmTlP51BK0CqG9BybkjoGQsObjtqqScmmy7g2pWR2AI="
+	recipientAddress := "GDJIN6W6PLTPKLLM57UW65ZH4BITUXUMYQHIMAZFYXF45PZVAWDBI77Z"
+	txSuccess, err := fb.Pay(recipientAddress)
+	if !assert.NoError(t, err) {
+		return
+	}
+	expectedTxn := "AAAAAGOiyZ/+kecCdxYBXywkAFwsSrGLYqD4IiVglvKCvaWHAAAAyAAAAAAAAAACAAAAAQAAAAAAAAAAAAAAAAAAASwAAAAAAAAAAgAAAAAAAAAAAAAAANKG+t565vUtbO/pb3cn4FE6XozEDoYDJcXLzr81BYYUAAAAF0h26AAAAAABAAAAAGOiyZ/+kecCdxYBXywkAFwsSrGLYqD4IiVglvKCvaWHAAAAAQAAAADShvreeub1LWzv6W93J+BROl6MxA6GAyXFy86/NQWGFAAAAAAAAAAXSHboAAAAAAAAAAACgr2lhwAAAEDcQhEvaKc/tNyDUWQtRYRH3MDZ/Aam3X/OPMbSWTozd/B2KzZzwEFj6qI5TpsDUFZ9OgYKJmYrsjOwQxxhdrMAgr2lhwAAAEDcQhEvaKc/tNyDUWQtRYRH3MDZ/Aam3X/OPMbSWTozd/B2KzZzwEFj6qI5TpsDUFZ9OgYKJmYrsjOwQxxhdrMA"
 	assert.Equal(t, expectedTxn, txSuccess.Env)
 
+	// Don't assert on tx values below, since the completion order is unknown.
 	var wg sync.WaitGroup
 	wg.Add(2)
 	go func() {
-		_, err := fb.Pay("GDJIN6W6PLTPKLLM57UW65ZH4BITUXUMYQHIMAZFYXF45PZVAWDBI77Z")
-		// don't assert on the txn value here because the ordering is not guaranteed between these 2 goroutines
+		_, err := fb.Pay(recipientAddress)
 		assert.NoError(t, err)
 		wg.Done()
 	}()
 	go func() {
-		_, err := fb.Pay("GDJIN6W6PLTPKLLM57UW65ZH4BITUXUMYQHIMAZFYXF45PZVAWDBI77Z")
-		// don't assert on the txn value here because the ordering is not guaranteed between these 2 goroutines
+		_, err := fb.Pay(recipientAddress)
 		assert.NoError(t, err)
 		wg.Done()
 	}()
