@@ -46,7 +46,7 @@ func main() {
 	if cfg.LogFile != "" {
 		logFile, err := os.OpenFile(cfg.LogFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 		if err != nil {
-			fmt.Fprintln(os.Stderr, "Failed to open file to log", err)
+			fmt.Fprintf(os.Stderr, "Failed to open file to log: %v\n", err)
 			os.Exit(1)
 		}
 
@@ -56,7 +56,7 @@ func main() {
 
 	db, err := sql.Open(dbDriverName, cfg.DBURL)
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "error opening database", err)
+		fmt.Fprintf(os.Stderr, "error opening database: %v\n", err)
 		os.Exit(1)
 	}
 	db.SetMaxOpenConns(cfg.MaxOpenDBConns)
@@ -64,7 +64,7 @@ func main() {
 
 	err = db.Ping()
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "error accessing database", err)
+		fmt.Fprintf(os.Stderr, "error accessing database: %v\n", err)
 		os.Exit(1)
 	}
 
@@ -73,7 +73,7 @@ func main() {
 	case "serve":
 		_, err := keystore.NewService(ctx, db)
 		if err != nil {
-			fmt.Fprintln(os.Stderr, "error initializing service object", err)
+			fmt.Fprintf(os.Stderr, "error initializing service object: %v\n", err)
 			os.Exit(1)
 		}
 
@@ -86,7 +86,7 @@ func main() {
 
 		listener, err := net.Listen("tcp", addr)
 		if err != nil {
-			fmt.Fprintln(os.Stderr, "error listening", err)
+			fmt.Fprintf(os.Stderr, "error listening: %v\n", err)
 			os.Exit(1)
 		}
 
@@ -94,7 +94,7 @@ func main() {
 		if *tlsCert != "" {
 			cer, err := tls.LoadX509KeyPair(*tlsCert, *tlsKey)
 			if err != nil {
-				fmt.Fprintln(os.Stderr, "error parsing TLS keypair", err)
+				fmt.Fprintf(os.Stderr, "error parsing TLS keypair: %v\n", err)
 				os.Exit(1)
 			}
 
@@ -119,7 +119,7 @@ func main() {
 		case "up":
 			n, err := migrate.Exec(db, dbDriverName, keystoreMigrations, migrate.Up)
 			if err != nil {
-				fmt.Fprintln(os.Stderr, "error applying up migrations", err)
+				fmt.Fprintf(os.Stderr, "error applying up migrations: %v\n", err)
 				os.Exit(1)
 			}
 
@@ -128,7 +128,7 @@ func main() {
 		case "down":
 			n, err := migrate.Exec(db, dbDriverName, keystoreMigrations, migrate.Down)
 			if err != nil {
-				fmt.Fprintln(os.Stderr, "error applying down migrations", err)
+				fmt.Fprintf(os.Stderr, "error applying down migrations: %v\n", err)
 				os.Exit(1)
 			}
 
@@ -143,13 +143,13 @@ func main() {
 
 			_, err = migrate.ExecMax(db, dbDriverName, keystoreMigrations, migrate.Down, 1)
 			if err != nil {
-				fmt.Fprintln(os.Stderr, "error applying the last down migration", err)
+				fmt.Fprintf(os.Stderr, "error applying the last down migration: %v\n", err)
 				os.Exit(1)
 			}
 
 			_, err = migrate.ExecMax(db, dbDriverName, keystoreMigrations, migrate.Up, 1)
 			if err != nil {
-				fmt.Fprintln(os.Stderr, "error applying the last up migration", err)
+				fmt.Fprintf(os.Stderr, "error applying the last up migration: %v\n", err)
 				os.Exit(1)
 			}
 
@@ -163,7 +163,7 @@ func main() {
 					fmt.Fprintln(os.Stdout, id)
 				}
 			} else {
-				fmt.Fprintln(os.Stdout, "All migrations have been unapplied!")
+				fmt.Fprintln(os.Stdout, "All migrations have been applied!")
 			}
 
 		default:
@@ -195,13 +195,13 @@ func (ln tcpKeepAliveListener) Accept() (net.Conn, error) {
 func getUnappliedMigrations(db *sql.DB) []string {
 	migrations, err := keystoreMigrations.FindMigrations()
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "error getting keystore migrations", err)
+		fmt.Fprintf(os.Stderr, "error getting keystore migrations: %v\n", err)
 		os.Exit(1)
 	}
 
 	records, err := migrate.GetMigrationRecords(db, dbDriverName)
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "error getting keystore migrations records", err)
+		fmt.Fprintf(os.Stderr, "error getting keystore migrations records: %v\n", err)
 		os.Exit(1)
 	}
 

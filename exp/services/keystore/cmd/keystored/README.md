@@ -19,7 +19,7 @@ cd github.com/stellar/go/exp/services/keystore
 go install ./cmd/keystored
 ```
 
-Set up `keytore` Postgres database locally:
+Set up `keystore` Postgres database locally:
 
 ```sh
 createdb keystore
