@@ -3,12 +3,14 @@ package main
 import (
 	"fmt"
 	"net/http"
+	"strconv"
 
-	"github.com/stellar/go/build"
-	"github.com/stellar/go/clients/horizon"
+	"github.com/stellar/go/clients/horizonclient"
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/services/friendbot/internal"
 	"github.com/stellar/go/strkey"
+	"github.com/stellar/go/support/errors"
+	"github.com/stellar/go/txnbuild"
 )
 
 func initFriendbot(
@@ -19,77 +21,96 @@ func initFriendbot(
 	numMinions uint16,
 ) (*internal.Bot, error) {
 	if friendbotSecret == "" || networkPassphrase == "" || horizonURL == "" || startingBalance == "" {
-		// XXX: Check error formatting syntax
-		return nil, fmt.Errorf("invalid input param")
+		return nil, errors.New("invalid input param(s)")
 	}
 
-	// ensure its a seed if its not blank
+	// Guarantee that friendbotSecret is a seed, if not blank.
 	strkey.MustDecode(strkey.VersionByteSeed, friendbotSecret)
 
-	// XXX: Change type
-	hclient := &horizon.Client{
-		URL:     horizonURL,
-		HTTP:    http.DefaultClient,
-		AppName: "friendbot",
+	hclient := &horizonclient.Client{
+		HorizonURL: horizonURL,
+		HTTP:       http.DefaultClient,
+		AppName:    "friendbot",
 	}
 
-	var minions []internal.Minion
-	// XXX: Looping logic discussed with Nikhil
-	for i := 0; i < numMinions; i++ {
-		minionSecret, err := createNewAccount(friendbotSecret, networkPassphrase, hclient)
-		if err != nil {
-			return nil, fmt.Errorf("creating minion account", err)
-		}
-		minions = append(minions, internal.Minion{
-			Secret:       minionSecret,
-			DestAddrChan: make(chan string),
-			TxResultChan: make(chan internal.TxResult),
-		})
+	botKP, err := keypair.Parse(friendbotSecret)
+	if err != nil {
+		return nil, errors.Wrap(err, "parsing bot keypair")
+	}
+
+	// Casting from the interface type will work, since we
+	// already confirmed that friendbotSecret is a seed.
+	botKeypair := botKP.(*keypair.Full)
+	botAccount := internal.Account{AccountID: botKeypair.Address()}
+
+	minionBalance, err := getMinionBalance(startingBalance, numMinions)
+	if err != nil {
+		return nil, errors.Wrap(err, "getting minion balance")
+	}
+	minions, err := createMinionAccounts(botAccount, botKeypair, minionBalance, networkPassphrase, numMinions, hclient)
+	if err != nil {
+		return nil, errors.Wrap(err, "creating minion accounts")
 	}
 
 	return &internal.Bot{
-		Secret:            friendbotSecret,
 		Horizon:           hclient,
+		Account:           botAccount,
+		Keypair:           botKeypair,
 		Network:           networkPassphrase,
 		StartingBalance:   startingBalance,
 		SubmitTransaction: internal.AsyncSubmitTransaction,
 		Minions:           minions,
 	}, nil
+
 }
 
-// XXX: Change horizon Client type
-// XXX: Rewrite to return a list and take in a number of secret keys
-func createNewAccount(sourceSeed, networkPassphrase string, hclient *horizon.Client) (string, error) {
-	kp, err := keypair.Random()
-	if err != nil {
-		return "", fmt.Errorf("creating keypair", err)
-	}
-	destAddr := kp.Address()
-	// XXX: Create tx without CreateAccount
-	tx, err := build.Transaction(
-		build.SourceAccount{AddressOrSeed: sourceSeed},
-		build.Network{Passphrase: networkPassphrase},
-		build.AutoSequence{SequenceProvider: hclient},
-		// XXX: See Nikhil PR comment
-		build.CreateAccount(
-			build.Destination{AddressOrSeed: destAddr},
-			// XXX: Add StartingBalance here
-		),
+func createMinionAccounts(botAccount txnbuild.Account, botKeypair *keypair.Full, minionBalance, networkPassphrase string, numMinions uint16, hclient *horizonclient.Client) ([]internal.Minion, error) {
+	var (
+		ops     []txnbuild.Operation
+		minions []internal.Minion
 	)
-	// XXX: Loop over tx and add CreateAccount ops
+	signers := []*keypair.Full{botKeypair}
 
-	txe, err := tx.Sign(sourceSeed)
-	if err != nil {
-		return "", fmt.Errorf("signing tx", err)
+	for i := uint16(0); i < numMinions; i++ {
+		minionKeypair, err := keypair.Random()
+		if err != nil {
+			return []internal.Minion{}, errors.Wrap(err, "making keypair")
+		}
+		signers = append(signers, minionKeypair)
+
+		minions = append(minions, internal.Minion{
+			SourceAccount: &internal.Account{AccountID: minionKeypair.Address()},
+			Keypair:       minionKeypair,
+		})
+
+		ops = append(ops, &txnbuild.CreateAccount{
+			Destination: minionKeypair.Address(),
+			Amount:      minionBalance,
+		})
 	}
 
-	txeB64, err := txe.Base64()
-	if err != nil {
-		return "", fmt.Errorf("converting to base 64", err)
+	txn := txnbuild.Transaction{
+		SourceAccount: botAccount,
+		Operations:    ops,
+		Timebounds:    txnbuild.NewTimebounds(0, 300),
+		Network:       networkPassphrase,
 	}
-	_, err = hclient.SubmitTransaction(txeB64)
+	txe, err := txn.BuildSignEncode(signers...)
 	if err != nil {
-		return "", fmt.Errorf("submitting tx", err)
+		return []internal.Minion{}, errors.Wrap(err, "making create accounts tx")
 	}
-	return destKeypair.Seed(), nil
+	_, err = hclient.SubmitTransactionXDR(txe)
+	if err != nil {
+		return []internal.Minion{}, errors.Wrap(err, "submitting create accounts tx")
+	}
+	return minions, nil
+}
+
+func getMinionBalance(botBalanceStr string, numMinions uint16) (string, error) {
+	botBalanceFloat, err := strconv.ParseFloat(botBalanceStr, 64)
+	if err != nil {
+		return "", errors.Wrap(err, "parsing bot balance")
+	}
+	minionBalanceStr := fmt.Sprintf("%f", botBalanceFloat/float64(numMinions))
+	return minionBalanceStr, nil
 }
