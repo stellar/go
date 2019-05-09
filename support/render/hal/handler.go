@@ -21,6 +21,7 @@ type handler struct {
 
 // Handler returns an HTTP Handler for function fn.
 // If fn returns a non-nil error, the handler will use problem.Render.
+// Please refer to funcParamType for the allowed function signature.
 func Handler(fn, param interface{}) (http.Handler, error) {
 	fv := reflect.ValueOf(fn)
 	inType, err := funcParamType(fv)
@@ -47,6 +48,8 @@ func (h *handler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	Render(w, res)
 }
 
+// executeFunc executes the function provided in the handler with the provided
+// param value, if any, in the handler.
 func (h *handler) executeFunc(ctx context.Context) (interface{}, error) {
 	var a []reflect.Value
 	a = append(a, reflect.ValueOf(ctx))
@@ -64,6 +67,8 @@ func (h *handler) executeFunc(ctx context.Context) (interface{}, error) {
 	return rv[0].Interface(), rv[1].Interface().(error)
 }
 
+// ExecuteFunc executes the fn with the param after checking whether the
+// function signature is valid or not by calling Handler.
 func ExecuteFunc(ctx context.Context, fn, param interface{}) (interface{}, error) {
 	h, err := Handler(fn, param)
 	if err != nil {
@@ -73,6 +78,14 @@ func ExecuteFunc(ctx context.Context, fn, param interface{}) (interface{}, error
 	return h.(*handler).executeFunc(ctx)
 }
 
+// funcParamType checks whether fv is valid. We only accept nonvariadic
+// functions with certain signatures.
+// The allowed function signature is as following:
+//
+//   func fn(ctx context.Context, an_optional_param) (interface{}, err)
+//
+// The caller must provide a function with at least 1 input (context)
+// and exact 2 return values, where the second value has to be error type.
 func funcParamType(fv reflect.Value) (reflect.Type, error) {
 	ft := fv.Type()
 	if ft.Kind() != reflect.Func || ft.IsVariadic() || ft.NumIn() > 2 {

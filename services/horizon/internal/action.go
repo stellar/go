@@ -169,13 +169,11 @@ type showActionQueryParams struct {
 }
 
 // getAccountInfo returns the information about an account based on the provided param.
-// The expected params type is a pointer to showActionQueryParams.
 func (w *web) getAccountInfo(ctx context.Context, qp *showActionQueryParams) (interface{}, error) {
 	return actions.AccountInfo(ctx, &core.Q{w.coreSession(ctx)}, qp.accountID)
 }
 
 // getTransactionPage returns a page containing the transaction records of an account or a ledger.
-// The expected params type is a pointer to indexActionQueryParams.
 func (w *web) getTransactionPage(ctx context.Context, qp *indexActionQueryParams) (interface{}, error) {
 	horizonSession, err := w.horizonSession(ctx)
 	if err != nil {
@@ -186,7 +184,6 @@ func (w *web) getTransactionPage(ctx context.Context, qp *indexActionQueryParams
 }
 
 // getTransactionRecord returns a single transaction resource.
-// The expected params type is a pointer to showActionQueryParams.
 func (w *web) getTransactionResource(ctx context.Context, qp *showActionQueryParams) (interface{}, error) {
 	horizonSession, err := w.horizonSession(ctx)
 	if err != nil {
@@ -197,7 +194,6 @@ func (w *web) getTransactionResource(ctx context.Context, qp *showActionQueryPar
 }
 
 // streamTransactions streams the transaction records of an account or a ledger.
-// The expected params type is a pointer to indexActionQueryParams.
 func (w *web) streamTransactions(ctx context.Context, s *sse.Stream, qp *indexActionQueryParams) error {
 	horizonSession, err := w.horizonSession(ctx)
 	if err != nil {
