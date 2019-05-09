@@ -84,7 +84,7 @@ func ExecuteFunc(ctx context.Context, fn, param interface{}) (interface{}, error
 //
 //   func fn(ctx context.Context, an_optional_param) (interface{}, err)
 //
-// The caller must provide a function with at least 1 input (context)
+// The caller must provide a function with at least 1 input (request context) and up to 2 inputs,
 // and exact 2 return values, where the second value has to be error type.
 func funcParamType(fv reflect.Value) (reflect.Type, error) {
 	ft := fv.Type()
