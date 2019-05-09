@@ -170,23 +170,13 @@ type showActionQueryParams struct {
 
 // getAccountInfo returns the information about an account based on the provided param.
 // The expected params type is a pointer to showActionQueryParams.
-func (w *web) getAccountInfo(ctx context.Context, params interface{}) (interface{}, error) {
-	qp, ok := params.(*showActionQueryParams)
-	if !ok {
-		return nil, errors.New("Invalid param type for getAccountInfo func")
-	}
-
+func (w *web) getAccountInfo(ctx context.Context, qp *showActionQueryParams) (interface{}, error) {
 	return actions.AccountInfo(ctx, &core.Q{w.coreSession(ctx)}, qp.accountID)
 }
 
 // getTransactionPage returns a page containing the transaction records of an account or a ledger.
 // The expected params type is a pointer to indexActionQueryParams.
-func (w *web) getTransactionPage(ctx context.Context, params interface{}) (interface{}, error) {
-	qp, ok := params.(*indexActionQueryParams)
-	if !ok {
-		return nil, errors.New("Invalid param type for getTransactionPage func")
-	}
-
+func (w *web) getTransactionPage(ctx context.Context, qp *indexActionQueryParams) (interface{}, error) {
 	horizonSession, err := w.horizonSession(ctx)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting horizon db session")
@@ -197,12 +187,7 @@ func (w *web) getTransactionPage(ctx context.Context, params interface{}) (inter
 
 // getTransactionRecord returns a single transaction resource.
 // The expected params type is a pointer to showActionQueryParams.
-func (w *web) getTransactionResource(ctx context.Context, params interface{}) (interface{}, error) {
-	qp, ok := params.(*showActionQueryParams)
-	if !ok {
-		return nil, errors.New("Invalid param type for getTransactionResource func")
-	}
-
+func (w *web) getTransactionResource(ctx context.Context, qp *showActionQueryParams) (interface{}, error) {
 	horizonSession, err := w.horizonSession(ctx)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting horizon db session")
@@ -213,12 +198,7 @@ func (w *web) getTransactionResource(ctx context.Context, params interface{}) (i
 
 // streamTransactions streams the transaction records of an account or a ledger.
 // The expected params type is a pointer to indexActionQueryParams.
-func (w *web) streamTransactions(ctx context.Context, s *sse.Stream, params interface{}) error {
-	qp, ok := params.(*indexActionQueryParams)
-	if !ok {
-		return errors.New("Invalid param type for streamTransactions func")
-	}
-
+func (w *web) streamTransactions(ctx context.Context, s *sse.Stream, qp *indexActionQueryParams) error {
 	horizonSession, err := w.horizonSession(ctx)
 	if err != nil {
 		return errors.Wrap(err, "getting horizon db session")

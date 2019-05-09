@@ -23,20 +23,16 @@ import (
 	"github.com/stellar/go/support/render/problem"
 )
 
-// jsonResponderFunc represents the signature of the function that handles
-// requests to which the server responds in json format.
-type jsonResponderFunc func(context.Context, interface{}) (interface{}, error)
-
 // streamFunc represents the signature of the function that handles requests
 // with stream mode turned on using server-sent events.
-type streamFunc func(context.Context, *sse.Stream, interface{}) error
+type streamFunc func(context.Context, *sse.Stream, *indexActionQueryParams) error
 
 // streamableEndpointHandler handles endpoints that have the stream mode
 // available. It inspects the Accept header to determine which function to be
 // executed. If it's "application/hal+json" or "application/json", then jfn
 // will be executed with params. If it's "text/event-stream", then either sfn
 // or jfn will be executed with the streamHandler with params.
-func (we *web) streamableEndpointHandler(jfn jsonResponderFunc, streamSingleObjectEnabled bool, sfn streamFunc, params interface{}) http.HandlerFunc {
+func (we *web) streamableEndpointHandler(jfn interface{}, streamSingleObjectEnabled bool, sfn streamFunc, params interface{}) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 
@@ -46,8 +42,12 @@ func (we *web) streamableEndpointHandler(jfn jsonResponderFunc, streamSingleObje
 				problem.Render(ctx, w, hProblem.NotAcceptable)
 				return
 			}
-
-			hal.Handler(jfn, params).ServeHTTP(w, r)
+			h, err := hal.Handler(jfn, params)
+			if err != nil {
+				problem.Render(ctx, w, err)
+				return
+			}
+			h.ServeHTTP(w, r)
 			return
 
 		case render.MimeEventStream:
@@ -69,7 +69,7 @@ func (we *web) streamableEndpointHandler(jfn jsonResponderFunc, streamSingleObje
 // provided params.
 // Note that we don't return an error if both jfn and sfn are not nil. sfn will
 // simply take precedence.
-func (we *web) streamHandler(jfn jsonResponderFunc, sfn streamFunc, params interface{}) http.HandlerFunc {
+func (we *web) streamHandler(jfn interface{}, sfn streamFunc, params interface{}) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 
@@ -94,13 +94,13 @@ func (we *web) streamHandler(jfn jsonResponderFunc, sfn streamFunc, params inter
 			}
 
 			if sfn != nil {
-				err := sfn(ctx, stream, params)
+				err := sfn(ctx, stream, params.(*indexActionQueryParams))
 				if err != nil {
 					stream.Err(err)
 					return
 				}
 			} else if jfn != nil {
-				data, err := jfn(ctx, params)
+				data, err := hal.ExecuteFunc(ctx, jfn, params)
 				if err != nil {
 					stream.Err(err)
 					return
@@ -158,7 +158,7 @@ func (we *web) streamHandler(jfn jsonResponderFunc, sfn streamFunc, params inter
 
 // streamShowActionHandler gets the showAction query params from the request
 // and pass it on to streamableEndpointHandler.
-func (we *web) streamShowActionHandler(jfn jsonResponderFunc, requireAccountID bool) http.HandlerFunc {
+func (we *web) streamShowActionHandler(jfn interface{}, requireAccountID bool) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 		param, err := getShowActionQueryParams(r, requireAccountID)
@@ -174,7 +174,7 @@ func (we *web) streamShowActionHandler(jfn jsonResponderFunc, requireAccountID b
 // streamIndexActionHandler gets the required params for indexable endpoints from
 // the URL, validates the cursor is within history, and finally passes the
 // indexAction query params to the more general purpose streamableEndpointHandler.
-func (we *web) streamIndexActionHandler(jfn jsonResponderFunc, sfn streamFunc) http.HandlerFunc {
+func (we *web) streamIndexActionHandler(jfn interface{}, sfn streamFunc) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 
@@ -195,7 +195,7 @@ func (we *web) streamIndexActionHandler(jfn jsonResponderFunc, sfn streamFunc) h
 }
 
 // showActionHandler handles all non-streamable endpoints.
-func showActionHandler(jfn jsonResponderFunc) http.HandlerFunc {
+func showActionHandler(jfn interface{}) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 		contentType := render.Negotiate(r)
@@ -210,7 +210,12 @@ func showActionHandler(jfn jsonResponderFunc) http.HandlerFunc {
 			return
 		}
 
-		hal.Handler(jfn, params).ServeHTTP(w, r)
+		h, err := hal.Handler(jfn, params)
+		if err != nil {
+			problem.Render(ctx, w, err)
+			return
+		}
+		h.ServeHTTP(w, r)
 	})
 }
 
