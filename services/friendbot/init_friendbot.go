@@ -40,10 +40,26 @@ func initFriendbot(
 	// already confirmed that friendbotSecret is a seed.
 	botKeypair := botKP.(*keypair.Full)
 	botAccount := internal.Account{AccountID: botKeypair.Address()}
-
-	minions, err := createMinionAccounts(botAccount, botKeypair, networkPassphrase, numMinions, hclient)
+	err = botAccount.RefreshSequenceNumber(hclient)
 	if err != nil {
-		return nil, errors.Wrap(err, "creating minion accounts")
+		return nil, errors.Wrap(err, "refreshing bot seqnum")
+	}
+
+	// Create Minions in batches of 100.
+	var minions []internal.Minion
+	numRemainingMinions := numMinions
+	minionBatchSize := 100
+	for numRemainingMinions > 0 {
+		numCreateMinions := minionBatchSize
+		if numRemainingMinions < minionBatchSize {
+			numCreateMinions = numRemainingMinions
+		}
+		newMinions, err := createMinionAccounts(botAccount, botKeypair, networkPassphrase, numCreateMinions, hclient)
+		if err != nil {
+			return nil, errors.Wrap(err, "creating minion accounts")
+		}
+		minions = append(minions, newMinions...)
+		numRemainingMinions -= numCreateMinions
 	}
 
 	return &internal.Bot{
@@ -63,14 +79,12 @@ func createMinionAccounts(botAccount txnbuild.Account, botKeypair *keypair.Full,
 		ops     []txnbuild.Operation
 		minions []internal.Minion
 	)
-	signers := []*keypair.Full{botKeypair}
 
 	for i := 0; i < numMinions; i++ {
 		minionKeypair, err := keypair.Random()
 		if err != nil {
 			return []internal.Minion{}, errors.Wrap(err, "making keypair")
 		}
-		signers = append(signers, minionKeypair)
 
 		minions = append(minions, internal.Minion{
 			Account: internal.Account{AccountID: minionKeypair.Address()},
@@ -89,7 +103,7 @@ func createMinionAccounts(botAccount txnbuild.Account, botKeypair *keypair.Full,
 		Timebounds:    txnbuild.NewTimebounds(0, 300),
 		Network:       networkPassphrase,
 	}
-	txe, err := txn.BuildSignEncode(signers...)
+	txe, err := txn.BuildSignEncode(botKeypair)
 	if err != nil {
 		return []internal.Minion{}, errors.Wrap(err, "making create accounts tx")
 	}
