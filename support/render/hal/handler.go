@@ -11,7 +11,10 @@ import (
 	"github.com/stellar/go/support/render/problem"
 )
 
-var errorType = reflect.TypeOf((*error)(nil)).Elem()
+var (
+	errorType   = reflect.TypeOf((*error)(nil)).Elem()
+	contextType = reflect.TypeOf((*context.Context)(nil)).Elem()
+)
 
 type handler struct {
 	fv      reflect.Value
@@ -88,7 +91,7 @@ func ExecuteFunc(ctx context.Context, fn, param interface{}) (interface{}, error
 // and exact 2 return values, where the second value has to be error type.
 func funcParamType(fv reflect.Value) (reflect.Type, error) {
 	ft := fv.Type()
-	if ft.Kind() != reflect.Func || ft.IsVariadic() || ft.NumIn() > 2 {
+	if ft.Kind() != reflect.Func || ft.IsVariadic() || ft.NumIn() > 2 || ft.NumIn() == 0 || !ft.In(0).Implements(contextType) {
 		return nil, fmt.Errorf("%s must be nonvariadic func and has at most one parameter other than context", ft.String())
 	}
 
