@@ -29,6 +29,21 @@ func (a Account) IncrementSequenceNumber() (xdr.SequenceNumber, error) {
 	return a.Sequence, nil
 }
 
+// RefreshSequenceNumber gets an Account's correct in-memory sequence number from Horizon.
+func (a Account) RefreshSequenceNumber(hclient *horizonclient.Client) error {
+	accountRequest := horizonclient.AccountRequest{AccountID: a.GetAccountID()}
+	accountDetail, err := hclient.AccountDetail(accountRequest)
+	if err != nil {
+		return errors.Wrap(err, "getting account detail")
+	}
+	seq, err := strconv.ParseInt(accountDetail.Sequence, 10, 64)
+	if err != nil {
+		return errors.Wrap(err, "parsing account seqnum")
+	}
+	a.Sequence = xdr.SequenceNumber(seq)
+	return nil
+}
+
 // Minion contains a Stellar channel account and Go channels to communicate with friendbot.
 type Minion struct {
 	Account Account
@@ -148,7 +163,12 @@ func (minion *Minion) checkSequenceRefresh(hclient *horizonclient.Client) error 
 	if minion.Account.Sequence != 0 && !minion.forceRefreshSequence {
 		return nil
 	}
-	return minion.refreshSequence(hclient)
+	err := minion.Account.RefreshSequenceNumber(hclient)
+	if err != nil {
+		return errors.Wrap(err, "refreshing minion seqnum")
+	}
+	minion.forceRefreshSequence = false
+	return nil
 }
 
 func (minion *Minion) makeTx(input MinionInput) (*string, error) {
@@ -178,21 +198,4 @@ func (minion *Minion) makeTx(input MinionInput) (*string, error) {
 		return nil, errors.Wrap(err, "incrementing minion seq")
 	}
 	return &txe, err
-}
-
-// Refreshes the in-memory sequence number from the minion Stellar account.
-func (minion *Minion) refreshSequence(hclient *horizonclient.Client) error {
-	minion.Account.Sequence = 0
-	accountRequest := horizonclient.AccountRequest{AccountID: minion.Account.GetAccountID()}
-	minionAccount, err := hclient.AccountDetail(accountRequest)
-	if err != nil {
-		return err
-	}
-	seq, err := strconv.ParseInt(minionAccount.Sequence, 10, 64)
-	if err != nil {
-		return err
-	}
-	minion.Account.Sequence = xdr.SequenceNumber(seq)
-	minion.forceRefreshSequence = false
-	return nil
 }
