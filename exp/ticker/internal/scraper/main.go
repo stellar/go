@@ -5,6 +5,7 @@ import (
 	"time"
 
 	horizonclient "github.com/stellar/go/clients/horizonclient"
+	"github.com/stellar/go/exp/ticker/internal/utils"
 	hProtocol "github.com/stellar/go/protocols/horizon"
 	hlog "github.com/stellar/go/support/log"
 )
@@ -150,4 +151,25 @@ func (c *ScraperConfig) StreamNewTrades(cursor string, h horizonclient.TradeHand
 func (c *ScraperConfig) FetchOrderbookForAssets(bType, bCode, bIssuer, cType, cCode, cIssuer string) (OrderbookStats, error) {
 	c.Logger.Infof("Fetching orderbook info for %s:%s / %s:%s\n", bCode, bIssuer, cCode, cIssuer)
 	return c.fetchOrderbook(bType, bCode, bIssuer, cType, cCode, cIssuer)
+}
+
+// NormalizeTradeAssets enforces the following rules:
+// 1. native asset type refers to a "XLM" code and a "native" issuer
+// 2. native is always the base asset (and if not, base and counter are swapped)
+// 3. when trades are between two non-native, the base is the asset whose string
+// comes first alphabetically.
+func NormalizeTradeAssets(t *hProtocol.Trade) {
+	addNativeData(t)
+	if t.BaseAssetType == "native" {
+		return
+	}
+	if t.CounterAssetType == "native" {
+		reverseAssets(t)
+		return
+	}
+	bAssetString := utils.GetAssetString(t.BaseAssetType, t.BaseAssetCode, t.BaseAssetIssuer)
+	cAssetString := utils.GetAssetString(t.CounterAssetType, t.CounterAssetCode, t.CounterAssetIssuer)
+	if bAssetString > cAssetString {
+		reverseAssets(t)
+	}
 }
