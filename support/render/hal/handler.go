@@ -51,8 +51,8 @@ func (h *handler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	Render(w, res)
 }
 
-// executeFunc executes the function provided in the handler with the provided
-// param value, if any, in the handler.
+// executeFunc executes the function provided in the handler together with the
+// provided param value, if any, in the handler.
 func (h *handler) executeFunc(ctx context.Context) (interface{}, error) {
 	var a []reflect.Value
 	a = append(a, reflect.ValueOf(ctx))
@@ -67,7 +67,6 @@ func (h *handler) executeFunc(ctx context.Context) (interface{}, error) {
 
 	rv := h.fv.Call(a)
 	err, _ := rv[1].Interface().(error)
-
 	return rv[0].Interface(), err
 }
 
@@ -98,7 +97,6 @@ func funcParamType(fv reflect.Value) (reflect.Type, error) {
 
 	var paramType reflect.Type
 	if ft.NumIn() == 2 {
-		// the first param is context
 		paramType = ft.In(1)
 	}
 
