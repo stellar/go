@@ -1,12 +1,18 @@
 package internal
 
 import (
+	"context"
+	"log"
+	"time"
+
 	"github.com/stellar/go/clients/horizonclient"
 	"github.com/stellar/go/keypair"
 	hProtocol "github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/txnbuild"
 )
+
+const createAccountInitAmt = "3.0"
 
 // Minion contains a Stellar channel account and Go channels to communicate with friendbot.
 type Minion struct {
@@ -26,27 +32,39 @@ type Minion struct {
 
 // Run reads a payment destination address and an output channel. It attempts
 // to pay that address and submits the result to the channel.
-func (minion *Minion) Run() {
+func (minion *Minion) Run(ctx context.Context) {
+	defer log.Printf("Run for Minion with address %s exiting", minion.Account.GetAccountID())
 	for {
-		minionInput := <-minion.InputChan
-		err := minion.checkSequenceRefresh(minion.Horizon)
-		if err != nil {
-			minionInput.resultChan <- SubmitResult{
-				maybeTransactionSuccess: nil,
-				maybeErr:                errors.Wrap(err, "checking minion seq"),
+		select {
+		case <-ctx.Done():
+			return
+		case minionInput, ok := <-minion.InputChan:
+			log.Printf("Ok value: %v", ok)
+			log.Print("just received minion input")
+			log.Print("calling checkSequenceRefresh")
+			err := minion.checkSequenceRefresh(minion.Horizon)
+			if err != nil {
+				minionInput.resultChan <- SubmitResult{
+					maybeTransactionSuccess: nil,
+					maybeErr:                errors.Wrap(err, "checking minion seq"),
+				}
 			}
-		}
-		txStr, err := minion.makeTx(minionInput.destAddress)
-		if err != nil {
-			minionInput.resultChan <- SubmitResult{
-				maybeTransactionSuccess: nil,
-				maybeErr:                errors.Wrap(err, "making payment tx"),
+			log.Printf("calling makeTx with destAddress %s", minionInput.destAddress)
+			txStr, err := minion.makeTx(minionInput.destAddress)
+			if err != nil {
+				minionInput.resultChan <- SubmitResult{
+					maybeTransactionSuccess: nil,
+					maybeErr:                errors.Wrap(err, "making payment tx"),
+				}
 			}
-		}
-		succ, err := minion.SubmitTransaction(minion, minion.Horizon, txStr)
-		minionInput.resultChan <- SubmitResult{
-			maybeTransactionSuccess: succ,
-			maybeErr:                err,
+			log.Print("about to SubmitTransaction")
+			succ, err := minion.SubmitTransaction(minion, minion.Horizon, txStr)
+			minionInput.resultChan <- SubmitResult{
+				maybeTransactionSuccess: succ,
+				maybeErr:                err,
+			}
+		default:
+			time.Sleep(1)
 		}
 	}
 }
@@ -69,11 +87,13 @@ func (minion *Minion) checkSequenceRefresh(hclient *horizonclient.Client) error 
 	if minion.Account.Sequence != 0 && !minion.forceRefreshSequence {
 		return nil
 	}
+	log.Print("about to refresh seqnum")
 	err := minion.Account.RefreshSequenceNumber(hclient)
 	if err != nil {
 		return errors.Wrap(err, "refreshing minion seqnum")
 	}
 	minion.forceRefreshSequence = false
+	log.Print("returning from checkSequenceRefresh")
 	return nil
 }
 
@@ -88,8 +108,9 @@ func (minion *Minion) checkHandleBadSequence(err *horizonclient.Error) {
 
 func (minion *Minion) makeTx(destAddress string) (string, error) {
 	createAccountOp := txnbuild.CreateAccount{
-		Destination: destAddress,
-		Amount:      minion.StartingBalance,
+		Destination:   destAddress,
+		SourceAccount: minion.Account,
+		Amount:        createAccountInitAmt,
 	}
 	paymentOp := txnbuild.Payment{
 		Destination:   destAddress,
