@@ -112,7 +112,7 @@ func dbMarketToPartialMarket(dbMarket tickerdb.PartialMarket) *partialMarket {
 		Close:                dbMarket.Close,
 		IntervalStart:        graphql.Time{Time: dbMarket.IntervalStart},
 		FirstLedgerCloseTime: graphql.Time{Time: dbMarket.FirstLedgerCloseTime},
-		LedgerCloseTime:      graphql.Time{Time: dbMarket.LedgerCloseTime},
+		LastLedgerCloseTime:  graphql.Time{Time: dbMarket.LastLedgerCloseTime},
 		OrderbookStats:       os,
 	}
 }
