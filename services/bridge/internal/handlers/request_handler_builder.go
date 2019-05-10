@@ -6,9 +6,8 @@ import (
 	"strconv"
 
 	log "github.com/sirupsen/logrus"
-
 	b "github.com/stellar/go/build"
-	"github.com/stellar/go/clients/horizon"
+	hc "github.com/stellar/go/clients/horizonclient"
 	"github.com/stellar/go/services/internal/bridge-compliance-shared/http/helpers"
 	"github.com/stellar/go/services/internal/bridge-compliance-shared/protocols/bridge"
 )
@@ -50,8 +49,9 @@ func (rh *RequestHandler) Builder(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if request.SequenceNumber == "" {
-		var accountResponse horizon.Account
-		accountResponse, err = rh.Horizon.LoadAccount(request.Source)
+
+		accountRequest := hc.AccountRequest{AccountID: request.Source}
+		accountResponse, err := rh.Horizon.AccountDetail(accountRequest)
 		if err != nil {
 			log.WithFields(log.Fields{"err": err}).Error("Error when loading account")
 			helpers.Write(w, helpers.InternalServerError)

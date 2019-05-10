@@ -3,14 +3,17 @@ package handlers
 import (
 	"encoding/hex"
 	"encoding/json"
-	log "github.com/sirupsen/logrus"
 	"io/ioutil"
 	"net/http"
 	"strconv"
 
+	log "github.com/sirupsen/logrus"
+
 	"github.com/stellar/go/address"
 	b "github.com/stellar/go/build"
-	"github.com/stellar/go/clients/horizon"
+	hc "github.com/stellar/go/clients/horizonclient"
+	hProtocol "github.com/stellar/go/protocols/horizon"
+
 	"github.com/stellar/go/protocols/compliance"
 	"github.com/stellar/go/protocols/federation"
 	shared "github.com/stellar/go/services/internal/bridge-compliance-shared"
@@ -142,7 +145,7 @@ func (rh *RequestHandler) standardPayment(w http.ResponseWriter, request *bridge
 			paymentID = &request.ID
 		} else {
 			log.WithFields(log.Fields{"paymentID": request.ID, "tx": sentTransaction.EnvelopeXdr}).Info("Transaction with given ID already exists, resubmitting...")
-			submitResponse, err := rh.Horizon.SubmitTransaction(sentTransaction.EnvelopeXdr)
+			submitResponse, err := rh.Horizon.SubmitTransactionXDR(sentTransaction.EnvelopeXdr)
 			if err != nil {
 				log.WithFields(log.Fields{"error": err}).Error("Error submitting transaction")
 				helpers.Write(w, helpers.InternalServerError)
@@ -228,7 +231,8 @@ func (rh *RequestHandler) standardPayment(w http.ResponseWriter, request *bridge
 		}
 
 		// Check if destination account exist
-		_, err = rh.Horizon.LoadAccount(destinationObject.AccountID)
+		accountRequest := hc.AccountRequest{AccountID: destinationObject.AccountID}
+		_, err = rh.Horizon.AccountDetail(accountRequest)
 		if err != nil {
 			log.WithFields(log.Fields{"error": err}).Error("Error loading account")
 			operationBuilder = b.CreateAccount(mutators...)
@@ -288,11 +292,11 @@ func (rh *RequestHandler) standardPayment(w http.ResponseWriter, request *bridge
 	rh.handleTransactionSubmitResponse(w, submitResponse, err)
 }
 
-func (rh *RequestHandler) handleTransactionSubmitResponse(w http.ResponseWriter, submitResponse horizon.TransactionSuccess, err error) {
+func (rh *RequestHandler) handleTransactionSubmitResponse(w http.ResponseWriter, submitResponse hProtocol.TransactionSuccess, err error) {
 	jsonEncoder := json.NewEncoder(w)
 
 	if err != nil {
-		herr, isHorizonError := err.(*horizon.Error)
+		herr, isHorizonError := err.(*hc.Error)
 		if !isHorizonError {
 			log.WithFields(log.Fields{"err": err}).Error("Error submitting transaction")
 			helpers.Write(w, helpers.InternalServerError)
