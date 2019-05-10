@@ -156,21 +156,25 @@ func (action *Action) baseURL() *url.URL {
 	return httpx.BaseURL(action.R.Context())
 }
 
+// Fields of this struct are exported for json marshaling/unmarshaling in
+// support/render/hal package.
 type indexActionQueryParams struct {
-	accountID        string
-	ledgerID         int32
-	pagingParams     db2.PageQuery
-	includeFailedTxs bool
+	AccountID        string
+	LedgerID         int32
+	PagingParams     db2.PageQuery
+	IncludeFailedTxs bool
 }
 
+// Fields of this struct are exported for json marshaling/unmarshaling in
+// support/render/hal package.
 type showActionQueryParams struct {
-	accountID string
-	txHash    string
+	AccountID string
+	TxHash    string
 }
 
 // getAccountInfo returns the information about an account based on the provided param.
 func (w *web) getAccountInfo(ctx context.Context, qp *showActionQueryParams) (interface{}, error) {
-	return actions.AccountInfo(ctx, &core.Q{w.coreSession(ctx)}, qp.accountID)
+	return actions.AccountInfo(ctx, &core.Q{w.coreSession(ctx)}, qp.AccountID)
 }
 
 // getTransactionPage returns a page containing the transaction records of an account or a ledger.
@@ -180,7 +184,7 @@ func (w *web) getTransactionPage(ctx context.Context, qp *indexActionQueryParams
 		return nil, errors.Wrap(err, "getting horizon db session")
 	}
 
-	return actions.TransactionPage(ctx, &history.Q{horizonSession}, qp.accountID, qp.ledgerID, qp.includeFailedTxs, qp.pagingParams)
+	return actions.TransactionPage(ctx, &history.Q{horizonSession}, qp.AccountID, qp.LedgerID, qp.IncludeFailedTxs, qp.PagingParams)
 }
 
 // getTransactionRecord returns a single transaction resource.
@@ -190,7 +194,7 @@ func (w *web) getTransactionResource(ctx context.Context, qp *showActionQueryPar
 		return nil, errors.Wrap(err, "getting horizon db session")
 	}
 
-	return actions.TransactionResource(ctx, &history.Q{horizonSession}, qp.txHash)
+	return actions.TransactionResource(ctx, &history.Q{horizonSession}, qp.TxHash)
 }
 
 // streamTransactions streams the transaction records of an account or a ledger.
@@ -200,5 +204,5 @@ func (w *web) streamTransactions(ctx context.Context, s *sse.Stream, qp *indexAc
 		return errors.Wrap(err, "getting horizon db session")
 	}
 
-	return actions.StreamTransactions(ctx, s, &history.Q{horizonSession}, qp.accountID, qp.ledgerID, qp.includeFailedTxs, qp.pagingParams)
+	return actions.StreamTransactions(ctx, s, &history.Q{horizonSession}, qp.AccountID, qp.LedgerID, qp.IncludeFailedTxs, qp.PagingParams)
 }

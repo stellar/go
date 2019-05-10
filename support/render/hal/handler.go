@@ -66,8 +66,9 @@ func (h *handler) executeFunc(ctx context.Context) (interface{}, error) {
 	}
 
 	rv := h.fv.Call(a)
+	err, _ := rv[1].Interface().(error)
 
-	return rv[0].Interface(), rv[1].Interface().(error)
+	return rv[0].Interface(), err
 }
 
 // ExecuteFunc executes the fn with the param after checking whether the

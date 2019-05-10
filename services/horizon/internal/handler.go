@@ -184,7 +184,7 @@ func (we *web) streamIndexActionHandler(jfn interface{}, sfn streamFunc) http.Ha
 			return
 		}
 
-		err = validateCursorWithinHistory(params.pagingParams)
+		err = validateCursorWithinHistory(params.PagingParams)
 		if err != nil {
 			problem.Render(ctx, w, err)
 			return
@@ -255,8 +255,8 @@ func getShowActionQueryParams(r *http.Request, requireAccountID bool) (*showActi
 	}
 
 	return &showActionQueryParams{
-		accountID: addr,
-		txHash:    txHash,
+		AccountID: addr,
+		TxHash:    txHash,
 	}, nil
 }
 
@@ -293,10 +293,10 @@ func getIndexActionQueryParams(r *http.Request, ingestFailedTransactions bool) (
 	}
 
 	return &indexActionQueryParams{
-		accountID:        addr,
-		ledgerID:         lid,
-		pagingParams:     pq,
-		includeFailedTxs: includeFailedTx,
+		AccountID:        addr,
+		LedgerID:         lid,
+		PagingParams:     pq,
+		IncludeFailedTxs: includeFailedTx,
 	}, nil
 }
 
