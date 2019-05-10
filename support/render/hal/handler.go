@@ -25,7 +25,8 @@ type handler struct {
 // Handler returns an HTTP Handler for function fn.
 // If fn returns a non-nil error, the handler will use problem.Render.
 // Please refer to funcParamType for the allowed function signature.
-// The caller of this function should probably panic on the returned error.
+// The caller of this function should probably panic on the returned error, if
+// any.
 func Handler(fn, param interface{}) (http.Handler, error) {
 	fv := reflect.ValueOf(fn)
 	inType, err := funcParamType(fv)
