@@ -40,76 +40,78 @@ func initFriendbot(
 	// already confirmed that friendbotSecret is a seed.
 	botKeypair := botKP.(*keypair.Full)
 	botAccount := internal.Account{AccountID: botKeypair.Address()}
-	err = botAccount.RefreshSequenceNumber(hclient)
+	minionBalance := "10.0"
+	minions, err := createMinionAccounts(botAccount, botKeypair, networkPassphrase, startingBalance, minionBalance, numMinions, hclient)
 	if err != nil {
-		return nil, errors.Wrap(err, "refreshing bot seqnum")
+		return nil, errors.Wrap(err, "creating minion accounts")
 	}
 
-	// Create Minions in batches of 100.
+	// Launch long-running go routine per-Minion.
+	for _, minion := range minions {
+		go minion.Run()
+	}
+	return &internal.Bot{Minions: minions}, nil
+}
+
+func createMinionAccounts(botAccount internal.Account, botKeypair *keypair.Full, networkPassphrase, newAccountBalance, minionBalance string, numMinions int, hclient *horizonclient.Client) ([]internal.Minion, error) {
 	var minions []internal.Minion
 	numRemainingMinions := numMinions
 	minionBatchSize := 100
 	for numRemainingMinions > 0 {
+		var (
+			ops        []txnbuild.Operation
+			newMinions []internal.Minion
+		)
+		// Refresh the sequence number before submitting a new transaction.
+		err := botAccount.RefreshSequenceNumber(hclient)
+		if err != nil {
+			return nil, errors.Wrap(err, "refreshing bot seqnum")
+		}
+		// The tx will create min(numRemainingMinions, 100) Minion accounts.
 		numCreateMinions := minionBatchSize
 		if numRemainingMinions < minionBatchSize {
 			numCreateMinions = numRemainingMinions
 		}
-		newMinions, err := createMinionAccounts(botAccount, botKeypair, networkPassphrase, numCreateMinions, hclient)
-		if err != nil {
-			return nil, errors.Wrap(err, "creating minion accounts")
+		for i := 0; i < numCreateMinions; i++ {
+			minionKeypair, err := keypair.Random()
+			if err != nil {
+				return []internal.Minion{}, errors.Wrap(err, "making keypair")
+			}
+			minions = append(minions, internal.Minion{
+				Account:           internal.Account{AccountID: minionKeypair.Address()},
+				Keypair:           minionKeypair,
+				BotAccount:        botAccount,
+				BotKeypair:        botKeypair,
+				Horizon:           hclient,
+				Network:           networkPassphrase,
+				StartingBalance:   newAccountBalance,
+				InputChan:         make(chan internal.MinionInput),
+				SubmitTransaction: internal.SubmitTransaction,
+			})
+
+			ops = append(ops, &txnbuild.CreateAccount{
+				Destination: minionKeypair.Address(),
+				Amount:      minionBalance,
+			})
 		}
-		minions = append(minions, newMinions...)
 		numRemainingMinions -= numCreateMinions
-	}
+		minions = append(minions, newMinions...)
 
-	return &internal.Bot{
-		Horizon:           hclient,
-		Account:           botAccount,
-		Keypair:           botKeypair,
-		Network:           networkPassphrase,
-		StartingBalance:   startingBalance,
-		SubmitTransaction: internal.AsyncSubmitTransaction,
-		Minions:           minions,
-	}, nil
-
-}
-
-func createMinionAccounts(botAccount txnbuild.Account, botKeypair *keypair.Full, networkPassphrase string, numMinions int, hclient *horizonclient.Client) ([]internal.Minion, error) {
-	var (
-		ops     []txnbuild.Operation
-		minions []internal.Minion
-	)
-
-	for i := 0; i < numMinions; i++ {
-		minionKeypair, err := keypair.Random()
-		if err != nil {
-			return []internal.Minion{}, errors.Wrap(err, "making keypair")
+		// Build and submit batched account creation tx.
+		txn := txnbuild.Transaction{
+			SourceAccount: botAccount,
+			Operations:    ops,
+			Timebounds:    txnbuild.NewTimeout(300),
+			Network:       networkPassphrase,
 		}
-
-		minions = append(minions, internal.Minion{
-			Account: internal.Account{AccountID: minionKeypair.Address()},
-			Keypair: minionKeypair,
-		})
-
-		ops = append(ops, &txnbuild.CreateAccount{
-			Destination: minionKeypair.Address(),
-			Amount:      "0.00",
-		})
-	}
-
-	txn := txnbuild.Transaction{
-		SourceAccount: botAccount,
-		Operations:    ops,
-		Timebounds:    txnbuild.NewTimebounds(0, 300),
-		Network:       networkPassphrase,
-	}
-	txe, err := txn.BuildSignEncode(botKeypair)
-	if err != nil {
-		return []internal.Minion{}, errors.Wrap(err, "making create accounts tx")
-	}
-	_, err = hclient.SubmitTransactionXDR(txe)
-	if err != nil {
-		return []internal.Minion{}, errors.Wrap(err, "submitting create accounts tx")
+		txe, err := txn.BuildSignEncode(botKeypair)
+		if err != nil {
+			return []internal.Minion{}, errors.Wrap(err, "making create accounts tx")
+		}
+		_, err = hclient.SubmitTransactionXDR(txe)
+		if err != nil {
+			return []internal.Minion{}, errors.Wrap(err, "submitting create accounts tx")
+		}
 	}
 	return minions, nil
 }
