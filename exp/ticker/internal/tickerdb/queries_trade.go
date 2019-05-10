@@ -3,6 +3,7 @@ package tickerdb
 import (
 	"math"
 	"strings"
+	"time"
 )
 
 // BulkInsertTrades inserts a slice of trades in the database. Trades
@@ -28,6 +29,12 @@ func (s *TickerSession) BulkInsertTrades(trades []Trade) (err error) {
 func (s *TickerSession) GetLastTrade() (trade Trade, err error) {
 	err = s.GetRaw(&trade, "SELECT * FROM trades ORDER BY ledger_close_time DESC LIMIT 1")
 	return
+}
+
+// DeleteOldTrades deletes trades in the database older than minDate.
+func (s *TickerSession) DeleteOldTrades(minDate time.Time) error {
+	_, err := s.ExecRaw("DELETE FROM trades WHERE ledger_close_time < ?", minDate)
+	return err
 }
 
 // chunkifyDBTrades transforms a slice into a slice of chunks (also slices) of chunkSize
