@@ -44,9 +44,9 @@ func (we *web) streamableEndpointHandler(jfn interface{}, streamSingleObjectEnab
 			}
 			h, err := hal.Handler(jfn, params)
 			if err != nil {
-				problem.Render(ctx, w, err)
-				return
+				panic(err)
 			}
+
 			h.ServeHTTP(w, r)
 			return
 
@@ -100,8 +100,11 @@ func (we *web) streamHandler(jfn interface{}, sfn streamFunc, params interface{}
 					return
 				}
 			} else if jfn != nil {
-				data, err := hal.ExecuteFunc(ctx, jfn, params)
+				data, ok, err := hal.ExecuteFunc(ctx, jfn, params)
 				if err != nil {
+					if !ok {
+						panic(err)
+					}
 					stream.Err(err)
 					return
 				}
@@ -212,9 +215,9 @@ func showActionHandler(jfn interface{}) http.HandlerFunc {
 
 		h, err := hal.Handler(jfn, params)
 		if err != nil {
-			problem.Render(ctx, w, err)
-			return
+			panic(err)
 		}
+
 		h.ServeHTTP(w, r)
 	})
 }

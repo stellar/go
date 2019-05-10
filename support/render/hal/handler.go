@@ -19,12 +19,13 @@ var (
 type handler struct {
 	fv      reflect.Value
 	inType  reflect.Type
-	inValue []byte
+	inValue reflect.Value
 }
 
 // Handler returns an HTTP Handler for function fn.
 // If fn returns a non-nil error, the handler will use problem.Render.
 // Please refer to funcParamType for the allowed function signature.
+// The caller of this function should probably panic on the returned error.
 func Handler(fn, param interface{}) (http.Handler, error) {
 	fv := reflect.ValueOf(fn)
 	inType, err := funcParamType(fv)
@@ -32,9 +33,20 @@ func Handler(fn, param interface{}) (http.Handler, error) {
 		return nil, errors.Wrap(err, "parsing function prototype")
 	}
 
-	inValue, err := json.Marshal(param)
-	if err != nil {
-		return nil, errors.Wrap(err, "marshaling function input value")
+	var inValue reflect.Value
+	if inType != nil {
+		val, err := json.Marshal(param)
+		if err != nil {
+			return nil, errors.Wrap(err, "marshaling function input value")
+		}
+
+		inPtr := reflect.New(inType)
+		err = json.Unmarshal(val, inPtr.Interface())
+		if err != nil {
+			return nil, errors.Wrap(err, "unmarshaling the provided param to function's param")
+		}
+
+		inValue = inPtr.Elem()
 	}
 
 	return &handler{fv, inType, inValue}, nil
@@ -57,12 +69,7 @@ func (h *handler) executeFunc(ctx context.Context) (interface{}, error) {
 	var a []reflect.Value
 	a = append(a, reflect.ValueOf(ctx))
 	if h.inType != nil {
-		inPtr := reflect.New(h.inType)
-		err := json.Unmarshal(h.inValue, inPtr.Interface())
-		if err != nil {
-			return nil, err
-		}
-		a = append(a, inPtr.Elem())
+		a = append(a, h.inValue)
 	}
 
 	rv := h.fv.Call(a)
@@ -72,13 +79,22 @@ func (h *handler) executeFunc(ctx context.Context) (interface{}, error) {
 
 // ExecuteFunc executes the fn with the param after checking whether the
 // function signature is valid or not by calling Handler.
-func ExecuteFunc(ctx context.Context, fn, param interface{}) (interface{}, error) {
+// The first return value is the result that fn returns.
+// The second return value is a boolean indicating whether the caller should
+// panic on the err or not. If it's true, it means the caller can process the
+// error normally; if it's false, it means the caller should probably panic on
+// the error.
+// The third return value is an error either from Handler() or from fn, if any.
+func ExecuteFunc(ctx context.Context, fn, param interface{}) (interface{}, bool, error) {
+	dontPanic := true
 	h, err := Handler(fn, param)
 	if err != nil {
-		return nil, err
+		dontPanic = false
+		return nil, dontPanic, err
 	}
 
-	return h.(*handler).executeFunc(ctx)
+	res, err := h.(*handler).executeFunc(ctx)
+	return res, dontPanic, err
 }
 
 // funcParamType checks whether fv is valid. We only accept nonvariadic
