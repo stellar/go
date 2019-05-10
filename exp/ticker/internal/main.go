@@ -7,8 +7,9 @@ import (
 // MarketSummary represents a summary of statistics of all valid markets
 // within a given period of time.
 type MarketSummary struct {
-	GeneratedAt int64         `json:"generated_at"`
-	Pairs       []MarketStats `json:"pairs"`
+	GeneratedAt        int64         `json:"generated_at"`
+	GeneratedAtRFC3339 string        `json:"generated_at_rfc3339"`
+	Pairs              []MarketStats `json:"pairs"`
 }
 
 // Market stats represents the statistics of a specific market (identified by
@@ -31,7 +32,7 @@ type MarketStats struct {
 	Change7d         float64 `json:"change_7d"`
 	Price            float64 `json:"price"`
 	Close            float64 `json:"close"`
-	CloseTime        int64   `json:"close_time"`
+	CloseTime        string  `json:"close_time"`
 	BidCount         int     `json:"bid_count"`
 	BidVolume        float64 `json:"bid_volume"`
 	BidMax           float64 `json:"bid_max"`
@@ -44,13 +45,14 @@ type MarketStats struct {
 
 // Asset Sumary represents the collection of valid assets.
 type AssetSummary struct {
-	GeneratedAt int64   `json:"generated_at"`
-	Assets      []Asset `json:"assets"`
+	GeneratedAt        int64   `json:"generated_at"`
+	GeneratedAtRFC3339 string  `json:"generated_at_rfc3339"`
+	Assets             []Asset `json:"assets"`
 }
 
 // Asset represent the aggregated data for a given asset.
 type Asset struct {
 	scraper.FinalAsset
 
-	LastValidTimestamp int64 `json:"last_valid"`
+	LastValidTimestamp string `json:"last_valid"`
 }
