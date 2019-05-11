@@ -1,7 +1,6 @@
 package internal
 
 import (
-	"log"
 	"net/http"
 	"net/url"
 
@@ -29,7 +28,6 @@ func (handler *FriendbotHandler) Handle(w http.ResponseWriter, r *http.Request) 
 
 // doHandle is just a convenience method that returns the object to be rendered
 func (handler *FriendbotHandler) doHandle(r *http.Request) (*horizon.TransactionSuccess, error) {
-	log.Print("top of doHandle")
 	err := handler.checkEnabled()
 	if err != nil {
 		return nil, err
@@ -44,7 +42,6 @@ func (handler *FriendbotHandler) doHandle(r *http.Request) (*horizon.Transaction
 	if err != nil {
 		return nil, problem.MakeInvalidFieldProblem("addr", err)
 	}
-	log.Print("about to call loadResult")
 	return handler.loadResult(address)
 }
 
@@ -62,7 +59,6 @@ func (handler *FriendbotHandler) checkEnabled() error {
 }
 
 func (handler *FriendbotHandler) loadAddress(r *http.Request) (string, error) {
-	log.Print("top of loadAddress")
 	address := r.Form.Get("addr")
 	unescaped, err := url.QueryUnescape(address)
 	if err != nil {
@@ -70,12 +66,10 @@ func (handler *FriendbotHandler) loadAddress(r *http.Request) (string, error) {
 	}
 
 	_, err = strkey.Decode(strkey.VersionByteAccountID, unescaped)
-	log.Print("bottom of loadAddress")
 	return unescaped, err
 }
 
 func (handler *FriendbotHandler) loadResult(address string) (*horizon.TransactionSuccess, error) {
-	log.Print("top of loadResult")
 	result, err := handler.Friendbot.Pay(address)
 	switch e := err.(type) {
 	case horizon.Error:

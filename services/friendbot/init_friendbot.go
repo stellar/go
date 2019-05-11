@@ -1,8 +1,6 @@
 package main
 
 import (
-	"context"
-	"log"
 	"net/http"
 
 	"github.com/stellar/go/clients/horizonclient"
@@ -48,12 +46,6 @@ func initFriendbot(
 		return nil, errors.Wrap(err, "creating minion accounts")
 	}
 
-	// Launch long-running go routine per-Minion.
-	ctx := context.Background()
-	for _, minion := range minions {
-		log.Printf("launching Run on minion %v", minion)
-		go minion.Run(ctx)
-	}
 	return &internal.Bot{Minions: minions}, nil
 }
 
@@ -89,7 +81,6 @@ func createMinionAccounts(botAccount internal.Account, botKeypair *keypair.Full,
 				Horizon:           hclient,
 				Network:           networkPassphrase,
 				StartingBalance:   newAccountBalance,
-				InputChan:         make(chan internal.MinionInput, 1),
 				SubmitTransaction: internal.SubmitTransaction,
 			})
 
@@ -114,13 +105,6 @@ func createMinionAccounts(botAccount internal.Account, botKeypair *keypair.Full,
 		}
 		_, err = hclient.SubmitTransactionXDR(txe)
 		if err != nil {
-			// XXX: Remove debug switch.
-			switch e := err.(type) {
-			case *horizonclient.Error:
-				resCode, _ := e.ResultCodes()
-				log.Print(resCode.TransactionCode)
-				log.Print(resCode.OperationCodes)
-			}
 			return []internal.Minion{}, errors.Wrap(err, "submitting create accounts tx")
 		}
 	}
