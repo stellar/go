@@ -40,18 +40,16 @@ func TestFriendbot_Pay(t *testing.T) {
 		BotKeypair:        botKeypair.(*keypair.Full),
 		Network:           "Test SDF Network ; September 2015",
 		StartingBalance:   "10000.00",
-		InputChan:         make(chan MinionInput),
 		SubmitTransaction: mockSubmitTransaction,
 	}
 	fb := &Bot{Minions: []Minion{minion}}
-	go minion.Run()
 
 	recipientAddress := "GDJIN6W6PLTPKLLM57UW65ZH4BITUXUMYQHIMAZFYXF45PZVAWDBI77Z"
 	txSuccess, err := fb.Pay(recipientAddress)
 	if !assert.NoError(t, err) {
 		return
 	}
-	expectedTxn := "AAAAAGOiyZ/+kecCdxYBXywkAFwsSrGLYqD4IiVglvKCvaWHAAAAyAAAAAAAAAACAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAgAAAAAAAAAAAAAAANKG+t565vUtbO/pb3cn4FE6XozEDoYDJcXLzr81BYYUAAAAF0h26AAAAAABAAAAAGOiyZ/+kecCdxYBXywkAFwsSrGLYqD4IiVglvKCvaWHAAAAAQAAAADShvreeub1LWzv6W93J+BROl6MxA6GAyXFy86/NQWGFAAAAAAAAAAXSHboAAAAAAAAAAACgr2lhwAAAEBoQgfzvxb81HRrjMYgQbGwhhs4iXE+vqdLk9qayJJEc31HU6MMEmRCzusIJh7cpSdunqoqaxpYbXZVqtLAFd0Cgr2lhwAAAEBoQgfzvxb81HRrjMYgQbGwhhs4iXE+vqdLk9qayJJEc31HU6MMEmRCzusIJh7cpSdunqoqaxpYbXZVqtLAFd0C"
+	expectedTxn := "AAAAAGOiyZ/+kecCdxYBXywkAFwsSrGLYqD4IiVglvKCvaWHAAAAyAAAAAAAAAACAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAgAAAAEAAAAAY6LJn/6R5wJ3FgFfLCQAXCxKsYtioPgiJWCW8oK9pYcAAAAAAAAAANKG+t565vUtbO/pb3cn4FE6XozEDoYDJcXLzr81BYYUAAAAAAHJw4AAAAABAAAAAGOiyZ/+kecCdxYBXywkAFwsSrGLYqD4IiVglvKCvaWHAAAAAQAAAADShvreeub1LWzv6W93J+BROl6MxA6GAyXFy86/NQWGFAAAAAAAAAAXSHboAAAAAAAAAAACgr2lhwAAAEBt+7drpsNo3bFHELxKCa1TiGNDGIFjWZGxEdCOGXw64+wUn3djRI2EuAXQkZLVKr8E/1BZEUShbGfQ3wrnlF0Ggr2lhwAAAEBt+7drpsNo3bFHELxKCa1TiGNDGIFjWZGxEdCOGXw64+wUn3djRI2EuAXQkZLVKr8E/1BZEUShbGfQ3wrnlF0G"
 	assert.Equal(t, expectedTxn, txSuccess.Env)
 
 	// Don't assert on tx values below, since the completion order is unknown.
