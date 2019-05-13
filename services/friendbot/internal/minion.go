@@ -85,7 +85,6 @@ func (minion *Minion) checkHandleBadSequence(err *horizonclient.Error) {
 }
 
 func (minion *Minion) makeTx(destAddress string) (string, error) {
-	// XXX: Subtract CreateAccount Amount from payment balance.
 	createAccountOp := txnbuild.CreateAccount{
 		Destination:   destAddress,
 		SourceAccount: minion.Account,
