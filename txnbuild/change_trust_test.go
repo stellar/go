@@ -9,7 +9,7 @@ import (
 
 func TestChangeTrustMaxLimit(t *testing.T) {
 	kp0 := newKeypair0()
-	txSourceAccount := makeTestAccount(kp0, "9605939170639898")
+	txSourceAccount := NewSimpleAccount(kp0.Address(), int64(9605939170639898))
 
 	changeTrust := ChangeTrust{
 		Line: CreditAsset{"ABCD", kp0.Address()},
