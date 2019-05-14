@@ -40,7 +40,7 @@ func initFriendbot(
 	// already confirmed that friendbotSecret is a seed.
 	botKeypair := botKP.(*keypair.Full)
 	botAccount := internal.Account{AccountID: botKeypair.Address()}
-	minionBalance := "10.0"
+	minionBalance := "1000000.00" // Each channel account is given 1M testnet XLM to cover base balances and fees.
 	minions, err := createMinionAccounts(botAccount, botKeypair, networkPassphrase, startingBalance, minionBalance, numMinions, hclient)
 	if err != nil {
 		return nil, errors.Wrap(err, "creating minion accounts")
