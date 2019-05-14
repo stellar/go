@@ -22,9 +22,8 @@ func (bot *Bot) Pay(destAddress string) (*hProtocol.TransactionSuccess, error) {
 	minion := bot.Minions[bot.nextMinionIndex]
 	resultChan := make(chan SubmitResult)
 	go minion.Run(destAddress, resultChan)
+	bot.nextMinionIndex = (bot.nextMinionIndex + 1) % len(bot.Minions)
 	maybeSubmitResult := <-resultChan
 	close(resultChan)
-
-	bot.nextMinionIndex = (bot.nextMinionIndex + 1) % len(bot.Minions)
 	return maybeSubmitResult.maybeTransactionSuccess, maybeSubmitResult.maybeErr
 }

@@ -45,7 +45,7 @@ func (minion *Minion) Run(destAddress string, resultChan chan SubmitResult) {
 	succ, err := minion.SubmitTransaction(minion, minion.Horizon, txStr)
 	resultChan <- SubmitResult{
 		maybeTransactionSuccess: succ,
-		maybeErr:                err,
+		maybeErr:                errors.Wrap(err, "submitting tx to minion"),
 	}
 }
 
@@ -57,7 +57,7 @@ func SubmitTransaction(minion *Minion, hclient *horizonclient.Client, tx string)
 		case *horizonclient.Error:
 			minion.checkHandleBadSequence(e)
 		}
-		return nil, err
+		return nil, errors.Wrap(err, "submitting tx to horizon")
 	}
 	return &result, nil
 }
@@ -88,7 +88,7 @@ func (minion *Minion) makeTx(destAddress string) (string, error) {
 	createAccountOp := txnbuild.CreateAccount{
 		Destination:   destAddress,
 		SourceAccount: minion.Account,
-		Amount:        "3.00",
+		Amount:        "1.00", // Minimum account amount.
 	}
 	paymentOp := txnbuild.Payment{
 		Destination:   destAddress,
