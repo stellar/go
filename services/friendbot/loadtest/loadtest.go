@@ -17,8 +17,7 @@ type maybeDuration struct {
 }
 
 func main() {
-	// Friendbot must be running
-	// Get Friendbot URL from CL. Friendbot must be running as a local server.
+	// Friendbot must be running as a local server. Get Friendbot URL from CL.
 	fbURL := flag.String("url", "http://0.0.0.0:8000/", "URL of friendbot")
 	numRequests := flag.Int("requests", 500, "number of requests")
 	flag.Parse()
@@ -32,9 +31,7 @@ func main() {
 		go makeFriendbotRequest(address, *fbURL, durationChannel)
 
 		time.Sleep(time.Duration(500) * time.Millisecond)
-		time.Sleep(time.Second)
 	}
-	time.Sleep(time.Duration(10) * time.Second)
 	durations := []time.Duration{}
 	for i := 0; i < *numRequests; i++ {
 		durations = append(durations, <-durationChannel)
@@ -51,7 +48,6 @@ func makeFriendbotRequest(address, fbURL string, durationChannel chan time.Durat
 	resp, _ := http.PostForm(fbURL, formData)
 	var result map[string]interface{}
 	json.NewDecoder(resp.Body).Decode(&result)
-	log.Print(result)
 }
 
 func timeTrack(start time.Time, name string, durationChannel chan time.Duration) {

@@ -8,7 +8,7 @@ import (
 	"github.com/stellar/go/txnbuild"
 )
 
-const createAccountInitAmt = "3.0"
+const createAccountInitialAmount = "1.0"
 
 // Minion contains a Stellar channel account and Go channels to communicate with friendbot.
 type Minion struct {
@@ -88,7 +88,7 @@ func (minion *Minion) makeTx(destAddress string) (string, error) {
 	createAccountOp := txnbuild.CreateAccount{
 		Destination:   destAddress,
 		SourceAccount: minion.Account,
-		Amount:        "1.00", // Minimum account amount.
+		Amount:        createAccountInitialAmount, // Minimum account amount.
 	}
 	paymentOp := txnbuild.Payment{
 		Destination:   destAddress,
