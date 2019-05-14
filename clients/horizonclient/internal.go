@@ -115,7 +115,9 @@ func setCurrentServerTime(host string, serverDate []string) {
 	if err != nil {
 		return
 	}
+	serverTimeMapMutex.Lock()
 	ServerTimeMap[host] = ServerTimeRecord{ServerTime: st.UTC().Unix(), LocalTimeRecorded: time.Now().UTC().Unix()}
+	serverTimeMapMutex.Unlock()
 }
 
 // currentServerTime returns the current server time for a given horizon server

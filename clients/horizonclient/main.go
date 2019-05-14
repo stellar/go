@@ -15,6 +15,7 @@ import (
 	"errors"
 	"net/http"
 	"net/url"
+	"sync"
 	"time"
 
 	hProtocol "github.com/stellar/go/protocols/horizon"
@@ -342,3 +343,4 @@ type ServerTimeRecord struct {
 
 // ServerTimeMap holds the ServerTimeRecord for different horizon instances.
 var ServerTimeMap = make(map[string]ServerTimeRecord)
+var serverTimeMapMutex = &sync.Mutex{}
