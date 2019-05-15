@@ -159,6 +159,8 @@ type ClientInterface interface {
 	StreamLedgers(ctx context.Context, request LedgerRequest, handler LedgerHandler) error
 	StreamOrderBooks(ctx context.Context, request OrderBookRequest, handler OrderBookHandler) error
 	Root() (hProtocol.Root, error)
+	NextAssetsPage(hProtocol.AssetsPage) (hProtocol.AssetsPage, error)
+	PrevAssetsPage(hProtocol.AssetsPage) (hProtocol.AssetsPage, error)
 }
 
 // DefaultTestNetClient is a default client to connect to test network.
