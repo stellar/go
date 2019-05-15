@@ -527,5 +527,17 @@ func (c *Client) Version() string {
 	return version
 }
 
+// NextAssetsPage returns the next page of assets
+func (c *Client) NextAssetsPage(page hProtocol.AssetsPage) (assets hProtocol.AssetsPage, err error) {
+	err = c.sendRequestURL(page.Links.Next.Href, "get", &assets)
+	return
+}
+
+// PrevAssetsPage returns the previous page of assets
+func (c *Client) PrevAssetsPage(page hProtocol.AssetsPage) (assets hProtocol.AssetsPage, err error) {
+	err = c.sendRequestURL(page.Links.Prev.Href, "get", &assets)
+	return
+}
+
 // ensure that the horizon client implements ClientInterface
 var _ ClientInterface = &Client{}
