@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/stellar/go/keypair"
+	"github.com/stellar/go/support/errors"
 )
 
 type maybeDuration struct {
@@ -21,7 +22,7 @@ func main() {
 	fbURL := flag.String("url", "http://0.0.0.0:8000/", "URL of friendbot")
 	numRequests := flag.Int("requests", 500, "number of requests")
 	flag.Parse()
-	durationChannel := make(chan time.Duration, *numRequests)
+	durationChannel := make(chan maybeDuration, *numRequests)
 	for i := 0; i < *numRequests; i++ {
 		kp, err := keypair.Random()
 		if err != nil {
@@ -32,7 +33,7 @@ func main() {
 
 		time.Sleep(time.Duration(500) * time.Millisecond)
 	}
-	durations := []time.Duration{}
+	durations := []maybeDuration{}
 	for i := 0; i < *numRequests; i++ {
 		durations = append(durations, <-durationChannel)
 	}
@@ -40,26 +41,40 @@ func main() {
 	log.Printf("Got %d times with average %s", *numRequests, mean(durations))
 }
 
-func makeFriendbotRequest(address, fbURL string, durationChannel chan time.Duration) {
-	defer timeTrack(time.Now(), "makeFriendbotRequest", durationChannel)
+func makeFriendbotRequest(address, fbURL string, durationChannel chan maybeDuration) {
+	start := time.Now()
 	formData := url.Values{
 		"addr": {address},
 	}
-	resp, _ := http.PostForm(fbURL, formData)
+	resp, err := http.PostForm(fbURL, formData)
+	if err != nil {
+		log.Printf("Got post error: %s", err)
+		durationChannel <- maybeDuration{maybeError: errors.Wrap(err, "posting form")}
+	}
 	var result map[string]interface{}
-	json.NewDecoder(resp.Body).Decode(&result)
+	err = json.NewDecoder(resp.Body).Decode(&result)
+	if err != nil {
+		log.Printf("Got decode error: %s", err)
+		durationChannel <- maybeDuration{maybeError: errors.Wrap(err, "decoding json")}
+	}
+	timeTrack(start, "makeFriendbotRequest", durationChannel)
 }
 
-func timeTrack(start time.Time, name string, durationChannel chan time.Duration) {
+func timeTrack(start time.Time, name string, durationChannel chan maybeDuration) {
 	elapsed := time.Since(start)
 	log.Printf("%s took %s", name, elapsed)
-	durationChannel <- elapsed
+	durationChannel <- maybeDuration{maybeDuration: elapsed}
 }
 
-func mean(durations []time.Duration) time.Duration {
+func mean(durations []maybeDuration) time.Duration {
 	var total time.Duration
+	count := 0
 	for _, d := range durations {
-		total += d
+		if d.maybeError != nil {
+			continue
+		}
+		total += d.maybeDuration
+		count++
 	}
-	return total / time.Duration(len(durations))
+	return total / time.Duration(count)
 }

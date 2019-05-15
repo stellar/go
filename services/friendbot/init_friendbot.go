@@ -1,6 +1,7 @@
 package main
 
 import (
+	"log"
 	"net/http"
 
 	"github.com/stellar/go/clients/horizonclient"
@@ -40,7 +41,7 @@ func initFriendbot(
 	// already confirmed that friendbotSecret is a seed.
 	botKeypair := botKP.(*keypair.Full)
 	botAccount := internal.Account{AccountID: botKeypair.Address()}
-	minionBalance := "1000000.00" // Each channel account is given 1M testnet XLM to cover base balances and fees.
+	minionBalance := "101.00"
 	minions, err := createMinionAccounts(botAccount, botKeypair, networkPassphrase, startingBalance, minionBalance, numMinions, hclient)
 	if err != nil {
 		return nil, errors.Wrap(err, "creating minion accounts")
@@ -99,8 +100,9 @@ func createMinionAccounts(botAccount internal.Account, botKeypair *keypair.Full,
 		if err != nil {
 			return []internal.Minion{}, errors.Wrap(err, "making create accounts tx")
 		}
-		_, err = hclient.SubmitTransactionXDR(txe)
+		resp, err := hclient.SubmitTransactionXDR(txe)
 		if err != nil {
+			log.Print(resp)
 			return []internal.Minion{}, errors.Wrap(err, "submitting create accounts tx")
 		}
 	}

@@ -87,18 +87,12 @@ func (minion *Minion) checkHandleBadSequence(err *horizonclient.Error) {
 func (minion *Minion) makeTx(destAddress string) (string, error) {
 	createAccountOp := txnbuild.CreateAccount{
 		Destination:   destAddress,
-		SourceAccount: minion.Account,
-		Amount:        createAccountInitialAmount, // Minimum account amount.
-	}
-	paymentOp := txnbuild.Payment{
-		Destination:   destAddress,
-		Amount:        minion.StartingBalance,
-		Asset:         txnbuild.NativeAsset{},
 		SourceAccount: minion.BotAccount,
+		Amount:        minion.StartingBalance,
 	}
 	txn := txnbuild.Transaction{
 		SourceAccount: minion.Account,
-		Operations:    []txnbuild.Operation{&createAccountOp, &paymentOp},
+		Operations:    []txnbuild.Operation{&createAccountOp},
 		Network:       minion.Network,
 		Timebounds:    txnbuild.NewInfiniteTimeout(),
 	}
