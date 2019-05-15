@@ -16,7 +16,7 @@ SDF runs a instance of Horizon that is connected to the test net: [https://horiz
 
 SDF maintained libraries:<br />
 - [JavaScript](https://github.com/stellar/js-stellar-sdk)
-- [Go](https://github.com/stellar/go/tree/master/clients)
+- [Go](https://github.com/stellar/go/tree/master/clients/horizonclient)
 - [Java](https://github.com/stellar/java-stellar-sdk)
 
 Community maintained libraries (in various states of completeness) for interacting with Horizon in other languages:<br>
