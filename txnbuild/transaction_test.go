@@ -632,3 +632,79 @@ func TestMemoReturn(t *testing.T) {
 	expected := "AAAAAH4RyzTWNfXhqwLUoCw91aWkZtgIzY8SAVkIPc0uFVmYAAAAZAAMLgoAAAABAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAEAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAAAAAAAAAAsAAAAAAAAAAQAAAAAAAAABLhVZmAAAAEAuLFTunY08pbWKompoepHdazLmr7uePUSOzA4P33+SVRKWiu+h2tngOsP8hga+wpLJXT9l/0uMQ3iziRVUrh0K"
 	assert.Equal(t, expected, received, "Base 64 XDR should match")
 }
+
+func TestManageBuyOfferNewOffer(t *testing.T) {
+	kp0 := newKeypair0()
+	kp1 := newKeypair1()
+	sourceAccount := NewSimpleAccount(kp1.Address(), int64(41137196761092))
+
+	buyOffer := ManageBuyOffer{
+		Selling: NativeAsset{},
+		Buying:  CreditAsset{"ABCD", kp0.Address()},
+		Amount:  "100",
+		Price:   "0.01",
+		OfferID: 0,
+	}
+
+	tx := Transaction{
+		SourceAccount: &sourceAccount,
+		Operations:    []Operation{&buyOffer},
+		Timebounds:    NewInfiniteTimeout(),
+		Network:       network.TestNetworkPassphrase,
+	}
+
+	received := buildSignEncode(t, tx, kp1)
+	// https://www.stellar.org/laboratory/#xdr-viewer?input=AAAAACXK8doPx27P6IReQlRRuweSSUiUfjqgyswxiu3Sh2R%2BAAAAZAAAJWoAAAAFAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAMAAAAAAAAAAFBQkNEAAAAAODcbeFyXKxmUWK1L6znNbKKIkPkHRJNbLktcKPqLnLFAAAAADuaygAAAAABAAAAZAAAAAAAAAAAAAAAAAAAAAHSh2R%2BAAAAQHwuorW7BvBwJAz%2BETSteeDZ9UKhox1y1BqJLvaIkWSr5rNbOpimjWQxrUNQoy%2B%2BwmtY8tiMSv3Jbz8Dd4QTaQU%3D&type=TransactionEnvelope&network=test
+	expected := "AAAAACXK8doPx27P6IReQlRRuweSSUiUfjqgyswxiu3Sh2R+AAAAZAAAJWoAAAAFAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAMAAAAAAAAAAFBQkNEAAAAAODcbeFyXKxmUWK1L6znNbKKIkPkHRJNbLktcKPqLnLFAAAAADuaygAAAAABAAAAZAAAAAAAAAAAAAAAAAAAAAHSh2R+AAAAQHwuorW7BvBwJAz+ETSteeDZ9UKhox1y1BqJLvaIkWSr5rNbOpimjWQxrUNQoy++wmtY8tiMSv3Jbz8Dd4QTaQU="
+	assert.Equal(t, expected, received, "Base 64 XDR should match")
+}
+
+func TestManageBuyOfferDeleteOffer(t *testing.T) {
+	kp1 := newKeypair1()
+	sourceAccount := NewSimpleAccount(kp1.Address(), int64(41137196761105))
+
+	buyOffer := ManageBuyOffer{
+		Selling: NativeAsset{},
+		Buying:  CreditAsset{"ABCD", kp1.Address()},
+		Amount:  "0",
+		Price:   "0.01",
+		OfferID: int64(2921622),
+	}
+
+	tx := Transaction{
+		SourceAccount: &sourceAccount,
+		Operations:    []Operation{&buyOffer},
+		Timebounds:    NewInfiniteTimeout(),
+		Network:       network.TestNetworkPassphrase,
+	}
+
+	received := buildSignEncode(t, tx, kp1)
+	// https://www.stellar.org/laboratory/#xdr-viewer?input=AAAAACXK8doPx27P6IReQlRRuweSSUiUfjqgyswxiu3Sh2R%2BAAAAZAAAJWoAAAASAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAMAAAAAAAAAAFBQkNEAAAAACXK8doPx27P6IReQlRRuweSSUiUfjqgyswxiu3Sh2R%2BAAAAAAAAAAAAAAABAAAAZAAAAAAALJSWAAAAAAAAAAHSh2R%2BAAAAQItno%2BcpmUYFvxLcYVaDonTV3dmvzz%2B2SLzKRrYoXOqK8wCZjcP%2FkgzPMmXhTtF2tgQ9qb0rAIYpH9%2FrjtZPBgY%3D&type=TransactionEnvelope&network=test
+	expected := "AAAAACXK8doPx27P6IReQlRRuweSSUiUfjqgyswxiu3Sh2R+AAAAZAAAJWoAAAASAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAMAAAAAAAAAAFBQkNEAAAAACXK8doPx27P6IReQlRRuweSSUiUfjqgyswxiu3Sh2R+AAAAAAAAAAAAAAABAAAAZAAAAAAALJSWAAAAAAAAAAHSh2R+AAAAQItno+cpmUYFvxLcYVaDonTV3dmvzz+2SLzKRrYoXOqK8wCZjcP/kgzPMmXhTtF2tgQ9qb0rAIYpH9/rjtZPBgY="
+	assert.Equal(t, expected, received, "Base 64 XDR should match")
+}
+
+func TestManageBuyOfferUpdateOffer(t *testing.T) {
+	kp1 := newKeypair1()
+	sourceAccount := NewSimpleAccount(kp1.Address(), int64(41137196761097))
+
+	buyOffer := ManageBuyOffer{
+		Selling: NativeAsset{},
+		Buying:  CreditAsset{"ABCD", kp1.Address()},
+		Amount:  "50",
+		Price:   "0.02",
+		OfferID: int64(2921622),
+	}
+
+	tx := Transaction{
+		SourceAccount: &sourceAccount,
+		Operations:    []Operation{&buyOffer},
+		Timebounds:    NewInfiniteTimeout(),
+		Network:       network.TestNetworkPassphrase,
+	}
+
+	received := buildSignEncode(t, tx, kp1)
+	// https://www.stellar.org/laboratory/#xdr-viewer?input=AAAAACXK8doPx27P6IReQlRRuweSSUiUfjqgyswxiu3Sh2R%2BAAAAZAAAJWoAAAAKAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAMAAAAAAAAAAFBQkNEAAAAACXK8doPx27P6IReQlRRuweSSUiUfjqgyswxiu3Sh2R%2BAAAAAB3NZQAAAAABAAAAMgAAAAAALJSWAAAAAAAAAAHSh2R%2BAAAAQK%2FsasTxgNqvkz3dGaDOyUgfa9UAAmUBmgiyaQU1dMlNNvTVH1D7PQKXkTooWmb6qK7Ee8vaTCFU6gGmShhA9wE%3D&type=TransactionEnvelope&network=test
+	expected := "AAAAACXK8doPx27P6IReQlRRuweSSUiUfjqgyswxiu3Sh2R+AAAAZAAAJWoAAAAKAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAMAAAAAAAAAAFBQkNEAAAAACXK8doPx27P6IReQlRRuweSSUiUfjqgyswxiu3Sh2R+AAAAAB3NZQAAAAABAAAAMgAAAAAALJSWAAAAAAAAAAHSh2R+AAAAQK/sasTxgNqvkz3dGaDOyUgfa9UAAmUBmgiyaQU1dMlNNvTVH1D7PQKXkTooWmb6qK7Ee8vaTCFU6gGmShhA9wE="
+	assert.Equal(t, expected, received, "Base 64 XDR should match")
+}
