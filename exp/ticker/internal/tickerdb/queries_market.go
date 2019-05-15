@@ -140,7 +140,11 @@ SELECT
 FROM (
 	SELECT
 			-- All valid trades for 24h period
-			concat(bAsset.code, '_', cAsset.code) as trade_pair_name,
+			concat(
+				COALESCE(NULLIF(bAsset.anchor_asset_code, ''), bAsset.code),
+				'_',
+				COALESCE(NULLIF(cAsset.anchor_asset_code, ''), cAsset.code)
+			) as trade_pair_name,
 			sum(t.base_amount) AS base_volume_24h,
 			sum(t.counter_amount) AS counter_volume_24h,
 			count(t.base_amount) AS trade_count_24h,
@@ -160,7 +164,11 @@ FROM (
 	) t1 RIGHT JOIN (
 	SELECT
 			-- All valid trades for 7d period
-			concat(bAsset.code, '_', cAsset.code) as trade_pair_name,
+			concat(
+				COALESCE(NULLIF(bAsset.anchor_asset_code, ''), bAsset.code),
+				'_',
+				COALESCE(NULLIF(cAsset.anchor_asset_code, ''), cAsset.code)
+			) as trade_pair_name,
 			sum(t.base_amount) AS base_volume_7d,
 			sum(t.counter_amount) AS counter_volume_7d,
 			count(t.base_amount) AS trade_count_7d,
@@ -243,7 +251,11 @@ SELECT
 	COALESCE(aob.lowest_ask, 0.0) AS lowest_ask
 FROM (
 	SELECT
-		concat(bAsset.code, '_', cAsset.code) as trade_pair_name,
+		concat(
+			COALESCE(NULLIF(bAsset.anchor_asset_code, ''), bAsset.code),
+			'_',
+			COALESCE(NULLIF(cAsset.anchor_asset_code, ''), cAsset.code)
+		) as trade_pair_name,
 		sum(t.base_amount) AS base_volume,
 		sum(t.counter_amount) AS counter_volume,
 		count(t.base_amount) AS trade_count,
