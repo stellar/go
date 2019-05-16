@@ -115,19 +115,19 @@ func ExampleClient_NextOperationsPage() {
 	client := DefaultPublicNetClient
 	// all operations
 	operationRequest := OperationRequest{Limit: 20}
-	operations, err := client.Operations(operationRequest)
+	ops, err := client.Operations(operationRequest)
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
-	fmt.Print(operations)
+	fmt.Print(ops)
 
 	// get next pages.
 	recordsFound := false
-	if len(operations.Embedded.Records) > 0 {
+	if len(ops.Embedded.Records) > 0 {
 		recordsFound = true
 	}
-	page := operations
+	page := ops
 	// get the next page of records if recordsFound is true
 	for recordsFound {
 		// next page
@@ -149,19 +149,19 @@ func ExampleClient_PrevOperationsPage() {
 	client := DefaultPublicNetClient
 	// all operations
 	operationRequest := OperationRequest{Limit: 20}
-	operations, err := client.Operations(operationRequest)
+	ops, err := client.Operations(operationRequest)
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
-	fmt.Print(operations)
+	fmt.Print(ops)
 
 	// get prev pages.
 	recordsFound := false
-	if len(operations.Embedded.Records) > 0 {
+	if len(ops.Embedded.Records) > 0 {
 		recordsFound = true
 	}
-	page := operations
+	page := ops
 	// get the prev page of records if recordsFound is true
 	for recordsFound {
 		// prev page
@@ -193,10 +193,10 @@ func TestNextOperationsPage(t *testing.T) {
 		"https://localhost/operations?limit=2",
 	).ReturnString(200, firstOperationsPage)
 
-	operations, err := client.Operations(operationRequest)
+	ops, err := client.Operations(operationRequest)
 
 	if assert.NoError(t, err) {
-		assert.Equal(t, len(operations.Embedded.Records), 2)
+		assert.Equal(t, len(ops.Embedded.Records), 2)
 	}
 
 	hmock.On(
@@ -204,7 +204,7 @@ func TestNextOperationsPage(t *testing.T) {
 		"https://horizon-testnet.stellar.org/operations?cursor=661424967682&limit=2&order=asc",
 	).ReturnString(200, emptyOperationsPage)
 
-	nextPage, err := client.NextOperationsPage(operations)
+	nextPage, err := client.NextOperationsPage(ops)
 	if assert.NoError(t, err) {
 		assert.Equal(t, len(nextPage.Embedded.Records), 0)
 	}
