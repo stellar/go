@@ -5,8 +5,8 @@ file.  This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [v1.2.0](https://github.com/stellar/go/releases/tag/horizonclient-v1.2.0) - 2019-05-16
 
-- Added support for returning the previous and next set of pages for a horizon response.
-- Fixed bug that causes a panic when using horizonclient in goroutines.
+- Added support for returning the previous and next set of pages for a horizon response; issue [#985](https://github.com/stellar/go/issues/985). 
+- Fixed bug reported in [#1254](https://github.com/stellar/go/issues/1254)  that causes a panic when using horizonclient in goroutines.
 
 
 ## [v1.1.0](https://github.com/stellar/go/releases/tag/horizonclient-v1.1.0) - 2019-05-02
