@@ -563,6 +563,40 @@ func (c *Client) PrevEffectsPage(page effects.EffectsPage) (efp effects.EffectsP
 	return
 }
 
+// NextTransactionsPage returns the next page of transactions.
+func (c *Client) NextTransactionsPage(page hProtocol.TransactionsPage) (transactions hProtocol.TransactionsPage, err error) {
+	err = c.sendRequestURL(page.Links.Next.Href, "get", &transactions)
+	return
+}
+
+// PrevTransactionsPage returns the previous page of transactions.
+func (c *Client) PrevTransactionsPage(page hProtocol.TransactionsPage) (transactions hProtocol.TransactionsPage, err error) {
+	err = c.sendRequestURL(page.Links.Prev.Href, "get", &transactions)
+	return
+}
+
+// NextOperationsPage returns the next page of operations.
+func (c *Client) NextOperationsPage(page operations.OperationsPage) (operations operations.OperationsPage, err error) {
+	err = c.sendRequestURL(page.Links.Next.Href, "get", &operations)
+	return
+}
+
+// PrevOperationsPage returns the previous page of operations.
+func (c *Client) PrevOperationsPage(page operations.OperationsPage) (operations operations.OperationsPage, err error) {
+	err = c.sendRequestURL(page.Links.Prev.Href, "get", &operations)
+	return
+}
+
+// NextPaymentsPage returns the next page of payments.
+func (c *Client) NextPaymentsPage(page operations.OperationsPage) (operations.OperationsPage, error) {
+	return c.NextOperationsPage(page)
+}
+
+// PrevPaymentsPage returns the previous page of payments.
+func (c *Client) PrevPaymentsPage(page operations.OperationsPage) (operations.OperationsPage, error) {
+	return c.PrevOperationsPage(page)
+}
+
 // NextOffersPage returns the next page of offers.
 func (c *Client) NextOffersPage(page hProtocol.OffersPage) (offers hProtocol.OffersPage, err error) {
 	err = c.sendRequestURL(page.Links.Next.Href, "get", &offers)
