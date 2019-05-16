@@ -57,11 +57,11 @@ func SubmitTransaction(minion *Minion, hclient *horizonclient.Client, tx string)
 		switch e := err.(type) {
 		case *horizonclient.Error:
 			minion.checkHandleBadSequence(e)
-			resCode, resErr := e.ResultCodes()
+			resStr, resErr := e.ResultString()
 			if resErr != nil {
 				errStr += ": error getting horizon error code: " + resErr.Error()
 			} else {
-				errStr += ": horizon error code: " + resCode.TransactionCode
+				errStr += ": horizon error string: " + resStr
 			}
 			return nil, errors.New(errStr)
 		}
