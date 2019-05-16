@@ -171,6 +171,10 @@ type ClientInterface interface {
 	PrevOperationsPage(operations.OperationsPage) (operations.OperationsPage, error)
 	NextPaymentsPage(operations.OperationsPage) (operations.OperationsPage, error)
 	PrevPaymentsPage(operations.OperationsPage) (operations.OperationsPage, error)
+	NextOffersPage(hProtocol.OffersPage) (hProtocol.OffersPage, error)
+	PrevOffersPage(hProtocol.OffersPage) (hProtocol.OffersPage, error)
+	NextTradesPage(hProtocol.TradesPage) (hProtocol.TradesPage, error)
+	PrevTradesPage(hProtocol.TradesPage) (hProtocol.TradesPage, error)
 }
 
 // DefaultTestNetClient is a default client to connect to test network.
