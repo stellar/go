@@ -64,6 +64,73 @@ func TestEffectRequestBuildUrl(t *testing.T) {
 
 }
 
+func ExampleClient_NextEffectsPage() {
+	client := DefaultPublicNetClient
+	// all effects
+	effectRequest := EffectRequest{Limit: 20}
+	efp, err := client.Effects(effectRequest)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	fmt.Print(efp)
+
+	// get next pages.
+	recordsFound := false
+	if len(efp.Embedded.Records) > 0 {
+		recordsFound = true
+	}
+	page := efp
+	// get the next page of records if recordsFound is true
+	for recordsFound {
+		// next page
+		nextPage, err := client.NextEffectsPage(page)
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+
+		page = nextPage
+		if len(nextPage.Embedded.Records) == 0 {
+			recordsFound = false
+		}
+		fmt.Println(nextPage)
+	}
+}
+
+func ExampleClient_PrevEffectsPage() {
+	client := DefaultPublicNetClient
+	// all effects
+	effectRequest := EffectRequest{Limit: 20}
+	efp, err := client.Effects(effectRequest)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	fmt.Print(efp)
+
+	// get prev pages.
+	recordsFound := false
+	if len(efp.Embedded.Records) > 0 {
+		recordsFound = true
+	}
+	page := efp
+	// get the prev page of records if recordsFound is true
+	for recordsFound {
+		// prev page
+		prevPage, err := client.PrevEffectsPage(page)
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+
+		page = prevPage
+		if len(prevPage.Embedded.Records) == 0 {
+			recordsFound = false
+		}
+		fmt.Println(prevPage)
+	}
+}
 func ExampleClient_StreamEffects() {
 	client := DefaultTestNetClient
 	// all effects
@@ -147,5 +214,114 @@ func TestEffectRequestStreamEffects(t *testing.T) {
 	}
 }
 
+func TestNextEffectsPage(t *testing.T) {
+	hmock := httptest.NewClient()
+	client := &Client{
+		HorizonURL: "https://localhost/",
+		HTTP:       hmock,
+	}
+
+	// Account effects
+	effectRequest := EffectRequest{ForAccount: "GCDIZFWLOTBWHTPODXCBH6XNXPFMSQFRVIDRP3JLEKQZN66G7NF3ANOD"}
+
+	hmock.On(
+		"GET",
+		"https://localhost/accounts/GCDIZFWLOTBWHTPODXCBH6XNXPFMSQFRVIDRP3JLEKQZN66G7NF3ANOD/effects",
+	).ReturnString(200, firstEffectsPage)
+
+	efp, err := client.Effects(effectRequest)
+
+	if assert.NoError(t, err) {
+		assert.Equal(t, len(efp.Embedded.Records), 2)
+	}
+
+	hmock.On(
+		"GET",
+		"https://horizon-testnet.stellar.org/accounts/GCDIZFWLOTBWHTPODXCBH6XNXPFMSQFRVIDRP3JLEKQZN66G7NF3ANOD/effects?cursor=1557363731492865-3&limit=10&order=asc",
+	).ReturnString(200, emptyEffectsPage)
+
+	nextPage, err := client.NextEffectsPage(efp)
+	if assert.NoError(t, err) {
+		assert.Equal(t, len(nextPage.Embedded.Records), 0)
+	}
+}
+
 var effectStreamResponse = `data: {"_links":{"operation":{"href":"https://horizon-testnet.stellar.org/operations/2531135896703017"},"succeeds":{"href":"https://horizon-testnet.stellar.org/effects?order=desc\u0026cursor=2531135896703017-1"},"precedes":{"href":"https://horizon-testnet.stellar.org/effects?order=asc\u0026cursor=2531135896703017-1"}},"id":"0002531135896703017-0000000001","paging_token":"2531135896703017-1","account":"GBNZN27NAOHRJRCMHQF2ZN2F6TAPVEWKJIGZIRNKIADWIS2HDENIS6CI","type":"account_credited","type_i":2,"created_at":"2019-04-03T10:14:17Z","asset_type":"credit_alphanum4","asset_code":"qwop","asset_issuer":"GBM4HXXNDBWWQBXOL4QCTZIUQAP6XFUI3FPINUGUPBMULMTEHJPIKX6T","amount":"0.0460000"}
 `
+
+var firstEffectsPage = `{
+  "_links": {
+    "self": {
+      "href": "https://horizon-testnet.stellar.org/accounts/GCDIZFWLOTBWHTPODXCBH6XNXPFMSQFRVIDRP3JLEKQZN66G7NF3ANOD/effects?cursor=&limit=10&order=asc"
+    },
+    "next": {
+      "href": "https://horizon-testnet.stellar.org/accounts/GCDIZFWLOTBWHTPODXCBH6XNXPFMSQFRVIDRP3JLEKQZN66G7NF3ANOD/effects?cursor=1557363731492865-3&limit=10&order=asc"
+    },
+    "prev": {
+      "href": "https://horizon-testnet.stellar.org/accounts/GCDIZFWLOTBWHTPODXCBH6XNXPFMSQFRVIDRP3JLEKQZN66G7NF3ANOD/effects?cursor=1557363731492865-1&limit=10&order=desc"
+    }
+  },
+  "_embedded": {
+    "records": [
+      {
+        "_links": {
+          "operation": {
+            "href": "https://horizon-testnet.stellar.org/operations/1557363731492865"
+          },
+          "succeeds": {
+            "href": "https://horizon-testnet.stellar.org/effects?order=desc&cursor=1557363731492865-1"
+          },
+          "precedes": {
+            "href": "https://horizon-testnet.stellar.org/effects?order=asc&cursor=1557363731492865-1"
+          }
+        },
+        "id": "0001557363731492865-0000000001",
+        "paging_token": "1557363731492865-1",
+        "account": "GCDIZFWLOTBWHTPODXCBH6XNXPFMSQFRVIDRP3JLEKQZN66G7NF3ANOD",
+        "type": "account_created",
+        "type_i": 0,
+        "created_at": "2019-05-16T07:13:25Z",
+        "starting_balance": "10000.0000000"
+      },
+      {
+        "_links": {
+          "operation": {
+            "href": "https://horizon-testnet.stellar.org/operations/1557363731492865"
+          },
+          "succeeds": {
+            "href": "https://horizon-testnet.stellar.org/effects?order=desc&cursor=1557363731492865-3"
+          },
+          "precedes": {
+            "href": "https://horizon-testnet.stellar.org/effects?order=asc&cursor=1557363731492865-3"
+          }
+        },
+        "id": "0001557363731492865-0000000003",
+        "paging_token": "1557363731492865-3",
+        "account": "GCDIZFWLOTBWHTPODXCBH6XNXPFMSQFRVIDRP3JLEKQZN66G7NF3ANOD",
+        "type": "signer_created",
+        "type_i": 10,
+        "created_at": "2019-05-16T07:13:25Z",
+        "weight": 1,
+        "public_key": "GCDIZFWLOTBWHTPODXCBH6XNXPFMSQFRVIDRP3JLEKQZN66G7NF3ANOD",
+        "key": ""
+      }
+    ]
+  }
+}`
+
+var emptyEffectsPage = `{
+  "_links": {
+    "self": {
+      "href": "https://horizon-testnet.stellar.org/accounts/GCDIZFWLOTBWHTPODXCBH6XNXPFMSQFRVIDRP3JLEKQZN66G7NF3ANOD/effects?cursor=1557363731492865-3&limit=10&order=asc"
+    },
+    "next": {
+      "href": "https://horizon-testnet.stellar.org/accounts/GCDIZFWLOTBWHTPODXCBH6XNXPFMSQFRVIDRP3JLEKQZN66G7NF3ANOD/effects?cursor=1557363731492865-3&limit=10&order=asc"
+    },
+    "prev": {
+      "href": "https://horizon-testnet.stellar.org/accounts/GCDIZFWLOTBWHTPODXCBH6XNXPFMSQFRVIDRP3JLEKQZN66G7NF3ANOD/effects?cursor=1557363731492865-3&limit=10&order=desc"
+    }
+  },
+  "_embedded": {
+    "records": []
+  }
+}`

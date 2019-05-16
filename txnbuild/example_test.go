@@ -434,3 +434,33 @@ func ExamplePathPayment() {
 
 	// Output: AAAAAH4RyzTWNfXhqwLUoCw91aWkZtgIzY8SAVkIPc0uFVmYAAAAZAAMoj8AAAAEAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAACAAAAAAAAAAAF9eEAAAAAAH4RyzTWNfXhqwLUoCw91aWkZtgIzY8SAVkIPc0uFVmYAAAAAAAAAAAAmJaAAAAAAQAAAAFBQkNEAAAAAODcbeFyXKxmUWK1L6znNbKKIkPkHRJNbLktcKPqLnLFAAAAAAAAAAEuFVmYAAAAQOGE+w2bvIp8JQIPIFXWk5kO77cNUOlPZwlItA5V68/qmZTbJWq8wqdZtjELkZtNcQQX4x8EToShbn5nitG3RA4=
 }
+
+func ExampleManageBuyOffer() {
+	kp, _ := keypair.Parse("SBZVMB74Z76QZ3ZOY7UTDFYKMEGKW5XFJEB6PFKBF4UYSSWHG4EDH7PY")
+	client := horizonclient.DefaultTestNetClient
+	ar := horizonclient.AccountRequest{AccountID: kp.Address()}
+	sourceAccount, err := client.AccountDetail(ar)
+	check(err)
+
+	buyOffer := ManageBuyOffer{
+		Selling: NativeAsset{},
+		Buying:  CreditAsset{"ABCD", "GDQNY3PBOJOKYZSRMK2S7LHHGWZIUISD4QORETLMXEWXBI7KFZZMKTL3"},
+		Amount:  "100",
+		Price:   "0.01",
+		OfferID: 0,
+	}
+
+	tx := Transaction{
+		SourceAccount: &sourceAccount,
+		Operations:    []Operation{&buyOffer},
+		Timebounds:    NewInfiniteTimeout(),
+		Network:       network.TestNetworkPassphrase,
+	}
+
+	txe, err := tx.BuildSignEncode(kp.(*keypair.Full))
+	check(err)
+	fmt.Println(txe)
+
+	// Output: AAAAAH4RyzTWNfXhqwLUoCw91aWkZtgIzY8SAVkIPc0uFVmYAAAAZAAMoj8AAAAEAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAMAAAAAAAAAAFBQkNEAAAAAODcbeFyXKxmUWK1L6znNbKKIkPkHRJNbLktcKPqLnLFAAAAADuaygAAAAABAAAAZAAAAAAAAAAAAAAAAAAAAAEuFVmYAAAAQPh8h1TrzDpcgzB/VE8V0X2pFGV8/JyuYrx0I5bRfBJuLJr0l8yL1isP1wZjvMdX7fNiktwSLuUuj749nWA6wAo=
+
+}

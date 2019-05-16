@@ -1,18 +1,24 @@
 package txnbuild
 
 import (
+	"math"
+
 	"github.com/stellar/go/amount"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
 )
 
 // ChangeTrust represents the Stellar change trust operation. See
-// https://www.stellar.org/developers/guides/concepts/list-of-operations.html
+// https://www.stellar.org/developers/guides/concepts/list-of-operations.html.
+// If Limit is omitted, it defaults to txnbuild.MaxTrustlineLimit.
 type ChangeTrust struct {
 	Line          Asset
 	Limit         string
 	SourceAccount Account
 }
+
+// MaxTrustlineLimit represents the maximum value that can be set as a trustline limit.
+var MaxTrustlineLimit = amount.StringFromInt64(math.MaxInt64)
 
 // RemoveTrustlineOp returns a ChangeTrust operation to remove the trustline of the described asset,
 // by setting the limit to "0".
@@ -33,6 +39,10 @@ func (ct *ChangeTrust) BuildXDR() (xdr.Operation, error) {
 		return xdr.Operation{}, errors.Wrap(err, "can't convert trustline asset to XDR")
 	}
 
+	if ct.Limit == "" {
+		ct.Limit = MaxTrustlineLimit
+	}
+
 	xdrLimit, err := amount.Parse(ct.Limit)
 	if err != nil {
 		return xdr.Operation{}, errors.Wrap(err, "failed to parse limit amount")
@@ -49,5 +59,5 @@ func (ct *ChangeTrust) BuildXDR() (xdr.Operation, error) {
 	}
 	op := xdr.Operation{Body: body}
 	SetOpSourceAccount(&op, ct.SourceAccount)
-	return xdr.Operation{Body: body}, nil
+	return op, nil
 }

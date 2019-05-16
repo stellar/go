@@ -187,5 +187,99 @@ func (m *MockClient) Root() (hProtocol.Root, error) {
 	return a.Get(0).(hProtocol.Root), a.Error(1)
 }
 
+// NextAssetsPage is a mocking method
+func (m *MockClient) NextAssetsPage(page hProtocol.AssetsPage) (hProtocol.AssetsPage, error) {
+	a := m.Called(page)
+	return a.Get(0).(hProtocol.AssetsPage), a.Error(1)
+}
+
+// PrevAssetsPage is a mocking method
+func (m *MockClient) PrevAssetsPage(page hProtocol.AssetsPage) (hProtocol.AssetsPage, error) {
+	a := m.Called(page)
+	return a.Get(0).(hProtocol.AssetsPage), a.Error(1)
+}
+
+// NextLedgersPage is a mocking method
+func (m *MockClient) NextLedgersPage(page hProtocol.LedgersPage) (hProtocol.LedgersPage, error) {
+	a := m.Called(page)
+	return a.Get(0).(hProtocol.LedgersPage), a.Error(1)
+}
+
+// PrevLedgersPage is a mocking method
+func (m *MockClient) PrevLedgersPage(page hProtocol.LedgersPage) (hProtocol.LedgersPage, error) {
+	a := m.Called(page)
+	return a.Get(0).(hProtocol.LedgersPage), a.Error(1)
+}
+
+// NextEffectsPage is a mocking method
+func (m *MockClient) NextEffectsPage(page effects.EffectsPage) (effects.EffectsPage, error) {
+	a := m.Called(page)
+	return a.Get(0).(effects.EffectsPage), a.Error(1)
+}
+
+// PrevEffectsPage is a mocking method
+func (m *MockClient) PrevEffectsPage(page effects.EffectsPage) (effects.EffectsPage, error) {
+	a := m.Called(page)
+	return a.Get(0).(effects.EffectsPage), a.Error(1)
+}
+
+// NextTransactionsPage is a mocking method
+func (m *MockClient) NextTransactionsPage(page hProtocol.TransactionsPage) (hProtocol.TransactionsPage, error) {
+	a := m.Called(page)
+	return a.Get(0).(hProtocol.TransactionsPage), a.Error(1)
+}
+
+// PrevTransactionsPage is a mocking method
+func (m *MockClient) PrevTransactionsPage(page hProtocol.TransactionsPage) (hProtocol.TransactionsPage, error) {
+	a := m.Called(page)
+	return a.Get(0).(hProtocol.TransactionsPage), a.Error(1)
+}
+
+// NextOperationsPage is a mocking method
+func (m *MockClient) NextOperationsPage(page operations.OperationsPage) (operations.OperationsPage, error) {
+	a := m.Called(page)
+	return a.Get(0).(operations.OperationsPage), a.Error(1)
+}
+
+// PrevOperationsPage is a mocking method
+func (m *MockClient) PrevOperationsPage(page operations.OperationsPage) (operations.OperationsPage, error) {
+	a := m.Called(page)
+	return a.Get(0).(operations.OperationsPage), a.Error(1)
+}
+
+// NextPaymentsPage is a mocking method
+func (m *MockClient) NextPaymentsPage(page operations.OperationsPage) (operations.OperationsPage, error) {
+	return m.NextOperationsPage(page)
+}
+
+// PrevPaymentsPage is a mocking method
+func (m *MockClient) PrevPaymentsPage(page operations.OperationsPage) (operations.OperationsPage, error) {
+	return m.PrevOperationsPage(page)
+}
+
+// NextOffersPage is a mocking method
+func (m *MockClient) NextOffersPage(page hProtocol.OffersPage) (hProtocol.OffersPage, error) {
+	a := m.Called(page)
+	return a.Get(0).(hProtocol.OffersPage), a.Error(1)
+}
+
+// PrevOffersPage is a mocking method
+func (m *MockClient) PrevOffersPage(page hProtocol.OffersPage) (hProtocol.OffersPage, error) {
+	a := m.Called(page)
+	return a.Get(0).(hProtocol.OffersPage), a.Error(1)
+}
+
+// NextTradesPage is a mocking method
+func (m *MockClient) NextTradesPage(page hProtocol.TradesPage) (hProtocol.TradesPage, error) {
+	a := m.Called(page)
+	return a.Get(0).(hProtocol.TradesPage), a.Error(1)
+}
+
+// PrevTradesPage is a mocking method
+func (m *MockClient) PrevTradesPage(page hProtocol.TradesPage) (hProtocol.TradesPage, error) {
+	a := m.Called(page)
+	return a.Get(0).(hProtocol.TradesPage), a.Error(1)
+}
+
 // ensure that the MockClient implements ClientInterface
 var _ ClientInterface = &MockClient{}
