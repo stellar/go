@@ -199,5 +199,29 @@ func (m *MockClient) PrevAssetsPage(page hProtocol.AssetsPage) (hProtocol.Assets
 	return a.Get(0).(hProtocol.AssetsPage), a.Error(1)
 }
 
+// NextLedgersPage is a mocking method
+func (m *MockClient) NextLedgersPage(page hProtocol.LedgersPage) (hProtocol.LedgersPage, error) {
+	a := m.Called(page)
+	return a.Get(0).(hProtocol.LedgersPage), a.Error(1)
+}
+
+// PrevLedgersPage is a mocking method
+func (m *MockClient) PrevLedgersPage(page hProtocol.LedgersPage) (hProtocol.LedgersPage, error) {
+	a := m.Called(page)
+	return a.Get(0).(hProtocol.LedgersPage), a.Error(1)
+}
+
+// NextEffectsPage is a mocking method
+func (m *MockClient) NextEffectsPage(page effects.EffectsPage) (effects.EffectsPage, error) {
+	a := m.Called(page)
+	return a.Get(0).(effects.EffectsPage), a.Error(1)
+}
+
+// PrevEffectsPage is a mocking method
+func (m *MockClient) PrevEffectsPage(page effects.EffectsPage) (effects.EffectsPage, error) {
+	a := m.Called(page)
+	return a.Get(0).(effects.EffectsPage), a.Error(1)
+}
+
 // ensure that the MockClient implements ClientInterface
 var _ ClientInterface = &MockClient{}

@@ -527,15 +527,39 @@ func (c *Client) Version() string {
 	return version
 }
 
-// NextAssetsPage returns the next page of assets
+// NextAssetsPage returns the next page of assets.
 func (c *Client) NextAssetsPage(page hProtocol.AssetsPage) (assets hProtocol.AssetsPage, err error) {
 	err = c.sendRequestURL(page.Links.Next.Href, "get", &assets)
 	return
 }
 
-// PrevAssetsPage returns the previous page of assets
+// PrevAssetsPage returns the previous page of assets.
 func (c *Client) PrevAssetsPage(page hProtocol.AssetsPage) (assets hProtocol.AssetsPage, err error) {
 	err = c.sendRequestURL(page.Links.Prev.Href, "get", &assets)
+	return
+}
+
+// NextLedgersPage returns the next page of ledgers.
+func (c *Client) NextLedgersPage(page hProtocol.LedgersPage) (ledgers hProtocol.LedgersPage, err error) {
+	err = c.sendRequestURL(page.Links.Next.Href, "get", &ledgers)
+	return
+}
+
+// PrevLedgersPage returns the previous page of ledgers.
+func (c *Client) PrevLedgersPage(page hProtocol.LedgersPage) (ledgers hProtocol.LedgersPage, err error) {
+	err = c.sendRequestURL(page.Links.Prev.Href, "get", &ledgers)
+	return
+}
+
+// NextEffectsPage returns the next page of effects.
+func (c *Client) NextEffectsPage(page effects.EffectsPage) (efp effects.EffectsPage, err error) {
+	err = c.sendRequestURL(page.Links.Next.Href, "get", &efp)
+	return
+}
+
+// PrevEffectsPage returns the previous page of effects.
+func (c *Client) PrevEffectsPage(page effects.EffectsPage) (efp effects.EffectsPage, err error) {
+	err = c.sendRequestURL(page.Links.Prev.Href, "get", &efp)
 	return
 }
 
