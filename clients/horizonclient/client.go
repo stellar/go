@@ -563,5 +563,29 @@ func (c *Client) PrevEffectsPage(page effects.EffectsPage) (efp effects.EffectsP
 	return
 }
 
+// NextOffersPage returns the next page of offers.
+func (c *Client) NextOffersPage(page hProtocol.OffersPage) (offers hProtocol.OffersPage, err error) {
+	err = c.sendRequestURL(page.Links.Next.Href, "get", &offers)
+	return
+}
+
+// PrevOffersPage returns the previous page of offers.
+func (c *Client) PrevOffersPage(page hProtocol.OffersPage) (offers hProtocol.OffersPage, err error) {
+	err = c.sendRequestURL(page.Links.Prev.Href, "get", &offers)
+	return
+}
+
+// NextTradesPage returns the next page of trades.
+func (c *Client) NextTradesPage(page hProtocol.TradesPage) (trades hProtocol.TradesPage, err error) {
+	err = c.sendRequestURL(page.Links.Next.Href, "get", &trades)
+	return
+}
+
+// PrevTradesPage returns the previous page of trades.
+func (c *Client) PrevTradesPage(page hProtocol.TradesPage) (trades hProtocol.TradesPage, err error) {
+	err = c.sendRequestURL(page.Links.Prev.Href, "get", &trades)
+	return
+}
+
 // ensure that the horizon client implements ClientInterface
 var _ ClientInterface = &Client{}

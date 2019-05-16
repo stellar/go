@@ -165,6 +165,10 @@ type ClientInterface interface {
 	PrevLedgersPage(hProtocol.LedgersPage) (hProtocol.LedgersPage, error)
 	NextEffectsPage(effects.EffectsPage) (effects.EffectsPage, error)
 	PrevEffectsPage(effects.EffectsPage) (effects.EffectsPage, error)
+	NextOffersPage(hProtocol.OffersPage) (hProtocol.OffersPage, error)
+	PrevOffersPage(hProtocol.OffersPage) (hProtocol.OffersPage, error)
+	NextTradesPage(hProtocol.TradesPage) (hProtocol.TradesPage, error)
+	PrevTradesPage(hProtocol.TradesPage) (hProtocol.TradesPage, error)
 }
 
 // DefaultTestNetClient is a default client to connect to test network.
