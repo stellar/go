@@ -37,11 +37,9 @@ func (c *ScraperConfig) retrieveTrades(since time.Time, limit int) (trades []hPr
 	for tradesPage.Links.Next.Href != tradesPage.Links.Self.Href {
 		// Enforcing time boundaries:
 		last, cleanTrades := c.checkRecords(tradesPage.Embedded.Records, since)
+		trades = append(trades, cleanTrades...)
 		if last {
-			trades = append(trades, cleanTrades...)
 			break
-		} else {
-			trades = append(trades, tradesPage.Embedded.Records...)
 		}
 
 		// Enforcing limit of results:
