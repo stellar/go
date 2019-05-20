@@ -198,7 +198,7 @@ func Connect(u string, opts ConnectOptions) (*Archive, error) {
 	} else if parsed.Scheme == "file" {
 		pth = path.Join(parsed.Host, pth)
 		arch.backend = makeFsBackend(pth, opts)
-	} else if parsed.Scheme == "http" {
+	} else if parsed.Scheme == "http" || parsed.Scheme == "https" {
 		arch.backend = makeHttpBackend(parsed, opts)
 	} else if parsed.Scheme == "mock" {
 		arch.backend = makeMockBackend(opts)
