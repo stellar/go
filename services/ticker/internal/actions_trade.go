@@ -8,9 +8,9 @@ import (
 	"time"
 
 	horizonclient "github.com/stellar/go/clients/horizonclient"
+	hProtocol "github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/services/ticker/internal/scraper"
 	"github.com/stellar/go/services/ticker/internal/tickerdb"
-	hProtocol "github.com/stellar/go/protocols/horizon"
 	hlog "github.com/stellar/go/support/log"
 )
 
