@@ -10,7 +10,7 @@ This monorepo contains a number of projects, individually versioned and released
 * `compliance` ([changelog](./services/compliance/CHANGELOG.md))
 * `federation` ([changelog](./services/federation/CHANGELOG.md))
 * `bifrost` ([changelog](./services/bifrost/CHANGELOG.md))
-* `ticker` (experimental) ([changelog](./exp/ticker/CHANGELOG.md))
+* `ticker` (experimental) ([changelog](./services/ticker/CHANGELOG.md))
 * `stellar-vanity-gen` ([changelog](./tools/stellar-vanity-gen/CHANGELOG.md))
 * `stellar-sign` ([changelog](./tools/stellar-sign/CHANGELOG.md))
 * `stellar-archivist` ([changelog](./tools/stellar-archivist/CHANGELOG.md))
