@@ -75,6 +75,7 @@ type Market {
 	close: Float!
 	intervalStart: Time!
 	firstLedgerCloseTime: Time!
+	lastLedgerCloseTime: Time!
 	orderbookStats: OrderbookStats!
 }
 
@@ -90,6 +91,7 @@ type AggregatedMarket {
 	close: Float!
 	intervalStart: Time!
 	firstLedgerCloseTime: Time!
+	lastLedgerCloseTime: Time!
 	orderbookStats: OrderbookStats!
 }
 

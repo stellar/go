@@ -115,10 +115,10 @@ SELECT
 	COALESCE(base_volume_24h, 0.0) as base_volume_24h,
 	COALESCE(counter_volume_24h, 0.0) as counter_volume_24h,
 	COALESCE(trade_count_24h, 0) as trade_count_24h,
-	COALESCE(highest_price_24h, 0.0) as highest_price_24h,
-	COALESCE(lowest_price_24h, 0.0) as lowest_price_24h,
+	COALESCE(highest_price_24h, last_price_7d, 0.0) as highest_price_24h,
+	COALESCE(lowest_price_24h, last_price_7d, 0.0) as lowest_price_24h,
 	COALESCE(price_change_24h, 0.0) as price_change_24h,
-	COALESCE(open_price_24h, 0.0) as open_price_24h,
+	COALESCE(open_price_24h, last_price_7d, 0.0) as open_price_24h,
 
 	COALESCE(base_volume_7d, 0) as base_volume_7d,
 	COALESCE(counter_volume_7d, 0) as counter_volume_7d,
@@ -128,7 +128,7 @@ SELECT
 	COALESCE(price_change_7d, 0.0) as price_change_7d,
 	COALESCE(open_price_7d, 0.0) as open_price_7d,
 
-	COALESCE(last_price, 0.0) as last_price,
+	COALESCE(last_price, last_price_7d, 0.0) as last_price,
 	COALESCE(last_close_time_24h, last_close_time_7d) as close_time,
 
 	COALESCE(os.num_bids, 0) as num_bids,
@@ -140,7 +140,11 @@ SELECT
 FROM (
 	SELECT
 			-- All valid trades for 24h period
-			concat(bAsset.code, '_', cAsset.code) as trade_pair_name,
+			concat(
+				COALESCE(NULLIF(bAsset.anchor_asset_code, ''), bAsset.code),
+				'_',
+				COALESCE(NULLIF(cAsset.anchor_asset_code, ''), cAsset.code)
+			) as trade_pair_name,
 			sum(t.base_amount) AS base_volume_24h,
 			sum(t.counter_amount) AS counter_volume_24h,
 			count(t.base_amount) AS trade_count_24h,
@@ -160,13 +164,18 @@ FROM (
 	) t1 RIGHT JOIN (
 	SELECT
 			-- All valid trades for 7d period
-			concat(bAsset.code, '_', cAsset.code) as trade_pair_name,
+			concat(
+				COALESCE(NULLIF(bAsset.anchor_asset_code, ''), bAsset.code),
+				'_',
+				COALESCE(NULLIF(cAsset.anchor_asset_code, ''), cAsset.code)
+			) as trade_pair_name,
 			sum(t.base_amount) AS base_volume_7d,
 			sum(t.counter_amount) AS counter_volume_7d,
 			count(t.base_amount) AS trade_count_7d,
 			max(t.price) AS highest_price_7d,
 			min(t.price) AS lowest_price_7d,
 			(array_agg(t.price ORDER BY t.ledger_close_time ASC))[1] AS open_price_7d,
+			(array_agg(t.price ORDER BY t.ledger_close_time DESC))[1] AS last_price_7d,
 			((array_agg(t.price ORDER BY t.ledger_close_time DESC))[1] - (array_agg(t.price ORDER BY t.ledger_close_time ASC))[1]) AS price_change_7d,
 			max(t.ledger_close_time) AS last_close_time_7d
 		FROM trades AS t
@@ -203,6 +212,7 @@ SELECT
 	((array_agg(t.price ORDER BY t.ledger_close_time DESC))[1] - (array_agg(t.price ORDER BY t.ledger_close_time ASC))[1]) AS price_change,
 	(now() - interval '__NUMHOURS__ hours') AS interval_start,
 	min(t.ledger_close_time) AS first_ledger_close_time,
+	max(t.ledger_close_time) AS last_ledger_close_time,
 	COALESCE((array_agg(os.num_bids))[1], 0) AS num_bids,
 	COALESCE((array_agg(os.bid_volume))[1], 0.0) AS bid_volume,
 	COALESCE((array_agg(os.highest_bid))[1], 0.0) AS highest_bid,
@@ -230,6 +240,7 @@ SELECT
 	t1.price_change,
 	t1.interval_start,
 	t1.first_ledger_close_time,
+	t1.last_ledger_close_time,
 	COALESCE(aob.base_asset_code, '') as base_asset_code,
 	COALESCE(aob.counter_asset_code, '') as counter_asset_code,
 	COALESCE(aob.num_bids, 0) AS num_bids,
@@ -240,7 +251,11 @@ SELECT
 	COALESCE(aob.lowest_ask, 0.0) AS lowest_ask
 FROM (
 	SELECT
-		concat(bAsset.code, '_', cAsset.code) as trade_pair_name,
+		concat(
+			COALESCE(NULLIF(bAsset.anchor_asset_code, ''), bAsset.code),
+			'_',
+			COALESCE(NULLIF(cAsset.anchor_asset_code, ''), cAsset.code)
+		) as trade_pair_name,
 		sum(t.base_amount) AS base_volume,
 		sum(t.counter_amount) AS counter_volume,
 		count(t.base_amount) AS trade_count,
@@ -250,7 +265,8 @@ FROM (
 		(array_agg(t.price ORDER BY t.ledger_close_time DESC))[1] AS last_price,
 		((array_agg(t.price ORDER BY t.ledger_close_time DESC))[1] - (array_agg(t.price ORDER BY t.ledger_close_time ASC))[1]) AS price_change,
 		(now() - interval '__NUMHOURS__ hours') AS interval_start,
-		min(t.ledger_close_time) AS first_ledger_close_time
+		min(t.ledger_close_time) AS first_ledger_close_time,
+		max(t.ledger_close_time) AS last_ledger_close_time
 	FROM trades AS t
 		LEFT JOIN orderbook_stats AS os ON t.base_asset_id = os.base_asset_id AND t.counter_asset_id = os.counter_asset_id
 		JOIN assets AS bAsset ON t.base_asset_id = bAsset.id

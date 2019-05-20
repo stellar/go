@@ -110,7 +110,7 @@ func TestNormalizeTradeAssets(t *testing.T) {
 		Price:            &price,
 	}
 
-	normalizeTradeAssets(&trade1)
+	NormalizeTradeAssets(&trade1)
 	assert.Equal(t, baseAmount, trade1.CounterAmount)
 	assert.Equal(t, baseAccount, trade1.CounterAccount)
 	assert.Equal(t, baseAssetCode, trade1.CounterAssetCode)
@@ -136,7 +136,7 @@ func TestNormalizeTradeAssets(t *testing.T) {
 		CounterAssetIssuer: counterAssetIssuer,
 		Price:              &price,
 	}
-	normalizeTradeAssets(&trade2)
+	NormalizeTradeAssets(&trade2)
 	assert.Equal(t, baseAmount, trade2.CounterAmount)
 	assert.Equal(t, baseAccount, trade2.CounterAccount)
 	assert.Equal(t, "BBB", trade2.CounterAssetCode)

@@ -527,5 +527,99 @@ func (c *Client) Version() string {
 	return version
 }
 
+// NextAssetsPage returns the next page of assets.
+func (c *Client) NextAssetsPage(page hProtocol.AssetsPage) (assets hProtocol.AssetsPage, err error) {
+	err = c.sendRequestURL(page.Links.Next.Href, "get", &assets)
+	return
+}
+
+// PrevAssetsPage returns the previous page of assets.
+func (c *Client) PrevAssetsPage(page hProtocol.AssetsPage) (assets hProtocol.AssetsPage, err error) {
+	err = c.sendRequestURL(page.Links.Prev.Href, "get", &assets)
+	return
+}
+
+// NextLedgersPage returns the next page of ledgers.
+func (c *Client) NextLedgersPage(page hProtocol.LedgersPage) (ledgers hProtocol.LedgersPage, err error) {
+	err = c.sendRequestURL(page.Links.Next.Href, "get", &ledgers)
+	return
+}
+
+// PrevLedgersPage returns the previous page of ledgers.
+func (c *Client) PrevLedgersPage(page hProtocol.LedgersPage) (ledgers hProtocol.LedgersPage, err error) {
+	err = c.sendRequestURL(page.Links.Prev.Href, "get", &ledgers)
+	return
+}
+
+// NextEffectsPage returns the next page of effects.
+func (c *Client) NextEffectsPage(page effects.EffectsPage) (efp effects.EffectsPage, err error) {
+	err = c.sendRequestURL(page.Links.Next.Href, "get", &efp)
+	return
+}
+
+// PrevEffectsPage returns the previous page of effects.
+func (c *Client) PrevEffectsPage(page effects.EffectsPage) (efp effects.EffectsPage, err error) {
+	err = c.sendRequestURL(page.Links.Prev.Href, "get", &efp)
+	return
+}
+
+// NextTransactionsPage returns the next page of transactions.
+func (c *Client) NextTransactionsPage(page hProtocol.TransactionsPage) (transactions hProtocol.TransactionsPage, err error) {
+	err = c.sendRequestURL(page.Links.Next.Href, "get", &transactions)
+	return
+}
+
+// PrevTransactionsPage returns the previous page of transactions.
+func (c *Client) PrevTransactionsPage(page hProtocol.TransactionsPage) (transactions hProtocol.TransactionsPage, err error) {
+	err = c.sendRequestURL(page.Links.Prev.Href, "get", &transactions)
+	return
+}
+
+// NextOperationsPage returns the next page of operations.
+func (c *Client) NextOperationsPage(page operations.OperationsPage) (operations operations.OperationsPage, err error) {
+	err = c.sendRequestURL(page.Links.Next.Href, "get", &operations)
+	return
+}
+
+// PrevOperationsPage returns the previous page of operations.
+func (c *Client) PrevOperationsPage(page operations.OperationsPage) (operations operations.OperationsPage, err error) {
+	err = c.sendRequestURL(page.Links.Prev.Href, "get", &operations)
+	return
+}
+
+// NextPaymentsPage returns the next page of payments.
+func (c *Client) NextPaymentsPage(page operations.OperationsPage) (operations.OperationsPage, error) {
+	return c.NextOperationsPage(page)
+}
+
+// PrevPaymentsPage returns the previous page of payments.
+func (c *Client) PrevPaymentsPage(page operations.OperationsPage) (operations.OperationsPage, error) {
+	return c.PrevOperationsPage(page)
+}
+
+// NextOffersPage returns the next page of offers.
+func (c *Client) NextOffersPage(page hProtocol.OffersPage) (offers hProtocol.OffersPage, err error) {
+	err = c.sendRequestURL(page.Links.Next.Href, "get", &offers)
+	return
+}
+
+// PrevOffersPage returns the previous page of offers.
+func (c *Client) PrevOffersPage(page hProtocol.OffersPage) (offers hProtocol.OffersPage, err error) {
+	err = c.sendRequestURL(page.Links.Prev.Href, "get", &offers)
+	return
+}
+
+// NextTradesPage returns the next page of trades.
+func (c *Client) NextTradesPage(page hProtocol.TradesPage) (trades hProtocol.TradesPage, err error) {
+	err = c.sendRequestURL(page.Links.Next.Href, "get", &trades)
+	return
+}
+
+// PrevTradesPage returns the previous page of trades.
+func (c *Client) PrevTradesPage(page hProtocol.TradesPage) (trades hProtocol.TradesPage, err error) {
+	err = c.sendRequestURL(page.Links.Prev.Href, "get", &trades)
+	return
+}
+
 // ensure that the horizon client implements ClientInterface
 var _ ClientInterface = &Client{}

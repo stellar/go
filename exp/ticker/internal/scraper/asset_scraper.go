@@ -68,7 +68,11 @@ func fetchTOMLData(asset hProtocol.AssetStat) (data string, err error) {
 	client := http.Client{
 		Timeout: timeout,
 	}
-	resp, err := client.Get(tomlURL)
+
+	req, err := http.NewRequest("GET", tomlURL, nil)
+	req.Header.Set("User-Agent", "Stellar Ticker v1.0")
+
+	resp, err := client.Do(req)
 	if err != nil {
 		return
 	}

@@ -156,6 +156,7 @@ type PartialMarket struct {
 	LowestAsk            float64   `db:"lowest_ask"`
 	IntervalStart        time.Time `db:"interval_start"`
 	FirstLedgerCloseTime time.Time `db:"first_ledger_close_time"`
+	LastLedgerCloseTime  time.Time `db:"last_ledger_close_time"`
 }
 
 // CreateSession returns a new TickerSession that connects to the given db settings

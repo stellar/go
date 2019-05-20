@@ -105,15 +105,8 @@ func TestInsertOrUpdateAsset(t *testing.T) {
 	assert.Equal(t, code, dbAsset2.Code)
 	assert.Equal(t, issuerAccount, dbAsset1.IssuerAccount)
 	assert.Equal(t, dbIssuer.ID, dbAsset2.IssuerID)
-	assert.NotEqual(
-		t,
-		firstTime.Local().Truncate(time.Millisecond),
-		dbAsset2.LastValid.Local().Truncate(time.Millisecond),
-	)
-	assert.NotEqual(t,
-		firstTime.Local().Truncate(time.Millisecond),
-		dbAsset2.LastChecked.Local().Truncate(time.Millisecond),
-	)
+	assert.True(t, dbAsset2.LastValid.After(firstTime))
+	assert.True(t, dbAsset2.LastChecked.After(firstTime))
 	assert.Equal(
 		t,
 		secondTime.Local().Truncate(time.Millisecond),
@@ -145,16 +138,8 @@ func TestInsertOrUpdateAsset(t *testing.T) {
 	assert.Equal(t, code, dbAsset3.Code)
 	assert.Equal(t, issuerAccount, dbAsset3.IssuerAccount)
 	assert.Equal(t, dbIssuer.ID, dbAsset3.IssuerID)
-	assert.NotEqual(
-		t,
-		thirdTime.Local().Truncate(time.Millisecond),
-		dbAsset3.LastValid.Local().Truncate(time.Millisecond),
-	)
-	assert.NotEqual(
-		t,
-		thirdTime.Local().Truncate(time.Millisecond),
-		dbAsset3.LastChecked.Local().Truncate(time.Millisecond),
-	)
+	assert.True(t, dbAsset3.LastValid.Before(thirdTime))
+	assert.True(t, dbAsset3.LastChecked.Before(thirdTime))
 	assert.Equal(
 		t,
 		dbAsset2.LastValid.Local().Truncate(time.Millisecond),

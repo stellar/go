@@ -15,6 +15,7 @@ import (
 	"errors"
 	"net/http"
 	"net/url"
+	"sync"
 	"time"
 
 	hProtocol "github.com/stellar/go/protocols/horizon"
@@ -158,6 +159,22 @@ type ClientInterface interface {
 	StreamLedgers(ctx context.Context, request LedgerRequest, handler LedgerHandler) error
 	StreamOrderBooks(ctx context.Context, request OrderBookRequest, handler OrderBookHandler) error
 	Root() (hProtocol.Root, error)
+	NextAssetsPage(hProtocol.AssetsPage) (hProtocol.AssetsPage, error)
+	PrevAssetsPage(hProtocol.AssetsPage) (hProtocol.AssetsPage, error)
+	NextLedgersPage(hProtocol.LedgersPage) (hProtocol.LedgersPage, error)
+	PrevLedgersPage(hProtocol.LedgersPage) (hProtocol.LedgersPage, error)
+	NextEffectsPage(effects.EffectsPage) (effects.EffectsPage, error)
+	PrevEffectsPage(effects.EffectsPage) (effects.EffectsPage, error)
+	NextTransactionsPage(hProtocol.TransactionsPage) (hProtocol.TransactionsPage, error)
+	PrevTransactionsPage(hProtocol.TransactionsPage) (hProtocol.TransactionsPage, error)
+	NextOperationsPage(operations.OperationsPage) (operations.OperationsPage, error)
+	PrevOperationsPage(operations.OperationsPage) (operations.OperationsPage, error)
+	NextPaymentsPage(operations.OperationsPage) (operations.OperationsPage, error)
+	PrevPaymentsPage(operations.OperationsPage) (operations.OperationsPage, error)
+	NextOffersPage(hProtocol.OffersPage) (hProtocol.OffersPage, error)
+	PrevOffersPage(hProtocol.OffersPage) (hProtocol.OffersPage, error)
+	NextTradesPage(hProtocol.TradesPage) (hProtocol.TradesPage, error)
+	PrevTradesPage(hProtocol.TradesPage) (hProtocol.TradesPage, error)
 }
 
 // DefaultTestNetClient is a default client to connect to test network.
@@ -342,3 +359,4 @@ type ServerTimeRecord struct {
 
 // ServerTimeMap holds the ServerTimeRecord for different horizon instances.
 var ServerTimeMap = make(map[string]ServerTimeRecord)
+var serverTimeMapMutex = &sync.Mutex{}
