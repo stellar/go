@@ -2,7 +2,6 @@ package hal
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"net/http"
 	"reflect"
@@ -36,18 +35,7 @@ func Handler(fn, param interface{}) (http.Handler, error) {
 
 	var inValue reflect.Value
 	if inType != nil {
-		val, err := json.Marshal(param)
-		if err != nil {
-			return nil, errors.Wrap(err, "marshaling function input value")
-		}
-
-		inPtr := reflect.New(inType)
-		err = json.Unmarshal(val, inPtr.Interface())
-		if err != nil {
-			return nil, errors.Wrap(err, "unmarshaling the provided param to function's param")
-		}
-
-		inValue = inPtr.Elem()
+		inValue = reflect.ValueOf(param)
 	}
 
 	return &handler{fv, inType, inValue}, nil
@@ -108,6 +96,7 @@ func ExecuteFunc(ctx context.Context, fn, param interface{}) (interface{}, bool,
 // and exact 2 return values, where the second value has to be error type.
 func funcParamType(fv reflect.Value) (reflect.Type, error) {
 	ft := fv.Type()
+
 	if ft.Kind() != reflect.Func || ft.IsVariadic() || ft.NumIn() > 2 || ft.NumIn() == 0 || !ft.In(0).Implements(contextType) {
 		return nil, fmt.Errorf("%s must be nonvariadic func and has at most one parameter other than context", ft.String())
 	}
