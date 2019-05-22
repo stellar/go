@@ -416,7 +416,6 @@ func TestAccountDetail(t *testing.T) {
 
 	if assert.NoError(t, err) {
 		assert.Equal(t, account.ID, "GCLWGQPMKXQSPF776IU33AH4PZNOOWNAWGGKVTBQMIC5IMKUNP3E6NVU")
-		assert.Equal(t, account.PT, "1")
 		assert.Equal(t, account.Signers[0].Key, "GCLWGQPMKXQSPF776IU33AH4PZNOOWNAWGGKVTBQMIC5IMKUNP3E6NVU")
 		assert.Equal(t, account.Signers[0].Type, "ed25519_public_key")
 		assert.Equal(t, account.Data["test"], "dGVzdA==")
