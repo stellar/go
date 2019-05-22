@@ -31,8 +31,9 @@ type CommandOptions struct {
 }
 
 type ConnectOptions struct {
-	S3Region   string
-	S3Endpoint string
+	S3Region         string
+	S3Endpoint       string
+	UnsignedRequests bool
 }
 
 type ArchiveBackend interface {

@@ -15,9 +15,10 @@ import (
 )
 
 type S3ArchiveBackend struct {
-	svc    *s3.S3
-	bucket string
-	prefix string
+	svc              *s3.S3
+	bucket           string
+	prefix           string
+	unsignedRequests bool
 }
 
 func (b *S3ArchiveBackend) GetFile(pth string) (io.ReadCloser, error) {
@@ -25,10 +26,16 @@ func (b *S3ArchiveBackend) GetFile(pth string) (io.ReadCloser, error) {
 		Bucket: aws.String(b.bucket),
 		Key:    aws.String(path.Join(b.prefix, pth)),
 	}
-	resp, err := b.svc.GetObject(params)
+
+	req, resp := b.svc.GetObjectRequest(params)
+	if b.unsignedRequests {
+		req.Handlers.Sign.Clear() // makes this request unsigned
+	}
+	err := req.Send()
 	if err != nil {
 		return nil, err
 	}
+
 	return resp.Body, nil
 }
 
@@ -37,7 +44,13 @@ func (b *S3ArchiveBackend) Exists(pth string) bool {
 		Bucket: aws.String(b.bucket),
 		Key:    aws.String(path.Join(b.prefix, pth)),
 	}
-	_, err := b.svc.HeadObject(params)
+
+	req, _ := b.svc.HeadObjectRequest(params)
+	if b.unsignedRequests {
+		req.Handlers.Sign.Clear() // makes this request unsigned
+	}
+	err := req.Send()
+
 	return err == nil
 }
 
@@ -54,7 +67,12 @@ func (b *S3ArchiveBackend) PutFile(pth string, in io.ReadCloser) error {
 		ACL:    aws.String(s3.ObjectCannedACLPublicRead),
 		Body:   bytes.NewReader(buf.Bytes()),
 	}
-	_, err = b.svc.PutObject(params)
+	req, _ := b.svc.PutObjectRequest(params)
+	if b.unsignedRequests {
+		req.Handlers.Sign.Clear() // makes this request unsigned
+	}
+	err = req.Send()
+
 	in.Close()
 	return err
 }
@@ -69,7 +87,11 @@ func (b *S3ArchiveBackend) ListFiles(pth string) (chan string, chan error) {
 		MaxKeys: aws.Int64(1000),
 		Prefix:  aws.String(prefix),
 	}
-	resp, err := b.svc.ListObjects(params)
+	req, resp := b.svc.ListObjectsRequest(params)
+	if b.unsignedRequests {
+		req.Handlers.Sign.Clear() // makes this request unsigned
+	}
+	err := req.Send()
 	if err != nil {
 		errs <- err
 		close(ch)
@@ -83,7 +105,11 @@ func (b *S3ArchiveBackend) ListFiles(pth string) (chan string, chan error) {
 				ch <- *c.Key
 			}
 			if *resp.IsTruncated {
-				resp, err = b.svc.ListObjects(params)
+				req, resp = b.svc.ListObjectsRequest(params)
+				if b.unsignedRequests {
+					req.Handlers.Sign.Clear() // makes this request unsigned
+				}
+				err := req.Send()
 				if err != nil {
 					errs <- err
 				}
@@ -113,9 +139,10 @@ func makeS3Backend(bucket string, prefix string, opts ConnectOptions) (ArchiveBa
 	}
 
 	backend := S3ArchiveBackend{
-		svc:    s3.New(sess),
-		bucket: bucket,
-		prefix: prefix,
+		svc:              s3.New(sess),
+		bucket:           bucket,
+		prefix:           prefix,
+		unsignedRequests: opts.UnsignedRequests,
 	}
 	return &backend, nil
 }
