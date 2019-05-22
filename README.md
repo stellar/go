@@ -1,5 +1,5 @@
 # Stellar Go 
-[![Build Status](https://travis-ci.org/stellar/go.svg?branch=master)](https://travis-ci.org/stellar/go) 
+[![Build Status](https://circleci.com/gh/stellar/go.svg?style=shield)](https://circleci.com/gh/stellar/go)
 [![GoDoc](https://godoc.org/github.com/stellar/go?status.svg)](https://godoc.org/github.com/stellar/go)
 [![Go Report Card](https://goreportcard.com/badge/github.com/stellar/go)](https://goreportcard.com/report/github.com/stellar/go)
 
@@ -8,7 +8,8 @@ This repo is the home for all of the public go code produced by SDF.  In additio
 ## Package Index
 
 * [Horizon Server](services/horizon): Full-featured API server for Stellar network
-* [Go Clients (Horizon SDK)](clients): Go SDK for making requests to Horizon Server
+* [Go Horizon SDK - horizonclient](clients/horizonclient): Client for Horizon server (queries and transaction submission)
+* [Go Horizon SDK - txnbuild](txnbuild): Construct Stellar transactions and operations
 * [Bifrost](services/bifrost): Bitcoin/Ethereum -> Stellar bridge
 * Servers for Anchors & Financial Institutions
   * [Bridge Server](services/bridge): send payments and take action when payments are received

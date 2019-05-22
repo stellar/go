@@ -129,7 +129,7 @@ func (w *web) mustInstallActions(enableAssetStats bool, friendbotURL *url.URL) {
 		r.Get("/", LedgerIndexAction{}.Handle)
 		r.Route("/{ledger_id}", func(r chi.Router) {
 			r.Get("/", LedgerShowAction{}.Handle)
-			r.Get("/transactions", TransactionIndexAction{}.Handle)
+			r.Get("/transactions", w.streamIndexActionHandler(w.getTransactionPage, w.streamTransactions))
 			r.Get("/operations", OperationIndexAction{}.Handle)
 			r.Get("/payments", PaymentsIndexAction{}.Handle)
 			r.Get("/effects", EffectIndexAction{}.Handle)
@@ -139,8 +139,8 @@ func (w *web) mustInstallActions(enableAssetStats bool, friendbotURL *url.URL) {
 	// account actions
 	r.Route("/accounts", func(r chi.Router) {
 		r.Route("/{account_id}", func(r chi.Router) {
-			r.Get("/", w.accountHandler(w.getAccountInfo))
-			r.Get("/transactions", w.transactionHandler(w.getTransactionPageByAccount, w.streamTransactionByAccount))
+			r.Get("/", w.streamShowActionHandler(w.getAccountInfo, true))
+			r.Get("/transactions", w.streamIndexActionHandler(w.getTransactionPage, w.streamTransactions))
 			r.Get("/operations", OperationIndexAction{}.Handle)
 			r.Get("/payments", PaymentsIndexAction{}.Handle)
 			r.Get("/effects", EffectIndexAction{}.Handle)
@@ -152,9 +152,9 @@ func (w *web) mustInstallActions(enableAssetStats bool, friendbotURL *url.URL) {
 
 	// transaction history actions
 	r.Route("/transactions", func(r chi.Router) {
-		r.Get("/", TransactionIndexAction{}.Handle)
+		r.Get("/", w.streamIndexActionHandler(w.getTransactionPage, w.streamTransactions))
 		r.Route("/{tx_id}", func(r chi.Router) {
-			r.Get("/", TransactionShowAction{}.Handle)
+			r.Get("/", showActionHandler(w.getTransactionResource))
 			r.Get("/operations", OperationIndexAction{}.Handle)
 			r.Get("/payments", PaymentsIndexAction{}.Handle)
 			r.Get("/effects", EffectIndexAction{}.Handle)

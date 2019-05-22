@@ -8,4 +8,6 @@
 debug
 .bundle
 *.swp
-
+*.crt
+*.csr
+*.key

@@ -13,6 +13,7 @@ import (
 	. "github.com/stellar/go/services/horizon/internal/db2/history"
 	. "github.com/stellar/go/services/horizon/internal/test/trades"
 	"github.com/stellar/go/support/render/hal"
+	stellarTime "github.com/stellar/go/support/time"
 	"github.com/stellar/go/xdr"
 )
 
@@ -307,6 +308,44 @@ func TestTradeActions_Aggregation(t *testing.T) {
 	w = ht.Get(nextLink)
 	if ht.Assert.Equal(200, w.Code) {
 		ht.Assert.PageOf(0, w.Body)
+	}
+}
+
+func TestTradeActions_AmountsExceedInt64(t *testing.T) {
+	ht := StartHTTPTest(t, "base")
+	defer ht.Finish()
+	dbQ := &Q{ht.HorizonSession()}
+
+	const start = int64(1510693200000)
+
+	acc1 := GetTestAccount()
+	acc2 := GetTestAccount()
+	ass1 := GetTestAsset("usd")
+	ass2 := GetTestAsset("euro")
+	for i := 1; i <= 3; i++ {
+		timestamp := stellarTime.MillisFromInt64(start + (minute * int64(i-1)))
+		err := IngestTestTrade(
+			dbQ, ass1, ass2, acc1, acc2, int64(9131689504000000000), int64(9131689504000000000), timestamp, int64(i))
+		ht.Require.NoError(err)
+	}
+
+	var records []horizon.TradeAggregation
+
+	q := make(url.Values)
+	setAssetQuery(&q, "base_", ass1)
+	setAssetQuery(&q, "counter_", ass2)
+
+	q.Add("start_time", strconv.FormatInt(start, 10))
+	q.Add("end_time", strconv.FormatInt(start+hour, 10))
+	q.Add("order", "asc")
+	q.Set("resolution", strconv.FormatInt(hour, 10))
+
+	w := ht.GetWithParams(aggregationPath, q)
+	if ht.Assert.Equal(200, w.Code) {
+		ht.Assert.PageOf(1, w.Body)
+		ht.UnmarshalPage(w.Body, &records)
+		ht.Assert.Equal("2739506851200.0000000", records[0].BaseVolume)
+		ht.Assert.Equal("2739506851200.0000000", records[0].CounterVolume)
 	}
 }
 

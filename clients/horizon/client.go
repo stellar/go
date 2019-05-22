@@ -22,6 +22,7 @@ const clientName = "go-stellar-sdk-old"
 
 // HomeDomainForAccount returns the home domain for the provided strkey-encoded
 // account id.
+// Deprecated: use clients/horizonclient instead
 func (c *Client) HomeDomainForAccount(aid string) (string, error) {
 	a, err := c.LoadAccount(aid)
 	if err != nil {
@@ -37,6 +38,7 @@ func (c *Client) fixURL() {
 }
 
 // Root loads the root endpoint of horizon
+// Deprecated: use clients/horizonclient instead
 func (c *Client) Root() (root Root, err error) {
 	c.fixURLOnce.Do(c.fixURL)
 	resp, err := c.getRequest(c.URL)
@@ -50,6 +52,7 @@ func (c *Client) Root() (root Root, err error) {
 
 // LoadAccount loads the account state from horizon. err can be either error
 // object or horizon.Error object.
+// Deprecated: use horizonclient.AccountDetail instead
 func (c *Client) LoadAccount(accountID string) (account Account, err error) {
 	c.fixURLOnce.Do(c.fixURL)
 	resp, err := c.getRequest(c.URL + "/accounts/" + accountID)
@@ -63,6 +66,7 @@ func (c *Client) LoadAccount(accountID string) (account Account, err error) {
 
 // LoadAccountOffers loads the account offers from horizon. err can be either
 // error object or horizon.Error object.
+// Deprecated: use horizonclient.Offers instead
 func (c *Client) LoadAccountOffers(
 	accountID string,
 	params ...interface{},
@@ -114,6 +118,7 @@ func (c *Client) LoadAccountOffers(
 }
 
 // LoadTradeAggregations loads the trade aggregation from horizon.
+// Deprecated: use horizonclient.TradeAggregations instead
 func (c *Client) LoadTradeAggregations(
 	baseAsset Asset,
 	counterAsset Asset,
@@ -173,6 +178,7 @@ func (c *Client) LoadTradeAggregations(
 }
 
 // LoadTrades loads the /trades endpoint from horizon.
+// Deprecated: use horizonclient.Trades instead
 func (c *Client) LoadTrades(
 	baseAsset Asset,
 	counterAsset Asset,
@@ -227,6 +233,7 @@ func (c *Client) LoadTrades(
 }
 
 // LoadTransaction loads a single transaction from Horizon server
+// Deprecated: use horizonclient.TransactionDetail instead
 func (c *Client) LoadTransaction(transactionID string) (transaction Transaction, err error) {
 	c.fixURLOnce.Do(c.fixURL)
 	resp, err := c.getRequest(c.URL + "/transactions/" + transactionID)
@@ -248,6 +255,7 @@ func addAssetToQuery(v map[string][]string, assetPrefix string, asset Asset) {
 	}
 }
 
+// Deprecated: use horizonclient.Transactions instead
 func (c *Client) LoadAccountTransactions(accountID string, params ...interface{}) (TransactionsPage, error) {
 	tx := TransactionsPage{}
 
@@ -285,6 +293,7 @@ func (c *Client) LoadAccountTransactions(accountID string, params ...interface{}
 }
 
 // LoadOperation loads a single operation from Horizon server
+// Deprecated: use horizonclient.OperationDetail instead
 func (c *Client) LoadOperation(operationID string) (payment Payment, err error) {
 	c.fixURLOnce.Do(c.fixURL)
 	resp, err := c.getRequest(c.URL + "/operations/" + operationID)
@@ -297,6 +306,7 @@ func (c *Client) LoadOperation(operationID string) (payment Payment, err error) 
 }
 
 // LoadMemo loads memo for a transaction in Payment
+// Deprecated: use clients/horizonclient instead
 func (c *Client) LoadMemo(p *Payment) (err error) {
 	res, err := c.getRequest(p.Links.Transaction.Href)
 	if err != nil {
@@ -307,6 +317,7 @@ func (c *Client) LoadMemo(p *Payment) (err error) {
 }
 
 // LoadAccountMergeAmount loads `account_merge` operation amount from it's effects
+// Deprecated: use clients/horizonclient instead
 func (c *Client) LoadAccountMergeAmount(p *Payment) error {
 	if p.Type != "account_merge" {
 		return errors.New("Not `account_merge` operation")
@@ -334,6 +345,7 @@ func (c *Client) LoadAccountMergeAmount(p *Payment) error {
 }
 
 // SequenceForAccount implements build.SequenceProvider
+// Deprecated: use clients/horizonclient instead
 func (c *Client) SequenceForAccount(
 	accountID string,
 ) (xdr.SequenceNumber, error) {
@@ -352,6 +364,7 @@ func (c *Client) SequenceForAccount(
 }
 
 // LoadOrderBook loads order book for given selling and buying assets.
+// Deprecated: use horizonclient.OrderBook instead
 func (c *Client) LoadOrderBook(
 	selling Asset,
 	buying Asset,
@@ -509,6 +522,7 @@ func (c *Client) stream(
 
 // StreamLedgers streams incoming ledgers. Use context.WithCancel to stop streaming or
 // context.Background() if you want to stream indefinitely.
+// Deprecated: use horizonclient.StreamLedgers instead
 func (c *Client) StreamLedgers(
 	ctx context.Context,
 	cursor *Cursor,
@@ -529,6 +543,7 @@ func (c *Client) StreamLedgers(
 
 // StreamPayments streams payments, for which the given `accountID` was either the sender or receiver.
 // Use context.WithCancel to stop streaming or context.Background() if you want to stream indefinitely.
+// Deprecated: use horizonclient.StreamPayments instead
 func (c *Client) StreamPayments(
 	ctx context.Context,
 	accountID string,
@@ -550,6 +565,7 @@ func (c *Client) StreamPayments(
 
 // StreamTransactions streams incoming transactions. Use context.WithCancel to stop streaming or
 // context.Background() if you want to stream indefinitely.
+// Deprecated: use horizonclient.StreamTransactions instead
 func (c *Client) StreamTransactions(
 	ctx context.Context,
 	accountID string,
@@ -570,6 +586,7 @@ func (c *Client) StreamTransactions(
 }
 
 // SubmitTransaction submits a transaction to the network. err can be either error object or horizon.Error object.
+// Deprecated: use horizonclient.SubmitTransactionXDR instead
 func (c *Client) SubmitTransaction(
 	transactionEnvelopeXdr string,
 ) (response TransactionSuccess, err error) {
