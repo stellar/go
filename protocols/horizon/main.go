@@ -39,7 +39,8 @@ type Account struct {
 		Data         hal.Link `json:"data"`
 	} `json:"_links"`
 
-	HistoryAccount
+	ID                   string            `json:"id"`
+	AccountID            string            `json:"account_id"`
 	Sequence             string            `json:"sequence"`
 	SubentryCount        int32             `json:"subentry_count"`
 	InflationDestination string            `json:"inflation_destination,omitempty"`
@@ -167,14 +168,6 @@ type Balance struct {
 	LastModifiedLedger uint32 `json:"last_modified_ledger,omitempty"`
 	IsAuthorized       *bool  `json:"is_authorized,omitempty"`
 	base.Asset
-}
-
-// HistoryAccount is a simple resource, used for the account collection actions.
-// It provides only the "TotalOrderID" of the account and its account id.
-type HistoryAccount struct {
-	ID        string `json:"id"`
-	PT        string `json:"paging_token"`
-	AccountID string `json:"account_id"`
 }
 
 // Ledger represents a single closed ledger
