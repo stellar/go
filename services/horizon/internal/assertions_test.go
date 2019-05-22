@@ -3,6 +3,7 @@ package horizon
 import (
 	"bytes"
 	"encoding/json"
+	"strings"
 
 	"net/url"
 
@@ -49,6 +50,7 @@ func (a *Assertions) Problem(body *bytes.Buffer, expected problem.P) bool {
 		return false
 	}
 
+	actual.Type = strings.TrimPrefix(actual.Type, problem.ServiceHost)
 	if expected.Type != "" && a.Equal(expected.Type, actual.Type, "problem type didn't match") {
 		return false
 	}

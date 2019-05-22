@@ -12,7 +12,7 @@ import (
 )
 
 var (
-	serviceHost     = "https://stellar.org/horizon-errors/"
+	ServiceHost     = "https://stellar.org/horizon-errors/"
 	errToProblemMap = map[error]P{}
 )
 
@@ -81,7 +81,7 @@ func RegisterError(err error, p P) {
 // type, register host as an empty string.
 // The default service host points to `https://stellar.org/horizon-errors/`.
 func RegisterHost(host string) {
-	serviceHost = host
+	ServiceHost = host
 }
 
 // Render writes a http response to `w`, compliant with the "Problem
@@ -112,8 +112,8 @@ func Render(ctx context.Context, w http.ResponseWriter, err error) {
 }
 
 func renderProblem(ctx context.Context, w http.ResponseWriter, p P) {
-	if serviceHost != "" && !strings.HasPrefix(p.Type, serviceHost) {
-		p.Type = serviceHost + p.Type
+	if ServiceHost != "" && !strings.HasPrefix(p.Type, ServiceHost) {
+		p.Type = ServiceHost + p.Type
 	}
 
 	w.Header().Set("Content-Type", "application/problem+json; charset=utf-8")
