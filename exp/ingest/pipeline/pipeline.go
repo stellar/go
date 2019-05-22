@@ -104,17 +104,19 @@ func (p *Pipeline) processStateNode(store *Store, node *PipelineNode, reader io.
 	go func() {
 		// Update stats
 		for {
-			readBuffer := reader.(*bufferedStateReadWriteCloser)
+			readBuffer, readBufferIsBufferedStateReadWriteCloser := reader.(*bufferedStateReadWriteCloser)
 			writeBuffer := writer
 
 			interval := time.Second
 
-			node.readsPerSecond = (readBuffer.readEntries - node.readEntries) * int(time.Second/interval)
 			node.writesPerSecond = (writeBuffer.wroteEntries - node.wroteEntries) * int(time.Second/interval)
-
 			node.wroteEntries = writeBuffer.wroteEntries
-			node.readEntries = readBuffer.readEntries
-			node.queuedEntries = readBuffer.QueuedEntries()
+
+			if readBufferIsBufferedStateReadWriteCloser {
+				node.readsPerSecond = (readBuffer.readEntries - node.readEntries) * int(time.Second/interval)
+				node.readEntries = readBuffer.readEntries
+				node.queuedEntries = readBuffer.QueuedEntries()
+			}
 
 			time.Sleep(interval)
 		}

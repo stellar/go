@@ -7,7 +7,7 @@ import (
 	"github.com/stellar/go/support/historyarchive"
 )
 
-const msrBufferSize = 10
+const msrBufferSize = 50000
 
 // HistoryArchiveAdapter is an adapter for the historyarchive package to read from history archives
 type HistoryArchiveAdapter struct {
