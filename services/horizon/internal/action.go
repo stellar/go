@@ -156,73 +156,53 @@ func (action *Action) baseURL() *url.URL {
 	return httpx.BaseURL(action.R.Context())
 }
 
+// Fields of this struct are exported for json marshaling/unmarshaling in
+// support/render/hal package.
 type indexActionQueryParams struct {
-	accountID        string
-	ledgerID         int32
-	pagingParams     db2.PageQuery
-	includeFailedTxs bool
+	AccountID        string
+	LedgerID         int32
+	PagingParams     db2.PageQuery
+	IncludeFailedTxs bool
 }
 
+// Fields of this struct are exported for json marshaling/unmarshaling in
+// support/render/hal package.
 type showActionQueryParams struct {
-	accountID string
-	txHash    string
+	AccountID string
+	TxHash    string
 }
 
 // getAccountInfo returns the information about an account based on the provided param.
-// The expected params type is a pointer to showActionQueryParams.
-func (w *web) getAccountInfo(ctx context.Context, params interface{}) (interface{}, error) {
-	qp, ok := params.(*showActionQueryParams)
-	if !ok {
-		return nil, errors.New("Invalid param type for getAccountInfo func")
-	}
-
-	return actions.AccountInfo(ctx, &core.Q{w.coreSession(ctx)}, qp.accountID)
+func (w *web) getAccountInfo(ctx context.Context, qp *showActionQueryParams) (interface{}, error) {
+	return actions.AccountInfo(ctx, &core.Q{w.coreSession(ctx)}, qp.AccountID)
 }
 
 // getTransactionPage returns a page containing the transaction records of an account or a ledger.
-// The expected params type is a pointer to indexActionQueryParams.
-func (w *web) getTransactionPage(ctx context.Context, params interface{}) (interface{}, error) {
-	qp, ok := params.(*indexActionQueryParams)
-	if !ok {
-		return nil, errors.New("Invalid param type for getTransactionPage func")
-	}
-
+func (w *web) getTransactionPage(ctx context.Context, qp *indexActionQueryParams) (interface{}, error) {
 	horizonSession, err := w.horizonSession(ctx)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting horizon db session")
 	}
 
-	return actions.TransactionPage(ctx, &history.Q{horizonSession}, qp.accountID, qp.ledgerID, qp.includeFailedTxs, qp.pagingParams)
+	return actions.TransactionPage(ctx, &history.Q{horizonSession}, qp.AccountID, qp.LedgerID, qp.IncludeFailedTxs, qp.PagingParams)
 }
 
 // getTransactionRecord returns a single transaction resource.
-// The expected params type is a pointer to showActionQueryParams.
-func (w *web) getTransactionResource(ctx context.Context, params interface{}) (interface{}, error) {
-	qp, ok := params.(*showActionQueryParams)
-	if !ok {
-		return nil, errors.New("Invalid param type for getTransactionResource func")
-	}
-
+func (w *web) getTransactionResource(ctx context.Context, qp *showActionQueryParams) (interface{}, error) {
 	horizonSession, err := w.horizonSession(ctx)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting horizon db session")
 	}
 
-	return actions.TransactionResource(ctx, &history.Q{horizonSession}, qp.txHash)
+	return actions.TransactionResource(ctx, &history.Q{horizonSession}, qp.TxHash)
 }
 
 // streamTransactions streams the transaction records of an account or a ledger.
-// The expected params type is a pointer to indexActionQueryParams.
-func (w *web) streamTransactions(ctx context.Context, s *sse.Stream, params interface{}) error {
-	qp, ok := params.(*indexActionQueryParams)
-	if !ok {
-		return errors.New("Invalid param type for streamTransactions func")
-	}
-
+func (w *web) streamTransactions(ctx context.Context, s *sse.Stream, qp *indexActionQueryParams) error {
 	horizonSession, err := w.horizonSession(ctx)
 	if err != nil {
 		return errors.Wrap(err, "getting horizon db session")
 	}
 
-	return actions.StreamTransactions(ctx, s, &history.Q{horizonSession}, qp.accountID, qp.ledgerID, qp.includeFailedTxs, qp.pagingParams)
+	return actions.StreamTransactions(ctx, s, &history.Q{horizonSession}, qp.AccountID, qp.LedgerID, qp.IncludeFailedTxs, qp.PagingParams)
 }
