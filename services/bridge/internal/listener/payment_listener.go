@@ -211,7 +211,7 @@ func (pl *PaymentListener) shouldProcessPayment(payment bridge.PaymentResponse) 
 	}
 
 	if payment.To != pl.config.Accounts.ReceivingAccountID {
-		return false, "Operation not sent to configured receiving account"
+		return false, "Operation type not permitted"
 	}
 
 	if !pl.isAssetAllowed(payment.AssetType, payment.AssetCode, payment.AssetIssuer) {
@@ -419,7 +419,7 @@ func (pl *PaymentListener) ConvertToBridgePayment(op operations.Operation) (brid
 		}
 
 	default:
-		return bridge.PaymentResponse{}, errors.New("operation not sent to configured receiving account")
+		return bridge.PaymentResponse{}, errors.New("operation type not permitted")
 	}
 
 	transaction, err := pl.horizon.TransactionDetail(payment.TransactionHash)
