@@ -2,7 +2,7 @@ package handlers
 
 import (
 	"github.com/stellar/go/clients/federation"
-	"github.com/stellar/go/clients/horizon"
+	hc "github.com/stellar/go/clients/horizonclient"
 	"github.com/stellar/go/clients/stellartoml"
 	"github.com/stellar/go/services/bridge/internal/config"
 	"github.com/stellar/go/services/bridge/internal/db"
@@ -15,7 +15,7 @@ import (
 type RequestHandler struct {
 	Config               *config.Config                          `inject:""`
 	Client               http.SimpleHTTPClientInterface          `inject:""`
-	Horizon              horizon.ClientInterface                 `inject:""`
+	Horizon              hc.ClientInterface                      `inject:""`
 	Database             db.Database                             `inject:""`
 	StellarTomlResolver  stellartoml.ClientInterface             `inject:""`
 	FederationResolver   federation.ClientInterface              `inject:""`

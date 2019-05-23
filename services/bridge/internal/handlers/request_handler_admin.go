@@ -9,10 +9,10 @@ import (
 
 	"github.com/go-chi/chi"
 	log "github.com/sirupsen/logrus"
-	"github.com/stellar/go/clients/horizon"
 	"github.com/stellar/go/protocols/compliance"
 	"github.com/stellar/go/services/bridge/internal/db"
 	"github.com/stellar/go/services/internal/bridge-compliance-shared/http/helpers"
+	"github.com/stellar/go/services/internal/bridge-compliance-shared/protocols/bridge"
 	callback "github.com/stellar/go/services/internal/bridge-compliance-shared/protocols/compliance"
 	"github.com/stellar/go/support/errors"
 )
@@ -32,23 +32,23 @@ func (rh *RequestHandler) AdminReceivedPayment(w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	paymentResponse, err := rh.Horizon.LoadOperation(payment.OperationID)
+	paymentResponse, err := rh.Horizon.OperationDetail(payment.OperationID)
 	if err != nil {
 		log.WithFields(log.Fields{"err": err}).Error("Error getting operation from Horizon")
 		helpers.Write(w, helpers.InternalServerError)
 		return
 	}
 
-	err = rh.Horizon.LoadMemo(&paymentResponse)
+	bridgePayment, err := rh.PaymentListener.ConvertToBridgePayment(paymentResponse)
 	if err != nil {
-		log.WithFields(log.Fields{"err": err}).Error("Error loading memo")
+		log.WithFields(log.Fields{"err": err}).Error("Error converting operation to bridge payment type")
 		helpers.Write(w, helpers.InternalServerError)
 		return
 	}
 
 	var authData *compliance.AuthData
-	if paymentResponse.Memo.Type == "hash" && rh.Config.Compliance != "" {
-		authData, err = rh.getComplianceData(paymentResponse.Memo.Value)
+	if bridgePayment.MemoType == "hash" && rh.Config.Compliance != "" {
+		authData, err = rh.getComplianceData(bridgePayment.Memo)
 		if err != nil {
 			log.WithFields(log.Fields{"err": err}).Error("Error loading compliance data")
 			helpers.Write(w, helpers.InternalServerError)
@@ -57,10 +57,10 @@ func (rh *RequestHandler) AdminReceivedPayment(w http.ResponseWriter, r *http.Re
 	}
 
 	response := struct {
-		Payment   *db.ReceivedPayment  `json:"payment"`
-		Operation horizon.Payment      `json:"operation"`
-		AuthData  *compliance.AuthData `json:"auth_data"`
-	}{payment, paymentResponse, authData}
+		Payment   *db.ReceivedPayment    `json:"payment"`
+		Operation bridge.PaymentResponse `json:"operation"`
+		AuthData  *compliance.AuthData   `json:"auth_data"`
+	}{payment, bridgePayment, authData}
 
 	encoder := json.NewEncoder(w)
 	err = encoder.Encode(response)

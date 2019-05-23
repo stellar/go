@@ -6,7 +6,7 @@ import (
 
 	log "github.com/sirupsen/logrus"
 	b "github.com/stellar/go/build"
-	"github.com/stellar/go/clients/horizon"
+	hc "github.com/stellar/go/clients/horizonclient"
 	"github.com/stellar/go/services/internal/bridge-compliance-shared/http/helpers"
 	"github.com/stellar/go/services/internal/bridge-compliance-shared/protocols/bridge"
 )
@@ -49,7 +49,7 @@ func (rh *RequestHandler) Authorize(w http.ResponseWriter, r *http.Request) {
 	jsonEncoder := json.NewEncoder(w)
 
 	if err != nil {
-		herr, isHorizonError := err.(*horizon.Error)
+		herr, isHorizonError := err.(*hc.Error)
 		if !isHorizonError {
 			log.WithFields(log.Fields{"err": err}).Error("Error submitting transaction")
 			helpers.Write(w, helpers.InternalServerError)
