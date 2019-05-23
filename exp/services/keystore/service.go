@@ -20,6 +20,6 @@ type Service struct {
 	db *sql.DB
 }
 
-func NewService(ctx context.Context, db *sql.DB) (*Service, error) {
-	return &Service{db: db}, nil
+func NewService(ctx context.Context, db *sql.DB) *Service {
+	return &Service{db: db}
 }
