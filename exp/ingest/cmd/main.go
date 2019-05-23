@@ -9,18 +9,16 @@ import (
 
 const dbURI = "postgres://stellar:postgres@localhost:8002/core"
 
-const txHistoryQuery = "select * from txhistory limit 10;"
-
 func main() {
-	coreSession, err := ingest.CreateSession("postgres", dbURI)
-	defer coreSession.DB.Close()
-
+	// Initialise the database backend
+	dbb := ingest.DatabaseBackend{}
+	err := dbb.CreateSession("postgres", dbURI)
 	if err != nil {
 		log.Fatalf("Couldn't connect to database at %s: %s", dbURI, err)
 	}
+	defer dbb.Close()
 
-	var rows []TXHistory
-	err = coreSession.SelectRaw(&rows, txHistoryQuery)
+	rows, err := dbb.GetTXHistory()
 	if err != nil {
 		log.Fatal("Couldn't select txhistory rows: ", err)
 	}
@@ -28,13 +26,11 @@ func main() {
 	for _, row := range rows {
 		fmt.Println(row.TXID)
 	}
-}
 
-type TXHistory struct {
-	TXID      string `db:"txid"`
-	LedgerSeq int    `db:"ledgerseq"`
-	TXIndex   int    `db:"txindex"`
-	TXBody    string `db:"txbody"`
-	TXResult  string `db:"txresult"`
-	TXMeta    string `db:"txmeta"`
+	ledgerSequence, err := dbb.GetLatestLedgerSequence()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	fmt.Println("Latest ledger =", ledgerSequence)
 }
