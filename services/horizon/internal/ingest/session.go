@@ -98,9 +98,6 @@ func (is *Session) clearLedger() {
 		return
 	}
 
-	startLedger, endLedger := is.Cursor.LedgerRange()
-	log.WithFields(ilog.F{"toid_start": startLedger, "toid_end": endLedger}).Info("Clearing ledgers")
-
 	start := time.Now()
 	is.Err = is.Ingestion.Clear(is.Cursor.LedgerRange())
 	if is.Err != nil {
