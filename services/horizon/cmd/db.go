@@ -411,7 +411,7 @@ func reingestRange(i *ingest.System, from, to int32) error {
 
 		_, err := i.ReingestRange(lr.from, lr.to)
 		if err != nil {
-			localLog.WithField("err", err).Error("Worker failed range, work will processed again")
+			localLog.WithField("err", err).Error("Worker failed range, work will be processed again")
 			// Add the work again
 			pool.AddWork(lr)
 			return
