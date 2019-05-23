@@ -8,26 +8,20 @@ import (
 // First add jobs by using AddWork(), then add a worker function using
 // `SetWorker`. Finally, start as many workers as you want using `Start`.
 type WorkersPool struct {
-	work   []interface{}
-	worker func(workerID int, work interface{})
-	mutex  sync.Mutex
+	work       []interface{}
+	workerFunc func(workerID int, work interface{})
+	mutex      sync.Mutex
 }
 
 func (w *WorkersPool) AddWork(job interface{}) {
 	w.mutex.Lock()
 	defer w.mutex.Unlock()
-
-	if w.work == nil {
-		w.work = make([]interface{}, 0)
-	}
-
 	w.work = append(w.work, job)
 }
 
 func (w *WorkersPool) WorkSize() int {
 	w.mutex.Lock()
 	defer w.mutex.Unlock()
-
 	return len(w.work)
 }
 
@@ -40,16 +34,20 @@ func (w *WorkersPool) getWork() (interface{}, bool) {
 		return nil, false
 	}
 
-	var work interface{}
-	work, w.work = w.work[len(w.work)-1], w.work[:len(w.work)-1]
+	work := w.work[0]
+	w.work = w.work[1:]
 	return work, true
 }
 
-func (w *WorkersPool) SetWorker(worker func(int, interface{})) {
-	w.worker = worker
+// SetWorker defines function that will be run by workers. workerFunc accepts two
+// parameters:
+//   * first provides ID of the worker [0, workers-1],
+//   * seconds provides data that worker should work on.
+func (w *WorkersPool) SetWorker(workerFunc func(int, interface{})) {
+	w.workerFunc = workerFunc
 }
 
-// Start starts working using `workers` workers
+// Start starts worker to execute workerFunc
 func (w *WorkersPool) Start(workers int) {
 	var wg sync.WaitGroup
 
@@ -63,7 +61,7 @@ func (w *WorkersPool) Start(workers int) {
 					return
 				}
 
-				w.worker(workerID, job)
+				w.workerFunc(workerID, job)
 			}
 		}(i)
 	}
