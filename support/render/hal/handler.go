@@ -16,9 +16,27 @@ var (
 )
 
 type handler struct {
-	fv      reflect.Value
-	inType  reflect.Type
-	inValue reflect.Value
+	fv           reflect.Value
+	inType       reflect.Type
+	inValue      reflect.Value
+	readFromBody bool
+}
+
+// PostHandler returns an HTTP Handler for function fn.
+// If fn has an input type, it will try to decode the request body into the
+// function's input type.
+// If fn returns a non-nil error, the handler will use problem.Render.
+// Please refer to funcParamType for the allowed function signature.
+// The caller of this function should probably panic on the returned error, if
+// any.
+func PostHandler(fn interface{}) (http.Handler, error) {
+	fv := reflect.ValueOf(fn)
+	inType, err := funcParamType(fv)
+	if err != nil {
+		return nil, errors.Wrap(err, "parsing function prototype")
+	}
+
+	return &handler{fv, inType, reflect.Value{}, inType != nil}, nil
 }
 
 // Handler returns an HTTP Handler for function fn.
@@ -38,12 +56,12 @@ func Handler(fn, param interface{}) (http.Handler, error) {
 		inValue = reflect.ValueOf(param)
 	}
 
-	return &handler{fv, inType, inValue}, nil
+	return &handler{fv, inType, inValue, false}, nil
 }
 
 func (h *handler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	ctx := req.Context()
-	res, err := h.executeFunc(ctx)
+	res, err := h.executeFunc(ctx, req)
 	if err != nil {
 		problem.Render(ctx, w, err)
 		return
@@ -54,11 +72,20 @@ func (h *handler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 
 // executeFunc executes the function provided in the handler together with the
 // provided param value, if any, in the handler.
-func (h *handler) executeFunc(ctx context.Context) (interface{}, error) {
+func (h *handler) executeFunc(ctx context.Context, req *http.Request) (interface{}, error) {
 	var a []reflect.Value
 	a = append(a, reflect.ValueOf(ctx))
 	if h.inType != nil {
-		a = append(a, h.inValue)
+		if h.readFromBody {
+			inPtr := reflect.New(h.inType)
+			err := read(req.Body, inPtr.Interface())
+			if err != nil {
+				return nil, err
+			}
+			a = append(a, inPtr.Elem())
+		} else {
+			a = append(a, h.inValue)
+		}
 	}
 
 	rv := h.fv.Call(a)
@@ -82,7 +109,7 @@ func ExecuteFunc(ctx context.Context, fn, param interface{}) (interface{}, bool,
 		return nil, dontPanic, err
 	}
 
-	res, err := h.(*handler).executeFunc(ctx)
+	res, err := h.(*handler).executeFunc(ctx, nil)
 	return res, dontPanic, err
 }
 
