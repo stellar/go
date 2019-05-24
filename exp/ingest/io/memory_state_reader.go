@@ -1,17 +1,15 @@
 package io
 
 import (
-	"crypto/sha256"
+	"encoding/base64"
 	"fmt"
 	"io"
-	"regexp"
 	"sync"
 
+	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/support/historyarchive"
 	"github.com/stellar/go/xdr"
 )
-
-var bucketRegex = regexp.MustCompile(`(bucket/[0-9a-z]{2}/[0-9a-z]{2}/[0-9a-z]{2}/bucket-[0-9a-z]+\.xdr\.gz)`)
 
 // readResult is the result of reading a bucket value
 type readResult struct {
@@ -49,70 +47,63 @@ func MakeMemoryStateReader(archive *historyarchive.Archive, sequence uint32, buf
 	}, nil
 }
 
-func getBucketPath(r *regexp.Regexp, s string) (string, error) {
-	matches := r.FindStringSubmatch(s)
-	if len(matches) != 2 {
-		return "", fmt.Errorf("regex string submatch needs full match and one more subgroup, i.e. length should be 2 but was %d", len(matches))
-	}
-	return matches[1], nil
+func hashToBucketPath(hash historyarchive.Hash) string {
+	return fmt.Sprintf(
+		"bucket/%s/bucket-%s.xdr.gz",
+		historyarchive.HashPrefix(hash).Path(),
+		hash.String(),
+	)
 }
 
 func (msr *MemoryStateReader) bufferNext() {
 	defer close(msr.readChan)
 
-	// iterate from newest to oldest bucket and track keys already seen
-	seen := map[string]bool{}
-	for _, hash := range msr.has.Buckets() {
+	seen := map[string]xdr.LedgerEntry{}
+
+	// Process buckets from oldest to newest
+	var buckets []string
+	for i := len(msr.has.CurrentBuckets) - 1; i >= 0; i-- {
+		b := msr.has.CurrentBuckets[i]
+		buckets = append(buckets, b.Snap, b.Curr)
+	}
+
+	for _, hashString := range buckets {
+		hash, err := historyarchive.DecodeHash(hashString)
+		if err != nil {
+			msr.readChan <- readResult{xdr.LedgerEntry{}, errors.Wrap(err, "Error decoding bucket hash")}
+			return
+		}
+
+		if hash.IsZero() {
+			continue
+		}
+
 		if !msr.archive.BucketExists(hash) {
 			msr.readChan <- readResult{xdr.LedgerEntry{}, fmt.Errorf("bucket hash does not exist: %s", hash)}
 			return
 		}
 
-		// read bucket detail
-		filepathChan, errChan := msr.archive.ListBucket(historyarchive.HashPrefix(hash))
-
-		// read from channels
-		var filepath string
-		var e error
-		var ok bool
-		select {
-		case fp, okb := <-filepathChan:
-			// example filepath: prd/core-testnet/core_testnet_001/bucket/be/3c/bf/bucket-be3cbfc2d7e4272c01a1a22084573a04dad96bf77aa7fc2be4ce2dec8777b4f9.xdr.gz
-			filepath, e, ok = fp, nil, okb
-		case err, okb := <-errChan:
-			filepath, e, ok = "", err, okb
-			// TODO do we need to do anything special if e is nil here?
-		}
-		if !ok {
-			// move on to next bucket when this bucket is fully consumed or empty
-			continue
-		}
-
-		// process values
-		if e != nil {
-			msr.readChan <- readResult{xdr.LedgerEntry{}, fmt.Errorf("received error on errChan when listing buckets for hash '%s': %s", hash, e)}
-			return
-		}
-
-		bucketPath, e := getBucketPath(bucketRegex, filepath)
-		if e != nil {
-			msr.readChan <- readResult{xdr.LedgerEntry{}, fmt.Errorf("cannot get bucket path for filepath '%s' with hash '%s': %s", filepath, hash, e)}
-			return
-		}
-
+		bucketPath := hashToBucketPath(hash)
 		var shouldContinue bool
-		shouldContinue = msr.streamBucketContents(bucketPath, hash, seen)
+		shouldContinue = msr.streamBucketContents(bucketPath, seen)
 		if !shouldContinue {
-			return
+			break
 		}
+	}
+
+	// Send map contents
+
+	// since readChan is a buffered channel we block here until one item is consumed on the dequeue side.
+	// this is our intended behavior, which ensures we only buffer exactly bufferSize results in the channel.
+	for _, entry := range seen {
+		msr.readChan <- readResult{entry, nil}
 	}
 }
 
 // streamBucketContents pushes value onto the read channel, returning false when the channel needs to be closed otherwise true
 func (msr *MemoryStateReader) streamBucketContents(
 	bucketPath string,
-	hash historyarchive.Hash,
-	seen map[string]bool,
+	seen map[string]xdr.LedgerEntry,
 ) bool {
 	rdr, e := msr.archive.GetXdrStream(bucketPath)
 	if e != nil {
@@ -121,8 +112,10 @@ func (msr *MemoryStateReader) streamBucketContents(
 	}
 	defer rdr.Close()
 
-	n := 0
+	n := -1
 	for {
+		n++
+
 		var entry xdr.BucketEntry
 		if e = rdr.ReadOne(&entry); e != nil {
 			if e == io.EOF {
@@ -133,30 +126,42 @@ func (msr *MemoryStateReader) streamBucketContents(
 			return false
 		}
 
-		liveEntry, ok := entry.GetLiveEntry()
-		if ok {
-			// ignore entry if we've seen it previously
-			key := liveEntry.LedgerKey()
-			keyBytes, e := key.MarshalBinary()
-			if e != nil {
-				msr.readChan <- readResult{xdr.LedgerEntry{}, fmt.Errorf("Error marshaling XDR record %d of bucketPath '%s': %s", n, bucketPath, e)}
-				return false
-			}
-			shasum := fmt.Sprintf("%x", sha256.Sum256(keyBytes))
+		var key xdr.LedgerKey
 
-			if seen[shasum] {
-				n++
-				continue
-			}
-			seen[shasum] = true
-
-			// since readChan is a buffered channel we block here until one item is consumed on the dequeue side.
-			// this is our intended behavior, which ensures we only buffer exactly bufferSize results in the channel.
-			msr.readChan <- readResult{liveEntry, nil}
+		switch entry.Type {
+		case xdr.BucketEntryTypeLiveentry:
+			liveEntry := entry.MustLiveEntry()
+			key = liveEntry.LedgerKey()
+		case xdr.BucketEntryTypeDeadentry:
+			key = entry.MustDeadEntry()
+		case xdr.BucketEntryTypeMetaentry:
+			// Ignore
+		default:
+			panic(fmt.Sprintf("Shouldn't happen in protocol <=10: BucketEntryType=%d", entry.Type))
 		}
-		// we can ignore dead entries because we're only ever concerned with the first live entry values
-		n++
+
+		// Process accounts only for now
+		if key.Type != xdr.LedgerEntryTypeAccount {
+			continue
+		}
+
+		keyBytes, e := key.MarshalBinary()
+		if e != nil {
+			msr.readChan <- readResult{xdr.LedgerEntry{}, fmt.Errorf("Error marshaling XDR record %d of bucketPath '%s': %s", n, bucketPath, e)}
+			return false
+		}
+
+		h := base64.StdEncoding.EncodeToString(keyBytes)
+
+		switch entry.Type {
+		case xdr.BucketEntryTypeLiveentry:
+			seen[h] = entry.MustLiveEntry()
+		case xdr.BucketEntryTypeDeadentry:
+			delete(seen, h)
+		}
 	}
+
+	panic("Shouldn't happen")
 }
 
 // GetSequence impl.

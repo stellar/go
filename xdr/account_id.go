@@ -7,6 +7,10 @@ import (
 	"github.com/stellar/go/strkey"
 )
 
+func (aid *AccountId) MarshalJSON() ([]byte, error) {
+	return []byte(`"` + aid.Address() + `"`), nil
+}
+
 // Address returns the strkey encoded form of this AccountId.  This method will
 // panic if the accountid is backed by a public key of an unknown type.
 func (aid *AccountId) Address() string {

@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"os"
 	"sync"
 
 	"github.com/stellar/go/exp/ingest/io"
@@ -107,7 +108,14 @@ type PrintAllProcessor struct {
 func (p *PrintAllProcessor) ProcessState(store *pipeline.Store, r io.StateReader, w io.StateWriteCloser) error {
 	defer w.Close()
 
-	var accounts []string
+	f, err := os.Create("./accounts.txt")
+	if err != nil {
+		return err
+	}
+
+	defer f.Close()
+
+	// var accounts []string
 
 	entries := 0
 	for {
@@ -123,16 +131,16 @@ func (p *PrintAllProcessor) ProcessState(store *pipeline.Store, r io.StateReader
 		entries++
 		switch entry.Data.Type {
 		case xdr.LedgerEntryTypeAccount:
-			accounts = append(accounts, entry.Data.Account.AccountId.Address())
+			fmt.Fprintln(f, entry.Data.Account.AccountId.Address())
 		default:
 			// Ignore for now
 		}
 	}
 
-	fmt.Printf("Found %d entries:\n", entries)
-	for _, account := range accounts {
-		fmt.Println(account)
-	}
+	// fmt.Printf("Found %d entries:\n", entries)
+	// for _, account := range accounts {
+	// 	fmt.Println(account)
+	// }
 
 	return nil
 }
