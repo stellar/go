@@ -71,11 +71,7 @@ func main() {
 	cmd := flag.Arg(0)
 	switch cmd {
 	case "serve":
-		_, err := keystore.NewService(ctx, db)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "error initializing service object: %v\n", err)
-			os.Exit(1)
-		}
+		keystore.NewService(ctx, db)
 
 		addr := ":8443"
 		server := &http.Server{

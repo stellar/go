@@ -1,9 +1,8 @@
 package keystore
 
 import (
-	"context"
 	"database/sql"
-	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -14,11 +13,10 @@ import (
 	"github.com/stellar/go/support/render/problem"
 )
 
-var errBadKeysBlob = errors.New("invalid base64 encoding string")
-
 func init() {
 	// register problems
 	problem.RegisterError(sql.ErrNoRows, problem.NotFound)
+	problem.RegisterError(errBadKeysBlob, probInvalidInput)
 
 	// register service host as an empty string
 	problem.RegisterHost("")
@@ -34,7 +32,7 @@ func ServeMux(s *Service) http.Handler {
 	return mux
 }
 
-func storeKeysHandler(f func(context.Context, []byte) ([]byte, error)) http.Handler {
+func storeKeysHandler(f interface{}) http.Handler {
 	return http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
 		ctx := req.Context()
 
@@ -44,22 +42,13 @@ func storeKeysHandler(f func(context.Context, []byte) ([]byte, error)) http.Hand
 			return
 		}
 
-		data, err := base64.RawURLEncoding.DecodeString(string(body))
+		var input storeKeysRequest
+		err = json.Unmarshal(body, &input)
 		if err != nil {
-			problem.Render(ctx, rw, errBadKeysBlob)
-			return
+			problem.Render(ctx, rw, err)
 		}
 
-		encodeResult := func(context.Context) (string, error) {
-			res, err := f(ctx, data)
-			if err != nil {
-				return "", err
-			}
-
-			return base64.RawURLEncoding.EncodeToString(res), nil
-		}
-
-		h, err := hal.Handler(encodeResult, nil)
+		h, err := hal.Handler(f, input)
 		if err != nil {
 			panic(err)
 		}
