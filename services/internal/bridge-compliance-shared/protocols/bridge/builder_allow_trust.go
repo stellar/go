@@ -1,9 +1,9 @@
 package bridge
 
 import (
-	b "github.com/stellar/go/build"
 	shared "github.com/stellar/go/services/internal/bridge-compliance-shared"
 	"github.com/stellar/go/services/internal/bridge-compliance-shared/http/helpers"
+	"github.com/stellar/go/txnbuild"
 )
 
 // AllowTrustOperationBody represents allow_trust operation
@@ -14,23 +14,33 @@ type AllowTrustOperationBody struct {
 	Authorize bool
 }
 
-// ToTransactionMutator returns stellar/go TransactionMutator
-func (op AllowTrustOperationBody) ToTransactionMutator() b.TransactionMutator {
-	mutators := []interface{}{
-		b.AllowTrustAsset{op.AssetCode},
-		b.Trustor{op.Trustor},
-		b.Authorize{op.Authorize},
+// Build returns a txnbuild.Operation
+func (op AllowTrustOperationBody) Build() txnbuild.Operation {
+	txnOp := txnbuild.AllowTrust{
+		Trustor:   op.Trustor,
+		Authorize: op.Authorize,
 	}
 
 	if op.Source != nil {
-		mutators = append(mutators, b.SourceAccount{*op.Source})
+		txnOp.SourceAccount = &txnbuild.SimpleAccount{AccountID: *op.Source}
+		txnOp.Type = txnbuild.CreditAsset{Code: op.AssetCode, Issuer: *op.Source}
 	}
 
-	return b.AllowTrust(mutators...)
+	return &txnOp
 }
 
 // Validate validates if operation body is valid.
 func (op AllowTrustOperationBody) Validate() error {
+	// Note (Peter 23-05-2019): We need source account to be set here because it is used for
+	// creating an asset type which is needed by txnbuild.AllowTrust.
+	// to do: Update documentation for bridge server to indicate that source account is required for
+	// AllowTrust operation. Alternatively, update txnbuild to ignore issuer when building
+	// AllowTrust operations.
+
+	if op.Source == nil {
+		return helpers.NewInvalidParameterError("source", "Source must be specified for AllowTrust operation.")
+	}
+
 	if !shared.IsValidAssetCode(op.AssetCode) {
 		return helpers.NewInvalidParameterError("asset_code", "Asset code is invalid")
 	}
