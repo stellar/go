@@ -1,10 +1,7 @@
 package keystore
 
 import (
-	"database/sql"
-	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 
 	"github.com/stellar/go/support/errors"
@@ -14,10 +11,6 @@ import (
 )
 
 func init() {
-	// register problems
-	problem.RegisterError(sql.ErrNoRows, problem.NotFound)
-	problem.RegisterError(errBadKeysBlob, probInvalidInput)
-
 	// register service host as an empty string
 	problem.RegisterHost("")
 }
@@ -27,34 +20,21 @@ func wrapMiddleware(handler http.Handler) http.Handler {
 }
 
 func ServeMux(s *Service) http.Handler {
+	jsonIOHandler := func(f interface{}) http.Handler {
+		return wrapMiddleware(jsonHandler(f))
+	}
+
 	mux := http.NewServeMux()
-	mux.Handle("/store-keys", wrapMiddleware(storeKeysHandler(s.storeKeys)))
+	mux.Handle("/store-keys", jsonIOHandler(s.storeKeys))
 	return mux
 }
 
-func storeKeysHandler(f interface{}) http.Handler {
-	return http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
-		ctx := req.Context()
-
-		body, err := ioutil.ReadAll(req.Body)
-		if err != nil {
-			problem.Render(ctx, rw, err)
-			return
-		}
-
-		var input storeKeysRequest
-		err = json.Unmarshal(body, &input)
-		if err != nil {
-			problem.Render(ctx, rw, err)
-		}
-
-		h, err := hal.Handler(f, input)
-		if err != nil {
-			panic(err)
-		}
-
-		h.ServeHTTP(rw, req)
-	})
+func jsonHandler(f interface{}) http.Handler {
+	h, err := hal.PostHandler(f)
+	if err != nil {
+		panic(err)
+	}
+	return h
 }
 
 func recoverHandler(next http.Handler) http.Handler {
