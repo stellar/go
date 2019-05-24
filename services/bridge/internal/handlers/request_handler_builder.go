@@ -116,39 +116,5 @@ func (rh *RequestHandler) Builder(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	/*
-		mutators := []b.TransactionMutator{
-			b.SourceAccount{request.Source},
-			b.Sequence{sequenceNumber},
-			b.Network{rh.Config.NetworkPassphrase},
-		}
-
-		for _, operation := range request.Operations {
-			mutators = append(mutators, operation.Body.ToTransactionMutator())
-		}
-
-		tx, err := b.Transaction(mutators...)
-
-		if err != nil {
-			log.WithFields(log.Fields{"err": err, "request": request}).Error("TransactionBuilder returned error")
-			helpers.Write(w, helpers.InternalServerError)
-			return
-		}
-
-		txe, err := tx.Sign(request.Signers...)
-		if err != nil {
-			log.WithFields(log.Fields{"err": err, "request": request}).Error("Error signing transaction")
-			helpers.Write(w, helpers.InternalServerError)
-			return
-		}
-
-		txeB64, err := txe.Base64()
-		if err != nil {
-			log.WithFields(log.Fields{"err": err, "request": request}).Error("Error encoding transaction envelope")
-			helpers.Write(w, helpers.InternalServerError)
-			return
-		}
-	*/
-
 	helpers.Write(w, &bridge.BuilderResponse{TransactionEnvelope: txeBase64})
 }

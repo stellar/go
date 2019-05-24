@@ -168,62 +168,6 @@ func (ts *TransactionSubmitter) SignAndSubmitRawTransaction(paymentID *string, s
 		}
 	}
 
-	/*
-		nullPaymentID := sql.NullString{Valid: false}
-		if paymentID != nil {
-			nullPaymentID = sql.NullString{
-				String: *paymentID,
-				Valid:  true,
-			}
-		}
-
-		sentTransaction := &db.SentTransaction{
-			PaymentID:     nullPaymentID,
-			TransactionID: hex.EncodeToString(transactionHashBytes[:]),
-			Status:        db.SentTransactionStatusSending,
-			Source:        account.Keypair.Address(),
-			SubmittedAt:   ts.now(),
-			EnvelopeXdr:   txeB64,
-		}
-		err = ts.Database.InsertSentTransaction(sentTransaction)
-		if err != nil {
-			ts.log.WithFields(logrus.Fields{"err": err}).Error("Error inserting sent transaction")
-			return
-		}
-
-		ts.log.WithFields(logrus.Fields{"tx": txeB64}).Info("Submitting transaction")
-
-		var herr *hc.Error
-		response, err = ts.Horizon.SubmitTransactionXDR(txeB64)
-		if err == nil {
-			sentTransaction.Status = db.SentTransactionStatusSuccess
-			sentTransaction.Ledger = &response.Ledger
-			now := time.Now()
-			sentTransaction.SucceededAt = &now
-		} else {
-			var isHorizonError bool
-			herr, isHorizonError = err.(*hc.Error)
-			if !isHorizonError {
-				ts.log.WithFields(logrus.Fields{"err": err}).Error("Error submitting transaction ", err)
-				return
-			}
-
-			var result string
-			result, err = herr.ResultString()
-			if err != nil {
-				result = errors.Wrap(err, "Error getting tx result").Error()
-			}
-			sentTransaction.Status = db.SentTransactionStatusFailure
-			sentTransaction.ResultXdr = &result
-		}
-
-		err = ts.Database.UpdateSentTransaction(sentTransaction)
-		if err != nil {
-			ts.log.WithFields(logrus.Fields{"err": err}).Error("Error updating sent transaction")
-			return
-		}
-	*/
-
 	// Sync sequence number
 	if herr != nil {
 		codes, rerr := herr.ResultCodes()
@@ -297,37 +241,10 @@ func (ts *TransactionSubmitter) SubmitTransaction(paymentID *string, seed string
 		return hProtocol.TransactionSuccess{}, errors.Wrap(err, "unable to get transaction hash")
 	}
 
-	/*
-		operationMutator, ok := operation.(build.TransactionMutator)
-		if !ok {
-			ts.log.Error("Cannot cast operationMutator to build.TransactionMutator")
-			return hProtocol.TransactionSuccess{}, errors.New("Cannot cast operationMutator to build.TransactionMutator")
-		}
-
-		mutators := []build.TransactionMutator{
-			build.SourceAccount{account.Seed},
-			ts.Network,
-			operationMutator,
-		}
-
-		if memo != nil {
-			memoMutator, ok := memo.(build.TransactionMutator)
-			if !ok {
-				ts.log.Error("Cannot cast memo to build.TransactionMutator")
-				return hProtocol.TransactionSuccess{}, errors.New("Cannot cast memo to build.TransactionMutator")
-			}
-			mutators = append(mutators, memoMutator)
-		}
-
-		txBuilder, err := build.Transaction(mutators...)
-		if err != nil {
-			return hProtocol.TransactionSuccess{}, errors.Wrap(err, "Error building a transaction")
-		}
-	*/
 	return ts.SubmitAndSave(paymentID, tx.SourceAccount.GetAccountID(), txe, hex.EncodeToString(txHashBytes[:]))
-	// return ts.SignAndSubmitRawTransaction(paymentID, seed, tx.)
 }
 
+// SubmitAndSave sumbits a transaction to horizon and saves the details in the bridge server database.
 func (ts *TransactionSubmitter) SubmitAndSave(paymentID *string, sourceAccount, txeB64, txHash string) (response hProtocol.TransactionSuccess, err error) {
 	nullPaymentID := sql.NullString{Valid: false}
 	if paymentID != nil {
