@@ -36,12 +36,7 @@ func PostHandler(fn interface{}) (http.Handler, error) {
 		return nil, errors.Wrap(err, "parsing function prototype")
 	}
 
-	readFromBody := false
-	if inType != nil {
-		readFromBody = true
-	}
-
-	return &handler{fv, inType, reflect.Value{}, readFromBody}, nil
+	return &handler{fv, inType, reflect.Value{}, inType != nil}, nil
 }
 
 // Handler returns an HTTP Handler for function fn.
