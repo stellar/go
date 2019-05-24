@@ -11,6 +11,9 @@ import (
 )
 
 func init() {
+	// register errors
+	problem.RegisterError(hal.ErrBadRequest, probInvalidRequest)
+
 	// register service host as an empty string
 	problem.RegisterHost("")
 }
