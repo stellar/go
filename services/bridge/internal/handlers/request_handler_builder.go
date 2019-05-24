@@ -74,7 +74,7 @@ func (rh *RequestHandler) Builder(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	txOps := make([]txnbuild.Operation, 1)
+	var txOps []txnbuild.Operation
 	for _, operation := range request.Operations {
 		txOps = append(txOps, operation.Body.Build())
 	}

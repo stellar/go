@@ -64,7 +64,7 @@ func (op PathPaymentOperationBody) ToValuesSpecial(values url.Values) {
 // Build returns a txnbuild.Operation
 func (op PathPaymentOperationBody) Build() txnbuild.Operation {
 
-	paths := make([]txnbuild.Asset, 1)
+	var paths []txnbuild.Asset
 
 	for _, asset := range op.Path {
 		paths = append(paths, asset.ToBaseAsset())
