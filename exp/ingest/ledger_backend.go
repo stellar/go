@@ -1,7 +1,10 @@
 package ingest
 
 import (
+	"time"
+
 	"github.com/jmoiron/sqlx"
+	log "github.com/sirupsen/logrus"
 	"github.com/stellar/go/support/db"
 	"github.com/stellar/go/support/errors"
 )
@@ -20,10 +23,14 @@ type LedgerBackend interface {
 }
 
 type DatabaseBackend struct {
-	session CoreSession
+	session    CoreSession
+	lastLedger Ledger
 }
 
 func (dbb *DatabaseBackend) GetLatestLedgerSequence() (uint32, error) {
+	if dbb.session == (CoreSession{}) {
+		return 0, errors.New("no session configured - call CreateSesion() first")
+	}
 	// TODO: Assumes connection is already set up
 	// Call DB and find latest sequence number
 	var ledger []Ledger
@@ -31,6 +38,8 @@ func (dbb *DatabaseBackend) GetLatestLedgerSequence() (uint32, error) {
 	if err != nil {
 		return 0, errors.Wrap(err, "couldn't select ledger sequence")
 	}
+
+	log.Infof("latest ledger is %d, closed at %s (%d)", ledger[0].LedgerSeq, time.Unix(ledger[0].CloseTime, 0), ledger[0].CloseTime)
 
 	return ledger[0].LedgerSeq, nil
 }
@@ -71,7 +80,7 @@ type TXHistory struct {
 }
 
 type Ledger struct {
-	// TODO: Check sizes of ints
+	// TODO: Could use horizon/internal/db2/core/main core.LedgerHeader after refactoring
 	LedgerSeq uint32 `db:"ledgerseq"`
-	CloseTime int    `db:"closetime"`
+	CloseTime int64  `db:"closetime"`
 }
