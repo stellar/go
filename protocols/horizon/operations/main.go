@@ -204,7 +204,7 @@ func (this Base) GetType() string {
 	return this.Type
 }
 
-// GetType returns the ID of type of operation
+// GetTypeI returns the ID of type of operation
 func (this Base) GetTypeI() int32 {
 	return this.TypeI
 }
