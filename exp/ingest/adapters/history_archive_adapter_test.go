@@ -5,6 +5,7 @@ import (
 	"log"
 	"testing"
 
+	"github.com/stellar/go/exp/ingest/io"
 	"github.com/stellar/go/support/historyarchive"
 
 	"github.com/stretchr/testify/assert"
@@ -56,11 +57,11 @@ func TestGetState_Read(t *testing.T) {
 		return
 	}
 
-	ok, le, e := sr.Read()
+	le, e := sr.Read()
 	if !assert.NoError(t, e) {
 		return
 	}
-	assert.Equal(t, ok, true)
+	assert.NotEqual(t, e, io.EOF)
 
 	log.Printf("%v\n", le)
 	if !assert.NotNil(t, le) {

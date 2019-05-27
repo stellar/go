@@ -12,6 +12,7 @@ import (
 	"github.com/stellar/go/exp/ingest/io"
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/xdr"
+	"github.com/stretchr/testify/assert"
 )
 
 func randomAccountId() xdr.AccountId {
@@ -101,11 +102,13 @@ func TestStore(t *testing.T) {
 	s.Put("value", v.(int)+1)
 	s.Unlock()
 
-	fmt.Println(s.Get("value"))
+	assert.Equal(t, 1, s.Get("value"))
 }
 
 func TestBuffer(t *testing.T) {
 	buffer := &bufferedStateReadWriteCloser{}
+	write := 20
+	read := 0
 
 	var wg sync.WaitGroup
 	wg.Add(2)
@@ -113,7 +116,7 @@ func TestBuffer(t *testing.T) {
 	go func() {
 		defer wg.Done()
 		for {
-			entry, err := buffer.Read()
+			_, err := buffer.Read()
 			if err != nil {
 				if err == io.EOF {
 					break
@@ -121,25 +124,24 @@ func TestBuffer(t *testing.T) {
 					panic(err)
 				}
 			}
-			fmt.Println("Read", entry.Data.Account.AccountId.Address())
-			time.Sleep(4 * time.Second)
+			read++
 		}
 	}()
 
 	go func() {
 		defer wg.Done()
-		for i := 0; i < 20; i++ {
+		for i := 0; i < write; i++ {
 			buffer.Write(AccountLedgerEntry())
-			fmt.Println("Wrote")
-			time.Sleep(time.Second)
 		}
 		buffer.Close()
 	}()
 
 	wg.Wait()
+
+	assert.Equal(t, 20, read)
 }
 
-func TestPipeline(t *testing.T) {
+func ExamplePipeline(t *testing.T) {
 	pipeline := &Pipeline{}
 
 	passthroughProcessor := &PassthroughProcessor{}

@@ -25,7 +25,6 @@ type MemoryStateReader struct {
 	has      *historyarchive.HistoryArchiveState
 	archive  *historyarchive.Archive
 	sequence uint32
-	active   bool
 	readChan chan readResult
 	once     *sync.Once
 }
@@ -44,7 +43,6 @@ func MakeMemoryStateReader(archive *historyarchive.Archive, sequence uint32, buf
 		has:      &has,
 		archive:  archive,
 		sequence: sequence,
-		active:   false,
 		readChan: make(chan readResult, bufferSize),
 		once:     &sync.Once{},
 	}, nil
