@@ -5,7 +5,6 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/stellar/go/services/horizon/internal/hchi"
 	"github.com/stellar/go/support/render/problem"
 	"github.com/stretchr/testify/assert"
 )
@@ -33,17 +32,4 @@ func TestCommonProblems(t *testing.T) {
 			assert.Equal(t, tc.expectedCode, w.Code)
 		})
 	}
-}
-
-func TestInflate(t *testing.T) {
-	// Sets Instance to the request id based on the context
-	ctx2 := hchi.WithRequestID(ctx, "2")
-	p := problem.P{}
-
-	Inflate(ctx2, &p)
-	assert.Equal(t, "2", p.Instance)
-
-	// when no request id is set, instance should be ""
-	Inflate(ctx, &p)
-	assert.Equal(t, "", p.Instance)
 }

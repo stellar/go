@@ -30,13 +30,19 @@ func (rh *RequestHandler) Reprocess(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	operation, err := rh.Horizon.LoadOperation(request.OperationID)
+	operation, err := rh.Horizon.OperationDetail(request.OperationID)
 	if err != nil {
 		helpers.Write(w, &bridge.ReprocessResponse{Status: "error", Message: err.Error()})
 		return
 	}
 
-	err = rh.PaymentListener.ReprocessPayment(operation, request.Force)
+	bridgePayment, err := rh.PaymentListener.ConvertToBridgePayment(operation)
+	if err != nil {
+		helpers.Write(w, &bridge.ReprocessResponse{Status: "error", Message: err.Error()})
+		return
+	}
+
+	err = rh.PaymentListener.ReprocessPayment(bridgePayment, request.Force)
 
 	if err != nil {
 		helpers.Write(w, &bridge.ReprocessResponse{Status: "error", Message: err.Error()})

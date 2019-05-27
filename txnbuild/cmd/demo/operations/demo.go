@@ -395,7 +395,6 @@ func printHorizonError(hError *horizonclient.Error) error {
 	log.Println("Error title:", problem.Title)
 	log.Println("Error status:", problem.Status)
 	log.Println("Error detail:", problem.Detail)
-	log.Println("Error instance:", problem.Instance)
 
 	resultCodes, err := hError.ResultCodes()
 	if err != nil {

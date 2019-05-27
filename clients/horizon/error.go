@@ -20,12 +20,11 @@ func (prob Problem) ToProblem() problem.P {
 	}
 
 	return problem.P{
-		Type:     prob.Type,
-		Title:    prob.Title,
-		Status:   prob.Status,
-		Detail:   prob.Detail,
-		Instance: prob.Instance,
-		Extras:   extras,
+		Type:   prob.Type,
+		Title:  prob.Title,
+		Status: prob.Status,
+		Detail: prob.Detail,
+		Extras: extras,
 	}
 }
 

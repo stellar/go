@@ -9,8 +9,9 @@ import (
 
 	"github.com/sirupsen/logrus"
 	"github.com/stellar/go/build"
-	"github.com/stellar/go/clients/horizon"
+	hc "github.com/stellar/go/clients/horizonclient"
 	"github.com/stellar/go/keypair"
+	hProtocol "github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/services/bridge/internal/db"
 	shared "github.com/stellar/go/services/internal/bridge-compliance-shared"
 	"github.com/stellar/go/support/errors"
@@ -19,13 +20,13 @@ import (
 
 // TransactionSubmitterInterface helps mocking TransactionSubmitter
 type TransactionSubmitterInterface interface {
-	SubmitTransaction(paymentID *string, seed string, operation, memo interface{}) (response horizon.TransactionSuccess, err error)
-	SignAndSubmitRawTransaction(paymentID *string, seed string, tx *xdr.Transaction) (response horizon.TransactionSuccess, err error)
+	SubmitTransaction(paymentID *string, seed string, operation, memo interface{}) (response hProtocol.TransactionSuccess, err error)
+	SignAndSubmitRawTransaction(paymentID *string, seed string, tx *xdr.Transaction) (response hProtocol.TransactionSuccess, err error)
 }
 
 // TransactionSubmitter submits transactions to Stellar Network
 type TransactionSubmitter struct {
-	Horizon       horizon.ClientInterface
+	Horizon       hc.ClientInterface
 	Accounts      map[string]*Account // seed => *Account
 	AccountsMutex sync.Mutex
 	Database      db.Database
@@ -44,7 +45,7 @@ type Account struct {
 
 // NewTransactionSubmitter creates a new TransactionSubmitter
 func NewTransactionSubmitter(
-	horizon horizon.ClientInterface,
+	horizon hc.ClientInterface,
 	database db.Database,
 	networkPassphrase string,
 	now func() time.Time,
@@ -91,7 +92,8 @@ func (ts *TransactionSubmitter) LoadAccount(seed string) (*Account, error) {
 		return ts.Accounts[seed], nil
 	}
 
-	accountResponse, err := ts.Horizon.LoadAccount(ts.Accounts[seed].Keypair.Address())
+	accountRequest := hc.AccountRequest{AccountID: ts.Accounts[seed].Keypair.Address()}
+	accountResponse, err := ts.Horizon.AccountDetail(accountRequest)
 	if err != nil {
 		return nil, err
 	}
@@ -114,7 +116,7 @@ func (ts *TransactionSubmitter) InitAccount(seed string) (err error) {
 // - update sequence number of the transaction to the current one,
 // - sign it,
 // - submit it to the network.
-func (ts *TransactionSubmitter) SignAndSubmitRawTransaction(paymentID *string, seed string, tx *xdr.Transaction) (response horizon.TransactionSuccess, err error) {
+func (ts *TransactionSubmitter) SignAndSubmitRawTransaction(paymentID *string, seed string, tx *xdr.Transaction) (response hProtocol.TransactionSuccess, err error) {
 	account, err := ts.LoadAccount(seed)
 	if err != nil {
 		ts.log.WithFields(logrus.Fields{"err": err}).Error("Error loading account")
@@ -179,8 +181,8 @@ func (ts *TransactionSubmitter) SignAndSubmitRawTransaction(paymentID *string, s
 
 	ts.log.WithFields(logrus.Fields{"tx": txeB64}).Info("Submitting transaction")
 
-	var herr *horizon.Error
-	response, err = ts.Horizon.SubmitTransaction(txeB64)
+	var herr *hc.Error
+	response, err = ts.Horizon.SubmitTransactionXDR(txeB64)
 	if err == nil {
 		sentTransaction.Status = db.SentTransactionStatusSuccess
 		sentTransaction.Ledger = &response.Ledger
@@ -188,7 +190,7 @@ func (ts *TransactionSubmitter) SignAndSubmitRawTransaction(paymentID *string, s
 		sentTransaction.SucceededAt = &now
 	} else {
 		var isHorizonError bool
-		herr, isHorizonError = err.(*horizon.Error)
+		herr, isHorizonError = err.(*hc.Error)
 		if !isHorizonError {
 			ts.log.WithFields(logrus.Fields{"err": err}).Error("Error submitting transaction ", err)
 			return
@@ -222,8 +224,9 @@ func (ts *TransactionSubmitter) SignAndSubmitRawTransaction(paymentID *string, s
 
 		account.Mutex.Lock()
 		ts.log.Print("Syncing sequence number for ", account.Keypair.Address())
-		var accountResponse horizon.Account
-		accountResponse, err = ts.Horizon.LoadAccount(account.Keypair.Address())
+
+		accountRequest := hc.AccountRequest{AccountID: account.Keypair.Address()}
+		accountResponse, err := ts.Horizon.AccountDetail(accountRequest)
 		if err != nil {
 			ts.log.Error("Error updating sequence number ", err)
 		} else {
@@ -237,16 +240,16 @@ func (ts *TransactionSubmitter) SignAndSubmitRawTransaction(paymentID *string, s
 }
 
 // SubmitTransaction builds and submits transaction to Stellar network
-func (ts *TransactionSubmitter) SubmitTransaction(paymentID *string, seed string, operation, memo interface{}) (horizon.TransactionSuccess, error) {
+func (ts *TransactionSubmitter) SubmitTransaction(paymentID *string, seed string, operation, memo interface{}) (hProtocol.TransactionSuccess, error) {
 	account, err := ts.LoadAccount(seed)
 	if err != nil {
-		return horizon.TransactionSuccess{}, errors.Wrap(err, "Error loading an account")
+		return hProtocol.TransactionSuccess{}, errors.Wrap(err, "Error loading an account")
 	}
 
 	operationMutator, ok := operation.(build.TransactionMutator)
 	if !ok {
 		ts.log.Error("Cannot cast operationMutator to build.TransactionMutator")
-		return horizon.TransactionSuccess{}, errors.New("Cannot cast operationMutator to build.TransactionMutator")
+		return hProtocol.TransactionSuccess{}, errors.New("Cannot cast operationMutator to build.TransactionMutator")
 	}
 
 	mutators := []build.TransactionMutator{
@@ -259,14 +262,14 @@ func (ts *TransactionSubmitter) SubmitTransaction(paymentID *string, seed string
 		memoMutator, ok := memo.(build.TransactionMutator)
 		if !ok {
 			ts.log.Error("Cannot cast memo to build.TransactionMutator")
-			return horizon.TransactionSuccess{}, errors.New("Cannot cast memo to build.TransactionMutator")
+			return hProtocol.TransactionSuccess{}, errors.New("Cannot cast memo to build.TransactionMutator")
 		}
 		mutators = append(mutators, memoMutator)
 	}
 
 	txBuilder, err := build.Transaction(mutators...)
 	if err != nil {
-		return horizon.TransactionSuccess{}, errors.Wrap(err, "Error building a transaction")
+		return hProtocol.TransactionSuccess{}, errors.Wrap(err, "Error building a transaction")
 	}
 
 	return ts.SignAndSubmitRawTransaction(paymentID, seed, txBuilder.TX)

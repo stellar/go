@@ -27,7 +27,7 @@ func TestGetAccountInfo(t *testing.T) {
 
 	w := mustInitWeb(context.Background(), &history.Q{tt.HorizonSession()}, &core.Q{tt.CoreSession()}, time.Duration(5), 0, true)
 
-	res, err := w.getAccountInfo(tt.Ctx, &showActionQueryParams{accountID: "GCXKG6RN4ONIEPCMNFB732A436Z5PNDSRLGWK7GBLCMQLIFO4S7EYWVU"})
+	res, err := w.getAccountInfo(tt.Ctx, &showActionQueryParams{AccountID: "GCXKG6RN4ONIEPCMNFB732A436Z5PNDSRLGWK7GBLCMQLIFO4S7EYWVU"})
 	tt.Assert.NoError(err)
 
 	account, ok := res.(*horizon.Account)
@@ -46,7 +46,7 @@ func TestGetAccountInfo(t *testing.T) {
 		}
 	}
 
-	_, err = w.getAccountInfo(tt.Ctx, &showActionQueryParams{accountID: "GDBAPLDCAEJV6LSEDFEAUDAVFYSNFRUYZ4X75YYJJMMX5KFVUOHX46SQ"})
+	_, err = w.getAccountInfo(tt.Ctx, &showActionQueryParams{AccountID: "GDBAPLDCAEJV6LSEDFEAUDAVFYSNFRUYZ4X75YYJJMMX5KFVUOHX46SQ"})
 	tt.Assert.Equal(errors.Cause(err), sql.ErrNoRows)
 }
 
@@ -59,9 +59,9 @@ func TestGetTransactionPage(t *testing.T) {
 
 	// filter by account
 	params := &indexActionQueryParams{
-		accountID:        "GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H",
-		pagingParams:     defaultPage,
-		includeFailedTxs: true,
+		AccountID:        "GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H",
+		PagingParams:     defaultPage,
+		IncludeFailedTxs: true,
 	}
 
 	page, err := w.getTransactionPage(ctx, params)
@@ -74,9 +74,9 @@ func TestGetTransactionPage(t *testing.T) {
 
 	// filter by ledger
 	params = &indexActionQueryParams{
-		ledgerID:         3,
-		pagingParams:     defaultPage,
-		includeFailedTxs: true,
+		LedgerID:         3,
+		PagingParams:     defaultPage,
+		IncludeFailedTxs: true,
 	}
 
 	page, err = w.getTransactionPage(ctx, params)
@@ -89,8 +89,8 @@ func TestGetTransactionPage(t *testing.T) {
 
 	// no filter
 	params = &indexActionQueryParams{
-		pagingParams:     defaultPage,
-		includeFailedTxs: true,
+		PagingParams:     defaultPage,
+		IncludeFailedTxs: true,
 	}
 
 	page, err = w.getTransactionPage(ctx, params)
