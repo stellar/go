@@ -103,19 +103,18 @@ func (n *AccountsForSignerProcessor) IsConcurrent() bool {
 
 type PrintAllProcessor struct {
 	SimpleProcessor
+	Filename string
 }
 
 func (p *PrintAllProcessor) ProcessState(store *pipeline.Store, r io.StateReader, w io.StateWriteCloser) error {
 	defer w.Close()
 
-	f, err := os.Create("./accounts.txt")
+	f, err := os.Create(p.Filename)
 	if err != nil {
 		return err
 	}
 
 	defer f.Close()
-
-	// var accounts []string
 
 	entries := 0
 	for {
@@ -131,16 +130,17 @@ func (p *PrintAllProcessor) ProcessState(store *pipeline.Store, r io.StateReader
 		entries++
 		switch entry.Data.Type {
 		case xdr.LedgerEntryTypeAccount:
-			fmt.Fprintln(f, entry.Data.Account.AccountId.Address())
+			fmt.Fprintf(
+				f,
+				"%s,%d,%d\n",
+				entry.Data.Account.AccountId.Address(),
+				entry.Data.Account.Balance,
+				entry.Data.Account.SeqNum,
+			)
 		default:
 			// Ignore for now
 		}
 	}
-
-	// fmt.Printf("Found %d entries:\n", entries)
-	// for _, account := range accounts {
-	// 	fmt.Println(account)
-	// }
 
 	return nil
 }

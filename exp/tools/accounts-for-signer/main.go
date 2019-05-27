@@ -19,14 +19,12 @@ func main() {
 
 	historyAdapter := ingestadapters.MakeHistoryArchiveAdapter(archive)
 
-	// seq, err := historyAdapter.GetLatestLedgerSequence()
-	// if err != nil {
-	// 	panic(err)
-	// }
+	seq, err := historyAdapter.GetLatestLedgerSequence()
+	if err != nil {
+		panic(err)
+	}
 
-	seq := uint32(23991935)
-	//            23975770
-	// lastmodled 23608331
+	// seq := uint32(23991935)
 
 	fmt.Printf("Getting data for ledger seq = %d\n", seq)
 
@@ -64,9 +62,8 @@ func buildPipeline() (*pipeline.Pipeline, error) {
 		p.Node(&EntryTypeFilter{Type: xdr.LedgerEntryTypeAccount}).
 			Pipe(
 				// Finds accounts for a single signer
-				// p.Node(&AccountsForSignerProcessor{Signer: "GBMALBYJT6A73SYQWOWVVCGSPUPJPBX4AFDJ7A63GG64QCNRCAFYWWEN"}).
-				// Pipe(),
-				p.Node(&PrintAllProcessor{}),
+				p.Node(&AccountsForSignerProcessor{Signer: "GBMALBYJT6A73SYQWOWVVCGSPUPJPBX4AFDJ7A63GG64QCNRCAFYWWEN"}).
+					Pipe(p.Node(&PrintAllProcessor{Filename: "./accounts_for_signer.txt"})),
 			),
 	)
 
