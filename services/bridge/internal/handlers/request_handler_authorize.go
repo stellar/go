@@ -9,6 +9,7 @@ import (
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/services/internal/bridge-compliance-shared/http/helpers"
 	"github.com/stellar/go/services/internal/bridge-compliance-shared/protocols/bridge"
+	"github.com/stellar/go/txnbuild"
 )
 
 // Authorize implements /authorize endpoint
@@ -35,7 +36,7 @@ func (rh *RequestHandler) Authorize(w http.ResponseWriter, r *http.Request) {
 
 	kp, err := keypair.Parse(rh.Config.Accounts.AuthorizingSeed)
 	if err != nil {
-		log.WithFields(log.Fields{"err": err}).Error("Error parsinf authorizing seed")
+		log.WithFields(log.Fields{"err": err}).Error("Error parsing authorizing seed")
 		helpers.Write(w, helpers.InternalServerError)
 	}
 
@@ -53,7 +54,7 @@ func (rh *RequestHandler) Authorize(w http.ResponseWriter, r *http.Request) {
 	submitResponse, err := rh.TransactionSubmitter.SubmitTransaction(
 		nil,
 		rh.Config.Accounts.AuthorizingSeed,
-		operationBuilder,
+		[]txnbuild.Operation{operationBuilder},
 		nil,
 	)
 

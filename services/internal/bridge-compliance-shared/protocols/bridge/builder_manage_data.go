@@ -17,9 +17,13 @@ type ManageDataOperationBody struct {
 
 // Build returns a txnbuild.Operation
 func (op ManageDataOperationBody) Build() txnbuild.Operation {
+
+	// This is validated in Validate()
+	data, _ := base64.StdEncoding.DecodeString(op.Data)
+
 	txnOp := txnbuild.ManageData{
 		Name:  op.Name,
-		Value: []byte(op.Data),
+		Value: data,
 	}
 
 	if op.Source != nil {

@@ -11,6 +11,7 @@ import (
 
 	"github.com/stellar/go/address"
 	hc "github.com/stellar/go/clients/horizonclient"
+	"github.com/stellar/go/keypair"
 	hProtocol "github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/txnbuild"
 
@@ -188,13 +189,24 @@ func (rh *RequestHandler) standardPayment(w http.ResponseWriter, request *bridge
 		return
 	}
 
+	var rSource *string
+	if request.Source != "" {
+		kp, err := keypair.Parse(request.Source)
+		if err != nil {
+			log.WithFields(log.Fields{"error": err}).Error("Unable to convert seed to keypair")
+			helpers.Write(w, helpers.NewInvalidParameterError("source", "Source must be a valid secret seed."))
+		}
+		kpAddress := kp.Address()
+		rSource = &kpAddress
+	}
+
 	var operationBuilder txnbuild.Operation
 
 	// check if Path payment
 
 	if request.SendMax != "" {
 		paymentOp := bridge.PathPaymentOperationBody{
-			Source:            &request.Source,
+			Source:            rSource,
 			SendMax:           request.SendMax,
 			SendAsset:         protocols.Asset{Code: request.SendAssetCode, Issuer: request.SendAssetIssuer},
 			Destination:       request.Destination,
@@ -209,7 +221,7 @@ func (rh *RequestHandler) standardPayment(w http.ResponseWriter, request *bridge
 	// if payment is to a custom asset
 	if request.AssetCode != "" && request.AssetIssuer != "" {
 		paymentOp := bridge.PaymentOperationBody{
-			Source:      &request.Source,
+			Source:      rSource,
 			Destination: request.Destination,
 			Amount:      request.Amount,
 			Asset:       protocols.Asset{Code: request.AssetCode, Issuer: request.AssetIssuer},
@@ -226,14 +238,14 @@ func (rh *RequestHandler) standardPayment(w http.ResponseWriter, request *bridge
 	if err != nil {
 		log.WithFields(log.Fields{"error": err}).Error("Error loading account")
 		paymentOp := bridge.CreateAccountOperationBody{
-			Source:          &request.Source,
+			Source:          rSource,
 			Destination:     request.Destination,
 			StartingBalance: request.Amount,
 		}
 		operationBuilder = paymentOp.Build()
 	} else {
 		paymentOp := bridge.PaymentOperationBody{
-			Source:      &request.Source,
+			Source:      rSource,
 			Destination: request.Destination,
 			Amount:      request.Amount,
 			Asset:       protocols.Asset{Code: request.AssetCode, Issuer: request.AssetIssuer},
@@ -288,7 +300,7 @@ func (rh *RequestHandler) standardPayment(w http.ResponseWriter, request *bridge
 		return
 	}
 
-	submitResponse, err := rh.TransactionSubmitter.SubmitTransaction(paymentID, request.Source, operationBuilder, txMemo)
+	submitResponse, err := rh.TransactionSubmitter.SubmitTransaction(paymentID, request.Source, []txnbuild.Operation{operationBuilder}, txMemo)
 	rh.handleTransactionSubmitResponse(w, submitResponse, err)
 }
 

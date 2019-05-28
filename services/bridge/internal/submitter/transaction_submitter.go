@@ -20,7 +20,7 @@ import (
 
 // TransactionSubmitterInterface helps mocking TransactionSubmitter
 type TransactionSubmitterInterface interface {
-	SubmitTransaction(paymentID *string, seed string, operation, memo interface{}) (response hProtocol.TransactionSuccess, err error)
+	SubmitTransaction(paymentID *string, seed string, operation []txnbuild.Operation, memo txnbuild.Memo) (response hProtocol.TransactionSuccess, err error)
 	SignAndSubmitRawTransaction(paymentID *string, seed string, tx *xdr.Transaction) (response hProtocol.TransactionSuccess, err error)
 }
 
