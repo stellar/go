@@ -17,7 +17,6 @@ import (
 	"github.com/stellar/go/services/internal/bridge-compliance-shared/protocols/bridge"
 	callback "github.com/stellar/go/services/internal/bridge-compliance-shared/protocols/compliance"
 	"github.com/stellar/go/txnbuild"
-	"github.com/stellar/go/xdr"
 )
 
 // HandlerSend implements /send endpoint
@@ -248,10 +247,8 @@ func (rh *RequestHandler) HandlerSend(w http.ResponseWriter, r *http.Request) {
 		[]txnbuild.Operation{operationBuilder},
 		memo,
 	)
-
-	txBase64, err := xdr.MarshalBase64(transaction)
 	if err != nil {
-		log.WithFields(log.Fields{"err": err}).Error("Error mashaling transaction")
+		log.WithFields(log.Fields{"err": err}).Error("Error building transaction")
 		helpers.Write(w, helpers.InternalServerError)
 		return
 	}
@@ -259,7 +256,7 @@ func (rh *RequestHandler) HandlerSend(w http.ResponseWriter, r *http.Request) {
 	authData := compliance.AuthData{
 		Sender:         request.Sender,
 		NeedInfo:       rh.Config.NeedsAuth,
-		Tx:             txBase64,
+		Tx:             transaction,
 		AttachmentJSON: string(attachmentJSON),
 	}
 
