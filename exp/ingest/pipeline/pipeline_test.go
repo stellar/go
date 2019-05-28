@@ -258,7 +258,7 @@ func (p *PassthroughProcessor) ProcessState(store *Store, r io.StateReadCloser, 
 			}
 		}
 
-		err := w.Write(entry)
+		err = w.Write(entry)
 		if err != nil {
 			if err == io.ErrClosedPipe {
 				// Reader does not need more data
