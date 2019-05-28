@@ -244,7 +244,10 @@ type PassthroughProcessor struct {
 	SimpleProcessor
 }
 
-func (p *PassthroughProcessor) ProcessState(store *Store, r io.StateReader, w io.StateWriteCloser) error {
+func (p *PassthroughProcessor) ProcessState(store *Store, r io.StateReadCloser, w io.StateWriteCloser) error {
+	defer w.Close()
+	defer r.Close()
+
 	for {
 		entry, err := r.Read()
 		if err != nil {
@@ -255,10 +258,16 @@ func (p *PassthroughProcessor) ProcessState(store *Store, r io.StateReader, w io
 			}
 		}
 
-		w.Write(entry)
+		err := w.Write(entry)
+		if err != nil {
+			if err == io.ErrClosedPipe {
+				// Reader does not need more data
+				return nil
+			}
+			return err
+		}
 	}
 
-	w.Close()
 	return nil
 }
 
@@ -276,7 +285,10 @@ type EntryTypeFilter struct {
 	Type xdr.LedgerEntryType
 }
 
-func (p *EntryTypeFilter) ProcessState(store *Store, r io.StateReader, w io.StateWriteCloser) error {
+func (p *EntryTypeFilter) ProcessState(store *Store, r io.StateReadCloser, w io.StateWriteCloser) error {
+	defer w.Close()
+	defer r.Close()
+
 	for {
 		entry, err := r.Read()
 		if err != nil {
@@ -288,11 +300,17 @@ func (p *EntryTypeFilter) ProcessState(store *Store, r io.StateReader, w io.Stat
 		}
 
 		if entry.Data.Type == p.Type {
-			w.Write(entry)
+			err := w.Write(entry)
+			if err != nil {
+				if err == io.ErrClosedPipe {
+					// Reader does not need more data
+					return nil
+				}
+				return err
+			}
 		}
 	}
 
-	w.Close()
 	return nil
 }
 
@@ -306,7 +324,10 @@ type AccountsForSignerProcessor struct {
 	Signer string
 }
 
-func (p *AccountsForSignerProcessor) ProcessState(store *Store, r io.StateReader, w io.StateWriteCloser) error {
+func (p *AccountsForSignerProcessor) ProcessState(store *Store, r io.StateReadCloser, w io.StateWriteCloser) error {
+	defer w.Close()
+	defer r.Close()
+
 	for {
 		entry, err := r.Read()
 		if err != nil {
@@ -323,13 +344,19 @@ func (p *AccountsForSignerProcessor) ProcessState(store *Store, r io.StateReader
 
 		for _, signer := range entry.Data.Account.Signers {
 			if signer.Key.Address() == p.Signer {
-				w.Write(entry)
+				err := w.Write(entry)
+				if err != nil {
+					if err == io.ErrClosedPipe {
+						// Reader does not need more data
+						return nil
+					}
+					return err
+				}
 				break
 			}
 		}
 	}
 
-	w.Close()
 	return nil
 }
 
@@ -342,9 +369,9 @@ type CountPrefixProcessor struct {
 	Prefix string
 }
 
-func (p *CountPrefixProcessor) ProcessState(store *Store, r io.StateReader, w io.StateWriteCloser) error {
-	// Close writer when we're done
+func (p *CountPrefixProcessor) ProcessState(store *Store, r io.StateReadCloser, w io.StateWriteCloser) error {
 	defer w.Close()
+	defer r.Close()
 
 	count := 0
 
@@ -361,7 +388,14 @@ func (p *CountPrefixProcessor) ProcessState(store *Store, r io.StateReader, w io
 		address := entry.Data.Account.AccountId.Address()
 
 		if strings.HasPrefix(address, p.Prefix) {
-			w.Write(entry)
+			err := w.Write(entry)
+			if err != nil {
+				if err == io.ErrClosedPipe {
+					// Reader does not need more data
+					return nil
+				}
+				return err
+			}
 			count++
 		}
 
@@ -394,10 +428,11 @@ type PrintCountersProcessor struct {
 	SimpleProcessor
 }
 
-func (p *PrintCountersProcessor) ProcessState(store *Store, r io.StateReader, w io.StateWriteCloser) error {
+func (p *PrintCountersProcessor) ProcessState(store *Store, r io.StateReadCloser, w io.StateWriteCloser) error {
 	defer w.Close()
+	defer r.Close()
 
-	// This should be a helper function or a method on `io.StateReader`.
+	// TODO, we should use context with cancel and value to check when pipeline is done.
 	for {
 		_, err := r.Read()
 		if err != nil {
@@ -431,8 +466,9 @@ type PrintAllProcessor struct {
 	SimpleProcessor
 }
 
-func (p *PrintAllProcessor) ProcessState(store *Store, r io.StateReader, w io.StateWriteCloser) error {
+func (p *PrintAllProcessor) ProcessState(store *Store, r io.StateReadCloser, w io.StateWriteCloser) error {
 	defer w.Close()
+	defer r.Close()
 
 	entries := 0
 	for {

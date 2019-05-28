@@ -22,15 +22,17 @@ type readResult struct {
 // MemoryStateReader hides internal structure of buckets from the user so entries returned
 // by `Read()` are exactly the ledger entries present at the given ledger.
 type MemoryStateReader struct {
-	has      *historyarchive.HistoryArchiveState
-	archive  *historyarchive.Archive
-	sequence uint32
-	readChan chan readResult
-	once     *sync.Once
+	has        *historyarchive.HistoryArchiveState
+	archive    *historyarchive.Archive
+	sequence   uint32
+	readChan   chan readResult
+	streamOnce sync.Once
+	closeOnce  sync.Once
+	done       chan bool
 }
 
-// enforce MemoryStateReader to implement StateReader
-var _ StateReader = &MemoryStateReader{}
+// enforce MemoryStateReader to implement StateReadCloser
+var _ StateReadCloser = &MemoryStateReader{}
 
 // MakeMemoryStateReader is a factory method for MemoryStateReader
 func MakeMemoryStateReader(archive *historyarchive.Archive, sequence uint32, bufferSize uint16) (*MemoryStateReader, error) {
@@ -40,20 +42,14 @@ func MakeMemoryStateReader(archive *historyarchive.Archive, sequence uint32, buf
 	}
 
 	return &MemoryStateReader{
-		has:      &has,
-		archive:  archive,
-		sequence: sequence,
-		readChan: make(chan readResult, bufferSize),
-		once:     &sync.Once{},
+		has:        &has,
+		archive:    archive,
+		sequence:   sequence,
+		readChan:   make(chan readResult, bufferSize),
+		streamOnce: sync.Once{},
+		closeOnce:  sync.Once{},
+		done:       make(chan bool),
 	}, nil
-}
-
-func hashToBucketPath(hash historyarchive.Hash) string {
-	return fmt.Sprintf(
-		"bucket/%s/bucket-%s.xdr.gz",
-		historyarchive.HashPrefix(hash).Path(),
-		hash.String(),
-	)
 }
 
 // streamBuckets is internal method that streams buckets from the given HAS.
@@ -81,6 +77,7 @@ func hashToBucketPath(hash historyarchive.Hash) string {
 // required by a given pipeline.
 func (msr *MemoryStateReader) streamBuckets() {
 	defer close(msr.readChan)
+	defer msr.closeOnce.Do(msr.close)
 
 	removed := map[string]bool{}
 	seen := map[string]bool{}
@@ -107,9 +104,8 @@ func (msr *MemoryStateReader) streamBuckets() {
 			return
 		}
 
-		bucketPath := hashToBucketPath(hash)
 		var shouldContinue bool
-		shouldContinue = msr.streamBucketContents(bucketPath, seen, removed)
+		shouldContinue = msr.streamBucketContents(hash, seen, removed)
 		if !shouldContinue {
 			break
 		}
@@ -118,13 +114,13 @@ func (msr *MemoryStateReader) streamBuckets() {
 
 // streamBucketContents pushes value onto the read channel, returning false when the channel needs to be closed otherwise true
 func (msr *MemoryStateReader) streamBucketContents(
-	bucketPath string,
+	hash historyarchive.Hash,
 	seen map[string]bool,
 	removed map[string]bool,
 ) bool {
-	rdr, e := msr.archive.GetXdrStream(bucketPath)
+	rdr, e := msr.archive.GetXdrStreamForHash(hash)
 	if e != nil {
-		msr.readChan <- readResult{xdr.LedgerEntry{}, fmt.Errorf("cannot get xdr stream for bucketPath '%s': %s", bucketPath, e)}
+		msr.readChan <- readResult{xdr.LedgerEntry{}, fmt.Errorf("cannot get xdr stream for hash '%s': %s", hash.String(), e)}
 		return false
 	}
 	defer rdr.Close()
@@ -139,7 +135,7 @@ func (msr *MemoryStateReader) streamBucketContents(
 				// proceed to the next bucket hash
 				return true
 			}
-			msr.readChan <- readResult{xdr.LedgerEntry{}, fmt.Errorf("Error on XDR record %d of bucketPath '%s': %s", n, bucketPath, e)}
+			msr.readChan <- readResult{xdr.LedgerEntry{}, fmt.Errorf("Error on XDR record %d of hash '%s': %s", n, hash.String(), e)}
 			return false
 		}
 
@@ -159,7 +155,7 @@ func (msr *MemoryStateReader) streamBucketContents(
 
 		keyBytes, e := key.MarshalBinary()
 		if e != nil {
-			msr.readChan <- readResult{xdr.LedgerEntry{}, fmt.Errorf("Error marshaling XDR record %d of bucketPath '%s': %s", n, bucketPath, e)}
+			msr.readChan <- readResult{xdr.LedgerEntry{}, fmt.Errorf("Error marshaling XDR record %d of hash '%s': %s", n, hash.String(), e)}
 			return false
 		}
 
@@ -176,6 +172,14 @@ func (msr *MemoryStateReader) streamBucketContents(
 		case xdr.BucketEntryTypeDeadentry:
 			removed[h] = true
 		}
+
+		select {
+		case <-msr.done:
+			// Close() called: stop processing buckets.
+			return false
+		default:
+			continue
+		}
 	}
 
 	panic("Shouldn't happen")
@@ -188,7 +192,7 @@ func (msr *MemoryStateReader) GetSequence() uint32 {
 
 // Read returns a new ledger entry on each call, returning io.EOF when the stream ends.
 func (msr *MemoryStateReader) Read() (xdr.LedgerEntry, error) {
-	msr.once.Do(func() {
+	msr.streamOnce.Do(func() {
 		go msr.streamBuckets()
 	})
 
@@ -203,4 +207,14 @@ func (msr *MemoryStateReader) Read() (xdr.LedgerEntry, error) {
 		return xdr.LedgerEntry{}, errors.Wrap(result.e, "Error while reading from buckets")
 	}
 	return result.entry, nil
+}
+
+func (msr *MemoryStateReader) close() {
+	close(msr.done)
+}
+
+// Close should be called when reading is finished.
+func (msr *MemoryStateReader) Close() error {
+	msr.closeOnce.Do(msr.close)
+	return nil
 }

@@ -10,7 +10,13 @@ import (
 
 type bufferedStateReadWriteCloser struct {
 	initOnce sync.Once
-	buffer   chan xdr.LedgerEntry
+
+	// writeCloseMutex protects from writing to a closed buffer
+	writeCloseMutex sync.Mutex
+	// closeOnce protects from closing buffer twice
+	closeOnce sync.Once
+	buffer    chan xdr.LedgerEntry
+	closed    bool
 
 	readEntries  int
 	wroteEntries int
@@ -44,14 +50,14 @@ type PipelineNode struct {
 
 // StateProcessor defines methods required by state processing pipeline.
 type StateProcessor interface {
-	// ProcessState is a main method of `StateProcessor`. It receives `io.StateReader`
+	// ProcessState is a main method of `StateProcessor`. It receives `io.StateReadCloser`
 	// that contains object passed down the pipeline from the previous procesor. Writes to
 	// `io.StateWriteCloser` will be passed to the next processor. WARNING! `ProcessState`
 	// should **always** call `Close()` on `io.StateWriteCloser` when no more object will be
-	// written.
+	// written and `Close()` on `io.StateReadCloser` when reading is finished.
 	// Data required by following processors (like aggregated data) should be saved in
 	// `Store`. Read `Store` godoc to understand how to use it.
-	ProcessState(store *Store, reader io.StateReader, writeCloser io.StateWriteCloser) (err error)
+	ProcessState(store *Store, readCloser io.StateReadCloser, writeCloser io.StateWriteCloser) (err error)
 	// IsConcurrent defines if processing pipeline should start a single instance
 	// of the processor or multiple instances. Multiple instances will read
 	// from the same StateReader and write to the same StateWriter.

@@ -19,22 +19,31 @@ func (m *multiWriteCloser) Write(entry xdr.LedgerEntry) error {
 		wg.Add(1)
 		go func(w io.StateWriteCloser) {
 			defer wg.Done()
-			err := w.Write(entry)
-			if err != nil {
-				results <- err
-			} else {
-				results <- nil
-			}
+			// We can keep sending entries even when io.ErrClosedPipe is returned
+			// as bufferedStateReadWriteCloser will ignore them (won't add them to
+			// a channel).
+			results <- w.Write(entry)
 		}(w)
 	}
 
 	wg.Wait()
 
+	countClosedPipes := 0
 	for range m.writers {
 		err := <-results
 		if err != nil {
-			return err
+			if err == io.ErrClosedPipe {
+				countClosedPipes++
+			} else {
+				return err
+			}
 		}
+	}
+
+	// When all pipes are closed return `io.ErrClosedPipe` because there are no
+	// active readers anymore.
+	if countClosedPipes == len(m.writers) {
+		return io.ErrClosedPipe
 	}
 
 	return nil

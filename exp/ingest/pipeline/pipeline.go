@@ -63,11 +63,11 @@ func (p *Pipeline) AddStateProcessorTree(rootProcessor *PipelineNode) {
 	p.rootStateProcessor = rootProcessor
 }
 
-func (p *Pipeline) ProcessState(reader io.StateReader) (done chan error) {
-	return p.processStateNode(&Store{}, p.rootStateProcessor, reader)
+func (p *Pipeline) ProcessState(readCloser io.StateReadCloser) (done chan error) {
+	return p.processStateNode(&Store{}, p.rootStateProcessor, readCloser)
 }
 
-func (p *Pipeline) processStateNode(store *Store, node *PipelineNode, reader io.StateReader) chan error {
+func (p *Pipeline) processStateNode(store *Store, node *PipelineNode, readCloser io.StateReadCloser) chan error {
 	outputs := make([]io.StateWriteCloser, len(node.Children))
 
 	for i := range outputs {
@@ -90,7 +90,7 @@ func (p *Pipeline) processStateNode(store *Store, node *PipelineNode, reader io.
 
 	for i := 1; i <= jobs; i++ {
 		wg.Add(1)
-		go func(reader io.StateReader, writer io.StateWriteCloser) {
+		go func(reader io.StateReadCloser, writer io.StateWriteCloser) {
 			defer wg.Done()
 
 			err := node.Processor.ProcessState(store, reader, writer)
@@ -98,13 +98,13 @@ func (p *Pipeline) processStateNode(store *Store, node *PipelineNode, reader io.
 				// TODO return to pipeline error channel
 				panic(err)
 			}
-		}(reader, writer)
+		}(readCloser, writer)
 	}
 
 	go func() {
 		// Update stats
 		for {
-			readBuffer, readBufferIsBufferedStateReadWriteCloser := reader.(*bufferedStateReadWriteCloser)
+			readBuffer, readBufferIsBufferedStateReadWriteCloser := readCloser.(*bufferedStateReadWriteCloser)
 			writeBuffer := writer
 
 			interval := time.Second
