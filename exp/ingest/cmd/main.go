@@ -5,6 +5,7 @@ import (
 
 	log "github.com/sirupsen/logrus"
 	"github.com/stellar/go/exp/ingest"
+	"github.com/stellar/go/support/errors"
 )
 
 const dbURI = "postgres://stellar:postgres@localhost:8002/core"
@@ -33,4 +34,16 @@ func main() {
 	}
 
 	fmt.Println("Latest ledger =", ledgerSequence)
+
+	exists, ledgerCloseMeta, err := dbb.GetLedger(ledgerSequence)
+
+	if !exists {
+		log.Fatalf("Ledger %d was not found", ledgerSequence)
+	}
+
+	if err != nil {
+		errors.Wrap(err, "error reading ledger from backend")
+	}
+
+	fmt.Println(ledgerCloseMeta)
 }

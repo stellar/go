@@ -15,13 +15,19 @@ type CoreSession struct {
 	db.Session
 }
 
-const latestLedgerQuery = "select ledgerseq, closetime from ledgerheaders order by ledgerseq desc limit 1"
+const latestLedgerSeqQuery = "select ledgerseq, closetime from ledgerheaders order by ledgerseq desc limit 1"
 const txHistoryQuery = "select * from txhistory limit 10;"
+const ledgerHeaderQuery = "select ledgerhash, data from ledgerheaders where ledgerseq = "
 
 type LedgerBackend interface {
-	GetLatestLedgerSequence() (uint32, error)
-	GetLedger(uint32) (bool, []byte, error)
+	GetLatestLedgerSequence() (sequence uint32, err error)
+	// The first returned value is false when the ledger does not exist in a backend
+	GetLedger(sequence uint32) (bool, LedgerCloseMeta, error)
 }
+
+// Ensure DatabaseBackend implements LedgerBackend
+// var _ LedgerBackend = &DatabaseBackend{}
+var _ LedgerBackend = (*DatabaseBackend)(nil)
 
 type DatabaseBackend struct {
 	session    CoreSession
@@ -34,7 +40,7 @@ func (dbb *DatabaseBackend) GetLatestLedgerSequence() (uint32, error) {
 	}
 
 	var ledger []LedgerHeader
-	err := dbb.session.SelectRaw(&ledger, latestLedgerQuery)
+	err := dbb.session.SelectRaw(&ledger, latestLedgerSeqQuery)
 	if err != nil {
 		return 0, errors.Wrap(err, "couldn't select ledger sequence")
 	}
@@ -44,15 +50,38 @@ func (dbb *DatabaseBackend) GetLatestLedgerSequence() (uint32, error) {
 	return ledger[0].LedgerSeq, nil
 }
 
+func (dbb *DatabaseBackend) GetLedger(sequence uint32) (bool, LedgerCloseMeta, error) {
+	if dbb.session == (CoreSession{}) {
+		return false, LedgerCloseMeta{}, errors.New("no session configured - call CreateSesion() first")
+	}
+
+	// Check whether ledger is available
+	latest, err := dbb.GetLatestLedgerSequence()
+	if err != nil {
+		return false, LedgerCloseMeta{}, err
+	}
+	if latest < sequence {
+		return false, LedgerCloseMeta{}, nil
+	}
+
+	// Query
+	// lcm := LedgerCloseMeta{}
+	// Get LedgerHeader
+	// TODO: Try this out. Probably will need custom deserialising into XDR
+	// TODO: Append to create full query
+	rows := []LedgerHeaderHistory
+	err = dbb.session.SelectRaw(&rows, ledgerHeaderQ)
+
+
+	// Return errors, otherwise data
+
+	return true, LedgerCloseMeta{}, nil
+}
+
 func (dbb *DatabaseBackend) GetTXHistory() (rows []TXHistory, err error) {
 	err = dbb.session.SelectRaw(&rows, txHistoryQuery)
 
 	return rows, err
-}
-
-func GetLedger(uint32) (Ledger, error) {
-
-	return Ledger{}, nil
 }
 
 // CreateSession returns a new CoreSession that connects to the given DB settings.
@@ -74,12 +103,17 @@ func (dbb *DatabaseBackend) Close() error {
 	return dbb.session.DB.Close()
 }
 
-type Ledger struct {
-	LedgerHeader   LedgerHeader
-	TXHistory      TXHistory
-	TXFeeHistory   TXFeeHistory
-	SCPHistory     SCPHistory
-	UpgradeHistory UpgradeHistory
+type LedgerCloseMeta struct {
+	LedgerHeader          xdr.LedgerHeaderHistoryEntry
+	Transaction           xdr.Transaction
+	TransactionResult     xdr.TransactionResultPair
+	TransactionMeta       xdr.TransactionMeta
+	TransactionFeeChanges xdr.LedgerEntryChanges
+}
+
+type LedgerHeaderHistory struct {
+	Hash xdr.Hash           `db:"ledgerhash"`
+	Header xdr.LedgerHeader `db:"data"`
 }
 
 // LedgerHeader holds a row of data from the `ledgerheaders` table
