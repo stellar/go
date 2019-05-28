@@ -14,6 +14,7 @@ type encryptedKeys struct {
 	Salt          string    `json:"salt"`
 	EncrypterName string    `json:"encrypter_name"`
 	CreatedAt     time.Time `json:"created_at"`
+	ModifiedAt    time.Time `json:"modified_at"`
 }
 
 type storeKeysRequest struct {
@@ -34,21 +35,21 @@ func (s *Service) storeKeys(ctx context.Context, in storeKeysRequest) (*encrypte
 		// support/error package for keeping the stack trace from err
 		// and substitude the root error for the one we want for better
 		// debugging experience.
-		// Thowing away err is a waste.
+		// Thowing away the original err makes it harder for debugging.
 		return nil, probInvalidKeysBlob
 	}
 
 	q := `
 		INSERT INTO encrypted_keys (user_id, encrypted_keys_data, salt, encrypter_name)
 		VALUES ($1, $2, $3, $4)
-		ON CONFLICT DO NOTHING
-		RETURNING encrypted_keys_data, salt, encrypter_name, created_at
+		ON CONFLICT DO UPDATE SET encrypted_keys_data = excluded.encrypted_keys_data, modified_at = NOW()
+		RETURNING encrypted_keys_data, salt, encrypter_name, created_at, modified_at
 	`
 	var (
 		keysBlob []byte
 		out      encryptedKeys
 	)
-	err = s.db.QueryRowContext(ctx, q, userID, keysData, in.Salt, in.EncrypterName).Scan(&keysBlob, &out.Salt, &out.EncrypterName, &out.CreatedAt)
+	err = s.db.QueryRowContext(ctx, q, userID, keysData, in.Salt, in.EncrypterName).Scan(&keysBlob, &out.Salt, &out.EncrypterName, &out.CreatedAt, &out.ModifiedAt)
 	if err == sql.ErrNoRows {
 		return nil, probDuplicateKeys
 	}
