@@ -71,13 +71,10 @@ func main() {
 	cmd := flag.Arg(0)
 	switch cmd {
 	case "serve":
-		keystore.NewService(ctx, db)
-
 		addr := ":8443"
 		server := &http.Server{
-			Addr: addr,
-			//TODO: implement ServeMux
-			// Handler: keystore.ServeMux(service),
+			Addr:    addr,
+			Handler: keystore.ServeMux(keystore.NewService(ctx, db)),
 		}
 
 		listener, err := net.Listen("tcp", addr)
