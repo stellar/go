@@ -147,8 +147,6 @@ func (msr *MemoryStateReader) streamBucketContents(
 			key = liveEntry.LedgerKey()
 		case xdr.BucketEntryTypeDeadentry:
 			key = entry.MustDeadEntry()
-		case xdr.BucketEntryTypeMetaentry:
-			// Ignore
 		default:
 			panic(fmt.Sprintf("Shouldn't happen in protocol <=10: BucketEntryType=%d", entry.Type))
 		}
@@ -166,8 +164,6 @@ func (msr *MemoryStateReader) streamBucketContents(
 			if !seen[h] && !removed[h] {
 				msr.readChan <- readResult{entry.MustLiveEntry(), nil}
 				seen[h] = true
-				// We can remove removed[h] to save memory as it's no longer needed.
-				delete(removed, h)
 			}
 		case xdr.BucketEntryTypeDeadentry:
 			removed[h] = true
