@@ -2,9 +2,9 @@ package bridge
 
 import (
 	"github.com/stellar/go/amount"
-	b "github.com/stellar/go/build"
 	shared "github.com/stellar/go/services/internal/bridge-compliance-shared"
 	"github.com/stellar/go/services/internal/bridge-compliance-shared/http/helpers"
+	"github.com/stellar/go/txnbuild"
 )
 
 // CreateAccountOperationBody represents create_account operation
@@ -14,18 +14,18 @@ type CreateAccountOperationBody struct {
 	StartingBalance string `json:"starting_balance"`
 }
 
-// ToTransactionMutator returns go-stellar-base TransactionMutator
-func (op CreateAccountOperationBody) ToTransactionMutator() b.TransactionMutator {
-	mutators := []interface{}{
-		b.Destination{op.Destination},
-		b.NativeAmount{op.StartingBalance},
+// Build returns a txnbuild.Operation
+func (op CreateAccountOperationBody) Build() txnbuild.Operation {
+	txnOp := txnbuild.CreateAccount{
+		Destination: op.Destination,
+		Amount:      op.StartingBalance,
 	}
 
 	if op.Source != nil {
-		mutators = append(mutators, b.SourceAccount{*op.Source})
+		txnOp.SourceAccount = &txnbuild.SimpleAccount{AccountID: *op.Source}
 	}
 
-	return b.CreateAccount(mutators...)
+	return &txnOp
 }
 
 // Validate validates if operation body is valid.
