@@ -19,6 +19,7 @@ type CoreSession struct {
 const latestLedgerSeqQuery = "select ledgerseq, closetime from ledgerheaders order by ledgerseq desc limit 1"
 const txHistoryQuery = "select txbody, txresult, txmeta from txhistory where ledgerseq = "
 const ledgerHeaderQuery = "select ledgerhash, data from ledgerheaders where ledgerseq = "
+const txFeeHistoryQuery = "select txchanges from txfeehistory where ledgerseq = "
 
 type LedgerBackend interface {
 	GetLatestLedgerSequence() (sequence uint32, err error)
@@ -68,7 +69,7 @@ func (dbb *DatabaseBackend) GetLedger(sequence uint32) (bool, LedgerCloseMeta, e
 	// Query - ledgerheader
 	var lRows []LedgerHeaderHistory
 
-	ledgerHeaderQ := ledgerHeaderQuery + fmt.Sprintf("%d", latest)
+	ledgerHeaderQ := ledgerHeaderQuery + fmt.Sprintf("%d", sequence)
 	err = dbb.session.SelectRaw(&lRows, ledgerHeaderQ)
 	// Return errors, otherwise data
 	if err != nil {
@@ -85,7 +86,7 @@ func (dbb *DatabaseBackend) GetLedger(sequence uint32) (bool, LedgerCloseMeta, e
 
 	// Query - txhistory
 	var txhRows []TXHistory
-	txHistoryQ := txHistoryQuery + fmt.Sprintf("%d", latest)
+	txHistoryQ := txHistoryQuery + fmt.Sprintf("%d", sequence)
 	err = dbb.session.SelectRaw(&txhRows, txHistoryQ)
 	// Return errors, otherwise data
 	if err != nil {
@@ -96,6 +97,19 @@ func (dbb *DatabaseBackend) GetLedger(sequence uint32) (bool, LedgerCloseMeta, e
 		lcm.TransactionEnvelope = append(lcm.TransactionEnvelope, tx.TXBody)
 		lcm.TransactionResult = append(lcm.TransactionResult, tx.TXResult)
 		lcm.TransactionMeta = append(lcm.TransactionMeta, tx.TXMeta)
+	}
+
+	// Query - txfeehistory
+	var txfhRows []TXFeeHistory
+	txFeeHistoryQ := txFeeHistoryQuery + fmt.Sprintf("%d", sequence)
+	err = dbb.session.SelectRaw(&txfhRows, txFeeHistoryQ)
+	// Return errors, otherwise data
+	if err != nil {
+		return false, lcm, err
+	}
+
+	for _, tx := range txfhRows {
+		lcm.TransactionFeeChanges = append(lcm.TransactionFeeChanges, tx.TXChanges)
 	}
 
 	return true, lcm, nil
@@ -160,10 +174,10 @@ type TXHistory struct {
 }
 
 type TXFeeHistory struct {
-	TXID      string `db:"txid"`
-	LedgerSeq uint32 `db:"ledgerseq"`
-	TXIndex   uint32 `db:"txindex"`
-	TXChanges string `db:"txchanges"`
+	TXID      string                 `db:"txid"`
+	LedgerSeq uint32                 `db:"ledgerseq"`
+	TXIndex   uint32                 `db:"txindex"`
+	TXChanges xdr.LedgerEntryChanges `db:"txchanges"`
 }
 
 type SCPHistory struct {
