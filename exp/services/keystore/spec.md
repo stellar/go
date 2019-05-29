@@ -28,7 +28,7 @@ is no need for a userid argument to the endpoints below.
 
 ### Raw Key Data
 
-RawKeyData Object:
+*RawKeyData Object:*
 
 ```typescript
 interface RawKeyData {
@@ -49,7 +49,7 @@ The clients will transmit the encrypted keys blob as a base64 URL encoded string
 
 ### Encrypted Key Data
 
-EncryptedKeysData Object:
+*EncryptedKeysData Object:*
 
 ```typescript
 interface EncryptedKeysData {
