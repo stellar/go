@@ -28,7 +28,9 @@ func (b *bufferedStateReadWriteCloser) Read() (xdr.LedgerEntry, error) {
 
 	entry, more := <-b.buffer
 	if more {
+		b.readEntriesMutex.Lock()
 		b.readEntries++
+		b.readEntriesMutex.Unlock()
 		return entry, nil
 	} else {
 		return xdr.LedgerEntry{}, io.EOF

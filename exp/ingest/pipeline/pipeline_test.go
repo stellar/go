@@ -233,7 +233,7 @@ func (n *SimpleProcessor) RequiresInput() bool {
 	return true
 }
 
-func (n *SimpleProcessor) CallCount() int {
+func (n *SimpleProcessor) IncrementAndReturnCallCount() int {
 	n.Lock()
 	defer n.Unlock()
 	n.callCount++
@@ -444,7 +444,7 @@ func (p *PrintCountersProcessor) ProcessState(store *Store, r io.StateReadCloser
 		}
 	}
 
-	if p.CallCount() != 4 {
+	if p.IncrementAndReturnCallCount() != 4 {
 		return nil
 	}
 

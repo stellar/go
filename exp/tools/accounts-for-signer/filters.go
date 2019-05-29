@@ -23,7 +23,7 @@ func (n *SimpleProcessor) RequiresInput() bool {
 	return true
 }
 
-func (n *SimpleProcessor) CallCount() int {
+func (n *SimpleProcessor) IncrementAndReturnCallCount() int {
 	n.Lock()
 	defer n.Unlock()
 	n.callCount++

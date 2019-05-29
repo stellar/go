@@ -83,29 +83,30 @@ func (p *Pipeline) processStateNode(store *Store, node *PipelineNode, readCloser
 
 	node.jobs = jobs
 
-	writer := &multiWriteCloser{
+	writeCloser := &multiWriteCloser{
 		writers:    outputs,
 		closeAfter: jobs,
 	}
 
 	for i := 1; i <= jobs; i++ {
 		wg.Add(1)
-		go func(reader io.StateReadCloser, writer io.StateWriteCloser) {
+		go func() {
 			defer wg.Done()
 
-			err := node.Processor.ProcessState(store, reader, writer)
+			err := node.Processor.ProcessState(store, readCloser, writeCloser)
 			if err != nil {
 				// TODO return to pipeline error channel
 				panic(err)
 			}
-		}(readCloser, writer)
+		}()
 	}
 
 	go func() {
 		// Update stats
 		for {
+			// This is not thread-safe: check if Mutex slows it down a lot...
 			readBuffer, readBufferIsBufferedStateReadWriteCloser := readCloser.(*bufferedStateReadWriteCloser)
-			writeBuffer := writer
+			writeBuffer := writeCloser
 
 			interval := time.Second
 

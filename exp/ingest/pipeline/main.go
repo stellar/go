@@ -11,15 +11,19 @@ import (
 type bufferedStateReadWriteCloser struct {
 	initOnce sync.Once
 
+	// readEntriesMutex protects readEntries variable
+	readEntriesMutex sync.Mutex
+	readEntries      int
+
 	// writeCloseMutex protects from writing to a closed buffer
+	// and wroteEntries variable
 	writeCloseMutex sync.Mutex
+	wroteEntries    int
+
 	// closeOnce protects from closing buffer twice
 	closeOnce sync.Once
 	buffer    chan xdr.LedgerEntry
 	closed    bool
-
-	readEntries  int
-	wroteEntries int
 }
 
 type multiWriteCloser struct {
@@ -61,9 +65,9 @@ type StateProcessor interface {
 	// IsConcurrent defines if processing pipeline should start a single instance
 	// of the processor or multiple instances. Multiple instances will read
 	// from the same StateReader and write to the same StateWriter.
-	// Example: you can calculate number of asset holders in a single processor but
-	// you can also start multiple processors that sum asset holders in a shared
-	// variable to calculate it faster.
+	// Example: the processor can insert entries to a DB in a single job but it
+	// probably will be faster with multiple DB writers (especially when you want
+	// to do some data conversions before inserting).
 	IsConcurrent() bool
 	// RequiresInput defines if processor requires input data (StateReader). If not,
 	// it will receive empty reader, it's parent process will write to "void" and
