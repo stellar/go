@@ -37,7 +37,12 @@ type multiWriteCloser struct {
 
 type Pipeline struct {
 	rootStateProcessor *PipelineNode
-	done               bool
+
+	doneMutex sync.Mutex
+	done      bool
+
+	cancelledMutex sync.Mutex
+	cancelled      bool
 }
 
 type PipelineNode struct {

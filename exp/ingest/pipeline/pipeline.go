@@ -65,6 +65,13 @@ func (p *Pipeline) AddStateProcessorTree(rootProcessor *PipelineNode) {
 }
 
 func (p *Pipeline) ProcessState(readCloser io.StateReadCloser) <-chan error {
+	p.doneMutex.Lock()
+	if p.done {
+		panic("Pipeline already running or done...")
+	}
+	p.done = true
+	p.doneMutex.Unlock()
+
 	ctx, cancel := context.WithCancel(context.Background())
 	return p.processStateNode(ctx, &Store{}, p.rootStateProcessor, readCloser, cancel)
 }
@@ -99,6 +106,14 @@ func (p *Pipeline) processStateNode(ctx context.Context, store *Store, node *Pip
 
 			err := node.Processor.ProcessState(ctx, store, readCloser, writeCloser)
 			if err != nil {
+				// Protect from cancelling twice and sending multiple errors to err channel
+				p.cancelledMutex.Lock()
+				defer p.cancelledMutex.Unlock()
+
+				if p.cancelled {
+					return
+				}
+				p.cancelled = true
 				cancel()
 				errorChan <- err
 			}
