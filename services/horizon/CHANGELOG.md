@@ -21,6 +21,11 @@ Removed | Use
 
 ### Changes
 
+* The following new config parameters were added. When old `max-db-connections` config parameter is set, it has a priority over the the new params. Run `horizon help` for more information.
+  * `horizon-db-max-open-connections`,
+  * `horizon-db-max-idle-connections`,
+  * `core-db-max-open-connections`,
+  * `core-db-max-idle-connections`.
 * Improved `horizon db reingest range` command.
 * Fix "int64: value out of range" errors in trade aggregations (#1319).
 
