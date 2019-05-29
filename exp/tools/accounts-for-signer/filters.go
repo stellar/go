@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"sync"
@@ -36,7 +37,7 @@ type EntryTypeFilter struct {
 	Type xdr.LedgerEntryType
 }
 
-func (p *EntryTypeFilter) ProcessState(store *pipeline.Store, r io.StateReadCloser, w io.StateWriteCloser) error {
+func (p *EntryTypeFilter) ProcessState(ctx context.Context, store *pipeline.Store, r io.StateReadCloser, w io.StateWriteCloser) error {
 	defer r.Close()
 	defer w.Close()
 
@@ -60,6 +61,13 @@ func (p *EntryTypeFilter) ProcessState(store *pipeline.Store, r io.StateReadClos
 				return err
 			}
 		}
+
+		select {
+		case <-ctx.Done():
+			return nil
+		default:
+			continue
+		}
 	}
 
 	return nil
@@ -75,7 +83,7 @@ type AccountsForSignerProcessor struct {
 	Signer string
 }
 
-func (p *AccountsForSignerProcessor) ProcessState(store *pipeline.Store, r io.StateReadCloser, w io.StateWriteCloser) error {
+func (p *AccountsForSignerProcessor) ProcessState(ctx context.Context, store *pipeline.Store, r io.StateReadCloser, w io.StateWriteCloser) error {
 	defer r.Close()
 	defer w.Close()
 
@@ -106,6 +114,13 @@ func (p *AccountsForSignerProcessor) ProcessState(store *pipeline.Store, r io.St
 				break
 			}
 		}
+
+		select {
+		case <-ctx.Done():
+			return nil
+		default:
+			continue
+		}
 	}
 
 	return nil
@@ -124,7 +139,7 @@ type PrintAllProcessor struct {
 	Filename string
 }
 
-func (p *PrintAllProcessor) ProcessState(store *pipeline.Store, r io.StateReadCloser, w io.StateWriteCloser) error {
+func (p *PrintAllProcessor) ProcessState(ctx context.Context, store *pipeline.Store, r io.StateReadCloser, w io.StateWriteCloser) error {
 	defer r.Close()
 	defer w.Close()
 
@@ -158,10 +173,18 @@ func (p *PrintAllProcessor) ProcessState(store *pipeline.Store, r io.StateReadCl
 			foundEntries++
 			if foundEntries == 3 {
 				// We only want a few entries...
+				// return errors.New("Some error")
 				return nil
 			}
 		default:
 			// Ignore for now
+		}
+
+		select {
+		case <-ctx.Done():
+			return nil
+		default:
+			continue
 		}
 	}
 
