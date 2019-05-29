@@ -18,15 +18,6 @@ func main() {
 	}
 	defer dbb.Close()
 
-	// rows, err := dbb.GetTXHistory()
-	// if err != nil {
-	// 	log.Fatal("Couldn't select txhistory rows: ", err)
-	// }
-
-	// for _, row := range rows {
-	// 	fmt.Println(row.TXID)
-	// }
-
 	ledgerSequence, err := dbb.GetLatestLedgerSequence()
 	if err != nil {
 		log.Fatal(err)
