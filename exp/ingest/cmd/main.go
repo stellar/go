@@ -5,7 +5,6 @@ import (
 
 	log "github.com/sirupsen/logrus"
 	"github.com/stellar/go/exp/ingest"
-	"github.com/stellar/go/support/errors"
 )
 
 const dbURI = "postgres://stellar:postgres@localhost:8002/core"
@@ -37,13 +36,21 @@ func main() {
 
 	exists, ledgerCloseMeta, err := dbb.GetLedger(ledgerSequence)
 
+	if err != nil {
+		log.Fatal("error reading ledger from backend: ", err)
+	}
 	if !exists {
 		log.Fatalf("Ledger %d was not found", ledgerSequence)
 	}
 
-	if err != nil {
-		errors.Wrap(err, "error reading ledger from backend")
-	}
-
 	fmt.Println(ledgerCloseMeta)
+
+	fmt.Println("N transactions =", len(ledgerCloseMeta.Transaction))
+	fmt.Println("ledgerCloseMeta.Transaction:", ledgerCloseMeta.Transaction)
+
+	fmt.Println("N transactionReults =", len(ledgerCloseMeta.TransactionResult))
+	fmt.Println("ledgerCloseMeta.TransactionResults:", ledgerCloseMeta.TransactionResult)
+
+	fmt.Println("N transactionMeta =", len(ledgerCloseMeta.TransactionMeta))
+	fmt.Println("ledgerCloseMeta.TransactionMeta:", ledgerCloseMeta.TransactionMeta)
 }

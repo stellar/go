@@ -1,6 +1,7 @@
 package ingest
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/jmoiron/sqlx"
@@ -16,7 +17,7 @@ type CoreSession struct {
 }
 
 const latestLedgerSeqQuery = "select ledgerseq, closetime from ledgerheaders order by ledgerseq desc limit 1"
-const txHistoryQuery = "select * from txhistory limit 10;"
+const txHistoryQuery = "select txbody, txresult, txmeta from txhistory where ledgerseq = "
 const ledgerHeaderQuery = "select ledgerhash, data from ledgerheaders where ledgerseq = "
 
 type LedgerBackend interface {
@@ -64,18 +65,29 @@ func (dbb *DatabaseBackend) GetLedger(sequence uint32) (bool, LedgerCloseMeta, e
 		return false, LedgerCloseMeta{}, nil
 	}
 
-	// Query
-	// lcm := LedgerCloseMeta{}
-	// Get LedgerHeader
-	// TODO: Try this out. Probably will need custom deserialising into XDR
-	// TODO: Append to create full query
-	rows := []LedgerHeaderHistory
-	err = dbb.session.SelectRaw(&rows, ledgerHeaderQ)
+	// Query - ledgerheader
+	var lRows []LedgerHeaderHistory
 
-
+	ledgerHeaderQ := ledgerHeaderQuery + fmt.Sprintf("%d", latest)
+	err = dbb.session.SelectRaw(&lRows, ledgerHeaderQ)
 	// Return errors, otherwise data
+	if err != nil {
+		return false, LedgerCloseMeta{}, err
+	}
 
-	return true, LedgerCloseMeta{}, nil
+	lcm := LedgerCloseMeta{}
+
+	lcm.LedgerHeader = xdr.LedgerHeaderHistoryEntry{
+		Hash:   lRows[0].Hash,
+		Header: lRows[0].Header,
+		Ext:    xdr.LedgerHeaderHistoryEntryExt{},
+	}
+
+	// Query - txhistory
+	// txHistoryQ := txHistoryQuery + fmt.Sprintf("%d", latest)
+	// err = dbb.session.SelectRaw(&lcm, txHistoryQ)
+
+	return true, lcm, nil
 }
 
 func (dbb *DatabaseBackend) GetTXHistory() (rows []TXHistory, err error) {
@@ -105,14 +117,14 @@ func (dbb *DatabaseBackend) Close() error {
 
 type LedgerCloseMeta struct {
 	LedgerHeader          xdr.LedgerHeaderHistoryEntry
-	Transaction           xdr.Transaction
-	TransactionResult     xdr.TransactionResultPair
-	TransactionMeta       xdr.TransactionMeta
-	TransactionFeeChanges xdr.LedgerEntryChanges
+	Transaction           []xdr.Transaction
+	TransactionResult     []xdr.TransactionResultPair
+	TransactionMeta       []xdr.TransactionMeta
+	TransactionFeeChanges []xdr.LedgerEntryChanges
 }
 
 type LedgerHeaderHistory struct {
-	Hash xdr.Hash           `db:"ledgerhash"`
+	Hash   xdr.Hash         `db:"ledgerhash"`
 	Header xdr.LedgerHeader `db:"data"`
 }
 
@@ -128,12 +140,12 @@ type LedgerHeader struct {
 }
 
 type TXHistory struct {
-	TXID      string `db:"txid"`
-	LedgerSeq uint32 `db:"ledgerseq"`
-	TXIndex   uint32 `db:"txindex"`
-	TXBody    string `db:"txbody"`
-	TXResult  string `db:"txresult"`
-	TXMeta    string `db:"txmeta"`
+	TXID      string                    `db:"txid"`
+	LedgerSeq uint32                    `db:"ledgerseq"`
+	TXIndex   uint32                    `db:"txindex"`
+	TXBody    xdr.TransactionEnvelope   `db:"txbody"`
+	TXResult  xdr.TransactionResultPair `db:"txresult"`
+	TXMeta    xdr.TransactionMeta       `db:"txmeta"`
 }
 
 type TXFeeHistory struct {
