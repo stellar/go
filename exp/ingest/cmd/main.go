@@ -45,8 +45,8 @@ func main() {
 
 	fmt.Println(ledgerCloseMeta)
 
-	fmt.Println("N transactions =", len(ledgerCloseMeta.Transaction))
-	fmt.Println("ledgerCloseMeta.Transaction:", ledgerCloseMeta.Transaction)
+	fmt.Println("N transactions =", len(ledgerCloseMeta.TransactionEnvelope))
+	fmt.Println("ledgerCloseMeta.Transaction:", ledgerCloseMeta.TransactionEnvelope)
 
 	fmt.Println("N transactionReults =", len(ledgerCloseMeta.TransactionResult))
 	fmt.Println("ledgerCloseMeta.TransactionResults:", ledgerCloseMeta.TransactionResult)

@@ -84,8 +84,19 @@ func (dbb *DatabaseBackend) GetLedger(sequence uint32) (bool, LedgerCloseMeta, e
 	}
 
 	// Query - txhistory
-	// txHistoryQ := txHistoryQuery + fmt.Sprintf("%d", latest)
-	// err = dbb.session.SelectRaw(&lcm, txHistoryQ)
+	var txhRows []TXHistory
+	txHistoryQ := txHistoryQuery + fmt.Sprintf("%d", latest)
+	err = dbb.session.SelectRaw(&txhRows, txHistoryQ)
+	// Return errors, otherwise data
+	if err != nil {
+		return false, lcm, err
+	}
+
+	for _, tx := range txhRows {
+		lcm.TransactionEnvelope = append(lcm.TransactionEnvelope, tx.TXBody)
+		lcm.TransactionResult = append(lcm.TransactionResult, tx.TXResult)
+		lcm.TransactionMeta = append(lcm.TransactionMeta, tx.TXMeta)
+	}
 
 	return true, lcm, nil
 }
@@ -117,7 +128,7 @@ func (dbb *DatabaseBackend) Close() error {
 
 type LedgerCloseMeta struct {
 	LedgerHeader          xdr.LedgerHeaderHistoryEntry
-	Transaction           []xdr.Transaction
+	TransactionEnvelope   []xdr.TransactionEnvelope
 	TransactionResult     []xdr.TransactionResultPair
 	TransactionMeta       []xdr.TransactionMeta
 	TransactionFeeChanges []xdr.LedgerEntryChanges
