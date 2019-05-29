@@ -6,6 +6,7 @@ import (
 	"log"
 
 	"github.com/stellar/go/exp/ingest/adapters"
+	"github.com/stellar/go/exp/ingest/io"
 	"github.com/stellar/go/support/historyarchive"
 )
 
@@ -34,11 +35,11 @@ func main() {
 	var i uint64 = 0
 	var count uint64 = 0
 	for {
-		ok, le, e := sr.Read()
+		le, e := sr.Read()
 		if e != nil {
 			panic(e)
 		}
-		if !ok {
+		if e == io.EOF {
 			log.Printf("total seen %d entries of which %d were accounts", i, count)
 			return
 		}
