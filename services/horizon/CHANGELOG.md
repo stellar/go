@@ -12,13 +12,7 @@ bumps.  A breaking change will get clearly notified in this log.
 
 * Horizon requires Postgres 9.5+.
 * Removed `paging_token` field from `/accounts/{id}` endpoint.
-* The following table presents breaking changes in Horizon responses:
-
-Removed | Use
--|-
-`manage_offer` operation type | `manage_sell_offer` operation type
-`create_passive_offer` operation type | `create_passive_sell_offer` operation type
-`/operation_fee_stats` endpoint | `/fee_stats` endpoint
+* Removed `/operation_fee_stats` endpoint. Please use `/fee_stats`.
 
 ### Changes
 
