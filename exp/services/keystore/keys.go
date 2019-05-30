@@ -11,17 +11,17 @@ import (
 )
 
 type encryptedKeys struct {
-	KeysBlob      string     `json:"keys_blob"`
+	KeysBlob      string     `json:"keysBlob"`
 	Salt          string     `json:"salt"`
-	EncrypterName string     `json:"encrypter_name"`
-	CreatedAt     time.Time  `json:"created_at"`
-	ModifiedAt    *time.Time `json:"modified_at,omitempty"`
+	EncrypterName string     `json:"encrypterName"`
+	CreatedAt     time.Time  `json:"createdAt"`
+	ModifiedAt    *time.Time `json:"modifiedAt,omitempty"`
 }
 
 type storeKeysRequest struct {
-	KeysBlob      string `json:"keys_blob"`
+	KeysBlob      string `json:"keysBlob"`
 	Salt          string `json:"salt"`
-	EncrypterName string `json:"encrypter_name"`
+	EncrypterName string `json:"encrypterName"`
 }
 
 func (s *Service) storeKeys(ctx context.Context, in storeKeysRequest) (*encryptedKeys, error) {
