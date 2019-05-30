@@ -4,14 +4,14 @@ import (
 	"fmt"
 
 	log "github.com/sirupsen/logrus"
-	"github.com/stellar/go/exp/ingest"
+	"github.com/stellar/go/exp/ingest/ledgerbackend"
 )
 
 const dbURI = "postgres://stellar:postgres@localhost:8002/core"
 
 func main() {
 	// Initialise the database backend
-	dbb := ingest.DatabaseBackend{}
+	dbb := ledgerbackend.DatabaseBackend{}
 	err := dbb.CreateSession("postgres", dbURI)
 	if err != nil {
 		log.Fatalf("Couldn't connect to database at %s: %s", dbURI, err)
