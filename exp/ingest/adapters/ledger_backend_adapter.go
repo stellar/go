@@ -18,8 +18,7 @@ func (lba *LedgerBackendAdapter) GetLatestLedgerSequence() (uint32, error) {
 }
 
 // GetLedger returns...
-func (lba *LedgerBackendAdapter) GetLedger(uint32) (io.LedgerReader, error) {
-	// func (lba *LedgerBackendAdapter) GetLedger(uint32) (io.LedgerReadCloser, error) {
+func (lba *LedgerBackendAdapter) GetLedger(uint32) (io.LedgerReadCloser, error) {
 	// TODO: placeholder
 	return nil, fmt.Errorf("not implemented yet")
 }
