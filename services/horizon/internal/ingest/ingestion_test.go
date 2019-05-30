@@ -53,6 +53,53 @@ func TestEmptySignature(t *testing.T) {
 	assert.NoError(t, err)
 }
 
+func TestFeeMax(t *testing.T) {
+	tt := test.Start(t).ScenarioWithoutHorizon("kahuna")
+	defer tt.Finish()
+
+	ingestion := Ingestion{
+		DB: &db.Session{
+			DB: testDB.Horizon(t),
+		},
+	}
+	ingestion.Start()
+
+	envelope := xdr.TransactionEnvelope{}
+	resultPair := xdr.TransactionResultPair{}
+	meta := xdr.TransactionMeta{}
+
+	xdr.SafeUnmarshalBase64("AAAAAOLWsdzzeqJ5N2DeHgvzMc/mwBhceAIKwLHfM5J8zsK6AA9CQAAI+n0AAAABAAAAAAAAAAAAAAABAAAAAAAAAAEAAAAA4tax3PN6onk3YN4eC/Mxz+bAGFx4AgrAsd8zknzOwroAAAAAAAAAAACYloAAAAAAAAAAAXzOwroAAABAJ6nzO0f3/izUO3nB+CfN1sII66VBwGyIb6rP8VidFiYSxgY9fBviXA4FtPt0p1msOOI8NNA0alMQ95E2HOn8Dg==", &envelope)
+	xdr.SafeUnmarshalBase64("AAAAAAAAAGQAAAAAAAAAAQAAAAAAAAABAAAAAAAAAAA=", &resultPair.Result)
+	xdr.SafeUnmarshalBase64("AAAAAQAAAAIAAAADAAj6gwAAAAAAAAAA4tax3PN6onk3YN4eC/Mxz+bAGFx4AgrAsd8zknzOwroAAAAXSHbnnAAI+n0AAAAAAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAABAAj6gwAAAAAAAAAA4tax3PN6onk3YN4eC/Mxz+bAGFx4AgrAsd8zknzOwroAAAAXSHbnnAAI+n0AAAABAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAABAAAAAA==", &meta)
+
+	transaction := &core.Transaction{
+		TransactionHash: "a48debf9245e39d78c4fcb8e010b4f41dbee10823148e89269aab74ceeefcdad",
+		LedgerSequence:  1680922,
+		Index:           1,
+		Envelope:        envelope,
+		Result:          resultPair,
+		ResultMeta:      meta,
+	}
+
+	transactionFee := &core.TransactionFee{}
+
+	ingestion.Transaction(true, 1, transaction, transactionFee)
+	assert.Equal(t, 1, len(ingestion.builders[TransactionsTableName].rows))
+
+	err := ingestion.Flush()
+	assert.NoError(t, err)
+
+	err = ingestion.Close()
+	assert.NoError(t, err)
+
+	q := history.Q{Session: ingestion.DB}
+	tx := history.Transaction{}
+	err = q.TransactionByHash(&tx, "a48debf9245e39d78c4fcb8e010b4f41dbee10823148e89269aab74ceeefcdad")
+	tt.Require.NoError(err)
+	tt.Assert.Equal(100000, tx.MaxFee)
+	tt.Assert.Equal(100, tx.FeeCharged)
+}
+
 func TestTimeBoundsMaxBig(t *testing.T) {
 	ingestion := Ingestion{
 		DB: &db.Session{

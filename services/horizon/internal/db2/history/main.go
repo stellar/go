@@ -300,25 +300,28 @@ type TradesQ struct {
 // Transaction is a row of data from the `history_transactions` table
 type Transaction struct {
 	TotalOrderID
-	TransactionHash  string      `db:"transaction_hash"`
-	LedgerSequence   int32       `db:"ledger_sequence"`
-	LedgerCloseTime  time.Time   `db:"ledger_close_time"`
-	ApplicationOrder int32       `db:"application_order"`
-	Account          string      `db:"account"`
-	AccountSequence  string      `db:"account_sequence"`
-	FeePaid          int32       `db:"fee_paid"`
-	OperationCount   int32       `db:"operation_count"`
-	TxEnvelope       string      `db:"tx_envelope"`
-	TxResult         string      `db:"tx_result"`
-	TxMeta           string      `db:"tx_meta"`
-	TxFeeMeta        string      `db:"tx_fee_meta"`
-	SignatureString  string      `db:"signatures"`
-	MemoType         string      `db:"memo_type"`
-	Memo             null.String `db:"memo"`
-	ValidAfter       null.Int    `db:"valid_after"`
-	ValidBefore      null.Int    `db:"valid_before"`
-	CreatedAt        time.Time   `db:"created_at"`
-	UpdatedAt        time.Time   `db:"updated_at"`
+	TransactionHash  string    `db:"transaction_hash"`
+	LedgerSequence   int32     `db:"ledger_sequence"`
+	LedgerCloseTime  time.Time `db:"ledger_close_time"`
+	ApplicationOrder int32     `db:"application_order"`
+	Account          string    `db:"account"`
+	AccountSequence  string    `db:"account_sequence"`
+	// FeePaid defines the max fee set by the user for this transaction.
+	// The column name was not changed because of the painful DB migration.
+	MaxFee          int32       `db:"fee_paid"`
+	FeeCharged      int32       `db:"fee_charged"`
+	OperationCount  int32       `db:"operation_count"`
+	TxEnvelope      string      `db:"tx_envelope"`
+	TxResult        string      `db:"tx_result"`
+	TxMeta          string      `db:"tx_meta"`
+	TxFeeMeta       string      `db:"tx_fee_meta"`
+	SignatureString string      `db:"signatures"`
+	MemoType        string      `db:"memo_type"`
+	Memo            null.String `db:"memo"`
+	ValidAfter      null.Int    `db:"valid_after"`
+	ValidBefore     null.Int    `db:"valid_before"`
+	CreatedAt       time.Time   `db:"created_at"`
+	UpdatedAt       time.Time   `db:"updated_at"`
 	// NULL indicates successful transaction. We wanted a migration to be fast
 	// however Postgres performs a table rewrite if a new column has a default
 	// non-null value. We need `NULL` to indicate successful transaction because

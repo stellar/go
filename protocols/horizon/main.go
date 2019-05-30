@@ -401,17 +401,22 @@ type Transaction struct {
 	LedgerCloseTime time.Time `json:"created_at"`
 	Account         string    `json:"source_account"`
 	AccountSequence string    `json:"source_account_sequence"`
-	FeePaid         int32     `json:"fee_paid"`
-	OperationCount  int32     `json:"operation_count"`
-	EnvelopeXdr     string    `json:"envelope_xdr"`
-	ResultXdr       string    `json:"result_xdr"`
-	ResultMetaXdr   string    `json:"result_meta_xdr"`
-	FeeMetaXdr      string    `json:"fee_meta_xdr"`
-	MemoType        string    `json:"memo_type"`
-	Memo            string    `json:"memo,omitempty"`
-	Signatures      []string  `json:"signatures"`
-	ValidAfter      string    `json:"valid_after,omitempty"`
-	ValidBefore     string    `json:"valid_before,omitempty"`
+	// Deprecated - remove in: horizon-v0.19.0
+	// Change the name to `fee_charged`
+	FeeCharged int32 `json:"fee_paid"`
+	// Deprecated - remove in: horizon-v0.18.0
+	// Display this value as `max_fee`
+	MaxFee         int32    `json:"-"`
+	OperationCount int32    `json:"operation_count"`
+	EnvelopeXdr    string   `json:"envelope_xdr"`
+	ResultXdr      string   `json:"result_xdr"`
+	ResultMetaXdr  string   `json:"result_meta_xdr"`
+	FeeMetaXdr     string   `json:"fee_meta_xdr"`
+	MemoType       string   `json:"memo_type"`
+	Memo           string   `json:"memo,omitempty"`
+	Signatures     []string `json:"signatures"`
+	ValidAfter     string   `json:"valid_after,omitempty"`
+	ValidBefore    string   `json:"valid_before,omitempty"`
 }
 
 // MarshalJSON implements a custom marshaler for Transaction.
