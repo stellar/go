@@ -4,39 +4,36 @@ import (
 	"bytes"
 	"fmt"
 
-	"github.com/stellar/go/build"
 	"github.com/stellar/go/hash"
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/support/errors"
+	"github.com/stellar/go/txnbuild"
 	"github.com/stellar/go/xdr"
 )
 
 // BuildTransaction is used in compliance server. The sequence number in built transaction will be equal 0!
-func BuildTransaction(accountID, networkPassphrase string, operation, memo interface{}) (transaction *xdr.Transaction, err error) {
-	operationMutator, ok := operation.(build.TransactionMutator)
-	if !ok {
-		err = errors.New("Cannot cast operationMutator to build.TransactionMutator")
-		return
+func BuildTransaction(accountID, networkPassphrase string, operation []txnbuild.Operation, memo txnbuild.Memo) (string, error) {
+
+	// Sequence number is set to -1 here because txnbuild auto increments by 1.
+	tx := txnbuild.Transaction{
+		SourceAccount: &txnbuild.SimpleAccount{AccountID: accountID, Sequence: int64(-1)},
+		Operations:    operation,
+		Timebounds:    txnbuild.NewInfiniteTimeout(),
+		Network:       networkPassphrase,
+		Memo:          memo,
 	}
 
-	mutators := []build.TransactionMutator{
-		build.SourceAccount{accountID},
-		build.Sequence{0},
-		build.Network{networkPassphrase},
-		operationMutator,
+	err := tx.Build()
+	if err != nil {
+		return "", errors.Wrap(err, "unable to build transaction")
 	}
 
-	if memo != nil {
-		memoMutator, ok := memo.(build.TransactionMutator)
-		if !ok {
-			err = errors.New("Cannot cast memo to build.TransactionMutator")
-			return
-		}
-		mutators = append(mutators, memoMutator)
+	txe, err := tx.Base64()
+	if err != nil {
+		return "", errors.Wrap(err, "unable to encode transaction")
 	}
 
-	txBuilder, err := build.Transaction(mutators...)
-	return txBuilder.TX, err
+	return txe, err
 }
 
 // TransactionHash returns transaction hash for a given Transaction based on the network
