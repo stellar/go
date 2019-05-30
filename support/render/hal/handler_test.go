@@ -62,7 +62,7 @@ func TestPostHandler(t *testing.T) {
 	}
 
 	for _, tc := range cases {
-		h, err := PostHandler(tc.f)
+		h, err := ReqBodyHandler(tc.f)
 		if err != nil {
 			t.Errorf("Handler(%v) got err %v", tc.f, err)
 			continue

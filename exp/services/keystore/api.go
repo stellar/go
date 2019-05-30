@@ -23,17 +23,31 @@ func wrapMiddleware(handler http.Handler) http.Handler {
 }
 
 func ServeMux(s *Service) http.Handler {
-	jsonIOHandler := func(f interface{}) http.Handler {
-		return wrapMiddleware(jsonHandler(f))
-	}
-
 	mux := http.NewServeMux()
-	mux.Handle("/store-keys", jsonIOHandler(s.storeKeys))
+	mux.Handle("/keys", wrapMiddleware(s.keysHTTPMethodHandler()))
 	return mux
 }
 
+func (s *Service) keysHTTPMethodHandler() http.Handler {
+	return http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		switch req.Method {
+		case http.MethodGet:
+			// Serve the resource.
+
+		case http.MethodPut:
+			jsonHandler(s.storeKeys).ServeHTTP(rw, req)
+
+		case http.MethodDelete:
+			// Remove the record.
+
+		default:
+			problem.Render(req.Context(), rw, probMethodNotAllowed)
+		}
+	})
+}
+
 func jsonHandler(f interface{}) http.Handler {
-	h, err := hal.PostHandler(f)
+	h, err := hal.ReqBodyHandler(f)
 	if err != nil {
 		panic(err)
 	}

@@ -22,14 +22,14 @@ type handler struct {
 	readFromBody bool
 }
 
-// PostHandler returns an HTTP Handler for function fn.
+// ReqBodyHandler returns an HTTP Handler for function fn.
 // If fn has an input type, it will try to decode the request body into the
 // function's input type.
 // If fn returns a non-nil error, the handler will use problem.Render.
 // Please refer to funcParamType for the allowed function signature.
 // The caller of this function should probably panic on the returned error, if
 // any.
-func PostHandler(fn interface{}) (http.Handler, error) {
+func ReqBodyHandler(fn interface{}) (http.Handler, error) {
 	fv := reflect.ValueOf(fn)
 	inType, err := funcParamType(fv)
 	if err != nil {
