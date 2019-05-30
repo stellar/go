@@ -4,9 +4,9 @@ import (
 	"encoding/json"
 	"strconv"
 
-	b "github.com/stellar/go/build"
 	shared "github.com/stellar/go/services/internal/bridge-compliance-shared"
 	"github.com/stellar/go/services/internal/bridge-compliance-shared/http/helpers"
+	"github.com/stellar/go/txnbuild"
 )
 
 // OperationType is the type of operation
@@ -142,7 +142,8 @@ type Operation struct {
 
 // OperationBody interface is a common interface for builder operations
 type OperationBody interface {
-	ToTransactionMutator() b.TransactionMutator
+	// ToTransactionMutator() b.TransactionMutator
+	Build() txnbuild.Operation
 	Validate() error
 }
 

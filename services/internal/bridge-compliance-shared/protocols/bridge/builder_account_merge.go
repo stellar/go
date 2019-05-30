@@ -1,9 +1,9 @@
 package bridge
 
 import (
-	b "github.com/stellar/go/build"
 	shared "github.com/stellar/go/services/internal/bridge-compliance-shared"
 	"github.com/stellar/go/services/internal/bridge-compliance-shared/http/helpers"
+	"github.com/stellar/go/txnbuild"
 )
 
 // AccountMergeOperationBody represents account_merge operation
@@ -12,15 +12,17 @@ type AccountMergeOperationBody struct {
 	Destination string
 }
 
-// ToTransactionMutator returns stellar/go TransactionMutator
-func (op AccountMergeOperationBody) ToTransactionMutator() b.TransactionMutator {
-	mutators := []interface{}{b.Destination{op.Destination}}
-
-	if op.Source != nil {
-		mutators = append(mutators, b.SourceAccount{*op.Source})
+// Build returns a txnbuild.Operation
+func (op AccountMergeOperationBody) Build() txnbuild.Operation {
+	txnOp := txnbuild.AccountMerge{
+		Destination: op.Destination,
 	}
 
-	return b.AccountMerge(mutators...)
+	if op.Source != nil {
+		txnOp.SourceAccount = &txnbuild.SimpleAccount{AccountID: *op.Source}
+	}
+
+	return &txnOp
 }
 
 // Validate validates if operation body is valid.

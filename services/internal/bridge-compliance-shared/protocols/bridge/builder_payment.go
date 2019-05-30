@@ -2,10 +2,10 @@ package bridge
 
 import (
 	"github.com/stellar/go/amount"
-	b "github.com/stellar/go/build"
 	shared "github.com/stellar/go/services/internal/bridge-compliance-shared"
 	"github.com/stellar/go/services/internal/bridge-compliance-shared/http/helpers"
 	"github.com/stellar/go/services/internal/bridge-compliance-shared/protocols"
+	"github.com/stellar/go/txnbuild"
 )
 
 // PaymentOperationBody represents payment operation
@@ -16,29 +16,19 @@ type PaymentOperationBody struct {
 	Asset       protocols.Asset
 }
 
-// ToTransactionMutator returns go-stellar-base TransactionMutator
-func (op PaymentOperationBody) ToTransactionMutator() b.TransactionMutator {
-	mutators := []interface{}{
-		b.Destination{op.Destination},
-	}
-
-	if op.Asset.Code != "" && op.Asset.Issuer != "" {
-		mutators = append(
-			mutators,
-			b.CreditAmount{op.Asset.Code, op.Asset.Issuer, op.Amount},
-		)
-	} else {
-		mutators = append(
-			mutators,
-			b.NativeAmount{op.Amount},
-		)
+// Build returns a txnbuild.Operation
+func (op PaymentOperationBody) Build() txnbuild.Operation {
+	txnOp := txnbuild.Payment{
+		Destination: op.Destination,
+		Amount:      op.Amount,
+		Asset:       txnbuild.CreditAsset{Code: op.Asset.Code, Issuer: op.Asset.Issuer},
 	}
 
 	if op.Source != nil {
-		mutators = append(mutators, b.SourceAccount{*op.Source})
+		txnOp.SourceAccount = &txnbuild.SimpleAccount{AccountID: *op.Source}
 	}
 
-	return b.Payment(mutators...)
+	return &txnOp
 }
 
 // Validate validates if operation body is valid.

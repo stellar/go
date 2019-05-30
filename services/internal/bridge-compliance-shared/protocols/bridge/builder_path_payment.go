@@ -6,10 +6,10 @@ import (
 	"net/url"
 
 	"github.com/stellar/go/amount"
-	b "github.com/stellar/go/build"
 	shared "github.com/stellar/go/services/internal/bridge-compliance-shared"
 	"github.com/stellar/go/services/internal/bridge-compliance-shared/http/helpers"
 	"github.com/stellar/go/services/internal/bridge-compliance-shared/protocols"
+	"github.com/stellar/go/txnbuild"
 )
 
 // PathPaymentOperationBody represents path_payment operation
@@ -61,43 +61,29 @@ func (op PathPaymentOperationBody) ToValuesSpecial(values url.Values) {
 	}
 }
 
-// ToTransactionMutator returns go-stellar-base TransactionMutator
-func (op PathPaymentOperationBody) ToTransactionMutator() b.TransactionMutator {
-	var path []b.Asset
-	for _, pathAsset := range op.Path {
-		path = append(path, pathAsset.ToBaseAsset())
+// Build returns a txnbuild.Operation
+func (op PathPaymentOperationBody) Build() txnbuild.Operation {
+
+	var paths []txnbuild.Asset
+
+	for _, asset := range op.Path {
+		paths = append(paths, asset.ToBaseAsset())
 	}
 
-	mutators := []interface{}{
-		b.Destination{op.Destination},
-		b.PayWithPath{
-			Asset:     op.SendAsset.ToBaseAsset(),
-			MaxAmount: op.SendMax,
-			Path:      path,
-		},
-	}
-
-	if op.DestinationAsset.Code != "" && op.DestinationAsset.Issuer != "" {
-		mutators = append(
-			mutators,
-			b.CreditAmount{
-				op.DestinationAsset.Code,
-				op.DestinationAsset.Issuer,
-				op.DestinationAmount,
-			},
-		)
-	} else {
-		mutators = append(
-			mutators,
-			b.NativeAmount{op.DestinationAmount},
-		)
+	txnOp := txnbuild.PathPayment{
+		Destination: op.Destination,
+		DestAmount:  op.DestinationAmount,
+		DestAsset:   txnbuild.CreditAsset{Code: op.DestinationAsset.Code, Issuer: op.DestinationAsset.Issuer},
+		SendAsset:   txnbuild.CreditAsset{Code: op.SendAsset.Code, Issuer: op.SendAsset.Issuer},
+		SendMax:     op.SendMax,
+		Path:        paths,
 	}
 
 	if op.Source != nil {
-		mutators = append(mutators, b.SourceAccount{*op.Source})
+		txnOp.SourceAccount = &txnbuild.SimpleAccount{AccountID: *op.Source}
 	}
 
-	return b.Payment(mutators...)
+	return &txnOp
 }
 
 // Validate validates if operation body is valid.

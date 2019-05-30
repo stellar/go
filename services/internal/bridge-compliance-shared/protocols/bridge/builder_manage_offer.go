@@ -3,7 +3,7 @@ package bridge
 import (
 	"strconv"
 
-	b "github.com/stellar/go/build"
+	"github.com/stellar/go/txnbuild"
 
 	shared "github.com/stellar/go/services/internal/bridge-compliance-shared"
 	"github.com/stellar/go/services/internal/bridge-compliance-shared/http/helpers"
@@ -21,36 +21,47 @@ type ManageOfferOperationBody struct {
 	OfferID      *string `json:"offer_id"`
 }
 
-// uint64
+// Build returns a txnbuild.Operation
+func (op ManageOfferOperationBody) Build() txnbuild.Operation {
+	if op.PassiveOffer {
+		txnOp := txnbuild.CreatePassiveSellOffer{
+			Selling: txnbuild.CreditAsset{Code: op.Selling.Code, Issuer: op.Selling.Issuer},
+			Buying:  txnbuild.CreditAsset{Code: op.Buying.Code, Issuer: op.Buying.Issuer},
+			Amount:  op.Amount,
+			Price:   op.Price,
+		}
 
-// ToTransactionMutator returns go-stellar-base TransactionMutator
-func (op ManageOfferOperationBody) ToTransactionMutator() b.TransactionMutator {
-	mutators := []interface{}{
-		b.Amount(op.Amount),
-		b.Rate{
-			Selling: op.Selling.ToBaseAsset(),
-			Buying:  op.Buying.ToBaseAsset(),
-			Price:   b.Price(op.Price),
-		},
+		if op.Source != nil {
+			txnOp.SourceAccount = &txnbuild.SimpleAccount{AccountID: *op.Source}
+		}
+
+		return &txnOp
+	}
+
+	txnOp := txnbuild.ManageSellOffer{
+		Selling: txnbuild.CreditAsset{Code: op.Selling.Code, Issuer: op.Selling.Issuer},
+		Buying:  txnbuild.CreditAsset{Code: op.Buying.Code, Issuer: op.Buying.Issuer},
+		Amount:  op.Amount,
+		Price:   op.Price,
 	}
 
 	if op.OfferID != nil {
 		// Validated in Validate()
-		u, _ := strconv.ParseUint(*op.OfferID, 10, 64)
-		mutators = append(mutators, b.OfferID(u))
+		u, _ := strconv.ParseInt(*op.OfferID, 10, 64)
+		txnOp.OfferID = u
 	}
 
 	if op.Source != nil {
-		mutators = append(mutators, b.SourceAccount{*op.Source})
+		txnOp.SourceAccount = &txnbuild.SimpleAccount{AccountID: *op.Source}
 	}
 
-	return b.ManageOffer(op.PassiveOffer, mutators...)
+	return &txnOp
 }
 
 // Validate validates if operation body is valid.
 func (op ManageOfferOperationBody) Validate() error {
 	if op.OfferID != nil {
-		_, err := strconv.ParseUint(*op.OfferID, 10, 64)
+		_, err := strconv.ParseInt(*op.OfferID, 10, 64)
 		if err != nil {
 			return helpers.NewInvalidParameterError("offer_id", "Not a number.")
 		}
