@@ -61,22 +61,24 @@ interface EncryptedKeysData {
 }
 ```
 
-### /store-keys
+We support three different kinds of HTTP methods to manipulate keys:
 
-Store Keys Request:
+### PUT /keys
+
+Put Keys Request:
 
 ```typescript
-interface StoreKeysRequest {
+interface PutKeysRequest {
 	encrypterName: string;
 	salt: string;
 	keysBlob: string;
 }
 ```
 
-Store Keys Response:
+Put Keys Response:
 
 ```typescript
-type StoreKeysResponse = EncryptedKeysData;
+type PutKeysResponse = EncryptedKeysData;
 ```
 
 <details><summary>Errors</summary>
@@ -91,18 +93,18 @@ TBD
 ```
 </details>
 
-### /load-keys
+### GET /keys
 
-Load Keys Request:
+Get Keys Request:
 
 This endpoint will return the keys blob corresponding to the auth token
 in the request header, if the token is valid. This endpoint does not take
 any parameter.
 
-Load Keys Response:
+Get Keys Response:
 
 ```typescript
-type LoadKeysResponse = EncryptedKeysData;
+type GetKeysResponse = EncryptedKeysData;
 ```
 <details><summary>Errors</summary>
 
@@ -116,7 +118,7 @@ TBD
 ```
 </details>
 
-### /delete-keys
+### DELETE /keys
 
 Delete Keys Request:
 
