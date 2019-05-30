@@ -197,7 +197,6 @@ func (is *Session) ingestEffects() {
 		effects.Add(source, history.EffectAccountDebited, dets)
 
 		var offerResults []xdr.ManageOfferSuccessResultOffer
-
 		if is.Config.IngestOfferEffects {
 			opChanges := is.Cursor.OperationChanges()
 			for _, change := range opChanges {
@@ -232,20 +231,24 @@ func (is *Session) ingestEffects() {
 
 		is.ingestTradeEffects(effects, source, resultSuccess.Offers, offerResults)
 
-	case xdr.OperationTypeManageOffer:
-		result := is.Cursor.OperationResult().MustManageOfferResult().MustSuccess()
+	case xdr.OperationTypeManageBuyOffer:
+		result := is.Cursor.OperationResult().MustManageBuyOfferResult().MustSuccess()
 		is.ingestTradeEffects(effects, source, result.OffersClaimed, []xdr.ManageOfferSuccessResultOffer{result.Offer})
 
-	case xdr.OperationTypeCreatePassiveOffer:
-		var offerSuccess xdr.ManageOfferSuccessResult
+	case xdr.OperationTypeManageSellOffer:
+		result := is.Cursor.OperationResult().MustManageSellOfferResult().MustSuccess()
+		is.ingestTradeEffects(effects, source, result.OffersClaimed, []xdr.ManageOfferSuccessResultOffer{result.Offer})
+
+	case xdr.OperationTypeCreatePassiveSellOffer:
 		result := is.Cursor.OperationResult()
+		offerSuccess := xdr.ManageOfferSuccessResult{}
 
 		// KNOWN ISSUE:  stellar-core creates results for CreatePassiveOffer operations
 		// with the wrong result arm set.
-		if result.Type == xdr.OperationTypeManageOffer {
-			offerSuccess = result.MustManageOfferResult().MustSuccess()
+		if result.Type == xdr.OperationTypeManageSellOffer {
+			offerSuccess = result.MustManageSellOfferResult().MustSuccess()
 		} else {
-			offerSuccess = result.MustCreatePassiveOfferResult().MustSuccess()
+			offerSuccess = result.MustCreatePassiveSellOfferResult().MustSuccess()
 		}
 
 		is.ingestTradeEffects(effects, source, offerSuccess.OffersClaimed, []xdr.ManageOfferSuccessResultOffer{offerSuccess.Offer})
@@ -576,22 +579,27 @@ func (is *Session) ingestTrades() {
 			MustSuccess().
 			Offers
 
-	case xdr.OperationTypeManageOffer:
-		manageOfferResult := cursor.OperationResult().MustManageOfferResult().MustSuccess()
+	case xdr.OperationTypeManageBuyOffer:
+		manageOfferResult := cursor.OperationResult().MustManageBuyOfferResult().MustSuccess()
 		trades = manageOfferResult.OffersClaimed
 		buyOffer, buyOfferExists = manageOfferResult.Offer.GetOffer()
 
-	case xdr.OperationTypeCreatePassiveOffer:
+	case xdr.OperationTypeManageSellOffer:
+		manageOfferResult := cursor.OperationResult().MustManageSellOfferResult().MustSuccess()
+		trades = manageOfferResult.OffersClaimed
+		buyOffer, buyOfferExists = manageOfferResult.Offer.GetOffer()
+
+	case xdr.OperationTypeCreatePassiveSellOffer:
 		result := cursor.OperationResult()
 
 		// KNOWN ISSUE:  stellar-core creates results for CreatePassiveOffer operations
 		// with the wrong result arm set.
-		if result.Type == xdr.OperationTypeManageOffer {
-			manageOfferResult := result.MustManageOfferResult().MustSuccess()
+		if result.Type == xdr.OperationTypeManageSellOffer {
+			manageOfferResult := result.MustManageSellOfferResult().MustSuccess()
 			trades = manageOfferResult.OffersClaimed
 			buyOffer, buyOfferExists = manageOfferResult.Offer.GetOffer()
 		} else {
-			passiveOfferResult := result.MustCreatePassiveOfferResult().MustSuccess()
+			passiveOfferResult := result.MustCreatePassiveSellOfferResult().MustSuccess()
 			trades = passiveOfferResult.OffersClaimed
 			buyOffer, buyOfferExists = passiveOfferResult.Offer.GetOffer()
 		}
@@ -826,8 +834,19 @@ func (is *Session) operationDetails() map[string]interface{} {
 			is.assetDetails(path[i], op.Path[i], "")
 		}
 		details["path"] = path
-	case xdr.OperationTypeManageOffer:
-		op := c.Operation().Body.MustManageOfferOp()
+	case xdr.OperationTypeManageBuyOffer:
+		op := c.Operation().Body.MustManageBuyOfferOp()
+		details["offer_id"] = op.OfferId
+		details["amount"] = amount.String(op.BuyAmount)
+		details["price"] = op.Price.String()
+		details["price_r"] = map[string]interface{}{
+			"n": op.Price.N,
+			"d": op.Price.D,
+		}
+		is.assetDetails(details, op.Buying, "buying_")
+		is.assetDetails(details, op.Selling, "selling_")
+	case xdr.OperationTypeManageSellOffer:
+		op := c.Operation().Body.MustManageSellOfferOp()
 		details["offer_id"] = op.OfferId
 		details["amount"] = amount.String(op.Amount)
 		details["price"] = op.Price.String()
@@ -837,9 +856,8 @@ func (is *Session) operationDetails() map[string]interface{} {
 		}
 		is.assetDetails(details, op.Buying, "buying_")
 		is.assetDetails(details, op.Selling, "selling_")
-
-	case xdr.OperationTypeCreatePassiveOffer:
-		op := c.Operation().Body.MustCreatePassiveOfferOp()
+	case xdr.OperationTypeCreatePassiveSellOffer:
+		op := c.Operation().Body.MustCreatePassiveSellOfferOp()
 		details["amount"] = amount.String(op.Amount)
 		details["price"] = op.Price.String()
 		details["price_r"] = map[string]interface{}{
@@ -964,7 +982,7 @@ func (is *Session) reportCursorState() error {
 
 	core := &stellarcore.Client{URL: is.StellarCoreURL}
 
-	err := core.SetCursor(context.Background(), "HORIZON", is.Cursor.LastLedger)
+	err := core.SetCursor(context.Background(), is.Cursor.Name, is.Cursor.LastLedger)
 
 	if err != nil {
 		return errors.Wrap(err, "SetCursor failed")

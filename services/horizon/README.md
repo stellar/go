@@ -1,5 +1,5 @@
 # Horizon
-[![Build Status](https://travis-ci.org/stellar/go.svg?branch=master)](https://travis-ci.org/stellar/go)
+[![Build Status](https://circleci.com/gh/stellar/go.svg?style=shield)](https://circleci.com/gh/stellar/go)
 
 Horizon is the client facing API server for the [Stellar ecosystem](https://www.stellar.org/developers/guides/get-started/).  It acts as the interface between [Stellar Core](https://www.stellar.org/developers/stellar-core/software/admin.html) and applications that want to access the Stellar network. It allows you to submit transactions to the network, check the status of accounts, subscribe to event streams and more.
 

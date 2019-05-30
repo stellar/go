@@ -63,6 +63,9 @@ type Cursor struct {
 	// Err is the error that caused this iteration to fail, if any.
 	Err error
 
+	// Name is a unique identifier tracking the latest ingested ledger on stellar-core
+	Name string
+
 	lg   int32
 	tx   int
 	op   int
@@ -80,6 +83,11 @@ type Config struct {
 	// IngestOfferEffects is a feature flag that determines if system
 	// should ingest effects for offers.
 	IngestOfferEffects bool
+	// CursorName is the cursor used for ingesting from stellar-core.
+	// Setting multiple cursors in different Horizon instances allows multiple
+	// Horizons to ingest from the same stellar-core instance without cursor
+	// collisions.
+	CursorName string
 }
 
 // EffectIngestion is a helper struct to smooth the ingestion of effects. This
@@ -228,6 +236,7 @@ func NewCursor(first, last int32, i *System) *Cursor {
 		FirstLedger: first,
 		LastLedger:  last,
 		CoreDB:      i.CoreDB,
+		Name:        i.Config.CursorName,
 		Metrics:     &i.Metrics,
 	}
 }

@@ -76,8 +76,8 @@ func TestTimeBoundsMaxBig(t *testing.T) {
 		"",
 		sqx.StringArray([]string{}),
 		ingestion.formatTimeBounds(&xdr.TimeBounds{
-			MinTime: xdr.Uint64(0),
-			MaxTime: xdr.Uint64(9999999999999999999),
+			MinTime: xdr.TimePoint(0),
+			MaxTime: xdr.TimePoint(9999999999999999999),
 		}),
 		"id",
 		"111",

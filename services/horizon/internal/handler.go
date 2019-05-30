@@ -23,32 +23,31 @@ import (
 	"github.com/stellar/go/support/render/problem"
 )
 
-// jsonResponderFunc represents the signature of the function that handles
-// requests to which the server responds in json format.
-type jsonResponderFunc func(context.Context, interface{}) (interface{}, error)
-
 // streamFunc represents the signature of the function that handles requests
 // with stream mode turned on using server-sent events.
-type streamFunc func(context.Context, *sse.Stream, interface{}) error
+type streamFunc func(context.Context, *sse.Stream, *indexActionQueryParams) error
 
 // streamableEndpointHandler handles endpoints that have the stream mode
 // available. It inspects the Accept header to determine which function to be
 // executed. If it's "application/hal+json" or "application/json", then jfn
 // will be executed with params. If it's "text/event-stream", then either sfn
 // or jfn will be executed with the streamHandler with params.
-func (we *web) streamableEndpointHandler(jfn jsonResponderFunc, streamSingleObjectEnabled bool, sfn streamFunc, params interface{}) http.HandlerFunc {
+func (we *web) streamableEndpointHandler(jfn interface{}, streamSingleObjectEnabled bool, sfn streamFunc, params interface{}) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 
-		contentType := render.Negotiate(r)
-		switch contentType {
+		switch render.Negotiate(r) {
 		case render.MimeHal, render.MimeJSON:
 			if jfn == nil {
 				problem.Render(ctx, w, hProblem.NotAcceptable)
 				return
 			}
+			h, err := hal.Handler(jfn, params)
+			if err != nil {
+				panic(err)
+			}
 
-			hal.Handler(jfn, params).ServeHTTP(w, r)
+			h.ServeHTTP(w, r)
 			return
 
 		case render.MimeEventStream:
@@ -70,7 +69,7 @@ func (we *web) streamableEndpointHandler(jfn jsonResponderFunc, streamSingleObje
 // provided params.
 // Note that we don't return an error if both jfn and sfn are not nil. sfn will
 // simply take precedence.
-func (we *web) streamHandler(jfn jsonResponderFunc, sfn streamFunc, params interface{}) http.HandlerFunc {
+func (we *web) streamHandler(jfn interface{}, sfn streamFunc, params interface{}) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 
@@ -95,14 +94,17 @@ func (we *web) streamHandler(jfn jsonResponderFunc, sfn streamFunc, params inter
 			}
 
 			if sfn != nil {
-				err := sfn(ctx, stream, params)
+				err := sfn(ctx, stream, params.(*indexActionQueryParams))
 				if err != nil {
 					stream.Err(err)
 					return
 				}
 			} else if jfn != nil {
-				data, err := jfn(ctx, params)
+				data, ok, err := hal.ExecuteFunc(ctx, jfn, params)
 				if err != nil {
+					if !ok {
+						panic(err)
+					}
 					stream.Err(err)
 					return
 				}
@@ -157,21 +159,66 @@ func (we *web) streamHandler(jfn jsonResponderFunc, sfn streamFunc, params inter
 	})
 }
 
-// accountHandler gets the account address from the request and pass it on to
-// streamableEndpointHandler.
-// Note that we cannot put this handler in the middleware stack because of
-// Chi's routing mechanism. A request will have to reach the end of the route
-// in order to have a valid route pattern in Chi.
-func (we *web) accountHandler(jfn jsonResponderFunc) http.HandlerFunc {
+// streamShowActionHandler gets the showAction query params from the request
+// and pass it on to streamableEndpointHandler.
+func (we *web) streamShowActionHandler(jfn interface{}, requireAccountID bool) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
-		addr, err := getAccountID(r, "account_id", true)
+		param, err := getShowActionQueryParams(r, requireAccountID)
 		if err != nil {
 			problem.Render(ctx, w, err)
 			return
 		}
 
-		we.streamableEndpointHandler(jfn, true, nil, addr).ServeHTTP(w, r)
+		we.streamableEndpointHandler(jfn, true, nil, param).ServeHTTP(w, r)
+	})
+}
+
+// streamIndexActionHandler gets the required params for indexable endpoints from
+// the URL, validates the cursor is within history, and finally passes the
+// indexAction query params to the more general purpose streamableEndpointHandler.
+func (we *web) streamIndexActionHandler(jfn interface{}, sfn streamFunc) http.HandlerFunc {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+
+		params, err := getIndexActionQueryParams(r, we.ingestFailedTx)
+		if err != nil {
+			problem.Render(ctx, w, err)
+			return
+		}
+
+		err = validateCursorWithinHistory(params.PagingParams)
+		if err != nil {
+			problem.Render(ctx, w, err)
+			return
+		}
+
+		we.streamableEndpointHandler(jfn, false, sfn, params).ServeHTTP(w, r)
+	})
+}
+
+// showActionHandler handles all non-streamable endpoints.
+func showActionHandler(jfn interface{}) http.HandlerFunc {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+		contentType := render.Negotiate(r)
+		if jfn == nil || (contentType != render.MimeHal && contentType != render.MimeJSON) {
+			problem.Render(ctx, w, hProblem.NotAcceptable)
+			return
+		}
+
+		params, err := getShowActionQueryParams(r, false)
+		if err != nil {
+			problem.Render(ctx, w, err)
+			return
+		}
+
+		h, err := hal.Handler(jfn, params)
+		if err != nil {
+			panic(err)
+		}
+
+		h.ServeHTTP(w, r)
 	})
 }
 
@@ -198,35 +245,29 @@ func getAccountID(r *http.Request, key string, required bool) (string, error) {
 	return val, nil
 }
 
-// transactionHandler checks whether the history is stale, gets the required
-// params for transaction endpoints from the URL, validates the cursor is within
-// history, and finally pass the transaction params to the more general purpose
-// streamableEndpointHandler.
-func (we *web) transactionHandler(jfn jsonResponderFunc, sfn streamFunc) http.HandlerFunc {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		ctx := r.Context()
+// getShowActionQueryParams gets the available query params for all non-indexable endpoints.
+func getShowActionQueryParams(r *http.Request, requireAccountID bool) (*showActionQueryParams, error) {
+	txHash, err := hchi.GetStringFromURL(r, "tx_id")
+	if err != nil {
+		return nil, errors.Wrap(err, "getting tx id")
+	}
 
-		params, err := getTransactionQueryParams(r, we.ingestFailedTx)
-		if err != nil {
-			problem.Render(ctx, w, err)
-			return
-		}
+	addr, err := getAccountID(r, "account_id", requireAccountID)
+	if err != nil {
+		return nil, errors.Wrap(err, "getting account id")
+	}
 
-		err = validateCursorWithinHistory(params.PagingParams)
-		if err != nil {
-			problem.Render(ctx, w, err)
-			return
-		}
-
-		we.streamableEndpointHandler(jfn, false, sfn, params).ServeHTTP(w, r)
-	})
+	return &showActionQueryParams{
+		AccountID: addr,
+		TxHash:    txHash,
+	}, nil
 }
 
-// getTransactionQueryParams gets the available query params for transaction endpoints.
-func getTransactionQueryParams(r *http.Request, ingestFailedTransactions bool) (*actions.TransactionParams, error) {
+// getIndexActionQueryParams gets the available query params for all indexable endpoints.
+func getIndexActionQueryParams(r *http.Request, ingestFailedTransactions bool) (*indexActionQueryParams, error) {
 	addr, err := getAccountID(r, "account_id", false)
 	if err != nil {
-		return nil, errors.Wrap(err, "getting account address")
+		return nil, errors.Wrap(err, "getting account id")
 	}
 
 	lid, err := getInt32ParamFromURL(r, "ledger_id")
@@ -254,11 +295,11 @@ func getTransactionQueryParams(r *http.Request, ingestFailedTransactions bool) (
 				"transactions. Set `INGEST_FAILED_TRANSACTIONS=true` to start ingesting them."))
 	}
 
-	return &actions.TransactionParams{
-		AccountFilter: addr,
-		LedgerFilter:  lid,
-		PagingParams:  pq,
-		IncludeFailed: includeFailedTx,
+	return &indexActionQueryParams{
+		AccountID:        addr,
+		LedgerID:         lid,
+		PagingParams:     pq,
+		IncludeFailedTxs: includeFailedTx,
 	}, nil
 }
 

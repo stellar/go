@@ -2,16 +2,17 @@ package main
 
 import (
 	"fmt"
-	log "github.com/sirupsen/logrus"
 	"net/http"
 	"os"
 	"runtime"
 	"time"
 
+	log "github.com/sirupsen/logrus"
+
 	"github.com/facebookgo/inject"
 	"github.com/spf13/cobra"
 	"github.com/stellar/go/clients/federation"
-	"github.com/stellar/go/clients/horizon"
+	hc "github.com/stellar/go/clients/horizonclient"
 	"github.com/stellar/go/clients/stellartoml"
 	"github.com/stellar/go/services/bridge/internal/config"
 	"github.com/stellar/go/services/bridge/internal/db"
@@ -137,10 +138,10 @@ func NewApp(config config.Config, migrateFlag bool, versionFlag bool, version st
 		Timeout: 60 * time.Second,
 	}
 
-	h := horizon.Client{
-		URL:     config.Horizon,
-		HTTP:    &httpClientWithTimeout,
-		AppName: "bridge-server",
+	h := hc.Client{
+		HorizonURL: config.Horizon,
+		HTTP:       http.DefaultClient,
+		AppName:    "bridge-server",
 	}
 
 	log.Print("Creating and initializing TransactionSubmitter")

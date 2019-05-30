@@ -13,25 +13,19 @@ import (
 	"github.com/stellar/go/xdr"
 )
 
-type TransactionParams struct {
-	AccountFilter string
-	LedgerFilter  int32
-	PagingParams  db2.PageQuery
-	IncludeFailed bool
-}
-
-// TransactionPageByAccount returns a paga containing the transaction records
-// of an account identified by the provided addr into a page based on pq and
+// TransactionPage returns a page containing the transaction records of an
+// account/ledger identified by accountID/ledgerID into a page based on pq and
 // includeFailedTx.
-func TransactionPageByAccount(ctx context.Context, hq *history.Q, addr string, includeFailedTx bool, pq db2.PageQuery) (hal.Page, error) {
+func TransactionPage(ctx context.Context, hq *history.Q, accountID string, ledgerID int32, includeFailedTx bool, pq db2.PageQuery) (hal.Page, error) {
+	records, err := loadTransactionRecords(hq, accountID, ledgerID, includeFailedTx, pq)
+	if err != nil {
+		return hal.Page{}, errors.Wrap(err, "loading transaction records")
+	}
+
 	page := hal.Page{
 		Cursor: pq.Cursor,
 		Order:  pq.Order,
 		Limit:  pq.Limit,
-	}
-	records, err := loadTransactionRecordByAccount(hq, addr, includeFailedTx, pq)
-	if err != nil {
-		return page, errors.Wrap(err, "loading transaction records by account")
 	}
 
 	for _, record := range records {
@@ -46,13 +40,23 @@ func TransactionPageByAccount(ctx context.Context, hq *history.Q, addr string, i
 	return page, nil
 }
 
-// loadTransactionRecordByAccount returns a slice of transaction records of an
-// account identified by addr based on pq and includeFailedTx.
-func loadTransactionRecordByAccount(hq *history.Q, addr string, includeFailedTx bool, pq db2.PageQuery) ([]history.Transaction, error) {
+// loadTransactionRecords returns a slice of transaction records of an
+// account/ledger identified by accountID/ledgerID based on pq and
+// includeFailedTx.
+func loadTransactionRecords(hq *history.Q, accountID string, ledgerID int32, includeFailedTx bool, pq db2.PageQuery) ([]history.Transaction, error) {
+	if accountID != "" && ledgerID != 0 {
+		return nil, errors.New("conflicting exclusive fields are present: account_id and ledger_id")
+	}
+
 	var records []history.Transaction
 
 	txs := hq.Transactions()
-	txs.ForAccount(addr)
+	switch {
+	case accountID != "":
+		txs.ForAccount(accountID)
+	case ledgerID > 0:
+		txs.ForLedger(ledgerID)
+	}
 
 	if includeFailedTx {
 		txs.IncludeFailed()
@@ -60,7 +64,7 @@ func loadTransactionRecordByAccount(hq *history.Q, addr string, includeFailedTx 
 
 	err := txs.Page(pq).Select(&records)
 	if err != nil {
-		return nil, errors.Wrap(err, "getting transaction records by account")
+		return nil, errors.Wrap(err, "executing transaction records query")
 	}
 
 	for _, t := range records {
@@ -84,12 +88,12 @@ func loadTransactionRecordByAccount(hq *history.Q, addr string, includeFailedTx 
 	return records, nil
 }
 
-// StreamTransactionByAccount streams transaction records of an account
-// identified by addr based on pq and includeFailedTx.
-func StreamTransactionByAccount(ctx context.Context, s *sse.Stream, hq *history.Q, addr string, includeFailedTx bool, pq db2.PageQuery) error {
-	allRecords, err := loadTransactionRecordByAccount(hq, addr, includeFailedTx, pq)
+// StreamTransactions streams transaction records of an account/ledger
+// identified by accountID/ledgerID based on pq and includeFailedTx.
+func StreamTransactions(ctx context.Context, s *sse.Stream, hq *history.Q, accountID string, ledgerID int32, includeFailedTx bool, pq db2.PageQuery) error {
+	allRecords, err := loadTransactionRecords(hq, accountID, ledgerID, includeFailedTx, pq)
 	if err != nil {
-		return errors.Wrap(err, "loading transaction records by account")
+		return errors.Wrap(err, "loading transaction records")
 	}
 
 	s.SetLimit(int(pq.Limit))
@@ -101,4 +105,19 @@ func StreamTransactionByAccount(ctx context.Context, s *sse.Stream, hq *history.
 	}
 
 	return nil
+}
+
+// TransactionResource returns a single transaction resource identified by txHash.
+func TransactionResource(ctx context.Context, hq *history.Q, txHash string) (horizon.Transaction, error) {
+	var (
+		record   history.Transaction
+		resource horizon.Transaction
+	)
+	err := hq.TransactionByHash(&record, txHash)
+	if err != nil {
+		return resource, errors.Wrap(err, "loading transaction record")
+	}
+
+	resourceadapter.PopulateTransaction(ctx, &resource, record)
+	return resource, nil
 }

@@ -202,3 +202,19 @@ func NewPaymentPendingError(seconds int) *helpers.ErrorResponse {
 		Data:    map[string]interface{}{"pending": seconds},
 	}
 }
+
+// PaymentResponse represents a response from the bridge server when a payment is received.
+type PaymentResponse struct {
+	ID              string
+	Type            string
+	PagingToken     string
+	From            string
+	To              string
+	AssetType       string
+	AssetCode       string
+	AssetIssuer     string
+	Amount          string
+	TransactionHash string
+	MemoType        string
+	Memo            string
+}

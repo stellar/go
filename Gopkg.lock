@@ -272,6 +272,29 @@
   revision = "9235644dd9e52eeae6fa48efd539fdc351a0af53"
 
 [[projects]]
+  branch = "master"
+  digest = "1:5cd75acef421262dbd1d2d15dc1b3859e43c78f13046a0c3b468386e215a28e5"
+  name = "github.com/graph-gophers/graphql-go"
+  packages = [
+    ".",
+    "errors",
+    "internal/common",
+    "internal/exec",
+    "internal/exec/packer",
+    "internal/exec/resolvable",
+    "internal/exec/selected",
+    "internal/query",
+    "internal/schema",
+    "internal/validation",
+    "introspection",
+    "log",
+    "relay",
+    "trace",
+  ]
+  pruneopts = "T"
+  revision = "3e8838d4614c12ab337e796548521744f921e05d"
+
+[[projects]]
   digest = "1:1645a00815964b8746574a5688974d9e6285519bb053ea06b0758729eb5b2942"
   name = "github.com/guregu/null"
   packages = ["."]
@@ -431,6 +454,14 @@
   revision = "efea85cb9a06f1d4f661649f6beb5fd04597a366"
 
 [[projects]]
+  digest = "1:5d231480e1c64a726869bc4142d270184c419749d34f167646baa21008eb0a79"
+  name = "github.com/mitchellh/go-homedir"
+  packages = ["."]
+  pruneopts = "T"
+  revision = "af06845cf3004701891bf4fdb884bfe4920b3727"
+  version = "v1.1.0"
+
+[[projects]]
   digest = "1:922a47edb4c9b30c8d1e55ececa4fc35c791cccfac6b810c5155fc3a65751597"
   name = "github.com/mitchellh/mapstructure"
   packages = ["."]
@@ -499,6 +530,18 @@
   ]
   pruneopts = "T"
   revision = "649b44d988ce182cabcda7dba01fcf3b6179ad19"
+
+[[projects]]
+  digest = "1:a88448fcd2802025fa764388e12f31f0a64d5d436b369a71b97a6c9da783fafe"
+  name = "github.com/opentracing/opentracing-go"
+  packages = [
+    ".",
+    "ext",
+    "log",
+  ]
+  pruneopts = "T"
+  revision = "659c90643e714681897ec2521c60567dd21da733"
+  version = "v1.1.0"
 
 [[projects]]
   digest = "1:40e195917a951a8bf867cd05de2a46aaf1806c50cf92eebf4c16f78cd196f747"
@@ -885,6 +928,8 @@
     "github.com/go-sql-driver/mysql",
     "github.com/goji/httpauth",
     "github.com/gomodule/redigo/redis",
+    "github.com/graph-gophers/graphql-go",
+    "github.com/graph-gophers/graphql-go/relay",
     "github.com/guregu/null",
     "github.com/haltingstate/secp256k1-go",
     "github.com/howeyc/gopass",
@@ -894,6 +939,7 @@
     "github.com/lib/pq",
     "github.com/manucorporat/sse",
     "github.com/mattn/go-sqlite3",
+    "github.com/mitchellh/go-homedir",
     "github.com/onsi/ginkgo",
     "github.com/onsi/ginkgo/extensions/table",
     "github.com/onsi/gomega",

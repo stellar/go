@@ -17,11 +17,6 @@ import (
 )
 
 func DumpXdrAsJson(args []string) error {
-	var lhe xdr.LedgerHeaderHistoryEntry
-	var the xdr.TransactionHistoryEntry
-	var thre xdr.TransactionHistoryResultEntry
-	var bke xdr.BucketEntry
-	var scp xdr.ScpHistoryEntry
 	var tmp interface{}
 	var rdr io.ReadCloser
 	var err error
@@ -40,22 +35,29 @@ func DumpXdrAsJson(args []string) error {
 		}
 
 		base := path.Base(arg)
-		if strings.HasPrefix(base, "bucket") {
-			tmp = &bke
-		} else if strings.HasPrefix(base, "ledger") {
-			tmp = &lhe
-		} else if strings.HasPrefix(base, "transactions") {
-			tmp = &the
-		} else if strings.HasPrefix(base, "results") {
-			tmp = &thre
-		} else if strings.HasPrefix(base, "scp") {
-			tmp = &scp
-		} else {
-			return fmt.Errorf("Error: unrecognized XDR file type %s", base)
-		}
 		xr := NewXdrStream(rdr)
 		n := 0
 		for {
+			var lhe xdr.LedgerHeaderHistoryEntry
+			var the xdr.TransactionHistoryEntry
+			var thre xdr.TransactionHistoryResultEntry
+			var bke xdr.BucketEntry
+			var scp xdr.ScpHistoryEntry
+
+			if strings.HasPrefix(base, "bucket") {
+				tmp = &bke
+			} else if strings.HasPrefix(base, "ledger") {
+				tmp = &lhe
+			} else if strings.HasPrefix(base, "transactions") {
+				tmp = &the
+			} else if strings.HasPrefix(base, "results") {
+				tmp = &thre
+			} else if strings.HasPrefix(base, "scp") {
+				tmp = &scp
+			} else {
+				return fmt.Errorf("Error: unrecognized XDR file type %s", base)
+			}
+
 			if err = xr.ReadOne(&tmp); err != nil {
 				if err == io.EOF {
 					break

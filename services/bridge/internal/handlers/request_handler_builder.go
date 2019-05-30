@@ -6,11 +6,11 @@ import (
 	"strconv"
 
 	log "github.com/sirupsen/logrus"
-
-	b "github.com/stellar/go/build"
-	"github.com/stellar/go/clients/horizon"
+	hc "github.com/stellar/go/clients/horizonclient"
+	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/services/internal/bridge-compliance-shared/http/helpers"
 	"github.com/stellar/go/services/internal/bridge-compliance-shared/protocols/bridge"
+	"github.com/stellar/go/txnbuild"
 )
 
 // Builder implements /builder endpoint
@@ -50,20 +50,22 @@ func (rh *RequestHandler) Builder(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if request.SequenceNumber == "" {
-		var accountResponse horizon.Account
-		accountResponse, err = rh.Horizon.LoadAccount(request.Source)
+
+		accountRequest := hc.AccountRequest{AccountID: request.Source}
+		accountResponse, err := rh.Horizon.AccountDetail(accountRequest)
 		if err != nil {
 			log.WithFields(log.Fields{"err": err}).Error("Error when loading account")
 			helpers.Write(w, helpers.InternalServerError)
 			return
 		}
 		sequenceNumber, err = strconv.ParseUint(accountResponse.Sequence, 10, 64)
-		if err == nil {
-			// increment sequence number when none is provided
-			sequenceNumber = sequenceNumber + 1
-		}
 	} else {
 		sequenceNumber, err = strconv.ParseUint(request.SequenceNumber, 10, 64)
+		if err == nil {
+			// decrement sequence number when it is provided because txnbuild will autoincrement
+			// to do: remove in txnbuild v2.*
+			sequenceNumber = sequenceNumber - 1
+		}
 	}
 
 	if err != nil {
@@ -72,37 +74,47 @@ func (rh *RequestHandler) Builder(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	mutators := []b.TransactionMutator{
-		b.SourceAccount{request.Source},
-		b.Sequence{sequenceNumber},
-		b.Network{rh.Config.NetworkPassphrase},
-	}
-
+	var txOps []txnbuild.Operation
 	for _, operation := range request.Operations {
-		mutators = append(mutators, operation.Body.ToTransactionMutator())
+		txOps = append(txOps, operation.Body.Build())
 	}
 
-	tx, err := b.Transaction(mutators...)
+	tx := txnbuild.Transaction{
+		SourceAccount: &txnbuild.SimpleAccount{AccountID: request.Source, Sequence: int64(sequenceNumber)},
+		Operations:    txOps,
+		Timebounds:    txnbuild.NewInfiniteTimeout(),
+		Network:       rh.Config.NetworkPassphrase,
+	}
 
+	err = tx.Build()
 	if err != nil {
 		log.WithFields(log.Fields{"err": err, "request": request}).Error("TransactionBuilder returned error")
 		helpers.Write(w, helpers.InternalServerError)
 		return
 	}
 
-	txe, err := tx.Sign(request.Signers...)
-	if err != nil {
-		log.WithFields(log.Fields{"err": err, "request": request}).Error("Error signing transaction")
-		helpers.Write(w, helpers.InternalServerError)
-		return
+	for _, s := range request.Signers {
+		kp, err := keypair.Parse(s)
+		if err != nil {
+			log.WithFields(log.Fields{"err": err, "request": request}).Error("Error converting signers to keypairs")
+			helpers.Write(w, helpers.InternalServerError)
+			return
+		}
+
+		err = tx.Sign(kp.(*keypair.Full))
+		if err != nil {
+			log.WithFields(log.Fields{"err": err, "request": request}).Error("Error signing transaction")
+			helpers.Write(w, helpers.InternalServerError)
+			return
+		}
 	}
 
-	txeB64, err := txe.Base64()
+	txeBase64, err := tx.Base64()
 	if err != nil {
 		log.WithFields(log.Fields{"err": err, "request": request}).Error("Error encoding transaction envelope")
 		helpers.Write(w, helpers.InternalServerError)
 		return
 	}
 
-	helpers.Write(w, &bridge.BuilderResponse{TransactionEnvelope: txeB64})
+	helpers.Write(w, &bridge.BuilderResponse{TransactionEnvelope: txeBase64})
 }

@@ -36,7 +36,7 @@ To test the installation, simply run `horizon --help` from a terminal.  If the h
 Should you decide not to use one of our prebuilt releases, you may instead build Horizon from source.  To do so, you need to install some developer tools:
 
 - A unix-like operating system with the common core commands (cp, tar, mkdir, bash, etc.)
-- A compatible distribution of Go (we officially support Go 1.9 and later)
+- A compatible distribution of Go (we officially support Go 1.10 and later)
 - [go-dep](https://golang.github.io/dep/)
 - [git](https://git-scm.com/)
 - [mercurial](https://www.mercurial-scm.org/)
@@ -93,6 +93,11 @@ INFO[0000] Starting horizon on :8000                     pid=29013
 
 The log line above announces that Horizon is ready to serve client requests. Note: the numbers shown above may be different for your installation.  Next we can confirm that Horizon is responding correctly by loading the root resource.  In the example above, that URL would be [http://127.0.0.1:8000/] and simply running `curl http://127.0.0.1:8000/` shows you that the root resource can be loaded correctly.
 
+If you didn't set up a stellar-core yet, you may see an error like this:
+```
+ERRO[2019-05-06T16:21:14.126+08:00] Error getting core latest ledger err="get failed: pq: relation \"ledgerheaders\" does not exist"
+```
+Horizon requires a functional stellar-core. Go back and set up stellar-core as described in the admin guide. In particular, you need to initialise the database as [described here](https://www.stellar.org/developers/stellar-core/software/admin.html#database-and-local-state).
 
 ## Ingesting live stellar-core data
 

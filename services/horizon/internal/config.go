@@ -40,6 +40,11 @@ type Config struct {
 	IngestFailedTransactions bool
 	// IngestOfferEffects toggles whether to ingest offer effects
 	IngestOfferEffects bool
+	// CursorName is the cursor used for ingesting from stellar-core.
+	// Setting multiple cursors in different Horizon instances allows multiple
+	// Horizons to ingest from the same stellar-core instance without cursor
+	// collisions.
+	CursorName string
 	// HistoryRetentionCount represents the minimum number of ledgers worth of
 	// history data to retain in the horizon database. For the purposes of
 	// determining a "retention duration", each ledger roughly corresponds to 10

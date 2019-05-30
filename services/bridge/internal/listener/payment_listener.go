@@ -14,10 +14,13 @@ import (
 	"encoding/base64"
 
 	"github.com/sirupsen/logrus"
-	"github.com/stellar/go/clients/horizon"
+	hc "github.com/stellar/go/clients/horizonclient"
 	"github.com/stellar/go/protocols/compliance"
+	"github.com/stellar/go/protocols/horizon/effects"
+	"github.com/stellar/go/protocols/horizon/operations"
 	"github.com/stellar/go/services/bridge/internal/config"
 	"github.com/stellar/go/services/bridge/internal/db"
+	"github.com/stellar/go/services/internal/bridge-compliance-shared/protocols/bridge"
 	callback "github.com/stellar/go/services/internal/bridge-compliance-shared/protocols/compliance"
 	"github.com/stellar/go/strkey"
 	"github.com/stellar/go/support/errors"
@@ -28,7 +31,7 @@ type PaymentListener struct {
 	client   HTTP
 	config   *config.Config
 	database db.Database
-	horizon  horizon.ClientInterface
+	horizon  hc.ClientInterface
 	log      *logrus.Entry
 	now      func() time.Time
 }
@@ -45,7 +48,7 @@ const callbackTimeout = 60 * time.Second
 func NewPaymentListener(
 	config *config.Config,
 	database db.Database,
-	horizon horizon.ClientInterface,
+	horizon hc.ClientInterface,
 	now func() time.Time,
 ) (pl PaymentListener, err error) {
 	pl.client = &http.Client{
@@ -64,8 +67,8 @@ func NewPaymentListener(
 // Listen starts listening for new payments
 func (pl *PaymentListener) Listen() (err error) {
 	accountID := pl.config.Accounts.ReceivingAccountID
-
-	_, err = pl.horizon.LoadAccount(accountID)
+	accountRequest := hc.AccountRequest{AccountID: accountID}
+	_, err = pl.horizon.AccountDetail(accountRequest)
 	if err != nil {
 		return
 	}
@@ -78,12 +81,12 @@ func (pl *PaymentListener) Listen() (err error) {
 				return
 			}
 
-			var cursor horizon.Cursor
+			var cursor string
 			if cursorValue != nil {
-				cursor = horizon.Cursor(*cursorValue)
+				cursor = *cursorValue
 			} else {
 				// If no last cursor saved set it to: `now`
-				cursor = horizon.Cursor("now")
+				cursor = "now"
 			}
 
 			pl.log.WithFields(logrus.Fields{
@@ -91,7 +94,8 @@ func (pl *PaymentListener) Listen() (err error) {
 				"cursor":    cursor,
 			}).Info("Started listening for new payments")
 
-			err = pl.horizon.StreamPayments(context.Background(), accountID, &cursor, pl.onPayment)
+			paymentRequest := hc.OperationRequest{ForAccount: accountID, Cursor: cursor}
+			err = pl.horizon.StreamPayments(context.Background(), paymentRequest, pl.onPayment)
 			if err != nil {
 				pl.log.Error("Error while streaming: ", err)
 				pl.log.Info("Sleeping...")
@@ -103,7 +107,7 @@ func (pl *PaymentListener) Listen() (err error) {
 	return
 }
 
-func (pl *PaymentListener) ReprocessPayment(payment horizon.Payment, force bool) error {
+func (pl *PaymentListener) ReprocessPayment(payment bridge.PaymentResponse, force bool) error {
 	pl.log.WithFields(logrus.Fields{"id": payment.ID}).Info("Reprocessing a payment")
 
 	existingPayment, err := pl.database.GetReceivedPaymentByOperationID(payment.ID)
@@ -143,25 +147,25 @@ func (pl *PaymentListener) ReprocessPayment(payment horizon.Payment, force bool)
 	return pl.database.UpdateReceivedPayment(existingPayment)
 }
 
-func (pl *PaymentListener) onPayment(payment horizon.Payment) {
-	pl.log.WithFields(logrus.Fields{"id": payment.ID}).Info("New received payment")
+func (pl *PaymentListener) onPayment(payment operations.Operation) {
+	pl.log.WithFields(logrus.Fields{"id": payment.GetID()}).Info("New received payment")
 
-	existingPayment, err := pl.database.GetReceivedPaymentByOperationID(payment.ID)
+	existingPayment, err := pl.database.GetReceivedPaymentByOperationID(payment.GetID())
 	if err != nil {
 		pl.log.WithFields(logrus.Fields{"err": err}).Error("Error checking if receive payment exists")
 		return
 	}
 
 	if existingPayment != nil {
-		pl.log.WithFields(logrus.Fields{"id": payment.ID}).Info("Payment already exists")
+		pl.log.WithFields(logrus.Fields{"id": payment.GetID()}).Info("Payment already exists")
 		return
 	}
 
 	dbPayment := &db.ReceivedPayment{
-		OperationID:   payment.ID,
-		TransactionID: payment.TransactionHash,
+		OperationID:   payment.GetID(),
+		TransactionID: payment.GetTransactionHash(),
 		ProcessedAt:   pl.now(),
-		PagingToken:   payment.PagingToken,
+		PagingToken:   payment.PagingToken(),
 		Status:        "Processing...",
 	}
 
@@ -170,12 +174,18 @@ func (pl *PaymentListener) onPayment(payment horizon.Payment) {
 		return
 	}
 
-	process, status := pl.shouldProcessPayment(payment)
+	bPayment, err := pl.ConvertToBridgePayment(payment)
+	if err != nil {
+		pl.log.WithFields(logrus.Fields{"err": err}).Error("Error when converting operation to bridge payment type")
+		return
+	}
+
+	process, status := pl.shouldProcessPayment(bPayment)
 	if !process {
 		dbPayment.Status = status
 		pl.log.Info(status)
 	} else {
-		err = pl.process(payment)
+		err = pl.process(bPayment)
 
 		if err != nil {
 			pl.log.WithFields(logrus.Fields{"err": err}).Error("Payment processed with errors")
@@ -195,17 +205,13 @@ func (pl *PaymentListener) onPayment(payment horizon.Payment) {
 
 // shouldProcessPayment returns false and text status if payment should not be processed
 // (ex. asset is different than allowed assets).
-func (pl *PaymentListener) shouldProcessPayment(payment horizon.Payment) (bool, string) {
+func (pl *PaymentListener) shouldProcessPayment(payment bridge.PaymentResponse) (bool, string) {
 	if payment.Type != "payment" && payment.Type != "path_payment" && payment.Type != "account_merge" {
 		return false, "Not a payment operation"
 	}
 
-	if payment.Type == "account_merge" {
-		payment.AssetType = "native"
-	}
-
-	if payment.To != pl.config.Accounts.ReceivingAccountID && payment.Into != pl.config.Accounts.ReceivingAccountID {
-		return false, "Operation sent not received"
+	if payment.To != pl.config.Accounts.ReceivingAccountID {
+		return false, "Operation type not permitted"
 	}
 
 	if !pl.isAssetAllowed(payment.AssetType, payment.AssetCode, payment.AssetIssuer) {
@@ -215,36 +221,20 @@ func (pl *PaymentListener) shouldProcessPayment(payment horizon.Payment) (bool, 
 	return true, ""
 }
 
-func (pl *PaymentListener) process(payment horizon.Payment) error {
-	if payment.Type == "account_merge" {
-		payment.AssetType = "native"
-		payment.From = payment.Account
-		payment.To = payment.Into
-
-		err := pl.horizon.LoadAccountMergeAmount(&payment)
-		if err != nil {
-			return errors.Wrap(err, "Unable to load account_merge amount")
-		}
-	}
-
-	err := pl.horizon.LoadMemo(&payment)
-	if err != nil {
-		return errors.Wrap(err, "Unable to load transaction memo")
-	}
-
-	pl.log.WithFields(logrus.Fields{"memo": payment.Memo.Value, "type": payment.Memo.Type}).Info("Loaded memo")
+func (pl *PaymentListener) process(payment bridge.PaymentResponse) error {
+	pl.log.WithFields(logrus.Fields{"memo": payment.Memo, "type": payment.MemoType}).Info("Loaded memo")
 
 	var receiveResponse callback.ReceiveResponse
 	var route string
 
 	// Request extra_memo from compliance server
-	if pl.config.Compliance != "" && payment.Memo.Type == "hash" {
+	if pl.config.Compliance != "" && payment.MemoType == "hash" {
 		complianceRequestURL := pl.config.Compliance + "/receive"
-		complianceRequestBody := url.Values{"memo": {string(payment.Memo.Value)}}
+		complianceRequestBody := url.Values{"memo": {string(payment.Memo)}}
 
 		pl.log.WithFields(logrus.Fields{"url": complianceRequestURL, "body": complianceRequestBody}).Info("Sending request to compliance server")
 		var resp *http.Response
-		resp, err = pl.postForm(complianceRequestURL, complianceRequestBody)
+		resp, err := pl.postForm(complianceRequestURL, complianceRequestBody)
 		if err != nil {
 			return errors.Wrap(err, "Error sending request to compliance server")
 		}
@@ -282,8 +272,8 @@ func (pl *PaymentListener) process(payment horizon.Payment) error {
 		}
 
 		route = string(attachment.Transaction.Route)
-	} else if payment.Memo.Type != "hash" {
-		route = payment.Memo.Value
+	} else if payment.MemoType != "hash" {
+		route = payment.Memo
 	}
 
 	resp, err := pl.postForm(
@@ -295,8 +285,8 @@ func (pl *PaymentListener) process(payment horizon.Payment) error {
 			"amount":         {payment.Amount},
 			"asset_code":     {payment.AssetCode},
 			"asset_issuer":   {payment.AssetIssuer},
-			"memo_type":      {payment.Memo.Type},
-			"memo":           {payment.Memo.Value},
+			"memo_type":      {payment.MemoType},
+			"memo":           {payment.Memo},
 			"data":           {receiveResponse.Data},
 			"transaction_id": {payment.TransactionHash},
 		},
@@ -322,16 +312,15 @@ func (pl *PaymentListener) process(payment horizon.Payment) error {
 	return nil
 }
 
-func (pl *PaymentListener) isAssetAllowed(asset_type string, code string, issuer string) bool {
+func (pl *PaymentListener) isAssetAllowed(assetType string, code string, issuer string) bool {
 	for _, asset := range pl.config.Assets {
 		if asset.Code == code && asset.Issuer == issuer {
 			return true
 		}
 
-		if asset.Code == "XLM" && asset.Issuer == "" && asset_type == "native" {
+		if asset.Code == "XLM" && asset.Issuer == "" && assetType == "native" {
 			return true
 		}
-
 	}
 	return false
 }
@@ -379,4 +368,66 @@ func (pl *PaymentListener) getMAC(key string, raw []byte) ([]byte, error) {
 	macer := hmac.New(sha256.New, rawkey)
 	macer.Write(raw)
 	return macer.Sum(nil), nil
+}
+
+// ConvertToBridgePayment constructs a bridge.PaymentResponse struct from the operation received from horizon.
+// This is done in order to have a standard response because the response from horizon can either be a
+// payment, path_payment or account_merge operation; all of which have different fields.
+func (pl *PaymentListener) ConvertToBridgePayment(op operations.Operation) (bridge.PaymentResponse, error) {
+
+	payment := bridge.PaymentResponse{
+		ID:              op.GetID(),
+		Type:            op.GetType(),
+		PagingToken:     op.PagingToken(),
+		TransactionHash: op.GetTransactionHash(),
+	}
+
+	switch v := op.(type) {
+	case operations.Payment:
+		payment.AssetCode = v.Asset.Code
+		payment.AssetIssuer = v.Asset.Issuer
+		payment.AssetType = v.Asset.Type
+		payment.From = v.From
+		payment.To = v.To
+	case operations.PathPayment:
+		payment.AssetCode = v.Asset.Code
+		payment.AssetIssuer = v.Asset.Issuer
+		payment.AssetType = v.Asset.Type
+		payment.From = v.From
+		payment.To = v.To
+	case operations.AccountMerge:
+		payment.AssetCode = "XLM"
+		payment.AssetIssuer = ""
+		payment.AssetType = "native"
+		payment.From = v.Account
+		payment.To = v.Into
+		// get amount
+		effectRequest := hc.EffectRequest{ForOperation: payment.ID}
+		page, err := pl.horizon.Effects(effectRequest)
+		if err != nil {
+			return bridge.PaymentResponse{}, errors.Wrap(err, "unable to get account merge effect")
+		}
+		for _, effect := range page.Embedded.Records {
+			if effect.GetType() == "account_credited" {
+				ace, ok := effect.(effects.AccountCredited)
+				if ok {
+					payment.Amount = ace.Amount
+				} else {
+					return bridge.PaymentResponse{}, errors.New("unable to get amount from effect")
+				}
+			}
+		}
+
+	default:
+		return bridge.PaymentResponse{}, errors.New("operation type not permitted")
+	}
+
+	transaction, err := pl.horizon.TransactionDetail(payment.TransactionHash)
+	if err != nil {
+		return bridge.PaymentResponse{}, errors.Wrap(err, "unable to get transaction details")
+	}
+	payment.MemoType = transaction.MemoType
+	payment.Memo = transaction.Memo
+
+	return payment, nil
 }

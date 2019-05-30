@@ -1,9 +1,9 @@
 package bridge
 
 import (
-	b "github.com/stellar/go/build"
 	shared "github.com/stellar/go/services/internal/bridge-compliance-shared"
 	"github.com/stellar/go/services/internal/bridge-compliance-shared/http/helpers"
+	"github.com/stellar/go/txnbuild"
 )
 
 // SetOptionsOperationBody represents set_options operation
@@ -26,54 +26,58 @@ type SetOptionsSigner struct {
 	Weight    uint32 `json:"weight"`
 }
 
-// ToTransactionMutator returns go-stellar-base TransactionMutator
-func (op SetOptionsOperationBody) ToTransactionMutator() b.TransactionMutator {
-	var mutators []interface{}
+// Build returns a txnbuild.Operation
+func (op SetOptionsOperationBody) Build() txnbuild.Operation {
+	txnOp := txnbuild.SetOptions{}
 
 	if op.InflationDest != nil {
-		mutators = append(mutators, b.InflationDest(*op.InflationDest))
+		txnOp.InflationDestination = op.InflationDest
 	}
 
 	if op.SetFlags != nil {
 		for _, flag := range *op.SetFlags {
-			mutators = append(mutators, b.SetFlag(flag))
+			txnOp.SetFlags = append(txnOp.SetFlags, txnbuild.AccountFlag(flag))
 		}
 	}
 
 	if op.ClearFlags != nil {
 		for _, flag := range *op.ClearFlags {
-			mutators = append(mutators, b.ClearFlag(flag))
+			txnOp.ClearFlags = append(txnOp.ClearFlags, txnbuild.AccountFlag(flag))
 		}
 	}
 
 	if op.MasterWeight != nil {
-		mutators = append(mutators, b.MasterWeight(*op.MasterWeight))
+		txnOp.MasterWeight = txnbuild.NewThreshold(txnbuild.Threshold(*op.MasterWeight))
 	}
 
 	if op.LowThreshold != nil {
-		mutators = append(mutators, b.SetLowThreshold(*op.LowThreshold))
+		txnOp.LowThreshold = txnbuild.NewThreshold(txnbuild.Threshold(*op.LowThreshold))
 	}
 
 	if op.MediumThreshold != nil {
-		mutators = append(mutators, b.SetMediumThreshold(*op.MediumThreshold))
+		txnOp.MediumThreshold = txnbuild.NewThreshold(txnbuild.Threshold(*op.MediumThreshold))
 	}
 
 	if op.HighThreshold != nil {
-		mutators = append(mutators, b.SetHighThreshold(*op.HighThreshold))
+		txnOp.HighThreshold = txnbuild.NewThreshold(txnbuild.Threshold(*op.HighThreshold))
 	}
 
 	if op.HomeDomain != nil {
-		mutators = append(mutators, b.HomeDomain(*op.HomeDomain))
+		txnOp.HomeDomain = op.HomeDomain
 	}
 
 	if op.Signer != nil {
-		mutators = append(mutators, b.Signer{
+		txnOp.Signer = &txnbuild.Signer{
 			Address: op.Signer.PublicKey,
-			Weight:  op.Signer.Weight,
-		})
+			Weight:  txnbuild.Threshold(op.Signer.Weight),
+		}
 	}
 
-	return b.SetOptions(mutators...)
+	if op.Source != nil {
+		txnOp.SourceAccount = &txnbuild.SimpleAccount{AccountID: *op.Source}
+	}
+
+	return &txnOp
 }
 
 // Validate validates if operation body is valid.

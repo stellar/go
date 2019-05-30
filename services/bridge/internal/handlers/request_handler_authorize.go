@@ -5,10 +5,11 @@ import (
 	"net/http"
 
 	log "github.com/sirupsen/logrus"
-	b "github.com/stellar/go/build"
-	"github.com/stellar/go/clients/horizon"
+	hc "github.com/stellar/go/clients/horizonclient"
+	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/services/internal/bridge-compliance-shared/http/helpers"
 	"github.com/stellar/go/services/internal/bridge-compliance-shared/protocols/bridge"
+	"github.com/stellar/go/txnbuild"
 )
 
 // Authorize implements /authorize endpoint
@@ -33,23 +34,34 @@ func (rh *RequestHandler) Authorize(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	operationMutator := b.AllowTrust(
-		b.Trustor{request.AccountID},
-		b.Authorize{true},
-		b.AllowTrustAsset{request.AssetCode},
-	)
+	kp, err := keypair.Parse(rh.Config.Accounts.AuthorizingSeed)
+	if err != nil {
+		log.WithFields(log.Fields{"err": err}).Error("Error parsing authorizing seed")
+		helpers.Write(w, helpers.InternalServerError)
+	}
+
+	sourceAccount := kp.Address()
+
+	allowTrustOp := bridge.AllowTrustOperationBody{
+		Source:    &sourceAccount,
+		Authorize: true,
+		Trustor:   request.AccountID,
+		AssetCode: request.AssetCode,
+	}
+
+	operationBuilder := allowTrustOp.Build()
 
 	submitResponse, err := rh.TransactionSubmitter.SubmitTransaction(
 		nil,
 		rh.Config.Accounts.AuthorizingSeed,
-		operationMutator,
+		[]txnbuild.Operation{operationBuilder},
 		nil,
 	)
 
 	jsonEncoder := json.NewEncoder(w)
 
 	if err != nil {
-		herr, isHorizonError := err.(*horizon.Error)
+		herr, isHorizonError := err.(*hc.Error)
 		if !isHorizonError {
 			log.WithFields(log.Fields{"err": err}).Error("Error submitting transaction")
 			helpers.Write(w, helpers.InternalServerError)
