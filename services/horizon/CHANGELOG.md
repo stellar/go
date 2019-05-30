@@ -8,6 +8,7 @@ bumps.  A breaking change will get clearly notified in this log.
 
 ## Unreleased
 
+* Fixed `fee_paid` value in Transaction resource.
 * Fix "int64: value out of range" errors in trade aggregations (#1319).
 
 ## v0.17.6 - 2019-04-29
