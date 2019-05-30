@@ -11,6 +11,7 @@ This repo is the home for all of the public go code produced by SDF.  In additio
 * [Go Horizon SDK - horizonclient](clients/horizonclient): Client for Horizon server (queries and transaction submission)
 * [Go Horizon SDK - txnbuild](txnbuild): Construct Stellar transactions and operations
 * [Bifrost](services/bifrost): Bitcoin/Ethereum -> Stellar bridge
+* [Ticker](services/ticker): An API server that provides statistics about assets and markets on the Stellar network
 * Servers for Anchors & Financial Institutions
   * [Bridge Server](services/bridge): send payments and take action when payments are received
   * [Compliance Server](services/compliance): Allows financial institutions to exchange KYC information

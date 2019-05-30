@@ -42,7 +42,7 @@ are aggregated in the `XLM_BTC` pair.
 
 ### Example
 #### Endpoint
-GET `https://ticker-v2.stellar.org/markets.json`
+GET `https://ticker.stellar.org/markets.json`
 #### Response (application/json)
 
 ```json
@@ -142,7 +142,7 @@ Lists all the valid assets within the Stellar network. The provided fields are b
 
 ### Example
 #### Endpoint
-GET `https://ticker-v2.stellar.org/assets.json`
+GET `https://ticker.stellar.org/assets.json`
 
 #### Response (application/json)
 
@@ -211,7 +211,7 @@ GET `https://ticker-v2.stellar.org/assets.json`
 ## GraphQL interface
 Asset, issuer, markets and ticker data can be queried through a GraphQL interface, which is also provided by the Ticker.
 
-To explore the GraphQL queries, you can access the GraphiQL URL: https://ticker-v2.stellar.org/graphiql
+To explore the GraphQL queries, you can access the GraphiQL URL: https://ticker.stellar.org/graphiql
 
 ## Orderbook
 Apart from the orderbook data provided by `markets.json`, orderbook data can be retrieved directly from Horizon. In order to retrieve `ask` and `bid` data, you have to provide the following parameters from the asset pairs:

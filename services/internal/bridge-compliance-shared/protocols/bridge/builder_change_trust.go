@@ -2,10 +2,10 @@ package bridge
 
 import (
 	"github.com/stellar/go/amount"
-	b "github.com/stellar/go/build"
 	shared "github.com/stellar/go/services/internal/bridge-compliance-shared"
 	"github.com/stellar/go/services/internal/bridge-compliance-shared/http/helpers"
 	"github.com/stellar/go/services/internal/bridge-compliance-shared/protocols"
+	"github.com/stellar/go/txnbuild"
 )
 
 // ChangeTrustOperationBody represents change_trust operation
@@ -16,24 +16,21 @@ type ChangeTrustOperationBody struct {
 	Limit *string
 }
 
-// ToTransactionMutator returns go-stellar-base TransactionMutator
-func (op ChangeTrustOperationBody) ToTransactionMutator() b.TransactionMutator {
-	mutators := []interface{}{
-		op.Asset.ToBaseAsset(),
+// Build returns a txnbuild.Operation
+func (op ChangeTrustOperationBody) Build() txnbuild.Operation {
+	txnOp := txnbuild.ChangeTrust{
+		Line: txnbuild.CreditAsset{Code: op.Asset.Code, Issuer: op.Asset.Issuer},
 	}
 
-	if op.Limit == nil {
-		// Set MaxLimit
-		mutators = append(mutators, b.MaxLimit)
-	} else {
-		mutators = append(mutators, b.Limit(*op.Limit))
+	if op.Limit != nil {
+		txnOp.Limit = *op.Limit
 	}
 
 	if op.Source != nil {
-		mutators = append(mutators, b.SourceAccount{*op.Source})
+		txnOp.SourceAccount = &txnbuild.SimpleAccount{AccountID: *op.Source}
 	}
 
-	return b.ChangeTrust(mutators...)
+	return &txnOp
 }
 
 // Validate validates if operation body is valid.
