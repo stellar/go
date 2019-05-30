@@ -54,7 +54,7 @@ func TestEmptySignature(t *testing.T) {
 }
 
 func TestFeeMax(t *testing.T) {
-	tt := test.Start(t).ScenarioWithoutHorizon("kahuna")
+	tt := test.Start(t).Scenario("kahuna")
 	defer tt.Finish()
 
 	ingestion := Ingestion{
@@ -72,9 +72,11 @@ func TestFeeMax(t *testing.T) {
 	xdr.SafeUnmarshalBase64("AAAAAAAAAGQAAAAAAAAAAQAAAAAAAAABAAAAAAAAAAA=", &resultPair.Result)
 	xdr.SafeUnmarshalBase64("AAAAAQAAAAIAAAADAAj6gwAAAAAAAAAA4tax3PN6onk3YN4eC/Mxz+bAGFx4AgrAsd8zknzOwroAAAAXSHbnnAAI+n0AAAAAAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAABAAj6gwAAAAAAAAAA4tax3PN6onk3YN4eC/Mxz+bAGFx4AgrAsd8zknzOwroAAAAXSHbnnAAI+n0AAAABAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAABAAAAAA==", &meta)
 
+	hash := "a48debf9245e39d78c4fcb8e010b4f41dbee10823148e89269aab74ceeefcdad"
+
 	transaction := &core.Transaction{
-		TransactionHash: "a48debf9245e39d78c4fcb8e010b4f41dbee10823148e89269aab74ceeefcdad",
-		LedgerSequence:  1680922,
+		TransactionHash: hash,
+		LedgerSequence:  1,
 		Index:           1,
 		Envelope:        envelope,
 		Result:          resultPair,
@@ -94,10 +96,21 @@ func TestFeeMax(t *testing.T) {
 
 	q := history.Q{Session: ingestion.DB}
 	tx := history.Transaction{}
-	err = q.TransactionByHash(&tx, "a48debf9245e39d78c4fcb8e010b4f41dbee10823148e89269aab74ceeefcdad")
+	err = q.TransactionByHash(&tx, hash)
 	tt.Require.NoError(err)
-	tt.Assert.Equal(100000, tx.MaxFee)
-	tt.Assert.Equal(100, tx.FeeCharged)
+	tt.Assert.Equal(int32(1000000), tx.MaxFee)
+	tt.Assert.Equal(int32(100), tx.FeeCharged)
+
+	_, err = tt.HorizonSession().ExecRaw(
+		`UPDATE history_transactions SET fee_charged = NULL WHERE transaction_hash = ?`, hash,
+	)
+	tt.Require.NoError(err)
+
+	tx = history.Transaction{}
+	err = q.TransactionByHash(&tx, hash)
+	tt.Require.NoError(err)
+	tt.Assert.Equal(int32(1000000), tx.MaxFee)
+	tt.Assert.Equal(int32(1000000), tx.FeeCharged)
 }
 
 func TestTimeBoundsMaxBig(t *testing.T) {

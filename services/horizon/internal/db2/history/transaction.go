@@ -149,7 +149,7 @@ var selectTransaction = sq.Select(
 		"ht.fee_paid, " +
 		// `fee_charged` is NULL by default, DB needs to be reingested
 		// to populate the value. If value is not present display `fee_paid`.
-		"COALESCE(ht.fee_charged, ht.fee_paid) as fee_charged," +
+		"COALESCE(ht.fee_charged, ht.fee_paid) as fee_charged, " +
 		"ht.operation_count, " +
 		"ht.tx_envelope, " +
 		"ht.tx_result, " +

@@ -38,3 +38,4 @@ close_ledger
 offer :scott, {sell:["USD", :usd_gateway], for: :native}, 50, 1.0
 close_ledger
 offer :scott, {sell:["USD", :usd_gateway], for:["EUR", :eur_gateway]}, 20, 1.0
+close_ledger

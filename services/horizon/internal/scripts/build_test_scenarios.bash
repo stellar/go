@@ -20,6 +20,7 @@ export INGEST_FAILED_TRANSACTIONS=true
 
 # run all scenarios
 for i in $PACKAGES; do
+  echo $i
   CORE_SQL="${i%.rb}-core.sql"
   HORIZON_SQL="${i%.rb}-horizon.sql"
   scc -r $i --allow-failed-transactions --dump-root-db > $CORE_SQL

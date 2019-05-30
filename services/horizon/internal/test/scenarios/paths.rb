@@ -77,3 +77,5 @@ offer :gateway, {for:["USD", :gateway], sell: :native}, 1000, 0.1
 
 offer :trader, {for:["AAA", :gateway], sell:["BBB", :gateway]}, 1, 11
 offer :trader, {for:["BBB", :gateway], sell:["CCC", :gateway]}, 10, 0.1
+
+close_ledger
