@@ -97,15 +97,15 @@ Notes:
 
 - the `HistoryArchiveAdapter` supports both reading a ledger transaction result set via `GetLedger()` and reading ledger state via `GetState()`.
 - Both adapters support `GetLatestLedgerSequence()`, which allows a consumer to look up the most recent ledger information in the backend.
-- The adapters, rather than returning state and ledgers as objects stored in memory, return them as `ReadClosers` objects. This is because the ledger state or a particular transaction state may not fit in memory, and must be processed as a stream.
+- The adapters, rather than returning state and ledgers as objects stored in memory, return them as `ReadCloser` objects. This is because the ledger state or a particular transaction state may not fit in memory, and must be processed as a stream.
 
-The `ReadClosers` structs come from the `ingest/io` package, shown in the UML class diagram below:
+The `ReadCloser` structs come from the `ingest/io` package, shown in the UML class diagram below:
 
 ![IO package](images/io.png)
 
 #### Ingestion Pipeline
 
-At the center of ingestion is a `Pipeline`, which is initialized with a series of processors for each kind of data that ingestion handles (ledger state, a full ledger update, and an archive ledger update). Each processors implements a function that reads data from a `ReadWriter`, processes/filters it, and writes it to a `WriteCloser`. A few example processors:
+At the center of ingestion is a `Pipeline`, which is initialized with a series of processors for each kind of data that ingestion handles (ledger state, a full ledger update, and an archive ledger update). Each processors implements a function that reads data from a `ReadCloser`, processes/filters it, and writes it to a `WriteCloser`. A few example processors:
 
 - A processor that passes on only information about a certain account
 - A processor that only looks at certain kinds of events, such as offers being placed
