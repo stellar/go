@@ -11,7 +11,7 @@ import (
 	"time"
 )
 
-func TestStoreKeysAPI(t *testing.T) {
+func TestPutKeys(t *testing.T) {
 	db := openKeystoreDB(t)
 	defer db.Close() // drop test db
 
@@ -20,11 +20,11 @@ func TestStoreKeysAPI(t *testing.T) {
 
 	h := ServeMux(&Service{conn.DB})
 
-	blob := `{
-		"type": "plaintextKey",
-		"pubkey": "stellar-pubkey",
-		"encrypted_seed": "encrypted-stellar-privatekey"
-	}`
+	blob := `[{
+		"keyType": "plaintextKey",
+		"publicKey": "stellar-pubkey",
+		"privateKey": "encrypted-stellar-privatekey"
+	}]`
 	encodedBlob := base64.RawURLEncoding.EncodeToString([]byte(blob))
 	encrypterName := "identity"
 	salt := "random-salt"
@@ -37,7 +37,7 @@ func TestStoreKeysAPI(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	req := httptest.NewRequest("POST", "/store-keys", bytes.NewReader([]byte(body)))
+	req := httptest.NewRequest("PUT", "/keys", bytes.NewReader([]byte(body)))
 	req = req.WithContext(withUserID(context.Background(), "test-user"))
 
 	rr := httptest.NewRecorder()

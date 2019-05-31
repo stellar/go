@@ -2,7 +2,6 @@ package keystore
 
 import (
 	"context"
-	"database/sql"
 	"encoding/base64"
 	"time"
 
@@ -52,13 +51,13 @@ func (s *Service) storeKeys(ctx context.Context, in storeKeysRequest) (*encrypte
 		modifiedAt pq.NullTime
 	)
 	err = s.db.QueryRowContext(ctx, q, userID, keysData, in.Salt, in.EncrypterName).Scan(&keysBlob, &out.Salt, &out.EncrypterName, &out.CreatedAt, &modifiedAt)
-	if err == sql.ErrNoRows {
-		return nil, probDuplicateKeys
+	if err != nil {
+		return nil, errors.Wrap(err, "storing keys blob")
 	}
 
 	out.KeysBlob = base64.RawURLEncoding.EncodeToString(keysBlob)
 	if modifiedAt.Valid {
 		out.ModifiedAt = &modifiedAt.Time
 	}
-	return &out, errors.Wrap(err, "storing keys blob")
+	return &out, nil
 }
