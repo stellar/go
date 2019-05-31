@@ -8,6 +8,8 @@ bumps.  A breaking change will get clearly notified in this log.
 
 ## v0.19.0
 
+### Breaking changes
+
 * The following table presents breaking changes in Horizon responses:
 
 Removed | Use
