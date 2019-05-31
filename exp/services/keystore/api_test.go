@@ -20,11 +20,11 @@ func TestPutKeys(t *testing.T) {
 
 	h := ServeMux(&Service{conn.DB})
 
-	blob := `{
-		"type": "plaintextKey",
-		"pubkey": "stellar-pubkey",
-		"encrypted_seed": "encrypted-stellar-privatekey"
-	}`
+	blob := `[{
+		"keyType": "plaintextKey",
+		"publicKey": "stellar-pubkey",
+		"privateKey": "encrypted-stellar-privatekey"
+	}]`
 	encodedBlob := base64.RawURLEncoding.EncodeToString([]byte(blob))
 	encrypterName := "identity"
 	salt := "random-salt"
