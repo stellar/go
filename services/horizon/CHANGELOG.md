@@ -6,6 +6,16 @@ file.  This project adheres to [Semantic Versioning](http://semver.org/).
 As this project is pre 1.0, breaking changes may happen for minor version
 bumps.  A breaking change will get clearly notified in this log.
 
+## v0.19.0
+
+* The following table presents breaking changes in Horizon responses:
+
+Removed | Use
+-|-
+`manage_offer` operation type | `manage_sell_offer` operation type
+`create_passive_offer` operation type | `create_passive_sell_offer` operation type
+
+
 ## v0.18.0
 
 ### Breaking changes

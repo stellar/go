@@ -13,15 +13,11 @@ import (
 // OperationTypeNames maps from operation type to the string used to represent that type
 // in horizon's JSON responses
 var TypeNames = map[xdr.OperationType]string{
-	xdr.OperationTypeCreateAccount: "create_account",
-	xdr.OperationTypePayment:       "payment",
-	xdr.OperationTypePathPayment:   "path_payment",
-	// Deprecated - remove in: horizon-v0.19.0
-	// Change name to `manage_sell_offer`
-	xdr.OperationTypeManageSellOffer: "manage_offer",
-	// Deprecated - remove in: horizon-v0.19.0
-	// Change name to `create_passive_sell_offer`
-	xdr.OperationTypeCreatePassiveSellOffer: "create_passive_offer",
+	xdr.OperationTypeCreateAccount:          "create_account",
+	xdr.OperationTypePayment:                "payment",
+	xdr.OperationTypePathPayment:            "path_payment",
+	xdr.OperationTypeManageSellOffer:        "manage_sell_offer",
+	xdr.OperationTypeCreatePassiveSellOffer: "create_passive_sell_offer",
 	xdr.OperationTypeSetOptions:             "set_options",
 	xdr.OperationTypeChangeTrust:            "change_trust",
 	xdr.OperationTypeAllowTrust:             "allow_trust",
