@@ -165,7 +165,31 @@ func invertMarketStats(m *MarketStats) {
 
 func shouldMarketBeInvertdForCMC(pairName string) bool {
 	cmcMarketPairs := []string{
+		"XLM_SHX",
+		"XLM_SLT",
+		"XLM_DOGET",
+		"XLM_RMT",
 		"XLM_MOBI",
+		"XLM_ETH",
+		"XLM_BTC",
+		"XLM_KIN",
+		"XLM_XRP",
+		"XLM_XLB",
+		"XLM_TERN",
+		"XLM_BTX",
+		"XLM_GRAT",
+		"XLM_DRA",
+		"XLM_PEDI",
+		"XLM_ABDT",
+		"XLM_ZRX",
+		"XLM_WLO",
+		"XLM_LTC",
+		"XLM_SHADE",
+		"XLM_XLMG",
+		"XLM_OMG",
+		"XLM_ETX",
+		"XLM_NEOX",
+		"XLM_REPO",
 	}
 	for _, cmcPair := range cmcMarketPairs {
 		if pairName == cmcPair {
