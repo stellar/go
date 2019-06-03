@@ -36,8 +36,11 @@ func (s *Service) storeKeys(ctx context.Context, in storeKeysRequest) (*encrypte
 	if in.EncrypterName == "" {
 		return nil, problem.MakeInvalidFieldProblem("encrypterName", errRequiredField)
 	}
+	if in.KeysBlob == "" {
+		return nil, problem.MakeInvalidFieldProblem("keysBlob", errRequiredField)
+	}
 
-	keysData, err := base64.RawURLEncoding.DecodeString(string(in.KeysBlob))
+	keysData, err := base64.RawURLEncoding.DecodeString(in.KeysBlob)
 	if err != nil {
 		// TODO: we need to implement a helper function in the
 		// support/error package for keeping the stack trace from err
