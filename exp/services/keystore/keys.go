@@ -100,3 +100,31 @@ func (s *Service) getKeys(ctx context.Context) (*encryptedKeys, error) {
 	}
 	return &out, nil
 }
+
+func (s *Service) deleteKeys(ctx context.Context) (*encryptedKeys, error) {
+	userID := userID(ctx)
+	if userID == "" {
+		return nil, probNotAuthorized
+	}
+
+	q := `
+		DELETE FROM encrypted_keys
+		WHERE user_id = $1
+		RETURNING encrypted_keys_data, salt, encrypter_name, created_at, modified_at
+	`
+	var (
+		keysBlob   []byte
+		out        encryptedKeys
+		modifiedAt pq.NullTime
+	)
+	err := s.db.QueryRowContext(ctx, q, userID).Scan(&keysBlob, &out.Salt, &out.EncrypterName, &out.CreatedAt, &modifiedAt)
+	if err != nil {
+		return nil, errors.Wrap(err, "deleting keys blob")
+	}
+
+	out.KeysBlob = base64.RawURLEncoding.EncodeToString(keysBlob)
+	if modifiedAt.Valid {
+		out.ModifiedAt = &modifiedAt.Time
+	}
+	return &out, nil
+}
