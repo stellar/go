@@ -99,13 +99,15 @@ Notes:
 - Both adapters support `GetLatestLedgerSequence()`, which allows a consumer to look up the most recent ledger information in the backend.
 - The adapters, rather than returning state and ledgers as objects stored in memory, return them as `ReadCloser` objects. This is because the ledger state or a particular transaction state may not fit in memory, and must be processed as a stream.
 
+Both `ReadCloser` and `WriteCloser` interfaces include `Close()` method. When `Close()` is called on `ReadCloser` it tells the reader that no more data is needed and it should stop streaming, ex. close buffered channels, close network connections, etc. When `Close` is is called on `WriteCloser` it means that no more data will be written to it. This is especially helpful when writer is writing to a pipe so the reader on the other end knows that no more objects will be streamed and can return `EOF`.
+
 The `ReadCloser` structs come from the `ingest/io` package, shown in the UML class diagram below:
 
 ![IO package](images/io.png)
 
 #### Ingestion Pipeline
 
-At the center of ingestion is a `Pipeline`, which is initialized with a series of processors for each kind of data that ingestion handles (ledger state, a full ledger update, and an archive ledger update). Each processors implements a function that reads data from a `ReadCloser`, processes/filters it, and writes it to a `WriteCloser`. A few example processors:
+At the center of ingestion is a `Pipeline`, which is initialized with a series of processors for each kind of data that ingestion handles (ledger state, a full ledger update, and an archive ledger update). Each processor implements a function that reads data from a `ReadCloser`, processes/filters it, and writes it to a `WriteCloser`. A few example processors:
 
 - A processor that passes on only information about a certain account
 - A processor that only looks at certain kinds of events, such as offers being placed
@@ -120,7 +122,7 @@ Notes:
 
 - The processors form a tree and are processed from root to leaves.
 - Processing does not change the type of the data, but it can remove or change fields in the data
-- Processors can write/read artifacts (ex. average balances) in a `Store` that is shared between all processors in a pipeline. `Store` is ephemeral, it's contents is removed when pipeline processing is done.
+- Processors can write/read artifacts (ex. average balances) in a `Store` that is shared between all processors in a pipeline. `Store` is ephemeral, its contents is removed when pipeline processing is done.
 
 ### Tying it all together
 
@@ -130,7 +132,7 @@ The ingestion system can run as a stand-alone process or as part of a larger pro
 - `LiveSession`: ingest the latest ledgers as soon as the close. This is the standard operating mode for a live Horizon instance
 - `CheckpointsOnlySession`: ingest only history archive checkpoint data.
 
-Session are responsible for coordinating pipelines and ensuring data is in sync. When processors write to a single storage type, keeping data in sync is trivial. For example, for Postgres processors can share a single transaction object and commit when processing is done. However, there's also a significant challenge keeping data in sync when processors are writing to different storage types: any read operation that reads across stores or across data updated by multiple `Processes`s is at risk of reading inconsistent values. `System` or `Session` objects (TBD) should be responsible by keeping different stores in sync. For example: they can ensure that all queries sent to stores have the latest ledger sequence that was successfully saved all stores appended. This probably requires stores to keep data for the two (2) latest ledgers.
+Sessions are responsible for coordinating pipelines and ensuring data is in sync. When processors write to a single storage type, keeping data in sync is trivial. For example, for Postgres processors can share a single transaction object and commit when processing is done. However, there's also a significant challenge keeping data in sync when processors are writing to different storage types: any read operation that reads across stores or across data updated by multiple `Processes`s is at risk of reading inconsistent values. `System` or `Session` objects (TBD) should be responsible by keeping different stores in sync. For example: they can ensure that all queries sent to stores have the latest ledger sequence that was successfully saved all stores appended. This probably requires stores to keep data for the two (2) latest ledgers.
 
 ![ingest package](images/system.png)
 
