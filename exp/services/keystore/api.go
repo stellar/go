@@ -32,10 +32,10 @@ func (s *Service) keysHTTPMethodHandler() http.Handler {
 	return http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
 		switch req.Method {
 		case http.MethodGet:
-			// Serve the resource.
+			jsonHandler(s.getKeys).ServeHTTP(rw, req)
 
 		case http.MethodPut:
-			jsonHandler(s.storeKeys).ServeHTTP(rw, req)
+			jsonHandler(s.putKeys).ServeHTTP(rw, req)
 
 		case http.MethodDelete:
 			// Remove the record.
