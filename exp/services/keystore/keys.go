@@ -7,6 +7,7 @@ import (
 
 	"github.com/lib/pq"
 	"github.com/stellar/go/support/errors"
+	"github.com/stellar/go/support/render/problem"
 )
 
 type encryptedKeys struct {
@@ -29,7 +30,17 @@ func (s *Service) storeKeys(ctx context.Context, in storeKeysRequest) (*encrypte
 		return nil, probNotAuthorized
 	}
 
-	keysData, err := base64.RawURLEncoding.DecodeString(string(in.KeysBlob))
+	if in.Salt == "" {
+		return nil, problem.MakeInvalidFieldProblem("salt", errRequiredField)
+	}
+	if in.EncrypterName == "" {
+		return nil, problem.MakeInvalidFieldProblem("encrypterName", errRequiredField)
+	}
+	if in.KeysBlob == "" {
+		return nil, problem.MakeInvalidFieldProblem("keysBlob", errRequiredField)
+	}
+
+	keysData, err := base64.RawURLEncoding.DecodeString(in.KeysBlob)
 	if err != nil {
 		// TODO: we need to implement a helper function in the
 		// support/error package for keeping the stack trace from err
