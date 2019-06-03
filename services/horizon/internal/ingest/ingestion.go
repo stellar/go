@@ -385,7 +385,7 @@ func (ingest *Ingestion) createInsertBuilders() {
 			"application_order",
 			"account",
 			"account_sequence",
-			"fee_paid",
+			"max_fee",
 			"fee_charged",
 			"operation_count",
 			"tx_envelope",

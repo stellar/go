@@ -412,7 +412,7 @@ CREATE TABLE history_transactions (
     application_order integer NOT NULL,
     account character varying(64) NOT NULL,
     account_sequence bigint NOT NULL,
-    fee_paid integer NOT NULL,
+    max_fee integer NOT NULL,
     operation_count integer NOT NULL,
     created_at timestamp without time zone,
     updated_at timestamp without time zone,
@@ -461,24 +461,24 @@ ALTER TABLE ONLY history_transaction_participants ALTER COLUMN id SET DEFAULT ne
 -- Data for Name: gorp_migrations; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-INSERT INTO gorp_migrations VALUES ('1_initial_schema.sql', '2019-05-30 18:05:18.785621+02');
-INSERT INTO gorp_migrations VALUES ('2_index_participants_by_toid.sql', '2019-05-30 18:05:18.796895+02');
-INSERT INTO gorp_migrations VALUES ('3_use_sequence_in_history_accounts.sql', '2019-05-30 18:05:18.801093+02');
-INSERT INTO gorp_migrations VALUES ('4_add_protocol_version.sql', '2019-05-30 18:05:18.812759+02');
-INSERT INTO gorp_migrations VALUES ('5_create_trades_table.sql', '2019-05-30 18:05:18.823283+02');
-INSERT INTO gorp_migrations VALUES ('6_create_assets_table.sql', '2019-05-30 18:05:18.830669+02');
-INSERT INTO gorp_migrations VALUES ('7_modify_trades_table.sql', '2019-05-30 18:05:18.844068+02');
-INSERT INTO gorp_migrations VALUES ('8_add_aggregators.sql', '2019-05-30 18:05:18.848513+02');
-INSERT INTO gorp_migrations VALUES ('8_create_asset_stats_table.sql', '2019-05-30 18:05:18.853468+02');
-INSERT INTO gorp_migrations VALUES ('9_add_header_xdr.sql', '2019-05-30 18:05:18.856236+02');
-INSERT INTO gorp_migrations VALUES ('10_add_trades_price.sql', '2019-05-30 18:05:18.860097+02');
-INSERT INTO gorp_migrations VALUES ('11_add_trades_account_index.sql', '2019-05-30 18:05:18.863936+02');
-INSERT INTO gorp_migrations VALUES ('12_asset_stats_amount_string.sql', '2019-05-30 18:05:18.870262+02');
-INSERT INTO gorp_migrations VALUES ('13_trade_offer_ids.sql', '2019-05-30 18:05:18.877291+02');
-INSERT INTO gorp_migrations VALUES ('14_fix_asset_toml_field.sql', '2019-05-30 18:05:18.878572+02');
-INSERT INTO gorp_migrations VALUES ('15_ledger_failed_txs.sql', '2019-05-30 18:05:18.880451+02');
-INSERT INTO gorp_migrations VALUES ('16_ingest_failed_transactions.sql', '2019-05-30 18:05:18.882057+02');
-INSERT INTO gorp_migrations VALUES ('17_transaction_fee_paid.sql', '2019-05-30 18:05:18.883545+02');
+INSERT INTO gorp_migrations VALUES ('1_initial_schema.sql', '2019-06-03 18:28:47.032496+02');
+INSERT INTO gorp_migrations VALUES ('2_index_participants_by_toid.sql', '2019-06-03 18:28:47.039657+02');
+INSERT INTO gorp_migrations VALUES ('3_use_sequence_in_history_accounts.sql', '2019-06-03 18:28:47.044048+02');
+INSERT INTO gorp_migrations VALUES ('4_add_protocol_version.sql', '2019-06-03 18:28:47.054532+02');
+INSERT INTO gorp_migrations VALUES ('5_create_trades_table.sql', '2019-06-03 18:28:47.063028+02');
+INSERT INTO gorp_migrations VALUES ('6_create_assets_table.sql', '2019-06-03 18:28:47.068415+02');
+INSERT INTO gorp_migrations VALUES ('7_modify_trades_table.sql', '2019-06-03 18:28:47.081625+02');
+INSERT INTO gorp_migrations VALUES ('8_create_asset_stats_table.sql', '2019-06-03 18:28:47.087463+02');
+INSERT INTO gorp_migrations VALUES ('8_add_aggregators.sql', '2019-06-03 18:28:47.090109+02');
+INSERT INTO gorp_migrations VALUES ('9_add_header_xdr.sql', '2019-06-03 18:28:47.092718+02');
+INSERT INTO gorp_migrations VALUES ('10_add_trades_price.sql', '2019-06-03 18:28:47.095973+02');
+INSERT INTO gorp_migrations VALUES ('11_add_trades_account_index.sql', '2019-06-03 18:28:47.099698+02');
+INSERT INTO gorp_migrations VALUES ('12_asset_stats_amount_string.sql', '2019-06-03 18:28:47.107549+02');
+INSERT INTO gorp_migrations VALUES ('13_trade_offer_ids.sql', '2019-06-03 18:28:47.112768+02');
+INSERT INTO gorp_migrations VALUES ('14_fix_asset_toml_field.sql', '2019-06-03 18:28:47.115116+02');
+INSERT INTO gorp_migrations VALUES ('15_ledger_failed_txs.sql', '2019-06-03 18:28:47.116796+02');
+INSERT INTO gorp_migrations VALUES ('16_ingest_failed_transactions.sql', '2019-06-03 18:28:47.117989+02');
+INSERT INTO gorp_migrations VALUES ('17_transaction_fee_paid.sql', '2019-06-03 18:28:47.120034+02');
 
 
 --
