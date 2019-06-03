@@ -7,6 +7,7 @@ import (
 
 	"github.com/lib/pq"
 	"github.com/stellar/go/support/errors"
+	"github.com/stellar/go/support/render/problem"
 )
 
 type encryptedKeys struct {
@@ -27,6 +28,13 @@ func (s *Service) storeKeys(ctx context.Context, in storeKeysRequest) (*encrypte
 	userID := userID(ctx)
 	if userID == "" {
 		return nil, probNotAuthorized
+	}
+
+	if in.Salt == "" {
+		return nil, problem.MakeInvalidFieldProblem("salt", errRequiredField)
+	}
+	if in.EncrypterName == "" {
+		return nil, problem.MakeInvalidFieldProblem("encrypterName", errRequiredField)
 	}
 
 	keysData, err := base64.RawURLEncoding.DecodeString(string(in.KeysBlob))
