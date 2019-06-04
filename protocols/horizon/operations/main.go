@@ -16,10 +16,10 @@ var TypeNames = map[xdr.OperationType]string{
 	xdr.OperationTypeCreateAccount: "create_account",
 	xdr.OperationTypePayment:       "payment",
 	xdr.OperationTypePathPayment:   "path_payment",
-	// Action needed before: horizon-v0.18.0
+	// Action needed in release: horizon-v0.18.0
 	// Change name to `manage_sell_offer`
 	xdr.OperationTypeManageSellOffer: "manage_offer",
-	// Action needed before: horizon-v0.18.0
+	// Action needed in release: horizon-v0.18.0
 	// Change name to `create_passive_sell_offer`
 	xdr.OperationTypeCreatePassiveSellOffer: "create_passive_offer",
 	xdr.OperationTypeSetOptions:             "set_options",

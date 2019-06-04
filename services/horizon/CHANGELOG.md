@@ -6,7 +6,7 @@ file.  This project adheres to [Semantic Versioning](http://semver.org/).
 As this project is pre 1.0, breaking changes may happen for minor version
 bumps.  A breaking change will get clearly notified in this log.
 
-## Unreleased
+## Unreleased v0.17.7
 
 * Fixed `fee_paid` value in Transaction resource.
 * Fix "int64: value out of range" errors in trade aggregations (#1319).
