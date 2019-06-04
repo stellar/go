@@ -158,7 +158,7 @@ func funcParamType(fv reflect.Value) (reflect.Type, error) {
 	if n := ft.NumOut(); n == 2 && !ft.Out(1).Implements(errorType) {
 		return nil, fmt.Errorf("%s: second return value must be an error", ft.String())
 	} else if n > 2 {
-		return nil, fmt.Errorf("%s can only have at most two return values", ft.String())
+		return nil, fmt.Errorf("%s can have at most two return values", ft.String())
 	}
 
 	return paramType, nil
