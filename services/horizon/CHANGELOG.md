@@ -21,8 +21,9 @@ bumps.  A breaking change will get clearly notified in this log.
   * `horizon-db-max-idle-connections`,
   * `core-db-max-open-connections`,
   * `core-db-max-idle-connections`.
-* Improved `horizon db reingest range` command.
+* Fixed `fee_paid` value in Transaction resource (#1358).
 * Fix "int64: value out of range" errors in trade aggregations (#1319).
+* Improved `horizon db reingest range` command.
 
 ## v0.17.6 - 2019-04-29
 

@@ -7,15 +7,16 @@ import (
 
 	log "github.com/sirupsen/logrus"
 	"github.com/stellar/go/address"
-	b "github.com/stellar/go/build"
 	"github.com/stellar/go/clients/stellartoml"
 	"github.com/stellar/go/protocols/compliance"
 	"github.com/stellar/go/protocols/federation"
 	"github.com/stellar/go/services/compliance/internal/db"
 	shared "github.com/stellar/go/services/internal/bridge-compliance-shared"
 	"github.com/stellar/go/services/internal/bridge-compliance-shared/http/helpers"
+	"github.com/stellar/go/services/internal/bridge-compliance-shared/protocols"
+	"github.com/stellar/go/services/internal/bridge-compliance-shared/protocols/bridge"
 	callback "github.com/stellar/go/services/internal/bridge-compliance-shared/protocols/compliance"
-	"github.com/stellar/go/xdr"
+	"github.com/stellar/go/txnbuild"
 )
 
 // HandlerSend implements /send endpoint
@@ -122,62 +123,46 @@ func (rh *RequestHandler) HandlerSend(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var payWithMutator *b.PayWithPath
+	var rSource *string
+	if request.Source != "" {
+		rSource = &request.Source
+	}
+	var operationBuilder txnbuild.Operation
+
+	// check if Path payment
 
 	if request.SendMax != "" {
-		// Path payment
-		var sendAsset b.Asset
+		var sendAsset protocols.Asset
 		if request.SendAssetCode != "" && request.SendAssetIssuer != "" {
-			sendAsset = b.CreditAsset(request.SendAssetCode, request.SendAssetIssuer)
+			sendAsset = protocols.Asset{Code: request.SendAssetCode, Issuer: request.SendAssetIssuer}
 		} else if request.SendAssetCode == "" && request.SendAssetIssuer == "" {
-			sendAsset = b.NativeAsset()
+			sendAsset = protocols.Asset{}
 		} else {
 			log.Print("Missing send asset param.")
 			helpers.Write(w, helpers.NewMissingParameter("send asset"))
 			return
 		}
 
-		payWith := b.PayWith(sendAsset, request.SendMax)
-
-		for _, asset := range request.Path {
-			if asset.Code == "" && asset.Issuer == "" {
-				payWith = payWith.Through(b.NativeAsset())
-			} else {
-				payWith = payWith.Through(b.CreditAsset(asset.Code, asset.Issuer))
-			}
+		paymentOp := bridge.PathPaymentOperationBody{
+			Source:            rSource,
+			SendMax:           request.SendMax,
+			SendAsset:         sendAsset,
+			Destination:       destinationObject.AccountID,
+			DestinationAmount: request.Amount,
+			DestinationAsset:  protocols.Asset{Code: request.AssetCode, Issuer: request.AssetIssuer},
+			Path:              request.Path,
 		}
 
-		payWithMutator = &payWith
-	}
-
-	mutators := []interface{}{
-		b.Destination{destinationObject.AccountID},
-	}
-
-	if request.AssetCode == "" {
-		mutators = append(mutators, b.NativeAmount{
-			request.Amount,
-		})
-
+		operationBuilder = paymentOp.Build()
 	} else {
-		mutators = append(mutators, b.CreditAmount{
-			request.AssetCode,
-			request.AssetIssuer,
-			request.Amount,
-		})
-	}
+		paymentOp := bridge.PaymentOperationBody{
+			Source:      rSource,
+			Destination: destinationObject.AccountID,
+			Amount:      request.Amount,
+			Asset:       protocols.Asset{Code: request.AssetCode, Issuer: request.AssetIssuer},
+		}
 
-	if payWithMutator != nil {
-		mutators = append(mutators, *payWithMutator)
-	}
-
-	operationMutator := b.Payment(mutators...)
-	if operationMutator.Err != nil {
-		log.WithFields(log.Fields{
-			"err": operationMutator.Err,
-		}).Error("Error creating operation")
-		helpers.Write(w, helpers.InternalServerError)
-		return
+		operationBuilder = paymentOp.Build()
 	}
 
 	// Fetch Sender Info
@@ -253,18 +238,17 @@ func (rh *RequestHandler) HandlerSend(w http.ResponseWriter, r *http.Request) {
 		helpers.Write(w, helpers.InternalServerError)
 		return
 	}
-	memoMutator := &b.MemoHash{xdr.Hash(attachmentHashBytes)}
+
+	memo := txnbuild.MemoHash(attachmentHashBytes)
 
 	transaction, err := shared.BuildTransaction(
 		request.Source,
 		rh.Config.NetworkPassphrase,
-		operationMutator,
-		memoMutator,
+		[]txnbuild.Operation{operationBuilder},
+		memo,
 	)
-
-	txBase64, err := xdr.MarshalBase64(transaction)
 	if err != nil {
-		log.WithFields(log.Fields{"err": err}).Error("Error mashaling transaction")
+		log.WithFields(log.Fields{"err": err}).Error("Error building transaction")
 		helpers.Write(w, helpers.InternalServerError)
 		return
 	}
@@ -272,7 +256,7 @@ func (rh *RequestHandler) HandlerSend(w http.ResponseWriter, r *http.Request) {
 	authData := compliance.AuthData{
 		Sender:         request.Sender,
 		NeedInfo:       rh.Config.NeedsAuth,
-		Tx:             txBase64,
+		Tx:             transaction,
 		AttachmentJSON: string(attachmentJSON),
 	}
 

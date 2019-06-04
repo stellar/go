@@ -146,7 +146,10 @@ var selectTransaction = sq.Select(
 		"ht.application_order, " +
 		"ht.account, " +
 		"ht.account_sequence, " +
-		"ht.fee_paid, " +
+		"ht.max_fee, " +
+		// `fee_charged` is NULL by default, DB needs to be reingested
+		// to populate the value. If value is not present display `max_fee`.
+		"COALESCE(ht.fee_charged, ht.max_fee) as fee_charged, " +
 		"ht.operation_count, " +
 		"ht.tx_envelope, " +
 		"ht.tx_result, " +

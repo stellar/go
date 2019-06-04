@@ -32,7 +32,13 @@ func PopulateTransaction(
 	dest.LedgerCloseTime = row.LedgerCloseTime
 	dest.Account = row.Account
 	dest.AccountSequence = row.AccountSequence
-	dest.FeePaid = row.FeePaid
+	dest.FeePaid = row.FeeCharged
+
+	// Action needed in release: horizon-v0.18.0
+	// Uncomment in horizon-v0.18.0
+	// dest.FeeCharged = row.FeeCharged
+	// dest.MaxFee = row.MaxFee
+
 	dest.OperationCount = row.OperationCount
 	dest.EnvelopeXdr = row.TxEnvelope
 	dest.ResultXdr = row.TxResult

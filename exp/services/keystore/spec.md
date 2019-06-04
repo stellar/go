@@ -26,56 +26,59 @@ is no need for a userid argument to the endpoints below.
 
 <img src=attachments/2019-04-24-keystore-auth-flows.png>
 
-### Encrypted Key
+### Raw Key Data
 
-EncryptedKey Object:
+*RawKeyData Object:*
 
 ```typescript
-interface EncryptedKey {
+interface RawKeyData {
 	keyType: string;
 	publicKey: string;
+	privateKey: string;
 	path?: string;
 	extra?: any;
-	encrypterName: string;
-	encryptedPrivateKey: string;
-	salt: string;
 }
 ```
 
+```typescript
+type RawKeys = RawKeyData[]
+```
+
+The clients will encrypt RawKeys with a salt based on the encrypter they use.
+The clients will transmit the encrypted keys blob as a base64 URL encoded string.
+
 ### Encrypted Key Data
 
-EncryptedKeyData Object:
+*EncryptedKeysData Object:*
 
 ```typescript
-interface EncryptedKeyData {
-	keyType: string;
-	publicKey: string;
-	path?: string;
-	extra?: any;
+interface EncryptedKeysData {
 	encrypterName: string;
-	encryptedPrivateKey: string;
 	salt: string;
+	keysBlob: string;
 	creationTime: number;
 	modifiedTime: number;	
 }
 ```
 
-### /store-keys
+We support three different kinds of HTTP methods to manipulate keys:
 
-Store Keys Request:
+### PUT /keys
+
+Put Keys Request:
 
 ```typescript
-interface StoreKeysRequest {
-	encryptedKeys: EncryptedKey[];
+interface PutKeysRequest {
+	encrypterName: string;
+	salt: string;
+	keysBlob: string;
 }
 ```
 
-Store Keys Response:
+Put Keys Response:
 
 ```typescript
-interface StoreKeysResponse {
-	encryptedKeys: EncryptedKeyData[];
-}
+type PutKeysResponse = EncryptedKeysData;
 ```
 
 <details><summary>Errors</summary>
@@ -90,19 +93,18 @@ TBD
 ```
 </details>
 
-### /load-all-keys
+### GET /keys
 
-Load All Keys Request:
+Get Keys Request:
 
-This endpoint currently doesn't take any parameters.
-We can potentially add some filters in the request.
+This endpoint will return the keys blob corresponding to the auth token
+in the request header, if the token is valid. This endpoint does not take
+any parameter.
 
-Load All Keys Response:
+Get Keys Response:
 
 ```typescript
-interface LoadAllKeysResponse {
-	encryptedKeys: EncryptedKeyData[];
-}
+type GetKeysResponse = EncryptedKeysData;
 ```
 <details><summary>Errors</summary>
 
@@ -116,77 +118,18 @@ TBD
 ```
 </details>
 
-### /load-key
+### DELETE /keys
 
-Load Key Request:
+Delete Keys Request:
 
-```typescript
-interface LoadKeyRequest {
-	publicKey: string;
-}
-```
+This endpoint will delete the keys blob corresponding to the auth token
+in the request header and return the deleted keys blob to the client, if
+the token is valid. This endpoint does not take any parameter.
 
-Load Key Response:
+Delete Keys Response:
 
 ```typescript
-type LoadKeyResponse = EncryptedKeyData;
-```
-
-<details><summary>Errors</summary>
-
-TBD
-```json
-{
-	"code": "some error code",
-	"message": "some error message",
-	"retriable": false,
-}
-```
-</details>
-
-### /update-keys
-
-Update Keys Request:
-
-```typescript
-interface UpdateKeysRequest {
-	encryptedKeys: EncryptedKey[];
-}
-```
-
-Update Keys Response:
-
-```typescript
-interface UpdateKeysResponse {
-	encryptedKeys: EncryptedKeyData[];
-}
-```
-<details><summary>Errors</summary>
-
-TBD
-```json
-{
-	"code": "some error code",
-	"message": "some error message",
-	"retriable": false,
-}
-```
-</details>
-
-### /remove-key
-
-Remove Key Request:
-
-```typescript
-interface RemoveKeyRequest {
-	publicKey: string;
-}
-```
-
-Remove Key Response:
-
-```typescript
-type RemoveKeyResponse = EncryptedKeyData;
+type DeleteKeysResponse = EncryptedKeysData;
 ```
 
 <details><summary>Errors</summary>

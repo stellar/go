@@ -4,11 +4,23 @@ import (
 	b "github.com/stellar/go/build"
 	shared "github.com/stellar/go/services/internal/bridge-compliance-shared"
 	"github.com/stellar/go/services/internal/bridge-compliance-shared/http/helpers"
+	"github.com/stellar/go/txnbuild"
 )
 
 // InflationOperationBody represents inflation operation
 type InflationOperationBody struct {
 	Source *string
+}
+
+// Build returns a txnbuild.Operation
+func (op InflationOperationBody) Build() txnbuild.Operation {
+	txnOp := txnbuild.Inflation{}
+
+	if op.Source != nil {
+		txnOp.SourceAccount = &txnbuild.SimpleAccount{AccountID: *op.Source}
+	}
+
+	return &txnOp
 }
 
 // ToTransactionMutator returns go-stellar-base TransactionMutator
