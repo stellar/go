@@ -70,10 +70,6 @@ func (h *handler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	if res == nil {
-		res = &DefaultResponse
-	}
-
 	Render(w, res)
 }
 
