@@ -8,8 +8,10 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"net/url"
 	"os"
 	"sort"
+	"strings"
 	"time"
 
 	migrate "github.com/rubenv/sql-migrate"
@@ -29,6 +31,8 @@ func main() {
 	ctx := context.Background()
 	tlsCert := flag.String("tls-cert", "", "TLS certificate file path")
 	tlsKey := flag.String("tls-key", "", "TLS private key file path")
+	auth := flag.Bool("auth", true, "Enable authentication")
+	apiType := flag.String("api-type", "REST", "Auth Forwarding API Type")
 
 	flag.Parse()
 	if len(flag.Args()) < 1 {
@@ -54,6 +58,23 @@ func main() {
 		log.DefaultLogger.Logger.SetLevel(cfg.LogLevel)
 	}
 
+	if *auth == true {
+		if cfg.AUTHURL == "" {
+			fmt.Fprintln(os.Stderr, "Auth is enabled but auth forwarding URL is not set")
+			os.Exit(1)
+		}
+		if _, err := url.Parse(cfg.AUTHURL); err != nil {
+			fmt.Fprintln(os.Stderr, "Invalid auth forwarding URL")
+			os.Exit(1)
+		}
+	}
+
+	aType := strings.ToUpper(*apiType)
+	if aType != keystore.REST && aType != keystore.GraphQL {
+		fmt.Fprintln(os.Stderr, `Auth forwarding endpoint type can only be either "REST" or "GRAPHQL"`)
+		os.Exit(1)
+	}
+
 	db, err := sql.Open(dbDriverName, cfg.DBURL)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "error opening database: %v\n", err)
@@ -72,9 +93,17 @@ func main() {
 	switch cmd {
 	case "serve":
 		addr := ":8443"
+		var authenticator *keystore.Authenticator
+		if *auth {
+			authenticator = &keystore.Authenticator{
+				URL:     cfg.AUTHURL,
+				APIType: aType,
+			}
+		}
+
 		server := &http.Server{
 			Addr:    addr,
-			Handler: keystore.ServeMux(keystore.NewService(ctx, db)),
+			Handler: keystore.ServeMux(keystore.NewService(ctx, db, authenticator)),
 		}
 
 		listener, err := net.Listen("tcp", addr)

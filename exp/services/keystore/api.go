@@ -2,7 +2,11 @@ package keystore
 
 import (
 	"fmt"
+	"io/ioutil"
+	"net"
 	"net/http"
+	"strings"
+	"time"
 
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/support/log"
@@ -18,13 +22,14 @@ func init() {
 	problem.RegisterHost("")
 }
 
-func wrapMiddleware(handler http.Handler) http.Handler {
+func (s *Service) wrapMiddleware(handler http.Handler) http.Handler {
+	handler = authHandler(handler, s.authenticator)
 	return recoverHandler(handler)
 }
 
 func ServeMux(s *Service) http.Handler {
 	mux := http.NewServeMux()
-	mux.Handle("/keys", wrapMiddleware(s.keysHTTPMethodHandler()))
+	mux.Handle("/keys", s.wrapMiddleware(s.keysHTTPMethodHandler()))
 	return mux
 }
 
@@ -43,6 +48,65 @@ func (s *Service) keysHTTPMethodHandler() http.Handler {
 		default:
 			problem.Render(req.Context(), rw, probMethodNotAllowed)
 		}
+	})
+}
+
+func authHandler(next http.Handler, authenticator *Authenticator) http.Handler {
+	return http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		if authenticator == nil {
+			next.ServeHTTP(rw, req)
+			return
+		}
+
+		var (
+			proxyReq *http.Request
+			err      error
+		)
+		ctx := req.Context()
+		client := http.Client{Timeout: time.Duration(5 * time.Second)}
+
+		switch authenticator.APIType {
+		case REST:
+			proxyReq, err = http.NewRequest("GET", authenticator.URL, nil)
+			if err != nil {
+				problem.Render(ctx, rw, err)
+				return
+			}
+
+		case GraphQL:
+			// to be implemented later
+		default:
+			problem.Render(ctx, rw, probNotAuthorized)
+			return
+		}
+
+		// shallow copy
+		proxyReq.Header = req.Header
+		if clientIP, _, err := net.SplitHostPort(req.RemoteAddr); err == nil {
+			proxyReq.Header.Set("X-Forwarded-For", clientIP)
+		}
+
+		resp, err := client.Do(proxyReq)
+		if err != nil {
+			problem.Render(ctx, rw, err)
+			return
+		}
+		defer resp.Body.Close()
+
+		if resp.StatusCode == http.StatusOK {
+			body, err := ioutil.ReadAll(resp.Body)
+			if err != nil {
+				problem.Render(ctx, rw, err)
+				return
+			}
+			// assuming the context-type is text/plain
+			ctx = withUserID(ctx, strings.TrimSpace(string(body)))
+		} else {
+			problem.Render(ctx, rw, probNotAuthorized)
+			return
+		}
+
+		next.ServeHTTP(rw, req.WithContext(ctx))
 	})
 }
 
