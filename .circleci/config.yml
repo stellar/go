@@ -31,8 +31,8 @@ commands:
           command: |
             if [ "$CIRCLE_TAG" != "" ]; then
               # Negate the result so process exits with 1 if anything found
-              echo "Searching for deprecated values in Horizon..."
-              ! egrep -irn -A 1 --include=*.go "Deprecated.+-.+remove.+in:.+$CIRCLE_TAG" ./services/horizon/ ./protocols/horizon/
+              echo "Searching for \"action needed\" tags..."
+              ! egrep -irn -A 1 --include=*.go "Action.+needed.+in.+release:.+$CIRCLE_TAG" ./
             fi
 
   # install_go_deps installs the go dependencies of the project.
