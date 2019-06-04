@@ -128,8 +128,12 @@ the token is valid. This endpoint does not take any parameter.
 
 Delete Keys Response:
 
+*Success:*
+
 ```typescript
-type DeleteKeysResponse = EncryptedKeysData;
+interface Success {
+	message: "ok";
+}
 ```
 
 <details><summary>Errors</summary>

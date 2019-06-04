@@ -38,7 +38,7 @@ func (s *Service) keysHTTPMethodHandler() http.Handler {
 			jsonHandler(s.putKeys).ServeHTTP(rw, req)
 
 		case http.MethodDelete:
-			// Remove the record.
+			jsonHandler(s.deleteKeys).ServeHTTP(rw, req)
 
 		default:
 			problem.Render(req.Context(), rw, probMethodNotAllowed)

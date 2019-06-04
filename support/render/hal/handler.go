@@ -2,6 +2,7 @@ package hal
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"reflect"
@@ -14,6 +15,8 @@ var (
 	errorType   = reflect.TypeOf((*error)(nil)).Elem()
 	contextType = reflect.TypeOf((*context.Context)(nil)).Elem()
 )
+
+var DefaultResponse = json.RawMessage(`{"message":"ok"}`)
 
 type handler struct {
 	fv           reflect.Value
@@ -65,6 +68,10 @@ func (h *handler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	if err != nil {
 		problem.Render(ctx, w, err)
 		return
+	}
+
+	if res == nil {
+		res = &DefaultResponse
 	}
 
 	Render(w, res)

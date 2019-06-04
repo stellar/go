@@ -3,12 +3,16 @@ package keystore
 import (
 	"bytes"
 	"context"
+	"database/sql"
 	"encoding/base64"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 	"time"
+
+	"github.com/stellar/go/support/errors"
+	"github.com/stellar/go/support/render/hal"
 )
 
 func TestPutKeysAPI(t *testing.T) {
@@ -127,5 +131,56 @@ func TestGetKeysAPI(t *testing.T) {
 
 	if got.CreatedAt.Before(time.Now().Add(-time.Hour)) {
 		t.Errorf("got CreatedAt=%s, want CreatedAt within the last hour", got.CreatedAt)
+	}
+}
+
+func TestDeleteKeysAPI(t *testing.T) {
+	db := openKeystoreDB(t)
+	defer db.Close() // drop test db
+
+	conn := db.Open()
+	defer conn.Close() // close db connection
+
+	ctx := withUserID(context.Background(), "test-user")
+	s := &Service{conn.DB}
+	h := ServeMux(s)
+
+	blob := `[{
+		"keyType": "plaintextKey",
+		"publicKey": "stellar-pubkey",
+		"privateKey": "encrypted-stellar-privatekey"
+	}]`
+	encodedBlob := base64.RawURLEncoding.EncodeToString([]byte(blob))
+	encrypterName := "identity"
+	salt := "random-salt"
+
+	_, err := s.putKeys(ctx, putKeysRequest{
+		KeysBlob:      encodedBlob,
+		EncrypterName: encrypterName,
+		Salt:          salt,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	req := httptest.NewRequest("DELETE", "/keys", nil)
+	req = req.WithContext(ctx)
+
+	rr := httptest.NewRecorder()
+	h.ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Errorf("DELETE %s responded with %s, want %s", req.URL, http.StatusText(rr.Code), http.StatusText(http.StatusOK))
+	}
+
+	got := rr.Body.Bytes()
+	dr, _ := json.MarshalIndent(hal.DefaultResponse, "", "  ")
+	if !bytes.Equal(got, dr) {
+		t.Errorf("got: %s, expected: %s", got, dr)
+	}
+
+	_, err = s.getKeys(ctx)
+	if errors.Cause(err) != sql.ErrNoRows {
+		t.Errorf("expect the keys blob of the user %s to be deleted", userID(ctx))
 	}
 }
