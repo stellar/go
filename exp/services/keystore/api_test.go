@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/stellar/go/support/errors"
+	"github.com/stellar/go/support/render/hal"
 )
 
 func TestPutKeysAPI(t *testing.T) {
@@ -171,26 +172,11 @@ func TestDeleteKeysAPI(t *testing.T) {
 	if rr.Code != http.StatusOK {
 		t.Errorf("DELETE %s responded with %s, want %s", req.URL, http.StatusText(rr.Code), http.StatusText(http.StatusOK))
 	}
-	got := &encryptedKeys{}
-	json.Unmarshal(rr.Body.Bytes(), &got)
-	if got == nil {
-		t.Error("Expected to receive an encryptedKeys response but did not")
-	}
 
-	if got.KeysBlob != encodedBlob {
-		t.Errorf("got blob: %s, want: %s\n", got.KeysBlob, encodedBlob)
-	}
-
-	if got.EncrypterName != encrypterName {
-		t.Errorf("got encrypter name: %s, want: %s\n", got.EncrypterName, encrypterName)
-	}
-
-	if got.Salt != salt {
-		t.Errorf("got salt: %s, want: %s\n", got.Salt, salt)
-	}
-
-	if got.CreatedAt.Before(time.Now().Add(-time.Hour)) {
-		t.Errorf("got CreatedAt=%s, want CreatedAt within the last hour\n", got.CreatedAt)
+	got := rr.Body.Bytes()
+	dr, _ := json.MarshalIndent(hal.DefaultResponse, "", "  ")
+	if !bytes.Equal(got, dr) {
+		t.Errorf("got: %s, expected: %s", got, dr)
 	}
 
 	_, err = s.getKeys(ctx)

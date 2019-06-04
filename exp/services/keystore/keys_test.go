@@ -133,25 +133,9 @@ func TestDeleteKeys(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	got, err := s.deleteKeys(ctx)
+	_, err = s.deleteKeys(ctx)
 	if err != nil {
 		t.Fatal(err)
-	}
-
-	if got.KeysBlob != encodedBlob {
-		t.Errorf("got blob: %s, want: %s\n", got.KeysBlob, encodedBlob)
-	}
-
-	if got.EncrypterName != encrypterName {
-		t.Errorf("got encrypter name: %s, want: %s\n", got.EncrypterName, encrypterName)
-	}
-
-	if got.Salt != salt {
-		t.Errorf("got salt: %s, want: %s\n", got.Salt, salt)
-	}
-
-	if got.CreatedAt.Before(time.Now().Add(-time.Hour)) {
-		t.Errorf("got CreatedAt=%s, want CreatedAt within the last hour\n", got.CreatedAt)
 	}
 
 	_, err = s.getKeys(ctx)
