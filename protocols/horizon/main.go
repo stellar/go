@@ -401,14 +401,14 @@ type Transaction struct {
 	LedgerCloseTime time.Time `json:"created_at"`
 	Account         string    `json:"source_account"`
 	AccountSequence string    `json:"source_account_sequence"`
-	// Deprecated - remove in: horizon-v0.19.0 and horizonclient-...
+	// Deprecated - remove in: horizon-v0.19.0 and horizonclient-v2.0.0
 	FeePaid int32 `json:"fee_paid"`
 	// Deprecated - remove in: horizon-v0.18.0
-	// Display this value as `fee_charged`
-	FeeCharged int32 `json:"-"`
+	// Start displaying in horizon-v0.18.0 and horizonclient-v1.3.0
+	// FeeCharged int32 `json:"fee_charged"`
 	// Deprecated - remove in: horizon-v0.18.0
-	// Display this value as `max_fee`
-	MaxFee         int32    `json:"-"`
+	// Start displaying in horizon-v0.18.0 and horizonclient-v1.3.0
+	// MaxFee         int32    `json:"max_fee"`
 	OperationCount int32    `json:"operation_count"`
 	EnvelopeXdr    string   `json:"envelope_xdr"`
 	ResultXdr      string   `json:"result_xdr"`
