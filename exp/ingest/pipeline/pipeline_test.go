@@ -1,6 +1,7 @@
 package pipeline
 
 import (
+	"context"
 	"fmt"
 	"math/rand"
 	"runtime"
@@ -244,7 +245,7 @@ type PassthroughProcessor struct {
 	SimpleProcessor
 }
 
-func (p *PassthroughProcessor) ProcessState(store *Store, r io.StateReadCloser, w io.StateWriteCloser) error {
+func (p *PassthroughProcessor) ProcessState(ctx context.Context, store *Store, r io.StateReadCloser, w io.StateWriteCloser) error {
 	defer w.Close()
 	defer r.Close()
 
@@ -266,6 +267,13 @@ func (p *PassthroughProcessor) ProcessState(store *Store, r io.StateReadCloser, 
 			}
 			return err
 		}
+
+		select {
+		case <-ctx.Done():
+			return nil
+		default:
+			continue
+		}
 	}
 
 	return nil
@@ -285,7 +293,7 @@ type EntryTypeFilter struct {
 	Type xdr.LedgerEntryType
 }
 
-func (p *EntryTypeFilter) ProcessState(store *Store, r io.StateReadCloser, w io.StateWriteCloser) error {
+func (p *EntryTypeFilter) ProcessState(ctx context.Context, store *Store, r io.StateReadCloser, w io.StateWriteCloser) error {
 	defer w.Close()
 	defer r.Close()
 
@@ -309,6 +317,13 @@ func (p *EntryTypeFilter) ProcessState(store *Store, r io.StateReadCloser, w io.
 				return err
 			}
 		}
+
+		select {
+		case <-ctx.Done():
+			return nil
+		default:
+			continue
+		}
 	}
 
 	return nil
@@ -324,7 +339,7 @@ type AccountsForSignerProcessor struct {
 	Signer string
 }
 
-func (p *AccountsForSignerProcessor) ProcessState(store *Store, r io.StateReadCloser, w io.StateWriteCloser) error {
+func (p *AccountsForSignerProcessor) ProcessState(ctx context.Context, store *Store, r io.StateReadCloser, w io.StateWriteCloser) error {
 	defer w.Close()
 	defer r.Close()
 
@@ -355,6 +370,13 @@ func (p *AccountsForSignerProcessor) ProcessState(store *Store, r io.StateReadCl
 				break
 			}
 		}
+
+		select {
+		case <-ctx.Done():
+			return nil
+		default:
+			continue
+		}
 	}
 
 	return nil
@@ -369,7 +391,7 @@ type CountPrefixProcessor struct {
 	Prefix string
 }
 
-func (p *CountPrefixProcessor) ProcessState(store *Store, r io.StateReadCloser, w io.StateWriteCloser) error {
+func (p *CountPrefixProcessor) ProcessState(ctx context.Context, store *Store, r io.StateReadCloser, w io.StateWriteCloser) error {
 	defer w.Close()
 	defer r.Close()
 
@@ -403,6 +425,13 @@ func (p *CountPrefixProcessor) ProcessState(store *Store, r io.StateReadCloser, 
 			// Make it slower to test full buffer
 			// time.Sleep(50 * time.Millisecond)
 		}
+
+		select {
+		case <-ctx.Done():
+			return nil
+		default:
+			continue
+		}
 	}
 
 	store.Lock()
@@ -428,7 +457,7 @@ type PrintCountersProcessor struct {
 	SimpleProcessor
 }
 
-func (p *PrintCountersProcessor) ProcessState(store *Store, r io.StateReadCloser, w io.StateWriteCloser) error {
+func (p *PrintCountersProcessor) ProcessState(ctx context.Context, store *Store, r io.StateReadCloser, w io.StateWriteCloser) error {
 	defer w.Close()
 	defer r.Close()
 
@@ -441,6 +470,13 @@ func (p *PrintCountersProcessor) ProcessState(store *Store, r io.StateReadCloser
 			} else {
 				return err
 			}
+		}
+
+		select {
+		case <-ctx.Done():
+			return nil
+		default:
+			continue
 		}
 	}
 
@@ -466,7 +502,7 @@ type PrintAllProcessor struct {
 	SimpleProcessor
 }
 
-func (p *PrintAllProcessor) ProcessState(store *Store, r io.StateReadCloser, w io.StateWriteCloser) error {
+func (p *PrintAllProcessor) ProcessState(ctx context.Context, store *Store, r io.StateReadCloser, w io.StateWriteCloser) error {
 	defer w.Close()
 	defer r.Close()
 
@@ -483,6 +519,13 @@ func (p *PrintAllProcessor) ProcessState(store *Store, r io.StateReadCloser, w i
 
 		entries++
 		// fmt.Printf("%+v\n", entry)
+
+		select {
+		case <-ctx.Done():
+			return nil
+		default:
+			continue
+		}
 	}
 
 	fmt.Printf("Found %d entries\n", entries)

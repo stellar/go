@@ -1,6 +1,7 @@
 package pipeline
 
 import (
+	"context"
 	"fmt"
 	"strings"
 	"sync"
@@ -63,11 +64,19 @@ func (p *Pipeline) AddStateProcessorTree(rootProcessor *PipelineNode) {
 	p.rootStateProcessor = rootProcessor
 }
 
-func (p *Pipeline) ProcessState(readCloser io.StateReadCloser) (done chan error) {
-	return p.processStateNode(&Store{}, p.rootStateProcessor, readCloser)
+func (p *Pipeline) ProcessState(readCloser io.StateReadCloser) <-chan error {
+	p.doneMutex.Lock()
+	if p.done {
+		panic("Pipeline already running or done...")
+	}
+	p.done = true
+	p.doneMutex.Unlock()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	return p.processStateNode(ctx, &Store{}, p.rootStateProcessor, readCloser, cancel)
 }
 
-func (p *Pipeline) processStateNode(store *Store, node *PipelineNode, readCloser io.StateReadCloser) chan error {
+func (p *Pipeline) processStateNode(ctx context.Context, store *Store, node *PipelineNode, readCloser io.StateReadCloser, cancel context.CancelFunc) <-chan error {
 	outputs := make([]io.StateWriteCloser, len(node.Children))
 
 	for i := range outputs {
@@ -88,30 +97,72 @@ func (p *Pipeline) processStateNode(store *Store, node *PipelineNode, readCloser
 		closeAfter: jobs,
 	}
 
+	errorChan := make(chan error)
+
 	for i := 1; i <= jobs; i++ {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
 
-			err := node.Processor.ProcessState(store, readCloser, writeCloser)
+			err := node.Processor.ProcessState(ctx, store, readCloser, writeCloser)
 			if err != nil {
-				// TODO return to pipeline error channel
-				panic(err)
+				// Protect from cancelling twice and sending multiple errors to err channel
+				p.cancelledMutex.Lock()
+				defer p.cancelledMutex.Unlock()
+
+				if p.cancelled {
+					return
+				}
+				p.cancelled = true
+				cancel()
+				errorChan <- err
 			}
 		}()
 	}
 
+	finishUpdatingStats := p.updateStats(node, readCloser, writeCloser)
+
+	for i, child := range node.Children {
+		wg.Add(1)
+		go func(i int, child *PipelineNode) {
+			defer wg.Done()
+			done := p.processStateNode(ctx, store, child, outputs[i].(*bufferedStateReadWriteCloser), cancel)
+			err := <-done
+			if err != nil {
+				errorChan <- err
+			}
+		}(i, child)
+	}
+
 	go func() {
-		// Update stats
+		wg.Wait()
+		finishUpdatingStats <- true
+		select {
+		case <-ctx.Done():
+			// Do nothing, err already sent to a channel...
+		default:
+			errorChan <- nil
+		}
+	}()
+
+	return errorChan
+}
+
+func (p *Pipeline) updateStats(node *PipelineNode, readCloser io.StateReadCloser, writeCloser *multiWriteCloser) chan<- bool {
+	// Update stats
+	interval := time.Second
+	done := make(chan bool)
+	ticker := time.NewTicker(interval)
+
+	go func() {
+		defer ticker.Stop()
+
 		for {
 			// This is not thread-safe: check if Mutex slows it down a lot...
 			readBuffer, readBufferIsBufferedStateReadWriteCloser := readCloser.(*bufferedStateReadWriteCloser)
-			writeBuffer := writeCloser
 
-			interval := time.Second
-
-			node.writesPerSecond = (writeBuffer.wroteEntries - node.wroteEntries) * int(time.Second/interval)
-			node.wroteEntries = writeBuffer.wroteEntries
+			node.writesPerSecond = (writeCloser.wroteEntries - node.wroteEntries) * int(time.Second/interval)
+			node.wroteEntries = writeCloser.wroteEntries
 
 			if readBufferIsBufferedStateReadWriteCloser {
 				node.readsPerSecond = (readBuffer.readEntries - node.readEntries) * int(time.Second/interval)
@@ -119,24 +170,14 @@ func (p *Pipeline) processStateNode(store *Store, node *PipelineNode, readCloser
 				node.queuedEntries = readBuffer.QueuedEntries()
 			}
 
-			time.Sleep(interval)
+			select {
+			case <-ticker.C:
+				continue
+			case <-done:
+				// Pipeline done
+				return
+			}
 		}
-	}()
-
-	for i, child := range node.Children {
-		wg.Add(1)
-		go func(i int, child *PipelineNode) {
-			defer wg.Done()
-			done := p.processStateNode(store, child, outputs[i].(*bufferedStateReadWriteCloser))
-			<-done
-		}(i, child)
-	}
-
-	done := make(chan error)
-
-	go func() {
-		wg.Wait()
-		done <- nil
 	}()
 
 	return done
