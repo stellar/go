@@ -101,12 +101,10 @@ func (s *Service) getKeys(ctx context.Context) (*encryptedKeys, error) {
 	return &out, nil
 }
 
-//TODO: make support/render/hal be able to handle function with only 1 return
-//value
-func (s *Service) deleteKeys(ctx context.Context) (interface{}, error) {
+func (s *Service) deleteKeys(ctx context.Context) error {
 	userID := userID(ctx)
 	if userID == "" {
-		return nil, probNotAuthorized
+		return probNotAuthorized
 	}
 
 	q := `
@@ -114,5 +112,5 @@ func (s *Service) deleteKeys(ctx context.Context) (interface{}, error) {
 		WHERE user_id = $1
 	`
 	_, err := s.db.ExecContext(ctx, q, userID)
-	return nil, errors.Wrap(err, "deleting keys blob")
+	return errors.Wrap(err, "deleting keys blob")
 }
