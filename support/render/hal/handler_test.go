@@ -107,3 +107,19 @@ func TestFuncParamTypeError(t *testing.T) {
 		}
 	}
 }
+
+func TestFuncParamTypeNoError(t *testing.T) {
+	cases := []interface{}{
+		func(context.Context) {},                                  // no return value
+		func(context.Context) int { return 0 },                    // one non-error type return value
+		func(context.Context) error { return nil },                // one error type return value
+		func(context.Context, int) (int, error) { return 0, nil }, // two return values
+	}
+
+	for _, tc := range cases {
+		_, err := funcParamType(reflect.ValueOf(tc))
+		if err != nil {
+			t.Errorf("funcParamType(%T) got error %v", tc, err)
+		}
+	}
+}
