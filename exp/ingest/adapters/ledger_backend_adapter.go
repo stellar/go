@@ -17,7 +17,7 @@ func (lba *LedgerBackendAdapter) GetLatestLedgerSequence() (uint32, error) {
 	return lba.backend.GetLatestLedgerSequence()
 }
 
-// GetLedger returns...
+// GetLedger returns information about a given ledger as an object that can be streamed.
 func (lba *LedgerBackendAdapter) GetLedger(uint32) (io.LedgerReadCloser, error) {
 	// TODO: placeholder
 	return nil, fmt.Errorf("not implemented yet")
