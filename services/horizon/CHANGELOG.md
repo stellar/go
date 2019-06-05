@@ -14,6 +14,11 @@ bumps.  A breaking change will get clearly notified in this log.
 * Removed `paging_token` field from `/accounts/{id}` endpoint.
 * Removed `/operation_fee_stats` endpoint. Please use `/fee_stats`.
 
+### Deprecations
+
+* `fee_paid` field on Transaction resource has been deprecated and will be removed in 0.19.0. Two new fields have been added: `max_fee` that defines the maximum fee the source account is willing to pay and `fee_charged` that defines the fee that was actually paid for a transaction. See [CAP-0005](https://github.com/stellar/stellar-protocol/blob/master/core/cap-0005.md) for more information.
+* The following operation type names have been deprecated: `manage_offer` and `create_passive_offer`. The names will be changed to: `manage_sell_offer` and `create_passive_offer` in 0.19.0.
+
 ### Changes
 
 * The following new config parameters were added. When old `max-db-connections` config parameter is set, it has a priority over the the new params. Run `horizon help` for more information.

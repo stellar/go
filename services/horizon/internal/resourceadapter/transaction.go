@@ -34,10 +34,8 @@ func PopulateTransaction(
 	dest.AccountSequence = row.AccountSequence
 	dest.FeePaid = row.FeeCharged
 
-	// Action needed in release: horizon-v0.18.0
-	// Uncomment in horizon-v0.18.0
-	// dest.FeeCharged = row.FeeCharged
-	// dest.MaxFee = row.MaxFee
+	dest.FeeCharged = row.FeeCharged
+	dest.MaxFee = row.MaxFee
 
 	dest.OperationCount = row.OperationCount
 	dest.EnvelopeXdr = row.TxEnvelope
