@@ -133,7 +133,7 @@ func TestDeleteKeys(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	_, err = s.deleteKeys(ctx)
+	err = s.deleteKeys(ctx)
 	if err != nil {
 		t.Fatal(err)
 	}

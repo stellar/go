@@ -70,10 +70,6 @@ func (h *handler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	if res == nil {
-		res = &DefaultResponse
-	}
-
 	Render(w, res)
 }
 
@@ -95,9 +91,27 @@ func (h *handler) executeFunc(ctx context.Context, req *http.Request) (interface
 		}
 	}
 
+	var (
+		res interface{}
+		err error
+	)
 	rv := h.fv.Call(a)
-	err, _ := rv[1].Interface().(error)
-	return rv[0].Interface(), err
+	switch n := len(rv); {
+	case n == 0:
+		res = &DefaultResponse
+	case n == 1:
+		if h.fv.Type().Out(0).Implements(errorType) {
+			res = &DefaultResponse
+			err, _ = rv[0].Interface().(error)
+		} else {
+			res = rv[0].Interface()
+		}
+	case n == 2:
+		res = rv[0].Interface()
+		err, _ = rv[1].Interface().(error)
+	}
+
+	return res, err
 }
 
 // ExecuteFunc executes the fn with the param after checking whether the
@@ -124,10 +138,11 @@ func ExecuteFunc(ctx context.Context, fn, param interface{}) (interface{}, bool,
 // functions with certain signatures.
 // The allowed function signature is as following:
 //
-//   func fn(ctx context.Context, an_optional_param) (interface{}, err)
+//   func fn(ctx context.Context, an_optional_param) (at_most_two_return_values)
 //
-// The caller must provide a function with at least 1 input (request context) and up to 2 inputs,
-// and exact 2 return values, where the second value has to be error type.
+// The caller must provide a function with at least 1 input (request context)
+// and up to 2 inputs, and up to 2 return values. If there are two return
+// values, the second value has to be error type.
 func funcParamType(fv reflect.Value) (reflect.Type, error) {
 	ft := fv.Type()
 
@@ -140,8 +155,10 @@ func funcParamType(fv reflect.Value) (reflect.Type, error) {
 		paramType = ft.In(1)
 	}
 
-	if ft.NumOut() != 2 || !ft.Out(1).Implements(errorType) {
-		return nil, fmt.Errorf("%s must have two return values, and the second return value must be an error", ft.String())
+	if n := ft.NumOut(); n == 2 && !ft.Out(1).Implements(errorType) {
+		return nil, fmt.Errorf("%s: second return value must be an error", ft.String())
+	} else if n > 2 {
+		return nil, fmt.Errorf("%s can have at most two return values", ft.String())
 	}
 
 	return paramType, nil
