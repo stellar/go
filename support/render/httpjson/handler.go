@@ -1,4 +1,4 @@
-package hal
+package httpjson
 
 import (
 	"context"
@@ -23,6 +23,7 @@ type handler struct {
 	inType       reflect.Type
 	inValue      reflect.Value
 	readFromBody bool
+	cType        contentType
 }
 
 // ReqBodyHandler returns an HTTP Handler for function fn.
@@ -32,14 +33,14 @@ type handler struct {
 // Please refer to funcParamType for the allowed function signature.
 // The caller of this function should probably panic on the returned error, if
 // any.
-func ReqBodyHandler(fn interface{}) (http.Handler, error) {
+func ReqBodyHandler(fn interface{}, cType contentType) (http.Handler, error) {
 	fv := reflect.ValueOf(fn)
 	inType, err := funcParamType(fv)
 	if err != nil {
 		return nil, errors.Wrap(err, "parsing function prototype")
 	}
 
-	return &handler{fv, inType, reflect.Value{}, inType != nil}, nil
+	return &handler{fv, inType, reflect.Value{}, inType != nil, cType}, nil
 }
 
 // Handler returns an HTTP Handler for function fn.
@@ -47,7 +48,7 @@ func ReqBodyHandler(fn interface{}) (http.Handler, error) {
 // Please refer to funcParamType for the allowed function signature.
 // The caller of this function should probably panic on the returned error, if
 // any.
-func Handler(fn, param interface{}) (http.Handler, error) {
+func Handler(fn, param interface{}, cType contentType) (http.Handler, error) {
 	fv := reflect.ValueOf(fn)
 	inType, err := funcParamType(fv)
 	if err != nil {
@@ -59,7 +60,7 @@ func Handler(fn, param interface{}) (http.Handler, error) {
 		inValue = reflect.ValueOf(param)
 	}
 
-	return &handler{fv, inType, inValue, false}, nil
+	return &handler{fv, inType, inValue, false, cType}, nil
 }
 
 func (h *handler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
@@ -70,7 +71,7 @@ func (h *handler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	Render(w, res)
+	Render(w, res, h.cType)
 }
 
 // executeFunc executes the function provided in the handler together with the
@@ -122,9 +123,9 @@ func (h *handler) executeFunc(ctx context.Context, req *http.Request) (interface
 // error normally; if it's false, it means the caller should probably panic on
 // the error.
 // The third return value is an error either from Handler() or from fn, if any.
-func ExecuteFunc(ctx context.Context, fn, param interface{}) (interface{}, bool, error) {
+func ExecuteFunc(ctx context.Context, fn, param interface{}, cType contentType) (interface{}, bool, error) {
 	dontPanic := true
-	h, err := Handler(fn, param)
+	h, err := Handler(fn, param, cType)
 	if err != nil {
 		dontPanic = false
 		return nil, dontPanic, err

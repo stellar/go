@@ -5,7 +5,7 @@ import (
 	"github.com/stellar/go/services/horizon/internal/actions"
 	"github.com/stellar/go/services/horizon/internal/ledger"
 	"github.com/stellar/go/services/horizon/internal/resourceadapter"
-	"github.com/stellar/go/support/render/hal"
+	"github.com/stellar/go/support/render/httpjson"
 )
 
 // Interface verification
@@ -32,6 +32,6 @@ func (action *RootAction) JSON() error {
 		action.App.config.FriendbotURL,
 	)
 
-	hal.Render(action.W, res)
+	httpjson.Render(action.W, res, httpjson.HALJSON)
 	return action.Err
 }

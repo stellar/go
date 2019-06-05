@@ -6,6 +6,7 @@ import (
 	"github.com/stellar/go/services/horizon/internal/paths"
 	"github.com/stellar/go/services/horizon/internal/resourceadapter"
 	"github.com/stellar/go/support/render/hal"
+	"github.com/stellar/go/support/render/httpjson"
 )
 
 // Interface verification
@@ -26,7 +27,7 @@ func (action *PathIndexAction) JSON() error {
 		action.loadSourceAssets,
 		action.loadRecords,
 		action.loadPage,
-		func() { hal.Render(action.W, action.Page) },
+		func() { httpjson.Render(action.W, action.Page, httpjson.HALJSON) },
 	)
 	return action.Err
 }

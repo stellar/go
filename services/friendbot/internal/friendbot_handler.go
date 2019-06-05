@@ -6,7 +6,7 @@ import (
 
 	"github.com/stellar/go/clients/horizon"
 	"github.com/stellar/go/strkey"
-	"github.com/stellar/go/support/render/hal"
+	"github.com/stellar/go/support/render/httpjson"
 	"github.com/stellar/go/support/render/problem"
 )
 
@@ -23,7 +23,7 @@ func (handler *FriendbotHandler) Handle(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	hal.Render(w, *result)
+	httpjson.Render(w, *result, httpjson.HALJSON)
 }
 
 // doHandle is just a convenience method that returns the object to be rendered

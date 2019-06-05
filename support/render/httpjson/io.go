@@ -1,4 +1,4 @@
-package hal
+package httpjson
 
 import (
 	"encoding/json"
@@ -6,6 +6,13 @@ import (
 	"net/http"
 
 	"github.com/stellar/go/support/errors"
+)
+
+type contentType int
+
+const (
+	JSON contentType = iota
+	HALJSON
 )
 
 // renderToString renders the provided data as a json string
@@ -18,7 +25,7 @@ func renderToString(data interface{}, pretty bool) ([]byte, error) {
 }
 
 // Render write data to w, after marshalling to json
-func Render(w http.ResponseWriter, data interface{}) {
+func Render(w http.ResponseWriter, data interface{}, cType contentType) {
 	js, err := renderToString(data, true)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -26,7 +33,11 @@ func Render(w http.ResponseWriter, data interface{}) {
 	}
 
 	w.Header().Set("Content-Disposition", "inline")
-	w.Header().Set("Content-Type", "application/hal+json; charset=utf-8")
+	if cType == HALJSON {
+		w.Header().Set("Content-Type", "application/hal+json; charset=utf-8")
+	} else {
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	}
 	w.Write(js)
 }
 

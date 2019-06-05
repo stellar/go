@@ -19,7 +19,7 @@ import (
 	"github.com/stellar/go/services/horizon/internal/toid"
 	"github.com/stellar/go/strkey"
 	"github.com/stellar/go/support/errors"
-	"github.com/stellar/go/support/render/hal"
+	"github.com/stellar/go/support/render/httpjson"
 	"github.com/stellar/go/support/render/problem"
 )
 
@@ -42,7 +42,7 @@ func (we *web) streamableEndpointHandler(jfn interface{}, streamSingleObjectEnab
 				problem.Render(ctx, w, hProblem.NotAcceptable)
 				return
 			}
-			h, err := hal.Handler(jfn, params)
+			h, err := httpjson.Handler(jfn, params, httpjson.HALJSON)
 			if err != nil {
 				panic(err)
 			}
@@ -100,7 +100,7 @@ func (we *web) streamHandler(jfn interface{}, sfn streamFunc, params interface{}
 					return
 				}
 			} else if jfn != nil {
-				data, ok, err := hal.ExecuteFunc(ctx, jfn, params)
+				data, ok, err := httpjson.ExecuteFunc(ctx, jfn, params, httpjson.HALJSON)
 				if err != nil {
 					if !ok {
 						panic(err)
@@ -213,7 +213,7 @@ func showActionHandler(jfn interface{}) http.HandlerFunc {
 			return
 		}
 
-		h, err := hal.Handler(jfn, params)
+		h, err := httpjson.Handler(jfn, params, httpjson.HALJSON)
 		if err != nil {
 			panic(err)
 		}

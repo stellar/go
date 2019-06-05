@@ -8,7 +8,7 @@ import (
 	"github.com/stellar/go/services/horizon/internal/db2/core"
 	"github.com/stellar/go/services/horizon/internal/render/sse"
 	"github.com/stellar/go/services/horizon/internal/resourceadapter"
-	"github.com/stellar/go/support/render/hal"
+	"github.com/stellar/go/support/render/httpjson"
 	"github.com/stellar/go/support/render/problem"
 	"github.com/stellar/go/xdr"
 )
@@ -74,7 +74,7 @@ func (action *OrderBookShowAction) JSON() error {
 		action.LoadQuery,
 		action.LoadRecord,
 		action.LoadResource,
-		func() { hal.Render(action.W, action.Resource) },
+		func() { httpjson.Render(action.W, action.Resource, httpjson.HALJSON) },
 	)
 	return action.Err
 }

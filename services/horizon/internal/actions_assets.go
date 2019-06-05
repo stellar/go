@@ -9,6 +9,7 @@ import (
 	"github.com/stellar/go/services/horizon/internal/db2/assets"
 	"github.com/stellar/go/services/horizon/internal/resourceadapter"
 	"github.com/stellar/go/support/render/hal"
+	"github.com/stellar/go/support/render/httpjson"
 )
 
 // This file contains the actions:
@@ -36,7 +37,7 @@ func (action *AssetsAction) JSON() error {
 		action.loadParams,
 		action.loadRecords,
 		action.loadPage,
-		func() { hal.Render(action.W, action.Page) },
+		func() { httpjson.Render(action.W, action.Page, httpjson.HALJSON) },
 	)
 	return action.Err
 }

@@ -1,4 +1,4 @@
-package hal
+package httpjson
 
 import (
 	"context"

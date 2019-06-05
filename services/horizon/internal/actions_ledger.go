@@ -10,6 +10,7 @@ import (
 	"github.com/stellar/go/services/horizon/internal/render/sse"
 	"github.com/stellar/go/services/horizon/internal/resourceadapter"
 	"github.com/stellar/go/support/render/hal"
+	"github.com/stellar/go/support/render/httpjson"
 )
 
 // This file contains the actions:
@@ -38,7 +39,7 @@ func (action *LedgerIndexAction) JSON() error {
 		action.ValidateCursorWithinHistory,
 		action.loadRecords,
 		action.loadPage,
-		func() { hal.Render(action.W, action.Page) },
+		func() { httpjson.Render(action.W, action.Page, httpjson.HALJSON) },
 	)
 	return action.Err
 }
@@ -109,7 +110,7 @@ func (action *LedgerShowAction) JSON() error {
 		func() {
 			var res horizon.Ledger
 			resourceadapter.PopulateLedger(action.R.Context(), &res, action.Record)
-			hal.Render(action.W, res)
+			httpjson.Render(action.W, res, httpjson.HALJSON)
 		},
 	)
 	return action.Err

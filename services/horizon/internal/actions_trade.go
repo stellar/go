@@ -12,6 +12,7 @@ import (
 	"github.com/stellar/go/services/horizon/internal/resourceadapter"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/support/render/hal"
+	"github.com/stellar/go/support/render/httpjson"
 	"github.com/stellar/go/support/time"
 	"github.com/stellar/go/xdr"
 )
@@ -40,7 +41,7 @@ func (action *TradeIndexAction) JSON() error {
 		action.loadParams,
 		action.loadRecords,
 		action.loadPage,
-		func() { hal.Render(action.W, action.Page) },
+		func() { httpjson.Render(action.W, action.Page, httpjson.HALJSON) },
 	)
 	return action.Err
 }
@@ -160,7 +161,7 @@ func (action *TradeAggregateIndexAction) JSON() error {
 		action.loadParams,
 		action.loadRecords,
 		action.loadPage,
-		func() { hal.Render(action.W, action.Page) },
+		func() { httpjson.Render(action.W, action.Page, httpjson.HALJSON) },
 	)
 	return action.Err
 }
