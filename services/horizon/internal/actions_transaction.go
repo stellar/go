@@ -8,7 +8,7 @@ import (
 	hProblem "github.com/stellar/go/services/horizon/internal/render/problem"
 	"github.com/stellar/go/services/horizon/internal/resourceadapter"
 	"github.com/stellar/go/services/horizon/internal/txsub"
-	"github.com/stellar/go/support/render/httpjson"
+	"github.com/stellar/go/support/render/hal"
 	"github.com/stellar/go/support/render/problem"
 )
 
@@ -30,7 +30,7 @@ func (action *TransactionCreateAction) JSON() error {
 		action.loadTX,
 		action.loadResult,
 		action.loadResource,
-		func() { httpjson.Render(action.W, action.Resource, httpjson.HALJSON) },
+		func() { hal.Render(action.W, action.Resource) },
 	)
 	return action.Err
 }

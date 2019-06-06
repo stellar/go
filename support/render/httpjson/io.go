@@ -24,7 +24,8 @@ func renderToString(data interface{}, pretty bool) ([]byte, error) {
 	return json.Marshal(data)
 }
 
-// Render write data to w, after marshalling to json
+// Render write data to w, after marshalling to json. The response header is
+// set based on cType.
 func Render(w http.ResponseWriter, data interface{}, cType contentType) {
 	js, err := renderToString(data, true)
 	if err != nil {

@@ -4,7 +4,7 @@ import (
 	"github.com/stellar/go/services/horizon/internal/actions"
 	"github.com/stellar/go/services/horizon/internal/db2/core"
 	"github.com/stellar/go/services/horizon/internal/render/sse"
-	"github.com/stellar/go/support/render/httpjson"
+	"github.com/stellar/go/support/render/hal"
 )
 
 // Interface verifications
@@ -25,11 +25,7 @@ func (action *DataShowAction) JSON() error {
 	action.Do(
 		action.loadParams,
 		action.loadRecord,
-		func() {
-			httpjson.Render(action.W, map[string]string{
-				"value": action.Data.Value,
-			}, httpjson.HALJSON)
-		},
+		func() { hal.Render(action.W, map[string]string{"value": action.Data.Value}) },
 	)
 	return action.Err
 }

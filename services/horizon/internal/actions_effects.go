@@ -11,7 +11,6 @@ import (
 	"github.com/stellar/go/services/horizon/internal/resourceadapter"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/support/render/hal"
-	"github.com/stellar/go/support/render/httpjson"
 	"github.com/stellar/go/support/render/problem"
 )
 
@@ -48,7 +47,7 @@ func (action *EffectIndexAction) JSON() error {
 		action.loadRecords,
 		action.loadLedgers,
 		action.loadPage,
-		func() { httpjson.Render(action.W, action.Page, httpjson.HALJSON) },
+		func() { hal.Render(action.W, action.Page) },
 	)
 	return action.Err
 }

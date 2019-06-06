@@ -4,7 +4,6 @@ import (
 	metrics "github.com/rcrowley/go-metrics"
 	"github.com/stellar/go/services/horizon/internal/actions"
 	"github.com/stellar/go/support/render/hal"
-	"github.com/stellar/go/support/render/httpjson"
 )
 
 // Interface verification
@@ -24,7 +23,7 @@ func (action *MetricsAction) JSON() error {
 		"self": hal.NewLink("/metrics"),
 	}
 
-	httpjson.Render(action.W, action.Snapshot, httpjson.HALJSON)
+	hal.Render(action.W, action.Snapshot)
 	return action.Err
 }
 

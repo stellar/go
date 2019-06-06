@@ -13,7 +13,6 @@ import (
 	"github.com/stellar/go/services/horizon/internal/toid"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/support/render/hal"
-	"github.com/stellar/go/support/render/httpjson"
 	supportProblem "github.com/stellar/go/support/render/problem"
 	"github.com/stellar/go/xdr"
 )
@@ -51,7 +50,7 @@ func (action *OperationIndexAction) JSON() error {
 		action.loadRecords,
 		action.loadLedgers,
 		action.loadPage,
-		func() { httpjson.Render(action.W, action.Page, httpjson.HALJSON) },
+		func() { hal.Render(action.W, action.Page) },
 	)
 	return action.Err
 }
@@ -247,7 +246,7 @@ func (action *OperationShowAction) JSON() error {
 		action.loadRecord,
 		action.loadLedger,
 		action.loadResource,
-		func() { httpjson.Render(action.W, action.Resource, httpjson.HALJSON) },
+		func() { hal.Render(action.W, action.Resource) },
 	)
 	return action.Err
 }

@@ -6,7 +6,7 @@ import (
 
 	"github.com/stellar/go/services/horizon/internal/actions"
 	"github.com/stellar/go/services/horizon/internal/operationfeestats"
-	"github.com/stellar/go/support/render/httpjson"
+	"github.com/stellar/go/support/render/hal"
 	"github.com/stellar/go/support/render/problem"
 )
 
@@ -57,7 +57,7 @@ func (action *OperationFeeStatsAction) JSON() error {
 	action.Do(
 		action.loadRecords,
 		func() {
-			httpjson.Render(action.W, map[string]string{
+			hal.Render(action.W, map[string]string{
 				"min_accepted_fee":      fmt.Sprint(action.FeeMin),
 				"mode_accepted_fee":     fmt.Sprint(action.FeeMode),
 				"p10_accepted_fee":      fmt.Sprint(action.FeeP10),
@@ -74,7 +74,7 @@ func (action *OperationFeeStatsAction) JSON() error {
 				"ledger_capacity_usage": action.LedgerCapacityUsage,
 				"last_ledger_base_fee":  fmt.Sprint(action.LastBaseFee),
 				"last_ledger":           fmt.Sprint(action.LastLedger),
-			}, httpjson.HALJSON)
+			})
 		},
 	)
 	return action.Err
