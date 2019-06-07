@@ -12,7 +12,7 @@ import (
 	"time"
 
 	"github.com/stellar/go/support/errors"
-	"github.com/stellar/go/support/render/hal"
+	"github.com/stellar/go/support/render/httpjson"
 )
 
 func TestPutKeysAPI(t *testing.T) {
@@ -174,7 +174,7 @@ func TestDeleteKeysAPI(t *testing.T) {
 	}
 
 	got := rr.Body.Bytes()
-	dr, _ := json.MarshalIndent(hal.DefaultResponse, "", "  ")
+	dr, _ := json.MarshalIndent(httpjson.DefaultResponse, "", "  ")
 	if !bytes.Equal(got, dr) {
 		t.Errorf("got: %s, expected: %s", got, dr)
 	}

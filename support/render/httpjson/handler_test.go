@@ -1,4 +1,4 @@
-package hal
+package httpjson
 
 import (
 	"context"
@@ -15,15 +15,16 @@ func TestHandler(t *testing.T) {
 		input   interface{}
 		output  string
 		f       interface{}
+		cType   contentType
 		wantErr bool
 	}{
-		{`foo`, `"foo"`, func(ctx context.Context, s string) (string, error) { return s, nil }, false},
-		{struct{ Foo int }{1}, `1`, func(ctx context.Context, param struct{ Foo int }) (int, error) { return param.Foo, nil }, false},
-		{``, ``, func(ctx context.Context) (int, error) { return 0, errors.New("test") }, true},
+		{`foo`, `"foo"`, func(ctx context.Context, s string) (string, error) { return s, nil }, JSON, false},
+		{struct{ Foo int }{1}, `1`, func(ctx context.Context, param struct{ Foo int }) (int, error) { return param.Foo, nil }, HALJSON, false},
+		{``, ``, func(ctx context.Context) (int, error) { return 0, errors.New("test") }, JSON, true},
 	}
 
 	for _, tc := range cases {
-		h, err := Handler(tc.f, tc.input)
+		h, err := Handler(tc.f, tc.input, tc.cType)
 		if err != nil {
 			t.Errorf("Handler(%v) got err %v", tc.f, err)
 			continue
@@ -43,6 +44,18 @@ func TestHandler(t *testing.T) {
 			t.Errorf("%T response code = %d want 200", tc.f, resp.Code)
 		}
 
+		if tc.cType == JSON {
+			want := "application/json; charset=utf-8"
+			if ct := resp.Header().Get("Content-Type"); ct != want {
+				t.Errorf(`Content-Type = %s, want %s`, ct, want)
+			}
+		} else if tc.cType == HALJSON {
+			want := "application/hal+json; charset=utf-8"
+			if ct := resp.Header().Get("Content-Type"); ct != want {
+				t.Errorf(`Content-Type = %s, want %s`, ct, want)
+			}
+		}
+
 		got := resp.Body.String()
 		if got != tc.output {
 			t.Errorf("%T response body = %#q want %#q", tc.f, got, tc.output)
@@ -55,14 +68,15 @@ func TestReqBodyHandler(t *testing.T) {
 		input   string
 		output  string
 		f       interface{}
+		cType   contentType
 		wantErr bool
 	}{
-		{`{"Foo":1}`, `1`, func(ctx context.Context, param struct{ Foo int }) (int, error) { return param.Foo, nil }, false},
-		{``, ``, func(ctx context.Context) (int, error) { return 0, errors.New("test") }, true},
+		{`{"Foo":1}`, `1`, func(ctx context.Context, param struct{ Foo int }) (int, error) { return param.Foo, nil }, JSON, false},
+		{``, ``, func(ctx context.Context) (int, error) { return 0, errors.New("test") }, JSON, true},
 	}
 
 	for _, tc := range cases {
-		h, err := ReqBodyHandler(tc.f)
+		h, err := ReqBodyHandler(tc.f, tc.cType)
 		if err != nil {
 			t.Errorf("Handler(%v) got err %v", tc.f, err)
 			continue
@@ -80,6 +94,13 @@ func TestReqBodyHandler(t *testing.T) {
 
 		if resp.Code != 200 {
 			t.Errorf("%T response code = %d want 200", tc.f, resp.Code)
+		}
+
+		if tc.cType == JSON {
+			want := "application/json; charset=utf-8"
+			if ct := resp.Header().Get("Content-Type"); ct != want {
+				t.Errorf(`Content-Type = %s, want %s`, ct, want)
+			}
 		}
 
 		got := resp.Body.String()

@@ -6,13 +6,13 @@ import (
 
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/support/log"
-	"github.com/stellar/go/support/render/hal"
+	"github.com/stellar/go/support/render/httpjson"
 	"github.com/stellar/go/support/render/problem"
 )
 
 func init() {
 	// register errors
-	problem.RegisterError(hal.ErrBadRequest, probInvalidRequest)
+	problem.RegisterError(httpjson.ErrBadRequest, probInvalidRequest)
 
 	// register service host as an empty string
 	problem.RegisterHost("")
@@ -47,7 +47,7 @@ func (s *Service) keysHTTPMethodHandler() http.Handler {
 }
 
 func jsonHandler(f interface{}) http.Handler {
-	h, err := hal.ReqBodyHandler(f)
+	h, err := httpjson.ReqBodyHandler(f, httpjson.JSON)
 	if err != nil {
 		panic(err)
 	}
