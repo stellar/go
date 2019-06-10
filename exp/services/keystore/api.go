@@ -54,7 +54,8 @@ func (s *Service) keysHTTPMethodHandler() http.Handler {
 func authHandler(next http.Handler, authenticator *Authenticator) http.Handler {
 	return http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
 		if authenticator == nil {
-			next.ServeHTTP(rw, req)
+			// to facilitate API testing
+			next.ServeHTTP(rw, req.WithContext(withUserID(req.Context(), "test-user")))
 			return
 		}
 
@@ -63,6 +64,7 @@ func authHandler(next http.Handler, authenticator *Authenticator) http.Handler {
 			err      error
 		)
 		ctx := req.Context()
+		// set a 5-second timeout
 		client := http.Client{Timeout: time.Duration(5 * time.Second)}
 
 		switch authenticator.APIType {
