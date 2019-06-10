@@ -132,6 +132,18 @@ func TestGetKeysAPI(t *testing.T) {
 	if got.CreatedAt.Before(time.Now().Add(-time.Hour)) {
 		t.Errorf("got CreatedAt=%s, want CreatedAt within the last hour", got.CreatedAt)
 	}
+
+	err = s.deleteKeys(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	rr = httptest.NewRecorder()
+	h.ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusNotFound {
+		t.Errorf("GET %s responded with %s, want %s", req.URL, http.StatusText(rr.Code), http.StatusText(http.StatusNotFound))
+	}
 }
 
 func TestDeleteKeysAPI(t *testing.T) {
