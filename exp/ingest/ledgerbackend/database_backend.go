@@ -12,7 +12,7 @@ import (
 )
 
 const latestLedgerSeqQuery = "select ledgerseq, closetime from ledgerheaders order by ledgerseq desc limit 1"
-const txHistoryQuery = "select txbody, txresult, txmeta from txhistory where ledgerseq = "
+const txHistoryQuery = "select txbody, txresult, txmeta, txindex from txhistory where ledgerseq = "
 const ledgerHeaderQuery = "select ledgerhash, data from ledgerheaders where ledgerseq = "
 const txFeeHistoryQuery = "select txchanges from txfeehistory where ledgerseq = "
 
@@ -89,6 +89,7 @@ func (dbb *DatabaseBackend) GetLedger(sequence uint32) (bool, LedgerCloseMeta, e
 		lcm.TransactionEnvelope = append(lcm.TransactionEnvelope, tx.TXBody)
 		lcm.TransactionResult = append(lcm.TransactionResult, tx.TXResult)
 		lcm.TransactionMeta = append(lcm.TransactionMeta, tx.TXMeta)
+		lcm.TransactionIndex = append(lcm.TransactionIndex, tx.TXIndex)
 	}
 
 	// Query - txfeehistory

@@ -15,6 +15,7 @@ type LedgerCloseMeta struct {
 	TransactionEnvelope   []xdr.TransactionEnvelope
 	TransactionResult     []xdr.TransactionResultPair
 	TransactionMeta       []xdr.TransactionMeta
+	TransactionIndex      []uint32
 	TransactionFeeChanges []xdr.LedgerEntryChanges
 }
 

@@ -2,6 +2,7 @@ package io
 
 import (
 	"fmt"
+	"io"
 	"log"
 
 	"github.com/stellar/go/exp/ingest/ledgerbackend"
@@ -22,15 +23,18 @@ type LedgerReadCloser interface {
 }
 
 type LedgerTransaction struct {
-	Transaction       xdr.Transaction
-	TransactionResult xdr.TransactionResult
-	TransactionMeta   xdr.TransactionMeta
+	Index    uint32
+	Envelope xdr.TransactionEnvelope
+	Result   xdr.TransactionResultPair
+	Meta     xdr.TransactionMeta
 }
 
 type DBLedgerReadCloser struct {
-	sequence uint32
-	backend  ledgerbackend.DatabaseBackend
-	header   xdr.LedgerHeaderHistoryEntry
+	sequence     uint32
+	backend      ledgerbackend.DatabaseBackend
+	header       xdr.LedgerHeaderHistoryEntry
+	transactions []LedgerTransaction
+	readIdx      int
 }
 
 func (dblrc *DBLedgerReadCloser) GetSequence() uint32 {
@@ -39,6 +43,20 @@ func (dblrc *DBLedgerReadCloser) GetSequence() uint32 {
 
 func (dblrc *DBLedgerReadCloser) GetHeader() xdr.LedgerHeaderHistoryEntry {
 	return dblrc.header
+}
+
+func (dblrc *DBLedgerReadCloser) Read() (LedgerTransaction, error) {
+	if dblrc.readIdx < len(dblrc.transactions) {
+		defer dblrc.incReadIdx()
+		return dblrc.transactions[dblrc.readIdx], nil
+	}
+	return LedgerTransaction{}, io.EOF
+}
+
+func (dblrc *DBLedgerReadCloser) Close() error {
+	// TODO - raise an error if no data initialised yet
+	dblrc.readIdx = len(dblrc.transactions)
+	return nil
 }
 
 func (dblrc *DBLedgerReadCloser) Init(sequence uint32, driver string, dbURI string) error {
@@ -61,5 +79,24 @@ func (dblrc *DBLedgerReadCloser) Init(sequence uint32, driver string, dbURI stri
 
 	dblrc.header = ledgerCloseMeta.LedgerHeader
 
+	dblrc.storeTransactions(ledgerCloseMeta)
+
 	return nil
+}
+
+func (dblrc *DBLedgerReadCloser) storeTransactions(lcm ledgerbackend.LedgerCloseMeta) {
+	// TODO: Assume all slices are the same length - do we need to verify that?
+	// TODO: This should only be done once - how to enforce?
+	for i := range lcm.TransactionEnvelope {
+		dblrc.transactions = append(dblrc.transactions, LedgerTransaction{
+			Index:    lcm.TransactionIndex[i],
+			Envelope: lcm.TransactionEnvelope[i],
+			Result:   lcm.TransactionResult[i],
+			Meta:     lcm.TransactionMeta[i],
+		})
+	}
+}
+
+func (dblrc *DBLedgerReadCloser) incReadIdx() {
+	dblrc.readIdx++
 }
