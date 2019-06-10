@@ -41,9 +41,23 @@ You can check whether there is any unapplied migrations by running
 keystored migrate status
 ```
 
-Run `keystored` in development:
+Run `keystored` in development with authentication disabled:
 
 ```sh
-keystored -tls-cert=tls/server.crt -tls-key=tls/server.key serve
+keystored -tls-cert=tls/server.crt -tls-key=tls/server.key -auth=false serve
 ```
 
+Before you have a valid endpoint that can handle your auth token and return a
+user id in plaintext, you might want to disable authentication for testing.
+
+Run `keystored` in production with authentication disabled:
+
+There are four environment variables used for starting keystored:
+`KEYSTORE_DATABASE_URL`, `DB_MAX_IDLE_CONNS`, `DB_MAX_OPEN_CONNS`, `KEYSTORE_AUTHFORWARDING_URL`.
+* `KEYSTORE_DATABASE_URL` and `KEYSTORE_AUTHFORWARDING_URL` are required.
+* `DB_MAX_IDLE_CONNS` and `DB_MAX_OPEN_CONNS` are default to 5.
+* `KEYSTORE_AUTHFORWARDING_URL` is ignored when authentication is turned off.
+
+```sh
+keystored -tls-cert=PATH_TO_TLS_CERT -tls-key=PATH_TO_TLS_KEY -auth=false serve
+```
