@@ -16,10 +16,10 @@ var TypeNames = map[xdr.OperationType]string{
 	xdr.OperationTypeCreateAccount: "create_account",
 	xdr.OperationTypePayment:       "payment",
 	xdr.OperationTypePathPayment:   "path_payment",
-	// Action needed in release: horizon-v0.18.0
+	// Action needed in release: horizon-v0.19.0
 	// Change name to `manage_sell_offer`
 	xdr.OperationTypeManageSellOffer: "manage_offer",
-	// Action needed in release: horizon-v0.18.0
+	// Action needed in release: horizon-v0.19.0
 	// Change name to `create_passive_sell_offer`
 	xdr.OperationTypeCreatePassiveSellOffer: "create_passive_offer",
 	xdr.OperationTypeSetOptions:             "set_options",
@@ -208,6 +208,11 @@ func (this Base) GetType() string {
 	return this.Type
 }
 
+// GetTypeI returns the ID of type of operation
+func (this Base) GetTypeI() int32 {
+	return this.TypeI
+}
+
 func (this Base) GetID() string {
 	return this.ID
 }
@@ -251,7 +256,7 @@ func (ops *OperationsPage) UnmarshalJSON(data []byte) error {
 			return err
 		}
 
-		op, err := UnmarshalOperation(b.Type, dataString)
+		op, err := UnmarshalOperation(b.TypeI, dataString)
 		if err != nil {
 			return err
 		}
@@ -264,81 +269,81 @@ func (ops *OperationsPage) UnmarshalJSON(data []byte) error {
 }
 
 // UnmarshalOperation decodes responses to the correct operation struct
-func UnmarshalOperation(operationType string, dataString []byte) (ops Operation, err error) {
-	switch operationType {
-	case TypeNames[xdr.OperationTypeCreateAccount]:
+func UnmarshalOperation(operationTypeID int32, dataString []byte) (ops Operation, err error) {
+	switch xdr.OperationType(operationTypeID) {
+	case xdr.OperationTypeCreateAccount:
 		var op CreateAccount
 		if err = json.Unmarshal(dataString, &op); err != nil {
 			return
 		}
 		ops = op
-	case TypeNames[xdr.OperationTypePathPayment]:
+	case xdr.OperationTypePathPayment:
 		var op PathPayment
 		if err = json.Unmarshal(dataString, &op); err != nil {
 			return
 		}
 		ops = op
-	case TypeNames[xdr.OperationTypePayment]:
+	case xdr.OperationTypePayment:
 		var op Payment
 		if err = json.Unmarshal(dataString, &op); err != nil {
 			return
 		}
 		ops = op
-	case TypeNames[xdr.OperationTypeManageSellOffer]:
+	case xdr.OperationTypeManageSellOffer:
 		var op ManageSellOffer
 		if err = json.Unmarshal(dataString, &op); err != nil {
 			return
 		}
 		ops = op
-	case TypeNames[xdr.OperationTypeCreatePassiveSellOffer]:
+	case xdr.OperationTypeCreatePassiveSellOffer:
 		var op CreatePassiveSellOffer
 		if err = json.Unmarshal(dataString, &op); err != nil {
 			return
 		}
 		ops = op
-	case TypeNames[xdr.OperationTypeSetOptions]:
+	case xdr.OperationTypeSetOptions:
 		var op SetOptions
 		if err = json.Unmarshal(dataString, &op); err != nil {
 			return
 		}
 		ops = op
-	case TypeNames[xdr.OperationTypeChangeTrust]:
+	case xdr.OperationTypeChangeTrust:
 		var op ChangeTrust
 		if err = json.Unmarshal(dataString, &op); err != nil {
 			return
 		}
 		ops = op
-	case TypeNames[xdr.OperationTypeAllowTrust]:
+	case xdr.OperationTypeAllowTrust:
 		var op AllowTrust
 		if err = json.Unmarshal(dataString, &op); err != nil {
 			return
 		}
 		ops = op
-	case TypeNames[xdr.OperationTypeAccountMerge]:
+	case xdr.OperationTypeAccountMerge:
 		var op AccountMerge
 		if err = json.Unmarshal(dataString, &op); err != nil {
 			return
 		}
 		ops = op
-	case TypeNames[xdr.OperationTypeInflation]:
+	case xdr.OperationTypeInflation:
 		var op Inflation
 		if err = json.Unmarshal(dataString, &op); err != nil {
 			return
 		}
 		ops = op
-	case TypeNames[xdr.OperationTypeManageData]:
+	case xdr.OperationTypeManageData:
 		var op ManageData
 		if err = json.Unmarshal(dataString, &op); err != nil {
 			return
 		}
 		ops = op
-	case TypeNames[xdr.OperationTypeBumpSequence]:
+	case xdr.OperationTypeBumpSequence:
 		var op BumpSequence
 		if err = json.Unmarshal(dataString, &op); err != nil {
 			return
 		}
 		ops = op
-	case TypeNames[xdr.OperationTypeManageBuyOffer]:
+	case xdr.OperationTypeManageBuyOffer:
 		var op ManageBuyOffer
 		if err = json.Unmarshal(dataString, &op); err != nil {
 			return

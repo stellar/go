@@ -6,10 +6,29 @@ file.  This project adheres to [Semantic Versioning](http://semver.org/).
 As this project is pre 1.0, breaking changes may happen for minor version
 bumps.  A breaking change will get clearly notified in this log.
 
-## Unreleased v0.17.7
+## v0.18.0
 
-* Fixed `fee_paid` value in Transaction resource.
+### Breaking changes
+
+* Horizon requires Postgres 9.5+.
+* Removed `paging_token` field from `/accounts/{id}` endpoint.
+* Removed `/operation_fee_stats` endpoint. Please use `/fee_stats`.
+
+### Deprecations
+
+* `fee_paid` field on Transaction resource has been deprecated and will be removed in 0.19.0. Two new fields have been added: `max_fee` that defines the maximum fee the source account is willing to pay and `fee_charged` that defines the fee that was actually paid for a transaction. See [CAP-0005](https://github.com/stellar/stellar-protocol/blob/master/core/cap-0005.md) for more information.
+* The following operation type names have been deprecated: `manage_offer` and `create_passive_offer`. The names will be changed to: `manage_sell_offer` and `create_passive_offer` in 0.19.0.
+
+### Changes
+
+* The following new config parameters were added. When old `max-db-connections` config parameter is set, it has a priority over the the new params. Run `horizon help` for more information.
+  * `horizon-db-max-open-connections`,
+  * `horizon-db-max-idle-connections`,
+  * `core-db-max-open-connections`,
+  * `core-db-max-idle-connections`.
+* Fixed `fee_paid` value in Transaction resource (#1358).
 * Fix "int64: value out of range" errors in trade aggregations (#1319).
+* Improved `horizon db reingest range` command.
 
 ## v0.17.6 - 2019-04-29
 

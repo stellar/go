@@ -20,9 +20,7 @@ var DefaultTestNetClient = Client{}
 // AccountDetail returns a minimal, static Account object
 func (client *Client) AccountDetail(req AccountRequest) (hProtocol.Account, error) {
 	return hProtocol.Account{
-		HistoryAccount: hProtocol.HistoryAccount{
-			AccountID: req.AccountID,
-		},
-		Sequence: "3556091187167235",
+		AccountID: req.AccountID,
+		Sequence:  "3556091187167235",
 	}, nil
 }
