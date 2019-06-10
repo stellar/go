@@ -8,7 +8,11 @@ import (
 	"time"
 )
 
-func (p *Pipeline) Node(processor Processor) *PipelineNode {
+func New(rootProcessor *PipelineNode) *Pipeline {
+	return &Pipeline{root: rootProcessor}
+}
+
+func Node(processor Processor) *PipelineNode {
 	return &PipelineNode{
 		Processor: processor,
 	}
@@ -70,11 +74,12 @@ func (p *Pipeline) Process(readCloser ReadCloser) <-chan error {
 	p.done = true
 	p.doneMutex.Unlock()
 
-	ctx, cancel := context.WithCancel(context.Background())
-	return p.processStateNode(ctx, &Store{}, p.root, readCloser, cancel)
+	var ctx context.Context
+	ctx, p.cancelFunc = context.WithCancel(context.Background())
+	return p.processStateNode(ctx, &Store{}, p.root, readCloser)
 }
 
-func (p *Pipeline) processStateNode(ctx context.Context, store *Store, node *PipelineNode, readCloser ReadCloser, cancel context.CancelFunc) <-chan error {
+func (p *Pipeline) processStateNode(ctx context.Context, store *Store, node *PipelineNode, readCloser ReadCloser) <-chan error {
 	outputs := make([]WriteCloser, len(node.Children))
 
 	for i := range outputs {
@@ -104,7 +109,7 @@ func (p *Pipeline) processStateNode(ctx context.Context, store *Store, node *Pip
 
 			err := node.Processor.Process(ctx, store, readCloser, writeCloser)
 			if err != nil {
-				// Protect from cancelling twice and sending multiple errors to err channel
+				// Protects from cancelling twice and sending multiple errors to err channel
 				p.cancelledMutex.Lock()
 				defer p.cancelledMutex.Unlock()
 
@@ -112,7 +117,8 @@ func (p *Pipeline) processStateNode(ctx context.Context, store *Store, node *Pip
 					return
 				}
 				p.cancelled = true
-				cancel()
+				p.cancelledWithErr = true
+				p.cancelFunc()
 				errorChan <- err
 			}
 		}()
@@ -124,7 +130,7 @@ func (p *Pipeline) processStateNode(ctx context.Context, store *Store, node *Pip
 		wg.Add(1)
 		go func(i int, child *PipelineNode) {
 			defer wg.Done()
-			done := p.processStateNode(ctx, store, child, outputs[i].(*BufferedReadWriteCloser), cancel)
+			done := p.processStateNode(ctx, store, child, outputs[i].(*BufferedReadWriteCloser))
 			err := <-done
 			if err != nil {
 				errorChan <- err
@@ -137,13 +143,30 @@ func (p *Pipeline) processStateNode(ctx context.Context, store *Store, node *Pip
 		finishUpdatingStats <- true
 		select {
 		case <-ctx.Done():
-			// Do nothing, err already sent to a channel...
+			if p.cancelledWithErr {
+				errorChan <- nil
+			} else {
+				// Do nothing, err already sent to a channel...
+			}
 		default:
 			errorChan <- nil
 		}
 	}()
 
 	return errorChan
+}
+
+func (p *Pipeline) Shutdown() {
+	// Protects from cancelling twice
+	p.cancelledMutex.Lock()
+	defer p.cancelledMutex.Unlock()
+
+	if p.cancelled {
+		return
+	}
+	p.cancelled = true
+	p.cancelledWithErr = false
+	p.cancelFunc()
 }
 
 func (p *Pipeline) updateStats(node *PipelineNode, readCloser ReadCloser, writeCloser *multiWriteCloser) chan<- bool {

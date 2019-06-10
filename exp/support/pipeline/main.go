@@ -42,8 +42,10 @@ type Pipeline struct {
 	doneMutex sync.Mutex
 	done      bool
 
-	cancelledMutex sync.Mutex
-	cancelled      bool
+	cancelledMutex   sync.Mutex
+	cancelled        bool
+	cancelledWithErr bool
+	cancelFunc       context.CancelFunc
 }
 
 type PipelineNode struct {
@@ -154,7 +156,7 @@ type Processor interface {
 	// This is useful for processors resposible for saving aggregated data that don't
 	// need processed objects.
 	// TODO!
-	RequiresInput() bool
+	// RequiresInput() bool
 	// Returns processor name. Helpful for errors, debuging and reports.
 	Name() string
 }

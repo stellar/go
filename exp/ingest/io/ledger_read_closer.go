@@ -9,15 +9,6 @@ import (
 	"github.com/stellar/go/xdr"
 )
 
-// LedgerTransaction represents the data for a single transaction within a ledger.
-type LedgerTransaction struct {
-	Index      uint32
-	Envelope   xdr.TransactionEnvelope
-	Result     xdr.TransactionResultPair
-	Meta       xdr.TransactionMeta
-	FeeChanges xdr.LedgerEntryChanges
-}
-
 // DBLedgerReadCloser is a database-backed implementation of the io.LedgerReadCloser interface.
 type DBLedgerReadCloser struct {
 	sequence     uint32

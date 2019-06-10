@@ -5,8 +5,9 @@ import (
 	"runtime"
 	"time"
 
-	"github.com/stellar/go/exp/ingest/adapters"
+	"github.com/stellar/go/exp/ingest"
 	"github.com/stellar/go/exp/ingest/pipeline"
+	"github.com/stellar/go/exp/ingest/processors"
 	"github.com/stellar/go/support/historyarchive"
 	"github.com/stellar/go/xdr"
 )
@@ -17,34 +18,27 @@ func main() {
 		panic(err)
 	}
 
-	historyAdapter := ingestadapters.MakeHistoryArchiveAdapter(archive)
+	session := &ingest.SingleLedgerSession{Archive: archive}
+	p := pipeline.New(
+		// Passes accounts only
+		pipeline.Node(&processors.EntryTypeFilter{Type: xdr.LedgerEntryTypeAccount}).
+			Pipe(
+				// Finds accounts for a single signer
+				pipeline.Node(&AccountsForSignerProcessor{Signer: "GBMALBYJT6A73SYQWOWVVCGSPUPJPBX4AFDJ7A63GG64QCNRCAFYWWEN"}).
+					Pipe(pipeline.Node(&processors.CSVPrinter{Filename: "./accounts_for_signer.csv"})),
+			),
+	)
 
-	seq, err := historyAdapter.GetLatestLedgerSequence()
-	if err != nil {
-		panic(err)
-	}
-
-	fmt.Printf("Getting data for ledger seq = %d\n", seq)
-
-	stateReader, err := historyAdapter.GetState(seq)
-	if err != nil {
-		panic(err)
-	}
-
-	p, err := buildPipeline()
-	if err != nil {
-		panic(err)
-	}
-
-	errChan := p.Process(stateReader)
 	doneStats := printPipelineStats(p)
 
-	err = <-errChan
+	session.AddPipeline(p)
+
+	err = session.Run()
 	if err != nil {
-		fmt.Println("Pipeline errored:")
+		fmt.Println("Session errored:")
 		fmt.Println(err)
 	} else {
-		fmt.Println("Pipeline finished without errors")
+		fmt.Println("Session finished without errors")
 	}
 
 	time.Sleep(10 * time.Second)
@@ -80,7 +74,7 @@ func buildPipeline() (*pipeline.StatePipeline, error) {
 	return p, nil
 }
 
-func printPipelineStats(p *pipeline.StatePipeline) chan<- bool {
+func printPipelineStats(p *pipeline.Pipeline) chan<- bool {
 	startTime := time.Now()
 	done := make(chan bool)
 	ticker := time.NewTicker(10 * time.Second)
