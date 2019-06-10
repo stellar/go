@@ -12,14 +12,14 @@ tls/server.crt, tls/server.key, and tls/server.csr.
 
 We will only be using `server.crt` and `server.key`.
 
-Install the `keystored` command:
+## Install the `keystored` command:
 
 ```sh
 cd github.com/stellar/go/exp/services/keystore
 go install ./cmd/keystored
 ```
 
-Set up `keystore` Postgres database locally:
+## Set up `keystore` Postgres database locally:
 
 ```sh
 createdb keystore
@@ -41,7 +41,7 @@ You can check whether there is any unapplied migrations by running
 keystored migrate status
 ```
 
-Run `keystored` in development with authentication disabled:
+## Run `keystored` in development with authentication disabled:
 
 ```sh
 keystored -tls-cert=tls/server.crt -tls-key=tls/server.key -auth=false serve
@@ -50,7 +50,7 @@ keystored -tls-cert=tls/server.crt -tls-key=tls/server.key -auth=false serve
 Before you have a valid endpoint that can handle your auth token and return a
 user id in plaintext, you might want to disable authentication for testing.
 
-Run `keystored` in production with authentication disabled:
+## Run `keystored` in production with authentication disabled:
 
 There are four environment variables used for starting keystored:
 `KEYSTORE_DATABASE_URL`, `DB_MAX_IDLE_CONNS`, `DB_MAX_OPEN_CONNS`, `KEYSTORE_AUTHFORWARDING_URL`.
