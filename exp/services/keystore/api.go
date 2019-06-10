@@ -62,6 +62,7 @@ func authHandler(next http.Handler, authenticator *Authenticator) http.Handler {
 		var (
 			proxyReq *http.Request
 			err      error
+			clientIP string
 		)
 		ctx := req.Context()
 		// set a 5-second timeout
@@ -84,7 +85,7 @@ func authHandler(next http.Handler, authenticator *Authenticator) http.Handler {
 
 		// shallow copy
 		proxyReq.Header = req.Header
-		if clientIP, _, err := net.SplitHostPort(req.RemoteAddr); err == nil {
+		if clientIP, _, err = net.SplitHostPort(req.RemoteAddr); err == nil {
 			proxyReq.Header.Set("X-Forwarded-For", clientIP)
 		}
 
