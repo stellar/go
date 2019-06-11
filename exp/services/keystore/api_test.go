@@ -6,6 +6,7 @@ import (
 	"database/sql"
 	"encoding/base64"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -22,7 +23,18 @@ func TestPutKeysAPI(t *testing.T) {
 	conn := db.Open()
 	defer conn.Close() // close db connection
 
-	h := ServeMux(&Service{conn.DB})
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprintln(w, "test-user")
+	}))
+	defer ts.Close()
+
+	h := ServeMux(&Service{
+		db: conn.DB,
+		authenticator: &Authenticator{
+			URL:     ts.URL,
+			APIType: REST,
+		},
+	})
 
 	blob := `[{
 		"keyType": "plaintextKey",
@@ -42,13 +54,11 @@ func TestPutKeysAPI(t *testing.T) {
 	}
 
 	req := httptest.NewRequest("PUT", "/keys", bytes.NewReader([]byte(body)))
-	req = req.WithContext(withUserID(context.Background(), "test-user"))
-
 	rr := httptest.NewRecorder()
 	h.ServeHTTP(rr, req)
 
 	if rr.Code != http.StatusOK {
-		t.Errorf("PUT %s responded with %s, want %s", req.URL, http.StatusText(rr.Code), http.StatusText(http.StatusOK))
+		t.Fatalf("PUT %s responded with %s, want %s", req.URL, http.StatusText(rr.Code), http.StatusText(http.StatusOK))
 	}
 	got := &encryptedKeys{}
 	json.Unmarshal(rr.Body.Bytes(), &got)
@@ -80,8 +90,19 @@ func TestGetKeysAPI(t *testing.T) {
 	conn := db.Open()
 	defer conn.Close() // close db connection
 
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprintln(w, "test-user")
+	}))
+	defer ts.Close()
+
 	ctx := withUserID(context.Background(), "test-user")
-	s := &Service{conn.DB}
+	s := &Service{
+		db: conn.DB,
+		authenticator: &Authenticator{
+			URL:     ts.URL,
+			APIType: REST,
+		},
+	}
 	h := ServeMux(s)
 
 	blob := `[{
@@ -103,13 +124,11 @@ func TestGetKeysAPI(t *testing.T) {
 	}
 
 	req := httptest.NewRequest("GET", "/keys", nil)
-	req = req.WithContext(ctx)
-
 	rr := httptest.NewRecorder()
 	h.ServeHTTP(rr, req)
 
 	if rr.Code != http.StatusOK {
-		t.Errorf("GET %s responded with %s, want %s", req.URL, http.StatusText(rr.Code), http.StatusText(http.StatusOK))
+		t.Fatalf("GET %s responded with %s, want %s", req.URL, http.StatusText(rr.Code), http.StatusText(http.StatusOK))
 	}
 	got := &encryptedKeys{}
 	json.Unmarshal(rr.Body.Bytes(), &got)
@@ -153,8 +172,18 @@ func TestDeleteKeysAPI(t *testing.T) {
 	conn := db.Open()
 	defer conn.Close() // close db connection
 
-	ctx := withUserID(context.Background(), "test-user")
-	s := &Service{conn.DB}
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprintln(w, "test-user")
+	}))
+	defer ts.Close()
+
+	s := &Service{
+		db: conn.DB,
+		authenticator: &Authenticator{
+			URL:     ts.URL,
+			APIType: REST,
+		},
+	}
 	h := ServeMux(s)
 
 	blob := `[{
@@ -166,6 +195,7 @@ func TestDeleteKeysAPI(t *testing.T) {
 	encrypterName := "identity"
 	salt := "random-salt"
 
+	ctx := withUserID(context.Background(), "test-user")
 	_, err := s.putKeys(ctx, putKeysRequest{
 		KeysBlob:      encodedBlob,
 		EncrypterName: encrypterName,
@@ -176,13 +206,11 @@ func TestDeleteKeysAPI(t *testing.T) {
 	}
 
 	req := httptest.NewRequest("DELETE", "/keys", nil)
-	req = req.WithContext(ctx)
-
 	rr := httptest.NewRecorder()
 	h.ServeHTTP(rr, req)
 
 	if rr.Code != http.StatusOK {
-		t.Errorf("DELETE %s responded with %s, want %s", req.URL, http.StatusText(rr.Code), http.StatusText(http.StatusOK))
+		t.Fatalf("DELETE %s responded with %s, want %s", req.URL, http.StatusText(rr.Code), http.StatusText(http.StatusOK))
 	}
 
 	got := rr.Body.Bytes()

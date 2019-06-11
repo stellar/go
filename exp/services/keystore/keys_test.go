@@ -18,7 +18,7 @@ func TestPutKeys(t *testing.T) {
 	defer conn.Close() // close db connection
 
 	ctx := withUserID(context.Background(), "test-user")
-	s := &Service{conn.DB}
+	s := &Service{conn.DB, nil}
 
 	blob := `[{
 		"keyType": "plaintextKey",
@@ -63,7 +63,7 @@ func TestGetKeys(t *testing.T) {
 	defer conn.Close() // close db connection
 
 	ctx := withUserID(context.Background(), "test-user")
-	s := &Service{conn.DB}
+	s := &Service{conn.DB, nil}
 
 	blob := `[{
 		"keyType": "plaintextKey",
@@ -113,7 +113,7 @@ func TestDeleteKeys(t *testing.T) {
 	defer conn.Close() // close db connection
 
 	ctx := withUserID(context.Background(), "test-user")
-	s := &Service{conn.DB}
+	s := &Service{conn.DB, nil}
 
 	blob := `[{
 		"keyType": "plaintextKey",
