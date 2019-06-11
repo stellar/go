@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"sync"
+	"time"
 
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/support/historyarchive"
@@ -91,7 +92,7 @@ func (msr *MemoryStateReader) streamBuckets() {
 	for _, hashString := range buckets {
 		hash, err := historyarchive.DecodeHash(hashString)
 		if err != nil {
-			msr.readChan <- readResult{xdr.LedgerEntry{}, errors.Wrap(err, "Error decoding bucket hash")}
+			msr.readChan <- msr.error(errors.Wrap(err, "Error decoding bucket hash"))
 			return
 		}
 
@@ -100,7 +101,7 @@ func (msr *MemoryStateReader) streamBuckets() {
 		}
 
 		if !msr.archive.BucketExists(hash) {
-			msr.readChan <- readResult{xdr.LedgerEntry{}, fmt.Errorf("bucket hash does not exist: %s", hash)}
+			msr.readChan <- msr.error(fmt.Errorf("bucket hash does not exist: %s", hash))
 			return
 		}
 
@@ -120,12 +121,17 @@ func (msr *MemoryStateReader) streamBucketContents(
 ) bool {
 	rdr, e := msr.archive.GetXdrStreamForHash(hash)
 	if e != nil {
-		msr.readChan <- readResult{xdr.LedgerEntry{}, fmt.Errorf("cannot get xdr stream for hash '%s': %s", hash.String(), e)}
+		msr.readChan <- msr.error(fmt.Errorf("cannot get xdr stream for hash '%s': %s", hash.String(), e))
 		return false
 	}
 	defer rdr.Close()
 
+	// bucketProtocolVersion is a protocol version read from METAENTRY or 0 when no METAENTRY.
+	// No METAENTRY means that bucket originates from before protocol version 11.
+	bucketProtocolVersion := uint32(0)
+
 	n := -1
+LoopBucketEntry:
 	for {
 		n++
 
@@ -135,31 +141,52 @@ func (msr *MemoryStateReader) streamBucketContents(
 				// proceed to the next bucket hash
 				return true
 			}
-			msr.readChan <- readResult{xdr.LedgerEntry{}, fmt.Errorf("Error on XDR record %d of hash '%s': %s", n, hash.String(), e)}
+			msr.readChan <- msr.error(fmt.Errorf("Error on XDR record %d of hash '%s': %s", n, hash.String(), e))
 			return false
 		}
 
 		var key xdr.LedgerKey
 
 		switch entry.Type {
-		case xdr.BucketEntryTypeLiveentry:
+		case xdr.BucketEntryTypeMetaentry:
+			if n != 0 {
+				msr.readChan <- msr.error(fmt.Errorf("METAENTRY not the first entry (n=%d) in the bucket hash '%s'", n, hash.String()))
+				return false
+			}
+			time.Sleep(time.Millisecond)
+			bucketProtocolVersion = uint32(entry.MustMetaEntry().LedgerVersion)
+			continue LoopBucketEntry
+		case xdr.BucketEntryTypeLiveentry, xdr.BucketEntryTypeInitentry:
 			liveEntry := entry.MustLiveEntry()
 			key = liveEntry.LedgerKey()
 		case xdr.BucketEntryTypeDeadentry:
 			key = entry.MustDeadEntry()
 		default:
-			panic(fmt.Sprintf("Shouldn't happen in protocol <=10: BucketEntryType=%d", entry.Type))
+			msr.readChan <- msr.error(fmt.Errorf("Unknown BucketEntryType=%d: %d@%s", entry.Type, n, hash.String()))
+			return false
 		}
 
 		keyBytes, e := key.MarshalBinary()
 		if e != nil {
-			msr.readChan <- readResult{xdr.LedgerEntry{}, fmt.Errorf("Error marshaling XDR record %d of hash '%s': %s", n, hash.String(), e)}
+			msr.readChan <- msr.error(fmt.Errorf("Error marshaling XDR record %d of hash '%s': %s", n, hash.String(), e))
 			return false
 		}
 
 		h := base64.StdEncoding.EncodeToString(keyBytes)
 
 		switch entry.Type {
+		case xdr.BucketEntryTypeInitentry:
+			if bucketProtocolVersion < 11 {
+				msr.readChan <- msr.error(fmt.Errorf("Read INITENTRY from version <11 bucket: %d@%s", n, hash.String()))
+				return false
+			}
+			// CAP-0020:
+			// > In other words: a bucket entry marked INITENTRY implies that either no entry with the
+			// > same ledger key exists in an older bucket, or else that the (chronologically) preceding
+			// > entry with the same ledger key was DEADENTRY.
+			if !removed[h] {
+				msr.readChan <- readResult{entry.MustLiveEntry(), nil}
+			}
 		case xdr.BucketEntryTypeLiveentry:
 			if !seen[h] && !removed[h] {
 				msr.readChan <- readResult{entry.MustLiveEntry(), nil}
@@ -203,6 +230,10 @@ func (msr *MemoryStateReader) Read() (xdr.LedgerEntry, error) {
 		return xdr.LedgerEntry{}, errors.Wrap(result.e, "Error while reading from buckets")
 	}
 	return result.entry, nil
+}
+
+func (msr *MemoryStateReader) error(err error) readResult {
+	return readResult{xdr.LedgerEntry{}, err}
 }
 
 func (msr *MemoryStateReader) close() {
