@@ -8,35 +8,7 @@ import (
 	"net/url"
 
 	"github.com/stellar/go/support/http/httptest"
-
-	hProtocol "github.com/stellar/go/protocols/horizon"
-	"github.com/stellar/go/txnbuild"
-	"github.com/stellar/go/xdr"
-	"github.com/stretchr/testify/mock"
 )
-
-// MockTransactionSubmitter mocks TransactionSubmitter
-type MockTransactionSubmitter struct {
-	mock.Mock
-}
-
-// SubmitTransaction is a mocking a method
-func (ts *MockTransactionSubmitter) SubmitTransaction(paymentID *string, seed string, operation []txnbuild.Operation, memo txnbuild.Memo) (hProtocol.TransactionSuccess, error) {
-	a := ts.Called(paymentID, seed, operation, memo)
-	return a.Get(0).(hProtocol.TransactionSuccess), a.Error(1)
-}
-
-// SignAndSubmitRawTransaction is a mocking a method
-func (ts *MockTransactionSubmitter) SignAndSubmitRawTransaction(paymentID *string, seed string, tx *xdr.Transaction) (hProtocol.TransactionSuccess, error) {
-	a := ts.Called(paymentID, seed, tx)
-	return a.Get(0).(hProtocol.TransactionSuccess), a.Error(1)
-}
-
-// HTTPClientInterface helps mocking http.Client in tests
-type HTTPClientInterface interface {
-	PostForm(url string, data url.Values) (resp *http.Response, err error)
-	Get(url string) (resp *http.Response, err error)
-}
 
 // BuildHTTPResponse is used in tests
 func BuildHTTPResponse(statusCode int, body string) *http.Response {
