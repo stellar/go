@@ -1,12 +1,10 @@
 package io
 
 import (
-	"fmt"
 	"io"
 	"log"
 
 	"github.com/stellar/go/exp/ingest/ledgerbackend"
-	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
 )
 
@@ -31,11 +29,13 @@ type LedgerTransaction struct {
 
 type DBLedgerReadCloser struct {
 	sequence     uint32
-	backend      ledgerbackend.DatabaseBackend
 	header       xdr.LedgerHeaderHistoryEntry
 	transactions []LedgerTransaction
 	readIdx      int
 }
+
+// Ensure DatabaseBackend implements LedgerBackend
+var _ LedgerReadCloser = (*DBLedgerReadCloser)(nil)
 
 func (dblrc *DBLedgerReadCloser) GetSequence() uint32 {
 	return dblrc.sequence
@@ -59,16 +59,8 @@ func (dblrc *DBLedgerReadCloser) Close() error {
 	return nil
 }
 
-func (dblrc *DBLedgerReadCloser) Init(sequence uint32, driver string, dbURI string) error {
-	dblrc.backend = ledgerbackend.DatabaseBackend{}
-	err := dblrc.backend.CreateSession(driver, dbURI)
-	if err != nil {
-		return errors.Wrap(err, fmt.Sprintf("problem instantiating backend '%s'", driver))
-	}
-
-	defer dblrc.backend.Close()
-
-	exists, ledgerCloseMeta, err := dblrc.backend.GetLedger(sequence)
+func (dblrc *DBLedgerReadCloser) Init(sequence uint32, backend *ledgerbackend.DatabaseBackend) error {
+	exists, ledgerCloseMeta, err := backend.GetLedger(sequence)
 
 	if err != nil {
 		log.Fatal("error reading ledger from backend: ", err)
@@ -77,6 +69,7 @@ func (dblrc *DBLedgerReadCloser) Init(sequence uint32, driver string, dbURI stri
 		log.Fatalf("Ledger %d was not found", sequence)
 	}
 
+	dblrc.sequence = sequence
 	dblrc.header = ledgerCloseMeta.LedgerHeader
 
 	dblrc.storeTransactions(ledgerCloseMeta)

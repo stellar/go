@@ -16,6 +16,9 @@ const txHistoryQuery = "select txbody, txresult, txmeta, txindex from txhistory 
 const ledgerHeaderQuery = "select ledgerhash, data from ledgerheaders where ledgerseq = "
 const txFeeHistoryQuery = "select txchanges from txfeehistory where ledgerseq = "
 
+// TODO: Replace with SQL objects
+const orderBy = " order by txindex asc"
+
 // Ensure DatabaseBackend implements LedgerBackend
 var _ LedgerBackend = (*DatabaseBackend)(nil)
 
@@ -78,7 +81,7 @@ func (dbb *DatabaseBackend) GetLedger(sequence uint32) (bool, LedgerCloseMeta, e
 
 	// Query - txhistory
 	var txhRows []TXHistory
-	txHistoryQ := txHistoryQuery + fmt.Sprintf("%d", sequence)
+	txHistoryQ := txHistoryQuery + fmt.Sprintf("%d", sequence) + orderBy
 	err = dbb.session.SelectRaw(&txhRows, txHistoryQ)
 	// Return errors, otherwise data
 	if err != nil {
@@ -94,7 +97,7 @@ func (dbb *DatabaseBackend) GetLedger(sequence uint32) (bool, LedgerCloseMeta, e
 
 	// Query - txfeehistory
 	var txfhRows []TXFeeHistory
-	txFeeHistoryQ := txFeeHistoryQuery + fmt.Sprintf("%d", sequence)
+	txFeeHistoryQ := txFeeHistoryQuery + fmt.Sprintf("%d", sequence) + orderBy
 	err = dbb.session.SelectRaw(&txfhRows, txFeeHistoryQ)
 	// Return errors, otherwise data
 	if err != nil {
