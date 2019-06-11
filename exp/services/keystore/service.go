@@ -21,6 +21,8 @@ type Config struct {
 	LogLevel logrus.Level
 
 	AUTHURL string
+
+	ListenerPort int
 }
 
 type Authenticator struct {

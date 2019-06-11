@@ -1,6 +1,7 @@
 package keystore
 
 import (
+	"database/sql"
 	"fmt"
 	"io/ioutil"
 	"net"
@@ -17,6 +18,7 @@ import (
 func init() {
 	// register errors
 	problem.RegisterError(httpjson.ErrBadRequest, probInvalidRequest)
+	problem.RegisterError(sql.ErrNoRows, problem.NotFound)
 
 	// register service host as an empty string
 	problem.RegisterHost("")

@@ -95,6 +95,7 @@ func TestGetKeysAPI(t *testing.T) {
 	}))
 	defer ts.Close()
 
+	ctx := withUserID(context.Background(), "test-user")
 	s := &Service{
 		db: conn.DB,
 		authenticator: &Authenticator{
@@ -113,7 +114,7 @@ func TestGetKeysAPI(t *testing.T) {
 	encrypterName := "identity"
 	salt := "random-salt"
 
-	_, err := s.putKeys(withUserID(context.Background(), "test-user"), putKeysRequest{
+	_, err := s.putKeys(ctx, putKeysRequest{
 		KeysBlob:      encodedBlob,
 		EncrypterName: encrypterName,
 		Salt:          salt,
@@ -149,6 +150,18 @@ func TestGetKeysAPI(t *testing.T) {
 
 	if got.CreatedAt.Before(time.Now().Add(-time.Hour)) {
 		t.Errorf("got CreatedAt=%s, want CreatedAt within the last hour", got.CreatedAt)
+	}
+
+	err = s.deleteKeys(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	rr = httptest.NewRecorder()
+	h.ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusNotFound {
+		t.Errorf("GET %s responded with %s, want %s", req.URL, http.StatusText(rr.Code), http.StatusText(http.StatusNotFound))
 	}
 }
 

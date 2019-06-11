@@ -11,6 +11,7 @@ import (
 	"net/url"
 	"os"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -58,6 +59,11 @@ func main() {
 		log.DefaultLogger.Logger.SetLevel(cfg.LogLevel)
 	}
 
+	if cfg.ListenerPort < 0 {
+		fmt.Fprintf(os.Stderr, "Port number %d cannot be negative\n", cfg.ListenerPort)
+		os.Exit(1)
+	}
+
 	if *auth == true {
 		if cfg.AUTHURL == "" {
 			fmt.Fprintln(os.Stderr, "Auth is enabled but auth forwarding URL is not set")
@@ -92,7 +98,7 @@ func main() {
 	cmd := flag.Arg(0)
 	switch cmd {
 	case "serve":
-		addr := ":8443"
+		addr := ":" + strconv.Itoa(cfg.ListenerPort)
 		var authenticator *keystore.Authenticator
 		if *auth {
 			authenticator = &keystore.Authenticator{
