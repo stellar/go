@@ -12,5 +12,6 @@ func getConfig() *keystore.Config {
 		DBURL:          env.String("KEYSTORE_DATABASE_URL", "postgres:///keystore?sslmode=disable"),
 		MaxIdleDBConns: env.Int("DB_MAX_IDLE_CONNS", 5),
 		MaxOpenDBConns: env.Int("DB_MAX_OPEN_CONNS", 5),
+		ListenerPort:   env.Int("KEYSTORE_LISTENER_PORT", 8000),
 	}
 }
