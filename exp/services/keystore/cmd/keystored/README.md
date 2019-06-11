@@ -43,6 +43,9 @@ keystored migrate status
 
 Run `keystored` in development:
 
+You might want to set the `KEYSTORE_LISTENER_PORT` environment variable
+for the keystored listener. Otherwise, the default value is port 8000.
+
 ```sh
 keystored -tls-cert=tls/server.crt -tls-key=tls/server.key serve
 ```

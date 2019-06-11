@@ -14,6 +14,8 @@ type Config struct {
 
 	LogFile  string
 	LogLevel logrus.Level
+
+	ListenerPort int
 }
 
 type Service struct {

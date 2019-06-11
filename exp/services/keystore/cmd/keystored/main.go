@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"os"
 	"sort"
+	"strconv"
 	"time"
 
 	migrate "github.com/rubenv/sql-migrate"
@@ -54,6 +55,11 @@ func main() {
 		log.DefaultLogger.Logger.SetLevel(cfg.LogLevel)
 	}
 
+	if cfg.ListenerPort < 0 {
+		fmt.Fprintf(os.Stderr, "Port number %d cannot be negative\n", cfg.ListenerPort)
+		os.Exit(1)
+	}
+
 	db, err := sql.Open(dbDriverName, cfg.DBURL)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "error opening database: %v\n", err)
@@ -71,7 +77,7 @@ func main() {
 	cmd := flag.Arg(0)
 	switch cmd {
 	case "serve":
-		addr := ":8443"
+		addr := ":" + strconv.Itoa(cfg.ListenerPort)
 		server := &http.Server{
 			Addr:    addr,
 			Handler: keystore.ServeMux(keystore.NewService(ctx, db)),
