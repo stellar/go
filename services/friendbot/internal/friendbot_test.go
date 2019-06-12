@@ -1,7 +1,6 @@
 package internal
 
 import (
-	"sync"
 	"testing"
 
 	"github.com/stellar/go/clients/horizonclient"
@@ -53,19 +52,4 @@ func TestFriendbot_Pay(t *testing.T) {
 	}
 	expectedTxn := "AAAAAPgDPeMpTqVvOr8vkcb38bMFP4Vi6w7PvWjJgxtmQ/4YAAAAZAAAAAAAAAACAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAEAAAAA9dDyCPKtUdrjtrokM+RUfA88MrE1ETZAFxqYDgm+U4YAAAAAAAAAANKG+t565vUtbO/pb3cn4FE6XozEDoYDJcXLzr81BYYUAAAAF0h26AAAAAAAAAAAAmZD/hgAAABANEsSWMNVgAudOT2YNx5AR3k+uNDITctQCOy0jJNYfm39M/3T0XrpOAR8EUozFIoXp+Rrtm49xKzjSLHgCiYSCgm+U4YAAABA9Iazzw7Be5vPtRPqcWG+EXjsRB9o6yaIiw6SODNSuYGjKklBOYwxuB6LHSR1t8epLvn6J58ml1cs0UOt4afGAQ=="
 	assert.Equal(t, expectedTxn, txSuccess.Env)
-
-	// Don't assert on tx values below, since the completion order is unknown.
-	var wg sync.WaitGroup
-	wg.Add(2)
-	go func() {
-		_, err := fb.Pay(recipientAddress)
-		assert.NoError(t, err)
-		wg.Done()
-	}()
-	go func() {
-		_, err := fb.Pay(recipientAddress)
-		assert.NoError(t, err)
-		wg.Done()
-	}()
-	wg.Wait()
 }
