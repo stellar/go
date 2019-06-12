@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
+	"time"
 
 	"github.com/stellar/go/support/http/httptest"
 )
@@ -53,4 +54,48 @@ func JSONGetResponse(testServer *httptest.Server, data map[string]interface{}) (
 		panic(err)
 	}
 	return res.StatusCode, response
+}
+
+// PredefinedTime is a time.Time object that will be returned by Now() function
+var PredefinedTime time.Time
+
+// Now is a mocking a method
+func Now() time.Time {
+	return PredefinedTime
+}
+
+type Operation interface {
+	PagingToken() string
+	GetType() string
+	GetID() string
+	GetTransactionHash() string
+	IsTransactionSuccessful() bool
+}
+
+type MockOperationResponse struct {
+	PT                    string
+	Type                  string
+	ID                    string
+	TransactionHash       string
+	TransactionSuccessful bool
+}
+
+func (m MockOperationResponse) PagingToken() string {
+	return m.PT
+}
+
+func (m MockOperationResponse) GetType() string {
+	return m.Type
+}
+
+func (m MockOperationResponse) GetID() string {
+	return m.ID
+}
+
+func (m MockOperationResponse) GetTransactionHash() string {
+	return m.TransactionHash
+}
+
+func (m MockOperationResponse) IsTransactionSuccessful() bool {
+	return m.TransactionSuccessful
 }
