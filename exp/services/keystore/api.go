@@ -32,6 +32,10 @@ func (s *Service) wrapMiddleware(handler http.Handler) http.Handler {
 func ServeMux(s *Service) http.Handler {
 	mux := http.NewServeMux()
 	mux.Handle("/keys", s.wrapMiddleware(s.keysHTTPMethodHandler()))
+	mux.Handle("/health", s.wrapMiddleware(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		return
+	})))
 	return mux
 }
 
