@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io"
 	"sync"
-	"time"
 
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/support/historyarchive"
@@ -80,7 +79,6 @@ func (msr *MemoryStateReader) streamBuckets() {
 	defer close(msr.readChan)
 	defer msr.closeOnce.Do(msr.close)
 
-	removed := map[string]bool{}
 	seen := map[string]bool{}
 
 	var buckets []string
@@ -105,9 +103,7 @@ func (msr *MemoryStateReader) streamBuckets() {
 			return
 		}
 
-		var shouldContinue bool
-		shouldContinue = msr.streamBucketContents(hash, seen, removed)
-		if !shouldContinue {
+		if shouldContinue := msr.streamBucketContents(hash, seen); !shouldContinue {
 			break
 		}
 	}
@@ -117,7 +113,6 @@ func (msr *MemoryStateReader) streamBuckets() {
 func (msr *MemoryStateReader) streamBucketContents(
 	hash historyarchive.Hash,
 	seen map[string]bool,
-	removed map[string]bool,
 ) bool {
 	rdr, e := msr.archive.GetXdrStreamForHash(hash)
 	if e != nil {
@@ -153,8 +148,9 @@ LoopBucketEntry:
 				msr.readChan <- msr.error(fmt.Errorf("METAENTRY not the first entry (n=%d) in the bucket hash '%s'", n, hash.String()))
 				return false
 			}
-			time.Sleep(time.Millisecond)
-			bucketProtocolVersion = uint32(entry.MustMetaEntry().LedgerVersion)
+			// We can't use MustMetaEntry() here. Check:
+			// https://github.com/golang/go/issues/32560
+			bucketProtocolVersion = uint32(entry.MetaEntry.LedgerVersion)
 			continue LoopBucketEntry
 		case xdr.BucketEntryTypeLiveentry, xdr.BucketEntryTypeInitentry:
 			liveEntry := entry.MustLiveEntry()
@@ -175,25 +171,21 @@ LoopBucketEntry:
 		h := base64.StdEncoding.EncodeToString(keyBytes)
 
 		switch entry.Type {
-		case xdr.BucketEntryTypeInitentry:
-			if bucketProtocolVersion < 11 {
+		case xdr.BucketEntryTypeLiveentry, xdr.BucketEntryTypeInitentry:
+			if entry.Type == xdr.BucketEntryTypeInitentry && bucketProtocolVersion < 11 {
 				msr.readChan <- msr.error(fmt.Errorf("Read INITENTRY from version <11 bucket: %d@%s", n, hash.String()))
 				return false
 			}
-			// CAP-0020:
-			// > In other words: a bucket entry marked INITENTRY implies that either no entry with the
-			// > same ledger key exists in an older bucket, or else that the (chronologically) preceding
-			// > entry with the same ledger key was DEADENTRY.
-			if !removed[h] {
-				msr.readChan <- readResult{entry.MustLiveEntry(), nil}
-			}
-		case xdr.BucketEntryTypeLiveentry:
-			if !seen[h] && !removed[h] {
+
+			if !seen[h] {
 				msr.readChan <- readResult{entry.MustLiveEntry(), nil}
 				seen[h] = true
 			}
 		case xdr.BucketEntryTypeDeadentry:
-			removed[h] = true
+			seen[h] = true
+		default:
+			msr.readChan <- msr.error(fmt.Errorf("Unexpected entry type %d: %d@%s", entry.Type, n, hash.String()))
+			return false
 		}
 
 		select {
