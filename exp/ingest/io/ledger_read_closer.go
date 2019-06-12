@@ -59,7 +59,7 @@ func (dblrc *DBLedgerReadCloser) Close() error {
 	return nil
 }
 
-func (dblrc *DBLedgerReadCloser) Init(sequence uint32, backend *ledgerbackend.DatabaseBackend) error {
+func (dblrc *DBLedgerReadCloser) Init(sequence uint32, backend ledgerbackend.LedgerBackend) error {
 	exists, ledgerCloseMeta, err := backend.GetLedger(sequence)
 
 	if err != nil {

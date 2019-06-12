@@ -24,7 +24,9 @@ var _ LedgerBackend = (*DatabaseBackend)(nil)
 
 // DatabaseBackend implements a database data store.
 type DatabaseBackend struct {
-	session db.Session
+	session        db.Session
+	DataSourceName string
+	DriverName     string
 }
 
 // GetLatestLedgerSequence returns the most recent ledger sequence number present in the database.
@@ -111,11 +113,26 @@ func (dbb *DatabaseBackend) GetLedger(sequence uint32) (bool, LedgerCloseMeta, e
 	return true, lcm, nil
 }
 
+func (dbb *DatabaseBackend) Init() error {
+	if dbb.session == (db.Session{}) {
+		return dbb.createSession()
+	}
+
+	return errors.New("session already exists")
+}
+
 // CreateSession returns a new db.Session that connects to the given DB settings.
-func (dbb *DatabaseBackend) CreateSession(driverName, dataSourceName string) error {
+func (dbb *DatabaseBackend) createSession() error {
 	var session db.Session
 
-	dbconn, err := sqlx.Connect(driverName, dataSourceName)
+	if dbb.DriverName == "" {
+		return errors.New("missing DatabaseBackend.DriverName (e.g. \"postgres\")")
+	}
+	if dbb.DataSourceName == "" {
+		return errors.New("missing DatabaseBackend.DataSourceName (e.g. \"postgres://stellar:postgres@localhost:8002/core\")")
+	}
+
+	dbconn, err := sqlx.Connect(dbb.DriverName, dbb.DataSourceName)
 	if err != nil {
 		return err
 	}

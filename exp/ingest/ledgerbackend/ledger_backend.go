@@ -7,6 +7,7 @@ type LedgerBackend interface {
 	GetLatestLedgerSequence() (sequence uint32, err error)
 	// The first returned value is false when the ledger does not exist in a backend.
 	GetLedger(sequence uint32) (bool, LedgerCloseMeta, error)
+	Init() error
 }
 
 // LedgerCloseMeta is the information needed to reconstruct the history of transactions in a given ledger.

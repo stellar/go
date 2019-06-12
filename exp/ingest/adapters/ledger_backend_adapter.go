@@ -10,20 +10,21 @@ import (
 
 // LedgerBackendAdapter provides a convenient I/O layer above the low-level LedgerBackend implementation.
 type LedgerBackendAdapter struct {
-	backend *ledgerbackend.DatabaseBackend
+	Backend *ledgerbackend.DatabaseBackend
 }
 
 // GetLatestLedgerSequence returns the most recent ledger sequence number present in the backend.
 func (lba *LedgerBackendAdapter) GetLatestLedgerSequence() (uint32, error) {
-	return lba.backend.GetLatestLedgerSequence()
+	return lba.Backend.GetLatestLedgerSequence()
 }
 
 // GetLedger returns information about a given ledger as an object that can be streamed.
 func (lba *LedgerBackendAdapter) GetLedger(sequence uint32) (io.LedgerReadCloser, error) {
-	// TODO: Would like to only initialise session once, not on every GetLedger
-	// TODO: Don't init unless driver and dburi are set
+	if lba.Backend == nil {
+		return nil, errors.New("missing LedgerBackendAdapter.Backend")
+	}
 	dblrc := io.DBLedgerReadCloser{}
-	err := dblrc.Init(sequence, lba.backend)
+	err := dblrc.Init(sequence, lba.Backend)
 	if err != nil {
 		return nil, err
 	}
@@ -31,16 +32,20 @@ func (lba *LedgerBackendAdapter) GetLedger(sequence uint32) (io.LedgerReadCloser
 	return &dblrc, nil
 }
 
-func (lba *LedgerBackendAdapter) Init(driver string, dbURI string) error {
-	lba.backend = &ledgerbackend.DatabaseBackend{}
-	err := lba.backend.CreateSession(driver, dbURI)
+// Init initialises the provided backend.
+func (lba *LedgerBackendAdapter) Init() error {
+	if lba.Backend == nil {
+		return errors.New("missing LedgerBackendAdapter.Backend")
+	}
+	err := lba.Backend.Init()
 	if err != nil {
-		return errors.Wrap(err, fmt.Sprintf("problem instantiating backend '%s'", driver))
+		return errors.Wrap(err, fmt.Sprintf("problem instantiating backend"))
 	}
 
 	return nil
 }
 
+// Close shuts down the provided backend.
 func (lba *LedgerBackendAdapter) Close() error {
-	return lba.backend.Close()
+	return lba.Backend.Close()
 }

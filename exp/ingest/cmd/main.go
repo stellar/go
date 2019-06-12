@@ -10,6 +10,7 @@ import (
 	ingestadapters "github.com/stellar/go/exp/ingest/adapters"
 )
 
+const driver = "postgres"
 const dbURI = "postgres://stellar:postgres@localhost:8002/core"
 
 func main() {
@@ -18,8 +19,14 @@ func main() {
 }
 
 func useAdapter() {
-	lba := ingestadapters.LedgerBackendAdapter{}
-	err := lba.Init("postgres", dbURI)
+	backend := ledgerbackend.DatabaseBackend{
+		DriverName:     driver,
+		DataSourceName: dbURI,
+	}
+	lba := ingestadapters.LedgerBackendAdapter{
+		Backend: &backend,
+	}
+	err := lba.Init()
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -75,10 +82,13 @@ func useAdapter() {
 
 func useBackend() {
 	// Initialise the database backend
-	dbb := ledgerbackend.DatabaseBackend{}
-	err := dbb.CreateSession("postgres", dbURI)
+	dbb := ledgerbackend.DatabaseBackend{
+		DriverName:     "postgres",
+		DataSourceName: dbURI,
+	}
+	err := dbb.Init()
 	if err != nil {
-		log.Fatalf("Couldn't connect to database at %s: %s", dbURI, err)
+		log.Fatalf("couldn't connect to database at %s: %s", dbURI, err)
 	}
 	defer dbb.Close()
 
