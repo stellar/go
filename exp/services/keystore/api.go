@@ -2,11 +2,11 @@ package keystore
 
 import (
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net"
 	"net/http"
-	"strings"
 	"time"
 
 	"github.com/stellar/go/support/errors"
@@ -51,6 +51,10 @@ func (s *Service) keysHTTPMethodHandler() http.Handler {
 			problem.Render(req.Context(), rw, probMethodNotAllowed)
 		}
 	})
+}
+
+type authResponse struct {
+	UserID string `json:"userID"`
 }
 
 func authHandler(next http.Handler, authenticator *Authenticator) http.Handler {
@@ -104,8 +108,19 @@ func authHandler(next http.Handler, authenticator *Authenticator) http.Handler {
 				problem.Render(ctx, rw, err)
 				return
 			}
-			// assuming the context-type is text/plain
-			ctx = withUserID(ctx, strings.TrimSpace(string(body)))
+
+			var authResp authResponse
+			err = json.Unmarshal(body, &authResp)
+			if err != nil {
+				problem.Render(ctx, rw, err)
+				return
+			}
+			if authResp.UserID == "" {
+				problem.Render(ctx, rw, probNotAuthorized)
+				return
+			}
+			// assuming the context-type is application/json
+			ctx = withUserID(ctx, authResp.UserID)
 		} else {
 			problem.Render(ctx, rw, probNotAuthorized)
 			return
