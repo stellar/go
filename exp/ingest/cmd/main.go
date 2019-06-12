@@ -82,10 +82,6 @@ func useBackend() {
 		DriverName:     "postgres",
 		DataSourceName: dbURI,
 	}
-	err := dbb.Init()
-	if err != nil {
-		log.Fatalf("couldn't connect to database at %s: %s", dbURI, err)
-	}
 	defer dbb.Close()
 
 	ledgerSequence, err := dbb.GetLatestLedgerSequence()

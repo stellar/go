@@ -31,12 +31,13 @@ type DatabaseBackend struct {
 
 // GetLatestLedgerSequence returns the most recent ledger sequence number present in the database.
 func (dbb *DatabaseBackend) GetLatestLedgerSequence() (uint32, error) {
-	if dbb.session == (db.Session{}) {
-		return 0, errors.New("no session configured - call CreateSesion() first")
+	err := dbb.init()
+	if err != nil {
+		return 0, err
 	}
 
 	var ledger []LedgerHeader
-	err := dbb.session.SelectRaw(&ledger, latestLedgerSeqQuery)
+	err = dbb.session.SelectRaw(&ledger, latestLedgerSeqQuery)
 	if err != nil {
 		return 0, errors.Wrap(err, "couldn't select ledger sequence")
 	}
@@ -50,8 +51,9 @@ func (dbb *DatabaseBackend) GetLatestLedgerSequence() (uint32, error) {
 // GetLedger returns the LedgerCloseMeta for the given ledger sequence number.
 // The first returned value is false when the ledger does not exist in the database.
 func (dbb *DatabaseBackend) GetLedger(sequence uint32) (bool, LedgerCloseMeta, error) {
-	if dbb.session == (db.Session{}) {
-		return false, LedgerCloseMeta{}, errors.New("no session configured - call CreateSesion() first")
+	err := dbb.init()
+	if err != nil {
+		return false, LedgerCloseMeta{}, err
 	}
 
 	// Check whether ledger is available
@@ -63,18 +65,19 @@ func (dbb *DatabaseBackend) GetLedger(sequence uint32) (bool, LedgerCloseMeta, e
 		return false, LedgerCloseMeta{}, nil
 	}
 
+	lcm := LedgerCloseMeta{}
+
 	// Query - ledgerheader
 	var lRows []LedgerHeaderHistory
 
 	ledgerHeaderQ := ledgerHeaderQuery + fmt.Sprintf("%d", sequence)
 	err = dbb.session.SelectRaw(&lRows, ledgerHeaderQ)
-	// Return errors, otherwise data
+	// Return errors...
 	if err != nil {
 		return false, LedgerCloseMeta{}, err
 	}
 
-	lcm := LedgerCloseMeta{}
-
+	// ...otherwise store the header
 	lcm.LedgerHeader = xdr.LedgerHeaderHistoryEntry{
 		Hash:   lRows[0].Hash,
 		Header: lRows[0].Header,
@@ -85,11 +88,12 @@ func (dbb *DatabaseBackend) GetLedger(sequence uint32) (bool, LedgerCloseMeta, e
 	var txhRows []TXHistory
 	txHistoryQ := txHistoryQuery + fmt.Sprintf("%d", sequence) + orderBy
 	err = dbb.session.SelectRaw(&txhRows, txHistoryQ)
-	// Return errors, otherwise data
+	// Return errors...
 	if err != nil {
 		return false, lcm, err
 	}
 
+	// ...otherwise store the data
 	for _, tx := range txhRows {
 		lcm.TransactionEnvelope = append(lcm.TransactionEnvelope, tx.TXBody)
 		lcm.TransactionResult = append(lcm.TransactionResult, tx.TXResult)
@@ -101,11 +105,12 @@ func (dbb *DatabaseBackend) GetLedger(sequence uint32) (bool, LedgerCloseMeta, e
 	var txfhRows []TXFeeHistory
 	txFeeHistoryQ := txFeeHistoryQuery + fmt.Sprintf("%d", sequence) + orderBy
 	err = dbb.session.SelectRaw(&txfhRows, txFeeHistoryQ)
-	// Return errors, otherwise data
+	// Return errors...
 	if err != nil {
 		return false, lcm, err
 	}
 
+	// ...otherwise store the data
 	for _, tx := range txfhRows {
 		lcm.TransactionFeeChanges = append(lcm.TransactionFeeChanges, tx.TXChanges)
 	}
@@ -113,18 +118,17 @@ func (dbb *DatabaseBackend) GetLedger(sequence uint32) (bool, LedgerCloseMeta, e
 	return true, lcm, nil
 }
 
-func (dbb *DatabaseBackend) Init() error {
+// init sets up the backend for use. It delegates to the specific backend implementation. If initialisation has
+// already happened, it passes through silently.
+func (dbb *DatabaseBackend) init() error {
 	if dbb.session == (db.Session{}) {
 		return dbb.createSession()
 	}
-
 	return nil
 }
 
 // CreateSession returns a new db.Session that connects to the given DB settings.
 func (dbb *DatabaseBackend) createSession() error {
-	var session db.Session
-
 	if dbb.DriverName == "" {
 		return errors.New("missing DatabaseBackend.DriverName (e.g. \"postgres\")")
 	}
@@ -137,7 +141,9 @@ func (dbb *DatabaseBackend) createSession() error {
 		return err
 	}
 
-	session.DB = dbconn
+	session := db.Session{
+		DB: dbconn,
+	}
 	dbb.session = session
 
 	return nil
