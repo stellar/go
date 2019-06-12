@@ -24,7 +24,7 @@ func TestPutKeysAPI(t *testing.T) {
 	defer conn.Close() // close db connection
 
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprintln(w, "test-user")
+		fmt.Fprintln(w, `{"userID":"test-user"}`)
 	}))
 	defer ts.Close()
 
@@ -91,7 +91,7 @@ func TestGetKeysAPI(t *testing.T) {
 	defer conn.Close() // close db connection
 
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprintln(w, "test-user")
+		fmt.Fprintln(w, `{"userID":"test-user"}`)
 	}))
 	defer ts.Close()
 
@@ -173,7 +173,7 @@ func TestDeleteKeysAPI(t *testing.T) {
 	defer conn.Close() // close db connection
 
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprintln(w, "test-user")
+		fmt.Fprintln(w, `{"userID":"test-user"}`)
 	}))
 	defer ts.Close()
 
