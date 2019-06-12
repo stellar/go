@@ -26,10 +26,6 @@ func useAdapter() {
 	lba := ingestadapters.LedgerBackendAdapter{
 		Backend: &backend,
 	}
-	err := lba.Init()
-	if err != nil {
-		log.Fatal(err)
-	}
 
 	ledgerSequence, err := lba.GetLatestLedgerSequence()
 	if err != nil {

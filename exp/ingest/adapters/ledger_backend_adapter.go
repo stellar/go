@@ -1,8 +1,6 @@
 package ingestadapters
 
 import (
-	"fmt"
-
 	"github.com/stellar/go/exp/ingest/io"
 	"github.com/stellar/go/exp/ingest/ledgerbackend"
 	"github.com/stellar/go/support/errors"
@@ -15,16 +13,21 @@ type LedgerBackendAdapter struct {
 
 // GetLatestLedgerSequence returns the most recent ledger sequence number present in the backend.
 func (lba *LedgerBackendAdapter) GetLatestLedgerSequence() (uint32, error) {
+	err := lba.init()
+	if err != nil {
+		return 0, err
+	}
 	return lba.Backend.GetLatestLedgerSequence()
 }
 
 // GetLedger returns information about a given ledger as an object that can be streamed.
 func (lba *LedgerBackendAdapter) GetLedger(sequence uint32) (io.LedgerReadCloser, error) {
-	if lba.Backend == nil {
-		return nil, errors.New("missing LedgerBackendAdapter.Backend")
+	err := lba.init()
+	if err != nil {
+		return nil, err
 	}
 	dblrc := io.DBLedgerReadCloser{}
-	err := dblrc.Init(sequence, lba.Backend)
+	err = dblrc.Init(sequence, lba.Backend)
 	if err != nil {
 		return nil, err
 	}
@@ -33,16 +36,11 @@ func (lba *LedgerBackendAdapter) GetLedger(sequence uint32) (io.LedgerReadCloser
 }
 
 // Init initialises the provided backend.
-func (lba *LedgerBackendAdapter) Init() error {
+func (lba *LedgerBackendAdapter) init() error {
 	if lba.Backend == nil {
 		return errors.New("missing LedgerBackendAdapter.Backend")
 	}
-	err := lba.Backend.Init()
-	if err != nil {
-		return errors.Wrap(err, fmt.Sprintf("problem instantiating backend"))
-	}
-
-	return nil
+	return lba.Backend.Init()
 }
 
 // Close shuts down the provided backend.

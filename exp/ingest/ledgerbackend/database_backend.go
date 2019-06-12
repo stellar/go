@@ -118,7 +118,7 @@ func (dbb *DatabaseBackend) Init() error {
 		return dbb.createSession()
 	}
 
-	return errors.New("session already exists")
+	return nil
 }
 
 // CreateSession returns a new db.Session that connects to the given DB settings.
