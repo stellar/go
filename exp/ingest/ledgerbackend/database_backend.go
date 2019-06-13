@@ -15,8 +15,6 @@ const latestLedgerSeqQuery = "select ledgerseq, closetime from ledgerheaders ord
 const txHistoryQuery = "select txbody, txresult, txmeta, txindex from txhistory where ledgerseq = "
 const ledgerHeaderQuery = "select ledgerhash, data from ledgerheaders where ledgerseq = "
 const txFeeHistoryQuery = "select txchanges from txfeehistory where ledgerseq = "
-
-// TODO: Replace with SQL objects
 const orderBy = " order by txindex asc"
 
 // Ensure DatabaseBackend implements LedgerBackend

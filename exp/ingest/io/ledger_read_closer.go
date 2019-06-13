@@ -19,6 +19,7 @@ type LedgerReadCloser interface {
 	// helpful when there are still some entries available so the reader can stop
 	// streaming them.
 	Close() error
+	Init(sequence uint32, backend ledgerbackend.LedgerBackend) error
 }
 
 // LedgerTransaction represents the data for a single transaction within a ledger.
