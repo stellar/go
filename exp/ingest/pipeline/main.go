@@ -1,6 +1,7 @@
 package pipeline
 
 import (
+	"context"
 	"sync"
 	"time"
 
@@ -36,7 +37,12 @@ type multiWriteCloser struct {
 
 type Pipeline struct {
 	rootStateProcessor *PipelineNode
-	done               bool
+
+	doneMutex sync.Mutex
+	done      bool
+
+	cancelledMutex sync.Mutex
+	cancelled      bool
 }
 
 type PipelineNode struct {
@@ -61,7 +67,56 @@ type StateProcessor interface {
 	// written and `Close()` on `io.StateReadCloser` when reading is finished.
 	// Data required by following processors (like aggregated data) should be saved in
 	// `Store`. Read `Store` godoc to understand how to use it.
-	ProcessState(store *Store, readCloser io.StateReadCloser, writeCloser io.StateWriteCloser) (err error)
+	// The first argument `ctx` is a context with cancel. Processor should monitor
+	// `ctx.Done()` channel and exit when it returns a value. This can happen when
+	// pipeline execution is interrupted, ex. due to an error.
+	//
+	// Given all information above `ProcessState` should always look like this:
+	//
+	//    func (p *Processor) ProcessState(ctx context.Context, store *pipeline.Store, r io.StateReadCloser, w io.StateWriteCloser) error {
+	//    	defer r.Close()
+	//    	defer w.Close()
+	//
+	//    	// Some pre code...
+	//
+	//    	for {
+	//    		entry, err := r.Read()
+	//    		if err != nil {
+	//    			if err == io.EOF {
+	//    				break
+	//    			} else {
+	//    				return errors.Wrap(err, "Error reading from StateReadCloser in [ProcessorName]")
+	//    			}
+	//    		}
+	//
+	//    		// Process entry...
+	//
+	//    		// Write to StateWriteCloser if needed but exit if pipe is closed:
+	//    		err := w.Write(entry)
+	//    		if err != nil {
+	//    			if err == io.ErrClosedPipe {
+	//    				//    Reader does not need more data
+	//    				return nil
+	//    			}
+	//    			return errors.Wrap(err, "Error writing to StateWriteCloser in [ProcessorName]")
+	//    		}
+	//
+	//    		// Return errors if needed...
+	//
+	//    		// Exit when pipeline terminated due to an error in another processor...
+	//    		select {
+	//    		case <-ctx.Done():
+	//    			return nil
+	//    		default:
+	//    			continue
+	//    		}
+	//    	}
+	//
+	//    	// Some post code...
+	//
+	//    	return nil
+	//    }
+	ProcessState(context.Context, *Store, io.StateReadCloser, io.StateWriteCloser) error
 	// IsConcurrent defines if processing pipeline should start a single instance
 	// of the processor or multiple instances. Multiple instances will read
 	// from the same StateReader and write to the same StateWriter.

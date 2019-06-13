@@ -38,10 +38,22 @@ func main() {
 		panic(err)
 	}
 
-	done := p.ProcessState(stateReader)
-	startTime := time.Now()
-	go printPipelineStats(p, startTime)
-	<-done
+	errChan := p.ProcessState(stateReader)
+	doneStats := printPipelineStats(p)
+
+	err = <-errChan
+	if err != nil {
+		fmt.Println("Pipeline errored:")
+		fmt.Println(err)
+	} else {
+		fmt.Println("Pipeline finished without errors")
+	}
+
+	time.Sleep(10 * time.Second)
+	doneStats <- true
+	time.Sleep(10 * time.Second)
+	// Print go routines count for the last time
+	fmt.Printf("Goroutines = %v\n", runtime.NumGoroutine())
 }
 
 func archive() (*historyarchive.Archive, error) {
@@ -70,26 +82,42 @@ func buildPipeline() (*pipeline.Pipeline, error) {
 	return p, nil
 }
 
-func printPipelineStats(p *pipeline.Pipeline, startTime time.Time) {
-	for {
-		var m runtime.MemStats
-		runtime.ReadMemStats(&m)
+func printPipelineStats(p *pipeline.Pipeline) chan<- bool {
+	startTime := time.Now()
+	done := make(chan bool)
+	ticker := time.NewTicker(10 * time.Second)
 
-		fmt.Printf("Alloc = %v MiB", bToMb(m.Alloc))
-		fmt.Printf("\tHeapAlloc = %v MiB", bToMb(m.HeapAlloc))
-		fmt.Printf("\tSys = %v MiB", bToMb(m.Sys))
-		fmt.Printf("\tNumGC = %v", m.NumGC)
-		fmt.Printf("\tGoroutines = %v", runtime.NumGoroutine())
-		fmt.Printf("\tNumCPU = %v\n\n", runtime.NumCPU())
+	go func() {
+		defer ticker.Stop()
 
-		fmt.Printf("Duration: %s\n", time.Since(startTime))
-		fmt.Println("Pipeline status:")
-		p.PrintStatus()
+		for {
+			var m runtime.MemStats
+			runtime.ReadMemStats(&m)
 
-		fmt.Println("========================================")
+			fmt.Printf("Alloc = %v MiB", bToMb(m.Alloc))
+			fmt.Printf("\tHeapAlloc = %v MiB", bToMb(m.HeapAlloc))
+			fmt.Printf("\tSys = %v MiB", bToMb(m.Sys))
+			fmt.Printf("\tNumGC = %v", m.NumGC)
+			fmt.Printf("\tGoroutines = %v", runtime.NumGoroutine())
+			fmt.Printf("\tNumCPU = %v\n\n", runtime.NumCPU())
 
-		time.Sleep(10 * time.Second)
-	}
+			fmt.Printf("Duration: %s\n", time.Since(startTime))
+			fmt.Println("Pipeline status:")
+			p.PrintStatus()
+
+			fmt.Println("========================================")
+
+			select {
+			case <-ticker.C:
+				continue
+			case <-done:
+				// Pipeline done
+				return
+			}
+		}
+	}()
+
+	return done
 }
 
 func bToMb(b uint64) uint64 {

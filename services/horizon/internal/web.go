@@ -194,8 +194,6 @@ func (w *web) mustInstallActions(enableAssetStats bool, friendbotURL *url.URL) {
 
 	// Network state related endpoints
 	r.Get("/fee_stats", OperationFeeStatsAction{}.Handle)
-	// Deprecated - remove in: horizon-v0.18.0
-	r.Get("/operation_fee_stats", OperationFeeStatsAction{}.Handle)
 
 	// friendbot
 	if friendbotURL != nil {

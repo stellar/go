@@ -97,54 +97,32 @@ Notes:
 
 - the `HistoryArchiveAdapter` supports both reading a ledger transaction result set via `GetLedger()` and reading ledger state via `GetState()`.
 - Both adapters support `GetLatestLedgerSequence()`, which allows a consumer to look up the most recent ledger information in the backend.
-- The adapters, rather than returning state and ledgers as objects stored in memory, return them as `Reader` objects. This is because the ledger state or a particular transaction state may not fit in memory, and must be processed as a stream.
+- The adapters, rather than returning state and ledgers as objects stored in memory, return them as `ReadCloser` objects. This is because the ledger state or a particular transaction state may not fit in memory, and must be processed as a stream.
 
-The `Reader` structs come from the `ingest/io` package, shown in the UML class diagram below:
+Both `ReadCloser` and `WriteCloser` interfaces include `Close()` method. When `Close()` is called on `ReadCloser` it tells the reader that no more data is needed and it should stop streaming, ex. close buffered channels, close network connections, etc. When `Close` is is called on `WriteCloser` it means that no more data will be written to it. This is especially helpful when writer is writing to a pipe so the reader on the other end knows that no more objects will be streamed and can return `EOF`.
+
+The `ReadCloser` structs come from the `ingest/io` package, shown in the UML class diagram below:
 
 ![IO package](images/io.png)
 
-#### Ingestion Filters
+#### Ingestion Pipeline
 
-At the center of ingestion is a filtering `Pipeline`, which is initialized with a series of filters for each kind of data that ingestion handles (ledger state, a full ledger update, and an archive ledger update). Each filter implements a function that reads data from a `Reader`, transforms it, and writes it to a `Writer`. A few example filters:
+At the center of ingestion is a `Pipeline`, which is initialized with a series of processors for each kind of data that ingestion handles (ledger state, a full ledger update, and an archive ledger update). Each processor implements a function that reads data from a `ReadCloser`, processes/filters it, and writes it to a `WriteCloser`. A few example processors:
 
-- A filter that passes on only information about a certain account
-- A filter that only looks at certain kinds of events, such as offers being placed
+- A processor that passes on only information about a certain account
+- A processor that only looks at certain kinds of events, such as offers being placed
+- A processor sending a mobile notification for incoming payments
+- A processor saving data to a database or in-memory store.
 
 See the rough UML diagram:
 
-![Filter package](images/filters.png)
+![Filter package](images/pipeline.png)
 
 Notes:
 
-- The filters are applied in the order they're added to the `Pipeline`.
-- There probably should be a separate AddFilter method for each kind of filter
-- Filtering does not change the type of the data, but it can remove or change fields in the data
-- Filter should probably be called `Transformer` instead, since it does not change the number of data objects, only the the fields inside the data objects.
-
-### Outputs
-
-Once ledger and state data have been filtered, they must be passed on to one or more `Process` objects that receive the data and take action on it in a particular `ProcessingPipeline`. There can also be multiple `ProcessingPipeline`s, one for each sink.
-
-Examples of sinks / stores:
-
-- An in-memory store that stores current order book information
-- A postgres store for a wallet app that updates the app's `users` table any time a user's balance changes
-- A streaming service that sends websockets notifications whenever the price for a particular asset changes
-
-Unfortunately, `Store`s and `Process` objects are not reuseable, because they have a particular storage schema baked-in in order to know how to write out updates. This is why the `Store`s in the diagram below have names like `MyPostgresStore` rather than `PostgresStore`. However, `Store`s are extensible, because a developer can create and add a new store or `Process` to their app that writes to the same underlying storage (say a postgres database) and adds new tables or fields.
-
-There's also a significant challenge keeping stores in sync. If multiple `Process`es write to the same underlying store, or to entirely different stores, then any read operation that reads across stores or across data updated by multiple `Processes`s is at risk of reading inconsistent values.
-
-See the UML diagram:
-
-![Store package](images/stores.png)
-
-Notes:
-
-- `MyMemoryStateStore` is an example of the kind of in-memory store we'd want to implement for Horizon.
-- `AccountNotificationProcess` is an example of processor that notifies users when their account has changed
-- There's an alternate way to design this package, where there is a single `ProcessingPipeline` and no `Store` objects. Instead, each `Process` object is initialized with access to its underlying store independently. This decouples `Store`s from `ProcessingPipeline`s. It may also remove the need for `Store` objects altogether. A `Process` could directly write to postgres, and a `Process` could write directly to an in-memory `State` object.
-- I'd rename `Process` to `Processor` or even `Writer`
+- The processors form a tree and are processed from root to leaves.
+- Processing does not change the type of the data, but it can remove or change fields in the data
+- Processors can write/read artifacts (ex. average balances) in a `Store` that is shared between all processors in a pipeline. `Store` is ephemeral, its contents is removed when pipeline processing is done.
 
 ### Tying it all together
 
@@ -153,6 +131,8 @@ The ingestion system can run as a stand-alone process or as part of a larger pro
 - `IngestRangeSession`: ingest data over a range of ledgers. Used for ingesting historical data in parallel
 - `LiveSession`: ingest the latest ledgers as soon as the close. This is the standard operating mode for a live Horizon instance
 - `CheckpointsOnlySession`: ingest only history archive checkpoint data.
+
+Sessions are responsible for coordinating pipelines and ensuring data is in sync. When processors write to a single storage type, keeping data in sync is trivial. For example, for Postgres processors can share a single transaction object and commit when processing is done. However, there's also a significant challenge keeping data in sync when processors are writing to different storage types: any read operation that reads across stores or across data updated by multiple `Processes`s is at risk of reading inconsistent values. `System` or `Session` objects (TBD) should be responsible by keeping different stores in sync. For example: they can ensure that all queries sent to stores have the latest ledger sequence that was successfully saved all stores appended. This probably requires stores to keep data for the two (2) latest ledgers.
 
 ![ingest package](images/system.png)
 
@@ -189,10 +169,8 @@ We can implement [accounts for signer](https://github.com/stellar/go/issues/432)
   - command-line tool takes a history archive file and prints out basic stats like # of accounts and transactions per second 
 - `DatabaseBackend` implementation of `LedgerBackend` and `LedgerBackendAdapter`
   - command-line tool takes a database URI and computes stats like # of transactions in the latest ledger (it runs live and updates with each new ledger in the `DatabaseBackend`)
-- `ingest/filters`:
-  - command-line tool that implements a few demo filters and given a DB URL and/or a historyarchive file location, streams out the data that passes the filter
-- `ingest/stores`: Implement a basic postgres store for accounts, to be used to implement `accounts for signer`
-  - command-line tool that runs the basic ingestion from input to the store
+- `ingest/pipeline`:
+  - command-line tool that implements a few demo processors and given a DB URL and/or a historyarchive file location, streams out the data that passes the filter
 
 Once the above are all done, put together a basic ingestion server as laid out in the top-level `ingest` package.
 

@@ -349,7 +349,7 @@ func (c *Client) OperationDetail(id string) (ops operations.Operation, err error
 		return ops, errors.Wrap(err, "unmarshaling json")
 	}
 
-	ops, err = operations.UnmarshalOperation(baseRecord.GetType(), dataString)
+	ops, err = operations.UnmarshalOperation(baseRecord.GetTypeI(), dataString)
 	return ops, errors.Wrap(err, "unmarshaling to the correct operation type")
 }
 
