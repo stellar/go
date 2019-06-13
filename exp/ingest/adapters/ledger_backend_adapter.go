@@ -28,12 +28,8 @@ func (lba *LedgerBackendAdapter) GetLedger(sequence uint32) (io.LedgerReadCloser
 		return nil, errors.New(noBackendErr)
 	}
 
-	dblrc := io.DBLedgerReadCloser{}
-	err := dblrc.Init(sequence, lba.Backend)
-	if err != nil {
-		return nil, err
-	}
-	return &dblrc, nil
+	dblrc := io.MakeLedgerReadCloser(sequence, lba.Backend)
+	return dblrc, nil
 }
 
 // Close shuts down the provided backend.

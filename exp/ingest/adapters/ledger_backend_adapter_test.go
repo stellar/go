@@ -5,30 +5,10 @@ import (
 
 	"github.com/stellar/go/exp/ingest/ledgerbackend"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 )
 
-type MockDatabaseBackend struct {
-	mock.Mock
-}
-
-func (m *MockDatabaseBackend) GetLatestLedgerSequence() (uint32, error) {
-	args := m.Called()
-	return args.Get(0).(uint32), args.Error(1)
-}
-
-func (m *MockDatabaseBackend) GetLedger(sequence uint32) (bool, ledgerbackend.LedgerCloseMeta, error) {
-	args := m.Called()
-	return args.Bool(0), args.Get(1).(ledgerbackend.LedgerCloseMeta), args.Error(2)
-}
-
-func (m *MockDatabaseBackend) Close() error {
-	args := m.Called()
-	return args.Error(0)
-}
-
 func TestGetLatestLedgerSequenceHappyPath(t *testing.T) {
-	mockBackend := new(MockDatabaseBackend)
+	mockBackend := new(ledgerbackend.MockDatabaseBackend)
 	mockBackend.On("GetLatestLedgerSequence").Return(uint32(1), nil)
 
 	lba := LedgerBackendAdapter{Backend: mockBackend}

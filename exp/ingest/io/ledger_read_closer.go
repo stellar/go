@@ -2,6 +2,7 @@ package io
 
 import (
 	"io"
+	"sync"
 
 	"github.com/stellar/go/exp/ingest/ledgerbackend"
 	"github.com/stellar/go/support/errors"
@@ -19,7 +20,6 @@ type LedgerReadCloser interface {
 	// helpful when there are still some entries available so the reader can stop
 	// streaming them.
 	Close() error
-	Init(sequence uint32, backend ledgerbackend.LedgerBackend) error
 }
 
 // LedgerTransaction represents the data for a single transaction within a ledger.
@@ -33,27 +33,40 @@ type LedgerTransaction struct {
 // DBLedgerReadCloser is a database-backed implementation of the io.LedgerReadCloser interface.
 type DBLedgerReadCloser struct {
 	sequence     uint32
+	backend      ledgerbackend.LedgerBackend
 	header       xdr.LedgerHeaderHistoryEntry
 	transactions []LedgerTransaction
 	readIdx      int
+	initOnce     sync.Once
 }
 
 // Ensure DBLedgerReadCloser implements LedgerReadCloser
 var _ LedgerReadCloser = (*DBLedgerReadCloser)(nil)
 
+// MakeLedgerReadCloser is a factory method for LedgerReadCloser.
+func MakeLedgerReadCloser(sequence uint32, backend ledgerbackend.LedgerBackend) *DBLedgerReadCloser {
+	return &DBLedgerReadCloser{
+		sequence: sequence,
+		backend:  backend,
+	}
+}
+
 // GetSequence returns the sequence number of the ledger data stored by this object.
 func (dblrc *DBLedgerReadCloser) GetSequence() uint32 {
+	dblrc.initOnce.Do(func() { dblrc.init() })
 	return dblrc.sequence
 }
 
 // GetHeader returns the XDR Header data associated with the stored ledger.
 func (dblrc *DBLedgerReadCloser) GetHeader() xdr.LedgerHeaderHistoryEntry {
+	dblrc.initOnce.Do(func() { dblrc.init() })
 	return dblrc.header
 }
 
 // Read returns the next transaction in the ledger, ordered by tx number, each time it is called. When there
 // are no more transactions to return, an EOF error is returned.
 func (dblrc *DBLedgerReadCloser) Read() (LedgerTransaction, error) {
+	dblrc.initOnce.Do(func() { dblrc.init() })
 	if dblrc.readIdx < len(dblrc.transactions) {
 		defer dblrc.incReadIdx()
 		return dblrc.transactions[dblrc.readIdx], nil
@@ -63,13 +76,14 @@ func (dblrc *DBLedgerReadCloser) Read() (LedgerTransaction, error) {
 
 // Close moves the read pointer so that subsequent calls to Read() will return EOF.
 func (dblrc *DBLedgerReadCloser) Close() error {
+	dblrc.initOnce.Do(func() { dblrc.init() })
 	dblrc.readIdx = len(dblrc.transactions)
 	return nil
 }
 
 // Init pulls data from the backend to set this object up for use.
-func (dblrc *DBLedgerReadCloser) Init(sequence uint32, backend ledgerbackend.LedgerBackend) error {
-	exists, ledgerCloseMeta, err := backend.GetLedger(sequence)
+func (dblrc *DBLedgerReadCloser) init() error {
+	exists, ledgerCloseMeta, err := dblrc.backend.GetLedger(dblrc.sequence)
 
 	if err != nil {
 		return errors.Wrap(err, "error reading ledger from backend")
@@ -78,7 +92,6 @@ func (dblrc *DBLedgerReadCloser) Init(sequence uint32, backend ledgerbackend.Led
 		return errors.Wrap(err, "ledger was not found")
 	}
 
-	dblrc.sequence = sequence
 	dblrc.header = ledgerCloseMeta.LedgerHeader
 
 	dblrc.storeTransactions(ledgerCloseMeta)
