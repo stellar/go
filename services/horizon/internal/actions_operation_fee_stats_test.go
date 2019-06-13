@@ -84,7 +84,7 @@ func TestOperationFeeTestsActions_Show(t *testing.T) {
 	}
 
 	for _, kase := range testCases {
-		t.Run("/operation_fee_stats", func(t *testing.T) {
+		t.Run("/fee_stats", func(t *testing.T) {
 			ht := StartHTTPTest(t, kase.scenario)
 			defer ht.Finish()
 
@@ -94,7 +94,7 @@ func TestOperationFeeTestsActions_Show(t *testing.T) {
 
 			ht.App.UpdateOperationFeeStatsState()
 
-			w := ht.Get("/operation_fee_stats")
+			w := ht.Get("/fee_stats")
 
 			if ht.Assert.Equal(200, w.Code) {
 				var result map[string]string

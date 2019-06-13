@@ -93,7 +93,7 @@ func (op OperationRequest) StreamOperations(ctx context.Context, client *Client,
 			return errors.Wrap(err, "error unmarshaling data for operation request")
 		}
 
-		ops, err := operations.UnmarshalOperation(baseRecord.GetType(), data)
+		ops, err := operations.UnmarshalOperation(baseRecord.GetTypeI(), data)
 		if err != nil {
 			return errors.Wrap(err, "unmarshaling to the correct operation type")
 		}

@@ -62,3 +62,5 @@ offer :scott, {buy:["USD", :usd_gateway], with: :native}, "1000", "3.2"
 offer :scott, {buy:["USD", :usd_gateway], with: :native}, "1000", "2.2"
 offer :scott, {buy:["USD", :usd_gateway], with: :native}, "1000", "1.2"
 offer :scott, {buy:["USD", :usd_gateway], with: :native}, "1000", "0.3"
+
+close_ledger

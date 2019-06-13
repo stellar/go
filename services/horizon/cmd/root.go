@@ -94,8 +94,36 @@ var configOpts = []*support.ConfigOption{
 		Name:        "max-db-connections",
 		ConfigKey:   &config.MaxDBConnections,
 		OptType:     types.Int,
+		FlagDefault: 0,
+		Usage:       "when set has a priority over horizon-db-max-open-connections, horizon-db-max-idle-connections, core-db-max-open-connections, core-db-max-idle-connections. max horizon database open connections. may need to be increased when responses are slow but DB CPU is normal",
+	},
+	&support.ConfigOption{
+		Name:        "horizon-db-max-open-connections",
+		ConfigKey:   &config.HorizonDBMaxOpenConnections,
+		OptType:     types.Int,
 		FlagDefault: 20,
-		Usage:       "max db connections (per DB), may need to be increased when responses are slow but DB CPU is normal",
+		Usage:       "max horizon database open connections. may need to be increased when responses are slow but DB CPU is normal",
+	},
+	&support.ConfigOption{
+		Name:        "horizon-db-max-idle-connections",
+		ConfigKey:   &config.HorizonDBMaxIdleConnections,
+		OptType:     types.Int,
+		FlagDefault: 20,
+		Usage:       "max horizon database idle connections. may need to be set to the same value as horizon-db-max-open-connections when responses are slow and DB CPU is normal, because it may indicate that a lot of time is spent closing/opening idle connections. This can happen in case of high variance in number of requests. must be equal or lower than max open connections",
+	},
+	&support.ConfigOption{
+		Name:        "core-db-max-open-connections",
+		ConfigKey:   &config.CoreDBMaxOpenConnections,
+		OptType:     types.Int,
+		FlagDefault: 20,
+		Usage:       "max core database open connections. may need to be increased when responses are slow but DB CPU is normal",
+	},
+	&support.ConfigOption{
+		Name:        "core-db-max-idle-connections",
+		ConfigKey:   &config.CoreDBMaxIdleConnections,
+		OptType:     types.Int,
+		FlagDefault: 20,
+		Usage:       "max core database idle connections. may need to be set to the same value as core-db-max-open-connections when responses are slow and DB CPU is normal, because it may indicate that a lot of time is spent closing/opening idle connections. This can happen in case of high variance in number of requests. must be equal or lower than max open connections",
 	},
 	&support.ConfigOption{
 		Name:           "sse-update-frequency",
@@ -309,6 +337,15 @@ func initConfig() {
 
 	// Configure log level
 	log.DefaultLogger.Logger.SetLevel(config.LogLevel)
+
+	// Configure DB params. When config.MaxDBConnections is set, set other
+	// DB params to that value for backward compatibility.
+	if config.MaxDBConnections != 0 {
+		config.HorizonDBMaxOpenConnections = config.MaxDBConnections
+		config.HorizonDBMaxIdleConnections = config.MaxDBConnections
+		config.CoreDBMaxOpenConnections = config.MaxDBConnections
+		config.CoreDBMaxIdleConnections = config.MaxDBConnections
+	}
 }
 
 func Execute() {

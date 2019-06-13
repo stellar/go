@@ -65,3 +65,6 @@ payment :multiop, :master,  [:native, "10.00"] do |env|
     env.tx.fee = 400
     env.signatures = [env.tx.sign_decorated(get_account :multiop)]
   end
+
+
+close_ledger #8

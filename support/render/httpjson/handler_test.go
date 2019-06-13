@@ -1,4 +1,4 @@
-package hal
+package httpjson
 
 import (
 	"context"
@@ -15,15 +15,16 @@ func TestHandler(t *testing.T) {
 		input   interface{}
 		output  string
 		f       interface{}
+		cType   contentType
 		wantErr bool
 	}{
-		{`foo`, `"foo"`, func(ctx context.Context, s string) (string, error) { return s, nil }, false},
-		{struct{ Foo int }{1}, `1`, func(ctx context.Context, param struct{ Foo int }) (int, error) { return param.Foo, nil }, false},
-		{``, ``, func(ctx context.Context) (int, error) { return 0, errors.New("test") }, true},
+		{`foo`, `"foo"`, func(ctx context.Context, s string) (string, error) { return s, nil }, JSON, false},
+		{struct{ Foo int }{1}, `1`, func(ctx context.Context, param struct{ Foo int }) (int, error) { return param.Foo, nil }, HALJSON, false},
+		{``, ``, func(ctx context.Context) (int, error) { return 0, errors.New("test") }, JSON, true},
 	}
 
 	for _, tc := range cases {
-		h, err := Handler(tc.f, tc.input)
+		h, err := Handler(tc.f, tc.input, tc.cType)
 		if err != nil {
 			t.Errorf("Handler(%v) got err %v", tc.f, err)
 			continue
@@ -43,6 +44,18 @@ func TestHandler(t *testing.T) {
 			t.Errorf("%T response code = %d want 200", tc.f, resp.Code)
 		}
 
+		if tc.cType == JSON {
+			want := "application/json; charset=utf-8"
+			if ct := resp.Header().Get("Content-Type"); ct != want {
+				t.Errorf(`Content-Type = %s, want %s`, ct, want)
+			}
+		} else if tc.cType == HALJSON {
+			want := "application/hal+json; charset=utf-8"
+			if ct := resp.Header().Get("Content-Type"); ct != want {
+				t.Errorf(`Content-Type = %s, want %s`, ct, want)
+			}
+		}
+
 		got := resp.Body.String()
 		if got != tc.output {
 			t.Errorf("%T response body = %#q want %#q", tc.f, got, tc.output)
@@ -50,19 +63,20 @@ func TestHandler(t *testing.T) {
 	}
 }
 
-func TestPostHandler(t *testing.T) {
+func TestReqBodyHandler(t *testing.T) {
 	cases := []struct {
 		input   string
 		output  string
 		f       interface{}
+		cType   contentType
 		wantErr bool
 	}{
-		{`{"Foo":1}`, `1`, func(ctx context.Context, param struct{ Foo int }) (int, error) { return param.Foo, nil }, false},
-		{``, ``, func(ctx context.Context) (int, error) { return 0, errors.New("test") }, true},
+		{`{"Foo":1}`, `1`, func(ctx context.Context, param struct{ Foo int }) (int, error) { return param.Foo, nil }, JSON, false},
+		{``, ``, func(ctx context.Context) (int, error) { return 0, errors.New("test") }, JSON, true},
 	}
 
 	for _, tc := range cases {
-		h, err := ReqBodyHandler(tc.f)
+		h, err := ReqBodyHandler(tc.f, tc.cType)
 		if err != nil {
 			t.Errorf("Handler(%v) got err %v", tc.f, err)
 			continue
@@ -82,6 +96,13 @@ func TestPostHandler(t *testing.T) {
 			t.Errorf("%T response code = %d want 200", tc.f, resp.Code)
 		}
 
+		if tc.cType == JSON {
+			want := "application/json; charset=utf-8"
+			if ct := resp.Header().Get("Content-Type"); ct != want {
+				t.Errorf(`Content-Type = %s, want %s`, ct, want)
+			}
+		}
+
 		got := resp.Body.String()
 		if got != tc.output {
 			t.Errorf("%T response body = %#q want %#q", tc.f, got, tc.output)
@@ -95,7 +116,6 @@ func TestFuncParamTypeError(t *testing.T) {
 		"a string",                               // not a function
 		func() (int, error) { return 0, nil },    // no inputs
 		func(int) (int, error) { return 0, nil }, // first input is not context
-		func(context.Context) {},                 // not return values
 		func(context.Context, int, int) (int, error) { return 0, nil }, // too many inputs
 		func(context.Context, int) (int, int) { return 0, 0 },          // second return value is not an error
 		func() (int, int, error) { return 0, 0, nil },                  // too many return values
@@ -105,6 +125,22 @@ func TestFuncParamTypeError(t *testing.T) {
 		_, err := funcParamType(reflect.ValueOf(tc))
 		if err == nil {
 			t.Errorf("funcParamType(%T) wants error", tc)
+		}
+	}
+}
+
+func TestFuncParamTypeNoError(t *testing.T) {
+	cases := []interface{}{
+		func(context.Context) {},                                  // no return value
+		func(context.Context) int { return 0 },                    // one non-error type return value
+		func(context.Context) error { return nil },                // one error type return value
+		func(context.Context, int) (int, error) { return 0, nil }, // two return values
+	}
+
+	for _, tc := range cases {
+		_, err := funcParamType(reflect.ValueOf(tc))
+		if err != nil {
+			t.Errorf("funcParamType(%T) got error %v", tc, err)
 		}
 	}
 }

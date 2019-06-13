@@ -62,18 +62,18 @@ func Mirror(src *Archive, dst *Archive, opts *CommandOptions) error {
 					bucketFetchMutex.Unlock()
 					if !alreadyFetching {
 						pth := BucketPath(bucket)
-						e = copyPath(src, dst, pth, opts)
-						atomic.AddUint32(&errs, noteError(e))
+						err = copyPath(src, dst, pth, opts)
+						atomic.AddUint32(&errs, noteError(err))
 					}
 				}
 
 				for _, cat := range Categories() {
 					pth := CategoryCheckpointPath(cat, ix)
-					e = copyPath(src, dst, pth, opts)
-					if e != nil && !categoryRequired(cat) {
+					err = copyPath(src, dst, pth, opts)
+					if err != nil && !categoryRequired(cat) {
 						continue
 					}
-					atomic.AddUint32(&errs, noteError(e))
+					atomic.AddUint32(&errs, noteError(err))
 				}
 				tick <- true
 			}

@@ -30,3 +30,5 @@ close_ledger #5
 payment :andrew, :scott,  [:native, "10.00"]
 payment :andrew, :scott,  [:native, "10.00"]
 payment :andrew, :scott,  [:native, "10.00"]
+
+close_ledger #6

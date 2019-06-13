@@ -12,7 +12,9 @@ import (
 	"github.com/spf13/viper"
 	"github.com/stellar/go/services/horizon/internal/db2/schema"
 	"github.com/stellar/go/services/horizon/internal/ingest"
+	"github.com/stellar/go/services/horizon/internal/util"
 	"github.com/stellar/go/support/db"
+	"github.com/stellar/go/support/errors"
 	hlog "github.com/stellar/go/support/log"
 )
 
@@ -20,8 +22,8 @@ type reingestType int
 
 const (
 	byAll reingestType = iota
-	bySeq
 	byRange
+	bySeq
 	byOutdated
 )
 
@@ -340,7 +342,7 @@ func reingest(cmd reingestType, args ...int32) {
 				log.Fatal(`"horizon db reingest range" command requires 2 sequence numbers after "range"`)
 			}
 
-			_, err = i.ReingestRange(args[0], args[1])
+			err = reingestRange(i, args[0], args[1])
 
 		case byOutdated:
 			_, err = i.ReingestOutdated()
@@ -364,4 +366,67 @@ func reingest(cmd reingestType, args ...int32) {
 			os.Exit(0)
 		}
 	}
+}
+
+type ledgerRange struct {
+	from, to int32
+}
+
+func reingestRange(i *ingest.System, from, to int32) error {
+	if to < from {
+		return errors.New("Invalid range")
+	}
+
+	var (
+		size    int32 = 10000
+		workers int   = 10
+	)
+
+	var pool util.WorkersPool
+	hlog.Info("Creating work...")
+	for current := from; current <= to; current += size {
+		lr := ledgerRange{from: current, to: current + size - 1}
+		if lr.to > to {
+			lr.to = to
+		}
+		pool.AddWork(lr)
+	}
+
+	allJobs := pool.WorkSize()
+
+	pool.SetWorker(func(workerID int, job interface{}) {
+		lr, ok := job.(ledgerRange)
+		if !ok {
+			hlog.Error("job is not a ledgerRange")
+			os.Exit(1)
+		}
+
+		localLog := hlog.WithFields(hlog.F{
+			"id":   workerID,
+			"from": lr.from,
+			"to":   lr.to,
+		})
+
+		localLog.Info("Worker starting range...")
+
+		_, err := i.ReingestRange(lr.from, lr.to)
+		if err != nil {
+			localLog.WithField("err", err).Error("Worker failed range, work will be processed again")
+			// Add the work again
+			pool.AddWork(lr)
+			return
+		}
+		localLog.Info("Worker finished range")
+	})
+
+	hlog.Infof("Starting %d workers...", workers)
+	go func() {
+		c := time.Tick(10 * time.Second)
+		for range c {
+			hlog.WithField("progress", float32(allJobs-pool.WorkSize())/float32(allJobs)*100).Info("Work status")
+		}
+	}()
+	pool.Start(workers)
+	hlog.Info("Done")
+	return nil
 }
