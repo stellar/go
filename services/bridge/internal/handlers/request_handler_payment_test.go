@@ -12,6 +12,7 @@ import (
 	"github.com/stellar/go/services/bridge/internal/config"
 	"github.com/stellar/go/services/bridge/internal/mocks"
 	"github.com/stellar/go/services/bridge/internal/test"
+	"github.com/stellar/go/services/internal/bridge-compliance-shared/protocols"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/support/http/httptest"
 	"github.com/stellar/go/txnbuild"
@@ -22,6 +23,10 @@ import (
 var phconfig = &config.Config{
 	NetworkPassphrase: "Test SDF Network ; September 2015",
 	Compliance:        "http://compliance",
+	Assets: []protocols.Asset{
+		{Code: "USD", Issuer: "GD4I7AFSLZGTDL34TQLWJOM2NHLIIOEKD5RHHZUW54HERBLSIRKUOXRR"},
+		{Code: "EUR", Issuer: "GD4I7AFSLZGTDL34TQLWJOM2NHLIIOEKD5RHHZUW54HERBLSIRKUOXRR"},
+	},
 	Accounts: config.Accounts{
 		// GAHA6GRCLCCN7XE2NEEUDSIVOFBOQ6GLSYXVLYCJXJKLPMDR5XB5XZZJ
 		BaseSeed: "SBKKWO3ZVDDEHDJILGHPHCJCFD2GNUAYIUDMRAS326HLUEQ7ZFXWIGQK",
@@ -107,7 +112,7 @@ func TestRequestHandlerPaymentInvalidParameter(t *testing.T) {
 		"source":       {"SDRAS7XIQNX25UDCCX725R4EYGBFYGJE4HJ2A3DFCWJIHMRSMS7CXX42"},
 		"destination":  {"GDSIKW43UA6JTOA47WVEBCZ4MYC74M3GNKNXTVDXFHXYYTNO5GGVN632"},
 		"asset_code":   {"USD"},
-		"asset_issuer": {"GDSIKW43UA6JTOA47WVEBCZ4MYC74M3GNKNXTVDXFHXYYTNO5GGVN631"},
+		"asset_issuer": {"GD4I7AFSLZGTDL34TQLWJOM2NHLIIOEKD5RHHZUW54HERBLSIRKUOX"},
 		"amount":       {"100.0"},
 	}
 
@@ -136,7 +141,7 @@ func TestRequestHandlerPaymentInvalidParameter(t *testing.T) {
 		"source":       {"SDRAS7XIQNX25UDCCX725R4EYGBFYGJE4HJ2A3DFCWJIHMRSMS7CXX42"},
 		"destination":  {"GDSIKW43UA6JTOA47WVEBCZ4MYC74M3GNKNXTVDXFHXYYTNO5GGVN632"},
 		"asset_code":   {"USD01234567890"},
-		"asset_issuer": {"GDSIKW43UA6JTOA47WVEBCZ4MYC74M3GNKNXTVDXFHXYYTNO5GGVN631"},
+		"asset_issuer": {"GD4I7AFSLZGTDL34TQLWJOM2NHLIIOEKD5RHHZUW54HERBLSIRKUOXRR"},
 		"amount":       {"100.0"},
 	}
 
