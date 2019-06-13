@@ -31,3 +31,5 @@ close_ledger
 payment :user1, :user2,
   ["USD", :anchor, "200.0"],
   path:[:native]
+
+close_ledger

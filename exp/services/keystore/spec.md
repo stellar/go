@@ -18,10 +18,11 @@ don’t anticipate a lot of requests to the keystore from each user, we
 should be able to tolerate having another round trip for relaying the
 auth token to the client server.
 
-Clients will have to configure their server's address used for
-authentication when booting up the keystore.
+Clients will have to configure a API endpoint on their servers used for
+authentication when booting up the keystore. Please refer to [this section](#required-changes-in-client-server)
+for more details.
 
-An auth token needs to be passed for all requests, and that's why there
+An auth token needs to be passed with all requests, and that's why there
 is no need for a userid argument to the endpoints below.
 
 <img src=attachments/2019-04-24-keystore-auth-flows.png>
@@ -128,8 +129,12 @@ the token is valid. This endpoint does not take any parameter.
 
 Delete Keys Response:
 
+*Success:*
+
 ```typescript
-type DeleteKeysResponse = EncryptedKeysData;
+interface Success {
+	message: "ok";
+}
 ```
 
 <details><summary>Errors</summary>
@@ -146,5 +151,14 @@ TBD
 
 ### Required Changes in Client Server
 
-Applications using the keytore will have to implement an endpoint
-that takes an auth token and returns a userid.
+Applications using the keystore will have to implement an endpoint
+that takes an auth token and returns a userid in the following json format:
+
+```json
+{
+	"userID": "some-user-id"
+}
+```
+
+The keystore will send a HTTP GET request to your designated endpoint and
+parse the result in the above format.

@@ -7,6 +7,7 @@ import (
 
 	"github.com/lib/pq"
 	"github.com/stellar/go/support/errors"
+	"github.com/stellar/go/support/render/problem"
 )
 
 type encryptedKeys struct {
@@ -17,19 +18,29 @@ type encryptedKeys struct {
 	ModifiedAt    *time.Time `json:"modifiedAt,omitempty"`
 }
 
-type storeKeysRequest struct {
+type putKeysRequest struct {
 	KeysBlob      string `json:"keysBlob"`
 	Salt          string `json:"salt"`
 	EncrypterName string `json:"encrypterName"`
 }
 
-func (s *Service) storeKeys(ctx context.Context, in storeKeysRequest) (*encryptedKeys, error) {
+func (s *Service) putKeys(ctx context.Context, in putKeysRequest) (*encryptedKeys, error) {
 	userID := userID(ctx)
 	if userID == "" {
 		return nil, probNotAuthorized
 	}
 
-	keysData, err := base64.RawURLEncoding.DecodeString(string(in.KeysBlob))
+	if in.Salt == "" {
+		return nil, problem.MakeInvalidFieldProblem("salt", errRequiredField)
+	}
+	if in.EncrypterName == "" {
+		return nil, problem.MakeInvalidFieldProblem("encrypterName", errRequiredField)
+	}
+	if in.KeysBlob == "" {
+		return nil, problem.MakeInvalidFieldProblem("keysBlob", errRequiredField)
+	}
+
+	keysData, err := base64.RawURLEncoding.DecodeString(in.KeysBlob)
 	if err != nil {
 		// TODO: we need to implement a helper function in the
 		// support/error package for keeping the stack trace from err
@@ -60,4 +71,46 @@ func (s *Service) storeKeys(ctx context.Context, in storeKeysRequest) (*encrypte
 		out.ModifiedAt = &modifiedAt.Time
 	}
 	return &out, nil
+}
+
+func (s *Service) getKeys(ctx context.Context) (*encryptedKeys, error) {
+	userID := userID(ctx)
+	if userID == "" {
+		return nil, probNotAuthorized
+	}
+
+	q := `
+		SELECT encrypted_keys_data, salt, encrypter_name, created_at, modified_at
+		FROM encrypted_keys
+		WHERE user_id = $1
+	`
+	var (
+		keysBlob   []byte
+		out        encryptedKeys
+		modifiedAt pq.NullTime
+	)
+	err := s.db.QueryRowContext(ctx, q, userID).Scan(&keysBlob, &out.Salt, &out.EncrypterName, &out.CreatedAt, &modifiedAt)
+	if err != nil {
+		return nil, errors.Wrap(err, "getting keys blob")
+	}
+
+	out.KeysBlob = base64.RawURLEncoding.EncodeToString(keysBlob)
+	if modifiedAt.Valid {
+		out.ModifiedAt = &modifiedAt.Time
+	}
+	return &out, nil
+}
+
+func (s *Service) deleteKeys(ctx context.Context) error {
+	userID := userID(ctx)
+	if userID == "" {
+		return probNotAuthorized
+	}
+
+	q := `
+		DELETE FROM encrypted_keys
+		WHERE user_id = $1
+	`
+	_, err := s.db.ExecContext(ctx, q, userID)
+	return errors.Wrap(err, "deleting keys blob")
 }

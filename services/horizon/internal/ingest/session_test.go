@@ -117,7 +117,6 @@ func Test_ingestBumpSeq(t *testing.T) {
 			NewSq int64 `json:"new_seq"`
 		}{}
 		err = testEffect.UnmarshalDetails(&details)
-		println(details.NewSq)
 		tt.Assert.Equal(int64(300000000000), details.NewSq)
 	}
 }

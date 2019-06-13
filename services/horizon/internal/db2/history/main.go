@@ -306,7 +306,8 @@ type Transaction struct {
 	ApplicationOrder int32       `db:"application_order"`
 	Account          string      `db:"account"`
 	AccountSequence  string      `db:"account_sequence"`
-	FeePaid          int32       `db:"fee_paid"`
+	MaxFee           int32       `db:"max_fee"`
+	FeeCharged       int32       `db:"fee_charged"`
 	OperationCount   int32       `db:"operation_count"`
 	TxEnvelope       string      `db:"tx_envelope"`
 	TxResult         string      `db:"tx_result"`
