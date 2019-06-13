@@ -24,8 +24,6 @@ func main() {
 		panic(err)
 	}
 
-	// seq := uint32(23991935)
-
 	fmt.Printf("Getting data for ledger seq = %d\n", seq)
 
 	stateReader, err := historyAdapter.GetState(seq)
@@ -75,7 +73,7 @@ func buildPipeline() (*pipeline.Pipeline, error) {
 			Pipe(
 				// Finds accounts for a single signer
 				p.Node(&AccountsForSignerProcessor{Signer: "GBMALBYJT6A73SYQWOWVVCGSPUPJPBX4AFDJ7A63GG64QCNRCAFYWWEN"}).
-					Pipe(p.Node(&PrintAllProcessor{Filename: "./accounts_for_signer.txt"})),
+					Pipe(p.Node(&PrintAllProcessor{Filename: "./accounts_for_signer.csv"})),
 			),
 	)
 

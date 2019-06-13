@@ -171,11 +171,6 @@ func (p *PrintAllProcessor) ProcessState(ctx context.Context, store *pipeline.St
 				entry.Data.Account.SeqNum,
 			)
 			foundEntries++
-			if foundEntries == 3 {
-				// We only want a few entries...
-				// return errors.New("Some error")
-				return nil
-			}
 		default:
 			// Ignore for now
 		}
