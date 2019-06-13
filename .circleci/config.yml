@@ -61,9 +61,6 @@ commands:
           name: Install dependencies
           command: sudo apt-get update && sudo apt-get install postgresql-client-9.6 mariadb-client-10.1
       - run:
-          name: Installing go-sqlite3 via "go install", to avoid build issues
-          command: go install github.com/stellar/go/vendor/github.com/mattn/go-sqlite3
-      - run:
           name: Install dockerize
           command: wget https://github.com/jwilder/dockerize/releases/download/$DOCKERIZE_VERSION/dockerize-linux-amd64-$DOCKERIZE_VERSION.tar.gz && sudo tar -C /usr/local/bin -xzvf dockerize-linux-amd64-$DOCKERIZE_VERSION.tar.gz && rm dockerize-linux-amd64-$DOCKERIZE_VERSION.tar.gz
           environment:
