@@ -2,9 +2,9 @@ package io
 
 import (
 	"io"
-	"log"
 
 	"github.com/stellar/go/exp/ingest/ledgerbackend"
+	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
 )
 
@@ -62,7 +62,6 @@ func (dblrc *DBLedgerReadCloser) Read() (LedgerTransaction, error) {
 
 // Close moves the read pointer so that subsequent calls to Read() will return EOF.
 func (dblrc *DBLedgerReadCloser) Close() error {
-	// TODO - raise an error if no data initialised yet
 	dblrc.readIdx = len(dblrc.transactions)
 	return nil
 }
@@ -72,10 +71,10 @@ func (dblrc *DBLedgerReadCloser) Init(sequence uint32, backend ledgerbackend.Led
 	exists, ledgerCloseMeta, err := backend.GetLedger(sequence)
 
 	if err != nil {
-		log.Fatal("error reading ledger from backend: ", err)
+		return errors.Wrap(err, "error reading ledger from backend")
 	}
 	if !exists {
-		log.Fatalf("Ledger %d was not found", sequence)
+		return errors.Wrap(err, "ledger was not found")
 	}
 
 	dblrc.sequence = sequence

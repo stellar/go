@@ -11,7 +11,7 @@ const noBackendErr = "missing LedgerBackendAdapter.Backend"
 
 // LedgerBackendAdapter provides a convenient I/O layer above the low-level LedgerBackend implementation.
 type LedgerBackendAdapter struct {
-	Backend *ledgerbackend.DatabaseBackend
+	Backend ledgerbackend.LedgerBackend
 }
 
 // GetLatestLedgerSequence returns the most recent ledger sequence number present in the backend.

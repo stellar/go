@@ -18,6 +18,7 @@ func main() {
 	useAdapter()
 }
 
+// Demos use of the LedgerBackendAdapter
 func useAdapter() {
 	backend := ledgerbackend.DatabaseBackend{
 		DriverName:     driver,
@@ -76,8 +77,8 @@ func useAdapter() {
 	lba.Close()
 }
 
+// Demos direct use of the DatabaseBackend
 func useBackend() {
-	// Initialise the database backend
 	dbb := ledgerbackend.DatabaseBackend{
 		DriverName:     "postgres",
 		DataSourceName: dbURI,
@@ -99,8 +100,6 @@ func useBackend() {
 	if !exists {
 		log.Fatalf("Ledger %d was not found", ledgerSequence)
 	}
-
-	// fmt.Println(ledgerCloseMeta)
 
 	fmt.Println("N transactions =", len(ledgerCloseMeta.TransactionEnvelope))
 	fmt.Println("ledgerCloseMeta.Transaction:", ledgerCloseMeta.TransactionEnvelope)
