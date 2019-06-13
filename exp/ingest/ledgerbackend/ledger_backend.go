@@ -26,8 +26,6 @@ type LedgerHeaderHistory struct {
 	Header xdr.LedgerHeader `db:"data"`
 }
 
-// TODO: Could use horizon/internal/db2/core/main core.LedgerHeader etc. after refactoring
-
 // LedgerHeader holds a row of data from the stellar-core `ledgerheaders` table.
 type LedgerHeader struct {
 	LedgerHash     string           `db:"ledgerhash"`

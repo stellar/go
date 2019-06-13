@@ -11,11 +11,13 @@ import (
 	"github.com/stellar/go/xdr"
 )
 
-const latestLedgerSeqQuery = "select ledgerseq, closetime from ledgerheaders order by ledgerseq desc limit 1"
-const txHistoryQuery = "select txbody, txresult, txmeta, txindex from txhistory where ledgerseq = "
-const ledgerHeaderQuery = "select ledgerhash, data from ledgerheaders where ledgerseq = "
-const txFeeHistoryQuery = "select txchanges from txfeehistory where ledgerseq = "
-const orderBy = " order by txindex asc"
+const (
+	latestLedgerSeqQuery = "select ledgerseq, closetime from ledgerheaders order by ledgerseq desc limit 1"
+	txHistoryQuery       = "select txbody, txresult, txmeta, txindex from txhistory where ledgerseq = "
+	ledgerHeaderQuery    = "select ledgerhash, data from ledgerheaders where ledgerseq = "
+	txFeeHistoryQuery    = "select txchanges from txfeehistory where ledgerseq = "
+	orderBy              = " order by txindex asc"
+)
 
 // Ensure DatabaseBackend implements LedgerBackend
 var _ LedgerBackend = (*DatabaseBackend)(nil)
