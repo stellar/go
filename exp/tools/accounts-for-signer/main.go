@@ -24,8 +24,6 @@ func main() {
 		panic(err)
 	}
 
-	// seq = uint32(24311487)
-
 	fmt.Printf("Getting data for ledger seq = %d\n", seq)
 
 	stateReader, err := historyAdapter.GetState(seq)
