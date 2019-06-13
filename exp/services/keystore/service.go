@@ -3,8 +3,6 @@ package keystore
 import (
 	"context"
 	"database/sql"
-
-	"github.com/sirupsen/logrus"
 )
 
 const (
@@ -16,9 +14,6 @@ type Config struct {
 	DBURL          string
 	MaxIdleDBConns int
 	MaxOpenDBConns int
-
-	LogFile  string
-	LogLevel logrus.Level
 
 	AUTHURL string
 
