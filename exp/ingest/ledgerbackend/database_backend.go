@@ -3,7 +3,6 @@ package ledgerbackend
 import (
 	"fmt"
 
-	"github.com/jmoiron/sqlx"
 	"github.com/stellar/go/support/db"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
@@ -22,7 +21,7 @@ var _ LedgerBackend = (*DatabaseBackend)(nil)
 
 // DatabaseBackend implements a database data store.
 type DatabaseBackend struct {
-	session        db.Session
+	session        *db.Session
 	DataSourceName string
 	DriverName     string
 }
@@ -116,7 +115,7 @@ func (dbb *DatabaseBackend) GetLedger(sequence uint32) (bool, LedgerCloseMeta, e
 // init sets up the backend for use. It delegates to the specific backend implementation. If initialisation has
 // already happened, it passes through silently.
 func (dbb *DatabaseBackend) init() error {
-	if dbb.session == (db.Session{}) {
+	if dbb.session == nil {
 		return dbb.createSession()
 	}
 	return nil
@@ -131,14 +130,11 @@ func (dbb *DatabaseBackend) createSession() error {
 		return errors.New("missing DatabaseBackend.DataSourceName (e.g. \"postgres://stellar:postgres@localhost:8002/core\")")
 	}
 
-	dbconn, err := sqlx.Connect(dbb.DriverName, dbb.DataSourceName)
+	session, err := db.Open(dbb.DriverName, dbb.DataSourceName)
 	if err != nil {
 		return err
 	}
 
-	session := db.Session{
-		DB: dbconn,
-	}
 	dbb.session = session
 
 	return nil

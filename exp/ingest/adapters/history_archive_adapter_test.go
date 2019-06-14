@@ -62,7 +62,6 @@ func TestGetState_Read(t *testing.T) {
 	}
 	assert.NotEqual(t, e, io.EOF)
 
-	// log.Printf("%v\n", le)
 	if !assert.NotNil(t, le) {
 		return
 	}
