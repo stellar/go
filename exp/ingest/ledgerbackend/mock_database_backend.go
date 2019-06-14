@@ -4,6 +4,8 @@ import (
 	"github.com/stretchr/testify/mock"
 )
 
+var _ LedgerBackend = (*MockDatabaseBackend)(nil)
+
 type MockDatabaseBackend struct {
 	mock.Mock
 }

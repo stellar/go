@@ -20,14 +20,14 @@ type LedgerCloseMeta struct {
 	TransactionFeeChanges []xdr.LedgerEntryChanges
 }
 
-// LedgerHeaderHistory is a helper struct used to unmarshall header fields from a stellar-core DB.
-type LedgerHeaderHistory struct {
+// ledgerHeaderHistory is a helper struct used to unmarshall header fields from a stellar-core DB.
+type ledgerHeaderHistory struct {
 	Hash   xdr.Hash         `db:"ledgerhash"`
 	Header xdr.LedgerHeader `db:"data"`
 }
 
-// LedgerHeader holds a row of data from the stellar-core `ledgerheaders` table.
-type LedgerHeader struct {
+// ledgerHeader holds a row of data from the stellar-core `ledgerheaders` table.
+type ledgerHeader struct {
 	LedgerHash     string           `db:"ledgerhash"`
 	PrevHash       string           `db:"prevhash"`
 	BucketListHash string           `db:"bucketlisthash"`
@@ -36,8 +36,8 @@ type LedgerHeader struct {
 	Data           xdr.LedgerHeader `db:"data"`
 }
 
-// TXHistory holds a row of data from the stellar-core `txhistory` table.
-type TXHistory struct {
+// txHistory holds a row of data from the stellar-core `txhistory` table.
+type txHistory struct {
 	TXID      string                    `db:"txid"`
 	LedgerSeq uint32                    `db:"ledgerseq"`
 	TXIndex   uint32                    `db:"txindex"`
@@ -46,23 +46,23 @@ type TXHistory struct {
 	TXMeta    xdr.TransactionMeta       `db:"txmeta"`
 }
 
-// TXFeeHistory holds a row of data from the stellar-core `txfeehistory` table.
-type TXFeeHistory struct {
+// txFeeHistory holds a row of data from the stellar-core `txfeehistory` table.
+type txFeeHistory struct {
 	TXID      string                 `db:"txid"`
 	LedgerSeq uint32                 `db:"ledgerseq"`
 	TXIndex   uint32                 `db:"txindex"`
 	TXChanges xdr.LedgerEntryChanges `db:"txchanges"`
 }
 
-// SCPHistory holds a row of data from the stellar-core `scphistory` table.
-type SCPHistory struct {
+// scpHistory holds a row of data from the stellar-core `scphistory` table.
+type scpHistory struct {
 	NodeID    string `db:"nodeid"`
 	LedgerSeq uint32 `db:"ledgerseq"`
 	Envelope  string `db:"envelope"`
 }
 
-// UpgradeHistory holds a row of data from the stellar-core `upgradehistory` table.
-type UpgradeHistory struct {
+// upgradeHistory holds a row of data from the stellar-core `upgradehistory` table.
+type upgradeHistory struct {
 	LedgerSeq    uint32 `db:"ledgerseq"`
 	UpgradeIndex uint32 `db:"upgradeindex"`
 	Upgrade      string `db:"upgrade"`

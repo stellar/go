@@ -2,10 +2,8 @@ package ledgerbackend
 
 import (
 	"fmt"
-	"time"
 
 	"github.com/jmoiron/sqlx"
-	log "github.com/sirupsen/logrus"
 	"github.com/stellar/go/support/db"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
@@ -36,14 +34,11 @@ func (dbb *DatabaseBackend) GetLatestLedgerSequence() (uint32, error) {
 		return 0, err
 	}
 
-	var ledger []LedgerHeader
+	var ledger []ledgerHeader
 	err = dbb.session.SelectRaw(&ledger, latestLedgerSeqQuery)
 	if err != nil {
 		return 0, errors.Wrap(err, "couldn't select ledger sequence")
 	}
-
-	log.Infof("latest ledger is %d, closed at %s (%d)", ledger[0].LedgerSeq,
-		time.Unix(ledger[0].CloseTime, 0), ledger[0].CloseTime)
 
 	return ledger[0].LedgerSeq, nil
 }
@@ -68,7 +63,7 @@ func (dbb *DatabaseBackend) GetLedger(sequence uint32) (bool, LedgerCloseMeta, e
 	lcm := LedgerCloseMeta{}
 
 	// Query - ledgerheader
-	var lRows []LedgerHeaderHistory
+	var lRows []ledgerHeaderHistory
 
 	ledgerHeaderQ := ledgerHeaderQuery + fmt.Sprintf("%d", sequence)
 	err = dbb.session.SelectRaw(&lRows, ledgerHeaderQ)
@@ -85,7 +80,7 @@ func (dbb *DatabaseBackend) GetLedger(sequence uint32) (bool, LedgerCloseMeta, e
 	}
 
 	// Query - txhistory
-	var txhRows []TXHistory
+	var txhRows []txHistory
 	txHistoryQ := txHistoryQuery + fmt.Sprintf("%d", sequence) + orderBy
 	err = dbb.session.SelectRaw(&txhRows, txHistoryQ)
 	// Return errors...
@@ -102,7 +97,7 @@ func (dbb *DatabaseBackend) GetLedger(sequence uint32) (bool, LedgerCloseMeta, e
 	}
 
 	// Query - txfeehistory
-	var txfhRows []TXFeeHistory
+	var txfhRows []txFeeHistory
 	txFeeHistoryQ := txFeeHistoryQuery + fmt.Sprintf("%d", sequence) + orderBy
 	err = dbb.session.SelectRaw(&txfhRows, txFeeHistoryQ)
 	// Return errors...

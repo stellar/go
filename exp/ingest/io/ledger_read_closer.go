@@ -1,7 +1,6 @@
 package io
 
 import (
-	"io"
 	"sync"
 
 	"github.com/stellar/go/exp/ingest/ledgerbackend"
@@ -76,7 +75,7 @@ func (dblrc *DBLedgerReadCloser) Read() (LedgerTransaction, error) {
 
 		return dblrc.transactions[dblrc.readIdx-1], nil
 	}
-	return LedgerTransaction{}, io.EOF
+	return LedgerTransaction{}, EOF
 }
 
 // Close moves the read pointer so that subsequent calls to Read() will return EOF.

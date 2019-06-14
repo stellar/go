@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"io"
+	"time"
 
 	log "github.com/sirupsen/logrus"
 	"github.com/stellar/go/exp/ingest/ledgerbackend"
@@ -45,6 +46,9 @@ func useAdapter() {
 
 	h := lrc.GetHeader()
 	fmt.Println("lrc header:", h)
+
+	log.Infof("latest ledger is %d, closed at %s (%d)", ledgerSequence,
+		time.Unix(int64(h.Header.ScpValue.CloseTime), 0), h.Header.ScpValue.CloseTime)
 
 	for {
 		lt, err := lrc.Read()

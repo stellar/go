@@ -1,10 +1,11 @@
 package io
 
 import (
-	"github.com/stellar/go/exp/ingest/ledgerbackend"
 	"github.com/stellar/go/xdr"
 	"github.com/stretchr/testify/mock"
 )
+
+var _ LedgerReadCloser = (*MockLedgerReadCloser)(nil)
 
 type MockLedgerReadCloser struct {
 	mock.Mock
@@ -26,11 +27,6 @@ func (m *MockLedgerReadCloser) Read() (LedgerTransaction, error) {
 }
 
 func (m *MockLedgerReadCloser) Close() error {
-	args := m.Called()
-	return args.Error(0)
-}
-
-func (m *MockLedgerReadCloser) Init(sequence uint32, backend ledgerbackend.LedgerBackend) error {
 	args := m.Called()
 	return args.Error(0)
 }
