@@ -28,6 +28,11 @@ func BuildTransaction(accountID, networkPassphrase string, operation []txnbuild.
 		return "", errors.Wrap(err, "unable to build transaction")
 	}
 
+	err = tx.Sign()
+	if err != nil {
+		return "", errors.Wrap(err, "unable to build transaction")
+	}
+
 	txe, err := tx.Base64()
 	if err != nil {
 		return "", errors.Wrap(err, "unable to encode transaction")

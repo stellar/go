@@ -64,38 +64,8 @@ func Now() time.Time {
 	return PredefinedTime
 }
 
-type Operation interface {
-	PagingToken() string
-	GetType() string
-	GetID() string
-	GetTransactionHash() string
-	IsTransactionSuccessful() bool
-}
+type MockNonceGenerator struct{}
 
-type MockOperationResponse struct {
-	PT                    string
-	Type                  string
-	ID                    string
-	TransactionHash       string
-	TransactionSuccessful bool
-}
-
-func (m MockOperationResponse) PagingToken() string {
-	return m.PT
-}
-
-func (m MockOperationResponse) GetType() string {
-	return m.Type
-}
-
-func (m MockOperationResponse) GetID() string {
-	return m.ID
-}
-
-func (m MockOperationResponse) GetTransactionHash() string {
-	return m.TransactionHash
-}
-
-func (m MockOperationResponse) IsTransactionSuccessful() bool {
-	return m.TransactionSuccessful
+func (n *MockNonceGenerator) Generate() string {
+	return "nonce"
 }
