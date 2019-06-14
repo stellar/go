@@ -16,6 +16,7 @@ import (
 	"time"
 
 	migrate "github.com/rubenv/sql-migrate"
+	"github.com/sirupsen/logrus"
 	"github.com/stellar/go/exp/services/keystore"
 	"github.com/stellar/go/support/log"
 
@@ -32,6 +33,8 @@ func main() {
 	ctx := context.Background()
 	tlsCert := flag.String("tls-cert", "", "TLS certificate file path")
 	tlsKey := flag.String("tls-key", "", "TLS private key file path")
+	logFilePath := flag.String("log-file", "", "Log file file path")
+	logLevel := flag.String("log-level", "info", "Log level used by logrus (debug, info, warn, error)")
 	auth := flag.Bool("auth", true, "Enable authentication")
 	apiType := flag.String("api-type", "REST", "Auth Forwarding API Type")
 
@@ -46,19 +49,24 @@ func main() {
 		os.Exit(1)
 	}
 
-	cfg := getConfig()
-	// will read the value from AWS parameter store
-	if cfg.LogFile != "" {
-		logFile, err := os.OpenFile(cfg.LogFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if *logFilePath != "" {
+		logFile, err := os.OpenFile(*logFilePath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Failed to open file to log: %v\n", err)
 			os.Exit(1)
 		}
 
 		log.DefaultLogger.Logger.Out = logFile
-		log.DefaultLogger.Logger.SetLevel(cfg.LogLevel)
+
+		ll, err := logrus.ParseLevel(*logLevel)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Could not parse log-level: %v\n", err)
+			os.Exit(1)
+		}
+		log.DefaultLogger.Logger.SetLevel(ll)
 	}
 
+	cfg := getConfig()
 	if cfg.ListenerPort < 0 {
 		fmt.Fprintf(os.Stderr, "Port number %d cannot be negative\n", cfg.ListenerPort)
 		os.Exit(1)
