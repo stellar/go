@@ -44,8 +44,11 @@ func useAdapter() {
 
 	for {
 		lt, err := lrc.Read()
-		if err == io.EOF {
-			break
+		if err != nil {
+			if err == io.EOF {
+				break
+			}
+			log.Fatal(err)
 		}
 
 		d := lt.Index

@@ -1,6 +1,7 @@
 package ledgerbackend
 
 import (
+	"log"
 	"sync"
 
 	"github.com/stellar/go/support/db"
@@ -65,18 +66,23 @@ func (dbb *DatabaseBackend) GetLedger(sequence uint32) (bool, LedgerCloseMeta, e
 	lcm := LedgerCloseMeta{}
 
 	// Query - ledgerheader
-	var lRows []ledgerHeaderHistory
+	var lRow ledgerHeaderHistory
 
-	err = dbb.session.SelectRaw(&lRows, ledgerHeaderQuery, sequence)
+	err = dbb.session.GetRaw(&lRow, ledgerHeaderQuery, sequence)
 	// Return errors...
 	if err != nil {
+		// switch err {
+		// case sql.ErrNoRows:
+		// 	return false, LedgerCloseMeta{}, nil
+		// default:
 		return false, LedgerCloseMeta{}, errors.Wrap(err, "Error getting ledger header")
+		// }
 	}
 
 	// ...otherwise store the header
 	lcm.LedgerHeader = xdr.LedgerHeaderHistoryEntry{
-		Hash:   lRows[0].Hash,
-		Header: lRows[0].Header,
+		Hash:   lRow.Hash,
+		Header: lRow.Header,
 		Ext:    xdr.LedgerHeaderHistoryEntryExt{},
 	}
 
@@ -89,7 +95,12 @@ func (dbb *DatabaseBackend) GetLedger(sequence uint32) (bool, LedgerCloseMeta, e
 	}
 
 	// ...otherwise store the data
-	for _, tx := range txhRows {
+	for i, tx := range txhRows {
+		// Sanity check index. Note that first TXIndex in a ledger is 1
+		if i != int(tx.TXIndex)-1 {
+			return false, LedgerCloseMeta{}, errors.New("transactions read from DB are misordered")
+		}
+
 		lcm.TransactionEnvelope = append(lcm.TransactionEnvelope, tx.TXBody)
 		lcm.TransactionResult = append(lcm.TransactionResult, tx.TXResult)
 		lcm.TransactionMeta = append(lcm.TransactionMeta, tx.TXMeta)
@@ -105,7 +116,13 @@ func (dbb *DatabaseBackend) GetLedger(sequence uint32) (bool, LedgerCloseMeta, e
 	}
 
 	// ...otherwise store the data
-	for _, tx := range txfhRows {
+	for i, tx := range txfhRows {
+		// Sanity check index. Note that first TXIndex in a ledger is 1
+		// TODO: This is not working
+		if i != int(tx.TXIndex)-1 {
+			log.Fatal("i is:", i, tx.TXIndex)
+			return false, LedgerCloseMeta{}, errors.New("transactions read from DB are misordered")
+		}
 		lcm.TransactionFeeChanges = append(lcm.TransactionFeeChanges, tx.TXChanges)
 	}
 
