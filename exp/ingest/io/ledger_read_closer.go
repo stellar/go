@@ -53,20 +53,23 @@ func MakeLedgerReadCloser(sequence uint32, backend ledgerbackend.LedgerBackend) 
 
 // GetSequence returns the sequence number of the ledger data stored by this object.
 func (dblrc *DBLedgerReadCloser) GetSequence() uint32 {
-	dblrc.initOnce.Do(func() { dblrc.init() })
 	return dblrc.sequence
 }
 
 // GetHeader returns the XDR Header data associated with the stored ledger.
 func (dblrc *DBLedgerReadCloser) GetHeader() xdr.LedgerHeaderHistoryEntry {
-	dblrc.initOnce.Do(func() { dblrc.init() })
 	return dblrc.header
 }
 
 // Read returns the next transaction in the ledger, ordered by tx number, each time it is called. When there
 // are no more transactions to return, an EOF error is returned.
 func (dblrc *DBLedgerReadCloser) Read() (LedgerTransaction, error) {
-	dblrc.initOnce.Do(func() { dblrc.init() })
+	var err error
+	dblrc.initOnce.Do(func() { err = dblrc.init() })
+	if err != nil {
+		return LedgerTransaction{}, err
+	}
+
 	if dblrc.readIdx < len(dblrc.transactions) {
 
 		dblrc.readMutex.Lock()
@@ -80,8 +83,10 @@ func (dblrc *DBLedgerReadCloser) Read() (LedgerTransaction, error) {
 
 // Close moves the read pointer so that subsequent calls to Read() will return EOF.
 func (dblrc *DBLedgerReadCloser) Close() error {
-	dblrc.initOnce.Do(func() { dblrc.init() })
+	dblrc.readMutex.Lock()
 	dblrc.readIdx = len(dblrc.transactions)
+	dblrc.readMutex.Unlock()
+
 	return nil
 }
 
