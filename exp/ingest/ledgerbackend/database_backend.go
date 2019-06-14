@@ -2,6 +2,7 @@ package ledgerbackend
 
 import (
 	"fmt"
+	"sync"
 
 	"github.com/stellar/go/support/db"
 	"github.com/stellar/go/support/errors"
@@ -21,14 +22,16 @@ var _ LedgerBackend = (*DatabaseBackend)(nil)
 
 // DatabaseBackend implements a database data store.
 type DatabaseBackend struct {
-	session        *db.Session
 	DataSourceName string
 	DriverName     string
+	session        *db.Session
+	initOnce       sync.Once
 }
 
 // GetLatestLedgerSequence returns the most recent ledger sequence number present in the database.
 func (dbb *DatabaseBackend) GetLatestLedgerSequence() (uint32, error) {
-	err := dbb.init()
+	var err error
+	dbb.initOnce.Do(func() { err = dbb.init() })
 	if err != nil {
 		return 0, err
 	}
@@ -45,7 +48,8 @@ func (dbb *DatabaseBackend) GetLatestLedgerSequence() (uint32, error) {
 // GetLedger returns the LedgerCloseMeta for the given ledger sequence number.
 // The first returned value is false when the ledger does not exist in the database.
 func (dbb *DatabaseBackend) GetLedger(sequence uint32) (bool, LedgerCloseMeta, error) {
-	err := dbb.init()
+	var err error
+	dbb.initOnce.Do(func() { err = dbb.init() })
 	if err != nil {
 		return false, LedgerCloseMeta{}, err
 	}
@@ -68,7 +72,7 @@ func (dbb *DatabaseBackend) GetLedger(sequence uint32) (bool, LedgerCloseMeta, e
 	err = dbb.session.SelectRaw(&lRows, ledgerHeaderQ)
 	// Return errors...
 	if err != nil {
-		return false, LedgerCloseMeta{}, err
+		return false, LedgerCloseMeta{}, errors.Wrap(err, "Error getting ledger header")
 	}
 
 	// ...otherwise store the header
@@ -84,7 +88,7 @@ func (dbb *DatabaseBackend) GetLedger(sequence uint32) (bool, LedgerCloseMeta, e
 	err = dbb.session.SelectRaw(&txhRows, txHistoryQ)
 	// Return errors...
 	if err != nil {
-		return false, lcm, err
+		return false, lcm, errors.Wrap(err, "Error getting txHistory")
 	}
 
 	// ...otherwise store the data
@@ -101,7 +105,7 @@ func (dbb *DatabaseBackend) GetLedger(sequence uint32) (bool, LedgerCloseMeta, e
 	err = dbb.session.SelectRaw(&txfhRows, txFeeHistoryQ)
 	// Return errors...
 	if err != nil {
-		return false, lcm, err
+		return false, lcm, errors.Wrap(err, "Error getting txFeeHistory")
 	}
 
 	// ...otherwise store the data
@@ -112,13 +116,9 @@ func (dbb *DatabaseBackend) GetLedger(sequence uint32) (bool, LedgerCloseMeta, e
 	return true, lcm, nil
 }
 
-// init sets up the backend for use. It delegates to the specific backend implementation. If initialisation has
-// already happened, it passes through silently.
+// init sets up the backend for use. It delegates to the specific backend implementation.
 func (dbb *DatabaseBackend) init() error {
-	if dbb.session == nil {
-		return dbb.createSession()
-	}
-	return nil
+	return dbb.createSession()
 }
 
 // CreateSession returns a new db.Session that connects to the given DB settings.
