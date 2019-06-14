@@ -1,7 +1,6 @@
 package ledgerbackend
 
 import (
-	"fmt"
 	"sync"
 
 	"github.com/stellar/go/support/db"
@@ -11,10 +10,11 @@ import (
 
 const (
 	latestLedgerSeqQuery = "select ledgerseq, closetime from ledgerheaders order by ledgerseq desc limit 1"
-	txHistoryQuery       = "select txbody, txresult, txmeta, txindex from txhistory where ledgerseq = "
-	ledgerHeaderQuery    = "select ledgerhash, data from ledgerheaders where ledgerseq = "
-	txFeeHistoryQuery    = "select txchanges from txfeehistory where ledgerseq = "
-	orderBy              = " order by txindex asc"
+	txHistoryQuery       = "select txbody, txresult, txmeta, txindex from txhistory where ledgerseq = ? "
+	ledgerHeaderQuery    = "select ledgerhash, data from ledgerheaders where ledgerseq = ? "
+	txFeeHistoryQuery    = "select txchanges from txfeehistory where ledgerseq = ? "
+	orderBy              = "order by txindex asc"
+	dbDriver             = "postgres"
 )
 
 // Ensure DatabaseBackend implements LedgerBackend
@@ -23,7 +23,6 @@ var _ LedgerBackend = (*DatabaseBackend)(nil)
 // DatabaseBackend implements a database data store.
 type DatabaseBackend struct {
 	DataSourceName string
-	DriverName     string
 	session        *db.Session
 	initOnce       sync.Once
 }
@@ -68,8 +67,7 @@ func (dbb *DatabaseBackend) GetLedger(sequence uint32) (bool, LedgerCloseMeta, e
 	// Query - ledgerheader
 	var lRows []ledgerHeaderHistory
 
-	ledgerHeaderQ := ledgerHeaderQuery + fmt.Sprintf("%d", sequence)
-	err = dbb.session.SelectRaw(&lRows, ledgerHeaderQ)
+	err = dbb.session.SelectRaw(&lRows, ledgerHeaderQuery, sequence)
 	// Return errors...
 	if err != nil {
 		return false, LedgerCloseMeta{}, errors.Wrap(err, "Error getting ledger header")
@@ -84,8 +82,7 @@ func (dbb *DatabaseBackend) GetLedger(sequence uint32) (bool, LedgerCloseMeta, e
 
 	// Query - txhistory
 	var txhRows []txHistory
-	txHistoryQ := txHistoryQuery + fmt.Sprintf("%d", sequence) + orderBy
-	err = dbb.session.SelectRaw(&txhRows, txHistoryQ)
+	err = dbb.session.SelectRaw(&txhRows, txHistoryQuery+orderBy, sequence)
 	// Return errors...
 	if err != nil {
 		return false, lcm, errors.Wrap(err, "Error getting txHistory")
@@ -101,8 +98,7 @@ func (dbb *DatabaseBackend) GetLedger(sequence uint32) (bool, LedgerCloseMeta, e
 
 	// Query - txfeehistory
 	var txfhRows []txFeeHistory
-	txFeeHistoryQ := txFeeHistoryQuery + fmt.Sprintf("%d", sequence) + orderBy
-	err = dbb.session.SelectRaw(&txfhRows, txFeeHistoryQ)
+	err = dbb.session.SelectRaw(&txfhRows, txFeeHistoryQuery+orderBy, sequence)
 	// Return errors...
 	if err != nil {
 		return false, lcm, errors.Wrap(err, "Error getting txFeeHistory")
@@ -123,14 +119,11 @@ func (dbb *DatabaseBackend) init() error {
 
 // CreateSession returns a new db.Session that connects to the given DB settings.
 func (dbb *DatabaseBackend) createSession() error {
-	if dbb.DriverName == "" {
-		return errors.New("missing DatabaseBackend.DriverName (e.g. \"postgres\")")
-	}
 	if dbb.DataSourceName == "" {
 		return errors.New("missing DatabaseBackend.DataSourceName (e.g. \"postgres://stellar:postgres@localhost:8002/core\")")
 	}
 
-	session, err := db.Open(dbb.DriverName, dbb.DataSourceName)
+	session, err := db.Open(dbDriver, dbb.DataSourceName)
 	if err != nil {
 		return err
 	}

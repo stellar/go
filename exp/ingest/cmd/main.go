@@ -11,7 +11,6 @@ import (
 	ingestadapters "github.com/stellar/go/exp/ingest/adapters"
 )
 
-const driver = "postgres"
 const dbURI = "postgres://stellar:postgres@localhost:8002/core"
 
 func main() {
@@ -22,7 +21,6 @@ func main() {
 // Demos use of the LedgerBackendAdapter
 func useAdapter() {
 	backend := ledgerbackend.DatabaseBackend{
-		DriverName:     driver,
 		DataSourceName: dbURI,
 	}
 	lba := ingestadapters.LedgerBackendAdapter{
@@ -43,12 +41,6 @@ func useAdapter() {
 
 	s := lrc.GetSequence()
 	fmt.Println("lrc sequence:", s)
-
-	h := lrc.GetHeader()
-	fmt.Println("lrc header:", h)
-
-	log.Infof("latest ledger is %d, closed at %s (%d)", ledgerSequence,
-		time.Unix(int64(h.Header.ScpValue.CloseTime), 0), h.Header.ScpValue.CloseTime)
 
 	for {
 		lt, err := lrc.Read()
@@ -77,6 +69,12 @@ func useAdapter() {
 		fmt.Println("    V1.TxChanges", c.V1.TxChanges)
 	}
 
+	h := lrc.GetHeader()
+	fmt.Println("lrc header:", h)
+
+	log.Infof("latest ledger is %d, closed at %s (%d)", ledgerSequence,
+		time.Unix(int64(h.Header.ScpValue.CloseTime), 0), h.Header.ScpValue.CloseTime)
+
 	lrc.Close()
 	lba.Close()
 }
@@ -84,7 +82,6 @@ func useAdapter() {
 // Demos direct use of the DatabaseBackend
 func useBackend() {
 	dbb := ledgerbackend.DatabaseBackend{
-		DriverName:     "postgres",
 		DataSourceName: dbURI,
 	}
 	defer dbb.Close()
