@@ -38,6 +38,7 @@ type DBLedgerReadCloser struct {
 	transactions []LedgerTransaction
 	readIdx      int
 	initOnce     sync.Once
+	readMutex    sync.Mutex
 }
 
 // Ensure DBLedgerReadCloser implements LedgerReadCloser
@@ -68,8 +69,12 @@ func (dblrc *DBLedgerReadCloser) GetHeader() xdr.LedgerHeaderHistoryEntry {
 func (dblrc *DBLedgerReadCloser) Read() (LedgerTransaction, error) {
 	dblrc.initOnce.Do(func() { dblrc.init() })
 	if dblrc.readIdx < len(dblrc.transactions) {
-		defer dblrc.incReadIdx()
-		return dblrc.transactions[dblrc.readIdx], nil
+
+		dblrc.readMutex.Lock()
+		dblrc.readIdx++
+		dblrc.readMutex.Unlock()
+
+		return dblrc.transactions[dblrc.readIdx-1], nil
 	}
 	return LedgerTransaction{}, io.EOF
 }
@@ -112,10 +117,4 @@ func (dblrc *DBLedgerReadCloser) storeTransactions(lcm ledgerbackend.LedgerClose
 			Meta:     lcm.TransactionMeta[i],
 		})
 	}
-}
-
-// incReadIdx increments the transaction pointer for Read(). It is a function so that it can
-// be called with defer.
-func (dblrc *DBLedgerReadCloser) incReadIdx() {
-	dblrc.readIdx++
 }
