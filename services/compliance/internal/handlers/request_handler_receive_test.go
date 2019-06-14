@@ -15,21 +15,21 @@ import (
 	callback "github.com/stellar/go/services/internal/bridge-compliance-shared/protocols/compliance"
 )
 
-var rhconfig = &config.Config{
-	NetworkPassphrase: "Test SDF Network ; September 2015",
-	Keys: config.Keys{
-		// GBYJZW5XFAI6XV73H5SAIUYK6XZI4CGGVBUBO3ANA2SV7KKDAXTV6AEB
-		SigningSeed: "SDWTLFPALQSP225BSMX7HPZ7ZEAYSUYNDLJ5QI3YGVBNRUIIELWH3XUV",
-	},
-}
-
-var mockHTTPClient = new(mocks.MockHTTPClient)
-var mockDatabase = new(mocks.MockDatabase)
-var mockFederationResolver = new(mocks.MockFederationResolver)
-var mockSignerVerifier = new(mocks.MockSignerVerifier)
-var mockStellartomlResolver = new(mocks.MockStellartomlResolver)
-
 func TestRequestHandlerReceive(t *testing.T) {
+	var rhconfig = &config.Config{
+		NetworkPassphrase: "Test SDF Network ; September 2015",
+		Keys: config.Keys{
+			// GBYJZW5XFAI6XV73H5SAIUYK6XZI4CGGVBUBO3ANA2SV7KKDAXTV6AEB
+			SigningSeed: "SDWTLFPALQSP225BSMX7HPZ7ZEAYSUYNDLJ5QI3YGVBNRUIIELWH3XUV",
+		},
+	}
+
+	var mockHTTPClient = new(mocks.MockHTTPClient)
+	var mockDatabase = new(mocks.MockDatabase)
+	var mockFederationResolver = new(mocks.MockFederationResolver)
+	var mockSignerVerifier = new(mocks.MockSignerVerifier)
+	var mockStellartomlResolver = new(mocks.MockStellartomlResolver)
+
 	requestHandler := RequestHandler{
 		Config:                  rhconfig,
 		Client:                  mockHTTPClient,
