@@ -1,7 +1,6 @@
 package ledgerbackend
 
 import (
-	"log"
 	"sync"
 
 	"github.com/stellar/go/support/db"
@@ -13,7 +12,7 @@ const (
 	latestLedgerSeqQuery = "select ledgerseq, closetime from ledgerheaders order by ledgerseq desc limit 1"
 	txHistoryQuery       = "select txbody, txresult, txmeta, txindex from txhistory where ledgerseq = ? "
 	ledgerHeaderQuery    = "select ledgerhash, data from ledgerheaders where ledgerseq = ? "
-	txFeeHistoryQuery    = "select txchanges from txfeehistory where ledgerseq = ? "
+	txFeeHistoryQuery    = "select txchanges, txindex from txfeehistory where ledgerseq = ? "
 	orderBy              = "order by txindex asc"
 	dbDriver             = "postgres"
 )
@@ -98,7 +97,7 @@ func (dbb *DatabaseBackend) GetLedger(sequence uint32) (bool, LedgerCloseMeta, e
 	for i, tx := range txhRows {
 		// Sanity check index. Note that first TXIndex in a ledger is 1
 		if i != int(tx.TXIndex)-1 {
-			return false, LedgerCloseMeta{}, errors.New("transactions read from DB are misordered")
+			return false, LedgerCloseMeta{}, errors.New("transactions read from DB history table are misordered")
 		}
 
 		lcm.TransactionEnvelope = append(lcm.TransactionEnvelope, tx.TXBody)
@@ -118,10 +117,8 @@ func (dbb *DatabaseBackend) GetLedger(sequence uint32) (bool, LedgerCloseMeta, e
 	// ...otherwise store the data
 	for i, tx := range txfhRows {
 		// Sanity check index. Note that first TXIndex in a ledger is 1
-		// TODO: This is not working
 		if i != int(tx.TXIndex)-1 {
-			log.Fatal("i is:", i, tx.TXIndex)
-			return false, LedgerCloseMeta{}, errors.New("transactions read from DB are misordered")
+			return false, LedgerCloseMeta{}, errors.New("transactions read from DB fee history table are misordered")
 		}
 		lcm.TransactionFeeChanges = append(lcm.TransactionFeeChanges, tx.TXChanges)
 	}
