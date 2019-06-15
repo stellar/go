@@ -70,6 +70,8 @@ func (dbb *DatabaseBackend) GetLedger(sequence uint32) (bool, LedgerCloseMeta, e
 	err = dbb.session.GetRaw(&lRow, ledgerHeaderQuery, sequence)
 	// Return errors...
 	if err != nil {
+		// TODO: The code here should be sufficient to replace the ledger checks above.
+		// However, I'm not seeing any sql.ErrNoRows error being raised, even when the dataset is empty.
 		// switch err {
 		// case sql.ErrNoRows:
 		// 	return false, LedgerCloseMeta{}, nil

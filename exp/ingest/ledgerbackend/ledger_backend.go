@@ -10,6 +10,13 @@ type LedgerBackend interface {
 	Close() error
 }
 
+// session is the interface needed to access a persistent database session.
+// TODO can't use this until we add Close() to the existing db.Session object
+type session interface {
+	GetRaw(dest interface{}, query string, args ...interface{}) error
+	SelectRaw(dest interface{}, query string, args ...interface{}) error
+}
+
 // LedgerCloseMeta is the information needed to reconstruct the history of transactions in a given ledger.
 type LedgerCloseMeta struct {
 	LedgerHeader          xdr.LedgerHeaderHistoryEntry
