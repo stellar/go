@@ -40,6 +40,13 @@ func (s *Session) Clone() *Session {
 	}
 }
 
+// Close delegates to the underlying database Close method, closing the database
+// and releasing any resources. It is rare to Close a DB, as the DB handle is meant
+// to be long-lived and shared between many goroutines.
+func (s *Session) Close() error {
+	return s.DB.Close()
+}
+
 // Commit commits the current transaction
 func (s *Session) Commit() error {
 	if s.tx == nil {
