@@ -1,6 +1,7 @@
 package ledgerbackend
 
 import (
+	"database/sql"
 	"sync"
 
 	"github.com/stellar/go/support/db"
@@ -53,15 +54,6 @@ func (dbb *DatabaseBackend) GetLedger(sequence uint32) (bool, LedgerCloseMeta, e
 		return false, LedgerCloseMeta{}, err
 	}
 
-	// Check whether ledger is available
-	latest, err := dbb.GetLatestLedgerSequence()
-	if err != nil {
-		return false, LedgerCloseMeta{}, err
-	}
-	if latest < sequence {
-		return false, LedgerCloseMeta{}, nil
-	}
-
 	lcm := LedgerCloseMeta{}
 
 	// Query - ledgerheader
@@ -70,14 +62,13 @@ func (dbb *DatabaseBackend) GetLedger(sequence uint32) (bool, LedgerCloseMeta, e
 	err = dbb.session.GetRaw(&lRow, ledgerHeaderQuery, sequence)
 	// Return errors...
 	if err != nil {
-		// TODO: The code here should be sufficient to replace the ledger checks above.
-		// However, I'm not seeing any sql.ErrNoRows error being raised, even when the dataset is empty.
-		// switch err {
-		// case sql.ErrNoRows:
-		// 	return false, LedgerCloseMeta{}, nil
-		// default:
-		return false, LedgerCloseMeta{}, errors.Wrap(err, "Error getting ledger header")
-		// }
+		switch err {
+		case sql.ErrNoRows:
+			// Ledger was not found
+			return false, LedgerCloseMeta{}, nil
+		default:
+			return false, LedgerCloseMeta{}, errors.Wrap(err, "Error getting ledger header")
+		}
 	}
 
 	// ...otherwise store the header
@@ -105,7 +96,6 @@ func (dbb *DatabaseBackend) GetLedger(sequence uint32) (bool, LedgerCloseMeta, e
 		lcm.TransactionEnvelope = append(lcm.TransactionEnvelope, tx.TXBody)
 		lcm.TransactionResult = append(lcm.TransactionResult, tx.TXResult)
 		lcm.TransactionMeta = append(lcm.TransactionMeta, tx.TXMeta)
-		lcm.TransactionIndex = append(lcm.TransactionIndex, tx.TXIndex)
 	}
 
 	// Query - txfeehistory

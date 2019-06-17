@@ -23,10 +23,12 @@ type LedgerReadCloser interface {
 
 // LedgerTransaction represents the data for a single transaction within a ledger.
 type LedgerTransaction struct {
-	Index    uint32
-	Envelope xdr.TransactionEnvelope
-	Result   xdr.TransactionResultPair
-	Meta     xdr.TransactionMeta
+	Index            uint32
+	Envelope         xdr.TransactionEnvelope
+	Result           xdr.TransactionResultPair
+	Meta             xdr.TransactionMeta
+	FeeChanges       xdr.LedgerEntryChanges
+	TransactionIndex []uint32
 }
 
 // DBLedgerReadCloser is a database-backed implementation of the io.LedgerReadCloser interface.
@@ -70,12 +72,12 @@ func (dblrc *DBLedgerReadCloser) Read() (LedgerTransaction, error) {
 		return LedgerTransaction{}, err
 	}
 
+	// Protect all accesses to dblrc.readIdx
+	dblrc.readMutex.Lock()
+	defer dblrc.readMutex.Unlock()
+
 	if dblrc.readIdx < len(dblrc.transactions) {
-
-		dblrc.readMutex.Lock()
 		dblrc.readIdx++
-		dblrc.readMutex.Unlock()
-
 		return dblrc.transactions[dblrc.readIdx-1], nil
 	}
 	return LedgerTransaction{}, EOF
@@ -115,10 +117,11 @@ func (dblrc *DBLedgerReadCloser) storeTransactions(lcm ledgerbackend.LedgerClose
 	// TODO: This should only be done once - how to enforce?
 	for i := range lcm.TransactionEnvelope {
 		dblrc.transactions = append(dblrc.transactions, LedgerTransaction{
-			Index:    lcm.TransactionIndex[i],
-			Envelope: lcm.TransactionEnvelope[i],
-			Result:   lcm.TransactionResult[i],
-			Meta:     lcm.TransactionMeta[i],
+			Index:      uint32(i + 1), // Transactions start at '1'
+			Envelope:   lcm.TransactionEnvelope[i],
+			Result:     lcm.TransactionResult[i],
+			Meta:       lcm.TransactionMeta[i],
+			FeeChanges: lcm.TransactionFeeChanges[i],
 		})
 	}
 }

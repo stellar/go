@@ -46,6 +46,7 @@ func useAdapter() {
 		lt, err := lrc.Read()
 		if err != nil {
 			if err == io.EOF {
+				log.Info("No more transactions to read")
 				break
 			}
 			log.Fatal(err)
