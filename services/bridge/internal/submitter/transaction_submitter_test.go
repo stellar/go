@@ -42,18 +42,15 @@ func TestTransactionSubmitter(t *testing.T) {
 
 	// successfully loads an account
 	transactionSubmitter = NewTransactionSubmitter(mockHorizon, mockDatabase, "Test SDF Network ; September 2015", mocks.Now)
-	hAcct := hProtocol.HistoryAccount{
-		ID:        accountID,
-		AccountID: accountID,
-	}
 
 	mockHorizon.On(
 		"AccountDetail",
 		mock.AnythingOfType("horizonclient.AccountRequest"),
 	).Return(
 		hProtocol.Account{
-			HistoryAccount: hAcct,
-			Sequence:       "10372672437354496",
+			ID:        accountID,
+			AccountID: accountID,
+			Sequence:  "10372672437354496",
 		},
 		nil,
 	).Once()
@@ -67,18 +64,15 @@ func TestTransactionSubmitter(t *testing.T) {
 
 	// Submit transaction - Error response from horizon
 	transactionSubmitter = NewTransactionSubmitter(mockHorizon, mockDatabase, "Test SDF Network ; September 2015", mocks.Now)
-	hAcct = hProtocol.HistoryAccount{
-		ID:        accountID,
-		AccountID: accountID,
-	}
 
 	mockHorizon.On(
 		"AccountDetail",
 		mock.AnythingOfType("horizonclient.AccountRequest"),
 	).Return(
 		hProtocol.Account{
-			HistoryAccount: hAcct,
-			Sequence:       "10372672437354496",
+			ID:        accountID,
+			AccountID: accountID,
+			Sequence:  "10372672437354496",
 		},
 		nil,
 	).Once()
@@ -136,18 +130,15 @@ func TestTransactionSubmitter(t *testing.T) {
 
 	// Submit transaction - success response
 	transactionSubmitter = NewTransactionSubmitter(mockHorizon, mockDatabase, "Test SDF Network ; September 2015", mocks.Now)
-	hAcct = hProtocol.HistoryAccount{
-		ID:        accountID,
-		AccountID: accountID,
-	}
 
 	mockHorizon.On(
 		"AccountDetail",
 		mock.AnythingOfType("horizonclient.AccountRequest"),
 	).Return(
 		hProtocol.Account{
-			HistoryAccount: hAcct,
-			Sequence:       "10372672437354496",
+			ID:        accountID,
+			AccountID: accountID,
+			Sequence:  "10372672437354496",
 		},
 		nil,
 	).Once()
