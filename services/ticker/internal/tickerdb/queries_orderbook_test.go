@@ -74,13 +74,13 @@ func TestInsertOrUpdateOrderbokStats(t *testing.T) {
 	assert.Equal(t, dbIssuer.ID, dbAsset1.IssuerID)
 	assert.Equal(
 		t,
-		firstTime.Local().Truncate(time.Millisecond),
-		dbAsset1.LastValid.Local().Truncate(time.Millisecond),
+		firstTime.Local().Truncate(time.Second),
+		dbAsset1.LastValid.Local().Truncate(time.Second),
 	)
 	assert.Equal(
 		t,
-		firstTime.Local().Truncate(time.Millisecond),
-		dbAsset1.LastChecked.Local().Truncate(time.Millisecond),
+		firstTime.Local().Truncate(time.Second),
+		dbAsset1.LastChecked.Local().Truncate(time.Second),
 	)
 
 	// Creating Seconde Asset:
@@ -141,8 +141,8 @@ func TestInsertOrUpdateOrderbokStats(t *testing.T) {
 	assert.Equal(t, 0.35, dbOS.SpreadMidPoint)
 	assert.Equal(
 		t,
-		obTime.Local().Truncate(time.Millisecond),
-		dbOS.UpdatedAt.Local().Truncate(time.Millisecond),
+		obTime.Local().Truncate(time.Second),
+		dbOS.UpdatedAt.Local().Truncate(time.Second),
 	)
 
 	// Making sure we're upserting:
@@ -189,7 +189,7 @@ func TestInsertOrUpdateOrderbokStats(t *testing.T) {
 	assert.Equal(t, 0.7, dbOS2.SpreadMidPoint)
 	assert.Equal(
 		t,
-		obTime2.Local().Truncate(time.Millisecond),
-		dbOS2.UpdatedAt.Local().Truncate(time.Millisecond),
+		obTime2.Local().Truncate(time.Second),
+		dbOS2.UpdatedAt.Local().Truncate(time.Second),
 	)
 }

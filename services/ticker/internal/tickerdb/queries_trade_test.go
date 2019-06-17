@@ -219,8 +219,8 @@ func TestGetLastTrade(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(
 		t,
-		now.Local().Truncate(time.Millisecond),
-		lastTrade.LedgerCloseTime.Local().Truncate(time.Millisecond),
+		now.Local().Truncate(time.Second),
+		lastTrade.LedgerCloseTime.Local().Truncate(time.Second),
 	)
 }
 
@@ -350,12 +350,12 @@ func TestDeleteOldTrades(t *testing.T) {
 	assert.NotEqual(t, trade2.HorizonID, "")
 	assert.Equal(
 		t,
-		now.Local().Truncate(time.Millisecond),
-		trade1.LedgerCloseTime.Local().Truncate(time.Millisecond),
+		now.Local().Truncate(time.Second),
+		trade1.LedgerCloseTime.Local().Truncate(time.Second),
 	)
 	assert.Equal(
 		t,
-		oneDayAgo.Local().Truncate(time.Millisecond),
-		trade2.LedgerCloseTime.Local().Truncate(time.Millisecond),
+		oneDayAgo.Local().Truncate(time.Second),
+		trade2.LedgerCloseTime.Local().Truncate(time.Second),
 	)
 }
