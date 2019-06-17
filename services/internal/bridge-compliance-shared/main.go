@@ -33,12 +33,22 @@ func BuildTransaction(accountID, networkPassphrase string, operation []txnbuild.
 		return "", errors.Wrap(err, "unable to build transaction")
 	}
 
-	txe, err := tx.Base64()
+	txeB64, err := tx.Base64()
+	if err != nil {
+		return "", errors.Wrap(err, "unable to encode transaction envelope")
+	}
+
+	var txXDR xdr.TransactionEnvelope
+	err = xdr.SafeUnmarshalBase64(txeB64, &txXDR)
+	if err != nil {
+		return "", errors.Wrap(err, "unable to decode transaction envelope")
+	}
+	txB64, err := xdr.MarshalBase64(txXDR.Tx)
 	if err != nil {
 		return "", errors.Wrap(err, "unable to encode transaction")
 	}
 
-	return txe, err
+	return txB64, err
 }
 
 // TransactionHash returns transaction hash for a given Transaction based on the network

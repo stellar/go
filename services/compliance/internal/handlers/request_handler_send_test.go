@@ -10,6 +10,7 @@ import (
 	"github.com/stellar/go/protocols/compliance"
 	"github.com/stellar/go/protocols/federation"
 	"github.com/stellar/go/support/http/httptest"
+	"github.com/stellar/go/xdr"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -228,13 +229,19 @@ func TestRequestHandlerSendValidParams(t *testing.T) {
 	err = tx.Sign()
 	require.NoError(t, err)
 
-	txe, err := tx.Base64()
+	txeB64, err := tx.Base64()
+	require.NoError(t, err)
+
+	var txXDR xdr.TransactionEnvelope
+	err = xdr.SafeUnmarshalBase64(txeB64, &txXDR)
+	require.NoError(t, err)
+	txB64, err := xdr.MarshalBase64(txXDR.Tx)
 	require.NoError(t, err)
 
 	authData := compliance.AuthData{
 		Sender:         "alice*stellar.org",
 		NeedInfo:       false,
-		Tx:             txe,
+		Tx:             txB64,
 		AttachmentJSON: string(attachmentJSON),
 	}
 
@@ -286,7 +293,7 @@ func TestRequestHandlerSendValidParams(t *testing.T) {
 				    "info_status": "ok",
 				    "tx_status": "ok"
 				  },
-				  "transaction_xdr": "` + txe + `"
+				  "transaction_xdr": "` + txB64 + `"
 				}`)
 	assert.Equal(t, expected, test.StringToJSONMap(responseString))
 
@@ -369,13 +376,18 @@ func TestRequestHandlerSendValidParams(t *testing.T) {
 	err = tx.Sign()
 	require.NoError(t, err)
 
-	txe, err = tx.Base64()
+	txeB64, err = tx.Base64()
+	require.NoError(t, err)
+
+	err = xdr.SafeUnmarshalBase64(txeB64, &txXDR)
+	require.NoError(t, err)
+	txB64, err = xdr.MarshalBase64(txXDR.Tx)
 	require.NoError(t, err)
 
 	authData = compliance.AuthData{
 		Sender:         "alice*stellar.org",
 		NeedInfo:       false,
-		Tx:             txe,
+		Tx:             txB64,
 		AttachmentJSON: string(attachmentJSON),
 	}
 
@@ -427,7 +439,7 @@ func TestRequestHandlerSendValidParams(t *testing.T) {
 				    "info_status": "ok",
 				    "tx_status": "ok"
 				  },
-				  "transaction_xdr": "` + txe + `"
+				  "transaction_xdr": "` + txB64 + `"
 				}`)
 	assert.Equal(t, expected, test.StringToJSONMap(responseString))
 
@@ -517,13 +529,18 @@ func TestRequestHandlerSendValidParams(t *testing.T) {
 	err = tx.Sign()
 	require.NoError(t, err)
 
-	txe, err = tx.Base64()
+	txeB64, err = tx.Base64()
+	require.NoError(t, err)
+
+	err = xdr.SafeUnmarshalBase64(txeB64, &txXDR)
+	require.NoError(t, err)
+	txB64, err = xdr.MarshalBase64(txXDR.Tx)
 	require.NoError(t, err)
 
 	authData = compliance.AuthData{
 		Sender:         "alice*stellar.org",
 		NeedInfo:       false,
-		Tx:             txe,
+		Tx:             txB64,
 		AttachmentJSON: string(attachmentJSON),
 	}
 
@@ -575,7 +592,7 @@ func TestRequestHandlerSendValidParams(t *testing.T) {
 				    "info_status": "ok",
 				    "tx_status": "ok"
 				  },
-				  "transaction_xdr": "` + txe + `"
+				  "transaction_xdr": "` + txB64 + `"
 				}`)
 	assert.Equal(t, expected, test.StringToJSONMap(responseString))
 
