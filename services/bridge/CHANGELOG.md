@@ -2,7 +2,17 @@
 
 As this project is pre 1.0, breaking changes may happen for minor version bumps. A breaking change will get clearly notified in this log.
 
-## Unreleased
+## 0.0.32
+
+* Bridge server now uses the new Go SDK.
+* Unit tests added.
+
+## Breaking changes
+
+* MySQL is no longer supported. To migrate your data to postgresql use any of the tools provided [here](https://wiki.postgresql.org/wiki/Converting_from_other_Databases_to_PostgreSQL#MySQL).
+
+* Requests to `/builder` for `AllowTrust` operations must specify the source account for the operation.
+
 
 ## Changes
 * Payload MAC authentication uses `X-Payload-Mac` header (old `X_PAYLOAD_MAC` header is still provided for backward compatibility, but it is deprecated and will be removed in future versions).
