@@ -113,8 +113,6 @@ func (dblrc *DBLedgerReadCloser) init() error {
 // storeTransactions maps the close meta data into a slice of LedgerTransaction structs, to provide
 // a per-transaction view of the data when Read() is called.
 func (dblrc *DBLedgerReadCloser) storeTransactions(lcm ledgerbackend.LedgerCloseMeta) {
-	// TODO: Assume all slices are the same length - do we need to verify that?
-	// TODO: This should only be done once - how to enforce?
 	for i := range lcm.TransactionEnvelope {
 		dblrc.transactions = append(dblrc.transactions, LedgerTransaction{
 			Index:      uint32(i + 1), // Transactions start at '1'
