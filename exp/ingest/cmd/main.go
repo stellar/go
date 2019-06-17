@@ -42,6 +42,12 @@ func useAdapter() {
 	s := lrc.GetSequence()
 	fmt.Println("lrc sequence:", s)
 
+	h, err := lrc.GetHeader()
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Println("lrc header:", h)
+
 	for {
 		lt, err := lrc.Read()
 		if err != nil {
@@ -72,9 +78,6 @@ func useAdapter() {
 		fmt.Println("    V1.Operations", c.V1.Operations)
 		fmt.Println("    V1.TxChanges", c.V1.TxChanges)
 	}
-
-	h := lrc.GetHeader()
-	fmt.Println("lrc header:", h)
 
 	log.Infof("latest ledger is %d, closed at %s (%d)", ledgerSequence,
 		time.Unix(int64(h.Header.ScpValue.CloseTime), 0), h.Header.ScpValue.CloseTime)

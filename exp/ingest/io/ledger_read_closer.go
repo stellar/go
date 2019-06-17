@@ -11,7 +11,7 @@ import (
 // LedgerReadCloser provides convenient, streaming access to the transactions within a ledger.
 type LedgerReadCloser interface {
 	GetSequence() uint32
-	GetHeader() xdr.LedgerHeaderHistoryEntry
+	GetHeader() (xdr.LedgerHeaderHistoryEntry, error)
 	// Read should return the next transaction. If there are no more
 	// transactions it should return `EOF` error.
 	Read() (LedgerTransaction, error)
@@ -23,12 +23,11 @@ type LedgerReadCloser interface {
 
 // LedgerTransaction represents the data for a single transaction within a ledger.
 type LedgerTransaction struct {
-	Index            uint32
-	Envelope         xdr.TransactionEnvelope
-	Result           xdr.TransactionResultPair
-	Meta             xdr.TransactionMeta
-	FeeChanges       xdr.LedgerEntryChanges
-	TransactionIndex []uint32
+	Index      uint32
+	Envelope   xdr.TransactionEnvelope
+	Result     xdr.TransactionResultPair
+	Meta       xdr.TransactionMeta
+	FeeChanges xdr.LedgerEntryChanges
 }
 
 // DBLedgerReadCloser is a database-backed implementation of the io.LedgerReadCloser interface.
@@ -59,8 +58,13 @@ func (dblrc *DBLedgerReadCloser) GetSequence() uint32 {
 }
 
 // GetHeader returns the XDR Header data associated with the stored ledger.
-func (dblrc *DBLedgerReadCloser) GetHeader() xdr.LedgerHeaderHistoryEntry {
-	return dblrc.header
+func (dblrc *DBLedgerReadCloser) GetHeader() (xdr.LedgerHeaderHistoryEntry, error) {
+	var err error
+	dblrc.initOnce.Do(func() { err = dblrc.init() })
+	if err != nil {
+		return xdr.LedgerHeaderHistoryEntry{}, err
+	}
+	return dblrc.header, nil
 }
 
 // Read returns the next transaction in the ledger, ordered by tx number, each time it is called. When there

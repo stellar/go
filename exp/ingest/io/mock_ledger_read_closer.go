@@ -16,9 +16,9 @@ func (m *MockLedgerReadCloser) GetSequence() uint32 {
 	return args.Get(0).(uint32)
 }
 
-func (m *MockLedgerReadCloser) GetHeader() xdr.LedgerHeaderHistoryEntry {
+func (m *MockLedgerReadCloser) GetHeader() (xdr.LedgerHeaderHistoryEntry, error) {
 	args := m.Called()
-	return args.Get(0).(xdr.LedgerHeaderHistoryEntry)
+	return args.Get(0).(xdr.LedgerHeaderHistoryEntry), nil
 }
 
 func (m *MockLedgerReadCloser) Read() (LedgerTransaction, error) {
