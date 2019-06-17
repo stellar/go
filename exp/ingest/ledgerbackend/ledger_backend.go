@@ -15,6 +15,7 @@ type LedgerBackend interface {
 type session interface {
 	GetRaw(dest interface{}, query string, args ...interface{}) error
 	SelectRaw(dest interface{}, query string, args ...interface{}) error
+	Close() error
 }
 
 // LedgerCloseMeta is the information needed to reconstruct the history of transactions in a given ledger.

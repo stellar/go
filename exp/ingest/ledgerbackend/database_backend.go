@@ -24,7 +24,7 @@ var _ LedgerBackend = (*DatabaseBackend)(nil)
 // DatabaseBackend implements a database data store.
 type DatabaseBackend struct {
 	DataSourceName string
-	session        *db.Session
+	session        session
 	initOnce       sync.Once
 }
 
@@ -141,5 +141,5 @@ func (dbb *DatabaseBackend) createSession() error {
 
 // Close disconnects an active database session.
 func (dbb *DatabaseBackend) Close() error {
-	return dbb.session.DB.Close()
+	return dbb.session.Close()
 }
