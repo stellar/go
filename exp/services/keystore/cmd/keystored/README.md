@@ -64,3 +64,12 @@ There are four environment variables used for starting keystored:
 ```sh
 keystored -tls-cert=PATH_TO_TLS_CERT -tls-key=PATH_TO_TLS_KEY -auth=false serve
 ```
+
+## Logging
+
+You can put the log messages in a designated file with the `-log-file` flag as well as determine
+the log severity level with the `-log-level` flag:
+
+```sh
+keystored -log-file=PATH_TO_YOUR_LOG_FILE -log-level=[debug|info|warn|error] serve
+```
