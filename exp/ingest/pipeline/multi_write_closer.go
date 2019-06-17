@@ -6,7 +6,7 @@ import (
 	"github.com/stellar/go/xdr"
 )
 
-func (m *multiWriteCloser) Write(entry xdr.LedgerEntry) error {
+func (m *multiWriteCloser) Write(entry xdr.LedgerEntryChange) error {
 	m.mutex.Lock()
 	m.wroteEntries++
 	m.mutex.Unlock()
@@ -63,3 +63,5 @@ func (m *multiWriteCloser) Close() error {
 
 	return nil
 }
+
+var _ io.StateWriteCloser = &multiWriteCloser{}

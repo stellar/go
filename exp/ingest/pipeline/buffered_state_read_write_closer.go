@@ -8,7 +8,7 @@ import (
 const bufferSize = 50000
 
 func (b *bufferedStateReadWriteCloser) init() {
-	b.buffer = make(chan xdr.LedgerEntry, bufferSize)
+	b.buffer = make(chan xdr.LedgerEntryChange, bufferSize)
 }
 
 func (b *bufferedStateReadWriteCloser) close() {
@@ -23,7 +23,7 @@ func (b *bufferedStateReadWriteCloser) GetSequence() uint32 {
 	return 0
 }
 
-func (b *bufferedStateReadWriteCloser) Read() (xdr.LedgerEntry, error) {
+func (b *bufferedStateReadWriteCloser) Read() (xdr.LedgerEntryChange, error) {
 	b.initOnce.Do(b.init)
 
 	entry, more := <-b.buffer
@@ -33,11 +33,11 @@ func (b *bufferedStateReadWriteCloser) Read() (xdr.LedgerEntry, error) {
 		b.readEntriesMutex.Unlock()
 		return entry, nil
 	} else {
-		return xdr.LedgerEntry{}, io.EOF
+		return xdr.LedgerEntryChange{}, io.EOF
 	}
 }
 
-func (b *bufferedStateReadWriteCloser) Write(entry xdr.LedgerEntry) error {
+func (b *bufferedStateReadWriteCloser) Write(entry xdr.LedgerEntryChange) error {
 	b.initOnce.Do(b.init)
 
 	b.writeCloseMutex.Lock()

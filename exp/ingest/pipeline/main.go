@@ -23,7 +23,7 @@ type bufferedStateReadWriteCloser struct {
 
 	// closeOnce protects from closing buffer twice
 	closeOnce sync.Once
-	buffer    chan xdr.LedgerEntry
+	buffer    chan xdr.LedgerEntryChange
 	closed    bool
 }
 
