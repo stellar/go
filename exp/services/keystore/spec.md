@@ -110,7 +110,7 @@ type PutKeysResponse = EncryptedKeysData;
 	"type": "bad_request",
 	"title": "Bad Request",
 	"status": 400,
-	"detail": "The request you sent was invalid in some way",
+	"detail": "The request you sent was invalid in some way.",
 	"extras": {
 		"invalid_field": "keysBlob",
 		"reason": "field value cannot be empty"
@@ -132,7 +132,7 @@ type PutKeysResponse = EncryptedKeysData;
 	"type": "bad_request",
 	"title": "Bad Request",
 	"status": 400,
-	"detail": "The request you sent was invalid in some way",
+	"detail": "The request you sent was invalid in some way.",
 	"extras": {
 		"invalid_field": "salt",
 		"reason": "field value cannot be empty"
@@ -154,7 +154,7 @@ type PutKeysResponse = EncryptedKeysData;
 	"type": "bad_request",
 	"title": "Bad Request",
 	"status": 400,
-	"detail": "The request you sent was invalid in some way",
+	"detail": "The request you sent was invalid in some way.",
 	"extras": {
 		"invalid_field": "encrypterName",
 		"reason": "field value cannot be empty"
