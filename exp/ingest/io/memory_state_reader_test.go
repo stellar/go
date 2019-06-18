@@ -31,8 +31,11 @@ func (s *MemoryStateReaderTestSuite) SetupTest() {
 	err := json.Unmarshal([]byte(hasExample), &s.has)
 	s.Require().NoError(err)
 
+	ledgerSeq := uint32(24123007)
+	bufferSize := uint16(5000)
+
 	s.mockArchive.
-		On("GetCheckpointHAS", uint32(24123007)).
+		On("GetCheckpointHAS", ledgerSeq).
 		Return(s.has, nil)
 
 	// BucketExists should be called 21 times (11 levels, last without `snap`)
@@ -40,10 +43,10 @@ func (s *MemoryStateReaderTestSuite) SetupTest() {
 		On("BucketExists", mock.AnythingOfType("historyarchive.Hash")).
 		Return(true).Times(21)
 
-	s.reader, err = MakeMemoryStateReader(s.mockArchive, uint32(24123007), 5000)
+	s.reader, err = MakeMemoryStateReader(s.mockArchive, ledgerSeq, bufferSize)
 	s.Require().NotNil(s.reader)
 	s.Require().NoError(err)
-	s.Assert().Equal(uint32(24123007), s.reader.sequence)
+	s.Assert().Equal(ledgerSeq, s.reader.sequence)
 }
 
 func (s *MemoryStateReaderTestSuite) TearDownTest() {
