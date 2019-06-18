@@ -119,3 +119,43 @@ func TestOperationFeeTestsActions_Show(t *testing.T) {
 		})
 	}
 }
+
+// TestOperationFeeTestsActions_ShowMultiOp tests fee stats in case transactions contain multiple operations.
+// In such case, since protocol v11, we should use number of operations as the indicator of ledger capacity usage.
+func TestOperationFeeTestsActions_ShowMultiOp(t *testing.T) {
+	ht := StartHTTPTest(t, "operation_fee_stats_3")
+	defer ht.Finish()
+
+	// Update max_tx_set_size on ledgers
+	_, err := ht.HorizonSession().ExecRaw("UPDATE history_ledgers SET max_tx_set_size = 50")
+	ht.Require.NoError(err)
+
+	// Update number of ops on each transaction
+	_, err = ht.HorizonSession().ExecRaw("UPDATE history_transactions SET operation_count = operation_count * 2")
+	ht.Require.NoError(err)
+
+	ht.App.UpdateOperationFeeStatsState()
+
+	w := ht.Get("/fee_stats")
+
+	if ht.Assert.Equal(200, w.Code) {
+		var result map[string]string
+		err := json.Unmarshal(w.Body.Bytes(), &result)
+		ht.Require.NoError(err)
+		ht.Assert.Equal("100", result["min_accepted_fee"], "min")
+		ht.Assert.Equal("200", result["mode_accepted_fee"], "mode")
+		ht.Assert.Equal("100", result["last_ledger_base_fee"], "base_fee")
+		ht.Assert.Equal("130", result["p10_accepted_fee"], "p10")
+		ht.Assert.Equal("160", result["p20_accepted_fee"], "p20")
+		ht.Assert.Equal("190", result["p30_accepted_fee"], "p30")
+		ht.Assert.Equal("200", result["p40_accepted_fee"], "p40")
+		ht.Assert.Equal("200", result["p50_accepted_fee"], "p50")
+		ht.Assert.Equal("200", result["p60_accepted_fee"], "p60")
+		ht.Assert.Equal("200", result["p70_accepted_fee"], "p70")
+		ht.Assert.Equal("200", result["p80_accepted_fee"], "p80")
+		ht.Assert.Equal("200", result["p90_accepted_fee"], "p90")
+		ht.Assert.Equal("200", result["p95_accepted_fee"], "p95")
+		ht.Assert.Equal("200", result["p99_accepted_fee"], "p99")
+		ht.Assert.Equal("0.06", result["ledger_capacity_usage"], "ledger_capacity_usage")
+	}
+}
