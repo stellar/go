@@ -1,6 +1,7 @@
 package ingest
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/stellar/go/network"
@@ -40,9 +41,29 @@ func TestClearAll(t *testing.T) {
 
 	tt.Require.NoError(err)
 
-	// ensure no ledgers
+	// ensure all tables are cleared
+	tables := []TableName{
+		AssetStatsTableName,
+		AccountsTableName,
+		AssetsTableName,
+		EffectsTableName,
+		LedgersTableName,
+		OperationParticipantsTableName,
+		OperationsTableName,
+		TradesTableName,
+		TransactionParticipantsTableName,
+		TransactionsTableName,
+	}
+
+	for _, tableName := range tables {
+		ensureEmpty(tt, tableName)
+	}
+}
+
+func ensureEmpty(tt *test.T, tableName TableName) {
 	var found int
-	err = tt.HorizonSession().GetRaw(&found, "SELECT COUNT(*) FROM history_ledgers")
+	query := fmt.Sprintf("SELECT COUNT(*) FROM %s", string(tableName))
+	err := tt.HorizonSession().GetRaw(&found, query)
 	tt.Require.NoError(err)
 	tt.Assert.Equal(0, found)
 }

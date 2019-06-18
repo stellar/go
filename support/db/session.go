@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 	"reflect"
+	"strings"
 	"time"
 
 	sq "github.com/Masterminds/squirrel"
@@ -119,6 +120,12 @@ func (s *Session) GetTable(name string) *Table {
 		Name:    name,
 		Session: s,
 	}
+}
+
+func (s *Session) TruncateTables(tables []string) error {
+	truncateCmd := fmt.Sprintf("truncate %s cascade", strings.Join(tables[:], ","))
+	_, err := s.ExecRaw(truncateCmd)
+	return err
 }
 
 // Exec runs `query`
