@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/stellar/go/network"
+	"github.com/stellar/go/xdr"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -741,5 +742,7 @@ func TestHashHex(t *testing.T) {
 	expected = "1b3905ba8c3c0ecc68ae812f2d77f27c697195e8daf568740fc0f5662f65f759"
 	assert.Equal(t, expected, hashHex, "hex encoded hash should match")
 
-	assert.NotNil(t, tx.TxEnvelope(), "transaction xdr envelope should not be nil")
+	txEnv := tx.TxEnvelope()
+	assert.NotNil(t, txEnv, "transaction xdr envelope should not be nil")
+	assert.IsType(t, txEnv, xdr.TransactionEnvelope{}, "tx.TxEnvelope should return type of *xdr.TransactionEnvelope")
 }
