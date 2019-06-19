@@ -744,5 +744,5 @@ func TestHashHex(t *testing.T) {
 
 	txEnv := tx.TxEnvelope()
 	assert.NotNil(t, txEnv, "transaction xdr envelope should not be nil")
-	assert.IsType(t, txEnv, xdr.TransactionEnvelope{}, "tx.TxEnvelope should return type of *xdr.TransactionEnvelope")
+	assert.IsType(t, txEnv, &xdr.TransactionEnvelope{}, "tx.TxEnvelope should return type of *xdr.TransactionEnvelope")
 }
