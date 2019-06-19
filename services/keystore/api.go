@@ -2,6 +2,7 @@ package keystore
 
 import (
 	"database/sql"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -121,6 +122,7 @@ func authHandler(next http.Handler, authenticator *Authenticator) http.Handler {
 		var authResp authResponse
 		err = json.Unmarshal(body, &authResp)
 		if err != nil {
+			log.Ctx(ctx).Infof("Response body as a plain string: %s\n. Response body as a hex dump string: %s\n", string(body), hex.Dump(body))
 			problem.Render(ctx, rw, errors.Wrap(err, "unmarshaling the auth response"))
 			return
 		}
