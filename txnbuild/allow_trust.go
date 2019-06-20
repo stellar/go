@@ -30,10 +30,7 @@ func (at *AllowTrust) BuildXDR() (xdr.Operation, error) {
 	}
 
 	// AllowTrust has a special asset type - map to it
-	xdrAsset, err := at.Type.ToXDR()
-	if err != nil {
-		return xdr.Operation{}, errors.Wrap(err, "can't convert asset for trustline to XDR")
-	}
+	xdrAsset := xdr.Asset{}
 
 	xdrOp.Asset, err = xdrAsset.ToAllowTrustOpAsset(at.Type.GetCode())
 	if err != nil {
