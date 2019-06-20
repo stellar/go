@@ -3,6 +3,11 @@
 All notable changes to this project will be documented in this
 file.  This project adheres to [Semantic Versioning](http://semver.org/).
 
+## Unreleased
+
+* Add support for getting the hex-encoded transaction hash with `Transaction.HashHex` method.
+* Add support for getting the `TransactionEnvelope` struct with `Transaction.TxEnvelope` method.
+
 ## [v1.2.0](https://github.com/stellar/go/releases/tag/horizonclient-v1.2.0) - 2019-05-16
 
 * In addition to account responses from horizon, transactions and operations can now be built with txnbuild.SimpleAccount structs constructed locally ([#1266](https://github.com/stellar/go/issues/1266)). 

@@ -14,6 +14,7 @@ package txnbuild
 import (
 	"bytes"
 	"encoding/base64"
+	"encoding/hex"
 	"fmt"
 
 	"github.com/stellar/go/keypair"
@@ -49,7 +50,7 @@ func (tx *Transaction) Hash() ([32]byte, error) {
 	return network.HashTransaction(&tx.xdrTransaction, tx.Network)
 }
 
-// MarshalBinary returns the binary XDR representation of the Transaction.
+// MarshalBinary returns the binary XDR representation of the transaction envelope.
 func (tx *Transaction) MarshalBinary() ([]byte, error) {
 	var txBytes bytes.Buffer
 	_, err := xdr.Marshal(&txBytes, tx.xdrEnvelope)
@@ -60,7 +61,7 @@ func (tx *Transaction) MarshalBinary() ([]byte, error) {
 	return txBytes.Bytes(), nil
 }
 
-// Base64 returns the base 64 XDR representation of the Transaction.
+// Base64 returns the base 64 XDR representation of the transaction envelope.
 func (tx *Transaction) Base64() (string, error) {
 	bs, err := tx.MarshalBinary()
 	if err != nil {
@@ -177,4 +178,18 @@ func (tx *Transaction) BuildSignEncode(keypairs ...*keypair.Full) (string, error
 	}
 
 	return txeBase64, err
+}
+
+// HashHex returns the hex-encoded hash of the transaction.
+func (tx *Transaction) HashHex() (string, error) {
+	hashByte, err := tx.Hash()
+	if err != nil {
+		return "", err
+	}
+	return hex.EncodeToString(hashByte[:]), nil
+}
+
+// TxEnvelope returns the TransactionEnvelope XDR struct.
+func (tx *Transaction) TxEnvelope() *xdr.TransactionEnvelope {
+	return tx.xdrEnvelope
 }

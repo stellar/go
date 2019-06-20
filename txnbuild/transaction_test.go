@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/stellar/go/network"
+	"github.com/stellar/go/xdr"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -707,4 +708,41 @@ func TestManageBuyOfferUpdateOffer(t *testing.T) {
 	// https://www.stellar.org/laboratory/#xdr-viewer?input=AAAAACXK8doPx27P6IReQlRRuweSSUiUfjqgyswxiu3Sh2R%2BAAAAZAAAJWoAAAAKAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAMAAAAAAAAAAFBQkNEAAAAACXK8doPx27P6IReQlRRuweSSUiUfjqgyswxiu3Sh2R%2BAAAAAB3NZQAAAAABAAAAMgAAAAAALJSWAAAAAAAAAAHSh2R%2BAAAAQK%2FsasTxgNqvkz3dGaDOyUgfa9UAAmUBmgiyaQU1dMlNNvTVH1D7PQKXkTooWmb6qK7Ee8vaTCFU6gGmShhA9wE%3D&type=TransactionEnvelope&network=test
 	expected := "AAAAACXK8doPx27P6IReQlRRuweSSUiUfjqgyswxiu3Sh2R+AAAAZAAAJWoAAAAKAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAMAAAAAAAAAAFBQkNEAAAAACXK8doPx27P6IReQlRRuweSSUiUfjqgyswxiu3Sh2R+AAAAAB3NZQAAAAABAAAAMgAAAAAALJSWAAAAAAAAAAHSh2R+AAAAQK/sasTxgNqvkz3dGaDOyUgfa9UAAmUBmgiyaQU1dMlNNvTVH1D7PQKXkTooWmb6qK7Ee8vaTCFU6gGmShhA9wE="
 	assert.Equal(t, expected, received, "Base 64 XDR should match")
+}
+
+func TestHashHex(t *testing.T) {
+	kp0 := newKeypair0()
+	sourceAccount := NewSimpleAccount(kp0.Address(), int64(9605939170639897))
+
+	createAccount := CreateAccount{
+		Destination: "GCCOBXW2XQNUSL467IEILE6MMCNRR66SSVL4YQADUNYYNUVREF3FIV2Z",
+		Amount:      "10",
+	}
+
+	tx := Transaction{
+		SourceAccount: &sourceAccount,
+		Operations:    []Operation{&createAccount},
+		Timebounds:    NewInfiniteTimeout(),
+		Network:       network.TestNetworkPassphrase,
+	}
+
+	err := tx.Build()
+	assert.NoError(t, err)
+
+	err = tx.Sign(kp0)
+	assert.NoError(t, err)
+
+	txeB64, err := tx.Base64()
+	assert.NoError(t, err)
+	expected := "AAAAAODcbeFyXKxmUWK1L6znNbKKIkPkHRJNbLktcKPqLnLFAAAAZAAiII0AAAAaAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAITg3tq8G0kvnvoIhZPMYJsY+9KVV8xAA6NxhtKxIXZUAAAAAAX14QAAAAAAAAAAAeoucsUAAABAHsyMojA0Q5MiNsR5X5AiNpCn9mlXmqluRsNpTniCR91M4U5TFmrrqVNLkU58/l+Y8hUPwidDTRSzLZKbMUL/Bw=="
+	assert.Equal(t, expected, txeB64, "Base 64 XDR should match")
+
+	hashHex, err := tx.HashHex()
+	assert.NoError(t, err)
+	expected = "1b3905ba8c3c0ecc68ae812f2d77f27c697195e8daf568740fc0f5662f65f759"
+	assert.Equal(t, expected, hashHex, "hex encoded hash should match")
+
+	txEnv := tx.TxEnvelope()
+	assert.NotNil(t, txEnv, "transaction xdr envelope should not be nil")
+	assert.IsType(t, txEnv, &xdr.TransactionEnvelope{}, "tx.TxEnvelope should return type of *xdr.TransactionEnvelope")
 }
