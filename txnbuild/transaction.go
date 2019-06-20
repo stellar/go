@@ -50,7 +50,7 @@ func (tx *Transaction) Hash() ([32]byte, error) {
 	return network.HashTransaction(&tx.xdrTransaction, tx.Network)
 }
 
-// MarshalBinary returns the binary XDR representation of the Transaction.
+// MarshalBinary returns the binary XDR representation of the transaction envelope.
 func (tx *Transaction) MarshalBinary() ([]byte, error) {
 	var txBytes bytes.Buffer
 	_, err := xdr.Marshal(&txBytes, tx.xdrEnvelope)
@@ -180,7 +180,7 @@ func (tx *Transaction) BuildSignEncode(keypairs ...*keypair.Full) (string, error
 	return txeBase64, err
 }
 
-// HashHex returns the hex-encododed hash of the transaction
+// HashHex returns the hex-encoded hash of the transaction.
 func (tx *Transaction) HashHex() (string, error) {
 	hashByte, err := tx.Hash()
 	if err != nil {
@@ -189,7 +189,7 @@ func (tx *Transaction) HashHex() (string, error) {
 	return hex.EncodeToString(hashByte[:]), nil
 }
 
-// TxEnvelope returns the TransactionEnvelope XDR struct
+// TxEnvelope returns the TransactionEnvelope XDR struct.
 func (tx *Transaction) TxEnvelope() *xdr.TransactionEnvelope {
 	return tx.xdrEnvelope
 }

@@ -5,8 +5,8 @@ file.  This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## Unreleased
 
-* Add support for getting the hex-encoded transaction hash with `HashHex` method.
-* Add support for getting the `TransactionEnvelope` struct with `TxEnvelope` method.
+* Add support for getting the hex-encoded transaction hash with `Transaction.HashHex` method.
+* Add support for getting the `TransactionEnvelope` struct with `Transaction.TxEnvelope` method.
 
 ## [v1.2.0](https://github.com/stellar/go/releases/tag/horizonclient-v1.2.0) - 2019-05-16
 
