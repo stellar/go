@@ -445,6 +445,30 @@ func TestAllowTrust(t *testing.T) {
 	assert.Equal(t, expected, received, "Base 64 XDR should match")
 }
 
+func TestAllowTrustNoIssuer(t *testing.T) {
+	kp0 := newKeypair0()
+	kp1 := newKeypair1()
+	sourceAccount := NewSimpleAccount(kp0.Address(), int64(40385577484366))
+
+	issuedAsset := CreditAsset{Code: "XYZ"}
+	allowTrust := AllowTrust{
+		Trustor:   kp1.Address(),
+		Type:      issuedAsset,
+		Authorize: true,
+	}
+
+	tx := Transaction{
+		SourceAccount: &sourceAccount,
+		Operations:    []Operation{&allowTrust},
+		Timebounds:    NewInfiniteTimeout(),
+		Network:       network.TestNetworkPassphrase,
+	}
+
+	received := buildSignEncode(t, tx, kp0)
+	expected := "AAAAAODcbeFyXKxmUWK1L6znNbKKIkPkHRJNbLktcKPqLnLFAAAAZAAAJLsAAABPAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAHAAAAACXK8doPx27P6IReQlRRuweSSUiUfjqgyswxiu3Sh2R+AAAAAVhZWgAAAAABAAAAAAAAAAHqLnLFAAAAQO8mcsi/+RObrKto8tABtN8RwUi6101FqBDTwqMQp4hNuujw+SGEFaBCYLNw/u40DHFRQoBNi6zcBKbBSg+gVwE="
+	assert.Equal(t, expected, received, "Base 64 XDR should match")
+}
+
 func TestManageSellOfferNewOffer(t *testing.T) {
 	kp0 := newKeypair0()
 	kp1 := newKeypair1()
