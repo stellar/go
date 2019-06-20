@@ -1030,7 +1030,6 @@ func TestFetchTimebounds(t *testing.T) {
 	if assert.NoError(t, err) {
 		assert.IsType(t, ServerTimeMap["localhost"], ServerTimeRecord{})
 		assert.Equal(t, st.MinTime, int64(0))
-		// assert.Equal(t, st.MaxTime, int64(0))
 	}
 
 	// server time is saved on requests to horizon
