@@ -104,7 +104,6 @@ func ExamplePayment_setBaseFee() {
 	}
 
 	// get fees from network
-
 	feeStats, err := client.FeeStats()
 	check(err)
 
