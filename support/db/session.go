@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 	"reflect"
+	"strings"
 	"time"
 
 	sq "github.com/Masterminds/squirrel"
@@ -38,6 +39,13 @@ func (s *Session) Clone() *Session {
 		DB:  s.DB,
 		Ctx: s.Ctx,
 	}
+}
+
+// Close delegates to the underlying database Close method, closing the database
+// and releasing any resources. It is rare to Close a DB, as the DB handle is meant
+// to be long-lived and shared between many goroutines.
+func (s *Session) Close() error {
+	return s.DB.Close()
 }
 
 // Commit commits the current transaction
@@ -112,6 +120,12 @@ func (s *Session) GetTable(name string) *Table {
 		Name:    name,
 		Session: s,
 	}
+}
+
+func (s *Session) TruncateTables(tables []string) error {
+	truncateCmd := fmt.Sprintf("truncate %s cascade", strings.Join(tables[:], ","))
+	_, err := s.ExecRaw(truncateCmd)
+	return err
 }
 
 // Exec runs `query`

@@ -2,6 +2,7 @@ package internal
 
 import (
 	"log"
+	"sync"
 
 	hProtocol "github.com/stellar/go/protocols/horizon"
 )
@@ -11,6 +12,7 @@ import (
 type Bot struct {
 	Minions         []Minion
 	nextMinionIndex int
+	indexMux        sync.Mutex
 }
 
 // SubmitResult is the result from the asynchronous tx submission.
@@ -21,11 +23,13 @@ type SubmitResult struct {
 
 // Pay funds the account at `destAddress`.
 func (bot *Bot) Pay(destAddress string) (*hProtocol.TransactionSuccess, error) {
+	bot.indexMux.Lock()
 	log.Printf("Selecting minion at index %d of max length %d", bot.nextMinionIndex, len(bot.Minions))
 	minion := bot.Minions[bot.nextMinionIndex]
+	bot.nextMinionIndex = (bot.nextMinionIndex + 1) % len(bot.Minions)
+	bot.indexMux.Unlock()
 	resultChan := make(chan SubmitResult)
 	go minion.Run(destAddress, resultChan)
-	bot.nextMinionIndex = (bot.nextMinionIndex + 1) % len(bot.Minions)
 	maybeSubmitResult := <-resultChan
 	close(resultChan)
 	return maybeSubmitResult.maybeTransactionSuccess, maybeSubmitResult.maybeErr

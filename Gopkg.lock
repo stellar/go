@@ -447,13 +447,6 @@
   revision = "ee05b128a739a0fb76c7ebd3ae4810c1de808d6d"
 
 [[projects]]
-  digest = "1:2c8b543d3a7345ab10850762595dd027b2ee87cfdc423cc2d977b568bf18228f"
-  name = "github.com/mattn/go-sqlite3"
-  packages = ["."]
-  pruneopts = "T"
-  revision = "efea85cb9a06f1d4f661649f6beb5fd04597a366"
-
-[[projects]]
   digest = "1:5d231480e1c64a726869bc4142d270184c419749d34f167646baa21008eb0a79"
   name = "github.com/mitchellh/go-homedir"
   packages = ["."]
@@ -938,7 +931,6 @@
     "github.com/jmoiron/sqlx/reflectx",
     "github.com/lib/pq",
     "github.com/manucorporat/sse",
-    "github.com/mattn/go-sqlite3",
     "github.com/mitchellh/go-homedir",
     "github.com/onsi/ginkgo",
     "github.com/onsi/ginkgo/extensions/table",
