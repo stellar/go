@@ -197,28 +197,28 @@ type ledgerReadCloserWrapper struct {
 
 var _ supportPipeline.ReadCloser = &ledgerReadCloserWrapper{}
 
-// readCloserWrapperState wraps pipelinne.ReadCloser to implement StateReadCloser interface.
+// readCloserWrapperState wraps pipeline.ReadCloser to implement StateReadCloser interface.
 type readCloserWrapperState struct {
 	supportPipeline.ReadCloser
 }
 
 var _ io.StateReadCloser = &readCloserWrapperState{}
 
-// readCloserWrapperLedger wraps pipelinne.ReadCloser to implement LedgerReadCloser interface.
+// readCloserWrapperLedger wraps pipeline.ReadCloser to implement LedgerReadCloser interface.
 type readCloserWrapperLedger struct {
 	supportPipeline.ReadCloser
 }
 
 var _ io.LedgerReadCloser = &readCloserWrapperLedger{}
 
-// writeCloserWrapperState wraps pipelinne.WriteCloser to implement StateWriteCloser interface.
+// writeCloserWrapperState wraps pipeline.WriteCloser to implement StateWriteCloser interface.
 type writeCloserWrapperState struct {
 	supportPipeline.WriteCloser
 }
 
 var _ io.StateWriteCloser = &writeCloserWrapperState{}
 
-// writeCloserWrapperLedger wraps pipelinne.WriteCloser to implement LedgerWriteCloser interface.
+// writeCloserWrapperLedger wraps pipeline.WriteCloser to implement LedgerWriteCloser interface.
 type writeCloserWrapperLedger struct {
 	supportPipeline.WriteCloser
 }

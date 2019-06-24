@@ -4,6 +4,11 @@ import (
 	"io"
 )
 
+// bufferSize is a size of a buffered channel in BufferedReadWriteCloser.
+// This should be big enough to hold a short lag of items in a pipeline
+// but small enough to not consume too much memory.
+// In pipelines with no slow processors a buffered channel will be empty
+// or almost empty most of the time.
 const bufferSize = 50000
 
 func (b *BufferedReadWriteCloser) init() {
@@ -27,9 +32,9 @@ func (b *BufferedReadWriteCloser) Read() (interface{}, error) {
 		b.readEntries++
 		b.readEntriesMutex.Unlock()
 		return entry, nil
-	} else {
-		return nil, io.EOF
 	}
+
+	return nil, io.EOF
 }
 
 func (b *BufferedReadWriteCloser) Write(entry interface{}) error {
