@@ -770,3 +770,48 @@ func TestHashHex(t *testing.T) {
 	assert.NotNil(t, txEnv, "transaction xdr envelope should not be nil")
 	assert.IsType(t, txEnv, &xdr.TransactionEnvelope{}, "tx.TxEnvelope should return type of *xdr.TransactionEnvelope")
 }
+
+func TestTransactionFee(t *testing.T) {
+	kp0 := newKeypair0()
+	sourceAccount := NewSimpleAccount(kp0.Address(), int64(9605939170639897))
+
+	createAccount := CreateAccount{
+		Destination: "GCCOBXW2XQNUSL467IEILE6MMCNRR66SSVL4YQADUNYYNUVREF3FIV2Z",
+		Amount:      "10",
+	}
+
+	tx := Transaction{
+		SourceAccount: &sourceAccount,
+		Operations:    []Operation{&createAccount},
+		Timebounds:    NewInfiniteTimeout(),
+		Network:       network.TestNetworkPassphrase,
+	}
+
+	txFee := tx.TransactionFee()
+	assert.Equal(t, 0, txFee, "Transaction fee should match")
+
+	err := tx.Build()
+	assert.NoError(t, err)
+	txFee = tx.TransactionFee()
+	assert.Equal(t, 100, txFee, "Transaction fee should match")
+
+	tx = Transaction{
+		SourceAccount: &sourceAccount,
+		Operations:    []Operation{&createAccount},
+		Timebounds:    NewInfiniteTimeout(),
+		Network:       network.TestNetworkPassphrase,
+		BaseFee:       500,
+	}
+	err = tx.Build()
+	assert.NoError(t, err)
+	txFee = tx.TransactionFee()
+	assert.Equal(t, 500, txFee, "Transaction fee should match")
+
+	err = tx.Sign(kp0)
+	assert.NoError(t, err)
+
+	txeB64, err := tx.Base64()
+	assert.NoError(t, err)
+	expected := "AAAAAODcbeFyXKxmUWK1L6znNbKKIkPkHRJNbLktcKPqLnLFAAAB9AAiII0AAAAbAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAITg3tq8G0kvnvoIhZPMYJsY+9KVV8xAA6NxhtKxIXZUAAAAAAX14QAAAAAAAAAAAeoucsUAAABAnc69aKw6dg1LlHxkIetKZu8Ou8hgbj4mICV0tiOJeuiq8DvivSlAngnD+FlVIaotmg8i3dEzBg+LcLnG9UttBQ=="
+	assert.Equal(t, expected, txeB64, "Base 64 XDR should match")
+}
