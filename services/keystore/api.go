@@ -2,6 +2,7 @@ package keystore
 
 import (
 	"database/sql"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -82,7 +83,7 @@ func authHandler(next http.Handler, authenticator *Authenticator) http.Handler {
 		case REST:
 			proxyReq, err = http.NewRequest("GET", authenticator.URL, nil)
 			if err != nil {
-				problem.Render(ctx, rw, err)
+				problem.Render(ctx, rw, errors.Wrap(err, "creating the auth proxy request"))
 				return
 			}
 
@@ -98,39 +99,39 @@ func authHandler(next http.Handler, authenticator *Authenticator) http.Handler {
 		if clientIP, _, err = net.SplitHostPort(req.RemoteAddr); err == nil {
 			proxyReq.Header.Set("X-Forwarded-For", clientIP)
 		}
+		proxyReq.Header.Set("Accept-Encoding", "identity")
 
 		resp, err := client.Do(proxyReq)
 		if err != nil {
-			problem.Render(ctx, rw, err)
+			problem.Render(ctx, rw, errors.Wrap(err, "sending the auth proxy request"))
 			return
 		}
 		defer resp.Body.Close()
 
-		if resp.StatusCode == http.StatusOK {
-			body, err := ioutil.ReadAll(resp.Body)
-			if err != nil {
-				problem.Render(ctx, rw, err)
-				return
-			}
-
-			var authResp authResponse
-			err = json.Unmarshal(body, &authResp)
-			if err != nil {
-				problem.Render(ctx, rw, err)
-				return
-			}
-			if authResp.UserID == "" {
-				problem.Render(ctx, rw, probNotAuthorized)
-				return
-			}
-			// assuming the context-type is application/json
-			ctx = withUserID(ctx, authResp.UserID)
-		} else {
+		if resp.StatusCode != http.StatusOK {
 			problem.Render(ctx, rw, probNotAuthorized)
 			return
 		}
 
-		next.ServeHTTP(rw, req.WithContext(ctx))
+		body, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			problem.Render(ctx, rw, errors.Wrap(err, "reading the auth response"))
+			return
+		}
+
+		var authResp authResponse
+		err = json.Unmarshal(body, &authResp)
+		if err != nil {
+			log.Ctx(ctx).Infof("Response body as a plain string: %s\n. Response body as a hex dump string: %s\n", string(body), hex.Dump(body))
+			problem.Render(ctx, rw, errors.Wrap(err, "unmarshaling the auth response"))
+			return
+		}
+		if authResp.UserID == "" {
+			problem.Render(ctx, rw, probNotAuthorized)
+			return
+		}
+
+		next.ServeHTTP(rw, req.WithContext(withUserID(ctx, authResp.UserID)))
 	})
 }
 

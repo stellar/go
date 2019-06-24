@@ -72,16 +72,8 @@ func TestInsertOrUpdateOrderbokStats(t *testing.T) {
 	assert.Equal(t, code, dbAsset1.Code)
 	assert.Equal(t, issuerAccount, dbAsset1.IssuerAccount)
 	assert.Equal(t, dbIssuer.ID, dbAsset1.IssuerID)
-	assert.Equal(
-		t,
-		firstTime.Local().Truncate(time.Millisecond),
-		dbAsset1.LastValid.Local().Truncate(time.Millisecond),
-	)
-	assert.Equal(
-		t,
-		firstTime.Local().Truncate(time.Millisecond),
-		dbAsset1.LastChecked.Local().Truncate(time.Millisecond),
-	)
+	assert.WithinDuration(t, firstTime.Local(), dbAsset1.LastValid.Local(), 10*time.Millisecond)
+	assert.WithinDuration(t, firstTime.Local(), dbAsset1.LastChecked.Local(), 10*time.Millisecond)
 
 	// Creating Seconde Asset:
 	secondTime := time.Now()
@@ -139,11 +131,7 @@ func TestInsertOrUpdateOrderbokStats(t *testing.T) {
 	assert.Equal(t, 0.1, dbOS.LowestAsk)
 	assert.Equal(t, 0.93, dbOS.Spread)
 	assert.Equal(t, 0.35, dbOS.SpreadMidPoint)
-	assert.Equal(
-		t,
-		obTime.Local().Truncate(time.Millisecond),
-		dbOS.UpdatedAt.Local().Truncate(time.Millisecond),
-	)
+	assert.WithinDuration(t, obTime.Local(), dbOS.UpdatedAt.Local(), 10*time.Millisecond)
 
 	// Making sure we're upserting:
 	obTime2 := time.Now()
@@ -187,9 +175,5 @@ func TestInsertOrUpdateOrderbokStats(t *testing.T) {
 	assert.Equal(t, 0.1, dbOS2.LowestAsk) // should keep the old value, since on preserveFields
 	assert.Equal(t, 1.86, dbOS2.Spread)
 	assert.Equal(t, 0.7, dbOS2.SpreadMidPoint)
-	assert.Equal(
-		t,
-		obTime2.Local().Truncate(time.Millisecond),
-		dbOS2.UpdatedAt.Local().Truncate(time.Millisecond),
-	)
+	assert.WithinDuration(t, obTime2.Local(), dbOS2.UpdatedAt.Local(), 10*time.Millisecond)
 }
