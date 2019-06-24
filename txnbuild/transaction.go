@@ -223,5 +223,10 @@ func (tx *Transaction) setTransactionFee() error {
 
 // TransactionFee returns the fee to be paid for a transaction.
 func (tx *Transaction) TransactionFee() int {
-	return int(int(tx.BaseFee) * len(tx.xdrTransaction.Operations))
+	err := tx.setTransactionFee()
+	// error is returned when BaseFee is zero
+	if err != nil {
+		return 0
+	}
+	return int(tx.xdrTransaction.Fee)
 }
