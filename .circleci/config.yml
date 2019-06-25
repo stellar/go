@@ -117,6 +117,7 @@ jobs:
     docker:
       - image: circleci/golang:1.12
     steps:
+      - install_go_deps
       - gofmt
       - govet
       - staticcheck
