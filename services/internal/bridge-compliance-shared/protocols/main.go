@@ -14,8 +14,8 @@ const (
 
 // Asset represents asset
 type Asset struct {
-	Code   string `name:"asset_code" json:"code"`
-	Issuer string `name:"asset_issuer" json:"issuer"`
+	Code   string `valid:"required" name:"asset_code" json:"code"`
+	Issuer string `valid:"optional" name:"asset_issuer" json:"issuer"`
 }
 
 // ForwardDestination contains fields required to create forward federation request
