@@ -28,7 +28,8 @@ import (
 type Account interface {
 	GetAccountID() string
 	IncrementSequenceNumber() (xdr.SequenceNumber, error)
-	// To do: implement in v2.0.0: add GetSequenceNumber method
+	// Action needed in release: horizonclient-v2.0.0
+	// add GetSequenceNumber method
 	// GetSequenceNumber() (xdr.SequenceNumber, error)
 }
 
@@ -73,25 +74,40 @@ func (tx *Transaction) Base64() (string, error) {
 
 // SetDefaultFee sets a sensible minimum default for the Transaction fee, if one has not
 // already been set. It is a linear function of the number of Operations in the Transaction.
+// Deprecated: This will be removed in v2.0.0 and setting `Transaction.BaseFee` will be mandatory.
+// Action needed in release: horizonclient-v2.0.0
 func (tx *Transaction) SetDefaultFee() {
 	// TODO: Generalise to pull this from a client call
 	var DefaultBaseFee uint32 = 100
 	if tx.BaseFee == 0 {
 		tx.BaseFee = DefaultBaseFee
 	}
-	if tx.xdrTransaction.Fee == 0 {
-		tx.xdrTransaction.Fee = xdr.Uint32(int(tx.BaseFee) * len(tx.xdrTransaction.Operations))
+
+	err := tx.setTransactionFee()
+	if err != nil {
+		panic(err)
 	}
 }
 
 // Build for Transaction completely configures the Transaction. After calling Build,
 // the Transaction is ready to be serialised or signed.
 func (tx *Transaction) Build() error {
-	// Set account ID in XDR
-	// TODO: Validate provided key before going further
-	tx.xdrTransaction.SourceAccount.SetAddress(tx.SourceAccount.GetAccountID())
 
-	// TODO: Validate Seq Num is present in struct
+	accountID := tx.SourceAccount.GetAccountID()
+	// Public keys start with 'G'
+	if accountID[0] != 'G' {
+		return errors.New("invalid public key for transaction source account")
+	}
+	_, err := keypair.Parse(accountID)
+	if err != nil {
+		return err
+	}
+
+	// Set account ID in XDR
+	tx.xdrTransaction.SourceAccount.SetAddress(accountID)
+
+	// Action needed in release: horizonclient-v2.0.0
+	// Validate Seq Num is present in struct. Requires Account.GetSequenceNumber (v.2.0.0)
 	seqnum, err := tx.SourceAccount.IncrementSequenceNumber()
 	if err != nil {
 		return errors.Wrap(err, "failed to parse sequence number")
@@ -124,6 +140,8 @@ func (tx *Transaction) Build() error {
 	}
 
 	// Set a default fee, if it hasn't been set yet
+	// Action needed in release: horizonclient-v2.0.0
+	// replace with tx.setTransactionfee
 	tx.SetDefaultFee()
 
 	return nil
@@ -192,4 +210,23 @@ func (tx *Transaction) HashHex() (string, error) {
 // TxEnvelope returns the TransactionEnvelope XDR struct.
 func (tx *Transaction) TxEnvelope() *xdr.TransactionEnvelope {
 	return tx.xdrEnvelope
+}
+
+func (tx *Transaction) setTransactionFee() error {
+	if tx.BaseFee == 0 {
+		return errors.New("base fee can not be zero")
+	}
+
+	tx.xdrTransaction.Fee = xdr.Uint32(int(tx.BaseFee) * len(tx.xdrTransaction.Operations))
+	return nil
+}
+
+// TransactionFee returns the fee to be paid for a transaction.
+func (tx *Transaction) TransactionFee() int {
+	err := tx.setTransactionFee()
+	// error is returned when BaseFee is zero
+	if err != nil {
+		return 0
+	}
+	return int(tx.xdrTransaction.Fee)
 }
