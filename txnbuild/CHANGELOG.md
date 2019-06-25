@@ -6,9 +6,11 @@ file.  This project adheres to [Semantic Versioning](http://semver.org/).
 ## Unreleased
 
 * Add support for getting the hex-encoded transaction hash with `Transaction.HashHex` method.
+* `TransactionEnvelope` is now available after building a transaction(`Transaction.Build`). Previously, this was only available after signing a transaction. ([#1376](https://github.com/stellar/go/pull/1376)) 
 * Add support for getting the `TransactionEnvelope` struct with `Transaction.TxEnvelope` method ([#1415](https://github.com/stellar/go/issues/1415)).
 * `AllowTrust` operations no longer requires the asset issuer, only asset code is required ([#1330](https://github.com/stellar/go/issues/1330)).
-
+* `Transaction.SetDefaultFee` method is deprecated and will be removed in the next major release ([#1221](https://github.com/stellar/go/issues/1221)).
+* `Transaction.TransactionFee` method has been added to get the fee that will be paid for a transaction.
 
 ## [v1.2.0](https://github.com/stellar/go/releases/tag/horizonclient-v1.2.0) - 2019-05-16
 
