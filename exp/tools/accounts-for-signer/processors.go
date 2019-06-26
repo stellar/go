@@ -20,10 +20,6 @@ func (n *SimpleProcessor) IsConcurrent() bool {
 	return false
 }
 
-func (n *SimpleProcessor) RequiresInput() bool {
-	return true
-}
-
 func (n *SimpleProcessor) IncrementAndReturnCallCount() int {
 	n.Lock()
 	defer n.Unlock()

@@ -186,10 +186,6 @@ func (n *SimpleProcessor) IsConcurrent() bool {
 	return false
 }
 
-func (n *SimpleProcessor) RequiresInput() bool {
-	return true
-}
-
 func (n *SimpleProcessor) Reset() {
 	n.callCount = 0
 }
