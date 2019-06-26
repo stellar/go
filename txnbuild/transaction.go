@@ -13,6 +13,7 @@ package txnbuild
 
 import (
 	"bytes"
+	"crypto/sha256"
 	"encoding/base64"
 	"encoding/hex"
 	"fmt"
@@ -229,4 +230,30 @@ func (tx *Transaction) TransactionFee() int {
 		return 0
 	}
 	return int(tx.xdrTransaction.Fee)
+}
+
+// SignHashX signs a transaction with HashX signature type.
+func (tx *Transaction) SignHashX(preimage []byte) error {
+
+	if tx.xdrEnvelope == nil {
+		tx.xdrEnvelope = &xdr.TransactionEnvelope{}
+		tx.xdrEnvelope.Tx = tx.xdrTransaction
+	}
+
+	if len(preimage) > 64 {
+		return errors.New("preimage cannnot be more than 64 bytes")
+	}
+
+	preimageHash := sha256.Sum256(preimage)
+	var hint [4]byte
+	copy(hint[:], preimageHash[28:])
+
+	sig := xdr.DecoratedSignature{
+		Hint:      xdr.SignatureHint(hint),
+		Signature: xdr.Signature(preimage),
+	}
+
+	tx.xdrEnvelope.Signatures = append(tx.xdrEnvelope.Signatures, sig)
+
+	return nil
 }
