@@ -939,9 +939,6 @@ func TestHashXTransaction(t *testing.T) {
 	err = tx.Build()
 	assert.NoError(t, err)
 
-	err = tx.Sign()
-	assert.NoError(t, err)
-
 	err = tx.SignHashX([]byte(preimage))
 	assert.NoError(t, err)
 
