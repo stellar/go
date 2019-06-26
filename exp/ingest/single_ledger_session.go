@@ -9,7 +9,9 @@ import (
 var _ Session = &SingleLedgerSession{}
 
 func (s *SingleLedgerSession) Run() error {
+	s.ensureRunOnce()
 	s.shutdown = make(chan bool)
+
 	historyAdapter := adapters.MakeHistoryArchiveAdapter(s.Archive)
 
 	var err error
@@ -29,13 +31,12 @@ func (s *SingleLedgerSession) Run() error {
 	return nil
 }
 
-// AddPipeline - TODO it should be possible to add multiple pipelines
-func (s *SingleLedgerSession) AddPipeline(p *pipeline.StatePipeline) {
-	s.pipeline = p
+func (s *SingleLedgerSession) SetStatePipeline(p *pipeline.StatePipeline) {
+	s.statePipeline = p
 }
 
-func (s *SingleLedgerSession) Shutdown() {
-	close(s.shutdown)
+func (s *SingleLedgerSession) SetLedgerPipeline(p *pipeline.LedgerPipeline) {
+	panic("SingleLedgerSession does not accept LedgerPipeline")
 }
 
 func (s *SingleLedgerSession) processState(historyAdapter *adapters.HistoryArchiveAdapter, sequence uint32) error {
@@ -44,14 +45,14 @@ func (s *SingleLedgerSession) processState(historyAdapter *adapters.HistoryArchi
 		return errors.Wrap(err, "Error getting state from history archive")
 	}
 
-	errChan := s.pipeline.Process(stateReader)
+	errChan := s.statePipeline.Process(stateReader)
 	select {
 	case err := <-errChan:
 		if err != nil {
 			return errors.Wrap(err, "State pipeline errored")
 		}
 	case <-s.shutdown:
-		s.pipeline.Shutdown()
+		s.statePipeline.Shutdown()
 	}
 
 	return nil

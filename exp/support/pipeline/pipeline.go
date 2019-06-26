@@ -66,20 +66,42 @@ func (p *Pipeline) SetRoot(rootProcessor *PipelineNode) {
 	p.root = rootProcessor
 }
 
-func (p *Pipeline) Process(readCloser ReadCloser) <-chan error {
-	p.doneMutex.Lock()
-	if p.done {
-		panic("Pipeline already running or done...")
-	}
-	p.done = true
-	p.doneMutex.Unlock()
+// setRunning protects from processing more than once at a time.
+func (p *Pipeline) setRunning(setRunning bool) {
+	p.runningMutex.Lock()
+	defer p.runningMutex.Unlock()
 
-	var ctx context.Context
-	ctx, p.cancelFunc = context.WithCancel(context.Background())
-	return p.processStateNode(ctx, &Store{}, p.root, readCloser)
+	if setRunning && p.running {
+		panic("Pipeline is running...")
+	}
+	p.running = setRunning
 }
 
-func (p *Pipeline) processStateNode(ctx context.Context, store *Store, node *PipelineNode, readCloser ReadCloser) <-chan error {
+// reset resets internal state of the pipeline and all the nodes and processors.
+func (p *Pipeline) reset() {
+	p.cancelled = false
+	p.cancelledWithErr = false
+	p.resetNode(p.root)
+}
+
+// resetNode resets internal state of the pipeline node and internal processor and
+// calls itself recursively on all of the children.
+func (p *Pipeline) resetNode(node *PipelineNode) {
+	node.reset()
+	for _, child := range node.Children {
+		p.resetNode(child)
+	}
+}
+
+func (p *Pipeline) Process(readCloser ReadCloser) <-chan error {
+	p.setRunning(true)
+	p.reset()
+	var ctx context.Context
+	ctx, p.cancelFunc = context.WithCancel(context.Background())
+	return p.processStateNode(0, ctx, &Store{}, p.root, readCloser)
+}
+
+func (p *Pipeline) processStateNode(level int, ctx context.Context, store *Store, node *PipelineNode, readCloser ReadCloser) <-chan error {
 	outputs := make([]WriteCloser, len(node.Children))
 
 	for i := range outputs {
@@ -130,7 +152,7 @@ func (p *Pipeline) processStateNode(ctx context.Context, store *Store, node *Pip
 		wg.Add(1)
 		go func(i int, child *PipelineNode) {
 			defer wg.Done()
-			done := p.processStateNode(ctx, store, child, outputs[i].(*BufferedReadWriteCloser))
+			done := p.processStateNode(level+1, ctx, store, child, outputs[i].(*BufferedReadWriteCloser))
 			err := <-done
 			if err != nil {
 				errorChan <- err
@@ -150,6 +172,10 @@ func (p *Pipeline) processStateNode(ctx context.Context, store *Store, node *Pip
 			}
 		default:
 			errorChan <- nil
+		}
+
+		if level == 0 {
+			p.setRunning(false)
 		}
 	}()
 

@@ -14,16 +14,28 @@ import (
 	"github.com/stellar/go/xdr"
 )
 
+// TODO replace `fmt` with `encoding/csv`
+
+func (p *CSVPrinter) fileHandle() (*os.File, error) {
+	if p.Filename == "" {
+		return os.Stdout, nil
+	}
+
+	return os.Create(p.Filename)
+}
+
 func (p *CSVPrinter) ProcessState(ctx context.Context, store *pipeline.Store, r io.StateReadCloser, w io.StateWriteCloser) error {
 	defer r.Close()
 	defer w.Close()
 
-	f, err := os.Create(p.Filename)
+	f, err := p.fileHandle()
 	if err != nil {
 		return err
 	}
 
-	defer f.Close()
+	if f != os.Stdout {
+		defer f.Close()
+	}
 
 	for {
 		entryChange, err := r.Read()
@@ -65,6 +77,50 @@ func (p *CSVPrinter) ProcessState(ctx context.Context, store *pipeline.Store, r 
 		default:
 			return fmt.Errorf("Invalid LedgerEntryType: %d", entryChange.Type)
 		}
+
+		select {
+		case <-ctx.Done():
+			return nil
+		default:
+			continue
+		}
+	}
+
+	return nil
+}
+
+func (p *CSVPrinter) ProcessLedger(ctx context.Context, store *pipeline.Store, r io.LedgerReadCloser, w io.LedgerWriteCloser) error {
+	defer r.Close()
+	defer w.Close()
+
+	f, err := p.fileHandle()
+	if err != nil {
+		return err
+	}
+
+	if f != os.Stdout {
+		defer f.Close()
+	}
+
+	for {
+		transaction, err := r.Read()
+		if err != nil {
+			if err == stdio.EOF {
+				break
+			} else {
+				return err
+			}
+		}
+
+		fmt.Fprintf(
+			f,
+			"%d,%t,%s,%d,%d\n",
+			transaction.Index,
+			transaction.Result.Result.Result.Code == xdr.TransactionResultCodeTxSuccess,
+			transaction.Envelope.Tx.SourceAccount.Address(),
+			len(transaction.Envelope.Tx.Operations),
+			transaction.Envelope.Tx.Fee,
+		)
 
 		select {
 		case <-ctx.Done():

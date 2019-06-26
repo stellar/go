@@ -24,11 +24,19 @@ type DBLedgerReadCloser struct {
 var _ LedgerReadCloser = (*DBLedgerReadCloser)(nil)
 
 // MakeLedgerReadCloser is a factory method for LedgerReadCloser.
-func MakeLedgerReadCloser(sequence uint32, backend ledgerbackend.LedgerBackend) *DBLedgerReadCloser {
-	return &DBLedgerReadCloser{
+func MakeLedgerReadCloser(sequence uint32, backend ledgerbackend.LedgerBackend) (*DBLedgerReadCloser, error) {
+	reader := &DBLedgerReadCloser{
 		sequence: sequence,
 		backend:  backend,
 	}
+
+	var err error
+	reader.initOnce.Do(func() { err = reader.init() })
+	if err != nil {
+		return nil, err
+	}
+
+	return reader, nil
 }
 
 // GetSequence returns the sequence number of the ledger data stored by this object.
@@ -83,7 +91,7 @@ func (dblrc *DBLedgerReadCloser) init() error {
 		return errors.Wrap(err, "error reading ledger from backend")
 	}
 	if !exists {
-		return errors.Wrap(err, "ledger was not found")
+		return ErrNotFound
 	}
 
 	dblrc.header = ledgerCloseMeta.LedgerHeader

@@ -19,19 +19,20 @@ func main() {
 	}
 
 	session := &ingest.SingleLedgerSession{Archive: archive}
-	p := pipeline.New(
+	statePipeline := &pipeline.StatePipeline{}
+	statePipeline.SetRoot(
 		// Passes accounts only
-		pipeline.Node(&processors.EntryTypeFilter{Type: xdr.LedgerEntryTypeAccount}).
+		statePipeline.Node(&processors.EntryTypeFilter{Type: xdr.LedgerEntryTypeAccount}).
 			Pipe(
 				// Finds accounts for a single signer
-				pipeline.Node(&AccountsForSignerProcessor{Signer: "GBMALBYJT6A73SYQWOWVVCGSPUPJPBX4AFDJ7A63GG64QCNRCAFYWWEN"}).
-					Pipe(pipeline.Node(&processors.CSVPrinter{Filename: "./accounts_for_signer.csv"})),
+				statePipeline.Node(&AccountsForSignerProcessor{Signer: "GBMALBYJT6A73SYQWOWVVCGSPUPJPBX4AFDJ7A63GG64QCNRCAFYWWEN"}).
+					Pipe(statePipeline.Node(&processors.CSVPrinter{Filename: "./accounts_for_signer.csv"})),
 			),
 	)
 
-	doneStats := printPipelineStats(p)
+	doneStats := printPipelineStats(statePipeline)
 
-	session.AddPipeline(p)
+	session.SetStatePipeline(statePipeline)
 
 	err = session.Run()
 	if err != nil {
@@ -63,18 +64,18 @@ func buildPipeline() (*pipeline.StatePipeline, error) {
 
 	p.SetRoot(
 		// Passes accounts only
-		p.Node(&EntryTypeFilter{Type: xdr.LedgerEntryTypeAccount}).
+		p.Node(&processors.EntryTypeFilter{Type: xdr.LedgerEntryTypeAccount}).
 			Pipe(
 				// Finds accounts for a single signer
 				p.Node(&AccountsForSignerProcessor{Signer: "GBMALBYJT6A73SYQWOWVVCGSPUPJPBX4AFDJ7A63GG64QCNRCAFYWWEN"}).
-					Pipe(p.Node(&PrintAllProcessor{Filename: "./accounts_for_signer.csv"})),
+					Pipe(p.Node(&processors.CSVPrinter{Filename: "./accounts_for_signer.csv"})),
 			),
 	)
 
 	return p, nil
 }
 
-func printPipelineStats(p *pipeline.Pipeline) chan<- bool {
+func printPipelineStats(p *pipeline.StatePipeline) chan<- bool {
 	startTime := time.Now()
 	done := make(chan bool)
 	ticker := time.NewTicker(10 * time.Second)

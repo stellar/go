@@ -81,15 +81,13 @@ type StateProcessor interface {
 	// probably will be faster with multiple DB writers (especially when you want
 	// to do some data conversions before inserting).
 	IsConcurrent() bool
-	// RequiresInput defines if processor requires input data (StateReadCloser). If not,
-	// it will receive empty reader, it's parent process will write to "void" and
-	// writes to `writer` will go to "void".
-	// This is useful for processors resposible for saving aggregated data that don't
-	// need state objects.
-	// TODO!
-	// RequiresInput() bool
 	// Returns processor name. Helpful for errors, debuging and reports.
 	Name() string
+	// Reset resets internal state of the processor. This is run by the pipeline
+	// everytime the processing is done. It is extremely important to implement
+	// this method, otherwise internal state of the processor will be maintained
+	// between pipeline runs and may result in invalid data.
+	Reset()
 }
 
 // LedgerProcessor defines methods required by ledger processing pipeline.
@@ -158,15 +156,13 @@ type LedgerProcessor interface {
 	// probably will be faster with multiple DB writers (especially when you want
 	// to do some data conversions before inserting).
 	IsConcurrent() bool
-	// RequiresInput defines if processor requires input data (LedgerReadCloser). If not,
-	// it will receive empty reader, it's parent process will write to "void" and
-	// writes to `writer` will go to "void".
-	// This is useful for processors resposible for saving aggregated data that don't
-	// need state objects.
-	// TODO!
-	// RequiresInput() bool
 	// Returns processor name. Helpful for errors, debuging and reports.
 	Name() string
+	// Reset resets internal state of the processor. This is run by the pipeline
+	// everytime the processing is done. It is extremely important to implement
+	// this method, otherwise internal state of the processor will be maintained
+	// between pipeline runs and may result in invalid data.
+	Reset()
 }
 
 // stateProcessorWrapper wraps StateProcessor to implement pipeline.Processor interface.

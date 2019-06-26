@@ -2,10 +2,11 @@ package main
 
 import (
 	"context"
+	stdio "io"
 	"sync"
 
 	"github.com/stellar/go/exp/ingest/io"
-	"github.com/stellar/go/exp/ingest/pipeline"
+	"github.com/stellar/go/exp/support/pipeline"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
 )
@@ -30,6 +31,10 @@ func (n *SimpleProcessor) IncrementAndReturnCallCount() int {
 	return n.callCount
 }
 
+func (n *SimpleProcessor) Reset() {
+	n.callCount = 0
+}
+
 type AccountsForSignerProcessor struct {
 	SimpleProcessor
 
@@ -43,7 +48,7 @@ func (p *AccountsForSignerProcessor) ProcessState(ctx context.Context, store *pi
 	for {
 		entryChange, err := r.Read()
 		if err != nil {
-			if err == io.EOF {
+			if err == stdio.EOF {
 				break
 			} else {
 				return err
@@ -60,7 +65,7 @@ func (p *AccountsForSignerProcessor) ProcessState(ctx context.Context, store *pi
 			if signer.Key.Address() == p.Signer {
 				err := w.Write(entryChange)
 				if err != nil {
-					if err == io.ErrClosedPipe {
+					if err == stdio.ErrClosedPipe {
 						// Reader does not need more data
 						return nil
 					}
