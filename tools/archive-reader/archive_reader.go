@@ -24,7 +24,7 @@ func main() {
 	if e != nil {
 		panic(e)
 	}
-	haa := ingestadapters.MakeHistoryArchiveAdapter(archive)
+	haa := adapters.MakeHistoryArchiveAdapter(archive)
 
 	sr, e := haa.GetState(seqNum)
 	if e != nil {
