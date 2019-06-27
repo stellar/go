@@ -55,8 +55,8 @@ type Base struct {
 }
 
 // PagingToken implements hal.Pageable
-func (this Base) PagingToken() string {
-	return this.PT
+func (base Base) PagingToken() string {
+	return base.PT
 }
 
 // BumpSequence is the json resource representing a single operation whose type is
@@ -204,25 +204,25 @@ type Operation interface {
 }
 
 // GetType returns the type of operation
-func (this Base) GetType() string {
-	return this.Type
+func (base Base) GetType() string {
+	return base.Type
 }
 
 // GetTypeI returns the ID of type of operation
-func (this Base) GetTypeI() int32 {
-	return this.TypeI
+func (base Base) GetTypeI() int32 {
+	return base.TypeI
 }
 
-func (this Base) GetID() string {
-	return this.ID
+func (base Base) GetID() string {
+	return base.ID
 }
 
-func (this Base) GetTransactionHash() string {
-	return this.TransactionHash
+func (base Base) GetTransactionHash() string {
+	return base.TransactionHash
 }
 
-func (this Base) IsTransactionSuccessful() bool {
-	return this.TransactionSuccessful
+func (base Base) IsTransactionSuccessful() bool {
+	return base.TransactionSuccessful
 }
 
 // OperationsPage is the json resource representing a page of operations.

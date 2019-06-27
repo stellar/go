@@ -78,7 +78,6 @@ type Archive struct {
 	expectTxResultSetHashes map[uint32]Hash
 	actualTxResultSetHashes map[uint32]Hash
 
-	missingBuckets int
 	invalidBuckets int
 
 	invalidLedgers      int

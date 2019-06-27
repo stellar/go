@@ -50,6 +50,8 @@ type Database struct {
 	URL  string `valid:"required"`
 }
 
+var assetCodeMatch = regexp.MustCompile("^[a-zA-Z0-9]{1,12}$")
+
 // Validate validates config and returns error if any of config values is incorrect
 func (c *Config) Validate() (err error) {
 	if c.Port == nil {
@@ -89,12 +91,7 @@ func (c *Config) Validate() (err error) {
 			}
 		}
 
-		var matched bool
-		matched, err = regexp.MatchString("^[a-zA-Z0-9]{1,12}$", asset.Code)
-		if err != nil {
-			return err
-		}
-
+		matched := assetCodeMatch.MatchString(asset.Code)
 		if !matched {
 			return errors.New("Invalid asset code: " + asset.Code)
 		}

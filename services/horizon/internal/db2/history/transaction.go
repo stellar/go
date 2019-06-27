@@ -94,7 +94,7 @@ func (q *TransactionsQ) Select(dest interface{}) error {
 		return q.Err
 	}
 
-	if q.includeFailed == false {
+	if !q.includeFailed {
 		q.sql = q.sql.
 			Where("(ht.successful = true OR ht.successful IS NULL)")
 	}

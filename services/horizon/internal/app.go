@@ -392,7 +392,7 @@ func (a *App) init() {
 	a.paths = &simplepath.Finder{a.CoreQ()}
 
 	// reaper
-	a.reaper = reap.New(a.config.HistoryRetentionCount, a.HorizonSession(nil))
+	a.reaper = reap.New(a.config.HistoryRetentionCount, a.HorizonSession(context.Background()))
 
 	// web.init
 	a.web = mustInitWeb(a.ctx, a.historyQ, a.coreQ, a.config.SSEUpdateFrequency, a.config.StaleThreshold, a.config.IngestFailedTransactions)

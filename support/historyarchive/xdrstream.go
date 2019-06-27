@@ -93,6 +93,9 @@ func (x *XdrStream) ReadOne(in interface{}) error {
 func WriteFramedXdr(out io.Writer, in interface{}) error {
 	var tmp bytes.Buffer
 	n, err := xdr.Marshal(&tmp, in)
+	if err != nil {
+		return err
+	}
 	un := uint32(n)
 	if un > 0x7fffffff {
 		return fmt.Errorf("Overlong write: %d bytes", n)
