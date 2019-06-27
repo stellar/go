@@ -98,10 +98,10 @@ func (p *Pipeline) Process(readCloser ReadCloser) <-chan error {
 	p.reset()
 	var ctx context.Context
 	ctx, p.cancelFunc = context.WithCancel(context.Background())
-	return p.processStateNode(0, ctx, &Store{}, p.root, readCloser)
+	return p.processStateNode(ctx, &Store{}, p.root, readCloser)
 }
 
-func (p *Pipeline) processStateNode(level int, ctx context.Context, store *Store, node *PipelineNode, readCloser ReadCloser) <-chan error {
+func (p *Pipeline) processStateNode(ctx context.Context, store *Store, node *PipelineNode, readCloser ReadCloser) <-chan error {
 	outputs := make([]WriteCloser, len(node.Children))
 
 	for i := range outputs {
@@ -152,7 +152,7 @@ func (p *Pipeline) processStateNode(level int, ctx context.Context, store *Store
 		wg.Add(1)
 		go func(i int, child *PipelineNode) {
 			defer wg.Done()
-			done := p.processStateNode(level+1, ctx, store, child, outputs[i].(*BufferedReadWriteCloser))
+			done := p.processStateNode(ctx, store, child, outputs[i].(*BufferedReadWriteCloser))
 			err := <-done
 			if err != nil {
 				errorChan <- err
@@ -174,7 +174,9 @@ func (p *Pipeline) processStateNode(level int, ctx context.Context, store *Store
 			errorChan <- nil
 		}
 
-		if level == 0 {
+		// If all of the children of the current node are done and the current node is root
+		// it means that pipeline is done too.
+		if node == p.root {
 			p.setRunning(false)
 		}
 	}()
