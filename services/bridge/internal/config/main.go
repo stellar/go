@@ -6,28 +6,23 @@ import (
 	"regexp"
 
 	"github.com/stellar/go/keypair"
+	"github.com/stellar/go/services/internal/bridge-compliance-shared/protocols"
 )
 
 // Config contains config params of the bridge server
 type Config struct {
-	Port              *int      `valid:"required"`
-	Horizon           string    `valid:"optional"`
-	Compliance        string    `valid:"optional"`
-	LogFormat         string    `valid:"optional" toml:"log_format"`
-	MACKey            string    `valid:"optional" toml:"mac_key"`
-	APIKey            string    `valid:"optional" toml:"api_key"`
-	NetworkPassphrase string    `valid:"optional" toml:"network_passphrase"`
-	Develop           bool      `valid:"optional"`
-	Assets            []Asset   `valid:"optional"`
-	Database          *Database `valid:"optional"`
-	Accounts          Accounts  `valid:"optional" toml:"accounts"`
-	Callbacks         Callbacks `valid:"optional" toml:"callbacks"`
-}
-
-// Asset represents credit asset
-type Asset struct {
-	Code   string `valid:"required"`
-	Issuer string `valid:"optional"`
+	Port              *int              `valid:"required"`
+	Horizon           string            `valid:"optional"`
+	Compliance        string            `valid:"optional"`
+	LogFormat         string            `valid:"optional" toml:"log_format"`
+	MACKey            string            `valid:"optional" toml:"mac_key"`
+	APIKey            string            `valid:"optional" toml:"api_key"`
+	NetworkPassphrase string            `valid:"optional" toml:"network_passphrase"`
+	Develop           bool              `valid:"optional"`
+	Assets            []protocols.Asset `valid:"optional"`
+	Database          *Database         `valid:"optional"`
+	Accounts          Accounts          `valid:"optional" toml:"accounts"`
+	Callbacks         Callbacks         `valid:"optional" toml:"callbacks"`
 }
 
 // Accounts contains values of `accounts` config group
