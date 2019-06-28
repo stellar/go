@@ -42,7 +42,7 @@ func TestTradeRequestBuildUrl(t *testing.T) {
 	assert.Equal(t, "trades?cursor=123", endpoint)
 
 	tr = TradeRequest{ForOfferID: "123", ForAccount: "GCLWGQPMKXQSPF776IU33AH4PZNOOWNAWGGKVTBQMIC5IMKUNP3E6NVU"}
-	endpoint, err = tr.BuildURL()
+	_, err = tr.BuildURL()
 
 	// error case: too many parameters for building any operation endpoint
 	if assert.Error(t, err) {

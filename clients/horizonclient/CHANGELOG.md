@@ -3,6 +3,11 @@
 All notable changes to this project will be documented in this
 file.  This project adheres to [Semantic Versioning](http://semver.org/).
 
+## Unreleased
+
+- Transaction information returned by methods now contain new fields: `FeeCharged` and `MaxFee`. `FeePaid` is deprecated and will be removed in later versions.
+- Improved unit test for `Client.FetchTimebounds` method.
+
 ## [v1.2.0](https://github.com/stellar/go/releases/tag/horizonclient-v1.2.0) - 2019-05-16
 
 - Added support for returning the previous and next set of pages for a horizon response; issue [#985](https://github.com/stellar/go/issues/985). 
