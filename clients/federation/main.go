@@ -4,9 +4,10 @@ import (
 	"net/http"
 	"net/url"
 
-	"github.com/stellar/go/clients/horizon"
+	hc "github.com/stellar/go/clients/horizonclient"
 	"github.com/stellar/go/clients/stellartoml"
 	proto "github.com/stellar/go/protocols/federation"
+	hProtocol "github.com/stellar/go/protocols/horizon"
 )
 
 // FederationResponseMaxSize is the maximum size of response from a federation server
@@ -15,14 +16,14 @@ const FederationResponseMaxSize = 100 * 1024
 // DefaultTestNetClient is a default federation client for testnet
 var DefaultTestNetClient = &Client{
 	HTTP:        http.DefaultClient,
-	Horizon:     horizon.DefaultTestNetClient,
+	Horizon:     hc.DefaultTestNetClient,
 	StellarTOML: stellartoml.DefaultClient,
 }
 
 // DefaultPublicNetClient is a default federation client for pubnet
 var DefaultPublicNetClient = &Client{
 	HTTP:        http.DefaultClient,
-	Horizon:     horizon.DefaultPublicNetClient,
+	Horizon:     hc.DefaultPublicNetClient,
 	StellarTOML: stellartoml.DefaultClient,
 }
 
@@ -44,7 +45,7 @@ type ClientInterface interface {
 // Horizon represents a horizon client that can be consulted for data when
 // needed as part of the federation protocol
 type Horizon interface {
-	HomeDomainForAccount(aid string) (string, error)
+	AccountDetail(request hc.AccountRequest) (hProtocol.Account, error)
 }
 
 // HTTP represents the http client that a federation client uses to make http
