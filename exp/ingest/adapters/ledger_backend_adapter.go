@@ -42,8 +42,5 @@ func (lba *LedgerBackendAdapter) Close() error {
 
 // hasBackend checks for the presence of LedgerBackendAdapter.Backend.
 func (lba *LedgerBackendAdapter) hasBackend() bool {
-	if lba.Backend == nil {
-		return false
-	}
-	return true
+	return lba.Backend != nil
 }

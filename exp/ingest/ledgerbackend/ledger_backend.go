@@ -62,16 +62,16 @@ type txFeeHistory struct {
 }
 
 // scpHistory holds a row of data from the stellar-core `scphistory` table.
-type scpHistory struct {
-	NodeID    string `db:"nodeid"`
-	LedgerSeq uint32 `db:"ledgerseq"`
-	Envelope  string `db:"envelope"`
-}
+// type scpHistory struct {
+// 	NodeID    string `db:"nodeid"`
+// 	LedgerSeq uint32 `db:"ledgerseq"`
+// 	Envelope  string `db:"envelope"`
+// }
 
 // upgradeHistory holds a row of data from the stellar-core `upgradehistory` table.
-type upgradeHistory struct {
-	LedgerSeq    uint32 `db:"ledgerseq"`
-	UpgradeIndex uint32 `db:"upgradeindex"`
-	Upgrade      string `db:"upgrade"`
-	Changes      string `db:"changes"`
-}
+// type upgradeHistory struct {
+// 	LedgerSeq    uint32 `db:"ledgerseq"`
+// 	UpgradeIndex uint32 `db:"upgradeindex"`
+// 	Upgrade      string `db:"upgrade"`
+// 	Changes      string `db:"changes"`
+// }

@@ -100,11 +100,7 @@ func domainsMatch(tomlURL *url.URL, orgURL *url.URL) bool {
 	lenDiff := len(orgDomainParts) - len(tomlDomainParts)
 	orgDomainParts = orgDomainParts[lenDiff:]
 	orgRootDomain := strings.Join(orgDomainParts, ".")
-	if tomlURL.Host != orgRootDomain {
-		return false
-	}
-
-	return true
+	return tomlURL.Host == orgRootDomain
 }
 
 // isDomainVerified performs some checking to ensure we can trust the Asset's domain

@@ -420,13 +420,21 @@ func reingestRange(i *ingest.System, from, to int32) error {
 	})
 
 	hlog.Infof("Starting %d workers...", workers)
+	done := make(chan bool)
 	go func() {
-		c := time.Tick(10 * time.Second)
-		for range c {
+		ticker := time.NewTicker(10 * time.Second)
+		for {
+			select {
+			case <-done:
+				ticker.Stop()
+				return
+			case <-ticker.C:
+			}
 			hlog.WithField("progress", float32(allJobs-pool.WorkSize())/float32(allJobs)*100).Info("Work status")
 		}
 	}()
 	pool.Start(workers)
+	done <- true
 	hlog.Info("Done")
 	return nil
 }

@@ -114,7 +114,7 @@ func (action *PaymentsIndexAction) loadParams() {
 		return
 	}
 
-	if action.IncludeFailed == true && !action.App.config.IngestFailedTransactions {
+	if action.IncludeFailed && !action.App.config.IngestFailedTransactions {
 		err := errors.New("`include_failed` parameter is unavailable when Horizon is not ingesting failed " +
 			"transactions. Set `INGEST_FAILED_TRANSACTIONS=true` to start ingesting them.")
 		action.Err = supportProblem.MakeInvalidFieldProblem("include_failed", err)

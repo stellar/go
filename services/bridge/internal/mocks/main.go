@@ -40,6 +40,9 @@ func JSONGetResponse(testServer *httptest.Server, data map[string]interface{}) (
 		panic(err)
 	}
 	req, err := http.NewRequest("POST", testServer.URL, bytes.NewBuffer(j))
+	if err != nil {
+		panic(err)
+	}
 	req.Header.Set("Content-Type", "application/json")
 
 	client := &http.Client{}

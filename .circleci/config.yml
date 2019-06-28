@@ -22,6 +22,14 @@ commands:
           name: Run govet
           command: ./govet.sh
 
+  # staticcheck runs staticcheck in the entire codebase.
+  staticcheck:
+    steps:
+      - checkout
+      - run:
+          name: Run staticcheck
+          command: ./staticcheck.sh
+
   # check_deprecations ensures a release is actually removing deprecated fields
   # that were supposed to be discontinued in said release.
   check_deprecations:
@@ -109,8 +117,10 @@ jobs:
     docker:
       - image: circleci/golang:1.12
     steps:
+      - install_go_deps
       - gofmt
       - govet
+      - staticcheck
 
   # test_code_1_10 performs all package tests using Go 1.10.
   test_code_1_10:

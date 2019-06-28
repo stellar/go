@@ -3,7 +3,6 @@ package pipeline
 import (
 	"context"
 	"sync"
-	"time"
 )
 
 // BufferedReadWriteCloser implements ReadCloser and WriteCloser and acts
@@ -51,7 +50,6 @@ type PipelineNode struct {
 	Processor Processor
 	Children  []*PipelineNode
 
-	duration        time.Duration
 	jobs            int
 	readEntries     int
 	readsPerSecond  int

@@ -2,7 +2,6 @@ package shared
 
 import (
 	"bytes"
-	"fmt"
 
 	"github.com/stellar/go/hash"
 	"github.com/stellar/go/keypair"
@@ -55,7 +54,8 @@ func BuildTransaction(accountID, networkPassphrase string, operation []txnbuild.
 func TransactionHash(tx *xdr.Transaction, networkPassphrase string) ([32]byte, error) {
 	var txBytes bytes.Buffer
 
-	_, err := fmt.Fprintf(&txBytes, "%s", hash.Hash([]byte(networkPassphrase)))
+	h := hash.Hash([]byte(networkPassphrase))
+	_, err := txBytes.Write(h[:])
 	if err != nil {
 		return [32]byte{}, err
 	}

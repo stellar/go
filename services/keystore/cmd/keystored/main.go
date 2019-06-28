@@ -72,7 +72,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	if *auth == true {
+	if *auth {
 		if cfg.AUTHURL == "" {
 			fmt.Fprintln(os.Stderr, "Auth is enabled but auth forwarding URL is not set")
 			os.Exit(1)
@@ -172,6 +172,11 @@ func main() {
 
 		case "redo":
 			migrations, _, err := migrate.PlanMigration(db, dbDriverName, keystoreMigrations, migrate.Down, 1)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "error getting migration data: %v\n", err)
+				os.Exit(1)
+			}
+
 			if len(migrations) == 0 {
 				fmt.Fprintln(os.Stdout, "Nothing to do!")
 				os.Exit(0)

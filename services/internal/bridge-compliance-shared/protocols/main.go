@@ -5,7 +5,7 @@ import (
 	"regexp"
 )
 
-var FederationDestinationFieldName = regexp.MustCompile("forward_destination\\[fields\\]\\[([a-z_-]+)\\]")
+var FederationDestinationFieldName = regexp.MustCompile(`forward_destination\[fields\]\[([a-z_-]+)\]`)
 
 const (
 	PathCodeField   = "path[%d][asset_code]"

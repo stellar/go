@@ -7,6 +7,13 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+type person struct {
+	Name        string `db:"name"`
+	HungerLevel string `db:"hunger_level"`
+
+	SomethingIgnored int `db:"-"`
+}
+
 func TestGetTable(t *testing.T) {
 	db := dbtest.Postgres(t).Load(testSchema)
 	defer db.Close()

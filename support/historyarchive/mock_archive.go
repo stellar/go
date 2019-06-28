@@ -53,7 +53,7 @@ func (b *MockArchiveBackend) ListFiles(pth string) (chan string, chan error) {
 	ch := make(chan string)
 	errs := make(chan error)
 	files := make([]string, 0, len(b.files))
-	for k, _ := range b.files {
+	for k := range b.files {
 		files = append(files, k)
 	}
 	go func() {

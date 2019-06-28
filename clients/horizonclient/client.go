@@ -88,7 +88,7 @@ func (c *Client) stream(
 	for {
 		// updates the url with new cursor
 		su.RawQuery = query.Encode()
-		req, err := http.NewRequest("GET", fmt.Sprintf("%s", su), nil)
+		req, err := http.NewRequest("GET", su.String(), nil)
 		if err != nil {
 			return errors.Wrap(err, "error creating HTTP request")
 		}
@@ -280,7 +280,7 @@ func (c *Client) Ledgers(request LedgerRequest) (ledgers hProtocol.LedgersPage, 
 // LedgerDetail returns information about a particular ledger for a given sequence number
 // See https://www.stellar.org/developers/horizon/reference/endpoints/ledgers-single.html
 func (c *Client) LedgerDetail(sequence uint32) (ledger hProtocol.Ledger, err error) {
-	if sequence <= 0 {
+	if sequence == 0 {
 		err = errors.New("invalid sequence number provided")
 	}
 
@@ -289,7 +289,6 @@ func (c *Client) LedgerDetail(sequence uint32) (ledger hProtocol.Ledger, err err
 	}
 
 	request := LedgerRequest{forSequence: sequence}
-
 	err = c.sendRequest(request, &ledger)
 	return
 }

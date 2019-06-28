@@ -351,7 +351,7 @@ func (arch *Archive) CheckBucketsMissing() map[Hash]bool {
 	arch.mutex.Lock()
 	defer arch.mutex.Unlock()
 	missing := make(map[Hash]bool)
-	for k, _ := range arch.referencedBuckets {
+	for k := range arch.referencedBuckets {
 		_, ok := arch.allBuckets[k]
 		if !ok {
 			missing[k] = true
@@ -383,7 +383,7 @@ func (arch *Archive) ReportMissing(opts *CommandOptions) error {
 		log.Printf("No checkpoint files missing in range %s", opts.Range)
 	}
 
-	for bucket, _ := range missingBuckets {
+	for bucket := range missingBuckets {
 		log.Printf("Missing bucket: %s", bucket)
 	}
 
