@@ -49,8 +49,8 @@ type ArchiveBackend interface {
 type ArchiveInterface interface {
 	GetPathHAS(path string) (HistoryArchiveState, error)
 	PutPathHAS(path string, has HistoryArchiveState, opts *CommandOptions) error
-	BucketExists(bucket Hash) bool
-	CategoryCheckpointExists(cat string, chk uint32) bool
+	BucketExists(bucket Hash) (bool, error)
+	CategoryCheckpointExists(cat string, chk uint32) (bool, error)
 	GetRootHAS() (HistoryArchiveState, error)
 	GetCheckpointHAS(chk uint32) (HistoryArchiveState, error)
 	PutCheckpointHAS(chk uint32, has HistoryArchiveState, opts *CommandOptions) error

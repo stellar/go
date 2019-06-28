@@ -100,12 +100,12 @@ func (msr *MemoryStateReader) streamBuckets() {
 
 		exists, err := msr.archive.BucketExists(hash)
 		if err != nil {
-			msr.readChan <- readResult{xdr.LedgerEntry{}, fmt.Errorf("error checking if bucket exists: %s", hash)}
+			msr.readChan <- msr.error(fmt.Errorf("error checking if bucket exists: %s", hash))
 			return
 		}
 
 		if !exists {
-			msr.readChan <- readResult{xdr.LedgerEntry{}, fmt.Errorf("bucket hash does not exist: %s", hash)}
+			msr.readChan <- msr.error(fmt.Errorf("bucket hash does not exist: %s", hash))
 			return
 		}
 
