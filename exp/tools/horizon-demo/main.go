@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"time"
 
 	"github.com/stellar/go/exp/ingest"
 	"github.com/stellar/go/exp/ingest/ledgerbackend"
@@ -13,21 +12,21 @@ import (
 )
 
 func main() {
+	db, err := NewDatabase("postgres://localhost:5432/horizondemo?sslmode=disable")
+	if err != nil {
+		panic(err)
+	}
+	defer db.Close()
+
 	session := &ingest.LiveSession{
 		Archive:       archive(),
 		LedgerBackend: ledgerBackend(),
+
+		StatePipeline:  buildStatePipeline(db),
+		LedgerPipeline: buildLedgerPipeline(db),
 	}
 
-	session.SetStatePipeline(buildStatePipeline())
-	session.SetLedgerPipeline(buildLedgerPipeline())
-
-	go func() {
-		time.Sleep(time.Minute)
-		fmt.Println("Shutting down. Remove next line to run full demo.")
-		session.Shutdown()
-	}()
-
-	err := session.Run()
+	err = session.Run()
 	if err != nil {
 		panic(err)
 	}
@@ -53,17 +52,19 @@ func ledgerBackend() ledgerbackend.LedgerBackend {
 	}
 }
 
-func buildStatePipeline() *pipeline.StatePipeline {
+func buildStatePipeline(db *Database) *pipeline.StatePipeline {
 	statePipeline := &pipeline.StatePipeline{}
 
 	statePipeline.SetRoot(
 		// Prints number of read entries every N entries...
 		statePipeline.Node(&processors.StatusLogger{N: 5000}).
 			Pipe(
-				// Passes accounts only
 				statePipeline.Node(&processors.EntryTypeFilter{Type: xdr.LedgerEntryTypeAccount}).
 					Pipe(
-						statePipeline.Node(&processors.CSVPrinter{Filename: "accounts.csv"}),
+						statePipeline.Node(&DatabaseProcessor{
+							Database: db,
+							Action:   AccountsForSigner,
+						}),
 					),
 			),
 	)
@@ -71,11 +72,14 @@ func buildStatePipeline() *pipeline.StatePipeline {
 	return statePipeline
 }
 
-func buildLedgerPipeline() *pipeline.LedgerPipeline {
+func buildLedgerPipeline(db *Database) *pipeline.LedgerPipeline {
 	ledgerPipeline := &pipeline.LedgerPipeline{}
 
 	ledgerPipeline.SetRoot(
-		ledgerPipeline.Node(&processors.CSVPrinter{}),
+		ledgerPipeline.Node(&DatabaseProcessor{
+			Database: db,
+			Action:   AccountsForSigner,
+		}),
 	)
 
 	return ledgerPipeline

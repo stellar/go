@@ -1,9 +1,5 @@
 package pipeline
 
-import (
-	"time"
-)
-
 func (p *PipelineNode) Pipe(children ...*PipelineNode) *PipelineNode {
 	p.Children = children
 	return p

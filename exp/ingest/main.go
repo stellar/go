@@ -16,21 +16,15 @@ type standardSession struct {
 	done      bool
 }
 
-// LiveSession initializes the ledger state using `Archive` and `StatePipeline`,
-// then starts processing ledger data using `ledgerbackend`.
+// LiveSession initializes the ledger state using `Archive` and `statePipeline`,
+// then starts processing ledger data using `LedgerBackend` and `ledgerPipeline`.
 type LiveSession struct {
 	standardSession
 
-	Archive       historyarchive.ArchiveInterface
-	LedgerBackend ledgerbackend.LedgerBackend
-
-	// mutex is used to make sure queries across many stores are persistent
-	// mutex         sync.RWMutex
-
-	statePipeline  *pipeline.StatePipeline
-	ledgerPipeline *pipeline.LedgerPipeline
-
-	currentLedger uint32
+	Archive        historyarchive.ArchiveInterface
+	LedgerBackend  ledgerbackend.LedgerBackend
+	StatePipeline  *pipeline.StatePipeline
+	LedgerPipeline *pipeline.LedgerPipeline
 }
 
 // SingleLedgerSession initializes the ledger state using `Archive` and `StatePipeline`
@@ -41,13 +35,15 @@ type SingleLedgerSession struct {
 
 	Archive        *historyarchive.Archive
 	LedgerSequence uint32
-
-	statePipeline *pipeline.StatePipeline
+	StatePipeline  *pipeline.StatePipeline
 }
 
+// Session is an implementation of a ingesting scenario. Some useful sessions
+// can be found in this package.
 type Session interface {
+	// Run() start the session and works as long as the session is active.
 	Run() error
-	SetStatePipeline(*pipeline.StatePipeline)
-	SetLedgerPipeline(*pipeline.LedgerPipeline)
+	// Shutdown() gracefully stops running session and stops all internal
+	// objects.
 	Shutdown()
 }

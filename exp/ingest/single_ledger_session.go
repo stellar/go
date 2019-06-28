@@ -2,7 +2,6 @@ package ingest
 
 import (
 	"github.com/stellar/go/exp/ingest/adapters"
-	"github.com/stellar/go/exp/ingest/pipeline"
 	"github.com/stellar/go/support/errors"
 )
 
@@ -31,28 +30,20 @@ func (s *SingleLedgerSession) Run() error {
 	return nil
 }
 
-func (s *SingleLedgerSession) SetStatePipeline(p *pipeline.StatePipeline) {
-	s.statePipeline = p
-}
-
-func (s *SingleLedgerSession) SetLedgerPipeline(p *pipeline.LedgerPipeline) {
-	panic("SingleLedgerSession does not accept LedgerPipeline")
-}
-
 func (s *SingleLedgerSession) processState(historyAdapter *adapters.HistoryArchiveAdapter, sequence uint32) error {
 	stateReader, err := historyAdapter.GetState(sequence)
 	if err != nil {
 		return errors.Wrap(err, "Error getting state from history archive")
 	}
 
-	errChan := s.statePipeline.Process(stateReader)
+	errChan := s.StatePipeline.Process(stateReader)
 	select {
 	case err := <-errChan:
 		if err != nil {
 			return errors.Wrap(err, "State pipeline errored")
 		}
 	case <-s.shutdown:
-		s.statePipeline.Shutdown()
+		s.StatePipeline.Shutdown()
 	}
 
 	return nil

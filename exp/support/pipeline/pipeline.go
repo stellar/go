@@ -6,6 +6,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/stellar/go/support/errors"
 )
 
 func New(rootProcessor *PipelineNode) *Pipeline {
@@ -141,7 +143,7 @@ func (p *Pipeline) processStateNode(ctx context.Context, store *Store, node *Pip
 				p.cancelled = true
 				p.cancelledWithErr = true
 				p.cancelFunc()
-				errorChan <- err
+				errorChan <- errors.Wrap(err, fmt.Sprintf("Processor %s errored", node.Processor.Name()))
 			}
 		}()
 	}
@@ -167,9 +169,8 @@ func (p *Pipeline) processStateNode(ctx context.Context, store *Store, node *Pip
 		case <-ctx.Done():
 			if p.cancelledWithErr {
 				errorChan <- nil
-			} else {
-				// Do nothing, err already sent to a channel...
 			}
+			// else: Do nothing, err already sent to a channel...
 		default:
 			errorChan <- nil
 		}

@@ -18,7 +18,6 @@ func main() {
 		panic(err)
 	}
 
-	session := &ingest.SingleLedgerSession{Archive: archive}
 	statePipeline := &pipeline.StatePipeline{}
 	statePipeline.SetRoot(
 		// Passes accounts only
@@ -30,9 +29,12 @@ func main() {
 			),
 	)
 
-	doneStats := printPipelineStats(statePipeline)
+	session := &ingest.SingleLedgerSession{
+		Archive:       archive,
+		StatePipeline: statePipeline,
+	}
 
-	session.SetStatePipeline(statePipeline)
+	doneStats := printPipelineStats(statePipeline)
 
 	err = session.Run()
 	if err != nil {
@@ -57,22 +59,6 @@ func archive() (*historyarchive.Archive, error) {
 			UnsignedRequests: true,
 		},
 	)
-}
-
-func buildPipeline() (*pipeline.StatePipeline, error) {
-	p := &pipeline.StatePipeline{}
-
-	p.SetRoot(
-		// Passes accounts only
-		p.Node(&processors.EntryTypeFilter{Type: xdr.LedgerEntryTypeAccount}).
-			Pipe(
-				// Finds accounts for a single signer
-				p.Node(&AccountsForSignerProcessor{Signer: "GBMALBYJT6A73SYQWOWVVCGSPUPJPBX4AFDJ7A63GG64QCNRCAFYWWEN"}).
-					Pipe(p.Node(&processors.CSVPrinter{Filename: "./accounts_for_signer.csv"})),
-			),
-	)
-
-	return p, nil
 }
 
 func printPipelineStats(p *pipeline.StatePipeline) chan<- bool {

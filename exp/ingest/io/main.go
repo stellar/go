@@ -5,7 +5,7 @@ import (
 	"github.com/stellar/go/xdr"
 )
 
-var ErrNotFound = errors.New("Not found")
+var ErrNotFound = errors.New("not found")
 
 // StateReadCloser interface placeholder
 type StateReadCloser interface {

@@ -141,4 +141,5 @@ func (p *CSVPrinter) Name() string {
 	return "CSVPrinter"
 }
 
-var _ ingestpipeline.StateProcessor = &EntryTypeFilter{}
+var _ ingestpipeline.StateProcessor = &CSVPrinter{}
+var _ ingestpipeline.LedgerProcessor = &CSVPrinter{}
