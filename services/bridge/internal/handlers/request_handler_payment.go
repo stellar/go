@@ -212,7 +212,7 @@ func (rh *RequestHandler) standardPayment(w http.ResponseWriter, request *bridge
 		if request.SendMax != "" || (request.AssetCode != "" && request.AssetIssuer != "") {
 			// return error instead of creating account
 			log.WithFields(log.Fields{"destination": request.Destination}).Error("can not send custom asset or path payment to inactive destination")
-			helpers.Write(w, helpers.InternalServerError)
+			helpers.Write(w, helpers.NewInvalidParameterError("destination", "Can not send custom asset or path payment to inactive destination."))
 			return
 		}
 
