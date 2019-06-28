@@ -130,5 +130,4 @@ func (t *T) UpdateLedgerState() {
 	}
 
 	ledger.SetState(next)
-	return
 }

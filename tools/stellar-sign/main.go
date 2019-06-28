@@ -101,7 +101,7 @@ func main() {
 }
 
 func readLine(prompt string, private bool) (string, error) {
-	fmt.Fprintf(os.Stdout, prompt)
+	fmt.Println(prompt)
 	var line string
 	var err error
 

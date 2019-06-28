@@ -8,8 +8,6 @@ import (
 	"github.com/stellar/go/txnbuild"
 )
 
-const createAccountInitialAmount = "1.0"
-
 // Minion contains a Stellar channel account and Go channels to communicate with friendbot.
 type Minion struct {
 	Account           Account

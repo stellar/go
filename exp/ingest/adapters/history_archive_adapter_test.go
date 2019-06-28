@@ -2,12 +2,10 @@ package ingestadapters
 
 import (
 	"fmt"
-	"log"
+	"io"
 	"testing"
 
-	"github.com/stellar/go/exp/ingest/io"
 	"github.com/stellar/go/support/historyarchive"
-
 	"github.com/stretchr/testify/assert"
 )
 
@@ -57,17 +55,16 @@ func TestGetState_Read(t *testing.T) {
 		return
 	}
 
-	le, e := sr.Read()
+	lec, e := sr.Read()
 	if !assert.NoError(t, e) {
 		return
 	}
 	assert.NotEqual(t, e, io.EOF)
 
-	log.Printf("%v\n", le)
-	if !assert.NotNil(t, le) {
+	if !assert.NotNil(t, lec) {
 		return
 	}
-	assert.Equal(t, "GAFBQT4VRORLEVEECUYDQGWNVQ563ZN76LGRJR7T7KDL32EES54UOQST", le.Data.Account.AccountId.Address())
+	assert.Equal(t, "GAFBQT4VRORLEVEECUYDQGWNVQ563ZN76LGRJR7T7KDL32EES54UOQST", lec.State.Data.Account.AccountId.Address())
 }
 
 func getTestArchive() (*historyarchive.Archive, error) {

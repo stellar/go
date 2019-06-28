@@ -1,6 +1,9 @@
-If you're making a doc PR or something tiny where the below is irrelevant, just delete this
-template and use a short description.
+<!-- If you're making a doc PR or something tiny where the below is irrelevant, just delete this
+template and use a short description. -->
 
+<details>
+  <summary>PR Checklist</summary>
+  
 ### PR Structure
 
 * [ ] This PR has reasonably narrow scope (if not, break it down into smaller PRs).
@@ -23,8 +26,11 @@ template and use a short description.
 * [ ] I've decided if this PR requires a new major/minor version according to
   [semver](https://semver.org/), or if it's mainly a patch change. The PR is targeted at the next
   release branch if it's not a patch change.
+</details>
 
-## Summary
+### Summary
+
+[TODO]
 
 ### Goal and scope
 

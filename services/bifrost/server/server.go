@@ -272,5 +272,4 @@ func (s *Server) HandlerRecoveryTransaction(w stdhttp.ResponseWriter, r *stdhttp
 	}
 
 	w.WriteHeader(stdhttp.StatusOK)
-	return
 }

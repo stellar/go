@@ -3,11 +3,12 @@ package main
 import (
 	"context"
 	"fmt"
+	stdio "io"
 	"os"
 	"sync"
 
 	"github.com/stellar/go/exp/ingest/io"
-	"github.com/stellar/go/exp/ingest/pipeline"
+	"github.com/stellar/go/exp/support/pipeline"
 	"github.com/stellar/go/xdr"
 )
 
@@ -44,17 +45,17 @@ func (p *EntryTypeFilter) ProcessState(ctx context.Context, store *pipeline.Stor
 	for {
 		entry, err := r.Read()
 		if err != nil {
-			if err == io.EOF {
+			if err == stdio.EOF {
 				break
 			} else {
 				return err
 			}
 		}
 
-		if entry.Data.Type == p.Type {
+		if entry.State.Data.Type == p.Type {
 			err := w.Write(entry)
 			if err != nil {
-				if err == io.ErrClosedPipe {
+				if err == stdio.ErrClosedPipe {
 					// Reader does not need more data
 					return nil
 				}
@@ -90,22 +91,22 @@ func (p *AccountsForSignerProcessor) ProcessState(ctx context.Context, store *pi
 	for {
 		entry, err := r.Read()
 		if err != nil {
-			if err == io.EOF {
+			if err == stdio.EOF {
 				break
 			} else {
 				return err
 			}
 		}
 
-		if entry.Data.Type != xdr.LedgerEntryTypeAccount {
+		if entry.State.Data.Type != xdr.LedgerEntryTypeAccount {
 			continue
 		}
 
-		for _, signer := range entry.Data.Account.Signers {
+		for _, signer := range entry.State.Data.Account.Signers {
 			if signer.Key.Address() == p.Signer {
 				err := w.Write(entry)
 				if err != nil {
-					if err == io.ErrClosedPipe {
+					if err == stdio.ErrClosedPipe {
 						// Reader does not need more data
 						return nil
 					}
@@ -154,28 +155,23 @@ func (p *PrintAllProcessor) ProcessState(ctx context.Context, store *pipeline.St
 	for {
 		entry, err := r.Read()
 		if err != nil {
-			if err == io.EOF {
+			if err == stdio.EOF {
 				break
 			} else {
 				return err
 			}
 		}
 
-		switch entry.Data.Type {
+		switch entry.State.Data.Type {
 		case xdr.LedgerEntryTypeAccount:
 			fmt.Fprintf(
 				f,
 				"%s,%d,%d\n",
-				entry.Data.Account.AccountId.Address(),
-				entry.Data.Account.Balance,
-				entry.Data.Account.SeqNum,
+				entry.State.Data.Account.AccountId.Address(),
+				entry.State.Data.Account.Balance,
+				entry.State.Data.Account.SeqNum,
 			)
 			foundEntries++
-			if foundEntries == 3 {
-				// We only want a few entries...
-				// return errors.New("Some error")
-				return nil
-			}
 		default:
 			// Ignore for now
 		}
