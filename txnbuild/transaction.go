@@ -233,19 +233,20 @@ func (tx *Transaction) TransactionFee() int {
 }
 
 // SignHashX signs a transaction with HashX signature type.
+// See description here: https://www.stellar.org/developers/guides/concepts/multi-sig.html#hashx.
 func (tx *Transaction) SignHashX(preimage []byte) error {
-
 	if tx.xdrEnvelope == nil {
 		tx.xdrEnvelope = &xdr.TransactionEnvelope{}
 		tx.xdrEnvelope.Tx = tx.xdrTransaction
 	}
 
-	if len(preimage) > 64 {
+	if len(preimage) > xdr.Signature(preimage).XDRMaxSize() {
 		return errors.New("preimage cannnot be more than 64 bytes")
 	}
 
 	preimageHash := sha256.Sum256(preimage)
 	var hint [4]byte
+	// copy the last 4-bytes of the signer public key to be used as hint
 	copy(hint[:], preimageHash[28:])
 
 	sig := xdr.DecoratedSignature{
