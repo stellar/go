@@ -55,11 +55,13 @@ user id in plaintext, you might want to disable authentication for testing.
 
 ## Run `keystored` in production with authentication disabled:
 
-There are four environment variables used for starting keystored:
-`KEYSTORE_DATABASE_URL`, `DB_MAX_IDLE_CONNS`, `DB_MAX_OPEN_CONNS`, `KEYSTORE_AUTHFORWARDING_URL`.
-* `KEYSTORE_DATABASE_URL` and `KEYSTORE_AUTHFORWARDING_URL` are required.
+There are five environment variables used for starting keystored:
+`KEYSTORE_DATABASE_URL`, `DB_MAX_IDLE_CONNS`, `DB_MAX_OPEN_CONNS`,
+`KEYSTORE_AUTHFORWARDING_URL`, and `KEYSTORE_LISTENER_PORT`.
+* `KEYSTORE_DATABASE_URL` is required.
+* `KEYSTORE_AUTHFORWARDING_URL` is required if authentication is turned on.
 * `DB_MAX_IDLE_CONNS` and `DB_MAX_OPEN_CONNS` are default to 5.
-* `KEYSTORE_AUTHFORWARDING_URL` is ignored when authentication is turned off.
+* `KEYSTORE_LISTENER_PORT` is default to 8000.
 
 ```sh
 keystored -tls-cert=PATH_TO_TLS_CERT -tls-key=PATH_TO_TLS_KEY -auth=false serve
