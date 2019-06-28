@@ -1,7 +1,6 @@
 package stress
 
 import (
-	"encoding/hex"
 	"errors"
 	"math/rand"
 	"time"
@@ -144,10 +143,4 @@ func (g *RandomBitcoinClient) randomAddress() btcutil.Address {
 // randomAmount generates random amount between [0, 100) BTC
 func (g *RandomBitcoinClient) randomAmount() int64 {
 	return rand.Int63n(100 * satsInBtc)
-}
-
-func (g *RandomBitcoinClient) randomHash() string {
-	var hash [32]byte
-	rand.Read(hash[:])
-	return hex.EncodeToString(hash[:])
 }

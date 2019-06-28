@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"io"
 	"log"
 
 	"github.com/stellar/go/exp/ingest/adapters"
@@ -34,16 +35,16 @@ func main() {
 	var i uint64 = 0
 	var count uint64 = 0
 	for {
-		ok, le, e := sr.Read()
+		le, e := sr.Read()
 		if e != nil {
 			panic(e)
 		}
-		if !ok {
+		if e == io.EOF {
 			log.Printf("total seen %d entries of which %d were accounts", i, count)
 			return
 		}
 
-		if ae, valid := le.Data.GetAccount(); valid {
+		if ae, valid := le.State.Data.GetAccount(); valid {
 			addr := ae.AccountId.Address()
 			if _, exists := accounts[addr]; exists {
 				log.Fatalf("error, total seen %d entries of which %d were unique accounts; repeated account: %s", i, count, addr)

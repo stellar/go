@@ -39,3 +39,19 @@ func TestPopulateTransaction_Successful(t *testing.T) {
 	PopulateTransaction(ctx, &dest, row)
 	assert.False(t, dest.Successful)
 }
+
+// TestPopulateTransaction_Fee tests transaction object population.
+func TestPopulateTransaction_Fee(t *testing.T) {
+	ctx, _ := test.ContextWithLogBuffer()
+
+	var (
+		dest Transaction
+		row  history.Transaction
+	)
+
+	dest = Transaction{}
+	row = history.Transaction{MaxFee: 10000, FeeCharged: 100}
+
+	PopulateTransaction(ctx, &dest, row)
+	assert.Equal(t, int32(100), dest.FeePaid)
+}

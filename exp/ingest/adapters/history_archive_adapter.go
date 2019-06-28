@@ -7,15 +7,15 @@ import (
 	"github.com/stellar/go/support/historyarchive"
 )
 
-const msrBufferSize = 10
+const msrBufferSize = 50000
 
 // HistoryArchiveAdapter is an adapter for the historyarchive package to read from history archives
 type HistoryArchiveAdapter struct {
-	archive *historyarchive.Archive
+	archive historyarchive.ArchiveInterface
 }
 
 // MakeHistoryArchiveAdapter is a factory method to make a HistoryArchiveAdapter
-func MakeHistoryArchiveAdapter(archive *historyarchive.Archive) *HistoryArchiveAdapter {
+func MakeHistoryArchiveAdapter(archive historyarchive.ArchiveInterface) *HistoryArchiveAdapter {
 	return &HistoryArchiveAdapter{archive: archive}
 }
 
@@ -30,7 +30,7 @@ func (haa *HistoryArchiveAdapter) GetLatestLedgerSequence() (uint32, error) {
 }
 
 // GetState returns a reader with the state of the ledger at the provided sequence number
-func (haa *HistoryArchiveAdapter) GetState(sequence uint32) (io.StateReader, error) {
+func (haa *HistoryArchiveAdapter) GetState(sequence uint32) (io.StateReadCloser, error) {
 	if !haa.archive.CategoryCheckpointExists("history", sequence) {
 		return nil, fmt.Errorf("history checkpoint does not exist for ledger %d", sequence)
 	}

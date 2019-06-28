@@ -3,9 +3,9 @@ package bridge
 import (
 	"encoding/base64"
 
-	b "github.com/stellar/go/build"
 	shared "github.com/stellar/go/services/internal/bridge-compliance-shared"
 	"github.com/stellar/go/services/internal/bridge-compliance-shared/http/helpers"
+	"github.com/stellar/go/txnbuild"
 )
 
 // ManageDataOperationBody represents manage_data operation
@@ -15,23 +15,22 @@ type ManageDataOperationBody struct {
 	Data   string
 }
 
-// ToTransactionMutator returns go-stellar-base TransactionMutator
-func (op ManageDataOperationBody) ToTransactionMutator() b.TransactionMutator {
-	var builder b.ManageDataBuilder
+// Build returns a txnbuild.Operation
+func (op ManageDataOperationBody) Build() txnbuild.Operation {
 
-	if op.Data == "" {
-		builder = b.ClearData(op.Name)
-	} else {
-		// This is validated in Validate()
-		data, _ := base64.StdEncoding.DecodeString(op.Data)
-		builder = b.SetData(op.Name, data)
+	// This is validated in Validate()
+	data, _ := base64.StdEncoding.DecodeString(op.Data)
+
+	txnOp := txnbuild.ManageData{
+		Name:  op.Name,
+		Value: data,
 	}
 
 	if op.Source != nil {
-		builder.Mutate(b.SourceAccount{*op.Source})
+		txnOp.SourceAccount = &txnbuild.SimpleAccount{AccountID: *op.Source}
 	}
 
-	return builder
+	return &txnOp
 }
 
 // Validate validates if operation body is valid.

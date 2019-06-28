@@ -5,10 +5,10 @@ import (
 	"net/http"
 
 	log "github.com/sirupsen/logrus"
-	b "github.com/stellar/go/build"
 	hc "github.com/stellar/go/clients/horizonclient"
 	"github.com/stellar/go/services/internal/bridge-compliance-shared/http/helpers"
 	"github.com/stellar/go/services/internal/bridge-compliance-shared/protocols/bridge"
+	"github.com/stellar/go/txnbuild"
 )
 
 // Authorize implements /authorize endpoint
@@ -21,7 +21,7 @@ func (rh *RequestHandler) Authorize(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = helpers.Validate(request)
+	err = helpers.Validate(request, rh.Config.Assets, rh.Config.Accounts.IssuingAccountID)
 	if err != nil {
 		switch err := err.(type) {
 		case *helpers.ErrorResponse:
@@ -33,16 +33,24 @@ func (rh *RequestHandler) Authorize(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	operationMutator := b.AllowTrust(
-		b.Trustor{request.AccountID},
-		b.Authorize{true},
-		b.AllowTrustAsset{request.AssetCode},
-	)
+	var sourceAccount *string
+	if rh.Config.Accounts.IssuingAccountID != "" {
+		sourceAccount = &rh.Config.Accounts.IssuingAccountID
+	}
+
+	allowTrustOp := bridge.AllowTrustOperationBody{
+		Source:    sourceAccount,
+		Authorize: true,
+		Trustor:   request.AccountID,
+		AssetCode: request.AssetCode,
+	}
+
+	operationBuilder := allowTrustOp.Build()
 
 	submitResponse, err := rh.TransactionSubmitter.SubmitTransaction(
 		nil,
 		rh.Config.Accounts.AuthorizingSeed,
-		operationMutator,
+		[]txnbuild.Operation{operationBuilder},
 		nil,
 	)
 

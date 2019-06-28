@@ -1,6 +1,7 @@
 package horizon
 
 import (
+	"context"
 	"net/http"
 	"net/url"
 	"time"
@@ -24,10 +25,8 @@ func mustInitHorizonDB(app *App) {
 		log.Fatalf("cannot open Horizon DB: %v", err)
 	}
 
-	// Make sure MaxIdleConns is equal MaxOpenConns. In case of high variance
-	// in number of requests closing and opening connections may slow down Horizon.
-	session.DB.SetMaxIdleConns(app.config.MaxDBConnections)
-	session.DB.SetMaxOpenConns(app.config.MaxDBConnections)
+	session.DB.SetMaxIdleConns(app.config.HorizonDBMaxIdleConnections)
+	session.DB.SetMaxOpenConns(app.config.HorizonDBMaxOpenConnections)
 	app.historyQ = &history.Q{session}
 }
 
@@ -37,10 +36,8 @@ func mustInitCoreDB(app *App) {
 		log.Fatalf("cannot open Core DB: %v", err)
 	}
 
-	// Make sure MaxIdleConns is equal MaxOpenConns. In case of high variance
-	// in number of requests closing and opening connections may slow down Horizon.
-	session.DB.SetMaxIdleConns(app.config.MaxDBConnections)
-	session.DB.SetMaxOpenConns(app.config.MaxDBConnections)
+	session.DB.SetMaxIdleConns(app.config.CoreDBMaxIdleConnections)
+	session.DB.SetMaxOpenConns(app.config.CoreDBMaxOpenConnections)
 	app.coreQ = &core.Q{session}
 }
 
@@ -56,8 +53,8 @@ func initIngester(app *App) {
 	app.ingester = ingest.New(
 		app.config.NetworkPassphrase,
 		app.config.StellarCoreURL,
-		app.CoreSession(nil),
-		app.HorizonSession(nil),
+		app.CoreSession(context.Background()),
+		app.HorizonSession(context.Background()),
 		ingest.Config{
 			EnableAssetStats:         app.config.EnableAssetStats,
 			IngestFailedTransactions: app.config.IngestFailedTransactions,
@@ -197,7 +194,7 @@ func dialRedis(redisURL *url.URL) func() (redis.Conn, error) {
 }
 
 func initSubmissionSystem(app *App) {
-	cq := &core.Q{Session: app.CoreSession(nil)}
+	cq := &core.Q{Session: app.CoreSession(context.Background())}
 
 	app.submitter = &txsub.System{
 		Pending:         txsub.NewDefaultSubmissionList(),
@@ -205,7 +202,7 @@ func initSubmissionSystem(app *App) {
 		SubmissionQueue: sequence.NewManager(),
 		Results: &results.DB{
 			Core:    cq,
-			History: &history.Q{Session: app.HorizonSession(nil)},
+			History: &history.Q{Session: app.HorizonSession(context.Background())},
 		},
 		Sequences:         cq.SequenceProvider(),
 		NetworkPassphrase: app.config.NetworkPassphrase,

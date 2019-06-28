@@ -98,9 +98,6 @@ func (is *Session) clearLedger() {
 		return
 	}
 
-	startLedger, endLedger := is.Cursor.LedgerRange()
-	log.WithFields(ilog.F{"toid_start": startLedger, "toid_end": endLedger}).Info("Clearing ledgers")
-
 	start := time.Now()
 	is.Err = is.Ingestion.Clear(is.Cursor.LedgerRange())
 	if is.Err != nil {
@@ -204,7 +201,7 @@ func (is *Session) ingestEffects() {
 		result := is.Cursor.OperationResult().MustManageSellOfferResult().MustSuccess()
 		is.ingestTradeEffects(effects, source, result.OffersClaimed)
 	case xdr.OperationTypeCreatePassiveSellOffer:
-		claims := []xdr.ClaimOfferAtom{}
+		var claims []xdr.ClaimOfferAtom
 		result := is.Cursor.OperationResult()
 
 		// KNOWN ISSUE:  stellar-core creates results for CreatePassiveOffer operations
@@ -407,8 +404,6 @@ func (is *Session) ingestLedger() {
 	if is.Metrics != nil {
 		is.Metrics.IngestLedgerTimer.Update(time.Since(start))
 	}
-
-	return
 }
 
 func (is *Session) ingestOperation() {

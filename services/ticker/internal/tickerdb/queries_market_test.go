@@ -247,11 +247,7 @@ func TestRetrieveMarketData(t *testing.T) {
 	assert.Equal(t, 0.12, xlmbtcMkt.HighestPrice7d)
 
 	assert.Equal(t, 0.1, xlmbtcMkt.LastPrice)
-	assert.Equal(
-		t,
-		now.Local().Truncate(time.Millisecond),
-		xlmbtcMkt.LastPriceCloseTime.Local().Truncate(time.Millisecond),
-	)
+	assert.WithinDuration(t, now.Local(), xlmbtcMkt.LastPriceCloseTime.Local(), 10*time.Millisecond)
 
 	assert.Equal(t, 0.0, xlmbtcMkt.PriceChange24h)
 	// There might be some floating point rounding issues, so this test
@@ -275,11 +271,7 @@ func TestRetrieveMarketData(t *testing.T) {
 	assert.Equal(t, 1.0, xlmethMkt.HighestPrice7d)
 
 	assert.Equal(t, 1.0, xlmethMkt.LastPrice)
-	assert.Equal(
-		t,
-		now.Local().Truncate(time.Millisecond),
-		xlmbtcMkt.LastPriceCloseTime.Local().Truncate(time.Millisecond),
-	)
+	assert.WithinDuration(t, now.Local(), xlmbtcMkt.LastPriceCloseTime.Local(), 10*time.Millisecond)
 
 	// There might be some floating point rounding issues, so this test
 	// needs to be a bit more flexible. Since the change is 0.08, an error
@@ -553,17 +545,8 @@ func TestRetrievePartialMarkets(t *testing.T) {
 	assert.Equal(t, -0.9, btceth1Mkt.Change)
 	assert.Equal(t, 1.0, btceth1Mkt.High)
 	assert.Equal(t, 0.1, btceth1Mkt.Low)
-	assert.Equal(
-		t,
-		oneHourAgo.Local().Truncate(time.Millisecond),
-		btceth1Mkt.FirstLedgerCloseTime.Local().Truncate(time.Millisecond),
-	)
-	assert.Equal(
-		t,
-		tenMinutesAgo.Local().Truncate(time.Millisecond),
-		btceth1Mkt.LastLedgerCloseTime.Local().Truncate(time.Millisecond),
-	)
-
+	assert.WithinDuration(t, oneHourAgo.Local(), btceth1Mkt.FirstLedgerCloseTime.Local(), 10*time.Millisecond)
+	assert.WithinDuration(t, tenMinutesAgo.Local(), btceth1Mkt.LastLedgerCloseTime.Local(), 10*time.Millisecond)
 	assert.Equal(t, 24.0, btceth2Mkt.BaseVolume)
 	assert.Equal(t, 26.0, btceth2Mkt.CounterVolume)
 	assert.Equal(t, int32(1), btceth2Mkt.TradeCount)
@@ -572,16 +555,8 @@ func TestRetrievePartialMarkets(t *testing.T) {
 	assert.Equal(t, 0.0, btceth2Mkt.Change)
 	assert.Equal(t, 0.92, btceth2Mkt.High)
 	assert.Equal(t, 0.92, btceth2Mkt.Low)
-	assert.Equal(
-		t,
-		now.Local().Truncate(time.Millisecond),
-		btceth2Mkt.FirstLedgerCloseTime.Local().Truncate(time.Millisecond),
-	)
-	assert.Equal(
-		t,
-		now.Local().Truncate(time.Millisecond),
-		btceth2Mkt.FirstLedgerCloseTime.Local().Truncate(time.Millisecond),
-	)
+	assert.WithinDuration(t, now.Local(), btceth2Mkt.FirstLedgerCloseTime.Local(), 10*time.Millisecond)
+	assert.WithinDuration(t, now.Local(), btceth2Mkt.LastLedgerCloseTime.Local(), 10*time.Millisecond)
 
 	// Analyzing non-aggregated orderbook data
 	assert.Equal(t, 15, btceth1Mkt.NumBids)
@@ -613,16 +588,8 @@ func TestRetrievePartialMarkets(t *testing.T) {
 	assert.Equal(t, 0.92, partialAggMkt.Close)
 	assert.Equal(t, 1.0, partialAggMkt.High)
 	assert.Equal(t, 0.1, partialAggMkt.Low)
-	assert.Equal(
-		t,
-		oneHourAgo.Local().Truncate(time.Millisecond),
-		partialAggMkt.FirstLedgerCloseTime.Local().Truncate(time.Millisecond),
-	)
-	assert.Equal(
-		t,
-		now.Local().Truncate(time.Millisecond),
-		partialAggMkt.LastLedgerCloseTime.Local().Truncate(time.Millisecond),
-	)
+	assert.WithinDuration(t, oneHourAgo.Local(), partialAggMkt.FirstLedgerCloseTime.Local(), 10*time.Millisecond)
+	assert.WithinDuration(t, now.Local(), partialAggMkt.LastLedgerCloseTime.Local(), 10*time.Millisecond)
 
 	// There might be some floating point rounding issues, so this test
 	// needs to be a bit more flexible. Since the change is 0.08, an error

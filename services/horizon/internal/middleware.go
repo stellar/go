@@ -76,7 +76,7 @@ func loggerMiddleware(h http.Handler) http.Handler {
 
 		h.ServeHTTP(mw, r.WithContext(ctx))
 
-		duration := time.Now().Sub(then)
+		duration := time.Since(then)
 		logEndOfRequest(ctx, r, duration, mw, streaming)
 	})
 }

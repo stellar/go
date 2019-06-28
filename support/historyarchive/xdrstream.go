@@ -12,7 +12,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"strings"
 
 	"github.com/stellar/go/xdr"
 )
@@ -34,17 +33,6 @@ func NewXdrGzStream(in io.ReadCloser) (*XdrStream, error) {
 		return nil, err
 	}
 	return &XdrStream{rdr: bufReadCloser(rdr), rdr2: in}, nil
-}
-
-func (a *Archive) GetXdrStream(pth string) (*XdrStream, error) {
-	if !strings.HasSuffix(pth, ".xdr.gz") {
-		return nil, errors.New("File has non-.xdr.gz suffix: " + pth)
-	}
-	rdr, err := a.backend.GetFile(pth)
-	if err != nil {
-		return nil, err
-	}
-	return NewXdrGzStream(rdr)
 }
 
 func HashXdr(x interface{}) (Hash, error) {
@@ -105,6 +93,9 @@ func (x *XdrStream) ReadOne(in interface{}) error {
 func WriteFramedXdr(out io.Writer, in interface{}) error {
 	var tmp bytes.Buffer
 	n, err := xdr.Marshal(&tmp, in)
+	if err != nil {
+		return err
+	}
 	un := uint32(n)
 	if un > 0x7fffffff {
 		return fmt.Errorf("Overlong write: %d bytes", n)

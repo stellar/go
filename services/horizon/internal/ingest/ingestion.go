@@ -17,7 +17,19 @@ import (
 
 // ClearAll clears the entire history database
 func (ingest *Ingestion) ClearAll() error {
-	return ingest.Clear(0, math.MaxInt64)
+	tables := []string{
+		string(AssetStatsTableName),
+		string(AccountsTableName),
+		string(AssetsTableName),
+		string(EffectsTableName),
+		string(LedgersTableName),
+		string(OperationParticipantsTableName),
+		string(OperationsTableName),
+		string(TradesTableName),
+		string(TransactionParticipantsTableName),
+		string(TransactionsTableName),
+	}
+	return ingest.DB.TruncateTables(tables)
 }
 
 // Clear removes a range of data from the history database, exclusive of the end
@@ -322,7 +334,8 @@ func (ingest *Ingestion) Transaction(
 		tx.Index,
 		tx.SourceAddress(),
 		tx.Sequence(),
-		tx.Fee(),
+		tx.MaxFee(),
+		tx.FeeCharged(),
 		len(tx.Envelope.Tx.Operations),
 		tx.EnvelopeXDR(),
 		tx.ResultXDR(),
@@ -384,7 +397,8 @@ func (ingest *Ingestion) createInsertBuilders() {
 			"application_order",
 			"account",
 			"account_sequence",
-			"fee_paid",
+			"max_fee",
+			"fee_charged",
 			"operation_count",
 			"tx_envelope",
 			"tx_result",

@@ -36,3 +36,4 @@ offer :scott, {sell:["USD", :usd_gateway], for:["EUR", :eur_gateway]}, 150, 0.9
 close_ledger
 # should be partially consumed in two trades
 offer :scott, {sell:["USD", :usd_gateway], for:["EUR", :eur_gateway]}, 151, 0.8
+close_ledger

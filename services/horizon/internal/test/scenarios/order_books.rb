@@ -41,3 +41,5 @@ offer :scott, {buy:["USD", :usd_gateway], with: ["BTC", :usd_gateway]}, 1000, "5
 offer :andrew, {sell:["USD", :usd_gateway], for: ["BTC", :usd_gateway]}, 10, "15.0"
 offer :andrew, {sell:["USD", :usd_gateway], for: ["BTC", :usd_gateway]}, 100, "20.0"
 offer :andrew, {sell:["USD", :usd_gateway], for: ["BTC", :usd_gateway]}, 1000, "50.0"
+
+close_ledger
