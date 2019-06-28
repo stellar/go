@@ -2,6 +2,10 @@
 
 As this project is pre 1.0, breaking changes may happen for minor version bumps. A breaking change will get clearly notified in this log.
 
+## Unreleased
+
+* Fixed path-payment operation in `/payment`
+
 ## 0.0.32
 
 * Bridge server now uses the new Go SDK.
