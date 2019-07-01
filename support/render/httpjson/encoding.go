@@ -4,6 +4,7 @@ import "github.com/stellar/go/support/errors"
 
 // ErrNotObject is returned when Object.UnmarshalJSON is called
 // with bytes not representing a valid json object.
+// A valid json object means it starts with `null` or `{`, not `[`.
 var ErrNotJsonObject = errors.New("input is not a json object")
 
 type Object []byte
