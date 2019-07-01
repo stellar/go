@@ -7,11 +7,13 @@ package historyarchive
 import (
 	"bytes"
 	"io"
+	"net/http"
 	"path"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
+	"github.com/stellar/go/support/errors"
 )
 
 type S3ArchiveBackend struct {
@@ -39,7 +41,7 @@ func (b *S3ArchiveBackend) GetFile(pth string) (io.ReadCloser, error) {
 	return resp.Body, nil
 }
 
-func (b *S3ArchiveBackend) Exists(pth string) bool {
+func (b *S3ArchiveBackend) Exists(pth string) (bool, error) {
 	params := &s3.HeadObjectInput{
 		Bucket: aws.String(b.bucket),
 		Key:    aws.String(path.Join(b.prefix, pth)),
@@ -50,8 +52,17 @@ func (b *S3ArchiveBackend) Exists(pth string) bool {
 		req.Handlers.Sign.Clear() // makes this request unsigned
 	}
 	err := req.Send()
+	if err != nil {
+		return false, err
+	}
 
-	return err == nil
+	if req.HTTPResponse.StatusCode >= 200 && req.HTTPResponse.StatusCode < 400 {
+		return true, nil
+	} else if req.HTTPResponse.StatusCode == http.StatusNotFound {
+		return false, nil
+	} else {
+		return false, errors.Errorf("Unkown status code=%d", req.HTTPResponse.StatusCode)
+	}
 }
 
 func (b *S3ArchiveBackend) PutFile(pth string, in io.ReadCloser) error {

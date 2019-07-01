@@ -72,7 +72,10 @@ func (arch *Archive) ScanCheckpointsSlow(opts *CommandOptions) error {
 				if !ok {
 					break
 				}
-				exists := arch.CategoryCheckpointExists(r.category, r.checkpoint)
+				exists, err := arch.CategoryCheckpointExists(r.category, r.checkpoint)
+				if err != nil {
+					panic(err)
+				}
 				tick <- true
 				arch.NoteCheckpointFile(r.category, r.checkpoint, exists)
 				if exists && opts.Verify {
@@ -237,14 +240,22 @@ func (arch *Archive) ScanBuckets(opts *CommandOptions) error {
 				}
 				has, e := arch.GetCheckpointHAS(ix)
 				atomic.AddUint32(&errs, noteError(e))
-				for _, bucket := range has.Buckets() {
+				buckets, err := has.Buckets()
+				if err != nil {
+					panic(err)
+				}
+				for _, bucket := range buckets {
 					new := arch.NoteReferencedBucket(bucket)
 					if !new {
 						continue
 					}
 
 					if !doList || opts.Verify {
-						if arch.BucketExists(bucket) {
+						exists, err := arch.BucketExists(bucket)
+						if err != nil {
+							panic(err)
+						}
+						if exists {
 							if !doList {
 								arch.NoteExistingBucket(bucket)
 							}

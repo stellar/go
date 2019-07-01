@@ -20,7 +20,7 @@ type HistoryArchiveState struct {
 	} `json:"currentBuckets"`
 }
 
-func (h *HistoryArchiveState) LevelSummary() (string, int) {
+func (h *HistoryArchiveState) LevelSummary() (string, int, error) {
 	summ := ""
 	nz := 0
 	for _, b := range h.CurrentBuckets {
@@ -28,8 +28,17 @@ func (h *HistoryArchiveState) LevelSummary() (string, int) {
 		for _, bs := range []string{
 			b.Curr, b.Snap, b.Next.Output,
 		} {
+			// Ignore empty values
+			if bs == "" {
+				continue
+			}
+
 			h, err := DecodeHash(bs)
-			if err == nil && !h.IsZero() {
+			if err != nil {
+				return summ, nz, err
+			}
+
+			if !h.IsZero() {
 				state = '#'
 			}
 		}
@@ -38,22 +47,30 @@ func (h *HistoryArchiveState) LevelSummary() (string, int) {
 		}
 		summ += string(state)
 	}
-	return summ, nz
+	return summ, nz, nil
 }
 
-func (h *HistoryArchiveState) Buckets() []Hash {
+func (h *HistoryArchiveState) Buckets() ([]Hash, error) {
 	r := []Hash{}
 	for _, b := range h.CurrentBuckets {
 		for _, bs := range []string{
 			b.Curr, b.Snap, b.Next.Output,
 		} {
+			// Ignore empty values
+			if bs == "" {
+				continue
+			}
+
 			h, err := DecodeHash(bs)
-			if err == nil && !h.IsZero() {
+			if err != nil {
+				return r, err
+			}
+			if !h.IsZero() {
 				r = append(r, h)
 			}
 		}
 	}
-	return r
+	return r, nil
 }
 
 func (h *HistoryArchiveState) Range() Range {

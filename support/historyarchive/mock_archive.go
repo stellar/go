@@ -18,11 +18,11 @@ type MockArchiveBackend struct {
 	files map[string][]byte
 }
 
-func (b *MockArchiveBackend) Exists(pth string) bool {
+func (b *MockArchiveBackend) Exists(pth string) (bool, error) {
 	b.mutex.Lock()
 	defer b.mutex.Unlock()
 	_, ok := b.files[pth]
-	return ok
+	return ok, nil
 }
 
 func (b *MockArchiveBackend) GetFile(pth string) (io.ReadCloser, error) {

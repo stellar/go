@@ -9,10 +9,10 @@ import (
 	"compress/gzip"
 	"crypto/sha256"
 	"encoding/binary"
-	"errors"
 	"fmt"
 	"io"
 
+	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
 )
 
@@ -59,11 +59,11 @@ func (x *XdrStream) ReadOne(in interface{}) error {
 	err := binary.Read(x.rdr, binary.BigEndian, &nbytes)
 	if err != nil {
 		x.rdr.Close()
-		if err == io.ErrUnexpectedEOF {
-			return io.EOF
-		} else {
+		if err == io.EOF {
+			// Do not wrap io.EOF
 			return err
 		}
+		return errors.Wrap(err, "binary.Read error")
 	}
 	nbytes &= 0x7fffffff
 	x.buf.Reset()

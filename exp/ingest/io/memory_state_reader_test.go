@@ -42,7 +42,7 @@ func (s *MemoryStateReaderTestSuite) SetupTest() {
 	// BucketExists should be called 21 times (11 levels, last without `snap`)
 	s.mockBucketExistsCall = s.mockArchive.
 		On("BucketExists", mock.AnythingOfType("historyarchive.Hash")).
-		Return(true).Times(21)
+		Return(true, nil).Times(21)
 
 	s.reader, err = MakeMemoryStateReader(s.mockArchive, ledgerSeq, bufferSize)
 	s.Require().NotNil(s.reader)

@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/stellar/go/exp/ingest/io"
+	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/support/historyarchive"
 )
 
@@ -31,13 +32,17 @@ func (haa *HistoryArchiveAdapter) GetLatestLedgerSequence() (uint32, error) {
 
 // GetState returns a reader with the state of the ledger at the provided sequence number
 func (haa *HistoryArchiveAdapter) GetState(sequence uint32) (io.StateReadCloser, error) {
-	if !haa.archive.CategoryCheckpointExists("history", sequence) {
+	exists, err := haa.archive.CategoryCheckpointExists("history", sequence)
+	if err != nil {
+		return nil, errors.Wrap(err, "error checking if category checkpoint exists")
+	}
+	if !exists {
 		return nil, fmt.Errorf("history checkpoint does not exist for ledger %d", sequence)
 	}
 
 	sr, e := io.MakeMemoryStateReader(haa.archive, sequence, msrBufferSize)
 	if e != nil {
-		return nil, fmt.Errorf("could not make memory state reader: %s", e)
+		return nil, errors.Wrap(e, "could not make memory state reader")
 	}
 
 	return sr, nil

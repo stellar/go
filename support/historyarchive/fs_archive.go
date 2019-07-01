@@ -19,18 +19,27 @@ func (b *FsArchiveBackend) GetFile(pth string) (io.ReadCloser, error) {
 	return os.Open(path.Join(b.prefix, pth))
 }
 
-func (b *FsArchiveBackend) Exists(pth string) bool {
+func (b *FsArchiveBackend) Exists(pth string) (bool, error) {
 	pth = path.Join(b.prefix, pth)
 	_, err := os.Stat(pth)
-	if err != nil && os.IsNotExist(err) {
-		return false
+	if err != nil {
+		if os.IsNotExist(err) {
+			return false, nil
+		} else {
+			return false, err
+		}
 	}
-	return true
+	return true, nil
 }
 
 func (b *FsArchiveBackend) PutFile(pth string, in io.ReadCloser) error {
 	dir := path.Join(b.prefix, path.Dir(pth))
-	if !b.Exists(dir) {
+	exists, err := b.Exists(dir)
+	if err != nil {
+		return err
+	}
+
+	if !exists {
 		if e := os.MkdirAll(dir, 0755); e != nil {
 			return e
 		}
