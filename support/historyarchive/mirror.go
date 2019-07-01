@@ -57,7 +57,7 @@ func Mirror(src *Archive, dst *Archive, opts *CommandOptions) error {
 
 				buckets, err := has.Buckets()
 				if err != nil {
-					panic(errors.Wrap(err, "Error getting buckets"))
+					panic(errors.Wrap(err, "error getting buckets"))
 				}
 
 				for _, bucket := range buckets {
