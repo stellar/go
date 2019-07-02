@@ -708,3 +708,17 @@ func TestManageBuyOfferUpdateOffer(t *testing.T) {
 	expected := "AAAAACXK8doPx27P6IReQlRRuweSSUiUfjqgyswxiu3Sh2R+AAAAZAAAJWoAAAAKAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAMAAAAAAAAAAFBQkNEAAAAACXK8doPx27P6IReQlRRuweSSUiUfjqgyswxiu3Sh2R+AAAAAB3NZQAAAAABAAAAMgAAAAAALJSWAAAAAAAAAAHSh2R+AAAAQK/sasTxgNqvkz3dGaDOyUgfa9UAAmUBmgiyaQU1dMlNNvTVH1D7PQKXkTooWmb6qK7Ee8vaTCFU6gGmShhA9wE="
 	assert.Equal(t, expected, received, "Base 64 XDR should match")
 }
+
+func TestBuildChallengeTx(t *testing.T) {
+	kp0 := newKeypair0()
+
+	tx, err := BuildChallengeTx(kp0.Address(), "SDF", network.TestNetworkPassphrase, 100)
+	assert.NoError(t, err)
+	err = tx.Sign(kp0)
+	assert.NoError(t, err)
+	txeBase64, err := tx.Base64()
+	assert.NoError(t, err)
+
+	expected := "TODO: TX here"
+	assert.Equal(t, expected, txeBase64, "Base 64 XDR should match")
+}

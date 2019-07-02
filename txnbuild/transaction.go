@@ -11,6 +11,7 @@ package txnbuild
 
 import (
 	"bytes"
+	"crypto/rand"
 	"encoding/base64"
 	"fmt"
 
@@ -25,7 +26,8 @@ import (
 type Account interface {
 	GetAccountID() string
 	IncrementSequenceNumber() (xdr.SequenceNumber, error)
-	// To do: implement in v2.0.0: add GetSequenceNumber method
+	// Action needed in release: v2.0.0
+	// TODO: add GetSequenceNumber method
 	// GetSequenceNumber() (xdr.SequenceNumber, error)
 }
 
@@ -176,4 +178,69 @@ func (tx *Transaction) BuildSignEncode(keypairs ...*keypair.Full) (string, error
 	}
 
 	return txeBase64, err
+}
+
+// BuildChallengeTx is a factory method that creates a valid SEP 10 challenge, for use in web authentication.
+func BuildChallengeTx(accountID, anchorName, network string, fee uint32) (Transaction, error) {
+	randomNonce, err := GenerateRandomString(64)
+	if err != nil {
+		return Transaction{}, err
+	}
+
+	sa := SimpleAccount{
+		AccountID: accountID,
+	}
+
+	// Create a SEP 10 compatible response. See
+	// https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0010.md#response
+
+	tx := Transaction{
+		SourceAccount: &sa,
+		Operations: []Operation{
+			&ManageData{
+				SourceAccount: &sa,
+				Name:          anchorName + " auth",
+				Value:         []byte(randomNonce),
+			},
+		},
+		Timebounds: NewTimeout(300),
+		Network:    network,
+	}
+
+	// Action needed in release: v2.0.0
+	// TODO: remove this and use Build() with optional argument (https://github.com/stellar/go/issues/1259)
+	tx.xdrTransaction.SourceAccount.SetAddress(tx.SourceAccount.GetAccountID())
+
+	tx.xdrTransaction.SeqNum = 0
+	for _, op := range tx.Operations {
+		xdrOperation, err := op.BuildXDR()
+		if err != nil {
+			return Transaction{}, errors.Wrap(err, fmt.Sprintf("failed to build operation %T", op))
+		}
+		tx.xdrTransaction.Operations = append(tx.xdrTransaction.Operations, xdrOperation)
+	}
+
+	tx.xdrTransaction.TimeBounds = &xdr.TimeBounds{MinTime: xdr.TimePoint(tx.Timebounds.MinTime),
+		MaxTime: xdr.TimePoint(tx.Timebounds.MaxTime)}
+
+	tx.xdrTransaction.Fee = xdr.Uint32(fee)
+
+	if tx.xdrEnvelope == nil {
+		tx.xdrEnvelope = &xdr.TransactionEnvelope{}
+		tx.xdrEnvelope.Tx = tx.xdrTransaction
+	}
+
+	return tx, nil
+}
+
+// GenerateRandomString creates a base-64 encoded, cryptographically secure random string of `n` bytes.
+func GenerateRandomString(n int) (string, error) {
+	bytes := make([]byte, n)
+	_, err := rand.Read(bytes)
+
+	if err != nil {
+		return "", err
+	}
+
+	return base64.URLEncoding.EncodeToString(bytes), err
 }
