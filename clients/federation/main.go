@@ -7,7 +7,6 @@ import (
 	hc "github.com/stellar/go/clients/horizonclient"
 	"github.com/stellar/go/clients/stellartoml"
 	proto "github.com/stellar/go/protocols/federation"
-	hProtocol "github.com/stellar/go/protocols/horizon"
 )
 
 // FederationResponseMaxSize is the maximum size of response from a federation server
@@ -45,7 +44,7 @@ type ClientInterface interface {
 // Horizon represents a horizon client that can be consulted for data when
 // needed as part of the federation protocol
 type Horizon interface {
-	AccountDetail(request hc.AccountRequest) (hProtocol.Account, error)
+	HomeDomainForAccount(aid string) (string, error)
 }
 
 // HTTP represents the http client that a federation client uses to make http

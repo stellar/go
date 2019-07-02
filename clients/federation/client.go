@@ -8,7 +8,6 @@ import (
 	"strings"
 
 	"github.com/stellar/go/address"
-	hc "github.com/stellar/go/clients/horizonclient"
 	proto "github.com/stellar/go/protocols/federation"
 	"github.com/stellar/go/support/errors"
 )
@@ -52,12 +51,11 @@ func (c *Client) LookupByAddress(addy string) (*proto.NameResponse, error) {
 // account id is used to resolve what server the request should be made against.
 func (c *Client) LookupByAccountID(aid string) (*proto.IDResponse, error) {
 
-	accountDetail, err := c.Horizon.AccountDetail(hc.AccountRequest{AccountID: aid})
+	domain, err := c.Horizon.HomeDomainForAccount(aid)
 	if err != nil {
 		return nil, errors.Wrap(err, "get homedomain failed")
 	}
 
-	domain := accountDetail.HomeDomain
 	if domain == "" {
 		return nil, errors.New("homedomain not set")
 	}

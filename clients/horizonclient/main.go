@@ -175,6 +175,7 @@ type ClientInterface interface {
 	PrevOffersPage(hProtocol.OffersPage) (hProtocol.OffersPage, error)
 	NextTradesPage(hProtocol.TradesPage) (hProtocol.TradesPage, error)
 	PrevTradesPage(hProtocol.TradesPage) (hProtocol.TradesPage, error)
+	HomeDomainForAccount(aid string) (string, error)
 }
 
 // DefaultTestNetClient is a default client to connect to test network.

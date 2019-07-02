@@ -620,5 +620,19 @@ func (c *Client) PrevTradesPage(page hProtocol.TradesPage) (trades hProtocol.Tra
 	return
 }
 
+// HomeDomainForAccount returns the home domain for a single account.
+func (c *Client) HomeDomainForAccount(aid string) (string, error) {
+	if aid == "" {
+		return "", errors.New("no account ID provided")
+	}
+
+	accountDetail, err := c.AccountDetail(AccountRequest{AccountID: aid})
+	if err != nil {
+		return "", errors.Wrap(err, "get account detail failed")
+	}
+
+	return accountDetail.HomeDomain, nil
+}
+
 // ensure that the horizon client implements ClientInterface
 var _ ClientInterface = &Client{}
