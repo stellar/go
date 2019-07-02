@@ -1,12 +1,15 @@
 package main
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/stellar/go/exp/ingest"
 	"github.com/stellar/go/exp/ingest/ledgerbackend"
 	"github.com/stellar/go/exp/ingest/pipeline"
 	"github.com/stellar/go/exp/ingest/processors"
+	supportPipeline "github.com/stellar/go/exp/support/pipeline"
+	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/support/historyarchive"
 	"github.com/stellar/go/xdr"
 )
@@ -26,7 +29,20 @@ func main() {
 		LedgerPipeline: buildLedgerPipeline(db),
 	}
 
-	err = session.Run()
+	addPipelineHooks(session.StatePipeline, db, session)
+	addPipelineHooks(session.LedgerPipeline, db, session)
+
+	ledger, err := db.GetLatestLedger()
+	if err != nil && !db.NoRows(errors.Cause(err)) {
+		panic(err)
+	}
+
+	if ledger == 0 {
+		err = session.Run()
+	} else {
+		err = session.Resume(ledger + 1)
+	}
+
 	if err != nil {
 		panic(err)
 	}
@@ -76,11 +92,42 @@ func buildLedgerPipeline(db *Database) *pipeline.LedgerPipeline {
 	ledgerPipeline := &pipeline.LedgerPipeline{}
 
 	ledgerPipeline.SetRoot(
-		ledgerPipeline.Node(&DatabaseProcessor{
-			Database: db,
-			Action:   AccountsForSigner,
-		}),
+		ledgerPipeline.Node(&processors.RootProcessor{}).Pipe(
+			ledgerPipeline.Node(&DatabaseProcessor{
+				Database: db,
+				Action:   AccountsForSigner,
+			}),
+			ledgerPipeline.Node(&DatabaseProcessor{
+				Database: db,
+				Action:   Transactions,
+			}),
+		),
 	)
 
 	return ledgerPipeline
+}
+
+func addPipelineHooks(p supportPipeline.PipelineInterface, db *Database, session ingest.Session) {
+	p.AddPreProcessingHook(func(ctx context.Context) error {
+		ledgerSeq := pipeline.GetLedgerSequenceFromContext(ctx)
+		fmt.Printf("Processing ledger: %d\n", ledgerSeq)
+		return db.Begin()
+	})
+
+	p.AddPostProcessingHook(func(ctx context.Context, err error) error {
+		ledgerSeq := pipeline.GetLedgerSequenceFromContext(ctx)
+
+		if err != nil {
+			fmt.Println("Error processing ledger:", err)
+			return db.Rollback()
+		}
+
+		fmt.Printf("Processed ledger: %d\n", ledgerSeq)
+
+		// Acquire write lock
+		session.UpdateLock()
+		defer session.UpdateUnlock()
+
+		return db.Commit()
+	})
 }

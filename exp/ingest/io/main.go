@@ -35,7 +35,7 @@ type StateWriteCloser interface {
 // LedgerReadCloser provides convenient, streaming access to the transactions within a ledger.
 type LedgerReadCloser interface {
 	GetSequence() uint32
-	GetHeader() (xdr.LedgerHeaderHistoryEntry, error)
+	GetHeader() xdr.LedgerHeaderHistoryEntry
 	// Read should return the next transaction. If there are no more
 	// transactions it should return `io.EOF` error.
 	Read() (LedgerTransaction, error)

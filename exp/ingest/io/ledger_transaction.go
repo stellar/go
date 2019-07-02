@@ -49,7 +49,7 @@ func (c *Change) AccountSignersChanged() bool {
 		}
 	}
 
-	// TODO should it also change master key weight changes?
+	// TODO should it also change on master key weight changes?
 
 	return false
 }

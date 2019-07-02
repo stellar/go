@@ -24,6 +24,14 @@ func (p *Pipeline) PrintStatus() {
 	p.printNodeStatus(p.root, 0)
 }
 
+func (p *Pipeline) AddPreProcessingHook(hook func(context.Context) error) {
+	p.preProcessingHooks = append(p.preProcessingHooks, hook)
+}
+
+func (p *Pipeline) AddPostProcessingHook(hook func(context.Context, error) error) {
+	p.postProcessingHooks = append(p.postProcessingHooks, hook)
+}
+
 func (p *Pipeline) printNodeStatus(node *PipelineNode, level int) {
 	fmt.Print(strings.Repeat("  ", level))
 
@@ -82,8 +90,30 @@ func (p *Pipeline) setRunning(setRunning bool) {
 // reset resets internal state of the pipeline and all the nodes and processors.
 func (p *Pipeline) reset() {
 	p.cancelled = false
-	p.cancelledWithErr = false
+	p.cancelledWithErr = nil
 	p.resetNode(p.root)
+}
+
+func (p *Pipeline) sendPreProcessingHooks(ctx context.Context) error {
+	for _, hook := range p.preProcessingHooks {
+		err := hook(ctx)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (p *Pipeline) sendPostProcessingHooks(ctx context.Context) error {
+	for _, hook := range p.postProcessingHooks {
+		err := hook(ctx, p.cancelledWithErr)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 // resetNode resets internal state of the pipeline node and internal processor and
@@ -98,6 +128,15 @@ func (p *Pipeline) resetNode(node *PipelineNode) {
 func (p *Pipeline) Process(readCloser ReadCloser) <-chan error {
 	p.setRunning(true)
 	p.reset()
+
+	err := p.sendPreProcessingHooks(readCloser.GetContext())
+	if err != nil {
+		p.setRunning(false)
+		errorChan := make(chan error)
+		errorChan <- errors.Wrap(err, "Error running pre-hook")
+		return errorChan
+	}
+
 	var ctx context.Context
 	ctx, p.cancelFunc = context.WithCancel(context.Background())
 	return p.processStateNode(ctx, &Store{}, p.root, readCloser)
@@ -107,7 +146,9 @@ func (p *Pipeline) processStateNode(ctx context.Context, store *Store, node *Pip
 	outputs := make([]WriteCloser, len(node.Children))
 
 	for i := range outputs {
-		outputs[i] = &BufferedReadWriteCloser{}
+		outputs[i] = &BufferedReadWriteCloser{
+			context: readCloser.GetContext(),
+		}
 	}
 
 	var wg sync.WaitGroup
@@ -140,10 +181,13 @@ func (p *Pipeline) processStateNode(ctx context.Context, store *Store, node *Pip
 				if p.cancelled {
 					return
 				}
+
+				wrappedErr := errors.Wrap(err, fmt.Sprintf("Processor %s errored", node.Processor.Name()))
+
 				p.cancelled = true
-				p.cancelledWithErr = true
+				p.cancelledWithErr = wrappedErr
 				p.cancelFunc()
-				errorChan <- errors.Wrap(err, fmt.Sprintf("Processor %s errored", node.Processor.Name()))
+				errorChan <- wrappedErr
 			}
 		}()
 	}
@@ -167,7 +211,7 @@ func (p *Pipeline) processStateNode(ctx context.Context, store *Store, node *Pip
 		finishUpdatingStats <- true
 		select {
 		case <-ctx.Done():
-			if p.cancelledWithErr {
+			if p.cancelledWithErr != nil {
 				errorChan <- nil
 			}
 			// else: Do nothing, err already sent to a channel...
@@ -178,6 +222,11 @@ func (p *Pipeline) processStateNode(ctx context.Context, store *Store, node *Pip
 		// If all of the children of the current node are done and the current node is root
 		// it means that pipeline is done too.
 		if node == p.root {
+			err := p.sendPostProcessingHooks(readCloser.GetContext())
+			if err != nil {
+				errorChan <- errors.Wrap(err, "Error running pre-hook")
+			}
+
 			p.setRunning(false)
 		}
 	}()
@@ -194,7 +243,7 @@ func (p *Pipeline) Shutdown() {
 		return
 	}
 	p.cancelled = true
-	p.cancelledWithErr = false
+	p.cancelledWithErr = nil
 	p.cancelFunc()
 }
 

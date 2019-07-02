@@ -12,3 +12,23 @@ func (s *standardSession) ensureRunOnce() {
 func (s *standardSession) Shutdown() {
 	close(s.shutdown)
 }
+
+func (s *standardSession) QueryLock() {
+	s.rwLock.RLock()
+}
+
+func (s *standardSession) QueryUnlock() {
+	s.rwLock.RUnlock()
+}
+
+func (s *standardSession) UpdateLock() {
+	s.rwLock.Lock()
+}
+
+func (s *standardSession) UpdateUnlock() {
+	s.rwLock.Unlock()
+}
+
+func (s *standardSession) GetLatestProcessedLedger() uint32 {
+	return s.latestProcessedLedger
+}

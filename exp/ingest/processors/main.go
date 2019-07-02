@@ -4,6 +4,14 @@ import (
 	"github.com/stellar/go/xdr"
 )
 
+// RootProcessor is useful when a pipeline needs to be split stream into
+// multiple branches right away. This processor is a no-op - just passes the data
+// to all children.
+type RootProcessor struct {
+	noStateProcessor
+	concurrentProcessor
+}
+
 // CSVPrinter prints ledger entries to a file or stdout (when Filename is empty).
 // Can be used both for processing state and ledgers.
 type CSVPrinter struct {

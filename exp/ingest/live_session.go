@@ -19,9 +19,7 @@ func (s *LiveSession) Run() error {
 	}
 
 	s.ensureRunOnce()
-
 	historyAdapter := adapters.MakeHistoryArchiveAdapter(s.Archive)
-
 	currentLedger, err := historyAdapter.GetLatestLedgerSequence()
 	if err != nil {
 		return errors.Wrap(err, "Error getting the latest ledger sequence")
@@ -31,6 +29,8 @@ func (s *LiveSession) Run() error {
 	if err != nil {
 		return errors.Wrap(err, "initState error")
 	}
+
+	s.standardSession.latestProcessedLedger = currentLedger
 
 	// Exit early if Shutdown() was called.
 	select {
@@ -44,12 +44,16 @@ func (s *LiveSession) Run() error {
 	// current value of `currentLedger`
 	currentLedger++
 
+	return s.Resume(currentLedger)
+}
+
+func (s *LiveSession) Resume(ledgerSequence uint32) error {
 	ledgerAdapter := &adapters.LedgerBackendAdapter{
 		Backend: s.LedgerBackend,
 	}
 
 	for {
-		ledgerReader, err := ledgerAdapter.GetLedger(currentLedger)
+		ledgerReader, err := ledgerAdapter.GetLedger(ledgerSequence)
 		if err != nil {
 			if err == io.ErrNotFound {
 				time.Sleep(time.Second)
@@ -70,10 +74,15 @@ func (s *LiveSession) Run() error {
 			return nil
 		}
 
-		currentLedger++
+		s.standardSession.latestProcessedLedger = ledgerSequence
+		ledgerSequence++
 	}
 
 	return nil
+}
+
+func (s *LiveSession) GetLatestProcessedLedger() uint32 {
+	return s.standardSession.latestProcessedLedger
 }
 
 func (s *LiveSession) validate() error {

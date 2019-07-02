@@ -93,7 +93,7 @@ func (p *DatabaseProcessor) ProcessLedger(ctx context.Context, store *pipeline.S
 
 		switch p.Action {
 		case Transactions:
-			_, err = p.Database.InsertTransaction(transaction)
+			_, err = p.Database.InsertTransaction(r.GetSequence(), transaction)
 			if err != nil {
 				return errors.Wrap(err, "Error inserting a transaction")
 			}

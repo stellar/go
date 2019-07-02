@@ -27,7 +27,12 @@ func (s *SingleLedgerSession) Run() error {
 		return errors.Wrap(err, "processState errored")
 	}
 
+	s.standardSession.latestProcessedLedger = sequence
 	return nil
+}
+
+func (s *SingleLedgerSession) Resume(ledgerSequence uint32) error {
+	panic("Not possible to resume SingleLedgerSession")
 }
 
 func (s *SingleLedgerSession) processState(historyAdapter *adapters.HistoryArchiveAdapter, sequence uint32) error {

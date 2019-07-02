@@ -5,7 +5,35 @@ import (
 
 	"github.com/stellar/go/exp/ingest/io"
 	supportPipeline "github.com/stellar/go/exp/support/pipeline"
+	"github.com/stellar/go/xdr"
 )
+
+type ContextKey string
+
+const (
+	LedgerSequenceContextKey ContextKey = "ledger_sequence"
+	LedgerHeaderContextKey   ContextKey = "ledger_header"
+)
+
+func GetLedgerSequenceFromContext(ctx context.Context) uint32 {
+	v := ctx.Value(LedgerSequenceContextKey)
+
+	if v == nil {
+		panic("ledger sequence not found in context")
+	}
+
+	return v.(uint32)
+}
+
+func GetLedgerHeaderFromContext(ctx context.Context) xdr.LedgerHeaderHistoryEntry {
+	v := ctx.Value(LedgerHeaderContextKey)
+
+	if v == nil {
+		panic("ledger header not found in context")
+	}
+
+	return v.(xdr.LedgerHeaderHistoryEntry)
+}
 
 type StatePipeline struct {
 	supportPipeline.Pipeline

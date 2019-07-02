@@ -45,13 +45,15 @@ func (dblrc *DBLedgerReadCloser) GetSequence() uint32 {
 }
 
 // GetHeader returns the XDR Header data associated with the stored ledger.
-func (dblrc *DBLedgerReadCloser) GetHeader() (xdr.LedgerHeaderHistoryEntry, error) {
+func (dblrc *DBLedgerReadCloser) GetHeader() xdr.LedgerHeaderHistoryEntry {
 	var err error
 	dblrc.initOnce.Do(func() { err = dblrc.init() })
 	if err != nil {
-		return xdr.LedgerHeaderHistoryEntry{}, err
+		// TODO, object should be initialized in constructor.
+		// Not returning error here, makes this much simpler.
+		panic(err)
 	}
-	return dblrc.header, nil
+	return dblrc.header
 }
 
 // Read returns the next transaction in the ledger, ordered by tx number, each time it is called. When there

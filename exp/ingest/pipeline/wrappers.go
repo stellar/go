@@ -27,14 +27,25 @@ func (w *ledgerProcessorWrapper) Process(ctx context.Context, store *supportPipe
 	)
 }
 
+func (w *stateReadCloserWrapper) GetContext() context.Context {
+	ctx := context.Background()
+	ctx = context.WithValue(ctx, LedgerSequenceContextKey, w.StateReadCloser.GetSequence())
+	return ctx
+}
+
 func (w *stateReadCloserWrapper) Read() (interface{}, error) {
 	return w.StateReadCloser.Read()
 }
 
 func (w *readCloserWrapperState) GetSequence() uint32 {
-	// TODO we should probably keep ledger sequence in context and this
-	// method will be just a wrapper that fetches the data.
-	return 0
+	return GetLedgerSequenceFromContext(w.ReadCloser.GetContext())
+}
+
+func (w *ledgerReadCloserWrapper) GetContext() context.Context {
+	ctx := context.Background()
+	ctx = context.WithValue(ctx, LedgerSequenceContextKey, w.LedgerReadCloser.GetSequence())
+	ctx = context.WithValue(ctx, LedgerHeaderContextKey, w.LedgerReadCloser.GetHeader())
+	return ctx
 }
 
 func (w *ledgerReadCloserWrapper) Read() (interface{}, error) {
@@ -56,15 +67,11 @@ func (w *readCloserWrapperState) Read() (xdr.LedgerEntryChange, error) {
 }
 
 func (w *readCloserWrapperLedger) GetSequence() uint32 {
-	// TODO we should probably keep ledger sequence in context and this
-	// method will be just a wrapper that fetches the data.
-	return 0
+	return GetLedgerSequenceFromContext(w.ReadCloser.GetContext())
 }
 
-func (w *readCloserWrapperLedger) GetHeader() (xdr.LedgerHeaderHistoryEntry, error) {
-	// TODO we should probably keep header in context and this
-	// method will be just a wrapper that fetches the data.
-	return xdr.LedgerHeaderHistoryEntry{}, nil
+func (w *readCloserWrapperLedger) GetHeader() xdr.LedgerHeaderHistoryEntry {
+	return GetLedgerHeaderFromContext(w.ReadCloser.GetContext())
 }
 
 func (w *readCloserWrapperLedger) Read() (io.LedgerTransaction, error) {

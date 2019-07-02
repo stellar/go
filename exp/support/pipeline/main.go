@@ -13,6 +13,8 @@ import (
 type BufferedReadWriteCloser struct {
 	initOnce sync.Once
 
+	context context.Context
+
 	// readEntriesMutex protects readEntries variable
 	readEntriesMutex sync.Mutex
 	readEntries      int
@@ -42,11 +44,25 @@ type Pipeline struct {
 	runningMutex sync.Mutex
 	running      bool
 
+	preProcessingHooks  []func(context.Context) error
+	postProcessingHooks []func(context.Context, error) error
+
 	cancelledMutex   sync.Mutex
 	cancelled        bool
-	cancelledWithErr bool
+	cancelledWithErr error
 	cancelFunc       context.CancelFunc
 }
+
+// PipelineInterface is an interface that defines common pipeline methods
+// in structs that embed Pipeline.
+type PipelineInterface interface {
+	SetRoot(rootProcessor *PipelineNode)
+	AddPreProcessingHook(hook func(context.Context) error)
+	AddPostProcessingHook(hook func(context.Context, error) error)
+	Shutdown()
+}
+
+var _ PipelineInterface = &Pipeline{}
 
 type PipelineNode struct {
 	// Remember to update reset() method if you ever add a new field to this struct!
@@ -63,6 +79,9 @@ type PipelineNode struct {
 
 // ReadCloser interface placeholder
 type ReadCloser interface {
+	// GetContext returns context with values of the current reader. Can be
+	// helpful to provide data to structs that wrap `ReadCloser`.
+	GetContext() context.Context
 	// Read should return next entry. If there are no more
 	// entries it should return `io.EOF` error.
 	Read() (interface{}, error)
