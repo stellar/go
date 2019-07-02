@@ -11,6 +11,7 @@ file.  This project adheres to [Semantic Versioning](http://semver.org/).
 * `AllowTrust` operations no longer requires the asset issuer, only asset code is required ([#1330](https://github.com/stellar/go/issues/1330)).
 * `Transaction.SetDefaultFee` method is deprecated and will be removed in the next major release ([#1221](https://github.com/stellar/go/issues/1221)).
 * `Transaction.TransactionFee` method has been added to get the fee that will be paid for a transaction.
+* `Transaction.SignHashX` method adds support for signing transactions with hash(x) signature types.
 
 ## [v1.2.0](https://github.com/stellar/go/releases/tag/horizonclient-v1.2.0) - 2019-05-16
 
