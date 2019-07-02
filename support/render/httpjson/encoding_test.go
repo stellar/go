@@ -17,6 +17,20 @@ func TestRawObjectMarshaler(t *testing.T) {
 	if !bytes.Equal(got, want) {
 		t.Errorf("got: %s, want: %s", string(got), string(want))
 	}
+
+	var inField struct {
+		Input RawObject `json:"input"`
+	}
+
+	got, err = json.Marshal(inField)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	want = []byte(`{"input":{}}`)
+	if !bytes.Equal(got, want) {
+		t.Errorf("got: %s, want: %s", string(got), string(want))
+	}
 }
 
 func TestRawObjectUnmarshaler(t *testing.T) {
