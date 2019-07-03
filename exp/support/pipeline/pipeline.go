@@ -209,6 +209,7 @@ func (p *Pipeline) processStateNode(ctx context.Context, store *Store, node *Pip
 	go func() {
 		wg.Wait()
 		finishUpdatingStats <- true
+
 		select {
 		case <-ctx.Done():
 			if p.cancelledWithErr != nil {
@@ -216,17 +217,17 @@ func (p *Pipeline) processStateNode(ctx context.Context, store *Store, node *Pip
 			}
 			// else: Do nothing, err already sent to a channel...
 		default:
+			if node == p.root {
+				err := p.sendPostProcessingHooks(readCloser.GetContext())
+				if err != nil {
+					errorChan <- errors.Wrap(err, "Error running pre-hook")
+					break
+				}
+			}
 			errorChan <- nil
 		}
 
-		// If all of the children of the current node are done and the current node is root
-		// it means that pipeline is done too.
 		if node == p.root {
-			err := p.sendPostProcessingHooks(readCloser.GetContext())
-			if err != nil {
-				errorChan <- errors.Wrap(err, "Error running pre-hook")
-			}
-
 			p.setRunning(false)
 		}
 	}()

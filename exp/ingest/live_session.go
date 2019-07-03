@@ -56,6 +56,7 @@ func (s *LiveSession) Resume(ledgerSequence uint32) error {
 		ledgerReader, err := ledgerAdapter.GetLedger(ledgerSequence)
 		if err != nil {
 			if err == io.ErrNotFound {
+				// TODO make the idle time smaller
 				time.Sleep(time.Second)
 				continue
 			}

@@ -60,6 +60,7 @@ type PipelineInterface interface {
 	AddPreProcessingHook(hook func(context.Context) error)
 	AddPostProcessingHook(hook func(context.Context, error) error)
 	Shutdown()
+	PrintStatus()
 }
 
 var _ PipelineInterface = &Pipeline{}
@@ -173,9 +174,10 @@ type Processor interface {
 	// Returns processor name. Helpful for errors, debuging and reports.
 	Name() string
 	// Reset resets internal state of the processor. This is run by the pipeline
-	// everytime the processing is done. It is extremely important to implement
-	// this method, otherwise internal state of the processor will be maintained
-	// between pipeline runs and may result in invalid data.
+	// everytime before the pipeline starts running.
+	// It is extremely important to implement this method, otherwise internal
+	// state of the processor will be maintained between pipeline runs and may
+	// result in an invalid data.
 	Reset()
 }
 

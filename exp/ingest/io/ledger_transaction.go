@@ -55,7 +55,8 @@ func (c *Change) AccountSignersChanged() bool {
 }
 
 // GetChanges returns a developer friendly representation of LedgerEntryChanges.
-// TODO this should include TransactionMetaV1.txChanges too!
+// Currently it results operations related LedgerEntryChanges only.
+// TODO this should include TransactionMetaV1.txChanges and fee changes too!
 func (t *LedgerTransaction) GetChanges() []Change {
 	changes := []Change{}
 

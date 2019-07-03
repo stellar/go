@@ -1,4 +1,3 @@
-//lint:file-ignore U1000 this package is currently unused but it will be used in a future PR
 package orderbook
 
 import (
@@ -35,15 +34,45 @@ type OrderBookGraph struct {
 	// tradingPairForOffer maps an offer id to the assets which are being exchanged
 	// in the given offer
 	tradingPairForOffer map[xdr.Int64]tradingPair
-	lock                sync.RWMutex
+	// batchedUpdates is internal batch of updates to this graph. Users can
+	// create multiple batches using `Batch()` method but sometimes only one
+	// batch is enough.
+	batchedUpdates BatchedUpdates
+	lock           sync.RWMutex
 }
 
 // NewOrderBookGraph constructs a new OrderBookGraph
 func NewOrderBookGraph() *OrderBookGraph {
-	return &OrderBookGraph{
+	graph := &OrderBookGraph{
 		edgesForSellingAsset: map[string]edgeSet{},
 		tradingPairForOffer:  map[xdr.Int64]tradingPair{},
 	}
+
+	graph.batchedUpdates = graph.Batch()
+	return graph
+}
+
+// AddOffer will queue an operation to add the given offer to the order book in
+// the internal batch.
+// You need to run Apply() to apply all enqueued operations.
+func (graph *OrderBookGraph) AddOffer(offer xdr.OfferEntry) BatchedUpdates {
+	graph.batchedUpdates.AddOffer(offer)
+	return graph
+}
+
+// RemoveOffer will queue an operation to remove the given offer from the order book in
+// the internal batch.
+// You need to run Apply() to apply all enqueued operations.
+func (graph *OrderBookGraph) RemoveOffer(offerID xdr.Int64) BatchedUpdates {
+	graph.batchedUpdates.RemoveOffer(offerID)
+	return graph
+}
+
+// Apply will attempt to apply all the updates in the internal batch to the order book.
+// When Apply is successful, a new empty, instance of internal batch will be created.
+func (graph *OrderBookGraph) Apply() {
+	graph.batchedUpdates.Apply()
+	graph.batchedUpdates = graph.Batch()
 }
 
 // Batch creates a new batch of order book updates which can be applied

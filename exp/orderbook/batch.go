@@ -1,8 +1,8 @@
-//lint:file-ignore U1000 this package is currently unused but it will be used in a future PR
-
 package orderbook
 
 import (
+	"sync"
+
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
 )
@@ -23,10 +23,10 @@ const (
 type BatchedUpdates interface {
 	// AddOffer will queue an operation to add the given offer to the order book
 	AddOffer(offer xdr.OfferEntry) BatchedUpdates
-	// AddOffer will queue an operation to remove the given offer from the order book
+	// RemoveOffer will queue an operation to remove the given offer from the order book
 	RemoveOffer(offerID xdr.Int64) BatchedUpdates
 	// Apply will attempt to apply all the updates in the batch to the order book
-	Apply() error
+	Apply()
 }
 
 type orderBookOperation struct {
@@ -36,6 +36,8 @@ type orderBookOperation struct {
 }
 
 type orderBookBatchedUpdates struct {
+	// mutex is protecting access to operations from multiple go routines
+	mutex      sync.Mutex
 	operations []orderBookOperation
 	orderbook  *OrderBookGraph
 	committed  bool
@@ -43,6 +45,13 @@ type orderBookBatchedUpdates struct {
 
 // AddOffer will queue an operation to add the given offer to the order book
 func (tx *orderBookBatchedUpdates) AddOffer(offer xdr.OfferEntry) BatchedUpdates {
+	tx.mutex.Lock()
+	defer tx.mutex.Unlock()
+
+	if tx.committed {
+		panic(errBatchAlreadyApplied)
+	}
+
 	tx.operations = append(tx.operations, orderBookOperation{
 		operationType: addOfferOperationType,
 		offerID:       offer.OfferId,
@@ -54,6 +63,13 @@ func (tx *orderBookBatchedUpdates) AddOffer(offer xdr.OfferEntry) BatchedUpdates
 
 // AddOffer will queue an operation to remove the given offer from the order book
 func (tx *orderBookBatchedUpdates) RemoveOffer(offerID xdr.Int64) BatchedUpdates {
+	tx.mutex.Lock()
+	defer tx.mutex.Unlock()
+
+	if tx.committed {
+		panic(errBatchAlreadyApplied)
+	}
+
 	tx.operations = append(tx.operations, orderBookOperation{
 		operationType: removeOfferOperationType,
 		offerID:       offerID,
@@ -63,11 +79,15 @@ func (tx *orderBookBatchedUpdates) RemoveOffer(offerID xdr.Int64) BatchedUpdates
 }
 
 // Apply will attempt to apply all the updates in the batch to the order book
-func (tx *orderBookBatchedUpdates) Apply() error {
+func (tx *orderBookBatchedUpdates) Apply() {
+	tx.mutex.Lock()
+	defer tx.mutex.Unlock()
+
 	tx.orderbook.lock.Lock()
 	defer tx.orderbook.lock.Unlock()
+
 	if tx.committed {
-		return errBatchAlreadyApplied
+		panic(errBatchAlreadyApplied)
 	}
 	tx.committed = true
 
@@ -85,6 +105,4 @@ func (tx *orderBookBatchedUpdates) Apply() error {
 			panic(errors.New("invalid operation type"))
 		}
 	}
-
-	return nil
 }
