@@ -464,3 +464,18 @@ func ExampleManageBuyOffer() {
 	// Output: AAAAAH4RyzTWNfXhqwLUoCw91aWkZtgIzY8SAVkIPc0uFVmYAAAAZAAMoj8AAAAEAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAMAAAAAAAAAAFBQkNEAAAAAODcbeFyXKxmUWK1L6znNbKKIkPkHRJNbLktcKPqLnLFAAAAADuaygAAAAABAAAAZAAAAAAAAAAAAAAAAAAAAAEuFVmYAAAAQPh8h1TrzDpcgzB/VE8V0X2pFGV8/JyuYrx0I5bRfBJuLJr0l8yL1isP1wZjvMdX7fNiktwSLuUuj749nWA6wAo=
 
 }
+
+func ExampleBuildChallengeTx() {
+	// Generate random nonce
+	randomNonce, err := GenerateRandomString(64)
+	serverSignerSeed := "SBZVMB74Z76QZ3ZOY7UTDFYKMEGKW5XFJEB6PFKBF4UYSSWHG4EDH7PY"
+	clientAccountID := "GDQNY3PBOJOKYZSRMK2S7LHHGWZIUISD4QORETLMXEWXBI7KFZZMKTL3"
+	anchorName := "SDF"
+	fee := uint32(400)
+	timebound := int64(300)
+
+	// tx envelope returned here is ignored because it will be different for each run and cause tests to fail
+	_, err = BuildChallengeTx(serverSignerSeed, clientAccountID, anchorName,
+		network.TestNetworkPassphrase, fee, randomNonce, timebound)
+	check(err)
+}
