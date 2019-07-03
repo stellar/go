@@ -192,6 +192,13 @@ func BuildChallengeTx(serverSignerSecret, clientAccountID,
 		return "", err
 	}
 
+	if randomNonce == "" {
+		randomNonce, err = GenerateRandomString(64)
+		if err != nil {
+			return "", err
+		}
+	}
+
 	randomNonceBytes, err := base64.StdEncoding.DecodeString(randomNonce)
 	if err != nil {
 		return "", errors.Wrap(err, "failed to decode random nonce")
@@ -218,7 +225,8 @@ func BuildChallengeTx(serverSignerSecret, clientAccountID,
 	txTimebound := NewInfiniteTimeout()
 
 	if timebound > 0 {
-		txTimebound = NewTimebounds(time.Now().UTC().Unix(), time.Now().UTC().Unix()+timebound)
+		currentTime := time.Now().UTC().Unix()
+		txTimebound = NewTimebounds(currentTime, currentTime+timebound)
 	}
 
 	// Create a SEP 10 compatible response. See
