@@ -84,6 +84,11 @@ func (p *Pipeline) setRunning(setRunning bool) {
 	if setRunning && p.running {
 		panic("Pipeline is running...")
 	}
+
+	if setRunning && p.shutDown {
+		panic("Pipeline was shut down...")
+	}
+
 	p.running = setRunning
 }
 
@@ -210,13 +215,20 @@ func (p *Pipeline) processStateNode(ctx context.Context, store *Store, node *Pip
 		finishUpdatingStats <- true
 
 		if node == p.root {
-			// If pipeline processing is finished run post-hooks and send error
-			// if not already sent.
-			err := p.sendPostProcessingHooks(readCloser.GetContext(), processingError)
-			if err != nil {
-				errorChan <- errors.Wrap(err, "Error running post-hook")
+			// If pipeline processing is finished run post-hooks (if not shut down)
+			// and send error if not already sent.
+			p.runningMutex.Lock()
+			defer p.runningMutex.Unlock()
+
+			if p.shutDown {
+				errorChan <- nil
 			} else {
-				errorChan <- processingError
+				err := p.sendPostProcessingHooks(readCloser.GetContext(), processingError)
+				if err != nil {
+					errorChan <- errors.Wrap(err, "Error running post-hook")
+				} else {
+					errorChan <- processingError
+				}
 			}
 
 			p.setRunning(false)
@@ -229,14 +241,21 @@ func (p *Pipeline) processStateNode(ctx context.Context, store *Store, node *Pip
 	return errorChan
 }
 
+// Shutdown stops the processing. Please note that post-processing hooks will not
+// be executed when Shutdown() is called.
 func (p *Pipeline) Shutdown() {
 	// Protects from cancelling twice
 	p.cancelledMutex.Lock()
 	defer p.cancelledMutex.Unlock()
 
+	// Protects p.shutDown
+	p.runningMutex.Lock()
+	defer p.runningMutex.Unlock()
+
 	if p.cancelled {
 		return
 	}
+	p.shutDown = true
 	p.cancelled = true
 	p.cancelFunc()
 }

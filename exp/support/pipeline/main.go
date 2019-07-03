@@ -43,6 +43,7 @@ type Pipeline struct {
 
 	runningMutex sync.Mutex
 	running      bool
+	shutDown     bool
 
 	preProcessingHooks  []func(context.Context) error
 	postProcessingHooks []func(context.Context, error) error
@@ -138,7 +139,7 @@ type Processor interface {
 	//    		// Process entry...
 	//
 	//    		// Write to WriteCloser if needed but exit if pipe is closed:
-	//    		err := w.Write(entry)
+	//    		err = w.Write(entry)
 	//    		if err != nil {
 	//    			if err == io.ErrClosedPipe {
 	//    				// Reader does not need more data

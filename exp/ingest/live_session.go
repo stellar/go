@@ -11,7 +11,7 @@ import (
 var _ Session = &LiveSession{}
 
 func (s *LiveSession) Run() error {
-	s.shutdown = make(chan bool)
+	s.standardSession.shutdown = make(chan bool)
 
 	err := s.validate()
 	if err != nil {
@@ -44,10 +44,15 @@ func (s *LiveSession) Run() error {
 	// current value of `currentLedger`
 	currentLedger++
 
-	return s.Resume(currentLedger)
+	return s.resume(currentLedger)
 }
 
 func (s *LiveSession) Resume(ledgerSequence uint32) error {
+	s.standardSession.shutdown = make(chan bool)
+	return s.resume(ledgerSequence)
+}
+
+func (s *LiveSession) resume(ledgerSequence uint32) error {
 	ledgerAdapter := &adapters.LedgerBackendAdapter{
 		Backend: s.LedgerBackend,
 	}
@@ -56,8 +61,25 @@ func (s *LiveSession) Resume(ledgerSequence uint32) error {
 		ledgerReader, err := ledgerAdapter.GetLedger(ledgerSequence)
 		if err != nil {
 			if err == io.ErrNotFound {
-				// TODO make the idle time smaller
-				time.Sleep(time.Second)
+				// Ensure that there are no gaps. This is "just in case". There shouldn't
+				// be any gaps if CURSOR in core is updated and core version is v11.2.0+.
+				latestLedger, err := ledgerAdapter.GetLatestLedgerSequence()
+				if err != nil {
+					return err
+				}
+
+				if latestLedger > ledgerSequence {
+					return errors.New("Gap detected")
+				}
+
+				select {
+				case <-s.shutdown:
+					s.LedgerPipeline.Shutdown()
+					return nil
+				case <-time.After(time.Second):
+					// TODO make the idle time smaller
+				}
+
 				continue
 			}
 

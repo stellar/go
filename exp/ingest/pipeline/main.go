@@ -77,7 +77,7 @@ type StateProcessor interface {
 	//    		// Process entry...
 	//
 	//    		// Write to StateWriteCloser if needed but exit if pipe is closed:
-	//    		err := w.Write(entry)
+	//    		err = w.Write(entry)
 	//    		if err != nil {
 	//    			if err == io.ErrClosedPipe {
 	//    				//    Reader does not need more data
@@ -152,7 +152,7 @@ type LedgerProcessor interface {
 	//    		// Process entry...
 	//
 	//    		// Write to LedgerWriteCloser if needed but exit if pipe is closed:
-	//    		err := w.Write(entry)
+	//    		err = w.Write(entry)
 	//    		if err != nil {
 	//    			if err == io.ErrClosedPipe {
 	//    				//    Reader does not need more data
