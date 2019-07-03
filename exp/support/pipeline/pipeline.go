@@ -78,15 +78,14 @@ func (p *Pipeline) SetRoot(rootProcessor *PipelineNode) {
 
 // setRunning protects from processing more than once at a time.
 func (p *Pipeline) setRunning(setRunning bool) {
-	p.runningMutex.Lock()
-	defer p.runningMutex.Unlock()
+	if setRunning {
+		if p.running {
+			panic("Pipeline is running...")
+		}
 
-	if setRunning && p.running {
-		panic("Pipeline is running...")
-	}
-
-	if setRunning && p.shutDown {
-		panic("Pipeline was shut down...")
+		if p.shutDown {
+			panic("Pipeline was shut down...")
+		}
 	}
 
 	p.running = setRunning
@@ -130,6 +129,10 @@ func (p *Pipeline) resetNode(node *PipelineNode) {
 }
 
 func (p *Pipeline) Process(readCloser ReadCloser) <-chan error {
+	// Protects internal fields
+	p.runningMutex.Lock()
+	defer p.runningMutex.Unlock()
+
 	p.setRunning(true)
 	p.reset()
 
@@ -217,9 +220,6 @@ func (p *Pipeline) processStateNode(ctx context.Context, store *Store, node *Pip
 		if node == p.root {
 			// If pipeline processing is finished run post-hooks (if not shut down)
 			// and send error if not already sent.
-			p.runningMutex.Lock()
-			defer p.runningMutex.Unlock()
-
 			if p.shutDown {
 				errorChan <- nil
 			} else {
@@ -231,7 +231,9 @@ func (p *Pipeline) processStateNode(ctx context.Context, store *Store, node *Pip
 				}
 			}
 
+			p.runningMutex.Lock()
 			p.setRunning(false)
+			p.runningMutex.Unlock()
 		} else {
 			// For non-root node just send an error
 			errorChan <- processingError
@@ -248,7 +250,7 @@ func (p *Pipeline) Shutdown() {
 	p.cancelledMutex.Lock()
 	defer p.cancelledMutex.Unlock()
 
-	// Protects p.shutDown
+	// Protects internal fields
 	p.runningMutex.Lock()
 	defer p.runningMutex.Unlock()
 

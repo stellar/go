@@ -12,6 +12,15 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func TestPipelineCanBeProcessedAgain(t *testing.T) {
+	p := pipeline.New(
+		pipeline.Node(&NoOpProcessor{}),
+	)
+
+	assert.NoError(t, <-p.Process(&SimpleReadCloser{CountObject: 10}))
+	assert.NoError(t, <-p.Process(&SimpleReadCloser{CountObject: 20}))
+}
+
 func TestCannotRunProcessOnRunningPipeline(t *testing.T) {
 	p := pipeline.New(
 		pipeline.Node(&NoOpProcessor{}),

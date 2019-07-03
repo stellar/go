@@ -31,6 +31,8 @@ func main() {
 
 	printPipelinesStats(session.StatePipeline, session.LedgerPipeline)
 
+	// This is broken when the last ledger does not contain transactions
+	// but it's just a demo (we don't store ledgers, just transactions).
 	ledger, err := db.GetLatestLedger()
 	if err != nil && !db.NoRows(errors.Cause(err)) {
 		panic(err)

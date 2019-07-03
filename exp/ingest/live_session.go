@@ -34,7 +34,7 @@ func (s *LiveSession) Run() error {
 
 	// Exit early if Shutdown() was called.
 	select {
-	case <-s.shutdown:
+	case <-s.standardSession.shutdown:
 		return nil
 	default:
 		// Continue
@@ -63,7 +63,8 @@ func (s *LiveSession) resume(ledgerSequence uint32) error {
 			if err == io.ErrNotFound {
 				// Ensure that there are no gaps. This is "just in case". There shouldn't
 				// be any gaps if CURSOR in core is updated and core version is v11.2.0+.
-				latestLedger, err := ledgerAdapter.GetLatestLedgerSequence()
+				var latestLedger uint32
+				latestLedger, err = ledgerAdapter.GetLatestLedgerSequence()
 				if err != nil {
 					return err
 				}
@@ -73,7 +74,7 @@ func (s *LiveSession) resume(ledgerSequence uint32) error {
 				}
 
 				select {
-				case <-s.shutdown:
+				case <-s.standardSession.shutdown:
 					s.LedgerPipeline.Shutdown()
 					return nil
 				case <-time.After(time.Second):
@@ -92,7 +93,7 @@ func (s *LiveSession) resume(ledgerSequence uint32) error {
 			if err != nil {
 				return errors.Wrap(err, "Ledger pipeline errored")
 			}
-		case <-s.shutdown:
+		case <-s.standardSession.shutdown:
 			s.LedgerPipeline.Shutdown()
 			return nil
 		}
@@ -135,7 +136,7 @@ func (s *LiveSession) initState(historyAdapter *adapters.HistoryArchiveAdapter, 
 		if err != nil {
 			return errors.Wrap(err, "State pipeline errored")
 		}
-	case <-s.shutdown:
+	case <-s.standardSession.shutdown:
 		s.StatePipeline.Shutdown()
 	}
 
