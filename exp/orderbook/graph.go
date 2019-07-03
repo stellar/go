@@ -70,9 +70,13 @@ func (graph *OrderBookGraph) RemoveOffer(offerID xdr.Int64) BatchedUpdates {
 
 // Apply will attempt to apply all the updates in the internal batch to the order book.
 // When Apply is successful, a new empty, instance of internal batch will be created.
-func (graph *OrderBookGraph) Apply() {
-	graph.batchedUpdates.Apply()
+func (graph *OrderBookGraph) Apply() error {
+	err := graph.batchedUpdates.Apply()
+	if err != nil {
+		return err
+	}
 	graph.batchedUpdates = graph.Batch()
+	return nil
 }
 
 // Batch creates a new batch of order book updates which can be applied

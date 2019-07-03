@@ -26,7 +26,7 @@ type BatchedUpdates interface {
 	// RemoveOffer will queue an operation to remove the given offer from the order book
 	RemoveOffer(offerID xdr.Int64) BatchedUpdates
 	// Apply will attempt to apply all the updates in the batch to the order book
-	Apply()
+	Apply() error
 }
 
 type orderBookOperation struct {
@@ -79,7 +79,7 @@ func (tx *orderBookBatchedUpdates) RemoveOffer(offerID xdr.Int64) BatchedUpdates
 }
 
 // Apply will attempt to apply all the updates in the batch to the order book
-func (tx *orderBookBatchedUpdates) Apply() {
+func (tx *orderBookBatchedUpdates) Apply() error {
 	tx.mutex.Lock()
 	defer tx.mutex.Unlock()
 
@@ -87,7 +87,7 @@ func (tx *orderBookBatchedUpdates) Apply() {
 	defer tx.orderbook.lock.Unlock()
 
 	if tx.committed {
-		panic(errBatchAlreadyApplied)
+		return errBatchAlreadyApplied
 	}
 	tx.committed = true
 
@@ -105,4 +105,6 @@ func (tx *orderBookBatchedUpdates) Apply() {
 			panic(errors.New("invalid operation type"))
 		}
 	}
+
+	return nil
 }

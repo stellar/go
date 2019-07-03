@@ -86,7 +86,7 @@ func addPipelineHooks(
 		ledgerSeq := pipeline.GetLedgerSequenceFromContext(ctx)
 
 		if err != nil {
-			fmt.Println("%T Error processing ledger:", p, err)
+			fmt.Printf("%T Error processing ledger: %s\n", p, err)
 			return db.Rollback()
 		}
 
@@ -99,7 +99,7 @@ func addPipelineHooks(
 		wg.Add(2)
 
 		go func() {
-			orderBookGraph.Apply()
+			err = orderBookGraph.Apply()
 			wg.Done()
 		}()
 

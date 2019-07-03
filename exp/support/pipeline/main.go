@@ -47,10 +47,9 @@ type Pipeline struct {
 	preProcessingHooks  []func(context.Context) error
 	postProcessingHooks []func(context.Context, error) error
 
-	cancelledMutex   sync.Mutex
-	cancelled        bool
-	cancelledWithErr error
-	cancelFunc       context.CancelFunc
+	cancelledMutex sync.Mutex
+	cancelled      bool
+	cancelFunc     context.CancelFunc
 }
 
 // PipelineInterface is an interface that defines common pipeline methods

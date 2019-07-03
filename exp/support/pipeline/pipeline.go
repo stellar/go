@@ -90,7 +90,6 @@ func (p *Pipeline) setRunning(setRunning bool) {
 // reset resets internal state of the pipeline and all the nodes and processors.
 func (p *Pipeline) reset() {
 	p.cancelled = false
-	p.cancelledWithErr = nil
 	p.resetNode(p.root)
 }
 
@@ -105,9 +104,9 @@ func (p *Pipeline) sendPreProcessingHooks(ctx context.Context) error {
 	return nil
 }
 
-func (p *Pipeline) sendPostProcessingHooks(ctx context.Context) error {
+func (p *Pipeline) sendPostProcessingHooks(ctx context.Context, processingError error) error {
 	for _, hook := range p.postProcessingHooks {
-		err := hook(ctx, p.cancelledWithErr)
+		err := hook(ctx, processingError)
 		if err != nil {
 			return err
 		}
@@ -165,7 +164,7 @@ func (p *Pipeline) processStateNode(ctx context.Context, store *Store, node *Pip
 		closeAfter: jobs,
 	}
 
-	errorChan := make(chan error)
+	var processingError error
 
 	for i := 1; i <= jobs; i++ {
 		wg.Add(1)
@@ -185,9 +184,8 @@ func (p *Pipeline) processStateNode(ctx context.Context, store *Store, node *Pip
 				wrappedErr := errors.Wrap(err, fmt.Sprintf("Processor %s errored", node.Processor.Name()))
 
 				p.cancelled = true
-				p.cancelledWithErr = wrappedErr
 				p.cancelFunc()
-				errorChan <- wrappedErr
+				processingError = wrappedErr
 			}
 		}()
 	}
@@ -198,37 +196,33 @@ func (p *Pipeline) processStateNode(ctx context.Context, store *Store, node *Pip
 		wg.Add(1)
 		go func(i int, child *PipelineNode) {
 			defer wg.Done()
-			done := p.processStateNode(ctx, store, child, outputs[i].(*BufferedReadWriteCloser))
-			err := <-done
+			err := <-p.processStateNode(ctx, store, child, outputs[i].(*BufferedReadWriteCloser))
 			if err != nil {
-				errorChan <- err
+				processingError = err
 			}
 		}(i, child)
 	}
+
+	errorChan := make(chan error)
 
 	go func() {
 		wg.Wait()
 		finishUpdatingStats <- true
 
-		select {
-		case <-ctx.Done():
-			if p.cancelledWithErr != nil {
-				errorChan <- nil
-			}
-			// else: Do nothing, err already sent to a channel...
-		default:
-			if node == p.root {
-				err := p.sendPostProcessingHooks(readCloser.GetContext())
-				if err != nil {
-					errorChan <- errors.Wrap(err, "Error running pre-hook")
-					break
-				}
-			}
-			errorChan <- nil
-		}
-
 		if node == p.root {
+			// If pipeline processing is finished run post-hooks and send error
+			// if not already sent.
+			err := p.sendPostProcessingHooks(readCloser.GetContext(), processingError)
+			if err != nil {
+				errorChan <- errors.Wrap(err, "Error running post-hook")
+			} else {
+				errorChan <- processingError
+			}
+
 			p.setRunning(false)
+		} else {
+			// For non-root node just send an error
+			errorChan <- processingError
 		}
 	}()
 
@@ -244,7 +238,6 @@ func (p *Pipeline) Shutdown() {
 		return
 	}
 	p.cancelled = true
-	p.cancelledWithErr = nil
 	p.cancelFunc()
 }
 
