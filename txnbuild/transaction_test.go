@@ -712,13 +712,11 @@ func TestManageBuyOfferUpdateOffer(t *testing.T) {
 func TestBuildChallengeTx(t *testing.T) {
 	kp0 := newKeypair0()
 
-	tx, err := BuildChallengeTx(kp0.Address(), "SDF", network.TestNetworkPassphrase, 100)
-	assert.NoError(t, err)
-	err = tx.Sign(kp0)
-	assert.NoError(t, err)
-	txeBase64, err := tx.Base64()
+	// use GenerateRandomString(64) to get randomNonce like below
+	randomNonce := "faFEv1xTU4s58f9DVUXkHqKb6Vhj5EPSjPGV5bx0ceHK7/N6ftdlNk2FtqWx+XLVOmh2Q7W/6ZoKmd1uYZW24A=="
+	txeBase64, err := BuildChallengeTx(kp0.Seed(), kp0.Address(), "SDF", network.TestNetworkPassphrase, 500, randomNonce, 0)
 	assert.NoError(t, err)
 
-	expected := "TODO: TX here"
+	expected := "AAAAAODcbeFyXKxmUWK1L6znNbKKIkPkHRJNbLktcKPqLnLFAAAB9AAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAEAAAAA4Nxt4XJcrGZRYrUvrOc1sooiQ+QdEk1suS1wo+oucsUAAAAKAAAACFNERiBhdXRoAAAAAQAAAEB9oUS/XFNTiznx/0NVReQeopvpWGPkQ9KM8ZXlvHRx4crv83p+12U2TYW2pbH5ctU6aHZDtb/pmgqZ3W5hlbbgAAAAAAAAAAHqLnLFAAAAQCzOl4lvDkW3aMs867Axz/2s09OqVZ6zjYbdyaaCutj63yHf098QhJWdFPv38ZGrUrfCitF2BsznwgUX0czATAM="
 	assert.Equal(t, expected, txeBase64, "Base 64 XDR should match")
 }

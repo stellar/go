@@ -14,6 +14,7 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 	"fmt"
+	"time"
 
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/network"
@@ -181,56 +182,66 @@ func (tx *Transaction) BuildSignEncode(keypairs ...*keypair.Full) (string, error
 }
 
 // BuildChallengeTx is a factory method that creates a valid SEP 10 challenge, for use in web authentication.
-func BuildChallengeTx(accountID, anchorName, network string, fee uint32) (Transaction, error) {
-	randomNonce, err := GenerateRandomString(64)
+// "randomNonce" is a base64 encoded 64 byte long random string.
+// "timebound" is the number of seconds the transaction should be valid for, O means infinity.
+// More details on SEP 10: https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0010.md
+func BuildChallengeTx(serverSignerSecret, clientAccountID,
+	anchorName, network string, fee uint32, randomNonce string, timebound int64) (string, error) {
+	serverKP, err := keypair.Parse(serverSignerSecret)
 	if err != nil {
-		return Transaction{}, err
+		return "", err
 	}
 
+	randomNonceBytes, err := base64.StdEncoding.DecodeString(randomNonce)
+	if err != nil {
+		return "", errors.Wrap(err, "failed to decode random nonce")
+	}
+
+	if len(randomNonceBytes) != 64 {
+		return "", errors.New("64 byte long random nonce required")
+	}
+
+	// represent server signing account as SimpleAccount
 	sa := SimpleAccount{
-		AccountID: accountID,
+		AccountID: serverKP.Address(),
+		// Action needed in release: v2.0.0
+		// TODO: remove this and use "Sequence: 0" and build transaction with optional argument
+		//  (https://github.com/stellar/go/issues/1259)
+		Sequence: int64(-1),
+	}
+
+	// represent client account as SimpleAccount
+	ca := SimpleAccount{
+		AccountID: clientAccountID,
+	}
+
+	txTimebound := NewInfiniteTimeout()
+
+	if timebound > 0 {
+		txTimebound = NewTimebounds(time.Now().UTC().Unix(), time.Now().UTC().Unix()+timebound)
 	}
 
 	// Create a SEP 10 compatible response. See
 	// https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0010.md#response
-
 	tx := Transaction{
 		SourceAccount: &sa,
 		Operations: []Operation{
 			&ManageData{
-				SourceAccount: &sa,
+				SourceAccount: &ca,
 				Name:          anchorName + " auth",
-				Value:         []byte(randomNonce),
+				Value:         randomNonceBytes,
 			},
 		},
-		Timebounds: NewTimeout(300),
+		Timebounds: txTimebound,
 		Network:    network,
+		BaseFee:    fee,
 	}
 
-	// Action needed in release: v2.0.0
-	// TODO: remove this and use Build() with optional argument (https://github.com/stellar/go/issues/1259)
-	tx.xdrTransaction.SourceAccount.SetAddress(tx.SourceAccount.GetAccountID())
-
-	tx.xdrTransaction.SeqNum = 0
-	for _, op := range tx.Operations {
-		xdrOperation, err := op.BuildXDR()
-		if err != nil {
-			return Transaction{}, errors.Wrap(err, fmt.Sprintf("failed to build operation %T", op))
-		}
-		tx.xdrTransaction.Operations = append(tx.xdrTransaction.Operations, xdrOperation)
+	txeB64, err := tx.BuildSignEncode(serverKP.(*keypair.Full))
+	if err != nil {
+		return "", err
 	}
-
-	tx.xdrTransaction.TimeBounds = &xdr.TimeBounds{MinTime: xdr.TimePoint(tx.Timebounds.MinTime),
-		MaxTime: xdr.TimePoint(tx.Timebounds.MaxTime)}
-
-	tx.xdrTransaction.Fee = xdr.Uint32(fee)
-
-	if tx.xdrEnvelope == nil {
-		tx.xdrEnvelope = &xdr.TransactionEnvelope{}
-		tx.xdrEnvelope.Tx = tx.xdrTransaction
-	}
-
-	return tx, nil
+	return txeB64, nil
 }
 
 // GenerateRandomString creates a base-64 encoded, cryptographically secure random string of `n` bytes.
@@ -242,5 +253,5 @@ func GenerateRandomString(n int) (string, error) {
 		return "", err
 	}
 
-	return base64.URLEncoding.EncodeToString(bytes), err
+	return base64.StdEncoding.EncodeToString(bytes), err
 }
