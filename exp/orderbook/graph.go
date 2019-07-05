@@ -64,7 +64,7 @@ func (graph *OrderBookGraph) AddOffer(offer xdr.OfferEntry) *OrderBookGraph {
 // the internal batch.
 // You need to run Apply() to apply all enqueued operations.
 func (graph *OrderBookGraph) RemoveOffer(offerID xdr.Int64) *OrderBookGraph {
-	graph.batchedUpdates.RemoveOffer(offerID)
+	graph.batchedUpdates.removeOffer(offerID)
 	return graph
 }
 
