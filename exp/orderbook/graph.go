@@ -37,7 +37,7 @@ type OrderBookGraph struct {
 	// batchedUpdates is internal batch of updates to this graph. Users can
 	// create multiple batches using `Batch()` method but sometimes only one
 	// batch is enough.
-	batchedUpdates BatchedUpdates
+	batchedUpdates *orderBookBatchedUpdates
 	lock           sync.RWMutex
 }
 
@@ -48,22 +48,22 @@ func NewOrderBookGraph() *OrderBookGraph {
 		tradingPairForOffer:  map[xdr.Int64]tradingPair{},
 	}
 
-	graph.batchedUpdates = graph.Batch()
+	graph.batchedUpdates = graph.batch()
 	return graph
 }
 
 // AddOffer will queue an operation to add the given offer to the order book in
 // the internal batch.
 // You need to run Apply() to apply all enqueued operations.
-func (graph *OrderBookGraph) AddOffer(offer xdr.OfferEntry) BatchedUpdates {
-	graph.batchedUpdates.AddOffer(offer)
+func (graph *OrderBookGraph) AddOffer(offer xdr.OfferEntry) *OrderBookGraph {
+	graph.batchedUpdates.addOffer(offer)
 	return graph
 }
 
 // RemoveOffer will queue an operation to remove the given offer from the order book in
 // the internal batch.
 // You need to run Apply() to apply all enqueued operations.
-func (graph *OrderBookGraph) RemoveOffer(offerID xdr.Int64) BatchedUpdates {
+func (graph *OrderBookGraph) RemoveOffer(offerID xdr.Int64) *OrderBookGraph {
 	graph.batchedUpdates.RemoveOffer(offerID)
 	return graph
 }
@@ -71,17 +71,17 @@ func (graph *OrderBookGraph) RemoveOffer(offerID xdr.Int64) BatchedUpdates {
 // Apply will attempt to apply all the updates in the internal batch to the order book.
 // When Apply is successful, a new empty, instance of internal batch will be created.
 func (graph *OrderBookGraph) Apply() error {
-	err := graph.batchedUpdates.Apply()
+	err := graph.batchedUpdates.apply()
 	if err != nil {
 		return err
 	}
-	graph.batchedUpdates = graph.Batch()
+	graph.batchedUpdates = graph.batch()
 	return nil
 }
 
 // Batch creates a new batch of order book updates which can be applied
 // on this graph
-func (graph *OrderBookGraph) Batch() BatchedUpdates {
+func (graph *OrderBookGraph) batch() *orderBookBatchedUpdates {
 	return &orderBookBatchedUpdates{
 		operations: []orderBookOperation{},
 		committed:  false,
