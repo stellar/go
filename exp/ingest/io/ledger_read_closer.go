@@ -9,15 +9,6 @@ import (
 	"github.com/stellar/go/xdr"
 )
 
-// LedgerTransaction represents the data for a single transaction within a ledger.
-type LedgerTransaction struct {
-	Index      uint32
-	Envelope   xdr.TransactionEnvelope
-	Result     xdr.TransactionResultPair
-	Meta       xdr.TransactionMeta
-	FeeChanges xdr.LedgerEntryChanges
-}
-
 // DBLedgerReadCloser is a database-backed implementation of the io.LedgerReadCloser interface.
 type DBLedgerReadCloser struct {
 	sequence     uint32
@@ -33,11 +24,19 @@ type DBLedgerReadCloser struct {
 var _ LedgerReadCloser = (*DBLedgerReadCloser)(nil)
 
 // MakeLedgerReadCloser is a factory method for LedgerReadCloser.
-func MakeLedgerReadCloser(sequence uint32, backend ledgerbackend.LedgerBackend) *DBLedgerReadCloser {
-	return &DBLedgerReadCloser{
+func MakeLedgerReadCloser(sequence uint32, backend ledgerbackend.LedgerBackend) (*DBLedgerReadCloser, error) {
+	reader := &DBLedgerReadCloser{
 		sequence: sequence,
 		backend:  backend,
 	}
+
+	var err error
+	reader.initOnce.Do(func() { err = reader.init() })
+	if err != nil {
+		return nil, err
+	}
+
+	return reader, nil
 }
 
 // GetSequence returns the sequence number of the ledger data stored by this object.
@@ -46,13 +45,15 @@ func (dblrc *DBLedgerReadCloser) GetSequence() uint32 {
 }
 
 // GetHeader returns the XDR Header data associated with the stored ledger.
-func (dblrc *DBLedgerReadCloser) GetHeader() (xdr.LedgerHeaderHistoryEntry, error) {
+func (dblrc *DBLedgerReadCloser) GetHeader() xdr.LedgerHeaderHistoryEntry {
 	var err error
 	dblrc.initOnce.Do(func() { err = dblrc.init() })
 	if err != nil {
-		return xdr.LedgerHeaderHistoryEntry{}, err
+		// TODO, object should be initialized in constructor.
+		// Not returning error here, makes this much simpler.
+		panic(err)
 	}
-	return dblrc.header, nil
+	return dblrc.header
 }
 
 // Read returns the next transaction in the ledger, ordered by tx number, each time it is called. When there
@@ -92,7 +93,7 @@ func (dblrc *DBLedgerReadCloser) init() error {
 		return errors.Wrap(err, "error reading ledger from backend")
 	}
 	if !exists {
-		return errors.Wrap(err, "ledger was not found")
+		return ErrNotFound
 	}
 
 	dblrc.header = ledgerCloseMeta.LedgerHeader

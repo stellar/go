@@ -1,5 +1,3 @@
-//lint:file-ignore U1000 this package is currently unused but it will be used in a future PR
-
 package orderbook
 
 import (
@@ -18,17 +16,6 @@ const (
 	removeOfferOperationType = iota
 )
 
-// BatchedUpdates is an interface for applying multiple
-// operations on an order book
-type BatchedUpdates interface {
-	// AddOffer will queue an operation to add the given offer to the order book
-	AddOffer(offer xdr.OfferEntry) BatchedUpdates
-	// AddOffer will queue an operation to remove the given offer from the order book
-	RemoveOffer(offerID xdr.Int64) BatchedUpdates
-	// Apply will attempt to apply all the updates in the batch to the order book
-	Apply() error
-}
-
 type orderBookOperation struct {
 	operationType int
 	offerID       xdr.Int64
@@ -41,8 +28,8 @@ type orderBookBatchedUpdates struct {
 	committed  bool
 }
 
-// AddOffer will queue an operation to add the given offer to the order book
-func (tx *orderBookBatchedUpdates) AddOffer(offer xdr.OfferEntry) BatchedUpdates {
+// addOffer will queue an operation to add the given offer to the order book
+func (tx *orderBookBatchedUpdates) addOffer(offer xdr.OfferEntry) *orderBookBatchedUpdates {
 	tx.operations = append(tx.operations, orderBookOperation{
 		operationType: addOfferOperationType,
 		offerID:       offer.OfferId,
@@ -52,8 +39,8 @@ func (tx *orderBookBatchedUpdates) AddOffer(offer xdr.OfferEntry) BatchedUpdates
 	return tx
 }
 
-// AddOffer will queue an operation to remove the given offer from the order book
-func (tx *orderBookBatchedUpdates) RemoveOffer(offerID xdr.Int64) BatchedUpdates {
+// removeOffer will queue an operation to remove the given offer from the order book
+func (tx *orderBookBatchedUpdates) removeOffer(offerID xdr.Int64) *orderBookBatchedUpdates {
 	tx.operations = append(tx.operations, orderBookOperation{
 		operationType: removeOfferOperationType,
 		offerID:       offerID,
@@ -62,12 +49,14 @@ func (tx *orderBookBatchedUpdates) RemoveOffer(offerID xdr.Int64) BatchedUpdates
 	return tx
 }
 
-// Apply will attempt to apply all the updates in the batch to the order book
-func (tx *orderBookBatchedUpdates) Apply() error {
+// apply will attempt to apply all the updates in the batch to the order book
+func (tx *orderBookBatchedUpdates) apply() error {
 	tx.orderbook.lock.Lock()
 	defer tx.orderbook.lock.Unlock()
+
 	if tx.committed {
-		return errBatchAlreadyApplied
+		// This should never happen
+		panic(errBatchAlreadyApplied)
 	}
 	tx.committed = true
 

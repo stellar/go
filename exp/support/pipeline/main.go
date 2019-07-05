@@ -13,6 +13,8 @@ import (
 type BufferedReadWriteCloser struct {
 	initOnce sync.Once
 
+	context context.Context
+
 	// readEntriesMutex protects readEntries variable
 	readEntriesMutex sync.Mutex
 	readEntries      int
@@ -39,14 +41,32 @@ type multiWriteCloser struct {
 type Pipeline struct {
 	root *PipelineNode
 
-	doneMutex sync.Mutex
-	done      bool
+	runningMutex sync.Mutex
+	running      bool
+	shutDown     bool
+
+	preProcessingHooks  []func(context.Context) error
+	postProcessingHooks []func(context.Context, error) error
 
 	cancelledMutex sync.Mutex
 	cancelled      bool
+	cancelFunc     context.CancelFunc
 }
 
+// PipelineInterface is an interface that defines common pipeline methods
+// in structs that embed Pipeline.
+type PipelineInterface interface {
+	SetRoot(rootProcessor *PipelineNode)
+	AddPreProcessingHook(hook func(context.Context) error)
+	AddPostProcessingHook(hook func(context.Context, error) error)
+	Shutdown()
+	PrintStatus()
+}
+
+var _ PipelineInterface = &Pipeline{}
+
 type PipelineNode struct {
+	// Remember to update reset() method if you ever add a new field to this struct!
 	Processor Processor
 	Children  []*PipelineNode
 
@@ -60,6 +80,9 @@ type PipelineNode struct {
 
 // ReadCloser interface placeholder
 type ReadCloser interface {
+	// GetContext returns context with values of the current reader. Can be
+	// helpful to provide data to structs that wrap `ReadCloser`.
+	GetContext() context.Context
 	// Read should return next entry. If there are no more
 	// entries it should return `io.EOF` error.
 	Read() (interface{}, error)
@@ -116,7 +139,7 @@ type Processor interface {
 	//    		// Process entry...
 	//
 	//    		// Write to WriteCloser if needed but exit if pipe is closed:
-	//    		err := w.Write(entry)
+	//    		err = w.Write(entry)
 	//    		if err != nil {
 	//    			if err == io.ErrClosedPipe {
 	//    				// Reader does not need more data
@@ -148,15 +171,14 @@ type Processor interface {
 	// probably will be faster with multiple DB writers (especially when you want
 	// to do some data conversions before inserting).
 	IsConcurrent() bool
-	// RequiresInput defines if processor requires input data (ReadCloser). If not,
-	// it will receive empty reader, it's parent process will write to "void" and
-	// writes to `writer` will go to "void".
-	// This is useful for processors resposible for saving aggregated data that don't
-	// need processed objects.
-	// TODO!
-	RequiresInput() bool
 	// Returns processor name. Helpful for errors, debuging and reports.
 	Name() string
+	// Reset resets internal state of the processor. This is run by the pipeline
+	// everytime before the pipeline starts running.
+	// It is extremely important to implement this method, otherwise internal
+	// state of the processor will be maintained between pipeline runs and may
+	// result in an invalid data.
+	Reset()
 }
 
 // Store allows storing data connected to pipeline execution.

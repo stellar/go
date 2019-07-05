@@ -1,4 +1,4 @@
-package ingestadapters
+package adapters
 
 import (
 	"errors"
@@ -28,8 +28,7 @@ func (lba *LedgerBackendAdapter) GetLedger(sequence uint32) (io.LedgerReadCloser
 		return nil, errors.New(noBackendErr)
 	}
 
-	dblrc := io.MakeLedgerReadCloser(sequence, lba.Backend)
-	return dblrc, nil
+	return io.MakeLedgerReadCloser(sequence, lba.Backend)
 }
 
 // Close shuts down the provided backend.

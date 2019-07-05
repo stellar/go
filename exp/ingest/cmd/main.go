@@ -42,10 +42,7 @@ func useAdapter() {
 	s := lrc.GetSequence()
 	fmt.Println("lrc sequence:", s)
 
-	h, err := lrc.GetHeader()
-	if err != nil {
-		log.Fatal(err)
-	}
+	h := lrc.GetHeader()
 	fmt.Println("lrc header:", h)
 
 	for {

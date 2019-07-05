@@ -299,32 +299,10 @@ func TestRemoveEdgeSet(t *testing.T) {
 	})
 }
 
-func TestApplyTwice(t *testing.T) {
-	graph := NewOrderBookGraph()
-
-	batch := graph.Batch()
-	err := batch.
-		AddOffer(dollarOffer).
-		AddOffer(threeEurOffer).
-		AddOffer(eurOffer).
-		AddOffer(twoEurOffer).
-		AddOffer(quarterOffer).
-		AddOffer(fiftyCentsOffer).
-		Apply()
-	if err != nil {
-		t.Fatalf("unexpected error %v", err)
-	}
-
-	err = batch.Apply()
-	if err != errBatchAlreadyApplied {
-		t.Fatalf("expected error %v but got %v", errBatchAlreadyApplied, err)
-	}
-}
-
 func TestAddOfferOrderBook(t *testing.T) {
 	graph := NewOrderBookGraph()
 
-	err := graph.Batch().
+	err := graph.
 		AddOffer(dollarOffer).
 		AddOffer(threeEurOffer).
 		AddOffer(eurOffer).
@@ -371,7 +349,7 @@ func TestAddOfferOrderBook(t *testing.T) {
 		Amount: xdr.Int64(500),
 	}
 
-	err = graph.Batch().
+	err = graph.
 		AddOffer(eurUsdOffer).
 		AddOffer(otherEurUsdOffer).
 		AddOffer(usdEurOffer).
@@ -447,7 +425,7 @@ func TestAddOfferOrderBook(t *testing.T) {
 	}
 
 	// adding the same orders multiple times should have no effect
-	err = graph.Batch().
+	err = graph.
 		AddOffer(otherEurUsdOffer).
 		AddOffer(usdEurOffer).
 		AddOffer(dollarOffer).
@@ -463,7 +441,7 @@ func TestAddOfferOrderBook(t *testing.T) {
 func TestUpdateOfferOrderBook(t *testing.T) {
 	graph := NewOrderBookGraph()
 
-	err := graph.Batch().
+	err := graph.
 		AddOffer(dollarOffer).
 		AddOffer(threeEurOffer).
 		AddOffer(eurOffer).
@@ -510,7 +488,7 @@ func TestUpdateOfferOrderBook(t *testing.T) {
 		Amount: xdr.Int64(500),
 	}
 
-	err = graph.Batch().
+	err = graph.
 		AddOffer(eurUsdOffer).
 		AddOffer(otherEurUsdOffer).
 		AddOffer(usdEurOffer).
@@ -527,7 +505,7 @@ func TestUpdateOfferOrderBook(t *testing.T) {
 
 	dollarOffer.Amount = 12
 
-	err = graph.Batch().
+	err = graph.
 		AddOffer(usdEurOffer).
 		AddOffer(otherEurUsdOffer).
 		AddOffer(dollarOffer).
@@ -608,7 +586,7 @@ func TestUpdateOfferOrderBook(t *testing.T) {
 func TestRemoveOfferOrderBook(t *testing.T) {
 	graph := NewOrderBookGraph()
 
-	err := graph.Batch().
+	err := graph.
 		AddOffer(dollarOffer).
 		AddOffer(threeEurOffer).
 		AddOffer(eurOffer).
@@ -655,7 +633,7 @@ func TestRemoveOfferOrderBook(t *testing.T) {
 		Amount: xdr.Int64(500),
 	}
 
-	err = graph.Batch().
+	err = graph.
 		AddOffer(eurUsdOffer).
 		AddOffer(otherEurUsdOffer).
 		AddOffer(usdEurOffer).
@@ -937,7 +915,7 @@ func TestSortAndFilterPaths(t *testing.T) {
 func TestFindPaths(t *testing.T) {
 	graph := NewOrderBookGraph()
 
-	err := graph.Batch().
+	err := graph.
 		AddOffer(dollarOffer).
 		AddOffer(threeEurOffer).
 		AddOffer(eurOffer).
@@ -1008,7 +986,7 @@ func TestFindPaths(t *testing.T) {
 		Amount: xdr.Int64(500),
 	}
 
-	err = graph.Batch().
+	err = graph.
 		AddOffer(eurUsdOffer).
 		AddOffer(otherEurUsdOffer).
 		AddOffer(usdEurOffer).

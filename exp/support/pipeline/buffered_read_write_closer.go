@@ -1,6 +1,7 @@
 package pipeline
 
 import (
+	"context"
 	"io"
 )
 
@@ -21,6 +22,10 @@ func (b *BufferedReadWriteCloser) close() {
 
 	close(b.buffer)
 	b.closed = true
+}
+
+func (b *BufferedReadWriteCloser) GetContext() context.Context {
+	return b.context
 }
 
 func (b *BufferedReadWriteCloser) Read() (interface{}, error) {

@@ -186,8 +186,8 @@ func (n *SimpleProcessor) IsConcurrent() bool {
 	return false
 }
 
-func (n *SimpleProcessor) RequiresInput() bool {
-	return true
+func (n *SimpleProcessor) Reset() {
+	n.callCount = 0
 }
 
 func (n *SimpleProcessor) IncrementAndReturnCallCount() int {
@@ -417,7 +417,6 @@ func (p *PrintCountersProcessor) ProcessState(ctx context.Context, store *suppor
 	defer w.Close()
 	defer r.Close()
 
-	// TODO, we should use context with cancel and value to check when pipeline is done.
 	for {
 		_, err := r.Read()
 		if err != nil {
