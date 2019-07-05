@@ -55,44 +55,72 @@ func (c *Change) AccountSignersChanged() bool {
 }
 
 // GetChanges returns a developer friendly representation of LedgerEntryChanges.
-// Currently it results operations related LedgerEntryChanges only.
-// TODO this should include TransactionMetaV1.txChanges and fee changes too!
+// It contains fee changes, transaction changes and operation changes in that
+// order.
 func (t *LedgerTransaction) GetChanges() []Change {
-	changes := []Change{}
+	// Fee meta
+	changes := getChangesFromLedgerEntryChanges(t.FeeChanges)
 
+	// Transaction meta
+	v1Meta, ok := t.Meta.GetV1()
+	if ok {
+		txChanges := getChangesFromLedgerEntryChanges(v1Meta.TxChanges)
+		changes = append(changes, txChanges...)
+	}
+
+	// Operation meta
 	for _, operationMeta := range t.Meta.OperationsMeta() {
 		ledgerEntryChanges := operationMeta.Changes
-		for i := 0; i < len(ledgerEntryChanges); i++ {
-			entryChange := ledgerEntryChanges[i]
+		opChanges := getChangesFromLedgerEntryChanges(ledgerEntryChanges)
 
-			switch entryChange.Type {
-			case xdr.LedgerEntryChangeTypeLedgerEntryCreated:
-				created := entryChange.MustCreated()
-				changes = append(changes, Change{
-					Type: created.Data.Type,
-					Pre:  nil,
-					Post: &created.Data,
-				})
-			case xdr.LedgerEntryChangeTypeLedgerEntryUpdated:
-				state := ledgerEntryChanges[i-1].MustState()
-				updated := entryChange.MustUpdated()
-				changes = append(changes, Change{
-					Type: state.Data.Type,
-					Pre:  &state.Data,
-					Post: &updated.Data,
-				})
-			case xdr.LedgerEntryChangeTypeLedgerEntryRemoved:
-				state := ledgerEntryChanges[i-1].MustState()
-				changes = append(changes, Change{
-					Type: state.Data.Type,
-					Pre:  &state.Data,
-					Post: nil,
-				})
-			case xdr.LedgerEntryChangeTypeLedgerEntryState:
-				continue
-			default:
-				panic("Invalid LedgerEntryChangeType")
-			}
+		changes = append(changes, opChanges...)
+	}
+
+	return changes
+}
+
+// getChangesFromLedgerEntryChanges transforms LedgerEntryChanges to []Change.
+// Each `update` and `removed` is preceded with `state` and `create` changes
+// are alone, without `state`. The transformation we're doing is to move each
+// change (state/update, state/removed or create) to an array of pre/post pairs.
+// Then:
+// - for create, pre is null and post is a new entry,
+// - for update, pre is previous state and post is the current state,
+// - for removed, pre is previous state and post is null.
+//
+// stellar-core source:
+// https://github.com/stellar/stellar-core/blob/e584b43/src/ledger/LedgerTxn.cpp#L582
+func getChangesFromLedgerEntryChanges(ledgerEntryChanges xdr.LedgerEntryChanges) []Change {
+	changes := []Change{}
+
+	for i, entryChange := range ledgerEntryChanges {
+		switch entryChange.Type {
+		case xdr.LedgerEntryChangeTypeLedgerEntryCreated:
+			created := entryChange.MustCreated()
+			changes = append(changes, Change{
+				Type: created.Data.Type,
+				Pre:  nil,
+				Post: &created.Data,
+			})
+		case xdr.LedgerEntryChangeTypeLedgerEntryUpdated:
+			state := ledgerEntryChanges[i-1].MustState()
+			updated := entryChange.MustUpdated()
+			changes = append(changes, Change{
+				Type: state.Data.Type,
+				Pre:  &state.Data,
+				Post: &updated.Data,
+			})
+		case xdr.LedgerEntryChangeTypeLedgerEntryRemoved:
+			state := ledgerEntryChanges[i-1].MustState()
+			changes = append(changes, Change{
+				Type: state.Data.Type,
+				Pre:  &state.Data,
+				Post: nil,
+			})
+		case xdr.LedgerEntryChangeTypeLedgerEntryState:
+			continue
+		default:
+			panic("Invalid LedgerEntryChangeType")
 		}
 	}
 

@@ -50,6 +50,9 @@ type Session interface {
 	// Session user to determine what was the last ledger processed by a
 	// Session as it's stateless (or if Run() should be called first).
 	Resume(ledgerSequence uint32) error
+	// GetLatestProcessedLedger returns the latest ledger sequence processed in
+	// the session. Return 0 if no ledgers were processed yet.
+	// Please note that this value is not synchronized with pipeline hooks.
 	GetLatestProcessedLedger() uint32
 	// Shutdown gracefully stops running session and stops all internal
 	// objects.
