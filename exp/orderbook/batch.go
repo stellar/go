@@ -40,7 +40,7 @@ func (tx *orderBookBatchedUpdates) addOffer(offer xdr.OfferEntry) *orderBookBatc
 }
 
 // removeOffer will queue an operation to remove the given offer from the order book
-func (tx *orderBookBatchedUpdates) RemoveOffer(offerID xdr.Int64) *orderBookBatchedUpdates {
+func (tx *orderBookBatchedUpdates) removeOffer(offerID xdr.Int64) *orderBookBatchedUpdates {
 	tx.operations = append(tx.operations, orderBookOperation{
 		operationType: removeOfferOperationType,
 		offerID:       offerID,
