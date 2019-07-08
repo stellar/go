@@ -68,4 +68,7 @@ type Config struct {
 	// Enabling it has a negative impact on CPU when ingesting ledgers full of
 	// many different assets related operations.
 	EnableAssetStats bool
+	// EnableAccountsForSigner is a feature flag that enables an experimental "accounts for signer"
+	// endpoint. This endpoint uses a new ingestion system based primarily on historical archives.
+	EnableAccountsForSigner bool
 }
