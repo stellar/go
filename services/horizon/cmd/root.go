@@ -28,7 +28,7 @@ var rootCmd = &cobra.Command{
 	},
 }
 
-// validateBothOrNeither ensures that both options are provided, if either is provided
+// validateBothOrNeither ensures that both options are provided, if either is provided.
 func validateBothOrNeither(option1, option2 string) {
 	arg1, arg2 := viper.GetString(option1), viper.GetString(option2)
 	if arg1 != "" && arg2 == "" {
@@ -39,7 +39,7 @@ func validateBothOrNeither(option1, option2 string) {
 	}
 }
 
-// checkMigrations looks for necessary database migrations and fails with a descriptive error if migrations are needed
+// checkMigrations looks for necessary database migrations and fails with a descriptive error if migrations are needed.
 func checkMigrations() {
 	migrationsToApplyUp := schema.GetMigrationsUp(viper.GetString("db-url"))
 	if len(migrationsToApplyUp) > 0 {
@@ -57,7 +57,7 @@ func checkMigrations() {
 	}
 }
 
-// configOpts defines the complete flag configuration for horizon
+// configOpts defines the complete flag configuration for horizon.
 // Add a new entry here to connect a new field in the horizon.Config struct
 var configOpts = []*support.ConfigOption{
 	&support.ConfigOption{
@@ -82,6 +82,13 @@ var configOpts = []*support.ConfigOption{
 		OptType:   types.String,
 		Required:  true,
 		Usage:     "stellar-core to connect with (for http commands)",
+	},
+	&support.ConfigOption{
+		Name:      "history-archive-url",
+		ConfigKey: &config.HistoryArchiveURL,
+		OptType:   types.String,
+		Required:  false, // TODO: make required when ingestion system is released from feature flag
+		Usage:     "stellar history archive to connect with",
 	},
 	&support.ConfigOption{
 		Name:        "port",
