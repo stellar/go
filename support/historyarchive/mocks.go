@@ -19,14 +19,14 @@ func (m *MockArchive) PutPathHAS(path string, has HistoryArchiveState, opts *Com
 	return a.Error(0)
 }
 
-func (m *MockArchive) BucketExists(bucket Hash) bool {
+func (m *MockArchive) BucketExists(bucket Hash) (bool, error) {
 	a := m.Called(bucket)
-	return a.Get(0).(bool)
+	return a.Get(0).(bool), a.Error(1)
 }
 
-func (m *MockArchive) CategoryCheckpointExists(cat string, chk uint32) bool {
+func (m *MockArchive) CategoryCheckpointExists(cat string, chk uint32) (bool, error) {
 	a := m.Called(cat, chk)
-	return a.Get(0).(bool)
+	return a.Get(0).(bool), a.Error(1)
 }
 
 func (m *MockArchive) GetRootHAS() (HistoryArchiveState, error) {

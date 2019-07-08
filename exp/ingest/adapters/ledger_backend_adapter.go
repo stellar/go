@@ -1,4 +1,4 @@
-package ingestadapters
+package adapters
 
 import (
 	"errors"
@@ -28,8 +28,7 @@ func (lba *LedgerBackendAdapter) GetLedger(sequence uint32) (io.LedgerReadCloser
 		return nil, errors.New(noBackendErr)
 	}
 
-	dblrc := io.MakeLedgerReadCloser(sequence, lba.Backend)
-	return dblrc, nil
+	return io.MakeLedgerReadCloser(sequence, lba.Backend)
 }
 
 // Close shuts down the provided backend.
@@ -42,8 +41,5 @@ func (lba *LedgerBackendAdapter) Close() error {
 
 // hasBackend checks for the presence of LedgerBackendAdapter.Backend.
 func (lba *LedgerBackendAdapter) hasBackend() bool {
-	if lba.Backend == nil {
-		return false
-	}
-	return true
+	return lba.Backend != nil
 }

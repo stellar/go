@@ -12,17 +12,24 @@ import (
 	"os"
 
 	"github.com/spf13/cobra"
+	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/support/historyarchive"
 )
 
 func status(a string, opts *Options) {
 	arch := historyarchive.MustConnect(a, opts.ConnectOpts)
-	state, e := arch.GetRootHAS()
-	if e != nil {
-		log.Fatal(e)
+	state, err := arch.GetRootHAS()
+	if err != nil {
+		log.Fatal(errors.Wrap(err, "Error getting HAS"))
 	}
-	buckets := state.Buckets()
-	summ, nz := state.LevelSummary()
+	buckets, err := state.Buckets()
+	if err != nil {
+		log.Fatal(errors.Wrap(err, "Error getting buckets"))
+	}
+	summ, nz, err := state.LevelSummary()
+	if err != nil {
+		log.Fatal(errors.Wrap(err, "Error getting level summary"))
+	}
 	fmt.Printf("\n")
 	fmt.Printf("       Archive: %s\n", a)
 	fmt.Printf("        Server: %s\n", state.Server)

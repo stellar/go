@@ -1,12 +1,11 @@
-package ingestadapters
+package adapters
 
 import (
 	"fmt"
+	"io"
 	"testing"
 
-	"github.com/stellar/go/exp/ingest/io"
 	"github.com/stellar/go/support/historyarchive"
-
 	"github.com/stretchr/testify/assert"
 )
 

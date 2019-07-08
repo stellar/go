@@ -3,10 +3,10 @@ package main
 import (
 	"flag"
 	"fmt"
+	"io"
 	"log"
 
 	"github.com/stellar/go/exp/ingest/adapters"
-	"github.com/stellar/go/exp/ingest/io"
 	"github.com/stellar/go/support/historyarchive"
 )
 
@@ -24,7 +24,7 @@ func main() {
 	if e != nil {
 		panic(e)
 	}
-	haa := ingestadapters.MakeHistoryArchiveAdapter(archive)
+	haa := adapters.MakeHistoryArchiveAdapter(archive)
 
 	sr, e := haa.GetState(seqNum)
 	if e != nil {

@@ -72,7 +72,10 @@ func (arch *Archive) ScanCheckpointsSlow(opts *CommandOptions) error {
 				if !ok {
 					break
 				}
-				exists := arch.CategoryCheckpointExists(r.category, r.checkpoint)
+				exists, err := arch.CategoryCheckpointExists(r.category, r.checkpoint)
+				if err != nil {
+					panic(err)
+				}
 				tick <- true
 				arch.NoteCheckpointFile(r.category, r.checkpoint, exists)
 				if exists && opts.Verify {
@@ -237,14 +240,22 @@ func (arch *Archive) ScanBuckets(opts *CommandOptions) error {
 				}
 				has, e := arch.GetCheckpointHAS(ix)
 				atomic.AddUint32(&errs, noteError(e))
-				for _, bucket := range has.Buckets() {
+				buckets, err := has.Buckets()
+				if err != nil {
+					panic(err)
+				}
+				for _, bucket := range buckets {
 					new := arch.NoteReferencedBucket(bucket)
 					if !new {
 						continue
 					}
 
 					if !doList || opts.Verify {
-						if arch.BucketExists(bucket) {
+						exists, err := arch.BucketExists(bucket)
+						if err != nil {
+							panic(err)
+						}
+						if exists {
 							if !doList {
 								arch.NoteExistingBucket(bucket)
 							}
@@ -351,7 +362,7 @@ func (arch *Archive) CheckBucketsMissing() map[Hash]bool {
 	arch.mutex.Lock()
 	defer arch.mutex.Unlock()
 	missing := make(map[Hash]bool)
-	for k, _ := range arch.referencedBuckets {
+	for k := range arch.referencedBuckets {
 		_, ok := arch.allBuckets[k]
 		if !ok {
 			missing[k] = true
@@ -383,7 +394,7 @@ func (arch *Archive) ReportMissing(opts *CommandOptions) error {
 		log.Printf("No checkpoint files missing in range %s", opts.Range)
 	}
 
-	for bucket, _ := range missingBuckets {
+	for bucket := range missingBuckets {
 		log.Printf("Missing bucket: %s", bucket)
 	}
 

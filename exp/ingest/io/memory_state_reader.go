@@ -98,7 +98,13 @@ func (msr *MemoryStateReader) streamBuckets() {
 			continue
 		}
 
-		if !msr.archive.BucketExists(hash) {
+		exists, err := msr.archive.BucketExists(hash)
+		if err != nil {
+			msr.readChan <- msr.error(fmt.Errorf("error checking if bucket exists: %s", hash))
+			return
+		}
+
+		if !exists {
 			msr.readChan <- msr.error(fmt.Errorf("bucket hash does not exist: %s", hash))
 			return
 		}
@@ -221,7 +227,7 @@ func (msr *MemoryStateReader) Read() (xdr.LedgerEntryChange, error) {
 	result, ok := <-msr.readChan
 	if !ok {
 		// when channel is closed then return io.EOF
-		return xdr.LedgerEntryChange{}, EOF
+		return xdr.LedgerEntryChange{}, io.EOF
 	}
 
 	if result.e != nil {

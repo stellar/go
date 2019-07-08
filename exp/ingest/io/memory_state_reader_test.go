@@ -3,6 +3,7 @@ package io
 import (
 	"bytes"
 	"encoding/json"
+	"io"
 	"io/ioutil"
 	"sync"
 	"testing"
@@ -41,7 +42,7 @@ func (s *MemoryStateReaderTestSuite) SetupTest() {
 	// BucketExists should be called 21 times (11 levels, last without `snap`)
 	s.mockBucketExistsCall = s.mockArchive.
 		On("BucketExists", mock.AnythingOfType("historyarchive.Hash")).
-		Return(true).Times(21)
+		Return(true, nil).Times(21)
 
 	s.reader, err = MakeMemoryStateReader(s.mockArchive, ledgerSeq, bufferSize)
 	s.Require().NotNil(s.reader)
@@ -83,7 +84,7 @@ func (s *MemoryStateReaderTestSuite) TestSimple() {
 	s.Assert().Equal("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML", id.Address())
 
 	_, err = s.reader.Read()
-	s.Require().Equal(err, EOF)
+	s.Require().Equal(err, io.EOF)
 }
 
 // TestRemoved test reading buckets with a single live entry that was removed.
@@ -115,7 +116,7 @@ func (s *MemoryStateReaderTestSuite) TestRemoved() {
 	}
 
 	_, err := s.reader.Read()
-	s.Require().Equal(err, EOF)
+	s.Require().Equal(err, io.EOF)
 }
 
 // TestConcurrentRead test concurrent reads for race conditions
@@ -163,9 +164,9 @@ func (s *MemoryStateReaderTestSuite) TestConcurrentRead() {
 
 	wg.Wait()
 
-	// Next call should return EOF
+	// Next call should return io.EOF
 	_, err := s.reader.Read()
-	s.Require().Equal(err, EOF)
+	s.Require().Equal(err, io.EOF)
 }
 
 // TestEnsureLatestLiveEntry tests if a live entry overrides an older initentry
@@ -196,7 +197,7 @@ func (s *MemoryStateReaderTestSuite) TestEnsureLatestLiveEntry() {
 	s.Assert().Equal(xdr.Int64(1), entry.State.Data.Account.Balance)
 
 	_, err = s.reader.Read()
-	s.Require().Equal(err, EOF)
+	s.Require().Equal(err, io.EOF)
 }
 
 // TestMalformedProtocol11Bucket tests a buggy protocol 11 bucket (meta not the first entry)

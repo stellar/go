@@ -289,7 +289,7 @@ func getIndexActionQueryParams(r *http.Request, ingestFailedTransactions bool) (
 	if err != nil {
 		return nil, errors.Wrap(err, "getting include_failed param")
 	}
-	if includeFailedTx == true && !ingestFailedTransactions {
+	if includeFailedTx && !ingestFailedTransactions {
 		return nil, problem.MakeInvalidFieldProblem("include_failed",
 			errors.New("`include_failed` parameter is unavailable when Horizon is not ingesting failed "+
 				"transactions. Set `INGEST_FAILED_TRANSACTIONS=true` to start ingesting them."))

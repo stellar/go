@@ -9,6 +9,8 @@ import (
 	"log"
 	"sync"
 	"sync/atomic"
+
+	"github.com/stellar/go/support/errors"
 )
 
 func Mirror(src *Archive, dst *Archive, opts *CommandOptions) error {
@@ -52,7 +54,13 @@ func Mirror(src *Archive, dst *Archive, opts *CommandOptions) error {
 					atomic.AddUint32(&errs, noteError(err))
 					continue
 				}
-				for _, bucket := range has.Buckets() {
+
+				buckets, err := has.Buckets()
+				if err != nil {
+					panic(errors.Wrap(err, "error getting buckets"))
+				}
+
+				for _, bucket := range buckets {
 					alreadyFetching := false
 					bucketFetchMutex.Lock()
 					_, alreadyFetching = bucketFetch[bucket]
