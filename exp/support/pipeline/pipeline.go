@@ -220,20 +220,23 @@ func (p *Pipeline) processStateNode(ctx context.Context, store *Store, node *Pip
 		if node == p.root {
 			// If pipeline processing is finished run post-hooks (if not shut down)
 			// and send error if not already sent.
+			var returnError error
 			if p.shutDown {
-				errorChan <- nil
+				returnError = nil
 			} else {
 				err := p.sendPostProcessingHooks(readCloser.GetContext(), processingError)
 				if err != nil {
-					errorChan <- errors.Wrap(err, "Error running post-hook")
+					returnError = errors.Wrap(err, "Error running post-hook")
 				} else {
-					errorChan <- processingError
+					returnError = processingError
 				}
 			}
 
 			p.runningMutex.Lock()
 			p.setRunning(false)
 			p.runningMutex.Unlock()
+
+			errorChan <- returnError
 		} else {
 			// For non-root node just send an error
 			errorChan <- processingError

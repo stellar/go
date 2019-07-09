@@ -199,9 +199,13 @@ jobs:
       - run:
           name: "Publish release on GitHub"
           command: |
-            go get github.com/tcnksm/ghr
-            ghr -t ${GITHUB_TOKEN} -u ${CIRCLE_PROJECT_USERNAME} -r ${CIRCLE_PROJECT_REPONAME} -c ${CIRCLE_SHA1} ${CIRCLE_TAG} ./dist/
-
+            if [ -d "./dist" ] 
+            then
+              go get github.com/tcnksm/ghr
+              ghr -t ${GITHUB_TOKEN} -u ${CIRCLE_PROJECT_USERNAME} -r ${CIRCLE_PROJECT_REPONAME} -c ${CIRCLE_SHA1} ${CIRCLE_TAG} ./dist/
+            else
+                echo "./dist does not exist. No binaries to publish for ${CIRCLE_TAG}."
+            fi            
 #-------------------------------------------------------------------------#
 # Workflows orchestrate jobs and make sure they run in the right sequence #
 #-------------------------------------------------------------------------#
