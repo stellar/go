@@ -63,8 +63,11 @@ func (c *ScraperConfig) retrieveTrades(since time.Time, limit int) (trades []hPr
 		c.Logger.Debugln("Cursor currently at:", n)
 		r.Cursor = n
 
-		err = utils.Retry(3, 1*time.Second, func() error {
+		err = utils.Retry(5, 500*time.Millisecond, c.Logger, func() error {
 			tradesPage, err = c.Client.Trades(r)
+			if err != nil {
+				c.Logger.Infoln("Horizon rate limit reached!")
+			}
 			return err
 		})
 		if err != nil {

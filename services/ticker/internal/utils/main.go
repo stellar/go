@@ -5,6 +5,8 @@ import (
 	"math/rand"
 	"os"
 	"time"
+
+	hlog "github.com/stellar/go/support/log"
 )
 
 // PanicIfError is an utility function that panics if err != nil
@@ -77,15 +79,16 @@ func CalcSpread(bidMax float64, askMin float64) (spread float64, midPoint float6
 
 // Retry retries running a function that returns an error numRetries times, multiplying
 // the sleep time by a factor of 2 each time it retries.
-func Retry(numRetries int, delay time.Duration, f func() error) error {
-	fmt.Println("Running retry function")
+func Retry(numRetries int, delay time.Duration, logger *hlog.Entry, f func() error) error {
 	if err := f(); err != nil {
 		if numRetries--; numRetries > 0 {
 			jitter := time.Duration(rand.Int63n(int64(delay)))
 			delay = delay + jitter/2
 
+			logger.Infof("Backing off for %d milliseconds before retrying", delay.Truncate(time.Millisecond))
+
 			time.Sleep(delay)
-			return Retry(numRetries, 2*delay, f)
+			return Retry(numRetries, 2*delay, logger, f)
 		}
 		return err
 	}
