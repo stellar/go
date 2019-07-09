@@ -42,7 +42,7 @@ func TestTransactionRequestBuildUrl(t *testing.T) {
 	assert.Equal(t, "transactions/123", endpoint)
 
 	tr = TransactionRequest{ForLedger: 123, forTransactionHash: "789"}
-	endpoint, err = tr.BuildURL()
+	_, err = tr.BuildURL()
 
 	// error case: too many parameters for building any operation endpoint
 	if assert.Error(t, err) {

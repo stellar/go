@@ -49,7 +49,7 @@ func TestOperationRequestBuildUrl(t *testing.T) {
 	assert.Equal(t, "transactions/123/payments", endpoint)
 
 	op = OperationRequest{ForLedger: 123, forOperationID: "789", endpoint: "operations"}
-	endpoint, err = op.BuildURL()
+	_, err = op.BuildURL()
 
 	// error case: too many parameters for building any operation endpoint
 	if assert.Error(t, err) {

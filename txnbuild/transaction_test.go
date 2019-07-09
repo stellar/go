@@ -1,9 +1,12 @@
 package txnbuild
 
 import (
+	"crypto/sha256"
 	"testing"
 
 	"github.com/stellar/go/network"
+	"github.com/stellar/go/strkey"
+	"github.com/stellar/go/xdr"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -444,6 +447,30 @@ func TestAllowTrust(t *testing.T) {
 	assert.Equal(t, expected, received, "Base 64 XDR should match")
 }
 
+func TestAllowTrustNoIssuer(t *testing.T) {
+	kp0 := newKeypair0()
+	kp1 := newKeypair1()
+	sourceAccount := NewSimpleAccount(kp0.Address(), int64(40385577484366))
+
+	issuedAsset := CreditAsset{Code: "XYZ"}
+	allowTrust := AllowTrust{
+		Trustor:   kp1.Address(),
+		Type:      issuedAsset,
+		Authorize: true,
+	}
+
+	tx := Transaction{
+		SourceAccount: &sourceAccount,
+		Operations:    []Operation{&allowTrust},
+		Timebounds:    NewInfiniteTimeout(),
+		Network:       network.TestNetworkPassphrase,
+	}
+
+	received := buildSignEncode(t, tx, kp0)
+	expected := "AAAAAODcbeFyXKxmUWK1L6znNbKKIkPkHRJNbLktcKPqLnLFAAAAZAAAJLsAAABPAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAHAAAAACXK8doPx27P6IReQlRRuweSSUiUfjqgyswxiu3Sh2R+AAAAAVhZWgAAAAABAAAAAAAAAAHqLnLFAAAAQO8mcsi/+RObrKto8tABtN8RwUi6101FqBDTwqMQp4hNuujw+SGEFaBCYLNw/u40DHFRQoBNi6zcBKbBSg+gVwE="
+	assert.Equal(t, expected, received, "Base 64 XDR should match")
+}
+
 func TestManageSellOfferNewOffer(t *testing.T) {
 	kp0 := newKeypair0()
 	kp1 := newKeypair1()
@@ -707,4 +734,227 @@ func TestManageBuyOfferUpdateOffer(t *testing.T) {
 	// https://www.stellar.org/laboratory/#xdr-viewer?input=AAAAACXK8doPx27P6IReQlRRuweSSUiUfjqgyswxiu3Sh2R%2BAAAAZAAAJWoAAAAKAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAMAAAAAAAAAAFBQkNEAAAAACXK8doPx27P6IReQlRRuweSSUiUfjqgyswxiu3Sh2R%2BAAAAAB3NZQAAAAABAAAAMgAAAAAALJSWAAAAAAAAAAHSh2R%2BAAAAQK%2FsasTxgNqvkz3dGaDOyUgfa9UAAmUBmgiyaQU1dMlNNvTVH1D7PQKXkTooWmb6qK7Ee8vaTCFU6gGmShhA9wE%3D&type=TransactionEnvelope&network=test
 	expected := "AAAAACXK8doPx27P6IReQlRRuweSSUiUfjqgyswxiu3Sh2R+AAAAZAAAJWoAAAAKAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAMAAAAAAAAAAFBQkNEAAAAACXK8doPx27P6IReQlRRuweSSUiUfjqgyswxiu3Sh2R+AAAAAB3NZQAAAAABAAAAMgAAAAAALJSWAAAAAAAAAAHSh2R+AAAAQK/sasTxgNqvkz3dGaDOyUgfa9UAAmUBmgiyaQU1dMlNNvTVH1D7PQKXkTooWmb6qK7Ee8vaTCFU6gGmShhA9wE="
 	assert.Equal(t, expected, received, "Base 64 XDR should match")
+}
+
+func TestHashHex(t *testing.T) {
+	kp0 := newKeypair0()
+	sourceAccount := NewSimpleAccount(kp0.Address(), int64(9605939170639897))
+
+	createAccount := CreateAccount{
+		Destination: "GCCOBXW2XQNUSL467IEILE6MMCNRR66SSVL4YQADUNYYNUVREF3FIV2Z",
+		Amount:      "10",
+	}
+
+	tx := Transaction{
+		SourceAccount: &sourceAccount,
+		Operations:    []Operation{&createAccount},
+		Timebounds:    NewInfiniteTimeout(),
+		Network:       network.TestNetworkPassphrase,
+	}
+
+	err := tx.Build()
+	assert.NoError(t, err)
+
+	err = tx.Sign(kp0)
+	assert.NoError(t, err)
+
+	txeB64, err := tx.Base64()
+	assert.NoError(t, err)
+	expected := "AAAAAODcbeFyXKxmUWK1L6znNbKKIkPkHRJNbLktcKPqLnLFAAAAZAAiII0AAAAaAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAITg3tq8G0kvnvoIhZPMYJsY+9KVV8xAA6NxhtKxIXZUAAAAAAX14QAAAAAAAAAAAeoucsUAAABAHsyMojA0Q5MiNsR5X5AiNpCn9mlXmqluRsNpTniCR91M4U5TFmrrqVNLkU58/l+Y8hUPwidDTRSzLZKbMUL/Bw=="
+	assert.Equal(t, expected, txeB64, "Base 64 XDR should match")
+
+	hashHex, err := tx.HashHex()
+	assert.NoError(t, err)
+	expected = "1b3905ba8c3c0ecc68ae812f2d77f27c697195e8daf568740fc0f5662f65f759"
+	assert.Equal(t, expected, hashHex, "hex encoded hash should match")
+
+	txEnv := tx.TxEnvelope()
+	assert.NotNil(t, txEnv, "transaction xdr envelope should not be nil")
+	assert.IsType(t, txEnv, &xdr.TransactionEnvelope{}, "tx.TxEnvelope should return type of *xdr.TransactionEnvelope")
+}
+
+func TestTransactionFee(t *testing.T) {
+	kp0 := newKeypair0()
+	sourceAccount := NewSimpleAccount(kp0.Address(), int64(9605939170639897))
+
+	createAccount := CreateAccount{
+		Destination: "GCCOBXW2XQNUSL467IEILE6MMCNRR66SSVL4YQADUNYYNUVREF3FIV2Z",
+		Amount:      "10",
+	}
+
+	tx := Transaction{
+		SourceAccount: &sourceAccount,
+		Operations:    []Operation{&createAccount},
+		Timebounds:    NewInfiniteTimeout(),
+		Network:       network.TestNetworkPassphrase,
+	}
+
+	txFee := tx.TransactionFee()
+	assert.Equal(t, 0, txFee, "Transaction fee should match")
+
+	err := tx.Build()
+	assert.NoError(t, err)
+	txFee = tx.TransactionFee()
+	assert.Equal(t, 100, txFee, "Transaction fee should match")
+
+	tx = Transaction{
+		SourceAccount: &sourceAccount,
+		Operations:    []Operation{&createAccount},
+		Timebounds:    NewInfiniteTimeout(),
+		Network:       network.TestNetworkPassphrase,
+		BaseFee:       500,
+	}
+	err = tx.Build()
+	assert.NoError(t, err)
+	txFee = tx.TransactionFee()
+	assert.Equal(t, 500, txFee, "Transaction fee should match")
+
+	err = tx.Sign(kp0)
+	assert.NoError(t, err)
+
+	txeB64, err := tx.Base64()
+	assert.NoError(t, err)
+	expected := "AAAAAODcbeFyXKxmUWK1L6znNbKKIkPkHRJNbLktcKPqLnLFAAAB9AAiII0AAAAbAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAITg3tq8G0kvnvoIhZPMYJsY+9KVV8xAA6NxhtKxIXZUAAAAAAX14QAAAAAAAAAAAeoucsUAAABAnc69aKw6dg1LlHxkIetKZu8Ou8hgbj4mICV0tiOJeuiq8DvivSlAngnD+FlVIaotmg8i3dEzBg+LcLnG9UttBQ=="
+	assert.Equal(t, expected, txeB64, "Base 64 XDR should match")
+}
+
+func TestPreAuthTransaction(t *testing.T) {
+	// Address: GDK3YEHGI3ORGVO7ZEV2XF4SV5JU3BOKHMHPP4QFJ74ZRIIRROZ7ITOJ
+	kp0 := newKeypair("SDY4PF6F6OWWERZT6OL2LVNREHUGHKALUI5W4U2JK4GAKPAC2RM43OAU")
+	sourceAccount := NewSimpleAccount(kp0.Address(), int64(4353383146192898)) // sequence number is in the future
+
+	createAccount := CreateAccount{
+		Destination: "GCCOBXW2XQNUSL467IEILE6MMCNRR66SSVL4YQADUNYYNUVREF3FIV2Z",
+		Amount:      "10",
+	}
+
+	// build transaction to be submitted in the future.
+	txFuture := Transaction{
+		SourceAccount: &sourceAccount,
+		Operations:    []Operation{&createAccount},
+		Timebounds:    NewInfiniteTimeout(),
+		Network:       network.TestNetworkPassphrase,
+		BaseFee:       100,
+	}
+
+	err := txFuture.Build()
+	assert.NoError(t, err)
+
+	// save the hash of the future transaction.
+	txFutureHash, err := txFuture.Hash()
+	assert.NoError(t, err)
+
+	// sign transaction without keypairs, the hash of the future transaction on the account
+	//  will be used for authorisation.
+	err = txFuture.Sign()
+	assert.NoError(t, err)
+
+	txeFutureB64, err := txFuture.Base64()
+	assert.NoError(t, err)
+	expected := "AAAAANW8EOZG3RNV38krq5eSr1NNhco7DvfyBU/5mKERi7P0AAAAZAAPd2EAAAADAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAITg3tq8G0kvnvoIhZPMYJsY+9KVV8xAA6NxhtKxIXZUAAAAAAX14QAAAAAAAAAAAA=="
+	assert.Equal(t, expected, txeFutureB64, "Base 64 XDR should match")
+
+	//encode the txFutureHash as a stellar HashTx signer key.
+	preAuth, err := strkey.Encode(strkey.VersionByteHashTx, txFutureHash[:])
+	assert.NoError(t, err)
+
+	// set sequence number to the current number.
+	sourceAccount.Sequence = int64(4353383146192897)
+
+	// add hash of future transaction as signer to account
+	setOptions := SetOptions{
+		Signer: &Signer{Address: preAuth, Weight: Threshold(2)},
+	}
+
+	// build a transaction to add the hash of the future transaction as a signer on the account.
+	txNow := Transaction{
+		SourceAccount: &sourceAccount,
+		Operations:    []Operation{&setOptions},
+		Timebounds:    NewInfiniteTimeout(),
+		Network:       network.TestNetworkPassphrase,
+		BaseFee:       500,
+	}
+	err = txNow.Build()
+	assert.NoError(t, err)
+	txFee := txNow.TransactionFee()
+	assert.Equal(t, 500, txFee, "Transaction fee should match")
+
+	err = txNow.Sign(kp0)
+	assert.NoError(t, err)
+
+	txeNowB64, err := txNow.Base64()
+	assert.NoError(t, err)
+	expected = "AAAAANW8EOZG3RNV38krq5eSr1NNhco7DvfyBU/5mKERi7P0AAAB9AAPd2EAAAACAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAFAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAAAAAY9c66YpCPn8yMopKaNBd7gbiD2cr+aTLOaZE4whmeO1AAAAAgAAAAAAAAABEYuz9AAAAEC62tXQKDTcrB8VvOQIaI3ECV0uypBkpGNuyodnLLY27ii4QMdB4g4otYIvKY6nbWQqYYapNh6Q9dVsYfK6OHQM"
+	assert.Equal(t, expected, txeNowB64, "Base 64 XDR should match")
+	// Note: txeFutureB64 can be submitted to the network after txeNowB64 has been applied to the account
+}
+
+func TestHashXTransaction(t *testing.T) {
+	// 256 bit preimage
+	preimage := "this is a preimage for hashx transactions on the stellar network"
+
+	preimageHash := sha256.Sum256([]byte(preimage))
+
+	//encode preimageHash as a stellar HashX signer key
+	hashx, err := strkey.Encode(strkey.VersionByteHashX, preimageHash[:])
+	assert.NoError(t, err)
+
+	// add hashx as signer to the account
+	setOptions := SetOptions{
+		Signer: &Signer{Address: hashx, Weight: Threshold(1)},
+	}
+
+	// Address: GDK3YEHGI3ORGVO7ZEV2XF4SV5JU3BOKHMHPP4QFJ74ZRIIRROZ7ITOJ
+	kp0 := newKeypair("SDY4PF6F6OWWERZT6OL2LVNREHUGHKALUI5W4U2JK4GAKPAC2RM43OAU")
+	sourceAccount := NewSimpleAccount(kp0.Address(), int64(4353383146192899))
+
+	tx := Transaction{
+		SourceAccount: &sourceAccount,
+		Operations:    []Operation{&setOptions},
+		Timebounds:    NewInfiniteTimeout(),
+		Network:       network.TestNetworkPassphrase,
+		BaseFee:       500,
+	}
+	err = tx.Build()
+	assert.NoError(t, err)
+	txFee := tx.TransactionFee()
+	assert.Equal(t, 500, txFee, "Transaction fee should match")
+
+	err = tx.Sign(kp0)
+	assert.NoError(t, err)
+
+	txeB64, err := tx.Base64()
+	assert.NoError(t, err)
+
+	expected := "AAAAANW8EOZG3RNV38krq5eSr1NNhco7DvfyBU/5mKERi7P0AAAB9AAPd2EAAAAEAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAFAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAAAAAvslgb5oIfuISFP8FYvTqsciG1iSUerJB3Au6T2WLqMFAAAAAQAAAAAAAAABEYuz9AAAAECHBwfCbcOwFyoILLW7OZejvdbsVPEwB6z6ocAG4cRGu69vXKCrBFYD2mMdJRCeglgJgfgaFj2qshBgL8yQ14UH"
+	assert.Equal(t, expected, txeB64, "Base 64 XDR should match")
+
+	// build a transaction to test hashx signer
+	payment := Payment{
+		Destination: "GCCOBXW2XQNUSL467IEILE6MMCNRR66SSVL4YQADUNYYNUVREF3FIV2Z",
+		Amount:      "10",
+		Asset:       NativeAsset{},
+	}
+
+	sourceAccount.Sequence = int64(4353383146192902)
+
+	tx = Transaction{
+		SourceAccount: &sourceAccount,
+		Operations:    []Operation{&payment},
+		Timebounds:    NewInfiniteTimeout(),
+		Network:       network.TestNetworkPassphrase,
+		BaseFee:       100,
+	}
+
+	err = tx.Build()
+	assert.NoError(t, err)
+
+	// sign transaction with the preimage
+	err = tx.SignHashX([]byte(preimage))
+	assert.NoError(t, err)
+
+	txeB64, err = tx.Base64()
+	assert.NoError(t, err)
+	expected = "AAAAANW8EOZG3RNV38krq5eSr1NNhco7DvfyBU/5mKERi7P0AAAAZAAPd2EAAAAHAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAABAAAAAITg3tq8G0kvnvoIhZPMYJsY+9KVV8xAA6NxhtKxIXZUAAAAAAAAAAAF9eEAAAAAAAAAAAGWLqMFAAAAQHRoaXMgaXMgYSBwcmVpbWFnZSBmb3IgaGFzaHggdHJhbnNhY3Rpb25zIG9uIHRoZSBzdGVsbGFyIG5ldHdvcms="
+	assert.Equal(t, expected, txeB64, "Base 64 XDR should match")
 }
