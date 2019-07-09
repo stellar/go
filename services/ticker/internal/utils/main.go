@@ -85,7 +85,7 @@ func Retry(numRetries int, delay time.Duration, logger *hlog.Entry, f func() err
 			jitter := time.Duration(rand.Int63n(int64(delay)))
 			delay = delay + jitter/2
 
-			logger.Infof("Backing off for %d milliseconds before retrying", delay.Truncate(time.Millisecond))
+			logger.Infof("Backing off for %.3f seconds before retrying", delay.Seconds())
 
 			time.Sleep(delay)
 			return Retry(numRetries, 2*delay, logger, f)
