@@ -2,6 +2,7 @@ package utils
 
 import (
 	"fmt"
+	"math/rand"
 	"os"
 	"time"
 )
@@ -72,4 +73,26 @@ func CalcSpread(bidMax float64, askMin float64) (spread float64, midPoint float6
 	spread = (askMin - bidMax) / askMin
 	midPoint = bidMax + spread/2.0
 	return
+}
+
+// Retry retries running a function that returns an error numRetries times, multiplying
+// the sleep time by a factor of 2 each time it retries.
+func Retry(numRetries int, delay time.Duration, f func() error) error {
+	fmt.Println("Running retry function")
+	if err := f(); err != nil {
+		if numRetries--; numRetries > 0 {
+			jitter := time.Duration(rand.Int63n(int64(delay)))
+			delay = delay + jitter/2
+
+			time.Sleep(delay)
+			return Retry(numRetries, 2*delay, f)
+		}
+		return err
+	}
+
+	return nil
+}
+
+func init() {
+	rand.Seed(time.Now().UnixNano())
 }
