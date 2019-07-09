@@ -5,6 +5,7 @@ import (
 	"go/types"
 	stdLog "log"
 	"os"
+	"strings"
 
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -84,11 +85,18 @@ var configOpts = []*support.ConfigOption{
 		Usage:     "stellar-core to connect with (for http commands)",
 	},
 	&support.ConfigOption{
-		Name:      "history-archive-url",
-		ConfigKey: &config.HistoryArchiveURL,
-		OptType:   types.String,
-		Required:  false, // TODO: make required when ingestion system is released from feature flag
-		Usage:     "stellar history archive to connect with",
+		Name:        "history-archive-urls",
+		ConfigKey:   &config.HistoryArchiveURLs,
+		OptType:     types.String,
+		Required:    false,
+		FlagDefault: "http://history.stellar.org/prd/core-live/core_live_001/,http://history.stellar.org/prd/core-live/core_live_002/,http://history.stellar.org/prd/core-live/core_live_003/",
+		CustomSetValue: func(co *support.ConfigOption) {
+			stringOfUrls := viper.GetString(co.Name)
+			urlStrings := strings.Split(stringOfUrls, ",")
+
+			*(co.ConfigKey.(*[]string)) = urlStrings
+		},
+		Usage: "comma-separated list of stellar history archives to connect with",
 	},
 	&support.ConfigOption{
 		Name:        "port",
