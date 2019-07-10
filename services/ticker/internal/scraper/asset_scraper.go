@@ -16,6 +16,7 @@ import (
 
 	horizonclient "github.com/stellar/go/clients/horizonclient"
 	hProtocol "github.com/stellar/go/protocols/horizon"
+	"github.com/stellar/go/services/ticker/internal/utils"
 )
 
 // shouldDiscardAsset maps the criteria for discarding an asset from the asset index
@@ -308,7 +309,13 @@ func (c *ScraperConfig) retrieveAssets(limit int) (assets []hProtocol.AssetStat,
 	c.Logger.Infoln("Fetching assets from Horizon")
 
 	for assetsPage.Links.Next.Href != assetsPage.Links.Self.Href {
-		assetsPage, err = c.Client.Assets(r)
+		err = utils.Retry(5, 5*time.Second, c.Logger, func() error {
+			assetsPage, err = c.Client.Assets(r)
+			if err != nil {
+				c.Logger.Infoln("Horizon rate limit reached!")
+			}
+			return err
+		})
 		if err != nil {
 			return
 		}
