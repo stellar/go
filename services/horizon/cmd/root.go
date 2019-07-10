@@ -5,6 +5,7 @@ import (
 	"go/types"
 	stdLog "log"
 	"os"
+	"strings"
 
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -28,7 +29,7 @@ var rootCmd = &cobra.Command{
 	},
 }
 
-// validateBothOrNeither ensures that both options are provided, if either is provided
+// validateBothOrNeither ensures that both options are provided, if either is provided.
 func validateBothOrNeither(option1, option2 string) {
 	arg1, arg2 := viper.GetString(option1), viper.GetString(option2)
 	if arg1 != "" && arg2 == "" {
@@ -39,7 +40,7 @@ func validateBothOrNeither(option1, option2 string) {
 	}
 }
 
-// checkMigrations looks for necessary database migrations and fails with a descriptive error if migrations are needed
+// checkMigrations looks for necessary database migrations and fails with a descriptive error if migrations are needed.
 func checkMigrations() {
 	migrationsToApplyUp := schema.GetMigrationsUp(viper.GetString("db-url"))
 	if len(migrationsToApplyUp) > 0 {
@@ -57,7 +58,7 @@ func checkMigrations() {
 	}
 }
 
-// configOpts defines the complete flag configuration for horizon
+// configOpts defines the complete flag configuration for horizon.
 // Add a new entry here to connect a new field in the horizon.Config struct
 var configOpts = []*support.ConfigOption{
 	&support.ConfigOption{
@@ -82,6 +83,20 @@ var configOpts = []*support.ConfigOption{
 		OptType:   types.String,
 		Required:  true,
 		Usage:     "stellar-core to connect with (for http commands)",
+	},
+	&support.ConfigOption{
+		Name:        "history-archive-urls",
+		ConfigKey:   &config.HistoryArchiveURLs,
+		OptType:     types.String,
+		Required:    false,
+		FlagDefault: "https://history.stellar.org/prd/core-live/core_live_001/,https://history.stellar.org/prd/core-live/core_live_002/,https://history.stellar.org/prd/core-live/core_live_003/",
+		CustomSetValue: func(co *support.ConfigOption) {
+			stringOfUrls := viper.GetString(co.Name)
+			urlStrings := strings.Split(stringOfUrls, ",")
+
+			*(co.ConfigKey.(*[]string)) = urlStrings
+		},
+		Usage: "comma-separated list of stellar history archives to connect with",
 	},
 	&support.ConfigOption{
 		Name:        "port",
@@ -292,6 +307,13 @@ var configOpts = []*support.ConfigOption{
 		OptType:     types.Bool,
 		FlagDefault: false,
 		Usage:       "enables asset stats during the ingestion and expose `/assets` endpoint, Enabling it has a negative impact on CPU",
+	},
+	&support.ConfigOption{
+		Name:        "enable-accounts-for-signer",
+		ConfigKey:   &config.EnableAccountsForSigner,
+		OptType:     types.Bool,
+		FlagDefault: false,
+		Usage:       "[EXPERIMENTAL] enables accounts for signer endpoint using an alternative ingest system",
 	},
 }
 
