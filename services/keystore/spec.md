@@ -30,7 +30,9 @@ Clients are expected to put their auth tokens in one of the request header
 fields. For example, those who use a bearer token to autheticate should have an
 *Authorization* header in the following format:
 
-> Authorization: Bearer <token>
+```
+Authorization: Bearer <token>
+```
 
 As mentioned above, clients will have to configure a API endpoint on their
 servers used for authentication when booting up the keystore. For those who
