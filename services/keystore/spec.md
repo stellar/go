@@ -18,16 +18,34 @@ don’t anticipate a lot of requests to the keystore from each user, we
 should be able to tolerate having another round trip for relaying the
 auth token to the client server.
 
-Clients will have to configure a API endpoint on their servers used for
-authentication when booting up the keystore. Please refer to [this section](#required-changes-in-client-server)
-for more details.
+<img src=attachments/2019-07-10-keystore-auth.png>
 
-An auth token needs to be passed with all requests, and that's why there
-is no need for a userid argument to the endpoints below.
+Keystore will forward every header field to the designated endpoint on the
+client server with an extra header field *X-Forwarded-For* specifying the
+request's origin. At this moment, keystore forwards incoming requests by using
+HTTP GET method. We plan on adding the support for clients who use GraphQL to
+authenticate in the future.
 
-<img src=attachments/2019-04-24-keystore-auth-flows.png>
+Clients are expected to put their auth tokens in one of the request header
+fields. For example, those who use a bearer token to authenticate should have an
+*Authorization* header in the following format:
 
-All requests that the keystore is not able to derive a userID from will
+```
+Authorization: Bearer <token>
+```
+
+As mentioned above, clients will have to configure a API endpoint on their
+servers used for authentication when booting up the keystore. For those who
+choose to autheticate via a REST endpoint, keystore expects to receive a
+response in the following json format:
+
+```json
+{
+	"userID": "some-user-id"
+}
+```
+
+Requests that the keystore is not able to derive a userID from will
 receive the following error:
 
 *not_authorized:*
@@ -234,17 +252,3 @@ interface Success {
 
 <details><summary>Errors</summary>
 </details>
-
-### Required Changes in Client Server
-
-Applications using the keystore will have to implement an endpoint
-that takes an auth token and returns a userid in the following json format:
-
-```json
-{
-	"userID": "some-user-id"
-}
-```
-
-The keystore will send a HTTP GET request to your designated endpoint and
-parse the result in the above format.
