@@ -27,7 +27,7 @@ HTTP GET method. We plan on adding the support for clients who use GraphQL to
 authenticate in the future.
 
 Clients are expected to put their auth tokens in one of the request header
-fields. For example, those who use a bearer token to autheticate should have an
+fields. For example, those who use a bearer token to authenticate should have an
 *Authorization* header in the following format:
 
 ```
