@@ -29,6 +29,9 @@ type MemoryStateReader struct {
 	streamOnce sync.Once
 	closeOnce  sync.Once
 	done       chan bool
+
+	// This should be set to true in tests only
+	disableBucketListHashValidation bool
 }
 
 // Ensure MemoryStateReader implements StateReadCloser
@@ -125,7 +128,21 @@ func (msr *MemoryStateReader) streamBucketContents(
 		msr.readChan <- msr.error(fmt.Errorf("cannot get xdr stream for hash '%s': %s", hash.String(), e))
 		return false
 	}
-	defer rdr.Close()
+
+	if !msr.disableBucketListHashValidation {
+		// Calling SetExpectedHash will enable validation of the stream hash. If hashes
+		// don't match, rdr.Close() will return an error.
+		rdr.SetExpectedHash(hash)
+	}
+
+	defer func() {
+		err := rdr.Close()
+		if err != nil {
+			msr.readChan <- msr.error(errors.Wrap(err, "Error closing xdr stream"))
+			// Stop streaming from the rest of the files.
+			msr.Close()
+		}
+	}()
 
 	// bucketProtocolVersion is a protocol version read from METAENTRY or 0 when no METAENTRY.
 	// No METAENTRY means that bucket originates from before protocol version 11.

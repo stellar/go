@@ -1,6 +1,8 @@
 package ingest
 
 import (
+	"bytes"
+	"fmt"
 	"time"
 
 	"github.com/stellar/go/exp/ingest/adapters"
@@ -19,10 +21,21 @@ func (s *LiveSession) Run() error {
 	}
 
 	s.ensureRunOnce()
+
 	historyAdapter := adapters.MakeHistoryArchiveAdapter(s.Archive)
 	currentLedger, err := historyAdapter.GetLatestLedgerSequence()
 	if err != nil {
 		return errors.Wrap(err, "Error getting the latest ledger sequence")
+	}
+
+	ledgerAdapter := &adapters.LedgerBackendAdapter{
+		Backend: s.LedgerBackend,
+	}
+
+	// Validate bucket list hash
+	err = s.validateBucketList(currentLedger, historyAdapter, ledgerAdapter)
+	if err != nil {
+		return errors.Wrap(err, "Error validating bucket list hash")
 	}
 
 	err = s.initState(historyAdapter, currentLedger)
@@ -44,19 +57,62 @@ func (s *LiveSession) Run() error {
 	// current value of `currentLedger`
 	currentLedger++
 
-	return s.resume(currentLedger)
+	return s.resume(currentLedger, ledgerAdapter)
 }
 
 func (s *LiveSession) Resume(ledgerSequence uint32) error {
 	s.standardSession.shutdown = make(chan bool)
-	return s.resume(ledgerSequence)
-}
 
-func (s *LiveSession) resume(ledgerSequence uint32) error {
 	ledgerAdapter := &adapters.LedgerBackendAdapter{
 		Backend: s.LedgerBackend,
 	}
 
+	return s.resume(ledgerSequence, ledgerAdapter)
+}
+
+// validateBucketList validates if the bucket list hash in history archive
+// matches the one in corresponding ledger header in stellar-core backend.
+// This gives you full security if data in stellar-core backend can be trusted
+// (ex. you run it in your infrastructure).
+// The hashes of actual buckets of this HAS file are checked using
+// historyarchive.XdrStream.SetExpectedHash (this is done in MemoryStateReader).
+func (s *LiveSession) validateBucketList(
+	ledgerSequence uint32,
+	historyAdapter *adapters.HistoryArchiveAdapter,
+	ledgerAdapter *adapters.LedgerBackendAdapter,
+) error {
+	historyBucketListHash, err := historyAdapter.BucketListHash(ledgerSequence)
+	if err != nil {
+		return errors.Wrap(err, "Error getting bucket list hash")
+	}
+
+	ledgerReader, err := ledgerAdapter.GetLedger(ledgerSequence)
+	if err != nil {
+		if err == io.ErrNotFound {
+			return fmt.Errorf(
+				"Cannot validate bucket hash list. Checkpoint ledger (%d) must exist in Stellar-Core database.",
+				ledgerSequence,
+			)
+		} else {
+			return errors.Wrap(err, "Error getting ledger")
+		}
+	}
+
+	ledgerHeader := ledgerReader.GetHeader()
+	ledgerBucketHashList := ledgerHeader.Header.BucketListHash
+
+	if !bytes.Equal(historyBucketListHash[:], ledgerBucketHashList[:]) {
+		return fmt.Errorf(
+			"Bucket list hash of history archive and ledger header does not match: %#x %#x",
+			historyBucketListHash,
+			ledgerBucketHashList,
+		)
+	}
+
+	return nil
+}
+
+func (s *LiveSession) resume(ledgerSequence uint32, ledgerAdapter *adapters.LedgerBackendAdapter) error {
 	for {
 		ledgerReader, err := ledgerAdapter.GetLedger(ledgerSequence)
 		if err != nil {

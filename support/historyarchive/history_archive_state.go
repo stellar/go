@@ -4,6 +4,15 @@
 
 package historyarchive
 
+import (
+	"crypto/sha256"
+	"encoding/hex"
+	"fmt"
+
+	"github.com/stellar/go/support/errors"
+	"github.com/stellar/go/xdr"
+)
+
 const NumLevels = 11
 
 type HistoryArchiveState struct {
@@ -71,6 +80,32 @@ func (h *HistoryArchiveState) Buckets() ([]Hash, error) {
 		}
 	}
 	return r, nil
+}
+
+// BucketListHash calculates the hash of bucket list in the HistoryArchiveState.
+// This can be later compared with LedgerHeader.BucketListHash of the checkpoint
+// ledger to ensure data in history archive has not been changed by a malicious
+// actor.
+// Warning: Ledger header should be fetched from a trusted (!) stellar-core
+// instead of ex. history archives!
+func (h *HistoryArchiveState) BucketListHash() (xdr.Hash, error) {
+	total := []byte{}
+
+	for i, b := range h.CurrentBuckets {
+		curr, err := hex.DecodeString(b.Curr)
+		if err != nil {
+			return xdr.Hash{}, errors.Wrap(err, fmt.Sprintf("Error decoding hex of %d.curr", i))
+		}
+		snap, err := hex.DecodeString(b.Snap)
+		if err != nil {
+			return xdr.Hash{}, errors.Wrap(err, fmt.Sprintf("Error decoding hex of %d.snap", i))
+		}
+		both := append(curr, snap...)
+		bothHash := sha256.Sum256(both)
+		total = append(total, bothHash[:]...)
+	}
+
+	return sha256.Sum256(total), nil
 }
 
 func (h *HistoryArchiveState) Range() Range {
