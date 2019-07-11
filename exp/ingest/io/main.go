@@ -7,9 +7,9 @@ import (
 
 var ErrNotFound = errors.New("not found")
 
-// StateReadCloser reads state data from history archive buckets for a single
+// StateReader reads state data from history archive buckets for a single
 // checkpoint ledger / HAS.
-type StateReadCloser interface {
+type StateReader interface {
 	// GetSequence returns the checkpoint ledger sequence this reader is
 	// reading.
 	GetSequence() uint32
@@ -22,12 +22,12 @@ type StateReadCloser interface {
 	Close() error
 }
 
-// StateWriteCloser interface placeholder
-type StateWriteCloser interface {
+// StateWriter interface placeholder
+type StateWriter interface {
 	// Write is used to pass ledger entry change to the next processor. It can return
 	// `ErrClosedPipe` when the pipe between processors has been closed meaning
 	// that next processor does not need more data. In such situation the current
-	// processor can terminate as sending more entries to a `StateWriteCloser`
+	// processor can terminate as sending more entries to a `StateWriter`
 	// does not make sense (will not be read).
 	Write(xdr.LedgerEntryChange) error
 	// Close should be called when there are no more entries
@@ -35,8 +35,8 @@ type StateWriteCloser interface {
 	Close() error
 }
 
-// LedgerReadCloser provides convenient, streaming access to the transactions within a ledger.
-type LedgerReadCloser interface {
+// LedgerReader provides convenient, streaming access to the transactions within a ledger.
+type LedgerReader interface {
 	GetSequence() uint32
 	GetHeader() xdr.LedgerHeaderHistoryEntry
 	// Read should return the next transaction. If there are no more
@@ -48,12 +48,12 @@ type LedgerReadCloser interface {
 	Close() error
 }
 
-// LedgerWriteCloser provides convenient, streaming access to the transactions within a ledger.
-type LedgerWriteCloser interface {
+// LedgerWriter provides convenient, streaming access to the transactions within a ledger.
+type LedgerWriter interface {
 	// Write is used to pass a transaction to the next processor. It can return
 	// `io.ErrClosedPipe` when the pipe between processors has been closed meaning
 	// that next processor does not need more data. In such situation the current
-	// processor can terminate as sending more transactions to a `LedgerWriteCloser`
+	// processor can terminate as sending more transactions to a `LedgerWriter`
 	// does not make sense (will not be read).
 	Write(LedgerTransaction) error
 	// Close should be called when reading is finished. This is especially

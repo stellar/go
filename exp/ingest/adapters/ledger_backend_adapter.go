@@ -23,12 +23,12 @@ func (lba *LedgerBackendAdapter) GetLatestLedgerSequence() (uint32, error) {
 }
 
 // GetLedger returns information about a given ledger as an object that can be streamed.
-func (lba *LedgerBackendAdapter) GetLedger(sequence uint32) (io.LedgerReadCloser, error) {
+func (lba *LedgerBackendAdapter) GetLedger(sequence uint32) (io.LedgerReader, error) {
 	if !lba.hasBackend() {
 		return nil, errors.New(noBackendErr)
 	}
 
-	return io.MakeLedgerReadCloser(sequence, lba.Backend)
+	return io.NewDBLedgerReader(sequence, lba.Backend)
 }
 
 // Close shuts down the provided backend.

@@ -29,7 +29,7 @@ type DatabaseProcessor struct {
 	Action   DatabaseProcessorActionType
 }
 
-func (p *DatabaseProcessor) ProcessState(ctx context.Context, store *pipeline.Store, r io.StateReadCloser, w io.StateWriteCloser) error {
+func (p *DatabaseProcessor) ProcessState(ctx context.Context, store *pipeline.Store, r io.StateReader, w io.StateWriter) error {
 	defer r.Close()
 	defer w.Close()
 
@@ -77,7 +77,7 @@ func (p *DatabaseProcessor) ProcessState(ctx context.Context, store *pipeline.St
 	return nil
 }
 
-func (p *DatabaseProcessor) ProcessLedger(ctx context.Context, store *pipeline.Store, r io.LedgerReadCloser, w io.LedgerWriteCloser) error {
+func (p *DatabaseProcessor) ProcessLedger(ctx context.Context, store *pipeline.Store, r io.LedgerReader, w io.LedgerWriter) error {
 	defer r.Close()
 	defer w.Close()
 

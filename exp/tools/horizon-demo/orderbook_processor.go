@@ -19,7 +19,7 @@ type OrderbookProcessor struct {
 	OrderBookGraph *orderbook.OrderBookGraph
 }
 
-func (p *OrderbookProcessor) ProcessState(ctx context.Context, store *pipeline.Store, r io.StateReadCloser, w io.StateWriteCloser) error {
+func (p *OrderbookProcessor) ProcessState(ctx context.Context, store *pipeline.Store, r io.StateReader, w io.StateWriter) error {
 	defer r.Close()
 	defer w.Close()
 
@@ -47,7 +47,7 @@ func (p *OrderbookProcessor) ProcessState(ctx context.Context, store *pipeline.S
 	return nil
 }
 
-func (p *OrderbookProcessor) ProcessLedger(ctx context.Context, store *pipeline.Store, r io.LedgerReadCloser, w io.LedgerWriteCloser) error {
+func (p *OrderbookProcessor) ProcessLedger(ctx context.Context, store *pipeline.Store, r io.LedgerReader, w io.LedgerWriter) error {
 	defer r.Close()
 	defer w.Close()
 

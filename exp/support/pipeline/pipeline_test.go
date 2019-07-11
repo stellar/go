@@ -17,8 +17,8 @@ func TestPipelineCanBeProcessedAgain(t *testing.T) {
 		pipeline.Node(&NoOpProcessor{}),
 	)
 
-	assert.NoError(t, <-p.Process(&SimpleReadCloser{CountObject: 10}))
-	assert.NoError(t, <-p.Process(&SimpleReadCloser{CountObject: 20}))
+	assert.NoError(t, <-p.Process(&SimpleReader{CountObject: 10}))
+	assert.NoError(t, <-p.Process(&SimpleReader{CountObject: 20}))
 }
 
 func TestCannotRunProcessOnRunningPipeline(t *testing.T) {
@@ -26,11 +26,11 @@ func TestCannotRunProcessOnRunningPipeline(t *testing.T) {
 		pipeline.Node(&NoOpProcessor{}),
 	)
 
-	go p.Process(&SimpleReadCloser{})
+	go p.Process(&SimpleReader{})
 	defer p.Shutdown()
 	time.Sleep(100 * time.Millisecond)
 	assert.Panics(t, func() {
-		p.Process(&SimpleReadCloser{})
+		p.Process(&SimpleReader{})
 	})
 }
 
@@ -39,7 +39,7 @@ func TestNoErrorsOnSuccess(t *testing.T) {
 		pipeline.Node(&NoOpProcessor{}),
 	)
 
-	assert.NoError(t, <-p.Process(&SimpleReadCloser{CountObject: 10}))
+	assert.NoError(t, <-p.Process(&SimpleReader{CountObject: 10}))
 }
 
 func TestErrorsOnFailure(t *testing.T) {
@@ -47,7 +47,7 @@ func TestErrorsOnFailure(t *testing.T) {
 		pipeline.Node(&NoOpProcessor{ReturnError: true}),
 	)
 
-	err := <-p.Process(&SimpleReadCloser{CountObject: 10})
+	err := <-p.Process(&SimpleReader{CountObject: 10})
 	assert.Error(t, err)
 	assert.Equal(t, "Processor NoOpProcessor errored: Test error", err.Error())
 }
@@ -69,7 +69,7 @@ func TestHooksCalled(t *testing.T) {
 		return nil
 	})
 
-	err := <-p.Process(&SimpleReadCloser{CountObject: 10})
+	err := <-p.Process(&SimpleReader{CountObject: 10})
 	assert.NoError(t, err)
 	assert.True(t, preHookCalled, "pre-hook not called")
 	assert.True(t, postHookCalled, "post-hook not called")
@@ -87,7 +87,7 @@ func TestPostHooksCalledWithError(t *testing.T) {
 		return nil
 	})
 
-	err := <-p.Process(&SimpleReadCloser{CountObject: 10})
+	err := <-p.Process(&SimpleReader{CountObject: 10})
 	assert.Error(t, err)
 	assert.Equal(t, "Processor NoOpProcessor errored: Test error", err.Error())
 
@@ -105,7 +105,7 @@ func TestProcessReturnsErrorWhenPostHooksErrors(t *testing.T) {
 		return errors.New("post-hook error")
 	})
 
-	err := <-p.Process(&SimpleReadCloser{CountObject: 10})
+	err := <-p.Process(&SimpleReader{CountObject: 10})
 	assert.Error(t, err)
 	assert.Equal(t, "Error running post-hook: post-hook error", err.Error())
 }
@@ -118,25 +118,25 @@ func TestPostHookNotCalledWhenShutDown(t *testing.T) {
 		panic("Hook shouldn't be called!")
 	})
 
-	go p.Process(&SimpleReadCloser{})
+	go p.Process(&SimpleReader{})
 	time.Sleep(100 * time.Millisecond)
 	p.Shutdown()
 }
 
-// SimpleReadCloser sends CountObject objects. If CountObject = 0 it
+// SimpleReader sends CountObject objects. If CountObject = 0 it
 // streams infinite number of objects.
-type SimpleReadCloser struct {
+type SimpleReader struct {
 	sync.Mutex
 	CountObject int
 
 	sent int
 }
 
-func (r *SimpleReadCloser) GetContext() context.Context {
+func (r *SimpleReader) GetContext() context.Context {
 	return context.Background()
 }
 
-func (r *SimpleReadCloser) Read() (interface{}, error) {
+func (r *SimpleReader) Read() (interface{}, error) {
 	r.Lock()
 	defer r.Unlock()
 
@@ -148,7 +148,7 @@ func (r *SimpleReadCloser) Read() (interface{}, error) {
 	return "test", nil
 }
 
-func (r *SimpleReadCloser) Close() error {
+func (r *SimpleReader) Close() error {
 	return nil
 }
 
@@ -156,7 +156,7 @@ type NoOpProcessor struct {
 	ReturnError bool
 }
 
-func (p *NoOpProcessor) Process(ctx context.Context, store *pipeline.Store, r pipeline.ReadCloser, w pipeline.WriteCloser) error {
+func (p *NoOpProcessor) Process(ctx context.Context, store *pipeline.Store, r pipeline.Reader, w pipeline.Writer) error {
 	defer r.Close()
 	defer w.Close()
 
@@ -166,7 +166,7 @@ func (p *NoOpProcessor) Process(ctx context.Context, store *pipeline.Store, r pi
 			if err == io.EOF {
 				break
 			} else {
-				return errors.Wrap(err, "Error reading from ReadCloser")
+				return errors.Wrap(err, "Error reading from Reader")
 			}
 		}
 

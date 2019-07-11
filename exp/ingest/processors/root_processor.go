@@ -9,7 +9,7 @@ import (
 	"github.com/stellar/go/exp/support/pipeline"
 )
 
-func (p *RootProcessor) ProcessState(ctx context.Context, store *pipeline.Store, r io.StateReadCloser, w io.StateWriteCloser) error {
+func (p *RootProcessor) ProcessState(ctx context.Context, store *pipeline.Store, r io.StateReader, w io.StateWriter) error {
 	defer r.Close()
 	defer w.Close()
 
@@ -42,7 +42,7 @@ func (p *RootProcessor) ProcessState(ctx context.Context, store *pipeline.Store,
 	return nil
 }
 
-func (p *RootProcessor) ProcessLedger(ctx context.Context, store *pipeline.Store, r io.LedgerReadCloser, w io.LedgerWriteCloser) error {
+func (p *RootProcessor) ProcessLedger(ctx context.Context, store *pipeline.Store, r io.LedgerReader, w io.LedgerWriter) error {
 	defer r.Close()
 	defer w.Close()
 

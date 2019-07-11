@@ -37,7 +37,7 @@ type AccountsForSignerProcessor struct {
 	Signer string
 }
 
-func (p *AccountsForSignerProcessor) ProcessState(ctx context.Context, store *pipeline.Store, r io.StateReadCloser, w io.StateWriteCloser) error {
+func (p *AccountsForSignerProcessor) ProcessState(ctx context.Context, store *pipeline.Store, r io.StateReader, w io.StateWriter) error {
 	defer r.Close()
 	defer w.Close()
 

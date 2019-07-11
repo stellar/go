@@ -10,7 +10,7 @@ import (
 	"github.com/stellar/go/exp/support/pipeline"
 )
 
-func (p *StatusLogger) ProcessState(ctx context.Context, store *pipeline.Store, r io.StateReadCloser, w io.StateWriteCloser) error {
+func (p *StatusLogger) ProcessState(ctx context.Context, store *pipeline.Store, r io.StateReader, w io.StateWriter) error {
 	defer r.Close()
 	defer w.Close()
 
