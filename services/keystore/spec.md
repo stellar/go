@@ -20,11 +20,11 @@ auth token to the client server.
 
 <img src=attachments/2019-07-10-keystore-auth.png>
 
-Keystore will forward every header field to the designated endpoint on the
-client server with an extra header field *X-Forwarded-For* specifying the
-request's origin. At this moment, keystore forwards incoming requests by using
-HTTP GET method. We plan on adding the support for clients who use GraphQL to
-authenticate in the future.
+Keystore will forward two header fields, *Authorization* and *Cookie*, to the
+designated endpoint on the client server with an extra header field
+*X-Forwarded-For* specifying the request's origin. At this moment, keystore
+forwards incoming requests by using HTTP GET method. We plan on adding the
+support for clients who use GraphQL to authenticate in the future.
 
 Clients are expected to put their auth tokens in one of the request header
 fields. For example, those who use a bearer token to authenticate should have an

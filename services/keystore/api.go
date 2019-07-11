@@ -8,6 +8,7 @@ import (
 	"io/ioutil"
 	"net"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/stellar/go/support/errors"
@@ -61,6 +62,11 @@ type authResponse struct {
 	UserID string `json:"userID"`
 }
 
+var forwardHeaders = map[string]struct{}{
+	"authorization": struct{}{},
+	"cookie":        struct{}{},
+}
+
 func authHandler(next http.Handler, authenticator *Authenticator) http.Handler {
 	return http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
 		if authenticator == nil {
@@ -93,8 +99,15 @@ func authHandler(next http.Handler, authenticator *Authenticator) http.Handler {
 			return
 		}
 
-		// shallow copy
-		proxyReq.Header = req.Header
+		proxyReq.Header = make(http.Header)
+		for k, v := range req.Header {
+			// http headers are case-insensitive
+			// https://www.ietf.org/rfc/rfc2616.txt
+			if _, ok := forwardHeaders[strings.ToLower(k)]; ok {
+				proxyReq.Header[k] = v
+			}
+		}
+
 		if clientIP, _, err = net.SplitHostPort(req.RemoteAddr); err == nil {
 			proxyReq.Header.Set("X-Forwarded-For", clientIP)
 		}
