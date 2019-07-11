@@ -101,6 +101,8 @@ func authHandler(next http.Handler, authenticator *Authenticator) http.Handler {
 
 		proxyReq.Header = make(http.Header)
 		for k, v := range req.Header {
+			// http headers are case-insensitive
+			// https://www.ietf.org/rfc/rfc2616.txt
 			if _, ok := forwardHeaders[strings.ToLower(k)]; ok {
 				proxyReq.Header[k] = v
 			}
