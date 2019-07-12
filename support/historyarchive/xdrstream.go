@@ -13,6 +13,7 @@ import (
 	"fmt"
 	"hash"
 	"io"
+	"io/ioutil"
 
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
@@ -72,20 +73,12 @@ func (x *XdrStream) SetExpectedHash(hash [sha256.Size]byte) {
 	x.expectedHash = hash
 }
 
-// voidWriter is internal struct that write to void. Helpful to read
-// the rest of the bytes from reader using io.Copy.
-type voidWriter struct{}
-
-func (vw voidWriter) Write(p []byte) (n int, err error) {
-	return len(p), nil
-}
-
 // Close closes all internal readers and checks if the expected hash
 // (if set by SetExpectedHash) matches the actual hash of the stream.
 func (x *XdrStream) Close() error {
 	if x.validateHash {
 		// Read all remaining data from rdr
-		_, err := io.Copy(voidWriter{}, x.rdr)
+		_, err := io.Copy(ioutil.Discard, x.rdr)
 		if err != nil {
 			return errors.Wrap(err, "Error reading remaining bytes from rdr")
 		}
@@ -98,14 +91,12 @@ func (x *XdrStream) Close() error {
 	}
 
 	if x.rdr != nil {
-		err := x.rdr.Close()
-		if err != nil {
+		if err := x.rdr.Close(); err != nil {
 			return err
 		}
 	}
 	if x.rdr2 != nil {
-		err := x.rdr2.Close()
-		if err != nil {
+		if err := x.rdr2.Close(); err != nil {
 			return err
 		}
 	}
