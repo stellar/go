@@ -5,25 +5,43 @@
 package historyarchive
 
 import (
+	"bufio"
 	"bytes"
 	"compress/gzip"
 	"crypto/sha256"
 	"encoding/binary"
 	"fmt"
+	"hash"
 	"io"
+	"io/ioutil"
 
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
 )
 
 type XdrStream struct {
-	buf  bytes.Buffer
-	rdr  io.ReadCloser
-	rdr2 io.ReadCloser
+	buf        bytes.Buffer
+	rdr        io.ReadCloser
+	rdr2       io.ReadCloser
+	sha256Hash hash.Hash
+
+	validateHash bool
+	expectedHash [sha256.Size]byte
 }
 
 func NewXdrStream(in io.ReadCloser) *XdrStream {
-	return &XdrStream{rdr: bufReadCloser(in)}
+	// We write all we read from in to sha256Hash that can be later
+	// compared with `expectedHash` using SetExpectedHash and Close.
+	sha256Hash := sha256.New()
+	teeReader := io.TeeReader(in, sha256Hash)
+
+	return &XdrStream{
+		rdr: struct {
+			io.Reader
+			io.Closer
+		}{bufio.NewReader(teeReader), in},
+		sha256Hash: sha256Hash,
+	}
 }
 
 func NewXdrGzStream(in io.ReadCloser) (*XdrStream, error) {
@@ -32,7 +50,10 @@ func NewXdrGzStream(in io.ReadCloser) (*XdrStream, error) {
 		in.Close()
 		return nil, err
 	}
-	return &XdrStream{rdr: bufReadCloser(rdr), rdr2: in}, nil
+
+	stream := NewXdrStream(rdr)
+	stream.rdr2 = in
+	return stream, nil
 }
 
 func HashXdr(x interface{}) (Hash, error) {
@@ -45,13 +66,42 @@ func HashXdr(x interface{}) (Hash, error) {
 	return Hash(sha256.Sum256(msg.Bytes())), nil
 }
 
-func (x *XdrStream) Close() {
+// SetExpectedHash sets expected hash that will be checked in Close().
+// This (obviously) needs to be set before Close() is called.
+func (x *XdrStream) SetExpectedHash(hash [sha256.Size]byte) {
+	x.validateHash = true
+	x.expectedHash = hash
+}
+
+// Close closes all internal readers and checks if the expected hash
+// (if set by SetExpectedHash) matches the actual hash of the stream.
+func (x *XdrStream) Close() error {
+	if x.validateHash {
+		// Read all remaining data from rdr
+		_, err := io.Copy(ioutil.Discard, x.rdr)
+		if err != nil {
+			return errors.Wrap(err, "Error reading remaining bytes from rdr")
+		}
+
+		actualHash := x.sha256Hash.Sum([]byte{})
+
+		if !bytes.Equal(x.expectedHash[:], actualHash[:]) {
+			return errors.New("Stream hash does not match expected hash!")
+		}
+	}
+
 	if x.rdr != nil {
-		x.rdr.Close()
+		if err := x.rdr.Close(); err != nil {
+			return err
+		}
 	}
 	if x.rdr2 != nil {
-		x.rdr2.Close()
+		if err := x.rdr2.Close(); err != nil {
+			return err
+		}
 	}
+
+	return nil
 }
 
 func (x *XdrStream) ReadOne(in interface{}) error {

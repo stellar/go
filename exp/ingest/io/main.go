@@ -7,8 +7,11 @@ import (
 
 var ErrNotFound = errors.New("not found")
 
-// StateReadCloser interface placeholder
+// StateReadCloser reads state data from history archive buckets for a single
+// checkpoint ledger / HAS.
 type StateReadCloser interface {
+	// GetSequence returns the checkpoint ledger sequence this reader is
+	// reading.
 	GetSequence() uint32
 	// Read should return next ledger entry. If there are no more
 	// entries it should return `io.EOF` error.

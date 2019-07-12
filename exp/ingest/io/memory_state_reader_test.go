@@ -48,6 +48,9 @@ func (s *MemoryStateReaderTestSuite) SetupTest() {
 	s.Require().NotNil(s.reader)
 	s.Require().NoError(err)
 	s.Assert().Equal(ledgerSeq, s.reader.sequence)
+
+	// Disable hash validation. We trust historyarchive.XdrStream tests here.
+	s.reader.disableBucketListHashValidation = true
 }
 
 func (s *MemoryStateReaderTestSuite) TearDownTest() {
@@ -284,7 +287,6 @@ func entryAccount(t xdr.BucketEntryType, id string, balance uint32) xdr.BucketEn
 	default:
 		panic("Unkown entry type")
 	}
-
 }
 
 func createXdrStream(entries ...xdr.BucketEntry) *historyarchive.XdrStream {

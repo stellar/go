@@ -6,6 +6,7 @@ import (
 	"github.com/stellar/go/exp/ingest/io"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/support/historyarchive"
+	"github.com/stellar/go/xdr"
 )
 
 const msrBufferSize = 50000
@@ -28,6 +29,25 @@ func (haa *HistoryArchiveAdapter) GetLatestLedgerSequence() (uint32, error) {
 	}
 
 	return has.CurrentLedger, nil
+}
+
+// BucketListHash returns the bucket list hash to compare with hash in the
+// ledger header fetched from Stellar-Core.
+func (haa *HistoryArchiveAdapter) BucketListHash(sequence uint32) (xdr.Hash, error) {
+	exists, err := haa.archive.CategoryCheckpointExists("history", sequence)
+	if err != nil {
+		return xdr.Hash{}, errors.Wrap(err, "error checking if category checkpoint exists")
+	}
+	if !exists {
+		return xdr.Hash{}, fmt.Errorf("history checkpoint does not exist for ledger %d", sequence)
+	}
+
+	has, err := haa.archive.GetCheckpointHAS(sequence)
+	if err != nil {
+		return xdr.Hash{}, fmt.Errorf("unable to get checkpoint HAS at ledger sequence %d: %s", sequence, err)
+	}
+
+	return has.BucketListHash()
 }
 
 // GetState returns a reader with the state of the ledger at the provided sequence number
