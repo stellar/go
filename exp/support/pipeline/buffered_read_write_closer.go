@@ -5,18 +5,18 @@ import (
 	"io"
 )
 
-// bufferSize is a size of a buffered channel in BufferedReadWriteCloser.
+// bufferSize is a size of a buffered channel in BufferedReadWriter.
 // This should be big enough to hold a short lag of items in a pipeline
 // but small enough to not consume too much memory.
 // In pipelines with no slow processors a buffered channel will be empty
 // or almost empty most of the time.
 const bufferSize = 50000
 
-func (b *BufferedReadWriteCloser) init() {
+func (b *BufferedReadWriter) init() {
 	b.buffer = make(chan interface{}, bufferSize)
 }
 
-func (b *BufferedReadWriteCloser) close() {
+func (b *BufferedReadWriter) close() {
 	b.writeCloseMutex.Lock()
 	defer b.writeCloseMutex.Unlock()
 
@@ -24,11 +24,11 @@ func (b *BufferedReadWriteCloser) close() {
 	b.closed = true
 }
 
-func (b *BufferedReadWriteCloser) GetContext() context.Context {
+func (b *BufferedReadWriter) GetContext() context.Context {
 	return b.context
 }
 
-func (b *BufferedReadWriteCloser) Read() (interface{}, error) {
+func (b *BufferedReadWriter) Read() (interface{}, error) {
 	b.initOnce.Do(b.init)
 
 	entry, more := <-b.buffer
@@ -42,7 +42,7 @@ func (b *BufferedReadWriteCloser) Read() (interface{}, error) {
 	return nil, io.EOF
 }
 
-func (b *BufferedReadWriteCloser) Write(entry interface{}) error {
+func (b *BufferedReadWriter) Write(entry interface{}) error {
 	b.initOnce.Do(b.init)
 
 	b.writeCloseMutex.Lock()
@@ -57,24 +57,24 @@ func (b *BufferedReadWriteCloser) Write(entry interface{}) error {
 	return nil
 }
 
-func (b *BufferedReadWriteCloser) QueuedEntries() int {
+func (b *BufferedReadWriter) QueuedEntries() int {
 	b.initOnce.Do(b.init)
 	return len(b.buffer)
 }
 
-// Close can be called in `WriteCloser` and `ReadCloser` context.
+// Close can be called in `Writer` and `Reader` context.
 //
-// In `ReadCloser` it means that no more values will be read so writer can
+// In `Reader` it means that no more values will be read so writer can
 // stop writing to a buffer (`io.ErrClosedPipe` will be returned for calls to
 // `Write()`).
 //
-// In `WriteCloser` it means that no more values will be written so reader
+// In `Writer` it means that no more values will be written so reader
 // should start returning `io.EOF` error after returning all queued values.
-func (b *BufferedReadWriteCloser) Close() error {
+func (b *BufferedReadWriter) Close() error {
 	b.initOnce.Do(b.init)
 	b.closeOnce.Do(b.close)
 	return nil
 }
 
-var _ ReadCloser = &BufferedReadWriteCloser{}
-var _ WriteCloser = &BufferedReadWriteCloser{}
+var _ Reader = &BufferedReadWriter{}
+var _ Writer = &BufferedReadWriter{}

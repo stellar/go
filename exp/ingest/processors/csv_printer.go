@@ -24,7 +24,7 @@ func (p *CSVPrinter) fileHandle() (*os.File, error) {
 	return os.Create(p.Filename)
 }
 
-func (p *CSVPrinter) ProcessState(ctx context.Context, store *pipeline.Store, r io.StateReadCloser, w io.StateWriteCloser) error {
+func (p *CSVPrinter) ProcessState(ctx context.Context, store *pipeline.Store, r io.StateReader, w io.StateWriter) error {
 	defer r.Close()
 	defer w.Close()
 
@@ -89,7 +89,7 @@ func (p *CSVPrinter) ProcessState(ctx context.Context, store *pipeline.Store, r 
 	return nil
 }
 
-func (p *CSVPrinter) ProcessLedger(ctx context.Context, store *pipeline.Store, r io.LedgerReadCloser, w io.LedgerWriteCloser) error {
+func (p *CSVPrinter) ProcessLedger(ctx context.Context, store *pipeline.Store, r io.LedgerReader, w io.LedgerWriter) error {
 	defer r.Close()
 	defer w.Close()
 
