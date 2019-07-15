@@ -1,9 +1,11 @@
 package horizon
 
 import (
+	"encoding/json"
 	"testing"
 	"time"
 
+	"github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/protocols/horizon/operations"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 )
@@ -69,6 +71,36 @@ func TestPaymentActions(t *testing.T) {
 	// Regression: negative cursor
 	w = ht.Get("/accounts/GA5WBPYA5Y4WAEHXWR2UKO2UO4BUGHUQ74EUPKON2QHV4WRHOIRNKKH2/payments?cursor=-23667108046966785&order=asc&limit=100")
 	ht.Assert.Equal(400, w.Code)
+}
+
+func TestPaymentActions_Includetransactions(t *testing.T) {
+	ht := StartHTTPTest(t, "base")
+	defer ht.Finish()
+
+	w := ht.Get("/payments")
+	ht.Assert.Equal(200, w.Code)
+	withoutTransactions := []operations.Base{}
+	ht.UnmarshalPage(w.Body, &withoutTransactions)
+
+	w = ht.Get("/payments?join=transactions")
+	ht.Assert.Equal(200, w.Code)
+	withTransactions := []operations.Base{}
+	ht.UnmarshalPage(w.Body, &withTransactions)
+
+	for i, operation := range withTransactions {
+		getTransaction := ht.Get("/transactions/" + operation.Transaction.ID)
+		ht.Assert.Equal(200, getTransaction.Code)
+		var getTransactionResponse horizon.Transaction
+		err := json.Unmarshal(getTransaction.Body.Bytes(), &getTransactionResponse)
+
+		ht.Require.NoError(err, "failed to parse body")
+		tx := operation.Transaction
+		ht.Assert.Equal(*tx, getTransactionResponse)
+
+		withTransactions[i].Transaction = nil
+	}
+
+	ht.Assert.Equal(withoutTransactions, withTransactions)
 }
 
 func TestPaymentActions_Show_Failed(t *testing.T) {
