@@ -1019,19 +1019,44 @@ func TestOrderBookRequest(t *testing.T) {
 }
 
 func TestFetchTimebounds(t *testing.T) {
-	client := DefaultPublicNetClient
-	_, err := client.Metrics()
+	hmock := httptest.NewClient()
+	client := &Client{
+		HorizonURL: "https://localhost/",
+		HTTP:       hmock,
+	}
 
+	// When no saved server time, return local time
 	st, err := client.FetchTimebounds(100)
 	if assert.NoError(t, err) {
-		assert.IsType(t, ServerTimeMap["horizon.stellar.org"], ServerTimeRecord{})
+		assert.IsType(t, ServerTimeMap["localhost"], ServerTimeRecord{})
 		assert.Equal(t, st.MinTime, int64(0))
 	}
 
+	// server time is saved on requests to horizon
+	header := http.Header{}
+	header.Add("Date", "Wed, 19 Jun 2019 12:24:56 GMT") //unix time: 1560947096
+	hmock.On(
+		"GET",
+		"https://localhost/metrics",
+	).ReturnStringWithHeader(200, metricsResponse, header)
+	_, err = client.Metrics()
+	assert.NoError(t, err)
+
+	// get saved server time
+	st, err = client.FetchTimebounds(100)
+	if assert.NoError(t, err) {
+		assert.IsType(t, ServerTimeMap["localhost"], ServerTimeRecord{})
+		assert.Equal(t, st.MinTime, int64(0))
+		// serverTime + 100seconds
+		assert.Equal(t, st.MaxTime, int64(1560947196))
+	}
+
+	// mock server time
 	newRecord := ServerTimeRecord{ServerTime: 100, LocalTimeRecorded: time.Now().UTC().Unix()}
 
-	ServerTimeMap["horizon.stellar.org"] = newRecord
+	ServerTimeMap["localhost"] = newRecord
 	st, err = client.FetchTimebounds(100)
+	assert.NoError(t, err)
 	assert.IsType(t, st, txnbuild.Timebounds{})
 	assert.Equal(t, st.MinTime, int64(0))
 	// time should be 200, serverTime + 100seconds

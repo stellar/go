@@ -9,40 +9,51 @@ import (
 	"github.com/stellar/go/xdr"
 )
 
-func (w *stateProcessorWrapper) Process(ctx context.Context, store *supportPipeline.Store, readCloser supportPipeline.ReadCloser, writeCloser supportPipeline.WriteCloser) error {
+func (w *stateProcessorWrapper) Process(ctx context.Context, store *supportPipeline.Store, reader supportPipeline.Reader, writer supportPipeline.Writer) error {
 	return w.StateProcessor.ProcessState(
 		ctx,
 		store,
-		&readCloserWrapperState{readCloser},
-		&writeCloserWrapperState{writeCloser},
+		&readerWrapperState{reader},
+		&writerWrapperState{writer},
 	)
 }
 
-func (w *ledgerProcessorWrapper) Process(ctx context.Context, store *supportPipeline.Store, readCloser supportPipeline.ReadCloser, writeCloser supportPipeline.WriteCloser) error {
+func (w *ledgerProcessorWrapper) Process(ctx context.Context, store *supportPipeline.Store, reader supportPipeline.Reader, writer supportPipeline.Writer) error {
 	return w.LedgerProcessor.ProcessLedger(
 		ctx,
 		store,
-		&readCloserWrapperLedger{readCloser},
-		&writeCloserWrapperLedger{writeCloser},
+		&readerWrapperLedger{reader},
+		&writerWrapperLedger{writer},
 	)
 }
 
-func (w *stateReadCloserWrapper) Read() (interface{}, error) {
-	return w.StateReadCloser.Read()
+func (w *stateReaderWrapper) GetContext() context.Context {
+	ctx := context.Background()
+	ctx = context.WithValue(ctx, LedgerSequenceContextKey, w.StateReader.GetSequence())
+	return ctx
 }
 
-func (w *readCloserWrapperState) GetSequence() uint32 {
-	// TODO we should probably keep ledger sequence in context and this
-	// method will be just a wrapper that fetches the data.
-	return 0
+func (w *stateReaderWrapper) Read() (interface{}, error) {
+	return w.StateReader.Read()
 }
 
-func (w *ledgerReadCloserWrapper) Read() (interface{}, error) {
-	return w.LedgerReadCloser.Read()
+func (w *readerWrapperState) GetSequence() uint32 {
+	return GetLedgerSequenceFromContext(w.Reader.GetContext())
 }
 
-func (w *readCloserWrapperState) Read() (xdr.LedgerEntryChange, error) {
-	object, err := w.ReadCloser.Read()
+func (w *ledgerReaderWrapper) GetContext() context.Context {
+	ctx := context.Background()
+	ctx = context.WithValue(ctx, LedgerSequenceContextKey, w.LedgerReader.GetSequence())
+	ctx = context.WithValue(ctx, LedgerHeaderContextKey, w.LedgerReader.GetHeader())
+	return ctx
+}
+
+func (w *ledgerReaderWrapper) Read() (interface{}, error) {
+	return w.LedgerReader.Read()
+}
+
+func (w *readerWrapperState) Read() (xdr.LedgerEntryChange, error) {
+	object, err := w.Reader.Read()
 	if err != nil {
 		return xdr.LedgerEntryChange{}, err
 	}
@@ -55,20 +66,16 @@ func (w *readCloserWrapperState) Read() (xdr.LedgerEntryChange, error) {
 	return entry, nil
 }
 
-func (w *readCloserWrapperLedger) GetSequence() uint32 {
-	// TODO we should probably keep ledger sequence in context and this
-	// method will be just a wrapper that fetches the data.
-	return 0
+func (w *readerWrapperLedger) GetSequence() uint32 {
+	return GetLedgerSequenceFromContext(w.Reader.GetContext())
 }
 
-func (w *readCloserWrapperLedger) GetHeader() (xdr.LedgerHeaderHistoryEntry, error) {
-	// TODO we should probably keep header in context and this
-	// method will be just a wrapper that fetches the data.
-	return xdr.LedgerHeaderHistoryEntry{}, nil
+func (w *readerWrapperLedger) GetHeader() xdr.LedgerHeaderHistoryEntry {
+	return GetLedgerHeaderFromContext(w.Reader.GetContext())
 }
 
-func (w *readCloserWrapperLedger) Read() (io.LedgerTransaction, error) {
-	object, err := w.ReadCloser.Read()
+func (w *readerWrapperLedger) Read() (io.LedgerTransaction, error) {
+	object, err := w.Reader.Read()
 	if err != nil {
 		return io.LedgerTransaction{}, err
 	}
@@ -81,10 +88,10 @@ func (w *readCloserWrapperLedger) Read() (io.LedgerTransaction, error) {
 	return entry, nil
 }
 
-func (w *writeCloserWrapperState) Write(entry xdr.LedgerEntryChange) error {
-	return w.WriteCloser.Write(entry)
+func (w *writerWrapperState) Write(entry xdr.LedgerEntryChange) error {
+	return w.Writer.Write(entry)
 }
 
-func (w *writeCloserWrapperLedger) Write(entry io.LedgerTransaction) error {
-	return w.WriteCloser.Write(entry)
+func (w *writerWrapperLedger) Write(entry io.LedgerTransaction) error {
+	return w.Writer.Write(entry)
 }

@@ -1,4 +1,4 @@
-package ingestadapters
+package adapters
 
 import (
 	"errors"
@@ -23,13 +23,12 @@ func (lba *LedgerBackendAdapter) GetLatestLedgerSequence() (uint32, error) {
 }
 
 // GetLedger returns information about a given ledger as an object that can be streamed.
-func (lba *LedgerBackendAdapter) GetLedger(sequence uint32) (io.LedgerReadCloser, error) {
+func (lba *LedgerBackendAdapter) GetLedger(sequence uint32) (io.LedgerReader, error) {
 	if !lba.hasBackend() {
 		return nil, errors.New(noBackendErr)
 	}
 
-	dblrc := io.MakeLedgerReadCloser(sequence, lba.Backend)
-	return dblrc, nil
+	return io.NewDBLedgerReader(sequence, lba.Backend)
 }
 
 // Close shuts down the provided backend.

@@ -16,7 +16,7 @@ func TestSubmitRequestBuildUrl(t *testing.T) {
 	assert.Equal(t, "transactions?tx=xyzabc", endpoint)
 
 	sr = submitRequest{}
-	endpoint, err = sr.BuildURL()
+	_, err = sr.BuildURL()
 
 	// It should return errors
 	if assert.Error(t, err) {

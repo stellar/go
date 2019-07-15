@@ -281,5 +281,11 @@ func (m *MockClient) PrevTradesPage(page hProtocol.TradesPage) (hProtocol.Trades
 	return a.Get(0).(hProtocol.TradesPage), a.Error(1)
 }
 
+// HomeDomainForAccount is a mocking method
+func (m *MockClient) HomeDomainForAccount(aid string) (string, error) {
+	a := m.Called(aid)
+	return a.Get(0).(string), a.Error(1)
+}
+
 // ensure that the MockClient implements ClientInterface
 var _ ClientInterface = &MockClient{}

@@ -6,7 +6,7 @@ import (
 	"github.com/stellar/go/support/errors"
 )
 
-func (m *multiWriteCloser) Write(entry interface{}) error {
+func (m *multiWriter) Write(entry interface{}) error {
 	m.mutex.Lock()
 	m.wroteEntries++
 	m.mutex.Unlock()
@@ -14,9 +14,9 @@ func (m *multiWriteCloser) Write(entry interface{}) error {
 	results := make(chan error, len(m.writers))
 
 	for _, w := range m.writers {
-		go func(w WriteCloser) {
+		go func(w Writer) {
 			// We can keep sending entries even when io.ErrClosedPipe is returned
-			// as bufferedStateReadWriteCloser will ignore them (won't add them to
+			// as bufferedStateReadWriter will ignore them (won't add them to
 			// a channel).
 			results <- w.Write(entry)
 		}(w)
@@ -43,7 +43,7 @@ func (m *multiWriteCloser) Write(entry interface{}) error {
 	return nil
 }
 
-func (m *multiWriteCloser) Close() error {
+func (m *multiWriter) Close() error {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
 
@@ -64,4 +64,4 @@ func (m *multiWriteCloser) Close() error {
 	return nil
 }
 
-var _ WriteCloser = &multiWriteCloser{}
+var _ Writer = &multiWriter{}

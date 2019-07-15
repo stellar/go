@@ -84,6 +84,44 @@ func ExamplePayment() {
 	// Output: AAAAAODcbeFyXKxmUWK1L6znNbKKIkPkHRJNbLktcKPqLnLFAAAAZAAMoj8AAAAEAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAABAAAAAITg3tq8G0kvnvoIhZPMYJsY+9KVV8xAA6NxhtKxIXZUAAAAAAAAAAAF9eEAAAAAAAAAAAHqLnLFAAAAQHb8LTro4QVpzcGzOToW28p340o54KX5/xxodABM+izweQlbVKb9bISRUOu+sNfi50weXeAeGVL+oTQS5YR4lgI=
 }
 
+func ExamplePayment_setBaseFee() {
+	kp, _ := keypair.Parse("SBPQUZ6G4FZNWFHKUWC5BEYWF6R52E3SEP7R3GWYSM2XTKGF5LNTWW4R")
+	client := horizonclient.DefaultTestNetClient
+	ar := horizonclient.AccountRequest{AccountID: kp.Address()}
+	sourceAccount, err := client.AccountDetail(ar)
+	check(err)
+
+	op1 := Payment{
+		Destination: "GCCOBXW2XQNUSL467IEILE6MMCNRR66SSVL4YQADUNYYNUVREF3FIV2Z",
+		Amount:      "10",
+		Asset:       NativeAsset{},
+	}
+
+	op2 := Payment{
+		Destination: "GCCOBXW2XQNUSL467IEILE6MMCNRR66SSVL4YQADUNYYNUVREF3FIV2Z",
+		Amount:      "100",
+		Asset:       NativeAsset{},
+	}
+
+	// get fees from network
+	feeStats, err := client.FeeStats()
+	check(err)
+
+	tx := Transaction{
+		SourceAccount: &sourceAccount,
+		Operations:    []Operation{&op1, &op2},
+		Timebounds:    NewInfiniteTimeout(), // Use a real timeout in production!
+		Network:       network.TestNetworkPassphrase,
+		BaseFee:       uint32(feeStats.P50AcceptedFee),
+	}
+
+	txe, err := tx.BuildSignEncode(kp.(*keypair.Full))
+	check(err)
+	fmt.Println(txe)
+
+	// Output: AAAAAODcbeFyXKxmUWK1L6znNbKKIkPkHRJNbLktcKPqLnLFAAAEsAAMoj8AAAAEAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAgAAAAAAAAABAAAAAITg3tq8G0kvnvoIhZPMYJsY+9KVV8xAA6NxhtKxIXZUAAAAAAAAAAAF9eEAAAAAAAAAAAEAAAAAhODe2rwbSS+e+giFk8xgmxj70pVXzEADo3GG0rEhdlQAAAAAAAAAADuaygAAAAAAAAAAAeoucsUAAABAyY5c/6T3cQ1i27t681O7aHrdSQ2tCcXpyLj06HVe59DeuHNLgN3X7oBeqBZrgVty+VNVGPEK6uR+UjhGi/bGBA==
+}
+
 func ExampleBumpSequence() {
 	kp, _ := keypair.Parse("SBPQUZ6G4FZNWFHKUWC5BEYWF6R52E3SEP7R3GWYSM2XTKGF5LNTWW4R")
 	client := horizonclient.DefaultTestNetClient

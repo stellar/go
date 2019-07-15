@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/stellar/go/clients/horizon"
+	hc "github.com/stellar/go/clients/horizonclient"
 	"github.com/stellar/go/clients/stellartoml"
 	"github.com/stellar/go/support/http/httptest"
 	"github.com/stretchr/testify/assert"
@@ -96,7 +96,7 @@ func TestLookupByAddress(t *testing.T) {
 		(*stellartoml.Response)(nil),
 		errors.New("toml failed"),
 	)
-	resp, err = c.LookupByAddress("scott*missing.org")
+	_, err = c.LookupByAddress("scott*missing.org")
 	if assert.Error(t, err) {
 		assert.Contains(t, err.Error(), "toml failed")
 	}
@@ -106,7 +106,7 @@ func TestLookupByAddress(t *testing.T) {
 		FederationServer: "https://404.org/federation",
 	}, nil)
 	hmock.On("GET", "https://404.org/federation").ReturnNotFound()
-	resp, err = c.LookupByAddress("scott*404.org")
+	_, err = c.LookupByAddress("scott*404.org")
 	if assert.Error(t, err) {
 		assert.Contains(t, err.Error(), "failed with (404)")
 	}
@@ -116,14 +116,14 @@ func TestLookupByAddress(t *testing.T) {
 		FederationServer: "https://error.org/federation",
 	}, nil)
 	hmock.On("GET", "https://error.org/federation").ReturnError("kaboom!")
-	resp, err = c.LookupByAddress("scott*error.org")
+	_, err = c.LookupByAddress("scott*error.org")
 	if assert.Error(t, err) {
 		assert.Contains(t, err.Error(), "kaboom!")
 	}
 }
 
 func TestLookupByID(t *testing.T) {
-	horizonMock := &horizon.MockClient{}
+	horizonMock := &hc.MockClient{}
 	client := &Client{Horizon: horizonMock}
 
 	horizonMock.On("HomeDomainForAccount", "GASTNVNLHVR3NFO3QACMHCJT3JUSIV4NBXDHDO4VTPDTNN65W3B2766C").
