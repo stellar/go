@@ -51,10 +51,6 @@ func (p *StatusLogger) ProcessState(ctx context.Context, store *pipeline.Store, 
 	return nil
 }
 
-func (n *StatusLogger) IsConcurrent() bool {
-	return false
-}
-
 func (p *StatusLogger) Name() string {
 	return fmt.Sprintf("StatusLogger (N=%d)", p.N)
 }

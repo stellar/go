@@ -8,7 +8,6 @@ func (p *PipelineNode) Pipe(children ...*PipelineNode) *PipelineNode {
 func (p *PipelineNode) reset() {
 	p.Processor.Reset()
 
-	p.jobs = 0
 	p.readEntries = 0
 	p.readsPerSecond = 0
 	p.queuedEntries = 0
