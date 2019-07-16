@@ -200,23 +200,18 @@ func (tx *Transaction) BuildSignEncode(keypairs ...*keypair.Full) (string, error
 	return txeBase64, err
 }
 
-
 // BuildChallengeTx is a factory method that creates a valid SEP 10 challenge, for use in web authentication.
-// "randomNonce" is a base64 encoded 64 byte long random string.
-// "timebound" is the number of seconds the transaction should be valid for, O means infinity.
+// "timebound" is the time duration the transaction should be valid for, O means infinity.
 // More details on SEP 10: https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0010.md
-func BuildChallengeTx(serverSignerSecret, clientAccountID,
-	anchorName, network string, fee uint32, randomNonce string, timebound int64) (string, error) {
+func BuildChallengeTx(serverSignerSecret, clientAccountID, anchorName, network string, timebound time.Duration) (string, error) {
 	serverKP, err := keypair.Parse(serverSignerSecret)
 	if err != nil {
 		return "", err
 	}
 
-	if randomNonce == "" {
-		randomNonce, err = GenerateRandomString(64)
-		if err != nil {
-			return "", err
-		}
+	randomNonce, err := generateRandomString(64)
+	if err != nil {
+		return "", err
 	}
 
 	randomNonceBytes, err := base64.StdEncoding.DecodeString(randomNonce)
@@ -243,10 +238,10 @@ func BuildChallengeTx(serverSignerSecret, clientAccountID,
 	}
 
 	txTimebound := NewInfiniteTimeout()
-
 	if timebound > 0 {
-		currentTime := time.Now().UTC().Unix()
-		txTimebound = NewTimebounds(currentTime, currentTime+timebound)
+		currentTime := time.Now().UTC()
+		maxTime := currentTime.Add(timebound)
+		txTimebound = NewTimebounds(currentTime.Unix(), maxTime.Unix())
 	}
 
 	// Create a SEP 10 compatible response. See
@@ -262,7 +257,7 @@ func BuildChallengeTx(serverSignerSecret, clientAccountID,
 		},
 		Timebounds: txTimebound,
 		Network:    network,
-		BaseFee:    fee,
+		BaseFee:    uint32(100),
 	}
 
 	txeB64, err := tx.BuildSignEncode(serverKP.(*keypair.Full))
@@ -272,8 +267,8 @@ func BuildChallengeTx(serverSignerSecret, clientAccountID,
 	return txeB64, nil
 }
 
-// GenerateRandomString creates a base-64 encoded, cryptographically secure random string of `n` bytes.
-func GenerateRandomString(n int) (string, error) {
+// generateRandomString creates a base-64 encoded, cryptographically secure random string of `n` bytes.
+func generateRandomString(n int) (string, error) {
 	bytes := make([]byte, n)
 	_, err := rand.Read(bytes)
 
