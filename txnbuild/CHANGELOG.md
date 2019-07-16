@@ -3,6 +3,11 @@
 All notable changes to this project will be documented in this
 file.  This project adheres to [Semantic Versioning](http://semver.org/).
 
+## Unreleased
+
+* Add `Transaction.BuildChallengeTx` method for building [SEP-10](https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0010.md) challenge transaction.
+
+
 ## [v1.3.0](https://github.com/stellar/go/releases/tag/horizonclient-v1.3.0) - 2019-07-08
 
 * Add support for getting the hex-encoded transaction hash with `Transaction.HashHex` method.
