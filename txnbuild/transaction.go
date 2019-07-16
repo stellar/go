@@ -209,17 +209,12 @@ func BuildChallengeTx(serverSignerSecret, clientAccountID, anchorName, network s
 		return "", err
 	}
 
-	randomNonce, err := generateRandomString(64)
+	randomNonce, err := generateRandomNonce(64)
 	if err != nil {
 		return "", err
 	}
 
-	randomNonceBytes, err := base64.StdEncoding.DecodeString(randomNonce)
-	if err != nil {
-		return "", errors.Wrap(err, "failed to decode random nonce")
-	}
-
-	if len(randomNonceBytes) != 64 {
+	if len(randomNonce) != 64 {
 		return "", errors.New("64 byte long random nonce required")
 	}
 
@@ -252,7 +247,7 @@ func BuildChallengeTx(serverSignerSecret, clientAccountID, anchorName, network s
 			&ManageData{
 				SourceAccount: &ca,
 				Name:          anchorName + " auth",
-				Value:         randomNonceBytes,
+				Value:         randomNonce,
 			},
 		},
 		Timebounds: txTimebound,
@@ -267,16 +262,16 @@ func BuildChallengeTx(serverSignerSecret, clientAccountID, anchorName, network s
 	return txeB64, nil
 }
 
-// generateRandomString creates a base-64 encoded, cryptographically secure random string of `n` bytes.
-func generateRandomString(n int) (string, error) {
+// generateRandomNonce creates a cryptographically secure random slice of `n` bytes.
+func generateRandomNonce(n int) ([]byte, error) {
 	bytes := make([]byte, n)
 	_, err := rand.Read(bytes)
 
 	if err != nil {
-		return "", err
+		return []byte{}, err
 	}
 
-	return base64.StdEncoding.EncodeToString(bytes), err
+	return bytes, err
 }
 
 // HashHex returns the hex-encoded hash of the transaction.

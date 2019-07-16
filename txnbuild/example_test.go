@@ -511,8 +511,8 @@ func ExampleBuildChallengeTx() {
 	anchorName := "SDF"
 	timebound := time.Duration(5 * time.Minute)
 
-	// tx envelope returned here is ignored because it will be different for each run and cause tests to fail
-	_, err := BuildChallengeTx(serverSignerSeed, clientAccountID, anchorName,
-		network.TestNetworkPassphrase, timebound)
+	tx, err := BuildChallengeTx(serverSignerSeed, clientAccountID, anchorName, network.TestNetworkPassphrase, timebound)
+	_, err = checkChallengeTx(tx, anchorName)
+
 	check(err)
 }
