@@ -11,6 +11,6 @@ func (p *LedgerPipeline) Node(processor LedgerProcessor) *supportPipeline.Pipeli
 	}
 }
 
-func (p *LedgerPipeline) Process(readCloser io.LedgerReadCloser) <-chan error {
-	return p.Pipeline.Process(&ledgerReadCloserWrapper{readCloser})
+func (p *LedgerPipeline) Process(reader io.LedgerReader) <-chan error {
+	return p.Pipeline.Process(&ledgerReaderWrapper{reader})
 }

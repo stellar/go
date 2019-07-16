@@ -11,6 +11,6 @@ func (p *StatePipeline) Node(processor StateProcessor) *supportPipeline.Pipeline
 	}
 }
 
-func (p *StatePipeline) Process(readCloser io.StateReadCloser) <-chan error {
-	return p.Pipeline.Process(&stateReadCloserWrapper{readCloser})
+func (p *StatePipeline) Process(reader io.StateReader) <-chan error {
+	return p.Pipeline.Process(&stateReaderWrapper{reader})
 }

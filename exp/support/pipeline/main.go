@@ -5,12 +5,12 @@ import (
 	"sync"
 )
 
-// BufferedReadWriteCloser implements ReadCloser and WriteCloser and acts
+// BufferedReadWriter implements Reader and Writer and acts
 // like a pipe. All writes are queued in a buffered channel and are waiting
 // to be consumed.
 //
 // Used internally by Pipeline but also helpful for testing.
-type BufferedReadWriteCloser struct {
+type BufferedReadWriter struct {
 	initOnce sync.Once
 
 	context context.Context
@@ -30,8 +30,8 @@ type BufferedReadWriteCloser struct {
 	closed    bool
 }
 
-type multiWriteCloser struct {
-	writers []WriteCloser
+type multiWriter struct {
+	writers []Writer
 
 	mutex        sync.Mutex
 	closeAfter   int
@@ -78,10 +78,10 @@ type PipelineNode struct {
 	writesPerSecond int
 }
 
-// ReadCloser interface placeholder
-type ReadCloser interface {
+// Reader interface placeholder
+type Reader interface {
 	// GetContext returns context with values of the current reader. Can be
-	// helpful to provide data to structs that wrap `ReadCloser`.
+	// helpful to provide data to structs that wrap `Reader`.
 	GetContext() context.Context
 	// Read should return next entry. If there are no more
 	// entries it should return `io.EOF` error.
@@ -92,12 +92,12 @@ type ReadCloser interface {
 	Close() error
 }
 
-// WriteCloser interface placeholder
-type WriteCloser interface {
+// Writer interface placeholder
+type Writer interface {
 	// Write is used to pass entry to the next processor. It can return
 	// `io.ErrClosedPipe` when the pipe between processors has been closed meaning
 	// that next processor does not need more data. In such situation the current
-	// processor can terminate as sending more entries to a `WriteCloser`
+	// processor can terminate as sending more entries to a `Writer`
 	// does not make sense (will not be read).
 	Write(interface{}) error
 	// Close should be called when there are no more entries
@@ -107,11 +107,11 @@ type WriteCloser interface {
 
 // Processor defines methods required by the processing pipeline.
 type Processor interface {
-	// Process is a main method of `Processor`. It receives `ReadCloser`
+	// Process is a main method of `Processor`. It receives `Reader`
 	// that contains object passed down the pipeline from the previous procesor. Writes to
-	// `WriteCloser` will be passed to the next processor. WARNING! `Process`
-	// should **always** call `Close()` on `WriteCloser` when no more object will be
-	// written and `Close()` on `ReadCloser` when reading is finished.
+	// `Writer` will be passed to the next processor. WARNING! `Process`
+	// should **always** call `Close()` on `Writer` when no more object will be
+	// written and `Close()` on `Reader` when reading is finished.
 	// Data required by following processors (like aggregated data) should be saved in
 	// `Store`. Read `Store` godoc to understand how to use it.
 	// The first argument `ctx` is a context with cancel. Processor should monitor
@@ -120,7 +120,7 @@ type Processor interface {
 	//
 	// Given all information above `Process` should always look like this:
 	//
-	//    func (p *Processor) Process(ctx context.Context, store *pipeline.Store, r ReadCloser, w WriteCloser) error {
+	//    func (p *Processor) Process(ctx context.Context, store *pipeline.Store, r Reader, w Writer) error {
 	//    	defer r.Close()
 	//    	defer w.Close()
 	//
@@ -132,20 +132,20 @@ type Processor interface {
 	//    			if err == io.EOF {
 	//    				break
 	//    			} else {
-	//    				return errors.Wrap(err, "Error reading from ReadCloser in [ProcessorName]")
+	//    				return errors.Wrap(err, "Error reading from Reader in [ProcessorName]")
 	//    			}
 	//    		}
 	//
 	//    		// Process entry...
 	//
-	//    		// Write to WriteCloser if needed but exit if pipe is closed:
+	//    		// Write to Writer if needed but exit if pipe is closed:
 	//    		err = w.Write(entry)
 	//    		if err != nil {
 	//    			if err == io.ErrClosedPipe {
 	//    				// Reader does not need more data
 	//    				return nil
 	//    			}
-	//    			return errors.Wrap(err, "Error writing to WriteCloser in [ProcessorName]")
+	//    			return errors.Wrap(err, "Error writing to Writer in [ProcessorName]")
 	//    		}
 	//
 	//    		// Return errors if needed...
@@ -163,10 +163,10 @@ type Processor interface {
 	//
 	//    	return nil
 	//    }
-	Process(context.Context, *Store, ReadCloser, WriteCloser) error
+	Process(context.Context, *Store, Reader, Writer) error
 	// IsConcurrent defines if processing pipeline should start a single instance
 	// of the processor or multiple instances. Multiple instances will read
-	// from the same ReadCloser and write to the same WriteCloser.
+	// from the same Reader and write to the same Writer.
 	// Example: the processor can insert entries to a DB in a single job but it
 	// probably will be faster with multiple DB writers (especially when you want
 	// to do some data conversions before inserting).

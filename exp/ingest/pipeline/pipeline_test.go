@@ -133,7 +133,7 @@ func ExamplePipeline(t *testing.T) {
 			),
 	)
 
-	buffer := &supportPipeline.BufferedReadWriteCloser{}
+	buffer := &supportPipeline.BufferedReadWriter{}
 
 	go func() {
 		for i := 0; i < 1000000; i++ {
@@ -143,7 +143,7 @@ func ExamplePipeline(t *testing.T) {
 		buffer.Close()
 	}()
 
-	done := pipeline.Process(&readCloserWrapperState{buffer})
+	done := pipeline.Process(&readerWrapperState{buffer})
 	startTime := time.Now()
 
 	go func() {
@@ -201,7 +201,7 @@ type PassthroughProcessor struct {
 	SimpleProcessor
 }
 
-func (p *PassthroughProcessor) ProcessState(ctx context.Context, store *supportPipeline.Store, r io.StateReadCloser, w io.StateWriteCloser) error {
+func (p *PassthroughProcessor) ProcessState(ctx context.Context, store *supportPipeline.Store, r io.StateReader, w io.StateWriter) error {
 	defer w.Close()
 	defer r.Close()
 
@@ -249,7 +249,7 @@ type EntryTypeFilter struct {
 	Type xdr.LedgerEntryType
 }
 
-func (p *EntryTypeFilter) ProcessState(ctx context.Context, store *supportPipeline.Store, r io.StateReadCloser, w io.StateWriteCloser) error {
+func (p *EntryTypeFilter) ProcessState(ctx context.Context, store *supportPipeline.Store, r io.StateReader, w io.StateWriter) error {
 	defer w.Close()
 	defer r.Close()
 
@@ -295,7 +295,7 @@ type AccountsForSignerProcessor struct {
 	Signer string
 }
 
-func (p *AccountsForSignerProcessor) ProcessState(ctx context.Context, store *supportPipeline.Store, r io.StateReadCloser, w io.StateWriteCloser) error {
+func (p *AccountsForSignerProcessor) ProcessState(ctx context.Context, store *supportPipeline.Store, r io.StateReader, w io.StateWriter) error {
 	defer w.Close()
 	defer r.Close()
 
@@ -347,7 +347,7 @@ type CountPrefixProcessor struct {
 	Prefix string
 }
 
-func (p *CountPrefixProcessor) ProcessState(ctx context.Context, store *supportPipeline.Store, r io.StateReadCloser, w io.StateWriteCloser) error {
+func (p *CountPrefixProcessor) ProcessState(ctx context.Context, store *supportPipeline.Store, r io.StateReader, w io.StateWriter) error {
 	defer w.Close()
 	defer r.Close()
 
@@ -413,7 +413,7 @@ type PrintCountersProcessor struct {
 	SimpleProcessor
 }
 
-func (p *PrintCountersProcessor) ProcessState(ctx context.Context, store *supportPipeline.Store, r io.StateReadCloser, w io.StateWriteCloser) error {
+func (p *PrintCountersProcessor) ProcessState(ctx context.Context, store *supportPipeline.Store, r io.StateReader, w io.StateWriter) error {
 	defer w.Close()
 	defer r.Close()
 
@@ -457,7 +457,7 @@ type PrintAllProcessor struct {
 	SimpleProcessor
 }
 
-func (p *PrintAllProcessor) ProcessState(ctx context.Context, store *supportPipeline.Store, r io.StateReadCloser, w io.StateWriteCloser) error {
+func (p *PrintAllProcessor) ProcessState(ctx context.Context, store *supportPipeline.Store, r io.StateReader, w io.StateWriter) error {
 	defer w.Close()
 	defer r.Close()
 

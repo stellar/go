@@ -128,7 +128,7 @@ func (p *Pipeline) resetNode(node *PipelineNode) {
 	}
 }
 
-func (p *Pipeline) Process(readCloser ReadCloser) <-chan error {
+func (p *Pipeline) Process(reader Reader) <-chan error {
 	// Protects internal fields
 	p.runningMutex.Lock()
 	defer p.runningMutex.Unlock()
@@ -136,7 +136,7 @@ func (p *Pipeline) Process(readCloser ReadCloser) <-chan error {
 	p.setRunning(true)
 	p.reset()
 
-	err := p.sendPreProcessingHooks(readCloser.GetContext())
+	err := p.sendPreProcessingHooks(reader.GetContext())
 	if err != nil {
 		p.setRunning(false)
 		errorChan := make(chan error)
@@ -146,15 +146,15 @@ func (p *Pipeline) Process(readCloser ReadCloser) <-chan error {
 
 	var ctx context.Context
 	ctx, p.cancelFunc = context.WithCancel(context.Background())
-	return p.processStateNode(ctx, &Store{}, p.root, readCloser)
+	return p.processStateNode(ctx, &Store{}, p.root, reader)
 }
 
-func (p *Pipeline) processStateNode(ctx context.Context, store *Store, node *PipelineNode, readCloser ReadCloser) <-chan error {
-	outputs := make([]WriteCloser, len(node.Children))
+func (p *Pipeline) processStateNode(ctx context.Context, store *Store, node *PipelineNode, reader Reader) <-chan error {
+	outputs := make([]Writer, len(node.Children))
 
 	for i := range outputs {
-		outputs[i] = &BufferedReadWriteCloser{
-			context: readCloser.GetContext(),
+		outputs[i] = &BufferedReadWriter{
+			context: reader.GetContext(),
 		}
 	}
 
@@ -167,7 +167,7 @@ func (p *Pipeline) processStateNode(ctx context.Context, store *Store, node *Pip
 
 	node.jobs = jobs
 
-	writeCloser := &multiWriteCloser{
+	writer := &multiWriter{
 		writers:    outputs,
 		closeAfter: jobs,
 	}
@@ -179,7 +179,7 @@ func (p *Pipeline) processStateNode(ctx context.Context, store *Store, node *Pip
 		go func() {
 			defer wg.Done()
 
-			err := node.Processor.Process(ctx, store, readCloser, writeCloser)
+			err := node.Processor.Process(ctx, store, reader, writer)
 			if err != nil {
 				// Protects from cancelling twice and sending multiple errors to err channel
 				p.cancelledMutex.Lock()
@@ -198,13 +198,13 @@ func (p *Pipeline) processStateNode(ctx context.Context, store *Store, node *Pip
 		}()
 	}
 
-	finishUpdatingStats := p.updateStats(node, readCloser, writeCloser)
+	finishUpdatingStats := p.updateStats(node, reader, writer)
 
 	for i, child := range node.Children {
 		wg.Add(1)
 		go func(i int, child *PipelineNode) {
 			defer wg.Done()
-			err := <-p.processStateNode(ctx, store, child, outputs[i].(*BufferedReadWriteCloser))
+			err := <-p.processStateNode(ctx, store, child, outputs[i].(*BufferedReadWriter))
 			if err != nil {
 				processingError = err
 			}
@@ -224,7 +224,7 @@ func (p *Pipeline) processStateNode(ctx context.Context, store *Store, node *Pip
 			if p.shutDown {
 				returnError = nil
 			} else {
-				err := p.sendPostProcessingHooks(readCloser.GetContext(), processingError)
+				err := p.sendPostProcessingHooks(reader.GetContext(), processingError)
 				if err != nil {
 					returnError = errors.Wrap(err, "Error running post-hook")
 				} else {
@@ -265,7 +265,7 @@ func (p *Pipeline) Shutdown() {
 	p.cancelFunc()
 }
 
-func (p *Pipeline) updateStats(node *PipelineNode, readCloser ReadCloser, writeCloser *multiWriteCloser) chan<- bool {
+func (p *Pipeline) updateStats(node *PipelineNode, reader Reader, writer *multiWriter) chan<- bool {
 	// Update stats
 	interval := time.Second
 	done := make(chan bool)
@@ -276,12 +276,12 @@ func (p *Pipeline) updateStats(node *PipelineNode, readCloser ReadCloser, writeC
 
 		for {
 			// This is not thread-safe: check if Mutex slows it down a lot...
-			readBuffer, readBufferIsBufferedReadWriteCloser := readCloser.(*BufferedReadWriteCloser)
+			readBuffer, readBufferIsBufferedReadWriter := reader.(*BufferedReadWriter)
 
-			node.writesPerSecond = (writeCloser.wroteEntries - node.wroteEntries) * int(time.Second/interval)
-			node.wroteEntries = writeCloser.wroteEntries
+			node.writesPerSecond = (writer.wroteEntries - node.wroteEntries) * int(time.Second/interval)
+			node.wroteEntries = writer.wroteEntries
 
-			if readBufferIsBufferedReadWriteCloser {
+			if readBufferIsBufferedReadWriter {
 				node.readsPerSecond = (readBuffer.readEntries - node.readEntries) * int(time.Second/interval)
 				node.readEntries = readBuffer.readEntries
 				node.queuedEntries = readBuffer.QueuedEntries()

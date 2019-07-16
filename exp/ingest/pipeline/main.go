@@ -45,11 +45,11 @@ type LedgerPipeline struct {
 
 // StateProcessor defines methods required by state processing pipeline.
 type StateProcessor interface {
-	// ProcessState is a main method of `StateProcessor`. It receives `io.StateReadCloser`
+	// ProcessState is a main method of `StateProcessor`. It receives `io.StateReader`
 	// that contains object passed down the pipeline from the previous procesor. Writes to
-	// `io.StateWriteCloser` will be passed to the next processor. WARNING! `ProcessState`
-	// should **always** call `Close()` on `io.StateWriteCloser` when no more object will be
-	// written and `Close()` on `io.StateReadCloser` when reading is finished.
+	// `io.StateWriter` will be passed to the next processor. WARNING! `ProcessState`
+	// should **always** call `Close()` on `io.StateWriter` when no more object will be
+	// written and `Close()` on `io.StateReader` when reading is finished.
 	// Data required by following processors (like aggregated data) should be saved in
 	// `Store`. Read `Store` godoc to understand how to use it.
 	// The first argument `ctx` is a context with cancel. Processor should monitor
@@ -58,7 +58,7 @@ type StateProcessor interface {
 	//
 	// Given all information above `ProcessState` should always look like this:
 	//
-	//    func (p *Processor) ProcessState(ctx context.Context, store *pipeline.Store, r io.StateReadCloser, w io.StateWriteCloser) error {
+	//    func (p *Processor) ProcessState(ctx context.Context, store *pipeline.Store, r io.StateReader, w io.StateWriter) error {
 	//    	defer r.Close()
 	//    	defer w.Close()
 	//
@@ -70,20 +70,20 @@ type StateProcessor interface {
 	//    			if err == io.EOF {
 	//    				break
 	//    			} else {
-	//    				return errors.Wrap(err, "Error reading from StateReadCloser in [ProcessorName]")
+	//    				return errors.Wrap(err, "Error reading from StateReader in [ProcessorName]")
 	//    			}
 	//    		}
 	//
 	//    		// Process entry...
 	//
-	//    		// Write to StateWriteCloser if needed but exit if pipe is closed:
+	//    		// Write to StateWriter if needed but exit if pipe is closed:
 	//    		err = w.Write(entry)
 	//    		if err != nil {
 	//    			if err == io.ErrClosedPipe {
 	//    				//    Reader does not need more data
 	//    				return nil
 	//    			}
-	//    			return errors.Wrap(err, "Error writing to StateWriteCloser in [ProcessorName]")
+	//    			return errors.Wrap(err, "Error writing to StateWriter in [ProcessorName]")
 	//    		}
 	//
 	//    		// Return errors if needed...
@@ -101,10 +101,10 @@ type StateProcessor interface {
 	//
 	//    	return nil
 	//    }
-	ProcessState(context.Context, *supportPipeline.Store, io.StateReadCloser, io.StateWriteCloser) error
+	ProcessState(context.Context, *supportPipeline.Store, io.StateReader, io.StateWriter) error
 	// IsConcurrent defines if processing pipeline should start a single instance
 	// of the processor or multiple instances. Multiple instances will read
-	// from the same StateReadCloser and write to the same StateWriteCloser.
+	// from the same StateReader and write to the same StateWriter.
 	// Example: the processor can insert entries to a DB in a single job but it
 	// probably will be faster with multiple DB writers (especially when you want
 	// to do some data conversions before inserting).
@@ -120,11 +120,11 @@ type StateProcessor interface {
 
 // LedgerProcessor defines methods required by ledger processing pipeline.
 type LedgerProcessor interface {
-	// ProcessLedger is a main method of `LedgerProcessor`. It receives `io.LedgerReadCloser`
+	// ProcessLedger is a main method of `LedgerProcessor`. It receives `io.LedgerReader`
 	// that contains object passed down the pipeline from the previous procesor. Writes to
-	// `io.LedgerWriteCloser` will be passed to the next processor. WARNING! `ProcessLedger`
-	// should **always** call `Close()` on `io.LedgerWriteCloser` when no more object will be
-	// written and `Close()` on `io.LedgerReadCloser` when reading is finished.
+	// `io.LedgerWriter` will be passed to the next processor. WARNING! `ProcessLedger`
+	// should **always** call `Close()` on `io.LedgerWriter` when no more object will be
+	// written and `Close()` on `io.LedgerReader` when reading is finished.
 	// Data required by following processors (like aggregated data) should be saved in
 	// `Store`. Read `Store` godoc to understand how to use it.
 	// The first argument `ctx` is a context with cancel. Processor should monitor
@@ -133,7 +133,7 @@ type LedgerProcessor interface {
 	//
 	// Given all information above `ProcessLedger` should always look like this:
 	//
-	//    func (p *Processor) ProcessLedger(ctx context.Context, store *pipeline.Store, r io.LedgerReadCloser, w io.LedgerWriteCloser) error {
+	//    func (p *Processor) ProcessLedger(ctx context.Context, store *pipeline.Store, r io.LedgerReader, w io.LedgerWriter) error {
 	//    	defer r.Close()
 	//    	defer w.Close()
 	//
@@ -145,20 +145,20 @@ type LedgerProcessor interface {
 	//    			if err == io.EOF {
 	//    				break
 	//    			} else {
-	//    				return errors.Wrap(err, "Error reading from LedgerReadCloser in [ProcessorName]")
+	//    				return errors.Wrap(err, "Error reading from LedgerReader in [ProcessorName]")
 	//    			}
 	//    		}
 	//
 	//    		// Process entry...
 	//
-	//    		// Write to LedgerWriteCloser if needed but exit if pipe is closed:
+	//    		// Write to LedgerWriter if needed but exit if pipe is closed:
 	//    		err = w.Write(entry)
 	//    		if err != nil {
 	//    			if err == io.ErrClosedPipe {
 	//    				//    Reader does not need more data
 	//    				return nil
 	//    			}
-	//    			return errors.Wrap(err, "Error writing to LedgerWriteCloser in [ProcessorName]")
+	//    			return errors.Wrap(err, "Error writing to LedgerWriter in [ProcessorName]")
 	//    		}
 	//
 	//    		// Return errors if needed...
@@ -176,10 +176,10 @@ type LedgerProcessor interface {
 	//
 	//    	return nil
 	//    }
-	ProcessLedger(context.Context, *supportPipeline.Store, io.LedgerReadCloser, io.LedgerWriteCloser) error
+	ProcessLedger(context.Context, *supportPipeline.Store, io.LedgerReader, io.LedgerWriter) error
 	// IsConcurrent defines if processing pipeline should start a single instance
 	// of the processor or multiple instances. Multiple instances will read
-	// from the same LedgerReadWriter and write to the same LedgerWriteCloser.
+	// from the same LedgerReadWriter and write to the same LedgerWriter.
 	// Example: the processor can insert entries to a DB in a single job but it
 	// probably will be faster with multiple DB writers (especially when you want
 	// to do some data conversions before inserting).
@@ -207,44 +207,44 @@ type ledgerProcessorWrapper struct {
 
 var _ supportPipeline.Processor = &ledgerProcessorWrapper{}
 
-// stateReadCloserWrapper wraps StateReadCloser to implement pipeline.ReadCloser interface.
-type stateReadCloserWrapper struct {
-	io.StateReadCloser
+// stateReaderWrapper wraps StateReader to implement pipeline.Reader interface.
+type stateReaderWrapper struct {
+	io.StateReader
 }
 
-var _ supportPipeline.ReadCloser = &stateReadCloserWrapper{}
+var _ supportPipeline.Reader = &stateReaderWrapper{}
 
-// ledgerReadCloserWrapper wraps LedgerReadCloser to implement pipeline.ReadCloser interface.
-type ledgerReadCloserWrapper struct {
-	io.LedgerReadCloser
+// ledgerReaderWrapper wraps LedgerReader to implement pipeline.Reader interface.
+type ledgerReaderWrapper struct {
+	io.LedgerReader
 }
 
-var _ supportPipeline.ReadCloser = &ledgerReadCloserWrapper{}
+var _ supportPipeline.Reader = &ledgerReaderWrapper{}
 
-// readCloserWrapperState wraps pipeline.ReadCloser to implement StateReadCloser interface.
-type readCloserWrapperState struct {
-	supportPipeline.ReadCloser
+// readerWrapperState wraps pipeline.Reader to implement StateReader interface.
+type readerWrapperState struct {
+	supportPipeline.Reader
 }
 
-var _ io.StateReadCloser = &readCloserWrapperState{}
+var _ io.StateReader = &readerWrapperState{}
 
-// readCloserWrapperLedger wraps pipeline.ReadCloser to implement LedgerReadCloser interface.
-type readCloserWrapperLedger struct {
-	supportPipeline.ReadCloser
+// readerWrapperLedger wraps pipeline.Reader to implement LedgerReader interface.
+type readerWrapperLedger struct {
+	supportPipeline.Reader
 }
 
-var _ io.LedgerReadCloser = &readCloserWrapperLedger{}
+var _ io.LedgerReader = &readerWrapperLedger{}
 
-// writeCloserWrapperState wraps pipeline.WriteCloser to implement StateWriteCloser interface.
-type writeCloserWrapperState struct {
-	supportPipeline.WriteCloser
+// writerWrapperState wraps pipeline.Writer to implement StateWriter interface.
+type writerWrapperState struct {
+	supportPipeline.Writer
 }
 
-var _ io.StateWriteCloser = &writeCloserWrapperState{}
+var _ io.StateWriter = &writerWrapperState{}
 
-// writeCloserWrapperLedger wraps pipeline.WriteCloser to implement LedgerWriteCloser interface.
-type writeCloserWrapperLedger struct {
-	supportPipeline.WriteCloser
+// writerWrapperLedger wraps pipeline.Writer to implement LedgerWriter interface.
+type writerWrapperLedger struct {
+	supportPipeline.Writer
 }
 
-var _ io.LedgerWriteCloser = &writeCloserWrapperLedger{}
+var _ io.LedgerWriter = &writerWrapperLedger{}

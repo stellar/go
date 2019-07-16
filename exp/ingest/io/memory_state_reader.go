@@ -34,8 +34,8 @@ type MemoryStateReader struct {
 	disableBucketListHashValidation bool
 }
 
-// Ensure MemoryStateReader implements StateReadCloser
-var _ StateReadCloser = &MemoryStateReader{}
+// Ensure MemoryStateReader implements StateReader
+var _ StateReader = &MemoryStateReader{}
 
 // MakeMemoryStateReader is a factory method for MemoryStateReader
 func MakeMemoryStateReader(archive historyarchive.ArchiveInterface, sequence uint32, bufferSize uint16) (*MemoryStateReader, error) {

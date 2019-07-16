@@ -9,7 +9,7 @@ import (
 )
 
 func TestBuffer(t *testing.T) {
-	buffer := &BufferedReadWriteCloser{}
+	buffer := &BufferedReadWriter{}
 	write := 20
 	read := 0
 
