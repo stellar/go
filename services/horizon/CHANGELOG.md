@@ -8,6 +8,7 @@ bumps.  A breaking change will get clearly notified in this log.
 
 ## v0.18.1
 
+* Add `join` parameter to operations and payments endpoints. Currently, the only valid value for the parameter is `transactions`. If `join=transactions` is included in a request then the response will include a `transaction` field for each operation in the response.
 * Fixed `/fee_stats` to correctly calculate ledger capacity in protocol v11.
 * Fixed `horizon db clean` command to truncate all tables.
 

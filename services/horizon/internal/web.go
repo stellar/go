@@ -131,7 +131,7 @@ func (w *web) mustInstallActions(enableAssetStats bool, friendbotURL *url.URL) {
 			r.Get("/", LedgerShowAction{}.Handle)
 			r.Get("/transactions", w.streamIndexActionHandler(w.getTransactionPage, w.streamTransactions))
 			r.Get("/operations", OperationIndexAction{}.Handle)
-			r.Get("/payments", PaymentsIndexAction{}.Handle)
+			r.Get("/payments", OperationIndexAction{OnlyPayments: true}.Handle)
 			r.Get("/effects", EffectIndexAction{}.Handle)
 		})
 	})
@@ -142,7 +142,7 @@ func (w *web) mustInstallActions(enableAssetStats bool, friendbotURL *url.URL) {
 			r.Get("/", w.streamShowActionHandler(w.getAccountInfo, true))
 			r.Get("/transactions", w.streamIndexActionHandler(w.getTransactionPage, w.streamTransactions))
 			r.Get("/operations", OperationIndexAction{}.Handle)
-			r.Get("/payments", PaymentsIndexAction{}.Handle)
+			r.Get("/payments", OperationIndexAction{OnlyPayments: true}.Handle)
 			r.Get("/effects", EffectIndexAction{}.Handle)
 			r.Get("/offers", OffersByAccountAction{}.Handle)
 			r.Get("/trades", TradeIndexAction{}.Handle)
@@ -156,7 +156,7 @@ func (w *web) mustInstallActions(enableAssetStats bool, friendbotURL *url.URL) {
 		r.Route("/{tx_id}", func(r chi.Router) {
 			r.Get("/", showActionHandler(w.getTransactionResource))
 			r.Get("/operations", OperationIndexAction{}.Handle)
-			r.Get("/payments", PaymentsIndexAction{}.Handle)
+			r.Get("/payments", OperationIndexAction{OnlyPayments: true}.Handle)
 			r.Get("/effects", EffectIndexAction{}.Handle)
 		})
 	})
@@ -169,7 +169,7 @@ func (w *web) mustInstallActions(enableAssetStats bool, friendbotURL *url.URL) {
 	})
 
 	// payment actions
-	r.Get("/payments", PaymentsIndexAction{}.Handle)
+	r.Get("/payments", OperationIndexAction{OnlyPayments: true}.Handle)
 
 	// effect actions
 	r.Get("/effects", EffectIndexAction{}.Handle)
