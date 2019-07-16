@@ -172,9 +172,9 @@ func (s *LiveSession) resume(ledgerSequence uint32, ledgerAdapter *adapters.Ledg
 
 		errChan := s.LedgerPipeline.Process(ledgerReader)
 		select {
-		case err := <-errChan:
-			if err != nil {
-				return errors.Wrap(err, "Ledger pipeline errored")
+		case err2 := <-errChan:
+			if err2 != nil {
+				return errors.Wrap(err2, "Ledger pipeline errored")
 			}
 		case <-s.standardSession.shutdown:
 			s.LedgerPipeline.Shutdown()
