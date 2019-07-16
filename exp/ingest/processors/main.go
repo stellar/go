@@ -9,7 +9,6 @@ import (
 // to all children.
 type RootProcessor struct {
 	noStateProcessor
-	concurrentProcessor
 }
 
 // CSVPrinter prints ledger entries to a file or stdout (when Filename is empty).
@@ -31,16 +30,9 @@ type StatusLogger struct {
 // EntryTypeFilter is a pipeline.StateProcessor that filters out all
 // entries that are not of type `Type`.
 type EntryTypeFilter struct {
-	concurrentProcessor
 	noStateProcessor
 
 	Type xdr.LedgerEntryType
-}
-
-type concurrentProcessor struct{}
-
-func (n *concurrentProcessor) IsConcurrent() bool {
-	return true
 }
 
 type noStateProcessor struct{}

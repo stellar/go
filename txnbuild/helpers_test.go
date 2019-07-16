@@ -4,6 +4,8 @@ import (
 	"testing"
 
 	"github.com/stellar/go/keypair"
+	"github.com/stellar/go/support/errors"
+	"github.com/stellar/go/xdr"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -41,4 +43,17 @@ func check(err error) {
 	if err != nil {
 		panic(err)
 	}
+}
+
+func checkChallengeTx(txeBase64, anchorName string) (bool, error) {
+	var txXDR xdr.TransactionEnvelope
+	err := xdr.SafeUnmarshalBase64(txeBase64, &txXDR)
+	if err != nil {
+		return false, err
+	}
+	op := txXDR.Tx.Operations[0]
+	if (xdr.OperationTypeManageData == op.Body.Type) && (op.Body.ManageDataOp.DataName == xdr.String64(anchorName+" auth")) {
+		return true, nil
+	}
+	return false, errors.New("invalid challenge tx")
 }

@@ -182,10 +182,6 @@ type SimpleProcessor struct {
 	callCount int
 }
 
-func (n *SimpleProcessor) IsConcurrent() bool {
-	return false
-}
-
 func (n *SimpleProcessor) Reset() {
 	n.callCount = 0
 }
@@ -237,10 +233,6 @@ func (p *PassthroughProcessor) ProcessState(ctx context.Context, store *supportP
 
 func (p *PassthroughProcessor) Name() string {
 	return "PassthroughProcessor"
-}
-
-func (n *PassthroughProcessor) IsConcurrent() bool {
-	return true
 }
 
 type EntryTypeFilter struct {
@@ -399,10 +391,6 @@ func (p *CountPrefixProcessor) ProcessState(ctx context.Context, store *supportP
 	store.Unlock()
 
 	return nil
-}
-
-func (p *CountPrefixProcessor) IsConcurrent() bool {
-	return true
 }
 
 func (p *CountPrefixProcessor) Name() string {

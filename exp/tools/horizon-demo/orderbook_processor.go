@@ -93,13 +93,6 @@ func (p *OrderbookProcessor) ProcessLedger(ctx context.Context, store *pipeline.
 	return nil
 }
 
-// IsConcurrent implementation. OrderbookProcessor cannot be concurrent because
-// offer graph must be updated in order. Ex. an offer is created and deleted
-// within the same ledger.
-func (p *OrderbookProcessor) IsConcurrent() bool {
-	return false
-}
-
 func (p *OrderbookProcessor) Name() string {
 	return fmt.Sprintf("OrderbookProcessor")
 }

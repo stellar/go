@@ -185,10 +185,6 @@ func (p *NoOpProcessor) Process(ctx context.Context, store *pipeline.Store, r pi
 	return nil
 }
 
-func (p *NoOpProcessor) IsConcurrent() bool {
-	return false
-}
-
 func (p *NoOpProcessor) Name() string {
 	return "NoOpProcessor"
 }
