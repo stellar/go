@@ -2,6 +2,7 @@ package txnbuild
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/network"
@@ -501,4 +502,17 @@ func ExampleManageBuyOffer() {
 
 	// Output: AAAAAH4RyzTWNfXhqwLUoCw91aWkZtgIzY8SAVkIPc0uFVmYAAAAZAAMoj8AAAAEAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAMAAAAAAAAAAFBQkNEAAAAAODcbeFyXKxmUWK1L6znNbKKIkPkHRJNbLktcKPqLnLFAAAAADuaygAAAAABAAAAZAAAAAAAAAAAAAAAAAAAAAEuFVmYAAAAQPh8h1TrzDpcgzB/VE8V0X2pFGV8/JyuYrx0I5bRfBJuLJr0l8yL1isP1wZjvMdX7fNiktwSLuUuj749nWA6wAo=
 
+}
+
+func ExampleBuildChallengeTx() {
+	// Generate random nonce
+	serverSignerSeed := "SBZVMB74Z76QZ3ZOY7UTDFYKMEGKW5XFJEB6PFKBF4UYSSWHG4EDH7PY"
+	clientAccountID := "GDQNY3PBOJOKYZSRMK2S7LHHGWZIUISD4QORETLMXEWXBI7KFZZMKTL3"
+	anchorName := "SDF"
+	timebound := time.Duration(5 * time.Minute)
+
+	tx, err := BuildChallengeTx(serverSignerSeed, clientAccountID, anchorName, network.TestNetworkPassphrase, timebound)
+	_, err = checkChallengeTx(tx, anchorName)
+
+	check(err)
 }

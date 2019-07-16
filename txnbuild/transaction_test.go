@@ -3,6 +3,7 @@ package txnbuild
 import (
 	"crypto/sha256"
 	"testing"
+	"time"
 
 	"github.com/stellar/go/network"
 	"github.com/stellar/go/strkey"
@@ -736,6 +737,44 @@ func TestManageBuyOfferUpdateOffer(t *testing.T) {
 	assert.Equal(t, expected, received, "Base 64 XDR should match")
 }
 
+func TestBuildChallengeTx(t *testing.T) {
+	kp0 := newKeypair0()
+
+	// infinite timebound
+	txeBase64, err := BuildChallengeTx(kp0.Seed(), kp0.Address(), "SDF", network.TestNetworkPassphrase, 0)
+	assert.NoError(t, err)
+	var txXDR xdr.TransactionEnvelope
+	err = xdr.SafeUnmarshalBase64(txeBase64, &txXDR)
+	assert.NoError(t, err)
+	assert.Equal(t, xdr.SequenceNumber(0), txXDR.Tx.SeqNum, "sequence number should be 0")
+	assert.Equal(t, xdr.Uint32(100), txXDR.Tx.Fee, "Fee should be 100")
+	assert.Equal(t, 1, len(txXDR.Tx.Operations), "number operations should be 1")
+	assert.Equal(t, xdr.TimePoint(0), xdr.TimePoint(txXDR.Tx.TimeBounds.MinTime), "Min time should be 0")
+	assert.Equal(t, xdr.TimePoint(0), xdr.TimePoint(txXDR.Tx.TimeBounds.MaxTime), "Max time should be 0")
+	op := txXDR.Tx.Operations[0]
+	assert.Equal(t, xdr.OperationTypeManageData, op.Body.Type, "operation type should be manage data")
+	assert.Equal(t, xdr.String64("SDF auth"), op.Body.ManageDataOp.DataName, "DataName should be 'SDF auth'")
+	assert.Equal(t, 64, len(*op.Body.ManageDataOp.DataValue), "DataValue should be 64 bytes")
+
+	// 5 minutes timebound
+	txeBase64, err = BuildChallengeTx(kp0.Seed(), kp0.Address(), "SDF1", network.TestNetworkPassphrase, time.Duration(5*time.Minute))
+	assert.NoError(t, err)
+
+	var txXDR1 xdr.TransactionEnvelope
+	err = xdr.SafeUnmarshalBase64(txeBase64, &txXDR1)
+	assert.NoError(t, err)
+	assert.Equal(t, xdr.SequenceNumber(0), txXDR1.Tx.SeqNum, "sequence number should be 0")
+	assert.Equal(t, xdr.Uint32(100), txXDR1.Tx.Fee, "Fee should be 100")
+	assert.Equal(t, 1, len(txXDR1.Tx.Operations), "number operations should be 1")
+
+	timeDiff := txXDR1.Tx.TimeBounds.MaxTime - txXDR1.Tx.TimeBounds.MinTime
+	assert.Equal(t, int64(300), int64(timeDiff), "time difference should be 300 seconds")
+	op1 := txXDR1.Tx.Operations[0]
+	assert.Equal(t, xdr.OperationTypeManageData, op1.Body.Type, "operation type should be manage data")
+	assert.Equal(t, xdr.String64("SDF1 auth"), op1.Body.ManageDataOp.DataName, "DataName should be 'SDF1 auth'")
+	assert.Equal(t, 64, len(*op1.Body.ManageDataOp.DataValue), "DataValue should be 64 bytes")
+}
+
 func TestHashHex(t *testing.T) {
 	kp0 := newKeypair0()
 	sourceAccount := NewSimpleAccount(kp0.Address(), int64(9605939170639897))
@@ -957,4 +996,5 @@ func TestHashXTransaction(t *testing.T) {
 	assert.NoError(t, err)
 	expected = "AAAAANW8EOZG3RNV38krq5eSr1NNhco7DvfyBU/5mKERi7P0AAAAZAAPd2EAAAAHAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAABAAAAAITg3tq8G0kvnvoIhZPMYJsY+9KVV8xAA6NxhtKxIXZUAAAAAAAAAAAF9eEAAAAAAAAAAAGWLqMFAAAAQHRoaXMgaXMgYSBwcmVpbWFnZSBmb3IgaGFzaHggdHJhbnNhY3Rpb25zIG9uIHRoZSBzdGVsbGFyIG5ldHdvcms="
 	assert.Equal(t, expected, txeB64, "Base 64 XDR should match")
+
 }
