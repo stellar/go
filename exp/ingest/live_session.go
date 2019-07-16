@@ -2,6 +2,7 @@ package ingest
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"time"
 
@@ -11,6 +12,8 @@ import (
 )
 
 var _ Session = &LiveSession{}
+
+const defaultCoreCursorName = "EXPINGESTLIVESESSION"
 
 func (s *LiveSession) Run() error {
 	s.standardSession.shutdown = make(chan bool)
@@ -26,6 +29,12 @@ func (s *LiveSession) Run() error {
 	currentLedger, err := historyAdapter.GetLatestLedgerSequence()
 	if err != nil {
 		return errors.Wrap(err, "Error getting the latest ledger sequence")
+	}
+
+	// Update cursor
+	err = s.updateCursor(currentLedger)
+	if err != nil {
+		return errors.Wrap(err, "Error setting cursor")
 	}
 
 	ledgerAdapter := &adapters.LedgerBackendAdapter{
@@ -58,6 +67,24 @@ func (s *LiveSession) Run() error {
 	currentLedger++
 
 	return s.resume(currentLedger, ledgerAdapter)
+}
+
+func (s *LiveSession) updateCursor(ledgerSequence uint32) error {
+	if s.StellarCoreClient == nil {
+		return nil
+	}
+
+	cursor := defaultCoreCursorName
+	if s.StellarCoreCursor != "" {
+		cursor = s.StellarCoreCursor
+	}
+
+	err := s.StellarCoreClient.SetCursor(context.Background(), cursor, int32(ledgerSequence))
+	if err != nil {
+		return errors.Wrap(err, "Setting stellar-core cursor failed")
+	}
+
+	return nil
 }
 
 func (s *LiveSession) Resume(ledgerSequence uint32) error {
@@ -145,13 +172,19 @@ func (s *LiveSession) resume(ledgerSequence uint32, ledgerAdapter *adapters.Ledg
 
 		errChan := s.LedgerPipeline.Process(ledgerReader)
 		select {
-		case err := <-errChan:
-			if err != nil {
-				return errors.Wrap(err, "Ledger pipeline errored")
+		case err2 := <-errChan:
+			if err2 != nil {
+				return errors.Wrap(err2, "Ledger pipeline errored")
 			}
 		case <-s.standardSession.shutdown:
 			s.LedgerPipeline.Shutdown()
 			return nil
+		}
+
+		// Update cursor
+		err = s.updateCursor(ledgerSequence)
+		if err != nil {
+			return errors.Wrap(err, "Error setting cursor")
 		}
 
 		s.standardSession.latestProcessedLedger = ledgerSequence
