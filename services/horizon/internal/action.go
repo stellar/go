@@ -167,6 +167,13 @@ type indexActionQueryParams struct {
 
 // Fields of this struct are exported for json marshaling/unmarshaling in
 // support/render/hal package.
+type accountIndexActionQueryParams struct {
+	Signer       string
+	PagingParams db2.PageQuery
+}
+
+// Fields of this struct are exported for json marshaling/unmarshaling in
+// support/render/hal package.
 type showActionQueryParams struct {
 	AccountID string
 	TxHash    string
@@ -175,6 +182,16 @@ type showActionQueryParams struct {
 // getAccountInfo returns the information about an account based on the provided param.
 func (w *web) getAccountInfo(ctx context.Context, qp *showActionQueryParams) (interface{}, error) {
 	return actions.AccountInfo(ctx, &core.Q{w.coreSession(ctx)}, qp.AccountID)
+}
+
+// getAccountPage returns a page containing the account records.
+func (w *web) getAccountPage(ctx context.Context, qp *accountIndexActionQueryParams) (interface{}, error) {
+	horizonSession, err := w.horizonSession(ctx)
+	if err != nil {
+		return nil, errors.Wrap(err, "getting horizon db session")
+	}
+
+	return actions.AccountPage(ctx, &history.Q{horizonSession}, qp.Signer, qp.PagingParams)
 }
 
 // getTransactionPage returns a page containing the transaction records of an account or a ledger.

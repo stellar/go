@@ -138,6 +138,7 @@ func (w *web) mustInstallActions(enableAssetStats bool, friendbotURL *url.URL) {
 
 	// account actions
 	r.Route("/accounts", func(r chi.Router) {
+		r.Get("/", showActionHandler(w.getAccountPage))
 		r.Route("/{account_id}", func(r chi.Router) {
 			r.Get("/", w.streamShowActionHandler(w.getAccountInfo, true))
 			r.Get("/transactions", w.streamIndexActionHandler(w.getTransactionPage, w.streamTransactions))
