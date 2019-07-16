@@ -120,6 +120,13 @@ type AccountsQ struct {
 	sql    sq.SelectBuilder
 }
 
+// AccountSigner is a row of data from the `accounts_signers` table
+type AccountSigner struct {
+	Account string `db:"account"`
+	Signer  string `db:"signer"`
+	Weight  int32  `db:"weight"`
+}
+
 // Asset is a row of data from the `history_assets` table
 type Asset struct {
 	ID     int64  `db:"id"`
