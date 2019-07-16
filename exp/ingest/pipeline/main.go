@@ -102,13 +102,6 @@ type StateProcessor interface {
 	//    	return nil
 	//    }
 	ProcessState(context.Context, *supportPipeline.Store, io.StateReader, io.StateWriter) error
-	// IsConcurrent defines if processing pipeline should start a single instance
-	// of the processor or multiple instances. Multiple instances will read
-	// from the same StateReader and write to the same StateWriter.
-	// Example: the processor can insert entries to a DB in a single job but it
-	// probably will be faster with multiple DB writers (especially when you want
-	// to do some data conversions before inserting).
-	IsConcurrent() bool
 	// Returns processor name. Helpful for errors, debuging and reports.
 	Name() string
 	// Reset resets internal state of the processor. This is run by the pipeline
@@ -177,13 +170,6 @@ type LedgerProcessor interface {
 	//    	return nil
 	//    }
 	ProcessLedger(context.Context, *supportPipeline.Store, io.LedgerReader, io.LedgerWriter) error
-	// IsConcurrent defines if processing pipeline should start a single instance
-	// of the processor or multiple instances. Multiple instances will read
-	// from the same LedgerReadWriter and write to the same LedgerWriter.
-	// Example: the processor can insert entries to a DB in a single job but it
-	// probably will be faster with multiple DB writers (especially when you want
-	// to do some data conversions before inserting).
-	IsConcurrent() bool
 	// Returns processor name. Helpful for errors, debuging and reports.
 	Name() string
 	// Reset resets internal state of the processor. This is run by the pipeline

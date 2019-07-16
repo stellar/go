@@ -16,10 +16,6 @@ type SimpleProcessor struct {
 	callCount int
 }
 
-func (n *SimpleProcessor) IsConcurrent() bool {
-	return false
-}
-
 func (n *SimpleProcessor) IncrementAndReturnCallCount() int {
 	n.Lock()
 	defer n.Unlock()
@@ -84,8 +80,4 @@ func (p *AccountsForSignerProcessor) ProcessState(ctx context.Context, store *pi
 
 func (p *AccountsForSignerProcessor) Name() string {
 	return "AccountsForSignerProcessor"
-}
-
-func (n *AccountsForSignerProcessor) IsConcurrent() bool {
-	return true
 }

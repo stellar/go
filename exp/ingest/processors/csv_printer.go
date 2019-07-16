@@ -133,10 +133,6 @@ func (p *CSVPrinter) ProcessLedger(ctx context.Context, store *pipeline.Store, r
 	return nil
 }
 
-func (n *CSVPrinter) IsConcurrent() bool {
-	return false
-}
-
 func (p *CSVPrinter) Name() string {
 	return "CSVPrinter"
 }
