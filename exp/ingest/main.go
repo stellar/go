@@ -3,6 +3,7 @@ package ingest
 import (
 	"sync"
 
+	"github.com/stellar/go/clients/stellarcore"
 	"github.com/stellar/go/exp/ingest/ledgerbackend"
 	"github.com/stellar/go/exp/ingest/pipeline"
 	"github.com/stellar/go/support/historyarchive"
@@ -23,10 +24,15 @@ type standardSession struct {
 type LiveSession struct {
 	standardSession
 
-	Archive        historyarchive.ArchiveInterface
-	LedgerBackend  ledgerbackend.LedgerBackend
-	StatePipeline  *pipeline.StatePipeline
-	LedgerPipeline *pipeline.LedgerPipeline
+	Archive           historyarchive.ArchiveInterface
+	LedgerBackend     ledgerbackend.LedgerBackend
+	StellarCoreClient *stellarcore.Client
+	// StellarCoreCursor defines cursor name used in `setcursor` command of
+	// stellar-core. If you run multiple sessions against a single stellar-core
+	// instance the cursor name needs to be different in each session.
+	StellarCoreCursor string
+	StatePipeline     *pipeline.StatePipeline
+	LedgerPipeline    *pipeline.LedgerPipeline
 }
 
 // SingleLedgerSession initializes the ledger state using `Archive` and `StatePipeline`

@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 
+	"github.com/stellar/go/clients/stellarcore"
 	"github.com/stellar/go/exp/ingest"
 	"github.com/stellar/go/exp/orderbook"
 	"github.com/stellar/go/support/errors"
@@ -21,6 +22,9 @@ func main() {
 	session := &ingest.LiveSession{
 		Archive:       archive(),
 		LedgerBackend: ledgerBackend(),
+		StellarCoreClient: &stellarcore.Client{
+			URL: "http://localhost:11620",
+		},
 
 		StatePipeline:  buildStatePipeline(db, orderBookGraph),
 		LedgerPipeline: buildLedgerPipeline(db, orderBookGraph),
