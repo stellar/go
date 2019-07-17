@@ -317,7 +317,8 @@ func getAccountsIndexActionQueryParams(r *http.Request) (*indexActionQueryParams
 		return nil, errors.Wrap(err, "getting signer key")
 	}
 
-	pq, err := getPageQuery(r, false)
+	// disableCursorValidation = true because cursors are account IDs
+	pq, err := getPageQuery(r, true)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting page query")
 	}

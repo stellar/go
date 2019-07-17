@@ -39,11 +39,11 @@ func (p *DatabaseProcessor) ProcessState(ctx context.Context, store *pipeline.St
 
 			accountEntry := entryChange.MustState().Data.MustAccount()
 			account := accountEntry.AccountId.Address()
-			for _, signer := range accountEntry.Signers {
+			for signer, weight := range accountEntry.SignerSummary() {
 				err = p.HistoryQ.CreateAccountSigner(
 					account,
-					signer.Key.Address(),
-					int32(signer.Weight),
+					signer,
+					weight,
 				)
 				if err != nil {
 					return errors.Wrap(err, "Error updating account for signer")
@@ -110,15 +110,12 @@ func (p *DatabaseProcessor) processLedgerAccountsForSigner(transaction io.Ledger
 			continue
 		}
 
-		accountEntry := change.Pre.MustAccount()
-		account := accountEntry.AccountId.Address()
-
 		// The code below removes all Pre signers adds Post signers but
 		// can be improved by finding a diff (check performance first).
 		if change.Pre != nil {
 			preAccountEntry := change.Pre.MustAccount()
 			for signer, _ := range preAccountEntry.SignerSummary() {
-				err := p.HistoryQ.RemoveAccountSigner(account, signer)
+				err := p.HistoryQ.RemoveAccountSigner(preAccountEntry.AccountId.Address(), signer)
 				if err != nil {
 					return errors.Wrap(err, "Error removing a signer")
 				}
@@ -128,7 +125,7 @@ func (p *DatabaseProcessor) processLedgerAccountsForSigner(transaction io.Ledger
 		if change.Post != nil {
 			postAccountEntry := change.Post.MustAccount()
 			for signer, weight := range postAccountEntry.SignerSummary() {
-				err := p.HistoryQ.CreateAccountSigner(account, signer, weight)
+				err := p.HistoryQ.CreateAccountSigner(postAccountEntry.AccountId.Address(), signer, weight)
 				if err != nil {
 					return errors.Wrap(err, "Error inserting a signer")
 				}
