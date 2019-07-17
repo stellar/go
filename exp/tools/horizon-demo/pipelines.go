@@ -26,8 +26,7 @@ func buildStatePipeline(db *Database, orderBookGraph *orderbook.OrderBookGraph) 
 	statePipeline := &pipeline.StatePipeline{}
 
 	statePipeline.SetRoot(
-		// Prints number of read entries every N entries...
-		statePipeline.Node(&processors.StatusLogger{N: 50000}).
+		statePipeline.Node(&processors.RootProcessor{}).
 			Pipe(
 				statePipeline.Node(&processors.EntryTypeFilter{Type: xdr.LedgerEntryTypeAccount}).
 					Pipe(
