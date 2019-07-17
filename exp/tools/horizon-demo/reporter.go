@@ -42,7 +42,7 @@ func (lr *LoggingStateReporter) OnStateEntry() {
 
 // OnEndState logs that the session has finished processing the history archive snapshot
 func (lr *LoggingStateReporter) OnEndState(err error, shutdown bool) {
-	elapsedTime := time.Now().Sub(lr.startTime)
+	elapsedTime := time.Since(lr.startTime)
 	log.WithField("sequence", lr.sequence).
 		WithField("numEntries", lr.entryCount).
 		WithError(err).
@@ -79,7 +79,7 @@ func (lr *LoggingLedgerReporter) OnLedgerTransaction() {
 
 // OnEndLedger logs that the session has finished processing the ledger
 func (lr *LoggingLedgerReporter) OnEndLedger(err error, shutdown bool) {
-	elapsedTime := time.Now().Sub(lr.startTime)
+	elapsedTime := time.Since(lr.startTime)
 	log.WithField("sequence", lr.sequence).
 		WithField("numEntries", lr.entryCount).
 		WithError(err).
