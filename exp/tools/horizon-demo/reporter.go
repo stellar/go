@@ -9,6 +9,7 @@ import (
 // LoggingStateReporter logs the progress of a session running its
 // state pipelines
 type LoggingStateReporter struct {
+	log         *log.Entry
 	logInterval int
 	entryCount  int
 	sequence    uint32
@@ -17,14 +18,17 @@ type LoggingStateReporter struct {
 
 // NewLoggingStateReporter constructs a new LoggingStateReporter instance
 func NewLoggingStateReporter(logInterval int) *LoggingStateReporter {
+	logger := log.New()
+	logger.SetLevel(log.InfoLevel)
 	return &LoggingStateReporter{
 		logInterval: logInterval,
+		log:         logger,
 	}
 }
 
 // OnStartState logs that the session has started reading from the history archive snapshot
 func (lr *LoggingStateReporter) OnStartState(sequence uint32) {
-	log.WithField("sequence", sequence).Info("Reading from History Archive Snapshot")
+	lr.log.WithField("sequence", sequence).Info("Reading from History Archive Snapshot")
 	lr.entryCount = 0
 	lr.sequence = sequence
 	lr.startTime = time.Now()
@@ -34,7 +38,7 @@ func (lr *LoggingStateReporter) OnStartState(sequence uint32) {
 func (lr *LoggingStateReporter) OnStateEntry() {
 	lr.entryCount++
 	if lr.entryCount%lr.logInterval == 0 {
-		log.WithField("sequence", lr.sequence).
+		lr.log.WithField("sequence", lr.sequence).
 			WithField("numEntries", lr.entryCount).
 			Info("Processed entries from History Archive Snapshot")
 	}
@@ -43,17 +47,18 @@ func (lr *LoggingStateReporter) OnStateEntry() {
 // OnEndState logs that the session has finished processing the history archive snapshot
 func (lr *LoggingStateReporter) OnEndState(err error, shutdown bool) {
 	elapsedTime := time.Since(lr.startTime)
-	log.WithField("sequence", lr.sequence).
+	lr.log.WithField("sequence", lr.sequence).
 		WithField("numEntries", lr.entryCount).
 		WithError(err).
 		WithField("shutdown", shutdown).
-		WithField("elapsedSeconds", elapsedTime.Seconds).
+		WithField("elapsedSeconds", elapsedTime.Seconds()).
 		Info("Finished processing History Archive Snapshot")
 }
 
 // LoggingLedgerReporter logs the progress of a session running its
 // ledger pipelines
 type LoggingLedgerReporter struct {
+	log        *log.Entry
 	entryCount int
 	sequence   uint32
 	startTime  time.Time
@@ -61,12 +66,16 @@ type LoggingLedgerReporter struct {
 
 // NewLoggingLedgerReporter constructs a new LoggingLedgerReporter instance
 func NewLoggingLedgerReporter() *LoggingLedgerReporter {
-	return &LoggingLedgerReporter{}
+	logger := log.New()
+	logger.SetLevel(log.InfoLevel)
+	return &LoggingLedgerReporter{
+		log: logger,
+	}
 }
 
 // OnNewLedger logs that the session has started reading a new ledger
 func (lr *LoggingLedgerReporter) OnNewLedger(sequence uint32) {
-	log.WithField("sequence", sequence).Info("Reading new ledger")
+	lr.log.WithField("sequence", sequence).Info("Reading new ledger")
 	lr.entryCount = 0
 	lr.sequence = sequence
 	lr.startTime = time.Now()
@@ -80,10 +89,10 @@ func (lr *LoggingLedgerReporter) OnLedgerTransaction() {
 // OnEndLedger logs that the session has finished processing the ledger
 func (lr *LoggingLedgerReporter) OnEndLedger(err error, shutdown bool) {
 	elapsedTime := time.Since(lr.startTime)
-	log.WithField("sequence", lr.sequence).
+	lr.log.WithField("sequence", lr.sequence).
 		WithField("numEntries", lr.entryCount).
 		WithError(err).
 		WithField("shutdown", shutdown).
-		WithField("elapsedSeconds", elapsedTime.Seconds).
+		WithField("elapsedSeconds", elapsedTime.Seconds()).
 		Info("Finished processing ledger")
 }

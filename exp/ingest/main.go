@@ -116,7 +116,7 @@ type reporterStateReader struct {
 
 func (r reporterStateReader) Read() (xdr.LedgerEntryChange, error) {
 	entry, err := r.StateReader.Read()
-	if err != nil {
+	if err == nil {
 		r.OnStateEntry()
 	}
 
@@ -150,7 +150,7 @@ type reporterLedgerReader struct {
 
 func (r reporterLedgerReader) Read() (io.LedgerTransaction, error) {
 	entry, err := r.LedgerReader.Read()
-	if err != nil {
+	if err == nil {
 		r.OnLedgerTransaction()
 	}
 
