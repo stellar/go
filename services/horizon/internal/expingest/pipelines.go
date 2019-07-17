@@ -11,6 +11,7 @@ import (
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	horizonProcessors "github.com/stellar/go/services/horizon/internal/expingest/processors"
 	"github.com/stellar/go/support/db"
+	"github.com/stellar/go/support/errors"
 	ilog "github.com/stellar/go/support/log"
 	"github.com/stellar/go/xdr"
 )
@@ -51,7 +52,7 @@ func buildLedgerPipeline(q *history.Q) *pipeline.LedgerPipeline {
 
 func addPipelineHooks(
 	p supportPipeline.PipelineInterface,
-	dbSession *db.Session,
+	historySession *db.Session,
 	ingestSession ingest.Session,
 ) {
 	var pipelineType string
@@ -64,10 +65,12 @@ func addPipelineHooks(
 		panic(fmt.Sprintf("Unknown pipeline type %T", p))
 	}
 
+	historyQ := &history.Q{historySession}
+
 	p.AddPreProcessingHook(func(ctx context.Context) error {
 		ledgerSeq := pipeline.GetLedgerSequenceFromContext(ctx)
 		log.WithFields(ilog.F{"ledger": ledgerSeq, "type": pipelineType}).Info("Processing ledger")
-		return dbSession.Begin()
+		return historySession.Begin()
 	})
 
 	p.AddPostProcessingHook(func(ctx context.Context, err error) error {
@@ -80,17 +83,22 @@ func addPipelineHooks(
 					"type":   pipelineType,
 					"err":    err,
 				}).
-				Error("Processing ledger")
-			return dbSession.Rollback()
+				Error("Error processing ledger")
+			return historySession.Rollback()
+		}
+
+		err = historyQ.UpdateLastLedgerExpIngest(ledgerSeq)
+		if err != nil {
+			return errors.Wrap(err, "Error updating last ingested ledger")
 		}
 
 		// Acquire write lock
 		ingestSession.UpdateLock()
 		defer ingestSession.UpdateUnlock()
 
-		err = dbSession.Commit()
+		err = historySession.Commit()
 		if err != nil {
-			return err
+			return errors.Wrap(err, "Error commiting db transaction")
 		}
 
 		log.WithFields(ilog.F{"ledger": ledgerSeq, "type": pipelineType}).Info("Processed ledger")

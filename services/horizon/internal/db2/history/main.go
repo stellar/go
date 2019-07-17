@@ -184,6 +184,12 @@ type FeeStats struct {
 	P99  null.Int `db:"p99"`
 }
 
+// KeyValueStoreRow represents a row in key value store.
+type KeyValueStoreRow struct {
+	Key   string `db:"key"`
+	Value string `db:"value"`
+}
+
 // LatestLedger represents a response from the raw LatestLedgerBaseFeeAndSequence
 // query.
 type LatestLedger struct {

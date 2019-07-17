@@ -285,7 +285,6 @@ func getSignerKey(r *http.Request, key string, required bool) (string, error) {
 
 	version, _, err := strkey.DecodeAny(val)
 	if err != nil || version == strkey.VersionByteSeed {
-		// TODO: add errInvalidValue
 		return "", problem.MakeInvalidFieldProblem(key, errors.New("invalid signer"))
 	}
 
@@ -317,8 +316,7 @@ func getAccountsIndexActionQueryParams(r *http.Request) (*indexActionQueryParams
 		return nil, errors.Wrap(err, "getting signer key")
 	}
 
-	// disableCursorValidation = true because cursors are account IDs
-	pq, err := getPageQuery(r, true)
+	pq, err := getAccountsPageQuery(r)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting page query")
 	}

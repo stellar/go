@@ -418,7 +418,7 @@ func (a *App) init() {
 	a.web.mustInstallMiddlewares(a, a.config.ConnectionTimeout)
 
 	// web.actions
-	a.web.mustInstallActions(a.config.EnableAssetStats, a.config.FriendbotURL)
+	a.web.mustInstallActions(a.config.EnableAssetStats, a.config.EnableAccountsForSigner, a.config.FriendbotURL)
 
 	// metrics and log.metrics
 	a.metrics = metrics.NewRegistry()

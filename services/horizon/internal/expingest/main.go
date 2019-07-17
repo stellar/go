@@ -24,7 +24,8 @@ type Config struct {
 }
 
 type System struct {
-	session *ingest.LiveSession
+	session  *ingest.LiveSession
+	historyQ *history.Q
 }
 
 func NewSystem(config Config) (*System, error) {
@@ -48,17 +49,32 @@ func NewSystem(config Config) (*System, error) {
 		StellarCoreClient: &stellarcore.Client{
 			URL: config.StellarCoreURL,
 		},
+
+		StateReporter:  &LoggingStateReporter{Log: log, Interval: 100000},
+		LedgerReporter: &LoggingLedgerReporter{Log: log},
 	}
 
 	addPipelineHooks(session.StatePipeline, config.HistorySession, session)
 	addPipelineHooks(session.LedgerPipeline, config.HistorySession, session)
 
-	return &System{session}, nil
+	return &System{session, historyQ}, nil
 }
 
 func (s *System) Run() {
-	log.Info("Starting ingestion system...")
-	err := s.session.Run()
+	lastIngestedLedger, err := s.historyQ.GetLastLedgerExpIngest()
+	if err != nil {
+		panic(err)
+	}
+
+	if lastIngestedLedger == 0 {
+		log.Info("Starting ingestion system from empty state...")
+		err = s.session.Run()
+	} else {
+		log.WithField("last_ledger", lastIngestedLedger).
+			Info("Resuming ingestion system from last processed ledger...")
+		err = s.session.Resume(lastIngestedLedger + 1)
+	}
+
 	if err != nil {
 		panic(err)
 	}
