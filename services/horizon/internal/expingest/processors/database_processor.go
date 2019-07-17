@@ -114,7 +114,7 @@ func (p *DatabaseProcessor) processLedgerAccountsForSigner(transaction io.Ledger
 		// can be improved by finding a diff (check performance first).
 		if change.Pre != nil {
 			preAccountEntry := change.Pre.MustAccount()
-			for signer, _ := range preAccountEntry.SignerSummary() {
+			for signer := range preAccountEntry.SignerSummary() {
 				err := p.HistoryQ.RemoveAccountSigner(preAccountEntry.AccountId.Address(), signer)
 				if err != nil {
 					return errors.Wrap(err, "Error removing a signer")

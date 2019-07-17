@@ -5,6 +5,7 @@ import (
 
 	"github.com/stellar/go/clients/stellarcore"
 	"github.com/stellar/go/exp/ingest"
+	"github.com/stellar/go/exp/ingest/ledgerbackend"
 	"github.com/stellar/go/exp/orderbook"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/support/historyarchive"
@@ -17,11 +18,16 @@ func main() {
 	}
 	defer db.Close()
 
+	ledgerBackend, err := ledgerbackend.NewDatabaseBackend("postgres://localhost:5432/core?sslmode=disable")
+	if err != nil {
+		panic(err)
+	}
+
 	orderBookGraph := orderbook.NewOrderBookGraph()
 
 	session := &ingest.LiveSession{
 		Archive:       archive(),
-		LedgerBackend: ledgerBackend(),
+		LedgerBackend: ledgerBackend,
 		StellarCoreClient: &stellarcore.Client{
 			URL: "http://localhost:11620",
 		},
