@@ -26,8 +26,11 @@ func main() {
 			URL: "http://localhost:11620",
 		},
 
-		StatePipeline:  buildStatePipeline(db, orderBookGraph),
+		StatePipeline: buildStatePipeline(db, orderBookGraph),
+		// logs every 50,000 state entries
+		StateReporter:  NewLoggingStateReporter(50000),
 		LedgerPipeline: buildLedgerPipeline(db, orderBookGraph),
+		LedgerReporter: NewLoggingLedgerReporter(),
 	}
 
 	addPipelineHooks(session.StatePipeline, db, session, orderBookGraph)

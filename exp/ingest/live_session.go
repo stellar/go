@@ -170,13 +170,24 @@ func (s *LiveSession) resume(ledgerSequence uint32, ledgerAdapter *adapters.Ledg
 			return errors.Wrap(err, "Error getting ledger")
 		}
 
+		if s.LedgerReporter != nil {
+			s.LedgerReporter.OnNewLedger(ledgerSequence)
+			ledgerReader = reporterLedgerReader{ledgerReader, s.LedgerReporter}
+		}
+
 		errChan := s.LedgerPipeline.Process(ledgerReader)
 		select {
 		case err2 := <-errChan:
 			if err2 != nil {
+				if s.LedgerReporter != nil {
+					s.LedgerReporter.OnEndLedger(err2, false)
+				}
 				return errors.Wrap(err2, "Ledger pipeline errored")
 			}
 		case <-s.standardSession.shutdown:
+			if s.LedgerReporter != nil {
+				s.LedgerReporter.OnEndLedger(nil, true)
+			}
 			s.LedgerPipeline.Shutdown()
 			return nil
 		}
@@ -187,6 +198,9 @@ func (s *LiveSession) resume(ledgerSequence uint32, ledgerAdapter *adapters.Ledg
 			return errors.Wrap(err, "Error setting cursor")
 		}
 
+		if s.LedgerReporter != nil {
+			s.LedgerReporter.OnEndLedger(nil, false)
+		}
 		s.standardSession.latestProcessedLedger = ledgerSequence
 		ledgerSequence++
 	}
@@ -218,16 +232,29 @@ func (s *LiveSession) initState(historyAdapter *adapters.HistoryArchiveAdapter, 
 	if err != nil {
 		return errors.Wrap(err, "Error getting state from history archive")
 	}
+	if s.StateReporter != nil {
+		s.StateReporter.OnStartState(sequence)
+		stateReader = reporterStateReader{stateReader, s.StateReporter}
+	}
 
 	errChan := s.StatePipeline.Process(stateReader)
 	select {
 	case err := <-errChan:
 		if err != nil {
+			if s.StateReporter != nil {
+				s.StateReporter.OnEndState(err, false)
+			}
 			return errors.Wrap(err, "State pipeline errored")
 		}
 	case <-s.standardSession.shutdown:
+		if s.StateReporter != nil {
+			s.StateReporter.OnEndState(nil, true)
+		}
 		s.StatePipeline.Shutdown()
 	}
 
+	if s.StateReporter != nil {
+		s.StateReporter.OnEndState(nil, false)
+	}
 	return nil
 }
