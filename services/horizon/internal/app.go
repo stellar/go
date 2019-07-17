@@ -16,6 +16,7 @@ import (
 	horizonContext "github.com/stellar/go/services/horizon/internal/context"
 	"github.com/stellar/go/services/horizon/internal/db2/core"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
+	"github.com/stellar/go/services/horizon/internal/expingest"
 	"github.com/stellar/go/services/horizon/internal/ingest"
 	"github.com/stellar/go/services/horizon/internal/ledger"
 	"github.com/stellar/go/services/horizon/internal/logmetrics"
@@ -49,6 +50,7 @@ type App struct {
 	submitter                    *txsub.System
 	paths                        paths.Finder
 	ingester                     *ingest.System
+	expingester                  *expingest.System
 	reaper                       *reap.System
 	ticks                        *time.Ticker
 

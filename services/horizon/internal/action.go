@@ -163,13 +163,7 @@ type indexActionQueryParams struct {
 	LedgerID         int32
 	PagingParams     db2.PageQuery
 	IncludeFailedTxs bool
-}
-
-// Fields of this struct are exported for json marshaling/unmarshaling in
-// support/render/hal package.
-type accountIndexActionQueryParams struct {
-	Signer       string
-	PagingParams db2.PageQuery
+	Signer           string
 }
 
 // Fields of this struct are exported for json marshaling/unmarshaling in
@@ -185,7 +179,7 @@ func (w *web) getAccountInfo(ctx context.Context, qp *showActionQueryParams) (in
 }
 
 // getAccountPage returns a page containing the account records.
-func (w *web) getAccountPage(ctx context.Context, qp *accountIndexActionQueryParams) (interface{}, error) {
+func (w *web) getAccountPage(ctx context.Context, qp *indexActionQueryParams) (interface{}, error) {
 	horizonSession, err := w.horizonSession(ctx)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting horizon db session")

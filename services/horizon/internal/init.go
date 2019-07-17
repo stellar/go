@@ -11,6 +11,7 @@ import (
 	metrics "github.com/rcrowley/go-metrics"
 	"github.com/stellar/go/services/horizon/internal/db2/core"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
+	"github.com/stellar/go/services/horizon/internal/expingest"
 	"github.com/stellar/go/services/horizon/internal/ingest"
 	"github.com/stellar/go/services/horizon/internal/txsub"
 	results "github.com/stellar/go/services/horizon/internal/txsub/results/db"
@@ -64,6 +65,22 @@ func initIngester(app *App) {
 
 	app.ingester.SkipCursorUpdate = app.config.SkipCursorUpdate
 	app.ingester.HistoryRetentionCount = app.config.HistoryRetentionCount
+}
+
+func initExpIngester(app *App) {
+	if !app.config.Ingest {
+		return
+	}
+
+	if !app.config.EnableAccountsForSigner {
+		return
+	}
+
+	app.expingester = expingest.New(expingest.Config{
+		HistorySession:    app.HorizonSession(context.Background()),
+		HistoryArchiveURL: HistoryArchiveURLs,
+		StellarCoreURL:    app.config.StellarCoreURL,
+	})
 }
 
 // initSentry initialized the default sentry client with the configured DSN
