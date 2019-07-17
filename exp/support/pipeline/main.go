@@ -41,16 +41,16 @@ type multiWriter struct {
 type Pipeline struct {
 	root *PipelineNode
 
-	runningMutex sync.Mutex
-	running      bool
-	shutDown     bool
-
 	preProcessingHooks  []func(context.Context) error
 	postProcessingHooks []func(context.Context, error) error
 
-	cancelledMutex sync.Mutex
-	cancelled      bool
-	cancelFunc     context.CancelFunc
+	// mutex protects internal fields that may be modified from
+	// multiple go routines.
+	mutex      sync.Mutex
+	running    bool
+	shutDown   bool
+	cancelled  bool
+	cancelFunc context.CancelFunc
 }
 
 // PipelineInterface is an interface that defines common pipeline methods
@@ -70,7 +70,6 @@ type PipelineNode struct {
 	Processor Processor
 	Children  []*PipelineNode
 
-	jobs            int
 	readEntries     int
 	readsPerSecond  int
 	queuedEntries   int
@@ -164,13 +163,6 @@ type Processor interface {
 	//    	return nil
 	//    }
 	Process(context.Context, *Store, Reader, Writer) error
-	// IsConcurrent defines if processing pipeline should start a single instance
-	// of the processor or multiple instances. Multiple instances will read
-	// from the same Reader and write to the same Writer.
-	// Example: the processor can insert entries to a DB in a single job but it
-	// probably will be faster with multiple DB writers (especially when you want
-	// to do some data conversions before inserting).
-	IsConcurrent() bool
 	// Returns processor name. Helpful for errors, debuging and reports.
 	Name() string
 	// Reset resets internal state of the processor. This is run by the pipeline

@@ -11,10 +11,12 @@ package txnbuild
 
 import (
 	"bytes"
+	"crypto/rand"
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/hex"
 	"fmt"
+	"time"
 
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/network"
@@ -196,6 +198,80 @@ func (tx *Transaction) BuildSignEncode(keypairs ...*keypair.Full) (string, error
 	}
 
 	return txeBase64, err
+}
+
+// BuildChallengeTx is a factory method that creates a valid SEP 10 challenge, for use in web authentication.
+// "timebound" is the time duration the transaction should be valid for, O means infinity.
+// More details on SEP 10: https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0010.md
+func BuildChallengeTx(serverSignerSecret, clientAccountID, anchorName, network string, timebound time.Duration) (string, error) {
+	serverKP, err := keypair.Parse(serverSignerSecret)
+	if err != nil {
+		return "", err
+	}
+
+	randomNonce, err := generateRandomNonce(64)
+	if err != nil {
+		return "", err
+	}
+
+	if len(randomNonce) != 64 {
+		return "", errors.New("64 byte long random nonce required")
+	}
+
+	// represent server signing account as SimpleAccount
+	sa := SimpleAccount{
+		AccountID: serverKP.Address(),
+		// Action needed in release: v2.0.0
+		// TODO: remove this and use "Sequence: 0" and build transaction with optional argument
+		//  (https://github.com/stellar/go/issues/1259)
+		Sequence: int64(-1),
+	}
+
+	// represent client account as SimpleAccount
+	ca := SimpleAccount{
+		AccountID: clientAccountID,
+	}
+
+	txTimebound := NewInfiniteTimeout()
+	if timebound > 0 {
+		currentTime := time.Now().UTC()
+		maxTime := currentTime.Add(timebound)
+		txTimebound = NewTimebounds(currentTime.Unix(), maxTime.Unix())
+	}
+
+	// Create a SEP 10 compatible response. See
+	// https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0010.md#response
+	tx := Transaction{
+		SourceAccount: &sa,
+		Operations: []Operation{
+			&ManageData{
+				SourceAccount: &ca,
+				Name:          anchorName + " auth",
+				Value:         randomNonce,
+			},
+		},
+		Timebounds: txTimebound,
+		Network:    network,
+		BaseFee:    uint32(100),
+	}
+
+	txeB64, err := tx.BuildSignEncode(serverKP.(*keypair.Full))
+	if err != nil {
+		return "", err
+	}
+	return txeB64, nil
+}
+
+// generateRandomNonce creates a cryptographically secure random slice of `n` bytes.
+func generateRandomNonce(n int) ([]byte, error) {
+	bytes := make([]byte, n)
+	_, err := rand.Read(bytes)
+
+	if err != nil {
+		return []byte{}, err
+	}
+
+	return bytes, err
 }
 
 // HashHex returns the hex-encoded hash of the transaction.

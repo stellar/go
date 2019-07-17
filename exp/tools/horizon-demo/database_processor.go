@@ -150,10 +150,6 @@ func (p *DatabaseProcessor) processLedgerAccountsForSigner(transaction io.Ledger
 	return nil
 }
 
-func (p *DatabaseProcessor) IsConcurrent() bool {
-	return true
-}
-
 func (p *DatabaseProcessor) Name() string {
 	return fmt.Sprintf("DatabaseProcessor (%s)", p.Action)
 }

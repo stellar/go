@@ -46,7 +46,7 @@ func (p *Pipeline) printNodeStatus(node *PipelineNode, level int) {
 	}
 
 	fmt.Printf(
-		"└ %s%s read=%d (queued=%d rps=%d) wrote=%d (w/r ratio = %1.5f) concurrent=%t jobs=%d\n",
+		"└ %s%s read=%d (queued=%d rps=%d) wrote=%d (w/r ratio = %1.5f)\n",
 		icon,
 		node.Processor.Name(),
 		node.readEntries,
@@ -54,18 +54,7 @@ func (p *Pipeline) printNodeStatus(node *PipelineNode, level int) {
 		node.readsPerSecond,
 		node.wroteEntries,
 		wrRatio,
-		node.Processor.IsConcurrent(),
-		node.jobs,
 	)
-
-	if node.jobs > 1 {
-		fmt.Print(strings.Repeat("  ", level))
-		fmt.Print("  ")
-		for i := 0; i < node.jobs; i++ {
-			fmt.Print("• ")
-		}
-		fmt.Println("")
-	}
 
 	for _, child := range node.Children {
 		p.printNodeStatus(child, level+1)
@@ -130,8 +119,8 @@ func (p *Pipeline) resetNode(node *PipelineNode) {
 
 func (p *Pipeline) Process(reader Reader) <-chan error {
 	// Protects internal fields
-	p.runningMutex.Lock()
-	defer p.runningMutex.Unlock()
+	p.mutex.Lock()
+	defer p.mutex.Unlock()
 
 	p.setRunning(true)
 	p.reset()
@@ -160,43 +149,34 @@ func (p *Pipeline) processStateNode(ctx context.Context, store *Store, node *Pip
 
 	var wg sync.WaitGroup
 
-	jobs := 1
-	if node.Processor.IsConcurrent() {
-		jobs = 20
-	}
-
-	node.jobs = jobs
-
 	writer := &multiWriter{
 		writers:    outputs,
-		closeAfter: jobs,
+		closeAfter: 1,
 	}
 
 	var processingError error
 
-	for i := 1; i <= jobs; i++ {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
 
-			err := node.Processor.Process(ctx, store, reader, writer)
-			if err != nil {
-				// Protects from cancelling twice and sending multiple errors to err channel
-				p.cancelledMutex.Lock()
-				defer p.cancelledMutex.Unlock()
+		err := node.Processor.Process(ctx, store, reader, writer)
+		if err != nil {
+			// Protects from cancelling twice and sending multiple errors to err channel
+			p.mutex.Lock()
+			defer p.mutex.Unlock()
 
-				if p.cancelled {
-					return
-				}
-
-				wrappedErr := errors.Wrap(err, fmt.Sprintf("Processor %s errored", node.Processor.Name()))
-
-				p.cancelled = true
-				p.cancelFunc()
-				processingError = wrappedErr
+			if p.cancelled {
+				return
 			}
-		}()
-	}
+
+			wrappedErr := errors.Wrap(err, fmt.Sprintf("Processor %s errored", node.Processor.Name()))
+
+			p.cancelled = true
+			p.cancelFunc()
+			processingError = wrappedErr
+		}
+	}()
 
 	finishUpdatingStats := p.updateStats(node, reader, writer)
 
@@ -232,9 +212,9 @@ func (p *Pipeline) processStateNode(ctx context.Context, store *Store, node *Pip
 				}
 			}
 
-			p.runningMutex.Lock()
+			p.mutex.Lock()
 			p.setRunning(false)
-			p.runningMutex.Unlock()
+			p.mutex.Unlock()
 
 			errorChan <- returnError
 		} else {
@@ -249,13 +229,9 @@ func (p *Pipeline) processStateNode(ctx context.Context, store *Store, node *Pip
 // Shutdown stops the processing. Please note that post-processing hooks will not
 // be executed when Shutdown() is called.
 func (p *Pipeline) Shutdown() {
-	// Protects from cancelling twice
-	p.cancelledMutex.Lock()
-	defer p.cancelledMutex.Unlock()
-
 	// Protects internal fields
-	p.runningMutex.Lock()
-	defer p.runningMutex.Unlock()
+	p.mutex.Lock()
+	defer p.mutex.Unlock()
 
 	if p.cancelled {
 		return
