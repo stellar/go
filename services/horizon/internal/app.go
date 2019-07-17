@@ -104,6 +104,10 @@ func (a *App) Serve() {
 
 	go a.run()
 
+	if a.expingester != nil {
+		go a.expingester.Run()
+	}
+
 	var err error
 	if a.config.TLSCert != "" {
 		err = srv.ListenAndServeTLS(a.config.TLSCert, a.config.TLSKey)
@@ -123,6 +127,9 @@ func (a *App) Serve() {
 // Close cancels the app. It does not close DB connections - use App.CloseDB().
 func (a *App) Close() {
 	a.cancel()
+	if a.expingester != nil {
+		a.expingester.Shutdown()
+	}
 	a.ticks.Stop()
 }
 
@@ -386,6 +393,9 @@ func (a *App) init() {
 
 	// ingester
 	initIngester(a)
+
+	// expingester
+	initExpIngester(a)
 
 	// txsub
 	initSubmissionSystem(a)
