@@ -20,15 +20,12 @@ func buildStatePipeline(q *history.Q) *pipeline.StatePipeline {
 	statePipeline := &pipeline.StatePipeline{}
 
 	statePipeline.SetRoot(
-		statePipeline.Node(&processors.RootProcessor{}).
+		statePipeline.Node(&processors.EntryTypeFilter{Type: xdr.LedgerEntryTypeAccount}).
 			Pipe(
-				statePipeline.Node(&processors.EntryTypeFilter{Type: xdr.LedgerEntryTypeAccount}).
-					Pipe(
-						statePipeline.Node(&horizonProcessors.DatabaseProcessor{
-							HistoryQ: q,
-							Action:   horizonProcessors.AccountsForSigner,
-						}),
-					),
+				statePipeline.Node(&horizonProcessors.DatabaseProcessor{
+					HistoryQ: q,
+					Action:   horizonProcessors.AccountsForSigner,
+				}),
 			),
 	)
 
@@ -74,6 +71,13 @@ func addPipelineHooks(
 	})
 
 	p.AddPostProcessingHook(func(ctx context.Context, err error) error {
+		defer func() {
+			err := historySession.Rollback()
+			if err != nil {
+				log.WithField("err", err).Error("Rollback error")
+			}
+		}()
+
 		ledgerSeq := pipeline.GetLedgerSequenceFromContext(ctx)
 
 		if err != nil {
@@ -84,17 +88,13 @@ func addPipelineHooks(
 					"err":    err,
 				}).
 				Error("Error processing ledger")
-			return historySession.Rollback()
+			return err
 		}
 
 		err = historyQ.UpdateLastLedgerExpIngest(ledgerSeq)
 		if err != nil {
 			return errors.Wrap(err, "Error updating last ingested ledger")
 		}
-
-		// Acquire write lock
-		ingestSession.UpdateLock()
-		defer ingestSession.UpdateUnlock()
 
 		err = historySession.Commit()
 		if err != nil {

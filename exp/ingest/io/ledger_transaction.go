@@ -18,7 +18,7 @@ type Change struct {
 }
 
 // AccountSignersChanged returns true if account signers have changed.
-// Notice: this includes master key changes too!
+// Notice: this will return true on master key changes too!
 func (c *Change) AccountSignersChanged() bool {
 	if c.Type != xdr.LedgerEntryTypeAccount {
 		panic("This should not be called on changes other than Account changes")
@@ -42,12 +42,12 @@ func (c *Change) AccountSignersChanged() bool {
 	preAccountEntry := c.Pre.MustAccount()
 	postAccountEntry := c.Post.MustAccount()
 
-	if len(c.Pre.MustAccount().Signers) != len(c.Post.MustAccount().Signers) {
-		return true
-	}
-
 	preSigners := preAccountEntry.SignerSummary()
 	postSigners := postAccountEntry.SignerSummary()
+
+	if len(preSigners) != len(postSigners) {
+		return true
+	}
 
 	for postSigner, postWeight := range postSigners {
 		preWeight, exist := preSigners[postSigner]
