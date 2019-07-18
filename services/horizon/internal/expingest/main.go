@@ -61,22 +61,32 @@ func NewSystem(config Config) (*System, error) {
 }
 
 func (s *System) Run() {
-	lastIngestedLedger, err := s.historyQ.GetLastLedgerExpIngest()
-	if err != nil {
-		panic(err)
-	}
+	for {
+		lastIngestedLedger, err := s.historyQ.GetLastLedgerExpIngest()
+		if err != nil {
+			log.WithField("error", err).Error("Error getting last ingested ledger")
+			time.Sleep(time.Second)
+			continue
+		}
 
-	if lastIngestedLedger == 0 {
-		log.Info("Starting ingestion system from empty state...")
-		err = s.session.Run()
-	} else {
-		log.WithField("last_ledger", lastIngestedLedger).
-			Info("Resuming ingestion system from last processed ledger...")
-		err = s.session.Resume(lastIngestedLedger + 1)
-	}
+		if lastIngestedLedger == 0 {
+			log.Info("Starting ingestion system from empty state...")
+			err = s.session.Run()
+		} else {
+			log.WithField("last_ledger", lastIngestedLedger).
+				Info("Resuming ingestion system from last processed ledger...")
+			err = s.session.Resume(lastIngestedLedger + 1)
+		}
 
-	if err != nil {
-		panic(err)
+		if err != nil {
+			log.WithField("error", err).Error("Error returned from ingest.LiveSession")
+			time.Sleep(time.Second)
+			continue
+		}
+
+		// err == nil returned from Session means shutdown
+		log.Info("Session shut down")
+		break
 	}
 }
 

@@ -7,6 +7,7 @@ import (
 
 	"github.com/stellar/go/exp/ingest/io"
 	supportPipeline "github.com/stellar/go/exp/support/pipeline"
+	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/xdr"
 	"github.com/stretchr/testify/suite"
 )
@@ -18,13 +19,13 @@ func TestDatabaseProcessorTestSuiteState(t *testing.T) {
 type DatabaseProcessorTestSuiteState struct {
 	suite.Suite
 	processor       *DatabaseProcessor
-	mockQ           *MockHistoryQSigners
+	mockQ           *history.MockQSigners
 	mockStateReader *io.MockStateReader
 	mockStateWriter *io.MockStateWriter
 }
 
 func (s *DatabaseProcessorTestSuiteState) SetupTest() {
-	s.mockQ = &MockHistoryQSigners{}
+	s.mockQ = &history.MockQSigners{}
 	s.mockStateReader = &io.MockStateReader{}
 	s.mockStateWriter = &io.MockStateWriter{}
 

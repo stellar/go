@@ -62,7 +62,7 @@ func AccountInfo(ctx context.Context, cq *core.Q, addr string) (*protocol.Accoun
 // the new ingestion system is fully integrated, this endpoint can be
 // used to find accounts for signer but also accounts for assets,
 // home domain, inflation_dest etc.
-func AccountPage(ctx context.Context, hq *history.Q, signer string, pq db2.PageQuery) (hal.Page, error) {
+func AccountPage(ctx context.Context, hq history.QSigners, signer string, pq db2.PageQuery) (hal.Page, error) {
 	lastIngestedLedger, err := hq.GetLastLedgerExpIngest()
 	if err != nil {
 		return hal.Page{}, errors.Wrap(err, "error loading last ledger ingested by expingest")
