@@ -8,7 +8,8 @@ import (
 var _ Session = &SingleLedgerSession{}
 
 func (s *SingleLedgerSession) Run() error {
-	s.ensureRunOnce()
+	s.setRunningState(true)
+	defer s.setRunningState(false)
 	s.shutdown = make(chan bool)
 
 	historyAdapter := adapters.MakeHistoryArchiveAdapter(s.Archive)

@@ -8,19 +8,12 @@ import (
 	"time"
 
 	"github.com/stellar/go/exp/ingest"
-	"github.com/stellar/go/exp/ingest/ledgerbackend"
 	"github.com/stellar/go/exp/ingest/pipeline"
 	"github.com/stellar/go/exp/ingest/processors"
 	"github.com/stellar/go/exp/orderbook"
 	supportPipeline "github.com/stellar/go/exp/support/pipeline"
 	"github.com/stellar/go/xdr"
 )
-
-func ledgerBackend() ledgerbackend.LedgerBackend {
-	return &ledgerbackend.DatabaseBackend{
-		DataSourceName: "postgres://localhost:5432/core?sslmode=disable",
-	}
-}
 
 func buildStatePipeline(db *Database, orderBookGraph *orderbook.OrderBookGraph) *pipeline.StatePipeline {
 	statePipeline := &pipeline.StatePipeline{}

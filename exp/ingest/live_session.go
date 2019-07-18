@@ -23,7 +23,8 @@ func (s *LiveSession) Run() error {
 		return errors.Wrap(err, "Validation error")
 	}
 
-	s.ensureRunOnce()
+	s.setRunningState(true)
+	defer s.setRunningState(false)
 
 	historyAdapter := adapters.MakeHistoryArchiveAdapter(s.Archive)
 	currentLedger, err := historyAdapter.GetLatestLedgerSequence()

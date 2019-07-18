@@ -16,6 +16,7 @@ import (
 	horizonContext "github.com/stellar/go/services/horizon/internal/context"
 	"github.com/stellar/go/services/horizon/internal/db2/core"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
+	"github.com/stellar/go/services/horizon/internal/expingest"
 	"github.com/stellar/go/services/horizon/internal/ingest"
 	"github.com/stellar/go/services/horizon/internal/ledger"
 	"github.com/stellar/go/services/horizon/internal/logmetrics"
@@ -49,6 +50,7 @@ type App struct {
 	submitter                    *txsub.System
 	paths                        paths.Finder
 	ingester                     *ingest.System
+	expingester                  *expingest.System
 	reaper                       *reap.System
 	ticks                        *time.Ticker
 
@@ -102,6 +104,10 @@ func (a *App) Serve() {
 
 	go a.run()
 
+	if a.expingester != nil {
+		go a.expingester.Run()
+	}
+
 	var err error
 	if a.config.TLSCert != "" {
 		err = srv.ListenAndServeTLS(a.config.TLSCert, a.config.TLSKey)
@@ -121,6 +127,9 @@ func (a *App) Serve() {
 // Close cancels the app. It does not close DB connections - use App.CloseDB().
 func (a *App) Close() {
 	a.cancel()
+	if a.expingester != nil {
+		a.expingester.Shutdown()
+	}
 	a.ticks.Stop()
 }
 
@@ -385,6 +394,9 @@ func (a *App) init() {
 	// ingester
 	initIngester(a)
 
+	// expingester
+	initExpIngester(a)
+
 	// txsub
 	initSubmissionSystem(a)
 
@@ -406,7 +418,7 @@ func (a *App) init() {
 	a.web.mustInstallMiddlewares(a, a.config.ConnectionTimeout)
 
 	// web.actions
-	a.web.mustInstallActions(a.config.EnableAssetStats, a.config.FriendbotURL)
+	a.web.mustInstallActions(a.config.EnableAssetStats, a.config.EnableAccountsForSigner, a.config.FriendbotURL)
 
 	// metrics and log.metrics
 	a.metrics = metrics.NewRegistry()

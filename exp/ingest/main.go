@@ -17,8 +17,8 @@ type standardSession struct {
 	rwLock                sync.RWMutex
 	latestProcessedLedger uint32
 
-	doneMutex sync.Mutex
-	done      bool
+	runningMutex sync.Mutex
+	running      bool
 }
 
 // LiveSession initializes the ledger state using `Archive` and `statePipeline`,

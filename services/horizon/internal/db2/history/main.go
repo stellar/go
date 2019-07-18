@@ -8,6 +8,7 @@ import (
 
 	sq "github.com/Masterminds/squirrel"
 	"github.com/guregu/null"
+	"github.com/stellar/go/services/horizon/internal/db2"
 	"github.com/stellar/go/support/db"
 	"github.com/stellar/go/xdr"
 )
@@ -184,6 +185,12 @@ type FeeStats struct {
 	P99  null.Int `db:"p99"`
 }
 
+// KeyValueStoreRow represents a row in key value store.
+type KeyValueStoreRow struct {
+	Key   string `db:"key"`
+	Value string `db:"value"`
+}
+
 // LatestLedger represents a response from the raw LatestLedgerBaseFeeAndSequence
 // query.
 type LatestLedger struct {
@@ -265,6 +272,15 @@ type OperationsQ struct {
 // portion of the horizon database.
 type Q struct {
 	*db.Session
+}
+
+// QSigners defines signer related queries.
+type QSigners interface {
+	GetLastLedgerExpIngest() (uint32, error)
+	UpdateLastLedgerExpIngest(ledgerSequence uint32) error
+	AccountsForSigner(signer string, page db2.PageQuery) ([]AccountSigner, error)
+	CreateAccountSigner(account, signer string, weight int32) error
+	RemoveAccountSigner(account, signer string) error
 }
 
 // TotalOrderID represents the ID portion of rows that are identified by the

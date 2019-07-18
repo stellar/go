@@ -8,5 +8,12 @@ CREATE TABLE accounts_signers (
     PRIMARY KEY (signer, account)
 );
 
+CREATE TABLE key_value_store (
+  key varchar(255) NOT NULL,
+  value varchar(255) NOT NULL,
+  PRIMARY KEY (key)
+);
+
 -- +migrate Down
 DROP TABLE accounts_signers cascade;
+DROP TABLE key_value_store cascade;
