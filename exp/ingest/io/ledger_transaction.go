@@ -17,7 +17,7 @@ type Change struct {
 	Post *xdr.LedgerEntryData
 }
 
-// AccountSignersChanged returns true if account signers have changes.
+// AccountSignersChanged returns true if account signers have changed.
 // Notice: this includes master key changes too!
 func (c *Change) AccountSignersChanged() bool {
 	if c.Type != xdr.LedgerEntryTypeAccount {
@@ -52,11 +52,11 @@ func (c *Change) AccountSignersChanged() bool {
 	for postSigner, postWeight := range postSigners {
 		preWeight, exist := preSigners[postSigner]
 		if !exist {
-			return false
+			return true
 		}
 
 		if preWeight != postWeight {
-			return false
+			return true
 		}
 	}
 
