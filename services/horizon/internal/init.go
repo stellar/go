@@ -80,6 +80,7 @@ func initExpIngester(app *App) {
 	app.expingester, err = expingest.NewSystem(expingest.Config{
 		CoreSession:    app.CoreSession(context.Background()),
 		HistorySession: app.HorizonSession(context.Background()),
+		// TODO:
 		// Use the first archive for now. We don't have a mechanism to
 		// use multiple archives at the same time currently.
 		HistoryArchiveURL: app.config.HistoryArchiveURLs[0],

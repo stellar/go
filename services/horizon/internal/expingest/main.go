@@ -1,4 +1,4 @@
-// Package newingest contains the new ingestion system for horizon.
+// Package expingest contains the new ingestion system for horizon.
 // It currently runs completely independent of the old one, that means
 // that the new system can be ledgers behind/ahead the old system.
 package expingest

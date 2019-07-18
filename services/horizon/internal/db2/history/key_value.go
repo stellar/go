@@ -12,6 +12,9 @@ const (
 	lastLedgerKey = "exp_ingest_last_ledger"
 )
 
+// GetLastLedgerExpIngest returns the last ledger ingested by expingest system
+// in Horizon. Returns 0 if no value has been previously set. This can be set
+// using UpdateLastLedgerExpIngest.
 func (q *Q) GetLastLedgerExpIngest() (uint32, error) {
 	lastIngestedLedger, err := q.getValueFromStore(lastLedgerKey)
 	if err != nil {
@@ -23,13 +26,15 @@ func (q *Q) GetLastLedgerExpIngest() (uint32, error) {
 	} else {
 		ledgerSequence, err := strconv.ParseUint(lastIngestedLedger, 10, 32)
 		if err != nil {
-			return 0, errors.Wrap(err, "Error convering lastIngestedLedger value")
+			return 0, errors.Wrap(err, "Error converting lastIngestedLedger value")
 		}
 
 		return uint32(ledgerSequence), nil
 	}
 }
 
+// UpdateLastLedgerExpIngest upsets the last ledger ingested by expingest system.
+// Can be read using GetLastLedgerExpIngest.
 func (q *Q) UpdateLastLedgerExpIngest(ledgerSequence uint32) error {
 	return q.updateValueInStore(
 		lastLedgerKey,
