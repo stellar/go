@@ -56,7 +56,7 @@ func AccountInfo(ctx context.Context, cq *core.Q, addr string) (*protocol.Accoun
 }
 
 // AccountPage returns a page containing the account records that
-// have a `signer` as a signer.
+// have `signer` as a signer.
 // This doesn't return full account details resource because of the
 // limitations of existing ingestion architecture. In a future, when
 // the new ingestion system is fully integrated, this endpoint can be
