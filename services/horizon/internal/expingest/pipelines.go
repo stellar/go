@@ -71,12 +71,7 @@ func addPipelineHooks(
 	})
 
 	p.AddPostProcessingHook(func(ctx context.Context, err error) error {
-		defer func() {
-			err := historySession.Rollback()
-			if err != nil {
-				log.WithField("err", err).Error("Rollback error")
-			}
-		}()
+		defer historySession.Rollback()
 
 		ledgerSeq := pipeline.GetLedgerSequenceFromContext(ctx)
 
