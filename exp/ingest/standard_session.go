@@ -1,12 +1,13 @@
 package ingest
 
-func (s *standardSession) ensureRunOnce() {
-	s.doneMutex.Lock()
-	if s.done {
-		panic("Session already running or done...")
+func (s *standardSession) setRunningState(newState bool) {
+	s.runningMutex.Lock()
+	defer s.runningMutex.Unlock()
+
+	if s.running && newState {
+		panic("Session is running...")
 	}
-	s.done = true
-	s.doneMutex.Unlock()
+	s.running = newState
 }
 
 func (s *standardSession) Shutdown() {
