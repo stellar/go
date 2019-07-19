@@ -89,7 +89,7 @@ var configOpts = []*support.ConfigOption{
 		ConfigKey:   &config.HistoryArchiveURLs,
 		OptType:     types.String,
 		Required:    false,
-		FlagDefault: "https://history.stellar.org/prd/core-live/core_live_001/,https://history.stellar.org/prd/core-live/core_live_002/,https://history.stellar.org/prd/core-live/core_live_003/",
+		FlagDefault: "",
 		CustomSetValue: func(co *support.ConfigOption) {
 			stringOfUrls := viper.GetString(co.Name)
 			urlStrings := strings.Split(stringOfUrls, ",")
