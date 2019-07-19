@@ -67,7 +67,7 @@ func TestRawObjectUnmarshaler(t *testing.T) {
 	}
 }
 
-func TestJSONStringUnmarshaler(t *testing.T) {
+func TestOptStringUnmarshaler(t *testing.T) {
 	cases := []struct {
 		input []byte
 		isSet bool
@@ -80,7 +80,7 @@ func TestJSONStringUnmarshaler(t *testing.T) {
 
 	for _, tc := range cases {
 		var out struct {
-			Input JSONString `json:"input"`
+			Input OptString `json:"input"`
 		}
 
 		err := json.Unmarshal(tc.input, &out)

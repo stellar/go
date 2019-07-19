@@ -61,13 +61,13 @@ func isSpace(c byte) bool {
 
 // This type is used to tell whether a JSON key is presented with its value
 // being an empty string or is not presented.
-type JSONString struct {
+type OptString struct {
 	Value string
 	Valid bool
 	IsSet bool
 }
 
-func (s *JSONString) UnmarshalJSON(in []byte) error {
+func (s *OptString) UnmarshalJSON(in []byte) error {
 	s.IsSet = true
 
 	if string(in) == "null" {
