@@ -76,7 +76,7 @@ func (action *OperationIndexAction) SSE(stream *sse.Stream) error {
 		func() {
 			stream.SetLimit(int(action.PagingParams.Limit))
 			operationRecords := action.OperationRecords[stream.SentCount():]
-			var transactionRecords = action.TransactionRecords
+			var transactionRecords []history.Transaction
 			if action.IncludeTransactions {
 				transactionRecords = action.TransactionRecords[stream.SentCount():]
 			}
