@@ -46,7 +46,7 @@ This project is maintained by the Stellar Development Foundation.
   	}
 
 	// Send the transaction to the network
-	resp, err := client.SubmitTransactionXDR(txeBase64)
+	resp, err := client.SubmitTransactionXDR(txe)
   	if err != nil {
     		log.Println(err)
   	}
