@@ -1,13 +1,16 @@
 package horizon
 
 import (
+	"context"
 	"encoding/json"
+	"net/http/httptest"
 	"testing"
 	"time"
 
 	"github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/protocols/horizon/operations"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
+	"github.com/stellar/go/services/horizon/internal/render/sse"
 	"github.com/stellar/go/services/horizon/internal/test"
 )
 
@@ -209,6 +212,27 @@ func TestOperationActions_IncludeTransactions(t *testing.T) {
 	}
 
 	ht.Assert.Equal(withoutTransactions, withTransactions)
+}
+
+func TestOperationActions_SSE(t *testing.T) {
+	tt := test.Start(t).Scenario("failed_transactions")
+	defer tt.Finish()
+
+	ctx := context.Background()
+	stream := sse.NewStream(ctx, httptest.NewRecorder())
+	oa := OperationIndexAction{
+		Action: *NewTestAction(ctx, "/operations?account_id=GA5WBPYA5Y4WAEHXWR2UKO2UO4BUGHUQ74EUPKON2QHV4WRHOIRNKKH2"),
+	}
+
+	oa.SSE(stream)
+	tt.Require.NoError(oa.Err)
+
+	streamWithTransactions := sse.NewStream(ctx, httptest.NewRecorder())
+	oaWithTransactions := OperationIndexAction{
+		Action: *NewTestAction(ctx, "/operations?account_id=GA5WBPYA5Y4WAEHXWR2UKO2UO4BUGHUQ74EUPKON2QHV4WRHOIRNKKH2&join=transactions"),
+	}
+	oaWithTransactions.SSE(streamWithTransactions)
+	tt.Require.NoError(oaWithTransactions.Err)
 }
 
 func TestOperationActions_Show(t *testing.T) {

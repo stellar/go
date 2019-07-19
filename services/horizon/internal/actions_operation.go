@@ -76,7 +76,10 @@ func (action *OperationIndexAction) SSE(stream *sse.Stream) error {
 		func() {
 			stream.SetLimit(int(action.PagingParams.Limit))
 			operationRecords := action.OperationRecords[stream.SentCount():]
-			transactionRecords := action.TransactionRecords[stream.SentCount():]
+			var transactionRecords []history.Transaction
+			if action.IncludeTransactions {
+				transactionRecords = action.TransactionRecords[stream.SentCount():]
+			}
 			for i, operationRecord := range operationRecords {
 				ledger, found := action.Ledgers.Records[operationRecord.LedgerSequence()]
 				if !found {
