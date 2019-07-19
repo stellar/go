@@ -5,7 +5,7 @@ import (
 	supportPipeline "github.com/stellar/go/exp/support/pipeline"
 )
 
-func (p *LedgerPipeline) Node(processor LedgerProcessor) *supportPipeline.PipelineNode {
+func LedgerNode(processor LedgerProcessor) *supportPipeline.PipelineNode {
 	return &supportPipeline.PipelineNode{
 		Processor: &ledgerProcessorWrapper{processor},
 	}

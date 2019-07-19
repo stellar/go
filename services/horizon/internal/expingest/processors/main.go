@@ -1,6 +1,7 @@
 package processors
 
 import (
+	"github.com/stellar/go/exp/orderbook"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 )
 
@@ -18,4 +19,11 @@ const (
 type DatabaseProcessor struct {
 	HistoryQ history.QSigners
 	Action   DatabaseProcessorActionType
+}
+
+// OrderbookProcessor is a processor (both state and ledger) that's responsible
+// for updating orderbook graph with new/updated/removed offers. Orderbook graph
+// can be later used for path finding.
+type OrderbookProcessor struct {
+	OrderBookGraph *orderbook.OrderBookGraph
 }

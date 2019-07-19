@@ -4,7 +4,9 @@ import (
 	"github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/services/horizon/internal/actions"
 	"github.com/stellar/go/services/horizon/internal/paths"
+	"github.com/stellar/go/services/horizon/internal/render/problem"
 	"github.com/stellar/go/services/horizon/internal/resourceadapter"
+	"github.com/stellar/go/services/horizon/internal/simplepath"
 	"github.com/stellar/go/support/render/hal"
 )
 
@@ -33,19 +35,21 @@ func (action *PathIndexAction) JSON() error {
 
 func (action *PathIndexAction) loadQuery() {
 	action.Query.DestinationAmount = action.GetPositiveAmount("destination_amount")
-	action.Query.DestinationAddress = action.GetAddress("destination_account", actions.RequiredParam)
 	action.Query.DestinationAsset = action.GetAsset("destination_")
+	action.Query.SourceAccount = action.Base.GetAccountID("source_account")
 }
 
 func (action *PathIndexAction) loadSourceAssets() {
-	action.Err = action.CoreQ().AssetsForAddress(
-		&action.Query.SourceAssets,
-		action.GetAddress("source_account"),
+	action.Query.SourceAssets, action.Query.SourceAssetBalances, action.Err = action.CoreQ().AssetsForAddress(
+		action.Query.SourceAccount.Address(),
 	)
 }
 
 func (action *PathIndexAction) loadRecords() {
 	action.Records, action.Err = action.App.paths.Find(action.Query, action.App.config.MaxPathLength)
+	if action.Err == simplepath.ErrEmptyInMemoryOrderBook {
+		action.Err = problem.StillIngesting
+	}
 }
 
 func (action *PathIndexAction) loadPage() {

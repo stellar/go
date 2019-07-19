@@ -241,6 +241,14 @@ func (graph *OrderBookGraph) findPaths(
 	return paths, nil
 }
 
+// IsEmpty returns true if the orderbook graph is not populated
+func (graph *OrderBookGraph) IsEmpty() bool {
+	graph.lock.RLock()
+	defer graph.lock.RUnlock()
+
+	return len(graph.edgesForSellingAsset) == 0
+}
+
 // FindPaths returns a list of payment paths originating from a source account
 // and ending with a given destinaton asset and amount.
 func (graph *OrderBookGraph) FindPaths(

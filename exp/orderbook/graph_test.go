@@ -441,6 +441,10 @@ func TestAddOfferOrderBook(t *testing.T) {
 func TestUpdateOfferOrderBook(t *testing.T) {
 	graph := NewOrderBookGraph()
 
+	if !graph.IsEmpty() {
+		t.Fatal("expected graph to be empty")
+	}
+
 	err := graph.
 		AddOffer(dollarOffer).
 		AddOffer(threeEurOffer).
@@ -451,6 +455,10 @@ func TestUpdateOfferOrderBook(t *testing.T) {
 		Apply()
 	if err != nil {
 		t.Fatalf("unexpected error %v", err)
+	}
+
+	if graph.IsEmpty() {
+		t.Fatal("expected graph to not be empty")
 	}
 
 	eurUsdOffer := xdr.OfferEntry{
@@ -693,6 +701,26 @@ func TestRemoveOfferOrderBook(t *testing.T) {
 	}
 
 	assertGraphEquals(t, graph, expectedGraph)
+
+	err = graph.
+		RemoveOffer(quarterOffer.OfferId).
+		RemoveOffer(fiftyCentsOffer.OfferId).
+		RemoveOffer(eurOffer.OfferId).
+		RemoveOffer(twoEurOffer.OfferId).
+		RemoveOffer(threeEurOffer.OfferId).
+		RemoveOffer(eurUsdOffer.OfferId).
+		Apply()
+	if err != nil {
+		t.Fatalf("unexpected error %v", err)
+	}
+
+	expectedGraph.edgesForSellingAsset = map[string]edgeSet{}
+	expectedGraph.tradingPairForOffer = map[xdr.Int64]tradingPair{}
+	assertGraphEquals(t, graph, expectedGraph)
+
+	if !graph.IsEmpty() {
+		t.Fatal("expected graph to be empty")
+	}
 }
 
 func TestConsumeOffers(t *testing.T) {

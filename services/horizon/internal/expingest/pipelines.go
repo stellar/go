@@ -7,6 +7,7 @@ import (
 	"github.com/stellar/go/exp/ingest"
 	"github.com/stellar/go/exp/ingest/pipeline"
 	"github.com/stellar/go/exp/ingest/processors"
+	"github.com/stellar/go/exp/orderbook"
 	supportPipeline "github.com/stellar/go/exp/support/pipeline"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	horizonProcessors "github.com/stellar/go/services/horizon/internal/expingest/processors"
@@ -16,41 +17,107 @@ import (
 	"github.com/stellar/go/xdr"
 )
 
-func buildStatePipeline(q *history.Q) *pipeline.StatePipeline {
+func accountForSignerStateNode(q *history.Q) *supportPipeline.PipelineNode {
+	return pipeline.StateNode(&processors.EntryTypeFilter{Type: xdr.LedgerEntryTypeAccount}).
+		Pipe(
+			pipeline.StateNode(&horizonProcessors.DatabaseProcessor{
+				HistoryQ: q,
+				Action:   horizonProcessors.AccountsForSigner,
+			}),
+		)
+}
+func orderBookStateNode(graph *orderbook.OrderBookGraph) *supportPipeline.PipelineNode {
+	return pipeline.StateNode(&processors.EntryTypeFilter{Type: xdr.LedgerEntryTypeOffer}).
+		Pipe(
+			pipeline.StateNode(&horizonProcessors.OrderbookProcessor{
+				OrderBookGraph: graph,
+			}),
+		)
+}
+
+func buildStatePipeline(children []*supportPipeline.PipelineNode) *pipeline.StatePipeline {
 	statePipeline := &pipeline.StatePipeline{}
 
 	statePipeline.SetRoot(
-		statePipeline.Node(&processors.EntryTypeFilter{Type: xdr.LedgerEntryTypeAccount}).
-			Pipe(
-				statePipeline.Node(&horizonProcessors.DatabaseProcessor{
-					HistoryQ: q,
-					Action:   horizonProcessors.AccountsForSigner,
-				}),
-			),
+		pipeline.StateNode(&processors.RootProcessor{}).
+			Pipe(children...),
 	)
 
 	return statePipeline
 }
 
-func buildLedgerPipeline(q *history.Q) *pipeline.LedgerPipeline {
-	ledgerPipeline := &pipeline.LedgerPipeline{}
-
-	ledgerPipeline.SetRoot(
-		ledgerPipeline.Node(&processors.RootProcessor{}).Pipe(
-			ledgerPipeline.Node(&horizonProcessors.DatabaseProcessor{
+func accountForSignerLedgerNode(
+	q *history.Q,
+	accountsForSignerFilter *processors.LedgerFilter,
+) *supportPipeline.PipelineNode {
+	return pipeline.LedgerNode(accountsForSignerFilter).
+		Pipe(
+			pipeline.LedgerNode(&horizonProcessors.DatabaseProcessor{
 				HistoryQ: q,
 				Action:   horizonProcessors.AccountsForSigner,
 			}),
-		),
+		)
+}
+func orderBookLedgerNode(
+	graph *orderbook.OrderBookGraph,
+	orderbookFilter *processors.LedgerFilter,
+) *supportPipeline.PipelineNode {
+	return pipeline.LedgerNode(orderbookFilter).
+		Pipe(
+			pipeline.LedgerNode(&horizonProcessors.OrderbookProcessor{
+				OrderBookGraph: graph,
+			}),
+		)
+}
+
+func buildLedgerPipeline(children []*supportPipeline.PipelineNode) *pipeline.LedgerPipeline {
+	ledgerPipeline := &pipeline.LedgerPipeline{}
+
+	ledgerPipeline.SetRoot(
+		pipeline.LedgerNode(&processors.RootProcessor{}).Pipe(children...),
 	)
 
 	return ledgerPipeline
+}
+
+func buildOrderBookStatePipeline(graph *orderbook.OrderBookGraph) *pipeline.StatePipeline {
+	orderbookPipeline := buildStatePipeline([]*supportPipeline.PipelineNode{
+		orderBookStateNode(graph),
+	})
+	orderbookPipeline.AddPostProcessingHook(func(ctx context.Context, err error) error {
+		ledgerSeq := pipeline.GetLedgerSequenceFromContext(ctx)
+
+		if err != nil {
+			log.
+				WithFields(ilog.F{
+					"ledger": ledgerSeq,
+					"err":    err,
+				}).
+				Error("Error processing ledger")
+			return nil
+		}
+
+		if err := graph.Apply(); err != nil {
+			log.
+				WithFields(ilog.F{
+					"ledger": ledgerSeq,
+					"err":    err,
+				}).
+				Error("Error applying orderbook changes")
+			return err
+		}
+
+		return nil
+	})
+
+	return orderbookPipeline
 }
 
 func addPipelineHooks(
 	p supportPipeline.PipelineInterface,
 	historySession *db.Session,
 	ingestSession ingest.Session,
+	graph *orderbook.OrderBookGraph,
 ) {
 	var pipelineType string
 	switch p.(type) {
@@ -86,19 +153,22 @@ func addPipelineHooks(
 			return err
 		}
 
-		err = historyQ.UpdateLastLedgerExpIngest(ledgerSeq)
-		if err != nil {
+		if err := historyQ.UpdateLastLedgerExpIngest(ledgerSeq); err != nil {
 			return errors.Wrap(err, "Error updating last ingested ledger")
 		}
 
-		err = historyQ.UpdateExpIngestVersion(CurrentVersion)
-		if err != nil {
+		if err := historyQ.UpdateExpIngestVersion(CurrentVersion); err != nil {
 			return errors.Wrap(err, "Error updating expingest version")
 		}
 
-		err = historySession.Commit()
-		if err != nil {
+		if err := historySession.Commit(); err != nil {
 			return errors.Wrap(err, "Error commiting db transaction")
+		}
+
+		if graph != nil {
+			if err := graph.Apply(); err != nil {
+				return errors.Wrap(err, "Error applying order book changes")
+			}
 		}
 
 		log.WithFields(ilog.F{"ledger": ledgerSeq, "type": pipelineType}).Info("Processed ledger")

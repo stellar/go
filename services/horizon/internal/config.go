@@ -71,4 +71,10 @@ type Config struct {
 	// EnableAccountsForSigner is a feature flag that enables an experimental "accounts for signer"
 	// endpoint. This endpoint uses a new ingestion system based primarily on historical archives.
 	EnableAccountsForSigner bool
+	// EnableInMemoryPathFinding is a feature flag that enables an experimental path finding
+	// endpoint implementation. The new path finding implementation uses an in memory orderbook
+	// and is substantially faster than the existing implementation which needs to do several
+	// queries to stellar core's database. This endpoint uses a new ingestion system based primarily
+	// on historical archives.
+	EnableInMemoryPathFinding bool
 }

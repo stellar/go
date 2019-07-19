@@ -6,8 +6,25 @@ import (
 	"github.com/stellar/go/services/horizon/internal/db2/core"
 	"github.com/stellar/go/services/horizon/internal/paths"
 	"github.com/stellar/go/services/horizon/internal/test"
+	"github.com/stellar/go/strkey"
 	"github.com/stellar/go/xdr"
 )
+
+func stringToAccountID(t *testing.T, address string) xdr.AccountId {
+	raw, err := strkey.Decode(strkey.VersionByteAccountID, address)
+	if err != nil {
+		t.Fatalf("could not decode address %v", err)
+	}
+	var key xdr.Uint256
+	copy(key[:], raw)
+
+	accountID, err := xdr.NewAccountId(xdr.PublicKeyTypePublicKeyTypeEd25519, key)
+	if err != nil {
+		t.Fatalf("could not construct account id %v", err)
+	}
+
+	return accountID
+}
 
 func TestFinder(t *testing.T) {
 	tt := test.Start(t).Scenario("paths")
@@ -40,10 +57,9 @@ func TestFinder(t *testing.T) {
 		"GDSBCQO34HWPGUGQSP3QBFEXVTSR2PW46UIGTHVWGWJGQKH3AFNHXHXN")
 
 	query := paths.Query{
-		DestinationAddress: "GAEDTJ4PPEFVW5XV2S7LUXBEHNQMX5Q2GM562RJGOQG7GVCE5H3HIB4V",
-		DestinationAsset:   eur,
-		DestinationAmount:  xdr.Int64(200000000), // 20.0000000
-		SourceAssets:       []xdr.Asset{usd},
+		DestinationAsset:  eur,
+		DestinationAmount: xdr.Int64(200000000), // 20.0000000
+		SourceAssets:      []xdr.Asset{usd},
 	}
 
 	p, err := finder.Find(query, MaxPathLength)
@@ -109,10 +125,9 @@ func TestFinder(t *testing.T) {
 	//  regression: paths that involve native currencies can be found
 
 	query = paths.Query{
-		DestinationAddress: "GDSBCQO34HWPGUGQSP3QBFEXVTSR2PW46UIGTHVWGWJGQKH3AFNHXHXN",
-		DestinationAsset:   native,
-		DestinationAmount:  xdr.Int64(1),
-		SourceAssets:       []xdr.Asset{usd, native},
+		DestinationAsset:  native,
+		DestinationAmount: xdr.Int64(1),
+		SourceAssets:      []xdr.Asset{usd, native},
 	}
 	p, err = finder.Find(query, MaxPathLength)
 	if tt.Assert.NoError(err) {
@@ -145,10 +160,9 @@ func TestFinder(t *testing.T) {
 		"GDSBCQO34HWPGUGQSP3QBFEXVTSR2PW46UIGTHVWGWJGQKH3AFNHXHXN")
 
 	query = paths.Query{
-		DestinationAddress: "GDSBCQO34HWPGUGQSP3QBFEXVTSR2PW46UIGTHVWGWJGQKH3AFNHXHXN",
-		DestinationAsset:   ccc,
-		DestinationAmount:  xdr.Int64(100000000), // 10.0
-		SourceAssets:       []xdr.Asset{aaa},
+		DestinationAsset:  ccc,
+		DestinationAmount: xdr.Int64(100000000), // 10.0
+		SourceAssets:      []xdr.Asset{aaa},
 	}
 	p, err = finder.Find(query, MaxPathLength)
 	if tt.Assert.NoError(err) {
