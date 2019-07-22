@@ -65,9 +65,9 @@ commands:
   # test_packages performs tests on all packages of the monorepo.
   test_packages:
     steps:
-      - run:
-          name: Install dependencies
-          command: sudo apt-get update && sudo apt-get install postgresql-client-9.6 mariadb-client-10.1
+      # - run:
+      #     name: Install dependencies
+      #     command: sudo apt-get update && sudo apt-get install postgresql-client-9.6 mariadb-client-10.1
       - run:
           name: Install dockerize
           command: wget https://github.com/jwilder/dockerize/releases/download/$DOCKERIZE_VERSION/dockerize-linux-amd64-$DOCKERIZE_VERSION.tar.gz && sudo tar -C /usr/local/bin -xzvf dockerize-linux-amd64-$DOCKERIZE_VERSION.tar.gz && rm dockerize-linux-amd64-$DOCKERIZE_VERSION.tar.gz
@@ -199,13 +199,13 @@ jobs:
       - run:
           name: "Publish release on GitHub"
           command: |
-            if [ -d "./dist" ] 
+            if [ -d "./dist" ]
             then
               go get github.com/tcnksm/ghr
               ghr -t ${GITHUB_TOKEN} -u ${CIRCLE_PROJECT_USERNAME} -r ${CIRCLE_PROJECT_REPONAME} -c ${CIRCLE_SHA1} ${CIRCLE_TAG} ./dist/
             else
                 echo "./dist does not exist. No binaries to publish for ${CIRCLE_TAG}."
-            fi            
+            fi
 #-------------------------------------------------------------------------#
 # Workflows orchestrate jobs and make sure they run in the right sequence #
 #-------------------------------------------------------------------------#
