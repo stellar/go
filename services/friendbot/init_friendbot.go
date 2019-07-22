@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"net/http"
 
@@ -109,7 +110,12 @@ func createMinionAccounts(botAccount internal.Account, botKeypair *keypair.Full,
 		}
 		resp, err := hclient.SubmitTransactionXDR(txe)
 		if err != nil {
-			log.Print(resp)
+			log.Println(resp)
+			switch e := err.(type) {
+			case *horizonclient.Error:
+				problemString := fmt.Sprintf("Problem[Type=%s, Title=%s, Status=%d, Detail=%s, Extras=%v]", e.Problem.Type, e.Problem.Title, e.Problem.Status, e.Problem.Detail, e.Problem.Extras)
+				return minions, errors.Wrap(errors.Wrap(e, problemString), "submitting create accounts tx")
+			}
 			return minions, errors.Wrap(err, "submitting create accounts tx")
 		}
 
