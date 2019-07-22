@@ -65,9 +65,9 @@ commands:
   # test_packages performs tests on all packages of the monorepo.
   test_packages:
     steps:
-      # - run:
-      #     name: Install dependencies
-      #     command: sudo apt-get update && sudo apt-get install postgresql-client-9.6 mariadb-client-10.1
+      - run:
+          name: Install dependencies
+          command: sudo apt-get update && sudo apt-get install postgresql-client mariadb-client
       - run:
           name: Install dockerize
           command: wget https://github.com/jwilder/dockerize/releases/download/$DOCKERIZE_VERSION/dockerize-linux-amd64-$DOCKERIZE_VERSION.tar.gz && sudo tar -C /usr/local/bin -xzvf dockerize-linux-amd64-$DOCKERIZE_VERSION.tar.gz && rm dockerize-linux-amd64-$DOCKERIZE_VERSION.tar.gz
