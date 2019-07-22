@@ -99,7 +99,7 @@ jobs:
   check_code_1_10:
     working_directory: /go/src/github.com/stellar/go
     docker:
-      - image: circleci/golang:1.10
+      - image: circleci/golang:1.10-stretch
     steps:
       - govet
 
@@ -107,7 +107,7 @@ jobs:
   check_code_1_11:
     working_directory: /go/src/github.com/stellar/go
     docker:
-      - image: circleci/golang:1.11
+      - image: circleci/golang:1.11-stretch
     steps:
       - govet
 
@@ -115,7 +115,7 @@ jobs:
   check_code_1_12:
     working_directory: /go/src/github.com/stellar/go
     docker:
-      - image: circleci/golang:1.12
+      - image: circleci/golang:1.12-stretch
     steps:
       - install_go_deps
       - gofmt
@@ -126,7 +126,7 @@ jobs:
   test_code_1_10:
     working_directory: /go/src/github.com/stellar/go
     docker:
-      - image: circleci/golang:1.10
+      - image: circleci/golang:1.10-stretch
         environment:
           PGHOST: localhost
           PGPORT: 5432
@@ -146,7 +146,7 @@ jobs:
   test_code_1_11:
     working_directory: /go/src/github.com/stellar/go
     docker:
-      - image: circleci/golang:1.11
+      - image: circleci/golang:1.11-stretch
         environment:
           PGHOST: localhost
           PGPORT: 5432
@@ -166,7 +166,7 @@ jobs:
   test_code_1_12:
     working_directory: /go/src/github.com/stellar/go
     docker:
-      - image: circleci/golang:1.12
+      - image: circleci/golang:1.12-stretch
         environment:
           PGHOST: localhost
           PGPORT: 5432
@@ -189,7 +189,7 @@ jobs:
   publish_artifacts:
     working_directory: /go/src/github.com/stellar/go
     docker:
-      - image: circleci/golang:1.11
+      - image: circleci/golang:1.11-stretch
     steps:
       - check_deprecations
       - install_go_deps
@@ -199,13 +199,13 @@ jobs:
       - run:
           name: "Publish release on GitHub"
           command: |
-            if [ -d "./dist" ] 
+            if [ -d "./dist" ]
             then
               go get github.com/tcnksm/ghr
               ghr -t ${GITHUB_TOKEN} -u ${CIRCLE_PROJECT_USERNAME} -r ${CIRCLE_PROJECT_REPONAME} -c ${CIRCLE_SHA1} ${CIRCLE_TAG} ./dist/
             else
                 echo "./dist does not exist. No binaries to publish for ${CIRCLE_TAG}."
-            fi            
+            fi
 #-------------------------------------------------------------------------#
 # Workflows orchestrate jobs and make sure they run in the right sequence #
 #-------------------------------------------------------------------------#
