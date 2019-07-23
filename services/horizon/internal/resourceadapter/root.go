@@ -21,6 +21,7 @@ func PopulateRoot(
 	coreSupportedProtocolVersion int32,
 	friendBotURL *url.URL,
 ) {
+	dest.ExpHorizonSequence = ledgerState.ExpHistoryLatest
 	dest.HorizonSequence = ledgerState.HistoryLatest
 	dest.HistoryElderSequence = ledgerState.HistoryElder
 	dest.CoreSequence = ledgerState.CoreLatest

@@ -203,6 +203,12 @@ func (a *App) UpdateLedgerState() {
 		return
 	}
 
+	next.ExpHistoryLatest, err = a.HistoryQ().GetLastLedgerExpIngest()
+	if err != nil {
+		logErr(err, "failed to load the oldest known exp ledger state from history DB")
+		return
+	}
+
 	ledger.SetState(next)
 }
 
