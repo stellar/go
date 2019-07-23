@@ -60,7 +60,7 @@ func isSpace(c byte) bool {
 }
 
 // This type is used to tell whether a JSON key is presented with its value
-// being an empty string or is not presented.
+// being a JSON null value or is not presented.
 type OptString struct {
 	Value string
 	Valid bool
