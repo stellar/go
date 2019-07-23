@@ -16,6 +16,13 @@ import (
 	ilog "github.com/stellar/go/support/log"
 )
 
+const (
+	// CurrentVersion reflects the latest version of the ingestion
+	// algorithm. This value is stored in KV store and is used to decide
+	// if there's a need to reprocess the ledger state or reingest data.
+	CurrentVersion = 1
+)
+
 var log = ilog.DefaultLogger.WithField("service", "expingest")
 
 type Config struct {
