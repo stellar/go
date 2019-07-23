@@ -91,6 +91,11 @@ func addPipelineHooks(
 			return errors.Wrap(err, "Error updating last ingested ledger")
 		}
 
+		err = historyQ.UpdateExpIngestVersion(CurrentVersion)
+		if err != nil {
+			return errors.Wrap(err, "Error updating expingest version")
+		}
+
 		err = historySession.Commit()
 		if err != nil {
 			return errors.Wrap(err, "Error commiting db transaction")

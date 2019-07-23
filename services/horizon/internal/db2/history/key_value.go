@@ -9,6 +9,7 @@ import (
 )
 
 const (
+	ingestVersion = "exp_ingest_version"
 	lastLedgerKey = "exp_ingest_last_ledger"
 )
 
@@ -38,6 +39,34 @@ func (q *Q) GetLastLedgerExpIngest() (uint32, error) {
 func (q *Q) UpdateLastLedgerExpIngest(ledgerSequence uint32) error {
 	return q.updateValueInStore(
 		lastLedgerKey,
+		strconv.FormatUint(uint64(ledgerSequence), 10),
+	)
+}
+
+// GetExpIngestVersion returns the exp ingest version. Returns zero
+// if there is no value.
+func (q *Q) GetExpIngestVersion() (int, error) {
+	expVersion, err := q.getValueFromStore(ingestVersion)
+	if err != nil {
+		return 0, err
+	}
+
+	if expVersion == "" {
+		return 0, nil
+	} else {
+		version, err := strconv.ParseInt(expVersion, 10, 32)
+		if err != nil {
+			return 0, errors.Wrap(err, "Error converting expVersion value")
+		}
+
+		return int(version), nil
+	}
+}
+
+// UpdateExpIngestVersion upsets the exp ingest version.
+func (q *Q) UpdateExpIngestVersion(ledgerSequence int) error {
+	return q.updateValueInStore(
+		ingestVersion,
 		strconv.FormatUint(uint64(ledgerSequence), 10),
 	)
 }
