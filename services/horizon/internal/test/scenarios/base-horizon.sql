@@ -983,3 +983,9 @@ ALTER TABLE ONLY history_trades
 -- PostgreSQL database dump complete
 --
 
+CREATE TABLE key_value_store (
+  key varchar(255) NOT NULL,
+  value varchar(255) NOT NULL,
+  PRIMARY KEY (key)
+);
+
