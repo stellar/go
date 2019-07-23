@@ -102,7 +102,8 @@ func (s *LiveSession) Resume(ledgerSequence uint32) error {
 // This gives you full security if data in stellar-core backend can be trusted
 // (ex. you run it in your infrastructure).
 // The hashes of actual buckets of this HAS file are checked using
-// historyarchive.XdrStream.SetExpectedHash (this is done in MemoryStateReader).
+// historyarchive.XdrStream.SetExpectedHash (this is done in
+// SingleLedgerStateReader).
 func (s *LiveSession) validateBucketList(
 	ledgerSequence uint32,
 	historyAdapter *adapters.HistoryArchiveAdapter,

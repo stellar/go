@@ -17,13 +17,15 @@ type readResult struct {
 	e           error
 }
 
-// MemoryStateReader is an in-memory streaming implementation that reads ledger entries
-// from buckets for a given HistoryArchiveState.
-// MemoryStateReader hides internal structure of buckets from the user so entries returned
-// by `Read()` are exactly the ledger entries present at the given ledger.
-type MemoryStateReader struct {
+// SingleLedgerStateReader is a streaming implementation that reads ledger entries
+// from buckets for a given HistoryArchiveState (single ledger/checkpoint).
+// SingleLedgerStateReader hides internal structure of buckets from the user so
+// entries returned by `Read()` are exactly the ledger entries present at the given
+// ledger.
+type SingleLedgerStateReader struct {
 	has        *historyarchive.HistoryArchiveState
 	archive    historyarchive.ArchiveInterface
+	tempStore  StateReaderTempStore
 	sequence   uint32
 	readChan   chan readResult
 	streamOnce sync.Once
@@ -34,19 +36,39 @@ type MemoryStateReader struct {
 	disableBucketListHashValidation bool
 }
 
-// Ensure MemoryStateReader implements StateReader
-var _ StateReader = &MemoryStateReader{}
+// Ensure SingleLedgerStateReader implements StateReader
+var _ StateReader = &SingleLedgerStateReader{}
 
-// MakeMemoryStateReader is a factory method for MemoryStateReader
-func MakeMemoryStateReader(archive historyarchive.ArchiveInterface, sequence uint32, bufferSize uint16) (*MemoryStateReader, error) {
-	has, e := archive.GetCheckpointHAS(sequence)
-	if e != nil {
-		return nil, fmt.Errorf("unable to get checkpoint HAS at ledger sequence %d: %s", sequence, e)
+// StateReaderTempStore is an interface that must be implemented by stores that
+// hold temporary objects for state reader.
+type StateReaderTempStore interface {
+	Open() error
+	Set(string, bool) error
+	Get(string) (bool, error)
+	Close() error
+}
+
+// MakeSingleLedgerStateReader is a factory method for SingleLedgerStateReader
+func MakeSingleLedgerStateReader(
+	archive historyarchive.ArchiveInterface,
+	tempStore StateReaderTempStore,
+	sequence uint32,
+	bufferSize uint16,
+) (*SingleLedgerStateReader, error) {
+	has, err := archive.GetCheckpointHAS(sequence)
+	if err != nil {
+		return nil, fmt.Errorf("unable to get checkpoint HAS at ledger sequence %d: %s", sequence, err)
 	}
 
-	return &MemoryStateReader{
+	err = tempStore.Open()
+	if err != nil {
+		return nil, errors.Wrap(err, "unable to get open temp store")
+	}
+
+	return &SingleLedgerStateReader{
 		has:        &has,
 		archive:    archive,
+		tempStore:  tempStore,
 		sequence:   sequence,
 		readChan:   make(chan readResult, bufferSize),
 		streamOnce: sync.Once{},
@@ -76,13 +98,18 @@ func MakeMemoryStateReader(archive historyarchive.ArchiveInterface, sequence uin
 // In such algorithm we just need to keep 2 maps with `bool` values that require
 // much less memory space.  The memory requirements will be lowered when CAP-0020
 // is live. Finally, we can require `ingest/pipeline.StateProcessor` to return
-// entry types it needs so that `MemoryStateReader` will only stream entry types
+// entry types it needs so that `SingleLedgerStateReader` will only stream entry types
 // required by a given pipeline.
-func (msr *MemoryStateReader) streamBuckets() {
-	defer close(msr.readChan)
-	defer msr.closeOnce.Do(msr.close)
+func (msr *SingleLedgerStateReader) streamBuckets() {
+	defer func() {
+		err := msr.tempStore.Close()
+		if err != nil {
+			msr.readChan <- msr.error(errors.New("Error closing tempStore"))
+		}
 
-	seen := map[string]bool{}
+		msr.closeOnce.Do(msr.close)
+		close(msr.readChan)
+	}()
 
 	var buckets []string
 	for i := 0; i < len(msr.has.CurrentBuckets); i++ {
@@ -112,17 +139,14 @@ func (msr *MemoryStateReader) streamBuckets() {
 			return
 		}
 
-		if shouldContinue := msr.streamBucketContents(hash, seen); !shouldContinue {
+		if shouldContinue := msr.streamBucketContents(hash); !shouldContinue {
 			break
 		}
 	}
 }
 
 // streamBucketContents pushes value onto the read channel, returning false when the channel needs to be closed otherwise true
-func (msr *MemoryStateReader) streamBucketContents(
-	hash historyarchive.Hash,
-	seen map[string]bool,
-) bool {
+func (msr *SingleLedgerStateReader) streamBucketContents(hash historyarchive.Hash) bool {
 	rdr, e := msr.archive.GetXdrStreamForHash(hash)
 	if e != nil {
 		msr.readChan <- msr.error(fmt.Errorf("cannot get xdr stream for hash '%s': %s", hash.String(), e))
@@ -200,7 +224,13 @@ LoopBucketEntry:
 				return false
 			}
 
-			if !seen[h] {
+			seen, err := msr.tempStore.Get(h)
+			if err != nil {
+				msr.readChan <- msr.error(errors.Wrap(err, "Error reading from tempStore"))
+				return false
+			}
+
+			if !seen {
 				// Return LEDGER_ENTRY_STATE changes only now.
 				liveEntry := entry.MustLiveEntry()
 				entryChange := xdr.LedgerEntryChange{
@@ -208,10 +238,19 @@ LoopBucketEntry:
 					State: &liveEntry,
 				}
 				msr.readChan <- readResult{entryChange, nil}
-				seen[h] = true
+
+				err := msr.tempStore.Set(h, true)
+				if err != nil {
+					msr.readChan <- msr.error(errors.Wrap(err, "Error writing to tempStore"))
+					return false
+				}
 			}
 		case xdr.BucketEntryTypeDeadentry:
-			seen[h] = true
+			err := msr.tempStore.Set(h, true)
+			if err != nil {
+				msr.readChan <- msr.error(errors.Wrap(err, "Error writing to tempStore"))
+				return false
+			}
 		default:
 			msr.readChan <- msr.error(fmt.Errorf("Unexpected entry type %d: %d@%s", entry.Type, n, hash.String()))
 			return false
@@ -230,12 +269,12 @@ LoopBucketEntry:
 }
 
 // GetSequence impl.
-func (msr *MemoryStateReader) GetSequence() uint32 {
+func (msr *SingleLedgerStateReader) GetSequence() uint32 {
 	return msr.sequence
 }
 
 // Read returns a new ledger entry change on each call, returning io.EOF when the stream ends.
-func (msr *MemoryStateReader) Read() (xdr.LedgerEntryChange, error) {
+func (msr *SingleLedgerStateReader) Read() (xdr.LedgerEntryChange, error) {
 	msr.streamOnce.Do(func() {
 		go msr.streamBuckets()
 	})
@@ -253,16 +292,16 @@ func (msr *MemoryStateReader) Read() (xdr.LedgerEntryChange, error) {
 	return result.entryChange, nil
 }
 
-func (msr *MemoryStateReader) error(err error) readResult {
+func (msr *SingleLedgerStateReader) error(err error) readResult {
 	return readResult{xdr.LedgerEntryChange{}, err}
 }
 
-func (msr *MemoryStateReader) close() {
+func (msr *SingleLedgerStateReader) close() {
 	close(msr.done)
 }
 
 // Close should be called when reading is finished.
-func (msr *MemoryStateReader) Close() error {
+func (msr *SingleLedgerStateReader) Close() error {
 	msr.closeOnce.Do(msr.close)
 	return nil
 }
