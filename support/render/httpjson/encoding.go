@@ -1,6 +1,10 @@
 package httpjson
 
-import "github.com/stellar/go/support/errors"
+import (
+	"encoding/json"
+
+	"github.com/stellar/go/support/errors"
+)
 
 // ErrNotJSONObject is returned when Object.UnmarshalJSON is called
 // with bytes not representing a valid json object.
@@ -53,4 +57,30 @@ func (o *RawObject) UnmarshalJSON(in []byte) error {
 // https://github.com/golang/go/blob/9f193fbe31d7ffa5f6e71a6387cbcf4636306660/src/encoding/json/scanner.go#L160-L162
 func isSpace(c byte) bool {
 	return c == ' ' || c == '\t' || c == '\r' || c == '\n'
+}
+
+// This type is used to tell whether a JSON key is presented with its value
+// being a JSON null value or is not presented.
+type OptString struct {
+	Value string
+	Valid bool
+	IsSet bool
+}
+
+func (s *OptString) UnmarshalJSON(in []byte) error {
+	s.IsSet = true
+
+	if string(in) == "null" {
+		s.Valid = false
+		return nil
+	}
+
+	var val string
+	if err := json.Unmarshal(in, &val); err != nil {
+		return err
+	}
+
+	s.Value = val
+	s.Valid = true
+	return nil
 }
