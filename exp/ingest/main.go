@@ -4,6 +4,7 @@ import (
 	"sync"
 
 	"github.com/stellar/go/clients/stellarcore"
+	"github.com/stellar/go/exp/ingest/io"
 	"github.com/stellar/go/exp/ingest/ledgerbackend"
 	"github.com/stellar/go/exp/ingest/pipeline"
 	"github.com/stellar/go/support/historyarchive"
@@ -33,6 +34,10 @@ type LiveSession struct {
 	StellarCoreCursor string
 	StatePipeline     *pipeline.StatePipeline
 	LedgerPipeline    *pipeline.LedgerPipeline
+
+	// StateTempStore is a store used to hold temporary objects generated during
+	// state processing. If nil, defaults to io.MemoryStateReaderTempStore.
+	StateTempStore io.StateReaderTempStore
 }
 
 // SingleLedgerSession initializes the ledger state using `Archive` and `StatePipeline`
@@ -44,6 +49,9 @@ type SingleLedgerSession struct {
 	Archive        *historyarchive.Archive
 	LedgerSequence uint32
 	StatePipeline  *pipeline.StatePipeline
+	// StateTempStore is a store used to hold temporary objects generated during
+	// state processing. If nil, defaults to io.MemoryStateReaderTempStore.
+	StateTempStore io.StateReaderTempStore
 }
 
 // Session is an implementation of a ingesting scenario. Some useful sessions

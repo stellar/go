@@ -5,13 +5,15 @@ import (
 
 	"github.com/stellar/go/clients/stellarcore"
 	"github.com/stellar/go/exp/ingest"
+	"github.com/stellar/go/exp/ingest/io"
 	"github.com/stellar/go/exp/orderbook"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/support/historyarchive"
 )
 
 func main() {
-	db, err := NewDatabase("postgres://localhost:5432/horizondemo?sslmode=disable")
+	dsn := "postgres://localhost:5432/horizondemo?sslmode=disable"
+	db, err := NewDatabase(dsn)
 	if err != nil {
 		panic(err)
 	}
@@ -28,6 +30,7 @@ func main() {
 
 		StatePipeline:  buildStatePipeline(db, orderBookGraph),
 		LedgerPipeline: buildLedgerPipeline(db, orderBookGraph),
+		StateTempStore: &io.PostgresStateReaderTempStore{DSN: dsn},
 	}
 
 	addPipelineHooks(session.StatePipeline, db, session, orderBookGraph)

@@ -40,10 +40,13 @@ type SingleLedgerStateReader struct {
 var _ StateReader = &SingleLedgerStateReader{}
 
 // StateReaderTempStore is an interface that must be implemented by stores that
-// hold temporary objects for state reader.
+// hold temporary objects for state reader. The implementation does not need
+// to be thread-safe.
 type StateReaderTempStore interface {
 	Open() error
 	Set(string, bool) error
+	// Get returns value from the store. Of the value has not been set, it
+	// should return false.
 	Get(string) (bool, error)
 	Close() error
 }

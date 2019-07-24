@@ -215,7 +215,12 @@ func (s *LiveSession) validate() error {
 }
 
 func (s *LiveSession) initState(historyAdapter *adapters.HistoryArchiveAdapter, sequence uint32) error {
-	stateReader, err := historyAdapter.GetState(sequence)
+	var tempStore io.StateReaderTempStore = &io.MemoryStateReaderTempStore{}
+	if s.StateTempStore != nil {
+		tempStore = s.StateTempStore
+	}
+
+	stateReader, err := historyAdapter.GetState(sequence, tempStore)
 	if err != nil {
 		return errors.Wrap(err, "Error getting state from history archive")
 	}

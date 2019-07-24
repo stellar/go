@@ -1,8 +1,9 @@
 package io
 
 // MemoryStateReaderTempStore is an in-memory implementation of
-// StateReaderTempStore. As of July 2019 this requires ~4GB of memory
-// for pubnet ledger state processing.
+// StateReaderTempStore. As of July 2019 this requires up to ~4GB of
+// memory for pubnet ledger state processing. The internal structure is
+// dereferenced after the store is closed.
 type MemoryStateReaderTempStore struct {
 	m map[string]bool
 }

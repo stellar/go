@@ -2,6 +2,7 @@ package ingest
 
 import (
 	"github.com/stellar/go/exp/ingest/adapters"
+	"github.com/stellar/go/exp/ingest/io"
 	"github.com/stellar/go/support/errors"
 )
 
@@ -36,7 +37,12 @@ func (s *SingleLedgerSession) Resume(ledgerSequence uint32) error {
 }
 
 func (s *SingleLedgerSession) processState(historyAdapter *adapters.HistoryArchiveAdapter, sequence uint32) error {
-	stateReader, err := historyAdapter.GetState(sequence)
+	var tempStore io.StateReaderTempStore = &io.MemoryStateReaderTempStore{}
+	if s.StateTempStore != nil {
+		tempStore = s.StateTempStore
+	}
+
+	stateReader, err := historyAdapter.GetState(sequence, tempStore)
 	if err != nil {
 		return errors.Wrap(err, "Error getting state from history archive")
 	}
