@@ -79,6 +79,21 @@ func (graph *OrderBookGraph) Apply() error {
 	return nil
 }
 
+// Offers returns a list of offers contained in the order book
+func (graph *OrderBookGraph) Offers() []xdr.OfferEntry {
+	graph.lock.RLock()
+	defer graph.lock.RUnlock()
+
+	offers := []xdr.OfferEntry{}
+	for _, edges := range graph.edgesForSellingAsset {
+		for _, offersForEdge := range edges {
+			offers = append(offers, offersForEdge...)
+		}
+	}
+
+	return offers
+}
+
 // Batch creates a new batch of order book updates which can be applied
 // on this graph
 func (graph *OrderBookGraph) batch() *orderBookBatchedUpdates {

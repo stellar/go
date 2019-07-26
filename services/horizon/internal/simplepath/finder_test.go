@@ -6,25 +6,8 @@ import (
 	"github.com/stellar/go/services/horizon/internal/db2/core"
 	"github.com/stellar/go/services/horizon/internal/paths"
 	"github.com/stellar/go/services/horizon/internal/test"
-	"github.com/stellar/go/strkey"
 	"github.com/stellar/go/xdr"
 )
-
-func stringToAccountID(t *testing.T, address string) xdr.AccountId {
-	raw, err := strkey.Decode(strkey.VersionByteAccountID, address)
-	if err != nil {
-		t.Fatalf("could not decode address %v", err)
-	}
-	var key xdr.Uint256
-	copy(key[:], raw)
-
-	accountID, err := xdr.NewAccountId(xdr.PublicKeyTypePublicKeyTypeEd25519, key)
-	if err != nil {
-		t.Fatalf("could not construct account id %v", err)
-	}
-
-	return accountID
-}
 
 func TestFinder(t *testing.T) {
 	tt := test.Start(t).Scenario("paths")
