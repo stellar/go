@@ -86,6 +86,7 @@ func buildOrderBookStatePipeline(graph *orderbook.OrderBookGraph) *pipeline.Stat
 	})
 	orderbookPipeline.AddPostProcessingHook(func(ctx context.Context, err error) error {
 		ledgerSeq := pipeline.GetLedgerSequenceFromContext(ctx)
+		defer graph.Discard()
 
 		if err != nil {
 			log.
@@ -139,6 +140,7 @@ func addPipelineHooks(
 
 	p.AddPostProcessingHook(func(ctx context.Context, err error) error {
 		defer historySession.Rollback()
+		defer graph.Discard()
 
 		ledgerSeq := pipeline.GetLedgerSequenceFromContext(ctx)
 

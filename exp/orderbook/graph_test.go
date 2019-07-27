@@ -591,6 +591,41 @@ func TestUpdateOfferOrderBook(t *testing.T) {
 	assertGraphEquals(t, graph, expectedGraph)
 }
 
+func TestDiscard(t *testing.T) {
+	graph := NewOrderBookGraph()
+
+	graph.
+		AddOffer(dollarOffer).
+		AddOffer(threeEurOffer).
+		AddOffer(eurOffer).
+		AddOffer(twoEurOffer).
+		AddOffer(quarterOffer).
+		AddOffer(fiftyCentsOffer).
+		Discard()
+	if err := graph.Apply(); err != nil {
+		t.Fatalf("unexpected error %v", err)
+	}
+	if !graph.IsEmpty() {
+		t.Fatal("expected graph to be empty")
+	}
+
+	err := graph.
+		AddOffer(dollarOffer).
+		Apply()
+	if err != nil {
+		t.Fatalf("unexpected error %v", err)
+	}
+	if graph.IsEmpty() {
+		t.Fatal("expected graph to be not empty")
+	}
+
+	expectedOffers := []xdr.OfferEntry{dollarOffer}
+	assertOfferListEquals(t, graph.Offers(), expectedOffers)
+
+	graph.AddOffer(threeEurOffer).Discard()
+	assertOfferListEquals(t, graph.Offers(), expectedOffers)
+}
+
 func TestRemoveOfferOrderBook(t *testing.T) {
 	graph := NewOrderBookGraph()
 
