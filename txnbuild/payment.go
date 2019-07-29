@@ -51,3 +51,21 @@ func (p *Payment) BuildXDR() (xdr.Operation, error) {
 	SetOpSourceAccount(&op, p.SourceAccount)
 	return op, nil
 }
+
+func (p *Payment) FromXDR(xdrOp xdr.Operation) error {
+	p.SourceAccount = &SimpleAccount{AccountID: xdrOp.SourceAccount.Address()}
+	result, ok := xdrOp.Body.GetPaymentOp()
+	if !ok {
+		return errors.New("error parsing payment operation from xdr")
+	}
+	p.Destination = result.Destination.Address()
+	p.Amount = amount.String(result.Amount)
+
+	asset, err := assetFromXDR(result.Asset)
+	if err != nil {
+		return errors.Wrap(err, "error parsing payment operation from xdr")
+	}
+	p.Asset = asset
+
+	return nil
+}

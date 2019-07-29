@@ -18,3 +18,24 @@ func SetOpSourceAccount(op *xdr.Operation, sourceAccount Account) {
 	opSourceAccountID.SetAddress(sourceAccount.GetAccountID())
 	op.SourceAccount = &opSourceAccountID
 }
+
+func operationFromXDR(xdrOp xdr.Operation) (Operation, error) {
+	var newOp Operation
+	var err error
+	switch xdrOp.Body.Type {
+	case xdr.OperationTypeCreateAccount:
+		var op CreateAccount
+		err = op.FromXDR(xdrOp)
+		newOp = &op
+	case xdr.OperationTypePayment:
+		var op Payment
+		err = op.FromXDR(xdrOp)
+		newOp = &op
+	}
+
+	if err != nil {
+		return nil, err
+	}
+
+	return newOp, nil
+}

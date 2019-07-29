@@ -96,3 +96,19 @@ func (ca CreditAsset) ToXDR() (xdr.Asset, error) {
 
 	return xdrAsset, nil
 }
+
+// to do: consider exposing function or adding it to asset interface
+func assetFromXDR(xAsset xdr.Asset) (Asset, error) {
+	switch xAsset.Type {
+	case xdr.AssetTypeAssetTypeNative:
+		return NativeAsset{}, nil
+	case xdr.AssetTypeAssetTypeCreditAlphanum4:
+		return CreditAsset{Code: string(xAsset.AlphaNum4.AssetCode[:]),
+			Issuer: xAsset.AlphaNum4.Issuer.Address()}, nil
+	case xdr.AssetTypeAssetTypeCreditAlphanum12:
+		return CreditAsset{Code: string(xAsset.AlphaNum12.AssetCode[:]),
+			Issuer: xAsset.AlphaNum12.Issuer.Address()}, nil
+	}
+
+	return nil, errors.New("invalid asset")
+}

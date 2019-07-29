@@ -3,6 +3,7 @@ package txnbuild
 import (
 	"fmt"
 
+	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
 )
 
@@ -48,4 +49,34 @@ func (mh MemoHash) ToXDR() (xdr.Memo, error) {
 // ToXDR for MemoReturn returns an XDR object representation of a Memo of the same type.
 func (mr MemoReturn) ToXDR() (xdr.Memo, error) {
 	return xdr.NewMemo(xdr.MemoTypeMemoReturn, xdr.Hash(mr))
+}
+
+func memoFromXDR(memo xdr.Memo) (Memo, error) {
+	var newMemo Memo
+	var memoCreated bool
+
+	switch memo.Type {
+	case xdr.MemoTypeMemoText:
+		value, ok := memo.GetText()
+		newMemo = MemoText(value)
+		memoCreated = ok
+	case xdr.MemoTypeMemoId:
+		value, ok := memo.GetId()
+		newMemo = MemoID(uint64(value))
+		memoCreated = ok
+	case xdr.MemoTypeMemoHash:
+		value, ok := memo.GetHash()
+		newMemo = MemoHash(value)
+		memoCreated = ok
+	case xdr.MemoTypeMemoReturn:
+		value, ok := memo.GetHash()
+		newMemo = MemoReturn(value)
+		memoCreated = ok
+	}
+
+	if !memoCreated {
+		return nil, errors.New("invalid memo")
+	}
+
+	return newMemo, nil
 }
