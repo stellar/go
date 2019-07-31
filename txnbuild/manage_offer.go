@@ -121,3 +121,32 @@ func (mo *ManageSellOffer) BuildXDR() (xdr.Operation, error) {
 	SetOpSourceAccount(&op, mo.SourceAccount)
 	return op, nil
 }
+
+// FromXDR for ManageSellOffer returns a ManageSellOffer operation from XDR
+func (mo *ManageSellOffer) FromXDR(xdrOp xdr.Operation) error {
+	result, ok := xdrOp.Body.GetManageSellOfferOp()
+	if !ok {
+		return errors.New("error parsing manage_sell_offer operation from xdr")
+	}
+
+	if xdrOp.SourceAccount != nil {
+		mo.SourceAccount = &SimpleAccount{AccountID: xdrOp.SourceAccount.Address()}
+	}
+
+	mo.OfferID = int64(result.OfferId)
+	mo.Amount = amount.String(result.Amount)
+	mo.Price = price.StringFromFloat64(float64(result.Price.N / result.Price.D))
+
+	buyingAsset, err := assetFromXDR(result.Buying)
+	if err != nil {
+		return errors.Wrap(err, "error parsing manage_sell_offer operation from xdr")
+	}
+	mo.Buying = buyingAsset
+
+	sellingAsset, err := assetFromXDR(result.Selling)
+	if err != nil {
+		return errors.Wrap(err, "error parsing manage_sell_offer operation from xdr")
+	}
+	mo.Selling = sellingAsset
+	return nil
+}

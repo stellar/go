@@ -51,6 +51,7 @@ func (mr MemoReturn) ToXDR() (xdr.Memo, error) {
 	return xdr.NewMemo(xdr.MemoTypeMemoReturn, xdr.Hash(mr))
 }
 
+// memoFromXDR returns a Memo from XDR
 func memoFromXDR(memo xdr.Memo) (Memo, error) {
 	var newMemo Memo
 	var memoCreated bool
@@ -72,6 +73,8 @@ func memoFromXDR(memo xdr.Memo) (Memo, error) {
 		value, ok := memo.GetHash()
 		newMemo = MemoReturn(value)
 		memoCreated = ok
+	case xdr.MemoTypeMemoNone:
+		memoCreated = true
 	}
 
 	if !memoCreated {

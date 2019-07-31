@@ -52,12 +52,17 @@ func (p *Payment) BuildXDR() (xdr.Operation, error) {
 	return op, nil
 }
 
+// FromXDR for Payment returns a Payment operation from XDR
 func (p *Payment) FromXDR(xdrOp xdr.Operation) error {
-	p.SourceAccount = &SimpleAccount{AccountID: xdrOp.SourceAccount.Address()}
 	result, ok := xdrOp.Body.GetPaymentOp()
 	if !ok {
 		return errors.New("error parsing payment operation from xdr")
 	}
+
+	if xdrOp.SourceAccount != nil {
+		p.SourceAccount = &SimpleAccount{AccountID: xdrOp.SourceAccount.Address()}
+	}
+
 	p.Destination = result.Destination.Address()
 	p.Amount = amount.String(result.Amount)
 

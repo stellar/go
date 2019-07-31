@@ -34,3 +34,19 @@ func (md *ManageData) BuildXDR() (xdr.Operation, error) {
 	SetOpSourceAccount(&op, md.SourceAccount)
 	return op, nil
 }
+
+// FromXDR for ManageData returns a ManageData operation from XDR
+func (md *ManageData) FromXDR(xdrOp xdr.Operation) error {
+	result, ok := xdrOp.Body.GetManageDataOp()
+	if !ok {
+		return errors.New("error parsing create_account operation from xdr")
+	}
+
+	if xdrOp.SourceAccount != nil {
+		md.SourceAccount = &SimpleAccount{AccountID: xdrOp.SourceAccount.Address()}
+	}
+
+	md.Name = string(result.DataName)
+	md.Value = *result.DataValue
+	return nil
+}

@@ -49,3 +49,26 @@ func (at *AllowTrust) BuildXDR() (xdr.Operation, error) {
 	SetOpSourceAccount(&op, at.SourceAccount)
 	return op, nil
 }
+
+// FromXDR for AllowTrust returns an AllowTrust operation from XDR
+func (at *AllowTrust) FromXDR(xdrOp xdr.Operation) error {
+	result, ok := xdrOp.Body.GetAllowTrustOp()
+	if !ok {
+		return errors.New("error parsing allow_trust operation from xdr")
+	}
+
+	if xdrOp.SourceAccount != nil {
+		at.SourceAccount = &SimpleAccount{AccountID: xdrOp.SourceAccount.Address()}
+	}
+
+	at.Trustor = result.Trustor.Address()
+	at.Authorize = result.Authorize
+	if result.Asset.Type == xdr.AssetTypeAssetTypeCreditAlphanum4 {
+		at.Type = CreditAsset{Code: string(result.Asset.AssetCode4[:])}
+	}
+	if result.Asset.Type == xdr.AssetTypeAssetTypeCreditAlphanum12 {
+		at.Type = CreditAsset{Code: string(result.Asset.AssetCode12[:])}
+	}
+
+	return nil
+}

@@ -61,3 +61,23 @@ func (ct *ChangeTrust) BuildXDR() (xdr.Operation, error) {
 	SetOpSourceAccount(&op, ct.SourceAccount)
 	return op, nil
 }
+
+// FromXDR for ChangeTrust returns a ChangeTrust operation from XDR
+func (ct *ChangeTrust) FromXDR(xdrOp xdr.Operation) error {
+	result, ok := xdrOp.Body.GetChangeTrustOp()
+	if !ok {
+		return errors.New("error parsing change_trust operation from xdr")
+	}
+
+	if xdrOp.SourceAccount != nil {
+		ct.SourceAccount = &SimpleAccount{AccountID: xdrOp.SourceAccount.Address()}
+	}
+
+	ct.Limit = amount.String(result.Limit)
+	asset, err := assetFromXDR(result.Line)
+	if err != nil {
+		return errors.Wrap(err, "error parsing change_trust operation from xdr")
+	}
+	ct.Line = asset
+	return nil
+}

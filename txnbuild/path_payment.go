@@ -85,3 +85,42 @@ func (pp *PathPayment) BuildXDR() (xdr.Operation, error) {
 	SetOpSourceAccount(&op, pp.SourceAccount)
 	return op, nil
 }
+
+// FromXDR for PathPayment returns a PathPayment operation from XDR
+func (pp *PathPayment) FromXDR(xdrOp xdr.Operation) error {
+	result, ok := xdrOp.Body.GetPathPaymentOp()
+	if !ok {
+		return errors.New("error parsing path_payment operation from xdr")
+	}
+
+	if xdrOp.SourceAccount != nil {
+		pp.SourceAccount = &SimpleAccount{AccountID: xdrOp.SourceAccount.Address()}
+	}
+
+	pp.Destination = result.Destination.Address()
+	pp.DestAmount = amount.String(result.DestAmount)
+	pp.SendMax = amount.String(result.SendMax)
+
+	destAsset, err := assetFromXDR(result.DestAsset)
+	if err != nil {
+		return errors.Wrap(err, "error parsing path_payment operation from xdr")
+	}
+	pp.DestAsset = destAsset
+
+	sendAsset, err := assetFromXDR(result.SendAsset)
+	if err != nil {
+		return errors.Wrap(err, "error parsing path_payment operation from xdr")
+	}
+	pp.SendAsset = sendAsset
+
+	pp.Path = []Asset{}
+	for _, p := range result.Path {
+		pathAsset, err := assetFromXDR(p)
+		if err != nil {
+			return errors.Wrap(err, "error parsing paths in path_payment operation")
+		}
+		pp.Path = append(pp.Path, pathAsset)
+	}
+
+	return nil
+}

@@ -30,3 +30,20 @@ func (am *AccountMerge) BuildXDR() (xdr.Operation, error) {
 	SetOpSourceAccount(&op, am.SourceAccount)
 	return op, nil
 }
+
+// FromXDR for AccountMerge returns an AccountMerge operation from XDR
+func (am *AccountMerge) FromXDR(xdrOp xdr.Operation) error {
+	if xdrOp.Body.Type != xdr.OperationTypeAccountMerge {
+		return errors.New("error parsing account_merge operation from xdr")
+	}
+
+	if xdrOp.SourceAccount != nil {
+		am.SourceAccount = &SimpleAccount{AccountID: xdrOp.SourceAccount.Address()}
+	}
+
+	if xdrOp.Body.Destination != nil {
+		am.Destination = xdrOp.Body.Destination.Address()
+	}
+
+	return nil
+}

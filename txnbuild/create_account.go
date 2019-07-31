@@ -38,12 +38,17 @@ func (ca *CreateAccount) BuildXDR() (xdr.Operation, error) {
 	return op, nil
 }
 
+// FromXDR for CreateAccount returns a CreateAccount operation from XDR
 func (ca *CreateAccount) FromXDR(xdrOp xdr.Operation) error {
-	ca.SourceAccount = &SimpleAccount{AccountID: xdrOp.SourceAccount.Address()}
 	result, ok := xdrOp.Body.GetCreateAccountOp()
 	if !ok {
 		return errors.New("error parsing create_account operation from xdr")
 	}
+
+	if xdrOp.SourceAccount != nil {
+		ca.SourceAccount = &SimpleAccount{AccountID: xdrOp.SourceAccount.Address()}
+	}
+
 	ca.Destination = result.Destination.Address()
 	ca.Amount = amount.String(result.StartingBalance)
 
