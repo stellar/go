@@ -400,21 +400,12 @@ func (a *App) init() {
 	// ingester
 	initIngester(a)
 
-	if a.config.EnableInMemoryPathFinding && !a.config.Ingest {
-		log.Panic("cannot enable in memory path finding without ingestion")
-	}
-
-	if a.config.EnableAccountsForSigner && !a.config.Ingest {
-		log.Panic("cannot enable experimental accounts for signer finding without ingestion")
-	}
-
 	var orderBookGraph *orderbook.OrderBookGraph
-	if a.config.EnableInMemoryPathFinding {
+	if a.config.EnableExperimentalIngestion {
 		orderBookGraph = orderbook.NewOrderBookGraph()
+		// expingester
+		initExpIngester(a, orderBookGraph)
 	}
-
-	// expingester
-	initExpIngester(a, orderBookGraph)
 
 	// txsub
 	initSubmissionSystem(a)
@@ -437,7 +428,11 @@ func (a *App) init() {
 	a.web.mustInstallMiddlewares(a, a.config.ConnectionTimeout)
 
 	// web.actions
-	a.web.mustInstallActions(a.config.EnableAssetStats, a.config.EnableAccountsForSigner, a.config.FriendbotURL)
+	a.web.mustInstallActions(
+		a.config.EnableAssetStats,
+		a.config.EnableExperimentalIngestion,
+		a.config.FriendbotURL,
+	)
 
 	// metrics and log.metrics
 	a.metrics = metrics.NewRegistry()

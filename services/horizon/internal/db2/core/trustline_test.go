@@ -7,20 +7,10 @@ import (
 	"github.com/stellar/go/xdr"
 )
 
-func assetToSymbol(asset xdr.Asset) string {
-	if alpha12, ok := asset.GetAlphaNum12(); ok {
-		return string(alpha12.AssetCode[:len(alpha12.AssetCode)])
-	} else if alpha4, ok := asset.GetAlphaNum4(); ok {
-		return string(alpha4.AssetCode[:len(alpha4.AssetCode)])
-	} else {
-		return "XLM"
-	}
-}
-
 func assetsToSymbols(assets []xdr.Asset) []string {
 	symbols := make([]string, len(assets))
 	for i, asset := range assets {
-		symbols[i] = assetToSymbol(asset)
+		symbols[i] = asset.String()
 	}
 	return symbols
 }
@@ -41,7 +31,11 @@ func TestAssetsForAddress(t *testing.T) {
 		assetsToBalance[symbol] = balances[i]
 	}
 
-	expected := map[string]xdr.Int64{"BTC\x00": 60000000000, "USD\x00": 50000000000, "XLM": 99999999200}
+	expected := map[string]xdr.Int64{
+		"credit_alphanum4/BTC/GC23QF2HUE52AMXUFUH3AYJAXXGXXV2VHXYYR6EYXETPKDXZSAW67XO4": 60000000000,
+		"credit_alphanum4/USD/GC23QF2HUE52AMXUFUH3AYJAXXGXXV2VHXYYR6EYXETPKDXZSAW67XO4": 50000000000,
+		"native": 99999999200,
+	}
 
 	tt.Assert.Equal(expected, assetsToBalance)
 }

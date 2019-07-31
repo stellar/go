@@ -70,10 +70,6 @@ func initIngester(app *App) {
 }
 
 func initExpIngester(app *App, orderBookGraph *orderbook.OrderBookGraph) {
-	if !app.config.EnableAccountsForSigner {
-		return
-	}
-
 	var err error
 	app.expingester, err = expingest.NewSystem(expingest.Config{
 		CoreSession:    app.CoreSession(context.Background()),
@@ -91,7 +87,7 @@ func initExpIngester(app *App, orderBookGraph *orderbook.OrderBookGraph) {
 }
 
 func initPathFinder(app *App, orderBookGraph *orderbook.OrderBookGraph) {
-	if app.config.EnableInMemoryPathFinding {
+	if app.config.EnableExperimentalIngestion {
 		app.paths = simplepath.NewInMemoryFinder(orderBookGraph)
 	} else {
 		app.paths = &simplepath.Finder{app.CoreQ()}

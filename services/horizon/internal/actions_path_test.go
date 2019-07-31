@@ -12,7 +12,6 @@ import (
 	"github.com/stellar/go/services/horizon/internal/render/problem"
 	"github.com/stellar/go/services/horizon/internal/simplepath"
 	"github.com/stellar/go/services/horizon/internal/test"
-	"github.com/stellar/go/strkey"
 	"github.com/stellar/go/xdr"
 )
 
@@ -78,19 +77,6 @@ func TestPathActionsStillIngesting(t *testing.T) {
 	ht.Assert.Equal(problem.StillIngesting.Status, w.Code)
 }
 
-func stringToAccountID(tt *test.T, address string) xdr.AccountId {
-	raw, err := strkey.Decode(strkey.VersionByteAccountID, address)
-	tt.Assert.NoError(err)
-
-	var key xdr.Uint256
-	copy(key[:], raw)
-
-	accountID, err := xdr.NewAccountId(xdr.PublicKeyTypePublicKeyTypeEd25519, key)
-	tt.Assert.NoError(err)
-
-	return accountID
-}
-
 func loadOffers(tt *test.T, orderBookGraph *orderbook.OrderBookGraph, fromAddress string) {
 	coreQ := &core.Q{tt.CoreSession()}
 	offers := []core.Offer{}
@@ -103,7 +89,7 @@ func loadOffers(tt *test.T, orderBookGraph *orderbook.OrderBookGraph, fromAddres
 	for _, offer := range offers {
 
 		orderBookGraph.AddOffer(xdr.OfferEntry{
-			SellerId: stringToAccountID(tt, offer.SellerID),
+			SellerId: xdr.MustAddress(offer.SellerID),
 			OfferId:  xdr.Int64(offer.OfferID),
 			Selling:  offer.SellingAsset,
 			Buying:   offer.BuyingAsset,

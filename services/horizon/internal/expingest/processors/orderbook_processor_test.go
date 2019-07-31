@@ -97,15 +97,14 @@ func TestProcessOrderBookState(t *testing.T) {
 	}
 
 	offers := graph.Offers()
-	if len(expectedOffers) != len(offers) {
-		t.Fatalf("expected offers to have length 3 but got %v", len(offers))
-	}
-
 	for _, offer := range offers {
 		if !expectedOffers[offer.OfferId] {
 			t.Fatalf("unexpected offer id %v", offer.OfferId)
 		}
 		delete(expectedOffers, offer.OfferId)
+	}
+	if len(expectedOffers) != 0 {
+		t.Fatal("expected offers does not match offers in graph")
 	}
 }
 
@@ -334,10 +333,6 @@ func TestProcessOrderBookLedger(t *testing.T) {
 	}
 
 	offers := graph.Offers()
-	if len(expectedOffers) != len(offers) {
-		t.Fatalf("expected offers to have length 3 but got %v", len(offers))
-	}
-
 	for _, offer := range offers {
 		if price, ok := expectedOffers[offer.OfferId]; !ok {
 			t.Fatalf("unexpected offer id %v", offer.OfferId)
@@ -345,5 +340,8 @@ func TestProcessOrderBookLedger(t *testing.T) {
 			t.Fatalf("unexpected offer price %v for offer with id %v", offer.Price, offer.OfferId)
 		}
 		delete(expectedOffers, offer.OfferId)
+	}
+	if len(expectedOffers) != 0 {
+		t.Fatal("expected offers does not match offers in graph")
 	}
 }
