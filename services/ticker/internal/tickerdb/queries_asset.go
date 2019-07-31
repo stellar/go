@@ -80,8 +80,11 @@ func (s *TickerSession) GetAssetsWithNestedIssuer() (assets []Asset, err error) 
 			&a.Countries, &a.Status, &a.IssuerID, &i.PublicKey, &i.Name, &i.URL, &i.TOMLURL, &i.FederationServer,
 			&i.AuthServer, &i.TransferServer, &i.WebAuthEndpoint, &i.DepositServer, &i.OrgTwitter,
 		)
-		a.Issuer = i
+		if err != nil {
+			return
+		}
 
+		a.Issuer = i
 		assets = append(assets, a)
 	}
 
