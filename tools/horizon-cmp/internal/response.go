@@ -7,6 +7,7 @@ import (
 	"os/exec"
 	"regexp"
 	"strings"
+	"time"
 )
 
 const fileLengthLimit = 100
@@ -21,6 +22,10 @@ var findResultMetaXDR = regexp.MustCompile(`"result_meta_xdr": "(.*)",`)
 // `is_authorized` on account balances list. You want to remove this
 // field so it's not reported for each `/accounts/{id}` response.
 var removeRegexps = []*regexp.Regexp{
+	regexp.MustCompile(`This (is ){0,1}usually`),
+	// Removes joined transaction (join=transactions) added in Horizon 0.19.0.
+	// Remove for future versions.
+	regexp.MustCompile(`(?msU)"transaction":\s*{\s*("memo|"_links)[\n\s\S]*][\n\s\S]*}(,\s{9}|,)`),
 	// regexp.MustCompile(`\s*"is_authorized": true,`),
 	// regexp.MustCompile(`\s*"is_authorized": false,`),
 	// regexp.MustCompile(`\s*"successful": true,`),
@@ -32,32 +37,61 @@ var removeRegexps = []*regexp.Regexp{
 type Response struct {
 	Domain string
 	Path   string
+	Stream bool
 
-	Body string
+	StatusCode int
+	Body       string
 	// NormalizedBody is body without parts that identify a single
 	// server (ex. domain) and fields known to be different between
 	// instances (ex. `result_meta_xdr`).
 	NormalizedBody string
 }
 
-func NewResponse(domain, path string) *Response {
+func NewResponse(domain, path string, stream bool) *Response {
 	response := &Response{
 		Domain: domain,
 		Path:   path,
+		Stream: stream,
 	}
 
-	resp, err := http.Get(domain + path)
+	req, err := http.NewRequest("GET", domain+path, nil)
 	if err != nil {
 		panic(err)
 	}
 
-	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusNotFound {
+	client := &http.Client{}
+
+	if stream {
+		req.Header.Add("Accept", "text/event-stream")
+		client.Timeout = 500 * time.Millisecond
+	}
+
+	resp, err := client.Do(req)
+	if err != nil {
+		response.Body = err.Error()
+		response.NormalizedBody = err.Error()
+		return response
+	}
+
+	response.StatusCode = resp.StatusCode
+
+	if resp.StatusCode != http.StatusOK &&
+		resp.StatusCode != http.StatusNotFound &&
+		resp.StatusCode != http.StatusNotAcceptable {
 		panic(resp.StatusCode)
 	}
 
 	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		panic(err)
+	// We ignore the error below to timeout streaming requests.
+	// net/http: request canceled (Client.Timeout exceeded while reading body)
+	if err != nil && !stream {
+		response.Body = err.Error()
+		response.NormalizedBody = err.Error()
+		return response
+	}
+
+	if string(body) == "" {
+		panic("Empty body")
 	}
 
 	response.Body = string(body)
@@ -80,12 +114,16 @@ func (r *Response) Equal(other *Response) bool {
 	return r.NormalizedBody == other.NormalizedBody
 }
 
+func (r *Response) Size() int {
+	return len(r.Body)
+}
+
 func (r *Response) SaveDiff(outputDir string, other *Response) {
 	if r.Path != other.Path {
 		panic("Paths are different")
 	}
 
-	fileName := pathToFileName(r.Path)
+	fileName := pathToFileName(r.Path, r.Stream)
 
 	if len(fileName) > fileLengthLimit {
 		fileName = fileName[0:fileLengthLimit]
@@ -132,7 +170,10 @@ func (r *Response) GetPaths() []string {
 	return links
 }
 
-func pathToFileName(path string) string {
+func pathToFileName(path string, stream bool) string {
+	if stream {
+		path = "stream_" + path
+	}
 	path = strings.Replace(path, "/", "_", -1)
 	path = strings.Replace(path, "?", "_", -1)
 	path = strings.Replace(path, "&", "_", -1)
