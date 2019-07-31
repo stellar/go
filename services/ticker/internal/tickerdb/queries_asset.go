@@ -68,8 +68,10 @@ func (s *TickerSession) GetAssetsWithNestedIssuer() (assets []Asset, err error) 
 	}
 
 	for rows.Next() {
-		var a Asset
-		var i Issuer
+		var (
+			a Asset
+			i Issuer
+		)
 
 		err = rows.Scan(
 			&a.Code, &a.IssuerAccount, &a.Type, &a.NumAccounts, &a.AuthRequired, &a.AuthRevocable,
