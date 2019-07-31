@@ -1,3 +1,7 @@
+## [UNRELEASED]
+- Added nested `"issuer_detail"` field to `/assets.json`.
+
+
 ## [v1.1.0] - 2019-07-22
 
 - Added support for running the ticker on Stellar's Test Network, by using the `--testnet` CLI flag.
