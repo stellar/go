@@ -29,7 +29,7 @@ type pathWithLevel struct {
 }
 
 func (p pathWithLevel) ID() string {
-	return fmt.Sprintf("%t%s", p.Path, p.Stream)
+	return fmt.Sprintf("%t%s", p.Stream, p.Path)
 }
 
 var initPaths []string = []string{
