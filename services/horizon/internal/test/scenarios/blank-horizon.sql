@@ -512,26 +512,26 @@ ALTER TABLE ONLY public.history_transaction_participants ALTER COLUMN id SET DEF
 -- Data for Name: gorp_migrations; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-INSERT INTO public.gorp_migrations VALUES ('1_initial_schema.sql', '2019-07-31 09:42:53.312443+00');
-INSERT INTO public.gorp_migrations VALUES ('2_index_participants_by_toid.sql', '2019-07-31 09:42:53.319083+00');
-INSERT INTO public.gorp_migrations VALUES ('3_use_sequence_in_history_accounts.sql', '2019-07-31 09:42:53.323326+00');
-INSERT INTO public.gorp_migrations VALUES ('4_add_protocol_version.sql', '2019-07-31 09:42:53.335129+00');
-INSERT INTO public.gorp_migrations VALUES ('5_create_trades_table.sql', '2019-07-31 09:42:53.346908+00');
-INSERT INTO public.gorp_migrations VALUES ('6_create_assets_table.sql', '2019-07-31 09:42:53.354523+00');
-INSERT INTO public.gorp_migrations VALUES ('7_modify_trades_table.sql', '2019-07-31 09:42:53.367809+00');
-INSERT INTO public.gorp_migrations VALUES ('8_add_aggregators.sql', '2019-07-31 09:42:53.372788+00');
-INSERT INTO public.gorp_migrations VALUES ('8_create_asset_stats_table.sql', '2019-07-31 09:42:53.378596+00');
-INSERT INTO public.gorp_migrations VALUES ('9_add_header_xdr.sql', '2019-07-31 09:42:53.382748+00');
-INSERT INTO public.gorp_migrations VALUES ('10_add_trades_price.sql', '2019-07-31 09:42:53.388427+00');
-INSERT INTO public.gorp_migrations VALUES ('11_add_trades_account_index.sql', '2019-07-31 09:42:53.394026+00');
-INSERT INTO public.gorp_migrations VALUES ('12_asset_stats_amount_string.sql', '2019-07-31 09:42:53.401133+00');
-INSERT INTO public.gorp_migrations VALUES ('13_trade_offer_ids.sql', '2019-07-31 09:42:53.407951+00');
-INSERT INTO public.gorp_migrations VALUES ('14_fix_asset_toml_field.sql', '2019-07-31 09:42:53.411054+00');
-INSERT INTO public.gorp_migrations VALUES ('15_ledger_failed_txs.sql', '2019-07-31 09:42:53.414588+00');
-INSERT INTO public.gorp_migrations VALUES ('16_ingest_failed_transactions.sql', '2019-07-31 09:42:53.417581+00');
-INSERT INTO public.gorp_migrations VALUES ('17_transaction_fee_paid.sql', '2019-07-31 09:42:53.421119+00');
-INSERT INTO public.gorp_migrations VALUES ('18_account_for_signers.sql', '2019-07-31 09:42:53.428242+00');
-INSERT INTO public.gorp_migrations VALUES ('19_offers.sql', '2019-07-31 09:42:53.438185+00');
+INSERT INTO public.gorp_migrations VALUES ('1_initial_schema.sql', '2019-08-01 11:00:15.942198+00');
+INSERT INTO public.gorp_migrations VALUES ('2_index_participants_by_toid.sql', '2019-08-01 11:00:15.948851+00');
+INSERT INTO public.gorp_migrations VALUES ('3_use_sequence_in_history_accounts.sql', '2019-08-01 11:00:15.953746+00');
+INSERT INTO public.gorp_migrations VALUES ('4_add_protocol_version.sql', '2019-08-01 11:00:15.965021+00');
+INSERT INTO public.gorp_migrations VALUES ('5_create_trades_table.sql', '2019-08-01 11:00:15.975218+00');
+INSERT INTO public.gorp_migrations VALUES ('6_create_assets_table.sql', '2019-08-01 11:00:15.982345+00');
+INSERT INTO public.gorp_migrations VALUES ('7_modify_trades_table.sql', '2019-08-01 11:00:15.996382+00');
+INSERT INTO public.gorp_migrations VALUES ('8_create_asset_stats_table.sql', '2019-08-01 11:00:16.002907+00');
+INSERT INTO public.gorp_migrations VALUES ('8_add_aggregators.sql', '2019-08-01 11:00:16.007922+00');
+INSERT INTO public.gorp_migrations VALUES ('9_add_header_xdr.sql', '2019-08-01 11:00:16.012233+00');
+INSERT INTO public.gorp_migrations VALUES ('10_add_trades_price.sql', '2019-08-01 11:00:16.018075+00');
+INSERT INTO public.gorp_migrations VALUES ('11_add_trades_account_index.sql', '2019-08-01 11:00:16.023702+00');
+INSERT INTO public.gorp_migrations VALUES ('12_asset_stats_amount_string.sql', '2019-08-01 11:00:16.030942+00');
+INSERT INTO public.gorp_migrations VALUES ('13_trade_offer_ids.sql', '2019-08-01 11:00:16.03799+00');
+INSERT INTO public.gorp_migrations VALUES ('14_fix_asset_toml_field.sql', '2019-08-01 11:00:16.04114+00');
+INSERT INTO public.gorp_migrations VALUES ('15_ledger_failed_txs.sql', '2019-08-01 11:00:16.044761+00');
+INSERT INTO public.gorp_migrations VALUES ('16_ingest_failed_transactions.sql', '2019-08-01 11:00:16.047694+00');
+INSERT INTO public.gorp_migrations VALUES ('17_transaction_fee_paid.sql', '2019-08-01 11:00:16.05123+00');
+INSERT INTO public.gorp_migrations VALUES ('18_account_for_signers.sql', '2019-08-01 11:00:16.058403+00');
+INSERT INTO public.gorp_migrations VALUES ('19_offers.sql', '2019-08-01 11:00:16.068334+00');
 
 
 --

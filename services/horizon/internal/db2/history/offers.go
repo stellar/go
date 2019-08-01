@@ -2,6 +2,7 @@ package history
 
 import (
 	sq "github.com/Masterminds/squirrel"
+	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
 )
 
@@ -18,6 +19,14 @@ func (q *Q) UpsertOffer(offer xdr.OfferEntry) error {
 	if offer.Price.N > 0 {
 		price = float64(offer.Price.N) / float64(offer.Price.D)
 	}
+	buyingAsset, err := xdr.MarshalBase64(offer.Buying)
+	if err != nil {
+		return errors.Wrap(err, "cannot marshall buying asset in offer")
+	}
+	sellingAsset, err := xdr.MarshalBase64(offer.Selling)
+	if err != nil {
+		return errors.Wrap(err, "cannot marshall selling asset in offer")
+	}
 	sql := sq.Insert("offers").
 		Columns(
 			"sellerid",
@@ -31,10 +40,10 @@ func (q *Q) UpsertOffer(offer xdr.OfferEntry) error {
 			"flags",
 		).
 		Values(
-			offer.SellerId,
+			offer.SellerId.Address(),
 			offer.OfferId,
-			offer.Selling,
-			offer.Buying,
+			sellingAsset,
+			buyingAsset,
 			offer.Amount,
 			offer.Price.N,
 			offer.Price.D,
@@ -53,18 +62,28 @@ func (q *Q) UpsertOffer(offer xdr.OfferEntry) error {
 				flags=EXCLUDED.flags
 		`)
 
-	_, err := q.Exec(sql)
+	_, err = q.Exec(sql)
 	return err
 }
 
 // RemoveOffer deletes a row in the offers table
 func (q *Q) RemoveOffer(offerID xdr.Int64) error {
 	sql := sq.Delete("offers").Where(sq.Eq{
-		"id": offerID,
+		"offerid": offerID,
 	})
 
 	_, err := q.Exec(sql)
 	return err
 }
 
-var selectOffers = sq.Select("o.*").From("offers o")
+var selectOffers = sq.Select(`
+	sellerid,
+	offerid,
+	sellingasset,
+	buyingasset,
+	amount,
+	pricen,
+	priced,
+	price,
+	flags
+`).From("offers")
