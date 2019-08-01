@@ -422,14 +422,16 @@
   revision = "c603884a2c1fcf331c71940f3227a8111d29f3ba"
 
 [[projects]]
-  digest = "1:c92cec18d5ad500beaecbb094638ff9e319ac31f3d1c7c5b68ba06bd6217e7a2"
+  digest = "1:de9cc7a0102d0ccc5fbfba2336a0621cb6815581ceab488a30e4a7dbc3286b53"
   name = "github.com/lib/pq"
   packages = [
     ".",
     "oid",
+    "scram",
   ]
   pruneopts = "T"
-  revision = "50761b0867bd1d9d069276790bcd4a3bccf2324a"
+  revision = "3427c32cb71afc948325f299f040e53c1dd78979"
+  version = "v1.2.0"
 
 [[projects]]
   digest = "1:7b64a000d64c808554c53442ef9593230e8742c1482108efc9a445f404b077f3"
