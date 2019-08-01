@@ -66,7 +66,7 @@ func (cpo *CreatePassiveSellOffer) FromXDR(xdrOp xdr.Operation) error {
 	cpo.SourceAccount = accountFromXDR(xdrOp.SourceAccount)
 	cpo.Amount = amount.String(result.Amount)
 	if result.Price != (xdr.Price{}) {
-		cpo.Price = price.StringFromFloat64(float64(result.Price.N / result.Price.D))
+		cpo.Price = price.StringFromFloat64(float64(result.Price.N) / float64(result.Price.D))
 	}
 	buyingAsset, err := assetFromXDR(result.Buying)
 	if err != nil {

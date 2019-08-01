@@ -133,7 +133,7 @@ func (mo *ManageSellOffer) FromXDR(xdrOp xdr.Operation) error {
 	mo.OfferID = int64(result.OfferId)
 	mo.Amount = amount.String(result.Amount)
 	if result.Price != (xdr.Price{}) {
-		mo.Price = price.StringFromFloat64(float64(result.Price.N / result.Price.D))
+		mo.Price = price.StringFromFloat64(float64(result.Price.N) / float64(result.Price.D))
 	}
 	buyingAsset, err := assetFromXDR(result.Buying)
 	if err != nil {
