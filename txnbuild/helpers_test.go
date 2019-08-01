@@ -57,3 +57,9 @@ func checkChallengeTx(txeBase64, anchorName string) (bool, error) {
 	}
 	return false, errors.New("invalid challenge tx")
 }
+
+func unmarshalBase64(txeB64 string) (xdr.TransactionEnvelope, error) {
+	var xdrEnv xdr.TransactionEnvelope
+	err := xdr.SafeUnmarshalBase64(txeB64, &xdrEnv)
+	return xdrEnv, err
+}

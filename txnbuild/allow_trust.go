@@ -1,6 +1,8 @@
 package txnbuild
 
 import (
+	"bytes"
+
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
 )
@@ -62,10 +64,12 @@ func (at *AllowTrust) FromXDR(xdrOp xdr.Operation) error {
 	at.Authorize = result.Authorize
 	//Because AllowTrust has a special asset type, we don't use assetFromXDR() here.
 	if result.Asset.Type == xdr.AssetTypeAssetTypeCreditAlphanum4 {
-		at.Type = CreditAsset{Code: string(result.Asset.AssetCode4[:])}
+		code := bytes.Trim(result.Asset.AssetCode4[:], "\x00")
+		at.Type = CreditAsset{Code: string(code[:])}
 	}
 	if result.Asset.Type == xdr.AssetTypeAssetTypeCreditAlphanum12 {
-		at.Type = CreditAsset{Code: string(result.Asset.AssetCode12[:])}
+		code := bytes.Trim(result.Asset.AssetCode12[:], "\x00")
+		at.Type = CreditAsset{Code: string(code[:])}
 	}
 
 	return nil

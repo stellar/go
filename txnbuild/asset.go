@@ -1,6 +1,8 @@
 package txnbuild
 
 import (
+	"bytes"
+
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
 )
@@ -103,10 +105,12 @@ func assetFromXDR(xAsset xdr.Asset) (Asset, error) {
 	case xdr.AssetTypeAssetTypeNative:
 		return NativeAsset{}, nil
 	case xdr.AssetTypeAssetTypeCreditAlphanum4:
-		return CreditAsset{Code: string(xAsset.AlphaNum4.AssetCode[:]),
+		code := bytes.Trim(xAsset.AlphaNum4.AssetCode[:], "\x00")
+		return CreditAsset{Code: string(code[:]),
 			Issuer: xAsset.AlphaNum4.Issuer.Address()}, nil
 	case xdr.AssetTypeAssetTypeCreditAlphanum12:
-		return CreditAsset{Code: string(xAsset.AlphaNum12.AssetCode[:]),
+		code := bytes.Trim(xAsset.AlphaNum12.AssetCode[:], "\x00")
+		return CreditAsset{Code: string(code[:]),
 			Issuer: xAsset.AlphaNum12.Issuer.Address()}, nil
 	}
 
