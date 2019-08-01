@@ -24,7 +24,7 @@ const (
 	// CurrentVersion reflects the latest version of the ingestion
 	// algorithm. This value is stored in KV store and is used to decide
 	// if there's a need to reprocess the ledger state or reingest data.
-	CurrentVersion = 1
+	CurrentVersion = 2 // in version 2 we added the orderbook and offers processors
 )
 
 var log = ilog.DefaultLogger.WithField("service", "expingest")
