@@ -31,10 +31,8 @@ func (bs *BumpSequence) FromXDR(xdrOp xdr.Operation) error {
 	if !ok {
 		return errors.New("error parsing bump_sequence operation from xdr")
 	}
-	if xdrOp.SourceAccount != nil {
-		bs.SourceAccount = &SimpleAccount{AccountID: xdrOp.SourceAccount.Address()}
-	}
 
+	bs.SourceAccount = accountFromXDR(xdrOp.SourceAccount)
 	bs.BumpTo = int64(result.BumpTo)
 	return nil
 }

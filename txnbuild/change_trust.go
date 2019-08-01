@@ -69,14 +69,11 @@ func (ct *ChangeTrust) FromXDR(xdrOp xdr.Operation) error {
 		return errors.New("error parsing change_trust operation from xdr")
 	}
 
-	if xdrOp.SourceAccount != nil {
-		ct.SourceAccount = &SimpleAccount{AccountID: xdrOp.SourceAccount.Address()}
-	}
-
+	ct.SourceAccount = accountFromXDR(xdrOp.SourceAccount)
 	ct.Limit = amount.String(result.Limit)
 	asset, err := assetFromXDR(result.Line)
 	if err != nil {
-		return errors.Wrap(err, "error parsing change_trust operation from xdr")
+		return errors.Wrap(err, "error parsing asset in change_trust operation")
 	}
 	ct.Line = asset
 	return nil

@@ -59,16 +59,13 @@ func (p *Payment) FromXDR(xdrOp xdr.Operation) error {
 		return errors.New("error parsing payment operation from xdr")
 	}
 
-	if xdrOp.SourceAccount != nil {
-		p.SourceAccount = &SimpleAccount{AccountID: xdrOp.SourceAccount.Address()}
-	}
-
+	p.SourceAccount = accountFromXDR(xdrOp.SourceAccount)
 	p.Destination = result.Destination.Address()
 	p.Amount = amount.String(result.Amount)
 
 	asset, err := assetFromXDR(result.Asset)
 	if err != nil {
-		return errors.Wrap(err, "error parsing payment operation from xdr")
+		return errors.Wrap(err, "error parsing asset in payment operation")
 	}
 	p.Asset = asset
 

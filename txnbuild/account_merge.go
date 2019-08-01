@@ -37,10 +37,7 @@ func (am *AccountMerge) FromXDR(xdrOp xdr.Operation) error {
 		return errors.New("error parsing account_merge operation from xdr")
 	}
 
-	if xdrOp.SourceAccount != nil {
-		am.SourceAccount = &SimpleAccount{AccountID: xdrOp.SourceAccount.Address()}
-	}
-
+	am.SourceAccount = accountFromXDR(xdrOp.SourceAccount)
 	if xdrOp.Body.Destination != nil {
 		am.Destination = xdrOp.Body.Destination.Address()
 	}

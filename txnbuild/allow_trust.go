@@ -57,10 +57,7 @@ func (at *AllowTrust) FromXDR(xdrOp xdr.Operation) error {
 		return errors.New("error parsing allow_trust operation from xdr")
 	}
 
-	if xdrOp.SourceAccount != nil {
-		at.SourceAccount = &SimpleAccount{AccountID: xdrOp.SourceAccount.Address()}
-	}
-
+	at.SourceAccount = accountFromXDR(xdrOp.SourceAccount)
 	at.Trustor = result.Trustor.Address()
 	at.Authorize = result.Authorize
 	//Because AllowTrust has a special asset type, we don't use assetFromXDR() here.

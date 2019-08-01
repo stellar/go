@@ -93,23 +93,20 @@ func (pp *PathPayment) FromXDR(xdrOp xdr.Operation) error {
 		return errors.New("error parsing path_payment operation from xdr")
 	}
 
-	if xdrOp.SourceAccount != nil {
-		pp.SourceAccount = &SimpleAccount{AccountID: xdrOp.SourceAccount.Address()}
-	}
-
+	pp.SourceAccount = accountFromXDR(xdrOp.SourceAccount)
 	pp.Destination = result.Destination.Address()
 	pp.DestAmount = amount.String(result.DestAmount)
 	pp.SendMax = amount.String(result.SendMax)
 
 	destAsset, err := assetFromXDR(result.DestAsset)
 	if err != nil {
-		return errors.Wrap(err, "error parsing path_payment operation from xdr")
+		return errors.Wrap(err, "error parsing dest_asset in path_payment operation")
 	}
 	pp.DestAsset = destAsset
 
 	sendAsset, err := assetFromXDR(result.SendAsset)
 	if err != nil {
-		return errors.Wrap(err, "error parsing path_payment operation from xdr")
+		return errors.Wrap(err, "error parsing send_asset in path_payment operation")
 	}
 	pp.SendAsset = sendAsset
 

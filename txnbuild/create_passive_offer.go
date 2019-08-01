@@ -63,22 +63,19 @@ func (cpo *CreatePassiveSellOffer) FromXDR(xdrOp xdr.Operation) error {
 		return errors.New("error parsing create_passive_sell_offer operation from xdr")
 	}
 
-	if xdrOp.SourceAccount != nil {
-		cpo.SourceAccount = &SimpleAccount{AccountID: xdrOp.SourceAccount.Address()}
-	}
-
+	cpo.SourceAccount = accountFromXDR(xdrOp.SourceAccount)
 	cpo.Amount = amount.String(result.Amount)
 	cpo.Price = price.StringFromFloat64(float64(result.Price.N / result.Price.D))
 
 	buyingAsset, err := assetFromXDR(result.Buying)
 	if err != nil {
-		return errors.Wrap(err, "error parsing create_passive_sell_offer operation from xdr")
+		return errors.Wrap(err, "error parsing buying_asset in create_passive_sell_offer operation")
 	}
 	cpo.Buying = buyingAsset
 
 	sellingAsset, err := assetFromXDR(result.Selling)
 	if err != nil {
-		return errors.Wrap(err, "error parsing create_passive_sell_offer operation from xdr")
+		return errors.Wrap(err, "error parsing selling_asset in create_passive_sell_offer operation")
 	}
 	cpo.Selling = sellingAsset
 	return nil

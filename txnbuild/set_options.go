@@ -291,14 +291,12 @@ func (so *SetOptions) handleSignerXDR(xSigner *xdr.Signer) {
 
 // FromXDR for SetOptions initialises the txnbuild struct from the corresponding xdr Operation.
 func (so *SetOptions) FromXDR(xdrOp xdr.Operation) error {
-	if xdrOp.SourceAccount != nil {
-		so.SourceAccount = &SimpleAccount{AccountID: xdrOp.SourceAccount.Address()}
-	}
 	result, ok := xdrOp.Body.GetSetOptionsOp()
 	if !ok {
 		return errors.New("error parsing set_options operation from xdr")
 	}
 
+	so.SourceAccount = accountFromXDR(xdrOp.SourceAccount)
 	so.handleInflationXDR(result.InflationDest)
 	so.handleClearFlagsXDR(result.ClearFlags)
 	so.handleSetFlagsXDR(result.SetFlags)

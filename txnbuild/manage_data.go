@@ -42,10 +42,7 @@ func (md *ManageData) FromXDR(xdrOp xdr.Operation) error {
 		return errors.New("error parsing create_account operation from xdr")
 	}
 
-	if xdrOp.SourceAccount != nil {
-		md.SourceAccount = &SimpleAccount{AccountID: xdrOp.SourceAccount.Address()}
-	}
-
+	md.SourceAccount = accountFromXDR(xdrOp.SourceAccount)
 	md.Name = string(result.DataName)
 	md.Value = *result.DataValue
 	return nil

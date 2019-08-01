@@ -20,10 +20,9 @@ func SetOpSourceAccount(op *xdr.Operation, sourceAccount Account) {
 	op.SourceAccount = &opSourceAccountID
 }
 
-// operationFrom XDR returns an Operation from XDR object
+// operationFromXDR returns a txnbuild Operation from its corresponding XDR operation
 func operationFromXDR(xdrOp xdr.Operation) (Operation, error) {
 	var newOp Operation
-	var err error
 	switch xdrOp.Body.Type {
 	case xdr.OperationTypeCreateAccount:
 		newOp = &CreateAccount{}
@@ -53,10 +52,14 @@ func operationFromXDR(xdrOp xdr.Operation) (Operation, error) {
 		newOp = &ManageBuyOffer{}
 	}
 
-	err = newOp.FromXDR(xdrOp)
-	if err != nil {
-		return nil, err
-	}
+	err := newOp.FromXDR(xdrOp)
+	return newOp, err
+}
 
-	return newOp, nil
+// accountFromXDR returns a txnbuild Account from a XDR Account.
+func accountFromXDR(account *xdr.AccountId) Account {
+	if account != nil {
+		return &SimpleAccount{AccountID: account.Address()}
+	}
+	return nil
 }
