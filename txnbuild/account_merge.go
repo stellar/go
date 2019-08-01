@@ -31,7 +31,7 @@ func (am *AccountMerge) BuildXDR() (xdr.Operation, error) {
 	return op, nil
 }
 
-// FromXDR for AccountMerge returns an AccountMerge operation from XDR
+// FromXDR for AccountMerge initialises the txnbuild struct from the corresponding xdr Operation.
 func (am *AccountMerge) FromXDR(xdrOp xdr.Operation) error {
 	if xdrOp.Body.Type != xdr.OperationTypeAccountMerge {
 		return errors.New("error parsing account_merge operation from xdr")

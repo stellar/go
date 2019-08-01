@@ -38,7 +38,7 @@ func (ca *CreateAccount) BuildXDR() (xdr.Operation, error) {
 	return op, nil
 }
 
-// FromXDR for CreateAccount returns a CreateAccount operation from XDR
+// FromXDR for CreateAccount initialises the txnbuild struct from the corresponding xdr Operation.
 func (ca *CreateAccount) FromXDR(xdrOp xdr.Operation) error {
 	result, ok := xdrOp.Body.GetCreateAccountOp()
 	if !ok {

@@ -197,8 +197,8 @@ func (so *SetOptions) handleLowThreshold() {
 // See https://www.stellar.org/developers/guides/concepts/multi-sig.html
 func (so *SetOptions) handleLowThresholdXDR(weight *xdr.Uint32) {
 	if weight != nil {
-		mw := Threshold(uint32(*weight))
-		so.LowThreshold = &mw
+		lt := Threshold(uint32(*weight))
+		so.LowThreshold = &lt
 	}
 }
 
@@ -215,8 +215,8 @@ func (so *SetOptions) handleMediumThreshold() {
 // See https://www.stellar.org/developers/guides/concepts/multi-sig.html
 func (so *SetOptions) handleMediumThresholdXDR(weight *xdr.Uint32) {
 	if weight != nil {
-		mw := Threshold(uint32(*weight))
-		so.MediumThreshold = &mw
+		mt := Threshold(uint32(*weight))
+		so.MediumThreshold = &mt
 	}
 }
 
@@ -233,8 +233,8 @@ func (so *SetOptions) handleHighThreshold() {
 // See https://www.stellar.org/developers/guides/concepts/multi-sig.html
 func (so *SetOptions) handleHighThresholdXDR(weight *xdr.Uint32) {
 	if weight != nil {
-		mw := Threshold(uint32(*weight))
-		so.HighThreshold = &mw
+		ht := Threshold(uint32(*weight))
+		so.HighThreshold = &ht
 	}
 }
 
@@ -289,7 +289,7 @@ func (so *SetOptions) handleSignerXDR(xSigner *xdr.Signer) {
 	}
 }
 
-// FromXDR for SetOptions returns a SetOptions operation from XDR
+// FromXDR for SetOptions initialises the txnbuild struct from the corresponding xdr Operation.
 func (so *SetOptions) FromXDR(xdrOp xdr.Operation) error {
 	if xdrOp.SourceAccount != nil {
 		so.SourceAccount = &SimpleAccount{AccountID: xdrOp.SourceAccount.Address()}

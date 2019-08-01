@@ -50,7 +50,7 @@ func (at *AllowTrust) BuildXDR() (xdr.Operation, error) {
 	return op, nil
 }
 
-// FromXDR for AllowTrust returns an AllowTrust operation from XDR
+// FromXDR for AllowTrust initialises the txnbuild struct from the corresponding xdr Operation.
 func (at *AllowTrust) FromXDR(xdrOp xdr.Operation) error {
 	result, ok := xdrOp.Body.GetAllowTrustOp()
 	if !ok {
@@ -63,6 +63,7 @@ func (at *AllowTrust) FromXDR(xdrOp xdr.Operation) error {
 
 	at.Trustor = result.Trustor.Address()
 	at.Authorize = result.Authorize
+	//Because AllowTrust has a special asset type, we don't use assetFromXDR() here.
 	if result.Asset.Type == xdr.AssetTypeAssetTypeCreditAlphanum4 {
 		at.Type = CreditAsset{Code: string(result.Asset.AssetCode4[:])}
 	}

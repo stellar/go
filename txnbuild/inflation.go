@@ -23,7 +23,7 @@ func (inf *Inflation) BuildXDR() (xdr.Operation, error) {
 	return op, nil
 }
 
-// FromXDR for Inflation returns an Inflation operation from XDR
+// FromXDR for Inflation initialises the txnbuild struct from the corresponding xdr Operation.
 func (inf *Inflation) FromXDR(xdrOp xdr.Operation) error {
 	if xdrOp.Body.Type != xdr.OperationTypeInflation {
 		return errors.New("error parsing inflation operation from xdr")

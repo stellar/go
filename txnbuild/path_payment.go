@@ -86,7 +86,7 @@ func (pp *PathPayment) BuildXDR() (xdr.Operation, error) {
 	return op, nil
 }
 
-// FromXDR for PathPayment returns a PathPayment operation from XDR
+// FromXDR for PathPayment initialises the txnbuild struct from the corresponding xdr Operation.
 func (pp *PathPayment) FromXDR(xdrOp xdr.Operation) error {
 	result, ok := xdrOp.Body.GetPathPaymentOp()
 	if !ok {

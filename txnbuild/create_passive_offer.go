@@ -56,7 +56,7 @@ func (cpo *CreatePassiveSellOffer) BuildXDR() (xdr.Operation, error) {
 	return op, nil
 }
 
-// FromXDR for CreatePassiveSellOffer returns a CreatePassiveSellOffer operation from XDR
+// FromXDR for CreatePassiveSellOffer initialises the txnbuild struct from the corresponding xdr Operation.
 func (cpo *CreatePassiveSellOffer) FromXDR(xdrOp xdr.Operation) error {
 	result, ok := xdrOp.Body.GetCreatePassiveSellOfferOp()
 	if !ok {

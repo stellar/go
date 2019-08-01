@@ -35,7 +35,7 @@ func (md *ManageData) BuildXDR() (xdr.Operation, error) {
 	return op, nil
 }
 
-// FromXDR for ManageData returns a ManageData operation from XDR
+// FromXDR for ManageData initialises the txnbuild struct from the corresponding xdr Operation.
 func (md *ManageData) FromXDR(xdrOp xdr.Operation) error {
 	result, ok := xdrOp.Body.GetManageDataOp()
 	if !ok {

@@ -58,7 +58,7 @@ func (mo *ManageBuyOffer) BuildXDR() (xdr.Operation, error) {
 	return op, nil
 }
 
-// FromXDR for ManageBuyOffer returns a ManageBuyOffer operation from XDR
+// FromXDR for ManageBuyOffer initialises the txnbuild struct from the corresponding xdr Operation.
 func (mo *ManageBuyOffer) FromXDR(xdrOp xdr.Operation) error {
 	result, ok := xdrOp.Body.GetManageBuyOfferOp()
 	if !ok {

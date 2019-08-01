@@ -62,7 +62,7 @@ func (ct *ChangeTrust) BuildXDR() (xdr.Operation, error) {
 	return op, nil
 }
 
-// FromXDR for ChangeTrust returns a ChangeTrust operation from XDR
+// FromXDR for ChangeTrust initialises the txnbuild struct from the corresponding xdr Operation.
 func (ct *ChangeTrust) FromXDR(xdrOp xdr.Operation) error {
 	result, ok := xdrOp.Body.GetChangeTrustOp()
 	if !ok {

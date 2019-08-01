@@ -52,7 +52,7 @@ func (p *Payment) BuildXDR() (xdr.Operation, error) {
 	return op, nil
 }
 
-// FromXDR for Payment returns a Payment operation from XDR
+// FromXDR for Payment initialises the txnbuild struct from the corresponding xdr Operation.
 func (p *Payment) FromXDR(xdrOp xdr.Operation) error {
 	result, ok := xdrOp.Body.GetPaymentOp()
 	if !ok {
