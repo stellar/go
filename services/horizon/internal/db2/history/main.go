@@ -107,6 +107,13 @@ const (
 
 )
 
+// ExperimentalIngestionTables is a list of tables populated by the experimental
+// ingestion system
+var ExperimentalIngestionTables = []string{
+	"accounts_signers",
+	"offers",
+}
+
 // Account is a row of data from the `history_accounts` table
 type Account struct {
 	ID      int64
@@ -257,6 +264,21 @@ type Operation struct {
 	TransactionSuccessful *bool `db:"transaction_successful"`
 }
 
+// Offer is row of data from the `offers` table from stellar-core
+type Offer struct {
+	SellerID string    `db:"sellerid"`
+	OfferID  xdr.Int64 `db:"offerid"`
+
+	SellingAsset xdr.Asset `db:"sellingasset"`
+	BuyingAsset  xdr.Asset `db:"buyingasset"`
+
+	Amount xdr.Int64 `db:"amount"`
+	Pricen int32     `db:"pricen"`
+	Priced int32     `db:"priced"`
+	Price  float64   `db:"price"`
+	Flags  uint32    `db:"flags"`
+}
+
 // OperationsQ is a helper struct to aid in configuring queries that loads
 // slices of Operation structs.
 type OperationsQ struct {
@@ -281,6 +303,13 @@ type QSigners interface {
 	AccountsForSigner(signer string, page db2.PageQuery) ([]AccountSigner, error)
 	CreateAccountSigner(account, signer string, weight int32) error
 	RemoveAccountSigner(account, signer string) error
+}
+
+// QOffers defines offer related queries.
+type QOffers interface {
+	GetAllOffers() ([]Offer, error)
+	UpsertOffer(offer xdr.OfferEntry) error
+	RemoveOffer(offerID xdr.Int64) error
 }
 
 // TotalOrderID represents the ID portion of rows that are identified by the

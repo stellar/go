@@ -26,7 +26,18 @@ func accountForSignerStateNode(q *history.Q) *supportPipeline.PipelineNode {
 			}),
 		)
 }
-func orderBookStateNode(graph *orderbook.OrderBookGraph) *supportPipeline.PipelineNode {
+
+func orderBookDBStateNode(q *history.Q) *supportPipeline.PipelineNode {
+	return pipeline.StateNode(&processors.EntryTypeFilter{Type: xdr.LedgerEntryTypeOffer}).
+		Pipe(
+			pipeline.StateNode(&horizonProcessors.DatabaseProcessor{
+				OffersQ: q,
+				Action:  horizonProcessors.Offers,
+			}),
+		)
+}
+
+func orderBookGraphStateNode(graph *orderbook.OrderBookGraph) *supportPipeline.PipelineNode {
 	return pipeline.StateNode(&processors.EntryTypeFilter{Type: xdr.LedgerEntryTypeOffer}).
 		Pipe(
 			pipeline.StateNode(&horizonProcessors.OrderbookProcessor{
@@ -46,28 +57,24 @@ func buildStatePipeline(children []*supportPipeline.PipelineNode) *pipeline.Stat
 	return statePipeline
 }
 
-func accountForSignerLedgerNode(
-	q *history.Q,
-	accountsForSignerFilter *processors.LedgerFilter,
-) *supportPipeline.PipelineNode {
-	return pipeline.LedgerNode(accountsForSignerFilter).
-		Pipe(
-			pipeline.LedgerNode(&horizonProcessors.DatabaseProcessor{
-				HistoryQ: q,
-				Action:   horizonProcessors.AccountsForSigner,
-			}),
-		)
+func accountForSignerLedgerNode(q *history.Q) *supportPipeline.PipelineNode {
+	return pipeline.LedgerNode(&horizonProcessors.DatabaseProcessor{
+		HistoryQ: q,
+		Action:   horizonProcessors.AccountsForSigner,
+	})
 }
-func orderBookLedgerNode(
-	graph *orderbook.OrderBookGraph,
-	orderbookFilter *processors.LedgerFilter,
-) *supportPipeline.PipelineNode {
-	return pipeline.LedgerNode(orderbookFilter).
-		Pipe(
-			pipeline.LedgerNode(&horizonProcessors.OrderbookProcessor{
-				OrderBookGraph: graph,
-			}),
-		)
+
+func orderBookDBLedgerNode(q *history.Q) *supportPipeline.PipelineNode {
+	return pipeline.LedgerNode(&horizonProcessors.DatabaseProcessor{
+		OffersQ: q,
+		Action:  horizonProcessors.Offers,
+	})
+}
+
+func orderBookGraphLedgerNode(graph *orderbook.OrderBookGraph) *supportPipeline.PipelineNode {
+	return pipeline.LedgerNode(&horizonProcessors.OrderbookProcessor{
+		OrderBookGraph: graph,
+	})
 }
 
 func buildLedgerPipeline(children []*supportPipeline.PipelineNode) *pipeline.LedgerPipeline {
@@ -78,40 +85,6 @@ func buildLedgerPipeline(children []*supportPipeline.PipelineNode) *pipeline.Led
 	)
 
 	return ledgerPipeline
-}
-
-func buildOrderBookStatePipeline(graph *orderbook.OrderBookGraph) *pipeline.StatePipeline {
-	orderbookPipeline := buildStatePipeline([]*supportPipeline.PipelineNode{
-		orderBookStateNode(graph),
-	})
-	orderbookPipeline.AddPostProcessingHook(func(ctx context.Context, err error) error {
-		ledgerSeq := pipeline.GetLedgerSequenceFromContext(ctx)
-		defer graph.Discard()
-
-		if err != nil {
-			log.
-				WithFields(ilog.F{
-					"ledger": ledgerSeq,
-					"err":    err,
-				}).
-				Error("Error processing ledger")
-			return nil
-		}
-
-		if err := graph.Apply(); err != nil {
-			log.
-				WithFields(ilog.F{
-					"ledger": ledgerSeq,
-					"err":    err,
-				}).
-				Error("Error applying orderbook changes")
-			return err
-		}
-
-		return nil
-	})
-
-	return orderbookPipeline
 }
 
 func addPipelineHooks(

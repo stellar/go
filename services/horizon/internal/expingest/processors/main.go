@@ -9,6 +9,7 @@ type DatabaseProcessorActionType string
 
 const (
 	AccountsForSigner DatabaseProcessorActionType = "AccountsForSigner"
+	Offers            DatabaseProcessorActionType = "Offers"
 )
 
 // DatabaseProcessor is a processor (both state and ledger) that's responsible
@@ -18,6 +19,7 @@ const (
 // processor is responsible for.
 type DatabaseProcessor struct {
 	HistoryQ history.QSigners
+	OffersQ  history.QOffers
 	Action   DatabaseProcessorActionType
 }
 

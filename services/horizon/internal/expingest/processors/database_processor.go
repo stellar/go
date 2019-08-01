@@ -49,6 +49,16 @@ func (p *DatabaseProcessor) ProcessState(ctx context.Context, store *pipeline.St
 					return errors.Wrap(err, "Error updating account for signer")
 				}
 			}
+		case Offers:
+			// We're interested in offers only
+			if entryChange.EntryType() != xdr.LedgerEntryTypeOffer {
+				continue
+			}
+
+			offer := entryChange.MustState().Data.MustOffer()
+			if err := p.OffersQ.UpsertOffer(offer); err != nil {
+				return errors.Wrap(err, "Error inserting offers")
+			}
 		default:
 			return errors.New("Unknown action")
 		}
@@ -78,12 +88,20 @@ func (p *DatabaseProcessor) ProcessLedger(ctx context.Context, store *pipeline.S
 			}
 		}
 
+		if transaction.Result.Result.Result.Code != xdr.TransactionResultCodeTxSuccess {
+			continue
+		}
+
 		switch p.Action {
 		case AccountsForSigner:
-			// TODO check if tx is success!
 			err := p.processLedgerAccountsForSigner(transaction)
 			if err != nil {
 				return errors.Wrap(err, "Error in processLedgerAccountsForSigner")
+			}
+		case Offers:
+			err := p.processLedgerOffers(transaction)
+			if err != nil {
+				return errors.Wrap(err, "Error in processLedgerOffers")
 			}
 		default:
 			return errors.New("Unknown action")
@@ -131,6 +149,27 @@ func (p *DatabaseProcessor) processLedgerAccountsForSigner(transaction io.Ledger
 				}
 			}
 		}
+	}
+	return nil
+}
+
+func (p *DatabaseProcessor) processLedgerOffers(transaction io.LedgerTransaction) error {
+	for _, change := range transaction.GetChanges() {
+		if change.Type != xdr.LedgerEntryTypeOffer {
+			continue
+		}
+
+		switch {
+		case change.Post != nil:
+			// Created or updated
+			offer := change.Post.MustOffer()
+			p.OffersQ.UpsertOffer(offer)
+		case change.Pre != nil && change.Post == nil:
+			// Removed
+			offer := change.Pre.MustOffer()
+			p.OffersQ.RemoveOffer(offer.OfferId)
+		}
+
 	}
 	return nil
 }
