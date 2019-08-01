@@ -68,8 +68,9 @@ func (mo *ManageBuyOffer) FromXDR(xdrOp xdr.Operation) error {
 	mo.SourceAccount = accountFromXDR(xdrOp.SourceAccount)
 	mo.OfferID = int64(result.OfferId)
 	mo.Amount = amount.String(result.BuyAmount)
-	mo.Price = price.StringFromFloat64(float64(result.Price.N / result.Price.D))
-
+	if result.Price != (xdr.Price{}) {
+		mo.Price = price.StringFromFloat64(float64(result.Price.N / result.Price.D))
+	}
 	buyingAsset, err := assetFromXDR(result.Buying)
 	if err != nil {
 		return errors.Wrap(err, "error parsing buying_asset in manage_buy_offer operation")
