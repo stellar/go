@@ -31,6 +31,23 @@ func (s *Session) Begin() error {
 	return nil
 }
 
+// BeginTx binds this session to a new transaction which is configured with the
+// given transaction options
+func (s *Session) BeginTx(opts *sql.TxOptions) error {
+	if s.tx != nil {
+		return errors.New("already in transaction")
+	}
+
+	tx, err := s.DB.BeginTxx(s.Ctx, opts)
+	if err != nil {
+		return errors.Wrap(err, "beginTx failed")
+	}
+	s.logBegin()
+
+	s.tx = tx
+	return nil
+}
+
 // Clone clones the receiver, returning a new instance backed by the same
 // context and db. The result will not be bound to any transaction that the
 // source is currently within.
