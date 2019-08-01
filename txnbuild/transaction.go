@@ -93,6 +93,7 @@ func (tx *Transaction) SetDefaultFee() {
 // Build for Transaction completely configures the Transaction. After calling Build,
 // the Transaction is ready to be serialised or signed.
 func (tx *Transaction) Build() error {
+	// to do: check if tx is already signed
 
 	accountID := tx.SourceAccount.GetAccountID()
 	// Public keys start with 'G'
@@ -332,4 +333,45 @@ func (tx *Transaction) SignHashX(preimage []byte) error {
 	tx.xdrEnvelope.Signatures = append(tx.xdrEnvelope.Signatures, sig)
 
 	return nil
+}
+
+// TransactionFromXDR parses the supplied transaction envelope in base64 XDR and returns a Transaction object.
+func TransactionFromXDR(txeB64 string) (Transaction, error) {
+	var xdrEnv xdr.TransactionEnvelope
+	err := xdr.SafeUnmarshalBase64(txeB64, &xdrEnv)
+	if err != nil {
+		return Transaction{}, errors.Wrap(err, "unable to unmarshal transaction envelope")
+	}
+
+	var newTx Transaction
+	newTx.xdrTransaction = xdrEnv.Tx
+	newTx.xdrEnvelope = &xdrEnv
+
+	if len(xdrEnv.Tx.Operations) > 0 {
+		newTx.BaseFee = uint32(xdrEnv.Tx.Fee) / uint32(len(xdrEnv.Tx.Operations))
+	}
+
+	newTx.SourceAccount = &SimpleAccount{
+		AccountID: xdrEnv.Tx.SourceAccount.Address(),
+		Sequence:  int64(xdrEnv.Tx.SeqNum),
+	}
+
+	if xdrEnv.Tx.TimeBounds != nil {
+		newTx.Timebounds = NewTimebounds(int64(xdrEnv.Tx.TimeBounds.MinTime), int64(xdrEnv.Tx.TimeBounds.MaxTime))
+	}
+
+	newTx.Memo, err = memoFromXDR(xdrEnv.Tx.Memo)
+	if err != nil {
+		return Transaction{}, errors.Wrap(err, "unable to parse memo")
+	}
+
+	for _, op := range xdrEnv.Tx.Operations {
+		newOp, err := operationFromXDR(op)
+		if err != nil {
+			return Transaction{}, err
+		}
+		newTx.Operations = append(newTx.Operations, newOp)
+	}
+
+	return newTx, nil
 }

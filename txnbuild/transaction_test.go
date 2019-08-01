@@ -998,3 +998,23 @@ func TestHashXTransaction(t *testing.T) {
 	assert.Equal(t, expected, txeB64, "Base 64 XDR should match")
 
 }
+
+func TestFromXDR(t *testing.T) {
+
+	txeB64 := "AAAAACYWIvM98KlTMs0IlQBZ06WkYpZ+gILsQN6ega0++I/sAAAAZAAXeEkAAAABAAAAAAAAAAEAAAAQMkExVjZKNTcwM0c0N1hIWQAAAAEAAAABAAAAACYWIvM98KlTMs0IlQBZ06WkYpZ+gILsQN6ega0++I/sAAAAAQAAAADMSEvcRKXsaUNna++Hy7gWm/CfqTjEA7xoGypfrFGUHAAAAAAAAAACCPHRAAAAAAAAAAABPviP7AAAAEBu6BCKf4WZHPum5+29Nxf6SsJNN8bgjp1+e1uNBaHjRg3rdFZYgUqEqbHxVEs7eze3IeRbjMZxS3zPf/xwJCEI"
+
+	newTx, err := TransactionFromXDR(txeB64)
+	assert.NoError(t, err)
+	assert.Equal(t, "GATBMIXTHXYKSUZSZUEJKACZ2OS2IYUWP2AIF3CA32PIDLJ67CH6Y5UY", newTx.SourceAccount.GetAccountID(), "source accounts should match")
+	assert.Equal(t, int(100), int(newTx.BaseFee), "Base fee should match")
+	sa, ok := newTx.SourceAccount.(*SimpleAccount)
+	assert.Equal(t, true, ok)
+	assert.Equal(t, int64(6606179392290817), sa.Sequence, "Sequence number should match")
+	assert.Equal(t, 1, len(newTx.Operations), "Operations length should match")
+	assert.IsType(t, newTx.Operations[0], &Payment{}, "Operation types should match")
+	paymentOp, ok1 := newTx.Operations[0].(*Payment)
+	assert.Equal(t, true, ok1)
+	assert.Equal(t, "GATBMIXTHXYKSUZSZUEJKACZ2OS2IYUWP2AIF3CA32PIDLJ67CH6Y5UY", paymentOp.SourceAccount.GetAccountID(), "Operation source should match")
+	assert.Equal(t, "GDGEQS64ISS6Y2KDM5V67B6LXALJX4E7VE4MIA54NANSUX5MKGKBZM5G", paymentOp.Destination, "Operation destination should match")
+	assert.Equal(t, "874.0000000", paymentOp.Amount, "Operation amount should match")
+}

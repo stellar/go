@@ -49,3 +49,24 @@ func (at *AllowTrust) BuildXDR() (xdr.Operation, error) {
 	SetOpSourceAccount(&op, at.SourceAccount)
 	return op, nil
 }
+
+// FromXDR for AllowTrust initialises the txnbuild struct from the corresponding xdr Operation.
+func (at *AllowTrust) FromXDR(xdrOp xdr.Operation) error {
+	result, ok := xdrOp.Body.GetAllowTrustOp()
+	if !ok {
+		return errors.New("error parsing allow_trust operation from xdr")
+	}
+
+	at.SourceAccount = accountFromXDR(xdrOp.SourceAccount)
+	at.Trustor = result.Trustor.Address()
+	at.Authorize = result.Authorize
+	//Because AllowTrust has a special asset type, we don't use assetFromXDR() here.
+	if result.Asset.Type == xdr.AssetTypeAssetTypeCreditAlphanum4 {
+		at.Type = CreditAsset{Code: string(result.Asset.AssetCode4[:])}
+	}
+	if result.Asset.Type == xdr.AssetTypeAssetTypeCreditAlphanum12 {
+		at.Type = CreditAsset{Code: string(result.Asset.AssetCode12[:])}
+	}
+
+	return nil
+}

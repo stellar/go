@@ -37,3 +37,17 @@ func (ca *CreateAccount) BuildXDR() (xdr.Operation, error) {
 	SetOpSourceAccount(&op, ca.SourceAccount)
 	return op, nil
 }
+
+// FromXDR for CreateAccount initialises the txnbuild struct from the corresponding xdr Operation.
+func (ca *CreateAccount) FromXDR(xdrOp xdr.Operation) error {
+	result, ok := xdrOp.Body.GetCreateAccountOp()
+	if !ok {
+		return errors.New("error parsing create_account operation from xdr")
+	}
+
+	ca.SourceAccount = accountFromXDR(xdrOp.SourceAccount)
+	ca.Destination = result.Destination.Address()
+	ca.Amount = amount.String(result.StartingBalance)
+
+	return nil
+}
