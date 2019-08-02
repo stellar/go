@@ -160,7 +160,7 @@ func (so *SetOptions) handleClearFlagsXDR(flags *xdr.Uint32) {
 	if flags != nil {
 		for _, f := range []AccountFlag{AuthRequired, AuthRevocable, AuthImmutable} {
 			if f&AccountFlag(*flags) != 0 {
-				so.SetFlags = append(so.SetFlags, f)
+				so.ClearFlags = append(so.ClearFlags, f)
 			}
 		}
 	}

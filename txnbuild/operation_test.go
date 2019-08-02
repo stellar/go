@@ -3,6 +3,9 @@ package txnbuild
 import (
 	"testing"
 
+	"github.com/stellar/go/amount"
+	"github.com/stellar/go/xdr"
+
 	"github.com/stretchr/testify/assert"
 )
 
@@ -177,5 +180,238 @@ func TestCreatePassiveSellOfferFromXDR(t *testing.T) {
 			assert.Equal(t, "ABCD", cpo.Buying.GetCode(), "Asset code should match")
 			assert.Equal(t, "GDQNY3PBOJOKYZSRMK2S7LHHGWZIUISD4QORETLMXEWXBI7KFZZMKTL3", cpo.Buying.GetIssuer(), "Asset issuer should match")
 		}
+	}
+}
+
+func TestSetOptionsFromXDR(t *testing.T) {
+
+	var opSource xdr.AccountId
+	err := opSource.SetAddress("GB7BDSZU2Y27LYNLALKKALB52WS2IZWYBDGY6EQBLEED3TJOCVMZRH7H")
+	assert.NoError(t, err)
+	cFlags := xdr.Uint32(5)
+	sFlags := xdr.Uint32(7)
+	mw := xdr.Uint32(7)
+	lt := xdr.Uint32(2)
+	mt := xdr.Uint32(4)
+	ht := xdr.Uint32(6)
+	hDomain := xdr.String32("stellar.org")
+	var skey xdr.SignerKey
+	err = skey.SetAddress("GDQNY3PBOJOKYZSRMK2S7LHHGWZIUISD4QORETLMXEWXBI7KFZZMKTL3")
+	assert.NoError(t, err)
+	signer := xdr.Signer{
+		Key:    skey,
+		Weight: xdr.Uint32(4),
+	}
+
+	xdrSetOptions := xdr.SetOptionsOp{
+		InflationDest: &opSource,
+		ClearFlags:    &cFlags,
+		SetFlags:      &sFlags,
+		MasterWeight:  &mw,
+		LowThreshold:  &lt,
+		MedThreshold:  &mt,
+		HighThreshold: &ht,
+		HomeDomain:    &hDomain,
+		Signer:        &signer,
+	}
+
+	xdrOp := xdr.Operation{
+		SourceAccount: &opSource,
+		Body: xdr.OperationBody{
+			Type:         xdr.OperationTypeSetOptions,
+			SetOptionsOp: &xdrSetOptions,
+		},
+	}
+
+	var so SetOptions
+	err = so.FromXDR(xdrOp)
+	if assert.NoError(t, err) {
+		assert.Equal(t, "GB7BDSZU2Y27LYNLALKKALB52WS2IZWYBDGY6EQBLEED3TJOCVMZRH7H", so.SourceAccount.GetAccountID(), "source accounts should match")
+		assert.Equal(t, Threshold(7), *so.MasterWeight, "master weight should match")
+		assert.Equal(t, Threshold(2), *so.LowThreshold, "low threshold should match")
+		assert.Equal(t, Threshold(4), *so.MediumThreshold, "medium threshold should match")
+		assert.Equal(t, Threshold(6), *so.HighThreshold, "high threshold should match")
+		assert.Equal(t, "stellar.org", *so.HomeDomain, "Home domain should match")
+		assert.Equal(t, "GDQNY3PBOJOKYZSRMK2S7LHHGWZIUISD4QORETLMXEWXBI7KFZZMKTL3", so.Signer.Address, "Signer address should match")
+		assert.Equal(t, Threshold(4), so.Signer.Weight, "Signer weight should match")
+		assert.Equal(t, int(AuthRequired), int(so.SetFlags[0]), "Set AuthRequired flags should match")
+		assert.Equal(t, int(AuthRevocable), int(so.SetFlags[1]), "Set AuthRevocable flags should match")
+		assert.Equal(t, int(AuthImmutable), int(so.SetFlags[2]), "Set AuthImmutable flags should match")
+		assert.Equal(t, int(AuthRequired), int(so.ClearFlags[0]), "Clear AuthRequired flags should match")
+		assert.Equal(t, int(AuthImmutable), int(so.ClearFlags[1]), "Clear AuthImmutable flags should match")
+	}
+
+}
+
+func TestChangeTrustFromXDR(t *testing.T) {
+	asset := CreditAsset{Code: "ABC", Issuer: "GDQNY3PBOJOKYZSRMK2S7LHHGWZIUISD4QORETLMXEWXBI7KFZZMKTL3"}
+	xdrAsset, err := asset.ToXDR()
+	assert.NoError(t, err)
+	xdrLimit, err := amount.Parse("5000")
+	assert.NoError(t, err)
+	changeTrustOp := xdr.ChangeTrustOp{
+		Line:  xdrAsset,
+		Limit: xdrLimit,
+	}
+
+	var opSource xdr.AccountId
+	err = opSource.SetAddress("GB7BDSZU2Y27LYNLALKKALB52WS2IZWYBDGY6EQBLEED3TJOCVMZRH7H")
+	assert.NoError(t, err)
+	xdrOp := xdr.Operation{
+		SourceAccount: &opSource,
+		Body: xdr.OperationBody{
+			Type:          xdr.OperationTypeChangeTrust,
+			ChangeTrustOp: &changeTrustOp,
+		},
+	}
+
+	var ct ChangeTrust
+	err = ct.FromXDR(xdrOp)
+	if assert.NoError(t, err) {
+		assert.Equal(t, "GB7BDSZU2Y27LYNLALKKALB52WS2IZWYBDGY6EQBLEED3TJOCVMZRH7H", ct.SourceAccount.GetAccountID(), "source accounts should match")
+		assetType, e := ct.Line.GetType()
+		assert.NoError(t, e)
+
+		assert.Equal(t, AssetTypeCreditAlphanum4, assetType, "Asset type should match")
+		assert.Equal(t, "ABC", ct.Line.GetCode(), "Asset code should match")
+		assert.Equal(t, "GDQNY3PBOJOKYZSRMK2S7LHHGWZIUISD4QORETLMXEWXBI7KFZZMKTL3", ct.Line.GetIssuer(), "Asset issuer should match")
+		assert.Equal(t, "5000.0000000", ct.Limit, "Trustline  limit should match")
+	}
+}
+
+func TestAllowTrustFromXDR(t *testing.T) {
+	xdrAsset := xdr.Asset{}
+	allowTrustAsset, err := xdrAsset.ToAllowTrustOpAsset("ABCXYZ")
+	assert.NoError(t, err)
+
+	var opSource xdr.AccountId
+	err = opSource.SetAddress("GB7BDSZU2Y27LYNLALKKALB52WS2IZWYBDGY6EQBLEED3TJOCVMZRH7H")
+	assert.NoError(t, err)
+
+	var trustor xdr.AccountId
+	err = trustor.SetAddress("GDQNY3PBOJOKYZSRMK2S7LHHGWZIUISD4QORETLMXEWXBI7KFZZMKTL3")
+	assert.NoError(t, err)
+
+	allowTrustOp := xdr.AllowTrustOp{
+		Trustor:   trustor,
+		Asset:     allowTrustAsset,
+		Authorize: true,
+	}
+
+	xdrOp := xdr.Operation{
+		SourceAccount: &opSource,
+		Body: xdr.OperationBody{
+			Type:         xdr.OperationTypeAllowTrust,
+			AllowTrustOp: &allowTrustOp,
+		},
+	}
+
+	var at AllowTrust
+	err = at.FromXDR(xdrOp)
+	if assert.NoError(t, err) {
+		assert.Equal(t, "GB7BDSZU2Y27LYNLALKKALB52WS2IZWYBDGY6EQBLEED3TJOCVMZRH7H", at.SourceAccount.GetAccountID(), "source accounts should match")
+
+		assetType, e := at.Type.GetType()
+		assert.NoError(t, e)
+		assert.Equal(t, AssetTypeCreditAlphanum12, assetType, "Asset type should match")
+		assert.Equal(t, "ABCXYZ", at.Type.GetCode(), "Asset code should match")
+		assert.Equal(t, "GDQNY3PBOJOKYZSRMK2S7LHHGWZIUISD4QORETLMXEWXBI7KFZZMKTL3", at.Trustor, "Trustor should match")
+		assert.Equal(t, true, at.Authorize, "Authorize value should match")
+	}
+}
+
+func TestAccountMergeFromXDR(t *testing.T) {
+	var opSource xdr.AccountId
+	err := opSource.SetAddress("GB7BDSZU2Y27LYNLALKKALB52WS2IZWYBDGY6EQBLEED3TJOCVMZRH7H")
+	assert.NoError(t, err)
+
+	var destination xdr.AccountId
+	err = destination.SetAddress("GDQNY3PBOJOKYZSRMK2S7LHHGWZIUISD4QORETLMXEWXBI7KFZZMKTL3")
+	assert.NoError(t, err)
+
+	xdrOp := xdr.Operation{
+		SourceAccount: &opSource,
+		Body: xdr.OperationBody{
+			Type:        xdr.OperationTypeAccountMerge,
+			Destination: &destination,
+		},
+	}
+
+	var am AccountMerge
+	err = am.FromXDR(xdrOp)
+	if assert.NoError(t, err) {
+		assert.Equal(t, "GB7BDSZU2Y27LYNLALKKALB52WS2IZWYBDGY6EQBLEED3TJOCVMZRH7H", am.SourceAccount.GetAccountID(), "source accounts should match")
+		assert.Equal(t, "GDQNY3PBOJOKYZSRMK2S7LHHGWZIUISD4QORETLMXEWXBI7KFZZMKTL3", am.Destination, "destination accounts should match")
+	}
+}
+
+func TestInflationFromXDR(t *testing.T) {
+	var opSource xdr.AccountId
+	err := opSource.SetAddress("GB7BDSZU2Y27LYNLALKKALB52WS2IZWYBDGY6EQBLEED3TJOCVMZRH7H")
+	assert.NoError(t, err)
+
+	xdrOp := xdr.Operation{
+		SourceAccount: &opSource,
+		Body:          xdr.OperationBody{Type: xdr.OperationTypeInflation},
+	}
+
+	var inf Inflation
+	err = inf.FromXDR(xdrOp)
+	if assert.NoError(t, err) {
+		assert.Equal(t, "GB7BDSZU2Y27LYNLALKKALB52WS2IZWYBDGY6EQBLEED3TJOCVMZRH7H", inf.SourceAccount.GetAccountID(), "source accounts should match")
+	}
+}
+
+func TestManageDataFromXDR(t *testing.T) {
+	var opSource xdr.AccountId
+	err := opSource.SetAddress("GB7BDSZU2Y27LYNLALKKALB52WS2IZWYBDGY6EQBLEED3TJOCVMZRH7H")
+	assert.NoError(t, err)
+
+	dv := []byte("value")
+	xdrdv := xdr.DataValue(dv)
+	manageDataOp := xdr.ManageDataOp{
+		DataName:  xdr.String64("data"),
+		DataValue: &xdrdv,
+	}
+
+	xdrOp := xdr.Operation{
+		SourceAccount: &opSource,
+		Body: xdr.OperationBody{
+			Type:         xdr.OperationTypeManageData,
+			ManageDataOp: &manageDataOp,
+		},
+	}
+
+	var md ManageData
+	err = md.FromXDR(xdrOp)
+	if assert.NoError(t, err) {
+		assert.Equal(t, "GB7BDSZU2Y27LYNLALKKALB52WS2IZWYBDGY6EQBLEED3TJOCVMZRH7H", md.SourceAccount.GetAccountID(), "source accounts should match")
+		assert.Equal(t, "data", md.Name, "Name should match")
+		assert.Equal(t, "value", string(md.Value), "Value should match")
+	}
+}
+
+func TestBumpSequenceFromXDR(t *testing.T) {
+	var opSource xdr.AccountId
+	err := opSource.SetAddress("GB7BDSZU2Y27LYNLALKKALB52WS2IZWYBDGY6EQBLEED3TJOCVMZRH7H")
+	assert.NoError(t, err)
+
+	bsOp := xdr.BumpSequenceOp{
+		BumpTo: xdr.SequenceNumber(45),
+	}
+
+	xdrOp := xdr.Operation{
+		SourceAccount: &opSource,
+		Body: xdr.OperationBody{
+			Type:           xdr.OperationTypeBumpSequence,
+			BumpSequenceOp: &bsOp,
+		},
+	}
+
+	var bs BumpSequence
+	err = bs.FromXDR(xdrOp)
+	if assert.NoError(t, err) {
+		assert.Equal(t, "GB7BDSZU2Y27LYNLALKKALB52WS2IZWYBDGY6EQBLEED3TJOCVMZRH7H", bs.SourceAccount.GetAccountID(), "source accounts should match")
+		assert.Equal(t, int64(45), bs.BumpTo, "BumpTo should match")
 	}
 }
