@@ -18,7 +18,7 @@ The Stellar Development Foundation runs two Horizon servers, one for the public 
 ## Prerequisites
 
 Horizon is dependent upon a stellar-core server.  Horizon needs access to both the SQL database and the HTTP API that is published by stellar-core. See [the administration guide](https://www.stellar.org/developers/stellar-core/learn/admin.html
-) to learn how to set up and administer a stellar-core server.  Secondly, Horizon is dependent upon a postgres server, which it uses to store processed core data for ease of use. Horizon requires postgres version >= 9.3.
+) to learn how to set up and administer a stellar-core server.  Secondly, Horizon is dependent upon a postgres server, which it uses to store processed core data for ease of use. Horizon requires postgres version >= 9.5.
 
 In addition to the two prerequisites above, you may optionally install a redis server to be used for rate limiting requests.
 

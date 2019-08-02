@@ -17,6 +17,10 @@ type FriendbotHandler struct {
 
 // Handle is a method that implements http.HandlerFunc
 func (handler *FriendbotHandler) Handle(w http.ResponseWriter, r *http.Request) {
+	accountExistsProblem := problem.BadRequest
+	accountExistsProblem.Detail = ErrAccountExists.Error()
+	problem.RegisterError(ErrAccountExists, accountExistsProblem)
+
 	result, err := handler.doHandle(r)
 	if err != nil {
 		problem.Render(r.Context(), w, err)

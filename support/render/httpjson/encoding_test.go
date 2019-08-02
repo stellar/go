@@ -66,3 +66,34 @@ func TestRawObjectUnmarshaler(t *testing.T) {
 		}
 	}
 }
+
+func TestOptStringUnmarshaler(t *testing.T) {
+	cases := []struct {
+		input []byte
+		isSet bool
+		valid bool
+	}{
+		{[]byte(`{}`), false, false},
+		{[]byte(`{"input":null}`), true, false},
+		{[]byte(`{"input":"a string"}`), true, true},
+	}
+
+	for _, tc := range cases {
+		var out struct {
+			Input OptString `json:"input"`
+		}
+
+		err := json.Unmarshal(tc.input, &out)
+		if err != nil {
+			t.Errorf("case %s got error %v but shouldn't", string(tc.input), err)
+			continue
+		}
+
+		if out.Input.IsSet != tc.isSet {
+			t.Errorf("case %s got IsSet: %t, want: %t ", tc.input, out.Input.IsSet, tc.isSet)
+		}
+		if out.Input.Valid != tc.valid {
+			t.Errorf("case %s got Valid: %t, want: %t ", tc.input, out.Input.Valid, tc.valid)
+		}
+	}
+}
