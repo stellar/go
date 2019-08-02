@@ -8,7 +8,8 @@ import (
 var _ Session = &SingleLedgerSession{}
 
 func (s *SingleLedgerSession) Run() error {
-	s.ensureRunOnce()
+	s.setRunningState(true)
+	defer s.setRunningState(false)
 	s.shutdown = make(chan bool)
 
 	historyAdapter := adapters.MakeHistoryArchiveAdapter(s.Archive)
@@ -40,16 +41,29 @@ func (s *SingleLedgerSession) processState(historyAdapter *adapters.HistoryArchi
 	if err != nil {
 		return errors.Wrap(err, "Error getting state from history archive")
 	}
+	if s.StateReporter != nil {
+		s.StateReporter.OnStartState(sequence)
+		stateReader = reporterStateReader{stateReader, s.StateReporter}
+	}
 
 	errChan := s.StatePipeline.Process(stateReader)
 	select {
 	case err := <-errChan:
 		if err != nil {
+			if s.StateReporter != nil {
+				s.StateReporter.OnEndState(err, false)
+			}
 			return errors.Wrap(err, "State pipeline errored")
 		}
 	case <-s.shutdown:
+		if s.StateReporter != nil {
+			s.StateReporter.OnEndState(nil, true)
+		}
 		s.StatePipeline.Shutdown()
 	}
 
+	if s.StateReporter != nil {
+		s.StateReporter.OnEndState(nil, false)
+	}
 	return nil
 }

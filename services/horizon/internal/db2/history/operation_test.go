@@ -13,51 +13,51 @@ func TestOperationQueries(t *testing.T) {
 	q := &Q{tt.HorizonSession()}
 
 	// Test OperationByID
-	var op Operation
-	err := q.OperationByID(&op, 8589938689)
+	op, transaction, err := q.OperationByID(false, 8589938689)
 	if tt.Assert.NoError(err) {
 		tt.Assert.Equal(int64(8589938689), op.ID)
 	}
+	tt.Assert.Nil(transaction)
 
 	// Test Operations()
-	ops := []Operation{}
-	err = q.Operations().
+	ops, transactions, err := q.Operations().
 		ForAccount("GBXGQJWVLWOYHFLVTKWV5FGHA3LNYY2JQKM7OAJAUEQFU6LPCSEFVXON").
-		Select(&ops)
+		Fetch()
 	if tt.Assert.NoError(err) {
 		tt.Assert.Len(ops, 2)
 	}
+	tt.Assert.Len(transactions, 0)
 
 	// ledger filter works
-	ops = []Operation{}
-	err = q.Operations().ForLedger(2).Select(&ops)
+	ops, transactions, err = q.Operations().ForLedger(2).Fetch()
 	if tt.Assert.NoError(err) {
 		tt.Assert.Len(ops, 3)
 	}
+	tt.Assert.Len(transactions, 0)
 
 	// tx filter works
 	hash := "2374e99349b9ef7dba9a5db3339b78fda8f34777b1af33ba468ad5c0df946d4d"
-	ops = []Operation{}
-	err = q.Operations().ForTransaction(hash).Select(&ops)
+	ops, transactions, err = q.Operations().ForTransaction(hash).Fetch()
 	if tt.Assert.NoError(err) {
 		tt.Assert.Len(ops, 1)
 	}
+	tt.Assert.Len(transactions, 0)
 
 	// payment filter works
 	tt.Scenario("pathed_payment")
-	ops = []Operation{}
-	err = q.Operations().OnlyPayments().Select(&ops)
+	ops, transactions, err = q.Operations().OnlyPayments().Fetch()
 	if tt.Assert.NoError(err) {
 		tt.Assert.Len(ops, 10)
 	}
+	tt.Assert.Len(transactions, 0)
 
 	// payment filter includes account merges
 	tt.Scenario("account_merge")
-	ops = []Operation{}
-	err = q.Operations().OnlyPayments().Select(&ops)
+	ops, transactions, err = q.Operations().OnlyPayments().Fetch()
 	if tt.Assert.NoError(err) {
 		tt.Assert.Len(ops, 3)
 	}
+	tt.Assert.Len(transactions, 0)
 }
 
 func TestOperationQueryBuilder(t *testing.T) {
@@ -92,14 +92,13 @@ func TestOperationSuccessfulOnly(t *testing.T) {
 	tt := test.Start(t).Scenario("failed_transactions")
 	defer tt.Finish()
 
-	var operations []Operation
-
 	q := &Q{tt.HorizonSession()}
 	query := q.Operations().
 		ForAccount("GA5WBPYA5Y4WAEHXWR2UKO2UO4BUGHUQ74EUPKON2QHV4WRHOIRNKKH2")
 
-	err := query.Select(&operations)
+	operations, transactions, err := query.Fetch()
 	tt.Assert.NoError(err)
+	tt.Assert.Len(transactions, 0)
 
 	tt.Assert.Equal(3, len(operations))
 
@@ -118,15 +117,14 @@ func TestOperationIncludeFailed(t *testing.T) {
 	tt := test.Start(t).Scenario("failed_transactions")
 	defer tt.Finish()
 
-	var operations []Operation
-
 	q := &Q{tt.HorizonSession()}
 	query := q.Operations().
 		ForAccount("GA5WBPYA5Y4WAEHXWR2UKO2UO4BUGHUQ74EUPKON2QHV4WRHOIRNKKH2").
 		IncludeFailed()
 
-	err := query.Select(&operations)
+	operations, transactions, err := query.Fetch()
 	tt.Assert.NoError(err)
+	tt.Assert.Len(transactions, 0)
 
 	var failed, successful int
 	for _, operation := range operations {
@@ -153,15 +151,14 @@ func TestPaymentsSuccessfulOnly(t *testing.T) {
 	tt := test.Start(t).Scenario("failed_transactions")
 	defer tt.Finish()
 
-	var operations []Operation
-
 	q := &Q{tt.HorizonSession()}
 	query := q.Operations().
 		OnlyPayments().
 		ForAccount("GBXGQJWVLWOYHFLVTKWV5FGHA3LNYY2JQKM7OAJAUEQFU6LPCSEFVXON")
 
-	err := query.Select(&operations)
+	operations, transactions, err := query.Fetch()
 	tt.Assert.NoError(err)
+	tt.Assert.Len(transactions, 0)
 
 	tt.Assert.Equal(2, len(operations))
 
@@ -180,16 +177,15 @@ func TestPaymentsIncludeFailed(t *testing.T) {
 	tt := test.Start(t).Scenario("failed_transactions")
 	defer tt.Finish()
 
-	var operations []Operation
-
 	q := &Q{tt.HorizonSession()}
 	query := q.Operations().
 		OnlyPayments().
 		ForAccount("GBXGQJWVLWOYHFLVTKWV5FGHA3LNYY2JQKM7OAJAUEQFU6LPCSEFVXON").
 		IncludeFailed()
 
-	err := query.Select(&operations)
+	operations, transactions, err := query.Fetch()
 	tt.Assert.NoError(err)
+	tt.Assert.Len(transactions, 0)
 
 	var failed, successful int
 	for _, operation := range operations {
@@ -218,14 +214,12 @@ func TestExtraChecksOperationsTransactionSuccessfulTrueResultFalse(t *testing.T)
 	)
 	tt.Require.NoError(err)
 
-	var operations []Operation
-
 	q := &Q{tt.HorizonSession()}
 	query := q.Operations().
 		ForAccount("GA5WBPYA5Y4WAEHXWR2UKO2UO4BUGHUQ74EUPKON2QHV4WRHOIRNKKH2").
 		IncludeFailed()
 
-	err = query.Select(&operations)
+	_, _, err = query.Fetch()
 	tt.Assert.Error(err)
 	tt.Assert.Contains(err.Error(), "Corrupted data! `successful=true` but returned transaction is not success")
 }
@@ -240,14 +234,62 @@ func TestExtraChecksOperationsTransactionSuccessfulFalseResultTrue(t *testing.T)
 	)
 	tt.Require.NoError(err)
 
-	var operations []Operation
-
 	q := &Q{tt.HorizonSession()}
 	query := q.Operations().
 		ForAccount("GBXGQJWVLWOYHFLVTKWV5FGHA3LNYY2JQKM7OAJAUEQFU6LPCSEFVXON").
 		IncludeFailed()
 
-	err = query.Select(&operations)
+	_, _, err = query.Fetch()
 	tt.Assert.Error(err)
 	tt.Assert.Contains(err.Error(), "Corrupted data! `successful=false` but returned transaction is success")
+}
+
+func assertOperationMatchesTransaction(tt *test.T, operation Operation, transaction Transaction) {
+	tt.Assert.Equal(operation.TransactionID, transaction.ID)
+	tt.Assert.Equal(operation.TransactionHash, transaction.TransactionHash)
+	tt.Assert.Equal(operation.TxResult, transaction.TxResult)
+	tt.Assert.Equal(operation.IsTransactionSuccessful(), transaction.IsSuccessful())
+}
+
+// TestOperationIncludeTransactions tests that transactions are included when fetching records from the db.
+func TestOperationIncludeTransactions(t *testing.T) {
+	tt := test.Start(t).Scenario("failed_transactions")
+	defer tt.Finish()
+
+	accountID := "GA5WBPYA5Y4WAEHXWR2UKO2UO4BUGHUQ74EUPKON2QHV4WRHOIRNKKH2"
+
+	q := &Q{tt.HorizonSession()}
+	query := q.Operations().
+		IncludeTransactions().
+		ForAccount(accountID)
+
+	operations, transactions, err := query.Fetch()
+	tt.Assert.NoError(err)
+	tt.Assert.Len(transactions, 3)
+	tt.Assert.Len(transactions, len(operations))
+
+	for i := range operations {
+		operation := operations[i]
+		transaction := transactions[i]
+		assertOperationMatchesTransaction(tt, operation, transaction)
+	}
+
+	withoutTransactionsQuery := (&Q{tt.HorizonSession()}).Operations().
+		ForAccount(accountID)
+
+	var expectedTransactions []Transaction
+	err = (&Q{tt.HorizonSession()}).Transactions().ForAccount(accountID).Select(&expectedTransactions)
+	tt.Assert.NoError(err)
+
+	expectedOperations, _, err := withoutTransactionsQuery.Fetch()
+	tt.Assert.NoError(err)
+
+	tt.Assert.Equal(operations, expectedOperations)
+	tt.Assert.Equal(transactions, expectedTransactions)
+
+	op, transaction, err := q.OperationByID(true, expectedOperations[0].ID)
+	tt.Assert.NoError(err)
+	tt.Assert.Equal(op, expectedOperations[0])
+	tt.Assert.Equal(*transaction, expectedTransactions[0])
+	assertOperationMatchesTransaction(tt, op, *transaction)
 }

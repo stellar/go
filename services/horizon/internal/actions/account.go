@@ -3,21 +3,24 @@ package actions
 import (
 	"context"
 
-	"github.com/stellar/go/clients/horizon"
-	pHorizon "github.com/stellar/go/protocols/horizon"
+	protocol "github.com/stellar/go/protocols/horizon"
+	"github.com/stellar/go/services/horizon/internal/db2"
 	"github.com/stellar/go/services/horizon/internal/db2/core"
+	"github.com/stellar/go/services/horizon/internal/db2/history"
+	"github.com/stellar/go/services/horizon/internal/render/problem"
 	"github.com/stellar/go/services/horizon/internal/resourceadapter"
 	"github.com/stellar/go/support/errors"
+	"github.com/stellar/go/support/render/hal"
 )
 
 // AccountInfo returns the information about an account identified by addr.
-func AccountInfo(ctx context.Context, cq *core.Q, addr string) (*pHorizon.Account, error) {
+func AccountInfo(ctx context.Context, cq *core.Q, addr string) (*protocol.Account, error) {
 	var (
 		coreRecord     core.Account
 		coreData       []core.AccountData
 		coreSigners    []core.Signer
 		coreTrustlines []core.Trustline
-		resource       horizon.Account
+		resource       protocol.Account
 	)
 
 	err := cq.AccountByAddress(&coreRecord, addr)
@@ -50,4 +53,44 @@ func AccountInfo(ctx context.Context, cq *core.Q, addr string) (*pHorizon.Accoun
 	)
 
 	return &resource, errors.Wrap(err, "populating account")
+}
+
+// AccountPage returns a page containing the account records that
+// have `signer` as a signer.
+// This doesn't return full account details resource because of the
+// limitations of existing ingestion architecture. In a future, when
+// the new ingestion system is fully integrated, this endpoint can be
+// used to find accounts for signer but also accounts for assets,
+// home domain, inflation_dest etc.
+func AccountPage(ctx context.Context, hq history.QSigners, signer string, pq db2.PageQuery) (hal.Page, error) {
+	lastIngestedLedger, err := hq.GetLastLedgerExpIngest()
+	if err != nil {
+		return hal.Page{}, errors.Wrap(err, "error loading last ledger ingested by expingest")
+	}
+
+	// expingest has not finished processing any ledger so no data.
+	if lastIngestedLedger == 0 {
+		return hal.Page{}, problem.StillIngesting
+	}
+
+	records, err := hq.AccountsForSigner(signer, pq)
+	if err != nil {
+		return hal.Page{}, errors.Wrap(err, "loading account records")
+	}
+
+	page := hal.Page{
+		Cursor: pq.Cursor,
+		Order:  pq.Order,
+		Limit:  pq.Limit,
+	}
+
+	for _, record := range records {
+		var res protocol.AccountSigner
+		resourceadapter.PopulateAccountSigner(ctx, &res, record)
+		page.Add(res)
+	}
+
+	page.FullURL = fullURL(ctx)
+	page.PopulateLinks()
+	return page, nil
 }
