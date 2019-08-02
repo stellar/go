@@ -44,10 +44,14 @@ var _ StateReader = &SingleLedgerStateReader{}
 // to be thread-safe.
 type StateReaderTempStore interface {
 	Open() error
-	Set(string, bool) error
-	// Get returns value from the store. Of the value has not been set, it
-	// should return false.
-	Get(string) (bool, error)
+	// Preload batch-loads keys into internal cache (if a store has any) to
+	// improve execution time by removing many round-trips.
+	Preload(keys []string) error
+	// Add adds key to the store.
+	Add(key string) error
+	// Exist returns value true if the value is found in the store.
+	// If the value has not been set, it should return false.
+	Exist(key string) (bool, error)
 	Close() error
 }
 
@@ -83,8 +87,9 @@ func MakeSingleLedgerStateReader(
 // streamBuckets is internal method that streams buckets from the given HAS.
 //
 // Buckets should be processed from oldest to newest, `snap` and then `curr` at
-// each level. The correct value of ledger entry is the latest seen `LIVEENTRY`
-// except the case when there's a `DEADENTRY` later which removes the entry.
+// each level. The correct value of ledger entry is the latest seen
+// `INITENTRY`/`LIVEENTRY` except the case when there's a `DEADENTRY` later
+// which removes the entry.
 //
 // We can implement trivial algorithm (processing from oldest to newest buckets)
 // but it requires to keep map of all entries in memory and stream what's left
@@ -92,17 +97,16 @@ func MakeSingleLedgerStateReader(
 //
 // However, we can modify this algorithm to work from newest to oldest ledgers:
 //
-//   1. For each `LIVEENTRY` we check if we've seen it before (`seen` map) or
-//      if we've seen `DEADENTRY` for it (`removed` map). If both conditions are
-//      false, we write that bucket entry to the stream and mark it as `seen`.
+//   1. For each `INITENTRY`/`LIVEENTRY` we check if we've seen the key before
+//      (stored in `tempStore`). If the key hasn't been seen, we write that bucket
+//      entry to the stream and add it to the `tempStore` (we don't mark `INITENTRY`,
+//      see the inline comment or CAP-20).
 //   2. For each `DEADENTRY` we keep track of removed bucket entries in
-//      `removed` map.
+//      `tempStore` map.
 //
-// In such algorithm we just need to keep 2 maps with `bool` values that require
-// much less memory space.  The memory requirements will be lowered when CAP-0020
-// is live. Finally, we can require `ingest/pipeline.StateProcessor` to return
-// entry types it needs so that `SingleLedgerStateReader` will only stream entry types
-// required by a given pipeline.
+// In such algorithm we just need to store a set of keys that require much less space.
+// The memory requirements will be lowered when CAP-0020 is live and older buckets are
+// rewritten. Then, we will only need to keep track of `DEADENTRY`.
 func (msr *SingleLedgerStateReader) streamBuckets() {
 	defer func() {
 		err := msr.tempStore.Close()
@@ -176,19 +180,72 @@ func (msr *SingleLedgerStateReader) streamBucketContents(hash historyarchive.Has
 	bucketProtocolVersion := uint32(0)
 
 	n := -1
+	var batch []xdr.BucketEntry
+	lastBatch := false
+
 LoopBucketEntry:
 	for {
-		n++
-
-		var entry xdr.BucketEntry
-		if e = rdr.ReadOne(&entry); e != nil {
-			if e == io.EOF {
-				// proceed to the next bucket hash
+		// Preload entries for faster retrieve from temp store.
+		if len(batch) == 0 {
+			if lastBatch {
 				return true
 			}
-			msr.readChan <- msr.error(fmt.Errorf("Error on XDR record %d of hash '%s': %s", n, hash.String(), e))
-			return false
+
+			preloadKeys := []string{}
+
+			for i := 0; i < 50000; i++ {
+				var entry xdr.BucketEntry
+				if e = rdr.ReadOne(&entry); e != nil {
+					if e == io.EOF {
+						if len(batch) == 0 {
+							// No entries loaded for this batch, nothing more to process
+							return true
+						}
+						lastBatch = true
+						break
+					}
+					msr.readChan <- msr.error(fmt.Errorf("Error on XDR record %d of hash '%s': %s", n, hash.String(), e))
+					return false
+				}
+
+				batch = append(batch, entry)
+
+				// Generate a key
+				var key xdr.LedgerKey
+
+				switch entry.Type {
+				case xdr.BucketEntryTypeLiveentry, xdr.BucketEntryTypeInitentry:
+					liveEntry := entry.MustLiveEntry()
+					key = liveEntry.LedgerKey()
+				case xdr.BucketEntryTypeDeadentry:
+					key = entry.MustDeadEntry()
+				default:
+					// No ledger key associated with this entry, continue to the next one.
+					continue
+				}
+
+				// We're using compressed keys here
+				keyBytes, e := key.MarshalBinaryCompress()
+				if e != nil {
+					msr.readChan <- msr.error(fmt.Errorf("Error marshaling XDR record %d of hash '%s': %s", n, hash.String(), e))
+					return false
+				}
+
+				h := base64.StdEncoding.EncodeToString(keyBytes)
+				preloadKeys = append(preloadKeys, h)
+			}
+
+			err := msr.tempStore.Preload(preloadKeys)
+			if err != nil {
+				msr.readChan <- msr.error(errors.Wrap(err, "Error preloading keys"))
+				return false
+			}
 		}
+
+		var entry xdr.BucketEntry
+		entry, batch = batch[0], batch[1:]
+
+		n++
 
 		var key xdr.LedgerKey
 
@@ -212,7 +269,8 @@ LoopBucketEntry:
 			return false
 		}
 
-		keyBytes, e := key.MarshalBinary()
+		// We're using compressed keys here
+		keyBytes, e := key.MarshalBinaryCompress()
 		if e != nil {
 			msr.readChan <- msr.error(fmt.Errorf("Error marshaling XDR record %d of hash '%s': %s", n, hash.String(), e))
 			return false
@@ -227,7 +285,7 @@ LoopBucketEntry:
 				return false
 			}
 
-			seen, err := msr.tempStore.Get(h)
+			seen, err := msr.tempStore.Exist(h)
 			if err != nil {
 				msr.readChan <- msr.error(errors.Wrap(err, "Error reading from tempStore"))
 				return false
@@ -242,14 +300,21 @@ LoopBucketEntry:
 				}
 				msr.readChan <- readResult{entryChange, nil}
 
-				err := msr.tempStore.Set(h, true)
-				if err != nil {
-					msr.readChan <- msr.error(errors.Wrap(err, "Error writing to tempStore"))
-					return false
+				// We don't update `tempStore` for INITENTRY because CAP-20 says:
+				// > a bucket entry marked INITENTRY implies that either no entry
+				// > with the same ledger key exists in an older bucket, or else
+				// > that the (chronologically) preceding entry with the same ledger
+				// > key was DEADENTRY.
+				if entry.Type == xdr.BucketEntryTypeLiveentry {
+					err := msr.tempStore.Add(h)
+					if err != nil {
+						msr.readChan <- msr.error(errors.Wrap(err, "Error updating to tempStore"))
+						return false
+					}
 				}
 			}
 		case xdr.BucketEntryTypeDeadentry:
-			err := msr.tempStore.Set(h, true)
+			err := msr.tempStore.Add(h)
 			if err != nil {
 				msr.readChan <- msr.error(errors.Wrap(err, "Error writing to tempStore"))
 				return false

@@ -107,6 +107,38 @@ func (a Asset) String() string {
 	return fmt.Sprintf("%s/%s/%s", t, c, i)
 }
 
+// Warning, do not use UnmarshalBinary() on data encoded using this method!
+func (a Asset) MarshalBinaryCompress() ([]byte, error) {
+	m := []byte{byte(a.Type)}
+
+	var err error
+	var code []byte
+	var issuer []byte
+
+	switch a.Type {
+	case AssetTypeAssetTypeNative:
+		return m, nil
+	case AssetTypeAssetTypeCreditAlphanum4:
+		code = []byte(strings.TrimRight(string(a.AlphaNum4.AssetCode[:]), "\x00"))
+		issuer, err = a.AlphaNum4.Issuer.MarshalBinary()
+		if err != nil {
+			return nil, err
+		}
+	case AssetTypeAssetTypeCreditAlphanum12:
+		code = []byte(strings.TrimRight(string(a.AlphaNum12.AssetCode[:]), "\x00"))
+		issuer, err = a.AlphaNum12.Issuer.MarshalBinary()
+		if err != nil {
+			panic(err)
+		}
+	default:
+		panic(fmt.Errorf("Unknown asset type: %v", a.Type))
+	}
+
+	m = append(m, code...)
+	m = append(m, issuer...)
+	return m, nil
+}
+
 // Equals returns true if `other` is equivalent to `a`
 func (a Asset) Equals(other Asset) bool {
 	if a.Type != other.Type {

@@ -13,12 +13,17 @@ func (s *MemoryStateReaderTempStore) Open() error {
 	return nil
 }
 
-func (s *MemoryStateReaderTempStore) Set(key string, value bool) error {
-	s.m[key] = value
+func (s *MemoryStateReaderTempStore) Add(key string) error {
+	s.m[key] = true
 	return nil
 }
 
-func (s *MemoryStateReaderTempStore) Get(key string) (bool, error) {
+func (s *MemoryStateReaderTempStore) Preload(keys []string) error {
+	// Everything in memory - no preloading needed
+	return nil
+}
+
+func (s *MemoryStateReaderTempStore) Exist(key string) (bool, error) {
 	return s.m[key], nil
 }
 

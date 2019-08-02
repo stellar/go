@@ -30,7 +30,7 @@ func main() {
 
 		StatePipeline:  buildStatePipeline(db, orderBookGraph),
 		LedgerPipeline: buildLedgerPipeline(db, orderBookGraph),
-		StateTempStore: &io.PostgresStateReaderTempStore{DSN: dsn},
+		StateTempStore: &io.PostgresStateReaderTempStore{DSN: dsn}, //&io.RedisStateReaderTempStore{DSN: "redis://localhost:6379"}, // &io.MemoryStateReaderTempStore{},
 	}
 
 	addPipelineHooks(session.StatePipeline, db, session, orderBookGraph)

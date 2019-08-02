@@ -51,6 +51,24 @@ func (aid *AccountId) LedgerKey() (ret LedgerKey) {
 	return
 }
 
+// Warning, do not use UnmarshalBinary() on data encoded using this method!
+func (aid AccountId) MarshalBinaryCompress() ([]byte, error) {
+	m := []byte{byte(aid.Type)}
+
+	switch aid.Type {
+	case PublicKeyTypePublicKeyTypeEd25519:
+		pk, err := aid.Ed25519.MarshalBinary()
+		if err != nil {
+			return nil, err
+		}
+		m = append(m, pk...)
+	default:
+		panic("Unknown type")
+	}
+
+	return m, nil
+}
+
 func MustAddress(address string) AccountId {
 	aid := AccountId{}
 	err := aid.SetAddress(address)
