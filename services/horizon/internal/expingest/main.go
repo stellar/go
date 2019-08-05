@@ -4,7 +4,6 @@
 package expingest
 
 import (
-	"database/sql"
 	"time"
 
 	"github.com/stellar/go/clients/stellarcore"
@@ -159,10 +158,7 @@ func (s *System) Run() {
 
 func loadOrderBookGraphFromDB(historyQ *history.Q, graph *orderbook.OrderBookGraph) (uint32, error) {
 	var lastIngestedLedger uint32
-	err := historyQ.BeginTx(&sql.TxOptions{
-		Isolation: sql.LevelSerializable,
-		ReadOnly:  true,
-	})
+	err := historyQ.Begin()
 	if err != nil {
 		return lastIngestedLedger, err
 	}
@@ -182,10 +178,7 @@ func loadOrderBookGraphFromDB(historyQ *history.Q, graph *orderbook.OrderBookGra
 	err = historyQ.Commit()
 	if err == nil {
 		for _, offer := range offers {
-			sellerID := xdr.AccountId{}
-			if err = sellerID.SetAddress(offer.SellerID); err != nil {
-				return lastIngestedLedger, err
-			}
+			sellerID := xdr.MustAddress(offer.SellerID)
 			graph.AddOffer(xdr.OfferEntry{
 				SellerId: sellerID,
 				OfferId:  offer.OfferID,
