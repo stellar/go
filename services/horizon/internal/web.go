@@ -58,7 +58,7 @@ func init() {
 }
 
 // mustInitWeb installed a new Web instance onto the provided app object.
-func mustInitWeb(ctx context.Context, hq *history.Q, cq *core.Q, updateFreq time.Duration, threshold uint, ingest bool) *web {
+func mustInitWeb(ctx context.Context, hq *history.Q, cq *core.Q, updateFreq time.Duration, threshold uint, ingestFailedTx bool) *web {
 	if hq == nil {
 		log.Fatal("missing history DB for installing the web instance")
 	}
@@ -73,7 +73,7 @@ func mustInitWeb(ctx context.Context, hq *history.Q, cq *core.Q, updateFreq time
 		coreQ:              cq,
 		sseUpdateFrequency: updateFreq,
 		staleThreshold:     threshold,
-		ingestFailedTx:     ingest,
+		ingestFailedTx:     ingestFailedTx,
 		requestTimer:       metrics.NewTimer(),
 		failureMeter:       metrics.NewMeter(),
 		successMeter:       metrics.NewMeter(),
@@ -115,7 +115,7 @@ func (w *web) mustInstallMiddlewares(app *App, connTimeout time.Duration) {
 
 // mustInstallActions installs the routing configuration of horizon onto the
 // provided app.  All route registration should be implemented here.
-func (w *web) mustInstallActions(enableAssetStats bool, friendbotURL *url.URL) {
+func (w *web) mustInstallActions(enableAssetStats bool, enableAccountsForSigner bool, friendbotURL *url.URL) {
 	if w == nil {
 		log.Fatal("missing web instance for installing web actions")
 	}
@@ -131,18 +131,21 @@ func (w *web) mustInstallActions(enableAssetStats bool, friendbotURL *url.URL) {
 			r.Get("/", LedgerShowAction{}.Handle)
 			r.Get("/transactions", w.streamIndexActionHandler(w.getTransactionPage, w.streamTransactions))
 			r.Get("/operations", OperationIndexAction{}.Handle)
-			r.Get("/payments", PaymentsIndexAction{}.Handle)
+			r.Get("/payments", OperationIndexAction{OnlyPayments: true}.Handle)
 			r.Get("/effects", EffectIndexAction{}.Handle)
 		})
 	})
 
 	// account actions
 	r.Route("/accounts", func(r chi.Router) {
+		if enableAccountsForSigner {
+			r.Get("/", accountIndexActionHandler(w.getAccountPage))
+		}
 		r.Route("/{account_id}", func(r chi.Router) {
 			r.Get("/", w.streamShowActionHandler(w.getAccountInfo, true))
 			r.Get("/transactions", w.streamIndexActionHandler(w.getTransactionPage, w.streamTransactions))
 			r.Get("/operations", OperationIndexAction{}.Handle)
-			r.Get("/payments", PaymentsIndexAction{}.Handle)
+			r.Get("/payments", OperationIndexAction{OnlyPayments: true}.Handle)
 			r.Get("/effects", EffectIndexAction{}.Handle)
 			r.Get("/offers", OffersByAccountAction{}.Handle)
 			r.Get("/trades", TradeIndexAction{}.Handle)
@@ -156,7 +159,7 @@ func (w *web) mustInstallActions(enableAssetStats bool, friendbotURL *url.URL) {
 		r.Route("/{tx_id}", func(r chi.Router) {
 			r.Get("/", showActionHandler(w.getTransactionResource))
 			r.Get("/operations", OperationIndexAction{}.Handle)
-			r.Get("/payments", PaymentsIndexAction{}.Handle)
+			r.Get("/payments", OperationIndexAction{OnlyPayments: true}.Handle)
 			r.Get("/effects", EffectIndexAction{}.Handle)
 		})
 	})
@@ -169,7 +172,7 @@ func (w *web) mustInstallActions(enableAssetStats bool, friendbotURL *url.URL) {
 	})
 
 	// payment actions
-	r.Get("/payments", PaymentsIndexAction{}.Handle)
+	r.Get("/payments", OperationIndexAction{OnlyPayments: true}.Handle)
 
 	// effect actions
 	r.Get("/effects", EffectIndexAction{}.Handle)

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"time"
 
+	"github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/protocols/horizon/base"
 	"github.com/stellar/go/support/render/hal"
 	"github.com/stellar/go/xdr"
@@ -51,7 +52,13 @@ type Base struct {
 	Type                  string    `json:"type"`
 	TypeI                 int32     `json:"type_i"`
 	LedgerCloseTime       time.Time `json:"created_at"`
-	TransactionHash       string    `json:"transaction_hash"`
+	// TransactionHash is the hash of the transaction which created the operation
+	// Note that the Transaction field below is not always present in the Operation response.
+	// If the Transaction field is present TransactionHash is redundant since the same information
+	// is present in Transaction. But, if the Transaction field is nil then TransactionHash is useful.
+	// Transaction is non nil when the "join=transactions" parameter is present in the operations request
+	TransactionHash string               `json:"transaction_hash"`
+	Transaction     *horizon.Transaction `json:"transaction,omitempty"`
 }
 
 // PagingToken implements hal.Pageable

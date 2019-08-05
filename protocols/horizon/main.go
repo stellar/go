@@ -123,6 +123,23 @@ func (a *Account) GetData(key string) ([]byte, error) {
 	return base64.StdEncoding.DecodeString(a.Data[key])
 }
 
+// AccountSigner is the account signer information.
+type AccountSigner struct {
+	Links struct {
+		Account hal.Link `json:"account"`
+	} `json:"_links"`
+
+	ID        string `json:"id"`
+	AccountID string `json:"account_id"`
+	PT        string `json:"paging_token"`
+	Signer    `json:"signer"`
+}
+
+// PagingToken implementation for hal.Pageable
+func (res AccountSigner) PagingToken() string {
+	return res.PT
+}
+
 // AccountFlags represents the state of an account's flags
 type AccountFlags struct {
 	AuthRequired  bool `json:"auth_required"`
@@ -276,6 +293,7 @@ type Root struct {
 
 	HorizonVersion               string `json:"horizon_version"`
 	StellarCoreVersion           string `json:"core_version"`
+	ExpHorizonSequence           uint32 `json:"exp_history_latest_ledger,omitempty"`
 	HorizonSequence              int32  `json:"history_latest_ledger"`
 	HistoryElderSequence         int32  `json:"history_elder_ledger"`
 	CoreSequence                 int32  `json:"core_latest_ledger"`

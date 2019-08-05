@@ -20,11 +20,13 @@ func main() {
 
 // Demos use of the LedgerBackendAdapter
 func useAdapter() {
-	backend := ledgerbackend.DatabaseBackend{
-		DataSourceName: dbURI,
+	backend, err := ledgerbackend.NewDatabaseBackend(dbURI)
+	if err != nil {
+		log.Fatal(err)
 	}
+
 	lba := ingestadapters.LedgerBackendAdapter{
-		Backend: &backend,
+		Backend: backend,
 	}
 
 	ledgerSequence, err := lba.GetLatestLedgerSequence()

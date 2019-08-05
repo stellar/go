@@ -8,6 +8,7 @@ import (
 
 	sq "github.com/Masterminds/squirrel"
 	"github.com/guregu/null"
+	"github.com/stellar/go/services/horizon/internal/db2"
 	"github.com/stellar/go/support/db"
 	"github.com/stellar/go/xdr"
 )
@@ -120,6 +121,13 @@ type AccountsQ struct {
 	sql    sq.SelectBuilder
 }
 
+// AccountSigner is a row of data from the `accounts_signers` table
+type AccountSigner struct {
+	Account string `db:"account"`
+	Signer  string `db:"signer"`
+	Weight  int32  `db:"weight"`
+}
+
 // Asset is a row of data from the `history_assets` table
 type Asset struct {
 	ID     int64  `db:"id"`
@@ -175,6 +183,12 @@ type FeeStats struct {
 	P90  null.Int `db:"p90"`
 	P95  null.Int `db:"p95"`
 	P99  null.Int `db:"p99"`
+}
+
+// KeyValueStoreRow represents a row in key value store.
+type KeyValueStoreRow struct {
+	Key   string `db:"key"`
+	Value string `db:"value"`
 }
 
 // LatestLedger represents a response from the raw LatestLedgerBaseFeeAndSequence
@@ -246,17 +260,27 @@ type Operation struct {
 // OperationsQ is a helper struct to aid in configuring queries that loads
 // slices of Operation structs.
 type OperationsQ struct {
-	Err           error
-	parent        *Q
-	sql           sq.SelectBuilder
-	opIdCol       string
-	includeFailed bool
+	Err                 error
+	parent              *Q
+	sql                 sq.SelectBuilder
+	opIdCol             string
+	includeFailed       bool
+	includeTransactions bool
 }
 
 // Q is a helper struct on which to hang common_trades queries against a history
 // portion of the horizon database.
 type Q struct {
 	*db.Session
+}
+
+// QSigners defines signer related queries.
+type QSigners interface {
+	GetLastLedgerExpIngest() (uint32, error)
+	UpdateLastLedgerExpIngest(ledgerSequence uint32) error
+	AccountsForSigner(signer string, page db2.PageQuery) ([]AccountSigner, error)
+	CreateAccountSigner(account, signer string, weight int32) error
+	RemoveAccountSigner(account, signer string) error
 }
 
 // TotalOrderID represents the ID portion of rows that are identified by the

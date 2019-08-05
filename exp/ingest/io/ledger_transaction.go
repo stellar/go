@@ -17,39 +17,48 @@ type Change struct {
 	Post *xdr.LedgerEntryData
 }
 
+// AccountSignersChanged returns true if account signers have changed.
+// Notice: this will return true on master key changes too!
 func (c *Change) AccountSignersChanged() bool {
 	if c.Type != xdr.LedgerEntryTypeAccount {
 		panic("This should not be called on changes other than Account changes")
 	}
 
-	// Signers must be removed before merging an account and it's
-	// impossible to add signers during a creation of a new account.
-	if c.Pre == nil || c.Post == nil {
-		return false
-	}
-
-	if len(c.Pre.MustAccount().Signers) != len(c.Post.MustAccount().Signers) {
+	// New account so new master key (which is also a signer)
+	if c.Pre == nil {
 		return true
 	}
 
-	signers := map[string]uint32{} // signer => weight
-
-	for _, signer := range c.Pre.MustAccount().Signers {
-		signers[signer.Key.Address()] = uint32(signer.Weight)
+	// Account merged, check if master key weight > 0, if so, it means
+	// it got removed. Merged account can't have subentries so we don't
+	// need to check other signers.
+	// c.Pre != nil at this point.
+	if c.Post == nil {
+		preAccountEntry := c.Pre.MustAccount()
+		return preAccountEntry.MasterKeyWeight() > 0
 	}
 
-	for _, signer := range c.Post.MustAccount().Signers {
-		weight, exist := signers[signer.Key.Address()]
+	// c.Pre != nil && c.Post != nil at this point.
+	preAccountEntry := c.Pre.MustAccount()
+	postAccountEntry := c.Post.MustAccount()
+
+	preSigners := preAccountEntry.SignerSummary()
+	postSigners := postAccountEntry.SignerSummary()
+
+	if len(preSigners) != len(postSigners) {
+		return true
+	}
+
+	for postSigner, postWeight := range postSigners {
+		preWeight, exist := preSigners[postSigner]
 		if !exist {
-			return false
+			return true
 		}
 
-		if weight != uint32(signer.Weight) {
-			return false
+		if preWeight != postWeight {
+			return true
 		}
 	}
-
-	// TODO should it also change on master key weight changes?
 
 	return false
 }

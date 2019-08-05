@@ -2,7 +2,6 @@ package ledgerbackend
 
 import (
 	"database/sql"
-	"sync"
 
 	"github.com/stellar/go/support/db"
 	"github.com/stellar/go/support/errors"
@@ -23,21 +22,26 @@ var _ LedgerBackend = (*DatabaseBackend)(nil)
 
 // DatabaseBackend implements a database data store.
 type DatabaseBackend struct {
-	DataSourceName string
-	session        session
-	initOnce       sync.Once
+	session session
+}
+
+func NewDatabaseBackend(dataSourceName string) (*DatabaseBackend, error) {
+	session, err := createSession(dataSourceName)
+	if err != nil {
+		return nil, err
+	}
+
+	return &DatabaseBackend{session: session}, nil
+}
+
+func NewDatabaseBackendFromSession(session *db.Session) (*DatabaseBackend, error) {
+	return &DatabaseBackend{session: session}, nil
 }
 
 // GetLatestLedgerSequence returns the most recent ledger sequence number present in the database.
 func (dbb *DatabaseBackend) GetLatestLedgerSequence() (uint32, error) {
-	var err error
-	dbb.initOnce.Do(func() { err = dbb.init() })
-	if err != nil {
-		return 0, err
-	}
-
 	var ledger []ledgerHeader
-	err = dbb.session.SelectRaw(&ledger, latestLedgerSeqQuery)
+	err := dbb.session.SelectRaw(&ledger, latestLedgerSeqQuery)
 	if err != nil {
 		return 0, errors.Wrap(err, "couldn't select ledger sequence")
 	}
@@ -48,18 +52,12 @@ func (dbb *DatabaseBackend) GetLatestLedgerSequence() (uint32, error) {
 // GetLedger returns the LedgerCloseMeta for the given ledger sequence number.
 // The first returned value is false when the ledger does not exist in the database.
 func (dbb *DatabaseBackend) GetLedger(sequence uint32) (bool, LedgerCloseMeta, error) {
-	var err error
-	dbb.initOnce.Do(func() { err = dbb.init() })
-	if err != nil {
-		return false, LedgerCloseMeta{}, err
-	}
-
 	lcm := LedgerCloseMeta{}
 
 	// Query - ledgerheader
 	var lRow ledgerHeaderHistory
 
-	err = dbb.session.GetRaw(&lRow, ledgerHeaderQuery, sequence)
+	err := dbb.session.GetRaw(&lRow, ledgerHeaderQuery, sequence)
 	// Return errors...
 	if err != nil {
 		switch err {
@@ -118,25 +116,13 @@ func (dbb *DatabaseBackend) GetLedger(sequence uint32) (bool, LedgerCloseMeta, e
 	return true, lcm, nil
 }
 
-// init sets up the backend for use. It delegates to the specific backend implementation.
-func (dbb *DatabaseBackend) init() error {
-	return dbb.createSession()
-}
-
 // CreateSession returns a new db.Session that connects to the given DB settings.
-func (dbb *DatabaseBackend) createSession() error {
-	if dbb.DataSourceName == "" {
-		return errors.New("missing DatabaseBackend.DataSourceName (e.g. \"postgres://stellar:postgres@localhost:8002/core\")")
+func createSession(dataSourceName string) (*db.Session, error) {
+	if dataSourceName == "" {
+		return nil, errors.New("missing DatabaseBackend.DataSourceName (e.g. \"postgres://stellar:postgres@localhost:8002/core\")")
 	}
 
-	session, err := db.Open(dbDriver, dbb.DataSourceName)
-	if err != nil {
-		return err
-	}
-
-	dbb.session = session
-
-	return nil
+	return db.Open(dbDriver, dataSourceName)
 }
 
 // Close disconnects an active database session.

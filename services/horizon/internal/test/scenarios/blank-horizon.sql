@@ -55,15 +55,18 @@ DROP INDEX IF EXISTS public.by_hash;
 DROP INDEX IF EXISTS public.by_account;
 DROP INDEX IF EXISTS public.asset_by_issuer;
 DROP INDEX IF EXISTS public.asset_by_code;
+ALTER TABLE IF EXISTS ONLY public.key_value_store DROP CONSTRAINT IF EXISTS key_value_store_pkey;
 ALTER TABLE IF EXISTS ONLY public.history_transaction_participants DROP CONSTRAINT IF EXISTS history_transaction_participants_pkey;
 ALTER TABLE IF EXISTS ONLY public.history_operation_participants DROP CONSTRAINT IF EXISTS history_operation_participants_pkey;
 ALTER TABLE IF EXISTS ONLY public.history_assets DROP CONSTRAINT IF EXISTS history_assets_pkey;
 ALTER TABLE IF EXISTS ONLY public.history_assets DROP CONSTRAINT IF EXISTS history_assets_asset_code_asset_type_asset_issuer_key;
 ALTER TABLE IF EXISTS ONLY public.gorp_migrations DROP CONSTRAINT IF EXISTS gorp_migrations_pkey;
 ALTER TABLE IF EXISTS ONLY public.asset_stats DROP CONSTRAINT IF EXISTS asset_stats_pkey;
+ALTER TABLE IF EXISTS ONLY public.accounts_signers DROP CONSTRAINT IF EXISTS accounts_signers_pkey;
 ALTER TABLE IF EXISTS public.history_transaction_participants ALTER COLUMN id DROP DEFAULT;
 ALTER TABLE IF EXISTS public.history_operation_participants ALTER COLUMN id DROP DEFAULT;
 ALTER TABLE IF EXISTS public.history_assets ALTER COLUMN id DROP DEFAULT;
+DROP TABLE IF EXISTS public.key_value_store;
 DROP TABLE IF EXISTS public.history_transactions;
 DROP SEQUENCE IF EXISTS public.history_transaction_participants_id_seq;
 DROP TABLE IF EXISTS public.history_transaction_participants;
@@ -79,6 +82,7 @@ DROP TABLE IF EXISTS public.history_accounts;
 DROP SEQUENCE IF EXISTS public.history_accounts_id_seq;
 DROP TABLE IF EXISTS public.gorp_migrations;
 DROP TABLE IF EXISTS public.asset_stats;
+DROP TABLE IF EXISTS public.accounts_signers;
 DROP AGGREGATE IF EXISTS public.min_price(numeric[]);
 DROP AGGREGATE IF EXISTS public.max_price(numeric[]);
 DROP AGGREGATE IF EXISTS public.last(anyelement);
@@ -185,6 +189,17 @@ CREATE AGGREGATE min_price(numeric[]) (
 SET default_tablespace = '';
 
 SET default_with_oids = false;
+
+--
+-- Name: accounts_signers; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE accounts_signers (
+    account character varying(64) NOT NULL,
+    signer character varying(64) NOT NULL,
+    weight integer NOT NULL
+);
+
 
 --
 -- Name: asset_stats; Type: TABLE; Schema: public; Owner: -
@@ -431,6 +446,16 @@ CREATE TABLE history_transactions (
 
 
 --
+-- Name: key_value_store; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE key_value_store (
+    key character varying(255) NOT NULL,
+    value character varying(255) NOT NULL
+);
+
+
+--
 -- Name: history_assets id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -452,6 +477,12 @@ ALTER TABLE ONLY history_transaction_participants ALTER COLUMN id SET DEFAULT ne
 
 
 --
+-- Data for Name: accounts_signers; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+
+
+--
 -- Data for Name: asset_stats; Type: TABLE DATA; Schema: public; Owner: -
 --
 
@@ -461,24 +492,25 @@ ALTER TABLE ONLY history_transaction_participants ALTER COLUMN id SET DEFAULT ne
 -- Data for Name: gorp_migrations; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-INSERT INTO gorp_migrations VALUES ('1_initial_schema.sql', '2019-06-03 18:28:47.032496+02');
-INSERT INTO gorp_migrations VALUES ('2_index_participants_by_toid.sql', '2019-06-03 18:28:47.039657+02');
-INSERT INTO gorp_migrations VALUES ('3_use_sequence_in_history_accounts.sql', '2019-06-03 18:28:47.044048+02');
-INSERT INTO gorp_migrations VALUES ('4_add_protocol_version.sql', '2019-06-03 18:28:47.054532+02');
-INSERT INTO gorp_migrations VALUES ('5_create_trades_table.sql', '2019-06-03 18:28:47.063028+02');
-INSERT INTO gorp_migrations VALUES ('6_create_assets_table.sql', '2019-06-03 18:28:47.068415+02');
-INSERT INTO gorp_migrations VALUES ('7_modify_trades_table.sql', '2019-06-03 18:28:47.081625+02');
-INSERT INTO gorp_migrations VALUES ('8_create_asset_stats_table.sql', '2019-06-03 18:28:47.087463+02');
-INSERT INTO gorp_migrations VALUES ('8_add_aggregators.sql', '2019-06-03 18:28:47.090109+02');
-INSERT INTO gorp_migrations VALUES ('9_add_header_xdr.sql', '2019-06-03 18:28:47.092718+02');
-INSERT INTO gorp_migrations VALUES ('10_add_trades_price.sql', '2019-06-03 18:28:47.095973+02');
-INSERT INTO gorp_migrations VALUES ('11_add_trades_account_index.sql', '2019-06-03 18:28:47.099698+02');
-INSERT INTO gorp_migrations VALUES ('12_asset_stats_amount_string.sql', '2019-06-03 18:28:47.107549+02');
-INSERT INTO gorp_migrations VALUES ('13_trade_offer_ids.sql', '2019-06-03 18:28:47.112768+02');
-INSERT INTO gorp_migrations VALUES ('14_fix_asset_toml_field.sql', '2019-06-03 18:28:47.115116+02');
-INSERT INTO gorp_migrations VALUES ('15_ledger_failed_txs.sql', '2019-06-03 18:28:47.116796+02');
-INSERT INTO gorp_migrations VALUES ('16_ingest_failed_transactions.sql', '2019-06-03 18:28:47.117989+02');
-INSERT INTO gorp_migrations VALUES ('17_transaction_fee_paid.sql', '2019-06-03 18:28:47.120034+02');
+INSERT INTO gorp_migrations VALUES ('1_initial_schema.sql', '2019-07-17 21:46:35.197987+02');
+INSERT INTO gorp_migrations VALUES ('2_index_participants_by_toid.sql', '2019-07-17 21:46:35.204345+02');
+INSERT INTO gorp_migrations VALUES ('3_use_sequence_in_history_accounts.sql', '2019-07-17 21:46:35.20828+02');
+INSERT INTO gorp_migrations VALUES ('4_add_protocol_version.sql', '2019-07-17 21:46:35.217914+02');
+INSERT INTO gorp_migrations VALUES ('5_create_trades_table.sql', '2019-07-17 21:46:35.229599+02');
+INSERT INTO gorp_migrations VALUES ('6_create_assets_table.sql', '2019-07-17 21:46:35.23484+02');
+INSERT INTO gorp_migrations VALUES ('7_modify_trades_table.sql', '2019-07-17 21:46:35.247209+02');
+INSERT INTO gorp_migrations VALUES ('8_create_asset_stats_table.sql', '2019-07-17 21:46:35.25277+02');
+INSERT INTO gorp_migrations VALUES ('8_add_aggregators.sql', '2019-07-17 21:46:35.255358+02');
+INSERT INTO gorp_migrations VALUES ('9_add_header_xdr.sql', '2019-07-17 21:46:35.260486+02');
+INSERT INTO gorp_migrations VALUES ('10_add_trades_price.sql', '2019-07-17 21:46:35.263643+02');
+INSERT INTO gorp_migrations VALUES ('11_add_trades_account_index.sql', '2019-07-17 21:46:35.267212+02');
+INSERT INTO gorp_migrations VALUES ('12_asset_stats_amount_string.sql', '2019-07-17 21:46:35.275203+02');
+INSERT INTO gorp_migrations VALUES ('13_trade_offer_ids.sql', '2019-07-17 21:46:35.282065+02');
+INSERT INTO gorp_migrations VALUES ('14_fix_asset_toml_field.sql', '2019-07-17 21:46:35.284004+02');
+INSERT INTO gorp_migrations VALUES ('15_ledger_failed_txs.sql', '2019-07-17 21:46:35.285489+02');
+INSERT INTO gorp_migrations VALUES ('16_ingest_failed_transactions.sql', '2019-07-17 21:46:35.286943+02');
+INSERT INTO gorp_migrations VALUES ('17_transaction_fee_paid.sql', '2019-07-17 21:46:35.289744+02');
+INSERT INTO gorp_migrations VALUES ('18_account_for_signers.sql', '2019-07-17 21:46:35.297283+02');
 
 
 --
@@ -564,6 +596,20 @@ SELECT pg_catalog.setval('history_transaction_participants_id_seq', 1, false);
 
 
 --
+-- Data for Name: key_value_store; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+
+
+--
+-- Name: accounts_signers accounts_signers_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY accounts_signers
+    ADD CONSTRAINT accounts_signers_pkey PRIMARY KEY (signer, account);
+
+
+--
 -- Name: asset_stats asset_stats_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -609,6 +655,14 @@ ALTER TABLE ONLY history_operation_participants
 
 ALTER TABLE ONLY history_transaction_participants
     ADD CONSTRAINT history_transaction_participants_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: key_value_store key_value_store_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY key_value_store
+    ADD CONSTRAINT key_value_store_pkey PRIMARY KEY (key);
 
 
 --
