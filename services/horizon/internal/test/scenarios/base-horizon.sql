@@ -55,6 +55,9 @@ DROP INDEX IF EXISTS public.by_hash;
 DROP INDEX IF EXISTS public.by_account;
 DROP INDEX IF EXISTS public.asset_by_issuer;
 DROP INDEX IF EXISTS public.asset_by_code;
+DROP INDEX IF EXISTS public.offers_by_seller;
+DROP INDEX IF EXISTS public.offers_by_selling_asset;
+DROP INDEX IF EXISTS public.offers_by_buying_asset;
 ALTER TABLE IF EXISTS ONLY public.history_transaction_participants DROP CONSTRAINT IF EXISTS history_transaction_participants_pkey;
 ALTER TABLE IF EXISTS ONLY public.history_operation_participants DROP CONSTRAINT IF EXISTS history_operation_participants_pkey;
 ALTER TABLE IF EXISTS ONLY public.history_assets DROP CONSTRAINT IF EXISTS history_assets_pkey;
@@ -62,6 +65,7 @@ ALTER TABLE IF EXISTS ONLY public.history_assets DROP CONSTRAINT IF EXISTS histo
 ALTER TABLE IF EXISTS ONLY public.gorp_migrations DROP CONSTRAINT IF EXISTS gorp_migrations_pkey;
 ALTER TABLE IF EXISTS ONLY public.accounts_signers DROP CONSTRAINT IF EXISTS accounts_signers_pkey;
 ALTER TABLE IF EXISTS ONLY public.asset_stats DROP CONSTRAINT IF EXISTS asset_stats_pkey;
+ALTER TABLE IF EXISTS ONLY public.offers DROP CONSTRAINT IF EXISTS offers_pkey;
 ALTER TABLE IF EXISTS public.history_transaction_participants ALTER COLUMN id DROP DEFAULT;
 ALTER TABLE IF EXISTS public.history_operation_participants ALTER COLUMN id DROP DEFAULT;
 ALTER TABLE IF EXISTS public.history_assets ALTER COLUMN id DROP DEFAULT;
@@ -80,6 +84,8 @@ DROP TABLE IF EXISTS public.history_accounts;
 DROP SEQUENCE IF EXISTS public.history_accounts_id_seq;
 DROP TABLE IF EXISTS public.gorp_migrations;
 DROP TABLE IF EXISTS public.asset_stats;
+DROP TABLE IF EXISTS public.accounts_signers;
+DROP TABLE IF EXISTS public.offers;
 DROP AGGREGATE IF EXISTS public.min_price(numeric[]);
 DROP AGGREGATE IF EXISTS public.max_price(numeric[]);
 DROP AGGREGATE IF EXISTS public.last(anyelement);
@@ -409,6 +415,21 @@ CREATE TABLE history_transaction_participants (
     history_account_id bigint NOT NULL
 );
 
+--
+-- Name: offers; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE offers (
+    sellerid character varying(56) NOT NULL,
+    offerid bigint,
+    sellingasset text NOT NULL,
+    buyingasset text NOT NULL,
+    amount bigint NOT NULL,
+    pricen integer NOT NULL,
+    priced integer NOT NULL,
+    price double precision NOT NULL,
+    flags integer NOT NULL
+);
 
 --
 -- Name: history_transaction_participants_id_seq; Type: SEQUENCE; Schema: public; Owner: -
@@ -686,6 +707,12 @@ ALTER TABLE ONLY history_operation_participants
 ALTER TABLE ONLY history_transaction_participants
     ADD CONSTRAINT history_transaction_participants_pkey PRIMARY KEY (id);
 
+--
+-- Name: offers offers_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.offers
+    ADD CONSTRAINT offers_pkey PRIMARY KEY (offerid);
 
 --
 -- Name: asset_by_code; Type: INDEX; Schema: public; Owner: -
@@ -937,6 +964,24 @@ CREATE UNIQUE INDEX index_history_transactions_on_id ON history_transactions USI
 --
 
 CREATE INDEX trade_effects_by_order_book ON history_effects USING btree (((details ->> 'sold_asset_type'::text)), ((details ->> 'sold_asset_code'::text)), ((details ->> 'sold_asset_issuer'::text)), ((details ->> 'bought_asset_type'::text)), ((details ->> 'bought_asset_code'::text)), ((details ->> 'bought_asset_issuer'::text))) WHERE (type = 33);
+
+--
+-- Name: offers_by_seller; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX offers_by_seller ON offers USING BTREE(sellerid);
+
+--
+-- Name: offers_by_selling_asset; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX offers_by_selling_asset ON offers USING BTREE(sellingasset);
+
+--
+-- Name: offers_by_buying_asset; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX offers_by_buying_asset ON offers USING BTREE(buyingasset);
 
 
 --

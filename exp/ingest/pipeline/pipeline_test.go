@@ -108,28 +108,28 @@ func ExamplePipeline(t *testing.T) {
 	printAllProcessor := &PrintAllProcessor{}
 
 	pipeline.SetRoot(
-		pipeline.Node(passthroughProcessor).
+		StateNode(passthroughProcessor).
 			Pipe(
 				// Passes accounts only
-				pipeline.Node(accountsOnlyFilter).
+				StateNode(accountsOnlyFilter).
 					Pipe(
 						// Finds accounts for a single signer
-						pipeline.Node(&AccountsForSignerProcessor{Signer: "GCS26OX27PF67V22YYCTBLW3A4PBFAL723QG3X3FQYEL56FXX2C7RX5G"}).
-							Pipe(pipeline.Node(printAllProcessor)),
+						StateNode(&AccountsForSignerProcessor{Signer: "GCS26OX27PF67V22YYCTBLW3A4PBFAL723QG3X3FQYEL56FXX2C7RX5G"}).
+							Pipe(StateNode(printAllProcessor)),
 
 						// Counts accounts with prefix GA/GB/GC/GD and stores results in a store
-						pipeline.Node(&CountPrefixProcessor{Prefix: "GA"}).
-							Pipe(pipeline.Node(printCountersProcessor)),
-						pipeline.Node(&CountPrefixProcessor{Prefix: "GB"}).
-							Pipe(pipeline.Node(printCountersProcessor)),
-						pipeline.Node(&CountPrefixProcessor{Prefix: "GC"}).
-							Pipe(pipeline.Node(printCountersProcessor)),
-						pipeline.Node(&CountPrefixProcessor{Prefix: "GD"}).
-							Pipe(pipeline.Node(printCountersProcessor)),
+						StateNode(&CountPrefixProcessor{Prefix: "GA"}).
+							Pipe(StateNode(printCountersProcessor)),
+						StateNode(&CountPrefixProcessor{Prefix: "GB"}).
+							Pipe(StateNode(printCountersProcessor)),
+						StateNode(&CountPrefixProcessor{Prefix: "GC"}).
+							Pipe(StateNode(printCountersProcessor)),
+						StateNode(&CountPrefixProcessor{Prefix: "GD"}).
+							Pipe(StateNode(printCountersProcessor)),
 					),
 				// Passes trust lines only
-				pipeline.Node(trustLinesOnlyFilter).
-					Pipe(pipeline.Node(printAllProcessor)),
+				StateNode(trustLinesOnlyFilter).
+					Pipe(StateNode(printAllProcessor)),
 			),
 	)
 

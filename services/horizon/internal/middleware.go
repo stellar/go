@@ -8,7 +8,6 @@ import (
 
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
-	chimiddleware "github.com/go-chi/chi/middleware"
 	"github.com/stellar/go/services/horizon/internal/errors"
 	"github.com/stellar/go/services/horizon/internal/hchi"
 	"github.com/stellar/go/services/horizon/internal/httpx"
@@ -63,7 +62,7 @@ func loggerMiddleware(h http.Handler) http.Handler {
 		ctx := r.Context()
 		mw := middleware.NewWrapResponseWriter(w, r.ProtoMajor)
 
-		logger := log.WithField("req", chimiddleware.GetReqID(ctx))
+		logger := log.WithField("req", middleware.GetReqID(ctx))
 		ctx = log.Set(ctx, logger)
 
 		// Checking `Accept` header from user request because if the streaming connection

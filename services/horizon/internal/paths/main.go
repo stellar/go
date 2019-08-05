@@ -6,10 +6,11 @@ import (
 
 // Query is a query for paths
 type Query struct {
-	DestinationAddress string
-	DestinationAsset   xdr.Asset
-	DestinationAmount  xdr.Int64
-	SourceAssets       []xdr.Asset
+	DestinationAsset    xdr.Asset
+	DestinationAmount   xdr.Int64
+	SourceAssets        []xdr.Asset
+	SourceAssetBalances []xdr.Int64
+	SourceAccount       xdr.AccountId
 }
 
 // Path is the result returned by a path finder and is tied to the DestinationAmount used in the input query

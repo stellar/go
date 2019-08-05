@@ -68,6 +68,11 @@ func (graph *OrderBookGraph) RemoveOffer(offerID xdr.Int64) *OrderBookGraph {
 	return graph
 }
 
+// Discard removes all operations which have been queued but not yet applied to the OrderBookGraph
+func (graph *OrderBookGraph) Discard() {
+	graph.batchedUpdates = graph.batch()
+}
+
 // Apply will attempt to apply all the updates in the internal batch to the order book.
 // When Apply is successful, a new empty, instance of internal batch will be created.
 func (graph *OrderBookGraph) Apply() error {
@@ -77,6 +82,21 @@ func (graph *OrderBookGraph) Apply() error {
 	}
 	graph.batchedUpdates = graph.batch()
 	return nil
+}
+
+// Offers returns a list of offers contained in the order book
+func (graph *OrderBookGraph) Offers() []xdr.OfferEntry {
+	graph.lock.RLock()
+	defer graph.lock.RUnlock()
+
+	offers := []xdr.OfferEntry{}
+	for _, edges := range graph.edgesForSellingAsset {
+		for _, offersForEdge := range edges {
+			offers = append(offers, offersForEdge...)
+		}
+	}
+
+	return offers
 }
 
 // Batch creates a new batch of order book updates which can be applied
@@ -239,6 +259,14 @@ func (graph *OrderBookGraph) findPaths(
 	}
 
 	return paths, nil
+}
+
+// IsEmpty returns true if the orderbook graph is not populated
+func (graph *OrderBookGraph) IsEmpty() bool {
+	graph.lock.RLock()
+	defer graph.lock.RUnlock()
+
+	return len(graph.edgesForSellingAsset) == 0
 }
 
 // FindPaths returns a list of payment paths originating from a source account
