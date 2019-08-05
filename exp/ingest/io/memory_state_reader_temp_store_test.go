@@ -13,22 +13,22 @@ func TestMemoryStateReaderTempStoreOpen(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, s.m)
 
-	err = s.Set("a", true)
+	err = s.Add("a")
 	assert.NoError(t, err)
 
-	err = s.Set("b", false)
+	err = s.Add("b")
 	assert.NoError(t, err)
 
-	v, err := s.Get("a")
+	v, err := s.Exist("a")
 	assert.NoError(t, err)
 	assert.True(t, v)
 
-	v, err = s.Get("b")
+	v, err = s.Exist("b")
 	assert.NoError(t, err)
-	assert.False(t, v)
+	assert.True(t, v)
 
 	// Get for not-set key should return false
-	v, err = s.Get("c")
+	v, err = s.Exist("c")
 	assert.NoError(t, err)
 	assert.False(t, v)
 
