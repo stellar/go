@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"encoding/hex"
 	"fmt"
-	"time"
 
 	sq "github.com/Masterminds/squirrel"
 	"github.com/stellar/go/support/db"
@@ -15,6 +14,8 @@ import (
 // postgresStateReaderTempStoreCacheSize defines the maximum number of
 // entries in the cache. When the number of entries exceed part of
 // the cache is dumped to the DB.
+// Change the value to lower: smaller memory requirements but slower.
+// Change the value to higher: higher memory requirements but faster.
 const postgresStateReaderTempStoreCacheSize = 1000000
 
 // PostgresStateReaderTempStore is a postgres implementation of
@@ -31,8 +32,6 @@ type PostgresStateReaderTempStore struct {
 	session   *db.Session
 	tableName string
 }
-
-var cacheHit, cacheMiss int
 
 func (s *PostgresStateReaderTempStore) Open() error {
 	var err error
@@ -67,47 +66,36 @@ func (s *PostgresStateReaderTempStore) Open() error {
 	}
 
 	s.cache = make(map[string]bool)
-
-	go func() {
-		c := time.Tick(5 * time.Second)
-		for range c {
-			fmt.Println("Hit:", cacheHit, "Miss:", cacheMiss)
-
-			cacheHit = 0
-			cacheMiss = 0
-		}
-	}()
-
 	return nil
 }
 
 func (s *PostgresStateReaderTempStore) Preload(keys []string) error {
-	// Before first dump all `true` there are no keys in a database.
+	// Before first dump, there are no keys in a database.
 	if !s.afterFirstDump {
 		return nil
 	}
 
-	start := time.Now()
-
+	// The cache has always the latest data that (maybe) was not dumped to
+	// a database yet so check it first. Then constuct a slice of keys
+	// that actually need to be loaded from a DB.
+	loadKeys := make([]string, 0, len(keys))
 	keysMap := make(map[string]bool)
 	for _, key := range keys {
-		// The cache has always the latest data that (maybe) was not dumped to
-		// a database yet so check it first.
-		_, exist := s.cache[key]
-		if exist {
+		if _, exist := s.cache[key]; exist {
 			continue
 		}
 
 		keysMap[key] = true
+		loadKeys = append(loadKeys, key)
 	}
 
-	// At this point `keysMap` contains only the keys that are not currently cached.
+	// At this point `keysMap` and `loadKeys` contains only the keys that
+	// are not currently cached.
 
 	psql := sq.StatementBuilder.PlaceholderFormat(sq.Dollar)
-
 	rows, err := psql.Select("key").
 		From(s.tableName).
-		Where(map[string]interface{}{"key": keys}).
+		Where(map[string]interface{}{"key": loadKeys}).
 		RunWith(s.session.GetTx().Tx).
 		Query()
 
@@ -132,8 +120,6 @@ func (s *PostgresStateReaderTempStore) Preload(keys []string) error {
 		s.cache[key] = false
 	}
 
-	fmt.Println(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> preloaded ", len(keys), " keys in: ", time.Since(start))
-
 	return nil
 }
 
@@ -150,13 +136,13 @@ func (s *PostgresStateReaderTempStore) dumpCacheIfNeeded() error {
 
 	s.afterFirstDump = true
 
-	start := time.Now()
 	query := s.newInsertBuilder()
 	dumpedEntries := 0
 	queryParams := 0
 
 	for k, v := range s.cache {
-		// We omit false values set in `Get`
+		// We omit `false` values set in `Get`. We only store `true` values
+		// in a DB.
 		if !v {
 			continue
 		}
@@ -180,13 +166,13 @@ func (s *PostgresStateReaderTempStore) dumpCacheIfNeeded() error {
 			queryParams = 0
 		}
 
-		// Exit if 1/2 of the cache is dumped
+		// We dump only 1/2 (random) keys in cache. This is to hold _some_ keys
+		// in memory and to not spend too much time dumping data. This 1:1 ratio
+		// was confirmed to be the best by experimenting with different options.
 		if dumpedEntries >= cacheLen/2 {
 			break
 		}
 	}
-
-	fmt.Println(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> dumped ", dumpedEntries, " entries in: ", time.Since(start))
 
 	// Insert the last batch.
 	if queryParams > 0 {
@@ -204,22 +190,20 @@ func (s *PostgresStateReaderTempStore) newInsertBuilder() sq.InsertBuilder {
 }
 
 func (s *PostgresStateReaderTempStore) Exist(key string) (bool, error) {
-	// Check cache first
+	// Cache has the latest data: check it first.
 	value, exist := s.cache[key]
 	if exist {
-		cacheHit++
+		// This can be `true` or `false`. `false` values can be set below.
 		return value, nil
 	}
 
 	// Before first dump all `true` entries should be in cache. If it's
 	// not found then return false. It improves performance a lot before
-	// the first data is dumped.
+	// the first data is dumped. Otherwise each `Exist` would send a
+	// corresponding DB query.
 	if !s.afterFirstDump {
-		cacheHit++
 		return false, nil
 	}
-
-	cacheMiss++
 
 	value, err := s.dbGet(key)
 	if err != nil {

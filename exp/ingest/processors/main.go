@@ -13,6 +13,8 @@ type RootProcessor struct {
 
 // CSVPrinter prints ledger entries to a file or stdout (when Filename is empty).
 // Can be used both for processing state and ledgers.
+// The state output matches the format of data in stellar-core DB so can be
+// used for diff-testing the state readers.
 type CSVPrinter struct {
 	noStateProcessor
 
