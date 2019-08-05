@@ -116,7 +116,7 @@ func (s *PostgresStateReaderTempStore) Preload(keys []string) error {
 	}
 
 	// For all the keys that are left (not found in a DB) we set `false` value.
-	for key, _ := range keysMap {
+	for key := range keysMap {
 		s.cache[key] = false
 	}
 

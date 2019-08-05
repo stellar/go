@@ -119,6 +119,7 @@ func (p *CSVPrinter) ProcessState(ctx context.Context, store *pipeline.Store, r 
 		case xdr.LedgerEntryTypeOffer:
 			offer := entry.Data.MustOffer()
 
+			var err error
 			selling, err := xdr.MarshalBase64(offer.Selling)
 			if err != nil {
 				return err
