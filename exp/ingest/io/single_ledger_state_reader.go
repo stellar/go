@@ -198,7 +198,7 @@ LoopBucketEntry:
 
 			preloadKeys := []string{}
 
-			for i := 0; i < 50000; i++ {
+			for i := 0; i < preloadedEntries; i++ {
 				var entry xdr.BucketEntry
 				if e = rdr.ReadOne(&entry); e != nil {
 					if e == io.EOF {
