@@ -3,9 +3,11 @@ package processors
 import (
 	"context"
 	"encoding/base64"
+	"encoding/csv"
 	"fmt"
 	stdio "io"
 	"os"
+	"strconv"
 
 	"github.com/stellar/go/exp/ingest/io"
 	ingestpipeline "github.com/stellar/go/exp/ingest/pipeline"
@@ -13,8 +15,6 @@ import (
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
 )
-
-// TODO replace `fmt` with `encoding/csv`
 
 func (p *CSVPrinter) fileHandle() (*os.File, error) {
 	if p.Filename == "" {
@@ -37,6 +37,8 @@ func (p *CSVPrinter) ProcessState(ctx context.Context, store *pipeline.Store, r 
 		defer f.Close()
 	}
 
+	csvWriter := csv.NewWriter(f)
+
 	for {
 		entryChange, err := r.Read()
 		if err != nil {
@@ -52,30 +54,111 @@ func (p *CSVPrinter) ProcessState(ctx context.Context, store *pipeline.Store, r 
 		}
 
 		entry := entryChange.State
-
 		switch entry.Data.Type {
 		case xdr.LedgerEntryTypeAccount:
-			fmt.Fprintf(
-				f,
-				"%s,%d,%d\n",
-				entry.Data.Account.AccountId.Address(),
-				entry.Data.Account.Balance,
-				entry.Data.Account.SeqNum,
-			)
+			account := entry.Data.MustAccount()
+
+			inflationDest := ""
+			if account.InflationDest != nil {
+				inflationDest = entry.Data.Account.InflationDest.Address()
+			}
+
+			var err error
+			var signers string
+			if len(account.Signers) > 0 {
+				signers, err = xdr.MarshalBase64(account.Signers)
+				if err != nil {
+					return err
+				}
+			}
+
+			var buyingLiabilities, sellingLiabilities int64
+
+			if account.Ext.V1 != nil {
+				buyingLiabilities = int64(account.Ext.V1.Liabilities.Buying)
+				sellingLiabilities = int64(account.Ext.V1.Liabilities.Selling)
+			}
+
+			csvWriter.Write([]string{
+				account.AccountId.Address(),
+				strconv.FormatInt(int64(account.Balance), 10),
+				strconv.FormatInt(int64(account.SeqNum), 10),
+				strconv.FormatInt(int64(account.NumSubEntries), 10),
+				inflationDest,
+				base64.StdEncoding.EncodeToString([]byte(account.HomeDomain)),
+				base64.StdEncoding.EncodeToString(account.Thresholds[:]),
+				strconv.FormatInt(int64(account.Flags), 10),
+				strconv.FormatInt(buyingLiabilities, 10),
+				strconv.FormatInt(sellingLiabilities, 10),
+				signers,
+			})
 		case xdr.LedgerEntryTypeTrustline:
-			fmt.Println("TODO")
+			trustline := entry.Data.MustTrustLine()
+
+			var assetType, assetCode, assetIssuer string
+			trustline.Asset.MustExtract(&assetType, &assetCode, &assetIssuer)
+
+			var buyingLiabilities, sellingLiabilities int64
+
+			if trustline.Ext.V1 != nil {
+				buyingLiabilities = int64(trustline.Ext.V1.Liabilities.Buying)
+				sellingLiabilities = int64(trustline.Ext.V1.Liabilities.Selling)
+			}
+
+			csvWriter.Write([]string{
+				trustline.AccountId.Address(),
+				strconv.FormatInt(int64(trustline.Asset.Type), 10),
+				assetIssuer,
+				assetCode,
+				strconv.FormatInt(int64(trustline.Limit), 10),
+				strconv.FormatInt(int64(trustline.Balance), 10),
+				strconv.FormatInt(int64(trustline.Flags), 10),
+				strconv.FormatInt(buyingLiabilities, 10),
+				strconv.FormatInt(sellingLiabilities, 10),
+			})
 		case xdr.LedgerEntryTypeOffer:
-			fmt.Println("TODO")
+			offer := entry.Data.MustOffer()
+
+			var err error
+			selling, err := xdr.MarshalBase64(offer.Selling)
+			if err != nil {
+				return err
+			}
+
+			buying, err := xdr.MarshalBase64(offer.Buying)
+			if err != nil {
+				return err
+			}
+
+			csvWriter.Write([]string{
+				offer.SellerId.Address(),
+				strconv.FormatInt(int64(offer.OfferId), 10),
+				selling,
+				buying,
+				strconv.FormatInt(int64(offer.Amount), 10),
+				strconv.FormatInt(int64(offer.Price.N), 10),
+				strconv.FormatInt(int64(offer.Price.D), 10),
+				strconv.FormatInt(int64(offer.Flags), 10),
+			})
 		case xdr.LedgerEntryTypeData:
-			fmt.Fprintf(
-				f,
-				"%s,%s,%s\n",
+			csvWriter.Write([]string{
 				entry.Data.Data.AccountId.Address(),
-				entry.Data.Data.DataName,
+				base64.StdEncoding.EncodeToString([]byte(entry.Data.Data.DataName)),
 				base64.StdEncoding.EncodeToString(entry.Data.Data.DataValue),
-			)
+			})
 		default:
 			return fmt.Errorf("Invalid LedgerEntryType: %d", entryChange.Type)
+		}
+
+		err = csvWriter.Error()
+		if err != nil {
+			return errors.Wrap(err, "Error during csv.Writer.Write")
+		}
+
+		csvWriter.Flush()
+		err = csvWriter.Error()
+		if err != nil {
+			return errors.Wrap(err, "Error during csv.Writer.Flush")
 		}
 
 		select {

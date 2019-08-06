@@ -2,9 +2,10 @@ package adapters
 
 import (
 	"fmt"
-	"io"
+	stdio "io"
 	"testing"
 
+	"github.com/stellar/go/exp/ingest/io"
 	"github.com/stellar/go/support/historyarchive"
 	"github.com/stretchr/testify/assert"
 )
@@ -36,7 +37,7 @@ func TestGetState_Sequence(t *testing.T) {
 		return
 	}
 
-	sr, e := haa.GetState(seq)
+	sr, e := haa.GetState(seq, &io.MemoryTempSet{})
 	if !assert.NoError(t, e) {
 		return
 	}
@@ -50,7 +51,7 @@ func TestGetState_Read(t *testing.T) {
 	}
 	haa := MakeHistoryArchiveAdapter(archive)
 
-	sr, e := haa.GetState(21686847)
+	sr, e := haa.GetState(21686847, &io.MemoryTempSet{})
 	if !assert.NoError(t, e) {
 		return
 	}
@@ -59,7 +60,7 @@ func TestGetState_Read(t *testing.T) {
 	if !assert.NoError(t, e) {
 		return
 	}
-	assert.NotEqual(t, e, io.EOF)
+	assert.NotEqual(t, e, stdio.EOF)
 
 	if !assert.NotNil(t, lec) {
 		return

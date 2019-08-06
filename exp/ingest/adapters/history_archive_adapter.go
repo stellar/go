@@ -51,7 +51,7 @@ func (haa *HistoryArchiveAdapter) BucketListHash(sequence uint32) (xdr.Hash, err
 }
 
 // GetState returns a reader with the state of the ledger at the provided sequence number
-func (haa *HistoryArchiveAdapter) GetState(sequence uint32) (io.StateReader, error) {
+func (haa *HistoryArchiveAdapter) GetState(sequence uint32, tempSet io.TempSet) (io.StateReader, error) {
 	exists, err := haa.archive.CategoryCheckpointExists("history", sequence)
 	if err != nil {
 		return nil, errors.Wrap(err, "error checking if category checkpoint exists")
@@ -60,7 +60,7 @@ func (haa *HistoryArchiveAdapter) GetState(sequence uint32) (io.StateReader, err
 		return nil, fmt.Errorf("history checkpoint does not exist for ledger %d", sequence)
 	}
 
-	sr, e := io.MakeMemoryStateReader(haa.archive, sequence, msrBufferSize)
+	sr, e := io.MakeSingleLedgerStateReader(haa.archive, tempSet, sequence, msrBufferSize)
 	if e != nil {
 		return nil, errors.Wrap(e, "could not make memory state reader")
 	}
