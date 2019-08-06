@@ -5,6 +5,7 @@ import (
 
 	"github.com/stellar/go/clients/stellarcore"
 	"github.com/stellar/go/exp/ingest"
+	"github.com/stellar/go/exp/ingest/io"
 	"github.com/stellar/go/exp/ingest/ledgerbackend"
 	"github.com/stellar/go/exp/orderbook"
 	"github.com/stellar/go/support/errors"
@@ -12,7 +13,8 @@ import (
 )
 
 func main() {
-	db, err := NewDatabase("postgres://localhost:5432/horizondemo?sslmode=disable")
+	dsn := "postgres://localhost:5432/horizondemo?sslmode=disable"
+	db, err := NewDatabase(dsn)
 	if err != nil {
 		panic(err)
 	}
@@ -36,6 +38,7 @@ func main() {
 		// logs every 50,000 state entries
 		StateReporter:  NewLoggingStateReporter(50000),
 		LedgerPipeline: buildLedgerPipeline(db, orderBookGraph),
+		TempSet:        &io.PostgresTempSet{DSN: dsn},
 		LedgerReporter: NewLoggingLedgerReporter(),
 	}
 

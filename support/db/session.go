@@ -48,6 +48,10 @@ func (s *Session) BeginTx(opts *sql.TxOptions) error {
 	return nil
 }
 
+func (s *Session) GetTx() *sqlx.Tx {
+	return s.tx
+}
+
 // Clone clones the receiver, returning a new instance backed by the same
 // context and db. The result will not be bound to any transaction that the
 // source is currently within.

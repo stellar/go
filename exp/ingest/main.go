@@ -37,6 +37,9 @@ type LiveSession struct {
 	StateReporter     StateReporter
 	LedgerPipeline    *pipeline.LedgerPipeline
 	LedgerReporter    LedgerReporter
+	// TempSet is a store used to hold temporary objects generated during
+	// state processing. If nil, defaults to io.MemoryTempSet.
+	TempSet io.TempSet
 }
 
 // SingleLedgerSession initializes the ledger state using `Archive` and `StatePipeline`
@@ -49,6 +52,9 @@ type SingleLedgerSession struct {
 	LedgerSequence uint32
 	StatePipeline  *pipeline.StatePipeline
 	StateReporter  StateReporter
+	// TempSet is a store used to hold temporary objects generated during
+	// state processing. If nil, defaults to io.MemoryTempSet.
+	TempSet io.TempSet
 }
 
 // Session is an implementation of a ingesting scenario. Some useful sessions
