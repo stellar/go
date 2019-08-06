@@ -46,6 +46,9 @@ type includeFailed bool
 // AssetType represents `asset_type` param in queries
 type AssetType string
 
+// join represents `join` param in queries
+type join string
+
 const (
 	// OrderAsc represents an ascending order parameter
 	OrderAsc Order = "asc"
@@ -271,6 +274,7 @@ type OperationRequest struct {
 	Cursor         string
 	Limit          uint
 	IncludeFailed  bool
+	Join           string
 	endpoint       string
 }
 

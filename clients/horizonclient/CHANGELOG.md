@@ -3,6 +3,11 @@
 All notable changes to this project will be documented in this
 file.  This project adheres to [Semantic Versioning](http://semver.org/).
 
+## Unreleased
+
+- Add support for querying operation endpoint with `join` parameter [#1521](https://github.com/stellar/go/issues/1521).
+
+
 ## [v1.3.0](https://github.com/stellar/go/releases/tag/horizonclient-v1.3.0) - 2019-07-08
 
 - Transaction information returned by methods now contain new fields: `FeeCharged` and `MaxFee`. `FeePaid` is deprecated and will be removed in later versions.
