@@ -733,12 +733,12 @@ func TestOperationsRequest(t *testing.T) {
 		HTTP:       hmock,
 	}
 
-	operationRequest := OperationRequest{}
+	operationRequest := OperationRequest{Join: "transactions"}
 
 	// all operations
 	hmock.On(
 		"GET",
-		"https://localhost/operations",
+		"https://localhost/operations?join=transactions",
 	).ReturnString(200, multipleOpsResponse)
 
 	ops, err := client.Operations(operationRequest)
@@ -768,7 +768,7 @@ func TestOperationsRequest(t *testing.T) {
 	// all payments
 	hmock.On(
 		"GET",
-		"https://localhost/payments",
+		"https://localhost/payments?join=transactions",
 	).ReturnString(200, paymentsResponse)
 
 	ops, err = client.Payments(operationRequest)

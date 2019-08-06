@@ -95,6 +95,10 @@ func addQueryParams(params ...interface{}) string {
 			if param {
 				query.Add("include_failed", "true")
 			}
+		case join:
+			if param != "" {
+				query.Add("join", string(param))
+			}
 		case map[string]string:
 			for key, value := range param {
 				if value != "" {
