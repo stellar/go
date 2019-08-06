@@ -93,7 +93,17 @@ func (tx *Transaction) SetDefaultFee() {
 // Build for Transaction completely configures the Transaction. After calling Build,
 // the Transaction is ready to be serialised or signed.
 func (tx *Transaction) Build() error {
-	// to do: check if tx is already signed
+	// If transaction envelope has been signed, don't build transaction
+	if tx.xdrEnvelope != nil {
+		if tx.xdrEnvelope.Signatures != nil {
+			return errors.New("transaction has been signed. can not be modified.")
+		}
+		tx.xdrEnvelope = &xdr.TransactionEnvelope{}
+		tx.xdrEnvelope.Tx = xdr.Transaction{}
+	}
+
+	// reset tx.xdrTransaction
+	tx.xdrTransaction = xdr.Transaction{}
 
 	accountID := tx.SourceAccount.GetAccountID()
 	// Public keys start with 'G'
@@ -147,10 +157,8 @@ func (tx *Transaction) Build() error {
 	tx.SetDefaultFee()
 
 	// Initialise transaction envelope
-	if tx.xdrEnvelope == nil {
-		tx.xdrEnvelope = &xdr.TransactionEnvelope{}
-		tx.xdrEnvelope.Tx = tx.xdrTransaction
-	}
+	tx.xdrEnvelope = &xdr.TransactionEnvelope{}
+	tx.xdrEnvelope.Tx = tx.xdrTransaction
 
 	return nil
 }
