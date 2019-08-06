@@ -38,7 +38,7 @@ func main() {
 		// logs every 50,000 state entries
 		StateReporter:  NewLoggingStateReporter(50000),
 		LedgerPipeline: buildLedgerPipeline(db, orderBookGraph),
-		StateTempStore: &io.PostgresStateReaderTempStore{DSN: dsn},
+		TempSet:        &io.PostgresTempSet{DSN: dsn},
 		LedgerReporter: NewLoggingLedgerReporter(),
 	}
 

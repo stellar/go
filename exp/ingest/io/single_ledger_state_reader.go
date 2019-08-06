@@ -25,7 +25,7 @@ type readResult struct {
 type SingleLedgerStateReader struct {
 	has        *historyarchive.HistoryArchiveState
 	archive    historyarchive.ArchiveInterface
-	tempStore  StateReaderTempStore
+	tempStore  TempSet
 	sequence   uint32
 	readChan   chan readResult
 	streamOnce sync.Once
@@ -39,10 +39,10 @@ type SingleLedgerStateReader struct {
 // Ensure SingleLedgerStateReader implements StateReader
 var _ StateReader = &SingleLedgerStateReader{}
 
-// StateReaderTempStore is an interface that must be implemented by stores that
-// hold temporary objects for state reader. The implementation does not need
-// to be thread-safe.
-type StateReaderTempStore interface {
+// TempSet is an interface that must be implemented by stores that
+// hold temporary set of objects for state reader. The implementation
+// does not need to be thread-safe.
+type TempSet interface {
 	Open() error
 	// Preload batch-loads keys into internal cache (if a store has any) to
 	// improve execution time by removing many round-trips.
@@ -55,10 +55,15 @@ type StateReaderTempStore interface {
 	Close() error
 }
 
+// preloadedEntries defines a number of bucket entries to preload from a
+// bucket in a single run. This is done to allow preloading keys from
+// temp set.
+const preloadedEntries = 50000
+
 // MakeSingleLedgerStateReader is a factory method for SingleLedgerStateReader
 func MakeSingleLedgerStateReader(
 	archive historyarchive.ArchiveInterface,
-	tempStore StateReaderTempStore,
+	tempStore TempSet,
 	sequence uint32,
 	bufferSize uint16,
 ) (*SingleLedgerStateReader, error) {

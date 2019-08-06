@@ -41,7 +41,7 @@ func main() {
 		LedgerSequence: 25154239,
 		Archive:        archive,
 		StatePipeline:  statePipeline,
-		StateTempStore: &io.PostgresStateReaderTempStore{DSN: dsn},
+		TempSet:        &io.PostgresTempSet{DSN: dsn},
 	}
 
 	doneStats := printPipelineStats(statePipeline)

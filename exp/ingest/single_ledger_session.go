@@ -38,12 +38,12 @@ func (s *SingleLedgerSession) Resume(ledgerSequence uint32) error {
 }
 
 func (s *SingleLedgerSession) processState(historyAdapter *adapters.HistoryArchiveAdapter, sequence uint32) error {
-	var tempStore io.StateReaderTempStore = &io.MemoryStateReaderTempStore{}
-	if s.StateTempStore != nil {
-		tempStore = s.StateTempStore
+	var tempSet io.TempSet = &io.MemoryTempSet{}
+	if s.TempSet != nil {
+		tempSet = s.TempSet
 	}
 
-	stateReader, err := historyAdapter.GetState(sequence, tempStore)
+	stateReader, err := historyAdapter.GetState(sequence, tempSet)
 	if err != nil {
 		return errors.Wrap(err, "Error getting state from history archive")
 	}

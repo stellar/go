@@ -6,8 +6,8 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestMemoryStateReaderTempStoreOpen(t *testing.T) {
-	s := MemoryStateReaderTempStore{}
+func TestMemoryTempSet(t *testing.T) {
+	s := MemoryTempSet{}
 	assert.Nil(t, s.m)
 	err := s.Open()
 	assert.NoError(t, err)

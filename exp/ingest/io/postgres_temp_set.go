@@ -11,17 +11,23 @@ import (
 	"github.com/stellar/go/support/errors"
 )
 
-// postgresStateReaderTempStoreCacheSize defines the maximum number of
-// entries in the cache. When the number of entries exceed part of
-// the cache is dumped to the DB.
-// Change the value to lower: smaller memory requirements but slower.
-// Change the value to higher: higher memory requirements but faster.
-const postgresStateReaderTempStoreCacheSize = 1000000
+const (
+	// postgresTempSetCacheSize defines the maximum number of
+	// entries in the cache. When the number of entries exceed part of
+	// the cache is dumped to the DB.
+	// Change the value to lower: smaller memory requirements but slower.
+	// Change the value to higher: higher memory requirements but faster.
+	postgresTempSetCacheSize = 1000000
+	// postgresMaxQueryParams defines maximum number of params in a single
+	// postgres query.
+	postgresMaxQueryParams = 65535
+)
 
-// PostgresStateReaderTempStore is a postgres implementation of
-// StateReaderTempStore. It's much slower than MemoryStateReaderTempStore
-// but has much lower memory requirements.
-type PostgresStateReaderTempStore struct {
+// PostgresTempSet is a postgres implementation of TempSet interface.
+// It's around 4x slower than MemoryStateReaderTempStore but has much
+// lower memory requirements. `postgresTempSetCacheSize` can be changed
+// to achieve better speed at the cost of higher memory usage.
+type PostgresTempSet struct {
 	DSN string
 
 	afterFirstDump bool
@@ -33,7 +39,8 @@ type PostgresStateReaderTempStore struct {
 	tableName string
 }
 
-func (s *PostgresStateReaderTempStore) Open() error {
+// Open connects to a DB and creates a temporary table and data structures.
+func (s *PostgresTempSet) Open() error {
 	var err error
 	s.session, err = db.Open("postgres", s.DSN)
 	if err != nil {
@@ -69,7 +76,9 @@ func (s *PostgresStateReaderTempStore) Open() error {
 	return nil
 }
 
-func (s *PostgresStateReaderTempStore) Preload(keys []string) error {
+// Preload preloads `keys` from a database. It ignores the keys that
+// are already in cache because these are the most recent values.
+func (s *PostgresTempSet) Preload(keys []string) error {
 	// Before first dump, there are no keys in a database.
 	if !s.afterFirstDump {
 		return nil
@@ -123,14 +132,17 @@ func (s *PostgresStateReaderTempStore) Preload(keys []string) error {
 	return nil
 }
 
-func (s *PostgresStateReaderTempStore) Add(key string) error {
+// Add adds a key to TempSet.
+func (s *PostgresTempSet) Add(key string) error {
 	s.cache[key] = true
 	return s.dumpCacheIfNeeded()
 }
 
-func (s *PostgresStateReaderTempStore) dumpCacheIfNeeded() error {
+// dumpCacheIfNeeded dumps cache to a database if cache size exceeds
+// postgresTempSetCacheSize.
+func (s *PostgresTempSet) dumpCacheIfNeeded() error {
 	cacheLen := len(s.cache)
-	if cacheLen < postgresStateReaderTempStoreCacheSize {
+	if cacheLen < postgresTempSetCacheSize {
 		return nil
 	}
 
@@ -156,7 +168,7 @@ func (s *PostgresStateReaderTempStore) dumpCacheIfNeeded() error {
 		// The number comes from the fact that the maximum number of params per
 		// postgres query is 65535. When we are approaching the max params,
 		// insert rows we have so far and create a new builder.
-		if queryParams > 65000 {
+		if queryParams > postgresMaxQueryParams-500 {
 			_, err := s.session.Exec(query)
 			if err != nil {
 				return err
@@ -183,13 +195,15 @@ func (s *PostgresStateReaderTempStore) dumpCacheIfNeeded() error {
 	return nil
 }
 
-func (s *PostgresStateReaderTempStore) newInsertBuilder() sq.InsertBuilder {
+// newInsertBuilder creates a new InsertBuilder.
+func (s *PostgresTempSet) newInsertBuilder() sq.InsertBuilder {
 	return sq.Insert(s.tableName).
 		Columns("key").
 		Suffix("ON CONFLICT (key) DO NOTHING")
 }
 
-func (s *PostgresStateReaderTempStore) Exist(key string) (bool, error) {
+// Exist check if the key exists in a TempSet.
+func (s *PostgresTempSet) Exist(key string) (bool, error) {
 	// Cache has the latest data: check it first.
 	value, exist := s.cache[key]
 	if exist {
@@ -216,7 +230,8 @@ func (s *PostgresStateReaderTempStore) Exist(key string) (bool, error) {
 	return value, err
 }
 
-func (s *PostgresStateReaderTempStore) dbGet(key string) (bool, error) {
+// dbGet gets a single row from a database.
+func (s *PostgresTempSet) dbGet(key string) (bool, error) {
 	query := sq.Select("1").
 		From(s.tableName).
 		Where("key = ?", key)
@@ -233,7 +248,8 @@ func (s *PostgresStateReaderTempStore) dbGet(key string) (bool, error) {
 	return true, nil
 }
 
-func (s *PostgresStateReaderTempStore) Close() error {
+// Close closes a database connection what also removes a temporary table.
+func (s *PostgresTempSet) Close() error {
 	// This will also drop temp table
 	return s.session.Close()
 }
