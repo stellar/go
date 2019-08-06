@@ -105,7 +105,14 @@ func (a *App) Serve() {
 	go a.run()
 
 	if a.expingester != nil {
-		go a.expingester.Run()
+		go func() {
+			// Run will return errors only for initial state building.
+			// For ledger updates it will try again in case of errors.
+			err := a.expingester.Run()
+			if err != nil {
+				log.Panic(err)
+			}
+		}()
 	}
 
 	var err error
@@ -203,7 +210,7 @@ func (a *App) UpdateLedgerState() {
 		return
 	}
 
-	next.ExpHistoryLatest, err = a.HistoryQ().GetLastLedgerExpIngest()
+	next.ExpHistoryLatest, err = a.HistoryQ().GetLastLedgerExpIngest(false)
 	if err != nil {
 		logErr(err, "failed to load the oldest known exp ledger state from history DB")
 		return
