@@ -16,9 +16,33 @@ const (
 	lastLedgerKey = "exp_ingest_last_ledger"
 )
 
+// GetLastLedgerExpIngestUnsafe works like GetLastLedgerExpIngest but
+// it does not block the value and does not return error if the value
+// has not been previously set.
+// This is used in status reporting (ex. in root resource of Horizon).
+func (q *Q) GetLastLedgerExpIngestUnsafe() (uint32, error) {
+	lastIngestedLedger, err := q.getValueFromStore(lastLedgerKey, false)
+	if err != nil {
+		return 0, err
+	}
+
+	if lastIngestedLedger == "" {
+		return 0, nil
+	} else {
+		ledgerSequence, err := strconv.ParseUint(lastIngestedLedger, 10, 32)
+		if err != nil {
+			return 0, errors.Wrap(err, "Error converting lastIngestedLedger value")
+		}
+
+		return uint32(ledgerSequence), nil
+	}
+}
+
 // GetLastLedgerExpIngest returns the last ledger ingested by expingest system
-// in Horizon. Returns 0 if no value has been previously set. This can be set
-// using UpdateLastLedgerExpIngest.
+// in Horizon. Returns error if no value has been previously set. This behaviour
+// is critical in distributed ingestion so do not change it unless you know
+// what you are doing.
+// The value can be set using UpdateLastLedgerExpIngest.
 // `forUpdate` parameter determines whether the value should be locked `FOR UPDATE`.
 func (q *Q) GetLastLedgerExpIngest(forUpdate bool) (uint32, error) {
 	lastIngestedLedger, err := q.getValueFromStore(lastLedgerKey, forUpdate)
