@@ -16,11 +16,11 @@ const (
 	lastLedgerKey = "exp_ingest_last_ledger"
 )
 
-// GetLastLedgerExpIngestUnsafe works like GetLastLedgerExpIngest but
+// GetLastLedgerExpIngestNonBlocking works like GetLastLedgerExpIngest but
 // it does not block the value and does not return error if the value
 // has not been previously set.
 // This is used in status reporting (ex. in root resource of Horizon).
-func (q *Q) GetLastLedgerExpIngestUnsafe() (uint32, error) {
+func (q *Q) GetLastLedgerExpIngestNonBlocking() (uint32, error) {
 	lastIngestedLedger, err := q.getValueFromStore(lastLedgerKey, false)
 	if err != nil {
 		return 0, err

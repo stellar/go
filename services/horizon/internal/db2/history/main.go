@@ -298,6 +298,7 @@ type Q struct {
 
 // QSigners defines signer related queries.
 type QSigners interface {
+	GetLastLedgerExpIngestNonBlocking() (uint32, error)
 	GetLastLedgerExpIngest(forUpdate bool) (uint32, error)
 	UpdateLastLedgerExpIngest(ledgerSequence uint32) error
 	AccountsForSigner(signer string, page db2.PageQuery) ([]AccountSigner, error)
