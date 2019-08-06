@@ -9,8 +9,8 @@ type MockQSigners struct {
 	mock.Mock
 }
 
-func (m *MockQSigners) GetLastLedgerExpIngest() (uint32, error) {
-	a := m.Called()
+func (m *MockQSigners) GetLastLedgerExpIngest(forUpdate bool) (uint32, error) {
+	a := m.Called(forUpdate)
 	return a.Get(0).(uint32), a.Error(1)
 }
 
