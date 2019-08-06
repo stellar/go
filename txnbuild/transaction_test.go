@@ -1017,4 +1017,37 @@ func TestFromXDR(t *testing.T) {
 	assert.Equal(t, "GATBMIXTHXYKSUZSZUEJKACZ2OS2IYUWP2AIF3CA32PIDLJ67CH6Y5UY", paymentOp.SourceAccount.GetAccountID(), "Operation source should match")
 	assert.Equal(t, "GDGEQS64ISS6Y2KDM5V67B6LXALJX4E7VE4MIA54NANSUX5MKGKBZM5G", paymentOp.Destination, "Operation destination should match")
 	assert.Equal(t, "874.0000000", paymentOp.Amount, "Operation amount should match")
+
+	txeB64 = "AAAAAGigiN2q4qBXAERImNEncpaADylyBRtzdqpEsku6CN0xAAABkAAADXYAAAABAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAABAAAABm5ldyB0eAAAAAAAAgAAAAEAAAAA+Q2efEMLNGF4i+aYfutUXGMSlf8tNevKeS1Jl/oCVGkAAAAGAAAAAVVTRAAAAAAAaKCI3arioFcAREiY0SdyloAPKXIFG3N2qkSyS7oI3TF//////////wAAAAAAAAAKAAAABHRlc3QAAAABAAAABXZhbHVlAAAAAAAAAAAAAAA="
+
+	newTx2, err := TransactionFromXDR(txeB64)
+	assert.NoError(t, err)
+	assert.Equal(t, "GBUKBCG5VLRKAVYAIREJRUJHOKLIADZJOICRW43WVJCLES52BDOTCQZU", newTx2.SourceAccount.GetAccountID(), "source accounts should match")
+	assert.Equal(t, int(200), int(newTx2.BaseFee), "Base fee should match")
+	sa2, ok := newTx2.SourceAccount.(*SimpleAccount)
+	assert.Equal(t, true, ok)
+	assert.Equal(t, int64(14800457302017), sa2.Sequence, "Sequence number should match")
+
+	memo, ok := newTx2.Memo.(MemoText)
+	assert.Equal(t, true, ok)
+	assert.Equal(t, MemoText("new tx"), memo, "memo should match")
+	assert.Equal(t, 2, len(newTx2.Operations), "Operations length should match")
+	assert.IsType(t, newTx2.Operations[0], &ChangeTrust{}, "Operation types should match")
+	assert.IsType(t, newTx2.Operations[1], &ManageData{}, "Operation types should match")
+	op1, ok1 := newTx2.Operations[0].(*ChangeTrust)
+	assert.Equal(t, true, ok1)
+	assert.Equal(t, "GD4Q3HT4IMFTIYLYRPTJQ7XLKROGGEUV74WTL26KPEWUTF72AJKGSJS7", op1.SourceAccount.GetAccountID(), "Operation source should match")
+	assetType, err := op1.Line.GetType()
+	assert.NoError(t, err)
+
+	assert.Equal(t, AssetTypeCreditAlphanum4, assetType, "Asset type should match")
+	assert.Equal(t, "USD", op1.Line.GetCode(), "Asset code should match")
+	assert.Equal(t, "GBUKBCG5VLRKAVYAIREJRUJHOKLIADZJOICRW43WVJCLES52BDOTCQZU", op1.Line.GetIssuer(), "Asset issuer should match")
+	assert.Equal(t, "922337203685.4775807", op1.Limit, "trustline limit should match")
+
+	op2, ok2 := newTx2.Operations[1].(*ManageData)
+	assert.Equal(t, true, ok2)
+	assert.Equal(t, nil, op2.SourceAccount, "Operation source should match")
+	assert.Equal(t, "test", op2.Name, "Name should match")
+	assert.Equal(t, "value", string(op2.Value), "Value should match")
 }

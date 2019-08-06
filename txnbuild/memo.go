@@ -70,7 +70,7 @@ func memoFromXDR(memo xdr.Memo) (Memo, error) {
 		newMemo = MemoHash(value)
 		memoCreated = ok
 	case xdr.MemoTypeMemoReturn:
-		value, ok := memo.GetHash()
+		value, ok := memo.GetRetHash()
 		newMemo = MemoReturn(value)
 		memoCreated = ok
 	case xdr.MemoTypeMemoNone:
