@@ -186,15 +186,30 @@ func addPipelineHooks(
 			return err
 		}
 
-		if err := historyQ.UpdateLastLedgerExpIngest(ledgerSeq); err != nil {
-			return errors.Wrap(err, "Error updating last ingested ledger")
-		}
-
-		if err := historyQ.UpdateExpIngestVersion(CurrentVersion); err != nil {
-			return errors.Wrap(err, "Error updating expingest version")
-		}
-
 		if tx := historySession.GetTx(); tx != nil {
+			// If we're in a transaction we're updating database with new data.
+			// We get lastIngestedLedger from a DB here to do an extra check
+			// if the current node should really be updating a DB.
+			// This is "just in case" if lastIngestedLedger is not selected
+			// `FOR UPDATE` due to a bug or accident. In such case we error and
+			// rollback.
+			lastIngestedLedger, err := historyQ.GetLastLedgerExpIngest()
+			if err != nil {
+				return errors.Wrap(err, "Error getting last ledger")
+			}
+
+			if lastIngestedLedger+1 != ledgerSeq {
+				return errors.New("The local latest sequence is not equal to global sequence + 1")
+			}
+
+			if err := historyQ.UpdateLastLedgerExpIngest(ledgerSeq); err != nil {
+				return errors.Wrap(err, "Error updating last ingested ledger")
+			}
+
+			if err := historyQ.UpdateExpIngestVersion(CurrentVersion); err != nil {
+				return errors.Wrap(err, "Error updating expingest version")
+			}
+
 			if err := historySession.Commit(); err != nil {
 				return errors.Wrap(err, "Error commiting db transaction")
 			}
