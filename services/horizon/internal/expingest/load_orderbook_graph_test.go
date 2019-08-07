@@ -64,9 +64,8 @@ func TestLoadOrderBookGraphFromEmptyDB(t *testing.T) {
 	q := &history.Q{tt.HorizonSession()}
 	graph := orderbook.NewOrderBookGraph()
 
-	lastIngestedLedger, err := loadOrderBookGraphFromDB(q, graph)
+	err := loadOrderBookGraphFromDB(q, graph)
 	tt.Assert.NoError(err)
-	tt.Assert.Equal(uint32(0), lastIngestedLedger)
 	tt.Assert.True(graph.IsEmpty())
 }
 
@@ -81,9 +80,8 @@ func TestLoadOrderBookGraph(t *testing.T) {
 	tt.Assert.NoError(q.UpsertOffer(eurOffer))
 	tt.Assert.NoError(q.UpsertOffer(twoEurOffer))
 
-	lastIngestedLedger, err := loadOrderBookGraphFromDB(q, graph)
+	err := loadOrderBookGraphFromDB(q, graph)
 	tt.Assert.NoError(err)
-	tt.Assert.Equal(uint32(123), lastIngestedLedger)
 	tt.Assert.False(graph.IsEmpty())
 
 	offers := graph.Offers()

@@ -13,9 +13,9 @@ import (
 
 // standardSession contains common methods used by all sessions.
 type standardSession struct {
-	shutdown              chan bool
-	rwLock                sync.RWMutex
-	latestProcessedLedger uint32
+	shutdown                          chan bool
+	rwLock                            sync.RWMutex
+	latestSuccessfullyProcessedLedger uint32
 
 	runningMutex sync.Mutex
 	running      bool
@@ -67,10 +67,11 @@ type Session interface {
 	// Session user to determine what was the last ledger processed by a
 	// Session as it's stateless (or if Run() should be called first).
 	Resume(ledgerSequence uint32) error
-	// GetLatestProcessedLedger returns the latest ledger sequence processed in
-	// the session. Return 0 if no ledgers were processed yet.
+	// GetLatestSuccessfullyProcessedLedger returns the ledger sequence of the
+	// latest successfully processed ledger in the session. Return 0 if no
+	// ledgers were processed yet.
 	// Please note that this value is not synchronized with pipeline hooks.
-	GetLatestProcessedLedger() uint32
+	GetLatestSuccessfullyProcessedLedger() uint32
 	// Shutdown gracefully stops running session and stops all internal
 	// objects.
 	// Calling Shutdown() does not trigger post processing hooks.

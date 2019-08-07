@@ -68,10 +68,10 @@ func addPipelineHooks(
 	session ingest.Session,
 	orderBookGraph *orderbook.OrderBookGraph,
 ) {
-	p.AddPreProcessingHook(func(ctx context.Context) error {
+	p.AddPreProcessingHook(func(ctx context.Context) (context.Context, error) {
 		ledgerSeq := pipeline.GetLedgerSequenceFromContext(ctx)
 		fmt.Printf("%T Processing ledger: %d\n", p, ledgerSeq)
-		return db.Begin()
+		return ctx, db.Begin()
 	})
 
 	p.AddPostProcessingHook(func(ctx context.Context, err error) error {
