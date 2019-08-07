@@ -122,10 +122,10 @@ func NewSystem(config Config) (*System, error) {
 //   * If instances is a NOT leader, it runs ledger pipeline without updating a
 //     a database so order book graph is updated but database is not overwritten.
 func (s *System) Run() {
-	// continueAfter loop is needed only in case of initial state sync errors.
+	// retryOnError loop is needed only in case of initial state sync errors.
 	// If the state is successfully ingested `resumeFromLedger` method continues
 	// processing ledgers.
-	continueAfter(time.Second, func() error {
+	retryOnError(time.Second, func() error {
 		// Transaction will be commited or rolled back in pipelines post hooks.
 		err := s.historyQ.Begin()
 		if err != nil {
@@ -170,6 +170,11 @@ func (s *System) Run() {
 				if lastIngestedLedger == 0 {
 					return err
 				}
+
+				log.WithFields(ilog.F{
+					"err":                  err,
+					"last_ingested_ledger": lastIngestedLedger,
+				}).Error("Error running session, resuming from the last ingested ledger")
 			}
 		} else {
 			// The other node already ingested a state (just now or in the past)
@@ -226,7 +231,7 @@ func loadOrderBookGraphFromDB(historyQ *history.Q, graph *orderbook.OrderBookGra
 }
 
 func (s *System) resumeFromLedger(lastIngestedLedger uint32) {
-	continueAfter(time.Second, func() error {
+	retryOnError(time.Second, func() error {
 		err := s.session.Resume(lastIngestedLedger + 1)
 		if err != nil {
 			lastIngestedLedger = s.session.GetLatestSuccessfullyProcessedLedger()
@@ -250,10 +255,10 @@ func createArchive(archiveURL string) (*historyarchive.Archive, error) {
 	)
 }
 
-// continueAfter is a helper function that runs function f synchronically every
+// retryOnError is a helper function that runs function f synchronically every
 // `duration` until it returns no error.
 // Logs all returned errors with `error` level.
-func continueAfter(sleepDuration time.Duration, f func() error) {
+func retryOnError(sleepDuration time.Duration, f func() error) {
 	for {
 		err := f()
 		if err != nil {

@@ -194,14 +194,14 @@ func addPipelineHooks(
 			return errors.Wrap(err, "Error updating expingest version")
 		}
 
-		if err := historySession.Commit(); err != nil {
-			return errors.Wrap(err, "Error commiting db transaction")
+		if tx := historySession.GetTx(); tx != nil {
+			if err := historySession.Commit(); err != nil {
+				return errors.Wrap(err, "Error commiting db transaction")
+			}
 		}
 
-		if graph != nil {
-			if err := graph.Apply(); err != nil {
-				return errors.Wrap(err, "Error applying order book changes")
-			}
+		if err := graph.Apply(); err != nil {
+			return errors.Wrap(err, "Error applying order book changes")
 		}
 
 		log.WithFields(ilog.F{"ledger": ledgerSeq, "type": pipelineType}).Info("Processed ledger")
