@@ -30,6 +30,6 @@ func (s *standardSession) UpdateUnlock() {
 	s.rwLock.Unlock()
 }
 
-func (s *standardSession) GetLatestProcessedLedger() uint32 {
-	return s.latestProcessedLedger
+func (s *standardSession) GetLatestSuccessfullyProcessedLedger() uint32 {
+	return s.latestSuccessfullyProcessedLedger
 }
