@@ -754,7 +754,7 @@ func TestBuildChallengeTx(t *testing.T) {
 	op := txXDR.Tx.Operations[0]
 	assert.Equal(t, xdr.OperationTypeManageData, op.Body.Type, "operation type should be manage data")
 	assert.Equal(t, xdr.String64("SDF auth"), op.Body.ManageDataOp.DataName, "DataName should be 'SDF auth'")
-	assert.Equal(t, 64, len(*op.Body.ManageDataOp.DataValue), "DataValue should be 48 bytes")
+	assert.Equal(t, 64, len(*op.Body.ManageDataOp.DataValue), "DataValue should be 64 bytes")
 
 	// 5 minutes timebound
 	txeBase64, err = BuildChallengeTx(kp0.Seed(), kp0.Address(), "SDF1", network.TestNetworkPassphrase, time.Duration(5*time.Minute))
