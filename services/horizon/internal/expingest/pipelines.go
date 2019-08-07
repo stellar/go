@@ -132,7 +132,7 @@ func addPipelineHooks(
 
 		// We need to get this value `FOR UPDATE` so all other instances
 		// are blocked.
-		lastIngestedLedger, err := historyQ.GetLastLedgerExpIngest(true)
+		lastIngestedLedger, err := historyQ.GetLastLedgerExpIngest()
 		if err != nil {
 			return ctx, errors.Wrap(err, "Error getting last ledger")
 		}
@@ -152,6 +152,12 @@ func addPipelineHooks(
 				updateDatabase = true
 				ctx = context.WithValue(ctx, horizonProcessors.IngestUpdateDatabase, true)
 			}
+		}
+
+		// If we are not going to update a DB release a lock by rolling back a
+		// transaction.
+		if !updateDatabase {
+			historySession.Rollback()
 		}
 
 		log.WithFields(ilog.F{

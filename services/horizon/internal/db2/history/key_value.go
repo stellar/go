@@ -39,13 +39,13 @@ func (q *Q) GetLastLedgerExpIngestNonBlocking() (uint32, error) {
 }
 
 // GetLastLedgerExpIngest returns the last ledger ingested by expingest system
-// in Horizon. Returns error if no value has been previously set. This behaviour
-// is critical in distributed ingestion so do not change it unless you know
-// what you are doing.
+// in Horizon. Returns ErrKeyNotFound error if no value has been previously set.
+// This is using `SELECT ... FOR UPDATE` what means it's blocking the row for all other
+// transactions.This behaviour is critical in distributed ingestion so do not change
+// it unless you know what you are doing.
 // The value can be set using UpdateLastLedgerExpIngest.
-// `forUpdate` parameter determines whether the value should be locked `FOR UPDATE`.
-func (q *Q) GetLastLedgerExpIngest(forUpdate bool) (uint32, error) {
-	lastIngestedLedger, err := q.getValueFromStore(lastLedgerKey, forUpdate)
+func (q *Q) GetLastLedgerExpIngest() (uint32, error) {
+	lastIngestedLedger, err := q.getValueFromStore(lastLedgerKey, true)
 	if err != nil {
 		return 0, err
 	}
@@ -101,7 +101,8 @@ func (q *Q) UpdateExpIngestVersion(ledgerSequence int) error {
 	)
 }
 
-// getValueFromStore returns a value for a given key from KV store
+// getValueFromStore returns a value for a given key from KV store. If value
+// is not present in the key value store "" will be returned.
 func (q *Q) getValueFromStore(key string, forUpdate bool) (string, error) {
 	query := sq.Select("key_value_store.value").
 		From("key_value_store").

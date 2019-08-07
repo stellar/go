@@ -105,14 +105,7 @@ func (a *App) Serve() {
 	go a.run()
 
 	if a.expingester != nil {
-		go func() {
-			// Run will return errors only for initial state building.
-			// For ledger updates it will try again in case of errors.
-			err := a.expingester.Run()
-			if err != nil {
-				log.Panic(err)
-			}
-		}()
+		go a.expingester.Run()
 	}
 
 	var err error

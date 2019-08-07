@@ -4,7 +4,6 @@
 package expingest
 
 import (
-	"database/sql"
 	"time"
 
 	"github.com/stellar/go/clients/stellarcore"
@@ -122,60 +121,73 @@ func NewSystem(config Config) (*System, error) {
 //     a database.
 //   * If instances is a NOT leader, it runs ledger pipeline without updating a
 //     a database so order book graph is updated but database is not overwritten.
-func (s *System) Run() error {
-	// Transaction will be commited or rolled back in pipelines post hooks.
-	// This needs to be `REPEATABLE READ` isolation because offers are loaded
-	// from a DB later on and we need a consistent view.
-	err := s.historyQ.BeginTx(&sql.TxOptions{
-		Isolation: sql.LevelRepeatableRead,
-	})
-	if err != nil {
-		return errors.Wrap(err, "Error starting a transaction")
-	}
-
-	// This will get the value `FOR UPDATE`, blocking it for other nodes.
-	lastIngestedLedger, err := s.historyQ.GetLastLedgerExpIngest(true)
-	if err != nil {
-		return errors.Wrap(err, "Error getting last ingested ledger")
-	}
-
-	ingestVersion, err := s.historyQ.GetExpIngestVersion()
-	if err != nil {
-		return errors.Wrap(err, "Error getting exp ingest version")
-	}
-
-	if ingestVersion != CurrentVersion || lastIngestedLedger == 0 {
-		// This block is either starting from empty state or ingestion
-		// version upgrade.
-		// This will always run on a single instance due to the fact that
-		// `LastLedgerExpIngest` value is blocked for update and will always
-		// be updated when leading instance finishes processing state.
-		log.Info("Starting ingestion system from empty state...")
-
-		err = s.historyQ.Session.TruncateTables(
-			history.ExperimentalIngestionTables,
-		)
+func (s *System) Run() {
+	// continueAfter loop is needed only in case of initial state sync errors.
+	// If the state is successfully ingested `resumeFromLedger` method continues
+	// processing ledgers.
+	continueAfter(time.Second, func() error {
+		// Transaction will be commited or rolled back in pipelines post hooks.
+		err := s.historyQ.Begin()
 		if err != nil {
-			return errors.Wrap(err, "Error clearing ingest tables")
+			return errors.Wrap(err, "Error starting a transaction")
+		}
+		// We rollback in pipelines post-hooks but the error can happen before
+		// pipeline starts processing.
+		defer s.historyQ.Rollback()
+
+		// This will get the value `FOR UPDATE`, blocking it for other nodes.
+		lastIngestedLedger, err := s.historyQ.GetLastLedgerExpIngest()
+		if err != nil {
+			return errors.Wrap(err, "Error getting last ingested ledger")
 		}
 
-		s.runFromEmptyState()
-	} else {
-		// The other node already ingested a state (just now or in the past)
-		// so we need to get offers from a DB, then resume session normally.
-		// State pipeline is NOT processed.
-		log.WithField("last_ledger", lastIngestedLedger).
-			Info("Resuming ingestion system from last processed ledger...")
-
-		err = loadOrderBookGraphFromDB(s.historyQ, s.graph)
+		ingestVersion, err := s.historyQ.GetExpIngestVersion()
 		if err != nil {
-			return errors.Wrap(err, "Error loading order book graph from db")
+			return errors.Wrap(err, "Error getting exp ingest version")
+		}
+
+		if ingestVersion != CurrentVersion || lastIngestedLedger == 0 {
+			// This block is either starting from empty state or ingestion
+			// version upgrade.
+			// This will always run on a single instance due to the fact that
+			// `LastLedgerExpIngest` value is blocked for update and will always
+			// be updated when leading instance finishes processing state.
+			// In case of errors it will start `Run` from the beginning.
+			log.Info("Starting ingestion system from empty state...")
+
+			err = s.historyQ.Session.TruncateTables(
+				history.ExperimentalIngestionTables,
+			)
+			if err != nil {
+				return errors.Wrap(err, "Error clearing ingest tables")
+			}
+
+			err = s.session.Run()
+			if err != nil {
+				// Check if session processed a state, if so, continue since the
+				// last processed ledger, otherwise start over.
+				lastIngestedLedger = s.session.GetLatestSuccessfullyProcessedLedger()
+				if lastIngestedLedger == 0 {
+					return err
+				}
+			}
+		} else {
+			// The other node already ingested a state (just now or in the past)
+			// so we need to get offers from a DB, then resume session normally.
+			// State pipeline is NOT processed.
+			log.WithField("last_ledger", lastIngestedLedger).
+				Info("Resuming ingestion system from last processed ledger...")
+
+			err = loadOrderBookGraphFromDB(s.historyQ, s.graph)
+			if err != nil {
+				return errors.Wrap(err, "Error loading order book graph from db")
+			}
+
 		}
 
 		s.resumeFromLedger(lastIngestedLedger)
-	}
-
-	return nil
+		return nil
+	})
 }
 
 func loadOrderBookGraphFromDB(historyQ *history.Q, graph *orderbook.OrderBookGraph) error {
@@ -213,42 +225,17 @@ func loadOrderBookGraphFromDB(historyQ *history.Q, graph *orderbook.OrderBookGra
 	return err
 }
 
-func (s *System) runFromEmptyState() {
-	for {
-		lastIngestedLedger := s.session.GetLatestProcessedLedger()
-
-		var err error
-		if lastIngestedLedger == 0 {
-			err = s.session.Run()
-		} else {
-			s.resumeFromLedger(lastIngestedLedger)
-			return
-		}
-
-		if err != nil {
-			log.WithField("error", err).Error("Error returned from ingest.LiveSession")
-			time.Sleep(time.Second)
-			continue
-		}
-
-		log.Info("Session shut down")
-		break
-	}
-}
-
 func (s *System) resumeFromLedger(lastIngestedLedger uint32) {
-	for {
+	continueAfter(time.Second, func() error {
 		err := s.session.Resume(lastIngestedLedger + 1)
 		if err != nil {
-			lastIngestedLedger = s.session.GetLatestProcessedLedger()
-			log.WithField("error", err).Error("Error returned from ingest.LiveSession")
-			time.Sleep(time.Second)
-			continue
+			lastIngestedLedger = s.session.GetLatestSuccessfullyProcessedLedger()
+			return errors.Wrap(err, "Error returned from ingest.LiveSession")
 		}
 
 		log.Info("Session shut down")
-		break
-	}
+		return nil
+	})
 }
 
 func (s *System) Shutdown() {
@@ -261,4 +248,19 @@ func createArchive(archiveURL string) (*historyarchive.Archive, error) {
 		archiveURL,
 		historyarchive.ConnectOptions{},
 	)
+}
+
+// continueAfter is a helper function that runs function f synchronically every
+// `duration` until it returns no error.
+// Logs all returned errors with `error` level.
+func continueAfter(sleepDuration time.Duration, f func() error) {
+	for {
+		err := f()
+		if err != nil {
+			log.Error(err)
+			time.Sleep(sleepDuration)
+			continue
+		}
+		break
+	}
 }
