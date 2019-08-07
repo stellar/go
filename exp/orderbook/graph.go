@@ -347,11 +347,12 @@ func consumeOffers(
 
 		totalConsumed += xdr.Int64(buyingUnitsFromOffer)
 		currentAssetAmount -= xdr.Int64(sellingUnitsFromOffer)
+
+		if currentAssetAmount <= 0 {
+			return totalConsumed, nil
+		}
 	}
 
-	if currentAssetAmount <= 0 {
-		return totalConsumed, nil
-	}
 	return -1, nil
 }
 
