@@ -210,13 +210,13 @@ func BuildChallengeTx(serverSignerSecret, clientAccountID, anchorName, network s
 		return "", err
 	}
 
-	randomNonce, err := generateRandomNonce(64)
+	randomNonce, err := generateRandomNonce(48)
 	if err != nil {
 		return "", err
 	}
 
-	if len(randomNonce) != 64 {
-		return "", errors.New("64 byte long random nonce required")
+	if len(randomNonce) != 48 {
+		return "", errors.New("48 byte long random nonce required")
 	}
 
 	// represent server signing account as SimpleAccount
