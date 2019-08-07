@@ -2,7 +2,6 @@ package txnbuild
 
 import (
 	"crypto/sha256"
-	"encoding/base64"
 	"testing"
 	"time"
 
@@ -755,9 +754,7 @@ func TestBuildChallengeTx(t *testing.T) {
 	op := txXDR.Tx.Operations[0]
 	assert.Equal(t, xdr.OperationTypeManageData, op.Body.Type, "operation type should be manage data")
 	assert.Equal(t, xdr.String64("SDF auth"), op.Body.ManageDataOp.DataName, "DataName should be 'SDF auth'")
-	assert.Equal(t, 48, len(*op.Body.ManageDataOp.DataValue), "DataValue should be 48 bytes")
-	dvB64 := base64.StdEncoding.EncodeToString(*op.Body.ManageDataOp.DataValue)
-	assert.Equal(t, 64, len(dvB64), "DataValue as base64 should be 64 bytes")
+	assert.Equal(t, 64, len(*op.Body.ManageDataOp.DataValue), "DataValue should be 48 bytes")
 
 	// 5 minutes timebound
 	txeBase64, err = BuildChallengeTx(kp0.Seed(), kp0.Address(), "SDF1", network.TestNetworkPassphrase, time.Duration(5*time.Minute))
@@ -775,9 +772,7 @@ func TestBuildChallengeTx(t *testing.T) {
 	op1 := txXDR1.Tx.Operations[0]
 	assert.Equal(t, xdr.OperationTypeManageData, op1.Body.Type, "operation type should be manage data")
 	assert.Equal(t, xdr.String64("SDF1 auth"), op1.Body.ManageDataOp.DataName, "DataName should be 'SDF1 auth'")
-	assert.Equal(t, 48, len(*op1.Body.ManageDataOp.DataValue), "DataValue should be 48 bytes")
-	dvB64 = base64.StdEncoding.EncodeToString(*op.Body.ManageDataOp.DataValue)
-	assert.Equal(t, 64, len(dvB64), "DataValue as base64 should be 64 bytes")
+	assert.Equal(t, 64, len(*op1.Body.ManageDataOp.DataValue), "DataValue should be 64 bytes")
 }
 
 func TestHashHex(t *testing.T) {
