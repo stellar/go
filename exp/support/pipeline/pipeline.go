@@ -24,7 +24,7 @@ func (p *Pipeline) PrintStatus() {
 	p.printNodeStatus(p.root, 0)
 }
 
-func (p *Pipeline) AddPreProcessingHook(hook func(context.Context) error) {
+func (p *Pipeline) AddPreProcessingHook(hook func(context.Context) (context.Context, error)) {
 	p.preProcessingHooks = append(p.preProcessingHooks, hook)
 }
 
@@ -86,15 +86,17 @@ func (p *Pipeline) reset() {
 	p.resetNode(p.root)
 }
 
-func (p *Pipeline) sendPreProcessingHooks(ctx context.Context) error {
+func (p *Pipeline) sendPreProcessingHooks(ctx context.Context) (context.Context, error) {
+	var err error
+
 	for _, hook := range p.preProcessingHooks {
-		err := hook(ctx)
+		ctx, err = hook(ctx)
 		if err != nil {
-			return err
+			return ctx, err
 		}
 	}
 
-	return nil
+	return ctx, nil
 }
 
 func (p *Pipeline) sendPostProcessingHooks(ctx context.Context, processingError error) error {
@@ -125,16 +127,15 @@ func (p *Pipeline) Process(reader Reader) <-chan error {
 	p.setRunning(true)
 	p.reset()
 
-	err := p.sendPreProcessingHooks(reader.GetContext())
+	ctx, err := p.sendPreProcessingHooks(reader.GetContext())
 	if err != nil {
 		p.setRunning(false)
-		errorChan := make(chan error)
+		errorChan := make(chan error, 1)
 		errorChan <- errors.Wrap(err, "Error running pre-hook")
 		return errorChan
 	}
 
-	var ctx context.Context
-	ctx, p.cancelFunc = context.WithCancel(context.Background())
+	ctx, p.cancelFunc = context.WithCancel(ctx)
 	return p.processStateNode(ctx, &Store{}, p.root, reader)
 }
 
@@ -191,7 +192,7 @@ func (p *Pipeline) processStateNode(ctx context.Context, store *Store, node *Pip
 		}(i, child)
 	}
 
-	errorChan := make(chan error)
+	errorChan := make(chan error, 1)
 
 	go func() {
 		wg.Wait()

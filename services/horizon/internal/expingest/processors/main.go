@@ -5,6 +5,12 @@ import (
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 )
 
+type PipelineContextKey string
+
+const (
+	IngestUpdateDatabase = PipelineContextKey("IngestUpdateDatabase")
+)
+
 type DatabaseProcessorActionType string
 
 const (
@@ -28,4 +34,10 @@ type DatabaseProcessor struct {
 // can be later used for path finding.
 type OrderbookProcessor struct {
 	OrderBookGraph *orderbook.OrderBookGraph
+}
+
+// ContextFilter writes read objects only if a given key is present in the
+// pipline context.
+type ContextFilter struct {
+	Key PipelineContextKey
 }
