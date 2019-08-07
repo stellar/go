@@ -258,6 +258,8 @@ func (s *PostgresTempSet) dbGet(key string) (bool, error) {
 
 // Close closes a database connection what also removes a temporary table.
 func (s *PostgresTempSet) Close() error {
+	// Dereference map
+	s.cache = nil
 	// This will drop temp table. Do not use `s.Session.Close` as
 	// DB in `s.Session` can be shared by many sessions.
 	return s.Session.Rollback()
