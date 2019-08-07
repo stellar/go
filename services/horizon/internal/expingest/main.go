@@ -8,6 +8,7 @@ import (
 
 	"github.com/stellar/go/clients/stellarcore"
 	"github.com/stellar/go/exp/ingest"
+	"github.com/stellar/go/exp/ingest/io"
 	"github.com/stellar/go/exp/ingest/ledgerbackend"
 	"github.com/stellar/go/exp/orderbook"
 	supportPipeline "github.com/stellar/go/exp/support/pipeline"
@@ -29,11 +30,13 @@ const (
 var log = ilog.DefaultLogger.WithField("service", "expingest")
 
 type Config struct {
-	CoreSession       *db.Session
+	CoreSession    *db.Session
+	StellarCoreURL string
+
 	HistorySession    *db.Session
 	HistoryArchiveURL string
-	StellarCoreURL    string
-	OrderBookGraph    *orderbook.OrderBookGraph
+
+	OrderBookGraph *orderbook.OrderBookGraph
 }
 
 type System struct {
@@ -76,6 +79,10 @@ func NewSystem(config Config) (*System, error) {
 
 		StateReporter:  &LoggingStateReporter{Log: log, Interval: 100000},
 		LedgerReporter: &LoggingLedgerReporter{Log: log},
+
+		TempSet: &io.PostgresTempSet{
+			Session: config.HistorySession,
+		},
 	}
 
 	addPipelineHooks(
