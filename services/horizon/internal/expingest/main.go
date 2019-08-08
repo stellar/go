@@ -163,7 +163,7 @@ func (s *System) Run() {
 			log.Info("Starting ingestion system from empty state...")
 
 			// Clear last_ingested_ledger in key value store
-			if err := s.historyQ.UpdateLastLedgerExpIngest(0); err != nil {
+			if err = s.historyQ.UpdateLastLedgerExpIngest(0); err != nil {
 				return errors.Wrap(err, "Error updating last ingested ledger")
 			}
 
