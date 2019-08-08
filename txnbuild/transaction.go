@@ -387,17 +387,19 @@ func TransactionFromXDR(txeB64 string) (Transaction, error) {
 	return newTx, nil
 }
 
-// SignWithSecretKey is a helper method for signing transactions with a secret key
-func (tx *Transaction) SignWithSecretKey(keys ...string) error {
+// SignWithKeyString for Transaction signs a previously built transaction with the secret key
+// as a string. This can be used when you don't have access to a Stellar keypair.
+// A signed transaction may be submitted to the network.
+func (tx *Transaction) SignWithKeyString(keys ...string) error {
 	signers := []*keypair.Full{}
 	for _, k := range keys {
 		kp, err := keypair.Parse(k)
 		if err != nil {
-			return errors.Wrapf(err, "invalid key %s", k)
+			return errors.Wrapf(err, "provided string %s is not a valid Stellar key", k)
 		}
 		kpf, ok := kp.(*keypair.Full)
 		if !ok {
-			return errors.New("keypair type assertion failed")
+			return errors.New("provided string %s is not a valid Stellar secret key")
 		}
 		signers = append(signers, kpf)
 	}

@@ -1120,7 +1120,7 @@ func TestFromXDRBuildSignEncode(t *testing.T) {
 	assert.Equal(t, expectedSigned2, txeB64, "tx envelope should match")
 }
 
-func TestSignWithSecretKEy(t *testing.T) {
+func TestSignWithSecretKey(t *testing.T) {
 	kp0 := newKeypair0()
 	kp1 := newKeypair1()
 	txSource := NewSimpleAccount(kp0.Address(), int64(9605939170639897))
