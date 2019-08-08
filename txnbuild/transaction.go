@@ -210,12 +210,14 @@ func BuildChallengeTx(serverSignerSecret, clientAccountID, anchorName, network s
 		return "", err
 	}
 
-	randomNonce, err := generateRandomNonce(64)
+	// SEP10 spec requires 48 byte cryptographic-quality random string
+	randomNonce, err := generateRandomNonce(48)
 	if err != nil {
 		return "", err
 	}
-
-	if len(randomNonce) != 64 {
+	// Encode 48-byte nonce to base64 for a total of 64-bytes
+	randomNonceToString := base64.StdEncoding.EncodeToString(randomNonce)
+	if len(randomNonceToString) != 64 {
 		return "", errors.New("64 byte long random nonce required")
 	}
 
@@ -248,7 +250,7 @@ func BuildChallengeTx(serverSignerSecret, clientAccountID, anchorName, network s
 			&ManageData{
 				SourceAccount: &ca,
 				Name:          anchorName + " auth",
-				Value:         randomNonce,
+				Value:         []byte(randomNonceToString),
 			},
 		},
 		Timebounds: txTimebound,
