@@ -46,3 +46,39 @@ func TestVersion(t *testing.T) {
 		}
 	}
 }
+
+func TestIsValidEd25519PublicKey(t *testing.T) {
+	validKey := "GDWZCOEQRODFCH6ISYQPWY67L3ULLWS5ISXYYL5GH43W7YFMTLB65PYM"
+	isValid := IsValidEd25519PublicKey(validKey)
+	assert.Equal(t, true, isValid)
+
+	invalidKey := "GDWZCOEQRODFCH6ISYQPWY67L3ULLWS5ISXYYL5GH43W7Y"
+	isValid = IsValidEd25519PublicKey(invalidKey)
+	assert.Equal(t, false, isValid)
+
+	invalidKey = ""
+	isValid = IsValidEd25519PublicKey(invalidKey)
+	assert.Equal(t, false, isValid)
+
+	invalidKey = "SBCVMMCBEDB64TVJZFYJOJAERZC4YVVUOE6SYR2Y76CBTENGUSGWRRVO"
+	isValid = IsValidEd25519PublicKey(invalidKey)
+	assert.Equal(t, false, isValid)
+}
+
+func TestIsValidEd25519SecretSeed(t *testing.T) {
+	validKey := "SBCVMMCBEDB64TVJZFYJOJAERZC4YVVUOE6SYR2Y76CBTENGUSGWRRVO"
+	isValid := IsValidEd25519SecretSeed(validKey)
+	assert.Equal(t, true, isValid)
+
+	invalidKey := "SBCVMMCBEDB64TVJZFYJOJAERZC4YVVUOE6SYR2Y76CBTENGUSG"
+	isValid = IsValidEd25519SecretSeed(invalidKey)
+	assert.Equal(t, false, isValid)
+
+	invalidKey = ""
+	isValid = IsValidEd25519SecretSeed(invalidKey)
+	assert.Equal(t, false, isValid)
+
+	invalidKey = "GDWZCOEQRODFCH6ISYQPWY67L3ULLWS5ISXYYL5GH43W7YFMTLB65PYM"
+	isValid = IsValidEd25519SecretSeed(invalidKey)
+	assert.Equal(t, false, isValid)
+}
