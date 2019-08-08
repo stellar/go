@@ -1119,3 +1119,40 @@ func TestFromXDRBuildSignEncode(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, expectedSigned2, txeB64, "tx envelope should match")
 }
+
+func TestSignWithSecretKey(t *testing.T) {
+	kp0 := newKeypair0()
+	kp1 := newKeypair1()
+	txSource := NewSimpleAccount(kp0.Address(), int64(9605939170639897))
+	tx1Source := NewSimpleAccount(kp0.Address(), int64(9605939170639897))
+	opSource := NewSimpleAccount(kp1.Address(), 0)
+	createAccount := CreateAccount{
+		Destination:   "GCCOBXW2XQNUSL467IEILE6MMCNRR66SSVL4YQADUNYYNUVREF3FIV2Z",
+		Amount:        "10",
+		SourceAccount: &opSource,
+	}
+	tx := Transaction{
+		SourceAccount: &txSource,
+		Operations:    []Operation{&createAccount},
+		Timebounds:    NewInfiniteTimeout(),
+		Network:       network.TestNetworkPassphrase,
+	}
+	expected, err := tx.BuildSignEncode(kp0, kp1)
+	assert.NoError(t, err)
+
+	tx1 := Transaction{
+		SourceAccount: &tx1Source,
+		Operations:    []Operation{&createAccount},
+		Timebounds:    NewInfiniteTimeout(),
+		Network:       network.TestNetworkPassphrase,
+	}
+	err = tx1.Build()
+	assert.NoError(t, err)
+
+	err = tx1.SignWithKeyString("SBPQUZ6G4FZNWFHKUWC5BEYWF6R52E3SEP7R3GWYSM2XTKGF5LNTWW4R", "SBMSVD4KKELKGZXHBUQTIROWUAPQASDX7KEJITARP4VMZ6KLUHOGPTYW")
+	assert.NoError(t, err)
+
+	actual, err := tx1.Base64()
+	assert.NoError(t, err)
+	assert.Equal(t, expected, actual, "base64 xdr should match")
+}
