@@ -759,7 +759,6 @@ func TestBuildChallengeTx(t *testing.T) {
 	// 5 minutes timebound
 	txeBase64, err = BuildChallengeTx(kp0.Seed(), kp0.Address(), "SDF1", network.TestNetworkPassphrase, time.Duration(5*time.Minute))
 	assert.NoError(t, err)
-
 	var txXDR1 xdr.TransactionEnvelope
 	err = xdr.SafeUnmarshalBase64(txeBase64, &txXDR1)
 	assert.NoError(t, err)
@@ -1000,7 +999,6 @@ func TestHashXTransaction(t *testing.T) {
 }
 
 func TestFromXDR(t *testing.T) {
-
 	txeB64 := "AAAAACYWIvM98KlTMs0IlQBZ06WkYpZ+gILsQN6ega0++I/sAAAAZAAXeEkAAAABAAAAAAAAAAEAAAAQMkExVjZKNTcwM0c0N1hIWQAAAAEAAAABAAAAACYWIvM98KlTMs0IlQBZ06WkYpZ+gILsQN6ega0++I/sAAAAAQAAAADMSEvcRKXsaUNna++Hy7gWm/CfqTjEA7xoGypfrFGUHAAAAAAAAAACCPHRAAAAAAAAAAABPviP7AAAAEBu6BCKf4WZHPum5+29Nxf6SsJNN8bgjp1+e1uNBaHjRg3rdFZYgUqEqbHxVEs7eze3IeRbjMZxS3zPf/xwJCEI"
 
 	newTx, err := TransactionFromXDR(txeB64)
@@ -1050,4 +1048,74 @@ func TestFromXDR(t *testing.T) {
 	assert.Equal(t, nil, op2.SourceAccount, "Operation source should match")
 	assert.Equal(t, "test", op2.Name, "Name should match")
 	assert.Equal(t, "value", string(op2.Value), "Value should match")
+}
+
+func TestBuild(t *testing.T) {
+	kp0 := newKeypair0()
+	sourceAccount := NewSimpleAccount(kp0.Address(), int64(9605939170639897))
+	createAccount := CreateAccount{
+		Destination: "GCCOBXW2XQNUSL467IEILE6MMCNRR66SSVL4YQADUNYYNUVREF3FIV2Z",
+		Amount:      "10",
+	}
+	tx := Transaction{
+		SourceAccount: &sourceAccount,
+		Operations:    []Operation{&createAccount},
+		Timebounds:    NewInfiniteTimeout(),
+		Network:       network.TestNetworkPassphrase,
+	}
+	expectedUnsigned := "AAAAAODcbeFyXKxmUWK1L6znNbKKIkPkHRJNbLktcKPqLnLFAAAAZAAiII0AAAAaAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAITg3tq8G0kvnvoIhZPMYJsY+9KVV8xAA6NxhtKxIXZUAAAAAAX14QAAAAAAAAAAAA=="
+
+	expectedSigned := "AAAAAODcbeFyXKxmUWK1L6znNbKKIkPkHRJNbLktcKPqLnLFAAAAZAAiII0AAAAaAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAITg3tq8G0kvnvoIhZPMYJsY+9KVV8xAA6NxhtKxIXZUAAAAAAX14QAAAAAAAAAAAeoucsUAAABAHsyMojA0Q5MiNsR5X5AiNpCn9mlXmqluRsNpTniCR91M4U5TFmrrqVNLkU58/l+Y8hUPwidDTRSzLZKbMUL/Bw=="
+
+	err := tx.Build()
+	assert.NoError(t, err)
+	txeB64, err := tx.Base64()
+	assert.NoError(t, err)
+	assert.Equal(t, expectedUnsigned, txeB64, "tx envelope should match")
+	err = tx.Sign(kp0)
+	assert.NoError(t, err)
+	txeB64, err = tx.Base64()
+	assert.NoError(t, err)
+	assert.Equal(t, expectedSigned, txeB64, "tx envelope should match")
+
+	// build again
+	err = tx.Build()
+	if assert.Error(t, err) {
+		assert.Contains(t, err.Error(), "transaction has already been signed, so cannot be rebuilt.")
+	}
+	txeB64, err = tx.Base64()
+	assert.NoError(t, err)
+	assert.Equal(t, expectedSigned, txeB64, "tx envelope should match")
+}
+
+func TestFromXDRBuildSignEncode(t *testing.T) {
+	expectedUnsigned := "AAAAAODcbeFyXKxmUWK1L6znNbKKIkPkHRJNbLktcKPqLnLFAAAAZAAiII0AAAAaAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAITg3tq8G0kvnvoIhZPMYJsY+9KVV8xAA6NxhtKxIXZUAAAAAAX14QAAAAAAAAAAAA=="
+
+	expectedSigned := "AAAAAODcbeFyXKxmUWK1L6znNbKKIkPkHRJNbLktcKPqLnLFAAAAZAAiII0AAAAaAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAITg3tq8G0kvnvoIhZPMYJsY+9KVV8xAA6NxhtKxIXZUAAAAAAX14QAAAAAAAAAAAeoucsUAAABAHsyMojA0Q5MiNsR5X5AiNpCn9mlXmqluRsNpTniCR91M4U5TFmrrqVNLkU58/l+Y8hUPwidDTRSzLZKbMUL/Bw=="
+
+	kp0 := newKeypair0()
+
+	// test signing transaction  without modification
+	newTx, err := TransactionFromXDR(expectedUnsigned)
+	assert.NoError(t, err)
+	//passphrase is needed for signing
+	newTx.Network = network.TestNetworkPassphrase
+	err = newTx.Sign(kp0)
+	assert.NoError(t, err)
+	txeB64, err := newTx.Base64()
+	assert.NoError(t, err)
+	assert.Equal(t, expectedSigned, txeB64, "tx envelope should match")
+
+	// test signing transaction  with modification
+	expectedSigned2 := "AAAAAODcbeFyXKxmUWK1L6znNbKKIkPkHRJNbLktcKPqLnLFAAAAZAAiII0AAAAbAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAABAAAABW5ld3R4AAAAAAAAAQAAAAAAAAAAAAAAAITg3tq8G0kvnvoIhZPMYJsY+9KVV8xAA6NxhtKxIXZUAAAAAAX14QAAAAAAAAAAAeoucsUAAABADPbbXNzpC408WyYGQszN3VA9e41sNpsyZ2HcS62RXvUDsN0A+IXMPRMaCb+Wgn1OM6Ikam9ol0MJYNeK0BPxCg=="
+	newTx, err = TransactionFromXDR(expectedUnsigned)
+	assert.NoError(t, err)
+	//passphrase is needed for signing
+	newTx.Network = network.TestNetworkPassphrase
+	newTx.Memo = MemoText("newtx")
+
+	//Note: calling build will increment the sequence number
+	txeB64, err = newTx.BuildSignEncode(kp0)
+	assert.NoError(t, err)
+	assert.Equal(t, expectedSigned2, txeB64, "tx envelope should match")
 }
