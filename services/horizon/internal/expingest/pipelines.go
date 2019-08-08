@@ -198,7 +198,7 @@ func addPipelineHooks(
 				return errors.Wrap(err, "Error getting last ledger")
 			}
 
-			if lastIngestedLedger+1 != ledgerSeq {
+			if lastIngestedLedger != 0 && lastIngestedLedger+1 != ledgerSeq {
 				return errors.New("The local latest sequence is not equal to global sequence + 1")
 			}
 
