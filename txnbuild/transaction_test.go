@@ -1156,3 +1156,137 @@ func TestSignWithSecretKey(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, expected, actual, "base64 xdr should match")
 }
+
+func TestVerifyTxSignature(t *testing.T) {
+	kp0 := newKeypair0()
+	kp1 := newKeypair1()
+	txSource := NewSimpleAccount(kp0.Address(), int64(9605939170639897))
+	opSource := NewSimpleAccount(kp1.Address(), 0)
+	createAccount := CreateAccount{
+		Destination:   "GCCOBXW2XQNUSL467IEILE6MMCNRR66SSVL4YQADUNYYNUVREF3FIV2Z",
+		Amount:        "10",
+		SourceAccount: &opSource,
+	}
+	tx := Transaction{
+		SourceAccount: &txSource,
+		Operations:    []Operation{&createAccount},
+		Timebounds:    NewInfiniteTimeout(),
+		Network:       network.TestNetworkPassphrase,
+	}
+
+	// verify unsigned tx
+	err := tx.Build()
+	assert.NoError(t, err)
+	ok, err := verifyTxSignature(tx, kp0.Address())
+	if assert.Error(t, err) {
+		assert.Contains(t, err.Error(), "transaction has no signatures")
+	}
+	assert.Equal(t, false, ok)
+
+	// verify tx with one signature
+	err = tx.Sign(kp0)
+	assert.NoError(t, err)
+	ok, err = verifyTxSignature(tx, kp0.Address())
+	assert.NoError(t, err)
+	assert.Equal(t, true, ok)
+
+	// verify tx with multiple signature
+	err = tx.Sign(kp1)
+	assert.NoError(t, err)
+	ok, err = verifyTxSignature(tx, kp0.Address())
+	assert.NoError(t, err)
+	assert.Equal(t, true, ok)
+	ok, err = verifyTxSignature(tx, kp1.Address())
+	assert.NoError(t, err)
+	assert.Equal(t, true, ok)
+
+	// verify invalid signer
+	ok, err = verifyTxSignature(tx, "GATBMIXTHXYKSUZSZUEJKACZ2OS2IYUWP2AIF3CA32PIDLJ67CH6Y5UY")
+	if assert.Error(t, err) {
+		assert.Contains(t, err.Error(), "transaction not signed by GATBMIXTHXYKSUZSZUEJKACZ2OS2IYUWP2AIF3CA32PIDLJ67CH6Y5UY")
+	}
+	assert.Equal(t, false, ok)
+}
+
+func TestVerifyChallengeTx(t *testing.T) {
+	invalidTx := "AAAAACYWIvM98KlTMs0IlQBZ06WkYpZ+gILsQN6ega0++I/sAAAAZAAXeEkAAAABAAAAAAAAAAEAAAAQMkExVjZKNTcwM0c0N1hIWQAAAAEAAAABAAAAACYWIvM98KlTMs0IlQBZ06WkYpZ+gILsQN6ega0++I/sAAAAAQAAAADMSEvcRKXsaUNna++Hy7gWm/CfqTjEA7xoGypfrFGUHAAAAAAAAAACCPHRAAAAAAAAAAABPviP7AAAAEBu6BCKf4WZHPum5+29Nxf6SsJNN8bgjp1+e1uNBaHjRg3rdFZYgUqEqbHxVEs7eze3IeRbjMZxS3zPf/xwJCEI"
+
+	_, err := VerifyChallengeTx(invalidTx, "GATBMIXTHXYKSUZSZUEJKACZ2OS2IYUWP2AIF3CA32PIDLJ67CH6Y5UY", network.TestNetworkPassphrase)
+	if assert.Error(t, err) {
+		assert.Contains(t, err.Error(), "transaction requires timebounds")
+	}
+
+	kp0 := newKeypair0()
+	kp1 := newKeypair1()
+
+	// transaction with elapsed timebound
+	newChallenge, err := BuildChallengeTx(kp0.Seed(), kp1.Address(), "sdf", network.TestNetworkPassphrase, 1)
+	assert.NoError(t, err)
+	time.Sleep(2 * time.Second)
+	_, err = VerifyChallengeTx(newChallenge, kp0.Address(), network.TestNetworkPassphrase)
+	if assert.Error(t, err) {
+		assert.Contains(t, err.Error(), "transaction timebounds has elapsed")
+	}
+
+	// transaction not signed by client
+	newChallenge, err = BuildChallengeTx(kp0.Seed(), kp1.Address(), "sdf", network.TestNetworkPassphrase, 300)
+	assert.NoError(t, err)
+	_, err = VerifyChallengeTx(newChallenge, kp0.Address(), network.TestNetworkPassphrase)
+	if assert.Error(t, err) {
+		assert.Contains(t, err.Error(), "transaction not signed by "+kp1.Address())
+	}
+
+	// valid transaction signed by client
+	newChallenge, err = BuildChallengeTx(kp0.Seed(), kp1.Address(), "sdf", network.TestNetworkPassphrase, 300)
+	assert.NoError(t, err)
+	newTx, err := TransactionFromXDR(newChallenge)
+	assert.NoError(t, err)
+	newTx.Network = network.TestNetworkPassphrase
+	err = newTx.Sign(kp1)
+	assert.NoError(t, err)
+	newChallenge, err = newTx.Base64()
+	assert.NoError(t, err)
+	isValid, err := VerifyChallengeTx(newChallenge, kp0.Address(), network.TestNetworkPassphrase)
+	assert.NoError(t, err)
+	assert.Equal(t, true, isValid, "challenge should be valid")
+
+	// valid transaction with infinite timebound signed by client
+	newChallenge, err = BuildChallengeTx(kp0.Seed(), kp1.Address(), "sdf", network.TestNetworkPassphrase, 0)
+	assert.NoError(t, err)
+	newTx, err = TransactionFromXDR(newChallenge)
+	assert.NoError(t, err)
+	newTx.Network = network.TestNetworkPassphrase
+	err = newTx.Sign(kp1)
+	assert.NoError(t, err)
+	newChallenge, err = newTx.Base64()
+	assert.NoError(t, err)
+	isValid, err = VerifyChallengeTx(newChallenge, kp0.Address(), network.TestNetworkPassphrase)
+	assert.NoError(t, err)
+	assert.Equal(t, true, isValid, "challenge should be valid")
+
+	// invalid operation type
+	txSource := NewSimpleAccount(kp0.Address(), 0)
+	opSource := NewSimpleAccount(kp1.Address(), 0)
+	createAccount := CreateAccount{
+		Destination:   "GCCOBXW2XQNUSL467IEILE6MMCNRR66SSVL4YQADUNYYNUVREF3FIV2Z",
+		Amount:        "10",
+		SourceAccount: &opSource,
+	}
+	newTx = Transaction{
+		SourceAccount: &txSource,
+		Operations:    []Operation{&createAccount},
+		Timebounds:    NewInfiniteTimeout(),
+		Network:       network.TestNetworkPassphrase,
+	}
+	err = newTx.Build()
+	assert.NoError(t, err)
+	err = newTx.Sign(kp0, kp1)
+	assert.NoError(t, err)
+	newChallenge, err = newTx.Base64()
+	assert.NoError(t, err)
+	isValid, err = VerifyChallengeTx(newChallenge, kp0.Address(), network.TestNetworkPassphrase)
+	if assert.Error(t, err) {
+		assert.Contains(t, err.Error(), "operation type should be manage_data")
+	}
+	assert.Equal(t, false, isValid, "challenge should be invalid")
+}

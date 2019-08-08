@@ -406,3 +406,89 @@ func (tx *Transaction) SignWithKeyString(keys ...string) error {
 
 	return tx.Sign(signers...)
 }
+
+// VerifyChallengeTx is a factory method that verifies a SEP 10 challenge transaction,
+// for use in web authentication.
+// More details on SEP 10: https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0010.md
+func VerifyChallengeTx(challengeTx, serverAccountId, network string) (bool, error) {
+	tx, err := TransactionFromXDR(challengeTx)
+	if err != nil {
+		return false, err
+	}
+	tx.Network = network
+
+	// verify transaction source
+	if tx.SourceAccount != nil {
+		if tx.SourceAccount.GetAccountID() != serverAccountId {
+			return false, errors.New("transaction source account is not equal to server's account")
+		}
+	} else {
+		return false, errors.New("transaction requires a source account")
+	}
+
+	// verify timebounds
+	if tx.Timebounds.wasBuilt {
+		// if timebound is not infinite
+		if tx.Timebounds.MinTime > 0 && tx.Timebounds.MaxTime > 0 {
+			currentTime := time.Now().UTC().Unix()
+			if currentTime < tx.Timebounds.MinTime || currentTime > tx.Timebounds.MaxTime {
+				return false, errors.New("transaction timebounds has elapsed")
+			}
+		}
+	} else {
+		return false, errors.New("transaction requires timebounds")
+	}
+
+	// verify operation
+	if len(tx.Operations) == 1 {
+		op, ok := tx.Operations[0].(*ManageData)
+		if !ok {
+			return false, errors.New("operation type should be manage_data")
+		}
+		if op.SourceAccount == nil {
+			return false, errors.New("operation should have a source account")
+		}
+		// verify signature from operation source
+		ok, err = verifyTxSignature(tx, op.SourceAccount.GetAccountID())
+		if err != nil {
+			return ok, err
+		}
+	} else {
+		return false, errors.New("transaction requires a single manage_data operation")
+	}
+
+	// verify signature from server signing key
+	return verifyTxSignature(tx, serverAccountId)
+}
+
+// verifyTxSignature checks if a transaction has been signed by the provided stellar account.
+func verifyTxSignature(tx Transaction, accountID string) (bool, error) {
+	signerFound := false
+	txHash, err := tx.Hash()
+	if err != nil {
+		return signerFound, err
+	}
+
+	kp, err := keypair.Parse(accountID)
+	if err != nil {
+		return signerFound, err
+	}
+
+	// find and verify signatures
+	if tx.xdrEnvelope != nil && len(tx.xdrEnvelope.Signatures) > 0 {
+		for _, s := range tx.xdrEnvelope.Signatures {
+			e := kp.Verify(txHash[:], s.Signature)
+			if e == nil {
+				signerFound = true
+				break
+			}
+		}
+	} else {
+		return signerFound, errors.New("transaction has no signatures")
+	}
+
+	if !signerFound {
+		return signerFound, errors.Errorf("transaction not signed by %s", accountID)
+	}
+	return signerFound, nil
+}
