@@ -1081,7 +1081,7 @@ func TestBuild(t *testing.T) {
 	// build again
 	err = tx.Build()
 	if assert.Error(t, err) {
-		assert.Contains(t, err.Error(), "transaction has been signed. can not be modified.")
+		assert.Contains(t, err.Error(), "transaction has already been signed, so cannot be rebuilt.")
 	}
 	txeB64, err = tx.Base64()
 	assert.NoError(t, err)

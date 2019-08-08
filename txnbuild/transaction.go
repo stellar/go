@@ -96,8 +96,9 @@ func (tx *Transaction) Build() error {
 	// If transaction envelope has been signed, don't build transaction
 	if tx.xdrEnvelope != nil {
 		if tx.xdrEnvelope.Signatures != nil {
-			return errors.New("transaction has been signed. can not be modified.")
+			return errors.New("transaction has already been signed, so cannot be rebuilt.")
 		}
+		// clear the existing XDR so we don't append to any existing fields
 		tx.xdrEnvelope = &xdr.TransactionEnvelope{}
 		tx.xdrEnvelope.Tx = xdr.Transaction{}
 	}
