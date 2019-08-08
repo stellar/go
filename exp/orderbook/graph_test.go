@@ -229,12 +229,12 @@ func assertPathEquals(t *testing.T, a, b []Path) {
 func TestAddEdgeSet(t *testing.T) {
 	set := edgeSet{}
 
-	set.add(dollarOffer)
-	set.add(eurOffer)
-	set.add(twoEurOffer)
-	set.add(threeEurOffer)
-	set.add(quarterOffer)
-	set.add(fiftyCentsOffer)
+	set.add(dollarOffer.Buying.String(), dollarOffer)
+	set.add(eurOffer.Buying.String(), eurOffer)
+	set.add(twoEurOffer.Buying.String(), twoEurOffer)
+	set.add(threeEurOffer.Buying.String(), threeEurOffer)
+	set.add(quarterOffer.Buying.String(), quarterOffer)
+	set.add(fiftyCentsOffer.Buying.String(), fiftyCentsOffer)
 
 	if len(set) != 2 {
 		t.Fatalf("expected set to have 2 entries but got %v", set)
@@ -260,12 +260,12 @@ func TestRemoveEdgeSet(t *testing.T) {
 		t.Fatal("expected set to not contain asset")
 	}
 
-	set.add(dollarOffer)
-	set.add(eurOffer)
-	set.add(twoEurOffer)
-	set.add(threeEurOffer)
-	set.add(quarterOffer)
-	set.add(fiftyCentsOffer)
+	set.add(dollarOffer.Buying.String(), dollarOffer)
+	set.add(eurOffer.Buying.String(), eurOffer)
+	set.add(twoEurOffer.Buying.String(), twoEurOffer)
+	set.add(threeEurOffer.Buying.String(), threeEurOffer)
+	set.add(quarterOffer.Buying.String(), quarterOffer)
+	set.add(fiftyCentsOffer.Buying.String(), fiftyCentsOffer)
 
 	if contains := set.remove(dollarOffer.OfferId, usdAsset.String()); !contains {
 		t.Fatal("expected set to contain dollar offer")
@@ -758,17 +758,12 @@ func TestRemoveOfferOrderBook(t *testing.T) {
 	}
 }
 
-func TestConsumeOffers(t *testing.T) {
-	var key xdr.Uint256
+func TestConsumeOffersForSellingAsset(t *testing.T) {
 	kp, err := keypair.Random()
 	if err != nil {
 		t.Fatalf("unexpected error %v", err)
 	}
-	copy(key[:], kp.Address())
-	ignoreOffersFrom, err := xdr.NewAccountId(xdr.PublicKeyTypePublicKeyTypeEd25519, key)
-	if err != nil {
-		t.Fatalf("unexpected error %v", err)
-	}
+	ignoreOffersFrom := xdr.MustAddress(kp.Address())
 	otherSellerTwoEurOffer := twoEurOffer
 	otherSellerTwoEurOffer.SellerId = ignoreOffersFrom
 
@@ -857,7 +852,119 @@ func TestConsumeOffers(t *testing.T) {
 		},
 	} {
 		t.Run(testCase.name, func(t *testing.T) {
-			result, err := consumeOffers(
+			result, err := consumeOffersForSellingAsset(
+				testCase.offers,
+				testCase.ignoreOffersFrom,
+				testCase.currentAssetAmount,
+			)
+			if err != testCase.err {
+				t.Fatalf("expected error %v but got %v", testCase.err, err)
+			}
+			if err == nil {
+				if result != testCase.result {
+					t.Fatalf("expected %v but got %v", testCase.result, result)
+				}
+			}
+		})
+	}
+
+}
+
+func TestConsumeOffersForBuyingAsset(t *testing.T) {
+	kp, err := keypair.Random()
+	if err != nil {
+		t.Fatalf("unexpected error %v", err)
+	}
+	ignoreOffersFrom := xdr.MustAddress(kp.Address())
+	otherSellerTwoEurOffer := twoEurOffer
+	otherSellerTwoEurOffer.SellerId = ignoreOffersFrom
+
+	denominatorZeroOffer := twoEurOffer
+	denominatorZeroOffer.Price.D = 0
+
+	for _, testCase := range []struct {
+		name               string
+		offers             []xdr.OfferEntry
+		ignoreOffersFrom   *xdr.AccountId
+		currentAssetAmount xdr.Int64
+		result             xdr.Int64
+		err                error
+	}{
+		{
+			"offers must not be empty",
+			[]xdr.OfferEntry{},
+			&issuer,
+			100,
+			0,
+			errEmptyOffers,
+		},
+		{
+			"currentAssetAmount must be positive",
+			[]xdr.OfferEntry{eurOffer},
+			&ignoreOffersFrom,
+			0,
+			0,
+			errAssetAmountIsZero,
+		},
+		{
+			"ignore all offers",
+			[]xdr.OfferEntry{eurOffer},
+			&issuer,
+			1,
+			-1,
+			nil,
+		},
+		{
+			"offer denominator cannot be zero",
+			[]xdr.OfferEntry{denominatorZeroOffer},
+			&ignoreOffersFrom,
+			10000,
+			0,
+			errOfferPriceDenominatorIsZero,
+		},
+		{
+			"ignore some offers",
+			[]xdr.OfferEntry{eurOffer, otherSellerTwoEurOffer},
+			&issuer,
+			100,
+			50,
+			nil,
+		},
+		{
+			"not enough offers to consume",
+			[]xdr.OfferEntry{eurOffer, twoEurOffer},
+			nil,
+			1502,
+			-1,
+			nil,
+		},
+		{
+			"consume all offers",
+			[]xdr.OfferEntry{eurOffer, twoEurOffer, threeEurOffer},
+			&ignoreOffersFrom,
+			3000,
+			1500,
+			nil,
+		},
+		{
+			"consume offer partially",
+			[]xdr.OfferEntry{eurOffer, twoEurOffer},
+			nil,
+			2,
+			2,
+			nil,
+		},
+		{
+			"round down",
+			[]xdr.OfferEntry{eurOffer, twoEurOffer},
+			nil,
+			1501,
+			1000,
+			nil,
+		},
+	} {
+		t.Run(testCase.name, func(t *testing.T) {
+			result, err := consumeOffersForBuyingAsset(
 				testCase.offers,
 				testCase.ignoreOffersFrom,
 				testCase.currentAssetAmount,
@@ -1060,16 +1167,11 @@ func TestFindPaths(t *testing.T) {
 		t.Fatalf("unexpected error %v", err)
 	}
 
-	var key xdr.Uint256
 	kp, err := keypair.Random()
 	if err != nil {
 		t.Fatalf("unexpected error %v", err)
 	}
-	copy(key[:], kp.Address())
-	ignoreOffersFrom, err := xdr.NewAccountId(xdr.PublicKeyTypePublicKeyTypeEd25519, key)
-	if err != nil {
-		t.Fatalf("unexpected error %v", err)
-	}
+	ignoreOffersFrom := xdr.MustAddress(kp.Address())
 
 	paths, err := graph.FindPaths(
 		3,
@@ -1179,6 +1281,208 @@ func TestFindPaths(t *testing.T) {
 
 	if err != nil {
 		t.Fatalf("unexpected error %v", err)
+	}
+
+	assertPathEquals(t, paths, expectedPaths)
+}
+
+func TestFindPathsStartingAt(t *testing.T) {
+	graph := NewOrderBookGraph()
+
+	err := graph.
+		AddOffer(dollarOffer).
+		AddOffer(threeEurOffer).
+		AddOffer(eurOffer).
+		AddOffer(twoEurOffer).
+		AddOffer(quarterOffer).
+		AddOffer(fiftyCentsOffer).
+		Apply()
+	if err != nil {
+		t.Fatalf("unexpected error %v", err)
+	}
+
+	eurUsdOffer := xdr.OfferEntry{
+		SellerId: issuer,
+		OfferId:  xdr.Int64(9),
+		Buying:   eurAsset,
+		Selling:  usdAsset,
+		Price: xdr.Price{
+			N: 1,
+			D: 1,
+		},
+		Amount: xdr.Int64(500),
+	}
+	otherEurUsdOffer := xdr.OfferEntry{
+		SellerId: issuer,
+		OfferId:  xdr.Int64(10),
+		Buying:   eurAsset,
+		Selling:  usdAsset,
+		Price: xdr.Price{
+			N: 2,
+			D: 1,
+		},
+		Amount: xdr.Int64(500),
+	}
+
+	usdEurOffer := xdr.OfferEntry{
+		SellerId: issuer,
+		OfferId:  xdr.Int64(11),
+		Buying:   usdAsset,
+		Selling:  eurAsset,
+		Price: xdr.Price{
+			N: 1,
+			D: 3,
+		},
+		Amount: xdr.Int64(500),
+	}
+
+	chfEurOffer := xdr.OfferEntry{
+		SellerId: issuer,
+		OfferId:  xdr.Int64(12),
+		Buying:   chfAsset,
+		Selling:  eurAsset,
+		Price: xdr.Price{
+			N: 1,
+			D: 2,
+		},
+		Amount: xdr.Int64(500),
+	}
+
+	yenChfOffer := xdr.OfferEntry{
+		SellerId: issuer,
+		OfferId:  xdr.Int64(13),
+		Buying:   yenAsset,
+		Selling:  chfAsset,
+		Price: xdr.Price{
+			N: 1,
+			D: 2,
+		},
+		Amount: xdr.Int64(500),
+	}
+
+	err = graph.
+		AddOffer(eurUsdOffer).
+		AddOffer(otherEurUsdOffer).
+		AddOffer(usdEurOffer).
+		AddOffer(chfEurOffer).
+		AddOffer(yenChfOffer).
+		Apply()
+	if err != nil {
+		t.Fatalf("unexpected error %v", err)
+	}
+
+	kp, err := keypair.Random()
+	if err != nil {
+		t.Fatalf("unexpected error %v", err)
+	}
+	ignoreOffersFrom := xdr.MustAddress(kp.Address())
+
+	paths, err := graph.FindFixedPaths(
+		3,
+		&ignoreOffersFrom,
+		usdAsset,
+		5,
+		nativeAsset,
+	)
+	if err != nil {
+		t.Fatalf("unexpected error %v", err)
+	}
+
+	expectedPaths := []Path{
+		Path{
+			SourceAmount:      5,
+			SourceAsset:       usdAsset,
+			InteriorNodes:     []xdr.Asset{},
+			DestinationAsset:  nativeAsset,
+			DestinationAmount: 20,
+		},
+		Path{
+			SourceAmount: 5,
+			SourceAsset:  usdAsset,
+			InteriorNodes: []xdr.Asset{
+				eurAsset,
+			},
+			DestinationAsset:  nativeAsset,
+			DestinationAmount: 15,
+		},
+	}
+
+	assertPathEquals(t, paths, expectedPaths)
+
+	paths, err = graph.FindFixedPaths(
+		2,
+		nil,
+		yenAsset,
+		5,
+		nativeAsset,
+	)
+	if err != nil {
+		t.Fatalf("unexpected error %v", err)
+	}
+
+	expectedPaths = []Path{}
+
+	assertPathEquals(t, paths, expectedPaths)
+
+	paths, err = graph.FindFixedPaths(
+		3,
+		nil,
+		yenAsset,
+		5,
+		nativeAsset,
+	)
+	if err != nil {
+		t.Fatalf("unexpected error %v", err)
+	}
+
+	expectedPaths = []Path{
+		Path{
+			SourceAmount: 5,
+			SourceAsset:  yenAsset,
+			InteriorNodes: []xdr.Asset{
+				chfAsset,
+				eurAsset,
+			},
+			DestinationAsset:  nativeAsset,
+			DestinationAmount: 20,
+		},
+	}
+
+	assertPathEquals(t, paths, expectedPaths)
+
+	paths, err = graph.FindFixedPaths(
+		5,
+		nil,
+		yenAsset,
+		5,
+		nativeAsset,
+	)
+	if err != nil {
+		t.Fatalf("unexpected error %v", err)
+	}
+
+	expectedPaths = []Path{
+		Path{
+			SourceAmount: 5,
+			SourceAsset:  yenAsset,
+			InteriorNodes: []xdr.Asset{
+				chfAsset,
+				eurAsset,
+				usdAsset,
+			},
+			DestinationAsset:  nativeAsset,
+			DestinationAmount: 80,
+		},
+		Path{
+			SourceAmount: 5,
+			SourceAsset:  yenAsset,
+			InteriorNodes: []xdr.Asset{
+				chfAsset,
+				eurAsset,
+			},
+			DestinationAsset:  nativeAsset,
+			DestinationAmount: 20,
+		},
 	}
 
 	assertPathEquals(t, paths, expectedPaths)

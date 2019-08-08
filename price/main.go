@@ -134,7 +134,7 @@ func ConvertToBuyingUnits(sellingOfferAmount int64, sellingUnitsNeeded int64, pr
 	// offerSellingBound
 	result := sellingOfferAmount
 	if pricen <= priced {
-		result, e = mulFractionRoundDown(sellingOfferAmount, pricen, priced)
+		result, e = MulFractionRoundDown(sellingOfferAmount, pricen, priced)
 		if e != nil {
 			return 0, 0, e
 		}
@@ -157,9 +157,9 @@ func ConvertToBuyingUnits(sellingOfferAmount int64, sellingUnitsNeeded int64, pr
 	return result, sellingUnitsExtracted, nil
 }
 
-// mulFractionRoundDown sets x = (x * n) / d, which is a round-down operation
+// MulFractionRoundDown sets x = (x * n) / d, which is a round-down operation
 // see https://github.com/stellar/stellar-core/blob/9af27ef4e20b66f38ab148d52ba7904e74fe502f/src/util/types.cpp#L201
-func mulFractionRoundDown(x int64, n int64, d int64) (int64, error) {
+func MulFractionRoundDown(x int64, n int64, d int64) (int64, error) {
 	var bn, bd big.Int
 	bn.SetInt64(n)
 	bd.SetInt64(d)

@@ -189,6 +189,8 @@ func (w *web) mustInstallActions(enableAssetStats bool, friendbotURL *url.URL) {
 	// Transaction submission API
 	r.Post("/transactions", TransactionCreateAction{}.Handle)
 	r.Get("/paths", PathIndexAction{}.Handle)
+	r.Get("/paths/strict-receive", PathIndexAction{}.Handle)
+	r.Get("/paths/strict-send", FixedPathIndexAction{}.Handle)
 
 	if enableAssetStats {
 		// Asset related endpoints

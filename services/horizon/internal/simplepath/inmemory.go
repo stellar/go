@@ -4,6 +4,7 @@ import (
 	"github.com/go-errors/errors"
 	"github.com/stellar/go/exp/orderbook"
 	"github.com/stellar/go/services/horizon/internal/paths"
+	"github.com/stellar/go/xdr"
 )
 
 const (
@@ -55,10 +56,54 @@ func (finder InMemoryFinder) Find(q paths.Query, maxLength uint) ([]paths.Path, 
 	results := make([]paths.Path, len(orderbookPaths))
 	for i, path := range orderbookPaths {
 		results[i] = paths.Path{
-			Path:        path.InteriorNodes,
-			Source:      path.SourceAsset,
-			Destination: path.DestinationAsset,
-			Cost:        path.SourceAmount,
+			Path:              path.InteriorNodes,
+			Source:            path.SourceAsset,
+			SourceAmount:      path.SourceAmount,
+			Destination:       path.DestinationAsset,
+			DestinationAmount: path.DestinationAmount,
+		}
+	}
+	return results, err
+}
+
+// FindFixedPaths returns a list of payment paths where the source and destination
+// assets are fixed. All returned payment paths will start by spending `amountToSpend`
+// of `sourceAsset` and will end with some positive balance of `destinationAsset`.
+// `sourceAccountID` is optional. if `sourceAccountID` is provided then no offers
+// created by `sourceAccountID` will be considered when evaluating payment paths
+func (finder InMemoryFinder) FindFixedPaths(
+	sourceAccount *xdr.AccountId,
+	sourceAsset xdr.Asset,
+	amountToSpend xdr.Int64,
+	destinationAsset xdr.Asset,
+	maxLength uint,
+) ([]paths.Path, error) {
+	if finder.graph.IsEmpty() {
+		return nil, ErrEmptyInMemoryOrderBook
+	}
+
+	if maxLength == 0 {
+		maxLength = MaxInMemoryPathLength
+	}
+	if maxLength > MaxInMemoryPathLength {
+		return nil, errors.New("invalid value of maxLength")
+	}
+
+	orderbookPaths, err := finder.graph.FindFixedPaths(
+		int(maxLength),
+		sourceAccount,
+		sourceAsset,
+		amountToSpend,
+		destinationAsset,
+	)
+	results := make([]paths.Path, len(orderbookPaths))
+	for i, path := range orderbookPaths {
+		results[i] = paths.Path{
+			Path:              path.InteriorNodes,
+			Source:            path.SourceAsset,
+			SourceAmount:      path.SourceAmount,
+			Destination:       path.DestinationAsset,
+			DestinationAmount: path.DestinationAmount,
 		}
 	}
 	return results, err
