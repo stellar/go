@@ -5,7 +5,8 @@ file.  This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## Unreleased
 
-* Add `Transaction.BuildChallengeTx` method for building [SEP-10](https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0010.md) challenge transaction.
+* Add `BuildChallengeTx` function for building [SEP-10](https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0010.md) challenge transaction([#1466](https://github.com/stellar/go/issues/1466)).
+* Add `VerifyChallengeTx` method for verifying [SEP-10](https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0010.md) challenge transaction([#1530](https://github.com/stellar/go/issues/1530)).
 * Add `TransactionFromXDR` function for building `txnbuild.Transaction` struct from a  base64 XDR transaction envelope[#1329](https://github.com/stellar/go/issues/1329).
 * Fix bug that allowed multiple calls to `Transaction.Build` increment the number of operations in a transaction [#1448](https://github.com/stellar/go/issues/1448).
 * Add `Transaction.SignWithKeyString` helper method for signing transactions using secret keys as strings.([#1564](https://github.com/stellar/go/issues/1564))
