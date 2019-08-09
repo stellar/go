@@ -2,6 +2,7 @@ package txnbuild
 
 import (
 	"crypto/sha256"
+	"encoding/base64"
 	"testing"
 	"time"
 
@@ -1276,7 +1277,7 @@ func TestVerifyChallengeTxInvalid(t *testing.T) {
 
 	isValid, err := VerifyChallengeTx(invalidTx, "GATBMIXTHXYKSUZSZUEJKACZ2OS2IYUWP2AIF3CA32PIDLJ67CH6Y5UY", network.TestNetworkPassphrase)
 	if assert.Error(t, err) {
-		assert.Contains(t, err.Error(), "transaction requires non-infinite timebounds")
+		assert.Contains(t, err.Error(), "transaction sequence number must be 0")
 	}
 	assert.Equal(t, false, isValid, "challenge should not be valid")
 }
@@ -1334,7 +1335,7 @@ func TestVerifyChallengeTxInvalidOp(t *testing.T) {
 	kp1 := newKeypair1()
 
 	// invalid operation type
-	txSource := NewSimpleAccount(kp0.Address(), 0)
+	txSource := NewSimpleAccount(kp0.Address(), -1)
 	opSource := NewSimpleAccount(kp1.Address(), 0)
 	createAccount := CreateAccount{
 		Destination:   "GCCOBXW2XQNUSL467IEILE6MMCNRR66SSVL4YQADUNYYNUVREF3FIV2Z",
@@ -1379,4 +1380,76 @@ func TestVerifyChallengeTxInvalidSource(t *testing.T) {
 		assert.Contains(t, err.Error(), "transaction source account is not equal to server's account")
 	}
 	assert.Equal(t, false, isValid, "challenge should be valid")
+}
+
+func TestVerifyChallengeTxSequenceNumber(t *testing.T) {
+	kp0 := newKeypair0()
+	kp1 := newKeypair1()
+
+	// invalid sequence number
+	txSource := NewSimpleAccount(kp0.Address(), 100)
+	opSource := NewSimpleAccount(kp1.Address(), 0)
+	randomNonce, err := generateRandomNonce(48)
+	assert.NoError(t, err)
+	randomNonceToString := base64.StdEncoding.EncodeToString(randomNonce)
+	newTx := Transaction{
+		SourceAccount: &txSource,
+		Operations: []Operation{
+			&ManageData{
+				SourceAccount: &opSource,
+				Name:          "sdf auth",
+				Value:         []byte(randomNonceToString),
+			},
+		},
+		Timebounds: NewTimeout(300),
+		Network:    network.TestNetworkPassphrase,
+		BaseFee:    uint32(100),
+	}
+	err = newTx.Build()
+	assert.NoError(t, err)
+	err = newTx.Sign(kp0, kp1)
+	assert.NoError(t, err)
+	newChallenge, err := newTx.Base64()
+	assert.NoError(t, err)
+	isValid, err := VerifyChallengeTx(newChallenge, kp0.Address(), network.TestNetworkPassphrase)
+	if assert.Error(t, err) {
+		assert.Contains(t, err.Error(), "transaction sequence number must be 0")
+	}
+	assert.Equal(t, false, isValid, "challenge should be invalid")
+}
+
+func TestVerifyChallengeTxRandomNonce(t *testing.T) {
+	kp0 := newKeypair0()
+	kp1 := newKeypair1()
+
+	txSource := NewSimpleAccount(kp0.Address(), -1)
+	opSource := NewSimpleAccount(kp1.Address(), 0)
+	// invalid nonce
+	randomNonce, err := generateRandomNonce(40)
+	assert.NoError(t, err)
+	randomNonceToString := base64.StdEncoding.EncodeToString(randomNonce)
+	newTx := Transaction{
+		SourceAccount: &txSource,
+		Operations: []Operation{
+			&ManageData{
+				SourceAccount: &opSource,
+				Name:          "sdf auth",
+				Value:         []byte(randomNonceToString),
+			},
+		},
+		Timebounds: NewTimeout(300),
+		Network:    network.TestNetworkPassphrase,
+		BaseFee:    uint32(100),
+	}
+	err = newTx.Build()
+	assert.NoError(t, err)
+	err = newTx.Sign(kp0, kp1)
+	assert.NoError(t, err)
+	newChallenge, err := newTx.Base64()
+	assert.NoError(t, err)
+	isValid, err := VerifyChallengeTx(newChallenge, kp0.Address(), network.TestNetworkPassphrase)
+	if assert.Error(t, err) {
+		assert.Contains(t, err.Error(), "random nonce encoded as base64 should be 64 bytes long")
+	}
+	assert.Equal(t, false, isValid, "challenge should be invalid")
 }
