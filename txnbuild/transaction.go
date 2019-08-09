@@ -426,6 +426,15 @@ func VerifyChallengeTx(challengeTx, serverAccountID, network string) (bool, erro
 		return false, errors.New("transaction source account is not equal to server's account")
 	}
 
+	//verify sequence number
+	txSourceAccount, ok := tx.SourceAccount.(*SimpleAccount)
+	if !ok {
+		return false, errors.New("source account is not of type SimpleAccount unable to verify sequence number")
+	}
+	if txSourceAccount.Sequence != 0 {
+		return false, errors.New("transaction sequence number must be 0")
+	}
+
 	// verify timebounds
 	if tx.Timebounds.MaxTime == TimeoutInfinite {
 		return false, errors.New("transaction requires non-infinite timebounds")
@@ -446,6 +455,20 @@ func VerifyChallengeTx(challengeTx, serverAccountID, network string) (bool, erro
 	if op.SourceAccount == nil {
 		return false, errors.New("operation should have a source account")
 	}
+
+	// verify manage data value
+	nonceB64 := string(op.Value)
+	if len(nonceB64) != 64 {
+		return false, errors.New("random nonce encoded as base64 should be 64 bytes long")
+	}
+	nonceBytes, err := base64.StdEncoding.DecodeString(nonceB64)
+	if err != nil {
+		return false, errors.Wrap(err, "failed to decode random nonce provided in manage_data operation")
+	}
+	if len(nonceBytes) != 48 {
+		return false, errors.New("random nonce before encoding as base64 should be 48 bytes long")
+	}
+
 	// verify signature from operation source
 	ok, err = verifyTxSignature(tx, op.SourceAccount.GetAccountID())
 	if err != nil {
