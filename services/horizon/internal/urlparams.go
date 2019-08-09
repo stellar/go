@@ -86,8 +86,33 @@ func getLimit(r *http.Request, defaultSize, maxSize uint64) (uint64, error) {
 	return uint64(limitInt64), nil
 }
 
-// getPageQuery gets the page query and does the validation if disableCursorValidation is false.
-func getPageQuery(r *http.Request, disableCursorValidation bool) (db2.PageQuery, error) {
+// getAccountsPageQuery gets the page query for /accounts
+func getAccountsPageQuery(r *http.Request) (db2.PageQuery, error) {
+	cursor, err := hchi.GetStringFromURL(r, actions.ParamCursor)
+	if err != nil {
+		return db2.PageQuery{}, errors.Wrap(err, "getting param cursor")
+	}
+
+	order, err := getOrder(r)
+	if err != nil {
+		return db2.PageQuery{}, errors.Wrap(err, "getting param order")
+	}
+
+	limit, err := getLimit(r, db2.DefaultPageSize, db2.MaxPageSize)
+	if err != nil {
+		return db2.PageQuery{}, errors.Wrap(err, "getting param limit")
+	}
+
+	return db2.PageQuery{
+		Cursor: cursor,
+		Order:  order,
+		Limit:  limit,
+	}, nil
+}
+
+// getPageQuery gets the page query and does the pair validation if
+// disablePairValidation is false.
+func getPageQuery(r *http.Request, disablePairValidation bool) (db2.PageQuery, error) {
 	cursor, err := getCursor(r)
 	if err != nil {
 		return db2.PageQuery{}, errors.Wrap(err, "getting param cursor")
@@ -108,7 +133,7 @@ func getPageQuery(r *http.Request, disableCursorValidation bool) (db2.PageQuery,
 		Order:  order,
 		Limit:  limit,
 	}
-	if !disableCursorValidation {
+	if !disablePairValidation {
 		_, _, err = pq.CursorInt64Pair(db2.DefaultPairSep)
 		if err != nil {
 			return db2.PageQuery{}, problem.MakeInvalidFieldProblem(actions.ParamCursor, db2.ErrInvalidCursor)

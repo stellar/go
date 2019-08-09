@@ -2,13 +2,15 @@ package ingest
 
 import (
 	"github.com/stellar/go/exp/ingest/adapters"
+	"github.com/stellar/go/exp/ingest/io"
 	"github.com/stellar/go/support/errors"
 )
 
 var _ Session = &SingleLedgerSession{}
 
 func (s *SingleLedgerSession) Run() error {
-	s.ensureRunOnce()
+	s.setRunningState(true)
+	defer s.setRunningState(false)
 	s.shutdown = make(chan bool)
 
 	historyAdapter := adapters.MakeHistoryArchiveAdapter(s.Archive)
@@ -36,20 +38,38 @@ func (s *SingleLedgerSession) Resume(ledgerSequence uint32) error {
 }
 
 func (s *SingleLedgerSession) processState(historyAdapter *adapters.HistoryArchiveAdapter, sequence uint32) error {
-	stateReader, err := historyAdapter.GetState(sequence)
+	var tempSet io.TempSet = &io.MemoryTempSet{}
+	if s.TempSet != nil {
+		tempSet = s.TempSet
+	}
+
+	stateReader, err := historyAdapter.GetState(sequence, tempSet)
 	if err != nil {
 		return errors.Wrap(err, "Error getting state from history archive")
+	}
+	if s.StateReporter != nil {
+		s.StateReporter.OnStartState(sequence)
+		stateReader = reporterStateReader{stateReader, s.StateReporter}
 	}
 
 	errChan := s.StatePipeline.Process(stateReader)
 	select {
 	case err := <-errChan:
 		if err != nil {
+			if s.StateReporter != nil {
+				s.StateReporter.OnEndState(err, false)
+			}
 			return errors.Wrap(err, "State pipeline errored")
 		}
 	case <-s.shutdown:
+		if s.StateReporter != nil {
+			s.StateReporter.OnEndState(nil, true)
+		}
 		s.StatePipeline.Shutdown()
 	}
 
+	if s.StateReporter != nil {
+		s.StateReporter.OnEndState(nil, false)
+	}
 	return nil
 }

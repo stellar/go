@@ -4,9 +4,11 @@ import (
 	"sync"
 
 	"github.com/stellar/go/clients/stellarcore"
+	"github.com/stellar/go/exp/ingest/io"
 	"github.com/stellar/go/exp/ingest/ledgerbackend"
 	"github.com/stellar/go/exp/ingest/pipeline"
 	"github.com/stellar/go/support/historyarchive"
+	"github.com/stellar/go/xdr"
 )
 
 // standardSession contains common methods used by all sessions.
@@ -15,8 +17,8 @@ type standardSession struct {
 	rwLock                sync.RWMutex
 	latestProcessedLedger uint32
 
-	doneMutex sync.Mutex
-	done      bool
+	runningMutex sync.Mutex
+	running      bool
 }
 
 // LiveSession initializes the ledger state using `Archive` and `statePipeline`,
@@ -32,7 +34,12 @@ type LiveSession struct {
 	// instance the cursor name needs to be different in each session.
 	StellarCoreCursor string
 	StatePipeline     *pipeline.StatePipeline
+	StateReporter     StateReporter
 	LedgerPipeline    *pipeline.LedgerPipeline
+	LedgerReporter    LedgerReporter
+	// TempSet is a store used to hold temporary objects generated during
+	// state processing. If nil, defaults to io.MemoryTempSet.
+	TempSet io.TempSet
 }
 
 // SingleLedgerSession initializes the ledger state using `Archive` and `StatePipeline`
@@ -44,6 +51,10 @@ type SingleLedgerSession struct {
 	Archive        *historyarchive.Archive
 	LedgerSequence uint32
 	StatePipeline  *pipeline.StatePipeline
+	StateReporter  StateReporter
+	// TempSet is a store used to hold temporary objects generated during
+	// state processing. If nil, defaults to io.MemoryTempSet.
+	TempSet io.TempSet
 }
 
 // Session is an implementation of a ingesting scenario. Some useful sessions
@@ -82,4 +93,72 @@ type Session interface {
 	UpdateLock()
 	// UpdateUnlock unlocks write lock of the session.
 	UpdateUnlock()
+}
+
+// StateReporter can be used by a session to log progress
+// or update metrics as the session runs its state pipelines.
+type StateReporter interface {
+	// OnStartState is called when the session begins processing
+	// a history archive snapshot at the given sequence number.
+	OnStartState(sequence uint32)
+	// OnStateEntry is called when the session processes an entry
+	// from the io.StateReader
+	OnStateEntry()
+	// OnEndState is called when the session finishes processing
+	// a history archive snapshot.
+	// if err is not nil it means that the session stoped processing the
+	// history archive snapshot because of an error.
+	// if shutdown is true it means the session stopped processing the
+	// history archive snapshot because it received a shutdown signal
+	OnEndState(err error, shutdown bool)
+}
+
+// reporterLedgerReader instruments a io.StateReader with a StateReporter
+// which reports each xdr.LedgerEntryChange which is read from the reader
+type reporterStateReader struct {
+	io.StateReader
+	StateReporter
+}
+
+func (r reporterStateReader) Read() (xdr.LedgerEntryChange, error) {
+	entry, err := r.StateReader.Read()
+	if err == nil {
+		r.OnStateEntry()
+	}
+
+	return entry, err
+}
+
+// LedgerReporter can be used by a session to log progress
+// or update metrics as the session runs its ledger pipelines.
+type LedgerReporter interface {
+	// OnNewLedger is called when the session begins processing
+	// a ledger at the given sequence number.
+	OnNewLedger(sequence uint32)
+	// OnLedgerEntry is called when the session processes a transaction
+	// from the io.LedgerReader
+	OnLedgerTransaction()
+	// OnEndLedger is called when the session finishes processing
+	// a ledger.
+	// if err is not nil it means that the session stoped processing the
+	// ledger because of an error.
+	// if shutdown is true it means the session stopped processing the
+	// ledger because it received a shutdown signal
+	OnEndLedger(err error, shutdown bool)
+}
+
+// reporterLedgerReader instruments a io.LedgerReader with a LedgerReporter
+// which reports each io.LedgerTransaction which is read from the reader
+type reporterLedgerReader struct {
+	io.LedgerReader
+	LedgerReporter
+}
+
+func (r reporterLedgerReader) Read() (io.LedgerTransaction, error) {
+	entry, err := r.LedgerReader.Read()
+	if err == nil {
+		r.OnLedgerTransaction()
+	}
+
+	return entry, err
 }

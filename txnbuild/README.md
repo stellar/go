@@ -7,7 +7,7 @@ This project is maintained by the Stellar Development Foundation.
 ```golang
   import (
 	"log"
-	
+
 	"github.com/stellar/go/clients/horizonclient"
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/network"
@@ -35,7 +35,7 @@ This project is maintained by the Stellar Development Foundation.
 	tx := txnbuild.Transaction{
 		SourceAccount: &sourceAccount,
 		Operations:    []txnbuild.Operation{&op},
-		Timebounds:    txnbuild.NewTimebounds(0, 300),
+		Timebounds:    txnbuild.NewTimeout(300),
 		Network:       network.TestNetworkPassphrase,
 	}
 

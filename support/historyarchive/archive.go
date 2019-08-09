@@ -230,6 +230,11 @@ func Connect(u string, opts ConnectOptions) (*Archive, error) {
 	for _, cat := range Categories() {
 		arch.checkpointFiles[cat] = make(map[uint32]bool)
 	}
+
+	if u == "" {
+		return &arch, errors.New("URL is empty")
+	}
+
 	parsed, err := url.Parse(u)
 	if err != nil {
 		return &arch, err

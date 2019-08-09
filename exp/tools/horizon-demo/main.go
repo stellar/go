@@ -5,29 +5,41 @@ import (
 
 	"github.com/stellar/go/clients/stellarcore"
 	"github.com/stellar/go/exp/ingest"
+	"github.com/stellar/go/exp/ingest/io"
+	"github.com/stellar/go/exp/ingest/ledgerbackend"
 	"github.com/stellar/go/exp/orderbook"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/support/historyarchive"
 )
 
 func main() {
-	db, err := NewDatabase("postgres://localhost:5432/horizondemo?sslmode=disable")
+	dsn := "postgres://localhost:5432/horizondemo?sslmode=disable"
+	db, err := NewDatabase(dsn)
 	if err != nil {
 		panic(err)
 	}
 	defer db.Close()
 
+	ledgerBackend, err := ledgerbackend.NewDatabaseBackend("postgres://localhost:5432/core?sslmode=disable")
+	if err != nil {
+		panic(err)
+	}
+
 	orderBookGraph := orderbook.NewOrderBookGraph()
 
 	session := &ingest.LiveSession{
 		Archive:       archive(),
-		LedgerBackend: ledgerBackend(),
+		LedgerBackend: ledgerBackend,
 		StellarCoreClient: &stellarcore.Client{
 			URL: "http://localhost:11620",
 		},
 
-		StatePipeline:  buildStatePipeline(db, orderBookGraph),
+		StatePipeline: buildStatePipeline(db, orderBookGraph),
+		// logs every 50,000 state entries
+		StateReporter:  NewLoggingStateReporter(50000),
 		LedgerPipeline: buildLedgerPipeline(db, orderBookGraph),
+		TempSet:        &io.PostgresTempSet{DSN: dsn},
+		LedgerReporter: NewLoggingLedgerReporter(),
 	}
 
 	addPipelineHooks(session.StatePipeline, db, session, orderBookGraph)
