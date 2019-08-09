@@ -463,7 +463,7 @@ func VerifyChallengeTx(challengeTx, serverAccountID, network string) (bool, erro
 	}
 	nonceBytes, err := base64.StdEncoding.DecodeString(nonceB64)
 	if err != nil {
-		return false, errors.Wrap(err, "falied to decode random nonce provided in manage_data operation")
+		return false, errors.Wrap(err, "failed to decode random nonce provided in manage_data operation")
 	}
 	if len(nonceBytes) != 48 {
 		return false, errors.New("random nonce before encoding as base64 should be 48 bytes long")
