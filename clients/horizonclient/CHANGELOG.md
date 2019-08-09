@@ -6,6 +6,7 @@ file.  This project adheres to [Semantic Versioning](http://semver.org/).
 ## [v1.4.0](https://github.com/stellar/go/releases/tag/horizonclient-v1.4.0) - 2019-08-09
 
 - Add support for querying operation endpoint with `join` parameter [#1521](https://github.com/stellar/go/issues/1521).
+- Add support for querying previous and next trade aggregations with `Client.NextTradeAggregationsPage` and `Client.PrevTradeAggregationsPage` methods.
 
 
 ## [v1.3.0](https://github.com/stellar/go/releases/tag/horizonclient-v1.3.0) - 2019-07-08

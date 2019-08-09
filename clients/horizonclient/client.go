@@ -634,5 +634,19 @@ func (c *Client) HomeDomainForAccount(aid string) (string, error) {
 	return accountDetail.HomeDomain, nil
 }
 
+// NextTradeAggregationsPage returns the next page of trade aggregations from the current
+// trade aggregations response.
+func (c *Client) NextTradeAggregationsPage(page hProtocol.TradeAggregationsPage) (ta hProtocol.TradeAggregationsPage, err error) {
+	err = c.sendRequestURL(page.Links.Next.Href, "get", &ta)
+	return
+}
+
+// PrevTradeAggregationsPage returns the previous page of trade aggregations from the current
+// trade aggregations response.
+func (c *Client) PrevTradeAggregationsPage(page hProtocol.TradeAggregationsPage) (ta hProtocol.TradeAggregationsPage, err error) {
+	err = c.sendRequestURL(page.Links.Prev.Href, "get", &ta)
+	return
+}
+
 // ensure that the horizon client implements ClientInterface
 var _ ClientInterface = &Client{}
