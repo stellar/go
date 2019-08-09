@@ -211,7 +211,7 @@ func (tx *Transaction) BuildSignEncode(keypairs ...*keypair.Full) (string, error
 }
 
 // BuildChallengeTx is a factory method that creates a valid SEP 10 challenge, for use in web authentication.
-// "timebound" is the time duration the transaction should be valid for, O means infinity.
+// "timebound" is the time duration the transaction should be valid for.
 // More details on SEP 10: https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0010.md
 func BuildChallengeTx(serverSignerSecret, clientAccountID, anchorName, network string, timebound time.Duration) (string, error) {
 	serverKP, err := keypair.Parse(serverSignerSecret)
@@ -244,12 +244,12 @@ func BuildChallengeTx(serverSignerSecret, clientAccountID, anchorName, network s
 		AccountID: clientAccountID,
 	}
 
-	txTimebound := NewInfiniteTimeout()
-	if timebound > 0 {
-		currentTime := time.Now().UTC()
-		maxTime := currentTime.Add(timebound)
-		txTimebound = NewTimebounds(currentTime.Unix(), maxTime.Unix())
+	if timebound == 0 {
+		return "", errors.New("timebound cannot be 0")
 	}
+	currentTime := time.Now().UTC()
+	maxTime := currentTime.Add(timebound)
+	txTimebound := NewTimebounds(currentTime.Unix(), maxTime.Unix())
 
 	// Create a SEP 10 compatible response. See
 	// https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0010.md#response
@@ -405,4 +405,84 @@ func (tx *Transaction) SignWithKeyString(keys ...string) error {
 	}
 
 	return tx.Sign(signers...)
+}
+
+// VerifyChallengeTx is a factory method that verifies a SEP 10 challenge transaction,
+// for use in web authentication. It can be used by a server to verify that the challenge
+// has been signed by the client.
+// More details on SEP 10: https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0010.md
+func VerifyChallengeTx(challengeTx, serverAccountID, network string) (bool, error) {
+	tx, err := TransactionFromXDR(challengeTx)
+	if err != nil {
+		return false, err
+	}
+	tx.Network = network
+
+	// verify transaction source
+	if tx.SourceAccount == nil {
+		return false, errors.New("transaction requires a source account")
+	}
+	if tx.SourceAccount.GetAccountID() != serverAccountID {
+		return false, errors.New("transaction source account is not equal to server's account")
+	}
+
+	// verify timebounds
+	if tx.Timebounds.MaxTime == TimeoutInfinite {
+		return false, errors.New("transaction requires non-infinite timebounds")
+	}
+	currentTime := time.Now().UTC().Unix()
+	if currentTime < tx.Timebounds.MinTime || currentTime > tx.Timebounds.MaxTime {
+		return false, errors.New("transaction is not within range of the specified timebounds")
+	}
+
+	// verify operation
+	if len(tx.Operations) != 1 {
+		return false, errors.New("transaction requires a single manage_data operation")
+	}
+	op, ok := tx.Operations[0].(*ManageData)
+	if !ok {
+		return false, errors.New("operation type should be manage_data")
+	}
+	if op.SourceAccount == nil {
+		return false, errors.New("operation should have a source account")
+	}
+	// verify signature from operation source
+	ok, err = verifyTxSignature(tx, op.SourceAccount.GetAccountID())
+	if err != nil {
+		return ok, err
+	}
+
+	// verify signature from server signing key
+	return verifyTxSignature(tx, serverAccountID)
+}
+
+// verifyTxSignature checks if a transaction has been signed by the provided Stellar account.
+func verifyTxSignature(tx Transaction, accountID string) (bool, error) {
+	signerFound := false
+	txHash, err := tx.Hash()
+	if err != nil {
+		return signerFound, err
+	}
+
+	kp, err := keypair.Parse(accountID)
+	if err != nil {
+		return signerFound, err
+	}
+
+	// find and verify signatures
+	if tx.xdrEnvelope == nil {
+		return signerFound, errors.New("transaction has no signatures")
+	}
+	for _, s := range tx.xdrEnvelope.Signatures {
+		e := kp.Verify(txHash[:], s.Signature)
+		if e == nil {
+			signerFound = true
+			break
+		}
+	}
+
+	if !signerFound {
+		return signerFound, errors.Errorf("transaction not signed by %s", accountID)
+	}
+	return signerFound, nil
 }
