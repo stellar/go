@@ -776,7 +776,7 @@ func TestBuildChallengeTx(t *testing.T) {
 	//transaction with infinite timebound
 	_, err = BuildChallengeTx(kp0.Seed(), kp0.Address(), "sdf", network.TestNetworkPassphrase, 0)
 	if assert.Error(t, err) {
-		assert.Contains(t, err.Error(), "timebound can not be 0")
+		assert.Contains(t, err.Error(), "timebound cannot be 0")
 	}
 }
 func TestHashHex(t *testing.T) {

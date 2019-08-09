@@ -245,7 +245,7 @@ func BuildChallengeTx(serverSignerSecret, clientAccountID, anchorName, network s
 	}
 
 	if timebound == 0 {
-		return "", errors.New("timebound can not be 0")
+		return "", errors.New("timebound cannot be 0")
 	}
 	currentTime := time.Now().UTC()
 	maxTime := currentTime.Add(timebound)
