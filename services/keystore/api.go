@@ -28,7 +28,9 @@ func init() {
 
 func (s *Service) wrapMiddleware(handler http.Handler) http.Handler {
 	handler = authHandler(handler, s.authenticator)
-	return recoverHandler(handler)
+	handler = recoverHandler(handler)
+	handler = corsHandler(handler)
+	return handler
 }
 
 func ServeMux(s *Service) http.Handler {
@@ -175,6 +177,13 @@ func recoverHandler(next http.Handler) http.Handler {
 			problem.Render(ctx, rw, err)
 		}()
 
+		next.ServeHTTP(rw, req)
+	})
+}
+
+func corsHandler(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		rw.Header().Set("Access-Control-Allow-Origin", "*")
 		next.ServeHTTP(rw, req)
 	})
 }
