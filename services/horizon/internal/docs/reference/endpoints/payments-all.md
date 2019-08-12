@@ -22,7 +22,7 @@ The operations that can be returned in by this endpoint are:
 ## Request
 
 ```
-GET /payments{?cursor,limit,order,include_failed}
+GET /payments{?cursor,limit,order,include_failed,join}
 ```
 
 ### Arguments
