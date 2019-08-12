@@ -56,17 +56,29 @@ func TestOperationRequestBuildUrl(t *testing.T) {
 		assert.Contains(t, err.Error(), "invalid request: too many parameters")
 	}
 
-	op = OperationRequest{Cursor: "123456", Limit: 30, Order: OrderAsc, endpoint: "operations"}
+	op = OperationRequest{Cursor: "123456", Limit: 30, Order: OrderAsc, endpoint: "operations", Join: "transactions"}
 	endpoint, err = op.BuildURL()
 	// It should return valid all operations endpoint with query params and no errors
 	require.NoError(t, err)
-	assert.Equal(t, "operations?cursor=123456&limit=30&order=asc", endpoint)
+	assert.Equal(t, "operations?cursor=123456&join=transactions&limit=30&order=asc", endpoint)
 
-	op = OperationRequest{Cursor: "123456", Limit: 30, Order: OrderAsc, endpoint: "payments"}
+	op = OperationRequest{Cursor: "123456", Limit: 30, Order: OrderAsc, endpoint: "payments", Join: "transactions"}
 	endpoint, err = op.BuildURL()
 	// It should return valid all operations endpoint with query params and no errors
 	require.NoError(t, err)
-	assert.Equal(t, "payments?cursor=123456&limit=30&order=asc", endpoint)
+	assert.Equal(t, "payments?cursor=123456&join=transactions&limit=30&order=asc", endpoint)
+
+	op = OperationRequest{ForAccount: "GCLWGQPMKXQSPF776IU33AH4PZNOOWNAWGGKVTBQMIC5IMKUNP3E6NVU", endpoint: "payments", Join: "transactions"}
+	endpoint, err = op.BuildURL()
+	// It should return valid all operations endpoint with query params and no errors
+	require.NoError(t, err)
+	assert.Equal(t, "accounts/GCLWGQPMKXQSPF776IU33AH4PZNOOWNAWGGKVTBQMIC5IMKUNP3E6NVU/payments?join=transactions", endpoint)
+
+	op = OperationRequest{forOperationID: "1234", endpoint: "payments", Join: "transactions"}
+	endpoint, err = op.BuildURL()
+	// It should return valid all operations endpoint with query params and no errors
+	require.NoError(t, err)
+	assert.Equal(t, "operations/1234?join=transactions", endpoint)
 }
 
 func ExampleClient_StreamOperations() {

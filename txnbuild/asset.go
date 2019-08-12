@@ -1,6 +1,8 @@
 package txnbuild
 
 import (
+	"bytes"
+
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
 )
@@ -95,4 +97,22 @@ func (ca CreditAsset) ToXDR() (xdr.Asset, error) {
 	}
 
 	return xdrAsset, nil
+}
+
+// to do: consider exposing function or adding it to asset interface
+func assetFromXDR(xAsset xdr.Asset) (Asset, error) {
+	switch xAsset.Type {
+	case xdr.AssetTypeAssetTypeNative:
+		return NativeAsset{}, nil
+	case xdr.AssetTypeAssetTypeCreditAlphanum4:
+		code := bytes.Trim(xAsset.AlphaNum4.AssetCode[:], "\x00")
+		return CreditAsset{Code: string(code[:]),
+			Issuer: xAsset.AlphaNum4.Issuer.Address()}, nil
+	case xdr.AssetTypeAssetTypeCreditAlphanum12:
+		code := bytes.Trim(xAsset.AlphaNum12.AssetCode[:], "\x00")
+		return CreditAsset{Code: string(code[:]),
+			Issuer: xAsset.AlphaNum12.Issuer.Address()}, nil
+	}
+
+	return nil, errors.New("invalid asset")
 }

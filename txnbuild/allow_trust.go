@@ -1,6 +1,8 @@
 package txnbuild
 
 import (
+	"bytes"
+
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
 )
@@ -48,4 +50,27 @@ func (at *AllowTrust) BuildXDR() (xdr.Operation, error) {
 	op := xdr.Operation{Body: body}
 	SetOpSourceAccount(&op, at.SourceAccount)
 	return op, nil
+}
+
+// FromXDR for AllowTrust initialises the txnbuild struct from the corresponding xdr Operation.
+func (at *AllowTrust) FromXDR(xdrOp xdr.Operation) error {
+	result, ok := xdrOp.Body.GetAllowTrustOp()
+	if !ok {
+		return errors.New("error parsing allow_trust operation from xdr")
+	}
+
+	at.SourceAccount = accountFromXDR(xdrOp.SourceAccount)
+	at.Trustor = result.Trustor.Address()
+	at.Authorize = result.Authorize
+	//Because AllowTrust has a special asset type, we don't use assetFromXDR() here.
+	if result.Asset.Type == xdr.AssetTypeAssetTypeCreditAlphanum4 {
+		code := bytes.Trim(result.Asset.AssetCode4[:], "\x00")
+		at.Type = CreditAsset{Code: string(code[:])}
+	}
+	if result.Asset.Type == xdr.AssetTypeAssetTypeCreditAlphanum12 {
+		code := bytes.Trim(result.Asset.AssetCode12[:], "\x00")
+		at.Type = CreditAsset{Code: string(code[:])}
+	}
+
+	return nil
 }
