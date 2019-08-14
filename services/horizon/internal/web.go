@@ -181,7 +181,7 @@ func (w *web) mustInstallActions(enableAssetStats bool, enableAccountsForSigner 
 	r.Get("/trades", TradeIndexAction{}.Handle)
 	r.Get("/trade_aggregations", TradeAggregateIndexAction{}.Handle)
 	r.Route("/offers", func(r chi.Router) {
-		r.Get("/{id}", NotImplementedAction{}.Handle)
+		r.Get("/{id}", http.HandlerFunc(w.getOfferResource))
 		r.Get("/{offer_id}/trades", TradeIndexAction{}.Handle)
 	})
 	r.Get("/order_book", OrderBookShowAction{}.Handle)

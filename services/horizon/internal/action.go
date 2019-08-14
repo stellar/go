@@ -6,17 +6,23 @@ import (
 	"net/url"
 	"strings"
 
+	"github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/services/horizon/internal/actions"
 	"github.com/stellar/go/services/horizon/internal/db2"
 	"github.com/stellar/go/services/horizon/internal/db2/core"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
+	"github.com/stellar/go/services/horizon/internal/hchi"
 	"github.com/stellar/go/services/horizon/internal/httpx"
 	"github.com/stellar/go/services/horizon/internal/ledger"
-	"github.com/stellar/go/services/horizon/internal/render/problem"
+	"github.com/stellar/go/services/horizon/internal/render"
+	hProblem "github.com/stellar/go/services/horizon/internal/render/problem"
 	"github.com/stellar/go/services/horizon/internal/render/sse"
 	"github.com/stellar/go/services/horizon/internal/toid"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/support/log"
+	"github.com/stellar/go/support/render/hal"
+	"github.com/stellar/go/support/render/problem"
+	"strconv"
 )
 
 // Action is the "base type" for all actions in horizon.  It provides
@@ -121,7 +127,7 @@ func (action *Action) ValidateCursorWithinHistory() {
 	elder := toid.New(ledger.CurrentState().HistoryElder, 0, 0)
 
 	if cursor <= elder.ToInt64() {
-		action.Err = &problem.BeforeHistory
+		action.Err = &hProblem.BeforeHistory
 	}
 }
 
@@ -133,7 +139,7 @@ func (action *Action) EnsureHistoryFreshness() {
 
 	if action.App.IsHistoryStale() {
 		ls := ledger.CurrentState()
-		err := problem.StaleHistory
+		err := hProblem.StaleHistory
 		err.Extras = map[string]interface{}{
 			"history_latest_ledger": ls.HistoryLatest,
 			"core_latest_ledger":    ls.CoreLatest,
@@ -216,4 +222,42 @@ func (w *web) streamTransactions(ctx context.Context, s *sse.Stream, qp *indexAc
 	}
 
 	return actions.StreamTransactions(ctx, s, &history.Q{horizonSession}, qp.AccountID, qp.LedgerID, qp.IncludeFailedTxs, qp.PagingParams)
+}
+
+// getTransactionRecord returns a single transaction resource.
+func (w *web) getOfferResource(responseWriter http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	contentType := render.Negotiate(r)
+	if contentType != render.MimeHal && contentType != render.MimeJSON {
+		problem.Render(ctx, responseWriter, hProblem.NotAcceptable)
+		return
+	}
+
+	rawOfferID, err := hchi.GetStringFromURL(r, "id")
+	if err != nil {
+		problem.Render(ctx, responseWriter, errors.Wrap(err, "getting offer id"))
+		return
+	}
+
+	offerID, err := strconv.ParseInt(rawOfferID, 10, 64)
+	if err != nil {
+		problem.Render(ctx, responseWriter, errors.Wrap(err, "parsing offer id"))
+		return
+	}
+
+	h, err := hal.Handler(func(ctx context.Context) (horizon.Offer, error) {
+		horizonSession, err := w.horizonSession(ctx)
+		if err != nil {
+			return horizon.Offer{}, errors.Wrap(err, "getting horizon db session")
+		}
+
+		return actions.OfferResource(ctx, &history.Q{horizonSession}, offerID)
+	}, nil)
+
+	if err != nil {
+		panic(err)
+	}
+
+	h.ServeHTTP(responseWriter, r)
+
 }
