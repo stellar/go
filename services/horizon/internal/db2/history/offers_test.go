@@ -113,6 +113,26 @@ func assertOfferEntryMatchesDBOffer(t *testing.T, offerEntry xdr.OfferEntry, off
 	}
 }
 
+func TestGetOfferByID(t *testing.T) {
+	tt := test.Start(t).Scenario("base")
+	defer tt.Finish()
+	q := &Q{tt.HorizonSession()}
+
+	tt.Assert.NoError(q.UpsertOffer(eurOffer))
+	offer, err := q.GetOfferByID(int64(eurOffer.OfferId))
+	tt.Assert.NoError(err)
+	assertOfferEntryMatchesDBOffer(t, eurOffer, offer)
+}
+
+func TestGetNonExistantOfferByID(t *testing.T) {
+	tt := test.Start(t).Scenario("base")
+	defer tt.Finish()
+	q := &Q{tt.HorizonSession()}
+
+	_, err := q.GetOfferByID(12345)
+	tt.Assert.True(q.NoRows(err))
+}
+
 func TestQueryEmptyOffers(t *testing.T) {
 	tt := test.Start(t).Scenario("base")
 	defer tt.Finish()

@@ -6,6 +6,14 @@ import (
 	"github.com/stellar/go/xdr"
 )
 
+// OfferByID loads a row from `offers`, by offerid
+func (q *Q) GetOfferByID(id int64) (Offer, error) {
+	var offer Offer
+	sql := selectOffers.Limit(1).Where("offers.offerid = ?", id)
+	err := q.Get(&offer, sql)
+	return offer, err
+}
+
 // GetAllOffers loads a row from `history_accounts`, by address
 func (q *Q) GetAllOffers() ([]Offer, error) {
 	var offers []Offer
