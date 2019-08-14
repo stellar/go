@@ -2,11 +2,13 @@ package horizon
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http/httptest"
 	"testing"
 	"time"
 
+	"github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/services/horizon/internal/render/sse"
 	"github.com/stellar/go/services/horizon/internal/test"
@@ -50,29 +52,16 @@ func TestOfferActions_Show(t *testing.T) {
 
 	w := ht.Get(fmt.Sprintf("/offers/%v", eurOffer.OfferId))
 
-	ht.Assert.Equal(200, w.Code)
-	// if ht.Assert.Equal(200, w.Code) {
-	// 	ht.Assert.PageOf(3, w.Body)
-
-	// 	//test last modified timestamp
-	// 	var records []map[string]interface{}
-	// 	ht.UnmarshalPage(w.Body, &records)
-
-	// 	// Test asset fields population
-	// 	ht.Assert.Equal("credit_alphanum4", records[2]["selling"].(map[string]interface{})["asset_type"])
-	// 	ht.Assert.Equal("EUR", records[2]["selling"].(map[string]interface{})["asset_code"])
-	// 	ht.Assert.Equal("GCQPYGH4K57XBDENKKX55KDTWOTK5WDWRQOH2LHEDX3EKVIQRLMESGBG", records[2]["selling"].(map[string]interface{})["asset_issuer"])
-
-	// 	ht.Assert.Equal("credit_alphanum4", records[2]["buying"].(map[string]interface{})["asset_type"])
-	// 	ht.Assert.Equal("USD", records[2]["buying"].(map[string]interface{})["asset_code"])
-	// 	ht.Assert.Equal("GC23QF2HUE52AMXUFUH3AYJAXXGXXV2VHXYYR6EYXETPKDXZSAW67XO4", records[2]["buying"].(map[string]interface{})["asset_issuer"])
-
-	// 	t2018, err := time.Parse("2006-01-02", "2018-01-01")
-	// 	ht.Assert.NoError(err)
-	// 	recordTime, err := time.Parse("2006-01-02T15:04:05Z", records[2]["last_modified_time"].(string))
-	// 	ht.Assert.True(recordTime.After(t2018))
-	// 	ht.Assert.EqualValues(8, records[2]["last_modified_ledger"])
-	// }
+	if ht.Assert.Equal(200, w.Code) {
+		var result horizon.Offer
+		err := json.Unmarshal(w.Body.Bytes(), &result)
+		ht.Require.NoError(err)
+		ht.Assert.Equal(int64(eurOffer.OfferId), result.ID)
+		ht.Assert.Equal("native", result.Selling.Type)
+		ht.Assert.Equal("credit_alphanum4", result.Buying.Type)
+		ht.Assert.Equal(issuer.Address(), result.Seller)
+		ht.Assert.Equal(issuer.Address(), result.Buying.Issuer)
+	}
 }
 
 func TestOfferActions_Index(t *testing.T) {
