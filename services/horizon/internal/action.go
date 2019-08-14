@@ -224,7 +224,7 @@ func (w *web) streamTransactions(ctx context.Context, s *sse.Stream, qp *indexAc
 	return actions.StreamTransactions(ctx, s, &history.Q{horizonSession}, qp.AccountID, qp.LedgerID, qp.IncludeFailedTxs, qp.PagingParams)
 }
 
-// getTransactionRecord returns a single transaction resource.
+// getOfferRecord returns a single offer resource.
 func (w *web) getOfferResource(responseWriter http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	contentType := render.Negotiate(r)
