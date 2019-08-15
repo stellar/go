@@ -6,15 +6,12 @@ import (
 	"net/url"
 	"strings"
 
-	"strconv"
-
 	"github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/services/horizon/internal/actions"
 	horizonContext "github.com/stellar/go/services/horizon/internal/context"
 	"github.com/stellar/go/services/horizon/internal/db2"
 	"github.com/stellar/go/services/horizon/internal/db2/core"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
-	"github.com/stellar/go/services/horizon/internal/hchi"
 	"github.com/stellar/go/services/horizon/internal/httpx"
 	"github.com/stellar/go/services/horizon/internal/ledger"
 	hProblem "github.com/stellar/go/services/horizon/internal/render/problem"
@@ -229,14 +226,7 @@ func (w *web) streamTransactions(ctx context.Context, s *sse.Stream, qp *indexAc
 // getOfferRecord returns a single offer resource.
 func getOfferResource(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-
-	rawOfferID, err := hchi.GetStringFromURL(r, "id")
-	if err != nil {
-		problem.Render(ctx, w, errors.Wrap(err, "getting offer id"))
-		return
-	}
-
-	offerID, err := strconv.ParseInt(rawOfferID, 10, 64)
+	offerID, err := getInt64ParamFromURL(r, "id")
 	if err != nil {
 		problem.Render(ctx, w, errors.Wrap(err, "parsing offer id"))
 		return
