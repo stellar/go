@@ -6,23 +6,25 @@ import (
 	"net/url"
 	"strings"
 
+	"strconv"
+
 	"github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/services/horizon/internal/actions"
+	horizonContext "github.com/stellar/go/services/horizon/internal/context"
 	"github.com/stellar/go/services/horizon/internal/db2"
 	"github.com/stellar/go/services/horizon/internal/db2/core"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/services/horizon/internal/hchi"
 	"github.com/stellar/go/services/horizon/internal/httpx"
 	"github.com/stellar/go/services/horizon/internal/ledger"
-	"github.com/stellar/go/services/horizon/internal/render"
 	hProblem "github.com/stellar/go/services/horizon/internal/render/problem"
 	"github.com/stellar/go/services/horizon/internal/render/sse"
+	"github.com/stellar/go/services/horizon/internal/resourceadapter"
 	"github.com/stellar/go/services/horizon/internal/toid"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/support/log"
-	"github.com/stellar/go/support/render/hal"
+	"github.com/stellar/go/support/render/httpjson"
 	"github.com/stellar/go/support/render/problem"
-	"strconv"
 )
 
 // Action is the "base type" for all actions in horizon.  It provides
@@ -225,39 +227,29 @@ func (w *web) streamTransactions(ctx context.Context, s *sse.Stream, qp *indexAc
 }
 
 // getOfferRecord returns a single offer resource.
-func (w *web) getOfferResource(responseWriter http.ResponseWriter, r *http.Request) {
+func getOfferResource(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	contentType := render.Negotiate(r)
-	if contentType != render.MimeHal && contentType != render.MimeJSON {
-		problem.Render(ctx, responseWriter, hProblem.NotAcceptable)
-		return
-	}
 
 	rawOfferID, err := hchi.GetStringFromURL(r, "id")
 	if err != nil {
-		problem.Render(ctx, responseWriter, errors.Wrap(err, "getting offer id"))
+		problem.Render(ctx, w, errors.Wrap(err, "getting offer id"))
 		return
 	}
 
 	offerID, err := strconv.ParseInt(rawOfferID, 10, 64)
 	if err != nil {
-		problem.Render(ctx, responseWriter, errors.Wrap(err, "parsing offer id"))
+		problem.Render(ctx, w, errors.Wrap(err, "parsing offer id"))
 		return
 	}
 
-	h, err := hal.Handler(func(ctx context.Context) (horizon.Offer, error) {
-		horizonSession, err := w.horizonSession(ctx)
-		if err != nil {
-			return horizon.Offer{}, errors.Wrap(err, "getting horizon db session")
-		}
-
-		return actions.OfferResource(ctx, &history.Q{horizonSession}, offerID)
-	}, nil)
-
+	hq := &history.Q{horizonContext.HorizonSessionForContext(ctx)}
+	record, err := hq.GetOfferByID(offerID)
 	if err != nil {
-		panic(err)
+		problem.Render(ctx, w, err)
+		return
 	}
 
-	h.ServeHTTP(responseWriter, r)
-
+	var offerResponse horizon.Offer
+	resourceadapter.PopulateHistoryOffer(ctx, &offerResponse, record)
+	httpjson.Render(w, offerResponse, httpjson.HALJSON)
 }

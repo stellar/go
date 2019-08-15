@@ -64,6 +64,15 @@ func TestOfferActions_Show(t *testing.T) {
 	}
 }
 
+func TestOfferActions_OfferDoesNotExist(t *testing.T) {
+	ht := StartHTTPTest(t, "base")
+	defer ht.Finish()
+
+	w := ht.Get("/offers/123456")
+
+	ht.Assert.Equal(404, w.Code)
+}
+
 func TestOfferActions_Index(t *testing.T) {
 	ht := StartHTTPTest(t, "trades")
 	defer ht.Finish()
