@@ -239,7 +239,20 @@ func getOfferResource(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	var ledgers []history.Ledger
+	err = hq.LedgersBySequence(&ledgers, int32(record.LastModifiedLedger))
+	if err != nil {
+		problem.Render(ctx, w, err)
+		return
+	}
+
+	var ledger *history.Ledger
+
+	if len(ledgers) == 1 {
+		ledger = &ledgers[0]
+	}
+
 	var offerResponse horizon.Offer
-	resourceadapter.PopulateHistoryOffer(ctx, &offerResponse, record)
+	resourceadapter.PopulateHistoryOffer(ctx, &offerResponse, record, ledger)
 	httpjson.Render(w, offerResponse, httpjson.HALJSON)
 }

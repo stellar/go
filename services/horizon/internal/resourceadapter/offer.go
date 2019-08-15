@@ -34,7 +34,7 @@ func PopulateOffer(ctx context.Context, dest *protocol.Offer, row core.Offer, le
 	dest.Links.OfferMaker = lb.Linkf("/accounts/%s", row.SellerID)
 }
 
-func PopulateHistoryOffer(ctx context.Context, dest *protocol.Offer, row history.Offer) {
+func PopulateHistoryOffer(ctx context.Context, dest *protocol.Offer, row history.Offer, ledger *history.Ledger) {
 	dest.ID = int64(row.OfferID)
 	dest.PT = fmt.Sprintf("%d", row.OfferID)
 	dest.Seller = row.SellerID
@@ -46,11 +46,10 @@ func PopulateHistoryOffer(ctx context.Context, dest *protocol.Offer, row history
 	row.SellingAsset.MustExtract(&dest.Selling.Type, &dest.Selling.Code, &dest.Selling.Issuer)
 	row.BuyingAsset.MustExtract(&dest.Buying.Type, &dest.Buying.Code, &dest.Buying.Issuer)
 
-	// TODO: We need to extend the processor to include this data
-	// dest.LastModifiedLedger = row.Lastmodified
-	// if ledger != nil {
-	// 	dest.LastModifiedTime = &ledger.ClosedAt
-	// }
+	dest.LastModifiedLedger = int32(row.LastModifiedLedger)
+	if ledger != nil {
+		dest.LastModifiedTime = &ledger.ClosedAt
+	}
 	lb := hal.LinkBuilder{httpx.BaseURL(ctx)}
 	dest.Links.Self = lb.Linkf("/offers/%d", row.OfferID)
 	dest.Links.OfferMaker = lb.Linkf("/accounts/%s", row.SellerID)
