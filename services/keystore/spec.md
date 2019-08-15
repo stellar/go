@@ -78,7 +78,7 @@ interface RawKeyData {
 
 ```typescript
 interface EncryptedKeyData {
-	id: number;
+	id: string;
 	encrypterName: string;
 	salt: string;
 	encryptedBlob: string;
