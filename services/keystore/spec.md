@@ -78,9 +78,10 @@ interface RawKeyData {
 
 ```typescript
 interface EncryptedKeyData {
+	id: number;
 	encrypterName: string;
 	salt: string;
-	keyBlob: string;
+	encryptedBlob: string;
 	creationTime: number;
 	modifiedTime: number;	
 }
@@ -88,7 +89,7 @@ interface EncryptedKeyData {
 
 Clients will encrypt each `RawKeyData` they want to store on the keystore with
 a salt based on the encrypter they use. Clients should assign the resulting
-string to the field `keyBlob` in the `EncryptedKeyData`.
+string to the field `encryptedBlob` in the `EncryptedKeyData`.
 
 ```typescript
 type EncryptedKeys = EncryptedKeyData[]
