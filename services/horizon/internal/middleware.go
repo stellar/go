@@ -8,11 +8,14 @@ import (
 
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
+	horizonContext "github.com/stellar/go/services/horizon/internal/context"
+	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/services/horizon/internal/errors"
 	"github.com/stellar/go/services/horizon/internal/hchi"
 	"github.com/stellar/go/services/horizon/internal/httpx"
 	"github.com/stellar/go/services/horizon/internal/render"
 	hProblem "github.com/stellar/go/services/horizon/internal/render/problem"
+	sErrors "github.com/stellar/go/support/errors"
 	"github.com/stellar/go/support/log"
 	"github.com/stellar/go/support/render/problem"
 )
@@ -196,6 +199,27 @@ func acceptOnlyJSON(h http.Handler) http.Handler {
 		contentType := render.Negotiate(r)
 		if contentType != render.MimeHal && contentType != render.MimeJSON {
 			problem.Render(r.Context(), w, hProblem.NotAcceptable)
+			return
+		}
+
+		h.ServeHTTP(w, r)
+	})
+}
+
+// Checks if ingestion is finished, otherwise, return an error while ingestion is done.
+func checkIngestionState(h http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+		hq := &history.Q{horizonContext.HorizonSessionForContext(ctx)}
+		lastIngestedLedger, err := hq.GetLastLedgerExpIngestNonBlocking()
+		if err != nil {
+			problem.Render(r.Context(), w, sErrors.Wrap(err, "error loading last ledger ingested by expingest"))
+			return
+		}
+
+		// expingest has not finished processing any ledger so no data.
+		if lastIngestedLedger == 0 {
+			problem.Render(r.Context(), w, hProblem.StillIngesting)
 			return
 		}
 
