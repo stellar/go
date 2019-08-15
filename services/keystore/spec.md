@@ -72,28 +72,42 @@ interface RawKeyData {
 }
 ```
 
-```typescript
-type RawKeys = RawKeyData[]
-```
-
-The clients will encrypt RawKeys with a salt based on the encrypter they use.
-The clients will transmit the encrypted keys blob as a base64 URL encoded string.
-
 ### Encrypted Key Data
 
 *EncryptedKeysData Object:*
 
 ```typescript
-interface EncryptedKeysData {
+interface EncryptedKeyData {
 	encrypterName: string;
 	salt: string;
-	keysBlob: string;
+	keyBlob: string;
 	creationTime: number;
 	modifiedTime: number;	
 }
 ```
 
+Clients will encrypt each `RawKeyData` they want to store on the keystore with
+a salt based on the encrypter they use. Clients should assign the resulting
+string to the field `keyBlob` in the `EncryptedKeyData`.
+
+```typescript
+type EncryptedKeys = EncryptedKeyData[]
+```
+
+Clients will have to convert `EncryptedKeys` as a base64 URL encoded string
+before sending it to the keystore.
+
 We support three different kinds of HTTP methods to manipulate keys:
+
+### Encrypted Keys Data
+
+```typescript
+interface EncryptedKeysData {
+	keysBlob: string;
+	creationTime: number;
+	modifiedTime: number;
+}
+```
 
 ### PUT /keys
 
@@ -101,8 +115,6 @@ Put Keys Request:
 
 ```typescript
 interface PutKeysRequest {
-	encrypterName: string;
-	salt: string;
 	keysBlob: string;
 }
 ```
@@ -119,8 +131,6 @@ type PutKeysResponse = EncryptedKeysData;
 ```json
 {
 	"keysBlob": "",
-	"salt": "some-salt",
-	"encrypterName": "identity"
 }
 ```
 ```json
@@ -140,9 +150,7 @@ type PutKeysResponse = EncryptedKeysData;
 *bad_request:*
 ```json
 {
-	"keysBlob": "some-base64-encoded-blob",
-	"salt": "",
-	"encrypterName": "identity"
+	"keysBlob": "some-encrypted-key-data-with-no-salt",
 }
 ```
 ```json
@@ -152,8 +160,8 @@ type PutKeysResponse = EncryptedKeysData;
 	"status": 400,
 	"detail": "The request you sent was invalid in some way.",
 	"extras": {
-		"invalid_field": "salt",
-		"reason": "field value cannot be empty"
+		"invalid_field": "keysBlob",
+		"reason": "salt is required for all the encrypted keys"
 	}
 }
 ```
@@ -162,9 +170,7 @@ type PutKeysResponse = EncryptedKeysData;
 *bad_request:*
 ```json
 {
-	"keysBlob": "some-base64-encoded-blob",
-	"salt": "some-salt",
-	"encrypterName": ""
+	"keysBlob": "some-encrypted-key-data-with-no-encryptername",
 }
 ```
 ```json
@@ -174,8 +180,8 @@ type PutKeysResponse = EncryptedKeysData;
 	"status": 400,
 	"detail": "The request you sent was invalid in some way.",
 	"extras": {
-		"invalid_field": "encrypterName",
-		"reason": "field value cannot be empty"
+		"invalid_field": "keysBlob",
+		"reason": "encrypterName is required for all the encrypted keys"
 	}
 }
 ```
@@ -185,8 +191,6 @@ type PutKeysResponse = EncryptedKeysData;
 ```json
 {
 	"keysBlob": "some-badly-encoded-blob",
-	"salt": "some-salt",
-	"encrypterName": "identity"
 }
 ```
 ```json
@@ -237,8 +241,8 @@ The keystore cannot find any keys assocaited with the derived userID.
 Delete Keys Request:
 
 This endpoint will delete the keys blob corresponding to the auth token
-in the request header and return the deleted keys blob to the client, if
-the token is valid. This endpoint does not take any parameter.
+in the request header, if the token is valid. This endpoint does not take any
+parameter.
 
 Delete Keys Response:
 
