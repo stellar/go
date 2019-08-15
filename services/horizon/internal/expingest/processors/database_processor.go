@@ -56,7 +56,7 @@ func (p *DatabaseProcessor) ProcessState(ctx context.Context, store *pipeline.St
 			}
 
 			offer := entryChange.MustState().Data.MustOffer()
-			if err := p.OffersQ.UpsertOffer(offer); err != nil {
+			if err := p.OffersQ.UpsertOffer(offer, entryChange.MustState().LastModifiedLedgerSeq); err != nil {
 				return errors.Wrap(err, "Error inserting offers")
 			}
 		default:
@@ -99,7 +99,7 @@ func (p *DatabaseProcessor) ProcessLedger(ctx context.Context, store *pipeline.S
 				return errors.Wrap(err, "Error in processLedgerAccountsForSigner")
 			}
 		case Offers:
-			err := p.processLedgerOffers(transaction)
+			err := p.processLedgerOffers(transaction, r.GetSequence())
 			if err != nil {
 				return errors.Wrap(err, "Error in processLedgerOffers")
 			}
@@ -153,7 +153,7 @@ func (p *DatabaseProcessor) processLedgerAccountsForSigner(transaction io.Ledger
 	return nil
 }
 
-func (p *DatabaseProcessor) processLedgerOffers(transaction io.LedgerTransaction) error {
+func (p *DatabaseProcessor) processLedgerOffers(transaction io.LedgerTransaction, currentLedger uint32) error {
 	for _, change := range transaction.GetChanges() {
 		if change.Type != xdr.LedgerEntryTypeOffer {
 			continue
@@ -163,7 +163,7 @@ func (p *DatabaseProcessor) processLedgerOffers(transaction io.LedgerTransaction
 		case change.Post != nil:
 			// Created or updated
 			offer := change.Post.MustOffer()
-			p.OffersQ.UpsertOffer(offer)
+			p.OffersQ.UpsertOffer(offer, xdr.Uint32(currentLedger))
 		case change.Pre != nil && change.Post == nil:
 			// Removed
 			offer := change.Pre.MustOffer()

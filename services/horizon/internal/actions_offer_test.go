@@ -48,7 +48,7 @@ func TestOfferActions_Show(t *testing.T) {
 	defer ht.Finish()
 	q := &history.Q{ht.HorizonSession()}
 
-	ht.Assert.NoError(q.UpsertOffer(eurOffer))
+	ht.Assert.NoError(q.UpsertOffer(eurOffer, 1234))
 
 	w := ht.Get(fmt.Sprintf("/offers/%v", eurOffer.OfferId))
 

@@ -15,8 +15,8 @@ func (m *MockQOffers) GetAllOffers() ([]Offer, error) {
 	return a.Get(0).([]Offer), a.Error(1)
 }
 
-func (m *MockQOffers) UpsertOffer(offer xdr.OfferEntry) error {
-	a := m.Called(offer)
+func (m *MockQOffers) UpsertOffer(offer xdr.OfferEntry, lastModifiedLedger xdr.Uint32) error {
+	a := m.Called(offer, lastModifiedLedger)
 	return a.Error(0)
 }
 
