@@ -183,7 +183,7 @@ func (w *web) mustInstallActions(enableAssetStats bool, enableAccountsForSigner 
 	r.Get("/trades", TradeIndexAction{}.Handle)
 	r.Get("/trade_aggregations", TradeAggregateIndexAction{}.Handle)
 	r.Route("/offers", func(r chi.Router) {
-		r.With(acceptOnlyJSON, w.injectHorizonSession).
+		r.With(acceptOnlyJSON, w.injectHorizonSession, checkIngestionState).
 			Get("/{id}", getOfferResource)
 		r.Get("/{offer_id}/trades", TradeIndexAction{}.Handle)
 	})

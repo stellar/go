@@ -10,6 +10,7 @@ import (
 
 	"github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
+	"github.com/stellar/go/services/horizon/internal/render/problem"
 	"github.com/stellar/go/services/horizon/internal/render/sse"
 	"github.com/stellar/go/services/horizon/internal/test"
 	"github.com/stellar/go/xdr"
@@ -60,6 +61,7 @@ func TestOfferActions_Show(t *testing.T) {
 	defer ht.Finish()
 	q := &history.Q{ht.HorizonSession()}
 
+	ht.Assert.NoError(q.UpdateLastLedgerExpIngest(3))
 	ht.Assert.NoError(q.UpsertOffer(eurOffer, 3))
 	ht.Assert.NoError(q.UpsertOffer(twoEurOffer, 20))
 
@@ -95,10 +97,22 @@ func TestOfferActions_Show(t *testing.T) {
 func TestOfferActions_OfferDoesNotExist(t *testing.T) {
 	ht := StartHTTPTest(t, "base")
 	defer ht.Finish()
+	q := &history.Q{ht.HorizonSession()}
+	ht.Assert.NoError(q.UpdateLastLedgerExpIngest(3))
 
 	w := ht.Get("/offers/123456")
 
 	ht.Assert.Equal(404, w.Code)
+}
+
+func TestOfferActionsStillIngesting_Show(t *testing.T) {
+	ht := StartHTTPTest(t, "base")
+	defer ht.Finish()
+	q := &history.Q{ht.HorizonSession()}
+	ht.Assert.NoError(q.UpdateLastLedgerExpIngest(0))
+
+	w := ht.Get("/offers/123456")
+	ht.Assert.Equal(problem.StillIngesting.Status, w.Code)
 }
 
 func TestOfferActions_Index(t *testing.T) {
