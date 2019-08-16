@@ -41,7 +41,7 @@ func (b *S3ArchiveBackend) GetFile(pth string) (io.ReadCloser, error) {
 	return resp.Body, nil
 }
 
-func (b *S3ArchiveBackend) Exists(pth string) (bool, error) {
+func (b *S3ArchiveBackend) Head(pth string) (*http.Response, error) {
 	params := &s3.HeadObjectInput{
 		Bucket: aws.String(b.bucket),
 		Key:    aws.String(path.Join(b.prefix, pth)),
@@ -53,15 +53,36 @@ func (b *S3ArchiveBackend) Exists(pth string) (bool, error) {
 	}
 	err := req.Send()
 	if err != nil {
+		return nil, err
+	}
+	return req.HTTPResponse, nil
+}
+
+func (b *S3ArchiveBackend) Exists(pth string) (bool, error) {
+	resp, err := b.Head(pth)
+	if err != nil {
 		return false, err
 	}
-
-	if req.HTTPResponse.StatusCode >= 200 && req.HTTPResponse.StatusCode < 400 {
+	if resp.StatusCode >= 200 && resp.StatusCode < 400 {
 		return true, nil
-	} else if req.HTTPResponse.StatusCode == http.StatusNotFound {
+	} else if resp.StatusCode == http.StatusNotFound {
 		return false, nil
 	} else {
-		return false, errors.Errorf("Unkown status code=%d", req.HTTPResponse.StatusCode)
+		return false, errors.Errorf("Unkown status code=%d", resp.StatusCode)
+	}
+}
+
+func (b *S3ArchiveBackend) Size(pth string) (int64, error) {
+	resp, err := b.Head(pth)
+	if err != nil {
+		return 0, err
+	}
+	if resp.StatusCode >= 200 && resp.StatusCode < 400 {
+		return resp.ContentLength, nil
+	} else if resp.StatusCode == http.StatusNotFound {
+		return 0, nil
+	} else {
+		return 0, errors.Errorf("Unkown status code=%d", resp.StatusCode)
 	}
 }
 

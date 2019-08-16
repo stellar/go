@@ -32,6 +32,19 @@ func (b *FsArchiveBackend) Exists(pth string) (bool, error) {
 	return true, nil
 }
 
+func (b *FsArchiveBackend) Size(pth string) (int64, error) {
+	pth = path.Join(b.prefix, pth)
+	fi, err := os.Stat(pth)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return 0, nil
+		} else {
+			return 0, err
+		}
+	}
+	return fi.Size(), nil
+}
+
 func (b *FsArchiveBackend) PutFile(pth string, in io.ReadCloser) error {
 	dir := path.Join(b.prefix, path.Dir(pth))
 	exists, err := b.Exists(dir)

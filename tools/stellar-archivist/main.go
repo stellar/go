@@ -72,6 +72,12 @@ func (opts *Options) MaybeProfile() {
 	}
 }
 
+func logArchive(a string, opts *Options) {
+	arch := historyarchive.MustConnect(a, opts.ConnectOpts)
+	opts.SetRange(arch)
+	arch.Log(&opts.CommandOpts)
+}
+
 func scan(a string, opts *Options) {
 	arch := historyarchive.MustConnect(a, opts.ConnectOpts)
 	opts.SetRange(arch)
@@ -208,6 +214,14 @@ func main() {
 		Use: "status",
 		Run: func(cmd *cobra.Command, args []string) {
 			status(firstArg(args), &opts)
+		},
+	})
+
+	rootCmd.AddCommand(&cobra.Command{
+		Use: "log",
+		Run: func(cmd *cobra.Command, args []string) {
+			opts.MaybeProfile()
+			logArchive(firstArg(args), &opts)
 		},
 	})
 
