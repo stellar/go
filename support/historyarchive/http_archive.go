@@ -48,24 +48,46 @@ func (b *HttpArchiveBackend) GetFile(pth string) (io.ReadCloser, error) {
 	return resp.Body, nil
 }
 
-func (b *HttpArchiveBackend) Exists(pth string) (bool, error) {
+func (b *HttpArchiveBackend) Head(pth string) (*http.Response, error) {
 	var derived url.URL = b.base
 	derived.Path = path.Join(derived.Path, pth)
 	resp, err := b.client.Head(derived.String())
 	if err != nil {
-		return false, err
+		return nil, err
 	}
 
 	if resp.Body != nil {
 		resp.Body.Close()
 	}
 
+	return resp, nil
+}
+
+func (b *HttpArchiveBackend) Exists(pth string) (bool, error) {
+	resp, err := b.Head(pth)
+	if err != nil {
+		return false, err
+	}
 	if resp.StatusCode >= 200 && resp.StatusCode < 400 {
 		return true, nil
 	} else if resp.StatusCode == http.StatusNotFound {
 		return false, nil
 	} else {
 		return false, errors.Errorf("Unkown status code=%d", resp.StatusCode)
+	}
+}
+
+func (b *HttpArchiveBackend) Size(pth string) (int64, error) {
+	resp, err := b.Head(pth)
+	if err != nil {
+		return 0, err
+	}
+	if resp.StatusCode >= 200 && resp.StatusCode < 400 {
+		return resp.ContentLength, nil
+	} else if resp.StatusCode == http.StatusNotFound {
+		return 0, nil
+	} else {
+		return 0, errors.Errorf("Unkown status code=%d", resp.StatusCode)
 	}
 }
 
