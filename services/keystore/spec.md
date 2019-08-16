@@ -89,7 +89,7 @@ interface EncryptedKeyData {
 
 Clients will encrypt each `RawKeyData` they want to store on the keystore with
 a salt based on the encrypter they use. Clients should assign the resulting
-string to the field `encryptedBlob` in the `EncryptedKeyData`.
+base64-encoded string to the field `encryptedBlob` in the `EncryptedKeyData`.
 
 ```typescript
 type EncryptedKeys = EncryptedKeyData[]
@@ -119,6 +119,8 @@ interface PutKeysRequest {
 	keysBlob: string;
 }
 ```
+
+where the value of the `keysBlob` field is `base64_url_encode(EncryptedKeys)`.
 
 Put Keys Response:
 
