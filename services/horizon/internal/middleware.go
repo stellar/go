@@ -8,14 +8,11 @@ import (
 
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
-	horizonContext "github.com/stellar/go/services/horizon/internal/context"
-	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/services/horizon/internal/errors"
 	"github.com/stellar/go/services/horizon/internal/hchi"
 	"github.com/stellar/go/services/horizon/internal/httpx"
 	"github.com/stellar/go/services/horizon/internal/render"
 	hProblem "github.com/stellar/go/services/horizon/internal/render/problem"
-	sErrors "github.com/stellar/go/support/errors"
 	"github.com/stellar/go/support/log"
 	"github.com/stellar/go/support/render/problem"
 )
@@ -206,14 +203,20 @@ func acceptOnlyJSON(h http.Handler) http.Handler {
 	})
 }
 
-// Checks if ingestion is finished, otherwise, return an error while ingestion is done.
-func checkIngestionState(h http.Handler) http.Handler {
+// requiresExperimentalIngestion is a middleware which enables a handler
+// if the experimental ingestion system is enabled and initialized
+func requiresExperimentalIngestion(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
-		hq := &history.Q{horizonContext.HorizonSessionForContext(ctx)}
-		lastIngestedLedger, err := hq.GetLastLedgerExpIngestNonBlocking()
+		app := AppFromContext(ctx)
+		if !app.config.EnableExperimentalIngestion {
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
+
+		lastIngestedLedger, err := app.HistoryQ().GetLastLedgerExpIngestNonBlocking()
 		if err != nil {
-			problem.Render(r.Context(), w, sErrors.Wrap(err, "error loading last ledger ingested by expingest"))
+			problem.Render(r.Context(), w, err)
 			return
 		}
 

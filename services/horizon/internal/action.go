@@ -8,7 +8,6 @@ import (
 
 	"github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/services/horizon/internal/actions"
-	horizonContext "github.com/stellar/go/services/horizon/internal/context"
 	"github.com/stellar/go/services/horizon/internal/db2"
 	"github.com/stellar/go/services/horizon/internal/db2/core"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
@@ -232,22 +231,24 @@ func getOfferResource(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	hq := &history.Q{horizonContext.HorizonSessionForContext(ctx)}
-	record, err := hq.GetOfferByID(offerID)
+	app := AppFromContext(ctx)
+	record, err := app.HistoryQ().GetOfferByID(offerID)
 	if err != nil {
 		problem.Render(ctx, w, err)
 		return
 	}
 
 	var ledgers []history.Ledger
-	err = hq.LedgersBySequence(&ledgers, int32(record.LastModifiedLedger))
+	err = app.HistoryQ().LedgersBySequence(
+		&ledgers,
+		int32(record.LastModifiedLedger),
+	)
 	if err != nil {
 		problem.Render(ctx, w, err)
 		return
 	}
 
 	var ledger *history.Ledger
-
 	if len(ledgers) == 1 {
 		ledger = &ledgers[0]
 	}

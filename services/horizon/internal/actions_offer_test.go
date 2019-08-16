@@ -58,6 +58,7 @@ func TestOfferActions_Show(t *testing.T) {
 	)
 
 	ht := StartHTTPTest(t, "base")
+	ht.App.config.EnableExperimentalIngestion = true
 	defer ht.Finish()
 	q := &history.Q{ht.HorizonSession()}
 
@@ -96,6 +97,7 @@ func TestOfferActions_Show(t *testing.T) {
 
 func TestOfferActions_OfferDoesNotExist(t *testing.T) {
 	ht := StartHTTPTest(t, "base")
+	ht.App.config.EnableExperimentalIngestion = true
 	defer ht.Finish()
 	q := &history.Q{ht.HorizonSession()}
 	ht.Assert.NoError(q.UpdateLastLedgerExpIngest(3))
@@ -107,6 +109,7 @@ func TestOfferActions_OfferDoesNotExist(t *testing.T) {
 
 func TestOfferActionsStillIngesting_Show(t *testing.T) {
 	ht := StartHTTPTest(t, "base")
+	ht.App.config.EnableExperimentalIngestion = true
 	defer ht.Finish()
 	q := &history.Q{ht.HorizonSession()}
 	ht.Assert.NoError(q.UpdateLastLedgerExpIngest(0))

@@ -430,7 +430,6 @@ func (a *App) init() {
 	// web.actions
 	a.web.mustInstallActions(
 		a.config.EnableAssetStats,
-		a.config.EnableExperimentalIngestion,
 		a.config.FriendbotURL,
 	)
 

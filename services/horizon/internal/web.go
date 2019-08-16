@@ -14,7 +14,6 @@ import (
 	metrics "github.com/rcrowley/go-metrics"
 	"github.com/rs/cors"
 	"github.com/sebest/xff"
-	horizonContext "github.com/stellar/go/services/horizon/internal/context"
 	"github.com/stellar/go/services/horizon/internal/db2"
 	"github.com/stellar/go/services/horizon/internal/db2/core"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
@@ -23,7 +22,6 @@ import (
 	"github.com/stellar/go/services/horizon/internal/render/sse"
 	"github.com/stellar/go/services/horizon/internal/txsub/sequence"
 	"github.com/stellar/go/support/db"
-	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/support/log"
 	"github.com/stellar/go/support/render/problem"
 	"github.com/throttled/throttled"
@@ -117,7 +115,7 @@ func (w *web) mustInstallMiddlewares(app *App, connTimeout time.Duration) {
 
 // mustInstallActions installs the routing configuration of horizon onto the
 // provided app.  All route registration should be implemented here.
-func (w *web) mustInstallActions(enableAssetStats bool, enableAccountsForSigner bool, friendbotURL *url.URL) {
+func (w *web) mustInstallActions(enableAssetStats bool, friendbotURL *url.URL) {
 	if w == nil {
 		log.Fatal("missing web instance for installing web actions")
 	}
@@ -140,9 +138,8 @@ func (w *web) mustInstallActions(enableAssetStats bool, enableAccountsForSigner 
 
 	// account actions
 	r.Route("/accounts", func(r chi.Router) {
-		if enableAccountsForSigner {
-			r.Get("/", accountIndexActionHandler(w.getAccountPage))
-		}
+		r.With(requiresExperimentalIngestion).
+			Get("/", accountIndexActionHandler(w.getAccountPage))
 		r.Route("/{account_id}", func(r chi.Router) {
 			r.Get("/", w.streamShowActionHandler(w.getAccountInfo, true))
 			r.Get("/transactions", w.streamIndexActionHandler(w.getTransactionPage, w.streamTransactions))
@@ -183,7 +180,7 @@ func (w *web) mustInstallActions(enableAssetStats bool, enableAccountsForSigner 
 	r.Get("/trades", TradeIndexAction{}.Handle)
 	r.Get("/trade_aggregations", TradeAggregateIndexAction{}.Handle)
 	r.Route("/offers", func(r chi.Router) {
-		r.With(acceptOnlyJSON, w.injectHorizonSession, checkIngestionState).
+		r.With(acceptOnlyJSON, requiresExperimentalIngestion).
 			Get("/{id}", getOfferResource)
 		r.Get("/{offer_id}/trades", TradeIndexAction{}.Handle)
 	})
@@ -257,25 +254,6 @@ func (w *web) horizonSession(ctx context.Context) (*db.Session, error) {
 	}
 
 	return &db.Session{DB: w.historyQ.Session.DB, Ctx: ctx}, nil
-}
-
-// injectHorizonSession is a middleware which inserts a horizon session in the request
-// context. if it is not possible to construct a horizon sesson, we terminate the request
-// with an error
-func (w *web) injectHorizonSession(h http.Handler) http.Handler {
-	return http.HandlerFunc(func(responseWriter http.ResponseWriter, r *http.Request) {
-		ctx := r.Context()
-		horizonSession, err := w.horizonSession(ctx)
-		if err != nil {
-			problem.Render(ctx, responseWriter, errors.Wrap(err, "could not construct session"))
-			return
-		}
-
-		h.ServeHTTP(
-			responseWriter,
-			r.WithContext(horizonContext.AddHorizonSessionToContext(ctx, horizonSession)),
-		)
-	})
 }
 
 // coreSession returns a new session that loads data from the stellar core

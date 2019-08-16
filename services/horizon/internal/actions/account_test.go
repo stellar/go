@@ -8,7 +8,6 @@ import (
 	"github.com/stellar/go/services/horizon/internal/db2"
 	"github.com/stellar/go/services/horizon/internal/db2/core"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
-	"github.com/stellar/go/services/horizon/internal/render/problem"
 	"github.com/stellar/go/services/horizon/internal/test"
 	"github.com/stretchr/testify/assert"
 )
@@ -30,16 +29,6 @@ func TestAccountInfo(t *testing.T) {
 			tt.Assert.NotEqual(uint32(0), balance.LastModifiedLedger)
 		}
 	}
-}
-
-func TestAccountPageStillIngesting(t *testing.T) {
-	mockQ := &history.MockQSigners{}
-
-	mockQ.On("GetLastLedgerExpIngestNonBlocking").Return(uint32(0), nil).Once()
-
-	_, err := AccountPage(context.Background(), mockQ, "", db2.PageQuery{})
-	assert.Error(t, err)
-	assert.Equal(t, err, problem.StillIngesting)
 }
 
 func TestAccountPageNoResults(t *testing.T) {
