@@ -68,20 +68,20 @@ func TestGetAsset(t *testing.T) {
 func TestGetAssetType(t *testing.T) {
 	tt := test.Start(t)
 	defer tt.Finish()
-	action := makeTestAction()
+	r := makeTestAction().R
 
-	ts := action.GetAssetType("native_asset_type")
-	if tt.Assert.NoError(action.Err) {
+	ts, err := getAssetType(r, "native_asset_type")
+	if tt.Assert.NoError(err) {
 		tt.Assert.Equal(xdr.AssetTypeAssetTypeNative, ts)
 	}
 
-	ts = action.GetAssetType("4_asset_type")
-	if tt.Assert.NoError(action.Err) {
+	ts, err = getAssetType(r, "4_asset_type")
+	if tt.Assert.NoError(err) {
 		tt.Assert.Equal(xdr.AssetTypeAssetTypeCreditAlphanum4, ts)
 	}
 
-	ts = action.GetAssetType("12_asset_type")
-	if tt.Assert.NoError(action.Err) {
+	ts, err = getAssetType(r, "12_asset_type")
+	if tt.Assert.NoError(err) {
 		tt.Assert.Equal(xdr.AssetTypeAssetTypeCreditAlphanum12, ts)
 	}
 }
@@ -179,52 +179,26 @@ func TestGetInt64(t *testing.T) {
 	tt.Assert.Equal(int64(math.MinInt64), result)
 }
 
-func TestAmount(t *testing.T) {
-	tt := test.Start(t)
-	defer tt.Finish()
-	action := makeTestAction()
-
-	result := action.GetAmount("minus_one")
-	tt.Assert.NoError(action.Err)
-	tt.Assert.Equal(xdr.Int64(-10000000), result)
-
-	result = action.GetAmount("zero")
-	tt.Assert.NoError(action.Err)
-	tt.Assert.Equal(xdr.Int64(0), result)
-
-	result = action.GetAmount("two")
-	tt.Assert.NoError(action.Err)
-	tt.Assert.Equal(xdr.Int64(20000000), result)
-
-	result = action.GetAmount("twenty")
-	tt.Assert.NoError(action.Err)
-	tt.Assert.Equal(xdr.Int64(200000000), result)
-}
-
 func TestPositiveAmount(t *testing.T) {
 	tt := test.Start(t)
 	defer tt.Finish()
-	action := makeTestAction()
+	r := makeTestAction().R
 
-	result := action.GetPositiveAmount("minus_one")
-	tt.Assert.Error(action.Err)
+	result, err := GetPositiveAmount(r, "minus_one")
+	tt.Assert.Error(err)
 	tt.Assert.Equal(xdr.Int64(0), result)
-	action.Err = nil
 
-	result = action.GetPositiveAmount("zero")
-	tt.Assert.Error(action.Err)
+	result, err = GetPositiveAmount(r, "zero")
+	tt.Assert.Error(err)
 	tt.Assert.Equal(xdr.Int64(0), result)
-	action.Err = nil
 
-	result = action.GetPositiveAmount("two")
-	tt.Assert.NoError(action.Err)
+	result, err = GetPositiveAmount(r, "two")
+	tt.Assert.NoError(err)
 	tt.Assert.Equal(xdr.Int64(20000000), result)
-	action.Err = nil
 
-	result = action.GetPositiveAmount("twenty")
-	tt.Assert.NoError(action.Err)
+	result, err = GetPositiveAmount(r, "twenty")
+	tt.Assert.NoError(err)
 	tt.Assert.Equal(xdr.Int64(200000000), result)
-	action.Err = nil
 }
 
 func TestGetLimit(t *testing.T) {

@@ -6,23 +6,46 @@ import (
 	"strconv"
 	"testing"
 
+	"github.com/go-chi/chi"
 	"github.com/stellar/go/exp/orderbook"
 	"github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/services/horizon/internal/db2"
 	"github.com/stellar/go/services/horizon/internal/db2/core"
+	"github.com/stellar/go/services/horizon/internal/paths"
 	"github.com/stellar/go/services/horizon/internal/render/problem"
 	"github.com/stellar/go/services/horizon/internal/simplepath"
 	"github.com/stellar/go/services/horizon/internal/test"
 	"github.com/stellar/go/xdr"
 )
 
+func pathFindingClient(tt *test.T, pathFinder paths.Finder) test.RequestHelper {
+	router := chi.NewRouter()
+	findPaths := FindPathsHandler{
+		pathFinder: pathFinder,
+		coreQ:      &core.Q{tt.CoreSession()},
+	}
+	findFixedPaths := FindFixedPathsHandler{
+		pathFinder: pathFinder,
+	}
+
+	installPathFindingRoutes(findPaths, findFixedPaths, router)
+	return test.NewRequestHelper(router)
+}
+
 func TestPathActions_Index(t *testing.T) {
-	ht := StartHTTPTest(t, "paths")
-	defer ht.Finish()
+	tt := test.Start(t).Scenario("paths")
+	assertions := &Assertions{tt.Assert}
+	defer tt.Finish()
+	rh := pathFindingClient(
+		tt,
+		&simplepath.Finder{
+			Q: &core.Q{tt.CoreSession()},
+		},
+	)
 
 	// no query args
-	w := ht.Get("/paths")
-	ht.Assert.Equal(400, w.Code)
+	w := rh.Get("/paths")
+	assertions.Equal(400, w.Code)
 
 	// happy path
 	var q = make(url.Values)
@@ -44,18 +67,20 @@ func TestPathActions_Index(t *testing.T) {
 	q.Add("destination_amount", "10")
 
 	for _, uri := range []string{"/paths", "/paths/strict-receive"} {
-		w = ht.Get(uri + "?" + q.Encode())
-		ht.Assert.Equal(200, w.Code)
-		ht.Assert.PageOf(3, w.Body)
+		w = rh.Get(uri + "?" + q.Encode())
+		assertions.Equal(200, w.Code)
+		assertions.PageOf(3, w.Body)
 	}
 }
 
 func TestPathActionsStillIngesting(t *testing.T) {
-	ht := StartHTTPTest(t, "paths")
-	defer ht.Finish()
-
-	orderBookGraph := orderbook.NewOrderBookGraph()
-	ht.App.paths = simplepath.NewInMemoryFinder(orderBookGraph)
+	tt := test.Start(t).Scenario("paths")
+	defer tt.Finish()
+	assertions := &Assertions{tt.Assert}
+	rh := pathFindingClient(
+		tt,
+		simplepath.NewInMemoryFinder(orderbook.NewOrderBookGraph()),
+	)
 
 	var q = make(url.Values)
 
@@ -76,8 +101,8 @@ func TestPathActionsStillIngesting(t *testing.T) {
 	q.Add("destination_amount", "10")
 
 	for _, uri := range []string{"/paths", "/paths/strict-receive"} {
-		w := ht.Get(uri + "?" + q.Encode())
-		ht.Assert.Equal(problem.StillIngesting.Status, w.Code)
+		w := rh.Get(uri + "?" + q.Encode())
+		assertions.Equal(problem.StillIngesting.Status, w.Code)
 	}
 }
 
@@ -105,13 +130,23 @@ func loadOffers(tt *test.T, orderBookGraph *orderbook.OrderBookGraph, fromAddres
 }
 
 func TestPathActionsInMemoryFinder(t *testing.T) {
-	ht := StartHTTPTest(t, "paths")
-	defer ht.Finish()
-
+	tt := test.Start(t).Scenario("paths")
+	defer tt.Finish()
 	orderBookGraph := orderbook.NewOrderBookGraph()
+	assertions := &Assertions{tt.Assert}
+	inMemoryPathsClient := pathFindingClient(
+		tt,
+		simplepath.NewInMemoryFinder(orderBookGraph),
+	)
+	dbPathsClient := pathFindingClient(
+		tt,
+		&simplepath.Finder{
+			Q: &core.Q{tt.CoreSession()},
+		},
+	)
 
-	loadOffers(ht.T, orderBookGraph, "GA2NC4ZOXMXLVQAQQ5IQKJX47M3PKBQV2N5UV5Z4OXLQJ3CKMBA2O2YL")
-	loadOffers(ht.T, orderBookGraph, "GDSBCQO34HWPGUGQSP3QBFEXVTSR2PW46UIGTHVWGWJGQKH3AFNHXHXN")
+	loadOffers(tt, orderBookGraph, "GA2NC4ZOXMXLVQAQQ5IQKJX47M3PKBQV2N5UV5Z4OXLQJ3CKMBA2O2YL")
+	loadOffers(tt, orderBookGraph, "GDSBCQO34HWPGUGQSP3QBFEXVTSR2PW46UIGTHVWGWJGQKH3AFNHXHXN")
 
 	var q = make(url.Values)
 
@@ -132,32 +167,38 @@ func TestPathActionsInMemoryFinder(t *testing.T) {
 	q.Add("destination_amount", "10")
 
 	for _, uri := range []string{"/paths", "/paths/strict-receive"} {
-		ht.App.paths = simplepath.NewInMemoryFinder(orderBookGraph)
-
-		w := ht.Get(uri + "?" + q.Encode())
-		ht.Assert.Equal(http.StatusOK, w.Code)
+		w := inMemoryPathsClient.Get(uri + "?" + q.Encode())
+		assertions.Equal(http.StatusOK, w.Code)
 		inMemoryResponse := []horizon.Path{}
-		ht.UnmarshalPage(w.Body, &inMemoryResponse)
+		tt.UnmarshalPage(w.Body, &inMemoryResponse)
 
-		ht.App.paths = &simplepath.Finder{ht.App.CoreQ()}
-
-		w = ht.Get(uri + "?" + q.Encode())
-		ht.Assert.Equal(http.StatusOK, w.Code)
+		w = dbPathsClient.Get(uri + "?" + q.Encode())
+		assertions.Equal(http.StatusOK, w.Code)
 		dbResponse := []horizon.Path{}
-		ht.UnmarshalPage(w.Body, &dbResponse)
+		tt.UnmarshalPage(w.Body, &dbResponse)
 
-		ht.Assert.Equal(inMemoryResponse, dbResponse)
+		assertions.Equal(inMemoryResponse, dbResponse)
 	}
 }
 
 func TestPathActionsEmptySourceAcount(t *testing.T) {
-	ht := StartHTTPTest(t, "paths")
-	defer ht.Finish()
-
+	tt := test.Start(t).Scenario("paths")
+	defer tt.Finish()
 	orderBookGraph := orderbook.NewOrderBookGraph()
+	assertions := &Assertions{tt.Assert}
+	inMemoryPathsClient := pathFindingClient(
+		tt,
+		simplepath.NewInMemoryFinder(orderBookGraph),
+	)
+	dbPathsClient := pathFindingClient(
+		tt,
+		&simplepath.Finder{
+			Q: &core.Q{tt.CoreSession()},
+		},
+	)
 
-	loadOffers(ht.T, orderBookGraph, "GA2NC4ZOXMXLVQAQQ5IQKJX47M3PKBQV2N5UV5Z4OXLQJ3CKMBA2O2YL")
-	loadOffers(ht.T, orderBookGraph, "GDSBCQO34HWPGUGQSP3QBFEXVTSR2PW46UIGTHVWGWJGQKH3AFNHXHXN")
+	loadOffers(tt, orderBookGraph, "GA2NC4ZOXMXLVQAQQ5IQKJX47M3PKBQV2N5UV5Z4OXLQJ3CKMBA2O2YL")
+	loadOffers(tt, orderBookGraph, "GDSBCQO34HWPGUGQSP3QBFEXVTSR2PW46UIGTHVWGWJGQKH3AFNHXHXN")
 
 	var q = make(url.Values)
 
@@ -179,34 +220,32 @@ func TestPathActionsEmptySourceAcount(t *testing.T) {
 	q.Add("destination_amount", "10")
 
 	for _, uri := range []string{"/paths", "/paths/strict-receive"} {
-		ht.App.paths = simplepath.NewInMemoryFinder(orderBookGraph)
-
-		w := ht.Get(uri + "?" + q.Encode())
-		ht.Assert.Equal(http.StatusOK, w.Code)
+		w := inMemoryPathsClient.Get(uri + "?" + q.Encode())
+		assertions.Equal(http.StatusOK, w.Code)
 		inMemoryResponse := []horizon.Path{}
-		ht.UnmarshalPage(w.Body, &inMemoryResponse)
-		ht.Assert.Empty(inMemoryResponse)
+		tt.UnmarshalPage(w.Body, &inMemoryResponse)
+		assertions.Empty(inMemoryResponse)
 
-		ht.App.paths = &simplepath.Finder{ht.App.CoreQ()}
-
-		w = ht.Get(uri + "?" + q.Encode())
-		ht.Assert.Equal(http.StatusOK, w.Code)
+		w = dbPathsClient.Get(uri + "?" + q.Encode())
+		assertions.Equal(http.StatusOK, w.Code)
 		dbResponse := []horizon.Path{}
-		ht.UnmarshalPage(w.Body, &dbResponse)
-		ht.Assert.Empty(dbResponse)
+		tt.UnmarshalPage(w.Body, &dbResponse)
+		assertions.Empty(dbResponse)
 	}
 }
 
 func TestPathActionsStrictSend(t *testing.T) {
-	ht := StartHTTPTest(t, "paths")
-	defer ht.Finish()
-
+	tt := test.Start(t).Scenario("paths")
+	defer tt.Finish()
+	assertions := &Assertions{tt.Assert}
 	orderBookGraph := orderbook.NewOrderBookGraph()
+	rh := pathFindingClient(
+		tt,
+		simplepath.NewInMemoryFinder(orderBookGraph),
+	)
 
-	loadOffers(ht.T, orderBookGraph, "GA2NC4ZOXMXLVQAQQ5IQKJX47M3PKBQV2N5UV5Z4OXLQJ3CKMBA2O2YL")
-	loadOffers(ht.T, orderBookGraph, "GDSBCQO34HWPGUGQSP3QBFEXVTSR2PW46UIGTHVWGWJGQKH3AFNHXHXN")
-
-	ht.App.paths = simplepath.NewInMemoryFinder(orderBookGraph)
+	loadOffers(tt, orderBookGraph, "GA2NC4ZOXMXLVQAQQ5IQKJX47M3PKBQV2N5UV5Z4OXLQJ3CKMBA2O2YL")
+	loadOffers(tt, orderBookGraph, "GDSBCQO34HWPGUGQSP3QBFEXVTSR2PW46UIGTHVWGWJGQKH3AFNHXHXN")
 
 	var q = make(url.Values)
 
@@ -228,28 +267,28 @@ func TestPathActionsStrictSend(t *testing.T) {
 	q.Add("destination_asset_type", "credit_alphanum4")
 	q.Add("destination_asset_code", "EUR")
 
-	w := ht.Get("/paths/strict-send?" + q.Encode())
-	ht.Assert.Equal(http.StatusOK, w.Code)
+	w := rh.Get("/paths/strict-send?" + q.Encode())
+	assertions.Equal(http.StatusOK, w.Code)
 	inMemoryResponse := []horizon.Path{}
-	ht.UnmarshalPage(w.Body, &inMemoryResponse)
-	ht.Assert.Len(inMemoryResponse, 4)
+	tt.UnmarshalPage(w.Body, &inMemoryResponse)
+	assertions.Len(inMemoryResponse, 4)
 	for i, path := range inMemoryResponse {
-		ht.Assert.Equal(path.SourceAssetCode, "USD")
-		ht.Assert.Equal(path.SourceAssetType, "credit_alphanum4")
-		ht.Assert.Equal(path.SourceAssetIssuer, "GDSBCQO34HWPGUGQSP3QBFEXVTSR2PW46UIGTHVWGWJGQKH3AFNHXHXN")
-		ht.Assert.Equal(path.SourceAmount, "10.0000000")
+		assertions.Equal(path.SourceAssetCode, "USD")
+		assertions.Equal(path.SourceAssetType, "credit_alphanum4")
+		assertions.Equal(path.SourceAssetIssuer, "GDSBCQO34HWPGUGQSP3QBFEXVTSR2PW46UIGTHVWGWJGQKH3AFNHXHXN")
+		assertions.Equal(path.SourceAmount, "10.0000000")
 
-		ht.Assert.Equal(path.DestinationAssetCode, "EUR")
-		ht.Assert.Equal(path.DestinationAssetType, "credit_alphanum4")
-		ht.Assert.Equal(path.DestinationAssetIssuer, "GDSBCQO34HWPGUGQSP3QBFEXVTSR2PW46UIGTHVWGWJGQKH3AFNHXHXN")
+		assertions.Equal(path.DestinationAssetCode, "EUR")
+		assertions.Equal(path.DestinationAssetType, "credit_alphanum4")
+		assertions.Equal(path.DestinationAssetIssuer, "GDSBCQO34HWPGUGQSP3QBFEXVTSR2PW46UIGTHVWGWJGQKH3AFNHXHXN")
 		if i > 1 {
 			previous, err := strconv.ParseFloat(inMemoryResponse[i-1].DestinationAmount, 64)
-			ht.Assert.NoError(err)
+			assertions.NoError(err)
 
 			current, err := strconv.ParseFloat(path.DestinationAmount, 64)
-			ht.Assert.NoError(err)
+			assertions.NoError(err)
 
-			ht.Assert.True(previous >= current)
+			assertions.True(previous >= current)
 		}
 	}
 }
