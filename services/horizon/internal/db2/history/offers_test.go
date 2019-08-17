@@ -113,7 +113,7 @@ func assertOfferEntryMatchesDBOffer(t *testing.T, offerEntry xdr.OfferEntry, off
 	}
 	if lastModifiedLedger != xdr.Uint32(offer.LastModifiedLedger) {
 		t.Fatalf(
-			"last_modified_ledger %v does not equal to last_modified_ledger in offer from db %v",
+			"last_modified_ledger %v does not equal last_modified_ledger %v in offer from DB",
 			lastModifiedLedger,
 			offer,
 		)
@@ -131,7 +131,7 @@ func TestGetOfferByID(t *testing.T) {
 	assertOfferEntryMatchesDBOffer(t, eurOffer, offer, 1234)
 }
 
-func TestGetNonExistantOfferByID(t *testing.T) {
+func TestGetNonExistentOfferByID(t *testing.T) {
 	tt := test.Start(t).Scenario("base")
 	defer tt.Finish()
 	q := &Q{tt.HorizonSession()}

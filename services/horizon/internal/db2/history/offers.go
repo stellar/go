@@ -6,7 +6,7 @@ import (
 	"github.com/stellar/go/xdr"
 )
 
-// OfferByID loads a row from `offers`, by offerid
+// GetOfferByID loads a row from the `offers` table, selected by offerid.
 func (q *Q) GetOfferByID(id int64) (Offer, error) {
 	var offer Offer
 	sql := selectOffers.Limit(1).Where("offers.offerid = ?", id)

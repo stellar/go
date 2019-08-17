@@ -227,7 +227,7 @@ func getOfferResource(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	offerID, err := getInt64ParamFromURL(r, "id")
 	if err != nil {
-		problem.Render(ctx, w, errors.Wrap(err, "parsing offer id"))
+		problem.Render(ctx, w, errors.Wrap(err, "couldn't parse offer id"))
 		return
 	}
 
