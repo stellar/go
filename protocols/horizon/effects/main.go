@@ -198,7 +198,7 @@ type AccountFlagsUpdated struct {
 
 type SequenceBumped struct {
 	Base
-	NewSeq int64 `json:"new_seq"`
+	NewSeq string `json:"new_seq"`
 }
 
 type SignerCreated struct {
