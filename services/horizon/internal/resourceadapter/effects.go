@@ -2,6 +2,7 @@ package resourceadapter
 
 import (
 	"context"
+	"strconv"
 
 	"github.com/stellar/go/protocols/horizon/base"
 	"github.com/stellar/go/protocols/horizon/effects"
@@ -111,7 +112,9 @@ func NewEffect(
 		result = e
 	case history.EffectSequenceBumped:
 		e := effects.SequenceBumped{Base: basev}
-		err = row.UnmarshalDetails(&e)
+		hsb := history.SequenceBumped{}
+		err = row.UnmarshalDetails(&hsb)
+		e.NewSeq = strconv.FormatInt(hsb.NewSeq, 10)
 		result = e
 	default:
 		result = basev
