@@ -9,7 +9,7 @@ import (
 // GetOfferByID loads a row from the `offers` table, selected by offerid.
 func (q *Q) GetOfferByID(id int64) (Offer, error) {
 	var offer Offer
-	sql := selectOffers.Limit(1).Where("offers.offerid = ?", id)
+	sql := selectOffers.Where("offers.offerid = ?", id)
 	err := q.Get(&offer, sql)
 	return offer, err
 }
