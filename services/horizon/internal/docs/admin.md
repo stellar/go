@@ -36,7 +36,7 @@ To test the installation, simply run `horizon --help` from a terminal.  If the h
 Should you decide not to use one of our prebuilt releases, you may instead build Horizon from source.  To do so, you need to install some developer tools:
 
 - A unix-like operating system with the common core commands (cp, tar, mkdir, bash, etc.)
-- A compatible distribution of Go (we officially support Go 1.10 and later)
+- A compatible distribution of Go (Go 1.11 or later)
 - [go-dep](https://golang.github.io/dep/)
 - [git](https://git-scm.com/)
 - [mercurial](https://www.mercurial-scm.org/)
