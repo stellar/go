@@ -9,12 +9,14 @@ CREATE TABLE offers (
     pricen integer NOT NULL,
     priced integer NOT NULL,
     price double precision NOT NULL,
-    flags integer NOT NULL
+    flags integer NOT NULL,
+    last_modified_ledger INT NOT NULL
 );
 
 CREATE INDEX offers_by_seller ON offers USING BTREE(sellerid);
 CREATE INDEX offers_by_selling_asset ON offers USING BTREE(sellingasset);
 CREATE INDEX offers_by_buying_asset ON offers USING BTREE(buyingasset);
+CREATE INDEX offers_by_last_modified_ledger ON offers USING BTREE(last_modified_ledger);
 
 -- Distributed ingestion relies on a single value locked for updating
 -- in a DB. When Horizon starts clear there is no value so we create it
@@ -25,9 +27,5 @@ INSERT INTO key_value_store (key, value)
     ON CONFLICT (key) DO NOTHING;
 
 -- +migrate Down
-
-DROP INDEX offers_by_seller;
-DROP INDEX offers_by_selling_asset;
-DROP INDEX offers_by_buying_asset;
 
 DROP TABLE offers cascade;

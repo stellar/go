@@ -28,7 +28,8 @@ const (
 	// - 1: Initial version
 	// - 2: We added the orderbook, offers processors and distributed
 	//      ingestion.
-	CurrentVersion = 2
+	// - 3: We added last_modified_ledger to the offers table.
+	CurrentVersion = 3
 )
 
 var log = ilog.DefaultLogger.WithField("service", "expingest")

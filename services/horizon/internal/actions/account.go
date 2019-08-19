@@ -7,7 +7,6 @@ import (
 	"github.com/stellar/go/services/horizon/internal/db2"
 	"github.com/stellar/go/services/horizon/internal/db2/core"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
-	"github.com/stellar/go/services/horizon/internal/render/problem"
 	"github.com/stellar/go/services/horizon/internal/resourceadapter"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/support/render/hal"
@@ -63,16 +62,6 @@ func AccountInfo(ctx context.Context, cq *core.Q, addr string) (*protocol.Accoun
 // used to find accounts for signer but also accounts for assets,
 // home domain, inflation_dest etc.
 func AccountPage(ctx context.Context, hq history.QSigners, signer string, pq db2.PageQuery) (hal.Page, error) {
-	lastIngestedLedger, err := hq.GetLastLedgerExpIngestNonBlocking()
-	if err != nil {
-		return hal.Page{}, errors.Wrap(err, "error loading last ledger ingested by expingest")
-	}
-
-	// expingest has not finished processing any ledger so no data.
-	if lastIngestedLedger == 0 {
-		return hal.Page{}, problem.StillIngesting
-	}
-
 	records, err := hq.AccountsForSigner(signer, pq)
 	if err != nil {
 		return hal.Page{}, errors.Wrap(err, "loading account records")

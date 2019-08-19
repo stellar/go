@@ -5,6 +5,8 @@ import (
 	"testing"
 
 	"github.com/stellar/go/protocols/horizon"
+	"github.com/stellar/go/services/horizon/internal/db2/history"
+	"github.com/stellar/go/services/horizon/internal/render/problem"
 )
 
 func TestAccountActions_Show(t *testing.T) {
@@ -35,6 +37,18 @@ func TestAccountActions_Show(t *testing.T) {
 	// missing account
 	w = ht.Get("/accounts/GDBAPLDCAEJV6LSEDFEAUDAVFYSNFRUYZ4X75YYJJMMX5KFVUOHX46SQ")
 	ht.Assert.Equal(404, w.Code)
+}
+
+func TestAccountActionsStillIngesting_Show(t *testing.T) {
+	ht := StartHTTPTest(t, "base")
+	ht.App.config.EnableExperimentalIngestion = true
+
+	defer ht.Finish()
+	q := &history.Q{ht.HorizonSession()}
+	ht.Assert.NoError(q.UpdateLastLedgerExpIngest(0))
+
+	w := ht.Get("/accounts?signer=GDBAPLDCAEJV6LSEDFEAUDAVFYSNFRUYZ4X75YYJJMMX5KFVUOHX46SQ")
+	ht.Assert.Equal(problem.StillIngesting.Status, w.Code)
 }
 
 func TestAccountActions_ShowRegressions(t *testing.T) {

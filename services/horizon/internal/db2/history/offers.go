@@ -6,6 +6,14 @@ import (
 	"github.com/stellar/go/xdr"
 )
 
+// GetOfferByID loads a row from the `offers` table, selected by offerid.
+func (q *Q) GetOfferByID(id int64) (Offer, error) {
+	var offer Offer
+	sql := selectOffers.Where("offers.offerid = ?", id)
+	err := q.Get(&offer, sql)
+	return offer, err
+}
+
 // GetAllOffers loads a row from `history_accounts`, by address
 func (q *Q) GetAllOffers() ([]Offer, error) {
 	var offers []Offer
@@ -14,7 +22,7 @@ func (q *Q) GetAllOffers() ([]Offer, error) {
 }
 
 // UpsertOffer creates / updates a row in the offers table
-func (q *Q) UpsertOffer(offer xdr.OfferEntry) error {
+func (q *Q) UpsertOffer(offer xdr.OfferEntry, lastModifiedLedger xdr.Uint32) error {
 	var price float64
 	if offer.Price.N > 0 {
 		price = float64(offer.Price.N) / float64(offer.Price.D)
@@ -31,15 +39,16 @@ func (q *Q) UpsertOffer(offer xdr.OfferEntry) error {
 	}
 	sql := sq.Insert("offers").SetMap(
 		map[string]interface{}{
-			"sellerid":     offer.SellerId.Address(),
-			"offerid":      offer.OfferId,
-			"sellingasset": sellingAsset,
-			"buyingasset":  buyingAsset,
-			"amount":       offer.Amount,
-			"pricen":       offer.Price.N,
-			"priced":       offer.Price.D,
-			"price":        price,
-			"flags":        offer.Flags,
+			"sellerid":             offer.SellerId.Address(),
+			"offerid":              offer.OfferId,
+			"sellingasset":         sellingAsset,
+			"buyingasset":          buyingAsset,
+			"amount":               offer.Amount,
+			"pricen":               offer.Price.N,
+			"priced":               offer.Price.D,
+			"price":                price,
+			"flags":                offer.Flags,
+			"last_modified_ledger": lastModifiedLedger,
 		},
 	).Suffix(`
 			ON CONFLICT (offerid) DO UPDATE SET
@@ -50,7 +59,8 @@ func (q *Q) UpsertOffer(offer xdr.OfferEntry) error {
 				pricen=EXCLUDED.pricen,
 				priced=EXCLUDED.priced,
 				price=EXCLUDED.price,
-				flags=EXCLUDED.flags
+				flags=EXCLUDED.flags,
+				last_modified_ledger=EXCLUDED.last_modified_ledger
 		`)
 
 	_, err = q.Exec(sql)
@@ -76,5 +86,6 @@ var selectOffers = sq.Select(`
 	pricen,
 	priced,
 	price,
-	flags
+	flags,
+	last_modified_ledger
 `).From("offers")

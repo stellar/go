@@ -77,8 +77,8 @@ func TestLoadOrderBookGraph(t *testing.T) {
 	graph := orderbook.NewOrderBookGraph()
 
 	tt.Assert.NoError(q.UpdateLastLedgerExpIngest(123))
-	tt.Assert.NoError(q.UpsertOffer(eurOffer))
-	tt.Assert.NoError(q.UpsertOffer(twoEurOffer))
+	tt.Assert.NoError(q.UpsertOffer(eurOffer, 123))
+	tt.Assert.NoError(q.UpsertOffer(twoEurOffer, 123))
 
 	err := loadOrderBookGraphFromDB(q, graph)
 	tt.Assert.NoError(err)

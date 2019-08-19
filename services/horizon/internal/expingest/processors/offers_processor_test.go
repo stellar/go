@@ -55,6 +55,7 @@ func (s *OffersProcessorTestSuiteState) TestCreateOffer() {
 		OfferId: xdr.Int64(1),
 		Price:   xdr.Price{1, 2},
 	}
+	lastModifiedLedgerSeq := xdr.Uint32(123)
 	s.mockStateReader.
 		On("Read").Return(
 		xdr.LedgerEntryChange{
@@ -64,6 +65,7 @@ func (s *OffersProcessorTestSuiteState) TestCreateOffer() {
 					Type:  xdr.LedgerEntryTypeOffer,
 					Offer: &offer,
 				},
+				LastModifiedLedgerSeq: lastModifiedLedgerSeq,
 			},
 		},
 		nil,
@@ -72,6 +74,7 @@ func (s *OffersProcessorTestSuiteState) TestCreateOffer() {
 	s.mockQ.On(
 		"UpsertOffer",
 		offer,
+		lastModifiedLedgerSeq,
 	).Return(nil).Once()
 
 	s.mockStateReader.
@@ -187,6 +190,7 @@ func (s *OffersProcessorTestSuiteLedger) TestUpsertOffer() {
 		OfferId: xdr.Int64(2),
 		Price:   xdr.Price{1, 2},
 	}
+	lastModifiedLedgerSeq := xdr.Uint32(1234)
 	s.mockLedgerReader.On("Read").
 		Return(io.LedgerTransaction{
 			Meta: createTransactionMeta([]xdr.OperationMeta{
@@ -206,10 +210,12 @@ func (s *OffersProcessorTestSuiteLedger) TestUpsertOffer() {
 				},
 			}),
 		}, nil).Once()
+	s.mockLedgerReader.On("GetSequence").Return(uint32(lastModifiedLedgerSeq))
 
 	s.mockQ.On(
 		"UpsertOffer",
 		offer,
+		lastModifiedLedgerSeq,
 	).Return(nil).Once()
 
 	updatedOffer := xdr.OfferEntry{
@@ -248,6 +254,7 @@ func (s *OffersProcessorTestSuiteLedger) TestUpsertOffer() {
 	s.mockQ.On(
 		"UpsertOffer",
 		updatedOffer,
+		lastModifiedLedgerSeq,
 	).Return(nil).Once()
 
 	s.mockLedgerReader.
@@ -296,6 +303,7 @@ func (s *OffersProcessorTestSuiteLedger) TestRemoveOffer() {
 				},
 			}),
 		}, nil).Once()
+	s.mockLedgerReader.On("GetSequence").Return(uint32(123))
 
 	s.mockQ.On(
 		"RemoveOffer",
