@@ -238,19 +238,16 @@ func getOfferResource(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var ledgers []history.Ledger
-	err = app.HistoryQ().LedgersBySequence(
-		&ledgers,
+	ledger := new(history.Ledger)
+	err = app.HistoryQ().LedgerBySequence(
+		ledger,
 		int32(record.LastModifiedLedger),
 	)
-	if err != nil {
+	if app.HistoryQ().NoRows(err) {
+		ledger = nil
+	} else if err != nil {
 		problem.Render(ctx, w, err)
 		return
-	}
-
-	var ledger *history.Ledger
-	if len(ledgers) == 1 {
-		ledger = &ledgers[0]
 	}
 
 	var offerResponse horizon.Offer
