@@ -4,7 +4,6 @@ import (
 	"sort"
 	"sync"
 
-	"github.com/stellar/go/price"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
 )
@@ -173,201 +172,6 @@ func (graph *OrderBookGraph) remove(offerID xdr.Int64) error {
 	return nil
 }
 
-// Path represents a payment path from a source asset to some destination asset
-type Path struct {
-	SourceAmount xdr.Int64
-	SourceAsset  xdr.Asset
-	// sourceAssetString is included as an optimization to improve the performance
-	// of sorting paths by avoiding serializing assets to strings repeatedly
-	sourceAssetString string
-	InteriorNodes     []xdr.Asset
-	DestinationAsset  xdr.Asset
-	DestinationAmount xdr.Int64
-}
-
-// findPaths performs a DFS of maxPathLength depth
-// the DFS maintains the following invariants:
-// no node is repeated
-// no offers are consumed from the `ignoreOffersFrom` account
-// each payment path must originate with an asset in `targetAssets`
-// also, the required source asset amount cannot exceed the balance in `targetAssets`
-func (graph *OrderBookGraph) findPathsEndingAt(
-	maxPathLength int,
-	visited map[string]bool,
-	visitedList []xdr.Asset,
-	currentAssetString string,
-	currentAsset xdr.Asset,
-	currentAssetAmount xdr.Int64,
-	destinationAsset xdr.Asset,
-	destinationAssetAmount xdr.Int64,
-	ignoreOffersFrom xdr.AccountId,
-	targetAssets map[string]xdr.Int64,
-	paths []Path,
-) ([]Path, error) {
-	if currentAssetAmount <= 0 {
-		return paths, nil
-	}
-	if visited[currentAssetString] {
-		return paths, nil
-	}
-	if len(visitedList) > maxPathLength {
-		return paths, nil
-	}
-	visited[currentAssetString] = true
-	defer func() {
-		visited[currentAssetString] = false
-	}()
-
-	updatedVisitedList := append(visitedList, currentAsset)
-	if targetAssetBalance, ok := targetAssets[currentAssetString]; ok && targetAssetBalance >= currentAssetAmount {
-		var interiorNodes []xdr.Asset
-		if len(updatedVisitedList) > 2 {
-			// reverse updatedVisitedList and skip the first and last elements
-			interiorNodes = make([]xdr.Asset, len(updatedVisitedList)-2)
-			position := 0
-			for i := len(updatedVisitedList) - 2; i >= 1; i-- {
-				interiorNodes[position] = updatedVisitedList[i]
-				position++
-			}
-		} else {
-			interiorNodes = []xdr.Asset{}
-		}
-
-		paths = append(paths, Path{
-			sourceAssetString: currentAssetString,
-			SourceAmount:      currentAssetAmount,
-			SourceAsset:       currentAsset,
-			InteriorNodes:     interiorNodes,
-			DestinationAsset:  destinationAsset,
-			DestinationAmount: destinationAssetAmount,
-		})
-	}
-
-	edges, ok := graph.edgesForSellingAsset[currentAssetString]
-	if !ok {
-		return paths, nil
-	}
-
-	for nextAssetString, offers := range edges {
-		if len(offers) == 0 {
-			continue
-		}
-		nextAssetAmount, err := consumeOffersForSellingAsset(offers, ignoreOffersFrom, currentAssetAmount)
-		if err != nil {
-			return nil, err
-		}
-		if nextAssetAmount <= 0 {
-			continue
-		}
-
-		nextAsset := offers[0].Buying
-		paths, err = graph.findPathsEndingAt(
-			maxPathLength,
-			visited,
-			updatedVisitedList,
-			nextAssetString,
-			nextAsset,
-			nextAssetAmount,
-			destinationAsset,
-			destinationAssetAmount,
-			ignoreOffersFrom,
-			targetAssets,
-			paths,
-		)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	return paths, nil
-}
-
-func (graph *OrderBookGraph) findPathsStartingAt(
-	maxPathLength int,
-	visited map[string]bool,
-	visitedList []xdr.Asset,
-	currentAssetString string,
-	currentAsset xdr.Asset,
-	currentAssetAmount xdr.Int64,
-	sourceAsset xdr.Asset,
-	sourceAssetAmount xdr.Int64,
-	ignoreOffersFrom *xdr.AccountId,
-	targetAssets map[string]bool,
-	paths []Path,
-) ([]Path, error) {
-	if currentAssetAmount <= 0 {
-		return paths, nil
-	}
-	if visited[currentAssetString] {
-		return paths, nil
-	}
-	if len(visitedList) > maxPathLength {
-		return paths, nil
-	}
-	visited[currentAssetString] = true
-	defer func() {
-		visited[currentAssetString] = false
-	}()
-
-	updatedVisitedList := append(visitedList, currentAsset)
-	if targetAssets[currentAssetString] {
-		var interiorNodes []xdr.Asset
-		if len(updatedVisitedList) > 2 {
-			// skip the first and last elements
-			interiorNodes = make([]xdr.Asset, len(updatedVisitedList)-2)
-			copy(interiorNodes, updatedVisitedList[1:len(updatedVisitedList)-1])
-		} else {
-			interiorNodes = []xdr.Asset{}
-		}
-
-		paths = append(paths, Path{
-			SourceAmount:      sourceAssetAmount,
-			SourceAsset:       sourceAsset,
-			InteriorNodes:     interiorNodes,
-			DestinationAsset:  currentAsset,
-			DestinationAmount: currentAssetAmount,
-		})
-	}
-
-	edges, ok := graph.edgesForBuyingAsset[currentAssetString]
-	if !ok {
-		return paths, nil
-	}
-
-	for nextAssetString, offers := range edges {
-		if len(offers) == 0 {
-			continue
-		}
-		nextAssetAmount, err := consumeOffersForBuyingAsset(offers, ignoreOffersFrom, currentAssetAmount)
-		if err != nil {
-			return nil, err
-		}
-		if nextAssetAmount <= 0 {
-			continue
-		}
-
-		nextAsset := offers[0].Selling
-		paths, err = graph.findPathsStartingAt(
-			maxPathLength,
-			visited,
-			updatedVisitedList,
-			nextAssetString,
-			nextAsset,
-			nextAssetAmount,
-			sourceAsset,
-			sourceAssetAmount,
-			ignoreOffersFrom,
-			targetAssets,
-			paths,
-		)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	return paths, nil
-}
-
 // IsEmpty returns true if the orderbook graph is not populated
 func (graph *OrderBookGraph) IsEmpty() bool {
 	graph.lock.RLock()
@@ -394,19 +198,23 @@ func (graph *OrderBookGraph) FindPaths(
 		sourceAssetsMap[sourceAssetString] = sourceAssetBalances[i]
 	}
 
+	searchState := &sellingGraphSearchState{
+		graph:                  graph,
+		destinationAsset:       destinationAsset,
+		destinationAssetAmount: destinationAmount,
+		ignoreOffersFrom:       sourceAccountID,
+		targetAssets:           sourceAssetsMap,
+		paths:                  []Path{},
+	}
 	graph.lock.RLock()
-	allPaths, err := graph.findPathsEndingAt(
+	err := dfs(
+		searchState,
 		maxPathLength,
 		map[string]bool{},
 		[]xdr.Asset{},
 		destinationAssetString,
 		destinationAsset,
 		destinationAmount,
-		destinationAsset,
-		destinationAmount,
-		sourceAccountID,
-		sourceAssetsMap,
-		[]Path{},
 	)
 	graph.lock.RUnlock()
 	if err != nil {
@@ -414,7 +222,7 @@ func (graph *OrderBookGraph) FindPaths(
 	}
 
 	return sortAndFilterPaths(
-		allPaths,
+		searchState.paths,
 		maxAssetsPerPath,
 	), nil
 }
@@ -434,132 +242,34 @@ func (graph *OrderBookGraph) FindFixedPaths(
 	destinationAssetString := destinationAsset.String()
 	target := map[string]bool{destinationAssetString: true}
 
+	searchState := &buyingGraphSearchState{
+		graph:             graph,
+		sourceAsset:       sourceAsset,
+		sourceAssetAmount: amountToSpend,
+		ignoreOffersFrom:  sourceAccountID,
+		targetAssets:      target,
+		paths:             []Path{},
+	}
 	graph.lock.RLock()
-	allPaths, err := graph.findPathsStartingAt(
+	err := dfs(
+		searchState,
 		maxPathLength,
 		map[string]bool{},
 		[]xdr.Asset{},
 		sourceAsset.String(),
 		sourceAsset,
 		amountToSpend,
-		sourceAsset,
-		amountToSpend,
-		sourceAccountID,
-		target,
-		[]Path{},
 	)
 	graph.lock.RUnlock()
 	if err != nil {
 		return nil, errors.Wrap(err, "could not determine paths")
 	}
 
-	sort.Slice(allPaths, func(i, j int) bool {
-		return allPaths[i].DestinationAmount > allPaths[j].DestinationAmount
+	sort.Slice(searchState.paths, func(i, j int) bool {
+		return searchState.paths[i].DestinationAmount > searchState.paths[j].DestinationAmount
 	})
 
-	return allPaths, nil
-}
-
-func consumeOffersForSellingAsset(
-	offers []xdr.OfferEntry,
-	ignoreOffersFrom xdr.AccountId,
-	currentAssetAmount xdr.Int64,
-) (xdr.Int64, error) {
-	totalConsumed := xdr.Int64(0)
-
-	if len(offers) == 0 {
-		return totalConsumed, errEmptyOffers
-	}
-
-	if currentAssetAmount == 0 {
-		return totalConsumed, errAssetAmountIsZero
-	}
-
-	for _, offer := range offers {
-		if offer.SellerId.Equals(ignoreOffersFrom) {
-			continue
-		}
-		if offer.Price.D == 0 {
-			return -1, errOfferPriceDenominatorIsZero
-		}
-
-		buyingUnitsFromOffer, sellingUnitsFromOffer, err := price.ConvertToBuyingUnits(
-			int64(offer.Amount),
-			int64(currentAssetAmount),
-			int64(offer.Price.N),
-			int64(offer.Price.D),
-		)
-		if err != nil {
-			return -1, errors.Wrap(err, "could not determine buying units")
-		}
-
-		totalConsumed += xdr.Int64(buyingUnitsFromOffer)
-		currentAssetAmount -= xdr.Int64(sellingUnitsFromOffer)
-
-		if currentAssetAmount <= 0 {
-			return totalConsumed, nil
-		}
-	}
-
-	return -1, nil
-}
-
-func consumeOffersForBuyingAsset(
-	offers []xdr.OfferEntry,
-	ignoreOffersFrom *xdr.AccountId,
-	currentAssetAmount xdr.Int64,
-) (xdr.Int64, error) {
-	totalConsumed := xdr.Int64(0)
-
-	if len(offers) == 0 {
-		return totalConsumed, errEmptyOffers
-	}
-
-	if currentAssetAmount == 0 {
-		return totalConsumed, errAssetAmountIsZero
-	}
-
-	for _, offer := range offers {
-		if ignoreOffersFrom != nil && ignoreOffersFrom.Equals(offer.SellerId) {
-			continue
-		}
-		if offer.Price.D == 0 {
-			return -1, errOfferPriceDenominatorIsZero
-		}
-
-		n := int64(offer.Price.N)
-		d := int64(offer.Price.D)
-
-		// check if we can spend all of currentAssetAmount on the current offer
-		// otherwise consume entire offer and move on to the next one
-		amountSold, err := price.MulFractionRoundDown(int64(currentAssetAmount), d, n)
-		if err != nil {
-			return -1, errors.Wrap(err, "could not determine selling units needed")
-		}
-		if amountSoldXDR := xdr.Int64(amountSold); amountSoldXDR <= offer.Amount {
-			totalConsumed += amountSoldXDR
-			return totalConsumed, nil
-		}
-
-		buyingUnitsFromOffer, sellingUnitsFromOffer, err := price.ConvertToBuyingUnits(
-			int64(offer.Amount),
-			int64(offer.Amount),
-			n,
-			d,
-		)
-		if err != nil {
-			return -1, errors.Wrap(err, "could not determine selling units")
-		}
-
-		totalConsumed += xdr.Int64(sellingUnitsFromOffer)
-		currentAssetAmount -= xdr.Int64(buyingUnitsFromOffer)
-
-		if currentAssetAmount <= 0 {
-			return totalConsumed, nil
-		}
-	}
-
-	return -1, nil
+	return searchState.paths, nil
 }
 
 // sortAndFilterPaths sorts the given list of paths by
