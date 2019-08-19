@@ -1,5 +1,6 @@
 ## [UNRELEASED]
 - Added nested `"issuer_detail"` field to `/assets.json`.
+- Dropped support for Go 1.10.
 
 
 ## [v1.1.0] - 2019-07-22
