@@ -40,6 +40,7 @@ type ConnectOptions struct {
 
 type ArchiveBackend interface {
 	Exists(path string) (bool, error)
+	Size(path string) (int64, error)
 	GetFile(path string) (io.ReadCloser, error)
 	PutFile(path string, in io.ReadCloser) error
 	ListFiles(path string) (chan string, chan error)
@@ -194,14 +195,16 @@ func (a *Archive) ListCategoryCheckpoints(cat string, pth string) (chan uint32, 
 	return ch, errs
 }
 
-func (a *Archive) GetXdrStreamForHash(hash Hash) (*XdrStream, error) {
-	path := fmt.Sprintf(
+func (a *Archive) GetBucketPathForHash(hash Hash) string {
+	return fmt.Sprintf(
 		"bucket/%s/bucket-%s.xdr.gz",
 		HashPrefix(hash).Path(),
 		hash.String(),
 	)
+}
 
-	return a.GetXdrStream(path)
+func (a *Archive) GetXdrStreamForHash(hash Hash) (*XdrStream, error) {
+	return a.GetXdrStream(a.GetBucketPathForHash(hash))
 }
 
 func (a *Archive) GetXdrStream(pth string) (*XdrStream, error) {
