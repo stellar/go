@@ -82,8 +82,6 @@ interface EncryptedKeyData {
 	encrypterName: string;
 	salt: string;
 	encryptedBlob: string;
-	creationTime: number;
-	modifiedTime: number;	
 }
 ```
 
@@ -109,6 +107,9 @@ interface EncryptedKeysData {
 	modifiedTime: number;
 }
 ```
+
+Note that keysBlob has one global creation time and modified time even though
+there could be multiple keys in the blob.
 
 ### PUT /keys
 
