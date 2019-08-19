@@ -211,9 +211,14 @@ func (tx *Transaction) BuildSignEncode(keypairs ...*keypair.Full) (string, error
 }
 
 // BuildChallengeTx is a factory method that creates a valid SEP 10 challenge, for use in web authentication.
-// "timebound" is the time duration the transaction should be valid for.
+// "timebound" is the time duration the transaction should be valid for, and must be greater than 1s (300s is recommended).
 // More details on SEP 10: https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0010.md
 func BuildChallengeTx(serverSignerSecret, clientAccountID, anchorName, network string, timebound time.Duration) (string, error) {
+
+	if timebound < time.Second {
+		return "", errors.New("provided timebound must be at least 1s (300s is recommended)")
+	}
+
 	serverKP, err := keypair.Parse(serverSignerSecret)
 	if err != nil {
 		return "", err
@@ -244,9 +249,6 @@ func BuildChallengeTx(serverSignerSecret, clientAccountID, anchorName, network s
 		AccountID: clientAccountID,
 	}
 
-	if timebound == 0 {
-		return "", errors.New("timebound cannot be 0")
-	}
 	currentTime := time.Now().UTC()
 	maxTime := currentTime.Add(timebound)
 	txTimebound := NewTimebounds(currentTime.Unix(), maxTime.Unix())
@@ -441,7 +443,8 @@ func VerifyChallengeTx(challengeTx, serverAccountID, network string) (bool, erro
 	}
 	currentTime := time.Now().UTC().Unix()
 	if currentTime < tx.Timebounds.MinTime || currentTime > tx.Timebounds.MaxTime {
-		return false, errors.New("transaction is not within range of the specified timebounds")
+		return false, errors.Errorf("transaction is not within range of the specified timebounds (currentTime=%d, MinTime=%d, MaxTime=%d)",
+			currentTime, tx.Timebounds.MinTime, tx.Timebounds.MaxTime)
 	}
 
 	// verify operation

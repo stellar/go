@@ -777,7 +777,7 @@ func TestBuildChallengeTx(t *testing.T) {
 	//transaction with infinite timebound
 	_, err = BuildChallengeTx(kp0.Seed(), kp0.Address(), "sdf", network.TestNetworkPassphrase, 0)
 	if assert.Error(t, err) {
-		assert.Contains(t, err.Error(), "timebound cannot be 0")
+		assert.Contains(t, err.Error(), "provided timebound must be at least 1s (300s is recommended)")
 	}
 }
 func TestHashHex(t *testing.T) {
@@ -1287,7 +1287,7 @@ func TestVerifyChallengeTxInvalidTimebound(t *testing.T) {
 	kp1 := newKeypair1()
 
 	// transaction with elapsed timebound
-	newChallenge, err := BuildChallengeTx(kp0.Seed(), kp1.Address(), "sdf", network.TestNetworkPassphrase, 1)
+	newChallenge, err := BuildChallengeTx(kp0.Seed(), kp1.Address(), "sdf", network.TestNetworkPassphrase, time.Duration(1*time.Second))
 	assert.NoError(t, err)
 	time.Sleep(2 * time.Second)
 	isValid, err := VerifyChallengeTx(newChallenge, kp0.Address(), network.TestNetworkPassphrase)
@@ -1302,7 +1302,7 @@ func TestVerifyChallengeTxNotSigned(t *testing.T) {
 	kp1 := newKeypair1()
 
 	// transaction not signed by client
-	newChallenge, err := BuildChallengeTx(kp0.Seed(), kp1.Address(), "sdf", network.TestNetworkPassphrase, 300)
+	newChallenge, err := BuildChallengeTx(kp0.Seed(), kp1.Address(), "sdf", network.TestNetworkPassphrase, time.Duration(5*time.Minute))
 	assert.NoError(t, err)
 	isValid, err := VerifyChallengeTx(newChallenge, kp0.Address(), network.TestNetworkPassphrase)
 	if assert.Error(t, err) {
@@ -1316,7 +1316,7 @@ func TestVerifyChallengeTxSigned(t *testing.T) {
 	kp1 := newKeypair1()
 
 	// valid transaction signed by client
-	newChallenge, err := BuildChallengeTx(kp0.Seed(), kp1.Address(), "sdf", network.TestNetworkPassphrase, 300)
+	newChallenge, err := BuildChallengeTx(kp0.Seed(), kp1.Address(), "sdf", network.TestNetworkPassphrase, time.Duration(5*time.Minute))
 	assert.NoError(t, err)
 	newTx, err := TransactionFromXDR(newChallenge)
 	assert.NoError(t, err)
@@ -1366,7 +1366,7 @@ func TestVerifyChallengeTxInvalidSource(t *testing.T) {
 	kp1 := newKeypair1()
 
 	// transaction with invalid source
-	newChallenge, err := BuildChallengeTx(kp1.Seed(), kp1.Address(), "sdf", network.TestNetworkPassphrase, 300)
+	newChallenge, err := BuildChallengeTx(kp1.Seed(), kp1.Address(), "sdf", network.TestNetworkPassphrase, time.Duration(5*time.Minute))
 	assert.NoError(t, err)
 	newTx, err := TransactionFromXDR(newChallenge)
 	assert.NoError(t, err)
