@@ -443,8 +443,8 @@ func VerifyChallengeTx(challengeTx, serverAccountID, network string) (bool, erro
 	}
 	currentTime := time.Now().UTC().Unix()
 	if currentTime < tx.Timebounds.MinTime || currentTime > tx.Timebounds.MaxTime {
-		return false, errors.New(fmt.Sprintf("transaction is not within range of the specified timebounds (currentTime=%d, MinTime=%d, MaxTime=%d)",
-			currentTime, tx.Timebounds.MinTime, tx.Timebounds.MaxTime))
+		return false, errors.Errorf("transaction is not within range of the specified timebounds (currentTime=%d, MinTime=%d, MaxTime=%d)",
+			currentTime, tx.Timebounds.MinTime, tx.Timebounds.MaxTime)
 	}
 
 	// verify operation
