@@ -8,6 +8,7 @@ import (
 
 	sq "github.com/Masterminds/squirrel"
 	"github.com/guregu/null"
+
 	"github.com/stellar/go/services/horizon/internal/db2"
 	"github.com/stellar/go/support/db"
 	"github.com/stellar/go/xdr"
@@ -160,6 +161,12 @@ type Effect struct {
 	Order              int32       `db:"order"`
 	Type               EffectType  `db:"type"`
 	DetailsString      null.String `db:"details"`
+}
+
+// SequenceBumped is a struct of data from `effects.DetailsString`
+// when the effect type is sequence bumped.
+type SequenceBumped struct {
+	NewSeq int64 `json:"new_seq"`
 }
 
 // EffectsQ is a helper struct to aid in configuring queries that loads
