@@ -25,6 +25,17 @@ func (b *MockArchiveBackend) Exists(pth string) (bool, error) {
 	return ok, nil
 }
 
+func (b *MockArchiveBackend) Size(pth string) (int64, error) {
+	b.mutex.Lock()
+	defer b.mutex.Unlock()
+	f, ok := b.files[pth]
+	sz := int64(0)
+	if ok {
+		sz = int64(len(f))
+	}
+	return sz, nil
+}
+
 func (b *MockArchiveBackend) GetFile(pth string) (io.ReadCloser, error) {
 	b.mutex.Lock()
 	defer b.mutex.Unlock()
