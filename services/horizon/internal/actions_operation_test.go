@@ -321,7 +321,16 @@ func TestOperationEffect_BumpSequence(t *testing.T) {
 	if ht.Assert.Equal(200, w.Code) {
 		var result []effects.SequenceBumped
 		ht.UnmarshalPage(w.Body, &result)
-		ht.Assert.Equal("300000000000", result[0].NewSeq)
+		ht.Assert.Equal(int64(300000000000), result[0].NewSeq)
+
+		data, err := json.Marshal(&result[0])
+		ht.Assert.NoError(err)
+		effect := struct {
+			NewSeq string `json:"new_seq"`
+		}{}
+
+		json.Unmarshal(data, &effect)
+		ht.Assert.Equal("300000000000", effect.NewSeq)
 	}
 }
 
