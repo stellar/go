@@ -298,6 +298,23 @@ jobs:
             docker push stellar/ledger-state-diff:$CIRCLE_SHA1
             docker push stellar/ledger-state-diff:latest
 
+  publish_horizon_docker_image:
+    docker:
+      - image: circleci/buildpack-deps:stretch
+    steps:
+      - checkout
+      - setup_remote_docker
+      - run:
+          name: Build and Push Docker image
+          command: |
+            echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
+            # CIRCLE_TAG will be prefixed by "horizon-v", here we build the horizon docker image and tag it with stellar/horizon:$VERSION
+            # where version is CIRCLE_TAG without the "horizon-v" prefiix
+            VERSION=$(echo $CIRCLE_TAG | sed -e "s/^horizon-v//")
+            docker build -f services/horizon/docker/Dockerfile -t stellar/horizon:$VERSION -t stellar/horizon:latest .
+            docker push stellar/horizon:$VERSION
+            docker push stellar/horizon:latest
+
 #-------------------------------------------------------------------------#
 # Workflows orchestrate jobs and make sure they run in the right sequence #
 #-------------------------------------------------------------------------#
@@ -329,6 +346,12 @@ workflows:
           filters:
               tags:
                 ignore: snapshots
+              branches:
+                ignore: /.*/
+      - publish_horizon_docker_image:
+          filters:
+              tags:
+                only: /^horizon-v.*/
               branches:
                 ignore: /.*/
 
