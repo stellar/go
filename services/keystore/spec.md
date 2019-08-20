@@ -232,7 +232,6 @@ type PutKeysResponse = EncryptedKeysData;
 ```
 <hr />
 
-
 *invalid_keys_blob:*
 ```json
 {
