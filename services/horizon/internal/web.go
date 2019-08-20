@@ -13,6 +13,8 @@ import (
 	metrics "github.com/rcrowley/go-metrics"
 	"github.com/rs/cors"
 	"github.com/sebest/xff"
+	"github.com/throttled/throttled"
+
 	"github.com/stellar/go/services/horizon/internal/db2"
 	"github.com/stellar/go/services/horizon/internal/db2/core"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
@@ -24,7 +26,10 @@ import (
 	"github.com/stellar/go/support/db"
 	"github.com/stellar/go/support/log"
 	"github.com/stellar/go/support/render/problem"
+<<<<<<< HEAD
 	"github.com/stellar/throttled"
+=======
+>>>>>>> d15baaa... Add initial offers resource with raw representation.
 )
 
 const LRUCacheSize = 50000
@@ -193,6 +198,8 @@ func (w *web) mustInstallActions(config Config, pathFinder paths.Finder) {
 	r.Get("/trades", TradeIndexAction{}.Handle)
 	r.Get("/trade_aggregations", TradeAggregateIndexAction{}.Handle)
 	r.Route("/offers", func(r chi.Router) {
+		r.With(acceptOnlyJSON, requiresExperimentalIngestion).
+			Get("/", getAllOffersResource)
 		r.With(acceptOnlyJSON, requiresExperimentalIngestion).
 			Get("/{id}", getOfferResource)
 		r.Get("/{offer_id}/trades", TradeIndexAction{}.Handle)

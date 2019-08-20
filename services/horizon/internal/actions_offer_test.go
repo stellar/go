@@ -119,6 +119,72 @@ func TestOfferActionsStillIngesting_Show(t *testing.T) {
 }
 
 func TestOfferActions_Index(t *testing.T) {
+	var (
+		issuer = xdr.MustAddress("GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H")
+
+		nativeAsset = xdr.Asset{
+			Type: xdr.AssetTypeAssetTypeNative,
+		}
+
+		eurAsset = xdr.Asset{
+			Type: xdr.AssetTypeAssetTypeCreditAlphanum4,
+			AlphaNum4: &xdr.AssetAlphaNum4{
+				AssetCode: [4]byte{'e', 'u', 'r', 0},
+				Issuer:    issuer,
+			},
+		}
+		eurOffer = xdr.OfferEntry{
+			SellerId: issuer,
+			OfferId:  xdr.Int64(4),
+			Buying:   eurAsset,
+			Selling:  nativeAsset,
+			Price: xdr.Price{
+				N: 1,
+				D: 1,
+			},
+			Flags:  1,
+			Amount: xdr.Int64(500),
+		}
+		twoEurOffer = xdr.OfferEntry{
+			SellerId: issuer,
+			OfferId:  xdr.Int64(5),
+			Buying:   eurAsset,
+			Selling:  nativeAsset,
+			Price: xdr.Price{
+				N: 2,
+				D: 1,
+			},
+			Flags:  2,
+			Amount: xdr.Int64(500),
+		}
+	)
+
+	ht := StartHTTPTest(t, "base")
+	ht.App.config.EnableExperimentalIngestion = true
+	defer ht.Finish()
+	q := &history.Q{ht.HorizonSession()}
+
+	ht.Assert.NoError(q.UpdateLastLedgerExpIngest(3))
+	ht.Assert.NoError(q.UpsertOffer(eurOffer, 3))
+	ht.Assert.NoError(q.UpsertOffer(twoEurOffer, 20))
+
+	w := ht.Get("/offers")
+
+	ht.Assert.Equal(200, w.Code)
+}
+
+func TestOfferActionsStillIngesting_Index(t *testing.T) {
+	ht := StartHTTPTest(t, "base")
+	ht.App.config.EnableExperimentalIngestion = true
+	defer ht.Finish()
+	q := &history.Q{ht.HorizonSession()}
+	ht.Assert.NoError(q.UpdateLastLedgerExpIngest(0))
+
+	w := ht.Get("/offers")
+	ht.Assert.Equal(problem.StillIngesting.Status, w.Code)
+}
+
+func TestOfferActions_AccountIndex(t *testing.T) {
 	ht := StartHTTPTest(t, "trades")
 	defer ht.Finish()
 

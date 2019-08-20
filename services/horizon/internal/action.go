@@ -254,3 +254,16 @@ func getOfferResource(w http.ResponseWriter, r *http.Request) {
 	resourceadapter.PopulateHistoryOffer(ctx, &offerResponse, record, ledger)
 	httpjson.Render(w, offerResponse, httpjson.HALJSON)
 }
+
+// getAllOffersResource returns an array of offer resources.
+func getAllOffersResource(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	app := AppFromContext(ctx)
+	records, err := app.HistoryQ().GetAllOffers()
+	if err != nil {
+		problem.Render(ctx, w, err)
+		return
+	}
+
+	httpjson.Render(w, records, httpjson.HALJSON)
+}
