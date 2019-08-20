@@ -92,23 +92,23 @@ func (s *Service) putKeys(ctx context.Context, in putKeysRequest) (*encryptedKey
 	return &out, nil
 }
 
-func (s *Service) getKeys(ctx context.Context) (*encryptedKeys, error) {
+func (s *Service) getKeys(ctx context.Context) (*encryptedKeysData, error) {
 	userID := userID(ctx)
 	if userID == "" {
 		return nil, probNotAuthorized
 	}
 
 	q := `
-		SELECT encrypted_keys_data, salt, encrypter_name, created_at, modified_at
+		SELECT encrypted_keys_data, created_at, modified_at
 		FROM encrypted_keys
 		WHERE user_id = $1
 	`
 	var (
 		keysBlob   []byte
-		out        encryptedKeys
+		out        encryptedKeysData
 		modifiedAt pq.NullTime
 	)
-	err := s.db.QueryRowContext(ctx, q, userID).Scan(&keysBlob, &out.Salt, &out.EncrypterName, &out.CreatedAt, &modifiedAt)
+	err := s.db.QueryRowContext(ctx, q, userID).Scan(&keysBlob, &out.CreatedAt, &modifiedAt)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting keys blob")
 	}
