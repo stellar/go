@@ -206,6 +206,23 @@ jobs:
             else
                 echo "No files found in ./dist. No binaries to publish for ${CIRCLE_TAG}."
             fi
+
+  publish_horizon_docker_image:
+    docker:
+      - image: circleci/buildpack-deps:stretch
+    steps:
+      - checkout
+      - setup_remote_docker
+      - run:
+          name: Build and Push Docker image
+          command: |
+            # CIRCLE_TAG will be prefixed by "horizon-v", here we build the horizon docker image and tag it with stellar/horizon:$VERSION
+            # where version is CIRCLE_TAG without the "horizon-v" prefiix
+            VERSION=$(echo $CIRCLE_BRANCH | sed -e "s/^horizon-v//")
+            docker build -f services/horizon/docker/Dockerfile -t stellar/horizon:$VERSION .
+            docker login -u "$DOCKER_USER" -u "$DOCKER_PASS"
+            docker push stellar/horizon:$VERSION
+
 #-------------------------------------------------------------------------#
 # Workflows orchestrate jobs and make sure they run in the right sequence #
 #-------------------------------------------------------------------------#
@@ -221,6 +238,12 @@ workflows:
       - test_code_1_10
       - test_code_1_11
       - test_code_1_12
+      - publish_horizon_docker_image:
+          filters:
+              tags:
+                only: /^horizon-v.*/
+              branches:
+                only: /^horizon-v.*/
 
   build_and_deploy:
     jobs:
