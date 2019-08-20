@@ -21,33 +21,20 @@ func TestPutKeys(t *testing.T) {
 	s := &Service{conn.DB, nil}
 
 	blob := `[{
-		"keyType": "plaintextKey",
-		"publicKey": "stellar-pubkey",
-		"privateKey": "encrypted-stellar-privatekey"
+		"id": "test-id,"
+		"salt": "test-salt",
+		"encrypterName": "test-encrypter-name",
+		"encryptedBlob": "test-encryptedblob"
 	}]`
-	encodedBlob := base64.RawURLEncoding.EncodeToString([]byte(blob))
-	encrypterName := "identity"
-	salt := "random-salt"
+	keysBlob := base64.RawURLEncoding.EncodeToString([]byte(blob))
 
-	got, err := s.putKeys(ctx, putKeysRequest{
-		KeysBlob:      encodedBlob,
-		EncrypterName: encrypterName,
-		Salt:          salt,
-	})
+	got, err := s.putKeys(ctx, putKeysRequest{KeysBlob: keysBlob})
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	if got.KeysBlob != encodedBlob {
-		t.Errorf("got blob: %s, want: %s\n", got.KeysBlob, encodedBlob)
-	}
-
-	if got.EncrypterName != encrypterName {
-		t.Errorf("got encrypter name: %s, want: %s\n", got.EncrypterName, encrypterName)
-	}
-
-	if got.Salt != salt {
-		t.Errorf("got salt: %s, want: %s\n", got.Salt, salt)
+	if got.KeysBlob != keysBlob {
+		t.Errorf("got blob: %s, want: %s\n", got.KeysBlob, keysBlob)
 	}
 
 	if got.CreatedAt.Before(time.Now().Add(-time.Hour)) {
@@ -66,19 +53,14 @@ func TestGetKeys(t *testing.T) {
 	s := &Service{conn.DB, nil}
 
 	blob := `[{
-		"keyType": "plaintextKey",
-		"publicKey": "stellar-pubkey",
-		"privateKey": "encrypted-stellar-privatekey"
+		"id": "test-id,"
+		"salt": "test-salt",
+		"encrypterName": "test-encrypter-name",
+		"encryptedBlob": "test-encryptedblob"
 	}]`
-	encodedBlob := base64.RawURLEncoding.EncodeToString([]byte(blob))
-	encrypterName := "identity"
-	salt := "random-salt"
+	keysBlob := base64.RawURLEncoding.EncodeToString([]byte(blob))
 
-	_, err := s.putKeys(ctx, putKeysRequest{
-		KeysBlob:      encodedBlob,
-		EncrypterName: encrypterName,
-		Salt:          salt,
-	})
+	_, err := s.putKeys(ctx, putKeysRequest{KeysBlob: keysBlob})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -88,16 +70,8 @@ func TestGetKeys(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if got.KeysBlob != encodedBlob {
-		t.Errorf("got blob: %s, want: %s\n", got.KeysBlob, encodedBlob)
-	}
-
-	if got.EncrypterName != encrypterName {
-		t.Errorf("got encrypter name: %s, want: %s\n", got.EncrypterName, encrypterName)
-	}
-
-	if got.Salt != salt {
-		t.Errorf("got salt: %s, want: %s\n", got.Salt, salt)
+	if got.KeysBlob != keysBlob {
+		t.Errorf("got blob: %s, want: %s\n", got.KeysBlob, keysBlob)
 	}
 
 	if got.CreatedAt.Before(time.Now().Add(-time.Hour)) {
@@ -116,19 +90,14 @@ func TestDeleteKeys(t *testing.T) {
 	s := &Service{conn.DB, nil}
 
 	blob := `[{
-		"keyType": "plaintextKey",
-		"publicKey": "stellar-pubkey",
-		"privateKey": "encrypted-stellar-privatekey"
+		"id": "test-id,"
+		"salt": "test-salt",
+		"encrypterName": "test-encrypter-name",
+		"encryptedBlob": "test-encryptedblob"
 	}]`
-	encodedBlob := base64.RawURLEncoding.EncodeToString([]byte(blob))
-	encrypterName := "identity"
-	salt := "random-salt"
+	keysBlob := base64.RawURLEncoding.EncodeToString([]byte(blob))
 
-	_, err := s.putKeys(ctx, putKeysRequest{
-		KeysBlob:      encodedBlob,
-		EncrypterName: encrypterName,
-		Salt:          salt,
-	})
+	_, err := s.putKeys(ctx, putKeysRequest{KeysBlob: keysBlob})
 	if err != nil {
 		t.Fatal(err)
 	}
