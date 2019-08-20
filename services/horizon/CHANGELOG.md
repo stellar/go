@@ -15,6 +15,16 @@ bumps.  A breaking change will get clearly notified in this log.
 * `--enable-accounts-for-signer` CLI param or `ENABLE_ACCOUNTS_FOR_SIGNER=true` env variable are merged with `--enable-experimental-ingestion` CLI param or `ENABLE_EXPERIMENTAL_INGESTION=true` env variable.
 * Add experimental get offers by id endpoint`/offers/{id}` which uses the new ingestion system to fill up the offers table. To enable it, set `--enable-experimental-ingestion` CLI param or `ENABLE_EXPERIMENTAL_INGESTION=true` env variable.
 
+### Scheduled Breaking Changes
+
+The type for the following attributes will be changed from `int64` to `string` in the upcoming `0.22` release.
+
+- Attribute `offer_id` in [manage buy offer](https://www.stellar.org/developers/horizon/reference/resources/operation.html#manage-buy-offer) and [manage sell offer](https://www.stellar.org/developers/horizon/reference/resources/operation.html#manage-sell-offer) operations.
+- Attribute `offer_id` in `Trade` effect.
+- Attribute `id` in [Offer](https://www.stellar.org/developers/horizon/reference/resources/offer.html) resource.
+- Attribute `timestamp` and `trade_count` in [Trade Aggregation](https://www.stellar.org/developers/horizon/reference/resources/trade_aggregation.html) resource.
+
+If you are an SDK maintainer, update your code to prepare for this change.
 
 ## v0.19.0
 
