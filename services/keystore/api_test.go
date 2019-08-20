@@ -37,7 +37,7 @@ func TestPutKeysAPI(t *testing.T) {
 	})
 
 	blob := `[{
-		"id": "test-id,"
+		"id": "test-id",
 		"salt": "test-salt",
 		"encrypterName": "test-encrypter-name",
 		"encryptedBlob": "test-encryptedblob"
@@ -61,9 +61,7 @@ func TestPutKeysAPI(t *testing.T) {
 		t.Error("Expected to receive an encryptedKeysData response but did not")
 	}
 
-	if got.KeysBlob != keysBlob {
-		t.Errorf("got blob: %s, want: %s\n", got.KeysBlob, keysBlob)
-	}
+	verifyKeysBlob(t, got.KeysBlob, keysBlob)
 
 	if got.CreatedAt.Before(time.Now().Add(-time.Hour)) {
 		t.Errorf("got CreatedAt=%s, want CreatedAt within the last hour", got.CreatedAt)
@@ -93,7 +91,7 @@ func TestGetKeysAPI(t *testing.T) {
 	h := ServeMux(s)
 
 	blob := `[{
-		"id": "test-id,"
+		"id": "test-id",
 		"salt": "test-salt",
 		"encrypterName": "test-encrypter-name",
 		"encryptedBlob": "test-encryptedblob"
@@ -122,9 +120,7 @@ func TestGetKeysAPI(t *testing.T) {
 		t.Error("Expected to receive an encryptedKeysData response but did not")
 	}
 
-	if got.KeysBlob != keysBlob {
-		t.Errorf("got blob: %s, want: %s\n", got.KeysBlob, keysBlob)
-	}
+	verifyKeysBlob(t, got.KeysBlob, keysBlob)
 
 	if got.CreatedAt.Before(time.Now().Add(-time.Hour)) {
 		t.Errorf("got CreatedAt=%s, want CreatedAt within the last hour", got.CreatedAt)
@@ -165,7 +161,7 @@ func TestDeleteKeysAPI(t *testing.T) {
 	h := ServeMux(s)
 
 	blob := `[{
-		"id": "test-id,"
+		"id": "test-id",
 		"salt": "test-salt",
 		"encrypterName": "test-encrypter-name",
 		"encryptedBlob": "test-encryptedblob"

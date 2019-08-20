@@ -72,7 +72,7 @@ func (s *Service) putKeys(ctx context.Context, in putKeysRequest) (*encryptedKey
 	q := `
 		INSERT INTO encrypted_keys (user_id, encrypted_keys_data)
 		VALUES ($1, $2)
-		ON CONFLICT (user_id) DO UPDATE SET encoded_keys_data = excluded.encrypted_keys_data, modified_at = NOW()
+		ON CONFLICT (user_id) DO UPDATE SET encrypted_keys_data = excluded.encrypted_keys_data, modified_at = NOW()
 		RETURNING encrypted_keys_data, created_at, modified_at
 	`
 	var (
