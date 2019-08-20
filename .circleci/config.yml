@@ -193,8 +193,10 @@ workflows:
 
   check_code_and_test:
     jobs:
+      - check_code_1_10
       - check_code_1_11
       - check_code_1_12
+      - test_code_1_10
       - test_code_1_11
       - test_code_1_12
 
