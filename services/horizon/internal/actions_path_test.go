@@ -3,6 +3,7 @@ package horizon
 import (
 	"net/http"
 	"net/url"
+	"strconv"
 	"testing"
 
 	"github.com/stellar/go/exp/orderbook"
@@ -42,10 +43,11 @@ func TestPathActions_Index(t *testing.T) {
 	q.Add("destination_asset_code", "EUR")
 	q.Add("destination_amount", "10")
 
-	w = ht.Get("/paths?" + q.Encode())
-	ht.Assert.Equal(200, w.Code)
-	ht.Assert.PageOf(3, w.Body)
-
+	for _, uri := range []string{"/paths", "/paths/strict-receive"} {
+		w = ht.Get(uri + "?" + q.Encode())
+		ht.Assert.Equal(200, w.Code)
+		ht.Assert.PageOf(3, w.Body)
+	}
 }
 
 func TestPathActionsStillIngesting(t *testing.T) {
@@ -73,8 +75,10 @@ func TestPathActionsStillIngesting(t *testing.T) {
 	q.Add("destination_asset_code", "EUR")
 	q.Add("destination_amount", "10")
 
-	w := ht.Get("/paths?" + q.Encode())
-	ht.Assert.Equal(problem.StillIngesting.Status, w.Code)
+	for _, uri := range []string{"/paths", "/paths/strict-receive"} {
+		w := ht.Get(uri + "?" + q.Encode())
+		ht.Assert.Equal(problem.StillIngesting.Status, w.Code)
+	}
 }
 
 func loadOffers(tt *test.T, orderBookGraph *orderbook.OrderBookGraph, fromAddress string) {
@@ -105,7 +109,6 @@ func TestPathActionsInMemoryFinder(t *testing.T) {
 	defer ht.Finish()
 
 	orderBookGraph := orderbook.NewOrderBookGraph()
-	ht.App.paths = simplepath.NewInMemoryFinder(orderBookGraph)
 
 	loadOffers(ht.T, orderBookGraph, "GA2NC4ZOXMXLVQAQQ5IQKJX47M3PKBQV2N5UV5Z4OXLQJ3CKMBA2O2YL")
 	loadOffers(ht.T, orderBookGraph, "GDSBCQO34HWPGUGQSP3QBFEXVTSR2PW46UIGTHVWGWJGQKH3AFNHXHXN")
@@ -128,16 +131,78 @@ func TestPathActionsInMemoryFinder(t *testing.T) {
 	q.Add("destination_asset_code", "EUR")
 	q.Add("destination_amount", "10")
 
-	w := ht.Get("/paths?" + q.Encode())
+	for _, uri := range []string{"/paths", "/paths/strict-receive"} {
+		ht.App.paths = simplepath.NewInMemoryFinder(orderBookGraph)
+
+		w := ht.Get(uri + "?" + q.Encode())
+		ht.Assert.Equal(http.StatusOK, w.Code)
+		inMemoryResponse := []horizon.Path{}
+		ht.UnmarshalPage(w.Body, &inMemoryResponse)
+
+		ht.App.paths = &simplepath.Finder{ht.App.CoreQ()}
+
+		w = ht.Get(uri + "?" + q.Encode())
+		ht.Assert.Equal(http.StatusOK, w.Code)
+		dbResponse := []horizon.Path{}
+		ht.UnmarshalPage(w.Body, &dbResponse)
+
+		ht.Assert.Equal(inMemoryResponse, dbResponse)
+	}
+}
+
+func TestPathActionsStrictSend(t *testing.T) {
+	ht := StartHTTPTest(t, "paths")
+	defer ht.Finish()
+
+	orderBookGraph := orderbook.NewOrderBookGraph()
+
+	loadOffers(ht.T, orderBookGraph, "GA2NC4ZOXMXLVQAQQ5IQKJX47M3PKBQV2N5UV5Z4OXLQJ3CKMBA2O2YL")
+	loadOffers(ht.T, orderBookGraph, "GDSBCQO34HWPGUGQSP3QBFEXVTSR2PW46UIGTHVWGWJGQKH3AFNHXHXN")
+
+	ht.App.paths = simplepath.NewInMemoryFinder(orderBookGraph)
+
+	var q = make(url.Values)
+
+	q.Add(
+		"source_asset_issuer",
+		"GDSBCQO34HWPGUGQSP3QBFEXVTSR2PW46UIGTHVWGWJGQKH3AFNHXHXN",
+	)
+	q.Add(
+		"source_account",
+		"GARSFJNXJIHO6ULUBK3DBYKVSIZE7SC72S5DYBCHU7DKL22UXKVD7MXP",
+	)
+	q.Add(
+		"destination_asset_issuer",
+		"GDSBCQO34HWPGUGQSP3QBFEXVTSR2PW46UIGTHVWGWJGQKH3AFNHXHXN",
+	)
+	q.Add("source_asset_type", "credit_alphanum4")
+	q.Add("source_asset_code", "USD")
+	q.Add("source_amount", "10")
+	q.Add("destination_asset_type", "credit_alphanum4")
+	q.Add("destination_asset_code", "EUR")
+
+	w := ht.Get("/paths/strict-send?" + q.Encode())
 	ht.Assert.Equal(http.StatusOK, w.Code)
 	inMemoryResponse := []horizon.Path{}
 	ht.UnmarshalPage(w.Body, &inMemoryResponse)
+	ht.Assert.Len(inMemoryResponse, 4)
+	for i, path := range inMemoryResponse {
+		ht.Assert.Equal(path.SourceAssetCode, "USD")
+		ht.Assert.Equal(path.SourceAssetType, "credit_alphanum4")
+		ht.Assert.Equal(path.SourceAssetIssuer, "GDSBCQO34HWPGUGQSP3QBFEXVTSR2PW46UIGTHVWGWJGQKH3AFNHXHXN")
+		ht.Assert.Equal(path.SourceAmount, "10.0000000")
 
-	ht.App.paths = &simplepath.Finder{ht.App.CoreQ()}
-	w = ht.Get("/paths?" + q.Encode())
-	ht.Assert.Equal(http.StatusOK, w.Code)
-	dbResponse := []horizon.Path{}
-	ht.UnmarshalPage(w.Body, &dbResponse)
+		ht.Assert.Equal(path.DestinationAssetCode, "EUR")
+		ht.Assert.Equal(path.DestinationAssetType, "credit_alphanum4")
+		ht.Assert.Equal(path.DestinationAssetIssuer, "GDSBCQO34HWPGUGQSP3QBFEXVTSR2PW46UIGTHVWGWJGQKH3AFNHXHXN")
+		if i > 1 {
+			previous, err := strconv.ParseFloat(inMemoryResponse[i-1].DestinationAmount, 64)
+			ht.Assert.NoError(err)
 
-	ht.Assert.Equal(inMemoryResponse, dbResponse)
+			current, err := strconv.ParseFloat(path.DestinationAmount, 64)
+			ht.Assert.NoError(err)
+
+			ht.Assert.True(previous >= current)
+		}
+	}
 }
