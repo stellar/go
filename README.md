@@ -20,7 +20,9 @@ This repo is the home for all of the public go code produced by SDF.  In additio
 
 ## Dependencies
 
-This repository depends upon a [number of external dependencies](./Gopkg.lock), and uses [dep](https://golang.github.io/dep/) to manage them (see installation instructions [here](https://golang.github.io/dep/docs/installation.html)).  
+This repository is officially supported on the last two releases of Go, which is currently Go 1.11 and Go 1.12.
+
+It depends on a [number of external dependencies](./Gopkg.lock), and uses [dep](https://golang.github.io/dep/) to manage them (see installation instructions [here](https://golang.github.io/dep/docs/installation.html)).
 
 To satisfy dependencies and populate the `vendor` directory run: 
 

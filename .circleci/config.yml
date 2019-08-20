@@ -95,14 +95,6 @@ commands:
 #-----------------------------------------------------------------------------#
 
 jobs:
-  # check_code_1_10 performs code checks using Go 1.10 (gofmt is only run for 1.12).
-  check_code_1_10:
-    working_directory: /go/src/github.com/stellar/go
-    docker:
-      - image: circleci/golang:1.10-stretch
-    steps:
-      - govet
-
   # check_code_1_11 performs code checks using Go 1.11 (gofmt is only run for 1.12).
   check_code_1_11:
     working_directory: /go/src/github.com/stellar/go
@@ -121,26 +113,6 @@ jobs:
       - gofmt
       - govet
       - staticcheck
-
-  # test_code_1_10 performs all package tests using Go 1.10.
-  test_code_1_10:
-    working_directory: /go/src/github.com/stellar/go
-    docker:
-      - image: circleci/golang:1.10-stretch
-        environment:
-          PGHOST: localhost
-          PGPORT: 5432
-          PGUSER: circleci
-          MYSQL_HOST: 127.0.0.1
-          MYSQL_PORT: 3306
-      - image: circleci/postgres:9.6.5-alpine-ram
-        environment:
-          POSTGRES_USER: circleci
-      - image: circleci/mysql:5.7
-      - image: circleci/redis:5.0-alpine
-    steps:
-      - install_go_deps
-      - test_packages
 
   # test_code_1_11 performs all package tests using Go 1.11.
   test_code_1_11:
@@ -215,10 +187,8 @@ workflows:
 
   check_code_and_test:
     jobs:
-      - check_code_1_10
       - check_code_1_11
       - check_code_1_12
-      - test_code_1_10
       - test_code_1_11
       - test_code_1_12
 

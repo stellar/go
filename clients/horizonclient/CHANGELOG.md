@@ -3,6 +3,10 @@
 All notable changes to this project will be documented in this
 file.  This project adheres to [Semantic Versioning](http://semver.org/).
 
+## Unreleased
+
+- Dropped support for Go 1.10.
+
 ## [v1.4.0](https://github.com/stellar/go/releases/tag/horizonclient-v1.4.0) - 2019-08-09
 
 - Add support for querying operation endpoint with `join` parameter [#1521](https://github.com/stellar/go/issues/1521).

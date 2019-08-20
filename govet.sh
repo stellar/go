@@ -7,7 +7,7 @@ set -e
 # For now we just skip the shadow checking for Go 1.12+
 # TODO: 2) Not triggering on shadowed vars (output not stdout?)
 # TODO: 3) Fix syntax for Go 1.12+ (go tool vet -> go vet, but fails to find packages?)
-if [[ $GOLANG_VERSION = 1.9.* ]] || [[ $GOLANG_VERSION = 1.10.* ]] || [[ $GOLANG_VERSION = 1.11.* ]]; then
+if [[ $GOLANG_VERSION = 1.11.* ]]; then
     echo "Running go vet checks..."
 OUTPUT=$(ls -d */ \
   | egrep -v '^vendor|^docs' \

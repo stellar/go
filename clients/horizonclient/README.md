@@ -12,7 +12,7 @@ This library is aimed at developers building Go applications that interact with 
 * The [txnbuild API reference](https://godoc.org/github.com/stellar/go/txnbuild).
 
 ### Prerequisites
-* Go 1.10 or greater
+* Go 1.11 or greater
 
 ### Installing
 * Download the Stellar Go monorepo: `git clone git@github.com:stellar/go.git`
