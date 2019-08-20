@@ -70,20 +70,22 @@ func (s *Service) putKeys(ctx context.Context, in putKeysRequest) (*encryptedKey
 	}
 
 	q := `
-		INSERT INTO encrypted_keys (user_id, encoded_keys_blob)
+		INSERT INTO encrypted_keys (user_id, encrypted_keys_data)
 		VALUES ($1, $2)
-		ON CONFLICT (user_id) DO UPDATE SET encoded_keys_blob = excluded.encoded_keys_blob, modified_at = NOW()
-		RETURNING encoded_keys_blob, created_at, modified_at
+		ON CONFLICT (user_id) DO UPDATE SET encoded_keys_data = excluded.encrypted_keys_data, modified_at = NOW()
+		RETURNING encrypted_keys_data, created_at, modified_at
 	`
 	var (
+		keysBlob   []byte
 		out        encryptedKeysData
 		modifiedAt pq.NullTime
 	)
-	err = s.db.QueryRowContext(ctx, q, userID, in.KeysBlob).Scan(&out.KeysBlob, &out.CreatedAt, &modifiedAt)
+	err = s.db.QueryRowContext(ctx, q, userID, keysData).Scan(&keysBlob, &out.CreatedAt, &modifiedAt)
 	if err != nil {
 		return nil, errors.Wrap(err, "storing keys blob")
 	}
 
+	out.KeysBlob = base64.RawURLEncoding.EncodeToString(keysBlob)
 	if modifiedAt.Valid {
 		out.ModifiedAt = &modifiedAt.Time
 	}
