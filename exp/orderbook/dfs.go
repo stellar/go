@@ -20,15 +20,13 @@ type Path struct {
 
 type searchState interface {
 	isTerminalNode(
-		currentAssetString string,
-		currentAsset xdr.Asset,
+		currentAsset string,
 		currentAssetAmount xdr.Int64,
 	) bool
 
 	appendToPaths(
 		updatedVisitedList []xdr.Asset,
-		currentAssetString string,
-		currentAsset xdr.Asset,
+		currentAsset string,
 		currentAssetAmount xdr.Int64,
 	)
 
@@ -64,11 +62,10 @@ func dfs(
 	}()
 
 	updatedVisitedList := append(visitedList, currentAsset)
-	if state.isTerminalNode(currentAssetString, currentAsset, currentAssetAmount) {
+	if state.isTerminalNode(currentAssetString, currentAssetAmount) {
 		state.appendToPaths(
 			updatedVisitedList,
 			currentAssetString,
-			currentAsset,
 			currentAssetAmount,
 		)
 	}
@@ -120,18 +117,16 @@ type sellingGraphSearchState struct {
 }
 
 func (state *sellingGraphSearchState) isTerminalNode(
-	currentAssetString string,
-	currentAsset xdr.Asset,
+	currentAsset string,
 	currentAssetAmount xdr.Int64,
 ) bool {
-	targetAssetBalance, ok := state.targetAssets[currentAssetString]
+	targetAssetBalance, ok := state.targetAssets[currentAsset]
 	return ok && targetAssetBalance >= currentAssetAmount
 }
 
 func (state *sellingGraphSearchState) appendToPaths(
 	updatedVisitedList []xdr.Asset,
-	currentAssetString string,
-	currentAsset xdr.Asset,
+	currentAsset string,
 	currentAssetAmount xdr.Int64,
 ) {
 	var interiorNodes []xdr.Asset
@@ -148,9 +143,9 @@ func (state *sellingGraphSearchState) appendToPaths(
 	}
 
 	state.paths = append(state.paths, Path{
-		sourceAssetString: currentAssetString,
+		sourceAssetString: currentAsset,
 		SourceAmount:      currentAssetAmount,
-		SourceAsset:       currentAsset,
+		SourceAsset:       updatedVisitedList[len(updatedVisitedList)-1],
 		InteriorNodes:     interiorNodes,
 		DestinationAsset:  state.destinationAsset,
 		DestinationAmount: state.destinationAssetAmount,
@@ -191,17 +186,15 @@ type buyingGraphSearchState struct {
 }
 
 func (state *buyingGraphSearchState) isTerminalNode(
-	currentAssetString string,
-	currentAsset xdr.Asset,
+	currentAsset string,
 	currentAssetAmount xdr.Int64,
 ) bool {
-	return state.targetAssets[currentAssetString]
+	return state.targetAssets[currentAsset]
 }
 
 func (state *buyingGraphSearchState) appendToPaths(
 	updatedVisitedList []xdr.Asset,
-	currentAssetString string,
-	currentAsset xdr.Asset,
+	currentAsset string,
 	currentAssetAmount xdr.Int64,
 ) {
 	var interiorNodes []xdr.Asset
@@ -217,13 +210,13 @@ func (state *buyingGraphSearchState) appendToPaths(
 		SourceAmount:      state.sourceAssetAmount,
 		SourceAsset:       state.sourceAsset,
 		InteriorNodes:     interiorNodes,
-		DestinationAsset:  currentAsset,
+		DestinationAsset:  updatedVisitedList[len(updatedVisitedList)-1],
 		DestinationAmount: currentAssetAmount,
 	})
 }
 
-func (state *buyingGraphSearchState) edges(currentAssetString string) edgeSet {
-	return state.graph.edgesForBuyingAsset[currentAssetString]
+func (state *buyingGraphSearchState) edges(currentAsset string) edgeSet {
+	return state.graph.edgesForBuyingAsset[currentAsset]
 }
 
 func (state *buyingGraphSearchState) consumeOffers(
