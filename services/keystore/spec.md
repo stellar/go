@@ -90,6 +90,8 @@ a salt based on the encrypter they use. Clients should assign the resulting
 base64-encoded string to the field `encryptedBlob` in the `EncryptedKeyData`.
 Please refer to this [encrypt function](https://github.com/stellar/js-stellar-wallets/blob/4a667171df4b22ba9cd15576d022f3e88f3951ff/src/helpers/ScryptEncryption.ts#L71-L108) in our wallet sdk for more details.
 
+### Encrypted Keys
+
 ```typescript
 type EncryptedKeys = EncryptedKeyData[]
 ```
