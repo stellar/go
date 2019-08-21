@@ -9,6 +9,8 @@ import (
 	"testing"
 
 	"github.com/go-chi/chi"
+
+	horizonContext "github.com/stellar/go/services/horizon/internal/context"
 	"github.com/stellar/go/services/horizon/internal/ledger"
 	"github.com/stellar/go/services/horizon/internal/test"
 	"github.com/stellar/go/services/horizon/internal/toid"
@@ -311,6 +313,15 @@ func TestGetURLParam(t *testing.T) {
 	tt.Assert.Equal(false, ok)
 }
 
+func TestFullURL(t *testing.T) {
+	tt := test.Start(t)
+	defer tt.Finish()
+	action := makeTestAction()
+
+	url := FullURL(action.R.Context())
+	tt.Assert.Equal("http:///foo-bar/blah?limit=2&cursor=123456", url.String())
+}
+
 func makeTestAction() *Base {
 	return makeAction("/foo-bar/blah?limit=2&cursor=123456", testURLParams())
 }
@@ -322,7 +333,9 @@ func makeAction(path string, body map[string]string) *Base {
 	}
 
 	r, _ := http.NewRequest("GET", path, nil)
-	r = r.WithContext(context.WithValue(r.Context(), chi.RouteCtxKey, rctx))
+
+	ctx := context.WithValue(r.Context(), chi.RouteCtxKey, rctx)
+	r = r.WithContext(context.WithValue(ctx, &horizonContext.RequestContextKey, r))
 	action := &Base{
 		R: r,
 	}
