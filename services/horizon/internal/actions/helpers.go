@@ -10,6 +10,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/go-chi/chi"
+
 	"github.com/stellar/go/amount"
 	"github.com/stellar/go/services/horizon/internal/assets"
 	"github.com/stellar/go/services/horizon/internal/db2"
@@ -52,13 +53,31 @@ func (base *Base) GetCursor(name string) string {
 		return ""
 	}
 
-	cursor := base.GetString(name)
+	cursor, err := GetCursor(base.R, name)
+
+	if err != nil {
+		base.Err = err
+		return ""
+	}
+
+	return cursor
+}
+
+// GetCursor retrieves a string from either the URLParams, form or query string.
+// This method uses the priority (URLParams, Form, Query).
+func GetCursor(r *http.Request, name string) (string, error) {
+	cursor, err := GetString(r, name)
+
+	if err != nil {
+		return "", problem.MakeInvalidFieldProblem(name, err)
+	}
+
 	if cursor == "now" {
 		tid := toid.AfterLedger(ledger.CurrentState().HistoryLatest)
 		cursor = tid.String()
 	}
 
-	if lastEventID := base.R.Header.Get("Last-Event-ID"); lastEventID != "" {
+	if lastEventID := r.Header.Get("Last-Event-ID"); lastEventID != "" {
 		cursor = lastEventID
 	}
 
@@ -66,10 +85,14 @@ func (base *Base) GetCursor(name string) string {
 	cursorInt, err := strconv.Atoi(cursor)
 	if err == nil && cursorInt < 0 {
 		msg := fmt.Sprintf("the cursor %d is a negative number: ", cursorInt)
-		base.SetInvalidField("cursor", errors.New(msg))
+
+		return "", problem.MakeInvalidFieldProblem(
+			name,
+			errors.New(msg),
+		)
 	}
 
-	return cursor
+	return cursor, nil
 }
 
 // checkUTF8 checks if value is a valid UTF-8 string, otherwise sets
