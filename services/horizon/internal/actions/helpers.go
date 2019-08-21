@@ -284,11 +284,19 @@ func GetLimit(r *http.Request, name string, def uint64, max uint64) (uint64, err
 
 // GetPageQuery is a helper that returns a new db.PageQuery struct initialized
 // using the results from a call to GetPagingParams()
-func (base *Base) GetPageQuery(opts ...Opt) db2.PageQuery {
+func (base *Base) GetPageQuery(opts ...Opt) (result db2.PageQuery) {
 	if base.Err != nil {
 		return db2.PageQuery{}
 	}
 
+	result, base.Err = GetPageQuery(base.R, opts...)
+
+	return result
+}
+
+// GetPageQuery is a helper that returns a new db.PageQuery struct initialized
+// using the results from a call to GetPagingParams()
+func GetPageQuery(r *http.Request, opts ...Opt) (db2.PageQuery, error) {
 	disableCursorValidation := false
 	for _, opt := range opts {
 		if opt == DisableCursorValidation {
@@ -296,23 +304,34 @@ func (base *Base) GetPageQuery(opts ...Opt) db2.PageQuery {
 		}
 	}
 
-	cursor := base.GetCursor(ParamCursor)
-	order := base.GetString(ParamOrder)
-	limit := base.GetLimit(ParamLimit, db2.DefaultPageSize, db2.MaxPageSize)
-	if base.Err != nil {
-		return db2.PageQuery{}
+	cursor, err := GetCursor(r, ParamCursor)
+	if err != nil {
+		return db2.PageQuery{}, err
+	}
+	order, err := GetString(r, ParamOrder)
+	if err != nil {
+		return db2.PageQuery{}, err
+	}
+	limit, err := GetLimit(r, ParamLimit, db2.DefaultPageSize, db2.MaxPageSize)
+	if err != nil {
+		return db2.PageQuery{}, err
 	}
 
-	r, err := db2.NewPageQuery(cursor, !disableCursorValidation, order, limit)
+	pageQuery, err := db2.NewPageQuery(cursor, !disableCursorValidation, order, limit)
 	if err != nil {
 		if invalidFieldError, ok := err.(*db2.InvalidFieldError); ok {
-			base.SetInvalidField(invalidFieldError.Name, err)
+			err = problem.MakeInvalidFieldProblem(
+				invalidFieldError.Name,
+				err,
+			)
 		} else {
-			base.Err = problem.BadRequest
+			err = problem.BadRequest
 		}
+
+		return db2.PageQuery{}, err
 	}
 
-	return r
+	return pageQuery, nil
 }
 
 // GetAddress retrieves a stellar address.  It confirms the value loaded is a

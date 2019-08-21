@@ -312,7 +312,7 @@ func TestGetLimit(t *testing.T) {
 	tt.Assert.Error(err)
 }
 
-func TestGetPageQuery(t *testing.T) {
+func TestActionGetPageQuery(t *testing.T) {
 	tt := test.Start(t)
 	defer tt.Finish()
 	action := makeTestAction()
@@ -336,6 +336,32 @@ func TestGetPageQuery(t *testing.T) {
 	makeAction("/?limit=0", nil)
 	_ = action.GetPageQuery()
 	tt.Assert.Error(action.Err)
+}
+
+func TestGetPageQuery(t *testing.T) {
+	tt := test.Start(t)
+	defer tt.Finish()
+	r := makeTestAction().R
+
+	// happy path
+	pq, err := GetPageQuery(r)
+	tt.Assert.NoError(err)
+	tt.Assert.Equal("123456", pq.Cursor)
+	tt.Assert.Equal(uint64(2), pq.Limit)
+	tt.Assert.Equal("asc", pq.Order)
+
+	// regression: GetPagQuery does not overwrite err
+	r = makeAction("/?limit=foo", nil).R
+	_, err = GetLimit(r, "limit", 1, 200)
+	tt.Assert.Error(err)
+	_, err = GetPageQuery(r)
+	tt.Assert.Error(err)
+
+	// regression: https://github.com/stellar/go/services/horizon/internal/issues/372
+	// (limit of 0 turns into 10)
+	r = makeAction("/?limit=0", nil).R
+	_, err = GetPageQuery(r)
+	tt.Assert.Error(err)
 }
 
 func TestGetString(t *testing.T) {
