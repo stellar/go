@@ -46,6 +46,10 @@ func (action *PathIndexAction) loadSourceAssets() {
 }
 
 func (action *PathIndexAction) loadRecords() {
+	if len(action.Query.SourceAssets) == 0 {
+		action.Records = []paths.Path{}
+		return
+	}
 	action.Records, action.Err = action.App.paths.Find(action.Query, action.App.config.MaxPathLength)
 	if action.Err == simplepath.ErrEmptyInMemoryOrderBook {
 		action.Err = problem.StillIngesting

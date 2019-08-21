@@ -17,7 +17,11 @@ func (q *Q) AssetsForAddress(addy string) ([]xdr.Asset, []xdr.Int64, error) {
 	var tls []Trustline
 	var account Account
 
-	if err := q.AccountByAddress(&account, addy); err != nil {
+	if err := q.AccountByAddress(&account, addy); q.NoRows(err) {
+		// if there is no account for the given address then
+		// we return an empty list of assets and balances
+		return []xdr.Asset{}, []xdr.Int64{}, nil
+	} else if err != nil {
 		return nil, nil, err
 	}
 

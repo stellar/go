@@ -39,3 +39,20 @@ func TestAssetsForAddress(t *testing.T) {
 
 	tt.Assert.Equal(expected, assetsToBalance)
 }
+
+func TestAssetsForAddressWithoutAccount(t *testing.T) {
+	tt := test.Start(t).Scenario("order_books")
+	defer tt.Finish()
+	q := &Q{tt.CoreSession()}
+
+	var account Account
+	err := q.AccountByAddress(&account, "GD5PM5X7Q5MM54ERO2P5PXW3HD6HVZI5IRZGEDWS4OPFBGHNTF6XOWQO")
+	tt.Assert.True(q.NoRows(err))
+
+	assets, balances, err := q.AssetsForAddress(
+		"GD5PM5X7Q5MM54ERO2P5PXW3HD6HVZI5IRZGEDWS4OPFBGHNTF6XOWQO",
+	)
+	tt.Assert.NoError(err)
+	tt.Assert.Empty(assets)
+	tt.Assert.Empty(balances)
+}
