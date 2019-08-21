@@ -245,20 +245,33 @@ func (base *Base) GetBool(name string) bool {
 // GetLimit retrieves a uint64 limit from the action parameter of the given
 // name. Populates err if the value is not a valid limit.  Uses the provided
 // default value if the limit parameter is a blank string.
-func (base *Base) GetLimit(name string, def uint64, max uint64) uint64 {
+func (base *Base) GetLimit(name string, def uint64, max uint64) (limit uint64) {
 	if base.Err != nil {
 		return 0
 	}
 
-	limit := base.GetString(name)
+	limit, base.Err = GetLimit(base.R, name, def, max)
+
+	return limit
+}
+
+// GetLimit retrieves a uint64 limit from the action parameter of the given
+// name. Populates err if the value is not a valid limit.  Uses the provided
+// default value if the limit parameter is a blank string.
+func GetLimit(r *http.Request, name string, def uint64, max uint64) (uint64, error) {
+	limit, err := GetString(r, name)
+
+	if err != nil {
+		return 0, err
+	}
 	if limit == "" {
-		return def
+		return def, nil
 	}
 
 	asI64, err := strconv.ParseInt(limit, 10, 64)
 	if err != nil {
-		base.SetInvalidField(name, errors.New("unparseable value"))
-		return 0
+
+		return 0, problem.MakeInvalidFieldProblem(name, errors.New("unparseable value"))
 	}
 
 	if asI64 <= 0 {
@@ -268,11 +281,10 @@ func (base *Base) GetLimit(name string, def uint64, max uint64) uint64 {
 	}
 
 	if err != nil {
-		base.SetInvalidField(name, err)
-		return 0
+		return 0, problem.MakeInvalidFieldProblem(name, err)
 	}
 
-	return uint64(asI64)
+	return uint64(asI64), nil
 }
 
 // GetPageQuery is a helper that returns a new db.PageQuery struct initialized

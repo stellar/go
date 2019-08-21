@@ -224,7 +224,7 @@ func TestPositiveAmount(t *testing.T) {
 	tt.Assert.Equal(xdr.Int64(200000000), result)
 }
 
-func TestGetLimit(t *testing.T) {
+func TestActionGetLimit(t *testing.T) {
 	tt := test.Start(t)
 	defer tt.Finish()
 
@@ -266,6 +266,50 @@ func TestGetLimit(t *testing.T) {
 	action = makeAction("/?limit=201", nil)
 	_ = action.GetLimit("limit", 5, 200)
 	tt.Assert.Error(action.Err)
+}
+
+func TestGetLimit(t *testing.T) {
+	tt := test.Start(t)
+	defer tt.Finish()
+
+	// happy path
+	r := makeTestAction().R
+	limit, err := GetLimit(r, "limit", 5, 200)
+	if tt.Assert.NoError(err) {
+		tt.Assert.Equal(uint64(2), limit)
+	}
+
+	r = makeAction("/?limit=200", nil).R
+	limit, err = GetLimit(r, "limit", 5, 200)
+	if tt.Assert.NoError(err) {
+		tt.Assert.Equal(uint64(200), limit)
+	}
+
+	// defaults
+	r = makeAction("/", nil).R
+	limit, err = GetLimit(r, "limit", 5, 200)
+	if tt.Assert.NoError(err) {
+		tt.Assert.Equal(uint64(5), limit)
+	}
+
+	r = makeAction("/?limit=", nil).R
+	limit, err = GetLimit(r, "limit", 5, 200)
+	if tt.Assert.NoError(err) {
+		tt.Assert.Equal(uint64(5), limit)
+	}
+
+	// invalids
+	r = makeAction("/?limit=0", nil).R
+	_, err = GetLimit(r, "limit", 5, 200)
+	tt.Assert.Error(err)
+
+	r = makeAction("/?limit=-1", nil).R
+	_, err = GetLimit(r, "limit", 5, 200)
+	tt.Assert.Error(err)
+
+	r = makeAction("/?limit=201", nil).R
+	_, err = GetLimit(r, "limit", 5, 200)
+	tt.Assert.Error(err)
 }
 
 func TestGetPageQuery(t *testing.T) {
