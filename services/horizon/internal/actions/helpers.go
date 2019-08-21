@@ -567,9 +567,9 @@ func (base *Base) ValidateBodyType() {
 	}
 }
 
-// fullURL returns a URL containing the information regarding the original
+// FullURL returns a URL containing the information regarding the original
 // request stored in the context.
-func fullURL(ctx context.Context) *url.URL {
+func FullURL(ctx context.Context) *url.URL {
 	url := httpx.BaseURL(ctx)
 	r := httpx.RequestFromContext(ctx)
 	if r != nil {
