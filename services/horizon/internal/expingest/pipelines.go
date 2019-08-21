@@ -17,6 +17,13 @@ import (
 	"github.com/stellar/go/xdr"
 )
 
+type pType string
+
+const (
+	statePipeline  pType = "state_pipeline"
+	ledgerPipeline pType = "ledger_pipeline"
+)
+
 func accountForSignerStateNode(q *history.Q) *supportPipeline.PipelineNode {
 	return pipeline.StateNode(&processors.EntryTypeFilter{Type: xdr.LedgerEntryTypeAccount}).
 		Pipe(
@@ -106,12 +113,12 @@ func addPipelineHooks(
 	ingestSession ingest.Session,
 	graph *orderbook.OrderBookGraph,
 ) {
-	var pipelineType string
+	var pipelineType pType
 	switch p.(type) {
 	case *pipeline.StatePipeline:
-		pipelineType = "state_pipeline"
+		pipelineType = statePipeline
 	case *pipeline.LedgerPipeline:
-		pipelineType = "ledger_pipeline"
+		pipelineType = ledgerPipeline
 	default:
 		panic(fmt.Sprintf("Unknown pipeline type %T", p))
 	}
@@ -140,7 +147,7 @@ func addPipelineHooks(
 		ledgerSeq := pipeline.GetLedgerSequenceFromContext(ctx)
 
 		updateDatabase := false
-		if pipelineType == "state_pipeline" {
+		if pipelineType == statePipeline {
 			// State pipeline is always fully run because loading offers
 			// from a database is done outside the pipeline.
 			updateDatabase = true
