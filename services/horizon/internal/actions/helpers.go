@@ -48,17 +48,12 @@ const (
 
 // GetCursor retrieves a string from either the URLParams, form or query string.
 // This method uses the priority (URLParams, Form, Query).
-func (base *Base) GetCursor(name string) string {
+func (base *Base) GetCursor(name string) (cursor string) {
 	if base.Err != nil {
 		return ""
 	}
 
-	cursor, err := GetCursor(base.R, name)
-
-	if err != nil {
-		base.Err = err
-		return ""
-	}
+	cursor, base.Err = GetCursor(base.R, name)
 
 	return cursor
 }
