@@ -166,11 +166,28 @@ func TestOfferActions_Index(t *testing.T) {
 
 	ht.Assert.NoError(q.UpdateLastLedgerExpIngest(3))
 	ht.Assert.NoError(q.UpsertOffer(eurOffer, 3))
-	ht.Assert.NoError(q.UpsertOffer(twoEurOffer, 20))
+	ht.Assert.NoError(q.UpsertOffer(twoEurOffer, 3))
 
 	w := ht.Get("/offers")
 
-	ht.Assert.Equal(200, w.Code)
+	fmt.Println(string(w.Body.Bytes()))
+	if ht.Assert.Equal(200, w.Code) {
+		ht.Assert.PageOf(2, w.Body)
+
+		var records []horizon.Offer
+		ht.UnmarshalPage(w.Body, &records)
+
+		ht.Assert.Equal(int64(eurOffer.OfferId), records[0].ID)
+		ht.Assert.Equal("native", records[0].Selling.Type)
+		ht.Assert.Equal("credit_alphanum4", records[0].Buying.Type)
+		ht.Assert.Equal(issuer.Address(), records[0].Seller)
+		ht.Assert.Equal(issuer.Address(), records[0].Buying.Issuer)
+		ht.Assert.Equal(int32(3), records[0].LastModifiedLedger)
+
+		lastModifiedTime, err := time.Parse("2006-01-02 15:04:05", "2019-06-03 16:34:02")
+		ht.Require.NoError(err)
+		ht.Assert.Equal(lastModifiedTime, *records[0].LastModifiedTime)
+	}
 }
 
 func TestOfferActionsStillIngesting_Index(t *testing.T) {

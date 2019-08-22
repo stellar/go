@@ -19,6 +19,7 @@ import (
 	"github.com/stellar/go/services/horizon/internal/toid"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/support/log"
+	"github.com/stellar/go/support/render/hal"
 	"github.com/stellar/go/support/render/httpjson"
 	"github.com/stellar/go/support/render/problem"
 )
@@ -265,5 +266,38 @@ func getAllOffersResource(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	httpjson.Render(w, records, httpjson.HALJSON)
+	page := hal.Page{
+		// Cursor: pq.Cursor,
+		// Order:  pq.Order,
+		// Limit:  pq.Limit,
+	}
+
+	ledgerCache := history.LedgerCache{}
+	for _, record := range records {
+		ledgerCache.Queue(int32(record.LastModifiedLedger))
+	}
+
+	err = ledgerCache.Load(app.HistoryQ())
+
+	if err != nil {
+		problem.Render(ctx, w, errors.Wrap(err, "failed to load ledger batch"))
+		return
+	}
+
+	for _, record := range records {
+		var offerResponse horizon.Offer
+
+		ledger, found := ledgerCache.Records[int32(record.LastModifiedLedger)]
+		ledgerPtr := &ledger
+		if !found {
+			ledgerPtr = nil
+		}
+
+		resourceadapter.PopulateHistoryOffer(ctx, &offerResponse, record, ledgerPtr)
+		page.Add(offerResponse)
+	}
+
+	page.FullURL = actions.FullURL(ctx)
+	page.PopulateLinks()
+	httpjson.Render(w, page, httpjson.HALJSON)
 }
