@@ -47,20 +47,6 @@ commands:
   install_go_deps:
     steps:
       - checkout
-      - run:
-          name: Install dep
-          command: curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh
-      - restore_cache:
-          keys:
-            - v1-pkg-cache
-      - run:
-          name: Install project dependencies using dep
-          command: dep ensure -v
-      - save_cache:
-          key: v1-pkg-cache
-          paths:
-            - "/go/src/github.com/stellar/go/vendor"
-            - "/go/src/pkg/dep"
 
   # test_packages performs tests on all packages of the monorepo.
   test_packages:
@@ -108,6 +94,8 @@ jobs:
     working_directory: /go/src/github.com/stellar/go
     docker:
       - image: circleci/golang:1.11-stretch
+        environment:
+          GO111MODULE: "on"
     steps:
       - govet
 
@@ -116,6 +104,8 @@ jobs:
     working_directory: /go/src/github.com/stellar/go
     docker:
       - image: circleci/golang:1.12-stretch
+        environment:
+          GO111MODULE: "on"
     steps:
       - install_go_deps
       - gofmt
@@ -128,6 +118,7 @@ jobs:
     docker:
       - image: circleci/golang:1.11-stretch
         environment:
+          GO111MODULE: "on"
           PGHOST: localhost
           PGPORT: 5432
           PGUSER: circleci
@@ -148,6 +139,7 @@ jobs:
     docker:
       - image: circleci/golang:1.12-stretch
         environment:
+          GO111MODULE: "on"
           PGHOST: localhost
           PGPORT: 5432
           PGUSER: circleci
