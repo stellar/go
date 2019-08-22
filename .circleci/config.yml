@@ -81,6 +81,14 @@ commands:
             dockerize -wait tcp://localhost:6379 -timeout 1m
       - run:
           name: Run package tests
+          environment:
+            # When running on Docker in Circle, Go thinks there are 36 CPUs
+            # which means the default number of parallel build processes will be 36
+            # but using 36 build processes can lead to OOM errors
+            # because according to https://circleci.com/docs/2.0/configuration-reference/#resource_class ,
+            # the default Docker container only has 2 CPUs available.
+            # That is why we explicitly specify -p=4 to reduce the number of parallel build processes
+            GOFLAGS: -p=4
           command: ./support/scripts/run_tests
 
   # build_packages creates the project's artifacts.
