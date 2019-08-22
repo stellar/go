@@ -2,16 +2,20 @@ package scenarios
 
 import (
 	"bytes"
+	"io/ioutil"
 	"log"
 	"os/exec"
 )
 
-//go:generate go-bindata -ignore (go|rb)$ -pkg scenarios .
+//go:generate go run assets_generate.go
 
 // Load executes the sql script at `path` on postgres database at `url`
 func Load(url string, path string) {
-	sql, err := Asset(path)
-
+	file, err := assets.Open(path)
+	if err != nil {
+		log.Panic(err)
+	}
+	sql, err := ioutil.ReadAll(file)
 	if err != nil {
 		log.Panic(err)
 	}

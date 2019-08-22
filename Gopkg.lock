@@ -618,6 +618,25 @@
   revision = "83532ca1c1caa393179c677b6facf48e61f4ca5d"
 
 [[projects]]
+  branch = "master"
+  digest = "1:4a0243e7807071601369ff7ed5ccf7769fb27d8a1fd7db4926c41dedf9e32058"
+  name = "github.com/shurcooL/httpfs"
+  packages = [
+    "filter",
+    "vfsutil",
+  ]
+  pruneopts = "T"
+  revision = "8d4bc4ba774931155e6cd5ef6098cb038dd45135"
+
+[[projects]]
+  branch = "master"
+  digest = "1:7035b65f829b3dff911034dcbf0ae67907d85d9df6a856d766fbf1dc7437f2cb"
+  name = "github.com/shurcooL/vfsgen"
+  packages = ["."]
+  pruneopts = "T"
+  revision = "6a9ea43bcacdf716a5c1b38efff722c07adf0069"
+
+[[projects]]
   digest = "1:39553373857c2f3d484b9e1e4474bf6f21a795fe14fe6b941362ee6b266416f3"
   name = "github.com/sirupsen/logrus"
   packages = [
@@ -947,6 +966,8 @@
     "github.com/rubenv/sql-migrate",
     "github.com/sebest/xff",
     "github.com/segmentio/go-loggly",
+    "github.com/shurcooL/httpfs/filter",
+    "github.com/shurcooL/vfsgen",
     "github.com/sirupsen/logrus",
     "github.com/sirupsen/logrus/hooks/test",
     "github.com/spf13/cobra",

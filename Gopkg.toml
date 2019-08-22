@@ -81,3 +81,7 @@
 [[constraint]]
   branch = "master"
   name = "github.com/graph-gophers/graphql-go"
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/shurcooL/httpfs"
