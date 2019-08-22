@@ -7,7 +7,7 @@ import (
 	"github.com/stellar/go/services/horizon/internal/test"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
-	"github.com/throttled/throttled"
+	"github.com/bartekn/throttled"
 )
 
 type RateLimitMiddlewareTestSuite struct {
