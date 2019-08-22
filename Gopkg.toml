@@ -3,8 +3,8 @@
   name = "bitbucket.org/ww/goautoneg"
 
 [[constraint]]
+  branch = "master"
   name = "github.com/asaskevich/govalidator"
-  source = "https://github.com/asaskevich/govalidator.git"
 
 [[constraint]]
   name = "github.com/go-chi/chi"
