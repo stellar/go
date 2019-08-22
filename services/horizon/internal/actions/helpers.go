@@ -64,7 +64,7 @@ func GetCursor(r *http.Request, name string) (string, error) {
 	cursor, err := GetString(r, name)
 
 	if err != nil {
-		return "", problem.MakeInvalidFieldProblem(name, err)
+		return "", err
 	}
 
 	if cursor == "now" {
