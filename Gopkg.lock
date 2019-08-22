@@ -586,14 +586,15 @@
   version = "v.11"
 
 [[projects]]
-  digest = "1:aeebf12d5c8463faab36c6f9904e36cc9d825a7a3c735ad160a0abd09c71017d"
+  branch = "master"
+  digest = "1:58e8415f3d41ba3f464bfb3c572400965a0eb7ab354c34d5c1f9b67a18e7e651"
   name = "github.com/rubenv/sql-migrate"
   packages = [
     ".",
     "sqlparse",
   ]
   pruneopts = "T"
-  revision = "53184e1edfb4f9655b0fa8dd2c23e7763f452bda"
+  revision = "87ce952f7079c58e10a2a85835202943ebb9580c"
 
 [[projects]]
   digest = "1:746e354627daf5948dc32970502e849e6e49e575f6de9dcf06bdaea47997a802"

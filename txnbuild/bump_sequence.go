@@ -24,3 +24,15 @@ func (bs *BumpSequence) BuildXDR() (xdr.Operation, error) {
 	SetOpSourceAccount(&op, bs.SourceAccount)
 	return op, nil
 }
+
+// FromXDR for BumpSequence initialises the txnbuild struct from the corresponding xdr Operation.
+func (bs *BumpSequence) FromXDR(xdrOp xdr.Operation) error {
+	result, ok := xdrOp.Body.GetBumpSequenceOp()
+	if !ok {
+		return errors.New("error parsing bump_sequence operation from xdr")
+	}
+
+	bs.SourceAccount = accountFromXDR(xdrOp.SourceAccount)
+	bs.BumpTo = int64(result.BumpTo)
+	return nil
+}

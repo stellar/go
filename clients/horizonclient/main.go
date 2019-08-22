@@ -46,6 +46,9 @@ type includeFailed bool
 // AssetType represents `asset_type` param in queries
 type AssetType string
 
+// join represents `join` param in queries
+type join string
+
 const (
 	// OrderAsc represents an ascending order parameter
 	OrderAsc Order = "asc"
@@ -176,6 +179,8 @@ type ClientInterface interface {
 	NextTradesPage(hProtocol.TradesPage) (hProtocol.TradesPage, error)
 	PrevTradesPage(hProtocol.TradesPage) (hProtocol.TradesPage, error)
 	HomeDomainForAccount(aid string) (string, error)
+	NextTradeAggregationsPage(hProtocol.TradeAggregationsPage) (hProtocol.TradeAggregationsPage, error)
+	PrevTradeAggregationsPage(hProtocol.TradeAggregationsPage) (hProtocol.TradeAggregationsPage, error)
 }
 
 // DefaultTestNetClient is a default client to connect to test network.
@@ -271,6 +276,7 @@ type OperationRequest struct {
 	Cursor         string
 	Limit          uint
 	IncludeFailed  bool
+	Join           string
 	endpoint       string
 }
 

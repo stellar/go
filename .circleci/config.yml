@@ -81,6 +81,14 @@ commands:
             dockerize -wait tcp://localhost:6379 -timeout 1m
       - run:
           name: Run package tests
+          environment:
+            # When running on Docker in Circle, Go thinks there are 36 CPUs
+            # which means the default number of parallel build processes will be 36
+            # but using 36 build processes can lead to OOM errors
+            # because according to https://circleci.com/docs/2.0/configuration-reference/#resource_class ,
+            # the default Docker container only has 2 CPUs available.
+            # That is why we explicitly specify -p=4 to reduce the number of parallel build processes
+            GOFLAGS: -p=4
           command: ./support/scripts/run_tests
 
   # build_packages creates the project's artifacts.
@@ -95,14 +103,6 @@ commands:
 #-----------------------------------------------------------------------------#
 
 jobs:
-  # check_code_1_10 performs code checks using Go 1.10 (gofmt is only run for 1.12).
-  check_code_1_10:
-    working_directory: /go/src/github.com/stellar/go
-    docker:
-      - image: circleci/golang:1.10-stretch
-    steps:
-      - govet
-
   # check_code_1_11 performs code checks using Go 1.11 (gofmt is only run for 1.12).
   check_code_1_11:
     working_directory: /go/src/github.com/stellar/go
@@ -121,26 +121,6 @@ jobs:
       - gofmt
       - govet
       - staticcheck
-
-  # test_code_1_10 performs all package tests using Go 1.10.
-  test_code_1_10:
-    working_directory: /go/src/github.com/stellar/go
-    docker:
-      - image: circleci/golang:1.10-stretch
-        environment:
-          PGHOST: localhost
-          PGPORT: 5432
-          PGUSER: circleci
-          MYSQL_HOST: 127.0.0.1
-          MYSQL_PORT: 3306
-      - image: circleci/postgres:9.6.5-alpine-ram
-        environment:
-          POSTGRES_USER: circleci
-      - image: circleci/mysql:5.7
-      - image: circleci/redis:5.0-alpine
-    steps:
-      - install_go_deps
-      - test_packages
 
   # test_code_1_11 performs all package tests using Go 1.11.
   test_code_1_11:
@@ -199,12 +179,12 @@ jobs:
       - run:
           name: "Publish release on GitHub"
           command: |
-            if [ -d "./dist" ]
+            if [ "$(ls -A ./dist)" ]
             then
               go get github.com/tcnksm/ghr
               ghr -t ${GITHUB_TOKEN} -u ${CIRCLE_PROJECT_USERNAME} -r ${CIRCLE_PROJECT_REPONAME} -c ${CIRCLE_SHA1} ${CIRCLE_TAG} ./dist/
             else
-                echo "./dist does not exist. No binaries to publish for ${CIRCLE_TAG}."
+                echo "No files found in ./dist. No binaries to publish for ${CIRCLE_TAG}."
             fi
 #-------------------------------------------------------------------------#
 # Workflows orchestrate jobs and make sure they run in the right sequence #
@@ -215,10 +195,8 @@ workflows:
 
   check_code_and_test:
     jobs:
-      - check_code_1_10
       - check_code_1_11
       - check_code_1_12
-      - test_code_1_10
       - test_code_1_11
       - test_code_1_12
 

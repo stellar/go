@@ -9,6 +9,7 @@ bumps.  A breaking change will get clearly notified in this log.
 ## ???
 
 * Fix race condition in `mirror` command
+* Dropped support for Go 1.10.
 
 ## [v0.1.0] - 2016-08-17
 
