@@ -48,12 +48,12 @@
   revision = "523a5da1a92f01b01f840b61689c0340a0243532"
 
 [[projects]]
+  branch = "master"
   digest = "1:a9d72387197f5b54e24fd51499668fb597e25db8f5223bfb51db3bdd10e2d8eb"
   name = "github.com/asaskevich/govalidator"
   packages = ["."]
   pruneopts = "T"
   revision = "7d2e70ef918f16bd6455529af38304d6d025c952"
-  source = "https://github.com/asaskevich/govalidator.git"
 
 [[projects]]
   digest = "1:b6ce38ef977bd5df1f9a7824549f03e542b772edf86f565ad1392a9fa68b9676"
