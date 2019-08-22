@@ -17,10 +17,10 @@ var TypeNames = map[xdr.OperationType]string{
 	xdr.OperationTypeCreateAccount: "create_account",
 	xdr.OperationTypePayment:       "payment",
 	xdr.OperationTypePathPayment:   "path_payment",
-	// Action needed in release: horizon-v0.19.0
+	// Action needed in release: horizon-v0.22.0
 	// Change name to `manage_sell_offer`
 	xdr.OperationTypeManageSellOffer: "manage_offer",
-	// Action needed in release: horizon-v0.19.0
+	// Action needed in release: horizon-v0.22.0
 	// Change name to `create_passive_sell_offer`
 	xdr.OperationTypeCreatePassiveSellOffer: "create_passive_offer",
 	xdr.OperationTypeSetOptions:             "set_options",
@@ -136,6 +136,7 @@ type CreatePassiveSellOffer struct {
 // is ManageSellOffer.
 type ManageSellOffer struct {
 	Offer
+	// Action needed in release: horizon-v0.22.0
 	OfferID int64 `json:"offer_id"`
 }
 
@@ -143,6 +144,7 @@ type ManageSellOffer struct {
 // is ManageBuyOffer.
 type ManageBuyOffer struct {
 	Offer
+	// Action needed in release: horizon-v0.22.0
 	OfferID int64 `json:"offer_id"`
 }
 
