@@ -170,7 +170,6 @@ func TestOfferActions_Index(t *testing.T) {
 
 	w := ht.Get("/offers")
 
-	fmt.Println(string(w.Body.Bytes()))
 	if ht.Assert.Equal(200, w.Code) {
 		ht.Assert.PageOf(2, w.Body)
 

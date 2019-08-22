@@ -266,10 +266,16 @@ func getAllOffersResource(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	pq, err := actions.GetPageQuery(r)
+
+	if err != nil {
+		problem.Render(ctx, w, err)
+	}
+
 	page := hal.Page{
-		// Cursor: pq.Cursor,
-		// Order:  pq.Order,
-		// Limit:  pq.Limit,
+		Cursor: pq.Cursor,
+		Order:  pq.Order,
+		Limit:  pq.Limit,
 	}
 
 	ledgerCache := history.LedgerCache{}
