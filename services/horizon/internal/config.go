@@ -4,8 +4,8 @@ import (
 	"net/url"
 	"time"
 
-	"github.com/sirupsen/logrus"
 	"github.com/bartekn/throttled"
+	"github.com/sirupsen/logrus"
 )
 
 // Config is the configuration for horizon.  It gets populated by the
