@@ -53,7 +53,7 @@ func (s *LiveSession) Run() error {
 		return errors.Wrap(err, "initState error")
 	}
 
-	s.standardSession.latestProcessedLedger = currentLedger
+	s.standardSession.latestSuccessfullyProcessedLedger = currentLedger
 
 	// Exit early if Shutdown() was called.
 	select {
@@ -194,24 +194,26 @@ func (s *LiveSession) resume(ledgerSequence uint32, ledgerAdapter *adapters.Ledg
 			return nil
 		}
 
-		// Update cursor
+		if s.LedgerReporter != nil {
+			s.LedgerReporter.OnEndLedger(nil, false)
+		}
+		s.standardSession.latestSuccessfullyProcessedLedger = ledgerSequence
+
+		// Update cursor - this needs to be done after `latestSuccessfullyProcessedLedger`
+		// is updated as the cursor update shouldn't affect this value.
 		err = s.updateCursor(ledgerSequence)
 		if err != nil {
 			return errors.Wrap(err, "Error setting cursor")
 		}
 
-		if s.LedgerReporter != nil {
-			s.LedgerReporter.OnEndLedger(nil, false)
-		}
-		s.standardSession.latestProcessedLedger = ledgerSequence
 		ledgerSequence++
 	}
 
 	return nil
 }
 
-func (s *LiveSession) GetLatestProcessedLedger() uint32 {
-	return s.standardSession.latestProcessedLedger
+func (s *LiveSession) GetLatestSuccessfullyProcessedLedger() uint32 {
+	return s.standardSession.latestSuccessfullyProcessedLedger
 }
 
 func (s *LiveSession) validate() error {

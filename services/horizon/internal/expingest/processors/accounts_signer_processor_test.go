@@ -12,11 +12,11 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
-func TestDatabaseProcessorTestSuiteState(t *testing.T) {
-	suite.Run(t, new(DatabaseProcessorTestSuiteState))
+func TestAccountsSignerProcessorTestSuiteState(t *testing.T) {
+	suite.Run(t, new(AccountsSignerProcessorTestSuiteState))
 }
 
-type DatabaseProcessorTestSuiteState struct {
+type AccountsSignerProcessorTestSuiteState struct {
 	suite.Suite
 	processor       *DatabaseProcessor
 	mockQ           *history.MockQSigners
@@ -24,7 +24,7 @@ type DatabaseProcessorTestSuiteState struct {
 	mockStateWriter *io.MockStateWriter
 }
 
-func (s *DatabaseProcessorTestSuiteState) SetupTest() {
+func (s *AccountsSignerProcessorTestSuiteState) SetupTest() {
 	s.mockQ = &history.MockQSigners{}
 	s.mockStateReader = &io.MockStateReader{}
 	s.mockStateWriter = &io.MockStateWriter{}
@@ -44,13 +44,13 @@ func (s *DatabaseProcessorTestSuiteState) SetupTest() {
 		Return(nil).Once()
 }
 
-func (s *DatabaseProcessorTestSuiteState) TearDownTest() {
+func (s *AccountsSignerProcessorTestSuiteState) TearDownTest() {
 	s.mockQ.AssertExpectations(s.T())
 	s.mockStateReader.AssertExpectations(s.T())
 	s.mockStateWriter.AssertExpectations(s.T())
 }
 
-func (s *DatabaseProcessorTestSuiteState) TestNoEntries() {
+func (s *AccountsSignerProcessorTestSuiteState) TestNoEntries() {
 	s.mockStateReader.
 		On("Read").
 		Return(xdr.LedgerEntryChange{}, stdio.EOF).Once()
@@ -65,7 +65,7 @@ func (s *DatabaseProcessorTestSuiteState) TestNoEntries() {
 	s.Assert().NoError(err)
 }
 
-func (s *DatabaseProcessorTestSuiteState) TestInvalidEntry() {
+func (s *AccountsSignerProcessorTestSuiteState) TestInvalidEntry() {
 	s.mockStateReader.
 		On("Read").
 		Return(xdr.LedgerEntryChange{
@@ -82,7 +82,7 @@ func (s *DatabaseProcessorTestSuiteState) TestInvalidEntry() {
 	s.Assert().EqualError(err, "DatabaseProcessor requires LedgerEntryChangeTypeLedgerEntryState changes only")
 }
 
-func (s *DatabaseProcessorTestSuiteState) TestCreatesSigners() {
+func (s *AccountsSignerProcessorTestSuiteState) TestCreatesSigners() {
 	s.mockStateReader.
 		On("Read").
 		Return(xdr.LedgerEntryChange{
@@ -150,11 +150,11 @@ func (s *DatabaseProcessorTestSuiteState) TestCreatesSigners() {
 	s.Assert().NoError(err)
 }
 
-func TestDatabaseProcessorTestSuiteLedger(t *testing.T) {
-	suite.Run(t, new(DatabaseProcessorTestSuiteLedger))
+func TestAccountsSignerProcessorTestSuiteLedger(t *testing.T) {
+	suite.Run(t, new(AccountsSignerProcessorTestSuiteLedger))
 }
 
-type DatabaseProcessorTestSuiteLedger struct {
+type AccountsSignerProcessorTestSuiteLedger struct {
 	suite.Suite
 	processor        *DatabaseProcessor
 	mockQ            *history.MockQSigners
@@ -162,7 +162,7 @@ type DatabaseProcessorTestSuiteLedger struct {
 	mockLedgerWriter *io.MockLedgerWriter
 }
 
-func (s *DatabaseProcessorTestSuiteLedger) SetupTest() {
+func (s *AccountsSignerProcessorTestSuiteLedger) SetupTest() {
 	s.mockQ = &history.MockQSigners{}
 	s.mockLedgerReader = &io.MockLedgerReader{}
 	s.mockLedgerWriter = &io.MockLedgerWriter{}
@@ -182,13 +182,13 @@ func (s *DatabaseProcessorTestSuiteLedger) SetupTest() {
 		Return(nil).Once()
 }
 
-func (s *DatabaseProcessorTestSuiteLedger) TearDownTest() {
+func (s *AccountsSignerProcessorTestSuiteLedger) TearDownTest() {
 	s.mockQ.AssertExpectations(s.T())
 	s.mockLedgerReader.AssertExpectations(s.T())
 	s.mockLedgerWriter.AssertExpectations(s.T())
 }
 
-func (s *DatabaseProcessorTestSuiteLedger) TestNoTransactions() {
+func (s *AccountsSignerProcessorTestSuiteLedger) TestNoTransactions() {
 	s.mockLedgerReader.
 		On("Read").
 		Return(io.LedgerTransaction{}, stdio.EOF).Once()
@@ -203,7 +203,7 @@ func (s *DatabaseProcessorTestSuiteLedger) TestNoTransactions() {
 	s.Assert().NoError(err)
 }
 
-func (s *DatabaseProcessorTestSuiteLedger) TestNewAccount() {
+func (s *AccountsSignerProcessorTestSuiteLedger) TestNewAccount() {
 	s.mockLedgerReader.
 		On("Read").
 		Return(io.LedgerTransaction{
@@ -250,7 +250,7 @@ func (s *DatabaseProcessorTestSuiteLedger) TestNewAccount() {
 	s.Assert().NoError(err)
 }
 
-func (s *DatabaseProcessorTestSuiteLedger) TestNewSigner() {
+func (s *AccountsSignerProcessorTestSuiteLedger) TestNewSigner() {
 	s.mockLedgerReader.
 		On("Read").
 		Return(io.LedgerTransaction{
@@ -344,7 +344,7 @@ func (s *DatabaseProcessorTestSuiteLedger) TestNewSigner() {
 	s.Assert().NoError(err)
 }
 
-func (s *DatabaseProcessorTestSuiteLedger) TestSignerRemoved() {
+func (s *AccountsSignerProcessorTestSuiteLedger) TestSignerRemoved() {
 	s.mockLedgerReader.
 		On("Read").
 		Return(io.LedgerTransaction{
@@ -437,7 +437,7 @@ func (s *DatabaseProcessorTestSuiteLedger) TestSignerRemoved() {
 	s.Assert().NoError(err)
 }
 
-func (s *DatabaseProcessorTestSuiteLedger) TestRemoveAccount() {
+func (s *AccountsSignerProcessorTestSuiteLedger) TestRemoveAccount() {
 	s.mockLedgerReader.
 		On("Read").
 		Return(io.LedgerTransaction{

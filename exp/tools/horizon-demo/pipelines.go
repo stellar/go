@@ -19,18 +19,18 @@ func buildStatePipeline(db *Database, orderBookGraph *orderbook.OrderBookGraph) 
 	statePipeline := &pipeline.StatePipeline{}
 
 	statePipeline.SetRoot(
-		statePipeline.Node(&processors.RootProcessor{}).
+		pipeline.StateNode(&processors.RootProcessor{}).
 			Pipe(
-				statePipeline.Node(&processors.EntryTypeFilter{Type: xdr.LedgerEntryTypeAccount}).
+				pipeline.StateNode(&processors.EntryTypeFilter{Type: xdr.LedgerEntryTypeAccount}).
 					Pipe(
-						statePipeline.Node(&DatabaseProcessor{
+						pipeline.StateNode(&DatabaseProcessor{
 							Database: db,
 							Action:   AccountsForSigner,
 						}),
 					),
-				statePipeline.Node(&processors.EntryTypeFilter{Type: xdr.LedgerEntryTypeOffer}).
+				pipeline.StateNode(&processors.EntryTypeFilter{Type: xdr.LedgerEntryTypeOffer}).
 					Pipe(
-						statePipeline.Node(&OrderbookProcessor{
+						pipeline.StateNode(&OrderbookProcessor{
 							OrderBookGraph: orderBookGraph,
 						}),
 					),
@@ -44,16 +44,16 @@ func buildLedgerPipeline(db *Database, orderBookGraph *orderbook.OrderBookGraph)
 	ledgerPipeline := &pipeline.LedgerPipeline{}
 
 	ledgerPipeline.SetRoot(
-		ledgerPipeline.Node(&processors.RootProcessor{}).Pipe(
-			ledgerPipeline.Node(&DatabaseProcessor{
+		pipeline.LedgerNode(&processors.RootProcessor{}).Pipe(
+			pipeline.LedgerNode(&DatabaseProcessor{
 				Database: db,
 				Action:   AccountsForSigner,
 			}),
-			ledgerPipeline.Node(&DatabaseProcessor{
+			pipeline.LedgerNode(&DatabaseProcessor{
 				Database: db,
 				Action:   Transactions,
 			}),
-			ledgerPipeline.Node(&OrderbookProcessor{
+			pipeline.LedgerNode(&OrderbookProcessor{
 				OrderBookGraph: orderBookGraph,
 			}),
 		),
@@ -68,10 +68,10 @@ func addPipelineHooks(
 	session ingest.Session,
 	orderBookGraph *orderbook.OrderBookGraph,
 ) {
-	p.AddPreProcessingHook(func(ctx context.Context) error {
+	p.AddPreProcessingHook(func(ctx context.Context) (context.Context, error) {
 		ledgerSeq := pipeline.GetLedgerSequenceFromContext(ctx)
 		fmt.Printf("%T Processing ledger: %d\n", p, ledgerSeq)
-		return db.Begin()
+		return ctx, db.Begin()
 	})
 
 	p.AddPostProcessingHook(func(ctx context.Context, err error) error {

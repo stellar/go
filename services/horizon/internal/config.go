@@ -44,6 +44,11 @@ type Config struct {
 	TLSKey string
 	// Ingest toggles whether this horizon instance should run the data ingestion subsystem.
 	Ingest bool
+	// EnableExperimentalIngestion  a feature flag that enables the exprimental ingestion subsystem.
+	// If this flag is true then the following features in horizon will be available:
+	// * In-Memory path finding
+	// * Accounts for signers endpoint
+	EnableExperimentalIngestion bool
 	// IngestFailedTransactions toggles whether to ingest failed transactions
 	IngestFailedTransactions bool
 	// CursorName is the cursor used for ingesting from stellar-core.
@@ -68,7 +73,4 @@ type Config struct {
 	// Enabling it has a negative impact on CPU when ingesting ledgers full of
 	// many different assets related operations.
 	EnableAssetStats bool
-	// EnableAccountsForSigner is a feature flag that enables an experimental "accounts for signer"
-	// endpoint. This endpoint uses a new ingestion system based primarily on historical archives.
-	EnableAccountsForSigner bool
 }

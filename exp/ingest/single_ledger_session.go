@@ -29,7 +29,7 @@ func (s *SingleLedgerSession) Run() error {
 		return errors.Wrap(err, "processState errored")
 	}
 
-	s.standardSession.latestProcessedLedger = sequence
+	s.standardSession.latestSuccessfullyProcessedLedger = sequence
 	return nil
 }
 

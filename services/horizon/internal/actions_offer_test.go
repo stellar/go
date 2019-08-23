@@ -2,13 +2,121 @@ package horizon
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 	"net/http/httptest"
 	"testing"
 	"time"
 
+	"github.com/stellar/go/protocols/horizon"
+	"github.com/stellar/go/services/horizon/internal/db2/history"
+	"github.com/stellar/go/services/horizon/internal/render/problem"
 	"github.com/stellar/go/services/horizon/internal/render/sse"
 	"github.com/stellar/go/services/horizon/internal/test"
+	"github.com/stellar/go/xdr"
 )
+
+func TestOfferActions_Show(t *testing.T) {
+	var (
+		issuer = xdr.MustAddress("GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H")
+
+		nativeAsset = xdr.Asset{
+			Type: xdr.AssetTypeAssetTypeNative,
+		}
+
+		eurAsset = xdr.Asset{
+			Type: xdr.AssetTypeAssetTypeCreditAlphanum4,
+			AlphaNum4: &xdr.AssetAlphaNum4{
+				AssetCode: [4]byte{'e', 'u', 'r', 0},
+				Issuer:    issuer,
+			},
+		}
+		eurOffer = xdr.OfferEntry{
+			SellerId: issuer,
+			OfferId:  xdr.Int64(4),
+			Buying:   eurAsset,
+			Selling:  nativeAsset,
+			Price: xdr.Price{
+				N: 1,
+				D: 1,
+			},
+			Flags:  1,
+			Amount: xdr.Int64(500),
+		}
+		twoEurOffer = xdr.OfferEntry{
+			SellerId: issuer,
+			OfferId:  xdr.Int64(5),
+			Buying:   eurAsset,
+			Selling:  nativeAsset,
+			Price: xdr.Price{
+				N: 2,
+				D: 1,
+			},
+			Flags:  2,
+			Amount: xdr.Int64(500),
+		}
+	)
+
+	ht := StartHTTPTest(t, "base")
+	ht.App.config.EnableExperimentalIngestion = true
+	defer ht.Finish()
+	q := &history.Q{ht.HorizonSession()}
+
+	ht.Assert.NoError(q.UpdateLastLedgerExpIngest(3))
+	ht.Assert.NoError(q.UpsertOffer(eurOffer, 3))
+	ht.Assert.NoError(q.UpsertOffer(twoEurOffer, 20))
+
+	w := ht.Get(fmt.Sprintf("/offers/%v", eurOffer.OfferId))
+
+	if ht.Assert.Equal(200, w.Code) {
+		var result horizon.Offer
+		err := json.Unmarshal(w.Body.Bytes(), &result)
+		ht.Require.NoError(err)
+		ht.Assert.Equal(int64(eurOffer.OfferId), result.ID)
+		ht.Assert.Equal("native", result.Selling.Type)
+		ht.Assert.Equal("credit_alphanum4", result.Buying.Type)
+		ht.Assert.Equal(issuer.Address(), result.Seller)
+		ht.Assert.Equal(issuer.Address(), result.Buying.Issuer)
+		ht.Assert.Equal(int32(3), result.LastModifiedLedger)
+
+		lastModifiedTime, err := time.Parse("2006-01-02 15:04:05", "2019-06-03 16:34:02")
+		ht.Require.NoError(err)
+		ht.Assert.Equal(lastModifiedTime, *result.LastModifiedTime)
+	}
+
+	w = ht.Get(fmt.Sprintf("/offers/%v", twoEurOffer.OfferId))
+
+	if ht.Assert.Equal(200, w.Code) {
+		var result horizon.Offer
+		err := json.Unmarshal(w.Body.Bytes(), &result)
+		ht.Require.NoError(err)
+		ht.Assert.Equal(int32(20), result.LastModifiedLedger)
+		ht.Assert.Nil(result.LastModifiedTime)
+	}
+}
+
+func TestOfferActions_OfferDoesNotExist(t *testing.T) {
+	ht := StartHTTPTest(t, "base")
+	ht.App.config.EnableExperimentalIngestion = true
+	defer ht.Finish()
+	q := &history.Q{ht.HorizonSession()}
+	ht.Assert.NoError(q.UpdateLastLedgerExpIngest(3))
+
+	w := ht.Get("/offers/123456")
+
+	ht.Assert.Equal(404, w.Code)
+}
+
+func TestOfferActionsStillIngesting_Show(t *testing.T) {
+	ht := StartHTTPTest(t, "base")
+	ht.App.config.EnableExperimentalIngestion = true
+	defer ht.Finish()
+	q := &history.Q{ht.HorizonSession()}
+	ht.Assert.NoError(q.UpdateLastLedgerExpIngest(0))
+
+	w := ht.Get("/offers/123456")
+	ht.Assert.Equal(problem.StillIngesting.Status, w.Code)
+}
 
 func TestOfferActions_Index(t *testing.T) {
 	ht := StartHTTPTest(t, "trades")

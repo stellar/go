@@ -8,7 +8,6 @@ import (
 	"github.com/stellar/go/services/horizon/internal/db2"
 	"github.com/stellar/go/services/horizon/internal/db2/core"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
-	"github.com/stellar/go/services/horizon/internal/render/problem"
 	"github.com/stellar/go/services/horizon/internal/test"
 	"github.com/stretchr/testify/assert"
 )
@@ -32,20 +31,10 @@ func TestAccountInfo(t *testing.T) {
 	}
 }
 
-func TestAccountPageStillIngesting(t *testing.T) {
-	mockQ := &history.MockQSigners{}
-
-	mockQ.On("GetLastLedgerExpIngest").Return(uint32(0), nil).Once()
-
-	_, err := AccountPage(context.Background(), mockQ, "", db2.PageQuery{})
-	assert.Error(t, err)
-	assert.Equal(t, err, problem.StillIngesting)
-}
-
 func TestAccountPageNoResults(t *testing.T) {
 	mockQ := &history.MockQSigners{}
 
-	mockQ.On("GetLastLedgerExpIngest").Return(uint32(10), nil).Once()
+	mockQ.On("GetLastLedgerExpIngestNonBlocking").Return(uint32(10), nil).Once()
 
 	mockQ.
 		On(
@@ -68,7 +57,7 @@ func TestAccountPageNoResults(t *testing.T) {
 func TestAccountPageResults(t *testing.T) {
 	mockQ := &history.MockQSigners{}
 
-	mockQ.On("GetLastLedgerExpIngest").Return(uint32(10), nil).Once()
+	mockQ.On("GetLastLedgerExpIngestNonBlocking").Return(uint32(10), nil).Once()
 
 	pq := db2.PageQuery{
 		Order: "asc",

@@ -31,7 +31,7 @@ func (s *MemoryTempSet) Exist(key string) (bool, error) {
 	return s.m[key], nil
 }
 
-// Close dereferences internal data structure.
+// Close removes reference to internal data structure.
 func (s *MemoryTempSet) Close() error {
 	s.m = nil
 	return nil

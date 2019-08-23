@@ -21,11 +21,11 @@ func main() {
 	statePipeline := &pipeline.StatePipeline{}
 	statePipeline.SetRoot(
 		// Passes accounts only
-		statePipeline.Node(&processors.EntryTypeFilter{Type: xdr.LedgerEntryTypeAccount}).
+		pipeline.StateNode(&processors.EntryTypeFilter{Type: xdr.LedgerEntryTypeAccount}).
 			Pipe(
 				// Finds accounts for a single signer
-				statePipeline.Node(&AccountsForSignerProcessor{Signer: "GBMALBYJT6A73SYQWOWVVCGSPUPJPBX4AFDJ7A63GG64QCNRCAFYWWEN"}).
-					Pipe(statePipeline.Node(&processors.CSVPrinter{Filename: "./accounts_for_signer.csv"})),
+				pipeline.StateNode(&AccountsForSignerProcessor{Signer: "GBMALBYJT6A73SYQWOWVVCGSPUPJPBX4AFDJ7A63GG64QCNRCAFYWWEN"}).
+					Pipe(pipeline.StateNode(&processors.CSVPrinter{Filename: "./accounts_for_signer.csv"})),
 			),
 	)
 

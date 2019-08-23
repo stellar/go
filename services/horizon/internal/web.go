@@ -115,7 +115,7 @@ func (w *web) mustInstallMiddlewares(app *App, connTimeout time.Duration) {
 
 // mustInstallActions installs the routing configuration of horizon onto the
 // provided app.  All route registration should be implemented here.
-func (w *web) mustInstallActions(enableAssetStats bool, enableAccountsForSigner bool, friendbotURL *url.URL) {
+func (w *web) mustInstallActions(enableAssetStats bool, friendbotURL *url.URL) {
 	if w == nil {
 		log.Fatal("missing web instance for installing web actions")
 	}
@@ -138,9 +138,8 @@ func (w *web) mustInstallActions(enableAssetStats bool, enableAccountsForSigner 
 
 	// account actions
 	r.Route("/accounts", func(r chi.Router) {
-		if enableAccountsForSigner {
-			r.Get("/", accountIndexActionHandler(w.getAccountPage))
-		}
+		r.With(requiresExperimentalIngestion).
+			Get("/", accountIndexActionHandler(w.getAccountPage))
 		r.Route("/{account_id}", func(r chi.Router) {
 			r.Get("/", w.streamShowActionHandler(w.getAccountInfo, true))
 			r.Get("/transactions", w.streamIndexActionHandler(w.getTransactionPage, w.streamTransactions))
@@ -181,7 +180,8 @@ func (w *web) mustInstallActions(enableAssetStats bool, enableAccountsForSigner 
 	r.Get("/trades", TradeIndexAction{}.Handle)
 	r.Get("/trade_aggregations", TradeAggregateIndexAction{}.Handle)
 	r.Route("/offers", func(r chi.Router) {
-		r.Get("/{id}", NotImplementedAction{}.Handle)
+		r.With(acceptOnlyJSON, requiresExperimentalIngestion).
+			Get("/{id}", getOfferResource)
 		r.Get("/{offer_id}/trades", TradeIndexAction{}.Handle)
 	})
 	r.Get("/order_book", OrderBookShowAction{}.Handle)
@@ -189,6 +189,8 @@ func (w *web) mustInstallActions(enableAssetStats bool, enableAccountsForSigner 
 	// Transaction submission API
 	r.Post("/transactions", TransactionCreateAction{}.Handle)
 	r.Get("/paths", PathIndexAction{}.Handle)
+	r.Get("/paths/strict-receive", PathIndexAction{}.Handle)
+	r.Get("/paths/strict-send", FixedPathIndexAction{}.Handle)
 
 	if enableAssetStats {
 		// Asset related endpoints

@@ -40,10 +40,9 @@ func TestFinder(t *testing.T) {
 		"GDSBCQO34HWPGUGQSP3QBFEXVTSR2PW46UIGTHVWGWJGQKH3AFNHXHXN")
 
 	query := paths.Query{
-		DestinationAddress: "GAEDTJ4PPEFVW5XV2S7LUXBEHNQMX5Q2GM562RJGOQG7GVCE5H3HIB4V",
-		DestinationAsset:   eur,
-		DestinationAmount:  xdr.Int64(200000000), // 20.0000000
-		SourceAssets:       []xdr.Asset{usd},
+		DestinationAsset:  eur,
+		DestinationAmount: xdr.Int64(200000000), // 20.0000000
+		SourceAssets:      []xdr.Asset{usd},
 	}
 
 	p, err := finder.Find(query, MaxPathLength)
@@ -55,7 +54,8 @@ func TestFinder(t *testing.T) {
 		// - selling 10 USD for EUR, price = 0.5
 		tt.Assert.Equal(p[0].Source.String(), usd.String())
 		tt.Assert.Equal(p[0].Destination.String(), eur.String())
-		tt.Assert.Equal(p[0].Cost, xdr.Int64(100000000)) // 10.0000000
+		tt.Assert.Equal(p[0].SourceAmount, xdr.Int64(100000000)) // 10.0000000
+		tt.Assert.Equal(p[0].DestinationAmount, xdr.Int64(200000000))
 		tt.Assert.Len(p[0].Path, 0)
 
 		// Consuming offers:
@@ -63,7 +63,8 @@ func TestFinder(t *testing.T) {
 		// - selling 20 `1` for EUR, price = 1
 		tt.Assert.Equal(p[1].Source.String(), usd.String())
 		tt.Assert.Equal(p[1].Destination.String(), eur.String())
-		tt.Assert.Equal(p[1].Cost, xdr.Int64(200000000))
+		tt.Assert.Equal(p[1].SourceAmount, xdr.Int64(200000000))
+		tt.Assert.Equal(p[1].DestinationAmount, xdr.Int64(200000000))
 		if tt.Assert.Len(p[1].Path, 1) {
 			tt.Assert.Equal(p[1].Path[0].String(), inter1.String())
 		}
@@ -74,7 +75,8 @@ func TestFinder(t *testing.T) {
 		// - selling 20 `22` for EUR, price = 1
 		tt.Assert.Equal(p[2].Source.String(), usd.String())
 		tt.Assert.Equal(p[2].Destination.String(), eur.String())
-		tt.Assert.Equal(p[2].Cost, xdr.Int64(200000000))
+		tt.Assert.Equal(p[2].SourceAmount, xdr.Int64(200000000))
+		tt.Assert.Equal(p[2].DestinationAmount, xdr.Int64(200000000))
 		if tt.Assert.Len(p[2].Path, 2) {
 			tt.Assert.Equal(p[2].Path[0].String(), inter21.String())
 			tt.Assert.Equal(p[2].Path[1].String(), inter22.String())
@@ -88,12 +90,14 @@ func TestFinder(t *testing.T) {
 
 		tt.Assert.Equal(p[0].Source.String(), usd.String())
 		tt.Assert.Equal(p[0].Destination.String(), eur.String())
-		tt.Assert.Equal(p[0].Cost, xdr.Int64(100000001))
+		tt.Assert.Equal(p[0].SourceAmount, xdr.Int64(100000001))
+		tt.Assert.Equal(p[0].DestinationAmount, xdr.Int64(200000001))
 		tt.Assert.Len(p[0].Path, 0)
 
 		tt.Assert.Equal(p[1].Source.String(), usd.String())
 		tt.Assert.Equal(p[1].Destination.String(), eur.String())
-		tt.Assert.Equal(p[1].Cost, xdr.Int64(200000001))
+		tt.Assert.Equal(p[1].SourceAmount, xdr.Int64(200000001))
+		tt.Assert.Equal(p[1].DestinationAmount, xdr.Int64(200000001))
 		if tt.Assert.Len(p[1].Path, 2) {
 			tt.Assert.Equal(p[1].Path[0].String(), inter21.String())
 			tt.Assert.Equal(p[1].Path[1].String(), inter22.String())
@@ -109,10 +113,9 @@ func TestFinder(t *testing.T) {
 	//  regression: paths that involve native currencies can be found
 
 	query = paths.Query{
-		DestinationAddress: "GDSBCQO34HWPGUGQSP3QBFEXVTSR2PW46UIGTHVWGWJGQKH3AFNHXHXN",
-		DestinationAsset:   native,
-		DestinationAmount:  xdr.Int64(1),
-		SourceAssets:       []xdr.Asset{usd, native},
+		DestinationAsset:  native,
+		DestinationAmount: xdr.Int64(1),
+		SourceAssets:      []xdr.Asset{usd, native},
 	}
 	p, err = finder.Find(query, MaxPathLength)
 	if tt.Assert.NoError(err) {
@@ -145,17 +148,17 @@ func TestFinder(t *testing.T) {
 		"GDSBCQO34HWPGUGQSP3QBFEXVTSR2PW46UIGTHVWGWJGQKH3AFNHXHXN")
 
 	query = paths.Query{
-		DestinationAddress: "GDSBCQO34HWPGUGQSP3QBFEXVTSR2PW46UIGTHVWGWJGQKH3AFNHXHXN",
-		DestinationAsset:   ccc,
-		DestinationAmount:  xdr.Int64(100000000), // 10.0
-		SourceAssets:       []xdr.Asset{aaa},
+		DestinationAsset:  ccc,
+		DestinationAmount: xdr.Int64(100000000), // 10.0
+		SourceAssets:      []xdr.Asset{aaa},
 	}
 	p, err = finder.Find(query, MaxPathLength)
 	if tt.Assert.NoError(err) {
 		if tt.Assert.Len(p, 1) {
 			tt.Assert.Equal(p[0].Source.String(), aaa.String())
 			tt.Assert.Equal(p[0].Destination.String(), ccc.String())
-			tt.Assert.Equal(p[0].Cost, xdr.Int64(110000000)) // 11.0
+			tt.Assert.Equal(p[0].SourceAmount, xdr.Int64(110000000))      // 11.0
+			tt.Assert.Equal(p[0].DestinationAmount, xdr.Int64(100000000)) // 10.0
 			if tt.Assert.Len(p[0].Path, 1) {
 				tt.Assert.Equal(p[0].Path[0].String(), bbb.String())
 			}

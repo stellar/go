@@ -24,16 +24,16 @@ func main() {
 
 	statePipeline := &pipeline.StatePipeline{}
 	statePipeline.SetRoot(
-		statePipeline.Node(&processors.RootProcessor{}).
+		pipeline.StateNode(&processors.RootProcessor{}).
 			Pipe(
-				statePipeline.Node(&processors.EntryTypeFilter{Type: xdr.LedgerEntryTypeAccount}).
-					Pipe(statePipeline.Node(&processors.CSVPrinter{Filename: "./accounts.csv"})),
-				statePipeline.Node(&processors.EntryTypeFilter{Type: xdr.LedgerEntryTypeData}).
-					Pipe(statePipeline.Node(&processors.CSVPrinter{Filename: "./accountdata.csv"})),
-				statePipeline.Node(&processors.EntryTypeFilter{Type: xdr.LedgerEntryTypeOffer}).
-					Pipe(statePipeline.Node(&processors.CSVPrinter{Filename: "./offers.csv"})),
-				statePipeline.Node(&processors.EntryTypeFilter{Type: xdr.LedgerEntryTypeTrustline}).
-					Pipe(statePipeline.Node(&processors.CSVPrinter{Filename: "./trustlines.csv"})),
+				pipeline.StateNode(&processors.EntryTypeFilter{Type: xdr.LedgerEntryTypeAccount}).
+					Pipe(pipeline.StateNode(&processors.CSVPrinter{Filename: "./accounts.csv"})),
+				pipeline.StateNode(&processors.EntryTypeFilter{Type: xdr.LedgerEntryTypeData}).
+					Pipe(pipeline.StateNode(&processors.CSVPrinter{Filename: "./accountdata.csv"})),
+				pipeline.StateNode(&processors.EntryTypeFilter{Type: xdr.LedgerEntryTypeOffer}).
+					Pipe(pipeline.StateNode(&processors.CSVPrinter{Filename: "./offers.csv"})),
+				pipeline.StateNode(&processors.EntryTypeFilter{Type: xdr.LedgerEntryTypeTrustline}).
+					Pipe(pipeline.StateNode(&processors.CSVPrinter{Filename: "./trustlines.csv"})),
 			),
 	)
 

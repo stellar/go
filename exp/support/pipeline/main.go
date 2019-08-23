@@ -41,7 +41,7 @@ type multiWriter struct {
 type Pipeline struct {
 	root *PipelineNode
 
-	preProcessingHooks  []func(context.Context) error
+	preProcessingHooks  []func(context.Context) (context.Context, error)
 	postProcessingHooks []func(context.Context, error) error
 
 	// mutex protects internal fields that may be modified from
@@ -57,7 +57,10 @@ type Pipeline struct {
 // in structs that embed Pipeline.
 type PipelineInterface interface {
 	SetRoot(rootProcessor *PipelineNode)
-	AddPreProcessingHook(hook func(context.Context) error)
+	// AddPreProcessingHook adds a pre-processing hook function. Returned
+	// context.Context will be passed to the processors. If error is returned
+	// pipeline will not start processing data.
+	AddPreProcessingHook(hook func(context.Context) (context.Context, error))
 	AddPostProcessingHook(hook func(context.Context, error) error)
 	Shutdown()
 	PrintStatus()

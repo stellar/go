@@ -58,9 +58,9 @@ func TestHooksCalled(t *testing.T) {
 	)
 
 	preHookCalled := false
-	p.AddPreProcessingHook(func(ctx context.Context) error {
+	p.AddPreProcessingHook(func(ctx context.Context) (context.Context, error) {
 		preHookCalled = true
-		return nil
+		return ctx, nil
 	})
 
 	postHookCalled := false
