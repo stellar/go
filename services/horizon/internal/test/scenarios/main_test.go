@@ -6,15 +6,19 @@ import (
 	"strings"
 	"testing"
 
+	assetfs "github.com/elazarl/go-bindata-assetfs"
 	"github.com/shurcooL/httpfs/filter"
+
 	supportHttp "github.com/stellar/go/support/http"
 )
 
 func TestGeneratedAssets(t *testing.T) {
-	var localAssets http.FileSystem = filter.Keep(http.Dir("assets"), func(path string, fi os.FileInfo) bool {
+	var localAssets http.FileSystem = filter.Keep(http.Dir("."), func(path string, fi os.FileInfo) bool {
 		return fi.IsDir() || strings.HasSuffix(path, ".sql")
 	})
-	if !supportHttp.EqualFileSystems(localAssets, assets, "/") {
+	generatedAssets := &assetfs.AssetFS{Asset: Asset, AssetDir: AssetDir, AssetInfo: AssetInfo}
+
+	if !supportHttp.EqualFileSystems(localAssets, generatedAssets, "/") {
 		t.Fatalf("generated migrations does not match local migrations")
 	}
 }

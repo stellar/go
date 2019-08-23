@@ -3,16 +3,13 @@ package schema
 import (
 	"database/sql"
 	"errors"
-	"io/ioutil"
 	stdLog "log"
-	"net/http"
-	"path/filepath"
 
 	migrate "github.com/rubenv/sql-migrate"
 	"github.com/stellar/go/support/db"
 )
 
-//go:generate go run assets_generate.go
+//go:generate go-bindata -ignore .+\.go$ -pkg schema -o bindata.go ./...
 
 // MigrateDir represents a direction in which to perform schema migrations.
 type MigrateDir string
@@ -26,32 +23,16 @@ const (
 	MigrateRedo MigrateDir = "redo"
 )
 
-type filesystem struct {
-	root string
-	http.FileSystem
-}
-
-func (fs filesystem) Open(name string) (http.File, error) {
-	return fs.FileSystem.Open(filepath.Join(fs.root, name))
-}
-
 // Migrations represents all of the schema migration for horizon
-var Migrations migrate.MigrationSource = &migrate.HttpFileSystemMigrationSource{
-	FileSystem: filesystem{"/migrations", assets},
+var Migrations migrate.MigrationSource = &migrate.AssetMigrationSource{
+	Asset:    Asset,
+	AssetDir: AssetDir,
+	Dir:      "migrations",
 }
 
 // Init installs the latest schema into db after clearing it first
 func Init(db *db.Session) error {
-	f, err := assets.Open("/latest.sql")
-	if err != nil {
-		return err
-	}
-	latestSQL, err := ioutil.ReadAll(f)
-	if err != nil {
-		return err
-	}
-
-	return db.ExecAll(string(latestSQL))
+	return db.ExecAll(string(MustAsset("latest.sql")))
 }
 
 // Migrate performs schema migration.  Migrations can occur in one of three
