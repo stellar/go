@@ -10,7 +10,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/bartekn/throttled"
+	"github.com/stellar/throttled"
 	"github.com/gomodule/redigo/redis"
 	metrics "github.com/rcrowley/go-metrics"
 	"github.com/stellar/go/clients/stellarcore"

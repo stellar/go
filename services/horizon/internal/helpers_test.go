@@ -8,7 +8,7 @@ import (
 	"net/http/httptest"
 	"time"
 
-	"github.com/bartekn/throttled"
+	"github.com/stellar/throttled"
 	"github.com/go-chi/chi"
 	"github.com/stellar/go/network"
 	"github.com/stellar/go/services/horizon/internal/actions"

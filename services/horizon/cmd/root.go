@@ -7,7 +7,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/bartekn/throttled"
+	"github.com/stellar/throttled"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"

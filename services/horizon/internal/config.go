@@ -4,7 +4,7 @@ import (
 	"net/url"
 	"time"
 
-	"github.com/bartekn/throttled"
+	"github.com/stellar/throttled"
 	"github.com/sirupsen/logrus"
 )
 
