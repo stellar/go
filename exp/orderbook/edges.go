@@ -7,19 +7,17 @@ import (
 	"github.com/stellar/go/xdr"
 )
 
-// edgeSet maps an asset to all offers which buy that asset
-// note that each key in the map is obtained by calling offer.Buying.String()
-// also, the offers are sorted by price (in terms of the buying asset)
+// edgeSet maintains a maping of strings to sorted lists of offers.
+// The offers are sorted by price (in terms of the buying asset)
 // from cheapest to expensive
 type edgeSet map[string][]xdr.OfferEntry
 
 // add will insert the given offer into the edge set
-func (e edgeSet) add(offer xdr.OfferEntry) {
-	buyingAsset := offer.Buying.String()
+func (e edgeSet) add(key string, offer xdr.OfferEntry) {
 	// offers is sorted by cheapest to most expensive price to convert buyingAsset to sellingAsset
-	offers := e[buyingAsset]
+	offers := e[key]
 	if len(offers) == 0 {
-		e[buyingAsset] = []xdr.OfferEntry{offer}
+		e[key] = []xdr.OfferEntry{offer}
 		return
 	}
 
@@ -35,13 +33,12 @@ func (e edgeSet) add(offer xdr.OfferEntry) {
 		offers[insertIndex], offers[last] = offers[last], offers[insertIndex]
 		insertIndex++
 	}
-	e[buyingAsset] = offers
+	e[key] = offers
 }
 
 // remove will delete the given offer from the edge set
-// buyingAsset is obtained by calling offer.Buying.String()
-func (e edgeSet) remove(offerID xdr.Int64, buyingAsset string) bool {
-	edges := e[buyingAsset]
+func (e edgeSet) remove(offerID xdr.Int64, key string) bool {
+	edges := e[key]
 	if len(edges) == 0 {
 		return false
 	}
@@ -60,9 +57,9 @@ func (e edgeSet) remove(offerID xdr.Int64, buyingAsset string) bool {
 	}
 	if contains {
 		if len(edges) == 0 {
-			delete(e, buyingAsset)
+			delete(e, key)
 		} else {
-			e[buyingAsset] = edges
+			e[key] = edges
 		}
 	}
 

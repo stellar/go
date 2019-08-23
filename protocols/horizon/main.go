@@ -225,6 +225,7 @@ type Offer struct {
 		OfferMaker hal.Link `json:"offer_maker"`
 	} `json:"_links"`
 
+	// Action needed in release: horizon-v0.22.0
 	ID                 int64      `json:"id"`
 	PT                 string     `json:"paging_token"`
 	Seller             string     `json:"seller"`
@@ -373,7 +374,9 @@ type TradeEffect struct {
 
 // TradeAggregation represents trade data aggregation over a period of time
 type TradeAggregation struct {
-	Timestamp     int64     `json:"timestamp"`
+	// Action needed in release: horizon-v0.22.0
+	Timestamp int64 `json:"timestamp"`
+	// Action needed in release: horizon-v0.22.0
 	TradeCount    int64     `json:"trade_count"`
 	BaseVolume    string    `json:"base_volume"`
 	CounterVolume string    `json:"counter_volume"`
@@ -412,7 +415,7 @@ type Transaction struct {
 	LedgerCloseTime time.Time `json:"created_at"`
 	Account         string    `json:"source_account"`
 	AccountSequence string    `json:"source_account_sequence"`
-	// Action needed in release: horizon-v0.19.0
+	// Action needed in release: horizon-v0.22.0
 	// Action needed in release: horizonclient-v2.0.0
 	// Remove this field.
 	FeePaid        int32    `json:"fee_paid"`

@@ -8,11 +8,11 @@ import (
 
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
-	chimiddleware "github.com/go-chi/chi/middleware"
 	"github.com/stellar/go/services/horizon/internal/errors"
 	"github.com/stellar/go/services/horizon/internal/hchi"
 	"github.com/stellar/go/services/horizon/internal/httpx"
 	"github.com/stellar/go/services/horizon/internal/render"
+	hProblem "github.com/stellar/go/services/horizon/internal/render/problem"
 	"github.com/stellar/go/support/log"
 	"github.com/stellar/go/support/render/problem"
 )
@@ -63,7 +63,7 @@ func loggerMiddleware(h http.Handler) http.Handler {
 		ctx := r.Context()
 		mw := middleware.NewWrapResponseWriter(w, r.ProtoMajor)
 
-		logger := log.WithField("req", chimiddleware.GetReqID(ctx))
+		logger := log.WithField("req", middleware.GetReqID(ctx))
 		ctx = log.Set(ctx, logger)
 
 		// Checking `Accept` header from user request because if the streaming connection
@@ -186,5 +186,46 @@ func requestMetricsMiddleware(h http.Handler) http.Handler {
 			// a success is in [400, 600)
 			app.web.failureMeter.Mark(1)
 		}
+	})
+}
+
+// acceptOnlyJSON inspects the accept header of the request and responds with
+// an error if the content type is not JSON
+func acceptOnlyJSON(h http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		contentType := render.Negotiate(r)
+		if contentType != render.MimeHal && contentType != render.MimeJSON {
+			problem.Render(r.Context(), w, hProblem.NotAcceptable)
+			return
+		}
+
+		h.ServeHTTP(w, r)
+	})
+}
+
+// requiresExperimentalIngestion is a middleware which enables a handler
+// if the experimental ingestion system is enabled and initialized
+func requiresExperimentalIngestion(h http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+		app := AppFromContext(ctx)
+		if !app.config.EnableExperimentalIngestion {
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
+
+		lastIngestedLedger, err := app.HistoryQ().GetLastLedgerExpIngestNonBlocking()
+		if err != nil {
+			problem.Render(r.Context(), w, err)
+			return
+		}
+
+		// expingest has not finished processing any ledger so no data.
+		if lastIngestedLedger == 0 {
+			problem.Render(r.Context(), w, hProblem.StillIngesting)
+			return
+		}
+
+		h.ServeHTTP(w, r)
 	})
 }

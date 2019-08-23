@@ -5,7 +5,7 @@ import (
 	supportPipeline "github.com/stellar/go/exp/support/pipeline"
 )
 
-func (p *StatePipeline) Node(processor StateProcessor) *supportPipeline.PipelineNode {
+func StateNode(processor StateProcessor) *supportPipeline.PipelineNode {
 	return &supportPipeline.PipelineNode{
 		Processor: &stateProcessorWrapper{processor},
 	}

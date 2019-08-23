@@ -55,6 +55,10 @@ DROP INDEX IF EXISTS public.by_hash;
 DROP INDEX IF EXISTS public.by_account;
 DROP INDEX IF EXISTS public.asset_by_issuer;
 DROP INDEX IF EXISTS public.asset_by_code;
+DROP INDEX IF EXISTS public.offers_by_seller;
+DROP INDEX IF EXISTS public.offers_by_last_modified_ledger;
+DROP INDEX IF EXISTS public.offers_by_selling_asset;
+DROP INDEX IF EXISTS public.offers_by_buying_asset;
 ALTER TABLE IF EXISTS ONLY public.history_transaction_participants DROP CONSTRAINT IF EXISTS history_transaction_participants_pkey;
 ALTER TABLE IF EXISTS ONLY public.history_operation_participants DROP CONSTRAINT IF EXISTS history_operation_participants_pkey;
 ALTER TABLE IF EXISTS ONLY public.history_assets DROP CONSTRAINT IF EXISTS history_assets_pkey;
@@ -62,6 +66,7 @@ ALTER TABLE IF EXISTS ONLY public.history_assets DROP CONSTRAINT IF EXISTS histo
 ALTER TABLE IF EXISTS ONLY public.gorp_migrations DROP CONSTRAINT IF EXISTS gorp_migrations_pkey;
 ALTER TABLE IF EXISTS ONLY public.accounts_signers DROP CONSTRAINT IF EXISTS accounts_signers_pkey;
 ALTER TABLE IF EXISTS ONLY public.asset_stats DROP CONSTRAINT IF EXISTS asset_stats_pkey;
+ALTER TABLE IF EXISTS ONLY public.offers DROP CONSTRAINT IF EXISTS offers_pkey;
 ALTER TABLE IF EXISTS public.history_transaction_participants ALTER COLUMN id DROP DEFAULT;
 ALTER TABLE IF EXISTS public.history_operation_participants ALTER COLUMN id DROP DEFAULT;
 ALTER TABLE IF EXISTS public.history_assets ALTER COLUMN id DROP DEFAULT;
@@ -80,6 +85,8 @@ DROP TABLE IF EXISTS public.history_accounts;
 DROP SEQUENCE IF EXISTS public.history_accounts_id_seq;
 DROP TABLE IF EXISTS public.gorp_migrations;
 DROP TABLE IF EXISTS public.asset_stats;
+DROP TABLE IF EXISTS public.accounts_signers;
+DROP TABLE IF EXISTS public.offers;
 DROP AGGREGATE IF EXISTS public.min_price(numeric[]);
 DROP AGGREGATE IF EXISTS public.max_price(numeric[]);
 DROP AGGREGATE IF EXISTS public.last(anyelement);
@@ -409,6 +416,22 @@ CREATE TABLE history_transaction_participants (
     history_account_id bigint NOT NULL
 );
 
+--
+-- Name: offers; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE offers (
+    sellerid character varying(56) NOT NULL,
+    offerid bigint,
+    sellingasset text NOT NULL,
+    buyingasset text NOT NULL,
+    amount bigint NOT NULL,
+    pricen integer NOT NULL,
+    priced integer NOT NULL,
+    price double precision NOT NULL,
+    flags integer NOT NULL,
+    last_modified_ledger integer NOT NULL
+);
 
 --
 -- Name: history_transaction_participants_id_seq; Type: SEQUENCE; Schema: public; Owner: -
@@ -632,6 +655,12 @@ INSERT INTO history_transactions VALUES ('164a5064eba64f2cdbadb856bf3448485fc626
 INSERT INTO history_transactions VALUES ('2b2e82dbabb024b27a0c3140ca71d8ac9bc71831f9f5a3bd69eca3d88fb0ec5c', 2, 3, 'GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H', 3, 100, 1, '2019-06-03 16:34:04.816623', '2019-06-03 16:34:04.816623', 8589946880, 'AAAAAGL8HQvQkbK2HA3WVjRrKmjX00fG8sLI7m0ERwJW/AX3AAAAZAAAAAAAAAADAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAbmgm1V2dg5V1mq1elMcG1txjSYKZ9wEgoSBaeW8UiFoAAAAAO5rKAAAAAAAAAAABVvwF9wAAAEDJul1tLGLF4Vxwt0dDCVEf6tb5l4byMrGgCp+lVZMmxct54iNf2mxtjx6Md5ZJ4E4Dlcsf46EAhBGSUPsn8fYD', 'AAAAAAAAAGQAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAA=', 'AAAAAQAAAAAAAAABAAAAAwAAAAMAAAACAAAAAAAAAABi/B0L0JGythwN1lY0aypo19NHxvLCyO5tBEcCVvwF9w3gtrMwLmrUAAAAAAAAAAMAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAEAAAACAAAAAAAAAABi/B0L0JGythwN1lY0aypo19NHxvLCyO5tBEcCVvwF9w3gtrL0k6DUAAAAAAAAAAMAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAAAAAAAAAABuaCbVXZ2DlXWarV6UxwbW3GNJgpn3ASChIFp5bxSIWgAAAAA7msoAAAAAAgAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAA==', 'AAAAAgAAAAMAAAACAAAAAAAAAABi/B0L0JGythwN1lY0aypo19NHxvLCyO5tBEcCVvwF9w3gtrOnY/84AAAAAAAAAAIAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAEAAAACAAAAAAAAAABi/B0L0JGythwN1lY0aypo19NHxvLCyO5tBEcCVvwF9w3gtrOnY/7UAAAAAAAAAAMAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAA==', '{ybpdbSxixeFccLdHQwlRH+rW+ZeG8jKxoAqfpVWTJsXLeeIjX9psbY8ejHeWSeBOA5XLH+OhAIQRklD7J/H2Aw==}', 'none', NULL, NULL, true, 100);
 
 --
+-- Data for Name: key_value_store; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+INSERT INTO public.key_value_store VALUES ('exp_ingest_last_ledger', '0');
+
+--
 -- Name: accounts_signers accounts_signers_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -686,6 +715,12 @@ ALTER TABLE ONLY history_operation_participants
 ALTER TABLE ONLY history_transaction_participants
     ADD CONSTRAINT history_transaction_participants_pkey PRIMARY KEY (id);
 
+--
+-- Name: offers offers_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.offers
+    ADD CONSTRAINT offers_pkey PRIMARY KEY (offerid);
 
 --
 -- Name: asset_by_code; Type: INDEX; Schema: public; Owner: -
@@ -938,6 +973,31 @@ CREATE UNIQUE INDEX index_history_transactions_on_id ON history_transactions USI
 
 CREATE INDEX trade_effects_by_order_book ON history_effects USING btree (((details ->> 'sold_asset_type'::text)), ((details ->> 'sold_asset_code'::text)), ((details ->> 'sold_asset_issuer'::text)), ((details ->> 'bought_asset_type'::text)), ((details ->> 'bought_asset_code'::text)), ((details ->> 'bought_asset_issuer'::text))) WHERE (type = 33);
 
+--
+-- Name: offers_by_seller; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX offers_by_seller ON offers USING BTREE(sellerid);
+
+--
+-- Name: offers_by_selling_asset; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX offers_by_selling_asset ON offers USING BTREE(sellingasset);
+
+--
+-- Name: offers_by_buying_asset; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX offers_by_buying_asset ON offers USING BTREE(buyingasset);
+
+
+--
+-- Name: offers_by_last_modified_ledger; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX offers_by_last_modified_ledger ON public.offers USING btree (last_modified_ledger);
+
 
 --
 -- Name: asset_stats asset_stats_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
@@ -988,4 +1048,3 @@ CREATE TABLE key_value_store (
   value varchar(255) NOT NULL,
   PRIMARY KEY (key)
 );
-
