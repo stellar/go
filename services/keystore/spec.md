@@ -90,6 +90,8 @@ a salt based on the encrypter they use. Clients should assign the resulting
 base64-encoded string to the field `encryptedBlob` in the `EncryptedKeyData`.
 Please refer to this [encrypt function](https://github.com/stellar/js-stellar-wallets/blob/4a667171df4b22ba9cd15576d022f3e88f3951ff/src/helpers/ScryptEncryption.ts#L71-L108) in our wallet sdk for more details.
 
+### Encrypted Keys
+
 ```typescript
 type EncryptedKeys = EncryptedKeyData[]
 ```
@@ -166,7 +168,7 @@ type PutKeysResponse = EncryptedKeysData;
 	"detail": "The request you sent was invalid in some way.",
 	"extras": {
 		"invalid_field": "keysBlob",
-		"reason": "salt is required for all the encrypted keys"
+		"reason": "salt is required for all the encrypted key data"
 	}
 }
 ```
@@ -186,7 +188,47 @@ type PutKeysResponse = EncryptedKeysData;
 	"detail": "The request you sent was invalid in some way.",
 	"extras": {
 		"invalid_field": "keysBlob",
-		"reason": "encrypterName is required for all the encrypted keys"
+		"reason": "encrypterName is required for all the encrypted key data"
+	}
+}
+```
+<hr />
+
+*bad_request:*
+```json
+{
+	"keysBlob": "some-encrypted-key-data-with-no-encryptedblob",
+}
+```
+```json
+{
+	"type": "bad_request",
+	"title": "Bad Request",
+	"status": 400,
+	"detail": "The request you sent was invalid in some way.",
+	"extras": {
+		"invalid_field": "keysBlob",
+		"reason": "encryptedBlob is required for all the encrypted key data"
+	}
+}
+```
+<hr />
+
+*bad_request:*
+```json
+{
+	"keysBlob": "some-encrypted-key-data-with-no-id",
+}
+```
+```json
+{
+	"type": "bad_request",
+	"title": "Bad Request",
+	"status": 400,
+	"detail": "The request you sent was invalid in some way.",
+	"extras": {
+		"invalid_field": "keysBlob",
+		"reason": "id is required for all the encrypted key data"
 	}
 }
 ```
@@ -203,9 +245,10 @@ type PutKeysResponse = EncryptedKeysData;
 	"type": "invalid_keys_blob",
 	"title": "Invalid Keys Blob",
 	"status": 400,
-	"detail": "The keysBlob in your request body is not a valid base64
-		string. Please encode the keysBlob in your request body as a base64
-		string properly and try again."
+	"detail": "The keysBlob in your request body is not a valid base64-URL-encoded string or
+		the decoded content cannt be mapped to EncryptedKeys type. Please encode the
+		keysBlob in your request body as a base64-URL string properly or make sure the
+		encoded content matches EncryptedKeys type specified in the spec and try again."
 }
 ```
 </details>

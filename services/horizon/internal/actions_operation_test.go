@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/stellar/go/protocols/horizon"
+	"github.com/stellar/go/protocols/horizon/effects"
 	"github.com/stellar/go/protocols/horizon/operations"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/services/horizon/internal/render/sse"
@@ -309,6 +310,18 @@ func TestOperation_BumpSequence(t *testing.T) {
 		ht.Require.NoError(err, "failed to parse body")
 		ht.Assert.Equal("bump_sequence", result.Type)
 		ht.Assert.Equal("300000000003", result.BumpTo)
+	}
+}
+
+func TestOperationEffect_BumpSequence(t *testing.T) {
+	ht := StartHTTPTest(t, "kahuna")
+	defer ht.Finish()
+
+	w := ht.Get("/operations/249108107265/effects")
+	if ht.Assert.Equal(200, w.Code) {
+		var result []effects.SequenceBumped
+		ht.UnmarshalPage(w.Body, &result)
+		ht.Assert.Equal(int64(300000000000), result[0].NewSeq)
 	}
 }
 

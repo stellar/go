@@ -48,12 +48,12 @@
   revision = "523a5da1a92f01b01f840b61689c0340a0243532"
 
 [[projects]]
+  branch = "master"
   digest = "1:a9d72387197f5b54e24fd51499668fb597e25db8f5223bfb51db3bdd10e2d8eb"
   name = "github.com/asaskevich/govalidator"
   packages = ["."]
   pruneopts = "T"
   revision = "7d2e70ef918f16bd6455529af38304d6d025c952"
-  source = "https://github.com/asaskevich/govalidator.git"
 
 [[projects]]
   digest = "1:b6ce38ef977bd5df1f9a7824549f03e542b772edf86f565ad1392a9fa68b9676"
@@ -362,14 +362,15 @@
   revision = "bd40a432e4c76585ef6b72d3fd96fb9b6dc7b68d"
 
 [[projects]]
-  digest = "1:70f9af80210f87f02874051596b0c02f4fce2b115ff7028e2ac754523927659a"
+  digest = "1:648edb3f72f7b7b62320d3473ad8008ae03f90c1d01f559fc85c37b408e1a5dd"
   name = "github.com/jmoiron/sqlx"
   packages = [
     ".",
     "reflectx",
   ]
   pruneopts = "T"
-  revision = "05b81a7d5d38058e42148dc01f17daf4acba4640"
+  revision = "d161d7a76b5661016ad0b085869f77fd410f3e6a"
+  version = "v1.2.0"
 
 [[projects]]
   digest = "1:14d434143144f0f4f3e6c8bc6ff035fa2321da997e32b2700085402260658630"
@@ -421,14 +422,16 @@
   revision = "c603884a2c1fcf331c71940f3227a8111d29f3ba"
 
 [[projects]]
-  digest = "1:c92cec18d5ad500beaecbb094638ff9e319ac31f3d1c7c5b68ba06bd6217e7a2"
+  digest = "1:de9cc7a0102d0ccc5fbfba2336a0621cb6815581ceab488a30e4a7dbc3286b53"
   name = "github.com/lib/pq"
   packages = [
     ".",
     "oid",
+    "scram",
   ]
   pruneopts = "T"
-  revision = "50761b0867bd1d9d069276790bcd4a3bccf2324a"
+  revision = "3427c32cb71afc948325f299f040e53c1dd78979"
+  version = "v1.2.0"
 
 [[projects]]
   digest = "1:7b64a000d64c808554c53442ef9593230e8742c1482108efc9a445f404b077f3"
@@ -583,14 +586,15 @@
   version = "v.11"
 
 [[projects]]
-  digest = "1:aeebf12d5c8463faab36c6f9904e36cc9d825a7a3c735ad160a0abd09c71017d"
+  branch = "master"
+  digest = "1:58e8415f3d41ba3f464bfb3c572400965a0eb7ab354c34d5c1f9b67a18e7e651"
   name = "github.com/rubenv/sql-migrate"
   packages = [
     ".",
     "sqlparse",
   ]
   pruneopts = "T"
-  revision = "53184e1edfb4f9655b0fa8dd2c23e7763f452bda"
+  revision = "87ce952f7079c58e10a2a85835202943ebb9580c"
 
 [[projects]]
   digest = "1:746e354627daf5948dc32970502e849e6e49e575f6de9dcf06bdaea47997a802"

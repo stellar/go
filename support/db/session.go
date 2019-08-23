@@ -31,6 +31,23 @@ func (s *Session) Begin() error {
 	return nil
 }
 
+// BeginTx binds this session to a new transaction which is configured with the
+// given transaction options
+func (s *Session) BeginTx(opts *sql.TxOptions) error {
+	if s.tx != nil {
+		return errors.New("already in transaction")
+	}
+
+	tx, err := s.DB.BeginTxx(s.Ctx, opts)
+	if err != nil {
+		return errors.Wrap(err, "beginTx failed")
+	}
+	s.logBegin()
+
+	s.tx = tx
+	return nil
+}
+
 func (s *Session) GetTx() *sqlx.Tx {
 	return s.tx
 }

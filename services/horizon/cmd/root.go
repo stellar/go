@@ -309,11 +309,11 @@ var configOpts = []*support.ConfigOption{
 		Usage:       "enables asset stats during the ingestion and expose `/assets` endpoint, Enabling it has a negative impact on CPU",
 	},
 	&support.ConfigOption{
-		Name:        "enable-accounts-for-signer",
-		ConfigKey:   &config.EnableAccountsForSigner,
+		Name:        "enable-experimental-ingestion",
+		ConfigKey:   &config.EnableExperimentalIngestion,
 		OptType:     types.Bool,
 		FlagDefault: false,
-		Usage:       "[EXPERIMENTAL] enables accounts for signer endpoint using an alternative ingest system",
+		Usage:       "[EXPERIMENTAL] enables experimental ingestion system",
 	},
 }
 

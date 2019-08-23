@@ -27,28 +27,36 @@ const (
 // It's around 4x slower than MemoryStateReaderTempStore but has much
 // lower memory requirements. `postgresTempSetCacheSize` can be changed
 // to achieve better speed at the cost of higher memory usage.
+// If `DSN` is passed, a new `db.Session` will be created.
+// If `Session` is passed, it will be cloned.
 type PostgresTempSet struct {
-	DSN string
+	DSN     string
+	Session *db.Session
 
 	afterFirstDump bool
 	// cache can contain both true and false values. false values can be set
 	// when key is not in cache: then the value will be checked in a database
 	// and later cached.
 	cache     map[string]bool
-	session   *db.Session
 	tableName string
 }
 
 // Open connects to a DB and creates a temporary table and data structures.
 func (s *PostgresTempSet) Open() error {
 	var err error
-	s.session, err = db.Open("postgres", s.DSN)
-	if err != nil {
-		return err
+	if s.Session == nil {
+		s.Session, err = db.Open("postgres", s.DSN)
+		if err != nil {
+			return err
+		}
+	} else {
+		// Clone existing session to prevent deadlock if the existing session
+		// is in a transaction.
+		s.Session = s.Session.Clone()
 	}
 
 	// Begin transaction - without it `ON COMMIT DROP` won't work.
-	err = s.session.Begin()
+	err = s.Session.Begin()
 	if err != nil {
 		return err
 	}
@@ -63,7 +71,7 @@ func (s *PostgresTempSet) Open() error {
 	s.tableName = fmt.Sprintf("exp_state_reader_%s", hex.EncodeToString(r))
 
 	// Create table
-	_, err = s.session.ExecRaw(fmt.Sprintf(`
+	_, err = s.Session.ExecRaw(fmt.Sprintf(`
 	CREATE TEMPORARY TABLE %s (
 	    key character varying(255) NOT NULL,
 	    PRIMARY KEY (key)
@@ -105,7 +113,7 @@ func (s *PostgresTempSet) Preload(keys []string) error {
 	rows, err := psql.Select("key").
 		From(s.tableName).
 		Where(map[string]interface{}{"key": loadKeys}).
-		RunWith(s.session.GetTx().Tx).
+		RunWith(s.Session.GetTx().Tx).
 		Query()
 
 	if err != nil {
@@ -169,7 +177,7 @@ func (s *PostgresTempSet) dumpCacheIfNeeded() error {
 		// postgres query is 65535. When we are approaching the max params,
 		// insert rows we have so far and create a new builder.
 		if queryParams > postgresMaxQueryParams-500 {
-			_, err := s.session.Exec(query)
+			_, err := s.Session.Exec(query)
 			if err != nil {
 				return err
 			}
@@ -188,7 +196,7 @@ func (s *PostgresTempSet) dumpCacheIfNeeded() error {
 
 	// Insert the last batch.
 	if queryParams > 0 {
-		_, err := s.session.Exec(query)
+		_, err := s.Session.Exec(query)
 		return err
 	}
 
@@ -237,7 +245,7 @@ func (s *PostgresTempSet) dbGet(key string) (bool, error) {
 		Where("key = ?", key)
 
 	var value int
-	if err := s.session.Get(&value, query); err != nil {
+	if err := s.Session.Get(&value, query); err != nil {
 		if errors.Cause(err) == sql.ErrNoRows {
 			return false, nil
 		}
@@ -250,6 +258,9 @@ func (s *PostgresTempSet) dbGet(key string) (bool, error) {
 
 // Close closes a database connection what also removes a temporary table.
 func (s *PostgresTempSet) Close() error {
-	// This will also drop temp table
-	return s.session.Close()
+	// Remove reference to a map
+	s.cache = nil
+	// This will drop temp table. Do not use `s.Session.Close` as
+	// DB in `s.Session` can be shared by many sessions.
+	return s.Session.Rollback()
 }

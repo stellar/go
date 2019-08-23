@@ -3,12 +3,16 @@
   name = "bitbucket.org/ww/goautoneg"
 
 [[constraint]]
+  branch = "master"
   name = "github.com/asaskevich/govalidator"
-  source = "https://github.com/asaskevich/govalidator.git"
 
 [[constraint]]
   name = "github.com/go-chi/chi"
   version = "~3.1.5"
+
+[[constraint]]
+  name = "github.com/lib/pq"
+  version = "1.2.0"
 
 [[constraint]]
   branch = "master"
