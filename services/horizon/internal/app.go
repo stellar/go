@@ -10,6 +10,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/bartekn/throttled"
 	"github.com/gomodule/redigo/redis"
 	metrics "github.com/rcrowley/go-metrics"
 	"github.com/stellar/go/clients/stellarcore"
@@ -29,7 +30,6 @@ import (
 	"github.com/stellar/go/support/db"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/support/log"
-	"github.com/throttled/throttled"
 	"golang.org/x/net/http2"
 	graceful "gopkg.in/tylerb/graceful.v1"
 )

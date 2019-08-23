@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/bartekn/throttled"
 	"github.com/go-chi/chi"
 	chimiddleware "github.com/go-chi/chi/middleware"
 	metrics "github.com/rcrowley/go-metrics"
@@ -24,7 +25,6 @@ import (
 	"github.com/stellar/go/support/db"
 	"github.com/stellar/go/support/log"
 	"github.com/stellar/go/support/render/problem"
-	"github.com/throttled/throttled"
 )
 
 const LRUCacheSize = 50000
