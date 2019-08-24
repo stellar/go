@@ -7,7 +7,6 @@ import (
 	"os"
 	"strings"
 
-	"github.com/stellar/throttled"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -16,6 +15,7 @@ import (
 	apkg "github.com/stellar/go/support/app"
 	support "github.com/stellar/go/support/config"
 	"github.com/stellar/go/support/log"
+	"github.com/stellar/throttled"
 )
 
 var config horizon.Config

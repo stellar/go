@@ -8,12 +8,12 @@ import (
 	"net/http/httptest"
 	"time"
 
-	"github.com/stellar/throttled"
 	"github.com/go-chi/chi"
 	"github.com/stellar/go/network"
 	"github.com/stellar/go/services/horizon/internal/actions"
 	"github.com/stellar/go/services/horizon/internal/test"
 	supportLog "github.com/stellar/go/support/log"
+	"github.com/stellar/throttled"
 )
 
 func NewTestApp() *App {

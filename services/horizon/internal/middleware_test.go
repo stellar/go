@@ -4,8 +4,8 @@ import (
 	"strconv"
 	"testing"
 
-	"github.com/stellar/throttled"
 	"github.com/stellar/go/services/horizon/internal/test"
+	"github.com/stellar/throttled"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 )
