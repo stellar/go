@@ -223,6 +223,19 @@ func TestOfferActions_Index(t *testing.T) {
 		if ht.Assert.Equal(200, w.Code) {
 			ht.Assert.PageOf(2, w.Body)
 		}
+
+		url := fmt.Sprintf(
+			"/offers?selling_asset_type=%s&selling_asset_code=%s&selling_asset_issuer=%s",
+			"credit_alphanum4",
+			"eur",
+			"GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H",
+		)
+
+		w = ht.Get(url)
+
+		if ht.Assert.Equal(200, w.Code) {
+			ht.Assert.PageOf(1, w.Body)
+		}
 	})
 }
 
