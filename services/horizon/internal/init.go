@@ -82,7 +82,7 @@ func initExpIngester(app *App, orderBookGraph *orderbook.OrderBookGraph) {
 		OrderBookGraph:    orderBookGraph,
 	})
 	if err != nil {
-		log.Panic(err)
+		log.Fatal(err)
 	}
 }
 
@@ -103,7 +103,7 @@ func initSentry(app *App) {
 	log.WithField("dsn", app.config.SentryDSN).Info("Initializing sentry")
 	err := raven.SetDSN(app.config.SentryDSN)
 	if err != nil {
-		log.Panic(err)
+		log.Fatal(err)
 	}
 }
 
