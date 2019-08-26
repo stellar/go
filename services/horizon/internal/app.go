@@ -116,7 +116,7 @@ func (a *App) Serve() {
 	}
 
 	if err != nil {
-		log.Panic(err)
+		log.Fatal(err)
 	}
 
 	a.CloseDB()
