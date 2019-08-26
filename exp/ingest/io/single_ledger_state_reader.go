@@ -58,7 +58,7 @@ type TempSet interface {
 // preloadedEntries defines a number of bucket entries to preload from a
 // bucket in a single run. This is done to allow preloading keys from
 // temp set.
-const preloadedEntries = 50000
+const preloadedEntries = 20000
 
 // MakeSingleLedgerStateReader is a factory method for SingleLedgerStateReader
 func MakeSingleLedgerStateReader(

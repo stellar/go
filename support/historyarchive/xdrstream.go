@@ -133,11 +133,15 @@ func (x *XdrStream) ReadOne(in interface{}) error {
 	}
 
 	readi, err := xdr.Unmarshal(&x.buf, in)
+	if err != nil {
+		x.rdr.Close()
+		return err
+	}
 	if int64(readi) != int64(nbytes) {
 		return fmt.Errorf("Unmarshalled %d bytes from XDR, expected %d)",
 			readi, nbytes)
 	}
-	return err
+	return nil
 }
 
 func WriteFramedXdr(out io.Writer, in interface{}) error {
