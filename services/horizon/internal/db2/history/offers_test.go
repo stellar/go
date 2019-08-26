@@ -233,6 +233,29 @@ func TestGetOffers(t *testing.T) {
 	tt.Assert.NoError(q.UpsertOffer(eurOffer, 1234))
 	tt.Assert.NoError(q.UpsertOffer(twoEurOffer, 1235))
 
+	t.Run("Filter by selling asset", func(t *testing.T) {
+		pageQuery, err := db2.NewPageQuery("", false, "", 10)
+		tt.Assert.NoError(err)
+
+		query := OffersQuery{
+			PageQuery: pageQuery,
+			Selling:   &usdAsset,
+		}
+
+		offers, err := q.GetOffers(query)
+		tt.Assert.NoError(err)
+		tt.Assert.Len(offers, 0)
+
+		query = OffersQuery{
+			PageQuery: pageQuery,
+			Selling:   &nativeAsset,
+		}
+
+		offers, err = q.GetOffers(query)
+		tt.Assert.NoError(err)
+		tt.Assert.Len(offers, 2)
+	})
+
 	t.Run("Filter by seller", func(t *testing.T) {
 		pageQuery, err := db2.NewPageQuery("", false, "", 10)
 		tt.Assert.NoError(err)

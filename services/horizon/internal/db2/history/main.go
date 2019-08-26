@@ -318,6 +318,7 @@ type QSigners interface {
 type OffersQuery struct {
 	PageQuery db2.PageQuery
 	SellerID  *string
+	Selling   *xdr.Asset
 }
 
 // QOffers defines offer related queries.

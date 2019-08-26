@@ -28,6 +28,15 @@ func (q *Q) GetOffers(query OffersQuery) ([]Offer, error) {
 		sql = sql.Where("offers.sellerid = ?", *query.SellerID)
 	}
 
+	if query.Selling != nil {
+		sellingAsset, err := xdr.MarshalBase64(*query.Selling)
+
+		if err != nil {
+			return nil, errors.Wrap(err, "cannot marshal selling asset")
+		}
+		sql = sql.Where("offers.sellingasset = ?", sellingAsset)
+	}
+
 	var offers []Offer
 	if err := q.Select(&offers, sql); err != nil {
 		return nil, errors.Wrap(err, "could not run select query")
