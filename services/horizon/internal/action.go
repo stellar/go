@@ -22,6 +22,7 @@ import (
 	"github.com/stellar/go/support/render/hal"
 	"github.com/stellar/go/support/render/httpjson"
 	"github.com/stellar/go/support/render/problem"
+	"github.com/stellar/go/xdr"
 )
 
 // Action is the "base type" for all actions in horizon.  It provides
@@ -275,9 +276,17 @@ func getAllOffersResource(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	var selling *xdr.Asset
+	sellingAsset, found := actions.MaybeGetAsset(r, "selling_")
+
+	if found {
+		selling = &sellingAsset
+	}
+
 	query := history.OffersQuery{
 		PageQuery: pq,
 		SellerID:  &seller,
+		Selling:   selling,
 	}
 
 	records, err := app.HistoryQ().GetOffers(query)

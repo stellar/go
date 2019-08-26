@@ -125,7 +125,13 @@ func TestOfferActions_Index(t *testing.T) {
 		nativeAsset = xdr.Asset{
 			Type: xdr.AssetTypeAssetTypeNative,
 		}
-
+		usdAsset = xdr.Asset{
+			Type: xdr.AssetTypeAssetTypeCreditAlphanum4,
+			AlphaNum4: &xdr.AssetAlphaNum4{
+				AssetCode: [4]byte{'u', 's', 'd', 0},
+				Issuer:    issuer,
+			},
+		}
 		eurAsset = xdr.Asset{
 			Type: xdr.AssetTypeAssetTypeCreditAlphanum4,
 			AlphaNum4: &xdr.AssetAlphaNum4{
@@ -157,6 +163,18 @@ func TestOfferActions_Index(t *testing.T) {
 			Flags:  2,
 			Amount: xdr.Int64(500),
 		}
+		usdOffer = xdr.OfferEntry{
+			SellerId: issuer,
+			OfferId:  xdr.Int64(6),
+			Buying:   usdAsset,
+			Selling:  eurAsset,
+			Price: xdr.Price{
+				N: 1,
+				D: 1,
+			},
+			Flags:  1,
+			Amount: xdr.Int64(500),
+		}
 	)
 
 	ht := StartHTTPTest(t, "base")
@@ -167,32 +185,45 @@ func TestOfferActions_Index(t *testing.T) {
 	ht.Assert.NoError(q.UpdateLastLedgerExpIngest(3))
 	ht.Assert.NoError(q.UpsertOffer(eurOffer, 3))
 	ht.Assert.NoError(q.UpsertOffer(twoEurOffer, 3))
+	ht.Assert.NoError(q.UpsertOffer(usdOffer, 3))
 
-	w := ht.Get("/offers")
+	t.Run("No filter", func(t *testing.T) {
+		w := ht.Get("/offers")
 
-	if ht.Assert.Equal(200, w.Code) {
-		ht.Assert.PageOf(2, w.Body)
+		if ht.Assert.Equal(200, w.Code) {
+			ht.Assert.PageOf(3, w.Body)
 
-		var records []horizon.Offer
-		ht.UnmarshalPage(w.Body, &records)
+			var records []horizon.Offer
+			ht.UnmarshalPage(w.Body, &records)
 
-		ht.Assert.Equal(int64(eurOffer.OfferId), records[0].ID)
-		ht.Assert.Equal("native", records[0].Selling.Type)
-		ht.Assert.Equal("credit_alphanum4", records[0].Buying.Type)
-		ht.Assert.Equal(issuer.Address(), records[0].Seller)
-		ht.Assert.Equal(issuer.Address(), records[0].Buying.Issuer)
-		ht.Assert.Equal(int32(3), records[0].LastModifiedLedger)
+			ht.Assert.Equal(int64(eurOffer.OfferId), records[0].ID)
+			ht.Assert.Equal("native", records[0].Selling.Type)
+			ht.Assert.Equal("credit_alphanum4", records[0].Buying.Type)
+			ht.Assert.Equal(issuer.Address(), records[0].Seller)
+			ht.Assert.Equal(issuer.Address(), records[0].Buying.Issuer)
+			ht.Assert.Equal(int32(3), records[0].LastModifiedLedger)
 
-		lastModifiedTime, err := time.Parse("2006-01-02 15:04:05", "2019-06-03 16:34:02")
-		ht.Require.NoError(err)
-		ht.Assert.Equal(lastModifiedTime, *records[0].LastModifiedTime)
-	}
+			lastModifiedTime, err := time.Parse("2006-01-02 15:04:05", "2019-06-03 16:34:02")
+			ht.Require.NoError(err)
+			ht.Assert.Equal(lastModifiedTime, *records[0].LastModifiedTime)
+		}
+	})
 
-	w = ht.Get("/offers?seller=GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H")
+	t.Run("Filter by seller", func(t *testing.T) {
+		w := ht.Get("/offers?seller=GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H")
 
-	if ht.Assert.Equal(200, w.Code) {
-		ht.Assert.PageOf(1, w.Body)
-	}
+		if ht.Assert.Equal(200, w.Code) {
+			ht.Assert.PageOf(2, w.Body)
+		}
+	})
+
+	t.Run("Filter by selling asset", func(t *testing.T) {
+		w := ht.Get("/offers?selling_asset_type=native")
+
+		if ht.Assert.Equal(200, w.Code) {
+			ht.Assert.PageOf(2, w.Body)
+		}
+	})
 }
 
 func TestOfferActionsStillIngesting_Index(t *testing.T) {
