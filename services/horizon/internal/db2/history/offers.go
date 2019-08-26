@@ -30,11 +30,18 @@ func (q *Q) GetOffers(query OffersQuery) ([]Offer, error) {
 
 	if query.Selling != nil {
 		sellingAsset, err := xdr.MarshalBase64(*query.Selling)
-
 		if err != nil {
 			return nil, errors.Wrap(err, "cannot marshal selling asset")
 		}
 		sql = sql.Where("offers.sellingasset = ?", sellingAsset)
+	}
+
+	if query.Buying != nil {
+		buyingAsset, err := xdr.MarshalBase64(*query.Buying)
+		if err != nil {
+			return nil, errors.Wrap(err, "cannot marshal Buying asset")
+		}
+		sql = sql.Where("offers.buyingasset = ?", buyingAsset)
 	}
 
 	var offers []Offer
