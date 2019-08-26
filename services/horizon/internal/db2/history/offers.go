@@ -18,10 +18,14 @@ func (q *Q) GetOfferByID(id int64) (Offer, error) {
 // GetOffers loads rows from `offers` by paging query.
 func (q *Q) GetOffers(query OffersQuery) ([]Offer, error) {
 	sql := selectOffers
-	sql, err := query.pageQuery.ApplyTo(sql, "offers.offerid")
+	sql, err := query.PageQuery.ApplyTo(sql, "offers.offerid")
 
 	if err != nil {
 		return nil, errors.Wrap(err, "could not apply query to page")
+	}
+
+	if query.SellerID != nil && *query.SellerID != "" {
+		sql = sql.Where("offers.sellerid = ?", *query.SellerID)
 	}
 
 	var offers []Offer

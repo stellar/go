@@ -10,8 +10,9 @@ import (
 )
 
 var (
-	issuer   = xdr.MustAddress("GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H")
-	usdAsset = xdr.Asset{
+	issuer            = xdr.MustAddress("GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H")
+	twoEurOfferSeller = xdr.MustAddress("GA5WBPYA5Y4WAEHXWR2UKO2UO4BUGHUQ74EUPKON2QHV4WRHOIRNKKH2")
+	usdAsset          = xdr.Asset{
 		Type: xdr.AssetTypeAssetTypeCreditAlphanum4,
 		AlphaNum4: &xdr.AssetAlphaNum4{
 			AssetCode: [4]byte{'u', 's', 'd', 0},
@@ -43,7 +44,7 @@ var (
 		Amount: xdr.Int64(500),
 	}
 	twoEurOffer = xdr.OfferEntry{
-		SellerId: issuer,
+		SellerId: twoEurOfferSeller,
 		OfferId:  xdr.Int64(5),
 		Buying:   eurAsset,
 		Selling:  nativeAsset,
@@ -232,11 +233,28 @@ func TestGetOffers(t *testing.T) {
 	tt.Assert.NoError(q.UpsertOffer(eurOffer, 1234))
 	tt.Assert.NoError(q.UpsertOffer(twoEurOffer, 1235))
 
+	t.Run("Filter by seller", func(t *testing.T) {
+		pageQuery, err := db2.NewPageQuery("", false, "", 10)
+		tt.Assert.NoError(err)
+
+		sellerID := issuer.Address()
+		query := OffersQuery{
+			PageQuery: pageQuery,
+			SellerID:  &sellerID,
+		}
+
+		offers, err := q.GetOffers(query)
+		tt.Assert.NoError(err)
+		tt.Assert.Len(offers, 1)
+
+		assertOfferEntryMatchesDBOffer(t, eurOffer, offers[0], 1234)
+	})
+
 	t.Run("PageQuery", func(t *testing.T) {
 		pageQuery, err := db2.NewPageQuery("", false, "", 10)
 		tt.Assert.NoError(err)
 		query := OffersQuery{
-			pageQuery: pageQuery,
+			PageQuery: pageQuery,
 		}
 
 		offers, err := q.GetOffers(query)
@@ -254,7 +272,7 @@ func TestGetOffers(t *testing.T) {
 		pageQuery, err = db2.NewPageQuery("", false, "asc", 1)
 		tt.Assert.NoError(err)
 		query = OffersQuery{
-			pageQuery: pageQuery,
+			PageQuery: pageQuery,
 		}
 
 		offers, err = q.GetOffers(query)
@@ -266,7 +284,7 @@ func TestGetOffers(t *testing.T) {
 		pageQuery, err = db2.NewPageQuery("", false, "desc", 1)
 		tt.Assert.NoError(err)
 		query = OffersQuery{
-			pageQuery: pageQuery,
+			PageQuery: pageQuery,
 		}
 
 		offers, err = q.GetOffers(query)
@@ -283,7 +301,7 @@ func TestGetOffers(t *testing.T) {
 		)
 		tt.Assert.NoError(err)
 		query = OffersQuery{
-			pageQuery: pageQuery,
+			PageQuery: pageQuery,
 		}
 
 		offers, err = q.GetOffers(query)

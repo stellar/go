@@ -316,7 +316,8 @@ type QSigners interface {
 
 // OffersQuery is a helper struct to configure queries to offers
 type OffersQuery struct {
-	pageQuery db2.PageQuery
+	PageQuery db2.PageQuery
+	SellerID  *string
 }
 
 // QOffers defines offer related queries.
