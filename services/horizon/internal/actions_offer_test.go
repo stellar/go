@@ -18,8 +18,7 @@ import (
 
 func TestOfferActions_Show(t *testing.T) {
 	var (
-		issuer = xdr.MustAddress("GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H")
-
+		issuer      = xdr.MustAddress("GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H")
 		nativeAsset = xdr.Asset{
 			Type: xdr.AssetTypeAssetTypeNative,
 		}
@@ -121,6 +120,7 @@ func TestOfferActionsStillIngesting_Show(t *testing.T) {
 func TestOfferActions_Index(t *testing.T) {
 	var (
 		issuer = xdr.MustAddress("GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H")
+		seller = xdr.MustAddress("GA5WBPYA5Y4WAEHXWR2UKO2UO4BUGHUQ74EUPKON2QHV4WRHOIRNKKH2")
 
 		nativeAsset = xdr.Asset{
 			Type: xdr.AssetTypeAssetTypeNative,
@@ -146,7 +146,7 @@ func TestOfferActions_Index(t *testing.T) {
 			Amount: xdr.Int64(500),
 		}
 		twoEurOffer = xdr.OfferEntry{
-			SellerId: issuer,
+			SellerId: seller,
 			OfferId:  xdr.Int64(5),
 			Buying:   eurAsset,
 			Selling:  nativeAsset,
@@ -186,6 +186,12 @@ func TestOfferActions_Index(t *testing.T) {
 		lastModifiedTime, err := time.Parse("2006-01-02 15:04:05", "2019-06-03 16:34:02")
 		ht.Require.NoError(err)
 		ht.Assert.Equal(lastModifiedTime, *records[0].LastModifiedTime)
+	}
+
+	w = ht.Get("/offers?seller=GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H")
+
+	if ht.Assert.Equal(200, w.Code) {
+		ht.Assert.PageOf(1, w.Body)
 	}
 }
 

@@ -260,16 +260,31 @@ func getOfferResource(w http.ResponseWriter, r *http.Request) {
 func getAllOffersResource(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	app := AppFromContext(ctx)
-	records, err := app.HistoryQ().GetAllOffers()
-	if err != nil {
-		problem.Render(ctx, w, err)
-		return
-	}
 
 	pq, err := actions.GetPageQuery(r)
 
 	if err != nil {
 		problem.Render(ctx, w, err)
+		return
+	}
+
+	seller, err := actions.GetString(r, "seller")
+
+	if err != nil {
+		problem.Render(ctx, w, err)
+		return
+	}
+
+	query := history.OffersQuery{
+		PageQuery: pq,
+		SellerID:  &seller,
+	}
+
+	records, err := app.HistoryQ().GetOffers(query)
+
+	if err != nil {
+		problem.Render(ctx, w, err)
+		return
 	}
 
 	page := hal.Page{
