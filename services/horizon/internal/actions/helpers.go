@@ -527,16 +527,29 @@ func (base *Base) GetAsset(prefix string) (result xdr.Asset) {
 // MaybeGetAsset decodes an asset from the request fields as GetAsset does, but
 // only if type field is populated. returns an additional boolean reflecting whether
 // or not the decoding was performed
+func MaybeGetAsset(r *http.Request, prefix string) (xdr.Asset, bool) {
+	s, err := GetString(r, prefix+"asset_type")
+	if err != nil || s == "" {
+		return xdr.Asset{}, false
+	}
+
+	asset, err := GetAsset(r, prefix)
+	if err != nil {
+		return xdr.Asset{}, false
+	}
+
+	return asset, true
+}
+
+// MaybeGetAsset decodes an asset from the request fields as GetAsset does, but
+// only if type field is populated. returns an additional boolean reflecting whether
+// or not the decoding was performed
 func (base *Base) MaybeGetAsset(prefix string) (xdr.Asset, bool) {
 	if base.Err != nil {
 		return xdr.Asset{}, false
 	}
 
-	if base.GetString(prefix+"asset_type") == "" {
-		return xdr.Asset{}, false
-	}
-
-	return base.GetAsset(prefix), true
+	return MaybeGetAsset(base.R, prefix)
 }
 
 // GetTimeMillis retrieves a TimeMillis from the action parameter of the given name.

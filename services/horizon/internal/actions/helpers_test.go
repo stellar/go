@@ -87,6 +87,45 @@ func TestGetAssetType(t *testing.T) {
 		tt.Assert.Equal(xdr.AssetTypeAssetTypeCreditAlphanum12, ts)
 	}
 }
+
+func TestMaybeGetAsset(t *testing.T) {
+	tt := test.Start(t)
+	defer tt.Finish()
+	r := makeTestAction().R
+
+	ts, found := MaybeGetAsset(r, "native_")
+	if tt.Assert.True(found) {
+		tt.Assert.Equal(xdr.AssetTypeAssetTypeNative, ts.Type)
+	}
+
+	ts, found = MaybeGetAsset(r, "4_")
+	if tt.Assert.True(found) {
+		tt.Assert.Equal(xdr.AssetTypeAssetTypeCreditAlphanum4, ts.Type)
+	}
+
+	_, found = MaybeGetAsset(r, "selling_")
+	tt.Assert.False(found)
+}
+
+func TestActionMaybeGetAsset(t *testing.T) {
+	tt := test.Start(t)
+	defer tt.Finish()
+	action := makeTestAction()
+
+	ts, found := action.MaybeGetAsset("native_")
+	if tt.Assert.True(found) {
+		tt.Assert.Equal(xdr.AssetTypeAssetTypeNative, ts.Type)
+	}
+
+	ts, found = action.MaybeGetAsset("4_")
+	if tt.Assert.True(found) {
+		tt.Assert.Equal(xdr.AssetTypeAssetTypeCreditAlphanum4, ts.Type)
+	}
+
+	_, found = action.MaybeGetAsset("selling_")
+	tt.Assert.False(found)
+}
+
 func TestActionGetCursor(t *testing.T) {
 	tt := test.Start(t)
 	defer tt.Finish()
