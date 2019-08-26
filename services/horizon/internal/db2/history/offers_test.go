@@ -1,6 +1,7 @@
 package history
 
 import (
+	"strconv"
 	"testing"
 
 	"github.com/stellar/go/services/horizon/internal/db2"
@@ -231,21 +232,64 @@ func TestGetOffers(t *testing.T) {
 	tt.Assert.NoError(q.UpsertOffer(eurOffer, 1234))
 	tt.Assert.NoError(q.UpsertOffer(twoEurOffer, 1235))
 
-	pageQuery, err := db2.NewPageQuery("", false, "", 10)
-	tt.Assert.NoError(err)
-	query := OffersQuery{
-		pageQuery: pageQuery,
-	}
+	t.Run("PageQuery", func(t *testing.T) {
+		pageQuery, err := db2.NewPageQuery("", false, "", 10)
+		tt.Assert.NoError(err)
+		query := OffersQuery{
+			pageQuery: pageQuery,
+		}
 
-	offers, err := q.GetOffers(query)
-	tt.Assert.NoError(err)
-	tt.Assert.Len(offers, 2)
+		offers, err := q.GetOffers(query)
+		tt.Assert.NoError(err)
+		tt.Assert.Len(offers, 2)
 
-	offersByID := map[xdr.Int64]Offer{
-		offers[0].OfferID: offers[0],
-		offers[1].OfferID: offers[1],
-	}
+		offersByID := map[xdr.Int64]Offer{
+			offers[0].OfferID: offers[0],
+			offers[1].OfferID: offers[1],
+		}
 
-	assertOfferEntryMatchesDBOffer(t, eurOffer, offersByID[eurOffer.OfferId], 1234)
-	assertOfferEntryMatchesDBOffer(t, twoEurOffer, offersByID[twoEurOffer.OfferId], 1235)
+		assertOfferEntryMatchesDBOffer(t, eurOffer, offersByID[eurOffer.OfferId], 1234)
+		assertOfferEntryMatchesDBOffer(t, twoEurOffer, offersByID[twoEurOffer.OfferId], 1235)
+
+		pageQuery, err = db2.NewPageQuery("", false, "asc", 1)
+		tt.Assert.NoError(err)
+		query = OffersQuery{
+			pageQuery: pageQuery,
+		}
+
+		offers, err = q.GetOffers(query)
+		tt.Assert.NoError(err)
+		tt.Assert.Len(offers, 1)
+
+		assertOfferEntryMatchesDBOffer(t, eurOffer, offers[0], 1234)
+
+		pageQuery, err = db2.NewPageQuery("", false, "desc", 1)
+		tt.Assert.NoError(err)
+		query = OffersQuery{
+			pageQuery: pageQuery,
+		}
+
+		offers, err = q.GetOffers(query)
+		tt.Assert.NoError(err)
+		tt.Assert.Len(offers, 1)
+
+		assertOfferEntryMatchesDBOffer(t, twoEurOffer, offers[0], 1235)
+
+		pageQuery, err = db2.NewPageQuery(
+			strconv.FormatInt(int64(eurOffer.OfferId), 10),
+			false,
+			"",
+			10,
+		)
+		tt.Assert.NoError(err)
+		query = OffersQuery{
+			pageQuery: pageQuery,
+		}
+
+		offers, err = q.GetOffers(query)
+		tt.Assert.NoError(err)
+		tt.Assert.Len(offers, 1)
+
+		assertOfferEntryMatchesDBOffer(t, twoEurOffer, offers[0], 1235)
+	})
 }
