@@ -3,21 +3,7 @@ package horizon
 import (
 	"net/http"
 	"testing"
-
-	"github.com/stellar/go/services/horizon/internal/test"
 )
-
-func TestNewApp(t *testing.T) {
-	tt := test.Start(t)
-	defer tt.Finish()
-
-	config := NewTestConfig()
-	config.SentryDSN = "Not a url"
-
-	tt.Assert.Panics(func() {
-		NewApp(config).Close()
-	})
-}
 
 func TestGenericHTTPFeatures(t *testing.T) {
 	ht := StartHTTPTest(t, "base")
