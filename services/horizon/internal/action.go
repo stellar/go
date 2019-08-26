@@ -283,10 +283,18 @@ func getAllOffersResource(w http.ResponseWriter, r *http.Request) {
 		selling = &sellingAsset
 	}
 
+	var buying *xdr.Asset
+	buyingAsset, found := actions.MaybeGetAsset(r, "buying_")
+
+	if found {
+		buying = &buyingAsset
+	}
+
 	query := history.OffersQuery{
 		PageQuery: pq,
 		SellerID:  &seller,
 		Selling:   selling,
+		Buying:    buying,
 	}
 
 	records, err := app.HistoryQ().GetOffers(query)

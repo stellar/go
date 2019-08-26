@@ -237,6 +237,34 @@ func TestOfferActions_Index(t *testing.T) {
 			ht.Assert.PageOf(1, w.Body)
 		}
 	})
+
+	t.Run("Filter by buying asset", func(t *testing.T) {
+		url := fmt.Sprintf(
+			"/offers?buying_asset_type=%s&buying_asset_code=%s&buying_asset_issuer=%s",
+			"credit_alphanum4",
+			"eur",
+			"GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H",
+		)
+
+		w := ht.Get(url)
+
+		if ht.Assert.Equal(200, w.Code) {
+			ht.Assert.PageOf(2, w.Body)
+		}
+
+		url = fmt.Sprintf(
+			"/offers?buying_asset_type=%s&buying_asset_code=%s&buying_asset_issuer=%s",
+			"credit_alphanum4",
+			"usd",
+			"GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H",
+		)
+
+		w = ht.Get(url)
+
+		if ht.Assert.Equal(200, w.Code) {
+			ht.Assert.PageOf(1, w.Body)
+		}
+	})
 }
 
 func TestOfferActionsStillIngesting_Index(t *testing.T) {
