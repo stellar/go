@@ -314,8 +314,14 @@ type QSigners interface {
 	RemoveAccountSigner(account, signer string) error
 }
 
+// OffersQuery is a helper struct to configure queries to offers
+type OffersQuery struct {
+	pageQuery db2.PageQuery
+}
+
 // QOffers defines offer related queries.
 type QOffers interface {
+	GetOffers(query OffersQuery) ([]Offer, error)
 	GetAllOffers() ([]Offer, error)
 	UpsertOffer(offer xdr.OfferEntry, lastModifiedLedger xdr.Uint32) error
 	RemoveOffer(offerID xdr.Int64) error
