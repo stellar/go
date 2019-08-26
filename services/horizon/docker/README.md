@@ -68,3 +68,12 @@ Now you can run horizon locally in vscode using the following configuration:
 ```
 
 Similarly, to run Stellar core locally from source and have it interact with Horizon in docker, all you need to do is run `docker-compose stop core` before running Stellar core from source.
+
+## Connecting to the Stellar Public Network
+
+By default, the Docker Compose file configures Stellar Core to connect to the Stellar test network. If you would like to run the docker containers against the
+Stellar public network, set the `core` container's env_file to `./stellar-core-pubnet.env` instead of `./stellar-core-testnet.env`. You will also need to
+change the `NETWORK_PASSPHRASE` variable in horizon to `Public Global Stellar Network ; September 2015`.
+
+When you switch between the Stellar test network and the Stellar public network, or vice versa, you will need to clear the Stellar Core and Stellar Horizon
+databases. You can wipe out the databases by running `docker-compose down -v`.
