@@ -81,3 +81,11 @@
 [[constraint]]
   branch = "master"
   name = "github.com/graph-gophers/graphql-go"
+
+[[constraint]]
+  name = "github.com/elazarl/go-bindata-assetfs"
+  version = "1.0.0"
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/shurcooL/httpfs"

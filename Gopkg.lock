@@ -146,6 +146,14 @@
   revision = "5215b55f46b2b919f50a1df0eaa5886afe4e3b3d"
 
 [[projects]]
+  digest = "1:044b2f1eea2f5cfb0d3678baf60892734f59d5c2ea3932cb6ed894a97ccba15c"
+  name = "github.com/elazarl/go-bindata-assetfs"
+  packages = ["."]
+  pruneopts = "T"
+  revision = "30f82fa23fd844bd5bb1e5f216db87fd77b5eb43"
+  version = "v1.0.0"
+
+[[projects]]
   digest = "1:5297743abfa08385d460c70f49cf0f0f01433445b400931a23027e846b594477"
   name = "github.com/ethereum/go-ethereum"
   packages = [
@@ -618,6 +626,14 @@
   revision = "83532ca1c1caa393179c677b6facf48e61f4ca5d"
 
 [[projects]]
+  branch = "master"
+  digest = "1:4a0243e7807071601369ff7ed5ccf7769fb27d8a1fd7db4926c41dedf9e32058"
+  name = "github.com/shurcooL/httpfs"
+  packages = ["filter"]
+  pruneopts = "T"
+  revision = "8d4bc4ba774931155e6cd5ef6098cb038dd45135"
+
+[[projects]]
   digest = "1:39553373857c2f3d484b9e1e4474bf6f21a795fe14fe6b941362ee6b266416f3"
   name = "github.com/sirupsen/logrus"
   packages = [
@@ -913,6 +929,7 @@
     "github.com/btcsuite/btcd/txscript",
     "github.com/btcsuite/btcd/wire",
     "github.com/btcsuite/btcutil",
+    "github.com/elazarl/go-bindata-assetfs",
     "github.com/ethereum/go-ethereum/common",
     "github.com/ethereum/go-ethereum/core/types",
     "github.com/ethereum/go-ethereum/crypto",
@@ -947,6 +964,7 @@
     "github.com/rubenv/sql-migrate",
     "github.com/sebest/xff",
     "github.com/segmentio/go-loggly",
+    "github.com/shurcooL/httpfs/filter",
     "github.com/sirupsen/logrus",
     "github.com/sirupsen/logrus/hooks/test",
     "github.com/spf13/cobra",
