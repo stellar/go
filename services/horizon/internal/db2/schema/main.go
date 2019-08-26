@@ -9,7 +9,7 @@ import (
 	"github.com/stellar/go/support/db"
 )
 
-//go:generate go-bindata -ignore .+\.go$ -pkg schema -o bindata.go ./...
+//go:generate go-bindata -pkg schema -o bindata.go migrations/
 
 // MigrateDir represents a direction in which to perform schema migrations.
 type MigrateDir string

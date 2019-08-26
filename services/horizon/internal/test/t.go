@@ -51,6 +51,24 @@ func (t *T) Scenario(name string) *T {
 // ScenarioWithoutHorizon loads the named sql scenario into the database
 func (t *T) ScenarioWithoutHorizon(name string) *T {
 	LoadScenarioWithoutHorizon(name)
+	err := t.HorizonSession().TruncateTables([]string{
+		"asset_stats",
+		"history_accounts",
+		"history_assets",
+		"history_effects",
+		"history_ledgers",
+		"history_operation_participants",
+		"history_operations",
+		"history_trades",
+		"history_transaction_participants",
+		"history_transactions",
+		"key_value_store",
+		"accounts_signers",
+		"offers",
+	})
+	if err != nil {
+		t.T.Fatalf("cannot truncate horizon tables: %v", err)
+	}
 	t.UpdateLedgerState()
 	return t
 }

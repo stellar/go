@@ -144,7 +144,7 @@ func (s *Session) GetTable(name string) *Table {
 }
 
 func (s *Session) TruncateTables(tables []string) error {
-	truncateCmd := fmt.Sprintf("truncate %s cascade", strings.Join(tables[:], ","))
+	truncateCmd := fmt.Sprintf("truncate %s restart identity cascade", strings.Join(tables[:], ","))
 	_, err := s.ExecRaw(truncateCmd)
 	return err
 }

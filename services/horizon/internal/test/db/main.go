@@ -11,6 +11,7 @@ import (
 	"github.com/jmoiron/sqlx"
 	// pq enables postgres support
 	_ "github.com/lib/pq"
+	"github.com/stellar/go/services/horizon/internal/db2/schema"
 	db "github.com/stellar/go/support/db/dbtest"
 )
 
@@ -29,6 +30,12 @@ func Horizon(t *testing.T) *sqlx.DB {
 	postgres := db.Postgres(t)
 	horizonUrl = &postgres.DSN
 	horizonDB = postgres.Open()
+
+	_, err := schema.Migrate(horizonDB.DB, schema.MigrateUp, 0)
+	if err != nil {
+		t.Fatalf("could not run migrations on test db: %v", err)
+	}
+
 	return horizonDB
 }
 
