@@ -19,7 +19,7 @@ type LoggingStateReporter struct {
 
 // OnStartState logs that the session has started reading from the history archive snapshot
 func (lr *LoggingStateReporter) OnStartState(sequence uint32) {
-	lr.Log.WithField("sequence", sequence).Info("Reading from History Archive Snapshot")
+	lr.Log.WithField("ledger", sequence).Info("Reading from History Archive Snapshot")
 
 	lr.entryCount = 0
 	lr.sequence = sequence
@@ -30,7 +30,7 @@ func (lr *LoggingStateReporter) OnStartState(sequence uint32) {
 func (lr *LoggingStateReporter) OnStateEntry() {
 	lr.entryCount++
 	if lr.entryCount%lr.Interval == 0 {
-		lr.Log.WithField("sequence", lr.sequence).
+		lr.Log.WithField("ledger", lr.sequence).
 			WithField("numEntries", lr.entryCount).
 			Info("Processing entries from History Archive Snapshot")
 	}
@@ -40,7 +40,7 @@ func (lr *LoggingStateReporter) OnStateEntry() {
 func (lr *LoggingStateReporter) OnEndState(err error, shutdown bool) {
 	elapsedTime := time.Since(lr.startTime)
 
-	l := lr.Log.WithField("sequence", lr.sequence).
+	l := lr.Log.WithField("ledger", lr.sequence).
 		WithField("numEntries", lr.entryCount).
 		WithField("shutdown", shutdown).
 		WithField("duration", elapsedTime.Seconds())
@@ -64,7 +64,7 @@ type LoggingLedgerReporter struct {
 
 // OnNewLedger logs that the session has started reading a new ledger
 func (lr *LoggingLedgerReporter) OnNewLedger(sequence uint32) {
-	lr.Log.WithField("sequence", sequence).Info("Reading new ledger")
+	lr.Log.WithField("ledger", sequence).Info("Reading new ledger")
 	lr.transactionCount = 0
 	lr.sequence = sequence
 	lr.startTime = time.Now()
@@ -79,7 +79,7 @@ func (lr *LoggingLedgerReporter) OnLedgerTransaction() {
 func (lr *LoggingLedgerReporter) OnEndLedger(err error, shutdown bool) {
 	elapsedTime := time.Since(lr.startTime)
 
-	l := lr.Log.WithField("sequence", lr.sequence).
+	l := lr.Log.WithField("ledger", lr.sequence).
 		WithField("transactions", lr.transactionCount).
 		WithField("shutdown", shutdown).
 		WithField("duration", elapsedTime.Seconds())

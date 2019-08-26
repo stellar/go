@@ -110,6 +110,7 @@ func logStartOfRequest(ctx context.Context, r *http.Request, streaming bool) {
 		"method":         r.Method,
 		"path":           r.URL.String(),
 		"streaming":      streaming,
+		"referer":        r.Referer(),
 	}).Info("Starting request")
 }
 
@@ -137,6 +138,7 @@ func logEndOfRequest(ctx context.Context, r *http.Request, duration time.Duratio
 		"route":          routePattern,
 		"status":         mw.Status(),
 		"streaming":      streaming,
+		"referer":        r.Referer(),
 	}).Info("Finished request")
 }
 
