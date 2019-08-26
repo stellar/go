@@ -15,7 +15,7 @@ import (
 	apkg "github.com/stellar/go/support/app"
 	support "github.com/stellar/go/support/config"
 	"github.com/stellar/go/support/log"
-	"github.com/throttled/throttled"
+	"github.com/stellar/throttled"
 )
 
 var config horizon.Config

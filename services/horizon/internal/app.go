@@ -29,7 +29,7 @@ import (
 	"github.com/stellar/go/support/db"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/support/log"
-	"github.com/throttled/throttled"
+	"github.com/stellar/throttled"
 	"golang.org/x/net/http2"
 	graceful "gopkg.in/tylerb/graceful.v1"
 )

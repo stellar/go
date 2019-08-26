@@ -59,9 +59,8 @@
   revision = "070c81def33f6362a8267b6a4e56fb7bf23fc6b5"
 
 [[constraint]]
-  name = "github.com/throttled/throttled"
-  source = "https://github.com/bartekn/throttled.git"
-  revision = "c99eef3ad70a3be5a983770523e0e379699c805c"
+  name = "github.com/stellar/throttled"
+  revision = "89d75816f59db3124e575e96b35d4b7d927cde93"
 
 [[constraint]]
   name = "golang.org/x/crypto"

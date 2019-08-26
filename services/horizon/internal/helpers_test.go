@@ -13,7 +13,7 @@ import (
 	"github.com/stellar/go/services/horizon/internal/actions"
 	"github.com/stellar/go/services/horizon/internal/test"
 	supportLog "github.com/stellar/go/support/log"
-	"github.com/throttled/throttled"
+	"github.com/stellar/throttled"
 )
 
 func NewTestApp() *App {
