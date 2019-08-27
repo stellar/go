@@ -11,6 +11,7 @@ bumps.  A breaking change will get clearly notified in this log.
 ### Changed
 
 - BREAKING CHANGE: The `url` database configuration has been renamed to `dsn` to more accurately reflect its content.
+- Dropped support for Go 1.10.
 
 ### Fixed
 

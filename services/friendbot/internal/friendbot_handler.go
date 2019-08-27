@@ -39,7 +39,9 @@ func (handler *FriendbotHandler) doHandle(r *http.Request) (*horizon.Transaction
 
 	err = r.ParseForm()
 	if err != nil {
-		return nil, err
+		p := problem.BadRequest
+		p.Detail = "Request parameters are not escaped or incorrectly formatted."
+		return nil, &p
 	}
 
 	address, err := handler.loadAddress(r)

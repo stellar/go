@@ -72,23 +72,6 @@ func main() {
 		os.Exit(1)
 	}
 
-	if *auth {
-		if cfg.AUTHURL == "" {
-			fmt.Fprintln(os.Stderr, "Auth is enabled but auth forwarding URL is not set")
-			os.Exit(1)
-		}
-		if _, err := url.Parse(cfg.AUTHURL); err != nil {
-			fmt.Fprintln(os.Stderr, "Invalid auth forwarding URL")
-			os.Exit(1)
-		}
-	}
-
-	aType := strings.ToUpper(*apiType)
-	if aType != keystore.REST && aType != keystore.GraphQL {
-		fmt.Fprintln(os.Stderr, `Auth forwarding endpoint type can only be either "REST" or "GRAPHQL"`)
-		os.Exit(1)
-	}
-
 	db, err := sql.Open(dbDriverName, cfg.DBURL)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "error opening database: %v\n", err)
@@ -106,6 +89,23 @@ func main() {
 	cmd := flag.Arg(0)
 	switch cmd {
 	case "serve":
+		if *auth {
+			if cfg.AUTHURL == "" {
+				fmt.Fprintln(os.Stderr, "Auth is enabled but auth forwarding URL is not set")
+				os.Exit(1)
+			}
+			if _, err := url.Parse(cfg.AUTHURL); err != nil {
+				fmt.Fprintln(os.Stderr, "Invalid auth forwarding URL")
+				os.Exit(1)
+			}
+		}
+
+		aType := strings.ToUpper(*apiType)
+		if aType != keystore.REST && aType != keystore.GraphQL {
+			fmt.Fprintln(os.Stderr, `Auth forwarding endpoint type can only be either "REST" or "GRAPHQL"`)
+			os.Exit(1)
+		}
+
 		addr := ":" + strconv.Itoa(cfg.ListenerPort)
 		var authenticator *keystore.Authenticator
 		if *auth {

@@ -48,12 +48,12 @@
   revision = "523a5da1a92f01b01f840b61689c0340a0243532"
 
 [[projects]]
+  branch = "master"
   digest = "1:a9d72387197f5b54e24fd51499668fb597e25db8f5223bfb51db3bdd10e2d8eb"
   name = "github.com/asaskevich/govalidator"
   packages = ["."]
   pruneopts = "T"
   revision = "7d2e70ef918f16bd6455529af38304d6d025c952"
-  source = "https://github.com/asaskevich/govalidator.git"
 
 [[projects]]
   digest = "1:b6ce38ef977bd5df1f9a7824549f03e542b772edf86f565ad1392a9fa68b9676"
@@ -144,6 +144,14 @@
   packages = ["spew"]
   pruneopts = "T"
   revision = "5215b55f46b2b919f50a1df0eaa5886afe4e3b3d"
+
+[[projects]]
+  digest = "1:044b2f1eea2f5cfb0d3678baf60892734f59d5c2ea3932cb6ed894a97ccba15c"
+  name = "github.com/elazarl/go-bindata-assetfs"
+  packages = ["."]
+  pruneopts = "T"
+  revision = "30f82fa23fd844bd5bb1e5f216db87fd77b5eb43"
+  version = "v1.0.0"
 
 [[projects]]
   digest = "1:5297743abfa08385d460c70f49cf0f0f01433445b400931a23027e846b594477"
@@ -586,14 +594,15 @@
   version = "v.11"
 
 [[projects]]
-  digest = "1:aeebf12d5c8463faab36c6f9904e36cc9d825a7a3c735ad160a0abd09c71017d"
+  branch = "master"
+  digest = "1:58e8415f3d41ba3f464bfb3c572400965a0eb7ab354c34d5c1f9b67a18e7e651"
   name = "github.com/rubenv/sql-migrate"
   packages = [
     ".",
     "sqlparse",
   ]
   pruneopts = "T"
-  revision = "53184e1edfb4f9655b0fa8dd2c23e7763f452bda"
+  revision = "87ce952f7079c58e10a2a85835202943ebb9580c"
 
 [[projects]]
   digest = "1:746e354627daf5948dc32970502e849e6e49e575f6de9dcf06bdaea47997a802"
@@ -615,6 +624,14 @@
   packages = ["diffmatchpatch"]
   pruneopts = "T"
   revision = "83532ca1c1caa393179c677b6facf48e61f4ca5d"
+
+[[projects]]
+  branch = "master"
+  digest = "1:4a0243e7807071601369ff7ed5ccf7769fb27d8a1fd7db4926c41dedf9e32058"
+  name = "github.com/shurcooL/httpfs"
+  packages = ["filter"]
+  pruneopts = "T"
+  revision = "8d4bc4ba774931155e6cd5ef6098cb038dd45135"
 
 [[projects]]
   digest = "1:39553373857c2f3d484b9e1e4474bf6f21a795fe14fe6b941362ee6b266416f3"
@@ -670,6 +687,13 @@
   revision = "0bc96f33a18ef2f963e75431dbed042129eb421b"
 
 [[projects]]
+  digest = "1:1726681d0181b61f4e256aeda39fa53f29268bab43b32ebe78f0223dd910dcfd"
+  name = "github.com/stellar/throttled"
+  packages = ["."]
+  pruneopts = "T"
+  revision = "89d75816f59db3124e575e96b35d4b7d927cde93"
+
+[[projects]]
   digest = "1:1087cae51acd825ff03792b392a34486a261b9673a9514df0b712051edee0c2b"
   name = "github.com/stretchr/objx"
   packages = ["."]
@@ -687,14 +711,6 @@
   ]
   pruneopts = "T"
   revision = "976c720a22c8eb4eb6a0b4348ad85ad12491a506"
-
-[[projects]]
-  digest = "1:a6dd23012ca65b72dbca7b3e06dac44a9bb33b018221a26f213b1802cddfc337"
-  name = "github.com/throttled/throttled"
-  packages = ["."]
-  pruneopts = "T"
-  revision = "c99eef3ad70a3be5a983770523e0e379699c805c"
-  source = "https://github.com/bartekn/throttled.git"
 
 [[projects]]
   branch = "master"
@@ -912,6 +928,7 @@
     "github.com/btcsuite/btcd/txscript",
     "github.com/btcsuite/btcd/wire",
     "github.com/btcsuite/btcutil",
+    "github.com/elazarl/go-bindata-assetfs",
     "github.com/ethereum/go-ethereum/common",
     "github.com/ethereum/go-ethereum/core/types",
     "github.com/ethereum/go-ethereum/crypto",
@@ -946,16 +963,17 @@
     "github.com/rubenv/sql-migrate",
     "github.com/sebest/xff",
     "github.com/segmentio/go-loggly",
+    "github.com/shurcooL/httpfs/filter",
     "github.com/sirupsen/logrus",
     "github.com/sirupsen/logrus/hooks/test",
     "github.com/spf13/cobra",
     "github.com/spf13/viper",
     "github.com/stellar/go-xdr/xdr3",
+    "github.com/stellar/throttled",
     "github.com/stretchr/testify/assert",
     "github.com/stretchr/testify/mock",
     "github.com/stretchr/testify/require",
     "github.com/stretchr/testify/suite",
-    "github.com/throttled/throttled",
     "github.com/tyler-smith/go-bip32",
     "github.com/tyler-smith/go-bip39",
     "golang.org/x/crypto/ed25519",

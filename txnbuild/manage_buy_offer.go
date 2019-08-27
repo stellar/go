@@ -57,3 +57,30 @@ func (mo *ManageBuyOffer) BuildXDR() (xdr.Operation, error) {
 	SetOpSourceAccount(&op, mo.SourceAccount)
 	return op, nil
 }
+
+// FromXDR for ManageBuyOffer initialises the txnbuild struct from the corresponding xdr Operation.
+func (mo *ManageBuyOffer) FromXDR(xdrOp xdr.Operation) error {
+	result, ok := xdrOp.Body.GetManageBuyOfferOp()
+	if !ok {
+		return errors.New("error parsing manage_buy_offer operation from xdr")
+	}
+
+	mo.SourceAccount = accountFromXDR(xdrOp.SourceAccount)
+	mo.OfferID = int64(result.OfferId)
+	mo.Amount = amount.String(result.BuyAmount)
+	if result.Price != (xdr.Price{}) {
+		mo.Price = price.StringFromFloat64(float64(result.Price.N) / float64(result.Price.D))
+	}
+	buyingAsset, err := assetFromXDR(result.Buying)
+	if err != nil {
+		return errors.Wrap(err, "error parsing buying_asset in manage_buy_offer operation")
+	}
+	mo.Buying = buyingAsset
+
+	sellingAsset, err := assetFromXDR(result.Selling)
+	if err != nil {
+		return errors.Wrap(err, "error parsing selling_asset in manage_buy_offer operation")
+	}
+	mo.Selling = sellingAsset
+	return nil
+}
