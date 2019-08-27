@@ -379,9 +379,6 @@ CREATE UNIQUE INDEX index_history_transactions_on_id ON history_transactions USI
 CREATE INDEX trade_effects_by_order_book ON history_effects USING btree (((details ->> 'sold_asset_type'::text)), ((details ->> 'sold_asset_code'::text)), ((details ->> 'sold_asset_issuer'::text)), ((details ->> 'bought_asset_type'::text)), ((details ->> 'bought_asset_code'::text)), ((details ->> 'bought_asset_issuer'::text))) WHERE (type = 33);
 
 
---
--- PostgreSQL database dump complete
---
 
 -- +migrate Down
 drop table history_transactions cascade;

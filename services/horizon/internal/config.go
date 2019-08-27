@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/sirupsen/logrus"
-	"github.com/throttled/throttled"
+	"github.com/stellar/throttled"
 )
 
 // Config is the configuration for horizon.  It gets populated by the

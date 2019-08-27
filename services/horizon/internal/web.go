@@ -24,7 +24,7 @@ import (
 	"github.com/stellar/go/support/db"
 	"github.com/stellar/go/support/log"
 	"github.com/stellar/go/support/render/problem"
-	"github.com/throttled/throttled"
+	"github.com/stellar/throttled"
 )
 
 const LRUCacheSize = 50000

@@ -21,7 +21,9 @@ services:
       - "11625:11625"
       - "11626:11626"
     env_file:
-      - ./stellar-core-testnet.env      
+      # to connect to the public stellar network
+      # use stellar-core-pubnet.env instead of stellar-core-testnet.env 
+      - ./stellar-core-testnet.env
     command: /start compat_minimal nopsql fresh
     network_mode: '${NETWORK_MODE:-bridge}'
 
@@ -50,6 +52,8 @@ services:
     environment:
       - DATABASE_URL=postgres://postgres@host.docker.internal:5432/horizon?sslmode=disable
       - STELLAR_CORE_DATABASE_URL=postgres://postgres:mysecretpassword@host.docker.internal:5641/stellar?sslmode=disable
+      # to connect to the public stellar network
+      # use "Public Global Stellar Network ; September 2015" of "Test SDF Network ; September 2015"
       - NETWORK_PASSPHRASE=Test SDF Network ; September 2015
       - STELLAR_CORE_URL=http://host.docker.internal:11626
       - INGEST=true
