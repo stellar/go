@@ -32,7 +32,8 @@ require (
 	github.com/go-ini/ini v1.23.0 // indirect
 	github.com/go-sql-driver/mysql v1.4.0
 	github.com/go-stack/stack v1.6.0 // indirect
-	github.com/gobuffalo/packr v1.30.1 // indirect
+	github.com/gobuffalo/packr v1.12.1 // indirect
+	github.com/gobuffalo/packr/v2 v2.5.1 // indirect
 	github.com/goji/httpauth v0.0.0-20160601135302-2da839ab0f4d
 	github.com/gomodule/redigo v2.0.0+incompatible
 	github.com/google/go-querystring v0.0.0-20160401233042-9235644dd9e5 // indirect
