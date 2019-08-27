@@ -58,7 +58,7 @@ require (
 	github.com/manucorporat/sse v0.0.0-20160126180136-ee05b128a739
 	github.com/mattn/go-colorable v0.1.2 // indirect
 	github.com/mitchellh/go-homedir v1.1.0
-	github.com/mitchellh/mapstructure v1.1.2 // indirect
+	github.com/mitchellh/mapstructure v0.0.0-20150613213606-2caf8efc9366 // indirect
 	github.com/mndrix/ps v0.0.0-20131111202200-33ddf69629c1 // indirect
 	github.com/moul/http2curl v0.0.0-20161031194548-4e24498b31db // indirect
 	github.com/nullstyle/go-xdr v0.0.0-20180726165426-f4c839f75077 // indirect
