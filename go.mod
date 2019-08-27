@@ -4,7 +4,7 @@ go 1.13
 
 require (
 	bitbucket.org/ww/goautoneg v0.0.0-20120707110453-75cd24fc2f2c
-	github.com/BurntSushi/toml v0.3.1
+	github.com/BurntSushi/toml v0.2.1-0.20160717150709-99064174e013
 	github.com/FactomProject/basen v0.0.0-20150613233007-fe3947df716e // indirect
 	github.com/FactomProject/btcutilecc v0.0.0-20130527213604-d3a63a5752ec // indirect
 	github.com/Masterminds/squirrel v0.0.0-20161115235646-20f192218cf5
