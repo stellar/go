@@ -254,6 +254,10 @@ func TestGetOffers(t *testing.T) {
 		offers, err = q.GetOffers(query)
 		tt.Assert.NoError(err)
 		tt.Assert.Len(offers, 2)
+
+		for _, offer := range offers {
+			tt.Assert.Equal(nativeAsset, offer.SellingAsset)
+		}
 	})
 
 	t.Run("Filter by buying asset", func(t *testing.T) {
@@ -268,6 +272,10 @@ func TestGetOffers(t *testing.T) {
 		offers, err := q.GetOffers(query)
 		tt.Assert.NoError(err)
 		tt.Assert.Len(offers, 2)
+
+		for _, offer := range offers {
+			tt.Assert.Equal(eurAsset, offer.BuyingAsset)
+		}
 
 		query = OffersQuery{
 			PageQuery: pageQuery,
