@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/http"
 	"net/http/httptest"
 	"testing"
 	"time"
@@ -190,7 +191,7 @@ func TestOfferActions_Index(t *testing.T) {
 	t.Run("No filter", func(t *testing.T) {
 		w := ht.Get("/offers")
 
-		if ht.Assert.Equal(200, w.Code) {
+		if ht.Assert.Equal(http.StatusOK, w.Code) {
 			ht.Assert.PageOf(3, w.Body)
 
 			var records []horizon.Offer
@@ -212,7 +213,7 @@ func TestOfferActions_Index(t *testing.T) {
 	t.Run("Filter by seller", func(t *testing.T) {
 		w := ht.Get("/offers?seller=GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H")
 
-		if ht.Assert.Equal(200, w.Code) {
+		if ht.Assert.Equal(http.StatusOK, w.Code) {
 			ht.Assert.PageOf(2, w.Body)
 		}
 	})
@@ -220,7 +221,7 @@ func TestOfferActions_Index(t *testing.T) {
 	t.Run("Filter by selling asset", func(t *testing.T) {
 		w := ht.Get("/offers?selling_asset_type=native")
 
-		if ht.Assert.Equal(200, w.Code) {
+		if ht.Assert.Equal(http.StatusOK, w.Code) {
 			ht.Assert.PageOf(2, w.Body)
 		}
 
@@ -233,7 +234,7 @@ func TestOfferActions_Index(t *testing.T) {
 
 		w = ht.Get(url)
 
-		if ht.Assert.Equal(200, w.Code) {
+		if ht.Assert.Equal(http.StatusOK, w.Code) {
 			ht.Assert.PageOf(1, w.Body)
 		}
 	})
@@ -248,7 +249,7 @@ func TestOfferActions_Index(t *testing.T) {
 
 		w := ht.Get(url)
 
-		if ht.Assert.Equal(200, w.Code) {
+		if ht.Assert.Equal(http.StatusOK, w.Code) {
 			ht.Assert.PageOf(2, w.Body)
 		}
 
@@ -261,7 +262,7 @@ func TestOfferActions_Index(t *testing.T) {
 
 		w = ht.Get(url)
 
-		if ht.Assert.Equal(200, w.Code) {
+		if ht.Assert.Equal(http.StatusOK, w.Code) {
 			ht.Assert.PageOf(1, w.Body)
 		}
 	})
