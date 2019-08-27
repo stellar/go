@@ -324,7 +324,6 @@ type OffersQuery struct {
 
 // QOffers defines offer related queries.
 type QOffers interface {
-	GetOffers(query OffersQuery) ([]Offer, error)
 	GetAllOffers() ([]Offer, error)
 	UpsertOffer(offer xdr.OfferEntry, lastModifiedLedger xdr.Uint32) error
 	RemoveOffer(offerID xdr.Int64) error

@@ -11,11 +11,6 @@ type MockQOffers struct {
 	mock.Mock
 }
 
-func (m *MockQOffers) GetOffers(query OffersQuery) ([]Offer, error) {
-	a := m.Called()
-	return a.Get(0).([]Offer), a.Error(1)
-}
-
 func (m *MockQOffers) GetAllOffers() ([]Offer, error) {
 	a := m.Called()
 	return a.Get(0).([]Offer), a.Error(1)
