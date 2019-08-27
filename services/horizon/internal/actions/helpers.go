@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"mime"
+	"net/http"
 	"net/url"
 	"strconv"
 	"unicode/utf8"
@@ -74,9 +75,16 @@ func (base *Base) GetCursor(name string) string {
 // checkUTF8 checks if value is a valid UTF-8 string, otherwise sets
 // error to `action.Err`.
 func (base *Base) checkUTF8(name, value string) {
-	if !utf8.ValidString(value) {
-		base.SetInvalidField(name, errors.New("invalid value"))
+	if err := checkUTF8(name, value); err != nil {
+		base.SetInvalidField(name, err)
 	}
+}
+
+func checkUTF8(name, value string) error {
+	if !utf8.ValidString(value) {
+		return problem.MakeInvalidFieldProblem(name, errors.New("invalid value"))
+	}
+	return nil
 }
 
 // GetStringFromURLParam retrieves a string from the URLParams.
@@ -102,32 +110,46 @@ func (base *Base) GetStringFromURLParam(name string) string {
 
 // GetString retrieves a string from either the URLParams, form or query string.
 // This method uses the priority (URLParams, Form, Query).
-func (base *Base) GetString(name string) string {
+func GetString(r *http.Request, name string) (string, error) {
+	fromURL, ok := GetURLParam(r, name)
+	if ok {
+		ret, err := url.PathUnescape(fromURL)
+		if err != nil {
+			return "", problem.MakeInvalidFieldProblem(name, err)
+		}
+
+		if err := checkUTF8(name, ret); err != nil {
+			return "", err
+		}
+
+		return ret, nil
+	}
+
+	fromForm := r.FormValue(name)
+	if fromForm != "" {
+		if err := checkUTF8(name, fromForm); err != nil {
+			return "", err
+		}
+		return fromForm, nil
+	}
+
+	value := r.URL.Query().Get(name)
+	if err := checkUTF8(name, value); err != nil {
+		return "", err
+	}
+
+	return value, nil
+}
+
+// GetString retrieves a string from either the URLParams, form or query string.
+// This method uses the priority (URLParams, Form, Query).
+func (base *Base) GetString(name string) (result string) {
 	if base.Err != nil {
 		return ""
 	}
 
-	fromURL, ok := base.GetURLParam(name)
-	if ok {
-		ret, err := url.PathUnescape(fromURL)
-		if err != nil {
-			base.SetInvalidField(name, err)
-			return ""
-		}
-
-		base.checkUTF8(name, ret)
-		return ret
-	}
-
-	fromForm := base.R.FormValue(name)
-	if fromForm != "" {
-		base.checkUTF8(name, fromForm)
-		return fromForm
-	}
-
-	value := base.R.URL.Query().Get(name)
-	base.checkUTF8(name, value)
-	return value
+	result, base.Err = GetString(base.R, name)
+	return result
 }
 
 // GetInt64 retrieves an int64 from the action parameter of the given name.
@@ -293,81 +315,152 @@ func (base *Base) GetAddress(name string, opts ...Opt) (result string) {
 
 // GetAccountID retireves an xdr.AccountID by attempting to decode a stellar
 // address at the provided name.
-func (base *Base) GetAccountID(name string) (result xdr.AccountId) {
-	if base.Err != nil {
-		return
-	}
-
-	raw, err := strkey.Decode(strkey.VersionByteAccountID, base.GetString(name))
+func GetAccountID(r *http.Request, name string) (xdr.AccountId, error) {
+	value, err := GetString(r, name)
 	if err != nil {
-		base.SetInvalidField(name, errors.New("invalid address"))
-		return
+		return xdr.AccountId{}, err
+	}
+	raw, err := strkey.Decode(strkey.VersionByteAccountID, value)
+	if err != nil {
+		return xdr.AccountId{}, problem.MakeInvalidFieldProblem(
+			name,
+			errors.New("invalid address"),
+		)
 	}
 
 	var key xdr.Uint256
 	copy(key[:], raw)
 
-	result, err = xdr.NewAccountId(xdr.PublicKeyTypePublicKeyTypeEd25519, key)
+	result, err := xdr.NewAccountId(xdr.PublicKeyTypePublicKeyTypeEd25519, key)
 	if err != nil {
-		base.SetInvalidField(name, errors.New("invalid address"))
-		return
+		return xdr.AccountId{}, problem.MakeInvalidFieldProblem(
+			name,
+			errors.New("invalid address"),
+		)
 	}
 
-	return
+	return result, nil
 }
 
-// GetAmount returns a native amount (i.e. 64-bit integer) by parsing
-// the string at the provided name in accordance with the stellar client
-// conventions
-func (base *Base) GetAmount(name string) (result xdr.Int64) {
+// GetAccountID retireves an xdr.AccountID by attempting to decode a stellar
+// address at the provided name.
+func (base *Base) GetAccountID(name string) (result xdr.AccountId) {
 	if base.Err != nil {
 		return
 	}
 
-	var err error
-	result, err = amount.Parse(base.GetString(name))
-	if err != nil {
-		base.SetInvalidField(name, errors.New("invalid amount"))
-		return
-	}
-
-	return
+	result, base.Err = GetAccountID(base.R, name)
+	return result
 }
 
 // GetPositiveAmount returns a native amount (i.e. 64-bit integer) by parsing
 // the string at the provided name in accordance with the stellar client
 // conventions. Renders error for negative amounts and zero.
-func (base *Base) GetPositiveAmount(name string) (result xdr.Int64) {
-	if base.Err != nil {
-		return
+func GetPositiveAmount(r *http.Request, fieldName string) (xdr.Int64, error) {
+	amountString, err := GetString(r, fieldName)
+	if err != nil {
+		return 0, err
 	}
 
-	result = base.GetAmount(name)
-	if result <= 0 {
-		base.SetInvalidField(name, errors.New("Value must be positive"))
-		return xdr.Int64(0)
+	parsed, err := amount.Parse(amountString)
+	if err != nil {
+		return 0, problem.MakeInvalidFieldProblem(
+			fieldName,
+			errors.New("invalid amount"),
+		)
 	}
 
-	return
+	if parsed <= 0 {
+		return 0, problem.MakeInvalidFieldProblem(
+			fieldName,
+			errors.New("amount must be positive"),
+		)
+	}
+
+	return parsed, nil
 }
 
-// GetAssetType is a helper that returns a xdr.AssetType by reading a string
-func (base *Base) GetAssetType(name string) xdr.AssetType {
-	if base.Err != nil {
-		return xdr.AssetTypeAssetTypeNative
-	}
-
-	val := base.GetString(name)
-	if base.Err != nil {
-		return xdr.AssetTypeAssetTypeNative
-	}
-
-	r, err := assets.Parse(val)
+// getAssetType is a helper that returns a xdr.AssetType by reading a string
+func getAssetType(r *http.Request, name string) (xdr.AssetType, error) {
+	val, err := GetString(r, name)
 	if err != nil {
-		base.SetInvalidField(name, err)
+		return xdr.AssetTypeAssetTypeNative, nil
 	}
 
-	return r
+	t, err := assets.Parse(val)
+	if err != nil {
+		return t, problem.MakeInvalidFieldProblem(
+			name,
+			err,
+		)
+	}
+
+	return t, nil
+}
+
+// GetAsset decodes an asset from the request fields prefixed by `prefix`.  To
+// succeed, three prefixed fields must be present: asset_type, asset_code, and
+// asset_issuer.
+func GetAsset(r *http.Request, prefix string) (xdr.Asset, error) {
+	var value interface{}
+	t, err := getAssetType(r, prefix+"asset_type")
+	if err != nil {
+		return xdr.Asset{}, err
+	}
+
+	switch t {
+	case xdr.AssetTypeAssetTypeCreditAlphanum4:
+		a := xdr.AssetAlphaNum4{}
+		a.Issuer, err = GetAccountID(r, prefix+"asset_issuer")
+		if err != nil {
+			return xdr.Asset{}, err
+		}
+
+		var code string
+		code, err = GetString(r, prefix+"asset_code")
+		if err != nil {
+			return xdr.Asset{}, err
+		}
+		if len(code) > len(a.AssetCode) {
+			err := problem.MakeInvalidFieldProblem(
+				prefix+"asset_code",
+				errors.New("code too long"),
+			)
+			return xdr.Asset{}, err
+		}
+
+		copy(a.AssetCode[:len(code)], []byte(code))
+		value = a
+	case xdr.AssetTypeAssetTypeCreditAlphanum12:
+		a := xdr.AssetAlphaNum12{}
+		a.Issuer, err = GetAccountID(r, prefix+"asset_issuer")
+		if err != nil {
+			return xdr.Asset{}, err
+		}
+
+		var code string
+		code, err = GetString(r, prefix+"asset_code")
+		if err != nil {
+			return xdr.Asset{}, err
+		}
+		if len(code) > len(a.AssetCode) {
+			err := problem.MakeInvalidFieldProblem(
+				prefix+"asset_code",
+				errors.New("code too long"),
+			)
+			return xdr.Asset{}, err
+		}
+
+		copy(a.AssetCode[:len(code)], []byte(code))
+		value = a
+	}
+
+	result, err := xdr.NewAsset(t, value)
+	if err != nil {
+		panic(err)
+	}
+
+	return result, nil
 }
 
 // GetAsset decodes an asset from the request fields prefixed by `prefix`.  To
@@ -378,42 +471,8 @@ func (base *Base) GetAsset(prefix string) (result xdr.Asset) {
 		return
 	}
 
-	var value interface{}
-	t := base.GetAssetType(prefix + "asset_type")
-
-	switch t {
-	case xdr.AssetTypeAssetTypeCreditAlphanum4:
-		a := xdr.AssetAlphaNum4{}
-		a.Issuer = base.GetAccountID(prefix + "asset_issuer")
-
-		c := base.GetString(prefix + "asset_code")
-		if len(c) > len(a.AssetCode) {
-			base.SetInvalidField(prefix+"asset_code", errors.New("code too long"))
-			return
-		}
-
-		copy(a.AssetCode[:len(c)], []byte(c))
-		value = a
-	case xdr.AssetTypeAssetTypeCreditAlphanum12:
-		a := xdr.AssetAlphaNum12{}
-		a.Issuer = base.GetAccountID(prefix + "asset_issuer")
-
-		c := base.GetString(prefix + "asset_code")
-		if len(c) > len(a.AssetCode) {
-			base.SetInvalidField(prefix+"asset_code", errors.New("code too long"))
-			return
-		}
-
-		copy(a.AssetCode[:len(c)], []byte(c))
-		value = a
-	}
-
-	result, err := xdr.NewAsset(t, value)
-	if err != nil {
-		panic(err)
-	}
-
-	return
+	result, base.Err = GetAsset(base.R, prefix)
+	return result
 }
 
 // MaybeGetAsset decodes an asset from the request fields as GetAsset does, but
@@ -457,8 +516,8 @@ func (base *Base) GetTimeMillis(name string) (timeMillis time.Millis) {
 // param was found. This is ported from Chi since the Chi version returns ""
 // for params not found. This is undesirable since "" also is a valid url param.
 // Ref: https://github.com/go-chi/chi/blob/d132b31857e5922a2cc7963f4fcfd8f46b3f2e97/context.go#L69
-func (base *Base) GetURLParam(key string) (string, bool) {
-	rctx := chi.RouteContext(base.R.Context())
+func GetURLParam(r *http.Request, key string) (string, bool) {
+	rctx := chi.RouteContext(r.Context())
 	for k := len(rctx.URLParams.Keys) - 1; k >= 0; k-- {
 		if rctx.URLParams.Keys[k] == key {
 			return rctx.URLParams.Values[k], true
@@ -466,6 +525,15 @@ func (base *Base) GetURLParam(key string) (string, bool) {
 	}
 
 	return "", false
+}
+
+// GetURLParam returns the corresponding URL parameter value from the request
+// routing context and an additional boolean reflecting whether or not the
+// param was found. This is ported from Chi since the Chi version returns ""
+// for params not found. This is undesirable since "" also is a valid url param.
+// Ref: https://github.com/go-chi/chi/blob/d132b31857e5922a2cc7963f4fcfd8f46b3f2e97/context.go#L69
+func (base *Base) GetURLParam(key string) (string, bool) {
+	return GetURLParam(base.R, key)
 }
 
 // SetInvalidField establishes an error response triggered by an invalid
