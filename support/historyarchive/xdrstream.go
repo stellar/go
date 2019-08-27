@@ -123,21 +123,25 @@ func (x *XdrStream) ReadOne(in interface{}) error {
 	}
 	x.buf.Grow(int(nbytes))
 	read, err := x.buf.ReadFrom(io.LimitReader(x.rdr, int64(nbytes)))
-	if read != int64(nbytes) {
-		x.rdr.Close()
-		return errors.New("Read wrong number of bytes from XDR")
-	}
 	if err != nil {
 		x.rdr.Close()
 		return err
 	}
+	if read != int64(nbytes) {
+		x.rdr.Close()
+		return errors.New("Read wrong number of bytes from XDR")
+	}
 
 	readi, err := xdr.Unmarshal(&x.buf, in)
+	if err != nil {
+		x.rdr.Close()
+		return err
+	}
 	if int64(readi) != int64(nbytes) {
 		return fmt.Errorf("Unmarshalled %d bytes from XDR, expected %d)",
 			readi, nbytes)
 	}
-	return err
+	return nil
 }
 
 func WriteFramedXdr(out io.Writer, in interface{}) error {
