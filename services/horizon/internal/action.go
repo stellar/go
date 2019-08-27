@@ -19,10 +19,8 @@ import (
 	"github.com/stellar/go/services/horizon/internal/toid"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/support/log"
-	"github.com/stellar/go/support/render/hal"
 	"github.com/stellar/go/support/render/httpjson"
 	"github.com/stellar/go/support/render/problem"
-	"github.com/stellar/go/xdr"
 )
 
 // Action is the "base type" for all actions in horizon.  It provides
@@ -255,87 +253,4 @@ func getOfferResource(w http.ResponseWriter, r *http.Request) {
 	var offerResponse horizon.Offer
 	resourceadapter.PopulateHistoryOffer(ctx, &offerResponse, record, ledger)
 	httpjson.Render(w, offerResponse, httpjson.HALJSON)
-}
-
-// getAllOffersResource returns an array of offer resources.
-func getAllOffersResource(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-	app := AppFromContext(ctx)
-
-	pq, err := actions.GetPageQuery(r)
-
-	if err != nil {
-		problem.Render(ctx, w, err)
-		return
-	}
-
-	seller, err := actions.GetString(r, "seller")
-
-	if err != nil {
-		problem.Render(ctx, w, err)
-		return
-	}
-
-	var selling *xdr.Asset
-	sellingAsset, found := actions.MaybeGetAsset(r, "selling_")
-
-	if found {
-		selling = &sellingAsset
-	}
-
-	var buying *xdr.Asset
-	buyingAsset, found := actions.MaybeGetAsset(r, "buying_")
-
-	if found {
-		buying = &buyingAsset
-	}
-
-	query := history.OffersQuery{
-		PageQuery: pq,
-		SellerID:  seller,
-		Selling:   selling,
-		Buying:    buying,
-	}
-
-	records, err := app.HistoryQ().GetOffers(query)
-
-	if err != nil {
-		problem.Render(ctx, w, err)
-		return
-	}
-
-	page := hal.Page{
-		Cursor: pq.Cursor,
-		Order:  pq.Order,
-		Limit:  pq.Limit,
-	}
-
-	ledgerCache := history.LedgerCache{}
-	for _, record := range records {
-		ledgerCache.Queue(int32(record.LastModifiedLedger))
-	}
-
-	err = ledgerCache.Load(app.HistoryQ())
-
-	if err != nil {
-		problem.Render(ctx, w, errors.Wrap(err, "failed to load ledger batch"))
-		return
-	}
-
-	for _, record := range records {
-		var offerResponse horizon.Offer
-
-		ledger, found := ledgerCache.Records[int32(record.LastModifiedLedger)]
-		ledgerPtr := &ledger
-		if !found {
-			ledgerPtr = nil
-		}
-
-		resourceadapter.PopulateHistoryOffer(ctx, &offerResponse, record, ledgerPtr)
-		page.Add(offerResponse)
-	}
-
-	page.FullURL = actions.FullURL(ctx)
-	page.PopulateLinks()
-	httpjson.Render(w, page, httpjson.HALJSON)
 }
