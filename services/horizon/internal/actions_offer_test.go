@@ -211,59 +211,99 @@ func TestOfferActions_Index(t *testing.T) {
 	})
 
 	t.Run("Filter by seller", func(t *testing.T) {
-		w := ht.Get("/offers?seller=GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H")
+		w := ht.Get(fmt.Sprintf("/offers?seller=%s", issuer.Address()))
 
 		if ht.Assert.Equal(http.StatusOK, w.Code) {
 			ht.Assert.PageOf(2, w.Body)
+			var records []horizon.Offer
+			ht.UnmarshalPage(w.Body, &records)
+
+			for _, record := range records {
+				ht.Assert.Equal(issuer.Address(), record.Seller)
+			}
 		}
 	})
 
 	t.Run("Filter by selling asset", func(t *testing.T) {
-		w := ht.Get("/offers?selling_asset_type=native")
+		asset := horizon.Asset{}
+		nativeAsset.Extract(&asset.Type, &asset.Code, &asset.Issuer)
+		w := ht.Get(fmt.Sprintf("/offers?selling_asset_type=%s", asset.Type))
 
 		if ht.Assert.Equal(http.StatusOK, w.Code) {
 			ht.Assert.PageOf(2, w.Body)
+			var records []horizon.Offer
+			ht.UnmarshalPage(w.Body, &records)
+
+			for _, record := range records {
+				ht.Assert.Equal(asset, record.Selling)
+			}
 		}
+
+		asset = horizon.Asset{}
+		eurAsset.Extract(&asset.Type, &asset.Code, &asset.Issuer)
 
 		url := fmt.Sprintf(
 			"/offers?selling_asset_type=%s&selling_asset_code=%s&selling_asset_issuer=%s",
-			"credit_alphanum4",
-			"eur",
-			"GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H",
+			asset.Type,
+			asset.Code,
+			asset.Issuer,
 		)
-
 		w = ht.Get(url)
 
 		if ht.Assert.Equal(http.StatusOK, w.Code) {
 			ht.Assert.PageOf(1, w.Body)
+			var records []horizon.Offer
+			ht.UnmarshalPage(w.Body, &records)
+
+			for _, record := range records {
+				ht.Assert.Equal(asset, record.Selling)
+			}
 		}
 	})
 
 	t.Run("Filter by buying asset", func(t *testing.T) {
+		asset := horizon.Asset{}
+		eurAsset.Extract(&asset.Type, &asset.Code, &asset.Issuer)
+
 		url := fmt.Sprintf(
 			"/offers?buying_asset_type=%s&buying_asset_code=%s&buying_asset_issuer=%s",
-			"credit_alphanum4",
-			"eur",
-			"GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H",
+			asset.Type,
+			asset.Code,
+			asset.Issuer,
 		)
 
 		w := ht.Get(url)
 
 		if ht.Assert.Equal(http.StatusOK, w.Code) {
 			ht.Assert.PageOf(2, w.Body)
+			var records []horizon.Offer
+			ht.UnmarshalPage(w.Body, &records)
+
+			for _, record := range records {
+				ht.Assert.Equal(asset, record.Buying)
+			}
 		}
+
+		asset = horizon.Asset{}
+		usdAsset.Extract(&asset.Type, &asset.Code, &asset.Issuer)
 
 		url = fmt.Sprintf(
 			"/offers?buying_asset_type=%s&buying_asset_code=%s&buying_asset_issuer=%s",
-			"credit_alphanum4",
-			"usd",
-			"GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H",
+			asset.Type,
+			asset.Code,
+			asset.Issuer,
 		)
 
 		w = ht.Get(url)
 
 		if ht.Assert.Equal(http.StatusOK, w.Code) {
 			ht.Assert.PageOf(1, w.Body)
+			var records []horizon.Offer
+			ht.UnmarshalPage(w.Body, &records)
+
+			for _, record := range records {
+				ht.Assert.Equal(asset, record.Buying)
+			}
 		}
 	})
 }
