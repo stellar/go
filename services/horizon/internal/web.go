@@ -26,10 +26,6 @@ import (
 	"github.com/stellar/go/support/db"
 	"github.com/stellar/go/support/log"
 	"github.com/stellar/go/support/render/problem"
-<<<<<<< HEAD
-	"github.com/stellar/throttled"
-=======
->>>>>>> d15baaa... Add initial offers resource with raw representation.
 )
 
 const LRUCacheSize = 50000
