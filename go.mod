@@ -54,9 +54,11 @@ require (
 	github.com/kr/pretty v0.1.0 // indirect
 	github.com/lann/builder v0.0.0-20140829050551-c603884a2c1f // indirect
 	github.com/lib/pq v1.2.0
+	github.com/magiconair/properties v1.8.0 // indirect
 	github.com/manucorporat/sse v0.0.0-20160126180136-ee05b128a739
 	github.com/mattn/go-colorable v0.1.2 // indirect
 	github.com/mitchellh/go-homedir v1.1.0
+	github.com/mitchellh/mapstructure v1.1.2 // indirect
 	github.com/mndrix/ps v0.0.0-20131111202200-33ddf69629c1 // indirect
 	github.com/moul/http2curl v0.0.0-20161031194548-4e24498b31db // indirect
 	github.com/nullstyle/go-xdr v0.0.0-20180726165426-f4c839f75077 // indirect
@@ -75,8 +77,11 @@ require (
 	github.com/shurcooL/httpfs v0.0.0-20190707220628-8d4bc4ba7749
 	github.com/sirupsen/logrus v1.4.2
 	github.com/smartystreets/goconvey v0.0.0-20190731233626-505e41936337 // indirect
+	github.com/spf13/cast v1.3.0 // indirect
 	github.com/spf13/cobra v0.0.0-20160830174925-9c28e4bbd74e
-	github.com/spf13/viper v1.3.2
+	github.com/spf13/jwalterweatherman v1.0.0 // indirect
+	github.com/spf13/pflag v1.0.3 // indirect
+	github.com/spf13/viper v0.0.0-20150621231900-db7ff930a189
 	github.com/stellar/go-xdr v0.0.0-20180917104419-0bc96f33a18e
 	github.com/stellar/throttled v2.2.3-0.20190823235211-89d75816f59d+incompatible
 	github.com/stretchr/testify v1.3.0
@@ -104,5 +109,6 @@ require (
 	gopkg.in/karalabe/cookiejar.v2 v2.0.0-20150724131613-8dcd6a7f4951 // indirect
 	gopkg.in/natefinch/npipe.v2 v2.0.0-20160621034901-c1b8fa8bdcce // indirect
 	gopkg.in/tylerb/graceful.v1 v1.2.13
+	gopkg.in/yaml.v2 v2.2.2 // indirect
 	launchpad.net/gocheck v0.0.0-20140225173054-000000000087 // indirect
 )
