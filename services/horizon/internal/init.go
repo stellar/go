@@ -9,6 +9,7 @@ import (
 	raven "github.com/getsentry/raven-go"
 	"github.com/gomodule/redigo/redis"
 	metrics "github.com/rcrowley/go-metrics"
+	ingestio "github.com/stellar/go/exp/ingest/io"
 	"github.com/stellar/go/exp/orderbook"
 	"github.com/stellar/go/services/horizon/internal/db2/core"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
@@ -70,6 +71,14 @@ func initIngester(app *App) {
 }
 
 func initExpIngester(app *App, orderBookGraph *orderbook.OrderBookGraph) {
+	var tempSet ingestio.TempSet = &ingestio.MemoryTempSet{}
+	switch app.config.IngestStateReaderTempSet {
+	case "postgres":
+		tempSet = &ingestio.PostgresTempSet{
+			Session: app.HorizonSession(context.Background()),
+		}
+	}
+
 	var err error
 	app.expingester, err = expingest.NewSystem(expingest.Config{
 		CoreSession:    app.CoreSession(context.Background()),
@@ -80,6 +89,7 @@ func initExpIngester(app *App, orderBookGraph *orderbook.OrderBookGraph) {
 		HistoryArchiveURL: app.config.HistoryArchiveURLs[0],
 		StellarCoreURL:    app.config.StellarCoreURL,
 		OrderBookGraph:    orderBookGraph,
+		TempSet:           tempSet,
 	})
 	if err != nil {
 		log.Fatal(err)
