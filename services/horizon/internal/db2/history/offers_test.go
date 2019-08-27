@@ -286,7 +286,7 @@ func TestGetOffers(t *testing.T) {
 		sellerID := issuer.Address()
 		query := OffersQuery{
 			PageQuery: pageQuery,
-			SellerID:  &sellerID,
+			SellerID:  sellerID,
 		}
 
 		offers, err := q.GetOffers(query)

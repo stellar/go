@@ -24,8 +24,8 @@ func (q *Q) GetOffers(query OffersQuery) ([]Offer, error) {
 		return nil, errors.Wrap(err, "could not apply query to page")
 	}
 
-	if query.SellerID != nil && *query.SellerID != "" {
-		sql = sql.Where("offers.sellerid = ?", *query.SellerID)
+	if query.SellerID != "" {
+		sql = sql.Where("offers.sellerid = ?", query.SellerID)
 	}
 
 	if query.Selling != nil {

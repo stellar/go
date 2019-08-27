@@ -317,7 +317,7 @@ type QSigners interface {
 // OffersQuery is a helper struct to configure queries to offers
 type OffersQuery struct {
 	PageQuery db2.PageQuery
-	SellerID  *string
+	SellerID  string
 	Selling   *xdr.Asset
 	Buying    *xdr.Asset
 }
