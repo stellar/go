@@ -239,11 +239,12 @@
   version = "v1.23.0"
 
 [[projects]]
-  digest = "1:1387be1e53c552585412ee19dcc7166c55dbf258f04510326dc138a3f37c819e"
+  digest = "1:d6bd34d9f9b8cb40469c1e5cca1e5d866f139f1c762e954f95d07e9f936aa86d"
   name = "github.com/go-sql-driver/mysql"
   packages = ["."]
   pruneopts = "T"
-  revision = "2e00b5cd70399450106cec6431c2e2ce3cae5034"
+  revision = "d523deb1b23d913de5bdada721a6071e71283618"
+  version = "v1.4.0"
 
 [[projects]]
   digest = "1:1ecf6125aba01b53e87eef03594102941d7f96c106787b53683323bdebf70a0e"
@@ -857,6 +858,14 @@
   ]
   pruneopts = "T"
   revision = "1cbadb444a806fd9430d14ad08967ed91da4fa0a"
+
+[[projects]]
+  digest = "1:04b9a99f5ff102323281698000a18c2daabde66baea55fe74941d6c82ed715a8"
+  name = "google.golang.org/appengine"
+  packages = ["cloudsql"]
+  pruneopts = "T"
+  revision = "b2f4a3cf3c67576a2ee09e1fe62656a5086ce880"
+  version = "v1.6.1"
 
 [[projects]]
   digest = "1:3ccd10c863188cfe0d936fcfe6a055c95362e43af8e7039e33baade846928e74"
