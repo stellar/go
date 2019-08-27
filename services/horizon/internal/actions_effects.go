@@ -22,7 +22,7 @@ import (
 var _ actions.JSONer = (*EffectIndexAction)(nil)
 var _ actions.EventStreamer = (*EffectIndexAction)(nil)
 
-var effectsCursorRegexp = regexp.MustCompile("now|\\d+(-\\d+)?")
+var effectsCursorRegexp = regexp.MustCompile(`now|\d+(-\d+)?`)
 
 // EffectIndexAction renders a page of effect resources, identified by
 // a normal page query and optionally filtered by an account, ledger,
