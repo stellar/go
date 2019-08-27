@@ -10,6 +10,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/go-chi/chi"
+
 	"github.com/stellar/go/amount"
 	"github.com/stellar/go/services/horizon/internal/assets"
 	"github.com/stellar/go/services/horizon/internal/db2"
@@ -47,18 +48,31 @@ const (
 
 // GetCursor retrieves a string from either the URLParams, form or query string.
 // This method uses the priority (URLParams, Form, Query).
-func (base *Base) GetCursor(name string) string {
+func (base *Base) GetCursor(name string) (cursor string) {
 	if base.Err != nil {
 		return ""
 	}
 
-	cursor := base.GetString(name)
+	cursor, base.Err = GetCursor(base.R, name)
+
+	return cursor
+}
+
+// GetCursor retrieves a string from either the URLParams, form or query string.
+// This method uses the priority (URLParams, Form, Query).
+func GetCursor(r *http.Request, name string) (string, error) {
+	cursor, err := GetString(r, name)
+
+	if err != nil {
+		return "", err
+	}
+
 	if cursor == "now" {
 		tid := toid.AfterLedger(ledger.CurrentState().HistoryLatest)
 		cursor = tid.String()
 	}
 
-	if lastEventID := base.R.Header.Get("Last-Event-ID"); lastEventID != "" {
+	if lastEventID := r.Header.Get("Last-Event-ID"); lastEventID != "" {
 		cursor = lastEventID
 	}
 
@@ -66,10 +80,14 @@ func (base *Base) GetCursor(name string) string {
 	cursorInt, err := strconv.Atoi(cursor)
 	if err == nil && cursorInt < 0 {
 		msg := fmt.Sprintf("the cursor %d is a negative number: ", cursorInt)
-		base.SetInvalidField("cursor", errors.New(msg))
+
+		return "", problem.MakeInvalidFieldProblem(
+			name,
+			errors.New(msg),
+		)
 	}
 
-	return cursor
+	return cursor, nil
 }
 
 // checkUTF8 checks if value is a valid UTF-8 string, otherwise sets
@@ -222,20 +240,33 @@ func (base *Base) GetBool(name string) bool {
 // GetLimit retrieves a uint64 limit from the action parameter of the given
 // name. Populates err if the value is not a valid limit.  Uses the provided
 // default value if the limit parameter is a blank string.
-func (base *Base) GetLimit(name string, def uint64, max uint64) uint64 {
+func (base *Base) GetLimit(name string, def uint64, max uint64) (limit uint64) {
 	if base.Err != nil {
 		return 0
 	}
 
-	limit := base.GetString(name)
+	limit, base.Err = GetLimit(base.R, name, def, max)
+
+	return limit
+}
+
+// GetLimit retrieves a uint64 limit from the action parameter of the given
+// name. Populates err if the value is not a valid limit.  Uses the provided
+// default value if the limit parameter is a blank string.
+func GetLimit(r *http.Request, name string, def uint64, max uint64) (uint64, error) {
+	limit, err := GetString(r, name)
+
+	if err != nil {
+		return 0, err
+	}
 	if limit == "" {
-		return def
+		return def, nil
 	}
 
 	asI64, err := strconv.ParseInt(limit, 10, 64)
 	if err != nil {
-		base.SetInvalidField(name, errors.New("unparseable value"))
-		return 0
+
+		return 0, problem.MakeInvalidFieldProblem(name, errors.New("unparseable value"))
 	}
 
 	if asI64 <= 0 {
@@ -245,20 +276,27 @@ func (base *Base) GetLimit(name string, def uint64, max uint64) uint64 {
 	}
 
 	if err != nil {
-		base.SetInvalidField(name, err)
-		return 0
+		return 0, problem.MakeInvalidFieldProblem(name, err)
 	}
 
-	return uint64(asI64)
+	return uint64(asI64), nil
 }
 
 // GetPageQuery is a helper that returns a new db.PageQuery struct initialized
 // using the results from a call to GetPagingParams()
-func (base *Base) GetPageQuery(opts ...Opt) db2.PageQuery {
+func (base *Base) GetPageQuery(opts ...Opt) (result db2.PageQuery) {
 	if base.Err != nil {
 		return db2.PageQuery{}
 	}
 
+	result, base.Err = GetPageQuery(base.R, opts...)
+
+	return result
+}
+
+// GetPageQuery is a helper that returns a new db.PageQuery struct initialized
+// using the results from a call to GetPagingParams()
+func GetPageQuery(r *http.Request, opts ...Opt) (db2.PageQuery, error) {
 	disableCursorValidation := false
 	for _, opt := range opts {
 		if opt == DisableCursorValidation {
@@ -266,23 +304,34 @@ func (base *Base) GetPageQuery(opts ...Opt) db2.PageQuery {
 		}
 	}
 
-	cursor := base.GetCursor(ParamCursor)
-	order := base.GetString(ParamOrder)
-	limit := base.GetLimit(ParamLimit, db2.DefaultPageSize, db2.MaxPageSize)
-	if base.Err != nil {
-		return db2.PageQuery{}
+	cursor, err := GetCursor(r, ParamCursor)
+	if err != nil {
+		return db2.PageQuery{}, err
+	}
+	order, err := GetString(r, ParamOrder)
+	if err != nil {
+		return db2.PageQuery{}, err
+	}
+	limit, err := GetLimit(r, ParamLimit, db2.DefaultPageSize, db2.MaxPageSize)
+	if err != nil {
+		return db2.PageQuery{}, err
 	}
 
-	r, err := db2.NewPageQuery(cursor, !disableCursorValidation, order, limit)
+	pageQuery, err := db2.NewPageQuery(cursor, !disableCursorValidation, order, limit)
 	if err != nil {
 		if invalidFieldError, ok := err.(*db2.InvalidFieldError); ok {
-			base.SetInvalidField(invalidFieldError.Name, err)
+			err = problem.MakeInvalidFieldProblem(
+				invalidFieldError.Name,
+				err,
+			)
 		} else {
-			base.Err = problem.BadRequest
+			err = problem.BadRequest
 		}
+
+		return db2.PageQuery{}, err
 	}
 
-	return r
+	return pageQuery, nil
 }
 
 // GetAddress retrieves a stellar address.  It confirms the value loaded is a
@@ -478,16 +527,29 @@ func (base *Base) GetAsset(prefix string) (result xdr.Asset) {
 // MaybeGetAsset decodes an asset from the request fields as GetAsset does, but
 // only if type field is populated. returns an additional boolean reflecting whether
 // or not the decoding was performed
+func MaybeGetAsset(r *http.Request, prefix string) (xdr.Asset, bool) {
+	s, err := GetString(r, prefix+"asset_type")
+	if err != nil || s == "" {
+		return xdr.Asset{}, false
+	}
+
+	asset, err := GetAsset(r, prefix)
+	if err != nil {
+		return xdr.Asset{}, false
+	}
+
+	return asset, true
+}
+
+// MaybeGetAsset decodes an asset from the request fields as GetAsset does, but
+// only if type field is populated. returns an additional boolean reflecting whether
+// or not the decoding was performed
 func (base *Base) MaybeGetAsset(prefix string) (xdr.Asset, bool) {
 	if base.Err != nil {
 		return xdr.Asset{}, false
 	}
 
-	if base.GetString(prefix+"asset_type") == "" {
-		return xdr.Asset{}, false
-	}
-
-	return base.GetAsset(prefix), true
+	return MaybeGetAsset(base.R, prefix)
 }
 
 // GetTimeMillis retrieves a TimeMillis from the action parameter of the given name.
@@ -567,9 +629,9 @@ func (base *Base) ValidateBodyType() {
 	}
 }
 
-// fullURL returns a URL containing the information regarding the original
+// FullURL returns a URL containing the information regarding the original
 // request stored in the context.
-func fullURL(ctx context.Context) *url.URL {
+func FullURL(ctx context.Context) *url.URL {
 	url := httpx.BaseURL(ctx)
 	r := httpx.RequestFromContext(ctx)
 	if r != nil {

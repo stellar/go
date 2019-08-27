@@ -9,6 +9,8 @@ import (
 	"testing"
 
 	"github.com/go-chi/chi"
+
+	horizonContext "github.com/stellar/go/services/horizon/internal/context"
 	"github.com/stellar/go/services/horizon/internal/ledger"
 	"github.com/stellar/go/services/horizon/internal/test"
 	"github.com/stellar/go/services/horizon/internal/toid"
@@ -85,7 +87,46 @@ func TestGetAssetType(t *testing.T) {
 		tt.Assert.Equal(xdr.AssetTypeAssetTypeCreditAlphanum12, ts)
 	}
 }
-func TestGetCursor(t *testing.T) {
+
+func TestMaybeGetAsset(t *testing.T) {
+	tt := test.Start(t)
+	defer tt.Finish()
+	r := makeTestAction().R
+
+	ts, found := MaybeGetAsset(r, "native_")
+	if tt.Assert.True(found) {
+		tt.Assert.Equal(xdr.AssetTypeAssetTypeNative, ts.Type)
+	}
+
+	ts, found = MaybeGetAsset(r, "4_")
+	if tt.Assert.True(found) {
+		tt.Assert.Equal(xdr.AssetTypeAssetTypeCreditAlphanum4, ts.Type)
+	}
+
+	_, found = MaybeGetAsset(r, "selling_")
+	tt.Assert.False(found)
+}
+
+func TestActionMaybeGetAsset(t *testing.T) {
+	tt := test.Start(t)
+	defer tt.Finish()
+	action := makeTestAction()
+
+	ts, found := action.MaybeGetAsset("native_")
+	if tt.Assert.True(found) {
+		tt.Assert.Equal(xdr.AssetTypeAssetTypeNative, ts.Type)
+	}
+
+	ts, found = action.MaybeGetAsset("4_")
+	if tt.Assert.True(found) {
+		tt.Assert.Equal(xdr.AssetTypeAssetTypeCreditAlphanum4, ts.Type)
+	}
+
+	_, found = action.MaybeGetAsset("selling_")
+	tt.Assert.False(found)
+}
+
+func TestActionGetCursor(t *testing.T) {
 	tt := test.Start(t)
 	defer tt.Finish()
 
@@ -102,6 +143,27 @@ func TestGetCursor(t *testing.T) {
 	action.R.Header.Set("Last-Event-ID", "from_header")
 	cursor = action.GetCursor("cursor")
 	if tt.Assert.NoError(action.Err) {
+		tt.Assert.Equal("from_header", cursor)
+	}
+}
+
+func TestGetCursor(t *testing.T) {
+	tt := test.Start(t)
+	defer tt.Finish()
+
+	// now uses the ledger state
+	r := makeAction("/?cursor=now", nil).R
+	cursor, err := GetCursor(r, "cursor")
+	if tt.Assert.NoError(err) {
+		expected := toid.AfterLedger(ledger.CurrentState().HistoryLatest).String()
+		tt.Assert.Equal(expected, cursor)
+	}
+
+	//Last-Event-ID overrides cursor
+	r = makeTestAction().R
+	r.Header.Set("Last-Event-ID", "from_header")
+	cursor, err = GetCursor(r, "cursor")
+	if tt.Assert.NoError(err) {
 		tt.Assert.Equal("from_header", cursor)
 	}
 }
@@ -201,7 +263,7 @@ func TestPositiveAmount(t *testing.T) {
 	tt.Assert.Equal(xdr.Int64(200000000), result)
 }
 
-func TestGetLimit(t *testing.T) {
+func TestActionGetLimit(t *testing.T) {
 	tt := test.Start(t)
 	defer tt.Finish()
 
@@ -245,7 +307,51 @@ func TestGetLimit(t *testing.T) {
 	tt.Assert.Error(action.Err)
 }
 
-func TestGetPageQuery(t *testing.T) {
+func TestGetLimit(t *testing.T) {
+	tt := test.Start(t)
+	defer tt.Finish()
+
+	// happy path
+	r := makeTestAction().R
+	limit, err := GetLimit(r, "limit", 5, 200)
+	if tt.Assert.NoError(err) {
+		tt.Assert.Equal(uint64(2), limit)
+	}
+
+	r = makeAction("/?limit=200", nil).R
+	limit, err = GetLimit(r, "limit", 5, 200)
+	if tt.Assert.NoError(err) {
+		tt.Assert.Equal(uint64(200), limit)
+	}
+
+	// defaults
+	r = makeAction("/", nil).R
+	limit, err = GetLimit(r, "limit", 5, 200)
+	if tt.Assert.NoError(err) {
+		tt.Assert.Equal(uint64(5), limit)
+	}
+
+	r = makeAction("/?limit=", nil).R
+	limit, err = GetLimit(r, "limit", 5, 200)
+	if tt.Assert.NoError(err) {
+		tt.Assert.Equal(uint64(5), limit)
+	}
+
+	// invalids
+	r = makeAction("/?limit=0", nil).R
+	_, err = GetLimit(r, "limit", 5, 200)
+	tt.Assert.Error(err)
+
+	r = makeAction("/?limit=-1", nil).R
+	_, err = GetLimit(r, "limit", 5, 200)
+	tt.Assert.Error(err)
+
+	r = makeAction("/?limit=201", nil).R
+	_, err = GetLimit(r, "limit", 5, 200)
+	tt.Assert.Error(err)
+}
+
+func TestActionGetPageQuery(t *testing.T) {
 	tt := test.Start(t)
 	defer tt.Finish()
 	action := makeTestAction()
@@ -269,6 +375,32 @@ func TestGetPageQuery(t *testing.T) {
 	makeAction("/?limit=0", nil)
 	_ = action.GetPageQuery()
 	tt.Assert.Error(action.Err)
+}
+
+func TestGetPageQuery(t *testing.T) {
+	tt := test.Start(t)
+	defer tt.Finish()
+	r := makeTestAction().R
+
+	// happy path
+	pq, err := GetPageQuery(r)
+	tt.Assert.NoError(err)
+	tt.Assert.Equal("123456", pq.Cursor)
+	tt.Assert.Equal(uint64(2), pq.Limit)
+	tt.Assert.Equal("asc", pq.Order)
+
+	// regression: GetPagQuery does not overwrite err
+	r = makeAction("/?limit=foo", nil).R
+	_, err = GetLimit(r, "limit", 1, 200)
+	tt.Assert.Error(err)
+	_, err = GetPageQuery(r)
+	tt.Assert.Error(err)
+
+	// regression: https://github.com/stellar/go/services/horizon/internal/issues/372
+	// (limit of 0 turns into 10)
+	r = makeAction("/?limit=0", nil).R
+	_, err = GetPageQuery(r)
+	tt.Assert.Error(err)
 }
 
 func TestGetString(t *testing.T) {
@@ -311,6 +443,15 @@ func TestGetURLParam(t *testing.T) {
 	tt.Assert.Equal(false, ok)
 }
 
+func TestFullURL(t *testing.T) {
+	tt := test.Start(t)
+	defer tt.Finish()
+	action := makeTestAction()
+
+	url := FullURL(action.R.Context())
+	tt.Assert.Equal("http:///foo-bar/blah?limit=2&cursor=123456", url.String())
+}
+
 func makeTestAction() *Base {
 	return makeAction("/foo-bar/blah?limit=2&cursor=123456", testURLParams())
 }
@@ -322,7 +463,9 @@ func makeAction(path string, body map[string]string) *Base {
 	}
 
 	r, _ := http.NewRequest("GET", path, nil)
-	r = r.WithContext(context.WithValue(r.Context(), chi.RouteCtxKey, rctx))
+
+	ctx := context.WithValue(r.Context(), chi.RouteCtxKey, rctx)
+	r = r.WithContext(context.WithValue(ctx, &horizonContext.RequestContextKey, r))
 	action := &Base{
 		R: r,
 	}
