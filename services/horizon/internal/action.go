@@ -292,7 +292,7 @@ func getAllOffersResource(w http.ResponseWriter, r *http.Request) {
 
 	query := history.OffersQuery{
 		PageQuery: pq,
-		SellerID:  &seller,
+		SellerID:  seller,
 		Selling:   selling,
 		Buying:    buying,
 	}
