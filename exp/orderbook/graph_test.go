@@ -1382,7 +1382,7 @@ func TestFindPathsStartingAt(t *testing.T) {
 		&ignoreOffersFrom,
 		usdAsset,
 		5,
-		nativeAsset,
+		[]xdr.Asset{nativeAsset},
 	)
 	if err != nil {
 		t.Fatalf("unexpected error %v", err)
@@ -1414,7 +1414,7 @@ func TestFindPathsStartingAt(t *testing.T) {
 		nil,
 		yenAsset,
 		5,
-		nativeAsset,
+		[]xdr.Asset{nativeAsset},
 	)
 	if err != nil {
 		t.Fatalf("unexpected error %v", err)
@@ -1429,7 +1429,7 @@ func TestFindPathsStartingAt(t *testing.T) {
 		nil,
 		yenAsset,
 		5,
-		nativeAsset,
+		[]xdr.Asset{nativeAsset},
 	)
 	if err != nil {
 		t.Fatalf("unexpected error %v", err)
@@ -1455,7 +1455,7 @@ func TestFindPathsStartingAt(t *testing.T) {
 		nil,
 		yenAsset,
 		5,
-		nativeAsset,
+		[]xdr.Asset{nativeAsset},
 	)
 	if err != nil {
 		t.Fatalf("unexpected error %v", err)
@@ -1485,5 +1485,51 @@ func TestFindPathsStartingAt(t *testing.T) {
 		},
 	}
 
+	assertPathEquals(t, paths, expectedPaths)
+
+	paths, err = graph.FindFixedPaths(
+		5,
+		nil,
+		yenAsset,
+		5,
+		[]xdr.Asset{nativeAsset, usdAsset},
+	)
+	if err != nil {
+		t.Fatalf("unexpected error %v", err)
+	}
+
+	expectedPaths = []Path{
+		Path{
+			SourceAmount: 5,
+			SourceAsset:  yenAsset,
+			InteriorNodes: []xdr.Asset{
+				chfAsset,
+				eurAsset,
+				usdAsset,
+			},
+			DestinationAsset:  nativeAsset,
+			DestinationAmount: 80,
+		},
+		Path{
+			SourceAmount: 5,
+			SourceAsset:  yenAsset,
+			InteriorNodes: []xdr.Asset{
+				chfAsset,
+				eurAsset,
+			},
+			DestinationAsset:  nativeAsset,
+			DestinationAmount: 20,
+		},
+		Path{
+			SourceAmount: 5,
+			SourceAsset:  yenAsset,
+			InteriorNodes: []xdr.Asset{
+				chfAsset,
+				eurAsset,
+			},
+			DestinationAsset:  usdAsset,
+			DestinationAmount: 20,
+		},
+	}
 	assertPathEquals(t, paths, expectedPaths)
 }

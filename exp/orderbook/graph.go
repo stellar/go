@@ -237,10 +237,13 @@ func (graph *OrderBookGraph) FindFixedPaths(
 	sourceAccountID *xdr.AccountId,
 	sourceAsset xdr.Asset,
 	amountToSpend xdr.Int64,
-	destinationAsset xdr.Asset,
+	destinationAssets []xdr.Asset,
 ) ([]Path, error) {
-	destinationAssetString := destinationAsset.String()
-	target := map[string]bool{destinationAssetString: true}
+	target := map[string]bool{}
+	for _, destinationAsset := range destinationAssets {
+		destinationAssetString := destinationAsset.String()
+		target[destinationAssetString] = true
+	}
 
 	searchState := &buyingGraphSearchState{
 		graph:             graph,
