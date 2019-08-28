@@ -12,25 +12,11 @@ import (
 var (
 	issuer            = xdr.MustAddress("GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H")
 	twoEurOfferSeller = xdr.MustAddress("GA5WBPYA5Y4WAEHXWR2UKO2UO4BUGHUQ74EUPKON2QHV4WRHOIRNKKH2")
-	usdAsset          = xdr.Asset{
-		Type: xdr.AssetTypeAssetTypeCreditAlphanum4,
-		AlphaNum4: &xdr.AssetAlphaNum4{
-			AssetCode: [4]byte{'u', 's', 'd', 0},
-			Issuer:    issuer,
-		},
-	}
 
-	nativeAsset = xdr.Asset{
-		Type: xdr.AssetTypeAssetTypeNative,
-	}
+	nativeAsset = xdr.MustNewNativeAsset()
+	eurAsset    = xdr.MustNewCreditAsset("EUR", issuer.Address())
+	usdAsset    = xdr.MustNewCreditAsset("USD", issuer.Address())
 
-	eurAsset = xdr.Asset{
-		Type: xdr.AssetTypeAssetTypeCreditAlphanum4,
-		AlphaNum4: &xdr.AssetAlphaNum4{
-			AssetCode: [4]byte{'e', 'u', 'r', 0},
-			Issuer:    issuer,
-		},
-	}
 	eurOffer = xdr.OfferEntry{
 		SellerId: issuer,
 		OfferId:  xdr.Int64(4),

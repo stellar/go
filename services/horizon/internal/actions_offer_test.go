@@ -123,23 +123,10 @@ func TestOfferActions_Index(t *testing.T) {
 		issuer = xdr.MustAddress("GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H")
 		seller = xdr.MustAddress("GA5WBPYA5Y4WAEHXWR2UKO2UO4BUGHUQ74EUPKON2QHV4WRHOIRNKKH2")
 
-		nativeAsset = xdr.Asset{
-			Type: xdr.AssetTypeAssetTypeNative,
-		}
-		usdAsset = xdr.Asset{
-			Type: xdr.AssetTypeAssetTypeCreditAlphanum4,
-			AlphaNum4: &xdr.AssetAlphaNum4{
-				AssetCode: [4]byte{'u', 's', 'd', 0},
-				Issuer:    issuer,
-			},
-		}
-		eurAsset = xdr.Asset{
-			Type: xdr.AssetTypeAssetTypeCreditAlphanum4,
-			AlphaNum4: &xdr.AssetAlphaNum4{
-				AssetCode: [4]byte{'e', 'u', 'r', 0},
-				Issuer:    issuer,
-			},
-		}
+		nativeAsset = xdr.MustNewNativeAsset()
+		usdAsset    = xdr.MustNewCreditAsset("USD", issuer.Address())
+		eurAsset    = xdr.MustNewCreditAsset("EUR", issuer.Address())
+
 		eurOffer = xdr.OfferEntry{
 			SellerId: issuer,
 			OfferId:  xdr.Int64(4),
