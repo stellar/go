@@ -281,6 +281,7 @@ type PriceLevel struct {
 type Root struct {
 	Links struct {
 		Account             hal.Link  `json:"account"`
+		Accounts            *hal.Link `json:"accounts,omitempty"`
 		AccountTransactions hal.Link  `json:"account_transactions"`
 		Assets              hal.Link  `json:"assets"`
 		Friendbot           *hal.Link `json:"friendbot,omitempty"`

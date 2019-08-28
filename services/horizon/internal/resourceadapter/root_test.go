@@ -32,6 +32,7 @@ func TestPopulateRoot(t *testing.T) {
 	assert.Equal(t, "cVersion", res.StellarCoreVersion)
 	assert.Equal(t, "passphrase", res.NetworkPassphrase)
 	assert.Equal(t, "https://friendbot.example.com/{?addr}", res.Links.Friendbot.Href)
+	assert.Empty(t, res.Links.Accounts)
 	assert.Empty(t, res.Links.Offer)
 	assert.Empty(t, res.Links.Offers)
 
@@ -71,6 +72,7 @@ func TestPopulateRoot(t *testing.T) {
 		true,
 	)
 
+	assert.Equal(t, "/accounts?{signer}", res.Links.Accounts.Href)
 	assert.Equal(t, "/offers/{offer_id}", res.Links.Offer.Href)
 	assert.Equal(t, "/offers{?seller,selling_asset_type,selling_asset_code,selling_asset_issuer,buying_asset_type,buying_asset_code,buying_asset_issuer,cursor,limit,order}", res.Links.Offers.Href)
 }
