@@ -191,9 +191,11 @@ func TestOfferActions_Index(t *testing.T) {
 			ht.Assert.Equal(issuer.Address(), records[0].Buying.Issuer)
 			ht.Assert.Equal(int32(3), records[0].LastModifiedLedger)
 
-			lastModifiedTime, err := time.Parse("2006-01-02 15:04:05", "2019-06-03 16:34:02")
-			ht.Require.NoError(err)
-			ht.Assert.Equal(lastModifiedTime, *records[0].LastModifiedTime)
+			ledger := new(history.Ledger)
+			err := q.LedgerBySequence(ledger, 3)
+
+			ht.Assert.NoError(err)
+			ht.Assert.True(ledger.ClosedAt.Equal(*records[0].LastModifiedTime))
 		}
 	})
 
