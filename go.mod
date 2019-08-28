@@ -17,6 +17,7 @@ require (
 	github.com/btcsuite/go-socks v0.0.0-20170105172521-4720035b7bfd // indirect
 	github.com/btcsuite/websocket v0.0.0-20150119174127-31079b680792 // indirect
 	github.com/cmars/basen v0.0.0-20150613233007-fe3947df716e // indirect
+	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/elazarl/go-bindata-assetfs v1.0.0
 	github.com/ethereum/go-ethereum v1.7.2-0.20171011101018-ad444752311b
 	github.com/facebookgo/ensure v0.0.0-20160127193407-b4ab57deab51 // indirect
@@ -77,7 +78,7 @@ require (
 	github.com/shurcooL/httpfs v0.0.0-20190707220628-8d4bc4ba7749
 	github.com/sirupsen/logrus v1.0.6-0.20180530095059-070c81def33f
 	github.com/smartystreets/goconvey v0.0.0-20190731233626-505e41936337 // indirect
-	github.com/spf13/cast v1.3.0 // indirect
+	github.com/spf13/cast v0.0.0-20150508191742-4d07383ffe94 // indirect
 	github.com/spf13/cobra v0.0.0-20160830174925-9c28e4bbd74e
 	github.com/spf13/jwalterweatherman v0.0.0-20141219030609-3d60171a6431 // indirect
 	github.com/spf13/pflag v0.0.0-20161005214240-4bd69631f475 // indirect
