@@ -274,6 +274,7 @@ func TestOfferActionsStillIngesting_Index(t *testing.T) {
 func TestOfferActions_AccountIndex(t *testing.T) {
 	ht := StartHTTPTest(t, "trades")
 	defer ht.Finish()
+	q := &history.Q{ht.HorizonSession()}
 
 	w := ht.Get(
 		"/accounts/GA5WBPYA5Y4WAEHXWR2UKO2UO4BUGHUQ74EUPKON2QHV4WRHOIRNKKH2/offers",
@@ -295,11 +296,15 @@ func TestOfferActions_AccountIndex(t *testing.T) {
 		ht.Assert.Equal("USD", records[2]["buying"].(map[string]interface{})["asset_code"])
 		ht.Assert.Equal("GC23QF2HUE52AMXUFUH3AYJAXXGXXV2VHXYYR6EYXETPKDXZSAW67XO4", records[2]["buying"].(map[string]interface{})["asset_issuer"])
 
-		t2018, err := time.Parse("2006-01-02", "2018-01-01")
-		ht.Assert.NoError(err)
-		recordTime, err := time.Parse("2006-01-02T15:04:05Z", records[2]["last_modified_time"].(string))
-		ht.Assert.True(recordTime.After(t2018))
 		ht.Assert.EqualValues(8, records[2]["last_modified_ledger"])
+
+		ledger := new(history.Ledger)
+		err := q.LedgerBySequence(ledger, 8)
+		ht.Assert.NoError(err)
+
+		recordTime, err := time.Parse("2006-01-02T15:04:05Z", records[2]["last_modified_time"].(string))
+		ht.Assert.NoError(err)
+		ht.Assert.True(ledger.ClosedAt.Equal(recordTime))
 	}
 }
 
