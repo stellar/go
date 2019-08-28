@@ -1,8 +1,9 @@
 package history
 
 import (
-	"github.com/stellar/go/xdr"
 	"github.com/stretchr/testify/mock"
+
+	"github.com/stellar/go/xdr"
 )
 
 // MockQOffers is a mock implementation of the QOffers interface

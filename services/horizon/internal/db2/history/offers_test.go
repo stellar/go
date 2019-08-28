@@ -1,33 +1,22 @@
 package history
 
 import (
+	"strconv"
 	"testing"
 
+	"github.com/stellar/go/services/horizon/internal/db2"
 	"github.com/stellar/go/services/horizon/internal/test"
 	"github.com/stellar/go/xdr"
 )
 
 var (
-	issuer   = xdr.MustAddress("GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H")
-	usdAsset = xdr.Asset{
-		Type: xdr.AssetTypeAssetTypeCreditAlphanum4,
-		AlphaNum4: &xdr.AssetAlphaNum4{
-			AssetCode: [4]byte{'u', 's', 'd', 0},
-			Issuer:    issuer,
-		},
-	}
+	issuer            = xdr.MustAddress("GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H")
+	twoEurOfferSeller = xdr.MustAddress("GA5WBPYA5Y4WAEHXWR2UKO2UO4BUGHUQ74EUPKON2QHV4WRHOIRNKKH2")
 
-	nativeAsset = xdr.Asset{
-		Type: xdr.AssetTypeAssetTypeNative,
-	}
+	nativeAsset = xdr.MustNewNativeAsset()
+	eurAsset    = xdr.MustNewCreditAsset("EUR", issuer.Address())
+	usdAsset    = xdr.MustNewCreditAsset("USD", issuer.Address())
 
-	eurAsset = xdr.Asset{
-		Type: xdr.AssetTypeAssetTypeCreditAlphanum4,
-		AlphaNum4: &xdr.AssetAlphaNum4{
-			AssetCode: [4]byte{'e', 'u', 'r', 0},
-			Issuer:    issuer,
-		},
-	}
 	eurOffer = xdr.OfferEntry{
 		SellerId: issuer,
 		OfferId:  xdr.Int64(4),
@@ -41,7 +30,7 @@ var (
 		Amount: xdr.Int64(500),
 	}
 	twoEurOffer = xdr.OfferEntry{
-		SellerId: issuer,
+		SellerId: twoEurOfferSeller,
 		OfferId:  xdr.Int64(5),
 		Buying:   eurAsset,
 		Selling:  nativeAsset,
@@ -220,4 +209,140 @@ func TestRemoveOffer(t *testing.T) {
 	offers, err = q.GetAllOffers()
 	tt.Assert.NoError(err)
 	tt.Assert.Len(offers, 0)
+}
+
+func TestGetOffers(t *testing.T) {
+	tt := test.Start(t).Scenario("base")
+	defer tt.Finish()
+	q := &Q{tt.HorizonSession()}
+
+	tt.Assert.NoError(q.UpsertOffer(eurOffer, 1234))
+	tt.Assert.NoError(q.UpsertOffer(twoEurOffer, 1235))
+
+	pageQuery, err := db2.NewPageQuery("", false, "", 10)
+	tt.Assert.NoError(err)
+
+	t.Run("Filter by selling asset", func(t *testing.T) {
+		query := OffersQuery{
+			PageQuery: pageQuery,
+			Selling:   &usdAsset,
+		}
+
+		offers, err := q.GetOffers(query)
+		tt.Assert.NoError(err)
+		tt.Assert.Len(offers, 0)
+
+		query = OffersQuery{
+			PageQuery: pageQuery,
+			Selling:   &nativeAsset,
+		}
+
+		offers, err = q.GetOffers(query)
+		tt.Assert.NoError(err)
+		tt.Assert.Len(offers, 2)
+
+		for _, offer := range offers {
+			tt.Assert.Equal(nativeAsset, offer.SellingAsset)
+		}
+	})
+
+	t.Run("Filter by buying asset", func(t *testing.T) {
+		query := OffersQuery{
+			PageQuery: pageQuery,
+			Buying:    &eurAsset,
+		}
+
+		offers, err := q.GetOffers(query)
+		tt.Assert.NoError(err)
+		tt.Assert.Len(offers, 2)
+
+		for _, offer := range offers {
+			tt.Assert.Equal(eurAsset, offer.BuyingAsset)
+		}
+
+		query = OffersQuery{
+			PageQuery: pageQuery,
+			Buying:    &usdAsset,
+		}
+
+		offers, err = q.GetOffers(query)
+		tt.Assert.NoError(err)
+		tt.Assert.Len(offers, 0)
+	})
+
+	t.Run("Filter by seller", func(t *testing.T) {
+		sellerID := issuer.Address()
+		query := OffersQuery{
+			PageQuery: pageQuery,
+			SellerID:  sellerID,
+		}
+
+		offers, err := q.GetOffers(query)
+		tt.Assert.NoError(err)
+		tt.Assert.Len(offers, 1)
+
+		assertOfferEntryMatchesDBOffer(t, eurOffer, offers[0], 1234)
+	})
+
+	t.Run("PageQuery", func(t *testing.T) {
+		pageQuery, err := db2.NewPageQuery("", false, "", 10)
+		tt.Assert.NoError(err)
+
+		query := OffersQuery{
+			PageQuery: pageQuery,
+		}
+
+		offers, err := q.GetOffers(query)
+		tt.Assert.NoError(err)
+		tt.Assert.Len(offers, 2)
+
+		offersByID := map[xdr.Int64]Offer{
+			offers[0].OfferID: offers[0],
+			offers[1].OfferID: offers[1],
+		}
+
+		assertOfferEntryMatchesDBOffer(t, eurOffer, offersByID[eurOffer.OfferId], 1234)
+		assertOfferEntryMatchesDBOffer(t, twoEurOffer, offersByID[twoEurOffer.OfferId], 1235)
+
+		pageQuery, err = db2.NewPageQuery("", false, "asc", 1)
+		tt.Assert.NoError(err)
+		query = OffersQuery{
+			PageQuery: pageQuery,
+		}
+
+		offers, err = q.GetOffers(query)
+		tt.Assert.NoError(err)
+		tt.Assert.Len(offers, 1)
+
+		assertOfferEntryMatchesDBOffer(t, eurOffer, offers[0], 1234)
+
+		pageQuery, err = db2.NewPageQuery("", false, "desc", 1)
+		tt.Assert.NoError(err)
+		query = OffersQuery{
+			PageQuery: pageQuery,
+		}
+
+		offers, err = q.GetOffers(query)
+		tt.Assert.NoError(err)
+		tt.Assert.Len(offers, 1)
+
+		assertOfferEntryMatchesDBOffer(t, twoEurOffer, offers[0], 1235)
+
+		pageQuery, err = db2.NewPageQuery(
+			strconv.FormatInt(int64(eurOffer.OfferId), 10),
+			false,
+			"",
+			10,
+		)
+		tt.Assert.NoError(err)
+		query = OffersQuery{
+			PageQuery: pageQuery,
+		}
+
+		offers, err = q.GetOffers(query)
+		tt.Assert.NoError(err)
+		tt.Assert.Len(offers, 1)
+
+		assertOfferEntryMatchesDBOffer(t, twoEurOffer, offers[0], 1235)
+	})
 }

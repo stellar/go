@@ -3,12 +3,11 @@
 package horizon
 
 import (
+	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"strconv"
 	"time"
-
-	"encoding/base64"
-	"encoding/json"
 
 	"github.com/stellar/go/protocols/horizon/base"
 	"github.com/stellar/go/strkey"
@@ -286,6 +285,8 @@ type Root struct {
 		Assets              hal.Link  `json:"assets"`
 		Friendbot           *hal.Link `json:"friendbot,omitempty"`
 		Metrics             hal.Link  `json:"metrics"`
+		Offer               *hal.Link `json:"offer,omitempty"`
+		Offers              *hal.Link `json:"offers,omitempty"`
 		OrderBook           hal.Link  `json:"order_book"`
 		Self                hal.Link  `json:"self"`
 		Transaction         hal.Link  `json:"transaction"`

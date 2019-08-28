@@ -13,6 +13,7 @@ import (
 	metrics "github.com/rcrowley/go-metrics"
 	"github.com/rs/cors"
 	"github.com/sebest/xff"
+
 	"github.com/stellar/go/services/horizon/internal/db2"
 	"github.com/stellar/go/services/horizon/internal/db2/core"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
@@ -192,7 +193,10 @@ func (w *web) mustInstallActions(config Config, pathFinder paths.Finder) {
 	// trading related endpoints
 	r.Get("/trades", TradeIndexAction{}.Handle)
 	r.Get("/trade_aggregations", TradeAggregateIndexAction{}.Handle)
+
 	r.Route("/offers", func(r chi.Router) {
+		r.With(acceptOnlyJSON, requiresExperimentalIngestion).
+			Method(http.MethodGet, "/", GetOffersHandle{historyQ: w.historyQ})
 		r.With(acceptOnlyJSON, requiresExperimentalIngestion).
 			Get("/{id}", getOfferResource)
 		r.Get("/{offer_id}/trades", TradeIndexAction{}.Handle)

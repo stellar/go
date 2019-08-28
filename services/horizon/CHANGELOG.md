@@ -11,6 +11,7 @@ bumps.  A breaking change will get clearly notified in this log.
 
 * Fixed performance issue in Effects related endpoints.
 * Dropped support for Go 1.10.
+* Add experimental support for `/offers`. To enable it, set `--enable-experimental-ingestion` CLI param or `ENABLE_EXPERIMENTAL_INGESTION=true` env variable.
 
 ## v0.20.0
 
