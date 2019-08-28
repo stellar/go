@@ -224,6 +224,8 @@ func (graph *OrderBookGraph) FindPaths(
 	return sortAndFilterPaths(
 		searchState.paths,
 		maxAssetsPerPath,
+		compareSourceAsset,
+		sourceAssetEquals,
 	), nil
 }
 
@@ -238,6 +240,7 @@ func (graph *OrderBookGraph) FindFixedPaths(
 	sourceAsset xdr.Asset,
 	amountToSpend xdr.Int64,
 	destinationAssets []xdr.Asset,
+	maxAssetsPerPath int,
 ) ([]Path, error) {
 	target := map[string]bool{}
 	for _, destinationAsset := range destinationAssets {
@@ -272,30 +275,66 @@ func (graph *OrderBookGraph) FindFixedPaths(
 		return searchState.paths[i].DestinationAmount > searchState.paths[j].DestinationAmount
 	})
 
-	return searchState.paths, nil
+	return sortAndFilterPaths(
+		searchState.paths,
+		maxAssetsPerPath,
+		compareDestinationAsset,
+		destinationAssetEquals,
+	), nil
 }
 
-// sortAndFilterPaths sorts the given list of paths by
-// source asset, source asset amount, and path length
-// also, we limit the number of paths with the same source asset to maxPathsPerAsset
+// compareSourceAsset will group payment paths by `SourceAsset`
+// paths which spend less `SourceAmount` will appear earlier in the sorting
+// if there are multiple paths which spend the same `SourceAmount` then shorter payment paths
+// will be prioritized
+func compareSourceAsset(allPaths []Path, i, j int) bool {
+	if allPaths[i].SourceAsset.Equals(allPaths[j].SourceAsset) {
+		if allPaths[i].SourceAmount == allPaths[j].SourceAmount {
+			return len(allPaths[i].InteriorNodes) < len(allPaths[j].InteriorNodes)
+		}
+		return allPaths[i].SourceAmount < allPaths[j].SourceAmount
+	}
+	return allPaths[i].sourceAssetString < allPaths[j].sourceAssetString
+}
+
+// compareDestinationAsset will group payment paths by `DestinationAsset`
+// paths which deliver a higher `DestinationAmount` will appear earlier in the sorting
+// if there are multiple paths which deliver the same `DestinationAmount` then shorter payment paths
+// will be prioritized
+func compareDestinationAsset(allPaths []Path, i, j int) bool {
+	if allPaths[i].DestinationAsset.Equals(allPaths[j].DestinationAsset) {
+		if allPaths[i].DestinationAmount == allPaths[j].DestinationAmount {
+			return len(allPaths[i].InteriorNodes) < len(allPaths[j].InteriorNodes)
+		}
+		return allPaths[i].DestinationAmount > allPaths[j].DestinationAmount
+	}
+	return allPaths[i].destinationAssetString > allPaths[j].destinationAssetString
+}
+
+func sourceAssetEquals(path, otherPath Path) bool {
+	return path.SourceAsset.Equals(otherPath.SourceAsset)
+}
+
+func destinationAssetEquals(path, otherPath Path) bool {
+	return path.DestinationAsset.Equals(otherPath.DestinationAsset)
+}
+
+// sortAndFilterPaths sorts the given list of paths using `comparePaths`
+// also, we limit the number of paths with the same asset to `maxPathsPerAsset`
 func sortAndFilterPaths(
 	allPaths []Path,
 	maxPathsPerAsset int,
+	comparePaths func(allPaths []Path, i, j int) bool,
+	assetsEqual func(path, otherPath Path) bool,
 ) []Path {
 	sort.Slice(allPaths, func(i, j int) bool {
-		if allPaths[i].SourceAsset.Equals(allPaths[j].SourceAsset) {
-			if allPaths[i].SourceAmount == allPaths[j].SourceAmount {
-				return len(allPaths[i].InteriorNodes) < len(allPaths[j].InteriorNodes)
-			}
-			return allPaths[i].SourceAmount < allPaths[j].SourceAmount
-		}
-		return allPaths[i].sourceAssetString < allPaths[j].sourceAssetString
+		return comparePaths(allPaths, i, j)
 	})
 
 	filtered := []Path{}
 	countForAsset := 0
 	for _, entry := range allPaths {
-		if len(filtered) == 0 || !filtered[len(filtered)-1].SourceAsset.Equals(entry.SourceAsset) {
+		if len(filtered) == 0 || !assetsEqual(filtered[len(filtered)-1], entry) {
 			countForAsset = 1
 			filtered = append(filtered, entry)
 		} else if countForAsset < maxPathsPerAsset {

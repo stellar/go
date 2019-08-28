@@ -95,6 +95,7 @@ func (finder InMemoryFinder) FindFixedPaths(
 		sourceAsset,
 		amountToSpend,
 		destinationAssets,
+		maxAssetsPerPath,
 	)
 	results := make([]paths.Path, len(orderbookPaths))
 	for i, path := range orderbookPaths {
