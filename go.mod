@@ -54,7 +54,7 @@ require (
 	github.com/kr/text v0.0.0-20150520163712-e373e137fafd // indirect
 	github.com/lann/builder v0.0.0-20140829050551-c603884a2c1f // indirect
 	github.com/lib/pq v1.2.0
-	github.com/magiconair/properties v1.8.0 // indirect
+	github.com/magiconair/properties v1.5.4 // indirect
 	github.com/manucorporat/sse v0.0.0-20160126180136-ee05b128a739
 	github.com/mattn/go-colorable v0.1.2 // indirect
 	github.com/mitchellh/go-homedir v1.1.0
