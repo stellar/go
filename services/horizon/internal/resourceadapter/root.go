@@ -45,8 +45,10 @@ func PopulateRoot(
 	dest.Links.Metrics = lb.Link("/metrics")
 
 	if experimentalIngestionEnabled {
+		accountsLink := lb.Link("/accounts?{signer}")
 		offerLink := lb.Link("/offers/{offer_id}")
 		offersLink := lb.Link("/offers{?seller,selling_asset_type,selling_asset_code,selling_asset_issuer,buying_asset_type,buying_asset_code,buying_asset_issuer,cursor,limit,order}")
+		dest.Links.Accounts = &accountsLink
 		dest.Links.Offer = &offerLink
 		dest.Links.Offers = &offersLink
 	}
