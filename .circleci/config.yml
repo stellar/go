@@ -47,6 +47,10 @@ commands:
   install_go_deps:
     steps:
       - checkout
+      - run:
+          name: Download dependencies
+          command: |
+            go mod download
 
   # test_packages performs tests on all packages of the monorepo.
   test_packages:
