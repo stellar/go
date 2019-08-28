@@ -6,10 +6,9 @@ import (
 	stdLog "log"
 
 	migrate "github.com/rubenv/sql-migrate"
-	"github.com/stellar/go/support/db"
 )
 
-//go:generate go-bindata -ignore .+\.go$ -pkg schema -o bindata.go ./...
+//go:generate go-bindata -pkg schema -o bindata.go migrations/
 
 // MigrateDir represents a direction in which to perform schema migrations.
 type MigrateDir string
@@ -28,11 +27,6 @@ var Migrations migrate.MigrationSource = &migrate.AssetMigrationSource{
 	Asset:    Asset,
 	AssetDir: AssetDir,
 	Dir:      "migrations",
-}
-
-// Init installs the latest schema into db after clearing it first
-func Init(db *db.Session) error {
-	return db.ExecAll(string(MustAsset("latest.sql")))
 }
 
 // Migrate performs schema migration.  Migrations can occur in one of three

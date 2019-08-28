@@ -17,11 +17,13 @@ import (
 )
 
 func TestEmptySignature(t *testing.T) {
+	dbConn := testDB.Horizon(t)
 	ingestion := Ingestion{
 		DB: &db.Session{
-			DB: testDB.Horizon(t),
+			DB: dbConn,
 		},
 	}
+	test.ResetHorizonDB(t, dbConn)
 	ingestion.Start()
 
 	envelope := xdr.TransactionEnvelope{}
@@ -114,11 +116,13 @@ func TestFeeMax(t *testing.T) {
 }
 
 func TestTimeBoundsMaxBig(t *testing.T) {
+	dbConn := testDB.Horizon(t)
 	ingestion := Ingestion{
 		DB: &db.Session{
-			DB: testDB.Horizon(t),
+			DB: dbConn,
 		},
 	}
+	test.ResetHorizonDB(t, dbConn)
 	ingestion.Start()
 
 	ingestion.builders[TransactionsTableName].Values(
