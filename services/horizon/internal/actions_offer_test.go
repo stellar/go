@@ -17,46 +17,53 @@ import (
 	"github.com/stellar/go/xdr"
 )
 
+var (
+	issuer = xdr.MustAddress("GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H")
+	seller = xdr.MustAddress("GA5WBPYA5Y4WAEHXWR2UKO2UO4BUGHUQ74EUPKON2QHV4WRHOIRNKKH2")
+
+	nativeAsset = xdr.MustNewNativeAsset()
+	usdAsset    = xdr.MustNewCreditAsset("USD", issuer.Address())
+	eurAsset    = xdr.MustNewCreditAsset("EUR", issuer.Address())
+
+	eurOffer = xdr.OfferEntry{
+		SellerId: issuer,
+		OfferId:  xdr.Int64(4),
+		Buying:   eurAsset,
+		Selling:  nativeAsset,
+		Price: xdr.Price{
+			N: 1,
+			D: 1,
+		},
+		Flags:  1,
+		Amount: xdr.Int64(500),
+	}
+	twoEurOffer = xdr.OfferEntry{
+		SellerId: seller,
+		OfferId:  xdr.Int64(5),
+		Buying:   eurAsset,
+		Selling:  nativeAsset,
+		Price: xdr.Price{
+			N: 2,
+			D: 1,
+		},
+		Flags:  2,
+		Amount: xdr.Int64(500),
+	}
+	usdOffer = xdr.OfferEntry{
+		SellerId: issuer,
+		OfferId:  xdr.Int64(6),
+		Buying:   usdAsset,
+		Selling:  eurAsset,
+		Price: xdr.Price{
+			N: 1,
+			D: 1,
+		},
+		Flags:  1,
+		Amount: xdr.Int64(500),
+	}
+)
+
 func TestOfferActions_Show(t *testing.T) {
-	var (
-		issuer      = xdr.MustAddress("GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H")
-		nativeAsset = xdr.Asset{
-			Type: xdr.AssetTypeAssetTypeNative,
-		}
-
-		eurAsset = xdr.Asset{
-			Type: xdr.AssetTypeAssetTypeCreditAlphanum4,
-			AlphaNum4: &xdr.AssetAlphaNum4{
-				AssetCode: [4]byte{'e', 'u', 'r', 0},
-				Issuer:    issuer,
-			},
-		}
-		eurOffer = xdr.OfferEntry{
-			SellerId: issuer,
-			OfferId:  xdr.Int64(4),
-			Buying:   eurAsset,
-			Selling:  nativeAsset,
-			Price: xdr.Price{
-				N: 1,
-				D: 1,
-			},
-			Flags:  1,
-			Amount: xdr.Int64(500),
-		}
-		twoEurOffer = xdr.OfferEntry{
-			SellerId: issuer,
-			OfferId:  xdr.Int64(5),
-			Buying:   eurAsset,
-			Selling:  nativeAsset,
-			Price: xdr.Price{
-				N: 2,
-				D: 1,
-			},
-			Flags:  2,
-			Amount: xdr.Int64(500),
-		}
-	)
-
 	ht := StartHTTPTest(t, "base")
 	ht.App.config.EnableExperimentalIngestion = true
 	defer ht.Finish()
@@ -79,9 +86,11 @@ func TestOfferActions_Show(t *testing.T) {
 		ht.Assert.Equal(issuer.Address(), result.Buying.Issuer)
 		ht.Assert.Equal(int32(3), result.LastModifiedLedger)
 
-		lastModifiedTime, err := time.Parse("2006-01-02 15:04:05", "2019-06-03 16:34:02")
-		ht.Require.NoError(err)
-		ht.Assert.Equal(lastModifiedTime, *result.LastModifiedTime)
+		ledger := new(history.Ledger)
+		err = q.LedgerBySequence(ledger, 3)
+
+		ht.Assert.NoError(err)
+		ht.Assert.True(ledger.ClosedAt.Equal(*result.LastModifiedTime))
 	}
 
 	w = ht.Get(fmt.Sprintf("/offers/%v", twoEurOffer.OfferId))
@@ -119,52 +128,6 @@ func TestOfferActionsStillIngesting_Show(t *testing.T) {
 }
 
 func TestOfferActions_Index(t *testing.T) {
-	var (
-		issuer = xdr.MustAddress("GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H")
-		seller = xdr.MustAddress("GA5WBPYA5Y4WAEHXWR2UKO2UO4BUGHUQ74EUPKON2QHV4WRHOIRNKKH2")
-
-		nativeAsset = xdr.MustNewNativeAsset()
-		usdAsset    = xdr.MustNewCreditAsset("USD", issuer.Address())
-		eurAsset    = xdr.MustNewCreditAsset("EUR", issuer.Address())
-
-		eurOffer = xdr.OfferEntry{
-			SellerId: issuer,
-			OfferId:  xdr.Int64(4),
-			Buying:   eurAsset,
-			Selling:  nativeAsset,
-			Price: xdr.Price{
-				N: 1,
-				D: 1,
-			},
-			Flags:  1,
-			Amount: xdr.Int64(500),
-		}
-		twoEurOffer = xdr.OfferEntry{
-			SellerId: seller,
-			OfferId:  xdr.Int64(5),
-			Buying:   eurAsset,
-			Selling:  nativeAsset,
-			Price: xdr.Price{
-				N: 2,
-				D: 1,
-			},
-			Flags:  2,
-			Amount: xdr.Int64(500),
-		}
-		usdOffer = xdr.OfferEntry{
-			SellerId: issuer,
-			OfferId:  xdr.Int64(6),
-			Buying:   usdAsset,
-			Selling:  eurAsset,
-			Price: xdr.Price{
-				N: 1,
-				D: 1,
-			},
-			Flags:  1,
-			Amount: xdr.Int64(500),
-		}
-	)
-
 	ht := StartHTTPTest(t, "base")
 	ht.App.config.EnableExperimentalIngestion = true
 	defer ht.Finish()
