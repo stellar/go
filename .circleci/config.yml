@@ -74,7 +74,14 @@ commands:
           name: Install dependencies
           command: |
             sudo apt-get update
-            (sudo apt-get install postgresql-client-9.6 || sudo apt-get install postgresql-client-11)
+            (
+              sudo apt-get install postgresql-client-9.6 || (
+                echo "deb http://apt.postgresql.org/pub/repos/apt/ $(env -i bash -c '. /etc/os-release; echo $VERSION_CODENAME')-pgdg main" | sudo tee /etc/apt/sources.list.d/pgdg.list &&
+                wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo apt-key add - &&
+                sudo apt-get update &&
+                sudo apt-get install postgresql-client-9.6
+              )
+            )
             (sudo apt-get install mariadb-client-10.1 || sudo apt-get install mariadb-client-10.3)
       - run:
           name: Install dockerize
