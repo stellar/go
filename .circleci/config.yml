@@ -80,7 +80,7 @@ commands:
     steps:
       - run:
           name: Running state diff tests
-          command: ./exp/tools/dump-ledger-state/run_test.sh
+          command: cd ./exp/tools/dump-ledger-state/ && ./run_test.sh
 
   # test_packages performs tests on all packages of the monorepo.
   test_packages:
@@ -210,7 +210,7 @@ jobs:
   # ingest_state_diff runs `/tools/dump-ledger-state` to compare if state ingested
   # by ingest package matches the state in stellar-core db
   ingest_state_diff:
-    working_directory: /go/src/github.com/stellar/go/exp/tools/dump-ledger-state/
+    working_directory: /go/src/github.com/stellar/go/
     docker:
       - image: circleci/golang:1.12-stretch
         environment:
