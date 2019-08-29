@@ -58,10 +58,7 @@ commands:
           command: sudo apt-get install -y stellar-core jq postgresql-client-9.6
       - run:
           name: Creating stellar-core DB
-          command: |
-            createdb core
-            cd ./exp/tools/dump-ledger-state/
-            stellar-core new-db
+          command: createdb core
 
   # install_go_deps installs the go dependencies of the project.
   install_go_deps:
@@ -86,7 +83,10 @@ commands:
     steps:
       - run:
           name: Running state diff tests
-          command: cd ./exp/tools/dump-ledger-state/ && ./run_test.sh
+          command: |
+            cd ./exp/tools/dump-ledger-state/
+            stellar-core new-db
+            ./run_test.sh
 
   # test_packages performs tests on all packages of the monorepo.
   test_packages:
