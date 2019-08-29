@@ -55,7 +55,7 @@ commands:
             sudo apt-get update -y
       - run:
           name: Installing stellar-core
-          command: apt-get install -y stellar-core jq postgresql-client-9.6
+          command: sudo apt-get install -y stellar-core jq postgresql-client-9.6
 
   # install_go_deps installs the go dependencies of the project.
   install_go_deps:
