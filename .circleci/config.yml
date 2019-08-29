@@ -92,10 +92,10 @@ commands:
           command: go run -v ./exp/tools/dump-ledger-state/
       - run:
           name: Init stellar-core DB
-          command: stellar-core new-db
+          command: stellar-core --conf ./exp/tools/dump-ledger-state/stellar-core.cfg new-db
       - run:
           name: Catchup core
-          command: stellar-core catchup $LATEST_LEDGER/1
+          command: stellar-core --conf ./exp/tools/dump-ledger-state/stellar-core.cfg catchup $LATEST_LEDGER/1
       - run:
           name: Dump stellar-core DB
           command: ./exp/tools/dump-ledger-state/dump_core_db.sh
