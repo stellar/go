@@ -58,7 +58,10 @@ commands:
           command: sudo apt-get install -y stellar-core jq postgresql-client-9.6
       - run:
           name: Creating stellar-core DB
-          command: createdb core
+          command: |
+            createdb core
+            cd ./exp/tools/dump-ledger-state/
+            stellar-core new-db
 
   # install_go_deps installs the go dependencies of the project.
   install_go_deps:
