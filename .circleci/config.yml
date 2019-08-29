@@ -48,12 +48,12 @@ commands:
       - run:
           name: Adding SDF repository
           command: |
-            wget -qO - https://apt.stellar.org/SDF.asc | apt-key add -
-            echo "deb https://apt.stellar.org/public stable/" | tee -a /etc/apt/sources.list.d/SDF.list
-            apt-get update -y
+            wget -qO - https://apt.stellar.org/SDF.asc | sudo apt-key add -
+            echo "deb https://apt.stellar.org/public stable/" | sudo tee -a /etc/apt/sources.list.d/SDF.list
+            sudo apt-get update -y
       - run:
           name: Installing stellar-core
-          command: apt-get install -y stellar-core jq psql
+          command: apt-get install -y stellar-core jq postgresql-client-9.6
 
   # install_go_deps installs the go dependencies of the project.
   install_go_deps:
@@ -230,21 +230,21 @@ jobs:
 workflows:
   version: 2
 
-  check_code_and_test:
-    jobs:
-      - check_code_1_11
-      - check_code_1_12
-      - test_code_1_11
-      - test_code_1_12
+  # check_code_and_test:
+  #   jobs:
+  #     - check_code_1_11
+  #     - check_code_1_12
+  #     - test_code_1_11
+  #     - test_code_1_12
 
-  build_and_deploy:
-    jobs:
-      - publish_artifacts:
-          filters:
-              tags:
-                ignore: snapshots
-              branches:
-                ignore: /.*/
+  # build_and_deploy:
+  #   jobs:
+  #     - publish_artifacts:
+  #         filters:
+  #             tags:
+  #               ignore: snapshots
+  #             branches:
+  #               ignore: /.*/
 
   ingest_nighly:
     # triggers:
