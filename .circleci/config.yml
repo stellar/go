@@ -45,11 +45,15 @@ commands:
 
   install_stellar_core_debian_package:
     steps:
-      -run: |
-        wget -qO - https://apt.stellar.org/SDF.asc | apt-key add -
-        echo "deb https://apt.stellar.org/public stable/" | tee -a /etc/apt/sources.list.d/SDF.list
-        apt-get update -y
-        apt-get install -y stellar-core jq psql
+      -run:
+        name: Adding SDF repository
+        command: |
+          wget -qO - https://apt.stellar.org/SDF.asc | apt-key add -
+          echo "deb https://apt.stellar.org/public stable/" | tee -a /etc/apt/sources.list.d/SDF.list
+          apt-get update -y
+      -run:
+        name: Installing stellar-core
+        command: apt-get install -y stellar-core jq psql
 
   # install_go_deps installs the go dependencies of the project.
   install_go_deps:
@@ -72,7 +76,9 @@ commands:
 
   check_ingest_state:
     steps:
-      -run: ./exp/tools/dump-ledger-state/run_test.sh
+      -run:
+          name: Running state diff tests
+          command: ./exp/tools/dump-ledger-state/run_test.sh
 
   # test_packages performs tests on all packages of the monorepo.
   test_packages:
