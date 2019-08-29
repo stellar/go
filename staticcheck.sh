@@ -2,16 +2,13 @@
 set -e
 
 # Check if staticcheck is installed, if not install it.
-command -v staticcheck >/dev/null 2>&1 || go get honnef.co/go/tools/cmd/staticcheck
-
-# use staticcheck stable version
-cd $GOPATH/src/honnef.co/go/tools/cmd/staticcheck
-git checkout 2019.2
-go get
-go install
-
-# go back to previous directory
-cd -
+command -v staticcheck >/dev/null 2>&1 || (
+  dir=$(mktemp -d)
+  pushd $dir
+  go mod init tool
+  go get honnef.co/go/tools/cmd/staticcheck@2019.2
+  popd
+)
 
 printf "Running staticcheck...\n"
 
