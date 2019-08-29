@@ -52,6 +52,14 @@ commands:
           command: |
             go mod download
 
+  # check_go_deps validates that the dependencies are expected.
+  check_go_deps:
+    steps:
+      - checkout
+      - run:
+          name: Check dependencies
+          command: ./gomod.sh
+
   # test_packages performs tests on all packages of the monorepo.
   test_packages:
     steps:
@@ -101,6 +109,8 @@ jobs:
         environment:
           GO111MODULE: "on"
     steps:
+      - install_go_deps
+      - check_go_deps
       - govet
 
   # check_code_1_12 performs code checks using Go 1.12.
@@ -112,6 +122,7 @@ jobs:
           GO111MODULE: "on"
     steps:
       - install_go_deps
+      - check_go_deps
       - gofmt
       - govet
       - staticcheck
