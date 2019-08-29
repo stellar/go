@@ -37,7 +37,6 @@ Should you decide not to use one of our prebuilt releases, you may instead build
 
 - A unix-like operating system with the common core commands (cp, tar, mkdir, bash, etc.)
 - A compatible distribution of Go (Go 1.11.4 or later)
-- [go-dep](https://golang.github.io/dep/)
 - [git](https://git-scm.com/)
 - [mercurial](https://www.mercurial-scm.org/)
 
