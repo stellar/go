@@ -31,12 +31,12 @@
   name = "github.com/manucorporat/sse"
 
 [[constraint]]
-  branch = "master"
   name = "github.com/onsi/ginkgo"
+  version = "=v1.7.0"
 
 [[constraint]]
-  branch = "master"
   name = "github.com/onsi/gomega"
+  version = "=v1.4.3"
 
 [[constraint]]
   name = "github.com/pkg/errors"
