@@ -73,11 +73,7 @@ func main() {
 		}
 	}
 
-	time.Sleep(10 * time.Second)
 	doneStats <- true
-	time.Sleep(10 * time.Second)
-	// Print go routines count for the last time
-	fmt.Printf("Goroutines = %v\n", runtime.NumGoroutine())
 }
 
 func archive() (*historyarchive.Archive, error) {

@@ -81,12 +81,29 @@ commands:
 
   check_ingest_state:
     steps:
+      -run:
+          name: Getting latest checkpoint ledger
+          command:
+            export LATEST_LEDGER=`curl -s http://history.stellar.org/prd/core-live/core_live_001/.well-known/stellar-history.json | jq -r '.currentLedger'`
+            echo $LATEST_LEDGER # For debug
       - run:
-          name: Running state diff tests
-          command: |
-            cd ./exp/tools/dump-ledger-state/
-            stellar-core new-db
-            ./run_test.sh
+          name: Change dir to dump-ledger-state
+          command: cd ./exp/tools/dump-ledger-state/
+      - run:
+          name: Dump state using ingest
+          command: go run -v ./main
+      - run:
+          name: Init stellar-core DB
+          command: stellar-core new-db
+      - run:
+          name: Catchup core
+          command: stellar-core catchup $LATEST_LEDGER/1
+      - run:
+          name: Dump stellar-core DB
+          command: dump_core_db.sh
+      - run:
+          name: Compare state dumps
+          command: diff_test.sh
 
   # test_packages performs tests on all packages of the monorepo.
   test_packages:
