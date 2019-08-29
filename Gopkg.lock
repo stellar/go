@@ -489,7 +489,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:58e797548d332abdfdcb87422d79a0cc94982f6ada7881c2aec5dabb22a1a415"
+  digest = "1:1de2ef6996903caab4bcf41f7885aa276d8e20076ba52ca80b2c6c32efb9c5f5"
   name = "github.com/onsi/ginkgo"
   packages = [
     ".",
@@ -513,11 +513,11 @@
     "types",
   ]
   pruneopts = "T"
-  revision = "c73579c58881b5ba90d3b08f6ac59cb1c909d6dd"
+  revision = "2e1be8f7d90e9d3e3e58b0ce470f2f14d075406f"
 
 [[projects]]
   branch = "master"
-  digest = "1:58e8be7fa1667158c62f632c254153e3b1c91d86473406846ad41406aaea49be"
+  digest = "1:4f40f5e1925c58d5f9b6a953d1b02f475a6be704e9b5f1a21df6c62c434bde13"
   name = "github.com/onsi/gomega"
   packages = [
     ".",
@@ -534,7 +534,7 @@
     "types",
   ]
   pruneopts = "T"
-  revision = "649b44d988ce182cabcda7dba01fcf3b6179ad19"
+  revision = "65fb64232476ad9046e57c26cd0bff3d3a8dc6cd"
 
 [[projects]]
   digest = "1:a88448fcd2802025fa764388e12f31f0a64d5d436b369a71b97a6c9da783fafe"
