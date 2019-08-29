@@ -1,6 +1,6 @@
 FROM golang:1.12-alpine3.10 AS builder
 
-RUN apk --no-cache add curl git mercurial
+RUN apk --no-cache add git mercurial
 
 WORKDIR /go/src/github.com/stellar/go
 ENV GO111MODULE=on
