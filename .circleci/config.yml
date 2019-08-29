@@ -253,31 +253,37 @@ jobs:
 workflows:
   version: 2
 
-  # check_code_and_test:
-  #   jobs:
-  #     - check_code_1_11
-  #     - check_code_1_12
-  #     - test_code_1_11
-  #     - test_code_1_12
+  check_code_and_test:
+    jobs:
+      - check_code_1_11
+      - check_code_1_12
+      - test_code_1_11
+      - test_code_1_12
+      - ingest_state_diff:
+          filters:
+              branches:
+                only:
+                  - master
+                  - /release-horizon-/
 
-  # build_and_deploy:
-  #   jobs:
-  #     - publish_artifacts:
-  #         filters:
-  #             tags:
-  #               ignore: snapshots
-  #             branches:
-  #               ignore: /.*/
+  build_and_deploy:
+    jobs:
+      - publish_artifacts:
+          filters:
+              tags:
+                ignore: snapshots
+              branches:
+                ignore: /.*/
 
-  ingest_nighly:
-    # triggers:
-    #   - schedule:
-    #       # Every hour
-    #       cron: "0 0 * * *"
-    #       filters:
-    #         branches:
-    #           only:
-    #             - master
-    #             - /release-horizon-/
+  ingest_state_nighly:
+    triggers:
+      - schedule:
+          # Every day
+          cron: "0 0 * * *"
+          filters:
+            branches:
+              only:
+                - master
+                - /release-horizon-/
     jobs:
       - ingest_state_diff
