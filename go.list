@@ -125,4 +125,4 @@ gopkg.in/natefinch/npipe.v2 v2.0.0-20160621034901-c1b8fa8bdcce
 gopkg.in/tomb.v1 v1.0.0-20141024135613-dd632973f1e7
 gopkg.in/tylerb/graceful.v1 v1.2.13
 gopkg.in/yaml.v2 v2.2.2
-launchpad.net/gocheck v0.0.0-20140225173054-000000000087
+launchpad.net/gocheck v0.0.0-20140225173054-000000000087 => github.com/go-check/check v0.0.0-20140225173054-eb6ee6f84d0a
