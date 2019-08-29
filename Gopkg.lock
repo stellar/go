@@ -341,6 +341,20 @@
   revision = "bf9dde6d0d2c004a008c27aaee91170c786f6db8"
 
 [[projects]]
+  digest = "1:8f20c8dd713564fa97299fbcb77d729c6de9c33f3222812a76e6ecfaef80fd61"
+  name = "github.com/hpcloud/tail"
+  packages = [
+    ".",
+    "ratelimiter",
+    "util",
+    "watch",
+    "winfile",
+  ]
+  pruneopts = "T"
+  revision = "a30252cb686a21eb2d0b98132633053ec2f7f1e5"
+  version = "v1.0.0"
+
+[[projects]]
   digest = "1:8e2464598392786ea6ace786a778918a5ec08b3679617bfb0dd9abcd40600e72"
   name = "github.com/imkira/go-interpol"
   packages = ["."]
@@ -488,8 +502,7 @@
   revision = "4e24498b31dba4683efb9d35c1c8a91e2eda28c8"
 
 [[projects]]
-  branch = "master"
-  digest = "1:58e797548d332abdfdcb87422d79a0cc94982f6ada7881c2aec5dabb22a1a415"
+  digest = "1:1de2ef6996903caab4bcf41f7885aa276d8e20076ba52ca80b2c6c32efb9c5f5"
   name = "github.com/onsi/ginkgo"
   packages = [
     ".",
@@ -513,11 +526,11 @@
     "types",
   ]
   pruneopts = "T"
-  revision = "c73579c58881b5ba90d3b08f6ac59cb1c909d6dd"
+  revision = "2e1be8f7d90e9d3e3e58b0ce470f2f14d075406f"
+  version = "v1.7.0"
 
 [[projects]]
-  branch = "master"
-  digest = "1:58e8be7fa1667158c62f632c254153e3b1c91d86473406846ad41406aaea49be"
+  digest = "1:4f40f5e1925c58d5f9b6a953d1b02f475a6be704e9b5f1a21df6c62c434bde13"
   name = "github.com/onsi/gomega"
   packages = [
     ".",
@@ -534,7 +547,8 @@
     "types",
   ]
   pruneopts = "T"
-  revision = "649b44d988ce182cabcda7dba01fcf3b6179ad19"
+  revision = "65fb64232476ad9046e57c26cd0bff3d3a8dc6cd"
+  version = "v1.4.3"
 
 [[projects]]
   digest = "1:a88448fcd2802025fa764388e12f31f0a64d5d436b369a71b97a6c9da783fafe"
@@ -875,6 +889,15 @@
   revision = "57907de300222151a123d29255ed17f5ed43fad3"
 
 [[projects]]
+  digest = "1:7fc160b460a6fc506b37fcca68332464c3f2cd57b6e3f111f26c5bbfd2d5518e"
+  name = "gopkg.in/fsnotify.v1"
+  packages = ["."]
+  pruneopts = "T"
+  revision = "c2828203cd70a50dcccfb2761f8b1f8ceef9a8e9"
+  source = "gopkg.in/fsnotify/fsnotify.v1"
+  version = "v1.4.7"
+
+[[projects]]
   digest = "1:771526d45c07bce33c1a468c844fd8c438ec94ad9fb660ca74b39e753a2fe76a"
   name = "gopkg.in/gavv/httpexpect.v1"
   packages = ["."]
@@ -904,6 +927,14 @@
   packages = ["."]
   pruneopts = "T"
   revision = "c1b8fa8bdccecb0b8db834ee0b92fdbcfa606dd6"
+
+[[projects]]
+  branch = "v1"
+  digest = "1:0caa92e17bc0b65a98c63e5bc76a9e844cd5e56493f8fdbb28fad101a16254d9"
+  name = "gopkg.in/tomb.v1"
+  packages = ["."]
+  pruneopts = "T"
+  revision = "dd632973f1e7218eb1089048e0798ec9ae7dceb8"
 
 [[projects]]
   digest = "1:1c39cd8d4130c1c7e3a13fc4bf425229bfe68bbd9632a24c3efa9579ce619dce"
