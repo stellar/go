@@ -65,7 +65,10 @@ commands:
     steps:
       - run:
           name: Install dependencies
-          command: sudo apt-get update && sudo apt-get install postgresql-client-9.6 mariadb-client-10.1
+          command: |
+            sudo apt-get update
+            (sudo apt-get install postgresql-client-9.6 || sudo apt-get install postgresql-client-11)
+            (sudo apt-get install mariadb-client-10.1 || sudo apt-get install mariadb-client-10.3)
       - run:
           name: Install dockerize
           command: wget https://github.com/jwilder/dockerize/releases/download/$DOCKERIZE_VERSION/dockerize-linux-amd64-$DOCKERIZE_VERSION.tar.gz && sudo tar -C /usr/local/bin -xzvf dockerize-linux-amd64-$DOCKERIZE_VERSION.tar.gz && rm dockerize-linux-amd64-$DOCKERIZE_VERSION.tar.gz
