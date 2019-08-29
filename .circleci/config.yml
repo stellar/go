@@ -87,11 +87,8 @@ commands:
             export LATEST_LEDGER=`curl -s http://history.stellar.org/prd/core-live/core_live_001/.well-known/stellar-history.json | jq -r '.currentLedger'`
             echo $LATEST_LEDGER # For debug
       - run:
-          name: Change dir to dump-ledger-state
-          command: cd ./exp/tools/dump-ledger-state/
-      - run:
           name: Dump state using ingest
-          command: go run -v ./main
+          command: go run -v ./exp/tools/dump-ledger-state/
       - run:
           name: Init stellar-core DB
           command: stellar-core new-db
@@ -100,10 +97,10 @@ commands:
           command: stellar-core catchup $LATEST_LEDGER/1
       - run:
           name: Dump stellar-core DB
-          command: dump_core_db.sh
+          command: ./exp/tools/dump-ledger-state/dump_core_db.sh
       - run:
           name: Compare state dumps
-          command: diff_test.sh
+          command: ./exp/tools/dump-ledger-state/diff_test.sh
 
   # test_packages performs tests on all packages of the monorepo.
   test_packages:
