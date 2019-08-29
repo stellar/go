@@ -83,7 +83,7 @@ commands:
     steps:
       - run:
           name: Getting latest checkpoint ledger
-          command:
+          command: |
             export LATEST_LEDGER=`curl -s http://history.stellar.org/prd/core-live/core_live_001/.well-known/stellar-history.json | jq -r '.currentLedger'`
             echo $LATEST_LEDGER # For debug
             echo "export LATEST_LEDGER=$LATEST_LEDGER" >> $BASH_ENV # Persist between steps
