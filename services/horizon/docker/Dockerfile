@@ -4,8 +4,9 @@ RUN apk --no-cache add curl git mercurial
 RUN curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh
 
 WORKDIR /go/src/github.com/stellar/go
-COPY Gopkg.toml Gopkg.lock ./
-RUN dep ensure --vendor-only
+ENV GO111MODULE=on
+COPY go.mod go.sum ./
+RUN go mod download
 COPY . ./
 RUN go install github.com/stellar/go/services/horizon
 
