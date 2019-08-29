@@ -213,6 +213,7 @@ jobs:
     steps:
       - check_deprecations
       - install_go_deps
+      - check_go_deps
       - build_packages
       - attach_workspace:
           at: ./dist
