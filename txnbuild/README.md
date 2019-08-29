@@ -62,11 +62,10 @@ An easy-to-follow demonstration that exercises this SDK on the TestNet with actu
 
 ### Prerequisites
 * Go 1.11 or greater
+* [Modules](https://github.com/golang/go/wiki/Modules) to manage dependencies
 
 ### Installing
-* Download the Stellar Go monorepo: `git clone git@github.com:stellar/go.git`
-* Enter the source directory: `cd $GOPATH/src/github.com/stellar/go`
-* Download external dependencies: `dep ensure -v`
+* `go get github.com/stellar/go/clients/txnbuild`
 
 ## Running the tests
 Run the unit tests from the package directory: `go test`
