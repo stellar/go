@@ -9,8 +9,8 @@ addons:
   ssh_known_hosts:
   - bitbucket.org
 go:
-- '1.11'
-- '1.12'
+- '1.11.x'
+- '1.12.x'
 - '1.13rc1'
 - tip
 env:
