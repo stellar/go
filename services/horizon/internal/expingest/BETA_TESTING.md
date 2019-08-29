@@ -8,7 +8,7 @@ Thank you for helping us test new ingestion system in Horizon!
 
 ## What is the new ingestion system?
 
-The new ingestion system solves issues found in the previous version like: inconsistent data, relying on Stellar-Core database directly, slow responses for specific queries, etc. It allows new kind of features in Horizon, ex. faster path-finding. We published a [blog post](#) with more details, please check it out!
+The new ingestion system solves issues found in the previous version like: inconsistent data, relying on Stellar-Core database directly, slow responses for specific queries, etc. It allows new kind of features in Horizon, ex. faster path-finding. We published a [blog post](https://www.stellar.org/developers/blog/our-new-horizon-ingestion-engine) with more details, please check it out!
 
 ## Prerequisities
 
