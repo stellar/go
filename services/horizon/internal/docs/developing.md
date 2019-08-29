@@ -15,7 +15,20 @@ Building Horizon requires the following developer tools:
 - [git](https://git-scm.com/) (to check out Horizon's source code)
 - [mercurial](https://www.mercurial-scm.org/) (needed for `go-dep`)
 
-1. See the details in [README.md](../../../../README.md#dependencies) for installing dependencies.
+1. Set your [GOPATH](https://github.com/golang/go/wiki/GOPATH) environment variable, if you haven't already. The default `GOPATH` is `$HOME/go`. When building any Go package or application the binaries will be installed by default to `$GOPATH/bin`.
+2. Checkout the code into any directory you prefer:
+   ```
+   git checkout https://github.com/stellar/go
+   ```
+   Or if you prefer to develop inside `GOPATH` check it out to `$GOPATH/src/github.com/stellar/go`:
+   ```
+   git checkout https://github.com/stellar/go $GOPATH/src/github.com/stellar/go
+   ```
+   If developing inside `GOPATH` set the `GO111MODULE=on` environment variable to turn on Modules for managing dependencies. See the repository [README](../../../../README.md#dependencies) for more information.
+3. Change to the directory where the repository is checked out. e.g. `cd go`, or if developing inside the `GOPATH`, `cd $GOPATH/src/github.com/stellar/go`.
+4. Compile the Horizon binary: `go install ./services/horizon`. You should see the resulting `horizon` executable in `$GOPATH/bin`.
+5. Add Go binaries to your PATH in your `bashrc` or equivalent, for easy access: `export PATH=${GOPATH//://bin:}/bin:$PATH`
+
 2. Compile the Horizon binary: `go install github.com/stellar/go/services/horizon`. You should see the resulting `horizon` executable in `$GOPATH/bin`.
 3. Add Go binaries to your PATH in your `bashrc` or equivalent, for easy access: `export PATH=${GOPATH//://bin:}/bin:$PATH`
 
