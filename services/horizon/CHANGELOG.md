@@ -19,6 +19,8 @@ Check (Beta Testing New Ingestion System)[https://github.com/stellar/go/blob/mas
 
 ## v0.20.0
 
+If you want to use experimental ingestion skip this version and use v0.20.1 instead. v0.20.0 has a performance issue.
+
 ### Changes
 
 * Experimental ingestion system is now run concurrently on all Horizon servers (with feature flag set - see below). This improves ingestion availability.
