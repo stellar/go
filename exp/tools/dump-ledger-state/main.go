@@ -67,7 +67,8 @@ func main() {
 	}
 	for _, file := range sortedFiles {
 		err := os.Remove(file)
-		if err != nil {
+		// Ignore not exist errors
+		if err != nil && !os.IsNotExist(err) {
 			panic(err)
 		}
 	}

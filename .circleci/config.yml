@@ -46,7 +46,7 @@ commands:
   install_stellar_core_debian_package:
     steps:
       - run:
-          name: Adding SDF repository
+          name: Adding SDF apt repository
           command: |
             sudo apt-get update -y
             sudo apt-get install -y apt-transport-https
