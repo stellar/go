@@ -117,3 +117,5 @@ require (
 	gopkg.in/yaml.v2 v2.2.2 // indirect
 	launchpad.net/gocheck v0.0.0-20140225173054-000000000087 // indirect
 )
+
+replace launchpad.net/gocheck => github.com/go-check/check v0.0.0-20140225173054-eb6ee6f84d0a

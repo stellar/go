@@ -50,6 +50,8 @@ github.com/gavv/monotime v0.0.0-20161010190848-47d58efa6955 h1:gmtGRvSexPU4B1T/y
 github.com/gavv/monotime v0.0.0-20161010190848-47d58efa6955/go.mod h1:vmp8DIyckQMXOPl0AQVHt+7n5h7Gb7hS6CUydiV8QeA=
 github.com/getsentry/raven-go v0.0.0-20160805001729-c9d3cc542ad1 h1:qIqziX4EA/OBdmMgtaqdKBWWOZIfyXYClCoa56NgVEk=
 github.com/getsentry/raven-go v0.0.0-20160805001729-c9d3cc542ad1/go.mod h1:KungGk8q33+aIAZUIVWZDr2OfAEBsO49PX4NzFV5kcQ=
+github.com/go-check/check v0.0.0-20140225173054-eb6ee6f84d0a h1:tbELoaWfk9vAq3VQ4aGloO6YbnU8/WkgqBpUeRllg0Q=
+github.com/go-check/check v0.0.0-20140225173054-eb6ee6f84d0a/go.mod h1:9ES+weclKsC9YodN5RgxqK/VD9HM9JsCSh7rNhMZE98=
 github.com/go-chi/chi v3.1.5+incompatible h1:TcUFIZz4n9dleJjD6lxsoqPJDiEVQEWcNjj3mevAEFQ=
 github.com/go-chi/chi v3.1.5+incompatible/go.mod h1:eB3wogJHnLi3x/kFX2A+IbTBlXxmMeXJVKy9tTv1XzQ=
 github.com/go-errors/errors v0.0.0-20150906023321-a41850380601 h1:jxTbmDuqQUTI6MscgbqB39vtxGfr2fi61nYIcFQUnlE=
@@ -270,5 +272,3 @@ gopkg.in/tylerb/graceful.v1 v1.2.13/go.mod h1:yBhekWvR20ACXVObSSdD3u6S9DeSylanL2
 gopkg.in/yaml.v2 v2.2.1/go.mod h1:hI93XBmqTisBFMUTm0b8Fm+jr3Dg1NNxqwp+5A1VGuI=
 gopkg.in/yaml.v2 v2.2.2 h1:ZCJp+EgiOT7lHqUV2J862kp8Qj64Jo6az82+3Td9dZw=
 gopkg.in/yaml.v2 v2.2.2/go.mod h1:hI93XBmqTisBFMUTm0b8Fm+jr3Dg1NNxqwp+5A1VGuI=
-launchpad.net/gocheck v0.0.0-20140225173054-000000000087 h1:Izowp2XBH6Ya6rv+hqbceQyw/gSGoXfH/UPoTGduL54=
-launchpad.net/gocheck v0.0.0-20140225173054-000000000087/go.mod h1:hj7XX3B/0A+80Vse0e+BUHsHMTEhd0O4cpUHr/e/BUM=
