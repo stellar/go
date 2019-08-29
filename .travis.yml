@@ -11,9 +11,15 @@ addons:
 go:
 - '1.11'
 - '1.12'
+- '1.13rc1'
 - tip
+env:
+- GO111MODULE=on
 go_import_path: github.com/stellar/go
-before_install:
+install:
+- go mod download
+- ./gomod.sh
+before_script:
 - |
   if [ "$TRAVIS_TAG" != "" ]; then
     # Negate the result so process exits with 1 if anything found
@@ -29,13 +35,11 @@ before_install:
     ./gofmt.sh
   fi
 - ./govet.sh
-install:
-- curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh
 script:
-- dep ensure -v && ./support/scripts/run_tests
+- ./support/scripts/run_tests
 cache:
   directories:
-    - $GOPATH/pkg/dep # cache dep downloaded dependencies
+    - $GOPATH/pkg/mod # cache downloaded dependencies
 before_deploy:
 - go run ./support/scripts/build_release_artifacts/main.go
 - ./support/scripts/push_snapshots_tag.sh
