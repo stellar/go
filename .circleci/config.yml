@@ -47,10 +47,17 @@ commands:
   install_go_deps:
     steps:
       - checkout
+      - restore_cache:
+          keys:
+            - go-mod-v1-{{ checksum "go.sum" }}
       - run:
           name: Download dependencies
           command: |
             go mod download
+      - save_cache:
+          key: go-mod-v1-{{ checksum "go.sum" }}
+          paths:
+            - /go/pkg/mod
 
   # check_go_deps validates that the dependencies are expected.
   check_go_deps:
