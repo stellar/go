@@ -88,3 +88,7 @@
 [[constraint]]
   branch = "master"
   name = "github.com/shurcooL/httpfs"
+
+[[constraint]]
+  name = "github.com/rcrowley/go-metrics"
+  revision = "51425a2415d21afadfd55cd93432c0bc69e9598d"
