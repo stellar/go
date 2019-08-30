@@ -92,3 +92,7 @@
 [[constraint]]
   name = "github.com/rcrowley/go-metrics"
   revision = "51425a2415d21afadfd55cd93432c0bc69e9598d"
+
+[[override]]
+  name = "gopkg.in/yaml.v2"
+  version = "=v2.2.2"
