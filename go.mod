@@ -69,7 +69,7 @@ require (
 	github.com/pkg/errors v0.8.0
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/r3labs/sse v0.0.0-20170720143429-2f36fb519619
-	github.com/rcrowley/go-metrics v0.0.0-20190826022208-cac0b30c2563
+	github.com/rcrowley/go-metrics v0.0.0-20160113235030-51425a2415d2
 	github.com/rs/cors v0.0.0-20160617231935-a62a804a8a00
 	github.com/rs/xhandler v0.0.0-20160618193221-ed27b6fd6521 // indirect
 	github.com/rubenv/sql-migrate v0.0.0-20190717103323-87ce952f7079
