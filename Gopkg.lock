@@ -586,11 +586,11 @@
   revision = "2f36fb519619e8589fbef5095fbe113c14e7d090"
 
 [[projects]]
-  digest = "1:745d6aedb50bf5fd2b1f23c8fb02326e86c6ef8fd891fe6cf8af369bf27b783b"
+  digest = "1:61c70a37c48b3085095e21bc86138f58d29cc125a73ad8b54753923a9a3c2043"
   name = "github.com/rcrowley/go-metrics"
   packages = ["."]
   pruneopts = "T"
-  revision = "a5cfc242a56ba7fa70b785f678d6214837bf93b9"
+  revision = "cac0b30c2563378d434b5af411844adff8e32960"
 
 [[projects]]
   digest = "1:613400d7688f0486bec153e7f6bb5323b7446a2a064e4246e0378bf77ea91deb"
