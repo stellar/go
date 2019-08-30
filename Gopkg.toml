@@ -64,7 +64,7 @@
 
 [[constraint]]
   name = "golang.org/x/crypto"
-  revision = "7f87c0fbb88b590338857bcb720678c2583d4dea"
+  revision = "cc06ce4a13d484c0101a9e92913248488a75786d"
 
 [[override]]
   name = "gopkg.in/fsnotify.v1"
@@ -72,7 +72,7 @@
 
 [[override]]
   name = "golang.org/x/sys"
-  revision = "cc5685c2db1239775905f3911f0067c0fa74762f"
+  revision = "5da285871e9c6a1c3acade75bea3282d33f55ebd"
 
 [prune]
   go-tests = true
@@ -92,3 +92,11 @@
 [[constraint]]
   name = "github.com/rcrowley/go-metrics"
   revision = "51425a2415d21afadfd55cd93432c0bc69e9598d"
+
+[[constraint]]
+  name = "golang.org/x/net"
+  revision = "60506f45cf65977eb3a9c6e30f995f54a721c271"
+
+[[override]]
+  name = "golang.org/x/text"
+  version = "=v0.3.2"
