@@ -29,9 +29,6 @@ Building Horizon requires the following developer tools:
 4. Compile the Horizon binary: `go install ./services/horizon`. You should see the resulting `horizon` executable in `$GOPATH/bin`.
 5. Add Go binaries to your PATH in your `bashrc` or equivalent, for easy access: `export PATH=${GOPATH//://bin:}/bin:$PATH`
 
-2. Compile the Horizon binary: `go install github.com/stellar/go/services/horizon`. You should see the resulting `horizon` executable in `$GOPATH/bin`.
-3. Add Go binaries to your PATH in your `bashrc` or equivalent, for easy access: `export PATH=${GOPATH//://bin:}/bin:$PATH`
-
 Open a new terminal. Confirm everything worked by running `horizon --help` successfully. You should see an informative message listing the command line options supported by Horizon.
 
 ## Set up Horizon's database
