@@ -945,11 +945,12 @@
   version = "v1.2.13"
 
 [[projects]]
-  digest = "1:37bf0c8e8da86322a5caa03c3a1979dd3538983d7d929e942f1542f865f3d5f2"
+  digest = "1:4d2e5a73dc1500038e504a8d78b986630e3626dc027bc030ba5c75da257cdb96"
   name = "gopkg.in/yaml.v2"
   packages = ["."]
   pruneopts = "T"
-  revision = "7ad95dd0798a40da1ccdff6dff35fd177b5edf40"
+  revision = "51d6538a90f86fe93ac480b35f37b2be17fef232"
+  version = "v2.2.2"
 
 [solve-meta]
   analyzer-name = "dep"
