@@ -78,6 +78,7 @@ func GetMigrationsUp(dbUrl string) (migrationIds []string) {
 	if dbErr != nil {
 		stdLog.Fatal(dbErr)
 	}
+	defer db.Close()
 
 	// Get the possible migrations
 	possibleMigrations, _, migrateErr := migrate.PlanMigration(db, "postgres", Migrations, migrate.Up, 0)
@@ -103,6 +104,7 @@ func GetNumMigrationsDown(dbUrl string) (nMigrations int) {
 	if dbErr != nil {
 		stdLog.Fatal(dbErr)
 	}
+	defer db.Close()
 
 	// Get the set of migrations recorded in the database
 	migrationRecords, recordErr := migrate.GetMigrationRecords(db, "postgres")
