@@ -48,18 +48,16 @@ func validateBothOrNeither(option1, option2 string) {
 
 func pingDB(db *sql.DB) {
 	for attempt := 0; attempt < maxDBPingAttempts; attempt++ {
-		err := db.Ping()
-		if err == nil {
+		if db.Ping() == nil {
 			return
 		}
-		stdLog.Printf("could not ping horizon db: %v\n", err)
 		time.Sleep(time.Second)
 		if attempt+1 < maxDBPingAttempts {
-			stdLog.Println("retrying ping")
+			stdLog.Println("Waiting for a horizon DB connection...")
 		}
 	}
 
-	stdLog.Fatalf("failed to ping horiizon db after %v attempts", maxDBPingAttempts)
+	stdLog.Fatalf("failed to connect to horizon DB after %v attempts", maxDBPingAttempts)
 }
 
 func applyMigrations() {
