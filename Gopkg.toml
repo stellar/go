@@ -93,6 +93,10 @@
   name = "github.com/rcrowley/go-metrics"
   revision = "51425a2415d21afadfd55cd93432c0bc69e9598d"
 
+[[override]]
+  name = "gopkg.in/yaml.v2"
+  version = "=v2.2.2"
+
 [[constraint]]
   name = "golang.org/x/net"
   revision = "60506f45cf65977eb3a9c6e30f995f54a721c271"
