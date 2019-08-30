@@ -33,7 +33,7 @@ var (
 	}
 )
 
-const dbPingTimeoutSeconds = 30
+const maxDBPingAttempts = 30
 
 // validateBothOrNeither ensures that both options are provided, if either is provided.
 func validateBothOrNeither(option1, option2 string) {
@@ -46,29 +46,36 @@ func validateBothOrNeither(option1, option2 string) {
 	}
 }
 
+func pingDB(db *sql.DB) {
+	for attempt := 0; attempt < maxDBPingAttempts; attempt++ {
+		err := db.Ping()
+		if err == nil {
+			return
+		}
+		stdLog.Printf("could not ping horizon db: %v\n", err)
+		time.Sleep(time.Second)
+		if attempt+1 < maxDBPingAttempts {
+			stdLog.Println("retrying ping")
+		}
+	}
+
+	stdLog.Fatalf("failed to ping horiizon db after %v attempts", maxDBPingAttempts)
+}
+
 func applyMigrations() {
 	db, err := sql.Open("postgres", config.DatabaseURL)
 	if err != nil {
 		stdLog.Fatalf("could not connect to horizon db: %v", err)
 	}
 	defer db.Close()
-
-	for secs := 0; secs <= dbPingTimeoutSeconds; secs++ {
-		if err = db.Ping(); err == nil {
-			break
-		}
-		if secs >= dbPingTimeoutSeconds {
-			stdLog.Fatal("could not ping horizon db")
-		}
-		time.Sleep(time.Second)
-	}
+	pingDB(db)
 
 	numMigrations, err := schema.Migrate(db, schema.MigrateUp, 0)
 	if err != nil {
 		stdLog.Fatalf("could not apply migrations: %v", err)
 	}
 	if numMigrations > 0 {
-		stdLog.Printf("successfully applied %v horizon migrations", numMigrations)
+		stdLog.Printf("successfully applied %v horizon migrations\n", numMigrations)
 	}
 }
 
