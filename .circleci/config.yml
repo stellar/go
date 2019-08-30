@@ -43,6 +43,23 @@ commands:
               ! egrep -irn -A 1 --include=*.go "Action.+needed.+in.+release:.+$CIRCLE_TAG" ./
             fi
 
+  install_stellar_core_debian_package:
+    steps:
+      - run:
+          name: Adding SDF apt repository
+          command: |
+            sudo apt-get update -y
+            sudo apt-get install -y apt-transport-https
+            wget -qO - https://apt.stellar.org/SDF.asc | sudo apt-key add -
+            echo "deb https://apt.stellar.org/public stable/" | sudo tee -a /etc/apt/sources.list.d/SDF.list
+            sudo apt-get update -y
+      - run:
+          name: Installing stellar-core
+          command: sudo apt-get install -y stellar-core jq postgresql-client-9.6
+      - run:
+          name: Creating stellar-core DB
+          command: createdb core
+
   # install_go_deps installs the go dependencies of the project.
   install_go_deps:
     steps:
@@ -61,6 +78,30 @@ commands:
           paths:
             - "/go/src/github.com/stellar/go/vendor"
             - "/go/src/pkg/dep"
+
+  check_ingest_state:
+    steps:
+      - run:
+          name: Getting latest checkpoint ledger
+          command: |
+            export LATEST_LEDGER=`curl -s http://history.stellar.org/prd/core-live/core_live_001/.well-known/stellar-history.json | jq -r '.currentLedger'`
+            echo $LATEST_LEDGER # For debug
+            echo "export LATEST_LEDGER=$LATEST_LEDGER" >> $BASH_ENV # Persist between steps
+      - run:
+          name: Dump state using ingest
+          command: go run -v ./exp/tools/dump-ledger-state/
+      - run:
+          name: Init stellar-core DB
+          command: stellar-core --conf ./exp/tools/dump-ledger-state/stellar-core.cfg new-db
+      - run:
+          name: Catchup core
+          command: stellar-core --conf ./exp/tools/dump-ledger-state/stellar-core.cfg catchup $LATEST_LEDGER/1
+      - run:
+          name: Dump stellar-core DB
+          command: ./exp/tools/dump-ledger-state/dump_core_db.sh
+      - run:
+          name: Compare state dumps
+          command: ./exp/tools/dump-ledger-state/diff_test.sh
 
   # test_packages performs tests on all packages of the monorepo.
   test_packages:
@@ -186,6 +227,25 @@ jobs:
             else
                 echo "No files found in ./dist. No binaries to publish for ${CIRCLE_TAG}."
             fi
+
+  # ingest_state_diff runs `/tools/dump-ledger-state` to compare if state ingested
+  # by ingest package matches the state in stellar-core db
+  ingest_state_diff:
+    working_directory: /go/src/github.com/stellar/go/
+    docker:
+      - image: circleci/golang:1.12-stretch
+        environment:
+          PGHOST: localhost
+          PGPORT: 5432
+          PGUSER: circleci
+      - image: circleci/postgres:9.6.5-alpine-ram
+        environment:
+          POSTGRES_USER: circleci
+    steps:
+      - install_stellar_core_debian_package
+      - install_go_deps
+      - check_ingest_state
+
 #-------------------------------------------------------------------------#
 # Workflows orchestrate jobs and make sure they run in the right sequence #
 #-------------------------------------------------------------------------#
@@ -199,6 +259,12 @@ workflows:
       - check_code_1_12
       - test_code_1_11
       - test_code_1_12
+      - ingest_state_diff:
+          filters:
+              branches:
+                only:
+                  - master
+                  - /release-horizon-/
 
   build_and_deploy:
     jobs:
@@ -208,3 +274,16 @@ workflows:
                 ignore: snapshots
               branches:
                 ignore: /.*/
+
+  ingest_state_nighly:
+    triggers:
+      - schedule:
+          # Every day
+          cron: "0 0 * * *"
+          filters:
+            branches:
+              only:
+                - master
+                - /release-horizon-/
+    jobs:
+      - ingest_state_diff

@@ -23,13 +23,14 @@ do
 done
 
 echo "Checking diffs..."
-for i in "${ENTRIES[@]}"
+for type in "${ENTRIES[@]}"
 do
-  diff -q ${i}_core_sorted.csv ${i}_sorted.csv
+  diff -q ${type}_core_sorted.csv ${type}_sorted.csv
   if [ "$?" -ne "0" ]
   then
-    echo "ERROR: $i does NOT match";
+    echo "ERROR: $type does NOT match";
+    exit -1
   else
-    echo "$i OK";
+    echo "$type OK";
   fi
 done
