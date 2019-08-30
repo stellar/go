@@ -1,13 +1,9 @@
 package actions
 
 import (
-	"context"
-	"net/http"
-	"net/url"
 	"testing"
 	"time"
 
-	"github.com/go-chi/chi"
 	"github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/services/horizon/internal/db2/core"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
@@ -63,50 +59,6 @@ var (
 	}
 )
 
-func makeOffersRequest(t *testing.T, queryParams map[string]string) *http.Request {
-	request, err := http.NewRequest("GET", "/", nil)
-	if err != nil {
-		t.Fatalf("unexpected error %v", err)
-	}
-	query := url.Values{}
-	for key, value := range queryParams {
-		query.Set(key, value)
-	}
-	request.URL.RawQuery = query.Encode()
-
-	ctx := context.WithValue(context.Background(), chi.RouteCtxKey, chi.NewRouteContext())
-	return request.WithContext(ctx)
-}
-
-func makeAccountOffersRequest(
-	t *testing.T,
-	accountID string,
-	queryParams map[string]string,
-) *http.Request {
-	request, err := http.NewRequest("GET", "/", nil)
-	if err != nil {
-		t.Fatalf("unexpected error %v", err)
-	}
-	query := url.Values{}
-	for key, value := range queryParams {
-		query.Set(key, value)
-	}
-	request.URL.RawQuery = query.Encode()
-
-	chiRouteContext := chi.NewRouteContext()
-	chiRouteContext.URLParams.Add("account_id", accountID)
-	ctx := context.WithValue(context.Background(), chi.RouteCtxKey, chiRouteContext)
-	return request.WithContext(ctx)
-}
-
-func pageableToOffers(t *testing.T, page []hal.Pageable) []horizon.Offer {
-	var offers []horizon.Offer
-	for _, entry := range page {
-		offers = append(offers, entry.(horizon.Offer))
-	}
-	return offers
-}
-
 func TestGetOffersHandler(t *testing.T) {
 	tt := test.Start(t)
 	defer tt.Finish()
@@ -133,7 +85,7 @@ func TestGetOffersHandler(t *testing.T) {
 	tt.Assert.NoError(q.UpsertOffer(usdOffer, 3))
 
 	t.Run("No filter", func(t *testing.T) {
-		records, err := handler.GetResourcePage(makeOffersRequest(t, map[string]string{}))
+		records, err := handler.GetResourcePage(makeRequest(t, map[string]string{}, map[string]string{}))
 		tt.Assert.NoError(err)
 		tt.Assert.Len(records, 3)
 
@@ -149,11 +101,12 @@ func TestGetOffersHandler(t *testing.T) {
 	})
 
 	t.Run("Filter by seller", func(t *testing.T) {
-		records, err := handler.GetResourcePage(makeOffersRequest(
+		records, err := handler.GetResourcePage(makeRequest(
 			t,
 			map[string]string{
 				"seller": issuer.Address(),
 			},
+			map[string]string{},
 		))
 		tt.Assert.NoError(err)
 		tt.Assert.Len(records, 2)
@@ -168,11 +121,12 @@ func TestGetOffersHandler(t *testing.T) {
 		asset := horizon.Asset{}
 		nativeAsset.Extract(&asset.Type, &asset.Code, &asset.Issuer)
 
-		records, err := handler.GetResourcePage(makeOffersRequest(
+		records, err := handler.GetResourcePage(makeRequest(
 			t,
 			map[string]string{
 				"selling_asset_type": asset.Type,
 			},
+			map[string]string{},
 		))
 		tt.Assert.NoError(err)
 		tt.Assert.Len(records, 2)
@@ -185,13 +139,14 @@ func TestGetOffersHandler(t *testing.T) {
 		asset = horizon.Asset{}
 		eurAsset.Extract(&asset.Type, &asset.Code, &asset.Issuer)
 
-		records, err = handler.GetResourcePage(makeOffersRequest(
+		records, err = handler.GetResourcePage(makeRequest(
 			t,
 			map[string]string{
 				"selling_asset_type":   asset.Type,
 				"selling_asset_code":   asset.Code,
 				"selling_asset_issuer": asset.Issuer,
 			},
+			map[string]string{},
 		))
 		tt.Assert.NoError(err)
 		tt.Assert.Len(records, 1)
@@ -204,13 +159,14 @@ func TestGetOffersHandler(t *testing.T) {
 		asset := horizon.Asset{}
 		eurAsset.Extract(&asset.Type, &asset.Code, &asset.Issuer)
 
-		records, err := handler.GetResourcePage(makeOffersRequest(
+		records, err := handler.GetResourcePage(makeRequest(
 			t,
 			map[string]string{
 				"buying_asset_type":   asset.Type,
 				"buying_asset_code":   asset.Code,
 				"buying_asset_issuer": asset.Issuer,
 			},
+			map[string]string{},
 		))
 		tt.Assert.NoError(err)
 		tt.Assert.Len(records, 2)
@@ -223,13 +179,14 @@ func TestGetOffersHandler(t *testing.T) {
 		asset = horizon.Asset{}
 		usdAsset.Extract(&asset.Type, &asset.Code, &asset.Issuer)
 
-		records, err = handler.GetResourcePage(makeOffersRequest(
+		records, err = handler.GetResourcePage(makeRequest(
 			t,
 			map[string]string{
 				"buying_asset_type":   asset.Type,
 				"buying_asset_code":   asset.Code,
 				"buying_asset_issuer": asset.Issuer,
 			},
+			map[string]string{},
 		))
 		tt.Assert.NoError(err)
 		tt.Assert.Len(records, 1)
@@ -256,7 +213,7 @@ func TestGetAccountOffersHandler(t *testing.T) {
 	tt.Assert.NoError(q.UpsertOffer(usdOffer, 3))
 
 	records, err := handler.GetResourcePage(
-		makeAccountOffersRequest(t, issuer.Address(), map[string]string{}),
+		makeRequest(t, map[string]string{}, map[string]string{"account_id": issuer.Address()}),
 	)
 	tt.Assert.NoError(err)
 	tt.Assert.Len(records, 2)
@@ -266,4 +223,12 @@ func TestGetAccountOffersHandler(t *testing.T) {
 	for _, offer := range offers {
 		tt.Assert.Equal(issuer.Address(), offer.Seller)
 	}
+}
+
+func pageableToOffers(t *testing.T, page []hal.Pageable) []horizon.Offer {
+	var offers []horizon.Offer
+	for _, entry := range page {
+		offers = append(offers, entry.(horizon.Offer))
+	}
+	return offers
 }

@@ -2,6 +2,7 @@ package ledger
 
 import (
 	"context"
+	"sync"
 	"time"
 )
 
@@ -62,6 +63,7 @@ func (source HistoryDBSource) NextLedger(currentSequence uint32) chan uint32 {
 type TestingSource struct {
 	currentLedger uint32
 	newLedgers    chan uint32
+	lock          *sync.RWMutex
 }
 
 // NewTestingSource returns a TestingSource.
@@ -69,11 +71,14 @@ func NewTestingSource(currentLedger uint32) *TestingSource {
 	return &TestingSource{
 		currentLedger: currentLedger,
 		newLedgers:    make(chan uint32),
+		lock:          &sync.RWMutex{},
 	}
 }
 
 // CurrentLedger returns the current ledger.
 func (source *TestingSource) CurrentLedger() uint32 {
+	source.lock.RLock()
+	defer source.lock.RUnlock()
 	return source.currentLedger
 }
 
@@ -106,5 +111,20 @@ func (source *TestingSource) TryAddLedger(
 
 // NextLedger returns a channel which yields every time there is a new ledger.
 func (source *TestingSource) NextLedger(currentSequence uint32) chan uint32 {
-	return source.newLedgers
+	response := make(chan uint32, 1)
+
+	go func() {
+		for {
+			nextLedger := <-source.newLedgers
+			if nextLedger > source.currentLedger {
+				source.lock.Lock()
+				defer source.lock.Unlock()
+				source.currentLedger = nextLedger
+				response <- nextLedger
+				return
+			}
+		}
+	}()
+
+	return response
 }

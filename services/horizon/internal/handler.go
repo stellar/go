@@ -403,6 +403,62 @@ func validateCursorWithinHistory(pq db2.PageQuery) error {
 	return nil
 }
 
+const singleObjectStreamLimit = 10
+
+type streamableObjectAction interface {
+	GetResource(r *http.Request) (actions.StreamableObjectResponse, error)
+}
+
+type streamableObjectActionHandler struct {
+	action        streamableObjectAction
+	streamHandler sse.StreamHandler
+}
+
+func (handler streamableObjectActionHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	switch render.Negotiate(r) {
+	case render.MimeHal, render.MimeJSON:
+		response, err := handler.action.GetResource(r)
+		if err != nil {
+			problem.Render(r.Context(), w, err)
+			return
+		}
+
+		httpjson.Render(
+			w,
+			response,
+			httpjson.HALJSON,
+		)
+		return
+	case render.MimeEventStream:
+		handler.renderStream(w, r)
+		return
+	}
+
+	problem.Render(r.Context(), w, hProblem.NotAcceptable)
+}
+
+func (handler streamableObjectActionHandler) renderStream(w http.ResponseWriter, r *http.Request) {
+	var lastResponse actions.StreamableObjectResponse
+
+	handler.streamHandler.ServeStream(
+		w,
+		r,
+		singleObjectStreamLimit,
+		func() ([]sse.Event, error) {
+			response, err := handler.action.GetResource(r)
+			if err != nil {
+				return nil, err
+			}
+
+			if lastResponse == nil || !lastResponse.Equals(response) {
+				lastResponse = response
+				return []sse.Event{sse.Event{Data: response}}, nil
+			}
+			return []sse.Event{}, nil
+		},
+	)
+}
+
 type pageAction interface {
 	GetResourcePage(r *http.Request) ([]hal.Pageable, error)
 }

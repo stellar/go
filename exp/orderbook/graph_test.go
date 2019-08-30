@@ -760,6 +760,64 @@ func TestRemoveOfferOrderBook(t *testing.T) {
 	}
 }
 
+func TestFindOffers(t *testing.T) {
+	graph := NewOrderBookGraph()
+
+	assertOfferListEquals(
+		t,
+		[]xdr.OfferEntry{},
+		graph.FindOffers(nativeAsset, eurAsset, 0),
+	)
+
+	assertOfferListEquals(
+		t,
+		[]xdr.OfferEntry{},
+		graph.FindOffers(nativeAsset, eurAsset, 5),
+	)
+
+	err := graph.
+		AddOffer(threeEurOffer).
+		AddOffer(eurOffer).
+		AddOffer(twoEurOffer).
+		Apply()
+	if err != nil {
+		t.Fatalf("unexpected error %v", err)
+	}
+
+	assertOfferListEquals(
+		t,
+		[]xdr.OfferEntry{},
+		graph.FindOffers(nativeAsset, eurAsset, 0),
+	)
+	assertOfferListEquals(
+		t,
+		[]xdr.OfferEntry{eurOffer, twoEurOffer},
+		graph.FindOffers(nativeAsset, eurAsset, 2),
+	)
+
+	extraTwoEurOffers := []xdr.OfferEntry{}
+	for i := 0; i < 4; i++ {
+		otherTwoEurOffer := twoEurOffer
+		otherTwoEurOffer.OfferId += xdr.Int64(i + 17)
+		graph.AddOffer(otherTwoEurOffer)
+		extraTwoEurOffers = append(extraTwoEurOffers, otherTwoEurOffer)
+	}
+	if err := graph.Apply(); err != nil {
+		t.Fatalf("unexpected error %v", err)
+	}
+
+	assertOfferListEquals(
+		t,
+		append([]xdr.OfferEntry{eurOffer, twoEurOffer}, extraTwoEurOffers...),
+		graph.FindOffers(nativeAsset, eurAsset, 2),
+	)
+	assertOfferListEquals(
+		t,
+		append(append([]xdr.OfferEntry{eurOffer, twoEurOffer}, extraTwoEurOffers...), threeEurOffer),
+		graph.FindOffers(nativeAsset, eurAsset, 3),
+	)
+}
+
 func TestConsumeOffersForSellingAsset(t *testing.T) {
 	kp, err := keypair.Random()
 	if err != nil {

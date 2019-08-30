@@ -119,6 +119,38 @@ func (graph *OrderBookGraph) batch() *orderBookBatchedUpdates {
 	}
 }
 
+// FindOffers returns all offers for a given trading pair
+// The offers will be sorted by price from cheapest to most expensive
+// The returned offers will span at most `limit` price levels
+func (graph *OrderBookGraph) FindOffers(selling, buying xdr.Asset, limit int) []xdr.OfferEntry {
+	results := []xdr.OfferEntry{}
+	buyingString := buying.String()
+	sellingString := selling.String()
+
+	graph.lock.RLock()
+	defer graph.lock.RUnlock()
+	edges, ok := graph.edgesForSellingAsset[sellingString]
+	if !ok {
+		return results
+	}
+	offers, ok := edges[buyingString]
+	if !ok {
+		return results
+	}
+
+	for _, offer := range offers {
+		if len(results) == 0 || results[len(results)-1].Price != offer.Price {
+			limit--
+		}
+		if limit < 0 {
+			return results
+		}
+
+		results = append(results, offer)
+	}
+	return results
+}
+
 // add inserts a given offer into the order book graph
 func (graph *OrderBookGraph) add(offer xdr.OfferEntry) error {
 	if _, contains := graph.tradingPairForOffer[offer.OfferId]; contains {

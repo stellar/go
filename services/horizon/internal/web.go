@@ -14,6 +14,7 @@ import (
 	"github.com/rs/cors"
 	"github.com/sebest/xff"
 
+	"github.com/stellar/go/exp/orderbook"
 	"github.com/stellar/go/services/horizon/internal/actions"
 	"github.com/stellar/go/services/horizon/internal/db2"
 	"github.com/stellar/go/services/horizon/internal/db2/core"
@@ -152,7 +153,11 @@ func installAccountOfferRoute(
 
 // mustInstallActions installs the routing configuration of horizon onto the
 // provided app.  All route registration should be implemented here.
-func (w *web) mustInstallActions(config Config, pathFinder paths.Finder) {
+func (w *web) mustInstallActions(
+	config Config,
+	pathFinder paths.Finder,
+	orderBookGraph *orderbook.OrderBookGraph,
+) {
 	if w == nil {
 		log.Fatal("missing web instance for installing web actions")
 	}
@@ -242,7 +247,21 @@ func (w *web) mustInstallActions(config Config, pathFinder paths.Finder) {
 			Get("/{id}", getOfferResource)
 		r.Get("/{offer_id}/trades", TradeIndexAction{}.Handle)
 	})
-	r.Get("/order_book", OrderBookShowAction{}.Handle)
+
+	if config.EnableExperimentalIngestion {
+		r.With(requiresExperimentalIngestion).Method(
+			http.MethodGet,
+			"/order_book",
+			streamableObjectActionHandler{
+				streamHandler: streamHandler,
+				action: actions.GetOrderbookHandler{
+					OrderBookGraph: orderBookGraph,
+				},
+			},
+		)
+	} else {
+		r.Get("/order_book", OrderBookShowAction{}.Handle)
+	}
 
 	// Transaction submission API
 	r.Post("/transactions", TransactionCreateAction{}.Handle)
