@@ -64,20 +64,25 @@ commands:
   install_go_deps:
     steps:
       - checkout
-      - run:
-          name: Install dep
-          command: curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh
       - restore_cache:
           keys:
-            - v1-pkg-cache
+            - go-mod-v1-{{ checksum "go.mod" }}-{{ checksum "go.sum" }}
       - run:
-          name: Install project dependencies using dep
-          command: dep ensure -v
+          name: Download dependencies
+          command: |
+            go mod download
       - save_cache:
-          key: v1-pkg-cache
+          key: go-mod-v1-{{ checksum "go.mod" }}-{{ checksum "go.sum" }}
           paths:
-            - "/go/src/github.com/stellar/go/vendor"
-            - "/go/src/pkg/dep"
+            - /go/pkg/mod
+
+  # check_go_deps validates that the dependencies are expected.
+  check_go_deps:
+    steps:
+      - checkout
+      - run:
+          name: Check dependencies
+          command: ./gomod.sh
 
   check_ingest_state:
     steps:
@@ -108,7 +113,17 @@ commands:
     steps:
       - run:
           name: Install dependencies
-          command: sudo apt-get update && sudo apt-get install postgresql-client-9.6 mariadb-client-10.1
+          command: |
+            sudo apt-get update
+            (
+              sudo apt-get install postgresql-client-9.6 || (
+                echo "deb http://apt.postgresql.org/pub/repos/apt/ $(env -i bash -c '. /etc/os-release; echo $VERSION_CODENAME')-pgdg main" | sudo tee /etc/apt/sources.list.d/pgdg.list &&
+                wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo apt-key add - &&
+                sudo apt-get update &&
+                sudo apt-get install postgresql-client-9.6
+              )
+            )
+            (sudo apt-get install mariadb-client-10.1 || sudo apt-get install mariadb-client-10.3)
       - run:
           name: Install dockerize
           command: wget https://github.com/jwilder/dockerize/releases/download/$DOCKERIZE_VERSION/dockerize-linux-amd64-$DOCKERIZE_VERSION.tar.gz && sudo tar -C /usr/local/bin -xzvf dockerize-linux-amd64-$DOCKERIZE_VERSION.tar.gz && rm dockerize-linux-amd64-$DOCKERIZE_VERSION.tar.gz
@@ -149,7 +164,11 @@ jobs:
     working_directory: /go/src/github.com/stellar/go
     docker:
       - image: circleci/golang:1.11-stretch
+        environment:
+          GO111MODULE: "on"
     steps:
+      - install_go_deps
+      - check_go_deps
       - govet
 
   # check_code_1_12 performs code checks using Go 1.12.
@@ -157,8 +176,23 @@ jobs:
     working_directory: /go/src/github.com/stellar/go
     docker:
       - image: circleci/golang:1.12-stretch
+        environment:
+          GO111MODULE: "on"
     steps:
       - install_go_deps
+      - check_go_deps
+      - gofmt
+      - govet
+      - staticcheck
+
+  # check_code_1_13 performs code checks using Go 1.13.
+  check_code_1_13:
+    working_directory: /go/src/github.com/stellar/go
+    docker:
+      - image: circleci/golang:1.13rc1-buster
+    steps:
+      - install_go_deps
+      - check_go_deps
       - gofmt
       - govet
       - staticcheck
@@ -169,6 +203,7 @@ jobs:
     docker:
       - image: circleci/golang:1.11-stretch
         environment:
+          GO111MODULE: "on"
           PGHOST: localhost
           PGPORT: 5432
           PGUSER: circleci
@@ -189,6 +224,28 @@ jobs:
     docker:
       - image: circleci/golang:1.12-stretch
         environment:
+          GO111MODULE: "on"
+          PGHOST: localhost
+          PGPORT: 5432
+          PGUSER: circleci
+          MYSQL_HOST: 127.0.0.1
+          MYSQL_PORT: 3306
+      - image: circleci/postgres:9.6.5-alpine-ram
+        environment:
+          POSTGRES_USER: circleci
+      - image: circleci/mysql:5.7
+      - image: circleci/redis:5.0-alpine
+    steps:
+      - install_go_deps
+      - test_packages
+
+  # test_code_1_13 performs all package tests using Go 1.13.
+  test_code_1_13:
+    working_directory: /go/src/github.com/stellar/go
+    docker:
+      - image: circleci/golang:1.13rc1-buster
+        environment:
+          GO111MODULE: "on"
           PGHOST: localhost
           PGPORT: 5432
           PGUSER: circleci
@@ -214,6 +271,7 @@ jobs:
     steps:
       - check_deprecations
       - install_go_deps
+      - check_go_deps
       - build_packages
       - attach_workspace:
           at: ./dist
@@ -257,8 +315,10 @@ workflows:
     jobs:
       - check_code_1_11
       - check_code_1_12
+      - check_code_1_13
       - test_code_1_11
       - test_code_1_12
+      - test_code_1_13
       - ingest_state_diff:
           filters:
               branches:
