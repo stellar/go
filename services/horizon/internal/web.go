@@ -160,7 +160,11 @@ func (w *web) mustInstallActions(config Config, pathFinder paths.Finder) {
 			r.Get("/operations", OperationIndexAction{}.Handle)
 			r.Get("/payments", OperationIndexAction{OnlyPayments: true}.Handle)
 			r.Get("/effects", EffectIndexAction{}.Handle)
-			r.Get("/offers", OffersByAccountAction{}.Handle)
+			r.Get("/offers", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				// Using this function as a temporal workaround since our test setup doesn't let us setup
+				// ExperimentalIngestion on init.
+				OffersByAccountAction{}.Handle(w, r)
+			}))
 			r.Get("/trades", TradeIndexAction{}.Handle)
 			r.Get("/data/{key}", DataShowAction{}.Handle)
 		})
