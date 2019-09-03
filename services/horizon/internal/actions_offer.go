@@ -1,6 +1,7 @@
 package horizon
 
 import (
+	"context"
 	"net/http"
 
 	"github.com/stellar/go/protocols/horizon"
@@ -179,29 +180,10 @@ func (handler GetOffersHandle) ServeHTTP(w http.ResponseWriter, r *http.Request)
 		Limit:  pq.Limit,
 	}
 
-	ledgerCache := history.LedgerCache{}
-	for _, record := range records {
-		ledgerCache.Queue(int32(record.LastModifiedLedger))
-	}
-
-	err = ledgerCache.Load(handler.historyQ)
+	err = buildOffersPage(ctx, handler.historyQ, &page, &records)
 
 	if err != nil {
-		problem.Render(ctx, w, errors.Wrap(err, "failed to load ledger batch"))
-		return
-	}
-
-	for _, record := range records {
-		var offerResponse horizon.Offer
-
-		ledger, found := ledgerCache.Records[int32(record.LastModifiedLedger)]
-		ledgerPtr := &ledger
-		if !found {
-			ledgerPtr = nil
-		}
-
-		resourceadapter.PopulateHistoryOffer(ctx, &offerResponse, record, ledgerPtr)
-		page.Add(offerResponse)
+		problem.Render(ctx, w, err)
 	}
 
 	page.FullURL = actions.FullURL(ctx)
@@ -251,19 +233,30 @@ func (handler GetAccountOffersHandle) ServeHTTP(w http.ResponseWriter, r *http.R
 		Limit:  pq.Limit,
 	}
 
+	err = buildOffersPage(ctx, handler.historyQ, &page, &records)
+
+	if err != nil {
+		problem.Render(ctx, w, err)
+	}
+
+	page.FullURL = actions.FullURL(ctx)
+	page.PopulateLinks()
+	httpjson.Render(w, page, httpjson.HALJSON)
+}
+
+func buildOffersPage(ctx context.Context, historyQ *history.Q, page *hal.Page, records *[]history.Offer) error {
 	ledgerCache := history.LedgerCache{}
-	for _, record := range records {
+	for _, record := range *records {
 		ledgerCache.Queue(int32(record.LastModifiedLedger))
 	}
 
-	err = ledgerCache.Load(handler.historyQ)
+	err := ledgerCache.Load(historyQ)
 
 	if err != nil {
-		problem.Render(ctx, w, errors.Wrap(err, "failed to load ledger batch"))
-		return
+		return errors.Wrap(err, "failed to load ledger batch")
 	}
 
-	for _, record := range records {
+	for _, record := range *records {
 		var offerResponse horizon.Offer
 
 		ledger, found := ledgerCache.Records[int32(record.LastModifiedLedger)]
@@ -276,7 +269,5 @@ func (handler GetAccountOffersHandle) ServeHTTP(w http.ResponseWriter, r *http.R
 		page.Add(offerResponse)
 	}
 
-	page.FullURL = actions.FullURL(ctx)
-	page.PopulateLinks()
-	httpjson.Render(w, page, httpjson.HALJSON)
+	return nil
 }
