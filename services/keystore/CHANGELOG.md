@@ -1,6 +1,6 @@
 ## Unreleased
 
-- Dropped support for Go 1.10.
+- Dropped support for Go 1.10, 1.11.
 
 ## [v1.0.0] - 2019-06-18
 

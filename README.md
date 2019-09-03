@@ -20,7 +20,7 @@ This repo is the home for all of the public go code produced by SDF.  In additio
 
 ## Dependencies
 
-This repository is officially supported on the last two releases of Go, which is currently Go 1.11 and Go 1.12. When using Go 1.11, a minimum minor version of Go 1.11.4 is required.
+This repository is officially supported on the last two releases of Go, which is currently Go 1.12 and Go 1.13.
 
 It depends on a [number of external dependencies](./go.mod), and uses Go [Modules](https://github.com/golang/go/wiki/Modules) to manage them. Running any `go` command will automatically download dependencies required for that operation.
 
