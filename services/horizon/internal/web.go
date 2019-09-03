@@ -14,6 +14,7 @@ import (
 	"github.com/rs/cors"
 	"github.com/sebest/xff"
 
+	"github.com/stellar/go/services/horizon/internal/actions"
 	"github.com/stellar/go/services/horizon/internal/db2"
 	"github.com/stellar/go/services/horizon/internal/db2/core"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
@@ -131,6 +132,24 @@ func installPathFindingRoutes(
 	})
 }
 
+func installAccountOfferRoute(
+	offersAction actions.GetAccountOffersHandler,
+	streamHandler sse.StreamHandler,
+	enableExperimentalIngestion bool,
+	r *chi.Mux,
+) {
+	path := "/accounts/{account_id}/offers"
+	if enableExperimentalIngestion {
+		r.With(requiresExperimentalIngestion).Method(
+			http.MethodGet,
+			path,
+			streamablePageHandler(offersAction, streamHandler),
+		)
+	} else {
+		r.Get(path, OffersByAccountAction{}.Handle)
+	}
+}
+
 // mustInstallActions installs the routing configuration of horizon onto the
 // provided app.  All route registration should be implemented here.
 func (w *web) mustInstallActions(config Config, pathFinder paths.Finder) {
@@ -164,11 +183,25 @@ func (w *web) mustInstallActions(config Config, pathFinder paths.Finder) {
 			r.Get("/operations", OperationIndexAction{}.Handle)
 			r.Get("/payments", OperationIndexAction{OnlyPayments: true}.Handle)
 			r.Get("/effects", EffectIndexAction{}.Handle)
-			r.Get("/offers", OffersByAccountAction{}.Handle)
 			r.Get("/trades", TradeIndexAction{}.Handle)
 			r.Get("/data/{key}", DataShowAction{}.Handle)
 		})
 	})
+	offersHandler := actions.GetAccountOffersHandler{
+		HistoryQ: w.historyQ,
+	}
+
+	streamHandler := sse.StreamHandler{
+		RateLimiter:  w.rateLimiter,
+		LedgerSource: ledger.NewHistoryDBSource(w.sseUpdateFrequency),
+	}
+
+	installAccountOfferRoute(
+		offersHandler,
+		streamHandler,
+		config.EnableExperimentalIngestion,
+		r,
+	)
 
 	// transaction history actions
 	r.Route("/transactions", func(r chi.Router) {
@@ -199,8 +232,12 @@ func (w *web) mustInstallActions(config Config, pathFinder paths.Finder) {
 	r.Get("/trade_aggregations", TradeAggregateIndexAction{}.Handle)
 
 	r.Route("/offers", func(r chi.Router) {
-		r.With(acceptOnlyJSON, requiresExperimentalIngestion).
-			Method(http.MethodGet, "/", GetOffersHandle{historyQ: w.historyQ})
+		r.With(requiresExperimentalIngestion).
+			Method(
+				http.MethodGet,
+				"/",
+				restPageHandler(actions.GetOffersHandler{HistoryQ: w.historyQ}),
+			)
 		r.With(acceptOnlyJSON, requiresExperimentalIngestion).
 			Get("/{id}", getOfferResource)
 		r.Get("/{offer_id}/trades", TradeIndexAction{}.Handle)
