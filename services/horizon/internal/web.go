@@ -161,9 +161,16 @@ func (w *web) mustInstallActions(config Config, pathFinder paths.Finder) {
 			r.Get("/payments", OperationIndexAction{OnlyPayments: true}.Handle)
 			r.Get("/effects", EffectIndexAction{}.Handle)
 			r.Get("/offers", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				// Using this function as a temporal workaround since our test setup doesn't let us setup
-				// ExperimentalIngestion on init.
-				OffersByAccountAction{}.Handle(w, r)
+				ctx := r.Context()
+				app := AppFromContext(ctx)
+				// Using this function as a temporal workaround since StartHTTPTest doesn't let us pass value to the initial config.
+				if app.config.EnableExperimentalIngestion {
+					offersHandle := GetAccountOffersHandle{historyQ: app.HistoryQ()}
+					// We know experimental ingestion is enabled, but we still need to call the middleware to check ingestion state
+					requiresExperimentalIngestion(offersHandle).ServeHTTP(w, r)
+				} else {
+					OffersByAccountAction{}.Handle(w, r)
+				}
 			}))
 			r.Get("/trades", TradeIndexAction{}.Handle)
 			r.Get("/data/{key}", DataShowAction{}.Handle)

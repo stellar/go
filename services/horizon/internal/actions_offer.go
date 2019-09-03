@@ -208,3 +208,75 @@ func (handler GetOffersHandle) ServeHTTP(w http.ResponseWriter, r *http.Request)
 	page.PopulateLinks()
 	httpjson.Render(w, page, httpjson.HALJSON)
 }
+
+// GetAccountOffersHandle is the http handler for the /accounts/{account_id}/offers endpoint when using experimental ingestion.
+type GetAccountOffersHandle struct {
+	historyQ *history.Q
+}
+
+// ServeHTTP implements the http.Handler interface
+func (handler GetAccountOffersHandle) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	pq, err := actions.GetPageQuery(r)
+
+	if err != nil {
+		problem.Render(ctx, w, err)
+		return
+	}
+
+	seller, err := actions.GetString(r, "account_id")
+
+	if err != nil {
+		problem.Render(ctx, w, err)
+		return
+	}
+
+	query := history.OffersQuery{
+		PageQuery: pq,
+		SellerID:  seller,
+		Selling:   nil,
+		Buying:    nil,
+	}
+
+	records, err := handler.historyQ.GetOffers(query)
+
+	if err != nil {
+		problem.Render(ctx, w, err)
+		return
+	}
+
+	page := hal.Page{
+		Cursor: pq.Cursor,
+		Order:  pq.Order,
+		Limit:  pq.Limit,
+	}
+
+	ledgerCache := history.LedgerCache{}
+	for _, record := range records {
+		ledgerCache.Queue(int32(record.LastModifiedLedger))
+	}
+
+	err = ledgerCache.Load(handler.historyQ)
+
+	if err != nil {
+		problem.Render(ctx, w, errors.Wrap(err, "failed to load ledger batch"))
+		return
+	}
+
+	for _, record := range records {
+		var offerResponse horizon.Offer
+
+		ledger, found := ledgerCache.Records[int32(record.LastModifiedLedger)]
+		ledgerPtr := &ledger
+		if !found {
+			ledgerPtr = nil
+		}
+
+		resourceadapter.PopulateHistoryOffer(ctx, &offerResponse, record, ledgerPtr)
+		page.Add(offerResponse)
+	}
+
+	page.FullURL = actions.FullURL(ctx)
+	page.PopulateLinks()
+	httpjson.Render(w, page, httpjson.HALJSON)
+}

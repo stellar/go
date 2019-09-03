@@ -270,7 +270,28 @@ func TestOfferActionsStillIngesting_Index(t *testing.T) {
 	w := ht.Get("/offers")
 	ht.Assert.Equal(problem.StillIngesting.Status, w.Code)
 }
+func TestOfferActions_AccountIndexExperimentalIngestion(t *testing.T) {
+	ht := StartHTTPTest(t, "base")
+	ht.App.config.EnableExperimentalIngestion = true
+	defer ht.Finish()
+	q := &history.Q{ht.HorizonSession()}
 
+	ht.Assert.NoError(q.UpdateLastLedgerExpIngest(3))
+	ht.Assert.NoError(q.UpsertOffer(eurOffer, 3))
+	ht.Assert.NoError(q.UpsertOffer(twoEurOffer, 3))
+	ht.Assert.NoError(q.UpsertOffer(usdOffer, 3))
+
+	w := ht.Get(fmt.Sprintf("/accounts/%s/offers", issuer.Address()))
+
+	if ht.Assert.Equal(http.StatusOK, w.Code) {
+		ht.Assert.PageOf(2, w.Body)
+		var records []horizon.Offer
+		ht.UnmarshalPage(w.Body, &records)
+		for _, record := range records {
+			ht.Assert.Equal(issuer.Address(), record.Seller)
+		}
+	}
+}
 func TestOfferActions_AccountIndex(t *testing.T) {
 	ht := StartHTTPTest(t, "trades")
 	defer ht.Finish()
