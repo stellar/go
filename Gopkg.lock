@@ -808,7 +808,7 @@
   revision = "d1c525dea8ce39ea9a783d33cf08932305373f2c"
 
 [[projects]]
-  digest = "1:214dc62bc053a6f4f7e4cb6c6393920fcc213c80994a7725fcb35974992d7ccd"
+  digest = "1:e31be034fd6b7057f387bf33683b2a4a2468d299bc311ff45f8dc269a8ea046b"
   name = "golang.org/x/crypto"
   packages = [
     "ed25519",
@@ -818,40 +818,42 @@
     "ssh/terminal",
   ]
   pruneopts = "T"
-  revision = "7f87c0fbb88b590338857bcb720678c2583d4dea"
+  revision = "cc06ce4a13d484c0101a9e92913248488a75786d"
 
 [[projects]]
-  digest = "1:a18644706c9badac05ff6618845384817a90a33b6cb79a7a0bdafaac6ef7e563"
+  digest = "1:654ff5d292c51348f10e6a0f438f0852e0e605e94410f2f96ae658e5acd92ffb"
   name = "golang.org/x/net"
   packages = [
     "context",
     "html",
     "html/atom",
     "html/charset",
+    "http/httpguts",
     "http2",
     "http2/hpack",
     "idna",
-    "lex/httplex",
     "publicsuffix",
     "websocket",
   ]
   pruneopts = "T"
-  revision = "9bc2a3340c92c17a20edcd0080e93851ed58f5d5"
+  revision = "ba9fcec4b297b415637633c5a6e8fa592e4a16c3"
 
 [[projects]]
-  digest = "1:0e2d0a79d5d135022a0733fa902d8c338871a5112035acd34774f62412b92573"
+  digest = "1:d740e4ac02cd861812ac3794f8e9cd34dd799651607b1dadd09a580b0402f3e3"
   name = "golang.org/x/sys"
   packages = [
     "unix",
     "windows",
   ]
   pruneopts = "T"
-  revision = "cc5685c2db1239775905f3911f0067c0fa74762f"
+  revision = "5da285871e9c6a1c3acade75bea3282d33f55ebd"
 
 [[projects]]
-  digest = "1:e75680071853b8e66b993f3b108eac3aa925432a4d2fb0205f6cb6422def925e"
+  digest = "1:0a6103b1dc59b52f7e64a491b398b854c0fcaacde43c25ce468610a64311b72d"
   name = "golang.org/x/text"
   packages = [
+    "collate",
+    "collate/build",
     "encoding",
     "encoding/charmap",
     "encoding/htmlindex",
@@ -862,16 +864,26 @@
     "encoding/simplifiedchinese",
     "encoding/traditionalchinese",
     "encoding/unicode",
+    "internal/colltab",
     "internal/gen",
+    "internal/language",
+    "internal/language/compact",
     "internal/tag",
+    "internal/triegen",
+    "internal/ucd",
     "internal/utf8internal",
     "language",
     "runes",
+    "secure/bidirule",
     "transform",
+    "unicode/bidi",
     "unicode/cldr",
+    "unicode/norm",
+    "unicode/rangetable",
   ]
   pruneopts = "T"
-  revision = "1cbadb444a806fd9430d14ad08967ed91da4fa0a"
+  revision = "342b2e1fbaa52c93f31447ad2c6abc048c63e475"
+  version = "v0.3.2"
 
 [[projects]]
   digest = "1:04b9a99f5ff102323281698000a18c2daabde66baea55fe74941d6c82ed715a8"
