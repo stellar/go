@@ -99,7 +99,7 @@
 
 [[constraint]]
   name = "golang.org/x/net"
-  revision = "60506f45cf65977eb3a9c6e30f995f54a721c271"
+  revision = "ba9fcec4b297b415637633c5a6e8fa592e4a16c3"
 
 [[override]]
   name = "golang.org/x/text"

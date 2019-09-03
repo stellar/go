@@ -821,7 +821,7 @@
   revision = "cc06ce4a13d484c0101a9e92913248488a75786d"
 
 [[projects]]
-  digest = "1:8c48ea5a4aaf27eb969bfed831f904009ac5ec3b2510494d9b5a07b80986f6f5"
+  digest = "1:654ff5d292c51348f10e6a0f438f0852e0e605e94410f2f96ae658e5acd92ffb"
   name = "golang.org/x/net"
   packages = [
     "context",
@@ -836,7 +836,7 @@
     "websocket",
   ]
   pruneopts = "T"
-  revision = "60506f45cf65977eb3a9c6e30f995f54a721c271"
+  revision = "ba9fcec4b297b415637633c5a6e8fa592e4a16c3"
 
 [[projects]]
   digest = "1:d740e4ac02cd861812ac3794f8e9cd34dd799651607b1dadd09a580b0402f3e3"
