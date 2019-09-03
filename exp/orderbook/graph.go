@@ -16,6 +16,13 @@ var (
 	errBatchAlreadyApplied         = errors.New("cannot apply batched updates more than once")
 )
 
+type sortByType string
+
+const (
+	sortBySourceAsset      sortByType = "source"
+	sortByDestinationAsset sortByType = "destination"
+)
+
 // trading pair represents two assets that can be exchanged if an order is fulfilled
 type tradingPair struct {
 	// buyingAsset is obtained by calling offer.Buying.String() where offer is an xdr.OfferEntry
@@ -224,9 +231,8 @@ func (graph *OrderBookGraph) FindPaths(
 	return sortAndFilterPaths(
 		searchState.paths,
 		maxAssetsPerPath,
-		compareSourceAsset,
-		sourceAssetEquals,
-	), nil
+		sortBySourceAsset,
+	)
 }
 
 // FindFixedPaths returns a list of payment paths where the source and destination
@@ -278,9 +284,8 @@ func (graph *OrderBookGraph) FindFixedPaths(
 	return sortAndFilterPaths(
 		searchState.paths,
 		maxAssetsPerPath,
-		compareDestinationAsset,
-		destinationAssetEquals,
-	), nil
+		sortByDestinationAsset,
+	)
 }
 
 // compareSourceAsset will group payment paths by `SourceAsset`
@@ -294,7 +299,7 @@ func compareSourceAsset(allPaths []Path, i, j int) bool {
 		}
 		return allPaths[i].SourceAmount < allPaths[j].SourceAmount
 	}
-	return allPaths[i].sourceAssetString < allPaths[j].sourceAssetString
+	return allPaths[i].SourceAssetString() < allPaths[j].SourceAssetString()
 }
 
 // compareDestinationAsset will group payment paths by `DestinationAsset`
@@ -308,15 +313,15 @@ func compareDestinationAsset(allPaths []Path, i, j int) bool {
 		}
 		return allPaths[i].DestinationAmount > allPaths[j].DestinationAmount
 	}
-	return allPaths[i].destinationAssetString > allPaths[j].destinationAssetString
+	return allPaths[i].DestinationAssetString() < allPaths[j].DestinationAssetString()
 }
 
-func sourceAssetEquals(path, otherPath Path) bool {
-	return path.SourceAsset.Equals(otherPath.SourceAsset)
+func sourceAssetEquals(p, otherPath Path) bool {
+	return p.SourceAsset.Equals(otherPath.SourceAsset)
 }
 
-func destinationAssetEquals(path, otherPath Path) bool {
-	return path.DestinationAsset.Equals(otherPath.DestinationAsset)
+func destinationAssetEquals(p, otherPath Path) bool {
+	return p.DestinationAsset.Equals(otherPath.DestinationAsset)
 }
 
 // sortAndFilterPaths sorts the given list of paths using `comparePaths`
@@ -324,9 +329,22 @@ func destinationAssetEquals(path, otherPath Path) bool {
 func sortAndFilterPaths(
 	allPaths []Path,
 	maxPathsPerAsset int,
-	comparePaths func(allPaths []Path, i, j int) bool,
-	assetsEqual func(path, otherPath Path) bool,
-) []Path {
+	sortType sortByType,
+) ([]Path, error) {
+	var comparePaths func([]Path, int, int) bool
+	var assetsEqual func(Path, Path) bool
+
+	switch sortType {
+	case sortBySourceAsset:
+		comparePaths = compareSourceAsset
+		assetsEqual = sourceAssetEquals
+	case sortByDestinationAsset:
+		comparePaths = compareDestinationAsset
+		assetsEqual = destinationAssetEquals
+	default:
+		return nil, errors.New("invalid sort by type")
+	}
+
 	sort.Slice(allPaths, func(i, j int) bool {
 		return comparePaths(allPaths, i, j)
 	})
@@ -343,5 +361,5 @@ func sortAndFilterPaths(
 		}
 	}
 
-	return filtered
+	return filtered, nil
 }

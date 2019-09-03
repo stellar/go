@@ -1035,12 +1035,14 @@ func TestSortAndFilterPathsBySourceAsset(t *testing.T) {
 			DestinationAmount: 1000,
 		},
 	}
-	sortedAndFiltered := sortAndFilterPaths(
+	sortedAndFiltered, err := sortAndFilterPaths(
 		allPaths,
 		3,
-		compareSourceAsset,
-		sourceAssetEquals,
+		sortBySourceAsset,
 	)
+	if err != nil {
+		t.Fatalf("unexpected error %v", err)
+	}
 	expectedPaths := []Path{
 		Path{
 			SourceAmount:      2,
@@ -1138,27 +1140,15 @@ func TestSortAndFilterPathsByDestinationAsset(t *testing.T) {
 			DestinationAmount:      10,
 		},
 	}
-	sortedAndFiltered := sortAndFilterPaths(
+	sortedAndFiltered, err := sortAndFilterPaths(
 		allPaths,
 		3,
-		compareDestinationAsset,
-		destinationAssetEquals,
+		sortByDestinationAsset,
 	)
+	if err != nil {
+		t.Fatalf("unexpected error %v", err)
+	}
 	expectedPaths := []Path{
-		Path{
-			SourceAmount:      1000,
-			SourceAsset:       yenAsset,
-			InteriorNodes:     []xdr.Asset{},
-			DestinationAsset:  nativeAsset,
-			DestinationAmount: 10,
-		},
-		Path{
-			SourceAmount:      1000,
-			SourceAsset:       yenAsset,
-			InteriorNodes:     []xdr.Asset{},
-			DestinationAsset:  usdAsset,
-			DestinationAmount: 1,
-		},
 		Path{
 			SourceAmount:      1000,
 			SourceAsset:       yenAsset,
@@ -1179,6 +1169,20 @@ func TestSortAndFilterPathsByDestinationAsset(t *testing.T) {
 			InteriorNodes:     []xdr.Asset{},
 			DestinationAsset:  eurAsset,
 			DestinationAmount: 2,
+		},
+		Path{
+			SourceAmount:      1000,
+			SourceAsset:       yenAsset,
+			InteriorNodes:     []xdr.Asset{},
+			DestinationAsset:  usdAsset,
+			DestinationAmount: 1,
+		},
+		Path{
+			SourceAmount:      1000,
+			SourceAsset:       yenAsset,
+			InteriorNodes:     []xdr.Asset{},
+			DestinationAsset:  nativeAsset,
+			DestinationAmount: 10,
 		},
 	}
 
@@ -1613,6 +1617,16 @@ func TestFindPathsStartingAt(t *testing.T) {
 			InteriorNodes: []xdr.Asset{
 				chfAsset,
 				eurAsset,
+			},
+			DestinationAsset:  usdAsset,
+			DestinationAmount: 20,
+		},
+		Path{
+			SourceAmount: 5,
+			SourceAsset:  yenAsset,
+			InteriorNodes: []xdr.Asset{
+				chfAsset,
+				eurAsset,
 				usdAsset,
 			},
 			DestinationAsset:  nativeAsset,
@@ -1626,16 +1640,6 @@ func TestFindPathsStartingAt(t *testing.T) {
 				eurAsset,
 			},
 			DestinationAsset:  nativeAsset,
-			DestinationAmount: 20,
-		},
-		Path{
-			SourceAmount: 5,
-			SourceAsset:  yenAsset,
-			InteriorNodes: []xdr.Asset{
-				chfAsset,
-				eurAsset,
-			},
-			DestinationAsset:  usdAsset,
 			DestinationAmount: 20,
 		},
 	}

@@ -15,9 +15,7 @@ bumps.  A breaking change will get clearly notified in this log.
 
 ## v0.21.0
 
-* `/paths/strict-send` can now accept a `destination_account` parameter. If `destination_account` is provided then the endpoint will return
-all payment paths which terminate with an asset held by `destination_account`. Note that the endpoint will accept a `destination_account`
-or a `destination_asset` but not both.
+* `/paths/strict-send` can now accept a `destination_account` parameter. If `destination_account` is provided then the endpoint will return all payment paths which terminate with an asset held by `destination_account`. Note that the endpoint will accept a `destination_account` or a `destination_asset` but not both.
 
 ## v0.20.1
 

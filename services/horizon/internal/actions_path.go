@@ -112,8 +112,8 @@ var destinationAssetOrDestinationAccount = problem.P{
 	Type:   "bad_request",
 	Title:  "Bad Request",
 	Status: http.StatusBadRequest,
-	Detail: "The request requires either a destination asset or a destination account." +
-		"Both fields cannot be present",
+	Detail: "The request requires either a destination asset or a destination account. " +
+		"Both fields cannot be present.",
 }
 
 var sourceAccountIsDestinationAccount = problem.P{

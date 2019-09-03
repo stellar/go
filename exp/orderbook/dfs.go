@@ -22,6 +22,22 @@ type Path struct {
 	InteriorNodes []xdr.Asset
 }
 
+// SourceAssetString returns the string representation of the path's source asset
+func (p *Path) SourceAssetString() string {
+	if p.sourceAssetString == "" {
+		p.sourceAssetString = p.SourceAsset.String()
+	}
+	return p.sourceAssetString
+}
+
+// DestinationAssetString returns the string representation of the path's destination asset
+func (p *Path) DestinationAssetString() string {
+	if p.destinationAssetString == "" {
+		p.destinationAssetString = p.DestinationAsset.String()
+	}
+	return p.destinationAssetString
+}
+
 type searchState interface {
 	isTerminalNode(
 		currentAsset string,
