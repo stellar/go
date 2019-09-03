@@ -24,6 +24,10 @@ var (
 	// Note: {1,20} because the biggest amount you can use in Stellar is:
 	// len("922337203685.4775807") = 20.
 	validAmountSimple = regexp.MustCompile("^-?[.0-9]{1,20}$")
+	// ErrDivisionByZero is returned when a price operation would result in a division by 0
+	ErrDivisionByZero = errors.New("division by 0")
+	// ErrOverflow is returned when a price operation would result in an integer overflow
+	ErrOverflow = errors.New("overflow")
 )
 
 // Parse  calculates and returns the best rational approximation of the given
@@ -162,18 +166,18 @@ func ConvertToBuyingUnits(sellingOfferAmount int64, sellingUnitsNeeded int64, pr
 // see https://github.com/stellar/stellar-core/blob/9af27ef4e20b66f38ab148d52ba7904e74fe502f/src/util/types.cpp#L201
 func MulFractionRoundDown(x int64, n int64, d int64) (int64, error) {
 	if d == 0 {
-		return 0, errors.New("division by 0")
+		return 0, ErrDivisionByZero
 	}
 
 	hi, lo := bits.Mul64(uint64(x), uint64(n))
 
 	denominator := uint64(d)
 	if denominator <= hi {
-		return 0, errors.New("overflow")
+		return 0, ErrOverflow
 	}
 	q, _ := bits.Div64(hi, lo, denominator)
 	if q > math.MaxInt64 {
-		return 0, errors.New("overflow")
+		return 0, ErrOverflow
 	}
 
 	return int64(q), nil
@@ -183,7 +187,7 @@ func MulFractionRoundDown(x int64, n int64, d int64) (int64, error) {
 // see https://github.com/stellar/stellar-core/blob/9af27ef4e20b66f38ab148d52ba7904e74fe502f/src/util/types.cpp#L201
 func mulFractionRoundUp(x int64, n int64, d int64) (int64, error) {
 	if d == 0 {
-		return 0, errors.New("division by 0")
+		return 0, ErrDivisionByZero
 	}
 
 	hi, lo := bits.Mul64(uint64(x), uint64(n))
@@ -192,11 +196,11 @@ func mulFractionRoundUp(x int64, n int64, d int64) (int64, error) {
 
 	denominator := uint64(d)
 	if denominator <= hi {
-		return 0, errors.New("overflow")
+		return 0, ErrOverflow
 	}
 	q, _ := bits.Div64(hi, lo, denominator)
 	if q > math.MaxInt64 {
-		return 0, errors.New("overflow")
+		return 0, ErrOverflow
 	}
 
 	return int64(q), nil

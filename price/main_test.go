@@ -121,12 +121,12 @@ func TestConvertToBuyingUnits(t *testing.T) {
 
 func TestMulFractionOverflow(t *testing.T) {
 	_, e := MulFractionRoundDown(math.MaxInt64/2+1, 2, 1)
-	if e == nil {
+	if e != ErrOverflow {
 		t.Fatal("expected overflow error")
 	}
 
 	_, e = mulFractionRoundUp(math.MaxInt64/2+1, 2, 1)
-	if e == nil {
+	if e != ErrOverflow {
 		t.Fatal("expected overflow error")
 	}
 }
