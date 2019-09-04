@@ -90,7 +90,7 @@ func (q *Q) OperationByID(includeTransactions bool, id int64) (Operation, *Trans
 
 	if includeTransactions {
 		var transaction Transaction
-		if err := q.TransactionByHash(&transaction, operation.TransactionHash); err != nil {
+		if err = q.TransactionByHash(&transaction, operation.TransactionHash); err != nil {
 			return operation, nil, err
 		}
 

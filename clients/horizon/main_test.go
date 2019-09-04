@@ -76,8 +76,8 @@ func TestLoadAccount(t *testing.T) {
 		assert.Equal(t, account.Signers[0].Key, "XBT5HNPK6DAL6222MAWTLHNOZSDKPJ2AKNEQ5Q324CHHCNQFQ7EHBHZN")
 		assert.Equal(t, account.Signers[0].Type, "sha256_hash")
 		assert.Equal(t, account.Data["test"], "R0NCVkwzU1FGRVZLUkxQNkFKNDdVS0tXWUVCWTQ1V0hBSkhDRVpLVldNVEdNQ1Q0SDROS1FZTEg=")
-		balance, err := account.GetNativeBalance()
-		assert.Nil(t, err)
+		balance, balanceErr := account.GetNativeBalance()
+		assert.Nil(t, balanceErr)
 		assert.Equal(t, balance, "948522307.6146000")
 	}
 

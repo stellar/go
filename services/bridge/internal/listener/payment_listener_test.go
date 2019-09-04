@@ -526,8 +526,8 @@ func TestPostForm_MACKey(t *testing.T) {
 		assert.Empty(t, req.Header.Get("X_PAYLOAD_MAC"), "unexpected MAC present")
 	})
 	handler.HandleFunc("/mac", func(w http.ResponseWriter, req *http.Request) {
-		body, err := ioutil.ReadAll(req.Body)
-		require.NoError(t, err)
+		body, bodyReadErr := ioutil.ReadAll(req.Body)
+		require.NoError(t, bodyReadErr)
 
 		macer := hmac.New(sha256.New, rawkey)
 		macer.Write(body)

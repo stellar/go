@@ -106,7 +106,8 @@ func readLine(prompt string, private bool) (string, error) {
 	var err error
 
 	if private {
-		str, err := gopass.GetPasswdMasked()
+		var str []byte
+		str, err = gopass.GetPasswdMasked()
 		if err != nil {
 			return "", err
 		}
