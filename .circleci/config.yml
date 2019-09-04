@@ -234,7 +234,7 @@ jobs:
   publish_artifacts:
     working_directory: /go/src/github.com/stellar/go
     docker:
-      - image: circleci/golang:1.12-stretch
+      - image: circleci/golang:1.13-buster
     steps:
       - check_deprecations
       - install_go_deps
@@ -258,7 +258,7 @@ jobs:
   ingest_state_diff:
     working_directory: /go/src/github.com/stellar/go/
     docker:
-      - image: circleci/golang:1.12-stretch
+      - image: circleci/golang:1.13-buster
         environment:
           PGHOST: localhost
           PGPORT: 5432
