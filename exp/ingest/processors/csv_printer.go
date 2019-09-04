@@ -63,7 +63,6 @@ func (p *CSVPrinter) ProcessState(ctx context.Context, store *pipeline.Store, r 
 				inflationDest = entry.Data.Account.InflationDest.Address()
 			}
 
-			var err error
 			var signers string
 			if len(account.Signers) > 0 {
 				signers, err = xdr.MarshalBase64(account.Signers)
@@ -119,13 +118,14 @@ func (p *CSVPrinter) ProcessState(ctx context.Context, store *pipeline.Store, r 
 		case xdr.LedgerEntryTypeOffer:
 			offer := entry.Data.MustOffer()
 
-			var err error
-			selling, err := xdr.MarshalBase64(offer.Selling)
+			var selling string
+			selling, err = xdr.MarshalBase64(offer.Selling)
 			if err != nil {
 				return err
 			}
 
-			buying, err := xdr.MarshalBase64(offer.Buying)
+			var buying string
+			buying, err = xdr.MarshalBase64(offer.Buying)
 			if err != nil {
 				return err
 			}

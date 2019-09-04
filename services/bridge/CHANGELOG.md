@@ -5,7 +5,7 @@ As this project is pre 1.0, breaking changes may happen for minor version bumps.
 ## Unreleased
 
 * Fixed path-payment operation in `/payment`
-* Dropped support for Go 1.10.
+* Dropped support for Go 1.10, 1.11.
 
 ## 0.0.32
 

@@ -194,8 +194,8 @@ func initRedis(app *App) {
 		IdleTimeout: 240 * time.Second,
 		Dial:        dialRedis(redisURL),
 		TestOnBorrow: func(c redis.Conn, t time.Time) error {
-			_, err := c.Do("PING")
-			return err
+			_, pingErr := c.Do("PING")
+			return pingErr
 		},
 	}
 

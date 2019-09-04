@@ -1,6 +1,6 @@
 module github.com/stellar/go
 
-go 1.11
+go 1.12
 
 require (
 	bitbucket.org/ww/goautoneg v0.0.0-20120707110453-75cd24fc2f2c

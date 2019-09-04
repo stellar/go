@@ -9,7 +9,7 @@ bumps.  A breaking change will get clearly notified in this log.
 ## Unreleased
 
 * Fixed performance issue in Effects related endpoints.
-* Dropped support for Go 1.10.
+* Dropped support for Go 1.10, 1.11.
 
 ## v0.20.1
 
