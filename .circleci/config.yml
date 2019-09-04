@@ -145,7 +145,7 @@ commands:
             # the default Docker container only has 2 CPUs available.
             # That is why we explicitly specify -p=4 to reduce the number of parallel build processes
             GOFLAGS: -p=4
-          command: ./support/scripts/run_tests
+          command: go test -race -coverprofile=coverage.txt -covermode=atomic ./...
 
   # build_packages creates the project's artifacts.
   build_packages:
@@ -153,6 +153,13 @@ commands:
       - run:
           name: Build release artifacts
           command: go run ./support/scripts/build_release_artifacts/main.go
+
+  # send_coverage_report sends coverage report to codecov.io
+  send_coverage_report:
+    steps:
+      - run:
+          name: Send report to codecov.io
+          command: bash <(curl -s https://codecov.io/bash)
 
 #-----------------------------------------------------------------------------#
 # Jobs use the commands to accomplish a given task, and run through workflows #
@@ -226,6 +233,7 @@ jobs:
     steps:
       - install_go_deps
       - test_packages
+      - send_coverage_report
 
   # publish_artifacts builds and uploads artifacts to any tagged commit.
   #
