@@ -212,7 +212,6 @@ jobs:
     steps:
       - install_go_deps
       - test_packages
-      - send_coverage_report
 
   # test_code_1_13 performs all package tests using Go 1.13.
   test_code_1_13:
@@ -234,6 +233,7 @@ jobs:
     steps:
       - install_go_deps
       - test_packages
+      - send_coverage_report
 
   # publish_artifacts builds and uploads artifacts to any tagged commit.
   #
