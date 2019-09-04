@@ -8,7 +8,7 @@ do
     continue
   fi
   wc -l ${i}.csv
-  sort -o ${i}_sorted.csv ${i}.csv
+  sort -S 1G -o ${i}_sorted.csv ${i}.csv
 done
 
 echo "Sorting stellar-core output files..."
@@ -19,7 +19,7 @@ do
     continue
   fi
   wc -l ${i}_core.csv
-  sort -o ${i}_core_sorted.csv ${i}_core.csv
+  sort -S 1G -o ${i}_core_sorted.csv ${i}_core.csv
 done
 
 echo "Checking diffs..."
