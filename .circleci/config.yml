@@ -305,7 +305,6 @@ workflows:
           filters:
               branches:
                 only:
-                  - fix_ingest_state_diff # todo: remove
                   - master
                   - /release-horizon-/
 
