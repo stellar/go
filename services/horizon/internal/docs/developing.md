@@ -47,7 +47,7 @@ Horizon uses a Postgres database backend to store test fixtures and record infor
 At this point you should be able to run Horizon's unit tests:
 ```bash
 cd $GOPATH/src/github.com/stellar/go/services/horizon
-bash ../../support/scripts/run_tests
+go test ./...
 ```
 
 ## Set up Stellar Core
