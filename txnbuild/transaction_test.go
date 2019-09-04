@@ -92,7 +92,7 @@ func TestPaymentFailsIfNoAssetSpecified(t *testing.T) {
 	}
 
 	err := tx.Build()
-	expectedErrMsg := "failed to build operation *txnbuild.Payment: you must specify an asset for payment"
+	expectedErrMsg := "validation failed for *txnbuild.Payment struct: Field: Asset, Error: asset is required"
 	require.EqualError(t, err, expectedErrMsg, "An asset is required")
 }
 
@@ -401,7 +401,7 @@ func TestChangeTrustNativeAssetNotAllowed(t *testing.T) {
 	}
 
 	err := tx.Build()
-	expectedErrMsg := "failed to build operation *txnbuild.ChangeTrust: trustline cannot be extended to a native (XLM) asset"
+	expectedErrMsg := "validation failed for *txnbuild.ChangeTrust struct: Field: Line, Error: native (XLM) asset type is not allowed"
 	require.EqualError(t, err, expectedErrMsg, "No trustlines for native assets")
 }
 

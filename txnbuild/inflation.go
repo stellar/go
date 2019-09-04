@@ -31,3 +31,10 @@ func (inf *Inflation) FromXDR(xdrOp xdr.Operation) error {
 	inf.SourceAccount = accountFromXDR(xdrOp.SourceAccount)
 	return nil
 }
+
+// Validate for Inflation validates the required struct fields. It returns an error if any
+// of the fields are invalid. Otherwise, it returns nil.
+func (inf *Inflation) Validate() error {
+	// no required fields, return nil.
+	return nil
+}

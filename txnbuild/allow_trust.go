@@ -74,3 +74,16 @@ func (at *AllowTrust) FromXDR(xdrOp xdr.Operation) error {
 
 	return nil
 }
+
+// Validate for AllowTrust validates the required struct fields. It returns an error if any of the fields are
+// invalid. Otherwise, it returns nil.
+func (at *AllowTrust) Validate() error {
+	if !validateStellarPublicKey(at.Trustor) {
+		return NewValidationError("Trustor", "public key is invalid")
+	}
+
+	if err := validateAllowTrustAsset(at.Type); err != nil {
+		return NewValidationError("Type", err.Error())
+	}
+	return nil
+}

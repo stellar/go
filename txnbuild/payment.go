@@ -71,3 +71,23 @@ func (p *Payment) FromXDR(xdrOp xdr.Operation) error {
 
 	return nil
 }
+
+// Validate for Payment validates the required struct fields. It returns an error if any
+// of the fields are invalid. Otherwise, it returns nil.
+func (p *Payment) Validate() error {
+	if !validateStellarPublicKey(p.Destination) {
+		return NewValidationError("Destination", "public key is invalid")
+	}
+
+	err := validateStellarAsset(p.Asset)
+	if err != nil {
+		return NewValidationError("Asset", err.Error())
+	}
+
+	err = validateNumber(p.Amount)
+	if err != nil {
+		return NewValidationError("Amount", err.Error())
+	}
+
+	return nil
+}

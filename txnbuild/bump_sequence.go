@@ -36,3 +36,13 @@ func (bs *BumpSequence) FromXDR(xdrOp xdr.Operation) error {
 	bs.BumpTo = int64(result.BumpTo)
 	return nil
 }
+
+// Validate for BumpSequence validates the required struct fields. It returns an error if any of the fields are
+// invalid. Otherwise, it returns nil.
+func (bs *BumpSequence) Validate() error {
+	err := validateNumber(bs.BumpTo)
+	if err != nil {
+		return NewValidationError("BumpTo", err.Error())
+	}
+	return nil
+}
