@@ -75,7 +75,7 @@ func (finder InMemoryFinder) FindFixedPaths(
 	sourceAccount *xdr.AccountId,
 	sourceAsset xdr.Asset,
 	amountToSpend xdr.Int64,
-	destinationAsset xdr.Asset,
+	destinationAssets []xdr.Asset,
 	maxLength uint,
 ) ([]paths.Path, error) {
 	if finder.graph.IsEmpty() {
@@ -94,7 +94,8 @@ func (finder InMemoryFinder) FindFixedPaths(
 		sourceAccount,
 		sourceAsset,
 		amountToSpend,
-		destinationAsset,
+		destinationAssets,
+		maxAssetsPerPath,
 	)
 	results := make([]paths.Path, len(orderbookPaths))
 	for i, path := range orderbookPaths {

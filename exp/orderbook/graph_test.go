@@ -982,7 +982,7 @@ func TestConsumeOffersForBuyingAsset(t *testing.T) {
 
 }
 
-func TestSortAndFilterPaths(t *testing.T) {
+func TestSortAndFilterPathsBySourceAsset(t *testing.T) {
 	allPaths := []Path{
 		Path{
 			SourceAmount:      3,
@@ -1035,10 +1035,14 @@ func TestSortAndFilterPaths(t *testing.T) {
 			DestinationAmount: 1000,
 		},
 	}
-	sortedAndFiltered := sortAndFilterPaths(
+	sortedAndFiltered, err := sortAndFilterPaths(
 		allPaths,
 		3,
+		sortBySourceAsset,
 	)
+	if err != nil {
+		t.Fatalf("unexpected error %v", err)
+	}
 	expectedPaths := []Path{
 		Path{
 			SourceAmount:      2,
@@ -1076,6 +1080,109 @@ func TestSortAndFilterPaths(t *testing.T) {
 			InteriorNodes:     []xdr.Asset{},
 			DestinationAsset:  yenAsset,
 			DestinationAmount: 1000,
+		},
+	}
+
+	assertPathEquals(t, sortedAndFiltered, expectedPaths)
+}
+
+func TestSortAndFilterPathsByDestinationAsset(t *testing.T) {
+	allPaths := []Path{
+		Path{
+			SourceAmount:           1000,
+			SourceAsset:            yenAsset,
+			InteriorNodes:          []xdr.Asset{},
+			DestinationAsset:       eurAsset,
+			destinationAssetString: eurAsset.String(),
+			DestinationAmount:      3,
+		},
+		Path{
+			SourceAmount:           1000,
+			SourceAsset:            yenAsset,
+			InteriorNodes:          []xdr.Asset{},
+			DestinationAsset:       eurAsset,
+			destinationAssetString: eurAsset.String(),
+			DestinationAmount:      4,
+		},
+		Path{
+			SourceAmount:           1000,
+			SourceAsset:            yenAsset,
+			InteriorNodes:          []xdr.Asset{},
+			DestinationAsset:       usdAsset,
+			destinationAssetString: usdAsset.String(),
+			DestinationAmount:      1,
+		},
+		Path{
+			SourceAmount:           1000,
+			SourceAsset:            yenAsset,
+			sourceAssetString:      eurAsset.String(),
+			InteriorNodes:          []xdr.Asset{},
+			DestinationAsset:       eurAsset,
+			destinationAssetString: eurAsset.String(),
+			DestinationAmount:      2,
+		},
+		Path{
+			SourceAmount: 1000,
+			SourceAsset:  yenAsset,
+			InteriorNodes: []xdr.Asset{
+				nativeAsset,
+			},
+			DestinationAsset:       eurAsset,
+			destinationAssetString: eurAsset.String(),
+			DestinationAmount:      2,
+		},
+		Path{
+			SourceAmount:           1000,
+			SourceAsset:            yenAsset,
+			InteriorNodes:          []xdr.Asset{},
+			DestinationAsset:       nativeAsset,
+			destinationAssetString: nativeAsset.String(),
+			DestinationAmount:      10,
+		},
+	}
+	sortedAndFiltered, err := sortAndFilterPaths(
+		allPaths,
+		3,
+		sortByDestinationAsset,
+	)
+	if err != nil {
+		t.Fatalf("unexpected error %v", err)
+	}
+	expectedPaths := []Path{
+		Path{
+			SourceAmount:      1000,
+			SourceAsset:       yenAsset,
+			InteriorNodes:     []xdr.Asset{},
+			DestinationAsset:  eurAsset,
+			DestinationAmount: 4,
+		},
+		Path{
+			SourceAmount:      1000,
+			SourceAsset:       yenAsset,
+			InteriorNodes:     []xdr.Asset{},
+			DestinationAsset:  eurAsset,
+			DestinationAmount: 3,
+		},
+		Path{
+			SourceAmount:      1000,
+			SourceAsset:       yenAsset,
+			InteriorNodes:     []xdr.Asset{},
+			DestinationAsset:  eurAsset,
+			DestinationAmount: 2,
+		},
+		Path{
+			SourceAmount:      1000,
+			SourceAsset:       yenAsset,
+			InteriorNodes:     []xdr.Asset{},
+			DestinationAsset:  usdAsset,
+			DestinationAmount: 1,
+		},
+		Path{
+			SourceAmount:      1000,
+			SourceAsset:       yenAsset,
+			InteriorNodes:     []xdr.Asset{},
+			DestinationAsset:  nativeAsset,
+			DestinationAmount: 10,
 		},
 	}
 
@@ -1382,7 +1489,8 @@ func TestFindPathsStartingAt(t *testing.T) {
 		&ignoreOffersFrom,
 		usdAsset,
 		5,
-		nativeAsset,
+		[]xdr.Asset{nativeAsset},
+		5,
 	)
 	if err != nil {
 		t.Fatalf("unexpected error %v", err)
@@ -1414,7 +1522,8 @@ func TestFindPathsStartingAt(t *testing.T) {
 		nil,
 		yenAsset,
 		5,
-		nativeAsset,
+		[]xdr.Asset{nativeAsset},
+		5,
 	)
 	if err != nil {
 		t.Fatalf("unexpected error %v", err)
@@ -1429,7 +1538,8 @@ func TestFindPathsStartingAt(t *testing.T) {
 		nil,
 		yenAsset,
 		5,
-		nativeAsset,
+		[]xdr.Asset{nativeAsset},
+		5,
 	)
 	if err != nil {
 		t.Fatalf("unexpected error %v", err)
@@ -1455,7 +1565,8 @@ func TestFindPathsStartingAt(t *testing.T) {
 		nil,
 		yenAsset,
 		5,
-		nativeAsset,
+		[]xdr.Asset{nativeAsset},
+		5,
 	)
 	if err != nil {
 		t.Fatalf("unexpected error %v", err)
@@ -1485,5 +1596,52 @@ func TestFindPathsStartingAt(t *testing.T) {
 		},
 	}
 
+	assertPathEquals(t, paths, expectedPaths)
+
+	paths, err = graph.FindFixedPaths(
+		5,
+		nil,
+		yenAsset,
+		5,
+		[]xdr.Asset{nativeAsset, usdAsset},
+		5,
+	)
+	if err != nil {
+		t.Fatalf("unexpected error %v", err)
+	}
+
+	expectedPaths = []Path{
+		Path{
+			SourceAmount: 5,
+			SourceAsset:  yenAsset,
+			InteriorNodes: []xdr.Asset{
+				chfAsset,
+				eurAsset,
+			},
+			DestinationAsset:  usdAsset,
+			DestinationAmount: 20,
+		},
+		Path{
+			SourceAmount: 5,
+			SourceAsset:  yenAsset,
+			InteriorNodes: []xdr.Asset{
+				chfAsset,
+				eurAsset,
+				usdAsset,
+			},
+			DestinationAsset:  nativeAsset,
+			DestinationAmount: 80,
+		},
+		Path{
+			SourceAmount: 5,
+			SourceAsset:  yenAsset,
+			InteriorNodes: []xdr.Asset{
+				chfAsset,
+				eurAsset,
+			},
+			DestinationAsset:  nativeAsset,
+			DestinationAmount: 20,
+		},
+	}
 	assertPathEquals(t, paths, expectedPaths)
 }

@@ -216,6 +216,7 @@ func (w *web) mustInstallActions(config Config, pathFinder paths.Finder) {
 	findFixedPaths := FindFixedPathsHandler{
 		maxPathLength: config.MaxPathLength,
 		pathFinder:    pathFinder,
+		coreQ:         w.coreQ,
 	}
 	installPathFindingRoutes(findPaths, findFixedPaths, w.router)
 

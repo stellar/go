@@ -64,7 +64,7 @@ func (f *Finder) FindFixedPaths(
 	sourceAccount *xdr.AccountId,
 	sourceAsset xdr.Asset,
 	amountToSpend xdr.Int64,
-	destinationAsset xdr.Asset,
+	destinationAssets []xdr.Asset,
 	maxLength uint,
 ) ([]paths.Path, error) {
 	return nil, errors.New("Not implemented")

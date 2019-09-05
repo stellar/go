@@ -76,10 +76,10 @@ func (handler FindPathsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request
 		if err == simplepath.ErrEmptyInMemoryOrderBook {
 			err = horizonProblem.StillIngesting
 		}
-	}
-	if err != nil {
-		problem.Render(ctx, w, err)
-		return
+		if err != nil {
+			problem.Render(ctx, w, err)
+			return
+		}
 	}
 
 	renderPaths(ctx, records, w)
@@ -105,6 +105,22 @@ func renderPaths(ctx context.Context, records []paths.Path, w http.ResponseWrite
 type FindFixedPathsHandler struct {
 	maxPathLength uint
 	pathFinder    paths.Finder
+	coreQ         *core.Q
+}
+
+var destinationAssetOrDestinationAccount = problem.P{
+	Type:   "bad_request",
+	Title:  "Bad Request",
+	Status: http.StatusBadRequest,
+	Detail: "The request requires either a destination asset or a destination account. " +
+		"Both fields cannot be present.",
+}
+
+var sourceAccountIsDestinationAccount = problem.P{
+	Type:   "bad_request",
+	Title:  "Bad Request",
+	Status: http.StatusBadRequest,
+	Detail: "The source account is the same as the destination account.",
 }
 
 // ServeHTTP implements the http.Handler interface
@@ -128,10 +144,32 @@ func (handler FindFixedPathsHandler) ServeHTTP(w http.ResponseWriter, r *http.Re
 		}
 	}
 
-	destinationAsset, err := actions.GetAsset(r, "destination_")
+	destinationAsset, destinationAssetPresent := actions.MaybeGetAsset(r, "destination_")
+	destinationAccount, err := getAccountID(r, "destination_account", false)
 	if err != nil {
 		problem.Render(ctx, w, err)
 		return
+	}
+
+	if (destinationAccount != "") == destinationAssetPresent {
+		problem.Render(ctx, w, destinationAssetOrDestinationAccount)
+		return
+	}
+
+	destinationAssets := []xdr.Asset{destinationAsset}
+	if destinationAccount != "" {
+		if sourceAccount == destinationAccount {
+			problem.Render(ctx, w, sourceAccountIsDestinationAccount)
+			return
+		}
+
+		destinationAssets, _, err = handler.coreQ.AssetsForAddress(
+			destinationAccount,
+		)
+		if err != nil {
+			problem.Render(ctx, w, err)
+			return
+		}
 	}
 
 	sourceAsset, err := actions.GetAsset(r, "source_")
@@ -146,19 +184,22 @@ func (handler FindFixedPathsHandler) ServeHTTP(w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	records, err := handler.pathFinder.FindFixedPaths(
-		sourceAccountID,
-		sourceAsset,
-		amountToSpend,
-		destinationAsset,
-		handler.maxPathLength,
-	)
-	if err == simplepath.ErrEmptyInMemoryOrderBook {
-		err = horizonProblem.StillIngesting
-	}
-	if err != nil {
-		problem.Render(ctx, w, err)
-		return
+	records := []paths.Path{}
+	if len(destinationAssets) > 0 {
+		records, err = handler.pathFinder.FindFixedPaths(
+			sourceAccountID,
+			sourceAsset,
+			amountToSpend,
+			destinationAssets,
+			handler.maxPathLength,
+		)
+		if err == simplepath.ErrEmptyInMemoryOrderBook {
+			err = horizonProblem.StillIngesting
+		}
+		if err != nil {
+			problem.Render(ctx, w, err)
+			return
+		}
 	}
 
 	renderPaths(ctx, records, w)

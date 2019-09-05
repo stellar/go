@@ -8,14 +8,34 @@ import (
 
 // Path represents a payment path from a source asset to some destination asset
 type Path struct {
-	SourceAmount xdr.Int64
-	SourceAsset  xdr.Asset
-	// sourceAssetString is included as an optimization to improve the performance
-	// of sorting paths by avoiding serializing assets to strings repeatedly
-	sourceAssetString string
-	InteriorNodes     []xdr.Asset
+	SourceAmount      xdr.Int64
+	SourceAsset       xdr.Asset
 	DestinationAsset  xdr.Asset
 	DestinationAmount xdr.Int64
+
+	// sourceAssetString and destinationAssetString are included as an optimization
+	// to improve the performance of sorting paths by avoiding
+	// serializing assets to strings repeatedly
+	sourceAssetString      string
+	destinationAssetString string
+
+	InteriorNodes []xdr.Asset
+}
+
+// SourceAssetString returns the string representation of the path's source asset
+func (p *Path) SourceAssetString() string {
+	if p.sourceAssetString == "" {
+		p.sourceAssetString = p.SourceAsset.String()
+	}
+	return p.sourceAssetString
+}
+
+// DestinationAssetString returns the string representation of the path's destination asset
+func (p *Path) DestinationAssetString() string {
+	if p.destinationAssetString == "" {
+		p.destinationAssetString = p.DestinationAsset.String()
+	}
+	return p.destinationAssetString
 }
 
 type searchState interface {
@@ -207,11 +227,12 @@ func (state *buyingGraphSearchState) appendToPaths(
 	}
 
 	state.paths = append(state.paths, Path{
-		SourceAmount:      state.sourceAssetAmount,
-		SourceAsset:       state.sourceAsset,
-		InteriorNodes:     interiorNodes,
-		DestinationAsset:  updatedVisitedList[len(updatedVisitedList)-1],
-		DestinationAmount: currentAssetAmount,
+		SourceAmount:           state.sourceAssetAmount,
+		SourceAsset:            state.sourceAsset,
+		InteriorNodes:          interiorNodes,
+		DestinationAsset:       updatedVisitedList[len(updatedVisitedList)-1],
+		DestinationAmount:      currentAssetAmount,
+		destinationAssetString: currentAsset,
 	})
 }
 

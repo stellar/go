@@ -33,7 +33,7 @@ type Finder interface {
 		sourceAccount *xdr.AccountId,
 		sourceAsset xdr.Asset,
 		amountToSpend xdr.Int64,
-		destinationAsset xdr.Asset,
+		destinationAssets []xdr.Asset,
 		maxLength uint,
 	) ([]Path, error)
 }
