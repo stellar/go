@@ -1,11 +1,13 @@
 package cmd
 
 import (
+	"database/sql"
 	"fmt"
 	"go/types"
 	stdLog "log"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -18,16 +20,20 @@ import (
 	"github.com/stellar/throttled"
 )
 
-var config horizon.Config
+var (
+	config horizon.Config
 
-var rootCmd = &cobra.Command{
-	Use:   "horizon",
-	Short: "client-facing api server for the stellar network",
-	Long:  "client-facing api server for the stellar network. It acts as the interface between Stellar Core and applications that want to access the Stellar network. It allows you to submit transactions to the network, check the status of accounts, subscribe to event streams and more.",
-	Run: func(cmd *cobra.Command, args []string) {
-		initApp().Serve()
-	},
-}
+	rootCmd = &cobra.Command{
+		Use:   "horizon",
+		Short: "client-facing api server for the stellar network",
+		Long:  "client-facing api server for the stellar network. It acts as the interface between Stellar Core and applications that want to access the Stellar network. It allows you to submit transactions to the network, check the status of accounts, subscribe to event streams and more.",
+		Run: func(cmd *cobra.Command, args []string) {
+			initApp().Serve()
+		},
+	}
+)
+
+const maxDBPingAttempts = 30
 
 // validateBothOrNeither ensures that both options are provided, if either is provided.
 func validateBothOrNeither(option1, option2 string) {
@@ -40,9 +46,40 @@ func validateBothOrNeither(option1, option2 string) {
 	}
 }
 
+func pingDB(db *sql.DB) {
+	for attempt := 0; attempt < maxDBPingAttempts; attempt++ {
+		if db.Ping() == nil {
+			return
+		}
+		time.Sleep(time.Second)
+		if attempt+1 < maxDBPingAttempts {
+			stdLog.Println("Waiting for a horizon DB connection...")
+		}
+	}
+
+	stdLog.Fatalf("failed to connect to horizon DB after %v attempts", maxDBPingAttempts)
+}
+
+func applyMigrations() {
+	db, err := sql.Open("postgres", config.DatabaseURL)
+	if err != nil {
+		stdLog.Fatalf("could not connect to horizon db: %v", err)
+	}
+	defer db.Close()
+	pingDB(db)
+
+	numMigrations, err := schema.Migrate(db, schema.MigrateUp, 0)
+	if err != nil {
+		stdLog.Fatalf("could not apply migrations: %v", err)
+	}
+	if numMigrations > 0 {
+		stdLog.Printf("successfully applied %v horizon migrations\n", numMigrations)
+	}
+}
+
 // checkMigrations looks for necessary database migrations and fails with a descriptive error if migrations are needed.
 func checkMigrations() {
-	migrationsToApplyUp := schema.GetMigrationsUp(viper.GetString("db-url"))
+	migrationsToApplyUp := schema.GetMigrationsUp(config.DatabaseURL)
 	if len(migrationsToApplyUp) > 0 {
 		stdLog.Printf(`There are %v migrations to apply in the "up" direction.`, len(migrationsToApplyUp))
 		stdLog.Printf("The necessary migrations are: %v", migrationsToApplyUp)
@@ -50,7 +87,7 @@ func checkMigrations() {
 		os.Exit(1)
 	}
 
-	nMigrationsDown := schema.GetNumMigrationsDown(viper.GetString("db-url"))
+	nMigrationsDown := schema.GetNumMigrationsDown(config.DatabaseURL)
 	if nMigrationsDown > 0 {
 		stdLog.Printf("A database migration DOWN to an earlier version of the schema is required to run this version (%v) of Horizon. Consult the Changelog (https://github.com/stellar/go/blob/master/services/horizon/CHANGELOG.md) for more information.", apkg.Version())
 		stdLog.Printf("In order to migrate the database DOWN, using the HIGHEST version number of Horizon you have installed (not this binary), run \"horizon db migrate down %v\".", nMigrationsDown)
@@ -322,6 +359,14 @@ var configOpts = []*support.ConfigOption{
 		FlagDefault: "memory",
 		Usage:       "defines where to store temporary objects during state ingestion: `memory` (default, more RAM usage, faster) or `postgres` (less RAM usage, slower)",
 	},
+	&support.ConfigOption{
+		Name:        "apply-migrations",
+		ConfigKey:   &config.ApplyMigrations,
+		OptType:     types.Bool,
+		FlagDefault: false,
+		Required:    false,
+		Usage:       "applies pending migrations before starting horizon",
+	},
 }
 
 func init() {
@@ -345,6 +390,10 @@ func initConfig() {
 	for _, co := range configOpts {
 		co.Require()
 		co.SetValue()
+	}
+
+	if config.ApplyMigrations {
+		applyMigrations()
 	}
 
 	// Migrations should be checked as early as possible

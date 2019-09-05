@@ -5,7 +5,6 @@ import (
 	"context"
 	"database/sql"
 	"net/http"
-	"net/url"
 	"strings"
 	"time"
 
@@ -14,10 +13,12 @@ import (
 	metrics "github.com/rcrowley/go-metrics"
 	"github.com/rs/cors"
 	"github.com/sebest/xff"
+
 	"github.com/stellar/go/services/horizon/internal/db2"
 	"github.com/stellar/go/services/horizon/internal/db2/core"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/services/horizon/internal/ledger"
+	"github.com/stellar/go/services/horizon/internal/paths"
 	hProblem "github.com/stellar/go/services/horizon/internal/render/problem"
 	"github.com/stellar/go/services/horizon/internal/render/sse"
 	"github.com/stellar/go/services/horizon/internal/txsub/sequence"
@@ -113,9 +114,22 @@ func (w *web) mustInstallMiddlewares(app *App, connTimeout time.Duration) {
 	r.Use(w.RateLimitMiddleware)
 }
 
+func installPathFindingRoutes(
+	findPaths FindPathsHandler,
+	findFixedPaths FindFixedPathsHandler,
+	r *chi.Mux,
+) {
+	r.Group(func(r chi.Router) {
+		r.Use(acceptOnlyJSON)
+		r.Method("GET", "/paths", findPaths)
+		r.Method("GET", "/paths/strict-receive", findPaths)
+		r.Method("GET", "/paths/strict-send", findFixedPaths)
+	})
+}
+
 // mustInstallActions installs the routing configuration of horizon onto the
 // provided app.  All route registration should be implemented here.
-func (w *web) mustInstallActions(enableAssetStats bool, friendbotURL *url.URL) {
+func (w *web) mustInstallActions(config Config, pathFinder paths.Finder) {
 	if w == nil {
 		log.Fatal("missing web instance for installing web actions")
 	}
@@ -179,7 +193,10 @@ func (w *web) mustInstallActions(enableAssetStats bool, friendbotURL *url.URL) {
 	// trading related endpoints
 	r.Get("/trades", TradeIndexAction{}.Handle)
 	r.Get("/trade_aggregations", TradeAggregateIndexAction{}.Handle)
+
 	r.Route("/offers", func(r chi.Router) {
+		r.With(acceptOnlyJSON, requiresExperimentalIngestion).
+			Method(http.MethodGet, "/", GetOffersHandle{historyQ: w.historyQ})
 		r.With(acceptOnlyJSON, requiresExperimentalIngestion).
 			Get("/{id}", getOfferResource)
 		r.Get("/{offer_id}/trades", TradeIndexAction{}.Handle)
@@ -188,11 +205,21 @@ func (w *web) mustInstallActions(enableAssetStats bool, friendbotURL *url.URL) {
 
 	// Transaction submission API
 	r.Post("/transactions", TransactionCreateAction{}.Handle)
-	r.Get("/paths", PathIndexAction{}.Handle)
-	r.Get("/paths/strict-receive", PathIndexAction{}.Handle)
-	r.Get("/paths/strict-send", FixedPathIndexAction{}.Handle)
 
-	if enableAssetStats {
+	findPaths := FindPathsHandler{
+		staleThreshold:      config.StaleThreshold,
+		checkHistoryIsStale: !config.EnableExperimentalIngestion,
+		maxPathLength:       config.MaxPathLength,
+		pathFinder:          pathFinder,
+		coreQ:               w.coreQ,
+	}
+	findFixedPaths := FindFixedPathsHandler{
+		maxPathLength: config.MaxPathLength,
+		pathFinder:    pathFinder,
+	}
+	installPathFindingRoutes(findPaths, findFixedPaths, w.router)
+
+	if config.EnableAssetStats {
 		// Asset related endpoints
 		r.Get("/assets", AssetsAction{}.Handle)
 	}
@@ -201,9 +228,9 @@ func (w *web) mustInstallActions(enableAssetStats bool, friendbotURL *url.URL) {
 	r.Get("/fee_stats", OperationFeeStatsAction{}.Handle)
 
 	// friendbot
-	if friendbotURL != nil {
+	if config.FriendbotURL != nil {
 		redirectFriendbot := func(w http.ResponseWriter, r *http.Request) {
-			redirectURL := friendbotURL.String() + "?" + r.URL.RawQuery
+			redirectURL := config.FriendbotURL.String() + "?" + r.URL.RawQuery
 			http.Redirect(w, r, redirectURL, http.StatusTemporaryRedirect)
 		}
 		r.Post("/friendbot", redirectFriendbot)

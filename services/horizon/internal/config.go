@@ -76,4 +76,7 @@ type Config struct {
 	// Enabling it has a negative impact on CPU when ingesting ledgers full of
 	// many different assets related operations.
 	EnableAssetStats bool
+	// ApplyMigrations will apply pending migrations to the horizon database
+	// before starting the horizon service
+	ApplyMigrations bool
 }

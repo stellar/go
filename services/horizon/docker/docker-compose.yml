@@ -58,6 +58,7 @@ services:
       - STELLAR_CORE_URL=http://host.docker.internal:11626
       - INGEST=true
     network_mode: '${NETWORK_MODE:-bridge}'
+    command: ["--apply-migrations"]
 
 volumes:
   core-db-data:

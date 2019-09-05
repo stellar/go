@@ -14,5 +14,5 @@ FROM alpine:3.10
 RUN apk add --no-cache ca-certificates
 
 COPY --from=builder /go/bin/horizon ./
-COPY ./services/horizon/docker/horizon-entry.sh ./
-ENTRYPOINT ["./horizon-entry.sh"]
+
+ENTRYPOINT ["./horizon"]

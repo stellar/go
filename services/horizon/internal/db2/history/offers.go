@@ -2,6 +2,7 @@ package history
 
 import (
 	sq "github.com/Masterminds/squirrel"
+
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
 )
@@ -12,6 +13,43 @@ func (q *Q) GetOfferByID(id int64) (Offer, error) {
 	sql := selectOffers.Where("offers.offerid = ?", id)
 	err := q.Get(&offer, sql)
 	return offer, err
+}
+
+// GetOffers loads rows from `offers` by paging query.
+func (q *Q) GetOffers(query OffersQuery) ([]Offer, error) {
+	sql := selectOffers
+	sql, err := query.PageQuery.ApplyTo(sql, "offers.offerid")
+
+	if err != nil {
+		return nil, errors.Wrap(err, "could not apply query to page")
+	}
+
+	if query.SellerID != "" {
+		sql = sql.Where("offers.sellerid = ?", query.SellerID)
+	}
+
+	if query.Selling != nil {
+		sellingAsset, err := xdr.MarshalBase64(*query.Selling)
+		if err != nil {
+			return nil, errors.Wrap(err, "cannot marshal selling asset")
+		}
+		sql = sql.Where("offers.sellingasset = ?", sellingAsset)
+	}
+
+	if query.Buying != nil {
+		buyingAsset, err := xdr.MarshalBase64(*query.Buying)
+		if err != nil {
+			return nil, errors.Wrap(err, "cannot marshal Buying asset")
+		}
+		sql = sql.Where("offers.buyingasset = ?", buyingAsset)
+	}
+
+	var offers []Offer
+	if err := q.Select(&offers, sql); err != nil {
+		return nil, errors.Wrap(err, "could not run select query")
+	}
+
+	return offers, nil
 }
 
 // GetAllOffers loads a row from `history_accounts`, by address
