@@ -113,6 +113,11 @@ type HTTP interface {
 	PostForm(url string, data url.Values) (resp *http.Response, err error)
 }
 
+// UniversalTimeHandler is a function that is called to return the UTC unix time in seconds.
+// This handler is used when getting the time from a horizon server, which can be used to calculate
+// transaction timebounds.
+type UniversalTimeHandler func() int64
+
 // Client struct contains data for creating a horizon client that connects to the stellar network.
 type Client struct {
 	// URL of Horizon server to connect
@@ -128,6 +133,9 @@ type Client struct {
 	AppVersion     string
 	horizonTimeOut time.Duration
 	isTestNet      bool
+
+	// currentUniversalTime is a function that returns the current UTC unix time in seconds.
+	currentUniversalTime UniversalTimeHandler
 }
 
 // ClientInterface contains methods implemented by the horizon client
@@ -185,17 +193,19 @@ type ClientInterface interface {
 
 // DefaultTestNetClient is a default client to connect to test network.
 var DefaultTestNetClient = &Client{
-	HorizonURL:     "https://horizon-testnet.stellar.org/",
-	HTTP:           http.DefaultClient,
-	horizonTimeOut: HorizonTimeOut,
-	isTestNet:      true,
+	HorizonURL:           "https://horizon-testnet.stellar.org/",
+	HTTP:                 http.DefaultClient,
+	horizonTimeOut:       HorizonTimeOut,
+	isTestNet:            true,
+	currentUniversalTime: universalTimeFunc,
 }
 
 // DefaultPublicNetClient is a default client to connect to public network.
 var DefaultPublicNetClient = &Client{
-	HorizonURL:     "https://horizon.stellar.org/",
-	HTTP:           http.DefaultClient,
-	horizonTimeOut: HorizonTimeOut,
+	HorizonURL:           "https://horizon.stellar.org/",
+	HTTP:                 http.DefaultClient,
+	horizonTimeOut:       HorizonTimeOut,
+	currentUniversalTime: universalTimeFunc,
 }
 
 // HorizonRequest contains methods implemented by request structs for horizon endpoints.

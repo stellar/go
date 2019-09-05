@@ -64,7 +64,7 @@ func (c *Client) sendRequestURL(requestURL string, method string, a interface{})
 		return
 	}
 
-	err = decodeResponse(resp, &a)
+	err = decodeResponse(resp, &a, c)
 	cancel()
 	return
 }
@@ -505,7 +505,8 @@ func (c *Client) FetchTimebounds(seconds int64) (txnbuild.Timebounds, error) {
 	if err != nil {
 		return txnbuild.Timebounds{}, errors.Wrap(err, "unable to parse horizon url")
 	}
-	currentTime := currentServerTime(serverURL.Hostname())
+	c.setDefaultCurrentUniversalTime()
+	currentTime := currentServerTime(serverURL.Hostname(), c.currentUniversalTime())
 	if currentTime != 0 {
 		return txnbuild.NewTimebounds(0, currentTime+seconds), nil
 	}
@@ -646,6 +647,21 @@ func (c *Client) NextTradeAggregationsPage(page hProtocol.TradeAggregationsPage)
 func (c *Client) PrevTradeAggregationsPage(page hProtocol.TradeAggregationsPage) (ta hProtocol.TradeAggregationsPage, err error) {
 	err = c.sendRequestURL(page.Links.Prev.Href, "get", &ta)
 	return
+}
+
+// setDefaultCurrentUniversalTime sets the currentUniversalTime function for the horizon client if non has been
+// provided to the default function that returns the current UTC time. This is needed when the client is
+// initialised directly.
+func (c *Client) setDefaultCurrentUniversalTime() {
+	if c.currentUniversalTime == nil {
+		c.SetCurrentUniversalTime(universalTimeFunc)
+	}
+}
+
+// SetCurrentUniversalTime sets the currentUniversalTime function to the provided handler function. Users can
+// use this method to set a custom handler function.
+func (c *Client) SetCurrentUniversalTime(handler UniversalTimeHandler) {
+	c.currentUniversalTime = handler
 }
 
 // ensure that the horizon client implements ClientInterface
