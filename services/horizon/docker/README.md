@@ -77,3 +77,7 @@ change the `NETWORK_PASSPHRASE` variable in horizon to `Public Global Stellar Ne
 
 When you switch between the Stellar test network and the Stellar public network, or vice versa, you will need to clear the Stellar Core and Stellar Horizon
 databases. You can wipe out the databases by running `docker-compose down -v`.
+
+## Using a specific version of Stellar Core
+
+By default the Docker Compose file is configured to use the latest version of Stellar Core. To use a specific version, you can edit [docker-compose.yml](./docker-compose.yml) and set the appropriate [tag](https://hub.docker.com/r/stellar/stellar-core/tags) on the Stellar Core docker image
