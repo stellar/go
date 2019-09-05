@@ -43,31 +43,96 @@ commands:
               ! egrep -irn -A 1 --include=*.go "Action.+needed.+in.+release:.+$CIRCLE_TAG" ./
             fi
 
+  install_stellar_core_debian_package:
+    steps:
+      - run:
+          name: Adding SDF apt repository
+          command: |
+            sudo apt-get update -y
+            sudo apt-get install -y apt-transport-https
+            wget -qO - https://apt.stellar.org/SDF.asc | sudo apt-key add -
+            echo "deb https://apt.stellar.org/public stable/" | sudo tee -a /etc/apt/sources.list.d/SDF.list
+            sudo apt-get update -y
+      - run:
+          name: Installing stellar-core
+          command: |
+            sudo apt-get install -y stellar-core jq
+            (
+              sudo apt-get install postgresql-client-9.6 || (
+                echo "deb http://apt.postgresql.org/pub/repos/apt/ $(env -i bash -c '. /etc/os-release; echo $VERSION_CODENAME')-pgdg main" | sudo tee /etc/apt/sources.list.d/pgdg.list &&
+                wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo apt-key add - &&
+                sudo apt-get update &&
+                sudo apt-get install postgresql-client-9.6
+              )
+            )
+      - run:
+          name: Creating stellar-core DB
+          command: createdb core
+
   # install_go_deps installs the go dependencies of the project.
   install_go_deps:
     steps:
       - checkout
-      - run:
-          name: Install dep
-          command: curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh
       - restore_cache:
           keys:
-            - v1-pkg-cache
+            - go-mod-v1-{{ checksum "go.mod" }}-{{ checksum "go.sum" }}
       - run:
-          name: Install project dependencies using dep
-          command: dep ensure -v
+          name: Download dependencies
+          command: |
+            go mod download
       - save_cache:
-          key: v1-pkg-cache
+          key: go-mod-v1-{{ checksum "go.mod" }}-{{ checksum "go.sum" }}
           paths:
-            - "/go/src/github.com/stellar/go/vendor"
-            - "/go/src/pkg/dep"
+            - /go/pkg/mod
+
+  # check_go_deps validates that the dependencies are expected.
+  check_go_deps:
+    steps:
+      - checkout
+      - run:
+          name: Check dependencies
+          command: ./gomod.sh
+
+  check_ingest_state:
+    steps:
+      - run:
+          name: Getting latest checkpoint ledger
+          command: |
+            export LATEST_LEDGER=`curl -s http://history.stellar.org/prd/core-live/core_live_001/.well-known/stellar-history.json | jq -r '.currentLedger'`
+            echo $LATEST_LEDGER # For debug
+            echo "export LATEST_LEDGER=$LATEST_LEDGER" >> $BASH_ENV # Persist between steps
+      - run:
+          name: Dump state using ingest
+          command: go run -v ./exp/tools/dump-ledger-state/
+      - run:
+          name: Init stellar-core DB
+          command: stellar-core --conf ./exp/tools/dump-ledger-state/stellar-core.cfg new-db
+      - run:
+          name: Catchup core
+          command: stellar-core --conf ./exp/tools/dump-ledger-state/stellar-core.cfg catchup $LATEST_LEDGER/1
+      - run:
+          name: Dump stellar-core DB
+          command: ./exp/tools/dump-ledger-state/dump_core_db.sh
+      - run:
+          name: Compare state dumps
+          command: ./exp/tools/dump-ledger-state/diff_test.sh
 
   # test_packages performs tests on all packages of the monorepo.
   test_packages:
     steps:
       - run:
           name: Install dependencies
-          command: sudo apt-get update && sudo apt-get install postgresql-client-9.6 mariadb-client-10.1
+          command: |
+            sudo apt-get update
+            (
+              sudo apt-get install postgresql-client-9.6 || (
+                echo "deb http://apt.postgresql.org/pub/repos/apt/ $(env -i bash -c '. /etc/os-release; echo $VERSION_CODENAME')-pgdg main" | sudo tee /etc/apt/sources.list.d/pgdg.list &&
+                wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo apt-key add - &&
+                sudo apt-get update &&
+                sudo apt-get install postgresql-client-9.6
+              )
+            )
+            (sudo apt-get install mariadb-client-10.1 || sudo apt-get install mariadb-client-10.3)
       - run:
           name: Install dockerize
           command: wget https://github.com/jwilder/dockerize/releases/download/$DOCKERIZE_VERSION/dockerize-linux-amd64-$DOCKERIZE_VERSION.tar.gz && sudo tar -C /usr/local/bin -xzvf dockerize-linux-amd64-$DOCKERIZE_VERSION.tar.gz && rm dockerize-linux-amd64-$DOCKERIZE_VERSION.tar.gz
@@ -89,7 +154,7 @@ commands:
             # the default Docker container only has 2 CPUs available.
             # That is why we explicitly specify -p=4 to reduce the number of parallel build processes
             GOFLAGS: -p=4
-          command: ./support/scripts/run_tests
+          command: go test -race -coverprofile=coverage.txt -covermode=atomic ./...
 
   # build_packages creates the project's artifacts.
   build_packages:
@@ -98,49 +163,43 @@ commands:
           name: Build release artifacts
           command: go run ./support/scripts/build_release_artifacts/main.go
 
+  # send_coverage_report sends coverage report to codecov.io
+  send_coverage_report:
+    steps:
+      - run:
+          name: Send report to codecov.io
+          command: bash <(curl -s https://codecov.io/bash)
+
 #-----------------------------------------------------------------------------#
 # Jobs use the commands to accomplish a given task, and run through workflows #
 #-----------------------------------------------------------------------------#
 
 jobs:
-  # check_code_1_11 performs code checks using Go 1.11 (gofmt is only run for 1.12).
-  check_code_1_11:
-    working_directory: /go/src/github.com/stellar/go
-    docker:
-      - image: circleci/golang:1.11-stretch
-    steps:
-      - govet
-
   # check_code_1_12 performs code checks using Go 1.12.
   check_code_1_12:
     working_directory: /go/src/github.com/stellar/go
     docker:
       - image: circleci/golang:1.12-stretch
+        environment:
+          GO111MODULE: "on"
     steps:
       - install_go_deps
+      - check_go_deps
       - gofmt
       - govet
       - staticcheck
 
-  # test_code_1_11 performs all package tests using Go 1.11.
-  test_code_1_11:
+  # check_code_1_13 performs code checks using Go 1.13.
+  check_code_1_13:
     working_directory: /go/src/github.com/stellar/go
     docker:
-      - image: circleci/golang:1.11-stretch
-        environment:
-          PGHOST: localhost
-          PGPORT: 5432
-          PGUSER: circleci
-          MYSQL_HOST: 127.0.0.1
-          MYSQL_PORT: 3306
-      - image: circleci/postgres:9.6.5-alpine-ram
-        environment:
-          POSTGRES_USER: circleci
-      - image: circleci/mysql:5.7
-      - image: circleci/redis:5.0-alpine
+      - image: circleci/golang:1.13-buster
     steps:
       - install_go_deps
-      - test_packages
+      - check_go_deps
+      - gofmt
+      - govet
+      - staticcheck
 
   # test_code_1_12 performs all package tests using Go 1.12.
   test_code_1_12:
@@ -148,6 +207,7 @@ jobs:
     docker:
       - image: circleci/golang:1.12-stretch
         environment:
+          GO111MODULE: "on"
           PGHOST: localhost
           PGPORT: 5432
           PGUSER: circleci
@@ -161,6 +221,28 @@ jobs:
     steps:
       - install_go_deps
       - test_packages
+
+  # test_code_1_13 performs all package tests using Go 1.13.
+  test_code_1_13:
+    working_directory: /go/src/github.com/stellar/go
+    docker:
+      - image: circleci/golang:1.13-buster
+        environment:
+          GO111MODULE: "on"
+          PGHOST: localhost
+          PGPORT: 5432
+          PGUSER: circleci
+          MYSQL_HOST: 127.0.0.1
+          MYSQL_PORT: 3306
+      - image: circleci/postgres:9.6.5-alpine-ram
+        environment:
+          POSTGRES_USER: circleci
+      - image: circleci/mysql:5.7
+      - image: circleci/redis:5.0-alpine
+    steps:
+      - install_go_deps
+      - test_packages
+      - send_coverage_report
 
   # publish_artifacts builds and uploads artifacts to any tagged commit.
   #
@@ -169,10 +251,11 @@ jobs:
   publish_artifacts:
     working_directory: /go/src/github.com/stellar/go
     docker:
-      - image: circleci/golang:1.11-stretch
+      - image: circleci/golang:1.13-buster
     steps:
       - check_deprecations
       - install_go_deps
+      - check_go_deps
       - build_packages
       - attach_workspace:
           at: ./dist
@@ -186,6 +269,25 @@ jobs:
             else
                 echo "No files found in ./dist. No binaries to publish for ${CIRCLE_TAG}."
             fi
+
+  # ingest_state_diff runs `/tools/dump-ledger-state` to compare if state ingested
+  # by ingest package matches the state in stellar-core db
+  ingest_state_diff:
+    working_directory: /go/src/github.com/stellar/go/
+    docker:
+      - image: circleci/golang:1.13-buster
+        environment:
+          PGHOST: localhost
+          PGPORT: 5432
+          PGUSER: circleci
+      - image: circleci/postgres:9.6.5-alpine-ram
+        environment:
+          POSTGRES_USER: circleci
+    steps:
+      - install_stellar_core_debian_package
+      - install_go_deps
+      - check_ingest_state
+
 #-------------------------------------------------------------------------#
 # Workflows orchestrate jobs and make sure they run in the right sequence #
 #-------------------------------------------------------------------------#
@@ -195,10 +297,16 @@ workflows:
 
   check_code_and_test:
     jobs:
-      - check_code_1_11
       - check_code_1_12
-      - test_code_1_11
+      - check_code_1_13
       - test_code_1_12
+      - test_code_1_13
+      - ingest_state_diff:
+          filters:
+              branches:
+                only:
+                  - master
+                  - /release-horizon-/
 
   build_and_deploy:
     jobs:
@@ -208,3 +316,16 @@ workflows:
                 ignore: snapshots
               branches:
                 ignore: /.*/
+
+  ingest_state_nighly:
+    triggers:
+      - schedule:
+          # Every day
+          cron: "0 0 * * *"
+          filters:
+            branches:
+              only:
+                - master
+                - /release-horizon-/
+    jobs:
+      - ingest_state_diff

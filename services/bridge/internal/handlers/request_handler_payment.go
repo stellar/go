@@ -191,7 +191,8 @@ func (rh *RequestHandler) standardPayment(w http.ResponseWriter, request *bridge
 
 	var rSource *string
 	if request.Source != "" {
-		kp, err := keypair.Parse(request.Source)
+		var kp keypair.KP
+		kp, err = keypair.Parse(request.Source)
 		if err != nil {
 			log.WithFields(log.Fields{"error": err}).Error("Unable to convert seed to keypair")
 			helpers.Write(w, helpers.NewInvalidParameterError("source", "Source must be a valid secret seed."))

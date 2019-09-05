@@ -36,17 +36,13 @@ To test the installation, simply run `horizon --help` from a terminal.  If the h
 Should you decide not to use one of our prebuilt releases, you may instead build Horizon from source.  To do so, you need to install some developer tools:
 
 - A unix-like operating system with the common core commands (cp, tar, mkdir, bash, etc.)
-- A compatible distribution of Go (Go 1.11 or later)
-- [go-dep](https://golang.github.io/dep/)
+- A compatible distribution of Go (Go 1.12 or later)
 - [git](https://git-scm.com/)
 - [mercurial](https://www.mercurial-scm.org/)
 
-
-1. Set your [GOPATH](https://github.com/golang/go/wiki/GOPATH) environment variable, if you haven't already. The default `GOPATH` is `$HOME/go`.
-2. Clone the Stellar Go monorepo:  `go get github.com/stellar/go`. You should see the repository cloned at `$GOPATH/src/github.com/stellar/go`.
-3. Enter the source dir: `cd $GOPATH/src/github.com/stellar/go`, and download external dependencies: `dep ensure -v`. You should see the downloaded third party dependencies in `$GOPATH/pkg`.
-4. Compile the Horizon binary: `cd $GOPATH; go install github.com/stellar/go/services/horizon`. You should see the `horizon` binary in `$GOPATH/bin`.
-5. Add Go binaries to your PATH in your `bashrc` or equivalent, for easy access: `export PATH=${GOPATH//://bin:}/bin:$PATH`
+1. See the details in [README.md](../../../../README.md#dependencies) for installing dependencies.
+2. Compile the Horizon binary: `go install github.com/stellar/go/services/horizon`. You should see the `horizon` binary in `$GOPATH/bin`.
+3. Add Go binaries to your PATH in your `bashrc` or equivalent, for easy access: `export PATH=${GOPATH//://bin:}/bin:$PATH`
 
 Open a new terminal. Confirm everything worked by running `horizon --help` successfully.
 

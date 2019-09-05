@@ -353,6 +353,13 @@ var configOpts = []*support.ConfigOption{
 		Usage:       "[EXPERIMENTAL] enables experimental ingestion system",
 	},
 	&support.ConfigOption{
+		Name:        "ingest-state-reader-temp-set",
+		ConfigKey:   &config.IngestStateReaderTempSet,
+		OptType:     types.String,
+		FlagDefault: "memory",
+		Usage:       "defines where to store temporary objects during state ingestion: `memory` (default, more RAM usage, faster) or `postgres` (less RAM usage, slower)",
+	},
+	&support.ConfigOption{
 		Name:        "apply-migrations",
 		ConfigKey:   &config.ApplyMigrations,
 		OptType:     types.Bool,
@@ -408,6 +415,10 @@ func initConfig() {
 
 	// Configure log level
 	log.DefaultLogger.Logger.SetLevel(config.LogLevel)
+
+	if config.IngestStateReaderTempSet != "memory" && config.IngestStateReaderTempSet != "postgres" {
+		log.Fatal("Invalid `ingest-state-reader-temp-set` value: " + config.IngestStateReaderTempSet)
+	}
 
 	// Configure DB params. When config.MaxDBConnections is set, set other
 	// DB params to that value for backward compatibility.

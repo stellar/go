@@ -94,7 +94,7 @@ redis-server
 then, run the all the Go monorepo tests like so (assuming you are at stellar/go, or run from stellar/go/services/horizon for just the Horizon subset):
 
 ```bash
-bash ./support/scripts/run_tests
+go test ./...
 ```
 
 or run individual Horizon tests like so, providing the expected arguments:

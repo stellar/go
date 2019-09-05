@@ -61,12 +61,11 @@ This library is aimed at developers building Go applications on top of the [Stel
 An easy-to-follow demonstration that exercises this SDK on the TestNet with actual accounts is also included! See the [Demo](#demo) section below.
 
 ### Prerequisites
-* Go 1.11 or greater
+* Go 1.12 or greater
+* [Modules](https://github.com/golang/go/wiki/Modules) to manage dependencies
 
 ### Installing
-* Download the Stellar Go monorepo: `git clone git@github.com:stellar/go.git`
-* Enter the source directory: `cd $GOPATH/src/github.com/stellar/go`
-* Download external dependencies: `dep ensure -v`
+* `go get github.com/stellar/go/clients/txnbuild`
 
 ## Running the tests
 Run the unit tests from the package directory: `go test`

@@ -95,7 +95,8 @@ func (rh *RequestHandler) Builder(w http.ResponseWriter, r *http.Request) {
 	}
 
 	for _, s := range request.Signers {
-		kp, err := keypair.Parse(s)
+		var kp keypair.KP
+		kp, err = keypair.Parse(s)
 		if err != nil {
 			log.WithFields(log.Fields{"err": err, "request": request}).Error("Error converting signers to keypairs")
 			helpers.Write(w, helpers.InternalServerError)

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"runtime"
+	"strconv"
 	"time"
 
 	"github.com/stellar/go/exp/ingest"
@@ -15,8 +16,6 @@ import (
 )
 
 func main() {
-	dsn := "postgres://localhost:5432/horizondemo?sslmode=disable"
-
 	archive, err := archive()
 	if err != nil {
 		panic(err)
@@ -37,11 +36,16 @@ func main() {
 			),
 	)
 
+	ledgerSequence, err := strconv.Atoi(os.Getenv("LATEST_LEDGER"))
+	if err != nil {
+		panic(err)
+	}
+
 	session := &ingest.SingleLedgerSession{
-		LedgerSequence: 25154239,
+		LedgerSequence: uint32(ledgerSequence),
 		Archive:        archive,
 		StatePipeline:  statePipeline,
-		TempSet:        &io.PostgresTempSet{DSN: dsn},
+		TempSet:        &io.MemoryTempSet{},
 	}
 
 	doneStats := printPipelineStats(statePipeline)
@@ -63,16 +67,13 @@ func main() {
 	}
 	for _, file := range sortedFiles {
 		err := os.Remove(file)
-		if err != nil {
+		// Ignore not exist errors
+		if err != nil && !os.IsNotExist(err) {
 			panic(err)
 		}
 	}
 
-	time.Sleep(10 * time.Second)
 	doneStats <- true
-	time.Sleep(10 * time.Second)
-	// Print go routines count for the last time
-	fmt.Printf("Goroutines = %v\n", runtime.NumGoroutine())
 }
 
 func archive() (*historyarchive.Archive, error) {

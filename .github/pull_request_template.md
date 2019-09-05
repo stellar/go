@@ -10,7 +10,8 @@ template and use a short description. -->
 * [ ] This PR avoids mixing refactoring changes with feature changes (split into two PRs
   otherwise).
 * [ ] This PR's title starts with name of package that is most changed in the PR, ex.
-  `services/friendbot`
+  `services/friendbot`, or `all` or `doc` if the changes are broad or impact many
+  packages.
 
 ### Thoroughness
 

@@ -10,11 +10,19 @@ bumps.  A breaking change will get clearly notified in this log.
 ## Unreleased
 
 * Fixed performance issue in Effects related endpoints.
-* Dropped support for Go 1.10.
+* Dropped support for Go 1.10, 1.11.
 * Add experimental support for `/offers`. To enable it, set `--enable-experimental-ingestion` CLI param or `ENABLE_EXPERIMENTAL_INGESTION=true` env variable.
 * Add flag to apply pending migrations before running horizon. If there are pending migrations, previously you needed to run `horizon db migrate up` before running `horizon`. Those two steps can be combined into one with the `--apply-migrations` flag (`APPLY_MIGRATIONS` env variable).
 
+## v0.20.1
+
+* Add `--ingest-state-reader-temp-set` flag (`INGEST_STATE_READER_TEMP_SET` env variable) which defines the storage type used for temporary objects during state ingestion in the new ingestion system. The possible options are: `memory` (requires ~1.5GB RAM, fast) and `postgres` (stores data in temporary table in Postgres, less RAM but slower).
+
+Check [Beta Testing New Ingestion System](https://github.com/stellar/go/blob/master/services/horizon/internal/expingest/BETA_TESTING.md) if you want to test new ingestion system.
+
 ## v0.20.0
+
+If you want to use experimental ingestion skip this version and use v0.20.1 instead. v0.20.0 has a performance issue.
 
 ### Changes
 
@@ -22,6 +30,8 @@ bumps.  A breaking change will get clearly notified in this log.
 * Add experimental path finding endpoints which use an in memory order book for improved performance. To enable the endpoints set `--enable-experimental-ingestion` CLI param or `ENABLE_EXPERIMENTAL_INGESTION=true` env variable. Note that the `enable-experimental-ingestion` flag enables both the new path finding endpoints and the accounts for signer endpoint. There are two path finding endpoints. `/paths/strict-send` returns payment paths where both the source and destination assets are fixed. This endpoint is able to answer questions like: "Get me the most EUR possible for my 10 USD." `/paths/strict-receive` is the other endpoint which is an alias to the existing `/paths` endpoint. 
 * `--enable-accounts-for-signer` CLI param or `ENABLE_ACCOUNTS_FOR_SIGNER=true` env variable are merged with `--enable-experimental-ingestion` CLI param or `ENABLE_EXPERIMENTAL_INGESTION=true` env variable.
 * Add experimental get offers by id endpoint`/offers/{id}` which uses the new ingestion system to fill up the offers table. To enable it, set `--enable-experimental-ingestion` CLI param or `ENABLE_EXPERIMENTAL_INGESTION=true` env variable.
+
+Check [Beta Testing New Ingestion System](https://github.com/stellar/go/blob/master/services/horizon/internal/expingest/BETA_TESTING.md) if you want to test new ingestion system.
 
 ### Scheduled Breaking Changes
 
@@ -39,6 +49,8 @@ If you are an SDK maintainer, update your code to prepare for this change.
 
 * Add `join` parameter to operations and payments endpoints. Currently, the only valid value for the parameter is `transactions`. If `join=transactions` is included in a request then the response will include a `transaction` field for each operation in the response.
 * Add experimental "Accounts For Signers" endpoint. To enable it set `--enable-accounts-for-signer` CLI param or `ENABLE_ACCOUNTS_FOR_SIGNER=true` env variable. Additionally new feature requires links to history archive: CLI: `--history-archive-urls="archive1,archive2,archive3"`, env variable: `HISTORY_ARCHIVE_URLS="archive1,archive2,archive3"`. This will expose `/accounts` endpoint. This requires around 4GB of RAM for initial state ingestion.
+
+Check [Beta Testing New Ingestion System](https://github.com/stellar/go/blob/master/services/horizon/internal/expingest/BETA_TESTING.md) if you want to test new ingestion system.
 
 ## v0.18.1
 
