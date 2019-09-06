@@ -53,7 +53,7 @@ func (s *LiveSession) Run() error {
 		return errors.Wrap(err, "initState error")
 	}
 
-	s.standardSession.latestSuccessfullyProcessedLedger = currentLedger
+	s.latestSuccessfullyProcessedLedger = currentLedger
 
 	// Exit early if Shutdown() was called.
 	select {
@@ -90,13 +90,13 @@ func (s *LiveSession) updateCursor(ledgerSequence uint32) error {
 
 // Resume resumes the session from `ledgerSequence`.
 //
-// WARNING: it's likely that developers will use
-// `LiveSession.GetLatestSuccessfullyProcessedLedger()` to get the latest
-// successfuly processed ledger after `Resume` returns error. It's critical
-// to understand that `GetLatestSuccessfullyProcessedLedger()` will return `0`
-// when no ledgers have been successfully processed, ex. error while trying
-// to process a ledger after application restart. You should always check
-// if the value is equal `0` before overwriting your local variable.
+// WARNING: it's likely that developers will use `GetLatestSuccessfullyProcessedLedger()`
+// to get the latest successfuly processed ledger after `Resume` returns error.
+// It's critical to understand that `GetLatestSuccessfullyProcessedLedger()` will
+// return `(0, false)` when no ledgers have been successfully processed, ex.
+// error while trying to process a ledger after application restart.
+// You should always check if the second returned value is equal `false` before
+// overwriting your local variable.
 func (s *LiveSession) Resume(ledgerSequence uint32) error {
 	s.standardSession.shutdown = make(chan bool)
 
@@ -206,7 +206,7 @@ func (s *LiveSession) resume(ledgerSequence uint32, ledgerAdapter *adapters.Ledg
 		if s.LedgerReporter != nil {
 			s.LedgerReporter.OnEndLedger(nil, false)
 		}
-		s.standardSession.latestSuccessfullyProcessedLedger = ledgerSequence
+		s.latestSuccessfullyProcessedLedger = ledgerSequence
 
 		// Update cursor - this needs to be done after `latestSuccessfullyProcessedLedger`
 		// is updated as the cursor update shouldn't affect this value.
@@ -221,12 +221,16 @@ func (s *LiveSession) resume(ledgerSequence uint32, ledgerAdapter *adapters.Ledg
 	return nil
 }
 
-// GetLatestSuccessfullyProcessedLedger returns the last SUCCESSFULLY
-// processed ledger. Returns zero (`0`) if no ledgers have been successfully
-// processed yet. Please check `Resume` godoc to understand possible
-// implications.
-func (s *LiveSession) GetLatestSuccessfullyProcessedLedger() uint32 {
-	return s.standardSession.latestSuccessfullyProcessedLedger
+// GetLatestSuccessfullyProcessedLedger returns the last SUCCESSFULLY processed
+// ledger. Returns (0, false) if no ledgers have been successfully processed yet
+// to prevent situations where `GetLatestSuccessfullyProcessedLedger()` value is
+// not properly checked in a loop resulting in ingesting ledger 0+1=1.
+// Please check `Resume` godoc to understand possible implications.
+func (s *LiveSession) GetLatestSuccessfullyProcessedLedger() (ledgerSequence uint32, processed bool) {
+	if s.latestSuccessfullyProcessedLedger == 0 {
+		return 0, false
+	}
+	return s.latestSuccessfullyProcessedLedger, true
 }
 
 func (s *LiveSession) validate() error {

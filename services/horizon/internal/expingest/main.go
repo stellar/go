@@ -181,8 +181,9 @@ func (s *System) Run() {
 			if err != nil {
 				// Check if session processed a state, if so, continue since the
 				// last processed ledger, otherwise start over.
-				lastIngestedLedger = s.session.GetLatestSuccessfullyProcessedLedger()
-				if lastIngestedLedger == 0 {
+				var processed bool
+				lastIngestedLedger, processed = s.session.GetLatestSuccessfullyProcessedLedger()
+				if !processed {
 					return err
 				}
 
@@ -249,10 +250,10 @@ func (s *System) resumeFromLedger(lastIngestedLedger uint32) {
 	retryOnError(time.Second, func() error {
 		err := s.session.Resume(lastIngestedLedger + 1)
 		if err != nil {
-			// If no ledgers processed so far it will return 0. In such case
-			// try again with the lastIngestedLedger+1.
-			sessionLastLedger := s.session.GetLatestSuccessfullyProcessedLedger()
-			if sessionLastLedger > 0 {
+			// If no ledgers processed so far, try again with the
+			// lastIngestedLedger+1.
+			sessionLastLedger, processed := s.session.GetLatestSuccessfullyProcessedLedger()
+			if !processed {
 				lastIngestedLedger = sessionLastLedger
 			}
 			return errors.Wrap(err, "Error returned from ingest.LiveSession")
