@@ -22,7 +22,7 @@ func PrevCheckpoint(i uint32) uint32 {
 	if i < freq {
 		return freq - 1
 	}
-	return ((i / freq) * freq) - 1
+	return (((i + 1) / freq) * freq) - 1
 }
 
 func NextCheckpoint(i uint32) uint32 {
@@ -31,7 +31,7 @@ func NextCheckpoint(i uint32) uint32 {
 	}
 	freq := uint64(CheckpointFreq)
 	v := uint64(i)
-	n := (((v + freq - 1) / freq) * freq) - 1
+	n := (((v + freq) / freq) * freq) - 1
 	if n >= 0xffffffff {
 		return 0xffffffff
 	}
