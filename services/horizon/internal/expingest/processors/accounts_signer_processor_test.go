@@ -31,7 +31,7 @@ func (s *AccountsSignerProcessorTestSuiteState) SetupTest() {
 
 	s.processor = &DatabaseProcessor{
 		Action:   AccountsForSigner,
-		HistoryQ: s.mockQ,
+		SignersQ: s.mockQ,
 	}
 
 	// Reader and Writer should be always closed and once
@@ -169,7 +169,7 @@ func (s *AccountsSignerProcessorTestSuiteLedger) SetupTest() {
 
 	s.processor = &DatabaseProcessor{
 		Action:   AccountsForSigner,
-		HistoryQ: s.mockQ,
+		SignersQ: s.mockQ,
 	}
 
 	// Reader and Writer should be always closed and once

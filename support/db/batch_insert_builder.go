@@ -10,7 +10,8 @@ import (
 
 // Row adds a new row to the batch. All rows must have exactly the same columns
 // (map keys). Otherwise, error will be returned. Please note that rows are not
-// added one by one but in batches when Exec is called.
+// added one by one but in batches when `Exec` is called (or `MaxBatchSize` is
+// reached).
 func (b *BatchInsertBuilder) Row(row map[string]interface{}) error {
 	if b.columns == nil {
 		b.columns = make([]string, 0, len(row))
