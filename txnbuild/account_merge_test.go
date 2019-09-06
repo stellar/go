@@ -24,7 +24,7 @@ func TestAccountMergeValidate(t *testing.T) {
 
 	err := tx.Build()
 	if assert.Error(t, err) {
-		expected := "validation failed for *txnbuild.AccountMerge struct: Field: Destination, Error: public key is invalid"
+		expected := "validation failed for *txnbuild.AccountMerge operation: Field: Destination, Error: GBAV is not a valid stellar public key"
 		assert.Contains(t, err.Error(), expected)
 	}
 }

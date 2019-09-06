@@ -26,7 +26,7 @@ func TestPaymentValidateDestination(t *testing.T) {
 
 	err := tx.Build()
 	if assert.Error(t, err) {
-		expected := "validation failed for *txnbuild.Payment struct: Field: Destination, Error: public key is invalid"
+		expected := "validation failed for *txnbuild.Payment operation: Field: Destination, Error: public key is undefined"
 		assert.Contains(t, err.Error(), expected)
 	}
 }
@@ -50,7 +50,7 @@ func TestPaymentValidateAmount(t *testing.T) {
 
 	err := tx.Build()
 	if assert.Error(t, err) {
-		expected := "validation failed for *txnbuild.Payment struct: Field: Amount, Error: invalid amount format: ten"
+		expected := "validation failed for *txnbuild.Payment operation: Field: Amount, Error: invalid amount format: ten"
 		assert.Contains(t, err.Error(), expected)
 	}
 }
@@ -74,7 +74,7 @@ func TestPaymentValidateAsset(t *testing.T) {
 
 	err := tx.Build()
 	if assert.Error(t, err) {
-		expected := "validation failed for *txnbuild.Payment struct: Field: Asset, Error: asset code length must be between 1 and 12 characters"
+		expected := "validation failed for *txnbuild.Payment operation: Field: Asset, Error: asset code length must be between 1 and 12 characters"
 		assert.Contains(t, err.Error(), expected)
 	}
 }

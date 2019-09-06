@@ -8,17 +8,24 @@ import (
 	"github.com/stellar/go/support/errors"
 )
 
-// validateStellarPublicKey returns true if a public key is valid. Otherwise, it returns false.
+// validateStellarPublicKey returns an error if a public key is invalid. Otherwise, it returns nil.
 // It is a wrapper around the IsValidEd25519PublicKey method of the strkey package.
-func validateStellarPublicKey(publicKey string) bool {
-	return strkey.IsValidEd25519PublicKey(publicKey)
+func validateStellarPublicKey(publicKey string) error {
+	if publicKey == "" {
+		return errors.New("public key is undefined")
+	}
+
+	if !strkey.IsValidEd25519PublicKey(publicKey) {
+		return errors.Errorf("%s is not a valid stellar public key", publicKey)
+	}
+	return nil
 }
 
 // validateStellarAsset checks if the asset supplied is a valid stellar Asset. It returns an error if the asset is
 // nil, has an invalid asset code or issuer.
 func validateStellarAsset(asset Asset) error {
 	if asset == nil {
-		return errors.New("asset is required")
+		return errors.New("asset is undefined")
 	}
 
 	if asset.IsNative() {
@@ -27,19 +34,20 @@ func validateStellarAsset(asset Asset) error {
 
 	_, err := asset.GetType()
 	if err != nil {
-		return errors.New("asset code length must be between 1 and 12 characters")
+		return err
 	}
 
-	if !validateStellarPublicKey(asset.GetIssuer()) {
-		return errors.New("asset issuer is not a valid stellar public key")
+	err = validateStellarPublicKey(asset.GetIssuer())
+	if err != nil {
+		return errors.Errorf("asset issuer: %s", err.Error())
 	}
 
 	return nil
 }
 
-// validateNumber checks if the provided value is a valid stellar amount, it returns an error if not.
+// validateAmount checks if the provided value is a valid stellar amount, it returns an error if not.
 // This is used to validate price and amount fields in structs.
-func validateNumber(n interface{}) error {
+func validateAmount(n interface{}) error {
 	var stellarAmount int64
 	// type switch can be extended to handle other types. Currently, the types for number values in the txnbuild
 	// package are string or int64.
@@ -53,11 +61,11 @@ func validateNumber(n interface{}) error {
 		}
 		stellarAmount = v
 	default:
-		return errors.New("validation failed, unknown type")
+		return errors.Errorf("could not parse expected numeric value %v", n)
 	}
 
 	if stellarAmount < 0 {
-		return errors.New("value should be positve or zero")
+		return errors.New("amount can not be negative")
 	}
 	return nil
 }
@@ -66,8 +74,13 @@ func validateNumber(n interface{}) error {
 // It returns an error if the asset is invalid.
 // The asset must be non native (XLM) with a valid asset code.
 func validateAllowTrustAsset(asset Asset) error {
+	// Note: we are not using validateStellarAsset() function for AllowTrust operations because it requires the
+	//  following :
+	// - asset is non-native
+	// - asset code is valid
+	// - asset issuer is not required. This is actually ignored by the operation
 	if asset == nil {
-		return errors.New("asset is required")
+		return errors.New("asset is undefined")
 	}
 
 	if asset.IsNative() {
@@ -76,7 +89,7 @@ func validateAllowTrustAsset(asset Asset) error {
 
 	_, err := asset.GetType()
 	if err != nil {
-		return errors.Errorf("asset code length must be between 1 and 12 characters")
+		return err
 	}
 	return nil
 }
@@ -85,13 +98,19 @@ func validateAllowTrustAsset(asset Asset) error {
 // It returns an error if the asset is invalid.
 // The asset must be non native (XLM) with a valid asset code and issuer.
 func validateChangeTrustAsset(asset Asset) error {
+	// Note: we are not using validateStellarAsset() function for ChangeTrust operations because it requires the
+	//  following :
+	// - asset is non-native
+	// - asset code is valid
+	// - asset issuer is valid
 	err := validateAllowTrustAsset(asset)
 	if err != nil {
 		return err
 	}
 
-	if !validateStellarPublicKey(asset.GetIssuer()) {
-		return errors.New("asset issuer is not a valid stellar public key")
+	err = validateStellarPublicKey(asset.GetIssuer())
+	if err != nil {
+		return errors.Errorf("asset issuer: %s", err.Error())
 	}
 
 	return nil
@@ -101,6 +120,8 @@ func validateChangeTrustAsset(asset Asset) error {
 // It checks that the buying and selling assets are valid stellar assets, and that amount and price are valid.
 // It returns an error if any field is invalid.
 func validatePassiveOffer(buying, selling Asset, offerAmount, price string) error {
+	// Note: see discussion on how this can be improved:
+	// https://github.com/stellar/go/pull/1707#discussion_r321508440
 	err := validateStellarAsset(buying)
 	if err != nil {
 		return NewValidationError("Buying", err.Error())
@@ -111,12 +132,12 @@ func validatePassiveOffer(buying, selling Asset, offerAmount, price string) erro
 		return NewValidationError("Selling", err.Error())
 	}
 
-	err = validateNumber(offerAmount)
+	err = validateAmount(offerAmount)
 	if err != nil {
 		return NewValidationError("Amount", err.Error())
 	}
 
-	err = validateNumber(price)
+	err = validateAmount(price)
 	if err != nil {
 		return NewValidationError("Price", err.Error())
 	}
@@ -133,7 +154,7 @@ func validateOffer(buying, selling Asset, offerAmount, price string, offerID int
 		return err
 	}
 
-	err = validateNumber(offerID)
+	err = validateAmount(offerID)
 	if err != nil {
 		return NewValidationError("OfferID", err.Error())
 	}

@@ -28,7 +28,7 @@ func TestAllowTrustValidateAsset(t *testing.T) {
 
 	err := tx.Build()
 	if assert.Error(t, err) {
-		expected := "validation failed for *txnbuild.AllowTrust struct: Field: Type, Error: asset code length must be between 1 and 12 characters"
+		expected := "validation failed for *txnbuild.AllowTrust operation: Field: Type, Error: asset code length must be between 1 and 12 characters"
 		assert.Contains(t, err.Error(), expected)
 	}
 }
@@ -54,7 +54,7 @@ func TestAllowTrustValidateTrustor(t *testing.T) {
 
 	err := tx.Build()
 	if assert.Error(t, err) {
-		expected := "validation failed for *txnbuild.AllowTrust struct: Field: Trustor, Error: public key is invalid"
+		expected := "validation failed for *txnbuild.AllowTrust operation: Field: Trustor, Error: public key is undefined"
 		assert.Contains(t, err.Error(), expected)
 	}
 }

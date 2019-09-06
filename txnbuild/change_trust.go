@@ -84,7 +84,7 @@ func (ct *ChangeTrust) FromXDR(xdrOp xdr.Operation) error {
 func (ct *ChangeTrust) Validate() error {
 	// only validate limit if it has a value. Empty limit is set to the max trustline limit.
 	if ct.Limit != "" {
-		err := validateNumber(ct.Limit)
+		err := validateAmount(ct.Limit)
 		if err != nil {
 			return NewValidationError("Limit", err.Error())
 		}

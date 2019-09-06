@@ -44,7 +44,7 @@ func TestChangeTrustValidateInvalidAsset(t *testing.T) {
 	}
 	err := tx.Build()
 	if assert.Error(t, err) {
-		expected := "validation failed for *txnbuild.ChangeTrust struct: Field: Line, Error: native (XLM) asset type is not allowed"
+		expected := "validation failed for *txnbuild.ChangeTrust operation: Field: Line, Error: native (XLM) asset type is not allowed"
 		assert.Contains(t, err.Error(), expected)
 	}
 }
@@ -66,7 +66,7 @@ func TestChangeTrustValidateInvalidLimit(t *testing.T) {
 	}
 	err := tx.Build()
 	if assert.Error(t, err) {
-		expected := "validation failed for *txnbuild.ChangeTrust struct: Field: Limit, Error: value should be positve or zero"
+		expected := "validation failed for *txnbuild.ChangeTrust operation: Field: Limit, Error: amount can not be negative"
 		assert.Contains(t, err.Error(), expected)
 	}
 }

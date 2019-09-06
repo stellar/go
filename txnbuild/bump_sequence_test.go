@@ -24,7 +24,7 @@ func TestBumpSequenceValidate(t *testing.T) {
 
 	err := tx.Build()
 	if assert.Error(t, err) {
-		expected := "validation failed for *txnbuild.BumpSequence struct: Field: BumpTo, Error: value should be positve or zero"
+		expected := "validation failed for *txnbuild.BumpSequence operation: Field: BumpTo, Error: amount can not be negative"
 		assert.Contains(t, err.Error(), expected)
 	}
 }

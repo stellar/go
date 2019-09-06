@@ -125,11 +125,12 @@ func (pp *PathPayment) FromXDR(xdrOp xdr.Operation) error {
 // Validate for PathPayment validates the required struct fields. It returns an error if any
 // of the fields are invalid. Otherwise, it returns nil.
 func (pp *PathPayment) Validate() error {
-	if !validateStellarPublicKey(pp.Destination) {
-		return NewValidationError("Destination", "public key is invalid")
+	err := validateStellarPublicKey(pp.Destination)
+	if err != nil {
+		return NewValidationError("Destination", err.Error())
 	}
 
-	err := validateStellarAsset(pp.SendAsset)
+	err = validateStellarAsset(pp.SendAsset)
 	if err != nil {
 		return NewValidationError("SendAsset", err.Error())
 	}
@@ -139,12 +140,12 @@ func (pp *PathPayment) Validate() error {
 		return NewValidationError("DestAsset", err.Error())
 	}
 
-	err = validateNumber(pp.SendMax)
+	err = validateAmount(pp.SendMax)
 	if err != nil {
 		return NewValidationError("SendMax", err.Error())
 	}
 
-	err = validateNumber(pp.DestAmount)
+	err = validateAmount(pp.DestAmount)
 	if err != nil {
 		return NewValidationError("DestAmount", err.Error())
 	}

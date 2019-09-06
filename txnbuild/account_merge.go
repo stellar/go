@@ -48,8 +48,9 @@ func (am *AccountMerge) FromXDR(xdrOp xdr.Operation) error {
 // Validate for AccountMerge validates the required struct fields. It returns an error if any of the fields are
 // invalid. Otherwise, it returns nil.
 func (am *AccountMerge) Validate() error {
-	if !validateStellarPublicKey(am.Destination) {
-		return NewValidationError("Destination", "public key is invalid")
+	err := validateStellarPublicKey(am.Destination)
+	if err != nil {
+		return NewValidationError("Destination", err.Error())
 	}
 	return nil
 }

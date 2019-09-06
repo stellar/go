@@ -55,11 +55,12 @@ func (ca *CreateAccount) FromXDR(xdrOp xdr.Operation) error {
 // Validate for CreateAccount validates the required struct fields. It returns an error if any of the fields are
 // invalid. Otherwise, it returns nil.
 func (ca *CreateAccount) Validate() error {
-	if !validateStellarPublicKey(ca.Destination) {
-		return NewValidationError("Destination", "public key is invalid")
+	err := validateStellarPublicKey(ca.Destination)
+	if err != nil {
+		return NewValidationError("Destination", err.Error())
 	}
 
-	err := validateNumber(ca.Amount)
+	err = validateAmount(ca.Amount)
 	if err != nil {
 		return NewValidationError("Amount", err.Error())
 	}

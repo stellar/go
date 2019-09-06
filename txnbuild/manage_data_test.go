@@ -25,7 +25,7 @@ func TestManageDataValidateName(t *testing.T) {
 
 	err := tx.Build()
 	if assert.Error(t, err) {
-		expected := "validation failed for *txnbuild.ManageData struct: Field: Name, Error: maximum length is 64 characters"
+		expected := "validation failed for *txnbuild.ManageData operation: Field: Name, Error: maximum length is 64 characters"
 		assert.Contains(t, err.Error(), expected)
 	}
 }
@@ -48,7 +48,7 @@ func TestManageDataValidateValue(t *testing.T) {
 
 	err := tx.Build()
 	if assert.Error(t, err) {
-		expected := "validation failed for *txnbuild.ManageData struct: Field: Value, Error: maximum length is 64 bytes"
+		expected := "validation failed for *txnbuild.ManageData operation: Field: Value, Error: maximum length is 64 bytes"
 		assert.Contains(t, err.Error(), expected)
 	}
 }

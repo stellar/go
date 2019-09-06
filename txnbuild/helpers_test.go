@@ -67,20 +67,23 @@ func unmarshalBase64(txeB64 string) (xdr.TransactionEnvelope, error) {
 
 func TestValidateStellarPublicKey(t *testing.T) {
 	validKey := "GDWZCOEQRODFCH6ISYQPWY67L3ULLWS5ISXYYL5GH43W7YFMTLB65PYM"
-	isValid := validateStellarPublicKey(validKey)
-	assert.Equal(t, true, isValid, "public key should be valid")
+	err := validateStellarPublicKey(validKey)
+	assert.NoError(t, err, "public key should be valid")
 
 	invalidKey := "GDWZCOEQRODFCH6ISYQPWY67L3ULLWS5ISXYYL5GH43W7Y"
-	isValid = validateStellarPublicKey(invalidKey)
-	assert.Equal(t, false, isValid, "public key should be invalid")
+	err = validateStellarPublicKey(invalidKey)
+	expectedErrMsg := "GDWZCOEQRODFCH6ISYQPWY67L3ULLWS5ISXYYL5GH43W7Y is not a valid stellar public key"
+	require.EqualError(t, err, expectedErrMsg, "public key should be invalid")
 
 	invalidKey = ""
-	isValid = validateStellarPublicKey(invalidKey)
-	assert.Equal(t, false, isValid, "public key should be invalid")
+	err = validateStellarPublicKey(invalidKey)
+	expectedErrMsg = "public key is undefined"
+	require.EqualError(t, err, expectedErrMsg, "public key should be invalid")
 
 	invalidKey = "SBCVMMCBEDB64TVJZFYJOJAERZC4YVVUOE6SYR2Y76CBTENGUSGWRRVO"
-	isValid = validateStellarPublicKey(invalidKey)
-	assert.Equal(t, false, isValid, "public key should be invalid")
+	err = validateStellarPublicKey(invalidKey)
+	expectedErrMsg = "SBCVMMCBEDB64TVJZFYJOJAERZC4YVVUOE6SYR2Y76CBTENGUSGWRRVO is not a valid stellar public key"
+	require.EqualError(t, err, expectedErrMsg, "public key should be invalid")
 }
 
 func TestValidateStellarAssetWithValidAsset(t *testing.T) {
@@ -97,7 +100,7 @@ func TestValidateStellarAssetWithValidAsset(t *testing.T) {
 func TestValidateStellarAssetWithInValidAsset(t *testing.T) {
 	err := validateStellarAsset(nil)
 	assert.Error(t, err)
-	expectedErrMsg := "asset is required"
+	expectedErrMsg := "asset is undefined"
 	require.EqualError(t, err, expectedErrMsg, "An asset is required")
 
 	kp0 := newKeypair0()
@@ -110,41 +113,41 @@ func TestValidateStellarAssetWithInValidAsset(t *testing.T) {
 	creditAssetNoIssuer := CreditAsset{Code: "ABC", Issuer: ""}
 	err = validateStellarAsset(creditAssetNoIssuer)
 	assert.Error(t, err)
-	expectedErrMsg = "asset issuer is not a valid stellar public key"
+	expectedErrMsg = "asset issuer: public key is undefined"
 	require.EqualError(t, err, expectedErrMsg, "An asset issuer is required")
 }
 
-func TestValidateNumber(t *testing.T) {
-	err := validateNumber(int64(10))
+func TestValidateAmount(t *testing.T) {
+	err := validateAmount(int64(10))
 	assert.NoError(t, err)
 
-	err = validateNumber("10")
+	err = validateAmount("10")
 	assert.NoError(t, err)
 
-	err = validateNumber(int64(0))
+	err = validateAmount(int64(0))
 	assert.NoError(t, err)
 
-	err = validateNumber("0")
+	err = validateAmount("0")
 	assert.NoError(t, err)
 }
 
-func TestValidateNumberInvalidValue(t *testing.T) {
-	err := validateNumber(int64(-10))
+func TestValidateAmountInvalidValue(t *testing.T) {
+	err := validateAmount(int64(-10))
 	assert.Error(t, err)
-	expectedErrMsg := "value should be positve or zero"
+	expectedErrMsg := "amount can not be negative"
 	require.EqualError(t, err, expectedErrMsg, "should be a valid stellar amount")
 
-	err = validateNumber("-10")
+	err = validateAmount("-10")
 	assert.Error(t, err)
-	expectedErrMsg = "value should be positve or zero"
+	expectedErrMsg = "amount can not be negative"
 	require.EqualError(t, err, expectedErrMsg, "should be a valid stellar amount")
 
-	err = validateNumber(10)
+	err = validateAmount(10)
 	assert.Error(t, err)
-	expectedErrMsg = "validation failed, unknown type"
+	expectedErrMsg = "could not parse expected numeric value 10"
 	require.EqualError(t, err, expectedErrMsg, "should be a valid stellar amount")
 
-	err = validateNumber("abc")
+	err = validateAmount("abc")
 	assert.Error(t, err)
 	expectedErrMsg = "invalid amount format: abc"
 	require.EqualError(t, err, expectedErrMsg, "should be a valid stellar amount")
@@ -153,7 +156,7 @@ func TestValidateNumberInvalidValue(t *testing.T) {
 func TestValidateAllowTrustAsset(t *testing.T) {
 	err := validateAllowTrustAsset(nil)
 	assert.Error(t, err)
-	expectedErrMsg := "asset is required"
+	expectedErrMsg := "asset is undefined"
 	require.EqualError(t, err, expectedErrMsg, "An asset is required")
 
 	err = validateAllowTrustAsset(NativeAsset{})
@@ -170,7 +173,7 @@ func TestValidateAllowTrustAsset(t *testing.T) {
 func TestValidateChangeTrustAsset(t *testing.T) {
 	err := validateChangeTrustAsset(nil)
 	assert.Error(t, err)
-	expectedErrMsg := "asset is required"
+	expectedErrMsg := "asset is undefined"
 	require.EqualError(t, err, expectedErrMsg, "An asset is required")
 
 	err = validateChangeTrustAsset(NativeAsset{})
@@ -188,7 +191,7 @@ func TestValidateChangeTrustAsset(t *testing.T) {
 	ctAsset1 := CreditAsset{Code: "ABCD"}
 	err = validateChangeTrustAsset(ctAsset1)
 	assert.Error(t, err)
-	expectedErrMsg = "asset issuer is not a valid stellar public key"
+	expectedErrMsg = "asset issuer: public key is undefined"
 	require.EqualError(t, err, expectedErrMsg, "asset issuer is required")
 
 	ctAsset2 := CreditAsset{Code: "ABCD", Issuer: kp0.Address()}
@@ -200,7 +203,7 @@ func TestValidatePassiveOfferZeroValues(t *testing.T) {
 	cpo := CreatePassiveSellOffer{}
 	err := validatePassiveOffer(cpo.Buying, cpo.Selling, cpo.Amount, cpo.Price)
 	assert.Error(t, err)
-	expectedErrMsg := "Field: Buying, Error: asset is required"
+	expectedErrMsg := "Field: Buying, Error: asset is undefined"
 	require.EqualError(t, err, expectedErrMsg, "Buying asset is required")
 }
 
@@ -216,7 +219,7 @@ func TestValidatePassiveOfferInvalidAmount(t *testing.T) {
 	}
 	err := validatePassiveOffer(cpo.Buying, cpo.Selling, cpo.Amount, cpo.Price)
 	assert.Error(t, err)
-	expectedErrMsg := "Field: Amount, Error: value should be positve or zero"
+	expectedErrMsg := "Field: Amount, Error: amount can not be negative"
 	require.EqualError(t, err, expectedErrMsg, "valid amount is required")
 }
 
@@ -232,7 +235,7 @@ func TestValidatePassiveOfferInvalidPrice(t *testing.T) {
 	}
 	err := validatePassiveOffer(cpo.Buying, cpo.Selling, cpo.Amount, cpo.Price)
 	assert.Error(t, err)
-	expectedErrMsg := "Field: Price, Error: value should be positve or zero"
+	expectedErrMsg := "Field: Price, Error: amount can not be negative"
 	require.EqualError(t, err, expectedErrMsg, "valid price is required")
 }
 
@@ -247,7 +250,7 @@ func TestValidatePassiveOfferInvalidAsset(t *testing.T) {
 	}
 	err := validatePassiveOffer(cpo.Buying, cpo.Selling, cpo.Amount, cpo.Price)
 	assert.Error(t, err)
-	expectedErrMsg := "Field: Selling, Error: asset issuer is not a valid stellar public key"
+	expectedErrMsg := "Field: Selling, Error: asset issuer: public key is undefined"
 	require.EqualError(t, err, expectedErrMsg, "Selling asset is required")
 
 	kp0 := newKeypair0()
@@ -278,7 +281,7 @@ func TestValidateOfferManageBuyOffer(t *testing.T) {
 	}
 	err := validateOffer(mbo.Buying, mbo.Selling, mbo.Amount, mbo.Price, mbo.OfferID)
 	assert.Error(t, err)
-	expectedErrMsg := "Field: OfferID, Error: value should be positve or zero"
+	expectedErrMsg := "Field: OfferID, Error: amount can not be negative"
 	require.EqualError(t, err, expectedErrMsg, "valid offerID is required")
 }
 
@@ -295,6 +298,6 @@ func TestValidateOfferManageSellOffer(t *testing.T) {
 	}
 	err := validateOffer(mso.Buying, mso.Selling, mso.Amount, mso.Price, mso.OfferID)
 	assert.Error(t, err)
-	expectedErrMsg := "Field: OfferID, Error: value should be positve or zero"
+	expectedErrMsg := "Field: OfferID, Error: amount can not be negative"
 	require.EqualError(t, err, expectedErrMsg, "valid offerID is required")
 }

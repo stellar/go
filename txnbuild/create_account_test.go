@@ -25,7 +25,7 @@ func TestCreateAccountValidateDestination(t *testing.T) {
 
 	err := tx.Build()
 	if assert.Error(t, err) {
-		expected := "validation failed for *txnbuild.CreateAccount struct: Field: Destination, Error: public key is invalid"
+		expected := "validation failed for *txnbuild.CreateAccount operation: Field: Destination, Error: public key is undefined"
 		assert.Contains(t, err.Error(), expected)
 	}
 }
@@ -48,7 +48,7 @@ func TestCreateAccountValidateAmount(t *testing.T) {
 
 	err := tx.Build()
 	if assert.Error(t, err) {
-		expected := "validation failed for *txnbuild.CreateAccount struct: Field: Amount, Error: invalid amount format"
+		expected := "validation failed for *txnbuild.CreateAccount operation: Field: Amount, Error: invalid amount format"
 		assert.Contains(t, err.Error(), expected)
 	}
 }

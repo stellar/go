@@ -32,8 +32,8 @@ func (inf *Inflation) FromXDR(xdrOp xdr.Operation) error {
 	return nil
 }
 
-// Validate for Inflation validates the required struct fields. It returns an error if any
-// of the fields are invalid. Otherwise, it returns nil.
+// Validate for Inflation is just a method that implements the Operation interface. No logic is actually performed
+// because the inflation operation does not have any required field. Nil is always returned.
 func (inf *Inflation) Validate() error {
 	// no required fields, return nil.
 	return nil

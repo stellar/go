@@ -8,7 +8,6 @@ import (
 )
 
 func TestCreatePassiveSellOfferValidateBuyingAsset(t *testing.T) {
-	// kp0 := newKeypair0()
 	kp1 := newKeypair1()
 	sourceAccount := NewSimpleAccount(kp1.Address(), int64(41137196761100))
 
@@ -28,7 +27,7 @@ func TestCreatePassiveSellOfferValidateBuyingAsset(t *testing.T) {
 
 	err := tx.Build()
 	if assert.Error(t, err) {
-		expected := "validation failed for *txnbuild.CreatePassiveSellOffer struct: Field: Buying, Error: asset issuer is not a valid stellar public key"
+		expected := "validation failed for *txnbuild.CreatePassiveSellOffer operation: Field: Buying, Error: asset issuer: public key is undefined"
 		assert.Contains(t, err.Error(), expected)
 	}
 }
@@ -54,7 +53,7 @@ func TestCreatePassiveSellOfferValidateSellingAsset(t *testing.T) {
 
 	err := tx.Build()
 	if assert.Error(t, err) {
-		expected := "validation failed for *txnbuild.CreatePassiveSellOffer struct: Field: Selling, Error: asset code length must be between 1 and 12 characters"
+		expected := `validation failed for *txnbuild.CreatePassiveSellOffer operation: Field: Selling, Error: asset code length must be between 1 and 12 characters`
 		assert.Contains(t, err.Error(), expected)
 	}
 }
@@ -80,7 +79,7 @@ func TestCreatePassiveSellOfferValidateAmount(t *testing.T) {
 
 	err := tx.Build()
 	if assert.Error(t, err) {
-		expected := "validation failed for *txnbuild.CreatePassiveSellOffer struct: Field: Amount, Error: value should be positve or zero"
+		expected := `validation failed for *txnbuild.CreatePassiveSellOffer operation: Field: Amount, Error: amount can not be negative`
 		assert.Contains(t, err.Error(), expected)
 	}
 }
@@ -106,7 +105,7 @@ func TestCreatePassiveSellOfferValidatePrice(t *testing.T) {
 
 	err := tx.Build()
 	if assert.Error(t, err) {
-		expected := "validation failed for *txnbuild.CreatePassiveSellOffer struct: Field: Price, Error: value should be positve or zero"
+		expected := `validation failed for *txnbuild.CreatePassiveSellOffer operation: Field: Price, Error: amount can not be negative`
 		assert.Contains(t, err.Error(), expected)
 	}
 }

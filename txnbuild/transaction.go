@@ -129,7 +129,7 @@ func (tx *Transaction) Build() error {
 
 	for _, op := range tx.Operations {
 		if verr := op.Validate(); verr != nil {
-			return errors.Wrap(verr, fmt.Sprintf("validation failed for %T struct", op))
+			return errors.Wrap(verr, fmt.Sprintf("validation failed for %T operation", op))
 		}
 
 		xdrOperation, err2 := op.BuildXDR()

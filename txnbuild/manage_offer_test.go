@@ -28,7 +28,7 @@ func TestManageSellOfferValidateSellingAsset(t *testing.T) {
 
 	err = tx.Build()
 	if assert.Error(t, err) {
-		expected := "validation failed for *txnbuild.ManageSellOffer struct: Field: Selling, Error: asset code length must be between 1 and 12 characters"
+		expected := "validation failed for *txnbuild.ManageSellOffer operation: Field: Selling, Error: asset code length must be between 1 and 12 characters"
 		assert.Contains(t, err.Error(), expected)
 	}
 }
@@ -54,7 +54,7 @@ func TestManageSellOfferValidateBuyingAsset(t *testing.T) {
 
 	err = tx.Build()
 	if assert.Error(t, err) {
-		expected := "validation failed for *txnbuild.ManageSellOffer struct: Field: Buying, Error: asset code length must be between 1 and 12 characters"
+		expected := "validation failed for *txnbuild.ManageSellOffer operation: Field: Buying, Error: asset code length must be between 1 and 12 characters"
 		assert.Contains(t, err.Error(), expected)
 	}
 }
@@ -80,7 +80,7 @@ func TestManageSellOfferValidateAmount(t *testing.T) {
 
 	err = tx.Build()
 	if assert.Error(t, err) {
-		expected := "validation failed for *txnbuild.ManageSellOffer struct: Field: Amount, Error: value should be positve or zero"
+		expected := "validation failed for *txnbuild.ManageSellOffer operation: Field: Amount, Error: amount can not be negative"
 		assert.Contains(t, err.Error(), expected)
 	}
 }
@@ -106,7 +106,7 @@ func TestManageSellOfferValidatePrice(t *testing.T) {
 
 	err = tx.Build()
 	if assert.Error(t, err) {
-		expected := "validation failed for *txnbuild.ManageSellOffer struct: Field: Price, Error: value should be positve or zero"
+		expected := "validation failed for *txnbuild.ManageSellOffer operation: Field: Price, Error: amount can not be negative"
 		assert.Contains(t, err.Error(), expected)
 	}
 }
@@ -133,7 +133,7 @@ func TestManageSellOfferValidateOfferID(t *testing.T) {
 
 	err := tx.Build()
 	if assert.Error(t, err) {
-		expected := "validation failed for *txnbuild.ManageSellOffer struct: Field: OfferID, Error: value should be positve or zero"
+		expected := "validation failed for *txnbuild.ManageSellOffer operation: Field: OfferID, Error: amount can not be negative"
 		assert.Contains(t, err.Error(), expected)
 	}
 }
