@@ -90,8 +90,8 @@ func Mirror(src *Archive, dst *Archive, opts *CommandOptions) error {
 	}
 
 	wg.Wait()
-	log.Printf("Copied %d checkpoints, %d buckets",
-		opts.Range.Size(), len(bucketFetch))
+	log.Printf("copied %d checkpoints, %d buckets, range %s",
+		opts.Range.Size(), len(bucketFetch), opts.Range)
 	close(tick)
 	e = dst.PutRootHAS(rootHAS, opts)
 	errs += noteError(e)
