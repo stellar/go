@@ -70,7 +70,10 @@ func (opts *Options) SetRange(srcArch *historyarchive.Archive, dstArch *historya
 		} else if opts.Last != -1 {
 			state, e := srcArch.GetRootHAS()
 			if e == nil {
-				low := state.CurrentLedger - uint32(opts.Last)
+				low := uint32(0)
+				if state.CurrentLedger > uint32(opts.Last) {
+					low = state.CurrentLedger - uint32(opts.Last)
+				}
 				opts.CommandOpts.Range =
 					historyarchive.MakeRange(low, state.CurrentLedger)
 				return

@@ -24,8 +24,15 @@ func GetTestS3Archive() *Archive {
 	if e != nil {
 		panic(e)
 	}
-	return MustConnect(fmt.Sprintf("s3://history-stg.stellar.org/dev/archivist/test-%s", r),
-		ConnectOptions{S3Region: "eu-west-1"})
+	bucket := fmt.Sprintf("s3://history-stg.stellar.org/dev/archivist/test-%s", r)
+	region := "eu-west-1"
+	if env_bucket := os.Getenv("ARCHIVIST_TEST_S3_BUCKET"); env_bucket != "" {
+		bucket = fmt.Sprintf(env_bucket+"/archivist/test-%s", r)
+	}
+	if env_region := os.Getenv("ARCHIVIST_TEST_S3_REGION"); env_region != "" {
+		region = env_region
+	}
+	return MustConnect(bucket, ConnectOptions{S3Region: region})
 }
 
 func GetTestMockArchive() *Archive {

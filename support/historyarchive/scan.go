@@ -158,10 +158,10 @@ func (arch *Archive) ScanCheckpointsFast(opts *CommandOptions) error {
 
 func (arch *Archive) Scan(opts *CommandOptions) error {
 	e1 := arch.ScanCheckpoints(opts)
-	e2 := arch.ScanBuckets(opts)
 	if e1 != nil {
 		return e1
 	}
+	e2 := arch.ScanBuckets(opts)
 	if e2 != nil {
 		return e2
 	}
