@@ -17,7 +17,7 @@ func (b *BatchInsertBuilder) Row(row map[string]interface{}) error {
 		b.columns = make([]string, 0, len(row))
 		b.rows = make([][]interface{}, 0)
 
-		for column, _ := range row {
+		for column := range row {
 			b.columns = append(b.columns, column)
 		}
 
