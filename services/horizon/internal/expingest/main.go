@@ -29,7 +29,9 @@ const (
 	// - 1: Initial version
 	// - 2: We added the orderbook, offers processors and distributed
 	//      ingestion.
-	CurrentVersion = 2
+	// - 3: Fixes a bug that could potentialy result in invalid state
+	//      (#1722). Update the version to clear the state.
+	CurrentVersion = 3
 )
 
 var log = ilog.DefaultLogger.WithField("service", "expingest")
