@@ -247,7 +247,12 @@ func (s *System) resumeFromLedger(lastIngestedLedger uint32) {
 	retryOnError(time.Second, func() error {
 		err := s.session.Resume(lastIngestedLedger + 1)
 		if err != nil {
-			lastIngestedLedger = s.session.GetLatestSuccessfullyProcessedLedger()
+			// If no ledgers processed so far it will return 0. In such case
+			// try again with the lastIngestedLedger+1.
+			sessionLastLedger := s.session.GetLatestSuccessfullyProcessedLedger()
+			if sessionLastLedger > 0 {
+				lastIngestedLedger = sessionLastLedger
+			}
 			return errors.Wrap(err, "Error returned from ingest.LiveSession")
 		}
 

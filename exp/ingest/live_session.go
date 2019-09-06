@@ -155,7 +155,7 @@ func (s *LiveSession) resume(ledgerSequence uint32, ledgerAdapter *adapters.Ledg
 				}
 
 				if latestLedger > ledgerSequence {
-					return errors.New("Gap detected")
+					return errors.Errorf("Gap detected (ledger %d does not exist but %d is latest)", ledgerSequence, latestLedger)
 				}
 
 				select {
