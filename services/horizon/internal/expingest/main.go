@@ -251,9 +251,11 @@ func (s *System) resumeFromLedger(lastIngestedLedger uint32) {
 		err := s.session.Resume(lastIngestedLedger + 1)
 		if err != nil {
 			// If no ledgers processed so far, try again with the
-			// lastIngestedLedger+1.
+			// lastIngestedLedger+1 (do nothing).
+			// Otherwise, set lastIngestedLedger to the last successfully
+			// ingested ledger in the session.
 			sessionLastLedger, processed := s.session.GetLatestSuccessfullyProcessedLedger()
-			if !processed {
+			if processed {
 				lastIngestedLedger = sessionLastLedger
 			}
 			return errors.Wrap(err, "Error returned from ingest.LiveSession")
