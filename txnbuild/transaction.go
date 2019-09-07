@@ -128,6 +128,10 @@ func (tx *Transaction) Build() error {
 	tx.xdrTransaction.SeqNum = seqnum
 
 	for _, op := range tx.Operations {
+		if verr := op.Validate(); verr != nil {
+			return errors.Wrap(verr, fmt.Sprintf("validation failed for %T operation", op))
+		}
+
 		xdrOperation, err2 := op.BuildXDR()
 		if err2 != nil {
 			return errors.Wrap(err2, fmt.Sprintf("failed to build operation %T", op))

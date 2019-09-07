@@ -31,3 +31,10 @@ func (inf *Inflation) FromXDR(xdrOp xdr.Operation) error {
 	inf.SourceAccount = accountFromXDR(xdrOp.SourceAccount)
 	return nil
 }
+
+// Validate for Inflation is just a method that implements the Operation interface. No logic is actually performed
+// because the inflation operation does not have any required field. Nil is always returned.
+func (inf *Inflation) Validate() error {
+	// no required fields, return nil.
+	return nil
+}

@@ -121,3 +121,34 @@ func (pp *PathPayment) FromXDR(xdrOp xdr.Operation) error {
 
 	return nil
 }
+
+// Validate for PathPayment validates the required struct fields. It returns an error if any
+// of the fields are invalid. Otherwise, it returns nil.
+func (pp *PathPayment) Validate() error {
+	err := validateStellarPublicKey(pp.Destination)
+	if err != nil {
+		return NewValidationError("Destination", err.Error())
+	}
+
+	err = validateStellarAsset(pp.SendAsset)
+	if err != nil {
+		return NewValidationError("SendAsset", err.Error())
+	}
+
+	err = validateStellarAsset(pp.DestAsset)
+	if err != nil {
+		return NewValidationError("DestAsset", err.Error())
+	}
+
+	err = validateAmount(pp.SendMax)
+	if err != nil {
+		return NewValidationError("SendMax", err.Error())
+	}
+
+	err = validateAmount(pp.DestAmount)
+	if err != nil {
+		return NewValidationError("DestAmount", err.Error())
+	}
+
+	return nil
+}
