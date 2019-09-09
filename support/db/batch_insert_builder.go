@@ -25,7 +25,7 @@ func (b *BatchInsertBuilder) Row(row map[string]interface{}) error {
 	}
 
 	if len(b.columns) != len(row) {
-		return errors.Errorf("Invalid number of columns (expected=%d, actual=%d)", len(b.columns), len(row))
+		return errors.Errorf("invalid number of columns (expected=%d, actual=%d)", len(b.columns), len(row))
 	}
 
 	rowSlice := make([]interface{}, 0, len(b.columns))
