@@ -29,7 +29,9 @@ const (
 	// - 1: Initial version
 	// - 2: We added the orderbook, offers processors and distributed
 	//      ingestion.
-	CurrentVersion = 2
+	// - 3: Fixes a bug that could potentialy result in invalid state
+	//      (#1722). Update the version to clear the state.
+	CurrentVersion = 3
 )
 
 var log = ilog.DefaultLogger.WithField("service", "expingest")
@@ -179,8 +181,9 @@ func (s *System) Run() {
 			if err != nil {
 				// Check if session processed a state, if so, continue since the
 				// last processed ledger, otherwise start over.
-				lastIngestedLedger = s.session.GetLatestSuccessfullyProcessedLedger()
-				if lastIngestedLedger == 0 {
+				var processed bool
+				lastIngestedLedger, processed = s.session.GetLatestSuccessfullyProcessedLedger()
+				if !processed {
 					return err
 				}
 
@@ -247,7 +250,14 @@ func (s *System) resumeFromLedger(lastIngestedLedger uint32) {
 	retryOnError(time.Second, func() error {
 		err := s.session.Resume(lastIngestedLedger + 1)
 		if err != nil {
-			lastIngestedLedger = s.session.GetLatestSuccessfullyProcessedLedger()
+			// If no ledgers processed so far, try again with the
+			// lastIngestedLedger+1 (do nothing).
+			// Otherwise, set lastIngestedLedger to the last successfully
+			// ingested ledger in the session.
+			sessionLastLedger, processed := s.session.GetLatestSuccessfullyProcessedLedger()
+			if processed {
+				lastIngestedLedger = sessionLastLedger
+			}
 			return errors.Wrap(err, "Error returned from ingest.LiveSession")
 		}
 
