@@ -56,6 +56,14 @@ func TestBatchInsertBuilder(t *testing.T) {
 	err = insertBuilder.Exec()
 	assert.NoError(t, err)
 
+	query, args, err := insertBuilder.sql.ToSql()
+	assert.NoError(t, err)
+	assert.Equal(t, "INSERT INTO people (hunger_level,name) VALUES (?,?),(?,?)", query)
+	assert.Equal(t, []interface{}{
+		"120", "bubba",
+		"1202", "bubba2",
+	}, args)
+
 	// Check rows
 	var found []person
 	err = sess.SelectRaw(&found, `SELECT * FROM people WHERE name like 'bubba%'`)
