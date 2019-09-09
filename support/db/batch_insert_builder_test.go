@@ -38,20 +38,20 @@ func TestBatchInsertBuilder(t *testing.T) {
 		"hunger_level": "120",
 		"abc":          "def",
 	})
-	assert.EqualError(t, err, "Invalid number of columns (expected=2, actual=3)")
+	assert.EqualError(t, err, "invalid number of columns (expected=2, actual=3)")
 
 	// Not enough columns
 	err = insertBuilder.Row(map[string]interface{}{
 		"name": "bubba",
 	})
-	assert.EqualError(t, err, "Invalid number of columns (expected=2, actual=1)")
+	assert.EqualError(t, err, "invalid number of columns (expected=2, actual=1)")
 
 	// Invalid column
 	err = insertBuilder.Row(map[string]interface{}{
 		"name":  "bubba",
 		"hello": "120",
 	})
-	assert.EqualError(t, err, `Column "hunger_level" does not exist`)
+	assert.EqualError(t, err, `column "hunger_level" does not exist`)
 
 	err = insertBuilder.Exec()
 	assert.NoError(t, err)
