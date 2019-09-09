@@ -64,7 +64,7 @@ func (b *BatchInsertBuilder) Exec() error {
 		if paramsCount > postgresQueryMaxParams-2*len(b.columns) {
 			_, err := b.Table.Session.Exec(b.sql)
 			if err != nil {
-				return errors.Wrap(err, fmt.Sprintf("Error adding values while inserting to %s", b.Table.Name))
+				return errors.Wrap(err, fmt.Sprintf("error adding values while inserting to %s", b.Table.Name))
 			}
 			paramsCount = 0
 			b.createInsertBuilder()
