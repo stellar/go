@@ -32,7 +32,7 @@ func (b *BatchInsertBuilder) Row(row map[string]interface{}) error {
 	for _, column := range b.columns {
 		val, ok := row[column]
 		if !ok {
-			return errors.Errorf(`Column "%s" does not exist`, column)
+			return errors.Errorf(`column "%s" does not exist`, column)
 		}
 		rowSlice = append(rowSlice, val)
 	}
