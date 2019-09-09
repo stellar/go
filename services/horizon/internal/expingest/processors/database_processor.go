@@ -13,11 +13,11 @@ import (
 	"github.com/stellar/go/xdr"
 )
 
+const maxBatchSize = 100000
+
 func (p *DatabaseProcessor) ProcessState(ctx context.Context, store *pipeline.Store, r io.StateReader, w io.StateWriter) error {
 	defer r.Close()
 	defer w.Close()
-
-	const maxBatchSize = 100000
 
 	var (
 		accountSignerBatch history.AccountSignersBatchInsertBuilder
