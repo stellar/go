@@ -47,14 +47,10 @@ func (b *BatchInsertBuilder) Row(row map[string]interface{}) error {
 	return nil
 }
 
-func (b *BatchInsertBuilder) createInsertBuilder() {
-	b.sql = sq.Insert(b.Table.Name).Columns(b.columns...)
-}
-
 // Exec inserts rows in batches. In case of errors it's possible that some batches
 // were added so this should be run in a DB transaction for easy rollbacks.
 func (b *BatchInsertBuilder) Exec() error {
-	b.createInsertBuilder()
+	b.sql = sq.Insert(b.Table.Name).Columns(b.columns...)
 	paramsCount := 0
 
 	for _, row := range b.rows {
@@ -67,7 +63,7 @@ func (b *BatchInsertBuilder) Exec() error {
 				return errors.Wrap(err, fmt.Sprintf("error adding values while inserting to %s", b.Table.Name))
 			}
 			paramsCount = 0
-			b.createInsertBuilder()
+			b.sql = sq.Insert(b.Table.Name).Columns(b.columns...)
 		}
 	}
 
