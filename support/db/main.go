@@ -59,7 +59,7 @@ type InsertBuilder struct {
 
 // BatchInsertBuilder works like sq.InsertBuilder but has a better support for batching
 // large number of rows.
-// It is NOT safe for concurent use.
+// It is NOT safe for concurrent use.
 type BatchInsertBuilder struct {
 	Table *Table
 	// MaxBatchSize defines the maximum size of a batch. If this number is
