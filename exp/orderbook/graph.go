@@ -9,11 +9,10 @@ import (
 )
 
 var (
-	errOfferNotPresent             = errors.New("offer is not present in the order book graph")
-	errEmptyOffers                 = errors.New("offers is empty")
-	errAssetAmountIsZero           = errors.New("current asset amount is 0")
-	errOfferPriceDenominatorIsZero = errors.New("denominator of offer price is 0")
-	errBatchAlreadyApplied         = errors.New("cannot apply batched updates more than once")
+	errOfferNotPresent     = errors.New("offer is not present in the order book graph")
+	errEmptyOffers         = errors.New("offers is empty")
+	errAssetAmountIsZero   = errors.New("current asset amount is 0")
+	errBatchAlreadyApplied = errors.New("cannot apply batched updates more than once")
 )
 
 type sortByType string
