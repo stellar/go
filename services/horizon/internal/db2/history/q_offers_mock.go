@@ -16,6 +16,11 @@ func (m *MockQOffers) GetAllOffers() ([]Offer, error) {
 	return a.Get(0).([]Offer), a.Error(1)
 }
 
+func (m *MockQOffers) NewOffersBatchInsertBuilder(maxBatchSize int) OffersBatchInsertBuilder {
+	a := m.Called(maxBatchSize)
+	return a.Get(0).(OffersBatchInsertBuilder)
+}
+
 func (m *MockQOffers) UpsertOffer(offer xdr.OfferEntry, lastModifiedLedger xdr.Uint32) error {
 	a := m.Called(offer, lastModifiedLedger)
 	return a.Error(0)

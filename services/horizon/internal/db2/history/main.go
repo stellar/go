@@ -136,6 +136,16 @@ type AccountSigner struct {
 	Weight  int32  `db:"weight"`
 }
 
+type AccountSignersBatchInsertBuilder interface {
+	Add(signer AccountSigner) error
+	Exec() error
+}
+
+// accountSignersBatchInsertBuilder is a simple wrapper around db.BatchInsertBuilder
+type accountSignersBatchInsertBuilder struct {
+	builder db.BatchInsertBuilder
+}
+
 // Asset is a row of data from the `history_assets` table
 type Asset struct {
 	ID     int64  `db:"id"`
@@ -287,6 +297,16 @@ type Offer struct {
 	LastModifiedLedger uint32    `db:"last_modified_ledger"`
 }
 
+type OffersBatchInsertBuilder interface {
+	Add(offer xdr.OfferEntry, lastModifiedLedger xdr.Uint32) error
+	Exec() error
+}
+
+// offersBatchInsertBuilder is a simple wrapper around db.BatchInsertBuilder
+type offersBatchInsertBuilder struct {
+	builder db.BatchInsertBuilder
+}
+
 // OperationsQ is a helper struct to aid in configuring queries that loads
 // slices of Operation structs.
 type OperationsQ struct {
@@ -310,6 +330,7 @@ type QSigners interface {
 	GetLastLedgerExpIngest() (uint32, error)
 	UpdateLastLedgerExpIngest(ledgerSequence uint32) error
 	AccountsForSigner(signer string, page db2.PageQuery) ([]AccountSigner, error)
+	NewAccountSignersBatchInsertBuilder(maxBatchSize int) AccountSignersBatchInsertBuilder
 	CreateAccountSigner(account, signer string, weight int32) error
 	RemoveAccountSigner(account, signer string) error
 }
@@ -325,6 +346,7 @@ type OffersQuery struct {
 // QOffers defines offer related queries.
 type QOffers interface {
 	GetAllOffers() ([]Offer, error)
+	NewOffersBatchInsertBuilder(maxBatchSize int) OffersBatchInsertBuilder
 	UpsertOffer(offer xdr.OfferEntry, lastModifiedLedger xdr.Uint32) error
 	RemoveOffer(offerID xdr.Int64) error
 }
@@ -405,6 +427,24 @@ type TransactionsQ struct {
 	parent        *Q
 	sql           sq.SelectBuilder
 	includeFailed bool
+}
+
+func (q *Q) NewAccountSignersBatchInsertBuilder(maxBatchSize int) AccountSignersBatchInsertBuilder {
+	return &accountSignersBatchInsertBuilder{
+		builder: db.BatchInsertBuilder{
+			Table:        q.GetTable("accounts_signers"),
+			MaxBatchSize: maxBatchSize,
+		},
+	}
+}
+
+func (q *Q) NewOffersBatchInsertBuilder(maxBatchSize int) OffersBatchInsertBuilder {
+	return &offersBatchInsertBuilder{
+		builder: db.BatchInsertBuilder{
+			Table:        q.GetTable("offers"),
+			MaxBatchSize: maxBatchSize,
+		},
+	}
 }
 
 // ElderLedger loads the oldest ledger known to the history database

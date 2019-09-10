@@ -24,7 +24,7 @@ const (
 // *history.Q object to share a common transaction. `Action` defines what each
 // processor is responsible for.
 type DatabaseProcessor struct {
-	HistoryQ history.QSigners
+	SignersQ history.QSigners
 	OffersQ  history.QOffers
 	Action   DatabaseProcessorActionType
 }

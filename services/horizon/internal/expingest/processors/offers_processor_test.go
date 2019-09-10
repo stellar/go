@@ -18,14 +18,16 @@ func TestOffersrocessorTestSuiteState(t *testing.T) {
 
 type OffersProcessorTestSuiteState struct {
 	suite.Suite
-	processor       *DatabaseProcessor
-	mockQ           *history.MockQOffers
-	mockStateReader *io.MockStateReader
-	mockStateWriter *io.MockStateWriter
+	processor              *DatabaseProcessor
+	mockQ                  *history.MockQOffers
+	mockBatchInsertBuilder *history.MockOffersBatchInsertBuilder
+	mockStateReader        *io.MockStateReader
+	mockStateWriter        *io.MockStateWriter
 }
 
 func (s *OffersProcessorTestSuiteState) SetupTest() {
 	s.mockQ = &history.MockQOffers{}
+	s.mockBatchInsertBuilder = &history.MockOffersBatchInsertBuilder{}
 	s.mockStateReader = &io.MockStateReader{}
 	s.mockStateWriter = &io.MockStateWriter{}
 
@@ -35,17 +37,17 @@ func (s *OffersProcessorTestSuiteState) SetupTest() {
 	}
 
 	// Reader and Writer should be always closed and once
-	s.mockStateReader.
-		On("Close").
-		Return(nil).Once()
+	s.mockStateReader.On("Close").Return(nil).Once()
+	s.mockStateWriter.On("Close").Return(nil).Once()
 
-	s.mockStateWriter.
-		On("Close").
-		Return(nil).Once()
+	s.mockQ.
+		On("NewOffersBatchInsertBuilder", maxBatchSize).
+		Return(s.mockBatchInsertBuilder).Once()
 }
 
 func (s *OffersProcessorTestSuiteState) TearDownTest() {
 	s.mockQ.AssertExpectations(s.T())
+	s.mockBatchInsertBuilder.AssertExpectations(s.T())
 	s.mockStateReader.AssertExpectations(s.T())
 	s.mockStateWriter.AssertExpectations(s.T())
 }
@@ -71,15 +73,14 @@ func (s *OffersProcessorTestSuiteState) TestCreateOffer() {
 		nil,
 	).Once()
 
-	s.mockQ.On(
-		"UpsertOffer",
-		offer,
-		lastModifiedLedgerSeq,
-	).Return(nil).Once()
+	s.mockBatchInsertBuilder.
+		On("Add", offer, lastModifiedLedgerSeq).Return(nil).Once()
 
 	s.mockStateReader.
 		On("Read").
 		Return(xdr.LedgerEntryChange{}, stdio.EOF).Once()
+
+	s.mockBatchInsertBuilder.On("Exec").Return(nil).Once()
 
 	err := s.processor.ProcessState(
 		context.Background(),

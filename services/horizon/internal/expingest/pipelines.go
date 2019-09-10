@@ -28,7 +28,7 @@ func accountForSignerStateNode(q *history.Q) *supportPipeline.PipelineNode {
 	return pipeline.StateNode(&processors.EntryTypeFilter{Type: xdr.LedgerEntryTypeAccount}).
 		Pipe(
 			pipeline.StateNode(&horizonProcessors.DatabaseProcessor{
-				HistoryQ: q,
+				SignersQ: q,
 				Action:   horizonProcessors.AccountsForSigner,
 			}),
 		)
@@ -70,7 +70,7 @@ func buildStatePipeline(historyQ *history.Q, graph *orderbook.OrderBookGraph) *p
 
 func accountForSignerLedgerNode(q *history.Q) *supportPipeline.PipelineNode {
 	return pipeline.LedgerNode(&horizonProcessors.DatabaseProcessor{
-		HistoryQ: q,
+		SignersQ: q,
 		Action:   horizonProcessors.AccountsForSigner,
 	})
 }
