@@ -349,7 +349,10 @@ func (c *Client) OperationDetail(id string) (ops operations.Operation, err error
 	}
 
 	ops, err = operations.UnmarshalOperation(baseRecord.GetTypeI(), dataString)
-	return ops, errors.Wrap(err, "unmarshaling to the correct operation type")
+	if err != nil {
+		return ops, errors.Wrap(err, "unmarshaling to the correct operation type")
+	}
+	return ops, nil
 }
 
 // SubmitTransactionXDR submits a transaction represented as a base64 XDR string to the network. err can be either error object or horizon.Error object.
