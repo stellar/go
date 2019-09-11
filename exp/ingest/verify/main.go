@@ -36,25 +36,24 @@ type StateError error
 //      entries in your storage (to find if some extra entires exist in your
 //      storage).
 // Functions will return StateError type if state is found to be incorrect.
+// It's user responsibility to call `StateReader.Close()` when reading is done.
 // Check Horizon for an example how to use this tool.
 type StateVerifier struct {
-	StateReader *io.SingleLedgerStateReader
+	StateReader io.StateReader
 	// TransformFunction transforms (or ignores) ledger entries streamed from
 	// checkpoint buckets to match the form added by `Write`. Read
 	// TransformLedgerEntryFunction godoc for more information.
 	TransformFunction TransformLedgerEntryFunction
 
-	readEntries  int
-	wroteEntries int
-	readingDone  bool
+	readEntries int
+	readingDone bool
 
 	currentEntries map[string]xdr.LedgerEntry
 }
 
-// GetLedgerKeys returns `count` ledger keys from history buckets storing
-// actual entries in cache to compare in Write.
+// GetLedgerKeys returns up to `count` ledger keys from history buckets
+// storing actual entries in cache to compare in Write.
 func (v *StateVerifier) GetLedgerKeys(count int) ([]xdr.LedgerKey, error) {
-	keys := make([]xdr.LedgerKey, 0, count)
 	if len(v.currentEntries) > 0 {
 		var entry xdr.LedgerEntry
 		for _, e := range v.currentEntries {
@@ -69,8 +68,10 @@ func (v *StateVerifier) GetLedgerKeys(count int) ([]xdr.LedgerKey, error) {
 			len(v.currentEntries),
 			entryString,
 		))
-		return keys, err
+		return nil, err
 	}
+
+	keys := make([]xdr.LedgerKey, 0, count)
 	v.currentEntries = make(map[string]xdr.LedgerEntry)
 
 	for count > 0 {
@@ -167,7 +168,6 @@ func (v *StateVerifier) Write(entry xdr.LedgerEntry) error {
 		))
 	}
 
-	v.wroteEntries++
 	return nil
 }
 
@@ -198,14 +198,6 @@ func (v *StateVerifier) Verify(countAll int) error {
 
 	if !v.readingDone {
 		return errors.New("There are unread entries in state reader. Process all entries before calling Verify.")
-	}
-
-	if v.readEntries != v.wroteEntries {
-		return StateError(errors.Errorf(
-			"Number of entries read using GetEntries (%d) does not match number of entries written using Write (%d).",
-			v.readEntries,
-			v.wroteEntries,
-		))
 	}
 
 	if v.readEntries != countAll {
