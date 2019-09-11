@@ -42,7 +42,10 @@ func (c *ScraperConfig) fetchOrderbook(bType, bCode, bIssuer, cType, cCode, cIss
 	}
 
 	err = calcOrderbookStats(&obStats, summary)
-	return obStats, errors.Wrap(err, "could not calculate orderbook stats")
+	if err != nil {
+		return obStats, errors.Wrap(err, "could not calculate orderbook stats")
+	}
+	return obStats, nil
 }
 
 // calcOrderbookStats calculates the NumBids, BidVolume, BidMax, NumAsks, AskVolume and AskMin
