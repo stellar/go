@@ -5,6 +5,7 @@ import (
 	"net/url"
 	"strconv"
 	"testing"
+	"time"
 
 	"github.com/go-chi/chi"
 	"github.com/stellar/go/exp/orderbook"
@@ -112,6 +113,16 @@ func TestPathActionsStillIngesting(t *testing.T) {
 func TestPathActionsStateInvalid(t *testing.T) {
 	rh := StartHTTPTest(t, "paths")
 	defer rh.Finish()
+
+	rh.App.config.EnableExperimentalIngestion = true
+	rh.App.web.router = chi.NewRouter()
+	orderBookGraph := orderbook.NewOrderBookGraph()
+	rh.App.web.mustInstallMiddlewares(rh.App, time.Minute)
+	rh.App.web.mustInstallActions(
+		rh.App.config,
+		simplepath.NewInMemoryFinder(orderBookGraph),
+	)
+	rh.RH = test.NewRequestHelper(rh.App.web.router)
 
 	err := rh.App.historyQ.UpdateExpStateInvalid(true)
 	rh.Assert.NoError(err)
