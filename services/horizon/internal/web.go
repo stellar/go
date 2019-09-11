@@ -222,7 +222,7 @@ func (w *web) mustInstallActions(config Config, pathFinder paths.Finder) {
 		pathFinder:    pathFinder,
 		coreQ:         w.coreQ,
 	}
-	installPathFindingRoutes(findPaths, findFixedPaths, w.router, true)
+	installPathFindingRoutes(findPaths, findFixedPaths, w.router, config.EnableExperimentalIngestion)
 
 	if config.EnableAssetStats {
 		// Asset related endpoints
