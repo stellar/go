@@ -22,7 +22,10 @@ type TransformLedgerEntryFunction func(xdr.LedgerEntry) (ignore bool, newEntry x
 
 // StateError are errors indicating invalid state. Type is used to differentiate
 // between network, i/o, marshaling, bad usage etc. errors and actual state errors.
-type StateError error
+// You can use type assertion or type switch to check for type.
+type StateError struct {
+	error
+}
 
 // StateVerifier verifies if ledger entries provided by Add method are the same
 // as in the checkpoint ledger entries provided by SingleLedgerStateReader.
@@ -54,20 +57,8 @@ type StateVerifier struct {
 // GetLedgerKeys returns up to `count` ledger keys from history buckets
 // storing actual entries in cache to compare in Write.
 func (v *StateVerifier) GetLedgerKeys(count int) ([]xdr.LedgerKey, error) {
-	if len(v.currentEntries) > 0 {
-		var entry xdr.LedgerEntry
-		for _, e := range v.currentEntries {
-			entry = e
-			break
-		}
-
-		// Ignore error as StateError below is more important
-		entryString, _ := xdr.MarshalBase64(entry)
-		err := StateError(errors.Errorf(
-			"Entries (%d) not found locally, example: %s",
-			len(v.currentEntries),
-			entryString,
-		))
+	err := v.checkUnreadEntries()
+	if err != nil {
 		return nil, err
 	}
 
@@ -127,11 +118,11 @@ func (v *StateVerifier) Write(entry xdr.LedgerEntry) error {
 
 	expectedEntry, exist := v.currentEntries[key]
 	if !exist {
-		return StateError(errors.Errorf(
+		return StateError{errors.Errorf(
 			"Cannot find entry in currentEntries map: %s (key = %s)",
 			base64.StdEncoding.EncodeToString(actualEntryMarshaled),
 			key,
-		))
+		)}
 	}
 	delete(v.currentEntries, key)
 
@@ -160,12 +151,12 @@ func (v *StateVerifier) Write(entry xdr.LedgerEntry) error {
 	}
 
 	if !bytes.Equal(actualEntryMarshaled, expectedEntryMarshaled) {
-		return StateError(errors.Errorf(
+		return StateError{errors.Errorf(
 			"Entry does not match the fetched entry. Expected: %s (pretransform = %s), actual: %s",
 			base64.StdEncoding.EncodeToString(expectedEntryMarshaled),
 			base64.StdEncoding.EncodeToString(preTransformExpectedEntryMarshaled),
 			base64.StdEncoding.EncodeToString(actualEntryMarshaled),
-		))
+		)}
 	}
 
 	return nil
@@ -180,6 +171,27 @@ func (v *StateVerifier) Write(entry xdr.LedgerEntry) error {
 //     buckets.
 // Any `StateError` returned by this method indicates invalid state!
 func (v *StateVerifier) Verify(countAll int) error {
+	err := v.checkUnreadEntries()
+	if err != nil {
+		return err
+	}
+
+	if !v.readingDone {
+		return errors.New("There are unread entries in state reader. Process all entries before calling Verify.")
+	}
+
+	if v.readEntries != countAll {
+		return StateError{errors.Errorf(
+			"Number of entries read using GetEntries (%d) does not match number of entries in your storage (%d).",
+			v.readEntries,
+			countAll,
+		)}
+	}
+
+	return nil
+}
+
+func (v *StateVerifier) checkUnreadEntries() error {
 	if len(v.currentEntries) > 0 {
 		var entry xdr.LedgerEntry
 		for _, e := range v.currentEntries {
@@ -189,23 +201,11 @@ func (v *StateVerifier) Verify(countAll int) error {
 
 		// Ignore error as StateError below is more important
 		entryString, _ := xdr.MarshalBase64(entry)
-		return StateError(errors.Errorf(
+		return StateError{errors.Errorf(
 			"Entries (%d) not found locally, example: %s",
 			len(v.currentEntries),
 			entryString,
-		))
-	}
-
-	if !v.readingDone {
-		return errors.New("There are unread entries in state reader. Process all entries before calling Verify.")
-	}
-
-	if v.readEntries != countAll {
-		return StateError(errors.Errorf(
-			"Number of entries read using GetEntries (%d) does not match number of entries in your storage (%d).",
-			v.readEntries,
-			countAll,
-		))
+		)}
 	}
 
 	return nil

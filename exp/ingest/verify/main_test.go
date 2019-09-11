@@ -8,8 +8,18 @@ import (
 	"github.com/stellar/go/exp/ingest/io"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 )
+
+func assertStateError(t *testing.T, err error, expectStateError bool) {
+	_, ok := err.(StateError)
+	if expectStateError {
+		assert.True(t, ok, "err should be StateError")
+	} else {
+		assert.False(t, ok, "err should not be StateError")
+	}
+}
 
 func TestStateVerifierTestSuite(t *testing.T) {
 	suite.Run(t, new(StateVerifierTestSuite))
@@ -62,10 +72,12 @@ func (s *StateVerifierTestSuite) TestCurrentEntriesNotEmpty() {
 
 	_, err = s.verifier.GetLedgerKeys(10)
 	s.Assert().Error(err)
+	assertStateError(s.T(), err, true)
 	s.Assert().EqualError(err, "Entries (1) not found locally, example: "+entryBase64)
 
 	err = s.verifier.Verify(10)
 	s.Assert().Error(err)
+	assertStateError(s.T(), err, true)
 	s.Assert().EqualError(err, "Entries (1) not found locally, example: "+entryBase64)
 }
 
@@ -142,6 +154,7 @@ func (s *StateVerifierTestSuite) TestOnlyRequestedNumberOfKeysReturned() {
 
 	err = s.verifier.Verify(1)
 	s.Assert().Error(err)
+	assertStateError(s.T(), err, false)
 	s.Assert().EqualError(err, "There are unread entries in state reader. Process all entries before calling Verify.")
 }
 
@@ -156,6 +169,7 @@ func (s *StateVerifierTestSuite) TestWriteEntryNotExist() {
 
 	err = s.verifier.Write(entry)
 	s.Assert().Error(err)
+	assertStateError(s.T(), err, true)
 	errorMsg := fmt.Sprintf(
 		"Cannot find entry in currentEntries map: %s (key = %s)",
 		entryBase64,
@@ -227,6 +241,7 @@ func (s *StateVerifierTestSuite) TestActualExpectedEntryNotEqualWrite() {
 	)
 	err = s.verifier.Write(actualEntry)
 	s.Assert().Error(err)
+	assertStateError(s.T(), err, true)
 	s.Assert().EqualError(err, errorMsg)
 }
 
@@ -250,6 +265,7 @@ func (s *StateVerifierTestSuite) TestVerifyCountersMatch() {
 
 	err = s.verifier.Verify(10)
 	s.Assert().Error(err)
+	assertStateError(s.T(), err, true)
 	errorMsg := fmt.Sprintf(
 		"Number of entries read using GetEntries (%d) does not match number of entries in your storage (%d).",
 		1,
