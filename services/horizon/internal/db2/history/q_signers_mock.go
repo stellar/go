@@ -29,6 +29,11 @@ func (m *MockQSigners) AccountsForSigner(signer string, page db2.PageQuery) ([]A
 	return a.Get(0).([]AccountSigner), a.Error(1)
 }
 
+func (m *MockQSigners) NewAccountSignersBatchInsertBuilder(maxBatchSize int) AccountSignersBatchInsertBuilder {
+	a := m.Called(maxBatchSize)
+	return a.Get(0).(AccountSignersBatchInsertBuilder)
+}
+
 func (m *MockQSigners) CreateAccountSigner(account, signer string, weight int32) error {
 	a := m.Called(account, signer, weight)
 	return a.Error(0)

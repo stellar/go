@@ -18,34 +18,36 @@ func TestAccountsSignerProcessorTestSuiteState(t *testing.T) {
 
 type AccountsSignerProcessorTestSuiteState struct {
 	suite.Suite
-	processor       *DatabaseProcessor
-	mockQ           *history.MockQSigners
-	mockStateReader *io.MockStateReader
-	mockStateWriter *io.MockStateWriter
+	processor              *DatabaseProcessor
+	mockQ                  *history.MockQSigners
+	mockBatchInsertBuilder *history.MockAccountSignersBatchInsertBuilder
+	mockStateReader        *io.MockStateReader
+	mockStateWriter        *io.MockStateWriter
 }
 
 func (s *AccountsSignerProcessorTestSuiteState) SetupTest() {
 	s.mockQ = &history.MockQSigners{}
+	s.mockBatchInsertBuilder = &history.MockAccountSignersBatchInsertBuilder{}
 	s.mockStateReader = &io.MockStateReader{}
 	s.mockStateWriter = &io.MockStateWriter{}
 
 	s.processor = &DatabaseProcessor{
 		Action:   AccountsForSigner,
-		HistoryQ: s.mockQ,
+		SignersQ: s.mockQ,
 	}
 
 	// Reader and Writer should be always closed and once
-	s.mockStateReader.
-		On("Close").
-		Return(nil).Once()
+	s.mockStateReader.On("Close").Return(nil).Once()
+	s.mockStateWriter.On("Close").Return(nil).Once()
 
-	s.mockStateWriter.
-		On("Close").
-		Return(nil).Once()
+	s.mockQ.
+		On("NewAccountSignersBatchInsertBuilder", maxBatchSize).
+		Return(s.mockBatchInsertBuilder).Once()
 }
 
 func (s *AccountsSignerProcessorTestSuiteState) TearDownTest() {
 	s.mockQ.AssertExpectations(s.T())
+	s.mockBatchInsertBuilder.AssertExpectations(s.T())
 	s.mockStateReader.AssertExpectations(s.T())
 	s.mockStateWriter.AssertExpectations(s.T())
 }
@@ -54,6 +56,8 @@ func (s *AccountsSignerProcessorTestSuiteState) TestNoEntries() {
 	s.mockStateReader.
 		On("Read").
 		Return(xdr.LedgerEntryChange{}, stdio.EOF).Once()
+
+	s.mockBatchInsertBuilder.On("Exec").Return(nil).Once()
 
 	err := s.processor.ProcessState(
 		context.Background(),
@@ -98,14 +102,12 @@ func (s *AccountsSignerProcessorTestSuiteState) TestCreatesSigners() {
 			},
 		}, nil).Once()
 
-	s.mockQ.
-		On(
-			"CreateAccountSigner",
-			"GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML",
-			"GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML",
-			int32(1),
-		).
-		Return(nil).Once()
+	s.mockBatchInsertBuilder.
+		On("Add", history.AccountSigner{
+			Account: "GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML",
+			Signer:  "GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML",
+			Weight:  int32(1),
+		}).Return(nil).Once()
 
 	s.mockStateReader.
 		On("Read").
@@ -127,18 +129,18 @@ func (s *AccountsSignerProcessorTestSuiteState) TestCreatesSigners() {
 			},
 		}, nil).Once()
 
-	s.mockQ.
-		On(
-			"CreateAccountSigner",
-			"GCCCU34WDY2RATQTOOQKY6SZWU6J5DONY42SWGW2CIXGW4LICAGNRZKX",
-			"GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML",
-			int32(10),
-		).
-		Return(nil).Once()
+	s.mockBatchInsertBuilder.
+		On("Add", history.AccountSigner{
+			Account: "GCCCU34WDY2RATQTOOQKY6SZWU6J5DONY42SWGW2CIXGW4LICAGNRZKX",
+			Signer:  "GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML",
+			Weight:  int32(10),
+		}).Return(nil).Once()
 
 	s.mockStateReader.
 		On("Read").
 		Return(xdr.LedgerEntryChange{}, stdio.EOF).Once()
+
+	s.mockBatchInsertBuilder.On("Exec").Return(nil).Once()
 
 	err := s.processor.ProcessState(
 		context.Background(),
@@ -169,7 +171,7 @@ func (s *AccountsSignerProcessorTestSuiteLedger) SetupTest() {
 
 	s.processor = &DatabaseProcessor{
 		Action:   AccountsForSigner,
-		HistoryQ: s.mockQ,
+		SignersQ: s.mockQ,
 	}
 
 	// Reader and Writer should be always closed and once

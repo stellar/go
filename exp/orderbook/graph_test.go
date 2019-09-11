@@ -3,9 +3,11 @@ package orderbook
 import (
 	"bytes"
 	"encoding"
+	"math"
 	"testing"
 
 	"github.com/stellar/go/keypair"
+	"github.com/stellar/go/price"
 	"github.com/stellar/go/xdr"
 )
 
@@ -770,6 +772,11 @@ func TestConsumeOffersForSellingAsset(t *testing.T) {
 	denominatorZeroOffer := twoEurOffer
 	denominatorZeroOffer.Price.D = 0
 
+	overflowOffer := twoEurOffer
+	overflowOffer.Amount = math.MaxInt64
+	overflowOffer.Price.N = math.MaxInt32
+	overflowOffer.Price.D = 1
+
 	for _, testCase := range []struct {
 		name               string
 		offers             []xdr.OfferEntry
@@ -808,7 +815,7 @@ func TestConsumeOffersForSellingAsset(t *testing.T) {
 			ignoreOffersFrom,
 			10000,
 			0,
-			errOfferPriceDenominatorIsZero,
+			price.ErrDivisionByZero,
 		},
 		{
 			"ignore some offers",
@@ -816,6 +823,14 @@ func TestConsumeOffersForSellingAsset(t *testing.T) {
 			issuer,
 			100,
 			200,
+			nil,
+		},
+		{
+			"ignore overflow offers",
+			[]xdr.OfferEntry{overflowOffer},
+			ignoreOffersFrom,
+			math.MaxInt64,
+			-1,
 			nil,
 		},
 		{
@@ -882,6 +897,10 @@ func TestConsumeOffersForBuyingAsset(t *testing.T) {
 	denominatorZeroOffer := twoEurOffer
 	denominatorZeroOffer.Price.D = 0
 
+	overflowOffer := twoEurOffer
+	overflowOffer.Price.N = 1
+	overflowOffer.Price.D = math.MaxInt32
+
 	for _, testCase := range []struct {
 		name               string
 		offers             []xdr.OfferEntry
@@ -920,7 +939,7 @@ func TestConsumeOffersForBuyingAsset(t *testing.T) {
 			&ignoreOffersFrom,
 			10000,
 			0,
-			errOfferPriceDenominatorIsZero,
+			price.ErrDivisionByZero,
 		},
 		{
 			"ignore some offers",
@@ -935,6 +954,14 @@ func TestConsumeOffersForBuyingAsset(t *testing.T) {
 			[]xdr.OfferEntry{eurOffer, twoEurOffer},
 			nil,
 			1502,
+			-1,
+			nil,
+		},
+		{
+			"ignore overflow offers",
+			[]xdr.OfferEntry{overflowOffer},
+			nil,
+			math.MaxInt64,
 			-1,
 			nil,
 		},

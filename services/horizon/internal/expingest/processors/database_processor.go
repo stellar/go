@@ -8,13 +8,30 @@ import (
 	"github.com/stellar/go/exp/ingest/io"
 	ingestpipeline "github.com/stellar/go/exp/ingest/pipeline"
 	"github.com/stellar/go/exp/support/pipeline"
+	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
 )
 
+const maxBatchSize = 100000
+
 func (p *DatabaseProcessor) ProcessState(ctx context.Context, store *pipeline.Store, r io.StateReader, w io.StateWriter) error {
 	defer r.Close()
 	defer w.Close()
+
+	var (
+		accountSignerBatch history.AccountSignersBatchInsertBuilder
+		offersBatch        history.OffersBatchInsertBuilder
+	)
+
+	switch p.Action {
+	case AccountsForSigner:
+		accountSignerBatch = p.SignersQ.NewAccountSignersBatchInsertBuilder(maxBatchSize)
+	case Offers:
+		offersBatch = p.OffersQ.NewOffersBatchInsertBuilder(maxBatchSize)
+	default:
+		return errors.Errorf("Invalid action type (%s)", p.Action)
+	}
 
 	for {
 		entryChange, err := r.Read()
@@ -40,13 +57,13 @@ func (p *DatabaseProcessor) ProcessState(ctx context.Context, store *pipeline.St
 			accountEntry := entryChange.MustState().Data.MustAccount()
 			account := accountEntry.AccountId.Address()
 			for signer, weight := range accountEntry.SignerSummary() {
-				err = p.HistoryQ.CreateAccountSigner(
-					account,
-					signer,
-					weight,
-				)
+				err = accountSignerBatch.Add(history.AccountSigner{
+					Account: account,
+					Signer:  signer,
+					Weight:  weight,
+				})
 				if err != nil {
-					return errors.Wrap(err, "Error updating account for signer")
+					return errors.Wrap(err, "Error adding row to accountSignerBatch")
 				}
 			}
 		case Offers:
@@ -55,9 +72,12 @@ func (p *DatabaseProcessor) ProcessState(ctx context.Context, store *pipeline.St
 				continue
 			}
 
-			offer := entryChange.MustState().Data.MustOffer()
-			if err := p.OffersQ.UpsertOffer(offer, entryChange.MustState().LastModifiedLedgerSeq); err != nil {
-				return errors.Wrap(err, "Error inserting offers")
+			err = offersBatch.Add(
+				entryChange.MustState().Data.MustOffer(),
+				entryChange.MustState().LastModifiedLedgerSeq,
+			)
+			if err != nil {
+				return errors.Wrap(err, "Error adding row to offersBatch")
 			}
 		default:
 			return errors.New("Unknown action")
@@ -69,6 +89,21 @@ func (p *DatabaseProcessor) ProcessState(ctx context.Context, store *pipeline.St
 		default:
 			continue
 		}
+	}
+
+	var err error
+
+	switch p.Action {
+	case AccountsForSigner:
+		err = accountSignerBatch.Exec()
+	case Offers:
+		err = offersBatch.Exec()
+	default:
+		return errors.Errorf("Invalid action type (%s)", p.Action)
+	}
+
+	if err != nil {
+		return errors.Wrap(err, "Error batch inserting rows")
 	}
 
 	return nil
@@ -133,7 +168,7 @@ func (p *DatabaseProcessor) processLedgerAccountsForSigner(transaction io.Ledger
 		if change.Pre != nil {
 			preAccountEntry := change.Pre.MustAccount()
 			for signer := range preAccountEntry.SignerSummary() {
-				err := p.HistoryQ.RemoveAccountSigner(preAccountEntry.AccountId.Address(), signer)
+				err := p.SignersQ.RemoveAccountSigner(preAccountEntry.AccountId.Address(), signer)
 				if err != nil {
 					return errors.Wrap(err, "Error removing a signer")
 				}
@@ -143,7 +178,7 @@ func (p *DatabaseProcessor) processLedgerAccountsForSigner(transaction io.Ledger
 		if change.Post != nil {
 			postAccountEntry := change.Post.MustAccount()
 			for signer, weight := range postAccountEntry.SignerSummary() {
-				err := p.HistoryQ.CreateAccountSigner(postAccountEntry.AccountId.Address(), signer, weight)
+				err := p.SignersQ.CreateAccountSigner(postAccountEntry.AccountId.Address(), signer, weight)
 				if err != nil {
 					return errors.Wrap(err, "Error inserting a signer")
 				}

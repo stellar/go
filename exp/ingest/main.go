@@ -13,9 +13,8 @@ import (
 
 // standardSession contains common methods used by all sessions.
 type standardSession struct {
-	shutdown                          chan bool
-	rwLock                            sync.RWMutex
-	latestSuccessfullyProcessedLedger uint32
+	shutdown chan bool
+	rwLock   sync.RWMutex
 
 	runningMutex sync.Mutex
 	running      bool
@@ -40,6 +39,8 @@ type LiveSession struct {
 	// TempSet is a store used to hold temporary objects generated during
 	// state processing. If nil, defaults to io.MemoryTempSet.
 	TempSet io.TempSet
+
+	latestSuccessfullyProcessedLedger uint32
 }
 
 // SingleLedgerSession initializes the ledger state using `Archive` and `StatePipeline`
@@ -67,11 +68,6 @@ type Session interface {
 	// Session user to determine what was the last ledger processed by a
 	// Session as it's stateless (or if Run() should be called first).
 	Resume(ledgerSequence uint32) error
-	// GetLatestSuccessfullyProcessedLedger returns the ledger sequence of the
-	// latest successfully processed ledger in the session. Return 0 if no
-	// ledgers were processed yet.
-	// Please note that this value is not synchronized with pipeline hooks.
-	GetLatestSuccessfullyProcessedLedger() uint32
 	// Shutdown gracefully stops running session and stops all internal
 	// objects.
 	// Calling Shutdown() does not trigger post processing hooks.

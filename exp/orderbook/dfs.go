@@ -2,7 +2,6 @@ package orderbook
 
 import (
 	"github.com/stellar/go/price"
-	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
 )
 
@@ -272,9 +271,6 @@ func consumeOffersForSellingAsset(
 		if offer.SellerId.Equals(ignoreOffersFrom) {
 			continue
 		}
-		if offer.Price.D == 0 {
-			return -1, errOfferPriceDenominatorIsZero
-		}
 
 		buyingUnitsFromOffer, sellingUnitsFromOffer, err := price.ConvertToBuyingUnits(
 			int64(offer.Amount),
@@ -282,8 +278,12 @@ func consumeOffersForSellingAsset(
 			int64(offer.Price.N),
 			int64(offer.Price.D),
 		)
-		if err != nil {
-			return -1, errors.Wrap(err, "could not determine buying units")
+		if err == price.ErrOverflow {
+			// skip paths which would result in overflow errors
+			// but still continue the path finding search
+			return -1, nil
+		} else if err != nil {
+			return -1, err
 		}
 
 		totalConsumed += xdr.Int64(buyingUnitsFromOffer)
@@ -316,9 +316,6 @@ func consumeOffersForBuyingAsset(
 		if ignoreOffersFrom != nil && ignoreOffersFrom.Equals(offer.SellerId) {
 			continue
 		}
-		if offer.Price.D == 0 {
-			return -1, errOfferPriceDenominatorIsZero
-		}
 
 		n := int64(offer.Price.N)
 		d := int64(offer.Price.D)
@@ -326,12 +323,13 @@ func consumeOffersForBuyingAsset(
 		// check if we can spend all of currentAssetAmount on the current offer
 		// otherwise consume entire offer and move on to the next one
 		amountSold, err := price.MulFractionRoundDown(int64(currentAssetAmount), d, n)
-		if err != nil {
-			return -1, errors.Wrap(err, "could not determine selling units needed")
-		}
-		if amountSoldXDR := xdr.Int64(amountSold); amountSoldXDR <= offer.Amount {
-			totalConsumed += amountSoldXDR
-			return totalConsumed, nil
+		if err == nil {
+			if amountSoldXDR := xdr.Int64(amountSold); amountSoldXDR > 0 && amountSoldXDR <= offer.Amount {
+				totalConsumed += amountSoldXDR
+				return totalConsumed, nil
+			}
+		} else if err != price.ErrOverflow {
+			return -1, err
 		}
 
 		buyingUnitsFromOffer, sellingUnitsFromOffer, err := price.ConvertToBuyingUnits(
@@ -340,8 +338,12 @@ func consumeOffersForBuyingAsset(
 			n,
 			d,
 		)
-		if err != nil {
-			return -1, errors.Wrap(err, "could not determine selling units")
+		if err == price.ErrOverflow {
+			// skip paths which would result in overflow errors
+			// but still continue the path finding search
+			return -1, nil
+		} else if err != nil {
+			return -1, err
 		}
 
 		totalConsumed += xdr.Int64(sellingUnitsFromOffer)
