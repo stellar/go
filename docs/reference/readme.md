@@ -1,6 +1,4 @@
----
-title: Overview
----
+# Go SDK
 
 The Go SDK is a set of packages for interacting with most aspects of the Stellar ecosystem. The primary component is the Horizon SDK, which provides convenient access to Horizon services. There are also packages for other Stellar services such as [TOML support](https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0001.md) and [federation](https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0002.md).
 
