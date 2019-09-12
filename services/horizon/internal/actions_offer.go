@@ -1,8 +1,6 @@
 package horizon
 
 import (
-	"net/http"
-
 	"github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/services/horizon/internal/actions"
 	"github.com/stellar/go/services/horizon/internal/db2"
@@ -10,11 +8,7 @@ import (
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/services/horizon/internal/render/sse"
 	"github.com/stellar/go/services/horizon/internal/resourceadapter"
-	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/support/render/hal"
-	"github.com/stellar/go/support/render/httpjson"
-	"github.com/stellar/go/support/render/problem"
-	"github.com/stellar/go/xdr"
 )
 
 // This file contains the actions:
@@ -121,90 +115,4 @@ func (action *OffersByAccountAction) loadPage() {
 	action.Page.Cursor = action.PageQuery.Cursor
 	action.Page.Order = action.PageQuery.Order
 	action.Page.PopulateLinks()
-}
-
-// GetOffersHandle is the http handler for the /offers endpoint
-type GetOffersHandle struct {
-	historyQ *history.Q
-}
-
-// ServeHTTP implements the http.Handler interface
-func (handler GetOffersHandle) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-	pq, err := actions.GetPageQuery(r)
-
-	if err != nil {
-		problem.Render(ctx, w, err)
-		return
-	}
-
-	seller, err := actions.GetString(r, "seller")
-
-	if err != nil {
-		problem.Render(ctx, w, err)
-		return
-	}
-
-	var selling *xdr.Asset
-	sellingAsset, found := actions.MaybeGetAsset(r, "selling_")
-
-	if found {
-		selling = &sellingAsset
-	}
-
-	var buying *xdr.Asset
-	buyingAsset, found := actions.MaybeGetAsset(r, "buying_")
-
-	if found {
-		buying = &buyingAsset
-	}
-
-	query := history.OffersQuery{
-		PageQuery: pq,
-		SellerID:  seller,
-		Selling:   selling,
-		Buying:    buying,
-	}
-
-	records, err := handler.historyQ.GetOffers(query)
-
-	if err != nil {
-		problem.Render(ctx, w, err)
-		return
-	}
-
-	page := hal.Page{
-		Cursor: pq.Cursor,
-		Order:  pq.Order,
-		Limit:  pq.Limit,
-	}
-
-	ledgerCache := history.LedgerCache{}
-	for _, record := range records {
-		ledgerCache.Queue(int32(record.LastModifiedLedger))
-	}
-
-	err = ledgerCache.Load(handler.historyQ)
-
-	if err != nil {
-		problem.Render(ctx, w, errors.Wrap(err, "failed to load ledger batch"))
-		return
-	}
-
-	for _, record := range records {
-		var offerResponse horizon.Offer
-
-		ledger, found := ledgerCache.Records[int32(record.LastModifiedLedger)]
-		ledgerPtr := &ledger
-		if !found {
-			ledgerPtr = nil
-		}
-
-		resourceadapter.PopulateHistoryOffer(ctx, &offerResponse, record, ledgerPtr)
-		page.Add(offerResponse)
-	}
-
-	page.FullURL = actions.FullURL(ctx)
-	page.PopulateLinks()
-	httpjson.Render(w, page, httpjson.HALJSON)
 }
