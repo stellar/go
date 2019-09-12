@@ -212,7 +212,7 @@ func requiresExperimentalIngestion(h http.Handler) http.Handler {
 		ctx := r.Context()
 		app := AppFromContext(ctx)
 		if !app.config.EnableExperimentalIngestion {
-			w.WriteHeader(http.StatusNotFound)
+			problem.Render(r.Context(), w, problem.NotFound)
 			return
 		}
 
@@ -225,6 +225,29 @@ func requiresExperimentalIngestion(h http.Handler) http.Handler {
 		// expingest has not finished processing any ledger so no data.
 		if lastIngestedLedger == 0 {
 			problem.Render(r.Context(), w, hProblem.StillIngesting)
+			return
+		}
+
+		h.ServeHTTP(w, r)
+	})
+}
+
+// ensureStateCorrect is a middleware which ensures that state (ledger entries)
+// has been verified and are correct. Otherwise returns `500 Internal Server Error`
+// to prevent returning invalid data to the user.
+func ensureStateCorrect(h http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+		app := AppFromContext(ctx)
+
+		stateInvalid, err := app.HistoryQ().GetExpStateInvalid()
+		if err != nil {
+			problem.Render(r.Context(), w, err)
+			return
+		}
+
+		if stateInvalid {
+			problem.Render(r.Context(), w, problem.ServerError)
 			return
 		}
 

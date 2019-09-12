@@ -14,6 +14,7 @@ const (
 	// of migration files. If you need to update the key name remember
 	// to upgrade it in migration files too!
 	lastLedgerKey = "exp_ingest_last_ledger"
+	stateInvalid  = "exp_state_invalid"
 )
 
 // GetLastLedgerExpIngestNonBlocking works like GetLastLedgerExpIngest but
@@ -98,6 +99,34 @@ func (q *Q) UpdateExpIngestVersion(ledgerSequence int) error {
 	return q.updateValueInStore(
 		ingestVersion,
 		strconv.FormatUint(uint64(ledgerSequence), 10),
+	)
+}
+
+// GetExpStateInvalid returns true if the state was found to be invalid.
+// Returns false otherwise.
+func (q *Q) GetExpStateInvalid() (bool, error) {
+	invalid, err := q.getValueFromStore(stateInvalid, false)
+	if err != nil {
+		return false, err
+	}
+
+	if invalid == "" {
+		return false, nil
+	} else {
+		val, err := strconv.ParseBool(invalid)
+		if err != nil {
+			return false, errors.Wrap(err, "Error converting invalid value")
+		}
+
+		return val, nil
+	}
+}
+
+// UpdateExpIngestVersion upsets the state invalid value.
+func (q *Q) UpdateExpStateInvalid(val bool) error {
+	return q.updateValueInStore(
+		stateInvalid,
+		strconv.FormatBool(val),
 	)
 }
 

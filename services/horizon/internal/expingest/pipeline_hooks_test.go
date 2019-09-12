@@ -182,7 +182,7 @@ func TestPostProcessingHook(t *testing.T) {
 				tt.Assert.Nil(historyQ.CreateAccountSigner(account, signer, weight))
 			}
 
-			err := postProcessingHook(ctx, testCase.err, statePipeline, graph, session)
+			err := postProcessingHook(ctx, testCase.err, statePipeline, nil, graph, session)
 			if testCase.expectedError == "" {
 				tt.Assert.Nil(err)
 				tt.Assert.Equal(graph.Offers(), []xdr.OfferEntry{eurOffer})

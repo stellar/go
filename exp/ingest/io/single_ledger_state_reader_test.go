@@ -33,7 +33,6 @@ func (s *SingleLedgerStateReaderTestSuite) SetupTest() {
 	s.Require().NoError(err)
 
 	ledgerSeq := uint32(24123007)
-	bufferSize := uint16(5000)
 
 	s.mockArchive.
 		On("GetCheckpointHAS", ledgerSeq).
@@ -44,7 +43,7 @@ func (s *SingleLedgerStateReaderTestSuite) SetupTest() {
 		On("BucketExists", mock.AnythingOfType("historyarchive.Hash")).
 		Return(true, nil).Times(21)
 
-	s.reader, err = MakeSingleLedgerStateReader(s.mockArchive, &MemoryTempSet{}, ledgerSeq, bufferSize)
+	s.reader, err = MakeSingleLedgerStateReader(s.mockArchive, &MemoryTempSet{}, ledgerSeq)
 	s.Require().NotNil(s.reader)
 	s.Require().NoError(err)
 	s.Assert().Equal(ledgerSeq, s.reader.sequence)

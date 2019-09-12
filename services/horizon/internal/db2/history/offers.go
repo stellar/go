@@ -7,12 +7,31 @@ import (
 	"github.com/stellar/go/xdr"
 )
 
+func (q *Q) CountOffers() (int, error) {
+	sql := sq.Select("count(*)").From("offers")
+
+	var count int
+	if err := q.Get(&count, sql); err != nil {
+		return 0, errors.Wrap(err, "could not run select query")
+	}
+
+	return count, nil
+}
+
 // GetOfferByID loads a row from the `offers` table, selected by offerid.
 func (q *Q) GetOfferByID(id int64) (Offer, error) {
 	var offer Offer
 	sql := selectOffers.Where("offers.offerid = ?", id)
 	err := q.Get(&offer, sql)
 	return offer, err
+}
+
+// GetOffersByIDs loads a row from the `offers` table, selected by multiple offerid.
+func (q *Q) GetOffersByIDs(ids []int64) ([]Offer, error) {
+	var offers []Offer
+	sql := selectOffers.Where(map[string]interface{}{"offers.offerid": ids})
+	err := q.Select(&offers, sql)
+	return offers, err
 }
 
 // GetOffers loads rows from `offers` by paging query.

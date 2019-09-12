@@ -7,12 +7,14 @@ import (
 	"github.com/stellar/go/exp/ingest"
 	"github.com/stellar/go/exp/ingest/pipeline"
 	"github.com/stellar/go/exp/ingest/processors"
+	"github.com/stellar/go/exp/ingest/verify"
 	"github.com/stellar/go/exp/orderbook"
 	supportPipeline "github.com/stellar/go/exp/support/pipeline"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	horizonProcessors "github.com/stellar/go/services/horizon/internal/expingest/processors"
 	"github.com/stellar/go/support/db"
 	"github.com/stellar/go/support/errors"
+	"github.com/stellar/go/support/historyarchive"
 	ilog "github.com/stellar/go/support/log"
 	"github.com/stellar/go/xdr"
 )
@@ -168,6 +170,7 @@ func postProcessingHook(
 	ctx context.Context,
 	err error,
 	pipelineType pType,
+	system *System,
 	graph *orderbook.OrderBookGraph,
 	historySession *db.Session,
 ) error {
@@ -221,11 +224,31 @@ func postProcessingHook(
 		return errors.Wrap(err, "Error applying order book changes")
 	}
 
+	if system != nil && pipelineType == ledgerPipeline && historyarchive.IsCheckpoint(ledgerSeq) {
+		// Run verification routine
+		go func() {
+			err := system.verifyState()
+			if err != nil {
+				switch err := errors.Cause(err).(type) {
+				case verify.StateError:
+					log.WithField("err", err).Error("STATE IS INVALID!")
+					q := &history.Q{historySession.Clone()}
+					if err := q.UpdateExpStateInvalid(true); err != nil {
+						log.WithField("err", err).Error("Error updating state invalid value")
+					}
+				default:
+					log.WithField("err", err).Error("State verification errored")
+				}
+			}
+		}()
+	}
+
 	log.WithFields(ilog.F{"ledger": ledgerSeq, "type": pipelineType}).Info("Processed ledger")
 	return nil
 }
 
 func addPipelineHooks(
+	system *System,
 	p supportPipeline.PipelineInterface,
 	historySession *db.Session,
 	ingestSession ingest.Session,
@@ -246,6 +269,6 @@ func addPipelineHooks(
 	})
 
 	p.AddPostProcessingHook(func(ctx context.Context, err error) error {
-		return postProcessingHook(ctx, err, pipelineType, graph, historySession)
+		return postProcessingHook(ctx, err, pipelineType, system, graph, historySession)
 	})
 }

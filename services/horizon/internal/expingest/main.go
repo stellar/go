@@ -5,6 +5,7 @@ package expingest
 
 import (
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/stellar/go/clients/stellarcore"
@@ -48,9 +49,15 @@ type Config struct {
 }
 
 type System struct {
-	session  *ingest.LiveSession
-	historyQ *history.Q
-	graph    *orderbook.OrderBookGraph
+	session        *ingest.LiveSession
+	historySession *db.Session
+	historyQ       *history.Q
+	graph          *orderbook.OrderBookGraph
+
+	// stateVerificationRunning is true when verification routine is currently
+	// running.
+	stateVerificationMutex   sync.Mutex
+	stateVerificationRunning bool
 }
 
 func NewSystem(config Config) (*System, error) {
@@ -81,24 +88,29 @@ func NewSystem(config Config) (*System, error) {
 		TempSet: config.TempSet,
 	}
 
+	system := &System{
+		session:        session,
+		historySession: config.HistorySession,
+		historyQ:       historyQ,
+		graph:          config.OrderBookGraph,
+	}
+
 	addPipelineHooks(
+		system,
 		session.StatePipeline,
 		config.HistorySession,
 		session,
 		config.OrderBookGraph,
 	)
 	addPipelineHooks(
+		system,
 		session.LedgerPipeline,
 		config.HistorySession,
 		session,
 		config.OrderBookGraph,
 	)
 
-	return &System{
-		session:  session,
-		historyQ: historyQ,
-		graph:    config.OrderBookGraph,
-	}, nil
+	return system, nil
 }
 
 // Run starts ingestion system. Ingestion system supports distributed ingestion
@@ -168,6 +180,12 @@ func (s *System) Run() {
 			// Clear last_ingested_ledger in key value store
 			if err = s.historyQ.UpdateLastLedgerExpIngest(0); err != nil {
 				return errors.Wrap(err, "Error updating last ingested ledger")
+			}
+
+			// Clear invalid state in key value store. It's possible that upgraded
+			// ingestion is fixing it.
+			if err = s.historyQ.UpdateExpStateInvalid(false); err != nil {
+				return errors.Wrap(err, "Error updating state invalid value")
 			}
 
 			err = s.historyQ.Session.TruncateTables(
