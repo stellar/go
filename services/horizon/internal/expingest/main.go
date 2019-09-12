@@ -4,7 +4,6 @@
 package expingest
 
 import (
-	"fmt"
 	"sync"
 	"time"
 
@@ -48,16 +47,60 @@ type Config struct {
 	OrderBookGraph *orderbook.OrderBookGraph
 }
 
+type dbQ interface {
+	Begin() error
+	Rollback() error
+	GetLastLedgerExpIngest() (uint32, error)
+	GetExpIngestVersion() (int, error)
+	UpdateLastLedgerExpIngest(uint32) error
+	UpdateExpStateInvalid(bool) error
+	GetAllOffers() ([]history.Offer, error)
+}
+
+type dbSession interface {
+	TruncateTables([]string) error
+	Clone() *db.Session
+}
+
+type liveSession interface {
+	Run() error
+	GetArchive() historyarchive.ArchiveInterface
+	Resume(ledgerSequence uint32) error
+	GetLatestSuccessfullyProcessedLedger() (ledgerSequence uint32, processed bool)
+	Shutdown()
+}
+
+type retry interface {
+	onError(func() error)
+}
+
 type System struct {
-	session        *ingest.LiveSession
-	historySession *db.Session
-	historyQ       *history.Q
+	session        liveSession
+	historyQ       dbQ
+	historySession dbSession
 	graph          *orderbook.OrderBookGraph
+	retry          retry
 
 	// stateVerificationRunning is true when verification routine is currently
 	// running.
 	stateVerificationMutex   sync.Mutex
 	stateVerificationRunning bool
+}
+
+type alwaysRetry struct {
+	backOff time.Duration
+}
+
+func (r alwaysRetry) onError(f func() error) {
+	for {
+		err := f()
+		if err != nil {
+			log.Error(err)
+			time.Sleep(r.backOff)
+			continue
+		}
+		break
+	}
 }
 
 func NewSystem(config Config) (*System, error) {
@@ -93,6 +136,7 @@ func NewSystem(config Config) (*System, error) {
 		historySession: config.HistorySession,
 		historyQ:       historyQ,
 		graph:          config.OrderBookGraph,
+		retry:          alwaysRetry{time.Second},
 	}
 
 	addPipelineHooks(
@@ -146,7 +190,7 @@ func (s *System) Run() {
 	// retryOnError loop is needed only in case of initial state sync errors.
 	// If the state is successfully ingested `resumeFromLedger` method continues
 	// processing ledgers.
-	retryOnError(time.Second, func() error {
+	s.retry.onError(func() error {
 		// Transaction will be commited or rolled back in pipelines post hooks.
 		err := s.historyQ.Begin()
 		if err != nil {
@@ -174,8 +218,7 @@ func (s *System) Run() {
 			// `LastLedgerExpIngest` value is blocked for update and will always
 			// be updated when leading instance finishes processing state.
 			// In case of errors it will start `Run` from the beginning.
-			log.WithField("temp_set", fmt.Sprintf("%T", s.session.TempSet)).
-				Info("Starting ingestion system from empty state...")
+			log.Info("Starting ingestion system from empty state...")
 
 			// Clear last_ingested_ledger in key value store
 			if err = s.historyQ.UpdateLastLedgerExpIngest(0); err != nil {
@@ -188,7 +231,7 @@ func (s *System) Run() {
 				return errors.Wrap(err, "Error updating state invalid value")
 			}
 
-			err = s.historyQ.Session.TruncateTables(
+			err = s.historySession.TruncateTables(
 				history.ExperimentalIngestionTables,
 			)
 			if err != nil {
@@ -221,7 +264,6 @@ func (s *System) Run() {
 			if err != nil {
 				return errors.Wrap(err, "Error loading order book graph from db")
 			}
-
 		}
 
 		s.resumeFromLedger(lastIngestedLedger)
@@ -229,7 +271,7 @@ func (s *System) Run() {
 	})
 }
 
-func loadOrderBookGraphFromDB(historyQ *history.Q, graph *orderbook.OrderBookGraph) error {
+func loadOrderBookGraphFromDB(historyQ dbQ, graph *orderbook.OrderBookGraph) error {
 	defer graph.Discard()
 
 	log.Info("Loading offers from a database into memory store...")
@@ -258,14 +300,17 @@ func loadOrderBookGraphFromDB(historyQ *history.Q, graph *orderbook.OrderBookGra
 
 	err = graph.Apply()
 	if err == nil {
-		log.WithField("duration", time.Since(start).Seconds()).Info("Finished offers from a database into memory store")
+		log.WithField(
+			"duration",
+			time.Since(start).Seconds(),
+		).Info("Finished loading offers from a database into memory store")
 	}
 
 	return err
 }
 
 func (s *System) resumeFromLedger(lastIngestedLedger uint32) {
-	retryOnError(time.Second, func() error {
+	s.retry.onError(func() error {
 		err := s.session.Resume(lastIngestedLedger + 1)
 		if err != nil {
 			// If no ledgers processed so far, try again with the
@@ -294,19 +339,4 @@ func createArchive(archiveURL string) (*historyarchive.Archive, error) {
 		archiveURL,
 		historyarchive.ConnectOptions{},
 	)
-}
-
-// retryOnError is a helper function that runs function f synchronically every
-// `duration` until it returns no error.
-// Logs all returned errors with `error` level.
-func retryOnError(sleepDuration time.Duration, f func() error) {
-	for {
-		err := f()
-		if err != nil {
-			log.Error(err)
-			time.Sleep(sleepDuration)
-			continue
-		}
-		break
-	}
 }

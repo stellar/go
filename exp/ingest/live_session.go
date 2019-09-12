@@ -9,6 +9,7 @@ import (
 	"github.com/stellar/go/exp/ingest/adapters"
 	"github.com/stellar/go/exp/ingest/io"
 	"github.com/stellar/go/support/errors"
+	"github.com/stellar/go/support/historyarchive"
 )
 
 var _ Session = &LiveSession{}
@@ -68,6 +69,11 @@ func (s *LiveSession) Run() error {
 	currentLedger++
 
 	return s.resume(currentLedger, ledgerAdapter)
+}
+
+// GetArchive returns the archive configured for the current session
+func (s *LiveSession) GetArchive() historyarchive.ArchiveInterface {
+	return s.Archive
 }
 
 func (s *LiveSession) updateCursor(ledgerSequence uint32) error {
