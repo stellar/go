@@ -6,7 +6,9 @@ import (
 
 	"github.com/stellar/go/exp/orderbook"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
+	"github.com/stellar/go/support/db"
 	"github.com/stellar/go/support/errors"
+	"github.com/stellar/go/support/historyarchive"
 	"github.com/stellar/go/xdr"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -20,6 +22,11 @@ type mockDBSession struct {
 func (m *mockDBSession) TruncateTables(tables []string) error {
 	args := m.Called(tables)
 	return args.Error(0)
+}
+
+func (m *mockDBSession) Clone() *db.Session {
+	args := m.Called()
+	return args.Get(0).(*db.Session)
 }
 
 type mockDBQ struct {
@@ -51,6 +58,11 @@ func (m *mockDBQ) UpdateLastLedgerExpIngest(sequence uint32) error {
 	return args.Error(0)
 }
 
+func (m *mockDBQ) UpdateExpStateInvalid(invalid bool) error {
+	args := m.Called(invalid)
+	return args.Error(0)
+}
+
 func (m *mockDBQ) GetAllOffers() ([]history.Offer, error) {
 	args := m.Called()
 	return args.Get(0).([]history.Offer), args.Error(1)
@@ -68,6 +80,11 @@ func (m *mockIngestSession) Run() error {
 func (m *mockIngestSession) Resume(ledgerSequence uint32) error {
 	args := m.Called(ledgerSequence)
 	return args.Error(0)
+}
+
+func (m *mockIngestSession) GetArchive() historyarchive.ArchiveInterface {
+	args := m.Called()
+	return args.Get(0).(historyarchive.ArchiveInterface)
 }
 
 func (m *mockIngestSession) GetLatestSuccessfullyProcessedLedger() (ledgerSequence uint32, processed bool) {
@@ -113,10 +130,10 @@ func (s *RunIngestionTestSuite) SetupTest() {
 	s.historyQ = &mockDBQ{}
 	s.ingestSession = &mockIngestSession{}
 	s.system = &System{
-		session:   s.ingestSession,
-		dbSession: s.session,
-		historyQ:  s.historyQ,
-		graph:     s.graph,
+		session:        s.ingestSession,
+		historySession: s.session,
+		historyQ:       s.historyQ,
+		graph:          s.graph,
 	}
 	s.expectedOffers = []xdr.OfferEntry{}
 }
@@ -171,11 +188,24 @@ func (s *RunIngestionTestSuite) TestUpdateLastLedgerExpIngestReturnsError() {
 	s.system.retry = expectError(s.Assert(), "update last ledger error")
 }
 
+func (s *RunIngestionTestSuite) TestUpdateExpStateInvalidReturnsError() {
+	s.historyQ.On("Begin").Return(nil).Once()
+	s.historyQ.On("GetLastLedgerExpIngest").Return(uint32(0), nil).Once()
+	s.historyQ.On("GetExpIngestVersion").Return(CurrentVersion, nil).Once()
+	s.historyQ.On("UpdateLastLedgerExpIngest", uint32(0)).Return(nil).Once()
+	s.historyQ.On("UpdateExpStateInvalid", false).Return(
+		errors.New("update exp state invalid error"),
+	).Once()
+	s.historyQ.On("Rollback").Return(nil).Once()
+	s.system.retry = expectError(s.Assert(), "update exp state invalid error")
+}
+
 func (s *RunIngestionTestSuite) TestTruncateTablesReturnsError() {
 	s.historyQ.On("Begin").Return(nil).Once()
 	s.historyQ.On("GetLastLedgerExpIngest").Return(uint32(0), nil).Once()
 	s.historyQ.On("GetExpIngestVersion").Return(CurrentVersion, nil).Once()
 	s.historyQ.On("UpdateLastLedgerExpIngest", uint32(0)).Return(nil).Once()
+	s.historyQ.On("UpdateExpStateInvalid", false).Return(nil).Once()
 	s.session.On("TruncateTables", history.ExperimentalIngestionTables).Return(
 		errors.New("truncate error"),
 	).Once()
@@ -188,6 +218,7 @@ func (s *RunIngestionTestSuite) TestRunReturnsError() {
 	s.historyQ.On("GetLastLedgerExpIngest").Return(uint32(0), nil).Once()
 	s.historyQ.On("GetExpIngestVersion").Return(CurrentVersion, nil).Once()
 	s.historyQ.On("UpdateLastLedgerExpIngest", uint32(0)).Return(nil).Once()
+	s.historyQ.On("UpdateExpStateInvalid", false).Return(nil).Once()
 	s.session.On("TruncateTables", history.ExperimentalIngestionTables).Return(nil).Once()
 	s.ingestSession.On("Run").Return(errors.New("run error")).Once()
 	s.ingestSession.On("GetLatestSuccessfullyProcessedLedger").Return(uint32(3), true).Once()
@@ -201,6 +232,7 @@ func (s *RunIngestionTestSuite) TestOutdatedIngestVersion() {
 	s.historyQ.On("GetLastLedgerExpIngest").Return(uint32(3), nil).Once()
 	s.historyQ.On("GetExpIngestVersion").Return(CurrentVersion-1, nil).Once()
 	s.historyQ.On("UpdateLastLedgerExpIngest", uint32(0)).Return(nil).Once()
+	s.historyQ.On("UpdateExpStateInvalid", false).Return(nil).Once()
 	s.session.On("TruncateTables", history.ExperimentalIngestionTables).Return(nil).Once()
 	s.ingestSession.On("Run").Return(nil).Once()
 	s.historyQ.On("Rollback").Return(nil).Once()
@@ -292,10 +324,10 @@ func (s *ResumeIngestionTestSuite) SetupTest() {
 	s.attempts = 0
 	s.expectedAttempts = 0
 	s.system = &System{
-		session:   s.ingestSession,
-		dbSession: s.session,
-		historyQ:  s.historyQ,
-		graph:     s.graph,
+		session:        s.ingestSession,
+		historySession: s.session,
+		historyQ:       s.historyQ,
+		graph:          s.graph,
 	}
 }
 

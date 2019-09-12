@@ -74,7 +74,7 @@ func (s *System) verifyState() error {
 	localLog.Info("Creating state reader...")
 
 	stateReader, err := io.MakeSingleLedgerStateReader(
-		s.session.Archive,
+		s.session.GetArchive(),
 		&io.MemoryTempSet{},
 		ledgerSequence,
 	)

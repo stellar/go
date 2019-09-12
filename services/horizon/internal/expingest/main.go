@@ -4,8 +4,8 @@
 package expingest
 
 import (
-	"time"
 	"sync"
+	"time"
 
 	"github.com/stellar/go/clients/stellarcore"
 	"github.com/stellar/go/exp/ingest"
@@ -53,15 +53,18 @@ type dbQ interface {
 	GetLastLedgerExpIngest() (uint32, error)
 	GetExpIngestVersion() (int, error)
 	UpdateLastLedgerExpIngest(uint32) error
+	UpdateExpStateInvalid(bool) error
 	GetAllOffers() ([]history.Offer, error)
 }
 
 type dbSession interface {
 	TruncateTables([]string) error
+	Clone() *db.Session
 }
 
 type liveSession interface {
 	Run() error
+	GetArchive() historyarchive.ArchiveInterface
 	Resume(ledgerSequence uint32) error
 	GetLatestSuccessfullyProcessedLedger() (ledgerSequence uint32, processed bool)
 	Shutdown()
@@ -72,11 +75,11 @@ type retry interface {
 }
 
 type System struct {
-	session   liveSession
-	historyQ  dbQ
+	session        liveSession
+	historyQ       dbQ
 	historySession dbSession
-	graph     *orderbook.OrderBookGraph
-	retry     retry
+	graph          *orderbook.OrderBookGraph
+	retry          retry
 
 	// stateVerificationRunning is true when verification routine is currently
 	// running.
@@ -133,7 +136,7 @@ func NewSystem(config Config) (*System, error) {
 		historySession: config.HistorySession,
 		historyQ:       historyQ,
 		graph:          config.OrderBookGraph,
-		retry:     alwaysRetry{time.Second},
+		retry:          alwaysRetry{time.Second},
 	}
 
 	addPipelineHooks(
