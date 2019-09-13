@@ -5,7 +5,7 @@ github.com/Masterminds/squirrel v0.0.0-20161115235646-20f192218cf5
 github.com/ajg/form v0.0.0-20160822230020-523a5da1a92f
 github.com/asaskevich/govalidator v0.0.0-20180319081651-7d2e70ef918f
 github.com/aws/aws-sdk-go v1.6.11-0.20170104181648-8649d278323e
-github.com/davecgh/go-spew v0.0.0-20151105211317-5215b55f46b2
+github.com/davecgh/go-spew v1.1.0
 github.com/elazarl/go-bindata-assetfs v1.0.0
 github.com/facebookgo/ensure v0.0.0-20160127193407-b4ab57deab51
 github.com/facebookgo/inject v0.0.0-20161006174721-cc1aa653e50f
@@ -78,8 +78,8 @@ github.com/spf13/pflag v0.0.0-20161005214240-4bd69631f475
 github.com/spf13/viper v0.0.0-20150621231900-db7ff930a189
 github.com/stellar/go-xdr v0.0.0-20180917104419-0bc96f33a18e
 github.com/stellar/throttled v2.2.3-0.20190823235211-89d75816f59d+incompatible
-github.com/stretchr/objx v0.0.0-20150928122152-1a9d0bb9f541
-github.com/stretchr/testify v1.1.5-0.20160925220609-976c720a22c8
+github.com/stretchr/objx v0.1.0
+github.com/stretchr/testify v1.4.0
 github.com/tyler-smith/go-bip39 v0.0.0-20180618194314-52158e4697b8
 github.com/valyala/bytebufferpool v1.0.0
 github.com/valyala/fasthttp v0.0.0-20170109085056-0a7f0a797cd6
