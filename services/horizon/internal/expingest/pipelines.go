@@ -177,6 +177,7 @@ func postProcessingHook(
 	defer historySession.Rollback()
 	defer graph.Discard()
 	historyQ := &history.Q{historySession}
+	isMaster := false
 
 	ledgerSeq := pipeline.GetLedgerSequenceFromContext(ctx)
 
@@ -192,6 +193,8 @@ func postProcessingHook(
 	}
 
 	if tx := historySession.GetTx(); tx != nil {
+		isMaster = true
+
 		// If we're in a transaction we're updating database with new data.
 		// We get lastIngestedLedger from a DB here to do an extra check
 		// if the current node should really be updating a DB.
@@ -228,7 +231,7 @@ func postProcessingHook(
 	if system != nil && // system is defined (not in tests)...
 		!system.disableStateVerification && // state verification is not disabled...
 		pipelineType == ledgerPipeline && // it's a ledger pipeline...
-		historySession.GetTx() != nil && // it's a master ingestion node (to verify on a single node only)...
+		isMaster && // it's a master ingestion node (to verify on a single node only)...
 		historyarchive.IsCheckpoint(ledgerSeq) { // it's a checkpoint ledger.
 		go func() {
 			err := system.verifyState()
