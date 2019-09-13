@@ -360,6 +360,13 @@ var configOpts = []*support.ConfigOption{
 		Usage:       "defines where to store temporary objects during state ingestion: `memory` (default, more RAM usage, faster) or `postgres` (less RAM usage, slower)",
 	},
 	&support.ConfigOption{
+		Name:        "ingest-disable-state-verification",
+		ConfigKey:   &config.IngestDisableStateVerification,
+		OptType:     types.Bool,
+		FlagDefault: false,
+		Usage:       "experimental ingestion system runs a verification routing to compare state in local database with history buckets, this can be disabled however it's not recommended",
+	},
+	&support.ConfigOption{
 		Name:        "apply-migrations",
 		ConfigKey:   &config.ApplyMigrations,
 		OptType:     types.Bool,
