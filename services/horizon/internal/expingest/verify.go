@@ -20,6 +20,8 @@ const verifyBatchSize = 50000
 // required by state verifier. This is done to prevent situations where
 // ingestion has been updated with new features but state verifier does not
 // check them.
+// There is a test that checks it, to fix it: update the actual `verifyState`
+// method instead of just updating this value!
 const stateVerifierExpectedIngestionVersion = 3
 
 // verifyState is called as a go routine from pipeline post hook every 64
