@@ -41,9 +41,10 @@ type Config struct {
 	CoreSession    *db.Session
 	StellarCoreURL string
 
-	HistorySession    *db.Session
-	HistoryArchiveURL string
-	TempSet           io.TempSet
+	HistorySession           *db.Session
+	HistoryArchiveURL        string
+	TempSet                  io.TempSet
+	DisableStateVerification bool
 
 	OrderBookGraph *orderbook.OrderBookGraph
 }
@@ -86,6 +87,7 @@ type System struct {
 	// running.
 	stateVerificationMutex   sync.Mutex
 	stateVerificationRunning bool
+	disableStateVerification bool
 }
 
 type alwaysRetry struct {
@@ -133,11 +135,12 @@ func NewSystem(config Config) (*System, error) {
 	}
 
 	system := &System{
-		session:        session,
-		historySession: config.HistorySession,
-		historyQ:       historyQ,
-		graph:          config.OrderBookGraph,
-		retry:          alwaysRetry{time.Second},
+		session:                  session,
+		historySession:           config.HistorySession,
+		historyQ:                 historyQ,
+		graph:                    config.OrderBookGraph,
+		retry:                    alwaysRetry{time.Second},
+		disableStateVerification: config.DisableStateVerification,
 	}
 
 	addPipelineHooks(

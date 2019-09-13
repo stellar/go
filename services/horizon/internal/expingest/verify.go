@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"time"
 
+	"github.com/stellar/go/exp/ingest/adapters"
 	"github.com/stellar/go/exp/ingest/io"
 	"github.com/stellar/go/exp/ingest/verify"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
@@ -14,6 +15,14 @@ import (
 )
 
 const verifyBatchSize = 50000
+
+// stateVerifierExpectedIngestionVersion defines a version of ingestion system
+// required by state verifier. This is done to prevent situations where
+// ingestion has been updated with new features but state verifier does not
+// check them.
+// There is a test that checks it, to fix it: update the actual `verifyState`
+// method instead of just updating this value!
+const stateVerifierExpectedIngestionVersion = 3
 
 // verifyState is called as a go routine from pipeline post hook every 64
 // ledgers. It checks if the state is correct. If another go routine is already
@@ -27,6 +36,15 @@ func (s *System) verifyState() error {
 	}
 	s.stateVerificationRunning = true
 	s.stateVerificationMutex.Unlock()
+
+	if stateVerifierExpectedIngestionVersion != CurrentVersion {
+		log.Errorf(
+			"State verification expected version is %d but actual is: %d",
+			stateVerifierExpectedIngestionVersion,
+			CurrentVersion,
+		)
+		return nil
+	}
 
 	startTime := time.Now()
 	session := s.historySession.Clone()
@@ -63,6 +81,21 @@ func (s *System) verifyState() error {
 
 	if !historyarchive.IsCheckpoint(ledgerSequence) {
 		localLog.Info("Current ledger is not a checkpoint ledger. Cancelling...")
+		return nil
+	}
+
+	// Get root HAS to check if we're checking one of the latest ledgers or
+	// Horizon is catching up. It doesn't make sense to verify old ledgers as
+	// we want to check the latest state.
+	archive := s.session.GetArchive()
+	historyAdapter := adapters.MakeHistoryArchiveAdapter(archive)
+	historyLatestSequence, err := historyAdapter.GetLatestLedgerSequence()
+	if err != nil {
+		return errors.Wrap(err, "Error getting the latest ledger sequence")
+	}
+
+	if ledgerSequence < historyLatestSequence {
+		localLog.Info("Current ledger is old. Cancelling...")
 		return nil
 	}
 

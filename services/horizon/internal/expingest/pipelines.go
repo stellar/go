@@ -177,6 +177,7 @@ func postProcessingHook(
 	defer historySession.Rollback()
 	defer graph.Discard()
 	historyQ := &history.Q{historySession}
+	isMaster := false
 
 	ledgerSeq := pipeline.GetLedgerSequenceFromContext(ctx)
 
@@ -192,6 +193,8 @@ func postProcessingHook(
 	}
 
 	if tx := historySession.GetTx(); tx != nil {
+		isMaster = true
+
 		// If we're in a transaction we're updating database with new data.
 		// We get lastIngestedLedger from a DB here to do an extra check
 		// if the current node should really be updating a DB.
@@ -224,8 +227,12 @@ func postProcessingHook(
 		return errors.Wrap(err, "Error applying order book changes")
 	}
 
-	if system != nil && pipelineType == ledgerPipeline && historyarchive.IsCheckpoint(ledgerSeq) {
-		// Run verification routine
+	// Run verification routine only when...
+	if system != nil && // system is defined (not in tests)...
+		!system.disableStateVerification && // state verification is not disabled...
+		pipelineType == ledgerPipeline && // it's a ledger pipeline...
+		isMaster && // it's a master ingestion node (to verify on a single node only)...
+		historyarchive.IsCheckpoint(ledgerSeq) { // it's a checkpoint ledger.
 		go func() {
 			err := system.verifyState()
 			if err != nil {
