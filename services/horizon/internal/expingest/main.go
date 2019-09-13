@@ -4,6 +4,7 @@
 package expingest
 
 import (
+	"runtime/debug"
 	"sync"
 	"time"
 
@@ -187,6 +188,18 @@ func NewSystem(config Config) (*System, error) {
 //   * If instances is a NOT leader, it runs ledger pipeline without updating a
 //     a database so order book graph is updated but database is not overwritten.
 func (s *System) Run() {
+	// Expingest is an experimental package so we don't want entire Horizon app
+	// to crash in case of unexpected errors.
+	// TODO: This should be removed when expingest is no longer experimental.
+	defer func() {
+		if r := recover(); r != nil {
+			log.WithFields(ilog.F{
+				"err":   r,
+				"stack": string(debug.Stack()),
+			}).Error("expingest panic")
+		}
+	}()
+
 	// retryOnError loop is needed only in case of initial state sync errors.
 	// If the state is successfully ingested `resumeFromLedger` method continues
 	// processing ledgers.
