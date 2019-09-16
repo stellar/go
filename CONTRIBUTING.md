@@ -24,3 +24,8 @@ Check out the [Stellar Contribution Guide](https://github.com/stellar/docs/blob/
 
 * Use `gofmt` or preferably `goimports` to format code
 * Follow [Effective Go](https://golang.org/doc/effective_go.html) and [Go Code Review Comments](https://github.com/golang/go/wiki/CodeReviewComments)
+
+### Go Coding conventions
+
+- Always document exported package elements: vars, consts, funcs, types, etc.
+- Tests are better than no tests.

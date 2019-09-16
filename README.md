@@ -65,8 +65,6 @@ Generally, file contents are sorted by exported/unexported, then declaration typ
 
 Often, we provide test packages that aid in the creation of tests that interact with our other packages.  For example, the `support/db` package has the `support/db/dbtest` package underneath it that contains elements that make it easier to test code that accesses a SQL database.  We've found that this pattern of having a separate test package maximizes flexibility and simplifies package dependencies.
 
+### Contributing
 
-## Coding conventions
-
-- Always document exported package elements: vars, consts, funcs, types, etc.
-- Tests are better than no tests.
+Contributions are welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for more details.
