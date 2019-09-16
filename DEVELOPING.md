@@ -24,9 +24,7 @@ Note: If you're using Go 1.12 and you checkout to a path inside your `GOPATH` yo
 
 ## Installing dependencies
 
-Dependencies are managed using [Modules](https://github.com/golang/go/wiki/Modules) and will be installed as they are required by the Go tool.
-
-Go module dependencies for the packages you are building will be installed automatically when running any Go command that requires them. If you need to pre-download all dependencies for the repository for offline development, run `go mod download`.
+Dependencies are managed using [Modules](https://github.com/golang/go/wiki/Modules). Dependencies for the packages you are building will be installed automatically when running any Go command that requires them. If you need to pre-download all dependencies for the repository for offline development, run `go mod download`.
 
 See [Dependency management](#dependency-management) for more details.
 
