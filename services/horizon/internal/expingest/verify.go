@@ -99,10 +99,10 @@ func (s *System) verifyState() error {
 		return nil
 	}
 
-	localLog.Info("Starting state verification. Waiting 20 seconds for stellar-core to publish HAS...")
+	localLog.Info("Starting state verification. Waiting 40 seconds for stellar-core to publish HAS...")
 
 	// Wait for stellar-core to publish HAS
-	time.Sleep(20 * time.Second)
+	time.Sleep(40 * time.Second)
 
 	localLog.Info("Creating state reader...")
 
