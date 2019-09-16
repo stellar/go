@@ -2,6 +2,8 @@
 
 Welcome to the Stellar Go monorepo. These instructions help launch 🚀 you into making and testing code changes to this repository. If you're aiming to submit a contribution make sure to also read the [contributing guidelines](CONTRIBUTING.md).
 
+For details about what's in this repository and how it is organized read the [README.md](README.md).
+
 ## Requirements
 To checkout, build, and run most tests these tools are required:
 - Git
