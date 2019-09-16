@@ -24,7 +24,11 @@ Note: If you're using Go 1.12 and you checkout to a path inside your `GOPATH` yo
 
 ## Installing dependencies
 
-Dependencies are managed using [Modules](https://github.com/golang/go/wiki/Modules) and will be installed as they are required by the Go tool. See [below](#dependency-management) for more details.
+Dependencies are managed using [Modules](https://github.com/golang/go/wiki/Modules) and will be installed as they are required by the Go tool.
+
+Go module dependencies for the packages you are building will be installed automatically when running any Go command that requires them. If you need to pre-download all dependencies for the repository for offline development, run `go mod download`.
+
+See [Dependency management](#dependency-management) for more details.
 
 ## Running tests
 
@@ -48,8 +52,6 @@ Dependencies are managed using [Modules](https://github.com/golang/go/wiki/Modul
 - [go.mod](go.mod): Contains a list of direct dependencies, and some indirect dependencies (see [why](https://github.com/golang/go/wiki/Modules#why-does-go-mod-tidy-record-indirect-and-test-dependencies-in-my-gomod)).
 - [go.sum](go.sum): Contains hashes for dependencies that are used for verifying downloaded dependencies.
 - [go.list](go.list): A file that is unique to this Go repository, containing the output of `go list -m all`, and captures all direct and indirect dependencies and their versions used in builds and tests within this repository. This is not a lock file but instead it helps us track over time which versions are being used for builds and tests, and to see when that changes in PR diffs.
-
-Go module dependencies for the packages you are building will be installed automatically when running any Go command that requires them. If you need to pre-download all dependencies for the repository for offline development, run `go mod download`.
 
 ### Adding new dependencies
 
