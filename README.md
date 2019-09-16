@@ -68,3 +68,7 @@ Often, we provide test packages that aid in the creation of tests that interact 
 ### Contributing
 
 Contributions are welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for more details.
+
+### Developing
+
+See [DEVELOPING.md](DEVELOPING.md) for helpful instructions for getting started developing code in this repository.
