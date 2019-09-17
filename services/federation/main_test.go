@@ -3,6 +3,7 @@ package main
 import (
 	"testing"
 
+	"github.com/stellar/go/support/db/dbtest"
 	"github.com/stellar/go/support/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -13,10 +14,11 @@ func TestInitDriver_dialect(t *testing.T) {
 
 	testCases := []struct {
 		dbType  string
+		dbDSN   string
 		wantErr error
 	}{
 		{dbType: "", wantErr: errors.New("Invalid db type: ")},
-		{dbType: "postgres", wantErr: nil},
+		{dbType: "postgres", dbDSN: dbtest.Postgres(t).DSN, wantErr: nil},
 		{dbType: "mysql", wantErr: errors.New("Invalid db type: mysql, mysql support is discontinued")},
 		{dbType: "bogus", wantErr: errors.New("Invalid db type: bogus")},
 	}
@@ -24,6 +26,7 @@ func TestInitDriver_dialect(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.dbType, func(t *testing.T) {
 			c.Database.Type = tc.dbType
+			c.Database.DSN = tc.dbDSN
 			_, err := initDriver(c)
 			if tc.wantErr == nil {
 				require.Nil(t, err)
