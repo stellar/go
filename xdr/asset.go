@@ -17,6 +17,13 @@ var AssetTypeToString = map[AssetType]string{
 	AssetTypeAssetTypeCreditAlphanum12: "credit_alphanum12",
 }
 
+// StringToAssetType maps an strings to its xdr.AssetType representation
+var StringToAssetType = map[string]AssetType{
+	"native":            AssetTypeAssetTypeNative,
+	"credit_alphanum4":  AssetTypeAssetTypeCreditAlphanum4,
+	"credit_alphanum12": AssetTypeAssetTypeCreditAlphanum12,
+}
+
 // MustNewNativeAsset returns a new native asset, panicking if it can't.
 func MustNewNativeAsset() Asset {
 	a := Asset{}
@@ -37,6 +44,39 @@ func MustNewCreditAsset(code string, issuer string) Asset {
 		panic(err)
 	}
 	return a
+}
+
+// BuildAsset creates a new asset from a given `assetType`, `code`, and `issuer`.
+//
+// Valid assetTypes are:
+// 		- `native`
+//		- `credit_alphanum4`
+//		- `credit_alphanum12`
+func BuildAsset(assetType, issuer, code string) (Asset, error) {
+	t, ok := StringToAssetType[assetType]
+
+	if !ok {
+		return Asset{}, errors.New("invalid asset type: was not one of 'native', 'credit_alphanum4', 'credit_alphanum12'")
+	}
+
+	var asset Asset
+	switch t {
+	case AssetTypeAssetTypeNative:
+		if err := asset.SetNative(); err != nil {
+			return Asset{}, err
+		}
+	default:
+		issuerAccountID := AccountId{}
+		if err := issuerAccountID.SetAddress(issuer); err != nil {
+			return Asset{}, err
+		}
+
+		if err := asset.SetCredit(code, issuerAccountID); err != nil {
+			return Asset{}, err
+		}
+	}
+
+	return asset, nil
 }
 
 // SetCredit overwrites `a` with a credit asset using `code` and `issuer`.  The
