@@ -2,11 +2,14 @@ package actions
 
 import (
 	"context"
+	"encoding/hex"
 	"fmt"
 	"mime"
 	"net/http"
 	"net/url"
 	"strconv"
+	"strings"
+	"unicode"
 	"unicode/utf8"
 
 	"github.com/go-chi/chi"
@@ -44,6 +47,7 @@ const (
 	// RequiredParam is used in Get* methods and defines a required parameter
 	// (errors if value is empty).
 	RequiredParam
+	maxAssetCodeLength = 12
 )
 
 // GetCursor retrieves a string from either the URLParams, form or query string.
@@ -362,6 +366,23 @@ func (base *Base) GetAddress(name string, opts ...Opt) (result string) {
 	return result
 }
 
+func accountIDFromString(value string) (xdr.AccountId, error) {
+	raw, err := strkey.Decode(strkey.VersionByteAccountID, value)
+	if err != nil {
+		return xdr.AccountId{}, errors.New("invalid address")
+	}
+
+	var key xdr.Uint256
+	copy(key[:], raw)
+
+	result, err := xdr.NewAccountId(xdr.PublicKeyTypePublicKeyTypeEd25519, key)
+	if err != nil {
+		return xdr.AccountId{}, errors.New("invalid address")
+	}
+
+	return result, nil
+}
+
 // GetAccountID retireves an xdr.AccountID by attempting to decode a stellar
 // address at the provided name.
 func GetAccountID(r *http.Request, name string) (xdr.AccountId, error) {
@@ -369,18 +390,8 @@ func GetAccountID(r *http.Request, name string) (xdr.AccountId, error) {
 	if err != nil {
 		return xdr.AccountId{}, err
 	}
-	raw, err := strkey.Decode(strkey.VersionByteAccountID, value)
-	if err != nil {
-		return xdr.AccountId{}, problem.MakeInvalidFieldProblem(
-			name,
-			errors.New("invalid address"),
-		)
-	}
 
-	var key xdr.Uint256
-	copy(key[:], raw)
-
-	result, err := xdr.NewAccountId(xdr.PublicKeyTypePublicKeyTypeEd25519, key)
+	result, err := accountIDFromString(value)
 	if err != nil {
 		return xdr.AccountId{}, problem.MakeInvalidFieldProblem(
 			name,
@@ -522,6 +533,120 @@ func (base *Base) GetAsset(prefix string) (result xdr.Asset) {
 
 	result, base.Err = GetAsset(base.R, prefix)
 	return result
+}
+
+func parseAssetCode(code string) ([]byte, error) {
+	// "Code" must consist of printable ASCII characters (octets 0x21 through 0x7e).
+	// The sequence \x introduces a hex escape sequence, e.g., \x00 to introduce a 0-valued byte.
+	// Otherwise, \ escapes the next character, so \\ is required to introduce a backslash
+	// https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0011.md
+	for _, r := range code {
+		if r > unicode.MaxASCII {
+			return nil, errors.New("code contains non ascii characters")
+		}
+		if !unicode.IsPrint(r) {
+			return nil, errors.New("code contains non printable characters")
+		}
+	}
+
+	var parsed []byte
+	codeBytes := []byte(code)
+
+	for i := 0; i < len(codeBytes); {
+		if codeBytes[i] == '\\' {
+			if i+1 >= len(code) {
+				return nil, errors.New("code ends with unescaped backslash")
+			}
+			switch code[i+1] {
+			case '\\':
+				parsed = append(parsed, '\\')
+				i += 2
+				continue
+			case 'x':
+				if i+3 >= len(code) {
+					return nil, errors.New("code ends with a hex escape sequence which is too short")
+				}
+				parsed = append(parsed, 0)
+				if _, err := hex.Decode(parsed[len(parsed)-1:], codeBytes[i+2:i+4]); err != nil {
+					return nil, errors.New("code contains invalid hex escape")
+				}
+				i += 4
+				continue
+			default:
+				return nil, errors.New("code contains invalid escape sequence")
+			}
+		}
+
+		parsed = append(parsed, codeBytes[i])
+		i++
+	}
+
+	return parsed, nil
+}
+
+// GetAssets parses a list of assets from a given request.
+// The request parameter is expected to be a comma separated list of assets
+// encoded in the format (Code:Issuer or "native") defined by SEP-0011
+// https://github.com/stellar/stellar-protocol/pull/313
+// If there is no request parameter present GetAssets will return an empty list of assets
+func GetAssets(r *http.Request, name string) ([]xdr.Asset, error) {
+	s, err := GetString(r, name)
+	if err != nil {
+		return nil, err
+	}
+
+	var assets []xdr.Asset
+	if s == "" {
+		return assets, nil
+	}
+
+	assetStrings := strings.Split(s, ",")
+	for _, assetString := range assetStrings {
+		var asset xdr.Asset
+
+		// Technically https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0011.md allows
+		// any string up to 12 characters not containing an unescaped colon to represent XLM
+		// however, this function only accepts the string "native" to reprsent XLM
+		if strings.ToLower(assetString) == "native" {
+			if err := asset.SetNative(); err != nil {
+				return nil, err
+			}
+		} else {
+			parts := strings.Split(assetString, ":")
+			if len(parts) != 2 {
+				return nil, problem.MakeInvalidFieldProblem(
+					name,
+					fmt.Errorf("%s is not a valid asset", assetString),
+				)
+			}
+			code, err := parseAssetCode(parts[0])
+			if err != nil {
+				return nil, problem.MakeInvalidFieldProblem(
+					name,
+					fmt.Errorf("%s is not a valid asset, it contains an invalid asset code", assetString),
+				)
+			}
+
+			issuer, err := accountIDFromString(parts[1])
+			if err != nil {
+				return nil, problem.MakeInvalidFieldProblem(
+					name,
+					fmt.Errorf("%s is not a valid asset, it contains an invalid issuer", assetString),
+				)
+			}
+
+			if err := asset.SetCredit(string(code), issuer); err != nil {
+				return nil, problem.MakeInvalidFieldProblem(
+					name,
+					fmt.Errorf("%s is not a valid asset", assetString),
+				)
+			}
+		}
+
+		assets = append(assets, asset)
+	}
+
+	return assets, nil
 }
 
 // MaybeGetAsset decodes an asset from the request fields as GetAsset does, but

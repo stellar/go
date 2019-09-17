@@ -780,7 +780,7 @@ func TestConsumeOffersForSellingAsset(t *testing.T) {
 	for _, testCase := range []struct {
 		name               string
 		offers             []xdr.OfferEntry
-		ignoreOffersFrom   xdr.AccountId
+		ignoreOffersFrom   *xdr.AccountId
 		currentAssetAmount xdr.Int64
 		result             xdr.Int64
 		err                error
@@ -788,7 +788,7 @@ func TestConsumeOffersForSellingAsset(t *testing.T) {
 		{
 			"offers must not be empty",
 			[]xdr.OfferEntry{},
-			issuer,
+			&issuer,
 			100,
 			0,
 			errEmptyOffers,
@@ -796,7 +796,7 @@ func TestConsumeOffersForSellingAsset(t *testing.T) {
 		{
 			"currentAssetAmount must be positive",
 			[]xdr.OfferEntry{eurOffer},
-			ignoreOffersFrom,
+			&ignoreOffersFrom,
 			0,
 			0,
 			errAssetAmountIsZero,
@@ -804,7 +804,7 @@ func TestConsumeOffersForSellingAsset(t *testing.T) {
 		{
 			"ignore all offers",
 			[]xdr.OfferEntry{eurOffer},
-			issuer,
+			&issuer,
 			1,
 			-1,
 			nil,
@@ -812,7 +812,7 @@ func TestConsumeOffersForSellingAsset(t *testing.T) {
 		{
 			"offer denominator cannot be zero",
 			[]xdr.OfferEntry{denominatorZeroOffer},
-			ignoreOffersFrom,
+			&ignoreOffersFrom,
 			10000,
 			0,
 			price.ErrDivisionByZero,
@@ -820,7 +820,7 @@ func TestConsumeOffersForSellingAsset(t *testing.T) {
 		{
 			"ignore some offers",
 			[]xdr.OfferEntry{eurOffer, otherSellerTwoEurOffer},
-			issuer,
+			&issuer,
 			100,
 			200,
 			nil,
@@ -828,7 +828,7 @@ func TestConsumeOffersForSellingAsset(t *testing.T) {
 		{
 			"ignore overflow offers",
 			[]xdr.OfferEntry{overflowOffer},
-			ignoreOffersFrom,
+			nil,
 			math.MaxInt64,
 			-1,
 			nil,
@@ -836,7 +836,7 @@ func TestConsumeOffersForSellingAsset(t *testing.T) {
 		{
 			"not enough offers to consume",
 			[]xdr.OfferEntry{eurOffer, twoEurOffer},
-			ignoreOffersFrom,
+			nil,
 			1001,
 			-1,
 			nil,
@@ -844,7 +844,7 @@ func TestConsumeOffersForSellingAsset(t *testing.T) {
 		{
 			"consume all offers",
 			[]xdr.OfferEntry{eurOffer, twoEurOffer, threeEurOffer},
-			ignoreOffersFrom,
+			nil,
 			1500,
 			3000,
 			nil,
@@ -852,7 +852,7 @@ func TestConsumeOffersForSellingAsset(t *testing.T) {
 		{
 			"consume offer partially",
 			[]xdr.OfferEntry{eurOffer, twoEurOffer},
-			ignoreOffersFrom,
+			nil,
 			2,
 			2,
 			nil,
@@ -860,7 +860,7 @@ func TestConsumeOffersForSellingAsset(t *testing.T) {
 		{
 			"round up",
 			[]xdr.OfferEntry{quarterOffer},
-			ignoreOffersFrom,
+			nil,
 			5,
 			2,
 			nil,
@@ -904,7 +904,6 @@ func TestConsumeOffersForBuyingAsset(t *testing.T) {
 	for _, testCase := range []struct {
 		name               string
 		offers             []xdr.OfferEntry
-		ignoreOffersFrom   *xdr.AccountId
 		currentAssetAmount xdr.Int64
 		result             xdr.Int64
 		err                error
@@ -912,7 +911,6 @@ func TestConsumeOffersForBuyingAsset(t *testing.T) {
 		{
 			"offers must not be empty",
 			[]xdr.OfferEntry{},
-			&issuer,
 			100,
 			0,
 			errEmptyOffers,
@@ -920,39 +918,20 @@ func TestConsumeOffersForBuyingAsset(t *testing.T) {
 		{
 			"currentAssetAmount must be positive",
 			[]xdr.OfferEntry{eurOffer},
-			&ignoreOffersFrom,
 			0,
 			0,
 			errAssetAmountIsZero,
 		},
 		{
-			"ignore all offers",
-			[]xdr.OfferEntry{eurOffer},
-			&issuer,
-			1,
-			-1,
-			nil,
-		},
-		{
 			"offer denominator cannot be zero",
 			[]xdr.OfferEntry{denominatorZeroOffer},
-			&ignoreOffersFrom,
 			10000,
 			0,
 			price.ErrDivisionByZero,
 		},
 		{
-			"ignore some offers",
-			[]xdr.OfferEntry{eurOffer, otherSellerTwoEurOffer},
-			&issuer,
-			100,
-			50,
-			nil,
-		},
-		{
 			"not enough offers to consume",
 			[]xdr.OfferEntry{eurOffer, twoEurOffer},
-			nil,
 			1502,
 			-1,
 			nil,
@@ -960,7 +939,6 @@ func TestConsumeOffersForBuyingAsset(t *testing.T) {
 		{
 			"ignore overflow offers",
 			[]xdr.OfferEntry{overflowOffer},
-			nil,
 			math.MaxInt64,
 			-1,
 			nil,
@@ -968,7 +946,6 @@ func TestConsumeOffersForBuyingAsset(t *testing.T) {
 		{
 			"consume all offers",
 			[]xdr.OfferEntry{eurOffer, twoEurOffer, threeEurOffer},
-			&ignoreOffersFrom,
 			3000,
 			1500,
 			nil,
@@ -976,7 +953,6 @@ func TestConsumeOffersForBuyingAsset(t *testing.T) {
 		{
 			"consume offer partially",
 			[]xdr.OfferEntry{eurOffer, twoEurOffer},
-			nil,
 			2,
 			2,
 			nil,
@@ -984,7 +960,6 @@ func TestConsumeOffersForBuyingAsset(t *testing.T) {
 		{
 			"round down",
 			[]xdr.OfferEntry{eurOffer, twoEurOffer},
-			nil,
 			1501,
 			1000,
 			nil,
@@ -993,7 +968,6 @@ func TestConsumeOffersForBuyingAsset(t *testing.T) {
 		t.Run(testCase.name, func(t *testing.T) {
 			result, err := consumeOffersForBuyingAsset(
 				testCase.offers,
-				testCase.ignoreOffersFrom,
 				testCase.currentAssetAmount,
 			)
 			if err != testCase.err {
@@ -1311,7 +1285,28 @@ func TestFindPaths(t *testing.T) {
 		3,
 		nativeAsset,
 		20,
-		ignoreOffersFrom,
+		&ignoreOffersFrom,
+		[]xdr.Asset{
+			yenAsset,
+			usdAsset,
+		},
+		[]xdr.Int64{
+			0,
+			0,
+		},
+		true,
+		5,
+	)
+	if err != nil {
+		t.Fatalf("unexpected error %v", err)
+	}
+	assertPathEquals(t, paths, []Path{})
+
+	paths, err = graph.FindPaths(
+		3,
+		nativeAsset,
+		20,
+		&ignoreOffersFrom,
 		[]xdr.Asset{
 			yenAsset,
 			usdAsset,
@@ -1320,6 +1315,7 @@ func TestFindPaths(t *testing.T) {
 			100000,
 			60000,
 		},
+		true,
 		5,
 	)
 	if err != nil {
@@ -1358,10 +1354,31 @@ func TestFindPaths(t *testing.T) {
 	assertPathEquals(t, paths, expectedPaths)
 
 	paths, err = graph.FindPaths(
+		3,
+		nativeAsset,
+		20,
+		&ignoreOffersFrom,
+		[]xdr.Asset{
+			yenAsset,
+			usdAsset,
+		},
+		[]xdr.Int64{
+			0,
+			0,
+		},
+		false,
+		5,
+	)
+	if err != nil {
+		t.Fatalf("unexpected error %v", err)
+	}
+	assertPathEquals(t, paths, expectedPaths)
+
+	paths, err = graph.FindPaths(
 		4,
 		nativeAsset,
 		20,
-		ignoreOffersFrom,
+		&ignoreOffersFrom,
 		[]xdr.Asset{
 			yenAsset,
 			usdAsset,
@@ -1370,6 +1387,70 @@ func TestFindPaths(t *testing.T) {
 			100000,
 			60000,
 		},
+		true,
+		5,
+	)
+
+	expectedPaths = []Path{
+		Path{
+			SourceAmount:      5,
+			SourceAsset:       usdAsset,
+			InteriorNodes:     []xdr.Asset{},
+			DestinationAsset:  nativeAsset,
+			DestinationAmount: 20,
+		},
+		Path{
+			SourceAmount: 7,
+			SourceAsset:  usdAsset,
+			InteriorNodes: []xdr.Asset{
+				eurAsset,
+			},
+			DestinationAsset:  nativeAsset,
+			DestinationAmount: 20,
+		},
+		Path{
+			SourceAmount: 2,
+			SourceAsset:  yenAsset,
+			InteriorNodes: []xdr.Asset{
+				usdAsset,
+				eurAsset,
+				chfAsset,
+			},
+			DestinationAsset:  nativeAsset,
+			DestinationAmount: 20,
+		},
+		Path{
+			SourceAmount: 5,
+			SourceAsset:  yenAsset,
+			InteriorNodes: []xdr.Asset{
+				eurAsset,
+				chfAsset,
+			},
+			DestinationAsset:  nativeAsset,
+			DestinationAmount: 20,
+		},
+	}
+
+	if err != nil {
+		t.Fatalf("unexpected error %v", err)
+	}
+
+	assertPathEquals(t, paths, expectedPaths)
+
+	paths, err = graph.FindPaths(
+		4,
+		nativeAsset,
+		20,
+		&ignoreOffersFrom,
+		[]xdr.Asset{
+			yenAsset,
+			usdAsset,
+		},
+		[]xdr.Int64{
+			100000,
+			60000,
+		},
+		true,
 		5,
 	)
 
@@ -1505,15 +1586,8 @@ func TestFindPathsStartingAt(t *testing.T) {
 		t.Fatalf("unexpected error %v", err)
 	}
 
-	kp, err := keypair.Random()
-	if err != nil {
-		t.Fatalf("unexpected error %v", err)
-	}
-	ignoreOffersFrom := xdr.MustAddress(kp.Address())
-
 	paths, err := graph.FindFixedPaths(
 		3,
-		&ignoreOffersFrom,
 		usdAsset,
 		5,
 		[]xdr.Asset{nativeAsset},
@@ -1546,7 +1620,6 @@ func TestFindPathsStartingAt(t *testing.T) {
 
 	paths, err = graph.FindFixedPaths(
 		2,
-		nil,
 		yenAsset,
 		5,
 		[]xdr.Asset{nativeAsset},
@@ -1562,7 +1635,6 @@ func TestFindPathsStartingAt(t *testing.T) {
 
 	paths, err = graph.FindFixedPaths(
 		3,
-		nil,
 		yenAsset,
 		5,
 		[]xdr.Asset{nativeAsset},
@@ -1589,7 +1661,6 @@ func TestFindPathsStartingAt(t *testing.T) {
 
 	paths, err = graph.FindFixedPaths(
 		5,
-		nil,
 		yenAsset,
 		5,
 		[]xdr.Asset{nativeAsset},
@@ -1627,7 +1698,6 @@ func TestFindPathsStartingAt(t *testing.T) {
 
 	paths, err = graph.FindFixedPaths(
 		5,
-		nil,
 		yenAsset,
 		5,
 		[]xdr.Asset{nativeAsset, usdAsset},

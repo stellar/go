@@ -251,13 +251,15 @@ func (w *web) mustInstallActions(config Config, pathFinder paths.Finder) {
 		staleThreshold:      config.StaleThreshold,
 		checkHistoryIsStale: !config.EnableExperimentalIngestion,
 		maxPathLength:       config.MaxPathLength,
+		maxAssetsLength:     maxAssetsForPathFinding,
 		pathFinder:          pathFinder,
 		coreQ:               w.coreQ,
 	}
 	findFixedPaths := FindFixedPathsHandler{
-		maxPathLength: config.MaxPathLength,
-		pathFinder:    pathFinder,
-		coreQ:         w.coreQ,
+		maxPathLength:   config.MaxPathLength,
+		maxAssetsLength: maxAssetsForPathFinding,
+		pathFinder:      pathFinder,
+		coreQ:           w.coreQ,
 	}
 	installPathFindingRoutes(findPaths, findFixedPaths, w.router, config.EnableExperimentalIngestion)
 

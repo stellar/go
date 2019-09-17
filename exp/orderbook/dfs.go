@@ -130,8 +130,9 @@ type sellingGraphSearchState struct {
 	graph                  *OrderBookGraph
 	destinationAsset       xdr.Asset
 	destinationAssetAmount xdr.Int64
-	ignoreOffersFrom       xdr.AccountId
+	ignoreOffersFrom       *xdr.AccountId
 	targetAssets           map[string]xdr.Int64
+	validateSourceBalance  bool
 	paths                  []Path
 }
 
@@ -140,7 +141,7 @@ func (state *sellingGraphSearchState) isTerminalNode(
 	currentAssetAmount xdr.Int64,
 ) bool {
 	targetAssetBalance, ok := state.targetAssets[currentAsset]
-	return ok && targetAssetBalance >= currentAssetAmount
+	return ok && (!state.validateSourceBalance || targetAssetBalance >= currentAssetAmount)
 }
 
 func (state *sellingGraphSearchState) appendToPaths(
@@ -199,7 +200,6 @@ type buyingGraphSearchState struct {
 	graph             *OrderBookGraph
 	sourceAsset       xdr.Asset
 	sourceAssetAmount xdr.Int64
-	ignoreOffersFrom  *xdr.AccountId
 	targetAssets      map[string]bool
 	paths             []Path
 }
@@ -244,7 +244,7 @@ func (state *buyingGraphSearchState) consumeOffers(
 	offers []xdr.OfferEntry,
 ) (xdr.Asset, xdr.Int64, error) {
 	var nextAsset xdr.Asset
-	nextAmount, err := consumeOffersForBuyingAsset(offers, state.ignoreOffersFrom, currentAssetAmount)
+	nextAmount, err := consumeOffersForBuyingAsset(offers, currentAssetAmount)
 	if err == nil {
 		nextAsset = offers[0].Selling
 	}
@@ -254,7 +254,7 @@ func (state *buyingGraphSearchState) consumeOffers(
 
 func consumeOffersForSellingAsset(
 	offers []xdr.OfferEntry,
-	ignoreOffersFrom xdr.AccountId,
+	ignoreOffersFrom *xdr.AccountId,
 	currentAssetAmount xdr.Int64,
 ) (xdr.Int64, error) {
 	totalConsumed := xdr.Int64(0)
@@ -268,7 +268,7 @@ func consumeOffersForSellingAsset(
 	}
 
 	for _, offer := range offers {
-		if offer.SellerId.Equals(ignoreOffersFrom) {
+		if ignoreOffersFrom != nil && ignoreOffersFrom.Equals(offer.SellerId) {
 			continue
 		}
 
@@ -299,7 +299,6 @@ func consumeOffersForSellingAsset(
 
 func consumeOffersForBuyingAsset(
 	offers []xdr.OfferEntry,
-	ignoreOffersFrom *xdr.AccountId,
 	currentAssetAmount xdr.Int64,
 ) (xdr.Int64, error) {
 	totalConsumed := xdr.Int64(0)
@@ -313,10 +312,6 @@ func consumeOffersForBuyingAsset(
 	}
 
 	for _, offer := range offers {
-		if ignoreOffersFrom != nil && ignoreOffersFrom.Equals(offer.SellerId) {
-			continue
-		}
-
 		n := int64(offer.Price.N)
 		d := int64(offer.Price.D)
 

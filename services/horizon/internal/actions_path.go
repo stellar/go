@@ -2,6 +2,7 @@ package horizon
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 
 	"github.com/stellar/go/protocols/horizon"
@@ -13,10 +14,15 @@ import (
 	horizonProblem "github.com/stellar/go/services/horizon/internal/render/problem"
 	"github.com/stellar/go/services/horizon/internal/resourceadapter"
 	"github.com/stellar/go/services/horizon/internal/simplepath"
+	"github.com/stellar/go/support/log"
 	"github.com/stellar/go/support/render/hal"
 	"github.com/stellar/go/support/render/httpjson"
 	"github.com/stellar/go/support/render/problem"
 	"github.com/stellar/go/xdr"
+)
+
+const (
+	maxAssetsForPathFinding = 15
 )
 
 // FindPathsHandler is the http handler for the find payment paths endpoint
@@ -24,8 +30,17 @@ type FindPathsHandler struct {
 	staleThreshold      uint
 	maxPathLength       uint
 	checkHistoryIsStale bool
+	maxAssetsLength     int
 	pathFinder          paths.Finder
 	coreQ               *core.Q
+}
+
+var sourceAssetsOrSourceAccount = problem.P{
+	Type:   "bad_request",
+	Title:  "Bad Request",
+	Status: http.StatusBadRequest,
+	Detail: "The request requires either a list of source assets or a source account. " +
+		"Both fields cannot be present.",
 }
 
 // ServeHTTP implements the http.Handler interface
@@ -50,24 +65,58 @@ func (handler FindPathsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	var sourceAccount string
-	if sourceAccount, err = getAccountID(r, "source_account", true); err != nil {
+	sourceAccount, err := getAccountID(r, "source_account", false)
+	if err != nil {
 		problem.Render(ctx, w, err)
 		return
 	}
-	query.SourceAccount = xdr.MustAddress(sourceAccount)
+
+	query.SourceAssets, err = actions.GetAssets(r, "source_assets")
+	if err != nil {
+		problem.Render(ctx, w, err)
+		return
+	}
+
+	if (len(query.SourceAssets) > 0) == (len(sourceAccount) > 0) {
+		problem.Render(ctx, w, sourceAssetsOrSourceAccount)
+		return
+	}
+
+	if len(query.SourceAssets) > handler.maxAssetsLength {
+		p := problem.MakeInvalidFieldProblem(
+			"source_assets",
+			fmt.Errorf("list of assets exceeds maximum length of %v", handler.maxPathLength),
+		)
+		problem.Render(ctx, w, p)
+		return
+	}
 
 	if query.DestinationAsset, err = actions.GetAsset(r, "destination_"); err != nil {
 		problem.Render(ctx, w, err)
 		return
 	}
 
-	query.SourceAssets, query.SourceAssetBalances, err = handler.coreQ.AssetsForAddress(
-		query.SourceAccount.Address(),
-	)
-	if err != nil {
-		problem.Render(ctx, w, err)
-		return
+	if sourceAccount != "" {
+		sourceAccount := xdr.MustAddress(sourceAccount)
+		query.SourceAccount = &sourceAccount
+		query.ValidateSourceBalance = true
+		query.SourceAssets, query.SourceAssetBalances, err = handler.coreQ.AssetsForAddress(
+			query.SourceAccount.Address(),
+		)
+		if err != nil {
+			problem.Render(ctx, w, err)
+			return
+		}
+		// log how many assets are associated with a source account so we can determine
+		// the best limit for `maxAssetsLength`
+		log.WithFields(log.F{
+			"sourceAccount": sourceAccount,
+			"numAssets":     len(query.SourceAssets),
+		}).Info("find paths request loaded assets for source account")
+	} else {
+		for range query.SourceAssets {
+			query.SourceAssetBalances = append(query.SourceAssetBalances, 0)
+		}
 	}
 
 	records := []paths.Path{}
@@ -103,66 +152,51 @@ func renderPaths(ctx context.Context, records []paths.Path, w http.ResponseWrite
 // FindFixedPathsHandler is the http handler for the find fixed payment paths endpoint
 // Fixed payment paths are payment paths where both the source and destination asset are fixed
 type FindFixedPathsHandler struct {
-	maxPathLength uint
-	pathFinder    paths.Finder
-	coreQ         *core.Q
+	maxPathLength   uint
+	maxAssetsLength int
+	pathFinder      paths.Finder
+	coreQ           *core.Q
 }
 
-var destinationAssetOrDestinationAccount = problem.P{
+var destinationAssetsOrDestinationAccount = problem.P{
 	Type:   "bad_request",
 	Title:  "Bad Request",
 	Status: http.StatusBadRequest,
-	Detail: "The request requires either a destination asset or a destination account. " +
+	Detail: "The request requires either a list of destination assets or a destination account. " +
 		"Both fields cannot be present.",
-}
-
-var sourceAccountIsDestinationAccount = problem.P{
-	Type:   "bad_request",
-	Title:  "Bad Request",
-	Status: http.StatusBadRequest,
-	Detail: "The source account is the same as the destination account.",
 }
 
 // ServeHTTP implements the http.Handler interface
 func (handler FindFixedPathsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	sourceAccount, err := actions.GetString(r, "source_account")
-	if err != nil {
-		problem.Render(ctx, w, err)
-		return
-	}
-
-	var sourceAccountID *xdr.AccountId
-	if sourceAccount != "" {
-		var accountID xdr.AccountId
-		if accountID, err = actions.GetAccountID(r, "source_account"); err != nil {
-			problem.Render(ctx, w, err)
-			return
-		} else {
-			sourceAccountID = &accountID
-		}
-	}
-
-	destinationAsset, destinationAssetPresent := actions.MaybeGetAsset(r, "destination_")
 	destinationAccount, err := getAccountID(r, "destination_account", false)
 	if err != nil {
 		problem.Render(ctx, w, err)
 		return
 	}
 
-	if (destinationAccount != "") == destinationAssetPresent {
-		problem.Render(ctx, w, destinationAssetOrDestinationAccount)
+	destinationAssets, err := actions.GetAssets(r, "destination_assets")
+	if err != nil {
+		problem.Render(ctx, w, err)
 		return
 	}
 
-	destinationAssets := []xdr.Asset{destinationAsset}
-	if destinationAccount != "" {
-		if sourceAccount == destinationAccount {
-			problem.Render(ctx, w, sourceAccountIsDestinationAccount)
-			return
-		}
+	if (len(destinationAccount) > 0) == (len(destinationAssets) > 0) {
+		problem.Render(ctx, w, destinationAssetsOrDestinationAccount)
+		return
+	}
 
+	if len(destinationAssets) > handler.maxAssetsLength {
+		p := problem.MakeInvalidFieldProblem(
+			"destination_assets",
+			fmt.Errorf("list of assets exceeds maximum length of %v", handler.maxPathLength),
+		)
+		problem.Render(ctx, w, p)
+		return
+	}
+
+	if destinationAccount != "" {
 		destinationAssets, _, err = handler.coreQ.AssetsForAddress(
 			destinationAccount,
 		)
@@ -170,6 +204,12 @@ func (handler FindFixedPathsHandler) ServeHTTP(w http.ResponseWriter, r *http.Re
 			problem.Render(ctx, w, err)
 			return
 		}
+		// log how many assets are associated with a destination account so we can determine
+		// the best limit for `maxAssetsLength`
+		log.WithFields(log.F{
+			"destinationAccount": destinationAccount,
+			"numAssets":          len(destinationAssets),
+		}).Info("find fixed paths request loaded assets for destination account")
 	}
 
 	sourceAsset, err := actions.GetAsset(r, "source_")
@@ -187,7 +227,6 @@ func (handler FindFixedPathsHandler) ServeHTTP(w http.ResponseWriter, r *http.Re
 	records := []paths.Path{}
 	if len(destinationAssets) > 0 {
 		records, err = handler.pathFinder.FindFixedPaths(
-			sourceAccountID,
 			sourceAsset,
 			amountToSpend,
 			destinationAssets,

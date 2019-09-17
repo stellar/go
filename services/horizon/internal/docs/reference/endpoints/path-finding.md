@@ -35,6 +35,12 @@ GET /paths?destination_account={da}&source_account={sa}&destination_asset_type={
 | `?destination_asset_issuer` | string | The issuer for the destination, if destination_asset_type is not "native" | `GAEDTJ4PPEFVW5XV2S7LUXBEHNQMX5Q2GM562RJGOQG7GVCE5H3HIB4V` |
 | `?destination_amount` | string | The amount, denominated in the destination asset, that any returned path should be able to satisfy | `10.1` |
 | `?source_account` | string | The sender's account id. Any returned path must use a source that the sender can hold | `GARSFJNXJIHO6ULUBK3DBYKVSIZE7SC72S5DYBCHU7DKL22UXKVD7MXP` |
+| `?source_assets` | string | A comma separated list of assets. Any returned path must use a source included in this list  | `USD:GAEDTJ4PPEFVW5XV2S7LUXBEHNQMX5Q2GM562RJGOQG7GVCE5H3HIB4V,native` |
+
+The endpoint will not allow requests which provide both a `source_account` and a `source_assets` parameter. All requests must provide one or the other.
+The assets in `source_assets` are expected to be encoded using the following format:
+
+The native asset should be rendered as `"native"`. Issued assets should be rendered as `"Code:IssuerAccountID"`. `"Code"` must consist of printable ASCII characters (octets 0x21 through 0x7e). The sequence `\x` introduces a hex escape sequence, e.g., `\x00` to introduce a 0-valued byte. Otherwise, `\` escapes the next character, so `\\ `is required to introduce a backslash.
 
 
 

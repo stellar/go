@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/go-chi/chi"
+	"github.com/stretchr/testify/assert"
 
 	horizonContext "github.com/stellar/go/services/horizon/internal/context"
 	"github.com/stellar/go/services/horizon/internal/ledger"
@@ -441,6 +442,148 @@ func TestGetURLParam(t *testing.T) {
 	val, ok = action.GetURLParam("foobarcursor")
 	tt.Assert.Equal("", val)
 	tt.Assert.Equal(false, ok)
+}
+
+func TestGetAssets(t *testing.T) {
+	rctx := chi.NewRouteContext()
+
+	issuer := xdr.MustAddress("GAEDTJ4PPEFVW5XV2S7LUXBEHNQMX5Q2GM562RJGOQG7GVCE5H3HIB4V")
+	path := "/foo-bar/blah?assets="
+	for _, testCase := range []struct {
+		name           string
+		value          string
+		expectedAssets []xdr.Asset
+		expectedError  string
+	}{
+		{
+			"empty list",
+			"",
+			[]xdr.Asset{},
+			"",
+		},
+		{
+			"native",
+			"native",
+			[]xdr.Asset{xdr.MustNewNativeAsset()},
+			"",
+		},
+		{
+			"asset does not contain :",
+			"invalid-asset",
+			[]xdr.Asset{},
+			"invalid-asset is not a valid asset",
+		},
+		{
+			"asset contains more than one :",
+			"usd:GAEDTJ4PPEFVW5XV2S7LUXBEHNQMX5Q2GM562RJGOQG7GVCE5H3HIB4V:",
+			[]xdr.Asset{},
+			"is not a valid asset",
+		},
+		{
+			"unicode asset code",
+			"üsd:GAEDTJ4PPEFVW5XV2S7LUXBEHNQMX5Q2GM562RJGOQG7GVCE5H3HIB4V",
+			[]xdr.Asset{},
+			"contains an invalid asset code",
+		},
+		{
+			"asset code contains non printable characters",
+			"\x07usd:GAEDTJ4PPEFVW5XV2S7LUXBEHNQMX5Q2GM562RJGOQG7GVCE5H3HIB4V",
+			[]xdr.Asset{},
+			"contains an invalid asset code",
+		},
+		{
+			"asset code ends with unescaped backslash",
+			"usd\\:GAEDTJ4PPEFVW5XV2S7LUXBEHNQMX5Q2GM562RJGOQG7GVCE5H3HIB4V",
+			[]xdr.Asset{},
+			"contains an invalid asset code",
+		},
+		{
+			"asset code contains invalid escape sequence",
+			"\\usd:GAEDTJ4PPEFVW5XV2S7LUXBEHNQMX5Q2GM562RJGOQG7GVCE5H3HIB4V",
+			[]xdr.Asset{},
+			"contains an invalid asset code",
+		},
+		{
+			"asset code contains invalid hex escape",
+			"\\xsd:GAEDTJ4PPEFVW5XV2S7LUXBEHNQMX5Q2GM562RJGOQG7GVCE5H3HIB4V",
+			[]xdr.Asset{},
+			"contains an invalid asset code",
+		},
+		{
+			"asset code ends with a hex escape sequence which is too short",
+			"\\x1:GAEDTJ4PPEFVW5XV2S7LUXBEHNQMX5Q2GM562RJGOQG7GVCE5H3HIB4V",
+			[]xdr.Asset{},
+			"contains an invalid asset code",
+		},
+		{
+			"asset code is too short",
+			":GAEDTJ4PPEFVW5XV2S7LUXBEHNQMX5Q2GM562RJGOQG7GVCE5H3HIB4V",
+			[]xdr.Asset{},
+			"is not a valid asset",
+		},
+		{
+			"asset code is too long",
+			"0123456789abc:GAEDTJ4PPEFVW5XV2S7LUXBEHNQMX5Q2GM562RJGOQG7GVCE5H3HIB4V",
+			[]xdr.Asset{},
+			"is not a valid asset",
+		},
+		{
+			"issuer is empty",
+			"usd:",
+			[]xdr.Asset{},
+			"contains an invalid issuer",
+		},
+		{
+			"issuer is invalid",
+			"usd:kkj9808;l",
+			[]xdr.Asset{},
+			"contains an invalid issuer",
+		},
+		{
+			"validation succeeds",
+			"usd:GAEDTJ4PPEFVW5XV2S7LUXBEHNQMX5Q2GM562RJGOQG7GVCE5H3HIB4V,usd\\x00\\x00:GAEDTJ4PPEFVW5XV2S7LUXBEHNQMX5Q2GM562RJGOQG7GVCE5H3HIB4V,\\\\:GAEDTJ4PPEFVW5XV2S7LUXBEHNQMX5Q2GM562RJGOQG7GVCE5H3HIB4V",
+			[]xdr.Asset{
+				xdr.MustNewCreditAsset("usd", "GAEDTJ4PPEFVW5XV2S7LUXBEHNQMX5Q2GM562RJGOQG7GVCE5H3HIB4V"),
+				xdr.Asset{
+					Type: xdr.AssetTypeAssetTypeCreditAlphanum12,
+					AlphaNum12: &xdr.AssetAlphaNum12{
+						Issuer:    issuer,
+						AssetCode: [12]byte{'u', 's', 'd', '\x00', '\x00'},
+					},
+				},
+				xdr.Asset{
+					Type: xdr.AssetTypeAssetTypeCreditAlphanum4,
+					AlphaNum4: &xdr.AssetAlphaNum4{
+						Issuer:    issuer,
+						AssetCode: [4]byte{'\\'},
+					},
+				},
+			},
+			"",
+		},
+	} {
+		t.Run(testCase.name, func(t *testing.T) {
+			tt := assert.New(t)
+			r, err := http.NewRequest("GET", path+url.QueryEscape(testCase.value), nil)
+			tt.NoError(err)
+
+			ctx := context.WithValue(r.Context(), chi.RouteCtxKey, rctx)
+			r = r.WithContext(context.WithValue(ctx, &horizonContext.RequestContextKey, r))
+
+			assets, err := GetAssets(r, "assets")
+			if testCase.expectedError == "" {
+				tt.NoError(err)
+				tt.Len(assets, len(testCase.expectedAssets))
+				for i := range assets {
+					tt.Equal(testCase.expectedAssets[i], assets[i])
+				}
+			} else {
+				p := err.(*problem.P)
+				tt.Equal(p.Extras["invalid_field"], "assets")
+				tt.Contains(p.Extras["reason"], testCase.expectedError)
+			}
+		})
+	}
 }
 
 func TestFullURL(t *testing.T) {
