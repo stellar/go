@@ -21,7 +21,6 @@ require (
 	github.com/go-chi/chi v3.1.5+incompatible
 	github.com/go-errors/errors v0.0.0-20150906023321-a41850380601
 	github.com/go-ini/ini v1.23.0 // indirect
-	github.com/go-sql-driver/mysql v1.4.0
 	github.com/gobuffalo/packr v1.12.1 // indirect
 	github.com/goji/httpauth v0.0.0-20160601135302-2da839ab0f4d
 	github.com/gomodule/redigo v2.0.0+incompatible
