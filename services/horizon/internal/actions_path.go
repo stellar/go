@@ -190,7 +190,7 @@ func (handler FindFixedPathsHandler) ServeHTTP(w http.ResponseWriter, r *http.Re
 	if len(destinationAssets) > handler.maxAssetsLength {
 		p := problem.MakeInvalidFieldProblem(
 			"destination_assets",
-			fmt.Errorf("list of assets exceeds maximum length of %v", handler.maxPathLength),
+			fmt.Errorf("list of assets exceeds maximum length of %d", handler.maxPathLength),
 		)
 		problem.Render(ctx, w, p)
 		return
