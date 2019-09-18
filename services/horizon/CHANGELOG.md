@@ -10,8 +10,10 @@ bumps.  A breaking change will get clearly notified in this log.
 
 * `/paths/strict-send` can now accept a `destination_account` parameter. If `destination_account` is provided then the endpoint will return all payment paths which terminate with an asset held by `destination_account`. Note that the endpoint will accept a `destination_account` or a `destination_asset` but not both.
 * Add experimental support for `/offers`. To enable it, set `--enable-experimental-ingestion` CLI param or `ENABLE_EXPERIMENTAL_INGESTION=true` env variable.
+* When experimental ingestion is enabled a state verification routine is started every 64 ledgers to ensure a local state is the same as in history buckets. This can be disabled by setting `--ingest-disable-state-verification` CLI param or `INGEST-DISABLE-STATE-VERIFICATION` env variable.
 * Add flag to apply pending migrations before running horizon. If there are pending migrations, previously you needed to run `horizon db migrate up` before running `horizon`. Those two steps can be combined into one with the `--apply-migrations` flag (`APPLY_MIGRATIONS` env variable).
 * Improved the speed of state ingestion in experimental ingestion system.
+* Fixed a bug in "Signers for Account" (experimental) transaction meta ingesting code.
 * Fixed performance issue in Effects related endpoints.
 * Dropped support for Go 1.10, 1.11.
 
