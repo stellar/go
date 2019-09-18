@@ -2,7 +2,6 @@ package actions
 
 import (
 	"context"
-	"encoding/hex"
 	"fmt"
 	"mime"
 	"net/http"
@@ -519,49 +518,47 @@ func (base *Base) GetAsset(prefix string) (result xdr.Asset) {
 }
 
 func parseAssetCode(code string) ([]byte, error) {
-	// "Code" must consist of printable ASCII characters (octets 0x21 through 0x7e).
-	// The sequence \x introduces a hex escape sequence, e.g., \x00 to introduce a 0-valued byte.
-	// Otherwise, \ escapes the next character, so \\ is required to introduce a backslash
-	// https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0011.md
+	// `code` must consist of alphanumeric ASCII characters.
+	// Stellar disallows assets of type ASSET_TYPE_CREDIT_ALPHANUM12 that have fewer than 5 bytes.
+	// So, to represent an asset code with fewer than 5 characters we must pad the asset code with trailing "\x00" characters (escaped NUL bytes)
+	// For example, the 12-byte asset code ABC is represented as "ABC\x00\x00"
 	for _, r := range code {
 		if r > unicode.MaxASCII {
 			return nil, errors.New("code contains non ascii characters")
 		}
-		if !unicode.IsPrint(r) {
-			return nil, errors.New("code contains non printable characters")
+		if !unicode.IsDigit(r) && !unicode.IsLetter(r) && r != '\\' {
+			return nil, errors.New("code must be alphanumeric")
 		}
 	}
 
 	var parsed []byte
 	codeBytes := []byte(code)
 
+	var containsNull bool
 	for i := 0; i < len(codeBytes); {
 		if codeBytes[i] == '\\' {
 			if i+1 >= len(code) {
 				return nil, errors.New("code ends with unescaped backslash")
 			}
-			switch code[i+1] {
-			case '\\':
-				parsed = append(parsed, '\\')
-				i += 2
-				continue
-			case 'x':
-				if i+3 >= len(code) {
-					return nil, errors.New("code ends with a hex escape sequence which is too short")
-				}
-				parsed = append(parsed, 0)
-				if _, err := hex.Decode(parsed[len(parsed)-1:], codeBytes[i+2:i+4]); err != nil {
-					return nil, errors.New("code contains invalid hex escape")
-				}
-				i += 4
-				continue
-			default:
+			if code[i+1] != 'x' {
 				return nil, errors.New("code contains invalid escape sequence")
 			}
+			if i+3 >= len(code) {
+				return nil, errors.New("code ends with a hex escape sequence which is too short")
+			}
+			if codeBytes[i+2] != '0' || codeBytes[i+3] != '0' {
+				return nil, errors.New("code contains invalid hex escape. only \\x00 is allowed")
+			}
+			parsed = append(parsed, 0)
+			i += 4
+			containsNull = true
+		} else {
+			if containsNull {
+				return nil, errors.New("only trailing \\x00 characters are allowed")
+			}
+			parsed = append(parsed, codeBytes[i])
+			i++
 		}
-
-		parsed = append(parsed, codeBytes[i])
-		i++
 	}
 
 	return parsed, nil

@@ -486,8 +486,8 @@ func TestGetAssets(t *testing.T) {
 			"contains an invalid asset code",
 		},
 		{
-			"asset code contains non printable characters",
-			"\x07usd:GAEDTJ4PPEFVW5XV2S7LUXBEHNQMX5Q2GM562RJGOQG7GVCE5H3HIB4V",
+			"asset code must be alpha numeric",
+			"!usd:GAEDTJ4PPEFVW5XV2S7LUXBEHNQMX5Q2GM562RJGOQG7GVCE5H3HIB4V",
 			[]xdr.Asset{},
 			"contains an invalid asset code",
 		},
@@ -505,13 +505,19 @@ func TestGetAssets(t *testing.T) {
 		},
 		{
 			"asset code contains invalid hex escape",
-			"\\xsd:GAEDTJ4PPEFVW5XV2S7LUXBEHNQMX5Q2GM562RJGOQG7GVCE5H3HIB4V",
+			"\\x25:GAEDTJ4PPEFVW5XV2S7LUXBEHNQMX5Q2GM562RJGOQG7GVCE5H3HIB4V",
 			[]xdr.Asset{},
 			"contains an invalid asset code",
 		},
 		{
 			"asset code ends with a hex escape sequence which is too short",
-			"\\x1:GAEDTJ4PPEFVW5XV2S7LUXBEHNQMX5Q2GM562RJGOQG7GVCE5H3HIB4V",
+			"\\x0:GAEDTJ4PPEFVW5XV2S7LUXBEHNQMX5Q2GM562RJGOQG7GVCE5H3HIB4V",
+			[]xdr.Asset{},
+			"contains an invalid asset code",
+		},
+		{
+			"null characters can only appear at the end of an asset code",
+			"abcde\\x00d:GAEDTJ4PPEFVW5XV2S7LUXBEHNQMX5Q2GM562RJGOQG7GVCE5H3HIB4V",
 			[]xdr.Asset{},
 			"contains an invalid asset code",
 		},
@@ -541,7 +547,7 @@ func TestGetAssets(t *testing.T) {
 		},
 		{
 			"validation succeeds",
-			"usd:GAEDTJ4PPEFVW5XV2S7LUXBEHNQMX5Q2GM562RJGOQG7GVCE5H3HIB4V,usd\\x00\\x00:GAEDTJ4PPEFVW5XV2S7LUXBEHNQMX5Q2GM562RJGOQG7GVCE5H3HIB4V,\\\\:GAEDTJ4PPEFVW5XV2S7LUXBEHNQMX5Q2GM562RJGOQG7GVCE5H3HIB4V",
+			"usd:GAEDTJ4PPEFVW5XV2S7LUXBEHNQMX5Q2GM562RJGOQG7GVCE5H3HIB4V,usd\\x00\\x00:GAEDTJ4PPEFVW5XV2S7LUXBEHNQMX5Q2GM562RJGOQG7GVCE5H3HIB4V,usdabc:GAEDTJ4PPEFVW5XV2S7LUXBEHNQMX5Q2GM562RJGOQG7GVCE5H3HIB4V",
 			[]xdr.Asset{
 				xdr.MustNewCreditAsset("usd", "GAEDTJ4PPEFVW5XV2S7LUXBEHNQMX5Q2GM562RJGOQG7GVCE5H3HIB4V"),
 				xdr.Asset{
@@ -551,13 +557,7 @@ func TestGetAssets(t *testing.T) {
 						AssetCode: [12]byte{'u', 's', 'd', '\x00', '\x00'},
 					},
 				},
-				xdr.Asset{
-					Type: xdr.AssetTypeAssetTypeCreditAlphanum4,
-					AlphaNum4: &xdr.AssetAlphaNum4{
-						Issuer:    issuer,
-						AssetCode: [4]byte{'\\'},
-					},
-				},
+				xdr.MustNewCreditAsset("usdabc", "GAEDTJ4PPEFVW5XV2S7LUXBEHNQMX5Q2GM562RJGOQG7GVCE5H3HIB4V"),
 			},
 			"",
 		},
