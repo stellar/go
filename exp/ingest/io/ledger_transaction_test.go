@@ -63,7 +63,8 @@ func TestChangeAccountSignersChangedNoPostNoMasterKey(t *testing.T) {
 		Post: nil,
 	}
 
-	assert.False(t, change.AccountSignersChanged())
+	// Account being merge can still have signers so they will be removed.
+	assert.True(t, change.AccountSignersChanged())
 }
 
 func TestChangeAccountSignersChangedMasterKeyRemoved(t *testing.T) {
