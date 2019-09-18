@@ -32,7 +32,8 @@ const (
 	//      ingestion.
 	// - 3: Fixes a bug that could potentialy result in invalid state
 	//      (#1722). Update the version to clear the state.
-	CurrentVersion = 3
+	// - 4: Fixes a bug in AccountSignersChanged method.
+	CurrentVersion = 4
 )
 
 var log = ilog.DefaultLogger.WithField("service", "expingest")
