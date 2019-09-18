@@ -22,17 +22,17 @@ import (
 	"github.com/stellar/go/xdr"
 )
 
-func pathFindingClient(tt *test.T, pathFinder paths.Finder, maxAssetsLength int) test.RequestHelper {
+func pathFindingClient(tt *test.T, pathFinder paths.Finder, maxAssetsParamLength int) test.RequestHelper {
 	router := chi.NewRouter()
 	findPaths := FindPathsHandler{
-		pathFinder:      pathFinder,
-		maxAssetsLength: maxAssetsLength,
-		coreQ:           &core.Q{tt.CoreSession()},
+		pathFinder:           pathFinder,
+		maxAssetsParamLength: maxAssetsParamLength,
+		coreQ:                &core.Q{tt.CoreSession()},
 	}
 	findFixedPaths := FindFixedPathsHandler{
-		pathFinder:      pathFinder,
-		maxAssetsLength: maxAssetsLength,
-		coreQ:           &core.Q{tt.CoreSession()},
+		pathFinder:           pathFinder,
+		maxAssetsParamLength: maxAssetsParamLength,
+		coreQ:                &core.Q{tt.CoreSession()},
 	}
 
 	installPathFindingRoutes(findPaths, findFixedPaths, router, false)

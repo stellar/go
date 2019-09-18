@@ -247,19 +247,20 @@ func (w *web) mustInstallActions(config Config, pathFinder paths.Finder) {
 	// Transaction submission API
 	r.Post("/transactions", TransactionCreateAction{}.Handle)
 
+	const maxAssetsForPathFinding = 15
 	findPaths := FindPathsHandler{
-		staleThreshold:      config.StaleThreshold,
-		checkHistoryIsStale: !config.EnableExperimentalIngestion,
-		maxPathLength:       config.MaxPathLength,
-		maxAssetsLength:     maxAssetsForPathFinding,
-		pathFinder:          pathFinder,
-		coreQ:               w.coreQ,
+		staleThreshold:       config.StaleThreshold,
+		checkHistoryIsStale:  !config.EnableExperimentalIngestion,
+		maxPathLength:        config.MaxPathLength,
+		maxAssetsParamLength: maxAssetsForPathFinding,
+		pathFinder:           pathFinder,
+		coreQ:                w.coreQ,
 	}
 	findFixedPaths := FindFixedPathsHandler{
-		maxPathLength:   config.MaxPathLength,
-		maxAssetsLength: maxAssetsForPathFinding,
-		pathFinder:      pathFinder,
-		coreQ:           w.coreQ,
+		maxPathLength:        config.MaxPathLength,
+		maxAssetsParamLength: maxAssetsForPathFinding,
+		pathFinder:           pathFinder,
+		coreQ:                w.coreQ,
 	}
 	installPathFindingRoutes(findPaths, findFixedPaths, w.router, config.EnableExperimentalIngestion)
 

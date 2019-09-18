@@ -20,18 +20,14 @@ import (
 	"github.com/stellar/go/xdr"
 )
 
-const (
-	maxAssetsForPathFinding = 15
-)
-
 // FindPathsHandler is the http handler for the find payment paths endpoint
 type FindPathsHandler struct {
-	staleThreshold      uint
-	maxPathLength       uint
-	checkHistoryIsStale bool
-	maxAssetsLength     int
-	pathFinder          paths.Finder
-	coreQ               *core.Q
+	staleThreshold       uint
+	maxPathLength        uint
+	checkHistoryIsStale  bool
+	maxAssetsParamLength int
+	pathFinder           paths.Finder
+	coreQ                *core.Q
 }
 
 var sourceAssetsOrSourceAccount = problem.P{
@@ -81,10 +77,10 @@ func (handler FindPathsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	if len(query.SourceAssets) > handler.maxAssetsLength {
+	if len(query.SourceAssets) > handler.maxAssetsParamLength {
 		p := problem.MakeInvalidFieldProblem(
 			"source_assets",
-			fmt.Errorf("list of assets exceeds maximum length of %v", handler.maxPathLength),
+			fmt.Errorf("list of assets exceeds maximum length of %d", handler.maxPathLength),
 		)
 		problem.Render(ctx, w, p)
 		return
@@ -145,10 +141,10 @@ func renderPaths(ctx context.Context, records []paths.Path, w http.ResponseWrite
 // FindFixedPathsHandler is the http handler for the find fixed payment paths endpoint
 // Fixed payment paths are payment paths where both the source and destination asset are fixed
 type FindFixedPathsHandler struct {
-	maxPathLength   uint
-	maxAssetsLength int
-	pathFinder      paths.Finder
-	coreQ           *core.Q
+	maxPathLength        uint
+	maxAssetsParamLength int
+	pathFinder           paths.Finder
+	coreQ                *core.Q
 }
 
 var destinationAssetsOrDestinationAccount = problem.P{
@@ -180,7 +176,7 @@ func (handler FindFixedPathsHandler) ServeHTTP(w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	if len(destinationAssets) > handler.maxAssetsLength {
+	if len(destinationAssets) > handler.maxAssetsParamLength {
 		p := problem.MakeInvalidFieldProblem(
 			"destination_assets",
 			fmt.Errorf("list of assets exceeds maximum length of %d", handler.maxPathLength),
