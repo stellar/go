@@ -14,7 +14,6 @@ import (
 	horizonProblem "github.com/stellar/go/services/horizon/internal/render/problem"
 	"github.com/stellar/go/services/horizon/internal/resourceadapter"
 	"github.com/stellar/go/services/horizon/internal/simplepath"
-	"github.com/stellar/go/support/log"
 	"github.com/stellar/go/support/render/hal"
 	"github.com/stellar/go/support/render/httpjson"
 	"github.com/stellar/go/support/render/problem"
@@ -107,12 +106,6 @@ func (handler FindPathsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request
 			problem.Render(ctx, w, err)
 			return
 		}
-		// log how many assets are associated with a source account so we can determine
-		// the best limit for `maxAssetsLength`
-		log.WithFields(log.F{
-			"sourceAccount": sourceAccount,
-			"numAssets":     len(query.SourceAssets),
-		}).Info("find paths request loaded assets for source account")
 	} else {
 		for range query.SourceAssets {
 			query.SourceAssetBalances = append(query.SourceAssetBalances, 0)
@@ -204,12 +197,6 @@ func (handler FindFixedPathsHandler) ServeHTTP(w http.ResponseWriter, r *http.Re
 			problem.Render(ctx, w, err)
 			return
 		}
-		// log how many assets are associated with a destination account so we can determine
-		// the best limit for `maxAssetsLength`
-		log.WithFields(log.F{
-			"destinationAccount": destinationAccount,
-			"numAssets":          len(destinationAssets),
-		}).Info("find fixed paths request loaded assets for destination account")
 	}
 
 	sourceAsset, err := actions.GetAsset(r, "source_")
