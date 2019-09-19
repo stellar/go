@@ -63,6 +63,11 @@ func (m *mockDBQ) UpdateExpStateInvalid(invalid bool) error {
 	return args.Error(0)
 }
 
+func (m *mockDBQ) GetExpStateInvalid() (bool, error) {
+	args := m.Called()
+	return args.Get(0).(bool), args.Error(1)
+}
+
 func (m *mockDBQ) GetAllOffers() ([]history.Offer, error) {
 	args := m.Called()
 	return args.Get(0).([]history.Offer), args.Error(1)

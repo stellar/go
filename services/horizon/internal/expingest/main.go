@@ -57,6 +57,7 @@ type dbQ interface {
 	GetExpIngestVersion() (int, error)
 	UpdateLastLedgerExpIngest(uint32) error
 	UpdateExpStateInvalid(bool) error
+	GetExpStateInvalid() (bool, error)
 	GetAllOffers() ([]history.Offer, error)
 }
 
