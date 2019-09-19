@@ -447,7 +447,6 @@ func TestGetURLParam(t *testing.T) {
 func TestGetAssets(t *testing.T) {
 	rctx := chi.NewRouteContext()
 
-	issuer := xdr.MustAddress("GAEDTJ4PPEFVW5XV2S7LUXBEHNQMX5Q2GM562RJGOQG7GVCE5H3HIB4V")
 	path := "/foo-bar/blah?assets="
 	for _, testCase := range []struct {
 		name           string
@@ -492,32 +491,14 @@ func TestGetAssets(t *testing.T) {
 			"contains an invalid asset code",
 		},
 		{
-			"asset code ends with unescaped backslash",
-			"usd\\:GAEDTJ4PPEFVW5XV2S7LUXBEHNQMX5Q2GM562RJGOQG7GVCE5H3HIB4V",
+			"asset code contains backslash",
+			"usd\\x23:GAEDTJ4PPEFVW5XV2S7LUXBEHNQMX5Q2GM562RJGOQG7GVCE5H3HIB4V",
 			[]xdr.Asset{},
 			"contains an invalid asset code",
 		},
 		{
-			"asset code contains invalid escape sequence",
-			"\\usd:GAEDTJ4PPEFVW5XV2S7LUXBEHNQMX5Q2GM562RJGOQG7GVCE5H3HIB4V",
-			[]xdr.Asset{},
-			"contains an invalid asset code",
-		},
-		{
-			"asset code contains invalid hex escape",
-			"\\x25:GAEDTJ4PPEFVW5XV2S7LUXBEHNQMX5Q2GM562RJGOQG7GVCE5H3HIB4V",
-			[]xdr.Asset{},
-			"contains an invalid asset code",
-		},
-		{
-			"asset code ends with a hex escape sequence which is too short",
-			"\\x0:GAEDTJ4PPEFVW5XV2S7LUXBEHNQMX5Q2GM562RJGOQG7GVCE5H3HIB4V",
-			[]xdr.Asset{},
-			"contains an invalid asset code",
-		},
-		{
-			"null characters can only appear at the end of an asset code",
-			"abcde\\x00d:GAEDTJ4PPEFVW5XV2S7LUXBEHNQMX5Q2GM562RJGOQG7GVCE5H3HIB4V",
+			"contains null characters",
+			"abcde\\x00:GAEDTJ4PPEFVW5XV2S7LUXBEHNQMX5Q2GM562RJGOQG7GVCE5H3HIB4V",
 			[]xdr.Asset{},
 			"contains an invalid asset code",
 		},
@@ -547,16 +528,9 @@ func TestGetAssets(t *testing.T) {
 		},
 		{
 			"validation succeeds",
-			"usd:GAEDTJ4PPEFVW5XV2S7LUXBEHNQMX5Q2GM562RJGOQG7GVCE5H3HIB4V,usd\\x00\\x00:GAEDTJ4PPEFVW5XV2S7LUXBEHNQMX5Q2GM562RJGOQG7GVCE5H3HIB4V,usdabc:GAEDTJ4PPEFVW5XV2S7LUXBEHNQMX5Q2GM562RJGOQG7GVCE5H3HIB4V",
+			"usd:GAEDTJ4PPEFVW5XV2S7LUXBEHNQMX5Q2GM562RJGOQG7GVCE5H3HIB4V,usdabc:GAEDTJ4PPEFVW5XV2S7LUXBEHNQMX5Q2GM562RJGOQG7GVCE5H3HIB4V",
 			[]xdr.Asset{
 				xdr.MustNewCreditAsset("usd", "GAEDTJ4PPEFVW5XV2S7LUXBEHNQMX5Q2GM562RJGOQG7GVCE5H3HIB4V"),
-				xdr.Asset{
-					Type: xdr.AssetTypeAssetTypeCreditAlphanum12,
-					AlphaNum12: &xdr.AssetAlphaNum12{
-						Issuer:    issuer,
-						AssetCode: [12]byte{'u', 's', 'd', '\x00', '\x00'},
-					},
-				},
 				xdr.MustNewCreditAsset("usdabc", "GAEDTJ4PPEFVW5XV2S7LUXBEHNQMX5Q2GM562RJGOQG7GVCE5H3HIB4V"),
 			},
 			"",

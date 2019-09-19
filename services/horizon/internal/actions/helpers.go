@@ -6,9 +6,9 @@ import (
 	"mime"
 	"net/http"
 	"net/url"
+	"regexp"
 	"strconv"
 	"strings"
-	"unicode"
 	"unicode/utf8"
 
 	"github.com/go-chi/chi"
@@ -48,6 +48,8 @@ const (
 	RequiredParam
 	maxAssetCodeLength = 12
 )
+
+var validAssetCode = regexp.MustCompile("^[[:alnum:]]{1,12}$")
 
 // GetCursor retrieves a string from either the URLParams, form or query string.
 // This method uses the priority (URLParams, Form, Query).
@@ -517,53 +519,6 @@ func (base *Base) GetAsset(prefix string) (result xdr.Asset) {
 	return result
 }
 
-func parseAssetCode(code string) ([]byte, error) {
-	// `code` must consist of alphanumeric ASCII characters.
-	// Stellar disallows assets of type ASSET_TYPE_CREDIT_ALPHANUM12 that have fewer than 5 bytes.
-	// So, to represent an asset code with fewer than 5 characters we must pad the asset code with trailing "\x00" characters (escaped NUL bytes)
-	// For example, the 12-byte asset code ABC is represented as "ABC\x00\x00"
-	for _, r := range code {
-		if r > unicode.MaxASCII {
-			return nil, errors.New("code contains non ascii characters")
-		}
-		if !unicode.IsDigit(r) && !unicode.IsLetter(r) && r != '\\' {
-			return nil, errors.New("code must be alphanumeric")
-		}
-	}
-
-	var parsed []byte
-	codeBytes := []byte(code)
-
-	var containsNull bool
-	for i := 0; i < len(codeBytes); {
-		if codeBytes[i] == '\\' {
-			if i+1 >= len(code) {
-				return nil, errors.New("code ends with unescaped backslash")
-			}
-			if code[i+1] != 'x' {
-				return nil, errors.New("code contains invalid escape sequence")
-			}
-			if i+3 >= len(code) {
-				return nil, errors.New("code ends with a hex escape sequence which is too short")
-			}
-			if codeBytes[i+2] != '0' || codeBytes[i+3] != '0' {
-				return nil, errors.New("code contains invalid hex escape. only \\x00 is allowed")
-			}
-			parsed = append(parsed, 0)
-			i += 4
-			containsNull = true
-		} else {
-			if containsNull {
-				return nil, errors.New("only trailing \\x00 characters are allowed")
-			}
-			parsed = append(parsed, codeBytes[i])
-			i++
-		}
-	}
-
-	return parsed, nil
-}
-
 // GetAssets parses a list of assets from a given request.
 // The request parameter is expected to be a comma separated list of assets
 // encoded in the format (Code:Issuer or "native") defined by SEP-0011
@@ -599,8 +554,9 @@ func GetAssets(r *http.Request, name string) ([]xdr.Asset, error) {
 					fmt.Errorf("%s is not a valid asset", assetString),
 				)
 			}
-			code, err := parseAssetCode(parts[0])
-			if err != nil {
+
+			code := parts[0]
+			if !validAssetCode.MatchString(code) {
 				return nil, problem.MakeInvalidFieldProblem(
 					name,
 					fmt.Errorf("%s is not a valid asset, it contains an invalid asset code", assetString),

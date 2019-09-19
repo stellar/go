@@ -40,8 +40,7 @@ GET /paths?destination_account={da}&source_account={sa}&destination_asset_type={
 The endpoint will not allow requests which provide both a `source_account` and a `source_assets` parameter. All requests must provide one or the other.
 The assets in `source_assets` are expected to be encoded using the following format:
 
-The native asset should be rendered as `"native"`. Issued assets should be rendered as `"Code:IssuerAccountID"`. `"Code"` must consist of alphanumeric ASCII characters. Stellar disallows asset codes of type `credit_alphanum12` that have fewer than 5 bytes. To represent an asset code with fewer than 5 characters we must pad the asset code with trailing "\x00" characters. For example, the 12-byte asset code ABC is represented as "ABC\x00\x00".
-
+The native asset should be represented as `"native"`. Issued assets should be represented as `"Code:IssuerAccountID"`. `"Code"` must consist of alphanumeric ASCII characters.
 
 
 ### curl Example Request

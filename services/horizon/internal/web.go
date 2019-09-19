@@ -29,7 +29,10 @@ import (
 	"github.com/stellar/throttled"
 )
 
-const LRUCacheSize = 50000
+const (
+	LRUCacheSize            = 50000
+	maxAssetsForPathFinding = 15
+)
 
 // Web contains the http server related fields for horizon: the router,
 // rate limiter, etc.
@@ -247,7 +250,6 @@ func (w *web) mustInstallActions(config Config, pathFinder paths.Finder) {
 	// Transaction submission API
 	r.Post("/transactions", TransactionCreateAction{}.Handle)
 
-	const maxAssetsForPathFinding = 15
 	findPaths := FindPathsHandler{
 		staleThreshold:       config.StaleThreshold,
 		checkHistoryIsStale:  !config.EnableExperimentalIngestion,
