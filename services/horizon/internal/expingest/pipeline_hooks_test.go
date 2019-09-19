@@ -180,7 +180,7 @@ func TestPostProcessingHook(t *testing.T) {
 				tt.Assert.Nil(session.Begin())
 				// queue an insert on the transaction so we can check if the post
 				// processing hook committed it to the db
-				_, err := historyQ.CreateAccountSigner(account, signer, weight)
+				_, err = historyQ.CreateAccountSigner(account, signer, weight)
 				tt.Assert.NoError(err)
 			}
 
