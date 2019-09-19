@@ -207,7 +207,10 @@ func acceptOnlyJSON(h http.Handler) http.Handler {
 }
 
 // requiresExperimentalIngestion is a middleware which enables a handler
-// if the experimental ingestion system is enabled and initialized
+// if the experimental ingestion system is enabled and initialized.
+// It also ensures that state (ledger entries) has been verified and are
+// correct. Otherwise returns `500 Internal Server Error` to prevent
+// returning invalid data to the user.
 func requiresExperimentalIngestion(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
@@ -217,8 +220,11 @@ func requiresExperimentalIngestion(h http.Handler) http.Handler {
 			return
 		}
 
+		localLog := log.Ctx(ctx)
+
 		lastIngestedLedger, err := app.HistoryQ().GetLastLedgerExpIngestNonBlocking()
 		if err != nil {
+			localLog.WithField("err", err).Error("Error running GetLastLedgerExpIngestNonBlocking")
 			problem.Render(r.Context(), w, err)
 			return
 		}
@@ -229,20 +235,9 @@ func requiresExperimentalIngestion(h http.Handler) http.Handler {
 			return
 		}
 
-		h.ServeHTTP(w, r)
-	})
-}
-
-// ensureStateCorrect is a middleware which ensures that state (ledger entries)
-// has been verified and are correct. Otherwise returns `500 Internal Server Error`
-// to prevent returning invalid data to the user.
-func ensureStateCorrect(h http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		ctx := r.Context()
-		app := AppFromContext(ctx)
-
 		stateInvalid, err := app.HistoryQ().GetExpStateInvalid()
 		if err != nil {
+			localLog.WithField("err", err).Error("Error running GetExpStateInvalid")
 			problem.Render(r.Context(), w, err)
 			return
 		}
