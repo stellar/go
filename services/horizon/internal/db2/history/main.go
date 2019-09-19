@@ -331,8 +331,8 @@ type QSigners interface {
 	UpdateLastLedgerExpIngest(ledgerSequence uint32) error
 	AccountsForSigner(signer string, page db2.PageQuery) ([]AccountSigner, error)
 	NewAccountSignersBatchInsertBuilder(maxBatchSize int) AccountSignersBatchInsertBuilder
-	CreateAccountSigner(account, signer string, weight int32) error
-	RemoveAccountSigner(account, signer string) error
+	CreateAccountSigner(account, signer string, weight int32) (int64, error)
+	RemoveAccountSigner(account, signer string) (int64, error)
 }
 
 // OffersQuery is a helper struct to configure queries to offers
@@ -347,8 +347,9 @@ type OffersQuery struct {
 type QOffers interface {
 	GetAllOffers() ([]Offer, error)
 	NewOffersBatchInsertBuilder(maxBatchSize int) OffersBatchInsertBuilder
-	UpsertOffer(offer xdr.OfferEntry, lastModifiedLedger xdr.Uint32) error
-	RemoveOffer(offerID xdr.Int64) error
+	InsertOffer(offer xdr.OfferEntry, lastModifiedLedger xdr.Uint32) (int64, error)
+	UpdateOffer(offer xdr.OfferEntry, lastModifiedLedger xdr.Uint32) (int64, error)
+	RemoveOffer(offerID xdr.Int64) (int64, error)
 }
 
 // TotalOrderID represents the ID portion of rows that are identified by the

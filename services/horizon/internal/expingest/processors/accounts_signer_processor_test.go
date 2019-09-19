@@ -236,7 +236,7 @@ func (s *AccountsSignerProcessorTestSuiteLedger) TestNewAccount() {
 			"GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML",
 			int32(1),
 		).
-		Return(nil).Once()
+		Return(int64(1), nil).Once()
 
 	s.mockLedgerReader.
 		On("Read").
@@ -311,7 +311,7 @@ func (s *AccountsSignerProcessorTestSuiteLedger) TestNewSigner() {
 			"GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML",
 			"GCBBDQLCTNASZJ3MTKAOYEOWRGSHDFAJVI7VPZUOP7KXNHYR3HP2BUKV",
 		).
-		Return(nil).Once()
+		Return(int64(1), nil).Once()
 
 	// Create new and old signer
 	s.mockQ.
@@ -321,7 +321,7 @@ func (s *AccountsSignerProcessorTestSuiteLedger) TestNewSigner() {
 			"GCBBDQLCTNASZJ3MTKAOYEOWRGSHDFAJVI7VPZUOP7KXNHYR3HP2BUKV",
 			int32(10),
 		).
-		Return(nil).Once()
+		Return(int64(1), nil).Once()
 
 	s.mockQ.
 		On(
@@ -330,7 +330,7 @@ func (s *AccountsSignerProcessorTestSuiteLedger) TestNewSigner() {
 			"GCAHY6JSXQFKWKP6R7U5JPXDVNV4DJWOWRFLY3Y6YPBF64QRL4BPFDNS",
 			int32(15),
 		).
-		Return(nil).Once()
+		Return(int64(1), nil).Once()
 
 	s.mockLedgerReader.
 		On("Read").
@@ -405,7 +405,7 @@ func (s *AccountsSignerProcessorTestSuiteLedger) TestSignerRemoved() {
 			"GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML",
 			"GCBBDQLCTNASZJ3MTKAOYEOWRGSHDFAJVI7VPZUOP7KXNHYR3HP2BUKV",
 		).
-		Return(nil).Once()
+		Return(int64(1), nil).Once()
 
 	s.mockQ.
 		On(
@@ -413,7 +413,7 @@ func (s *AccountsSignerProcessorTestSuiteLedger) TestSignerRemoved() {
 			"GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML",
 			"GCAHY6JSXQFKWKP6R7U5JPXDVNV4DJWOWRFLY3Y6YPBF64QRL4BPFDNS",
 		).
-		Return(nil).Once()
+		Return(int64(1), nil).Once()
 
 	// Create new signer
 	s.mockQ.
@@ -423,7 +423,7 @@ func (s *AccountsSignerProcessorTestSuiteLedger) TestSignerRemoved() {
 			"GCAHY6JSXQFKWKP6R7U5JPXDVNV4DJWOWRFLY3Y6YPBF64QRL4BPFDNS",
 			int32(15),
 		).
-		Return(nil).Once()
+		Return(int64(1), nil).Once()
 
 	s.mockLedgerReader.
 		On("Read").
@@ -478,7 +478,7 @@ func (s *AccountsSignerProcessorTestSuiteLedger) TestRemoveAccount() {
 			"GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML",
 			"GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML",
 		).
-		Return(nil).Once()
+		Return(int64(1), nil).Once()
 
 	s.mockLedgerReader.
 		On("Read").
@@ -492,6 +492,112 @@ func (s *AccountsSignerProcessorTestSuiteLedger) TestRemoveAccount() {
 	)
 
 	s.Assert().NoError(err)
+}
+
+func (s *AccountsSignerProcessorTestSuiteLedger) TestNewAccountNoRowsAffected() {
+	s.mockLedgerReader.
+		On("Read").
+		Return(io.LedgerTransaction{
+			Meta: createTransactionMeta([]xdr.OperationMeta{
+				xdr.OperationMeta{
+					Changes: []xdr.LedgerEntryChange{
+						xdr.LedgerEntryChange{
+							Type: xdr.LedgerEntryChangeTypeLedgerEntryCreated,
+							Created: &xdr.LedgerEntry{
+								Data: xdr.LedgerEntryData{
+									Type: xdr.LedgerEntryTypeAccount,
+									Account: &xdr.AccountEntry{
+										AccountId:  xdr.MustAddress("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
+										Thresholds: [4]byte{1, 1, 1, 1},
+									},
+								},
+							},
+						},
+					},
+				},
+			}),
+		}, nil).Once()
+
+	s.mockQ.
+		On(
+			"CreateAccountSigner",
+			"GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML",
+			"GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML",
+			int32(1),
+		).
+		Return(int64(0), nil).Once()
+
+	err := s.processor.ProcessLedger(
+		context.Background(),
+		&supportPipeline.Store{},
+		s.mockLedgerReader,
+		s.mockLedgerWriter,
+	)
+
+	s.Assert().Error(err)
+	s.Assert().EqualError(
+		err,
+		"Error in processLedgerAccountsForSigner: No rows affected when inserting "+
+			"account=GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML "+
+			"signer=GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML to database",
+	)
+}
+
+func (s *AccountsSignerProcessorTestSuiteLedger) TestRemoveAccountNoRowsAffected() {
+	s.mockLedgerReader.
+		On("Read").
+		Return(io.LedgerTransaction{
+			Meta: createTransactionMeta([]xdr.OperationMeta{
+				xdr.OperationMeta{
+					Changes: []xdr.LedgerEntryChange{
+						xdr.LedgerEntryChange{
+							Type: xdr.LedgerEntryChangeTypeLedgerEntryState,
+							State: &xdr.LedgerEntry{
+								Data: xdr.LedgerEntryData{
+									Type: xdr.LedgerEntryTypeAccount,
+									Account: &xdr.AccountEntry{
+										AccountId:  xdr.MustAddress("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
+										Thresholds: [4]byte{1, 1, 1, 1},
+									},
+								},
+							},
+						},
+						xdr.LedgerEntryChange{
+							Type: xdr.LedgerEntryChangeTypeLedgerEntryRemoved,
+							Removed: &xdr.LedgerKey{
+								Type: xdr.LedgerEntryTypeAccount,
+								Account: &xdr.LedgerKeyAccount{
+									AccountId: xdr.MustAddress("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
+								},
+							},
+						},
+					},
+				},
+			}),
+		}, nil).Once()
+
+	s.mockQ.
+		On(
+			"RemoveAccountSigner",
+			"GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML",
+			"GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML",
+		).
+		Return(int64(0), nil).Once()
+
+	err := s.processor.ProcessLedger(
+		context.Background(),
+		&supportPipeline.Store{},
+		s.mockLedgerReader,
+		s.mockLedgerWriter,
+	)
+
+	s.Assert().Error(err)
+	s.Assert().EqualError(
+		err,
+		"Error in processLedgerAccountsForSigner: Expected "+
+			"account=GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML "+
+			"signer=GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML in database but not found when removing",
+	)
 }
 
 func createTransactionMeta(opMeta []xdr.OperationMeta) xdr.TransactionMeta {

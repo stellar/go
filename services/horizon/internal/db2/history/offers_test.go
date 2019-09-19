@@ -114,7 +114,8 @@ func TestGetOfferByID(t *testing.T) {
 	defer tt.Finish()
 	q := &Q{tt.HorizonSession()}
 
-	tt.Assert.NoError(q.UpsertOffer(eurOffer, 1234))
+	_, err := q.InsertOffer(eurOffer, 1234)
+	tt.Assert.NoError(err)
 	offer, err := q.GetOfferByID(int64(eurOffer.OfferId))
 	tt.Assert.NoError(err)
 	assertOfferEntryMatchesDBOffer(t, eurOffer, offer, 1234)
@@ -144,8 +145,10 @@ func TestInsertOffers(t *testing.T) {
 	defer tt.Finish()
 	q := &Q{tt.HorizonSession()}
 
-	tt.Assert.NoError(q.UpsertOffer(eurOffer, 1234))
-	tt.Assert.NoError(q.UpsertOffer(twoEurOffer, 1235))
+	_, err := q.InsertOffer(eurOffer, 1234)
+	tt.Assert.NoError(err)
+	_, err = q.InsertOffer(twoEurOffer, 1235)
+	tt.Assert.NoError(err)
 
 	offers, err := q.GetAllOffers()
 	tt.Assert.NoError(err)
@@ -165,7 +168,9 @@ func TestUpdateOffer(t *testing.T) {
 	defer tt.Finish()
 	q := &Q{tt.HorizonSession()}
 
-	tt.Assert.NoError(q.UpsertOffer(eurOffer, 1234))
+	rowsAffected, err := q.InsertOffer(eurOffer, 1234)
+	tt.Assert.NoError(err)
+	tt.Assert.Equal(int64(1), rowsAffected)
 
 	offers, err := q.GetAllOffers()
 	tt.Assert.NoError(err)
@@ -176,7 +181,9 @@ func TestUpdateOffer(t *testing.T) {
 	modifiedEurOffer := eurOffer
 	modifiedEurOffer.Amount -= 10
 
-	tt.Assert.NoError(q.UpsertOffer(modifiedEurOffer, 1235))
+	rowsAffected, err = q.UpdateOffer(modifiedEurOffer, 1235)
+	tt.Assert.NoError(err)
+	tt.Assert.Equal(int64(1), rowsAffected)
 
 	offers, err = q.GetAllOffers()
 	tt.Assert.NoError(err)
@@ -190,7 +197,8 @@ func TestRemoveNonExistantOffer(t *testing.T) {
 	defer tt.Finish()
 	q := &Q{tt.HorizonSession()}
 
-	tt.Assert.NoError(q.RemoveOffer(xdr.Int64(12345)))
+	_, err := q.RemoveOffer(xdr.Int64(12345))
+	tt.Assert.NoError(err)
 }
 
 func TestRemoveOffer(t *testing.T) {
@@ -198,13 +206,16 @@ func TestRemoveOffer(t *testing.T) {
 	defer tt.Finish()
 	q := &Q{tt.HorizonSession()}
 
-	tt.Assert.NoError(q.UpsertOffer(eurOffer, 1234))
+	_, err := q.InsertOffer(eurOffer, 1234)
+	tt.Assert.NoError(err)
 	offers, err := q.GetAllOffers()
 	tt.Assert.NoError(err)
 	tt.Assert.Len(offers, 1)
 	assertOfferEntryMatchesDBOffer(t, eurOffer, offers[0], 1234)
 
-	tt.Assert.NoError(q.RemoveOffer(eurOffer.OfferId))
+	rowsAffected, err := q.RemoveOffer(eurOffer.OfferId)
+	tt.Assert.Equal(int64(1), rowsAffected)
+	tt.Assert.NoError(err)
 
 	offers, err = q.GetAllOffers()
 	tt.Assert.NoError(err)
@@ -216,8 +227,10 @@ func TestGetOffers(t *testing.T) {
 	defer tt.Finish()
 	q := &Q{tt.HorizonSession()}
 
-	tt.Assert.NoError(q.UpsertOffer(eurOffer, 1234))
-	tt.Assert.NoError(q.UpsertOffer(twoEurOffer, 1235))
+	_, err := q.InsertOffer(eurOffer, 1234)
+	tt.Assert.NoError(err)
+	_, err = q.InsertOffer(twoEurOffer, 1235)
+	tt.Assert.NoError(err)
 
 	pageQuery, err := db2.NewPageQuery("", false, "", 10)
 	tt.Assert.NoError(err)

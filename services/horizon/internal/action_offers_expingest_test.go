@@ -56,8 +56,11 @@ func TestOfferActions_Show(t *testing.T) {
 	q := &history.Q{ht.HorizonSession()}
 
 	ht.Assert.NoError(q.UpdateLastLedgerExpIngest(3))
-	ht.Assert.NoError(q.UpsertOffer(eurOffer, 3))
-	ht.Assert.NoError(q.UpsertOffer(twoEurOffer, 20))
+
+	_, err := q.InsertOffer(eurOffer, 3)
+	ht.Assert.NoError(err)
+	_, err = q.InsertOffer(twoEurOffer, 20)
+	ht.Assert.NoError(err)
 
 	w := ht.Get(fmt.Sprintf("/offers/%v", eurOffer.OfferId))
 
