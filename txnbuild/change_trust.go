@@ -78,3 +78,21 @@ func (ct *ChangeTrust) FromXDR(xdrOp xdr.Operation) error {
 	ct.Line = asset
 	return nil
 }
+
+// Validate for ChangeTrust validates the required struct fields. It returns an error if any of the fields are
+// invalid. Otherwise, it returns nil.
+func (ct *ChangeTrust) Validate() error {
+	// only validate limit if it has a value. Empty limit is set to the max trustline limit.
+	if ct.Limit != "" {
+		err := validateAmount(ct.Limit)
+		if err != nil {
+			return NewValidationError("Limit", err.Error())
+		}
+	}
+
+	err := validateChangeTrustAsset(ct.Line)
+	if err != nil {
+		return NewValidationError("Line", err.Error())
+	}
+	return nil
+}

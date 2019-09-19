@@ -68,7 +68,7 @@ func (ca CreditAsset) GetType() (AssetType, error) {
 	case len(ca.Code) >= 5 && len(ca.Code) <= 12:
 		return AssetTypeCreditAlphanum12, nil
 	default:
-		return AssetTypeCreditAlphanum4, errors.New("invalid asset code")
+		return AssetTypeCreditAlphanum4, errors.New("asset code length must be between 1 and 12 characters")
 	}
 }
 

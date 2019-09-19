@@ -8,6 +8,7 @@ import (
 type Operation interface {
 	BuildXDR() (xdr.Operation, error)
 	FromXDR(xdrOp xdr.Operation) error
+	Validate() error
 }
 
 // SetOpSourceAccount sets the source account ID on an Operation.
