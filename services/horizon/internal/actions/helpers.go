@@ -586,7 +586,7 @@ func GetAssets(r *http.Request, name string) ([]xdr.Asset, error) {
 
 		// Technically https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0011.md allows
 		// any string up to 12 characters not containing an unescaped colon to represent XLM
-		// however, this function only accepts the string "native" to reprsent XLM
+		// however, this function only accepts the string "native" to represent XLM
 		if strings.ToLower(assetString) == "native" {
 			if err := asset.SetNative(); err != nil {
 				return nil, err
