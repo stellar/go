@@ -182,13 +182,18 @@ func postProcessingHook(
 	ledgerSeq := pipeline.GetLedgerSequenceFromContext(ctx)
 
 	if err != nil {
-		log.
-			WithFields(ilog.F{
-				"ledger": ledgerSeq,
-				"type":   pipelineType,
-				"err":    err,
-			}).
-			Error("Error processing ledger")
+		switch errors.Cause(err).(type) {
+		case verify.StateError:
+			markStateInvalid(historySession, err)
+		default:
+			log.
+				WithFields(ilog.F{
+					"ledger": ledgerSeq,
+					"type":   pipelineType,
+					"err":    err,
+				}).
+				Error("Error processing ledger")
+		}
 		return err
 	}
 
@@ -244,13 +249,9 @@ func postProcessingHook(
 		go func() {
 			err := system.verifyState()
 			if err != nil {
-				switch err := errors.Cause(err).(type) {
+				switch errors.Cause(err).(type) {
 				case verify.StateError:
-					log.WithField("err", err).Error("STATE IS INVALID!")
-					q := &history.Q{historySession.Clone()}
-					if err := q.UpdateExpStateInvalid(true); err != nil {
-						log.WithField("err", err).Error("Error updating state invalid value")
-					}
+					markStateInvalid(historySession, err)
 				default:
 					log.WithField("err", err).Error("State verification errored")
 				}
@@ -260,6 +261,14 @@ func postProcessingHook(
 
 	log.WithFields(ilog.F{"ledger": ledgerSeq, "type": pipelineType}).Info("Processed ledger")
 	return nil
+}
+
+func markStateInvalid(historySession *db.Session, err error) {
+	log.WithField("err", err).Error("STATE IS INVALID!")
+	q := &history.Q{historySession.Clone()}
+	if err := q.UpdateExpStateInvalid(true); err != nil {
+		log.WithField("err", err).Error("Error updating state invalid value")
+	}
 }
 
 func addPipelineHooks(
