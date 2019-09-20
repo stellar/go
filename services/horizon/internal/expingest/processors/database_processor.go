@@ -7,6 +7,7 @@ import (
 
 	"github.com/stellar/go/exp/ingest/io"
 	ingestpipeline "github.com/stellar/go/exp/ingest/pipeline"
+	"github.com/stellar/go/exp/ingest/verify"
 	"github.com/stellar/go/exp/support/pipeline"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/support/errors"
@@ -174,11 +175,11 @@ func (p *DatabaseProcessor) processLedgerAccountsForSigner(transaction io.Ledger
 				}
 
 				if rowsAffected != 1 {
-					return errors.Errorf(
+					return verify.NewStateError(errors.Errorf(
 						"Expected account=%s signer=%s in database but not found when removing",
 						preAccountEntry.AccountId.Address(),
 						signer,
-					)
+					))
 				}
 			}
 		}
@@ -192,11 +193,11 @@ func (p *DatabaseProcessor) processLedgerAccountsForSigner(transaction io.Ledger
 				}
 
 				if rowsAffected != 1 {
-					return errors.Errorf(
+					return verify.NewStateError(errors.Errorf(
 						"No rows affected when inserting account=%s signer=%s to database",
 						postAccountEntry.AccountId.Address(),
 						signer,
-					)
+					))
 				}
 			}
 		}
@@ -241,11 +242,11 @@ func (p *DatabaseProcessor) processLedgerOffers(transaction io.LedgerTransaction
 		}
 
 		if rowsAffected != 1 {
-			return errors.Errorf(
+			return verify.NewStateError(errors.Errorf(
 				"No rows affected when %s offer %d",
 				action,
 				offerID,
-			)
+			))
 		}
 	}
 	return nil

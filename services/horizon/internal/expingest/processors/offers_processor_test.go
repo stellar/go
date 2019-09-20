@@ -6,8 +6,10 @@ import (
 	"testing"
 
 	"github.com/stellar/go/exp/ingest/io"
+	"github.com/stellar/go/exp/ingest/verify"
 	supportPipeline "github.com/stellar/go/exp/support/pipeline"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
+	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
 	"github.com/stretchr/testify/suite"
 )
@@ -327,6 +329,7 @@ func (s *OffersProcessorTestSuiteLedger) TestUpdateOfferNoRowsAffected() {
 	)
 
 	s.Assert().Error(err)
+	s.Assert().IsType(verify.StateError{}, errors.Cause(err))
 	s.Assert().EqualError(err, "Error in processLedgerOffers: No rows affected when updating offer 2")
 }
 
@@ -430,5 +433,6 @@ func (s *OffersProcessorTestSuiteLedger) TestRemoveOfferNoRowsAffected() {
 	)
 
 	s.Assert().Error(err)
+	s.Assert().IsType(verify.StateError{}, errors.Cause(err))
 	s.Assert().EqualError(err, "Error in processLedgerOffers: No rows affected when removing offer 3")
 }
