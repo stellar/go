@@ -201,7 +201,8 @@ func postProcessingHook(
 		// This is "just in case" if lastIngestedLedger is not selected
 		// `FOR UPDATE` due to a bug or accident. In such case we error and
 		// rollback.
-		lastIngestedLedger, err := historyQ.GetLastLedgerExpIngest()
+		var lastIngestedLedger uint32
+		lastIngestedLedger, err = historyQ.GetLastLedgerExpIngest()
 		if err != nil {
 			return errors.Wrap(err, "Error getting last ledger")
 		}
@@ -210,20 +211,21 @@ func postProcessingHook(
 			return errors.New("The local latest sequence is not equal to global sequence + 1")
 		}
 
-		if err := historyQ.UpdateLastLedgerExpIngest(ledgerSeq); err != nil {
+		if err = historyQ.UpdateLastLedgerExpIngest(ledgerSeq); err != nil {
 			return errors.Wrap(err, "Error updating last ingested ledger")
 		}
 
-		if err := historyQ.UpdateExpIngestVersion(CurrentVersion); err != nil {
+		if err = historyQ.UpdateExpIngestVersion(CurrentVersion); err != nil {
 			return errors.Wrap(err, "Error updating expingest version")
 		}
 
-		if err := historySession.Commit(); err != nil {
+		if err = historySession.Commit(); err != nil {
 			return errors.Wrap(err, "Error commiting db transaction")
 		}
 	}
 
-	if err := graph.Apply(); err != nil {
+	err = graph.Apply()
+	if err != nil {
 		return errors.Wrap(err, "Error applying order book changes")
 	}
 
