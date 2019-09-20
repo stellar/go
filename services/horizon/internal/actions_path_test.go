@@ -130,10 +130,18 @@ func TestPathActionsStateInvalid(t *testing.T) {
 	)
 	rh.RH = test.NewRequestHelper(rh.App.web.router)
 
-	err := rh.App.historyQ.UpdateExpStateInvalid(true)
+	w := rh.Get("/paths")
+	// Still ingesting
+	rh.Assert.Equal(503, w.Code)
+
+	err := rh.App.historyQ.UpdateLastLedgerExpIngest(10)
 	rh.Assert.NoError(err)
 
-	w := rh.Get("/paths")
+	err = rh.App.historyQ.UpdateExpStateInvalid(true)
+	rh.Assert.NoError(err)
+
+	w = rh.Get("/paths")
+	// State invalid
 	rh.Assert.Equal(500, w.Code)
 }
 
