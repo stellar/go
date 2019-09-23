@@ -1,8 +1,10 @@
 package tickerdb
 
 import (
+	"reflect"
 	"testing"
 	"time"
+	"unsafe"
 
 	_ "github.com/lib/pq"
 	migrate "github.com/rubenv/sql-migrate"
@@ -50,7 +52,18 @@ func TestInsertOrUpdateAsset(t *testing.T) {
 	require.NoError(t, err)
 
 	// Creating first asset:
-	firstTime := time.Now()
+	//firstTime := time.Now()
+	firstTimeTmpl := &time.Time{}
+	{
+		firstTimeValue := reflect.ValueOf(firstTimeTmpl).Elem()
+		wallField := firstTimeValue.FieldByName("wall")
+		reflect.NewAt(wallField.Type(), unsafe.Pointer(wallField.UnsafeAddr())).Elem().SetUint(0xbf5a63f0b825c654)
+		extField := firstTimeValue.FieldByName("ext")
+		reflect.NewAt(extField.Type(), unsafe.Pointer(extField.UnsafeAddr())).Elem().SetInt(353520401)
+		locField := firstTimeValue.FieldByName("loc")
+		reflect.NewAt(locField.Type(), unsafe.Pointer(locField.UnsafeAddr())).Elem().Set(reflect.ValueOf(time.Local))
+	}
+	firstTime := *firstTimeTmpl
 	a := Asset{
 		Code:          code,
 		IssuerAccount: issuerAccount,
