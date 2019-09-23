@@ -12,7 +12,7 @@ The new ingestion system solves issues found in the previous version like: incon
 
 ## Prerequisities
 
-* The init stage (state ingestion) for public network requires around 1.5GB of RAM. The memory is released after the state ingestion. State ingestion is performed only once, restarting the server will not trigger it unless Horizon has been upgraded to a newer version (with updated ingestion pipeline). We are currently working on alternative solutions to make RAM requirements smaller however we believe that it will become smaller and smaller as more buckets are [CAP-20](https://github.com/stellar/stellar-protocol/blob/master/core/cap-0020.md) compatible. The CPU footprint of the new ingestion is really small. We were able to run experimental ingestion on `c5.large` instance on AWS.
+* The init stage (state ingestion) for public network requires around 1.5GB of RAM. The memory is released after the state ingestion. State ingestion is performed only once, restarting the server will not trigger it unless Horizon has been upgraded to a newer version (with updated ingestion pipeline). We are currently working on alternative solutions to make RAM requirements smaller however we believe that it will become smaller and smaller as more buckets are [CAP-20](https://github.com/stellar/stellar-protocol/blob/master/core/cap-0020.md) compatible. The CPU footprint of the new ingestion is really small. We were able to run experimental ingestion on `c5.large` instance on AWS. The init stage takes a few minutes on `c5.large`.
 * The state data requires additional 1.3GB DB disk space (as of version 0.20.1).
 * Flags needed to enable experimental ingestion:
   * `ENABLE_EXPERIMENTAL_INGESTION=true`
@@ -26,13 +26,19 @@ Endpoints that display state information like `/paths` (built using offers) are 
 
 ### State ingestion is taking a lot of time
 
-State ingestion speed depends mostly on a database specs. In most cases so far the new system was able to ingest the state in around 30 minutes. We are currently working on making this process as fast as possible.
+Since Horizon 0.21.0 the state ingestion shouldn't take more than a couple minutes on AWS `c5.large` instance.
 
-It's also possible that the progress logs (see below) will not show anything new for a longer period of time (>15 minutes) or print a lot of progress entries every few seconds. This is happening because of the way history archives are designed, the ingestion is still working but it's processing so called `DEADENTRY`'ies: if there is a lot of them in the bucket, there are no _active_ entries to process. We plan to improve the progress logs to display actual percentage progress so it's easier to estimate ETA.
+It's possible that the progress logs (see below) will not show anything new for a longer period of time or print a lot of progress entries every few seconds. This is happening because of the way history archives are designed, the ingestion is still working but it's processing so called `DEADENTRY`'ies: if there is a lot of them in the bucket, there are no _active_ entries to process. We plan to improve the progress logs to display actual percentage progress so it's easier to estimate ETA.
 
 If you see that ingestion is not proceeding for a very long period of time:
 1. Check the RAM usage on the machine. It's possible that system run out of RAM and it using swap memory that is extremely slow.
 2. If above is not the case, file a new issue in this repository.
+
+### CPU usage goes high every few minutes
+
+This is _by design_. Horizon 0.21.0 introduced a state verifier routine that compares state in local storage to history archives every 64 ledgers to ensure data changes are applied correctly. If data corruption is detected Horizon will block access to endpoints serving invalid data.
+
+We recommend to keep this security feature turned on however if it's causing problems (due to CPU usage) this can be disabled by `--ingest-disable-state-verification` CLI param or `INGEST-DISABLE-STATE-VERIFICATION` env variable.
 
 ## Reading the logs
 
