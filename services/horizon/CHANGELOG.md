@@ -8,6 +8,12 @@ bumps.  A breaking change will get clearly notified in this log.
 
 ## v0.21.0
 
+### Database migration notes
+
+This version adds a new index on a table used by experimental ingestion system. If it has not been enabled, migration will be instant. If you migrate from a previous version with experimental ingestion system enabled database migration can take a couple minutes.
+
+### Changes
+
 * `/paths/strict-send` can now accept a `destination_account` parameter. If `destination_account` is provided then the endpoint will return all payment paths which terminate with an asset held by `destination_account`. Note that the endpoint will accept `destination_account` or `destination_assets` but not both. `destination_assets` is a comma separated list of assets encoded as `native` or `code:issuer`.
 * `/paths/strict-receive` can now accept a `source_assets` parameter instead of `source_account` parameter. If `source_assets` is provided the endpoint will return all payment paths originating from an asset in `source_assets`. Note that the endpoint will accept `source_account` or `source_assets` but not both. `source_assets` is a comma separated list of assets encoded as `native` or `code:issuer`.
 * Add experimental support for `/offers`. To enable it, set `--enable-experimental-ingestion` CLI param or `ENABLE_EXPERIMENTAL_INGESTION=true` env variable.
@@ -16,7 +22,10 @@ bumps.  A breaking change will get clearly notified in this log.
 * Improved the speed of state ingestion in experimental ingestion system.
 * Fixed a bug in "Signers for Account" (experimental) transaction meta ingesting code.
 * Fixed performance issue in Effects related endpoints.
+* Fixed DoS vector in Go HTTP/2 implementation.
 * Dropped support for Go 1.10, 1.11.
+
+Check [Beta Testing New Ingestion System](https://github.com/stellar/go/blob/master/services/horizon/internal/expingest/BETA_TESTING.md) if you want to test new ingestion system.
 
 ## v0.20.1
 
