@@ -28,6 +28,10 @@ func (pr *PathPaymentStrictReceiveResult) SendAmount() Int64 {
 // DestAmount returns the amount received, denominated in the destination asset, in the
 // course of this path payment
 func (pr *PathPaymentStrictSendResult) DestAmount() Int64 {
-	panic("TODO")
-	return 0
+	s, ok := pr.GetSuccess()
+	if !ok {
+		return 0
+	}
+
+	return s.Last.Amount
 }
