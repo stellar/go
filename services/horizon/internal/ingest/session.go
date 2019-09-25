@@ -175,23 +175,23 @@ func (is *Session) ingestEffects() {
 	case xdr.OperationTypePayment:
 		op := opbody.MustPaymentOp()
 
-		dets := map[string]interface{}{"amount": amount.String(op.Amount)}
-		is.assetDetails(dets, op.Asset, "")
-		effects.Add(op.Destination, history.EffectAccountCredited, dets)
-		effects.Add(source, history.EffectAccountDebited, dets)
+		details := map[string]interface{}{"amount": amount.String(op.Amount)}
+		is.assetDetails(details, op.Asset, "")
+		effects.Add(op.Destination, history.EffectAccountCredited, details)
+		effects.Add(source, history.EffectAccountDebited, details)
 
 	case xdr.OperationTypePathPaymentStrictReceive:
 		op := opbody.MustPathPaymentStrictReceiveOp()
 		resultSuccess := is.Cursor.OperationResult().MustPathPaymentStrictReceiveResult().MustSuccess()
 
-		dets := map[string]interface{}{"amount": amount.String(op.DestAmount)}
-		is.assetDetails(dets, op.DestAsset, "")
-		effects.Add(op.Destination, history.EffectAccountCredited, dets)
+		details := map[string]interface{}{"amount": amount.String(op.DestAmount)}
+		is.assetDetails(details, op.DestAsset, "")
+		effects.Add(op.Destination, history.EffectAccountCredited, details)
 
 		result := is.Cursor.OperationResult().MustPathPaymentStrictReceiveResult()
-		dets = map[string]interface{}{"amount": amount.String(result.SendAmount())}
-		is.assetDetails(dets, op.SendAsset, "")
-		effects.Add(source, history.EffectAccountDebited, dets)
+		details = map[string]interface{}{"amount": amount.String(result.SendAmount())}
+		is.assetDetails(details, op.SendAsset, "")
+		effects.Add(source, history.EffectAccountDebited, details)
 
 		is.ingestTradeEffects(effects, source, resultSuccess.Offers)
 	case xdr.OperationTypePathPaymentStrictSend:
@@ -199,13 +199,13 @@ func (is *Session) ingestEffects() {
 		resultSuccess := is.Cursor.OperationResult().MustPathPaymentStrictSendResult().MustSuccess()
 		result := is.Cursor.OperationResult().MustPathPaymentStrictSendResult()
 
-		dets := map[string]interface{}{"amount": amount.String(result.DestAmount())}
-		is.assetDetails(dets, op.DestAsset, "")
-		effects.Add(op.Destination, history.EffectAccountCredited, dets)
+		details := map[string]interface{}{"amount": amount.String(result.DestAmount())}
+		is.assetDetails(details, op.DestAsset, "")
+		effects.Add(op.Destination, history.EffectAccountCredited, details)
 
-		dets = map[string]interface{}{"amount": amount.String(op.SendAmount)}
-		is.assetDetails(dets, op.SendAsset, "")
-		effects.Add(source, history.EffectAccountDebited, dets)
+		details = map[string]interface{}{"amount": amount.String(op.SendAmount)}
+		is.assetDetails(details, op.SendAsset, "")
+		effects.Add(source, history.EffectAccountDebited, details)
 
 		is.ingestTradeEffects(effects, source, resultSuccess.Offers)
 	case xdr.OperationTypeManageBuyOffer:
@@ -276,11 +276,11 @@ func (is *Session) ingestEffects() {
 
 	case xdr.OperationTypeChangeTrust:
 		op := opbody.MustChangeTrustOp()
-		dets := map[string]interface{}{"limit": amount.String(op.Limit)}
+		details := map[string]interface{}{"limit": amount.String(op.Limit)}
 		key := xdr.LedgerKey{}
 		effect := history.EffectType(0)
 
-		is.assetDetails(dets, op.Line, "")
+		is.assetDetails(details, op.Line, "")
 
 		key.SetTrustline(source, op.Line)
 
@@ -309,30 +309,30 @@ func (is *Session) ingestEffects() {
 			panic("Invalid before-and-after state")
 		}
 
-		effects.Add(source, effect, dets)
+		effects.Add(source, effect, details)
 	case xdr.OperationTypeAllowTrust:
 		op := opbody.MustAllowTrustOp()
 		asset := op.Asset.ToAsset(source)
-		dets := map[string]interface{}{
+		details := map[string]interface{}{
 			"trustor": op.Trustor.Address(),
 		}
-		is.assetDetails(dets, asset, "")
+		is.assetDetails(details, asset, "")
 
 		if op.Authorize {
-			effects.Add(source, history.EffectTrustlineAuthorized, dets)
+			effects.Add(source, history.EffectTrustlineAuthorized, details)
 		} else {
-			effects.Add(source, history.EffectTrustlineDeauthorized, dets)
+			effects.Add(source, history.EffectTrustlineDeauthorized, details)
 		}
 
 	case xdr.OperationTypeAccountMerge:
 		dest := opbody.MustDestination()
 		result := is.Cursor.OperationResult().MustAccountMergeResult()
-		dets := map[string]interface{}{
+		details := map[string]interface{}{
 			"amount":     amount.String(result.MustSourceAccountBalance()),
 			"asset_type": "native",
 		}
-		effects.Add(source, history.EffectAccountDebited, dets)
-		effects.Add(dest, history.EffectAccountCredited, dets)
+		effects.Add(source, history.EffectAccountDebited, details)
+		effects.Add(dest, history.EffectAccountCredited, details)
 		effects.Add(source, history.EffectAccountRemoved, map[string]interface{}{})
 	case xdr.OperationTypeInflation:
 		payouts := is.Cursor.OperationResult().MustInflationResult().MustPayouts()
@@ -346,7 +346,7 @@ func (is *Session) ingestEffects() {
 		}
 	case xdr.OperationTypeManageData:
 		op := opbody.MustManageDataOp()
-		dets := map[string]interface{}{"name": op.DataName}
+		details := map[string]interface{}{"name": op.DataName}
 		key := xdr.LedgerKey{}
 		effect := history.EffectType(0)
 
@@ -360,7 +360,7 @@ func (is *Session) ingestEffects() {
 
 		if after != nil {
 			raw := after.Data.MustData().DataValue
-			dets["value"] = base64.StdEncoding.EncodeToString(raw)
+			details["value"] = base64.StdEncoding.EncodeToString(raw)
 		}
 
 		switch {
@@ -374,14 +374,14 @@ func (is *Session) ingestEffects() {
 			panic("Invalid before-and-after state")
 		}
 
-		effects.Add(source, effect, dets)
+		effects.Add(source, effect, details)
 
 	case xdr.OperationTypeBumpSequence:
 		opChanges := is.Cursor.OperationChanges()
 		if len(opChanges) > 0 {
 			op := opbody.MustBumpSequenceOp()
-			dets := map[string]interface{}{"new_seq": op.BumpTo}
-			effects.Add(source, history.EffectSequenceBumped, dets)
+			details := map[string]interface{}{"new_seq": op.BumpTo}
+			effects.Add(source, history.EffectSequenceBumped, details)
 		}
 
 	default:
