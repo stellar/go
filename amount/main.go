@@ -123,3 +123,10 @@ func StringFromInt64(v int64) string {
 	r.Quo(r, bigOne)
 	return r.FloatString(7)
 }
+
+// StringFromBigInt returns an "amount string" from the provided raw *big.Int value `v`.
+func StringFromBigInt(v *big.Int) string {
+	r := new(big.Rat).SetInt(v)
+	r.Quo(r, bigOne)
+	return r.FloatString(7)
+}

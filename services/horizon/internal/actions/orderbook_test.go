@@ -1,11 +1,13 @@
 package actions
 
 import (
+	"math"
 	"strconv"
 	"testing"
 
 	"github.com/stellar/go/exp/orderbook"
 	protocol "github.com/stellar/go/protocols/horizon"
+	"github.com/stellar/go/xdr"
 )
 
 type intObject int
@@ -512,7 +514,7 @@ func TestOrderbookGetResource(t *testing.T) {
 		t.Fatalf("unexpected error %v", err)
 	}
 	otherEurOffer := twoEurOffer
-	otherEurOffer.Amount = 10000
+	otherEurOffer.Amount = xdr.Int64(math.MaxInt64)
 	otherEurOffer.OfferId = 16
 	if err := fullGraph.AddOffer(otherEurOffer).Apply(); err != nil {
 		t.Fatalf("unexpected error %v", err)
@@ -541,7 +543,7 @@ func TestOrderbookGetResource(t *testing.T) {
 		protocol.PriceLevel{
 			PriceR: protocol.Price{N: int32(twoEurOffer.Price.N), D: int32(twoEurOffer.Price.D)},
 			Price:  "2.0000000",
-			Amount: "0.0010500",
+			Amount: "922337203685.4776307",
 		},
 		protocol.PriceLevel{
 			PriceR: protocol.Price{N: int32(threeEurOffer.Price.N), D: int32(threeEurOffer.Price.D)},
@@ -567,7 +569,7 @@ func TestOrderbookGetResource(t *testing.T) {
 		protocol.PriceLevel{
 			PriceR: protocol.Price{N: int32(twoEurOffer.Price.N), D: int32(twoEurOffer.Price.D)},
 			Price:  "2.0000000",
-			Amount: "0.0010500",
+			Amount: "922337203685.4776307",
 		},
 	}
 	limitResponse.Bids = []protocol.PriceLevel{

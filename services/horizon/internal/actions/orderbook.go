@@ -2,6 +2,7 @@ package actions
 
 import (
 	"context"
+	"math/big"
 	"net/http"
 
 	"github.com/stellar/go/amount"
@@ -19,7 +20,7 @@ type StreamableObjectResponse interface {
 	Equals(other StreamableObjectResponse) bool
 }
 
-// OrderBookResponse is the response for the /orderbook_endpoint
+// OrderBookResponse is the response for the /order_book endpoint
 // OrderBookResponse implements StreamableObjectResponse
 type OrderBookResponse struct {
 	protocol.OrderBookSummary
@@ -70,9 +71,14 @@ type GetOrderbookHandler struct {
 func offersToPriceLevels(offers []xdr.OfferEntry, invert bool) []protocol.PriceLevel {
 	result := []protocol.PriceLevel{}
 
-	amountForPrice := map[xdr.Price]xdr.Int64{}
+	amountForPrice := map[xdr.Price]*big.Int{}
 	for _, offer := range offers {
-		amountForPrice[offer.Price] += offer.Amount
+		offerAmount := big.NewInt(int64(offer.Amount))
+		if amount, ok := amountForPrice[offer.Price]; ok {
+			amount.Add(amount, offerAmount)
+		} else {
+			amountForPrice[offer.Price] = offerAmount
+		}
 	}
 	for _, offer := range offers {
 		total, ok := amountForPrice[offer.Price]
@@ -92,7 +98,7 @@ func offersToPriceLevels(offers []xdr.OfferEntry, invert bool) []protocol.PriceL
 				D: int32(offerPrice.D),
 			},
 			Price:  offerPrice.String(),
-			Amount: amount.String(total),
+			Amount: amount.StringFromBigInt(total),
 		})
 	}
 
