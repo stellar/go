@@ -68,7 +68,7 @@ type GetOrderbookHandler struct {
 	OrderBookGraph *orderbook.OrderBookGraph
 }
 
-func offersToPriceLevels(offers []xdr.OfferEntry, invert bool) []protocol.PriceLevel {
+func offersToPriceLevels(offers []xdr.OfferEntry, invert bool) ([]protocol.PriceLevel, error) {
 	result := []protocol.PriceLevel{}
 
 	amountForPrice := map[xdr.Price]*big.Int{}
@@ -92,17 +92,22 @@ func offersToPriceLevels(offers []xdr.OfferEntry, invert bool) []protocol.PriceL
 			offerPrice.Invert()
 		}
 
+		amountString, err := amount.IntStringToAmount(total.String())
+		if err != nil {
+			return nil, err
+		}
+
 		result = append(result, protocol.PriceLevel{
 			PriceR: protocol.Price{
 				N: int32(offerPrice.N),
 				D: int32(offerPrice.D),
 			},
 			Price:  offerPrice.String(),
-			Amount: amount.StringFromBigInt(total),
+			Amount: amountString,
 		})
 	}
 
-	return result
+	return result, nil
 }
 
 func (handler GetOrderbookHandler) orderBookSummary(
@@ -116,9 +121,15 @@ func (handler GetOrderbookHandler) orderBookSummary(
 		return response, err
 	}
 
+	var err error
 	asks, bids := handler.OrderBookGraph.FindAsksAndBids(selling, buying, limit)
-	response.Asks = offersToPriceLevels(asks, false)
-	response.Bids = offersToPriceLevels(bids, true)
+	if response.Asks, err = offersToPriceLevels(asks, false); err != nil {
+		return response, err
+	}
+
+	if response.Bids, err = offersToPriceLevels(bids, true); err != nil {
+		return response, err
+	}
 
 	return response, nil
 }
