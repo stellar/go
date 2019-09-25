@@ -79,6 +79,7 @@ func offersToPriceLevels(offers []xdr.OfferEntry, invert bool) []protocol.PriceL
 		if !ok {
 			continue
 		}
+		delete(amountForPrice, offer.Price)
 
 		offerPrice := offer.Price
 		if invert {
@@ -93,8 +94,6 @@ func offersToPriceLevels(offers []xdr.OfferEntry, invert bool) []protocol.PriceL
 			Price:  offerPrice.String(),
 			Amount: amount.String(total),
 		})
-
-		delete(amountForPrice, offerPrice)
 	}
 
 	return result
@@ -111,14 +110,9 @@ func (handler GetOrderbookHandler) orderBookSummary(
 		return response, err
 	}
 
-	response.Asks = offersToPriceLevels(
-		handler.OrderBookGraph.FindOffers(selling, buying, limit),
-		false,
-	)
-	response.Bids = offersToPriceLevels(
-		handler.OrderBookGraph.FindOffers(buying, selling, limit),
-		true,
-	)
+	asks, bids := handler.OrderBookGraph.FindAsksAndBids(selling, buying, limit)
+	response.Asks = offersToPriceLevels(asks, false)
+	response.Bids = offersToPriceLevels(bids, true)
 
 	return response, nil
 }

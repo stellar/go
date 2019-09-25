@@ -119,36 +119,53 @@ func (graph *OrderBookGraph) batch() *orderBookBatchedUpdates {
 	}
 }
 
-// FindOffers returns all offers for a given trading pair
+// findOffers returns all offers for a given trading pair
 // The offers will be sorted by price from cheapest to most expensive
-// The returned offers will span at most `limit` price levels
-func (graph *OrderBookGraph) FindOffers(selling, buying xdr.Asset, limit int) []xdr.OfferEntry {
+// The returned offers will span at most `maxPriceLevels` price levels
+func (graph *OrderBookGraph) findOffers(
+	selling, buying string, maxPriceLevels int,
+) []xdr.OfferEntry {
 	results := []xdr.OfferEntry{}
-	buyingString := buying.String()
-	sellingString := selling.String()
-
-	graph.lock.RLock()
-	defer graph.lock.RUnlock()
-	edges, ok := graph.edgesForSellingAsset[sellingString]
+	edges, ok := graph.edgesForSellingAsset[selling]
 	if !ok {
 		return results
 	}
-	offers, ok := edges[buyingString]
+	offers, ok := edges[buying]
 	if !ok {
 		return results
 	}
 
 	for _, offer := range offers {
 		if len(results) == 0 || results[len(results)-1].Price != offer.Price {
-			limit--
+			maxPriceLevels--
 		}
-		if limit < 0 {
+		if maxPriceLevels < 0 {
 			return results
 		}
 
 		results = append(results, offer)
 	}
 	return results
+}
+
+// FindAsksAndBids returns all asks and bids for a given trading pair
+// Asks consists of all offers which sell `selling` in exchange for `buying` sorted by
+// price (in terms of `buying`) from cheapest to most expensive
+// Bids consists of all offers which sell `buying` in exchange for `selling` sorted by
+// price (in terms of `selling`) from cheapest to most expensive
+// Both Asks and Bids will span at most `maxPriceLevels` price levels
+func (graph *OrderBookGraph) FindAsksAndBids(
+	selling, buying xdr.Asset, maxPriceLevels int,
+) ([]xdr.OfferEntry, []xdr.OfferEntry) {
+	buyingString := buying.String()
+	sellingString := selling.String()
+
+	graph.lock.RLock()
+	defer graph.lock.RUnlock()
+	asks := graph.findOffers(sellingString, buyingString, maxPriceLevels)
+	bids := graph.findOffers(buyingString, sellingString, maxPriceLevels)
+
+	return asks, bids
 }
 
 // add inserts a given offer into the order book graph
