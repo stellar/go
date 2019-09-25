@@ -778,7 +778,7 @@ func (is *Session) operationDetails() map[string]interface{} {
 
 		details["amount"] = amount.String(0)
 		details["source_amount"] = amount.String(op.SendAmount)
-		details["dest_min"] = amount.String(op.DestMin)
+		details["destination_min"] = amount.String(op.DestMin)
 		is.assetDetails(details, op.DestAsset, "")
 		is.assetDetails(details, op.SendAsset, "source_")
 
