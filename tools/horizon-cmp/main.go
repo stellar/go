@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"net/http"
+	"net/url"
 	"os"
 	"strings"
 	"time"
@@ -12,7 +13,7 @@ import (
 	cmp "github.com/stellar/go/tools/horizon-cmp/internal"
 )
 
-const horizonOld = "http://localhost:8001"
+const horizonOld = "http://localhost:8002"
 const horizonNew = "http://localhost:8000"
 
 // maxLevels defines the maximum number of levels deep the crawler
@@ -84,18 +85,16 @@ var initPaths []string = []string{
 var paths []pathWithLevel
 var visitedPaths map[string]bool
 
-func init() {
-	visitedPaths = make(map[string]bool)
-	for _, p := range initPaths {
-		paths = append(paths, pathWithLevel{Path: p, Level: 0, Stream: false})
-		paths = append(paths, pathWithLevel{Path: p, Level: 0, Stream: true})
-	}
-}
-
 func main() {
 	// Get latest ledger and operate on it's cursor to get responses at a given ledger.
 	ledger := getLatestLedger()
 	cursor := ledger.PagingToken()
+
+	visitedPaths = make(map[string]bool)
+	for _, p := range initPaths {
+		paths = append(paths, pathWithLevel{Path: getPathWithCursor(p, cursor), Level: 0, Stream: false})
+		paths = append(paths, pathWithLevel{Path: getPathWithCursor(p, cursor), Level: 0, Stream: true})
+	}
 
 	// Sleep for a few seconds to make sure the second Horizon is up to speed
 	time.Sleep(2 * time.Second)
@@ -149,6 +148,26 @@ func main() {
 
 		newPaths := a.GetPaths()
 		for _, newPath := range newPaths {
+			// For all indexes with chronological sort ignore order=asc
+			// without cursor. There will always be a diff if Horizon started
+			// at a different ledger.
+			if strings.Contains(newPath, "/ledgers") ||
+				strings.Contains(newPath, "/transactions") ||
+				strings.Contains(newPath, "/operations") ||
+				strings.Contains(newPath, "/payments") ||
+				strings.Contains(newPath, "/effects") ||
+				strings.Contains(newPath, "/trades") {
+				u, err := url.Parse(newPath)
+				if err != nil {
+					panic(err)
+				}
+
+				if u.Query().Get("cursor") == "" &&
+					(u.Query().Get("order") == "" || u.Query().Get("order") == "asc") {
+					continue
+				}
+			}
+
 			if (strings.Contains(newPath, "/transactions") ||
 				strings.Contains(newPath, "/operations") ||
 				strings.Contains(newPath, "/payments")) && !strings.Contains(newPath, "include_failed") {
@@ -187,4 +206,20 @@ func getLatestLedger() protocol.Ledger {
 	}
 
 	return ledgers.Embedded.Records[0]
+}
+
+func getPathWithCursor(path, cursor string) string {
+	urlObj, err := url.Parse(path)
+	if err != nil {
+		panic(err)
+	}
+
+	// Add cursor if not present
+	q := urlObj.Query()
+	if q.Get("cursor") == "" {
+		q.Set("cursor", cursor)
+	}
+
+	urlObj.RawQuery = q.Encode()
+	return urlObj.String()
 }

@@ -12,7 +12,8 @@ import (
 
 const fileLengthLimit = 100
 
-var findResultMetaXDR = regexp.MustCompile(`"result_meta_xdr": "(.*)",`)
+// (?U) = ungreedy to end on `result_meta_xdr` value's: "
+var findResultMetaXDR = regexp.MustCompile(`(?U)"result_meta_xdr":[ ]{0,1}"(.*)",`)
 
 // removeRegexps contains a list of regular expressions that, when matched,
 // will be changed to an empty string. This is done to exclude known
@@ -22,10 +23,10 @@ var findResultMetaXDR = regexp.MustCompile(`"result_meta_xdr": "(.*)",`)
 // `is_authorized` on account balances list. You want to remove this
 // field so it's not reported for each `/accounts/{id}` response.
 var removeRegexps = []*regexp.Regexp{
-	regexp.MustCompile(`This (is ){0,1}usually`),
+	// regexp.MustCompile(`This (is ){0,1}usually`),
 	// Removes joined transaction (join=transactions) added in Horizon 0.19.0.
 	// Remove for future versions.
-	regexp.MustCompile(`(?msU)"transaction":\s*{\s*("memo|"_links)[\n\s\S]*][\n\s\S]*}(,\s{9}|,)`),
+	// regexp.MustCompile(`(?msU)"transaction":\s*{\s*("memo|"_links)[\n\s\S]*][\n\s\S]*}(,\s{9}|,)`),
 	// regexp.MustCompile(`\s*"is_authorized": true,`),
 	// regexp.MustCompile(`\s*"is_authorized": false,`),
 	// regexp.MustCompile(`\s*"successful": true,`),
