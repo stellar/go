@@ -133,6 +133,9 @@ func (arch *Archive) ScanCheckpointsFast(opts *CommandOptions) error {
 				}
 				ch, es := arch.ListCategoryCheckpoints(r.category, r.pathprefix)
 				for n := range ch {
+					if n < opts.Range.Low || n > opts.Range.High {
+						continue
+					}
 					tick <- true
 					arch.NoteCheckpointFile(r.category, n, true)
 					if opts.Verify {
@@ -197,11 +200,22 @@ func (arch *Archive) ScanBuckets(opts *CommandOptions) error {
 
 	var errs uint32
 
-	// First scan _all_ buckets if we can; if not, we'll do an exists-check
-	// on each bucket as we go. But this is faster when we can do it.
+	// First scan _all_ buckets if we can (and should -- if asked to look at the
+	// entire range); if not, we'll do an exists-check on each bucket as we
+	// go. But this is faster when we can do it.
 	doList := arch.backend.CanListFiles()
+	has, err := arch.GetRootHAS()
+	if err == nil {
+		fullRange := MakeRange(0, has.CurrentLedger)
+		doList = doList && opts.Range.Size() == fullRange.Size()
+	} else {
+		log.Print("Error retrieving root archive state, possibly corrupt archive:", err)
+		log.Print("Continuing and will do an exists-check on each bucket as we go, this will be slower")
+	}
 	if doList {
 		errs += noteError(arch.ScanAllBuckets())
+	} else {
+		log.Printf("Scanning buckets for %d checkpoints", opts.Range.Size())
 	}
 
 	// Grab the set of checkpoints we have HASs for, to read references.
