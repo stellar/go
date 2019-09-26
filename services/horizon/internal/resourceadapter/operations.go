@@ -37,7 +37,7 @@ func NewOperation(
 		e := operations.Payment{Base: base}
 		err = operationRow.UnmarshalDetails(&e)
 		result = e
-	case xdr.OperationTypePathPayment:
+	case xdr.OperationTypePathPaymentStrictReceive:
 		e := operations.PathPayment{}
 		e.Payment.Base = base
 		err = operationRow.UnmarshalDetails(&e)
@@ -79,6 +79,11 @@ func NewOperation(
 		result = e
 	case xdr.OperationTypeManageData:
 		e := operations.ManageData{Base: base}
+		err = operationRow.UnmarshalDetails(&e)
+		result = e
+	case xdr.OperationTypePathPaymentStrictSend:
+		e := operations.PathPaymentStrictSend{}
+		e.Payment.Base = base
 		err = operationRow.UnmarshalDetails(&e)
 		result = e
 	default:

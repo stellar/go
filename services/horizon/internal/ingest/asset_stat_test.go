@@ -215,12 +215,26 @@ func TestAssetModified(t *testing.T) {
 			}),
 			wantAssets: []string{"credit_alphanum4/USD/GCYLTPOU7IVYHHA3XKQF4YB4W4ZWHFERMOQ7K47IWANKNBFBNJJNEOG5"}, // sourceUSD
 		}, {
-			opBody: makeOperationBody(xdr.OperationTypePathPayment, xdr.PathPaymentOp{
+			opBody: makeOperationBody(xdr.OperationTypePathPaymentStrictReceive, xdr.PathPaymentStrictReceiveOp{
 				SendAsset:   issuerUSD,
 				SendMax:     1000000,
 				Destination: destAccount,
 				DestAsset:   anotherUSD,
 				DestAmount:  100,
+				Path:        []xdr.Asset{issuerUSD, destEUR, anotherUSD},
+			}),
+			wantAssets: []string{
+				"credit_alphanum4/EUR/GCSX4PDUZP3BL522ZVMFXCEJ55NKEOHEMII7PSMJZNAAESJ444GSSJMO", // destEUR
+				"credit_alphanum4/USD/GAB7GMQPJ5YY2E4UJMLNAZPDEUKPK4AAIPRXIZHKZGUIRC6FP2LAQSDN", // anotherUSD
+				"credit_alphanum4/USD/GCFZWN3AOVFQM2BZTZX7P47WSI4QMGJC62LILPKODTNDLVKZZNA5BQJ3", // issuerUSD
+			},
+		}, {
+			opBody: makeOperationBody(xdr.OperationTypePathPaymentStrictSend, xdr.PathPaymentStrictSendOp{
+				SendAsset:   issuerUSD,
+				SendAmount:  1000000,
+				Destination: destAccount,
+				DestAsset:   anotherUSD,
+				DestMin:     100,
 				Path:        []xdr.Asset{issuerUSD, destEUR, anotherUSD},
 			}),
 			wantAssets: []string{
@@ -413,8 +427,8 @@ func makeAccount(secret string, code string) (xdr.AccountId, xdr.Asset) {
 	return accountId, asset
 }
 
-func makeCodeBytes(code string) *[4]byte {
-	codeBytes := [4]byte{}
+func makeCodeBytes(code string) *xdr.AssetCode4 {
+	codeBytes := xdr.AssetCode4{}
 	copy(codeBytes[:], []byte(code))
 	return &codeBytes
 }

@@ -188,7 +188,7 @@ func TestAssetSetCredit(t *testing.T) {
 	assert.NotNil(t, a.AlphaNum4)
 	assert.Equal(t, AssetTypeAssetTypeCreditAlphanum4, a.Type)
 	assert.Equal(t, issuer, a.AlphaNum4.Issuer)
-	assert.Equal(t, [4]byte{'U', 'S', 'D', 0}, a.AlphaNum4.AssetCode)
+	assert.Equal(t, AssetCode4{'U', 'S', 'D', 0}, a.AlphaNum4.AssetCode)
 
 	a = &Asset{}
 	a.SetCredit("USDUSD", issuer)
@@ -196,7 +196,7 @@ func TestAssetSetCredit(t *testing.T) {
 	assert.NotNil(t, a.AlphaNum12)
 	assert.Equal(t, AssetTypeAssetTypeCreditAlphanum12, a.Type)
 	assert.Equal(t, issuer, a.AlphaNum12.Issuer)
-	assert.Equal(t, [12]byte{'U', 'S', 'D', 'U', 'S', 'D', 0, 0, 0, 0, 0, 0}, a.AlphaNum12.AssetCode)
+	assert.Equal(t, AssetCode12{'U', 'S', 'D', 'U', 'S', 'D', 0, 0, 0, 0, 0, 0}, a.AlphaNum12.AssetCode)
 }
 
 func TestToAllowTrustOpAsset_AlphaNum4(t *testing.T) {
@@ -205,7 +205,7 @@ func TestToAllowTrustOpAsset_AlphaNum4(t *testing.T) {
 	if assert.NoError(t, err) {
 		code, ok := at.GetAssetCode4()
 		assert.True(t, ok)
-		var expected [4]byte
+		var expected AssetCode4
 		copy(expected[:], "ABCD")
 		assert.Equal(t, expected, code)
 	}
@@ -217,7 +217,7 @@ func TestToAllowTrustOpAsset_AlphaNum12(t *testing.T) {
 	if assert.NoError(t, err) {
 		code, ok := at.GetAssetCode12()
 		assert.True(t, ok)
-		var expected [12]byte
+		var expected AssetCode12
 		copy(expected[:], "ABCDEFGHIJKL")
 		assert.Equal(t, expected, code)
 	}
