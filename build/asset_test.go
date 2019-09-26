@@ -32,7 +32,7 @@ func TestAsset_ToXDR(t *testing.T) {
 			Expected: xdr.Asset{
 				Type: xdr.AssetTypeAssetTypeCreditAlphanum4,
 				AlphaNum4: &xdr.AssetAlphaNum4{
-					AssetCode: [4]byte{0x55, 0x53, 0x44, 0x00}, //USD
+					AssetCode: xdr.AssetCode4{0x55, 0x53, 0x44, 0x00}, //USD
 					Issuer:    issuer,
 				},
 			},

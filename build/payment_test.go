@@ -30,7 +30,7 @@ var _ = Describe("Payment Mutators", func() {
 				It("sets the asset properly", func() {
 					Expect(subject.P.Amount).To(Equal(xdr.Int64(500000000)))
 					Expect(subject.P.Asset.Type).To(Equal(xdr.AssetTypeAssetTypeCreditAlphanum4))
-					Expect(subject.P.Asset.AlphaNum4.AssetCode).To(Equal([4]byte{'U', 'S', 'D', 0}))
+					Expect(subject.P.Asset.AlphaNum4.AssetCode).To(Equal(xdr.AssetCode4{'U', 'S', 'D', 0}))
 					var aid xdr.AccountId
 					aid.SetAddress(address)
 					Expect(subject.P.Asset.AlphaNum4.Issuer.MustEd25519()).To(Equal(aid.MustEd25519()))
@@ -49,7 +49,7 @@ var _ = Describe("Payment Mutators", func() {
 					Expect(subject.P.Amount).To(Equal(xdr.Int64(500000000)))
 					Expect(subject.P.Asset.Type).To(Equal(xdr.AssetTypeAssetTypeCreditAlphanum12))
 					Expect(subject.P.Asset.AlphaNum4).To(BeNil())
-					Expect(subject.P.Asset.AlphaNum12.AssetCode).To(Equal([12]byte{'A', 'B', 'C', 'D', 'E', 'F', 0, 0, 0, 0, 0, 0}))
+					Expect(subject.P.Asset.AlphaNum12.AssetCode).To(Equal(xdr.AssetCode12{'A', 'B', 'C', 'D', 'E', 'F', 0, 0, 0, 0, 0, 0}))
 					var aid xdr.AccountId
 					aid.SetAddress(address)
 					Expect(subject.P.Asset.AlphaNum12.Issuer.MustEd25519()).To(Equal(aid.MustEd25519()))
@@ -209,7 +209,7 @@ var _ = Describe("Payment Mutators", func() {
 				It("sets the asset properly", func() {
 					Expect(subject.PP.DestAmount).To(Equal(xdr.Int64(500000000)))
 					Expect(subject.PP.DestAsset.Type).To(Equal(xdr.AssetTypeAssetTypeCreditAlphanum4))
-					Expect(subject.PP.DestAsset.AlphaNum4.AssetCode).To(Equal([4]byte{'U', 'S', 'D', 0}))
+					Expect(subject.PP.DestAsset.AlphaNum4.AssetCode).To(Equal(xdr.AssetCode4{'U', 'S', 'D', 0}))
 					var aid xdr.AccountId
 					aid.SetAddress(address)
 					Expect(subject.PP.DestAsset.AlphaNum4.Issuer.MustEd25519()).To(Equal(aid.MustEd25519()))
@@ -228,7 +228,7 @@ var _ = Describe("Payment Mutators", func() {
 					Expect(subject.PP.DestAmount).To(Equal(xdr.Int64(500000000)))
 					Expect(subject.PP.DestAsset.Type).To(Equal(xdr.AssetTypeAssetTypeCreditAlphanum12))
 					Expect(subject.PP.DestAsset.AlphaNum4).To(BeNil())
-					Expect(subject.PP.DestAsset.AlphaNum12.AssetCode).To(Equal([12]byte{'A', 'B', 'C', 'D', 'E', 'F', 0, 0, 0, 0, 0, 0}))
+					Expect(subject.PP.DestAsset.AlphaNum12.AssetCode).To(Equal(xdr.AssetCode12{'A', 'B', 'C', 'D', 'E', 'F', 0, 0, 0, 0, 0, 0}))
 					var aid xdr.AccountId
 					aid.SetAddress(address)
 					Expect(subject.PP.DestAsset.AlphaNum12.Issuer.MustEd25519()).To(Equal(aid.MustEd25519()))
