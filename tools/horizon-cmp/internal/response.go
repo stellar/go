@@ -12,8 +12,7 @@ import (
 
 const fileLengthLimit = 100
 
-// (?U) = ungreedy to end on `result_meta_xdr` value's: "
-var findResultMetaXDR = regexp.MustCompile(`(?U)"result_meta_xdr":[ ]{0,1}"(.*)",`)
+var findResultMetaXDR = regexp.MustCompile(`"result_meta_xdr":[ ]?"([^"]*)",`)
 
 // removeRegexps contains a list of regular expressions that, when matched,
 // will be changed to an empty string. This is done to exclude known
