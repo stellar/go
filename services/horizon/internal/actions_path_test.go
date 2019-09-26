@@ -121,6 +121,7 @@ func TestPathActionsStateInvalid(t *testing.T) {
 	rh.App.web.mustInstallActions(
 		rh.App.config,
 		simplepath.NewInMemoryFinder(orderBookGraph),
+		orderBookGraph,
 	)
 	rh.RH = test.NewRequestHelper(rh.App.web.router)
 
