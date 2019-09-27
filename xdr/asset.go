@@ -80,12 +80,12 @@ func (a *Asset) ToAllowTrustOpAsset(code string) (AllowTrustOpAsset, error) {
 
 	switch {
 	case length >= 1 && length <= 4:
-		var bytecode [4]byte
+		var bytecode AssetCode4
 		byteArray := []byte(code)
 		copy(bytecode[:], byteArray[0:length])
 		return NewAllowTrustOpAsset(AssetTypeAssetTypeCreditAlphanum4, bytecode)
 	case length >= 5 && length <= 12:
-		var bytecode [12]byte
+		var bytecode AssetCode12
 		byteArray := []byte(code)
 		copy(bytecode[:], byteArray[0:length])
 		return NewAllowTrustOpAsset(AssetTypeAssetTypeCreditAlphanum12, bytecode)

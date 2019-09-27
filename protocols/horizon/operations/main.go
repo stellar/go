@@ -16,7 +16,9 @@ import (
 var TypeNames = map[xdr.OperationType]string{
 	xdr.OperationTypeCreateAccount: "create_account",
 	xdr.OperationTypePayment:       "payment",
-	xdr.OperationTypePathPayment:   "path_payment",
+	// Action needed in release: horizon-v0.22.0
+	// Change name to `path_payment_strict_receive`
+	xdr.OperationTypePathPaymentStrictReceive: "path_payment",
 	// Action needed in release: horizon-v0.22.0
 	// Change name to `manage_sell_offer`
 	xdr.OperationTypeManageSellOffer: "manage_offer",
@@ -31,6 +33,7 @@ var TypeNames = map[xdr.OperationType]string{
 	xdr.OperationTypeManageData:             "manage_data",
 	xdr.OperationTypeBumpSequence:           "bump_sequence",
 	xdr.OperationTypeManageBuyOffer:         "manage_buy_offer",
+	xdr.OperationTypePathPaymentStrictSend:  "path_payment_strict_send",
 }
 
 // Base represents the common attributes of an operation resource
@@ -99,6 +102,18 @@ type PathPayment struct {
 	Path              []base.Asset `json:"path"`
 	SourceAmount      string       `json:"source_amount"`
 	SourceMax         string       `json:"source_max"`
+	SourceAssetType   string       `json:"source_asset_type"`
+	SourceAssetCode   string       `json:"source_asset_code,omitempty"`
+	SourceAssetIssuer string       `json:"source_asset_issuer,omitempty"`
+}
+
+// PathPaymentStrictSend is the json resource representing a single operation whose type
+// is PathPaymentStrictSend.
+type PathPaymentStrictSend struct {
+	Payment
+	Path              []base.Asset `json:"path"`
+	SourceAmount      string       `json:"source_amount"`
+	DestinationMin    string       `json:"destination_min"`
 	SourceAssetType   string       `json:"source_asset_type"`
 	SourceAssetCode   string       `json:"source_asset_code,omitempty"`
 	SourceAssetIssuer string       `json:"source_asset_issuer,omitempty"`
@@ -286,7 +301,7 @@ func UnmarshalOperation(operationTypeID int32, dataString []byte) (ops Operation
 			return
 		}
 		ops = op
-	case xdr.OperationTypePathPayment:
+	case xdr.OperationTypePathPaymentStrictReceive:
 		var op PathPayment
 		if err = json.Unmarshal(dataString, &op); err != nil {
 			return
@@ -354,6 +369,12 @@ func UnmarshalOperation(operationTypeID int32, dataString []byte) (ops Operation
 		ops = op
 	case xdr.OperationTypeManageBuyOffer:
 		var op ManageBuyOffer
+		if err = json.Unmarshal(dataString, &op); err != nil {
+			return
+		}
+		ops = op
+	case xdr.OperationTypePathPaymentStrictSend:
+		var op PathPaymentStrictSend
 		if err = json.Unmarshal(dataString, &op); err != nil {
 			return
 		}

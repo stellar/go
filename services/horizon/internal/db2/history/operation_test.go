@@ -169,7 +169,7 @@ func TestPaymentsSuccessfulOnly(t *testing.T) {
 	sql, _, err := query.sql.ToSql()
 	tt.Assert.NoError(err)
 	// Note: brackets around `(ht.successful = true OR ht.successful IS NULL)` are critical!
-	tt.Assert.Contains(sql, "WHERE hop.type IN (?,?,?,?) AND hopp.history_account_id = ? AND (ht.successful = true OR ht.successful IS NULL)")
+	tt.Assert.Contains(sql, "WHERE hop.type IN (?,?,?,?,?) AND hopp.history_account_id = ? AND (ht.successful = true OR ht.successful IS NULL)")
 }
 
 // TestPaymentsIncludeFailed tests `IncludeFailed` method.
@@ -201,7 +201,7 @@ func TestPaymentsIncludeFailed(t *testing.T) {
 
 	sql, _, err := query.sql.ToSql()
 	tt.Assert.NoError(err)
-	tt.Assert.Equal("SELECT hop.id, hop.transaction_id, hop.application_order, hop.type, hop.details, hop.source_account, ht.transaction_hash, ht.tx_result, ht.successful as transaction_successful FROM history_operations hop LEFT JOIN history_transactions ht ON ht.id = hop.transaction_id JOIN history_operation_participants hopp ON hopp.history_operation_id = hop.id WHERE hop.type IN (?,?,?,?) AND hopp.history_account_id = ?", sql)
+	tt.Assert.Equal("SELECT hop.id, hop.transaction_id, hop.application_order, hop.type, hop.details, hop.source_account, ht.transaction_hash, ht.tx_result, ht.successful as transaction_successful FROM history_operations hop LEFT JOIN history_transactions ht ON ht.id = hop.transaction_id JOIN history_operation_participants hopp ON hopp.history_operation_id = hop.id WHERE hop.type IN (?,?,?,?,?) AND hopp.history_account_id = ?", sql)
 }
 
 func TestExtraChecksOperationsTransactionSuccessfulTrueResultFalse(t *testing.T) {
