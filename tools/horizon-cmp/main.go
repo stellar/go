@@ -40,7 +40,7 @@ var (
 	horizonBase           string
 	horizonTest           string
 	elbAccessLogFile      string
-	elbAccessLogstartLine int
+	elbAccessLogStartLine int
 	requestsPerSecond     int
 )
 
@@ -58,7 +58,7 @@ func init() {
 	rootCmd.Flags().StringVarP(&horizonBase, "base", "b", "", "URL of the base/old version Horizon server")
 	rootCmd.Flags().StringVarP(&horizonTest, "test", "t", "", "URL of the test/new version Horizon server")
 	rootCmd.Flags().StringVarP(&elbAccessLogFile, "elb-access-log-file", "a", "", "ELB access log file to replay")
-	rootCmd.Flags().IntVarP(&elbAccessLogstartLine, "elb-access-start-line", "s", 1, "Start line of ELB access log (useful to continue from a given point)")
+	rootCmd.Flags().IntVarP(&elbAccessLogStartLine, "elb-access-log-start-line", "s", 1, "Start line of ELB access log (useful to continue from a given point)")
 	rootCmd.Flags().IntVar(&requestsPerSecond, "rps", 1, "Requests per second")
 }
 
@@ -93,10 +93,10 @@ func run(cmd *cobra.Command) {
 		scanner := bufio.NewScanner(file)
 		accessLog = &cmp.Scanner{Scanner: scanner}
 		// Seek
-		if elbAccessLogstartLine > 1 {
+		if elbAccessLogStartLine > 1 {
 			fmt.Println("Seeking file...")
 		}
-		for i := 1; i < elbAccessLogstartLine; i++ {
+		for i := 1; i < elbAccessLogStartLine; i++ {
 			accessLog.Scan()
 		}
 		// Streams lines to channel from another go routine
