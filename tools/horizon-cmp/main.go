@@ -8,6 +8,7 @@ import (
 	"os"
 	"regexp"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -23,24 +24,17 @@ import (
 // Level 2 = /transactions/abcdef (finds a link to a list of operations)
 // Level 3 = /transactions/abcdef/operations (will not follow any links - at level 3)
 const maxLevels = 3
+const pathsQueueCap = 10000
 
 // pathAccessLog is a regexp that gets path from ELB access log line. Example:
 // 2015-05-13T23:39:43.945958Z my-loadbalancer 192.168.131.39:2817 10.0.0.1:80 0.000086 0.001048 0.001337 200 200 0 57 "GET https://www.example.com:443/transactions?order=desc HTTP/1.1" "curl/7.38.0" DHE-RSA-AES128-SHA TLSv1.2
-var pathAccessLog = regexp.MustCompile(`GET https:\/\/[^/]*(/[^ ]*)`)
+var pathAccessLog = regexp.MustCompile(`([A-Z]+) http[s]?:\/\/[^/]*(/[^ ]*)`)
 
-type pathWithLevel struct {
-	Path   string
-	Level  int
-	Line   int
-	Stream bool
-}
-
-func (p pathWithLevel) ID() string {
-	return fmt.Sprintf("%t%s", p.Stream, p.Path)
-}
-
-var paths []pathWithLevel
-var visitedPaths map[string]bool
+var (
+	paths                     = make(chan cmp.PathWithLevel, pathsQueueCap)
+	visitedPaths              map[string]bool
+	elbAccessLogFileReadMutex sync.Mutex
+)
 
 // CLI params
 var (
@@ -48,13 +42,14 @@ var (
 	horizonTest           string
 	elbAccessLogFile      string
 	elbAccessLogstartLine int
+	requestsPerSecond     int
 )
 
 var rootCmd = &cobra.Command{
 	Use:   "horizon-cmp",
 	Short: "horizon-cmp compares two horizon servers' responses",
 	Run: func(cmd *cobra.Command, args []string) {
-		run()
+		run(cmd)
 	},
 }
 
@@ -65,15 +60,17 @@ func init() {
 	rootCmd.Flags().StringVarP(&horizonTest, "test", "t", "", "URL of the test/new version Horizon server")
 	rootCmd.Flags().StringVarP(&elbAccessLogFile, "elb-access-log-file", "a", "", "ELB access log file to replay")
 	rootCmd.Flags().IntVarP(&elbAccessLogstartLine, "elb-access-start-line", "s", 1, "Start line of ELB access log (useful to continue from a given point)")
+	rootCmd.Flags().IntVar(&requestsPerSecond, "rps", 1, "Requests per second")
 }
 
 func main() {
 	rootCmd.Execute()
 }
 
-func run() {
+func run(cmd *cobra.Command) {
 	if horizonBase == "" || horizonTest == "" {
-		fmt.Println("--base and --test params are required")
+		fmt.Print("--base and --test params are required\n\n")
+		cmd.Help()
 		os.Exit(1)
 	}
 
@@ -81,11 +78,11 @@ func run() {
 	ledger := getLatestLedger()
 	cursor := ledger.PagingToken()
 
-	var accessLog *Scanner
+	var accessLog *cmp.Scanner
 	if elbAccessLogFile == "" {
 		for _, p := range initPaths {
-			paths = append(paths, pathWithLevel{Path: getPathWithCursor(p, cursor), Level: 0, Stream: false})
-			paths = append(paths, pathWithLevel{Path: getPathWithCursor(p, cursor), Level: 0, Stream: true})
+			paths <- cmp.PathWithLevel{Path: getPathWithCursor(p, cursor), Level: 0, Stream: false}
+			paths <- cmp.PathWithLevel{Path: getPathWithCursor(p, cursor), Level: 0, Stream: true}
 		}
 	} else {
 		file, err := os.Open(elbAccessLogFile)
@@ -95,7 +92,7 @@ func run() {
 		defer file.Close()
 
 		scanner := bufio.NewScanner(file)
-		accessLog = &Scanner{Scanner: scanner}
+		accessLog = &cmp.Scanner{Scanner: scanner}
 		// Seek
 		if elbAccessLogstartLine > 1 {
 			fmt.Println("Seeking file...")
@@ -103,7 +100,8 @@ func run() {
 		for i := 1; i < elbAccessLogstartLine; i++ {
 			accessLog.Scan()
 		}
-		addPathFromFile(accessLog)
+		// Streams lines to channel from another go routine
+		go streamFile(accessLog)
 	}
 
 	pwd, err := os.Getwd()
@@ -121,9 +119,12 @@ func run() {
 		panic(err)
 	}
 
-	for len(paths) > 0 {
-		var pl pathWithLevel
-		pl, paths = paths[0], paths[1:]
+	var wg sync.WaitGroup
+	for {
+		pl, more := <-paths
+		if !more {
+			break
+		}
 
 		if pl.Level > maxLevels {
 			continue
@@ -132,37 +133,41 @@ func run() {
 		if visitedPaths[pl.ID()] {
 			continue
 		}
-
 		visitedPaths[pl.ID()] = true
 
-		if accessLog != nil {
-			fmt.Printf("%d ", pl.Line)
-		}
-		fmt.Printf("[stream=%t] %s ", pl.Stream, pl.Path)
+		time.Sleep(time.Second / time.Duration(requestsPerSecond))
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			var status strings.Builder
+			if accessLog != nil {
+				status.WriteString(fmt.Sprintf("%d ", pl.Line))
+			}
+			status.WriteString(fmt.Sprintf("[stream=%t] %s ", pl.Stream, pl.Path))
 
-		a := cmp.NewResponse(horizonBase, pl.Path, pl.Stream)
-		fmt.Print(".")
-		b := cmp.NewResponse(horizonTest, pl.Path, pl.Stream)
-		fmt.Print(".")
+			a := cmp.NewResponse(horizonBase, pl.Path, pl.Stream)
+			status.WriteString(".")
+			b := cmp.NewResponse(horizonTest, pl.Path, pl.Stream)
+			status.WriteString(".")
 
-		status := ""
-		if a.Equal(b) {
-			status = "ok"
-		} else {
-			status = "diff"
-		}
-		fmt.Printf("%s %d %d %d\n", status, a.StatusCode, a.Size(), b.Size())
-		if status == "diff" {
-			a.SaveDiff(outputDir, b)
-		}
+			if a.Equal(b) {
+				status.WriteString("ok")
+			} else {
+				status.WriteString("diff")
+				a.SaveDiff(outputDir, b)
+			}
+			status.WriteString(fmt.Sprintf(" %d %d %d", a.StatusCode, a.Size(), b.Size()))
 
-		// Add new paths
-		if accessLog != nil {
-			addPathFromFile(accessLog)
-		} else {
-			addPathsFromResponse(a, pl.Level+1)
-		}
+			fmt.Println(status.String())
+
+			// Add new paths (only for non-ELB)
+			if accessLog == nil {
+				addPathsFromResponse(a, pl.Level+1)
+			}
+		}()
 	}
+
+	wg.Wait()
 }
 
 func getLatestLedger() protocol.Ledger {
@@ -201,28 +206,39 @@ func getPathWithCursor(path, cursor string) string {
 
 func getPathFromAccessLog(line string) (string, error) {
 	matches := pathAccessLog.FindStringSubmatch(line)
-	if len(matches) != 2 {
+	if len(matches) != 3 {
 		return "", errors.Errorf("Can't find match: %s", line)
 	}
 
-	return matches[1], nil
+	if matches[1] != "GET" {
+		return "", nil
+	}
+
+	return matches[2], nil
 }
 
-func addPathFromFile(accessLog *Scanner) {
-	if accessLog.Scan() {
+func streamFile(accessLog *cmp.Scanner) {
+	for accessLog.Scan() {
 		p := accessLog.Text()
 		path, err := getPathFromAccessLog(p)
 		if err != nil {
 			fmt.Println(err)
-		} else {
-			paths = append(paths, pathWithLevel{Path: path, Level: 0, Line: accessLog.LinesRead(), Stream: false})
-			paths = append(paths, pathWithLevel{Path: path, Level: 0, Line: accessLog.LinesRead(), Stream: true})
+			continue
 		}
+
+		if path == "" {
+			continue
+		}
+
+		paths <- cmp.PathWithLevel{Path: path, Level: 0, Line: accessLog.LinesRead(), Stream: false}
+		paths <- cmp.PathWithLevel{Path: path, Level: 0, Line: accessLog.LinesRead(), Stream: true}
 	}
 
 	if err := accessLog.Err(); err != nil {
 		panic("Invalid input: " + err.Error())
 	}
+
+	close(paths)
 }
 
 func addPathsFromResponse(a *cmp.Response, level int) {
@@ -256,15 +272,15 @@ func addPathsFromResponse(a *cmp.Response, level int) {
 				prefix = "&"
 			}
 
-			paths = append(paths, pathWithLevel{newPath + prefix + "include_failed=false", level, 0, false})
-			paths = append(paths, pathWithLevel{newPath + prefix + "include_failed=false", level, 0, true})
+			paths <- cmp.PathWithLevel{newPath + prefix + "include_failed=false", level, 0, false}
+			paths <- cmp.PathWithLevel{newPath + prefix + "include_failed=false", level, 0, true}
 
-			paths = append(paths, pathWithLevel{newPath + prefix + "include_failed=true", level, 0, false})
-			paths = append(paths, pathWithLevel{newPath + prefix + "include_failed=true", level, 0, true})
+			paths <- cmp.PathWithLevel{newPath + prefix + "include_failed=true", level, 0, false}
+			paths <- cmp.PathWithLevel{newPath + prefix + "include_failed=true", level, 0, true}
 			return
 		}
 
-		paths = append(paths, pathWithLevel{newPath, level, 0, false})
-		paths = append(paths, pathWithLevel{newPath, level, 0, true})
+		paths <- cmp.PathWithLevel{newPath, level, 0, false}
+		paths <- cmp.PathWithLevel{newPath, level, 0, true}
 	}
 }
