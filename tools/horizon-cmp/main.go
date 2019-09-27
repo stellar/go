@@ -13,6 +13,7 @@ import (
 	"github.com/spf13/cobra"
 	client "github.com/stellar/go/clients/horizonclient"
 	protocol "github.com/stellar/go/protocols/horizon"
+	"github.com/stellar/go/support/errors"
 	cmp "github.com/stellar/go/tools/horizon-cmp/internal"
 )
 
@@ -30,6 +31,7 @@ var pathAccessLog = regexp.MustCompile(`GET https:\/\/[^/]*(/[^ ]*)`)
 type pathWithLevel struct {
 	Path   string
 	Level  int
+	Line   int
 	Stream bool
 }
 
@@ -42,9 +44,10 @@ var visitedPaths map[string]bool
 
 // CLI params
 var (
-	horizonBase      string
-	horizonTest      string
-	elbAccessLogFile string
+	horizonBase           string
+	horizonTest           string
+	elbAccessLogFile      string
+	elbAccessLogstartLine int
 )
 
 var rootCmd = &cobra.Command{
@@ -61,6 +64,7 @@ func init() {
 	rootCmd.Flags().StringVarP(&horizonBase, "base", "b", "", "URL of the base/old version Horizon server")
 	rootCmd.Flags().StringVarP(&horizonTest, "test", "t", "", "URL of the test/new version Horizon server")
 	rootCmd.Flags().StringVarP(&elbAccessLogFile, "elb-access-log-file", "a", "", "ELB access log file to replay")
+	rootCmd.Flags().IntVarP(&elbAccessLogstartLine, "elb-access-start-line", "s", 1, "Start line of ELB access log (useful to continue from a given point)")
 }
 
 func main() {
@@ -77,7 +81,7 @@ func run() {
 	ledger := getLatestLedger()
 	cursor := ledger.PagingToken()
 
-	var accessLog *bufio.Scanner
+	var accessLog *Scanner
 	if elbAccessLogFile == "" {
 		for _, p := range initPaths {
 			paths = append(paths, pathWithLevel{Path: getPathWithCursor(p, cursor), Level: 0, Stream: false})
@@ -90,12 +94,16 @@ func run() {
 		}
 		defer file.Close()
 
-		accessLog = bufio.NewScanner(file)
-		if accessLog.Scan() {
-			p := accessLog.Text()
-			paths = append(paths, pathWithLevel{Path: getPathFromAccessLog(p), Level: 0, Stream: false})
-			paths = append(paths, pathWithLevel{Path: getPathFromAccessLog(p), Level: 0, Stream: true})
+		scanner := bufio.NewScanner(file)
+		accessLog = &Scanner{Scanner: scanner}
+		// Seek
+		if elbAccessLogstartLine > 1 {
+			fmt.Println("Seeking file...")
 		}
+		for i := 1; i < elbAccessLogstartLine; i++ {
+			accessLog.Scan()
+		}
+		addPathFromFile(accessLog)
 	}
 
 	pwd, err := os.Getwd()
@@ -127,6 +135,9 @@ func run() {
 
 		visitedPaths[pl.ID()] = true
 
+		if accessLog != nil {
+			fmt.Printf("%d ", pl.Line)
+		}
 		fmt.Printf("[stream=%t] %s ", pl.Stream, pl.Path)
 
 		a := cmp.NewResponse(horizonBase, pl.Path, pl.Stream)
@@ -147,15 +158,7 @@ func run() {
 
 		// Add new paths
 		if accessLog != nil {
-			if accessLog.Scan() {
-				p := accessLog.Text()
-				paths = append(paths, pathWithLevel{Path: getPathWithCursor(p, cursor), Level: 0, Stream: false})
-				paths = append(paths, pathWithLevel{Path: getPathWithCursor(p, cursor), Level: 0, Stream: true})
-			}
-
-			if err := accessLog.Err(); err != nil {
-				panic("Invalid input: " + err.Error())
-			}
+			addPathFromFile(accessLog)
 		} else {
 			addPathsFromResponse(a, pl.Level+1)
 		}
@@ -196,13 +199,30 @@ func getPathWithCursor(path, cursor string) string {
 	return urlObj.String()
 }
 
-func getPathFromAccessLog(line string) string {
+func getPathFromAccessLog(line string) (string, error) {
 	matches := pathAccessLog.FindStringSubmatch(line)
 	if len(matches) != 2 {
-		panic("Can't find match: " + line)
+		return "", errors.Errorf("Can't find match: %s", line)
 	}
 
-	return matches[1]
+	return matches[1], nil
+}
+
+func addPathFromFile(accessLog *Scanner) {
+	if accessLog.Scan() {
+		p := accessLog.Text()
+		path, err := getPathFromAccessLog(p)
+		if err != nil {
+			fmt.Println(err)
+		} else {
+			paths = append(paths, pathWithLevel{Path: path, Level: 0, Line: accessLog.LinesRead(), Stream: false})
+			paths = append(paths, pathWithLevel{Path: path, Level: 0, Line: accessLog.LinesRead(), Stream: true})
+		}
+	}
+
+	if err := accessLog.Err(); err != nil {
+		panic("Invalid input: " + err.Error())
+	}
 }
 
 func addPathsFromResponse(a *cmp.Response, level int) {
@@ -236,15 +256,15 @@ func addPathsFromResponse(a *cmp.Response, level int) {
 				prefix = "&"
 			}
 
-			paths = append(paths, pathWithLevel{newPath + prefix + "include_failed=false", level, false})
-			paths = append(paths, pathWithLevel{newPath + prefix + "include_failed=false", level, true})
+			paths = append(paths, pathWithLevel{newPath + prefix + "include_failed=false", level, 0, false})
+			paths = append(paths, pathWithLevel{newPath + prefix + "include_failed=false", level, 0, true})
 
-			paths = append(paths, pathWithLevel{newPath + prefix + "include_failed=true", level, false})
-			paths = append(paths, pathWithLevel{newPath + prefix + "include_failed=true", level, true})
+			paths = append(paths, pathWithLevel{newPath + prefix + "include_failed=true", level, 0, false})
+			paths = append(paths, pathWithLevel{newPath + prefix + "include_failed=true", level, 0, true})
 			return
 		}
 
-		paths = append(paths, pathWithLevel{newPath, level, false})
-		paths = append(paths, pathWithLevel{newPath, level, true})
+		paths = append(paths, pathWithLevel{newPath, level, 0, false})
+		paths = append(paths, pathWithLevel{newPath, level, 0, true})
 	}
 }

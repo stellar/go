@@ -63,7 +63,7 @@ func NewResponse(domain, path string, stream bool) *Response {
 
 	if stream {
 		req.Header.Add("Accept", "text/event-stream")
-		client.Timeout = 500 * time.Millisecond
+		client.Timeout = time.Second
 	}
 
 	resp, err := client.Do(req)
@@ -77,7 +77,8 @@ func NewResponse(domain, path string, stream bool) *Response {
 
 	if resp.StatusCode != http.StatusOK &&
 		resp.StatusCode != http.StatusNotFound &&
-		resp.StatusCode != http.StatusNotAcceptable {
+		resp.StatusCode != http.StatusNotAcceptable &&
+		resp.StatusCode != http.StatusBadRequest {
 		panic(resp.StatusCode)
 	}
 
@@ -133,12 +134,12 @@ func (r *Response) SaveDiff(outputDir string, other *Response) {
 	fileB := fmt.Sprintf("%s/%s.new", outputDir, fileName)
 	fileDiff := fmt.Sprintf("%s/%s.diff", outputDir, fileName)
 
-	err := ioutil.WriteFile(fileA, []byte(r.Path+"\n\n"+r.Body), 0744)
+	err := ioutil.WriteFile(fileA, []byte(r.Domain+" "+r.Path+"\n\n"+r.Body), 0744)
 	if err != nil {
 		panic(err)
 	}
 
-	err = ioutil.WriteFile(fileB, []byte(other.Path+"\n\n"+other.Body), 0744)
+	err = ioutil.WriteFile(fileB, []byte(other.Domain+" "+other.Path+"\n\n"+other.Body), 0744)
 	if err != nil {
 		panic(err)
 	}
