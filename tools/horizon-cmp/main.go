@@ -31,9 +31,8 @@ const pathsQueueCap = 10000
 var pathAccessLog = regexp.MustCompile(`([A-Z]+) http[s]?:\/\/[^/]*(/[^ ]*)`)
 
 var (
-	paths                     = make(chan cmp.PathWithLevel, pathsQueueCap)
-	visitedPaths              map[string]bool
-	elbAccessLogFileReadMutex sync.Mutex
+	paths        = make(chan cmp.PathWithLevel, pathsQueueCap)
+	visitedPaths map[string]bool
 )
 
 // CLI params
