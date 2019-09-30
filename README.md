@@ -10,7 +10,6 @@ This repo is the home for all of the public go code produced by SDF.  In additio
 * [Horizon Server](services/horizon): Full-featured API server for Stellar network
 * [Go Horizon SDK - horizonclient](clients/horizonclient): Client for Horizon server (queries and transaction submission)
 * [Go Horizon SDK - txnbuild](txnbuild): Construct Stellar transactions and operations
-* [Bifrost](services/bifrost): Bitcoin/Ethereum -> Stellar bridge
 * [Ticker](services/ticker): An API server that provides statistics about assets and markets on the Stellar network
 * [Keystore](services/keystore): An API server that is used to store and manage encrypted keys for Stellar client applications
 * Servers for Anchors & Financial Institutions
@@ -66,8 +65,10 @@ Generally, file contents are sorted by exported/unexported, then declaration typ
 
 Often, we provide test packages that aid in the creation of tests that interact with our other packages.  For example, the `support/db` package has the `support/db/dbtest` package underneath it that contains elements that make it easier to test code that accesses a SQL database.  We've found that this pattern of having a separate test package maximizes flexibility and simplifies package dependencies.
 
+### Contributing
 
-## Coding conventions
+Contributions are welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for more details.
 
-- Always document exported package elements: vars, consts, funcs, types, etc.
-- Tests are better than no tests.
+### Developing
+
+See [DEVELOPING.md](DEVELOPING.md) for helpful instructions for getting started developing code in this repository.

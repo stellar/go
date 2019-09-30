@@ -27,6 +27,11 @@ type StateError struct {
 	error
 }
 
+// NewStateError creates a new StateError.
+func NewStateError(err error) StateError {
+	return StateError{err}
+}
+
 // StateVerifier verifies if ledger entries provided by Add method are the same
 // as in the checkpoint ledger entries provided by SingleLedgerStateReader.
 // The algorithm works in the following way:

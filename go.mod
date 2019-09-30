@@ -5,21 +5,11 @@ go 1.12
 require (
 	bitbucket.org/ww/goautoneg v0.0.0-20120707110453-75cd24fc2f2c
 	github.com/BurntSushi/toml v0.2.1-0.20160717150709-99064174e013
-	github.com/FactomProject/basen v0.0.0-20150613233007-fe3947df716e // indirect
-	github.com/FactomProject/btcutilecc v0.0.0-20130527213604-d3a63a5752ec // indirect
 	github.com/Masterminds/squirrel v0.0.0-20161115235646-20f192218cf5
 	github.com/ajg/form v0.0.0-20160822230020-523a5da1a92f // indirect
 	github.com/asaskevich/govalidator v0.0.0-20180319081651-7d2e70ef918f
 	github.com/aws/aws-sdk-go v1.6.11-0.20170104181648-8649d278323e
-	github.com/btcsuite/btcd v0.0.0-20170920174435-4803a8291c92
-	github.com/btcsuite/btclog v0.0.0-20170628155309-84c8d2346e9f // indirect
-	github.com/btcsuite/btcutil v0.0.0-20170726183619-501929d3d046
-	github.com/btcsuite/go-socks v0.0.0-20170105172521-4720035b7bfd // indirect
-	github.com/btcsuite/websocket v0.0.0-20150119174127-31079b680792 // indirect
-	github.com/cmars/basen v0.0.0-20150613233007-fe3947df716e // indirect
-	github.com/davecgh/go-spew v0.0.0-20151105211317-5215b55f46b2 // indirect
 	github.com/elazarl/go-bindata-assetfs v1.0.0
-	github.com/ethereum/go-ethereum v1.7.2-0.20171011101018-ad444752311b
 	github.com/facebookgo/ensure v0.0.0-20160127193407-b4ab57deab51 // indirect
 	github.com/facebookgo/inject v0.0.0-20161006174721-cc1aa653e50f
 	github.com/facebookgo/stack v0.0.0-20160209184415-751773369052 // indirect
@@ -31,15 +21,12 @@ require (
 	github.com/go-chi/chi v3.1.5+incompatible
 	github.com/go-errors/errors v0.0.0-20150906023321-a41850380601
 	github.com/go-ini/ini v1.23.0 // indirect
-	github.com/go-sql-driver/mysql v1.4.0
-	github.com/go-stack/stack v1.6.0 // indirect
 	github.com/gobuffalo/packr v1.12.1 // indirect
 	github.com/goji/httpauth v0.0.0-20160601135302-2da839ab0f4d
 	github.com/gomodule/redigo v2.0.0+incompatible
 	github.com/google/go-querystring v0.0.0-20160401233042-9235644dd9e5 // indirect
 	github.com/graph-gophers/graphql-go v0.0.0-20190225005345-3e8838d4614c
 	github.com/guregu/null v2.1.3-0.20151024101046-79c5bd36b615+incompatible
-	github.com/haltingstate/secp256k1-go v0.0.0-20151224084235-572209b26df6
 	github.com/hashicorp/golang-lru v0.5.0 // indirect
 	github.com/howeyc/gopass v0.0.0-20170109162249-bf9dde6d0d2c
 	github.com/imkira/go-interpol v1.1.0 // indirect
@@ -67,8 +54,6 @@ require (
 	github.com/onsi/gomega v1.4.3
 	github.com/opentracing/opentracing-go v1.1.0 // indirect
 	github.com/pkg/errors v0.8.0
-	github.com/pmezard/go-difflib v1.0.0 // indirect
-	github.com/r3labs/sse v0.0.0-20170720143429-2f36fb519619
 	github.com/rcrowley/go-metrics v0.0.0-20160113235030-51425a2415d2
 	github.com/rs/cors v0.0.0-20160617231935-a62a804a8a00
 	github.com/rs/xhandler v0.0.0-20160618193221-ed27b6fd6521 // indirect
@@ -86,10 +71,7 @@ require (
 	github.com/spf13/viper v0.0.0-20150621231900-db7ff930a189
 	github.com/stellar/go-xdr v0.0.0-20180917104419-0bc96f33a18e
 	github.com/stellar/throttled v2.2.3-0.20190823235211-89d75816f59d+incompatible
-	github.com/stretchr/objx v0.0.0-20150928122152-1a9d0bb9f541 // indirect
-	github.com/stretchr/testify v1.1.5-0.20160925220609-976c720a22c8
-	github.com/syndtr/goleveldb v1.0.0 // indirect
-	github.com/tyler-smith/go-bip32 v0.0.0-20170922074101-2c9cfd177564
+	github.com/stretchr/testify v1.4.0
 	github.com/tyler-smith/go-bip39 v0.0.0-20180618194314-52158e4697b8
 	github.com/valyala/bytebufferpool v1.0.0 // indirect
 	github.com/valyala/fasthttp v0.0.0-20170109085056-0a7f0a797cd6 // indirect
@@ -102,20 +84,13 @@ require (
 	github.com/yudai/pp v2.0.1+incompatible // indirect
 	github.com/ziutek/mymysql v1.5.4 // indirect
 	golang.org/x/crypto v0.0.0-20190621222207-cc06ce4a13d4
-	golang.org/x/net v0.0.0-20190827160401-ba9fcec4b297
+	golang.org/x/net v0.0.0-20190827160401-ba9fcec4b297 // indirect
 	golang.org/x/tools v0.0.0-20190624180213-70d37148ca0c // indirect
 	google.golang.org/appengine v1.6.1 // indirect
 	gopkg.in/airbrake/gobrake.v2 v2.0.9 // indirect
 	gopkg.in/check.v1 v1.0.0-20180628173108-788fd7840127 // indirect
-	gopkg.in/fatih/set.v0 v0.1.0 // indirect
 	gopkg.in/gavv/httpexpect.v1 v1.0.0-20170111145843-40724cf1e4a0
 	gopkg.in/gemnasium/logrus-airbrake-hook.v2 v2.1.2 // indirect
 	gopkg.in/gorp.v1 v1.7.1 // indirect
-	gopkg.in/karalabe/cookiejar.v2 v2.0.0-20150724131613-8dcd6a7f4951 // indirect
-	gopkg.in/natefinch/npipe.v2 v2.0.0-20160621034901-c1b8fa8bdcce // indirect
 	gopkg.in/tylerb/graceful.v1 v1.2.13
-	gopkg.in/yaml.v2 v2.2.2 // indirect
-	launchpad.net/gocheck v0.0.0-20140225173054-000000000087 // indirect
 )
-
-replace launchpad.net/gocheck => github.com/go-check/check v0.0.0-20140225173054-eb6ee6f84d0a

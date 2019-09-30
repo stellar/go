@@ -19,8 +19,6 @@ import (
 	"github.com/jmoiron/sqlx"
 	"github.com/stellar/go/support/errors"
 
-	// Enable mysql
-	_ "github.com/go-sql-driver/mysql"
 	// Enable postgres
 	_ "github.com/lib/pq"
 )

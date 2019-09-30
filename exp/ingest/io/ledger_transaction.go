@@ -29,13 +29,10 @@ func (c *Change) AccountSignersChanged() bool {
 		return true
 	}
 
-	// Account merged, check if master key weight > 0, if so, it means
-	// it got removed. Merged account can't have subentries so we don't
-	// need to check other signers.
+	// Account merged. Account being merge can still have signers.
 	// c.Pre != nil at this point.
 	if c.Post == nil {
-		preAccountEntry := c.Pre.MustAccount()
-		return preAccountEntry.MasterKeyWeight() > 0
+		return true
 	}
 
 	// c.Pre != nil && c.Post != nil at this point.

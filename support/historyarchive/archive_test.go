@@ -24,8 +24,15 @@ func GetTestS3Archive() *Archive {
 	if e != nil {
 		panic(e)
 	}
-	return MustConnect(fmt.Sprintf("s3://history-stg.stellar.org/dev/archivist/test-%s", r),
-		ConnectOptions{S3Region: "eu-west-1"})
+	bucket := fmt.Sprintf("s3://history-stg.stellar.org/dev/archivist/test-%s", r)
+	region := "eu-west-1"
+	if env_bucket := os.Getenv("ARCHIVIST_TEST_S3_BUCKET"); env_bucket != "" {
+		bucket = fmt.Sprintf(env_bucket+"/archivist/test-%s", r)
+	}
+	if env_region := os.Getenv("ARCHIVIST_TEST_S3_REGION"); env_region != "" {
+		region = env_region
+	}
+	return MustConnect(bucket, ConnectOptions{S3Region: region})
 }
 
 func GetTestMockArchive() *Archive {
@@ -148,6 +155,46 @@ func TestScan(t *testing.T) {
 	GetRandomPopulatedArchive().Scan(opts)
 }
 
+func TestScanSize(t *testing.T) {
+	defer cleanup()
+	opts := testOptions()
+	arch := GetRandomPopulatedArchive()
+	arch.Scan(opts)
+	assert.Equal(t, opts.Range.Size(),
+		len(arch.checkpointFiles["history"]))
+}
+
+func TestScanSizeSubrange(t *testing.T) {
+	defer cleanup()
+	opts := testOptions()
+	arch := GetRandomPopulatedArchive()
+	opts.Range.Low = NextCheckpoint(opts.Range.Low)
+	opts.Range.High = PrevCheckpoint(opts.Range.High)
+	arch.Scan(opts)
+	assert.Equal(t, opts.Range.Size(),
+		len(arch.checkpointFiles["history"]))
+}
+
+func TestScanSizeSubrangeFewBuckets(t *testing.T) {
+	defer cleanup()
+	opts := testOptions()
+	arch := GetRandomPopulatedArchive()
+	opts.Range.Low = 0x1ff
+	opts.Range.High = 0x1ff
+	arch.Scan(opts)
+	// We should only scan one checkpoint worth of buckets.
+	assert.Less(t, len(arch.allBuckets), 40)
+}
+
+func TestScanSizeSubrangeAllBuckets(t *testing.T) {
+	defer cleanup()
+	opts := testOptions()
+	arch := GetRandomPopulatedArchive()
+	arch.Scan(opts)
+	// We should scan all checkpoints worth of buckets.
+	assert.Less(t, 300, len(arch.allBuckets))
+}
+
 func countMissing(arch *Archive, opts *CommandOptions) int {
 	n := 0
 	arch.Scan(opts)
@@ -191,6 +238,43 @@ func TestMirrorThenRepair(t *testing.T) {
 	assert.NotEqual(t, 0, countMissing(dst, opts))
 	Repair(src, dst, opts)
 	assert.Equal(t, 0, countMissing(dst, opts))
+}
+
+func (a *Archive) MustGetRootHAS() HistoryArchiveState {
+	has, e := a.GetRootHAS()
+	if e != nil {
+		panic("failed to get root HAS")
+	}
+	return has
+}
+
+func TestMirrorSubsetDoPointerUpdate(t *testing.T) {
+	defer cleanup()
+	opts := testOptions()
+	src := GetRandomPopulatedArchive()
+	dst := GetTestArchive()
+	Mirror(src, dst, opts)
+	oldHigh := opts.Range.High
+	assert.Equal(t, oldHigh, dst.MustGetRootHAS().CurrentLedger)
+	opts.Range.High = NextCheckpoint(oldHigh)
+	src.AddRandomCheckpoint(opts.Range.High)
+	Mirror(src, dst, opts)
+	assert.Equal(t, opts.Range.High, dst.MustGetRootHAS().CurrentLedger)
+}
+
+func TestMirrorSubsetNoPointerUpdate(t *testing.T) {
+	defer cleanup()
+	opts := testOptions()
+	src := GetRandomPopulatedArchive()
+	dst := GetTestArchive()
+	Mirror(src, dst, opts)
+	oldHigh := opts.Range.High
+	assert.Equal(t, oldHigh, dst.MustGetRootHAS().CurrentLedger)
+	src.AddRandomCheckpoint(NextCheckpoint(oldHigh))
+	opts.Range.Low = 0x7f
+	opts.Range.High = 0xff
+	Mirror(src, dst, opts)
+	assert.Equal(t, oldHigh, dst.MustGetRootHAS().CurrentLedger)
 }
 
 func TestDryRunNoRepair(t *testing.T) {

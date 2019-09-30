@@ -80,9 +80,12 @@ func TestGetOffersHandler(t *testing.T) {
 	tt.Assert.NoError(ingestion.Flush())
 	tt.Assert.NoError(ingestion.Close())
 
-	tt.Assert.NoError(q.UpsertOffer(eurOffer, 3))
-	tt.Assert.NoError(q.UpsertOffer(twoEurOffer, 3))
-	tt.Assert.NoError(q.UpsertOffer(usdOffer, 3))
+	_, err := q.InsertOffer(eurOffer, 3)
+	tt.Assert.NoError(err)
+	_, err = q.InsertOffer(twoEurOffer, 3)
+	tt.Assert.NoError(err)
+	_, err = q.InsertOffer(usdOffer, 3)
+	tt.Assert.NoError(err)
 
 	t.Run("No filter", func(t *testing.T) {
 		records, err := handler.GetResourcePage(makeRequest(t, map[string]string{}, map[string]string{}))
@@ -208,9 +211,12 @@ func TestGetAccountOffersHandler(t *testing.T) {
 		HistoryQ: q,
 	}
 
-	tt.Assert.NoError(q.UpsertOffer(eurOffer, 3))
-	tt.Assert.NoError(q.UpsertOffer(twoEurOffer, 3))
-	tt.Assert.NoError(q.UpsertOffer(usdOffer, 3))
+	_, err := q.InsertOffer(eurOffer, 3)
+	tt.Assert.NoError(err)
+	_, err = q.InsertOffer(twoEurOffer, 3)
+	tt.Assert.NoError(err)
+	_, err = q.InsertOffer(usdOffer, 3)
+	tt.Assert.NoError(err)
 
 	records, err := handler.GetResourcePage(
 		makeRequest(t, map[string]string{}, map[string]string{"account_id": issuer.Address()}),

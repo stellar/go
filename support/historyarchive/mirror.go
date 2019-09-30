@@ -90,11 +90,23 @@ func Mirror(src *Archive, dst *Archive, opts *CommandOptions) error {
 	}
 
 	wg.Wait()
-	log.Printf("Copied %d checkpoints, %d buckets",
-		opts.Range.Size(), len(bucketFetch))
+	log.Printf("copied %d checkpoints, %d buckets, range %s",
+		opts.Range.Size(), len(bucketFetch), opts.Range)
 	close(tick)
-	e = dst.PutRootHAS(rootHAS, opts)
-	errs += noteError(e)
+	if rootHAS.CurrentLedger == opts.Range.High {
+		log.Printf("updating destination archive current-ledger pointer to 0x%8.8x",
+			rootHAS.CurrentLedger)
+		e = dst.PutRootHAS(rootHAS, opts)
+		errs += noteError(e)
+	} else {
+		dstHAS, e := dst.GetRootHAS()
+		if e != nil {
+			errs += noteError(e)
+		} else {
+			log.Printf("leaving destination archive current-ledger pointer at 0x%8.8x",
+				dstHAS.CurrentLedger)
+		}
+	}
 	if errs != 0 {
 		return fmt.Errorf("%d errors while mirroring", errs)
 	}

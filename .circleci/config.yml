@@ -132,17 +132,15 @@ commands:
                 sudo apt-get install postgresql-client-9.6
               )
             )
-            (sudo apt-get install mariadb-client-10.1 || sudo apt-get install mariadb-client-10.3)
       - run:
           name: Install dockerize
           command: wget https://github.com/jwilder/dockerize/releases/download/$DOCKERIZE_VERSION/dockerize-linux-amd64-$DOCKERIZE_VERSION.tar.gz && sudo tar -C /usr/local/bin -xzvf dockerize-linux-amd64-$DOCKERIZE_VERSION.tar.gz && rm dockerize-linux-amd64-$DOCKERIZE_VERSION.tar.gz
           environment:
             DOCKERIZE_VERSION: v0.3.0
       - run:
-          name: Wait for mysql, postgres and redis
+          name: Wait for postgres and redis
           command: |
             dockerize -wait tcp://localhost:5432 -timeout 1m
-            dockerize -wait tcp://localhost:3306 -timeout 1m
             dockerize -wait tcp://localhost:6379 -timeout 1m
       - run:
           name: Run package tests
@@ -193,7 +191,7 @@ jobs:
   check_code_1_13:
     working_directory: /go/src/github.com/stellar/go
     docker:
-      - image: circleci/golang:1.13-buster
+      - image: circleci/golang:1.13-stretch
     steps:
       - install_go_deps
       - check_go_deps
@@ -216,7 +214,6 @@ jobs:
       - image: circleci/postgres:9.6.5-alpine-ram
         environment:
           POSTGRES_USER: circleci
-      - image: circleci/mysql:5.7
       - image: circleci/redis:5.0-alpine
     steps:
       - install_go_deps
@@ -226,7 +223,7 @@ jobs:
   test_code_1_13:
     working_directory: /go/src/github.com/stellar/go
     docker:
-      - image: circleci/golang:1.13-buster
+      - image: circleci/golang:1.13-stretch
         environment:
           GO111MODULE: "on"
           PGHOST: localhost
@@ -237,7 +234,6 @@ jobs:
       - image: circleci/postgres:9.6.5-alpine-ram
         environment:
           POSTGRES_USER: circleci
-      - image: circleci/mysql:5.7
       - image: circleci/redis:5.0-alpine
     steps:
       - install_go_deps
@@ -251,7 +247,7 @@ jobs:
   publish_artifacts:
     working_directory: /go/src/github.com/stellar/go
     docker:
-      - image: circleci/golang:1.13-buster
+      - image: circleci/golang:1.13-stretch
     steps:
       - check_deprecations
       - install_go_deps
@@ -275,7 +271,7 @@ jobs:
   ingest_state_diff:
     working_directory: /go/src/github.com/stellar/go/
     docker:
-      - image: circleci/golang:1.13-buster
+      - image: circleci/golang:1.13-stretch
         environment:
           PGHOST: localhost
           PGPORT: 5432

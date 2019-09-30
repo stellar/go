@@ -47,3 +47,16 @@ func (md *ManageData) FromXDR(xdrOp xdr.Operation) error {
 	md.Value = *result.DataValue
 	return nil
 }
+
+// Validate for ManageData validates the required struct fields. It returns an error if any
+// of the fields are invalid. Otherwise, it returns nil.
+func (md *ManageData) Validate() error {
+	if len(md.Name) > 64 {
+		return NewValidationError("Name", "maximum length is 64 characters")
+	}
+
+	if len(md.Value) > 64 {
+		return NewValidationError("Value", "maximum length is 64 bytes")
+	}
+	return nil
+}

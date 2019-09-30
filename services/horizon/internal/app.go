@@ -30,7 +30,6 @@ import (
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/support/log"
 	"github.com/stellar/throttled"
-	"golang.org/x/net/http2"
 	graceful "gopkg.in/tylerb/graceful.v1"
 )
 
@@ -97,8 +96,6 @@ func (a *App) Serve() {
 			a.Close()
 		},
 	}
-
-	http2.ConfigureServer(srv.Server, nil)
 
 	log.Infof("Starting horizon on %s (ingest: %v)", addr, a.config.Ingest)
 

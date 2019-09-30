@@ -6,6 +6,10 @@ import (
 	"github.com/stellar/go/xdr"
 )
 
+// PathPayment represents the Stellar path_payment_strict_receive operation. See
+// https://www.stellar.org/developers/guides/concepts/list-of-operations.html
+type PathPaymentStrictReceive PathPayment
+
 // PathPayment represents the Stellar path payment operation. See
 // https://www.stellar.org/developers/guides/concepts/list-of-operations.html
 type PathPayment struct {
@@ -68,8 +72,8 @@ func (pp *PathPayment) BuildXDR() (xdr.Operation, error) {
 		xdrPath = append(xdrPath, xdrPathAsset)
 	}
 
-	opType := xdr.OperationTypePathPayment
-	xdrOp := xdr.PathPaymentOp{
+	opType := xdr.OperationTypePathPaymentStrictReceive
+	xdrOp := xdr.PathPaymentStrictReceiveOp{
 		SendAsset:   xdrSendAsset,
 		SendMax:     xdrSendMax,
 		Destination: xdrDestination,
@@ -88,7 +92,7 @@ func (pp *PathPayment) BuildXDR() (xdr.Operation, error) {
 
 // FromXDR for PathPayment initialises the txnbuild struct from the corresponding xdr Operation.
 func (pp *PathPayment) FromXDR(xdrOp xdr.Operation) error {
-	result, ok := xdrOp.Body.GetPathPaymentOp()
+	result, ok := xdrOp.Body.GetPathPaymentStrictReceiveOp()
 	if !ok {
 		return errors.New("error parsing path_payment operation from xdr")
 	}
@@ -117,6 +121,37 @@ func (pp *PathPayment) FromXDR(xdrOp xdr.Operation) error {
 			return errors.Wrap(err, "error parsing paths in path_payment operation")
 		}
 		pp.Path = append(pp.Path, pathAsset)
+	}
+
+	return nil
+}
+
+// Validate for PathPayment validates the required struct fields. It returns an error if any
+// of the fields are invalid. Otherwise, it returns nil.
+func (pp *PathPayment) Validate() error {
+	err := validateStellarPublicKey(pp.Destination)
+	if err != nil {
+		return NewValidationError("Destination", err.Error())
+	}
+
+	err = validateStellarAsset(pp.SendAsset)
+	if err != nil {
+		return NewValidationError("SendAsset", err.Error())
+	}
+
+	err = validateStellarAsset(pp.DestAsset)
+	if err != nil {
+		return NewValidationError("DestAsset", err.Error())
+	}
+
+	err = validateAmount(pp.SendMax)
+	if err != nil {
+		return NewValidationError("SendMax", err.Error())
+	}
+
+	err = validateAmount(pp.DestAmount)
+	if err != nil {
+		return NewValidationError("DestAmount", err.Error())
 	}
 
 	return nil

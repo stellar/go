@@ -8,6 +8,7 @@ import (
 type Operation interface {
 	BuildXDR() (xdr.Operation, error)
 	FromXDR(xdrOp xdr.Operation) error
+	Validate() error
 }
 
 // SetOpSourceAccount sets the source account ID on an Operation.
@@ -28,7 +29,7 @@ func operationFromXDR(xdrOp xdr.Operation) (Operation, error) {
 		newOp = &CreateAccount{}
 	case xdr.OperationTypePayment:
 		newOp = &Payment{}
-	case xdr.OperationTypePathPayment:
+	case xdr.OperationTypePathPaymentStrictReceive:
 		newOp = &PathPayment{}
 	case xdr.OperationTypeManageSellOffer:
 		newOp = &ManageSellOffer{}
@@ -50,6 +51,8 @@ func operationFromXDR(xdrOp xdr.Operation) (Operation, error) {
 		newOp = &BumpSequence{}
 	case xdr.OperationTypeManageBuyOffer:
 		newOp = &ManageBuyOffer{}
+	case xdr.OperationTypePathPaymentStrictSend:
+		newOp = &PathPaymentStrictSend{}
 	}
 
 	err := newOp.FromXDR(xdrOp)

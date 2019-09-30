@@ -30,7 +30,10 @@ import (
 	"github.com/stellar/throttled"
 )
 
-const LRUCacheSize = 50000
+const (
+	LRUCacheSize            = 50000
+	maxAssetsForPathFinding = 15
+)
 
 // Web contains the http server related fields for horizon: the router,
 // rate limiter, etc.
@@ -120,12 +123,12 @@ func installPathFindingRoutes(
 	findPaths FindPathsHandler,
 	findFixedPaths FindFixedPathsHandler,
 	r *chi.Mux,
-	checkState bool,
+	expIngest bool,
 ) {
 	r.Group(func(r chi.Router) {
 		r.Use(acceptOnlyJSON)
-		if checkState {
-			r.Use(ensureStateCorrect)
+		if expIngest {
+			r.Use(requiresExperimentalIngestion)
 		}
 		r.Method("GET", "/paths", findPaths)
 		r.Method("GET", "/paths/strict-receive", findPaths)
@@ -180,7 +183,7 @@ func (w *web) mustInstallActions(
 
 	// account actions
 	r.Route("/accounts", func(r chi.Router) {
-		r.With(requiresExperimentalIngestion, ensureStateCorrect).
+		r.With(requiresExperimentalIngestion).
 			Get("/", accountIndexActionHandler(w.getAccountPage))
 		r.Route("/{account_id}", func(r chi.Router) {
 			r.Get("/", w.streamShowActionHandler(w.getAccountInfo, true))
@@ -267,16 +270,18 @@ func (w *web) mustInstallActions(
 	r.Post("/transactions", TransactionCreateAction{}.Handle)
 
 	findPaths := FindPathsHandler{
-		staleThreshold:      config.StaleThreshold,
-		checkHistoryIsStale: !config.EnableExperimentalIngestion,
-		maxPathLength:       config.MaxPathLength,
-		pathFinder:          pathFinder,
-		coreQ:               w.coreQ,
+		staleThreshold:       config.StaleThreshold,
+		checkHistoryIsStale:  !config.EnableExperimentalIngestion,
+		maxPathLength:        config.MaxPathLength,
+		maxAssetsParamLength: maxAssetsForPathFinding,
+		pathFinder:           pathFinder,
+		coreQ:                w.coreQ,
 	}
 	findFixedPaths := FindFixedPathsHandler{
-		maxPathLength: config.MaxPathLength,
-		pathFinder:    pathFinder,
-		coreQ:         w.coreQ,
+		maxPathLength:        config.MaxPathLength,
+		maxAssetsParamLength: maxAssetsForPathFinding,
+		pathFinder:           pathFinder,
+		coreQ:                w.coreQ,
 	}
 	installPathFindingRoutes(findPaths, findFixedPaths, w.router, config.EnableExperimentalIngestion)
 

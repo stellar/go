@@ -241,9 +241,10 @@ func (graph *OrderBookGraph) FindPaths(
 	maxPathLength int,
 	destinationAsset xdr.Asset,
 	destinationAmount xdr.Int64,
-	sourceAccountID xdr.AccountId,
+	sourceAccountID *xdr.AccountId,
 	sourceAssets []xdr.Asset,
 	sourceAssetBalances []xdr.Int64,
+	validateSourceBalance bool,
 	maxAssetsPerPath int,
 ) ([]Path, error) {
 	destinationAssetString := destinationAsset.String()
@@ -259,6 +260,7 @@ func (graph *OrderBookGraph) FindPaths(
 		destinationAssetAmount: destinationAmount,
 		ignoreOffersFrom:       sourceAccountID,
 		targetAssets:           sourceAssetsMap,
+		validateSourceBalance:  validateSourceBalance,
 		paths:                  []Path{},
 	}
 	graph.lock.RLock()
@@ -290,7 +292,6 @@ func (graph *OrderBookGraph) FindPaths(
 // created by `sourceAccountID` will be considered when evaluating payment paths
 func (graph *OrderBookGraph) FindFixedPaths(
 	maxPathLength int,
-	sourceAccountID *xdr.AccountId,
 	sourceAsset xdr.Asset,
 	amountToSpend xdr.Int64,
 	destinationAssets []xdr.Asset,
@@ -306,7 +307,6 @@ func (graph *OrderBookGraph) FindFixedPaths(
 		graph:             graph,
 		sourceAsset:       sourceAsset,
 		sourceAssetAmount: amountToSpend,
-		ignoreOffersFrom:  sourceAccountID,
 		targetAssets:      target,
 		paths:             []Path{},
 	}
