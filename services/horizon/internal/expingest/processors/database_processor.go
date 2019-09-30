@@ -322,7 +322,7 @@ func (p *DatabaseProcessor) processLedgerTrustLines(transaction io.LedgerTransac
 
 		if rowsAffected != 1 {
 			return verify.NewStateError(errors.Errorf(
-				"No rows affected when %s trustline: %d %d",
+				"No rows affected when %s trustline: %s %s",
 				action,
 				ledgerKey.TrustLine.AccountId.Address(),
 				ledgerKey.TrustLine.Asset.String(),
