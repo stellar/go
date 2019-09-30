@@ -113,6 +113,7 @@ const (
 var ExperimentalIngestionTables = []string{
 	"accounts_signers",
 	"offers",
+	"trust_lines",
 }
 
 // Account is a row of data from the `history_accounts` table
@@ -430,6 +431,24 @@ type TransactionsQ struct {
 	includeFailed bool
 }
 
+// QTrustLines defines offer related queries.
+type QTrustLines interface {
+	NewTrustLinesBatchInsertBuilder(maxBatchSize int) TrustLinesBatchInsertBuilder
+	InsertTrustLine(trustLine xdr.TrustLineEntry, lastModifiedLedger xdr.Uint32) (int64, error)
+	UpdateTrustLine(trustLine xdr.TrustLineEntry, lastModifiedLedger xdr.Uint32) (int64, error)
+	RemoveTrustLine(key xdr.LedgerKeyTrustLine) (int64, error)
+}
+
+type TrustLinesBatchInsertBuilder interface {
+	Add(trustLine xdr.TrustLineEntry, lastModifiedLedger xdr.Uint32) error
+	Exec() error
+}
+
+// trustLinesBatchInsertBuilder is a simple wrapper around db.BatchInsertBuilder
+type trustLinesBatchInsertBuilder struct {
+	builder db.BatchInsertBuilder
+}
+
 func (q *Q) NewAccountSignersBatchInsertBuilder(maxBatchSize int) AccountSignersBatchInsertBuilder {
 	return &accountSignersBatchInsertBuilder{
 		builder: db.BatchInsertBuilder{
@@ -443,6 +462,15 @@ func (q *Q) NewOffersBatchInsertBuilder(maxBatchSize int) OffersBatchInsertBuild
 	return &offersBatchInsertBuilder{
 		builder: db.BatchInsertBuilder{
 			Table:        q.GetTable("offers"),
+			MaxBatchSize: maxBatchSize,
+		},
+	}
+}
+
+func (q *Q) NewTrustLinesBatchInsertBuilder(maxBatchSize int) TrustLinesBatchInsertBuilder {
+	return &trustLinesBatchInsertBuilder{
+		builder: db.BatchInsertBuilder{
+			Table:        q.GetTable("trust_lines"),
 			MaxBatchSize: maxBatchSize,
 		},
 	}
