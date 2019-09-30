@@ -8,6 +8,7 @@ import (
 
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
+
 	"github.com/stellar/go/services/horizon/internal/errors"
 	"github.com/stellar/go/services/horizon/internal/hchi"
 	"github.com/stellar/go/services/horizon/internal/httpx"
@@ -206,18 +207,24 @@ func acceptOnlyJSON(h http.Handler) http.Handler {
 }
 
 // requiresExperimentalIngestion is a middleware which enables a handler
-// if the experimental ingestion system is enabled and initialized
+// if the experimental ingestion system is enabled and initialized.
+// It also ensures that state (ledger entries) has been verified and are
+// correct. Otherwise returns `500 Internal Server Error` to prevent
+// returning invalid data to the user.
 func requiresExperimentalIngestion(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 		app := AppFromContext(ctx)
 		if !app.config.EnableExperimentalIngestion {
-			w.WriteHeader(http.StatusNotFound)
+			problem.Render(r.Context(), w, problem.NotFound)
 			return
 		}
 
+		localLog := log.Ctx(ctx)
+
 		lastIngestedLedger, err := app.HistoryQ().GetLastLedgerExpIngestNonBlocking()
 		if err != nil {
+			localLog.WithField("err", err).Error("Error running GetLastLedgerExpIngestNonBlocking")
 			problem.Render(r.Context(), w, err)
 			return
 		}
@@ -225,6 +232,18 @@ func requiresExperimentalIngestion(h http.Handler) http.Handler {
 		// expingest has not finished processing any ledger so no data.
 		if lastIngestedLedger == 0 {
 			problem.Render(r.Context(), w, hProblem.StillIngesting)
+			return
+		}
+
+		stateInvalid, err := app.HistoryQ().GetExpStateInvalid()
+		if err != nil {
+			localLog.WithField("err", err).Error("Error running GetExpStateInvalid")
+			problem.Render(r.Context(), w, err)
+			return
+		}
+
+		if stateInvalid {
+			problem.Render(r.Context(), w, problem.ServerError)
 			return
 		}
 

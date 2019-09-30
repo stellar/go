@@ -166,6 +166,7 @@ var dbMigrateCmd = &cobra.Command{
 		if err != nil {
 			log.Fatal(err)
 		}
+		pingDB(db)
 
 		numMigrationsRun, err := schema.Migrate(db, dir, count)
 		if err != nil {

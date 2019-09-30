@@ -61,10 +61,9 @@ func (f *Finder) Find(q paths.Query, maxLength uint) (result []paths.Path, err e
 // FindFixedPaths will return an error because this implementation
 // does not support this operation
 func (f *Finder) FindFixedPaths(
-	sourceAccount *xdr.AccountId,
 	sourceAsset xdr.Asset,
 	amountToSpend xdr.Int64,
-	destinationAsset xdr.Asset,
+	destinationAssets []xdr.Asset,
 	maxLength uint,
 ) ([]paths.Path, error) {
 	return nil, errors.New("Not implemented")

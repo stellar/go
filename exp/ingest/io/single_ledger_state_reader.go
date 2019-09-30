@@ -55,6 +55,8 @@ type TempSet interface {
 	Close() error
 }
 
+const msrBufferSize = 50000
+
 // preloadedEntries defines a number of bucket entries to preload from a
 // bucket in a single run. This is done to allow preloading keys from
 // temp set.
@@ -65,7 +67,6 @@ func MakeSingleLedgerStateReader(
 	archive historyarchive.ArchiveInterface,
 	tempStore TempSet,
 	sequence uint32,
-	bufferSize uint16,
 ) (*SingleLedgerStateReader, error) {
 	has, err := archive.GetCheckpointHAS(sequence)
 	if err != nil {
@@ -82,7 +83,7 @@ func MakeSingleLedgerStateReader(
 		archive:    archive,
 		tempStore:  tempStore,
 		sequence:   sequence,
-		readChan:   make(chan readResult, bufferSize),
+		readChan:   make(chan readResult, msrBufferSize),
 		streamOnce: sync.Once{},
 		closeOnce:  sync.Once{},
 		done:       make(chan bool),

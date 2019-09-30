@@ -11,6 +11,7 @@
 // migrations/18_account_for_signers.sql (481B)
 // migrations/19_offers.sql (1.064kB)
 // migrations/1_initial_schema.sql (10.515kB)
+// migrations/20_account_for_signer_index.sql (140B)
 // migrations/21_trades_remove_zero_amount_constraints.sql (765B)
 // migrations/2_index_participants_by_toid.sql (277B)
 // migrations/3_use_sequence_in_history_accounts.sql (447B)
@@ -309,6 +310,26 @@ func migrations1_initial_schemaSql() (*asset, error) {
 	return a, nil
 }
 
+var _migrations20_account_for_signer_indexSql = []byte("\x1f\x8b\x08\x00\x00\x00\x00\x00\x00\xff\xd2\xd5\x55\xd0\xce\xcd\x4c\x2f\x4a\x2c\x49\x55\x08\x2d\xe0\xe2\x72\x0e\x72\x75\x0c\x71\x55\xf0\xf4\x73\x71\x8d\x50\x28\xce\x4c\xcf\x4b\x2d\x2a\x8e\x4f\xaa\x8c\x4f\x4c\x4e\xce\x2f\xcd\x2b\x51\xf0\xf7\x53\x80\x32\x8b\xe3\xa1\xd2\x0a\xa1\xc1\x9e\x7e\xee\x0a\x4e\x21\x41\xae\xae\x1a\x50\x49\x4d\x6b\x2e\x2e\x64\xa3\x5d\xf2\xcb\xf3\xb8\xb8\x5c\x82\xfc\x03\x70\x1a\x6d\xcd\x05\x08\x00\x00\xff\xff\x10\xbc\xb1\xe1\x8c\x00\x00\x00")
+
+func migrations20_account_for_signer_indexSqlBytes() ([]byte, error) {
+	return bindataRead(
+		_migrations20_account_for_signer_indexSql,
+		"migrations/20_account_for_signer_index.sql",
+	)
+}
+
+func migrations20_account_for_signer_indexSql() (*asset, error) {
+	bytes, err := migrations20_account_for_signer_indexSqlBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "migrations/20_account_for_signer_index.sql", size: 140, mode: os.FileMode(0644), modTime: time.Unix(1569850434, 0)}
+	a := &asset{bytes: bytes, info: info, digest: [32]uint8{0x7, 0xd5, 0x6a, 0x4f, 0x6a, 0x95, 0xe0, 0x16, 0xa8, 0x25, 0xd7, 0x4, 0xec, 0x85, 0xe9, 0x13, 0x33, 0x4c, 0x9a, 0xa8, 0x74, 0xf9, 0x63, 0x52, 0xa5, 0x18, 0xaa, 0xdb, 0x4, 0xb5, 0xf7, 0x6e}}
+	return a, nil
+}
+
 var _migrations21_trades_remove_zero_amount_constraintsSql = []byte("\x1f\x8b\x08\x00\x00\x00\x00\x00\x00\xff\xd2\xd5\x55\xd0\xce\xcd\x4c\x2f\x4a\x2c\x49\x55\x08\x2d\xe0\xe2\x72\xf4\x09\x71\x0d\x52\x08\x71\x74\xf2\x71\x55\xc8\xc8\x2c\x2e\xc9\x2f\xaa\x8c\x2f\x29\x4a\x4c\x49\x2d\x56\x70\x09\xf2\x0f\x50\x70\xf6\xf7\x0b\x0e\x09\x72\xf4\xf4\x0b\x41\x93\x8e\x4f\x4a\x2c\x4e\x8d\x4f\xcc\xcd\x2f\xcd\x2b\x89\x4f\xce\x48\x4d\xce\xb6\xa6\xc0\xb0\x64\x90\x31\xa9\x45\x68\xe6\xe1\x33\xd0\xd1\xc5\x85\x14\xc7\x29\x38\x7b\xb8\x3a\x7b\x2b\x68\x20\x49\x28\xd8\xd9\x2a\x18\x68\xe2\x75\x35\x7e\x4b\xb0\x39\x1a\x66\x0f\xaa\x1c\xcc\x2a\x2e\xe4\xe0\x77\xc9\x2f\xcf\x1b\xe1\x11\x40\xbf\xf0\x07\xdb\x04\x08\x00\x00\xff\xff\xfc\x1d\x38\xf5\xfd\x02\x00\x00")
 
 func migrations21_trades_remove_zero_amount_constraintsSqlBytes() ([]byte, error) {
@@ -324,7 +345,7 @@ func migrations21_trades_remove_zero_amount_constraintsSql() (*asset, error) {
 		return nil, err
 	}
 
-	info := bindataFileInfo{name: "migrations/21_trades_remove_zero_amount_constraints.sql", size: 765, mode: os.FileMode(0644), modTime: time.Unix(1569417410, 0)}
+	info := bindataFileInfo{name: "migrations/21_trades_remove_zero_amount_constraints.sql", size: 765, mode: os.FileMode(0644), modTime: time.Unix(1569852335, 0)}
 	a := &asset{bytes: bytes, info: info, digest: [32]uint8{0x24, 0x1a, 0x4b, 0x15, 0xd5, 0xce, 0x4, 0xe9, 0x43, 0x61, 0x69, 0xce, 0xed, 0x82, 0x11, 0x4e, 0xc7, 0x58, 0xef, 0x4a, 0x46, 0xef, 0x2a, 0x28, 0x13, 0x5e, 0x59, 0xf0, 0x69, 0x50, 0x45, 0x84}}
 	return a, nil
 }
@@ -622,6 +643,8 @@ var _bindata = map[string]func() (*asset, error){
 
 	"migrations/1_initial_schema.sql": migrations1_initial_schemaSql,
 
+	"migrations/20_account_for_signer_index.sql": migrations20_account_for_signer_indexSql,
+
 	"migrations/21_trades_remove_zero_amount_constraints.sql": migrations21_trades_remove_zero_amount_constraintsSql,
 
 	"migrations/2_index_participants_by_toid.sql": migrations2_index_participants_by_toidSql,
@@ -696,6 +719,7 @@ var _bintree = &bintree{nil, map[string]*bintree{
 		"18_account_for_signers.sql":                   &bintree{migrations18_account_for_signersSql, map[string]*bintree{}},
 		"19_offers.sql":                                &bintree{migrations19_offersSql, map[string]*bintree{}},
 		"1_initial_schema.sql":                         &bintree{migrations1_initial_schemaSql, map[string]*bintree{}},
+		"20_account_for_signer_index.sql":              &bintree{migrations20_account_for_signer_indexSql, map[string]*bintree{}},
 		"21_trades_remove_zero_amount_constraints.sql": &bintree{migrations21_trades_remove_zero_amount_constraintsSql, map[string]*bintree{}},
 		"2_index_participants_by_toid.sql":             &bintree{migrations2_index_participants_by_toidSql, map[string]*bintree{}},
 		"3_use_sequence_in_history_accounts.sql":       &bintree{migrations3_use_sequence_in_history_accountsSql, map[string]*bintree{}},

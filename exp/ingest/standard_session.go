@@ -29,7 +29,3 @@ func (s *standardSession) UpdateLock() {
 func (s *standardSession) UpdateUnlock() {
 	s.rwLock.Unlock()
 }
-
-func (s *standardSession) GetLatestSuccessfullyProcessedLedger() uint32 {
-	return s.latestSuccessfullyProcessedLedger
-}

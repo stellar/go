@@ -165,12 +165,16 @@ func (a *App) CoreQ() *core.Q {
 // IsHistoryStale returns true if the latest history ledger is more than
 // `StaleThreshold` ledgers behind the latest core ledger
 func (a *App) IsHistoryStale() bool {
-	if a.config.StaleThreshold == 0 {
+	return isHistoryStale(a.config.StaleThreshold)
+}
+
+func isHistoryStale(staleThreshold uint) bool {
+	if staleThreshold == 0 {
 		return false
 	}
 
 	ls := ledger.CurrentState()
-	return (ls.CoreLatest - ls.HistoryLatest) > int32(a.config.StaleThreshold)
+	return (ls.CoreLatest - ls.HistoryLatest) > int32(staleThreshold)
 }
 
 // UpdateLedgerState triggers a refresh of several metrics gauges, such as open
@@ -425,10 +429,7 @@ func (a *App) init() {
 	a.web.mustInstallMiddlewares(a, a.config.ConnectionTimeout)
 
 	// web.actions
-	a.web.mustInstallActions(
-		a.config.EnableAssetStats,
-		a.config.FriendbotURL,
-	)
+	a.web.mustInstallActions(a.config, a.paths)
 
 	// metrics and log.metrics
 	a.metrics = metrics.NewRegistry()
