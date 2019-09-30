@@ -134,12 +134,14 @@ func (r *Response) SaveDiff(outputDir string, other *Response) {
 	fileB := fmt.Sprintf("%s/%s.new", outputDir, fileName)
 	fileDiff := fmt.Sprintf("%s/%s.diff", outputDir, fileName)
 
-	err := ioutil.WriteFile(fileA, []byte(r.Domain+" "+r.Path+"\n\n"+r.Body), 0744)
+	// We compare normalized body to see actual differences in the diff instead
+	// of a lot of domain diffs.
+	err := ioutil.WriteFile(fileA, []byte(r.Domain+" "+r.Path+"\n\n"+r.NormalizedBody), 0744)
 	if err != nil {
 		panic(err)
 	}
 
-	err = ioutil.WriteFile(fileB, []byte(other.Domain+" "+other.Path+"\n\n"+other.Body), 0744)
+	err = ioutil.WriteFile(fileB, []byte(other.Domain+" "+other.Path+"\n\n"+other.NormalizedBody), 0744)
 	if err != nil {
 		panic(err)
 	}

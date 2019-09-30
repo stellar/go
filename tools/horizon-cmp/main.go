@@ -11,10 +11,12 @@ import (
 	"sync"
 	"time"
 
+	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	client "github.com/stellar/go/clients/horizonclient"
 	protocol "github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/support/errors"
+	slog "github.com/stellar/go/support/log"
 	cmp "github.com/stellar/go/tools/horizon-cmp/internal"
 )
 
@@ -31,7 +33,7 @@ const pathsQueueCap = 10000
 var pathAccessLog = regexp.MustCompile(`([A-Z]+) http[s]?:\/\/[^/]*(/[^ ]*)`)
 
 var (
-	paths        = make(chan cmp.PathWithLevel, pathsQueueCap)
+	paths        = make(chan cmp.Path, pathsQueueCap)
 	visitedPaths map[string]bool
 )
 
@@ -44,6 +46,8 @@ var (
 	requestsPerSecond     int
 )
 
+var log *slog.Entry
+
 var rootCmd = &cobra.Command{
 	Use:   "horizon-cmp",
 	Short: "horizon-cmp compares two horizon servers' responses",
@@ -53,6 +57,10 @@ var rootCmd = &cobra.Command{
 }
 
 func init() {
+	log = slog.New()
+	log.SetLevel(slog.InfoLevel)
+	log.Logger.Formatter.(*logrus.TextFormatter).DisableTimestamp = true
+
 	visitedPaths = make(map[string]bool)
 
 	rootCmd.Flags().StringVarP(&horizonBase, "base", "b", "", "URL of the base/old version Horizon server")
@@ -68,7 +76,7 @@ func main() {
 
 func run(cmd *cobra.Command) {
 	if horizonBase == "" || horizonTest == "" {
-		fmt.Print("--base and --test params are required\n\n")
+		log.Error("--base and --test params are required")
 		cmd.Help()
 		os.Exit(1)
 	}
@@ -80,8 +88,8 @@ func run(cmd *cobra.Command) {
 	var accessLog *cmp.Scanner
 	if elbAccessLogFile == "" {
 		for _, p := range initPaths {
-			paths <- cmp.PathWithLevel{Path: getPathWithCursor(p, cursor), Level: 0, Stream: false}
-			paths <- cmp.PathWithLevel{Path: getPathWithCursor(p, cursor), Level: 0, Stream: true}
+			paths <- cmp.Path{Path: getPathWithCursor(p, cursor), Level: 0, Stream: false}
+			paths <- cmp.Path{Path: getPathWithCursor(p, cursor), Level: 0, Stream: true}
 		}
 	} else {
 		file, err := os.Open(elbAccessLogFile)
@@ -94,7 +102,7 @@ func run(cmd *cobra.Command) {
 		accessLog = &cmp.Scanner{Scanner: scanner}
 		// Seek
 		if elbAccessLogStartLine > 1 {
-			fmt.Println("Seeking file...")
+			log.Info("Seeking file...")
 		}
 		for i := 1; i < elbAccessLogStartLine; i++ {
 			accessLog.Scan()
@@ -109,9 +117,14 @@ func run(cmd *cobra.Command) {
 	}
 	outputDir := fmt.Sprintf("%s/horizon-cmp-diff/%d", pwd, time.Now().Unix())
 
-	fmt.Println("Comparing:")
-	fmt.Printf("%s vs %s\n", horizonBase, horizonTest)
-	fmt.Printf("[accessLog=%s ledger=%d cursor=%s outputDir=%s]\n\n", elbAccessLogFile, ledger.Sequence, cursor, outputDir)
+	log.WithFields(slog.F{
+		"base":       horizonBase,
+		"test":       horizonTest,
+		"access_log": elbAccessLogFile,
+		"ledger":     ledger.Sequence,
+		"cursor":     cursor,
+		"output_dir": outputDir,
+	}).Info("Starting...")
 
 	err = os.MkdirAll(outputDir, 0744)
 	if err != nil {
@@ -138,26 +151,34 @@ func run(cmd *cobra.Command) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			var status strings.Builder
-			if accessLog != nil {
-				status.WriteString(fmt.Sprintf("%d ", pl.Line))
-			}
-			status.WriteString(fmt.Sprintf("[stream=%t] %s ", pl.Stream, pl.Path))
 
 			a := cmp.NewResponse(horizonBase, pl.Path, pl.Stream)
-			status.WriteString(".")
 			b := cmp.NewResponse(horizonTest, pl.Path, pl.Stream)
-			status.WriteString(".")
 
+			var status string
 			if a.Equal(b) {
-				status.WriteString("ok")
+				status = "ok"
 			} else {
-				status.WriteString("diff")
+				status = "diff"
 				a.SaveDiff(outputDir, b)
 			}
-			status.WriteString(fmt.Sprintf(" %d %d %d", a.StatusCode, a.Size(), b.Size()))
 
-			fmt.Println(status.String())
+			log = log.WithFields(slog.F{
+				"status_code": a.StatusCode,
+				"size_base":   a.Size(),
+				"size_test":   b.Size(),
+				"stream":      pl.Stream,
+			})
+
+			if accessLog != nil {
+				log = log.WithField("line", pl.Line)
+			}
+
+			if status == "diff" {
+				log.Error("DIFF " + pl.Path)
+			} else {
+				log.Info(pl.Path)
+			}
 
 			// Add new paths (only for non-ELB)
 			if accessLog == nil {
@@ -221,7 +242,7 @@ func streamFile(accessLog *cmp.Scanner) {
 		p := accessLog.Text()
 		path, err := getPathFromAccessLog(p)
 		if err != nil {
-			fmt.Println(err)
+			log.Error(err)
 			continue
 		}
 
@@ -229,8 +250,8 @@ func streamFile(accessLog *cmp.Scanner) {
 			continue
 		}
 
-		paths <- cmp.PathWithLevel{Path: path, Level: 0, Line: accessLog.LinesRead(), Stream: false}
-		paths <- cmp.PathWithLevel{Path: path, Level: 0, Line: accessLog.LinesRead(), Stream: true}
+		paths <- cmp.Path{Path: path, Level: 0, Line: accessLog.LinesRead(), Stream: false}
+		paths <- cmp.Path{Path: path, Level: 0, Line: accessLog.LinesRead(), Stream: true}
 	}
 
 	if err := accessLog.Err(); err != nil {
@@ -271,15 +292,15 @@ func addPathsFromResponse(a *cmp.Response, level int) {
 				prefix = "&"
 			}
 
-			paths <- cmp.PathWithLevel{newPath + prefix + "include_failed=false", level, 0, false}
-			paths <- cmp.PathWithLevel{newPath + prefix + "include_failed=false", level, 0, true}
+			paths <- cmp.Path{newPath + prefix + "include_failed=false", level, 0, false}
+			paths <- cmp.Path{newPath + prefix + "include_failed=false", level, 0, true}
 
-			paths <- cmp.PathWithLevel{newPath + prefix + "include_failed=true", level, 0, false}
-			paths <- cmp.PathWithLevel{newPath + prefix + "include_failed=true", level, 0, true}
+			paths <- cmp.Path{newPath + prefix + "include_failed=true", level, 0, false}
+			paths <- cmp.Path{newPath + prefix + "include_failed=true", level, 0, true}
 			return
 		}
 
-		paths <- cmp.PathWithLevel{newPath, level, 0, false}
-		paths <- cmp.PathWithLevel{newPath, level, 0, true}
+		paths <- cmp.Path{newPath, level, 0, false}
+		paths <- cmp.Path{newPath, level, 0, true}
 	}
 }
