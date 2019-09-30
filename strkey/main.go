@@ -198,7 +198,10 @@ func IsValidEd25519PublicKey(i interface{}) bool {
 		return false
 	}
 
-	_, err := Decode(VersionByteAccountID, enc)
+	decoded, err := Decode(VersionByteAccountID, enc)
+	if len(decoded) != 32 {
+		return false
+	}
 
 	return err == nil
 }
