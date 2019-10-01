@@ -63,6 +63,10 @@ func TestIsValidEd25519PublicKey(t *testing.T) {
 	invalidKey = "SBCVMMCBEDB64TVJZFYJOJAERZC4YVVUOE6SYR2Y76CBTENGUSGWRRVO"
 	isValid = IsValidEd25519PublicKey(invalidKey)
 	assert.Equal(t, false, isValid)
+
+	invalidKey = "GDWZCOEQRODFCH6ISYQPWY67L3ULLWS5ISXYYL5GH43W7YFMTLB64AEMPY======"
+	isValid = IsValidEd25519PublicKey(invalidKey)
+	assert.Equal(t, false, isValid)
 }
 
 func TestIsValidEd25519SecretSeed(t *testing.T) {

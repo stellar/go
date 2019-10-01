@@ -193,8 +193,10 @@ func decodeString(src string) ([]byte, error) {
 // IsValidEd25519PublicKey validates a stellar public key
 func IsValidEd25519PublicKey(i interface{}) bool {
 	enc, ok := i.(string)
-
 	if !ok {
+		return false
+	}
+	if len(enc) != 56 {
 		return false
 	}
 
@@ -214,7 +216,10 @@ func IsValidEd25519SecretSeed(i interface{}) bool {
 		return false
 	}
 
-	_, err := Decode(VersionByteSeed, enc)
+	decoded, err := Decode(VersionByteSeed, enc)
+	if len(decoded) != 32 {
+		return false
+	}
 
 	return err == nil
 }
