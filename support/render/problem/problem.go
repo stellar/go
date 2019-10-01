@@ -84,6 +84,7 @@ func RegisterHost(host string) {
 	ServiceHost = host
 }
 
+// ReportFunc is a function type used to report unexpected errors.
 type ReportFunc func(context.Context, error)
 
 var reportFn ReportFunc
