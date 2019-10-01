@@ -84,14 +84,14 @@ func RegisterHost(host string) {
 	ServiceHost = host
 }
 
-type reportFunc func(context.Context, error)
+type ReportFunc func(context.Context, error)
 
-var reportFn reportFunc
+var reportFn ReportFunc
 
 // RegisterReportFunc registers the report function that you want to use to
 // report errors. Once reportFn is initialzied, it will be used to report
 // unexpected errors.
-func RegisterReportFunc(fn reportFunc) {
+func RegisterReportFunc(fn ReportFunc) {
 	reportFn = fn
 }
 
