@@ -13,7 +13,7 @@ command -v shadow >/dev/null 2>&1 || (
   # 1.13 release for any vettool that doesn't support the unsafeptr flag. The
   # shadow tool doesn't support the unsafeptr flag.  Until either support for
   # unsafeptr is added to shadow or passing through that flag is removed from
-  # go vet we can use the anazlyer by wrapping it in our own main that ignores
+  # go vet we can use the analyzer by wrapping it in our own main that ignores
   # unsafeptr. This temporary work around was suggested here:
   # https://github.com/golang/go/issues/34053
   gofmt > main.go <<-EOF
