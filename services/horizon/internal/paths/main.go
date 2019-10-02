@@ -10,7 +10,10 @@ type Query struct {
 	DestinationAmount   xdr.Int64
 	SourceAssets        []xdr.Asset
 	SourceAssetBalances []xdr.Int64
-	SourceAccount       xdr.AccountId
+	// if ValidateSourceBalance is true then we won't consider payment paths
+	// which require a source asset amount which exceeds the balance present in `SourceAssetBalances`
+	ValidateSourceBalance bool
+	SourceAccount         *xdr.AccountId
 }
 
 // Path is the result returned by a path finder and is tied to the DestinationAmount used in the input query
@@ -30,10 +33,9 @@ type Finder interface {
 	// start by spending `amountToSpend` of `sourceAsset` and end
 	// with delivering a postive amount of `destinationAsset`
 	FindFixedPaths(
-		sourceAccount *xdr.AccountId,
 		sourceAsset xdr.Asset,
 		amountToSpend xdr.Int64,
-		destinationAsset xdr.Asset,
+		destinationAssets []xdr.Asset,
 		maxLength uint,
 	) ([]Path, error)
 }

@@ -2,20 +2,39 @@ package orderbook
 
 import (
 	"github.com/stellar/go/price"
-	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
 )
 
 // Path represents a payment path from a source asset to some destination asset
 type Path struct {
-	SourceAmount xdr.Int64
-	SourceAsset  xdr.Asset
-	// sourceAssetString is included as an optimization to improve the performance
-	// of sorting paths by avoiding serializing assets to strings repeatedly
-	sourceAssetString string
-	InteriorNodes     []xdr.Asset
+	SourceAmount      xdr.Int64
+	SourceAsset       xdr.Asset
 	DestinationAsset  xdr.Asset
 	DestinationAmount xdr.Int64
+
+	// sourceAssetString and destinationAssetString are included as an optimization
+	// to improve the performance of sorting paths by avoiding
+	// serializing assets to strings repeatedly
+	sourceAssetString      string
+	destinationAssetString string
+
+	InteriorNodes []xdr.Asset
+}
+
+// SourceAssetString returns the string representation of the path's source asset
+func (p *Path) SourceAssetString() string {
+	if p.sourceAssetString == "" {
+		p.sourceAssetString = p.SourceAsset.String()
+	}
+	return p.sourceAssetString
+}
+
+// DestinationAssetString returns the string representation of the path's destination asset
+func (p *Path) DestinationAssetString() string {
+	if p.destinationAssetString == "" {
+		p.destinationAssetString = p.DestinationAsset.String()
+	}
+	return p.destinationAssetString
 }
 
 type searchState interface {
@@ -111,8 +130,9 @@ type sellingGraphSearchState struct {
 	graph                  *OrderBookGraph
 	destinationAsset       xdr.Asset
 	destinationAssetAmount xdr.Int64
-	ignoreOffersFrom       xdr.AccountId
+	ignoreOffersFrom       *xdr.AccountId
 	targetAssets           map[string]xdr.Int64
+	validateSourceBalance  bool
 	paths                  []Path
 }
 
@@ -121,7 +141,7 @@ func (state *sellingGraphSearchState) isTerminalNode(
 	currentAssetAmount xdr.Int64,
 ) bool {
 	targetAssetBalance, ok := state.targetAssets[currentAsset]
-	return ok && targetAssetBalance >= currentAssetAmount
+	return ok && (!state.validateSourceBalance || targetAssetBalance >= currentAssetAmount)
 }
 
 func (state *sellingGraphSearchState) appendToPaths(
@@ -180,7 +200,6 @@ type buyingGraphSearchState struct {
 	graph             *OrderBookGraph
 	sourceAsset       xdr.Asset
 	sourceAssetAmount xdr.Int64
-	ignoreOffersFrom  *xdr.AccountId
 	targetAssets      map[string]bool
 	paths             []Path
 }
@@ -207,11 +226,12 @@ func (state *buyingGraphSearchState) appendToPaths(
 	}
 
 	state.paths = append(state.paths, Path{
-		SourceAmount:      state.sourceAssetAmount,
-		SourceAsset:       state.sourceAsset,
-		InteriorNodes:     interiorNodes,
-		DestinationAsset:  updatedVisitedList[len(updatedVisitedList)-1],
-		DestinationAmount: currentAssetAmount,
+		SourceAmount:           state.sourceAssetAmount,
+		SourceAsset:            state.sourceAsset,
+		InteriorNodes:          interiorNodes,
+		DestinationAsset:       updatedVisitedList[len(updatedVisitedList)-1],
+		DestinationAmount:      currentAssetAmount,
+		destinationAssetString: currentAsset,
 	})
 }
 
@@ -224,7 +244,7 @@ func (state *buyingGraphSearchState) consumeOffers(
 	offers []xdr.OfferEntry,
 ) (xdr.Asset, xdr.Int64, error) {
 	var nextAsset xdr.Asset
-	nextAmount, err := consumeOffersForBuyingAsset(offers, state.ignoreOffersFrom, currentAssetAmount)
+	nextAmount, err := consumeOffersForBuyingAsset(offers, currentAssetAmount)
 	if err == nil {
 		nextAsset = offers[0].Selling
 	}
@@ -233,50 +253,6 @@ func (state *buyingGraphSearchState) consumeOffers(
 }
 
 func consumeOffersForSellingAsset(
-	offers []xdr.OfferEntry,
-	ignoreOffersFrom xdr.AccountId,
-	currentAssetAmount xdr.Int64,
-) (xdr.Int64, error) {
-	totalConsumed := xdr.Int64(0)
-
-	if len(offers) == 0 {
-		return totalConsumed, errEmptyOffers
-	}
-
-	if currentAssetAmount == 0 {
-		return totalConsumed, errAssetAmountIsZero
-	}
-
-	for _, offer := range offers {
-		if offer.SellerId.Equals(ignoreOffersFrom) {
-			continue
-		}
-		if offer.Price.D == 0 {
-			return -1, errOfferPriceDenominatorIsZero
-		}
-
-		buyingUnitsFromOffer, sellingUnitsFromOffer, err := price.ConvertToBuyingUnits(
-			int64(offer.Amount),
-			int64(currentAssetAmount),
-			int64(offer.Price.N),
-			int64(offer.Price.D),
-		)
-		if err != nil {
-			return -1, errors.Wrap(err, "could not determine buying units")
-		}
-
-		totalConsumed += xdr.Int64(buyingUnitsFromOffer)
-		currentAssetAmount -= xdr.Int64(sellingUnitsFromOffer)
-
-		if currentAssetAmount <= 0 {
-			return totalConsumed, nil
-		}
-	}
-
-	return -1, nil
-}
-
-func consumeOffersForBuyingAsset(
 	offers []xdr.OfferEntry,
 	ignoreOffersFrom *xdr.AccountId,
 	currentAssetAmount xdr.Int64,
@@ -295,22 +271,60 @@ func consumeOffersForBuyingAsset(
 		if ignoreOffersFrom != nil && ignoreOffersFrom.Equals(offer.SellerId) {
 			continue
 		}
-		if offer.Price.D == 0 {
-			return -1, errOfferPriceDenominatorIsZero
+
+		buyingUnitsFromOffer, sellingUnitsFromOffer, err := price.ConvertToBuyingUnits(
+			int64(offer.Amount),
+			int64(currentAssetAmount),
+			int64(offer.Price.N),
+			int64(offer.Price.D),
+		)
+		if err == price.ErrOverflow {
+			// skip paths which would result in overflow errors
+			// but still continue the path finding search
+			return -1, nil
+		} else if err != nil {
+			return -1, err
 		}
 
+		totalConsumed += xdr.Int64(buyingUnitsFromOffer)
+		currentAssetAmount -= xdr.Int64(sellingUnitsFromOffer)
+
+		if currentAssetAmount <= 0 {
+			return totalConsumed, nil
+		}
+	}
+
+	return -1, nil
+}
+
+func consumeOffersForBuyingAsset(
+	offers []xdr.OfferEntry,
+	currentAssetAmount xdr.Int64,
+) (xdr.Int64, error) {
+	totalConsumed := xdr.Int64(0)
+
+	if len(offers) == 0 {
+		return totalConsumed, errEmptyOffers
+	}
+
+	if currentAssetAmount == 0 {
+		return totalConsumed, errAssetAmountIsZero
+	}
+
+	for _, offer := range offers {
 		n := int64(offer.Price.N)
 		d := int64(offer.Price.D)
 
 		// check if we can spend all of currentAssetAmount on the current offer
 		// otherwise consume entire offer and move on to the next one
 		amountSold, err := price.MulFractionRoundDown(int64(currentAssetAmount), d, n)
-		if err != nil {
-			return -1, errors.Wrap(err, "could not determine selling units needed")
-		}
-		if amountSoldXDR := xdr.Int64(amountSold); amountSoldXDR <= offer.Amount {
-			totalConsumed += amountSoldXDR
-			return totalConsumed, nil
+		if err == nil {
+			if amountSoldXDR := xdr.Int64(amountSold); amountSoldXDR > 0 && amountSoldXDR <= offer.Amount {
+				totalConsumed += amountSoldXDR
+				return totalConsumed, nil
+			}
+		} else if err != price.ErrOverflow {
+			return -1, err
 		}
 
 		buyingUnitsFromOffer, sellingUnitsFromOffer, err := price.ConvertToBuyingUnits(
@@ -319,8 +333,12 @@ func consumeOffersForBuyingAsset(
 			n,
 			d,
 		)
-		if err != nil {
-			return -1, errors.Wrap(err, "could not determine selling units")
+		if err == price.ErrOverflow {
+			// skip paths which would result in overflow errors
+			// but still continue the path finding search
+			return -1, nil
+		} else if err != nil {
+			return -1, err
 		}
 
 		totalConsumed += xdr.Int64(sellingUnitsFromOffer)

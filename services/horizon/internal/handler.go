@@ -20,6 +20,7 @@ import (
 	"github.com/stellar/go/strkey"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/support/render/hal"
+	"github.com/stellar/go/support/render/httpjson"
 	"github.com/stellar/go/support/render/problem"
 )
 
@@ -400,4 +401,124 @@ func validateCursorWithinHistory(pq db2.PageQuery) error {
 	}
 
 	return nil
+}
+
+type pageAction interface {
+	GetResourcePage(r *http.Request) ([]hal.Pageable, error)
+}
+
+type pageActionHandler struct {
+	action        pageAction
+	streamable    bool
+	streamHandler sse.StreamHandler
+}
+
+func restPageHandler(action pageAction) pageActionHandler {
+	return pageActionHandler{action: action}
+}
+
+func streamablePageHandler(
+	action pageAction,
+	streamHandler sse.StreamHandler,
+) pageActionHandler {
+	return pageActionHandler{
+		action:        action,
+		streamable:    true,
+		streamHandler: streamHandler,
+	}
+}
+
+func (handler pageActionHandler) renderPage(w http.ResponseWriter, r *http.Request) {
+	records, err := handler.action.GetResourcePage(r)
+	if err != nil {
+		problem.Render(r.Context(), w, err)
+		return
+	}
+
+	page, err := buildPage(r, records)
+	if err != nil {
+		problem.Render(r.Context(), w, err)
+		return
+	}
+
+	httpjson.Render(
+		w,
+		page,
+		httpjson.HALJSON,
+	)
+}
+
+func (handler pageActionHandler) renderStream(w http.ResponseWriter, r *http.Request) {
+	// Use pq to get SSE limit.
+	pq, err := actions.GetPageQuery(r)
+	if err != nil {
+		problem.Render(r.Context(), w, err)
+		return
+	}
+
+	handler.streamHandler.ServeStream(
+		w,
+		r,
+		int(pq.Limit),
+		func() ([]sse.Event, error) {
+			records, err := handler.action.GetResourcePage(r)
+			if err != nil {
+				return nil, err
+			}
+
+			events := make([]sse.Event, 0, len(records))
+			for _, record := range records {
+				events = append(events, sse.Event{ID: record.PagingToken(), Data: record})
+			}
+
+			if len(events) > 0 {
+				// Update the cursor for the next call to GetObject, GetCursor
+				// will use Last-Event-ID if present. This feels kind of hacky,
+				// but otherwise, we'll have to edit r.URL, which is also a
+				// hack.
+				r.Header.Set("Last-Event-ID", events[len(events)-1].ID)
+			}
+
+			return events, nil
+		},
+	)
+}
+
+func (handler pageActionHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	switch render.Negotiate(r) {
+	case render.MimeHal, render.MimeJSON:
+		handler.renderPage(w, r)
+		return
+	case render.MimeEventStream:
+		if handler.streamable {
+			handler.renderStream(w, r)
+			return
+		}
+	}
+
+	problem.Render(r.Context(), w, hProblem.NotAcceptable)
+}
+
+func buildPage(r *http.Request, records []hal.Pageable) (hal.Page, error) {
+	pageQuery, err := actions.GetPageQuery(r)
+	if err != nil {
+		return hal.Page{}, err
+	}
+
+	ctx := r.Context()
+
+	page := hal.Page{
+		Cursor: pageQuery.Cursor,
+		Order:  pageQuery.Order,
+		Limit:  pageQuery.Limit,
+	}
+
+	for _, record := range records {
+		page.Add(record)
+	}
+
+	page.FullURL = actions.FullURL(ctx)
+	page.PopulateLinks()
+
+	return page, nil
 }

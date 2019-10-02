@@ -51,6 +51,7 @@ func (finder InMemoryFinder) Find(q paths.Query, maxLength uint) ([]paths.Path, 
 		q.SourceAccount,
 		q.SourceAssets,
 		q.SourceAssetBalances,
+		q.ValidateSourceBalance,
 		maxAssetsPerPath,
 	)
 	results := make([]paths.Path, len(orderbookPaths))
@@ -72,10 +73,9 @@ func (finder InMemoryFinder) Find(q paths.Query, maxLength uint) ([]paths.Path, 
 // `sourceAccountID` is optional. if `sourceAccountID` is provided then no offers
 // created by `sourceAccountID` will be considered when evaluating payment paths
 func (finder InMemoryFinder) FindFixedPaths(
-	sourceAccount *xdr.AccountId,
 	sourceAsset xdr.Asset,
 	amountToSpend xdr.Int64,
-	destinationAsset xdr.Asset,
+	destinationAssets []xdr.Asset,
 	maxLength uint,
 ) ([]paths.Path, error) {
 	if finder.graph.IsEmpty() {
@@ -91,10 +91,10 @@ func (finder InMemoryFinder) FindFixedPaths(
 
 	orderbookPaths, err := finder.graph.FindFixedPaths(
 		int(maxLength),
-		sourceAccount,
 		sourceAsset,
 		amountToSpend,
-		destinationAsset,
+		destinationAssets,
+		maxAssetsPerPath,
 	)
 	results := make([]paths.Path, len(orderbookPaths))
 	for i, path := range orderbookPaths {

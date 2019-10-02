@@ -7,12 +7,14 @@ import (
 	"github.com/stellar/go/exp/ingest"
 	"github.com/stellar/go/exp/ingest/pipeline"
 	"github.com/stellar/go/exp/ingest/processors"
+	"github.com/stellar/go/exp/ingest/verify"
 	"github.com/stellar/go/exp/orderbook"
 	supportPipeline "github.com/stellar/go/exp/support/pipeline"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	horizonProcessors "github.com/stellar/go/services/horizon/internal/expingest/processors"
 	"github.com/stellar/go/support/db"
 	"github.com/stellar/go/support/errors"
+	"github.com/stellar/go/support/historyarchive"
 	ilog "github.com/stellar/go/support/log"
 	"github.com/stellar/go/xdr"
 )
@@ -28,7 +30,7 @@ func accountForSignerStateNode(q *history.Q) *supportPipeline.PipelineNode {
 	return pipeline.StateNode(&processors.EntryTypeFilter{Type: xdr.LedgerEntryTypeAccount}).
 		Pipe(
 			pipeline.StateNode(&horizonProcessors.DatabaseProcessor{
-				HistoryQ: q,
+				SignersQ: q,
 				Action:   horizonProcessors.AccountsForSigner,
 			}),
 		)
@@ -70,7 +72,7 @@ func buildStatePipeline(historyQ *history.Q, graph *orderbook.OrderBookGraph) *p
 
 func accountForSignerLedgerNode(q *history.Q) *supportPipeline.PipelineNode {
 	return pipeline.LedgerNode(&horizonProcessors.DatabaseProcessor{
-		HistoryQ: q,
+		SignersQ: q,
 		Action:   horizonProcessors.AccountsForSigner,
 	})
 }
@@ -168,34 +170,44 @@ func postProcessingHook(
 	ctx context.Context,
 	err error,
 	pipelineType pType,
+	system *System,
 	graph *orderbook.OrderBookGraph,
 	historySession *db.Session,
 ) error {
 	defer historySession.Rollback()
 	defer graph.Discard()
 	historyQ := &history.Q{historySession}
+	isMaster := false
 
 	ledgerSeq := pipeline.GetLedgerSequenceFromContext(ctx)
 
 	if err != nil {
-		log.
-			WithFields(ilog.F{
-				"ledger": ledgerSeq,
-				"type":   pipelineType,
-				"err":    err,
-			}).
-			Error("Error processing ledger")
+		switch errors.Cause(err).(type) {
+		case verify.StateError:
+			markStateInvalid(historySession, err)
+		default:
+			log.
+				WithFields(ilog.F{
+					"ledger": ledgerSeq,
+					"type":   pipelineType,
+					"err":    err,
+				}).
+				Error("Error processing ledger")
+		}
 		return err
 	}
 
 	if tx := historySession.GetTx(); tx != nil {
+		isMaster = true
+
 		// If we're in a transaction we're updating database with new data.
 		// We get lastIngestedLedger from a DB here to do an extra check
 		// if the current node should really be updating a DB.
 		// This is "just in case" if lastIngestedLedger is not selected
 		// `FOR UPDATE` due to a bug or accident. In such case we error and
 		// rollback.
-		lastIngestedLedger, err := historyQ.GetLastLedgerExpIngest()
+		var lastIngestedLedger uint32
+		lastIngestedLedger, err = historyQ.GetLastLedgerExpIngest()
 		if err != nil {
 			return errors.Wrap(err, "Error getting last ledger")
 		}
@@ -204,28 +216,63 @@ func postProcessingHook(
 			return errors.New("The local latest sequence is not equal to global sequence + 1")
 		}
 
-		if err := historyQ.UpdateLastLedgerExpIngest(ledgerSeq); err != nil {
+		if err = historyQ.UpdateLastLedgerExpIngest(ledgerSeq); err != nil {
 			return errors.Wrap(err, "Error updating last ingested ledger")
 		}
 
-		if err := historyQ.UpdateExpIngestVersion(CurrentVersion); err != nil {
+		if err = historyQ.UpdateExpIngestVersion(CurrentVersion); err != nil {
 			return errors.Wrap(err, "Error updating expingest version")
 		}
 
-		if err := historySession.Commit(); err != nil {
+		if err = historySession.Commit(); err != nil {
 			return errors.Wrap(err, "Error commiting db transaction")
 		}
 	}
 
-	if err := graph.Apply(); err != nil {
+	err = graph.Apply()
+	if err != nil {
 		return errors.Wrap(err, "Error applying order book changes")
+	}
+
+	stateInvalid, err := historyQ.GetExpStateInvalid()
+	if err != nil {
+		log.WithField("err", err).Error("Error getting state invalid value")
+	}
+
+	// Run verification routine only when...
+	if system != nil && // system is defined (not in tests)...
+		!stateInvalid && // state has not been proved to be invalid...
+		!system.disableStateVerification && // state verification is not disabled...
+		pipelineType == ledgerPipeline && // it's a ledger pipeline...
+		isMaster && // it's a master ingestion node (to verify on a single node only)...
+		historyarchive.IsCheckpoint(ledgerSeq) { // it's a checkpoint ledger.
+		go func() {
+			err := system.verifyState()
+			if err != nil {
+				switch errors.Cause(err).(type) {
+				case verify.StateError:
+					markStateInvalid(historySession, err)
+				default:
+					log.WithField("err", err).Error("State verification errored")
+				}
+			}
+		}()
 	}
 
 	log.WithFields(ilog.F{"ledger": ledgerSeq, "type": pipelineType}).Info("Processed ledger")
 	return nil
 }
 
+func markStateInvalid(historySession *db.Session, err error) {
+	log.WithField("err", err).Error("STATE IS INVALID!")
+	q := &history.Q{historySession.Clone()}
+	if err := q.UpdateExpStateInvalid(true); err != nil {
+		log.WithField("err", err).Error("Error updating state invalid value")
+	}
+}
+
 func addPipelineHooks(
+	system *System,
 	p supportPipeline.PipelineInterface,
 	historySession *db.Session,
 	ingestSession ingest.Session,
@@ -246,6 +293,6 @@ func addPipelineHooks(
 	})
 
 	p.AddPostProcessingHook(func(ctx context.Context, err error) error {
-		return postProcessingHook(ctx, err, pipelineType, graph, historySession)
+		return postProcessingHook(ctx, err, pipelineType, system, graph, historySession)
 	})
 }

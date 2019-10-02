@@ -79,7 +79,7 @@ func AccountPage(ctx context.Context, hq history.QSigners, signer string, pq db2
 		page.Add(res)
 	}
 
-	page.FullURL = fullURL(ctx)
+	page.FullURL = FullURL(ctx)
 	page.PopulateLinks()
 	return page, nil
 }
