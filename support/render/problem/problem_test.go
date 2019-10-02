@@ -143,6 +143,7 @@ func TestRegisterReportFunc(t *testing.T) {
 	assert.Equal(t, "", buf.String())
 
 	RegisterReportFunc(reportFunc)
+	defer RegisterReportFunc(nil)
 
 	// after register the reportFunc
 	want := "captured an unexpected error"
