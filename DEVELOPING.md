@@ -108,4 +108,11 @@ dependencies change the diff for the `go.list` file may be too complex to
 understand. In those situations use the [golistcmp] tool to get a list of
 changing modules, as well as GitHub links for easy access to diff review.
 
+```
+git checkout master
+go list -m -json all > go.list.master
+git checkout <branch>
+golistcmp go.list.master <(go list -m -json all)
+```
+
 [golistcmp]: https://github.com/stellar/golistcmp
