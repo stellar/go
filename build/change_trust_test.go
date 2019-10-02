@@ -50,7 +50,7 @@ var _ = Describe("ChangeTrustBuilder Mutators", func() {
 
 			It("sets Asset properly", func() {
 				Expect(subject.CT.Line.Type).To(Equal(xdr.AssetTypeAssetTypeCreditAlphanum4))
-				Expect(subject.CT.Line.AlphaNum4.AssetCode).To(Equal([4]byte{'U', 'S', 'D', 0}))
+				Expect(subject.CT.Line.AlphaNum4.AssetCode).To(Equal(xdr.AssetCode4{'U', 'S', 'D', 0}))
 				Expect(subject.CT.Line.AlphaNum12).To(BeNil())
 			})
 		})
@@ -63,7 +63,7 @@ var _ = Describe("ChangeTrustBuilder Mutators", func() {
 			It("sets Asset properly", func() {
 				Expect(subject.CT.Line.Type).To(Equal(xdr.AssetTypeAssetTypeCreditAlphanum12))
 				Expect(subject.CT.Line.AlphaNum4).To(BeNil())
-				Expect(subject.CT.Line.AlphaNum12.AssetCode).To(Equal([12]byte{'A', 'B', 'C', 'D', 'E', 'F', 0, 0, 0, 0, 0, 0}))
+				Expect(subject.CT.Line.AlphaNum12.AssetCode).To(Equal(xdr.AssetCode12{'A', 'B', 'C', 'D', 'E', 'F', 0, 0, 0, 0, 0, 0}))
 			})
 		})
 

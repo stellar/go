@@ -166,7 +166,8 @@ func (q *OperationsQ) OnlyPayments() *OperationsQ {
 	q.sql = q.sql.Where(sq.Eq{"hop.type": []xdr.OperationType{
 		xdr.OperationTypeCreateAccount,
 		xdr.OperationTypePayment,
-		xdr.OperationTypePathPayment,
+		xdr.OperationTypePathPaymentStrictReceive,
+		xdr.OperationTypePathPaymentStrictSend,
 		xdr.OperationTypeAccountMerge,
 	}})
 	return q
