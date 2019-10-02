@@ -284,6 +284,20 @@ jobs:
       - install_go_deps
       - check_ingest_state
 
+  publish_state_diff_docker_image:
+    docker:
+      - image: circleci/buildpack-deps:stretch
+    steps:
+      - checkout
+      - setup_remote_docker
+      - run:
+          name: Build and Push Docker image
+          command: |
+            echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
+            docker build -f exp/tools/dump-ledger-state/Dockerfile --build-arg GITCOMMIT=$CIRCLE_SHA1 -t stellar/ledger-state-diff:$CIRCLE_SHA1 -t stellar/ledger-state-diff:latest .
+            docker push stellar/ledger-state-diff:$CIRCLE_SHA1
+            docker push stellar/ledger-state-diff:latest
+
 #-------------------------------------------------------------------------#
 # Workflows orchestrate jobs and make sure they run in the right sequence #
 #-------------------------------------------------------------------------#
@@ -297,6 +311,11 @@ workflows:
       - check_code_1_13
       - test_code_1_12
       - test_code_1_13
+      - publish_state_diff_docker_image:
+          filters:
+              branches:
+                only:
+                  - master
       - ingest_state_diff:
           filters:
               branches:

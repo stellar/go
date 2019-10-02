@@ -12,8 +12,7 @@ import (
 
 const fileLengthLimit = 100
 
-// (?U) = ungreedy to end on `result_meta_xdr` value's: "
-var findResultMetaXDR = regexp.MustCompile(`(?U)"result_meta_xdr":[ ]{0,1}"(.*)",`)
+var findResultMetaXDR = regexp.MustCompile(`"result_meta_xdr":[ ]?"([^"]*)",`)
 
 // removeRegexps contains a list of regular expressions that, when matched,
 // will be changed to an empty string. This is done to exclude known
@@ -64,7 +63,9 @@ func NewResponse(domain, path string, stream bool) *Response {
 
 	if stream {
 		req.Header.Add("Accept", "text/event-stream")
-		client.Timeout = 500 * time.Millisecond
+		// Since requests are made in separate go routines we can
+		// set timeout to one minute.
+		client.Timeout = time.Minute
 	}
 
 	resp, err := client.Do(req)
@@ -78,7 +79,8 @@ func NewResponse(domain, path string, stream bool) *Response {
 
 	if resp.StatusCode != http.StatusOK &&
 		resp.StatusCode != http.StatusNotFound &&
-		resp.StatusCode != http.StatusNotAcceptable {
+		resp.StatusCode != http.StatusNotAcceptable &&
+		resp.StatusCode != http.StatusBadRequest {
 		panic(resp.StatusCode)
 	}
 
@@ -134,12 +136,14 @@ func (r *Response) SaveDiff(outputDir string, other *Response) {
 	fileB := fmt.Sprintf("%s/%s.new", outputDir, fileName)
 	fileDiff := fmt.Sprintf("%s/%s.diff", outputDir, fileName)
 
-	err := ioutil.WriteFile(fileA, []byte(r.Path+"\n\n"+r.Body), 0744)
+	// We compare normalized body to see actual differences in the diff instead
+	// of a lot of domain diffs.
+	err := ioutil.WriteFile(fileA, []byte(r.Domain+" "+r.Path+"\n\n"+r.NormalizedBody), 0744)
 	if err != nil {
 		panic(err)
 	}
 
-	err = ioutil.WriteFile(fileB, []byte(other.Path+"\n\n"+other.Body), 0744)
+	err = ioutil.WriteFile(fileB, []byte(other.Domain+" "+other.Path+"\n\n"+other.NormalizedBody), 0744)
 	if err != nil {
 		panic(err)
 	}
