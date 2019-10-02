@@ -216,6 +216,10 @@ func IsValidEd25519SecretSeed(i interface{}) bool {
 		return false
 	}
 
+	if len(enc) != 56 {
+		return false
+	}
+
 	decoded, err := Decode(VersionByteSeed, enc)
 	if len(decoded) != 32 {
 		return false
