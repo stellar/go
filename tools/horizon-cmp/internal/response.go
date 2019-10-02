@@ -63,7 +63,9 @@ func NewResponse(domain, path string, stream bool) *Response {
 
 	if stream {
 		req.Header.Add("Accept", "text/event-stream")
-		client.Timeout = time.Second
+		// Since requests are made in separate go routines we can
+		// set timeout to one minute.
+		client.Timeout = time.Minute
 	}
 
 	resp, err := client.Do(req)

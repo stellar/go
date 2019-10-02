@@ -30,7 +30,7 @@ const pathsQueueCap = 10000
 
 // pathAccessLog is a regexp that gets path from ELB access log line. Example:
 // 2015-05-13T23:39:43.945958Z my-loadbalancer 192.168.131.39:2817 10.0.0.1:80 0.000086 0.001048 0.001337 200 200 0 57 "GET https://www.example.com:443/transactions?order=desc HTTP/1.1" "curl/7.38.0" DHE-RSA-AES128-SHA TLSv1.2
-var pathAccessLog = regexp.MustCompile(`([A-Z]+) http[s]?:\/\/[^/]*(/[^ ]*)`)
+var pathAccessLog = regexp.MustCompile(`([A-Z]+) https?://[^/]*(/[^ ]*)`)
 
 var (
 	paths        = make(chan cmp.Path, pathsQueueCap)
@@ -60,6 +60,10 @@ func init() {
 	log = slog.New()
 	log.SetLevel(slog.InfoLevel)
 	log.Logger.Formatter.(*logrus.TextFormatter).DisableTimestamp = true
+
+	if cap(paths) < len(initPaths) {
+		panic("cap(paths) must be higher or equal len(initPaths)")
+	}
 
 	visitedPaths = make(map[string]bool)
 
@@ -171,7 +175,7 @@ func run(cmd *cobra.Command) {
 			})
 
 			if accessLog != nil {
-				log = log.WithField("line", pl.Line)
+				log = log.WithField("access_log_line", pl.Line)
 			}
 
 			if status == "diff" {
@@ -280,7 +284,7 @@ func addPathsFromResponse(a *cmp.Response, level int) {
 
 			if u.Query().Get("cursor") == "" &&
 				(u.Query().Get("order") == "" || u.Query().Get("order") == "asc") {
-				return
+				continue
 			}
 		}
 
@@ -297,10 +301,14 @@ func addPathsFromResponse(a *cmp.Response, level int) {
 
 			paths <- cmp.Path{newPath + prefix + "include_failed=true", level, 0, false}
 			paths <- cmp.Path{newPath + prefix + "include_failed=true", level, 0, true}
-			return
+			continue
 		}
 
 		paths <- cmp.Path{newPath, level, 0, false}
 		paths <- cmp.Path{newPath, level, 0, true}
+	}
+
+	if len(paths) == 0 {
+		close(paths)
 	}
 }
