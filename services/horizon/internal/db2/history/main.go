@@ -282,7 +282,7 @@ type Operation struct {
 	TransactionSuccessful *bool `db:"transaction_successful"`
 }
 
-// Offer is row of data from the `offers` table from stellar-core
+// Offer is row of data from the `offers` table from horizon DB
 type Offer struct {
 	SellerID string    `db:"sellerid"`
 	OfferID  xdr.Int64 `db:"offerid"`
@@ -429,6 +429,20 @@ type TransactionsQ struct {
 	parent        *Q
 	sql           sq.SelectBuilder
 	includeFailed bool
+}
+
+// TrustLine is row of data from the `trust_lines` table from horizon DB
+type TrustLine struct {
+	AccountID          string        `db:"accountid"`
+	AssetType          xdr.AssetType `db:"assettype"`
+	AssetIssuer        string        `db:"assetissuer"`
+	AssetCode          string        `db:"assetcode"`
+	Balance            int64         `db:"balance"`
+	Limit              int64         `db:"tlimit"`
+	BuyingLiabilities  int64         `db:"buyingliabilities"`
+	SellingLiabilities int64         `db:"sellingliabilities"`
+	Flags              uint32        `db:"flags"`
+	LastModifiedLedger uint32        `db:"last_modified_ledger"`
 }
 
 // QTrustLines defines offer related queries.
