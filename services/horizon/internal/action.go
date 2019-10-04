@@ -51,7 +51,7 @@ func (action *Action) CoreQ() *core.Q {
 // horizon's database.
 func (action *Action) HistoryQ() *history.Q {
 	if action.hq == nil {
-		action.hq = &history.Q{Session: action.App.HorizonSession(action.R.Context())}
+		action.hq = &history.Q{action.App.HorizonSession(action.R.Context())}
 	}
 
 	return action.hq

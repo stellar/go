@@ -241,7 +241,7 @@ func initSubmissionSystem(app *App) {
 		SubmissionQueue: sequence.NewManager(),
 		Results: &results.DB{
 			Core:    cq,
-			History: &history.Q{Session: app.HorizonSession(context.Background())},
+			History: &history.Q{app.HorizonSession(context.Background())},
 		},
 		Sequences:         cq.SequenceProvider(),
 		NetworkPassphrase: app.config.NetworkPassphrase,

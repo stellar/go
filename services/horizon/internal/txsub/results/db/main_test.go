@@ -15,7 +15,7 @@ func TestResultProvider(t *testing.T) {
 
 	rp := &DB{
 		Core:    &core.Q{Session: tt.CoreSession()},
-		History: &history.Q{Session: tt.HorizonSession()},
+		History: &history.Q{tt.HorizonSession()},
 	}
 
 	// Regression: ensure a transaction that is not ingested still returns the
@@ -33,7 +33,7 @@ func TestResultFailed(t *testing.T) {
 
 	rp := &DB{
 		Core:    &core.Q{Session: tt.CoreSession()},
-		History: &history.Q{Session: tt.HorizonSession()},
+		History: &history.Q{tt.HorizonSession()},
 	}
 
 	hash := "aa168f12124b7c196c0adaee7c73a64d37f99428cacb59a91ff389626845e7cf"

@@ -14,28 +14,30 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
-func TestOffersProcessorTestSuiteState(t *testing.T) {
-	suite.Run(t, new(OffersProcessorTestSuiteState))
+var trustLineIssuer = xdr.MustAddress("GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H")
+
+func TestTrustLinesProcessorTestSuiteState(t *testing.T) {
+	suite.Run(t, new(TrustLinesProcessorTestSuiteState))
 }
 
-type OffersProcessorTestSuiteState struct {
+type TrustLinesProcessorTestSuiteState struct {
 	suite.Suite
 	processor              *DatabaseProcessor
-	mockQ                  *history.MockQOffers
-	mockBatchInsertBuilder *history.MockOffersBatchInsertBuilder
+	mockQ                  *history.MockQTrustLines
+	mockBatchInsertBuilder *history.MockTrustLinesBatchInsertBuilder
 	mockStateReader        *io.MockStateReader
 	mockStateWriter        *io.MockStateWriter
 }
 
-func (s *OffersProcessorTestSuiteState) SetupTest() {
-	s.mockQ = &history.MockQOffers{}
-	s.mockBatchInsertBuilder = &history.MockOffersBatchInsertBuilder{}
+func (s *TrustLinesProcessorTestSuiteState) SetupTest() {
+	s.mockQ = &history.MockQTrustLines{}
+	s.mockBatchInsertBuilder = &history.MockTrustLinesBatchInsertBuilder{}
 	s.mockStateReader = &io.MockStateReader{}
 	s.mockStateWriter = &io.MockStateWriter{}
 
 	s.processor = &DatabaseProcessor{
-		Action:  Offers,
-		OffersQ: s.mockQ,
+		Action:      TrustLines,
+		TrustLinesQ: s.mockQ,
 	}
 
 	// Reader and Writer should be always closed and once
@@ -43,21 +45,21 @@ func (s *OffersProcessorTestSuiteState) SetupTest() {
 	s.mockStateWriter.On("Close").Return(nil).Once()
 
 	s.mockQ.
-		On("NewOffersBatchInsertBuilder", maxBatchSize).
+		On("NewTrustLinesBatchInsertBuilder", maxBatchSize).
 		Return(s.mockBatchInsertBuilder).Once()
 }
 
-func (s *OffersProcessorTestSuiteState) TearDownTest() {
+func (s *TrustLinesProcessorTestSuiteState) TearDownTest() {
 	s.mockQ.AssertExpectations(s.T())
 	s.mockBatchInsertBuilder.AssertExpectations(s.T())
 	s.mockStateReader.AssertExpectations(s.T())
 	s.mockStateWriter.AssertExpectations(s.T())
 }
 
-func (s *OffersProcessorTestSuiteState) TestCreateOffer() {
-	offer := xdr.OfferEntry{
-		OfferId: xdr.Int64(1),
-		Price:   xdr.Price{1, 2},
+func (s *TrustLinesProcessorTestSuiteState) TestCreateTrustLine() {
+	trustLine := xdr.TrustLineEntry{
+		AccountId: xdr.MustAddress("GAOQJGUAB7NI7K7I62ORBXMN3J4SSWQUQ7FOEPSDJ322W2HMCNWPHXFB"),
+		Asset:     xdr.MustNewCreditAsset("EUR", trustLineIssuer.Address()),
 	}
 	lastModifiedLedgerSeq := xdr.Uint32(123)
 	s.mockStateReader.
@@ -66,8 +68,8 @@ func (s *OffersProcessorTestSuiteState) TestCreateOffer() {
 			Type: xdr.LedgerEntryChangeTypeLedgerEntryState,
 			State: &xdr.LedgerEntry{
 				Data: xdr.LedgerEntryData{
-					Type:  xdr.LedgerEntryTypeOffer,
-					Offer: &offer,
+					Type:      xdr.LedgerEntryTypeTrustline,
+					TrustLine: &trustLine,
 				},
 				LastModifiedLedgerSeq: lastModifiedLedgerSeq,
 			},
@@ -76,7 +78,7 @@ func (s *OffersProcessorTestSuiteState) TestCreateOffer() {
 	).Once()
 
 	s.mockBatchInsertBuilder.
-		On("Add", offer, lastModifiedLedgerSeq).Return(nil).Once()
+		On("Add", trustLine, lastModifiedLedgerSeq).Return(nil).Once()
 
 	s.mockStateReader.
 		On("Read").
@@ -94,26 +96,26 @@ func (s *OffersProcessorTestSuiteState) TestCreateOffer() {
 	s.Assert().NoError(err)
 }
 
-func TestOffersProcessorTestSuiteLedger(t *testing.T) {
-	suite.Run(t, new(OffersProcessorTestSuiteLedger))
+func TestTrustLinesProcessorTestSuiteLedger(t *testing.T) {
+	suite.Run(t, new(TrustLinesProcessorTestSuiteLedger))
 }
 
-type OffersProcessorTestSuiteLedger struct {
+type TrustLinesProcessorTestSuiteLedger struct {
 	suite.Suite
 	processor        *DatabaseProcessor
-	mockQ            *history.MockQOffers
+	mockQ            *history.MockQTrustLines
 	mockLedgerReader *io.MockLedgerReader
 	mockLedgerWriter *io.MockLedgerWriter
 }
 
-func (s *OffersProcessorTestSuiteLedger) SetupTest() {
-	s.mockQ = &history.MockQOffers{}
+func (s *TrustLinesProcessorTestSuiteLedger) SetupTest() {
+	s.mockQ = &history.MockQTrustLines{}
 	s.mockLedgerReader = &io.MockLedgerReader{}
 	s.mockLedgerWriter = &io.MockLedgerWriter{}
 
 	s.processor = &DatabaseProcessor{
-		Action:  Offers,
-		OffersQ: s.mockQ,
+		Action:      TrustLines,
+		TrustLinesQ: s.mockQ,
 	}
 
 	// Reader and Writer should be always closed and once
@@ -126,14 +128,14 @@ func (s *OffersProcessorTestSuiteLedger) SetupTest() {
 		Return(nil).Once()
 }
 
-func (s *OffersProcessorTestSuiteLedger) TearDownTest() {
+func (s *TrustLinesProcessorTestSuiteLedger) TearDownTest() {
 	s.mockQ.AssertExpectations(s.T())
 	s.mockLedgerReader.AssertExpectations(s.T())
 	s.mockLedgerWriter.AssertExpectations(s.T())
 }
 
-func (s *OffersProcessorTestSuiteLedger) TestInsertOffer() {
-	// should be ignored because it's not an offer type
+func (s *TrustLinesProcessorTestSuiteLedger) TestInsertTrustLine() {
+	// should be ignored because it's not an trust line type
 	s.mockLedgerReader.
 		On("Read").
 		Return(io.LedgerTransaction{
@@ -188,10 +190,11 @@ func (s *OffersProcessorTestSuiteLedger) TestInsertOffer() {
 			}),
 		}, nil).Once()
 
-	// add offer
-	offer := xdr.OfferEntry{
-		OfferId: xdr.Int64(2),
-		Price:   xdr.Price{1, 2},
+	// add trust line
+	trustLine := xdr.TrustLineEntry{
+		AccountId: xdr.MustAddress("GAOQJGUAB7NI7K7I62ORBXMN3J4SSWQUQ7FOEPSDJ322W2HMCNWPHXFB"),
+		Asset:     xdr.MustNewCreditAsset("EUR", trustLineIssuer.Address()),
+		Balance:   0,
 	}
 	lastModifiedLedgerSeq := xdr.Uint32(1234)
 	s.mockLedgerReader.On("Read").
@@ -204,8 +207,8 @@ func (s *OffersProcessorTestSuiteLedger) TestInsertOffer() {
 							Type: xdr.LedgerEntryChangeTypeLedgerEntryCreated,
 							Created: &xdr.LedgerEntry{
 								Data: xdr.LedgerEntryData{
-									Type:  xdr.LedgerEntryTypeOffer,
-									Offer: &offer,
+									Type:      xdr.LedgerEntryTypeTrustline,
+									TrustLine: &trustLine,
 								},
 							},
 						},
@@ -216,14 +219,15 @@ func (s *OffersProcessorTestSuiteLedger) TestInsertOffer() {
 	s.mockLedgerReader.On("GetSequence").Return(uint32(lastModifiedLedgerSeq))
 
 	s.mockQ.On(
-		"InsertOffer",
-		offer,
+		"InsertTrustLine",
+		trustLine,
 		lastModifiedLedgerSeq,
 	).Return(int64(1), nil).Once()
 
-	updatedOffer := xdr.OfferEntry{
-		OfferId: xdr.Int64(2),
-		Price:   xdr.Price{1, 6},
+	updatedTrustLine := xdr.TrustLineEntry{
+		AccountId: xdr.MustAddress("GAOQJGUAB7NI7K7I62ORBXMN3J4SSWQUQ7FOEPSDJ322W2HMCNWPHXFB"),
+		Asset:     xdr.MustNewCreditAsset("EUR", trustLineIssuer.Address()),
+		Balance:   10,
 	}
 	s.mockLedgerReader.On("Read").
 		Return(io.LedgerTransaction{
@@ -235,8 +239,8 @@ func (s *OffersProcessorTestSuiteLedger) TestInsertOffer() {
 							Type: xdr.LedgerEntryChangeTypeLedgerEntryState,
 							State: &xdr.LedgerEntry{
 								Data: xdr.LedgerEntryData{
-									Type:  xdr.LedgerEntryTypeOffer,
-									Offer: &offer,
+									Type:      xdr.LedgerEntryTypeTrustline,
+									TrustLine: &trustLine,
 								},
 							},
 						},
@@ -245,8 +249,8 @@ func (s *OffersProcessorTestSuiteLedger) TestInsertOffer() {
 							Type: xdr.LedgerEntryChangeTypeLedgerEntryUpdated,
 							Updated: &xdr.LedgerEntry{
 								Data: xdr.LedgerEntryData{
-									Type:  xdr.LedgerEntryTypeOffer,
-									Offer: &updatedOffer,
+									Type:      xdr.LedgerEntryTypeTrustline,
+									TrustLine: &updatedTrustLine,
 								},
 							},
 						},
@@ -255,8 +259,8 @@ func (s *OffersProcessorTestSuiteLedger) TestInsertOffer() {
 			}),
 		}, nil).Once()
 	s.mockQ.On(
-		"UpdateOffer",
-		updatedOffer,
+		"UpdateTrustLine",
+		updatedTrustLine,
 		lastModifiedLedgerSeq,
 	).Return(int64(1), nil).Once()
 
@@ -274,17 +278,19 @@ func (s *OffersProcessorTestSuiteLedger) TestInsertOffer() {
 	s.Assert().NoError(err)
 }
 
-func (s *OffersProcessorTestSuiteLedger) TestUpdateOfferNoRowsAffected() {
+func (s *TrustLinesProcessorTestSuiteLedger) TestUpdateTrustLineNoRowsAffected() {
 	lastModifiedLedgerSeq := xdr.Uint32(1234)
 	s.mockLedgerReader.On("GetSequence").Return(uint32(lastModifiedLedgerSeq))
 
-	offer := xdr.OfferEntry{
-		OfferId: xdr.Int64(2),
-		Price:   xdr.Price{1, 2},
+	trustLine := xdr.TrustLineEntry{
+		AccountId: xdr.MustAddress("GAOQJGUAB7NI7K7I62ORBXMN3J4SSWQUQ7FOEPSDJ322W2HMCNWPHXFB"),
+		Asset:     xdr.MustNewCreditAsset("EUR", trustLineIssuer.Address()),
+		Balance:   0,
 	}
-	updatedOffer := xdr.OfferEntry{
-		OfferId: xdr.Int64(2),
-		Price:   xdr.Price{1, 6},
+	updatedTrustLine := xdr.TrustLineEntry{
+		AccountId: xdr.MustAddress("GAOQJGUAB7NI7K7I62ORBXMN3J4SSWQUQ7FOEPSDJ322W2HMCNWPHXFB"),
+		Asset:     xdr.MustNewCreditAsset("EUR", trustLineIssuer.Address()),
+		Balance:   10,
 	}
 	s.mockLedgerReader.On("Read").
 		Return(io.LedgerTransaction{
@@ -296,8 +302,8 @@ func (s *OffersProcessorTestSuiteLedger) TestUpdateOfferNoRowsAffected() {
 							Type: xdr.LedgerEntryChangeTypeLedgerEntryState,
 							State: &xdr.LedgerEntry{
 								Data: xdr.LedgerEntryData{
-									Type:  xdr.LedgerEntryTypeOffer,
-									Offer: &offer,
+									Type:      xdr.LedgerEntryTypeTrustline,
+									TrustLine: &trustLine,
 								},
 							},
 						},
@@ -306,8 +312,8 @@ func (s *OffersProcessorTestSuiteLedger) TestUpdateOfferNoRowsAffected() {
 							Type: xdr.LedgerEntryChangeTypeLedgerEntryUpdated,
 							Updated: &xdr.LedgerEntry{
 								Data: xdr.LedgerEntryData{
-									Type:  xdr.LedgerEntryTypeOffer,
-									Offer: &updatedOffer,
+									Type:      xdr.LedgerEntryTypeTrustline,
+									TrustLine: &updatedTrustLine,
 								},
 							},
 						},
@@ -316,8 +322,8 @@ func (s *OffersProcessorTestSuiteLedger) TestUpdateOfferNoRowsAffected() {
 			}),
 		}, nil).Once()
 	s.mockQ.On(
-		"UpdateOffer",
-		updatedOffer,
+		"UpdateTrustLine",
+		updatedTrustLine,
 		lastModifiedLedgerSeq,
 	).Return(int64(0), nil).Once()
 
@@ -330,11 +336,10 @@ func (s *OffersProcessorTestSuiteLedger) TestUpdateOfferNoRowsAffected() {
 
 	s.Assert().Error(err)
 	s.Assert().IsType(verify.StateError{}, errors.Cause(err))
-	s.Assert().EqualError(err, "Error in processLedgerOffers: No rows affected when updating offer 2")
+	s.Assert().EqualError(err, "Error in processLedgerTrustLines: No rows affected when updating trustline: GAOQJGUAB7NI7K7I62ORBXMN3J4SSWQUQ7FOEPSDJ322W2HMCNWPHXFB credit_alphanum4/EUR/GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H")
 }
 
-func (s *OffersProcessorTestSuiteLedger) TestRemoveOffer() {
-	// add offer
+func (s *TrustLinesProcessorTestSuiteLedger) TestRemoveTrustLine() {
 	s.mockLedgerReader.On("Read").
 		Return(io.LedgerTransaction{
 			Meta: createTransactionMeta([]xdr.OperationMeta{
@@ -344,10 +349,11 @@ func (s *OffersProcessorTestSuiteLedger) TestRemoveOffer() {
 							Type: xdr.LedgerEntryChangeTypeLedgerEntryState,
 							State: &xdr.LedgerEntry{
 								Data: xdr.LedgerEntryData{
-									Type: xdr.LedgerEntryTypeOffer,
-									Offer: &xdr.OfferEntry{
-										OfferId: xdr.Int64(3),
-										Price:   xdr.Price{3, 1},
+									Type: xdr.LedgerEntryTypeTrustline,
+									TrustLine: &xdr.TrustLineEntry{
+										AccountId: xdr.MustAddress("GAOQJGUAB7NI7K7I62ORBXMN3J4SSWQUQ7FOEPSDJ322W2HMCNWPHXFB"),
+										Asset:     xdr.MustNewCreditAsset("EUR", trustLineIssuer.Address()),
+										Balance:   0,
 									},
 								},
 							},
@@ -355,9 +361,10 @@ func (s *OffersProcessorTestSuiteLedger) TestRemoveOffer() {
 						xdr.LedgerEntryChange{
 							Type: xdr.LedgerEntryChangeTypeLedgerEntryRemoved,
 							Removed: &xdr.LedgerKey{
-								Type: xdr.LedgerEntryTypeOffer,
-								Offer: &xdr.LedgerKeyOffer{
-									OfferId: xdr.Int64(3),
+								Type: xdr.LedgerEntryTypeTrustline,
+								TrustLine: &xdr.LedgerKeyTrustLine{
+									AccountId: xdr.MustAddress("GAOQJGUAB7NI7K7I62ORBXMN3J4SSWQUQ7FOEPSDJ322W2HMCNWPHXFB"),
+									Asset:     xdr.MustNewCreditAsset("EUR", trustLineIssuer.Address()),
 								},
 							},
 						},
@@ -368,8 +375,11 @@ func (s *OffersProcessorTestSuiteLedger) TestRemoveOffer() {
 	s.mockLedgerReader.On("GetSequence").Return(uint32(123))
 
 	s.mockQ.On(
-		"RemoveOffer",
-		xdr.Int64(3),
+		"RemoveTrustLine",
+		xdr.LedgerKeyTrustLine{
+			AccountId: xdr.MustAddress("GAOQJGUAB7NI7K7I62ORBXMN3J4SSWQUQ7FOEPSDJ322W2HMCNWPHXFB"),
+			Asset:     xdr.MustNewCreditAsset("EUR", trustLineIssuer.Address()),
+		},
 	).Return(int64(1), nil).Once()
 
 	s.mockLedgerReader.
@@ -386,8 +396,7 @@ func (s *OffersProcessorTestSuiteLedger) TestRemoveOffer() {
 	s.Assert().NoError(err)
 }
 
-func (s *OffersProcessorTestSuiteLedger) TestRemoveOfferNoRowsAffected() {
-	// add offer
+func (s *TrustLinesProcessorTestSuiteLedger) TestRemoveOfferNoRowsAffected() {
 	s.mockLedgerReader.On("Read").
 		Return(io.LedgerTransaction{
 			Meta: createTransactionMeta([]xdr.OperationMeta{
@@ -397,10 +406,11 @@ func (s *OffersProcessorTestSuiteLedger) TestRemoveOfferNoRowsAffected() {
 							Type: xdr.LedgerEntryChangeTypeLedgerEntryState,
 							State: &xdr.LedgerEntry{
 								Data: xdr.LedgerEntryData{
-									Type: xdr.LedgerEntryTypeOffer,
-									Offer: &xdr.OfferEntry{
-										OfferId: xdr.Int64(3),
-										Price:   xdr.Price{3, 1},
+									Type: xdr.LedgerEntryTypeTrustline,
+									TrustLine: &xdr.TrustLineEntry{
+										AccountId: xdr.MustAddress("GAOQJGUAB7NI7K7I62ORBXMN3J4SSWQUQ7FOEPSDJ322W2HMCNWPHXFB"),
+										Asset:     xdr.MustNewCreditAsset("EUR", trustLineIssuer.Address()),
+										Balance:   0,
 									},
 								},
 							},
@@ -408,9 +418,10 @@ func (s *OffersProcessorTestSuiteLedger) TestRemoveOfferNoRowsAffected() {
 						xdr.LedgerEntryChange{
 							Type: xdr.LedgerEntryChangeTypeLedgerEntryRemoved,
 							Removed: &xdr.LedgerKey{
-								Type: xdr.LedgerEntryTypeOffer,
-								Offer: &xdr.LedgerKeyOffer{
-									OfferId: xdr.Int64(3),
+								Type: xdr.LedgerEntryTypeTrustline,
+								TrustLine: &xdr.LedgerKeyTrustLine{
+									AccountId: xdr.MustAddress("GAOQJGUAB7NI7K7I62ORBXMN3J4SSWQUQ7FOEPSDJ322W2HMCNWPHXFB"),
+									Asset:     xdr.MustNewCreditAsset("EUR", trustLineIssuer.Address()),
 								},
 							},
 						},
@@ -421,8 +432,11 @@ func (s *OffersProcessorTestSuiteLedger) TestRemoveOfferNoRowsAffected() {
 	s.mockLedgerReader.On("GetSequence").Return(uint32(123))
 
 	s.mockQ.On(
-		"RemoveOffer",
-		xdr.Int64(3),
+		"RemoveTrustLine",
+		xdr.LedgerKeyTrustLine{
+			AccountId: xdr.MustAddress("GAOQJGUAB7NI7K7I62ORBXMN3J4SSWQUQ7FOEPSDJ322W2HMCNWPHXFB"),
+			Asset:     xdr.MustNewCreditAsset("EUR", trustLineIssuer.Address()),
+		},
 	).Return(int64(0), nil).Once()
 
 	err := s.processor.ProcessLedger(
@@ -434,5 +448,5 @@ func (s *OffersProcessorTestSuiteLedger) TestRemoveOfferNoRowsAffected() {
 
 	s.Assert().Error(err)
 	s.Assert().IsType(verify.StateError{}, errors.Cause(err))
-	s.Assert().EqualError(err, "Error in processLedgerOffers: No rows affected when removing offer 3")
+	s.Assert().EqualError(err, "Error in processLedgerTrustLines: No rows affected when removing trustline: GAOQJGUAB7NI7K7I62ORBXMN3J4SSWQUQ7FOEPSDJ322W2HMCNWPHXFB credit_alphanum4/EUR/GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H")
 }

@@ -17,7 +17,7 @@ func Test_ingestSignerEffects(t *testing.T) {
 	s := ingest(tt, Config{EnableAssetStats: false})
 	tt.Require.NoError(s.Err)
 
-	q := &history.Q{Session: tt.HorizonSession()}
+	q := &history.Q{tt.HorizonSession()}
 
 	// Regression: https://github.com/stellar/horizon/issues/390 doesn't produce a signer effect when
 	// inflation has changed
@@ -37,7 +37,7 @@ func Test_ingestOperationEffects(t *testing.T) {
 	s := ingest(tt, Config{EnableAssetStats: false})
 	tt.Require.NoError(s.Err)
 
-	q := &history.Q{Session: tt.HorizonSession()}
+	q := &history.Q{tt.HorizonSession()}
 	var effects []history.Effect
 
 	// ensure inflation destination change is correctly recorded
@@ -91,7 +91,7 @@ func Test_ingestBumpSeq(t *testing.T) {
 	s := ingest(tt, Config{EnableAssetStats: false})
 	tt.Require.NoError(s.Err)
 
-	q := &history.Q{Session: tt.HorizonSession()}
+	q := &history.Q{tt.HorizonSession()}
 
 	//ensure bumpseq operations
 	ops, _, err := q.Operations().ForAccount("GCQZP3IU7XU6EJ63JZXKCQOYT2RNXN3HB5CNHENNUEUHSMA4VUJJJSEN").Fetch()

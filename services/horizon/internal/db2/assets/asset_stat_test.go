@@ -78,7 +78,7 @@ func TestAssetsStatsQExec(t *testing.T) {
 			tt.Require.NoError(err)
 
 			var results []AssetStatsR
-			err = history.Q{Session: tt.HorizonSession()}.Select(&results, sql)
+			err = history.Q{tt.HorizonSession()}.Select(&results, sql)
 			tt.Require.NoError(err)
 			if !tt.Assert.Equal(3, len(results)) {
 				return

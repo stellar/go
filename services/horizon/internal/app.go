@@ -134,7 +134,7 @@ func (a *App) Close() {
 // sure all requests are first properly finished to avoid "sql: database is
 // closed" errors.
 func (a *App) CloseDB() {
-	a.historyQ.Session.DB.Close()
+	a.historyQ.Close()
 	a.coreQ.Session.DB.Close()
 }
 
@@ -147,7 +147,7 @@ func (a *App) HistoryQ() *history.Q {
 // HorizonSession returns a new session that loads data from the horizon
 // database. The returned session is bound to `ctx`.
 func (a *App) HorizonSession(ctx context.Context) *db.Session {
-	return &db.Session{DB: a.historyQ.Session.DB, Ctx: ctx}
+	return &db.Session{DB: a.historyQ.SessionInterface.(*db.Session).DB, Ctx: ctx}
 }
 
 // CoreSession returns a new session that loads data from the stellar core
@@ -339,7 +339,7 @@ func (a *App) UpdateMetrics() {
 	a.historyElderLedgerGauge.Update(int64(ls.HistoryElder))
 	a.coreLatestLedgerGauge.Update(int64(ls.CoreLatest))
 
-	a.horizonConnGauge.Update(int64(a.historyQ.Session.DB.Stats().OpenConnections))
+	a.horizonConnGauge.Update(int64(a.historyQ.SessionInterface.(*db.Session).DB.Stats().OpenConnections))
 	a.coreConnGauge.Update(int64(a.coreQ.Session.DB.Stats().OpenConnections))
 }
 

@@ -348,7 +348,7 @@ func (w *web) horizonSession(ctx context.Context) (*db.Session, error) {
 		return nil, err
 	}
 
-	return &db.Session{DB: w.historyQ.Session.DB, Ctx: ctx}, nil
+	return &db.Session{DB: w.historyQ.SessionInterface.(*db.Session).DB, Ctx: ctx}, nil
 }
 
 // coreSession returns a new session that loads data from the stellar core
