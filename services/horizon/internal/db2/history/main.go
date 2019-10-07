@@ -164,6 +164,23 @@ type AssetStat struct {
 	Toml        string `db:"toml"`
 }
 
+// ExpAssetStat is a row in the exp_asset_stats table representing the stats per Asset
+type ExpAssetStat struct {
+	AssetType   string `db:"asset_type"`
+	AssetCode   string `db:"asset_code"`
+	AssetIssuer string `db:"asset_issuer"`
+	Amount      string `db:"amount"`
+	NumAccounts int32  `db:"num_accounts"`
+}
+
+// QAssetStats defines exp_asset_stats related queries.
+type QAssetStats interface {
+	InsertAssetStats(stats []ExpAssetStat, batchSize int) error
+	InsertAssetStat(stat ExpAssetStat) (int64, error)
+	UpdateAssetStat(stat ExpAssetStat) (int64, error)
+	GetAssetStat(assetType, assetCode, assetIssuer string) (ExpAssetStat, error)
+}
+
 // Effect is a row of data from the `history_effects` table
 type Effect struct {
 	HistoryAccountID   int64       `db:"history_account_id"`

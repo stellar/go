@@ -2,8 +2,10 @@ package processors
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	stdio "io"
+	"strconv"
 
 	"github.com/stellar/go/exp/ingest/io"
 	ingestpipeline "github.com/stellar/go/exp/ingest/pipeline"
@@ -25,6 +27,7 @@ func (p *DatabaseProcessor) ProcessState(ctx context.Context, store *pipeline.St
 		offersBatch        history.OffersBatchInsertBuilder
 		trustLinesBatch    history.TrustLinesBatchInsertBuilder
 	)
+	assetStats := assetStatSet{}
 
 	switch p.Action {
 	case AccountsForSigner:
@@ -89,8 +92,14 @@ func (p *DatabaseProcessor) ProcessState(ctx context.Context, store *pipeline.St
 				continue
 			}
 
+			trustline := entryChange.MustState().Data.MustTrustLine()
+			err = assetStats.add(trustline)
+			if err != nil {
+				return errors.Wrap(err, "Error adding trustline to asset stats set")
+			}
+
 			err = trustLinesBatch.Add(
-				entryChange.MustState().Data.MustTrustLine(),
+				trustline,
 				entryChange.MustState().LastModifiedLedgerSeq,
 			)
 			if err != nil {
@@ -117,6 +126,9 @@ func (p *DatabaseProcessor) ProcessState(ctx context.Context, store *pipeline.St
 		err = offersBatch.Exec()
 	case TrustLines:
 		err = trustLinesBatch.Exec()
+		if err == nil {
+			err = p.AssetStatsQ.InsertAssetStats(assetStats.all(), maxBatchSize)
+		}
 	default:
 		return errors.Errorf("Invalid action type (%s)", p.Action)
 	}
@@ -275,6 +287,68 @@ func (p *DatabaseProcessor) processLedgerOffers(transaction io.LedgerTransaction
 	return nil
 }
 
+func (p *DatabaseProcessor) adjustAssetStat(
+	trustline xdr.TrustLineEntry,
+	deltaBalance xdr.Int64,
+	deltaAccounts int32,
+) error {
+	if deltaBalance == 0 && deltaAccounts == 0 {
+		return nil
+	}
+
+	var assetType, assetIssuer, assetCode string
+	if err := trustline.Asset.Extract(&assetType, &assetCode, &assetIssuer); err != nil {
+		return errors.Wrap(err, "could not extract asset info from trustline")
+	}
+
+	mustExist := deltaAccounts <= 0
+	stat, err := p.AssetStatsQ.GetAssetStat(assetType, assetCode, assetIssuer)
+	assetStatNotFound := err == sql.ErrNoRows
+	if !assetStatNotFound && err != nil {
+		return errors.Wrap(err, "could not fetch asset stat from db")
+	}
+
+	var currentBalance int64
+	if assetStatNotFound {
+		stat.AssetType = assetType
+		stat.AssetCode = assetCode
+		stat.AssetIssuer = assetIssuer
+	} else {
+		currentBalance, err = strconv.ParseInt(stat.Amount, 10, 64)
+		if err != nil {
+			return errors.Wrap(err, "could not parse amount from asset stat")
+		}
+	}
+	currentBalance += int64(deltaBalance)
+	stat.Amount = strconv.FormatInt(currentBalance, 10)
+	stat.NumAccounts += deltaAccounts
+
+	var rowsAffected int64
+	if assetStatNotFound {
+		if mustExist {
+			return errors.New("asset stat does not exist")
+		}
+		rowsAffected, err = p.AssetStatsQ.InsertAssetStat(stat)
+		if err != nil {
+			return errors.Wrap(err, "could not insert asset stat")
+		}
+	} else {
+		rowsAffected, err = p.AssetStatsQ.UpdateAssetStat(stat)
+		if err != nil {
+			return errors.Wrap(err, "could not update asset stat")
+		}
+	}
+
+	if rowsAffected != 1 {
+		return verify.NewStateError(errors.Errorf(
+			"No rows affected when adjusting asset stat from trustline: %s %s",
+			trustline.AccountId.Address(),
+			trustline.Asset.String(),
+		))
+	}
+	return nil
+}
+
 func (p *DatabaseProcessor) processLedgerTrustLines(transaction io.LedgerTransaction, currentLedger uint32) error {
 	for _, change := range transaction.GetChanges() {
 		if change.Type != xdr.LedgerEntryTypeTrustline {
@@ -295,6 +369,10 @@ func (p *DatabaseProcessor) processLedgerTrustLines(transaction io.LedgerTransac
 			if err != nil {
 				return errors.Wrap(err, "Error creating ledger key")
 			}
+			err = p.adjustAssetStat(trustLine, trustLine.Balance, 1)
+			if err != nil {
+				return errors.Wrap(err, "Error adjusting asset stat")
+			}
 			rowsAffected, err = p.TrustLinesQ.InsertTrustLine(trustLine, xdr.Uint32(currentLedger))
 		case change.Pre != nil && change.Post == nil:
 			// Removed
@@ -304,14 +382,23 @@ func (p *DatabaseProcessor) processLedgerTrustLines(transaction io.LedgerTransac
 			if err != nil {
 				return errors.Wrap(err, "Error creating ledger key")
 			}
+			err = p.adjustAssetStat(trustLine, -trustLine.Balance, -1)
+			if err != nil {
+				return errors.Wrap(err, "Error adjusting asset stat")
+			}
 			rowsAffected, err = p.TrustLinesQ.RemoveTrustLine(*ledgerKey.TrustLine)
 		default:
 			// Updated
 			action = "updating"
+			preTrustLine := change.Pre.MustTrustLine()
 			trustLine := change.Post.MustTrustLine()
 			err = ledgerKey.SetTrustline(trustLine.AccountId, trustLine.Asset)
 			if err != nil {
 				return errors.Wrap(err, "Error creating ledger key")
+			}
+			err = p.adjustAssetStat(trustLine, trustLine.Balance-preTrustLine.Balance, 0)
+			if err != nil {
+				return errors.Wrap(err, "Error adjusting asset stat")
 			}
 			rowsAffected, err = p.TrustLinesQ.UpdateTrustLine(trustLine, xdr.Uint32(currentLedger))
 		}

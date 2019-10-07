@@ -28,6 +28,7 @@ type DatabaseProcessor struct {
 	SignersQ    history.QSigners
 	OffersQ     history.QOffers
 	TrustLinesQ history.QTrustLines
+	AssetStatsQ history.QAssetStats
 	Action      DatabaseProcessorActionType
 }
 
