@@ -47,8 +47,9 @@ var (
 )
 
 func TestInsertTrustLine(t *testing.T) {
-	tt := test.Start(t).Scenario("base")
+	tt := test.Start(t)
 	defer tt.Finish()
+	test.ResetHorizonDB(t, tt.HorizonDB)
 	q := &Q{tt.HorizonSession()}
 
 	rows, err := q.InsertTrustLine(eurTrustLine, 1234)
@@ -70,8 +71,9 @@ func TestInsertTrustLine(t *testing.T) {
 }
 
 func TestUpdateTrustLine(t *testing.T) {
-	tt := test.Start(t).Scenario("base")
+	tt := test.Start(t)
 	defer tt.Finish()
+	test.ResetHorizonDB(t, tt.HorizonDB)
 	q := &Q{tt.HorizonSession()}
 
 	rows, err := q.InsertTrustLine(eurTrustLine, 1234)
@@ -119,8 +121,9 @@ func TestUpdateTrustLine(t *testing.T) {
 }
 
 func TestRemoveTrustLine(t *testing.T) {
-	tt := test.Start(t).Scenario("base")
+	tt := test.Start(t)
 	defer tt.Finish()
+	test.ResetHorizonDB(t, tt.HorizonDB)
 	q := &Q{tt.HorizonSession()}
 
 	rows, err := q.InsertTrustLine(eurTrustLine, 1234)
