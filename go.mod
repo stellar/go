@@ -5,7 +5,7 @@ go 1.12
 require (
 	bitbucket.org/ww/goautoneg v0.0.0-20120707110453-75cd24fc2f2c
 	github.com/BurntSushi/toml v0.2.1-0.20160717150709-99064174e013
-	github.com/Masterminds/squirrel v1.1.0
+	github.com/Masterminds/squirrel v0.0.0-20161115235646-20f192218cf5
 	github.com/ajg/form v0.0.0-20160822230020-523a5da1a92f // indirect
 	github.com/asaskevich/govalidator v0.0.0-20180319081651-7d2e70ef918f
 	github.com/aws/aws-sdk-go v1.6.11-0.20170104181648-8649d278323e
@@ -40,6 +40,7 @@ require (
 	github.com/klauspost/crc32 v0.0.0-20161016154125-cb6bfca970f6 // indirect
 	github.com/kr/pretty v0.0.0-20150520163514-e6ac2fc51e89 // indirect
 	github.com/kr/text v0.0.0-20150520163712-e373e137fafd // indirect
+	github.com/lann/builder v0.0.0-20140829050551-c603884a2c1f // indirect
 	github.com/lib/pq v1.2.0
 	github.com/magiconair/properties v1.5.4 // indirect
 	github.com/manucorporat/sse v0.0.0-20160126180136-ee05b128a739
