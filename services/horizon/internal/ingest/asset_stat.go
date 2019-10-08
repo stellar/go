@@ -177,7 +177,7 @@ func (assetStats *AssetStats) deleteRows(session *db.Session) error {
 		assets = append(assets, asset)
 	}
 
-	historyQ := history.Q{SessionInterface: assetStats.HistorySession}
+	historyQ := history.Q{Session: assetStats.HistorySession}
 	ids, err := historyQ.GetAssetIDs(assets)
 	if err != nil {
 		return err
@@ -209,7 +209,7 @@ func (assetStats *AssetStats) computeAssetStat(asset *xdr.Asset) (*history.Asset
 		return nil, nil
 	}
 
-	historyQ := &history.Q{assetStats.HistorySession}
+	historyQ := &history.Q{Session: assetStats.HistorySession}
 	assetID, err := historyQ.GetCreateAssetID(*asset)
 	if err != nil {
 		return nil, errors.Wrap(err, "historyQ.GetCreateAssetID error")

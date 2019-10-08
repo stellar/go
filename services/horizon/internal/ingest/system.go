@@ -98,7 +98,7 @@ func (i *System) ReingestAll() (int, error) {
 
 	var elder int32
 	var latest int32
-	q := history.Q{i.HorizonDB}
+	q := history.Q{Session: i.HorizonDB}
 
 	err := q.ElderLedger(&elder)
 	if err != nil {
@@ -120,7 +120,7 @@ func (i *System) ReingestAll() (int, error) {
 
 // ReingestOutdated finds old ledgers and reimports them.
 func (i *System) ReingestOutdated() (n int, err error) {
-	q := history.Q{i.HorizonDB}
+	q := history.Q{Session: i.HorizonDB}
 
 	// NOTE: this loop will never terminate if some bug were cause a ledger
 	// reingestion to silently fail.
@@ -257,7 +257,7 @@ func (i *System) runOnce() {
 		return
 	}
 
-	historyQ := history.Q{i.HorizonDB}
+	historyQ := history.Q{Session: i.HorizonDB}
 	err = historyQ.LatestLedger(&historyLatest)
 	if err != nil {
 		log.WithFields(ilog.F{"err": err}).Error("Error getting history latest ledger")

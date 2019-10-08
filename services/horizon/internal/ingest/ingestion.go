@@ -140,7 +140,7 @@ func (ingest *Ingestion) UpdateAccountIDs(tables []TableName) error {
 	}
 
 	// Get IDs and update map
-	q := history.Q{ingest.DB}
+	q := history.Q{Session: ingest.DB}
 	dbAccounts := make([]history.Account, 0, len(addresses))
 	err := q.AccountsByAddresses(&dbAccounts, addresses)
 	if err != nil {
@@ -267,7 +267,7 @@ func (ingest *Ingestion) Trade(
 	ledgerClosedAt int64,
 ) error {
 
-	q := history.Q{ingest.DB}
+	q := history.Q{Session: ingest.DB}
 
 	sellerAccountId, err := q.GetCreateAccountID(trade.SellerId)
 	if err != nil {

@@ -582,7 +582,7 @@ func (is *Session) ingestTrades() {
 			buyOffer, buyOfferExists = passiveOfferResult.Offer.GetOffer()
 		}
 	}
-	q := history.Q{is.Ingestion.DB}
+	q := history.Q{Session: is.Ingestion.DB}
 	for i, trade := range trades {
 		// stellar-core will opportunisticly garbage collect invalid offers (in the
 		// event that a trader spends down their balance).  These garbage collected

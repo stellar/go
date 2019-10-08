@@ -204,7 +204,7 @@ func TestPayment_CreatedAt(t *testing.T) {
 	ht.UnmarshalPage(w.Body, &records)
 
 	l := history.Ledger{}
-	hq := history.Q{ht.HorizonSession()}
+	hq := history.Q{Session: ht.HorizonSession()}
 	ht.Require.NoError(hq.LedgerBySequence(&l, 3))
 
 	ht.Assert.WithinDuration(l.ClosedAt, records[0].LedgerCloseTime, 1*time.Second)

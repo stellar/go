@@ -96,7 +96,7 @@ func TestFeeMax(t *testing.T) {
 	err = ingestion.Close()
 	assert.NoError(t, err)
 
-	q := history.Q{ingestion.DB}
+	q := history.Q{Session: ingestion.DB}
 	tx := history.Transaction{}
 	err = q.TransactionByHash(&tx, hash)
 	tt.Require.NoError(err)
@@ -161,7 +161,7 @@ func TestAssetIngest(t *testing.T) {
 	defer tt.Finish()
 	s := ingest(tt, Config{EnableAssetStats: true})
 	tt.Require.NoError(s.Err)
-	q := history.Q{s.Ingestion.DB}
+	q := history.Q{Session: s.Ingestion.DB}
 
 	expectedAsset := history.Asset{
 		ID:     4,
@@ -181,7 +181,7 @@ func TestAssetStatsIngest(t *testing.T) {
 	defer tt.Finish()
 	s := ingest(tt, Config{EnableAssetStats: true})
 	tt.Require.NoError(s.Err)
-	q := history.Q{s.Ingestion.DB}
+	q := history.Q{Session: s.Ingestion.DB}
 
 	type AssetStatResult struct {
 		Type        string `db:"asset_type"`
@@ -248,7 +248,7 @@ func TestAssetStatsDisabledIngest(t *testing.T) {
 	defer tt.Finish()
 	s := ingest(tt, Config{EnableAssetStats: false})
 	tt.Require.NoError(s.Err)
-	q := history.Q{s.Ingestion.DB}
+	q := history.Q{Session: s.Ingestion.DB}
 
 	type AssetStatResult struct {
 		Type        string `db:"asset_type"`
@@ -285,7 +285,7 @@ func TestIngestFailedTransactionsEnabled(t *testing.T) {
 	defer tt.Finish()
 	s := ingest(tt, Config{EnableAssetStats: false, IngestFailedTransactions: true})
 	tt.Require.NoError(s.Err)
-	q := history.Q{s.Ingestion.DB}
+	q := history.Q{Session: s.Ingestion.DB}
 
 	tx := history.Transaction{}
 	err := q.TransactionByHash(&tx, "aa168f12124b7c196c0adaee7c73a64d37f99428cacb59a91ff389626845e7cf")
@@ -303,7 +303,7 @@ func TestIngestFailedTransactionsDisabled(t *testing.T) {
 	defer tt.Finish()
 	s := ingest(tt, Config{EnableAssetStats: false, IngestFailedTransactions: false})
 	tt.Require.NoError(s.Err)
-	q := history.Q{s.Ingestion.DB}
+	q := history.Q{Session: s.Ingestion.DB}
 
 	tx := history.Transaction{}
 	err := q.TransactionByHash(&tx, "aa168f12124b7c196c0adaee7c73a64d37f99428cacb59a91ff389626845e7cf")
@@ -322,7 +322,7 @@ func TestTradeIngestTimestamp(t *testing.T) {
 	tt := test.Start(t).ScenarioWithoutHorizon("trades")
 	defer tt.Finish()
 	s := ingest(tt, Config{EnableAssetStats: false})
-	q := history.Q{s.Ingestion.DB}
+	q := history.Q{Session: s.Ingestion.DB}
 
 	var ledgers []history.Ledger
 	err := q.Ledgers().Select(&ledgers)
