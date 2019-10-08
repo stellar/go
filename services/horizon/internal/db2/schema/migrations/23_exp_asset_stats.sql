@@ -5,7 +5,7 @@
 -- we can remove asset_stats
 
 CREATE TABLE exp_asset_stats (
-    asset_type      VARCHAR(64) NOT NULL,
+    asset_type      INT NOT NULL,
     asset_code      VARCHAR(12) NOT NULL,
     asset_issuer    VARCHAR(56) NOT NULL,
     amount          TEXT        NOT NULL,

@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/stellar/go/services/horizon/internal/test"
+	"github.com/stellar/go/xdr"
 )
 
 func TestInsertAssetStats(t *testing.T) {
@@ -16,14 +17,14 @@ func TestInsertAssetStats(t *testing.T) {
 
 	assetStats := []ExpAssetStat{
 		ExpAssetStat{
-			AssetType:   "credit_alphanum4",
+			AssetType:   xdr.AssetTypeAssetTypeCreditAlphanum4,
 			AssetIssuer: "GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H",
 			AssetCode:   "USD",
 			Amount:      "1",
 			NumAccounts: 2,
 		},
 		ExpAssetStat{
-			AssetType:   "credit_alphanum12",
+			AssetType:   xdr.AssetTypeAssetTypeCreditAlphanum12,
 			AssetIssuer: "GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H",
 			AssetCode:   "ETHER",
 			Amount:      "23",
@@ -47,14 +48,14 @@ func TestInsertAssetStat(t *testing.T) {
 
 	assetStats := []ExpAssetStat{
 		ExpAssetStat{
-			AssetType:   "credit_alphanum4",
+			AssetType:   xdr.AssetTypeAssetTypeCreditAlphanum4,
 			AssetIssuer: "GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H",
 			AssetCode:   "USD",
 			Amount:      "1",
 			NumAccounts: 2,
 		},
 		ExpAssetStat{
-			AssetType:   "credit_alphanum12",
+			AssetType:   xdr.AssetTypeAssetTypeCreditAlphanum12,
 			AssetIssuer: "GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H",
 			AssetCode:   "ETHER",
 			Amount:      "23",
@@ -80,7 +81,7 @@ func TestInsertAssetStatAlreadyExistsError(t *testing.T) {
 	q := &Q{tt.HorizonSession()}
 
 	assetStat := ExpAssetStat{
-		AssetType:   "credit_alphanum4",
+		AssetType:   xdr.AssetTypeAssetTypeCreditAlphanum4,
 		AssetIssuer: "GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H",
 		AssetCode:   "USD",
 		Amount:      "1",
@@ -115,7 +116,7 @@ func TestUpdateAssetStatDoesNotExistsError(t *testing.T) {
 	q := &Q{tt.HorizonSession()}
 
 	assetStat := ExpAssetStat{
-		AssetType:   "credit_alphanum4",
+		AssetType:   xdr.AssetTypeAssetTypeCreditAlphanum4,
 		AssetIssuer: "GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H",
 		AssetCode:   "USD",
 		Amount:      "1",
@@ -138,7 +139,7 @@ func TestUpdateStat(t *testing.T) {
 	q := &Q{tt.HorizonSession()}
 
 	assetStat := ExpAssetStat{
-		AssetType:   "credit_alphanum4",
+		AssetType:   xdr.AssetTypeAssetTypeCreditAlphanum4,
 		AssetIssuer: "GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H",
 		AssetCode:   "USD",
 		Amount:      "1",
@@ -172,7 +173,7 @@ func TestGetAssetStatDoesNotExist(t *testing.T) {
 	q := &Q{tt.HorizonSession()}
 
 	assetStat := ExpAssetStat{
-		AssetType:   "credit_alphanum4",
+		AssetType:   xdr.AssetTypeAssetTypeCreditAlphanum4,
 		AssetIssuer: "GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H",
 		AssetCode:   "USD",
 		Amount:      "1",

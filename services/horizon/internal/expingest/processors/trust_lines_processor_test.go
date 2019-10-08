@@ -87,7 +87,7 @@ func (s *TrustLinesProcessorTestSuiteState) TestCreateTrustLine() {
 
 	s.mockAssetStatsQ.On("InsertAssetStats", []history.ExpAssetStat{
 		history.ExpAssetStat{
-			AssetType:   "credit_alphanum4",
+			AssetType:   xdr.AssetTypeAssetTypeCreditAlphanum4,
 			AssetIssuer: trustLineIssuer.Address(),
 			AssetCode:   "EUR",
 			Amount:      "0",
@@ -243,12 +243,12 @@ func (s *TrustLinesProcessorTestSuiteLedger) TestInsertTrustLine() {
 		lastModifiedLedgerSeq,
 	).Return(int64(1), nil).Once()
 	s.mockAssetStatsQ.On("GetAssetStat",
-		"credit_alphanum4",
+		xdr.AssetTypeAssetTypeCreditAlphanum4,
 		"EUR",
 		trustLineIssuer.Address(),
 	).Return(history.ExpAssetStat{}, sql.ErrNoRows).Once()
 	s.mockAssetStatsQ.On("InsertAssetStat", history.ExpAssetStat{
-		AssetType:   "credit_alphanum4",
+		AssetType:   xdr.AssetTypeAssetTypeCreditAlphanum4,
 		AssetIssuer: trustLineIssuer.Address(),
 		AssetCode:   "EUR",
 		Amount:      "0",
@@ -295,18 +295,18 @@ func (s *TrustLinesProcessorTestSuiteLedger) TestInsertTrustLine() {
 		lastModifiedLedgerSeq,
 	).Return(int64(1), nil).Once()
 	s.mockAssetStatsQ.On("GetAssetStat",
-		"credit_alphanum4",
+		xdr.AssetTypeAssetTypeCreditAlphanum4,
 		"EUR",
 		trustLineIssuer.Address(),
 	).Return(history.ExpAssetStat{
-		AssetType:   "credit_alphanum4",
+		AssetType:   xdr.AssetTypeAssetTypeCreditAlphanum4,
 		AssetIssuer: trustLineIssuer.Address(),
 		AssetCode:   "EUR",
 		Amount:      "0",
 		NumAccounts: 1,
 	}, nil).Once()
 	s.mockAssetStatsQ.On("UpdateAssetStat", history.ExpAssetStat{
-		AssetType:   "credit_alphanum4",
+		AssetType:   xdr.AssetTypeAssetTypeCreditAlphanum4,
 		AssetIssuer: trustLineIssuer.Address(),
 		AssetCode:   "EUR",
 		Amount:      "10",
@@ -376,18 +376,18 @@ func (s *TrustLinesProcessorTestSuiteLedger) TestUpdateTrustLineNoRowsAffected()
 		lastModifiedLedgerSeq,
 	).Return(int64(0), nil).Once()
 	s.mockAssetStatsQ.On("GetAssetStat",
-		"credit_alphanum4",
+		xdr.AssetTypeAssetTypeCreditAlphanum4,
 		"EUR",
 		trustLineIssuer.Address(),
 	).Return(history.ExpAssetStat{
-		AssetType:   "credit_alphanum4",
+		AssetType:   xdr.AssetTypeAssetTypeCreditAlphanum4,
 		AssetIssuer: trustLineIssuer.Address(),
 		AssetCode:   "EUR",
 		Amount:      "0",
 		NumAccounts: 1,
 	}, nil).Once()
 	s.mockAssetStatsQ.On("UpdateAssetStat", history.ExpAssetStat{
-		AssetType:   "credit_alphanum4",
+		AssetType:   xdr.AssetTypeAssetTypeCreditAlphanum4,
 		AssetIssuer: trustLineIssuer.Address(),
 		AssetCode:   "EUR",
 		Amount:      "10",
@@ -449,18 +449,18 @@ func (s *TrustLinesProcessorTestSuiteLedger) TestRemoveTrustLine() {
 		},
 	).Return(int64(1), nil).Once()
 	s.mockAssetStatsQ.On("GetAssetStat",
-		"credit_alphanum4",
+		xdr.AssetTypeAssetTypeCreditAlphanum4,
 		"EUR",
 		trustLineIssuer.Address(),
 	).Return(history.ExpAssetStat{
-		AssetType:   "credit_alphanum4",
+		AssetType:   xdr.AssetTypeAssetTypeCreditAlphanum4,
 		AssetIssuer: trustLineIssuer.Address(),
 		AssetCode:   "EUR",
 		Amount:      "0",
 		NumAccounts: 1,
 	}, nil).Once()
 	s.mockAssetStatsQ.On("UpdateAssetStat", history.ExpAssetStat{
-		AssetType:   "credit_alphanum4",
+		AssetType:   xdr.AssetTypeAssetTypeCreditAlphanum4,
 		AssetIssuer: trustLineIssuer.Address(),
 		AssetCode:   "EUR",
 		Amount:      "0",
@@ -524,18 +524,18 @@ func (s *TrustLinesProcessorTestSuiteLedger) TestRemoveOfferNoRowsAffected() {
 		},
 	).Return(int64(0), nil).Once()
 	s.mockAssetStatsQ.On("GetAssetStat",
-		"credit_alphanum4",
+		xdr.AssetTypeAssetTypeCreditAlphanum4,
 		"EUR",
 		trustLineIssuer.Address(),
 	).Return(history.ExpAssetStat{
-		AssetType:   "credit_alphanum4",
+		AssetType:   xdr.AssetTypeAssetTypeCreditAlphanum4,
 		AssetIssuer: trustLineIssuer.Address(),
 		AssetCode:   "EUR",
 		Amount:      "0",
 		NumAccounts: 1,
 	}, nil).Once()
 	s.mockAssetStatsQ.On("UpdateAssetStat", history.ExpAssetStat{
-		AssetType:   "credit_alphanum4",
+		AssetType:   xdr.AssetTypeAssetTypeCreditAlphanum4,
 		AssetIssuer: trustLineIssuer.Address(),
 		AssetCode:   "EUR",
 		Amount:      "0",

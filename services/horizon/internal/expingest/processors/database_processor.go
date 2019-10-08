@@ -296,7 +296,8 @@ func (p *DatabaseProcessor) adjustAssetStat(
 		return nil
 	}
 
-	var assetType, assetIssuer, assetCode string
+	var assetType xdr.AssetType
+	var assetIssuer, assetCode string
 	if err := trustline.Asset.Extract(&assetType, &assetCode, &assetIssuer); err != nil {
 		return errors.Wrap(err, "could not extract asset info from trustline")
 	}

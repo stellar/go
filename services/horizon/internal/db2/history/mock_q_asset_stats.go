@@ -1,6 +1,7 @@
 package history
 
 import (
+	"github.com/stellar/go/xdr"
 	"github.com/stretchr/testify/mock"
 )
 
@@ -24,7 +25,7 @@ func (m *MockQAssetStats) UpdateAssetStat(assetStat ExpAssetStat) (int64, error)
 	return a.Get(0).(int64), a.Error(1)
 }
 
-func (m *MockQAssetStats) GetAssetStat(assetType, assetCode, assetIssuer string) (ExpAssetStat, error) {
+func (m *MockQAssetStats) GetAssetStat(assetType xdr.AssetType, assetCode, assetIssuer string) (ExpAssetStat, error) {
 	a := m.Called(assetType, assetCode, assetIssuer)
 	return a.Get(0).(ExpAssetStat), a.Error(1)
 }

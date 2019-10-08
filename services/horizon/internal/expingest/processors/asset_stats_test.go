@@ -32,7 +32,7 @@ func TestAddAssetStatSet(t *testing.T) {
 	}
 
 	eurAssetStat := history.ExpAssetStat{
-		AssetType:   "credit_alphanum4",
+		AssetType:   xdr.AssetTypeAssetTypeCreditAlphanum4,
 		AssetCode:   eur,
 		AssetIssuer: trustLineIssuer.Address(),
 		Amount:      "1",
@@ -91,7 +91,7 @@ func TestAddAssetStatSet(t *testing.T) {
 	})
 	expected := []history.ExpAssetStat{
 		history.ExpAssetStat{
-			AssetType:   "credit_alphanum12",
+			AssetType:   xdr.AssetTypeAssetTypeCreditAlphanum12,
 			AssetCode:   ether,
 			AssetIssuer: trustLineIssuer.Address(),
 			Amount:      "3",
@@ -99,7 +99,7 @@ func TestAddAssetStatSet(t *testing.T) {
 		},
 		eurAssetStat,
 		history.ExpAssetStat{
-			AssetType:   "credit_alphanum4",
+			AssetType:   xdr.AssetTypeAssetTypeCreditAlphanum4,
 			AssetCode:   usd,
 			AssetIssuer: trustLineIssuer.Address(),
 			Amount:      "10",

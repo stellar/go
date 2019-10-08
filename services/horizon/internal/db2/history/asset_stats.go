@@ -4,6 +4,7 @@ import (
 	sq "github.com/Masterminds/squirrel"
 	"github.com/stellar/go/support/db"
 	"github.com/stellar/go/support/errors"
+	"github.com/stellar/go/xdr"
 )
 
 func assetStatToMap(assetStat ExpAssetStat) map[string]interface{} {
@@ -71,7 +72,7 @@ func (q *Q) UpdateAssetStat(assetStat ExpAssetStat) (int64, error) {
 }
 
 // GetAssetStat returns a row in the exp_asset_stats table.
-func (q *Q) GetAssetStat(assetType, assetCode, assetIssuer string) (ExpAssetStat, error) {
+func (q *Q) GetAssetStat(assetType xdr.AssetType, assetCode, assetIssuer string) (ExpAssetStat, error) {
 	sql := selectAssetStats.Where(map[string]interface{}{
 		"asset_type":   assetType,
 		"asset_code":   assetCode,

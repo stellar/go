@@ -9,7 +9,7 @@ import (
 )
 
 type assetStatKey struct {
-	assetType   string
+	assetType   xdr.AssetType
 	assetIssuer string
 	assetCode   string
 }
