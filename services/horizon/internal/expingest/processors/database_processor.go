@@ -5,7 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 	stdio "io"
-	"strconv"
+	"math/big"
 
 	"github.com/stellar/go/exp/ingest/io"
 	ingestpipeline "github.com/stellar/go/exp/ingest/pipeline"
@@ -302,32 +302,43 @@ func (p *DatabaseProcessor) adjustAssetStat(
 		return errors.Wrap(err, "could not extract asset info from trustline")
 	}
 
-	mustExist := deltaAccounts <= 0
 	stat, err := p.AssetStatsQ.GetAssetStat(assetType, assetCode, assetIssuer)
 	assetStatNotFound := err == sql.ErrNoRows
 	if !assetStatNotFound && err != nil {
 		return errors.Wrap(err, "could not fetch asset stat from db")
 	}
 
-	var currentBalance int64
+	currentBalance := big.NewInt(0)
 	if assetStatNotFound {
 		stat.AssetType = assetType
 		stat.AssetCode = assetCode
 		stat.AssetIssuer = assetIssuer
 	} else {
-		currentBalance, err = strconv.ParseInt(stat.Amount, 10, 64)
-		if err != nil {
-			return errors.Wrap(err, "could not parse amount from asset stat")
+		_, ok := currentBalance.SetString(stat.Amount, 10)
+		if !ok {
+			return verify.NewStateError(errors.Errorf(
+				"Could not parse asset stat amount %s when processing trustline: %s %s",
+				stat.Amount,
+				trustline.AccountId.Address(),
+				trustline.Asset.String(),
+			))
 		}
 	}
-	currentBalance += int64(deltaBalance)
-	stat.Amount = strconv.FormatInt(currentBalance, 10)
+	currentBalance = currentBalance.Add(currentBalance, big.NewInt(int64(deltaBalance)))
+	stat.Amount = currentBalance.String()
 	stat.NumAccounts += deltaAccounts
 
 	var rowsAffected int64
 	if assetStatNotFound {
-		if mustExist {
-			return errors.New("asset stat does not exist")
+		// deltaAccounts is 0 if we are updating an account
+		// deltaAccounts is < 0 if we are removing an account
+		// therefore if deltaAccounts <= 0 the asset stat must exist in the db
+		if deltaAccounts <= 0 {
+			return verify.NewStateError(errors.Errorf(
+				"Expected asset stat to exist when processing trustline: %s %s",
+				trustline.AccountId.Address(),
+				trustline.Asset.String(),
+			))
 		}
 		rowsAffected, err = p.AssetStatsQ.InsertAssetStat(stat)
 		if err != nil {

@@ -1,7 +1,7 @@
 package processors
 
 import (
-	"strconv"
+	"math/big"
 
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/support/errors"
@@ -14,7 +14,7 @@ type assetStatKey struct {
 	assetCode   string
 }
 type assetStatValue struct {
-	amount      xdr.Int64
+	amount      *big.Int
 	numAccounts int32
 }
 type assetStatSet map[assetStatKey]assetStatValue
@@ -26,8 +26,14 @@ func (s assetStatSet) add(trustLine xdr.TrustLineEntry) error {
 	}
 
 	current := s[key]
+	amount := current.amount
+	if amount == nil {
+		amount = big.NewInt(int64(trustLine.Balance))
+	} else {
+		amount = amount.Add(amount, big.NewInt(int64(trustLine.Balance)))
+	}
 	s[key] = assetStatValue{
-		amount:      current.amount + trustLine.Balance,
+		amount:      amount,
 		numAccounts: current.numAccounts + 1,
 	}
 	return nil
@@ -40,7 +46,7 @@ func (s assetStatSet) all() []history.ExpAssetStat {
 			AssetType:   key.assetType,
 			AssetCode:   key.assetCode,
 			AssetIssuer: key.assetIssuer,
-			Amount:      strconv.FormatInt(int64(value.amount), 10),
+			Amount:      value.amount.String(),
 			NumAccounts: value.numAccounts,
 		})
 	}

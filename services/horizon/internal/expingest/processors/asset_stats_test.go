@@ -1,6 +1,7 @@
 package processors
 
 import (
+	"math"
 	"sort"
 	"testing"
 
@@ -111,5 +112,57 @@ func TestAddAssetStatSet(t *testing.T) {
 		if expected[i] != got {
 			t.Fatalf("expected asset stat to be %v but got %v", expected[i], got)
 		}
+	}
+}
+
+func TestOverflowAssetStatSet(t *testing.T) {
+	set := assetStatSet{}
+	eur := "EUR"
+	err := set.add(xdr.TrustLineEntry{
+		AccountId: xdr.MustAddress("GAOQJGUAB7NI7K7I62ORBXMN3J4SSWQUQ7FOEPSDJ322W2HMCNWPHXFB"),
+		Asset:     xdr.MustNewCreditAsset(eur, trustLineIssuer.Address()),
+		Balance:   math.MaxInt64,
+	})
+	if err != nil {
+		t.Fatalf("unexpected error %v", err)
+	}
+	all := set.all()
+	if len(all) != 1 {
+		t.Fatalf("expected list of 1 asset stat but got %v", all)
+	}
+
+	eurAssetStat := history.ExpAssetStat{
+		AssetType:   xdr.AssetTypeAssetTypeCreditAlphanum4,
+		AssetCode:   eur,
+		AssetIssuer: trustLineIssuer.Address(),
+		Amount:      "9223372036854775807",
+		NumAccounts: 1,
+	}
+	if all[0] != eurAssetStat {
+		t.Fatalf("expected asset stat to be %v but got %v", eurAssetStat, all[0])
+	}
+
+	err = set.add(xdr.TrustLineEntry{
+		AccountId: xdr.MustAddress("GAOQJGUAB7NI7K7I62ORBXMN3J4SSWQUQ7FOEPSDJ322W2HMCNWPHXFB"),
+		Asset:     xdr.MustNewCreditAsset(eur, trustLineIssuer.Address()),
+		Balance:   math.MaxInt64,
+	})
+	if err != nil {
+		t.Fatalf("unexpected error %v", err)
+	}
+	all = set.all()
+	if len(all) != 1 {
+		t.Fatalf("expected list of 1 asset stat but got %v", all)
+	}
+
+	eurAssetStat = history.ExpAssetStat{
+		AssetType:   xdr.AssetTypeAssetTypeCreditAlphanum4,
+		AssetCode:   eur,
+		AssetIssuer: trustLineIssuer.Address(),
+		Amount:      "18446744073709551614",
+		NumAccounts: 2,
+	}
+	if all[0] != eurAssetStat {
+		t.Fatalf("expected asset stat to be %v but got %v", eurAssetStat, all[0])
 	}
 }
