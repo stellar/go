@@ -179,6 +179,7 @@ type QAssetStats interface {
 	InsertAssetStat(stat ExpAssetStat) (int64, error)
 	UpdateAssetStat(stat ExpAssetStat) (int64, error)
 	GetAssetStat(assetType xdr.AssetType, assetCode, assetIssuer string) (ExpAssetStat, error)
+	RemoveAssetStat(assetType xdr.AssetType, assetCode, assetIssuer string) (int64, error)
 }
 
 // Effect is a row of data from the `history_effects` table

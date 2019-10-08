@@ -29,3 +29,8 @@ func (m *MockQAssetStats) GetAssetStat(assetType xdr.AssetType, assetCode, asset
 	a := m.Called(assetType, assetCode, assetIssuer)
 	return a.Get(0).(ExpAssetStat), a.Error(1)
 }
+
+func (m *MockQAssetStats) RemoveAssetStat(assetType xdr.AssetType, assetCode, assetIssuer string) (int64, error) {
+	a := m.Called(assetType, assetCode, assetIssuer)
+	return a.Get(0).(int64), a.Error(1)
+}

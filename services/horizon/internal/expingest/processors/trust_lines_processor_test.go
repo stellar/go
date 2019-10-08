@@ -459,13 +459,11 @@ func (s *TrustLinesProcessorTestSuiteLedger) TestRemoveTrustLine() {
 		Amount:      "0",
 		NumAccounts: 1,
 	}, nil).Once()
-	s.mockAssetStatsQ.On("UpdateAssetStat", history.ExpAssetStat{
-		AssetType:   xdr.AssetTypeAssetTypeCreditAlphanum4,
-		AssetIssuer: trustLineIssuer.Address(),
-		AssetCode:   "EUR",
-		Amount:      "0",
-		NumAccounts: 0,
-	}).Return(int64(1), nil).Once()
+	s.mockAssetStatsQ.On("RemoveAssetStat",
+		xdr.AssetTypeAssetTypeCreditAlphanum4,
+		"EUR",
+		trustLineIssuer.Address(),
+	).Return(int64(1), nil).Once()
 
 	s.mockLedgerReader.
 		On("Read").
@@ -534,13 +532,11 @@ func (s *TrustLinesProcessorTestSuiteLedger) TestRemoveOfferNoRowsAffected() {
 		Amount:      "0",
 		NumAccounts: 1,
 	}, nil).Once()
-	s.mockAssetStatsQ.On("UpdateAssetStat", history.ExpAssetStat{
-		AssetType:   xdr.AssetTypeAssetTypeCreditAlphanum4,
-		AssetIssuer: trustLineIssuer.Address(),
-		AssetCode:   "EUR",
-		Amount:      "0",
-		NumAccounts: 0,
-	}).Return(int64(1), nil).Once()
+	s.mockAssetStatsQ.On("RemoveAssetStat",
+		xdr.AssetTypeAssetTypeCreditAlphanum4,
+		"EUR",
+		trustLineIssuer.Address(),
+	).Return(int64(1), nil).Once()
 
 	err := s.processor.ProcessLedger(
 		context.Background(),

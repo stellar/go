@@ -183,3 +183,46 @@ func TestGetAssetStatDoesNotExist(t *testing.T) {
 	_, err := q.GetAssetStat(assetStat.AssetType, assetStat.AssetCode, assetStat.AssetIssuer)
 	tt.Assert.Equal(err, sql.ErrNoRows)
 }
+
+func TestRemoveAssetStat(t *testing.T) {
+	tt := test.Start(t)
+	defer tt.Finish()
+	test.ResetHorizonDB(t, tt.HorizonDB)
+
+	q := &Q{tt.HorizonSession()}
+
+	assetStat := ExpAssetStat{
+		AssetType:   xdr.AssetTypeAssetTypeCreditAlphanum4,
+		AssetIssuer: "GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H",
+		AssetCode:   "USD",
+		Amount:      "1",
+		NumAccounts: 2,
+	}
+
+	numChanged, err := q.RemoveAssetStat(
+		assetStat.AssetType,
+		assetStat.AssetCode,
+		assetStat.AssetIssuer,
+	)
+	tt.Assert.Nil(err)
+	tt.Assert.Equal(numChanged, int64(0))
+
+	numChanged, err = q.InsertAssetStat(assetStat)
+	tt.Assert.NoError(err)
+	tt.Assert.Equal(numChanged, int64(1))
+
+	got, err := q.GetAssetStat(assetStat.AssetType, assetStat.AssetCode, assetStat.AssetIssuer)
+	tt.Assert.NoError(err)
+	tt.Assert.Equal(got, assetStat)
+
+	numChanged, err = q.RemoveAssetStat(
+		assetStat.AssetType,
+		assetStat.AssetCode,
+		assetStat.AssetIssuer,
+	)
+	tt.Assert.Nil(err)
+	tt.Assert.Equal(numChanged, int64(1))
+
+	_, err = q.GetAssetStat(assetStat.AssetType, assetStat.AssetCode, assetStat.AssetIssuer)
+	tt.Assert.Equal(err, sql.ErrNoRows)
+}

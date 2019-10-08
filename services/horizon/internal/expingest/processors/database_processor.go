@@ -328,6 +328,23 @@ func (p *DatabaseProcessor) adjustAssetStat(
 	stat.Amount = currentBalance.String()
 	stat.NumAccounts += deltaAccounts
 
+	if currentBalance.Cmp(big.NewInt(0)) < 0 {
+		return verify.NewStateError(errors.Errorf(
+			"Asset stat has negative amount %s when processing trustline: %s %s",
+			stat.Amount,
+			trustline.AccountId.Address(),
+			trustline.Asset.String(),
+		))
+	}
+
+	if stat.NumAccounts < 0 {
+		return verify.NewStateError(errors.Errorf(
+			"Asset stat has negative num accounts when processing trustline: %s %s",
+			trustline.AccountId.Address(),
+			trustline.Asset.String(),
+		))
+	}
+
 	var rowsAffected int64
 	if assetStatNotFound {
 		// deltaAccounts is 0 if we are updating an account
@@ -343,6 +360,20 @@ func (p *DatabaseProcessor) adjustAssetStat(
 		rowsAffected, err = p.AssetStatsQ.InsertAssetStat(stat)
 		if err != nil {
 			return errors.Wrap(err, "could not insert asset stat")
+		}
+	} else if stat.NumAccounts == 0 {
+		if currentBalance.Cmp(big.NewInt(0)) != 0 {
+			return verify.NewStateError(errors.Errorf(
+				"Expected asset stat with no accounts to have amount of 0 "+
+					"(amount was %s) when processing trustline: %s %s",
+				stat.Amount,
+				trustline.AccountId.Address(),
+				trustline.Asset.String(),
+			))
+		}
+		rowsAffected, err = p.AssetStatsQ.RemoveAssetStat(assetType, assetCode, assetIssuer)
+		if err != nil {
+			return errors.Wrap(err, "could not update asset stat")
 		}
 	} else {
 		rowsAffected, err = p.AssetStatsQ.UpdateAssetStat(stat)

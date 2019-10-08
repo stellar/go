@@ -71,6 +71,22 @@ func (q *Q) UpdateAssetStat(assetStat ExpAssetStat) (int64, error) {
 	return result.RowsAffected()
 }
 
+// RemoveAssetStat removes a row in the exp_asset_stats table.
+func (q *Q) RemoveAssetStat(assetType xdr.AssetType, assetCode, assetIssuer string) (int64, error) {
+	sql := sq.Delete("exp_asset_stats").
+		Where(map[string]interface{}{
+			"asset_type":   assetType,
+			"asset_code":   assetCode,
+			"asset_issuer": assetIssuer,
+		})
+	result, err := q.Exec(sql)
+	if err != nil {
+		return 0, err
+	}
+
+	return result.RowsAffected()
+}
+
 // GetAssetStat returns a row in the exp_asset_stats table.
 func (q *Q) GetAssetStat(assetType xdr.AssetType, assetCode, assetIssuer string) (ExpAssetStat, error) {
 	sql := selectAssetStats.Where(map[string]interface{}{
