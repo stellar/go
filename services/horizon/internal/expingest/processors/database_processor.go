@@ -23,6 +23,7 @@ func (p *DatabaseProcessor) ProcessState(ctx context.Context, store *pipeline.St
 	var (
 		accountSignerBatch history.AccountSignersBatchInsertBuilder
 		offersBatch        history.OffersBatchInsertBuilder
+		trustLinesBatch    history.TrustLinesBatchInsertBuilder
 	)
 
 	switch p.Action {
@@ -30,6 +31,8 @@ func (p *DatabaseProcessor) ProcessState(ctx context.Context, store *pipeline.St
 		accountSignerBatch = p.SignersQ.NewAccountSignersBatchInsertBuilder(maxBatchSize)
 	case Offers:
 		offersBatch = p.OffersQ.NewOffersBatchInsertBuilder(maxBatchSize)
+	case TrustLines:
+		trustLinesBatch = p.TrustLinesQ.NewTrustLinesBatchInsertBuilder(maxBatchSize)
 	default:
 		return errors.Errorf("Invalid action type (%s)", p.Action)
 	}
@@ -80,6 +83,19 @@ func (p *DatabaseProcessor) ProcessState(ctx context.Context, store *pipeline.St
 			if err != nil {
 				return errors.Wrap(err, "Error adding row to offersBatch")
 			}
+		case TrustLines:
+			// We're interested in trust lines only
+			if entryChange.EntryType() != xdr.LedgerEntryTypeTrustline {
+				continue
+			}
+
+			err = trustLinesBatch.Add(
+				entryChange.MustState().Data.MustTrustLine(),
+				entryChange.MustState().LastModifiedLedgerSeq,
+			)
+			if err != nil {
+				return errors.Wrap(err, "Error adding row to trustLinesBatch")
+			}
 		default:
 			return errors.New("Unknown action")
 		}
@@ -99,6 +115,8 @@ func (p *DatabaseProcessor) ProcessState(ctx context.Context, store *pipeline.St
 		err = accountSignerBatch.Exec()
 	case Offers:
 		err = offersBatch.Exec()
+	case TrustLines:
+		err = trustLinesBatch.Exec()
 	default:
 		return errors.Errorf("Invalid action type (%s)", p.Action)
 	}
@@ -138,6 +156,11 @@ func (p *DatabaseProcessor) ProcessLedger(ctx context.Context, store *pipeline.S
 			err := p.processLedgerOffers(transaction, r.GetSequence())
 			if err != nil {
 				return errors.Wrap(err, "Error in processLedgerOffers")
+			}
+		case TrustLines:
+			err := p.processLedgerTrustLines(transaction, r.GetSequence())
+			if err != nil {
+				return errors.Wrap(err, "Error in processLedgerTrustLines")
 			}
 		default:
 			return errors.New("Unknown action")
@@ -246,6 +269,63 @@ func (p *DatabaseProcessor) processLedgerOffers(transaction io.LedgerTransaction
 				"No rows affected when %s offer %d",
 				action,
 				offerID,
+			))
+		}
+	}
+	return nil
+}
+
+func (p *DatabaseProcessor) processLedgerTrustLines(transaction io.LedgerTransaction, currentLedger uint32) error {
+	for _, change := range transaction.GetChanges() {
+		if change.Type != xdr.LedgerEntryTypeTrustline {
+			continue
+		}
+
+		var rowsAffected int64
+		var err error
+		var action string
+		var ledgerKey xdr.LedgerKey
+
+		switch {
+		case change.Pre == nil && change.Post != nil:
+			// Created
+			action = "inserting"
+			trustLine := change.Post.MustTrustLine()
+			err = ledgerKey.SetTrustline(trustLine.AccountId, trustLine.Asset)
+			if err != nil {
+				return errors.Wrap(err, "Error creating ledger key")
+			}
+			rowsAffected, err = p.TrustLinesQ.InsertTrustLine(trustLine, xdr.Uint32(currentLedger))
+		case change.Pre != nil && change.Post == nil:
+			// Removed
+			action = "removing"
+			trustLine := change.Pre.MustTrustLine()
+			err = ledgerKey.SetTrustline(trustLine.AccountId, trustLine.Asset)
+			if err != nil {
+				return errors.Wrap(err, "Error creating ledger key")
+			}
+			rowsAffected, err = p.TrustLinesQ.RemoveTrustLine(*ledgerKey.TrustLine)
+		default:
+			// Updated
+			action = "updating"
+			trustLine := change.Post.MustTrustLine()
+			err = ledgerKey.SetTrustline(trustLine.AccountId, trustLine.Asset)
+			if err != nil {
+				return errors.Wrap(err, "Error creating ledger key")
+			}
+			rowsAffected, err = p.TrustLinesQ.UpdateTrustLine(trustLine, xdr.Uint32(currentLedger))
+		}
+
+		if err != nil {
+			return err
+		}
+
+		if rowsAffected != 1 {
+			return verify.NewStateError(errors.Errorf(
+				"No rows affected when %s trustline: %s %s",
+				action,
+				ledgerKey.TrustLine.AccountId.Address(),
+				ledgerKey.TrustLine.Asset.String(),
 			))
 		}
 	}

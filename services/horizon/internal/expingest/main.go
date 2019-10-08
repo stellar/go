@@ -28,12 +28,12 @@ const (
 	//
 	// Version history:
 	// - 1: Initial version
-	// - 2: We added the orderbook, offers processors and distributed
-	//      ingestion.
+	// - 2: Added the orderbook, offers processors and distributed ingestion.
 	// - 3: Fixes a bug that could potentialy result in invalid state
 	//      (#1722). Update the version to clear the state.
 	// - 4: Fixes a bug in AccountSignersChanged method.
-	CurrentVersion = 4
+	// - 5: Added trust lines.
+	CurrentVersion = 5
 )
 
 var log = ilog.DefaultLogger.WithField("service", "expingest")

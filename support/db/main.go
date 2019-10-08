@@ -114,6 +114,22 @@ type Session struct {
 	tx *sqlx.Tx
 }
 
+type SessionInterface interface {
+	Begin() error
+	Rollback() error
+	TruncateTables(tables []string) error
+	Clone() *Session
+	Close() error
+	Get(dest interface{}, query squirrel.Sqlizer) error
+	GetRaw(dest interface{}, query string, args ...interface{}) error
+	Select(dest interface{}, query squirrel.Sqlizer) error
+	SelectRaw(dest interface{}, query string, args ...interface{}) error
+	GetTable(name string) *Table
+	Exec(query squirrel.Sqlizer) (sql.Result, error)
+	ExecRaw(query string, args ...interface{}) (sql.Result, error)
+	NoRows(err error) bool
+}
+
 // Table helps to build sql queries against a given table.  It logically
 // represents a SQL table on the database that `Session` is connected to.
 type Table struct {

@@ -22,7 +22,7 @@ const verifyBatchSize = 50000
 // check them.
 // There is a test that checks it, to fix it: update the actual `verifyState`
 // method instead of just updating this value!
-const stateVerifierExpectedIngestionVersion = 4
+const stateVerifierExpectedIngestionVersion = 5
 
 // verifyState is called as a go routine from pipeline post hook every 64
 // ledgers. It checks if the state is correct. If another go routine is already
@@ -135,12 +135,15 @@ func (s *System) verifyState() error {
 
 		accounts := make([]string, 0, verifyBatchSize)
 		offers := make([]int64, 0, verifyBatchSize)
+		trustLines := make([]xdr.LedgerKeyTrustLine, 0, verifyBatchSize)
 		for _, key := range keys {
 			switch key.Type {
 			case xdr.LedgerEntryTypeAccount:
 				accounts = append(accounts, key.Account.AccountId.Address())
 			case xdr.LedgerEntryTypeOffer:
 				offers = append(offers, int64(key.Offer.OfferId))
+			case xdr.LedgerEntryTypeTrustline:
+				trustLines = append(trustLines, *key.TrustLine)
 			default:
 				return errors.New("GetLedgerKeys return unexpected type")
 			}
@@ -154,6 +157,11 @@ func (s *System) verifyState() error {
 		err = addOffersToStateVerifier(verifier, historyQ, offers)
 		if err != nil {
 			return errors.Wrap(err, "addOffersToStateVerifier failed")
+		}
+
+		err = addTrustLinesToStateVerifier(verifier, historyQ, trustLines)
+		if err != nil {
+			return errors.Wrap(err, "addTrustLinesToStateVerifier failed")
 		}
 
 		total += len(keys)
@@ -172,7 +180,12 @@ func (s *System) verifyState() error {
 		return errors.Wrap(err, "Error running historyQ.CountOffers")
 	}
 
-	err = verifier.Verify(countAccounts + countOffers)
+	countTrustLines, err := historyQ.CountTrustLines()
+	if err != nil {
+		return errors.Wrap(err, "Error running historyQ.CountTrustLines")
+	}
+
+	err = verifier.Verify(countAccounts + countOffers + countTrustLines)
 	if err != nil {
 		return errors.Wrap(err, "verifier.Verify failed")
 	}
@@ -289,6 +302,50 @@ func addOffersToStateVerifier(verifier *verify.StateVerifier, q *history.Q, ids 
 	return nil
 }
 
+func addTrustLinesToStateVerifier(verifier *verify.StateVerifier, q *history.Q, keys []xdr.LedgerKeyTrustLine) error {
+	if len(keys) == 0 {
+		return nil
+	}
+
+	trustLines, err := q.GetTrustLinesByKeys(keys)
+	if err != nil {
+		return errors.Wrap(err, "Error running history.Q.GetTrustLinesByKeys")
+	}
+
+	for _, row := range trustLines {
+		asset := xdr.MustNewCreditAsset(row.AssetCode, row.AssetIssuer)
+
+		entry := xdr.LedgerEntry{
+			LastModifiedLedgerSeq: xdr.Uint32(row.LastModifiedLedger),
+			Data: xdr.LedgerEntryData{
+				Type: xdr.LedgerEntryTypeTrustline,
+				TrustLine: &xdr.TrustLineEntry{
+					AccountId: xdr.MustAddress(row.AccountID),
+					Asset:     asset,
+					Balance:   xdr.Int64(row.Balance),
+					Limit:     xdr.Int64(row.Limit),
+					Flags:     xdr.Uint32(row.Flags),
+					Ext: xdr.TrustLineEntryExt{
+						V: 1,
+						V1: &xdr.TrustLineEntryV1{
+							Liabilities: xdr.Liabilities{
+								Buying:  xdr.Int64(row.BuyingLiabilities),
+								Selling: xdr.Int64(row.SellingLiabilities),
+							},
+						},
+					},
+				},
+			},
+		}
+		err := verifier.Write(entry)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 func transformEntry(entry xdr.LedgerEntry) (bool, xdr.LedgerEntry) {
 	switch entry.Data.Type {
 	case xdr.LedgerEntryTypeAccount:
@@ -318,8 +375,20 @@ func transformEntry(entry xdr.LedgerEntry) (bool, xdr.LedgerEntry) {
 		// Full check of offer object
 		return false, entry
 	case xdr.LedgerEntryTypeTrustline:
-		// Ignore
-		return true, xdr.LedgerEntry{}
+		// Trust line can have ext=0. For those, create ext=1
+		// with 0 liabilities.
+		trustLineEntry := entry.Data.TrustLine
+		if trustLineEntry.Ext.V == 0 {
+			trustLineEntry.Ext.V = 1
+			trustLineEntry.Ext.V1 = &xdr.TrustLineEntryV1{
+				Liabilities: xdr.Liabilities{
+					Buying:  0,
+					Selling: 0,
+				},
+			}
+		}
+
+		return false, entry
 	case xdr.LedgerEntryTypeData:
 		// Ignore
 		return true, xdr.LedgerEntry{}

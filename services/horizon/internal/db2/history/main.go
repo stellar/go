@@ -113,6 +113,7 @@ const (
 var ExperimentalIngestionTables = []string{
 	"accounts_signers",
 	"offers",
+	"trust_lines",
 }
 
 // Account is a row of data from the `history_accounts` table
@@ -281,7 +282,7 @@ type Operation struct {
 	TransactionSuccessful *bool `db:"transaction_successful"`
 }
 
-// Offer is row of data from the `offers` table from stellar-core
+// Offer is row of data from the `offers` table from horizon DB
 type Offer struct {
 	SellerID string    `db:"sellerid"`
 	OfferID  xdr.Int64 `db:"offerid"`
@@ -430,6 +431,38 @@ type TransactionsQ struct {
 	includeFailed bool
 }
 
+// TrustLine is row of data from the `trust_lines` table from horizon DB
+type TrustLine struct {
+	AccountID          string        `db:"accountid"`
+	AssetType          xdr.AssetType `db:"assettype"`
+	AssetIssuer        string        `db:"assetissuer"`
+	AssetCode          string        `db:"assetcode"`
+	Balance            int64         `db:"balance"`
+	Limit              int64         `db:"tlimit"`
+	BuyingLiabilities  int64         `db:"buyingliabilities"`
+	SellingLiabilities int64         `db:"sellingliabilities"`
+	Flags              uint32        `db:"flags"`
+	LastModifiedLedger uint32        `db:"last_modified_ledger"`
+}
+
+// QTrustLines defines offer related queries.
+type QTrustLines interface {
+	NewTrustLinesBatchInsertBuilder(maxBatchSize int) TrustLinesBatchInsertBuilder
+	InsertTrustLine(trustLine xdr.TrustLineEntry, lastModifiedLedger xdr.Uint32) (int64, error)
+	UpdateTrustLine(trustLine xdr.TrustLineEntry, lastModifiedLedger xdr.Uint32) (int64, error)
+	RemoveTrustLine(key xdr.LedgerKeyTrustLine) (int64, error)
+}
+
+type TrustLinesBatchInsertBuilder interface {
+	Add(trustLine xdr.TrustLineEntry, lastModifiedLedger xdr.Uint32) error
+	Exec() error
+}
+
+// trustLinesBatchInsertBuilder is a simple wrapper around db.BatchInsertBuilder
+type trustLinesBatchInsertBuilder struct {
+	builder db.BatchInsertBuilder
+}
+
 func (q *Q) NewAccountSignersBatchInsertBuilder(maxBatchSize int) AccountSignersBatchInsertBuilder {
 	return &accountSignersBatchInsertBuilder{
 		builder: db.BatchInsertBuilder{
@@ -443,6 +476,15 @@ func (q *Q) NewOffersBatchInsertBuilder(maxBatchSize int) OffersBatchInsertBuild
 	return &offersBatchInsertBuilder{
 		builder: db.BatchInsertBuilder{
 			Table:        q.GetTable("offers"),
+			MaxBatchSize: maxBatchSize,
+		},
+	}
+}
+
+func (q *Q) NewTrustLinesBatchInsertBuilder(maxBatchSize int) TrustLinesBatchInsertBuilder {
+	return &trustLinesBatchInsertBuilder{
+		builder: db.BatchInsertBuilder{
+			Table:        q.GetTable("trust_lines"),
 			MaxBatchSize: maxBatchSize,
 		},
 	}

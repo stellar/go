@@ -55,6 +55,16 @@ func orderBookGraphStateNode(graph *orderbook.OrderBookGraph) *supportPipeline.P
 		)
 }
 
+func trustLinesDBStateNode(q *history.Q) *supportPipeline.PipelineNode {
+	return pipeline.StateNode(&processors.EntryTypeFilter{Type: xdr.LedgerEntryTypeTrustline}).
+		Pipe(
+			pipeline.StateNode(&horizonProcessors.DatabaseProcessor{
+				TrustLinesQ: q,
+				Action:      horizonProcessors.TrustLines,
+			}),
+		)
+}
+
 func buildStatePipeline(historyQ *history.Q, graph *orderbook.OrderBookGraph) *pipeline.StatePipeline {
 	statePipeline := &pipeline.StatePipeline{}
 
@@ -64,6 +74,7 @@ func buildStatePipeline(historyQ *history.Q, graph *orderbook.OrderBookGraph) *p
 				accountForSignerStateNode(historyQ),
 				orderBookDBStateNode(historyQ),
 				orderBookGraphStateNode(graph),
+				trustLinesDBStateNode(historyQ),
 			),
 	)
 
@@ -90,6 +101,13 @@ func orderBookGraphLedgerNode(graph *orderbook.OrderBookGraph) *supportPipeline.
 	})
 }
 
+func trustLinesDBLedgerNode(q *history.Q) *supportPipeline.PipelineNode {
+	return pipeline.LedgerNode(&horizonProcessors.DatabaseProcessor{
+		TrustLinesQ: q,
+		Action:      horizonProcessors.TrustLines,
+	})
+}
+
 func buildLedgerPipeline(historyQ *history.Q, graph *orderbook.OrderBookGraph) *pipeline.LedgerPipeline {
 	ledgerPipeline := &pipeline.LedgerPipeline{}
 
@@ -101,6 +119,7 @@ func buildLedgerPipeline(historyQ *history.Q, graph *orderbook.OrderBookGraph) *
 					Pipe(
 						accountForSignerLedgerNode(historyQ),
 						orderBookDBLedgerNode(historyQ),
+						trustLinesDBLedgerNode(historyQ),
 					),
 				orderBookGraphLedgerNode(graph),
 			),

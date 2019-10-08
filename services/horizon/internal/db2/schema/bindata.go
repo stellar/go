@@ -13,6 +13,7 @@
 // migrations/1_initial_schema.sql (10.515kB)
 // migrations/20_account_for_signer_index.sql (140B)
 // migrations/21_trades_remove_zero_amount_constraints.sql (765B)
+// migrations/22_trust_lines.sql (915B)
 // migrations/2_index_participants_by_toid.sql (277B)
 // migrations/3_use_sequence_in_history_accounts.sql (447B)
 // migrations/4_add_protocol_version.sql (188B)
@@ -305,7 +306,7 @@ func migrations1_initial_schemaSql() (*asset, error) {
 		return nil, err
 	}
 
-	info := bindataFileInfo{name: "migrations/1_initial_schema.sql", size: 10515, mode: os.FileMode(0644), modTime: time.Unix(1567081172, 0)}
+	info := bindataFileInfo{name: "migrations/1_initial_schema.sql", size: 10515, mode: os.FileMode(0644), modTime: time.Unix(1570100274, 0)}
 	a := &asset{bytes: bytes, info: info, digest: [32]uint8{0x27, 0x3e, 0x89, 0x23, 0x20, 0x34, 0xb6, 0xbd, 0x18, 0x3b, 0x51, 0x34, 0xc7, 0x59, 0x7, 0x1c, 0xb2, 0x7, 0x26, 0x3b, 0x9b, 0x75, 0xf4, 0x65, 0xff, 0xcb, 0x12, 0xe0, 0xd6, 0xa1, 0xfa, 0xa8}}
 	return a, nil
 }
@@ -325,7 +326,7 @@ func migrations20_account_for_signer_indexSql() (*asset, error) {
 		return nil, err
 	}
 
-	info := bindataFileInfo{name: "migrations/20_account_for_signer_index.sql", size: 140, mode: os.FileMode(0644), modTime: time.Unix(1569850434, 0)}
+	info := bindataFileInfo{name: "migrations/20_account_for_signer_index.sql", size: 140, mode: os.FileMode(0644), modTime: time.Unix(1570027727, 0)}
 	a := &asset{bytes: bytes, info: info, digest: [32]uint8{0x7, 0xd5, 0x6a, 0x4f, 0x6a, 0x95, 0xe0, 0x16, 0xa8, 0x25, 0xd7, 0x4, 0xec, 0x85, 0xe9, 0x13, 0x33, 0x4c, 0x9a, 0xa8, 0x74, 0xf9, 0x63, 0x52, 0xa5, 0x18, 0xaa, 0xdb, 0x4, 0xb5, 0xf7, 0x6e}}
 	return a, nil
 }
@@ -345,8 +346,28 @@ func migrations21_trades_remove_zero_amount_constraintsSql() (*asset, error) {
 		return nil, err
 	}
 
-	info := bindataFileInfo{name: "migrations/21_trades_remove_zero_amount_constraints.sql", size: 765, mode: os.FileMode(0644), modTime: time.Unix(1569852335, 0)}
+	info := bindataFileInfo{name: "migrations/21_trades_remove_zero_amount_constraints.sql", size: 765, mode: os.FileMode(0644), modTime: time.Unix(1570043345, 0)}
 	a := &asset{bytes: bytes, info: info, digest: [32]uint8{0x24, 0x1a, 0x4b, 0x15, 0xd5, 0xce, 0x4, 0xe9, 0x43, 0x61, 0x69, 0xce, 0xed, 0x82, 0x11, 0x4e, 0xc7, 0x58, 0xef, 0x4a, 0x46, 0xef, 0x2a, 0x28, 0x13, 0x5e, 0x59, 0xf0, 0x69, 0x50, 0x45, 0x84}}
+	return a, nil
+}
+
+var _migrations22_trust_linesSql = []byte("\x1f\x8b\x08\x00\x00\x00\x00\x00\x00\xff\x8c\x93\xc1\x6e\x9b\x40\x10\x86\xef\x3c\xc5\x1c\x6d\xd5\x54\x6d\xd5\xe4\xe2\x93\x5d\xa3\x0a\x85\xe0\x88\x62\xa9\x39\xa1\x61\x77\x20\xa3\x2e\xbb\xee\xce\xd2\x8a\xb7\xaf\xa0\x8d\xe3\x26\x28\xf1\x11\xed\xc7\xff\x33\x7c\xb3\x71\x0c\xef\x3a\x6e\x3d\x06\x82\xc3\x31\x8a\xbe\x14\xc9\xa6\x4c\xa0\xdc\x6c\xb3\x04\x82\xef\x25\x54\x86\x2d\x09\x2c\x22\x00\x80\x38\x06\xf3\x83\x06\x60\x01\x84\x8c\x74\x4b\xfe\x86\x06\xe8\xd0\xcb\x03\x1a\xd2\xd0\x0b\xdb\x16\x6e\xff\x3e\x6f\xd9\xa2\x1f\x1e\x5f\x44\xab\xa1\x46\xa1\xeb\xcf\x31\x59\xe5\xf4\x44\x93\x86\xe0\xa0\x76\x4e\x02\x1c\xc9\x37\xae\x43\xab\x08\x5c\x03\xe2\x3a\x82\x9f\x3d\x79\x26\x79\x3f\x65\x4c\xcd\xea\x01\x3d\xaa\x40\x1e\x7e\xa1\x1f\xd8\xb6\x8b\x8f\x57\x1f\x96\x90\xef\x4b\xc8\x0f\x59\xb6\x9a\x48\x54\xca\xf5\x36\xb0\x9e\xc1\xaf\xae\x5f\xd0\x22\x14\xc2\x70\x24\x60\x1b\xe6\xce\x58\xa4\x27\x7f\x79\xd6\x38\xdc\xdc\x87\x7e\x7a\x4e\xd7\x68\xa6\x71\x6b\x6e\x5f\x56\x07\xc3\x1d\x87\xf9\xb3\xba\x1f\x13\x0d\x63\xcd\x86\x03\x93\xcc\x63\x42\xc6\x5c\xc2\x35\x06\x5b\x99\x99\xde\xa0\x84\xaa\x73\x9a\x1b\x26\x5d\x99\xc9\x37\xa4\x79\xf9\x0c\xbb\x2b\xd2\xdb\x4d\x71\x0f\x37\xc9\x3d\x2c\x46\x4b\xcb\x68\xb9\x3e\xed\x52\x9a\xef\x92\xef\xe7\xbb\x54\xd5\x43\xf5\x64\x68\x9f\xff\xb7\x67\x87\x6f\x69\xfe\x15\xb6\x65\x91\x24\x8b\x13\xb4\x5c\xbf\x1a\x36\xba\xab\xc6\x9f\x5e\xfd\x33\xf5\x5a\xe6\xa3\xec\xd5\x93\xab\xd5\xb9\xe6\x37\xba\x2e\x6c\x38\x65\x45\xe7\x37\x6c\xe7\x7e\xdb\x28\xda\x15\xfb\xbb\x99\x1b\xa6\x50\x14\x6a\x5a\xff\x09\x00\x00\xff\xff\xa0\xc4\x9d\x7f\x93\x03\x00\x00")
+
+func migrations22_trust_linesSqlBytes() ([]byte, error) {
+	return bindataRead(
+		_migrations22_trust_linesSql,
+		"migrations/22_trust_lines.sql",
+	)
+}
+
+func migrations22_trust_linesSql() (*asset, error) {
+	bytes, err := migrations22_trust_linesSqlBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "migrations/22_trust_lines.sql", size: 915, mode: os.FileMode(0644), modTime: time.Unix(1570116419, 0)}
+	a := &asset{bytes: bytes, info: info, digest: [32]uint8{0x13, 0xe7, 0xde, 0x7f, 0xcc, 0x69, 0x3f, 0x5c, 0x91, 0x61, 0x51, 0x9e, 0x5b, 0xfa, 0xdd, 0x90, 0x97, 0x35, 0x28, 0xf8, 0x88, 0x8c, 0x63, 0x6, 0x81, 0x63, 0x2e, 0x70, 0x41, 0x54, 0xba, 0xf8}}
 	return a, nil
 }
 
@@ -647,6 +668,8 @@ var _bindata = map[string]func() (*asset, error){
 
 	"migrations/21_trades_remove_zero_amount_constraints.sql": migrations21_trades_remove_zero_amount_constraintsSql,
 
+	"migrations/22_trust_lines.sql": migrations22_trust_linesSql,
+
 	"migrations/2_index_participants_by_toid.sql": migrations2_index_participants_by_toidSql,
 
 	"migrations/3_use_sequence_in_history_accounts.sql": migrations3_use_sequence_in_history_accountsSql,
@@ -721,6 +744,7 @@ var _bintree = &bintree{nil, map[string]*bintree{
 		"1_initial_schema.sql":                         &bintree{migrations1_initial_schemaSql, map[string]*bintree{}},
 		"20_account_for_signer_index.sql":              &bintree{migrations20_account_for_signer_indexSql, map[string]*bintree{}},
 		"21_trades_remove_zero_amount_constraints.sql": &bintree{migrations21_trades_remove_zero_amount_constraintsSql, map[string]*bintree{}},
+		"22_trust_lines.sql":                           &bintree{migrations22_trust_linesSql, map[string]*bintree{}},
 		"2_index_participants_by_toid.sql":             &bintree{migrations2_index_participants_by_toidSql, map[string]*bintree{}},
 		"3_use_sequence_in_history_accounts.sql":       &bintree{migrations3_use_sequence_in_history_accountsSql, map[string]*bintree{}},
 		"4_add_protocol_version.sql":                   &bintree{migrations4_add_protocol_versionSql, map[string]*bintree{}},

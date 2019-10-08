@@ -16,6 +16,7 @@ type DatabaseProcessorActionType string
 const (
 	AccountsForSigner DatabaseProcessorActionType = "AccountsForSigner"
 	Offers            DatabaseProcessorActionType = "Offers"
+	TrustLines        DatabaseProcessorActionType = "TrustLines"
 )
 
 // DatabaseProcessor is a processor (both state and ledger) that's responsible
@@ -24,9 +25,10 @@ const (
 // *history.Q object to share a common transaction. `Action` defines what each
 // processor is responsible for.
 type DatabaseProcessor struct {
-	SignersQ history.QSigners
-	OffersQ  history.QOffers
-	Action   DatabaseProcessorActionType
+	SignersQ    history.QSigners
+	OffersQ     history.QOffers
+	TrustLinesQ history.QTrustLines
+	Action      DatabaseProcessorActionType
 }
 
 // OrderbookProcessor is a processor (both state and ledger) that's responsible
