@@ -6,12 +6,14 @@ import (
 	"github.com/stellar/go/xdr"
 )
 
-// PathPayment represents the Stellar path_payment_strict_receive operation. See
+// PathPaymentStrictReceive represents the Stellar path_payment_strict_receive operation. See
 // https://www.stellar.org/developers/guides/concepts/list-of-operations.html
-type PathPaymentStrictReceive PathPayment
+type PathPaymentStrictReceive = PathPayment
 
 // PathPayment represents the Stellar path payment operation. See
 // https://www.stellar.org/developers/guides/concepts/list-of-operations.html
+// Deprecated: This operation is deprecated in favour of PathPaymentStrictReceive, which functions
+// identically.
 type PathPayment struct {
 	SendAsset     Asset
 	SendMax       string
