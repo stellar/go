@@ -8,7 +8,7 @@ import (
 
 // PathPayment represents the Stellar path_payment operation. This operation was removed
 // in Stellar Protocol 12 and replaced by PathPaymentStrictReceive.
-// Deprecated: This operation is deprecated in favour of PathPaymentStrictReceive,
+// Deprecated: This operation was renamed to PathPaymentStrictReceive,
 // which functions identically.
 type PathPayment = PathPaymentStrictReceive
 
