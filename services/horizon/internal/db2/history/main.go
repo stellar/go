@@ -3,6 +3,7 @@
 package history
 
 import (
+	"fmt"
 	"sync"
 	"time"
 
@@ -173,6 +174,11 @@ type ExpAssetStat struct {
 	NumAccounts int32         `db:"num_accounts"`
 }
 
+// PagingToken returns a cursor for this asset stat
+func (e ExpAssetStat) PagingToken() string {
+	return fmt.Sprintf("%s:%s", e.AssetCode, e.AssetIssuer)
+}
+
 // QAssetStats defines exp_asset_stats related queries.
 type QAssetStats interface {
 	InsertAssetStats(stats []ExpAssetStat, batchSize int) error
@@ -180,6 +186,7 @@ type QAssetStats interface {
 	UpdateAssetStat(stat ExpAssetStat) (int64, error)
 	GetAssetStat(assetType xdr.AssetType, assetCode, assetIssuer string) (ExpAssetStat, error)
 	RemoveAssetStat(assetType xdr.AssetType, assetCode, assetIssuer string) (int64, error)
+	GetAssetStats(assetCode, assetIssuer string, page db2.PageQuery) ([]ExpAssetStat, error)
 }
 
 // Effect is a row of data from the `history_effects` table

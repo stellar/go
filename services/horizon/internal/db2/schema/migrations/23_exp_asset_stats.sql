@@ -10,7 +10,7 @@ CREATE TABLE exp_asset_stats (
     asset_issuer    VARCHAR(56) NOT NULL,
     amount          TEXT        NOT NULL,
     num_accounts    BIGINT      NOT NULL,
-    PRIMARY KEY(asset_code, asset_type, asset_issuer)
+    PRIMARY KEY(asset_code, asset_issuer, asset_type)
 );
 
 CREATE INDEX exp_asset_stats_by_issuer ON exp_asset_stats USING btree (asset_issuer);

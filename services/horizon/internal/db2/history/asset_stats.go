@@ -1,7 +1,11 @@
 package history
 
 import (
+	"fmt"
+	"strings"
+
 	sq "github.com/Masterminds/squirrel"
+	"github.com/stellar/go/services/horizon/internal/db2"
 	"github.com/stellar/go/support/db"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
@@ -97,6 +101,77 @@ func (q *Q) GetAssetStat(assetType xdr.AssetType, assetCode, assetIssuer string)
 	var assetStat ExpAssetStat
 	err := q.Get(&assetStat, sql)
 	return assetStat, err
+}
+
+func parseAssetStatsCursor(cursor string) (string, string, error) {
+	parts := strings.Split(cursor, ":")
+	if len(parts) != 2 {
+		return "", "", fmt.Errorf("invalid asset stats cursor: %v", cursor)
+	}
+
+	code, issuer := parts[0], parts[1]
+	var issuerAccount xdr.AccountId
+	var asset xdr.Asset
+
+	if err := issuerAccount.SetAddress(issuer); err != nil {
+		return "", "", errors.Wrap(
+			err,
+			fmt.Sprintf("invalid issuer in asset stats cursor: %v", cursor),
+		)
+	}
+
+	if err := asset.SetCredit(code, issuerAccount); err != nil {
+		return "", "", errors.Wrap(
+			err,
+			fmt.Sprintf("invalid asset stats cursor: %v", cursor),
+		)
+	}
+
+	return code, issuer, nil
+}
+
+// GetAssetStats returns a page of exp_asset_stats rows.
+func (q *Q) GetAssetStats(assetCode, assetIssuer string, page db2.PageQuery) ([]ExpAssetStat, error) {
+	sql := selectAssetStats
+	filters := map[string]interface{}{}
+	if assetCode != "" {
+		filters["asset_code"] = assetCode
+	}
+	if assetIssuer != "" {
+		filters["asset_issuer"] = assetIssuer
+	}
+
+	if len(filters) > 0 {
+		sql = sql.Where(filters)
+	}
+
+	var cursorComparison, orderBy string
+	switch page.Order {
+	case "asc":
+		cursorComparison, orderBy = ">", "asc"
+	case "desc":
+		cursorComparison, orderBy = "<", "desc"
+	default:
+		return nil, fmt.Errorf("invalid page order %s", page.Order)
+	}
+
+	if page.Cursor != "" {
+		cursorCode, cursorIssuer, err := parseAssetStatsCursor(page.Cursor)
+		if err != nil {
+			return nil, err
+		}
+
+		sql = sql.Where("((asset_code, asset_issuer) "+cursorComparison+" (?,?))", cursorCode, cursorIssuer)
+	}
+
+	sql = sql.OrderBy("(asset_code, asset_issuer) " + orderBy).Limit(page.Limit)
+
+	var results []ExpAssetStat
+	if err := q.Select(&results, sql); err != nil {
+		return nil, errors.Wrap(err, "could not run select query")
+	}
+
+	return results, nil
 }
 
 var selectAssetStats = sq.Select("exp_asset_stats.*").From("exp_asset_stats")

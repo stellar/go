@@ -1,6 +1,7 @@
 package history
 
 import (
+	"github.com/stellar/go/services/horizon/internal/db2"
 	"github.com/stellar/go/xdr"
 	"github.com/stretchr/testify/mock"
 )
@@ -33,4 +34,9 @@ func (m *MockQAssetStats) GetAssetStat(assetType xdr.AssetType, assetCode, asset
 func (m *MockQAssetStats) RemoveAssetStat(assetType xdr.AssetType, assetCode, assetIssuer string) (int64, error) {
 	a := m.Called(assetType, assetCode, assetIssuer)
 	return a.Get(0).(int64), a.Error(1)
+}
+
+func (m *MockQAssetStats) GetAssetStats(assetCode, assetIssuer string, page db2.PageQuery) ([]ExpAssetStat, error) {
+	a := m.Called(assetCode, assetIssuer, page)
+	return a.Get(0).([]ExpAssetStat), a.Error(1)
 }
