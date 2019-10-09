@@ -13,7 +13,7 @@ import (
 // strkey-encoded string is not one of the valid values.
 var ErrInvalidVersionByte = errors.New("invalid version byte")
 
-// ErrLengthIsNotDivisibleBy8 is returned when the length of a 
+// ErrLengthIsNotDivisibleBy8 is returned when the length of a
 // strkey-encoded string is not a multiple of 8.
 var ErrLengthIsNotDivisibleBy8 = errors.New("length has to be a multiple of 8")
 

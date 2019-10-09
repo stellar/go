@@ -89,7 +89,7 @@ func TestDecode(t *testing.T) {
 
 func TestDecodeDisallowPadding(t *testing.T) {
 	invalidKey := "GDWZCOEQRODFCH6ISYQPWY67L3ULLWS5ISXYYL5GH43W7Y"
-	_, err := Decode(VersionByteAccountID /* XXX */ , invalidKey)
+	_, err := Decode(VersionByteAccountID /* XXX */, invalidKey)
 
-	assert.Error(t, err, "Padding is disallowed");
+	assert.Error(t, err, "Padding is disallowed")
 }
