@@ -84,6 +84,18 @@ func RegisterHost(host string) {
 	ServiceHost = host
 }
 
+// ReportFunc is a function type used to report unexpected errors.
+type ReportFunc func(context.Context, error)
+
+var reportFn ReportFunc
+
+// RegisterReportFunc registers the report function that you want to use to
+// report errors. Once reportFn is initialzied, it will be used to report
+// unexpected errors.
+func RegisterReportFunc(fn ReportFunc) {
+	reportFn = fn
+}
+
 // Render writes a http response to `w`, compliant with the "Problem
 // Details for HTTP APIs" RFC:
 // https://tools.ietf.org/html/draft-ietf-appsawg-http-problem-00
@@ -104,6 +116,9 @@ func Render(ctx context.Context, w http.ResponseWriter, err error) {
 		// log it and replace it with a 500 error
 		if !ok {
 			log.Ctx(ctx).WithStack(err).Error(err)
+			if reportFn != nil {
+				reportFn(ctx, err)
+			}
 			problem = ServerError
 		}
 	}
