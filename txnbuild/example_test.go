@@ -474,6 +474,68 @@ func ExamplePathPayment() {
 	// Output: AAAAAH4RyzTWNfXhqwLUoCw91aWkZtgIzY8SAVkIPc0uFVmYAAAAZAAMoj8AAAAEAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAACAAAAAAAAAAAF9eEAAAAAAH4RyzTWNfXhqwLUoCw91aWkZtgIzY8SAVkIPc0uFVmYAAAAAAAAAAAAmJaAAAAAAQAAAAFBQkNEAAAAAODcbeFyXKxmUWK1L6znNbKKIkPkHRJNbLktcKPqLnLFAAAAAAAAAAEuFVmYAAAAQOGE+w2bvIp8JQIPIFXWk5kO77cNUOlPZwlItA5V68/qmZTbJWq8wqdZtjELkZtNcQQX4x8EToShbn5nitG3RA4=
 }
 
+func ExamplePathPaymentStrictReceive() {
+	kp, _ := keypair.Parse("SBZVMB74Z76QZ3ZOY7UTDFYKMEGKW5XFJEB6PFKBF4UYSSWHG4EDH7PY")
+	client := horizonclient.DefaultTestNetClient
+	ar := horizonclient.AccountRequest{AccountID: kp.Address()}
+	sourceAccount, err := client.AccountDetail(ar)
+	check(err)
+
+	abcdAsset := CreditAsset{"ABCD", "GDQNY3PBOJOKYZSRMK2S7LHHGWZIUISD4QORETLMXEWXBI7KFZZMKTL3"}
+	op := PathPaymentStrictReceive{
+		SendAsset:   NativeAsset{},
+		SendMax:     "10",
+		Destination: kp.Address(),
+		DestAsset:   NativeAsset{},
+		DestAmount:  "1",
+		Path:        []Asset{abcdAsset},
+	}
+
+	tx := Transaction{
+		SourceAccount: &sourceAccount,
+		Operations:    []Operation{&op},
+		Timebounds:    NewInfiniteTimeout(), // Use a real timeout in production!
+		Network:       network.TestNetworkPassphrase,
+	}
+
+	txe, err := tx.BuildSignEncode(kp.(*keypair.Full))
+	check(err)
+	fmt.Println(txe)
+
+	// Output: AAAAAH4RyzTWNfXhqwLUoCw91aWkZtgIzY8SAVkIPc0uFVmYAAAAZAAMoj8AAAAEAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAACAAAAAAAAAAAF9eEAAAAAAH4RyzTWNfXhqwLUoCw91aWkZtgIzY8SAVkIPc0uFVmYAAAAAAAAAAAAmJaAAAAAAQAAAAFBQkNEAAAAAODcbeFyXKxmUWK1L6znNbKKIkPkHRJNbLktcKPqLnLFAAAAAAAAAAEuFVmYAAAAQOGE+w2bvIp8JQIPIFXWk5kO77cNUOlPZwlItA5V68/qmZTbJWq8wqdZtjELkZtNcQQX4x8EToShbn5nitG3RA4=
+}
+
+func ExamplePathPaymentStrictSend() {
+	kp, _ := keypair.Parse("SBZVMB74Z76QZ3ZOY7UTDFYKMEGKW5XFJEB6PFKBF4UYSSWHG4EDH7PY")
+	client := horizonclient.DefaultTestNetClient
+	ar := horizonclient.AccountRequest{AccountID: kp.Address()}
+	sourceAccount, err := client.AccountDetail(ar)
+	check(err)
+
+	abcdAsset := CreditAsset{"ABCD", "GDQNY3PBOJOKYZSRMK2S7LHHGWZIUISD4QORETLMXEWXBI7KFZZMKTL3"}
+	op := PathPaymentStrictSend{
+		SendAsset:   NativeAsset{},
+		SendAmount:  "1",
+		Destination: kp.Address(),
+		DestAsset:   NativeAsset{},
+		DestMin:     "10",
+		Path:        []Asset{abcdAsset},
+	}
+
+	tx := Transaction{
+		SourceAccount: &sourceAccount,
+		Operations:    []Operation{&op},
+		Timebounds:    NewInfiniteTimeout(), // Use a real timeout in production!
+		Network:       network.TestNetworkPassphrase,
+	}
+
+	txe, err := tx.BuildSignEncode(kp.(*keypair.Full))
+	check(err)
+	fmt.Println(txe)
+
+	// Output: AAAAAH4RyzTWNfXhqwLUoCw91aWkZtgIzY8SAVkIPc0uFVmYAAAAZAAMoj8AAAAEAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAANAAAAAAAAAAAAmJaAAAAAAH4RyzTWNfXhqwLUoCw91aWkZtgIzY8SAVkIPc0uFVmYAAAAAAAAAAAF9eEAAAAAAQAAAAFBQkNEAAAAAODcbeFyXKxmUWK1L6znNbKKIkPkHRJNbLktcKPqLnLFAAAAAAAAAAEuFVmYAAAAQNXoKZHgBO+2baoHMcT1SqpL3lmcggeCm5TuFNk7fwMeF/6h5lDTYMa+y3i9gwwAg8aQwCwuV8A38AWKfPvgMAM=
+}
+
 func ExampleManageBuyOffer() {
 	kp, _ := keypair.Parse("SBZVMB74Z76QZ3ZOY7UTDFYKMEGKW5XFJEB6PFKBF4UYSSWHG4EDH7PY")
 	client := horizonclient.DefaultTestNetClient
