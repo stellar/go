@@ -27,7 +27,7 @@ func (p *DatabaseProcessor) ProcessState(ctx context.Context, store *pipeline.St
 		offersBatch        history.OffersBatchInsertBuilder
 		trustLinesBatch    history.TrustLinesBatchInsertBuilder
 	)
-	assetStats := assetStatSet{}
+	assetStats := AssetStatSet{}
 
 	switch p.Action {
 	case AccountsForSigner:
@@ -93,7 +93,7 @@ func (p *DatabaseProcessor) ProcessState(ctx context.Context, store *pipeline.St
 			}
 
 			trustline := entryChange.MustState().Data.MustTrustLine()
-			err = assetStats.add(trustline)
+			err = assetStats.Add(trustline)
 			if err != nil {
 				return errors.Wrap(err, "Error adding trustline to asset stats set")
 			}
@@ -127,7 +127,7 @@ func (p *DatabaseProcessor) ProcessState(ctx context.Context, store *pipeline.St
 	case TrustLines:
 		err = trustLinesBatch.Exec()
 		if err == nil {
-			err = p.AssetStatsQ.InsertAssetStats(assetStats.all(), maxBatchSize)
+			err = p.AssetStatsQ.InsertAssetStats(assetStats.All(), maxBatchSize)
 		}
 	default:
 		return errors.Errorf("Invalid action type (%s)", p.Action)
