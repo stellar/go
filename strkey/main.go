@@ -13,6 +13,10 @@ import (
 // strkey-encoded string is not one of the valid values.
 var ErrInvalidVersionByte = errors.New("invalid version byte")
 
+// ErrLengthIsNotDivisibleBy8 is returned when the length of a 
+// strkey-encoded string is not a multiple of 8.
+var ErrLengthIsNotDivisibleBy8 = errors.New("length has to be a multiple of 8")
+
 // VersionByte represents one of the possible prefix values for a StrKey base
 // string--the string the when encoded using base32 yields a final StrKey.
 type VersionByte byte
@@ -178,6 +182,11 @@ func checkValidVersionByte(version VersionByte) error {
 // potentially be strkey encoded (i.e. it has both a version byte and a
 // checksum, neither of which are explicitly checked by this func)
 func decodeString(src string) ([]byte, error) {
+	// base 32 data size is (s * 5)/8 => has to be a multiple of 8
+	if (len(src) & 0x07) != 0 {
+		return nil, ErrLengthIsNotDivisibleBy8
+	}
+
 	raw, err := base32.StdEncoding.DecodeString(src)
 	if err != nil {
 		return nil, errors.Wrap(err, "base32 decode failed")
