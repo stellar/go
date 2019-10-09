@@ -5,7 +5,12 @@ file.  This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## Unreleased
 
+## [v1.5.0](https://github.com/stellar/go/releases/tag/horizonclient-v1.5.0) - 2019-10-09
+
 * Dropped support for Go 1.10, 1.11.
+* Add support for stellar-core [protocol 12](https://github.com/stellar/stellar-core/releases/tag/v12.0.0), which implements [CAP-0024](https://github.com/stellar/stellar-protocol/blob/master/core/cap-0024.md) ("Make PathPayment Symmetrical"). ([#1737](https://github.com/stellar/go/issues/1737)).
+* **Deprecated:** Following CAP-0024, the operation `txnbuild.PathPayment` is now deprecated in favour of [`txnbuild.PathPaymentStrictReceive`](https://godoc.org/github.com/stellar/go/txnbuild#PathPaymentStrictReceive), and will be removed in a future release. This is a rename - the new operation behaves identically to the old one. Client code should be updated to use the new operation.
+* **Add:** New operation [`txnbuild.PathPaymentStrictSend`](https://godoc.org/github.com/stellar/go/txnbuild#PathPaymentStrictSend) allows a path payment to be made where the amount sent is specified, and the amount received can vary.
 
 ## [v1.4.0](https://github.com/stellar/go/releases/tag/horizonclient-v1.4.0) - 2019-08-09
 
