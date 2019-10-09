@@ -73,11 +73,11 @@ func (p *OrderbookProcessor) ProcessLedger(ctx context.Context, store *pipeline.
 			switch {
 			case change.Post != nil:
 				// Created or updated
-				offer := change.Post.MustOffer()
+				offer := change.Post.Data.MustOffer()
 				p.OrderBookGraph.AddOffer(offer)
 			case change.Pre != nil && change.Post == nil:
 				// Removed
-				offer := change.Pre.MustOffer()
+				offer := change.Pre.Data.MustOffer()
 				p.OrderBookGraph.RemoveOffer(offer.OfferId)
 			}
 		}

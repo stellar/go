@@ -23,6 +23,8 @@ func (p *DatabaseProcessor) ProcessState(ctx context.Context, store *pipeline.St
 	defer w.Close()
 
 	var (
+		accountsBatch      history.AccountsBatchInsertBuilder
+		accountDataBatch   history.AccountDataBatchInsertBuilder
 		accountSignerBatch history.AccountSignersBatchInsertBuilder
 		offersBatch        history.OffersBatchInsertBuilder
 		trustLinesBatch    history.TrustLinesBatchInsertBuilder
@@ -30,6 +32,10 @@ func (p *DatabaseProcessor) ProcessState(ctx context.Context, store *pipeline.St
 	assetStats := AssetStatSet{}
 
 	switch p.Action {
+	case Accounts:
+		accountsBatch = p.AccountsQ.NewAccountsBatchInsertBuilder(maxBatchSize)
+	case Data:
+		accountDataBatch = p.DataQ.NewAccountDataBatchInsertBuilder(maxBatchSize)
 	case AccountsForSigner:
 		accountSignerBatch = p.SignersQ.NewAccountSignersBatchInsertBuilder(maxBatchSize)
 	case Offers:
@@ -55,6 +61,32 @@ func (p *DatabaseProcessor) ProcessState(ctx context.Context, store *pipeline.St
 		}
 
 		switch p.Action {
+		case Accounts:
+			// We're interested in accounts only
+			if entryChange.EntryType() != xdr.LedgerEntryTypeAccount {
+				continue
+			}
+
+			err = accountsBatch.Add(
+				entryChange.MustState().Data.MustAccount(),
+				entryChange.MustState().LastModifiedLedgerSeq,
+			)
+			if err != nil {
+				return errors.Wrap(err, "Error adding row to accountSignerBatch")
+			}
+		case Data:
+			// We're interested in data only
+			if entryChange.EntryType() != xdr.LedgerEntryTypeData {
+				continue
+			}
+
+			err = accountDataBatch.Add(
+				entryChange.MustState().Data.MustData(),
+				entryChange.MustState().LastModifiedLedgerSeq,
+			)
+			if err != nil {
+				return errors.Wrap(err, "Error adding row to accountSignerBatch")
+			}
 		case AccountsForSigner:
 			// We're interested in accounts only
 			if entryChange.EntryType() != xdr.LedgerEntryTypeAccount {
@@ -120,6 +152,10 @@ func (p *DatabaseProcessor) ProcessState(ctx context.Context, store *pipeline.St
 	var err error
 
 	switch p.Action {
+	case Accounts:
+		err = accountsBatch.Exec()
+	case Data:
+		err = accountDataBatch.Exec()
 	case AccountsForSigner:
 		err = accountSignerBatch.Exec()
 	case Offers:
@@ -144,18 +180,22 @@ func (p *DatabaseProcessor) ProcessLedger(ctx context.Context, store *pipeline.S
 	defer r.Close()
 	defer w.Close()
 
-	if p.Action != All {
-		return errors.New("ledger processor must process all actions")
-	}
-
-	actionHandlers := map[DatabaseProcessorActionType]func(change io.Change, currentLedger uint32) error{
-		AccountsForSigner: p.processLedgerAccountsForSigner,
+	actionHandlers := map[DatabaseProcessorActionType]func(change io.Change) error{
+		Accounts:          p.processLedgerAccounts,
+		AccountsForSigner: p.processLedgerAccountSigners,
+		Data:              p.processLedgerAccountData,
 		Offers:            p.processLedgerOffers,
 		TrustLines:        p.processLedgerTrustLines,
 	}
 
-	actions := []DatabaseProcessorActionType{
-		AccountsForSigner, Offers, TrustLines,
+	actions := []DatabaseProcessorActionType{}
+
+	if p.Action == All {
+		actions = []DatabaseProcessorActionType{
+			Accounts, AccountsForSigner, Data, Offers, TrustLines,
+		}
+	} else {
+		actions = append(actions, p.Action)
 	}
 
 	for {
@@ -168,18 +208,21 @@ func (p *DatabaseProcessor) ProcessLedger(ctx context.Context, store *pipeline.S
 			}
 		}
 
-		if transaction.Result.Result.Result.Code != xdr.TransactionResultCodeTxSuccess {
-			continue
-		}
-
-		sequence := r.GetSequence()
 		for _, action := range actions {
 			handler, ok := actionHandlers[action]
 			if !ok {
 				return errors.New("Unknown action")
 			}
+
+			// Skip failed if not in Accounts processor. Failed txs can modify
+			// Accounts' seqnum and XLM balance (fees).
+			if action != Accounts &&
+				transaction.Result.Result.Result.Code != xdr.TransactionResultCodeTxSuccess {
+				continue
+			}
+
 			for _, change := range transaction.GetChanges() {
-				err := handler(change, sequence)
+				err := handler(change)
 				if err != nil {
 					return errors.Wrap(
 						err,
@@ -200,7 +243,117 @@ func (p *DatabaseProcessor) ProcessLedger(ctx context.Context, store *pipeline.S
 	return nil
 }
 
-func (p *DatabaseProcessor) processLedgerAccountsForSigner(change io.Change, currentLedger uint32) error {
+func (p *DatabaseProcessor) processLedgerAccounts(change io.Change) error {
+	if change.Type != xdr.LedgerEntryTypeAccount {
+		return nil
+	}
+
+	changed, err := change.AccountChangedExceptSigners()
+	if err != nil {
+		return errors.Wrap(err, "Error running change.AccountChangedExceptSigners")
+	}
+
+	if !changed {
+		return nil
+	}
+
+	var rowsAffected int64
+	var action string
+	var accountID string
+
+	switch {
+	case change.Pre == nil && change.Post != nil:
+		// Created
+		action = "inserting"
+		account := change.Post.Data.MustAccount()
+		accountID = account.AccountId.Address()
+		rowsAffected, err = p.AccountsQ.InsertAccount(account, change.Post.LastModifiedLedgerSeq)
+	case change.Pre != nil && change.Post == nil:
+		// Removed
+		action = "removing"
+		account := change.Pre.Data.MustAccount()
+		accountID = account.AccountId.Address()
+		rowsAffected, err = p.AccountsQ.RemoveAccount(accountID)
+	default:
+		// Updated
+		action = "updating"
+		account := change.Post.Data.MustAccount()
+		accountID = account.AccountId.Address()
+		rowsAffected, err = p.AccountsQ.UpdateAccount(account, change.Post.LastModifiedLedgerSeq)
+	}
+
+	if err != nil {
+		return err
+	}
+
+	if rowsAffected != 1 {
+		return verify.NewStateError(errors.Errorf(
+			"No rows affected when %s account %s",
+			action,
+			accountID,
+		))
+	}
+
+	return nil
+}
+
+func (p *DatabaseProcessor) processLedgerAccountData(change io.Change) error {
+	if change.Type != xdr.LedgerEntryTypeData {
+		return nil
+	}
+
+	var rowsAffected int64
+	var err error
+	var action string
+	var ledgerKey xdr.LedgerKey
+
+	switch {
+	case change.Pre == nil && change.Post != nil:
+		// Created
+		action = "inserting"
+		data := change.Post.Data.MustData()
+		err = ledgerKey.SetData(data.AccountId, string(data.DataName))
+		if err != nil {
+			return errors.Wrap(err, "Error creating ledger key")
+		}
+		rowsAffected, err = p.DataQ.InsertAccountData(data, change.Post.LastModifiedLedgerSeq)
+	case change.Pre != nil && change.Post == nil:
+		// Removed
+		action = "removing"
+		data := change.Pre.Data.MustData()
+		err = ledgerKey.SetData(data.AccountId, string(data.DataName))
+		if err != nil {
+			return errors.Wrap(err, "Error creating ledger key")
+		}
+		rowsAffected, err = p.DataQ.RemoveAccountData(*ledgerKey.Data)
+	default:
+		// Updated
+		action = "updating"
+		data := change.Post.Data.MustData()
+		err = ledgerKey.SetData(data.AccountId, string(data.DataName))
+		if err != nil {
+			return errors.Wrap(err, "Error creating ledger key")
+		}
+		rowsAffected, err = p.DataQ.UpdateAccountData(data, change.Post.LastModifiedLedgerSeq)
+	}
+
+	if err != nil {
+		return err
+	}
+
+	if rowsAffected != 1 {
+		return verify.NewStateError(errors.Errorf(
+			"No rows affected when %s data: %s %s",
+			action,
+			ledgerKey.Data.AccountId.Address(),
+			ledgerKey.Data.DataName,
+		))
+	}
+
+	return nil
+}
+
+func (p *DatabaseProcessor) processLedgerAccountSigners(change io.Change) error {
 	if change.Type != xdr.LedgerEntryTypeAccount {
 		return nil
 	}
@@ -212,7 +365,7 @@ func (p *DatabaseProcessor) processLedgerAccountsForSigner(change io.Change, cur
 	// The code below removes all Pre signers adds Post signers but
 	// can be improved by finding a diff (check performance first).
 	if change.Pre != nil {
-		preAccountEntry := change.Pre.MustAccount()
+		preAccountEntry := change.Pre.Data.MustAccount()
 		for signer := range preAccountEntry.SignerSummary() {
 			rowsAffected, err := p.SignersQ.RemoveAccountSigner(preAccountEntry.AccountId.Address(), signer)
 			if err != nil {
@@ -230,7 +383,7 @@ func (p *DatabaseProcessor) processLedgerAccountsForSigner(change io.Change, cur
 	}
 
 	if change.Post != nil {
-		postAccountEntry := change.Post.MustAccount()
+		postAccountEntry := change.Post.Data.MustAccount()
 		for signer, weight := range postAccountEntry.SignerSummary() {
 			rowsAffected, err := p.SignersQ.CreateAccountSigner(postAccountEntry.AccountId.Address(), signer, weight)
 			if err != nil {
@@ -246,10 +399,11 @@ func (p *DatabaseProcessor) processLedgerAccountsForSigner(change io.Change, cur
 			}
 		}
 	}
+
 	return nil
 }
 
-func (p *DatabaseProcessor) processLedgerOffers(change io.Change, currentLedger uint32) error {
+func (p *DatabaseProcessor) processLedgerOffers(change io.Change) error {
 	if change.Type != xdr.LedgerEntryTypeOffer {
 		return nil
 	}
@@ -263,21 +417,21 @@ func (p *DatabaseProcessor) processLedgerOffers(change io.Change, currentLedger 
 	case change.Pre == nil && change.Post != nil:
 		// Created
 		action = "inserting"
-		offer := change.Post.MustOffer()
+		offer := change.Post.Data.MustOffer()
 		offerID = offer.OfferId
-		rowsAffected, err = p.OffersQ.InsertOffer(offer, xdr.Uint32(currentLedger))
+		rowsAffected, err = p.OffersQ.InsertOffer(offer, change.Post.LastModifiedLedgerSeq)
 	case change.Pre != nil && change.Post == nil:
 		// Removed
 		action = "removing"
-		offer := change.Pre.MustOffer()
+		offer := change.Pre.Data.MustOffer()
 		offerID = offer.OfferId
 		rowsAffected, err = p.OffersQ.RemoveOffer(offer.OfferId)
 	default:
 		// Updated
 		action = "updating"
-		offer := change.Post.MustOffer()
+		offer := change.Post.Data.MustOffer()
 		offerID = offer.OfferId
-		rowsAffected, err = p.OffersQ.UpdateOffer(offer, xdr.Uint32(currentLedger))
+		rowsAffected, err = p.OffersQ.UpdateOffer(offer, change.Post.LastModifiedLedgerSeq)
 	}
 
 	if err != nil {
@@ -399,7 +553,7 @@ func (p *DatabaseProcessor) adjustAssetStat(
 	return nil
 }
 
-func (p *DatabaseProcessor) processLedgerTrustLines(change io.Change, currentLedger uint32) error {
+func (p *DatabaseProcessor) processLedgerTrustLines(change io.Change) error {
 	if change.Type != xdr.LedgerEntryTypeTrustline {
 		return nil
 	}
@@ -413,7 +567,7 @@ func (p *DatabaseProcessor) processLedgerTrustLines(change io.Change, currentLed
 	case change.Pre == nil && change.Post != nil:
 		// Created
 		action = "inserting"
-		trustLine := change.Post.MustTrustLine()
+		trustLine := change.Post.Data.MustTrustLine()
 		err = ledgerKey.SetTrustline(trustLine.AccountId, trustLine.Asset)
 		if err != nil {
 			return errors.Wrap(err, "Error creating ledger key")
@@ -422,11 +576,11 @@ func (p *DatabaseProcessor) processLedgerTrustLines(change io.Change, currentLed
 		if err != nil {
 			return errors.Wrap(err, "Error adjusting asset stat")
 		}
-		rowsAffected, err = p.TrustLinesQ.InsertTrustLine(trustLine, xdr.Uint32(currentLedger))
+		rowsAffected, err = p.TrustLinesQ.InsertTrustLine(trustLine, change.Post.LastModifiedLedgerSeq)
 	case change.Pre != nil && change.Post == nil:
 		// Removed
 		action = "removing"
-		trustLine := change.Pre.MustTrustLine()
+		trustLine := change.Pre.Data.MustTrustLine()
 		err = ledgerKey.SetTrustline(trustLine.AccountId, trustLine.Asset)
 		if err != nil {
 			return errors.Wrap(err, "Error creating ledger key")
@@ -439,8 +593,8 @@ func (p *DatabaseProcessor) processLedgerTrustLines(change io.Change, currentLed
 	default:
 		// Updated
 		action = "updating"
-		preTrustLine := change.Pre.MustTrustLine()
-		trustLine := change.Post.MustTrustLine()
+		preTrustLine := change.Pre.Data.MustTrustLine()
+		trustLine := change.Post.Data.MustTrustLine()
 		err = ledgerKey.SetTrustline(trustLine.AccountId, trustLine.Asset)
 		if err != nil {
 			return errors.Wrap(err, "Error creating ledger key")
@@ -449,7 +603,7 @@ func (p *DatabaseProcessor) processLedgerTrustLines(change io.Change, currentLed
 		if err != nil {
 			return errors.Wrap(err, "Error adjusting asset stat")
 		}
-		rowsAffected, err = p.TrustLinesQ.UpdateTrustLine(trustLine, xdr.Uint32(currentLedger))
+		rowsAffected, err = p.TrustLinesQ.UpdateTrustLine(trustLine, change.Post.LastModifiedLedgerSeq)
 	}
 
 	if err != nil {

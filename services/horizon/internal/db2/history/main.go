@@ -112,6 +112,8 @@ const (
 // ExperimentalIngestionTables is a list of tables populated by the experimental
 // ingestion system
 var ExperimentalIngestionTables = []string{
+	"accounts",
+	"accounts_data",
 	"accounts_signers",
 	"offers",
 	"trust_lines",
@@ -131,6 +133,42 @@ type AccountsQ struct {
 	sql    sq.SelectBuilder
 }
 
+// AccountEntry is a row of data from the `account` table
+type AccountEntry struct {
+	AccountID            string `db:"account_id"`
+	Balance              int64  `db:"balance"`
+	BuyingLiabilities    int64  `db:"buying_liabilities"`
+	SellingLiabilities   int64  `db:"selling_liabilities"`
+	SequenceNumber       int64  `db:"sequence_number"`
+	NumSubEntries        uint32 `db:"num_subentries"`
+	InflationDestination string `db:"inflation_destination"`
+	HomeDomain           string `db:"home_domain"`
+	Flags                uint32 `db:"flags"`
+	MasterWeight         byte   `db:"master_weight"`
+	ThresholdLow         byte   `db:"threshold_low"`
+	ThresholdMedium      byte   `db:"threshold_medium"`
+	ThresholdHigh        byte   `db:"threshold_high"`
+	LastModifiedLedger   uint32 `db:"last_modified_ledger"`
+}
+
+type AccountsBatchInsertBuilder interface {
+	Add(account xdr.AccountEntry, lastModifiedLedger xdr.Uint32) error
+	Exec() error
+}
+
+// accountsBatchInsertBuilder is a simple wrapper around db.BatchInsertBuilder
+type accountsBatchInsertBuilder struct {
+	builder db.BatchInsertBuilder
+}
+
+// QAccounts defines account related queries.
+type QAccounts interface {
+	NewAccountsBatchInsertBuilder(maxBatchSize int) AccountsBatchInsertBuilder
+	InsertAccount(account xdr.AccountEntry, lastModifiedLedger xdr.Uint32) (int64, error)
+	UpdateAccount(account xdr.AccountEntry, lastModifiedLedger xdr.Uint32) (int64, error)
+	RemoveAccount(accountID string) (int64, error)
+}
+
 // AccountSigner is a row of data from the `accounts_signers` table
 type AccountSigner struct {
 	Account string `db:"account"`
@@ -146,6 +184,34 @@ type AccountSignersBatchInsertBuilder interface {
 // accountSignersBatchInsertBuilder is a simple wrapper around db.BatchInsertBuilder
 type accountSignersBatchInsertBuilder struct {
 	builder db.BatchInsertBuilder
+}
+
+// Data is a row of data from the `account_data` table
+type Data struct {
+	AccountID          string           `db:"account"`
+	Name               string           `db:"name"`
+	Value              AccountDataValue `db:"value"`
+	LastModifiedLedger uint32           `db:"last_modified_ledger"`
+}
+
+type AccountDataValue []byte
+
+type AccountDataBatchInsertBuilder interface {
+	Add(data xdr.DataEntry, lastModifiedLedger xdr.Uint32) error
+	Exec() error
+}
+
+// accountDataBatchInsertBuilder is a simple wrapper around db.BatchInsertBuilder
+type accountDataBatchInsertBuilder struct {
+	builder db.BatchInsertBuilder
+}
+
+// QData defines account data related queries.
+type QData interface {
+	NewAccountDataBatchInsertBuilder(maxBatchSize int) AccountDataBatchInsertBuilder
+	InsertAccountData(data xdr.DataEntry, lastModifiedLedger xdr.Uint32) (int64, error)
+	UpdateAccountData(data xdr.DataEntry, lastModifiedLedger xdr.Uint32) (int64, error)
+	RemoveAccountData(key xdr.LedgerKeyData) (int64, error)
 }
 
 // Asset is a row of data from the `history_assets` table
@@ -470,7 +536,7 @@ type TrustLine struct {
 	LastModifiedLedger uint32        `db:"last_modified_ledger"`
 }
 
-// QTrustLines defines offer related queries.
+// QTrustLines defines trust lines related queries.
 type QTrustLines interface {
 	NewTrustLinesBatchInsertBuilder(maxBatchSize int) TrustLinesBatchInsertBuilder
 	InsertTrustLine(trustLine xdr.TrustLineEntry, lastModifiedLedger xdr.Uint32) (int64, error)
@@ -488,10 +554,28 @@ type trustLinesBatchInsertBuilder struct {
 	builder db.BatchInsertBuilder
 }
 
+func (q *Q) NewAccountsBatchInsertBuilder(maxBatchSize int) AccountsBatchInsertBuilder {
+	return &accountsBatchInsertBuilder{
+		builder: db.BatchInsertBuilder{
+			Table:        q.GetTable("accounts"),
+			MaxBatchSize: maxBatchSize,
+		},
+	}
+}
+
 func (q *Q) NewAccountSignersBatchInsertBuilder(maxBatchSize int) AccountSignersBatchInsertBuilder {
 	return &accountSignersBatchInsertBuilder{
 		builder: db.BatchInsertBuilder{
 			Table:        q.GetTable("accounts_signers"),
+			MaxBatchSize: maxBatchSize,
+		},
+	}
+}
+
+func (q *Q) NewAccountDataBatchInsertBuilder(maxBatchSize int) AccountDataBatchInsertBuilder {
+	return &accountDataBatchInsertBuilder{
+		builder: db.BatchInsertBuilder{
+			Table:        q.GetTable("accounts_data"),
 			MaxBatchSize: maxBatchSize,
 		},
 	}

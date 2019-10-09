@@ -172,7 +172,7 @@ func (s *AccountsSignerProcessorTestSuiteLedger) SetupTest() {
 	s.mockLedgerWriter = &io.MockLedgerWriter{}
 
 	s.processor = &DatabaseProcessor{
-		Action:   All,
+		Action:   AccountsForSigner,
 		SignersQ: s.mockQ,
 	}
 
@@ -230,7 +230,6 @@ func (s *AccountsSignerProcessorTestSuiteLedger) TestNewAccount() {
 				},
 			}),
 		}, nil).Once()
-	s.mockLedgerReader.On("GetSequence").Return(uint32(1)).Once()
 
 	s.mockQ.
 		On(
@@ -306,7 +305,6 @@ func (s *AccountsSignerProcessorTestSuiteLedger) TestNewSigner() {
 				},
 			}),
 		}, nil).Once()
-	s.mockLedgerReader.On("GetSequence").Return(uint32(1)).Once()
 
 	// Remove old signer
 	s.mockQ.
@@ -401,7 +399,6 @@ func (s *AccountsSignerProcessorTestSuiteLedger) TestSignerRemoved() {
 				},
 			}),
 		}, nil).Once()
-	s.mockLedgerReader.On("GetSequence").Return(uint32(1)).Once()
 
 	// Remove old signers
 	s.mockQ.
@@ -476,7 +473,6 @@ func (s *AccountsSignerProcessorTestSuiteLedger) TestRemoveAccount() {
 				},
 			}),
 		}, nil).Once()
-	s.mockLedgerReader.On("GetSequence").Return(uint32(1)).Once()
 
 	s.mockQ.
 		On(
@@ -523,7 +519,6 @@ func (s *AccountsSignerProcessorTestSuiteLedger) TestNewAccountNoRowsAffected() 
 				},
 			}),
 		}, nil).Once()
-	s.mockLedgerReader.On("GetSequence").Return(uint32(1)).Once()
 
 	s.mockQ.
 		On(
@@ -583,7 +578,6 @@ func (s *AccountsSignerProcessorTestSuiteLedger) TestRemoveAccountNoRowsAffected
 				},
 			}),
 		}, nil).Once()
-	s.mockLedgerReader.On("GetSequence").Return(uint32(1)).Once()
 
 	s.mockQ.
 		On(

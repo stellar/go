@@ -176,7 +176,7 @@ func (s *TrustLinesProcessorTestSuiteLedger) TestInsertTrustLine() {
 	}
 	// should be ignored because it's not an trust line type
 	s.Assert().NoError(
-		s.processor.processLedgerTrustLines(accountTransaction.GetChanges()[0], 1),
+		s.processor.processLedgerTrustLines(accountTransaction.GetChanges()[0]),
 	)
 
 	// should be ignored because transaction was not successful
@@ -226,6 +226,7 @@ func (s *TrustLinesProcessorTestSuiteLedger) TestInsertTrustLine() {
 						xdr.LedgerEntryChange{
 							Type: xdr.LedgerEntryChangeTypeLedgerEntryCreated,
 							Created: &xdr.LedgerEntry{
+								LastModifiedLedgerSeq: lastModifiedLedgerSeq,
 								Data: xdr.LedgerEntryData{
 									Type:      xdr.LedgerEntryTypeTrustline,
 									TrustLine: &trustLine,
@@ -236,7 +237,6 @@ func (s *TrustLinesProcessorTestSuiteLedger) TestInsertTrustLine() {
 				},
 			}),
 		}, nil).Once()
-	s.mockLedgerReader.On("GetSequence").Return(uint32(lastModifiedLedgerSeq))
 
 	s.mockQ.On(
 		"InsertTrustLine",
@@ -270,6 +270,7 @@ func (s *TrustLinesProcessorTestSuiteLedger) TestInsertTrustLine() {
 						xdr.LedgerEntryChange{
 							Type: xdr.LedgerEntryChangeTypeLedgerEntryState,
 							State: &xdr.LedgerEntry{
+								LastModifiedLedgerSeq: lastModifiedLedgerSeq - 1,
 								Data: xdr.LedgerEntryData{
 									Type:      xdr.LedgerEntryTypeTrustline,
 									TrustLine: &trustLine,
@@ -280,6 +281,7 @@ func (s *TrustLinesProcessorTestSuiteLedger) TestInsertTrustLine() {
 						xdr.LedgerEntryChange{
 							Type: xdr.LedgerEntryChangeTypeLedgerEntryUpdated,
 							Updated: &xdr.LedgerEntry{
+								LastModifiedLedgerSeq: lastModifiedLedgerSeq,
 								Data: xdr.LedgerEntryData{
 									Type:      xdr.LedgerEntryTypeTrustline,
 									TrustLine: &updatedTrustLine,
@@ -330,7 +332,6 @@ func (s *TrustLinesProcessorTestSuiteLedger) TestInsertTrustLine() {
 
 func (s *TrustLinesProcessorTestSuiteLedger) TestUpdateTrustLineNoRowsAffected() {
 	lastModifiedLedgerSeq := xdr.Uint32(1234)
-	s.mockLedgerReader.On("GetSequence").Return(uint32(lastModifiedLedgerSeq))
 
 	trustLine := xdr.TrustLineEntry{
 		AccountId: xdr.MustAddress("GAOQJGUAB7NI7K7I62ORBXMN3J4SSWQUQ7FOEPSDJ322W2HMCNWPHXFB"),
@@ -351,6 +352,7 @@ func (s *TrustLinesProcessorTestSuiteLedger) TestUpdateTrustLineNoRowsAffected()
 						xdr.LedgerEntryChange{
 							Type: xdr.LedgerEntryChangeTypeLedgerEntryState,
 							State: &xdr.LedgerEntry{
+								LastModifiedLedgerSeq: lastModifiedLedgerSeq - 1,
 								Data: xdr.LedgerEntryData{
 									Type:      xdr.LedgerEntryTypeTrustline,
 									TrustLine: &trustLine,
@@ -361,6 +363,7 @@ func (s *TrustLinesProcessorTestSuiteLedger) TestUpdateTrustLineNoRowsAffected()
 						xdr.LedgerEntryChange{
 							Type: xdr.LedgerEntryChangeTypeLedgerEntryUpdated,
 							Updated: &xdr.LedgerEntry{
+								LastModifiedLedgerSeq: lastModifiedLedgerSeq,
 								Data: xdr.LedgerEntryData{
 									Type:      xdr.LedgerEntryTypeTrustline,
 									TrustLine: &updatedTrustLine,
@@ -440,7 +443,6 @@ func (s *TrustLinesProcessorTestSuiteLedger) TestRemoveTrustLine() {
 				},
 			}),
 		}, nil).Once()
-	s.mockLedgerReader.On("GetSequence").Return(uint32(123))
 
 	s.mockQ.On(
 		"RemoveTrustLine",
@@ -513,7 +515,6 @@ func (s *TrustLinesProcessorTestSuiteLedger) TestRemoveOfferNoRowsAffected() {
 				},
 			}),
 		}, nil).Once()
-	s.mockLedgerReader.On("GetSequence").Return(uint32(123))
 
 	s.mockQ.On(
 		"RemoveTrustLine",

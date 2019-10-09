@@ -14,7 +14,9 @@ const (
 type DatabaseProcessorActionType string
 
 const (
+	Accounts          DatabaseProcessorActionType = "Accounts"
 	AccountsForSigner DatabaseProcessorActionType = "AccountsForSigner"
+	Data              DatabaseProcessorActionType = "Data"
 	Offers            DatabaseProcessorActionType = "Offers"
 	TrustLines        DatabaseProcessorActionType = "TrustLines"
 	All               DatabaseProcessorActionType = "All"
@@ -26,6 +28,8 @@ const (
 // *history.Q object to share a common transaction. `Action` defines what each
 // processor is responsible for.
 type DatabaseProcessor struct {
+	AccountsQ   history.QAccounts
+	DataQ       history.QData
 	SignersQ    history.QSigners
 	OffersQ     history.QOffers
 	TrustLinesQ history.QTrustLines

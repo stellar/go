@@ -6,17 +6,6 @@ import (
 	"github.com/stellar/go/support/errors"
 )
 
-func (q *Q) CountAccounts() (int, error) {
-	sql := sq.Select("count(distinct account)").From("accounts_signers")
-
-	var count int
-	if err := q.Get(&count, sql); err != nil {
-		return 0, errors.Wrap(err, "could not run select query")
-	}
-
-	return count, nil
-}
-
 func (q *Q) SignersForAccounts(accounts []string) ([]AccountSigner, error) {
 	sql := selectAccountSigners.Where(map[string]interface{}{"accounts_signers.account": accounts})
 

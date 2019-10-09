@@ -26,12 +26,26 @@ const (
 	ledgerPipeline pType = "ledger_pipeline"
 )
 
-func accountForSignerStateNode(q *history.Q) *supportPipeline.PipelineNode {
+func accountsStateNode(q *history.Q) *supportPipeline.PipelineNode {
 	return pipeline.StateNode(&processors.EntryTypeFilter{Type: xdr.LedgerEntryTypeAccount}).
 		Pipe(
 			pipeline.StateNode(&horizonProcessors.DatabaseProcessor{
+				AccountsQ: q,
+				Action:    horizonProcessors.Accounts,
+			}),
+			pipeline.StateNode(&horizonProcessors.DatabaseProcessor{
 				SignersQ: q,
 				Action:   horizonProcessors.AccountsForSigner,
+			}),
+		)
+}
+
+func dataDBStateNode(q *history.Q) *supportPipeline.PipelineNode {
+	return pipeline.StateNode(&processors.EntryTypeFilter{Type: xdr.LedgerEntryTypeData}).
+		Pipe(
+			pipeline.StateNode(&horizonProcessors.DatabaseProcessor{
+				DataQ:  q,
+				Action: horizonProcessors.Data,
 			}),
 		)
 }
@@ -72,7 +86,8 @@ func buildStatePipeline(historyQ *history.Q, graph *orderbook.OrderBookGraph) *p
 	statePipeline.SetRoot(
 		pipeline.StateNode(&processors.RootProcessor{}).
 			Pipe(
-				accountForSignerStateNode(historyQ),
+				accountsStateNode(historyQ),
+				dataDBStateNode(historyQ),
 				orderBookDBStateNode(historyQ),
 				orderBookGraphStateNode(graph),
 				trustLinesDBStateNode(historyQ),
@@ -98,6 +113,8 @@ func buildLedgerPipeline(historyQ *history.Q, graph *orderbook.OrderBookGraph) *
 				pipeline.LedgerNode(&horizonProcessors.ContextFilter{horizonProcessors.IngestUpdateDatabase}).
 					Pipe(
 						pipeline.LedgerNode(&horizonProcessors.DatabaseProcessor{
+							AccountsQ:   historyQ,
+							DataQ:       historyQ,
 							OffersQ:     historyQ,
 							SignersQ:    historyQ,
 							TrustLinesQ: historyQ,

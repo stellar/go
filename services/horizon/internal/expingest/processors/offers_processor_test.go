@@ -155,7 +155,7 @@ func (s *OffersProcessorTestSuiteLedger) TestInsertOffer() {
 	}
 	// should be ignored because it's not an offer type
 	s.Assert().NoError(
-		s.processor.processLedgerOffers(accountTransaction.GetChanges()[0], 1),
+		s.processor.processLedgerOffers(accountTransaction.GetChanges()[0]),
 	)
 
 	// should be ignored because transaction was not successful
@@ -204,6 +204,7 @@ func (s *OffersProcessorTestSuiteLedger) TestInsertOffer() {
 						xdr.LedgerEntryChange{
 							Type: xdr.LedgerEntryChangeTypeLedgerEntryCreated,
 							Created: &xdr.LedgerEntry{
+								LastModifiedLedgerSeq: lastModifiedLedgerSeq,
 								Data: xdr.LedgerEntryData{
 									Type:  xdr.LedgerEntryTypeOffer,
 									Offer: &offer,
@@ -214,7 +215,6 @@ func (s *OffersProcessorTestSuiteLedger) TestInsertOffer() {
 				},
 			}),
 		}, nil).Once()
-	s.mockLedgerReader.On("GetSequence").Return(uint32(lastModifiedLedgerSeq))
 
 	s.mockQ.On(
 		"InsertOffer",
@@ -235,6 +235,7 @@ func (s *OffersProcessorTestSuiteLedger) TestInsertOffer() {
 						xdr.LedgerEntryChange{
 							Type: xdr.LedgerEntryChangeTypeLedgerEntryState,
 							State: &xdr.LedgerEntry{
+								LastModifiedLedgerSeq: lastModifiedLedgerSeq - 1,
 								Data: xdr.LedgerEntryData{
 									Type:  xdr.LedgerEntryTypeOffer,
 									Offer: &offer,
@@ -245,6 +246,7 @@ func (s *OffersProcessorTestSuiteLedger) TestInsertOffer() {
 						xdr.LedgerEntryChange{
 							Type: xdr.LedgerEntryChangeTypeLedgerEntryUpdated,
 							Updated: &xdr.LedgerEntry{
+								LastModifiedLedgerSeq: lastModifiedLedgerSeq,
 								Data: xdr.LedgerEntryData{
 									Type:  xdr.LedgerEntryTypeOffer,
 									Offer: &updatedOffer,
@@ -277,7 +279,6 @@ func (s *OffersProcessorTestSuiteLedger) TestInsertOffer() {
 
 func (s *OffersProcessorTestSuiteLedger) TestUpdateOfferNoRowsAffected() {
 	lastModifiedLedgerSeq := xdr.Uint32(1234)
-	s.mockLedgerReader.On("GetSequence").Return(uint32(lastModifiedLedgerSeq))
 
 	offer := xdr.OfferEntry{
 		OfferId: xdr.Int64(2),
@@ -296,6 +297,7 @@ func (s *OffersProcessorTestSuiteLedger) TestUpdateOfferNoRowsAffected() {
 						xdr.LedgerEntryChange{
 							Type: xdr.LedgerEntryChangeTypeLedgerEntryState,
 							State: &xdr.LedgerEntry{
+								LastModifiedLedgerSeq: lastModifiedLedgerSeq - 1,
 								Data: xdr.LedgerEntryData{
 									Type:  xdr.LedgerEntryTypeOffer,
 									Offer: &offer,
@@ -306,6 +308,7 @@ func (s *OffersProcessorTestSuiteLedger) TestUpdateOfferNoRowsAffected() {
 						xdr.LedgerEntryChange{
 							Type: xdr.LedgerEntryChangeTypeLedgerEntryUpdated,
 							Updated: &xdr.LedgerEntry{
+								LastModifiedLedgerSeq: lastModifiedLedgerSeq,
 								Data: xdr.LedgerEntryData{
 									Type:  xdr.LedgerEntryTypeOffer,
 									Offer: &updatedOffer,
@@ -366,7 +369,6 @@ func (s *OffersProcessorTestSuiteLedger) TestRemoveOffer() {
 				},
 			}),
 		}, nil).Once()
-	s.mockLedgerReader.On("GetSequence").Return(uint32(123))
 
 	s.mockQ.On(
 		"RemoveOffer",
@@ -419,7 +421,6 @@ func (s *OffersProcessorTestSuiteLedger) TestRemoveOfferNoRowsAffected() {
 				},
 			}),
 		}, nil).Once()
-	s.mockLedgerReader.On("GetSequence").Return(uint32(123))
 
 	s.mockQ.On(
 		"RemoveOffer",
