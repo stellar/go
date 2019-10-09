@@ -31,7 +31,7 @@ func TestPathPaymentValidateSendAsset(t *testing.T) {
 
 	err := tx.Build()
 	if assert.Error(t, err) {
-		expected := "validation failed for *txnbuild.PathPayment operation: Field: SendAsset, Error: asset issuer: public key is undefined"
+		expected := "validation failed for *txnbuild.PathPaymentStrictReceive operation: Field: SendAsset, Error: asset issuer: public key is undefined"
 		assert.Contains(t, err.Error(), expected)
 	}
 }
@@ -60,7 +60,7 @@ func TestPathPaymentValidateDestAsset(t *testing.T) {
 
 	err := tx.Build()
 	if assert.Error(t, err) {
-		expected := "validation failed for *txnbuild.PathPayment operation: Field: DestAsset, Error: asset code length must be between 1 and 12 characters"
+		expected := "validation failed for *txnbuild.PathPaymentStrictReceive operation: Field: DestAsset, Error: asset code length must be between 1 and 12 characters"
 		assert.Contains(t, err.Error(), expected)
 	}
 }
@@ -89,7 +89,7 @@ func TestPathPaymentValidateDestination(t *testing.T) {
 
 	err := tx.Build()
 	if assert.Error(t, err) {
-		expected := "validation failed for *txnbuild.PathPayment operation: Field: Destination, Error: SASND3NRUY5K43PN3H3HOP5JNTIDXJFLOKKNSCZQQAFBRSEIRD5OJKXZ is not a valid stellar public key"
+		expected := "validation failed for *txnbuild.PathPaymentStrictReceive operation: Field: Destination, Error: SASND3NRUY5K43PN3H3HOP5JNTIDXJFLOKKNSCZQQAFBRSEIRD5OJKXZ is not a valid stellar public key"
 		assert.Contains(t, err.Error(), expected)
 	}
 }
@@ -118,7 +118,7 @@ func TestPathPaymentValidateSendMax(t *testing.T) {
 
 	err := tx.Build()
 	if assert.Error(t, err) {
-		expected := "validation failed for *txnbuild.PathPayment operation: Field: SendMax, Error: invalid amount format: abc"
+		expected := "validation failed for *txnbuild.PathPaymentStrictReceive operation: Field: SendMax, Error: invalid amount format: abc"
 		assert.Contains(t, err.Error(), expected)
 	}
 }
@@ -147,7 +147,7 @@ func TestPathPaymentValidateDestAmount(t *testing.T) {
 
 	err := tx.Build()
 	if assert.Error(t, err) {
-		expected := "validation failed for *txnbuild.PathPayment operation: Field: DestAmount, Error: amount can not be negative"
+		expected := "validation failed for *txnbuild.PathPaymentStrictReceive operation: Field: DestAmount, Error: amount can not be negative"
 		assert.Contains(t, err.Error(), expected)
 	}
 }
