@@ -36,7 +36,7 @@ func TestGetAccountsHandlerPageNoResults(t *testing.T) {
 	handler := &GetAccountsHandler{HistoryQ: q}
 	records, err := handler.GetResourcePage(makeRequest(t, map[string]string{
 		"signer": "GCXKG6RN4ONIEPCMNFB732A436Z5PNDSRLGWK7GBLCMQLIFO4S7EYWVU",
-	}))
+	}, map[string]string{}))
 	tt.Assert.NoError(err)
 	tt.Assert.Len(records, 0)
 }
@@ -73,7 +73,7 @@ func TestGetAccountsHandlerPageResults(t *testing.T) {
 
 	records, err := handler.GetResourcePage(makeRequest(t, map[string]string{
 		"signer": "GCXKG6RN4ONIEPCMNFB732A436Z5PNDSRLGWK7GBLCMQLIFO4S7EYWVU",
-	}))
+	}, map[string]string{}))
 
 	tt.Assert.NoError(err)
 	tt.Assert.Equal(3, len(records))
