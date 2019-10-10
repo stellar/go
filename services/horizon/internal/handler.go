@@ -492,7 +492,9 @@ func (handler pageActionHandler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 }
 
 func buildPage(r *http.Request, records []hal.Pageable) (hal.Page, error) {
-	pageQuery, err := actions.GetPageQuery(r)
+	// Always DisableCursorValidation - we can assume it's valid since the
+	// validation is done in GetResourcePage.
+	pageQuery, err := actions.GetPageQuery(r, actions.DisableCursorValidation)
 	if err != nil {
 		return hal.Page{}, err
 	}

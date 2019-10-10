@@ -2,6 +2,7 @@ package horizon
 
 import (
 	"encoding/json"
+	"fmt"
 	"testing"
 
 	"github.com/stellar/go/protocols/horizon"
@@ -99,8 +100,9 @@ func TestAccountActions_Index(t *testing.T) {
 	q := &history.Q{ht.HorizonSession()}
 	ht.Assert.NoError(q.UpdateLastLedgerExpIngest(3))
 
-	w := ht.Get("/accounts?signer=GDBAPLDCAEJV6LSEDFEAUDAVFYSNFRUYZ4X75YYJJMMX5KFVUOHX46SQ")
+	w := ht.Get("/accounts?cursor=GDRREYWHQWJDICNH4SAH4TT2JRBYRPTDYIMLK4UWBDT3X3ZVVYT6I4UQ&limit=10&order=asc&signer=GDRREYWHQWJDICNH4SAH4TT2JRBYRPTDYIMLK4UWBDT3X3ZVVYT6I4UQ")
 
+	fmt.Println(w.Body.String())
 	if ht.Assert.Equal(200, w.Code) {
 		records := []horizon.AccountSigner{}
 		ht.UnmarshalPage(w.Body, &records)
