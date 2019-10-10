@@ -751,15 +751,19 @@ func (is *Session) operationDetails() map[string]interface{} {
 		is.assetDetails(details, op.Asset, "")
 	case xdr.OperationTypePathPaymentStrictReceive:
 		op := c.Operation().Body.MustPathPaymentStrictReceiveOp()
-		result := c.OperationResult().MustPathPaymentStrictReceiveResult()
 		details["from"] = source.Address()
 		details["to"] = op.Destination.Address()
 
 		details["amount"] = amount.String(op.DestAmount)
-		details["source_amount"] = amount.String(result.SendAmount())
+		details["source_amount"] = amount.String(0)
 		details["source_max"] = amount.String(op.SendMax)
 		is.assetDetails(details, op.DestAsset, "")
 		is.assetDetails(details, op.SendAsset, "source_")
+
+		if c.Transaction().IsSuccessful() {
+			result := c.OperationResult().MustPathPaymentStrictReceiveResult()
+			details["source_amount"] = amount.String(result.SendAmount())
+		}
 
 		var path = make([]map[string]interface{}, len(op.Path))
 		for i := range op.Path {
@@ -767,17 +771,22 @@ func (is *Session) operationDetails() map[string]interface{} {
 			is.assetDetails(path[i], op.Path[i], "")
 		}
 		details["path"] = path
+
 	case xdr.OperationTypePathPaymentStrictSend:
 		op := c.Operation().Body.MustPathPaymentStrictSendOp()
-		result := c.OperationResult().MustPathPaymentStrictSendResult()
 		details["from"] = source.Address()
 		details["to"] = op.Destination.Address()
 
-		details["amount"] = amount.String(result.DestAmount())
+		details["amount"] = amount.String(0)
 		details["source_amount"] = amount.String(op.SendAmount)
 		details["destination_min"] = amount.String(op.DestMin)
 		is.assetDetails(details, op.DestAsset, "")
 		is.assetDetails(details, op.SendAsset, "source_")
+
+		if c.Transaction().IsSuccessful() {
+			result := c.OperationResult().MustPathPaymentStrictSendResult()
+			details["amount"] = amount.String(result.DestAmount())
+		}
 
 		var path = make([]map[string]interface{}, len(op.Path))
 		for i := range op.Path {
