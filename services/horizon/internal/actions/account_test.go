@@ -4,12 +4,13 @@ import (
 	"context"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+
 	protocol "github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/services/horizon/internal/db2"
 	"github.com/stellar/go/services/horizon/internal/db2/core"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/services/horizon/internal/test"
-	"github.com/stretchr/testify/assert"
 )
 
 func TestAccountInfo(t *testing.T) {
@@ -101,6 +102,65 @@ func TestAccountPageResults(t *testing.T) {
 
 	for i, row := range rows {
 		result := page.Embedded.Records[i].(protocol.AccountSigner)
+		assert.Equal(t, row.Account, result.AccountID)
+		assert.Equal(t, row.Signer, result.Signer.Key)
+		assert.Equal(t, row.Weight, result.Signer.Weight)
+	}
+}
+
+func TestGetAccountsHandlerPageNoResults(t *testing.T) {
+	tt := test.Start(t)
+	defer tt.Finish()
+	test.ResetHorizonDB(t, tt.HorizonDB)
+
+	q := &history.Q{tt.HorizonSession()}
+	handler := &GetAccountsHandler{HistoryQ: q}
+	records, err := handler.GetResourcePage(makeRequest(t, map[string]string{
+		"signer": "GCXKG6RN4ONIEPCMNFB732A436Z5PNDSRLGWK7GBLCMQLIFO4S7EYWVU",
+	}))
+	tt.Assert.NoError(err)
+	tt.Assert.Len(records, 0)
+}
+
+func TestGetAccountsHandlerPageResults(t *testing.T) {
+	tt := test.Start(t)
+	defer tt.Finish()
+	test.ResetHorizonDB(t, tt.HorizonDB)
+
+	q := &history.Q{tt.HorizonSession()}
+	handler := &GetAccountsHandler{HistoryQ: q}
+
+	rows := []history.AccountSigner{
+		history.AccountSigner{
+			Account: "GABGMPEKKDWR2WFH5AJOZV5PDKLJEHGCR3Q24ALETWR5H3A7GI3YTS7V",
+			Signer:  "GCXKG6RN4ONIEPCMNFB732A436Z5PNDSRLGWK7GBLCMQLIFO4S7EYWVU",
+			Weight:  1,
+		},
+		history.AccountSigner{
+			Account: "GADTXHUTHIAESMMQ2ZWSTIIGBZRLHUCBLCHPLLUEIAWDEFRDC4SYDKOZ",
+			Signer:  "GCXKG6RN4ONIEPCMNFB732A436Z5PNDSRLGWK7GBLCMQLIFO4S7EYWVU",
+			Weight:  2,
+		},
+		history.AccountSigner{
+			Account: "GDP347UYM2ZKE6ED6T5OM3BQ5IAS76NKRVEUPNB5PCQ26Z5D7Q7PJOMI",
+			Signer:  "GCXKG6RN4ONIEPCMNFB732A436Z5PNDSRLGWK7GBLCMQLIFO4S7EYWVU",
+			Weight:  3,
+		},
+	}
+
+	for _, row := range rows {
+		q.CreateAccountSigner(row.Account, row.Signer, row.Weight)
+	}
+
+	records, err := handler.GetResourcePage(makeRequest(t, map[string]string{
+		"signer": "GCXKG6RN4ONIEPCMNFB732A436Z5PNDSRLGWK7GBLCMQLIFO4S7EYWVU",
+	}))
+
+	assert.NoError(t, err)
+	assert.Equal(t, 3, len(records))
+
+	for i, row := range rows {
+		result := records[i].(protocol.AccountSigner)
 		assert.Equal(t, row.Account, result.AccountID)
 		assert.Equal(t, row.Signer, result.Signer.Key)
 		assert.Equal(t, row.Weight, result.Signer.Weight)

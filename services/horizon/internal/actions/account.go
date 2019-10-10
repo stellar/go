@@ -2,6 +2,7 @@ package actions
 
 import (
 	"context"
+	"net/http"
 
 	protocol "github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/services/horizon/internal/db2"
@@ -54,13 +55,6 @@ func AccountInfo(ctx context.Context, cq *core.Q, addr string) (*protocol.Accoun
 	return &resource, errors.Wrap(err, "populating account")
 }
 
-// AccountPage returns a page containing the account records that
-// have `signer` as a signer.
-// This doesn't return full account details resource because of the
-// limitations of existing ingestion architecture. In a future, when
-// the new ingestion system is fully integrated, this endpoint can be
-// used to find accounts for signer but also accounts for assets,
-// home domain, inflation_dest etc.
 func AccountPage(ctx context.Context, hq history.QSigners, signer string, pq db2.PageQuery) (hal.Page, error) {
 	records, err := hq.AccountsForSigner(signer, pq)
 	if err != nil {
@@ -82,4 +76,47 @@ func AccountPage(ctx context.Context, hq history.QSigners, signer string, pq db2
 	page.FullURL = FullURL(ctx)
 	page.PopulateLinks()
 	return page, nil
+}
+
+// GetAccountsHandler is the action handler for the /accounts endpoint
+type GetAccountsHandler struct {
+	HistoryQ *history.Q
+}
+
+// GetResourcePage returns a page containing the account records that have
+// `signer` as a signer. This doesn't return full account details resource
+// because of the limitations of existing ingestion architecture. In a future,
+// when the new ingestion system is fully integrated, this endpoint can be used
+// to find accounts for signer but also accounts for assets, home domain,
+// inflation_dest etc.
+func (handler GetAccountsHandler) GetResourcePage(r *http.Request) ([]hal.Pageable, error) {
+	ctx := r.Context()
+
+	signer, err := GetAccountID(r, "signer")
+
+	if err != nil {
+		return nil, err
+	}
+
+	pq, err := GetPageQuery(r)
+
+	if err != nil {
+		return nil, err
+	}
+
+	records, err := handler.HistoryQ.AccountsForSigner(signer.Address(), pq)
+
+	if err != nil {
+		return nil, errors.Wrap(err, "loading account records")
+	}
+
+	var accounts []hal.Pageable
+
+	for _, record := range records {
+		var res protocol.AccountSigner
+		resourceadapter.PopulateAccountSigner(ctx, &res, record)
+		accounts = append(accounts, res)
+	}
+
+	return accounts, nil
 }
