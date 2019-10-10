@@ -241,3 +241,39 @@ func Test_ingestPathPaymentStrictSend(t *testing.T) {
 		tt.Assert.Equal("native", tradeDetails.SoldAssetType)
 	}
 }
+
+func Test_ingestPathPaymentStrictSendTxTooLate(t *testing.T) {
+	tt := test.Start(t).ScenarioWithoutHorizon("paths_strict_send")
+	defer tt.Finish()
+
+	_, err := tt.CoreSession().ExecRaw(
+		`UPDATE txhistory SET txresult = 'aJIrokUPctlM/8KI4lsLiIdqmy/f6fa9J/4xMMbtF54AAAAAAAAAZP////0AAAAA' WHERE txid = ?`,
+		"0a1bb4fc8e39ac99730cc36326c0289621956a6f9d2e92ee927d762a670840cc",
+	)
+	tt.Require.NoError(err)
+
+	s := ingest(tt, Config{EnableAssetStats: false, IngestFailedTransactions: true})
+	tt.Require.NoError(s.Err)
+
+	q := &history.Q{Session: tt.HorizonSession()}
+	ops, _, err := q.Operations().ForAccount("GCXKG6RN4ONIEPCMNFB732A436Z5PNDSRLGWK7GBLCMQLIFO4S7EYWVU").IncludeFailed().Fetch()
+	tt.Require.NoError(err)
+	if tt.Assert.Len(ops, 6) {
+		tt.Assert.Equal(xdr.OperationTypeCreateAccount, ops[0].Type)
+		tt.Assert.Equal(xdr.OperationTypeChangeTrust, ops[1].Type)
+		tt.Assert.Equal(xdr.OperationTypePayment, ops[2].Type)
+		for i := 3; i < 6; i++ {
+			tt.Assert.Equal(xdr.OperationTypePathPaymentStrictSend, ops[i].Type)
+		}
+	}
+
+	details := struct {
+		Amount         string `json:"amount"`
+		DestinationMin string `json:"destination_min"`
+	}{}
+
+	err = ops[5].UnmarshalDetails(&details)
+	tt.Require.NoError(err)
+	tt.Assert.Equal("0.0000000", details.Amount)
+	tt.Assert.Equal("100.0000000", details.DestinationMin)
+}
