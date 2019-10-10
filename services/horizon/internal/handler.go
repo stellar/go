@@ -246,27 +246,6 @@ func getAccountID(r *http.Request, key string, required bool) (string, error) {
 	return val, nil
 }
 
-// getSignerKey retrieves the signer key by the provided key. The key is
-// usually "signer". The function would return an error if the account id is
-// empty and the required flag is true.
-func getSignerKey(r *http.Request, key string, required bool) (string, error) {
-	val, err := hchi.GetStringFromURL(r, key)
-	if err != nil {
-		return "", err
-	}
-
-	if val == "" && !required {
-		return val, nil
-	}
-
-	version, _, err := strkey.DecodeAny(val)
-	if err != nil || version == strkey.VersionByteSeed {
-		return "", problem.MakeInvalidFieldProblem(key, errors.New("invalid signer"))
-	}
-
-	return val, nil
-}
-
 // getShowActionQueryParams gets the available query params for all non-indexable endpoints.
 func getShowActionQueryParams(r *http.Request, requireAccountID bool) (*showActionQueryParams, error) {
 	txHash, err := hchi.GetStringFromURL(r, "tx_id")
