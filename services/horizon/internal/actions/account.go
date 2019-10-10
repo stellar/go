@@ -74,7 +74,7 @@ func (handler GetAccountsHandler) GetResourcePage(r *http.Request) ([]hal.Pageab
 		return nil, err
 	}
 
-	pq, err := GetPageQuery(r)
+	pq, err := GetPageQuery(r, DisableCursorValidation)
 
 	if err != nil {
 		return nil, err
