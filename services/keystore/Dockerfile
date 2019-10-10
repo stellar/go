@@ -1,0 +1,14 @@
+FROM golang:1.13-stretch as build
+
+ADD . /src/keystore
+WORKDIR /src/keystore
+RUN go build -o /bin/keystored ./services/keystore/cmd/keystored
+
+
+FROM ubuntu:16.04
+
+ADD ./services/keystore/migrations/ /app/migrations/
+COPY --from=build /bin/keystored /app/
+EXPOSE 8000
+ENTRYPOINT ["/app/keystored"]
+CMD ["serve"]
