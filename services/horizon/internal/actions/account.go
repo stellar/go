@@ -5,7 +5,6 @@ import (
 	"net/http"
 
 	protocol "github.com/stellar/go/protocols/horizon"
-	"github.com/stellar/go/services/horizon/internal/db2"
 	"github.com/stellar/go/services/horizon/internal/db2/core"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/services/horizon/internal/resourceadapter"
@@ -53,29 +52,6 @@ func AccountInfo(ctx context.Context, cq *core.Q, addr string) (*protocol.Accoun
 	)
 
 	return &resource, errors.Wrap(err, "populating account")
-}
-
-func AccountPage(ctx context.Context, hq history.QSigners, signer string, pq db2.PageQuery) (hal.Page, error) {
-	records, err := hq.AccountsForSigner(signer, pq)
-	if err != nil {
-		return hal.Page{}, errors.Wrap(err, "loading account records")
-	}
-
-	page := hal.Page{
-		Cursor: pq.Cursor,
-		Order:  pq.Order,
-		Limit:  pq.Limit,
-	}
-
-	for _, record := range records {
-		var res protocol.AccountSigner
-		resourceadapter.PopulateAccountSigner(ctx, &res, record)
-		page.Add(res)
-	}
-
-	page.FullURL = FullURL(ctx)
-	page.PopulateLinks()
-	return page, nil
 }
 
 // GetAccountsHandler is the action handler for the /accounts endpoint

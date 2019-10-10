@@ -182,16 +182,6 @@ func (w *web) getAccountInfo(ctx context.Context, qp *showActionQueryParams) (in
 	return actions.AccountInfo(ctx, &core.Q{w.coreSession(ctx)}, qp.AccountID)
 }
 
-// getAccountPage returns a page containing the account records.
-func (w *web) getAccountPage(ctx context.Context, qp *indexActionQueryParams) (interface{}, error) {
-	horizonSession, err := w.horizonSession(ctx)
-	if err != nil {
-		return nil, errors.Wrap(err, "getting horizon db session")
-	}
-
-	return actions.AccountPage(ctx, &history.Q{horizonSession}, qp.Signer, qp.PagingParams)
-}
-
 // getTransactionPage returns a page containing the transaction records of an account or a ledger.
 func (w *web) getTransactionPage(ctx context.Context, qp *indexActionQueryParams) (interface{}, error) {
 	horizonSession, err := w.horizonSession(ctx)

@@ -1,13 +1,9 @@
 package actions
 
 import (
-	"context"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
-
 	protocol "github.com/stellar/go/protocols/horizon"
-	"github.com/stellar/go/services/horizon/internal/db2"
 	"github.com/stellar/go/services/horizon/internal/db2/core"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/services/horizon/internal/test"
@@ -31,83 +27,6 @@ func TestAccountInfo(t *testing.T) {
 		}
 	}
 }
-
-func TestAccountPageNoResults(t *testing.T) {
-	mockQ := &history.MockQSigners{}
-
-	mockQ.On("GetLastLedgerExpIngestNonBlocking").Return(uint32(10), nil).Once()
-
-	mockQ.
-		On(
-			"AccountsForSigner",
-			"GCXKG6RN4ONIEPCMNFB732A436Z5PNDSRLGWK7GBLCMQLIFO4S7EYWVU",
-			db2.PageQuery{},
-		).
-		Return([]history.AccountSigner{}, nil).Once()
-
-	page, err := AccountPage(
-		context.Background(),
-		mockQ,
-		"GCXKG6RN4ONIEPCMNFB732A436Z5PNDSRLGWK7GBLCMQLIFO4S7EYWVU",
-		db2.PageQuery{},
-	)
-	assert.NoError(t, err)
-	assert.Equal(t, 0, len(page.Embedded.Records))
-}
-
-func TestAccountPageResults(t *testing.T) {
-	mockQ := &history.MockQSigners{}
-
-	mockQ.On("GetLastLedgerExpIngestNonBlocking").Return(uint32(10), nil).Once()
-
-	pq := db2.PageQuery{
-		Order: "asc",
-		Limit: 100,
-	}
-
-	rows := []history.AccountSigner{
-		history.AccountSigner{
-			Account: "GABGMPEKKDWR2WFH5AJOZV5PDKLJEHGCR3Q24ALETWR5H3A7GI3YTS7V",
-			Signer:  "GCXKG6RN4ONIEPCMNFB732A436Z5PNDSRLGWK7GBLCMQLIFO4S7EYWVU",
-			Weight:  1,
-		},
-		history.AccountSigner{
-			Account: "GADTXHUTHIAESMMQ2ZWSTIIGBZRLHUCBLCHPLLUEIAWDEFRDC4SYDKOZ",
-			Signer:  "GCXKG6RN4ONIEPCMNFB732A436Z5PNDSRLGWK7GBLCMQLIFO4S7EYWVU",
-			Weight:  2,
-		},
-		history.AccountSigner{
-			Account: "GDP347UYM2ZKE6ED6T5OM3BQ5IAS76NKRVEUPNB5PCQ26Z5D7Q7PJOMI",
-			Signer:  "GCXKG6RN4ONIEPCMNFB732A436Z5PNDSRLGWK7GBLCMQLIFO4S7EYWVU",
-			Weight:  3,
-		},
-	}
-
-	mockQ.
-		On(
-			"AccountsForSigner",
-			"GCXKG6RN4ONIEPCMNFB732A436Z5PNDSRLGWK7GBLCMQLIFO4S7EYWVU",
-			pq,
-		).
-		Return(rows, nil).Once()
-
-	page, err := AccountPage(
-		context.Background(),
-		mockQ,
-		"GCXKG6RN4ONIEPCMNFB732A436Z5PNDSRLGWK7GBLCMQLIFO4S7EYWVU",
-		pq,
-	)
-	assert.NoError(t, err)
-	assert.Equal(t, 3, len(page.Embedded.Records))
-
-	for i, row := range rows {
-		result := page.Embedded.Records[i].(protocol.AccountSigner)
-		assert.Equal(t, row.Account, result.AccountID)
-		assert.Equal(t, row.Signer, result.Signer.Key)
-		assert.Equal(t, row.Weight, result.Signer.Weight)
-	}
-}
-
 func TestGetAccountsHandlerPageNoResults(t *testing.T) {
 	tt := test.Start(t)
 	defer tt.Finish()
@@ -156,13 +75,13 @@ func TestGetAccountsHandlerPageResults(t *testing.T) {
 		"signer": "GCXKG6RN4ONIEPCMNFB732A436Z5PNDSRLGWK7GBLCMQLIFO4S7EYWVU",
 	}))
 
-	assert.NoError(t, err)
-	assert.Equal(t, 3, len(records))
+	tt.Assert.NoError(err)
+	tt.Assert.Equal(3, len(records))
 
 	for i, row := range rows {
 		result := records[i].(protocol.AccountSigner)
-		assert.Equal(t, row.Account, result.AccountID)
-		assert.Equal(t, row.Signer, result.Signer.Key)
-		assert.Equal(t, row.Weight, result.Signer.Weight)
+		tt.Assert.Equal(row.Account, result.AccountID)
+		tt.Assert.Equal(row.Signer, result.Signer.Key)
+		tt.Assert.Equal(row.Weight, result.Signer.Weight)
 	}
 }
