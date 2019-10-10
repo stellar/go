@@ -288,8 +288,13 @@ func (w *web) mustInstallActions(
 	}
 	installPathFindingRoutes(findPaths, findFixedPaths, w.router, config.EnableExperimentalIngestion)
 
-	if config.EnableAssetStats {
-		// Asset related endpoints
+	if config.EnableExperimentalIngestion {
+		r.With(requiresExperimentalIngestion).Method(
+			http.MethodGet,
+			"/assets",
+			restPageHandler(actions.AssetStatsHandler{}),
+		)
+	} else if config.EnableAssetStats {
 		r.Get("/assets", AssetsAction{}.Handle)
 	}
 

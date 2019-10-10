@@ -367,6 +367,13 @@ func (base *Base) GetAddress(name string, opts ...Opt) (result string) {
 	return result
 }
 
+func parseAccountID(value string) (xdr.AccountId, error) {
+	result := xdr.AccountId{}
+	err := result.SetAddress(value)
+
+	return result, err
+}
+
 // GetAccountID retireves an xdr.AccountID by attempting to decode a stellar
 // address at the provided name.
 func GetAccountID(r *http.Request, name string) (xdr.AccountId, error) {
@@ -375,8 +382,8 @@ func GetAccountID(r *http.Request, name string) (xdr.AccountId, error) {
 		return xdr.AccountId{}, err
 	}
 
-	result := xdr.AccountId{}
-	if err := result.SetAddress(value); err != nil {
+	result, err := parseAccountID(value)
+	if err != nil {
 		return result, problem.MakeInvalidFieldProblem(
 			name,
 			errors.New("invalid address"),
@@ -563,15 +570,15 @@ func GetAssets(r *http.Request, name string) ([]xdr.Asset, error) {
 				)
 			}
 
-			issuer := xdr.AccountId{}
-			if err := issuer.SetAddress(parts[1]); err != nil {
+			issuer, err := parseAccountID(parts[1])
+			if err != nil {
 				return nil, problem.MakeInvalidFieldProblem(
 					name,
 					fmt.Errorf("%s is not a valid asset, it contains an invalid issuer", assetString),
 				)
 			}
 
-			if err := asset.SetCredit(string(code), issuer); err != nil {
+			if err := asset.SetCredit(code, issuer); err != nil {
 				return nil, problem.MakeInvalidFieldProblem(
 					name,
 					fmt.Errorf("%s is not a valid asset", assetString),
