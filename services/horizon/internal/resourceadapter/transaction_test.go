@@ -53,5 +53,6 @@ func TestPopulateTransaction_Fee(t *testing.T) {
 	row = history.Transaction{MaxFee: 10000, FeeCharged: 100}
 
 	PopulateTransaction(ctx, &dest, row)
-	assert.Equal(t, int32(100), dest.FeePaid)
+	assert.Equal(t, int32(100), dest.FeeCharged)
+	assert.Equal(t, int32(10000), dest.MaxFee)
 }
