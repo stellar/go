@@ -223,31 +223,6 @@ func showActionHandler(jfn interface{}) http.HandlerFunc {
 	})
 }
 
-// accountIndexActionHandler handles /accounts index endpoints.
-func accountIndexActionHandler(jfn interface{}) http.HandlerFunc {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		ctx := r.Context()
-		contentType := render.Negotiate(r)
-		if jfn == nil || (contentType != render.MimeHal && contentType != render.MimeJSON) {
-			problem.Render(ctx, w, hProblem.NotAcceptable)
-			return
-		}
-
-		params, err := getAccountsIndexActionQueryParams(r)
-		if err != nil {
-			problem.Render(ctx, w, err)
-			return
-		}
-
-		h, err := hal.Handler(jfn, params)
-		if err != nil {
-			panic(err)
-		}
-
-		h.ServeHTTP(w, r)
-	})
-}
-
 // getAccountID retrieves the account id by the provided key. The key is
 // usually "account_id", "source_account", and "destination_account". The
 // function would return an error if the account id is empty and the required
@@ -271,27 +246,6 @@ func getAccountID(r *http.Request, key string, required bool) (string, error) {
 	return val, nil
 }
 
-// getSignerKey retrieves the signer key by the provided key. The key is
-// usually "signer". The function would return an error if the account id is
-// empty and the required flag is true.
-func getSignerKey(r *http.Request, key string, required bool) (string, error) {
-	val, err := hchi.GetStringFromURL(r, key)
-	if err != nil {
-		return "", err
-	}
-
-	if val == "" && !required {
-		return val, nil
-	}
-
-	version, _, err := strkey.DecodeAny(val)
-	if err != nil || version == strkey.VersionByteSeed {
-		return "", problem.MakeInvalidFieldProblem(key, errors.New("invalid signer"))
-	}
-
-	return val, nil
-}
-
 // getShowActionQueryParams gets the available query params for all non-indexable endpoints.
 func getShowActionQueryParams(r *http.Request, requireAccountID bool) (*showActionQueryParams, error) {
 	txHash, err := hchi.GetStringFromURL(r, "tx_id")
@@ -307,24 +261,6 @@ func getShowActionQueryParams(r *http.Request, requireAccountID bool) (*showActi
 	return &showActionQueryParams{
 		AccountID: addr,
 		TxHash:    txHash,
-	}, nil
-}
-
-// getAccountsIndexActionQueryParams gets the available query params for /accounts endpoints.
-func getAccountsIndexActionQueryParams(r *http.Request) (*indexActionQueryParams, error) {
-	signer, err := getSignerKey(r, "signer", true)
-	if err != nil {
-		return nil, errors.Wrap(err, "getting signer key")
-	}
-
-	pq, err := getAccountsPageQuery(r)
-	if err != nil {
-		return nil, errors.Wrap(err, "getting page query")
-	}
-
-	return &indexActionQueryParams{
-		Signer:       signer,
-		PagingParams: pq,
 	}, nil
 }
 
@@ -556,7 +492,9 @@ func (handler pageActionHandler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 }
 
 func buildPage(r *http.Request, records []hal.Pageable) (hal.Page, error) {
-	pageQuery, err := actions.GetPageQuery(r)
+	// Always DisableCursorValidation - we can assume it's valid since the
+	// validation is done in GetResourcePage.
+	pageQuery, err := actions.GetPageQuery(r, actions.DisableCursorValidation)
 	if err != nil {
 		return hal.Page{}, err
 	}

@@ -2,6 +2,7 @@ package horizon
 
 import (
 	"encoding/json"
+	"fmt"
 	"testing"
 
 	"github.com/stellar/go/protocols/horizon"
@@ -37,18 +38,6 @@ func TestAccountActions_Show(t *testing.T) {
 	// missing account
 	w = ht.Get("/accounts/GDBAPLDCAEJV6LSEDFEAUDAVFYSNFRUYZ4X75YYJJMMX5KFVUOHX46SQ")
 	ht.Assert.Equal(404, w.Code)
-}
-
-func TestAccountActionsStillIngesting_Show(t *testing.T) {
-	ht := StartHTTPTest(t, "base")
-	ht.App.config.EnableExperimentalIngestion = true
-
-	defer ht.Finish()
-	q := &history.Q{ht.HorizonSession()}
-	ht.Assert.NoError(q.UpdateLastLedgerExpIngest(0))
-
-	w := ht.Get("/accounts?signer=GDBAPLDCAEJV6LSEDFEAUDAVFYSNFRUYZ4X75YYJJMMX5KFVUOHX46SQ")
-	ht.Assert.Equal(problem.StillIngesting.Status, w.Code)
 }
 
 func TestAccountActions_ShowRegressions(t *testing.T) {
@@ -89,4 +78,34 @@ func TestAccountActions_InvalidID(t *testing.T) {
 		"/accounts/=cr%FF%98%CB%F3%AF%E72%D85%FE%28%15y%8Fz%C4Ng%CE%98h%02%2A:%B6%FF%B9%CF%92%88O%91%10d&S%7C%9Bi%D4%CFI%28%CFo",
 	)
 	ht.Assert.Equal(400, w.Code)
+}
+
+func TestAccountActionsStillIngesting_Index(t *testing.T) {
+	ht := StartHTTPTest(t, "base")
+	ht.App.config.EnableExperimentalIngestion = true
+
+	defer ht.Finish()
+	q := &history.Q{ht.HorizonSession()}
+	ht.Assert.NoError(q.UpdateLastLedgerExpIngest(0))
+
+	w := ht.Get("/accounts?signer=GDBAPLDCAEJV6LSEDFEAUDAVFYSNFRUYZ4X75YYJJMMX5KFVUOHX46SQ")
+	ht.Assert.Equal(problem.StillIngesting.Status, w.Code)
+}
+
+func TestAccountActions_Index(t *testing.T) {
+	ht := StartHTTPTest(t, "base")
+	ht.App.config.EnableExperimentalIngestion = true
+
+	defer ht.Finish()
+	q := &history.Q{ht.HorizonSession()}
+	ht.Assert.NoError(q.UpdateLastLedgerExpIngest(3))
+
+	w := ht.Get("/accounts?cursor=GDRREYWHQWJDICNH4SAH4TT2JRBYRPTDYIMLK4UWBDT3X3ZVVYT6I4UQ&limit=10&order=asc&signer=GDRREYWHQWJDICNH4SAH4TT2JRBYRPTDYIMLK4UWBDT3X3ZVVYT6I4UQ")
+
+	fmt.Println(w.Body.String())
+	if ht.Assert.Equal(200, w.Code) {
+		records := []horizon.AccountSigner{}
+		ht.UnmarshalPage(w.Body, &records)
+		ht.Assert.Len(records, 0)
+	}
 }

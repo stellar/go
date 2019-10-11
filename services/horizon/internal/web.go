@@ -184,7 +184,11 @@ func (w *web) mustInstallActions(
 	// account actions
 	r.Route("/accounts", func(r chi.Router) {
 		r.With(requiresExperimentalIngestion).
-			Get("/", accountIndexActionHandler(w.getAccountPage))
+			Method(
+				http.MethodGet,
+				"/",
+				restPageHandler(actions.GetAccountsHandler{HistoryQ: w.historyQ}),
+			)
 		r.Route("/{account_id}", func(r chi.Router) {
 			r.Get("/", w.streamShowActionHandler(w.getAccountInfo, true))
 			r.Get("/transactions", w.streamIndexActionHandler(w.getTransactionPage, w.streamTransactions))

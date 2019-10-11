@@ -1,15 +1,12 @@
 package actions
 
 import (
-	"context"
 	"testing"
 
 	protocol "github.com/stellar/go/protocols/horizon"
-	"github.com/stellar/go/services/horizon/internal/db2"
 	"github.com/stellar/go/services/horizon/internal/db2/core"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/services/horizon/internal/test"
-	"github.com/stretchr/testify/assert"
 )
 
 func TestAccountInfo(t *testing.T) {
@@ -30,39 +27,27 @@ func TestAccountInfo(t *testing.T) {
 		}
 	}
 }
+func TestGetAccountsHandlerPageNoResults(t *testing.T) {
+	tt := test.Start(t)
+	defer tt.Finish()
+	test.ResetHorizonDB(t, tt.HorizonDB)
 
-func TestAccountPageNoResults(t *testing.T) {
-	mockQ := &history.MockQSigners{}
-
-	mockQ.On("GetLastLedgerExpIngestNonBlocking").Return(uint32(10), nil).Once()
-
-	mockQ.
-		On(
-			"AccountsForSigner",
-			"GCXKG6RN4ONIEPCMNFB732A436Z5PNDSRLGWK7GBLCMQLIFO4S7EYWVU",
-			db2.PageQuery{},
-		).
-		Return([]history.AccountSigner{}, nil).Once()
-
-	page, err := AccountPage(
-		context.Background(),
-		mockQ,
-		"GCXKG6RN4ONIEPCMNFB732A436Z5PNDSRLGWK7GBLCMQLIFO4S7EYWVU",
-		db2.PageQuery{},
-	)
-	assert.NoError(t, err)
-	assert.Equal(t, 0, len(page.Embedded.Records))
+	q := &history.Q{tt.HorizonSession()}
+	handler := &GetAccountsHandler{HistoryQ: q}
+	records, err := handler.GetResourcePage(makeRequest(t, map[string]string{
+		"signer": "GCXKG6RN4ONIEPCMNFB732A436Z5PNDSRLGWK7GBLCMQLIFO4S7EYWVU",
+	}, map[string]string{}))
+	tt.Assert.NoError(err)
+	tt.Assert.Len(records, 0)
 }
 
-func TestAccountPageResults(t *testing.T) {
-	mockQ := &history.MockQSigners{}
+func TestGetAccountsHandlerPageResults(t *testing.T) {
+	tt := test.Start(t)
+	defer tt.Finish()
+	test.ResetHorizonDB(t, tt.HorizonDB)
 
-	mockQ.On("GetLastLedgerExpIngestNonBlocking").Return(uint32(10), nil).Once()
-
-	pq := db2.PageQuery{
-		Order: "asc",
-		Limit: 100,
-	}
+	q := &history.Q{tt.HorizonSession()}
+	handler := &GetAccountsHandler{HistoryQ: q}
 
 	rows := []history.AccountSigner{
 		history.AccountSigner{
@@ -82,27 +67,21 @@ func TestAccountPageResults(t *testing.T) {
 		},
 	}
 
-	mockQ.
-		On(
-			"AccountsForSigner",
-			"GCXKG6RN4ONIEPCMNFB732A436Z5PNDSRLGWK7GBLCMQLIFO4S7EYWVU",
-			pq,
-		).
-		Return(rows, nil).Once()
+	for _, row := range rows {
+		q.CreateAccountSigner(row.Account, row.Signer, row.Weight)
+	}
 
-	page, err := AccountPage(
-		context.Background(),
-		mockQ,
-		"GCXKG6RN4ONIEPCMNFB732A436Z5PNDSRLGWK7GBLCMQLIFO4S7EYWVU",
-		pq,
-	)
-	assert.NoError(t, err)
-	assert.Equal(t, 3, len(page.Embedded.Records))
+	records, err := handler.GetResourcePage(makeRequest(t, map[string]string{
+		"signer": "GCXKG6RN4ONIEPCMNFB732A436Z5PNDSRLGWK7GBLCMQLIFO4S7EYWVU",
+	}, map[string]string{}))
+
+	tt.Assert.NoError(err)
+	tt.Assert.Equal(3, len(records))
 
 	for i, row := range rows {
-		result := page.Embedded.Records[i].(protocol.AccountSigner)
-		assert.Equal(t, row.Account, result.AccountID)
-		assert.Equal(t, row.Signer, result.Signer.Key)
-		assert.Equal(t, row.Weight, result.Signer.Weight)
+		result := records[i].(protocol.AccountSigner)
+		tt.Assert.Equal(row.Account, result.AccountID)
+		tt.Assert.Equal(row.Signer, result.Signer.Key)
+		tt.Assert.Equal(row.Weight, result.Signer.Weight)
 	}
 }
