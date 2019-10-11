@@ -135,7 +135,10 @@ type testPageAction struct {
 	ledgerSource ledger.Source
 }
 
-func (action *testPageAction) GetResourcePage(r *http.Request) ([]hal.Pageable, error) {
+func (action *testPageAction) GetResourcePage(
+	r *http.Request,
+	w actions.HeaderWriter,
+) ([]hal.Pageable, error) {
 	objects, ok := action.objects[action.ledgerSource.CurrentLedger()]
 	if !ok {
 		return nil, fmt.Errorf("unexpected ledger")
@@ -357,7 +360,10 @@ type testObjectAction struct {
 	ledgerSource ledger.Source
 }
 
-func (action *testObjectAction) GetResource(r *http.Request) (actions.StreamableObjectResponse, error) {
+func (action *testObjectAction) GetResource(
+	r *http.Request,
+	w actions.HeaderWriter,
+) (actions.StreamableObjectResponse, error) {
 	ledger := action.ledgerSource.CurrentLedger()
 	object, ok := action.objects[ledger]
 	if !ok {

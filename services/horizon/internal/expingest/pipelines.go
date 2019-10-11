@@ -250,7 +250,7 @@ func postProcessingHook(
 		}
 	}
 
-	err = graph.Apply()
+	err = graph.Apply(ledgerSeq)
 	if err != nil {
 		return errors.Wrap(err, "Error applying order book changes")
 	}

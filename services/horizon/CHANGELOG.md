@@ -8,6 +8,8 @@ bumps.  A breaking change will get clearly notified in this log.
 
 ## v0.23.0
 
+* Add `Latest-Ledger` header with the sequence number of the last processed ledger by the experimental ingestion system. The endpoints built using the experimental ingestion system will always respond with data which is consistent with the ledger in `Latest-Ledger`.
+
 ### Breaking Changes
 
 * Remove deprecated `fee_paid` field on Transaction resource. Please use new fields added in 0.18.0: `max_fee` that defines the maximum fee the source account is willing to pay and `fee_charged` that defines the fee that was actually paid for a transaction. See [CAP-0005](https://github.com/stellar/stellar-protocol/blob/master/core/cap-0005.md) for more information.

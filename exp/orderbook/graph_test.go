@@ -301,6 +301,33 @@ func TestRemoveEdgeSet(t *testing.T) {
 	})
 }
 
+func TestApplyOutdatedLedger(t *testing.T) {
+	graph := NewOrderBookGraph()
+	if graph.lastLedger != 0 {
+		t.Fatalf("expected last ledger to be %v but got %v", 0, graph.lastLedger)
+	}
+
+	err := graph.
+		AddOffer(fiftyCentsOffer).
+		Apply(2)
+	if err != nil {
+		t.Fatalf("unexpected error %v", err)
+	}
+	if graph.lastLedger != 2 {
+		t.Fatalf("expected last ledger to be %v but got %v", 2, graph.lastLedger)
+	}
+
+	err = graph.
+		AddOffer(eurOffer).
+		Apply(1)
+	if err != errOutdatedLedger {
+		t.Fatalf("expected error %v but got %v", errOutdatedLedger, err)
+	}
+	if graph.lastLedger != 2 {
+		t.Fatalf("expected last ledger to be %v but got %v", 2, graph.lastLedger)
+	}
+}
+
 func TestAddOfferOrderBook(t *testing.T) {
 	graph := NewOrderBookGraph()
 
@@ -311,9 +338,12 @@ func TestAddOfferOrderBook(t *testing.T) {
 		AddOffer(twoEurOffer).
 		AddOffer(quarterOffer).
 		AddOffer(fiftyCentsOffer).
-		Apply()
+		Apply(1)
 	if err != nil {
 		t.Fatalf("unexpected error %v", err)
+	}
+	if graph.lastLedger != 1 {
+		t.Fatalf("expected last ledger to be %v but got %v", 1, graph.lastLedger)
 	}
 
 	eurUsdOffer := xdr.OfferEntry{
@@ -355,9 +385,12 @@ func TestAddOfferOrderBook(t *testing.T) {
 		AddOffer(eurUsdOffer).
 		AddOffer(otherEurUsdOffer).
 		AddOffer(usdEurOffer).
-		Apply()
+		Apply(2)
 	if err != nil {
 		t.Fatalf("unexpected error %v", err)
+	}
+	if graph.lastLedger != 2 {
+		t.Fatalf("expected last ledger to be %v but got %v", 2, graph.lastLedger)
 	}
 
 	expectedGraph := &OrderBookGraph{
@@ -432,9 +465,12 @@ func TestAddOfferOrderBook(t *testing.T) {
 		AddOffer(usdEurOffer).
 		AddOffer(dollarOffer).
 		AddOffer(threeEurOffer).
-		Apply()
+		Apply(3)
 	if err != nil {
 		t.Fatalf("unexpected error %v", err)
+	}
+	if graph.lastLedger != 3 {
+		t.Fatalf("expected last ledger to be %v but got %v", 3, graph.lastLedger)
 	}
 
 	assertGraphEquals(t, graph, expectedGraph)
@@ -454,9 +490,12 @@ func TestUpdateOfferOrderBook(t *testing.T) {
 		AddOffer(twoEurOffer).
 		AddOffer(quarterOffer).
 		AddOffer(fiftyCentsOffer).
-		Apply()
+		Apply(1)
 	if err != nil {
 		t.Fatalf("unexpected error %v", err)
+	}
+	if graph.lastLedger != 1 {
+		t.Fatalf("expected last ledger to be %v but got %v", 1, graph.lastLedger)
 	}
 
 	if graph.IsEmpty() {
@@ -502,9 +541,12 @@ func TestUpdateOfferOrderBook(t *testing.T) {
 		AddOffer(eurUsdOffer).
 		AddOffer(otherEurUsdOffer).
 		AddOffer(usdEurOffer).
-		Apply()
+		Apply(2)
 	if err != nil {
 		t.Fatalf("unexpected error %v", err)
+	}
+	if graph.lastLedger != 2 {
+		t.Fatalf("expected last ledger to be %v but got %v", 2, graph.lastLedger)
 	}
 
 	usdEurOffer.Price.N = 4
@@ -519,9 +561,12 @@ func TestUpdateOfferOrderBook(t *testing.T) {
 		AddOffer(usdEurOffer).
 		AddOffer(otherEurUsdOffer).
 		AddOffer(dollarOffer).
-		Apply()
+		Apply(3)
 	if err != nil {
 		t.Fatalf("unexpected error %v", err)
+	}
+	if graph.lastLedger != 3 {
+		t.Fatalf("expected last ledger to be %v but got %v", 3, graph.lastLedger)
 	}
 
 	expectedGraph := &OrderBookGraph{
@@ -604,21 +649,31 @@ func TestDiscard(t *testing.T) {
 		AddOffer(quarterOffer).
 		AddOffer(fiftyCentsOffer).
 		Discard()
-	if err := graph.Apply(); err != nil {
+	if graph.lastLedger != 0 {
+		t.Fatalf("expected last ledger to be %v but got %v", 0, graph.lastLedger)
+	}
+
+	if err := graph.Apply(1); err != nil {
 		t.Fatalf("unexpected error %v", err)
 	}
 	if !graph.IsEmpty() {
 		t.Fatal("expected graph to be empty")
 	}
+	if graph.lastLedger != 1 {
+		t.Fatalf("expected last ledger to be %v but got %v", 1, graph.lastLedger)
+	}
 
 	err := graph.
 		AddOffer(dollarOffer).
-		Apply()
+		Apply(2)
 	if err != nil {
 		t.Fatalf("unexpected error %v", err)
 	}
 	if graph.IsEmpty() {
 		t.Fatal("expected graph to be not empty")
+	}
+	if graph.lastLedger != 2 {
+		t.Fatalf("expected last ledger to be %v but got %v", 2, graph.lastLedger)
 	}
 
 	expectedOffers := []xdr.OfferEntry{dollarOffer}
@@ -638,9 +693,12 @@ func TestRemoveOfferOrderBook(t *testing.T) {
 		AddOffer(twoEurOffer).
 		AddOffer(quarterOffer).
 		AddOffer(fiftyCentsOffer).
-		Apply()
+		Apply(1)
 	if err != nil {
 		t.Fatalf("unexpected error %v", err)
+	}
+	if graph.lastLedger != 1 {
+		t.Fatalf("expected last ledger to be %v but got %v", 1, graph.lastLedger)
 	}
 
 	eurUsdOffer := xdr.OfferEntry{
@@ -685,9 +743,12 @@ func TestRemoveOfferOrderBook(t *testing.T) {
 		RemoveOffer(usdEurOffer.OfferId).
 		RemoveOffer(otherEurUsdOffer.OfferId).
 		RemoveOffer(dollarOffer.OfferId).
-		Apply()
+		Apply(2)
 	if err != nil {
 		t.Fatalf("unexpected error %v", err)
+	}
+	if graph.lastLedger != 2 {
+		t.Fatalf("expected last ledger to be %v but got %v", 2, graph.lastLedger)
 	}
 
 	expectedGraph := &OrderBookGraph{
@@ -746,9 +807,12 @@ func TestRemoveOfferOrderBook(t *testing.T) {
 		RemoveOffer(twoEurOffer.OfferId).
 		RemoveOffer(threeEurOffer.OfferId).
 		RemoveOffer(eurUsdOffer.OfferId).
-		Apply()
+		Apply(3)
 	if err != nil {
 		t.Fatalf("unexpected error %v", err)
+	}
+	if graph.lastLedger != 3 {
+		t.Fatalf("expected last ledger to be %v but got %v", 3, graph.lastLedger)
 	}
 
 	expectedGraph.edgesForSellingAsset = map[string]edgeSet{}
@@ -779,7 +843,7 @@ func TestFindOffers(t *testing.T) {
 		AddOffer(threeEurOffer).
 		AddOffer(eurOffer).
 		AddOffer(twoEurOffer).
-		Apply()
+		Apply(1)
 	if err != nil {
 		t.Fatalf("unexpected error %v", err)
 	}
@@ -802,7 +866,7 @@ func TestFindOffers(t *testing.T) {
 		graph.AddOffer(otherTwoEurOffer)
 		extraTwoEurOffers = append(extraTwoEurOffers, otherTwoEurOffer)
 	}
-	if err := graph.Apply(); err != nil {
+	if err := graph.Apply(2); err != nil {
 		t.Fatalf("unexpected error %v", err)
 	}
 
@@ -821,7 +885,7 @@ func TestFindOffers(t *testing.T) {
 func TestFindAsksAndBids(t *testing.T) {
 	graph := NewOrderBookGraph()
 
-	asks, bids := graph.FindAsksAndBids(nativeAsset, eurAsset, 0)
+	asks, bids, lastLedger := graph.FindAsksAndBids(nativeAsset, eurAsset, 0)
 	assertOfferListEquals(
 		t,
 		[]xdr.OfferEntry{},
@@ -832,8 +896,11 @@ func TestFindAsksAndBids(t *testing.T) {
 		[]xdr.OfferEntry{},
 		bids,
 	)
+	if lastLedger != 0 {
+		t.Fatalf("expected last ledger to be %v but got %v", 0, lastLedger)
+	}
 
-	asks, bids = graph.FindAsksAndBids(nativeAsset, eurAsset, 5)
+	asks, bids, lastLedger = graph.FindAsksAndBids(nativeAsset, eurAsset, 5)
 	assertOfferListEquals(
 		t,
 		[]xdr.OfferEntry{},
@@ -844,17 +911,20 @@ func TestFindAsksAndBids(t *testing.T) {
 		[]xdr.OfferEntry{},
 		bids,
 	)
+	if lastLedger != 0 {
+		t.Fatalf("expected last ledger to be %v but got %v", 0, lastLedger)
+	}
 
 	err := graph.
 		AddOffer(threeEurOffer).
 		AddOffer(eurOffer).
 		AddOffer(twoEurOffer).
-		Apply()
+		Apply(1)
 	if err != nil {
 		t.Fatalf("unexpected error %v", err)
 	}
 
-	asks, bids = graph.FindAsksAndBids(nativeAsset, eurAsset, 0)
+	asks, bids, lastLedger = graph.FindAsksAndBids(nativeAsset, eurAsset, 0)
 	assertOfferListEquals(
 		t,
 		[]xdr.OfferEntry{},
@@ -865,6 +935,9 @@ func TestFindAsksAndBids(t *testing.T) {
 		[]xdr.OfferEntry{},
 		bids,
 	)
+	if lastLedger != 1 {
+		t.Fatalf("expected last ledger to be %v but got %v", 1, lastLedger)
+	}
 
 	extraTwoEurOffers := []xdr.OfferEntry{}
 	for i := 0; i < 4; i++ {
@@ -873,18 +946,18 @@ func TestFindAsksAndBids(t *testing.T) {
 		graph.AddOffer(otherTwoEurOffer)
 		extraTwoEurOffers = append(extraTwoEurOffers, otherTwoEurOffer)
 	}
-	if err := graph.Apply(); err != nil {
+	if err := graph.Apply(2); err != nil {
 		t.Fatalf("unexpected error %v", err)
 	}
 
 	sellEurOffer := twoEurOffer
 	sellEurOffer.Buying, sellEurOffer.Selling = sellEurOffer.Selling, sellEurOffer.Buying
 	sellEurOffer.OfferId = 35
-	if err := graph.AddOffer(sellEurOffer).Apply(); err != nil {
+	if err := graph.AddOffer(sellEurOffer).Apply(3); err != nil {
 		t.Fatalf("unexpected error %v", err)
 	}
 
-	asks, bids = graph.FindAsksAndBids(nativeAsset, eurAsset, 3)
+	asks, bids, lastLedger = graph.FindAsksAndBids(nativeAsset, eurAsset, 3)
 	assertOfferListEquals(
 		t,
 		append(append([]xdr.OfferEntry{eurOffer, twoEurOffer}, extraTwoEurOffers...), threeEurOffer),
@@ -895,6 +968,9 @@ func TestFindAsksAndBids(t *testing.T) {
 		[]xdr.OfferEntry{sellEurOffer},
 		bids,
 	)
+	if lastLedger != 3 {
+		t.Fatalf("expected last ledger to be %v but got %v", 3, lastLedger)
+	}
 }
 
 func TestConsumeOffersForSellingAsset(t *testing.T) {
@@ -1337,7 +1413,7 @@ func TestFindPaths(t *testing.T) {
 		AddOffer(twoEurOffer).
 		AddOffer(quarterOffer).
 		AddOffer(fiftyCentsOffer).
-		Apply()
+		Apply(1)
 	if err != nil {
 		t.Fatalf("unexpected error %v", err)
 	}
@@ -1407,7 +1483,7 @@ func TestFindPaths(t *testing.T) {
 		AddOffer(usdEurOffer).
 		AddOffer(chfEurOffer).
 		AddOffer(yenChfOffer).
-		Apply()
+		Apply(2)
 	if err != nil {
 		t.Fatalf("unexpected error %v", err)
 	}
@@ -1418,7 +1494,7 @@ func TestFindPaths(t *testing.T) {
 	}
 	ignoreOffersFrom := xdr.MustAddress(kp.Address())
 
-	paths, err := graph.FindPaths(
+	paths, lastLedger, err := graph.FindPaths(
 		3,
 		nativeAsset,
 		20,
@@ -1438,8 +1514,11 @@ func TestFindPaths(t *testing.T) {
 		t.Fatalf("unexpected error %v", err)
 	}
 	assertPathEquals(t, paths, []Path{})
+	if lastLedger != 2 {
+		t.Fatalf("expected last ledger to be %v but got %v", 2, lastLedger)
+	}
 
-	paths, err = graph.FindPaths(
+	paths, lastLedger, err = graph.FindPaths(
 		3,
 		nativeAsset,
 		20,
@@ -1457,6 +1536,9 @@ func TestFindPaths(t *testing.T) {
 	)
 	if err != nil {
 		t.Fatalf("unexpected error %v", err)
+	}
+	if lastLedger != 2 {
+		t.Fatalf("expected last ledger to be %v but got %v", 2, lastLedger)
 	}
 
 	expectedPaths := []Path{
@@ -1490,7 +1572,7 @@ func TestFindPaths(t *testing.T) {
 
 	assertPathEquals(t, paths, expectedPaths)
 
-	paths, err = graph.FindPaths(
+	paths, lastLedger, err = graph.FindPaths(
 		3,
 		nativeAsset,
 		20,
@@ -1510,8 +1592,11 @@ func TestFindPaths(t *testing.T) {
 		t.Fatalf("unexpected error %v", err)
 	}
 	assertPathEquals(t, paths, expectedPaths)
+	if lastLedger != 2 {
+		t.Fatalf("expected last ledger to be %v but got %v", 2, lastLedger)
+	}
 
-	paths, err = graph.FindPaths(
+	paths, lastLedger, err = graph.FindPaths(
 		4,
 		nativeAsset,
 		20,
@@ -1527,6 +1612,9 @@ func TestFindPaths(t *testing.T) {
 		true,
 		5,
 	)
+	if lastLedger != 2 {
+		t.Fatalf("expected last ledger to be %v but got %v", 2, lastLedger)
+	}
 
 	expectedPaths = []Path{
 		Path{
@@ -1574,7 +1662,7 @@ func TestFindPaths(t *testing.T) {
 
 	assertPathEquals(t, paths, expectedPaths)
 
-	paths, err = graph.FindPaths(
+	paths, lastLedger, err = graph.FindPaths(
 		4,
 		nativeAsset,
 		20,
@@ -1590,6 +1678,9 @@ func TestFindPaths(t *testing.T) {
 		true,
 		5,
 	)
+	if lastLedger != 2 {
+		t.Fatalf("expected last ledger to be %v but got %v", 2, lastLedger)
+	}
 
 	expectedPaths = []Path{
 		Path{
@@ -1648,7 +1739,7 @@ func TestFindPathsStartingAt(t *testing.T) {
 		AddOffer(twoEurOffer).
 		AddOffer(quarterOffer).
 		AddOffer(fiftyCentsOffer).
-		Apply()
+		Apply(1)
 	if err != nil {
 		t.Fatalf("unexpected error %v", err)
 	}
@@ -1718,12 +1809,12 @@ func TestFindPathsStartingAt(t *testing.T) {
 		AddOffer(usdEurOffer).
 		AddOffer(chfEurOffer).
 		AddOffer(yenChfOffer).
-		Apply()
+		Apply(2)
 	if err != nil {
 		t.Fatalf("unexpected error %v", err)
 	}
 
-	paths, err := graph.FindFixedPaths(
+	paths, lastLedger, err := graph.FindFixedPaths(
 		3,
 		usdAsset,
 		5,
@@ -1732,6 +1823,9 @@ func TestFindPathsStartingAt(t *testing.T) {
 	)
 	if err != nil {
 		t.Fatalf("unexpected error %v", err)
+	}
+	if lastLedger != 2 {
+		t.Fatalf("expected last ledger to be %v but got %v", 2, lastLedger)
 	}
 
 	expectedPaths := []Path{
@@ -1755,7 +1849,7 @@ func TestFindPathsStartingAt(t *testing.T) {
 
 	assertPathEquals(t, paths, expectedPaths)
 
-	paths, err = graph.FindFixedPaths(
+	paths, lastLedger, err = graph.FindFixedPaths(
 		2,
 		yenAsset,
 		5,
@@ -1765,12 +1859,15 @@ func TestFindPathsStartingAt(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error %v", err)
 	}
+	if lastLedger != 2 {
+		t.Fatalf("expected last ledger to be %v but got %v", 2, lastLedger)
+	}
 
 	expectedPaths = []Path{}
 
 	assertPathEquals(t, paths, expectedPaths)
 
-	paths, err = graph.FindFixedPaths(
+	paths, lastLedger, err = graph.FindFixedPaths(
 		3,
 		yenAsset,
 		5,
@@ -1779,6 +1876,9 @@ func TestFindPathsStartingAt(t *testing.T) {
 	)
 	if err != nil {
 		t.Fatalf("unexpected error %v", err)
+	}
+	if lastLedger != 2 {
+		t.Fatalf("expected last ledger to be %v but got %v", 2, lastLedger)
 	}
 
 	expectedPaths = []Path{
@@ -1796,7 +1896,7 @@ func TestFindPathsStartingAt(t *testing.T) {
 
 	assertPathEquals(t, paths, expectedPaths)
 
-	paths, err = graph.FindFixedPaths(
+	paths, lastLedger, err = graph.FindFixedPaths(
 		5,
 		yenAsset,
 		5,
@@ -1805,6 +1905,9 @@ func TestFindPathsStartingAt(t *testing.T) {
 	)
 	if err != nil {
 		t.Fatalf("unexpected error %v", err)
+	}
+	if lastLedger != 2 {
+		t.Fatalf("expected last ledger to be %v but got %v", 2, lastLedger)
 	}
 
 	expectedPaths = []Path{
@@ -1833,7 +1936,7 @@ func TestFindPathsStartingAt(t *testing.T) {
 
 	assertPathEquals(t, paths, expectedPaths)
 
-	paths, err = graph.FindFixedPaths(
+	paths, lastLedger, err = graph.FindFixedPaths(
 		5,
 		yenAsset,
 		5,
@@ -1842,6 +1945,9 @@ func TestFindPathsStartingAt(t *testing.T) {
 	)
 	if err != nil {
 		t.Fatalf("unexpected error %v", err)
+	}
+	if lastLedger != 2 {
+		t.Fatalf("expected last ledger to be %v but got %v", 2, lastLedger)
 	}
 
 	expectedPaths = []Path{

@@ -91,7 +91,7 @@ func addPipelineHooks(
 		wg.Add(2)
 
 		go func() {
-			err = orderBookGraph.Apply()
+			err = orderBookGraph.Apply(ledgerSeq)
 			wg.Done()
 		}()
 

@@ -2,6 +2,7 @@ package horizon
 
 import (
 	"context"
+	"database/sql"
 	"net/http"
 	"strings"
 	"time"
@@ -9,6 +10,9 @@ import (
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
 
+	"github.com/stellar/go/services/horizon/internal/actions"
+	horizonContext "github.com/stellar/go/services/horizon/internal/context"
+	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/services/horizon/internal/errors"
 	"github.com/stellar/go/services/horizon/internal/hchi"
 	"github.com/stellar/go/services/horizon/internal/httpx"
@@ -221,8 +225,20 @@ func requiresExperimentalIngestion(h http.Handler) http.Handler {
 		}
 
 		localLog := log.Ctx(ctx)
+		repeatableReadSession := app.HorizonSession(r.Context())
+		err := repeatableReadSession.BeginTx(&sql.TxOptions{
+			Isolation: sql.LevelRepeatableRead,
+			ReadOnly:  true,
+		})
+		if err != nil {
+			localLog.WithField("err", err).Error("Error starting exp ingestion read transaction")
+			problem.Render(r.Context(), w, err)
+			return
+		}
+		defer repeatableReadSession.Rollback()
 
-		lastIngestedLedger, err := app.HistoryQ().GetLastLedgerExpIngestNonBlocking()
+		q := &history.Q{repeatableReadSession}
+		lastIngestedLedger, err := q.GetLastLedgerExpIngestNonBlocking()
 		if err != nil {
 			localLog.WithField("err", err).Error("Error running GetLastLedgerExpIngestNonBlocking")
 			problem.Render(r.Context(), w, err)
@@ -235,7 +251,7 @@ func requiresExperimentalIngestion(h http.Handler) http.Handler {
 			return
 		}
 
-		stateInvalid, err := app.HistoryQ().GetExpStateInvalid()
+		stateInvalid, err := q.GetExpStateInvalid()
 		if err != nil {
 			localLog.WithField("err", err).Error("Error running GetExpStateInvalid")
 			problem.Render(r.Context(), w, err)
@@ -247,6 +263,13 @@ func requiresExperimentalIngestion(h http.Handler) http.Handler {
 			return
 		}
 
-		h.ServeHTTP(w, r)
+		actions.SetLastLedgerHeader(w, lastIngestedLedger)
+		h.ServeHTTP(w, r.WithContext(
+			context.WithValue(
+				r.Context(),
+				&horizonContext.SessionContextKey,
+				repeatableReadSession,
+			),
+		))
 	})
 }

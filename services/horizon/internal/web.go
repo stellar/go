@@ -199,9 +199,6 @@ func (w *web) mustInstallActions(
 			r.Get("/data/{key}", DataShowAction{}.Handle)
 		})
 	})
-	offersHandler := actions.GetAccountOffersHandler{
-		HistoryQ: w.historyQ,
-	}
 
 	streamHandler := sse.StreamHandler{
 		RateLimiter:  w.rateLimiter,
@@ -209,7 +206,7 @@ func (w *web) mustInstallActions(
 	}
 
 	installAccountOfferRoute(
-		offersHandler,
+		actions.GetAccountOffersHandler{},
 		streamHandler,
 		config.EnableExperimentalIngestion,
 		r,
@@ -248,7 +245,7 @@ func (w *web) mustInstallActions(
 			Method(
 				http.MethodGet,
 				"/",
-				restPageHandler(actions.GetOffersHandler{HistoryQ: w.historyQ}),
+				restPageHandler(actions.GetOffersHandler{}),
 			)
 		r.With(acceptOnlyJSON, requiresExperimentalIngestion).
 			Get("/{id}", getOfferResource)
@@ -276,6 +273,7 @@ func (w *web) mustInstallActions(
 	findPaths := FindPathsHandler{
 		staleThreshold:       config.StaleThreshold,
 		checkHistoryIsStale:  !config.EnableExperimentalIngestion,
+		setLastLedgerHeader:  config.EnableExperimentalIngestion,
 		maxPathLength:        config.MaxPathLength,
 		maxAssetsParamLength: maxAssetsForPathFinding,
 		pathFinder:           pathFinder,
@@ -283,6 +281,7 @@ func (w *web) mustInstallActions(
 	}
 	findFixedPaths := FindFixedPathsHandler{
 		maxPathLength:        config.MaxPathLength,
+		setLastLedgerHeader:  config.EnableExperimentalIngestion,
 		maxAssetsParamLength: maxAssetsForPathFinding,
 		pathFinder:           pathFinder,
 		coreQ:                w.coreQ,

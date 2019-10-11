@@ -45,7 +45,7 @@ func TestFinder(t *testing.T) {
 		SourceAssets:      []xdr.Asset{usd},
 	}
 
-	p, err := finder.Find(query, MaxPathLength)
+	p, _, err := finder.Find(query, MaxPathLength)
 	if tt.Assert.NoError(err) {
 		tt.Assert.Len(p, 3)
 
@@ -84,7 +84,7 @@ func TestFinder(t *testing.T) {
 	}
 
 	query.DestinationAmount = xdr.Int64(200000001)
-	p, err = finder.Find(query, MaxPathLength)
+	p, _, err = finder.Find(query, MaxPathLength)
 	if tt.Assert.NoError(err) {
 		tt.Assert.Len(p, 2)
 
@@ -105,7 +105,7 @@ func TestFinder(t *testing.T) {
 	}
 
 	query.DestinationAmount = xdr.Int64(500000001)
-	p, err = finder.Find(query, MaxPathLength)
+	p, _, err = finder.Find(query, MaxPathLength)
 	if tt.Assert.NoError(err) {
 		tt.Assert.Len(p, 0)
 	}
@@ -117,7 +117,7 @@ func TestFinder(t *testing.T) {
 		DestinationAmount: xdr.Int64(1),
 		SourceAssets:      []xdr.Asset{usd, native},
 	}
-	p, err = finder.Find(query, MaxPathLength)
+	p, _, err = finder.Find(query, MaxPathLength)
 	if tt.Assert.NoError(err) {
 		tt.Assert.Len(p, 2)
 	}
@@ -152,7 +152,7 @@ func TestFinder(t *testing.T) {
 		DestinationAmount: xdr.Int64(100000000), // 10.0
 		SourceAssets:      []xdr.Asset{aaa},
 	}
-	p, err = finder.Find(query, MaxPathLength)
+	p, _, err = finder.Find(query, MaxPathLength)
 	if tt.Assert.NoError(err) {
 		if tt.Assert.Len(p, 1) {
 			tt.Assert.Equal(p[0].Source.String(), aaa.String())
