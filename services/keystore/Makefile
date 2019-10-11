@@ -2,14 +2,11 @@
 SUDO := $(shell docker version >/dev/null 2>&1 || echo "sudo")
 
 # If TAG is not provided set default value
-ifeq ($(TAG),)
-COMMIT := $(shell git rev-parse --short HEAD)
-TAG := stellar/keystore:$(COMMIT)
-endif
+TAG ?= stellar/keystore:$(shell git rev-parse --short HEAD)$(and $(shell git status -s),-dirty-$(shell id -u -n))
 
 docker-build:
 	cd ../../ && \
-	$(SUDO) docker build -f services/keystore/Dockerfile -t $(TAG) .
+	$(SUDO) docker build -f services/keystore/docker/Dockerfile -t $(TAG) .
 
 docker-push:
 	cd ../../ && \
