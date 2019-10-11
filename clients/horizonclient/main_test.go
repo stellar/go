@@ -929,7 +929,8 @@ func TestTransactionsRequest(t *testing.T) {
 		assert.IsType(t, tx, hProtocol.Transaction{})
 		assert.Equal(t, tx.ID, "3274f131af56ecb6d8668acf6eb0b31b5f8faeca785cbce0a911a5a81308a599")
 		assert.Equal(t, tx.Ledger, int32(438134))
-		assert.Equal(t, tx.FeePaid, int32(100))
+		assert.Equal(t, tx.FeeCharged, int32(100))
+		assert.Equal(t, tx.MaxFee, int32(100))
 		assert.Equal(t, tx.Hash, "3274f131af56ecb6d8668acf6eb0b31b5f8faeca785cbce0a911a5a81308a599")
 	}
 
@@ -1756,7 +1757,8 @@ var txPageResponse = `{
         "created_at": "2019-03-25T10:27:53Z",
         "source_account": "GAIH3ULLFQ4DGSECF2AR555KZ4KNDGEKN4AFI4SU2M7B43MGK3QJZNSR",
         "source_account_sequence": "4660039787356",
-        "fee_paid": 100,
+        "fee_charged": 100,
+        "max_fee": 100,
         "operation_count": 1,
         "envelope_xdr": "AAAAABB90WssODNIgi6BHveqzxTRmIpvAFRyVNM+Hm2GVuCcAAAAZAAABD0ABCNcAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAzvbakxhsAWYE0gRDf2pfXaYUCnH8vEwyQiNOJYLmNRIAAAAXSHboAAAAAAAAAAABhlbgnAAAAEBw2qecm0C4q7xi8+43NjuExfspCtA1ki2Jq2lWuNSLArJ0qcOhz/HnszFppaCBHkFf/37557MbF4NbFZXlVv4P",
         "result_xdr": "AAAAAAAAAGQAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAA=",
@@ -1802,7 +1804,8 @@ var txPageResponse = `{
         "created_at": "2019-03-25T10:27:53Z",
         "source_account": "GC3IMK2BSHNZZ4WAC3AXQYA7HQTZKUUDJ7UYSA2HTNCIX5S5A5NVD3FD",
         "source_account_sequence": "1881766906298369",
-        "fee_paid": 100,
+        "fee_charged": 100,
+        "max_fee": 100,      
         "operation_count": 1,
         "envelope_xdr": "AAAAALaGK0GR25zywBbBeGAfPCeVUoNP6YkDR5tEi/ZdB1tRAAAAZAAGr3UAAAABAAAAAAAAAAEAAAAQMkExVjZKNTcwM0c0N1hIWQAAAAEAAAABAAAAALaGK0GR25zywBbBeGAfPCeVUoNP6YkDR5tEi/ZdB1tRAAAAAQAAAADMSEvcRKXsaUNna++Hy7gWm/CfqTjEA7xoGypfrFGUHAAAAAAAAAACBo93AAAAAAAAAAABXQdbUQAAAECQ5m6ZHsv8/Gd/aRJ2EMLurJMxFynT7KbD51T7gD91Gqp/fzsRHilSGoVSw5ztmtJb2LP7o3bQbiZynQiJPl8C",
         "result_xdr": "AAAAAAAAAGQAAAAAAAAAAQAAAAAAAAABAAAAAAAAAAA=",
@@ -1852,7 +1855,8 @@ var txDetailResponse = `{
   "created_at": "2019-03-25T10:27:53Z",
   "source_account": "GC3IMK2BSHNZZ4WAC3AXQYA7HQTZKUUDJ7UYSA2HTNCIX5S5A5NVD3FD",
   "source_account_sequence": "1881766906298369",
-  "fee_paid": 100,
+  "fee_charged": 100,
+  "max_fee": 100,
   "operation_count": 1,
   "envelope_xdr": "AAAAALaGK0GR25zywBbBeGAfPCeVUoNP6YkDR5tEi/ZdB1tRAAAAZAAGr3UAAAABAAAAAAAAAAEAAAAQMkExVjZKNTcwM0c0N1hIWQAAAAEAAAABAAAAALaGK0GR25zywBbBeGAfPCeVUoNP6YkDR5tEi/ZdB1tRAAAAAQAAAADMSEvcRKXsaUNna++Hy7gWm/CfqTjEA7xoGypfrFGUHAAAAAAAAAACBo93AAAAAAAAAAABXQdbUQAAAECQ5m6ZHsv8/Gd/aRJ2EMLurJMxFynT7KbD51T7gD91Gqp/fzsRHilSGoVSw5ztmtJb2LP7o3bQbiZynQiJPl8C",
   "result_xdr": "AAAAAAAAAGQAAAAAAAAAAQAAAAAAAAABAAAAAAAAAAA=",

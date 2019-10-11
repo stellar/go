@@ -32,7 +32,6 @@ func PopulateTransaction(
 	dest.LedgerCloseTime = row.LedgerCloseTime
 	dest.Account = row.Account
 	dest.AccountSequence = row.AccountSequence
-	dest.FeePaid = row.FeeCharged
 
 	dest.FeeCharged = row.FeeCharged
 	dest.MaxFee = row.MaxFee
