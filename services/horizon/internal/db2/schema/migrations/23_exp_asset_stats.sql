@@ -9,7 +9,7 @@ CREATE TABLE exp_asset_stats (
     asset_code      VARCHAR(12) NOT NULL,
     asset_issuer    VARCHAR(56) NOT NULL,
     amount          TEXT        NOT NULL,
-    num_accounts    BIGINT      NOT NULL,
+    num_accounts    INTEGER     NOT NULL,
     PRIMARY KEY(asset_code, asset_issuer, asset_type)
 );
 
