@@ -19,7 +19,7 @@ type assetStatValue struct {
 }
 
 // AssetStatSet represents a collection of asset stats
-type AssetStatSet map[assetStatKey]assetStatValue
+type AssetStatSet map[assetStatKey]*assetStatValue
 
 // Add updates the set with a trustline entry from a history archive snapshot
 func (s AssetStatSet) Add(trustLine xdr.TrustLineEntry) error {
@@ -28,16 +28,14 @@ func (s AssetStatSet) Add(trustLine xdr.TrustLineEntry) error {
 		return errors.Wrap(err, "could not extract asset info from trustline")
 	}
 
-	current := s[key]
-	amount := current.amount
-	if amount == nil {
-		amount = big.NewInt(int64(trustLine.Balance))
+	if current, ok := s[key]; !ok {
+		s[key] = &assetStatValue{
+			amount:      big.NewInt(int64(trustLine.Balance)),
+			numAccounts: 1,
+		}
 	} else {
-		amount = amount.Add(amount, big.NewInt(int64(trustLine.Balance)))
-	}
-	s[key] = assetStatValue{
-		amount:      amount,
-		numAccounts: current.numAccounts + 1,
+		current.amount.Add(current.amount, big.NewInt(int64(trustLine.Balance)))
+		current.numAccounts++
 	}
 	return nil
 }
