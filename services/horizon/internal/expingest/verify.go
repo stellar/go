@@ -2,12 +2,15 @@ package expingest
 
 import (
 	"database/sql"
+	"fmt"
 	"time"
 
 	"github.com/stellar/go/exp/ingest/adapters"
 	"github.com/stellar/go/exp/ingest/io"
 	"github.com/stellar/go/exp/ingest/verify"
+	"github.com/stellar/go/services/horizon/internal/db2"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
+	"github.com/stellar/go/services/horizon/internal/expingest/processors"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/support/historyarchive"
 	ilog "github.com/stellar/go/support/log"
@@ -15,6 +18,7 @@ import (
 )
 
 const verifyBatchSize = 50000
+const assetStatsBatchSize = 500
 
 // stateVerifierExpectedIngestionVersion defines a version of ingestion system
 // required by state verifier. This is done to prevent situations where
@@ -121,6 +125,7 @@ func (s *System) verifyState() error {
 		TransformFunction: transformEntry,
 	}
 
+	assetStats := processors.AssetStatSet{}
 	total := 0
 	for {
 		var keys []xdr.LedgerKey
@@ -159,7 +164,7 @@ func (s *System) verifyState() error {
 			return errors.Wrap(err, "addOffersToStateVerifier failed")
 		}
 
-		err = addTrustLinesToStateVerifier(verifier, historyQ, trustLines)
+		err = addTrustLinesToStateVerifier(verifier, assetStats, historyQ, trustLines)
 		if err != nil {
 			return errors.Wrap(err, "addTrustLinesToStateVerifier failed")
 		}
@@ -190,7 +195,62 @@ func (s *System) verifyState() error {
 		return errors.Wrap(err, "verifier.Verify failed")
 	}
 
+	err = checkAssetStats(assetStats, historyQ)
+	if err != nil {
+		return errors.Wrap(err, "checkAssetStats failed")
+	}
+
 	localLog.Info("State correct")
+	return nil
+}
+
+func checkAssetStats(set processors.AssetStatSet, q *history.Q) error {
+	page := db2.PageQuery{
+		Order: "asc",
+		Limit: assetStatsBatchSize,
+	}
+
+	for {
+		assetStats, err := q.GetAssetStats("", "", page)
+		if err != nil {
+			return errors.Wrap(err, "could not fetch asset stats from db")
+		}
+		if len(assetStats) == 0 {
+			break
+		}
+
+		for _, assetStat := range assetStats {
+			fromSet, removed := set.Remove(assetStat.AssetType, assetStat.AssetCode, assetStat.AssetIssuer)
+			if !removed {
+				return verify.NewStateError(
+					fmt.Errorf(
+						"db contains asset stat with code %s issuer %s which is missing from HAS",
+						assetStat.AssetCode, assetStat.AssetIssuer,
+					),
+				)
+			}
+
+			if fromSet != assetStat {
+				return verify.NewStateError(
+					fmt.Errorf(
+						"db asset stat with code %s issuer %s does not match asset stat from HAS",
+						assetStat.AssetCode, assetStat.AssetIssuer,
+					),
+				)
+			}
+		}
+
+		page.Cursor = assetStats[len(assetStats)-1].PagingToken()
+	}
+
+	if len(set) > 0 {
+		return verify.NewStateError(
+			fmt.Errorf(
+				"HAS contains %d more asset stats than db",
+				len(set),
+			),
+		)
+	}
 	return nil
 }
 
@@ -302,7 +362,12 @@ func addOffersToStateVerifier(verifier *verify.StateVerifier, q *history.Q, ids 
 	return nil
 }
 
-func addTrustLinesToStateVerifier(verifier *verify.StateVerifier, q *history.Q, keys []xdr.LedgerKeyTrustLine) error {
+func addTrustLinesToStateVerifier(
+	verifier *verify.StateVerifier,
+	assetStats processors.AssetStatSet,
+	q *history.Q,
+	keys []xdr.LedgerKeyTrustLine,
+) error {
 	if len(keys) == 0 {
 		return nil
 	}
@@ -314,32 +379,36 @@ func addTrustLinesToStateVerifier(verifier *verify.StateVerifier, q *history.Q, 
 
 	for _, row := range trustLines {
 		asset := xdr.MustNewCreditAsset(row.AssetCode, row.AssetIssuer)
-
-		entry := xdr.LedgerEntry{
-			LastModifiedLedgerSeq: xdr.Uint32(row.LastModifiedLedger),
-			Data: xdr.LedgerEntryData{
-				Type: xdr.LedgerEntryTypeTrustline,
-				TrustLine: &xdr.TrustLineEntry{
-					AccountId: xdr.MustAddress(row.AccountID),
-					Asset:     asset,
-					Balance:   xdr.Int64(row.Balance),
-					Limit:     xdr.Int64(row.Limit),
-					Flags:     xdr.Uint32(row.Flags),
-					Ext: xdr.TrustLineEntryExt{
-						V: 1,
-						V1: &xdr.TrustLineEntryV1{
-							Liabilities: xdr.Liabilities{
-								Buying:  xdr.Int64(row.BuyingLiabilities),
-								Selling: xdr.Int64(row.SellingLiabilities),
-							},
-						},
+		trustline := xdr.TrustLineEntry{
+			AccountId: xdr.MustAddress(row.AccountID),
+			Asset:     asset,
+			Balance:   xdr.Int64(row.Balance),
+			Limit:     xdr.Int64(row.Limit),
+			Flags:     xdr.Uint32(row.Flags),
+			Ext: xdr.TrustLineEntryExt{
+				V: 1,
+				V1: &xdr.TrustLineEntryV1{
+					Liabilities: xdr.Liabilities{
+						Buying:  xdr.Int64(row.BuyingLiabilities),
+						Selling: xdr.Int64(row.SellingLiabilities),
 					},
 				},
 			},
 		}
-		err := verifier.Write(entry)
-		if err != nil {
+		entry := xdr.LedgerEntry{
+			LastModifiedLedgerSeq: xdr.Uint32(row.LastModifiedLedger),
+			Data: xdr.LedgerEntryData{
+				Type:      xdr.LedgerEntryTypeTrustline,
+				TrustLine: &trustline,
+			},
+		}
+		if err := verifier.Write(entry); err != nil {
 			return err
+		}
+		if err := assetStats.Add(trustline); err != nil {
+			return verify.NewStateError(
+				errors.Wrap(err, "could not add trustline to asset stats"),
+			)
 		}
 	}
 

@@ -60,6 +60,7 @@ func trustLinesDBStateNode(q *history.Q) *supportPipeline.PipelineNode {
 		Pipe(
 			pipeline.StateNode(&horizonProcessors.DatabaseProcessor{
 				TrustLinesQ: q,
+				AssetStatsQ: q,
 				Action:      horizonProcessors.TrustLines,
 			}),
 		)
@@ -104,6 +105,7 @@ func orderBookGraphLedgerNode(graph *orderbook.OrderBookGraph) *supportPipeline.
 func trustLinesDBLedgerNode(q *history.Q) *supportPipeline.PipelineNode {
 	return pipeline.LedgerNode(&horizonProcessors.DatabaseProcessor{
 		TrustLinesQ: q,
+		AssetStatsQ: q,
 		Action:      horizonProcessors.TrustLines,
 	})
 }

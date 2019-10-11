@@ -17,6 +17,7 @@ The new ingestion system solves issues found in the previous version like: incon
   * `accounts_signers` table: 1914 MB
   * `trust_lines` table: 1780 MB
   * `offers` table: 26 MB
+  * `exp_asset_stats` table: less than 1 MB
 * Flags needed to enable experimental ingestion:
   * `ENABLE_EXPERIMENTAL_INGESTION=true`
   * `HISTORY_ARCHIVE_URLS="archive1,archive2,archive3"` (for public network you can use one of SDF's archives, ex. `https://history.stellar.org/prd/core-live/core_live_001`)
