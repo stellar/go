@@ -69,25 +69,21 @@ func (handler GetAccountsHandler) GetResourcePage(r *http.Request) ([]hal.Pageab
 	ctx := r.Context()
 
 	signer, err := GetAccountID(r, "signer")
-
 	if err != nil {
 		return nil, err
 	}
 
 	pq, err := GetPageQuery(r, DisableCursorValidation)
-
 	if err != nil {
 		return nil, err
 	}
 
 	records, err := handler.HistoryQ.AccountsForSigner(signer.Address(), pq)
-
 	if err != nil {
 		return nil, errors.Wrap(err, "loading account records")
 	}
 
 	var accounts []hal.Pageable
-
 	for _, record := range records {
 		var res protocol.AccountSigner
 		resourceadapter.PopulateAccountSigner(ctx, &res, record)
