@@ -7,6 +7,7 @@ RUN go build -o /bin/keystored ./services/keystore/cmd/keystored
 
 FROM ubuntu:16.04
 
+RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates
 ADD ./services/keystore/migrations/ /app/migrations/
 COPY --from=build /bin/keystored /app/
 EXPOSE 8000
