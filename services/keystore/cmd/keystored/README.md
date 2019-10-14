@@ -26,7 +26,7 @@ createdb keystore
 keystored migrate up
 ```
 
-You can undo all migrations by running
+You can undo the last migration by running
 ```sh
 keystored migrate down
 ```
