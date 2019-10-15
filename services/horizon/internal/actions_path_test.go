@@ -179,7 +179,12 @@ func TestPathActionsStateInvalid(t *testing.T) {
 	rh.Assert.Equal("", w.Header().Get(actions.LastLedgerHeaderName))
 }
 
-func loadOffers(tt *test.T, orderBookGraph *orderbook.OrderBookGraph, fromAddress string) {
+func loadOffers(
+	tt *test.T,
+	orderBookGraph *orderbook.OrderBookGraph,
+	fromAddress string,
+	ledger uint32,
+) {
 	coreQ := &core.Q{tt.CoreSession()}
 	offers := []core.Offer{}
 	pageQuery := db2.PageQuery{
@@ -199,7 +204,7 @@ func loadOffers(tt *test.T, orderBookGraph *orderbook.OrderBookGraph, fromAddres
 			Price:    xdr.Price{N: xdr.Int32(offer.Price * 100), D: 100},
 		})
 	}
-	tt.Assert.NoError(orderBookGraph.Apply(1))
+	tt.Assert.NoError(orderBookGraph.Apply(ledger))
 }
 
 func TestPathActionsInMemoryFinder(t *testing.T) {
@@ -222,8 +227,8 @@ func TestPathActionsInMemoryFinder(t *testing.T) {
 		len(sourceAssets),
 	)
 
-	loadOffers(tt, orderBookGraph, "GA2NC4ZOXMXLVQAQQ5IQKJX47M3PKBQV2N5UV5Z4OXLQJ3CKMBA2O2YL")
-	loadOffers(tt, orderBookGraph, "GDSBCQO34HWPGUGQSP3QBFEXVTSR2PW46UIGTHVWGWJGQKH3AFNHXHXN")
+	loadOffers(tt, orderBookGraph, "GA2NC4ZOXMXLVQAQQ5IQKJX47M3PKBQV2N5UV5Z4OXLQJ3CKMBA2O2YL", 1)
+	loadOffers(tt, orderBookGraph, "GDSBCQO34HWPGUGQSP3QBFEXVTSR2PW46UIGTHVWGWJGQKH3AFNHXHXN", 2)
 
 	var withSourceAccount = make(url.Values)
 	withSourceAccount.Add(
@@ -254,7 +259,7 @@ func TestPathActionsInMemoryFinder(t *testing.T) {
 		tt.Assert.Equal(http.StatusOK, w.Code)
 		inMemorySourceAccountResponse := []horizon.Path{}
 		tt.UnmarshalPage(w.Body, &inMemorySourceAccountResponse)
-		tt.Assert.Equal("1", w.Header().Get(actions.LastLedgerHeaderName))
+		tt.Assert.Equal("2", w.Header().Get(actions.LastLedgerHeaderName))
 
 		w = dbPathsClient.Get(uri + "?" + withSourceAccount.Encode())
 		tt.Assert.Equal(http.StatusOK, w.Code)
@@ -269,7 +274,7 @@ func TestPathActionsInMemoryFinder(t *testing.T) {
 		tt.Assert.Equal(http.StatusOK, w.Code)
 		inMemorySourceAssetsResponse := []horizon.Path{}
 		tt.UnmarshalPage(w.Body, &inMemorySourceAssetsResponse)
-		tt.Assert.Equal("1", w.Header().Get(actions.LastLedgerHeaderName))
+		tt.Assert.Equal("2", w.Header().Get(actions.LastLedgerHeaderName))
 
 		w = dbPathsClient.Get(uri + "?" + withSourceAccount.Encode())
 		tt.Assert.Equal(http.StatusOK, w.Code)
@@ -297,8 +302,8 @@ func TestPathActionsEmptySourceAcount(t *testing.T) {
 		3,
 	)
 
-	loadOffers(tt, orderBookGraph, "GA2NC4ZOXMXLVQAQQ5IQKJX47M3PKBQV2N5UV5Z4OXLQJ3CKMBA2O2YL")
-	loadOffers(tt, orderBookGraph, "GDSBCQO34HWPGUGQSP3QBFEXVTSR2PW46UIGTHVWGWJGQKH3AFNHXHXN")
+	loadOffers(tt, orderBookGraph, "GA2NC4ZOXMXLVQAQQ5IQKJX47M3PKBQV2N5UV5Z4OXLQJ3CKMBA2O2YL", 1)
+	loadOffers(tt, orderBookGraph, "GDSBCQO34HWPGUGQSP3QBFEXVTSR2PW46UIGTHVWGWJGQKH3AFNHXHXN", 2)
 
 	var q = make(url.Values)
 
@@ -513,8 +518,8 @@ func TestPathActionsStrictSend(t *testing.T) {
 		len(destinationAssets),
 	)
 
-	loadOffers(tt, orderBookGraph, "GA2NC4ZOXMXLVQAQQ5IQKJX47M3PKBQV2N5UV5Z4OXLQJ3CKMBA2O2YL")
-	loadOffers(tt, orderBookGraph, "GDSBCQO34HWPGUGQSP3QBFEXVTSR2PW46UIGTHVWGWJGQKH3AFNHXHXN")
+	loadOffers(tt, orderBookGraph, "GA2NC4ZOXMXLVQAQQ5IQKJX47M3PKBQV2N5UV5Z4OXLQJ3CKMBA2O2YL", 1)
+	loadOffers(tt, orderBookGraph, "GDSBCQO34HWPGUGQSP3QBFEXVTSR2PW46UIGTHVWGWJGQKH3AFNHXHXN", 2)
 
 	var q = make(url.Values)
 
@@ -535,7 +540,7 @@ func TestPathActionsStrictSend(t *testing.T) {
 	accountResponse := []horizon.Path{}
 	tt.UnmarshalPage(w.Body, &accountResponse)
 	assertions.Len(accountResponse, 12)
-	assertions.Equal("1", w.Header().Get(actions.LastLedgerHeaderName))
+	assertions.Equal("2", w.Header().Get(actions.LastLedgerHeaderName))
 
 	for i, path := range accountResponse {
 		assertions.Equal(path.SourceAssetCode, "USD")
@@ -571,7 +576,7 @@ func TestPathActionsStrictSend(t *testing.T) {
 	tt.UnmarshalPage(w.Body, &assetListResponse)
 	assertions.Len(assetListResponse, 12)
 	tt.Assert.Equal(accountResponse, assetListResponse)
-	assertions.Equal("1", w.Header().Get(actions.LastLedgerHeaderName))
+	assertions.Equal("2", w.Header().Get(actions.LastLedgerHeaderName))
 }
 
 func assetsToURLParam(xdrAssets []xdr.Asset) string {

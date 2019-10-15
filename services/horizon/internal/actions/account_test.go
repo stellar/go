@@ -36,6 +36,7 @@ func TestGetAccountsHandlerPageNoResults(t *testing.T) {
 	q := &history.Q{tt.HorizonSession()}
 	handler := &GetAccountsHandler{HistoryQ: q}
 	records, err := handler.GetResourcePage(
+		httptest.NewRecorder(),
 		makeRequest(
 			t,
 			map[string]string{
@@ -44,7 +45,6 @@ func TestGetAccountsHandlerPageNoResults(t *testing.T) {
 			map[string]string{},
 			q.Session,
 		),
-		httptest.NewRecorder(),
 	)
 	tt.Assert.NoError(err)
 	tt.Assert.Len(records, 0)
@@ -81,6 +81,7 @@ func TestGetAccountsHandlerPageResults(t *testing.T) {
 	}
 
 	records, err := handler.GetResourcePage(
+		httptest.NewRecorder(),
 		makeRequest(
 			t,
 			map[string]string{
@@ -89,7 +90,6 @@ func TestGetAccountsHandlerPageResults(t *testing.T) {
 			map[string]string{},
 			q.Session,
 		),
-		httptest.NewRecorder(),
 	)
 
 	tt.Assert.NoError(err)

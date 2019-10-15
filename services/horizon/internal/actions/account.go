@@ -66,8 +66,8 @@ type GetAccountsHandler struct {
 // to find accounts for signer but also accounts for assets, home domain,
 // inflation_dest etc.
 func (handler GetAccountsHandler) GetResourcePage(
-	r *http.Request,
 	w HeaderWriter,
+	r *http.Request,
 ) ([]hal.Pageable, error) {
 	ctx := r.Context()
 

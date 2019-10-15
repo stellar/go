@@ -320,8 +320,20 @@ func TestApplyOutdatedLedger(t *testing.T) {
 	err = graph.
 		AddOffer(eurOffer).
 		Apply(1)
-	if err != errOutdatedLedger {
-		t.Fatalf("expected error %v but got %v", errOutdatedLedger, err)
+	if err != errUnexpectedLedger {
+		t.Fatalf("expected error %v but got %v", errUnexpectedLedger, err)
+	}
+	if graph.lastLedger != 2 {
+		t.Fatalf("expected last ledger to be %v but got %v", 2, graph.lastLedger)
+	}
+
+	graph.Discard()
+
+	err = graph.
+		AddOffer(eurOffer).
+		Apply(4)
+	if err != errUnexpectedLedger {
+		t.Fatalf("expected error %v but got %v", errUnexpectedLedger, err)
 	}
 	if graph.lastLedger != 2 {
 		t.Fatalf("expected last ledger to be %v but got %v", 2, graph.lastLedger)

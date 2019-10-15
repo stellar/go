@@ -453,7 +453,7 @@ func TestOrderbookGetResourceValidation(t *testing.T) {
 		t.Run(testCase.name, func(t *testing.T) {
 			r := makeRequest(t, testCase.queryParams, map[string]string{}, nil)
 			w := httptest.NewRecorder()
-			_, err := handler.GetResource(r, w)
+			_, err := handler.GetResource(w, r)
 			if err == nil || err.Error() != invalidOrderBook.Error() {
 				t.Fatalf("expected error %v but got %v", invalidOrderBook, err)
 			}
@@ -645,7 +645,7 @@ func TestOrderbookGetResource(t *testing.T) {
 				nil,
 			)
 			w := httptest.NewRecorder()
-			response, err := handler.GetResource(r, w)
+			response, err := handler.GetResource(w, r)
 			if err != nil {
 				t.Fatalf("unexpected error %v", err)
 			}

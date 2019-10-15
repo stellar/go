@@ -60,8 +60,8 @@ func (tx *orderBookBatchedUpdates) apply(ledger uint32) error {
 	}
 	tx.committed = true
 
-	if ledger < tx.orderbook.lastLedger {
-		return errOutdatedLedger
+	if tx.orderbook.lastLedger > 0 && ledger != tx.orderbook.lastLedger+1 {
+		return errUnexpectedLedger
 	}
 
 	for _, operation := range tx.operations {

@@ -13,7 +13,7 @@ var (
 	errEmptyOffers         = errors.New("offers is empty")
 	errAssetAmountIsZero   = errors.New("current asset amount is 0")
 	errBatchAlreadyApplied = errors.New("cannot apply batched updates more than once")
-	errOutdatedLedger      = errors.New("cannot apply outdated ledger")
+	errUnexpectedLedger    = errors.New("cannot apply unexpected ledger")
 )
 
 type sortByType string

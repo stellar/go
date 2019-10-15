@@ -136,8 +136,8 @@ type testPageAction struct {
 }
 
 func (action *testPageAction) GetResourcePage(
-	r *http.Request,
 	w actions.HeaderWriter,
+	r *http.Request,
 ) ([]hal.Pageable, error) {
 	objects, ok := action.objects[action.ledgerSource.CurrentLedger()]
 	if !ok {
@@ -361,8 +361,8 @@ type testObjectAction struct {
 }
 
 func (action *testObjectAction) GetResource(
-	r *http.Request,
 	w actions.HeaderWriter,
+	r *http.Request,
 ) (actions.StreamableObjectResponse, error) {
 	ledger := action.ledgerSource.CurrentLedger()
 	object, ok := action.objects[ledger]

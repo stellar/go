@@ -90,10 +90,10 @@ func TestGetOffersHandler(t *testing.T) {
 
 	t.Run("No filter", func(t *testing.T) {
 		records, err := handler.GetResourcePage(
+			httptest.NewRecorder(),
 			makeRequest(
 				t, map[string]string{}, map[string]string{}, q.Session,
 			),
-			httptest.NewRecorder(),
 		)
 		tt.Assert.NoError(err)
 		tt.Assert.Len(records, 3)
@@ -111,6 +111,7 @@ func TestGetOffersHandler(t *testing.T) {
 
 	t.Run("Filter by seller", func(t *testing.T) {
 		records, err := handler.GetResourcePage(
+			httptest.NewRecorder(),
 			makeRequest(
 				t,
 				map[string]string{
@@ -119,7 +120,6 @@ func TestGetOffersHandler(t *testing.T) {
 				map[string]string{},
 				q.Session,
 			),
-			httptest.NewRecorder(),
 		)
 		tt.Assert.NoError(err)
 		tt.Assert.Len(records, 2)
@@ -134,6 +134,7 @@ func TestGetOffersHandler(t *testing.T) {
 		asset := horizon.Asset{}
 		nativeAsset.Extract(&asset.Type, &asset.Code, &asset.Issuer)
 		records, err := handler.GetResourcePage(
+			httptest.NewRecorder(),
 			makeRequest(
 				t,
 				map[string]string{
@@ -142,7 +143,6 @@ func TestGetOffersHandler(t *testing.T) {
 				map[string]string{},
 				q.Session,
 			),
-			httptest.NewRecorder(),
 		)
 		tt.Assert.NoError(err)
 		tt.Assert.Len(records, 2)
@@ -156,6 +156,7 @@ func TestGetOffersHandler(t *testing.T) {
 		eurAsset.Extract(&asset.Type, &asset.Code, &asset.Issuer)
 
 		records, err = handler.GetResourcePage(
+			httptest.NewRecorder(),
 			makeRequest(
 				t,
 				map[string]string{
@@ -166,7 +167,6 @@ func TestGetOffersHandler(t *testing.T) {
 				map[string]string{},
 				q.Session,
 			),
-			httptest.NewRecorder(),
 		)
 		tt.Assert.NoError(err)
 		tt.Assert.Len(records, 1)
@@ -180,6 +180,7 @@ func TestGetOffersHandler(t *testing.T) {
 		eurAsset.Extract(&asset.Type, &asset.Code, &asset.Issuer)
 
 		records, err := handler.GetResourcePage(
+			httptest.NewRecorder(),
 			makeRequest(
 				t,
 				map[string]string{
@@ -190,7 +191,6 @@ func TestGetOffersHandler(t *testing.T) {
 				map[string]string{},
 				q.Session,
 			),
-			httptest.NewRecorder(),
 		)
 		tt.Assert.NoError(err)
 		tt.Assert.Len(records, 2)
@@ -204,6 +204,7 @@ func TestGetOffersHandler(t *testing.T) {
 		usdAsset.Extract(&asset.Type, &asset.Code, &asset.Issuer)
 
 		records, err = handler.GetResourcePage(
+			httptest.NewRecorder(),
 			makeRequest(
 				t,
 				map[string]string{
@@ -214,7 +215,6 @@ func TestGetOffersHandler(t *testing.T) {
 				map[string]string{},
 				q.Session,
 			),
-			httptest.NewRecorder(),
 		)
 		tt.Assert.NoError(err)
 		tt.Assert.Len(records, 1)
@@ -242,13 +242,13 @@ func TestGetAccountOffersHandler(t *testing.T) {
 	tt.Assert.NoError(err)
 
 	records, err := handler.GetResourcePage(
+		httptest.NewRecorder(),
 		makeRequest(
 			t,
 			map[string]string{},
 			map[string]string{"account_id": issuer.Address()},
 			q.Session,
 		),
-		httptest.NewRecorder(),
 	)
 	tt.Assert.NoError(err)
 	tt.Assert.Len(records, 2)
