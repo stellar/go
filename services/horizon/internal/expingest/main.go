@@ -278,7 +278,7 @@ func (s *System) Run() {
 			log.WithField("last_ledger", lastIngestedLedger).
 				Info("Resuming ingestion system from last processed ledger...")
 
-			err = loadOrderBookGraphFromDB(s.historyQ, s.graph)
+			err = loadOrderBookGraphFromDB(s.historyQ, s.graph, lastIngestedLedger)
 			if err != nil {
 				return errors.Wrap(err, "Error loading order book graph from db")
 			}
@@ -289,7 +289,11 @@ func (s *System) Run() {
 	})
 }
 
-func loadOrderBookGraphFromDB(historyQ dbQ, graph *orderbook.OrderBookGraph) error {
+func loadOrderBookGraphFromDB(
+	historyQ dbQ,
+	graph *orderbook.OrderBookGraph,
+	lastIngestedLedger uint32,
+) error {
 	defer graph.Discard()
 
 	log.Info("Loading offers from a database into memory store...")
@@ -316,7 +320,7 @@ func loadOrderBookGraphFromDB(historyQ dbQ, graph *orderbook.OrderBookGraph) err
 		})
 	}
 
-	err = graph.Apply()
+	err = graph.Apply(lastIngestedLedger)
 	if err == nil {
 		log.WithField(
 			"duration",

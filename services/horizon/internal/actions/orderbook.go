@@ -4,6 +4,7 @@ import (
 	"context"
 	"math/big"
 	"net/http"
+	"strconv"
 
 	"github.com/stellar/go/amount"
 	"github.com/stellar/go/exp/orderbook"
@@ -12,6 +13,19 @@ import (
 	"github.com/stellar/go/support/render/problem"
 	"github.com/stellar/go/xdr"
 )
+
+// LastLedgerHeaderName is the header which is set on all experimental ingestion endpoints
+const LastLedgerHeaderName = "Latest-Ledger"
+
+// HeaderWriter is an interface for setting HTTP response headers
+type HeaderWriter interface {
+	Header() http.Header
+}
+
+// SetLastLedgerHeader sets the Latest-Ledger header
+func SetLastLedgerHeader(w HeaderWriter, lastLedger uint32) {
+	w.Header().Set(LastLedgerHeaderName, strconv.FormatUint(uint64(lastLedger), 10))
+}
 
 // StreamableObjectResponse is an interface for objects returned by streamable object endpoints
 // A streamable object endpoint is an SSE endpoint which returns a single JSON object response
@@ -112,30 +126,30 @@ func offersToPriceLevels(offers []xdr.OfferEntry, invert bool) ([]protocol.Price
 
 func (handler GetOrderbookHandler) orderBookSummary(
 	ctx context.Context, selling, buying xdr.Asset, limit int,
-) (protocol.OrderBookSummary, error) {
+) (protocol.OrderBookSummary, uint32, error) {
 	response := protocol.OrderBookSummary{}
 	if err := resourceadapter.PopulateAsset(ctx, &response.Selling, selling); err != nil {
-		return response, err
+		return response, 0, err
 	}
 	if err := resourceadapter.PopulateAsset(ctx, &response.Buying, buying); err != nil {
-		return response, err
+		return response, 0, err
 	}
 
 	var err error
-	asks, bids := handler.OrderBookGraph.FindAsksAndBids(selling, buying, limit)
+	asks, bids, lastLedger := handler.OrderBookGraph.FindAsksAndBids(selling, buying, limit)
 	if response.Asks, err = offersToPriceLevels(asks, false); err != nil {
-		return response, err
+		return response, 0, err
 	}
 
 	if response.Bids, err = offersToPriceLevels(bids, true); err != nil {
-		return response, err
+		return response, 0, err
 	}
 
-	return response, nil
+	return response, lastLedger, nil
 }
 
 // GetResource implements the /order_book endpoint
-func (handler GetOrderbookHandler) GetResource(r *http.Request) (StreamableObjectResponse, error) {
+func (handler GetOrderbookHandler) GetResource(w HeaderWriter, r *http.Request) (StreamableObjectResponse, error) {
 	selling, err := GetAsset(r, "selling_")
 	if err != nil {
 		return nil, invalidOrderBook
@@ -149,10 +163,11 @@ func (handler GetOrderbookHandler) GetResource(r *http.Request) (StreamableObjec
 		return nil, invalidOrderBook
 	}
 
-	summary, err := handler.orderBookSummary(r.Context(), selling, buying, int(limit))
+	summary, lastLedger, err := handler.orderBookSummary(r.Context(), selling, buying, int(limit))
 	if err != nil {
 		return nil, err
 	}
 
+	SetLastLedgerHeader(w, lastLedger)
 	return OrderBookResponse{summary}, nil
 }

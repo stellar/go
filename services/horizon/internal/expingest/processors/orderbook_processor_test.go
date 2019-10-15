@@ -23,7 +23,7 @@ func TestProcessOrderBookState(t *testing.T) {
 		t.Fatalf("unexpected error %v", err)
 	}
 	writer.AssertExpectations(t)
-	if err := graph.Apply(); err != nil {
+	if err := graph.Apply(1); err != nil {
 		t.Fatalf("unexpected error %v", err)
 	}
 
@@ -86,7 +86,7 @@ func TestProcessOrderBookState(t *testing.T) {
 
 	writer.AssertExpectations(t)
 	reader.AssertExpectations(t)
-	if err := graph.Apply(); err != nil {
+	if err := graph.Apply(2); err != nil {
 		t.Fatalf("unexpected error %v", err)
 	}
 
@@ -122,7 +122,7 @@ func TestProcessOrderBookLedger(t *testing.T) {
 	}
 	writer.AssertExpectations(t)
 	reader.AssertExpectations(t)
-	if err := graph.Apply(); err != nil {
+	if err := graph.Apply(1); err != nil {
 		t.Fatalf("unexpected error %v", err)
 	}
 
@@ -323,7 +323,7 @@ func TestProcessOrderBookLedger(t *testing.T) {
 
 	writer.AssertExpectations(t)
 	reader.AssertExpectations(t)
-	if err := graph.Apply(); err != nil {
+	if err := graph.Apply(2); err != nil {
 		t.Fatalf("unexpected error %v", err)
 	}
 

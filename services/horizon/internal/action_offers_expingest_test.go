@@ -146,7 +146,7 @@ func TestOfferActionsExperimentalIngestion(t *testing.T) {
 	}
 	app.config.EnableExperimentalIngestion = true
 
-	handler := actions.GetAccountOffersHandler{HistoryQ: q}
+	handler := actions.GetAccountOffersHandler{}
 	client := accountOffersClient(tt, app, handler)
 
 	tt.Assert.NoError(q.UpdateLastLedgerExpIngest(0))

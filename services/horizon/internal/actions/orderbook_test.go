@@ -2,6 +2,7 @@ package actions
 
 import (
 	"math"
+	"net/http/httptest"
 	"strconv"
 	"testing"
 
@@ -450,10 +451,14 @@ func TestOrderbookGetResourceValidation(t *testing.T) {
 		},
 	} {
 		t.Run(testCase.name, func(t *testing.T) {
-			r := makeRequest(t, testCase.queryParams, map[string]string{})
-			_, err := handler.GetResource(r)
+			r := makeRequest(t, testCase.queryParams, map[string]string{}, nil)
+			w := httptest.NewRecorder()
+			_, err := handler.GetResource(w, r)
 			if err == nil || err.Error() != invalidOrderBook.Error() {
 				t.Fatalf("expected error %v but got %v", invalidOrderBook, err)
+			}
+			if lastLedger := w.Header().Get(LastLedgerHeaderName); lastLedger != "" {
+				t.Fatalf("expected last ledger to be not set but got %v", lastLedger)
 			}
 		})
 	}
@@ -481,7 +486,7 @@ func TestOrderbookGetResource(t *testing.T) {
 	}
 
 	asksButNoBidsGraph := orderbook.NewOrderBookGraph()
-	if err := asksButNoBidsGraph.AddOffer(twoEurOffer).Apply(); err != nil {
+	if err := asksButNoBidsGraph.AddOffer(twoEurOffer).Apply(1); err != nil {
 		t.Fatalf("unexpected error %v", err)
 	}
 	asksButNoBidsResponse := empty
@@ -497,7 +502,7 @@ func TestOrderbookGetResource(t *testing.T) {
 	sellEurOffer.Buying, sellEurOffer.Selling = sellEurOffer.Selling, sellEurOffer.Buying
 	sellEurOffer.OfferId = 15
 	bidsButNoAsksGraph := orderbook.NewOrderBookGraph()
-	if err := bidsButNoAsksGraph.AddOffer(sellEurOffer).Apply(); err != nil {
+	if err := bidsButNoAsksGraph.AddOffer(sellEurOffer).Apply(2); err != nil {
 		t.Fatalf("unexpected error %v", err)
 	}
 	bidsButNoAsksResponse := empty
@@ -510,31 +515,31 @@ func TestOrderbookGetResource(t *testing.T) {
 	}
 
 	fullGraph := orderbook.NewOrderBookGraph()
-	if err := fullGraph.AddOffer(twoEurOffer).Apply(); err != nil {
+	if err := fullGraph.AddOffer(twoEurOffer).Apply(3); err != nil {
 		t.Fatalf("unexpected error %v", err)
 	}
 	otherEurOffer := twoEurOffer
 	otherEurOffer.Amount = xdr.Int64(math.MaxInt64)
 	otherEurOffer.OfferId = 16
-	if err := fullGraph.AddOffer(otherEurOffer).Apply(); err != nil {
+	if err := fullGraph.AddOffer(otherEurOffer).Apply(4); err != nil {
 		t.Fatalf("unexpected error %v", err)
 	}
 	threeEurOffer := twoEurOffer
 	threeEurOffer.Price.N = 3
 	threeEurOffer.OfferId = 20
-	if err := fullGraph.AddOffer(threeEurOffer).Apply(); err != nil {
+	if err := fullGraph.AddOffer(threeEurOffer).Apply(5); err != nil {
 		t.Fatalf("unexpected error %v", err)
 	}
 
 	sellEurOffer.Price.N = 9
 	sellEurOffer.Price.D = 10
-	if err := fullGraph.AddOffer(sellEurOffer).Apply(); err != nil {
+	if err := fullGraph.AddOffer(sellEurOffer).Apply(6); err != nil {
 		t.Fatalf("unexpected error %v", err)
 	}
 	otherSellEurOffer := sellEurOffer
 	otherSellEurOffer.OfferId = 17
 	otherSellEurOffer.Price.N *= 2
-	if err := fullGraph.AddOffer(otherSellEurOffer).Apply(); err != nil {
+	if err := fullGraph.AddOffer(otherSellEurOffer).Apply(7); err != nil {
 		t.Fatalf("unexpected error %v", err)
 	}
 
@@ -581,40 +586,46 @@ func TestOrderbookGetResource(t *testing.T) {
 	}
 
 	for _, testCase := range []struct {
-		name     string
-		graph    *orderbook.OrderBookGraph
-		limit    int
-		expected OrderBookResponse
+		name       string
+		graph      *orderbook.OrderBookGraph
+		limit      int
+		expected   OrderBookResponse
+		lastLedger string
 	}{
 		{
 			"empty orderbook",
 			orderbook.NewOrderBookGraph(),
 			10,
 			empty,
+			"0",
 		},
 		{
 			"orderbook with asks but no bids",
 			asksButNoBidsGraph,
 			10,
 			asksButNoBidsResponse,
+			"1",
 		},
 		{
 			"orderbook with bids but no asks",
 			bidsButNoAsksGraph,
 			10,
 			bidsButNoAsksResponse,
+			"2",
 		},
 		{
 			"full orderbook",
 			fullGraph,
 			10,
 			fullResponse,
+			"7",
 		},
 		{
 			"limit request",
 			fullGraph,
 			1,
 			limitResponse,
+			"7",
 		},
 	} {
 		t.Run(testCase.name, func(t *testing.T) {
@@ -631,13 +642,23 @@ func TestOrderbookGetResource(t *testing.T) {
 					"limit":               strconv.Itoa(testCase.limit),
 				},
 				map[string]string{},
+				nil,
 			)
-			response, err := handler.GetResource(r)
+			w := httptest.NewRecorder()
+			response, err := handler.GetResource(w, r)
 			if err != nil {
 				t.Fatalf("unexpected error %v", err)
 			}
 			if !response.Equals(testCase.expected) {
 				t.Fatalf("expected %v but got %v", testCase.expected, response)
+			}
+			lastLedger := w.Header().Get(LastLedgerHeaderName)
+			if lastLedger != testCase.lastLedger {
+				t.Fatalf(
+					"expected last ledger to be %v but got %v",
+					testCase.lastLedger,
+					lastLedger,
+				)
 			}
 		})
 	}

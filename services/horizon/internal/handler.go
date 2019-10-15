@@ -342,7 +342,10 @@ func validateCursorWithinHistory(pq db2.PageQuery) error {
 const singleObjectStreamLimit = 10
 
 type streamableObjectAction interface {
-	GetResource(r *http.Request) (actions.StreamableObjectResponse, error)
+	GetResource(
+		w actions.HeaderWriter,
+		r *http.Request,
+	) (actions.StreamableObjectResponse, error)
 }
 
 type streamableObjectActionHandler struct {
@@ -350,10 +353,13 @@ type streamableObjectActionHandler struct {
 	streamHandler sse.StreamHandler
 }
 
-func (handler streamableObjectActionHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (handler streamableObjectActionHandler) ServeHTTP(
+	w http.ResponseWriter,
+	r *http.Request,
+) {
 	switch render.Negotiate(r) {
 	case render.MimeHal, render.MimeJSON:
-		response, err := handler.action.GetResource(r)
+		response, err := handler.action.GetResource(w, r)
 		if err != nil {
 			problem.Render(r.Context(), w, err)
 			return
@@ -373,7 +379,10 @@ func (handler streamableObjectActionHandler) ServeHTTP(w http.ResponseWriter, r 
 	problem.Render(r.Context(), w, hProblem.NotAcceptable)
 }
 
-func (handler streamableObjectActionHandler) renderStream(w http.ResponseWriter, r *http.Request) {
+func (handler streamableObjectActionHandler) renderStream(
+	w http.ResponseWriter,
+	r *http.Request,
+) {
 	var lastResponse actions.StreamableObjectResponse
 
 	handler.streamHandler.ServeStream(
@@ -381,7 +390,7 @@ func (handler streamableObjectActionHandler) renderStream(w http.ResponseWriter,
 		r,
 		singleObjectStreamLimit,
 		func() ([]sse.Event, error) {
-			response, err := handler.action.GetResource(r)
+			response, err := handler.action.GetResource(w, r)
 			if err != nil {
 				return nil, err
 			}
@@ -396,7 +405,7 @@ func (handler streamableObjectActionHandler) renderStream(w http.ResponseWriter,
 }
 
 type pageAction interface {
-	GetResourcePage(r *http.Request) ([]hal.Pageable, error)
+	GetResourcePage(w actions.HeaderWriter, r *http.Request) ([]hal.Pageable, error)
 }
 
 type pageActionHandler struct {
@@ -421,7 +430,7 @@ func streamablePageHandler(
 }
 
 func (handler pageActionHandler) renderPage(w http.ResponseWriter, r *http.Request) {
-	records, err := handler.action.GetResourcePage(r)
+	records, err := handler.action.GetResourcePage(w, r)
 	if err != nil {
 		problem.Render(r.Context(), w, err)
 		return
@@ -453,7 +462,7 @@ func (handler pageActionHandler) renderStream(w http.ResponseWriter, r *http.Req
 		r,
 		int(pq.Limit),
 		func() ([]sse.Event, error) {
-			records, err := handler.action.GetResourcePage(r)
+			records, err := handler.action.GetResourcePage(w, r)
 			if err != nil {
 				return nil, err
 			}

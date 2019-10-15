@@ -15,6 +15,7 @@ import (
 	"github.com/stellar/go/services/horizon/internal/ledger"
 	"github.com/stellar/go/services/horizon/internal/test"
 	"github.com/stellar/go/services/horizon/internal/toid"
+	"github.com/stellar/go/support/db"
 	"github.com/stellar/go/support/render/problem"
 	"github.com/stellar/go/xdr"
 )
@@ -620,6 +621,7 @@ func makeRequest(
 	t *testing.T,
 	queryParams map[string]string,
 	routeParams map[string]string,
+	session *db.Session,
 ) *http.Request {
 	request, err := http.NewRequest("GET", "/", nil)
 	if err != nil {
@@ -635,6 +637,11 @@ func makeRequest(
 	for key, value := range routeParams {
 		chiRouteContext.URLParams.Add(key, value)
 	}
-	ctx := context.WithValue(context.Background(), chi.RouteCtxKey, chiRouteContext)
+	ctx := context.WithValue(
+		context.WithValue(context.Background(), chi.RouteCtxKey, chiRouteContext),
+		&horizonContext.SessionContextKey,
+		session,
+	)
+
 	return request.WithContext(ctx)
 }

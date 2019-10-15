@@ -25,6 +25,7 @@ type FindPathsHandler struct {
 	staleThreshold       uint
 	maxPathLength        uint
 	checkHistoryIsStale  bool
+	setLastLedgerHeader  bool
 	maxAssetsParamLength int
 	pathFinder           paths.Finder
 	coreQ                *core.Q
@@ -110,13 +111,19 @@ func (handler FindPathsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request
 
 	records := []paths.Path{}
 	if len(query.SourceAssets) > 0 {
-		records, err = handler.pathFinder.Find(query, handler.maxPathLength)
+		var lastIngestedLedger uint32
+		records, lastIngestedLedger, err = handler.pathFinder.Find(query, handler.maxPathLength)
 		if err == simplepath.ErrEmptyInMemoryOrderBook {
 			err = horizonProblem.StillIngesting
 		}
 		if err != nil {
 			problem.Render(ctx, w, err)
 			return
+		}
+
+		if handler.setLastLedgerHeader {
+			// only set the last ingested ledger header if
+			actions.SetLastLedgerHeader(w, lastIngestedLedger)
 		}
 	}
 
@@ -143,6 +150,7 @@ func renderPaths(ctx context.Context, records []paths.Path, w http.ResponseWrite
 type FindFixedPathsHandler struct {
 	maxPathLength        uint
 	maxAssetsParamLength int
+	setLastLedgerHeader  bool
 	pathFinder           paths.Finder
 	coreQ                *core.Q
 }
@@ -209,7 +217,8 @@ func (handler FindFixedPathsHandler) ServeHTTP(w http.ResponseWriter, r *http.Re
 
 	records := []paths.Path{}
 	if len(destinationAssets) > 0 {
-		records, err = handler.pathFinder.FindFixedPaths(
+		var lastIngestedLedger uint32
+		records, lastIngestedLedger, err = handler.pathFinder.FindFixedPaths(
 			sourceAsset,
 			amountToSpend,
 			destinationAssets,
@@ -221,6 +230,11 @@ func (handler FindFixedPathsHandler) ServeHTTP(w http.ResponseWriter, r *http.Re
 		if err != nil {
 			problem.Render(ctx, w, err)
 			return
+		}
+
+		if handler.setLastLedgerHeader {
+			// only set the last ingested ledger header if
+			actions.SetLastLedgerHeader(w, lastIngestedLedger)
 		}
 	}
 

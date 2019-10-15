@@ -14,11 +14,13 @@ import (
 
 // GetOffersHandler is the action handler for the /offers endpoint
 type GetOffersHandler struct {
-	HistoryQ *history.Q
 }
 
 // GetResourcePage returns a page of offers.
-func (handler GetOffersHandler) GetResourcePage(r *http.Request) ([]hal.Pageable, error) {
+func (handler GetOffersHandler) GetResourcePage(
+	w HeaderWriter,
+	r *http.Request,
+) ([]hal.Pageable, error) {
 	ctx := r.Context()
 	pq, err := GetPageQuery(r)
 	if err != nil {
@@ -47,7 +49,12 @@ func (handler GetOffersHandler) GetResourcePage(r *http.Request) ([]hal.Pageable
 		Buying:    buying,
 	}
 
-	offers, err := getOffersPage(ctx, handler.HistoryQ, query)
+	historyQ, err := historyQFromRequest(r)
+	if err != nil {
+		return nil, err
+	}
+
+	offers, err := getOffersPage(ctx, historyQ, query)
 	if err != nil {
 		return nil, err
 	}
@@ -58,7 +65,6 @@ func (handler GetOffersHandler) GetResourcePage(r *http.Request) ([]hal.Pageable
 // GetAccountOffersHandler is the action handler for the
 // `/accounts/{account_id}/offers` endpoint when using experimental ingestion.
 type GetAccountOffersHandler struct {
-	HistoryQ *history.Q
 }
 
 func (handler GetAccountOffersHandler) parseOffersQuery(r *http.Request) (history.OffersQuery, error) {
@@ -81,14 +87,22 @@ func (handler GetAccountOffersHandler) parseOffersQuery(r *http.Request) (histor
 }
 
 // GetResourcePage returns a page of offers for a given account.
-func (handler GetAccountOffersHandler) GetResourcePage(r *http.Request) ([]hal.Pageable, error) {
+func (handler GetAccountOffersHandler) GetResourcePage(
+	w HeaderWriter,
+	r *http.Request,
+) ([]hal.Pageable, error) {
 	ctx := r.Context()
 	query, err := handler.parseOffersQuery(r)
 	if err != nil {
 		return nil, err
 	}
 
-	offers, err := getOffersPage(ctx, handler.HistoryQ, query)
+	historyQ, err := historyQFromRequest(r)
+	if err != nil {
+		return nil, err
+	}
+
+	offers, err := getOffersPage(ctx, historyQ, query)
 	if err != nil {
 		return nil, err
 	}

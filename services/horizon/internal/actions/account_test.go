@@ -1,6 +1,7 @@
 package actions
 
 import (
+	"net/http/httptest"
 	"testing"
 
 	protocol "github.com/stellar/go/protocols/horizon"
@@ -34,9 +35,17 @@ func TestGetAccountsHandlerPageNoResults(t *testing.T) {
 
 	q := &history.Q{tt.HorizonSession()}
 	handler := &GetAccountsHandler{HistoryQ: q}
-	records, err := handler.GetResourcePage(makeRequest(t, map[string]string{
-		"signer": "GCXKG6RN4ONIEPCMNFB732A436Z5PNDSRLGWK7GBLCMQLIFO4S7EYWVU",
-	}, map[string]string{}))
+	records, err := handler.GetResourcePage(
+		httptest.NewRecorder(),
+		makeRequest(
+			t,
+			map[string]string{
+				"signer": "GCXKG6RN4ONIEPCMNFB732A436Z5PNDSRLGWK7GBLCMQLIFO4S7EYWVU",
+			},
+			map[string]string{},
+			q.Session,
+		),
+	)
 	tt.Assert.NoError(err)
 	tt.Assert.Len(records, 0)
 }
@@ -71,9 +80,17 @@ func TestGetAccountsHandlerPageResults(t *testing.T) {
 		q.CreateAccountSigner(row.Account, row.Signer, row.Weight)
 	}
 
-	records, err := handler.GetResourcePage(makeRequest(t, map[string]string{
-		"signer": "GCXKG6RN4ONIEPCMNFB732A436Z5PNDSRLGWK7GBLCMQLIFO4S7EYWVU",
-	}, map[string]string{}))
+	records, err := handler.GetResourcePage(
+		httptest.NewRecorder(),
+		makeRequest(
+			t,
+			map[string]string{
+				"signer": "GCXKG6RN4ONIEPCMNFB732A436Z5PNDSRLGWK7GBLCMQLIFO4S7EYWVU",
+			},
+			map[string]string{},
+			q.Session,
+		),
+	)
 
 	tt.Assert.NoError(err)
 	tt.Assert.Equal(3, len(records))

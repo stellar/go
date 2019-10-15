@@ -65,7 +65,10 @@ type GetAccountsHandler struct {
 // when the new ingestion system is fully integrated, this endpoint can be used
 // to find accounts for signer but also accounts for assets, home domain,
 // inflation_dest etc.
-func (handler GetAccountsHandler) GetResourcePage(r *http.Request) ([]hal.Pageable, error) {
+func (handler GetAccountsHandler) GetResourcePage(
+	w HeaderWriter,
+	r *http.Request,
+) ([]hal.Pageable, error) {
 	ctx := r.Context()
 
 	signer, err := GetAccountID(r, "signer")

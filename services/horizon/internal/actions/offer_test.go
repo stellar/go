@@ -1,6 +1,7 @@
 package actions
 
 import (
+	"net/http/httptest"
 	"testing"
 	"time"
 
@@ -65,7 +66,7 @@ func TestGetOffersHandler(t *testing.T) {
 	test.ResetHorizonDB(t, tt.HorizonDB)
 
 	q := &history.Q{tt.HorizonSession()}
-	handler := GetOffersHandler{HistoryQ: q}
+	handler := GetOffersHandler{}
 	ingestion := ingest.Ingestion{DB: tt.HorizonSession()}
 
 	ledgerCloseTime := time.Now().Unix()
@@ -88,7 +89,12 @@ func TestGetOffersHandler(t *testing.T) {
 	tt.Assert.NoError(err)
 
 	t.Run("No filter", func(t *testing.T) {
-		records, err := handler.GetResourcePage(makeRequest(t, map[string]string{}, map[string]string{}))
+		records, err := handler.GetResourcePage(
+			httptest.NewRecorder(),
+			makeRequest(
+				t, map[string]string{}, map[string]string{}, q.Session,
+			),
+		)
 		tt.Assert.NoError(err)
 		tt.Assert.Len(records, 3)
 
@@ -104,13 +110,17 @@ func TestGetOffersHandler(t *testing.T) {
 	})
 
 	t.Run("Filter by seller", func(t *testing.T) {
-		records, err := handler.GetResourcePage(makeRequest(
-			t,
-			map[string]string{
-				"seller": issuer.Address(),
-			},
-			map[string]string{},
-		))
+		records, err := handler.GetResourcePage(
+			httptest.NewRecorder(),
+			makeRequest(
+				t,
+				map[string]string{
+					"seller": issuer.Address(),
+				},
+				map[string]string{},
+				q.Session,
+			),
+		)
 		tt.Assert.NoError(err)
 		tt.Assert.Len(records, 2)
 
@@ -123,14 +133,17 @@ func TestGetOffersHandler(t *testing.T) {
 	t.Run("Filter by selling asset", func(t *testing.T) {
 		asset := horizon.Asset{}
 		nativeAsset.Extract(&asset.Type, &asset.Code, &asset.Issuer)
-
-		records, err := handler.GetResourcePage(makeRequest(
-			t,
-			map[string]string{
-				"selling_asset_type": asset.Type,
-			},
-			map[string]string{},
-		))
+		records, err := handler.GetResourcePage(
+			httptest.NewRecorder(),
+			makeRequest(
+				t,
+				map[string]string{
+					"selling_asset_type": asset.Type,
+				},
+				map[string]string{},
+				q.Session,
+			),
+		)
 		tt.Assert.NoError(err)
 		tt.Assert.Len(records, 2)
 
@@ -142,15 +155,19 @@ func TestGetOffersHandler(t *testing.T) {
 		asset = horizon.Asset{}
 		eurAsset.Extract(&asset.Type, &asset.Code, &asset.Issuer)
 
-		records, err = handler.GetResourcePage(makeRequest(
-			t,
-			map[string]string{
-				"selling_asset_type":   asset.Type,
-				"selling_asset_code":   asset.Code,
-				"selling_asset_issuer": asset.Issuer,
-			},
-			map[string]string{},
-		))
+		records, err = handler.GetResourcePage(
+			httptest.NewRecorder(),
+			makeRequest(
+				t,
+				map[string]string{
+					"selling_asset_type":   asset.Type,
+					"selling_asset_code":   asset.Code,
+					"selling_asset_issuer": asset.Issuer,
+				},
+				map[string]string{},
+				q.Session,
+			),
+		)
 		tt.Assert.NoError(err)
 		tt.Assert.Len(records, 1)
 
@@ -162,15 +179,19 @@ func TestGetOffersHandler(t *testing.T) {
 		asset := horizon.Asset{}
 		eurAsset.Extract(&asset.Type, &asset.Code, &asset.Issuer)
 
-		records, err := handler.GetResourcePage(makeRequest(
-			t,
-			map[string]string{
-				"buying_asset_type":   asset.Type,
-				"buying_asset_code":   asset.Code,
-				"buying_asset_issuer": asset.Issuer,
-			},
-			map[string]string{},
-		))
+		records, err := handler.GetResourcePage(
+			httptest.NewRecorder(),
+			makeRequest(
+				t,
+				map[string]string{
+					"buying_asset_type":   asset.Type,
+					"buying_asset_code":   asset.Code,
+					"buying_asset_issuer": asset.Issuer,
+				},
+				map[string]string{},
+				q.Session,
+			),
+		)
 		tt.Assert.NoError(err)
 		tt.Assert.Len(records, 2)
 
@@ -182,15 +203,19 @@ func TestGetOffersHandler(t *testing.T) {
 		asset = horizon.Asset{}
 		usdAsset.Extract(&asset.Type, &asset.Code, &asset.Issuer)
 
-		records, err = handler.GetResourcePage(makeRequest(
-			t,
-			map[string]string{
-				"buying_asset_type":   asset.Type,
-				"buying_asset_code":   asset.Code,
-				"buying_asset_issuer": asset.Issuer,
-			},
-			map[string]string{},
-		))
+		records, err = handler.GetResourcePage(
+			httptest.NewRecorder(),
+			makeRequest(
+				t,
+				map[string]string{
+					"buying_asset_type":   asset.Type,
+					"buying_asset_code":   asset.Code,
+					"buying_asset_issuer": asset.Issuer,
+				},
+				map[string]string{},
+				q.Session,
+			),
+		)
 		tt.Assert.NoError(err)
 		tt.Assert.Len(records, 1)
 
@@ -207,9 +232,7 @@ func TestGetAccountOffersHandler(t *testing.T) {
 
 	test.ResetHorizonDB(t, tt.HorizonDB)
 	q := &history.Q{tt.HorizonSession()}
-	handler := GetAccountOffersHandler{
-		HistoryQ: q,
-	}
+	handler := GetAccountOffersHandler{}
 
 	_, err := q.InsertOffer(eurOffer, 3)
 	tt.Assert.NoError(err)
@@ -219,7 +242,13 @@ func TestGetAccountOffersHandler(t *testing.T) {
 	tt.Assert.NoError(err)
 
 	records, err := handler.GetResourcePage(
-		makeRequest(t, map[string]string{}, map[string]string{"account_id": issuer.Address()}),
+		httptest.NewRecorder(),
+		makeRequest(
+			t,
+			map[string]string{},
+			map[string]string{"account_id": issuer.Address()},
+			q.Session,
+		),
 	)
 	tt.Assert.NoError(err)
 	tt.Assert.Len(records, 2)
