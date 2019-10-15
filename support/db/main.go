@@ -102,8 +102,17 @@ type UpdateBuilder struct {
 // utilities such as automatic query logging and transaction management.  NOTE:
 // A Session is designed to be lightweight and temporarily lived (usually
 // request scoped) which is one reason it is acceptable for it to store a
-// context.  It is not presently intended to cross goroutine boundaries and is
-// not concurrency safe.
+// context.
+// When Session is not in a DB transaction all queries are made in separate
+// database connection. If there is no idle connection query will wait until
+// there is one.
+// When Session is in a DB transaction it is using a single DB connection.
+// To support running queries from multiple go routines it implements locking:
+// can run arbitrary number of Exec but only a single Get/Select query (it's
+// using sync.RWLock internally). This is done because Postgres protocol does
+// not allow Exec if all data has not been read from previous Get/Select.
+// Keep this in mind when using methods like `Query` that retuns `*sqlx.Rows`
+// so there's not possible to implement locking inside Session.
 type Session struct {
 	// DB is the database connection that queries should be executed against.
 	DB *sqlx.DB
@@ -111,7 +120,8 @@ type Session struct {
 	// Ctx is the optional context in which the repo is operating under.
 	Ctx context.Context
 
-	tx *sqlx.Tx
+	txSingleQueryMutex wrMutex
+	tx                 *sqlx.Tx
 }
 
 // Table helps to build sql queries against a given table.  It logically

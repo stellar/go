@@ -109,6 +109,8 @@ func (s *Session) Get(dest interface{}, query sq.Sqlizer) error {
 	if err != nil {
 		return err
 	}
+
+	// Calls s.txSingleQueryMutex.queryLock() inside:
 	return s.GetRaw(dest, sql, args...)
 }
 
@@ -121,7 +123,13 @@ func (s *Session) GetRaw(dest interface{}, query string, args ...interface{}) er
 	}
 
 	start := time.Now()
+	if s.inTransaction() {
+		s.txSingleQueryMutex.queryLock()
+	}
 	err = s.conn().Get(dest, query, args...)
+	if s.inTransaction() {
+		s.txSingleQueryMutex.queryUnlock()
+	}
 	s.log("get", start, query, args)
 
 	if err == nil {
@@ -145,7 +153,13 @@ func (s *Session) GetTable(name string) *Table {
 
 func (s *Session) TruncateTables(tables []string) error {
 	truncateCmd := fmt.Sprintf("truncate %s restart identity cascade", strings.Join(tables[:], ","))
+	if s.inTransaction() {
+		s.txSingleQueryMutex.execLock()
+	}
 	_, err := s.ExecRaw(truncateCmd)
+	if s.inTransaction() {
+		s.txSingleQueryMutex.execUnlock()
+	}
 	return err
 }
 
@@ -155,6 +169,7 @@ func (s *Session) Exec(query sq.Sqlizer) (sql.Result, error) {
 	if err != nil {
 		return nil, err
 	}
+	// Calls s.txSingleQueryMutex.execLock() inside:
 	return s.ExecRaw(sql, args...)
 }
 
@@ -186,7 +201,13 @@ func (s *Session) ExecRaw(query string, args ...interface{}) (sql.Result, error)
 	}
 
 	start := time.Now()
+	if s.inTransaction() {
+		s.txSingleQueryMutex.execLock()
+	}
 	result, err := s.conn().Exec(query, args...)
+	if s.inTransaction() {
+		s.txSingleQueryMutex.execUnlock()
+	}
 	s.log("exec", start, query, args)
 
 	if err == nil {
@@ -206,16 +227,24 @@ func (s *Session) NoRows(err error) bool {
 	return err == sql.ErrNoRows
 }
 
-// Query runs `query`, returns a *sqlx.Rows instance
+// Query runs `query`, returns a *sqlx.Rows instance.
+// Please note that this method may not work in a transaction because in
+// Postgres you can't send Exec if you did not read all the data from previous
+// Query in a single DB connection.
 func (s *Session) Query(query sq.Sqlizer) (*sqlx.Rows, error) {
 	sql, args, err := s.build(query)
 	if err != nil {
 		return nil, err
 	}
+
+	// Returns Rows so locking won't help
 	return s.QueryRaw(sql, args...)
 }
 
-// QueryRaw runs `query` with `args`
+// QueryRaw runs `query` with `args`.
+// Please note that this method may not work in a transaction because in
+// Postgres you can't send Exec if you did not read all the data from previous
+// Query in a single DB connection.
 func (s *Session) QueryRaw(query string, args ...interface{}) (*sqlx.Rows, error) {
 	query, err := s.ReplacePlaceholders(query)
 	if err != nil {
@@ -223,6 +252,7 @@ func (s *Session) QueryRaw(query string, args ...interface{}) (*sqlx.Rows, error
 	}
 
 	start := time.Now()
+	// Returns Rows so locking won't help
 	result, err := s.conn().Queryx(query, args...)
 	s.log("query", start, query, args)
 
@@ -249,6 +279,10 @@ func (s *Session) ReplacePlaceholders(query string) (string, error) {
 	return format.ReplacePlaceholders(query)
 }
 
+func (s *Session) inTransaction() bool {
+	return s.tx != nil
+}
+
 // Rollback rolls back the current transaction
 func (s *Session) Rollback() error {
 	if s.tx == nil {
@@ -267,6 +301,7 @@ func (s *Session) Select(dest interface{}, query sq.Sqlizer) error {
 	if err != nil {
 		return err
 	}
+	// Calls s.txSingleQueryMutex.queryLock() inside:
 	return s.SelectRaw(dest, sql, args...)
 }
 
@@ -283,7 +318,13 @@ func (s *Session) SelectRaw(
 	}
 
 	start := time.Now()
+	if s.inTransaction() {
+		s.txSingleQueryMutex.queryLock()
+	}
 	err = s.conn().Select(dest, query, args...)
+	if s.inTransaction() {
+		s.txSingleQueryMutex.queryUnlock()
+	}
 	s.log("select", start, query, args)
 
 	if err == nil {
