@@ -82,31 +82,9 @@ func buildStatePipeline(historyQ *history.Q, graph *orderbook.OrderBookGraph) *p
 	return statePipeline
 }
 
-func accountForSignerLedgerNode(q *history.Q) *supportPipeline.PipelineNode {
-	return pipeline.LedgerNode(&horizonProcessors.DatabaseProcessor{
-		SignersQ: q,
-		Action:   horizonProcessors.AccountsForSigner,
-	})
-}
-
-func orderBookDBLedgerNode(q *history.Q) *supportPipeline.PipelineNode {
-	return pipeline.LedgerNode(&horizonProcessors.DatabaseProcessor{
-		OffersQ: q,
-		Action:  horizonProcessors.Offers,
-	})
-}
-
 func orderBookGraphLedgerNode(graph *orderbook.OrderBookGraph) *supportPipeline.PipelineNode {
 	return pipeline.LedgerNode(&horizonProcessors.OrderbookProcessor{
 		OrderBookGraph: graph,
-	})
-}
-
-func trustLinesDBLedgerNode(q *history.Q) *supportPipeline.PipelineNode {
-	return pipeline.LedgerNode(&horizonProcessors.DatabaseProcessor{
-		TrustLinesQ: q,
-		AssetStatsQ: q,
-		Action:      horizonProcessors.TrustLines,
 	})
 }
 
@@ -119,9 +97,13 @@ func buildLedgerPipeline(historyQ *history.Q, graph *orderbook.OrderBookGraph) *
 				// This subtree will only run when `IngestUpdateDatabase` is set.
 				pipeline.LedgerNode(&horizonProcessors.ContextFilter{horizonProcessors.IngestUpdateDatabase}).
 					Pipe(
-						accountForSignerLedgerNode(historyQ),
-						orderBookDBLedgerNode(historyQ),
-						trustLinesDBLedgerNode(historyQ),
+						pipeline.LedgerNode(&horizonProcessors.DatabaseProcessor{
+							OffersQ:     historyQ,
+							SignersQ:    historyQ,
+							TrustLinesQ: historyQ,
+							AssetStatsQ: historyQ,
+							Action:      horizonProcessors.All,
+						}),
 					),
 				orderBookGraphLedgerNode(graph),
 			),
