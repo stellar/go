@@ -172,7 +172,7 @@ func (s *AccountsSignerProcessorTestSuiteLedger) SetupTest() {
 	s.mockLedgerWriter = &io.MockLedgerWriter{}
 
 	s.processor = &DatabaseProcessor{
-		Action:   AccountsForSigner,
+		Action:   All,
 		SignersQ: s.mockQ,
 	}
 
@@ -230,6 +230,7 @@ func (s *AccountsSignerProcessorTestSuiteLedger) TestNewAccount() {
 				},
 			}),
 		}, nil).Once()
+	s.mockLedgerReader.On("GetSequence").Return(uint32(1)).Once()
 
 	s.mockQ.
 		On(
@@ -305,6 +306,7 @@ func (s *AccountsSignerProcessorTestSuiteLedger) TestNewSigner() {
 				},
 			}),
 		}, nil).Once()
+	s.mockLedgerReader.On("GetSequence").Return(uint32(1)).Once()
 
 	// Remove old signer
 	s.mockQ.
@@ -399,6 +401,7 @@ func (s *AccountsSignerProcessorTestSuiteLedger) TestSignerRemoved() {
 				},
 			}),
 		}, nil).Once()
+	s.mockLedgerReader.On("GetSequence").Return(uint32(1)).Once()
 
 	// Remove old signers
 	s.mockQ.
@@ -473,6 +476,7 @@ func (s *AccountsSignerProcessorTestSuiteLedger) TestRemoveAccount() {
 				},
 			}),
 		}, nil).Once()
+	s.mockLedgerReader.On("GetSequence").Return(uint32(1)).Once()
 
 	s.mockQ.
 		On(
@@ -519,6 +523,7 @@ func (s *AccountsSignerProcessorTestSuiteLedger) TestNewAccountNoRowsAffected() 
 				},
 			}),
 		}, nil).Once()
+	s.mockLedgerReader.On("GetSequence").Return(uint32(1)).Once()
 
 	s.mockQ.
 		On(
@@ -540,7 +545,7 @@ func (s *AccountsSignerProcessorTestSuiteLedger) TestNewAccountNoRowsAffected() 
 	s.Assert().IsType(verify.StateError{}, errors.Cause(err))
 	s.Assert().EqualError(
 		err,
-		"Error in processLedgerAccountsForSigner: No rows affected when inserting "+
+		"Error in AccountsForSigner handler: No rows affected when inserting "+
 			"account=GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML "+
 			"signer=GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML to database",
 	)
@@ -578,6 +583,7 @@ func (s *AccountsSignerProcessorTestSuiteLedger) TestRemoveAccountNoRowsAffected
 				},
 			}),
 		}, nil).Once()
+	s.mockLedgerReader.On("GetSequence").Return(uint32(1)).Once()
 
 	s.mockQ.
 		On(
@@ -598,7 +604,7 @@ func (s *AccountsSignerProcessorTestSuiteLedger) TestRemoveAccountNoRowsAffected
 	s.Assert().IsType(verify.StateError{}, errors.Cause(err))
 	s.Assert().EqualError(
 		err,
-		"Error in processLedgerAccountsForSigner: Expected "+
+		"Error in AccountsForSigner handler: Expected "+
 			"account=GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML "+
 			"signer=GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML in database but not found when removing",
 	)

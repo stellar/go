@@ -131,7 +131,7 @@ func (s *TrustLinesProcessorTestSuiteLedger) SetupTest() {
 	s.mockAssetStatsQ = &history.MockQAssetStats{}
 
 	s.processor = &DatabaseProcessor{
-		Action:      TrustLines,
+		Action:      All,
 		TrustLinesQ: s.mockQ,
 		AssetStatsQ: s.mockAssetStatsQ,
 	}
@@ -154,29 +154,30 @@ func (s *TrustLinesProcessorTestSuiteLedger) TearDownTest() {
 }
 
 func (s *TrustLinesProcessorTestSuiteLedger) TestInsertTrustLine() {
-	// should be ignored because it's not an trust line type
-	s.mockLedgerReader.
-		On("Read").
-		Return(io.LedgerTransaction{
-			Meta: createTransactionMeta([]xdr.OperationMeta{
-				xdr.OperationMeta{
-					Changes: []xdr.LedgerEntryChange{
-						xdr.LedgerEntryChange{
-							Type: xdr.LedgerEntryChangeTypeLedgerEntryCreated,
-							Created: &xdr.LedgerEntry{
-								Data: xdr.LedgerEntryData{
-									Type: xdr.LedgerEntryTypeAccount,
-									Account: &xdr.AccountEntry{
-										AccountId:  xdr.MustAddress("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
-										Thresholds: [4]byte{1, 1, 1, 1},
-									},
+	accountTransaction := io.LedgerTransaction{
+		Meta: createTransactionMeta([]xdr.OperationMeta{
+			xdr.OperationMeta{
+				Changes: []xdr.LedgerEntryChange{
+					xdr.LedgerEntryChange{
+						Type: xdr.LedgerEntryChangeTypeLedgerEntryCreated,
+						Created: &xdr.LedgerEntry{
+							Data: xdr.LedgerEntryData{
+								Type: xdr.LedgerEntryTypeAccount,
+								Account: &xdr.AccountEntry{
+									AccountId:  xdr.MustAddress("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
+									Thresholds: [4]byte{1, 1, 1, 1},
 								},
 							},
 						},
 					},
 				},
-			}),
-		}, nil).Once()
+			},
+		}),
+	}
+	// should be ignored because it's not an trust line type
+	s.Assert().NoError(
+		s.processor.processLedgerTrustLines(accountTransaction.GetChanges()[0], 1),
+	)
 
 	// should be ignored because transaction was not successful
 	s.mockLedgerReader.On("Read").
@@ -403,7 +404,7 @@ func (s *TrustLinesProcessorTestSuiteLedger) TestUpdateTrustLineNoRowsAffected()
 
 	s.Assert().Error(err)
 	s.Assert().IsType(verify.StateError{}, errors.Cause(err))
-	s.Assert().EqualError(err, "Error in processLedgerTrustLines: No rows affected when updating trustline: GAOQJGUAB7NI7K7I62ORBXMN3J4SSWQUQ7FOEPSDJ322W2HMCNWPHXFB credit_alphanum4/EUR/GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H")
+	s.Assert().EqualError(err, "Error in TrustLines handler: No rows affected when updating trustline: GAOQJGUAB7NI7K7I62ORBXMN3J4SSWQUQ7FOEPSDJ322W2HMCNWPHXFB credit_alphanum4/EUR/GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H")
 }
 
 func (s *TrustLinesProcessorTestSuiteLedger) TestRemoveTrustLine() {
@@ -547,5 +548,5 @@ func (s *TrustLinesProcessorTestSuiteLedger) TestRemoveOfferNoRowsAffected() {
 
 	s.Assert().Error(err)
 	s.Assert().IsType(verify.StateError{}, errors.Cause(err))
-	s.Assert().EqualError(err, "Error in processLedgerTrustLines: No rows affected when removing trustline: GAOQJGUAB7NI7K7I62ORBXMN3J4SSWQUQ7FOEPSDJ322W2HMCNWPHXFB credit_alphanum4/EUR/GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H")
+	s.Assert().EqualError(err, "Error in TrustLines handler: No rows affected when removing trustline: GAOQJGUAB7NI7K7I62ORBXMN3J4SSWQUQ7FOEPSDJ322W2HMCNWPHXFB credit_alphanum4/EUR/GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H")
 }

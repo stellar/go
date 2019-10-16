@@ -17,6 +17,7 @@ const (
 	AccountsForSigner DatabaseProcessorActionType = "AccountsForSigner"
 	Offers            DatabaseProcessorActionType = "Offers"
 	TrustLines        DatabaseProcessorActionType = "TrustLines"
+	All               DatabaseProcessorActionType = "All"
 )
 
 // DatabaseProcessor is a processor (both state and ledger) that's responsible
