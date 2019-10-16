@@ -135,6 +135,10 @@ func TestRemoveTrustLine(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, int64(1), rows)
 
+	lines, err := q.GetTrustLinesByKeys([]xdr.LedgerKeyTrustLine{key})
+	assert.NoError(t, err)
+	assert.Len(t, lines, 0)
+
 	// Doesn't exist anymore
 	rows, err = q.RemoveTrustLine(key)
 	assert.NoError(t, err)
