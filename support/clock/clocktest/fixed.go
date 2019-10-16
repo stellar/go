@@ -8,7 +8,7 @@ import (
 // a specific time.
 type FixedSource time.Time
 
-// Now returns the fixed sources constant time.
+// Now returns the fixed source's constant time.
 func (s FixedSource) Now() time.Time {
 	return time.Time(s)
 }
