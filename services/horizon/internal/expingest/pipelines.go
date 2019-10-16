@@ -3,6 +3,7 @@ package expingest
 import (
 	"context"
 	"fmt"
+	"sync/atomic"
 
 	"github.com/stellar/go/exp/ingest"
 	"github.com/stellar/go/exp/ingest/pipeline"
@@ -132,6 +133,7 @@ func buildLedgerPipeline(historyQ *history.Q, graph *orderbook.OrderBookGraph) *
 func preProcessingHook(
 	ctx context.Context,
 	pipelineType pType,
+	system *System,
 	historySession *db.Session,
 ) (context.Context, error) {
 	historyQ := &history.Q{historySession}
@@ -162,6 +164,10 @@ func preProcessingHook(
 		// from a database is done outside the pipeline.
 		updateDatabase = true
 	} else {
+		// mark the system as ready because we have progressed to running
+		// the ledger pipeline
+		atomic.StoreInt32(&system.ready, 1)
+
 		if lastIngestedLedger+1 == ledgerSeq {
 			// lastIngestedLedger+1 == ledgerSeq what means that this instance
 			// is the main ingesting instance in this round and should update a
@@ -309,7 +315,7 @@ func addPipelineHooks(
 	}
 
 	p.AddPreProcessingHook(func(ctx context.Context) (context.Context, error) {
-		return preProcessingHook(ctx, pipelineType, historySession)
+		return preProcessingHook(ctx, pipelineType, system, historySession)
 	})
 
 	p.AddPostProcessingHook(func(ctx context.Context, err error) error {
