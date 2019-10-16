@@ -17,7 +17,8 @@ func TestFixedSource_Now(t *testing.T) {
 	assert.Equal(t, timeNow, c.Now())
 }
 
-// TestNewFixed_compose tests that FixedSource can be used to change time.
+// TestNewFixed_compose tests that FixedSource can be used easily to change
+// time during a test.
 func TestFixedSource_compose(t *testing.T) {
 	timeNow := time.Date(2015, 9, 30, 17, 15, 54, 0, time.UTC)
 	c := clock.Clock{Source: clocktest.FixedSource(timeNow)}
