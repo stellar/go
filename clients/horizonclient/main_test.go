@@ -1024,7 +1024,7 @@ func TestFetchTimebounds(t *testing.T) {
 	client := &Client{
 		HorizonURL: "https://localhost/",
 		HTTP:       hmock,
-		clock: clock.Clock{
+		clock: &clock.Clock{
 			Source: clocktest.FixedSource(time.Unix(1560947096, 0)),
 		},
 	}

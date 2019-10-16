@@ -136,7 +136,7 @@ type Client struct {
 	isTestNet      bool
 
 	// clock is a Clock returning the current time.
-	clock clock.Clock
+	clock *clock.Clock
 }
 
 // ClientInterface contains methods implemented by the horizon client
