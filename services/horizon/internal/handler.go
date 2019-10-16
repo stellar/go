@@ -339,6 +339,40 @@ func validateCursorWithinHistory(pq db2.PageQuery) error {
 	return nil
 }
 
+type objectAction interface {
+	GetResource(
+		w actions.HeaderWriter,
+		r *http.Request,
+	) (hal.Pageable, error)
+}
+
+type objectActionHandler struct {
+	action objectAction
+}
+
+func (handler objectActionHandler) ServeHTTP(
+	w http.ResponseWriter,
+	r *http.Request,
+) {
+	switch render.Negotiate(r) {
+	case render.MimeHal, render.MimeJSON:
+		response, err := handler.action.GetResource(w, r)
+		if err != nil {
+			problem.Render(r.Context(), w, err)
+			return
+		}
+
+		httpjson.Render(
+			w,
+			response,
+			httpjson.HALJSON,
+		)
+		return
+	}
+
+	problem.Render(r.Context(), w, hProblem.NotAcceptable)
+}
+
 const singleObjectStreamLimit = 10
 
 type streamableObjectAction interface {

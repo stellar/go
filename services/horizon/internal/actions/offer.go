@@ -12,6 +12,47 @@ import (
 	"github.com/stellar/go/xdr"
 )
 
+// GetOfferByID is the action handler for the /offers/{id} endpoint
+type GetOfferByID struct {
+}
+
+// GetResource returns an offer by id.
+func (handler GetOfferByID) GetResource(
+	w HeaderWriter,
+	r *http.Request,
+) (hal.Pageable, error) {
+	ctx := r.Context()
+	offerID, err := GetInt64(r, "id")
+	if err != nil {
+		return nil, err
+	}
+
+	historyQ, err := historyQFromRequest(r)
+	if err != nil {
+		return nil, err
+	}
+
+	record, err := historyQ.GetOfferByID(offerID)
+	if err != nil {
+		return nil, err
+	}
+
+	ledger := new(history.Ledger)
+	err = historyQ.LedgerBySequence(
+		ledger,
+		int32(record.LastModifiedLedger),
+	)
+	if historyQ.NoRows(err) {
+		ledger = nil
+	} else if err != nil {
+		return nil, err
+	}
+
+	var offerResponse horizon.Offer
+	resourceadapter.PopulateHistoryOffer(ctx, &offerResponse, record, ledger)
+	return offerResponse, nil
+}
+
 // GetOffersHandler is the action handler for the /offers endpoint
 type GetOffersHandler struct {
 }
