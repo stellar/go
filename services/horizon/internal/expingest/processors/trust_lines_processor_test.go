@@ -131,7 +131,7 @@ func (s *TrustLinesProcessorTestSuiteLedger) SetupTest() {
 	s.mockAssetStatsQ = &history.MockQAssetStats{}
 
 	s.processor = &DatabaseProcessor{
-		Action:      TrustLines,
+		Action:      All,
 		TrustLinesQ: s.mockQ,
 		AssetStatsQ: s.mockAssetStatsQ,
 	}
@@ -154,29 +154,30 @@ func (s *TrustLinesProcessorTestSuiteLedger) TearDownTest() {
 }
 
 func (s *TrustLinesProcessorTestSuiteLedger) TestInsertTrustLine() {
-	// should be ignored because it's not an trust line type
-	s.mockLedgerReader.
-		On("Read").
-		Return(io.LedgerTransaction{
-			Meta: createTransactionMeta([]xdr.OperationMeta{
-				xdr.OperationMeta{
-					Changes: []xdr.LedgerEntryChange{
-						xdr.LedgerEntryChange{
-							Type: xdr.LedgerEntryChangeTypeLedgerEntryCreated,
-							Created: &xdr.LedgerEntry{
-								Data: xdr.LedgerEntryData{
-									Type: xdr.LedgerEntryTypeAccount,
-									Account: &xdr.AccountEntry{
-										AccountId:  xdr.MustAddress("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
-										Thresholds: [4]byte{1, 1, 1, 1},
-									},
+	accountTransaction := io.LedgerTransaction{
+		Meta: createTransactionMeta([]xdr.OperationMeta{
+			xdr.OperationMeta{
+				Changes: []xdr.LedgerEntryChange{
+					xdr.LedgerEntryChange{
+						Type: xdr.LedgerEntryChangeTypeLedgerEntryCreated,
+						Created: &xdr.LedgerEntry{
+							Data: xdr.LedgerEntryData{
+								Type: xdr.LedgerEntryTypeAccount,
+								Account: &xdr.AccountEntry{
+									AccountId:  xdr.MustAddress("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
+									Thresholds: [4]byte{1, 1, 1, 1},
 								},
 							},
 						},
 					},
 				},
-			}),
-		}, nil).Once()
+			},
+		}),
+	}
+	// should be ignored because it's not an trust line type
+	s.Assert().NoError(
+		s.processor.processLedgerTrustLines(accountTransaction.GetChanges()[0], 1),
+	)
 
 	// should be ignored because transaction was not successful
 	s.mockLedgerReader.On("Read").

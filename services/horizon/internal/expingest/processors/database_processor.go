@@ -144,17 +144,18 @@ func (p *DatabaseProcessor) ProcessLedger(ctx context.Context, store *pipeline.S
 	defer r.Close()
 	defer w.Close()
 
+	if p.Action != All {
+		return errors.New("ledger processor must process all actions")
+	}
+
 	actionHandlers := map[DatabaseProcessorActionType]func(change io.Change, currentLedger uint32) error{
 		AccountsForSigner: p.processLedgerAccountsForSigner,
 		Offers:            p.processLedgerOffers,
 		TrustLines:        p.processLedgerTrustLines,
 	}
 
-	actions := []DatabaseProcessorActionType{}
-	if p.Action == All {
-		actions = append(actions, AccountsForSigner, Offers, TrustLines)
-	} else {
-		actions = append(actions, p.Action)
+	actions := []DatabaseProcessorActionType{
+		AccountsForSigner, Offers, TrustLines,
 	}
 
 	for {

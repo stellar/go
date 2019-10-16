@@ -172,7 +172,7 @@ func (s *AccountsSignerProcessorTestSuiteLedger) SetupTest() {
 	s.mockLedgerWriter = &io.MockLedgerWriter{}
 
 	s.processor = &DatabaseProcessor{
-		Action:   AccountsForSigner,
+		Action:   All,
 		SignersQ: s.mockQ,
 	}
 
