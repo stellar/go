@@ -9,6 +9,7 @@ import (
 	hProtocol "github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/protocols/horizon/effects"
 	"github.com/stellar/go/protocols/horizon/operations"
+	"github.com/stellar/go/support/clock"
 	"github.com/stellar/go/support/clock/clocktest"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/support/http/httptest"
@@ -1023,7 +1024,9 @@ func TestFetchTimebounds(t *testing.T) {
 	client := &Client{
 		HorizonURL: "https://localhost/",
 		HTTP:       hmock,
-		clock:      clocktest.NewFixed(time.Unix(1560947096, 0)),
+		clock: clock.Clock{
+			Source: clocktest.FixedSource(time.Unix(1560947096, 0)),
+		},
 	}
 
 	// When no saved server time, return local time

@@ -2,20 +2,13 @@ package clocktest
 
 import (
 	"time"
-
-	"github.com/stellar/go/support/clock"
 )
 
-type fixedSource time.Time
+// FixedSource is a clock source that has its current time stopped and fixed at
+// a specific time.
+type FixedSource time.Time
 
-func (s fixedSource) Now() time.Time {
+// Now returns the fixed sources constant time.
+func (s FixedSource) Now() time.Time {
 	return time.Time(s)
-}
-
-// NewFixed creates a Clock with its time stopped and fixed to the time
-// given.
-func NewFixed(t time.Time) clock.Clock {
-	return clock.Clock{
-		Source: fixedSource(t),
-	}
 }

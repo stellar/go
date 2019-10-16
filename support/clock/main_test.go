@@ -25,7 +25,7 @@ func TestClock_Now_sourceNotSet(t *testing.T) {
 func TestClock_Now_sourceSet(t *testing.T) {
 	timeNow := time.Date(2015, 9, 30, 17, 15, 54, 0, time.UTC)
 	c := clock.Clock{
-		Source: clocktest.NewFixed(timeNow),
+		Source: clocktest.FixedSource(timeNow),
 	}
 	cNow := c.Now()
 	assert.Equal(t, timeNow, cNow)
