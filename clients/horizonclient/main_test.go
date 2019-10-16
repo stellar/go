@@ -4,10 +4,12 @@ import (
 	"fmt"
 	"net/http"
 	"testing"
+	"time"
 
 	hProtocol "github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/protocols/horizon/effects"
 	"github.com/stellar/go/protocols/horizon/operations"
+	"github.com/stellar/go/support/clock/clocktest"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/support/http/httptest"
 	"github.com/stellar/go/txnbuild"
@@ -1021,12 +1023,8 @@ func TestFetchTimebounds(t *testing.T) {
 	client := &Client{
 		HorizonURL: "https://localhost/",
 		HTTP:       hmock,
+		clock:      clocktest.NewFixed(time.Unix(1560947096, 0)),
 	}
-
-	// mock currentUniversalTime
-	client.SetCurrentUniversalTime(func() int64 {
-		return int64(1560947096)
-	})
 
 	// When no saved server time, return local time
 	st, err := client.FetchTimebounds(100)
@@ -1055,7 +1053,7 @@ func TestFetchTimebounds(t *testing.T) {
 	}
 
 	// mock server time
-	newRecord := ServerTimeRecord{ServerTime: 100, LocalTimeRecorded: client.currentUniversalTime()}
+	newRecord := ServerTimeRecord{ServerTime: 100, LocalTimeRecorded: 1560947096}
 	ServerTimeMap["localhost"] = newRecord
 	st, err = client.FetchTimebounds(100)
 	assert.NoError(t, err)
