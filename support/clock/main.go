@@ -7,15 +7,15 @@ type Clock struct {
 	Source Source
 }
 
-func (c Clock) getSource() Source {
-	if c.Source == nil {
+func (c *Clock) getSource() Source {
+	if c == nil || c.Source == nil {
 		return RealSource{}
 	}
 	return c.Source
 }
 
 // Now returns the current time as defined by the Clock's Source.
-func (c Clock) Now() time.Time {
+func (c *Clock) Now() time.Time {
 	return c.getSource().Now()
 }
 

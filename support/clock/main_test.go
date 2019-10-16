@@ -20,6 +20,17 @@ func TestClock_Now_sourceNotSet(t *testing.T) {
 	assert.True(t, cNow.Before(after))
 }
 
+// TestClock_Now_sourceNotSetPtrNil tests that when the identifier is a
+// unset/nil pointer to a Clock, it still has default behavior.
+func TestClock_Now_sourceNotSetPtrNil(t *testing.T) {
+	c := (*clock.Clock)(nil)
+	before := time.Now()
+	cNow := c.Now()
+	after := time.Now()
+	assert.True(t, cNow.After(before))
+	assert.True(t, cNow.Before(after))
+}
+
 // TestClock_Now_sourceSet tests that when the Source field is set that it is
 // used when the Clock is asked for the current time.
 func TestClock_Now_sourceSet(t *testing.T) {
