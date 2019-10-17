@@ -367,13 +367,6 @@ func (base *Base) GetAddress(name string, opts ...Opt) (result string) {
 	return result
 }
 
-func parseAccountID(value string) (xdr.AccountId, error) {
-	result := xdr.AccountId{}
-	err := result.SetAddress(value)
-
-	return result, err
-}
-
 // GetAccountID retireves an xdr.AccountID by attempting to decode a stellar
 // address at the provided name.
 func GetAccountID(r *http.Request, name string) (xdr.AccountId, error) {
@@ -382,7 +375,7 @@ func GetAccountID(r *http.Request, name string) (xdr.AccountId, error) {
 		return xdr.AccountId{}, err
 	}
 
-	result, err := parseAccountID(value)
+	result, err := xdr.AddressToAccountId(value)
 	if err != nil {
 		return result, problem.MakeInvalidFieldProblem(
 			name,
@@ -570,7 +563,7 @@ func GetAssets(r *http.Request, name string) ([]xdr.Asset, error) {
 				)
 			}
 
-			issuer, err := parseAccountID(parts[1])
+			issuer, err := xdr.AddressToAccountId(parts[1])
 			if err != nil {
 				return nil, problem.MakeInvalidFieldProblem(
 					name,

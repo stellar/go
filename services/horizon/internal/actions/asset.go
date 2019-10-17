@@ -12,6 +12,7 @@ import (
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/support/render/hal"
 	"github.com/stellar/go/support/render/problem"
+	"github.com/stellar/go/xdr"
 )
 
 // AssetStatsHandler is the action handler for the /asset endpoint
@@ -29,7 +30,7 @@ func (handler AssetStatsHandler) validateAssetParams(code, issuer string, pq db2
 	}
 
 	if issuer != "" {
-		if _, err := parseAccountID(issuer); err != nil {
+		if _, err := xdr.AddressToAccountId(issuer); err != nil {
 			return problem.MakeInvalidFieldProblem(
 				"asset_issuer",
 				fmt.Errorf("%s is not a valid asset issuer", issuer),
@@ -54,7 +55,7 @@ func (handler AssetStatsHandler) validateAssetParams(code, issuer string, pq db2
 			)
 		}
 
-		if _, err := parseAccountID(cursorIssuer); err != nil {
+		if _, err := xdr.AddressToAccountId(cursorIssuer); err != nil {
 			return problem.MakeInvalidFieldProblem(
 				"cursor",
 				fmt.Errorf("%s is not a valid asset issuer", cursorIssuer),
