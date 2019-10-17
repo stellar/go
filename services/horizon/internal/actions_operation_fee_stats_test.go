@@ -68,9 +68,9 @@ func TestOperationFeeTestsActions_Show(t *testing.T) {
 			"100",
 			"200",
 			"400",
-			"260", // p10
-			"320",
-			"380",
+			"200", // p10
+			"300",
+			"400",
 			"400",
 			"400",
 			"400",
@@ -145,9 +145,9 @@ func TestOperationFeeTestsActions_ShowMultiOp(t *testing.T) {
 		ht.Assert.Equal("100", result["min_accepted_fee"], "min")
 		ht.Assert.Equal("200", result["mode_accepted_fee"], "mode")
 		ht.Assert.Equal("100", result["last_ledger_base_fee"], "base_fee")
-		ht.Assert.Equal("130", result["p10_accepted_fee"], "p10")
-		ht.Assert.Equal("160", result["p20_accepted_fee"], "p20")
-		ht.Assert.Equal("190", result["p30_accepted_fee"], "p30")
+		ht.Assert.Equal("100", result["p10_accepted_fee"], "p10")
+		ht.Assert.Equal("150", result["p20_accepted_fee"], "p20")
+		ht.Assert.Equal("200", result["p30_accepted_fee"], "p30")
 		ht.Assert.Equal("200", result["p40_accepted_fee"], "p40")
 		ht.Assert.Equal("200", result["p50_accepted_fee"], "p50")
 		ht.Assert.Equal("200", result["p60_accepted_fee"], "p60")
@@ -157,5 +157,43 @@ func TestOperationFeeTestsActions_ShowMultiOp(t *testing.T) {
 		ht.Assert.Equal("200", result["p95_accepted_fee"], "p95")
 		ht.Assert.Equal("200", result["p99_accepted_fee"], "p99")
 		ht.Assert.Equal("0.06", result["ledger_capacity_usage"], "ledger_capacity_usage")
+	}
+}
+
+func TestOperationFeeTestsActions_NotInterpolating(t *testing.T) {
+	ht := StartHTTPTest(t, "operation_fee_stats_3")
+	defer ht.Finish()
+
+	// Update max_tx_set_size on ledgers
+	_, err := ht.HorizonSession().ExecRaw("UPDATE history_ledgers SET max_tx_set_size = 50")
+	ht.Require.NoError(err)
+
+	// Update one tx to a huge fee
+	_, err = ht.HorizonSession().ExecRaw("UPDATE history_transactions SET max_fee = 256000, operation_count = 16 WHERE transaction_hash = '6a349e7331e93a251367287e274fb1699abaf723bde37aebe96248c76fd3071a'")
+	ht.Require.NoError(err)
+
+	ht.App.UpdateOperationFeeStatsState()
+
+	w := ht.Get("/fee_stats")
+
+	if ht.Assert.Equal(200, w.Code) {
+		var result map[string]string
+		err := json.Unmarshal(w.Body.Bytes(), &result)
+		ht.Require.NoError(err)
+		ht.Assert.Equal("200", result["min_accepted_fee"], "min")
+		ht.Assert.Equal("400", result["mode_accepted_fee"], "mode")
+		ht.Assert.Equal("100", result["last_ledger_base_fee"], "base_fee")
+		ht.Assert.Equal("200", result["p10_accepted_fee"], "p10")
+		ht.Assert.Equal("300", result["p20_accepted_fee"], "p20")
+		ht.Assert.Equal("400", result["p30_accepted_fee"], "p30")
+		ht.Assert.Equal("400", result["p40_accepted_fee"], "p40")
+		ht.Assert.Equal("400", result["p50_accepted_fee"], "p50")
+		ht.Assert.Equal("400", result["p60_accepted_fee"], "p60")
+		ht.Assert.Equal("400", result["p70_accepted_fee"], "p70")
+		ht.Assert.Equal("400", result["p80_accepted_fee"], "p80")
+		ht.Assert.Equal("16000", result["p90_accepted_fee"], "p90")
+		ht.Assert.Equal("16000", result["p95_accepted_fee"], "p95")
+		ht.Assert.Equal("16000", result["p99_accepted_fee"], "p99")
+		ht.Assert.Equal("0.09", result["ledger_capacity_usage"], "ledger_capacity_usage")
 	}
 }
