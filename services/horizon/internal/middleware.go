@@ -18,6 +18,7 @@ import (
 	"github.com/stellar/go/services/horizon/internal/httpx"
 	"github.com/stellar/go/services/horizon/internal/render"
 	hProblem "github.com/stellar/go/services/horizon/internal/render/problem"
+	"github.com/stellar/go/support/db"
 	"github.com/stellar/go/support/log"
 	"github.com/stellar/go/support/render/problem"
 )
@@ -210,22 +211,35 @@ func acceptOnlyJSON(h http.Handler) http.Handler {
 	})
 }
 
-// requiresExperimentalIngestion is a middleware which enables a handler
+// ExperimentalIngestionMiddleware is a middleware which enables a handler
 // if the experimental ingestion system is enabled and initialized.
 // It also ensures that state (ledger entries) has been verified and are
 // correct. Otherwise returns `500 Internal Server Error` to prevent
 // returning invalid data to the user.
-func requiresExperimentalIngestion(h http.Handler) http.Handler {
+type ExperimentalIngestionMiddleware struct {
+	EnableExperimentalIngestion bool
+	HorizonSession              *db.Session
+	StateReady                  func() bool
+}
+
+// Wrap executes the middleware on a given http handler
+func (m *ExperimentalIngestionMiddleware) Wrap(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
-		app := AppFromContext(ctx)
-		if !app.config.EnableExperimentalIngestion {
+		if !m.EnableExperimentalIngestion {
 			problem.Render(r.Context(), w, problem.NotFound)
 			return
 		}
 
+		// expingest has not finished processing any ledger so no data.
+		if !m.StateReady() {
+			problem.Render(r.Context(), w, hProblem.StillIngesting)
+			return
+		}
+
 		localLog := log.Ctx(ctx)
-		repeatableReadSession := app.HorizonSession(r.Context())
+		repeatableReadSession := m.HorizonSession.Clone()
+		repeatableReadSession.Ctx = r.Context()
 		err := repeatableReadSession.BeginTx(&sql.TxOptions{
 			Isolation: sql.LevelRepeatableRead,
 			ReadOnly:  true,
@@ -238,32 +252,25 @@ func requiresExperimentalIngestion(h http.Handler) http.Handler {
 		defer repeatableReadSession.Rollback()
 
 		q := &history.Q{repeatableReadSession}
-		lastIngestedLedger, err := q.GetLastLedgerExpIngestNonBlocking()
-		if err != nil {
-			localLog.WithField("err", err).Error("Error running GetLastLedgerExpIngestNonBlocking")
-			problem.Render(r.Context(), w, err)
-			return
-		}
-
-		// expingest has not finished processing any ledger so no data.
-		if lastIngestedLedger == 0 {
-			problem.Render(r.Context(), w, hProblem.StillIngesting)
-			return
-		}
-
 		stateInvalid, err := q.GetExpStateInvalid()
 		if err != nil {
 			localLog.WithField("err", err).Error("Error running GetExpStateInvalid")
 			problem.Render(r.Context(), w, err)
 			return
 		}
-
 		if stateInvalid {
 			problem.Render(r.Context(), w, problem.ServerError)
 			return
 		}
 
+		lastIngestedLedger, err := q.GetLastLedgerExpIngestNonBlocking()
+		if err != nil {
+			localLog.WithField("err", err).Error("Error running GetLastLedgerExpIngestNonBlocking")
+			problem.Render(r.Context(), w, err)
+			return
+		}
 		actions.SetLastLedgerHeader(w, lastIngestedLedger)
+
 		h.ServeHTTP(w, r.WithContext(
 			context.WithValue(
 				r.Context(),

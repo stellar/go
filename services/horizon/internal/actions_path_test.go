@@ -7,7 +7,6 @@ import (
 	"strconv"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/go-chi/chi"
 	"github.com/stellar/go/exp/orderbook"
@@ -41,7 +40,19 @@ func inMemoryPathFindingClient(
 		coreQ:                &core.Q{tt.CoreSession()},
 	}
 
-	installPathFindingRoutes(findPaths, findFixedPaths, router, false)
+	installPathFindingRoutes(
+		findPaths,
+		findFixedPaths,
+		router,
+		false,
+		&ExperimentalIngestionMiddleware{
+			EnableExperimentalIngestion: true,
+			HorizonSession:              tt.HorizonSession(),
+			StateReady: func() bool {
+				return true
+			},
+		},
+	)
 	return test.NewRequestHelper(router)
 }
 
@@ -67,7 +78,19 @@ func dbPathFindingClient(
 		coreQ:                &core.Q{tt.CoreSession()},
 	}
 
-	installPathFindingRoutes(findPaths, findFixedPaths, router, false)
+	installPathFindingRoutes(
+		findPaths,
+		findFixedPaths,
+		router,
+		false,
+		&ExperimentalIngestionMiddleware{
+			EnableExperimentalIngestion: false,
+			HorizonSession:              tt.HorizonSession(),
+			StateReady: func() bool {
+				return false
+			},
+		},
+	)
 	return test.NewRequestHelper(router)
 }
 
@@ -145,38 +168,6 @@ func TestPathActionsStillIngesting(t *testing.T) {
 		assertions.Problem(w.Body, horizonProblem.StillIngesting)
 		assertions.Equal("", w.Header().Get(actions.LastLedgerHeaderName))
 	}
-}
-
-func TestPathActionsStateInvalid(t *testing.T) {
-	rh := StartHTTPTest(t, "paths")
-	defer rh.Finish()
-
-	rh.App.config.EnableExperimentalIngestion = true
-	rh.App.web.router = chi.NewRouter()
-	orderBookGraph := orderbook.NewOrderBookGraph()
-	rh.App.web.mustInstallMiddlewares(rh.App, time.Minute)
-	rh.App.web.mustInstallActions(
-		rh.App.config,
-		simplepath.NewInMemoryFinder(orderBookGraph),
-		orderBookGraph,
-	)
-	rh.RH = test.NewRequestHelper(rh.App.web.router)
-
-	w := rh.Get("/paths")
-	// Still ingesting
-	rh.Assert.Equal(503, w.Code)
-	rh.Assert.Equal("", w.Header().Get(actions.LastLedgerHeaderName))
-
-	err := rh.App.historyQ.UpdateLastLedgerExpIngest(10)
-	rh.Assert.NoError(err)
-
-	err = rh.App.historyQ.UpdateExpStateInvalid(true)
-	rh.Assert.NoError(err)
-
-	w = rh.Get("/paths")
-	// State invalid
-	rh.Assert.Equal(500, w.Code)
-	rh.Assert.Equal("", w.Header().Get(actions.LastLedgerHeaderName))
 }
 
 func loadOffers(

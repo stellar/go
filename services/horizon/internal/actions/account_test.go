@@ -101,4 +101,27 @@ func TestGetAccountsHandlerPageResults(t *testing.T) {
 		tt.Assert.Equal(row.Signer, result.Signer.Key)
 		tt.Assert.Equal(row.Weight, result.Signer.Weight)
 	}
+
+	records, err = handler.GetResourcePage(
+		httptest.NewRecorder(),
+		makeRequest(
+			t,
+			map[string]string{
+				"signer": "GCXKG6RN4ONIEPCMNFB732A436Z5PNDSRLGWK7GBLCMQLIFO4S7EYWVU",
+				"cursor": "GABGMPEKKDWR2WFH5AJOZV5PDKLJEHGCR3Q24ALETWR5H3A7GI3YTS7V",
+			},
+			map[string]string{},
+			q.Session,
+		),
+	)
+
+	tt.Assert.NoError(err)
+	tt.Assert.Equal(2, len(records))
+
+	for i, row := range rows[1:] {
+		result := records[i].(protocol.AccountSigner)
+		tt.Assert.Equal(row.Account, result.AccountID)
+		tt.Assert.Equal(row.Signer, result.Signer.Key)
+		tt.Assert.Equal(row.Weight, result.Signer.Weight)
+	}
 }

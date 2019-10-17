@@ -153,20 +153,11 @@ func TestRateLimit_Redis(t *testing.T) {
 func TestRequiresExperimentalIngestion(t *testing.T) {
 	tt := test.Start(t)
 	defer tt.Finish()
-
 	test.ResetHorizonDB(t, tt.HorizonDB)
-	q := &history.Q{tt.HorizonSession()}
-	app := &App{
-		historyQ: q,
-	}
 
 	request, err := http.NewRequest("GET", "http://localhost", nil)
 	if err != nil {
 		tt.Assert.NoError(err)
-	}
-
-	if q.GetTx() != nil {
-		t.Fatal("unexpected transaction in history.Q")
 	}
 
 	endpoint := func(w http.ResponseWriter, r *http.Request) {
@@ -176,32 +167,36 @@ func TestRequiresExperimentalIngestion(t *testing.T) {
 		}
 		w.WriteHeader(http.StatusOK)
 	}
-	appMiddleWare := appContextMiddleware(app)
-	handler := appMiddleWare(requiresExperimentalIngestion(http.HandlerFunc(endpoint)))
+	ready := false
+	requiresExperimentalIngestion := &ExperimentalIngestionMiddleware{
+		EnableExperimentalIngestion: false,
+		HorizonSession:              tt.HorizonSession(),
+		StateReady: func() bool {
+			return ready
+		},
+	}
+	handler := requiresExperimentalIngestion.Wrap(http.HandlerFunc(endpoint))
+	q := &history.Q{tt.HorizonSession()}
 
 	// requiresExperimentalIngestion responds with 404 if experimental ingestion is not enabled
-	app.config.EnableExperimentalIngestion = false
 	w := httptest.NewRecorder()
 	handler.ServeHTTP(w, request)
 	tt.Assert.Equal(http.StatusNotFound, w.Code)
 
-	app.config.EnableExperimentalIngestion = true
+	requiresExperimentalIngestion.EnableExperimentalIngestion = true
 	// requiresExperimentalIngestion responds with hProblem.StillIngesting
-	// if the last ingested ledger is 0
-	tt.Assert.NoError(q.UpdateLastLedgerExpIngest(0))
+	// if Ready() is false
 	w = httptest.NewRecorder()
 	handler.ServeHTTP(w, request)
 	tt.Assert.Equal(hProblem.StillIngesting.Status, w.Code)
 
-	app.config.EnableExperimentalIngestion = true
-	tt.Assert.NoError(q.UpdateLastLedgerExpIngest(1))
+	ready = true
 	tt.Assert.NoError(q.UpdateExpStateInvalid(true))
 	// requiresExperimentalIngestion responds with 500 if q.GetExpStateInvalid returns true
 	w = httptest.NewRecorder()
 	handler.ServeHTTP(w, request)
 	tt.Assert.Equal(http.StatusInternalServerError, w.Code)
 
-	app.config.EnableExperimentalIngestion = true
 	tt.Assert.NoError(q.UpdateLastLedgerExpIngest(3))
 	tt.Assert.NoError(q.UpdateExpStateInvalid(false))
 	w = httptest.NewRecorder()

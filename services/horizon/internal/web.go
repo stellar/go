@@ -124,11 +124,12 @@ func installPathFindingRoutes(
 	findFixedPaths FindFixedPathsHandler,
 	r *chi.Mux,
 	expIngest bool,
+	requiresExperimentalIngestion *ExperimentalIngestionMiddleware,
 ) {
 	r.Group(func(r chi.Router) {
 		r.Use(acceptOnlyJSON)
 		if expIngest {
-			r.Use(requiresExperimentalIngestion)
+			r.Use(requiresExperimentalIngestion.Wrap)
 		}
 		r.Method("GET", "/paths", findPaths)
 		r.Method("GET", "/paths/strict-receive", findPaths)
@@ -141,10 +142,11 @@ func installAccountOfferRoute(
 	streamHandler sse.StreamHandler,
 	enableExperimentalIngestion bool,
 	r *chi.Mux,
+	requiresExperimentalIngestion *ExperimentalIngestionMiddleware,
 ) {
 	path := "/accounts/{account_id}/offers"
 	if enableExperimentalIngestion {
-		r.With(requiresExperimentalIngestion).Method(
+		r.With(requiresExperimentalIngestion.Wrap).Method(
 			http.MethodGet,
 			path,
 			streamablePageHandler(offersAction, streamHandler),
@@ -160,6 +162,7 @@ func (w *web) mustInstallActions(
 	config Config,
 	pathFinder paths.Finder,
 	orderBookGraph *orderbook.OrderBookGraph,
+	requiresExperimentalIngestion *ExperimentalIngestionMiddleware,
 ) {
 	if w == nil {
 		log.Fatal("missing web instance for installing web actions")
@@ -183,7 +186,7 @@ func (w *web) mustInstallActions(
 
 	// account actions
 	r.Route("/accounts", func(r chi.Router) {
-		r.With(requiresExperimentalIngestion).
+		r.With(requiresExperimentalIngestion.Wrap).
 			Method(
 				http.MethodGet,
 				"/",
@@ -210,6 +213,7 @@ func (w *web) mustInstallActions(
 		streamHandler,
 		config.EnableExperimentalIngestion,
 		r,
+		requiresExperimentalIngestion,
 	)
 
 	// transaction history actions
@@ -241,13 +245,13 @@ func (w *web) mustInstallActions(
 	r.Get("/trade_aggregations", TradeAggregateIndexAction{}.Handle)
 
 	r.Route("/offers", func(r chi.Router) {
-		r.With(requiresExperimentalIngestion).
+		r.With(requiresExperimentalIngestion.Wrap).
 			Method(
 				http.MethodGet,
 				"/",
 				restPageHandler(actions.GetOffersHandler{}),
 			)
-		r.With(acceptOnlyJSON, requiresExperimentalIngestion).
+		r.With(acceptOnlyJSON, requiresExperimentalIngestion.Wrap).
 			Method(
 				http.MethodGet,
 				"/{id}",
@@ -257,7 +261,7 @@ func (w *web) mustInstallActions(
 	})
 
 	if config.EnableExperimentalIngestion {
-		r.With(requiresExperimentalIngestion).Method(
+		r.With(requiresExperimentalIngestion.Wrap).Method(
 			http.MethodGet,
 			"/order_book",
 			streamableObjectActionHandler{
@@ -290,10 +294,16 @@ func (w *web) mustInstallActions(
 		pathFinder:           pathFinder,
 		coreQ:                w.coreQ,
 	}
-	installPathFindingRoutes(findPaths, findFixedPaths, w.router, config.EnableExperimentalIngestion)
+	installPathFindingRoutes(
+		findPaths,
+		findFixedPaths,
+		w.router,
+		config.EnableExperimentalIngestion,
+		requiresExperimentalIngestion,
+	)
 
 	if config.EnableExperimentalIngestion {
-		r.With(requiresExperimentalIngestion).Method(
+		r.With(requiresExperimentalIngestion.Wrap).Method(
 			http.MethodGet,
 			"/assets",
 			restPageHandler(actions.AssetStatsHandler{}),

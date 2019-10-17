@@ -428,8 +428,18 @@ func (a *App) init() {
 	// This parameter will be removed soon.
 	a.web.mustInstallMiddlewares(a, a.config.ConnectionTimeout)
 
+	requiresExperimentalIngestion := &ExperimentalIngestionMiddleware{
+		EnableExperimentalIngestion: a.config.EnableExperimentalIngestion,
+		HorizonSession:              a.historyQ.Session,
+		StateReady: func() bool {
+			if !a.config.EnableExperimentalIngestion {
+				return false
+			}
+			return a.expingester.StateReady()
+		},
+	}
 	// web.actions
-	a.web.mustInstallActions(a.config, a.paths, orderBookGraph)
+	a.web.mustInstallActions(a.config, a.paths, orderBookGraph, requiresExperimentalIngestion)
 
 	// metrics and log.metrics
 	a.metrics = metrics.NewRegistry()
