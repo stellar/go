@@ -431,11 +431,11 @@ func (a *App) init() {
 	requiresExperimentalIngestion := &ExperimentalIngestionMiddleware{
 		EnableExperimentalIngestion: a.config.EnableExperimentalIngestion,
 		HorizonSession:              a.historyQ.Session,
-		Ready: func() bool {
+		StateReady: func() bool {
 			if !a.config.EnableExperimentalIngestion {
 				return false
 			}
-			return a.expingester.Ready()
+			return a.expingester.StateReady()
 		},
 	}
 	// web.actions

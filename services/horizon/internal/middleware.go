@@ -219,7 +219,7 @@ func acceptOnlyJSON(h http.Handler) http.Handler {
 type ExperimentalIngestionMiddleware struct {
 	EnableExperimentalIngestion bool
 	HorizonSession              *db.Session
-	Ready                       func() bool
+	StateReady                  func() bool
 }
 
 // Wrap executes the middleware on a given http handler
@@ -228,6 +228,12 @@ func (m *ExperimentalIngestionMiddleware) Wrap(h http.Handler) http.Handler {
 		ctx := r.Context()
 		if !m.EnableExperimentalIngestion {
 			problem.Render(r.Context(), w, problem.NotFound)
+			return
+		}
+
+		// expingest has not finished processing any ledger so no data.
+		if !m.StateReady() {
+			problem.Render(r.Context(), w, hProblem.StillIngesting)
 			return
 		}
 
@@ -244,12 +250,6 @@ func (m *ExperimentalIngestionMiddleware) Wrap(h http.Handler) http.Handler {
 			return
 		}
 		defer repeatableReadSession.Rollback()
-
-		// expingest has not finished processing any ledger so no data.
-		if !m.Ready() {
-			problem.Render(r.Context(), w, hProblem.StillIngesting)
-			return
-		}
 
 		q := &history.Q{repeatableReadSession}
 		stateInvalid, err := q.GetExpStateInvalid()

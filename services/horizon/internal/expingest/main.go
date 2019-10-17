@@ -6,7 +6,6 @@ package expingest
 import (
 	"runtime/debug"
 	"sync"
-	"sync/atomic"
 	"time"
 
 	"github.com/stellar/go/clients/stellarcore"
@@ -86,7 +85,8 @@ type System struct {
 	historySession dbSession
 	graph          *orderbook.OrderBookGraph
 	retry          retry
-	ready          int32
+	stateReady     bool
+	stateReadyLock sync.RWMutex
 
 	// stateVerificationRunning is true when verification routine is currently
 	// running.
@@ -354,9 +354,17 @@ func (s *System) resumeFromLedger(lastIngestedLedger uint32) {
 	})
 }
 
-// Ready returns true if the ingestion system has finished running it's state pipelines
-func (s *System) Ready() bool {
-	return atomic.LoadInt32(&s.ready) > 0
+// StateReady returns true if the ingestion system has finished running it's state pipelines
+func (s *System) StateReady() bool {
+	s.stateReadyLock.RLock()
+	defer s.stateReadyLock.RUnlock()
+	return s.stateReady
+}
+
+func (s *System) setStateReady() {
+	s.stateReadyLock.Lock()
+	defer s.stateReadyLock.Unlock()
+	s.stateReady = true
 }
 
 func (s *System) Shutdown() {

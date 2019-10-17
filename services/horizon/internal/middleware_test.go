@@ -171,7 +171,7 @@ func TestRequiresExperimentalIngestion(t *testing.T) {
 	requiresExperimentalIngestion := &ExperimentalIngestionMiddleware{
 		EnableExperimentalIngestion: false,
 		HorizonSession:              tt.HorizonSession(),
-		Ready: func() bool {
+		StateReady: func() bool {
 			return ready
 		},
 	}

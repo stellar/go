@@ -3,7 +3,6 @@ package expingest
 import (
 	"context"
 	"fmt"
-	"sync/atomic"
 
 	"github.com/stellar/go/exp/ingest"
 	"github.com/stellar/go/exp/ingest/pipeline"
@@ -166,7 +165,7 @@ func preProcessingHook(
 	} else {
 		// mark the system as ready because we have progressed to running
 		// the ledger pipeline
-		atomic.StoreInt32(&system.ready, 1)
+		system.setStateReady()
 
 		if lastIngestedLedger+1 == ledgerSeq {
 			// lastIngestedLedger+1 == ledgerSeq what means that this instance

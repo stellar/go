@@ -35,7 +35,7 @@ func TestStatePreProcessingHook(t *testing.T) {
 	tt.Assert.NoError(err)
 	tt.Assert.NotNil(session.GetTx())
 	tt.Assert.Nil(newCtx.Value(horizonProcessors.IngestUpdateDatabase))
-	tt.Assert.False(system.Ready())
+	tt.Assert.False(system.StateReady())
 
 	tt.Assert.Nil(session.Rollback())
 	tt.Assert.Nil(session.GetTx())
@@ -47,7 +47,7 @@ func TestStatePreProcessingHook(t *testing.T) {
 	tt.Assert.NoError(err)
 	tt.Assert.NotNil(session.GetTx())
 	tt.Assert.Nil(newCtx.Value(horizonProcessors.IngestUpdateDatabase))
-	tt.Assert.False(system.Ready())
+	tt.Assert.False(system.StateReady())
 }
 
 func TestLedgerPreProcessingHook(t *testing.T) {
@@ -71,12 +71,12 @@ func TestLedgerPreProcessingHook(t *testing.T) {
 	tt.Assert.NoError(err)
 	tt.Assert.NotNil(session.GetTx())
 	tt.Assert.Equal(newCtx.Value(horizonProcessors.IngestUpdateDatabase), true)
-	tt.Assert.True(system.Ready())
+	tt.Assert.True(system.StateReady())
 
 	tt.Assert.Nil(session.Rollback())
 	tt.Assert.Nil(session.GetTx())
-	system.ready = 0
-	tt.Assert.False(system.Ready())
+	system.stateReady = false
+	tt.Assert.False(system.StateReady())
 
 	tt.Assert.Nil(session.Begin())
 	tt.Assert.NotNil(session.GetTx())
@@ -84,30 +84,30 @@ func TestLedgerPreProcessingHook(t *testing.T) {
 	tt.Assert.NoError(err)
 	tt.Assert.NotNil(session.GetTx())
 	tt.Assert.Equal(newCtx.Value(horizonProcessors.IngestUpdateDatabase), true)
-	tt.Assert.True(system.Ready())
+	tt.Assert.True(system.StateReady())
 
 	tt.Assert.Nil(session.Rollback())
 	tt.Assert.Nil(session.GetTx())
-	system.ready = 0
-	tt.Assert.False(system.Ready())
+	system.stateReady = false
+	tt.Assert.False(system.StateReady())
 
 	tt.Assert.Nil(historyQ.UpdateLastLedgerExpIngest(2))
 	newCtx, err = preProcessingHook(ctx, pipelineType, system, session)
 	tt.Assert.NoError(err)
 	tt.Assert.Nil(session.GetTx())
 	tt.Assert.Nil(newCtx.Value(horizonProcessors.IngestUpdateDatabase))
-	tt.Assert.True(system.Ready())
+	tt.Assert.True(system.StateReady())
 
 	tt.Assert.Nil(session.Begin())
 	tt.Assert.NotNil(session.GetTx())
-	system.ready = 0
-	tt.Assert.False(system.Ready())
+	system.stateReady = false
+	tt.Assert.False(system.StateReady())
 
 	newCtx, err = preProcessingHook(ctx, pipelineType, system, session)
 	tt.Assert.NoError(err)
 	tt.Assert.Nil(session.GetTx())
 	tt.Assert.Nil(newCtx.Value(horizonProcessors.IngestUpdateDatabase))
-	tt.Assert.True(system.Ready())
+	tt.Assert.True(system.StateReady())
 }
 
 func TestPostProcessingHook(t *testing.T) {

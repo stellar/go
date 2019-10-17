@@ -303,7 +303,7 @@ func (w *web) mustInstallActions(
 	)
 
 	if config.EnableExperimentalIngestion {
-		r.With(requiresExperimentalIngestion).Method(
+		r.With(requiresExperimentalIngestion.Wrap).Method(
 			http.MethodGet,
 			"/assets",
 			restPageHandler(actions.AssetStatsHandler{}),
