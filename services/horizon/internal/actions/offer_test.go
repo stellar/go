@@ -1,6 +1,8 @@
 package actions
 
 import (
+	"database/sql"
+	"net/http"
 	"net/http/httptest"
 	"testing"
 	"time"
@@ -11,6 +13,7 @@ import (
 	"github.com/stellar/go/services/horizon/internal/ingest"
 	"github.com/stellar/go/services/horizon/internal/test"
 	"github.com/stellar/go/support/render/hal"
+	"github.com/stellar/go/support/render/problem"
 	"github.com/stellar/go/xdr"
 )
 
@@ -59,6 +62,116 @@ var (
 		Amount: xdr.Int64(500),
 	}
 )
+
+func TestGetOfferByIDHandler(t *testing.T) {
+	tt := test.Start(t)
+	defer tt.Finish()
+	test.ResetHorizonDB(t, tt.HorizonDB)
+
+	q := &history.Q{tt.HorizonSession()}
+	handler := GetOfferByID{}
+	ingestion := ingest.Ingestion{DB: tt.HorizonSession()}
+
+	ledgerCloseTime := time.Now().Unix()
+	tt.Assert.NoError(ingestion.Start())
+	ingestion.Ledger(
+		1,
+		&core.LedgerHeader{Sequence: 3, CloseTime: ledgerCloseTime},
+		0,
+		0,
+		0,
+	)
+	tt.Assert.NoError(ingestion.Flush())
+	tt.Assert.NoError(ingestion.Close())
+
+	_, err := q.InsertOffer(eurOffer, 3)
+	tt.Assert.NoError(err)
+	_, err = q.InsertOffer(usdOffer, 4)
+	tt.Assert.NoError(err)
+
+	for _, testCase := range []struct {
+		name          string
+		request       *http.Request
+		expectedError func(error)
+		expectedOffer func(hal.Pageable)
+	}{
+		{
+			"offer id is invalid",
+			makeRequest(
+				t, map[string]string{}, map[string]string{"id": "invalid"}, q.Session,
+			),
+			func(err error) {
+				tt.Assert.Error(err)
+				p := err.(*problem.P)
+				tt.Assert.Equal("bad_request", p.Type)
+				tt.Assert.Equal("id", p.Extras["invalid_field"])
+			},
+			func(response hal.Pageable) {
+				tt.Assert.Nil(response)
+			},
+		},
+		{
+			"offer does not exist",
+			makeRequest(
+				t, map[string]string{}, map[string]string{"id": "1234567"}, q.Session,
+			),
+			func(err error) {
+				tt.Assert.Equal(err, sql.ErrNoRows)
+			},
+			func(response hal.Pageable) {
+				tt.Assert.Nil(response)
+			},
+		},
+		{
+			"offer with ledger close time",
+			makeRequest(
+				t, map[string]string{}, map[string]string{"id": "4"}, q.Session,
+			),
+			func(err error) {
+				tt.Assert.NoError(err)
+			},
+			func(response hal.Pageable) {
+				offer := response.(horizon.Offer)
+				tt.Assert.Equal(int64(eurOffer.OfferId), offer.ID)
+				tt.Assert.Equal("native", offer.Selling.Type)
+				tt.Assert.Equal("credit_alphanum4", offer.Buying.Type)
+				tt.Assert.Equal("EUR", offer.Buying.Code)
+				tt.Assert.Equal(issuer.Address(), offer.Seller)
+				tt.Assert.Equal(issuer.Address(), offer.Buying.Issuer)
+				tt.Assert.Equal(int32(3), offer.LastModifiedLedger)
+				tt.Assert.Equal(ledgerCloseTime, offer.LastModifiedTime.Unix())
+			},
+		},
+		{
+			"offer without ledger close time",
+			makeRequest(
+				t, map[string]string{}, map[string]string{"id": "6"}, q.Session,
+			),
+			func(err error) {
+				tt.Assert.NoError(err)
+			},
+			func(response hal.Pageable) {
+				offer := response.(horizon.Offer)
+				tt.Assert.Equal(int64(usdOffer.OfferId), offer.ID)
+				tt.Assert.Equal("credit_alphanum4", offer.Selling.Type)
+				tt.Assert.Equal("EUR", offer.Selling.Code)
+				tt.Assert.Equal("credit_alphanum4", offer.Buying.Type)
+				tt.Assert.Equal("USD", offer.Buying.Code)
+				tt.Assert.Equal(issuer.Address(), offer.Seller)
+				tt.Assert.Equal(issuer.Address(), offer.Selling.Issuer)
+				tt.Assert.Equal(issuer.Address(), offer.Buying.Issuer)
+				tt.Assert.Equal(int32(4), offer.LastModifiedLedger)
+				tt.Assert.Nil(offer.LastModifiedTime)
+			},
+		},
+	} {
+		t.Run(testCase.name, func(t *testing.T) {
+			offer, err := handler.GetResource(httptest.NewRecorder(), testCase.request)
+			testCase.expectedError(err)
+			testCase.expectedOffer(offer)
+		})
+	}
+}
 
 func TestGetOffersHandler(t *testing.T) {
 	tt := test.Start(t)

@@ -248,7 +248,11 @@ func (w *web) mustInstallActions(
 				restPageHandler(actions.GetOffersHandler{}),
 			)
 		r.With(acceptOnlyJSON, requiresExperimentalIngestion).
-			Get("/{id}", getOfferResource)
+			Method(
+				http.MethodGet,
+				"/{id}",
+				objectActionHandler{actions.GetOfferByID{}},
+			)
 		r.Get("/{offer_id}/trades", TradeIndexAction{}.Handle)
 	})
 

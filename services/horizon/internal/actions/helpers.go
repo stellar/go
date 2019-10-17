@@ -176,24 +176,34 @@ func (base *Base) GetString(name string) (result string) {
 }
 
 // GetInt64 retrieves an int64 from the action parameter of the given name.
+func GetInt64(r *http.Request, name string) (int64, error) {
+	asStr, err := GetString(r, name)
+	if err != nil {
+		return 0, err
+	}
+	if asStr == "" {
+		return 0, nil
+	}
+
+	asI64, err := strconv.ParseInt(asStr, 10, 64)
+	if err != nil {
+		return 0, problem.MakeInvalidFieldProblem(name, errors.New("unparseable value"))
+	}
+
+	return asI64, nil
+}
+
+// GetInt64 retrieves an int64 from the action parameter of the given name.
 // Populates err if the value is not a valid int64
 func (base *Base) GetInt64(name string) int64 {
 	if base.Err != nil {
 		return 0
 	}
 
-	asStr := base.GetString(name)
-	if asStr == "" {
-		return 0
-	}
+	var parsed int64
+	parsed, base.Err = GetInt64(base.R, name)
 
-	asI64, err := strconv.ParseInt(asStr, 10, 64)
-	if err != nil {
-		base.SetInvalidField(name, errors.New("unparseable value"))
-		return 0
-	}
-
-	return asI64
+	return parsed
 }
 
 // GetInt32 retrieves an int32 from the action parameter of the given name.
