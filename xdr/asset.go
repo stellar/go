@@ -10,6 +10,13 @@ import (
 
 // This file contains helpers for working with xdr.Asset structs
 
+// AssetTypeToString maps an xdr.AssetType to its string representation
+var AssetTypeToString = map[AssetType]string{
+	AssetTypeAssetTypeNative:           "native",
+	AssetTypeAssetTypeCreditAlphanum4:  "credit_alphanum4",
+	AssetTypeAssetTypeCreditAlphanum12: "credit_alphanum12",
+}
+
 // MustNewNativeAsset returns a new native asset, panicking if it can't.
 func MustNewNativeAsset() Asset {
 	a := Asset{}
@@ -176,14 +183,7 @@ func (a Asset) Extract(typ interface{}, code interface{}, issuer interface{}) er
 	case *AssetType:
 		*typ = a.Type
 	case *string:
-		switch a.Type {
-		case AssetTypeAssetTypeNative:
-			*typ = "native"
-		case AssetTypeAssetTypeCreditAlphanum4:
-			*typ = "credit_alphanum4"
-		case AssetTypeAssetTypeCreditAlphanum12:
-			*typ = "credit_alphanum12"
-		}
+		*typ = AssetTypeToString[a.Type]
 	default:
 		return errors.New("can't extract type")
 	}

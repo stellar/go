@@ -375,8 +375,8 @@ func GetAccountID(r *http.Request, name string) (xdr.AccountId, error) {
 		return xdr.AccountId{}, err
 	}
 
-	result := xdr.AccountId{}
-	if err := result.SetAddress(value); err != nil {
+	result, err := xdr.AddressToAccountId(value)
+	if err != nil {
 		return result, problem.MakeInvalidFieldProblem(
 			name,
 			errors.New("invalid address"),
@@ -563,15 +563,15 @@ func GetAssets(r *http.Request, name string) ([]xdr.Asset, error) {
 				)
 			}
 
-			issuer := xdr.AccountId{}
-			if err := issuer.SetAddress(parts[1]); err != nil {
+			issuer, err := xdr.AddressToAccountId(parts[1])
+			if err != nil {
 				return nil, problem.MakeInvalidFieldProblem(
 					name,
 					fmt.Errorf("%s is not a valid asset, it contains an invalid issuer", assetString),
 				)
 			}
 
-			if err := asset.SetCredit(string(code), issuer); err != nil {
+			if err := asset.SetCredit(code, issuer); err != nil {
 				return nil, problem.MakeInvalidFieldProblem(
 					name,
 					fmt.Errorf("%s is not a valid asset", assetString),
