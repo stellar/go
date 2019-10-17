@@ -8,6 +8,12 @@ import (
 	"github.com/stellar/go/xdr"
 )
 
+// IsAuthorized returns true if issuer has authorized account to perform
+// transactions with its credit
+func (trustLine TrustLine) IsAuthorized() bool {
+	return xdr.TrustLineFlags(trustLine.Flags).IsAuthorized()
+}
+
 func (q *Q) CountTrustLines() (int, error) {
 	sql := sq.Select("count(*)").From("trust_lines")
 

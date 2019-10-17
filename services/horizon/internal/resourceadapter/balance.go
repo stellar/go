@@ -5,6 +5,7 @@ import (
 	protocol "github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/services/horizon/internal/assets"
 	"github.com/stellar/go/services/horizon/internal/db2/core"
+	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
 )
@@ -22,6 +23,24 @@ func PopulateBalance(dest *protocol.Balance, row core.Trustline) (err error) {
 	dest.Issuer = row.Issuer
 	dest.Code = row.Assetcode
 	dest.LastModifiedLedger = row.LastModified
+	isAuthorized := row.IsAuthorized()
+	dest.IsAuthorized = &isAuthorized
+	return
+}
+
+func PopulateHistoryBalance(dest *protocol.Balance, row history.TrustLine) (err error) {
+	dest.Type, err = assets.String(row.AssetType)
+	if err != nil {
+		return errors.Wrap(err, "getting the string representation from the provided xdr asset type")
+	}
+
+	dest.Balance = amount.StringFromInt64(row.Balance)
+	dest.BuyingLiabilities = amount.StringFromInt64(row.BuyingLiabilities)
+	dest.SellingLiabilities = amount.StringFromInt64(row.SellingLiabilities)
+	dest.Limit = amount.StringFromInt64(row.Limit)
+	dest.Issuer = row.AssetIssuer
+	dest.Code = row.AssetCode
+	dest.LastModifiedLedger = row.LastModifiedLedger
 	isAuthorized := row.IsAuthorized()
 	dest.IsAuthorized = &isAuthorized
 	return

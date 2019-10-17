@@ -7,6 +7,24 @@ import (
 	"github.com/stellar/go/xdr"
 )
 
+// IsAuthRequired returns true if the account has the "AUTH_REQUIRED" option
+// turned on.
+func (account AccountEntry) IsAuthRequired() bool {
+	return xdr.AccountFlags(account.Flags).IsAuthRequired()
+}
+
+// IsAuthRevocable returns true if the account has the "AUTH_REVOCABLE" option
+// turned on.
+func (account AccountEntry) IsAuthRevocable() bool {
+	return xdr.AccountFlags(account.Flags).IsAuthRevocable()
+}
+
+// IsAuthImmutable returns true if the account has the "AUTH_IMMUTABLE" option
+// turned on.
+func (account AccountEntry) IsAuthImmutable() bool {
+	return xdr.AccountFlags(account.Flags).IsAuthImmutable()
+}
+
 func (q *Q) CountAccounts() (int, error) {
 	sql := sq.Select("count(*)").From("accounts")
 
