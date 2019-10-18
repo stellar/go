@@ -6,6 +6,17 @@ import (
 	"github.com/stellar/go/support/errors"
 )
 
+func (q *Q) GetAccountSignersByAccountID(id string) ([]AccountSigner, error) {
+	sql := selectAccountSigners.Where(sq.Eq{"accounts_signers.account": id})
+
+	var results []AccountSigner
+	if err := q.Select(&results, sql); err != nil {
+		return nil, errors.Wrap(err, "could not run select query")
+	}
+
+	return results, nil
+}
+
 func (q *Q) SignersForAccounts(accounts []string) ([]AccountSigner, error) {
 	sql := selectAccountSigners.Where(map[string]interface{}{"accounts_signers.account": accounts})
 
