@@ -2,6 +2,7 @@ package pipeline
 
 import (
 	"context"
+	stdio "io"
 
 	"github.com/stellar/go/exp/ingest/io"
 	supportPipeline "github.com/stellar/go/exp/support/pipeline"
@@ -86,6 +87,11 @@ func (w *readerWrapperLedger) Read() (io.LedgerTransaction, error) {
 	}
 
 	return entry, nil
+}
+
+func (w *readerWrapperLedger) ReadUpgradeChange() (io.Change, error) {
+	// TODO!
+	return io.Change{}, stdio.EOF
 }
 
 func (w *writerWrapperState) Write(entry xdr.LedgerEntryChange) error {

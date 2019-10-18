@@ -123,6 +123,10 @@ type LedgerProcessor interface {
 	// The first argument `ctx` is a context with cancel. Processor should monitor
 	// `ctx.Done()` channel and exit when it returns a value. This can happen when
 	// pipeline execution is interrupted, ex. due to an error.
+	// Please note that processor can filter transactions (by not passing them to
+	// `io.LedgerWriter`) but it cannot filter ledger upgrade changes
+	// (`io.LeaderReader.ReadUpgradeChange`). All upgrade changes will be available
+	// for the next processor to read.
 	//
 	// Given all information above `ProcessLedger` should always look like this:
 	//

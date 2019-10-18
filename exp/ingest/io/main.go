@@ -42,6 +42,12 @@ type LedgerReader interface {
 	// Read should return the next transaction. If there are no more
 	// transactions it should return `io.EOF` error.
 	Read() (LedgerTransaction, error)
+	// Read should return the next ledger entry change from ledger upgrades. If
+	// there are no more changes it should return `io.EOF` error.
+	// Ledger upgrades MUST be processed AFTER all transactions and only ONCE.
+	// If app is tracking state in more than one store, all of them need to
+	// be updated with upgrade changes.
+	ReadUpgradeChange() (Change, error)
 	// Close should be called when reading is finished. This is especially
 	// helpful when there are still some transactions available so reader can stop
 	// streaming them.
@@ -64,9 +70,12 @@ type LedgerWriter interface {
 
 // LedgerTransaction represents the data for a single transaction within a ledger.
 type LedgerTransaction struct {
-	Index      uint32
-	Envelope   xdr.TransactionEnvelope
-	Result     xdr.TransactionResultPair
-	Meta       xdr.TransactionMeta
+	Index    uint32
+	Envelope xdr.TransactionEnvelope
+	Result   xdr.TransactionResultPair
+	// FeeChanges and Meta are low level values.
+	// Use LedgerTransaction.GetChanges() for higher level access to ledger
+	// entry changes.
 	FeeChanges xdr.LedgerEntryChanges
+	Meta       xdr.TransactionMeta
 }

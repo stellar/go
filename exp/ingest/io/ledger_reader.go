@@ -11,13 +11,15 @@ import (
 
 // DBLedgerReader is a database-backed implementation of the io.LedgerReader interface.
 type DBLedgerReader struct {
-	sequence     uint32
-	backend      ledgerbackend.LedgerBackend
-	header       xdr.LedgerHeaderHistoryEntry
-	transactions []LedgerTransaction
-	readIdx      int
-	initOnce     sync.Once
-	readMutex    sync.Mutex
+	sequence       uint32
+	backend        ledgerbackend.LedgerBackend
+	header         xdr.LedgerHeaderHistoryEntry
+	transactions   []LedgerTransaction
+	upgradeChanges []Change
+	initOnce       sync.Once
+	readMutex      sync.Mutex
+	readIdx        int
+	upgradeReadIdx int
 }
 
 // Ensure DBLedgerReader implements LedgerReader
@@ -76,6 +78,26 @@ func (dblrc *DBLedgerReader) Read() (LedgerTransaction, error) {
 	return LedgerTransaction{}, io.EOF
 }
 
+// ReadUpgradeChange returns the next upgrade change in the ledger, each time it is called. When there
+// are no more upgrades to return, an EOF error is returned.
+func (dblrc *DBLedgerReader) ReadUpgradeChange() (Change, error) {
+	var err error
+	dblrc.initOnce.Do(func() { err = dblrc.init() })
+	if err != nil {
+		return Change{}, err
+	}
+
+	// Protect all accesses to dblrc.readIdx
+	dblrc.readMutex.Lock()
+	defer dblrc.readMutex.Unlock()
+
+	if dblrc.upgradeReadIdx < len(dblrc.transactions) {
+		dblrc.upgradeReadIdx++
+		return dblrc.upgradeChanges[dblrc.upgradeReadIdx-1], nil
+	}
+	return Change{}, io.EOF
+}
+
 // Close moves the read pointer so that subsequent calls to Read() will return EOF.
 func (dblrc *DBLedgerReader) Close() error {
 	dblrc.readMutex.Lock()
@@ -99,6 +121,10 @@ func (dblrc *DBLedgerReader) init() error {
 	dblrc.header = ledgerCloseMeta.LedgerHeader
 
 	dblrc.storeTransactions(ledgerCloseMeta)
+	for _, upgradeChanges := range ledgerCloseMeta.UpgradesMeta {
+		changes := getChangesFromLedgerEntryChanges(upgradeChanges)
+		dblrc.upgradeChanges = append(dblrc.upgradeChanges, changes...)
+	}
 
 	return nil
 }

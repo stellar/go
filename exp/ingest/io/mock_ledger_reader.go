@@ -26,6 +26,11 @@ func (m *MockLedgerReader) Read() (LedgerTransaction, error) {
 	return args.Get(0).(LedgerTransaction), args.Error(1)
 }
 
+func (m *MockLedgerReader) ReadUpgradeChange() (Change, error) {
+	args := m.Called()
+	return args.Get(0).(Change), args.Error(1)
+}
+
 func (m *MockLedgerReader) Close() error {
 	args := m.Called()
 	return args.Error(0)

@@ -198,6 +198,7 @@ func (p *DatabaseProcessor) ProcessLedger(ctx context.Context, store *pipeline.S
 		actions = append(actions, p.Action)
 	}
 
+	// Process transaction meta
 	for {
 		transaction, err := r.Read()
 		if err != nil {
@@ -229,6 +230,40 @@ func (p *DatabaseProcessor) ProcessLedger(ctx context.Context, store *pipeline.S
 						fmt.Sprintf("Error in %s handler", action),
 					)
 				}
+			}
+		}
+
+		select {
+		case <-ctx.Done():
+			return nil
+		default:
+			continue
+		}
+	}
+
+	// Process upgrades meta
+	for {
+		change, err := r.ReadUpgradeChange()
+		if err != nil {
+			if err == stdio.EOF {
+				break
+			} else {
+				return err
+			}
+		}
+
+		for _, action := range actions {
+			handler, ok := actionHandlers[action]
+			if !ok {
+				return errors.New("Unknown action")
+			}
+
+			err := handler(change)
+			if err != nil {
+				return errors.Wrap(
+					err,
+					fmt.Sprintf("Error in %s handler", action),
+				)
 			}
 		}
 
