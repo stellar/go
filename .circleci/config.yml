@@ -20,7 +20,7 @@ commands:
       - checkout
       - run:
           name: Run govet
-          command: ./govet.sh
+          command: docker images --no-trunc --format '{{.ID}}' | xargs docker rmi && ./govet.sh
 
   # staticcheck runs staticcheck in the entire codebase.
   staticcheck:
