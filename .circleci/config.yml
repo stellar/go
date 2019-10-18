@@ -191,7 +191,7 @@ jobs:
   check_code_1_13:
     working_directory: /go/src/github.com/stellar/go
     docker:
-      - image: circleci/golang:1.13-stretch
+      - image: circleci/golang:1.13.3-stretch
     steps:
       - install_go_deps
       - check_go_deps
@@ -203,7 +203,7 @@ jobs:
   test_code_1_12:
     working_directory: /go/src/github.com/stellar/go
     docker:
-      - image: circleci/golang:1.12-stretch
+      - image: circleci/golang:1.12.12-stretch
         environment:
           GO111MODULE: "on"
           PGHOST: localhost
@@ -223,7 +223,7 @@ jobs:
   test_code_1_13:
     working_directory: /go/src/github.com/stellar/go
     docker:
-      - image: circleci/golang:1.13-stretch
+      - image: circleci/golang:1.13.3-stretch
         environment:
           GO111MODULE: "on"
           PGHOST: localhost
@@ -247,7 +247,7 @@ jobs:
   publish_artifacts:
     working_directory: /go/src/github.com/stellar/go
     docker:
-      - image: circleci/golang:1.13-stretch
+      - image: circleci/golang:1.13.3-stretch
     steps:
       - check_deprecations
       - install_go_deps
@@ -271,7 +271,7 @@ jobs:
   ingest_state_diff:
     working_directory: /go/src/github.com/stellar/go/
     docker:
-      - image: circleci/golang:1.13-stretch
+      - image: circleci/golang:1.13.3-stretch
         environment:
           PGHOST: localhost
           PGPORT: 5432
