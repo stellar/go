@@ -176,6 +176,50 @@ func ExampleClient_NextOperationsPage() {
 	}
 }
 
+func ExampleClient_NextTradeAggregationsPage() {
+	client := horizonclient.DefaultPublicNetClient
+	testTime := time.Unix(int64(1517521726), int64(0))
+	// Find trade aggregations
+	ta := horizonclient.TradeAggregationRequest{
+		StartTime:          testTime,
+		EndTime:            testTime,
+		Resolution:         horizonclient.FiveMinuteResolution,
+		BaseAssetType:      horizonclient.AssetTypeNative,
+		CounterAssetType:   horizonclient.AssetType4,
+		CounterAssetCode:   "SLT",
+		CounterAssetIssuer: "GCKA6K5PCQ6PNF5RQBF7PQDJWRHO6UOGFMRLK3DYHDOI244V47XKQ4GP",
+		Order:              horizonclient.OrderDesc,
+	}
+	tradeAggs, err := client.TradeAggregations(ta)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	fmt.Print(tradeAggs)
+
+	// get next pages.
+	recordsFound := false
+	if len(tradeAggs.Embedded.Records) > 0 {
+		recordsFound = true
+	}
+	page := tradeAggs
+	// get the next page of records if recordsFound is true
+	for recordsFound {
+		// next page
+		nextPage, err := client.NextTradeAggregationsPage(page)
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+
+		page = nextPage
+		if len(nextPage.Embedded.Records) == 0 {
+			recordsFound = false
+		}
+		fmt.Println(nextPage)
+	}
+}
+
 func ExampleClient_Paths() {
 
 	client := horizonclient.DefaultPublicNetClient
@@ -361,6 +405,50 @@ func ExampleClient_PrevOperationsPage() {
 	}
 }
 
+func ExampleClient_PrevTradeAggregationsPage() {
+	client := horizonclient.DefaultPublicNetClient
+	testTime := time.Unix(int64(1517521726), int64(0))
+	// Find trade aggregations
+	ta := horizonclient.TradeAggregationRequest{
+		StartTime:          testTime,
+		EndTime:            testTime,
+		Resolution:         horizonclient.FiveMinuteResolution,
+		BaseAssetType:      horizonclient.AssetTypeNative,
+		CounterAssetType:   horizonclient.AssetType4,
+		CounterAssetCode:   "SLT",
+		CounterAssetIssuer: "GCKA6K5PCQ6PNF5RQBF7PQDJWRHO6UOGFMRLK3DYHDOI244V47XKQ4GP",
+		Order:              horizonclient.OrderDesc,
+	}
+	tradeAggs, err := client.TradeAggregations(ta)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	fmt.Print(tradeAggs)
+
+	// get prev pages.
+	recordsFound := false
+	if len(tradeAggs.Embedded.Records) > 0 {
+		recordsFound = true
+	}
+	page := tradeAggs
+	// get the prev page of records if recordsFound is true
+	for recordsFound {
+		// prev page
+		prevPage, err := client.PrevTradeAggregationsPage(page)
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+
+		page = prevPage
+		if len(prevPage.Embedded.Records) == 0 {
+			recordsFound = false
+		}
+		fmt.Println(prevPage)
+	}
+}
+
 func ExampleClient_Root() {
 	client := horizonclient.DefaultTestNetClient
 	root, err := client.Root()
@@ -494,4 +582,27 @@ func ExampleClient_StreamPayments() {
 	if err != nil {
 		fmt.Println(err)
 	}
+}
+
+func ExampleClient_TradeAggregations() {
+
+	client := horizonclient.DefaultPublicNetClient
+	testTime := time.Unix(int64(1517521726), int64(0))
+	// Find trade aggregations
+	ta := horizonclient.TradeAggregationRequest{
+		StartTime:          testTime,
+		EndTime:            testTime,
+		Resolution:         horizonclient.FiveMinuteResolution,
+		BaseAssetType:      horizonclient.AssetTypeNative,
+		CounterAssetType:   horizonclient.AssetType4,
+		CounterAssetCode:   "SLT",
+		CounterAssetIssuer: "GCKA6K5PCQ6PNF5RQBF7PQDJWRHO6UOGFMRLK3DYHDOI244V47XKQ4GP",
+		Order:              horizonclient.OrderDesc,
+	}
+	tradeAggs, err := client.TradeAggregations(ta)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	fmt.Print(tradeAggs)
 }
