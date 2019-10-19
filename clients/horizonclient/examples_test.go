@@ -425,6 +425,26 @@ func ExampleClient_StreamOperations() {
 	}
 }
 
+func ExampleClient_StreamOrderBooks() {
+	client := horizonclient.DefaultTestNetClient
+	orderbookRequest := horizonclient.OrderBookRequest{SellingAssetType: horizonclient.AssetTypeNative, BuyingAssetType: horizonclient.AssetType4, BuyingAssetCode: "ABC", BuyingAssetIssuer: "GCLWGQPMKXQSPF776IU33AH4PZNOOWNAWGGKVTBQMIC5IMKUNP3E6NVU"}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	go func() {
+		// Stop streaming after 60 seconds.
+		time.Sleep(60 * time.Second)
+		cancel()
+	}()
+
+	printHandler := func(orderbook hProtocol.OrderBookSummary) {
+		fmt.Println(orderbook)
+	}
+	err := client.StreamOrderBooks(ctx, orderbookRequest, printHandler)
+	if err != nil {
+		fmt.Println(err)
+	}
+}
+
 func ExampleClient_StreamPayments() {
 	client := horizonclient.DefaultTestNetClient
 	// all payments
