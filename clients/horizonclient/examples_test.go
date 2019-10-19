@@ -220,6 +220,40 @@ func ExampleClient_NextTradeAggregationsPage() {
 	}
 }
 
+func ExampleClient_NextTradesPage() {
+	client := horizonclient.DefaultPublicNetClient
+	// all trades
+	tradeRequest := horizonclient.TradeRequest{Cursor: "123456", Limit: 30, Order: horizonclient.OrderAsc}
+	trades, err := client.Trades(tradeRequest)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	fmt.Print(trades)
+
+	// get next pages.
+	recordsFound := false
+	if len(trades.Embedded.Records) > 0 {
+		recordsFound = true
+	}
+	page := trades
+	// get the next page of records if recordsFound is true
+	for recordsFound {
+		// next page
+		nextPage, err := client.NextTradesPage(page)
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+
+		page = nextPage
+		if len(nextPage.Embedded.Records) == 0 {
+			recordsFound = false
+		}
+		fmt.Println(nextPage)
+	}
+}
+
 func ExampleClient_Paths() {
 
 	client := horizonclient.DefaultPublicNetClient
@@ -449,6 +483,40 @@ func ExampleClient_PrevTradeAggregationsPage() {
 	}
 }
 
+func ExampleClient_PrevTradesPage() {
+	client := horizonclient.DefaultPublicNetClient
+	// all trades
+	tradeRequest := horizonclient.TradeRequest{Cursor: "123456", Limit: 30, Order: horizonclient.OrderAsc}
+	trades, err := client.Trades(tradeRequest)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	fmt.Print(trades)
+
+	// get prev pages.
+	recordsFound := false
+	if len(trades.Embedded.Records) > 0 {
+		recordsFound = true
+	}
+	page := trades
+	// get the prev page of records if recordsFound is true
+	for recordsFound {
+		// prev page
+		prevPage, err := client.PrevTradesPage(page)
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+
+		page = prevPage
+		if len(prevPage.Embedded.Records) == 0 {
+			recordsFound = false
+		}
+		fmt.Println(prevPage)
+	}
+}
+
 func ExampleClient_Root() {
 	client := horizonclient.DefaultTestNetClient
 	root, err := client.Root()
@@ -584,6 +652,28 @@ func ExampleClient_StreamPayments() {
 	}
 }
 
+func ExampleClient_StreamTrades() {
+	client := horizonclient.DefaultTestNetClient
+	// all trades
+	tradeRequest := horizonclient.TradeRequest{Cursor: "760209215489"}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	go func() {
+		// Stop streaming after 60 seconds.
+		time.Sleep(60 * time.Second)
+		cancel()
+	}()
+
+	printHandler := func(tr hProtocol.Trade) {
+		fmt.Println(tr)
+	}
+	err := client.StreamTrades(ctx, tradeRequest, printHandler)
+
+	if err != nil {
+		fmt.Println(err)
+	}
+}
+
 func ExampleClient_TradeAggregations() {
 
 	client := horizonclient.DefaultPublicNetClient
@@ -605,4 +695,17 @@ func ExampleClient_TradeAggregations() {
 		return
 	}
 	fmt.Print(tradeAggs)
+}
+
+func ExampleClient_Trades() {
+
+	client := horizonclient.DefaultPublicNetClient
+	// Find all trades
+	tr := horizonclient.TradeRequest{Cursor: "123456", Limit: 30, Order: horizonclient.OrderAsc}
+	trades, err := client.Trades(tr)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	fmt.Print(trades)
 }
