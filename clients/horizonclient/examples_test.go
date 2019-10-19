@@ -12,7 +12,6 @@ import (
 )
 
 func ExampleClient_AccountDetail() {
-
 	client := horizonclient.DefaultPublicNetClient
 	accountRequest := horizonclient.AccountRequest{AccountID: "GCLWGQPMKXQSPF776IU33AH4PZNOOWNAWGGKVTBQMIC5IMKUNP3E6NVU"}
 
@@ -26,7 +25,6 @@ func ExampleClient_AccountDetail() {
 }
 
 func ExampleClient_Assets() {
-
 	client := horizonclient.DefaultPublicNetClient
 	// assets for asset issuer
 	assetRequest := horizonclient.AssetRequest{ForAssetIssuer: "GCLWGQPMKXQSPF776IU33AH4PZNOOWNAWGGKVTBQMIC5IMKUNP3E6NVU"}
@@ -48,7 +46,6 @@ func ExampleClient_Assets() {
 }
 
 func ExampleClient_Effects() {
-
 	client := horizonclient.DefaultPublicNetClient
 	// effects for an account
 	effectRequest := horizonclient.EffectRequest{ForAccount: "GCLWGQPMKXQSPF776IU33AH4PZNOOWNAWGGKVTBQMIC5IMKUNP3E6NVU"}
@@ -77,7 +74,6 @@ func ExampleClient_Effects() {
 }
 
 func ExampleClient_FeeStats() {
-
 	client := horizonclient.DefaultPublicNetClient
 	// horizon fees
 	fees, err := client.FeeStats()
@@ -101,7 +97,6 @@ func ExampleClient_Fund() {
 }
 
 func ExampleClient_LedgerDetail() {
-
 	client := horizonclient.DefaultPublicNetClient
 	// details for a ledger
 	sequence := uint32(12345)
@@ -115,7 +110,6 @@ func ExampleClient_LedgerDetail() {
 }
 
 func ExampleClient_Metrics() {
-
 	client := horizonclient.DefaultPublicNetClient
 	// horizon metrics
 	metrics, err := client.Metrics()
@@ -124,7 +118,6 @@ func ExampleClient_Metrics() {
 		return
 	}
 	fmt.Print(metrics)
-
 }
 
 func ExampleClient_NextAssetsPage() {
@@ -405,9 +398,12 @@ func ExampleClient_NextTransactionsPage() {
 }
 
 func ExampleClient_Offers() {
-
 	client := horizonclient.DefaultPublicNetClient
-	offerRequest := horizonclient.OfferRequest{ForAccount: "GCLWGQPMKXQSPF776IU33AH4PZNOOWNAWGGKVTBQMIC5IMKUNP3E6NVU", Cursor: "now", Order: horizonclient.OrderDesc}
+	offerRequest := horizonclient.OfferRequest{
+		ForAccount: "GCLWGQPMKXQSPF776IU33AH4PZNOOWNAWGGKVTBQMIC5IMKUNP3E6NVU",
+		Cursor:     "now",
+		Order:      horizonclient.OrderDesc,
+	}
 	offers, err := client.Offers(offerRequest)
 	if err != nil {
 		fmt.Println(err)
@@ -417,7 +413,6 @@ func ExampleClient_Offers() {
 }
 
 func ExampleClient_OperationDetail() {
-
 	client := horizonclient.DefaultPublicNetClient
 	opID := "123456"
 	// operation details for an id
@@ -430,7 +425,6 @@ func ExampleClient_OperationDetail() {
 }
 
 func ExampleClient_Operations() {
-
 	client := horizonclient.DefaultPublicNetClient
 	// operations for an account
 	opRequest := horizonclient.OperationRequest{ForAccount: "GCLWGQPMKXQSPF776IU33AH4PZNOOWNAWGGKVTBQMIC5IMKUNP3E6NVU"}
@@ -465,10 +459,14 @@ func ExampleClient_Operations() {
 }
 
 func ExampleClient_OrderBook() {
-
 	client := horizonclient.DefaultPublicNetClient
 	// orderbook for an asset pair, e.g XLM/NGN
-	obRequest := horizonclient.OrderBookRequest{BuyingAssetType: horizonclient.AssetTypeNative, SellingAssetCode: "USD", SellingAssetType: horizonclient.AssetType4, SellingAssetIssuer: "GCLWGQPMKXQSPF776IU33AH4PZNOOWNAWGGKVTBQMIC5IMKUNP3E6NVU"}
+	obRequest := horizonclient.OrderBookRequest{
+		BuyingAssetType:    horizonclient.AssetTypeNative,
+		SellingAssetCode:   "USD",
+		SellingAssetType:   horizonclient.AssetType4,
+		SellingAssetIssuer: "GCLWGQPMKXQSPF776IU33AH4PZNOOWNAWGGKVTBQMIC5IMKUNP3E6NVU",
+	}
 	obs, err := client.OrderBook(obRequest)
 	if err != nil {
 		fmt.Println(err)
@@ -478,7 +476,6 @@ func ExampleClient_OrderBook() {
 }
 
 func ExampleClient_Paths() {
-
 	client := horizonclient.DefaultPublicNetClient
 	// Find paths for XLM->NGN
 	pr := horizonclient.PathsRequest{
@@ -498,7 +495,6 @@ func ExampleClient_Paths() {
 }
 
 func ExampleClient_Payments() {
-
 	client := horizonclient.DefaultPublicNetClient
 	// payments for an account
 	opRequest := horizonclient.OperationRequest{ForAccount: "GCLWGQPMKXQSPF776IU33AH4PZNOOWNAWGGKVTBQMIC5IMKUNP3E6NVU"}
@@ -820,7 +816,6 @@ func ExampleClient_Root() {
 }
 
 func ExampleClient_SetHorizonTimeOut() {
-
 	client := horizonclient.DefaultTestNetClient
 
 	// https://www.stellar.org/laboratory/#xdr-viewer?input=AAAAABB90WssODNIgi6BHveqzxTRmIpvAFRyVNM%2BHm2GVuCcAAAAZAAABD0AAuV%2FAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAyTBGxOgfSApppsTnb%2FYRr6gOR8WT0LZNrhLh4y3FCgoAAAAXSHboAAAAAAAAAAABhlbgnAAAAEAivKe977CQCxMOKTuj%2BcWTFqc2OOJU8qGr9afrgu2zDmQaX5Q0cNshc3PiBwe0qw%2F%2BD%2FqJk5QqM5dYeSUGeDQP&type=TransactionEnvelope&network=test
@@ -923,7 +918,12 @@ func ExampleClient_StreamOperations() {
 
 func ExampleClient_StreamOrderBooks() {
 	client := horizonclient.DefaultTestNetClient
-	orderbookRequest := horizonclient.OrderBookRequest{SellingAssetType: horizonclient.AssetTypeNative, BuyingAssetType: horizonclient.AssetType4, BuyingAssetCode: "ABC", BuyingAssetIssuer: "GCLWGQPMKXQSPF776IU33AH4PZNOOWNAWGGKVTBQMIC5IMKUNP3E6NVU"}
+	orderbookRequest := horizonclient.OrderBookRequest{
+		SellingAssetType:  horizonclient.AssetTypeNative,
+		BuyingAssetType:   horizonclient.AssetType4,
+		BuyingAssetCode:   "ABC",
+		BuyingAssetIssuer: "GCLWGQPMKXQSPF776IU33AH4PZNOOWNAWGGKVTBQMIC5IMKUNP3E6NVU",
+	}
 
 	ctx, cancel := context.WithCancel(context.Background())
 	go func() {
@@ -1006,7 +1006,6 @@ func ExampleClient_StreamTransactions() {
 }
 
 func ExampleClient_SubmitTransactionXDR() {
-
 	client := horizonclient.DefaultPublicNetClient
 	// https://www.stellar.org/laboratory/#xdr-viewer?input=AAAAAOoS%2F5V%2BBiCPXRiVcz8YsnkDdODufq%2Bg7xdqTdIXN8vyAAAE4gFiW0YAAALxAAAAAQAAAAAAAAAAAAAAAFyuBUcAAAABAAAABzIyMjgyNDUAAAAAAQAAAAEAAAAALhsY%2FFdAHXllTmb025DtCVBw06WDSQjq6I9NrCQHOV8AAAABAAAAAHT8zKV7bRQzuGTpk9AO3gjWJ9jVxBXTgguFORkxHVIKAAAAAAAAAAAAOnDwAAAAAAAAAAIkBzlfAAAAQPefqlsOvni6xX1g3AqddvOp1GOM88JYzayGZodbzTfV5toyhxZvL1ZggY3prFsvrereugEpj1kyPJ67z6gcRg0XN8vyAAAAQGwmoTssW49gaze8iQkz%2FUA2E2N%2BBOo%2B6v7YdOSsvIcZnMc37KmXH920nLosKpDLqkNChVztSZFcbVUlHhjbQgA%3D&type=TransactionEnvelope&network=public
 	txXdr := `AAAAAOoS/5V+BiCPXRiVcz8YsnkDdODufq+g7xdqTdIXN8vyAAAE4gFiW0YAAALxAAAAAQAAAAAAAAAAAAAAAFyuBUcAAAABAAAABzIyMjgyNDUAAAAAAQAAAAEAAAAALhsY/FdAHXllTmb025DtCVBw06WDSQjq6I9NrCQHOV8AAAABAAAAAHT8zKV7bRQzuGTpk9AO3gjWJ9jVxBXTgguFORkxHVIKAAAAAAAAAAAAOnDwAAAAAAAAAAIkBzlfAAAAQPefqlsOvni6xX1g3AqddvOp1GOM88JYzayGZodbzTfV5toyhxZvL1ZggY3prFsvrereugEpj1kyPJ67z6gcRg0XN8vyAAAAQGwmoTssW49gaze8iQkz/UA2E2N+BOo+6v7YdOSsvIcZnMc37KmXH920nLosKpDLqkNChVztSZFcbVUlHhjbQgA=`
@@ -1023,7 +1022,6 @@ func ExampleClient_SubmitTransactionXDR() {
 }
 
 func ExampleClient_TradeAggregations() {
-
 	client := horizonclient.DefaultPublicNetClient
 	testTime := time.Unix(int64(1517521726), int64(0))
 	// Find trade aggregations
@@ -1046,7 +1044,6 @@ func ExampleClient_TradeAggregations() {
 }
 
 func ExampleClient_Trades() {
-
 	client := horizonclient.DefaultPublicNetClient
 	// Find all trades
 	tr := horizonclient.TradeRequest{Cursor: "123456", Limit: 30, Order: horizonclient.OrderAsc}
@@ -1059,7 +1056,6 @@ func ExampleClient_Trades() {
 }
 
 func ExampleClient_Transactions() {
-
 	client := horizonclient.DefaultPublicNetClient
 	// transactions for an account
 	txRequest := horizonclient.TransactionRequest{ForAccount: "GCLWGQPMKXQSPF776IU33AH4PZNOOWNAWGGKVTBQMIC5IMKUNP3E6NVU"}
