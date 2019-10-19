@@ -11,6 +11,122 @@ import (
 	"github.com/stellar/go/protocols/horizon/operations"
 )
 
+func ExampleClient_AccountDetail() {
+
+	client := horizonclient.DefaultPublicNetClient
+	accountRequest := horizonclient.AccountRequest{AccountID: "GCLWGQPMKXQSPF776IU33AH4PZNOOWNAWGGKVTBQMIC5IMKUNP3E6NVU"}
+
+	account, err := client.AccountDetail(accountRequest)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	fmt.Print(account)
+}
+
+func ExampleClient_Assets() {
+
+	client := horizonclient.DefaultPublicNetClient
+	// assets for asset issuer
+	assetRequest := horizonclient.AssetRequest{ForAssetIssuer: "GCLWGQPMKXQSPF776IU33AH4PZNOOWNAWGGKVTBQMIC5IMKUNP3E6NVU"}
+	asset, err := client.Assets(assetRequest)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	fmt.Print(asset)
+
+	// all assets
+	assetRequest = horizonclient.AssetRequest{}
+	asset, err = client.Assets(assetRequest)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	fmt.Print(asset)
+}
+
+func ExampleClient_Effects() {
+
+	client := horizonclient.DefaultPublicNetClient
+	// effects for an account
+	effectRequest := horizonclient.EffectRequest{ForAccount: "GCLWGQPMKXQSPF776IU33AH4PZNOOWNAWGGKVTBQMIC5IMKUNP3E6NVU"}
+	effect, err := client.Effects(effectRequest)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	fmt.Print(effect)
+
+	// all effects
+	effectRequest = horizonclient.EffectRequest{}
+	effect, err = client.Effects(effectRequest)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	records := effect.Embedded.Records
+	if records[0].GetType() == "account_created" {
+		acc, ok := records[0].(effects.AccountCreated)
+		if ok {
+			fmt.Print(acc.Account)
+			fmt.Print(acc.StartingBalance)
+		}
+	}
+}
+
+func ExampleClient_FeeStats() {
+
+	client := horizonclient.DefaultPublicNetClient
+	// horizon fees
+	fees, err := client.FeeStats()
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	fmt.Print(fees)
+
+}
+
+func ExampleClient_Fund() {
+	client := horizonclient.DefaultTestNetClient
+	// fund an account
+	resp, err := client.Fund("GCLWGQPMKXQSPF776IU33AH4PZNOOWNAWGGKVTBQMIC5IMKUNP3E6NVU")
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	fmt.Print(resp)
+}
+
+func ExampleClient_LedgerDetail() {
+
+	client := horizonclient.DefaultPublicNetClient
+	// details for a ledger
+	sequence := uint32(12345)
+	ledger, err := client.LedgerDetail(sequence)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	fmt.Print(ledger)
+
+}
+
+func ExampleClient_Metrics() {
+
+	client := horizonclient.DefaultPublicNetClient
+	// horizon metrics
+	metrics, err := client.Metrics()
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	fmt.Print(metrics)
+
+}
+
 func ExampleClient_NextAssetsPage() {
 	client := horizonclient.DefaultPublicNetClient
 	// assets for asset issuer
@@ -288,6 +404,79 @@ func ExampleClient_NextTransactionsPage() {
 	}
 }
 
+func ExampleClient_Offers() {
+
+	client := horizonclient.DefaultPublicNetClient
+	offerRequest := horizonclient.OfferRequest{ForAccount: "GCLWGQPMKXQSPF776IU33AH4PZNOOWNAWGGKVTBQMIC5IMKUNP3E6NVU", Cursor: "now", Order: horizonclient.OrderDesc}
+	offers, err := client.Offers(offerRequest)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	fmt.Print(offers)
+}
+
+func ExampleClient_OperationDetail() {
+
+	client := horizonclient.DefaultPublicNetClient
+	opID := "123456"
+	// operation details for an id
+	ops, err := client.OperationDetail(opID)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	fmt.Print(ops)
+}
+
+func ExampleClient_Operations() {
+
+	client := horizonclient.DefaultPublicNetClient
+	// operations for an account
+	opRequest := horizonclient.OperationRequest{ForAccount: "GCLWGQPMKXQSPF776IU33AH4PZNOOWNAWGGKVTBQMIC5IMKUNP3E6NVU"}
+	ops, err := client.Operations(opRequest)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	fmt.Print(ops)
+
+	// all operations
+	opRequest = horizonclient.OperationRequest{Cursor: "now"}
+	ops, err = client.Operations(opRequest)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	fmt.Print(ops)
+	records := ops.Embedded.Records
+
+	for _, value := range records {
+		// prints the type
+		fmt.Print(value.GetType())
+		// for example if the type is change_trust
+		c, ok := value.(operations.ChangeTrust)
+		if ok {
+			// access ChangeTrust fields
+			fmt.Print(c.Trustee)
+		}
+
+	}
+}
+
+func ExampleClient_OrderBook() {
+
+	client := horizonclient.DefaultPublicNetClient
+	// orderbook for an asset pair, e.g XLM/NGN
+	obRequest := horizonclient.OrderBookRequest{BuyingAssetType: horizonclient.AssetTypeNative, SellingAssetCode: "USD", SellingAssetType: horizonclient.AssetType4, SellingAssetIssuer: "GCLWGQPMKXQSPF776IU33AH4PZNOOWNAWGGKVTBQMIC5IMKUNP3E6NVU"}
+	obs, err := client.OrderBook(obRequest)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	fmt.Print(obs)
+}
+
 func ExampleClient_Paths() {
 
 	client := horizonclient.DefaultPublicNetClient
@@ -306,6 +495,41 @@ func ExampleClient_Paths() {
 		return
 	}
 	fmt.Print(paths)
+}
+
+func ExampleClient_Payments() {
+
+	client := horizonclient.DefaultPublicNetClient
+	// payments for an account
+	opRequest := horizonclient.OperationRequest{ForAccount: "GCLWGQPMKXQSPF776IU33AH4PZNOOWNAWGGKVTBQMIC5IMKUNP3E6NVU"}
+	ops, err := client.Payments(opRequest)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	fmt.Print(ops)
+
+	// all payments
+	opRequest = horizonclient.OperationRequest{Cursor: "now"}
+	ops, err = client.Payments(opRequest)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	fmt.Print(ops)
+	records := ops.Embedded.Records
+
+	for _, value := range records {
+		// prints the type
+		fmt.Print(value.GetType())
+		// for example if the type is create_account
+		c, ok := value.(operations.CreateAccount)
+		if ok {
+			// access create_account fields
+			fmt.Print(c.StartingBalance)
+		}
+
+	}
 }
 
 func ExampleClient_PrevAssetsPage() {
@@ -595,6 +819,24 @@ func ExampleClient_Root() {
 	fmt.Print(root)
 }
 
+func ExampleClient_SetHorizonTimeOut() {
+
+	client := horizonclient.DefaultTestNetClient
+
+	// https://www.stellar.org/laboratory/#xdr-viewer?input=AAAAABB90WssODNIgi6BHveqzxTRmIpvAFRyVNM%2BHm2GVuCcAAAAZAAABD0AAuV%2FAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAyTBGxOgfSApppsTnb%2FYRr6gOR8WT0LZNrhLh4y3FCgoAAAAXSHboAAAAAAAAAAABhlbgnAAAAEAivKe977CQCxMOKTuj%2BcWTFqc2OOJU8qGr9afrgu2zDmQaX5Q0cNshc3PiBwe0qw%2F%2BD%2FqJk5QqM5dYeSUGeDQP&type=TransactionEnvelope&network=test
+	txXdr := `AAAAABB90WssODNIgi6BHveqzxTRmIpvAFRyVNM+Hm2GVuCcAAAAZAAABD0AAuV/AAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAyTBGxOgfSApppsTnb/YRr6gOR8WT0LZNrhLh4y3FCgoAAAAXSHboAAAAAAAAAAABhlbgnAAAAEAivKe977CQCxMOKTuj+cWTFqc2OOJU8qGr9afrgu2zDmQaX5Q0cNshc3PiBwe0qw/+D/qJk5QqM5dYeSUGeDQP`
+
+	// test user timeout
+	client = client.SetHorizonTimeOut(30)
+	resp, err := client.SubmitTransactionXDR(txXdr)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	fmt.Print(resp)
+}
+
 func ExampleClient_StreamEffects() {
 	client := horizonclient.DefaultTestNetClient
 	// all effects
@@ -763,6 +1005,23 @@ func ExampleClient_StreamTransactions() {
 	}
 }
 
+func ExampleClient_SubmitTransactionXDR() {
+
+	client := horizonclient.DefaultPublicNetClient
+	// https://www.stellar.org/laboratory/#xdr-viewer?input=AAAAAOoS%2F5V%2BBiCPXRiVcz8YsnkDdODufq%2Bg7xdqTdIXN8vyAAAE4gFiW0YAAALxAAAAAQAAAAAAAAAAAAAAAFyuBUcAAAABAAAABzIyMjgyNDUAAAAAAQAAAAEAAAAALhsY%2FFdAHXllTmb025DtCVBw06WDSQjq6I9NrCQHOV8AAAABAAAAAHT8zKV7bRQzuGTpk9AO3gjWJ9jVxBXTgguFORkxHVIKAAAAAAAAAAAAOnDwAAAAAAAAAAIkBzlfAAAAQPefqlsOvni6xX1g3AqddvOp1GOM88JYzayGZodbzTfV5toyhxZvL1ZggY3prFsvrereugEpj1kyPJ67z6gcRg0XN8vyAAAAQGwmoTssW49gaze8iQkz%2FUA2E2N%2BBOo%2B6v7YdOSsvIcZnMc37KmXH920nLosKpDLqkNChVztSZFcbVUlHhjbQgA%3D&type=TransactionEnvelope&network=public
+	txXdr := `AAAAAOoS/5V+BiCPXRiVcz8YsnkDdODufq+g7xdqTdIXN8vyAAAE4gFiW0YAAALxAAAAAQAAAAAAAAAAAAAAAFyuBUcAAAABAAAABzIyMjgyNDUAAAAAAQAAAAEAAAAALhsY/FdAHXllTmb025DtCVBw06WDSQjq6I9NrCQHOV8AAAABAAAAAHT8zKV7bRQzuGTpk9AO3gjWJ9jVxBXTgguFORkxHVIKAAAAAAAAAAAAOnDwAAAAAAAAAAIkBzlfAAAAQPefqlsOvni6xX1g3AqddvOp1GOM88JYzayGZodbzTfV5toyhxZvL1ZggY3prFsvrereugEpj1kyPJ67z6gcRg0XN8vyAAAAQGwmoTssW49gaze8iQkz/UA2E2N+BOo+6v7YdOSsvIcZnMc37KmXH920nLosKpDLqkNChVztSZFcbVUlHhjbQgA=`
+
+	// submit transaction
+	resp, err := client.SubmitTransactionXDR(txXdr)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	fmt.Print(resp)
+	// Output: {{{https://horizon.stellar.org/transactions/f8a09e8a17fc828a1b99814818ddc931876eec0fe9c203f5980d26d92641e1c2 false}} f8a09e8a17fc828a1b99814818ddc931876eec0fe9c203f5980d26d92641e1c2 23350654 AAAAAOoS/5V+BiCPXRiVcz8YsnkDdODufq+g7xdqTdIXN8vyAAAE4gFiW0YAAALxAAAAAQAAAAAAAAAAAAAAAFyuBUcAAAABAAAABzIyMjgyNDUAAAAAAQAAAAEAAAAALhsY/FdAHXllTmb025DtCVBw06WDSQjq6I9NrCQHOV8AAAABAAAAAHT8zKV7bRQzuGTpk9AO3gjWJ9jVxBXTgguFORkxHVIKAAAAAAAAAAAAOnDwAAAAAAAAAAIkBzlfAAAAQPefqlsOvni6xX1g3AqddvOp1GOM88JYzayGZodbzTfV5toyhxZvL1ZggY3prFsvrereugEpj1kyPJ67z6gcRg0XN8vyAAAAQGwmoTssW49gaze8iQkz/UA2E2N+BOo+6v7YdOSsvIcZnMc37KmXH920nLosKpDLqkNChVztSZFcbVUlHhjbQgA= AAAAAAAABOIAAAAAAAAAAQAAAAAAAAABAAAAAAAAAAA= AAAAAQAAAAIAAAADAWRNfgAAAAAAAAAA6hL/lX4GII9dGJVzPxiyeQN04O5+r6DvF2pN0hc3y/IAAAAAAuyTvgFiW0YAAALwAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAABAWRNfgAAAAAAAAAA6hL/lX4GII9dGJVzPxiyeQN04O5+r6DvF2pN0hc3y/IAAAAAAuyTvgFiW0YAAALxAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAABAAAABAAAAAMBZE0IAAAAAAAAAAB0/Myle20UM7hk6ZPQDt4I1ifY1cQV04ILhTkZMR1SCgAAAbZToYkOAToKfwAAAAEAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAEBZE1+AAAAAAAAAAB0/Myle20UM7hk6ZPQDt4I1ifY1cQV04ILhTkZMR1SCgAAAbZT2/n+AToKfwAAAAEAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAMBZE19AAAAAAAAAAAuGxj8V0AdeWVOZvTbkO0JUHDTpYNJCOroj02sJAc5XwAAAACrUfjvARGUKgAApRsAAAAAAAAAAAAAAAAAAAAObnlhbmRldi1pZC5vcmcAAAEAAAAAAAAAAAAAAAAAAAAAAAABAWRNfgAAAAAAAAAALhsY/FdAHXllTmb025DtCVBw06WDSQjq6I9NrCQHOV8AAAAAqxeH/wERlCoAAKUbAAAAAAAAAAAAAAAAAAAADm55YW5kZXYtaWQub3JnAAABAAAAAAAAAAAAAAAAAAAA}
+}
+
 func ExampleClient_TradeAggregations() {
 
 	client := horizonclient.DefaultPublicNetClient
@@ -797,4 +1056,31 @@ func ExampleClient_Trades() {
 		return
 	}
 	fmt.Print(trades)
+}
+
+func ExampleClient_Transactions() {
+
+	client := horizonclient.DefaultPublicNetClient
+	// transactions for an account
+	txRequest := horizonclient.TransactionRequest{ForAccount: "GCLWGQPMKXQSPF776IU33AH4PZNOOWNAWGGKVTBQMIC5IMKUNP3E6NVU"}
+	txs, err := client.Transactions(txRequest)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	fmt.Print(txs)
+
+	// all transactions
+	txRequest = horizonclient.TransactionRequest{Cursor: "now", Order: horizonclient.OrderDesc}
+	txs, err = client.Transactions(txRequest)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	fmt.Print(txs)
+	records := txs.Embedded.Records
+
+	for _, tx := range records {
+		fmt.Print(tx)
+	}
 }
