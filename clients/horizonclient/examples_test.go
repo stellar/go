@@ -254,6 +254,40 @@ func ExampleClient_NextTradesPage() {
 	}
 }
 
+func ExampleClient_NextTransactionsPage() {
+	client := horizonclient.DefaultPublicNetClient
+	// all transactions
+	transactionRequest := horizonclient.TransactionRequest{Limit: 20}
+	transactions, err := client.Transactions(transactionRequest)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	fmt.Print(transactions)
+
+	// get next pages.
+	recordsFound := false
+	if len(transactions.Embedded.Records) > 0 {
+		recordsFound = true
+	}
+	page := transactions
+	// get the next page of records if recordsFound is true
+	for recordsFound {
+		// next page
+		nextPage, err := client.NextTransactionsPage(page)
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+
+		page = nextPage
+		if len(nextPage.Embedded.Records) == 0 {
+			recordsFound = false
+		}
+		fmt.Println(nextPage)
+	}
+}
+
 func ExampleClient_Paths() {
 
 	client := horizonclient.DefaultPublicNetClient
@@ -517,6 +551,40 @@ func ExampleClient_PrevTradesPage() {
 	}
 }
 
+func ExampleClient_PrevTransactionsPage() {
+	client := horizonclient.DefaultPublicNetClient
+	// all transactions
+	transactionRequest := horizonclient.TransactionRequest{Limit: 20}
+	transactions, err := client.Transactions(transactionRequest)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	fmt.Print(transactions)
+
+	// get prev pages.
+	recordsFound := false
+	if len(transactions.Embedded.Records) > 0 {
+		recordsFound = true
+	}
+	page := transactions
+	// get the prev page of records if recordsFound is true
+	for recordsFound {
+		// prev page
+		prevPage, err := client.PrevTransactionsPage(page)
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+
+		page = prevPage
+		if len(prevPage.Embedded.Records) == 0 {
+			recordsFound = false
+		}
+		fmt.Println(prevPage)
+	}
+}
+
 func ExampleClient_Root() {
 	client := horizonclient.DefaultTestNetClient
 	root, err := client.Root()
@@ -669,6 +737,27 @@ func ExampleClient_StreamTrades() {
 	}
 	err := client.StreamTrades(ctx, tradeRequest, printHandler)
 
+	if err != nil {
+		fmt.Println(err)
+	}
+}
+
+func ExampleClient_StreamTransactions() {
+	client := horizonclient.DefaultTestNetClient
+	// all transactions
+	transactionRequest := horizonclient.TransactionRequest{Cursor: "760209215489"}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	go func() {
+		// Stop streaming after 60 seconds.
+		time.Sleep(60 * time.Second)
+		cancel()
+	}()
+
+	printHandler := func(tr hProtocol.Transaction) {
+		fmt.Println(tr)
+	}
+	err := client.StreamTransactions(ctx, transactionRequest, printHandler)
 	if err != nil {
 		fmt.Println(err)
 	}
