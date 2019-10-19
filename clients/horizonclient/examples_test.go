@@ -176,6 +176,26 @@ func ExampleClient_NextOperationsPage() {
 	}
 }
 
+func ExampleClient_Paths() {
+
+	client := horizonclient.DefaultPublicNetClient
+	// Find paths for XLM->NGN
+	pr := horizonclient.PathsRequest{
+		DestinationAccount:     "GCLWGQPMKXQSPF776IU33AH4PZNOOWNAWGGKVTBQMIC5IMKUNP3E6NVU",
+		DestinationAmount:      "100",
+		DestinationAssetCode:   "NGN",
+		DestinationAssetIssuer: "GDZST3XVCDTUJ76ZAV2HA72KYQODXXZ5PTMAPZGDHZ6CS7RO7MGG3DBM",
+		DestinationAssetType:   horizonclient.AssetType4,
+		SourceAccount:          "GDZST3XVCDTUJ76ZAV2HA72KYQODXXZ5PTMAPZGDHZ6CS7RO7MGG3DBM",
+	}
+	paths, err := client.Paths(pr)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	fmt.Print(paths)
+}
+
 func ExampleClient_PrevAssetsPage() {
 	client := horizonclient.DefaultPublicNetClient
 	// assets for asset issuer
