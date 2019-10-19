@@ -107,6 +107,40 @@ func ExampleClient_NextLedgersPage() {
 	}
 }
 
+func ExampleClient_NextOffersPage() {
+	client := horizonclient.DefaultPublicNetClient
+	// all offers
+	offerRequest := horizonclient.OfferRequest{ForAccount: "GAQHWQYBBW272OOXNQMMLCA5WY2XAZPODGB7Q3S5OKKIXVESKO55ZQ7C", Limit: 20}
+	offers, err := client.Offers(offerRequest)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	fmt.Print(offers)
+
+	// get next pages.
+	recordsFound := false
+	if len(offers.Embedded.Records) > 0 {
+		recordsFound = true
+	}
+	page := offers
+	// get the next page of records if recordsFound is true
+	for recordsFound {
+		// next page
+		nextPage, err := client.NextOffersPage(page)
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+
+		page = nextPage
+		if len(nextPage.Embedded.Records) == 0 {
+			recordsFound = false
+		}
+		fmt.Println(nextPage)
+	}
+}
+
 func ExampleClient_PrevAssetsPage() {
 	client := horizonclient.DefaultPublicNetClient
 	// assets for asset issuer
@@ -204,6 +238,40 @@ func ExampleClient_PrevLedgersPage() {
 	}
 }
 
+func ExampleClient_PrevOffersPage() {
+	client := horizonclient.DefaultPublicNetClient
+	// all offers
+	offerRequest := horizonclient.OfferRequest{ForAccount: "GAQHWQYBBW272OOXNQMMLCA5WY2XAZPODGB7Q3S5OKKIXVESKO55ZQ7C", Limit: 20}
+	offers, err := client.Offers(offerRequest)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	fmt.Print(offers)
+
+	// get prev pages.
+	recordsFound := false
+	if len(offers.Embedded.Records) > 0 {
+		recordsFound = true
+	}
+	page := offers
+	// get the prev page of records if recordsFound is true
+	for recordsFound {
+		// prev page
+		prevPage, err := client.PrevOffersPage(page)
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+
+		page = prevPage
+		if len(prevPage.Embedded.Records) == 0 {
+			recordsFound = false
+		}
+		fmt.Println(prevPage)
+	}
+}
+
 func ExampleClient_StreamEffects() {
 	client := horizonclient.DefaultTestNetClient
 	// all effects
@@ -241,6 +309,27 @@ func ExampleClient_StreamLedgers() {
 		fmt.Println(ledger)
 	}
 	err := client.StreamLedgers(ctx, ledgerRequest, printHandler)
+	if err != nil {
+		fmt.Println(err)
+	}
+}
+
+func ExampleClient_StreamOffers() {
+	client := horizonclient.DefaultTestNetClient
+	// offers for account
+	offerRequest := horizonclient.OfferRequest{ForAccount: "GAQHWQYBBW272OOXNQMMLCA5WY2XAZPODGB7Q3S5OKKIXVESKO55ZQ7C", Cursor: "1"}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	go func() {
+		// Stop streaming after 60 seconds.
+		time.Sleep(60 * time.Second)
+		cancel()
+	}()
+
+	printHandler := func(offer hProtocol.Offer) {
+		fmt.Println(offer)
+	}
+	err := client.StreamOffers(ctx, offerRequest, printHandler)
 	if err != nil {
 		fmt.Println(err)
 	}
