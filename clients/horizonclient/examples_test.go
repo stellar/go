@@ -361,6 +361,16 @@ func ExampleClient_PrevOperationsPage() {
 	}
 }
 
+func ExampleClient_Root() {
+	client := horizonclient.DefaultTestNetClient
+	root, err := client.Root()
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	fmt.Print(root)
+}
+
 func ExampleClient_StreamEffects() {
 	client := horizonclient.DefaultTestNetClient
 	// all effects

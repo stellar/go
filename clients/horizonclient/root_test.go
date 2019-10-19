@@ -1,7 +1,6 @@
 package horizonclient
 
 import (
-	"fmt"
 	"testing"
 
 	"github.com/stellar/go/support/http/httptest"
@@ -55,16 +54,6 @@ func TestRoot(t *testing.T) {
 		_, ok := err.(*Error)
 		assert.Equal(t, ok, false)
 	}
-}
-
-func ExampleClient_Root() {
-	client := DefaultTestNetClient
-	root, err := client.Root()
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	fmt.Print(root)
 }
 
 var rootResponse = `{
