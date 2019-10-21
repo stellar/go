@@ -222,7 +222,7 @@ type AccountRequest struct {
 
 // EffectRequest struct contains data for getting effects from a horizon server.
 // "ForAccount", "ForLedger", "ForOperation" and "ForTransaction": Not more than one of these
-//  can be set at a time. If none are set, the default is to return all effects.
+// can be set at a time. If none are set, the default is to return all effects.
 // The query parameters (Order, Cursor and Limit) are optional. All or none can be set.
 type EffectRequest struct {
 	ForAccount     string
