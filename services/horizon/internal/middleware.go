@@ -238,20 +238,31 @@ func (m *ExperimentalIngestionMiddleware) Wrap(h http.Handler) http.Handler {
 		}
 
 		localLog := log.Ctx(ctx)
-		repeatableReadSession := m.HorizonSession.Clone()
-		repeatableReadSession.Ctx = r.Context()
-		err := repeatableReadSession.BeginTx(&sql.TxOptions{
-			Isolation: sql.LevelRepeatableRead,
-			ReadOnly:  true,
-		})
-		if err != nil {
-			localLog.WithField("err", err).Error("Error starting exp ingestion read transaction")
-			problem.Render(r.Context(), w, err)
-			return
-		}
-		defer repeatableReadSession.Rollback()
+		session := m.HorizonSession.Clone()
+		session.Ctx = r.Context()
+		q := &history.Q{session}
 
-		q := &history.Q{repeatableReadSession}
+		if render.Negotiate(r) != render.MimeEventStream {
+			err := session.BeginTx(&sql.TxOptions{
+				Isolation: sql.LevelRepeatableRead,
+				ReadOnly:  true,
+			})
+			if err != nil {
+				localLog.WithField("err", err).Error("Error starting exp ingestion read transaction")
+				problem.Render(r.Context(), w, err)
+				return
+			}
+			defer session.Rollback()
+
+			lastIngestedLedger, err := q.GetLastLedgerExpIngestNonBlocking()
+			if err != nil {
+				localLog.WithField("err", err).Error("Error running GetLastLedgerExpIngestNonBlocking")
+				problem.Render(r.Context(), w, err)
+				return
+			}
+			actions.SetLastLedgerHeader(w, lastIngestedLedger)
+		}
+
 		stateInvalid, err := q.GetExpStateInvalid()
 		if err != nil {
 			localLog.WithField("err", err).Error("Error running GetExpStateInvalid")
@@ -263,19 +274,11 @@ func (m *ExperimentalIngestionMiddleware) Wrap(h http.Handler) http.Handler {
 			return
 		}
 
-		lastIngestedLedger, err := q.GetLastLedgerExpIngestNonBlocking()
-		if err != nil {
-			localLog.WithField("err", err).Error("Error running GetLastLedgerExpIngestNonBlocking")
-			problem.Render(r.Context(), w, err)
-			return
-		}
-		actions.SetLastLedgerHeader(w, lastIngestedLedger)
-
 		h.ServeHTTP(w, r.WithContext(
 			context.WithValue(
 				r.Context(),
 				&horizonContext.SessionContextKey,
-				repeatableReadSession,
+				session,
 			),
 		))
 	})
