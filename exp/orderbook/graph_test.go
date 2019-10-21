@@ -1151,8 +1151,15 @@ func TestConsumeOffersForBuyingAsset(t *testing.T) {
 			"offer denominator cannot be zero",
 			[]xdr.OfferEntry{denominatorZeroOffer},
 			10000,
-			0,
-			price.ErrDivisionByZero,
+			-1,
+			nil,
+		},
+		{
+			"balance too low to consume offers",
+			[]xdr.OfferEntry{twoEurOffer},
+			1,
+			-1,
+			nil,
 		},
 		{
 			"not enough offers to consume",

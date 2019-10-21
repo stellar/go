@@ -10,6 +10,7 @@ bumps.  A breaking change will get clearly notified in this log.
 
 * Add `Latest-Ledger` header with the sequence number of the last processed ledger by the experimental ingestion system. The endpoints built using the experimental ingestion system will always respond with data which is consistent with the ledger in `Latest-Ledger`.
 * Fixes a bug in `/fee_stats`.
+* Fixes a bug in `/paths/strict-send`.
 
 ### Breaking Changes
 
