@@ -12,6 +12,7 @@ var (
 	errOfferNotPresent     = errors.New("offer is not present in the order book graph")
 	errEmptyOffers         = errors.New("offers is empty")
 	errAssetAmountIsZero   = errors.New("current asset amount is 0")
+	errSoldTooMuch         = errors.New("sold more than current balance")
 	errBatchAlreadyApplied = errors.New("cannot apply batched updates more than once")
 	errUnexpectedLedger    = errors.New("cannot apply unexpected ledger")
 )
