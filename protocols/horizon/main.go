@@ -50,6 +50,12 @@ type Account struct {
 	Balances             []Balance         `json:"balances"`
 	Signers              []Signer          `json:"signers"`
 	Data                 map[string]string `json:"data"`
+	PT                   string            `json:"paging_token"`
+}
+
+// PagingToken implementation for hal.Pageable
+func (res Account) PagingToken() string {
+	return res.PT
 }
 
 // GetAccountID returns the Stellar account ID. This is to satisfy the

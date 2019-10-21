@@ -46,6 +46,18 @@ var (
 	}
 )
 
+func TestIsAuthorized(t *testing.T) {
+	tt := assert.New(t)
+	tl := TrustLine{
+		Flags: 1,
+	}
+	tt.True(tl.IsAuthorized())
+
+	tl = TrustLine{
+		Flags: 0,
+	}
+	tt.False(tl.IsAuthorized())
+}
 func TestInsertTrustLine(t *testing.T) {
 	tt := test.Start(t)
 	defer tt.Finish()
