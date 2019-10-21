@@ -241,6 +241,27 @@ func TestGetOffersHandler(t *testing.T) {
 		for _, offer := range offers {
 			tt.Assert.Equal(issuer.Address(), offer.Seller)
 		}
+
+		_, err = handler.GetResourcePage(
+			httptest.NewRecorder(),
+			makeRequest(
+				t,
+				map[string]string{
+					"seller": "GCXEWJ6U4KPGTNTBY5HX4WQ2EEVPWV2QKXEYIQ32IDYIX",
+				},
+				map[string]string{},
+				q.Session,
+			),
+		)
+		tt.Assert.Error(err)
+		tt.Assert.IsType(&problem.P{}, err)
+		p := err.(*problem.P)
+		tt.Assert.Equal("bad_request", p.Type)
+		tt.Assert.Equal("seller", p.Extras["invalid_field"])
+		tt.Assert.Equal(
+			"Account ID must start with `G` and contain 56 alphanum characters",
+			p.Extras["reason"],
+		)
 	})
 
 	t.Run("Filter by selling asset", func(t *testing.T) {

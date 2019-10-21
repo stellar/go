@@ -9,7 +9,6 @@ import (
 	"github.com/stellar/go/services/horizon/internal/resourceadapter"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/support/render/hal"
-	"github.com/stellar/go/xdr"
 )
 
 // GetOfferByID is the action handler for the /offers/{id} endpoint
@@ -53,6 +52,17 @@ func (handler GetOfferByID) GetResource(
 	return offerResponse, nil
 }
 
+// OffersQuery query struct for offers end-point
+type OffersQuery struct {
+	SellingBuyingAssetQueryParams `valid:"-"`
+	Seller                        string `schema:"seller" valid:"accountID,optional"`
+}
+
+// Validate runs custom validations.
+func (q OffersQuery) Validate() error {
+	return q.SellingBuyingAssetQueryParams.Validate()
+}
+
 // GetOffersHandler is the action handler for the /offers endpoint
 type GetOffersHandler struct {
 }
@@ -63,31 +73,22 @@ func (handler GetOffersHandler) GetResourcePage(
 	r *http.Request,
 ) ([]hal.Pageable, error) {
 	ctx := r.Context()
+	qp := OffersQuery{}
+	err := GetParams(&qp, r)
+	if err != nil {
+		return nil, err
+	}
+
 	pq, err := GetPageQuery(r)
 	if err != nil {
 		return nil, err
 	}
 
-	seller, err := GetString(r, "seller")
-	if err != nil {
-		return nil, err
-	}
-
-	var selling *xdr.Asset
-	if sellingAsset, found := MaybeGetAsset(r, "selling_"); found {
-		selling = &sellingAsset
-	}
-
-	var buying *xdr.Asset
-	if buyingAsset, found := MaybeGetAsset(r, "buying_"); found {
-		buying = &buyingAsset
-	}
-
 	query := history.OffersQuery{
 		PageQuery: pq,
-		SellerID:  seller,
-		Selling:   selling,
-		Buying:    buying,
+		SellerID:  qp.Seller,
+		Selling:   qp.Selling(),
+		Buying:    qp.Buying(),
 	}
 
 	historyQ, err := historyQFromRequest(r)

@@ -6,12 +6,15 @@ import (
 	"mime"
 	"net/http"
 	"net/url"
+	"reflect"
 	"regexp"
 	"strconv"
 	"strings"
 	"unicode/utf8"
 
+	"github.com/asaskevich/govalidator"
 	"github.com/go-chi/chi"
+	"github.com/gorilla/schema"
 
 	"github.com/stellar/go/amount"
 	"github.com/stellar/go/services/horizon/internal/assets"
@@ -710,4 +713,126 @@ func FullURL(ctx context.Context) *url.URL {
 		url.RawQuery = r.URL.RawQuery
 	}
 	return url
+}
+
+// Note from chi: it is a good idea to set a Decoder instance as a package
+// global, because it caches meta-data about structs, and an instance can be
+// shared safely:
+var decoder = schema.NewDecoder()
+
+// GetParams fills a struct with values read from a request's query parameters.
+func GetParams(dst interface{}, r *http.Request) error {
+	query := r.URL.Query()
+
+	// Merge chi's URLParams with URL Query Params. Given
+	// `/accounts/{account_id}/transactions?foo=bar`, chi's URLParams will
+	// contain `account_id` and URL Query params will contain `foo`.
+	if rctx := chi.RouteContext(r.Context()); rctx != nil {
+		for _, key := range rctx.URLParams.Keys {
+			val := query.Get(key)
+			if len(val) > 0 {
+				return problem.MakeInvalidFieldProblem(
+					key,
+					errors.New("The parameter should not be included in the request"),
+				)
+			}
+
+			query.Set(key, rctx.URLParam(key))
+		}
+	}
+
+	decoder.IgnoreUnknownKeys(true)
+	if err := decoder.Decode(dst, query); err != nil {
+		return errors.Wrap(err, "error decoding Request query")
+	}
+
+	if _, err := govalidator.ValidateStruct(dst); err != nil {
+		field, message := getErrorFieldMessage(err)
+		err = problem.MakeInvalidFieldProblem(
+			getSchemaTag(dst, field),
+			errors.New(message),
+		)
+
+		return err
+	}
+
+	if v, ok := dst.(Validateable); ok {
+		if err := v.Validate(); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func getSchemaTag(params interface{}, field string) string {
+	v := reflect.ValueOf(params).Elem()
+	qt := v.Type()
+	f, _ := qt.FieldByName(field)
+	return f.Tag.Get("schema")
+}
+
+func validateAssetParams(aType, code, issuer, prefix string) error {
+	// If asset type is not present but code or issuer are, then there is a
+	// missing parameter and the request is unprocessable.
+	if len(aType) == 0 {
+		if len(code) > 0 || len(issuer) > 0 {
+			return problem.MakeInvalidFieldProblem(
+				prefix+"_asset_type",
+				errors.New("Missing parameter"),
+			)
+		}
+
+		return nil
+	}
+
+	t, err := assets.Parse(aType)
+	if err != nil {
+		return problem.MakeInvalidFieldProblem(
+			prefix+"_asset_type",
+			err,
+		)
+	}
+
+	var validLen int
+	switch t {
+	case xdr.AssetTypeAssetTypeNative:
+		// If asset type is native, issuer or code should not be included in the
+		// request
+		switch {
+		case len(code) > 0:
+			return problem.MakeInvalidFieldProblem(
+				prefix+"_asset_code",
+				errors.New("native asset does not have a code"),
+			)
+		case len(issuer) > 0:
+			return problem.MakeInvalidFieldProblem(
+				prefix+"_asset_issuer",
+				errors.New("native asset does not have an issuer"),
+			)
+		}
+
+		return nil
+	case xdr.AssetTypeAssetTypeCreditAlphanum4:
+		validLen = len(xdr.AssetAlphaNum4{}.AssetCode)
+	case xdr.AssetTypeAssetTypeCreditAlphanum12:
+		validLen = len(xdr.AssetAlphaNum12{}.AssetCode)
+	}
+
+	codeLen := len(code)
+	if codeLen == 0 || codeLen > validLen {
+		return problem.MakeInvalidFieldProblem(
+			prefix+"_asset_code",
+			errors.New("Asset code must be 1-12 alphanumeric characters"),
+		)
+	}
+
+	if len(issuer) == 0 {
+		return problem.MakeInvalidFieldProblem(
+			prefix+"_asset_issuer",
+			errors.New("Missing parameter"),
+		)
+	}
+
+	return nil
 }

@@ -5,8 +5,9 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	. "github.com/stellar/go/xdr"
 	"github.com/stretchr/testify/assert"
+
+	. "github.com/stellar/go/xdr"
 )
 
 var _ = Describe("xdr.Asset#Extract()", func() {
@@ -227,4 +228,49 @@ func TestToAllowTrustOpAsset_Error(t *testing.T) {
 	a := &Asset{}
 	_, err := a.ToAllowTrustOpAsset("")
 	assert.EqualError(t, err, "Asset code length is invalid")
+}
+
+func TestBuildAsset(t *testing.T) {
+	testCases := []struct {
+		assetType string
+		code      string
+		issuer    string
+		valid     bool
+	}{
+		{
+			assetType: "native",
+			valid:     true,
+		},
+		{
+			assetType: "credit_alphanum4",
+			code:      "USD",
+			issuer:    "GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H",
+			valid:     true,
+		},
+		{
+			assetType: "credit_alphanum12",
+			code:      "SPOOON",
+			issuer:    "GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H",
+			valid:     true,
+		},
+		{
+			assetType: "invalid",
+		},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.assetType, func(t *testing.T) {
+			asset, err := BuildAsset(tc.assetType, tc.issuer, tc.code)
+
+			if tc.valid {
+				assert.NoError(t, err)
+				var assetType, code, issuer string
+				asset.Extract(&assetType, &code, &issuer)
+				assert.Equal(t, tc.assetType, assetType)
+				assert.Equal(t, tc.code, code)
+				assert.Equal(t, tc.issuer, issuer)
+			} else {
+				assert.Error(t, err)
+			}
+		})
+	}
 }
