@@ -128,6 +128,11 @@ func logEndOfRequest(ctx context.Context, r *http.Request, duration time.Duratio
 		routePattern = "undefined"
 	}
 
+	referer := r.Referer()
+	if routePattern == "" {
+		referer = "undefined"
+	}
+
 	log.Ctx(ctx).WithFields(log.F{
 		"bytes":          mw.BytesWritten(),
 		"client_name":    getClientData(r, clientNameHeader),
@@ -144,7 +149,7 @@ func logEndOfRequest(ctx context.Context, r *http.Request, duration time.Duratio
 		"route":          routePattern,
 		"status":         mw.Status(),
 		"streaming":      streaming,
-		"referer":        r.Referer(),
+		"referer":        referer,
 	}).Info("Finished request")
 }
 
