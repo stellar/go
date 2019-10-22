@@ -1,7 +1,6 @@
 package horizonclient
 
 import (
-	"fmt"
 	"testing"
 	"time"
 
@@ -29,28 +28,6 @@ func TestTradeAggregationRequestBuildUrl(t *testing.T) {
 	// It should return valid trade aggregation endpoint and no errors
 	require.NoError(t, err)
 	assert.Equal(t, "trade_aggregations?base_asset_type=native&counter_asset_code=SLT&counter_asset_issuer=GCKA6K5PCQ6PNF5RQBF7PQDJWRHO6UOGFMRLK3DYHDOI244V47XKQ4GP&counter_asset_type=credit_alphanum4&end_time=1517521726000&offset=0&order=desc&resolution=3600000&start_time=1517521726000", endpoint)
-}
-
-func ExampleClient_TradeAggregations() {
-
-	client := DefaultPublicNetClient
-	// Find trade aggregations
-	ta := TradeAggregationRequest{
-		StartTime:          testTime,
-		EndTime:            testTime,
-		Resolution:         FiveMinuteResolution,
-		BaseAssetType:      AssetTypeNative,
-		CounterAssetType:   AssetType4,
-		CounterAssetCode:   "SLT",
-		CounterAssetIssuer: "GCKA6K5PCQ6PNF5RQBF7PQDJWRHO6UOGFMRLK3DYHDOI244V47XKQ4GP",
-		Order:              OrderDesc,
-	}
-	tradeAggs, err := client.TradeAggregations(ta)
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	fmt.Print(tradeAggs)
 }
 
 func TestTradeAggregationsRequest(t *testing.T) {
@@ -114,92 +91,6 @@ func TestTradeAggregationsRequest(t *testing.T) {
 		horizonError, ok := err.(*Error)
 		assert.Equal(t, ok, true)
 		assert.Equal(t, horizonError.Problem.Title, "Bad Request")
-	}
-}
-
-func ExampleClient_NextTradeAggregationsPage() {
-	client := DefaultPublicNetClient
-	// Find trade aggregations
-	ta := TradeAggregationRequest{
-		StartTime:          testTime,
-		EndTime:            testTime,
-		Resolution:         FiveMinuteResolution,
-		BaseAssetType:      AssetTypeNative,
-		CounterAssetType:   AssetType4,
-		CounterAssetCode:   "SLT",
-		CounterAssetIssuer: "GCKA6K5PCQ6PNF5RQBF7PQDJWRHO6UOGFMRLK3DYHDOI244V47XKQ4GP",
-		Order:              OrderDesc,
-	}
-	tradeAggs, err := client.TradeAggregations(ta)
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	fmt.Print(tradeAggs)
-
-	// get next pages.
-	recordsFound := false
-	if len(tradeAggs.Embedded.Records) > 0 {
-		recordsFound = true
-	}
-	page := tradeAggs
-	// get the next page of records if recordsFound is true
-	for recordsFound {
-		// next page
-		nextPage, err := client.NextTradeAggregationsPage(page)
-		if err != nil {
-			fmt.Println(err)
-			return
-		}
-
-		page = nextPage
-		if len(nextPage.Embedded.Records) == 0 {
-			recordsFound = false
-		}
-		fmt.Println(nextPage)
-	}
-}
-
-func ExampleClient_PrevTradeAggregationsPage() {
-	client := DefaultPublicNetClient
-	// Find trade aggregations
-	ta := TradeAggregationRequest{
-		StartTime:          testTime,
-		EndTime:            testTime,
-		Resolution:         FiveMinuteResolution,
-		BaseAssetType:      AssetTypeNative,
-		CounterAssetType:   AssetType4,
-		CounterAssetCode:   "SLT",
-		CounterAssetIssuer: "GCKA6K5PCQ6PNF5RQBF7PQDJWRHO6UOGFMRLK3DYHDOI244V47XKQ4GP",
-		Order:              OrderDesc,
-	}
-	tradeAggs, err := client.TradeAggregations(ta)
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	fmt.Print(tradeAggs)
-
-	// get prev pages.
-	recordsFound := false
-	if len(tradeAggs.Embedded.Records) > 0 {
-		recordsFound = true
-	}
-	page := tradeAggs
-	// get the prev page of records if recordsFound is true
-	for recordsFound {
-		// prev page
-		prevPage, err := client.PrevTradeAggregationsPage(page)
-		if err != nil {
-			fmt.Println(err)
-			return
-		}
-
-		page = prevPage
-		if len(prevPage.Embedded.Records) == 0 {
-			recordsFound = false
-		}
-		fmt.Println(prevPage)
 	}
 }
 
