@@ -159,11 +159,12 @@ func TestRequiresExperimentalIngestion(t *testing.T) {
 	if err != nil {
 		tt.Assert.NoError(err)
 	}
+	expectTransaction := true
 
 	endpoint := func(w http.ResponseWriter, r *http.Request) {
 		session := r.Context().Value(&horizonContext.SessionContextKey).(*db.Session)
-		if session.GetTx() == nil {
-			t.Fatal("expected transaction to be in session")
+		if (session.GetTx() == nil) == expectTransaction {
+			t.Fatalf("expected transaction to be in session: %v", expectTransaction)
 		}
 		w.WriteHeader(http.StatusOK)
 	}
@@ -203,4 +204,11 @@ func TestRequiresExperimentalIngestion(t *testing.T) {
 	handler.ServeHTTP(w, request)
 	tt.Assert.Equal(http.StatusOK, w.Code)
 	tt.Assert.Equal(w.Header().Get(actions.LastLedgerHeaderName), "3")
+
+	request.Header.Set("Accept", "text/event-stream")
+	expectTransaction = false
+	w = httptest.NewRecorder()
+	handler.ServeHTTP(w, request)
+	tt.Assert.Equal(http.StatusOK, w.Code)
+	tt.Assert.Equal(w.Header().Get(actions.LastLedgerHeaderName), "")
 }
