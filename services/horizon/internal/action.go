@@ -2,6 +2,7 @@ package horizon
 
 import (
 	"context"
+	"database/sql"
 	"net/http"
 	"net/url"
 	"strings"
@@ -179,6 +180,16 @@ func (w *web) getAccountInfo(ctx context.Context, qp *showActionQueryParams) (in
 	if err != nil {
 		return nil, errors.Wrap(err, "getting horizon db session")
 	}
+
+	err = horizonSession.BeginTx(&sql.TxOptions{
+		Isolation: sql.LevelRepeatableRead,
+		ReadOnly:  true,
+	})
+	if err != nil {
+		return nil, errors.Wrap(err, "rrror starting transaction")
+	}
+
+	defer horizonSession.Rollback()
 
 	return actions.AccountInfo(ctx, &core.Q{w.coreSession(ctx)}, &history.Q{horizonSession}, qp.AccountID)
 }
