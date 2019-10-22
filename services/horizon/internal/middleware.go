@@ -87,6 +87,33 @@ func loggerMiddleware(h http.Handler) http.Handler {
 	})
 }
 
+// timeoutMiddleware ensures the request is terminated after the given timeout
+func timeoutMiddleware(timeout time.Duration) func(next http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		fn := func(w http.ResponseWriter, r *http.Request) {
+			mw, ok := w.(middleware.WrapResponseWriter)
+			if !ok {
+				mw = middleware.NewWrapResponseWriter(w, r.ProtoMajor)
+				w = http.ResponseWriter(mw)
+			}
+			ctx, cancel := context.WithTimeout(r.Context(), timeout)
+			defer func() {
+				cancel()
+				if ctx.Err() == context.DeadlineExceeded {
+					if mw.Status() == 0 {
+						// only write the header if it hasn't been written yet
+						w.WriteHeader(http.StatusGatewayTimeout)
+					}
+				}
+			}()
+
+			r = r.WithContext(ctx)
+			next.ServeHTTP(w, r)
+		}
+		return http.HandlerFunc(fn)
+	}
+}
+
 // getClientData gets client data (name or version) from header or GET parameter
 // (useful when not possible to set headers, like in EventStream).
 func getClientData(r *http.Request, headerName string) string {
