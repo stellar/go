@@ -17,7 +17,6 @@ type DBLedgerReader struct {
 	header         xdr.LedgerHeaderHistoryEntry
 	transactions   []LedgerTransaction
 	upgradeChanges []Change
-	initOnce       sync.Once
 	readMutex      sync.Mutex
 	readIdx        int
 	upgradeReadIdx int
@@ -33,8 +32,7 @@ func NewDBLedgerReader(sequence uint32, backend ledgerbackend.LedgerBackend) (*D
 		backend:  backend,
 	}
 
-	var err error
-	err = reader.init()
+	err := reader.init()
 	if err != nil {
 		return nil, err
 	}
