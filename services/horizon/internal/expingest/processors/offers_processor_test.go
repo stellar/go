@@ -118,6 +118,10 @@ func (s *OffersProcessorTestSuiteLedger) SetupTest() {
 
 	// Reader and Writer should be always closed and once
 	s.mockLedgerReader.
+		On("ReadUpgradeChange").
+		Return(io.Change{}, stdio.EOF).Once()
+
+	s.mockLedgerReader.
 		On("Close").
 		Return(nil).Once()
 
@@ -278,6 +282,10 @@ func (s *OffersProcessorTestSuiteLedger) TestInsertOffer() {
 }
 
 func (s *OffersProcessorTestSuiteLedger) TestUpdateOfferNoRowsAffected() {
+	// Removes ReadUpgradeChange assertion
+	s.mockLedgerReader = &io.MockLedgerReader{}
+	s.mockLedgerReader.On("Close").Return(nil).Once()
+
 	lastModifiedLedgerSeq := xdr.Uint32(1234)
 
 	offer := xdr.OfferEntry{
@@ -390,6 +398,10 @@ func (s *OffersProcessorTestSuiteLedger) TestRemoveOffer() {
 }
 
 func (s *OffersProcessorTestSuiteLedger) TestRemoveOfferNoRowsAffected() {
+	// Removes ReadUpgradeChange assertion
+	s.mockLedgerReader = &io.MockLedgerReader{}
+	s.mockLedgerReader.On("Close").Return(nil).Once()
+
 	// add offer
 	s.mockLedgerReader.On("Read").
 		Return(io.LedgerTransaction{

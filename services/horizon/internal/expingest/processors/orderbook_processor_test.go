@@ -115,6 +115,7 @@ func TestProcessOrderBookLedger(t *testing.T) {
 	processor := OrderbookProcessor{graph}
 
 	reader.On("Read").Return(io.LedgerTransaction{}, stdio.EOF).Once()
+	reader.On("ReadUpgradeChange").Return(io.Change{}, stdio.EOF).Once()
 	reader.On("Close").Return(nil).Once()
 	writer.On("Close").Return(nil).Once()
 	if err := processor.ProcessLedger(context.Background(), nil, reader, writer); err != nil {
@@ -314,6 +315,7 @@ func TestProcessOrderBookLedger(t *testing.T) {
 	reader.On("Read").
 		Return(io.LedgerTransaction{}, stdio.EOF).Once()
 
+	reader.On("ReadUpgradeChange").Return(io.Change{}, stdio.EOF).Once()
 	reader.On("Close").Return(nil).Once()
 	writer.On("Close").Return(nil).Once()
 

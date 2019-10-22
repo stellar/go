@@ -47,11 +47,17 @@ type LedgerReader interface {
 	// Ledger upgrades MUST be processed AFTER all transactions and only ONCE.
 	// If app is tracking state in more than one store, all of them need to
 	// be updated with upgrade changes.
+	// Values returned by this method must not be modified.
 	ReadUpgradeChange() (Change, error)
 	// Close should be called when reading is finished. This is especially
 	// helpful when there are still some transactions available so reader can stop
 	// streaming them.
+	// Close should return error if `ReadUpgradeChange` are not fully read.
 	Close() error
+}
+
+type UpgradeChangesContainer interface {
+	GetUpgradeChanges() []Change
 }
 
 // LedgerWriter provides convenient, streaming access to the transactions within a ledger.

@@ -178,6 +178,10 @@ func (s *AccountsSignerProcessorTestSuiteLedger) SetupTest() {
 
 	// Reader and Writer should be always closed and once
 	s.mockLedgerReader.
+		On("ReadUpgradeChange").
+		Return(io.Change{}, stdio.EOF).Once()
+
+	s.mockLedgerReader.
 		On("Close").
 		Return(nil).Once()
 
@@ -497,6 +501,10 @@ func (s *AccountsSignerProcessorTestSuiteLedger) TestRemoveAccount() {
 }
 
 func (s *AccountsSignerProcessorTestSuiteLedger) TestNewAccountNoRowsAffected() {
+	// Removes ReadUpgradeChange assertion
+	s.mockLedgerReader = &io.MockLedgerReader{}
+	s.mockLedgerReader.On("Close").Return(nil).Once()
+
 	s.mockLedgerReader.
 		On("Read").
 		Return(io.LedgerTransaction{
@@ -547,6 +555,10 @@ func (s *AccountsSignerProcessorTestSuiteLedger) TestNewAccountNoRowsAffected() 
 }
 
 func (s *AccountsSignerProcessorTestSuiteLedger) TestRemoveAccountNoRowsAffected() {
+	// Removes ReadUpgradeChange assertion
+	s.mockLedgerReader = &io.MockLedgerReader{}
+	s.mockLedgerReader.On("Close").Return(nil).Once()
+
 	s.mockLedgerReader.
 		On("Read").
 		Return(io.LedgerTransaction{

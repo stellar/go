@@ -138,6 +138,10 @@ func (s *TrustLinesProcessorTestSuiteLedger) SetupTest() {
 
 	// Reader and Writer should be always closed and once
 	s.mockLedgerReader.
+		On("ReadUpgradeChange").
+		Return(io.Change{}, stdio.EOF).Once()
+
+	s.mockLedgerReader.
 		On("Close").
 		Return(nil).Once()
 
@@ -331,6 +335,10 @@ func (s *TrustLinesProcessorTestSuiteLedger) TestInsertTrustLine() {
 }
 
 func (s *TrustLinesProcessorTestSuiteLedger) TestUpdateTrustLineNoRowsAffected() {
+	// Removes ReadUpgradeChange assertion
+	s.mockLedgerReader = &io.MockLedgerReader{}
+	s.mockLedgerReader.On("Close").Return(nil).Once()
+
 	lastModifiedLedgerSeq := xdr.Uint32(1234)
 
 	trustLine := xdr.TrustLineEntry{
@@ -483,6 +491,10 @@ func (s *TrustLinesProcessorTestSuiteLedger) TestRemoveTrustLine() {
 }
 
 func (s *TrustLinesProcessorTestSuiteLedger) TestRemoveOfferNoRowsAffected() {
+	// Removes ReadUpgradeChange assertion
+	s.mockLedgerReader = &io.MockLedgerReader{}
+	s.mockLedgerReader.On("Close").Return(nil).Once()
+
 	s.mockLedgerReader.On("Read").
 		Return(io.LedgerTransaction{
 			Meta: createTransactionMeta([]xdr.OperationMeta{
