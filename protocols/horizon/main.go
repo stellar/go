@@ -423,7 +423,7 @@ type Transaction struct {
 	LedgerCloseTime time.Time `json:"created_at"`
 	Account         string    `json:"source_account"`
 	AccountSequence string    `json:"source_account_sequence"`
-	// Action needed in release: horizon-v0.23.0
+	// Action needed in release: horizon-v0.25.0
 	// Action needed in release: horizonclient-v2.0.0
 	// Remove this field.
 	FeePaid        int32    `json:"fee_paid"`
