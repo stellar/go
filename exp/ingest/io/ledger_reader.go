@@ -90,7 +90,6 @@ func (dblrc *DBLedgerReader) Close() error {
 	if dblrc.upgradeReadIdx != len(dblrc.upgradeChanges) {
 		return errors.New("Ledger upgrade changes not fully read!")
 	}
-	dblrc.upgradeReadIdx = len(dblrc.upgradeChanges)
 	dblrc.readMutex.Unlock()
 
 	return nil
