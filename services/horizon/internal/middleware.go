@@ -104,6 +104,11 @@ func getClientData(r *http.Request, headerName string) string {
 }
 
 func logStartOfRequest(ctx context.Context, r *http.Request, streaming bool) {
+	referer := r.Referer()
+	if referer == "" {
+		referer = "undefined"
+	}
+
 	log.Ctx(ctx).WithFields(log.F{
 		"client_name":    getClientData(r, clientNameHeader),
 		"client_version": getClientData(r, clientVersionHeader),
@@ -116,7 +121,7 @@ func logStartOfRequest(ctx context.Context, r *http.Request, streaming bool) {
 		"method":         r.Method,
 		"path":           r.URL.String(),
 		"streaming":      streaming,
-		"referer":        r.Referer(),
+		"referer":        referer,
 	}).Info("Starting request")
 }
 
@@ -126,6 +131,11 @@ func logEndOfRequest(ctx context.Context, r *http.Request, duration time.Duratio
 	// a middleware). More info: https://github.com/go-chi/chi/issues/270
 	if routePattern == "" {
 		routePattern = "undefined"
+	}
+
+	referer := r.Referer()
+	if referer == "" {
+		referer = "undefined"
 	}
 
 	log.Ctx(ctx).WithFields(log.F{
@@ -144,7 +154,7 @@ func logEndOfRequest(ctx context.Context, r *http.Request, duration time.Duratio
 		"route":          routePattern,
 		"status":         mw.Status(),
 		"streaming":      streaming,
-		"referer":        r.Referer(),
+		"referer":        referer,
 	}).Info("Finished request")
 }
 
