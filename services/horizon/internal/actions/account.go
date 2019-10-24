@@ -147,58 +147,54 @@ func (handler GetAccountsHandler) GetResourcePage(
 		return nil, err
 	}
 
+	var records []history.AccountEntry
+
 	if len(qp.Signer) > 0 {
-		records, err := historyQ.AccountsForSigner(qp.Signer, pq)
+		records, err = historyQ.AccountEntriesForSigner(qp.Signer, pq)
 		if err != nil {
 			return nil, errors.Wrap(err, "loading account records")
-		}
-
-		for _, record := range records {
-			var res protocol.AccountSigner
-			resourceadapter.PopulateAccountSigner(ctx, &res, record)
-			accounts = append(accounts, res)
 		}
 	} else {
-		records, err := historyQ.AccountsForAsset(*qp.Asset(), pq)
+		records, err = historyQ.AccountsForAsset(*qp.Asset(), pq)
 		if err != nil {
 			return nil, errors.Wrap(err, "loading account records")
 		}
+	}
 
-		if len(records) == 0 {
-			// early return
-			return accounts, nil
-		}
+	if len(records) == 0 {
+		// early return
+		return accounts, nil
+	}
 
-		accountIDs := make([]string, 0, len(records))
-		for _, record := range records {
-			accountIDs = append(accountIDs, record.AccountID)
-		}
+	accountIDs := make([]string, 0, len(records))
+	for _, record := range records {
+		accountIDs = append(accountIDs, record.AccountID)
+	}
 
-		signers, err := handler.loadSigners(historyQ, accountIDs)
-		if err != nil {
-			return nil, err
-		}
+	signers, err := handler.loadSigners(historyQ, accountIDs)
+	if err != nil {
+		return nil, err
+	}
 
-		trustlines, err := handler.loadTrustlines(historyQ, accountIDs)
-		if err != nil {
-			return nil, err
-		}
+	trustlines, err := handler.loadTrustlines(historyQ, accountIDs)
+	if err != nil {
+		return nil, err
+	}
 
-		data, err := handler.loadData(historyQ, accountIDs)
-		if err != nil {
-			return nil, err
-		}
+	data, err := handler.loadData(historyQ, accountIDs)
+	if err != nil {
+		return nil, err
+	}
 
-		for _, record := range records {
-			var res protocol.Account
-			s := signers[record.AccountID]
-			t := trustlines[record.AccountID]
-			d := data[record.AccountID]
+	for _, record := range records {
+		var res protocol.Account
+		s := signers[record.AccountID]
+		t := trustlines[record.AccountID]
+		d := data[record.AccountID]
 
-			resourceadapter.PopulateAccountEntry(ctx, &res, record, d, s, t)
+		resourceadapter.PopulateAccountEntry(ctx, &res, record, d, s, t)
 
-			accounts = append(accounts, res)
-		}
+		accounts = append(accounts, res)
 	}
 
 	return accounts, nil
