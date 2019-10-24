@@ -73,7 +73,7 @@ func TestDuration_set(t *testing.T) {
 	defer os.Unsetenv(envVar)
 
 	value := env.Duration(envVar, 5*time.Minute+30*time.Second)
-	assert.Equal(t, time.Duration(330_000_000_000), value)
+	assert.Equal(t, time.Duration(330000000000), value)
 }
 
 // TestDuration_set tests that env.Duration will return the default value given
@@ -81,5 +81,5 @@ func TestDuration_set(t *testing.T) {
 func TestDuration_notSet(t *testing.T) {
 	envVar := randomStr(10)
 	value := env.Duration(envVar, 5*time.Minute+30*time.Second)
-	assert.Equal(t, time.Duration(330_000_000_000), value)
+	assert.Equal(t, time.Duration(330000000000), value)
 }
