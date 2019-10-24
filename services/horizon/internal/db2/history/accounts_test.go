@@ -51,6 +51,25 @@ var (
 			},
 		},
 	}
+
+	account3 = xdr.AccountEntry{
+		AccountId:     xdr.MustAddress("GDPGOMFSP4IF7A4P7UBKA4UC4QTRLEHGBD6IMDIS3W3KBDNBFAQ7FXDY"),
+		Balance:       50000,
+		SeqNum:        648736,
+		NumSubEntries: 10,
+		InflationDest: &inflationDest,
+		Flags:         2,
+		Thresholds:    xdr.Thresholds{5, 6, 7, 8},
+		Ext: xdr.AccountEntryExt{
+			V: 1,
+			V1: &xdr.AccountEntryV1{
+				Liabilities: xdr.Liabilities{
+					Buying:  30,
+					Selling: 40,
+				},
+			},
+		},
+	}
 )
 
 func TestInsertAccount(t *testing.T) {
@@ -211,4 +230,80 @@ func TestAccountsForAsset(t *testing.T) {
 	accounts, err = q.AccountsForAsset(usdTrustLine.Asset, pq)
 	assert.NoError(t, err)
 	tt.Assert.Len(accounts, 0)
+}
+
+func TestAccountEntriesForSigner(t *testing.T) {
+	tt := test.Start(t)
+	defer tt.Finish()
+	test.ResetHorizonDB(t, tt.HorizonDB)
+	q := &Q{tt.HorizonSession()}
+
+	eurTrustLine.AccountId = account1.AccountId
+	usdTrustLine.AccountId = account2.AccountId
+
+	_, err := q.InsertAccount(account1, 1234)
+	tt.Assert.NoError(err)
+	_, err = q.InsertAccount(account2, 1235)
+	tt.Assert.NoError(err)
+	_, err = q.InsertAccount(account3, 1235)
+	tt.Assert.NoError(err)
+
+	_, err = q.InsertTrustLine(eurTrustLine, 1234)
+	tt.Assert.NoError(err)
+	_, err = q.InsertTrustLine(usdTrustLine, 1235)
+	tt.Assert.NoError(err)
+
+	_, err = q.CreateAccountSigner(account1.AccountId.Address(), account1.AccountId.Address(), 1)
+	tt.Assert.NoError(err)
+	_, err = q.CreateAccountSigner(account2.AccountId.Address(), account2.AccountId.Address(), 1)
+	tt.Assert.NoError(err)
+	_, err = q.CreateAccountSigner(account3.AccountId.Address(), account3.AccountId.Address(), 1)
+	tt.Assert.NoError(err)
+	_, err = q.CreateAccountSigner(account1.AccountId.Address(), account3.AccountId.Address(), 1)
+	tt.Assert.NoError(err)
+	_, err = q.CreateAccountSigner(account2.AccountId.Address(), account3.AccountId.Address(), 1)
+	tt.Assert.NoError(err)
+
+	pq := db2.PageQuery{
+		Order:  db2.OrderAscending,
+		Limit:  db2.DefaultPageSize,
+		Cursor: "",
+	}
+
+	accounts, err := q.AccountEntriesForSigner(account1.AccountId.Address(), pq)
+	assert.NoError(t, err)
+	tt.Assert.Len(accounts, 1)
+	tt.Assert.Equal(account1.AccountId.Address(), accounts[0].AccountID)
+
+	accounts, err = q.AccountEntriesForSigner(account2.AccountId.Address(), pq)
+	assert.NoError(t, err)
+	tt.Assert.Len(accounts, 1)
+	tt.Assert.Equal(account2.AccountId.Address(), accounts[0].AccountID)
+
+	want := map[string]bool{
+		account1.AccountId.Address(): true,
+		account2.AccountId.Address(): true,
+		account3.AccountId.Address(): true,
+	}
+
+	accounts, err = q.AccountEntriesForSigner(account3.AccountId.Address(), pq)
+	assert.NoError(t, err)
+	tt.Assert.Len(accounts, 3)
+
+	for _, account := range accounts {
+		tt.Assert.True(want[account.AccountID])
+		delete(want, account.AccountID)
+	}
+
+	tt.Assert.Len(want, 0)
+
+	pq.Cursor = accounts[len(accounts)-1].AccountID
+	accounts, err = q.AccountEntriesForSigner(account3.AccountId.Address(), pq)
+	assert.NoError(t, err)
+	tt.Assert.Len(accounts, 0)
+
+	pq.Order = "desc"
+	accounts, err = q.AccountEntriesForSigner(account3.AccountId.Address(), pq)
+	assert.NoError(t, err)
+	tt.Assert.Len(accounts, 2)
 }
