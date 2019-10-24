@@ -124,3 +124,29 @@ func testRender(ctx context.Context, err error) *httptest.ResponseRecorder {
 	Render(ctx, w, err)
 	return w
 }
+
+func TestRegisterReportFunc(t *testing.T) {
+	var buf strings.Builder
+	ctx := context.Background()
+
+	reportFunc := func(ctx context.Context, err error) {
+		buf.WriteString("captured ")
+		buf.WriteString(err.Error())
+	}
+
+	err := errors.New("an unexpected error")
+
+	w := httptest.NewRecorder()
+
+	// before register the reportFunc
+	Render(ctx, w, err)
+	assert.Equal(t, "", buf.String())
+
+	RegisterReportFunc(reportFunc)
+	defer RegisterReportFunc(nil)
+
+	// after register the reportFunc
+	want := "captured an unexpected error"
+	Render(ctx, w, err)
+	assert.Equal(t, want, buf.String())
+}
