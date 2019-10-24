@@ -63,11 +63,20 @@ const (
 	appVersionHeader    = "X-App-Version"
 )
 
+func newWrapResponseWriter(w http.ResponseWriter, r *http.Request) middleware.WrapResponseWriter {
+	mw, ok := w.(middleware.WrapResponseWriter)
+	if !ok {
+		mw = middleware.NewWrapResponseWriter(w, r.ProtoMajor)
+	}
+
+	return mw
+}
+
 // loggerMiddleware logs http requests and resposnes to the logging subsytem of horizon.
 func loggerMiddleware(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
-		mw := middleware.NewWrapResponseWriter(w, r.ProtoMajor)
+		mw := newWrapResponseWriter(w, r)
 
 		logger := log.WithField("req", middleware.GetReqID(ctx))
 		ctx = log.Set(ctx, logger)
@@ -85,6 +94,29 @@ func loggerMiddleware(h http.Handler) http.Handler {
 		duration := time.Since(then)
 		logEndOfRequest(ctx, r, duration, mw, streaming)
 	})
+}
+
+// timeoutMiddleware ensures the request is terminated after the given timeout
+func timeoutMiddleware(timeout time.Duration) func(next http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		fn := func(w http.ResponseWriter, r *http.Request) {
+			mw := newWrapResponseWriter(w, r)
+			ctx, cancel := context.WithTimeout(r.Context(), timeout)
+			defer func() {
+				cancel()
+				if ctx.Err() == context.DeadlineExceeded {
+					if mw.Status() == 0 {
+						// only write the header if it hasn't been written yet
+						mw.WriteHeader(http.StatusGatewayTimeout)
+					}
+				}
+			}()
+
+			r = r.WithContext(ctx)
+			next.ServeHTTP(mw, r)
+		}
+		return http.HandlerFunc(fn)
+	}
 }
 
 // getClientData gets client data (name or version) from header or GET parameter
@@ -191,7 +223,7 @@ func recoverMiddleware(h http.Handler) http.Handler {
 func requestMetricsMiddleware(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		app := AppFromContext(r.Context())
-		mw := middleware.NewWrapResponseWriter(w, r.ProtoMajor)
+		mw := newWrapResponseWriter(w, r)
 
 		app.web.requestTimer.Time(func() {
 			h.ServeHTTP(mw.(http.ResponseWriter), r)
