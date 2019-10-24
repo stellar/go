@@ -11,6 +11,12 @@ bumps.  A breaking change will get clearly notified in this log.
 * Add `Latest-Ledger` header with the sequence number of the last processed ledger by the experimental ingestion system. The endpoints built using the experimental ingestion system will always respond with data which is consistent with the ledger in `Latest-Ledger`.
 * Fixes a bug in `/fee_stats`.
 * Fixes a bug in `/paths/strict-send`.
+* Add experimental support for filtering accounts who are trustees to an asset via `/accounts`. To enable it, set `--enable-experimental-ingestion` CLI param or `ENABLE_EXPERIMENTAL_INGESTION=true` env variable. ([#1835](https://github.com/stellar/go/pull/1835))
+  
+    The following request will return all accounts who have a trustline to the asset identified by `asset_type=credit_alphanum4`, `asset_code=COP`, and `asset_issuer=GC2GFGZ5CZCFCDJSQF3YYEAYBOS3ZREXJSPU7LUJ7JU3LP3BQNHY7YKS`:
+    
+     `/accounts?asset_type=credit_alphanum4&asset_code=COP&asset_issuer=GC2GFGZ5CZCFCDJSQF3YYEAYBOS3ZREXJSPU7LUJ7JU3LP3BQNHY7YKS`
+
 
 ## v0.22.1
 

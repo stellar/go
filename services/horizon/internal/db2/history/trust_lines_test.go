@@ -29,7 +29,24 @@ var (
 	}
 
 	usdTrustLine = xdr.TrustLineEntry{
-		AccountId: xdr.MustAddress("GAOQJGUAB7NI7K7I62ORBXMN3J4SSWQUQ7FOEPSDJ322W2HMCNWPHXFB"),
+		AccountId: xdr.MustAddress("GCYVFGI3SEQJGBNQQG7YCMFWEYOHK3XPVOVPA6C566PXWN4SN7LILZSM"),
+		Asset:     xdr.MustNewCreditAsset("USDUSD", trustLineIssuer.Address()),
+		Balance:   10000,
+		Limit:     123456789,
+		Flags:     0,
+		Ext: xdr.TrustLineEntryExt{
+			V: 1,
+			V1: &xdr.TrustLineEntryV1{
+				Liabilities: xdr.Liabilities{
+					Buying:  1,
+					Selling: 2,
+				},
+			},
+		},
+	}
+
+	usdTrustLine2 = xdr.TrustLineEntry{
+		AccountId: xdr.MustAddress("GBYSBDAJZMHL5AMD7QXQ3JEP3Q4GLKADWIJURAAHQALNAWD6Z5XF2RAC"),
 		Asset:     xdr.MustNewCreditAsset("USDUSD", trustLineIssuer.Address()),
 		Balance:   10000,
 		Limit:     123456789,
@@ -155,4 +172,42 @@ func TestRemoveTrustLine(t *testing.T) {
 	rows, err = q.RemoveTrustLine(key)
 	assert.NoError(t, err)
 	assert.Equal(t, int64(0), rows)
+}
+func TestGetTrustLinesByAccountsID(t *testing.T) {
+	tt := test.Start(t)
+	defer tt.Finish()
+	test.ResetHorizonDB(t, tt.HorizonDB)
+	q := &Q{tt.HorizonSession()}
+
+	_, err := q.InsertTrustLine(eurTrustLine, 1234)
+	tt.Assert.NoError(err)
+	_, err = q.InsertTrustLine(usdTrustLine, 1235)
+	tt.Assert.NoError(err)
+	_, err = q.InsertTrustLine(usdTrustLine2, 1235)
+	tt.Assert.NoError(err)
+
+	ids := []string{
+		eurTrustLine.AccountId.Address(),
+		usdTrustLine.AccountId.Address(),
+	}
+
+	records, err := q.GetTrustLinesByAccountsID(ids)
+	tt.Assert.NoError(err)
+	tt.Assert.Len(records, 2)
+
+	m := map[string]xdr.TrustLineEntry{
+		eurTrustLine.AccountId.Address(): eurTrustLine,
+		usdTrustLine.AccountId.Address(): usdTrustLine,
+	}
+
+	for _, record := range records {
+		xtl, ok := m[record.AccountID]
+		tt.Assert.True(ok)
+		asset := xdr.MustNewCreditAsset(record.AssetCode, record.AssetIssuer)
+		tt.Assert.Equal(xtl.Asset, asset)
+		tt.Assert.Equal(xtl.AccountId.Address(), record.AccountID)
+		delete(m, record.AccountID)
+	}
+
+	tt.Assert.Len(m, 0)
 }

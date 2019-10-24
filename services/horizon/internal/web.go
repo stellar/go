@@ -190,7 +190,7 @@ func (w *web) mustInstallActions(
 			Method(
 				http.MethodGet,
 				"/",
-				restPageHandler(actions.GetAccountsHandler{HistoryQ: w.historyQ}),
+				restPageHandler(actions.GetAccountsHandler{}),
 			)
 		r.Route("/{account_id}", func(r chi.Router) {
 			r.Get("/", w.streamShowActionHandler(w.getAccountInfo, true))

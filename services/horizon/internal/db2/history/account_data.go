@@ -130,6 +130,14 @@ func (q *Q) RemoveAccountData(key xdr.LedgerKeyData) (int64, error) {
 	return result.RowsAffected()
 }
 
+// GetAccountDataByAccountsID loads account data for a list of account ID
+func (q *Q) GetAccountDataByAccountsID(id []string) ([]Data, error) {
+	var data []Data
+	sql := selectAccountData.Where(sq.Eq{"account": id})
+	err := q.Select(&data, sql)
+	return data, err
+}
+
 var selectAccountData = sq.Select(`
 	account,
 	name,

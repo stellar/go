@@ -3,6 +3,7 @@ package history
 import (
 	"testing"
 
+	"github.com/stellar/go/services/horizon/internal/db2"
 	"github.com/stellar/go/services/horizon/internal/test"
 	"github.com/stellar/go/xdr"
 	"github.com/stretchr/testify/assert"
@@ -169,4 +170,45 @@ func TestRemoveAccount(t *testing.T) {
 	rows, err = q.RemoveAccount("GAOQJGUAB7NI7K7I62ORBXMN3J4SSWQUQ7FOEPSDJ322W2HMCNWPHXFB")
 	assert.NoError(t, err)
 	assert.Equal(t, int64(0), rows)
+}
+
+func TestAccountsForAsset(t *testing.T) {
+	tt := test.Start(t)
+	defer tt.Finish()
+	test.ResetHorizonDB(t, tt.HorizonDB)
+	q := &Q{tt.HorizonSession()}
+
+	eurTrustLine.AccountId = account1.AccountId
+	usdTrustLine.AccountId = account2.AccountId
+
+	_, err := q.InsertAccount(account1, 1234)
+	tt.Assert.NoError(err)
+	_, err = q.InsertAccount(account2, 1235)
+	tt.Assert.NoError(err)
+
+	_, err = q.InsertTrustLine(eurTrustLine, 1234)
+	tt.Assert.NoError(err)
+	_, err = q.InsertTrustLine(usdTrustLine, 1235)
+	tt.Assert.NoError(err)
+
+	pq := db2.PageQuery{
+		Order:  db2.OrderAscending,
+		Limit:  db2.DefaultPageSize,
+		Cursor: "",
+	}
+
+	accounts, err := q.AccountsForAsset(eurTrustLine.Asset, pq)
+	assert.NoError(t, err)
+	tt.Assert.Len(accounts, 1)
+	tt.Assert.Equal(account1.AccountId.Address(), accounts[0].AccountID)
+
+	accounts, err = q.AccountsForAsset(usdTrustLine.Asset, pq)
+	assert.NoError(t, err)
+	tt.Assert.Len(accounts, 1)
+	tt.Assert.Equal(account2.AccountId.Address(), accounts[0].AccountID)
+
+	pq.Cursor = account2.AccountId.Address()
+	accounts, err = q.AccountsForAsset(usdTrustLine.Asset, pq)
+	assert.NoError(t, err)
+	tt.Assert.Len(accounts, 0)
 }

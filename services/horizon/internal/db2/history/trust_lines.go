@@ -105,6 +105,14 @@ func (q *Q) RemoveTrustLine(ledgerKey xdr.LedgerKeyTrustLine) (int64, error) {
 	return result.RowsAffected()
 }
 
+// GetTrustLinesByAccountsID loads trust lines for a list of accounts ID
+func (q *Q) GetTrustLinesByAccountsID(id []string) ([]TrustLine, error) {
+	var data []TrustLine
+	sql := selectTrustLines.Where(sq.Eq{"accountid": id})
+	err := q.Select(&data, sql)
+	return data, err
+}
+
 func trustLineEntryToLedgerKeyString(trustLine xdr.TrustLineEntry) (string, error) {
 	ledgerKey := &xdr.LedgerKey{}
 	err := ledgerKey.SetTrustline(trustLine.AccountId, trustLine.Asset)

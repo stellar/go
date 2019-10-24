@@ -3,6 +3,7 @@ package history
 import (
 	sq "github.com/Masterminds/squirrel"
 
+	"github.com/stellar/go/services/horizon/internal/db2"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
 )
@@ -115,6 +116,35 @@ func (q *Q) RemoveAccount(accountID string) (int64, error) {
 	}
 
 	return result.RowsAffected()
+}
+
+// AccountSignersForAsset returns a list of `AccountSigner` rows who are trustee to an
+// asset
+func (q *Q) AccountsForAsset(asset xdr.Asset, page db2.PageQuery) ([]AccountEntry, error) {
+	var assetType, code, issuer string
+	asset.MustExtract(&assetType, &code, &issuer)
+
+	sql := sq.
+		Select("accounts.*").
+		From("accounts").
+		Join("trust_lines ON accounts.account_id = trust_lines.accountid").
+		Where(map[string]interface{}{
+			"trust_lines.assettype":   int32(asset.Type),
+			"trust_lines.assetissuer": issuer,
+			"trust_lines.assetcode":   code,
+		})
+
+	sql, err := page.ApplyToUsingCursor(sql, "trust_lines.accountid", page.Cursor)
+	if err != nil {
+		return nil, errors.Wrap(err, "could not apply query to page")
+	}
+
+	var results []AccountEntry
+	if err := q.Select(&results, sql); err != nil {
+		return nil, errors.Wrap(err, "could not run select query")
+	}
+
+	return results, nil
 }
 
 var selectAccounts = sq.Select(`

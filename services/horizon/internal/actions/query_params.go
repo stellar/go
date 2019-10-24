@@ -17,11 +17,11 @@ type SellingBuyingAssetQueryParams struct {
 
 // Validate runs custom validations buying and selling
 func (q SellingBuyingAssetQueryParams) Validate() error {
-	err := validateAssetParams(q.SellingAssetType, q.SellingAssetCode, q.SellingAssetIssuer, "selling")
+	err := validateAssetParams(q.SellingAssetType, q.SellingAssetCode, q.SellingAssetIssuer, "selling_")
 	if err != nil {
 		return err
 	}
-	err = validateAssetParams(q.BuyingAssetType, q.BuyingAssetCode, q.BuyingAssetIssuer, "buying")
+	err = validateAssetParams(q.BuyingAssetType, q.BuyingAssetCode, q.BuyingAssetIssuer, "buying_")
 	if err != nil {
 		return err
 	}
