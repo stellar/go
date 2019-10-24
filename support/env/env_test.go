@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/stellar/go/support/env"
 	"github.com/stellar/go/support/errors"
@@ -60,4 +61,25 @@ func TestInt_notSet(t *testing.T) {
 	envVar := "TestInt_notSet_" + randomStr(10)
 	value := env.Int(envVar, 67890)
 	assert.Equal(t, 67890, value)
+}
+
+// TestDuration_set tests that env.Duration will return the value of the
+// environment variable as a time.Duration when the environment variable is
+// set to a duration string.
+func TestDuration_set(t *testing.T) {
+	envVar := "TestDuration_set_" + randomStr(10)
+	err := os.Setenv(envVar, "5m30s")
+	require.NoError(t, err)
+	defer os.Unsetenv(envVar)
+
+	value := env.Duration(envVar, 5*time.Minute+30*time.Second)
+	assert.Equal(t, time.Duration(330_000_000_000), value)
+}
+
+// TestDuration_set tests that env.Duration will return the default value given
+// when the environment variable is not set.
+func TestDuration_notSet(t *testing.T) {
+	envVar := randomStr(10)
+	value := env.Duration(envVar, 5*time.Minute+30*time.Second)
+	assert.Equal(t, time.Duration(330_000_000_000), value)
 }
