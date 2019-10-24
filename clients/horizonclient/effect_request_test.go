@@ -2,9 +2,7 @@ package horizonclient
 
 import (
 	"context"
-	"fmt"
 	"testing"
-	"time"
 
 	"github.com/stellar/go/protocols/horizon/effects"
 	"github.com/stellar/go/support/http/httptest"
@@ -64,93 +62,6 @@ func TestEffectRequestBuildUrl(t *testing.T) {
 
 }
 
-func ExampleClient_NextEffectsPage() {
-	client := DefaultPublicNetClient
-	// all effects
-	effectRequest := EffectRequest{Limit: 20}
-	efp, err := client.Effects(effectRequest)
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	fmt.Print(efp)
-
-	// get next pages.
-	recordsFound := false
-	if len(efp.Embedded.Records) > 0 {
-		recordsFound = true
-	}
-	page := efp
-	// get the next page of records if recordsFound is true
-	for recordsFound {
-		// next page
-		nextPage, err := client.NextEffectsPage(page)
-		if err != nil {
-			fmt.Println(err)
-			return
-		}
-
-		page = nextPage
-		if len(nextPage.Embedded.Records) == 0 {
-			recordsFound = false
-		}
-		fmt.Println(nextPage)
-	}
-}
-
-func ExampleClient_PrevEffectsPage() {
-	client := DefaultPublicNetClient
-	// all effects
-	effectRequest := EffectRequest{Limit: 20}
-	efp, err := client.Effects(effectRequest)
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	fmt.Print(efp)
-
-	// get prev pages.
-	recordsFound := false
-	if len(efp.Embedded.Records) > 0 {
-		recordsFound = true
-	}
-	page := efp
-	// get the prev page of records if recordsFound is true
-	for recordsFound {
-		// prev page
-		prevPage, err := client.PrevEffectsPage(page)
-		if err != nil {
-			fmt.Println(err)
-			return
-		}
-
-		page = prevPage
-		if len(prevPage.Embedded.Records) == 0 {
-			recordsFound = false
-		}
-		fmt.Println(prevPage)
-	}
-}
-func ExampleClient_StreamEffects() {
-	client := DefaultTestNetClient
-	// all effects
-	effectRequest := EffectRequest{Cursor: "760209215489"}
-
-	ctx, cancel := context.WithCancel(context.Background())
-	go func() {
-		// Stop streaming after 60 seconds.
-		time.Sleep(60 * time.Second)
-		cancel()
-	}()
-
-	printHandler := func(e effects.Effect) {
-		fmt.Println(e)
-	}
-	err := client.StreamEffects(ctx, effectRequest, printHandler)
-	if err != nil {
-		fmt.Println(err)
-	}
-}
 func TestEffectRequestStreamEffects(t *testing.T) {
 	hmock := httptest.NewClient()
 	client := &Client{

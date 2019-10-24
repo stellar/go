@@ -1,5 +1,5 @@
 // Package build implements a builder system for constructing various xdr
-// structures used by the stellar network, most importanly transactions.
+// structures used by the stellar network, most importantly transactions.
 //
 // At the core of this package is the *Builder and *Mutator types.  A Builder
 // object (ex. PaymentBuilder, TransactionBuilder) contain an underlying xdr

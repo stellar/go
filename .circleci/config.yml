@@ -294,7 +294,7 @@ jobs:
           name: Build and Push Docker image
           command: |
             echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
-            docker build -f exp/tools/dump-ledger-state/Dockerfile --build-arg GITCOMMIT=$CIRCLE_SHA1 -t stellar/ledger-state-diff:$CIRCLE_SHA1 -t stellar/ledger-state-diff:latest .
+            docker build --no-cache -f exp/tools/dump-ledger-state/Dockerfile --build-arg GITCOMMIT=$CIRCLE_SHA1 -t stellar/ledger-state-diff:$CIRCLE_SHA1 -t stellar/ledger-state-diff:latest .
             docker push stellar/ledger-state-diff:$CIRCLE_SHA1
             docker push stellar/ledger-state-diff:latest
 
