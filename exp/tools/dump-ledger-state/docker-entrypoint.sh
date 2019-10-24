@@ -12,10 +12,10 @@ echo "using version $(stellar-core version)"
 
 if [ -z ${TESTNET+x} ]; then
     stellar-core --conf ./stellar-core.cfg new-db
-    export LATEST_LEDGER=`curl -s --max-time 10 --retry 3 --retry-delay 5 https://history.stellar.org/prd/core-live/core_live_001/.well-known/stellar-history.json | jq -r '.currentLedger'`
+    export LATEST_LEDGER=`curl -v --max-time 10 --retry 3 --retry-connrefused --retry-delay 5 https://history.stellar.org/prd/core-live/core_live_001/.well-known/stellar-history.json | jq -r '.currentLedger'`
 else
     stellar-core --conf ./stellar-core-testnet.cfg new-db
-    export LATEST_LEDGER=`curl -s --max-time 10 --retry 3 --retry-delay 5 https://history.stellar.org/prd/core-testnet/core_testnet_001/.well-known/stellar-history.json | jq -r '.currentLedger'`
+    export LATEST_LEDGER=`curl -v --max-time 10 --retry 3 --retry-connrefused --retry-delay 5 https://history.stellar.org/prd/core-testnet/core_testnet_001/.well-known/stellar-history.json | jq -r '.currentLedger'`
 fi
 echo "Latest ledger: $LATEST_LEDGER"
 
