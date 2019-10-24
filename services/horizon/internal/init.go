@@ -218,7 +218,7 @@ func dialRedis(redisURL *url.URL) func() (redis.Conn, error) {
 		}
 
 		if redisURL.User == nil {
-			return c, nil
+			return c, err
 		}
 
 		if pass, ok := redisURL.User.Password(); ok {
