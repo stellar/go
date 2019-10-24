@@ -12,14 +12,16 @@ import (
 // DBLedgerReader is a database-backed implementation of the io.LedgerReader interface.
 // Use NewDBLedgerReader to create a new instance.
 type DBLedgerReader struct {
-	sequence       uint32
-	backend        ledgerbackend.LedgerBackend
-	header         xdr.LedgerHeaderHistoryEntry
-	transactions   []LedgerTransaction
-	upgradeChanges []Change
-	readMutex      sync.Mutex
-	readIdx        int
-	upgradeReadIdx int
+	sequence                uint32
+	backend                 ledgerbackend.LedgerBackend
+	header                  xdr.LedgerHeaderHistoryEntry
+	transactions            []LedgerTransaction
+	upgradeChanges          []Change
+	readMutex               sync.Mutex
+	readIdx                 int
+	upgradeReadIdx          int
+	readUpgradeChangeCalled bool
+	ignoreUpgradeChanges    bool
 }
 
 // Ensure DBLedgerReader implements LedgerReader
@@ -70,6 +72,7 @@ func (dblrc *DBLedgerReader) ReadUpgradeChange() (Change, error) {
 	// Protect all accesses to dblrc.upgradeReadIdx
 	dblrc.readMutex.Lock()
 	defer dblrc.readMutex.Unlock()
+	dblrc.readUpgradeChangeCalled = true
 
 	if dblrc.upgradeReadIdx < len(dblrc.upgradeChanges) {
 		dblrc.upgradeReadIdx++
@@ -83,12 +86,17 @@ func (dblrc *DBLedgerReader) GetUpgradeChanges() []Change {
 	return dblrc.upgradeChanges
 }
 
+func (dblrc *DBLedgerReader) IgnoreUpgradeChanges() {
+	dblrc.ignoreUpgradeChanges = true
+}
+
 // Close moves the read pointer so that subsequent calls to Read() will return EOF.
 func (dblrc *DBLedgerReader) Close() error {
 	dblrc.readMutex.Lock()
 	dblrc.readIdx = len(dblrc.transactions)
-	if dblrc.upgradeReadIdx != len(dblrc.upgradeChanges) {
-		return errors.New("Ledger upgrade changes not fully read!")
+	if !dblrc.ignoreUpgradeChanges &&
+		(!dblrc.readUpgradeChangeCalled || dblrc.upgradeReadIdx != len(dblrc.upgradeChanges)) {
+		return errors.New("Ledger upgrade changes not read! Use ReadUpgradeChange() method.")
 	}
 	dblrc.readMutex.Unlock()
 

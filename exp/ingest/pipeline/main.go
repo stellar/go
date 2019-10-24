@@ -141,7 +141,7 @@ type LedgerProcessor interface {
 	//
 	// Given all information above `ProcessLedger` should always look like this:
 	//
-	//    func (p *Processor) ProcessLedger(ctx context.Context, store *pipeline.Store, r io.LedgerReader, w io.LedgerWriter) error {
+	//    func (p *Processor) ProcessLedger(ctx context.Context, store *pipeline.Store, r io.LedgerReader, w io.LedgerWriter) (err error) {
 	//      defer func() {
 	//      	// io.LedgerReader.Close() returns error if upgrade changes have not
 	//      	// been processed so it's worth checking the error.
@@ -255,7 +255,9 @@ type readerWrapperLedger struct {
 
 	upgradeChanges []io.Change
 	// currentUpgrade points to the upgrade to be read by `ReadUpgradeChange`.
-	currentUpgradeChange int
+	currentUpgradeChange    int
+	readUpgradeChangeCalled bool
+	ignoreUpgradeChanges    bool
 }
 
 var _ io.LedgerReader = &readerWrapperLedger{}

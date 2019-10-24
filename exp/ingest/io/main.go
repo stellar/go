@@ -49,10 +49,15 @@ type LedgerReader interface {
 	// be updated with upgrade changes.
 	// Values returned by this method must not be modified.
 	ReadUpgradeChange() (Change, error)
+	// IgnoreLedgerEntryChanges will change `Close()`` behaviour to not error
+	// when changes returned by `ReadUpgradeChange` are not fully read.
+	IgnoreUpgradeChanges()
 	// Close should be called when reading is finished. This is especially
 	// helpful when there are still some transactions available so reader can stop
 	// streaming them.
-	// Close should return error if `ReadUpgradeChange` are not fully read.
+	// Close should return error if `ReadUpgradeChange` are not fully read or
+	// `ReadUpgradeChange` was not called even once. However, this behaviour can
+	// be disabled by calling `IgnoreUpgradeChanges()`.
 	Close() error
 }
 

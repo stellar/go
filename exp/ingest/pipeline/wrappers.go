@@ -106,6 +106,8 @@ func (w *readerWrapperLedger) Read() (io.LedgerTransaction, error) {
 // ReadUpgradeChange returns the next ledger upgrade change or EOF if there are
 // no more upgrade changes. Not safe for concurrent use!
 func (w *readerWrapperLedger) ReadUpgradeChange() (io.Change, error) {
+	w.readUpgradeChangeCalled = true
+
 	if w.currentUpgradeChange < len(w.upgradeChanges) {
 		change := w.upgradeChanges[w.currentUpgradeChange]
 		w.currentUpgradeChange++
@@ -115,14 +117,27 @@ func (w *readerWrapperLedger) ReadUpgradeChange() (io.Change, error) {
 	return io.Change{}, stdio.EOF
 }
 
+func (w *readerWrapperLedger) IgnoreUpgradeChanges() {
+	w.ignoreUpgradeChanges = true
+}
+
 func (w *readerWrapperLedger) GetUpgradeChanges() []io.Change {
 	return w.upgradeChanges
 }
 
 func (w *readerWrapperLedger) Close() error {
-	if w.currentUpgradeChange != len(w.upgradeChanges) {
-		return errors.New("Ledger upgrade changes not fully read!")
+	if !w.ignoreUpgradeChanges &&
+		(!w.readUpgradeChangeCalled || w.currentUpgradeChange != len(w.upgradeChanges)) {
+		return errors.New("Ledger upgrade changes not read! Use ReadUpgradeChange() method.")
 	}
+
+	// Call IgnoreUpgradeChanges on a wrapped reader because `readerWrapperLedger`
+	// is responsible for streaming ledger upgrade changes now.
+	wrapper, ok := w.Reader.(*ledgerReaderWrapper)
+	if ok {
+		wrapper.LedgerReader.IgnoreUpgradeChanges()
+	}
+
 	return w.Reader.Close()
 }
 
