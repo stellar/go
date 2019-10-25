@@ -60,6 +60,25 @@ var (
 			},
 		},
 	}
+
+	account3 = xdr.AccountEntry{
+		AccountId:     xdr.MustAddress(signer),
+		Balance:       50000,
+		SeqNum:        648736,
+		NumSubEntries: 10,
+		Flags:         2,
+		Thresholds:    xdr.Thresholds{5, 6, 7, 8},
+		Ext: xdr.AccountEntryExt{
+			V: 1,
+			V1: &xdr.AccountEntryV1{
+				Liabilities: xdr.Liabilities{
+					Buying:  30,
+					Selling: 40,
+				},
+			},
+		},
+	}
+
 	eurTrustLine = xdr.TrustLineEntry{
 		AccountId: xdr.MustAddress(accountOne),
 		Asset:     euro,
@@ -105,6 +124,34 @@ var (
 		AccountId: xdr.MustAddress(accountTwo),
 		DataName:  "test data2",
 		DataValue: []byte{10, 11, 12, 13, 14, 15, 16, 17, 18, 19},
+	}
+
+	accountSigners = []history.AccountSigner{
+		history.AccountSigner{
+			Account: accountOne,
+			Signer:  accountOne,
+			Weight:  1,
+		},
+		history.AccountSigner{
+			Account: accountTwo,
+			Signer:  accountTwo,
+			Weight:  1,
+		},
+		history.AccountSigner{
+			Account: accountOne,
+			Signer:  signer,
+			Weight:  1,
+		},
+		history.AccountSigner{
+			Account: accountTwo,
+			Signer:  signer,
+			Weight:  2,
+		},
+		history.AccountSigner{
+			Account: signer,
+			Signer:  signer,
+			Weight:  3,
+		},
 	}
 )
 
@@ -156,9 +203,14 @@ func TestGetAccountsHandlerPageResultsBySigner(t *testing.T) {
 	q := &history.Q{tt.HorizonSession()}
 	handler := &GetAccountsHandler{}
 
-	rows := accountSigners()
+	_, err := q.InsertAccount(account1, 1234)
+	tt.Assert.NoError(err)
+	_, err = q.InsertAccount(account2, 1234)
+	tt.Assert.NoError(err)
+	_, err = q.InsertAccount(account3, 1234)
+	tt.Assert.NoError(err)
 
-	for _, row := range rows {
+	for _, row := range accountSigners {
 		q.CreateAccountSigner(row.Account, row.Signer, row.Weight)
 	}
 
@@ -177,20 +229,27 @@ func TestGetAccountsHandlerPageResultsBySigner(t *testing.T) {
 	tt.Assert.NoError(err)
 	tt.Assert.Equal(3, len(records))
 
-	for i, row := range rows {
-		result := records[i].(protocol.AccountSigner)
-		tt.Assert.Equal(row.Account, result.AccountID)
-		tt.Assert.Equal(row.Signer, result.Signer.Key)
-		tt.Assert.Equal(row.Weight, result.Signer.Weight)
+	want := map[string]bool{
+		accountOne: true,
+		accountTwo: true,
+		signer:     true,
 	}
+
+	for _, row := range records {
+		result := row.(protocol.Account)
+		tt.Assert.True(want[result.AccountID])
+		delete(want, result.AccountID)
+	}
+
+	tt.Assert.Empty(want)
 
 	records, err = handler.GetResourcePage(
 		httptest.NewRecorder(),
 		makeRequest(
 			t,
 			map[string]string{
-				"signer": "GCXKG6RN4ONIEPCMNFB732A436Z5PNDSRLGWK7GBLCMQLIFO4S7EYWVU",
-				"cursor": "GABGMPEKKDWR2WFH5AJOZV5PDKLJEHGCR3Q24ALETWR5H3A7GI3YTS7V",
+				"signer": signer,
+				"cursor": accountOne,
 			},
 			map[string]string{},
 			q.Session,
@@ -200,12 +259,18 @@ func TestGetAccountsHandlerPageResultsBySigner(t *testing.T) {
 	tt.Assert.NoError(err)
 	tt.Assert.Equal(2, len(records))
 
-	for i, row := range rows[1:] {
-		result := records[i].(protocol.AccountSigner)
-		tt.Assert.Equal(row.Account, result.AccountID)
-		tt.Assert.Equal(row.Signer, result.Signer.Key)
-		tt.Assert.Equal(row.Weight, result.Signer.Weight)
+	want = map[string]bool{
+		accountTwo: true,
+		signer:     true,
 	}
+
+	for _, row := range records {
+		result := row.(protocol.Account)
+		tt.Assert.True(want[result.AccountID])
+		delete(want, result.AccountID)
+	}
+
+	tt.Assert.Empty(want)
 }
 
 func TestGetAccountsHandlerPageResultsByAsset(t *testing.T) {
@@ -221,9 +286,7 @@ func TestGetAccountsHandlerPageResultsByAsset(t *testing.T) {
 	_, err = q.InsertAccount(account2, 1234)
 	tt.Assert.NoError(err)
 
-	rows := accountSigners()
-
-	for _, row := range rows {
+	for _, row := range accountSigners {
 		_, err = q.CreateAccountSigner(row.Account, row.Signer, row.Weight)
 		tt.Assert.NoError(err)
 	}
@@ -353,25 +416,5 @@ func TestGetAccountsHandlerInvalidParams(t *testing.T) {
 				}
 			}
 		})
-	}
-}
-
-func accountSigners() []history.AccountSigner {
-	return []history.AccountSigner{
-		history.AccountSigner{
-			Account: accountOne,
-			Signer:  signer,
-			Weight:  1,
-		},
-		history.AccountSigner{
-			Account: accountTwo,
-			Signer:  signer,
-			Weight:  2,
-		},
-		history.AccountSigner{
-			Account: accountThree,
-			Signer:  signer,
-			Weight:  3,
-		},
 	}
 }
