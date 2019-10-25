@@ -134,8 +134,6 @@ func (handler GetAccountsHandler) GetResourcePage(
 		return nil, err
 	}
 
-	var accounts []hal.Pageable
-
 	historyQ, err := historyQFromRequest(r)
 	if err != nil {
 		return nil, err
@@ -160,6 +158,8 @@ func (handler GetAccountsHandler) GetResourcePage(
 			return nil, errors.Wrap(err, "loading account records")
 		}
 	}
+
+	accounts := make([]hal.Pageable, 0, len(records))
 
 	if len(records) == 0 {
 		// early return
