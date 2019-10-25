@@ -55,11 +55,10 @@ func (p *SerializeEntryProcessor) ProcessState(ctx context.Context, store *suppo
 			}
 		}
 
-		entryType := entry.EntryType().String()
-
 		// If we've already seen an example of this entry, we break,
 		// as we only wish to serialize a single example now.
 		// TODO: Remove this check.
+		entryType := entry.EntryType().String()
 		if _, ok := entriesCountDict[entryType]; ok {
 			// entriesCountDict[entryType]++
 			continue
@@ -68,12 +67,14 @@ func (p *SerializeEntryProcessor) ProcessState(ctx context.Context, store *suppo
 		}
 
 		entries++
-		serializeEntry(entry)
+		entryString := serializeEntry(entry)
+		print(entryString)
 
-		// TODO: Remove. Only here because we want to serialize a single entry.
-		// if entriesCountDict[entryType] == 10 {
-		// 	break
-		// }
+		// If we have found an example of each of the 4 ledger entry types, exit.
+		// TODO: Remove this break.
+		if len(entriesCountDict) == 4 {
+			break
+		}
 
 		select {
 		case <-ctx.Done():
