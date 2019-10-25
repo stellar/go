@@ -8,6 +8,7 @@ import (
 	"github.com/stellar/go/exp/ingest/io"
 	"github.com/stellar/go/exp/orderbook"
 	"github.com/stellar/go/xdr"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestProcessOrderBookState(t *testing.T) {
@@ -115,6 +116,7 @@ func TestProcessOrderBookLedger(t *testing.T) {
 	processor := OrderbookProcessor{graph}
 
 	reader.On("Read").Return(io.LedgerTransaction{}, stdio.EOF).Once()
+	reader.On("ReadUpgradeChange").Return(io.Change{}, stdio.EOF).Once()
 	reader.On("Close").Return(nil).Once()
 	writer.On("Close").Return(nil).Once()
 	if err := processor.ProcessLedger(context.Background(), nil, reader, writer); err != nil {
@@ -314,6 +316,7 @@ func TestProcessOrderBookLedger(t *testing.T) {
 	reader.On("Read").
 		Return(io.LedgerTransaction{}, stdio.EOF).Once()
 
+	reader.On("ReadUpgradeChange").Return(io.Change{}, stdio.EOF).Once()
 	reader.On("Close").Return(nil).Once()
 	writer.On("Close").Return(nil).Once()
 
@@ -344,4 +347,83 @@ func TestProcessOrderBookLedger(t *testing.T) {
 	if len(expectedOffers) != 0 {
 		t.Fatal("expected offers does not match offers in graph")
 	}
+}
+
+func TestProcessOrderBookLedgerProcessUpgradeChanges(t *testing.T) {
+	reader := &io.MockLedgerReader{}
+	writer := &io.MockLedgerWriter{}
+	graph := orderbook.NewOrderBookGraph()
+	processor := OrderbookProcessor{graph}
+
+	// add offer
+	reader.On("Read").
+		Return(io.LedgerTransaction{
+			Meta: createTransactionMeta([]xdr.OperationMeta{
+				xdr.OperationMeta{
+					Changes: []xdr.LedgerEntryChange{
+						// State
+						xdr.LedgerEntryChange{
+							Type: xdr.LedgerEntryChangeTypeLedgerEntryCreated,
+							Created: &xdr.LedgerEntry{
+								Data: xdr.LedgerEntryData{
+									Type: xdr.LedgerEntryTypeOffer,
+									Offer: &xdr.OfferEntry{
+										OfferId: xdr.Int64(1),
+										Price:   xdr.Price{1, 2},
+									},
+								},
+							},
+						},
+					},
+				},
+			}),
+		}, nil).Once()
+
+	reader.On("Read").
+		Return(io.LedgerTransaction{}, stdio.EOF).Once()
+
+	// Process upgrade changes
+	reader.On("ReadUpgradeChange").Return(io.Change{
+		Type: xdr.LedgerEntryTypeOffer,
+		Pre: &xdr.LedgerEntry{
+			Data: xdr.LedgerEntryData{
+				Type: xdr.LedgerEntryTypeOffer,
+				Offer: &xdr.OfferEntry{
+					OfferId: xdr.Int64(1),
+					Price:   xdr.Price{1, 2},
+				},
+			},
+		},
+		Post: &xdr.LedgerEntry{
+			Data: xdr.LedgerEntryData{
+				Type: xdr.LedgerEntryTypeOffer,
+				Offer: &xdr.OfferEntry{
+					OfferId: xdr.Int64(1),
+					Price:   xdr.Price{100, 2},
+				},
+			},
+		},
+	}, nil).Once()
+
+	reader.
+		On("ReadUpgradeChange").
+		Return(io.Change{}, stdio.EOF).Once()
+
+	reader.On("Close").Return(nil).Once()
+	writer.On("Close").Return(nil).Once()
+
+	if err := processor.ProcessLedger(context.Background(), nil, reader, writer); err != nil {
+		t.Fatalf("unexpected error %v", err)
+	}
+
+	writer.AssertExpectations(t)
+	reader.AssertExpectations(t)
+
+	if err := graph.Apply(2); err != nil {
+		t.Fatalf("unexpected error %v", err)
+	}
+
+	offers := graph.Offers()
+	assert.Equal(t, xdr.Int32(100), offers[0].Price.N)
+	assert.Equal(t, xdr.Int32(2), offers[0].Price.D)
 }

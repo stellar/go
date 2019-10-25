@@ -138,6 +138,10 @@ func (s *TrustLinesProcessorTestSuiteLedger) SetupTest() {
 
 	// Reader and Writer should be always closed and once
 	s.mockLedgerReader.
+		On("ReadUpgradeChange").
+		Return(io.Change{}, stdio.EOF).Once()
+
+	s.mockLedgerReader.
 		On("Close").
 		Return(nil).Once()
 
@@ -331,6 +335,10 @@ func (s *TrustLinesProcessorTestSuiteLedger) TestInsertTrustLine() {
 }
 
 func (s *TrustLinesProcessorTestSuiteLedger) TestUpdateTrustLineNoRowsAffected() {
+	// Removes ReadUpgradeChange assertion
+	s.mockLedgerReader = &io.MockLedgerReader{}
+	s.mockLedgerReader.On("Close").Return(nil).Once()
+
 	lastModifiedLedgerSeq := xdr.Uint32(1234)
 
 	trustLine := xdr.TrustLineEntry{
@@ -482,7 +490,133 @@ func (s *TrustLinesProcessorTestSuiteLedger) TestRemoveTrustLine() {
 	s.Assert().NoError(err)
 }
 
+func (s *TrustLinesProcessorTestSuiteLedger) TestProcessUpgradeChange() {
+	// Removes ReadUpgradeChange assertion
+	s.mockLedgerReader = &io.MockLedgerReader{}
+
+	// add trust line
+	trustLine := xdr.TrustLineEntry{
+		AccountId: xdr.MustAddress("GAOQJGUAB7NI7K7I62ORBXMN3J4SSWQUQ7FOEPSDJ322W2HMCNWPHXFB"),
+		Asset:     xdr.MustNewCreditAsset("EUR", trustLineIssuer.Address()),
+		Balance:   0,
+	}
+	lastModifiedLedgerSeq := xdr.Uint32(1234)
+	s.mockLedgerReader.On("Read").
+		Return(io.LedgerTransaction{
+			Meta: createTransactionMeta([]xdr.OperationMeta{
+				xdr.OperationMeta{
+					Changes: []xdr.LedgerEntryChange{
+						// State
+						xdr.LedgerEntryChange{
+							Type: xdr.LedgerEntryChangeTypeLedgerEntryCreated,
+							Created: &xdr.LedgerEntry{
+								LastModifiedLedgerSeq: lastModifiedLedgerSeq,
+								Data: xdr.LedgerEntryData{
+									Type:      xdr.LedgerEntryTypeTrustline,
+									TrustLine: &trustLine,
+								},
+							},
+						},
+					},
+				},
+			}),
+		}, nil).Once()
+
+	s.mockQ.On(
+		"InsertTrustLine",
+		trustLine,
+		lastModifiedLedgerSeq,
+	).Return(int64(1), nil).Once()
+
+	s.mockAssetStatsQ.On("GetAssetStat",
+		xdr.AssetTypeAssetTypeCreditAlphanum4,
+		"EUR",
+		trustLineIssuer.Address(),
+	).Return(history.ExpAssetStat{}, sql.ErrNoRows).Once()
+	s.mockAssetStatsQ.On("InsertAssetStat", history.ExpAssetStat{
+		AssetType:   xdr.AssetTypeAssetTypeCreditAlphanum4,
+		AssetIssuer: trustLineIssuer.Address(),
+		AssetCode:   "EUR",
+		Amount:      "0",
+		NumAccounts: 1,
+	}).Return(int64(1), nil).Once()
+
+	s.mockLedgerReader.
+		On("Read").
+		Return(io.LedgerTransaction{}, stdio.EOF).Once()
+
+	updatedTrustLine := xdr.TrustLineEntry{
+		AccountId: xdr.MustAddress("GAOQJGUAB7NI7K7I62ORBXMN3J4SSWQUQ7FOEPSDJ322W2HMCNWPHXFB"),
+		Asset:     xdr.MustNewCreditAsset("EUR", trustLineIssuer.Address()),
+		Balance:   10,
+	}
+
+	s.mockLedgerReader.
+		On("ReadUpgradeChange").
+		Return(
+			io.Change{
+				Type: xdr.LedgerEntryTypeTrustline,
+				Pre: &xdr.LedgerEntry{
+					LastModifiedLedgerSeq: lastModifiedLedgerSeq,
+					Data: xdr.LedgerEntryData{
+						Type:      xdr.LedgerEntryTypeTrustline,
+						TrustLine: &trustLine,
+					},
+				},
+				Post: &xdr.LedgerEntry{
+					LastModifiedLedgerSeq: lastModifiedLedgerSeq,
+					Data: xdr.LedgerEntryData{
+						Type:      xdr.LedgerEntryTypeTrustline,
+						TrustLine: &updatedTrustLine,
+					},
+				},
+			}, nil).Once()
+
+	s.mockQ.On(
+		"UpdateTrustLine",
+		updatedTrustLine,
+		lastModifiedLedgerSeq,
+	).Return(int64(1), nil).Once()
+	s.mockAssetStatsQ.On("GetAssetStat",
+		xdr.AssetTypeAssetTypeCreditAlphanum4,
+		"EUR",
+		trustLineIssuer.Address(),
+	).Return(history.ExpAssetStat{
+		AssetType:   xdr.AssetTypeAssetTypeCreditAlphanum4,
+		AssetIssuer: trustLineIssuer.Address(),
+		AssetCode:   "EUR",
+		Amount:      "0",
+		NumAccounts: 1,
+	}, nil).Once()
+	s.mockAssetStatsQ.On("UpdateAssetStat", history.ExpAssetStat{
+		AssetType:   xdr.AssetTypeAssetTypeCreditAlphanum4,
+		AssetIssuer: trustLineIssuer.Address(),
+		AssetCode:   "EUR",
+		Amount:      "10",
+		NumAccounts: 1,
+	}).Return(int64(1), nil).Once()
+
+	s.mockLedgerReader.
+		On("ReadUpgradeChange").
+		Return(io.Change{}, stdio.EOF).Once()
+
+	s.mockLedgerReader.On("Close").Return(nil).Once()
+
+	err := s.processor.ProcessLedger(
+		context.Background(),
+		&supportPipeline.Store{},
+		s.mockLedgerReader,
+		s.mockLedgerWriter,
+	)
+
+	s.Assert().NoError(err)
+}
+
 func (s *TrustLinesProcessorTestSuiteLedger) TestRemoveOfferNoRowsAffected() {
+	// Removes ReadUpgradeChange assertion
+	s.mockLedgerReader = &io.MockLedgerReader{}
+	s.mockLedgerReader.On("Close").Return(nil).Once()
+
 	s.mockLedgerReader.On("Read").
 		Return(io.LedgerTransaction{
 			Meta: createTransactionMeta([]xdr.OperationMeta{

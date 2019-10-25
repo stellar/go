@@ -148,6 +148,10 @@ func (s *AccountsDataProcessorTestSuiteLedger) SetupTest() {
 
 	// Reader and Writer should be always closed and once
 	s.mockLedgerReader.
+		On("ReadUpgradeChange").
+		Return(io.Change{}, stdio.EOF).Once()
+
+	s.mockLedgerReader.
 		On("Close").
 		Return(nil).Once()
 
@@ -313,6 +317,95 @@ func (s *AccountsDataProcessorTestSuiteLedger) TestRemoveAccount() {
 	s.mockLedgerReader.
 		On("Read").
 		Return(io.LedgerTransaction{}, stdio.EOF).Once()
+
+	err := s.processor.ProcessLedger(
+		context.Background(),
+		&supportPipeline.Store{},
+		s.mockLedgerReader,
+		s.mockLedgerWriter,
+	)
+
+	s.Assert().NoError(err)
+}
+
+func (s *AccountsDataProcessorTestSuiteLedger) TestProcessUpgradeChange() {
+	// Removes ReadUpgradeChange assertion
+	s.mockLedgerReader = &io.MockLedgerReader{}
+
+	data := xdr.DataEntry{
+		AccountId: xdr.MustAddress("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
+		DataName:  "test",
+		DataValue: []byte{1, 1, 1, 1},
+	}
+	lastModifiedLedgerSeq := xdr.Uint32(123)
+
+	s.mockLedgerReader.
+		On("Read").
+		Return(io.LedgerTransaction{
+			Meta: createTransactionMeta([]xdr.OperationMeta{
+				xdr.OperationMeta{
+					Changes: []xdr.LedgerEntryChange{
+						xdr.LedgerEntryChange{
+							Type: xdr.LedgerEntryChangeTypeLedgerEntryCreated,
+							Created: &xdr.LedgerEntry{
+								LastModifiedLedgerSeq: lastModifiedLedgerSeq,
+								Data: xdr.LedgerEntryData{
+									Type: xdr.LedgerEntryTypeData,
+									Data: &data,
+								},
+							},
+						},
+					},
+				},
+			}),
+		}, nil).Once()
+
+	s.mockQ.On(
+		"InsertAccountData",
+		data,
+		lastModifiedLedgerSeq,
+	).Return(int64(1), nil).Once()
+
+	s.mockLedgerReader.
+		On("Read").
+		Return(io.LedgerTransaction{}, stdio.EOF).Once()
+
+	// Process ledger entry upgrades
+	modifiedData := data
+	modifiedData.DataValue = []byte{2, 2, 2, 2}
+
+	s.mockLedgerReader.
+		On("ReadUpgradeChange").
+		Return(
+			io.Change{
+				Type: xdr.LedgerEntryTypeData,
+				Pre: &xdr.LedgerEntry{
+					LastModifiedLedgerSeq: lastModifiedLedgerSeq,
+					Data: xdr.LedgerEntryData{
+						Type: xdr.LedgerEntryTypeData,
+						Data: &data,
+					},
+				},
+				Post: &xdr.LedgerEntry{
+					LastModifiedLedgerSeq: lastModifiedLedgerSeq + 1,
+					Data: xdr.LedgerEntryData{
+						Type: xdr.LedgerEntryTypeData,
+						Data: &modifiedData,
+					},
+				},
+			}, nil).Once()
+
+	s.mockLedgerReader.
+		On("ReadUpgradeChange").
+		Return(io.Change{}, stdio.EOF).Once()
+
+	s.mockLedgerReader.On("Close").Return(nil).Once()
+
+	s.mockQ.On(
+		"UpdateAccountData",
+		modifiedData,
+		lastModifiedLedgerSeq+1,
+	).Return(int64(1), nil).Once()
 
 	err := s.processor.ProcessLedger(
 		context.Background(),

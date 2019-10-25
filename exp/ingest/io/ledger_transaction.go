@@ -140,18 +140,27 @@ func (t *LedgerTransaction) GetChanges() []Change {
 	changes := getChangesFromLedgerEntryChanges(t.FeeChanges)
 
 	// Transaction meta
-	v1Meta, ok := t.Meta.GetV1()
-	if ok {
+	switch t.Meta.V {
+	case 0:
+		for _, operationMeta := range *t.Meta.Operations {
+			opChanges := getChangesFromLedgerEntryChanges(
+				operationMeta.Changes,
+			)
+			changes = append(changes, opChanges...)
+		}
+	case 1:
+		v1Meta := t.Meta.MustV1()
 		txChanges := getChangesFromLedgerEntryChanges(v1Meta.TxChanges)
 		changes = append(changes, txChanges...)
-	}
 
-	// Operation meta
-	for _, operationMeta := range t.Meta.OperationsMeta() {
-		ledgerEntryChanges := operationMeta.Changes
-		opChanges := getChangesFromLedgerEntryChanges(ledgerEntryChanges)
-
-		changes = append(changes, opChanges...)
+		for _, operationMeta := range v1Meta.Operations {
+			opChanges := getChangesFromLedgerEntryChanges(
+				operationMeta.Changes,
+			)
+			changes = append(changes, opChanges...)
+		}
+	default:
+		panic("Unkown TransactionMeta version")
 	}
 
 	return changes

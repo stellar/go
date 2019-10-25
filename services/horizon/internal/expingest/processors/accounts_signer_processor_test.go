@@ -178,6 +178,10 @@ func (s *AccountsSignerProcessorTestSuiteLedger) SetupTest() {
 
 	// Reader and Writer should be always closed and once
 	s.mockLedgerReader.
+		On("ReadUpgradeChange").
+		Return(io.Change{}, stdio.EOF).Once()
+
+	s.mockLedgerReader.
 		On("Close").
 		Return(nil).Once()
 
@@ -497,6 +501,10 @@ func (s *AccountsSignerProcessorTestSuiteLedger) TestRemoveAccount() {
 }
 
 func (s *AccountsSignerProcessorTestSuiteLedger) TestNewAccountNoRowsAffected() {
+	// Removes ReadUpgradeChange assertion
+	s.mockLedgerReader = &io.MockLedgerReader{}
+	s.mockLedgerReader.On("Close").Return(nil).Once()
+
 	s.mockLedgerReader.
 		On("Read").
 		Return(io.LedgerTransaction{
@@ -547,6 +555,10 @@ func (s *AccountsSignerProcessorTestSuiteLedger) TestNewAccountNoRowsAffected() 
 }
 
 func (s *AccountsSignerProcessorTestSuiteLedger) TestRemoveAccountNoRowsAffected() {
+	// Removes ReadUpgradeChange assertion
+	s.mockLedgerReader = &io.MockLedgerReader{}
+	s.mockLedgerReader.On("Close").Return(nil).Once()
+
 	s.mockLedgerReader.
 		On("Read").
 		Return(io.LedgerTransaction{
@@ -602,6 +614,164 @@ func (s *AccountsSignerProcessorTestSuiteLedger) TestRemoveAccountNoRowsAffected
 			"account=GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML "+
 			"signer=GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML in database but not found when removing",
 	)
+}
+
+func (s *AccountsSignerProcessorTestSuiteLedger) TestProcessUpgradeChange() {
+	// Removes ReadUpgradeChange assertion
+	s.mockLedgerReader = &io.MockLedgerReader{}
+
+	s.mockLedgerReader.
+		On("Read").
+		Return(io.LedgerTransaction{
+			Meta: createTransactionMeta([]xdr.OperationMeta{
+				xdr.OperationMeta{
+					Changes: []xdr.LedgerEntryChange{
+						// State
+						xdr.LedgerEntryChange{
+							Type: xdr.LedgerEntryChangeTypeLedgerEntryState,
+							State: &xdr.LedgerEntry{
+								Data: xdr.LedgerEntryData{
+									Type: xdr.LedgerEntryTypeAccount,
+									Account: &xdr.AccountEntry{
+										AccountId: xdr.MustAddress("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
+										Signers: []xdr.Signer{
+											xdr.Signer{
+												Key:    xdr.MustSigner("GCBBDQLCTNASZJ3MTKAOYEOWRGSHDFAJVI7VPZUOP7KXNHYR3HP2BUKV"),
+												Weight: 10,
+											},
+										},
+									},
+								},
+							},
+						},
+						// Updated
+						xdr.LedgerEntryChange{
+							Type: xdr.LedgerEntryChangeTypeLedgerEntryUpdated,
+							Updated: &xdr.LedgerEntry{
+								Data: xdr.LedgerEntryData{
+									Type: xdr.LedgerEntryTypeAccount,
+									Account: &xdr.AccountEntry{
+										AccountId: xdr.MustAddress("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
+										Signers: []xdr.Signer{
+											xdr.Signer{
+												Key:    xdr.MustSigner("GCBBDQLCTNASZJ3MTKAOYEOWRGSHDFAJVI7VPZUOP7KXNHYR3HP2BUKV"),
+												Weight: 10,
+											},
+											xdr.Signer{
+												Key:    xdr.MustSigner("GCAHY6JSXQFKWKP6R7U5JPXDVNV4DJWOWRFLY3Y6YPBF64QRL4BPFDNS"),
+												Weight: 15,
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			}),
+		}, nil).Once()
+
+	// Remove old signer
+	s.mockQ.
+		On(
+			"RemoveAccountSigner",
+			"GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML",
+			"GCBBDQLCTNASZJ3MTKAOYEOWRGSHDFAJVI7VPZUOP7KXNHYR3HP2BUKV",
+		).
+		Return(int64(1), nil).Once()
+
+	// Create new and old signer
+	s.mockQ.
+		On(
+			"CreateAccountSigner",
+			"GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML",
+			"GCBBDQLCTNASZJ3MTKAOYEOWRGSHDFAJVI7VPZUOP7KXNHYR3HP2BUKV",
+			int32(10),
+		).
+		Return(int64(1), nil).Once()
+
+	s.mockQ.
+		On(
+			"CreateAccountSigner",
+			"GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML",
+			"GCAHY6JSXQFKWKP6R7U5JPXDVNV4DJWOWRFLY3Y6YPBF64QRL4BPFDNS",
+			int32(15),
+		).
+		Return(int64(1), nil).Once()
+
+	s.mockLedgerReader.
+		On("Read").
+		Return(io.LedgerTransaction{}, stdio.EOF).Once()
+
+	s.mockLedgerReader.
+		On("ReadUpgradeChange").
+		Return(
+			io.Change{
+				Type: xdr.LedgerEntryTypeAccount,
+				Pre: &xdr.LedgerEntry{
+					LastModifiedLedgerSeq: 1000,
+					Data: xdr.LedgerEntryData{
+						Type: xdr.LedgerEntryTypeAccount,
+						Account: &xdr.AccountEntry{
+							AccountId: xdr.MustAddress("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
+							Signers: []xdr.Signer{
+								xdr.Signer{
+									Key:    xdr.MustSigner("GCBBDQLCTNASZJ3MTKAOYEOWRGSHDFAJVI7VPZUOP7KXNHYR3HP2BUKV"),
+									Weight: 10,
+								},
+							},
+						},
+					},
+				},
+				Post: &xdr.LedgerEntry{
+					LastModifiedLedgerSeq: 1001,
+					Data: xdr.LedgerEntryData{
+						Type: xdr.LedgerEntryTypeAccount,
+						Account: &xdr.AccountEntry{
+							AccountId: xdr.MustAddress("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
+							Signers: []xdr.Signer{
+								xdr.Signer{
+									Key:    xdr.MustSigner("GCBBDQLCTNASZJ3MTKAOYEOWRGSHDFAJVI7VPZUOP7KXNHYR3HP2BUKV"),
+									Weight: 12,
+								},
+							},
+						},
+					},
+				},
+			}, nil).Once()
+
+	// Update signer
+	s.mockQ.
+		On(
+			"RemoveAccountSigner",
+			"GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML",
+			"GCBBDQLCTNASZJ3MTKAOYEOWRGSHDFAJVI7VPZUOP7KXNHYR3HP2BUKV",
+		).
+		Return(int64(1), nil).Once()
+
+	s.mockQ.
+		On(
+			"CreateAccountSigner",
+			"GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML",
+			"GCBBDQLCTNASZJ3MTKAOYEOWRGSHDFAJVI7VPZUOP7KXNHYR3HP2BUKV",
+			int32(12),
+		).
+		Return(int64(1), nil).Once()
+
+	s.mockLedgerReader.
+		On("ReadUpgradeChange").
+		Return(io.Change{}, stdio.EOF).Once()
+
+	s.mockLedgerReader.On("Close").Return(nil).Once()
+
+	err := s.processor.ProcessLedger(
+		context.Background(),
+		&supportPipeline.Store{},
+		s.mockLedgerReader,
+		s.mockLedgerWriter,
+	)
+
+	s.Assert().NoError(err)
 }
 
 func createTransactionMeta(opMeta []xdr.OperationMeta) xdr.TransactionMeta {
