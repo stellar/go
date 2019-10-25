@@ -72,7 +72,8 @@ func TestDuration_set(t *testing.T) {
 	require.NoError(t, err)
 	defer os.Unsetenv(envVar)
 
-	value := env.Duration(envVar, 5*time.Minute+30*time.Second)
+	defaultValue := 2 * time.Minute
+	value := env.Duration(envVar, defaultValue)
 	assert.Equal(t, time.Duration(330000000000), value)
 }
 
@@ -80,6 +81,7 @@ func TestDuration_set(t *testing.T) {
 // when the environment variable is not set.
 func TestDuration_notSet(t *testing.T) {
 	envVar := randomStr(10)
-	value := env.Duration(envVar, 5*time.Minute+30*time.Second)
+	defaultValue := 5*time.Minute + 30*time.Second
+	value := env.Duration(envVar, defaultValue)
 	assert.Equal(t, time.Duration(330000000000), value)
 }
