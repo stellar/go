@@ -70,7 +70,7 @@ func TestDuration_set(t *testing.T) {
 	require.NoError(t, err)
 	defer os.Unsetenv(envVar)
 
-	setValue := time.Duration(330000000000)
+	setValue := 5*time.Minute + 30*time.Second
 	defaultValue := 2 * time.Minute
 	value := env.Duration(envVar, defaultValue)
 	assert.Equal(t, setValue, value)
