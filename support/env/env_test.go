@@ -15,9 +15,7 @@ import (
 func randomStr(t *testing.T, length int) string {
 	raw := make([]byte, (length+1)/2)
 	_, err := rand.Read(raw)
-	if err != nil {
-		t.Fatalf("error reading from crypto/rand: %v", err)
-	}
+	require.NoError(t, err)
 	return hex.EncodeToString(raw)[:length]
 }
 
