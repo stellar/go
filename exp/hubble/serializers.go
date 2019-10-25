@@ -24,7 +24,7 @@ func serializeLedgerEntry(entry *xdr.LedgerEntry, prefix string) string {
 	entryString := "\n"
 	newPrefix := prefix + "\t"
 	entryString += fmt.Sprintf("%sLastModifiedLedgerSeq: %d\n", prefix, entry.LastModifiedLedgerSeq)
-	entryString += fmt.Sprintf("%sData: %s", prefix, serializeEntryData(entry.Data, newPrefix))
+	entryString += fmt.Sprintf("%sData: %s\n", prefix, serializeEntryData(entry.Data, newPrefix))
 	entryString += fmt.Sprintf("%sExt: %v\n", prefix, entry.Ext)
 	return entryString
 }
@@ -36,7 +36,7 @@ func serializeEntryData(data xdr.LedgerEntryData, prefix string) string {
 	entryString += fmt.Sprintf("%sOffer: %s\n", prefix, serializeOfferEntry(data.Offer, newPrefix))
 	entryString += fmt.Sprintf("%sData: %s\n", prefix, serializeDataEntry(data.Data, newPrefix))
 	entryString += fmt.Sprintf("%sTrustLine: %s\n", prefix, serializeTrustlineEntry(data.TrustLine, newPrefix))
-	entryString += fmt.Sprintf("%sAccount: %s\n", prefix, serializeAccountEntry(data.Account, newPrefix))
+	entryString += fmt.Sprintf("%sAccount: %s", prefix, serializeAccountEntry(data.Account, newPrefix))
 
 	return entryString
 }
