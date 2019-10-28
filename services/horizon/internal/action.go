@@ -176,22 +176,30 @@ type showActionQueryParams struct {
 
 // getAccountInfo returns the information about an account based on the provided param.
 func (w *web) getAccountInfo(ctx context.Context, qp *showActionQueryParams) (interface{}, error) {
-	horizonSession, err := w.horizonSession(ctx)
-	if err != nil {
-		return nil, errors.Wrap(err, "getting horizon db session")
+	// Use AppFromContext to prevent larger refactoring of actions code. Will
+	// be removed once this endpoint is migrated to use new actions design.
+	app := AppFromContext(ctx)
+	var historyQ *history.Q
+
+	if app.config.EnableExperimentalIngestion {
+		horizonSession, err := w.horizonSession(ctx)
+		if err != nil {
+			return nil, errors.Wrap(err, "getting horizon db session")
+		}
+
+		err = horizonSession.BeginTx(&sql.TxOptions{
+			Isolation: sql.LevelRepeatableRead,
+			ReadOnly:  true,
+		})
+		if err != nil {
+			return nil, errors.Wrap(err, "error starting transaction")
+		}
+
+		defer horizonSession.Rollback()
+		historyQ = &history.Q{horizonSession}
 	}
 
-	err = horizonSession.BeginTx(&sql.TxOptions{
-		Isolation: sql.LevelRepeatableRead,
-		ReadOnly:  true,
-	})
-	if err != nil {
-		return nil, errors.Wrap(err, "rrror starting transaction")
-	}
-
-	defer horizonSession.Rollback()
-
-	return actions.AccountInfo(ctx, &core.Q{w.coreSession(ctx)}, &history.Q{horizonSession}, qp.AccountID)
+	return actions.AccountInfo(ctx, &core.Q{w.coreSession(ctx)}, historyQ, qp.AccountID, app.config.EnableExperimentalIngestion)
 }
 
 // getTransactionPage returns a page containing the transaction records of an account or a ledger.

@@ -16,7 +16,7 @@ import (
 )
 
 // AccountInfo returns the information about an account identified by addr.
-func AccountInfo(ctx context.Context, cq *core.Q, hq *history.Q, addr string) (*protocol.Account, error) {
+func AccountInfo(ctx context.Context, cq *core.Q, hq *history.Q, addr string, enableExperimentalIngestion bool) (*protocol.Account, error) {
 	var (
 		coreRecord     core.Account
 		coreData       []core.AccountData
@@ -57,19 +57,21 @@ func AccountInfo(ctx context.Context, cq *core.Q, hq *history.Q, addr string) (*
 		return nil, errors.Wrap(err, "populating account")
 	}
 
-	c, err := json.Marshal(resource)
-	if err != nil {
-		return nil, errors.Wrap(err, "error marshaling resource")
-	}
+	if enableExperimentalIngestion {
+		c, err := json.Marshal(resource)
+		if err != nil {
+			return nil, errors.Wrap(err, "error marshaling resource")
+		}
 
-	// We send JSON bytes to compareAccountResults to prevent modifying
-	// `resource` by any way.
-	err = compareAccountResults(ctx, hq, c, addr)
-	if err != nil {
-		log.Ctx(ctx).WithFields(log.F{
-			"err":            err,
-			"accounts_check": true, // So it's easy to find all diffs
-		}).Warn("error comparing core and horizon accounts")
+		// We send JSON bytes to compareAccountResults to prevent modifying
+		// `resource` in any way.
+		err = compareAccountResults(ctx, hq, c, addr)
+		if err != nil {
+			log.Ctx(ctx).WithFields(log.F{
+				"err":            err,
+				"accounts_check": true, // So it's easy to find all diffs
+			}).Warn("error comparing core and horizon accounts")
+		}
 	}
 
 	return &resource, nil
