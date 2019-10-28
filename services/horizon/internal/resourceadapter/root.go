@@ -21,6 +21,7 @@ func PopulateRoot(
 	coreSupportedProtocolVersion int32,
 	friendBotURL *url.URL,
 	experimentalIngestionEnabled bool,
+	templates map[string]string,
 ) {
 	dest.ExpHorizonSequence = ledgerState.ExpHistoryLatest
 	dest.HorizonSequence = ledgerState.HistoryLatest
@@ -45,7 +46,7 @@ func PopulateRoot(
 	dest.Links.Metrics = lb.Link("/metrics")
 
 	if experimentalIngestionEnabled {
-		accountsLink := lb.Link("/accounts?{signer}")
+		accountsLink := lb.Link(templates["accounts"])
 		offerLink := lb.Link("/offers/{offer_id}")
 		offersLink := lb.Link("/offers{?seller,selling_asset_type,selling_asset_code,selling_asset_issuer,buying_asset_type,buying_asset_code,buying_asset_issuer,cursor,limit,order}")
 		dest.Links.Accounts = &accountsLink

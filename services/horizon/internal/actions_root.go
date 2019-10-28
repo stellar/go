@@ -20,6 +20,9 @@ type RootAction struct {
 // JSON renders the json response for RootAction
 func (action *RootAction) JSON() error {
 	var res horizon.Root
+	templates := map[string]string{
+		"accounts": actions.AccountsQuery{}.URITemplate(),
+	}
 	resourceadapter.PopulateRoot(
 		action.R.Context(),
 		&res,
@@ -31,6 +34,7 @@ func (action *RootAction) JSON() error {
 		action.App.coreSupportedProtocolVersion,
 		action.App.config.FriendbotURL,
 		action.App.config.EnableExperimentalIngestion,
+		templates,
 	)
 
 	hal.Render(action.W, res)
