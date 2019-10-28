@@ -11,8 +11,9 @@ import (
 type ContextKey string
 
 const (
-	LedgerSequenceContextKey ContextKey = "ledger_sequence"
-	LedgerHeaderContextKey   ContextKey = "ledger_header"
+	LedgerSequenceContextKey       ContextKey = "ledger_sequence"
+	LedgerHeaderContextKey         ContextKey = "ledger_header"
+	LedgerUpgradeChangesContextKey ContextKey = "ledger_upgrade_changes"
 )
 
 func GetLedgerSequenceFromContext(ctx context.Context) uint32 {
@@ -33,6 +34,16 @@ func GetLedgerHeaderFromContext(ctx context.Context) xdr.LedgerHeaderHistoryEntr
 	}
 
 	return v.(xdr.LedgerHeaderHistoryEntry)
+}
+
+func GetLedgerUpgradeChangesFromContext(ctx context.Context) []io.Change {
+	v := ctx.Value(LedgerUpgradeChangesContextKey)
+
+	if v == nil {
+		panic("ledger upgrade changes not found in context")
+	}
+
+	return v.([]io.Change)
 }
 
 type StatePipeline struct {
@@ -123,11 +134,23 @@ type LedgerProcessor interface {
 	// The first argument `ctx` is a context with cancel. Processor should monitor
 	// `ctx.Done()` channel and exit when it returns a value. This can happen when
 	// pipeline execution is interrupted, ex. due to an error.
+	// Please note that processor can filter transactions (by not passing them to
+	// `io.LedgerWriter`) but it cannot filter ledger upgrade changes
+	// (`io.LeaderReader.ReadUpgradeChange`). All upgrade changes will be available
+	// for the next processor to read.
 	//
 	// Given all information above `ProcessLedger` should always look like this:
 	//
-	//    func (p *Processor) ProcessLedger(ctx context.Context, store *pipeline.Store, r io.LedgerReader, w io.LedgerWriter) error {
-	//    	defer r.Close()
+	//    func (p *Processor) ProcessLedger(ctx context.Context, store *pipeline.Store, r io.LedgerReader, w io.LedgerWriter) (err error) {
+	//      defer func() {
+	//      	// io.LedgerReader.Close() returns error if upgrade changes have not
+	//      	// been processed so it's worth checking the error.
+	//      	closeErr := r.Close()
+	//      	// Do not overwrite the previous error
+	//      	if err == nil {
+	//      		err = closeErr
+	//      	}
+	//      }()
 	//    	defer w.Close()
 	//
 	//    	// Some pre code...
@@ -163,6 +186,18 @@ type LedgerProcessor interface {
 	//    		default:
 	//    			continue
 	//    		}
+	//    	}
+	//
+	//    	for {
+	//    		change, err := r.ReadUpgradeChange()
+	//    		if err != nil {
+	//    			if err == stdio.EOF {
+	//    				break
+	//    		} else {
+	//    			return err
+	//    		}
+	//
+	//    		// Process ledger upgrade change...
 	//    	}
 	//
 	//    	// Some post code...
@@ -217,6 +252,12 @@ var _ io.StateReader = &readerWrapperState{}
 // readerWrapperLedger wraps pipeline.Reader to implement LedgerReader interface.
 type readerWrapperLedger struct {
 	supportPipeline.Reader
+
+	upgradeChanges []io.Change
+	// currentUpgrade points to the upgrade to be read by `ReadUpgradeChange`.
+	currentUpgradeChange    int
+	readUpgradeChangeCalled bool
+	ignoreUpgradeChanges    bool
 }
 
 var _ io.LedgerReader = &readerWrapperLedger{}

@@ -778,7 +778,7 @@ func validateAssetParams(aType, code, issuer, prefix string) error {
 	if len(aType) == 0 {
 		if len(code) > 0 || len(issuer) > 0 {
 			return problem.MakeInvalidFieldProblem(
-				prefix+"_asset_type",
+				prefix+"asset_type",
 				errors.New("Missing parameter"),
 			)
 		}
@@ -789,7 +789,7 @@ func validateAssetParams(aType, code, issuer, prefix string) error {
 	t, err := assets.Parse(aType)
 	if err != nil {
 		return problem.MakeInvalidFieldProblem(
-			prefix+"_asset_type",
+			prefix+"asset_type",
 			err,
 		)
 	}
@@ -802,12 +802,12 @@ func validateAssetParams(aType, code, issuer, prefix string) error {
 		switch {
 		case len(code) > 0:
 			return problem.MakeInvalidFieldProblem(
-				prefix+"_asset_code",
+				prefix+"asset_code",
 				errors.New("native asset does not have a code"),
 			)
 		case len(issuer) > 0:
 			return problem.MakeInvalidFieldProblem(
-				prefix+"_asset_issuer",
+				prefix+"asset_issuer",
 				errors.New("native asset does not have an issuer"),
 			)
 		}
@@ -822,14 +822,14 @@ func validateAssetParams(aType, code, issuer, prefix string) error {
 	codeLen := len(code)
 	if codeLen == 0 || codeLen > validLen {
 		return problem.MakeInvalidFieldProblem(
-			prefix+"_asset_code",
+			prefix+"asset_code",
 			errors.New("Asset code must be 1-12 alphanumeric characters"),
 		)
 	}
 
 	if len(issuer) == 0 {
 		return problem.MakeInvalidFieldProblem(
-			prefix+"_asset_issuer",
+			prefix+"asset_issuer",
 			errors.New("Missing parameter"),
 		)
 	}

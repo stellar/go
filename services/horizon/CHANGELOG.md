@@ -11,10 +11,12 @@ bumps.  A breaking change will get clearly notified in this log.
 * Add `Latest-Ledger` header with the sequence number of the last processed ledger by the experimental ingestion system. The endpoints built using the experimental ingestion system will always respond with data which is consistent with the ledger in `Latest-Ledger`.
 * Fixes a bug in `/fee_stats`.
 * Fixes a bug in `/paths/strict-send`.
-
-### Breaking Changes
-
-* Remove deprecated `fee_paid` field on Transaction resource. Please use new fields added in 0.18.0: `max_fee` that defines the maximum fee the source account is willing to pay and `fee_charged` that defines the fee that was actually paid for a transaction. See [CAP-0005](https://github.com/stellar/stellar-protocol/blob/master/core/cap-0005.md) for more information.
+* Add experimental support for filtering accounts who are trustees to an asset via `/accounts`. To enable it, set `--enable-experimental-ingestion` CLI param or `ENABLE_EXPERIMENTAL_INGESTION=true` env variable. ([#1835](https://github.com/stellar/go/pull/1835))
+  
+    The following request will return all accounts who have a trustline to the asset identified by `asset_type=credit_alphanum4`, `asset_code=COP`, and `asset_issuer=GC2GFGZ5CZCFCDJSQF3YYEAYBOS3ZREXJSPU7LUJ7JU3LP3BQNHY7YKS`:
+    
+     `/accounts?asset_type=credit_alphanum4&asset_code=COP&asset_issuer=GC2GFGZ5CZCFCDJSQF3YYEAYBOS3ZREXJSPU7LUJ7JU3LP3BQNHY7YKS`
+* Update payload in experimental "Accounts For Signers" end-point to return an account resource. ([#1876](https://github.com/stellar/go/pull/1876))
 
 ## v0.22.1
 

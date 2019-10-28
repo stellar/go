@@ -106,3 +106,29 @@ func TestRemoveAccountData(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, int64(0), rows)
 }
+
+func TestGetAccountDataByAccountsID(t *testing.T) {
+	tt := test.Start(t)
+	defer tt.Finish()
+	test.ResetHorizonDB(t, tt.HorizonDB)
+	q := &Q{tt.HorizonSession()}
+
+	_, err := q.InsertAccountData(data1, 1234)
+	assert.NoError(t, err)
+	_, err = q.InsertAccountData(data2, 1235)
+	assert.NoError(t, err)
+
+	ids := []string{
+		data1.AccountId.Address(),
+		data2.AccountId.Address(),
+	}
+	datas, err := q.GetAccountDataByAccountsID(ids)
+	assert.NoError(t, err)
+	assert.Len(t, datas, 2)
+
+	assert.Equal(t, data1.DataName, xdr.String64(datas[0].Name))
+	assert.Equal(t, []byte(data1.DataValue), []byte(datas[0].Value))
+
+	assert.Equal(t, data2.DataName, xdr.String64(datas[1].Name))
+	assert.Equal(t, []byte(data2.DataValue), []byte(datas[1].Value))
+}

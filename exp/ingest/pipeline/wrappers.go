@@ -2,6 +2,8 @@ package pipeline
 
 import (
 	"context"
+	"fmt"
+	stdio "io"
 
 	"github.com/stellar/go/exp/ingest/io"
 	supportPipeline "github.com/stellar/go/exp/support/pipeline"
@@ -22,7 +24,10 @@ func (w *ledgerProcessorWrapper) Process(ctx context.Context, store *supportPipe
 	return w.LedgerProcessor.ProcessLedger(
 		ctx,
 		store,
-		&readerWrapperLedger{reader},
+		&readerWrapperLedger{
+			Reader:         reader,
+			upgradeChanges: GetLedgerUpgradeChangesFromContext(reader.GetContext()),
+		},
 		&writerWrapperLedger{writer},
 	)
 }
@@ -45,6 +50,16 @@ func (w *ledgerReaderWrapper) GetContext() context.Context {
 	ctx := context.Background()
 	ctx = context.WithValue(ctx, LedgerSequenceContextKey, w.LedgerReader.GetSequence())
 	ctx = context.WithValue(ctx, LedgerHeaderContextKey, w.LedgerReader.GetHeader())
+
+	// Save upgrade changes in context. UpgradeChangesContainer is implemented by
+	// *io.DBLedgerReader and readerWrapperLedger.
+	reader, ok := w.LedgerReader.(io.UpgradeChangesContainer)
+	if !ok {
+		panic(fmt.Sprintf("Cannot get upgrade changes from unknown reader type: %T", w.LedgerReader))
+	}
+
+	ctx = context.WithValue(ctx, LedgerUpgradeChangesContextKey, reader.GetUpgradeChanges())
+
 	return ctx
 }
 
@@ -86,6 +101,44 @@ func (w *readerWrapperLedger) Read() (io.LedgerTransaction, error) {
 	}
 
 	return entry, nil
+}
+
+// ReadUpgradeChange returns the next ledger upgrade change or EOF if there are
+// no more upgrade changes. Not safe for concurrent use!
+func (w *readerWrapperLedger) ReadUpgradeChange() (io.Change, error) {
+	w.readUpgradeChangeCalled = true
+
+	if w.currentUpgradeChange < len(w.upgradeChanges) {
+		change := w.upgradeChanges[w.currentUpgradeChange]
+		w.currentUpgradeChange++
+		return change, nil
+	}
+
+	return io.Change{}, stdio.EOF
+}
+
+func (w *readerWrapperLedger) IgnoreUpgradeChanges() {
+	w.ignoreUpgradeChanges = true
+}
+
+func (w *readerWrapperLedger) GetUpgradeChanges() []io.Change {
+	return w.upgradeChanges
+}
+
+func (w *readerWrapperLedger) Close() error {
+	if !w.ignoreUpgradeChanges &&
+		(!w.readUpgradeChangeCalled || w.currentUpgradeChange != len(w.upgradeChanges)) {
+		return errors.New("Ledger upgrade changes not read! Use ReadUpgradeChange() method.")
+	}
+
+	// Call IgnoreUpgradeChanges on a wrapped reader because `readerWrapperLedger`
+	// is responsible for streaming ledger upgrade changes now.
+	wrapper, ok := w.Reader.(*ledgerReaderWrapper)
+	if ok {
+		wrapper.LedgerReader.IgnoreUpgradeChanges()
+	}
+
+	return w.Reader.Close()
 }
 
 func (w *writerWrapperState) Write(entry xdr.LedgerEntryChange) error {
