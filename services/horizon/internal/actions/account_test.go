@@ -19,6 +19,7 @@ func TestAccountInfo(t *testing.T) {
 		&core.Q{tt.CoreSession()},
 		&history.Q{tt.HorizonSession()},
 		"GCXKG6RN4ONIEPCMNFB732A436Z5PNDSRLGWK7GBLCMQLIFO4S7EYWVU",
+		false,
 	)
 	tt.Assert.NoError(err)
 
