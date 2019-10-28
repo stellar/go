@@ -748,3 +748,24 @@ func makeRequest(
 
 	return request.WithContext(ctx)
 }
+
+func TestGetURIParams(t *testing.T) {
+	tt := assert.New(t)
+	type QueryParams struct {
+		SellingBuyingAssetQueryParams `valid:"-"`
+		Account                       string `schema:"account_id" valid:"accountID"`
+	}
+
+	expected := []string{
+		"selling_asset_type",
+		"selling_asset_issuer",
+		"selling_asset_code",
+		"buying_asset_type",
+		"buying_asset_issuer",
+		"buying_asset_code",
+		"account_id",
+	}
+
+	qp := QueryParams{}
+	tt.Equal(expected, getURIParams(&qp, false))
+}

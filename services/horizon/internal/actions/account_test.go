@@ -418,3 +418,10 @@ func TestGetAccountsHandlerInvalidParams(t *testing.T) {
 		})
 	}
 }
+
+func TestAccountQueryURLTemplate(t *testing.T) {
+	tt := assert.New(t)
+	expected := "/accounts{?signer,asset_type,asset_issuer,asset_code,cursor,limit,order}"
+	accountsQuery := AccountsQuery{}
+	tt.Equal(expected, accountsQuery.URITemplate())
+}
