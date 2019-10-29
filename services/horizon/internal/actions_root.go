@@ -22,6 +22,7 @@ func (action *RootAction) JSON() error {
 	var res horizon.Root
 	templates := map[string]string{
 		"accounts": actions.AccountsQuery{}.URITemplate(),
+		"offers":   actions.OffersQuery{}.URITemplate(),
 	}
 	resourceadapter.PopulateRoot(
 		action.R.Context(),
