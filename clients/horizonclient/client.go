@@ -464,7 +464,7 @@ func (c *Client) StreamEffects(ctx context.Context, request EffectRequest, handl
 // StreamOperations streams stellar operations. It can be used to stream all operations or operations
 // for an account. Use context.WithCancel to stop streaming or context.Background() if you want to
 // stream indefinitely. OperationHandler is a user-supplied function that is executed for each streamed
-//  operation received.
+// operation received.
 func (c *Client) StreamOperations(ctx context.Context, request OperationRequest, handler OperationHandler) error {
 	return request.SetOperationsEndpoint().StreamOperations(ctx, c, handler)
 }
@@ -473,7 +473,7 @@ func (c *Client) StreamOperations(ctx context.Context, request OperationRequest,
 // for an account. Payments include create_account, payment, path_payment and account_merge operations.
 // Use context.WithCancel to stop streaming or context.Background() if you want to
 // stream indefinitely. OperationHandler is a user-supplied function that is executed for each streamed
-//  operation received.
+// operation received.
 func (c *Client) StreamPayments(ctx context.Context, request OperationRequest, handler OperationHandler) error {
 	return request.SetPaymentsEndpoint().StreamOperations(ctx, c, handler)
 }
@@ -508,8 +508,7 @@ func (c *Client) FetchTimebounds(seconds int64) (txnbuild.Timebounds, error) {
 	if err != nil {
 		return txnbuild.Timebounds{}, errors.Wrap(err, "unable to parse horizon url")
 	}
-	c.setDefaultCurrentUniversalTime()
-	currentTime := currentServerTime(serverURL.Hostname(), c.currentUniversalTime())
+	currentTime := currentServerTime(serverURL.Hostname(), c.clock.Now().UTC().Unix())
 	if currentTime != 0 {
 		return txnbuild.NewTimebounds(0, currentTime+seconds), nil
 	}
@@ -650,21 +649,6 @@ func (c *Client) NextTradeAggregationsPage(page hProtocol.TradeAggregationsPage)
 func (c *Client) PrevTradeAggregationsPage(page hProtocol.TradeAggregationsPage) (ta hProtocol.TradeAggregationsPage, err error) {
 	err = c.sendRequestURL(page.Links.Prev.Href, "get", &ta)
 	return
-}
-
-// setDefaultCurrentUniversalTime sets the currentUniversalTime function for the horizon client if non has been
-// provided to the default function that returns the current UTC time. This is needed when the client is
-// initialised directly.
-func (c *Client) setDefaultCurrentUniversalTime() {
-	if c.currentUniversalTime == nil {
-		c.SetCurrentUniversalTime(universalTimeFunc)
-	}
-}
-
-// SetCurrentUniversalTime sets the currentUniversalTime function to the provided handler function. Users can
-// use this method to set a custom handler function.
-func (c *Client) SetCurrentUniversalTime(handler UniversalTimeHandler) {
-	c.currentUniversalTime = handler
 }
 
 // ensure that the horizon client implements ClientInterface
