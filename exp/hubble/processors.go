@@ -8,6 +8,7 @@ import (
 
 	"github.com/stellar/go/exp/ingest/io"
 	supportPipeline "github.com/stellar/go/exp/support/pipeline"
+	"github.com/stellar/go/xdr"
 )
 
 // SimpleProcessor is a basic unit to use in more complex processors.
@@ -44,6 +45,7 @@ func (p *SerializeEntryProcessor) ProcessState(ctx context.Context, store *suppo
 	defer r.Close()
 
 	entries := 0
+	prefix := "\t"
 	entriesCountDict := make(map[string]int)
 	for {
 		entry, err := r.Read()
@@ -53,6 +55,13 @@ func (p *SerializeEntryProcessor) ProcessState(ctx context.Context, store *suppo
 			} else {
 				return err
 			}
+		}
+
+		// Skip entries that are not of type `State`.
+		// TODO: Test other types: `LedgerEntryChangeTypeLedgerEntryRemoved`, `LedgerEntryChangeTypeLedgerEntryUpdated`, `LedgerEntryChangeTypeLedgerEntryState`.
+		// TODO: Delete this.
+		if entry.Type != xdr.LedgerEntryChangeTypeLedgerEntryState {
+			continue
 		}
 
 		// If we've already seen an example of this entry, we break,
@@ -67,7 +76,7 @@ func (p *SerializeEntryProcessor) ProcessState(ctx context.Context, store *suppo
 		}
 
 		entries++
-		entryString := serializeEntry(entry)
+		entryString := serializeEntry(entry, prefix)
 		print(entryString)
 
 		// If we have found an example of each of the 4 ledger entry types, exit.

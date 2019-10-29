@@ -1,7 +1,6 @@
 package hubble
 
 import (
-	"github.com/stellar/go/exp/ingest"
 	"github.com/stellar/go/exp/ingest/pipeline"
 	"github.com/stellar/go/support/historyarchive"
 )
@@ -23,11 +22,9 @@ func RunStatePipelineSession() error {
 	}
 
 	statePipeline := GetStatePipeline()
-
-	session := &ingest.SingleLedgerSession{
-		Archive:        archive,
-		LedgerSequence: 21686847,
-		StatePipeline:  statePipeline,
+	session := TestingSession{
+		Archive:       archive,
+		StatePipeline: statePipeline,
 	}
 	err = session.Run()
 	return err
