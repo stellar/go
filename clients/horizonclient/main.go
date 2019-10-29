@@ -21,6 +21,7 @@ import (
 	hProtocol "github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/protocols/horizon/effects"
 	"github.com/stellar/go/protocols/horizon/operations"
+	"github.com/stellar/go/support/clock"
 	"github.com/stellar/go/support/render/problem"
 	"github.com/stellar/go/txnbuild"
 )
@@ -134,8 +135,8 @@ type Client struct {
 	horizonTimeOut time.Duration
 	isTestNet      bool
 
-	// currentUniversalTime is a function that returns the current UTC unix time in seconds.
-	currentUniversalTime UniversalTimeHandler
+	// clock is a Clock returning the current time.
+	clock *clock.Clock
 }
 
 // ClientInterface contains methods implemented by the horizon client
@@ -193,19 +194,17 @@ type ClientInterface interface {
 
 // DefaultTestNetClient is a default client to connect to test network.
 var DefaultTestNetClient = &Client{
-	HorizonURL:           "https://horizon-testnet.stellar.org/",
-	HTTP:                 http.DefaultClient,
-	horizonTimeOut:       HorizonTimeOut,
-	isTestNet:            true,
-	currentUniversalTime: universalTimeFunc,
+	HorizonURL:     "https://horizon-testnet.stellar.org/",
+	HTTP:           http.DefaultClient,
+	horizonTimeOut: HorizonTimeOut,
+	isTestNet:      true,
 }
 
 // DefaultPublicNetClient is a default client to connect to public network.
 var DefaultPublicNetClient = &Client{
-	HorizonURL:           "https://horizon.stellar.org/",
-	HTTP:                 http.DefaultClient,
-	horizonTimeOut:       HorizonTimeOut,
-	currentUniversalTime: universalTimeFunc,
+	HorizonURL:     "https://horizon.stellar.org/",
+	HTTP:           http.DefaultClient,
+	horizonTimeOut: HorizonTimeOut,
 }
 
 // HorizonRequest contains methods implemented by request structs for horizon endpoints.
@@ -223,7 +222,7 @@ type AccountRequest struct {
 
 // EffectRequest struct contains data for getting effects from a horizon server.
 // "ForAccount", "ForLedger", "ForOperation" and "ForTransaction": Not more than one of these
-//  can be set at a time. If none are set, the default is to return all effects.
+// can be set at a time. If none are set, the default is to return all effects.
 // The query parameters (Order, Cursor and Limit) are optional. All or none can be set.
 type EffectRequest struct {
 	ForAccount     string

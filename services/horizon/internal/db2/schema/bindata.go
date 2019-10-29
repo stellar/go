@@ -305,7 +305,7 @@ func migrations1_initial_schemaSql() (*asset, error) {
 		return nil, err
 	}
 
-	info := bindataFileInfo{name: "migrations/1_initial_schema.sql", size: 9977, mode: os.FileMode(0644), modTime: time.Unix(1570633826, 0)}
+	info := bindataFileInfo{name: "migrations/1_initial_schema.sql", size: 9977, mode: os.FileMode(0644), modTime: time.Unix(1570634484, 0)}
 	a := &asset{bytes: bytes, info: info, digest: [32]uint8{0x6d, 0xdd, 0xc3, 0x1d, 0x39, 0xb7, 0x5e, 0x6a, 0x64, 0x2b, 0xd5, 0x66, 0x83, 0x61, 0x79, 0xf7, 0x59, 0xce, 0x51, 0x66, 0x3c, 0xd0, 0xf3, 0x14, 0x35, 0xcd, 0x21, 0xc0, 0xae, 0x24, 0x84, 0x35}}
 	return a, nil
 }
