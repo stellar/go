@@ -11,5 +11,3 @@ docker-build:
 docker-push:
 	cd ../../ && \
 	$(SUDO) docker push $(TAG)
-
-docker: docker-build docker-push

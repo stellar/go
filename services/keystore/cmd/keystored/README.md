@@ -89,12 +89,6 @@ cd github.com/stellar/go/services/keystore
 TAG=my-registry.example.com/keystore:dev make docker-push
 ```
 
-to build and push in one step:
-```sh
-cd github.com/stellar/go/services/keystore
-TAG=my-registry.example.com/keystore:dev make docker
-```
-
 ## Logging
 
 You can put the log messages in a designated file with the `-log-file` flag as well as determine
