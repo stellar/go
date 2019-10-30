@@ -17,7 +17,7 @@ A path payment strict send search is specified using:
 - The source asset.
 - The source amount.
 
-As part of the search, horizon will load a list of assets available to the source account id or use the assets passed in the request and will find any payment paths from those source assets to the desired destination asset. The source's amount parameter will be used to determine if there a given path can satisfy a payment of the desired amount.
+As part of the search, horizon will load a list of assets available to the source account id or use the assets passed in the request and will find any payment paths from those source assets to the desired destination asset. The source's amount parameter will be used to determine if a given path can satisfy a payment of the desired amount.
 
 **Note**: This endpoint is still experimental and available only if Horizon is running the [new ingestion system](https://medium.com/stellar-developers-blog/horizon-just-got-a-lot-better-our-new-ingestion-engine-and-other-great-stuff-eca042966b32).
 
