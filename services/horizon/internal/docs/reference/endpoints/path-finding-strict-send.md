@@ -1,5 +1,5 @@
 ---
-title: Find Payment Paths (Strict Send)
+title: Strict Send Payment Paths
 clientData:
   laboratoryUrl: https://www.stellar.org/laboratory/#explorer?resource=paths&endpoint=all
 ---
@@ -31,12 +31,12 @@ https://horizon-testnet.stellar.org/paths/strict-send?&source_amount={sa}&source
 
 | name | notes | description | example |
 | ---- | ----- | ----------- | ------- |
-| `?source_amount` | string | The amount, denominated in the source asset, that any returned path should be able to satisfy | `10.1` |
-| `?source_asset_type` | string | The type of the source asset | `credit_alphanum4` |
-| `?source_asset_code` | string optional | The source asset code, if source_asset_type is not "native" | `USD` |
-| `?source_asset_issuer` | string optional | The issuer for the source asset, if source_asset_type is not "native" | `GAEDTJ4PPEFVW5XV2S7LUXBEHNQMX5Q2GM562RJGOQG7GVCE5H3HIB4V` |
-| `?destination_account` | string optional | The destination account that any returned path should use | `GAEDTJ4PPEFVW5XV2S7LUXBEHNQMX5Q2GM562RJGOQG7GVCE5H3HIB4V` |
-| `?destination_assets` | string optional | A comma separated list of assets. Any returned path must use an asset included in this list  | `USD:GAEDTJ4PPEFVW5XV2S7LUXBEHNQMX5Q2GM562RJGOQG7GVCE5H3HIB4V,native` |
+| `source_amount` | string | The amount, denominated in the source asset, that any returned path should be able to satisfy | `10.1` |
+| `source_asset_type` | string | The type of the source asset | `credit_alphanum4` |
+| `source_asset_code` | string, required if `source_asset_type` is not `native` | The source asset code, if source_asset_type is not "native" | `USD` |
+| `source_asset_issuer` | string, required if `source_asset_type` is not `native` | The issuer for the source asset, if source_asset_type is not "native" | `GAEDTJ4PPEFVW5XV2S7LUXBEHNQMX5Q2GM562RJGOQG7GVCE5H3HIB4V` |
+| `destination_account` | string optional | The destination account that any returned path should use | `GAEDTJ4PPEFVW5XV2S7LUXBEHNQMX5Q2GM562RJGOQG7GVCE5H3HIB4V` |
+| `destination_assets` | string optional | A comma separated list of assets. Any returned path must use an asset included in this list  | `USD:GAEDTJ4PPEFVW5XV2S7LUXBEHNQMX5Q2GM562RJGOQG7GVCE5H3HIB4V,native` |
 
 The endpoint will not allow requests which provide both a `destination_account` and `destination_assets` parameter. All requests must provide one or the other.
 The assets in `destination_assets` are expected to be encoded using the following format:

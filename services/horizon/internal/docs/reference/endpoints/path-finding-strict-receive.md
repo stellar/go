@@ -1,5 +1,5 @@
 ---
-title: Find Payment Paths (Strict Receive)
+title: Strict Receive Payment Paths
 clientData:
   laboratoryUrl: https://www.stellar.org/laboratory/#explorer?resource=paths&endpoint=all
 ---
@@ -30,13 +30,13 @@ GET /paths/strict-receive?source_account={sa}&destination_asset_type={at}&destin
 
 | name | notes | description | example |
 | ---- | ----- | ----------- | ------- |
-| `?source_account` | string | The sender's account id. Any returned path must use an asset that the sender can hold | `GARSFJNXJIHO6ULUBK3DBYKVSIZE7SC72S5DYBCHU7DKL22UXKVD7MXP` |
-| `?source_assets` | string | A comma separated list of assets. Any returned path must use an asset included in this list | `USD:GAEDTJ4PPEFVW5XV2S7LUXBEHNQMX5Q2GM562RJGOQG7GVCE5H3HIB4V,native` |
-| `?destination_account` | string | The destination account that any returned path should use | `GAEDTJ4PPEFVW5XV2S7LUXBEHNQMX5Q2GM562RJGOQG7GVCE5H3HIB4V` |
-| `?destination_asset_type` | string | The type of the destination asset | `credit_alphanum4` |
-| `?destination_asset_code` | string | The destination asset code, if destination_asset_type is not "native" | `USD` |
-| `?destination_asset_issuer` | string | The issuer for the destination asset, if destination_asset_type is not "native" | `GAEDTJ4PPEFVW5XV2S7LUXBEHNQMX5Q2GM562RJGOQG7GVCE5H3HIB4V` |
-| `?destination_amount` | string | The amount, denominated in the destination asset, that any returned path should be able to satisfy | `10.1` |
+| `source_account` | string | The sender's account id. Any returned path must use an asset that the sender has a trustline to. | `GARSFJNXJIHO6ULUBK3DBYKVSIZE7SC72S5DYBCHU7DKL22UXKVD7MXP` |
+| `source_assets` | string | A comma separated list of assets. Any returned path must use an asset included in this list | `USD:GAEDTJ4PPEFVW5XV2S7LUXBEHNQMX5Q2GM562RJGOQG7GVCE5H3HIB4V,native` |
+| `destination_account` | string | The destination account that any returned path should use | `GAEDTJ4PPEFVW5XV2S7LUXBEHNQMX5Q2GM562RJGOQG7GVCE5H3HIB4V` |
+| `destination_asset_type` | string | The type of the destination asset | `credit_alphanum4` |
+| `destination_asset_code` | required if `destination_asset_type` is not `native`, string | The destination asset code, if destination_asset_type is not "native" | `USD` |
+| `destination_asset_issuer` | required if `destination_asset_type` is not `native`, string | The issuer for the destination asset, if destination_asset_type is not "native" | `GAEDTJ4PPEFVW5XV2S7LUXBEHNQMX5Q2GM562RJGOQG7GVCE5H3HIB4V` |
+| `destination_amount` | string | The amount, denominated in the destination asset, that any returned path should be able to satisfy | `10.1` |
 
 The endpoint will not allow requests which provide both a `source_account` and a `source_assets` parameter. All requests must provide one or the other.
 The assets in `source_assets` are expected to be encoded using the following format:
