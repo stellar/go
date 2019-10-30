@@ -17,7 +17,7 @@ A strict receive path search is specified using:
 
 As part of the search, horizon will load a list of assets available to the source account id and
 will find any payment paths from those source assets to the desired destination asset. The search's
-amount parameter will be used to determine if there a given path can satisfy a payment of the
+amount parameter will be used to determine if a given path can satisfy a payment of the
 desired amount.
 
 ## Request
