@@ -98,3 +98,67 @@ func TestAccountIDValidator(t *testing.T) {
 		})
 	}
 }
+
+func TestAssetValidator(t *testing.T) {
+	type Query struct {
+		Asset string `valid:"asset"`
+	}
+
+	for _, testCase := range []struct {
+		desc  string
+		asset string
+		valid bool
+	}{
+		{
+			"native",
+			"native",
+			true,
+		},
+		{
+			"credit_alphanum4",
+			"USD:GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H",
+			true,
+		},
+		{
+			"credit_alphanum12",
+			"SDFUSD:GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H",
+			true,
+		},
+		{
+			"invalid credit_alphanum12",
+			"SDFUSDSDFUSDSDFUSD:GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H",
+			false,
+		},
+		{
+			"invalid no issuer",
+			"FOO",
+			false,
+		},
+		{
+			"invalid issuer",
+			"FOO:BAR",
+			false,
+		},
+		{
+			"empty colon",
+			":",
+			false,
+		},
+	} {
+		t.Run(testCase.desc, func(t *testing.T) {
+			tt := assert.New(t)
+
+			q := Query{
+				Asset: testCase.asset,
+			}
+
+			result, err := govalidator.ValidateStruct(q)
+			if testCase.valid {
+				tt.NoError(err)
+				tt.True(result)
+			} else {
+				tt.Error(err)
+			}
+		})
+	}
+}
