@@ -211,3 +211,26 @@ func TestGetTrustLinesByAccountsID(t *testing.T) {
 
 	tt.Assert.Len(m, 0)
 }
+
+func TestGetTrustLinesByAccountID(t *testing.T) {
+	tt := test.Start(t)
+	defer tt.Finish()
+	test.ResetHorizonDB(t, tt.HorizonDB)
+	q := &Q{tt.HorizonSession()}
+
+	_, err := q.InsertTrustLine(eurTrustLine, 1234)
+	tt.Assert.NoError(err)
+
+	record, err := q.GetTrustLinesByAccountID(eurTrustLine.AccountId.Address())
+	tt.Assert.NoError(err)
+
+	asset := xdr.MustNewCreditAsset(record[0].AssetCode, record[0].AssetIssuer)
+	tt.Assert.Equal(eurTrustLine.Asset, asset)
+	tt.Assert.Equal(eurTrustLine.AccountId.Address(), record[0].AccountID)
+	tt.Assert.Equal(int64(eurTrustLine.Balance), record[0].Balance)
+	tt.Assert.Equal(int64(eurTrustLine.Limit), record[0].Limit)
+	tt.Assert.Equal(uint32(eurTrustLine.Flags), record[0].Flags)
+	tt.Assert.Equal(int64(eurTrustLine.Ext.V1.Liabilities.Buying), record[0].BuyingLiabilities)
+	tt.Assert.Equal(int64(eurTrustLine.Ext.V1.Liabilities.Selling), record[0].SellingLiabilities)
+
+}
