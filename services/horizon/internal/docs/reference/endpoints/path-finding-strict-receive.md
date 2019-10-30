@@ -1,55 +1,53 @@
 ---
-title: Find Payment Paths
+title: Strict Receive Payment Paths
 clientData:
   laboratoryUrl: https://www.stellar.org/laboratory/#explorer?resource=paths&endpoint=all
 ---
-
-**Note**: This endpoint will be deprecated, use [/path/strict-receive](./path-finding-strict-receive.html) instead. There are no differences between both endpoints, `/paths` is an alias for `/path/strict-receive`.
-
 
 The Stellar Network allows payments to be made across assets through _path payments_.  A path
 payment specifies a series of assets to route a payment through, from source asset (the asset
 debited from the payer) to destination asset (the asset credited to the payee).
 
-A path search is specified using:
+A [Path Payment Strict Receive](../../../guides/concepts/list-of-operations.html#path-payment-strict-receive) allows a user to specify the *amount of the asset received*. The amount sent varies based on offers in the order books.  If you would like to search for a path specifying the amount to be sent, use the [Find Payment Paths (Strict Send)](./path-finding-strict-send.html).
 
-- The destination account id
-- The source account id
-- The asset and amount that the destination account should receive
+A strict receive path search is specified using:
+
+- The source account id or source assets.
+- The asset and amount that the destination account should receive.
 
 As part of the search, horizon will load a list of assets available to the source account id and
 will find any payment paths from those source assets to the desired destination asset. The search's
-amount parameter will be used to determine if there a given path can satisfy a payment of the
+amount parameter will be used to determine if a given path can satisfy a payment of the
 desired amount.
 
 ## Request
 
 ```
-GET /paths?destination_account={da}&source_account={sa}&destination_asset_type={at}&destination_asset_code={ac}&destination_asset_issuer={di}&destination_amount={amount}
+GET /paths/strict-receive?source_account={sa}&destination_asset_type={at}&destination_asset_code={ac}&destination_asset_issuer={di}&destination_amount={amount}&destination_account={da}
 ```
 
 ## Arguments
 
 | name | notes | description | example |
 | ---- | ----- | ----------- | ------- |
+| `?source_account` | string | The sender's account id. Any returned path must use an asset that the sender has a trustline to. | `GARSFJNXJIHO6ULUBK3DBYKVSIZE7SC72S5DYBCHU7DKL22UXKVD7MXP` |
+| `?source_assets` | string | A comma separated list of assets. Any returned path must use an asset included in this list | `USD:GAEDTJ4PPEFVW5XV2S7LUXBEHNQMX5Q2GM562RJGOQG7GVCE5H3HIB4V,native` |
 | `?destination_account` | string | The destination account that any returned path should use | `GAEDTJ4PPEFVW5XV2S7LUXBEHNQMX5Q2GM562RJGOQG7GVCE5H3HIB4V` |
 | `?destination_asset_type` | string | The type of the destination asset | `credit_alphanum4` |
-| `?destination_asset_code` | string | The destination asset code, if destination_asset_type is not "native" | `USD` |
-| `?destination_asset_issuer` | string | The issuer for the destination, if destination_asset_type is not "native" | `GAEDTJ4PPEFVW5XV2S7LUXBEHNQMX5Q2GM562RJGOQG7GVCE5H3HIB4V` |
+| `?destination_asset_code` | required if `destination_asset_type` is not `native`, string | The destination asset code, if destination_asset_type is not "native" | `USD` |
+| `?destination_asset_issuer` | required if `destination_asset_type` is not `native`, string | The issuer for the destination asset, if destination_asset_type is not "native" | `GAEDTJ4PPEFVW5XV2S7LUXBEHNQMX5Q2GM562RJGOQG7GVCE5H3HIB4V` |
 | `?destination_amount` | string | The amount, denominated in the destination asset, that any returned path should be able to satisfy | `10.1` |
-| `?source_account` | string | The sender's account id. Any returned path must use a source that the sender can hold | `GARSFJNXJIHO6ULUBK3DBYKVSIZE7SC72S5DYBCHU7DKL22UXKVD7MXP` |
-| `?source_assets` | string | A comma separated list of assets. Any returned path must use a source included in this list  | `USD:GAEDTJ4PPEFVW5XV2S7LUXBEHNQMX5Q2GM562RJGOQG7GVCE5H3HIB4V,native` |
 
 The endpoint will not allow requests which provide both a `source_account` and a `source_assets` parameter. All requests must provide one or the other.
 The assets in `source_assets` are expected to be encoded using the following format:
 
-The native asset should be represented as `"native"`. Issued assets should be represented as `"Code:IssuerAccountID"`. `"Code"` must consist of alphanumeric ASCII characters.
+XLM should be represented as `"native"`. Issued assets should be represented as `"Code:IssuerAccountID"`. `"Code"` must consist of alphanumeric ASCII characters.
 
 
 ### curl Example Request
 
 ```sh
-curl "https://horizon-testnet.stellar.org/paths?destination_account=GAEDTJ4PPEFVW5XV2S7LUXBEHNQMX5Q2GM562RJGOQG7GVCE5H3HIB4V&source_account=GARSFJNXJIHO6ULUBK3DBYKVSIZE7SC72S5DYBCHU7DKL22UXKVD7MXP&destination_asset_type=native&destination_amount=20"
+curl "https://horizon-testnet.stellar.org/paths/strict-receive?destination_account=GAEDTJ4PPEFVW5XV2S7LUXBEHNQMX5Q2GM562RJGOQG7GVCE5H3HIB4V&source_account=GARSFJNXJIHO6ULUBK3DBYKVSIZE7SC72S5DYBCHU7DKL22UXKVD7MXP&destination_asset_type=native&destination_amount=20"
 ```
 
 ### JavaScript Example Request
@@ -58,12 +56,11 @@ curl "https://horizon-testnet.stellar.org/paths?destination_account=GAEDTJ4PPEFV
 var StellarSdk = require('stellar-sdk');
 var server = new StellarSdk.Server('https://horizon-testnet.stellar.org');
 
-var source_account = "GARSFJNXJIHO6ULUBK3DBYKVSIZE7SC72S5DYBCHU7DKL22UXKVD7MXP";
-var destination_account = "GAEDTJ4PPEFVW5XV2S7LUXBEHNQMX5Q2GM562RJGOQG7GVCE5H3HIB4V";
-var destination_asset = StellarSdk.Asset.native();
-var destination_amount = "20";
+var sourceAccount = "GARSFJNXJIHO6ULUBK3DBYKVSIZE7SC72S5DYBCHU7DKL22UXKVD7MXP";
+var destinationAsset = StellarSdk.Asset.native();
+var destinationAmount = "20";
 
-server.paths(source_account, destination_account, destination_asset, destination_amount)
+server.paths(sourceAccount, destinationAsset, destinationAmount)
   .call()
   .then(function (pathResult) {
     console.log(pathResult.records);
