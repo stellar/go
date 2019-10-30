@@ -35,7 +35,7 @@ GET /paths/strict-receive?source_account={sa}&destination_asset_type={at}&destin
 | `?destination_account` | string | The destination account that any returned path should use | `GAEDTJ4PPEFVW5XV2S7LUXBEHNQMX5Q2GM562RJGOQG7GVCE5H3HIB4V` |
 | `?destination_asset_type` | string | The type of the destination asset | `credit_alphanum4` |
 | `?destination_asset_code` | string | The destination asset code, if destination_asset_type is not "native" | `USD` |
-| `?destination_asset_issuer` | string | The issuer for the destination, if destination_asset_type is not "native" | `GAEDTJ4PPEFVW5XV2S7LUXBEHNQMX5Q2GM562RJGOQG7GVCE5H3HIB4V` |
+| `?destination_asset_issuer` | string | The issuer for the destination asset, if destination_asset_type is not "native" | `GAEDTJ4PPEFVW5XV2S7LUXBEHNQMX5Q2GM562RJGOQG7GVCE5H3HIB4V` |
 | `?destination_amount` | string | The amount, denominated in the destination asset, that any returned path should be able to satisfy | `10.1` |
 
 The endpoint will not allow requests which provide both a `source_account` and a `source_assets` parameter. All requests must provide one or the other.
