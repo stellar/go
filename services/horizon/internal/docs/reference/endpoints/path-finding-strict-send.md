@@ -19,7 +19,7 @@ A path payment strict send search is specified using:
 
 As part of the search, horizon will load a list of assets available to the source account id or use the assets passed in the request and will find any payment paths from those source assets to the desired destination asset. The source's amount parameter will be used to determine if a given path can satisfy a payment of the desired amount.
 
-**Note**: This endpoint is still experimental and available only if Horizon is running the [new ingestion system](https://medium.com/stellar-developers-blog/horizon-just-got-a-lot-better-our-new-ingestion-engine-and-other-great-stuff-eca042966b32).
+**Note**: This endpoint is still experimental and available only if Horizon is running the [new ingestion system](https://github.com/stellar/go/blob/master/services/horizon/internal/expingest/BETA_TESTING.md).
 
 ## Request
 
@@ -33,8 +33,8 @@ https://horizon-testnet.stellar.org/paths/strict-send?&source_amount={sa}&source
 | ---- | ----- | ----------- | ------- |
 | `?source_amount` | string | The amount, denominated in the source asset, that any returned path should be able to satisfy | `10.1` |
 | `?source_asset_type` | string | The type of the source asset | `credit_alphanum4` |
-| `?source_asset_code` | string, required if `source_asset_type` is not `native` | The source asset code, if source_asset_type is not "native" | `USD` |
-| `?source_asset_issuer` | string, required if `source_asset_type` is not `native` | The issuer for the source asset, if source_asset_type is not "native" | `GAEDTJ4PPEFVW5XV2S7LUXBEHNQMX5Q2GM562RJGOQG7GVCE5H3HIB4V` |
+| `?source_asset_code` | string, required if `source_asset_type` is not `native`, string | The source asset code, if source_asset_type is not "native" | `USD` |
+| `?source_asset_issuer` | string, required if `source_asset_type` is not `native`, string | The issuer for the source asset, if source_asset_type is not "native" | `GAEDTJ4PPEFVW5XV2S7LUXBEHNQMX5Q2GM562RJGOQG7GVCE5H3HIB4V` |
 | `?destination_account` | string optional | The destination account that any returned path should use | `GAEDTJ4PPEFVW5XV2S7LUXBEHNQMX5Q2GM562RJGOQG7GVCE5H3HIB4V` |
 | `?destination_assets` | string optional | A comma separated list of assets. Any returned path must use an asset included in this list  | `USD:GAEDTJ4PPEFVW5XV2S7LUXBEHNQMX5Q2GM562RJGOQG7GVCE5H3HIB4V,native` |
 

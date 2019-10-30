@@ -6,7 +6,7 @@ This endpoint allows filtering accounts who have a given `signer` or have a trus
 
 To find all accounts who are trustees to asset, specify the asset using the query parameters `asset_type`, `asset_code` and `asset_issuer`.
 
-**Note**: This endpoint is still experimental and available only if Horizon is running the [new ingestion system](https://medium.com/stellar-developers-blog/horizon-just-got-a-lot-better-our-new-ingestion-engine-and-other-great-stuff-eca042966b32).
+**Note**: This endpoint is still experimental and available only if Horizon is running the [new ingestion system](https://github.com/stellar/go/blob/master/services/horizon/internal/expingest/BETA_TESTING.md).
 
 ## Request
 

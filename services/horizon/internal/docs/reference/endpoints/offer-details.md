@@ -4,7 +4,7 @@ title: Offer Details
 
 Returns information and links relating to a single [offer](../resources/offer.md).
 
-**Note**: This endpoint is still experimental and available only if Horizon is running the [new ingestion system](https://medium.com/stellar-developers-blog/horizon-just-got-a-lot-better-our-new-ingestion-engine-and-other-great-stuff-eca042966b32).
+**Note**: This endpoint is still experimental and available only if Horizon is running the [new ingestion system](https://github.com/stellar/go/blob/master/services/horizon/internal/expingest/BETA_TESTING.md).
 
 ## Request
 
