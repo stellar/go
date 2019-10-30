@@ -41,7 +41,7 @@ https://horizon-testnet.stellar.org/paths/strict-send?&source_amount={sa}&source
 The endpoint will not allow requests which provide both a `destination_account` and `destination_assets` parameter. All requests must provide one or the other.
 The assets in `destination_assets` are expected to be encoded using the following format:
 
-The native asset should be represented as `"native"`. Issued assets should be represented as `"Code:IssuerAccountID"`. `"Code"` must consist of alphanumeric ASCII characters.
+XLM should be represented as `"native"`. Issued assets should be represented as `"Code:IssuerAccountID"`. `"Code"` must consist of alphanumeric ASCII characters.
 
 
 ### curl Example Request
