@@ -22,7 +22,6 @@ GET /accounts{?signer,asset_type,asset_issuer,asset_code,cursor,limit,order}
 | `asset_type` | required, string | Type of the Asset  | `credit_alphanum4` |
 | `asset_code` | optional, string | Code of the Asset  | `USD` |
 | `asset_issuer` | optional, string | Account ID of the issuer of the Asset | `GA2HGBJIJKI6O4XEM7CZWY5PS6GKSXL6D34ERAJYQSPYA6X6AI7HYW36` |
-| `limit` | optional, string | Limit the number of items returned | `20` |
 | `cursor` | optional, default _null_ | A paging token, specifying where to start returning records from. | `GA2HGBJIJKI6O4XEM7CZWY5PS6GKSXL6D34ERAJYQSPYA6X6AI7HYW36` |
 | `order` | optional, string, default `asc` | The order in which to return rows, "asc" or "desc". | `asc` |
 | `limit` | optional, number, default `10` | Maximum number of records to return. | `200` |

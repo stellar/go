@@ -30,8 +30,8 @@ GET /paths/strict-receive?source_account={sa}&destination_asset_type={at}&destin
 
 | name | notes | description | example |
 | ---- | ----- | ----------- | ------- |
-| `?source_account` | string | The sender's account id. Any returned path must use a source that the sender can hold | `GARSFJNXJIHO6ULUBK3DBYKVSIZE7SC72S5DYBCHU7DKL22UXKVD7MXP` |
-| `?source_assets` | string | A comma separated list of assets. Any returned path must use a source included in this list  | `USD:GAEDTJ4PPEFVW5XV2S7LUXBEHNQMX5Q2GM562RJGOQG7GVCE5H3HIB4V,native` |
+| `?source_account` | string | The sender's account id. Any returned path must use an asset that the sender can hold | `GARSFJNXJIHO6ULUBK3DBYKVSIZE7SC72S5DYBCHU7DKL22UXKVD7MXP` |
+| `?source_assets` | string | A comma separated list of assets. Any returned path must use an asset included in this list | `USD:GAEDTJ4PPEFVW5XV2S7LUXBEHNQMX5Q2GM562RJGOQG7GVCE5H3HIB4V,native` |
 | `?destination_account` | string | The destination account that any returned path should use | `GAEDTJ4PPEFVW5XV2S7LUXBEHNQMX5Q2GM562RJGOQG7GVCE5H3HIB4V` |
 | `?destination_asset_type` | string | The type of the destination asset | `credit_alphanum4` |
 | `?destination_asset_code` | string | The destination asset code, if destination_asset_type is not "native" | `USD` |
