@@ -309,8 +309,8 @@ jobs:
           command: |
             echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
             # CIRCLE_TAG will be prefixed by "horizon-v", here we build the horizon docker image and tag it with stellar/horizon:$VERSION
-            # where version is CIRCLE_TAG without the "horizon-v" prefiix
-            VERSION=$(echo $CIRCLE_TAG | sed -e "s/^horizon-v//")
+            # where version is CIRCLE_TAG without the "horizon-v" prefix
+            VERSION=${CIRCLE_TAG#horizon-v}
             docker build -f services/horizon/docker/Dockerfile -t stellar/horizon:$VERSION -t stellar/horizon:latest .
             docker push stellar/horizon:$VERSION
             docker push stellar/horizon:latest
