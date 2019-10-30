@@ -319,7 +319,6 @@ func TestGetAccountByID(t *testing.T) {
 
 	resultAccount, err := q.GetAccountByID(account1.AccountId.Address())
 	assert.NoError(t, err)
-	assert.NoError(t, err)
 
 	assert.Equal(t, "GAOQJGUAB7NI7K7I62ORBXMN3J4SSWQUQ7FOEPSDJ322W2HMCNWPHXFB", resultAccount.AccountID)
 	assert.Equal(t, int64(20000), resultAccount.Balance)

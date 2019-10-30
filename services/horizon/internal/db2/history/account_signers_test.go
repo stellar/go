@@ -130,12 +130,12 @@ func TestGetAccountSignersByAccountID(t *testing.T) {
 	q := &Q{tt.HorizonSession()}
 
 	account := "GA5WBPYA5Y4WAEHXWR2UKO2UO4BUGHUQ74EUPKON2QHV4WRHOIRNKKH6"
-	signer := "GC2WJF6YWMAEHGGAK2UOMZCIOMH4RU7KY2CQEWZQJV2ZQJVXJ335ZSXG"
+	signer := "GC23QF2HUE52AMXUFUH3AYJAXXGXXV2VHXYYR6EYXETPKDXZSAW67XO7"
 	weight := int32(123)
 	_, err := q.CreateAccountSigner(account, signer, weight)
 	tt.Assert.NoError(err)
 
-	signer2 := "GC23QF2HUE52AMXUFUH3AYJAXXGXXV2VHXYYR6EYXETPKDXZSAW67XO7"
+	signer2 := "GC2WJF6YWMAEHGGAK2UOMZCIOMH4RU7KY2CQEWZQJV2ZQJVXJ335ZSXG"
 	weight2 := int32(100)
 	_, err = q.CreateAccountSigner(account, signer2, weight2)
 	tt.Assert.NoError(err)
@@ -143,13 +143,13 @@ func TestGetAccountSignersByAccountID(t *testing.T) {
 	expected := []AccountSigner{
 		AccountSigner{
 			Account: account,
-			Signer:  signer2,
-			Weight:  weight2,
+			Signer:  signer,
+			Weight:  weight,
 		},
 		AccountSigner{
 			Account: account,
-			Signer:  signer,
-			Weight:  weight,
+			Signer:  signer2,
+			Weight:  weight2,
 		},
 	}
 	results, err := q.GetAccountSignersByAccountID(account)
