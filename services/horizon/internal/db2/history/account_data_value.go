@@ -24,3 +24,7 @@ func (t *AccountDataValue) Scan(src interface{}) error {
 func (value AccountDataValue) Value() (driver.Value, error) {
 	return driver.Value([]uint8(base64.StdEncoding.EncodeToString(value))), nil
 }
+
+func (value AccountDataValue) Base64() string {
+	return base64.StdEncoding.EncodeToString(value)
+}

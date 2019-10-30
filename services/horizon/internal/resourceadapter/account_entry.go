@@ -2,7 +2,6 @@ package resourceadapter
 
 import (
 	"context"
-	"encoding/base64"
 	"fmt"
 	"strconv"
 
@@ -63,7 +62,7 @@ func PopulateAccountEntry(
 	// populate data
 	dest.Data = make(map[string]string)
 	for _, d := range accountData {
-		dest.Data[d.Name] = base64.StdEncoding.EncodeToString(d.Value)
+		dest.Data[d.Name] = d.Value.Base64()
 	}
 
 	masterKeyIncluded := false

@@ -37,6 +37,13 @@ func (q *Q) CountAccounts() (int, error) {
 	return count, nil
 }
 
+func (q *Q) GetAccountByID(id string) (AccountEntry, error) {
+	var account AccountEntry
+	sql := selectAccounts.Where(sq.Eq{"account_id": id})
+	err := q.Get(&account, sql)
+	return account, err
+}
+
 func (q *Q) GetAccountsByIDs(ids []string) ([]AccountEntry, error) {
 	var accounts []AccountEntry
 	sql := selectAccounts.Where(map[string]interface{}{"accounts.account_id": ids})

@@ -19,6 +19,14 @@ func (q *Q) CountAccountsData() (int, error) {
 	return count, nil
 }
 
+// GetAccountDataByAccountID loads account data for a given account ID
+func (q *Q) GetAccountDataByAccountID(id string) ([]Data, error) {
+	var data []Data
+	sql := selectAccountData.Where(sq.Eq{"account": id})
+	err := q.Select(&data, sql)
+	return data, err
+}
+
 // GetAccountDataByKeys loads a row from the `accounts_data` table, selected by multiple keys.
 func (q *Q) GetAccountDataByKeys(keys []xdr.LedgerKeyData) ([]Data, error) {
 	var data []Data

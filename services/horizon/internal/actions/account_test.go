@@ -159,7 +159,13 @@ func TestAccountInfo(t *testing.T) {
 	tt := test.Start(t).Scenario("allow_trust")
 	defer tt.Finish()
 
-	account, err := AccountInfo(tt.Ctx, &core.Q{tt.CoreSession()}, signer)
+	account, err := AccountInfo(
+		tt.Ctx,
+		&core.Q{tt.CoreSession()},
+		&history.Q{tt.HorizonSession()},
+		signer,
+		false,
+	)
 	tt.Assert.NoError(err)
 
 	tt.Assert.Equal("8589934593", account.Sequence)

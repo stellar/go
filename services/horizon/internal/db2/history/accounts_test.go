@@ -307,3 +307,30 @@ func TestAccountEntriesForSigner(t *testing.T) {
 	assert.NoError(t, err)
 	tt.Assert.Len(accounts, 2)
 }
+
+func TestGetAccountByID(t *testing.T) {
+	tt := test.Start(t)
+	defer tt.Finish()
+	test.ResetHorizonDB(t, tt.HorizonDB)
+	q := &Q{tt.HorizonSession()}
+
+	_, err := q.InsertAccount(account1, 1234)
+	tt.Assert.NoError(err)
+
+	resultAccount, err := q.GetAccountByID(account1.AccountId.Address())
+	assert.NoError(t, err)
+
+	assert.Equal(t, "GAOQJGUAB7NI7K7I62ORBXMN3J4SSWQUQ7FOEPSDJ322W2HMCNWPHXFB", resultAccount.AccountID)
+	assert.Equal(t, int64(20000), resultAccount.Balance)
+	assert.Equal(t, int64(223456789), resultAccount.SequenceNumber)
+	assert.Equal(t, uint32(10), resultAccount.NumSubEntries)
+	assert.Equal(t, "GBUH7T6U36DAVEKECMKN5YEBQYZVRBPNSZAAKBCO6P5HBMDFSQMQL4Z4", resultAccount.InflationDestination)
+	assert.Equal(t, uint32(1), resultAccount.Flags)
+	assert.Equal(t, "stellar.org", resultAccount.HomeDomain)
+	assert.Equal(t, byte(1), resultAccount.MasterWeight)
+	assert.Equal(t, byte(2), resultAccount.ThresholdLow)
+	assert.Equal(t, byte(3), resultAccount.ThresholdMedium)
+	assert.Equal(t, byte(4), resultAccount.ThresholdHigh)
+	assert.Equal(t, int64(3), resultAccount.BuyingLiabilities)
+	assert.Equal(t, int64(4), resultAccount.SellingLiabilities)
+}

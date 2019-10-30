@@ -14,17 +14,17 @@ func (a *AccountEntry) SignerSummary() map[string]int32 {
 }
 
 func (a *AccountEntry) MasterKeyWeight() byte {
-	return a.Thresholds[0]
+	return a.Thresholds.MasterKeyWeight()
 }
 
 func (a *AccountEntry) ThresholdLow() byte {
-	return a.Thresholds[1]
+	return a.Thresholds.ThresholdLow()
 }
 
 func (a *AccountEntry) ThresholdMedium() byte {
-	return a.Thresholds[2]
+	return a.Thresholds.ThresholdMedium()
 }
 
 func (a *AccountEntry) ThresholdHigh() byte {
-	return a.Thresholds[3]
+	return a.Thresholds.ThresholdHigh()
 }

@@ -25,6 +25,13 @@ func (q *Q) CountTrustLines() (int, error) {
 	return count, nil
 }
 
+func (q *Q) GetTrustLinesByAccountID(id string) ([]TrustLine, error) {
+	var trustLines []TrustLine
+	sql := selectTrustLines.Where(sq.Eq{"accountid": id})
+	err := q.Select(&trustLines, sql)
+	return trustLines, err
+}
+
 // GetTrustLinesByKeys loads a row from the `trust_lines` table, selected by multiple keys.
 func (q *Q) GetTrustLinesByKeys(keys []xdr.LedgerKeyTrustLine) ([]TrustLine, error) {
 	var trustLines []TrustLine
