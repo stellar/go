@@ -3,6 +3,7 @@ package actions
 import (
 	"context"
 	"net/http"
+	"strings"
 
 	protocol "github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/services/horizon/internal/db2/core"
@@ -62,6 +63,11 @@ type AccountsQuery struct {
 	AssetType   string `schema:"asset_type" valid:"assetType,optional"`
 	AssetIssuer string `schema:"asset_issuer" valid:"accountID,optional"`
 	AssetCode   string `schema:"asset_code" valid:"-"`
+}
+
+// URITemplate returns a rfc6570 URI template the query struct
+func (q AccountsQuery) URITemplate() string {
+	return "/accounts{?" + strings.Join(getURIParams(&q, true), ",") + "}"
 }
 
 var invalidAccountsParams = problem.P{

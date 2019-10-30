@@ -13,6 +13,11 @@ import (
 
 func TestPopulateRoot(t *testing.T) {
 	res := &horizon.Root{}
+	templates := map[string]string{
+		"accounts": "/accounts{?signer,asset_type,asset_issuer,asset_code}",
+		"offers":   "/offers",
+	}
+
 	PopulateRoot(context.Background(),
 		res,
 		ledger.State{CoreLatest: 1, HistoryLatest: 3, HistoryElder: 2},
@@ -23,6 +28,7 @@ func TestPopulateRoot(t *testing.T) {
 		101,
 		urlMustParse(t, "https://friendbot.example.com"),
 		false,
+		templates,
 	)
 
 	assert.Equal(t, int32(1), res.CoreSequence)
@@ -48,6 +54,7 @@ func TestPopulateRoot(t *testing.T) {
 		101,
 		nil,
 		false,
+		templates,
 	)
 
 	assert.Equal(t, int32(1), res.CoreSequence)
@@ -70,11 +77,16 @@ func TestPopulateRoot(t *testing.T) {
 		101,
 		urlMustParse(t, "https://friendbot.example.com"),
 		true,
+		templates,
 	)
 
-	assert.Equal(t, "/accounts?{signer}", res.Links.Accounts.Href)
+	assert.Equal(t, templates["accounts"], res.Links.Accounts.Href)
 	assert.Equal(t, "/offers/{offer_id}", res.Links.Offer.Href)
-	assert.Equal(t, "/offers{?seller,selling_asset_type,selling_asset_code,selling_asset_issuer,buying_asset_type,buying_asset_code,buying_asset_issuer,cursor,limit,order}", res.Links.Offers.Href)
+	assert.Equal(
+		t,
+		templates["offers"],
+		res.Links.Offers.Href,
+	)
 }
 
 func urlMustParse(t *testing.T, s string) *url.URL {

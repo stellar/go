@@ -3,6 +3,7 @@ package actions
 import (
 	"context"
 	"net/http"
+	"strings"
 
 	"github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
@@ -56,6 +57,11 @@ func (handler GetOfferByID) GetResource(
 type OffersQuery struct {
 	SellingBuyingAssetQueryParams `valid:"-"`
 	Seller                        string `schema:"seller" valid:"accountID,optional"`
+}
+
+// URITemplate returns a rfc6570 URI template the query struct
+func (q OffersQuery) URITemplate() string {
+	return "/offers{?" + strings.Join(getURIParams(&q, true), ",") + "}"
 }
 
 // Validate runs custom validations.

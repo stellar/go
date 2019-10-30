@@ -772,6 +772,39 @@ func getSchemaTag(params interface{}, field string) string {
 	return f.Tag.Get("schema")
 }
 
+func getURIParams(query interface{}, paginated bool) []string {
+	params := getSchemaTags(reflect.ValueOf(query).Elem())
+	if paginated {
+		pagingParams := []string{
+			"cursor",
+			"limit",
+			"order",
+		}
+		params = append(params, pagingParams...)
+	}
+	return params
+}
+
+func getSchemaTags(v reflect.Value) []string {
+	qt := v.Type()
+	fields := make([]string, 0, v.NumField())
+
+	for i := 0; i < qt.NumField(); i++ {
+		f := qt.Field(i)
+		// Query structs can have embedded query structs
+		if f.Type.Kind() == reflect.Struct {
+			fields = append(fields, getSchemaTags(v.Field(i))...)
+		} else {
+			tag, ok := f.Tag.Lookup("schema")
+			if ok {
+				fields = append(fields, tag)
+			}
+		}
+	}
+
+	return fields
+}
+
 func validateAssetParams(aType, code, issuer, prefix string) error {
 	// If asset type is not present but code or issuer are, then there is a
 	// missing parameter and the request is unprocessable.
