@@ -45,7 +45,7 @@ func isAsset(assetString string) bool {
 		}
 
 		code := parts[0]
-		if !validAssetCode.MatchString(code) {
+		if !xdr.ValidAssetCode.MatchString(code) {
 			return false
 		}
 
