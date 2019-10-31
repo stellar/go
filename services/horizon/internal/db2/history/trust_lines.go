@@ -27,7 +27,7 @@ func (q *Q) CountTrustLines() (int, error) {
 
 func (q *Q) GetTrustLinesByAccountID(id string) ([]TrustLine, error) {
 	var trustLines []TrustLine
-	sql := selectTrustLines.Where(sq.Eq{"accountid": id})
+	sql := selectTrustLines.Where(sq.Eq{"account_id": id})
 	err := q.Select(&trustLines, sql)
 	return trustLines, err
 }
@@ -43,7 +43,7 @@ func (q *Q) GetTrustLinesByKeys(keys []xdr.LedgerKeyTrustLine) ([]TrustLine, err
 		}
 		lkeys = append(lkeys, lkey)
 	}
-	sql := selectTrustLines.Where(map[string]interface{}{"trust_lines.lkey": lkeys})
+	sql := selectTrustLines.Where(map[string]interface{}{"trust_lines.ledger_key": lkeys})
 	err := q.Select(&trustLines, sql)
 	return trustLines, err
 }
@@ -58,7 +58,7 @@ func (q *Q) InsertTrustLine(trustLine xdr.TrustLineEntry, lastModifiedLedger xdr
 	if err != nil {
 		return 0, errors.Wrap(err, "Error running trustLineEntryToLedgerKeyString")
 	}
-	m["lkey"] = key
+	m["ledger_key"] = key
 
 	sql := sq.Insert("trust_lines").SetMap(m)
 	result, err := q.Exec(sql)
@@ -85,7 +85,7 @@ func (q *Q) UpdateTrustLine(trustLine xdr.TrustLineEntry, lastModifiedLedger xdr
 
 	sql := sq.Update("trust_lines").
 		SetMap(trustLineToMap(trustLine, lastModifiedLedger)).
-		Where(map[string]interface{}{"lkey": key})
+		Where(map[string]interface{}{"ledger_key": key})
 	result, err := q.Exec(sql)
 	if err != nil {
 		return 0, err
@@ -103,7 +103,7 @@ func (q *Q) RemoveTrustLine(ledgerKey xdr.LedgerKeyTrustLine) (int64, error) {
 	}
 
 	sql := sq.Delete("trust_lines").
-		Where(map[string]interface{}{"lkey": key})
+		Where(map[string]interface{}{"ledger_key": key})
 	result, err := q.Exec(sql)
 	if err != nil {
 		return 0, err
@@ -115,7 +115,7 @@ func (q *Q) RemoveTrustLine(ledgerKey xdr.LedgerKeyTrustLine) (int64, error) {
 // GetTrustLinesByAccountsID loads trust lines for a list of accounts ID
 func (q *Q) GetTrustLinesByAccountsID(id []string) ([]TrustLine, error) {
 	var data []TrustLine
-	sql := selectTrustLines.Where(sq.Eq{"accountid": id})
+	sql := selectTrustLines.Where(sq.Eq{"account_id": id})
 	err := q.Select(&data, sql)
 	return data, err
 }
@@ -161,28 +161,28 @@ func trustLineToMap(trustLine xdr.TrustLineEntry, lastModifiedLedger xdr.Uint32)
 	}
 
 	return map[string]interface{}{
-		"accountid":            trustLine.AccountId.Address(),
-		"assettype":            assetType,
-		"assetissuer":          assetIssuer,
-		"assetcode":            assetCode,
+		"account_id":           trustLine.AccountId.Address(),
+		"asset_type":           assetType,
+		"asset_issuer":         assetIssuer,
+		"asset_code":           assetCode,
 		"balance":              trustLine.Balance,
-		"tlimit":               trustLine.Limit,
-		"buyingliabilities":    buyingliabilities,
-		"sellingliabilities":   sellingliabilities,
+		"trust_line_limit":     trustLine.Limit,
+		"buying_liabilities":   buyingliabilities,
+		"selling_liabilities":  sellingliabilities,
 		"flags":                trustLine.Flags,
 		"last_modified_ledger": lastModifiedLedger,
 	}
 }
 
 var selectTrustLines = sq.Select(`
-	accountid,
-	assettype,
-	assetissuer,
-	assetcode,
+	account_id,
+	asset_type,
+	asset_issuer,
+	asset_code,
 	balance,
-	tlimit,
-	buyingliabilities,
-	sellingliabilities,
+	trust_line_limit,
+	buying_liabilities,
+	selling_liabilities,
 	flags,
 	last_modified_ledger
 `).From("trust_lines")

@@ -22,17 +22,17 @@ CREATE INDEX accounts_inflation_destination ON accounts USING BTREE(inflation_de
 CREATE INDEX accounts_home_domain ON accounts USING BTREE(home_domain);
 
 CREATE TABLE accounts_data (
-    -- lkey is a LedgerKey marshaled using MarshalBinary
+    -- ledger_key is a LedgerKey marshaled using MarshalBinary
     -- and base64-encoded used to boost perfomance of some queries.
-    lkey character varying(150) NOT NULL,
-    account character varying(56) NOT NULL,
+    ledger_key character varying(150) NOT NULL,
+    account_id character varying(56) NOT NULL,
     name character varying(64) NOT NULL,
     value character varying(90) NOT NULL, -- base64-encoded 64 bytes
     last_modified_ledger INT NOT NULL,
-    PRIMARY KEY (lkey)
+    PRIMARY KEY (ledger_key)
 );
 
-CREATE UNIQUE INDEX accounts_data_account_name ON accounts_data USING BTREE(account, name);
+CREATE UNIQUE INDEX accounts_data_account_id_name ON accounts_data USING BTREE(account_id, name);
 
 -- +migrate Down
 

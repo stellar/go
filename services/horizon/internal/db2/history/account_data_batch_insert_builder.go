@@ -6,15 +6,15 @@ import (
 )
 
 func (i *accountDataBatchInsertBuilder) Add(data xdr.DataEntry, lastModifiedLedger xdr.Uint32) error {
-	// Add lkey only when inserting rows
+	// Add ledger_key only when inserting rows
 	key, err := dataEntryToLedgerKeyString(data)
 	if err != nil {
 		return errors.Wrap(err, "Error running dataEntryToLedgerKeyString")
 	}
 
 	return i.builder.Row(map[string]interface{}{
-		"lkey":                 key,
-		"account":              data.AccountId.Address(),
+		"ledger_key":           key,
+		"account_id":           data.AccountId.Address(),
 		"name":                 data.DataName,
 		"value":                AccountDataValue(data.DataValue),
 		"last_modified_ledger": lastModifiedLedger,
