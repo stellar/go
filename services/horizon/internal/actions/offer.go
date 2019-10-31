@@ -61,7 +61,7 @@ type OffersQuery struct {
 
 // URITemplate returns a rfc6570 URI template the query struct
 func (q OffersQuery) URITemplate() string {
-	return "/offers{?" + strings.Join(getURIParams(&q, true), ",") + "}"
+	return "/offers{?" + strings.Join(GetURIParams(&q, true), ",") + "}"
 }
 
 // Validate runs custom validations.

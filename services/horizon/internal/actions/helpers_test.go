@@ -767,5 +767,5 @@ func TestGetURIParams(t *testing.T) {
 	}
 
 	qp := QueryParams{}
-	tt.Equal(expected, getURIParams(&qp, false))
+	tt.Equal(expected, GetURIParams(&qp, false))
 }

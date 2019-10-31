@@ -725,7 +725,8 @@ func getSchemaTag(params interface{}, field string) string {
 	return f.Tag.Get("schema")
 }
 
-func getURIParams(query interface{}, paginated bool) []string {
+// GetURIParams returns a list of query parameters for a given query struct
+func GetURIParams(query interface{}, paginated bool) []string {
 	params := getSchemaTags(reflect.ValueOf(query).Elem())
 	if paginated {
 		pagingParams := []string{
