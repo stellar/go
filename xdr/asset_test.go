@@ -230,6 +230,112 @@ func TestToAllowTrustOpAsset_Error(t *testing.T) {
 	assert.EqualError(t, err, "Asset code length is invalid")
 }
 
+func TestBuildAssets(t *testing.T) {
+	for _, testCase := range []struct {
+		name           string
+		value          string
+		expectedAssets []Asset
+		expectedError  string
+	}{
+		{
+			"empty list",
+			"",
+			[]Asset{},
+			"",
+		},
+		{
+			"native",
+			"native",
+			[]Asset{MustNewNativeAsset()},
+			"",
+		},
+		{
+			"asset does not contain :",
+			"invalid-asset",
+			[]Asset{},
+			"invalid-asset is not a valid asset",
+		},
+		{
+			"asset contains more than one :",
+			"usd:GAEDTJ4PPEFVW5XV2S7LUXBEHNQMX5Q2GM562RJGOQG7GVCE5H3HIB4V:",
+			[]Asset{},
+			"is not a valid asset",
+		},
+		{
+			"unicode asset code",
+			"üsd:GAEDTJ4PPEFVW5XV2S7LUXBEHNQMX5Q2GM562RJGOQG7GVCE5H3HIB4V",
+			[]Asset{},
+			"contains an invalid asset code",
+		},
+		{
+			"asset code must be alpha numeric",
+			"!usd:GAEDTJ4PPEFVW5XV2S7LUXBEHNQMX5Q2GM562RJGOQG7GVCE5H3HIB4V",
+			[]Asset{},
+			"contains an invalid asset code",
+		},
+		{
+			"asset code contains backslash",
+			"usd\\x23:GAEDTJ4PPEFVW5XV2S7LUXBEHNQMX5Q2GM562RJGOQG7GVCE5H3HIB4V",
+			[]Asset{},
+			"contains an invalid asset code",
+		},
+		{
+			"contains null characters",
+			"abcde\\x00:GAEDTJ4PPEFVW5XV2S7LUXBEHNQMX5Q2GM562RJGOQG7GVCE5H3HIB4V",
+			[]Asset{},
+			"contains an invalid asset code",
+		},
+		{
+			"asset code is too short",
+			":GAEDTJ4PPEFVW5XV2S7LUXBEHNQMX5Q2GM562RJGOQG7GVCE5H3HIB4V",
+			[]Asset{},
+			"is not a valid asset",
+		},
+		{
+			"asset code is too long",
+			"0123456789abc:GAEDTJ4PPEFVW5XV2S7LUXBEHNQMX5Q2GM562RJGOQG7GVCE5H3HIB4V",
+			[]Asset{},
+			"is not a valid asset",
+		},
+		{
+			"issuer is empty",
+			"usd:",
+			[]Asset{},
+			"contains an invalid issuer",
+		},
+		{
+			"issuer is invalid",
+			"usd:kkj9808;l",
+			[]Asset{},
+			"contains an invalid issuer",
+		},
+		{
+			"validation succeeds",
+			"usd:GAEDTJ4PPEFVW5XV2S7LUXBEHNQMX5Q2GM562RJGOQG7GVCE5H3HIB4V,usdabc:GAEDTJ4PPEFVW5XV2S7LUXBEHNQMX5Q2GM562RJGOQG7GVCE5H3HIB4V",
+			[]Asset{
+				MustNewCreditAsset("usd", "GAEDTJ4PPEFVW5XV2S7LUXBEHNQMX5Q2GM562RJGOQG7GVCE5H3HIB4V"),
+				MustNewCreditAsset("usdabc", "GAEDTJ4PPEFVW5XV2S7LUXBEHNQMX5Q2GM562RJGOQG7GVCE5H3HIB4V"),
+			},
+			"",
+		},
+	} {
+		t.Run(testCase.name, func(t *testing.T) {
+			tt := assert.New(t)
+			assets, err := BuildAssets(testCase.value)
+			if testCase.expectedError == "" {
+				tt.NoError(err)
+				tt.Len(assets, len(testCase.expectedAssets))
+				for i := range assets {
+					tt.Equal(testCase.expectedAssets[i], assets[i])
+				}
+			} else {
+				tt.Error(err)
+				tt.Contains(err.Error(), testCase.expectedError)
+			}
+		})
+	}
+}
+
 func TestBuildAsset(t *testing.T) {
 	testCases := []struct {
 		assetType string
