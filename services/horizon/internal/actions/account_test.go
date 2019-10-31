@@ -305,9 +305,7 @@ func TestGetAccountsHandlerPageResultsByAsset(t *testing.T) {
 	var assetType, code, issuer string
 	usd.MustExtract(&assetType, &code, &issuer)
 	params := map[string]string{
-		"asset_issuer": issuer,
-		"asset_code":   code,
-		"asset_type":   assetType,
+		"asset": code + ":" + issuer,
 	}
 
 	records, err := handler.GetResourcePage(
@@ -364,10 +362,8 @@ func TestGetAccountsHandlerInvalidParams(t *testing.T) {
 		{
 			desc: "signer and seller",
 			params: map[string]string{
-				"signer":       accountOne,
-				"asset_issuer": accountOne,
-				"asset_code":   "USD",
-				"asset_type":   "credit_alphanum4",
+				"signer": accountOne,
+				"asset":  "USD" + ":" + accountOne,
 			},
 			expectedInvalidField: "signer",
 			expectedErr:          "you can't filter by signer and asset at the same time",
@@ -375,20 +371,19 @@ func TestGetAccountsHandlerInvalidParams(t *testing.T) {
 		{
 			desc: "filtering by native asset",
 			params: map[string]string{
-				"asset_type": "native",
+				"asset": "native",
 			},
-			expectedInvalidField: "asset_type",
-			expectedErr:          "you can't filter by asset type: native",
+			expectedInvalidField: "asset",
+			expectedErr:          "you can't filter by asset: native",
 		},
 		{
 			desc: "invalid asset",
 			params: map[string]string{
 				"asset_issuer": accountOne,
-				"asset_code":   "USDCOP",
-				"asset_type":   "credit_alphanum4",
+				"asset":        "USDCOP:someissuer",
 			},
-			expectedInvalidField: "asset_code",
-			expectedErr:          "Asset code must be 1-12 alphanumeric characters",
+			expectedInvalidField: "asset",
+			expectedErr:          customTagsErrorMessages["asset"],
 		},
 	}
 	for _, tc := range testCases {
@@ -427,7 +422,7 @@ func TestGetAccountsHandlerInvalidParams(t *testing.T) {
 
 func TestAccountQueryURLTemplate(t *testing.T) {
 	tt := assert.New(t)
-	expected := "/accounts{?signer,asset_type,asset_issuer,asset_code,cursor,limit,order}"
+	expected := "/accounts{?signer,asset,cursor,limit,order}"
 	accountsQuery := AccountsQuery{}
 	tt.Equal(expected, accountsQuery.URITemplate())
 }

@@ -4,14 +4,14 @@ title: Accounts
 
 This endpoint allows filtering accounts who have a given `signer` or have a trustline to an `asset`. The result is a list of [accounts](../resources/account.md).
 
-To find all accounts who are trustees to asset, specify the asset using the query parameters `asset_type`, `asset_code` and `asset_issuer`.
+To find all accounts who are trustees to an asset, pass the query parameter `asset` using the canonical representation for an issued assets which is `Code:IssuerAccountID`. Read more about canonical representation of assets in [SEP-0011](https://github.com/stellar/stellar-protocol/blob/0c675fb3a482183dcf0f5db79c12685acf82a95c/ecosystem/sep-0011.md#values).
 
 **Note**: This endpoint is still experimental and available only if Horizon is running the [new ingestion system](https://github.com/stellar/go/blob/master/services/horizon/internal/expingest/BETA_TESTING.md).
 
 ## Request
 
 ```
-GET /accounts{?signer,asset_type,asset_issuer,asset_code,cursor,limit,order}
+GET /accounts{?signer,asset,cursor,limit,order}
 ```
 
 ### Arguments
@@ -19,9 +19,7 @@ GET /accounts{?signer,asset_type,asset_issuer,asset_code,cursor,limit,order}
 | name | notes | description | example |
 | ---- | ----- | ----------- | ------- |
 | `?signer` | optional, string | Account ID | GD42RQNXTRIW6YR3E2HXV5T2AI27LBRHOERV2JIYNFMXOBA234SWLQQB |
-| `?asset_type` | required, string | Type of the Asset  | `credit_alphanum4` |
-| `?asset_code` | required if `asset_type` is not `native`, string | Code of the Asset  | `USD` |
-| `?asset_issuer` | required if `asset_type` is not `native`, string | Account ID of the issuer of the Asset | `GA2HGBJIJKI6O4XEM7CZWY5PS6GKSXL6D34ERAJYQSPYA6X6AI7HYW36` |
+| `?asset` | optional, string | An issued asset represented as "Code:IssuerAccountID". | `USD:GAEDTJ4PPEFVW5XV2S7LUXBEHNQMX5Q2GM562RJGOQG7GVCE5H3HIB4V,native` |
 | `?cursor` | optional, default _null_ | A paging token, specifying where to start returning records from. | `GA2HGBJIJKI6O4XEM7CZWY5PS6GKSXL6D34ERAJYQSPYA6X6AI7HYW36` |
 | `?order` | optional, string, default `asc` | The order in which to return rows, "asc" or "desc". | `asc` |
 | `?limit` | optional, number, default `10` | Maximum number of records to return. | `200` |

@@ -255,9 +255,7 @@ func accountResourcesEqual(actual, expected protocol.Account) error {
 // AccountsQuery query struct for accounts end-point
 type AccountsQuery struct {
 	Signer      string `schema:"signer" valid:"accountID,optional"`
-	AssetType   string `schema:"asset_type" valid:"assetType,optional"`
-	AssetIssuer string `schema:"asset_issuer" valid:"accountID,optional"`
-	AssetCode   string `schema:"asset_code" valid:"-"`
+	AssetFilter string `schema:"asset" valid:"asset,optional"`
 }
 
 // URITemplate returns a rfc6570 URI template the query struct
@@ -274,13 +272,15 @@ var invalidAccountsParams = problem.P{
 
 // Validate runs custom validations.
 func (q AccountsQuery) Validate() error {
-	if len(q.Signer) == 0 && q.Asset() == nil {
-		return invalidAccountsParams
+	if q.AssetFilter == "native" {
+		return problem.MakeInvalidFieldProblem(
+			"asset",
+			errors.New("you can't filter by asset: native"),
+		)
 	}
 
-	err := validateAssetParams(q.AssetType, q.AssetCode, q.AssetIssuer, "")
-	if err != nil {
-		return err
+	if len(q.Signer) == 0 && q.Asset() == nil {
+		return invalidAccountsParams
 	}
 
 	if len(q.Signer) > 0 && q.Asset() != nil {
@@ -290,31 +290,17 @@ func (q AccountsQuery) Validate() error {
 		)
 	}
 
-	if q.Asset() != nil && q.AssetType == "native" {
-		return problem.MakeInvalidFieldProblem(
-			"asset_type",
-			errors.New("you can't filter by asset type: native"),
-		)
-	}
-
 	return nil
 }
 
 // Asset returns an xdr.Asset representing the Asset we want to find the trustees by.
 func (q AccountsQuery) Asset() *xdr.Asset {
-	if len(q.AssetType) == 0 {
+	if len(q.AssetFilter) == 0 {
 		return nil
 	}
 
-	asset, err := xdr.BuildAsset(
-		q.AssetType,
-		q.AssetIssuer,
-		q.AssetCode,
-	)
-
-	if err != nil {
-		panic(err)
-	}
+	parts := strings.Split(q.AssetFilter, ":")
+	asset := xdr.MustNewCreditAsset(parts[0], parts[1])
 
 	return &asset
 }

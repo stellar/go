@@ -71,7 +71,7 @@ func TestRootActionWithIngestion(t *testing.T) {
 		err := json.Unmarshal(w.Body.Bytes(), &actual)
 		ht.Require.NoError(err)
 		ht.Assert.Equal(
-			"http://localhost/accounts{?signer,asset_type,asset_issuer,asset_code,cursor,limit,order}",
+			"http://localhost/accounts{?signer,asset,cursor,limit,order}",
 			actual.Links.Accounts.Href,
 		)
 		ht.Assert.Equal(

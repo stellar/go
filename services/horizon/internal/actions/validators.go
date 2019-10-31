@@ -1,6 +1,8 @@
 package actions
 
 import (
+	"strings"
+
 	"github.com/asaskevich/govalidator"
 
 	"github.com/stellar/go/services/horizon/internal/assets"
@@ -15,11 +17,46 @@ type Validateable interface {
 func init() {
 	govalidator.TagMap["accountID"] = govalidator.Validator(isAccountID)
 	govalidator.TagMap["assetType"] = govalidator.Validator(isAssetType)
+	govalidator.TagMap["asset"] = govalidator.Validator(isAsset)
 }
 
 var customTagsErrorMessages = map[string]string{
 	"accountID": "Account ID must start with `G` and contain 56 alphanum characters",
 	"assetType": "Asset type must be native, credit_alphanum4 or credit_alphanum12",
+	"asset":     "Asset must be the string \"native\" or a string of the form \"Code:IssuerAccountID\" for issued assets.",
+}
+
+// isAsset validates if string contains a valid SEP11 asset
+func isAsset(assetString string) bool {
+	var asset xdr.Asset
+
+	if strings.ToLower(assetString) == "native" {
+		if err := asset.SetNative(); err != nil {
+			return false
+		}
+	} else {
+
+		parts := strings.Split(assetString, ":")
+		if len(parts) != 2 {
+			return false
+		}
+
+		code := parts[0]
+		if !validAssetCode.MatchString(code) {
+			return false
+		}
+
+		issuer, err := xdr.AddressToAccountId(parts[1])
+		if err != nil {
+			return false
+		}
+
+		if err := asset.SetCredit(code, issuer); err != nil {
+			return false
+		}
+	}
+
+	return true
 }
 
 func getErrorFieldMessage(err error) (string, string) {
