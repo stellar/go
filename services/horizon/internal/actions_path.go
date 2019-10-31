@@ -190,12 +190,18 @@ func (q FindFixedPathsQuery) Validate() error {
 		return err
 	}
 
+	_, err = q.Assets()
+
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
 // Assets returns a list of xdr.Asset
-func (q FindFixedPathsQuery) Assets(r *http.Request) ([]xdr.Asset, error) {
-	return actions.GetAssets(r, "destination_assets")
+func (q FindFixedPathsQuery) Assets() ([]xdr.Asset, error) {
+	return xdr.BuildAssets(q.DestinationAssets)
 }
 
 // Amount returns source amount
@@ -234,11 +240,7 @@ func (handler FindFixedPathsHandler) ServeHTTP(w http.ResponseWriter, r *http.Re
 	}
 
 	destinationAccount := qp.DestinationAccount
-	destinationAssets, err := qp.Assets(r)
-	if err != nil {
-		problem.Render(ctx, w, err)
-		return
-	}
+	destinationAssets, _ := qp.Assets()
 
 	if len(destinationAssets) > handler.maxAssetsParamLength {
 		p := problem.MakeInvalidFieldProblem(
