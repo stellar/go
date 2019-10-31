@@ -134,14 +134,14 @@ func (q *Q) AccountsForAsset(asset xdr.Asset, page db2.PageQuery) ([]AccountEntr
 	sql := sq.
 		Select("accounts.*").
 		From("accounts").
-		Join("trust_lines ON accounts.account_id = trust_lines.accountid").
+		Join("trust_lines ON accounts.account_id = trust_lines.account_id").
 		Where(map[string]interface{}{
-			"trust_lines.assettype":   int32(asset.Type),
-			"trust_lines.assetissuer": issuer,
-			"trust_lines.assetcode":   code,
+			"trust_lines.asset_type":   int32(asset.Type),
+			"trust_lines.asset_issuer": issuer,
+			"trust_lines.asset_code":   code,
 		})
 
-	sql, err := page.ApplyToUsingCursor(sql, "trust_lines.accountid", page.Cursor)
+	sql, err := page.ApplyToUsingCursor(sql, "trust_lines.account_id", page.Cursor)
 	if err != nil {
 		return nil, errors.Wrap(err, "could not apply query to page")
 	}
@@ -159,12 +159,12 @@ func (q *Q) AccountEntriesForSigner(signer string, page db2.PageQuery) ([]Accoun
 	sql := sq.
 		Select("accounts.*").
 		From("accounts").
-		Join("accounts_signers ON accounts.account_id = accounts_signers.account").
+		Join("accounts_signers ON accounts.account_id = accounts_signers.account_id").
 		Where(map[string]interface{}{
 			"accounts_signers.signer": signer,
 		})
 
-	sql, err := page.ApplyToUsingCursor(sql, "accounts_signers.account", page.Cursor)
+	sql, err := page.ApplyToUsingCursor(sql, "accounts_signers.account_id", page.Cursor)
 	if err != nil {
 		return nil, errors.Wrap(err, "could not apply query to page")
 	}

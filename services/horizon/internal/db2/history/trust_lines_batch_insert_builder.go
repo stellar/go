@@ -15,7 +15,7 @@ func (i *trustLinesBatchInsertBuilder) Add(trustLine xdr.TrustLineEntry, lastMod
 	if err != nil {
 		return errors.Wrap(err, "Error running trustLineEntryToLedgerKeyString")
 	}
-	m["lkey"] = key
+	m["ledger_key"] = key
 
 	return i.builder.Row(m)
 }

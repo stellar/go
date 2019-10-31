@@ -22,7 +22,7 @@ func (q *Q) CountAccountsData() (int, error) {
 // GetAccountDataByAccountID loads account data for a given account ID
 func (q *Q) GetAccountDataByAccountID(id string) ([]Data, error) {
 	var data []Data
-	sql := selectAccountData.Where(sq.Eq{"account": id})
+	sql := selectAccountData.Where(sq.Eq{"account_id": id})
 	err := q.Select(&data, sql)
 	return data, err
 }
@@ -38,7 +38,7 @@ func (q *Q) GetAccountDataByKeys(keys []xdr.LedgerKeyData) ([]Data, error) {
 		}
 		lkeys = append(lkeys, lkey)
 	}
-	sql := selectAccountData.Where(map[string]interface{}{"accounts_data.lkey": lkeys})
+	sql := selectAccountData.Where(map[string]interface{}{"accounts_data.ledger_key": lkeys})
 	err := q.Select(&data, sql)
 	return data, err
 }
@@ -81,7 +81,7 @@ func (q *Q) InsertAccountData(data xdr.DataEntry, lastModifiedLedger xdr.Uint32)
 	}
 
 	sql := sq.Insert("accounts_data").
-		Columns("lkey", "account", "name", "value", "last_modified_ledger").
+		Columns("ledger_key", "account_id", "name", "value", "last_modified_ledger").
 		Values(
 			key,
 			data.AccountId.Address(),
@@ -111,7 +111,7 @@ func (q *Q) UpdateAccountData(data xdr.DataEntry, lastModifiedLedger xdr.Uint32)
 			"value":                AccountDataValue(data.DataValue),
 			"last_modified_ledger": lastModifiedLedger,
 		}).
-		Where(sq.Eq{"lkey": key})
+		Where(sq.Eq{"ledger_key": key})
 	result, err := q.Exec(sql)
 	if err != nil {
 		return 0, err
@@ -129,7 +129,7 @@ func (q *Q) RemoveAccountData(key xdr.LedgerKeyData) (int64, error) {
 	}
 
 	sql := sq.Delete("accounts_data").
-		Where(sq.Eq{"lkey": lkey})
+		Where(sq.Eq{"ledger_key": lkey})
 	result, err := q.Exec(sql)
 	if err != nil {
 		return 0, err
@@ -141,13 +141,13 @@ func (q *Q) RemoveAccountData(key xdr.LedgerKeyData) (int64, error) {
 // GetAccountDataByAccountsID loads account data for a list of account ID
 func (q *Q) GetAccountDataByAccountsID(id []string) ([]Data, error) {
 	var data []Data
-	sql := selectAccountData.Where(sq.Eq{"account": id})
+	sql := selectAccountData.Where(sq.Eq{"account_id": id})
 	err := q.Select(&data, sql)
 	return data, err
 }
 
 var selectAccountData = sq.Select(`
-	account,
+	account_id,
 	name,
 	value,
 	last_modified_ledger

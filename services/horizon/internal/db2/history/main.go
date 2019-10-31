@@ -171,7 +171,7 @@ type QAccounts interface {
 
 // AccountSigner is a row of data from the `accounts_signers` table
 type AccountSigner struct {
-	Account string `db:"account"`
+	Account string `db:"account_id"`
 	Signer  string `db:"signer"`
 	Weight  int32  `db:"weight"`
 }
@@ -188,7 +188,7 @@ type accountSignersBatchInsertBuilder struct {
 
 // Data is a row of data from the `account_data` table
 type Data struct {
-	AccountID          string           `db:"account"`
+	AccountID          string           `db:"account_id"`
 	Name               string           `db:"name"`
 	Value              AccountDataValue `db:"value"`
 	LastModifiedLedger uint32           `db:"last_modified_ledger"`
@@ -375,11 +375,11 @@ type Operation struct {
 
 // Offer is row of data from the `offers` table from horizon DB
 type Offer struct {
-	SellerID string    `db:"sellerid"`
-	OfferID  xdr.Int64 `db:"offerid"`
+	SellerID string    `db:"seller_id"`
+	OfferID  xdr.Int64 `db:"offer_id"`
 
-	SellingAsset xdr.Asset `db:"sellingasset"`
-	BuyingAsset  xdr.Asset `db:"buyingasset"`
+	SellingAsset xdr.Asset `db:"selling_asset"`
+	BuyingAsset  xdr.Asset `db:"buying_asset"`
 
 	Amount             xdr.Int64 `db:"amount"`
 	Pricen             int32     `db:"pricen"`
@@ -524,14 +524,14 @@ type TransactionsQ struct {
 
 // TrustLine is row of data from the `trust_lines` table from horizon DB
 type TrustLine struct {
-	AccountID          string        `db:"accountid"`
-	AssetType          xdr.AssetType `db:"assettype"`
-	AssetIssuer        string        `db:"assetissuer"`
-	AssetCode          string        `db:"assetcode"`
+	AccountID          string        `db:"account_id"`
+	AssetType          xdr.AssetType `db:"asset_type"`
+	AssetIssuer        string        `db:"asset_issuer"`
+	AssetCode          string        `db:"asset_code"`
 	Balance            int64         `db:"balance"`
-	Limit              int64         `db:"tlimit"`
-	BuyingLiabilities  int64         `db:"buyingliabilities"`
-	SellingLiabilities int64         `db:"sellingliabilities"`
+	Limit              int64         `db:"trust_line_limit"`
+	BuyingLiabilities  int64         `db:"buying_liabilities"`
+	SellingLiabilities int64         `db:"selling_liabilities"`
 	Flags              uint32        `db:"flags"`
 	LastModifiedLedger uint32        `db:"last_modified_ledger"`
 }

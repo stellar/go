@@ -9,7 +9,7 @@ import (
 
 func (q *Q) GetAccountSignersByAccountID(id string) ([]AccountSigner, error) {
 	sql := selectAccountSigners.
-		Where(sq.Eq{"accounts_signers.account": id}).
+		Where(sq.Eq{"accounts_signers.account_id": id}).
 		OrderBy("accounts_signers.signer asc")
 
 	var results []AccountSigner
@@ -22,7 +22,7 @@ func (q *Q) GetAccountSignersByAccountID(id string) ([]AccountSigner, error) {
 
 func (q *Q) SignersForAccounts(accounts []string) ([]AccountSigner, error) {
 	sql := selectAccountSigners.
-		Where(map[string]interface{}{"accounts_signers.account": accounts})
+		Where(map[string]interface{}{"accounts_signers.account_id": accounts})
 
 	var results []AccountSigner
 	if err := q.Select(&results, sql); err != nil {
@@ -35,7 +35,7 @@ func (q *Q) SignersForAccounts(accounts []string) ([]AccountSigner, error) {
 // AccountsForSigner returns a list of `AccountSigner` rows for a given signer
 func (q *Q) AccountsForSigner(signer string, page db2.PageQuery) ([]AccountSigner, error) {
 	sql := selectAccountSigners.Where("accounts_signers.signer = ?", signer)
-	sql, err := page.ApplyToUsingCursor(sql, "accounts_signers.account", page.Cursor)
+	sql, err := page.ApplyToUsingCursor(sql, "accounts_signers.account_id", page.Cursor)
 	if err != nil {
 		return nil, errors.Wrap(err, "could not apply query to page")
 	}
@@ -52,7 +52,7 @@ func (q *Q) AccountsForSigner(signer string, page db2.PageQuery) ([]AccountSigne
 // Returns number of rows affected and error.
 func (q *Q) CreateAccountSigner(account, signer string, weight int32) (int64, error) {
 	sql := sq.Insert("accounts_signers").
-		Columns("account", "signer", "weight").
+		Columns("account_id", "signer", "weight").
 		Values(account, signer, weight)
 
 	result, err := q.Exec(sql)
@@ -67,8 +67,8 @@ func (q *Q) CreateAccountSigner(account, signer string, weight int32) (int64, er
 // Returns number of rows affected and error.
 func (q *Q) RemoveAccountSigner(account, signer string) (int64, error) {
 	sql := sq.Delete("accounts_signers").Where(sq.Eq{
-		"account": account,
-		"signer":  signer,
+		"account_id": account,
+		"signer":     signer,
 	})
 
 	result, err := q.Exec(sql)

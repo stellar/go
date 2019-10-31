@@ -1,25 +1,25 @@
 -- +migrate Up
 
 CREATE TABLE trust_lines (
-    -- lkey is a LedgerKey marshaled using MarshalBinary
+    -- ledger_key is a LedgerKey marshaled using MarshalBinary
     -- and base64-encoded used to boost perfomance of some queries.
-    lkey character varying(150) NOT NULL,
-    accountid character varying(56) NOT NULL,
-    assettype int NOT NULL,
-    assetissuer character varying(56) NOT NULL,
-    assetcode character varying(12) NOT NULL,
+    ledger_key character varying(150) NOT NULL,
+    account_id character varying(56) NOT NULL,
+    asset_type int NOT NULL,
+    asset_issuer character varying(56) NOT NULL,
+    asset_code character varying(12) NOT NULL,
     balance bigint NOT NULL,
-    tlimit bigint NOT NULL,
-    buyingliabilities bigint NOT NULL,
-    sellingliabilities bigint NOT NULL,
+    trust_line_limit bigint NOT NULL,
+    buying_liabilities bigint NOT NULL,
+    selling_liabilities bigint NOT NULL,
     flags int NOT NULL,
     last_modified_ledger INT NOT NULL,
-    PRIMARY KEY (lkey)
+    PRIMARY KEY (ledger_key)
 );
 
-CREATE INDEX trust_lines_by_accountid ON trust_lines USING BTREE(accountid);
-CREATE INDEX trust_lines_by_type_code_issuer ON trust_lines USING BTREE(assettype, assetcode, assetissuer);
-CREATE INDEX trust_lines_by_issuer ON trust_lines USING BTREE(assetissuer);
+CREATE INDEX trust_lines_by_account_id ON trust_lines USING BTREE(account_id);
+CREATE INDEX trust_lines_by_type_code_issuer ON trust_lines USING BTREE(asset_type, asset_code, asset_issuer);
+CREATE INDEX trust_lines_by_issuer ON trust_lines USING BTREE(asset_issuer);
 
 -- +migrate Down
 
