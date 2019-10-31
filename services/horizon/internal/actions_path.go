@@ -200,7 +200,10 @@ func (q FindFixedPathsQuery) Validate() error {
 	_, err = q.Assets()
 
 	if err != nil {
-		return err
+		return problem.MakeInvalidFieldProblem(
+			"destination_assets",
+			err,
+		)
 	}
 
 	return nil
