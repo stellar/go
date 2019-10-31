@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"strings"
 
 	"github.com/stellar/go/amount"
 	"github.com/stellar/go/protocols/horizon"
@@ -164,6 +165,7 @@ var destinationAssetsOrDestinationAccount = problem.P{
 		"Both fields cannot be present.",
 }
 
+// FindFixedPathsQuery query struct for paths/strict-send end-point
 type FindFixedPathsQuery struct {
 	DestinationAccount string `schema:"destination_account" valid:"accountID,optional"`
 	DestinationAssets  string `schema:"destination_assets"`
@@ -171,6 +173,11 @@ type FindFixedPathsQuery struct {
 	SourceAssetIssuer  string `schema:"source_asset_issuer" valid:"accountID,optional"`
 	SourceAssetCode    string `schema:"source_asset_code" valid:"-"`
 	SourceAmount       string `schema:"source_amount" valid:"amount"`
+}
+
+// URITemplate returns a rfc6570 URI template for the query struct
+func (q FindFixedPathsQuery) URITemplate() string {
+	return "/paths/strict-send{?" + strings.Join(actions.GetURIParams(&q, false), ",") + "}"
 }
 
 // Validate runs custom validations.
