@@ -805,7 +805,8 @@ func getSchemaTags(v reflect.Value) []string {
 	return fields
 }
 
-func validateAssetParams(aType, code, issuer, prefix string) error {
+// ValidateAssetParams runs multiple checks on an asset query parameter
+func ValidateAssetParams(aType, code, issuer, prefix string) error {
 	// If asset type is not present but code or issuer are, then there is a
 	// missing parameter and the request is unprocessable.
 	if len(aType) == 0 {
