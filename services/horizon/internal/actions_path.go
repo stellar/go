@@ -168,7 +168,7 @@ var destinationAssetsOrDestinationAccount = problem.P{
 // FindFixedPathsQuery query struct for paths/strict-send end-point
 type FindFixedPathsQuery struct {
 	DestinationAccount string `schema:"destination_account" valid:"accountID,optional"`
-	DestinationAssets  string `schema:"destination_assets"`
+	DestinationAssets  string `schema:"destination_assets" valid:"-"`
 	SourceAssetType    string `schema:"source_asset_type" valid:"assetType"`
 	SourceAssetIssuer  string `schema:"source_asset_issuer" valid:"accountID,optional"`
 	SourceAssetCode    string `schema:"source_asset_code" valid:"-"`
