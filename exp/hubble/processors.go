@@ -31,16 +31,15 @@ func (n *SimpleProcessor) IncrementAndReturnCallCount() int {
 	return n.callCount
 }
 
-// SerializeEntryProcessor reads and serializes account entries.
-// Note that it only serializes the first encountered example of an entry, to allow
-// for quicker debugging and testing of our serialization process.
-// TODO: Do not only process the first example entry.
-type SerializeEntryProcessor struct {
+// PrettyPrintEntryProcessor reads and pretty prints account entries.
+// Note that now, it prints the first encountered example of an entry, to allow
+// for quicker debugging and testing of our printing process.
+type PrettyPrintEntryProcessor struct {
 	SimpleProcessor
 }
 
 // ProcessState reads, prints, and writes all changes to ledger state.
-func (p *SerializeEntryProcessor) ProcessState(ctx context.Context, store *supportPipeline.Store, r io.StateReader, w io.StateWriter) error {
+func (p *PrettyPrintEntryProcessor) ProcessState(ctx context.Context, store *supportPipeline.Store, r io.StateReader, w io.StateWriter) error {
 	defer w.Close()
 	defer r.Close()
 
@@ -57,16 +56,21 @@ func (p *SerializeEntryProcessor) ProcessState(ctx context.Context, store *suppo
 			}
 		}
 
+		// The below logic is meant to only pretty print one example for each entry type.
+		// TODO: Remove the below checks, up and until printing the entry.
+		// If we have found an example of each of the 4 ledger entry types, exit.
+		if len(entriesCountDict) == 4 {
+			break
+		}
+
 		// Skip entries that are not of type `State`.
-		// TODO: Test other types: `LedgerEntryChangeTypeLedgerEntryRemoved`, `LedgerEntryChangeTypeLedgerEntryUpdated`, `LedgerEntryChangeTypeLedgerEntryState`.
-		// TODO: Delete this.
+		// This can be swapped with other types: Removed, Created, Updated.
 		if entry.Type != xdr.LedgerEntryChangeTypeLedgerEntryState {
 			continue
 		}
 
 		// If we've already seen an example of this entry, we break,
-		// as we only wish to serialize a single example now.
-		// TODO: Remove this check.
+		// as we only wish to print a single example now.
 		entryType := entry.EntryType().String()
 		if _, ok := entriesCountDict[entryType]; ok {
 			// entriesCountDict[entryType]++
@@ -76,14 +80,7 @@ func (p *SerializeEntryProcessor) ProcessState(ctx context.Context, store *suppo
 		}
 
 		entries++
-		entryString := serializeEntry(entry, prefix)
-		print(entryString)
-
-		// If we have found an example of each of the 4 ledger entry types, exit.
-		// TODO: Remove this break.
-		if len(entriesCountDict) == 4 {
-			break
-		}
+		fmt.Println(prettyPrintEntry(entry, prefix))
 
 		select {
 		case <-ctx.Done():
@@ -98,6 +95,6 @@ func (p *SerializeEntryProcessor) ProcessState(ctx context.Context, store *suppo
 }
 
 // Name returns the processor name.
-func (p *SerializeEntryProcessor) Name() string {
-	return "SerializeEntryProcessor"
+func (p *PrettyPrintEntryProcessor) Name() string {
+	return "PrettyPrintEntryProcessor"
 }

@@ -6,44 +6,44 @@ import (
 	"github.com/stellar/go/xdr"
 )
 
-func serializeEntry(entry xdr.LedgerEntryChange, prefix string) string {
+func prettyPrintEntry(entry xdr.LedgerEntryChange, prefix string) string {
 	entryString := ""
 	entryString += fmt.Sprintf("Type: %s\n", entry.Type)
-	entryString += fmt.Sprintf("Created: %s\n", serializeLedgerEntry(entry.Created, prefix))
-	entryString += fmt.Sprintf("Updated: %s\n", serializeLedgerEntry(entry.Updated, prefix))
-	entryString += fmt.Sprintf("Removed: %v\n", serializeLedgerKey(entry.Removed, prefix))
-	entryString += fmt.Sprintf("State: %s\n", serializeLedgerEntry(entry.State, prefix))
+	entryString += fmt.Sprintf("Created: %s\n", prettyPrintLedgerEntry(entry.Created, prefix))
+	entryString += fmt.Sprintf("Updated: %s\n", prettyPrintLedgerEntry(entry.Updated, prefix))
+	entryString += fmt.Sprintf("Removed: %v\n", prettyPrintLedgerKey(entry.Removed, prefix))
+	entryString += fmt.Sprintf("State: %s\n", prettyPrintLedgerEntry(entry.State, prefix))
 	entryString += "\n" // For extra spacing when printing multiple entries.
 	return entryString
 }
 
-func serializeLedgerEntry(entry *xdr.LedgerEntry, prefix string) string {
+func prettyPrintLedgerEntry(entry *xdr.LedgerEntry, prefix string) string {
 	if entry == nil {
 		return "<nil>"
 	}
 	entryString := "\n"
 	newPrefix := prefix + prefix
 	entryString += fmt.Sprintf("%sLastModifiedLedgerSeq: %d\n", prefix, entry.LastModifiedLedgerSeq)
-	entryString += fmt.Sprintf("%sData: %s\n", prefix, serializeLedgerEntryData(entry.Data, newPrefix))
-	entryString += fmt.Sprintf("%sExt: %v\n", prefix, entry.Ext)
+	entryString += fmt.Sprintf("%sData: %s\n", prefix, prettyPrintLedgerEntryData(entry.Data, newPrefix))
+	entryString += fmt.Sprintf("%sExt: %v", prefix, entry.Ext)
 	return entryString
 }
 
-func serializeLedgerKey(key *xdr.LedgerKey, prefix string) string {
+func prettyPrintLedgerKey(key *xdr.LedgerKey, prefix string) string {
 	if key == nil {
 		return "<nil>"
 	}
 	keyString := "\n"
 	newPrefix := prefix + prefix
 	keyString += fmt.Sprintf("%sType: %s\n", prefix, key.Type)
-	keyString += fmt.Sprintf("%sAccount: %s\n", prefix, serializeLedgerKeyAccount(key.Account, newPrefix))
-	keyString += fmt.Sprintf("%sTrustLine: %s\n", prefix, serializeLedgerKeyTrustLine(key.TrustLine, newPrefix))
-	keyString += fmt.Sprintf("%sOffer: %s\n", prefix, serializeLedgerKeyOffer(key.Offer, newPrefix))
-	keyString += fmt.Sprintf("%sData: %s", prefix, serializeLedgerKeyData(key.Data, newPrefix))
+	keyString += fmt.Sprintf("%sAccount: %s\n", prefix, prettyPrintLedgerKeyAccount(key.Account, newPrefix))
+	keyString += fmt.Sprintf("%sTrustLine: %s\n", prefix, prettyPrintLedgerKeyTrustLine(key.TrustLine, newPrefix))
+	keyString += fmt.Sprintf("%sOffer: %s\n", prefix, prettyPrintLedgerKeyOffer(key.Offer, newPrefix))
+	keyString += fmt.Sprintf("%sData: %s", prefix, prettyPrintLedgerKeyData(key.Data, newPrefix))
 	return keyString
 }
 
-func serializeLedgerKeyAccount(account *xdr.LedgerKeyAccount, prefix string) string {
+func prettyPrintLedgerKeyAccount(account *xdr.LedgerKeyAccount, prefix string) string {
 	if account == nil {
 		return "<nil>"
 	}
@@ -52,7 +52,7 @@ func serializeLedgerKeyAccount(account *xdr.LedgerKeyAccount, prefix string) str
 	return keyString
 }
 
-func serializeLedgerKeyTrustLine(trustline *xdr.LedgerKeyTrustLine, prefix string) string {
+func prettyPrintLedgerKeyTrustLine(trustline *xdr.LedgerKeyTrustLine, prefix string) string {
 	if trustline == nil {
 		return "<nil>"
 	}
@@ -62,7 +62,7 @@ func serializeLedgerKeyTrustLine(trustline *xdr.LedgerKeyTrustLine, prefix strin
 	return keyString
 }
 
-func serializeLedgerKeyOffer(offer *xdr.LedgerKeyOffer, prefix string) string {
+func prettyPrintLedgerKeyOffer(offer *xdr.LedgerKeyOffer, prefix string) string {
 	if offer == nil {
 		return "<nil>"
 	}
@@ -72,7 +72,7 @@ func serializeLedgerKeyOffer(offer *xdr.LedgerKeyOffer, prefix string) string {
 	return keyString
 }
 
-func serializeLedgerKeyData(data *xdr.LedgerKeyData, prefix string) string {
+func prettyPrintLedgerKeyData(data *xdr.LedgerKeyData, prefix string) string {
 	if data == nil {
 		return "<nil>"
 	}
@@ -82,18 +82,18 @@ func serializeLedgerKeyData(data *xdr.LedgerKeyData, prefix string) string {
 	return keyString
 }
 
-func serializeLedgerEntryData(data xdr.LedgerEntryData, prefix string) string {
+func prettyPrintLedgerEntryData(data xdr.LedgerEntryData, prefix string) string {
 	entryString := "\n"
 	newPrefix := prefix + prefix
 	entryString += fmt.Sprintf("%sType: %s\n", prefix, data.Type)
-	entryString += fmt.Sprintf("%sOffer: %s\n", prefix, serializeOfferEntry(data.Offer, newPrefix))
-	entryString += fmt.Sprintf("%sData: %s\n", prefix, serializeDataEntry(data.Data, newPrefix))
-	entryString += fmt.Sprintf("%sTrustLine: %s\n", prefix, serializeTrustlineEntry(data.TrustLine, newPrefix))
-	entryString += fmt.Sprintf("%sAccount: %s", prefix, serializeAccountEntry(data.Account, newPrefix))
+	entryString += fmt.Sprintf("%sOffer: %s\n", prefix, prettyPrintOfferEntry(data.Offer, newPrefix))
+	entryString += fmt.Sprintf("%sData: %s\n", prefix, prettyPrintDataEntry(data.Data, newPrefix))
+	entryString += fmt.Sprintf("%sTrustLine: %s\n", prefix, prettyPrintTrustlineEntry(data.TrustLine, newPrefix))
+	entryString += fmt.Sprintf("%sAccount: %s", prefix, prettyPrintAccountEntry(data.Account, newPrefix))
 	return entryString
 }
 
-func serializeOfferEntry(offerEntry *xdr.OfferEntry, prefix string) string {
+func prettyPrintOfferEntry(offerEntry *xdr.OfferEntry, prefix string) string {
 	if offerEntry == nil {
 		return "<nil>"
 	}
@@ -110,7 +110,7 @@ func serializeOfferEntry(offerEntry *xdr.OfferEntry, prefix string) string {
 	return entryString
 }
 
-func serializeDataEntry(dataEntry *xdr.DataEntry, prefix string) string {
+func prettyPrintDataEntry(dataEntry *xdr.DataEntry, prefix string) string {
 	if dataEntry == nil {
 		return "<nil>"
 	}
@@ -122,7 +122,7 @@ func serializeDataEntry(dataEntry *xdr.DataEntry, prefix string) string {
 	return entryString
 }
 
-func serializeTrustlineEntry(trustlineEntry *xdr.TrustLineEntry, prefix string) string {
+func prettyPrintTrustlineEntry(trustlineEntry *xdr.TrustLineEntry, prefix string) string {
 	if trustlineEntry == nil {
 		return "<nil>"
 	}
@@ -136,7 +136,7 @@ func serializeTrustlineEntry(trustlineEntry *xdr.TrustLineEntry, prefix string) 
 	return entryString
 }
 
-func serializeAccountEntry(accountEntry *xdr.AccountEntry, prefix string) string {
+func prettyPrintAccountEntry(accountEntry *xdr.AccountEntry, prefix string) string {
 	if accountEntry == nil {
 		return "<nil>"
 	}

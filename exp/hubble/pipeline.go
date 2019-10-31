@@ -1,6 +1,7 @@
 package hubble
 
 import (
+	"github.com/stellar/go/exp/ingest"
 	"github.com/stellar/go/exp/ingest/pipeline"
 	"github.com/stellar/go/support/historyarchive"
 )
@@ -22,7 +23,7 @@ func RunStatePipelineSession() error {
 	}
 
 	statePipeline := GetStatePipeline()
-	session := TestingSession{
+	session := &ingest.SingleLedgerSession{
 		Archive:       archive,
 		StatePipeline: statePipeline,
 	}
@@ -33,10 +34,10 @@ func RunStatePipelineSession() error {
 // GetStatePipeline returns a state pipeline.
 func GetStatePipeline() *pipeline.StatePipeline {
 	sp := &pipeline.StatePipeline{}
-	serializeEntryProcessor := &SerializeEntryProcessor{}
+	prettyPrintEntryProcessor := &PrettyPrintEntryProcessor{}
 
 	sp.SetRoot(
-		pipeline.StateNode(serializeEntryProcessor),
+		pipeline.StateNode(prettyPrintEntryProcessor),
 	)
 	return sp
 }
