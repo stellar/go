@@ -298,6 +298,35 @@ jobs:
             docker push stellar/ledger-state-diff:$CIRCLE_SHA1
             docker push stellar/ledger-state-diff:latest
 
+  publish_horizon_docker_image:
+    docker:
+      - image: circleci/buildpack-deps:stretch
+    steps:
+      - checkout
+      - setup_remote_docker
+      - run:
+          name: Build and Push Docker image
+          command: |
+            echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
+            # CIRCLE_TAG will be prefixed by "horizon-v", here we build the horizon docker image and tag it with stellar/horizon:$VERSION
+            # where version is CIRCLE_TAG without the "horizon-v" prefix
+            VERSION=${CIRCLE_TAG#horizon-v}
+            docker build -f services/horizon/docker/Dockerfile -t stellar/horizon:$VERSION .
+            docker push stellar/horizon:$VERSION
+
+  publish_latest_horizon_docker_image:
+    docker:
+      - image: circleci/buildpack-deps:stretch
+    steps:
+      - checkout
+      - setup_remote_docker
+      - run:
+          name: Build and Push Docker image
+          command: |
+            echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
+            docker build -f services/horizon/docker/Dockerfile -t stellar/horizon:latest .
+            docker push stellar/horizon:latest
+
 #-------------------------------------------------------------------------#
 # Workflows orchestrate jobs and make sure they run in the right sequence #
 #-------------------------------------------------------------------------#
@@ -331,6 +360,20 @@ workflows:
                 ignore: snapshots
               branches:
                 ignore: /.*/
+      - publish_horizon_docker_image:
+          filters:
+              tags:
+                only: /^horizon-v.*/
+              branches:
+                ignore: /.*/
+      - hold: # <<< A job that will require manual approval in the CircleCI web application.
+          type: approval # <<< This key-value pair will set your workflow to a status of "On Hold"
+          requires: # We only run the "hold" job when publish_horizon_docker_image has succeeded
+           - publish_horizon_docker_image
+      # Pushing stellar/horizon:latest to docker hub requires manual approval
+      - publish_latest_horizon_docker_image:
+          requires:
+            - hold
 
   ingest_state_nighly:
     triggers:
