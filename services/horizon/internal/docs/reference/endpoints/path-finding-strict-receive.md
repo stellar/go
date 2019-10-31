@@ -8,7 +8,7 @@ The Stellar Network allows payments to be made across assets through _path payme
 payment specifies a series of assets to route a payment through, from source asset (the asset
 debited from the payer) to destination asset (the asset credited to the payee).
 
-A [Path Payment Strict Receive](../../../guides/concepts/list-of-operations.html#path-payment-strict-receive) allows a user to specify the *amount of the asset received*. The amount sent varies based on offers in the order books.  If you would like to search for a path specifying the amount to be sent, use the [Find Payment Paths (Strict Send)](./path-finding-strict-send.html).
+A [Path Payment Strict Receive](https://www.stellar.org/developers/guides/concepts/list-of-operations.html#path-payment-strict-receive) allows a user to specify the *amount of the asset received*. The amount sent varies based on offers in the order books.  If you would like to search for a path specifying the amount to be sent, use the [Find Payment Paths (Strict Send)](./path-finding-strict-send.html).
 
 A strict receive path search is specified using:
 

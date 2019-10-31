@@ -15,7 +15,7 @@ To learn more about the concept of transactions in the Stellar network, take a l
 | id               | string | The canonical id of this transaction, suitable for use as the :id parameter for url templates that require a transaction's ID. |
 | paging_token     | string | A [paging token](./page.md) suitable for use as the `cursor` parameter to transaction collection resources.                   |
 | successful       | bool | *From 0.17.0* Indicates if transaction was successful or not.       |
-| hash             | string | A hex-encoded SHA-256 hash of the transaction's [XDR](../../learn/xdr.md)-encoded form.                                                              |
+| hash             | string | A hex-encoded SHA-256 hash of the transaction's [XDR](https://www.stellar.org/developers/guides/concepts/xdr.html)-encoded form.                                                              |
 | ledger           | number | Sequence number of the ledger in which this transaction was applied.       |
 | created_at       | ISO8601 string | |
 | source_account   | string |                                                                                                                                |
@@ -110,4 +110,4 @@ To learn more about the concept of transactions in the Stellar network, take a l
 
 
 ## Submitting transactions
-To submit a new transaction to Stellar network, it must first be built and signed locally. Then you can submit a hex representation of your transaction’s [XDR](../../learn/xdr.md) to the `/transactions` endpoint. Read more about submitting transactions in [Post Transaction](../transactions-create.md) doc.
+To submit a new transaction to Stellar network, it must first be built and signed locally. Then you can submit a hex representation of your transaction’s [XDR](https://www.stellar.org/developers/guides/concepts/xdr.html) to the `/transactions` endpoint. Read more about submitting transactions in [Post Transaction](../transactions-create.md) doc.
