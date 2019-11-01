@@ -21,9 +21,10 @@ type RootAction struct {
 func (action *RootAction) JSON() error {
 	var res horizon.Root
 	templates := map[string]string{
-		"accounts":        actions.AccountsQuery{}.URITemplate(),
-		"offers":          actions.OffersQuery{}.URITemplate(),
-		"strictSendPaths": FindFixedPathsQuery{}.URITemplate(),
+		"accounts":           actions.AccountsQuery{}.URITemplate(),
+		"offers":             actions.OffersQuery{}.URITemplate(),
+		"strictReceivePaths": StrictReceivePathsQuery{}.URITemplate(),
+		"strictSendPaths":    FindFixedPathsQuery{}.URITemplate(),
 	}
 	resourceadapter.PopulateRoot(
 		action.R.Context(),

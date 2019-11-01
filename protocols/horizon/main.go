@@ -296,6 +296,7 @@ type Root struct {
 		Offers              *hal.Link `json:"offers,omitempty"`
 		OrderBook           hal.Link  `json:"order_book"`
 		Self                hal.Link  `json:"self"`
+		StrictReceivePaths  *hal.Link `json:"strict_receive_paths"`
 		StrictSendPaths     *hal.Link `json:"strict_send_paths"`
 		Transaction         hal.Link  `json:"transaction"`
 		Transactions        hal.Link  `json:"transactions"`

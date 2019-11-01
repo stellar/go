@@ -14,9 +14,10 @@ import (
 func TestPopulateRoot(t *testing.T) {
 	res := &horizon.Root{}
 	templates := map[string]string{
-		"accounts":        "/accounts{?signer,asset_type,asset_issuer,asset_code}",
-		"offers":          "/offers",
-		"strictSendPaths": "/paths/strict-send",
+		"accounts":           "/accounts{?signer,asset_type,asset_issuer,asset_code}",
+		"offers":             "/offers",
+		"strictReceivePaths": "/paths/strict-receive",
+		"strictSendPaths":    "/paths/strict-send",
 	}
 
 	PopulateRoot(context.Background(),
@@ -42,6 +43,7 @@ func TestPopulateRoot(t *testing.T) {
 	assert.Empty(t, res.Links.Accounts)
 	assert.Empty(t, res.Links.Offer)
 	assert.Empty(t, res.Links.Offers)
+	assert.Empty(t, res.Links.StrictReceivePaths)
 	assert.Empty(t, res.Links.StrictSendPaths)
 
 	// Without testbot
@@ -88,6 +90,11 @@ func TestPopulateRoot(t *testing.T) {
 		t,
 		templates["offers"],
 		res.Links.Offers.Href,
+	)
+	assert.Equal(
+		t,
+		templates["strictReceivePaths"],
+		res.Links.StrictReceivePaths.Href,
 	)
 	assert.Equal(
 		t,
