@@ -16,16 +16,34 @@ type HTTPT struct {
 	*test.T
 }
 
-// StartHTTPTest is a helper function to setup a new test that will make http
-// requests. Pair it with a deferred call to FinishHTTPTest.
-func StartHTTPTest(t *testing.T, scenario string) *HTTPT {
-	ret := &HTTPT{T: test.Start(t).Scenario(scenario)}
+func startHTTPTest(t *testing.T, scenario string) *HTTPT {
+	ret := &HTTPT{T: test.Start(t)}
+	if scenario == "" {
+		test.ResetHorizonDB(t, ret.HorizonDB)
+	} else {
+		ret.Scenario(scenario)
+	}
 	ret.App = NewTestApp()
 	ret.RH = test.NewRequestHelper(ret.App.web.router)
 	ret.Assert = &Assertions{ret.T.Assert}
 	ret.App.UpdateLedgerState()
 
 	return ret
+}
+
+// StartHTTPTest is a helper function to setup a new test that will make http
+// requests. Pair it with a deferred call to FinishHTTPTest.
+func StartHTTPTest(t *testing.T, scenario string) *HTTPT {
+	if scenario == "" {
+		t.Fatal("scenario cannot be empty string")
+	}
+	return startHTTPTest(t, scenario)
+}
+
+// StartHTTPTestWithoutScenario is like StartHTTPTest except it does not use
+// a sql scenario
+func StartHTTPTestWithoutScenario(t *testing.T) *HTTPT {
+	return startHTTPTest(t, "")
 }
 
 // Get delegates to the test's request helper

@@ -3,12 +3,11 @@
 package horizon
 
 import (
+	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"strconv"
 	"time"
-
-	"encoding/base64"
-	"encoding/json"
 
 	"github.com/stellar/go/protocols/horizon/base"
 	"github.com/stellar/go/strkey"
@@ -225,7 +224,7 @@ type Offer struct {
 		OfferMaker hal.Link `json:"offer_maker"`
 	} `json:"_links"`
 
-	// Action needed in release: horizon-v0.22.0
+	// Action needed in release: horizon-v0.23.0
 	ID                 int64      `json:"id"`
 	PT                 string     `json:"paging_token"`
 	Seller             string     `json:"seller"`
@@ -282,10 +281,13 @@ type PriceLevel struct {
 type Root struct {
 	Links struct {
 		Account             hal.Link  `json:"account"`
+		Accounts            *hal.Link `json:"accounts,omitempty"`
 		AccountTransactions hal.Link  `json:"account_transactions"`
 		Assets              hal.Link  `json:"assets"`
 		Friendbot           *hal.Link `json:"friendbot,omitempty"`
 		Metrics             hal.Link  `json:"metrics"`
+		Offer               *hal.Link `json:"offer,omitempty"`
+		Offers              *hal.Link `json:"offers,omitempty"`
 		OrderBook           hal.Link  `json:"order_book"`
 		Self                hal.Link  `json:"self"`
 		Transaction         hal.Link  `json:"transaction"`
@@ -415,7 +417,7 @@ type Transaction struct {
 	LedgerCloseTime time.Time `json:"created_at"`
 	Account         string    `json:"source_account"`
 	AccountSequence string    `json:"source_account_sequence"`
-	// Action needed in release: horizon-v0.22.0
+	// Action needed in release: horizon-v0.23.0
 	// Action needed in release: horizonclient-v2.0.0
 	// Remove this field.
 	FeePaid        int32    `json:"fee_paid"`

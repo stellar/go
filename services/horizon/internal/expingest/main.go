@@ -4,7 +4,8 @@
 package expingest
 
 import (
-	"fmt"
+	"runtime/debug"
+	"sync"
 	"time"
 
 	"github.com/stellar/go/clients/stellarcore"
@@ -29,7 +30,10 @@ const (
 	// - 1: Initial version
 	// - 2: We added the orderbook, offers processors and distributed
 	//      ingestion.
-	CurrentVersion = 2
+	// - 3: Fixes a bug that could potentialy result in invalid state
+	//      (#1722). Update the version to clear the state.
+	// - 4: Fixes a bug in AccountSignersChanged method.
+	CurrentVersion = 4
 )
 
 var log = ilog.DefaultLogger.WithField("service", "expingest")
@@ -38,17 +42,70 @@ type Config struct {
 	CoreSession    *db.Session
 	StellarCoreURL string
 
-	HistorySession    *db.Session
-	HistoryArchiveURL string
-	TempSet           io.TempSet
+	HistorySession           *db.Session
+	HistoryArchiveURL        string
+	TempSet                  io.TempSet
+	DisableStateVerification bool
 
 	OrderBookGraph *orderbook.OrderBookGraph
 }
 
+type dbQ interface {
+	Begin() error
+	Rollback() error
+	GetLastLedgerExpIngest() (uint32, error)
+	GetExpIngestVersion() (int, error)
+	UpdateLastLedgerExpIngest(uint32) error
+	UpdateExpStateInvalid(bool) error
+	GetExpStateInvalid() (bool, error)
+	GetAllOffers() ([]history.Offer, error)
+}
+
+type dbSession interface {
+	TruncateTables([]string) error
+	Clone() *db.Session
+}
+
+type liveSession interface {
+	Run() error
+	GetArchive() historyarchive.ArchiveInterface
+	Resume(ledgerSequence uint32) error
+	GetLatestSuccessfullyProcessedLedger() (ledgerSequence uint32, processed bool)
+	Shutdown()
+}
+
+type retry interface {
+	onError(func() error)
+}
+
 type System struct {
-	session  *ingest.LiveSession
-	historyQ *history.Q
-	graph    *orderbook.OrderBookGraph
+	session        liveSession
+	historyQ       dbQ
+	historySession dbSession
+	graph          *orderbook.OrderBookGraph
+	retry          retry
+
+	// stateVerificationRunning is true when verification routine is currently
+	// running.
+	stateVerificationMutex   sync.Mutex
+	stateVerificationRunning bool
+	disableStateVerification bool
+}
+
+type alwaysRetry struct {
+	backOff time.Duration
+}
+
+func (r alwaysRetry) onError(f func() error) {
+	for {
+		err := f()
+		if err != nil {
+			log.Error(err)
+			time.Sleep(r.backOff)
+			continue
+		}
+		break
+	}
 }
 
 func NewSystem(config Config) (*System, error) {
@@ -79,24 +136,31 @@ func NewSystem(config Config) (*System, error) {
 		TempSet: config.TempSet,
 	}
 
+	system := &System{
+		session:                  session,
+		historySession:           config.HistorySession,
+		historyQ:                 historyQ,
+		graph:                    config.OrderBookGraph,
+		retry:                    alwaysRetry{time.Second},
+		disableStateVerification: config.DisableStateVerification,
+	}
+
 	addPipelineHooks(
+		system,
 		session.StatePipeline,
 		config.HistorySession,
 		session,
 		config.OrderBookGraph,
 	)
 	addPipelineHooks(
+		system,
 		session.LedgerPipeline,
 		config.HistorySession,
 		session,
 		config.OrderBookGraph,
 	)
 
-	return &System{
-		session:  session,
-		historyQ: historyQ,
-		graph:    config.OrderBookGraph,
-	}, nil
+	return system, nil
 }
 
 // Run starts ingestion system. Ingestion system supports distributed ingestion
@@ -129,10 +193,22 @@ func NewSystem(config Config) (*System, error) {
 //   * If instances is a NOT leader, it runs ledger pipeline without updating a
 //     a database so order book graph is updated but database is not overwritten.
 func (s *System) Run() {
+	// Expingest is an experimental package so we don't want entire Horizon app
+	// to crash in case of unexpected errors.
+	// TODO: This should be removed when expingest is no longer experimental.
+	defer func() {
+		if r := recover(); r != nil {
+			log.WithFields(ilog.F{
+				"err":   r,
+				"stack": string(debug.Stack()),
+			}).Error("expingest panic")
+		}
+	}()
+
 	// retryOnError loop is needed only in case of initial state sync errors.
 	// If the state is successfully ingested `resumeFromLedger` method continues
 	// processing ledgers.
-	retryOnError(time.Second, func() error {
+	s.retry.onError(func() error {
 		// Transaction will be commited or rolled back in pipelines post hooks.
 		err := s.historyQ.Begin()
 		if err != nil {
@@ -160,15 +236,20 @@ func (s *System) Run() {
 			// `LastLedgerExpIngest` value is blocked for update and will always
 			// be updated when leading instance finishes processing state.
 			// In case of errors it will start `Run` from the beginning.
-			log.WithField("temp_set", fmt.Sprintf("%T", s.session.TempSet)).
-				Info("Starting ingestion system from empty state...")
+			log.Info("Starting ingestion system from empty state...")
 
 			// Clear last_ingested_ledger in key value store
 			if err = s.historyQ.UpdateLastLedgerExpIngest(0); err != nil {
 				return errors.Wrap(err, "Error updating last ingested ledger")
 			}
 
-			err = s.historyQ.Session.TruncateTables(
+			// Clear invalid state in key value store. It's possible that upgraded
+			// ingestion is fixing it.
+			if err = s.historyQ.UpdateExpStateInvalid(false); err != nil {
+				return errors.Wrap(err, "Error updating state invalid value")
+			}
+
+			err = s.historySession.TruncateTables(
 				history.ExperimentalIngestionTables,
 			)
 			if err != nil {
@@ -179,8 +260,9 @@ func (s *System) Run() {
 			if err != nil {
 				// Check if session processed a state, if so, continue since the
 				// last processed ledger, otherwise start over.
-				lastIngestedLedger = s.session.GetLatestSuccessfullyProcessedLedger()
-				if lastIngestedLedger == 0 {
+				var processed bool
+				lastIngestedLedger, processed = s.session.GetLatestSuccessfullyProcessedLedger()
+				if !processed {
 					return err
 				}
 
@@ -200,7 +282,6 @@ func (s *System) Run() {
 			if err != nil {
 				return errors.Wrap(err, "Error loading order book graph from db")
 			}
-
 		}
 
 		s.resumeFromLedger(lastIngestedLedger)
@@ -208,7 +289,7 @@ func (s *System) Run() {
 	})
 }
 
-func loadOrderBookGraphFromDB(historyQ *history.Q, graph *orderbook.OrderBookGraph) error {
+func loadOrderBookGraphFromDB(historyQ dbQ, graph *orderbook.OrderBookGraph) error {
 	defer graph.Discard()
 
 	log.Info("Loading offers from a database into memory store...")
@@ -237,17 +318,27 @@ func loadOrderBookGraphFromDB(historyQ *history.Q, graph *orderbook.OrderBookGra
 
 	err = graph.Apply()
 	if err == nil {
-		log.WithField("duration", time.Since(start).Seconds()).Info("Finished offers from a database into memory store")
+		log.WithField(
+			"duration",
+			time.Since(start).Seconds(),
+		).Info("Finished loading offers from a database into memory store")
 	}
 
 	return err
 }
 
 func (s *System) resumeFromLedger(lastIngestedLedger uint32) {
-	retryOnError(time.Second, func() error {
+	s.retry.onError(func() error {
 		err := s.session.Resume(lastIngestedLedger + 1)
 		if err != nil {
-			lastIngestedLedger = s.session.GetLatestSuccessfullyProcessedLedger()
+			// If no ledgers processed so far, try again with the
+			// lastIngestedLedger+1 (do nothing).
+			// Otherwise, set lastIngestedLedger to the last successfully
+			// ingested ledger in the session.
+			sessionLastLedger, processed := s.session.GetLatestSuccessfullyProcessedLedger()
+			if processed {
+				lastIngestedLedger = sessionLastLedger
+			}
 			return errors.Wrap(err, "Error returned from ingest.LiveSession")
 		}
 
@@ -266,19 +357,4 @@ func createArchive(archiveURL string) (*historyarchive.Archive, error) {
 		archiveURL,
 		historyarchive.ConnectOptions{},
 	)
-}
-
-// retryOnError is a helper function that runs function f synchronically every
-// `duration` until it returns no error.
-// Logs all returned errors with `error` level.
-func retryOnError(sleepDuration time.Duration, f func() error) {
-	for {
-		err := f()
-		if err != nil {
-			log.Error(err)
-			time.Sleep(sleepDuration)
-			continue
-		}
-		break
-	}
 }

@@ -31,7 +31,7 @@ func TestStatePreProcessingHook(t *testing.T) {
 
 	tt.Assert.Nil(session.GetTx())
 	newCtx, err := preProcessingHook(ctx, pipelineType, session)
-	tt.Assert.Nil(err)
+	tt.Assert.NoError(err)
 	tt.Assert.NotNil(session.GetTx())
 	tt.Assert.Nil(newCtx.Value(horizonProcessors.IngestUpdateDatabase))
 
@@ -42,7 +42,7 @@ func TestStatePreProcessingHook(t *testing.T) {
 	tt.Assert.NotNil(session.GetTx())
 
 	newCtx, err = preProcessingHook(ctx, pipelineType, session)
-	tt.Assert.Nil(err)
+	tt.Assert.NoError(err)
 	tt.Assert.NotNil(session.GetTx())
 	tt.Assert.Nil(newCtx.Value(horizonProcessors.IngestUpdateDatabase))
 }
@@ -64,7 +64,7 @@ func TestLedgerPreProcessingHook(t *testing.T) {
 
 	tt.Assert.Nil(session.GetTx())
 	newCtx, err := preProcessingHook(ctx, pipelineType, session)
-	tt.Assert.Nil(err)
+	tt.Assert.NoError(err)
 	tt.Assert.NotNil(session.GetTx())
 	tt.Assert.Equal(newCtx.Value(horizonProcessors.IngestUpdateDatabase), true)
 
@@ -74,7 +74,7 @@ func TestLedgerPreProcessingHook(t *testing.T) {
 	tt.Assert.Nil(session.Begin())
 	tt.Assert.NotNil(session.GetTx())
 	newCtx, err = preProcessingHook(ctx, pipelineType, session)
-	tt.Assert.Nil(err)
+	tt.Assert.NoError(err)
 	tt.Assert.NotNil(session.GetTx())
 	tt.Assert.Equal(newCtx.Value(horizonProcessors.IngestUpdateDatabase), true)
 
@@ -83,14 +83,14 @@ func TestLedgerPreProcessingHook(t *testing.T) {
 
 	tt.Assert.Nil(historyQ.UpdateLastLedgerExpIngest(2))
 	newCtx, err = preProcessingHook(ctx, pipelineType, session)
-	tt.Assert.Nil(err)
+	tt.Assert.NoError(err)
 	tt.Assert.Nil(session.GetTx())
 	tt.Assert.Nil(newCtx.Value(horizonProcessors.IngestUpdateDatabase))
 
 	tt.Assert.Nil(session.Begin())
 	tt.Assert.NotNil(session.GetTx())
 	newCtx, err = preProcessingHook(ctx, pipelineType, session)
-	tt.Assert.Nil(err)
+	tt.Assert.NoError(err)
 	tt.Assert.Nil(session.GetTx())
 	tt.Assert.Nil(newCtx.Value(horizonProcessors.IngestUpdateDatabase))
 }
@@ -163,7 +163,8 @@ func TestPostProcessingHook(t *testing.T) {
 		t.Run(testCase.name, func(_ *testing.T) {
 			tt.Assert.Nil(historyQ.UpdateLastLedgerExpIngest(testCase.lastLedger))
 			tt.Assert.Nil(historyQ.UpdateExpIngestVersion(0))
-			tt.Assert.Nil(historyQ.RemoveAccountSigner(account, signer))
+			_, err := historyQ.RemoveAccountSigner(account, signer)
+			tt.Assert.NoError(err)
 
 			ctx := context.WithValue(
 				context.Background(),
@@ -179,12 +180,13 @@ func TestPostProcessingHook(t *testing.T) {
 				tt.Assert.Nil(session.Begin())
 				// queue an insert on the transaction so we can check if the post
 				// processing hook committed it to the db
-				tt.Assert.Nil(historyQ.CreateAccountSigner(account, signer, weight))
+				_, err = historyQ.CreateAccountSigner(account, signer, weight)
+				tt.Assert.NoError(err)
 			}
 
-			err := postProcessingHook(ctx, testCase.err, statePipeline, graph, session)
+			err = postProcessingHook(ctx, testCase.err, statePipeline, nil, graph, session)
 			if testCase.expectedError == "" {
-				tt.Assert.Nil(err)
+				tt.Assert.NoError(err)
 				tt.Assert.Equal(graph.Offers(), []xdr.OfferEntry{eurOffer})
 			} else {
 				tt.Assert.Contains(err.Error(), testCase.expectedError)
@@ -195,10 +197,10 @@ func TestPostProcessingHook(t *testing.T) {
 			if testCase.inTx && testCase.expectedError == "" {
 				// check that the ingest version and the ingest sequence was updated
 				version, err := historyQ.GetExpIngestVersion()
-				tt.Assert.Nil(err)
+				tt.Assert.NoError(err)
 				tt.Assert.Equal(version, CurrentVersion)
 				seq, err := historyQ.GetLastLedgerExpIngestNonBlocking()
-				tt.Assert.Nil(err)
+				tt.Assert.NoError(err)
 				tt.Assert.Equal(seq, testCase.pipelineLedger)
 
 				// check that the transaction was committed
@@ -209,10 +211,10 @@ func TestPostProcessingHook(t *testing.T) {
 			} else {
 				// check that the transaction was rolled back and nothing was committed
 				version, err := historyQ.GetExpIngestVersion()
-				tt.Assert.Nil(err)
+				tt.Assert.NoError(err)
 				tt.Assert.Equal(version, 0)
 				seq, err := historyQ.GetLastLedgerExpIngestNonBlocking()
-				tt.Assert.Nil(err)
+				tt.Assert.NoError(err)
 				tt.Assert.Equal(seq, testCase.lastLedger)
 
 				accounts, err := historyQ.AccountsForSigner(signer, db2.PageQuery{Order: "asc", Limit: 10})

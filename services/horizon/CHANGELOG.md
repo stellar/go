@@ -6,10 +6,48 @@ file.  This project adheres to [Semantic Versioning](http://semver.org/).
 As this project is pre 1.0, breaking changes may happen for minor version
 bumps.  A breaking change will get clearly notified in this log.
 
-## Unreleased
+## v0.22.1
 
+* Fixes a bug in path payment ingestion code.
+
+## v0.22.0
+
+* Adds support for Stellar Protocol v12.
+
+### Scheduled Breaking Changes
+
+* The following operation type names have been deprecated: `path_payment`, `manage_offer` and `create_passive_offer`. The names will be changed to: `path_payment_strict_receive`, `manage_sell_offer` and `create_passive_sell_offer` in 0.25.0. This has been previously scheduled for 0.22.0 release.
+* `fee_paid` field on Transaction resource has been deprecated and will be removed in 0.23.0 (previously scheduled for 0.22.0). Please use new fields added in 0.18.0: `max_fee` that defines the maximum fee the source account is willing to pay and `fee_charged` that defines the fee that was actually paid for a transaction. See [CAP-0005](https://github.com/stellar/stellar-protocol/blob/master/core/cap-0005.md) for more information.
+* The type for the following attributes will be changed from `int64` to `string` in 0.23.0 (previously scheduled for 0.22.0):
+  - Attribute `offer_id` in [manage buy offer](https://www.stellar.org/developers/horizon/reference/resources/operation.html#manage-buy-offer) and [manage sell offer](https://www.stellar.org/developers/horizon/reference/resources/operation.html#manage-sell-offer) operations.
+  - Attribute `offer_id` in `Trade` effect.
+  - Attribute `id` in [Offer](https://www.stellar.org/developers/horizon/reference/resources/offer.html) resource.
+  - Attribute `timestamp` and `trade_count` in [Trade Aggregation](https://www.stellar.org/developers/horizon/reference/resources/trade_aggregation.html) resource.
+
+## v0.21.1
+
+* Fixes a bug in initial schema migration file.
+
+## v0.21.0
+
+### Database migration notes
+
+This version adds a new index on a table used by experimental ingestion system. If it has not been enabled, migration will be instant. If you migrate from a previous version with experimental ingestion system enabled database migration can take a couple minutes.
+
+### Changes
+
+* `/paths/strict-send` can now accept a `destination_account` parameter. If `destination_account` is provided then the endpoint will return all payment paths which terminate with an asset held by `destination_account`. Note that the endpoint will accept `destination_account` or `destination_assets` but not both. `destination_assets` is a comma separated list of assets encoded as `native` or `code:issuer`.
+* `/paths/strict-receive` can now accept a `source_assets` parameter instead of `source_account` parameter. If `source_assets` is provided the endpoint will return all payment paths originating from an asset in `source_assets`. Note that the endpoint will accept `source_account` or `source_assets` but not both. `source_assets` is a comma separated list of assets encoded as `native` or `code:issuer`.
+* Add experimental support for `/offers`. To enable it, set `--enable-experimental-ingestion` CLI param or `ENABLE_EXPERIMENTAL_INGESTION=true` env variable.
+* When experimental ingestion is enabled a state verification routine is started every 64 ledgers to ensure a local state is the same as in history buckets. This can be disabled by setting `--ingest-disable-state-verification` CLI param or `INGEST-DISABLE-STATE-VERIFICATION` env variable.
+* Add flag to apply pending migrations before running horizon. If there are pending migrations, previously you needed to run `horizon db migrate up` before running `horizon`. Those two steps can be combined into one with the `--apply-migrations` flag (`APPLY_MIGRATIONS` env variable).
+* Improved the speed of state ingestion in experimental ingestion system.
+* Fixed a bug in "Signers for Account" (experimental) transaction meta ingesting code.
 * Fixed performance issue in Effects related endpoints.
+* Fixed DoS vector in Go HTTP/2 implementation.
 * Dropped support for Go 1.10, 1.11.
+
+Check [Beta Testing New Ingestion System](https://github.com/stellar/go/blob/master/services/horizon/internal/expingest/BETA_TESTING.md) if you want to test new ingestion system.
 
 ## v0.20.1
 

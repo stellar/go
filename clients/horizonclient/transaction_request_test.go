@@ -2,9 +2,7 @@ package horizonclient
 
 import (
 	"context"
-	"fmt"
 	"testing"
-	"time"
 
 	hProtocol "github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/support/http/httptest"
@@ -55,95 +53,6 @@ func TestTransactionRequestBuildUrl(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "transactions?cursor=123456&include_failed=true&limit=30&order=asc", endpoint)
 
-}
-
-func ExampleClient_StreamTransactions() {
-	client := DefaultTestNetClient
-	// all transactions
-	transactionRequest := TransactionRequest{Cursor: "760209215489"}
-
-	ctx, cancel := context.WithCancel(context.Background())
-	go func() {
-		// Stop streaming after 60 seconds.
-		time.Sleep(60 * time.Second)
-		cancel()
-	}()
-
-	printHandler := func(tr hProtocol.Transaction) {
-		fmt.Println(tr)
-	}
-	err := client.StreamTransactions(ctx, transactionRequest, printHandler)
-	if err != nil {
-		fmt.Println(err)
-	}
-}
-
-func ExampleClient_NextTransactionsPage() {
-	client := DefaultPublicNetClient
-	// all transactions
-	transactionRequest := TransactionRequest{Limit: 20}
-	transactions, err := client.Transactions(transactionRequest)
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	fmt.Print(transactions)
-
-	// get next pages.
-	recordsFound := false
-	if len(transactions.Embedded.Records) > 0 {
-		recordsFound = true
-	}
-	page := transactions
-	// get the next page of records if recordsFound is true
-	for recordsFound {
-		// next page
-		nextPage, err := client.NextTransactionsPage(page)
-		if err != nil {
-			fmt.Println(err)
-			return
-		}
-
-		page = nextPage
-		if len(nextPage.Embedded.Records) == 0 {
-			recordsFound = false
-		}
-		fmt.Println(nextPage)
-	}
-}
-
-func ExampleClient_PrevTransactionsPage() {
-	client := DefaultPublicNetClient
-	// all transactions
-	transactionRequest := TransactionRequest{Limit: 20}
-	transactions, err := client.Transactions(transactionRequest)
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	fmt.Print(transactions)
-
-	// get prev pages.
-	recordsFound := false
-	if len(transactions.Embedded.Records) > 0 {
-		recordsFound = true
-	}
-	page := transactions
-	// get the prev page of records if recordsFound is true
-	for recordsFound {
-		// prev page
-		prevPage, err := client.PrevTransactionsPage(page)
-		if err != nil {
-			fmt.Println(err)
-			return
-		}
-
-		page = prevPage
-		if len(prevPage.Embedded.Records) == 0 {
-			recordsFound = false
-		}
-		fmt.Println(prevPage)
-	}
 }
 
 func TestNextTransactionsPage(t *testing.T) {

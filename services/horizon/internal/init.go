@@ -86,10 +86,11 @@ func initExpIngester(app *App, orderBookGraph *orderbook.OrderBookGraph) {
 		// TODO:
 		// Use the first archive for now. We don't have a mechanism to
 		// use multiple archives at the same time currently.
-		HistoryArchiveURL: app.config.HistoryArchiveURLs[0],
-		StellarCoreURL:    app.config.StellarCoreURL,
-		OrderBookGraph:    orderBookGraph,
-		TempSet:           tempSet,
+		HistoryArchiveURL:        app.config.HistoryArchiveURLs[0],
+		StellarCoreURL:           app.config.StellarCoreURL,
+		OrderBookGraph:           orderBookGraph,
+		TempSet:                  tempSet,
+		DisableStateVerification: app.config.IngestDisableStateVerification,
 	})
 	if err != nil {
 		log.Fatal(err)

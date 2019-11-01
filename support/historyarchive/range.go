@@ -17,6 +17,10 @@ type Range struct {
 	High uint32
 }
 
+func IsCheckpoint(i uint32) bool {
+	return (i+1)%CheckpointFreq == 0
+}
+
 func PrevCheckpoint(i uint32) uint32 {
 	freq := CheckpointFreq
 	if i < freq {
