@@ -3,6 +3,7 @@ package xdr
 import (
 	"errors"
 	"fmt"
+	"regexp"
 	"strings"
 
 	"github.com/stellar/go/strkey"
@@ -77,6 +78,63 @@ func BuildAsset(assetType, issuer, code string) (Asset, error) {
 	}
 
 	return asset, nil
+}
+
+var ValidAssetCode = regexp.MustCompile("^[[:alnum:]]{1,12}$")
+
+// BuildAssets parses a list of assets from a given string.
+// The string is expected to be a comma separated list of assets
+// encoded in the format (Code:Issuer or "native") defined by SEP-0011
+// https://github.com/stellar/stellar-protocol/pull/313
+// If the string is empty, BuildAssets will return an empty list of assets
+func BuildAssets(s string) ([]Asset, error) {
+	var assets []Asset
+	if s == "" {
+		return assets, nil
+	}
+
+	assetStrings := strings.Split(s, ",")
+	for _, assetString := range assetStrings {
+		var asset Asset
+
+		// Technically https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0011.md allows
+		// any string up to 12 characters not containing an unescaped colon to represent XLM
+		// however, this function only accepts the string "native" to represent XLM
+		if strings.ToLower(assetString) == "native" {
+			if err := asset.SetNative(); err != nil {
+				return nil, err
+			}
+		} else {
+			parts := strings.Split(assetString, ":")
+			if len(parts) != 2 {
+				return nil, fmt.Errorf("%s is not a valid asset", assetString)
+			}
+
+			code := parts[0]
+			if !ValidAssetCode.MatchString(code) {
+				return nil, fmt.Errorf(
+					"%s is not a valid asset, it contains an invalid asset code",
+					assetString,
+				)
+			}
+
+			issuer, err := AddressToAccountId(parts[1])
+			if err != nil {
+				return nil, fmt.Errorf(
+					"%s is not a valid asset, it contains an invalid issuer",
+					assetString,
+				)
+			}
+
+			if err := asset.SetCredit(code, issuer); err != nil {
+				return nil, fmt.Errorf("%s is not a valid asset", assetString)
+			}
+		}
+
+		assets = append(assets, asset)
+	}
+
+	return assets, nil
 }
 
 // SetCredit overwrites `a` with a credit asset using `code` and `issuer`.  The

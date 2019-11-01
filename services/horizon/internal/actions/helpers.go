@@ -7,9 +7,7 @@ import (
 	"net/http"
 	"net/url"
 	"reflect"
-	"regexp"
 	"strconv"
-	"strings"
 	"unicode/utf8"
 
 	"github.com/asaskevich/govalidator"
@@ -51,8 +49,6 @@ const (
 	RequiredParam
 	maxAssetCodeLength = 12
 )
-
-var validAssetCode = regexp.MustCompile("^[[:alnum:]]{1,12}$")
 
 // GetCursor retrieves a string from either the URLParams, form or query string.
 // This method uses the priority (URLParams, Form, Query).
@@ -543,56 +539,13 @@ func GetAssets(r *http.Request, name string) ([]xdr.Asset, error) {
 		return nil, err
 	}
 
-	var assets []xdr.Asset
-	if s == "" {
-		return assets, nil
-	}
+	assets, err := xdr.BuildAssets(s)
 
-	assetStrings := strings.Split(s, ",")
-	for _, assetString := range assetStrings {
-		var asset xdr.Asset
-
-		// Technically https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0011.md allows
-		// any string up to 12 characters not containing an unescaped colon to represent XLM
-		// however, this function only accepts the string "native" to represent XLM
-		if strings.ToLower(assetString) == "native" {
-			if err := asset.SetNative(); err != nil {
-				return nil, err
-			}
-		} else {
-			parts := strings.Split(assetString, ":")
-			if len(parts) != 2 {
-				return nil, problem.MakeInvalidFieldProblem(
-					name,
-					fmt.Errorf("%s is not a valid asset", assetString),
-				)
-			}
-
-			code := parts[0]
-			if !validAssetCode.MatchString(code) {
-				return nil, problem.MakeInvalidFieldProblem(
-					name,
-					fmt.Errorf("%s is not a valid asset, it contains an invalid asset code", assetString),
-				)
-			}
-
-			issuer, err := xdr.AddressToAccountId(parts[1])
-			if err != nil {
-				return nil, problem.MakeInvalidFieldProblem(
-					name,
-					fmt.Errorf("%s is not a valid asset, it contains an invalid issuer", assetString),
-				)
-			}
-
-			if err := asset.SetCredit(code, issuer); err != nil {
-				return nil, problem.MakeInvalidFieldProblem(
-					name,
-					fmt.Errorf("%s is not a valid asset", assetString),
-				)
-			}
-		}
-
-		assets = append(assets, asset)
+	if err != nil {
+		return nil, problem.MakeInvalidFieldProblem(
+			name,
+			err,
+		)
 	}
 
 	return assets, nil
@@ -772,7 +725,8 @@ func getSchemaTag(params interface{}, field string) string {
 	return f.Tag.Get("schema")
 }
 
-func getURIParams(query interface{}, paginated bool) []string {
+// GetURIParams returns a list of query parameters for a given query struct
+func GetURIParams(query interface{}, paginated bool) []string {
 	params := getSchemaTags(reflect.ValueOf(query).Elem())
 	if paginated {
 		pagingParams := []string{
@@ -805,7 +759,8 @@ func getSchemaTags(v reflect.Value) []string {
 	return fields
 }
 
-func validateAssetParams(aType, code, issuer, prefix string) error {
+// ValidateAssetParams runs multiple checks on an asset query parameter
+func ValidateAssetParams(aType, code, issuer, prefix string) error {
 	// If asset type is not present but code or issuer are, then there is a
 	// missing parameter and the request is unprocessable.
 	if len(aType) == 0 {

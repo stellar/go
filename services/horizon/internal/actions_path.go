@@ -4,7 +4,9 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"strings"
 
+	"github.com/stellar/go/amount"
 	"github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/services/horizon/internal/actions"
 	"github.com/stellar/go/services/horizon/internal/db2/core"
@@ -163,26 +165,92 @@ var destinationAssetsOrDestinationAccount = problem.P{
 		"Both fields cannot be present.",
 }
 
+// FindFixedPathsQuery query struct for paths/strict-send end-point
+type FindFixedPathsQuery struct {
+	DestinationAccount string `schema:"destination_account" valid:"accountID,optional"`
+	DestinationAssets  string `schema:"destination_assets" valid:"-"`
+	SourceAssetType    string `schema:"source_asset_type" valid:"assetType"`
+	SourceAssetIssuer  string `schema:"source_asset_issuer" valid:"accountID,optional"`
+	SourceAssetCode    string `schema:"source_asset_code" valid:"-"`
+	SourceAmount       string `schema:"source_amount" valid:"amount"`
+}
+
+// URITemplate returns a rfc6570 URI template for the query struct
+func (q FindFixedPathsQuery) URITemplate() string {
+	return "/paths/strict-send{?" + strings.Join(actions.GetURIParams(&q, false), ",") + "}"
+}
+
+// Validate runs custom validations.
+func (q FindFixedPathsQuery) Validate() error {
+	if (len(q.DestinationAccount) > 0) == (len(q.DestinationAssets) > 0) {
+		return destinationAssetsOrDestinationAccount
+	}
+
+	err := actions.ValidateAssetParams(
+		q.SourceAssetType,
+		q.SourceAssetCode,
+		q.SourceAssetIssuer,
+		"source_",
+	)
+
+	if err != nil {
+		return err
+	}
+
+	_, err = q.Assets()
+
+	if err != nil {
+		return problem.MakeInvalidFieldProblem(
+			"destination_assets",
+			err,
+		)
+	}
+
+	return nil
+}
+
+// Assets returns a list of xdr.Asset
+func (q FindFixedPathsQuery) Assets() ([]xdr.Asset, error) {
+	return xdr.BuildAssets(q.DestinationAssets)
+}
+
+// Amount returns source amount
+func (q FindFixedPathsQuery) Amount() xdr.Int64 {
+	parsed, err := amount.Parse(q.SourceAmount)
+	if err != nil {
+		panic(err)
+	}
+	return parsed
+}
+
+// SourceAsset returns an xdr.Asset
+func (q FindFixedPathsQuery) SourceAsset() xdr.Asset {
+	asset, err := xdr.BuildAsset(
+		q.SourceAssetType,
+		q.SourceAssetIssuer,
+		q.SourceAssetCode,
+	)
+
+	if err != nil {
+		panic(err)
+	}
+
+	return asset
+}
+
 // ServeHTTP implements the http.Handler interface
 func (handler FindFixedPathsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	destinationAccount, err := getAccountID(r, "destination_account", false)
+	qp := FindFixedPathsQuery{}
+	err := actions.GetParams(&qp, r)
 	if err != nil {
 		problem.Render(ctx, w, err)
 		return
 	}
 
-	destinationAssets, err := actions.GetAssets(r, "destination_assets")
-	if err != nil {
-		problem.Render(ctx, w, err)
-		return
-	}
-
-	if (len(destinationAccount) > 0) == (len(destinationAssets) > 0) {
-		problem.Render(ctx, w, destinationAssetsOrDestinationAccount)
-		return
-	}
+	destinationAccount := qp.DestinationAccount
+	destinationAssets, _ := qp.Assets()
 
 	if len(destinationAssets) > handler.maxAssetsParamLength {
 		p := problem.MakeInvalidFieldProblem(
@@ -203,17 +271,8 @@ func (handler FindFixedPathsHandler) ServeHTTP(w http.ResponseWriter, r *http.Re
 		}
 	}
 
-	sourceAsset, err := actions.GetAsset(r, "source_")
-	if err != nil {
-		problem.Render(ctx, w, err)
-		return
-	}
-
-	amountToSpend, err := actions.GetPositiveAmount(r, "source_amount")
-	if err != nil {
-		problem.Render(ctx, w, err)
-		return
-	}
+	sourceAsset := qp.SourceAsset()
+	amountToSpend := qp.Amount()
 
 	records := []paths.Path{}
 	if len(destinationAssets) > 0 {

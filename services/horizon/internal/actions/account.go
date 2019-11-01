@@ -260,7 +260,7 @@ type AccountsQuery struct {
 
 // URITemplate returns a rfc6570 URI template the query struct
 func (q AccountsQuery) URITemplate() string {
-	return "/accounts{?" + strings.Join(getURIParams(&q, true), ",") + "}"
+	return "/accounts{?" + strings.Join(GetURIParams(&q, true), ",") + "}"
 }
 
 var invalidAccountsParams = problem.P{

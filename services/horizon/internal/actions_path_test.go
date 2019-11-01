@@ -19,6 +19,7 @@ import (
 	"github.com/stellar/go/services/horizon/internal/test"
 	"github.com/stellar/go/support/render/problem"
 	"github.com/stellar/go/xdr"
+	"github.com/stretchr/testify/assert"
 )
 
 func inMemoryPathFindingClient(
@@ -583,4 +584,19 @@ func assetsToURLParam(xdrAssets []xdr.Asset) string {
 	}
 
 	return strings.Join(assets, ",")
+}
+
+func TestFindFixedPathsQueryQueryURLTemplate(t *testing.T) {
+	tt := assert.New(t)
+	params := []string{
+		"destination_account",
+		"destination_assets",
+		"source_asset_type",
+		"source_asset_issuer",
+		"source_asset_code",
+		"source_amount",
+	}
+	expected := "/paths/strict-send{?" + strings.Join(params, ",") + "}"
+	accountsQuery := FindFixedPathsQuery{}
+	tt.Equal(expected, accountsQuery.URITemplate())
 }

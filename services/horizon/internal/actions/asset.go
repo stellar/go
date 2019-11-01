@@ -21,7 +21,7 @@ type AssetStatsHandler struct {
 
 func (handler AssetStatsHandler) validateAssetParams(code, issuer string, pq db2.PageQuery) error {
 	if code != "" {
-		if !validAssetCode.MatchString(code) {
+		if !xdr.ValidAssetCode.MatchString(code) {
 			return problem.MakeInvalidFieldProblem(
 				"asset_code",
 				fmt.Errorf("%s is not a valid asset code", code),
@@ -48,7 +48,7 @@ func (handler AssetStatsHandler) validateAssetParams(code, issuer string, pq db2
 		}
 
 		cursorCode, cursorIssuer := parts[0], parts[1]
-		if !validAssetCode.MatchString(cursorCode) {
+		if !xdr.ValidAssetCode.MatchString(cursorCode) {
 			return problem.MakeInvalidFieldProblem(
 				"cursor",
 				fmt.Errorf("%s is not a valid asset code", cursorCode),

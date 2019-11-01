@@ -162,3 +162,52 @@ func TestAssetValidator(t *testing.T) {
 		})
 	}
 }
+
+func TestAmountValidator(t *testing.T) {
+	type Query struct {
+		Amount string `valid:"amount"`
+	}
+
+	for _, testCase := range []struct {
+		name          string
+		value         string
+		expectedError string
+	}{
+		{
+			"valid",
+			"10",
+			"",
+		},
+		{
+			"zero",
+			"0",
+			"Amount: 0 does not validate as amount",
+		},
+		{
+			"negative",
+			"-1",
+			"Amount: -1 does not validate as amount",
+		},
+		{
+			"non-number",
+			"one",
+			"Amount: one does not validate as amount",
+		},
+	} {
+		t.Run(testCase.name, func(t *testing.T) {
+			tt := assert.New(t)
+
+			q := Query{
+				Amount: testCase.value,
+			}
+
+			result, err := govalidator.ValidateStruct(q)
+			if testCase.expectedError == "" {
+				tt.NoError(err)
+				tt.True(result)
+			} else {
+				tt.Equal(testCase.expectedError, err.Error())
+			}
+		})
+	}
+}
