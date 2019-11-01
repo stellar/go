@@ -6,6 +6,9 @@ import (
 	"github.com/stellar/go/xdr"
 )
 
+// TODO: Rather than hand serializing every struct, use Go reflection and other type tricks
+// to set up custom printing rules for certain types (i.e., AccountId and Sequence).
+// Then, we can replace this hand serialization with the JSON package methods.
 func prettyPrintEntry(entry xdr.LedgerEntryChange, prefix string) string {
 	entryString := ""
 	entryString += fmt.Sprintf("Type: %s\n", entry.Type)
