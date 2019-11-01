@@ -421,7 +421,7 @@ func (s *ReadBucketEntryTestSuite) TestReadEntryRetrySucceedsWithDiscard() {
 
 	b := &bytes.Buffer{}
 	s.Require().NoError(historyarchive.WriteFramedXdr(b, firstEntry))
-	b.WriteString("invalid-frame")
+	writeInvalidFrame(b)
 
 	s.mockArchive.
 		On("GetXdrStreamForHash", emptyHash).
@@ -461,7 +461,7 @@ func (s *ReadBucketEntryTestSuite) TestReadEntryRetryFailsWithDiscardError() {
 
 	b := &bytes.Buffer{}
 	s.Require().NoError(historyarchive.WriteFramedXdr(b, firstEntry))
-	b.WriteString("invalid-frame")
+	writeInvalidFrame(b)
 
 	s.mockArchive.
 		On("GetXdrStreamForHash", emptyHash).
@@ -526,8 +526,19 @@ func entryAccount(t xdr.BucketEntryType, id string, balance uint32) xdr.BucketEn
 
 func createInvalidXdrStream() *historyarchive.XdrStream {
 	b := &bytes.Buffer{}
-	b.WriteString("invalid-xdr-stream")
+	writeInvalidFrame(b)
+
 	return xdrStreamFromBuffer(b)
+}
+
+func writeInvalidFrame(b *bytes.Buffer) {
+	bufferSize := b.Len()
+	err := historyarchive.WriteFramedXdr(b, metaEntry(1))
+	if err != nil {
+		panic(err)
+	}
+	frameSize := b.Len() - bufferSize
+	b.Truncate(bufferSize + frameSize/2)
 }
 
 func createXdrStream(entries ...xdr.BucketEntry) *historyarchive.XdrStream {
