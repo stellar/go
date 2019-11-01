@@ -37,7 +37,7 @@ func TestGetState_Sequence(t *testing.T) {
 		return
 	}
 
-	sr, e := haa.GetState(seq, &io.MemoryTempSet{})
+	sr, e := haa.GetState(seq, &io.MemoryTempSet{}, 0)
 	if !assert.NoError(t, e) {
 		return
 	}
@@ -51,7 +51,7 @@ func TestGetState_Read(t *testing.T) {
 	}
 	haa := MakeHistoryArchiveAdapter(archive)
 
-	sr, e := haa.GetState(21686847, &io.MemoryTempSet{})
+	sr, e := haa.GetState(21686847, &io.MemoryTempSet{}, 0)
 	if !assert.NoError(t, e) {
 		return
 	}

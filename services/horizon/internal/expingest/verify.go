@@ -114,6 +114,7 @@ func (s *System) verifyState() error {
 		s.session.GetArchive(),
 		&io.MemoryTempSet{},
 		ledgerSequence,
+		s.maxStreamRetries,
 	)
 	if err != nil {
 		return errors.Wrap(err, "Error running io.MakeSingleLedgerStateReader")

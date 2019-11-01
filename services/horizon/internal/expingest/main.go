@@ -48,6 +48,11 @@ type Config struct {
 	TempSet                  io.TempSet
 	DisableStateVerification bool
 
+	// MaxStreamRetries determines how many times the reader will retry when encountering
+	// errors while streaming xdr bucket entries from the history archive.
+	// Set MaxStreamRetries to 0 if there should be no retry attempts
+	MaxStreamRetries int
+
 	OrderBookGraph *orderbook.OrderBookGraph
 }
 
@@ -80,13 +85,14 @@ type retry interface {
 }
 
 type System struct {
-	session        liveSession
-	historyQ       dbQ
-	historySession dbSession
-	graph          *orderbook.OrderBookGraph
-	retry          retry
-	stateReady     bool
-	stateReadyLock sync.RWMutex
+	session          liveSession
+	historyQ         dbQ
+	historySession   dbSession
+	graph            *orderbook.OrderBookGraph
+	retry            retry
+	stateReady       bool
+	stateReadyLock   sync.RWMutex
+	maxStreamRetries int
 
 	// stateVerificationRunning is true when verification routine is currently
 	// running.
@@ -125,10 +131,11 @@ func NewSystem(config Config) (*System, error) {
 	historyQ := &history.Q{config.HistorySession}
 
 	session := &ingest.LiveSession{
-		Archive:        archive,
-		LedgerBackend:  ledgerBackend,
-		StatePipeline:  buildStatePipeline(historyQ, config.OrderBookGraph),
-		LedgerPipeline: buildLedgerPipeline(historyQ, config.OrderBookGraph),
+		Archive:          archive,
+		MaxStreamRetries: config.MaxStreamRetries,
+		LedgerBackend:    ledgerBackend,
+		StatePipeline:    buildStatePipeline(historyQ, config.OrderBookGraph),
+		LedgerPipeline:   buildLedgerPipeline(historyQ, config.OrderBookGraph),
 		StellarCoreClient: &stellarcore.Client{
 			URL: config.StellarCoreURL,
 		},
@@ -146,6 +153,7 @@ func NewSystem(config Config) (*System, error) {
 		graph:                    config.OrderBookGraph,
 		retry:                    alwaysRetry{time.Second},
 		disableStateVerification: config.DisableStateVerification,
+		maxStreamRetries:         config.MaxStreamRetries,
 	}
 
 	addPipelineHooks(
