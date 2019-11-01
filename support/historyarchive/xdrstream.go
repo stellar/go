@@ -30,18 +30,14 @@ type XdrStream struct {
 }
 
 type countReader struct {
-	r         io.ReadCloser
+	io.ReadCloser
 	bytesRead int64
 }
 
 func (c *countReader) Read(p []byte) (int, error) {
-	n, err := c.r.Read(p)
+	n, err := c.ReadCloser.Read(p)
 	c.bytesRead += int64(n)
 	return n, err
-}
-
-func (c *countReader) Close() error {
-	return c.r.Close()
 }
 
 func newCountReader(r io.ReadCloser) *countReader {

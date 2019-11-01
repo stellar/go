@@ -13,7 +13,7 @@ import (
 	"github.com/stellar/go/services/horizon/internal/expingest/processors"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/support/historyarchive"
-	ilog "github.com/stellar/go/support/log"
+	logpkg "github.com/stellar/go/support/log"
 	"github.com/stellar/go/xdr"
 )
 
@@ -78,7 +78,7 @@ func (s *System) verifyState() error {
 		return errors.Wrap(err, "Error running historyQ.GetLastLedgerExpIngestNonBlocking")
 	}
 
-	localLog := log.WithFields(ilog.F{
+	localLog := log.WithFields(logpkg.F{
 		"subservice": "state_verify",
 		"ledger":     ledgerSequence,
 	})

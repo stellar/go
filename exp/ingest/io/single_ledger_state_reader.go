@@ -8,11 +8,11 @@ import (
 
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/support/historyarchive"
-	ilog "github.com/stellar/go/support/log"
+	logpkg "github.com/stellar/go/support/log"
 	"github.com/stellar/go/xdr"
 )
 
-var log = ilog.DefaultLogger.WithField("service", "expingest")
+var log = logpkg.DefaultLogger.WithField("service", "expingest")
 
 // readResult is the result of reading a bucket value
 type readResult struct {
@@ -189,7 +189,7 @@ func (msr *SingleLedgerStateReader) readBucketEntry(stream *historyarchive.XdrSt
 			break
 		}
 
-		log.WithFields(ilog.F{
+		log.WithFields(logpkg.F{
 			"hash":            hash.String(),
 			"currentPosition": currentPosition,
 		}).Info("Restarting xdr stream")
@@ -208,7 +208,7 @@ func (msr *SingleLedgerStateReader) readBucketEntry(stream *historyarchive.XdrSt
 
 		_, err = stream.Discard(currentPosition)
 		if err != nil {
-			log.WithFields(ilog.F{
+			log.WithFields(logpkg.F{
 				"hash":         hash.String(),
 				"discardBytes": currentPosition,
 			}).WithError(err).Info("could not fast forward retry xdr stream")
