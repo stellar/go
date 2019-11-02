@@ -33,6 +33,80 @@ type FindPathsHandler struct {
 	coreQ                *core.Q
 }
 
+// StrictReceivePathsQuery query struct for paths/strict-send end-point
+type StrictReceivePathsQuery struct {
+	SourceAssets           string `schema:"source_assets" valid:"-"`
+	SourceAccount          string `schema:"source_account" valid:"accountID,optional"`
+	DestinationAccount     string `schema:"destination_account" valid:"accountID,optional"`
+	DestinationAssetType   string `schema:"destination_asset_type" valid:"assetType"`
+	DestinationAssetIssuer string `schema:"destination_asset_issuer" valid:"accountID,optional"`
+	DestinationAssetCode   string `schema:"destination_asset_code" valid:"-"`
+	DestinationAmount      string `schema:"destination_amount" valid:"amount"`
+}
+
+// Assets returns a list of xdr.Asset
+func (q StrictReceivePathsQuery) Assets() ([]xdr.Asset, error) {
+	return xdr.BuildAssets(q.SourceAssets)
+}
+
+// Amount returns source amount
+func (q StrictReceivePathsQuery) Amount() xdr.Int64 {
+	parsed, err := amount.Parse(q.DestinationAmount)
+	if err != nil {
+		panic(err)
+	}
+	return parsed
+}
+
+// DestinationAsset returns an xdr.Asset
+func (q StrictReceivePathsQuery) DestinationAsset() xdr.Asset {
+	asset, err := xdr.BuildAsset(
+		q.DestinationAssetType,
+		q.DestinationAssetIssuer,
+		q.DestinationAssetCode,
+	)
+
+	if err != nil {
+		panic(err)
+	}
+
+	return asset
+}
+
+// URITemplate returns a rfc6570 URI template for the query struct
+func (q StrictReceivePathsQuery) URITemplate() string {
+	return "/paths/strict-receive{?" + strings.Join(actions.GetURIParams(&q, false), ",") + "}"
+}
+
+// Validate runs custom validations.
+func (q StrictReceivePathsQuery) Validate() error {
+	if (len(q.SourceAccount) > 0) == (len(q.SourceAssets) > 0) {
+		return sourceAssetsOrSourceAccount
+	}
+
+	err := actions.ValidateAssetParams(
+		q.DestinationAssetType,
+		q.DestinationAssetCode,
+		q.DestinationAssetIssuer,
+		"destination_",
+	)
+
+	if err != nil {
+		return err
+	}
+
+	_, err = q.Assets()
+
+	if err != nil {
+		return problem.MakeInvalidFieldProblem(
+			"source_assets",
+			err,
+		)
+	}
+
+	return nil
+}
+
 var sourceAssetsOrSourceAccount = problem.P{
 	Type:   "bad_request",
 	Title:  "Bad Request",
@@ -54,31 +128,17 @@ func (handler FindPathsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request
 		problem.Render(ctx, w, err)
 		return
 	}
+	qp := StrictReceivePathsQuery{}
+	err := actions.GetParams(&qp, r)
+	if err != nil {
+		problem.Render(ctx, w, err)
+		return
+	}
 
 	query := paths.Query{}
-	var err error
-	query.DestinationAmount, err = actions.GetPositiveAmount(r, "destination_amount")
-	if err != nil {
-		problem.Render(ctx, w, err)
-		return
-	}
-
-	sourceAccount, err := getAccountID(r, "source_account", false)
-	if err != nil {
-		problem.Render(ctx, w, err)
-		return
-	}
-
-	query.SourceAssets, err = actions.GetAssets(r, "source_assets")
-	if err != nil {
-		problem.Render(ctx, w, err)
-		return
-	}
-
-	if (len(query.SourceAssets) > 0) == (len(sourceAccount) > 0) {
-		problem.Render(ctx, w, sourceAssetsOrSourceAccount)
-		return
-	}
+	query.DestinationAmount = qp.Amount()
+	sourceAccount := qp.SourceAccount
+	query.SourceAssets, _ = qp.Assets()
 
 	if len(query.SourceAssets) > handler.maxAssetsParamLength {
 		p := problem.MakeInvalidFieldProblem(
@@ -88,11 +148,7 @@ func (handler FindPathsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request
 		problem.Render(ctx, w, p)
 		return
 	}
-
-	if query.DestinationAsset, err = actions.GetAsset(r, "destination_"); err != nil {
-		problem.Render(ctx, w, err)
-		return
-	}
+	query.DestinationAsset = qp.DestinationAsset()
 
 	if sourceAccount != "" {
 		sourceAccount := xdr.MustAddress(sourceAccount)

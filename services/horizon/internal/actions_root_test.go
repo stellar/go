@@ -94,5 +94,19 @@ func TestRootActionWithIngestion(t *testing.T) {
 			actual.Links.StrictSendPaths.Href,
 		)
 
+		params = []string{
+			"source_assets",
+			"source_account",
+			"destination_account",
+			"destination_asset_type",
+			"destination_asset_issuer",
+			"destination_asset_code",
+			"destination_amount",
+		}
+
+		ht.Assert.Equal(
+			"http://localhost/paths/strict-receive{?"+strings.Join(params, ",")+"}",
+			actual.Links.StrictReceivePaths.Href,
+		)
 	}
 }

@@ -597,6 +597,22 @@ func TestFindFixedPathsQueryQueryURLTemplate(t *testing.T) {
 		"source_amount",
 	}
 	expected := "/paths/strict-send{?" + strings.Join(params, ",") + "}"
-	accountsQuery := FindFixedPathsQuery{}
-	tt.Equal(expected, accountsQuery.URITemplate())
+	qp := FindFixedPathsQuery{}
+	tt.Equal(expected, qp.URITemplate())
+}
+
+func TestStrictReceivePathsQueryURLTemplate(t *testing.T) {
+	tt := assert.New(t)
+	params := []string{
+		"source_assets",
+		"source_account",
+		"destination_account",
+		"destination_asset_type",
+		"destination_asset_issuer",
+		"destination_asset_code",
+		"destination_amount",
+	}
+	expected := "/paths/strict-receive{?" + strings.Join(params, ",") + "}"
+	qp := StrictReceivePathsQuery{}
+	tt.Equal(expected, qp.URITemplate())
 }
