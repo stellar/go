@@ -87,3 +87,9 @@ func (cpo *CreatePassiveSellOffer) FromXDR(xdrOp xdr.Operation) error {
 func (cpo *CreatePassiveSellOffer) Validate() error {
 	return validatePassiveOffer(cpo.Buying, cpo.Selling, cpo.Amount, cpo.Price)
 }
+
+// GetSourceAccount returns the source account of the operation, or nil if not
+// set.
+func (cpo *CreatePassiveSellOffer) GetSourceAccount() Account {
+	return cpo.SourceAccount
+}
