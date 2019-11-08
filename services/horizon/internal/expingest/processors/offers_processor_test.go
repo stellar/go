@@ -157,37 +157,6 @@ func (s *OffersProcessorTestSuiteLedger) TestInsertOffer() {
 			}),
 		}, nil).Once()
 
-	// should be ignored because transaction was not successful
-	s.mockLedgerReader.On("Read").
-		Return(io.LedgerTransaction{
-			Result: xdr.TransactionResultPair{
-				Result: xdr.TransactionResult{
-					Result: xdr.TransactionResultResult{
-						Code: xdr.TransactionResultCodeTxFailed,
-					},
-				},
-			},
-			Meta: createTransactionMeta([]xdr.OperationMeta{
-				xdr.OperationMeta{
-					Changes: []xdr.LedgerEntryChange{
-						// State
-						xdr.LedgerEntryChange{
-							Type: xdr.LedgerEntryChangeTypeLedgerEntryCreated,
-							Created: &xdr.LedgerEntry{
-								Data: xdr.LedgerEntryData{
-									Type: xdr.LedgerEntryTypeOffer,
-									Offer: &xdr.OfferEntry{
-										OfferId: xdr.Int64(6),
-										Price:   xdr.Price{1, 2},
-									},
-								},
-							},
-						},
-					},
-				},
-			}),
-		}, nil).Once()
-
 	// add offer
 	offer := xdr.OfferEntry{
 		OfferId: xdr.Int64(2),
