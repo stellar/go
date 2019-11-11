@@ -232,7 +232,7 @@ func TestNextEffectsPage(t *testing.T) {
 	efp, err := client.Effects(effectRequest)
 
 	if assert.NoError(t, err) {
-		assert.Equal(t, len(efp.Embedded.Records), 2)
+		assert.Len(t, efp.Embedded.Records, 4)
 	}
 
 	hmock.On(
@@ -242,7 +242,7 @@ func TestNextEffectsPage(t *testing.T) {
 
 	nextPage, err := client.NextEffectsPage(efp)
 	if assert.NoError(t, err) {
-		assert.Equal(t, len(nextPage.Embedded.Records), 0)
+		assert.Len(t, nextPage.Embedded.Records, 0)
 	}
 }
 
@@ -304,6 +304,46 @@ var firstEffectsPage = `{
         "weight": 1,
         "public_key": "GCDIZFWLOTBWHTPODXCBH6XNXPFMSQFRVIDRP3JLEKQZN66G7NF3ANOD",
         "key": ""
+	  },
+	  {
+        "_links": {
+          "operation": {
+            "href": "https://horizon-testnet.stellar.org/operations/249108107265"
+          },
+          "succeeds": {
+            "href": "https://horizon-testnet.stellar.org/effects?order=desc\u0026cursor=249108107265-1"
+          },
+          "precedes": {
+            "href": "https://horizon-testnet.stellar.org/effects?order=asc\u0026cursor=249108107265-1"
+          }
+        },
+        "id": "0000000249108107265-0000000001",
+        "paging_token": "249108107265-1",
+        "account": "GCQZP3IU7XU6EJ63JZXKCQOYT2RNXN3HB5CNHENNUEUHSMA4VUJJJSEN",
+        "type": "sequence_bumped",
+        "type_i": 43,
+        "created_at": "2019-06-03T16:36:24Z",
+        "new_seq": 300000000000
+	  },
+	  {
+        "_links": {
+          "operation": {
+            "href": "https://horizon-testnet.stellar.org/operations/249108107266"
+          },
+          "succeeds": {
+            "href": "https://horizon-testnet.stellar.org/effects?order=desc\u0026cursor=249108107266-1"
+          },
+          "precedes": {
+            "href": "https://horizon-testnet.stellar.org/effects?order=asc\u0026cursor=249108107266-1"
+          }
+        },
+        "id": "0000000249108107266-0000000001",
+        "paging_token": "249108107266-1",
+        "account": "GCQZP3IU7XU6EJ63JZXKCQOYT2RNXN3HB5CNHENNUEUHSMA4VUJJJSEN",
+        "type": "sequence_bumped",
+        "type_i": 43,
+        "created_at": "2019-06-03T16:36:24Z",
+        "new_seq": "300000000000"
       }
     ]
   }
