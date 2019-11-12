@@ -60,3 +60,9 @@ func (md *ManageData) Validate() error {
 	}
 	return nil
 }
+
+// GetSourceAccount returns the source account of the operation, or nil if not
+// set.
+func (md *ManageData) GetSourceAccount() Account {
+	return md.SourceAccount
+}
