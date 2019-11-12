@@ -222,7 +222,7 @@ func (effect *SequenceBumped) UnmarshalJSON(data []byte) error {
 
 		effect.NewSeq = ns
 	} else {
-		// letting Unmarshal handle the convertion so we don't have to convert
+		// letting Unmarshal handle the conversion so we don't have to convert
 		// from interface{} to int64 which requires multiple checks.
 		if err := json.Unmarshal(data, &temp); err != nil {
 			return err
