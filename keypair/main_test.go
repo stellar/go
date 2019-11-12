@@ -1,6 +1,9 @@
 package keypair
 
 import (
+	"crypto/rand"
+	"errors"
+	"io"
 	"testing"
 
 	. "github.com/onsi/ginkgo"
@@ -104,3 +107,55 @@ var _ = DescribeTable("keypair.Parse()",
 		ErrCase:  HaveOccurred(),
 	}),
 )
+
+var _ = Describe("keypair.Random()", func() {
+	It("does not return the same value twice", func() {
+		seen := map[string]bool{}
+		for i := 0; i < 1000; i++ {
+			kp, err := Random()
+			Expect(err).To(BeNil())
+			seed := kp.Seed()
+			Expect(seen).ToNot(ContainElement(seed))
+			seen[seed] = true
+		}
+	})
+})
+
+type errReader struct {
+	Err error
+}
+
+func (r errReader) Read(_ []byte) (n int, err error) {
+	return 0, r.Err
+}
+
+var _ = Describe("keypair.MustRandom()", func() {
+	It("does not return the same value twice", func() {
+		seen := map[string]bool{}
+		for i := 0; i < 1000; i++ {
+			kp := MustRandom()
+			seed := kp.Seed()
+			Expect(seen).ToNot(ContainElement(seed))
+			seen[seed] = true
+		}
+	})
+
+	Describe("when error", func() {
+		var originalRandReader io.Reader
+		BeforeEach(func() {
+			originalRandReader = rand.Reader
+			rand.Reader = errReader{Err: errors.New("an error")}
+		})
+		AfterEach(func() {
+			rand.Reader = originalRandReader
+		})
+		It("panics", func() {
+			defer func() {
+				r := recover()
+				Expect(r).ToNot(BeNil())
+				Expect(r).To(Equal(errors.New("an error")))
+			}()
+			MustRandom()
+		})
+	})
+})
