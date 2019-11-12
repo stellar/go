@@ -124,12 +124,10 @@ func (p *DatabaseProcessor) ProcessLedger(ctx context.Context, store *pipeline.S
 			}
 		}
 
-		if transaction.Result.Result.Result.Code != xdr.TransactionResultCodeTxSuccess {
-			continue
-		}
-
 		switch p.Action {
 		case AccountsForSigner:
+			// Remember that it's possible that transaction can remove a preauth
+			// tx signer even when it's a failed transaction.
 			err := p.processLedgerAccountsForSigner(transaction)
 			if err != nil {
 				return errors.Wrap(err, "Error in processLedgerAccountsForSigner")
