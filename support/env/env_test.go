@@ -3,6 +3,7 @@ package env_test
 import (
 	"crypto/rand"
 	"encoding/hex"
+	"errors"
 	"os"
 	"testing"
 	"time"
@@ -61,6 +62,22 @@ func TestInt_notSet(t *testing.T) {
 	assert.Equal(t, 67890, value)
 }
 
+// TestInt_setInvalid tests that env.Int will panic if the set value cannot be
+// parsed as an integer.
+func TestInt_setInvalid(t *testing.T) {
+	envVar := randomEnvName(t)
+	err := os.Setenv(envVar, "1a345")
+	require.NoError(t, err)
+	defer os.Unsetenv(envVar)
+
+	wantPanic := errors.New(`env var "` + envVar + `" cannot be parsed as int: strconv.Atoi: parsing "1a345": invalid syntax`)
+	defer func() {
+		r := recover()
+		assert.Error(t, wantPanic, r)
+	}()
+	env.Int(envVar, 67890)
+}
+
 // TestDuration_set tests that env.Duration will return the value of the
 // environment variable as a time.Duration when the environment variable is
 // set to a duration string.
@@ -83,4 +100,20 @@ func TestDuration_notSet(t *testing.T) {
 	defaultValue := 5*time.Minute + 30*time.Second
 	value := env.Duration(envVar, defaultValue)
 	assert.Equal(t, defaultValue, value)
+}
+
+// TestDuration_setInvalid tests that env.Duration will panic if the value set
+// cannot be parsed as a duration.
+func TestDuration_setInvalid(t *testing.T) {
+	envVar := randomEnvName(t)
+	err := os.Setenv(envVar, "5q30s")
+	require.NoError(t, err)
+	defer os.Unsetenv(envVar)
+
+	wantPanic := errors.New(`env var "` + envVar + `" cannot be parsed as time.Duration: time: unknown unit q in duration 5q30s`)
+	defer func() {
+		r := recover()
+		assert.Error(t, wantPanic, r)
+	}()
+	env.Duration(envVar, 5*time.Minute+30*time.Second)
 }
