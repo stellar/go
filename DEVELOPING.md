@@ -100,3 +100,19 @@ go list -m all > go.list
 
 Note: `go list -m all` may show that the dependency is still being used. It will be possible that the dependency is still an indirect dependency. If it's important to understand why the dependency is still being used, use `go mod why <importpath>/...` and `go mod graph | grep <importpath>` to understand which modules are importing it.
 
+### Reviewing changes in dependencies
+
+When updating or adding dependencies it's critical that we review what the
+changes are in those dependencies that we are introducing into our builds. When
+dependencies change the diff for the `go.list` file may be too complex to
+understand. In those situations use the [golistcmp] tool to get a list of
+changing modules, as well as GitHub links for easy access to diff review.
+
+```
+git checkout master
+go list -m -json all > go.list.master
+git checkout <branch>
+golistcmp go.list.master <(go list -m -json all)
+```
+
+[golistcmp]: https://github.com/stellar/golistcmp

@@ -265,7 +265,7 @@ func migrations18_account_for_signersSql() (*asset, error) {
 		return nil, err
 	}
 
-	info := bindataFileInfo{name: "migrations/18_account_for_signers.sql", size: 481, mode: os.FileMode(0644), modTime: time.Unix(1565013256, 0)}
+	info := bindataFileInfo{name: "migrations/18_account_for_signers.sql", size: 481, mode: os.FileMode(0644), modTime: time.Unix(1572526795, 0)}
 	a := &asset{bytes: bytes, info: info, digest: [32]uint8{0x37, 0xdc, 0xe4, 0xb4, 0xd5, 0xcc, 0x53, 0xd9, 0x42, 0x8c, 0x12, 0x37, 0xcf, 0x13, 0x2c, 0x47, 0xe, 0xc7, 0xba, 0xe5, 0xc2, 0x17, 0x73, 0xe2, 0xc, 0xd2, 0x4a, 0xb3, 0x62, 0x75, 0x54, 0x7f}}
 	return a, nil
 }
@@ -285,7 +285,7 @@ func migrations19_offersSql() (*asset, error) {
 		return nil, err
 	}
 
-	info := bindataFileInfo{name: "migrations/19_offers.sql", size: 1064, mode: os.FileMode(0644), modTime: time.Unix(1567081172, 0)}
+	info := bindataFileInfo{name: "migrations/19_offers.sql", size: 1064, mode: os.FileMode(0644), modTime: time.Unix(1572526551, 0)}
 	a := &asset{bytes: bytes, info: info, digest: [32]uint8{0xbd, 0xff, 0xef, 0xfe, 0xb0, 0x5b, 0xa3, 0x92, 0xac, 0x9d, 0x98, 0x6c, 0xd4, 0x90, 0x9c, 0xe9, 0xae, 0x89, 0xfc, 0x54, 0x2b, 0xe3, 0x33, 0x1f, 0x0, 0xd6, 0x24, 0x9a, 0x1, 0xe1, 0xa6, 0x39}}
 	return a, nil
 }
@@ -305,7 +305,7 @@ func migrations1_initial_schemaSql() (*asset, error) {
 		return nil, err
 	}
 
-	info := bindataFileInfo{name: "migrations/1_initial_schema.sql", size: 9977, mode: os.FileMode(0644), modTime: time.Unix(1570452034, 0)}
+	info := bindataFileInfo{name: "migrations/1_initial_schema.sql", size: 9977, mode: os.FileMode(0644), modTime: time.Unix(1570634484, 0)}
 	a := &asset{bytes: bytes, info: info, digest: [32]uint8{0x6d, 0xdd, 0xc3, 0x1d, 0x39, 0xb7, 0x5e, 0x6a, 0x64, 0x2b, 0xd5, 0x66, 0x83, 0x61, 0x79, 0xf7, 0x59, 0xce, 0x51, 0x66, 0x3c, 0xd0, 0xf3, 0x14, 0x35, 0xcd, 0x21, 0xc0, 0xae, 0x24, 0x84, 0x35}}
 	return a, nil
 }
@@ -345,7 +345,7 @@ func migrations21_trades_remove_zero_amount_constraintsSql() (*asset, error) {
 		return nil, err
 	}
 
-	info := bindataFileInfo{name: "migrations/21_trades_remove_zero_amount_constraints.sql", size: 765, mode: os.FileMode(0644), modTime: time.Unix(1570453420, 0)}
+	info := bindataFileInfo{name: "migrations/21_trades_remove_zero_amount_constraints.sql", size: 765, mode: os.FileMode(0644), modTime: time.Unix(1570484588, 0)}
 	a := &asset{bytes: bytes, info: info, digest: [32]uint8{0x24, 0x1a, 0x4b, 0x15, 0xd5, 0xce, 0x4, 0xe9, 0x43, 0x61, 0x69, 0xce, 0xed, 0x82, 0x11, 0x4e, 0xc7, 0x58, 0xef, 0x4a, 0x46, 0xef, 0x2a, 0x28, 0x13, 0x5e, 0x59, 0xf0, 0x69, 0x50, 0x45, 0x84}}
 	return a, nil
 }
