@@ -1,10 +1,11 @@
 package env
 
 import (
-	"log"
 	"os"
 	"strconv"
 	"time"
+
+	"github.com/stellar/go/support/errors"
 )
 
 // String returns the value of the environment variable "name".
@@ -23,8 +24,7 @@ func Int(name string, value int) int {
 		var err error
 		value, err = strconv.Atoi(s)
 		if err != nil {
-			log.Println(name, err)
-			os.Exit(1)
+			panic(errors.Wrapf(err, "env var %q cannot be parsed as int", name))
 		}
 	}
 	return value
@@ -40,8 +40,7 @@ func Duration(name string, value time.Duration) time.Duration {
 		var err error
 		value, err = time.ParseDuration(s)
 		if err != nil {
-			log.Println(name, err)
-			os.Exit(1)
+			panic(errors.Wrapf(err, "env var %q cannot be parsed as time.Duration", name))
 		}
 	}
 	return value
