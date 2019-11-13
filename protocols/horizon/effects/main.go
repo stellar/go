@@ -198,7 +198,33 @@ type AccountFlagsUpdated struct {
 
 type SequenceBumped struct {
 	Base
+	// Action needed in release: horizon-v0.25.0: make new_seq as string
 	NewSeq int64 `json:"new_seq"`
+}
+
+// UnmarshalJSON is the custom unmarshal method for SequenceBumped. It allows
+// parsing of new_seq as a string or an int64.
+// Action needed in release: horizon-v0.25.0: Delete
+func (effect *SequenceBumped) UnmarshalJSON(data []byte) error {
+	var temp struct {
+		NewSeq json.Number `json:"new_seq"`
+	}
+
+	if err := json.Unmarshal(data, &effect.Base); err != nil {
+		return err
+	}
+
+	if err := json.Unmarshal(data, &temp); err != nil {
+		return err
+	}
+
+	newSeq, err := temp.NewSeq.Int64()
+	if err != nil {
+		return err
+	}
+	effect.NewSeq = newSeq
+
+	return nil
 }
 
 type SignerCreated struct {
@@ -254,11 +280,10 @@ type TrustlineDeauthorized struct {
 	AssetCode string `json:"asset_code,omitempty"`
 }
 
-type Trade struct {
-	Base
-	Seller string `json:"seller"`
-	// Action needed in release: horizon-v0.23.0
-	OfferID           int64  `json:"offer_id"`
+// Action needed in release: horizon-v0.25.0: move back to Trade, remove
+// embedded struct
+type tradeBase struct {
+	Seller            string `json:"seller"`
 	SoldAmount        string `json:"sold_amount"`
 	SoldAssetType     string `json:"sold_asset_type"`
 	SoldAssetCode     string `json:"sold_asset_code,omitempty"`
@@ -267,6 +292,37 @@ type Trade struct {
 	BoughtAssetType   string `json:"bought_asset_type"`
 	BoughtAssetCode   string `json:"bought_asset_code,omitempty"`
 	BoughtAssetIssuer string `json:"bought_asset_issuer,omitempty"`
+}
+
+type Trade struct {
+	Base
+	tradeBase
+	// Action needed in release: horizon-v0.25.0: Make offer_id a string
+	OfferID int64 `json:"offer_id"`
+}
+
+// UnmarshalJSON is the custom unmarshal method for Trade. It allows
+// parsing of offer_id as a string or an int64.
+// Action needed in release: horizon-v0.25.0: Delete
+func (effect *Trade) UnmarshalJSON(data []byte) error {
+	var tradeWithoutOfferID struct {
+		Base
+		tradeBase
+	}
+	if err := json.Unmarshal(data, &tradeWithoutOfferID); err != nil {
+		return err
+	}
+
+	offerID, err := base.ExtractOfferID(data)
+	if err != nil {
+		return err
+	}
+
+	effect.Base = tradeWithoutOfferID.Base
+	effect.tradeBase = tradeWithoutOfferID.tradeBase
+	effect.OfferID = offerID
+
+	return nil
 }
 
 // Effect contains methods that are implemented by all effect types.
