@@ -31,7 +31,7 @@ const stateVerifierExpectedIngestionVersion = 8
 // verifyState is called as a go routine from pipeline post hook every 64
 // ledgers. It checks if the state is correct. If another go routine is already
 // running it exists.
-func (s *System) verifyState() error {
+func (s *System) verifyState(graphOffers map[xdr.Int64]xdr.OfferEntry) error {
 	s.stateVerificationMutex.Lock()
 	if s.stateVerificationRunning {
 		log.Warn("State verification is already running...")
@@ -167,7 +167,7 @@ func (s *System) verifyState() error {
 			return errors.Wrap(err, "addDataToStateVerifier failed")
 		}
 
-		err = addOffersToStateVerifier(verifier, historyQ, offers)
+		err = addOffersToStateVerifier(verifier, historyQ, offers, graphOffers)
 		if err != nil {
 			return errors.Wrap(err, "addOffersToStateVerifier failed")
 		}
@@ -182,6 +182,15 @@ func (s *System) verifyState() error {
 	}
 
 	localLog.WithField("total", total).Info("Finished writing to StateVerifier")
+
+	if len(graphOffers) != 0 {
+		return verify.NewStateError(
+			fmt.Errorf(
+				"orderbook graph contains %v offers missing from HAS",
+				len(graphOffers),
+			),
+		)
+	}
 
 	countAccounts, err := historyQ.CountAccounts()
 	if err != nil {
@@ -384,7 +393,12 @@ func addDataToStateVerifier(verifier *verify.StateVerifier, q *history.Q, keys [
 	return nil
 }
 
-func addOffersToStateVerifier(verifier *verify.StateVerifier, q *history.Q, ids []int64) error {
+func addOffersToStateVerifier(
+	verifier *verify.StateVerifier,
+	q *history.Q,
+	ids []int64,
+	graphOffers map[xdr.Int64]xdr.OfferEntry,
+) error {
 	if len(ids) == 0 {
 		return nil
 	}
@@ -413,6 +427,21 @@ func addOffersToStateVerifier(verifier *verify.StateVerifier, q *history.Q, ids 
 				},
 			},
 		}
+		graphOffer, ok := graphOffers[row.OfferID]
+		if !ok {
+			return verify.NewStateError(
+				fmt.Errorf("offer %v is not in orderbook graph", row.OfferID),
+			)
+		}
+		if graphOffer != *entry.Data.Offer {
+			return verify.NewStateError(
+				fmt.Errorf(
+					"offer %v from db does not match offer in orderbook graph",
+					row.OfferID,
+				),
+			)
+		}
+		delete(graphOffers, row.OfferID)
 		err := verifier.Write(entry)
 		if err != nil {
 			return err
