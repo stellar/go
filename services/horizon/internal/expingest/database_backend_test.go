@@ -30,5 +30,5 @@ func TestGetLatestLedgerNotFound(t *testing.T) {
 	backend, err := ledgerbackend.NewDatabaseBackendFromSession(q.Session)
 	tt.Assert.NoError(err)
 	_, err = backend.GetLatestLedgerSequence()
-	tt.Assert.EqualError(err, "No ledgers found in ledgerheaders table")
+	tt.Assert.EqualError(err, "no ledgers exist in ledgerheaders table")
 }
