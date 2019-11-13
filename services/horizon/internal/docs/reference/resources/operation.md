@@ -300,7 +300,7 @@ Both will fill only partially (or not at all) if there are few (or no) offers th
   "selling_asset_type": "credit_alphanum4",
   "transaction_successful": true,
   "type_i": 3,
-  "type": "manage_offer" // `manage_sell_offer` from v0.18.0
+  "type": "manage_offer" // `manage_sell_offer` from v0.19.0
 }
 ```
 

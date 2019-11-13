@@ -1,285 +1,30 @@
 package horizonclient
 
 import (
-	"fmt"
+	"net/http"
 	"testing"
 	"time"
 
-	"github.com/stellar/go/txnbuild"
-
 	hProtocol "github.com/stellar/go/protocols/horizon"
+	"github.com/stellar/go/protocols/horizon/effects"
 	"github.com/stellar/go/protocols/horizon/operations"
+	"github.com/stellar/go/support/clock"
+	"github.com/stellar/go/support/clock/clocktest"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/support/http/httptest"
+	"github.com/stellar/go/txnbuild"
 	"github.com/stretchr/testify/assert"
 )
 
-func ExampleClient_AccountDetail() {
-
-	client := DefaultPublicNetClient
-	accountRequest := AccountRequest{AccountID: "GCLWGQPMKXQSPF776IU33AH4PZNOOWNAWGGKVTBQMIC5IMKUNP3E6NVU"}
-
-	account, err := client.AccountDetail(accountRequest)
-	if err != nil {
-		fmt.Println(err)
-		return
+func TestFixHTTP(t *testing.T) {
+	client := &Client{
+		HorizonURL: "https://localhost/",
 	}
-
-	fmt.Print(account)
-}
-
-func ExampleClient_Effects() {
-
-	client := DefaultPublicNetClient
-	// effects for an account
-	effectRequest := EffectRequest{ForAccount: "GCLWGQPMKXQSPF776IU33AH4PZNOOWNAWGGKVTBQMIC5IMKUNP3E6NVU"}
-	effect, err := client.Effects(effectRequest)
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	fmt.Print(effect)
-
-	// all effects
-	effectRequest = EffectRequest{}
-	effect, err = client.Effects(effectRequest)
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	fmt.Print(effect)
-}
-
-func ExampleClient_Assets() {
-
-	client := DefaultPublicNetClient
-	// assets for asset issuer
-	assetRequest := AssetRequest{ForAssetIssuer: "GCLWGQPMKXQSPF776IU33AH4PZNOOWNAWGGKVTBQMIC5IMKUNP3E6NVU"}
-	asset, err := client.Assets(assetRequest)
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	fmt.Print(asset)
-
-	// all assets
-	assetRequest = AssetRequest{}
-	asset, err = client.Assets(assetRequest)
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	fmt.Print(asset)
-}
-
-func ExampleClient_LedgerDetail() {
-
-	client := DefaultPublicNetClient
-	// details for a ledger
-	sequence := uint32(12345)
-	ledger, err := client.LedgerDetail(sequence)
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	fmt.Print(ledger)
-
-}
-
-func ExampleClient_Metrics() {
-
-	client := DefaultPublicNetClient
-	// horizon metrics
-	metrics, err := client.Metrics()
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	fmt.Print(metrics)
-
-}
-
-func ExampleClient_FeeStats() {
-
-	client := DefaultPublicNetClient
-	// horizon fees
-	fees, err := client.FeeStats()
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	fmt.Print(fees)
-
-}
-
-func ExampleClient_Offers() {
-
-	client := DefaultPublicNetClient
-	offerRequest := OfferRequest{ForAccount: "GCLWGQPMKXQSPF776IU33AH4PZNOOWNAWGGKVTBQMIC5IMKUNP3E6NVU", Cursor: "now", Order: OrderDesc}
-	offers, err := client.Offers(offerRequest)
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	fmt.Print(offers)
-}
-
-func ExampleClient_Operations() {
-
-	client := DefaultPublicNetClient
-	// operations for an account
-	opRequest := OperationRequest{ForAccount: "GCLWGQPMKXQSPF776IU33AH4PZNOOWNAWGGKVTBQMIC5IMKUNP3E6NVU"}
-	ops, err := client.Operations(opRequest)
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	fmt.Print(ops)
-
-	// all operations
-	opRequest = OperationRequest{Cursor: "now"}
-	ops, err = client.Operations(opRequest)
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	fmt.Print(ops)
-	records := ops.Embedded.Records
-
-	for _, value := range records {
-		// prints the type
-		fmt.Print(value.GetType())
-		// for example if the type is change_trust
-		c, ok := value.(operations.ChangeTrust)
-		if ok {
-			// access ChangeTrust fields
-			fmt.Print(c.Trustee)
-		}
-
-	}
-}
-
-func ExampleClient_OperationDetail() {
-
-	client := DefaultPublicNetClient
-	opID := "123456"
-	// operation details for an id
-	ops, err := client.OperationDetail(opID)
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	fmt.Print(ops)
-}
-
-func ExampleClient_SubmitTransactionXDR() {
-
-	client := DefaultPublicNetClient
-	// https://www.stellar.org/laboratory/#xdr-viewer?input=AAAAAOoS%2F5V%2BBiCPXRiVcz8YsnkDdODufq%2Bg7xdqTdIXN8vyAAAE4gFiW0YAAALxAAAAAQAAAAAAAAAAAAAAAFyuBUcAAAABAAAABzIyMjgyNDUAAAAAAQAAAAEAAAAALhsY%2FFdAHXllTmb025DtCVBw06WDSQjq6I9NrCQHOV8AAAABAAAAAHT8zKV7bRQzuGTpk9AO3gjWJ9jVxBXTgguFORkxHVIKAAAAAAAAAAAAOnDwAAAAAAAAAAIkBzlfAAAAQPefqlsOvni6xX1g3AqddvOp1GOM88JYzayGZodbzTfV5toyhxZvL1ZggY3prFsvrereugEpj1kyPJ67z6gcRg0XN8vyAAAAQGwmoTssW49gaze8iQkz%2FUA2E2N%2BBOo%2B6v7YdOSsvIcZnMc37KmXH920nLosKpDLqkNChVztSZFcbVUlHhjbQgA%3D&type=TransactionEnvelope&network=public
-	txXdr := `AAAAAOoS/5V+BiCPXRiVcz8YsnkDdODufq+g7xdqTdIXN8vyAAAE4gFiW0YAAALxAAAAAQAAAAAAAAAAAAAAAFyuBUcAAAABAAAABzIyMjgyNDUAAAAAAQAAAAEAAAAALhsY/FdAHXllTmb025DtCVBw06WDSQjq6I9NrCQHOV8AAAABAAAAAHT8zKV7bRQzuGTpk9AO3gjWJ9jVxBXTgguFORkxHVIKAAAAAAAAAAAAOnDwAAAAAAAAAAIkBzlfAAAAQPefqlsOvni6xX1g3AqddvOp1GOM88JYzayGZodbzTfV5toyhxZvL1ZggY3prFsvrereugEpj1kyPJ67z6gcRg0XN8vyAAAAQGwmoTssW49gaze8iQkz/UA2E2N+BOo+6v7YdOSsvIcZnMc37KmXH920nLosKpDLqkNChVztSZFcbVUlHhjbQgA=`
-
-	// submit transaction
-	resp, err := client.SubmitTransactionXDR(txXdr)
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-
-	fmt.Print(resp)
-	// Output: {{{https://horizon.stellar.org/transactions/f8a09e8a17fc828a1b99814818ddc931876eec0fe9c203f5980d26d92641e1c2 false}} f8a09e8a17fc828a1b99814818ddc931876eec0fe9c203f5980d26d92641e1c2 23350654 AAAAAOoS/5V+BiCPXRiVcz8YsnkDdODufq+g7xdqTdIXN8vyAAAE4gFiW0YAAALxAAAAAQAAAAAAAAAAAAAAAFyuBUcAAAABAAAABzIyMjgyNDUAAAAAAQAAAAEAAAAALhsY/FdAHXllTmb025DtCVBw06WDSQjq6I9NrCQHOV8AAAABAAAAAHT8zKV7bRQzuGTpk9AO3gjWJ9jVxBXTgguFORkxHVIKAAAAAAAAAAAAOnDwAAAAAAAAAAIkBzlfAAAAQPefqlsOvni6xX1g3AqddvOp1GOM88JYzayGZodbzTfV5toyhxZvL1ZggY3prFsvrereugEpj1kyPJ67z6gcRg0XN8vyAAAAQGwmoTssW49gaze8iQkz/UA2E2N+BOo+6v7YdOSsvIcZnMc37KmXH920nLosKpDLqkNChVztSZFcbVUlHhjbQgA= AAAAAAAABOIAAAAAAAAAAQAAAAAAAAABAAAAAAAAAAA= AAAAAQAAAAIAAAADAWRNfgAAAAAAAAAA6hL/lX4GII9dGJVzPxiyeQN04O5+r6DvF2pN0hc3y/IAAAAAAuyTvgFiW0YAAALwAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAABAWRNfgAAAAAAAAAA6hL/lX4GII9dGJVzPxiyeQN04O5+r6DvF2pN0hc3y/IAAAAAAuyTvgFiW0YAAALxAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAABAAAABAAAAAMBZE0IAAAAAAAAAAB0/Myle20UM7hk6ZPQDt4I1ifY1cQV04ILhTkZMR1SCgAAAbZToYkOAToKfwAAAAEAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAEBZE1+AAAAAAAAAAB0/Myle20UM7hk6ZPQDt4I1ifY1cQV04ILhTkZMR1SCgAAAbZT2/n+AToKfwAAAAEAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAMBZE19AAAAAAAAAAAuGxj8V0AdeWVOZvTbkO0JUHDTpYNJCOroj02sJAc5XwAAAACrUfjvARGUKgAApRsAAAAAAAAAAAAAAAAAAAAObnlhbmRldi1pZC5vcmcAAAEAAAAAAAAAAAAAAAAAAAAAAAABAWRNfgAAAAAAAAAALhsY/FdAHXllTmb025DtCVBw06WDSQjq6I9NrCQHOV8AAAAAqxeH/wERlCoAAKUbAAAAAAAAAAAAAAAAAAAADm55YW5kZXYtaWQub3JnAAABAAAAAAAAAAAAAAAAAAAA}
-}
-
-func ExampleClient_SetHorizonTimeOut() {
-
-	client := DefaultTestNetClient
-
-	// https://www.stellar.org/laboratory/#xdr-viewer?input=AAAAABB90WssODNIgi6BHveqzxTRmIpvAFRyVNM%2BHm2GVuCcAAAAZAAABD0AAuV%2FAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAyTBGxOgfSApppsTnb%2FYRr6gOR8WT0LZNrhLh4y3FCgoAAAAXSHboAAAAAAAAAAABhlbgnAAAAEAivKe977CQCxMOKTuj%2BcWTFqc2OOJU8qGr9afrgu2zDmQaX5Q0cNshc3PiBwe0qw%2F%2BD%2FqJk5QqM5dYeSUGeDQP&type=TransactionEnvelope&network=test
-	txXdr := `AAAAABB90WssODNIgi6BHveqzxTRmIpvAFRyVNM+Hm2GVuCcAAAAZAAABD0AAuV/AAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAyTBGxOgfSApppsTnb/YRr6gOR8WT0LZNrhLh4y3FCgoAAAAXSHboAAAAAAAAAAABhlbgnAAAAEAivKe977CQCxMOKTuj+cWTFqc2OOJU8qGr9afrgu2zDmQaX5Q0cNshc3PiBwe0qw/+D/qJk5QqM5dYeSUGeDQP`
-
-	// test user timeout
-	client = client.SetHorizonTimeOut(30)
-	resp, err := client.SubmitTransactionXDR(txXdr)
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-
-	fmt.Print(resp)
-}
-
-func ExampleClient_Transactions() {
-
-	client := DefaultPublicNetClient
-	// transactions for an account
-	txRequest := TransactionRequest{ForAccount: "GCLWGQPMKXQSPF776IU33AH4PZNOOWNAWGGKVTBQMIC5IMKUNP3E6NVU"}
-	txs, err := client.Transactions(txRequest)
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	fmt.Print(txs)
-
-	// all transactions
-	txRequest = TransactionRequest{Cursor: "now", Order: OrderDesc}
-	txs, err = client.Transactions(txRequest)
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	fmt.Print(txs)
-	records := txs.Embedded.Records
-
-	for _, tx := range records {
-		fmt.Print(tx)
-	}
-}
-
-func ExampleClient_OrderBook() {
-
-	client := DefaultPublicNetClient
-	// orderbook for an asset pair, e.g XLM/NGN
-	obRequest := OrderBookRequest{BuyingAssetType: AssetTypeNative, SellingAssetCode: "USD", SellingAssetType: AssetType4, SellingAssetIssuer: "GCLWGQPMKXQSPF776IU33AH4PZNOOWNAWGGKVTBQMIC5IMKUNP3E6NVU"}
-	obs, err := client.OrderBook(obRequest)
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	fmt.Print(obs)
-}
-
-func ExampleClient_Payments() {
-
-	client := DefaultPublicNetClient
-	// payments for an account
-	opRequest := OperationRequest{ForAccount: "GCLWGQPMKXQSPF776IU33AH4PZNOOWNAWGGKVTBQMIC5IMKUNP3E6NVU"}
-	ops, err := client.Payments(opRequest)
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	fmt.Print(ops)
-
-	// all payments
-	opRequest = OperationRequest{Cursor: "now"}
-	ops, err = client.Payments(opRequest)
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	fmt.Print(ops)
-	records := ops.Embedded.Records
-
-	for _, value := range records {
-		// prints the type
-		fmt.Print(value.GetType())
-		// for example if the type is create_account
-		c, ok := value.(operations.CreateAccount)
-		if ok {
-			// access create_account fields
-			fmt.Print(c.StartingBalance)
-		}
-
-	}
+	// No HTTP client is provided
+	assert.Nil(t, client.HTTP, "client HTTP is nil")
+	client.Root()
+	// When a request is made, default HTTP client is set
+	assert.IsType(t, client.HTTP, &http.Client{})
 }
 
 func TestAccountDetail(t *testing.T) {
@@ -327,12 +72,11 @@ func TestAccountDetail(t *testing.T) {
 
 	if assert.NoError(t, err) {
 		assert.Equal(t, account.ID, "GCLWGQPMKXQSPF776IU33AH4PZNOOWNAWGGKVTBQMIC5IMKUNP3E6NVU")
-		assert.Equal(t, account.PT, "1")
 		assert.Equal(t, account.Signers[0].Key, "GCLWGQPMKXQSPF776IU33AH4PZNOOWNAWGGKVTBQMIC5IMKUNP3E6NVU")
 		assert.Equal(t, account.Signers[0].Type, "ed25519_public_key")
 		assert.Equal(t, account.Data["test"], "dGVzdA==")
-		balance, err := account.GetNativeBalance()
-		assert.Nil(t, err)
+		balance, balanceErr := account.GetNativeBalance()
+		assert.Nil(t, balanceErr)
 		assert.Equal(t, balance, "9999.9999900")
 	}
 
@@ -427,10 +171,30 @@ func TestEffectsRequest(t *testing.T) {
 		"https://localhost/effects",
 	).ReturnString(200, effectsResponse)
 
-	effects, err := client.Effects(effectRequest)
+	effs, err := client.Effects(effectRequest)
 	if assert.NoError(t, err) {
-		assert.IsType(t, effects, hProtocol.EffectsPage{})
+		assert.IsType(t, effs, effects.EffectsPage{})
+		links := effs.Links
+		assert.Equal(t, links.Self.Href, "https://horizon-testnet.stellar.org/operations/43989725060534273/effects?cursor=&limit=10&order=asc")
 
+		assert.Equal(t, links.Next.Href, "https://horizon-testnet.stellar.org/operations/43989725060534273/effects?cursor=43989725060534273-3&limit=10&order=asc")
+
+		assert.Equal(t, links.Prev.Href, "https://horizon-testnet.stellar.org/operations/43989725060534273/effects?cursor=43989725060534273-1&limit=10&order=desc")
+
+		adEffect := effs.Embedded.Records[0]
+		acEffect := effs.Embedded.Records[1]
+		arEffect := effs.Embedded.Records[2]
+		assert.IsType(t, adEffect, effects.AccountDebited{})
+		assert.IsType(t, acEffect, effects.AccountCredited{})
+		// account_removed effect does not have a struct. Defaults to effects.Base
+		assert.IsType(t, arEffect, effects.Base{})
+
+		c, ok := acEffect.(effects.AccountCredited)
+		assert.Equal(t, ok, true)
+		assert.Equal(t, c.ID, "0043989725060534273-0000000002")
+		assert.Equal(t, c.Amount, "9999.9999900")
+		assert.Equal(t, c.Account, "GBO7LQUWCC7M237TU2PAXVPOLLYNHYCYYFCLVMX3RBJCML4WA742X3UB")
+		assert.Equal(t, c.Asset.Type, "native")
 	}
 
 	effectRequest = EffectRequest{ForAccount: "GCLWGQPMKXQSPF776IU33AH4PZNOOWNAWGGKVTBQMIC5IMKUNP3E6NVU"}
@@ -439,9 +203,9 @@ func TestEffectsRequest(t *testing.T) {
 		"https://localhost/accounts/GCLWGQPMKXQSPF776IU33AH4PZNOOWNAWGGKVTBQMIC5IMKUNP3E6NVU/effects",
 	).ReturnString(200, effectsResponse)
 
-	effects, err = client.Effects(effectRequest)
+	effs, err = client.Effects(effectRequest)
 	if assert.NoError(t, err) {
-		assert.IsType(t, effects, hProtocol.EffectsPage{})
+		assert.IsType(t, effs, effects.EffectsPage{})
 	}
 
 	// too many parameters
@@ -456,7 +220,6 @@ func TestEffectsRequest(t *testing.T) {
 	if assert.Error(t, err) {
 		assert.Contains(t, err.Error(), "too many parameters")
 	}
-
 }
 
 func TestAssetsRequest(t *testing.T) {
@@ -626,12 +389,12 @@ func TestOperationsRequest(t *testing.T) {
 		HTTP:       hmock,
 	}
 
-	operationRequest := OperationRequest{}
+	operationRequest := OperationRequest{Join: "transactions"}
 
 	// all operations
 	hmock.On(
 		"GET",
-		"https://localhost/operations",
+		"https://localhost/operations?join=transactions",
 	).ReturnString(200, multipleOpsResponse)
 
 	ops, err := client.Operations(operationRequest)
@@ -661,7 +424,7 @@ func TestOperationsRequest(t *testing.T) {
 	// all payments
 	hmock.On(
 		"GET",
-		"https://localhost/payments",
+		"https://localhost/payments?join=transactions",
 	).ReturnString(200, paymentsResponse)
 
 	ops, err = client.Payments(operationRequest)
@@ -912,19 +675,46 @@ func TestOrderBookRequest(t *testing.T) {
 }
 
 func TestFetchTimebounds(t *testing.T) {
-	client := DefaultPublicNetClient
-	_, err := client.Metrics()
+	hmock := httptest.NewClient()
+	client := &Client{
+		HorizonURL: "https://localhost/",
+		HTTP:       hmock,
+		clock: &clock.Clock{
+			Source: clocktest.FixedSource(time.Unix(1560947096, 0)),
+		},
+	}
 
+	// When no saved server time, return local time
 	st, err := client.FetchTimebounds(100)
 	if assert.NoError(t, err) {
-		assert.IsType(t, ServerTimeMap["horizon.stellar.org"], ServerTimeRecord{})
+		assert.IsType(t, ServerTimeMap["localhost"], ServerTimeRecord{})
 		assert.Equal(t, st.MinTime, int64(0))
 	}
 
-	newRecord := ServerTimeRecord{ServerTime: 100, LocalTimeRecorded: time.Now().UTC().Unix()}
+	// server time is saved on requests to horizon
+	header := http.Header{}
+	header.Add("Date", "Wed, 19 Jun 2019 12:24:56 GMT") //unix time: 1560947096
+	hmock.On(
+		"GET",
+		"https://localhost/metrics",
+	).ReturnStringWithHeader(200, metricsResponse, header)
+	_, err = client.Metrics()
+	assert.NoError(t, err)
 
-	ServerTimeMap["horizon.stellar.org"] = newRecord
+	// get saved server time
 	st, err = client.FetchTimebounds(100)
+	if assert.NoError(t, err) {
+		assert.IsType(t, ServerTimeMap["localhost"], ServerTimeRecord{})
+		assert.Equal(t, st.MinTime, int64(0))
+		// serverTime + 100seconds
+		assert.Equal(t, st.MaxTime, int64(1560947196))
+	}
+
+	// mock server time
+	newRecord := ServerTimeRecord{ServerTime: 100, LocalTimeRecorded: 1560947096}
+	ServerTimeMap["localhost"] = newRecord
+	st, err = client.FetchTimebounds(100)
+	assert.NoError(t, err)
 	assert.IsType(t, st, txnbuild.Timebounds{})
 	assert.Equal(t, st.MinTime, int64(0))
 	// time should be 200, serverTime + 100seconds

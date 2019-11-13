@@ -8,6 +8,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"log"
@@ -15,6 +16,7 @@ import (
 	"path"
 	"regexp"
 	"strconv"
+	"strings"
 	"sync"
 )
 
@@ -31,17 +33,38 @@ type CommandOptions struct {
 }
 
 type ConnectOptions struct {
-	S3Region   string
-	S3Endpoint string
+	S3Region         string
+	S3Endpoint       string
+	UnsignedRequests bool
 }
 
 type ArchiveBackend interface {
-	Exists(path string) bool
+	Exists(path string) (bool, error)
+	Size(path string) (int64, error)
 	GetFile(path string) (io.ReadCloser, error)
 	PutFile(path string, in io.ReadCloser) error
 	ListFiles(path string) (chan string, chan error)
 	CanListFiles() bool
 }
+
+type ArchiveInterface interface {
+	GetPathHAS(path string) (HistoryArchiveState, error)
+	PutPathHAS(path string, has HistoryArchiveState, opts *CommandOptions) error
+	BucketExists(bucket Hash) (bool, error)
+	CategoryCheckpointExists(cat string, chk uint32) (bool, error)
+	GetRootHAS() (HistoryArchiveState, error)
+	GetCheckpointHAS(chk uint32) (HistoryArchiveState, error)
+	PutCheckpointHAS(chk uint32, has HistoryArchiveState, opts *CommandOptions) error
+	PutRootHAS(has HistoryArchiveState, opts *CommandOptions) error
+	ListBucket(dp DirPrefix) (chan string, chan error)
+	ListAllBuckets() (chan string, chan error)
+	ListAllBucketHashes() (chan Hash, chan error)
+	ListCategoryCheckpoints(cat string, pth string) (chan uint32, chan error)
+	GetXdrStreamForHash(hash Hash) (*XdrStream, error)
+	GetXdrStream(pth string) (*XdrStream, error)
+}
+
+var _ ArchiveInterface = &Archive{}
 
 type Archive struct {
 	mutex             sync.Mutex
@@ -56,7 +79,6 @@ type Archive struct {
 	expectTxResultSetHashes map[uint32]Hash
 	actualTxResultSetHashes map[uint32]Hash
 
-	missingBuckets int
 	invalidBuckets int
 
 	invalidLedgers      int
@@ -79,7 +101,11 @@ func (a *Archive) GetPathHAS(path string) (HistoryArchiveState, error) {
 }
 
 func (a *Archive) PutPathHAS(path string, has HistoryArchiveState, opts *CommandOptions) error {
-	if a.backend.Exists(path) && !opts.Force {
+	exists, err := a.backend.Exists(path)
+	if err != nil {
+		return err
+	}
+	if exists && !opts.Force {
 		log.Printf("skipping existing " + path)
 		return nil
 	}
@@ -91,11 +117,11 @@ func (a *Archive) PutPathHAS(path string, has HistoryArchiveState, opts *Command
 		ioutil.NopCloser(bytes.NewReader(buf)))
 }
 
-func (a *Archive) BucketExists(bucket Hash) bool {
+func (a *Archive) BucketExists(bucket Hash) (bool, error) {
 	return a.backend.Exists(BucketPath(bucket))
 }
 
-func (a *Archive) CategoryCheckpointExists(cat string, chk uint32) bool {
+func (a *Archive) CategoryCheckpointExists(cat string, chk uint32) (bool, error) {
 	return a.backend.Exists(CategoryCheckpointPath(cat, chk))
 }
 
@@ -169,6 +195,29 @@ func (a *Archive) ListCategoryCheckpoints(cat string, pth string) (chan uint32, 
 	return ch, errs
 }
 
+func (a *Archive) GetBucketPathForHash(hash Hash) string {
+	return fmt.Sprintf(
+		"bucket/%s/bucket-%s.xdr.gz",
+		HashPrefix(hash).Path(),
+		hash.String(),
+	)
+}
+
+func (a *Archive) GetXdrStreamForHash(hash Hash) (*XdrStream, error) {
+	return a.GetXdrStream(a.GetBucketPathForHash(hash))
+}
+
+func (a *Archive) GetXdrStream(pth string) (*XdrStream, error) {
+	if !strings.HasSuffix(pth, ".xdr.gz") {
+		return nil, errors.New("File has non-.xdr.gz suffix: " + pth)
+	}
+	rdr, err := a.backend.GetFile(pth)
+	if err != nil {
+		return nil, err
+	}
+	return NewXdrGzStream(rdr)
+}
+
 func Connect(u string, opts ConnectOptions) (*Archive, error) {
 	arch := Archive{
 		checkpointFiles:         make(map[string](map[uint32]bool)),
@@ -184,6 +233,11 @@ func Connect(u string, opts ConnectOptions) (*Archive, error) {
 	for _, cat := range Categories() {
 		arch.checkpointFiles[cat] = make(map[uint32]bool)
 	}
+
+	if u == "" {
+		return &arch, errors.New("URL is empty")
+	}
+
 	parsed, err := url.Parse(u)
 	if err != nil {
 		return &arch, err
@@ -198,7 +252,7 @@ func Connect(u string, opts ConnectOptions) (*Archive, error) {
 	} else if parsed.Scheme == "file" {
 		pth = path.Join(parsed.Host, pth)
 		arch.backend = makeFsBackend(pth, opts)
-	} else if parsed.Scheme == "http" {
+	} else if parsed.Scheme == "http" || parsed.Scheme == "https" {
 		arch.backend = makeHttpBackend(parsed, opts)
 	} else if parsed.Scheme == "mock" {
 		arch.backend = makeMockBackend(opts)

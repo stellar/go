@@ -26,6 +26,30 @@ func (q *Q) TransactionByHash(dest interface{}, hash string) error {
 	return q.Get(dest, sql)
 }
 
+// TransactionsByIDs fetches transactions from the `history_transactions` table
+// which match the given ids
+func (q *Q) TransactionsByIDs(ids ...int64) (map[int64]Transaction, error) {
+	if len(ids) == 0 {
+		return nil, errors.New("no id arguments provided")
+	}
+
+	sql := selectTransaction.Where(map[string]interface{}{
+		"ht.id": ids,
+	})
+
+	var transactions []Transaction
+	if err := q.Select(&transactions, sql); err != nil {
+		return nil, err
+	}
+
+	byID := map[int64]Transaction{}
+	for _, transaction := range transactions {
+		byID[transaction.TotalOrderID.ID] = transaction
+	}
+
+	return byID, nil
+}
+
 // Transactions provides a helper to filter rows from the `history_transactions`
 // table with pre-defined filters.  See `TransactionsQ` methods for the
 // available filters.
@@ -94,7 +118,7 @@ func (q *TransactionsQ) Select(dest interface{}) error {
 		return q.Err
 	}
 
-	if q.includeFailed == false {
+	if !q.includeFailed {
 		q.sql = q.sql.
 			Where("(ht.successful = true OR ht.successful IS NULL)")
 	}
@@ -146,7 +170,10 @@ var selectTransaction = sq.Select(
 		"ht.application_order, " +
 		"ht.account, " +
 		"ht.account_sequence, " +
-		"ht.fee_paid, " +
+		"ht.max_fee, " +
+		// `fee_charged` is NULL by default, DB needs to be reingested
+		// to populate the value. If value is not present display `max_fee`.
+		"COALESCE(ht.fee_charged, ht.max_fee) as fee_charged, " +
 		"ht.operation_count, " +
 		"ht.tx_envelope, " +
 		"ht.tx_result, " +

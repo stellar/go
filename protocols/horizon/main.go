@@ -3,15 +3,13 @@
 package horizon
 
 import (
+	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"strconv"
 	"time"
 
-	"encoding/base64"
-	"encoding/json"
-
 	"github.com/stellar/go/protocols/horizon/base"
-	"github.com/stellar/go/protocols/horizon/effects"
 	"github.com/stellar/go/strkey"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/support/render/hal"
@@ -40,7 +38,8 @@ type Account struct {
 		Data         hal.Link `json:"data"`
 	} `json:"_links"`
 
-	HistoryAccount
+	ID                   string            `json:"id"`
+	AccountID            string            `json:"account_id"`
 	Sequence             string            `json:"sequence"`
 	SubentryCount        int32             `json:"subentry_count"`
 	InflationDestination string            `json:"inflation_destination,omitempty"`
@@ -123,6 +122,23 @@ func (a *Account) GetData(key string) ([]byte, error) {
 	return base64.StdEncoding.DecodeString(a.Data[key])
 }
 
+// AccountSigner is the account signer information.
+type AccountSigner struct {
+	Links struct {
+		Account hal.Link `json:"account"`
+	} `json:"_links"`
+
+	ID        string `json:"id"`
+	AccountID string `json:"account_id"`
+	PT        string `json:"paging_token"`
+	Signer    `json:"signer"`
+}
+
+// PagingToken implementation for hal.Pageable
+func (res AccountSigner) PagingToken() string {
+	return res.PT
+}
+
 // AccountFlags represents the state of an account's flags
 type AccountFlags struct {
 	AuthRequired  bool `json:"auth_required"`
@@ -170,14 +186,6 @@ type Balance struct {
 	base.Asset
 }
 
-// HistoryAccount is a simple resource, used for the account collection actions.
-// It provides only the "TotalOrderID" of the account and its account id.
-type HistoryAccount struct {
-	ID        string `json:"id"`
-	PT        string `json:"paging_token"`
-	AccountID string `json:"account_id"`
-}
-
 // Ledger represents a single closed ledger
 type Ledger struct {
 	Links struct {
@@ -216,6 +224,7 @@ type Offer struct {
 		OfferMaker hal.Link `json:"offer_maker"`
 	} `json:"_links"`
 
+	// Action needed in release: horizon-v0.23.0
 	ID                 int64      `json:"id"`
 	PT                 string     `json:"paging_token"`
 	Seller             string     `json:"seller"`
@@ -272,10 +281,13 @@ type PriceLevel struct {
 type Root struct {
 	Links struct {
 		Account             hal.Link  `json:"account"`
+		Accounts            *hal.Link `json:"accounts,omitempty"`
 		AccountTransactions hal.Link  `json:"account_transactions"`
 		Assets              hal.Link  `json:"assets"`
 		Friendbot           *hal.Link `json:"friendbot,omitempty"`
 		Metrics             hal.Link  `json:"metrics"`
+		Offer               *hal.Link `json:"offer,omitempty"`
+		Offers              *hal.Link `json:"offers,omitempty"`
 		OrderBook           hal.Link  `json:"order_book"`
 		Self                hal.Link  `json:"self"`
 		Transaction         hal.Link  `json:"transaction"`
@@ -284,6 +296,7 @@ type Root struct {
 
 	HorizonVersion               string `json:"horizon_version"`
 	StellarCoreVersion           string `json:"core_version"`
+	ExpHorizonSequence           uint32 `json:"exp_history_latest_ledger,omitempty"`
 	HorizonSequence              int32  `json:"history_latest_ledger"`
 	HistoryElderSequence         int32  `json:"history_elder_ledger"`
 	CoreSequence                 int32  `json:"core_latest_ledger"`
@@ -363,7 +376,9 @@ type TradeEffect struct {
 
 // TradeAggregation represents trade data aggregation over a period of time
 type TradeAggregation struct {
-	Timestamp     int64     `json:"timestamp"`
+	// Action needed in release: horizon-v0.22.0
+	Timestamp int64 `json:"timestamp"`
+	// Action needed in release: horizon-v0.22.0
 	TradeCount    int64     `json:"trade_count"`
 	BaseVolume    string    `json:"base_volume"`
 	CounterVolume string    `json:"counter_volume"`
@@ -402,17 +417,22 @@ type Transaction struct {
 	LedgerCloseTime time.Time `json:"created_at"`
 	Account         string    `json:"source_account"`
 	AccountSequence string    `json:"source_account_sequence"`
-	FeePaid         int32     `json:"fee_paid"`
-	OperationCount  int32     `json:"operation_count"`
-	EnvelopeXdr     string    `json:"envelope_xdr"`
-	ResultXdr       string    `json:"result_xdr"`
-	ResultMetaXdr   string    `json:"result_meta_xdr"`
-	FeeMetaXdr      string    `json:"fee_meta_xdr"`
-	MemoType        string    `json:"memo_type"`
-	Memo            string    `json:"memo,omitempty"`
-	Signatures      []string  `json:"signatures"`
-	ValidAfter      string    `json:"valid_after,omitempty"`
-	ValidBefore     string    `json:"valid_before,omitempty"`
+	// Action needed in release: horizon-v0.23.0
+	// Action needed in release: horizonclient-v2.0.0
+	// Remove this field.
+	FeePaid        int32    `json:"fee_paid"`
+	FeeCharged     int32    `json:"fee_charged"`
+	MaxFee         int32    `json:"max_fee"`
+	OperationCount int32    `json:"operation_count"`
+	EnvelopeXdr    string   `json:"envelope_xdr"`
+	ResultXdr      string   `json:"result_xdr"`
+	ResultMetaXdr  string   `json:"result_meta_xdr"`
+	FeeMetaXdr     string   `json:"fee_meta_xdr"`
+	MemoType       string   `json:"memo_type"`
+	Memo           string   `json:"memo,omitempty"`
+	Signatures     []string `json:"signatures"`
+	ValidAfter     string   `json:"valid_after,omitempty"`
+	ValidBefore    string   `json:"valid_before,omitempty"`
 }
 
 // MarshalJSON implements a custom marshaler for Transaction.
@@ -500,13 +520,6 @@ func MustKeyTypeFromAddress(address string) string {
 // AccountData represents a single data object stored on by an account
 type AccountData struct {
 	Value string `json:"value"`
-}
-
-// EffectsPage contains page of effects returned by Horizon.
-type EffectsPage struct {
-	Embedded struct {
-		Records []effects.Base
-	} `json:"_embedded"`
 }
 
 // TradeAggregationsPage returns a list of aggregated trade records, aggregated by resolution

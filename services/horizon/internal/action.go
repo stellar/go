@@ -6,16 +6,21 @@ import (
 	"net/url"
 	"strings"
 
+	"github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/services/horizon/internal/actions"
+	"github.com/stellar/go/services/horizon/internal/db2"
 	"github.com/stellar/go/services/horizon/internal/db2/core"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/services/horizon/internal/httpx"
 	"github.com/stellar/go/services/horizon/internal/ledger"
-	"github.com/stellar/go/services/horizon/internal/render/problem"
+	hProblem "github.com/stellar/go/services/horizon/internal/render/problem"
 	"github.com/stellar/go/services/horizon/internal/render/sse"
+	"github.com/stellar/go/services/horizon/internal/resourceadapter"
 	"github.com/stellar/go/services/horizon/internal/toid"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/support/log"
+	"github.com/stellar/go/support/render/httpjson"
+	"github.com/stellar/go/support/render/problem"
 )
 
 // Action is the "base type" for all actions in horizon.  It provides
@@ -120,7 +125,7 @@ func (action *Action) ValidateCursorWithinHistory() {
 	elder := toid.New(ledger.CurrentState().HistoryElder, 0, 0)
 
 	if cursor <= elder.ToInt64() {
-		action.Err = &problem.BeforeHistory
+		action.Err = &hProblem.BeforeHistory
 	}
 }
 
@@ -132,7 +137,7 @@ func (action *Action) EnsureHistoryFreshness() {
 
 	if action.App.IsHistoryStale() {
 		ls := ledger.CurrentState()
-		err := problem.StaleHistory
+		err := hProblem.StaleHistory
 		err.Extras = map[string]interface{}{
 			"history_latest_ledger": ls.HistoryLatest,
 			"core_latest_ledger":    ls.CoreLatest,
@@ -155,43 +160,97 @@ func (action *Action) baseURL() *url.URL {
 	return httpx.BaseURL(action.R.Context())
 }
 
-// getAccountInfo returns the information about an account based on the provided param.
-// The expected param here is the account id, which has a string type.
-func (w *web) getAccountInfo(ctx context.Context, param interface{}) (interface{}, error) {
-	addr, ok := param.(string)
-	if !ok {
-		return nil, errors.New("Invalid param type for getAccountInfo func")
-	}
-
-	return actions.AccountInfo(ctx, &core.Q{w.coreSession(ctx)}, addr)
+// Fields of this struct are exported for json marshaling/unmarshaling in
+// support/render/hal package.
+type indexActionQueryParams struct {
+	AccountID        string
+	LedgerID         int32
+	PagingParams     db2.PageQuery
+	IncludeFailedTxs bool
+	Signer           string
 }
 
-// getTransactionPageByAccount returns a page containing the transaction records of an account.
-// The expected param here is a pointer to TransactionParams.
-func (w *web) getTransactionPageByAccount(ctx context.Context, params interface{}) (interface{}, error) {
-	tp, ok := params.(*actions.TransactionParams)
-	if !ok {
-		return nil, errors.New("Invalid param type for getTransactionPageByAccount func")
-	}
+// Fields of this struct are exported for json marshaling/unmarshaling in
+// support/render/hal package.
+type showActionQueryParams struct {
+	AccountID string
+	TxHash    string
+}
+
+// getAccountInfo returns the information about an account based on the provided param.
+func (w *web) getAccountInfo(ctx context.Context, qp *showActionQueryParams) (interface{}, error) {
+	return actions.AccountInfo(ctx, &core.Q{w.coreSession(ctx)}, qp.AccountID)
+}
+
+// getAccountPage returns a page containing the account records.
+func (w *web) getAccountPage(ctx context.Context, qp *indexActionQueryParams) (interface{}, error) {
 	horizonSession, err := w.horizonSession(ctx)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting horizon db session")
 	}
 
-	return actions.TransactionPageByAccount(ctx, &history.Q{horizonSession}, tp.AccountFilter, tp.IncludeFailed, tp.PagingParams)
+	return actions.AccountPage(ctx, &history.Q{horizonSession}, qp.Signer, qp.PagingParams)
 }
 
-// streamTransactionByAccount streams the transaction records of an account.
-// The expected param here is a pointer to TransactionParams.
-func (w *web) streamTransactionByAccount(ctx context.Context, s *sse.Stream, params interface{}) error {
-	tp, ok := params.(*actions.TransactionParams)
-	if !ok {
-		return errors.New("Invalid param type for streamTransactionByAccount func")
+// getTransactionPage returns a page containing the transaction records of an account or a ledger.
+func (w *web) getTransactionPage(ctx context.Context, qp *indexActionQueryParams) (interface{}, error) {
+	horizonSession, err := w.horizonSession(ctx)
+	if err != nil {
+		return nil, errors.Wrap(err, "getting horizon db session")
 	}
+
+	return actions.TransactionPage(ctx, &history.Q{horizonSession}, qp.AccountID, qp.LedgerID, qp.IncludeFailedTxs, qp.PagingParams)
+}
+
+// getTransactionRecord returns a single transaction resource.
+func (w *web) getTransactionResource(ctx context.Context, qp *showActionQueryParams) (interface{}, error) {
+	horizonSession, err := w.horizonSession(ctx)
+	if err != nil {
+		return nil, errors.Wrap(err, "getting horizon db session")
+	}
+
+	return actions.TransactionResource(ctx, &history.Q{horizonSession}, qp.TxHash)
+}
+
+// streamTransactions streams the transaction records of an account or a ledger.
+func (w *web) streamTransactions(ctx context.Context, s *sse.Stream, qp *indexActionQueryParams) error {
 	horizonSession, err := w.horizonSession(ctx)
 	if err != nil {
 		return errors.Wrap(err, "getting horizon db session")
 	}
 
-	return actions.StreamTransactionByAccount(ctx, s, &history.Q{horizonSession}, tp.AccountFilter, tp.IncludeFailed, tp.PagingParams)
+	return actions.StreamTransactions(ctx, s, &history.Q{horizonSession}, qp.AccountID, qp.LedgerID, qp.IncludeFailedTxs, qp.PagingParams)
+}
+
+// getOfferRecord returns a single offer resource.
+func getOfferResource(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	offerID, err := getInt64ParamFromURL(r, "id")
+	if err != nil {
+		problem.Render(ctx, w, errors.Wrap(err, "couldn't parse offer id"))
+		return
+	}
+
+	app := AppFromContext(ctx)
+	record, err := app.HistoryQ().GetOfferByID(offerID)
+	if err != nil {
+		problem.Render(ctx, w, err)
+		return
+	}
+
+	ledger := new(history.Ledger)
+	err = app.HistoryQ().LedgerBySequence(
+		ledger,
+		int32(record.LastModifiedLedger),
+	)
+	if app.HistoryQ().NoRows(err) {
+		ledger = nil
+	} else if err != nil {
+		problem.Render(ctx, w, err)
+		return
+	}
+
+	var offerResponse horizon.Offer
+	resourceadapter.PopulateHistoryOffer(ctx, &offerResponse, record, ledger)
+	httpjson.Render(w, offerResponse, httpjson.HALJSON)
 }

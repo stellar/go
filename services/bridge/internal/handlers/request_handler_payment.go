@@ -3,18 +3,23 @@ package handlers
 import (
 	"encoding/hex"
 	"encoding/json"
-	log "github.com/sirupsen/logrus"
 	"io/ioutil"
 	"net/http"
 	"strconv"
 
+	log "github.com/sirupsen/logrus"
+
 	"github.com/stellar/go/address"
-	b "github.com/stellar/go/build"
-	"github.com/stellar/go/clients/horizon"
+	hc "github.com/stellar/go/clients/horizonclient"
+	"github.com/stellar/go/keypair"
+	hProtocol "github.com/stellar/go/protocols/horizon"
+	"github.com/stellar/go/txnbuild"
+
 	"github.com/stellar/go/protocols/compliance"
 	"github.com/stellar/go/protocols/federation"
 	shared "github.com/stellar/go/services/internal/bridge-compliance-shared"
 	"github.com/stellar/go/services/internal/bridge-compliance-shared/http/helpers"
+	"github.com/stellar/go/services/internal/bridge-compliance-shared/protocols"
 	"github.com/stellar/go/services/internal/bridge-compliance-shared/protocols/bridge"
 	callback "github.com/stellar/go/services/internal/bridge-compliance-shared/protocols/compliance"
 	"github.com/stellar/go/xdr"
@@ -142,7 +147,7 @@ func (rh *RequestHandler) standardPayment(w http.ResponseWriter, request *bridge
 			paymentID = &request.ID
 		} else {
 			log.WithFields(log.Fields{"paymentID": request.ID, "tx": sentTransaction.EnvelopeXdr}).Info("Transaction with given ID already exists, resubmitting...")
-			submitResponse, err := rh.Horizon.SubmitTransaction(sentTransaction.EnvelopeXdr)
+			submitResponse, err := rh.Horizon.SubmitTransactionXDR(sentTransaction.EnvelopeXdr)
 			if err != nil {
 				log.WithFields(log.Fields{"error": err}).Error("Error submitting transaction")
 				helpers.Write(w, helpers.InternalServerError)
@@ -184,56 +189,63 @@ func (rh *RequestHandler) standardPayment(w http.ResponseWriter, request *bridge
 		return
 	}
 
-	var payWithMutator *b.PayWithPath
-
-	if request.SendMax != "" {
-		// Path payment
-		var sendAsset b.Asset
-		if request.SendAssetCode == "" && request.SendAssetIssuer == "" {
-			sendAsset = b.NativeAsset()
-		} else {
-			sendAsset = b.CreditAsset(request.SendAssetCode, request.SendAssetIssuer)
+	var rSource *string
+	if request.Source != "" {
+		var kp keypair.KP
+		kp, err = keypair.Parse(request.Source)
+		if err != nil {
+			log.WithFields(log.Fields{"error": err}).Error("Unable to convert seed to keypair")
+			helpers.Write(w, helpers.NewInvalidParameterError("source", "Source must be a valid secret seed."))
 		}
-
-		payWith := b.PayWith(sendAsset, request.SendMax)
-
-		for _, asset := range request.Path {
-			payWith = payWith.Through(asset.ToBaseAsset())
-		}
-
-		payWithMutator = &payWith
+		kpAddress := kp.Address()
+		rSource = &kpAddress
 	}
 
-	var operationBuilder interface{}
+	var operationBuilder txnbuild.Operation
 
-	if request.AssetCode != "" && request.AssetIssuer != "" {
-		mutators := []interface{}{
-			b.Destination{destinationObject.AccountID},
-			b.CreditAmount{request.AssetCode, request.AssetIssuer, request.Amount},
+	// Check if destination account exist
+	accountRequest := hc.AccountRequest{AccountID: destinationObject.AccountID}
+	_, err = rh.Horizon.AccountDetail(accountRequest)
+	if err != nil {
+		log.WithFields(log.Fields{"error": err}).Error("Error loading destination account")
+
+		// if pathpayment or custom asset
+		if request.SendMax != "" || (request.AssetCode != "" && request.AssetIssuer != "") {
+			// return error instead of creating account
+			log.WithFields(log.Fields{"destination": request.Destination}).Error("can not send custom asset or path payment to inactive destination")
+			helpers.Write(w, helpers.NewInvalidParameterError("destination", "Can not send custom asset or path payment to inactive destination."))
+			return
 		}
 
-		if payWithMutator != nil {
-			mutators = append(mutators, *payWithMutator)
+		paymentOp := bridge.CreateAccountOperationBody{
+			Source:          rSource,
+			Destination:     request.Destination,
+			StartingBalance: request.Amount,
 		}
-
-		operationBuilder = b.Payment(mutators...)
+		operationBuilder = paymentOp.Build()
 	} else {
-		mutators := []interface{}{
-			b.Destination{destinationObject.AccountID},
-			b.NativeAmount{request.Amount},
-		}
+		// check if Path payment
+		if request.SendMax != "" {
+			paymentOp := bridge.PathPaymentOperationBody{
+				Source:            rSource,
+				SendMax:           request.SendMax,
+				SendAsset:         protocols.Asset{Code: request.SendAssetCode, Issuer: request.SendAssetIssuer},
+				Destination:       request.Destination,
+				DestinationAmount: request.Amount,
+				DestinationAsset:  protocols.Asset{Code: request.AssetCode, Issuer: request.AssetIssuer},
+				Path:              request.Path,
+			}
 
-		if payWithMutator != nil {
-			mutators = append(mutators, *payWithMutator)
-		}
-
-		// Check if destination account exist
-		_, err = rh.Horizon.LoadAccount(destinationObject.AccountID)
-		if err != nil {
-			log.WithFields(log.Fields{"error": err}).Error("Error loading account")
-			operationBuilder = b.CreateAccount(mutators...)
+			operationBuilder = paymentOp.Build()
 		} else {
-			operationBuilder = b.Payment(mutators...)
+			paymentOp := bridge.PaymentOperationBody{
+				Source:      rSource,
+				Destination: request.Destination,
+				Amount:      request.Amount,
+				Asset:       protocols.Asset{Code: request.AssetCode, Issuer: request.AssetIssuer},
+			}
+
+			operationBuilder = paymentOp.Build()
 		}
 	}
 
@@ -251,7 +263,8 @@ func (rh *RequestHandler) standardPayment(w http.ResponseWriter, request *bridge
 		memo = destinationObject.Memo.Value
 	}
 
-	var memoMutator interface{}
+	var txMemo txnbuild.Memo
+
 	switch {
 	case memoType == "":
 		break
@@ -263,9 +276,9 @@ func (rh *RequestHandler) standardPayment(w http.ResponseWriter, request *bridge
 			helpers.Write(w, helpers.NewInvalidParameterError("memo", "Memo.id must be a number"))
 			return
 		}
-		memoMutator = b.MemoID{id}
+		txMemo = txnbuild.MemoID(id)
 	case memoType == "text":
-		memoMutator = b.MemoText{memo}
+		txMemo = txnbuild.MemoText(memo)
 	case memoType == "hash":
 		var memoBytes []byte
 		memoBytes, err = hex.DecodeString(memo)
@@ -276,23 +289,22 @@ func (rh *RequestHandler) standardPayment(w http.ResponseWriter, request *bridge
 		}
 		var b32 [32]byte
 		copy(b32[:], memoBytes[0:32])
-		hash := xdr.Hash(b32)
-		memoMutator = b.MemoHash{hash}
+		txMemo = txnbuild.MemoHash(b32)
 	default:
 		log.Print("Not supported memo type: ", memoType)
 		helpers.Write(w, helpers.NewInvalidParameterError("memo", "Memo type not supported"))
 		return
 	}
 
-	submitResponse, err := rh.TransactionSubmitter.SubmitTransaction(paymentID, request.Source, operationBuilder, memoMutator)
+	submitResponse, err := rh.TransactionSubmitter.SubmitTransaction(paymentID, request.Source, []txnbuild.Operation{operationBuilder}, txMemo)
 	rh.handleTransactionSubmitResponse(w, submitResponse, err)
 }
 
-func (rh *RequestHandler) handleTransactionSubmitResponse(w http.ResponseWriter, submitResponse horizon.TransactionSuccess, err error) {
+func (rh *RequestHandler) handleTransactionSubmitResponse(w http.ResponseWriter, submitResponse hProtocol.TransactionSuccess, err error) {
 	jsonEncoder := json.NewEncoder(w)
 
 	if err != nil {
-		herr, isHorizonError := err.(*horizon.Error)
+		herr, isHorizonError := err.(*hc.Error)
 		if !isHorizonError {
 			log.WithFields(log.Fields{"err": err}).Error("Error submitting transaction")
 			helpers.Write(w, helpers.InternalServerError)

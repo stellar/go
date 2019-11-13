@@ -11,19 +11,19 @@ Handles:
 
 
 ## Downloading the server
-[Prebuilt binaries](https://github.com/stellar/bridge-server/releases) of the bridge-server server are available on the [releases page](https://github.com/stellar/bridge-server/releases).
+[Prebuilt binaries](https://github.com/stellar/go/releases) of the bridge server are available on the [releases page](https://github.com/stellar/go/releases).
 
 | Platform       | Binary file name                                                                         |
 |----------------|------------------------------------------------------------------------------------------|
-| Mac OSX 64 bit | [bridge-darwin-amd64](https://github.com/stellar/bridge-server/releases)      |
-| Linux 64 bit   | [bridge-linux-amd64](https://github.com/stellar/bridge-server/releases)       |
-| Windows 64 bit | [bridge-windows-amd64.exe](https://github.com/stellar/bridge-server/releases) |
+| Mac OSX 64 bit | [bridge-vX.X.X-darwin-amd64](https://github.com/stellar/go/releases)      |
+| Linux 64 bit   | [bridge-vX.X.X-linux-amd64](https://github.com/stellar/go/releases)       |
+| Windows 64 bit | [bridge-vX.X.X-windows-amd64.exe](https://github.com/stellar/go/releases) |
 
 Alternatively, you can [build](#building) the binary yourself.
 
 ## Config
 
-The `bridge.cfg` file must be present in a working directory (you can load another file by using `-c` parameter). Here is an [example configuration file](https://github.com/stellar/bridge-server/blob/master/bridge_example.cfg). Config file should contain following values:
+The `bridge.cfg` file must be present in a working directory (you can load another file by using `-c` parameter). Here is an [example configuration file](https://github.com/stellar/go/blob/master/services/bridge/bridge_example.cfg). Config file should contain following values:
 
 * `port` - server listening port
 * `api_key` - when set, all requests to bridge server must contain `api_key` parameter with a correct value, otherwise the server will respond with `503 Forbidden`
@@ -34,9 +34,8 @@ The `bridge.cfg` file must be present in a working directory (you can load anoth
 * `horizon` - URL to [horizon](https://github.com/stellar/horizon) server instance
 * `assets` - array of approved assets codes that this server can authorize or receive. These are currency code/issuer pairs. Use asset code 'XLM' with no issuer to listen for XLM payments. See [`bridge_example.cfg`](./bridge_example.cfg) for example.
 * `database`
-  * `type` - database type (mysql, postgres)
+  * `type` - database type (postgres)
   * `url` - url to database connection:
-    * for `mysql`: `user:password@(host:port)/dbname` ([more info](https://github.com/go-sql-driver/mysql#dsn-data-source-name))
     * for `postgres`: `postgres://user:password@host/dbname?sslmode=sslmode` ([more info](https://godoc.org/github.com/lib/pq#hdr-Connection_String_Parameters))
 * `accounts`
   * `base_seed` - The secret seed of the account used to send payments. If left blank you will need to pass it in calls to `/payment`. 

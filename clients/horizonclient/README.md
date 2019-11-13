@@ -12,12 +12,11 @@ This library is aimed at developers building Go applications that interact with 
 * The [txnbuild API reference](https://godoc.org/github.com/stellar/go/txnbuild).
 
 ### Prerequisites
-* Go 1.10 or greater
+* Go 1.12 or greater
+* [Modules](https://github.com/golang/go/wiki/Modules) to manage dependencies
 
 ### Installing
-* Download the Stellar Go monorepo: `git clone git@github.com:stellar/go.git`
-* Enter the source directory: `cd $GOPATH/src/github.com/stellar/go`
-* Download external dependencies: `dep ensure -v`
+* `go get github.com/stellar/go/clients/horizonclient`
 
 ### Usage
 
@@ -26,20 +25,20 @@ This library is aimed at developers building Go applications that interact with 
     import hClient "github.com/stellar/go/clients/horizonclient"
     ...
 
-    // use the default pubnet client
+    // Use the default pubnet client
     client := hClient.DefaultPublicNetClient
-    // create an account request
+
+    // Create an account request
     accountRequest := hClient.AccountRequest{AccountID: "GCLWGQPMKXQSPF776IU33AH4PZNOOWNAWGGKVTBQMIC5IMKUNP3E6NVU"}
 
-    // load the account detail from the network
+    // Load the account detail from the network
     account, err := client.AccountDetail(accountRequest)
     if err != nil {
         fmt.Println(err)
         return
     }
-    // account contains information about the stellar account
+    // Account contains information about the stellar account
     fmt.Print(account)
-
 ```
 For more examples, refer to the [documentation](https://godoc.org/github.com/stellar/go/clients/horizonclient).
 
@@ -47,7 +46,9 @@ For more examples, refer to the [documentation](https://godoc.org/github.com/ste
 Run the unit tests from the package directory: `go test`
 
 ## Contributing
-Please read [CONTRIBUTING](../../CONTRIBUTING.md) for details on our code of conduct, and the process for submitting pull requests to us.
+Please read [Code of Conduct](https://github.com/stellar/.github/blob/master/CODE_OF_CONDUCT.md) to understand this project's communication rules.
+
+To submit improvements and fixes to this library, please see [CONTRIBUTING](../CONTRIBUTING.md).
 
 ## License
 This project is licensed under the Apache License - see the [LICENSE](../../LICENSE-APACHE.txt) file for details.

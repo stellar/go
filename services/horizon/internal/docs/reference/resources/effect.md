@@ -51,10 +51,10 @@ We can distinguish 6 effect groups:
 
 | Type          | Operation                                        |
 | --- | --- |
-| Offer Created | manage_buy_offer, manage_offer (manage_sell_offer from v0.18.0), create_passive_offer (create_passive_sell_offer from v0.18.0)               |
-| Offer Removed | manage_buy_offer, manage_offer (manage_sell_offer from v0.18.0), create_passive_offer (create_passive_sell_offer from v0.18.0), path_payment |
-| Offer Updated | manage_buy_offer, manage_offer (manage_sell_offer from v0.18.0), create_passive_offer (create_passive_sell_offer from v0.18.0), path_payment |
-| Trade         | manage_buy_offer, manage_offer (manage_sell_offer from v0.18.0), create_passive_offer (create_passive_sell_offer from v0.18.0), path_payment |
+| Offer Created | manage_buy_offer, manage_offer (manage_sell_offer from v0.19.0), create_passive_offer (create_passive_sell_offer from v0.19.0)               |
+| Offer Removed | manage_buy_offer, manage_offer (manage_sell_offer from v0.19.0), create_passive_offer (create_passive_sell_offer from v0.19.0), path_payment |
+| Offer Updated | manage_buy_offer, manage_offer (manage_sell_offer from v0.19.0), create_passive_offer (create_passive_sell_offer from v0.19.0), path_payment |
+| Trade         | manage_buy_offer, manage_offer (manage_sell_offer from v0.19.0), create_passive_offer (create_passive_sell_offer from v0.19.0), path_payment |
 
 ### Data effects
 
@@ -127,8 +127,8 @@ Attributes depend on effect type.
 
 |  Resource                |    Type    |    Resource URI Template             |
 | ------------------------ | ---------- | ------------------------------------ |
-| [All Effects](../effects-all.md) | Collection | `/effects`                           |
-| [Operation Effects](../effects-for-operation.md) | Collection | `/operations/:id/effects`            |
-| [Account Effects](../effects-for-account.md) | Collection | `/accounts/:account_id/effects`      |
-| [Ledger Effects](../effects-for-ledger.md) | Collection | `/ledgers/:ledger_id/effects`        |
+| [All Effects](https://github.com/stellar/go/blob/master/services/horizon/internal/docs/reference/endpoints/effects-all.md) | Collection | `/effects`                           |
+| [Operation Effects](https://github.com/stellar/go/blob/master/services/horizon/internal/docs/reference/endpoints/effects-for-operation.md) | Collection | `/operations/:id/effects`            |
+| [Account Effects](https://github.com/stellar/go/blob/master/services/horizon/internal/docs/reference/endpoints/effects-for-account.md) | Collection | `/accounts/:account_id/effects`      |
+| [Ledger Effects](https://github.com/stellar/go/blob/master/services/horizon/internal/docs/reference/endpoints/effects-for-ledger.md) | Collection | `/ledgers/:ledger_id/effects`        |
 

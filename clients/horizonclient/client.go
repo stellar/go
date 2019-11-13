@@ -16,8 +16,8 @@ import (
 
 	"github.com/manucorporat/sse"
 	hProtocol "github.com/stellar/go/protocols/horizon"
+	"github.com/stellar/go/protocols/horizon/effects"
 	"github.com/stellar/go/protocols/horizon/operations"
-	"github.com/stellar/go/support/app"
 	"github.com/stellar/go/support/errors"
 )
 
@@ -53,7 +53,7 @@ func (c *Client) sendRequestURL(requestURL string, method string, a interface{})
 		return errors.Wrap(err, "error creating HTTP request")
 	}
 	c.setClientAppHeaders(req)
-
+	c.setDefaultClient()
 	if c.horizonTimeOut == 0 {
 		c.horizonTimeOut = HorizonTimeOut
 	}
@@ -64,7 +64,7 @@ func (c *Client) sendRequestURL(requestURL string, method string, a interface{})
 		return
 	}
 
-	err = decodeResponse(resp, &a)
+	err = decodeResponse(resp, &a, c)
 	cancel()
 	return
 }
@@ -88,12 +88,12 @@ func (c *Client) stream(
 	for {
 		// updates the url with new cursor
 		su.RawQuery = query.Encode()
-		req, err := http.NewRequest("GET", fmt.Sprintf("%s", su), nil)
+		req, err := http.NewRequest("GET", su.String(), nil)
 		if err != nil {
 			return errors.Wrap(err, "error creating HTTP request")
 		}
 		req.Header.Set("Accept", "text/event-stream")
-		// to do: confirm name and version
+		c.setDefaultClient()
 		c.setClientAppHeaders(req)
 
 		// We can use c.HTTP here because we set Timeout per request not on the client. See sendRequest()
@@ -198,9 +198,16 @@ func (c *Client) stream(
 
 func (c *Client) setClientAppHeaders(req *http.Request) {
 	req.Header.Set("X-Client-Name", "go-stellar-sdk")
-	req.Header.Set("X-Client-Version", app.Version())
+	req.Header.Set("X-Client-Version", c.Version())
 	req.Header.Set("X-App-Name", c.AppName)
 	req.Header.Set("X-App-Version", c.AppVersion)
+}
+
+// setDefaultClient sets the default HTTP client when none is provided.
+func (c *Client) setDefaultClient() {
+	if c.HTTP == nil {
+		c.HTTP = http.DefaultClient
+	}
 }
 
 // fixHorizonURL strips all slashes(/) at the end of HorizonURL if any, then adds a single slash
@@ -251,7 +258,7 @@ func (c *Client) AccountData(request AccountRequest) (accountData hProtocol.Acco
 
 // Effects returns effects(https://www.stellar.org/developers/horizon/reference/resources/effect.html)
 // It can be used to return effects for an account, a ledger, an operation, a transaction and all effects on the network.
-func (c *Client) Effects(request EffectRequest) (effects hProtocol.EffectsPage, err error) {
+func (c *Client) Effects(request EffectRequest) (effects effects.EffectsPage, err error) {
 	err = c.sendRequest(request, &effects)
 	return
 }
@@ -260,13 +267,6 @@ func (c *Client) Effects(request EffectRequest) (effects hProtocol.EffectsPage, 
 // See https://www.stellar.org/developers/horizon/reference/endpoints/assets-all.html
 func (c *Client) Assets(request AssetRequest) (assets hProtocol.AssetsPage, err error) {
 	err = c.sendRequest(request, &assets)
-	return
-}
-
-// Stream is for endpoints that support streaming
-func (c *Client) Stream(ctx context.Context, request StreamRequest, handler func(interface{})) (err error) {
-
-	err = request.Stream(ctx, c, handler)
 	return
 }
 
@@ -280,7 +280,7 @@ func (c *Client) Ledgers(request LedgerRequest) (ledgers hProtocol.LedgersPage, 
 // LedgerDetail returns information about a particular ledger for a given sequence number
 // See https://www.stellar.org/developers/horizon/reference/endpoints/ledgers-single.html
 func (c *Client) LedgerDetail(sequence uint32) (ledger hProtocol.Ledger, err error) {
-	if sequence <= 0 {
+	if sequence == 0 {
 		err = errors.New("invalid sequence number provided")
 	}
 
@@ -289,7 +289,6 @@ func (c *Client) LedgerDetail(sequence uint32) (ledger hProtocol.Ledger, err err
 	}
 
 	request := LedgerRequest{forSequence: sequence}
-
 	err = c.sendRequest(request, &ledger)
 	return
 }
@@ -349,8 +348,11 @@ func (c *Client) OperationDetail(id string) (ops operations.Operation, err error
 		return ops, errors.Wrap(err, "unmarshaling json")
 	}
 
-	ops, err = operations.UnmarshalOperation(baseRecord.GetType(), dataString)
-	return ops, errors.Wrap(err, "unmarshaling to the correct operation type")
+	ops, err = operations.UnmarshalOperation(baseRecord.GetTypeI(), dataString)
+	if err != nil {
+		return ops, errors.Wrap(err, "unmarshaling to the correct operation type")
+	}
+	return ops, nil
 }
 
 // SubmitTransactionXDR submits a transaction represented as a base64 XDR string to the network. err can be either error object or horizon.Error object.
@@ -422,11 +424,13 @@ func (c *Client) Trades(request TradeRequest) (tds hProtocol.TradesPage, err err
 
 // Fund creates a new account funded from friendbot. It only works on test networks. See
 // https://www.stellar.org/developers/guides/get-started/create-account.html for more information.
-func (c *Client) Fund(addr string) (*http.Response, error) {
+func (c *Client) Fund(addr string) (txSuccess hProtocol.TransactionSuccess, err error) {
 	if !c.isTestNet {
-		return nil, errors.New("Can't fund account from friendbot on production network")
+		return txSuccess, errors.New("can't fund account from friendbot on production network")
 	}
-	return http.Get(c.HorizonURL + "friendbot?addr=" + addr)
+	friendbotURL := fmt.Sprintf("%sfriendbot?addr=%s", c.fixHorizonURL(), addr)
+	err = c.sendRequestURL(friendbotURL, "get", &txSuccess)
+	return
 }
 
 // StreamTrades streams executed trades. It can be used to stream all trades, trades for an account and
@@ -460,7 +464,7 @@ func (c *Client) StreamEffects(ctx context.Context, request EffectRequest, handl
 // StreamOperations streams stellar operations. It can be used to stream all operations or operations
 // for an account. Use context.WithCancel to stop streaming or context.Background() if you want to
 // stream indefinitely. OperationHandler is a user-supplied function that is executed for each streamed
-//  operation received.
+// operation received.
 func (c *Client) StreamOperations(ctx context.Context, request OperationRequest, handler OperationHandler) error {
 	return request.SetOperationsEndpoint().StreamOperations(ctx, c, handler)
 }
@@ -469,7 +473,7 @@ func (c *Client) StreamOperations(ctx context.Context, request OperationRequest,
 // for an account. Payments include create_account, payment, path_payment and account_merge operations.
 // Use context.WithCancel to stop streaming or context.Background() if you want to
 // stream indefinitely. OperationHandler is a user-supplied function that is executed for each streamed
-//  operation received.
+// operation received.
 func (c *Client) StreamPayments(ctx context.Context, request OperationRequest, handler OperationHandler) error {
 	return request.SetPaymentsEndpoint().StreamOperations(ctx, c, handler)
 }
@@ -504,7 +508,7 @@ func (c *Client) FetchTimebounds(seconds int64) (txnbuild.Timebounds, error) {
 	if err != nil {
 		return txnbuild.Timebounds{}, errors.Wrap(err, "unable to parse horizon url")
 	}
-	currentTime := currentServerTime(serverURL.Hostname())
+	currentTime := currentServerTime(serverURL.Hostname(), c.clock.Now().UTC().Unix())
 	if currentTime != 0 {
 		return txnbuild.NewTimebounds(0, currentTime+seconds), nil
 	}
@@ -517,6 +521,133 @@ func (c *Client) FetchTimebounds(seconds int64) (txnbuild.Timebounds, error) {
 // Root loads the root endpoint of horizon
 func (c *Client) Root() (root hProtocol.Root, err error) {
 	err = c.sendRequestURL(c.fixHorizonURL(), "get", &root)
+	return
+}
+
+// Version returns the current version.
+func (c *Client) Version() string {
+	return version
+}
+
+// NextAssetsPage returns the next page of assets.
+func (c *Client) NextAssetsPage(page hProtocol.AssetsPage) (assets hProtocol.AssetsPage, err error) {
+	err = c.sendRequestURL(page.Links.Next.Href, "get", &assets)
+	return
+}
+
+// PrevAssetsPage returns the previous page of assets.
+func (c *Client) PrevAssetsPage(page hProtocol.AssetsPage) (assets hProtocol.AssetsPage, err error) {
+	err = c.sendRequestURL(page.Links.Prev.Href, "get", &assets)
+	return
+}
+
+// NextLedgersPage returns the next page of ledgers.
+func (c *Client) NextLedgersPage(page hProtocol.LedgersPage) (ledgers hProtocol.LedgersPage, err error) {
+	err = c.sendRequestURL(page.Links.Next.Href, "get", &ledgers)
+	return
+}
+
+// PrevLedgersPage returns the previous page of ledgers.
+func (c *Client) PrevLedgersPage(page hProtocol.LedgersPage) (ledgers hProtocol.LedgersPage, err error) {
+	err = c.sendRequestURL(page.Links.Prev.Href, "get", &ledgers)
+	return
+}
+
+// NextEffectsPage returns the next page of effects.
+func (c *Client) NextEffectsPage(page effects.EffectsPage) (efp effects.EffectsPage, err error) {
+	err = c.sendRequestURL(page.Links.Next.Href, "get", &efp)
+	return
+}
+
+// PrevEffectsPage returns the previous page of effects.
+func (c *Client) PrevEffectsPage(page effects.EffectsPage) (efp effects.EffectsPage, err error) {
+	err = c.sendRequestURL(page.Links.Prev.Href, "get", &efp)
+	return
+}
+
+// NextTransactionsPage returns the next page of transactions.
+func (c *Client) NextTransactionsPage(page hProtocol.TransactionsPage) (transactions hProtocol.TransactionsPage, err error) {
+	err = c.sendRequestURL(page.Links.Next.Href, "get", &transactions)
+	return
+}
+
+// PrevTransactionsPage returns the previous page of transactions.
+func (c *Client) PrevTransactionsPage(page hProtocol.TransactionsPage) (transactions hProtocol.TransactionsPage, err error) {
+	err = c.sendRequestURL(page.Links.Prev.Href, "get", &transactions)
+	return
+}
+
+// NextOperationsPage returns the next page of operations.
+func (c *Client) NextOperationsPage(page operations.OperationsPage) (operations operations.OperationsPage, err error) {
+	err = c.sendRequestURL(page.Links.Next.Href, "get", &operations)
+	return
+}
+
+// PrevOperationsPage returns the previous page of operations.
+func (c *Client) PrevOperationsPage(page operations.OperationsPage) (operations operations.OperationsPage, err error) {
+	err = c.sendRequestURL(page.Links.Prev.Href, "get", &operations)
+	return
+}
+
+// NextPaymentsPage returns the next page of payments.
+func (c *Client) NextPaymentsPage(page operations.OperationsPage) (operations.OperationsPage, error) {
+	return c.NextOperationsPage(page)
+}
+
+// PrevPaymentsPage returns the previous page of payments.
+func (c *Client) PrevPaymentsPage(page operations.OperationsPage) (operations.OperationsPage, error) {
+	return c.PrevOperationsPage(page)
+}
+
+// NextOffersPage returns the next page of offers.
+func (c *Client) NextOffersPage(page hProtocol.OffersPage) (offers hProtocol.OffersPage, err error) {
+	err = c.sendRequestURL(page.Links.Next.Href, "get", &offers)
+	return
+}
+
+// PrevOffersPage returns the previous page of offers.
+func (c *Client) PrevOffersPage(page hProtocol.OffersPage) (offers hProtocol.OffersPage, err error) {
+	err = c.sendRequestURL(page.Links.Prev.Href, "get", &offers)
+	return
+}
+
+// NextTradesPage returns the next page of trades.
+func (c *Client) NextTradesPage(page hProtocol.TradesPage) (trades hProtocol.TradesPage, err error) {
+	err = c.sendRequestURL(page.Links.Next.Href, "get", &trades)
+	return
+}
+
+// PrevTradesPage returns the previous page of trades.
+func (c *Client) PrevTradesPage(page hProtocol.TradesPage) (trades hProtocol.TradesPage, err error) {
+	err = c.sendRequestURL(page.Links.Prev.Href, "get", &trades)
+	return
+}
+
+// HomeDomainForAccount returns the home domain for a single account.
+func (c *Client) HomeDomainForAccount(aid string) (string, error) {
+	if aid == "" {
+		return "", errors.New("no account ID provided")
+	}
+
+	accountDetail, err := c.AccountDetail(AccountRequest{AccountID: aid})
+	if err != nil {
+		return "", errors.Wrap(err, "get account detail failed")
+	}
+
+	return accountDetail.HomeDomain, nil
+}
+
+// NextTradeAggregationsPage returns the next page of trade aggregations from the current
+// trade aggregations response.
+func (c *Client) NextTradeAggregationsPage(page hProtocol.TradeAggregationsPage) (ta hProtocol.TradeAggregationsPage, err error) {
+	err = c.sendRequestURL(page.Links.Next.Href, "get", &ta)
+	return
+}
+
+// PrevTradeAggregationsPage returns the previous page of trade aggregations from the current
+// trade aggregations response.
+func (c *Client) PrevTradeAggregationsPage(page hProtocol.TradeAggregationsPage) (ta hProtocol.TradeAggregationsPage, err error) {
+	err = c.sendRequestURL(page.Links.Prev.Href, "get", &ta)
 	return
 }
 

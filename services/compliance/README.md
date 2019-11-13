@@ -2,19 +2,19 @@
 This is a stand alone server written in go. It is designed to make [Compliance protocol](https://www.stellar.org/developers/learn/integration-guides/compliance-protocol.html) requests to other organizations. You can connect to it from the `bridge` server or any other server that can talk to it (check API section).
 
 ## Downloading the server
-[Prebuilt binaries](https://github.com/stellar/bridge-server/releases) of the bridge-server server are available on the [releases page](https://github.com/stellar/bridge-server/releases).
+[Prebuilt binaries](https://github.com/stellar/go/releases) of the compliance server are available on the [releases page](https://github.com/stellar/go/releases).
 
 | Platform       | Binary file name                                                                         |
 |----------------|------------------------------------------------------------------------------------------|
-| Mac OSX 64 bit | [bridge-darwin-amd64](https://github.com/stellar/bridge-server/releases)      |
-| Linux 64 bit   | [bridge-linux-amd64](https://github.com/stellar/bridge-server/releases)       |
-| Windows 64 bit | [bridge-windows-amd64.exe](https://github.com/stellar/bridge-server/releases) |
+| Mac OSX 64 bit | [compliance-vX.X.X-darwin-amd64](https://github.com/stellar/go/releases)      |
+| Linux 64 bit   | [compliance-vX.X.X-linux-amd64](https://github.com/stellar/go/releases)       |
+| Windows 64 bit | [compliance-vX.X.X-windows-amd64.exe](https://github.com/stellar/go/releases) |
 
 Alternatively, you can [build](#building) the binary yourself.
 
 ## Config
 
-The `compliance.cfg` file must be present in a working directory (you can load another file by using `-c` parameter). Here is an [example configuration file](https://github.com/stellar/bridge-server/blob/master/compliance_example.cfg). Config file should contain following values:
+The `compliance.cfg` file must be present in a working directory (you can load another file by using `-c` parameter). Here is an [example configuration file](https://github.com/stellar/go/blob/master/services/compliance/compliance_example.cfg). Config file should contain following values:
 
 * `external_port` - external server listening port (should be accessible from public)
 * `internal_port` - internal server listening port (should be accessible from your internal network only!)
@@ -23,9 +23,8 @@ The `compliance.cfg` file must be present in a working directory (you can load a
    * test network: `Test SDF Network ; September 2015`
    * public network: `Public Global Stellar Network ; September 2015`
 * `database` - This database is used internally to store memo information and to keep track of what FIs have been authorized to receive customer info.
-  * `type` - database type (mysql, postgres)
+  * `type` - database type (postgres)
   * `url` - url to database connection. **IMPORTANT** The `compliance` server must not use the same database as the `bridge` server.
-    * for `mysql`: `user:password@(host:port)/dbname` ([more info](https://github.com/go-sql-driver/mysql#dsn-data-source-name))
     * for `postgres`: `postgres://user:password@host/dbname?sslmode=sslmode` ([more info](https://godoc.org/github.com/lib/pq#hdr-Connection_String_Parameters))
 * `keys`
   * `signing_seed` - The secret seed that will be used to sign messages. Public key derived from this secret key should be in your `stellar.toml` file.

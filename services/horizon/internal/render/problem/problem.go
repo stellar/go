@@ -1,19 +1,10 @@
 package problem
 
 import (
-	"context"
 	"net/http"
 
-	"github.com/stellar/go/services/horizon/internal/hchi"
 	"github.com/stellar/go/support/render/problem"
 )
-
-// Inflate expands a problem with contextal information, including setting basic info.
-// At present it adds the request's id as the problem's Instance, if available.
-func Inflate(ctx context.Context, p *problem.P) {
-	problem.Inflate(p)
-	p.Instance = hchi.RequestID(ctx)
-}
 
 // Well-known and reused problems below:
 var (
@@ -102,5 +93,15 @@ var (
 			"when it can determine that the history database is lagging too far " +
 			"behind the connected instance of stellar-core.  If you operate this " +
 			"server, please ensure that the ingestion system is properly running.",
+	}
+
+	// StillIngesting is a well-known problem type.  Use it as a shortcut
+	// in your actions.
+	StillIngesting = problem.P{
+		Type:   "still_ingesting",
+		Title:  "Still Ingesting",
+		Status: http.StatusServiceUnavailable,
+		Detail: "Data cannot be presented because it's still being ingested. Please " +
+			"wait for several minutes before trying your request again.",
 	}
 )

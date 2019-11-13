@@ -38,7 +38,7 @@ func (op OperationRequest) BuildURL() (endpoint string, err error) {
 	}
 
 	queryParams := addQueryParams(cursor(op.Cursor), limit(op.Limit), op.Order,
-		includeFailed(op.IncludeFailed))
+		includeFailed(op.IncludeFailed), join(op.Join))
 	if queryParams != "" {
 		endpoint = fmt.Sprintf("%s?%s", endpoint, queryParams)
 	}
@@ -78,7 +78,7 @@ type OperationHandler func(operations.Operation)
 // StreamOperations streams stellar operations. It can be used to stream all operations or operations
 // for and account. Use context.WithCancel to stop streaming or context.Background() if you want to
 // stream indefinitely. OperationHandler is a user-supplied function that is executed for each streamed
-//  operation received.
+// operation received.
 func (op OperationRequest) StreamOperations(ctx context.Context, client *Client, handler OperationHandler) error {
 	endpoint, err := op.BuildURL()
 	if err != nil {
@@ -93,7 +93,7 @@ func (op OperationRequest) StreamOperations(ctx context.Context, client *Client,
 			return errors.Wrap(err, "error unmarshaling data for operation request")
 		}
 
-		ops, err := operations.UnmarshalOperation(baseRecord.GetType(), data)
+		ops, err := operations.UnmarshalOperation(baseRecord.GetTypeI(), data)
 		if err != nil {
 			return errors.Wrap(err, "unmarshaling to the correct operation type")
 		}

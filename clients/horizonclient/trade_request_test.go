@@ -2,9 +2,7 @@ package horizonclient
 
 import (
 	"context"
-	"fmt"
 	"testing"
-	"time"
 
 	hProtocol "github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/support/http/httptest"
@@ -42,7 +40,7 @@ func TestTradeRequestBuildUrl(t *testing.T) {
 	assert.Equal(t, "trades?cursor=123", endpoint)
 
 	tr = TradeRequest{ForOfferID: "123", ForAccount: "GCLWGQPMKXQSPF776IU33AH4PZNOOWNAWGGKVTBQMIC5IMKUNP3E6NVU"}
-	endpoint, err = tr.BuildURL()
+	_, err = tr.BuildURL()
 
 	// error case: too many parameters for building any operation endpoint
 	if assert.Error(t, err) {
@@ -55,19 +53,6 @@ func TestTradeRequestBuildUrl(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "trades?cursor=123456&limit=30&order=asc", endpoint)
 
-}
-
-func ExampleClient_Trades() {
-
-	client := DefaultPublicNetClient
-	// Find all trades
-	tr := TradeRequest{Cursor: "123456", Limit: 30, Order: OrderAsc}
-	trades, err := client.Trades(tr)
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	fmt.Print(trades)
 }
 
 func TestTradesRequest(t *testing.T) {
@@ -129,25 +114,34 @@ func TestTradesRequest(t *testing.T) {
 	}
 }
 
-func ExampleClient_StreamTrades() {
-	client := DefaultTestNetClient
-	// all trades
-	tradeRequest := TradeRequest{Cursor: "760209215489"}
-
-	ctx, cancel := context.WithCancel(context.Background())
-	go func() {
-		// Stop streaming after 60 seconds.
-		time.Sleep(60 * time.Second)
-		cancel()
-	}()
-
-	printHandler := func(tr hProtocol.Trade) {
-		fmt.Println(tr)
+func TestNextTradesPage(t *testing.T) {
+	hmock := httptest.NewClient()
+	client := &Client{
+		HorizonURL: "https://localhost/",
+		HTTP:       hmock,
 	}
-	err := client.StreamTrades(ctx, tradeRequest, printHandler)
 
-	if err != nil {
-		fmt.Println(err)
+	tradeRequest := TradeRequest{ForAccount: "GBZ5OD56VRTRQKMNADD6VUZUG3FCILMAMYQY5ZSC3AW3GBXNEPIK76IG", Limit: 2}
+
+	hmock.On(
+		"GET",
+		"https://localhost/accounts/GBZ5OD56VRTRQKMNADD6VUZUG3FCILMAMYQY5ZSC3AW3GBXNEPIK76IG/trades?limit=2",
+	).ReturnString(200, firstTradesPage)
+
+	trades, err := client.Trades(tradeRequest)
+
+	if assert.NoError(t, err) {
+		assert.Equal(t, len(trades.Embedded.Records), 2)
+	}
+
+	hmock.On(
+		"GET",
+		"https://horizon-testnet.stellar.org/accounts/GBZ5OD56VRTRQKMNADD6VUZUG3FCILMAMYQY5ZSC3AW3GBXNEPIK76IG/trades?cursor=45122926424065-0&limit=2&order=asc",
+	).ReturnString(200, emptyTradesPage)
+
+	nextPage, err := client.NextTradesPage(trades)
+	if assert.NoError(t, err) {
+		assert.Equal(t, len(nextPage.Embedded.Records), 0)
 	}
 }
 
@@ -332,3 +326,112 @@ var tradesResponse = `{
 
 var tradeStreamResponse = `data: {"_links":{"self":{"href":""},"base":{"href":"https://horizon-testnet.stellar.org/accounts/GCRHQBHX7JNBZE4HHPLNOAAYDRDVAGBJKJ4KPGHIID3CBGVALXBD6TVQ"},"counter":{"href":"https://horizon-testnet.stellar.org/accounts/GAEETTPUI5CO3CSYXXM5CRX4FHLDWJ3KD6XRRJ3GJISWQSCYF5ALN6JC"},"operation":{"href":"https://horizon-testnet.stellar.org/operations/76909979385857"}},"id":"76909979385857-0","paging_token":"76909979385857-0","ledger_close_time":"2019-02-28T11:29:40Z","offer_id":"494","base_offer_id":"4611762928406773761","base_account":"GCRHQBHX7JNBZE4HHPLNOAAYDRDVAGBJKJ4KPGHIID3CBGVALXBD6TVQ","base_amount":"0.0000001","base_asset_type":"native","counter_offer_id":"494","counter_account":"GAEETTPUI5CO3CSYXXM5CRX4FHLDWJ3KD6XRRJ3GJISWQSCYF5ALN6JC","counter_amount":"0.0001000","counter_asset_type":"credit_alphanum4","counter_asset_code":"WTF","counter_asset_issuer":"GAQZKAGUAHCN4OHAMQVQ3PNA5DUHCQ3CEVOSOTPUAXHG3UHTRSSUFHUL","base_is_seller":false,"price":{"n":1000,"d":1}}
 `
+
+var firstTradesPage = `{
+  "_links": {
+    "self": {
+      "href": "https://horizon-testnet.stellar.org/accounts/GBZ5OD56VRTRQKMNADD6VUZUG3FCILMAMYQY5ZSC3AW3GBXNEPIK76IG/trades?cursor=&limit=2&order=asc"
+    },
+    "next": {
+      "href": "https://horizon-testnet.stellar.org/accounts/GBZ5OD56VRTRQKMNADD6VUZUG3FCILMAMYQY5ZSC3AW3GBXNEPIK76IG/trades?cursor=45122926424065-0&limit=2&order=asc"
+    },
+    "prev": {
+      "href": "https://horizon-testnet.stellar.org/accounts/GBZ5OD56VRTRQKMNADD6VUZUG3FCILMAMYQY5ZSC3AW3GBXNEPIK76IG/trades?cursor=45097156620289-0&limit=2&order=desc"
+    }
+  },
+  "_embedded": {
+    "records": [
+      {
+        "_links": {
+          "self": {
+            "href": ""
+          },
+          "base": {
+            "href": "https://horizon-testnet.stellar.org/accounts/GBZ5OD56VRTRQKMNADD6VUZUG3FCILMAMYQY5ZSC3AW3GBXNEPIK76IG"
+          },
+          "counter": {
+            "href": "https://horizon-testnet.stellar.org/accounts/GBH77NK3ZP7RT52YZWGIU5Y6VTIJ52VXUSXDMQ7Z7VAAQO4U4QGGIROV"
+          },
+          "operation": {
+            "href": "https://horizon-testnet.stellar.org/operations/45097156620289"
+          }
+        },
+        "id": "45097156620289-0",
+        "paging_token": "45097156620289-0",
+        "ledger_close_time": "2019-04-25T02:29:20Z",
+        "offer_id": "1219",
+        "base_offer_id": "928",
+        "base_account": "GBZ5OD56VRTRQKMNADD6VUZUG3FCILMAMYQY5ZSC3AW3GBXNEPIK76IG",
+        "base_amount": "2.7922715",
+        "base_asset_type": "credit_alphanum4",
+        "base_asset_code": "HT",
+        "base_asset_issuer": "GCNSGHUCG5VMGLT5RIYYZSO7VQULQKAJ62QA33DBC5PPBSO57LFWVV6P",
+        "counter_offer_id": "1219",
+        "counter_account": "GBH77NK3ZP7RT52YZWGIU5Y6VTIJ52VXUSXDMQ7Z7VAAQO4U4QGGIROV",
+        "counter_amount": "0.0012000",
+        "counter_asset_type": "credit_alphanum4",
+        "counter_asset_code": "BTC",
+        "counter_asset_issuer": "GCNSGHUCG5VMGLT5RIYYZSO7VQULQKAJ62QA33DBC5PPBSO57LFWVV6P",
+        "base_is_seller": false,
+        "price": {
+          "n": 383,
+          "d": 891200
+        }
+      },
+      {
+        "_links": {
+          "self": {
+            "href": ""
+          },
+          "base": {
+            "href": "https://horizon-testnet.stellar.org/accounts/GBZ5OD56VRTRQKMNADD6VUZUG3FCILMAMYQY5ZSC3AW3GBXNEPIK76IG"
+          },
+          "counter": {
+            "href": "https://horizon-testnet.stellar.org/accounts/GBH77NK3ZP7RT52YZWGIU5Y6VTIJ52VXUSXDMQ7Z7VAAQO4U4QGGIROV"
+          },
+          "operation": {
+            "href": "https://horizon-testnet.stellar.org/operations/45122926424065"
+          }
+        },
+        "id": "45122926424065-0",
+        "paging_token": "45122926424065-0",
+        "ledger_close_time": "2019-04-25T02:29:49Z",
+        "offer_id": "928",
+        "base_offer_id": "928",
+        "base_account": "GBZ5OD56VRTRQKMNADD6VUZUG3FCILMAMYQY5ZSC3AW3GBXNEPIK76IG",
+        "base_amount": "2.7956854",
+        "base_asset_type": "credit_alphanum4",
+        "base_asset_code": "HT",
+        "base_asset_issuer": "GCNSGHUCG5VMGLT5RIYYZSO7VQULQKAJ62QA33DBC5PPBSO57LFWVV6P",
+        "counter_offer_id": "4611731141353811969",
+        "counter_account": "GBH77NK3ZP7RT52YZWGIU5Y6VTIJ52VXUSXDMQ7Z7VAAQO4U4QGGIROV",
+        "counter_amount": "0.0012000",
+        "counter_asset_type": "credit_alphanum4",
+        "counter_asset_code": "BTC",
+        "counter_asset_issuer": "GCNSGHUCG5VMGLT5RIYYZSO7VQULQKAJ62QA33DBC5PPBSO57LFWVV6P",
+        "base_is_seller": true,
+        "price": {
+          "n": 7973,
+          "d": 18575000
+        }
+      }
+    ]
+  }
+}`
+
+var emptyTradesPage = `{
+  "_links": {
+    "self": {
+      "href": "https://horizon-testnet.stellar.org/accounts/GBZ5OD56VRTRQKMNADD6VUZUG3FCILMAMYQY5ZSC3AW3GBXNEPIK76IG/trades?cursor=45122926424065-0&limit=2&order=asc"
+    },
+    "next": {
+      "href": "https://horizon-testnet.stellar.org/accounts/GBZ5OD56VRTRQKMNADD6VUZUG3FCILMAMYQY5ZSC3AW3GBXNEPIK76IG/trades?cursor=59889023983617-0&limit=2&order=asc"
+    },
+    "prev": {
+      "href": "https://horizon-testnet.stellar.org/accounts/GBZ5OD56VRTRQKMNADD6VUZUG3FCILMAMYQY5ZSC3AW3GBXNEPIK76IG/trades?cursor=45810121191425-0&limit=2&order=desc"
+    }
+  },
+  "_embedded": {
+    "records": []
+  }
+}`

@@ -16,7 +16,7 @@ func TestIngest_Kahuna1(t *testing.T) {
 	s := ingest(tt, Config{EnableAssetStats: false})
 
 	tt.Require.NoError(s.Err)
-	tt.Assert.Equal(62, s.Ingested)
+	tt.Assert.Equal(61, s.Ingested)
 
 	// Test that re-importing fails
 	s.Err = nil
@@ -37,7 +37,7 @@ func TestIngest_Kahuna2(t *testing.T) {
 	s := ingest(tt, Config{EnableAssetStats: false})
 
 	tt.Require.NoError(s.Err)
-	tt.Assert.Equal(6, s.Ingested)
+	tt.Assert.Equal(5, s.Ingested)
 
 	// ensure that the onetime signer is gone
 	q := core.Q{Session: tt.CoreSession()}

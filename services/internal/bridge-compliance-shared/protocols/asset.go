@@ -3,17 +3,17 @@ package protocols
 import (
 	"fmt"
 
-	"github.com/stellar/go/build"
 	shared "github.com/stellar/go/services/internal/bridge-compliance-shared"
 	"github.com/stellar/go/support/errors"
+	"github.com/stellar/go/txnbuild"
 )
 
 // ToBaseAsset transforms Asset to github.com/stellar/go-stellar-base/build.Asset
-func (a Asset) ToBaseAsset() build.Asset {
+func (a Asset) ToBaseAsset() txnbuild.Asset {
 	if a.Code == "" && a.Issuer == "" {
-		return build.NativeAsset()
+		return txnbuild.NativeAsset{}
 	}
-	return build.CreditAsset(a.Code, a.Issuer)
+	return txnbuild.CreditAsset{Code: a.Code, Issuer: a.Issuer}
 }
 
 // String returns string representation of this asset

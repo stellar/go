@@ -17,11 +17,13 @@ import (
 )
 
 func TestEmptySignature(t *testing.T) {
+	dbConn := testDB.Horizon(t)
 	ingestion := Ingestion{
 		DB: &db.Session{
-			DB: testDB.Horizon(t),
+			DB: dbConn,
 		},
 	}
+	test.ResetHorizonDB(t, dbConn)
 	ingestion.Start()
 
 	envelope := xdr.TransactionEnvelope{}
@@ -53,12 +55,74 @@ func TestEmptySignature(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-func TestTimeBoundsMaxBig(t *testing.T) {
+func TestFeeMax(t *testing.T) {
+	tt := test.Start(t).Scenario("kahuna")
+	defer tt.Finish()
+
 	ingestion := Ingestion{
 		DB: &db.Session{
 			DB: testDB.Horizon(t),
 		},
 	}
+	ingestion.Start()
+
+	envelope := xdr.TransactionEnvelope{}
+	resultPair := xdr.TransactionResultPair{}
+	meta := xdr.TransactionMeta{}
+
+	xdr.SafeUnmarshalBase64("AAAAAOLWsdzzeqJ5N2DeHgvzMc/mwBhceAIKwLHfM5J8zsK6AA9CQAAI+n0AAAABAAAAAAAAAAAAAAABAAAAAAAAAAEAAAAA4tax3PN6onk3YN4eC/Mxz+bAGFx4AgrAsd8zknzOwroAAAAAAAAAAACYloAAAAAAAAAAAXzOwroAAABAJ6nzO0f3/izUO3nB+CfN1sII66VBwGyIb6rP8VidFiYSxgY9fBviXA4FtPt0p1msOOI8NNA0alMQ95E2HOn8Dg==", &envelope)
+	xdr.SafeUnmarshalBase64("AAAAAAAAAGQAAAAAAAAAAQAAAAAAAAABAAAAAAAAAAA=", &resultPair.Result)
+	xdr.SafeUnmarshalBase64("AAAAAQAAAAIAAAADAAj6gwAAAAAAAAAA4tax3PN6onk3YN4eC/Mxz+bAGFx4AgrAsd8zknzOwroAAAAXSHbnnAAI+n0AAAAAAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAABAAj6gwAAAAAAAAAA4tax3PN6onk3YN4eC/Mxz+bAGFx4AgrAsd8zknzOwroAAAAXSHbnnAAI+n0AAAABAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAABAAAAAA==", &meta)
+
+	hash := "a48debf9245e39d78c4fcb8e010b4f41dbee10823148e89269aab74ceeefcdad"
+
+	transaction := &core.Transaction{
+		TransactionHash: hash,
+		LedgerSequence:  1,
+		Index:           1,
+		Envelope:        envelope,
+		Result:          resultPair,
+		ResultMeta:      meta,
+	}
+
+	transactionFee := &core.TransactionFee{}
+
+	ingestion.Transaction(true, 1, transaction, transactionFee)
+	assert.Equal(t, 1, len(ingestion.builders[TransactionsTableName].rows))
+
+	err := ingestion.Flush()
+	assert.NoError(t, err)
+
+	err = ingestion.Close()
+	assert.NoError(t, err)
+
+	q := history.Q{Session: ingestion.DB}
+	tx := history.Transaction{}
+	err = q.TransactionByHash(&tx, hash)
+	tt.Require.NoError(err)
+	tt.Assert.Equal(int32(1000000), tx.MaxFee)
+	tt.Assert.Equal(int32(100), tx.FeeCharged)
+
+	_, err = tt.HorizonSession().ExecRaw(
+		`UPDATE history_transactions SET fee_charged = NULL WHERE transaction_hash = ?`, hash,
+	)
+	tt.Require.NoError(err)
+
+	tx = history.Transaction{}
+	err = q.TransactionByHash(&tx, hash)
+	tt.Require.NoError(err)
+	tt.Assert.Equal(int32(1000000), tx.MaxFee)
+	tt.Assert.Equal(int32(1000000), tx.FeeCharged)
+}
+
+func TestTimeBoundsMaxBig(t *testing.T) {
+	dbConn := testDB.Horizon(t)
+	ingestion := Ingestion{
+		DB: &db.Session{
+			DB: dbConn,
+		},
+	}
+	test.ResetHorizonDB(t, dbConn)
 	ingestion.Start()
 
 	ingestion.builders[TransactionsTableName].Values(

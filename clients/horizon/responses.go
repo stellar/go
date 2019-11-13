@@ -36,9 +36,6 @@ type Asset = hProtocol.Asset
 type Balance = hProtocol.Balance
 
 // Deprecated: use protocols/horizon instead
-type HistoryAccount = hProtocol.HistoryAccount
-
-// Deprecated: use protocols/horizon instead
 type Ledger = hProtocol.Ledger
 
 // Deprecated: use render/hal instead

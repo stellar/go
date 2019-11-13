@@ -25,6 +25,8 @@ type Config struct {
 	HorizonURL        string      `toml:"horizon_url" valid:"required"`
 	StartingBalance   string      `toml:"starting_balance" valid:"required"`
 	TLS               *config.TLS `valid:"optional"`
+	NumMinions        int         `toml:"num_minions" valid:"optional"`
+	BaseFee           uint32      `toml:"base_fee" valid:"optional"`
 }
 
 func main() {
@@ -58,7 +60,11 @@ func run(cmd *cobra.Command, args []string) {
 		os.Exit(1)
 	}
 
-	fb := initFriendbot(cfg.FriendbotSecret, cfg.NetworkPassphrase, cfg.HorizonURL, cfg.StartingBalance)
+	fb, err := initFriendbot(cfg.FriendbotSecret, cfg.NetworkPassphrase, cfg.HorizonURL, cfg.StartingBalance, cfg.NumMinions, cfg.BaseFee)
+	if err != nil {
+		log.Error(err)
+		os.Exit(1)
+	}
 	router := initRouter(fb)
 	registerProblems()
 

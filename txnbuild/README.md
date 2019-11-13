@@ -4,10 +4,10 @@
 
 This project is maintained by the Stellar Development Foundation.
 
-```
+```golang
   import (
 	"log"
-	
+
 	"github.com/stellar/go/clients/horizonclient"
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/network"
@@ -35,7 +35,7 @@ This project is maintained by the Stellar Development Foundation.
 	tx := txnbuild.Transaction{
 		SourceAccount: &sourceAccount,
 		Operations:    []txnbuild.Operation{&op},
-		Timebounds:    txnbuild.NewTimebounds(0, 300),
+		Timebounds:    txnbuild.NewTimeout(300),
 		Network:       network.TestNetworkPassphrase,
 	}
 
@@ -46,7 +46,7 @@ This project is maintained by the Stellar Development Foundation.
   	}
 
 	// Send the transaction to the network
-	resp, err := client.SubmitTransactionXDR(txeBase64)
+	resp, err := client.SubmitTransactionXDR(txe)
   	if err != nil {
     		log.Println(err)
   	}
@@ -61,12 +61,11 @@ This library is aimed at developers building Go applications on top of the [Stel
 An easy-to-follow demonstration that exercises this SDK on the TestNet with actual accounts is also included! See the [Demo](#demo) section below.
 
 ### Prerequisites
-* Go 1.10 or greater
+* Go 1.12 or greater
+* [Modules](https://github.com/golang/go/wiki/Modules) to manage dependencies
 
 ### Installing
-* Download the Stellar Go monorepo: `git clone git@github.com:stellar/go.git`
-* Enter the source directory: `cd $GOPATH/src/github.com/stellar/go`
-* Download external dependencies: `dep ensure -v`
+* `go get github.com/stellar/go/clients/txnbuild`
 
 ## Running the tests
 Run the unit tests from the package directory: `go test`
@@ -79,7 +78,9 @@ To see the SDK in action, build and run the demo:
 
 
 ## Contributing
-Please read [CONTRIBUTING](../../CONTRIBUTING.md) for details on our code of conduct, and the process for submitting pull requests to us.
+Please read [Code of Conduct](https://github.com/stellar/.github/blob/master/CODE_OF_CONDUCT.md) to understand this project's communication rules.
+
+To submit improvements and fixes to this library, please see [CONTRIBUTING](../CONTRIBUTING.md).
 
 ## License
 This project is licensed under the Apache License - see the [LICENSE](../../LICENSE-APACHE.txt) file for details.

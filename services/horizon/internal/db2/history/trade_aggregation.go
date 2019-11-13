@@ -30,8 +30,8 @@ var StrictResolutionFiltering = true
 type TradeAggregation struct {
 	Timestamp     int64     `db:"timestamp"`
 	TradeCount    int64     `db:"count"`
-	BaseVolume    int64     `db:"base_volume"`
-	CounterVolume int64     `db:"counter_volume"`
+	BaseVolume    string    `db:"base_volume"`
+	CounterVolume string    `db:"counter_volume"`
 	Average       float64   `db:"avg"`
 	High          xdr.Price `db:"high"`
 	Low           xdr.Price `db:"low"`

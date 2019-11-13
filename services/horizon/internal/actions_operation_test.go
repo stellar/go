@@ -1,12 +1,17 @@
 package horizon
 
 import (
+	"context"
 	"encoding/json"
+	"net/http/httptest"
 	"testing"
 	"time"
 
+	"github.com/stellar/go/protocols/horizon"
+	"github.com/stellar/go/protocols/horizon/effects"
 	"github.com/stellar/go/protocols/horizon/operations"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
+	"github.com/stellar/go/services/horizon/internal/render/sse"
 	"github.com/stellar/go/services/horizon/internal/test"
 )
 
@@ -180,6 +185,57 @@ func TestOperationActions_Show_Failed(t *testing.T) {
 	}
 }
 
+func TestOperationActions_IncludeTransactions(t *testing.T) {
+	ht := StartHTTPTest(t, "failed_transactions")
+	defer ht.Finish()
+
+	w := ht.Get("/operations?account_id=GA5WBPYA5Y4WAEHXWR2UKO2UO4BUGHUQ74EUPKON2QHV4WRHOIRNKKH2")
+	ht.Assert.Equal(200, w.Code)
+	withoutTransactions := []operations.Base{}
+	ht.UnmarshalPage(w.Body, &withoutTransactions)
+
+	w = ht.Get("/operations?account_id=GA5WBPYA5Y4WAEHXWR2UKO2UO4BUGHUQ74EUPKON2QHV4WRHOIRNKKH2&join=transactions")
+	ht.Assert.Equal(200, w.Code)
+	withTransactions := []operations.Base{}
+	ht.UnmarshalPage(w.Body, &withTransactions)
+
+	for i, operation := range withTransactions {
+		getTransaction := ht.Get("/transactions/" + operation.Transaction.ID)
+		ht.Assert.Equal(200, getTransaction.Code)
+		var getTransactionResponse horizon.Transaction
+		err := json.Unmarshal(getTransaction.Body.Bytes(), &getTransactionResponse)
+
+		ht.Require.NoError(err, "failed to parse body")
+		tx := operation.Transaction
+		ht.Assert.Equal(*tx, getTransactionResponse)
+
+		withTransactions[i].Transaction = nil
+	}
+
+	ht.Assert.Equal(withoutTransactions, withTransactions)
+}
+
+func TestOperationActions_SSE(t *testing.T) {
+	tt := test.Start(t).Scenario("failed_transactions")
+	defer tt.Finish()
+
+	ctx := context.Background()
+	stream := sse.NewStream(ctx, httptest.NewRecorder())
+	oa := OperationIndexAction{
+		Action: *NewTestAction(ctx, "/operations?account_id=GA5WBPYA5Y4WAEHXWR2UKO2UO4BUGHUQ74EUPKON2QHV4WRHOIRNKKH2"),
+	}
+
+	oa.SSE(stream)
+	tt.Require.NoError(oa.Err)
+
+	streamWithTransactions := sse.NewStream(ctx, httptest.NewRecorder())
+	oaWithTransactions := OperationIndexAction{
+		Action: *NewTestAction(ctx, "/operations?account_id=GA5WBPYA5Y4WAEHXWR2UKO2UO4BUGHUQ74EUPKON2QHV4WRHOIRNKKH2&join=transactions"),
+	}
+	oaWithTransactions.SSE(streamWithTransactions)
+	tt.Require.NoError(oaWithTransactions.Err)
+}
+
 func TestOperationActions_Show(t *testing.T) {
 	ht := StartHTTPTest(t, "base")
 	defer ht.Finish()
@@ -255,6 +311,47 @@ func TestOperation_BumpSequence(t *testing.T) {
 		ht.Assert.Equal("bump_sequence", result.Type)
 		ht.Assert.Equal("300000000003", result.BumpTo)
 	}
+}
+
+func TestOperationEffect_BumpSequence(t *testing.T) {
+	ht := StartHTTPTest(t, "kahuna")
+	defer ht.Finish()
+
+	w := ht.Get("/operations/249108107265/effects")
+	if ht.Assert.Equal(200, w.Code) {
+		var result []effects.SequenceBumped
+		ht.UnmarshalPage(w.Body, &result)
+		ht.Assert.Equal(int64(300000000000), result[0].NewSeq)
+	}
+}
+
+func TestOperation_IncludeTransaction(t *testing.T) {
+	ht := StartHTTPTest(t, "kahuna")
+	defer ht.Finish()
+
+	withoutTransaction := ht.Get("/operations/261993009153")
+	ht.Assert.Equal(200, withoutTransaction.Code)
+	var responseWithoutTransaction operations.BumpSequence
+	err := json.Unmarshal(withoutTransaction.Body.Bytes(), &responseWithoutTransaction)
+	ht.Require.NoError(err, "failed to parse body")
+	ht.Assert.Nil(responseWithoutTransaction.Transaction)
+
+	withTransaction := ht.Get("/operations/261993009153?join=transactions")
+	ht.Assert.Equal(200, withTransaction.Code)
+	var responseWithTransaction operations.BumpSequence
+	err = json.Unmarshal(withTransaction.Body.Bytes(), &responseWithTransaction)
+	ht.Require.NoError(err, "failed to parse body")
+
+	transactionInOperationsResponse := *responseWithTransaction.Transaction
+	responseWithTransaction.Transaction = nil
+	ht.Assert.Equal(responseWithoutTransaction, responseWithTransaction)
+
+	getTransaction := ht.Get("/transactions/" + transactionInOperationsResponse.ID)
+	ht.Assert.Equal(200, getTransaction.Code)
+	var getTransactionResponse horizon.Transaction
+	err = json.Unmarshal(getTransaction.Body.Bytes(), &getTransactionResponse)
+	ht.Require.NoError(err, "failed to parse body")
+	ht.Assert.Equal(transactionInOperationsResponse, getTransactionResponse)
 }
 
 // TestOperationActions_Show_Extra_TxID tests if failed transactions are not returned

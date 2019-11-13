@@ -23,14 +23,14 @@ To learn more about the concept of transactions in the Stellar network, take a l
 | fee_paid         | number | The fee paid by the source account of this transaction when the transaction was applied to the ledger.                         |
 | operation_count  | number | The number of operations that are contained within this transaction.                                                           |
 | envelope_xdr     | string | A base64 encoded string of the raw `TransactionEnvelope` xdr struct for this transaction                                       |
-| result_xdr       | string | A base64 encoded string of the raw `TransactionResultPair` xdr struct for this transaction                                     |
+| result_xdr       | string | A base64 encoded string of the raw `TransactionResult` xdr struct for this transaction                                     |
 | result_meta_xdr  | string | A base64 encoded string of the raw `TransactionMeta` xdr struct for this transaction                                           |
 | fee_meta_xdr     | string | A base64 encoded string of the raw `LedgerEntryChanges` xdr struct produced by taking fees for this transaction.                                           |
 | memo_type        | string | |
 | memo             | string | |
 | signatures | string[] | An array of signatures used to sign this transaction |
-| valid_after | ISO8601 string | |
-| valid_before | ISO8601 string | |
+| valid_after | RFC3339 date-time string | |
+| valid_before | RFC3339 date-time string | |
 
 ## Links
 

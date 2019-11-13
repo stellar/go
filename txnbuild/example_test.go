@@ -2,6 +2,7 @@ package txnbuild
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/network"
@@ -82,6 +83,44 @@ func ExamplePayment() {
 	fmt.Println(txe)
 
 	// Output: AAAAAODcbeFyXKxmUWK1L6znNbKKIkPkHRJNbLktcKPqLnLFAAAAZAAMoj8AAAAEAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAABAAAAAITg3tq8G0kvnvoIhZPMYJsY+9KVV8xAA6NxhtKxIXZUAAAAAAAAAAAF9eEAAAAAAAAAAAHqLnLFAAAAQHb8LTro4QVpzcGzOToW28p340o54KX5/xxodABM+izweQlbVKb9bISRUOu+sNfi50weXeAeGVL+oTQS5YR4lgI=
+}
+
+func ExamplePayment_setBaseFee() {
+	kp, _ := keypair.Parse("SBPQUZ6G4FZNWFHKUWC5BEYWF6R52E3SEP7R3GWYSM2XTKGF5LNTWW4R")
+	client := horizonclient.DefaultTestNetClient
+	ar := horizonclient.AccountRequest{AccountID: kp.Address()}
+	sourceAccount, err := client.AccountDetail(ar)
+	check(err)
+
+	op1 := Payment{
+		Destination: "GCCOBXW2XQNUSL467IEILE6MMCNRR66SSVL4YQADUNYYNUVREF3FIV2Z",
+		Amount:      "10",
+		Asset:       NativeAsset{},
+	}
+
+	op2 := Payment{
+		Destination: "GCCOBXW2XQNUSL467IEILE6MMCNRR66SSVL4YQADUNYYNUVREF3FIV2Z",
+		Amount:      "100",
+		Asset:       NativeAsset{},
+	}
+
+	// get fees from network
+	feeStats, err := client.FeeStats()
+	check(err)
+
+	tx := Transaction{
+		SourceAccount: &sourceAccount,
+		Operations:    []Operation{&op1, &op2},
+		Timebounds:    NewInfiniteTimeout(), // Use a real timeout in production!
+		Network:       network.TestNetworkPassphrase,
+		BaseFee:       uint32(feeStats.P50AcceptedFee),
+	}
+
+	txe, err := tx.BuildSignEncode(kp.(*keypair.Full))
+	check(err)
+	fmt.Println(txe)
+
+	// Output: AAAAAODcbeFyXKxmUWK1L6znNbKKIkPkHRJNbLktcKPqLnLFAAAEsAAMoj8AAAAEAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAgAAAAAAAAABAAAAAITg3tq8G0kvnvoIhZPMYJsY+9KVV8xAA6NxhtKxIXZUAAAAAAAAAAAF9eEAAAAAAAAAAAEAAAAAhODe2rwbSS+e+giFk8xgmxj70pVXzEADo3GG0rEhdlQAAAAAAAAAADuaygAAAAAAAAAAAeoucsUAAABAyY5c/6T3cQ1i27t681O7aHrdSQ2tCcXpyLj06HVe59DeuHNLgN3X7oBeqBZrgVty+VNVGPEK6uR+UjhGi/bGBA==
 }
 
 func ExampleBumpSequence() {
@@ -305,7 +344,8 @@ func ExampleManageSellOffer() {
 	buying := CreditAsset{"ABCD", "GAS4V4O2B7DW5T7IQRPEEVCRXMDZESKISR7DVIGKZQYYV3OSQ5SH5LVP"}
 	sellAmount := "100"
 	price := "0.01"
-	op := CreateOfferOp(selling, buying, sellAmount, price)
+	op, err := CreateOfferOp(selling, buying, sellAmount, price)
+	check(err)
 
 	tx := Transaction{
 		SourceAccount: &sourceAccount,
@@ -329,7 +369,8 @@ func ExampleManageSellOffer_deleteOffer() {
 	check(err)
 
 	offerID := int64(2921622)
-	op := DeleteOfferOp(offerID)
+	op, err := DeleteOfferOp(offerID)
+	check(err)
 
 	tx := Transaction{
 		SourceAccount: &sourceAccount,
@@ -357,7 +398,8 @@ func ExampleManageSellOffer_updateOffer() {
 	sellAmount := "50"
 	price := "0.02"
 	offerID := int64(2497628)
-	op := UpdateOfferOp(selling, buying, sellAmount, price, offerID)
+	op, err := UpdateOfferOp(selling, buying, sellAmount, price, offerID)
+	check(err)
 
 	tx := Transaction{
 		SourceAccount: &sourceAccount,
@@ -430,4 +472,109 @@ func ExamplePathPayment() {
 	fmt.Println(txe)
 
 	// Output: AAAAAH4RyzTWNfXhqwLUoCw91aWkZtgIzY8SAVkIPc0uFVmYAAAAZAAMoj8AAAAEAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAACAAAAAAAAAAAF9eEAAAAAAH4RyzTWNfXhqwLUoCw91aWkZtgIzY8SAVkIPc0uFVmYAAAAAAAAAAAAmJaAAAAAAQAAAAFBQkNEAAAAAODcbeFyXKxmUWK1L6znNbKKIkPkHRJNbLktcKPqLnLFAAAAAAAAAAEuFVmYAAAAQOGE+w2bvIp8JQIPIFXWk5kO77cNUOlPZwlItA5V68/qmZTbJWq8wqdZtjELkZtNcQQX4x8EToShbn5nitG3RA4=
+}
+
+func ExamplePathPaymentStrictReceive() {
+	kp, _ := keypair.Parse("SBZVMB74Z76QZ3ZOY7UTDFYKMEGKW5XFJEB6PFKBF4UYSSWHG4EDH7PY")
+	client := horizonclient.DefaultTestNetClient
+	ar := horizonclient.AccountRequest{AccountID: kp.Address()}
+	sourceAccount, err := client.AccountDetail(ar)
+	check(err)
+
+	abcdAsset := CreditAsset{"ABCD", "GDQNY3PBOJOKYZSRMK2S7LHHGWZIUISD4QORETLMXEWXBI7KFZZMKTL3"}
+	op := PathPaymentStrictReceive{
+		SendAsset:   NativeAsset{},
+		SendMax:     "10",
+		Destination: kp.Address(),
+		DestAsset:   NativeAsset{},
+		DestAmount:  "1",
+		Path:        []Asset{abcdAsset},
+	}
+
+	tx := Transaction{
+		SourceAccount: &sourceAccount,
+		Operations:    []Operation{&op},
+		Timebounds:    NewInfiniteTimeout(), // Use a real timeout in production!
+		Network:       network.TestNetworkPassphrase,
+	}
+
+	txe, err := tx.BuildSignEncode(kp.(*keypair.Full))
+	check(err)
+	fmt.Println(txe)
+
+	// Output: AAAAAH4RyzTWNfXhqwLUoCw91aWkZtgIzY8SAVkIPc0uFVmYAAAAZAAMoj8AAAAEAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAACAAAAAAAAAAAF9eEAAAAAAH4RyzTWNfXhqwLUoCw91aWkZtgIzY8SAVkIPc0uFVmYAAAAAAAAAAAAmJaAAAAAAQAAAAFBQkNEAAAAAODcbeFyXKxmUWK1L6znNbKKIkPkHRJNbLktcKPqLnLFAAAAAAAAAAEuFVmYAAAAQOGE+w2bvIp8JQIPIFXWk5kO77cNUOlPZwlItA5V68/qmZTbJWq8wqdZtjELkZtNcQQX4x8EToShbn5nitG3RA4=
+}
+
+func ExamplePathPaymentStrictSend() {
+	kp, _ := keypair.Parse("SBZVMB74Z76QZ3ZOY7UTDFYKMEGKW5XFJEB6PFKBF4UYSSWHG4EDH7PY")
+	client := horizonclient.DefaultTestNetClient
+	ar := horizonclient.AccountRequest{AccountID: kp.Address()}
+	sourceAccount, err := client.AccountDetail(ar)
+	check(err)
+
+	abcdAsset := CreditAsset{"ABCD", "GDQNY3PBOJOKYZSRMK2S7LHHGWZIUISD4QORETLMXEWXBI7KFZZMKTL3"}
+	op := PathPaymentStrictSend{
+		SendAsset:   NativeAsset{},
+		SendAmount:  "1",
+		Destination: kp.Address(),
+		DestAsset:   NativeAsset{},
+		DestMin:     "10",
+		Path:        []Asset{abcdAsset},
+	}
+
+	tx := Transaction{
+		SourceAccount: &sourceAccount,
+		Operations:    []Operation{&op},
+		Timebounds:    NewInfiniteTimeout(), // Use a real timeout in production!
+		Network:       network.TestNetworkPassphrase,
+	}
+
+	txe, err := tx.BuildSignEncode(kp.(*keypair.Full))
+	check(err)
+	fmt.Println(txe)
+
+	// Output: AAAAAH4RyzTWNfXhqwLUoCw91aWkZtgIzY8SAVkIPc0uFVmYAAAAZAAMoj8AAAAEAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAANAAAAAAAAAAAAmJaAAAAAAH4RyzTWNfXhqwLUoCw91aWkZtgIzY8SAVkIPc0uFVmYAAAAAAAAAAAF9eEAAAAAAQAAAAFBQkNEAAAAAODcbeFyXKxmUWK1L6znNbKKIkPkHRJNbLktcKPqLnLFAAAAAAAAAAEuFVmYAAAAQNXoKZHgBO+2baoHMcT1SqpL3lmcggeCm5TuFNk7fwMeF/6h5lDTYMa+y3i9gwwAg8aQwCwuV8A38AWKfPvgMAM=
+}
+
+func ExampleManageBuyOffer() {
+	kp, _ := keypair.Parse("SBZVMB74Z76QZ3ZOY7UTDFYKMEGKW5XFJEB6PFKBF4UYSSWHG4EDH7PY")
+	client := horizonclient.DefaultTestNetClient
+	ar := horizonclient.AccountRequest{AccountID: kp.Address()}
+	sourceAccount, err := client.AccountDetail(ar)
+	check(err)
+
+	buyOffer := ManageBuyOffer{
+		Selling: NativeAsset{},
+		Buying:  CreditAsset{"ABCD", "GDQNY3PBOJOKYZSRMK2S7LHHGWZIUISD4QORETLMXEWXBI7KFZZMKTL3"},
+		Amount:  "100",
+		Price:   "0.01",
+		OfferID: 0,
+	}
+
+	tx := Transaction{
+		SourceAccount: &sourceAccount,
+		Operations:    []Operation{&buyOffer},
+		Timebounds:    NewInfiniteTimeout(),
+		Network:       network.TestNetworkPassphrase,
+	}
+
+	txe, err := tx.BuildSignEncode(kp.(*keypair.Full))
+	check(err)
+	fmt.Println(txe)
+
+	// Output: AAAAAH4RyzTWNfXhqwLUoCw91aWkZtgIzY8SAVkIPc0uFVmYAAAAZAAMoj8AAAAEAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAMAAAAAAAAAAFBQkNEAAAAAODcbeFyXKxmUWK1L6znNbKKIkPkHRJNbLktcKPqLnLFAAAAADuaygAAAAABAAAAZAAAAAAAAAAAAAAAAAAAAAEuFVmYAAAAQPh8h1TrzDpcgzB/VE8V0X2pFGV8/JyuYrx0I5bRfBJuLJr0l8yL1isP1wZjvMdX7fNiktwSLuUuj749nWA6wAo=
+
+}
+
+func ExampleBuildChallengeTx() {
+	// Generate random nonce
+	serverSignerSeed := "SBZVMB74Z76QZ3ZOY7UTDFYKMEGKW5XFJEB6PFKBF4UYSSWHG4EDH7PY"
+	clientAccountID := "GDQNY3PBOJOKYZSRMK2S7LHHGWZIUISD4QORETLMXEWXBI7KFZZMKTL3"
+	anchorName := "SDF"
+	timebound := time.Duration(5 * time.Minute)
+
+	tx, err := BuildChallengeTx(serverSignerSeed, clientAccountID, anchorName, network.TestNetworkPassphrase, timebound)
+	_, err = checkChallengeTx(tx, anchorName)
+
+	check(err)
 }

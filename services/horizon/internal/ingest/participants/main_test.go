@@ -86,6 +86,29 @@ func TestForOperation(t *testing.T) {
 	tt.Assert.Contains(p, aid("GAYSCMKQY6EYLXOPTT6JPPOXDMVNBWITPTSZIVWW4LWARVBOTH5RTLAD"))
 }
 
+func TestPathPaymentStrictSend(t *testing.T) {
+	tt := test.Start(t).ScenarioWithoutHorizon("paths_strict_send")
+	defer tt.Finish()
+	q := &core.Q{Session: tt.CoreSession()}
+
+	load := func(lg int32, tx int, op int) []xdr.AccountId {
+		var txs []core.Transaction
+
+		err := q.TransactionsByLedger(&txs, lg)
+		tt.Require.NoError(err, "failed to load transaction data")
+		xtx := txs[tx].Envelope.Tx
+		xop := xtx.Operations[op]
+		ret, err := ForOperation(&xtx, &xop)
+		tt.Require.NoError(err, "ForOperation() errored")
+		return ret
+	}
+
+	p := load(6, 0, 0)
+	tt.Require.Len(p, 2)
+	tt.Assert.Contains(p, aid("GCXKG6RN4ONIEPCMNFB732A436Z5PNDSRLGWK7GBLCMQLIFO4S7EYWVU"))
+	tt.Assert.Contains(p, aid("GA5WBPYA5Y4WAEHXWR2UKO2UO4BUGHUQ74EUPKON2QHV4WRHOIRNKKH2"))
+}
+
 func TestForTransaction(t *testing.T) {
 	tt := test.Start(t).ScenarioWithoutHorizon("kahuna")
 	defer tt.Finish()

@@ -5,7 +5,7 @@ import (
 
 	"github.com/stellar/go/amount"
 	"github.com/stellar/go/price"
-	. "github.com/stellar/go/protocols/horizon"
+	protocol "github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 )
 
@@ -13,13 +13,20 @@ import (
 // table.
 func PopulateTradeAggregation(
 	ctx context.Context,
-	dest *TradeAggregation,
+	dest *protocol.TradeAggregation,
 	row history.TradeAggregation,
-) (err error) {
+) error {
+	var err error
 	dest.Timestamp = row.Timestamp
 	dest.TradeCount = row.TradeCount
-	dest.BaseVolume = amount.StringFromInt64(row.BaseVolume)
-	dest.CounterVolume = amount.StringFromInt64(row.CounterVolume)
+	dest.BaseVolume, err = amount.IntStringToAmount(row.BaseVolume)
+	if err != nil {
+		return err
+	}
+	dest.CounterVolume, err = amount.IntStringToAmount(row.CounterVolume)
+	if err != nil {
+		return err
+	}
 	dest.Average = price.StringFromFloat64(row.Average)
 	dest.High = row.High.String()
 	dest.HighR = row.High
@@ -29,5 +36,5 @@ func PopulateTradeAggregation(
 	dest.OpenR = row.Open
 	dest.Close = row.Close.String()
 	dest.CloseR = row.Close
-	return
+	return nil
 }

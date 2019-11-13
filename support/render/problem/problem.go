@@ -11,24 +11,57 @@ import (
 	"github.com/stellar/go/support/log"
 )
 
-const horizonHost = "https://stellar.org/horizon-errors/"
+var (
+	ServiceHost     = "https://stellar.org/horizon-errors/"
+	errToProblemMap = map[error]P{}
+)
+
+var (
+	// ServerError is a well-known problem type. Use it as a shortcut.
+	ServerError = P{
+		Type:   "server_error",
+		Title:  "Internal Server Error",
+		Status: http.StatusInternalServerError,
+		Detail: "An error occurred while processing this request.  This is usually due " +
+			"to a bug within the server software.  Trying this request again may " +
+			"succeed if the bug is transient, otherwise please report this issue " +
+			"to the issue tracker at: https://github.com/stellar/go/issues." +
+			" Please include this response in your issue.",
+	}
+
+	// NotFound is a well-known problem type.  Use it as a shortcut in your actions
+	NotFound = P{
+		Type:   "not_found",
+		Title:  "Resource Missing",
+		Status: http.StatusNotFound,
+		Detail: "The resource at the url requested was not found.  This usually " +
+			"occurs for one of two reasons:  The url requested is not valid, or no " +
+			"data in our database could be found with the parameters provided.",
+	}
+
+	// BadRequest is a well-known problem type.  Use it as a shortcut
+	// in your actions.
+	BadRequest = P{
+		Type:   "bad_request",
+		Title:  "Bad Request",
+		Status: http.StatusBadRequest,
+		Detail: "The request you sent was invalid in some way.",
+	}
+)
 
 // P is a struct that represents an error response to be rendered to a connected
 // client.
 type P struct {
-	Type     string                 `json:"type"`
-	Title    string                 `json:"title"`
-	Status   int                    `json:"status"`
-	Detail   string                 `json:"detail,omitempty"`
-	Instance string                 `json:"instance,omitempty"`
-	Extras   map[string]interface{} `json:"extras,omitempty"`
+	Type   string                 `json:"type"`
+	Title  string                 `json:"title"`
+	Status int                    `json:"status"`
+	Detail string                 `json:"detail,omitempty"`
+	Extras map[string]interface{} `json:"extras,omitempty"`
 }
 
 func (p P) Error() string {
 	return fmt.Sprintf("problem: %s", p.Type)
 }
-
-var errToProblemMap = map[error]P{}
 
 // RegisterError records an error -> P mapping, allowing the app to register
 // specific errors that may occur in other packages to be rendered as a specific
@@ -43,48 +76,60 @@ func RegisterError(err error, p P) {
 	errToProblemMap[err] = p
 }
 
-// Inflate sets some basic parameters on the problem, mostly the type for now
-func Inflate(p *P) {
-	//TODO: add requesting url to extra info
-
-	if !strings.HasPrefix(p.Type, horizonHost) {
-		//TODO: make the horizonHost prefix configurable
-		p.Type = horizonHost + p.Type
-	}
-
-	p.Instance = ""
+// RegisterHost registers the service host url. It is used to prepend the host
+// url to the error type. If you don't wish to prepend anything to the error
+// type, register host as an empty string.
+// The default service host points to `https://stellar.org/horizon-errors/`.
+func RegisterHost(host string) {
+	ServiceHost = host
 }
 
-// HasProblem types can be transformed into a problem.
-// Implement it for custom errors.
-type HasProblem interface {
-	Problem() P
+// ReportFunc is a function type used to report unexpected errors.
+type ReportFunc func(context.Context, error)
+
+var reportFn ReportFunc
+
+// RegisterReportFunc registers the report function that you want to use to
+// report errors. Once reportFn is initialzied, it will be used to report
+// unexpected errors.
+func RegisterReportFunc(fn ReportFunc) {
+	reportFn = fn
 }
 
 // Render writes a http response to `w`, compliant with the "Problem
 // Details for HTTP APIs" RFC:
-//   https://tools.ietf.org/html/draft-ietf-appsawg-http-problem-00
-//
-// `p` is the problem, which may be either a concrete P struct, an implementor
-// of the `HasProblem` interface, or an error.  Any other value for `p` will
-// panic.
+// https://tools.ietf.org/html/draft-ietf-appsawg-http-problem-00
 func Render(ctx context.Context, w http.ResponseWriter, err error) {
 	origErr := errors.Cause(err)
 
+	var problem P
 	switch p := origErr.(type) {
 	case P:
-		renderProblem(ctx, w, p)
+		problem = p
 	case *P:
-		renderProblem(ctx, w, *p)
-	case HasProblem:
-		renderProblem(ctx, w, p.Problem())
+		problem = *p
 	case error:
-		renderErr(ctx, w, err)
+		var ok bool
+		problem, ok = errToProblemMap[origErr]
+
+		// If this error is not a registered error
+		// log it and replace it with a 500 error
+		if !ok {
+			log.Ctx(ctx).WithStack(err).Error(err)
+			if reportFn != nil {
+				reportFn(ctx, err)
+			}
+			problem = ServerError
+		}
 	}
+
+	renderProblem(ctx, w, problem)
 }
 
 func renderProblem(ctx context.Context, w http.ResponseWriter, p P) {
-	Inflate(&p)
+	if ServiceHost != "" && !strings.HasPrefix(p.Type, ServiceHost) {
+		p.Type = ServiceHost + p.Type
+	}
 
 	w.Header().Set("Content-Type", "application/problem+json; charset=utf-8")
 
@@ -98,52 +143,6 @@ func renderProblem(ctx context.Context, w http.ResponseWriter, p P) {
 
 	w.WriteHeader(p.Status)
 	w.Write(js)
-}
-
-func renderErr(ctx context.Context, w http.ResponseWriter, err error) {
-	origErr := errors.Cause(err)
-
-	p, ok := errToProblemMap[origErr]
-
-	// If this error is not a registered error
-	// log it and replace it with a 500 error
-	if !ok {
-		log.Ctx(ctx).WithStack(err).Error(err)
-		p = ServerError
-	}
-
-	renderProblem(ctx, w, p)
-}
-
-// ServerError is a well-known problem type. Use it as a shortcut.
-var ServerError = P{
-	Type:   "server_error",
-	Title:  "Internal Server Error",
-	Status: http.StatusInternalServerError,
-	Detail: "An error occurred while processing this request.  This is usually due " +
-		"to a bug within the server software.  Trying this request again may " +
-		"succeed if the bug is transient, otherwise please report this issue " +
-		"to the issue tracker at: https://github.com/stellar/go/issues." +
-		" Please include this response in your issue.",
-}
-
-// NotFound is a well-known problem type.  Use it as a shortcut in your actions
-var NotFound = P{
-	Type:   "not_found",
-	Title:  "Resource Missing",
-	Status: http.StatusNotFound,
-	Detail: "The resource at the url requested was not found.  This is usually " +
-		"occurs for one of two reasons:  The url requested is not valid, or no " +
-		"data in our database could be found with the parameters provided.",
-}
-
-// BadRequest is a well-known problem type.  Use it as a shortcut
-// in your actions.
-var BadRequest = P{
-	Type:   "bad_request",
-	Title:  "Bad Request",
-	Status: http.StatusBadRequest,
-	Detail: "The request you sent was invalid in some way",
 }
 
 // MakeInvalidFieldProblem is a helper function to make a BadRequest with extras
