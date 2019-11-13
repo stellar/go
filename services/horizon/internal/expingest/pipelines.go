@@ -276,8 +276,6 @@ func postProcessingHook(
 			err := system.verifyState()
 			if err != nil {
 				errorCount := system.incrementStateVerificationErrors()
-
-				system.stateVerificationErrors++
 				switch errors.Cause(err).(type) {
 				case verify.StateError:
 					markStateInvalid(historySession, err)
