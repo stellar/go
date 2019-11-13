@@ -445,6 +445,108 @@ func (s *AccountsSignerProcessorTestSuiteLedger) TestSignerRemoved() {
 	s.Assert().NoError(err)
 }
 
+// TestSignerPreAuthTxRemovedTxFailed tests if removing preauthorized transaction
+// signer works even when tx failed.
+func (s *AccountsSignerProcessorTestSuiteLedger) TestSignerPreAuthTxRemovedTxFailed() {
+	s.mockLedgerReader.
+		On("Read").
+		Return(io.LedgerTransaction{
+			Result: xdr.TransactionResultPair{
+				Result: xdr.TransactionResult{
+					Result: xdr.TransactionResultResult{
+						Code: xdr.TransactionResultCodeTxFailed,
+					},
+				},
+			},
+			Meta: createTransactionMeta([]xdr.OperationMeta{
+				xdr.OperationMeta{
+					Changes: []xdr.LedgerEntryChange{
+						// State
+						xdr.LedgerEntryChange{
+							Type: xdr.LedgerEntryChangeTypeLedgerEntryState,
+							State: &xdr.LedgerEntry{
+								Data: xdr.LedgerEntryData{
+									Type: xdr.LedgerEntryTypeAccount,
+									Account: &xdr.AccountEntry{
+										AccountId: xdr.MustAddress("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
+										Signers: []xdr.Signer{
+											xdr.Signer{
+												Key:    xdr.MustSigner("GCBBDQLCTNASZJ3MTKAOYEOWRGSHDFAJVI7VPZUOP7KXNHYR3HP2BUKV"),
+												Weight: 10,
+											},
+											xdr.Signer{
+												Key:    xdr.MustSigner("TBU2RRGLXH3E5CQHTD3ODLDF2BWDCYUSSBLLZ5GNW7JXHDIYKXZWHXL7"),
+												Weight: 15,
+											},
+										},
+									},
+								},
+							},
+						},
+						// Updated
+						xdr.LedgerEntryChange{
+							Type: xdr.LedgerEntryChangeTypeLedgerEntryUpdated,
+							Updated: &xdr.LedgerEntry{
+								Data: xdr.LedgerEntryData{
+									Type: xdr.LedgerEntryTypeAccount,
+									Account: &xdr.AccountEntry{
+										AccountId: xdr.MustAddress("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
+										Signers: []xdr.Signer{
+											xdr.Signer{
+												Key:    xdr.MustSigner("GCBBDQLCTNASZJ3MTKAOYEOWRGSHDFAJVI7VPZUOP7KXNHYR3HP2BUKV"),
+												Weight: 10,
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			}),
+		}, nil).Once()
+
+	// Remove old signers
+	s.mockQ.
+		On(
+			"RemoveAccountSigner",
+			"GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML",
+			"GCBBDQLCTNASZJ3MTKAOYEOWRGSHDFAJVI7VPZUOP7KXNHYR3HP2BUKV",
+		).
+		Return(int64(1), nil).Once()
+
+	s.mockQ.
+		On(
+			"RemoveAccountSigner",
+			"GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML",
+			"TBU2RRGLXH3E5CQHTD3ODLDF2BWDCYUSSBLLZ5GNW7JXHDIYKXZWHXL7",
+		).
+		Return(int64(1), nil).Once()
+
+	// Create new signer
+	s.mockQ.
+		On(
+			"CreateAccountSigner",
+			"GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML",
+			"GCBBDQLCTNASZJ3MTKAOYEOWRGSHDFAJVI7VPZUOP7KXNHYR3HP2BUKV",
+			int32(10),
+		).
+		Return(int64(1), nil).Once()
+
+	s.mockLedgerReader.
+		On("Read").
+		Return(io.LedgerTransaction{}, stdio.EOF).Once()
+
+	err := s.processor.ProcessLedger(
+		context.Background(),
+		&supportPipeline.Store{},
+		s.mockLedgerReader,
+		s.mockLedgerWriter,
+	)
+
+	s.Assert().NoError(err)
+}
+
 func (s *AccountsSignerProcessorTestSuiteLedger) TestRemoveAccount() {
 	s.mockLedgerReader.
 		On("Read").

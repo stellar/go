@@ -11,19 +11,19 @@ Handles:
 
 
 ## Downloading the server
-[Prebuilt binaries](https://github.com/stellar/bridge-server/releases) of the bridge-server server are available on the [releases page](https://github.com/stellar/bridge-server/releases).
+[Prebuilt binaries](https://github.com/stellar/go/releases) of the bridge server are available on the [releases page](https://github.com/stellar/go/releases).
 
 | Platform       | Binary file name                                                                         |
 |----------------|------------------------------------------------------------------------------------------|
-| Mac OSX 64 bit | [bridge-darwin-amd64](https://github.com/stellar/bridge-server/releases)      |
-| Linux 64 bit   | [bridge-linux-amd64](https://github.com/stellar/bridge-server/releases)       |
-| Windows 64 bit | [bridge-windows-amd64.exe](https://github.com/stellar/bridge-server/releases) |
+| Mac OSX 64 bit | [bridge-vX.X.X-darwin-amd64](https://github.com/stellar/go/releases)      |
+| Linux 64 bit   | [bridge-vX.X.X-linux-amd64](https://github.com/stellar/go/releases)       |
+| Windows 64 bit | [bridge-vX.X.X-windows-amd64.exe](https://github.com/stellar/go/releases) |
 
 Alternatively, you can [build](#building) the binary yourself.
 
 ## Config
 
-The `bridge.cfg` file must be present in a working directory (you can load another file by using `-c` parameter). Here is an [example configuration file](https://github.com/stellar/bridge-server/blob/master/bridge_example.cfg). Config file should contain following values:
+The `bridge.cfg` file must be present in a working directory (you can load another file by using `-c` parameter). Here is an [example configuration file](https://github.com/stellar/go/blob/master/services/bridge/bridge_example.cfg). Config file should contain following values:
 
 * `port` - server listening port
 * `api_key` - when set, all requests to bridge server must contain `api_key` parameter with a correct value, otherwise the server will respond with `503 Forbidden`

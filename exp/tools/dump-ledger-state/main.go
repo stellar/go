@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"os"
 	"runtime"
@@ -16,7 +17,10 @@ import (
 )
 
 func main() {
-	archive, err := archive()
+	testnet := flag.Bool("testnet", false, "connect to the Stellar test network")
+	flag.Parse()
+
+	archive, err := archive(*testnet)
 	if err != nil {
 		panic(err)
 	}
@@ -76,13 +80,17 @@ func main() {
 	doneStats <- true
 }
 
-func archive() (*historyarchive.Archive, error) {
+func archive(testnet bool) (*historyarchive.Archive, error) {
+	if testnet {
+		return historyarchive.Connect(
+			"https://history.stellar.org/prd/core-testnet/core_testnet_001",
+			historyarchive.ConnectOptions{},
+		)
+	}
+
 	return historyarchive.Connect(
-		fmt.Sprintf("s3://history.stellar.org/prd/core-live/core_live_001/"),
-		historyarchive.ConnectOptions{
-			S3Region:         "eu-west-1",
-			UnsignedRequests: true,
-		},
+		fmt.Sprintf("https://history.stellar.org/prd/core-live/core_live_001/"),
+		historyarchive.ConnectOptions{},
 	)
 }
 

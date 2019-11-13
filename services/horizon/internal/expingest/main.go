@@ -34,7 +34,10 @@ const (
 	// - 4: Fixed a bug in AccountSignersChanged method.
 	// - 5: Added trust lines.
 	// - 6: Added accounts and accounts data.
-	CurrentVersion = 6
+	// - 7: Fixes a bug in AccountSignersChanged method.
+	// - 8: Fixes AccountSigners processor to remove preauth tx signer
+	//      when preauth tx is failed.
+	CurrentVersion = 8
 )
 
 var log = ilog.DefaultLogger.WithField("service", "expingest")

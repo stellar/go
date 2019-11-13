@@ -183,37 +183,6 @@ func (s *TrustLinesProcessorTestSuiteLedger) TestInsertTrustLine() {
 		s.processor.processLedgerTrustLines(accountTransaction.GetChanges()[0]),
 	)
 
-	// should be ignored because transaction was not successful
-	s.mockLedgerReader.On("Read").
-		Return(io.LedgerTransaction{
-			Result: xdr.TransactionResultPair{
-				Result: xdr.TransactionResult{
-					Result: xdr.TransactionResultResult{
-						Code: xdr.TransactionResultCodeTxFailed,
-					},
-				},
-			},
-			Meta: createTransactionMeta([]xdr.OperationMeta{
-				xdr.OperationMeta{
-					Changes: []xdr.LedgerEntryChange{
-						// State
-						xdr.LedgerEntryChange{
-							Type: xdr.LedgerEntryChangeTypeLedgerEntryCreated,
-							Created: &xdr.LedgerEntry{
-								Data: xdr.LedgerEntryData{
-									Type: xdr.LedgerEntryTypeOffer,
-									Offer: &xdr.OfferEntry{
-										OfferId: xdr.Int64(6),
-										Price:   xdr.Price{1, 2},
-									},
-								},
-							},
-						},
-					},
-				},
-			}),
-		}, nil).Once()
-
 	// add trust line
 	trustLine := xdr.TrustLineEntry{
 		AccountId: xdr.MustAddress("GAOQJGUAB7NI7K7I62ORBXMN3J4SSWQUQ7FOEPSDJ322W2HMCNWPHXFB"),

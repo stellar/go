@@ -1,7 +1,6 @@
 package horizonclient
 
 import (
-	"fmt"
 	"testing"
 
 	hProtocol "github.com/stellar/go/protocols/horizon"
@@ -34,26 +33,6 @@ func TestPathsRequestBuildUrl(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "paths?destination_account=GCLWGQPMKXQSPF776IU33AH4PZNOOWNAWGGKVTBQMIC5IMKUNP3E6NVU&destination_amount=100&destination_asset_code=NGN&destination_asset_issuer=GDZST3XVCDTUJ76ZAV2HA72KYQODXXZ5PTMAPZGDHZ6CS7RO7MGG3DBM&destination_asset_type=credit_alphanum4&source_account=GDZST3XVCDTUJ76ZAV2HA72KYQODXXZ5PTMAPZGDHZ6CS7RO7MGG3DBM", endpoint)
 
-}
-
-func ExampleClient_Paths() {
-
-	client := DefaultPublicNetClient
-	// Find paths for XLM->NGN
-	pr := PathsRequest{
-		DestinationAccount:     "GCLWGQPMKXQSPF776IU33AH4PZNOOWNAWGGKVTBQMIC5IMKUNP3E6NVU",
-		DestinationAmount:      "100",
-		DestinationAssetCode:   "NGN",
-		DestinationAssetIssuer: "GDZST3XVCDTUJ76ZAV2HA72KYQODXXZ5PTMAPZGDHZ6CS7RO7MGG3DBM",
-		DestinationAssetType:   AssetType4,
-		SourceAccount:          "GDZST3XVCDTUJ76ZAV2HA72KYQODXXZ5PTMAPZGDHZ6CS7RO7MGG3DBM",
-	}
-	paths, err := client.Paths(pr)
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	fmt.Print(paths)
 }
 
 func TestPathsRequest(t *testing.T) {

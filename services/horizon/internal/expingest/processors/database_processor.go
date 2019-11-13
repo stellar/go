@@ -223,12 +223,8 @@ func (p *DatabaseProcessor) ProcessLedger(ctx context.Context, store *pipeline.S
 				return errors.New("Unknown action")
 			}
 
-			// Skip failed if not in Accounts processor. Failed txs can modify
-			// Accounts' seqnum and XLM balance (fees).
-			if action != Accounts &&
-				transaction.Result.Result.Result.Code != xdr.TransactionResultCodeTxSuccess {
-				continue
-			}
+			// Remember that it's possible that transaction can remove a preauth
+			// tx signer even when it's a failed transaction.
 
 			for _, change := range transaction.GetChanges() {
 				err := handler(change)
