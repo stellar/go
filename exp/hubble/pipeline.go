@@ -6,11 +6,11 @@ import (
 	"github.com/stellar/go/support/historyarchive"
 )
 
-const archivesURL string = "s3://history.stellar.org/prd/core-live/core_live_001/"
-const archivesRegion string = "eu-west-1"
+const archivesURL = "http://history.stellar.org/prd/core-live/core_live_001/"
+const archivesRegion = "eu-west-1"
 
-// RunStatePipelineSession runs a single ledger session.
-func RunStatePipelineSession() error {
+// NewStatePipelineSession runs a single ledger session.
+func NewStatePipelineSession() (*ingest.SingleLedgerSession, error) {
 	archive, err := historyarchive.Connect(
 		archivesURL,
 		historyarchive.ConnectOptions{
@@ -19,20 +19,19 @@ func RunStatePipelineSession() error {
 		},
 	)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	statePipeline := GetStatePipeline()
+	statePipeline := NewStatePipeline()
 	session := &ingest.SingleLedgerSession{
 		Archive:       archive,
 		StatePipeline: statePipeline,
 	}
-	err = session.Run()
-	return err
+	return session, nil
 }
 
-// GetStatePipeline returns a state pipeline.
-func GetStatePipeline() *pipeline.StatePipeline {
+// NewStatePipeline returns a state pipeline.
+func NewStatePipeline() *pipeline.StatePipeline {
 	sp := &pipeline.StatePipeline{}
 	prettyPrintEntryProcessor := &PrettyPrintEntryProcessor{}
 

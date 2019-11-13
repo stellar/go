@@ -4,39 +4,19 @@ import (
 	"context"
 	"fmt"
 	stdio "io"
-	"sync"
 
 	"github.com/stellar/go/exp/ingest/io"
 	supportPipeline "github.com/stellar/go/exp/support/pipeline"
 	"github.com/stellar/go/xdr"
 )
 
-// SimpleProcessor is a basic unit to use in more complex processors.
-// It wraps a mutex and number of calls.
-type SimpleProcessor struct {
-	sync.Mutex
-	callCount int
-}
-
-// Reset re-initializes the processor by putting the call count to 0.
-func (n *SimpleProcessor) Reset() {
-	n.callCount = 0
-}
-
-// IncrementAndReturnCallCount notes an additional call in the processor state.
-func (n *SimpleProcessor) IncrementAndReturnCallCount() int {
-	n.Lock()
-	defer n.Unlock()
-	n.callCount++
-	return n.callCount
-}
-
 // PrettyPrintEntryProcessor reads and pretty prints account entries.
 // Note that now, it prints the first encountered example of an entry, to allow
 // for quicker debugging and testing of our printing process.
-type PrettyPrintEntryProcessor struct {
-	SimpleProcessor
-}
+type PrettyPrintEntryProcessor struct{}
+
+// Reset is a no-op for this processor.
+func (p *PrettyPrintEntryProcessor) Reset() {}
 
 // ProcessState reads, prints, and writes all changes to ledger state.
 func (p *PrettyPrintEntryProcessor) ProcessState(ctx context.Context, store *supportPipeline.Store, r io.StateReader, w io.StateWriter) error {
@@ -56,8 +36,6 @@ func (p *PrettyPrintEntryProcessor) ProcessState(ctx context.Context, store *sup
 			}
 		}
 
-		// The below logic is meant to only pretty print one example for each entry type.
-		// TODO: Remove the below checks, up and until printing the entry.
 		// If we have found an example of each of the 4 ledger entry types, exit.
 		if len(entriesCountDict) == 4 {
 			break
@@ -73,7 +51,6 @@ func (p *PrettyPrintEntryProcessor) ProcessState(ctx context.Context, store *sup
 		// as we only wish to print a single example now.
 		entryType := entry.EntryType().String()
 		if _, ok := entriesCountDict[entryType]; ok {
-			// entriesCountDict[entryType]++
 			continue
 		} else {
 			entriesCountDict[entryType] = 1

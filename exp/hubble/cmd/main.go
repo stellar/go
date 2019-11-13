@@ -8,5 +8,9 @@ import (
 
 func main() {
 	fmt.Println("Running the pipeline to serialize XDR entries...")
-	hubble.RunStatePipelineSession()
+	session, err := hubble.NewStatePipelineSession()
+	if err != nil {
+		panic(err)
+	}
+	session.Run()
 }
