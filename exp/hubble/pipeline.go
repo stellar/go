@@ -1,3 +1,4 @@
+// +build go1.13
 package hubble
 
 import (

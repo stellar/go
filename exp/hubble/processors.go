@@ -1,3 +1,4 @@
+// +build go1.13
 package hubble
 
 import (
@@ -24,7 +25,6 @@ func (p *PrettyPrintEntryProcessor) ProcessState(ctx context.Context, store *sup
 	defer r.Close()
 
 	entries := 0
-	prefix := "\t"
 	entriesCountDict := make(map[string]int)
 	for {
 		entry, err := r.Read()
@@ -57,7 +57,11 @@ func (p *PrettyPrintEntryProcessor) ProcessState(ctx context.Context, store *sup
 		}
 
 		entries++
-		fmt.Println(prettyPrintEntry(entry, prefix))
+		bytes, err := serializeLedgerEntryChange(entry)
+		if err != nil {
+			panic(err)
+		}
+		fmt.Printf("%s\n", bytes)
 
 		select {
 		case <-ctx.Done():
