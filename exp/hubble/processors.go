@@ -49,7 +49,7 @@ func (p *PrettyPrintEntryProcessor) ProcessState(ctx context.Context, store *sup
 		// If we've already seen an example of this entry, we break,
 		// as we only wish to print a single example now.
 		entryType := entry.EntryType().String()
-		if _, ok := entryTypeSet[entryType]; ok {
+		if entryTypeSet[entryType] {
 			continue
 		} else {
 			entryTypeSet[entryType] = true
