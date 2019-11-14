@@ -311,7 +311,8 @@ func TestLoadTransaction(t *testing.T) {
 		assert.Equal(t, transaction.Hash, "a4ca51d09610154409890763e2c8ecbaa36688c957dea1df0578bdbc1f65d312")
 		assert.Equal(t, transaction.Ledger, int32(17425656))
 		assert.Equal(t, transaction.Account, "GBQ352ACDO6DEGI42SOI4DCB654N7B7DANO4RSBGA5CZLM4475CQNID4")
-		assert.Equal(t, transaction.FeePaid, int32(100))
+		assert.Equal(t, transaction.FeeCharged, int32(100))
+		assert.Equal(t, transaction.MaxFee, int32(100))
 		assert.Equal(t, transaction.ResultXdr, "AAAAAAAAAGQAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAA=")
 	}
 
@@ -798,7 +799,8 @@ var accountTransactionsResponse = `{
                 "created_at": "2018-10-31T16:04:26Z",
                 "source_account": "GCK6ALX65S5KTQRKX3OWG5DNCJ7XMI62N55TKRM6ZI2YNWDSO3PX3YSZ",
                 "source_account_sequence": "1901476511219733",
-                "fee_paid": 100,
+                "fee_charged": 100,
+                "max_fee": 100,
                 "operation_count": 1,
                 "envelope_xdr": "AAAAAJXgLv7suqnCKr7dY3RtEn92I9pvezVFnso1hthydt99AAAAZAAGwWIAAAAVAAAAAAAAAAAAAAABAAAAAAAAAAEAAAAAdTglQu8gT30RQIRX++/4DfJexNtwt8lsgFB6o72b7ogAAAACV1dNTlBQUUlNR0VHAAAAAHU4JULvIE99EUCEV/vv+A3yXsTbcLfJbIBQeqO9m+6IAAAAAACYloAAAAAAAAAAAXZU+JIAAABAvVrpeUdGqVv4rOJk5C0LPLvFKgVPwKtKtSEtz2jQUN0H3fiUHqmK7VtjwgC7Bvj7WfDponOHGsgbzjStlMDPBA==",
                 "result_xdr": "AAAAAAAAAGQAAAAAAAAAAQAAAAAAAAABAAAAAAAAAAA=",
@@ -842,7 +844,8 @@ var accountTransactionsResponse = `{
                 "created_at": "2018-10-31T16:04:17Z",
                 "source_account": "GCK6ALX65S5KTQRKX3OWG5DNCJ7XMI62N55TKRM6ZI2YNWDSO3PX3YSZ",
                 "source_account_sequence": "1901476511219732",
-                "fee_paid": 100,
+                "fee_charged": 100,
+                "max_fee": 100,
                 "operation_count": 1,
                 "envelope_xdr": "AAAAAJXgLv7suqnCKr7dY3RtEn92I9pvezVFnso1hthydt99AAAAZAAGwWIAAAAUAAAAAAAAAAAAAAABAAAAAAAAAAEAAAAAdTglQu8gT30RQIRX++/4DfJexNtwt8lsgFB6o72b7ogAAAACV1dNTlBQUUlNR0VHAAAAAHU4JULvIE99EUCEV/vv+A3yXsTbcLfJbIBQeqO9m+6IAAAAAACYloAAAAAAAAAAAXZU+JIAAABA1gQZebvgMe8B16XZgoBjhUHFxEKobB7O2agfS1Az3BhangQ/qfHKB1QgUo3ypIMpmsX6k8KdVGPWkrGNmv+DCg==",
                 "result_xdr": "AAAAAAAAAGQAAAAAAAAAAQAAAAAAAAABAAAAAAAAAAA=",
@@ -890,7 +893,8 @@ var transactionResponse = `{
   "created_at": "2018-04-19T00:16:25Z",
   "source_account": "GBQ352ACDO6DEGI42SOI4DCB654N7B7DANO4RSBGA5CZLM4475CQNID4",
   "source_account_sequence": "74842446537687041",
-  "fee_paid": 100,
+  "fee_charged": 100,
+  "max_fee": 100,
   "operation_count": 1,
   "envelope_xdr": "AAAAAGG+6AIbvDIZHNScjgxB93jfh+MDXcjIJgdFlbOc/0UGAAAAZAEJ5M8AAAABAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAWItna6Yfm4mu3aBouY6Jkq/sVMZZmYKp+Ybebu74C4YAAAAAAJiWgAAAAAAAAAABnP9FBgAAAEB/ufrWJGD1YeVvoxoku9U6CWQTUIO9SGf7NnbZY50Tn7+pNOtNslZy0bYlAabSgoCfJ2ZXRmDMue9v9nrFsLEA",
   "result_xdr": "AAAAAAAAAGQAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAA=",
