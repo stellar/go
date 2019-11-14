@@ -90,6 +90,10 @@ func (handler AssetStatsHandler) findIssuersForAssets(
 		delete(issuerSet, account.AccountID)
 	}
 
+	// Note it's possible that no accounts can be found for certain issuers.
+	// That can occur because an account can be removed when there are only empty trustlines
+	// pointing to it. We still continue to serve asset stats for such issuers.
+
 	return accountsByID, nil
 }
 
