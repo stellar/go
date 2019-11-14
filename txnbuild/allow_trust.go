@@ -89,3 +89,9 @@ func (at *AllowTrust) Validate() error {
 	}
 	return nil
 }
+
+// GetSourceAccount returns the source account of the operation, or nil if not
+// set.
+func (at *AllowTrust) GetSourceAccount() Account {
+	return at.SourceAccount
+}

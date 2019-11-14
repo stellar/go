@@ -109,3 +109,13 @@ func MustParse(addressOrSeed string) KP {
 
 	return kp
 }
+
+// MustRandom is the panic-on-fail version of Random.
+func MustRandom() *Full {
+	kp, err := Random()
+	if err != nil {
+		panic(err)
+	}
+
+	return kp
+}

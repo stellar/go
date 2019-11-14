@@ -90,3 +90,9 @@ func (mo *ManageBuyOffer) FromXDR(xdrOp xdr.Operation) error {
 func (mo *ManageBuyOffer) Validate() error {
 	return validateOffer(mo.Buying, mo.Selling, mo.Amount, mo.Price, mo.OfferID)
 }
+
+// GetSourceAccount returns the source account of the operation, or nil if not
+// set.
+func (mo *ManageBuyOffer) GetSourceAccount() Account {
+	return mo.SourceAccount
+}
