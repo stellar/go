@@ -9,6 +9,7 @@ import (
 
 	"github.com/stellar/go/exp/ingest/io"
 	supportPipeline "github.com/stellar/go/exp/support/pipeline"
+	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
 )
 
@@ -57,7 +58,7 @@ func (p *PrettyPrintEntryProcessor) ProcessState(ctx context.Context, store *sup
 		}
 		bytes, err := serializeLedgerEntryChange(entry)
 		if err != nil {
-			panic(err)
+			return errors.Wrap(err, "converting ledgerentry to json")
 		}
 		fmt.Printf("%s\n", bytes)
 
