@@ -54,3 +54,9 @@ func (am *AccountMerge) Validate() error {
 	}
 	return nil
 }
+
+// GetSourceAccount returns the source account of the operation, or nil if not
+// set.
+func (am *AccountMerge) GetSourceAccount() Account {
+	return am.SourceAccount
+}

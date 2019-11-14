@@ -9,16 +9,12 @@ import (
 )
 
 const archivesURL = "http://history.stellar.org/prd/core-live/core_live_001/"
-const archivesRegion = "eu-west-1"
 
 // NewStatePipelineSession runs a single ledger session.
 func NewStatePipelineSession() (*ingest.SingleLedgerSession, error) {
 	archive, err := historyarchive.Connect(
 		archivesURL,
-		historyarchive.ConnectOptions{
-			S3Region:         archivesRegion,
-			UnsignedRequests: true,
-		},
+		historyarchive.ConnectOptions{},
 	)
 	if err != nil {
 		return nil, err
