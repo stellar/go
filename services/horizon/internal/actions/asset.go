@@ -90,15 +90,6 @@ func (handler AssetStatsHandler) findIssuersForAssets(
 		delete(issuerSet, account.AccountID)
 	}
 
-	if len(issuerSet) > 0 {
-		var issuer string
-		for key := range issuerSet {
-			issuer = key
-			break
-		}
-		return nil, fmt.Errorf("Account for issuer %s does not exist", issuer)
-	}
-
 	return accountsByID, nil
 }
 
