@@ -266,24 +266,6 @@ jobs:
                 echo "No files found in ./dist. No binaries to publish for ${CIRCLE_TAG}."
             fi
 
-  # ingest_state_diff runs `/tools/dump-ledger-state` to compare if state ingested
-  # by ingest package matches the state in stellar-core db
-  ingest_state_diff:
-    working_directory: /go/src/github.com/stellar/go/
-    docker:
-      - image: circleci/golang:1.13-stretch
-        environment:
-          PGHOST: localhost
-          PGPORT: 5432
-          PGUSER: circleci
-      - image: circleci/postgres:9.6.5-alpine-ram
-        environment:
-          POSTGRES_USER: circleci
-    steps:
-      - install_stellar_core_debian_package
-      - install_go_deps
-      - check_ingest_state
-
   publish_state_diff_docker_image:
     docker:
       - image: circleci/buildpack-deps:stretch
@@ -345,12 +327,6 @@ workflows:
               branches:
                 only:
                   - master
-      - ingest_state_diff:
-          filters:
-              branches:
-                only:
-                  - master
-                  - /release-horizon-/
 
   build_and_deploy:
     jobs:
@@ -374,16 +350,3 @@ workflows:
       - publish_latest_horizon_docker_image:
           requires:
             - hold
-
-  ingest_state_nighly:
-    triggers:
-      - schedule:
-          # Every day
-          cron: "0 0 * * *"
-          filters:
-            branches:
-              only:
-                - master
-                - /release-horizon-/
-    jobs:
-      - ingest_state_diff
