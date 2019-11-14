@@ -6,13 +6,15 @@ import (
 	"github.com/stellar/go/xdr"
 )
 
-// PathPayment represents the Stellar path_payment_strict_receive operation. See
-// https://www.stellar.org/developers/guides/concepts/list-of-operations.html
-type PathPaymentStrictReceive PathPayment
+// PathPayment represents the Stellar path_payment operation. This operation was removed
+// in Stellar Protocol 12 and replaced by PathPaymentStrictReceive.
+// Deprecated: This operation was renamed to PathPaymentStrictReceive,
+// which functions identically.
+type PathPayment = PathPaymentStrictReceive
 
-// PathPayment represents the Stellar path payment operation. See
+// PathPaymentStrictReceive represents the Stellar path_payment_strict_receive operation. See
 // https://www.stellar.org/developers/guides/concepts/list-of-operations.html
-type PathPayment struct {
+type PathPaymentStrictReceive struct {
 	SendAsset     Asset
 	SendMax       string
 	Destination   string
@@ -22,8 +24,8 @@ type PathPayment struct {
 	SourceAccount Account
 }
 
-// BuildXDR for Payment returns a fully configured XDR Operation.
-func (pp *PathPayment) BuildXDR() (xdr.Operation, error) {
+// BuildXDR for PathPaymentStrictReceive returns a fully configured XDR Operation.
+func (pp *PathPaymentStrictReceive) BuildXDR() (xdr.Operation, error) {
 	// Set XDR send asset
 	if pp.SendAsset == nil {
 		return xdr.Operation{}, errors.New("you must specify an asset to send for payment")
@@ -90,8 +92,8 @@ func (pp *PathPayment) BuildXDR() (xdr.Operation, error) {
 	return op, nil
 }
 
-// FromXDR for PathPayment initialises the txnbuild struct from the corresponding xdr Operation.
-func (pp *PathPayment) FromXDR(xdrOp xdr.Operation) error {
+// FromXDR for PathPaymentStrictReceive initialises the txnbuild struct from the corresponding xdr Operation.
+func (pp *PathPaymentStrictReceive) FromXDR(xdrOp xdr.Operation) error {
 	result, ok := xdrOp.Body.GetPathPaymentStrictReceiveOp()
 	if !ok {
 		return errors.New("error parsing path_payment operation from xdr")
@@ -126,9 +128,9 @@ func (pp *PathPayment) FromXDR(xdrOp xdr.Operation) error {
 	return nil
 }
 
-// Validate for PathPayment validates the required struct fields. It returns an error if any
+// Validate for PathPaymentStrictReceive validates the required struct fields. It returns an error if any
 // of the fields are invalid. Otherwise, it returns nil.
-func (pp *PathPayment) Validate() error {
+func (pp *PathPaymentStrictReceive) Validate() error {
 	err := validateStellarPublicKey(pp.Destination)
 	if err != nil {
 		return NewValidationError("Destination", err.Error())
@@ -155,4 +157,10 @@ func (pp *PathPayment) Validate() error {
 	}
 
 	return nil
+}
+
+// GetSourceAccount returns the source account of the operation, or nil if not
+// set.
+func (pp *PathPaymentStrictReceive) GetSourceAccount() Account {
+	return pp.SourceAccount
 }

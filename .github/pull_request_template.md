@@ -1,5 +1,6 @@
-<!-- If you're making a doc PR or something tiny where the below is irrelevant, just delete this
-template and use a short description. -->
+<!-- If you're making a doc PR or something tiny where the below is irrelevant, delete this
+template and use a short description, but in your description aim to include both what the
+change is, and why it is being made, with enough context for anyone to understand. -->
 
 <details>
   <summary>PR Checklist</summary>
@@ -29,22 +30,14 @@ template and use a short description. -->
   release branch if it's not a patch change.
 </details>
 
-### Summary
+### What
 
-[TODO]
+[TODO: Short statement about what is changing.]
 
-### Goal and scope
+### Why
 
-[TODO]
+[TODO: Why this change is being made. Include any context required to understand the why.]
 
-### Summary of changes
+### Known limitations
 
-[TODO]
-
-### Known limitations & issues
-
-[TODO]
-
-### What shouldn't be reviewed
-
-[TODO]
+[TODO or N/A]
