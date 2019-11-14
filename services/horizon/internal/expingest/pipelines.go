@@ -280,11 +280,11 @@ func postProcessingHook(
 				case verify.StateError:
 					markStateInvalid(historySession, err)
 				default:
-					logError := log.WithField("err", err).Warn
+					logger := log.WithField("err", err).Warn
 					if errorCount >= stateVerificationErrorThreshold {
-						logError = log.WithField("err", err).Error
+						logger = log.WithField("err", err).Error
 					}
-					logError("State verification errored")
+					logger("State verification errored")
 				}
 			} else {
 				system.resetStateVerificationErrors()
