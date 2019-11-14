@@ -1,3 +1,5 @@
+// +build go1.13
+
 package hubble
 
 import (
@@ -7,6 +9,7 @@ import (
 
 	"github.com/stellar/go/exp/ingest/io"
 	supportPipeline "github.com/stellar/go/exp/support/pipeline"
+	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
 )
 
@@ -23,7 +26,6 @@ func (p *PrettyPrintEntryProcessor) ProcessState(ctx context.Context, store *sup
 	defer w.Close()
 	defer r.Close()
 
-	prefix := "\t"
 	entryTypeSet := make(map[string]bool)
 	for {
 		entry, err := r.Read()
@@ -54,8 +56,11 @@ func (p *PrettyPrintEntryProcessor) ProcessState(ctx context.Context, store *sup
 		} else {
 			entryTypeSet[entryType] = true
 		}
-
-		fmt.Println(prettyPrintEntry(entry, prefix))
+		bytes, err := serializeLedgerEntryChange(entry)
+		if err != nil {
+			return errors.Wrap(err, "converting ledgerentry to json")
+		}
+		fmt.Printf("%s\n", bytes)
 
 		select {
 		case <-ctx.Done():
