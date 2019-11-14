@@ -335,14 +335,21 @@ func TestAssetStatsIssuerDoesNotExist(t *testing.T) {
 	tt.Assert.Equal(numChanged, int64(1))
 
 	r := makeRequest(t, map[string]string{}, map[string]string{}, q.Session)
-	_, err = handler.GetResourcePage(httptest.NewRecorder(), r)
-	if err == nil {
-		t.Fatal("error but got not nil")
+	results, err := handler.GetResourcePage(httptest.NewRecorder(), r)
+	tt.Assert.NoError(err)
+
+	expectedAssetStatResponse := horizon.AssetStat{
+		Amount:      "0.0000001",
+		NumAccounts: usdAssetStat.NumAccounts,
+		Asset: base.Asset{
+			Type:   "credit_alphanum4",
+			Code:   usdAssetStat.AssetCode,
+			Issuer: usdAssetStat.AssetIssuer,
+		},
+		PT: usdAssetStat.AssetCode + ":" + usdAssetStat.AssetIssuer,
 	}
 
-	expected := "Account for issuer GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H does not exist"
-
-	if err.Error() != expected {
-		t.Fatalf("expected error %v but got %v", expected, err)
-	}
+	tt.Assert.Len(results, 1)
+	assetStat := results[0].(horizon.AssetStat)
+	tt.Assert.Equal(assetStat, expectedAssetStatResponse)
 }

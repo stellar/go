@@ -90,14 +90,9 @@ func (handler AssetStatsHandler) findIssuersForAssets(
 		delete(issuerSet, account.AccountID)
 	}
 
-	if len(issuerSet) > 0 {
-		var issuer string
-		for key := range issuerSet {
-			issuer = key
-			break
-		}
-		return nil, fmt.Errorf("Account for issuer %s does not exist", issuer)
-	}
+	// Note it's possible that no accounts can be found for certain issuers.
+	// That can occur because an account can be removed when there are only empty trustlines
+	// pointing to it. We still continue to serve asset stats for such issuers.
 
 	return accountsByID, nil
 }
