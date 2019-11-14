@@ -23,9 +23,8 @@ func (p *PrettyPrintEntryProcessor) ProcessState(ctx context.Context, store *sup
 	defer w.Close()
 	defer r.Close()
 
-	entries := 0
 	prefix := "\t"
-	entriesCountDict := make(map[string]int)
+	entryTypeSet := make(map[string]bool)
 	for {
 		entry, err := r.Read()
 		if err != nil {
@@ -37,7 +36,7 @@ func (p *PrettyPrintEntryProcessor) ProcessState(ctx context.Context, store *sup
 		}
 
 		// If we have found an example of each of the 4 ledger entry types, exit.
-		if len(entriesCountDict) == 4 {
+		if len(entryTypeSet) == 4 {
 			break
 		}
 
@@ -50,13 +49,12 @@ func (p *PrettyPrintEntryProcessor) ProcessState(ctx context.Context, store *sup
 		// If we've already seen an example of this entry, we break,
 		// as we only wish to print a single example now.
 		entryType := entry.EntryType().String()
-		if _, ok := entriesCountDict[entryType]; ok {
+		if _, ok := entryTypeSet[entryType]; ok {
 			continue
 		} else {
-			entriesCountDict[entryType] = 1
+			entryTypeSet[entryType] = true
 		}
 
-		entries++
 		fmt.Println(prettyPrintEntry(entry, prefix))
 
 		select {
@@ -67,7 +65,7 @@ func (p *PrettyPrintEntryProcessor) ProcessState(ctx context.Context, store *sup
 		}
 	}
 
-	fmt.Printf("Found %d entries\n", entries)
+	fmt.Printf("Found %d entries\n", len(entryTypeSet))
 	return nil
 }
 
