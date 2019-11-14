@@ -1,6 +1,7 @@
 package expingest
 
 import (
+	"bytes"
 	"database/sql"
 	"fmt"
 	"time"
@@ -393,6 +394,19 @@ func addDataToStateVerifier(verifier *verify.StateVerifier, q *history.Q, keys [
 	return nil
 }
 
+func offerEntryEquals(offer, other xdr.OfferEntry) (bool, error) {
+	serialized, err := offer.MarshalBinary()
+	if err != nil {
+		return false, errors.Wrap(err, "could not serialize offer")
+	}
+	otherSerialized, err := other.MarshalBinary()
+	if err != nil {
+		return false, errors.Wrap(err, "could not serialize offer")
+	}
+
+	return bytes.Equal(serialized, otherSerialized), nil
+}
+
 func addOffersToStateVerifier(
 	verifier *verify.StateVerifier,
 	q *history.Q,
@@ -433,7 +447,9 @@ func addOffersToStateVerifier(
 				fmt.Errorf("offer %v is not in orderbook graph", row.OfferID),
 			)
 		}
-		if graphOffer != *entry.Data.Offer {
+		if equal, err := offerEntryEquals(graphOffer, *entry.Data.Offer); err != nil {
+			return errors.Wrap(err, "could not compare offers")
+		} else if !equal {
 			return verify.NewStateError(
 				fmt.Errorf(
 					"offer %v from db does not match offer in orderbook graph",
