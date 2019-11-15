@@ -37,7 +37,9 @@ const (
 	// - 7: Fixes a bug in AccountSignersChanged method.
 	// - 8: Fixes AccountSigners processor to remove preauth tx signer
 	//      when preauth tx is failed.
-	CurrentVersion = 8
+	// - 9: Fixes a bug in asset stats processor that counted unauthorized
+	//      trustlines.
+	CurrentVersion = 9
 )
 
 var log = ilog.DefaultLogger.WithField("service", "expingest")
