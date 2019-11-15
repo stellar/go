@@ -488,10 +488,52 @@ func (p *DatabaseProcessor) processLedgerOffers(change io.Change) error {
 }
 
 func (p *DatabaseProcessor) adjustAssetStat(
-	trustline xdr.TrustLineEntry,
-	deltaBalance xdr.Int64,
-	deltaAccounts int32,
+	preTrustline *xdr.TrustLineEntry,
+	postTrustline *xdr.TrustLineEntry,
 ) error {
+	var deltaBalance xdr.Int64
+	var deltaAccounts int32
+	var trustline xdr.TrustLineEntry
+
+	if preTrustline != nil && postTrustline == nil {
+		trustline = *preTrustline
+		// removing a trustline
+		if xdr.TrustLineFlags(preTrustline.Flags).IsAuthorized() {
+			deltaAccounts = -1
+			deltaBalance = -preTrustline.Balance
+		}
+	} else if preTrustline == nil && postTrustline != nil {
+		trustline = *postTrustline
+		// adding a trustline
+		if xdr.TrustLineFlags(postTrustline.Flags).IsAuthorized() {
+			deltaAccounts = 1
+			deltaBalance = postTrustline.Balance
+		}
+	} else if preTrustline != nil && postTrustline != nil {
+		trustline = *postTrustline
+		// updating a trustline
+		if xdr.TrustLineFlags(preTrustline.Flags).IsAuthorized() &&
+			xdr.TrustLineFlags(postTrustline.Flags).IsAuthorized() {
+			// trustline remains authorized
+			deltaAccounts = 0
+			deltaBalance = postTrustline.Balance - preTrustline.Balance
+		} else if xdr.TrustLineFlags(preTrustline.Flags).IsAuthorized() &&
+			!xdr.TrustLineFlags(postTrustline.Flags).IsAuthorized() {
+			// trustline was authorized and became unauthorized
+			deltaAccounts = -1
+			deltaBalance = -preTrustline.Balance
+		} else if !xdr.TrustLineFlags(preTrustline.Flags).IsAuthorized() &&
+			xdr.TrustLineFlags(postTrustline.Flags).IsAuthorized() {
+			// trustline was unauthorized and became authorized
+			deltaAccounts = 1
+			deltaBalance = postTrustline.Balance
+		}
+		// else, trustline was unauthorized and remains unauthorized
+		// so there is no change to accounts or balances
+	} else {
+		return verify.NewStateError(errors.New("both pre and post trustlines cannot be nil"))
+	}
+
 	if deltaBalance == 0 && deltaAccounts == 0 {
 		return nil
 	}
@@ -611,7 +653,7 @@ func (p *DatabaseProcessor) processLedgerTrustLines(change io.Change) error {
 		if err != nil {
 			return errors.Wrap(err, "Error creating ledger key")
 		}
-		err = p.adjustAssetStat(trustLine, trustLine.Balance, 1)
+		err = p.adjustAssetStat(nil, &trustLine)
 		if err != nil {
 			return errors.Wrap(err, "Error adjusting asset stat")
 		}
@@ -624,7 +666,7 @@ func (p *DatabaseProcessor) processLedgerTrustLines(change io.Change) error {
 		if err != nil {
 			return errors.Wrap(err, "Error creating ledger key")
 		}
-		err = p.adjustAssetStat(trustLine, -trustLine.Balance, -1)
+		err = p.adjustAssetStat(&trustLine, nil)
 		if err != nil {
 			return errors.Wrap(err, "Error adjusting asset stat")
 		}
@@ -638,7 +680,7 @@ func (p *DatabaseProcessor) processLedgerTrustLines(change io.Change) error {
 		if err != nil {
 			return errors.Wrap(err, "Error creating ledger key")
 		}
-		err = p.adjustAssetStat(trustLine, trustLine.Balance-preTrustLine.Balance, 0)
+		err = p.adjustAssetStat(&preTrustLine, &trustLine)
 		if err != nil {
 			return errors.Wrap(err, "Error adjusting asset stat")
 		}

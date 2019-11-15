@@ -40,17 +40,17 @@ func TestAssetStatsValidation(t *testing.T) {
 			"not a valid asset issuer",
 		},
 		{
-			"cursor has too many colons",
+			"cursor has too many underscores",
 			map[string]string{
-				"cursor": "ABC:GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H:",
+				"cursor": "ABC_GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H_credit_alphanum4_",
 			},
 			"cursor",
-			"cursor must contain exactly one colon",
+			"credit_alphanum4_ is not a valid asset type",
 		},
 		{
 			"invalid cursor code",
 			map[string]string{
-				"cursor": "tooooooooolong:GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H",
+				"cursor": "tooooooooolong_GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H_credit_alphanum12",
 			},
 			"cursor",
 			"not a valid asset code",
@@ -58,10 +58,18 @@ func TestAssetStatsValidation(t *testing.T) {
 		{
 			"invalid cursor issuer",
 			map[string]string{
-				"cursor": "ABC:invalidissuer",
+				"cursor": "ABC_invalidissuer_credit_alphanum4",
 			},
 			"cursor",
 			"not a valid asset issuer",
+		},
+		{
+			"invalid cursor type",
+			map[string]string{
+				"cursor": "ABC_GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H_credit_alphanum123",
+			},
+			"cursor",
+			"credit_alphanum123 is not a valid asset type",
 		},
 	} {
 		t.Run(testCase.name, func(t *testing.T) {
@@ -124,7 +132,7 @@ func TestAssetStats(t *testing.T) {
 			Code:   usdAssetStat.AssetCode,
 			Issuer: usdAssetStat.AssetIssuer,
 		},
-		PT:    usdAssetStat.AssetCode + ":" + usdAssetStat.AssetIssuer,
+		PT:    usdAssetStat.PagingToken(),
 		Flags: issuerFlags,
 	}
 
@@ -143,7 +151,7 @@ func TestAssetStats(t *testing.T) {
 			Code:   etherAssetStat.AssetCode,
 			Issuer: etherAssetStat.AssetIssuer,
 		},
-		PT:    etherAssetStat.AssetCode + ":" + etherAssetStat.AssetIssuer,
+		PT:    etherAssetStat.PagingToken(),
 		Flags: issuerFlags,
 	}
 
@@ -162,7 +170,7 @@ func TestAssetStats(t *testing.T) {
 			Code:   otherUSDAssetStat.AssetCode,
 			Issuer: otherUSDAssetStat.AssetIssuer,
 		},
-		PT: otherUSDAssetStat.AssetCode + ":" + otherUSDAssetStat.AssetIssuer,
+		PT: otherUSDAssetStat.PagingToken(),
 	}
 	otherUSDAssetStatResponse.Links.Toml = hal.NewLink(
 		"https://" + otherIssuer.HomeDomain + "/.well-known/stellar.toml",
@@ -183,7 +191,7 @@ func TestAssetStats(t *testing.T) {
 			Code:   eurAssetStat.AssetCode,
 			Issuer: eurAssetStat.AssetIssuer,
 		},
-		PT: eurAssetStat.AssetCode + ":" + eurAssetStat.AssetIssuer,
+		PT: eurAssetStat.PagingToken(),
 	}
 	eurAssetStatResponse.Links.Toml = hal.NewLink(
 		"https://" + otherIssuer.HomeDomain + "/.well-known/stellar.toml",
@@ -346,7 +354,7 @@ func TestAssetStatsIssuerDoesNotExist(t *testing.T) {
 			Code:   usdAssetStat.AssetCode,
 			Issuer: usdAssetStat.AssetIssuer,
 		},
-		PT: usdAssetStat.AssetCode + ":" + usdAssetStat.AssetIssuer,
+		PT: usdAssetStat.PagingToken(),
 	}
 
 	tt.Assert.Len(results, 1)

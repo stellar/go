@@ -104,12 +104,12 @@ func (q *Q) GetAssetStat(assetType xdr.AssetType, assetCode, assetIssuer string)
 }
 
 func parseAssetStatsCursor(cursor string) (string, string, error) {
-	parts := strings.Split(cursor, ":")
-	if len(parts) != 2 {
+	parts := strings.SplitN(cursor, "_", 3)
+	if len(parts) != 3 {
 		return "", "", fmt.Errorf("invalid asset stats cursor: %v", cursor)
 	}
 
-	code, issuer := parts[0], parts[1]
+	code, issuer, assetType := parts[0], parts[1], parts[2]
 	var issuerAccount xdr.AccountId
 	var asset xdr.Asset
 
@@ -125,6 +125,10 @@ func parseAssetStatsCursor(cursor string) (string, string, error) {
 			err,
 			fmt.Sprintf("invalid asset stats cursor: %v", cursor),
 		)
+	}
+
+	if _, ok := xdr.StringToAssetType[assetType]; !ok {
+		return "", "", errors.Errorf("invalid asset type in asset stats cursor: %v", cursor)
 	}
 
 	return code, issuer, nil
