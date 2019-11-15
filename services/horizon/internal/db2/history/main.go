@@ -115,6 +115,7 @@ var ExperimentalIngestionTables = []string{
 	"accounts",
 	"accounts_data",
 	"accounts_signers",
+	"exp_asset_stats",
 	"offers",
 	"trust_lines",
 }
