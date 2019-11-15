@@ -182,7 +182,6 @@ jobs:
           GO111MODULE: "on"
     steps:
       - install_go_deps
-      - check_go_deps
       - gofmt
       - govet
       - staticcheck
