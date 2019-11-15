@@ -9,14 +9,20 @@ bumps.  A breaking change will get clearly notified in this log.
 ## v0.23.0
 
 * New features in experimental ingestion (to enable: set `--enable-experimental-ingestion` CLI param or `ENABLE_EXPERIMENTAL_INGESTION=true` env variable):
-  * All state (ledger entries) related endpoints are now served from Horizon DB (except `/account/{account_id}`).
-  * `/order_book` offers data is served from in-memory store #1761.
-  * Add `Latest-Ledger` header with the sequence number of the last processed ledger by the experimental ingestion system. The endpoints built using the experimental ingestion system will always respond with data which is consistent with the ledger in `Latest-Ledger`. (#1830)
-  * Add experimental support for filtering accounts who are trustees to an asset via `/accounts`. For example: the following request will return all accounts who have a trustline to the asset `COP` issued by `GC2GFGZ5CZCFCDJSQF3YYEAYBOS3ZREXJSPU7LUJ7JU3LP3BQNHY7YKS`: `/accounts?asset=COP:GC2GFGZ5CZCFCDJSQF3YYEAYBOS3ZREXJSPU7LUJ7JU3LP3BQNHY7YKS`. (#1835)
-  * Update payload in experimental "Accounts For Signers" end-point to return an account resource. (#1876)
-* Use new timeout middleware to prevent `multiple response.WriteHeader calls` errors when streaming. (#1870)
-* Fixes a bug in `/fee_stats` (#1830).
-* Fixes a bug in `/paths/strict-send`. (#1863)
+  * All state-related endpoints (i.e. ledger entries) are now served from Horizon DB (except `/account/{account_id}`)
+
+  * `/order_book` offers data is served from in-memory store ([#1761](https://github.com/stellar/go/pull/1761))
+
+  * Add `Latest-Ledger` header with the sequence number of the most recent ledger processed by the experimental ingestion system. Endpoints built on the experimental ingestion system will always respond with data which is consistent with the ledger in `Latest-Ledger` ([#1830](https://github.com/stellar/go/pull/1830))
+
+  * Add experimental support for filtering accounts who are trustees to an asset via `/accounts`. Example:\
+  `/accounts?asset=COP:GC2GFGZ5CZCFCDJSQF3YYEAYBOS3ZREXJSPU7LUJ7JU3LP3BQNHY7YKS`\
+  returns all accounts who have a trustline to the asset `COP` issued by account `GC2GFG...` ([#1835](https://github.com/stellar/go/pull/1835))
+
+  * Experimental "Accounts For Signers" end-point now returns a full account resource ([#1876](https://github.com/stellar/go/issues/1875))
+* Prevent "`multiple response.WriteHeader calls`" errors when streaming ([#1870](https://github.com/stellar/go/issues/1870))
+* Fix an interpolation bug in `/fee_stats` ([#1857](https://github.com/stellar/go/pull/1857))
+* Fix a bug in `/paths/strict-send` where occasionally bad paths were returned ([#1863](https://github.com/stellar/go/pull/1863))
 
 ## v0.22.2
 
