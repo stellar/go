@@ -78,7 +78,8 @@ func NewApp(config Config) *App {
 // Serve starts the horizon web server, binding it to a socket, setting up
 // the shutdown signals.
 func (a *App) Serve() {
-	http.Handle("/", a.web.router)
+	mux := http.NewServeMux()
+	mux.Handle("/", a.web.router)
 
 	addr := fmt.Sprintf(":%d", a.config.Port)
 
@@ -87,7 +88,7 @@ func (a *App) Serve() {
 
 		Server: &http.Server{
 			Addr:              addr,
-			Handler:           http.DefaultServeMux,
+			Handler:           mux,
 			ReadHeaderTimeout: 5 * time.Second,
 		},
 
