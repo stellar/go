@@ -173,19 +173,6 @@ commands:
 #-----------------------------------------------------------------------------#
 
 jobs:
-  # check_code_1_12 performs code checks using Go 1.12.
-  check_code_1_12:
-    working_directory: /go/src/github.com/stellar/go
-    docker:
-      - image: circleci/golang:1.12-stretch
-        environment:
-          GO111MODULE: "on"
-    steps:
-      - install_go_deps
-      - gofmt
-      - govet
-      - staticcheck
-
   # check_code_1_13 performs code checks using Go 1.13.
   check_code_1_13:
     working_directory: /go/src/github.com/stellar/go
