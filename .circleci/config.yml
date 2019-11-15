@@ -304,7 +304,6 @@ workflows:
 
   check_code_and_test:
     jobs:
-      - check_code_1_12
       - check_code_1_13
       - test_code_1_12
       - test_code_1_13
