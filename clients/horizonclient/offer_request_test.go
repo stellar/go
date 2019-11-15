@@ -47,6 +47,8 @@ func TestNextOffersPage(t *testing.T) {
 		assert.Equal(t, len(offers.Embedded.Records), 2)
 	}
 
+	assert.Equal(t, int64(2946580), offers.Embedded.Records[0].ID)
+
 	hmock.On(
 		"GET",
 		"https://horizon-testnet.stellar.org/accounts/GBZ5OD56VRTRQKMNADD6VUZUG3FCILMAMYQY5ZSC3AW3GBXNEPIK76IG/offers?cursor=2946581&limit=2&order=asc",
@@ -105,8 +107,47 @@ func TestOfferRequestStreamOffers(t *testing.T) {
 	}
 }
 
+func TestStringOfferID(t *testing.T) {
+	hmock := httptest.NewClient()
+	client := &Client{
+		HorizonURL: "https://localhost/",
+		HTTP:       hmock,
+	}
+
+	offerRequest := OfferRequest{ForAccount: "GBZ5OD56VRTRQKMNADD6VUZUG3FCILMAMYQY5ZSC3AW3GBXNEPIK76IG", Limit: 1}
+
+	hmock.On(
+		"GET",
+		"https://localhost/accounts/GBZ5OD56VRTRQKMNADD6VUZUG3FCILMAMYQY5ZSC3AW3GBXNEPIK76IG/offers?limit=1",
+	).ReturnString(200, stringOffersPage)
+
+	offers, err := client.Offers(offerRequest)
+
+	if assert.NoError(t, err) {
+		assert.Equal(t, len(offers.Embedded.Records), 1)
+	}
+
+	assert.Equal(t, int64(2946580), offers.Embedded.Records[0].ID)
+}
+
 var offerStreamResponse = `data: {"_links":{"self":{"href":"https://horizon-testnet.stellar.org/offers/5269100"},"offer_maker":{"href":"https://horizon-testnet.stellar.org/accounts/GAQHWQYBBW272OOXNQMMLCA5WY2XAZPODGB7Q3S5OKKIXVESKO55ZQ7C"}},"id":5269100,"paging_token":"5269100","seller":"GAQHWQYBBW272OOXNQMMLCA5WY2XAZPODGB7Q3S5OKKIXVESKO55ZQ7C","selling":{"asset_type":"credit_alphanum4","asset_code":"DSQ","asset_issuer":"GBDQPTQJDATT7Z7EO4COS4IMYXH44RDLLI6N6WIL5BZABGMUOVMLWMQF"},"buying":{"asset_type":"credit_alphanum4","asset_code":"XCS6","asset_issuer":"GBH2V47NOZRC56QAYCPV5JUBG5NVFJQF5AQTUNFNWNDHSWWTKH2MWR2L"},"amount":"20.4266087","price_r":{"n":24819,"d":10000000},"price":"0.0024819","last_modified_ledger":674449,"last_modified_time":"2019-04-08T11:56:41Z"}
 `
+var emptyOffersPage = `{
+  "_links": {
+    "self": {
+      "href": "https://horizon-testnet.stellar.org/accounts/GBZ5OD56VRTRQKMNADD6VUZUG3FCILMAMYQY5ZSC3AW3GBXNEPIK76IG/offers?cursor=2946581&limit=2&order=asc"
+    },
+    "next": {
+      "href": "https://horizon-testnet.stellar.org/accounts/GBZ5OD56VRTRQKMNADD6VUZUG3FCILMAMYQY5ZSC3AW3GBXNEPIK76IG/offers?cursor=2946583&limit=2&order=asc"
+    },
+    "prev": {
+      "href": "https://horizon-testnet.stellar.org/accounts/GBZ5OD56VRTRQKMNADD6VUZUG3FCILMAMYQY5ZSC3AW3GBXNEPIK76IG/offers?cursor=2946582&limit=2&order=desc"
+    }
+  },
+  "_embedded": {
+    "records": []
+  }
+}`
 
 var firstOffersPage = `{
   "_links": {
@@ -188,19 +229,40 @@ var firstOffersPage = `{
   }
 }`
 
-var emptyOffersPage = `{
-  "_links": {
-    "self": {
-      "href": "https://horizon-testnet.stellar.org/accounts/GBZ5OD56VRTRQKMNADD6VUZUG3FCILMAMYQY5ZSC3AW3GBXNEPIK76IG/offers?cursor=2946581&limit=2&order=asc"
-    },
-    "next": {
-      "href": "https://horizon-testnet.stellar.org/accounts/GBZ5OD56VRTRQKMNADD6VUZUG3FCILMAMYQY5ZSC3AW3GBXNEPIK76IG/offers?cursor=2946583&limit=2&order=asc"
-    },
-    "prev": {
-      "href": "https://horizon-testnet.stellar.org/accounts/GBZ5OD56VRTRQKMNADD6VUZUG3FCILMAMYQY5ZSC3AW3GBXNEPIK76IG/offers?cursor=2946582&limit=2&order=desc"
-    }
-  },
+var stringOffersPage = `{
   "_embedded": {
-    "records": []
+    "records": [
+      {
+        "_links": {
+          "self": {
+            "href": "https://horizon-testnet.stellar.org/offers/2946580"
+          },
+          "offer_maker": {
+            "href": "https://horizon-testnet.stellar.org/accounts/GBZ5OD56VRTRQKMNADD6VUZUG3FCILMAMYQY5ZSC3AW3GBXNEPIK76IG"
+          }
+        },
+        "id": "2946580",
+        "paging_token": "2946580",
+        "seller": "GBZ5OD56VRTRQKMNADD6VUZUG3FCILMAMYQY5ZSC3AW3GBXNEPIK76IG",
+        "selling": {
+          "asset_type": "credit_alphanum4",
+          "asset_code": "HT",
+          "asset_issuer": "GCNSGHUCG5VMGLT5RIYYZSO7VQULQKAJ62QA33DBC5PPBSO57LFWVV6P"
+        },
+        "buying": {
+          "asset_type": "credit_alphanum4",
+          "asset_code": "BTC",
+          "asset_issuer": "GCNSGHUCG5VMGLT5RIYYZSO7VQULQKAJ62QA33DBC5PPBSO57LFWVV6P"
+        },
+        "amount": "33.7252478",
+        "price_r": {
+          "n": 15477,
+          "d": 43975000
+        },
+        "price": "0.0003519",
+        "last_modified_ledger": 363492,
+        "last_modified_time": "2019-05-16T08:35:22Z"
+      }
+    ]
   }
 }`

@@ -151,16 +151,55 @@ type CreatePassiveSellOffer struct {
 // is ManageSellOffer.
 type ManageSellOffer struct {
 	Offer
-	// Action needed in release: horizon-v0.23.0
+	// Action needed in release: horizon-v0.25.0: Make offer_id a string
 	OfferID int64 `json:"offer_id"`
+}
+
+// UnmarshalJSON is the custom unmarshal method for ManageSellOffer. It allows
+// parsing of offer_id as a string or an int64.
+// Action needed in release: horizon-v0.25.0: Delete
+func (operation *ManageSellOffer) UnmarshalJSON(data []byte) error {
+	if err := json.Unmarshal(data, &operation.Offer); err != nil {
+		return err
+	}
+
+	offerID, err := base.ExtractOfferID(data)
+
+	if err != nil {
+		return err
+	}
+
+	operation.OfferID = offerID
+
+	return nil
 }
 
 // ManageBuyOffer is the json resource representing a single operation whose type
 // is ManageBuyOffer.
 type ManageBuyOffer struct {
 	Offer
-	// Action needed in release: horizon-v0.23.0
+
+	// Action needed in release: horizon-v0.25.0: Make offer_id a string
 	OfferID int64 `json:"offer_id"`
+}
+
+// UnmarshalJSON is the custom unmarshal method for ManageBuyOffer. It allows
+// parsing of offer_id as a string or an int64.
+// Action needed in release: horizon-v0.25.0: Delete
+func (operation *ManageBuyOffer) UnmarshalJSON(data []byte) error {
+	if err := json.Unmarshal(data, &operation.Offer); err != nil {
+		return err
+	}
+
+	offerID, err := base.ExtractOfferID(data)
+
+	if err != nil {
+		return err
+	}
+
+	operation.OfferID = offerID
+
+	return nil
 }
 
 // SetOptions is the json resource representing a single operation whose type is
