@@ -22,8 +22,9 @@ import (
 type pType string
 
 const (
-	statePipeline  pType = "state_pipeline"
-	ledgerPipeline pType = "ledger_pipeline"
+	statePipeline                   pType = "state_pipeline"
+	ledgerPipeline                  pType = "ledger_pipeline"
+	stateVerificationErrorThreshold       = 3
 )
 
 func accountsStateNode(q *history.Q) *supportPipeline.PipelineNode {
@@ -279,12 +280,19 @@ func postProcessingHook(
 
 			err := system.verifyState(graphOffers)
 			if err != nil {
+				errorCount := system.incrementStateVerificationErrors()
 				switch errors.Cause(err).(type) {
 				case verify.StateError:
 					markStateInvalid(historySession, err)
 				default:
-					log.WithField("err", err).Error("State verification errored")
+					logger := log.WithField("err", err).Warn
+					if errorCount >= stateVerificationErrorThreshold {
+						logger = log.WithField("err", err).Error
+					}
+					logger("State verification errored")
 				}
+			} else {
+				system.resetStateVerificationErrors()
 			}
 		}(graph.Offers())
 	}

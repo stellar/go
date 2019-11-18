@@ -93,7 +93,9 @@ type System struct {
 
 	// stateVerificationRunning is true when verification routine is currently
 	// running.
-	stateVerificationMutex   sync.Mutex
+	stateVerificationMutex sync.Mutex
+	// number of consecutive state verification runs which encountered errors
+	stateVerificationErrors  int
 	stateVerificationRunning bool
 	disableStateVerification bool
 }
@@ -368,6 +370,19 @@ func (s *System) setStateReady() {
 	s.stateReadyLock.Lock()
 	defer s.stateReadyLock.Unlock()
 	s.stateReady = true
+}
+
+func (s *System) incrementStateVerificationErrors() int {
+	s.stateVerificationMutex.Lock()
+	defer s.stateVerificationMutex.Unlock()
+	s.stateVerificationErrors++
+	return s.stateVerificationErrors
+}
+
+func (s *System) resetStateVerificationErrors() {
+	s.stateVerificationMutex.Lock()
+	defer s.stateVerificationMutex.Unlock()
+	s.stateVerificationErrors = 0
 }
 
 func (s *System) Shutdown() {
