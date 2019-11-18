@@ -119,7 +119,7 @@ func run(cmd *cobra.Command) {
 	if err != nil {
 		panic(err)
 	}
-	outputDir := fmt.Sprintf("%s/horizon-cmp-diff/%d", pwd, time.Now().Unix())
+	outputDir := fmt.Sprintf("%s/horizon-cmp-diff/%s", pwd, time.Now().Format(time.RFC3339))
 
 	log.WithFields(slog.F{
 		"base":       horizonBase,
