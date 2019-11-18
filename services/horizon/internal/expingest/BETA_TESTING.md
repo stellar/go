@@ -13,7 +13,13 @@ The new ingestion system solves issues found in the previous version like: incon
 ## Prerequisities
 
 * The init stage (state ingestion) for public network requires around 1.5GB of RAM. The memory is released after the state ingestion. State ingestion is performed only once, restarting the server will not trigger it unless Horizon has been upgraded to a newer version (with updated ingestion pipeline). We are currently working on alternative solutions to make RAM requirements smaller however we believe that it will become smaller and smaller as more buckets are [CAP-20](https://github.com/stellar/stellar-protocol/blob/master/core/cap-0020.md) compatible. The CPU footprint of the new ingestion is really small. We were able to run experimental ingestion on `c5.large` instance on AWS. The init stage takes a few minutes on `c5.large`.
-* The state data requires additional 1.3GB DB disk space (as of version 0.20.1).
+* The state data requires additional 5GB DB disk space for public network (as of version 0.22.0):
+  * `accounts_signers` table: 1914 MB
+  * `trust_lines` table: 1780 MB
+  * `accounts` table: 1332 MB
+  * `offers` table: 26 MB
+  * `accounts_data` table: 13 MB
+  * `exp_asset_stats` table: less than 1 MB
 * Flags needed to enable experimental ingestion:
   * `ENABLE_EXPERIMENTAL_INGESTION=true`
   * `HISTORY_ARCHIVE_URLS="archive1,archive2,archive3"` (for public network you can use one of SDF's archives, ex. `https://history.stellar.org/prd/core-live/core_live_001`)

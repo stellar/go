@@ -50,6 +50,12 @@ type Account struct {
 	Balances             []Balance         `json:"balances"`
 	Signers              []Signer          `json:"signers"`
 	Data                 map[string]string `json:"data"`
+	PT                   string            `json:"paging_token"`
+}
+
+// PagingToken implementation for hal.Pageable
+func (res Account) PagingToken() string {
+	return res.PT
 }
 
 // GetAccountID returns the Stellar account ID. This is to satisfy the
@@ -224,7 +230,7 @@ type Offer struct {
 		OfferMaker hal.Link `json:"offer_maker"`
 	} `json:"_links"`
 
-	// Action needed in release: horizon-v0.23.0
+	// Action needed in release: horizon-v0.25.0
 	ID                 int64      `json:"id"`
 	PT                 string     `json:"paging_token"`
 	Seller             string     `json:"seller"`
@@ -290,6 +296,8 @@ type Root struct {
 		Offers              *hal.Link `json:"offers,omitempty"`
 		OrderBook           hal.Link  `json:"order_book"`
 		Self                hal.Link  `json:"self"`
+		StrictReceivePaths  *hal.Link `json:"strict_receive_paths"`
+		StrictSendPaths     *hal.Link `json:"strict_send_paths"`
 		Transaction         hal.Link  `json:"transaction"`
 		Transactions        hal.Link  `json:"transactions"`
 	} `json:"_links"`
@@ -417,7 +425,7 @@ type Transaction struct {
 	LedgerCloseTime time.Time `json:"created_at"`
 	Account         string    `json:"source_account"`
 	AccountSequence string    `json:"source_account_sequence"`
-	// Action needed in release: horizon-v0.23.0
+	// Action needed in release: horizon-v0.25.0
 	// Action needed in release: horizonclient-v2.0.0
 	// Remove this field.
 	FeePaid        int32    `json:"fee_paid"`

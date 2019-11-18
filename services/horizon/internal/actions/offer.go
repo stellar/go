@@ -3,51 +3,106 @@ package actions
 import (
 	"context"
 	"net/http"
+	"strings"
 
 	"github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/services/horizon/internal/resourceadapter"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/support/render/hal"
-	"github.com/stellar/go/xdr"
 )
+
+// GetOfferByID is the action handler for the /offers/{id} endpoint
+type GetOfferByID struct {
+}
+
+// GetResource returns an offer by id.
+func (handler GetOfferByID) GetResource(
+	w HeaderWriter,
+	r *http.Request,
+) (hal.Pageable, error) {
+	ctx := r.Context()
+	offerID, err := GetInt64(r, "id")
+	if err != nil {
+		return nil, err
+	}
+
+	historyQ, err := historyQFromRequest(r)
+	if err != nil {
+		return nil, err
+	}
+
+	record, err := historyQ.GetOfferByID(offerID)
+	if err != nil {
+		return nil, err
+	}
+
+	ledger := new(history.Ledger)
+	err = historyQ.LedgerBySequence(
+		ledger,
+		int32(record.LastModifiedLedger),
+	)
+	if historyQ.NoRows(err) {
+		ledger = nil
+	} else if err != nil {
+		return nil, err
+	}
+
+	var offerResponse horizon.Offer
+	resourceadapter.PopulateHistoryOffer(ctx, &offerResponse, record, ledger)
+	return offerResponse, nil
+}
+
+// OffersQuery query struct for offers end-point
+type OffersQuery struct {
+	SellingBuyingAssetQueryParams `valid:"-"`
+	Seller                        string `schema:"seller" valid:"accountID,optional"`
+}
+
+// URITemplate returns a rfc6570 URI template the query struct
+func (q OffersQuery) URITemplate() string {
+	return "/offers{?" + strings.Join(GetURIParams(&q, true), ",") + "}"
+}
+
+// Validate runs custom validations.
+func (q OffersQuery) Validate() error {
+	return q.SellingBuyingAssetQueryParams.Validate()
+}
 
 // GetOffersHandler is the action handler for the /offers endpoint
 type GetOffersHandler struct {
-	HistoryQ *history.Q
 }
 
 // GetResourcePage returns a page of offers.
-func (handler GetOffersHandler) GetResourcePage(r *http.Request) ([]hal.Pageable, error) {
+func (handler GetOffersHandler) GetResourcePage(
+	w HeaderWriter,
+	r *http.Request,
+) ([]hal.Pageable, error) {
 	ctx := r.Context()
+	qp := OffersQuery{}
+	err := GetParams(&qp, r)
+	if err != nil {
+		return nil, err
+	}
+
 	pq, err := GetPageQuery(r)
 	if err != nil {
 		return nil, err
 	}
 
-	seller, err := GetString(r, "seller")
+	query := history.OffersQuery{
+		PageQuery: pq,
+		SellerID:  qp.Seller,
+		Selling:   qp.Selling(),
+		Buying:    qp.Buying(),
+	}
+
+	historyQ, err := historyQFromRequest(r)
 	if err != nil {
 		return nil, err
 	}
 
-	var selling *xdr.Asset
-	if sellingAsset, found := MaybeGetAsset(r, "selling_"); found {
-		selling = &sellingAsset
-	}
-
-	var buying *xdr.Asset
-	if buyingAsset, found := MaybeGetAsset(r, "buying_"); found {
-		buying = &buyingAsset
-	}
-
-	query := history.OffersQuery{
-		PageQuery: pq,
-		SellerID:  seller,
-		Selling:   selling,
-		Buying:    buying,
-	}
-
-	offers, err := getOffersPage(ctx, handler.HistoryQ, query)
+	offers, err := getOffersPage(ctx, historyQ, query)
 	if err != nil {
 		return nil, err
 	}
@@ -58,7 +113,6 @@ func (handler GetOffersHandler) GetResourcePage(r *http.Request) ([]hal.Pageable
 // GetAccountOffersHandler is the action handler for the
 // `/accounts/{account_id}/offers` endpoint when using experimental ingestion.
 type GetAccountOffersHandler struct {
-	HistoryQ *history.Q
 }
 
 func (handler GetAccountOffersHandler) parseOffersQuery(r *http.Request) (history.OffersQuery, error) {
@@ -81,14 +135,22 @@ func (handler GetAccountOffersHandler) parseOffersQuery(r *http.Request) (histor
 }
 
 // GetResourcePage returns a page of offers for a given account.
-func (handler GetAccountOffersHandler) GetResourcePage(r *http.Request) ([]hal.Pageable, error) {
+func (handler GetAccountOffersHandler) GetResourcePage(
+	w HeaderWriter,
+	r *http.Request,
+) ([]hal.Pageable, error) {
 	ctx := r.Context()
 	query, err := handler.parseOffersQuery(r)
 	if err != nil {
 		return nil, err
 	}
 
-	offers, err := getOffersPage(ctx, handler.HistoryQ, query)
+	historyQ, err := historyQFromRequest(r)
+	if err != nil {
+		return nil, err
+	}
+
+	offers, err := getOffersPage(ctx, historyQ, query)
 	if err != nil {
 		return nil, err
 	}

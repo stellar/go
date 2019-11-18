@@ -24,10 +24,10 @@ func (i *offersBatchInsertBuilder) Add(offer xdr.OfferEntry, lastModifiedLedger 
 	}
 
 	return i.builder.Row(map[string]interface{}{
-		"sellerid":             offer.SellerId.Address(),
-		"offerid":              offer.OfferId,
-		"sellingasset":         sellingAsset,
-		"buyingasset":          buyingAsset,
+		"seller_id":            offer.SellerId.Address(),
+		"offer_id":             offer.OfferId,
+		"selling_asset":        sellingAsset,
+		"buying_asset":         buyingAsset,
 		"amount":               offer.Amount,
 		"pricen":               offer.Price.N,
 		"priced":               offer.Price.D,

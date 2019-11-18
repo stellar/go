@@ -13,6 +13,7 @@ const (
 	txHistoryQuery       = "select txbody, txresult, txmeta, txindex from txhistory where ledgerseq = ? "
 	ledgerHeaderQuery    = "select ledgerhash, data from ledgerheaders where ledgerseq = ? "
 	txFeeHistoryQuery    = "select txchanges, txindex from txfeehistory where ledgerseq = ? "
+	upgradeHistoryQuery  = "select ledgerseq, upgradeindex, upgrade, changes from upgradehistory where ledgerseq = ? order by upgradeindex asc"
 	orderBy              = "order by txindex asc"
 	dbDriver             = "postgres"
 )
@@ -112,6 +113,21 @@ func (dbb *DatabaseBackend) GetLedger(sequence uint32) (bool, LedgerCloseMeta, e
 		}
 		lcm.TransactionFeeChanges = append(lcm.TransactionFeeChanges, tx.TXChanges)
 	}
+
+	// Query - upgradehistory
+	var upgradeHistoryRows []upgradeHistory
+	err = dbb.session.SelectRaw(&upgradeHistoryRows, upgradeHistoryQuery, sequence)
+	// Return errors...
+	if err != nil {
+		return false, lcm, errors.Wrap(err, "Error getting upgradeHistoryRows")
+	}
+
+	// ...otherwise store the data
+	var upgradesMeta []xdr.LedgerEntryChanges
+	for _, upgradeHistoryRow := range upgradeHistoryRows {
+		upgradesMeta = append(upgradesMeta, upgradeHistoryRow.Changes)
+	}
+	lcm.UpgradesMeta = upgradesMeta
 
 	return true, lcm, nil
 }

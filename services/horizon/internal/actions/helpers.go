@@ -6,12 +6,13 @@ import (
 	"mime"
 	"net/http"
 	"net/url"
-	"regexp"
+	"reflect"
 	"strconv"
-	"strings"
 	"unicode/utf8"
 
+	"github.com/asaskevich/govalidator"
 	"github.com/go-chi/chi"
+	"github.com/gorilla/schema"
 
 	"github.com/stellar/go/amount"
 	"github.com/stellar/go/services/horizon/internal/assets"
@@ -48,8 +49,6 @@ const (
 	RequiredParam
 	maxAssetCodeLength = 12
 )
-
-var validAssetCode = regexp.MustCompile("^[[:alnum:]]{1,12}$")
 
 // GetCursor retrieves a string from either the URLParams, form or query string.
 // This method uses the priority (URLParams, Form, Query).
@@ -176,24 +175,34 @@ func (base *Base) GetString(name string) (result string) {
 }
 
 // GetInt64 retrieves an int64 from the action parameter of the given name.
+func GetInt64(r *http.Request, name string) (int64, error) {
+	asStr, err := GetString(r, name)
+	if err != nil {
+		return 0, err
+	}
+	if asStr == "" {
+		return 0, nil
+	}
+
+	asI64, err := strconv.ParseInt(asStr, 10, 64)
+	if err != nil {
+		return 0, problem.MakeInvalidFieldProblem(name, errors.New("unparseable value"))
+	}
+
+	return asI64, nil
+}
+
+// GetInt64 retrieves an int64 from the action parameter of the given name.
 // Populates err if the value is not a valid int64
 func (base *Base) GetInt64(name string) int64 {
 	if base.Err != nil {
 		return 0
 	}
 
-	asStr := base.GetString(name)
-	if asStr == "" {
-		return 0
-	}
+	var parsed int64
+	parsed, base.Err = GetInt64(base.R, name)
 
-	asI64, err := strconv.ParseInt(asStr, 10, 64)
-	if err != nil {
-		base.SetInvalidField(name, errors.New("unparseable value"))
-		return 0
-	}
-
-	return asI64
+	return parsed
 }
 
 // GetInt32 retrieves an int32 from the action parameter of the given name.
@@ -375,8 +384,8 @@ func GetAccountID(r *http.Request, name string) (xdr.AccountId, error) {
 		return xdr.AccountId{}, err
 	}
 
-	result := xdr.AccountId{}
-	if err := result.SetAddress(value); err != nil {
+	result, err := xdr.AddressToAccountId(value)
+	if err != nil {
 		return result, problem.MakeInvalidFieldProblem(
 			name,
 			errors.New("invalid address"),
@@ -530,56 +539,13 @@ func GetAssets(r *http.Request, name string) ([]xdr.Asset, error) {
 		return nil, err
 	}
 
-	var assets []xdr.Asset
-	if s == "" {
-		return assets, nil
-	}
+	assets, err := xdr.BuildAssets(s)
 
-	assetStrings := strings.Split(s, ",")
-	for _, assetString := range assetStrings {
-		var asset xdr.Asset
-
-		// Technically https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0011.md allows
-		// any string up to 12 characters not containing an unescaped colon to represent XLM
-		// however, this function only accepts the string "native" to represent XLM
-		if strings.ToLower(assetString) == "native" {
-			if err := asset.SetNative(); err != nil {
-				return nil, err
-			}
-		} else {
-			parts := strings.Split(assetString, ":")
-			if len(parts) != 2 {
-				return nil, problem.MakeInvalidFieldProblem(
-					name,
-					fmt.Errorf("%s is not a valid asset", assetString),
-				)
-			}
-
-			code := parts[0]
-			if !validAssetCode.MatchString(code) {
-				return nil, problem.MakeInvalidFieldProblem(
-					name,
-					fmt.Errorf("%s is not a valid asset, it contains an invalid asset code", assetString),
-				)
-			}
-
-			issuer := xdr.AccountId{}
-			if err := issuer.SetAddress(parts[1]); err != nil {
-				return nil, problem.MakeInvalidFieldProblem(
-					name,
-					fmt.Errorf("%s is not a valid asset, it contains an invalid issuer", assetString),
-				)
-			}
-
-			if err := asset.SetCredit(string(code), issuer); err != nil {
-				return nil, problem.MakeInvalidFieldProblem(
-					name,
-					fmt.Errorf("%s is not a valid asset", assetString),
-				)
-			}
-		}
-
-		assets = append(assets, asset)
+	if err != nil {
+		return nil, problem.MakeInvalidFieldProblem(
+			name,
+			err,
+		)
 	}
 
 	return assets, nil
@@ -700,4 +666,161 @@ func FullURL(ctx context.Context) *url.URL {
 		url.RawQuery = r.URL.RawQuery
 	}
 	return url
+}
+
+// Note from chi: it is a good idea to set a Decoder instance as a package
+// global, because it caches meta-data about structs, and an instance can be
+// shared safely:
+var decoder = schema.NewDecoder()
+
+// GetParams fills a struct with values read from a request's query parameters.
+func GetParams(dst interface{}, r *http.Request) error {
+	query := r.URL.Query()
+
+	// Merge chi's URLParams with URL Query Params. Given
+	// `/accounts/{account_id}/transactions?foo=bar`, chi's URLParams will
+	// contain `account_id` and URL Query params will contain `foo`.
+	if rctx := chi.RouteContext(r.Context()); rctx != nil {
+		for _, key := range rctx.URLParams.Keys {
+			val := query.Get(key)
+			if len(val) > 0 {
+				return problem.MakeInvalidFieldProblem(
+					key,
+					errors.New("The parameter should not be included in the request"),
+				)
+			}
+
+			query.Set(key, rctx.URLParam(key))
+		}
+	}
+
+	decoder.IgnoreUnknownKeys(true)
+	if err := decoder.Decode(dst, query); err != nil {
+		return errors.Wrap(err, "error decoding Request query")
+	}
+
+	if _, err := govalidator.ValidateStruct(dst); err != nil {
+		field, message := getErrorFieldMessage(err)
+		err = problem.MakeInvalidFieldProblem(
+			getSchemaTag(dst, field),
+			errors.New(message),
+		)
+
+		return err
+	}
+
+	if v, ok := dst.(Validateable); ok {
+		if err := v.Validate(); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func getSchemaTag(params interface{}, field string) string {
+	v := reflect.ValueOf(params).Elem()
+	qt := v.Type()
+	f, _ := qt.FieldByName(field)
+	return f.Tag.Get("schema")
+}
+
+// GetURIParams returns a list of query parameters for a given query struct
+func GetURIParams(query interface{}, paginated bool) []string {
+	params := getSchemaTags(reflect.ValueOf(query).Elem())
+	if paginated {
+		pagingParams := []string{
+			"cursor",
+			"limit",
+			"order",
+		}
+		params = append(params, pagingParams...)
+	}
+	return params
+}
+
+func getSchemaTags(v reflect.Value) []string {
+	qt := v.Type()
+	fields := make([]string, 0, v.NumField())
+
+	for i := 0; i < qt.NumField(); i++ {
+		f := qt.Field(i)
+		// Query structs can have embedded query structs
+		if f.Type.Kind() == reflect.Struct {
+			fields = append(fields, getSchemaTags(v.Field(i))...)
+		} else {
+			tag, ok := f.Tag.Lookup("schema")
+			if ok {
+				fields = append(fields, tag)
+			}
+		}
+	}
+
+	return fields
+}
+
+// ValidateAssetParams runs multiple checks on an asset query parameter
+func ValidateAssetParams(aType, code, issuer, prefix string) error {
+	// If asset type is not present but code or issuer are, then there is a
+	// missing parameter and the request is unprocessable.
+	if len(aType) == 0 {
+		if len(code) > 0 || len(issuer) > 0 {
+			return problem.MakeInvalidFieldProblem(
+				prefix+"asset_type",
+				errors.New("Missing parameter"),
+			)
+		}
+
+		return nil
+	}
+
+	t, err := assets.Parse(aType)
+	if err != nil {
+		return problem.MakeInvalidFieldProblem(
+			prefix+"asset_type",
+			err,
+		)
+	}
+
+	var validLen int
+	switch t {
+	case xdr.AssetTypeAssetTypeNative:
+		// If asset type is native, issuer or code should not be included in the
+		// request
+		switch {
+		case len(code) > 0:
+			return problem.MakeInvalidFieldProblem(
+				prefix+"asset_code",
+				errors.New("native asset does not have a code"),
+			)
+		case len(issuer) > 0:
+			return problem.MakeInvalidFieldProblem(
+				prefix+"asset_issuer",
+				errors.New("native asset does not have an issuer"),
+			)
+		}
+
+		return nil
+	case xdr.AssetTypeAssetTypeCreditAlphanum4:
+		validLen = len(xdr.AssetAlphaNum4{}.AssetCode)
+	case xdr.AssetTypeAssetTypeCreditAlphanum12:
+		validLen = len(xdr.AssetAlphaNum12{}.AssetCode)
+	}
+
+	codeLen := len(code)
+	if codeLen == 0 || codeLen > validLen {
+		return problem.MakeInvalidFieldProblem(
+			prefix+"asset_code",
+			errors.New("Asset code must be 1-12 alphanumeric characters"),
+		)
+	}
+
+	if len(issuer) == 0 {
+		return problem.MakeInvalidFieldProblem(
+			prefix+"asset_issuer",
+			errors.New("Missing parameter"),
+		)
+	}
+
+	return nil
 }

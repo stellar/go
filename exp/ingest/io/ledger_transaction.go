@@ -1,6 +1,9 @@
 package io
 
 import (
+	"bytes"
+
+	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
 )
 
@@ -13,8 +16,77 @@ import (
 // If an entry is removed: Pre is not nil and Post is nil.
 type Change struct {
 	Type xdr.LedgerEntryType
-	Pre  *xdr.LedgerEntryData
-	Post *xdr.LedgerEntryData
+	Pre  *xdr.LedgerEntry
+	Post *xdr.LedgerEntry
+}
+
+// AccountChangedExceptSigners returns true if account has changed WITHOUT
+// checking the signers (except master key weight!). In other words, if the only
+// change is connected to signers, this function will return false.
+func (c *Change) AccountChangedExceptSigners() (bool, error) {
+	if c.Type != xdr.LedgerEntryTypeAccount {
+		panic("This should not be called on changes other than Account changes")
+	}
+
+	// New account
+	if c.Pre == nil {
+		return true, nil
+	}
+
+	// Account merged
+	// c.Pre != nil at this point.
+	if c.Post == nil {
+		return true, nil
+	}
+
+	// c.Pre != nil && c.Post != nil at this point.
+	if c.Pre.LastModifiedLedgerSeq != c.Post.LastModifiedLedgerSeq {
+		return true, nil
+	}
+
+	// Don't use short assignment statement (:=) to ensure variables below
+	// are not pointers (if `xdr` package changes in the future)!
+	var preAccountEntry, postAccountEntry xdr.AccountEntry
+	preAccountEntry = c.Pre.Data.MustAccount()
+	postAccountEntry = c.Post.Data.MustAccount()
+
+	// preAccountEntry and postAccountEntry are copies so it's fine to
+	// modify them here, EXCEPT pointers inside them!
+	if preAccountEntry.Ext.V == 0 {
+		preAccountEntry.Ext.V = 1
+		preAccountEntry.Ext.V1 = &xdr.AccountEntryV1{
+			Liabilities: xdr.Liabilities{
+				Buying:  0,
+				Selling: 0,
+			},
+		}
+	}
+
+	preAccountEntry.Signers = nil
+
+	if postAccountEntry.Ext.V == 0 {
+		postAccountEntry.Ext.V = 1
+		postAccountEntry.Ext.V1 = &xdr.AccountEntryV1{
+			Liabilities: xdr.Liabilities{
+				Buying:  0,
+				Selling: 0,
+			},
+		}
+	}
+
+	postAccountEntry.Signers = nil
+
+	preBinary, err := preAccountEntry.MarshalBinary()
+	if err != nil {
+		return false, errors.Wrap(err, "Error running preAccountEntry.MarshalBinary")
+	}
+
+	postBinary, err := postAccountEntry.MarshalBinary()
+	if err != nil {
+		return false, errors.Wrap(err, "Error running postAccountEntry.MarshalBinary")
+	}
+
+	return !bytes.Equal(preBinary, postBinary), nil
 }
 
 // AccountSignersChanged returns true if account signers have changed.
@@ -36,8 +108,8 @@ func (c *Change) AccountSignersChanged() bool {
 	}
 
 	// c.Pre != nil && c.Post != nil at this point.
-	preAccountEntry := c.Pre.MustAccount()
-	postAccountEntry := c.Post.MustAccount()
+	preAccountEntry := c.Pre.Data.MustAccount()
+	postAccountEntry := c.Post.Data.MustAccount()
 
 	preSigners := preAccountEntry.SignerSummary()
 	postSigners := postAccountEntry.SignerSummary()
@@ -68,18 +140,27 @@ func (t *LedgerTransaction) GetChanges() []Change {
 	changes := getChangesFromLedgerEntryChanges(t.FeeChanges)
 
 	// Transaction meta
-	v1Meta, ok := t.Meta.GetV1()
-	if ok {
+	switch t.Meta.V {
+	case 0:
+		for _, operationMeta := range *t.Meta.Operations {
+			opChanges := getChangesFromLedgerEntryChanges(
+				operationMeta.Changes,
+			)
+			changes = append(changes, opChanges...)
+		}
+	case 1:
+		v1Meta := t.Meta.MustV1()
 		txChanges := getChangesFromLedgerEntryChanges(v1Meta.TxChanges)
 		changes = append(changes, txChanges...)
-	}
 
-	// Operation meta
-	for _, operationMeta := range t.Meta.OperationsMeta() {
-		ledgerEntryChanges := operationMeta.Changes
-		opChanges := getChangesFromLedgerEntryChanges(ledgerEntryChanges)
-
-		changes = append(changes, opChanges...)
+		for _, operationMeta := range v1Meta.Operations {
+			opChanges := getChangesFromLedgerEntryChanges(
+				operationMeta.Changes,
+			)
+			changes = append(changes, opChanges...)
+		}
+	default:
+		panic("Unkown TransactionMeta version")
 	}
 
 	return changes
@@ -106,21 +187,21 @@ func getChangesFromLedgerEntryChanges(ledgerEntryChanges xdr.LedgerEntryChanges)
 			changes = append(changes, Change{
 				Type: created.Data.Type,
 				Pre:  nil,
-				Post: &created.Data,
+				Post: &created,
 			})
 		case xdr.LedgerEntryChangeTypeLedgerEntryUpdated:
 			state := ledgerEntryChanges[i-1].MustState()
 			updated := entryChange.MustUpdated()
 			changes = append(changes, Change{
 				Type: state.Data.Type,
-				Pre:  &state.Data,
-				Post: &updated.Data,
+				Pre:  &state,
+				Post: &updated,
 			})
 		case xdr.LedgerEntryChangeTypeLedgerEntryRemoved:
 			state := ledgerEntryChanges[i-1].MustState()
 			changes = append(changes, Change{
 				Type: state.Data.Type,
-				Pre:  &state.Data,
+				Pre:  &state,
 				Post: nil,
 			})
 		case xdr.LedgerEntryChangeTypeLedgerEntryState:

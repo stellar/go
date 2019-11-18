@@ -20,7 +20,8 @@ To learn more about the concept of transactions in the Stellar network, take a l
 | created_at       | ISO8601 string | |
 | source_account   | string |                                                                                                                                |
 | source_account_sequence | string |                                                                                                                                |
-| fee_paid         | number | The fee paid by the source account of this transaction when the transaction was applied to the ledger.                         |
+| max_fee          | number | The the maximum fee the source account was willing to pay.                         |
+| fee_charged         | number | The fee paid by the source account of this transaction when the transaction was applied to the ledger.                         |
 | operation_count  | number | The number of operations that are contained within this transaction.                                                           |
 | envelope_xdr     | string | A base64 encoded string of the raw `TransactionEnvelope` xdr struct for this transaction                                       |
 | result_xdr       | string | A base64 encoded string of the raw `TransactionResult` xdr struct for this transaction                                     |
@@ -81,7 +82,8 @@ To learn more about the concept of transactions in the Stellar network, take a l
   "created_at": "2019-02-21T21:44:13Z",
   "source_account": "GCDLRUXOD6KA53G5ILL435TZAISNLPS4EKIHSOVY3MVD3DVJ333NO4DT",
   "source_account_sequence": "10105916313567234",
-  "fee_paid": 100,
+  "max_fee": 100,
+  "fee_charged":100,
   "operation_count": 1,
   "envelope_xdr": "AAAAAIa40u4flA7s3ULXzfZ5AiTVvlwikHk6uNsqPY6p3vbXAAAAZAAj50cAAAACAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAABAAAAB2Fmc2RmYXMAAAAAAQAAAAAAAAABAAAAAIa40u4flA7s3ULXzfZ5AiTVvlwikHk6uNsqPY6p3vbXAAAAAAAAAAEqBfIAAAAAAAAAAAGp3vbXAAAAQKElK3CoNo1f8fWIGeJm98lw2AaFiyVVFhx3uFok0XVW3MHV9MubtEhfA+n1iLPrxmzHtHfmZsumWk+sOEQlSwI=",
   "result_xdr": "AAAAAAAAAGQAAAAAAAAAAQAAAAAAAAABAAAAAAAAAAA=",

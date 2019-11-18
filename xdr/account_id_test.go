@@ -1,10 +1,10 @@
 package xdr_test
 
 import (
-	. "github.com/stellar/go/xdr"
-
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+
+	. "github.com/stellar/go/xdr"
 )
 
 var _ = Describe("xdr.AccountId#Address()", func() {
@@ -45,5 +45,19 @@ var _ = Describe("xdr.AccountId#LedgerKey()", func() {
 		key := aid.LedgerKey()
 		packed := key.MustAccount().AccountId
 		Expect(packed.Equals(aid)).To(BeTrue())
+	})
+})
+
+var _ = Describe("xdr.AddressToAccountID()", func() {
+	It("works", func() {
+		address := "GCR22L3WS7TP72S4Z27YTO6JIQYDJK2KLS2TQNHK6Y7XYPA3AGT3X4FH"
+		accountID, err := AddressToAccountId(address)
+
+		Expect(accountID.Address()).To(Equal("GCR22L3WS7TP72S4Z27YTO6JIQYDJK2KLS2TQNHK6Y7XYPA3AGT3X4FH"))
+		Expect(err).ShouldNot(HaveOccurred())
+
+		_, err = AddressToAccountId("GCR22L3")
+
+		Expect(err).Should(HaveOccurred())
 	})
 })
