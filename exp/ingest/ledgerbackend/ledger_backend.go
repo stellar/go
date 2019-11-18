@@ -20,6 +20,7 @@ type session interface {
 
 // LedgerCloseMeta is the information needed to reconstruct the history of transactions in a given ledger.
 type LedgerCloseMeta struct {
+	CloseTime             int64
 	LedgerHeader          xdr.LedgerHeaderHistoryEntry
 	TransactionEnvelope   []xdr.TransactionEnvelope
 	TransactionResult     []xdr.TransactionResultPair
@@ -30,8 +31,9 @@ type LedgerCloseMeta struct {
 
 // ledgerHeaderHistory is a helper struct used to unmarshall header fields from a stellar-core DB.
 type ledgerHeaderHistory struct {
-	Hash   xdr.Hash         `db:"ledgerhash"`
-	Header xdr.LedgerHeader `db:"data"`
+	Hash      xdr.Hash         `db:"ledgerhash"`
+	Header    xdr.LedgerHeader `db:"data"`
+	CloseTime int64            `db:"closetime"`
 }
 
 // ledgerHeader holds a row of data from the stellar-core `ledgerheaders` table.

@@ -2,9 +2,14 @@ package history
 
 import (
 	"database/sql"
+	"encoding/hex"
 	"testing"
+	"time"
 
+	"github.com/guregu/null"
 	"github.com/stellar/go/services/horizon/internal/test"
+	"github.com/stellar/go/services/horizon/internal/toid"
+	"github.com/stellar/go/xdr"
 )
 
 func TestLedgerQueries(t *testing.T) {
@@ -43,4 +48,84 @@ func TestLedgerQueries(t *testing.T) {
 		tt.Assert.Contains(foundSeqs, int32(2))
 		tt.Assert.Contains(foundSeqs, int32(3))
 	}
+}
+
+func TestInsertLedger(t *testing.T) {
+	tt := test.Start(t)
+	defer tt.Finish()
+	test.ResetHorizonDB(t, tt.HorizonDB)
+	q := &Q{tt.HorizonSession()}
+
+	expectedLedger := Ledger{
+		Sequence:                   69859,
+		LedgerHash:                 "4db1e4f145e9ee75162040d26284795e0697e2e84084624e7c6c723ebbf80118",
+		PreviousLedgerHash:         null.NewString("4b0b8bace3b2438b2404776ce57643966855487ba6384724a3c664c7aa4cd9e4", true),
+		TotalOrderID:               TotalOrderID{toid.New(int32(69859), 0, 0).ToInt64()},
+		ImporterVersion:            ExperimentalIngestionImporterVersion,
+		TransactionCount:           12,
+		SuccessfulTransactionCount: new(int32),
+		FailedTransactionCount:     new(int32),
+		OperationCount:             23,
+		TotalCoins:                 23451,
+		FeePool:                    213,
+		BaseReserve:                687,
+		MaxTxSetSize:               345,
+		ProtocolVersion:            12,
+		BaseFee:                    100,
+		ClosedAt:                   time.Now().UTC().Truncate(time.Second),
+	}
+	*expectedLedger.SuccessfulTransactionCount = 12
+	*expectedLedger.FailedTransactionCount = 3
+
+	var ledgerHash, previousLedgerHash xdr.Hash
+
+	written, err := hex.Decode(ledgerHash[:], []byte(expectedLedger.LedgerHash))
+	tt.Assert.NoError(err)
+	tt.Assert.Equal(len(ledgerHash), written)
+
+	written, err = hex.Decode(previousLedgerHash[:], []byte(expectedLedger.PreviousLedgerHash.String))
+	tt.Assert.NoError(err)
+	tt.Assert.Equal(len(previousLedgerHash), written)
+
+	ledgerEntry := xdr.LedgerHeaderHistoryEntry{
+		Hash: ledgerHash,
+		Header: xdr.LedgerHeader{
+			LedgerVersion:      12,
+			PreviousLedgerHash: previousLedgerHash,
+			LedgerSeq:          xdr.Uint32(expectedLedger.Sequence),
+			TotalCoins:         xdr.Int64(expectedLedger.TotalCoins),
+			FeePool:            xdr.Int64(expectedLedger.FeePool),
+			BaseFee:            xdr.Uint32(expectedLedger.BaseFee),
+			BaseReserve:        xdr.Uint32(expectedLedger.BaseReserve),
+			MaxTxSetSize:       xdr.Uint32(expectedLedger.MaxTxSetSize),
+		},
+	}
+	ledgerHeaderBase64, err := xdr.MarshalBase64(ledgerEntry.Header)
+	tt.Assert.NoError(err)
+	expectedLedger.LedgerHeaderXDR = null.NewString(ledgerHeaderBase64, true)
+
+	rowsAffected, err := q.InsertLedger(ledgerEntry, expectedLedger.ClosedAt.Unix(), 12, 3, 23)
+	tt.Assert.NoError(err)
+	tt.Assert.Equal(rowsAffected, int64(1))
+
+	var ledgerFromDB Ledger
+	err = q.LedgerBySequence(&ledgerFromDB, 69859)
+	tt.Assert.NoError(err)
+
+	expectedLedger.CreatedAt = ledgerFromDB.CreatedAt
+	expectedLedger.UpdatedAt = ledgerFromDB.UpdatedAt
+	tt.Assert.True(ledgerFromDB.CreatedAt.After(expectedLedger.ClosedAt))
+	tt.Assert.True(ledgerFromDB.UpdatedAt.After(expectedLedger.ClosedAt))
+	tt.Assert.True(ledgerFromDB.CreatedAt.Before(expectedLedger.ClosedAt.Add(time.Hour)))
+	tt.Assert.True(ledgerFromDB.UpdatedAt.Before(expectedLedger.ClosedAt.Add(time.Hour)))
+
+	tt.Assert.True(expectedLedger.ClosedAt.Equal(ledgerFromDB.ClosedAt))
+	expectedLedger.ClosedAt = ledgerFromDB.ClosedAt
+
+	tt.Assert.Equal(*expectedLedger.SuccessfulTransactionCount, *ledgerFromDB.SuccessfulTransactionCount)
+	tt.Assert.Equal(*expectedLedger.FailedTransactionCount, *ledgerFromDB.FailedTransactionCount)
+	expectedLedger.SuccessfulTransactionCount = ledgerFromDB.SuccessfulTransactionCount
+	expectedLedger.FailedTransactionCount = ledgerFromDB.FailedTransactionCount
+
+	tt.Assert.Equal(expectedLedger, ledgerFromDB)
 }

@@ -19,6 +19,7 @@ const (
 	Data              DatabaseProcessorActionType = "Data"
 	Offers            DatabaseProcessorActionType = "Offers"
 	TrustLines        DatabaseProcessorActionType = "TrustLines"
+	Ledgers           DatabaseProcessorActionType = "Ledgers"
 	All               DatabaseProcessorActionType = "All"
 )
 
@@ -34,6 +35,7 @@ type DatabaseProcessor struct {
 	OffersQ     history.QOffers
 	TrustLinesQ history.QTrustLines
 	AssetStatsQ history.QAssetStats
+	LedgersQ    history.Q
 	Action      DatabaseProcessorActionType
 }
 

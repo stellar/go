@@ -11,7 +11,7 @@ import (
 const (
 	latestLedgerSeqQuery = "select ledgerseq, closetime from ledgerheaders order by ledgerseq desc limit 1"
 	txHistoryQuery       = "select txbody, txresult, txmeta, txindex from txhistory where ledgerseq = ? "
-	ledgerHeaderQuery    = "select ledgerhash, data from ledgerheaders where ledgerseq = ? "
+	ledgerHeaderQuery    = "select ledgerhash, closetime, data from ledgerheaders where ledgerseq = ? "
 	txFeeHistoryQuery    = "select txchanges, txindex from txfeehistory where ledgerseq = ? "
 	upgradeHistoryQuery  = "select ledgerseq, upgradeindex, upgrade, changes from upgradehistory where ledgerseq = ? order by upgradeindex asc"
 	orderBy              = "order by txindex asc"
@@ -79,6 +79,7 @@ func (dbb *DatabaseBackend) GetLedger(sequence uint32) (bool, LedgerCloseMeta, e
 		Header: lRow.Header,
 		Ext:    xdr.LedgerHeaderHistoryEntryExt{},
 	}
+	lcm.CloseTime = lRow.CloseTime
 
 	// Query - txhistory
 	var txhRows []txHistory

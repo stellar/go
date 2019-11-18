@@ -279,6 +279,28 @@ func (p *DatabaseProcessor) ProcessLedger(ctx context.Context, store *pipeline.S
 		}
 	}
 
+	return p.ingestLedgerHeader(r)
+}
+
+func (p *DatabaseProcessor) ingestLedgerHeader(r io.LedgerReader) error {
+	if p.Action == All || p.Action == Ledgers {
+		rowsAffected, err := p.LedgersQ.InsertLedger(
+			r.GetHeader(),
+			r.CloseTime(),
+			r.SuccessfulTransactionCount(),
+			r.FailedTransactionCount(),
+			r.SuccessfulLedgerOperationCount(),
+		)
+		if err != nil {
+			return err
+		}
+		if rowsAffected != 1 {
+			return verify.NewStateError(errors.Errorf(
+				"No rows affected when ingesting new ledger: %s",
+				r.GetSequence(),
+			))
+		}
+	}
 	return nil
 }
 

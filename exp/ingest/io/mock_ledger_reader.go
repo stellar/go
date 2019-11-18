@@ -44,3 +44,19 @@ func (m *MockLedgerReader) Close() error {
 	args := m.Called()
 	return args.Error(0)
 }
+
+func (m *MockLedgerReader) SuccessfulLedgerOperationCount() int {
+	return m.Called().Get(0).(int)
+}
+
+func (m *MockLedgerReader) SuccessfulTransactionCount() int {
+	return m.Called().Get(0).(int)
+}
+
+func (m *MockLedgerReader) FailedTransactionCount() int {
+	return m.Called().Get(0).(int)
+}
+
+func (m *MockLedgerReader) CloseTime() int64 {
+	return m.Called().Get(0).(int64)
+}

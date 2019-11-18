@@ -52,6 +52,15 @@ type LedgerReader interface {
 	// IgnoreLedgerEntryChanges will change `Close()`` behaviour to not error
 	// when changes returned by `ReadUpgradeChange` are not fully read.
 	IgnoreUpgradeChanges()
+	// SuccessfulTransactionCount returns the count of transactions in the current
+	// ledger that succeeded.
+	SuccessfulTransactionCount() int
+	// FailedTransactionCount returns the count of transactions in the current ledger that failed.
+	FailedTransactionCount() int
+	// SuccessfulLedgerOperationCount returns the count of operations in the current ledger
+	SuccessfulLedgerOperationCount() int
+	// CloseTime returns the time at which the ledger was applied to Stellar Core.
+	CloseTime() int64
 	// Close should be called when reading is finished. This is especially
 	// helpful when there are still some transactions available so reader can stop
 	// streaming them.
