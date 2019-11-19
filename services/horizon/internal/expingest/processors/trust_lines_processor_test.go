@@ -61,10 +61,11 @@ func (s *TrustLinesProcessorTestSuiteState) TearDownTest() {
 	s.mockStateWriter.AssertExpectations(s.T())
 }
 
-func (s *TrustLinesProcessorTestSuiteState) TestCreateTrustLine() {
+func (s *TrustLinesProcessorTestSuiteState) TestCreateTrustLineWithAssetStat() {
 	trustLine := xdr.TrustLineEntry{
 		AccountId: xdr.MustAddress("GAOQJGUAB7NI7K7I62ORBXMN3J4SSWQUQ7FOEPSDJ322W2HMCNWPHXFB"),
 		Asset:     xdr.MustNewCreditAsset("EUR", trustLineIssuer.Address()),
+		Flags:     xdr.Uint32(xdr.TrustLineFlagsAuthorizedFlag),
 	}
 	lastModifiedLedgerSeq := xdr.Uint32(123)
 	s.mockStateReader.
@@ -94,6 +95,49 @@ func (s *TrustLinesProcessorTestSuiteState) TestCreateTrustLine() {
 			NumAccounts: 1,
 		},
 	}, maxBatchSize).Return(nil).Once()
+
+	s.mockStateReader.
+		On("Read").
+		Return(xdr.LedgerEntryChange{}, stdio.EOF).Once()
+
+	s.mockBatchInsertBuilder.On("Exec").Return(nil).Once()
+
+	err := s.processor.ProcessState(
+		context.Background(),
+		&supportPipeline.Store{},
+		s.mockStateReader,
+		s.mockStateWriter,
+	)
+
+	s.Assert().NoError(err)
+}
+
+func (s *TrustLinesProcessorTestSuiteState) TestCreateTrustLineWithoutAssetStat() {
+	trustLine := xdr.TrustLineEntry{
+		AccountId: xdr.MustAddress("GAOQJGUAB7NI7K7I62ORBXMN3J4SSWQUQ7FOEPSDJ322W2HMCNWPHXFB"),
+		Asset:     xdr.MustNewCreditAsset("EUR", trustLineIssuer.Address()),
+	}
+	lastModifiedLedgerSeq := xdr.Uint32(123)
+	s.mockStateReader.
+		On("Read").Return(
+		xdr.LedgerEntryChange{
+			Type: xdr.LedgerEntryChangeTypeLedgerEntryState,
+			State: &xdr.LedgerEntry{
+				Data: xdr.LedgerEntryData{
+					Type:      xdr.LedgerEntryTypeTrustline,
+					TrustLine: &trustLine,
+				},
+				LastModifiedLedgerSeq: lastModifiedLedgerSeq,
+			},
+		},
+		nil,
+	).Once()
+
+	s.mockBatchInsertBuilder.
+		On("Add", trustLine, lastModifiedLedgerSeq).Return(nil).Once()
+
+	s.mockAssetStatsQ.
+		On("InsertAssetStats", []history.ExpAssetStat{}, maxBatchSize).Return(nil).Once()
 
 	s.mockStateReader.
 		On("Read").
@@ -188,6 +232,12 @@ func (s *TrustLinesProcessorTestSuiteLedger) TestInsertTrustLine() {
 		AccountId: xdr.MustAddress("GAOQJGUAB7NI7K7I62ORBXMN3J4SSWQUQ7FOEPSDJ322W2HMCNWPHXFB"),
 		Asset:     xdr.MustNewCreditAsset("EUR", trustLineIssuer.Address()),
 		Balance:   0,
+		Flags:     xdr.Uint32(xdr.TrustLineFlagsAuthorizedFlag),
+	}
+	unauthorizedTrustline := xdr.TrustLineEntry{
+		AccountId: xdr.MustAddress("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
+		Asset:     xdr.MustNewCreditAsset("USD", trustLineIssuer.Address()),
+		Balance:   0,
 	}
 	lastModifiedLedgerSeq := xdr.Uint32(1234)
 	s.mockLedgerReader.On("Read").
@@ -195,7 +245,7 @@ func (s *TrustLinesProcessorTestSuiteLedger) TestInsertTrustLine() {
 			Meta: createTransactionMeta([]xdr.OperationMeta{
 				xdr.OperationMeta{
 					Changes: []xdr.LedgerEntryChange{
-						// State
+						// Created
 						xdr.LedgerEntryChange{
 							Type: xdr.LedgerEntryChangeTypeLedgerEntryCreated,
 							Created: &xdr.LedgerEntry{
@@ -203,6 +253,16 @@ func (s *TrustLinesProcessorTestSuiteLedger) TestInsertTrustLine() {
 								Data: xdr.LedgerEntryData{
 									Type:      xdr.LedgerEntryTypeTrustline,
 									TrustLine: &trustLine,
+								},
+							},
+						},
+						xdr.LedgerEntryChange{
+							Type: xdr.LedgerEntryChangeTypeLedgerEntryCreated,
+							Created: &xdr.LedgerEntry{
+								LastModifiedLedgerSeq: lastModifiedLedgerSeq,
+								Data: xdr.LedgerEntryData{
+									Type:      xdr.LedgerEntryTypeTrustline,
+									TrustLine: &unauthorizedTrustline,
 								},
 							},
 						},
@@ -214,6 +274,11 @@ func (s *TrustLinesProcessorTestSuiteLedger) TestInsertTrustLine() {
 	s.mockQ.On(
 		"InsertTrustLine",
 		trustLine,
+		lastModifiedLedgerSeq,
+	).Return(int64(1), nil).Once()
+	s.mockQ.On(
+		"InsertTrustLine",
+		unauthorizedTrustline,
 		lastModifiedLedgerSeq,
 	).Return(int64(1), nil).Once()
 	s.mockAssetStatsQ.On("GetAssetStat",
@@ -232,6 +297,12 @@ func (s *TrustLinesProcessorTestSuiteLedger) TestInsertTrustLine() {
 	updatedTrustLine := xdr.TrustLineEntry{
 		AccountId: xdr.MustAddress("GAOQJGUAB7NI7K7I62ORBXMN3J4SSWQUQ7FOEPSDJ322W2HMCNWPHXFB"),
 		Asset:     xdr.MustNewCreditAsset("EUR", trustLineIssuer.Address()),
+		Balance:   10,
+		Flags:     xdr.Uint32(xdr.TrustLineFlagsAuthorizedFlag),
+	}
+	updatedUnauthorizedTrustline := xdr.TrustLineEntry{
+		AccountId: xdr.MustAddress("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
+		Asset:     xdr.MustNewCreditAsset("USD", trustLineIssuer.Address()),
 		Balance:   10,
 	}
 	s.mockLedgerReader.On("Read").
@@ -261,6 +332,28 @@ func (s *TrustLinesProcessorTestSuiteLedger) TestInsertTrustLine() {
 								},
 							},
 						},
+						// State
+						xdr.LedgerEntryChange{
+							Type: xdr.LedgerEntryChangeTypeLedgerEntryState,
+							State: &xdr.LedgerEntry{
+								LastModifiedLedgerSeq: lastModifiedLedgerSeq - 1,
+								Data: xdr.LedgerEntryData{
+									Type:      xdr.LedgerEntryTypeTrustline,
+									TrustLine: &unauthorizedTrustline,
+								},
+							},
+						},
+						// Updated
+						xdr.LedgerEntryChange{
+							Type: xdr.LedgerEntryChangeTypeLedgerEntryUpdated,
+							Updated: &xdr.LedgerEntry{
+								LastModifiedLedgerSeq: lastModifiedLedgerSeq,
+								Data: xdr.LedgerEntryData{
+									Type:      xdr.LedgerEntryTypeTrustline,
+									TrustLine: &updatedUnauthorizedTrustline,
+								},
+							},
+						},
 					},
 				},
 			}),
@@ -268,6 +361,11 @@ func (s *TrustLinesProcessorTestSuiteLedger) TestInsertTrustLine() {
 	s.mockQ.On(
 		"UpdateTrustLine",
 		updatedTrustLine,
+		lastModifiedLedgerSeq,
+	).Return(int64(1), nil).Once()
+	s.mockQ.On(
+		"UpdateTrustLine",
+		updatedUnauthorizedTrustline,
 		lastModifiedLedgerSeq,
 	).Return(int64(1), nil).Once()
 	s.mockAssetStatsQ.On("GetAssetStat",
@@ -314,11 +412,13 @@ func (s *TrustLinesProcessorTestSuiteLedger) TestUpdateTrustLineNoRowsAffected()
 		AccountId: xdr.MustAddress("GAOQJGUAB7NI7K7I62ORBXMN3J4SSWQUQ7FOEPSDJ322W2HMCNWPHXFB"),
 		Asset:     xdr.MustNewCreditAsset("EUR", trustLineIssuer.Address()),
 		Balance:   0,
+		Flags:     xdr.Uint32(xdr.TrustLineFlagsAuthorizedFlag),
 	}
 	updatedTrustLine := xdr.TrustLineEntry{
 		AccountId: xdr.MustAddress("GAOQJGUAB7NI7K7I62ORBXMN3J4SSWQUQ7FOEPSDJ322W2HMCNWPHXFB"),
 		Asset:     xdr.MustNewCreditAsset("EUR", trustLineIssuer.Address()),
 		Balance:   10,
+		Flags:     xdr.Uint32(xdr.TrustLineFlagsAuthorizedFlag),
 	}
 	s.mockLedgerReader.On("Read").
 		Return(io.LedgerTransaction{
@@ -387,7 +487,147 @@ func (s *TrustLinesProcessorTestSuiteLedger) TestUpdateTrustLineNoRowsAffected()
 	s.Assert().EqualError(err, "Error in TrustLines handler: No rows affected when updating trustline: GAOQJGUAB7NI7K7I62ORBXMN3J4SSWQUQ7FOEPSDJ322W2HMCNWPHXFB credit_alphanum4/EUR/GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H")
 }
 
+func (s *TrustLinesProcessorTestSuiteLedger) TestUpdateTrustLineAuthorization() {
+	lastModifiedLedgerSeq := xdr.Uint32(1234)
+
+	trustLine := xdr.TrustLineEntry{
+		AccountId: xdr.MustAddress("GAOQJGUAB7NI7K7I62ORBXMN3J4SSWQUQ7FOEPSDJ322W2HMCNWPHXFB"),
+		Asset:     xdr.MustNewCreditAsset("EUR", trustLineIssuer.Address()),
+		Balance:   100,
+	}
+	updatedTrustLine := xdr.TrustLineEntry{
+		AccountId: xdr.MustAddress("GAOQJGUAB7NI7K7I62ORBXMN3J4SSWQUQ7FOEPSDJ322W2HMCNWPHXFB"),
+		Asset:     xdr.MustNewCreditAsset("EUR", trustLineIssuer.Address()),
+		Balance:   10,
+		Flags:     xdr.Uint32(xdr.TrustLineFlagsAuthorizedFlag),
+	}
+
+	otherTrustLine := xdr.TrustLineEntry{
+		AccountId: xdr.MustAddress("GAOQJGUAB7NI7K7I62ORBXMN3J4SSWQUQ7FOEPSDJ322W2HMCNWPHXFB"),
+		Asset:     xdr.MustNewCreditAsset("USD", trustLineIssuer.Address()),
+		Balance:   100,
+		Flags:     xdr.Uint32(xdr.TrustLineFlagsAuthorizedFlag),
+	}
+	otherUpdatedTrustLine := xdr.TrustLineEntry{
+		AccountId: xdr.MustAddress("GAOQJGUAB7NI7K7I62ORBXMN3J4SSWQUQ7FOEPSDJ322W2HMCNWPHXFB"),
+		Asset:     xdr.MustNewCreditAsset("USD", trustLineIssuer.Address()),
+		Balance:   10,
+	}
+
+	s.mockLedgerReader.On("Read").
+		Return(io.LedgerTransaction{
+			Meta: createTransactionMeta([]xdr.OperationMeta{
+				xdr.OperationMeta{
+					Changes: []xdr.LedgerEntryChange{
+						// State
+						xdr.LedgerEntryChange{
+							Type: xdr.LedgerEntryChangeTypeLedgerEntryState,
+							State: &xdr.LedgerEntry{
+								LastModifiedLedgerSeq: lastModifiedLedgerSeq - 1,
+								Data: xdr.LedgerEntryData{
+									Type:      xdr.LedgerEntryTypeTrustline,
+									TrustLine: &trustLine,
+								},
+							},
+						},
+						// Updated
+						xdr.LedgerEntryChange{
+							Type: xdr.LedgerEntryChangeTypeLedgerEntryUpdated,
+							Updated: &xdr.LedgerEntry{
+								LastModifiedLedgerSeq: lastModifiedLedgerSeq,
+								Data: xdr.LedgerEntryData{
+									Type:      xdr.LedgerEntryTypeTrustline,
+									TrustLine: &updatedTrustLine,
+								},
+							},
+						},
+						// State
+						xdr.LedgerEntryChange{
+							Type: xdr.LedgerEntryChangeTypeLedgerEntryState,
+							State: &xdr.LedgerEntry{
+								LastModifiedLedgerSeq: lastModifiedLedgerSeq - 1,
+								Data: xdr.LedgerEntryData{
+									Type:      xdr.LedgerEntryTypeTrustline,
+									TrustLine: &otherTrustLine,
+								},
+							},
+						},
+						// Updated
+						xdr.LedgerEntryChange{
+							Type: xdr.LedgerEntryChangeTypeLedgerEntryUpdated,
+							Updated: &xdr.LedgerEntry{
+								LastModifiedLedgerSeq: lastModifiedLedgerSeq,
+								Data: xdr.LedgerEntryData{
+									Type:      xdr.LedgerEntryTypeTrustline,
+									TrustLine: &otherUpdatedTrustLine,
+								},
+							},
+						},
+					},
+				},
+			}),
+		}, nil).Once()
+
+	s.mockQ.On(
+		"UpdateTrustLine",
+		updatedTrustLine,
+		lastModifiedLedgerSeq,
+	).Return(int64(1), nil).Once()
+	s.mockAssetStatsQ.On("GetAssetStat",
+		xdr.AssetTypeAssetTypeCreditAlphanum4,
+		"EUR",
+		trustLineIssuer.Address(),
+	).Return(history.ExpAssetStat{}, sql.ErrNoRows).Once()
+	s.mockAssetStatsQ.On("InsertAssetStat", history.ExpAssetStat{
+		AssetType:   xdr.AssetTypeAssetTypeCreditAlphanum4,
+		AssetIssuer: trustLineIssuer.Address(),
+		AssetCode:   "EUR",
+		Amount:      "10",
+		NumAccounts: 1,
+	}).Return(int64(1), nil).Once()
+
+	s.mockQ.On(
+		"UpdateTrustLine",
+		otherUpdatedTrustLine,
+		lastModifiedLedgerSeq,
+	).Return(int64(1), nil).Once()
+	s.mockAssetStatsQ.On("GetAssetStat",
+		xdr.AssetTypeAssetTypeCreditAlphanum4,
+		"USD",
+		trustLineIssuer.Address(),
+	).Return(history.ExpAssetStat{
+		AssetType:   xdr.AssetTypeAssetTypeCreditAlphanum4,
+		AssetIssuer: trustLineIssuer.Address(),
+		AssetCode:   "USD",
+		Amount:      "100",
+		NumAccounts: 1,
+	}, nil).Once()
+	s.mockAssetStatsQ.On("RemoveAssetStat",
+		xdr.AssetTypeAssetTypeCreditAlphanum4,
+		"USD",
+		trustLineIssuer.Address(),
+	).Return(int64(1), nil).Once()
+
+	s.mockLedgerReader.
+		On("Read").
+		Return(io.LedgerTransaction{}, stdio.EOF).Once()
+
+	err := s.processor.ProcessLedger(
+		context.Background(),
+		&supportPipeline.Store{},
+		s.mockLedgerReader,
+		s.mockLedgerWriter,
+	)
+
+	s.Assert().NoError(err)
+}
 func (s *TrustLinesProcessorTestSuiteLedger) TestRemoveTrustLine() {
+	unauthorizedTrustLine := xdr.TrustLineEntry{
+		AccountId: xdr.MustAddress("GAOQJGUAB7NI7K7I62ORBXMN3J4SSWQUQ7FOEPSDJ322W2HMCNWPHXFB"),
+		Asset:     xdr.MustNewCreditAsset("USD", trustLineIssuer.Address()),
+		Balance:   0,
+	}
+
 	s.mockLedgerReader.On("Read").
 		Return(io.LedgerTransaction{
 			Meta: createTransactionMeta([]xdr.OperationMeta{
@@ -402,6 +642,7 @@ func (s *TrustLinesProcessorTestSuiteLedger) TestRemoveTrustLine() {
 										AccountId: xdr.MustAddress("GAOQJGUAB7NI7K7I62ORBXMN3J4SSWQUQ7FOEPSDJ322W2HMCNWPHXFB"),
 										Asset:     xdr.MustNewCreditAsset("EUR", trustLineIssuer.Address()),
 										Balance:   0,
+										Flags:     xdr.Uint32(xdr.TrustLineFlagsAuthorizedFlag),
 									},
 								},
 							},
@@ -416,6 +657,25 @@ func (s *TrustLinesProcessorTestSuiteLedger) TestRemoveTrustLine() {
 								},
 							},
 						},
+						xdr.LedgerEntryChange{
+							Type: xdr.LedgerEntryChangeTypeLedgerEntryState,
+							State: &xdr.LedgerEntry{
+								Data: xdr.LedgerEntryData{
+									Type:      xdr.LedgerEntryTypeTrustline,
+									TrustLine: &unauthorizedTrustLine,
+								},
+							},
+						},
+						xdr.LedgerEntryChange{
+							Type: xdr.LedgerEntryChangeTypeLedgerEntryRemoved,
+							Removed: &xdr.LedgerKey{
+								Type: xdr.LedgerEntryTypeTrustline,
+								TrustLine: &xdr.LedgerKeyTrustLine{
+									AccountId: xdr.MustAddress("GAOQJGUAB7NI7K7I62ORBXMN3J4SSWQUQ7FOEPSDJ322W2HMCNWPHXFB"),
+									Asset:     xdr.MustNewCreditAsset("USD", trustLineIssuer.Address()),
+								},
+							},
+						},
 					},
 				},
 			}),
@@ -426,6 +686,13 @@ func (s *TrustLinesProcessorTestSuiteLedger) TestRemoveTrustLine() {
 		xdr.LedgerKeyTrustLine{
 			AccountId: xdr.MustAddress("GAOQJGUAB7NI7K7I62ORBXMN3J4SSWQUQ7FOEPSDJ322W2HMCNWPHXFB"),
 			Asset:     xdr.MustNewCreditAsset("EUR", trustLineIssuer.Address()),
+		},
+	).Return(int64(1), nil).Once()
+	s.mockQ.On(
+		"RemoveTrustLine",
+		xdr.LedgerKeyTrustLine{
+			AccountId: xdr.MustAddress("GAOQJGUAB7NI7K7I62ORBXMN3J4SSWQUQ7FOEPSDJ322W2HMCNWPHXFB"),
+			Asset:     xdr.MustNewCreditAsset("USD", trustLineIssuer.Address()),
 		},
 	).Return(int64(1), nil).Once()
 	s.mockAssetStatsQ.On("GetAssetStat",
@@ -468,6 +735,7 @@ func (s *TrustLinesProcessorTestSuiteLedger) TestProcessUpgradeChange() {
 		AccountId: xdr.MustAddress("GAOQJGUAB7NI7K7I62ORBXMN3J4SSWQUQ7FOEPSDJ322W2HMCNWPHXFB"),
 		Asset:     xdr.MustNewCreditAsset("EUR", trustLineIssuer.Address()),
 		Balance:   0,
+		Flags:     xdr.Uint32(xdr.TrustLineFlagsAuthorizedFlag),
 	}
 	lastModifiedLedgerSeq := xdr.Uint32(1234)
 	s.mockLedgerReader.On("Read").
@@ -518,6 +786,7 @@ func (s *TrustLinesProcessorTestSuiteLedger) TestProcessUpgradeChange() {
 		AccountId: xdr.MustAddress("GAOQJGUAB7NI7K7I62ORBXMN3J4SSWQUQ7FOEPSDJ322W2HMCNWPHXFB"),
 		Asset:     xdr.MustNewCreditAsset("EUR", trustLineIssuer.Address()),
 		Balance:   10,
+		Flags:     xdr.Uint32(xdr.TrustLineFlagsAuthorizedFlag),
 	}
 
 	s.mockLedgerReader.
@@ -581,7 +850,7 @@ func (s *TrustLinesProcessorTestSuiteLedger) TestProcessUpgradeChange() {
 	s.Assert().NoError(err)
 }
 
-func (s *TrustLinesProcessorTestSuiteLedger) TestRemoveOfferNoRowsAffected() {
+func (s *TrustLinesProcessorTestSuiteLedger) TestRemoveTrustlineNoRowsAffected() {
 	// Removes ReadUpgradeChange assertion
 	s.mockLedgerReader = &io.MockLedgerReader{}
 	s.mockLedgerReader.On("Close").Return(nil).Once()
@@ -600,6 +869,7 @@ func (s *TrustLinesProcessorTestSuiteLedger) TestRemoveOfferNoRowsAffected() {
 										AccountId: xdr.MustAddress("GAOQJGUAB7NI7K7I62ORBXMN3J4SSWQUQ7FOEPSDJ322W2HMCNWPHXFB"),
 										Asset:     xdr.MustNewCreditAsset("EUR", trustLineIssuer.Address()),
 										Balance:   0,
+										Flags:     xdr.Uint32(xdr.TrustLineFlagsAuthorizedFlag),
 									},
 								},
 							},

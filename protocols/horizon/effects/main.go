@@ -281,7 +281,7 @@ type TrustlineDeauthorized struct {
 type Trade struct {
 	Base
 	Seller string `json:"seller"`
-	// Action needed in release: horizon-v0.23.0
+	// Action needed in release: horizon-v0.25.0
 	OfferID           int64  `json:"offer_id"`
 	SoldAmount        string `json:"sold_amount"`
 	SoldAssetType     string `json:"sold_asset_type"`

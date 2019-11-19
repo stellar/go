@@ -152,3 +152,9 @@ func (pp *PathPaymentStrictSend) Validate() error {
 
 	return nil
 }
+
+// GetSourceAccount returns the source account of the operation, or nil if not
+// set.
+func (pp *PathPaymentStrictSend) GetSourceAccount() Account {
+	return pp.SourceAccount
+}

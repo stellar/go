@@ -40,6 +40,21 @@ func assertAllEquals(t *testing.T, set AssetStatSet, expected []history.ExpAsset
 	}
 }
 
+func TestAssetStatSetIgnoresUnauthorizedTrustlines(t *testing.T) {
+	set := AssetStatSet{}
+	err := set.Add(xdr.TrustLineEntry{
+		AccountId: xdr.MustAddress("GAOQJGUAB7NI7K7I62ORBXMN3J4SSWQUQ7FOEPSDJ322W2HMCNWPHXFB"),
+		Asset:     xdr.MustNewCreditAsset("EUR", trustLineIssuer.Address()),
+		Balance:   1,
+	})
+	if err != nil {
+		t.Fatalf("unexpected error %v", err)
+	}
+	if all := set.All(); len(all) != 0 {
+		t.Fatalf("expected empty list but got %v", all)
+	}
+}
+
 func TestAddAndRemoveAssetStats(t *testing.T) {
 	set := AssetStatSet{}
 	eur := "EUR"
@@ -55,6 +70,7 @@ func TestAddAndRemoveAssetStats(t *testing.T) {
 		AccountId: xdr.MustAddress("GAOQJGUAB7NI7K7I62ORBXMN3J4SSWQUQ7FOEPSDJ322W2HMCNWPHXFB"),
 		Asset:     xdr.MustNewCreditAsset(eur, trustLineIssuer.Address()),
 		Balance:   1,
+		Flags:     xdr.Uint32(xdr.TrustLineFlagsAuthorizedFlag),
 	})
 	if err != nil {
 		t.Fatalf("unexpected error %v", err)
@@ -65,6 +81,7 @@ func TestAddAndRemoveAssetStats(t *testing.T) {
 		AccountId: xdr.MustAddress("GAOQJGUAB7NI7K7I62ORBXMN3J4SSWQUQ7FOEPSDJ322W2HMCNWPHXFB"),
 		Asset:     xdr.MustNewCreditAsset(eur, trustLineIssuer.Address()),
 		Balance:   24,
+		Flags:     xdr.Uint32(xdr.TrustLineFlagsAuthorizedFlag),
 	})
 	if err != nil {
 		t.Fatalf("unexpected error %v", err)
@@ -79,6 +96,7 @@ func TestAddAndRemoveAssetStats(t *testing.T) {
 		AccountId: xdr.MustAddress("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
 		Asset:     xdr.MustNewCreditAsset(usd, trustLineIssuer.Address()),
 		Balance:   10,
+		Flags:     xdr.Uint32(xdr.TrustLineFlagsAuthorizedFlag),
 	})
 	if err != nil {
 		t.Fatalf("unexpected error %v", err)
@@ -89,6 +107,7 @@ func TestAddAndRemoveAssetStats(t *testing.T) {
 		AccountId: xdr.MustAddress("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
 		Asset:     xdr.MustNewCreditAsset(ether, trustLineIssuer.Address()),
 		Balance:   3,
+		Flags:     xdr.Uint32(xdr.TrustLineFlagsAuthorizedFlag),
 	})
 	if err != nil {
 		t.Fatalf("unexpected error %v", err)
@@ -133,6 +152,7 @@ func TestOverflowAssetStatSet(t *testing.T) {
 		AccountId: xdr.MustAddress("GAOQJGUAB7NI7K7I62ORBXMN3J4SSWQUQ7FOEPSDJ322W2HMCNWPHXFB"),
 		Asset:     xdr.MustNewCreditAsset(eur, trustLineIssuer.Address()),
 		Balance:   math.MaxInt64,
+		Flags:     xdr.Uint32(xdr.TrustLineFlagsAuthorizedFlag),
 	})
 	if err != nil {
 		t.Fatalf("unexpected error %v", err)
@@ -157,6 +177,7 @@ func TestOverflowAssetStatSet(t *testing.T) {
 		AccountId: xdr.MustAddress("GAOQJGUAB7NI7K7I62ORBXMN3J4SSWQUQ7FOEPSDJ322W2HMCNWPHXFB"),
 		Asset:     xdr.MustNewCreditAsset(eur, trustLineIssuer.Address()),
 		Balance:   math.MaxInt64,
+		Flags:     xdr.Uint32(xdr.TrustLineFlagsAuthorizedFlag),
 	})
 	if err != nil {
 		t.Fatalf("unexpected error %v", err)

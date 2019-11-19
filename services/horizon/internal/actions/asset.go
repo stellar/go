@@ -39,15 +39,15 @@ func (handler AssetStatsHandler) validateAssetParams(code, issuer string, pq db2
 	}
 
 	if pq.Cursor != "" {
-		parts := strings.Split(pq.Cursor, ":")
-		if len(parts) != 2 {
+		parts := strings.SplitN(pq.Cursor, "_", 3)
+		if len(parts) != 3 {
 			return problem.MakeInvalidFieldProblem(
 				"cursor",
 				errors.New("cursor must contain exactly one colon"),
 			)
 		}
 
-		cursorCode, cursorIssuer := parts[0], parts[1]
+		cursorCode, cursorIssuer, assetType := parts[0], parts[1], parts[2]
 		if !xdr.ValidAssetCode.MatchString(cursorCode) {
 			return problem.MakeInvalidFieldProblem(
 				"cursor",
@@ -61,6 +61,14 @@ func (handler AssetStatsHandler) validateAssetParams(code, issuer string, pq db2
 				fmt.Errorf("%s is not a valid asset issuer", cursorIssuer),
 			)
 		}
+
+		if _, ok := xdr.StringToAssetType[assetType]; !ok {
+			return problem.MakeInvalidFieldProblem(
+				"cursor",
+				fmt.Errorf("%s is not a valid asset type", assetType),
+			)
+		}
+
 	}
 
 	return nil
@@ -90,14 +98,9 @@ func (handler AssetStatsHandler) findIssuersForAssets(
 		delete(issuerSet, account.AccountID)
 	}
 
-	if len(issuerSet) > 0 {
-		var issuer string
-		for key := range issuerSet {
-			issuer = key
-			break
-		}
-		return nil, fmt.Errorf("Account for issuer %s does not exist", issuer)
-	}
+	// Note it's possible that no accounts can be found for certain issuers.
+	// That can occur because an account can be removed when there are only empty trustlines
+	// pointing to it. We still continue to serve asset stats for such issuers.
 
 	return accountsByID, nil
 }

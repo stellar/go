@@ -241,28 +241,33 @@ func TestGetAssetStatsCursorValidation(t *testing.T) {
 		expectedError string
 	}{
 		{
-			"cursor does not use colon as serpator",
+			"cursor does not use underscore as serpator",
 			"usdc-GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H",
 			"invalid asset stats cursor",
 		},
 		{
-			"cursor has no colon",
+			"cursor has no underscore",
 			"usdc",
 			"invalid asset stats cursor",
 		},
 		{
-			"cursor has too many colons",
-			"usdc:GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H:",
-			"invalid asset stats cursor",
+			"cursor has too many underscores",
+			"usdc_GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H_credit_alphanum4_",
+			"invalid asset type in asset stats cursor",
 		},
 		{
 			"issuer in cursor is invalid",
-			"usd:abcdefghijklmnopqrstuv",
+			"usd_abcdefghijklmnopqrstuv_credit_alphanum4",
 			"invalid issuer in asset stats cursor",
 		},
 		{
+			"asset type in cursor is invalid",
+			"usd_GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H_credit_alphanum",
+			"invalid asset type in asset stats cursor",
+		},
+		{
 			"asset code in cursor is too long",
-			"abcdefghijklmnopqrstuv:GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H",
+			"abcdefghijklmnopqrstuv_GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H_credit_alphanum12",
 			"invalid asset stats cursor",
 		},
 	} {
@@ -376,7 +381,7 @@ func TestGetAssetStatsFiltersAndCursor(t *testing.T) {
 			"no filter with cursor",
 			"",
 			"",
-			"ABC:GA5WBPYA5Y4WAEHXWR2UKO2UO4BUGHUQ74EUPKON2QHV4WRHOIRNKKH2",
+			"ABC_GA5WBPYA5Y4WAEHXWR2UKO2UO4BUGHUQ74EUPKON2QHV4WRHOIRNKKH2_credit_alphanum4",
 			"asc",
 			[]ExpAssetStat{
 				etherAssetStat,
@@ -389,7 +394,7 @@ func TestGetAssetStatsFiltersAndCursor(t *testing.T) {
 			"no filter with cursor descending",
 			"",
 			"",
-			"ZZZ:GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H",
+			"ZZZ_GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H_credit_alphanum4",
 			"desc",
 			[]ExpAssetStat{
 				usdAssetStat,
@@ -402,7 +407,7 @@ func TestGetAssetStatsFiltersAndCursor(t *testing.T) {
 			"no filter with cursor and offset",
 			"",
 			"",
-			"ETHER:GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H",
+			"ETHER_GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H_credit_alphanum12",
 			"asc",
 			[]ExpAssetStat{
 				eurAssetStat,
@@ -414,7 +419,7 @@ func TestGetAssetStatsFiltersAndCursor(t *testing.T) {
 			"no filter with cursor and offset descending",
 			"",
 			"",
-			"EUR:GA5WBPYA5Y4WAEHXWR2UKO2UO4BUGHUQ74EUPKON2QHV4WRHOIRNKKH2",
+			"EUR_GA5WBPYA5Y4WAEHXWR2UKO2UO4BUGHUQ74EUPKON2QHV4WRHOIRNKKH2_credit_alphanum4",
 			"desc",
 			[]ExpAssetStat{
 				etherAssetStat,
@@ -424,7 +429,7 @@ func TestGetAssetStatsFiltersAndCursor(t *testing.T) {
 			"no filter with cursor and offset descending including eur",
 			"",
 			"",
-			"EUR:GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H",
+			"EUR_GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H_credit_alphanum4",
 			"desc",
 			[]ExpAssetStat{
 				eurAssetStat,
@@ -446,7 +451,7 @@ func TestGetAssetStatsFiltersAndCursor(t *testing.T) {
 			"filter on code with cursor",
 			"USD",
 			"",
-			"USD:GA5WBPYA5Y4WAEHXWR2UKO2UO4BUGHUQ74EUPKON2QHV4WRHOIRNKKH2",
+			"USD_GA5WBPYA5Y4WAEHXWR2UKO2UO4BUGHUQ74EUPKON2QHV4WRHOIRNKKH2_credit_alphanum4",
 			"asc",
 			[]ExpAssetStat{
 				usdAssetStat,
@@ -456,7 +461,7 @@ func TestGetAssetStatsFiltersAndCursor(t *testing.T) {
 			"filter on code with cursor descending",
 			"USD",
 			"",
-			"USD:GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H",
+			"USD_GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H_credit_alphanum4",
 			"desc",
 			[]ExpAssetStat{
 				otherUSDAssetStat,
@@ -477,7 +482,7 @@ func TestGetAssetStatsFiltersAndCursor(t *testing.T) {
 			"filter on issuer with cursor",
 			"",
 			"GA5WBPYA5Y4WAEHXWR2UKO2UO4BUGHUQ74EUPKON2QHV4WRHOIRNKKH2",
-			"EUR:GA5WBPYA5Y4WAEHXWR2UKO2UO4BUGHUQ74EUPKON2QHV4WRHOIRNKKH2",
+			"EUR_GA5WBPYA5Y4WAEHXWR2UKO2UO4BUGHUQ74EUPKON2QHV4WRHOIRNKKH2_credit_alphanum4",
 			"asc",
 			[]ExpAssetStat{
 				otherUSDAssetStat,
@@ -487,7 +492,7 @@ func TestGetAssetStatsFiltersAndCursor(t *testing.T) {
 			"filter on issuer with cursor descending",
 			"",
 			"GA5WBPYA5Y4WAEHXWR2UKO2UO4BUGHUQ74EUPKON2QHV4WRHOIRNKKH2",
-			"USD:GA5WBPYA5Y4WAEHXWR2UKO2UO4BUGHUQ74EUPKON2QHV4WRHOIRNKKH2",
+			"USD_GA5WBPYA5Y4WAEHXWR2UKO2UO4BUGHUQ74EUPKON2QHV4WRHOIRNKKH2_credit_alphanum4",
 			"desc",
 			[]ExpAssetStat{
 				eurAssetStat,
@@ -505,7 +510,7 @@ func TestGetAssetStatsFiltersAndCursor(t *testing.T) {
 			"filter on non existant code with cursor",
 			"BTC",
 			"",
-			"BTC:GA5WBPYA5Y4WAEHXWR2UKO2UO4BUGHUQ74EUPKON2QHV4WRHOIRNKKH2",
+			"BTC_GA5WBPYA5Y4WAEHXWR2UKO2UO4BUGHUQ74EUPKON2QHV4WRHOIRNKKH2_credit_alphanum4",
 			"asc",
 			nil,
 		},
@@ -521,7 +526,7 @@ func TestGetAssetStatsFiltersAndCursor(t *testing.T) {
 			"filter on non existant issuer with cursor",
 			"",
 			"GAEIHD6U4WSBHJGA2HPWOQ3OQEFQ3Y7QZE2DR76YKZNKPW5YDLYW4UGF",
-			"AAA:GAEIHD6U4WSBHJGA2HPWOQ3OQEFQ3Y7QZE2DR76YKZNKPW5YDLYW4UGF",
+			"AAA_GAEIHD6U4WSBHJGA2HPWOQ3OQEFQ3Y7QZE2DR76YKZNKPW5YDLYW4UGF_credit_alphanum4",
 			"asc",
 			nil,
 		},
@@ -537,7 +542,7 @@ func TestGetAssetStatsFiltersAndCursor(t *testing.T) {
 			"filter on non existant code and non existant issuer with cursor",
 			"BTC",
 			"GAEIHD6U4WSBHJGA2HPWOQ3OQEFQ3Y7QZE2DR76YKZNKPW5YDLYW4UGF",
-			"AAA:GA5WBPYA5Y4WAEHXWR2UKO2UO4BUGHUQ74EUPKON2QHV4WRHOIRNKKH2",
+			"AAA_GA5WBPYA5Y4WAEHXWR2UKO2UO4BUGHUQ74EUPKON2QHV4WRHOIRNKKH2_credit_alphanum4",
 			"asc",
 			nil,
 		},
@@ -555,7 +560,7 @@ func TestGetAssetStatsFiltersAndCursor(t *testing.T) {
 			"filter on both code and issuer with cursor",
 			"USD",
 			"GA5WBPYA5Y4WAEHXWR2UKO2UO4BUGHUQ74EUPKON2QHV4WRHOIRNKKH2",
-			"USC:GA5WBPYA5Y4WAEHXWR2UKO2UO4BUGHUQ74EUPKON2QHV4WRHOIRNKKH2",
+			"USC_GA5WBPYA5Y4WAEHXWR2UKO2UO4BUGHUQ74EUPKON2QHV4WRHOIRNKKH2_credit_alphanum4",
 			"asc",
 			[]ExpAssetStat{
 				otherUSDAssetStat,
@@ -565,7 +570,7 @@ func TestGetAssetStatsFiltersAndCursor(t *testing.T) {
 			"filter on both code and issuer with cursor descending",
 			"USD",
 			"GA5WBPYA5Y4WAEHXWR2UKO2UO4BUGHUQ74EUPKON2QHV4WRHOIRNKKH2",
-			"USE:GA5WBPYA5Y4WAEHXWR2UKO2UO4BUGHUQ74EUPKON2QHV4WRHOIRNKKH2",
+			"USE_GA5WBPYA5Y4WAEHXWR2UKO2UO4BUGHUQ74EUPKON2QHV4WRHOIRNKKH2_credit_alphanum4",
 			"desc",
 			[]ExpAssetStat{
 				otherUSDAssetStat,
@@ -575,7 +580,7 @@ func TestGetAssetStatsFiltersAndCursor(t *testing.T) {
 			"cursor negates filter",
 			"USD",
 			"GA5WBPYA5Y4WAEHXWR2UKO2UO4BUGHUQ74EUPKON2QHV4WRHOIRNKKH2",
-			"USD:GA5WBPYA5Y4WAEHXWR2UKO2UO4BUGHUQ74EUPKON2QHV4WRHOIRNKKH2",
+			"USD_GA5WBPYA5Y4WAEHXWR2UKO2UO4BUGHUQ74EUPKON2QHV4WRHOIRNKKH2_credit_alphanum4",
 			"asc",
 			nil,
 		},

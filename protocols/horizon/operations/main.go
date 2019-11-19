@@ -151,7 +151,7 @@ type CreatePassiveSellOffer struct {
 // is ManageSellOffer.
 type ManageSellOffer struct {
 	Offer
-	// Action needed in release: horizon-v0.23.0
+	// Action needed in release: horizon-v0.25.0
 	OfferID int64 `json:"offer_id"`
 }
 
@@ -159,7 +159,7 @@ type ManageSellOffer struct {
 // is ManageBuyOffer.
 type ManageBuyOffer struct {
 	Offer
-	// Action needed in release: horizon-v0.23.0
+	// Action needed in release: horizon-v0.25.0
 	OfferID int64 `json:"offer_id"`
 }
 

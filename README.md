@@ -50,10 +50,10 @@ While much of the code in individual packages is organized based upon different 
 
 In each package, there may be one or more of a set of common files:
 
-- *main.go*: Every package should have a `main.go` file.  This file contains the package documentation (unless a separate `doc.go` file is used), _all_ of the exported vars, consts, types and funcs for the package. 
-- *internal.go*:  This file should contain unexported vars, consts, types, and funcs.  Conceptually, it should be considered the private counterpart to the `main.go` file of a package
 - *errors.go*: This file should contains declarations (both types and vars) for errors that are used by the package.
 - *example_test.go*: This file should contains example tests, as described at https://blog.golang.org/examples.
+- *main.go/internal.go* (**deprecated**): Older packages may have a `main.go` (public symbols) or `internal.go` (private symbols).  These files contain, respectively, the exported and unexported vars, consts, types and funcs for the package. New packages do not follow this pattern, and instead follow the standard Go convention to co-locate structs and their methods in the same files. 
+- *main.go* (**new convention**): If present, this file contains a `main` function as part of an executable `main` package.
 
 In addition to the above files, a package often has files that contains code that is specific to one declared type.  This file uses the snake case form of the type name (for example `loggly_hook.go` would correspond to the type `LogglyHook`).  This file should contain method declarations, interface implementation assertions and any other declarations that are tied solely to that type.
 

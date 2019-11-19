@@ -115,6 +115,7 @@ var ExperimentalIngestionTables = []string{
 	"accounts",
 	"accounts_data",
 	"accounts_signers",
+	"exp_asset_stats",
 	"offers",
 	"trust_lines",
 }
@@ -242,7 +243,12 @@ type ExpAssetStat struct {
 
 // PagingToken returns a cursor for this asset stat
 func (e ExpAssetStat) PagingToken() string {
-	return fmt.Sprintf("%s:%s", e.AssetCode, e.AssetIssuer)
+	return fmt.Sprintf(
+		"%s_%s_%s",
+		e.AssetCode,
+		e.AssetIssuer,
+		xdr.AssetTypeToString[e.AssetType],
+	)
 }
 
 // QAssetStats defines exp_asset_stats related queries.

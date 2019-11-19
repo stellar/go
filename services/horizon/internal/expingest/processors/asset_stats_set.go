@@ -22,7 +22,12 @@ type assetStatValue struct {
 type AssetStatSet map[assetStatKey]*assetStatValue
 
 // Add updates the set with a trustline entry from a history archive snapshot
+// if the trustline is authorized
 func (s AssetStatSet) Add(trustLine xdr.TrustLineEntry) error {
+	if !xdr.TrustLineFlags(trustLine.Flags).IsAuthorized() {
+		return nil
+	}
+
 	var key assetStatKey
 	if err := trustLine.Asset.Extract(&key.assetType, &key.assetCode, &key.assetIssuer); err != nil {
 		return errors.Wrap(err, "could not extract asset info from trustline")
