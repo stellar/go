@@ -1,5 +1,5 @@
 <div align="center">
-<img alt="Stellar" src="https://www.stellar.org/old-content/2019/03/stellar-logo-solo-1.png" />
+<img alt="Stellar" src="https://www.stellar.org/old-content/2019/03/stellar-logo-solo-1.png" width="558" />
 <strong>Creating equitable access to the global financial system</strong>
 <h1>Stellar Go Monorepo</h1>
 </div>
