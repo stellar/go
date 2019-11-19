@@ -296,7 +296,7 @@ func (p *DatabaseProcessor) ingestLedgerHeader(r io.LedgerReader) error {
 		}
 		if rowsAffected != 1 {
 			return verify.NewStateError(errors.Errorf(
-				"No rows affected when ingesting new ledger: %s",
+				"No rows affected when ingesting new ledger: %v",
 				r.GetSequence(),
 			))
 		}

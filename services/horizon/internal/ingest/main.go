@@ -16,18 +16,6 @@ import (
 
 var log = ilog.DefaultLogger.WithField("service", "ingest")
 
-const (
-	// CurrentVersion reflects the latest version of the ingestion
-	// algorithm. As rows are ingested into the horizon database, this version is
-	// used to tag them.  In the future, any breaking changes introduced by a
-	// developer should be accompanied by an increase in this value.
-	//
-	// Scripts, that have yet to be ported to this codebase can then be leveraged
-	// to re-ingest old data with the new algorithm, providing a seamless
-	// transition when the ingested data's structure changes.
-	CurrentVersion = 16
-)
-
 // Address is a type of a param provided to BatchInsertBuilder that gets exchanged
 // to record ID in a DB.
 type Address string

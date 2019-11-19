@@ -14,7 +14,51 @@ const (
 	LedgerSequenceContextKey       ContextKey = "ledger_sequence"
 	LedgerHeaderContextKey         ContextKey = "ledger_header"
 	LedgerUpgradeChangesContextKey ContextKey = "ledger_upgrade_changes"
+	LedgerSuccessTxCountContextKey ContextKey = "ledger_success_tx_count"
+	LedgerFailedTxCountContextKey  ContextKey = "ledger_failed_tx_count"
+	LedgerOpCountContextKey        ContextKey = "ledger_op_count"
+	LedgerCloseTimeContextKey      ContextKey = "ledger_close_time"
 )
+
+func GetSuccessTxCountFromContext(ctx context.Context) int {
+	v := ctx.Value(LedgerSuccessTxCountContextKey)
+
+	if v == nil {
+		panic("ledger success tx count not found in context")
+	}
+
+	return v.(int)
+}
+
+func GetFailedTxCountContext(ctx context.Context) int {
+	v := ctx.Value(LedgerFailedTxCountContextKey)
+
+	if v == nil {
+		panic("ledger failed tx count not found in context")
+	}
+
+	return v.(int)
+}
+
+func GetOpCountFromContext(ctx context.Context) int {
+	v := ctx.Value(LedgerOpCountContextKey)
+
+	if v == nil {
+		panic("ledger op count not found in context")
+	}
+
+	return v.(int)
+}
+
+func GetCloseTimeFromContext(ctx context.Context) int64 {
+	v := ctx.Value(LedgerOpCountContextKey)
+
+	if v == nil {
+		panic("ledger close time not found in context")
+	}
+
+	return v.(int64)
+}
 
 func GetLedgerSequenceFromContext(ctx context.Context) uint32 {
 	v := ctx.Value(LedgerSequenceContextKey)

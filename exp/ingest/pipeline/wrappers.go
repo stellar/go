@@ -50,6 +50,10 @@ func (w *ledgerReaderWrapper) GetContext() context.Context {
 	ctx := context.Background()
 	ctx = context.WithValue(ctx, LedgerSequenceContextKey, w.LedgerReader.GetSequence())
 	ctx = context.WithValue(ctx, LedgerHeaderContextKey, w.LedgerReader.GetHeader())
+	ctx = context.WithValue(ctx, LedgerSuccessTxCountContextKey, w.LedgerReader.SuccessfulLedgerOperationCount())
+	ctx = context.WithValue(ctx, LedgerFailedTxCountContextKey, w.LedgerReader.FailedTransactionCount())
+	ctx = context.WithValue(ctx, LedgerOpCountContextKey, w.LedgerReader.SuccessfulLedgerOperationCount())
+	ctx = context.WithValue(ctx, LedgerCloseTimeContextKey, w.LedgerReader.CloseTime())
 
 	// Save upgrade changes in context. UpgradeChangesContainer is implemented by
 	// *io.DBLedgerReader and readerWrapperLedger.
@@ -101,6 +105,22 @@ func (w *readerWrapperLedger) Read() (io.LedgerTransaction, error) {
 	}
 
 	return entry, nil
+}
+
+func (w *readerWrapperLedger) SuccessfulTransactionCount() int {
+	return GetSuccessTxCountFromContext(w.Reader.GetContext())
+}
+
+func (w *readerWrapperLedger) FailedTransactionCount() int {
+	return GetFailedTxCountContext(w.Reader.GetContext())
+}
+
+func (w *readerWrapperLedger) SuccessfulLedgerOperationCount() int {
+	return GetSuccessTxCountFromContext(w.Reader.GetContext())
+}
+
+func (w *readerWrapperLedger) CloseTime() int64 {
+	return GetCloseTimeFromContext(w.Reader.GetContext())
 }
 
 // ReadUpgradeChange returns the next ledger upgrade change or EOF if there are

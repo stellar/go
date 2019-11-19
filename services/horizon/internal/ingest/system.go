@@ -126,7 +126,7 @@ func (i *System) ReingestOutdated() (n int, err error) {
 	// reingestion to silently fail.
 	for {
 		outdated := []int32{}
-		err = q.OldestOutdatedLedgers(&outdated, CurrentVersion)
+		err = q.OldestOutdatedLedgers(&outdated, history.LegacyIngestionVersion)
 		if err != nil {
 			return
 		}

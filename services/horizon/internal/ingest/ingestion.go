@@ -189,7 +189,7 @@ func (ingest *Ingestion) Ledger(
 	ops int,
 ) {
 	ingest.builders[LedgersTableName].Values(
-		CurrentVersion,
+		history.LegacyIngestionVersion,
 		id,
 		header.Sequence,
 		header.LedgerHash,

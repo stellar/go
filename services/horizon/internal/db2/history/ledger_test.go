@@ -61,7 +61,7 @@ func TestInsertLedger(t *testing.T) {
 		LedgerHash:                 "4db1e4f145e9ee75162040d26284795e0697e2e84084624e7c6c723ebbf80118",
 		PreviousLedgerHash:         null.NewString("4b0b8bace3b2438b2404776ce57643966855487ba6384724a3c664c7aa4cd9e4", true),
 		TotalOrderID:               TotalOrderID{toid.New(int32(69859), 0, 0).ToInt64()},
-		ImporterVersion:            ExperimentalIngestionImporterVersion,
+		ImporterVersion:            LegacyIngestionVersion,
 		TransactionCount:           12,
 		SuccessfulTransactionCount: new(int32),
 		FailedTransactionCount:     new(int32),

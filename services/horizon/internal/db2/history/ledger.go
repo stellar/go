@@ -13,9 +13,15 @@ import (
 	"github.com/stellar/go/xdr"
 )
 
-// ExperimentalIngestionImporterVersion is the importer version inserted into the
-// history_ledgers table by the experimental ingestion system
-const ExperimentalIngestionImporterVersion = 17
+// LegacyIngestionVersion reflects the latest version of the non-experimental ingestion
+// algorithm. As rows are ingested into the horizon database, this version is
+// used to tag them.  In the future, any breaking changes introduced by a
+// developer should be accompanied by an increase in this value.
+//
+// Scripts, that have yet to be ported to this codebase can then be leveraged
+// to re-ingest old data with the new algorithm, providing a seamless
+// transition when the ingested data's structure changes.
+const LegacyIngestionVersion = 16
 
 // LedgerBySequence loads the single ledger at `seq` into `dest`
 func (q *Q) LedgerBySequence(dest interface{}, seq int32) error {
@@ -130,7 +136,10 @@ func ledgerHeaderToMap(
 		return nil, err
 	}
 	return map[string]interface{}{
-		"importer_version":             ExperimentalIngestionImporterVersion,
+		// when it comes to ingesting ledgers, the experimental ingestion system is compatible with
+		// the legacy ingestion system which is why we use the same importer version as the legacy
+		// ingestion system
+		"importer_version":             LegacyIngestionVersion,
 		"id":                           toid.New(int32(ledger.Header.LedgerSeq), 0, 0).ToInt64(),
 		"sequence":                     ledger.Header.LedgerSeq,
 		"ledger_hash":                  hex.EncodeToString(ledger.Hash[:]),
