@@ -39,6 +39,10 @@ func TestUpgradeChangesPassed(t *testing.T) {
 	})
 	mockLedgerReader.On("IgnoreUpgradeChanges").Once()
 	mockLedgerReader.On("Close").Return(nil).Once()
+	mockLedgerReader.On("SuccessfulLedgerOperationCount").Return(1)
+	mockLedgerReader.On("FailedTransactionCount").Return(0)
+	mockLedgerReader.On("SuccessfulLedgerOperationCount").Return(1)
+	mockLedgerReader.On("CloseTime").Return(int64(234))
 
 	// Ensure upgrade changes are available to processors to read
 	ledgerPipeline := &pipeline.LedgerPipeline{}
