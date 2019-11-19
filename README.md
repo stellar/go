@@ -10,7 +10,9 @@
 <a href="https://goreportcard.com/report/github.com/stellar/go"><img alt="Go Report Card" src="https://goreportcard.com/badge/github.com/stellar/go" /></a>
 </p>
 
-This repo is the home for all of the public Go code produced by [SDF].  In addition to various tools and services, this repository is the SDK from which you may develop your own applications that integrate with the stellar network.
+This repo is the home for all of the public Go code produced by [SDF].
+
+This repo contains various tools and services that you can use and deploy, as well as the SDK you can use to develop applications that integrate with the Stellar network.
 
 ## Package Index
 
