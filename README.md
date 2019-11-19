@@ -1,9 +1,10 @@
 <div align="center">
 <img alt="Stellar" src="https://www.stellar.org/old-content/2019/03/stellar-logo-solo-1.png" width="558" />
+<br/>
 <strong>Creating equitable access to the global financial system</strong>
 <h1>Stellar Go Monorepo</h1>
 </div>
-</br>
+<br/>
 <p align="center">
 <a href="https://circleci.com/gh/stellar/go"><img alt="Build Status" src="https://circleci.com/gh/stellar/go.svg?style=shield" /></a>
 <a href="https://godoc.org/github.com/stellar/go"><img alt="GoDoc" src="https://godoc.org/github.com/stellar/go?status.svg" /></a>
