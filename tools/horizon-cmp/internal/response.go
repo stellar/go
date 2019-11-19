@@ -33,7 +33,7 @@ var removeRegexps = []*regexp.Regexp{
 	// regexp.MustCompile(`\s*"transaction_count": [0-9]+,`),
 	// regexp.MustCompile(`\s*"last_modified_ledger": [0-9]+,`),
 	// regexp.MustCompile(`\s*"public_key": "G.*",`),
-	regexp.MustCompile(`,\s*"paging_token": ?""`),
+	// regexp.MustCompile(`,\s*"paging_token": ?""`),
 }
 
 type Response struct {
