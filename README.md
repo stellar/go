@@ -1,9 +1,16 @@
-# Stellar Go 
-[![Build Status](https://circleci.com/gh/stellar/go.svg?style=shield)](https://circleci.com/gh/stellar/go)
-[![GoDoc](https://godoc.org/github.com/stellar/go?status.svg)](https://godoc.org/github.com/stellar/go)
-[![Go Report Card](https://goreportcard.com/badge/github.com/stellar/go)](https://goreportcard.com/report/github.com/stellar/go)
+<div align="center">
+<img alt="Stellar" src="https://www.stellar.org/images/circle-mark-small.png" />
+<h1>Stellar Go Monorepo</h1>
+<strong>Creating equitable access to the global financial system</strong>
+</div>
+</br>
+<p align="center">
+<a href="https://circleci.com/gh/stellar/go"><img alt="Build Status" src="https://circleci.com/gh/stellar/go.svg?style=shield" /></a>
+<a href="https://godoc.org/github.com/stellar/go"><img alt="GoDoc" src="https://godoc.org/github.com/stellar/go?status.svg" /></a>
+<a href="https://goreportcard.com/report/github.com/stellar/go"><img alt="Go Report Card" src="https://goreportcard.com/badge/github.com/stellar/go" /></a>
+</p>
 
-This repo is the home for all of the public go code produced by SDF.  In addition to various tools and services, this repository is the SDK from which you may develop your own applications that integrate with the stellar network.
+This repo is the home for all of the public Go code produced by SDF.  In addition to various tools and services, this repository is the SDK from which you may develop your own applications that integrate with the stellar network.
 
 ## Package Index
 
