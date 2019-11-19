@@ -120,6 +120,7 @@ func buildLedgerPipeline(historyQ *history.Q, graph *orderbook.OrderBookGraph) *
 							SignersQ:    historyQ,
 							TrustLinesQ: historyQ,
 							AssetStatsQ: historyQ,
+							LedgersQ:    historyQ,
 							Action:      horizonProcessors.All,
 						}),
 					),

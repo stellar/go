@@ -292,7 +292,10 @@ func (p *DatabaseProcessor) ingestLedgerHeader(r io.LedgerReader) error {
 			r.SuccessfulLedgerOperationCount(),
 		)
 		if err != nil {
-			return err
+			return errors.Wrap(
+				err,
+				fmt.Sprintf("Could not insert ledger"),
+			)
 		}
 		if rowsAffected != 1 {
 			return verify.NewStateError(errors.Errorf(

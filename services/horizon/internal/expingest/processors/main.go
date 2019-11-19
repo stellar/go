@@ -35,7 +35,7 @@ type DatabaseProcessor struct {
 	OffersQ     history.QOffers
 	TrustLinesQ history.QTrustLines
 	AssetStatsQ history.QAssetStats
-	LedgersQ    history.Q
+	LedgersQ    history.QLedgers
 	Action      DatabaseProcessorActionType
 }
 

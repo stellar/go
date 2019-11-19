@@ -144,7 +144,7 @@ func (dblrc *DBLedgerReader) SuccessfulTransactionCount() int {
 
 // FailedTransactionCount returns the count of transactions in the current ledger that failed.
 func (dblrc *DBLedgerReader) FailedTransactionCount() int {
-	return dblrc.FailedTransactionCount()
+	return dblrc.failedTxCount
 }
 
 // CloseTime returns the time at which the ledger was applied to Stellar Core.

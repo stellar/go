@@ -95,6 +95,17 @@ func (q *LedgersQ) Select(dest interface{}) error {
 	return q.Err
 }
 
+// QLedgers defines ledger related queries.
+type QLedgers interface {
+	InsertLedger(
+		ledger xdr.LedgerHeaderHistoryEntry,
+		closeTime int64,
+		successTxsCount int,
+		failedTxsCount int,
+		opCount int,
+	) (int64, error)
+}
+
 // InsertLedger creates a row in the history_ledgers table.
 // Returns number of rows affected and error.
 func (q *Q) InsertLedger(
