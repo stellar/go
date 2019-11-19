@@ -5,6 +5,7 @@ import (
 
 	"github.com/stellar/go/exp/ingest/ledgerbackend"
 	"github.com/stellar/go/xdr"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestCloseTime(t *testing.T) {
@@ -22,10 +23,7 @@ func TestCloseTime(t *testing.T) {
 		t.Fatalf("unexpected error %v", err)
 	}
 	backend.AssertExpectations(t)
-	if got := reader.CloseTime(); got != expectedCloseTime {
-		t.Fatalf("expected close time of %v but got %v", expectedCloseTime, got)
-
-	}
+	assert.Equal(t, expectedCloseTime, reader.CloseTime())
 }
 
 func txResultPair(code xdr.TransactionResultCode) xdr.TransactionResultPair {
@@ -43,15 +41,9 @@ func TestLedgerReaderCounts(t *testing.T) {
 	}
 	backend.AssertExpectations(t)
 
-	if got := reader.SuccessfulTransactionCount(); got != 0 {
-		t.Fatalf("expected successful transaction count of %v but got %v", 0, got)
-	}
-	if got := reader.FailedTransactionCount(); got != 0 {
-		t.Fatalf("expected failed transaction count of %v but got %v", 0, got)
-	}
-	if got := reader.SuccessfulLedgerOperationCount(); got != 0 {
-		t.Fatalf("expected successful operation count of %v but got %v", 0, got)
-	}
+	assert.Equal(t, 0, reader.SuccessfulTransactionCount())
+	assert.Equal(t, 0, reader.FailedTransactionCount())
+	assert.Equal(t, 0, reader.SuccessfulLedgerOperationCount())
 
 	backend.On("GetLedger", uint32(1)).Return(
 		true,
@@ -106,13 +98,7 @@ func TestLedgerReaderCounts(t *testing.T) {
 	}
 	backend.AssertExpectations(t)
 
-	if got := reader.SuccessfulTransactionCount(); got != 2 {
-		t.Fatalf("expected successful transaction count of %v but got %v", 2, got)
-	}
-	if got := reader.FailedTransactionCount(); got != 1 {
-		t.Fatalf("expected failed transaction count of %v but got %v", 1, got)
-	}
-	if got := reader.SuccessfulLedgerOperationCount(); got != 4 {
-		t.Fatalf("expected successful operation count of %v but got %v", 4, got)
-	}
+	assert.Equal(t, 2, reader.SuccessfulTransactionCount())
+	assert.Equal(t, 1, reader.FailedTransactionCount())
+	assert.Equal(t, 4, reader.SuccessfulLedgerOperationCount())
 }
