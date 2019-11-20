@@ -47,7 +47,7 @@ func (p *ESProcessor) ProcessState(ctx context.Context, store *supportPipeline.S
 		// TODO: Move this to a separate processor. Currently, this is not possible,
 		// as the ingestion system does not read and write custom structs
 		// between pipeline nodes.
-		entryJsonStr, err := serializeLedgerEntryChange(entry)
+		entryJSONStr, err := serializeLedgerEntryChange(entry)
 		if err != nil {
 			return errors.Wrap(err, "couldn't convert ledgerentry to json")
 		}
@@ -56,10 +56,12 @@ func (p *ESProcessor) ProcessState(ctx context.Context, store *supportPipeline.S
 		// TODO: Implement Step 2 as a separate processor.
 
 		// Step 3: put entry as JSON in ElasticSearch.
-		err = p.PutEntry(ctx, entryJsonStr, numEntries)
+		// TODO: Take ID from entry, rather than a counter.
+		err = p.PutEntry(ctx, entryJSONStr, numEntries)
 		if err != nil {
 			return errors.Wrap(err, "couldn't put entry json in elasticsearch")
 		}
+		numEntries++
 
 		select {
 		case <-ctx.Done():

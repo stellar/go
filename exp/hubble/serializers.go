@@ -4,7 +4,6 @@ package hubble
 
 import (
 	"bytes"
-	"fmt"
 
 	"github.com/stellar/go/xdr"
 	goxdr "github.com/xdrpp/goxdr/xdr"
@@ -19,10 +18,9 @@ func serializeLedgerEntryChange(lec xdr.LedgerEntryChange) (string, error) {
 		return "", err
 	}
 	stx.XDR_LedgerEntryChange(&stxlec).XdrMarshal(&goxdr.XdrIn{In: bytes.NewReader(lecBytes)}, "")
-	lecJsonBytes, err := stcdetail.XdrToJson(&stxlec)
+	lecJSONBytes, err := stcdetail.XdrToJson(&stxlec)
 	if err != nil {
 		return "", err
 	}
-	lecJsonStr := fmt.Sprintf("%s\n", lecJsonBytes)
-	return lecJsonStr, nil
+	return string(lecJSONBytes), nil
 }
