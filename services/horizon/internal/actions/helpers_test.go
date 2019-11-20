@@ -15,6 +15,8 @@ import (
 	"github.com/stellar/go/services/horizon/internal/ledger"
 	"github.com/stellar/go/services/horizon/internal/test"
 	"github.com/stellar/go/services/horizon/internal/toid"
+	"github.com/stellar/go/support/db"
+	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/support/render/problem"
 	"github.com/stellar/go/xdr"
 )
@@ -569,6 +571,108 @@ func TestFullURL(t *testing.T) {
 	tt.Assert.Equal("http:///foo-bar/blah?limit=2&cursor=123456", url.String())
 }
 
+func TestGetParams(t *testing.T) {
+	tt := test.Start(t)
+	defer tt.Finish()
+
+	type QueryParams struct {
+		SellingBuyingAssetQueryParams `valid:"-"`
+		Account                       string `schema:"account_id" valid:"accountID"`
+	}
+
+	account := "GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H"
+	usd := xdr.MustNewCreditAsset("USD", account)
+
+	// Simulate chi's URL params. The following would be equivalent to having a
+	// chi route like the following `/accounts/{account_id}`
+	urlParams := map[string]string{
+		"account_id":           account,
+		"selling_asset_type":   "credit_alphanum4",
+		"selling_asset_code":   "USD",
+		"selling_asset_issuer": account,
+	}
+
+	r := makeAction("/transactions?limit=2&cursor=123456&order=desc", urlParams).R
+	qp := QueryParams{}
+	err := GetParams(&qp, r)
+
+	tt.Assert.NoError(err)
+	tt.Assert.Equal(account, qp.Account)
+	tt.Assert.True(usd.Equals(*qp.Selling()))
+
+	urlParams = map[string]string{
+		"account_id":         account,
+		"selling_asset_type": "native",
+	}
+
+	r = makeAction("/transactions?limit=2&cursor=123456&order=desc", urlParams).R
+	qp = QueryParams{}
+	err = GetParams(&qp, r)
+
+	tt.Assert.NoError(err)
+	native := xdr.MustNewNativeAsset()
+	tt.Assert.True(native.Equals(*qp.Selling()))
+
+	urlParams = map[string]string{"account_id": "1"}
+	r = makeAction("/transactions?limit=2&cursor=123456&order=desc", urlParams).R
+	qp = QueryParams{}
+	err = GetParams(&qp, r)
+
+	if tt.Assert.IsType(&problem.P{}, err) {
+		p := err.(*problem.P)
+		tt.Assert.Equal("bad_request", p.Type)
+		tt.Assert.Equal("account_id", p.Extras["invalid_field"])
+		tt.Assert.Equal(
+			"Account ID must start with `G` and contain 56 alphanum characters",
+			p.Extras["reason"],
+		)
+	}
+
+	urlParams = map[string]string{
+		"account_id": account,
+	}
+	r = makeAction(fmt.Sprintf("/transactions?account_id=%s", account), urlParams).R
+	err = GetParams(&qp, r)
+
+	tt.Assert.Error(err)
+	if tt.Assert.IsType(&problem.P{}, err) {
+		p := err.(*problem.P)
+		tt.Assert.Equal("bad_request", p.Type)
+		tt.Assert.Equal("account_id", p.Extras["invalid_field"])
+		tt.Assert.Equal(
+			"The parameter should not be included in the request",
+			p.Extras["reason"],
+		)
+	}
+}
+
+type ParamsValidator struct {
+	Account string `schema:"account_id" valid:"required"`
+}
+
+func (pv ParamsValidator) Validate() error {
+	return problem.MakeInvalidFieldProblem(
+		"Name",
+		errors.New("Invalid"),
+	)
+}
+
+func TestGetParamsCustomValidator(t *testing.T) {
+	tt := test.Start(t)
+	defer tt.Finish()
+
+	urlParams := map[string]string{"account_id": "1"}
+	r := makeAction("/transactions", urlParams).R
+	qp := ParamsValidator{}
+	err := GetParams(&qp, r)
+
+	if tt.Assert.IsType(&problem.P{}, err) {
+		p := err.(*problem.P)
+		tt.Assert.Equal("bad_request", p.Type)
+		tt.Assert.Equal("Name", p.Extras["invalid_field"])
+	}
+}
+
 func makeTestAction() *Base {
 	return makeAction("/foo-bar/blah?limit=2&cursor=123456", testURLParams())
 }
@@ -614,4 +718,54 @@ func testURLParams() map[string]string {
 		"long_12_asset_code":   "OHMYGODITSSOLONG",
 		"long_12_asset_issuer": "GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H",
 	}
+}
+
+func makeRequest(
+	t *testing.T,
+	queryParams map[string]string,
+	routeParams map[string]string,
+	session *db.Session,
+) *http.Request {
+	request, err := http.NewRequest("GET", "/", nil)
+	if err != nil {
+		t.Fatalf("unexpected error %v", err)
+	}
+	query := url.Values{}
+	for key, value := range queryParams {
+		query.Set(key, value)
+	}
+	request.URL.RawQuery = query.Encode()
+
+	chiRouteContext := chi.NewRouteContext()
+	for key, value := range routeParams {
+		chiRouteContext.URLParams.Add(key, value)
+	}
+	ctx := context.WithValue(
+		context.WithValue(context.Background(), chi.RouteCtxKey, chiRouteContext),
+		&horizonContext.SessionContextKey,
+		session,
+	)
+
+	return request.WithContext(ctx)
+}
+
+func TestGetURIParams(t *testing.T) {
+	tt := assert.New(t)
+	type QueryParams struct {
+		SellingBuyingAssetQueryParams `valid:"-"`
+		Account                       string `schema:"account_id" valid:"accountID"`
+	}
+
+	expected := []string{
+		"selling_asset_type",
+		"selling_asset_issuer",
+		"selling_asset_code",
+		"buying_asset_type",
+		"buying_asset_issuer",
+		"buying_asset_code",
+		"account_id",
+	}
+
+	qp := QueryParams{}
+	tt.Equal(expected, GetURIParams(&qp, false))
 }

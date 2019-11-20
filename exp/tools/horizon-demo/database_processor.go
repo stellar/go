@@ -128,19 +128,19 @@ func (p *DatabaseProcessor) processLedgerAccountsForSigner(transaction io.Ledger
 			continue
 		}
 
-		accountEntry := change.Pre.MustAccount()
+		accountEntry := change.Pre.Data.MustAccount()
 		account := accountEntry.AccountId.Address()
 
 		// This removes all Pre signers adds Post signers but can be
 		// improved by finding a diff
-		for _, signer := range change.Pre.MustAccount().Signers {
+		for _, signer := range change.Pre.Data.MustAccount().Signers {
 			_, err := p.Database.RemoveAccountSigner(account, signer.Key.Address())
 			if err != nil {
 				return errors.Wrap(err, "Error removing a signer")
 			}
 		}
 
-		for _, signer := range change.Post.MustAccount().Signers {
+		for _, signer := range change.Post.Data.MustAccount().Signers {
 			_, err := p.Database.InsertAccountSigner(account, signer.Key.Address())
 			if err != nil {
 				return errors.Wrap(err, "Error inserting a signer")

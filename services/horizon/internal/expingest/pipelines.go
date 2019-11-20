@@ -26,12 +26,26 @@ const (
 	ledgerPipeline pType = "ledger_pipeline"
 )
 
-func accountForSignerStateNode(q *history.Q) *supportPipeline.PipelineNode {
+func accountsStateNode(q *history.Q) *supportPipeline.PipelineNode {
 	return pipeline.StateNode(&processors.EntryTypeFilter{Type: xdr.LedgerEntryTypeAccount}).
 		Pipe(
 			pipeline.StateNode(&horizonProcessors.DatabaseProcessor{
+				AccountsQ: q,
+				Action:    horizonProcessors.Accounts,
+			}),
+			pipeline.StateNode(&horizonProcessors.DatabaseProcessor{
 				SignersQ: q,
 				Action:   horizonProcessors.AccountsForSigner,
+			}),
+		)
+}
+
+func dataDBStateNode(q *history.Q) *supportPipeline.PipelineNode {
+	return pipeline.StateNode(&processors.EntryTypeFilter{Type: xdr.LedgerEntryTypeData}).
+		Pipe(
+			pipeline.StateNode(&horizonProcessors.DatabaseProcessor{
+				DataQ:  q,
+				Action: horizonProcessors.Data,
 			}),
 		)
 }
@@ -55,33 +69,32 @@ func orderBookGraphStateNode(graph *orderbook.OrderBookGraph) *supportPipeline.P
 		)
 }
 
+func trustLinesDBStateNode(q *history.Q) *supportPipeline.PipelineNode {
+	return pipeline.StateNode(&processors.EntryTypeFilter{Type: xdr.LedgerEntryTypeTrustline}).
+		Pipe(
+			pipeline.StateNode(&horizonProcessors.DatabaseProcessor{
+				TrustLinesQ: q,
+				AssetStatsQ: q,
+				Action:      horizonProcessors.TrustLines,
+			}),
+		)
+}
+
 func buildStatePipeline(historyQ *history.Q, graph *orderbook.OrderBookGraph) *pipeline.StatePipeline {
 	statePipeline := &pipeline.StatePipeline{}
 
 	statePipeline.SetRoot(
 		pipeline.StateNode(&processors.RootProcessor{}).
 			Pipe(
-				accountForSignerStateNode(historyQ),
+				accountsStateNode(historyQ),
+				dataDBStateNode(historyQ),
 				orderBookDBStateNode(historyQ),
 				orderBookGraphStateNode(graph),
+				trustLinesDBStateNode(historyQ),
 			),
 	)
 
 	return statePipeline
-}
-
-func accountForSignerLedgerNode(q *history.Q) *supportPipeline.PipelineNode {
-	return pipeline.LedgerNode(&horizonProcessors.DatabaseProcessor{
-		SignersQ: q,
-		Action:   horizonProcessors.AccountsForSigner,
-	})
-}
-
-func orderBookDBLedgerNode(q *history.Q) *supportPipeline.PipelineNode {
-	return pipeline.LedgerNode(&horizonProcessors.DatabaseProcessor{
-		OffersQ: q,
-		Action:  horizonProcessors.Offers,
-	})
 }
 
 func orderBookGraphLedgerNode(graph *orderbook.OrderBookGraph) *supportPipeline.PipelineNode {
@@ -99,8 +112,15 @@ func buildLedgerPipeline(historyQ *history.Q, graph *orderbook.OrderBookGraph) *
 				// This subtree will only run when `IngestUpdateDatabase` is set.
 				pipeline.LedgerNode(&horizonProcessors.ContextFilter{horizonProcessors.IngestUpdateDatabase}).
 					Pipe(
-						accountForSignerLedgerNode(historyQ),
-						orderBookDBLedgerNode(historyQ),
+						pipeline.LedgerNode(&horizonProcessors.DatabaseProcessor{
+							AccountsQ:   historyQ,
+							DataQ:       historyQ,
+							OffersQ:     historyQ,
+							SignersQ:    historyQ,
+							TrustLinesQ: historyQ,
+							AssetStatsQ: historyQ,
+							Action:      horizonProcessors.All,
+						}),
 					),
 				orderBookGraphLedgerNode(graph),
 			),
@@ -112,6 +132,7 @@ func buildLedgerPipeline(historyQ *history.Q, graph *orderbook.OrderBookGraph) *
 func preProcessingHook(
 	ctx context.Context,
 	pipelineType pType,
+	system *System,
 	historySession *db.Session,
 ) (context.Context, error) {
 	historyQ := &history.Q{historySession}
@@ -142,6 +163,10 @@ func preProcessingHook(
 		// from a database is done outside the pipeline.
 		updateDatabase = true
 	} else {
+		// mark the system as ready because we have progressed to running
+		// the ledger pipeline
+		system.setStateReady()
+
 		if lastIngestedLedger+1 == ledgerSeq {
 			// lastIngestedLedger+1 == ledgerSeq what means that this instance
 			// is the main ingesting instance in this round and should update a
@@ -229,7 +254,7 @@ func postProcessingHook(
 		}
 	}
 
-	err = graph.Apply()
+	err = graph.Apply(ledgerSeq)
 	if err != nil {
 		return errors.Wrap(err, "Error applying order book changes")
 	}
@@ -289,7 +314,7 @@ func addPipelineHooks(
 	}
 
 	p.AddPreProcessingHook(func(ctx context.Context) (context.Context, error) {
-		return preProcessingHook(ctx, pipelineType, historySession)
+		return preProcessingHook(ctx, pipelineType, system, historySession)
 	})
 
 	p.AddPostProcessingHook(func(ctx context.Context, err error) error {

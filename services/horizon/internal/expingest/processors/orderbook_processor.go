@@ -39,8 +39,16 @@ func (p *OrderbookProcessor) ProcessState(ctx context.Context, store *pipeline.S
 	return nil
 }
 
-func (p *OrderbookProcessor) ProcessLedger(ctx context.Context, store *pipeline.Store, r io.LedgerReader, w io.LedgerWriter) error {
-	defer r.Close()
+func (p *OrderbookProcessor) ProcessLedger(ctx context.Context, store *pipeline.Store, r io.LedgerReader, w io.LedgerWriter) (err error) {
+	defer func() {
+		// io.LedgerReader.Close() returns error if upgrade changes have not
+		// been processed so it's worth checking the error.
+		closeErr := r.Close()
+		// Do not overwrite the previous error
+		if err == nil {
+			err = closeErr
+		}
+	}()
 	defer w.Close()
 
 	for {
@@ -58,20 +66,7 @@ func (p *OrderbookProcessor) ProcessLedger(ctx context.Context, store *pipeline.
 		}
 
 		for _, change := range transaction.GetChanges() {
-			if change.Type != xdr.LedgerEntryTypeOffer {
-				continue
-			}
-
-			switch {
-			case change.Post != nil:
-				// Created or updated
-				offer := change.Post.MustOffer()
-				p.OrderBookGraph.AddOffer(offer)
-			case change.Pre != nil && change.Post == nil:
-				// Removed
-				offer := change.Pre.MustOffer()
-				p.OrderBookGraph.RemoveOffer(offer.OfferId)
-			}
+			p.processChange(change)
 		}
 
 		select {
@@ -82,7 +77,45 @@ func (p *OrderbookProcessor) ProcessLedger(ctx context.Context, store *pipeline.
 		}
 	}
 
+	// Process upgrades meta
+	for {
+		change, err := r.ReadUpgradeChange()
+		if err != nil {
+			if err == stdio.EOF {
+				break
+			} else {
+				return err
+			}
+		}
+
+		p.processChange(change)
+
+		select {
+		case <-ctx.Done():
+			return nil
+		default:
+			continue
+		}
+	}
+
 	return nil
+}
+
+func (p *OrderbookProcessor) processChange(change io.Change) {
+	if change.Type != xdr.LedgerEntryTypeOffer {
+		return
+	}
+
+	switch {
+	case change.Post != nil:
+		// Created or updated
+		offer := change.Post.Data.MustOffer()
+		p.OrderBookGraph.AddOffer(offer)
+	case change.Pre != nil && change.Post == nil:
+		// Removed
+		offer := change.Pre.Data.MustOffer()
+		p.OrderBookGraph.RemoveOffer(offer.OfferId)
+	}
 }
 
 func (p *OrderbookProcessor) Name() string {

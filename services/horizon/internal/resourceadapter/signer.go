@@ -15,7 +15,7 @@ func PopulateSigner(ctx context.Context, dest *protocol.Signer, row core.Signer)
 	dest.Type = protocol.MustKeyTypeFromAddress(dest.Key)
 }
 
-// PopulateMaster fills out the fields of the signer, using a stellar account to
+// PopulateMasterSigner fills out the fields of the signer, using a stellar account to
 // provide the data.
 func PopulateMasterSigner(dest *protocol.Signer, row core.Account) {
 	dest.Weight = int32(row.Thresholds[0])

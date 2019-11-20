@@ -21,7 +21,7 @@ func (q *Q) CountOffers() (int, error) {
 // GetOfferByID loads a row from the `offers` table, selected by offerid.
 func (q *Q) GetOfferByID(id int64) (Offer, error) {
 	var offer Offer
-	sql := selectOffers.Where("offers.offerid = ?", id)
+	sql := selectOffers.Where("offers.offer_id = ?", id)
 	err := q.Get(&offer, sql)
 	return offer, err
 }
@@ -29,7 +29,7 @@ func (q *Q) GetOfferByID(id int64) (Offer, error) {
 // GetOffersByIDs loads a row from the `offers` table, selected by multiple offerid.
 func (q *Q) GetOffersByIDs(ids []int64) ([]Offer, error) {
 	var offers []Offer
-	sql := selectOffers.Where(map[string]interface{}{"offers.offerid": ids})
+	sql := selectOffers.Where(map[string]interface{}{"offers.offer_id": ids})
 	err := q.Select(&offers, sql)
 	return offers, err
 }
@@ -37,14 +37,14 @@ func (q *Q) GetOffersByIDs(ids []int64) ([]Offer, error) {
 // GetOffers loads rows from `offers` by paging query.
 func (q *Q) GetOffers(query OffersQuery) ([]Offer, error) {
 	sql := selectOffers
-	sql, err := query.PageQuery.ApplyTo(sql, "offers.offerid")
+	sql, err := query.PageQuery.ApplyTo(sql, "offers.offer_id")
 
 	if err != nil {
 		return nil, errors.Wrap(err, "could not apply query to page")
 	}
 
 	if query.SellerID != "" {
-		sql = sql.Where("offers.sellerid = ?", query.SellerID)
+		sql = sql.Where("offers.seller_id = ?", query.SellerID)
 	}
 
 	if query.Selling != nil {
@@ -52,7 +52,7 @@ func (q *Q) GetOffers(query OffersQuery) ([]Offer, error) {
 		if err != nil {
 			return nil, errors.Wrap(err, "cannot marshal selling asset")
 		}
-		sql = sql.Where("offers.sellingasset = ?", sellingAsset)
+		sql = sql.Where("offers.selling_asset = ?", sellingAsset)
 	}
 
 	if query.Buying != nil {
@@ -60,7 +60,7 @@ func (q *Q) GetOffers(query OffersQuery) ([]Offer, error) {
 		if err != nil {
 			return nil, errors.Wrap(err, "cannot marshal Buying asset")
 		}
-		sql = sql.Where("offers.buyingasset = ?", buyingAsset)
+		sql = sql.Where("offers.buying_asset = ?", buyingAsset)
 	}
 
 	var offers []Offer
@@ -95,10 +95,10 @@ func offerToMap(offer xdr.OfferEntry, lastModifiedLedger xdr.Uint32) (map[string
 	}
 
 	return map[string]interface{}{
-		"sellerid":             offer.SellerId.Address(),
-		"offerid":              offer.OfferId,
-		"sellingasset":         sellingAsset,
-		"buyingasset":          buyingAsset,
+		"seller_id":            offer.SellerId.Address(),
+		"offer_id":             offer.OfferId,
+		"selling_asset":        sellingAsset,
+		"buying_asset":         buyingAsset,
 		"amount":               offer.Amount,
 		"pricen":               offer.Price.N,
 		"priced":               offer.Price.D,
@@ -133,10 +133,10 @@ func (q *Q) UpdateOffer(offer xdr.OfferEntry, lastModifiedLedger xdr.Uint32) (in
 		return 0, err
 	}
 
-	offerID := m["offerid"]
-	delete(m, "offerid")
+	offerID := m["offer_id"]
+	delete(m, "offer_id")
 
-	sql := sq.Update("offers").SetMap(m).Where(sq.Eq{"offerid": offerID})
+	sql := sq.Update("offers").SetMap(m).Where(sq.Eq{"offer_id": offerID})
 	result, err := q.Exec(sql)
 	if err != nil {
 		return 0, err
@@ -148,7 +148,7 @@ func (q *Q) UpdateOffer(offer xdr.OfferEntry, lastModifiedLedger xdr.Uint32) (in
 // RemoveOffer deletes a row in the offers table.
 // Returns number of rows affected and error.
 func (q *Q) RemoveOffer(offerID xdr.Int64) (int64, error) {
-	sql := sq.Delete("offers").Where(sq.Eq{"offerid": offerID})
+	sql := sq.Delete("offers").Where(sq.Eq{"offer_id": offerID})
 	result, err := q.Exec(sql)
 	if err != nil {
 		return 0, err
@@ -158,10 +158,10 @@ func (q *Q) RemoveOffer(offerID xdr.Int64) (int64, error) {
 }
 
 var selectOffers = sq.Select(`
-	sellerid,
-	offerid,
-	sellingasset,
-	buyingasset,
+	seller_id,
+	offer_id,
+	selling_asset,
+	buying_asset,
 	amount,
 	pricen,
 	priced,

@@ -3,6 +3,7 @@
 package history
 
 import (
+	"fmt"
 	"sync"
 	"time"
 
@@ -111,8 +112,12 @@ const (
 // ExperimentalIngestionTables is a list of tables populated by the experimental
 // ingestion system
 var ExperimentalIngestionTables = []string{
+	"accounts",
+	"accounts_data",
 	"accounts_signers",
+	"exp_asset_stats",
 	"offers",
+	"trust_lines",
 }
 
 // Account is a row of data from the `history_accounts` table
@@ -129,9 +134,45 @@ type AccountsQ struct {
 	sql    sq.SelectBuilder
 }
 
+// AccountEntry is a row of data from the `account` table
+type AccountEntry struct {
+	AccountID            string `db:"account_id"`
+	Balance              int64  `db:"balance"`
+	BuyingLiabilities    int64  `db:"buying_liabilities"`
+	SellingLiabilities   int64  `db:"selling_liabilities"`
+	SequenceNumber       int64  `db:"sequence_number"`
+	NumSubEntries        uint32 `db:"num_subentries"`
+	InflationDestination string `db:"inflation_destination"`
+	HomeDomain           string `db:"home_domain"`
+	Flags                uint32 `db:"flags"`
+	MasterWeight         byte   `db:"master_weight"`
+	ThresholdLow         byte   `db:"threshold_low"`
+	ThresholdMedium      byte   `db:"threshold_medium"`
+	ThresholdHigh        byte   `db:"threshold_high"`
+	LastModifiedLedger   uint32 `db:"last_modified_ledger"`
+}
+
+type AccountsBatchInsertBuilder interface {
+	Add(account xdr.AccountEntry, lastModifiedLedger xdr.Uint32) error
+	Exec() error
+}
+
+// accountsBatchInsertBuilder is a simple wrapper around db.BatchInsertBuilder
+type accountsBatchInsertBuilder struct {
+	builder db.BatchInsertBuilder
+}
+
+// QAccounts defines account related queries.
+type QAccounts interface {
+	NewAccountsBatchInsertBuilder(maxBatchSize int) AccountsBatchInsertBuilder
+	InsertAccount(account xdr.AccountEntry, lastModifiedLedger xdr.Uint32) (int64, error)
+	UpdateAccount(account xdr.AccountEntry, lastModifiedLedger xdr.Uint32) (int64, error)
+	RemoveAccount(accountID string) (int64, error)
+}
+
 // AccountSigner is a row of data from the `accounts_signers` table
 type AccountSigner struct {
-	Account string `db:"account"`
+	Account string `db:"account_id"`
 	Signer  string `db:"signer"`
 	Weight  int32  `db:"weight"`
 }
@@ -144,6 +185,34 @@ type AccountSignersBatchInsertBuilder interface {
 // accountSignersBatchInsertBuilder is a simple wrapper around db.BatchInsertBuilder
 type accountSignersBatchInsertBuilder struct {
 	builder db.BatchInsertBuilder
+}
+
+// Data is a row of data from the `account_data` table
+type Data struct {
+	AccountID          string           `db:"account_id"`
+	Name               string           `db:"name"`
+	Value              AccountDataValue `db:"value"`
+	LastModifiedLedger uint32           `db:"last_modified_ledger"`
+}
+
+type AccountDataValue []byte
+
+type AccountDataBatchInsertBuilder interface {
+	Add(data xdr.DataEntry, lastModifiedLedger xdr.Uint32) error
+	Exec() error
+}
+
+// accountDataBatchInsertBuilder is a simple wrapper around db.BatchInsertBuilder
+type accountDataBatchInsertBuilder struct {
+	builder db.BatchInsertBuilder
+}
+
+// QData defines account data related queries.
+type QData interface {
+	NewAccountDataBatchInsertBuilder(maxBatchSize int) AccountDataBatchInsertBuilder
+	InsertAccountData(data xdr.DataEntry, lastModifiedLedger xdr.Uint32) (int64, error)
+	UpdateAccountData(data xdr.DataEntry, lastModifiedLedger xdr.Uint32) (int64, error)
+	RemoveAccountData(key xdr.LedgerKeyData) (int64, error)
 }
 
 // Asset is a row of data from the `history_assets` table
@@ -161,6 +230,35 @@ type AssetStat struct {
 	NumAccounts int32  `db:"num_accounts"`
 	Flags       int8   `db:"flags"`
 	Toml        string `db:"toml"`
+}
+
+// ExpAssetStat is a row in the exp_asset_stats table representing the stats per Asset
+type ExpAssetStat struct {
+	AssetType   xdr.AssetType `db:"asset_type"`
+	AssetCode   string        `db:"asset_code"`
+	AssetIssuer string        `db:"asset_issuer"`
+	Amount      string        `db:"amount"`
+	NumAccounts int32         `db:"num_accounts"`
+}
+
+// PagingToken returns a cursor for this asset stat
+func (e ExpAssetStat) PagingToken() string {
+	return fmt.Sprintf(
+		"%s_%s_%s",
+		e.AssetCode,
+		e.AssetIssuer,
+		xdr.AssetTypeToString[e.AssetType],
+	)
+}
+
+// QAssetStats defines exp_asset_stats related queries.
+type QAssetStats interface {
+	InsertAssetStats(stats []ExpAssetStat, batchSize int) error
+	InsertAssetStat(stat ExpAssetStat) (int64, error)
+	UpdateAssetStat(stat ExpAssetStat) (int64, error)
+	GetAssetStat(assetType xdr.AssetType, assetCode, assetIssuer string) (ExpAssetStat, error)
+	RemoveAssetStat(assetType xdr.AssetType, assetCode, assetIssuer string) (int64, error)
+	GetAssetStats(assetCode, assetIssuer string, page db2.PageQuery) ([]ExpAssetStat, error)
 }
 
 // Effect is a row of data from the `history_effects` table
@@ -281,13 +379,13 @@ type Operation struct {
 	TransactionSuccessful *bool `db:"transaction_successful"`
 }
 
-// Offer is row of data from the `offers` table from stellar-core
+// Offer is row of data from the `offers` table from horizon DB
 type Offer struct {
-	SellerID string    `db:"sellerid"`
-	OfferID  xdr.Int64 `db:"offerid"`
+	SellerID string    `db:"seller_id"`
+	OfferID  xdr.Int64 `db:"offer_id"`
 
-	SellingAsset xdr.Asset `db:"sellingasset"`
-	BuyingAsset  xdr.Asset `db:"buyingasset"`
+	SellingAsset xdr.Asset `db:"selling_asset"`
+	BuyingAsset  xdr.Asset `db:"buying_asset"`
 
 	Amount             xdr.Int64 `db:"amount"`
 	Pricen             int32     `db:"pricen"`
@@ -430,6 +528,47 @@ type TransactionsQ struct {
 	includeFailed bool
 }
 
+// TrustLine is row of data from the `trust_lines` table from horizon DB
+type TrustLine struct {
+	AccountID          string        `db:"account_id"`
+	AssetType          xdr.AssetType `db:"asset_type"`
+	AssetIssuer        string        `db:"asset_issuer"`
+	AssetCode          string        `db:"asset_code"`
+	Balance            int64         `db:"balance"`
+	Limit              int64         `db:"trust_line_limit"`
+	BuyingLiabilities  int64         `db:"buying_liabilities"`
+	SellingLiabilities int64         `db:"selling_liabilities"`
+	Flags              uint32        `db:"flags"`
+	LastModifiedLedger uint32        `db:"last_modified_ledger"`
+}
+
+// QTrustLines defines trust lines related queries.
+type QTrustLines interface {
+	NewTrustLinesBatchInsertBuilder(maxBatchSize int) TrustLinesBatchInsertBuilder
+	InsertTrustLine(trustLine xdr.TrustLineEntry, lastModifiedLedger xdr.Uint32) (int64, error)
+	UpdateTrustLine(trustLine xdr.TrustLineEntry, lastModifiedLedger xdr.Uint32) (int64, error)
+	RemoveTrustLine(key xdr.LedgerKeyTrustLine) (int64, error)
+}
+
+type TrustLinesBatchInsertBuilder interface {
+	Add(trustLine xdr.TrustLineEntry, lastModifiedLedger xdr.Uint32) error
+	Exec() error
+}
+
+// trustLinesBatchInsertBuilder is a simple wrapper around db.BatchInsertBuilder
+type trustLinesBatchInsertBuilder struct {
+	builder db.BatchInsertBuilder
+}
+
+func (q *Q) NewAccountsBatchInsertBuilder(maxBatchSize int) AccountsBatchInsertBuilder {
+	return &accountsBatchInsertBuilder{
+		builder: db.BatchInsertBuilder{
+			Table:        q.GetTable("accounts"),
+			MaxBatchSize: maxBatchSize,
+		},
+	}
+}
+
 func (q *Q) NewAccountSignersBatchInsertBuilder(maxBatchSize int) AccountSignersBatchInsertBuilder {
 	return &accountSignersBatchInsertBuilder{
 		builder: db.BatchInsertBuilder{
@@ -439,10 +578,28 @@ func (q *Q) NewAccountSignersBatchInsertBuilder(maxBatchSize int) AccountSigners
 	}
 }
 
+func (q *Q) NewAccountDataBatchInsertBuilder(maxBatchSize int) AccountDataBatchInsertBuilder {
+	return &accountDataBatchInsertBuilder{
+		builder: db.BatchInsertBuilder{
+			Table:        q.GetTable("accounts_data"),
+			MaxBatchSize: maxBatchSize,
+		},
+	}
+}
+
 func (q *Q) NewOffersBatchInsertBuilder(maxBatchSize int) OffersBatchInsertBuilder {
 	return &offersBatchInsertBuilder{
 		builder: db.BatchInsertBuilder{
 			Table:        q.GetTable("offers"),
+			MaxBatchSize: maxBatchSize,
+		},
+	}
+}
+
+func (q *Q) NewTrustLinesBatchInsertBuilder(maxBatchSize int) TrustLinesBatchInsertBuilder {
+	return &trustLinesBatchInsertBuilder{
+		builder: db.BatchInsertBuilder{
+			Table:        q.GetTable("trust_lines"),
 			MaxBatchSize: maxBatchSize,
 		},
 	}

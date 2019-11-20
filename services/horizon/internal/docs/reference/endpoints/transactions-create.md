@@ -36,7 +36,7 @@ If you are encountering this error it means that either:
 The former case may happen because there was no room for your transaction in the 3 consecutive ledgers. In such case, Core server removes a transaction from a queue. To solve this you can either:
 
 * Keep resubmitting the same transaction (with the same sequence number) and wait until it finally is added to a new ledger or:
-* Increase the [fee](/developers/guides/concepts/fees.html).
+* Increase the [fee](../../../guides/concepts/fees.html).
 
 ## Request
 

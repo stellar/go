@@ -7,35 +7,91 @@ import (
 	"strconv"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/go-chi/chi"
 	"github.com/stellar/go/exp/orderbook"
 	"github.com/stellar/go/protocols/horizon"
+	"github.com/stellar/go/services/horizon/internal/actions"
 	"github.com/stellar/go/services/horizon/internal/db2"
 	"github.com/stellar/go/services/horizon/internal/db2/core"
-	"github.com/stellar/go/services/horizon/internal/paths"
 	horizonProblem "github.com/stellar/go/services/horizon/internal/render/problem"
 	"github.com/stellar/go/services/horizon/internal/simplepath"
 	"github.com/stellar/go/services/horizon/internal/test"
 	"github.com/stellar/go/support/render/problem"
 	"github.com/stellar/go/xdr"
+	"github.com/stretchr/testify/assert"
 )
 
-func pathFindingClient(tt *test.T, pathFinder paths.Finder, maxAssetsParamLength int) test.RequestHelper {
+func inMemoryPathFindingClient(
+	tt *test.T,
+	graph *orderbook.OrderBookGraph,
+	maxAssetsParamLength int,
+) test.RequestHelper {
 	router := chi.NewRouter()
 	findPaths := FindPathsHandler{
-		pathFinder:           pathFinder,
+		pathFinder:           simplepath.NewInMemoryFinder(graph),
 		maxAssetsParamLength: maxAssetsParamLength,
+		setLastLedgerHeader:  true,
 		coreQ:                &core.Q{tt.CoreSession()},
 	}
 	findFixedPaths := FindFixedPathsHandler{
-		pathFinder:           pathFinder,
+		pathFinder:           simplepath.NewInMemoryFinder(graph),
 		maxAssetsParamLength: maxAssetsParamLength,
+		setLastLedgerHeader:  true,
 		coreQ:                &core.Q{tt.CoreSession()},
 	}
 
-	installPathFindingRoutes(findPaths, findFixedPaths, router, false)
+	installPathFindingRoutes(
+		findPaths,
+		findFixedPaths,
+		router,
+		false,
+		&ExperimentalIngestionMiddleware{
+			EnableExperimentalIngestion: true,
+			HorizonSession:              tt.HorizonSession(),
+			StateReady: func() bool {
+				return true
+			},
+		},
+	)
+	return test.NewRequestHelper(router)
+}
+
+func dbPathFindingClient(
+	tt *test.T,
+	maxAssetsParamLength int,
+) test.RequestHelper {
+	router := chi.NewRouter()
+	findPaths := FindPathsHandler{
+		pathFinder: &simplepath.Finder{
+			Q: &core.Q{tt.CoreSession()},
+		},
+		maxAssetsParamLength: maxAssetsParamLength,
+		setLastLedgerHeader:  false,
+		coreQ:                &core.Q{tt.CoreSession()},
+	}
+	findFixedPaths := FindFixedPathsHandler{
+		pathFinder: &simplepath.Finder{
+			Q: &core.Q{tt.CoreSession()},
+		},
+		maxAssetsParamLength: maxAssetsParamLength,
+		setLastLedgerHeader:  false,
+		coreQ:                &core.Q{tt.CoreSession()},
+	}
+
+	installPathFindingRoutes(
+		findPaths,
+		findFixedPaths,
+		router,
+		false,
+		&ExperimentalIngestionMiddleware{
+			EnableExperimentalIngestion: false,
+			HorizonSession:              tt.HorizonSession(),
+			StateReady: func() bool {
+				return false
+			},
+		},
+	)
 	return test.NewRequestHelper(router)
 }
 
@@ -43,11 +99,8 @@ func TestPathActions_Index(t *testing.T) {
 	tt := test.Start(t).Scenario("paths")
 	assertions := &Assertions{tt.Assert}
 	defer tt.Finish()
-	rh := pathFindingClient(
+	rh := dbPathFindingClient(
 		tt,
-		&simplepath.Finder{
-			Q: &core.Q{tt.CoreSession()},
-		},
 		3,
 	)
 
@@ -78,6 +131,7 @@ func TestPathActions_Index(t *testing.T) {
 		w = rh.Get(uri + "?" + q.Encode())
 		assertions.Equal(200, w.Code)
 		assertions.PageOf(3, w.Body)
+		assertions.Equal("", w.Header().Get(actions.LastLedgerHeaderName))
 	}
 }
 
@@ -85,9 +139,9 @@ func TestPathActionsStillIngesting(t *testing.T) {
 	tt := test.Start(t).Scenario("paths")
 	defer tt.Finish()
 	assertions := &Assertions{tt.Assert}
-	rh := pathFindingClient(
+	rh := inMemoryPathFindingClient(
 		tt,
-		simplepath.NewInMemoryFinder(orderbook.NewOrderBookGraph()),
+		orderbook.NewOrderBookGraph(),
 		3,
 	)
 
@@ -113,39 +167,16 @@ func TestPathActionsStillIngesting(t *testing.T) {
 		w := rh.Get(uri + "?" + q.Encode())
 		assertions.Equal(horizonProblem.StillIngesting.Status, w.Code)
 		assertions.Problem(w.Body, horizonProblem.StillIngesting)
+		assertions.Equal("", w.Header().Get(actions.LastLedgerHeaderName))
 	}
 }
 
-func TestPathActionsStateInvalid(t *testing.T) {
-	rh := StartHTTPTest(t, "paths")
-	defer rh.Finish()
-
-	rh.App.config.EnableExperimentalIngestion = true
-	rh.App.web.router = chi.NewRouter()
-	orderBookGraph := orderbook.NewOrderBookGraph()
-	rh.App.web.mustInstallMiddlewares(rh.App, time.Minute)
-	rh.App.web.mustInstallActions(
-		rh.App.config,
-		simplepath.NewInMemoryFinder(orderBookGraph),
-	)
-	rh.RH = test.NewRequestHelper(rh.App.web.router)
-
-	w := rh.Get("/paths")
-	// Still ingesting
-	rh.Assert.Equal(503, w.Code)
-
-	err := rh.App.historyQ.UpdateLastLedgerExpIngest(10)
-	rh.Assert.NoError(err)
-
-	err = rh.App.historyQ.UpdateExpStateInvalid(true)
-	rh.Assert.NoError(err)
-
-	w = rh.Get("/paths")
-	// State invalid
-	rh.Assert.Equal(500, w.Code)
-}
-
-func loadOffers(tt *test.T, orderBookGraph *orderbook.OrderBookGraph, fromAddress string) {
+func loadOffers(
+	tt *test.T,
+	orderBookGraph *orderbook.OrderBookGraph,
+	fromAddress string,
+	ledger uint32,
+) {
 	coreQ := &core.Q{tt.CoreSession()}
 	offers := []core.Offer{}
 	pageQuery := db2.PageQuery{
@@ -165,7 +196,7 @@ func loadOffers(tt *test.T, orderBookGraph *orderbook.OrderBookGraph, fromAddres
 			Price:    xdr.Price{N: xdr.Int32(offer.Price * 100), D: 100},
 		})
 	}
-	tt.Assert.NoError(orderBookGraph.Apply())
+	tt.Assert.NoError(orderBookGraph.Apply(ledger))
 }
 
 func TestPathActionsInMemoryFinder(t *testing.T) {
@@ -178,21 +209,18 @@ func TestPathActionsInMemoryFinder(t *testing.T) {
 	sourceAssets, _, err := coreQ.AssetsForAddress(sourceAccount)
 	tt.Assert.NoError(err)
 
-	inMemoryPathsClient := pathFindingClient(
+	inMemoryPathsClient := inMemoryPathFindingClient(
 		tt,
-		simplepath.NewInMemoryFinder(orderBookGraph),
+		orderBookGraph,
 		len(sourceAssets),
 	)
-	dbPathsClient := pathFindingClient(
+	dbPathsClient := dbPathFindingClient(
 		tt,
-		&simplepath.Finder{
-			Q: &core.Q{tt.CoreSession()},
-		},
 		len(sourceAssets),
 	)
 
-	loadOffers(tt, orderBookGraph, "GA2NC4ZOXMXLVQAQQ5IQKJX47M3PKBQV2N5UV5Z4OXLQJ3CKMBA2O2YL")
-	loadOffers(tt, orderBookGraph, "GDSBCQO34HWPGUGQSP3QBFEXVTSR2PW46UIGTHVWGWJGQKH3AFNHXHXN")
+	loadOffers(tt, orderBookGraph, "GA2NC4ZOXMXLVQAQQ5IQKJX47M3PKBQV2N5UV5Z4OXLQJ3CKMBA2O2YL", 1)
+	loadOffers(tt, orderBookGraph, "GDSBCQO34HWPGUGQSP3QBFEXVTSR2PW46UIGTHVWGWJGQKH3AFNHXHXN", 2)
 
 	var withSourceAccount = make(url.Values)
 	withSourceAccount.Add(
@@ -223,11 +251,13 @@ func TestPathActionsInMemoryFinder(t *testing.T) {
 		tt.Assert.Equal(http.StatusOK, w.Code)
 		inMemorySourceAccountResponse := []horizon.Path{}
 		tt.UnmarshalPage(w.Body, &inMemorySourceAccountResponse)
+		tt.Assert.Equal("2", w.Header().Get(actions.LastLedgerHeaderName))
 
 		w = dbPathsClient.Get(uri + "?" + withSourceAccount.Encode())
 		tt.Assert.Equal(http.StatusOK, w.Code)
 		dbSourceAccountResponse := []horizon.Path{}
 		tt.UnmarshalPage(w.Body, &dbSourceAccountResponse)
+		tt.Assert.Equal("", w.Header().Get(actions.LastLedgerHeaderName))
 
 		tt.Assert.True(len(inMemorySourceAccountResponse) > 0)
 		tt.Assert.Equal(inMemorySourceAccountResponse, dbSourceAccountResponse)
@@ -236,11 +266,13 @@ func TestPathActionsInMemoryFinder(t *testing.T) {
 		tt.Assert.Equal(http.StatusOK, w.Code)
 		inMemorySourceAssetsResponse := []horizon.Path{}
 		tt.UnmarshalPage(w.Body, &inMemorySourceAssetsResponse)
+		tt.Assert.Equal("2", w.Header().Get(actions.LastLedgerHeaderName))
 
 		w = dbPathsClient.Get(uri + "?" + withSourceAccount.Encode())
 		tt.Assert.Equal(http.StatusOK, w.Code)
 		dbSourceAssetsResponse := []horizon.Path{}
 		tt.UnmarshalPage(w.Body, &dbSourceAssetsResponse)
+		tt.Assert.Equal("", w.Header().Get(actions.LastLedgerHeaderName))
 
 		tt.Assert.Equal(inMemorySourceAssetsResponse, dbSourceAssetsResponse)
 		tt.Assert.Equal(inMemorySourceAssetsResponse, inMemorySourceAccountResponse)
@@ -252,21 +284,18 @@ func TestPathActionsEmptySourceAcount(t *testing.T) {
 	defer tt.Finish()
 	orderBookGraph := orderbook.NewOrderBookGraph()
 	assertions := &Assertions{tt.Assert}
-	inMemoryPathsClient := pathFindingClient(
+	inMemoryPathsClient := inMemoryPathFindingClient(
 		tt,
-		simplepath.NewInMemoryFinder(orderBookGraph),
+		orderBookGraph,
 		3,
 	)
-	dbPathsClient := pathFindingClient(
+	dbPathsClient := dbPathFindingClient(
 		tt,
-		&simplepath.Finder{
-			Q: &core.Q{tt.CoreSession()},
-		},
 		3,
 	)
 
-	loadOffers(tt, orderBookGraph, "GA2NC4ZOXMXLVQAQQ5IQKJX47M3PKBQV2N5UV5Z4OXLQJ3CKMBA2O2YL")
-	loadOffers(tt, orderBookGraph, "GDSBCQO34HWPGUGQSP3QBFEXVTSR2PW46UIGTHVWGWJGQKH3AFNHXHXN")
+	loadOffers(tt, orderBookGraph, "GA2NC4ZOXMXLVQAQQ5IQKJX47M3PKBQV2N5UV5Z4OXLQJ3CKMBA2O2YL", 1)
+	loadOffers(tt, orderBookGraph, "GDSBCQO34HWPGUGQSP3QBFEXVTSR2PW46UIGTHVWGWJGQKH3AFNHXHXN", 2)
 
 	var q = make(url.Values)
 
@@ -293,12 +322,14 @@ func TestPathActionsEmptySourceAcount(t *testing.T) {
 		inMemoryResponse := []horizon.Path{}
 		tt.UnmarshalPage(w.Body, &inMemoryResponse)
 		assertions.Empty(inMemoryResponse)
+		tt.Assert.Equal("", w.Header().Get(actions.LastLedgerHeaderName))
 
 		w = dbPathsClient.Get(uri + "?" + q.Encode())
 		assertions.Equal(http.StatusOK, w.Code)
 		dbResponse := []horizon.Path{}
 		tt.UnmarshalPage(w.Body, &dbResponse)
 		assertions.Empty(dbResponse)
+		tt.Assert.Equal("", w.Header().Get(actions.LastLedgerHeaderName))
 	}
 }
 
@@ -307,9 +338,9 @@ func TestPathActionsSourceAssetsValidation(t *testing.T) {
 	defer tt.Finish()
 	assertions := &Assertions{tt.Assert}
 	orderBookGraph := orderbook.NewOrderBookGraph()
-	rh := pathFindingClient(
+	rh := inMemoryPathFindingClient(
 		tt,
-		simplepath.NewInMemoryFinder(orderBookGraph),
+		orderBookGraph,
 		3,
 	)
 
@@ -375,6 +406,7 @@ func TestPathActionsSourceAssetsValidation(t *testing.T) {
 			w := rh.Get("/paths/strict-receive?" + testCase.q.Encode())
 			assertions.Equal(testCase.expectedProblem.Status, w.Code)
 			assertions.Problem(w.Body, testCase.expectedProblem)
+			assertions.Equal("", w.Header().Get(actions.LastLedgerHeaderName))
 		})
 	}
 }
@@ -384,9 +416,9 @@ func TestPathActionsDestinationAssetsValidation(t *testing.T) {
 	defer tt.Finish()
 	assertions := &Assertions{tt.Assert}
 	orderBookGraph := orderbook.NewOrderBookGraph()
-	rh := pathFindingClient(
+	rh := inMemoryPathFindingClient(
 		tt,
-		simplepath.NewInMemoryFinder(orderBookGraph),
+		orderBookGraph,
 		3,
 	)
 
@@ -456,6 +488,7 @@ func TestPathActionsDestinationAssetsValidation(t *testing.T) {
 			w := rh.Get("/paths/strict-send?" + testCase.q.Encode())
 			assertions.Equal(testCase.expectedProblem.Status, w.Code)
 			assertions.Problem(w.Body, testCase.expectedProblem)
+			assertions.Equal("", w.Header().Get(actions.LastLedgerHeaderName))
 		})
 	}
 }
@@ -471,14 +504,14 @@ func TestPathActionsStrictSend(t *testing.T) {
 	destinationAssets, _, err := coreQ.AssetsForAddress(destinationAccount)
 	tt.Assert.NoError(err)
 
-	rh := pathFindingClient(
+	rh := inMemoryPathFindingClient(
 		tt,
-		simplepath.NewInMemoryFinder(orderBookGraph),
+		orderBookGraph,
 		len(destinationAssets),
 	)
 
-	loadOffers(tt, orderBookGraph, "GA2NC4ZOXMXLVQAQQ5IQKJX47M3PKBQV2N5UV5Z4OXLQJ3CKMBA2O2YL")
-	loadOffers(tt, orderBookGraph, "GDSBCQO34HWPGUGQSP3QBFEXVTSR2PW46UIGTHVWGWJGQKH3AFNHXHXN")
+	loadOffers(tt, orderBookGraph, "GA2NC4ZOXMXLVQAQQ5IQKJX47M3PKBQV2N5UV5Z4OXLQJ3CKMBA2O2YL", 1)
+	loadOffers(tt, orderBookGraph, "GDSBCQO34HWPGUGQSP3QBFEXVTSR2PW46UIGTHVWGWJGQKH3AFNHXHXN", 2)
 
 	var q = make(url.Values)
 
@@ -499,6 +532,7 @@ func TestPathActionsStrictSend(t *testing.T) {
 	accountResponse := []horizon.Path{}
 	tt.UnmarshalPage(w.Body, &accountResponse)
 	assertions.Len(accountResponse, 12)
+	assertions.Equal("2", w.Header().Get(actions.LastLedgerHeaderName))
 
 	for i, path := range accountResponse {
 		assertions.Equal(path.SourceAssetCode, "USD")
@@ -534,6 +568,7 @@ func TestPathActionsStrictSend(t *testing.T) {
 	tt.UnmarshalPage(w.Body, &assetListResponse)
 	assertions.Len(assetListResponse, 12)
 	tt.Assert.Equal(accountResponse, assetListResponse)
+	assertions.Equal("2", w.Header().Get(actions.LastLedgerHeaderName))
 }
 
 func assetsToURLParam(xdrAssets []xdr.Asset) string {
@@ -549,4 +584,35 @@ func assetsToURLParam(xdrAssets []xdr.Asset) string {
 	}
 
 	return strings.Join(assets, ",")
+}
+
+func TestFindFixedPathsQueryQueryURLTemplate(t *testing.T) {
+	tt := assert.New(t)
+	params := []string{
+		"destination_account",
+		"destination_assets",
+		"source_asset_type",
+		"source_asset_issuer",
+		"source_asset_code",
+		"source_amount",
+	}
+	expected := "/paths/strict-send{?" + strings.Join(params, ",") + "}"
+	qp := FindFixedPathsQuery{}
+	tt.Equal(expected, qp.URITemplate())
+}
+
+func TestStrictReceivePathsQueryURLTemplate(t *testing.T) {
+	tt := assert.New(t)
+	params := []string{
+		"source_assets",
+		"source_account",
+		"destination_account",
+		"destination_asset_type",
+		"destination_asset_issuer",
+		"destination_asset_code",
+		"destination_amount",
+	}
+	expected := "/paths/strict-receive{?" + strings.Join(params, ",") + "}"
+	qp := StrictReceivePathsQuery{}
+	tt.Equal(expected, qp.URITemplate())
 }

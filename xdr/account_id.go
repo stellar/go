@@ -84,6 +84,15 @@ func MustAddress(address string) AccountId {
 	return aid
 }
 
+// AddressToAccountId returns an AccountId for a given address string.
+// If the address is not valid the error returned will not be nil
+func AddressToAccountId(address string) (AccountId, error) {
+	result := AccountId{}
+	err := result.SetAddress(address)
+
+	return result, err
+}
+
 // SetAddress modifies the receiver, setting it's value to the AccountId form
 // of the provided address.
 func (aid *AccountId) SetAddress(address string) error {
