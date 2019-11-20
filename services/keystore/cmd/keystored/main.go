@@ -116,8 +116,9 @@ func main() {
 		}
 
 		server := &http.Server{
-			Addr:    addr,
-			Handler: keystore.ServeMux(keystore.NewService(ctx, db, authenticator)),
+			Addr:        addr,
+			Handler:     keystore.ServeMux(keystore.NewService(ctx, db, authenticator)),
+			ReadTimeout: 5 * time.Second,
 		}
 
 		listener, err := net.Listen("tcp", addr)

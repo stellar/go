@@ -1,4 +1,5 @@
 ## [UNRELEASED]
+- Add `ReadTimeout` to Ticker HTTP server configuration to fix potential DoS vector.
 - Added nested `"issuer_detail"` field to `/assets.json`.
 - Dropped support for Go 1.10, 1.11.
 

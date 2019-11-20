@@ -10,4 +10,5 @@ bumps.  A breaking change will get clearly notified in this log.
 
 ### Added
 
+- Add `ReadTimeout` to HTTP server configuration to fix potential DoS vector.
 - Extracted friendbot out of horizon
