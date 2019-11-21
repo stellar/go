@@ -3,6 +3,7 @@ package cmp
 import (
 	"fmt"
 	"io/ioutil"
+	"math/rand"
 	"net/http"
 	"os/exec"
 	"regexp"
@@ -32,6 +33,7 @@ var removeRegexps = []*regexp.Regexp{
 	// regexp.MustCompile(`\s*"transaction_count": [0-9]+,`),
 	// regexp.MustCompile(`\s*"last_modified_ledger": [0-9]+,`),
 	// regexp.MustCompile(`\s*"public_key": "G.*",`),
+	// regexp.MustCompile(`,\s*"paging_token": ?""`),
 }
 
 type Response struct {
@@ -80,7 +82,9 @@ func NewResponse(domain, path string, stream bool) *Response {
 	if resp.StatusCode != http.StatusOK &&
 		resp.StatusCode != http.StatusNotFound &&
 		resp.StatusCode != http.StatusNotAcceptable &&
-		resp.StatusCode != http.StatusBadRequest {
+		resp.StatusCode != http.StatusBadRequest &&
+		resp.StatusCode != http.StatusGatewayTimeout &&
+		resp.StatusCode != http.StatusGone {
 		panic(resp.StatusCode)
 	}
 
@@ -94,7 +98,7 @@ func NewResponse(domain, path string, stream bool) *Response {
 	}
 
 	if string(body) == "" {
-		panic("Empty body")
+		response.Body = fmt.Sprintf("Empty body [%d]", rand.Uint64())
 	}
 
 	response.Body = string(body)
