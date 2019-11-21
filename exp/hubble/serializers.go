@@ -11,16 +11,16 @@ import (
 	"github.com/xdrpp/stc/stx"
 )
 
-func serializeLedgerEntryChange(lec xdr.LedgerEntryChange) ([]byte, error) {
+func serializeLedgerEntryChange(lec xdr.LedgerEntryChange) (string, error) {
 	stxlec := stx.LedgerEntryChange{}
-	lecbytes, err := lec.MarshalBinary()
+	lecBytes, err := lec.MarshalBinary()
 	if err != nil {
-		return []byte{}, err
+		return "", err
 	}
-	stx.XDR_LedgerEntryChange(&stxlec).XdrMarshal(&goxdr.XdrIn{In: bytes.NewReader(lecbytes)}, "")
-	j, err := stcdetail.XdrToJson(&stxlec)
+	stx.XDR_LedgerEntryChange(&stxlec).XdrMarshal(&goxdr.XdrIn{In: bytes.NewReader(lecBytes)}, "")
+	lecJSONBytes, err := stcdetail.XdrToJson(&stxlec)
 	if err != nil {
-		return []byte{}, err
+		return "", err
 	}
-	return j, nil
+	return string(lecJSONBytes), nil
 }
