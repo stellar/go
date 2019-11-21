@@ -99,7 +99,6 @@ func (q *LedgersQ) Select(dest interface{}) error {
 type QLedgers interface {
 	InsertLedger(
 		ledger xdr.LedgerHeaderHistoryEntry,
-		closeTime int64,
 		successTxsCount int,
 		failedTxsCount int,
 		opCount int,
@@ -110,14 +109,12 @@ type QLedgers interface {
 // Returns number of rows affected and error.
 func (q *Q) InsertLedger(
 	ledger xdr.LedgerHeaderHistoryEntry,
-	closeTime int64,
 	successTxsCount int,
 	failedTxsCount int,
 	opCount int,
 ) (int64, error) {
 	m, err := ledgerHeaderToMap(
 		ledger,
-		closeTime,
 		successTxsCount,
 		failedTxsCount,
 		opCount,
@@ -137,7 +134,6 @@ func (q *Q) InsertLedger(
 
 func ledgerHeaderToMap(
 	ledger xdr.LedgerHeaderHistoryEntry,
-	closeTime int64,
 	successTxsCount int,
 	failedTxsCount int,
 	opCount int,
@@ -146,6 +142,7 @@ func ledgerHeaderToMap(
 	if err != nil {
 		return nil, err
 	}
+	closeTime := time.Unix(int64(ledger.Header.ScpValue.CloseTime), 0).UTC()
 	return map[string]interface{}{
 		// when it comes to ingesting ledgers, the experimental ingestion system is compatible with
 		// the legacy ingestion system which is why we use the same importer version as the legacy
@@ -160,7 +157,7 @@ func ledgerHeaderToMap(
 		"base_fee":                     ledger.Header.BaseFee,
 		"base_reserve":                 ledger.Header.BaseReserve,
 		"max_tx_set_size":              ledger.Header.MaxTxSetSize,
-		"closed_at":                    time.Unix(closeTime, 0).UTC(),
+		"closed_at":                    closeTime,
 		"created_at":                   time.Now().UTC(),
 		"updated_at":                   time.Now().UTC(),
 		"transaction_count":            successTxsCount,

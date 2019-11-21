@@ -202,9 +202,11 @@ func (p *DatabaseProcessor) ProcessLedger(ctx context.Context, store *pipeline.S
 		actions = []DatabaseProcessorActionType{
 			Accounts, AccountsForSigner, Data, Offers, TrustLines,
 		}
-	} else {
+	} else if p.Action != Ledgers {
 		actions = append(actions, p.Action)
 	}
+
+	var successTxCount, failedTxCount, opCount int
 
 	// Process transaction meta
 	for {
@@ -215,6 +217,13 @@ func (p *DatabaseProcessor) ProcessLedger(ctx context.Context, store *pipeline.S
 			} else {
 				return err
 			}
+		}
+
+		if transaction.Result.Result.Result.Code == xdr.TransactionResultCodeTxSuccess {
+			successTxCount++
+			opCount += len(transaction.Envelope.Tx.Operations)
+		} else {
+			failedTxCount++
 		}
 
 		for _, action := range actions {
@@ -279,17 +288,18 @@ func (p *DatabaseProcessor) ProcessLedger(ctx context.Context, store *pipeline.S
 		}
 	}
 
-	return p.ingestLedgerHeader(r)
+	return p.ingestLedgerHeader(r, successTxCount, failedTxCount, opCount)
 }
 
-func (p *DatabaseProcessor) ingestLedgerHeader(r io.LedgerReader) error {
+func (p *DatabaseProcessor) ingestLedgerHeader(
+	r io.LedgerReader, successTxCount, failedTxCount, opCount int,
+) error {
 	if p.Action == All || p.Action == Ledgers {
 		rowsAffected, err := p.LedgersQ.InsertLedger(
 			r.GetHeader(),
-			r.CloseTime(),
-			r.SuccessfulTransactionCount(),
-			r.FailedTransactionCount(),
-			r.SuccessfulLedgerOperationCount(),
+			successTxCount,
+			failedTxCount,
+			opCount,
 		)
 		if err != nil {
 			return errors.Wrap(

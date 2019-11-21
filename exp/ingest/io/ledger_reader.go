@@ -13,14 +13,10 @@ import (
 // Use NewDBLedgerReader to create a new instance.
 type DBLedgerReader struct {
 	sequence                uint32
-	closeTime               int64
 	backend                 ledgerbackend.LedgerBackend
 	header                  xdr.LedgerHeaderHistoryEntry
 	transactions            []LedgerTransaction
 	upgradeChanges          []Change
-	opCount                 int
-	successTxCount          int
-	failedTxCount           int
 	readMutex               sync.Mutex
 	readIdx                 int
 	upgradeReadIdx          int
@@ -119,7 +115,6 @@ func (dblrc *DBLedgerReader) init() error {
 	}
 
 	dblrc.header = ledgerCloseMeta.LedgerHeader
-	dblrc.closeTime = ledgerCloseMeta.CloseTime
 
 	dblrc.storeTransactions(ledgerCloseMeta)
 
@@ -129,27 +124,6 @@ func (dblrc *DBLedgerReader) init() error {
 	}
 
 	return nil
-}
-
-// SuccessfulLedgerOperationCount returns the count of operations in the current ledger
-func (dblrc *DBLedgerReader) SuccessfulLedgerOperationCount() int {
-	return dblrc.opCount
-}
-
-// SuccessfulTransactionCount returns the count of transactions in the current
-// ledger that succeeded.
-func (dblrc *DBLedgerReader) SuccessfulTransactionCount() int {
-	return dblrc.successTxCount
-}
-
-// FailedTransactionCount returns the count of transactions in the current ledger that failed.
-func (dblrc *DBLedgerReader) FailedTransactionCount() int {
-	return dblrc.failedTxCount
-}
-
-// CloseTime returns the time at which the ledger was applied to Stellar Core.
-func (dblrc *DBLedgerReader) CloseTime() int64 {
-	return dblrc.closeTime
 }
 
 // storeTransactions maps the close meta data into a slice of LedgerTransaction structs, to provide
@@ -163,12 +137,5 @@ func (dblrc *DBLedgerReader) storeTransactions(lcm ledgerbackend.LedgerCloseMeta
 			Meta:       lcm.TransactionMeta[i],
 			FeeChanges: lcm.TransactionFeeChanges[i],
 		})
-
-		if lcm.TransactionResult[i].Result.Result.Code == xdr.TransactionResultCodeTxSuccess {
-			dblrc.successTxCount++
-			dblrc.opCount += len(lcm.TransactionEnvelope[i].Tx.Operations)
-		} else {
-			dblrc.failedTxCount++
-		}
 	}
 }

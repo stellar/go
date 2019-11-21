@@ -21,7 +21,6 @@ type LedgersProcessorTestSuiteLedger struct {
 	mockLedgerReader *io.MockLedgerReader
 	mockLedgerWriter *io.MockLedgerWriter
 	header           xdr.LedgerHeaderHistoryEntry
-	closeTime        int64
 	successCount     int
 	failedCount      int
 	opCount          int
@@ -30,6 +29,34 @@ type LedgersProcessorTestSuiteLedger struct {
 func TestLedgersProcessorTestSuiteLedger(t *testing.T) {
 	suite.Run(t, new(LedgersProcessorTestSuiteLedger))
 }
+
+func createTransaction(successful bool, numOps int) io.LedgerTransaction {
+	code := xdr.TransactionResultCodeTxSuccess
+	if !successful {
+		code = xdr.TransactionResultCodeTxFailed
+	}
+
+	operations := []xdr.Operation{}
+	for i := 0; i < numOps; i++ {
+		operations = append(operations, xdr.Operation{})
+	}
+
+	return io.LedgerTransaction{
+		Result: xdr.TransactionResultPair{
+			Result: xdr.TransactionResult{
+				Result: xdr.TransactionResultResult{
+					Code: code,
+				},
+			},
+		},
+		Envelope: xdr.TransactionEnvelope{
+			Tx: xdr.Transaction{
+				Operations: operations,
+			},
+		},
+	}
+}
+
 func (s *LedgersProcessorTestSuiteLedger) SetupTest() {
 	s.mockQ = &history.MockQLedgers{}
 	s.mockLedgerReader = &io.MockLedgerReader{}
@@ -47,6 +74,15 @@ func (s *LedgersProcessorTestSuiteLedger) SetupTest() {
 
 	s.mockLedgerReader.
 		On("Read").
+		Return(createTransaction(true, 1), nil).Once()
+	s.mockLedgerReader.
+		On("Read").
+		Return(createTransaction(false, 3), nil).Once()
+	s.mockLedgerReader.
+		On("Read").
+		Return(createTransaction(true, 4), nil).Once()
+	s.mockLedgerReader.
+		On("Read").
 		Return(io.LedgerTransaction{}, stdio.EOF).Once()
 
 	s.mockLedgerReader.
@@ -58,15 +94,10 @@ func (s *LedgersProcessorTestSuiteLedger) SetupTest() {
 		Return(nil).Once()
 
 	s.header = xdr.LedgerHeaderHistoryEntry{}
-	s.closeTime = int64(1234)
 	s.successCount = 2
 	s.failedCount = 1
 	s.opCount = 5
 	s.mockLedgerReader.On("GetHeader").Return(s.header).Once()
-	s.mockLedgerReader.On("CloseTime").Return(s.closeTime).Once()
-	s.mockLedgerReader.On("SuccessfulTransactionCount").Return(s.successCount).Once()
-	s.mockLedgerReader.On("FailedTransactionCount").Return(s.failedCount).Once()
-	s.mockLedgerReader.On("SuccessfulLedgerOperationCount").Return(s.opCount).Once()
 }
 
 func (s *LedgersProcessorTestSuiteLedger) TearDownTest() {
@@ -76,11 +107,9 @@ func (s *LedgersProcessorTestSuiteLedger) TearDownTest() {
 }
 
 func (s *LedgersProcessorTestSuiteLedger) TestInsertLedgerSucceeds() {
-
 	s.mockQ.On(
 		"InsertLedger",
 		s.header,
-		s.closeTime,
 		s.successCount,
 		s.failedCount,
 		s.opCount,
@@ -99,7 +128,6 @@ func (s *LedgersProcessorTestSuiteLedger) TestInsertLedgerReturnsError() {
 	s.mockQ.On(
 		"InsertLedger",
 		s.header,
-		s.closeTime,
 		s.successCount,
 		s.failedCount,
 		s.opCount,
@@ -121,7 +149,6 @@ func (s *LedgersProcessorTestSuiteLedger) TestInsertLedgerNoRowsAffected() {
 	s.mockQ.On(
 		"InsertLedger",
 		s.header,
-		s.closeTime,
 		s.successCount,
 		s.failedCount,
 		s.opCount,

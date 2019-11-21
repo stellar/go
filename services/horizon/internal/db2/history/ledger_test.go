@@ -98,13 +98,16 @@ func TestInsertLedger(t *testing.T) {
 			BaseFee:            xdr.Uint32(expectedLedger.BaseFee),
 			BaseReserve:        xdr.Uint32(expectedLedger.BaseReserve),
 			MaxTxSetSize:       xdr.Uint32(expectedLedger.MaxTxSetSize),
+			ScpValue: xdr.StellarValue{
+				CloseTime: xdr.TimePoint(expectedLedger.ClosedAt.Unix()),
+			},
 		},
 	}
 	ledgerHeaderBase64, err := xdr.MarshalBase64(ledgerEntry.Header)
 	tt.Assert.NoError(err)
 	expectedLedger.LedgerHeaderXDR = null.NewString(ledgerHeaderBase64, true)
 
-	rowsAffected, err := q.InsertLedger(ledgerEntry, expectedLedger.ClosedAt.Unix(), 12, 3, 23)
+	rowsAffected, err := q.InsertLedger(ledgerEntry, 12, 3, 23)
 	tt.Assert.NoError(err)
 	tt.Assert.Equal(rowsAffected, int64(1))
 
