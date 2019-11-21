@@ -211,8 +211,8 @@ func (a *App) UpdateLedgerState() {
 	ledger.SetState(next)
 }
 
-// UpdateOperationFeeStatsState triggers a refresh of several operation fee metrics.
-func (a *App) UpdateOperationFeeStatsState() {
+// UpdateFeeStatsState triggers a refresh of several operation fee metrics.
+func (a *App) UpdateFeeStatsState() {
 	var (
 		next          operationfeestats.State
 		latest        history.LatestLedger
@@ -245,7 +245,7 @@ func (a *App) UpdateOperationFeeStatsState() {
 	next.LastBaseFee = int64(latest.BaseFee)
 	next.LastLedger = int64(latest.Sequence)
 
-	err = a.HistoryQ().OperationFeeStats(latest.Sequence, &feeStats)
+	err = a.HistoryQ().FeeStats(latest.Sequence, &feeStats)
 	if err != nil {
 		logErr(err, "failed to load operation fee stats")
 		return
@@ -355,7 +355,7 @@ func (a *App) Tick() {
 	// update ledger state, operation fee state, and stellar-core info in parallel
 	wg.Add(3)
 	go func() { a.UpdateLedgerState(); wg.Done() }()
-	go func() { a.UpdateOperationFeeStatsState(); wg.Done() }()
+	go func() { a.UpdateFeeStatsState(); wg.Done() }()
 	go func() { a.UpdateStellarCoreInfo(); wg.Done() }()
 	wg.Wait()
 

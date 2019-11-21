@@ -313,7 +313,7 @@ func (w *web) mustInstallActions(
 	}
 
 	// Network state related endpoints
-	r.Get("/fee_stats", OperationFeeStatsAction{}.Handle)
+	r.Get("/fee_stats", FeeStatsAction{}.Handle)
 
 	// friendbot
 	if config.FriendbotURL != nil {

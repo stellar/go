@@ -92,7 +92,7 @@ func TestOperationFeeTestsActions_Show(t *testing.T) {
 			_, err := ht.HorizonSession().ExecRaw("UPDATE history_ledgers SET max_tx_set_size = 50")
 			ht.Require.NoError(err)
 
-			ht.App.UpdateOperationFeeStatsState()
+			ht.App.UpdateFeeStatsState()
 
 			w := ht.Get("/fee_stats")
 
@@ -134,7 +134,7 @@ func TestOperationFeeTestsActions_ShowMultiOp(t *testing.T) {
 	_, err = ht.HorizonSession().ExecRaw("UPDATE history_transactions SET operation_count = operation_count * 2")
 	ht.Require.NoError(err)
 
-	ht.App.UpdateOperationFeeStatsState()
+	ht.App.UpdateFeeStatsState()
 
 	w := ht.Get("/fee_stats")
 
@@ -172,7 +172,7 @@ func TestOperationFeeTestsActions_NotInterpolating(t *testing.T) {
 	_, err = ht.HorizonSession().ExecRaw("UPDATE history_transactions SET max_fee = 256000, operation_count = 16 WHERE transaction_hash = '6a349e7331e93a251367287e274fb1699abaf723bde37aebe96248c76fd3071a'")
 	ht.Require.NoError(err)
 
-	ht.App.UpdateOperationFeeStatsState()
+	ht.App.UpdateFeeStatsState()
 
 	w := ht.Get("/fee_stats")
 

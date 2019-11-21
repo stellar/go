@@ -12,13 +12,13 @@ import (
 
 // This file contains the actions:
 //
-// OperationFeeStatsAction: stats representing current state of network fees
+// FeeStatsAction: stats representing current state of network fees
 
-var _ actions.JSONer = (*OperationFeeStatsAction)(nil)
+var _ actions.JSONer = (*FeeStatsAction)(nil)
 
-// OperationFeeStatsAction renders a few useful statistics that describe the
+// FeeStatsAction renders a few useful statistics that describe the
 // current state of operation fees on the network.
-type OperationFeeStatsAction struct {
+type FeeStatsAction struct {
 	Action
 	FeeMin              int64
 	FeeMode             int64
@@ -39,7 +39,7 @@ type OperationFeeStatsAction struct {
 }
 
 // JSON is a method for actions.JSON
-func (action *OperationFeeStatsAction) JSON() error {
+func (action *FeeStatsAction) JSON() error {
 	if !action.App.config.IngestFailedTransactions {
 		// If Horizon is not ingesting failed transaction it does not make sense to display
 		// operation fee stats because they will be incorrect.
@@ -80,7 +80,7 @@ func (action *OperationFeeStatsAction) JSON() error {
 	return action.Err
 }
 
-func (action *OperationFeeStatsAction) loadRecords() {
+func (action *FeeStatsAction) loadRecords() {
 	cur := operationfeestats.CurrentState()
 	action.FeeMin = cur.FeeMin
 	action.FeeMode = cur.FeeMode
