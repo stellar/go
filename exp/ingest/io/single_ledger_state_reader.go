@@ -12,7 +12,7 @@ import (
 	"github.com/stellar/go/xdr"
 )
 
-var log = logpkg.DefaultLogger.WithField("service", "expingest")
+var log = logpkg.DefaultLogger.WithField("component", "SingleLedgerStateReader")
 
 // readResult is the result of reading a bucket value
 type readResult struct {
@@ -169,9 +169,12 @@ func (msr *SingleLedgerStateReader) streamBuckets() {
 	}
 }
 
+// readBucketEntry will attempt to read a bucket entry from `stream`.
+// If any errors are encountered while reading from `stream`, readBucketEntry will
+// retry the operation using a new *historyarchive.XdrStream.
+// The total number of retries will not exceed `maxStreamRetries`.
 func (msr *SingleLedgerStateReader) readBucketEntry(stream *historyarchive.XdrStream, hash historyarchive.Hash) (
 	xdr.BucketEntry,
-	*historyarchive.XdrStream,
 	error,
 ) {
 	var entry xdr.BucketEntry
@@ -189,6 +192,12 @@ func (msr *SingleLedgerStateReader) readBucketEntry(stream *historyarchive.XdrSt
 			break
 		}
 
+		err = stream.CloseWithoutValidation()
+		if err != nil {
+			err = errors.Wrap(err, "Error closing stream")
+			break
+		}
+
 		log.WithFields(logpkg.F{
 			"hash":            hash.String(),
 			"currentPosition": currentPosition,
@@ -203,8 +212,7 @@ func (msr *SingleLedgerStateReader) readBucketEntry(stream *historyarchive.XdrSt
 			break
 		}
 
-		stream.Close()
-		stream = retryStream
+		*stream = *retryStream
 
 		_, err = stream.Discard(currentPosition)
 		if err != nil {
@@ -217,7 +225,7 @@ func (msr *SingleLedgerStateReader) readBucketEntry(stream *historyarchive.XdrSt
 		}
 	}
 
-	return entry, stream, err
+	return entry, err
 }
 
 func (msr *SingleLedgerStateReader) newXDRStream(hash historyarchive.Hash) (
@@ -271,7 +279,7 @@ LoopBucketEntry:
 
 			for i := 0; i < preloadedEntries; i++ {
 				var entry xdr.BucketEntry
-				entry, rdr, e = msr.readBucketEntry(rdr, hash)
+				entry, e = msr.readBucketEntry(rdr, hash)
 				if e != nil {
 					if e == io.EOF {
 						if len(batch) == 0 {

@@ -321,19 +321,16 @@ func (s *ReadBucketEntryTestSuite) TestReadAllEntries() {
 	stream, err := s.reader.newXDRStream(emptyHash)
 	s.Require().NoError(err)
 
-	entry, newStream, err := s.reader.readBucketEntry(stream, emptyHash)
+	entry, err := s.reader.readBucketEntry(stream, emptyHash)
 	s.Require().NoError(err)
-	s.Require().True(stream == newStream)
 	s.Require().Equal(entry, firstEntry)
 
-	entry, newStream, err = s.reader.readBucketEntry(stream, emptyHash)
+	entry, err = s.reader.readBucketEntry(stream, emptyHash)
 	s.Require().NoError(err)
-	s.Require().True(stream == newStream)
 	s.Require().Equal(entry, secondEntry)
 
-	_, newStream, err = s.reader.readBucketEntry(stream, emptyHash)
+	_, err = s.reader.readBucketEntry(stream, emptyHash)
 	s.Require().Equal(io.EOF, err)
-	s.Require().True(stream == newStream)
 }
 
 func (s *ReadBucketEntryTestSuite) TestReadEntryAllRetriesFail() {
@@ -354,9 +351,8 @@ func (s *ReadBucketEntryTestSuite) TestReadEntryAllRetriesFail() {
 	stream, err := s.reader.newXDRStream(emptyHash)
 	s.Require().NoError(err)
 
-	_, newStream, err := s.reader.readBucketEntry(stream, emptyHash)
+	_, err = s.reader.readBucketEntry(stream, emptyHash)
 	s.Require().EqualError(err, "Read wrong number of bytes from XDR")
-	s.Require().True(stream != newStream)
 }
 
 func (s *ReadBucketEntryTestSuite) TestReadEntryRetryFailsToCreateNewStream() {
@@ -374,9 +370,8 @@ func (s *ReadBucketEntryTestSuite) TestReadEntryRetryFailsToCreateNewStream() {
 	stream, err := s.reader.newXDRStream(emptyHash)
 	s.Require().NoError(err)
 
-	_, newStream, err := s.reader.readBucketEntry(stream, emptyHash)
+	_, err = s.reader.readBucketEntry(stream, emptyHash)
 	s.Require().EqualError(err, "Error creating new xdr stream: cannot create new stream")
-	s.Require().True(stream == newStream)
 }
 
 func (s *ReadBucketEntryTestSuite) TestReadEntryRetrySucceeds() {
@@ -398,19 +393,16 @@ func (s *ReadBucketEntryTestSuite) TestReadEntryRetrySucceeds() {
 	stream, err := s.reader.newXDRStream(emptyHash)
 	s.Require().NoError(err)
 
-	entry, newStream, err := s.reader.readBucketEntry(stream, emptyHash)
+	entry, err := s.reader.readBucketEntry(stream, emptyHash)
 	s.Require().NoError(err)
 	s.Require().Equal(entry, expectedEntry)
-	s.Require().True(stream != newStream)
-	stream = newStream
 
 	hash, ok := stream.ExpectedHash()
 	s.Require().Equal(historyarchive.Hash(hash), emptyHash)
 	s.Require().True(ok)
 
-	_, newStream, err = s.reader.readBucketEntry(stream, emptyHash)
+	_, err = s.reader.readBucketEntry(stream, emptyHash)
 	s.Require().Equal(err, io.EOF)
-	s.Require().True(stream == newStream)
 }
 
 func (s *ReadBucketEntryTestSuite) TestReadEntryRetrySucceedsWithDiscard() {
@@ -434,24 +426,20 @@ func (s *ReadBucketEntryTestSuite) TestReadEntryRetrySucceedsWithDiscard() {
 	stream, err := s.reader.newXDRStream(emptyHash)
 	s.Require().NoError(err)
 
-	entry, newStream, err := s.reader.readBucketEntry(stream, emptyHash)
+	entry, err := s.reader.readBucketEntry(stream, emptyHash)
 	s.Require().NoError(err)
 	s.Require().Equal(entry, firstEntry)
-	s.Require().True(stream == newStream)
 
-	entry, newStream, err = s.reader.readBucketEntry(stream, emptyHash)
+	entry, err = s.reader.readBucketEntry(stream, emptyHash)
 	s.Require().NoError(err)
 	s.Require().Equal(entry, secondEntry)
-	s.Require().True(stream != newStream)
-	stream = newStream
 
 	hash, ok := stream.ExpectedHash()
 	s.Require().Equal(historyarchive.Hash(hash), emptyHash)
 	s.Require().True(ok)
 
-	_, newStream, err = s.reader.readBucketEntry(stream, emptyHash)
+	_, err = s.reader.readBucketEntry(stream, emptyHash)
 	s.Require().Equal(err, io.EOF)
-	s.Require().True(stream == newStream)
 }
 
 func (s *ReadBucketEntryTestSuite) TestReadEntryRetryFailsWithDiscardError() {
@@ -477,14 +465,12 @@ func (s *ReadBucketEntryTestSuite) TestReadEntryRetryFailsWithDiscardError() {
 	stream, err := s.reader.newXDRStream(emptyHash)
 	s.Require().NoError(err)
 
-	entry, newStream, err := s.reader.readBucketEntry(stream, emptyHash)
+	entry, err := s.reader.readBucketEntry(stream, emptyHash)
 	s.Require().NoError(err)
 	s.Require().Equal(entry, firstEntry)
-	s.Require().True(stream == newStream)
 
-	_, newStream, err = s.reader.readBucketEntry(stream, emptyHash)
+	_, err = s.reader.readBucketEntry(stream, emptyHash)
 	s.Require().EqualError(err, "Error discarding from xdr stream: EOF")
-	s.Require().True(stream != newStream)
 }
 
 func metaEntry(version uint32) xdr.BucketEntry {
