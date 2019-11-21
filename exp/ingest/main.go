@@ -42,7 +42,7 @@ type LiveSession struct {
 	TempSet io.TempSet
 	// MaxStreamRetries determines how many times the reader will retry when encountering
 	// errors while streaming xdr bucket entries from the history archive.
-	// Set MaxStreamRetries to 0 if there should be no retry attempts
+	// Default MaxStreamRetries value (0) means that there should be no retry attempts
 	MaxStreamRetries int
 
 	latestSuccessfullyProcessedLedger uint32
