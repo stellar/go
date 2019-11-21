@@ -295,7 +295,7 @@ func (p *DatabaseProcessor) ingestLedgerHeader(
 	r io.LedgerReader, successTxCount, failedTxCount, opCount int,
 ) error {
 	if p.Action == All || p.Action == Ledgers {
-		rowsAffected, err := p.LedgersQ.InsertLedger(
+		rowsAffected, err := p.LedgersQ.InsertExpLedger(
 			r.GetHeader(),
 			successTxCount,
 			failedTxCount,

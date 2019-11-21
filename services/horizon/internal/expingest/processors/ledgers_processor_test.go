@@ -106,9 +106,9 @@ func (s *LedgersProcessorTestSuiteLedger) TearDownTest() {
 	s.mockLedgerWriter.AssertExpectations(s.T())
 }
 
-func (s *LedgersProcessorTestSuiteLedger) TestInsertLedgerSucceeds() {
+func (s *LedgersProcessorTestSuiteLedger) TestInsertExpLedgerSucceeds() {
 	s.mockQ.On(
-		"InsertLedger",
+		"InsertExpLedger",
 		s.header,
 		s.successCount,
 		s.failedCount,
@@ -124,9 +124,9 @@ func (s *LedgersProcessorTestSuiteLedger) TestInsertLedgerSucceeds() {
 	s.Assert().NoError(err)
 }
 
-func (s *LedgersProcessorTestSuiteLedger) TestInsertLedgerReturnsError() {
+func (s *LedgersProcessorTestSuiteLedger) TestInsertExpLedgerReturnsError() {
 	s.mockQ.On(
-		"InsertLedger",
+		"InsertExpLedger",
 		s.header,
 		s.successCount,
 		s.failedCount,
@@ -143,11 +143,11 @@ func (s *LedgersProcessorTestSuiteLedger) TestInsertLedgerReturnsError() {
 	s.Assert().EqualError(err, "Could not insert ledger: transient error")
 }
 
-func (s *LedgersProcessorTestSuiteLedger) TestInsertLedgerNoRowsAffected() {
+func (s *LedgersProcessorTestSuiteLedger) TestInsertExpLedgerNoRowsAffected() {
 	s.mockLedgerReader.On("GetSequence").Return(uint32(1)).Once()
 
 	s.mockQ.On(
-		"InsertLedger",
+		"InsertExpLedger",
 		s.header,
 		s.successCount,
 		s.failedCount,

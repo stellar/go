@@ -32,6 +32,18 @@ func (q *Q) LedgerBySequence(dest interface{}, seq int32) error {
 	return q.Get(dest, sql)
 }
 
+// ExpLedgerBySequence returns a row from the exp_history_ledgers table
+func (q *Q) ExpLedgerBySequence(seq int32) (Ledger, error) {
+	sql := selectLedgerFields.
+		From("exp_history_ledgers hl").
+		Limit(1).
+		Where("sequence = ?", seq)
+
+	var dest Ledger
+	err := q.Get(&dest, sql)
+	return dest, err
+}
+
 // Ledgers provides a helper to filter rows from the `history_ledgers` table
 // with pre-defined filters.  See `LedgersQ` methods for the available filters.
 func (q *Q) Ledgers() *LedgersQ {
@@ -95,9 +107,11 @@ func (q *LedgersQ) Select(dest interface{}) error {
 	return q.Err
 }
 
-// QLedgers defines ledger related queries.
-type QLedgers interface {
-	InsertLedger(
+// QExpLedgers defines experimental ingestion ledger related queries.
+type QExpLedgers interface {
+	ExpLedgerBySequence(seq int32) (Ledger, error)
+
+	InsertExpLedger(
 		ledger xdr.LedgerHeaderHistoryEntry,
 		successTxsCount int,
 		failedTxsCount int,
@@ -105,9 +119,9 @@ type QLedgers interface {
 	) (int64, error)
 }
 
-// InsertLedger creates a row in the history_ledgers table.
+// InsertExpLedger creates a row in the exp_history_ledgers table.
 // Returns number of rows affected and error.
-func (q *Q) InsertLedger(
+func (q *Q) InsertExpLedger(
 	ledger xdr.LedgerHeaderHistoryEntry,
 	successTxsCount int,
 	failedTxsCount int,
@@ -123,7 +137,7 @@ func (q *Q) InsertLedger(
 		return 0, err
 	}
 
-	sql := sq.Insert("history_ledgers").SetMap(m)
+	sql := sq.Insert("exp_history_ledgers").SetMap(m)
 	result, err := q.Exec(sql)
 	if err != nil {
 		return 0, err
@@ -169,7 +183,7 @@ func ledgerHeaderToMap(
 	}, nil
 }
 
-var selectLedger = sq.Select(
+var selectLedgerFields = sq.Select(
 	"hl.id",
 	"hl.sequence",
 	"hl.importer_version",
@@ -189,4 +203,5 @@ var selectLedger = sq.Select(
 	"hl.max_tx_set_size",
 	"hl.protocol_version",
 	"hl.ledger_header",
-).From("history_ledgers hl")
+)
+var selectLedger = selectLedgerFields.From("history_ledgers hl")
