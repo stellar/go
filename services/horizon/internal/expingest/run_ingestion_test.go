@@ -185,7 +185,7 @@ func (s *RunIngestionTestSuite) TestGetExpIngestVersionReturnsError() {
 func (s *RunIngestionTestSuite) TestUpdateLastLedgerExpIngestReturnsError() {
 	s.historyQ.On("Begin").Return(nil).Once()
 	s.historyQ.On("GetLastLedgerExpIngest").Return(uint32(0), nil).Once()
-	s.historyQ.On("GetExpIngestVersion").Return(CurrentVersion, nil).Once()
+	s.historyQ.On("GetExpIngestVersion").Return(history.CurrentExpIngestVersion, nil).Once()
 	s.historyQ.On("UpdateLastLedgerExpIngest", uint32(0)).Return(
 		errors.New("update last ledger error"),
 	).Once()
@@ -196,7 +196,7 @@ func (s *RunIngestionTestSuite) TestUpdateLastLedgerExpIngestReturnsError() {
 func (s *RunIngestionTestSuite) TestUpdateExpStateInvalidReturnsError() {
 	s.historyQ.On("Begin").Return(nil).Once()
 	s.historyQ.On("GetLastLedgerExpIngest").Return(uint32(0), nil).Once()
-	s.historyQ.On("GetExpIngestVersion").Return(CurrentVersion, nil).Once()
+	s.historyQ.On("GetExpIngestVersion").Return(history.CurrentExpIngestVersion, nil).Once()
 	s.historyQ.On("UpdateLastLedgerExpIngest", uint32(0)).Return(nil).Once()
 	s.historyQ.On("UpdateExpStateInvalid", false).Return(
 		errors.New("update exp state invalid error"),
@@ -208,7 +208,7 @@ func (s *RunIngestionTestSuite) TestUpdateExpStateInvalidReturnsError() {
 func (s *RunIngestionTestSuite) TestTruncateTablesReturnsError() {
 	s.historyQ.On("Begin").Return(nil).Once()
 	s.historyQ.On("GetLastLedgerExpIngest").Return(uint32(0), nil).Once()
-	s.historyQ.On("GetExpIngestVersion").Return(CurrentVersion, nil).Once()
+	s.historyQ.On("GetExpIngestVersion").Return(history.CurrentExpIngestVersion, nil).Once()
 	s.historyQ.On("UpdateLastLedgerExpIngest", uint32(0)).Return(nil).Once()
 	s.historyQ.On("UpdateExpStateInvalid", false).Return(nil).Once()
 	s.session.On("TruncateTables", history.ExperimentalIngestionTables).Return(
@@ -221,7 +221,7 @@ func (s *RunIngestionTestSuite) TestTruncateTablesReturnsError() {
 func (s *RunIngestionTestSuite) TestRunReturnsError() {
 	s.historyQ.On("Begin").Return(nil).Once()
 	s.historyQ.On("GetLastLedgerExpIngest").Return(uint32(0), nil).Once()
-	s.historyQ.On("GetExpIngestVersion").Return(CurrentVersion, nil).Once()
+	s.historyQ.On("GetExpIngestVersion").Return(history.CurrentExpIngestVersion, nil).Once()
 	s.historyQ.On("UpdateLastLedgerExpIngest", uint32(0)).Return(nil).Once()
 	s.historyQ.On("UpdateExpStateInvalid", false).Return(nil).Once()
 	s.session.On("TruncateTables", history.ExperimentalIngestionTables).Return(nil).Once()
@@ -235,7 +235,7 @@ func (s *RunIngestionTestSuite) TestRunReturnsError() {
 func (s *RunIngestionTestSuite) TestOutdatedIngestVersion() {
 	s.historyQ.On("Begin").Return(nil).Once()
 	s.historyQ.On("GetLastLedgerExpIngest").Return(uint32(3), nil).Once()
-	s.historyQ.On("GetExpIngestVersion").Return(CurrentVersion-1, nil).Once()
+	s.historyQ.On("GetExpIngestVersion").Return(history.CurrentExpIngestVersion-1, nil).Once()
 	s.historyQ.On("UpdateLastLedgerExpIngest", uint32(0)).Return(nil).Once()
 	s.historyQ.On("UpdateExpStateInvalid", false).Return(nil).Once()
 	s.session.On("TruncateTables", history.ExperimentalIngestionTables).Return(nil).Once()
@@ -248,7 +248,7 @@ func (s *RunIngestionTestSuite) TestOutdatedIngestVersion() {
 func (s *RunIngestionTestSuite) TestGetAllOffersReturnsError() {
 	s.historyQ.On("Begin").Return(nil).Once()
 	s.historyQ.On("GetLastLedgerExpIngest").Return(uint32(3), nil).Once()
-	s.historyQ.On("GetExpIngestVersion").Return(CurrentVersion, nil).Once()
+	s.historyQ.On("GetExpIngestVersion").Return(history.CurrentExpIngestVersion, nil).Once()
 	s.historyQ.On("GetAllOffers").Return(
 		[]history.Offer{
 			history.Offer{
@@ -272,7 +272,7 @@ func (s *RunIngestionTestSuite) TestGetAllOffersReturnsError() {
 func (s *RunIngestionTestSuite) TestGetAllOffersWithoutError() {
 	s.historyQ.On("Begin").Return(nil).Once()
 	s.historyQ.On("GetLastLedgerExpIngest").Return(uint32(3), nil).Once()
-	s.historyQ.On("GetExpIngestVersion").Return(CurrentVersion, nil).Once()
+	s.historyQ.On("GetExpIngestVersion").Return(history.CurrentExpIngestVersion, nil).Once()
 	s.historyQ.On("GetAllOffers").Return(
 		[]history.Offer{
 			history.Offer{

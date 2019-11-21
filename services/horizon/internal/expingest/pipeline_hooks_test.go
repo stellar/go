@@ -213,7 +213,7 @@ func TestPostProcessingHook(t *testing.T) {
 				// check that the ingest version and the ingest sequence was updated
 				version, err := historyQ.GetExpIngestVersion()
 				tt.Assert.NoError(err)
-				tt.Assert.Equal(version, CurrentVersion)
+				tt.Assert.Equal(version, history.CurrentExpIngestVersion)
 				seq, err := historyQ.GetLastLedgerExpIngestNonBlocking()
 				tt.Assert.NoError(err)
 				tt.Assert.Equal(seq, testCase.pipelineLedger)

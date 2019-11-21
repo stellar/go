@@ -294,26 +294,53 @@ func (p *DatabaseProcessor) ProcessLedger(ctx context.Context, store *pipeline.S
 func (p *DatabaseProcessor) ingestLedgerHeader(
 	r io.LedgerReader, successTxCount, failedTxCount, opCount int,
 ) error {
-	if p.Action == All || p.Action == Ledgers {
-		rowsAffected, err := p.LedgersQ.InsertExpLedger(
-			r.GetHeader(),
-			successTxCount,
-			failedTxCount,
-			opCount,
-		)
-		if err != nil {
-			return errors.Wrap(
-				err,
-				fmt.Sprintf("Could not insert ledger"),
-			)
-		}
-		if rowsAffected != 1 {
-			return verify.NewStateError(errors.Errorf(
-				"No rows affected when ingesting new ledger: %v",
-				r.GetSequence(),
-			))
-		}
+	if p.Action != All && p.Action != Ledgers {
+		return nil
 	}
+
+	rowsAffected, err := p.LedgersQ.InsertExpLedger(
+		r.GetHeader(),
+		successTxCount,
+		failedTxCount,
+		opCount,
+	)
+	if err != nil {
+		return errors.Wrap(
+			err,
+			fmt.Sprintf("Could not insert ledger"),
+		)
+	}
+	if rowsAffected != 1 {
+		return verify.NewStateError(errors.Errorf(
+			"No rows affected when ingesting new ledger: %v",
+			r.GetSequence(),
+		))
+	}
+
+	// use an older lookup sequence because the experimental ingestion system and the
+	// legacy ingestion system might not be in sync
+	seq := int32(r.GetSequence() - 10)
+
+	valid, err := p.LedgersQ.CheckExpLeger(seq)
+	// only validate the ledger if it is prsent in both ingestion systems
+	if err == sql.ErrNoRows {
+		return nil
+	}
+
+	if err != nil {
+		return errors.Wrap(
+			err,
+			fmt.Sprintf("Could not compare ledger %v", seq),
+		)
+	}
+
+	if !valid {
+		return verify.NewStateError(errors.Errorf(
+			"ledger %v in exp_history_ledgers does not match ledger in history_ledgers",
+			seq,
+		))
+	}
+
 	return nil
 }
 

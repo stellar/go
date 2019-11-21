@@ -2,6 +2,7 @@ package processors
 
 import (
 	"context"
+	"database/sql"
 	stdio "io"
 	"testing"
 
@@ -67,7 +68,8 @@ func (s *LedgersProcessorTestSuiteLedger) SetupTest() {
 		LedgersQ: s.mockQ,
 	}
 
-	// Reader and Writer should be always closed and once
+	s.mockLedgerReader.On("GetSequence").Return(uint32(20)).Maybe()
+
 	s.mockLedgerReader.
 		On("ReadUpgradeChange").
 		Return(io.Change{}, stdio.EOF).Once()
@@ -114,6 +116,7 @@ func (s *LedgersProcessorTestSuiteLedger) TestInsertExpLedgerSucceeds() {
 		s.failedCount,
 		s.opCount,
 	).Return(int64(1), nil)
+	s.mockQ.On("CheckExpLeger", int32(10)).Return(true, nil)
 
 	err := s.processor.ProcessLedger(
 		context.Background(),
@@ -122,6 +125,71 @@ func (s *LedgersProcessorTestSuiteLedger) TestInsertExpLedgerSucceeds() {
 		s.mockLedgerWriter,
 	)
 	s.Assert().NoError(err)
+}
+
+func (s *LedgersProcessorTestSuiteLedger) TestCheckExpLedgerNotFound() {
+	s.mockQ.On(
+		"InsertExpLedger",
+		s.header,
+		s.successCount,
+		s.failedCount,
+		s.opCount,
+	).Return(int64(1), nil)
+	s.mockQ.On("CheckExpLeger", int32(10)).Return(false, sql.ErrNoRows)
+
+	err := s.processor.ProcessLedger(
+		context.Background(),
+		&supportPipeline.Store{},
+		s.mockLedgerReader,
+		s.mockLedgerWriter,
+	)
+	s.Assert().NoError(err)
+}
+
+func (s *LedgersProcessorTestSuiteLedger) TestCheckExpLedgerError() {
+	s.mockQ.On(
+		"InsertExpLedger",
+		s.header,
+		s.successCount,
+		s.failedCount,
+		s.opCount,
+	).Return(int64(1), nil)
+	s.mockQ.On("CheckExpLeger", int32(10)).
+		Return(false, errors.New("transient check exp ledger error"))
+
+	err := s.processor.ProcessLedger(
+		context.Background(),
+		&supportPipeline.Store{},
+		s.mockLedgerReader,
+		s.mockLedgerWriter,
+	)
+	s.Assert().Error(err)
+	s.Assert().EqualError(err, "Could not compare ledger 10: transient check exp ledger error")
+}
+
+func (s *LedgersProcessorTestSuiteLedger) TestCheckExpLedgerStateError() {
+	s.mockQ.On(
+		"InsertExpLedger",
+		s.header,
+		s.successCount,
+		s.failedCount,
+		s.opCount,
+	).Return(int64(1), nil)
+	s.mockQ.On("CheckExpLeger", int32(10)).
+		Return(false, nil)
+
+	err := s.processor.ProcessLedger(
+		context.Background(),
+		&supportPipeline.Store{},
+		s.mockLedgerReader,
+		s.mockLedgerWriter,
+	)
+	s.Assert().Error(err)
+	s.Assert().IsType(verify.StateError{}, errors.Cause(err))
+	s.Assert().EqualError(
+		err,
+		"ledger 10 in exp_history_ledgers does not match ledger in history_ledgers",
+	)
 }
 
 func (s *LedgersProcessorTestSuiteLedger) TestInsertExpLedgerReturnsError() {
@@ -144,8 +212,6 @@ func (s *LedgersProcessorTestSuiteLedger) TestInsertExpLedgerReturnsError() {
 }
 
 func (s *LedgersProcessorTestSuiteLedger) TestInsertExpLedgerNoRowsAffected() {
-	s.mockLedgerReader.On("GetSequence").Return(uint32(1)).Once()
-
 	s.mockQ.On(
 		"InsertExpLedger",
 		s.header,
@@ -162,5 +228,5 @@ func (s *LedgersProcessorTestSuiteLedger) TestInsertExpLedgerNoRowsAffected() {
 	)
 	s.Assert().Error(err)
 	s.Assert().IsType(verify.StateError{}, errors.Cause(err))
-	s.Assert().EqualError(err, "No rows affected when ingesting new ledger: 1")
+	s.Assert().EqualError(err, "No rows affected when ingesting new ledger: 20")
 }

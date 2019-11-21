@@ -251,7 +251,7 @@ func postProcessingHook(
 			return errors.Wrap(err, "Error updating last ingested ledger")
 		}
 
-		if err = historyQ.UpdateExpIngestVersion(CurrentVersion); err != nil {
+		if err = historyQ.UpdateExpIngestVersion(history.CurrentExpIngestVersion); err != nil {
 			return errors.Wrap(err, "Error updating expingest version")
 		}
 

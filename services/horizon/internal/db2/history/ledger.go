@@ -3,6 +3,7 @@ package history
 import (
 	"encoding/hex"
 	"fmt"
+	"reflect"
 	"time"
 
 	sq "github.com/Masterminds/squirrel"
@@ -13,15 +14,26 @@ import (
 	"github.com/stellar/go/xdr"
 )
 
-// LegacyIngestionVersion reflects the latest version of the non-experimental ingestion
-// algorithm. As rows are ingested into the horizon database, this version is
-// used to tag them.  In the future, any breaking changes introduced by a
-// developer should be accompanied by an increase in this value.
-//
-// Scripts, that have yet to be ported to this codebase can then be leveraged
-// to re-ingest old data with the new algorithm, providing a seamless
-// transition when the ingested data's structure changes.
-const LegacyIngestionVersion = 16
+const (
+	// CurrentExpIngestVersion reflects the latest version of the experimental
+	// ingestion algorithm. This value is stored in KV store and is used to decide
+	// if there's a need to reprocess the ledger state or reingest data.
+	//
+	// Version history:
+	// - 1: Initial version
+	// - 2: Added the orderbook, offers processors and distributed ingestion.
+	// - 3: Fixed a bug that could potentialy result in invalid state
+	//      (#1722). Update the version to clear the state.
+	// - 4: Fixed a bug in AccountSignersChanged method.
+	// - 5: Added trust lines.
+	// - 6: Added accounts and accounts data.
+	// - 7: Fixes a bug in AccountSignersChanged method.
+	// - 8: Fixes AccountSigners processor to remove preauth tx signer
+	//      when preauth tx is failed.
+	// - 9: Fixes a bug in asset stats processor that counted unauthorized
+	//      trustlines.
+	CurrentExpIngestVersion = 9
+)
 
 // LedgerBySequence loads the single ledger at `seq` into `dest`
 func (q *Q) LedgerBySequence(dest interface{}, seq int32) error {
@@ -32,8 +44,8 @@ func (q *Q) LedgerBySequence(dest interface{}, seq int32) error {
 	return q.Get(dest, sql)
 }
 
-// ExpLedgerBySequence returns a row from the exp_history_ledgers table
-func (q *Q) ExpLedgerBySequence(seq int32) (Ledger, error) {
+// expLedgerBySequence returns a row from the exp_history_ledgers table
+func (q *Q) expLedgerBySequence(seq int32) (Ledger, error) {
 	sql := selectLedgerFields.
 		From("exp_history_ledgers hl").
 		Limit(1).
@@ -109,14 +121,39 @@ func (q *LedgersQ) Select(dest interface{}) error {
 
 // QExpLedgers defines experimental ingestion ledger related queries.
 type QExpLedgers interface {
-	ExpLedgerBySequence(seq int32) (Ledger, error)
-
+	CheckExpLeger(seq int32) (bool, error)
 	InsertExpLedger(
 		ledger xdr.LedgerHeaderHistoryEntry,
 		successTxsCount int,
 		failedTxsCount int,
 		opCount int,
 	) (int64, error)
+}
+
+// CheckExpLeger checks that the ledger in exp_history_ledgers
+// matches the one in history_ledgers  for a given sequence number
+func (q *Q) CheckExpLeger(seq int32) (bool, error) {
+	expLedger, err := q.expLedgerBySequence(seq)
+	if err != nil {
+		return false, err
+	}
+
+	var ledger Ledger
+	err = q.LedgerBySequence(&ledger, seq)
+	if err != nil {
+		return false, err
+	}
+
+	// ignore importer version created time, and updated time
+	expLedger.ImporterVersion = ledger.ImporterVersion
+	expLedger.CreatedAt = ledger.CreatedAt
+	expLedger.UpdatedAt = ledger.UpdatedAt
+
+	// compare ClosedAt separately because reflect.DeepEqual does not handle time.Time
+	expClosedAt := expLedger.ClosedAt
+	expLedger.ClosedAt = ledger.ClosedAt
+
+	return expClosedAt.Equal(ledger.ClosedAt) && reflect.DeepEqual(expLedger, ledger), nil
 }
 
 // InsertExpLedger creates a row in the exp_history_ledgers table.
@@ -158,10 +195,7 @@ func ledgerHeaderToMap(
 	}
 	closeTime := time.Unix(int64(ledger.Header.ScpValue.CloseTime), 0).UTC()
 	return map[string]interface{}{
-		// when it comes to ingesting ledgers, the experimental ingestion system is compatible with
-		// the legacy ingestion system which is why we use the same importer version as the legacy
-		// ingestion system
-		"importer_version":             LegacyIngestionVersion,
+		"importer_version":             CurrentExpIngestVersion,
 		"id":                           toid.New(int32(ledger.Header.LedgerSeq), 0, 0).ToInt64(),
 		"sequence":                     ledger.Header.LedgerSeq,
 		"ledger_hash":                  hex.EncodeToString(ledger.Hash[:]),

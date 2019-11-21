@@ -31,7 +31,7 @@ const stateVerifierExpectedIngestionVersion = 9
 
 // verifyState is called as a go routine from pipeline post hook every 64
 // ledgers. It checks if the state is correct. If another go routine is already
-// running it exists.
+// running it exits.
 func (s *System) verifyState(graphOffers map[xdr.Int64]xdr.OfferEntry) error {
 	s.stateVerificationMutex.Lock()
 	if s.stateVerificationRunning {
@@ -42,11 +42,11 @@ func (s *System) verifyState(graphOffers map[xdr.Int64]xdr.OfferEntry) error {
 	s.stateVerificationRunning = true
 	s.stateVerificationMutex.Unlock()
 
-	if stateVerifierExpectedIngestionVersion != CurrentVersion {
+	if stateVerifierExpectedIngestionVersion != history.CurrentExpIngestVersion {
 		log.Errorf(
 			"State verification expected version is %d but actual is: %d",
 			stateVerifierExpectedIngestionVersion,
-			CurrentVersion,
+			history.CurrentExpIngestVersion,
 		)
 		return nil
 	}
