@@ -607,6 +607,13 @@ func (base *Base) GetTimeMillis(name string) (timeMillis time.Millis) {
 // Ref: https://github.com/go-chi/chi/blob/d132b31857e5922a2cc7963f4fcfd8f46b3f2e97/context.go#L69
 func GetURLParam(r *http.Request, key string) (string, bool) {
 	rctx := chi.RouteContext(r.Context())
+
+	// Return immediately if there are no values for the URLParams.
+	// This can happen when a named param is not specified.
+	if len(rctx.URLParams.Values) == 0 {
+		return "", false
+	}
+
 	for k := len(rctx.URLParams.Keys) - 1; k >= 0; k-- {
 		if rctx.URLParams.Keys[k] == key {
 			return rctx.URLParams.Values[k], true
