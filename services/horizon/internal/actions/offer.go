@@ -121,14 +121,14 @@ func (handler GetAccountOffersHandler) parseOffersQuery(r *http.Request) (histor
 		return history.OffersQuery{}, err
 	}
 
-	seller, err := GetString(r, "account_id")
+	seller, err := GetAccountID(r, "account_id")
 	if err != nil {
 		return history.OffersQuery{}, err
 	}
 
 	query := history.OffersQuery{
 		PageQuery: pq,
-		SellerID:  seller,
+		SellerID:  seller.Address(),
 	}
 
 	return query, nil
