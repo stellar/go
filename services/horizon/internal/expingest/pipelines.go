@@ -208,6 +208,10 @@ func postProcessingHook(
 	ledgerSeq := pipeline.GetLedgerSequenceFromContext(ctx)
 
 	if err != nil {
+		if err == supportPipeline.ErrShutdown {
+			return nil
+		}
+
 		switch errors.Cause(err).(type) {
 		case verify.StateError:
 			markStateInvalid(historySession, err)
