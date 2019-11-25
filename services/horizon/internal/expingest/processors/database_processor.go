@@ -336,10 +336,10 @@ func (p *DatabaseProcessor) ingestLedgerHeader(
 	}
 
 	if !valid {
-		return verify.NewStateError(errors.Errorf(
+		return errors.Errorf(
 			"ledger %v in exp_history_ledgers does not match ledger in history_ledgers",
 			seq,
-		))
+		)
 	}
 
 	return nil

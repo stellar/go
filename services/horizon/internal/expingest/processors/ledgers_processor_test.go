@@ -173,7 +173,7 @@ func (s *LedgersProcessorTestSuiteLedger) TestCheckExpLedgerError() {
 	s.Assert().EqualError(err, "Could not compare ledger 10: transient check exp ledger error")
 }
 
-func (s *LedgersProcessorTestSuiteLedger) TestCheckExpLedgerStateError() {
+func (s *LedgersProcessorTestSuiteLedger) TestCheckExpLedgerDoesNotMatch() {
 	s.mockQ.On(
 		"InsertExpLedger",
 		s.header,
@@ -192,7 +192,6 @@ func (s *LedgersProcessorTestSuiteLedger) TestCheckExpLedgerStateError() {
 		s.mockLedgerWriter,
 	)
 	s.Assert().Error(err)
-	s.Assert().IsType(verify.StateError{}, errors.Cause(err))
 	s.Assert().EqualError(
 		err,
 		"ledger 10 in exp_history_ledgers does not match ledger in history_ledgers",
