@@ -8,11 +8,8 @@ import (
 
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/support/historyarchive"
-	logpkg "github.com/stellar/go/support/log"
 	"github.com/stellar/go/xdr"
 )
-
-var log = logpkg.DefaultLogger.WithField("component", "SingleLedgerStateReader")
 
 // readResult is the result of reading a bucket value
 type readResult struct {
@@ -186,8 +183,6 @@ func (msr *SingleLedgerStateReader) readBucketEntry(stream *historyarchive.XdrSt
 		if err == nil || err == io.EOF {
 			break
 		}
-		log.WithError(err).WithField("hash", hash.String()).
-			Info("could not read from xdr stream")
 		if attempts >= msr.maxStreamRetries {
 			break
 		}
@@ -198,16 +193,9 @@ func (msr *SingleLedgerStateReader) readBucketEntry(stream *historyarchive.XdrSt
 			break
 		}
 
-		log.WithFields(logpkg.F{
-			"hash":            hash.String(),
-			"currentPosition": currentPosition,
-		}).Info("Restarting xdr stream")
-
 		var retryStream *historyarchive.XdrStream
 		retryStream, err = msr.newXDRStream(hash)
 		if err != nil {
-			log.WithError(err).WithField("hash", hash.String()).
-				Info("could not create retry xdr stream")
 			err = errors.Wrap(err, "Error creating new xdr stream")
 			break
 		}
@@ -216,10 +204,6 @@ func (msr *SingleLedgerStateReader) readBucketEntry(stream *historyarchive.XdrSt
 
 		_, err = stream.Discard(currentPosition)
 		if err != nil {
-			log.WithFields(logpkg.F{
-				"hash":         hash.String(),
-				"discardBytes": currentPosition,
-			}).WithError(err).Info("could not fast forward retry xdr stream")
 			err = errors.Wrap(err, "Error discarding from xdr stream")
 			break
 		}
