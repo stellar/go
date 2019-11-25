@@ -13,8 +13,11 @@ import (
 	"github.com/stellar/go/exp/support/pipeline"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/support/errors"
+	logpkg "github.com/stellar/go/support/log"
 	"github.com/stellar/go/xdr"
 )
+
+var log = logpkg.DefaultLogger.WithField("service", "expingest")
 
 const maxBatchSize = 100000
 
@@ -312,10 +315,13 @@ func (p *DatabaseProcessor) ingestLedgerHeader(
 		)
 	}
 	if rowsAffected != 1 {
-		return verify.NewStateError(errors.Errorf(
+		log.WithField("rowsAffected", rowsAffected).
+			WithField("sequence", r.GetSequence()).
+			Error("No rows affected when ingesting new ledger")
+		return errors.Errorf(
 			"No rows affected when ingesting new ledger: %v",
 			r.GetSequence(),
-		))
+		)
 	}
 
 	// use an older lookup sequence because the experimental ingestion system and the
@@ -336,6 +342,8 @@ func (p *DatabaseProcessor) ingestLedgerHeader(
 	}
 
 	if !valid {
+		log.WithField("sequence", seq).
+			Error("row in exp_history_ledgers does not match ledger in history_ledgers")
 		return errors.Errorf(
 			"ledger %v in exp_history_ledgers does not match ledger in history_ledgers",
 			seq,
