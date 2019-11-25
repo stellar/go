@@ -186,14 +186,14 @@ func TestCheckExpLedger(t *testing.T) {
 	*ledger.SuccessfulTransactionCount = 12
 	*ledger.FailedTransactionCount = 3
 
-	_, err := q.CheckExpLeger(ledger.Sequence)
+	_, err := q.CheckExpLedger(ledger.Sequence)
 	tt.Assert.Equal(err, sql.ErrNoRows)
 
 	insertSQL := sq.Insert("exp_history_ledgers").SetMap(ledgerToMap(ledger))
 	_, err = q.Exec(insertSQL)
 	tt.Assert.NoError(err)
 
-	_, err = q.CheckExpLeger(ledger.Sequence)
+	_, err = q.CheckExpLedger(ledger.Sequence)
 	tt.Assert.Equal(err, sql.ErrNoRows)
 
 	ledger.CreatedAt = time.Now()
@@ -204,7 +204,7 @@ func TestCheckExpLedger(t *testing.T) {
 	_, err = q.Exec(insertSQL)
 	tt.Assert.NoError(err)
 
-	valid, err := q.CheckExpLeger(ledger.Sequence)
+	valid, err := q.CheckExpLedger(ledger.Sequence)
 	tt.Assert.NoError(err)
 	tt.Assert.True(valid)
 
@@ -231,7 +231,7 @@ func TestCheckExpLedger(t *testing.T) {
 		_, err = q.Exec(updateSQL)
 		tt.Assert.NoError(err)
 
-		valid, err = q.CheckExpLeger(ledger.Sequence)
+		valid, err = q.CheckExpLedger(ledger.Sequence)
 		tt.Assert.NoError(err)
 		tt.Assert.False(valid)
 
@@ -242,7 +242,7 @@ func TestCheckExpLedger(t *testing.T) {
 		_, err = q.Exec(insertSQL)
 		tt.Assert.NoError(err)
 
-		valid, err := q.CheckExpLeger(ledger.Sequence)
+		valid, err := q.CheckExpLedger(ledger.Sequence)
 		tt.Assert.NoError(err)
 		tt.Assert.True(valid)
 	}

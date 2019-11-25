@@ -322,7 +322,7 @@ func (p *DatabaseProcessor) ingestLedgerHeader(
 	// legacy ingestion system might not be in sync
 	seq := int32(r.GetSequence() - 10)
 
-	valid, err := p.LedgersQ.CheckExpLeger(seq)
+	valid, err := p.LedgersQ.CheckExpLedger(seq)
 	// only validate the ledger if it is present in both ingestion systems
 	if err == sql.ErrNoRows {
 		return nil

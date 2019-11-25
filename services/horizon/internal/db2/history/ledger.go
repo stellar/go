@@ -100,7 +100,7 @@ func (q *LedgersQ) Select(dest interface{}) error {
 
 // QExpLedgers defines experimental ingestion ledger related queries.
 type QExpLedgers interface {
-	CheckExpLeger(seq int32) (bool, error)
+	CheckExpLedger(seq int32) (bool, error)
 	InsertExpLedger(
 		ledger xdr.LedgerHeaderHistoryEntry,
 		successTxsCount int,
@@ -110,9 +110,9 @@ type QExpLedgers interface {
 	) (int64, error)
 }
 
-// CheckExpLeger checks that the ledger in exp_history_ledgers
+// CheckExpLedger checks that the ledger in exp_history_ledgers
 // matches the one in history_ledgers  for a given sequence number
-func (q *Q) CheckExpLeger(seq int32) (bool, error) {
+func (q *Q) CheckExpLedger(seq int32) (bool, error) {
 	expLedger, err := q.expLedgerBySequence(seq)
 	if err != nil {
 		return false, err

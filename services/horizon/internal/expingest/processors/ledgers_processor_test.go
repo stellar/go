@@ -120,7 +120,7 @@ func (s *LedgersProcessorTestSuiteLedger) TestInsertExpLedgerSucceeds() {
 		s.opCount,
 		s.ingestVersion,
 	).Return(int64(1), nil)
-	s.mockQ.On("CheckExpLeger", int32(10)).Return(true, nil)
+	s.mockQ.On("CheckExpLedger", int32(10)).Return(true, nil)
 
 	err := s.processor.ProcessLedger(
 		context.Background(),
@@ -140,7 +140,7 @@ func (s *LedgersProcessorTestSuiteLedger) TestCheckExpLedgerNotFound() {
 		s.opCount,
 		s.ingestVersion,
 	).Return(int64(1), nil)
-	s.mockQ.On("CheckExpLeger", int32(10)).Return(false, sql.ErrNoRows)
+	s.mockQ.On("CheckExpLedger", int32(10)).Return(false, sql.ErrNoRows)
 
 	err := s.processor.ProcessLedger(
 		context.Background(),
@@ -160,7 +160,7 @@ func (s *LedgersProcessorTestSuiteLedger) TestCheckExpLedgerError() {
 		s.opCount,
 		s.ingestVersion,
 	).Return(int64(1), nil)
-	s.mockQ.On("CheckExpLeger", int32(10)).
+	s.mockQ.On("CheckExpLedger", int32(10)).
 		Return(false, errors.New("transient check exp ledger error"))
 
 	err := s.processor.ProcessLedger(
@@ -182,7 +182,7 @@ func (s *LedgersProcessorTestSuiteLedger) TestCheckExpLedgerStateError() {
 		s.opCount,
 		s.ingestVersion,
 	).Return(int64(1), nil)
-	s.mockQ.On("CheckExpLeger", int32(10)).
+	s.mockQ.On("CheckExpLedger", int32(10)).
 		Return(false, nil)
 
 	err := s.processor.ProcessLedger(

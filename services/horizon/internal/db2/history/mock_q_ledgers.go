@@ -20,7 +20,7 @@ func (m *MockQLedgers) InsertExpLedger(
 	return a.Get(0).(int64), a.Error(1)
 }
 
-func (m *MockQLedgers) CheckExpLeger(seq int32) (bool, error) {
+func (m *MockQLedgers) CheckExpLedger(seq int32) (bool, error) {
 	a := m.Called(seq)
 	return a.Get(0).(bool), a.Error(1)
 }
