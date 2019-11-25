@@ -247,7 +247,7 @@ func (s *System) Run() {
 			return errors.Wrap(err, "Error getting exp ingest version")
 		}
 
-		if ingestVersion != history.CurrentExpIngestVersion || lastIngestedLedger == 0 {
+		if ingestVersion != CurrentVersion || lastIngestedLedger == 0 {
 			// This block is either starting from empty state or ingestion
 			// version upgrade.
 			// This will always run on a single instance due to the fact that

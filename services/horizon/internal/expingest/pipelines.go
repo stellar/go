@@ -31,12 +31,14 @@ func accountsStateNode(q *history.Q) *supportPipeline.PipelineNode {
 	return pipeline.StateNode(&processors.EntryTypeFilter{Type: xdr.LedgerEntryTypeAccount}).
 		Pipe(
 			pipeline.StateNode(&horizonProcessors.DatabaseProcessor{
-				AccountsQ: q,
-				Action:    horizonProcessors.Accounts,
+				AccountsQ:     q,
+				Action:        horizonProcessors.Accounts,
+				IngestVersion: CurrentVersion,
 			}),
 			pipeline.StateNode(&horizonProcessors.DatabaseProcessor{
-				SignersQ: q,
-				Action:   horizonProcessors.AccountsForSigner,
+				SignersQ:      q,
+				Action:        horizonProcessors.AccountsForSigner,
+				IngestVersion: CurrentVersion,
 			}),
 		)
 }
@@ -45,8 +47,9 @@ func dataDBStateNode(q *history.Q) *supportPipeline.PipelineNode {
 	return pipeline.StateNode(&processors.EntryTypeFilter{Type: xdr.LedgerEntryTypeData}).
 		Pipe(
 			pipeline.StateNode(&horizonProcessors.DatabaseProcessor{
-				DataQ:  q,
-				Action: horizonProcessors.Data,
+				DataQ:         q,
+				Action:        horizonProcessors.Data,
+				IngestVersion: CurrentVersion,
 			}),
 		)
 }
@@ -55,8 +58,9 @@ func orderBookDBStateNode(q *history.Q) *supportPipeline.PipelineNode {
 	return pipeline.StateNode(&processors.EntryTypeFilter{Type: xdr.LedgerEntryTypeOffer}).
 		Pipe(
 			pipeline.StateNode(&horizonProcessors.DatabaseProcessor{
-				OffersQ: q,
-				Action:  horizonProcessors.Offers,
+				OffersQ:       q,
+				Action:        horizonProcessors.Offers,
+				IngestVersion: CurrentVersion,
 			}),
 		)
 }
@@ -74,9 +78,10 @@ func trustLinesDBStateNode(q *history.Q) *supportPipeline.PipelineNode {
 	return pipeline.StateNode(&processors.EntryTypeFilter{Type: xdr.LedgerEntryTypeTrustline}).
 		Pipe(
 			pipeline.StateNode(&horizonProcessors.DatabaseProcessor{
-				TrustLinesQ: q,
-				AssetStatsQ: q,
-				Action:      horizonProcessors.TrustLines,
+				TrustLinesQ:   q,
+				AssetStatsQ:   q,
+				Action:        horizonProcessors.TrustLines,
+				IngestVersion: CurrentVersion,
 			}),
 		)
 }
@@ -114,14 +119,15 @@ func buildLedgerPipeline(historyQ *history.Q, graph *orderbook.OrderBookGraph) *
 				pipeline.LedgerNode(&horizonProcessors.ContextFilter{horizonProcessors.IngestUpdateDatabase}).
 					Pipe(
 						pipeline.LedgerNode(&horizonProcessors.DatabaseProcessor{
-							AccountsQ:   historyQ,
-							DataQ:       historyQ,
-							OffersQ:     historyQ,
-							SignersQ:    historyQ,
-							TrustLinesQ: historyQ,
-							AssetStatsQ: historyQ,
-							LedgersQ:    historyQ,
-							Action:      horizonProcessors.All,
+							AccountsQ:     historyQ,
+							DataQ:         historyQ,
+							OffersQ:       historyQ,
+							SignersQ:      historyQ,
+							TrustLinesQ:   historyQ,
+							AssetStatsQ:   historyQ,
+							LedgersQ:      historyQ,
+							Action:        horizonProcessors.All,
+							IngestVersion: CurrentVersion,
 						}),
 					),
 				orderBookGraphLedgerNode(graph),
@@ -251,7 +257,7 @@ func postProcessingHook(
 			return errors.Wrap(err, "Error updating last ingested ledger")
 		}
 
-		if err = historyQ.UpdateExpIngestVersion(history.CurrentExpIngestVersion); err != nil {
+		if err = historyQ.UpdateExpIngestVersion(CurrentVersion); err != nil {
 			return errors.Wrap(err, "Error updating expingest version")
 		}
 

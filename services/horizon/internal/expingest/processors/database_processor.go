@@ -303,6 +303,7 @@ func (p *DatabaseProcessor) ingestLedgerHeader(
 		successTxCount,
 		failedTxCount,
 		opCount,
+		p.IngestVersion,
 	)
 	if err != nil {
 		return errors.Wrap(

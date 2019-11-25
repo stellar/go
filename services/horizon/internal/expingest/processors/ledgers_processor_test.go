@@ -25,6 +25,7 @@ type LedgersProcessorTestSuiteLedger struct {
 	successCount     int
 	failedCount      int
 	opCount          int
+	ingestVersion    int
 }
 
 func TestLedgersProcessorTestSuiteLedger(t *testing.T) {
@@ -62,10 +63,12 @@ func (s *LedgersProcessorTestSuiteLedger) SetupTest() {
 	s.mockQ = &history.MockQLedgers{}
 	s.mockLedgerReader = &io.MockLedgerReader{}
 	s.mockLedgerWriter = &io.MockLedgerWriter{}
+	s.ingestVersion = 100
 
 	s.processor = &DatabaseProcessor{
-		Action:   Ledgers,
-		LedgersQ: s.mockQ,
+		Action:        Ledgers,
+		LedgersQ:      s.mockQ,
+		IngestVersion: s.ingestVersion,
 	}
 
 	s.mockLedgerReader.On("GetSequence").Return(uint32(20)).Maybe()
@@ -115,6 +118,7 @@ func (s *LedgersProcessorTestSuiteLedger) TestInsertExpLedgerSucceeds() {
 		s.successCount,
 		s.failedCount,
 		s.opCount,
+		s.ingestVersion,
 	).Return(int64(1), nil)
 	s.mockQ.On("CheckExpLeger", int32(10)).Return(true, nil)
 
@@ -134,6 +138,7 @@ func (s *LedgersProcessorTestSuiteLedger) TestCheckExpLedgerNotFound() {
 		s.successCount,
 		s.failedCount,
 		s.opCount,
+		s.ingestVersion,
 	).Return(int64(1), nil)
 	s.mockQ.On("CheckExpLeger", int32(10)).Return(false, sql.ErrNoRows)
 
@@ -153,6 +158,7 @@ func (s *LedgersProcessorTestSuiteLedger) TestCheckExpLedgerError() {
 		s.successCount,
 		s.failedCount,
 		s.opCount,
+		s.ingestVersion,
 	).Return(int64(1), nil)
 	s.mockQ.On("CheckExpLeger", int32(10)).
 		Return(false, errors.New("transient check exp ledger error"))
@@ -174,6 +180,7 @@ func (s *LedgersProcessorTestSuiteLedger) TestCheckExpLedgerStateError() {
 		s.successCount,
 		s.failedCount,
 		s.opCount,
+		s.ingestVersion,
 	).Return(int64(1), nil)
 	s.mockQ.On("CheckExpLeger", int32(10)).
 		Return(false, nil)
@@ -199,6 +206,7 @@ func (s *LedgersProcessorTestSuiteLedger) TestInsertExpLedgerReturnsError() {
 		s.successCount,
 		s.failedCount,
 		s.opCount,
+		s.ingestVersion,
 	).Return(int64(0), errors.New("transient error"))
 
 	err := s.processor.ProcessLedger(
@@ -218,6 +226,7 @@ func (s *LedgersProcessorTestSuiteLedger) TestInsertExpLedgerNoRowsAffected() {
 		s.successCount,
 		s.failedCount,
 		s.opCount,
+		s.ingestVersion,
 	).Return(int64(0), nil)
 
 	err := s.processor.ProcessLedger(

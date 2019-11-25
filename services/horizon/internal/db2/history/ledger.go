@@ -14,27 +14,6 @@ import (
 	"github.com/stellar/go/xdr"
 )
 
-const (
-	// CurrentExpIngestVersion reflects the latest version of the experimental
-	// ingestion algorithm. This value is stored in KV store and is used to decide
-	// if there's a need to reprocess the ledger state or reingest data.
-	//
-	// Version history:
-	// - 1: Initial version
-	// - 2: Added the orderbook, offers processors and distributed ingestion.
-	// - 3: Fixed a bug that could potentialy result in invalid state
-	//      (#1722). Update the version to clear the state.
-	// - 4: Fixed a bug in AccountSignersChanged method.
-	// - 5: Added trust lines.
-	// - 6: Added accounts and accounts data.
-	// - 7: Fixes a bug in AccountSignersChanged method.
-	// - 8: Fixes AccountSigners processor to remove preauth tx signer
-	//      when preauth tx is failed.
-	// - 9: Fixes a bug in asset stats processor that counted unauthorized
-	//      trustlines.
-	CurrentExpIngestVersion = 9
-)
-
 // LedgerBySequence loads the single ledger at `seq` into `dest`
 func (q *Q) LedgerBySequence(dest interface{}, seq int32) error {
 	sql := selectLedger.
@@ -127,6 +106,7 @@ type QExpLedgers interface {
 		successTxsCount int,
 		failedTxsCount int,
 		opCount int,
+		ingestVersion int,
 	) (int64, error)
 }
 
@@ -163,12 +143,14 @@ func (q *Q) InsertExpLedger(
 	successTxsCount int,
 	failedTxsCount int,
 	opCount int,
+	ingestVersion int,
 ) (int64, error) {
 	m, err := ledgerHeaderToMap(
 		ledger,
 		successTxsCount,
 		failedTxsCount,
 		opCount,
+		ingestVersion,
 	)
 	if err != nil {
 		return 0, err
@@ -188,6 +170,7 @@ func ledgerHeaderToMap(
 	successTxsCount int,
 	failedTxsCount int,
 	opCount int,
+	importerVersion int,
 ) (map[string]interface{}, error) {
 	ledgerHeaderBase64, err := xdr.MarshalBase64(ledger.Header)
 	if err != nil {
@@ -195,7 +178,7 @@ func ledgerHeaderToMap(
 	}
 	closeTime := time.Unix(int64(ledger.Header.ScpValue.CloseTime), 0).UTC()
 	return map[string]interface{}{
-		"importer_version":             CurrentExpIngestVersion,
+		"importer_version":             importerVersion,
 		"id":                           toid.New(int32(ledger.Header.LedgerSeq), 0, 0).ToInt64(),
 		"sequence":                     ledger.Header.LedgerSeq,
 		"ledger_hash":                  hex.EncodeToString(ledger.Hash[:]),

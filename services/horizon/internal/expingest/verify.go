@@ -42,11 +42,11 @@ func (s *System) verifyState(graphOffers map[xdr.Int64]xdr.OfferEntry) error {
 	s.stateVerificationRunning = true
 	s.stateVerificationMutex.Unlock()
 
-	if stateVerifierExpectedIngestionVersion != history.CurrentExpIngestVersion {
+	if stateVerifierExpectedIngestionVersion != CurrentVersion {
 		log.Errorf(
 			"State verification expected version is %d but actual is: %d",
 			stateVerifierExpectedIngestionVersion,
-			history.CurrentExpIngestVersion,
+			CurrentVersion,
 		)
 		return nil
 	}
