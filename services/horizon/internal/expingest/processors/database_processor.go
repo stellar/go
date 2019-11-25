@@ -323,7 +323,7 @@ func (p *DatabaseProcessor) ingestLedgerHeader(
 	seq := int32(r.GetSequence() - 10)
 
 	valid, err := p.LedgersQ.CheckExpLeger(seq)
-	// only validate the ledger if it is prsent in both ingestion systems
+	// only validate the ledger if it is present in both ingestion systems
 	if err == sql.ErrNoRows {
 		return nil
 	}
