@@ -41,12 +41,16 @@ func (lr *LoggingStateReporter) OnEndState(err error, shutdown bool) {
 	elapsedTime := time.Since(lr.startTime)
 
 	l := lr.Log.WithField("ledger", lr.sequence).
-		WithField("numEntries", lr.entryCount).
-		WithField("shutdown", shutdown).
 		WithField("duration", elapsedTime.Seconds())
+
+	if !shutdown {
+		l = l.WithField("numEntries", lr.entryCount)
+	}
 
 	if err != nil {
 		l.WithError(err).Error("Error processing History Archive Snapshot")
+	} else if shutdown {
+		l.Info("Processing History Archive Snapshot shutdown")
 	} else {
 		l.Info("Finished processing History Archive Snapshot")
 	}
@@ -80,12 +84,16 @@ func (lr *LoggingLedgerReporter) OnEndLedger(err error, shutdown bool) {
 	elapsedTime := time.Since(lr.startTime)
 
 	l := lr.Log.WithField("ledger", lr.sequence).
-		WithField("transactions", lr.transactionCount).
-		WithField("shutdown", shutdown).
 		WithField("duration", elapsedTime.Seconds())
+
+	if !shutdown {
+		l = l.WithField("transactions", lr.transactionCount)
+	}
 
 	if err != nil {
 		l.WithError(err).Error("Error processing ledger")
+	} else if shutdown {
+		l.Info("Processing ledger shutdown")
 	} else {
 		l.Info("Finished processing ledger")
 	}

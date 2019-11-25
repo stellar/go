@@ -99,8 +99,16 @@ func (a *App) Serve() {
 
 	go a.run()
 
+	// WaitGroup for all go routines. Makes sure that DB is closed when
+	// all services gracefully shutdown.
+	var wg sync.WaitGroup
+
 	if a.expingester != nil {
-		go a.expingester.Run()
+		wg.Add(1)
+		go func() {
+			a.expingester.Run()
+			wg.Done()
+		}()
 	}
 
 	var err error
@@ -114,6 +122,7 @@ func (a *App) Serve() {
 		log.Fatal(err)
 	}
 
+	wg.Wait()
 	a.CloseDB()
 
 	log.Info("stopped")
