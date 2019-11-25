@@ -3,13 +3,13 @@ package expingest
 import (
 	"time"
 
-	ilog "github.com/stellar/go/support/log"
+	logpkg "github.com/stellar/go/support/log"
 )
 
 // LoggingStateReporter logs the progress of a session running its
 // state pipelines
 type LoggingStateReporter struct {
-	Log      *ilog.Entry
+	Log      *logpkg.Entry
 	Interval int
 
 	entryCount int
@@ -55,7 +55,7 @@ func (lr *LoggingStateReporter) OnEndState(err error, shutdown bool) {
 // LoggingLedgerReporter logs the progress of a session running its
 // ledger pipelines
 type LoggingLedgerReporter struct {
-	Log *ilog.Entry
+	Log *logpkg.Entry
 
 	transactionCount int
 	sequence         uint32

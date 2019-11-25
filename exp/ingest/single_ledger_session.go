@@ -42,7 +42,7 @@ func (s *SingleLedgerSession) processState(historyAdapter *adapters.HistoryArchi
 		tempSet = s.TempSet
 	}
 
-	stateReader, err := historyAdapter.GetState(sequence, tempSet)
+	stateReader, err := historyAdapter.GetState(sequence, tempSet, s.MaxStreamRetries)
 	if err != nil {
 		return errors.Wrap(err, "Error getting state from history archive")
 	}

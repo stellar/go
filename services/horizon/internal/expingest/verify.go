@@ -14,7 +14,7 @@ import (
 	"github.com/stellar/go/services/horizon/internal/expingest/processors"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/support/historyarchive"
-	ilog "github.com/stellar/go/support/log"
+	logpkg "github.com/stellar/go/support/log"
 	"github.com/stellar/go/xdr"
 )
 
@@ -79,7 +79,7 @@ func (s *System) verifyState(graphOffers map[xdr.Int64]xdr.OfferEntry) error {
 		return errors.Wrap(err, "Error running historyQ.GetLastLedgerExpIngestNonBlocking")
 	}
 
-	localLog := log.WithFields(ilog.F{
+	localLog := log.WithFields(logpkg.F{
 		"subservice": "state_verify",
 		"ledger":     ledgerSequence,
 	})
@@ -115,6 +115,7 @@ func (s *System) verifyState(graphOffers map[xdr.Int64]xdr.OfferEntry) error {
 		s.session.GetArchive(),
 		&io.MemoryTempSet{},
 		ledgerSequence,
+		s.maxStreamRetries,
 	)
 	if err != nil {
 		return errors.Wrap(err, "Error running io.MakeSingleLedgerStateReader")

@@ -17,7 +17,7 @@ import (
 	"github.com/stellar/go/support/db"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/support/historyarchive"
-	ilog "github.com/stellar/go/support/log"
+	logpkg "github.com/stellar/go/support/log"
 	"github.com/stellar/go/xdr"
 )
 
@@ -42,7 +42,7 @@ const (
 	CurrentVersion = 9
 )
 
-var log = ilog.DefaultLogger.WithField("service", "expingest")
+var log = logpkg.DefaultLogger.WithField("service", "expingest")
 
 type Config struct {
 	CoreSession    *db.Session
@@ -52,6 +52,11 @@ type Config struct {
 	HistoryArchiveURL        string
 	TempSet                  io.TempSet
 	DisableStateVerification bool
+
+	// MaxStreamRetries determines how many times the reader will retry when encountering
+	// errors while streaming xdr bucket entries from the history archive.
+	// Set MaxStreamRetries to 0 if there should be no retry attempts
+	MaxStreamRetries int
 
 	OrderBookGraph *orderbook.OrderBookGraph
 }
@@ -85,13 +90,14 @@ type retry interface {
 }
 
 type System struct {
-	session        liveSession
-	historyQ       dbQ
-	historySession dbSession
-	graph          *orderbook.OrderBookGraph
-	retry          retry
-	stateReady     bool
-	stateReadyLock sync.RWMutex
+	session          liveSession
+	historyQ         dbQ
+	historySession   dbSession
+	graph            *orderbook.OrderBookGraph
+	retry            retry
+	stateReady       bool
+	stateReadyLock   sync.RWMutex
+	maxStreamRetries int
 
 	// stateVerificationRunning is true when verification routine is currently
 	// running.
@@ -132,10 +138,11 @@ func NewSystem(config Config) (*System, error) {
 	historyQ := &history.Q{config.HistorySession}
 
 	session := &ingest.LiveSession{
-		Archive:        archive,
-		LedgerBackend:  ledgerBackend,
-		StatePipeline:  buildStatePipeline(historyQ, config.OrderBookGraph),
-		LedgerPipeline: buildLedgerPipeline(historyQ, config.OrderBookGraph),
+		Archive:          archive,
+		MaxStreamRetries: config.MaxStreamRetries,
+		LedgerBackend:    ledgerBackend,
+		StatePipeline:    buildStatePipeline(historyQ, config.OrderBookGraph),
+		LedgerPipeline:   buildLedgerPipeline(historyQ, config.OrderBookGraph),
 		StellarCoreClient: &stellarcore.Client{
 			URL: config.StellarCoreURL,
 		},
@@ -153,6 +160,7 @@ func NewSystem(config Config) (*System, error) {
 		graph:                    config.OrderBookGraph,
 		retry:                    alwaysRetry{time.Second},
 		disableStateVerification: config.DisableStateVerification,
+		maxStreamRetries:         config.MaxStreamRetries,
 	}
 
 	addPipelineHooks(
@@ -208,7 +216,7 @@ func (s *System) Run() {
 	// TODO: This should be removed when expingest is no longer experimental.
 	defer func() {
 		if r := recover(); r != nil {
-			log.WithFields(ilog.F{
+			log.WithFields(logpkg.F{
 				"err":   r,
 				"stack": string(debug.Stack()),
 			}).Error("expingest panic")
@@ -276,7 +284,7 @@ func (s *System) Run() {
 					return err
 				}
 
-				log.WithFields(ilog.F{
+				log.WithFields(logpkg.F{
 					"err":                  err,
 					"last_ingested_ledger": lastIngestedLedger,
 				}).Error("Error running session, resuming from the last ingested ledger")
