@@ -140,6 +140,14 @@ func (s *System) verifyState(graphOffers map[xdr.Int64]xdr.OfferEntry) error {
 			return errors.Wrap(err, "verifier.GetLedgerKeys")
 		}
 
+		select {
+		case <-s.shutdown:
+			localLog.Info("State verifier shut down...")
+			return nil
+		default:
+			// continue
+		}
+
 		if len(keys) == 0 {
 			break
 		}
