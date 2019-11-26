@@ -39,7 +39,6 @@ func (s *System) verifyState(graphOffers map[xdr.Int64]xdr.OfferEntry) error {
 		s.stateVerificationMutex.Unlock()
 		return nil
 	}
-	s.wg.Add(1)
 	s.stateVerificationRunning = true
 	s.stateVerificationMutex.Unlock()
 	if stateVerifierExpectedIngestionVersion != CurrentVersion {
@@ -54,10 +53,10 @@ func (s *System) verifyState(graphOffers map[xdr.Int64]xdr.OfferEntry) error {
 	startTime := time.Now()
 	session := s.historySession.Clone()
 
+	s.wg.Add(1)
 	defer func() {
 		log.WithField("duration", time.Since(startTime).Seconds()).Info("State verification finished")
 		session.Rollback()
-
 		s.stateVerificationMutex.Lock()
 		s.stateVerificationRunning = false
 		s.wg.Done()
