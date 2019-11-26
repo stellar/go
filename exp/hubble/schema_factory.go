@@ -9,41 +9,6 @@ import (
 	"github.com/stellar/go/xdr"
 )
 
-type accountState struct {
-	address    string
-	seqnum     uint32
-	balance    uint32
-	signers    []signer
-	trustlines map[string]trustline
-	offers     map[uint32]offer
-	data       map[string][]byte
-	// TODO: May want to track other fields in AccountEntry.
-}
-
-type signer struct {
-	address string
-	weight  uint32
-}
-
-type trustline struct {
-	asset      string
-	balance    uint32
-	limit      uint32
-	authorized bool
-	// TODO: Add liabilities.
-}
-
-type offer struct {
-	id         uint32
-	seller     string // seller address
-	selling    string // selling asset
-	buying     string // buying asset
-	amount     uint32
-	priceNum   uint16
-	priceDenom uint16
-	// TODO: Add flags.
-}
-
 func makeNewAccountState(state *accountState, change *xdr.LedgerEntryChange) (*accountState, error) {
 	// TODO: Handle account removal.
 	var newAccountState accountState

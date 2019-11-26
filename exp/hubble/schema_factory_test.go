@@ -9,6 +9,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+// TODO: Replace manual equality check with `assert`, across all tests.
 func TestMakeAccountIDFromState(t *testing.T) {
 	wantAddress := "GBFLTCDLOE6YQ74B66RH3S2UW5I2MKZ5VLTM75F4YMIWUIXRIFVNRNIF"
 	state := accountState{address: wantAddress}
@@ -55,6 +56,7 @@ func TestMakeAccountIDFromChange(t *testing.T) {
 	}
 }
 
+// TODO: Replace error case tests with table-driven testing.
 func TestMakeSeqnumFromNonRemoved(t *testing.T) {
 	wantSeqnum := uint32(2947523)
 	state := accountState{seqnum: 11}
