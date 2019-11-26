@@ -480,14 +480,13 @@ func (s *SystemShutdownTestSuite) TestShutdownSucceeds() {
 	s.ingestSession.On("Shutdown").Return(nil).Once()
 	done := make(chan struct{})
 	go func() {
-		<-s.system.shutdown
+		defer close(done)
 		select {
 		case <-s.system.shutdown:
-			s.Assert().True(true, "channel is closed")
-		default:
-			s.Assert().Fail("channel should be closed")
+			s.Assert().True(true, "channel was closed")
+		case <-time.After(2 * time.Second):
+			s.Assert().Fail("channel should have been closed")
 		}
-		close(done)
 	}()
 	time.Sleep(100 * time.Millisecond)
 	s.system.Shutdown()
