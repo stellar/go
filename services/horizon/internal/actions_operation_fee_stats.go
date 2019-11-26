@@ -107,20 +107,20 @@ func (action *FeeStatsAction) loadRecords() {
 	action.feeStats.FeeCharged.P99 = cur.FeeChargedP99
 
 	// MaxFee
-	action.feeStats.MaxFee.Max = cur.FeeMax
-	action.feeStats.MaxFee.Min = cur.FeeMin
-	action.feeStats.MaxFee.Mode = cur.FeeMode
-	action.feeStats.MaxFee.P10 = cur.FeeP10
-	action.feeStats.MaxFee.P20 = cur.FeeP20
-	action.feeStats.MaxFee.P30 = cur.FeeP30
-	action.feeStats.MaxFee.P40 = cur.FeeP40
-	action.feeStats.MaxFee.P50 = cur.FeeP50
-	action.feeStats.MaxFee.P60 = cur.FeeP60
-	action.feeStats.MaxFee.P70 = cur.FeeP70
-	action.feeStats.MaxFee.P80 = cur.FeeP80
-	action.feeStats.MaxFee.P90 = cur.FeeP90
-	action.feeStats.MaxFee.P95 = cur.FeeP95
-	action.feeStats.MaxFee.P99 = cur.FeeP99
+	action.feeStats.MaxFee.Max = cur.MaxFeeMax
+	action.feeStats.MaxFee.Min = cur.MaxFeeMin
+	action.feeStats.MaxFee.Mode = cur.MaxFeeMode
+	action.feeStats.MaxFee.P10 = cur.MaxFeeP10
+	action.feeStats.MaxFee.P20 = cur.MaxFeeP20
+	action.feeStats.MaxFee.P30 = cur.MaxFeeP30
+	action.feeStats.MaxFee.P40 = cur.MaxFeeP40
+	action.feeStats.MaxFee.P50 = cur.MaxFeeP50
+	action.feeStats.MaxFee.P60 = cur.MaxFeeP60
+	action.feeStats.MaxFee.P70 = cur.MaxFeeP70
+	action.feeStats.MaxFee.P80 = cur.MaxFeeP80
+	action.feeStats.MaxFee.P90 = cur.MaxFeeP90
+	action.feeStats.MaxFee.P95 = cur.MaxFeeP95
+	action.feeStats.MaxFee.P99 = cur.MaxFeeP99
 
 	// AcceptedFee is an alias for MaxFee
 	// Action needed in release: horizon-v0.25.0

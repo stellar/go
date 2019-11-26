@@ -263,20 +263,20 @@ func (a *App) UpdateFeeStatsState() {
 	// latest ledger's base fee for all
 	if !feeStats.MaxFeeMode.Valid && !feeStats.MaxFeeMin.Valid {
 		// MaxFee
-		next.FeeMax = next.LastBaseFee
-		next.FeeMin = next.LastBaseFee
-		next.FeeMode = next.LastBaseFee
-		next.FeeP10 = next.LastBaseFee
-		next.FeeP20 = next.LastBaseFee
-		next.FeeP30 = next.LastBaseFee
-		next.FeeP40 = next.LastBaseFee
-		next.FeeP50 = next.LastBaseFee
-		next.FeeP60 = next.LastBaseFee
-		next.FeeP70 = next.LastBaseFee
-		next.FeeP80 = next.LastBaseFee
-		next.FeeP90 = next.LastBaseFee
-		next.FeeP95 = next.LastBaseFee
-		next.FeeP99 = next.LastBaseFee
+		next.MaxFeeMax = next.LastBaseFee
+		next.MaxFeeMin = next.LastBaseFee
+		next.MaxFeeMode = next.LastBaseFee
+		next.MaxFeeP10 = next.LastBaseFee
+		next.MaxFeeP20 = next.LastBaseFee
+		next.MaxFeeP30 = next.LastBaseFee
+		next.MaxFeeP40 = next.LastBaseFee
+		next.MaxFeeP50 = next.LastBaseFee
+		next.MaxFeeP60 = next.LastBaseFee
+		next.MaxFeeP70 = next.LastBaseFee
+		next.MaxFeeP80 = next.LastBaseFee
+		next.MaxFeeP90 = next.LastBaseFee
+		next.MaxFeeP95 = next.LastBaseFee
+		next.MaxFeeP99 = next.LastBaseFee
 
 		// FeeCharged
 		next.FeeChargedMax = next.LastBaseFee
@@ -296,20 +296,20 @@ func (a *App) UpdateFeeStatsState() {
 
 	} else {
 		// MaxFee
-		next.FeeMax = feeStats.MaxFeeMax.Int64
-		next.FeeMin = feeStats.MaxFeeMin.Int64
-		next.FeeMode = feeStats.MaxFeeMode.Int64
-		next.FeeP10 = feeStats.MaxFeeP10.Int64
-		next.FeeP20 = feeStats.MaxFeeP20.Int64
-		next.FeeP30 = feeStats.MaxFeeP30.Int64
-		next.FeeP40 = feeStats.MaxFeeP40.Int64
-		next.FeeP50 = feeStats.MaxFeeP50.Int64
-		next.FeeP60 = feeStats.MaxFeeP60.Int64
-		next.FeeP70 = feeStats.MaxFeeP70.Int64
-		next.FeeP80 = feeStats.MaxFeeP80.Int64
-		next.FeeP90 = feeStats.MaxFeeP90.Int64
-		next.FeeP95 = feeStats.MaxFeeP95.Int64
-		next.FeeP99 = feeStats.MaxFeeP99.Int64
+		next.MaxFeeMax = feeStats.MaxFeeMax.Int64
+		next.MaxFeeMin = feeStats.MaxFeeMin.Int64
+		next.MaxFeeMode = feeStats.MaxFeeMode.Int64
+		next.MaxFeeP10 = feeStats.MaxFeeP10.Int64
+		next.MaxFeeP20 = feeStats.MaxFeeP20.Int64
+		next.MaxFeeP30 = feeStats.MaxFeeP30.Int64
+		next.MaxFeeP40 = feeStats.MaxFeeP40.Int64
+		next.MaxFeeP50 = feeStats.MaxFeeP50.Int64
+		next.MaxFeeP60 = feeStats.MaxFeeP60.Int64
+		next.MaxFeeP70 = feeStats.MaxFeeP70.Int64
+		next.MaxFeeP80 = feeStats.MaxFeeP80.Int64
+		next.MaxFeeP90 = feeStats.MaxFeeP90.Int64
+		next.MaxFeeP95 = feeStats.MaxFeeP95.Int64
+		next.MaxFeeP99 = feeStats.MaxFeeP99.Int64
 
 		// FeeCharged
 		next.FeeChargedMax = feeStats.FeeChargedMax.Int64
