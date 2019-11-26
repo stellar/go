@@ -13,8 +13,11 @@ import (
 	"github.com/stellar/go/exp/support/pipeline"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/support/errors"
+	logpkg "github.com/stellar/go/support/log"
 	"github.com/stellar/go/xdr"
 )
+
+var log = logpkg.DefaultLogger.WithField("service", "expingest")
 
 const maxBatchSize = 100000
 
@@ -202,9 +205,11 @@ func (p *DatabaseProcessor) ProcessLedger(ctx context.Context, store *pipeline.S
 		actions = []DatabaseProcessorActionType{
 			Accounts, AccountsForSigner, Data, Offers, TrustLines,
 		}
-	} else {
+	} else if p.Action != Ledgers {
 		actions = append(actions, p.Action)
 	}
+
+	var successTxCount, failedTxCount, opCount int
 
 	// Process transaction meta
 	for {
@@ -215,6 +220,13 @@ func (p *DatabaseProcessor) ProcessLedger(ctx context.Context, store *pipeline.S
 			} else {
 				return err
 			}
+		}
+
+		if transaction.Result.Result.Result.Code == xdr.TransactionResultCodeTxSuccess {
+			successTxCount++
+			opCount += len(transaction.Envelope.Tx.Operations)
+		} else {
+			failedTxCount++
 		}
 
 		for _, action := range actions {
@@ -277,6 +289,65 @@ func (p *DatabaseProcessor) ProcessLedger(ctx context.Context, store *pipeline.S
 		default:
 			continue
 		}
+	}
+
+	return p.ingestLedgerHeader(r, successTxCount, failedTxCount, opCount)
+}
+
+func (p *DatabaseProcessor) ingestLedgerHeader(
+	r io.LedgerReader, successTxCount, failedTxCount, opCount int,
+) error {
+	if p.Action != All && p.Action != Ledgers {
+		return nil
+	}
+
+	rowsAffected, err := p.LedgersQ.InsertExpLedger(
+		r.GetHeader(),
+		successTxCount,
+		failedTxCount,
+		opCount,
+		p.IngestVersion,
+	)
+	if err != nil {
+		return errors.Wrap(
+			err,
+			fmt.Sprintf("Could not insert ledger"),
+		)
+	}
+	if rowsAffected != 1 {
+		log.WithField("rowsAffected", rowsAffected).
+			WithField("sequence", r.GetSequence()).
+			Error("No rows affected when ingesting new ledger")
+		return errors.Errorf(
+			"No rows affected when ingesting new ledger: %v",
+			r.GetSequence(),
+		)
+	}
+
+	// use an older lookup sequence because the experimental ingestion system and the
+	// legacy ingestion system might not be in sync
+	seq := int32(r.GetSequence() - 10)
+
+	valid, err := p.LedgersQ.CheckExpLedger(seq)
+	// only validate the ledger if it is present in both ingestion systems
+	if err == sql.ErrNoRows {
+		return nil
+	}
+
+	if err != nil {
+		return errors.Wrap(
+			err,
+			fmt.Sprintf("Could not compare ledger %v", seq),
+		)
+	}
+
+	if !valid {
+		log.WithField("sequence", seq).
+			Error("row in exp_history_ledgers does not match ledger in history_ledgers")
+		return errors.Errorf(
+			"ledger %v in exp_history_ledgers does not match ledger in history_ledgers",
+			seq,
+		)
 	}
 
 	return nil
