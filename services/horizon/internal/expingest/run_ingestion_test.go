@@ -448,13 +448,11 @@ func TestResumeIngestionTestSuite(t *testing.T) {
 
 type SystemShutdownTestSuite struct {
 	suite.Suite
-	graph            *orderbook.OrderBookGraph
-	session          *mockDBSession
-	historyQ         *mockDBQ
-	ingestSession    *mockIngestSession
-	system           *System
-	attempts         int
-	expectedAttempts int
+	graph         *orderbook.OrderBookGraph
+	session       *mockDBSession
+	historyQ      *mockDBQ
+	ingestSession *mockIngestSession
+	system        *System
 }
 
 func (s *SystemShutdownTestSuite) SetupTest() {
@@ -462,8 +460,6 @@ func (s *SystemShutdownTestSuite) SetupTest() {
 	s.session = &mockDBSession{}
 	s.historyQ = &mockDBQ{}
 	s.ingestSession = &mockIngestSession{}
-	s.attempts = 0
-	s.expectedAttempts = 0
 	s.system = &System{
 		session:        s.ingestSession,
 		historySession: s.session,
@@ -478,9 +474,6 @@ func (s *SystemShutdownTestSuite) TearDownTest() {
 	s.session.AssertExpectations(t)
 	s.ingestSession.AssertExpectations(t)
 	s.historyQ.AssertExpectations(t)
-	if s.attempts != s.expectedAttempts {
-		t.Fatalf("expected only %v attempts but got %v", s.expectedAttempts, s.attempts)
-	}
 }
 
 func (s *SystemShutdownTestSuite) TestShutdownSucceeds() {
