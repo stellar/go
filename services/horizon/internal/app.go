@@ -84,9 +84,9 @@ func (a *App) Serve() {
 		Timeout: 10 * time.Second,
 
 		Server: &http.Server{
-			Addr:              addr,
-			Handler:           a.web.router,
-			ReadHeaderTimeout: 5 * time.Second,
+			Addr:        addr,
+			Handler:     a.web.router,
+			ReadTimeout: 5 * time.Second,
 		},
 
 		ShutdownInitiated: func() {
