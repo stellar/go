@@ -3,6 +3,7 @@ package expingest
 import (
 	"sort"
 	"testing"
+	"time"
 
 	"github.com/stellar/go/exp/orderbook"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
@@ -443,4 +444,63 @@ func (s *ResumeIngestionTestSuite) TestLedgerUpdatesOnlyIfProcessed() {
 
 func TestResumeIngestionTestSuite(t *testing.T) {
 	suite.Run(t, new(ResumeIngestionTestSuite))
+}
+
+type SystemShutdownTestSuite struct {
+	suite.Suite
+	graph            *orderbook.OrderBookGraph
+	session          *mockDBSession
+	historyQ         *mockDBQ
+	ingestSession    *mockIngestSession
+	system           *System
+	attempts         int
+	expectedAttempts int
+}
+
+func (s *SystemShutdownTestSuite) SetupTest() {
+	s.graph = orderbook.NewOrderBookGraph()
+	s.session = &mockDBSession{}
+	s.historyQ = &mockDBQ{}
+	s.ingestSession = &mockIngestSession{}
+	s.attempts = 0
+	s.expectedAttempts = 0
+	s.system = &System{
+		session:        s.ingestSession,
+		historySession: s.session,
+		historyQ:       s.historyQ,
+		graph:          s.graph,
+		shutdown:       make(chan bool),
+	}
+}
+
+func (s *SystemShutdownTestSuite) TearDownTest() {
+	t := s.T()
+	s.session.AssertExpectations(t)
+	s.ingestSession.AssertExpectations(t)
+	s.historyQ.AssertExpectations(t)
+	if s.attempts != s.expectedAttempts {
+		t.Fatalf("expected only %v attempts but got %v", s.expectedAttempts, s.attempts)
+	}
+}
+
+func (s *SystemShutdownTestSuite) TestShutdownSucceeds() {
+	s.ingestSession.On("Shutdown").Return(nil).Once()
+	done := make(chan bool)
+	go func() {
+		<-s.system.shutdown
+		select {
+		case <-s.system.shutdown:
+			s.Assert().True(true, "channel is closed")
+		default:
+			s.Assert().Fail("channel should be closed")
+		}
+		done <- true
+	}()
+	time.Sleep(100 * time.Millisecond)
+	s.system.Shutdown()
+	<-done
+}
+
+func TestSystemShutdownTestSuite(t *testing.T) {
+	suite.Run(t, new(SystemShutdownTestSuite))
 }
