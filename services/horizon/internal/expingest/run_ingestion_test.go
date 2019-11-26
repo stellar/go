@@ -469,7 +469,7 @@ func (s *SystemShutdownTestSuite) SetupTest() {
 		historySession: s.session,
 		historyQ:       s.historyQ,
 		graph:          s.graph,
-		shutdown:       make(chan bool),
+		shutdown:       make(chan struct{}),
 	}
 }
 
@@ -485,7 +485,7 @@ func (s *SystemShutdownTestSuite) TearDownTest() {
 
 func (s *SystemShutdownTestSuite) TestShutdownSucceeds() {
 	s.ingestSession.On("Shutdown").Return(nil).Once()
-	done := make(chan bool)
+	done := make(chan struct{})
 	go func() {
 		<-s.system.shutdown
 		select {
@@ -494,7 +494,7 @@ func (s *SystemShutdownTestSuite) TestShutdownSucceeds() {
 		default:
 			s.Assert().Fail("channel should be closed")
 		}
-		done <- true
+		close(done)
 	}()
 	time.Sleep(100 * time.Millisecond)
 	s.system.Shutdown()
