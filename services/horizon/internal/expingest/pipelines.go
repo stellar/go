@@ -278,6 +278,7 @@ func postProcessingHook(
 		historyarchive.IsCheckpoint(ledgerSeq) { // it's a checkpoint ledger.
 		system.wg.Add(1)
 		go func(offerEntries []xdr.OfferEntry) {
+			defer system.wg.Done()
 			graphOffers := map[xdr.Int64]xdr.OfferEntry{}
 			for _, entry := range offerEntries {
 				graphOffers[entry.OfferId] = entry
@@ -299,7 +300,6 @@ func postProcessingHook(
 			} else {
 				system.resetStateVerificationErrors()
 			}
-			system.wg.Done()
 		}(graph.Offers())
 	}
 
