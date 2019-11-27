@@ -143,6 +143,16 @@ func preProcessingHook(
 	system *System,
 	historySession *db.Session,
 ) (context.Context, error) {
+	var err error
+	defer func() {
+		// Rollback a transaction if pre hook returns errors. Without it all
+		// queries will fail indefinietly with a following error:
+		// current transaction is aborted, commands ignored until end of transaction block
+		if err != nil {
+			historySession.Rollback()
+		}
+	}()
+
 	historyQ := &history.Q{historySession}
 
 	// Start a transaction only if not in a transaction already.
@@ -150,7 +160,7 @@ func preProcessingHook(
 	// a transaction is started to get the latest ledger `FOR UPDATE`
 	// in `System.Run()`.
 	if tx := historySession.GetTx(); tx == nil {
-		err := historySession.Begin()
+		err = historySession.Begin()
 		if err != nil {
 			return ctx, errors.Wrap(err, "Error starting a transaction")
 		}
