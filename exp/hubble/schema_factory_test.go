@@ -3,526 +3,497 @@
 package hubble
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/stellar/go/xdr"
 	"github.com/stretchr/testify/assert"
 )
 
-// TODO: Replace manual equality check with `assert`, across all tests.
-func TestMakeAccountIDFromState(t *testing.T) {
-	wantAddress := "GBFLTCDLOE6YQ74B66RH3S2UW5I2MKZ5VLTM75F4YMIWUIXRIFVNRNIF"
-	state := accountState{address: wantAddress}
-	change := xdr.LedgerEntryChange{
-		Type: xdr.LedgerEntryChangeTypeLedgerEntryState,
-		State: &xdr.LedgerEntry{
-			Data: xdr.LedgerEntryData{
-				Type: xdr.LedgerEntryTypeAccount,
-			},
-		},
-	}
-	gotAddress, err := makeAccountID(&change, &state)
-	if err != nil {
-		t.Error(err)
-	}
-	if wantAddress != gotAddress {
-		t.Fatalf("got address %s, want address %s", gotAddress, wantAddress)
-	}
-}
+const wantAddress = "GBFLTCDLOE6YQ74B66RH3S2UW5I2MKZ5VLTM75F4YMIWUIXRIFVNRNIF"
 
-func TestMakeAccountIDFromChange(t *testing.T) {
-	wantAddress := "GBFLTCDLOE6YQ74B66RH3S2UW5I2MKZ5VLTM75F4YMIWUIXRIFVNRNIF"
-	accountID, err := xdr.AddressToAccountId(wantAddress)
-	if err != nil {
-		t.Error(err)
-	}
-	change := xdr.LedgerEntryChange{
-		Type: xdr.LedgerEntryChangeTypeLedgerEntryState,
-		State: &xdr.LedgerEntry{
-			Data: xdr.LedgerEntryData{
-				Type: xdr.LedgerEntryTypeAccount,
-				Account: &xdr.AccountEntry{
-					AccountId: accountID,
+var accountIDTests = []struct {
+	testName      string
+	state         *accountState
+	wantAccountID string
+	change        xdr.LedgerEntryChange
+}{
+	{"FromState",
+		&accountState{address: wantAddress},
+		wantAddress,
+		xdr.LedgerEntryChange{
+			Type: xdr.LedgerEntryChangeTypeLedgerEntryState,
+			State: &xdr.LedgerEntry{
+				Data: xdr.LedgerEntryData{
+					Type: xdr.LedgerEntryTypeAccount,
 				},
 			},
 		},
-	}
-	gotAddress, err := makeAccountID(&change)
-	if err != nil {
-		t.Error(err)
-	}
-	if wantAddress != gotAddress {
-		t.Fatalf("got address %s, want address %s", wantAddress, gotAddress)
+	},
+	{"FromChange",
+		nil,
+		wantAddress,
+		xdr.LedgerEntryChange{
+			Type: xdr.LedgerEntryChangeTypeLedgerEntryState,
+			State: &xdr.LedgerEntry{
+				Data: xdr.LedgerEntryData{
+					Type: xdr.LedgerEntryTypeAccount,
+					Account: &xdr.AccountEntry{
+						AccountId: xdr.MustAddress(wantAddress),
+					},
+				},
+			},
+		},
+	},
+}
+
+func TestMakeAccount(t *testing.T) {
+	for _, tt := range accountIDTests {
+		t.Run(tt.testName, func(t *testing.T) {
+			var (
+				gotAccountID string
+				err          error
+			)
+			if tt.state == nil {
+				gotAccountID, err = makeAccountID(&tt.change)
+			} else {
+				gotAccountID, err = makeAccountID(&tt.change, *tt.state)
+			}
+			if err != nil {
+				t.Error(err)
+			}
+			if !assert.Equal(t, tt.wantAccountID, gotAccountID) {
+				t.Fatalf("got account id %s, want account id %s", tt.wantAccountID, gotAccountID)
+			}
+		})
 	}
 }
 
-// TODO: Replace error case tests with table-driven testing.
-func TestMakeSeqnumFromNonRemoved(t *testing.T) {
-	wantSeqnum := uint32(2947523)
-	state := accountState{seqnum: 11}
-	change := xdr.LedgerEntryChange{
-		Type: xdr.LedgerEntryChangeTypeLedgerEntryState,
-		State: &xdr.LedgerEntry{
-			LastModifiedLedgerSeq: xdr.Uint32(wantSeqnum),
-			Data: xdr.LedgerEntryData{
+var seqnumTests = []struct {
+	testName   string
+	wantSeqnum uint32
+	change     xdr.LedgerEntryChange
+}{
+	{"Changed",
+		2947523,
+		xdr.LedgerEntryChange{
+			Type: xdr.LedgerEntryChangeTypeLedgerEntryState,
+			State: &xdr.LedgerEntry{
+				LastModifiedLedgerSeq: xdr.Uint32(2947523),
+				Data: xdr.LedgerEntryData{
+					Type:    xdr.LedgerEntryTypeAccount,
+					Account: &xdr.AccountEntry{},
+				},
+			},
+		},
+	},
+	{"Removed",
+		0,
+		xdr.LedgerEntryChange{
+			Type:  xdr.LedgerEntryChangeTypeLedgerEntryRemoved,
+			State: &xdr.LedgerEntry{},
+		},
+	},
+}
+
+func TestMakeSeqnum(t *testing.T) {
+	for _, tt := range seqnumTests {
+		t.Run(string(tt.testName), func(t *testing.T) {
+			state := accountState{seqnum: 11}
+			gotSeqnum, err := makeSeqnum(&state, &tt.change)
+			if err != nil {
+				t.Error(err)
+			}
+			if !assert.Equal(t, tt.wantSeqnum, gotSeqnum) {
+				t.Fatalf("got seqnum %d, want seqnum %d", gotSeqnum, tt.wantSeqnum)
+			}
+		})
+	}
+}
+
+var accountEntryTests = []struct {
+	testName  string
+	wantEntry *xdr.AccountEntry
+	change    xdr.LedgerEntryChange
+}{
+	{"NotAccount",
+		nil,
+		xdr.LedgerEntryChange{
+			Type: xdr.LedgerEntryChangeTypeLedgerEntryState,
+			State: &xdr.LedgerEntry{
+				Data: xdr.LedgerEntryData{
+					Type: xdr.LedgerEntryTypeData,
+					Data: &xdr.DataEntry{
+						AccountId: xdr.MustAddress("GBFLTCDLOE6YQ74B66RH3S2UW5I2MKZ5VLTM75F4YMIWUIXRIFVNRNIF"),
+						DataName:  xdr.String64("name"),
+						DataValue: xdr.DataValue([]byte("value")),
+					},
+				},
+			},
+		},
+	},
+	{"Removed",
+		nil,
+		xdr.LedgerEntryChange{
+			Type: xdr.LedgerEntryChangeTypeLedgerEntryRemoved,
+			Removed: &xdr.LedgerKey{
+				Type: xdr.LedgerEntryTypeAccount,
+				Account: &xdr.LedgerKeyAccount{
+					AccountId: xdr.MustAddress("GBFLTCDLOE6YQ74B66RH3S2UW5I2MKZ5VLTM75F4YMIWUIXRIFVNRNIF"),
+				},
+			},
+		},
+	},
+	{"NotRemoved",
+		&xdr.AccountEntry{AccountId: xdr.MustAddress(wantAddress)},
+		xdr.LedgerEntryChange{
+			Type: xdr.LedgerEntryChangeTypeLedgerEntryState,
+			State: &xdr.LedgerEntry{
+				Data: xdr.LedgerEntryData{
+					Type: xdr.LedgerEntryTypeAccount,
+					Account: &xdr.AccountEntry{
+						AccountId: xdr.MustAddress(wantAddress),
+					},
+				},
+			},
+		},
+	},
+}
+
+func TestGetAccountEntry(t *testing.T) {
+	for _, tt := range accountEntryTests {
+		t.Run(string(tt.testName), func(t *testing.T) {
+			gotEntry, err := getAccountEntry(&tt.change)
+			if err != nil {
+				t.Error(err)
+			}
+			if tt.wantEntry == nil {
+				if gotEntry != nil {
+					t.Fatal("got account entry non-nil, want account entry nil")
+				}
+			} else {
+				gotAddress := gotEntry.AccountId.Address()
+				wantAddress := tt.wantEntry.AccountId.Address()
+				if !assert.Equal(t, wantAddress, gotAddress) {
+					t.Fatalf("got address %s, want address %s", gotAddress, wantAddress)
+				}
+			}
+		})
+	}
+}
+
+var balanceTests = []struct {
+	testName    string
+	wantBalance uint32
+	change      xdr.LedgerEntryChange
+}{
+	{"NotChanged",
+		uint32(111),
+		xdr.LedgerEntryChange{
+			Type: xdr.LedgerEntryChangeTypeLedgerEntryRemoved,
+			Removed: &xdr.LedgerKey{
 				Type:    xdr.LedgerEntryTypeAccount,
-				Account: &xdr.AccountEntry{},
+				Account: &xdr.LedgerKeyAccount{},
 			},
 		},
-	}
-	gotSeqnum, err := makeSeqnum(&state, &change)
-	if err != nil {
-		t.Error(err)
-	}
-	if wantSeqnum != gotSeqnum {
-		t.Fatalf("got seqnum %d, want seqnum %d", gotSeqnum, wantSeqnum)
-	}
-}
-
-func TestMakeSeqnumFromRemoved(t *testing.T) {
-	wantSeqnum := uint32(0)
-	state := accountState{seqnum: 11}
-	change := xdr.LedgerEntryChange{
-		Type:  xdr.LedgerEntryChangeTypeLedgerEntryRemoved,
-		State: &xdr.LedgerEntry{},
-	}
-	gotSeqnum, err := makeSeqnum(&state, &change)
-	if err != nil {
-		t.Error(err)
-	}
-	if wantSeqnum != gotSeqnum {
-		t.Fatalf("got seqnum %d, want seqnum %d", gotSeqnum, wantSeqnum)
-	}
-}
-
-func TestGetAccountEntryNotAccount(t *testing.T) {
-	accountID, err := xdr.AddressToAccountId("GBFLTCDLOE6YQ74B66RH3S2UW5I2MKZ5VLTM75F4YMIWUIXRIFVNRNIF")
-	if err != nil {
-		t.Error(err)
-	}
-	change := xdr.LedgerEntryChange{
-		Type: xdr.LedgerEntryChangeTypeLedgerEntryState,
-		State: &xdr.LedgerEntry{
-			Data: xdr.LedgerEntryData{
-				Type: xdr.LedgerEntryTypeData,
-				Data: &xdr.DataEntry{
-					AccountId: accountID,
-					DataName:  xdr.String64("name"),
-					DataValue: xdr.DataValue([]byte("value")),
+	},
+	{"Changed",
+		uint32(222),
+		xdr.LedgerEntryChange{
+			Type: xdr.LedgerEntryChangeTypeLedgerEntryState,
+			State: &xdr.LedgerEntry{
+				Data: xdr.LedgerEntryData{
+					Type: xdr.LedgerEntryTypeAccount,
+					Account: &xdr.AccountEntry{
+						Balance: xdr.Int64(222),
+					},
 				},
 			},
 		},
-	}
+	},
+}
 
-	entry, err := getAccountEntry(&change)
-	if err != nil {
-		t.Error(err)
-	}
-	if entry != nil {
-		t.Fatal("got account entry non-nil, want account entry nil")
+func TestMakeBalance(t *testing.T) {
+	for _, tt := range balanceTests {
+		t.Run(tt.testName, func(t *testing.T) {
+			state := accountState{balance: uint32(111)}
+			gotBalance, err := makeBalance(&state, &tt.change)
+			if err != nil {
+				t.Error(err)
+			}
+			if !assert.Equal(t, tt.wantBalance, gotBalance) {
+				t.Fatalf("got balance %d, want balance %d", gotBalance, tt.wantBalance)
+			}
+		})
 	}
 }
 
-func TestGetAccountEntryRemoved(t *testing.T) {
-	accountID, err := xdr.AddressToAccountId("GBFLTCDLOE6YQ74B66RH3S2UW5I2MKZ5VLTM75F4YMIWUIXRIFVNRNIF")
-	if err != nil {
-		t.Error(err)
-	}
-	change := xdr.LedgerEntryChange{
-		Type: xdr.LedgerEntryChangeTypeLedgerEntryRemoved,
-		Removed: &xdr.LedgerKey{
-			Type: xdr.LedgerEntryTypeAccount,
-			Account: &xdr.LedgerKeyAccount{
-				AccountId: accountID,
-			},
-		},
-	}
-	accountEntry, err := getAccountEntry(&change)
-	if err != nil {
-		t.Error(err)
-	}
-	if accountEntry != nil {
-		t.Fatal("got account entry non-nil for removal, want account entry nil")
-	}
-}
-
-func TestGetAccountEntryNotRemoved(t *testing.T) {
-	wantAddress := "GBFLTCDLOE6YQ74B66RH3S2UW5I2MKZ5VLTM75F4YMIWUIXRIFVNRNIF"
-	accountID, err := xdr.AddressToAccountId(wantAddress)
-	if err != nil {
-		t.Error(err)
-	}
-	change := xdr.LedgerEntryChange{
-		Type: xdr.LedgerEntryChangeTypeLedgerEntryState,
-		State: &xdr.LedgerEntry{
-			Data: xdr.LedgerEntryData{
-				Type: xdr.LedgerEntryTypeAccount,
-				Account: &xdr.AccountEntry{
-					AccountId: accountID,
-				},
-			},
-		},
-	}
-	accountEntry, err := getAccountEntry(&change)
-	if err != nil {
-		t.Error(err)
-	}
-	gotAddress := accountEntry.AccountId.Address()
-	if gotAddress != wantAddress {
-		t.Fatalf("got address %s, want address %s", gotAddress, wantAddress)
-	}
-}
-
-func TestMakeBalanceNotChanged(t *testing.T) {
-	wantBalance := uint32(999)
-	state := accountState{
-		balance: wantBalance,
-	}
-	change := xdr.LedgerEntryChange{
-		Type: xdr.LedgerEntryChangeTypeLedgerEntryRemoved,
-		Removed: &xdr.LedgerKey{
-			Type:    xdr.LedgerEntryTypeAccount,
-			Account: &xdr.LedgerKeyAccount{},
-		},
-	}
-	gotBalance, err := makeBalance(&state, &change)
-	if err != nil {
-		t.Error(err)
-	}
-	if gotBalance != wantBalance {
-		t.Fatalf("got balance %d, want balance %d", gotBalance, wantBalance)
-	}
-
-}
-
-func TestMakeBalanceChanged(t *testing.T) {
-	originalBalance := uint32(111)
-	wantBalance := uint32(222)
-	state := accountState{
-		balance: originalBalance,
-	}
-	change := xdr.LedgerEntryChange{
-		Type: xdr.LedgerEntryChangeTypeLedgerEntryState,
-		State: &xdr.LedgerEntry{
-			Data: xdr.LedgerEntryData{
-				Type: xdr.LedgerEntryTypeAccount,
-				Account: &xdr.AccountEntry{
-					Balance: xdr.Int64(wantBalance),
-				},
-			},
-		},
-	}
-	gotBalance, err := makeBalance(&state, &change)
-	if err != nil {
-		t.Error(err)
-	}
-	if gotBalance != wantBalance {
-		t.Fatalf("got balance %d, want balance %d", gotBalance, wantBalance)
-	}
-}
-
-func TestMakeSignersNotAccount(t *testing.T) {
-	wantSigners := []signer{}
-	wantSigners = append(wantSigners, signer{address: "GBFLTCDLOE6YQ74B66RH3S2UW5I2MKZ5VLTM75F4YMIWUIXRIFVNRNIF", weight: uint32(1)})
-	state := accountState{
-		signers: wantSigners,
-	}
-	change := xdr.LedgerEntryChange{
-		Type: xdr.LedgerEntryChangeTypeLedgerEntryRemoved,
-		Removed: &xdr.LedgerKey{
-			Type:    xdr.LedgerEntryTypeAccount,
-			Account: &xdr.LedgerKeyAccount{},
-		},
-	}
-	gotSigners, err := makeSigners(&state, &change)
-	if err != nil {
-		t.Error(err)
-	}
-
-	if !assert.Equal(t, gotSigners, wantSigners) {
-		t.Fatalf("got signers %v, want signers %v", gotSigners, wantSigners)
-	}
-}
-
-func TestMakeSignersNotChanged(t *testing.T) {
-	wantAddress := "GBFLTCDLOE6YQ74B66RH3S2UW5I2MKZ5VLTM75F4YMIWUIXRIFVNRNIF"
-	wantSigners := []signer{}
-	wantSigners = append(wantSigners, signer{address: wantAddress, weight: uint32(1)})
-
-	xdrSigners := []xdr.Signer{}
-	signerKeyPtr := &xdr.SignerKey{}
-	err := signerKeyPtr.SetAddress(wantAddress)
-	if err != nil {
-		t.Error(err)
-	}
-	xdrSigner := xdr.Signer{
-		Key:    *signerKeyPtr,
-		Weight: xdr.Uint32(1),
-	}
-	xdrSigners = append(xdrSigners, xdrSigner)
-
-	state := accountState{
-		signers: wantSigners,
-	}
-	change := xdr.LedgerEntryChange{
-		Type: xdr.LedgerEntryChangeTypeLedgerEntryState,
-		State: &xdr.LedgerEntry{
-			Data: xdr.LedgerEntryData{
-				Type: xdr.LedgerEntryTypeAccount,
-				Account: &xdr.AccountEntry{
-					Signers: xdrSigners,
-				},
-			},
-		},
-	}
-	gotSigners, err := makeSigners(&state, &change)
-	if err != nil {
-		t.Error(err)
-	}
-
-	if !assert.Equal(t, gotSigners, wantSigners) {
-		t.Fatalf("got signers %v, want signers %v", gotSigners, wantSigners)
-	}
-}
-
-func TestMakeSignersChanged(t *testing.T) {
-	originalAddress := "GBFLTCDLOE6YQ74B66RH3S2UW5I2MKZ5VLTM75F4YMIWUIXRIFVNRNIF"
-	originalSigners := []signer{}
-	originalSigners = append(originalSigners, signer{address: originalAddress, weight: uint32(1)})
-
-	state := accountState{
-		signers: originalSigners,
-	}
-	change := xdr.LedgerEntryChange{
-		Type: xdr.LedgerEntryChangeTypeLedgerEntryState,
-		State: &xdr.LedgerEntry{
-			Data: xdr.LedgerEntryData{
+var signersTests = []struct {
+	testName    string
+	wantSigners []signer
+	change      xdr.LedgerEntryChange
+}{
+	{"NotAccount",
+		[]signer{{address: wantAddress, weight: uint32(1)}},
+		xdr.LedgerEntryChange{
+			Type: xdr.LedgerEntryChangeTypeLedgerEntryRemoved,
+			Removed: &xdr.LedgerKey{
 				Type:    xdr.LedgerEntryTypeAccount,
-				Account: &xdr.AccountEntry{},
+				Account: &xdr.LedgerKeyAccount{},
+			},
+		}},
+	{"NotChanged",
+		[]signer{{address: wantAddress, weight: uint32(1)}},
+		xdr.LedgerEntryChange{
+			Type: xdr.LedgerEntryChangeTypeLedgerEntryState,
+			State: &xdr.LedgerEntry{
+				Data: xdr.LedgerEntryData{
+					Type: xdr.LedgerEntryTypeAccount,
+					Account: &xdr.AccountEntry{
+						Signers: []xdr.Signer{{
+							Key:    xdr.MustSigner(wantAddress),
+							Weight: xdr.Uint32(1),
+						}},
+					},
+				},
 			},
 		},
-	}
-	gotSigners, err := makeSigners(&state, &change)
-	if err != nil {
-		t.Error(err)
-	}
-	if gotSigners != nil {
-		t.Fatalf("got signers %v, want signers nil", gotSigners)
+	},
+}
+
+func TestSigners(t *testing.T) {
+	for _, tt := range signersTests {
+		t.Run(tt.testName, func(t *testing.T) {
+			originalSigners := []signer{{address: wantAddress, weight: uint32(1)}}
+			state := accountState{signers: originalSigners}
+			gotSigners, err := makeSigners(&state, &tt.change)
+			if err != nil {
+				t.Error(err)
+			}
+			if tt.wantSigners == nil {
+				if gotSigners != nil {
+					t.Fatalf("got signers %v, want signers nil", gotSigners)
+				}
+			} else {
+				if !assert.Equal(t, gotSigners, tt.wantSigners) {
+					t.Fatalf("got signers %v, want signers %v", gotSigners, tt.wantSigners)
+				}
+			}
+		})
 	}
 }
 
-func TestMakeTrustlinesNotTrustline(t *testing.T) {
-	wantTrustlines := make(map[string]trustline)
-	asset := "USD"
-	newTrustline := trustline{
-		asset:   asset,
-		balance: uint32(10),
-		limit:   uint32(100),
-	}
-	wantTrustlines[asset] = newTrustline
+var trustlineKey = fmt.Sprintf("credit_alphanum4/USD/%s", wantAddress)
 
-	state := accountState{
-		trustlines: wantTrustlines,
-	}
-
-	change := xdr.LedgerEntryChange{
-		Type: xdr.LedgerEntryChangeTypeLedgerEntryState,
-		State: &xdr.LedgerEntry{
-			Data: xdr.LedgerEntryData{
-				Type:    xdr.LedgerEntryTypeAccount,
-				Account: &xdr.AccountEntry{},
+var trustlinesTests = []struct {
+	testName       string
+	wantTrustlines map[string]trustline
+	change         xdr.LedgerEntryChange
+}{
+	{"NotTrustline",
+		map[string]trustline{
+			trustlineKey: trustline{
+				asset:   trustlineKey,
+				balance: uint32(0),
+				limit:   uint32(100),
+			}},
+		xdr.LedgerEntryChange{
+			Type: xdr.LedgerEntryChangeTypeLedgerEntryState,
+			State: &xdr.LedgerEntry{
+				Data: xdr.LedgerEntryData{
+					Type:    xdr.LedgerEntryTypeAccount,
+					Account: &xdr.AccountEntry{},
+				},
 			},
 		},
-	}
-	gotTrustlines, err := makeTrustlines(&state, &change)
-	if err != nil {
-		t.Error(err)
-	}
-	if !assert.Equal(t, gotTrustlines, wantTrustlines) {
-		t.Fatalf("got trustlines %v, want trustlines %v", gotTrustlines, wantTrustlines)
-	}
-}
-
-func TestMakeTrustlinesRemoved(t *testing.T) {
-	originalTrustlines := make(map[string]trustline)
-	assetCode := "USD"
-	assetIssuer := "GBDT3K42LOPSHNAEHEJ6AVPADIJ4MAR64QEKKW2LQPBSKLYD22KUEH4P"
-	newTrustline := trustline{
-		asset:   assetCode,
-		balance: uint32(10),
-		limit:   uint32(100),
-	}
-	asset := xdr.MustNewCreditAsset(assetCode, assetIssuer)
-
-	originalTrustlines[asset.String()] = newTrustline
-	state := accountState{trustlines: originalTrustlines}
-
-	// wantAddress := "GBFLTCDLOE6YQ74B66RH3S2UW5I2MKZ5VLTM75F4YMIWUIXRIFVNRNIF"
-	assetIssuerAccountID, err := xdr.AddressToAccountId(assetIssuer)
-	if err != nil {
-		t.Error(err)
-	}
-
-	change := xdr.LedgerEntryChange{
-		Type: xdr.LedgerEntryChangeTypeLedgerEntryRemoved,
-		Removed: &xdr.LedgerKey{
-			Type: xdr.LedgerEntryTypeTrustline,
-			TrustLine: &xdr.LedgerKeyTrustLine{
-				AccountId: assetIssuerAccountID,
-				Asset:     asset,
-			},
-		},
-	}
-	wantTrustlines := make(map[string]trustline)
-	gotTrustlines, err := makeTrustlines(&state, &change)
-	if err != nil {
-		t.Error(err)
-	}
-
-	if !assert.Equal(t, wantTrustlines, gotTrustlines) {
-		t.Fatalf("got trustlines %v, want nil trustlines", gotTrustlines)
-	}
-}
-
-func TestMakeTrustlinesChanged(t *testing.T) {
-	assetCode := "USD"
-	assetIssuer := "GBDT3K42LOPSHNAEHEJ6AVPADIJ4MAR64QEKKW2LQPBSKLYD22KUEH4P"
-	asset := xdr.MustNewCreditAsset(assetCode, assetIssuer)
-	assetString := asset.String()
-
-	originalBalance := 10
-	limit := 100
-	originalTrustline := trustline{
-		asset:   assetString,
-		balance: uint32(originalBalance),
-		limit:   uint32(limit),
-	}
-	originalTrustlines := make(map[string]trustline)
-	originalTrustlines[assetString] = originalTrustline
-	state := accountState{trustlines: originalTrustlines}
-
-	assetIssuerAccountID, err := xdr.AddressToAccountId(assetIssuer)
-	if err != nil {
-		t.Error(err)
-	}
-	newBalance := 20
-	change := xdr.LedgerEntryChange{
-		Type: xdr.LedgerEntryChangeTypeLedgerEntryState,
-		State: &xdr.LedgerEntry{
-			Data: xdr.LedgerEntryData{
+	},
+	{"Removed",
+		map[string]trustline{},
+		xdr.LedgerEntryChange{
+			Type: xdr.LedgerEntryChangeTypeLedgerEntryRemoved,
+			Removed: &xdr.LedgerKey{
 				Type: xdr.LedgerEntryTypeTrustline,
-				TrustLine: &xdr.TrustLineEntry{
-					AccountId: assetIssuerAccountID,
-					Asset:     asset,
-					Balance:   xdr.Int64(newBalance),
-					Limit:     xdr.Int64(limit),
+				TrustLine: &xdr.LedgerKeyTrustLine{
+					AccountId: xdr.MustAddress(wantAddress),
+					Asset:     xdr.MustNewCreditAsset("USD", wantAddress),
 				},
 			},
 		},
-	}
-
-	wantTrustlines := make(map[string]trustline)
-	newTrustline := trustline{
-		asset:   assetString,
-		balance: uint32(newBalance),
-		limit:   uint32(limit),
-	}
-	wantTrustlines[assetString] = newTrustline
-
-	gotTrustlines, err := makeTrustlines(&state, &change)
-	if err != nil {
-		t.Error(err)
-	}
-	if !assert.Equal(t, wantTrustlines, gotTrustlines) {
-		t.Fatalf("got trustlines %v, want trustlines %v", gotTrustlines, wantTrustlines)
-	}
-}
-
-func TestMakeDataNotData(t *testing.T) {
-	wantData := make(map[string][]byte)
-	wantData["key"] = []byte("value")
-	state := accountState{
-		data: wantData,
-	}
-	change := xdr.LedgerEntryChange{
-		Type: xdr.LedgerEntryChangeTypeLedgerEntryState,
-		State: &xdr.LedgerEntry{
-			Data: xdr.LedgerEntryData{
-				Type:    xdr.LedgerEntryTypeAccount,
-				Account: &xdr.AccountEntry{},
+	},
+	{"Changed",
+		map[string]trustline{
+			trustlineKey: trustline{
+				asset:   trustlineKey,
+				balance: uint32(20),
+				limit:   uint32(100),
+			}},
+		xdr.LedgerEntryChange{
+			Type: xdr.LedgerEntryChangeTypeLedgerEntryState,
+			State: &xdr.LedgerEntry{
+				Data: xdr.LedgerEntryData{
+					Type: xdr.LedgerEntryTypeTrustline,
+					TrustLine: &xdr.TrustLineEntry{
+						AccountId: xdr.MustAddress(wantAddress),
+						Asset:     xdr.MustNewCreditAsset("USD", wantAddress),
+						Balance:   xdr.Int64(20),
+						Limit:     xdr.Int64(100),
+					},
+				},
 			},
 		},
-	}
-	gotData, err := makeData(&state, &change)
-	if err != nil {
-		t.Error(err)
-	}
-	if !assert.Equal(t, wantData, gotData) {
-		t.Fatalf("got data %v, want data %v", gotData, wantData)
+	},
+}
+
+func TestTrustlines(t *testing.T) {
+	for _, tt := range trustlinesTests {
+		t.Run(tt.testName, func(t *testing.T) {
+			originalTrustlines := map[string]trustline{
+				trustlineKey: trustline{
+					asset:   trustlineKey,
+					balance: uint32(0),
+					limit:   uint32(100),
+				},
+			}
+			state := accountState{
+				trustlines: originalTrustlines,
+			}
+			gotTrustlines, err := makeTrustlines(&state, &tt.change)
+			if err != nil {
+				t.Error(err)
+			}
+			if !assert.Equal(t, tt.wantTrustlines, gotTrustlines) {
+				t.Fatalf("got trustlines %v, want trustlines %v", gotTrustlines, tt.wantTrustlines)
+			}
+		})
 	}
 }
 
-func TestMakeDataRemoved(t *testing.T) {
-	originalData := make(map[string][]byte)
-	dataName := "name"
-	originalData[dataName] = []byte("0")
-	state := accountState{
-		data: originalData,
-	}
-	change := xdr.LedgerEntryChange{
-		Type: xdr.LedgerEntryChangeTypeLedgerEntryRemoved,
-		Removed: &xdr.LedgerKey{
-			Type: xdr.LedgerEntryTypeData,
-			Data: &xdr.LedgerKeyData{
-				DataName: xdr.String64(dataName),
+var originalData = map[string][]byte{
+	"key": []byte("value"),
+}
+var dataTests = []struct {
+	testName string
+	wantData map[string][]byte
+	change   xdr.LedgerEntryChange
+}{
+	{"NotData",
+		originalData,
+		xdr.LedgerEntryChange{
+			Type: xdr.LedgerEntryChangeTypeLedgerEntryState,
+			State: &xdr.LedgerEntry{
+				Data: xdr.LedgerEntryData{
+					Type:    xdr.LedgerEntryTypeAccount,
+					Account: &xdr.AccountEntry{},
+				},
 			},
 		},
-	}
-	wantData := make(map[string][]byte)
-	gotData, err := makeData(&state, &change)
-	if err != nil {
-		t.Error(err)
-	}
-
-	if !assert.Equal(t, wantData, gotData) {
-		t.Fatalf("got data %v, want data %v", gotData, wantData)
-	}
-}
-
-func TestMakeDataChanged(t *testing.T) {
-	originalData := make(map[string][]byte)
-	originalDataName := "originalName"
-	originalDataValue := []byte("originalValue")
-	originalData[originalDataName] = originalDataValue
-	state := accountState{
-		data: originalData,
-	}
-
-	newDataName := "newName"
-	newDataValue := []byte("newValue")
-	change := xdr.LedgerEntryChange{
-		Type: xdr.LedgerEntryChangeTypeLedgerEntryState,
-		State: &xdr.LedgerEntry{
-			Data: xdr.LedgerEntryData{
+	},
+	{"Removed",
+		map[string][]byte{},
+		xdr.LedgerEntryChange{
+			Type: xdr.LedgerEntryChangeTypeLedgerEntryRemoved,
+			Removed: &xdr.LedgerKey{
 				Type: xdr.LedgerEntryTypeData,
-				Data: &xdr.DataEntry{
-					DataName:  xdr.String64(newDataName),
-					DataValue: xdr.DataValue(newDataValue),
+				Data: &xdr.LedgerKeyData{
+					DataName: xdr.String64("key"),
 				},
 			},
 		},
+	},
+	{"Changed",
+		map[string][]byte{"key": []byte("newValue")},
+		xdr.LedgerEntryChange{
+			Type: xdr.LedgerEntryChangeTypeLedgerEntryState,
+			State: &xdr.LedgerEntry{
+				Data: xdr.LedgerEntryData{
+					Type: xdr.LedgerEntryTypeData,
+					Data: &xdr.DataEntry{
+						DataName:  xdr.String64("key"),
+						DataValue: xdr.DataValue("newValue"),
+					},
+				},
+			},
+		},
+	},
+}
+
+func TestData(t *testing.T) {
+	for _, tt := range dataTests {
+		t.Run(tt.testName, func(t *testing.T) {
+
+			state := accountState{data: originalData}
+			gotData, err := makeData(&state, &tt.change)
+			if err != nil {
+				t.Error(err)
+			}
+			if !assert.Equal(t, tt.wantData, gotData) {
+				t.Fatalf("got data %v, want data %v", gotData, tt.wantData)
+			}
+		})
 	}
+}
 
-	wantData := make(map[string][]byte)
-	wantData[originalDataName] = originalDataValue
-	wantData[newDataName] = newDataValue
+var originalOffers = map[uint32]offer{1: offer{id: 1}}
+var offerTests = []struct {
+	testName   string
+	wantOffers map[uint32]offer
+	change     xdr.LedgerEntryChange
+}{
+	{"NotOffers",
+		originalOffers,
+		xdr.LedgerEntryChange{
+			Type: xdr.LedgerEntryChangeTypeLedgerEntryState,
+			State: &xdr.LedgerEntry{
+				Data: xdr.LedgerEntryData{
+					Type:    xdr.LedgerEntryTypeAccount,
+					Account: &xdr.AccountEntry{},
+				},
+			},
+		},
+	},
+	{"Removed",
+		map[uint32]offer{},
+		xdr.LedgerEntryChange{
+			Type: xdr.LedgerEntryChangeTypeLedgerEntryRemoved,
+			Removed: &xdr.LedgerKey{
+				Type: xdr.LedgerEntryTypeOffer,
+				Offer: &xdr.LedgerKeyOffer{
+					OfferId: xdr.Int64(1),
+				},
+			},
+		},
+	},
+	{"Changed",
+		map[uint32]offer{1: offer{id: 1}, 2: offer{id: 2, seller: wantAddress, selling: "native", buying: "native"}},
+		xdr.LedgerEntryChange{
+			Type: xdr.LedgerEntryChangeTypeLedgerEntryState,
+			State: &xdr.LedgerEntry{
+				Data: xdr.LedgerEntryData{
+					Type: xdr.LedgerEntryTypeOffer,
+					Offer: &xdr.OfferEntry{
+						OfferId:  xdr.Int64(2),
+						SellerId: xdr.MustAddress(wantAddress),
+					},
+				},
+			},
+		},
+	},
+}
 
-	gotData, err := makeData(&state, &change)
-	if err != nil {
-		t.Error(err)
-	}
-
-	if !assert.Equal(t, wantData, gotData) {
-		t.Fatalf("got data %v, want data %v", gotData, wantData)
+func TestOffers(t *testing.T) {
+	for _, tt := range offerTests {
+		t.Run(tt.testName, func(t *testing.T) {
+			originalOffers := map[uint32]offer{
+				1: offer{id: 1},
+			}
+			state := accountState{offers: originalOffers}
+			gotOffers, err := makeOffers(&state, &tt.change)
+			if err != nil {
+				t.Error(err)
+			}
+			if !assert.Equal(t, tt.wantOffers, gotOffers) {
+				t.Fatalf("got offers %v, want offers %v", gotOffers, tt.wantOffers)
+			}
+		})
 	}
 }

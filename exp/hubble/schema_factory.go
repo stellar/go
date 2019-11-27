@@ -12,7 +12,7 @@ import (
 func makeNewAccountState(state *accountState, change *xdr.LedgerEntryChange) (*accountState, error) {
 	// TODO: Handle account removal.
 	var newAccountState accountState
-	address, err := makeAccountID(change, state)
+	address, err := makeAccountID(change, *state)
 	if err != nil {
 		return nil, errors.Wrap(err, "could not get address")
 	}
@@ -57,7 +57,7 @@ func makeNewAccountState(state *accountState, change *xdr.LedgerEntryChange) (*a
 	return &newAccountState, nil
 }
 
-func makeAccountID(change *xdr.LedgerEntryChange, states ...*accountState) (string, error) {
+func makeAccountID(change *xdr.LedgerEntryChange, states ...accountState) (string, error) {
 	// If the address has already been set on the account state, we return it.
 	// We pass this as a optional parameter, so we can use this function more easily in the processor.
 	if len(states) == 1 {
