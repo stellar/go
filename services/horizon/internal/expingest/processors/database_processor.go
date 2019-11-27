@@ -320,10 +320,10 @@ func (p *DatabaseProcessor) ProcessLedger(ctx context.Context, store *pipeline.S
 					))
 				}
 
-				var err error
-				rowsAffected, err = p.AssetStatsQ.InsertAssetStat(delta)
-				if err != nil {
-					return errors.Wrap(err, "could not insert asset stat")
+				var errInsert error
+				rowsAffected, errInsert = p.AssetStatsQ.InsertAssetStat(delta)
+				if errInsert != nil {
+					return errors.Wrap(errInsert, "could not insert asset stat")
 				}
 			} else {
 				statBalance, ok := new(big.Int).SetString(stat.Amount, 10)

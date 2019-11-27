@@ -9,6 +9,7 @@ bumps.  A breaking change will get clearly notified in this log.
 ## v0.24.0
 
 * Rename `OperationFeeStats` to `FeeStats` ([#1950](https://github.com/stellar/go/pull/1950))
+* Improved performance of asset stats processor ([#1987](https://github.com/stellar/go/pull/1987))
 
 ## v0.23.1
 
