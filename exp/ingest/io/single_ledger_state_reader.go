@@ -187,11 +187,7 @@ func (msr *SingleLedgerStateReader) readBucketEntry(stream *historyarchive.XdrSt
 			break
 		}
 
-		err = stream.CloseWithoutValidation()
-		if err != nil {
-			err = errors.Wrap(err, "Error closing stream")
-			break
-		}
+		stream.Close()
 
 		var retryStream *historyarchive.XdrStream
 		retryStream, err = msr.newXDRStream(hash)

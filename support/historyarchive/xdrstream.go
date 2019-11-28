@@ -106,7 +106,7 @@ func (x *XdrStream) Close() error {
 		_, err := io.Copy(ioutil.Discard, x.rdr)
 		if err != nil {
 			// close the internal readers to avoid memory leaks
-			x.CloseWithoutValidation()
+			x.closeReaders()
 			return errors.Wrap(err, "Error reading remaining bytes from rdr")
 		}
 
@@ -114,19 +114,20 @@ func (x *XdrStream) Close() error {
 
 		if !bytes.Equal(x.expectedHash[:], actualHash[:]) {
 			// close the internal readers to avoid memory leaks
-			x.CloseWithoutValidation()
+			x.closeReaders()
 			return errors.New("Stream hash does not match expected hash!")
 		}
 	}
 
-	return x.CloseWithoutValidation()
+	return x.closeReaders()
 }
 
-// CloseWithoutValidation closes all internal readers without validating the
-// hash of the stream contents
-func (x *XdrStream) CloseWithoutValidation() error {
+func (x *XdrStream) closeReaders() error {
 	if x.rdr != nil {
 		if err := x.rdr.Close(); err != nil {
+			if x.rdr2 != nil {
+				x.rdr2.Close()
+			}
 			return err
 		}
 	}

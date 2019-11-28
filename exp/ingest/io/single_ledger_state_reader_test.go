@@ -338,15 +338,15 @@ func (s *ReadBucketEntryTestSuite) TestReadEntryAllRetriesFail() {
 
 	s.mockArchive.
 		On("GetXdrStreamForHash", emptyHash).
-		Return(createInvalidXdrStream(), nil).Once()
+		Return(createInvalidXdrStream(nil), nil).Once()
 
 	s.mockArchive.
 		On("GetXdrStreamForHash", emptyHash).
-		Return(createInvalidXdrStream(), nil).Once()
+		Return(createInvalidXdrStream(nil), nil).Once()
 
 	s.mockArchive.
 		On("GetXdrStreamForHash", emptyHash).
-		Return(createInvalidXdrStream(), nil).Once()
+		Return(createInvalidXdrStream(nil), nil).Once()
 
 	stream, err := s.reader.newXDRStream(emptyHash)
 	s.Require().NoError(err)
@@ -355,12 +355,42 @@ func (s *ReadBucketEntryTestSuite) TestReadEntryAllRetriesFail() {
 	s.Require().EqualError(err, "Read wrong number of bytes from XDR")
 }
 
+func (s *ReadBucketEntryTestSuite) TestReadEntryRetryIgnoresProtocolCloseError() {
+	emptyHash := historyarchive.EmptyXdrArrayHash()
+
+	s.mockArchive.
+		On("GetXdrStreamForHash", emptyHash).
+		Return(
+			createInvalidXdrStream(errors.New("stream error: stream ID 75; PROTOCOL_ERROR")),
+			nil,
+		).Once()
+
+	expectedEntry := metaEntry(1)
+	s.mockArchive.
+		On("GetXdrStreamForHash", emptyHash).
+		Return(createXdrStream(expectedEntry), nil).Once()
+
+	stream, err := s.reader.newXDRStream(emptyHash)
+	s.Require().NoError(err)
+
+	entry, err := s.reader.readBucketEntry(stream, emptyHash)
+	s.Require().NoError(err)
+	s.Require().Equal(entry, expectedEntry)
+
+	hash, ok := stream.ExpectedHash()
+	s.Require().Equal(historyarchive.Hash(hash), emptyHash)
+	s.Require().True(ok)
+
+	_, err = s.reader.readBucketEntry(stream, emptyHash)
+	s.Require().Equal(err, io.EOF)
+}
+
 func (s *ReadBucketEntryTestSuite) TestReadEntryRetryFailsToCreateNewStream() {
 	emptyHash := historyarchive.EmptyXdrArrayHash()
 
 	s.mockArchive.
 		On("GetXdrStreamForHash", emptyHash).
-		Return(createInvalidXdrStream(), nil).Once()
+		Return(createInvalidXdrStream(nil), nil).Once()
 
 	var nilStream *historyarchive.XdrStream
 	s.mockArchive.
@@ -379,11 +409,11 @@ func (s *ReadBucketEntryTestSuite) TestReadEntryRetrySucceeds() {
 
 	s.mockArchive.
 		On("GetXdrStreamForHash", emptyHash).
-		Return(createInvalidXdrStream(), nil).Once()
+		Return(createInvalidXdrStream(nil), nil).Once()
 
 	s.mockArchive.
 		On("GetXdrStreamForHash", emptyHash).
-		Return(createInvalidXdrStream(), nil).Once()
+		Return(createInvalidXdrStream(nil), nil).Once()
 
 	expectedEntry := metaEntry(1)
 	s.mockArchive.
@@ -510,11 +540,18 @@ func entryAccount(t xdr.BucketEntryType, id string, balance uint32) xdr.BucketEn
 	}
 }
 
-func createInvalidXdrStream() *historyarchive.XdrStream {
+type errCloser struct {
+	io.Reader
+	err error
+}
+
+func (e errCloser) Close() error { return e.err }
+
+func createInvalidXdrStream(closeError error) *historyarchive.XdrStream {
 	b := &bytes.Buffer{}
 	writeInvalidFrame(b)
 
-	return xdrStreamFromBuffer(b)
+	return historyarchive.NewXdrStream(errCloser{b, closeError})
 }
 
 func writeInvalidFrame(b *bytes.Buffer) {
