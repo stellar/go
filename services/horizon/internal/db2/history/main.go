@@ -292,19 +292,34 @@ type EffectType int
 // FeeStats is a row of data from the min, mode, percentile aggregate functions over the
 // `history_transactions` table.
 type FeeStats struct {
-	Min  null.Int `db:"min"`
-	Mode null.Int `db:"mode"`
-	P10  null.Int `db:"p10"`
-	P20  null.Int `db:"p20"`
-	P30  null.Int `db:"p30"`
-	P40  null.Int `db:"p40"`
-	P50  null.Int `db:"p50"`
-	P60  null.Int `db:"p60"`
-	P70  null.Int `db:"p70"`
-	P80  null.Int `db:"p80"`
-	P90  null.Int `db:"p90"`
-	P95  null.Int `db:"p95"`
-	P99  null.Int `db:"p99"`
+	FeeChargedMax  null.Int `db:"fee_charged_max"`
+	FeeChargedMin  null.Int `db:"fee_charged_min"`
+	FeeChargedMode null.Int `db:"fee_charged_mode"`
+	FeeChargedP10  null.Int `db:"fee_charged_p10"`
+	FeeChargedP20  null.Int `db:"fee_charged_p20"`
+	FeeChargedP30  null.Int `db:"fee_charged_p30"`
+	FeeChargedP40  null.Int `db:"fee_charged_p40"`
+	FeeChargedP50  null.Int `db:"fee_charged_p50"`
+	FeeChargedP60  null.Int `db:"fee_charged_p60"`
+	FeeChargedP70  null.Int `db:"fee_charged_p70"`
+	FeeChargedP80  null.Int `db:"fee_charged_p80"`
+	FeeChargedP90  null.Int `db:"fee_charged_p90"`
+	FeeChargedP95  null.Int `db:"fee_charged_p95"`
+	FeeChargedP99  null.Int `db:"fee_charged_p99"`
+	MaxFeeMax      null.Int `db:"max_fee_max"`
+	MaxFeeMin      null.Int `db:"max_fee_min"`
+	MaxFeeMode     null.Int `db:"max_fee_mode"`
+	MaxFeeP10      null.Int `db:"max_fee_p10"`
+	MaxFeeP20      null.Int `db:"max_fee_p20"`
+	MaxFeeP30      null.Int `db:"max_fee_p30"`
+	MaxFeeP40      null.Int `db:"max_fee_p40"`
+	MaxFeeP50      null.Int `db:"max_fee_p50"`
+	MaxFeeP60      null.Int `db:"max_fee_p60"`
+	MaxFeeP70      null.Int `db:"max_fee_p70"`
+	MaxFeeP80      null.Int `db:"max_fee_p80"`
+	MaxFeeP90      null.Int `db:"max_fee_p90"`
+	MaxFeeP95      null.Int `db:"max_fee_p95"`
+	MaxFeeP99      null.Int `db:"max_fee_p99"`
 }
 
 // KeyValueStoreRow represents a row in key value store.
