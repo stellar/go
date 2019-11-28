@@ -98,6 +98,8 @@ type System struct {
 	stateReady       bool
 	stateReadyLock   sync.RWMutex
 	maxStreamRetries int
+	wg               sync.WaitGroup
+	shutdown         chan struct{}
 
 	// stateVerificationRunning is true when verification routine is currently
 	// running.
@@ -211,10 +213,12 @@ func NewSystem(config Config) (*System, error) {
 //   * If instances is a NOT leader, it runs ledger pipeline without updating a
 //     a database so order book graph is updated but database is not overwritten.
 func (s *System) Run() {
+	s.shutdown = make(chan struct{})
 	// Expingest is an experimental package so we don't want entire Horizon app
 	// to crash in case of unexpected errors.
 	// TODO: This should be removed when expingest is no longer experimental.
 	defer func() {
+		s.wg.Wait()
 		if r := recover(); r != nil {
 			log.WithFields(logpkg.F{
 				"err":   r,
@@ -398,6 +402,12 @@ func (s *System) resetStateVerificationErrors() {
 func (s *System) Shutdown() {
 	log.Info("Shutting down ingestion system...")
 	s.session.Shutdown()
+	s.stateVerificationMutex.Lock()
+	defer s.stateVerificationMutex.Unlock()
+	if s.stateVerificationRunning {
+		log.Info("Shutting down state verifier...")
+	}
+	close(s.shutdown)
 }
 
 func createArchive(archiveURL string) (*historyarchive.Archive, error) {

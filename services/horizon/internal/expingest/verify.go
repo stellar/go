@@ -41,7 +41,6 @@ func (s *System) verifyState(graphOffers map[xdr.Int64]xdr.OfferEntry) error {
 	}
 	s.stateVerificationRunning = true
 	s.stateVerificationMutex.Unlock()
-
 	if stateVerifierExpectedIngestionVersion != CurrentVersion {
 		log.Errorf(
 			"State verification expected version is %d but actual is: %d",
@@ -57,7 +56,6 @@ func (s *System) verifyState(graphOffers map[xdr.Int64]xdr.OfferEntry) error {
 	defer func() {
 		log.WithField("duration", time.Since(startTime).Seconds()).Info("State verification finished")
 		session.Rollback()
-
 		s.stateVerificationMutex.Lock()
 		s.stateVerificationRunning = false
 		s.stateVerificationMutex.Unlock()
@@ -88,7 +86,6 @@ func (s *System) verifyState(graphOffers map[xdr.Int64]xdr.OfferEntry) error {
 		localLog.Info("Current ledger is not a checkpoint ledger. Cancelling...")
 		return nil
 	}
-
 	// Get root HAS to check if we're checking one of the latest ledgers or
 	// Horizon is catching up. It doesn't make sense to verify old ledgers as
 	// we want to check the latest state.
@@ -105,9 +102,13 @@ func (s *System) verifyState(graphOffers map[xdr.Int64]xdr.OfferEntry) error {
 	}
 
 	localLog.Info("Starting state verification. Waiting 40 seconds for stellar-core to publish HAS...")
-
-	// Wait for stellar-core to publish HAS
-	time.Sleep(40 * time.Second)
+	select {
+	case <-s.shutdown:
+		localLog.Info("State verifier shut down...")
+		return nil
+	case <-time.After(40 * time.Second):
+		// Wait for stellar-core to publish HAS
+	}
 
 	localLog.Info("Creating state reader...")
 
@@ -134,6 +135,14 @@ func (s *System) verifyState(graphOffers map[xdr.Int64]xdr.OfferEntry) error {
 		keys, err = verifier.GetLedgerKeys(verifyBatchSize)
 		if err != nil {
 			return errors.Wrap(err, "verifier.GetLedgerKeys")
+		}
+
+		select {
+		case <-s.shutdown:
+			localLog.Info("State verifier shut down...")
+			return nil
+		default:
+			// continue
 		}
 
 		if len(keys) == 0 {
