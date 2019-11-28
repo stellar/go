@@ -44,7 +44,7 @@ type State struct {
 	MaxFeeP99  int64
 
 	LastBaseFee         int64
-	LastLedger          int64
+	LastLedger          uint32
 	LedgerCapacityUsage string
 }
 

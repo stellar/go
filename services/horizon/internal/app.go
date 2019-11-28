@@ -238,12 +238,12 @@ func (a *App) UpdateFeeStatsState() {
 	}
 
 	// finish early if no new ledgers
-	if cur.LastLedger == int64(latest.Sequence) {
+	if cur.LastLedger == uint32(latest.Sequence) {
 		return
 	}
 
 	next.LastBaseFee = int64(latest.BaseFee)
-	next.LastLedger = int64(latest.Sequence)
+	next.LastLedger = uint32(latest.Sequence)
 
 	err = a.HistoryQ().FeeStats(latest.Sequence, &feeStats)
 	if err != nil {

@@ -20,7 +20,7 @@ var _ actions.JSONer = (*FeeStatsAction)(nil)
 // this struct is very similar to hProtocol.feeStats but drops the usage of int
 // in favor of int64
 type feeStats struct {
-	LastLedger          int64   `json:"last_ledger,string"`
+	LastLedger          uint32  `json:"last_ledger,string"`
 	LastLedgerBaseFee   int64   `json:"last_ledger_base_fee,string"`
 	LedgerCapacityUsage float64 `json:"ledger_capacity_usage,string"`
 	MinAcceptedFee      int64   `json:"min_accepted_fee,string"`
