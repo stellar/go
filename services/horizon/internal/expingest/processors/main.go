@@ -38,6 +38,8 @@ type DatabaseProcessor struct {
 	LedgersQ      history.QExpLedgers
 	Action        DatabaseProcessorActionType
 	IngestVersion int
+	// AssetStatSet is used in TrustLines processor
+	AssetStatSet AssetStatSet
 }
 
 // OrderbookProcessor is a processor (both state and ledger) that's responsible
