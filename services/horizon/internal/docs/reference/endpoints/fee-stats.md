@@ -76,7 +76,7 @@ Information about max fee bid for transactions in the last 5 ledgers.
 
 | Field | |
 | - | - |
-| min | Minimum max fee in the last 5 ledger. |
+| min | Minimum (lowest) value of the maximum fee bid over the last 5 ledgers. |
 | mode | Mode max fee in the last 5 ledger. |
 | p10 | 10th percentile max fee in the last 5 ledger. |
 | p20 | 20th percentile max fee in the last 5 ledger. |
