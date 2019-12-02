@@ -121,7 +121,7 @@ func (s *Session) GetRaw(dest interface{}, query string, args ...interface{}) er
 	}
 
 	start := time.Now()
-	err = s.conn().Get(dest, query, args...)
+	err = s.conn().GetContext(s.Ctx, dest, query, args...)
 	s.log("get", start, query, args)
 
 	if err == nil {
@@ -186,7 +186,7 @@ func (s *Session) ExecRaw(query string, args ...interface{}) (sql.Result, error)
 	}
 
 	start := time.Now()
-	result, err := s.conn().Exec(query, args...)
+	result, err := s.conn().ExecContext(s.Ctx, query, args...)
 	s.log("exec", start, query, args)
 
 	if err == nil {
@@ -223,7 +223,7 @@ func (s *Session) QueryRaw(query string, args ...interface{}) (*sqlx.Rows, error
 	}
 
 	start := time.Now()
-	result, err := s.conn().Queryx(query, args...)
+	result, err := s.conn().QueryxContext(s.Ctx, query, args...)
 	s.log("query", start, query, args)
 
 	if err == nil {
@@ -283,7 +283,7 @@ func (s *Session) SelectRaw(
 	}
 
 	start := time.Now()
-	err = s.conn().Select(dest, query, args...)
+	err = s.conn().SelectContext(s.Ctx, dest, query, args...)
 	s.log("select", start, query, args)
 
 	if err == nil {

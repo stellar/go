@@ -1,6 +1,7 @@
 package db
 
 import (
+	"context"
 	"testing"
 
 	"github.com/stellar/go/support/db/dbtest"
@@ -14,7 +15,7 @@ func TestSession(t *testing.T) {
 
 	assert := assert.New(t)
 	require := require.New(t)
-	sess := &Session{DB: db.Open()}
+	sess := &Session{DB: db.Open(), Ctx: context.Background()}
 	defer sess.DB.Close()
 
 	assert.Equal("postgres", sess.Dialect())

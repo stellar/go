@@ -281,10 +281,10 @@ func (m *ExperimentalIngestionMiddleware) Wrap(h http.Handler) http.Handler {
 
 		localLog := log.Ctx(ctx)
 		session := m.HorizonSession.Clone()
-		session.Ctx = r.Context()
 		q := &history.Q{session}
 
 		if render.Negotiate(r) != render.MimeEventStream {
+			session.Ctx = r.Context()
 			err := session.BeginTx(&sql.TxOptions{
 				Isolation: sql.LevelRepeatableRead,
 				ReadOnly:  true,

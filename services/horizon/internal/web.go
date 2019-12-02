@@ -61,6 +61,7 @@ func init() {
 	problem.RegisterError(db2.ErrInvalidLimit, problem.BadRequest)
 	problem.RegisterError(db2.ErrInvalidOrder, problem.BadRequest)
 	problem.RegisterError(sse.ErrRateLimited, hProblem.RateLimitExceeded)
+	problem.RegisterError(context.DeadlineExceeded, hProblem.Timeout)
 }
 
 // mustInitWeb installed a new Web instance onto the provided app object.
