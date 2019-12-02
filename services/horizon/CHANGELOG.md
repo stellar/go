@@ -20,7 +20,7 @@ bumps.  A breaking change will get clearly notified in this log.
 
 ### Scheduled Breaking Changes
 
-* Fee stats (`accepted` fields).
+* All `*_accepted_fee` fields in `/fee_stats` endpoint are deprecated. Fields will be removed in Horizon 0.25.0.
 
 Check [Beta Testing New Ingestion System](https://github.com/stellar/go/blob/master/services/horizon/internal/expingest/BETA_TESTING.md) if you want to test new ingestion system.
 
