@@ -29,18 +29,18 @@ Response contains the following fields:
 | last_ledger_base_fee | Base fee as defined in the last ledger |
 | ledger_capacity_usage | Average capacity usage in the last 5 ledgers. (0 is no usage, 1.0 is completely full ledgers) |
 | min_accepted_fee | Minimum accepted fee in the last 5 ledger. |
-| mode_accepted_fee | Mode accepted fee in the last 5 ledger. |
-| p10_accepted_fee | 10th percentile accepted fee in the last 5 ledger. |
-| p20_accepted_fee | 20th percentile accepted fee in the last 5 ledger. |
-| p30_accepted_fee | 30th percentile accepted fee in the last 5 ledger. |
-| p40_accepted_fee | 40th percentile accepted fee in the last 5 ledger. |
-| p50_accepted_fee | 50th percentile accepted fee in the last 5 ledger. |
-| p60_accepted_fee | 60th percentile accepted fee in the last 5 ledger. |
-| p70_accepted_fee | 70th percentile accepted fee in the last 5 ledger. |
-| p80_accepted_fee | 80th percentile accepted fee in the last 5 ledger. |
-| p90_accepted_fee | 90th percentile accepted fee in the last 5 ledger. |
-| p95_accepted_fee | 95th percentile accepted fee in the last 5 ledger. |
-| p99_accepted_fee | 99th percentile accepted fee in the last 5 ledger. |
+| mode_accepted_fee | Mode max fee in the last 5 ledger. |
+| p10_accepted_fee | 10th percentile max fee in the last 5 ledger. |
+| p20_accepted_fee | 20th percentile max fee in the last 5 ledger. |
+| p30_accepted_fee | 30th percentile max fee in the last 5 ledger. |
+| p40_accepted_fee | 40th percentile max fee in the last 5 ledger. |
+| p50_accepted_fee | 50th percentile max fee in the last 5 ledger. |
+| p60_accepted_fee | 60th percentile max fee in the last 5 ledger. |
+| p70_accepted_fee | 70th percentile max fee in the last 5 ledger. |
+| p80_accepted_fee | 80th percentile max fee in the last 5 ledger. |
+| p90_accepted_fee | 90th percentile max fee in the last 5 ledger. |
+| p95_accepted_fee | 95th percentile max fee in the last 5 ledger. |
+| p99_accepted_fee | 99th percentile max fee in the last 5 ledger. |
 
 ### Example Response
 
