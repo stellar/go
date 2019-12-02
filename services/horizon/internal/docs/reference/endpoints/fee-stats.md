@@ -7,6 +7,8 @@ clientData:
 This endpoint gives useful information about per-operation fee stats in the last 5 ledgers. It can be used to
 predict a fee set on the transaction that will be submitted to the network.
 
+Note: All `*_accepted_fee` fields are deprecated and  will be removed in Horizon `0.25.0`. Use the `max_fee` and `fee_charged` keys instead.
+
 ## Request
 
 ```
@@ -41,6 +43,53 @@ Response contains the following fields:
 | p90_accepted_fee | 90th percentile max fee in the last 5 ledger. |
 | p95_accepted_fee | 95th percentile max fee in the last 5 ledger. |
 | p99_accepted_fee | 99th percentile max fee in the last 5 ledger. |
+| fee_charged      | fee charged object |
+| max_fee          | max fee object |
+
+### Fee Charged Object
+
+Information about the fee charged for transactions in the last 5 ledgers.
+
+| Field | |
+| - | - |
+| min | Minimum fee charged in the last 5 ledger. |
+| mode | Mode fee charged in the last 5 ledger. |
+| p10 | 10th percentile fee charged in the last 5 ledger. |
+| p20 | 20th percentile fee charged in the last 5 ledger. |
+| p30 | 30th percentile fee charged in the last 5 ledger. |
+| p40 | 40th percentile fee charged in the last 5 ledger. |
+| p50 | 50th percentile fee charged in the last 5 ledger. |
+| p60 | 60th percentile fee charged in the last 5 ledger. |
+| p70 | 70th percentile fee charged in the last 5 ledger. |
+| p80 | 80th percentile fee charged in the last 5 ledger. |
+| p90 | 90th percentile fee charged in the last 5 ledger. |
+| p95 | 95th percentile fee charged in the last 5 ledger. |
+| p99 | 99th percentile fee charged in the last 5 ledger. |
+
+Note: The difference between `fee_charged` and `max_fee` is that the former
+represents the actual fee paid for the transaction while `max_fee` represents
+the maximum bid the transaction creator was willing to pay for the transaction.
+
+### Max Fee Object
+
+Information about max fee bid for transactions in the last 5 ledgers.
+
+| Field | |
+| - | - |
+| min | Minimum max fee in the last 5 ledger. |
+| mode | Mode max fee in the last 5 ledger. |
+| p10 | 10th percentile max fee in the last 5 ledger. |
+| p20 | 20th percentile max fee in the last 5 ledger. |
+| p30 | 30th percentile max fee in the last 5 ledger. |
+| p40 | 40th percentile max fee in the last 5 ledger. |
+| p50 | 50th percentile max fee in the last 5 ledger. |
+| p60 | 60th percentile max fee in the last 5 ledger. |
+| p70 | 70th percentile max fee in the last 5 ledger. |
+| p80 | 80th percentile max fee in the last 5 ledger. |
+| p90 | 90th percentile max fee in the last 5 ledger. |
+| p95 | 95th percentile max fee in the last 5 ledger. |
+| p99 | 99th percentile max fee in the last 5 ledger. |
+
 
 ### Example Response
 
@@ -61,7 +110,39 @@ Response contains the following fields:
   "p80_accepted_fee": "1225",
   "p90_accepted_fee": "1225",
   "p95_accepted_fee": "1225",
-  "p99_accepted_fee": "8000"
+  "p99_accepted_fee": "8000",
+  "fee_charged": {
+    "max": "100",
+    "min": "100",
+    "mode": "100",
+    "p10": "100",
+    "p20": "100",
+    "p30": "100",
+    "p40": "100",
+    "p50": "100",
+    "p60": "100",
+    "p70": "100",
+    "p80": "100",
+    "p90": "100",
+    "p95": "100",
+    "p99": "100"
+  },
+  "max_fee": {
+    "max": "100000",
+    "min": "100",
+    "mode": "100",
+    "p10": "100",
+    "p20": "100",
+    "p30": "100",
+    "p40": "100",
+    "p50": "100",
+    "p60": "100",
+    "p70": "100",
+    "p80": "100",
+    "p90": "15000",
+    "p95": "100000",
+    "p99": "100000"
+  }
 }
 ```
 
