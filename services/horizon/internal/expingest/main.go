@@ -365,7 +365,15 @@ func (s *System) resumeFromLedger(lastIngestedLedger uint32) {
 			if processed {
 				lastIngestedLedger = sessionLastLedger
 			}
-			return errors.Wrap(err, "Error returned from ingest.LiveSession")
+
+			select {
+			case <-s.shutdown:
+				log.WithField("err", err).
+					Error("System shut down but error returned from ingest.LiveSession")
+				return nil
+			default:
+				return errors.Wrap(err, "Error returned from ingest.LiveSession")
+			}
 		}
 
 		log.Info("Session shut down")
