@@ -29,20 +29,20 @@ Response contains the following fields:
 | - | - |
 | last_ledger | Last ledger sequence number |
 | last_ledger_base_fee | Base fee as defined in the last ledger |
-| ledger_capacity_usage | Average capacity usage in the last 5 ledgers. (0 is no usage, 1.0 is completely full ledgers) |
-| min_accepted_fee | Minimum accepted fee in the last 5 ledger. |
+| ledger_capacity_usage | Average capacity usage over the last 5 ledgers. (0 is no usage, 1.0 is completely full ledgers) |
+| min_accepted_fee | Minimum accepted fee over the last 5 ledger. |
 | mode_accepted_fee | Mode (most common value) of the maximum fee bid over the last 5 ledgers. |
-| p10_accepted_fee | 10th percentile max fee in the last 5 ledger. |
-| p20_accepted_fee | 20th percentile max fee in the last 5 ledger. |
-| p30_accepted_fee | 30th percentile max fee in the last 5 ledger. |
-| p40_accepted_fee | 40th percentile max fee in the last 5 ledger. |
-| p50_accepted_fee | 50th percentile max fee in the last 5 ledger. |
-| p60_accepted_fee | 60th percentile max fee in the last 5 ledger. |
-| p70_accepted_fee | 70th percentile max fee in the last 5 ledger. |
-| p80_accepted_fee | 80th percentile max fee in the last 5 ledger. |
-| p90_accepted_fee | 90th percentile max fee in the last 5 ledger. |
-| p95_accepted_fee | 95th percentile max fee in the last 5 ledger. |
-| p99_accepted_fee | 99th percentile max fee in the last 5 ledger. |
+| p10_accepted_fee | 10th percentile max fee over the last 5 ledger. |
+| p20_accepted_fee | 20th percentile max fee over the last 5 ledger. |
+| p30_accepted_fee | 30th percentile max fee over the last 5 ledger. |
+| p40_accepted_fee | 40th percentile max fee over the last 5 ledger. |
+| p50_accepted_fee | 50th percentile max fee over the last 5 ledger. |
+| p60_accepted_fee | 60th percentile max fee over the last 5 ledger. |
+| p70_accepted_fee | 70th percentile max fee over the last 5 ledger. |
+| p80_accepted_fee | 80th percentile max fee over the last 5 ledger. |
+| p90_accepted_fee | 90th percentile max fee over the last 5 ledger. |
+| p95_accepted_fee | 95th percentile max fee over the last 5 ledger. |
+| p99_accepted_fee | 99th percentile max fee over the last 5 ledger. |
 | fee_charged      | fee charged object |
 | max_fee          | max fee object |
 
@@ -52,19 +52,19 @@ Information about the fee charged for transactions in the last 5 ledgers.
 
 | Field | |
 | - | - |
-| min | Minimum fee charged in the last 5 ledger. |
-| mode | Mode fee charged in the last 5 ledger. |
-| p10 | 10th percentile fee charged in the last 5 ledger. |
-| p20 | 20th percentile fee charged in the last 5 ledger. |
-| p30 | 30th percentile fee charged in the last 5 ledger. |
-| p40 | 40th percentile fee charged in the last 5 ledger. |
-| p50 | 50th percentile fee charged in the last 5 ledger. |
-| p60 | 60th percentile fee charged in the last 5 ledger. |
-| p70 | 70th percentile fee charged in the last 5 ledger. |
-| p80 | 80th percentile fee charged in the last 5 ledger. |
-| p90 | 90th percentile fee charged in the last 5 ledger. |
-| p95 | 95th percentile fee charged in the last 5 ledger. |
-| p99 | 99th percentile fee charged in the last 5 ledger. |
+| min | Minimum fee charged over the last 5 ledgers. |
+| mode | Mode fee charged over the last 5 ledgers. |
+| p10 | 10th percentile fee charged over the last 5 ledgers. |
+| p20 | 20th percentile fee charged over the last 5 ledgers. |
+| p30 | 30th percentile fee charged over the last 5 ledgers. |
+| p40 | 40th percentile fee charged over the last 5 ledgers. |
+| p50 | 50th percentile fee charged over the last 5 ledgers. |
+| p60 | 60th percentile fee charged over the last 5 ledgers. |
+| p70 | 70th percentile fee charged over the last 5 ledgers. |
+| p80 | 80th percentile fee charged over the last 5 ledgers. |
+| p90 | 90th percentile fee charged over the last 5 ledgers. |
+| p95 | 95th percentile fee charged over the last 5 ledgers. |
+| p99 | 99th percentile fee charged over the last 5 ledgers. |
 
 Note: The difference between `fee_charged` and `max_fee` is that the former
 represents the actual fee paid for the transaction while `max_fee` represents
@@ -72,23 +72,23 @@ the maximum bid the transaction creator was willing to pay for the transaction.
 
 ### Max Fee Object
 
-Information about max fee bid for transactions in the last 5 ledgers.
+Information about max fee bid for transactions over the last 5 ledgers.
 
 | Field | |
 | - | - |
 | min | Minimum (lowest) value of the maximum fee bid over the last 5 ledgers. |
-| mode | Mode max fee in the last 5 ledger. |
-| p10 | 10th percentile max fee in the last 5 ledger. |
-| p20 | 20th percentile max fee in the last 5 ledger. |
-| p30 | 30th percentile max fee in the last 5 ledger. |
-| p40 | 40th percentile max fee in the last 5 ledger. |
-| p50 | 50th percentile max fee in the last 5 ledger. |
-| p60 | 60th percentile max fee in the last 5 ledger. |
-| p70 | 70th percentile max fee in the last 5 ledger. |
-| p80 | 80th percentile max fee in the last 5 ledger. |
-| p90 | 90th percentile max fee in the last 5 ledger. |
-| p95 | 95th percentile max fee in the last 5 ledger. |
-| p99 | 99th percentile max fee in the last 5 ledger. |
+| mode | Mode max fee over the last 5 ledgers. |
+| p10 | 10th percentile max fee over the last 5 ledgers. |
+| p20 | 20th percentile max fee over the last 5 ledgers. |
+| p30 | 30th percentile max fee over the last 5 ledgers. |
+| p40 | 40th percentile max fee over the last 5 ledgers. |
+| p50 | 50th percentile max fee over the last 5 ledgers. |
+| p60 | 60th percentile max fee over the last 5 ledgers. |
+| p70 | 70th percentile max fee over the last 5 ledgers. |
+| p80 | 80th percentile max fee over the last 5 ledgers. |
+| p90 | 90th percentile max fee over the last 5 ledgers. |
+| p95 | 95th percentile max fee over the last 5 ledgers. |
+| p99 | 99th percentile max fee over the last 5 ledgers. |
 
 
 ### Example Response
