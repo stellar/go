@@ -384,13 +384,18 @@ func (p *DatabaseProcessor) ProcessLedger(ctx context.Context, store *pipeline.S
 		}
 	}
 
-	return p.ingestLedgerHeader(r, successTxCount, failedTxCount, opCount)
+	return p.ingestLedgerHeader(ctx, r, successTxCount, failedTxCount, opCount)
 }
 
 func (p *DatabaseProcessor) ingestLedgerHeader(
-	r io.LedgerReader, successTxCount, failedTxCount, opCount int,
+	ctx context.Context, r io.LedgerReader, successTxCount, failedTxCount, opCount int,
 ) error {
 	if p.Action != All && p.Action != Ledgers {
+		return nil
+	}
+
+	// Exit early if not ingesting into a DB
+	if v := ctx.Value(IngestUpdateDatabase); v == nil {
 		return nil
 	}
 
