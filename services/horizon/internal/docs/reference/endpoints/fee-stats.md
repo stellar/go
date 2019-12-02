@@ -31,7 +31,7 @@ Response contains the following fields:
 | last_ledger_base_fee | Base fee as defined in the last ledger |
 | ledger_capacity_usage | Average capacity usage in the last 5 ledgers. (0 is no usage, 1.0 is completely full ledgers) |
 | min_accepted_fee | Minimum accepted fee in the last 5 ledger. |
-| mode_accepted_fee | Mode max fee in the last 5 ledger. |
+| mode_accepted_fee | Mode (most common value) of the maximum fee bid over the last 5 ledgers. |
 | p10_accepted_fee | 10th percentile max fee in the last 5 ledger. |
 | p20_accepted_fee | 20th percentile max fee in the last 5 ledger. |
 | p30_accepted_fee | 30th percentile max fee in the last 5 ledger. |
