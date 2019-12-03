@@ -43,6 +43,8 @@ func (change *LedgerEntryChange) GetLedgerEntry() (*LedgerEntry, error) {
 		entry, ok = change.GetUpdated()
 	case LedgerEntryChangeTypeLedgerEntryRemoved:
 		return nil, fmt.Errorf("Entry type %v does not have ledger entry", change.Type)
+	default:
+		return nil, fmt.Errorf("Unknown change type: %v", change.Type)
 	}
 
 	if !ok {
