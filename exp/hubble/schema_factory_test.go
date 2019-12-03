@@ -203,13 +203,13 @@ func TestGetAccountEntry(t *testing.T) {
 	for _, tt := range accountEntryTests {
 		t.Run(tt.name, func(t *testing.T) {
 			gotEntry, err := getAccountEntry(tt.change)
-			if !assert.NoError(t, err) {
-				return
-			}
 			if tt.wantEntry == nil {
 				if !assert.Nil(t, gotEntry) {
 					return
 				}
+				return
+			}
+			if !assert.NoError(t, err) {
 				return
 			}
 			gotAddress := gotEntry.AccountId.Address()

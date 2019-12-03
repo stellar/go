@@ -107,7 +107,7 @@ func makeSeqnum(state *accountState, change *xdr.LedgerEntryChange) (uint32, err
 		return state.seqnum, nil
 	}
 
-	// TODO: Use state to check if change of seqnum is valid.
+	// TODO: Use state to check if the change of seqnum is valid.
 
 	entry, err := getLedgerEntry(change)
 	if err != nil {
