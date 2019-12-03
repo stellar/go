@@ -12,7 +12,7 @@ import (
 func makeNewAccountState(state *accountState, change *xdr.LedgerEntryChange) (*accountState, error) {
 	// TODO: Handle account removal.
 	var newAccountState accountState
-	address, err := makeAccountID(change, state)
+	address, err := makeAccountIDFromStateOrChange(state, change)
 	if err != nil {
 		return nil, errors.Wrap(err, "could not get address")
 	}
@@ -57,28 +57,53 @@ func makeNewAccountState(state *accountState, change *xdr.LedgerEntryChange) (*a
 	return &newAccountState, nil
 }
 
-func makeAccountID(change *xdr.LedgerEntryChange, states ...*accountState) (string, error) {
-	// If the address has already been set on the account state, we return it.
-	// We pass this as a optional parameter, so we can use this function more easily in the processor.
-	if len(states) == 1 {
-		return states[0].address, nil
+func makeAccountIDFromStateOrChange(state *accountState, change *xdr.LedgerEntryChange) (string, error) {
+	if state != nil {
+		return state.address, nil
 	}
+	return makeAccountIDFromChange(change)
+}
 
-	key := change.LedgerKey()
-	var accountID xdr.AccountId
-	switch keyType := key.Type; keyType {
-	case xdr.LedgerEntryTypeAccount:
-		accountID = key.MustAccount().AccountId
-	case xdr.LedgerEntryTypeTrustline:
-		accountID = key.MustTrustLine().AccountId
-	case xdr.LedgerEntryTypeOffer:
-		accountID = key.MustOffer().SellerId
-	case xdr.LedgerEntryTypeData:
-		accountID = key.MustData().AccountId
-	default:
-		return "", fmt.Errorf("Unknown entry type: %v", keyType)
+func makeAccountIDFromChange(change *xdr.LedgerEntryChange) (string, error) {
+	entry, ok := change.GetLedgerEntry()
+	if !ok {
+		return "", fmt.Errorf("Could not get ledger entry from change")
 	}
-	return accountID.Address(), nil
+	var accountID xdr.AccountId
+	entryData := entry.Data
+	switch entryType := entryData.Type; entryType {
+	case xdr.LedgerEntryTypeAccount:
+		account, ok := entryData.GetAccount()
+		if !ok {
+			return "", fmt.Errorf("could not get account")
+		}
+		accountID = account.AccountId
+	case xdr.LedgerEntryTypeTrustline:
+		trustline, ok := entryData.GetTrustLine()
+		if !ok {
+			return "", fmt.Errorf("could not get trustline")
+		}
+		accountID = trustline.AccountId
+	case xdr.LedgerEntryTypeOffer:
+		offer, ok := entryData.GetOffer()
+		if !ok {
+			return "", fmt.Errorf("could not get offer")
+		}
+		accountID = offer.SellerId
+	case xdr.LedgerEntryTypeData:
+		data, ok := entryData.GetData()
+		if !ok {
+			return "", fmt.Errorf("could not get data")
+		}
+		accountID = data.AccountId
+	default:
+		return "", fmt.Errorf("Unknown entry type: %v", entryType)
+	}
+	address, err := accountID.GetAddress()
+	if err != nil {
+		return "", errors.Wrap(err, "could not get address")
+	}
+	return address, nil
 }
 
 func makeSeqnum(state *accountState, change *xdr.LedgerEntryChange) (uint32, error) {

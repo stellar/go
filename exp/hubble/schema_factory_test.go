@@ -10,7 +10,7 @@ import (
 )
 
 // TODO: Replace manual equality check with `assert`, across all tests.
-func TestMakeAccountIDFromState(t *testing.T) {
+func TestMakeAccountIDFromStateOrChange(t *testing.T) {
 	wantAddress := "GBFLTCDLOE6YQ74B66RH3S2UW5I2MKZ5VLTM75F4YMIWUIXRIFVNRNIF"
 	state := accountState{address: wantAddress}
 	change := xdr.LedgerEntryChange{
@@ -21,7 +21,7 @@ func TestMakeAccountIDFromState(t *testing.T) {
 			},
 		},
 	}
-	gotAddress, err := makeAccountID(&change, &state)
+	gotAddress, err := makeAccountIDFromStateOrChange(&state, &change)
 	if err != nil {
 		t.Error(err)
 	}
@@ -47,7 +47,7 @@ func TestMakeAccountIDFromChange(t *testing.T) {
 			},
 		},
 	}
-	gotAddress, err := makeAccountID(&change)
+	gotAddress, err := makeAccountIDFromStateOrChange(nil, &change)
 	if err != nil {
 		t.Error(err)
 	}
