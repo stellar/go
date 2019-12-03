@@ -10,13 +10,16 @@ import (
 )
 
 func makeNewAccountState(state *accountState, change *xdr.LedgerEntryChange) (*accountState, error) {
-	// TODO: Handle account removal.
+	if change.Type == xdr.LedgerEntryChangeTypeLedgerEntryRemoved && change.EntryType() == xdr.LedgerEntryTypeAccount {
+		return nil, nil
+	}
+
 	var newAccountState accountState
-	address, err := makeAccountID(change, *state)
+	address, err := makeAccountIDFromStateOrChange(state, change)
 	if err != nil {
 		return nil, errors.Wrap(err, "could not get address")
 	}
-	state.address = address
+	newAccountState.address = address
 
 	seqnum, err := makeSeqnum(state, change)
 	if err != nil {
@@ -57,24 +60,41 @@ func makeNewAccountState(state *accountState, change *xdr.LedgerEntryChange) (*a
 	return &newAccountState, nil
 }
 
-func makeAccountID(change *xdr.LedgerEntryChange, states ...accountState) (string, error) {
-	// If the address has already been set on the account state, we return it.
-	// We pass this as a optional parameter, so we can use this function more easily in the processor.
-	if len(states) == 1 {
-		return states[0].address, nil
+func makeAccountIDFromStateOrChange(state *accountState, change *xdr.LedgerEntryChange) (string, error) {
+	if state != nil {
+		return state.address, nil
 	}
+	return makeAccountIDFromChange(change)
+}
 
+func makeAccountIDFromChange(change *xdr.LedgerEntryChange) (string, error) {
 	key := change.LedgerKey()
 	var accountID xdr.AccountId
 	switch keyType := key.Type; keyType {
 	case xdr.LedgerEntryTypeAccount:
-		accountID = key.MustAccount().AccountId
+		account, ok := key.GetAccount()
+		if !ok {
+			return "", fmt.Errorf("could not get account")
+		}
+		accountID = account.AccountId
 	case xdr.LedgerEntryTypeTrustline:
-		accountID = key.MustTrustLine().AccountId
+		trustline, ok := key.GetTrustLine()
+		if !ok {
+			return "", fmt.Errorf("could not get trustline")
+		}
+		accountID = trustline.AccountId
 	case xdr.LedgerEntryTypeOffer:
-		accountID = key.MustOffer().SellerId
+		offer, ok := key.GetOffer()
+		if !ok {
+			return "", fmt.Errorf("could not get offer")
+		}
+		accountID = offer.SellerId
 	case xdr.LedgerEntryTypeData:
-		accountID = key.MustData().AccountId
+		data, ok := key.GetData()
+		if !ok {
+			return "", fmt.Errorf("could not get data")
+		}
+		accountID = data.AccountId
 	default:
 		return "", fmt.Errorf("Unknown entry type: %v", keyType)
 	}
@@ -82,23 +102,18 @@ func makeAccountID(change *xdr.LedgerEntryChange, states ...accountState) (strin
 }
 
 func makeSeqnum(state *accountState, change *xdr.LedgerEntryChange) (uint32, error) {
-	var seqnum xdr.Uint32
-	switch entryType := change.Type; entryType {
-	case xdr.LedgerEntryChangeTypeLedgerEntryCreated:
-		seqnum = change.MustCreated().LastModifiedLedgerSeq
-	case xdr.LedgerEntryChangeTypeLedgerEntryUpdated:
-		seqnum = change.MustUpdated().LastModifiedLedgerSeq
-	case xdr.LedgerEntryChangeTypeLedgerEntryState:
-		seqnum = change.MustState().LastModifiedLedgerSeq
-
-	// We do not need to update the seqnum for removed changes, because
-	// we just remove the accompanying account's state.
-	case xdr.LedgerEntryChangeTypeLedgerEntryRemoved:
-		return 0, nil
-	default:
-		return 0, fmt.Errorf("Unknown entry type: %v", entryType)
+	// Removed entries do not change the last modified ledger seqnum.
+	if change.Type == xdr.LedgerEntryChangeTypeLedgerEntryRemoved {
+		return state.seqnum, nil
 	}
-	return uint32(seqnum), nil
+
+	// TODO: Use state to check if change of seqnum is valid.
+
+	entry, err := getLedgerEntry(change)
+	if err != nil {
+		return 0, errors.Wrap(err, "could not get ledger entry")
+	}
+	return uint32(entry.LastModifiedLedgerSeq), nil
 }
 
 func makeBalance(state *accountState, change *xdr.LedgerEntryChange) (uint32, error) {
@@ -138,36 +153,41 @@ func makeSigners(state *accountState, change *xdr.LedgerEntryChange) ([]signer, 
 }
 
 func makeTrustlines(state *accountState, change *xdr.LedgerEntryChange) (map[string]trustline, error) {
-	if change.EntryType() != xdr.LedgerEntryTypeTrustline {
-		return state.trustlines, nil
+	// Get current trustlines.
+	var trustlines map[string]trustline
+	if state != nil {
+		if state.trustlines != nil {
+			trustlines = make(map[string]trustline)
+			for k, v := range state.trustlines {
+				trustlines[k] = v
+			}
+		}
 	}
 
-	// Copy the current state trustlines.
-	trustlines := make(map[string]trustline)
-	for k, v := range state.trustlines {
-		trustlines[k] = v
+	// Return existing trustlines if the change is not of type trustline.
+	if change.EntryType() != xdr.LedgerEntryTypeTrustline {
+		return trustlines, nil
 	}
 
 	// If the change is removed, remove the corresponding trustline.
 	if change.Type == xdr.LedgerEntryChangeTypeLedgerEntryRemoved {
-		asset := change.MustRemoved().TrustLine.Asset.String()
+		removeEntry, ok := change.GetRemoved()
+		if !ok {
+			return nil, fmt.Errorf("Could not get removed ledger key")
+		}
+		asset := removeEntry.TrustLine.Asset.String()
 		delete(trustlines, asset)
 		return trustlines, nil
 	}
 
-	// Get and store the new trustline.
-	var trustlineEntry xdr.TrustLineEntry
-	switch entryType := change.Type; entryType {
-	case xdr.LedgerEntryChangeTypeLedgerEntryCreated:
-		trustlineEntry = change.MustCreated().Data.MustTrustLine()
-	case xdr.LedgerEntryChangeTypeLedgerEntryUpdated:
-		trustlineEntry = change.MustUpdated().Data.MustTrustLine()
-	case xdr.LedgerEntryChangeTypeLedgerEntryState:
-		trustlineEntry = change.MustState().Data.MustTrustLine()
-	default:
-		return nil, fmt.Errorf("Unknown entry type: %v", entryType)
+	entry, err := getLedgerEntry(change)
+	if err != nil {
+		return nil, errors.Wrap(err, "could not get ledger entry")
 	}
-
+	trustlineEntry, ok := entry.Data.GetTrustLine()
+	if !ok {
+		return nil, fmt.Errorf("Could not get trustline")
+	}
 	assetKey := trustlineEntry.Asset.String()
 	newTrustline := trustline{
 		asset:      assetKey,
@@ -181,34 +201,41 @@ func makeTrustlines(state *accountState, change *xdr.LedgerEntryChange) (map[str
 }
 
 func makeOffers(state *accountState, change *xdr.LedgerEntryChange) (map[uint32]offer, error) {
+	// Return existing offers if the change is not of type offer.
 	if change.EntryType() != xdr.LedgerEntryTypeOffer {
-		return state.offers, nil
+		if state != nil {
+			return state.offers, nil
+		}
+		return nil, nil
 	}
 
-	// Copy the current state offers.
+	// Get current offers.
 	offers := make(map[uint32]offer)
-	for k, v := range state.offers {
-		offers[k] = v
+	if state != nil {
+		for k, v := range state.offers {
+			offers[k] = v
+		}
 	}
 
 	// If the change is removed, remove the corresponding offer.
 	if change.Type == xdr.LedgerEntryChangeTypeLedgerEntryRemoved {
-		id := uint32(change.MustRemoved().Offer.OfferId)
+		removeEntry, ok := change.GetRemoved()
+		if !ok {
+			return nil, fmt.Errorf("Could not get removed ledger key")
+		}
+		id := uint32(removeEntry.Offer.OfferId)
 		delete(offers, id)
 		return offers, nil
 	}
 
-	// Get and store the offer.
-	var offerEntry xdr.OfferEntry
-	switch entryType := change.Type; entryType {
-	case xdr.LedgerEntryChangeTypeLedgerEntryCreated:
-		offerEntry = change.MustCreated().Data.MustOffer()
-	case xdr.LedgerEntryChangeTypeLedgerEntryUpdated:
-		offerEntry = change.MustUpdated().Data.MustOffer()
-	case xdr.LedgerEntryChangeTypeLedgerEntryState:
-		offerEntry = change.MustState().Data.MustOffer()
-	default:
-		return nil, fmt.Errorf("Unknown entry type: %v", entryType)
+	// Get and store offer.
+	entry, err := getLedgerEntry(change)
+	if err != nil {
+		return nil, errors.Wrap(err, "could not get ledger entry")
+	}
+	offerEntry, ok := entry.Data.GetOffer()
+	if !ok {
+		return nil, fmt.Errorf("Could not get offer")
 	}
 
 	offerID := uint32(offerEntry.OfferId)
@@ -227,32 +254,40 @@ func makeOffers(state *accountState, change *xdr.LedgerEntryChange) (map[uint32]
 }
 
 func makeData(state *accountState, change *xdr.LedgerEntryChange) (map[string][]byte, error) {
+	// Return existing data if the change is not of type data.
 	if change.EntryType() != xdr.LedgerEntryTypeData {
-		return state.data, nil
+		if state != nil {
+			return state.data, nil
+		}
+		return nil, nil
 	}
 
+	// Copy current data.
 	data := make(map[string][]byte)
-	for k, v := range state.data {
-		data[k] = v
+	if state != nil {
+		for k, v := range state.data {
+			data[k] = v
+		}
 	}
 
 	if change.Type == xdr.LedgerEntryChangeTypeLedgerEntryRemoved {
-		name := string(change.MustRemoved().Data.DataName)
+		removeEntry, ok := change.GetRemoved()
+		if !ok {
+			return nil, fmt.Errorf("Could not get removed ledger key")
+		}
+		name := string(removeEntry.Data.DataName)
 		delete(data, name)
 		return data, nil
 	}
 
 	// Get and store the data key-value pair.
-	var dataEntry xdr.DataEntry
-	switch entryType := change.Type; entryType {
-	case xdr.LedgerEntryChangeTypeLedgerEntryCreated:
-		dataEntry = change.MustCreated().Data.MustData()
-	case xdr.LedgerEntryChangeTypeLedgerEntryUpdated:
-		dataEntry = change.MustUpdated().Data.MustData()
-	case xdr.LedgerEntryChangeTypeLedgerEntryState:
-		dataEntry = change.MustState().Data.MustData()
-	default:
-		return nil, fmt.Errorf("Unknown entry type: %v", entryType)
+	entry, err := getLedgerEntry(change)
+	if err != nil {
+		return nil, errors.Wrap(err, "could not get ledger entry")
+	}
+	dataEntry, ok := entry.Data.GetData()
+	if !ok {
+		return nil, fmt.Errorf("Could not get data")
 	}
 	data[string(dataEntry.DataName)] = dataEntry.DataValue
 	return data, nil
@@ -262,18 +297,40 @@ func getAccountEntry(change *xdr.LedgerEntryChange) (*xdr.AccountEntry, error) {
 	if change.EntryType() != xdr.LedgerEntryTypeAccount {
 		return nil, nil
 	}
-	var account xdr.AccountEntry
-	switch entryType := change.Type; entryType {
+
+	entry, err := getLedgerEntry(change)
+	if err != nil {
+		return nil, errors.Wrap(err, "could not get ledger entry")
+	}
+
+	account, ok := entry.Data.GetAccount()
+	if !ok {
+		return nil, fmt.Errorf("Could not get account")
+	}
+
+	return &account, nil
+}
+
+func getLedgerEntry(change *xdr.LedgerEntryChange) (*xdr.LedgerEntry, error) {
+	var (
+		account xdr.LedgerEntry
+		ok      bool
+	)
+	entryType := change.Type
+	switch entryType {
 	case xdr.LedgerEntryChangeTypeLedgerEntryCreated:
-		account = change.MustCreated().Data.MustAccount()
-	case xdr.LedgerEntryChangeTypeLedgerEntryUpdated:
-		account = change.MustUpdated().Data.MustAccount()
+		account, ok = change.GetCreated()
 	case xdr.LedgerEntryChangeTypeLedgerEntryState:
-		account = change.MustState().Data.MustAccount()
+		account, ok = change.GetState()
+	case xdr.LedgerEntryChangeTypeLedgerEntryUpdated:
+		account, ok = change.GetUpdated()
 	case xdr.LedgerEntryChangeTypeLedgerEntryRemoved:
-		return nil, nil
+		return nil, fmt.Errorf("Entry type %v does not have LedgerEntry", entryType)
 	default:
 		return nil, fmt.Errorf("Unknown entry type: %v", entryType)
+	}
+	if !ok {
+		return nil, fmt.Errorf("Could not get account from entry type %v", entryType)
 	}
 	return &account, nil
 }
