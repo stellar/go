@@ -172,6 +172,44 @@ func TestMakeNewAccountStateSuccess(t *testing.T) {
 	}
 }
 
+func TestMakeNewAccountStateErrors(t *testing.T) {
+	var accountStateTests = []struct {
+		name      string
+		state     *accountState
+		change    *xdr.LedgerEntryChange
+		wantState *accountState // TODO: May not need this.
+	}{
+		// TODO: Test `makeAccountIDFromChange`, Account.
+		// TODO: Test `makeAccountIDFromChange`, Trustline.
+		// TODO: Test `makeAccountIDFromChange`, Offer.
+		// TODO: Test `makeAccountIDFromChange`, Data.
+		// TODO: Test `makeSeqnum`, `getLedgerEntry` failure.
+		// TODO: Test `makeBalance`, `getAccountEntry` failure.
+		// TODO: Test `makeTrustlines`, `change.GetRemoved` failure.
+		// TODO: Test `makeTrustlines`, `getLedgerEntry` failure.
+		// TODO: Test `makeTrustlines`, `entry.Data.GetTrustline()` failure.
+		// TODO: Test `makeOffers`, `change.GetRemoved` failure.
+		// TODO: Test `makeOffers`, `getLedgerEntry` failure.
+		// TODO: Test `makeOffers`, `entry.Data.GetOffer()` failure.
+		// TODO: Test `makeData`, `change.GetRemoved` failure.
+		// TODO: Test `makeData`, `getLedgerEntry` failure.
+		// TODO: Test `makeData`, `entry.Data.GetData()` failure.`
+	}
+
+	for _, tt := range accountStateTests {
+		t.Run(tt.name, func(t *testing.T) {
+			gotState, err := makeNewAccountState(tt.state, tt.change)
+			if assert.NoError(t, err) {
+				return
+			}
+			// TODO: Check if we need this assert.
+			if !assert.Equal(t, tt.wantState, gotState) {
+				return
+			}
+		})
+	}
+}
+
 func TestGetAccountEntry(t *testing.T) {
 	var accountEntryTests = []struct {
 		name      string

@@ -68,35 +68,40 @@ func makeAccountIDFromStateOrChange(state *accountState, change *xdr.LedgerEntry
 }
 
 func makeAccountIDFromChange(change *xdr.LedgerEntryChange) (string, error) {
-	key := change.LedgerKey()
+	entry, err := getLedgerEntry(change)
+	if err != nil {
+		return "", errors.Wrap(err, "could not get ledger entry")
+	}
+
 	var accountID xdr.AccountId
-	switch keyType := key.Type; keyType {
+	entryData := entry.Data
+	switch entryType := entryData.Type; entryType {
 	case xdr.LedgerEntryTypeAccount:
-		account, ok := key.GetAccount()
+		account, ok := entryData.GetAccount()
 		if !ok {
 			return "", fmt.Errorf("could not get account")
 		}
 		accountID = account.AccountId
 	case xdr.LedgerEntryTypeTrustline:
-		trustline, ok := key.GetTrustLine()
+		trustline, ok := entryData.GetTrustLine()
 		if !ok {
 			return "", fmt.Errorf("could not get trustline")
 		}
 		accountID = trustline.AccountId
 	case xdr.LedgerEntryTypeOffer:
-		offer, ok := key.GetOffer()
+		offer, ok := entryData.GetOffer()
 		if !ok {
 			return "", fmt.Errorf("could not get offer")
 		}
 		accountID = offer.SellerId
 	case xdr.LedgerEntryTypeData:
-		data, ok := key.GetData()
+		data, ok := entryData.GetData()
 		if !ok {
 			return "", fmt.Errorf("could not get data")
 		}
 		accountID = data.AccountId
 	default:
-		return "", fmt.Errorf("Unknown entry type: %v", keyType)
+		return "", fmt.Errorf("Unknown entry type: %v", entryType)
 	}
 	return accountID.Address(), nil
 }
