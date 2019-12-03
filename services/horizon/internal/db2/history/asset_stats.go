@@ -170,10 +170,8 @@ func (q *Q) GetAssetStats(assetCode, assetIssuer string, page db2.PageQuery) ([]
 
 	sql = sql.OrderBy("(asset_code, asset_issuer) " + orderBy).Limit(page.Limit)
 
-	sqlQ := "SELECT pg_sleep(10)"
-
 	var results []ExpAssetStat
-	if err := q.SelectRaw(&results, sqlQ); err != nil {
+	if err := q.Select(&results, sql); err != nil {
 		return nil, errors.Wrap(err, "could not run select query")
 	}
 
