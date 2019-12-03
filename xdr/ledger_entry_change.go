@@ -48,7 +48,7 @@ func (change *LedgerEntryChange) GetLedgerEntry() (*LedgerEntry, error) {
 	}
 
 	if !ok {
-		return nil, fmt.Errorf("Could not get entry of type %v from change", change.Type)
+		return nil, fmt.Errorf("Could not get entry from change of type %v", change.Type)
 	}
 	return &entry, nil
 }
