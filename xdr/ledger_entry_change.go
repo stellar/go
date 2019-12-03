@@ -27,28 +27,19 @@ func (change *LedgerEntryChange) LedgerKey() LedgerKey {
 	}
 }
 
-// GetLedgerEntry returns the ledger entry that was changed in `change`, and
-// an error if that entry cannot be retrieved.
-func (change *LedgerEntryChange) GetLedgerEntry() (*LedgerEntry, error) {
-	var (
-		entry LedgerEntry
-		ok    bool
-	)
+// GetLedgerEntry returns the ledger entry that was changed in `change`, along
+// with a boolean indicating whether the entry value was valid.
+func (change *LedgerEntryChange) GetLedgerEntry() (LedgerEntry, bool) {
 	switch change.Type {
 	case LedgerEntryChangeTypeLedgerEntryCreated:
-		entry, ok = change.GetCreated()
+		return change.GetCreated()
 	case LedgerEntryChangeTypeLedgerEntryState:
-		entry, ok = change.GetState()
+		return change.GetState()
 	case LedgerEntryChangeTypeLedgerEntryUpdated:
-		entry, ok = change.GetUpdated()
+		return change.GetUpdated()
 	case LedgerEntryChangeTypeLedgerEntryRemoved:
-		return nil, fmt.Errorf("Entry type %v does not have ledger entry", change.Type)
+		return LedgerEntry{}, false
 	default:
-		return nil, fmt.Errorf("Unknown change type: %v", change.Type)
+		return LedgerEntry{}, false
 	}
-
-	if !ok {
-		return nil, fmt.Errorf("Could not get entry from change of type %v", change.Type)
-	}
-	return &entry, nil
 }
