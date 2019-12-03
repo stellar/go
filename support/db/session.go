@@ -23,6 +23,10 @@ func (s *Session) Begin() error {
 
 	tx, err := s.DB.Beginx()
 	if err != nil {
+		if s.cancelled(err) {
+			return ErrCancelled
+		}
+
 		return errors.Wrap(err, "beginx failed")
 	}
 	s.logBegin()
@@ -40,6 +44,10 @@ func (s *Session) BeginTx(opts *sql.TxOptions) error {
 
 	tx, err := s.DB.BeginTxx(s.Ctx, opts)
 	if err != nil {
+		if s.cancelled(err) {
+			return ErrCancelled
+		}
+
 		return errors.Wrap(err, "beginTx failed")
 	}
 	s.logBegin()
@@ -128,6 +136,10 @@ func (s *Session) GetRaw(dest interface{}, query string, args ...interface{}) er
 		return nil
 	}
 
+	if s.cancelled(err) {
+		return ErrCancelled
+	}
+
 	if s.NoRows(err) {
 		return err
 	}
@@ -193,6 +205,10 @@ func (s *Session) ExecRaw(query string, args ...interface{}) (sql.Result, error)
 		return result, nil
 	}
 
+	if s.cancelled(err) {
+		return nil, ErrCancelled
+	}
+
 	if s.NoRows(err) {
 		return nil, err
 	}
@@ -204,6 +220,11 @@ func (s *Session) ExecRaw(query string, args ...interface{}) (sql.Result, error)
 // no results.
 func (s *Session) NoRows(err error) bool {
 	return err == sql.ErrNoRows
+}
+
+// Cancelled returns true if the provided error resulted from a cancel.
+func (s *Session) cancelled(err error) bool {
+	return strings.Contains(err.Error(), "pq: canceling statement due to user request")
 }
 
 // Query runs `query`, returns a *sqlx.Rows instance
@@ -228,6 +249,10 @@ func (s *Session) QueryRaw(query string, args ...interface{}) (*sqlx.Rows, error
 
 	if err == nil {
 		return result, nil
+	}
+
+	if s.cancelled(err) {
+		return nil, ErrCancelled
 	}
 
 	if s.NoRows(err) {
@@ -288,6 +313,10 @@ func (s *Session) SelectRaw(
 
 	if err == nil {
 		return nil
+	}
+
+	if s.cancelled(err) {
+		return ErrCancelled
 	}
 
 	if s.NoRows(err) {

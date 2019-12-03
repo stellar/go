@@ -26,6 +26,12 @@ import (
 // postgresQueryMaxParams defines the maximum number of parameters in a query.
 var postgresQueryMaxParams = 65535
 
+var (
+	// ErrCancelled is an error returned by Session methods when request has
+	// been cancelled (ex. context cancelled).
+	ErrCancelled = errors.New("canceling statement due to user request")
+)
+
 // Conn represents a connection to a single database.
 type Conn interface {
 	ExecContext(ctx context.Context, query string, args ...interface{}) (sql.Result, error)
