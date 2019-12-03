@@ -13,9 +13,8 @@ var (
 	Cancelled = problem.P{
 		Type:   "cancelled",
 		Title:  "Cancelled",
-		Status: http.StatusNoContent,
-		Detail: "The request has been cancelled due to user action or application " +
-			"shut down.",
+		Status: http.StatusServiceUnavailable,
+		Detail: "The request cannot be serviced at this time.",
 	}
 
 	// RateLimitExceeded is a well-known problem type.  Use it as a shortcut
