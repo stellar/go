@@ -26,10 +26,13 @@ func (aid *AccountId) GetAddress() (string, error) {
 
 	switch aid.Type {
 	case PublicKeyTypePublicKeyTypeEd25519:
-		ed := aid.MustEd25519()
+		ed, ok := aid.GetEd25519()
+		if !ok {
+			return "", fmt.Errorf("Could not get Ed25519")
+		}
 		raw := make([]byte, 32)
 		copy(raw, ed[:])
-		return strkey.MustEncode(strkey.VersionByteAccountID, raw), nil
+		return strkey.Encode(strkey.VersionByteAccountID, raw)
 	default:
 		return "", fmt.Errorf("Unknown account id type: %v", aid.Type)
 	}
