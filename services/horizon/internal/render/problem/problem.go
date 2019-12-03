@@ -8,14 +8,13 @@ import (
 
 // Well-known and reused problems below:
 var (
-	// Cancelled is a well-known problem type.  Use it as a shortcut
+	// ServiceUnavailable is a well-known problem type.  Use it as a shortcut
 	// in your actions.
-	Cancelled = problem.P{
-		Type:   "cancelled",
-		Title:  "Cancelled",
-		Status: http.StatusNoContent,
-		Detail: "The request has been cancelled due to user action or application " +
-			"shut down.",
+	ServiceUnavailable = problem.P{
+		Type:   "service_unavailable",
+		Title:  "Service Unavailable",
+		Status: http.StatusServiceUnavailable,
+		Detail: "The request cannot be serviced at this time.",
 	}
 
 	// RateLimitExceeded is a well-known problem type.  Use it as a shortcut
