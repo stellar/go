@@ -10,8 +10,18 @@ import (
 // Address returns the strkey encoded form of this AccountId.  This method will
 // panic if the accountid is backed by a public key of an unknown type.
 func (aid *AccountId) Address() string {
+	address, err := aid.GetAddress()
+	if err != nil {
+		panic(err)
+	}
+	return address
+}
+
+// GetAddress returns the strkey encoded form of this AccountId, and an error
+// if the AccountId is backed by a public key of an unknown type.
+func (aid *AccountId) GetAddress() (string, error) {
 	if aid == nil {
-		return ""
+		return "", nil
 	}
 
 	switch aid.Type {
@@ -19,9 +29,9 @@ func (aid *AccountId) Address() string {
 		ed := aid.MustEd25519()
 		raw := make([]byte, 32)
 		copy(raw, ed[:])
-		return strkey.MustEncode(strkey.VersionByteAccountID, raw)
+		return strkey.MustEncode(strkey.VersionByteAccountID, raw), nil
 	default:
-		panic(fmt.Errorf("Unknown account id type: %v", aid.Type))
+		return "", fmt.Errorf("Unknown account id type: %v", aid.Type)
 	}
 }
 
