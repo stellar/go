@@ -40,7 +40,7 @@ Additionally you can specify which line to start in by using the flag `-s`.
 
 ### Request per second
 
-By default `horizon-cmp` will send 1 request per second, however, you can change this value using the `--rps` flag.  The following will run `10` request per second.
+By default `horizon-cmp` will send 1 request per second, however, you can change this value using the `--rps` flag.  The following will run `10` request per second. Please note that sending too many requests to a production server can result in rate limiting of requests.
 
 ```bash
 horizon-cmp -t https://new-horizon.host.org -b https://horizon.stellar.org --rps 10
