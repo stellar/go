@@ -13,8 +13,8 @@ bumps.  A breaking change will get clearly notified in this log.
 * Improved performance of asset stats processor ([#1987](https://github.com/stellar/go/pull/1987)).
 * Provide mechanism for retrying XDR stream errors ([#1899](https://github.com/stellar/go/pull/1899)).
 * Emit errors level log after 3 failed attempts to validate state ([#1918](https://github.com/stellar/go/pull/1918)).
-* Fixed out of bounds error in ledger backend reader ((#1914)[https://github.com/stellar/go/pull/1914]).
-* Fixed out of bounds error in URL params handler ((#1973)[https://github.com/stellar/go/pull/1973]).
+* Fixed out of bounds error in ledger backend reader ([#1914](https://github.com/stellar/go/pull/1914)).
+* Fixed out of bounds error in URL params handler ([#1973](https://github.com/stellar/go/pull/1973)).
 * Rename `OperationFeeStats` to `FeeStats` ([#1950](https://github.com/stellar/go/pull/1950)).
 * Fixed multiple issues connected to graceful shutdown of Horizon.
 
