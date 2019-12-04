@@ -20,8 +20,9 @@ func makeNewAccountState(state *accountState, change *xdr.LedgerEntryChange) (*a
 	}
 
 	// We should never be given a nil pointer for account state, rather one
-	// to an empty account state. If we are given a nil pointer to state
-	// somehow, we replace it with a pointer to empty account state.
+	// to an empty accountState struct. If we are given a nil pointer to state
+	// somehow, we replace it with the desired input. This prevents repeated,
+	// per-function checks for nil state.
 	if state == nil {
 		state = &accountState{}
 	}
@@ -145,7 +146,7 @@ func makeSeqnum(state *accountState, change *xdr.LedgerEntryChange) (uint32, err
 
 	entry, ok := change.GetLedgerEntry()
 	if !ok {
-		return state.seqnum, fmt.Errorf("Could not get ledger entry")
+		return 0, fmt.Errorf("Could not get ledger entry")
 	}
 	return uint32(entry.LastModifiedLedgerSeq), nil
 }
@@ -214,22 +215,21 @@ func makeTrustlines(state *accountState, change *xdr.LedgerEntryChange) (map[str
 	if change.Type == xdr.LedgerEntryChangeTypeLedgerEntryRemoved {
 		removeEntry, ok := change.GetRemoved()
 		if !ok {
-			return trustlines, fmt.Errorf("Could not get removed ledger key")
+			return nil, fmt.Errorf("Could not get removed ledger key")
 		}
 		asset := removeEntry.TrustLine.Asset.String()
 		delete(trustlines, asset)
 		return trustlines, nil
 	}
 
-	// Get the trustline entry from the change. If we cannot get this entry,
-	// return the current state's trustlines and an error.
+	// Get the trustline entry from the change and an error if we cannot.
 	entry, ok := change.GetLedgerEntry()
 	if !ok {
-		return trustlines, fmt.Errorf("Could not get ledger entry")
+		return nil, fmt.Errorf("Could not get ledger entry")
 	}
 	trustlineEntry, ok := entry.Data.GetTrustLine()
 	if !ok {
-		return trustlines, fmt.Errorf("Could not get trustline entry")
+		return nil, fmt.Errorf("Could not get trustline entry")
 	}
 
 	assetKey := trustlineEntry.Asset.String()
@@ -260,7 +260,7 @@ func makeOffers(state *accountState, change *xdr.LedgerEntryChange) (map[uint32]
 	if change.Type == xdr.LedgerEntryChangeTypeLedgerEntryRemoved {
 		removeEntry, ok := change.GetRemoved()
 		if !ok {
-			return offers, fmt.Errorf("Could not get removed ledger key")
+			return nil, fmt.Errorf("Could not get removed ledger key")
 		}
 		id := uint32(removeEntry.Offer.OfferId)
 		delete(offers, id)
@@ -270,16 +270,16 @@ func makeOffers(state *accountState, change *xdr.LedgerEntryChange) (map[uint32]
 	// Get and store the offer.
 	entry, ok := change.GetLedgerEntry()
 	if !ok {
-		return offers, fmt.Errorf("Could not get ledger entry")
+		return nil, fmt.Errorf("Could not get ledger entry")
 	}
 	offerEntry, ok := entry.Data.GetOffer()
 	if !ok {
-		return offers, fmt.Errorf("Could not get offer entry")
+		return nil, fmt.Errorf("Could not get offer entry")
 	}
 
 	offerSellerAddress, err := offerEntry.SellerId.GetAddress()
 	if err != nil {
-		return offers, errors.Wrap(err, "could not get offer seller address")
+		return nil, errors.Wrap(err, "could not get offer seller address")
 	}
 
 	offerID := uint32(offerEntry.OfferId)
@@ -311,7 +311,7 @@ func makeData(state *accountState, change *xdr.LedgerEntryChange) (map[string][]
 	if change.Type == xdr.LedgerEntryChangeTypeLedgerEntryRemoved {
 		key, ok := change.GetRemoved()
 		if !ok {
-			return data, fmt.Errorf("Could not get removed ledger key")
+			return nil, fmt.Errorf("Could not get removed ledger key")
 		}
 		name := string(key.Data.DataName)
 		delete(data, name)
@@ -321,12 +321,12 @@ func makeData(state *accountState, change *xdr.LedgerEntryChange) (map[string][]
 	// Get and store the data key-value pair.
 	entry, ok := change.GetLedgerEntry()
 	if !ok {
-		return data, fmt.Errorf("Could not get ledger entry")
+		return nil, fmt.Errorf("Could not get ledger entry")
 	}
 
 	dataEntry, ok := entry.Data.GetData()
 	if !ok {
-		return data, fmt.Errorf("Could not get data entry")
+		return nil, fmt.Errorf("Could not get data entry")
 	}
 
 	data[string(dataEntry.DataName)] = dataEntry.DataValue
