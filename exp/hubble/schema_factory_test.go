@@ -10,7 +10,29 @@ import (
 )
 
 // TODO: Replace manual equality check with `assert`, across all tests.
-func TestMakeAccountIDFromStateOrChange(t *testing.T) {
+
+func TestAccountRemoved(t *testing.T) {
+	testAddress := "GBFLTCDLOE6YQ74B66RH3S2UW5I2MKZ5VLTM75F4YMIWUIXRIFVNRNIF"
+	change := xdr.LedgerEntryChange{
+		Type: xdr.LedgerEntryChangeTypeLedgerEntryRemoved,
+		Removed: &xdr.LedgerKey{
+			Type: xdr.LedgerEntryTypeAccount,
+			Account: &xdr.LedgerKeyAccount{
+				AccountId: xdr.MustAddress(testAddress),
+			},
+		},
+	}
+	wantRemoved := false
+	gotRemoved, err := isAccountRemoved(&change)
+	if assert.Nil(t, err) {
+		return
+	}
+	if assert.Equal(t, wantRemoved, gotRemoved) {
+		return
+	}
+}
+
+func TestMakeAccountIDFromState(t *testing.T) {
 	wantAddress := "GBFLTCDLOE6YQ74B66RH3S2UW5I2MKZ5VLTM75F4YMIWUIXRIFVNRNIF"
 	state := accountState{address: wantAddress}
 	change := xdr.LedgerEntryChange{
@@ -80,7 +102,7 @@ func TestMakeSeqnumFromNonRemoved(t *testing.T) {
 }
 
 func TestMakeSeqnumFromRemoved(t *testing.T) {
-	wantSeqnum := uint32(0)
+	wantSeqnum := uint32(11)
 	state := accountState{seqnum: 11}
 	change := xdr.LedgerEntryChange{
 		Type:  xdr.LedgerEntryChangeTypeLedgerEntryRemoved,
@@ -92,84 +114,6 @@ func TestMakeSeqnumFromRemoved(t *testing.T) {
 	}
 	if wantSeqnum != gotSeqnum {
 		t.Fatalf("got seqnum %d, want seqnum %d", gotSeqnum, wantSeqnum)
-	}
-}
-
-func TestGetAccountEntryNotAccount(t *testing.T) {
-	accountID, err := xdr.AddressToAccountId("GBFLTCDLOE6YQ74B66RH3S2UW5I2MKZ5VLTM75F4YMIWUIXRIFVNRNIF")
-	if err != nil {
-		t.Error(err)
-	}
-	change := xdr.LedgerEntryChange{
-		Type: xdr.LedgerEntryChangeTypeLedgerEntryState,
-		State: &xdr.LedgerEntry{
-			Data: xdr.LedgerEntryData{
-				Type: xdr.LedgerEntryTypeData,
-				Data: &xdr.DataEntry{
-					AccountId: accountID,
-					DataName:  xdr.String64("name"),
-					DataValue: xdr.DataValue([]byte("value")),
-				},
-			},
-		},
-	}
-
-	entry, err := getAccountEntry(&change)
-	if err != nil {
-		t.Error(err)
-	}
-	if entry != nil {
-		t.Fatal("got account entry non-nil, want account entry nil")
-	}
-}
-
-func TestGetAccountEntryRemoved(t *testing.T) {
-	accountID, err := xdr.AddressToAccountId("GBFLTCDLOE6YQ74B66RH3S2UW5I2MKZ5VLTM75F4YMIWUIXRIFVNRNIF")
-	if err != nil {
-		t.Error(err)
-	}
-	change := xdr.LedgerEntryChange{
-		Type: xdr.LedgerEntryChangeTypeLedgerEntryRemoved,
-		Removed: &xdr.LedgerKey{
-			Type: xdr.LedgerEntryTypeAccount,
-			Account: &xdr.LedgerKeyAccount{
-				AccountId: accountID,
-			},
-		},
-	}
-	accountEntry, err := getAccountEntry(&change)
-	if err != nil {
-		t.Error(err)
-	}
-	if accountEntry != nil {
-		t.Fatal("got account entry non-nil for removal, want account entry nil")
-	}
-}
-
-func TestGetAccountEntryNotRemoved(t *testing.T) {
-	wantAddress := "GBFLTCDLOE6YQ74B66RH3S2UW5I2MKZ5VLTM75F4YMIWUIXRIFVNRNIF"
-	accountID, err := xdr.AddressToAccountId(wantAddress)
-	if err != nil {
-		t.Error(err)
-	}
-	change := xdr.LedgerEntryChange{
-		Type: xdr.LedgerEntryChangeTypeLedgerEntryState,
-		State: &xdr.LedgerEntry{
-			Data: xdr.LedgerEntryData{
-				Type: xdr.LedgerEntryTypeAccount,
-				Account: &xdr.AccountEntry{
-					AccountId: accountID,
-				},
-			},
-		},
-	}
-	accountEntry, err := getAccountEntry(&change)
-	if err != nil {
-		t.Error(err)
-	}
-	gotAddress := accountEntry.AccountId.Address()
-	if gotAddress != wantAddress {
-		t.Fatalf("got address %s, want address %s", gotAddress, wantAddress)
 	}
 }
 
