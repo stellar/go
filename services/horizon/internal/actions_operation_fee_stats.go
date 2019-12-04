@@ -78,12 +78,12 @@ func (action *FeeStatsAction) JSON() error {
 }
 
 func (action *FeeStatsAction) loadRecords() {
-	cur := operationfeestats.CurrentState()
+	cur, ok := operationfeestats.CurrentState()
 	action.feeStats.LastLedgerBaseFee = cur.LastBaseFee
 	action.feeStats.LastLedger = cur.LastLedger
 
 	// LedgerCapacityUsage is the empty string when operationfeestats has not had its state set
-	if len(cur.LedgerCapacityUsage) > 0 {
+	if ok {
 		action.feeStats.LedgerCapacityUsage, action.Err = strconv.ParseFloat(
 			cur.LedgerCapacityUsage,
 			64,

@@ -48,12 +48,14 @@ type State struct {
 	LedgerCapacityUsage string
 }
 
-// CurrentState returns the cached snapshot of operation fee state
-func CurrentState() State {
+// CurrentState returns the cached snapshot of operation fee state and a boolean indicating
+// if the cache has been populated
+func CurrentState() (State, bool) {
 	lock.RLock()
 	ret := current
+	ok := present
 	lock.RUnlock()
-	return ret
+	return ret, ok
 }
 
 // SetState updates the cached snapshot of the operation fee state
@@ -64,13 +66,16 @@ func SetState(next State) {
 	if current.LastLedger < next.LastLedger {
 		current = next
 	}
+	present = true
 	lock.Unlock()
 }
 
 // ResetState is used only for testing purposes
 func ResetState() {
 	current = State{}
+	present = false
 }
 
 var current State
+var present bool
 var lock sync.RWMutex

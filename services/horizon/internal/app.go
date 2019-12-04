@@ -238,7 +238,7 @@ func (a *App) UpdateFeeStatsState() {
 		log.WithStack(err).WithField("err", err.Error()).Error(msg)
 	}
 
-	cur := operationfeestats.CurrentState()
+	cur, ok := operationfeestats.CurrentState()
 
 	err := a.HistoryQ().LatestLedgerBaseFeeAndSequence(&latest)
 	if err != nil {
@@ -247,7 +247,7 @@ func (a *App) UpdateFeeStatsState() {
 	}
 
 	// finish early if no new ledgers
-	if cur.LastLedger == uint32(latest.Sequence) {
+	if ok && cur.LastLedger == uint32(latest.Sequence) {
 		return
 	}
 
