@@ -25,14 +25,15 @@ func makeNewAccountState(state *accountState, change *xdr.LedgerEntryChange) (*a
 	// per-function checks for nil state.
 	if state == nil {
 		state = &accountState{}
+		accountID, err := makeAccountIDFromChange(change)
+		if err != nil {
+			return nil, errors.Wrap(err, "could not get ledger account address")
+		}
+		state.address = accountID
 	}
 
 	var newAccountState accountState
-	address, err := makeAccountIDFromStateOrChange(state, change)
-	if err != nil {
-		return nil, errors.Wrap(err, "could not get address")
-	}
-	state.address = address
+	newAccountState.address = state.address
 
 	seqnum, err := makeSeqnum(state, change)
 	if err != nil {
@@ -86,13 +87,6 @@ func isAccountRemoved(change *xdr.LedgerEntryChange) (bool, error) {
 	}
 
 	return (ledgerKey.Type == xdr.LedgerEntryTypeAccount), nil
-}
-
-func makeAccountIDFromStateOrChange(state *accountState, change *xdr.LedgerEntryChange) (string, error) {
-	if state != nil {
-		return state.address, nil
-	}
-	return makeAccountIDFromChange(change)
 }
 
 func makeAccountIDFromChange(change *xdr.LedgerEntryChange) (string, error) {

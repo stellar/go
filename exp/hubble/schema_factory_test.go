@@ -32,26 +32,6 @@ func TestAccountRemoved(t *testing.T) {
 	}
 }
 
-func TestMakeAccountIDFromState(t *testing.T) {
-	wantAddress := "GBFLTCDLOE6YQ74B66RH3S2UW5I2MKZ5VLTM75F4YMIWUIXRIFVNRNIF"
-	state := accountState{address: wantAddress}
-	change := xdr.LedgerEntryChange{
-		Type: xdr.LedgerEntryChangeTypeLedgerEntryState,
-		State: &xdr.LedgerEntry{
-			Data: xdr.LedgerEntryData{
-				Type: xdr.LedgerEntryTypeAccount,
-			},
-		},
-	}
-	gotAddress, err := makeAccountIDFromStateOrChange(&state, &change)
-	if err != nil {
-		t.Error(err)
-	}
-	if wantAddress != gotAddress {
-		t.Fatalf("got address %s, want address %s", gotAddress, wantAddress)
-	}
-}
-
 func TestMakeAccountIDFromChange(t *testing.T) {
 	wantAddress := "GBFLTCDLOE6YQ74B66RH3S2UW5I2MKZ5VLTM75F4YMIWUIXRIFVNRNIF"
 	accountID, err := xdr.AddressToAccountId(wantAddress)
@@ -69,7 +49,7 @@ func TestMakeAccountIDFromChange(t *testing.T) {
 			},
 		},
 	}
-	gotAddress, err := makeAccountIDFromStateOrChange(nil, &change)
+	gotAddress, err := makeAccountIDFromChange(&change)
 	if err != nil {
 		t.Error(err)
 	}
