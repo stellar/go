@@ -189,6 +189,7 @@ func makeSigners(state *accountState, change *xdr.LedgerEntryChange) ([]signer, 
 
 	var signers []signer
 	for _, accountSigner := range account.Signers {
+		// TODO: Replace `SignerKey.Address()` with a panic-free version.
 		signers = append(signers, signer{
 			address: accountSigner.Key.Address(),
 			weight:  uint32(accountSigner.Weight),
