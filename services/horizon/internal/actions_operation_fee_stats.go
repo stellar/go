@@ -82,13 +82,16 @@ func (action *FeeStatsAction) loadRecords() {
 	action.feeStats.LastLedgerBaseFee = cur.LastBaseFee
 	action.feeStats.LastLedger = cur.LastLedger
 
-	ledgerCapacityUsage, err := strconv.ParseFloat(cur.LedgerCapacityUsage, 64)
-	if err != nil {
-		action.Err = err
-		return
+	// LedgerCapacityUsage is the empty string when operationfeestats has not had its state set
+	if len(cur.LedgerCapacityUsage) > 0 {
+		action.feeStats.LedgerCapacityUsage, action.Err = strconv.ParseFloat(
+			cur.LedgerCapacityUsage,
+			64,
+		)
+		if action.Err != nil {
+			return
+		}
 	}
-
-	action.feeStats.LedgerCapacityUsage = ledgerCapacityUsage
 
 	// FeeCharged
 	action.feeStats.FeeCharged.Max = cur.FeeChargedMax
