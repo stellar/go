@@ -20,11 +20,6 @@ var (
 	ErrRateLimited = errors.New("Rate limit exceeded")
 )
 
-var knownErrors = map[error]struct{}{
-	sql.ErrNoRows:  struct{}{},
-	ErrRateLimited: struct{}{},
-}
-
 type Stream struct {
 	ctx      context.Context
 	initSync sync.Once  // Variable to ensure that Init only writes the preamble once.
@@ -117,9 +112,10 @@ func (s *Stream) Err(err error) {
 		err = errNoObject
 	}
 
-	_, ok := knownErrors[rootErr]
-	if !ok {
-		log.Ctx(s.ctx).Error(err)
+	if knownErr := problem.IsKnownError(err); knownErr != nil {
+		err = knownErr
+	} else {
+		log.Ctx(s.ctx).WithStack(err).Error(err)
 		err = errBadStream
 	}
 

@@ -76,6 +76,26 @@ func RegisterError(err error, p P) {
 	errToProblemMap[err] = p
 }
 
+// IsKnownError maps an error to a list of known errors
+func IsKnownError(err error) error {
+	origErr := errors.Cause(err)
+
+	switch origErr.(type) {
+	case error:
+		if err, ok := errToProblemMap[origErr]; ok {
+			return err
+		}
+		return nil
+	default:
+		return nil
+	}
+}
+
+// UnRegisterErrors removes all registered errors
+func UnRegisterErrors() {
+	errToProblemMap = map[error]P{}
+}
+
 // RegisterHost registers the service host url. It is used to prepend the host
 // url to the error type. If you don't wish to prepend anything to the error
 // type, register host as an empty string.
