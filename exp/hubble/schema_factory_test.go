@@ -32,16 +32,6 @@ func TestMakeNewAccountStateSuccess(t *testing.T) {
 			},
 			nil,
 		},
-		{"AccountIDFromState",
-			&accountState{address: wantAddress},
-			makeLedgerEntryChangeAccount(&xdr.AccountEntry{}),
-			&accountState{address: wantAddress},
-		},
-		{"AccountIDFromChange",
-			nil,
-			makeLedgerEntryChangeAccount(&xdr.AccountEntry{AccountId: xdr.MustAddress(wantAddress)}),
-			&accountState{address: wantAddress},
-		},
 		{"SeqnumNotChanged",
 			&accountState{seqnum: 11},
 			&xdr.LedgerEntryChange{
@@ -173,52 +163,3 @@ func TestMakeNewAccountStateSuccess(t *testing.T) {
 }
 
 // TODO: Add tests for error cases.
-
-func TestGetAccountEntry(t *testing.T) {
-	var accountEntryTests = []struct {
-		name      string
-		change    *xdr.LedgerEntryChange
-		wantEntry *xdr.AccountEntry
-	}{
-		{"NotAccount",
-			makeLedgerEntryChangeData(wantAddress, "name", "value"),
-			nil,
-		},
-		{"Removed",
-			&xdr.LedgerEntryChange{
-				Type: xdr.LedgerEntryChangeTypeLedgerEntryRemoved,
-				Removed: &xdr.LedgerKey{
-					Type: xdr.LedgerEntryTypeAccount,
-					Account: &xdr.LedgerKeyAccount{
-						AccountId: xdr.MustAddress("GBFLTCDLOE6YQ74B66RH3S2UW5I2MKZ5VLTM75F4YMIWUIXRIFVNRNIF"),
-					},
-				},
-			},
-			nil,
-		},
-		{"NotRemoved",
-			makeLedgerEntryChangeAccount(&xdr.AccountEntry{AccountId: xdr.MustAddress(wantAddress)}),
-			&xdr.AccountEntry{AccountId: xdr.MustAddress(wantAddress)},
-		},
-	}
-
-	for _, tt := range accountEntryTests {
-		t.Run(tt.name, func(t *testing.T) {
-			gotEntry, err := getAccountEntry(tt.change)
-			if tt.wantEntry == nil {
-				if !assert.Nil(t, gotEntry) {
-					return
-				}
-				return
-			}
-			if !assert.NoError(t, err) {
-				return
-			}
-			gotAddress := gotEntry.AccountId.Address()
-			wantAddress := tt.wantEntry.AccountId.Address()
-			if !assert.Equal(t, wantAddress, gotAddress) {
-				return
-			}
-		})
-	}
-}

@@ -116,6 +116,13 @@ func (p *CurrentStateProcessor) ProcessState(ctx context.Context, store *support
 			return errors.Wrap(err, "could not get ledger account address")
 		}
 		currentState := p.ledgerState[accountID]
+
+		// If we have stored no prior state for this account, we should initialize
+		// its state with the already-found address.
+		if currentState.address == "" {
+			currentState.address = accountID
+		}
+
 		newState, err := makeNewAccountState(&currentState, &entry)
 		if err != nil {
 			return errors.Wrap(err, "could not update account state")
