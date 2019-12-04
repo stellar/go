@@ -112,8 +112,9 @@ func (s *Stream) Err(err error) {
 		err = errNoObject
 	}
 
-	err = problem.IsKnownError(err)
-	if err == nil {
+	if knownErr := problem.IsKnownError(err); knownErr != nil {
+		err = knownErr
+	} else {
 		log.Ctx(s.ctx).WithStack(err).Error(err)
 		err = errBadStream
 	}
