@@ -25,9 +25,9 @@ func makeNewAccountState(state *accountState, change *xdr.LedgerEntryChange) (*a
 	// per-function checks for nil state.
 	if state == nil {
 		state = &accountState{}
-		accountID, err := makeAccountIDFromChange(change)
+		accountID, aerr := makeAccountIDFromChange(change)
 		if err != nil {
-			return nil, errors.Wrap(err, "could not get ledger account address")
+			return nil, errors.Wrap(aerr, "could not get ledger account address")
 		}
 		state.address = accountID
 	}
