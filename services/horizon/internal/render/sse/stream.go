@@ -2,7 +2,6 @@ package sse
 
 import (
 	"context"
-	"database/sql"
 	"net/http"
 	"sync"
 
@@ -16,7 +15,6 @@ var (
 	errBadStream = errors.New("Unexpected stream error")
 
 	// known errors
-	errNoObject    = errors.New("Object not found")
 	ErrRateLimited = errors.New("Rate limit exceeded")
 )
 
@@ -104,12 +102,6 @@ func (s *Stream) Err(err error) {
 	if s.sent == 0 {
 		problem.Render(s.ctx, s.w, err)
 		return
-	}
-
-	rootErr := errors.Cause(err)
-	if rootErr == sql.ErrNoRows {
-		//TODO: return errNoObject directly in SSE() methods.
-		err = errNoObject
 	}
 
 	if knownErr := problem.IsKnownError(err); knownErr != nil {
