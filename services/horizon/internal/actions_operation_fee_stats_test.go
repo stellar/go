@@ -284,6 +284,17 @@ func TestOperationFeeTestsActions_ShowMultiOp(t *testing.T) {
 	}
 }
 
+func TestEmptyFeeStats(t *testing.T) {
+	ht := StartHTTPTestWithoutScenario(t)
+	defer ht.Finish()
+	w := ht.Get("/fee_stats")
+	ht.Assert.Equal(200, w.Code)
+	var result hProtocol.FeeStats
+	err := json.Unmarshal(w.Body.Bytes(), &result)
+	ht.Require.NoError(err)
+	ht.Assert.Equal(result, hProtocol.FeeStats{})
+}
+
 func TestOperationFeeTestsActions_NotInterpolating(t *testing.T) {
 	ht := StartHTTPTest(t, "operation_fee_stats_3")
 	defer ht.Finish()
