@@ -2,6 +2,7 @@ package sse
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"net/http/httptest"
 	"strconv"
@@ -84,6 +85,20 @@ func (suite *StreamTestSuite) TestStream_ErrRegisterError() {
 	suite.stream.Err(context.DeadlineExceeded)
 	suite.checkHeadersAndPreamble()
 	assert.Contains(suite.T(), suite.w.Body.String(), "event: error\ndata: problem: timeout\n\n")
+	assert.True(suite.T(), suite.stream.IsDone())
+}
+
+// Tests that Stream can send handled ErrNoRows
+func (suite *StreamTestSuite) TestStream_ErrNoRows() {
+	problem.RegisterError(sql.ErrNoRows, problem.NotFound)
+	defer problem.UnRegisterErrors()
+
+	suite.w = httptest.NewRecorder()
+	suite.stream = NewStream(suite.ctx, suite.w)
+	suite.stream.sent++
+	suite.stream.Err(sql.ErrNoRows)
+	suite.checkHeadersAndPreamble()
+	assert.Contains(suite.T(), suite.w.Body.String(), "event: error\ndata: problem: not_found\n\n")
 	assert.True(suite.T(), suite.stream.IsDone())
 }
 
