@@ -16,6 +16,7 @@ bumps.  A breaking change will get clearly notified in this log.
 * Fixed out of bounds error in ledger backend reader ([#1914](https://github.com/stellar/go/pull/1914)).
 * Fixed out of bounds error in URL params handler ([#1973](https://github.com/stellar/go/pull/1973)).
 * Rename `OperationFeeStats` to `FeeStats` ([#1952](https://github.com/stellar/go/pull/1952)).
+* All DB queries are now cancelled when request is cancelled/timeout. ([#1950](https://github.com/stellar/go/pull/1950)).
 * Fixed multiple issues connected to graceful shutdown of Horizon.
 
 ### Scheduled Breaking Changes
