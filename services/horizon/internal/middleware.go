@@ -19,6 +19,7 @@ import (
 	"github.com/stellar/go/services/horizon/internal/render"
 	hProblem "github.com/stellar/go/services/horizon/internal/render/problem"
 	"github.com/stellar/go/support/db"
+	supportErrors "github.com/stellar/go/support/errors"
 	"github.com/stellar/go/support/log"
 	"github.com/stellar/go/support/render/problem"
 )
@@ -267,7 +268,6 @@ type ExperimentalIngestionMiddleware struct {
 // Wrap executes the middleware on a given http handler
 func (m *ExperimentalIngestionMiddleware) Wrap(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		ctx := r.Context()
 		if !m.EnableExperimentalIngestion {
 			problem.Render(r.Context(), w, problem.NotFound)
 			return
@@ -279,7 +279,6 @@ func (m *ExperimentalIngestionMiddleware) Wrap(h http.Handler) http.Handler {
 			return
 		}
 
-		localLog := log.Ctx(ctx)
 		session := m.HorizonSession.Clone()
 		q := &history.Q{session}
 
@@ -290,7 +289,7 @@ func (m *ExperimentalIngestionMiddleware) Wrap(h http.Handler) http.Handler {
 				ReadOnly:  true,
 			})
 			if err != nil {
-				localLog.WithField("err", err).Error("Error starting exp ingestion read transaction")
+				err = supportErrors.Wrap(err, "Error starting exp ingestion read transaction")
 				problem.Render(r.Context(), w, err)
 				return
 			}
@@ -298,7 +297,7 @@ func (m *ExperimentalIngestionMiddleware) Wrap(h http.Handler) http.Handler {
 
 			lastIngestedLedger, err := q.GetLastLedgerExpIngestNonBlocking()
 			if err != nil {
-				localLog.WithField("err", err).Error("Error running GetLastLedgerExpIngestNonBlocking")
+				err = supportErrors.Wrap(err, "Error running GetLastLedgerExpIngestNonBlocking")
 				problem.Render(r.Context(), w, err)
 				return
 			}
@@ -307,7 +306,7 @@ func (m *ExperimentalIngestionMiddleware) Wrap(h http.Handler) http.Handler {
 
 		stateInvalid, err := q.GetExpStateInvalid()
 		if err != nil {
-			localLog.WithField("err", err).Error("Error running GetExpStateInvalid")
+			err = supportErrors.Wrap(err, "Error running GetExpStateInvalid")
 			problem.Render(r.Context(), w, err)
 			return
 		}
