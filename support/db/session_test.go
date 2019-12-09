@@ -31,18 +31,19 @@ func TestConcurrentQueriesTransaction(t *testing.T) {
 		wg.Add(1)
 		go func(i int) {
 			istr := fmt.Sprintf("%d", i)
+			var err2 error
 			if i%3 == 0 {
 				var names []string
-				err = sess.SelectRaw(&names, "SELECT name FROM people")
+				err2 = sess.SelectRaw(&names, "SELECT name FROM people")
 			} else if i%3 == 1 {
 				var name string
-				err = sess.GetRaw(&name, "SELECT name FROM people LIMIT 1")
+				err2 = sess.GetRaw(&name, "SELECT name FROM people LIMIT 1")
 			} else {
-				_, err = sess.ExecRaw(
+				_, err2 = sess.ExecRaw(
 					"INSERT INTO people (name, hunger_level) VALUES ('bartek" + istr + "', " + istr + ")",
 				)
 			}
-			assert.NoError(t, err)
+			assert.NoError(t, err2)
 			wg.Done()
 		}(i)
 	}
