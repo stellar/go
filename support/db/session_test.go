@@ -31,7 +31,6 @@ func TestConcurrentQueriesTransaction(t *testing.T) {
 		wg.Add(1)
 		go func(i int) {
 			istr := fmt.Sprintf("%d", i)
-			var err error
 			if i%3 == 0 {
 				var names []string
 				err = sess.SelectRaw(&names, "SELECT name FROM people")

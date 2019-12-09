@@ -119,7 +119,7 @@ type Session struct {
 	Ctx context.Context
 
 	// Synchronized is an EXPERIMENTAL flag that allows sending queries
-	// concurrently in a DB tx. When set to `true` all Exec and Query methods
+	// concurrently in a DB tx. When set to `true` all Exec and Select methods
 	// sent in a transaction are protected by mutex. It is not needed outside
 	// transaction context because then all queries are sent in a separate DB
 	// connections.
