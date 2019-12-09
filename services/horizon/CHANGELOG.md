@@ -9,20 +9,20 @@ bumps.  A breaking change will get clearly notified in this log.
 ## v0.24.0
 
 * Add `fee_charged` and `max_fee` objects to `/fee_stats` endpoint ([#1964](https://github.com/stellar/go/pull/1964)).
-* Experimental ledger ingestion processor ([#1949](https://github.com/stellar/go/pull/1949)).
+* Experimental ledger header ingestion processor ([#1949](https://github.com/stellar/go/pull/1949)).
 * Improved performance of asset stats processor ([#1987](https://github.com/stellar/go/pull/1987)).
 * Provide mechanism for retrying XDR stream errors ([#1899](https://github.com/stellar/go/pull/1899)).
-* Emit errors level log after 3 failed attempts to validate state ([#1918](https://github.com/stellar/go/pull/1918)).
+* Emit error level log after 3 failed attempts to validate state ([#1918](https://github.com/stellar/go/pull/1918)).
 * Fixed out of bounds error in ledger backend reader ([#1914](https://github.com/stellar/go/pull/1914)).
 * Fixed out of bounds error in URL params handler ([#1973](https://github.com/stellar/go/pull/1973)).
-* Rename `OperationFeeStats` to `FeeStats` ([#1950](https://github.com/stellar/go/pull/1950)).
+* Rename `OperationFeeStats` to `FeeStats` ([#1952](https://github.com/stellar/go/pull/1952)).
 * Fixed multiple issues connected to graceful shutdown of Horizon.
 
 ### Scheduled Breaking Changes
 
 * All `*_accepted_fee` fields in `/fee_stats` endpoint are deprecated. Fields will be removed in Horizon 0.25.0.
 
-Check [Beta Testing New Ingestion System](https://github.com/stellar/go/blob/master/services/horizon/internal/expingest/BETA_TESTING.md) if you want to test new ingestion system.
+Check [Beta Testing New Ingestion System](https://github.com/stellar/go/blob/master/services/horizon/internal/expingest/BETA_TESTING.md) if you want to test the new ingestion system.
 
 ## v0.23.1
 
