@@ -2,12 +2,56 @@ package db
 
 import (
 	"context"
+	"fmt"
+	"sync"
 	"testing"
 
 	"github.com/stellar/go/support/db/dbtest"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+func TestConcurrentQueriesTransaction(t *testing.T) {
+	db := dbtest.Postgres(t).Load(testSchema)
+	defer db.Close()
+
+	sess := &Session{
+		Ctx: context.Background(),
+		DB:  db.Open(),
+		// This test would fail for `Synchronized: false`
+		Synchronized: true,
+	}
+	defer sess.DB.Close()
+
+	err := sess.Begin()
+	assert.NoError(t, err)
+
+	var wg sync.WaitGroup
+	for i := 0; i < 1000; i++ {
+		wg.Add(1)
+		go func(i int) {
+			istr := fmt.Sprintf("%d", i)
+			var err2 error
+			if i%3 == 0 {
+				var names []string
+				err2 = sess.SelectRaw(&names, "SELECT name FROM people")
+			} else if i%3 == 1 {
+				var name string
+				err2 = sess.GetRaw(&name, "SELECT name FROM people LIMIT 1")
+			} else {
+				_, err2 = sess.ExecRaw(
+					"INSERT INTO people (name, hunger_level) VALUES ('bartek" + istr + "', " + istr + ")",
+				)
+			}
+			assert.NoError(t, err2)
+			wg.Done()
+		}(i)
+	}
+
+	wg.Wait()
+	err = sess.Rollback()
+	assert.NoError(t, err)
+}
 
 func TestSession(t *testing.T) {
 	db := dbtest.Postgres(t).Load(testSchema)

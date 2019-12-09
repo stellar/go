@@ -67,6 +67,8 @@ func (s *Session) Clone() *Session {
 	return &Session{
 		DB:  s.DB,
 		Ctx: s.Ctx,
+
+		Synchronized: s.Synchronized,
 	}
 }
 
@@ -126,6 +128,11 @@ func (s *Session) GetRaw(dest interface{}, query string, args ...interface{}) er
 	query, err := s.ReplacePlaceholders(query)
 	if err != nil {
 		return errors.Wrap(err, "replace placeholders failed")
+	}
+
+	if s.Synchronized && s.tx != nil {
+		s.txMutex.Lock()
+		defer s.txMutex.Unlock()
 	}
 
 	start := time.Now()
@@ -197,6 +204,11 @@ func (s *Session) ExecRaw(query string, args ...interface{}) (sql.Result, error)
 		return nil, errors.Wrap(err, "replace placeholders failed")
 	}
 
+	if s.Synchronized && s.tx != nil {
+		s.txMutex.Lock()
+		defer s.txMutex.Unlock()
+	}
+
 	start := time.Now()
 	result, err := s.conn().ExecContext(s.Ctx, query, args...)
 	s.log("exec", start, query, args)
@@ -238,6 +250,10 @@ func (s *Session) Query(query sq.Sqlizer) (*sqlx.Rows, error) {
 
 // QueryRaw runs `query` with `args`
 func (s *Session) QueryRaw(query string, args ...interface{}) (*sqlx.Rows, error) {
+	if s.Synchronized && s.tx != nil {
+		return nil, errors.New("QueryRaw cannot be run in transaction when Synchronized is true")
+	}
+
 	query, err := s.ReplacePlaceholders(query)
 	if err != nil {
 		return nil, errors.Wrap(err, "replace placeholders failed")
@@ -305,6 +321,11 @@ func (s *Session) SelectRaw(
 	query, err := s.ReplacePlaceholders(query)
 	if err != nil {
 		return errors.Wrap(err, "replace placeholders failed")
+	}
+
+	if s.Synchronized && s.tx != nil {
+		s.txMutex.Lock()
+		defer s.txMutex.Unlock()
 	}
 
 	start := time.Now()
