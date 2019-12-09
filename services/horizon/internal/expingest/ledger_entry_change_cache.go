@@ -17,7 +17,7 @@ import (
 // previously removed returns an error. In such case verify.StateError is
 // returned.
 type LedgerEntryChangeCache struct {
-	HistoryQ history.Q
+	historyQ history.Q
 
 	// ledger key => ledger entry change
 	cache map[string]xdr.LedgerEntryChange
@@ -29,17 +29,18 @@ type LedgerEntryChangeCache struct {
 	trustLinesBatch  history.TrustLinesBatchInsertBuilder
 }
 
-// Init initializes LedgerEntryChangeCache. maxBatchSize is a maximum capacity
-// of DB insert batch. LedgerEntryChangeCache uses 4 batches internally, for
-// each ledger entry type.
-func (c *LedgerEntryChangeCache) Init(maxBatchSize int) error {
-	c.cache = make(map[string]xdr.LedgerEntryChange)
-	c.accountsBatch = c.HistoryQ.NewAccountsBatchInsertBuilder(maxBatchSize)
-	c.accountDataBatch = c.HistoryQ.NewAccountDataBatchInsertBuilder(maxBatchSize)
-	c.offersBatch = c.HistoryQ.NewOffersBatchInsertBuilder(maxBatchSize)
-	c.trustLinesBatch = c.HistoryQ.NewTrustLinesBatchInsertBuilder(maxBatchSize)
-
-	return nil
+// NewLedgerEntryChangeCache returns a new LedgerEntryChangeCache.
+// maxBatchSize is a maximum capacity  of DB insert batch.
+// LedgerEntryChangeCache uses 4 batches internally, for each ledger entry type.
+func NewLedgerEntryChangeCache(historyQ history.Q, maxBatchSize int) *LedgerEntryChangeCache {
+	return &LedgerEntryChangeCache{
+		historyQ:         historyQ,
+		cache:            make(map[string]xdr.LedgerEntryChange),
+		accountsBatch:    historyQ.NewAccountsBatchInsertBuilder(maxBatchSize),
+		accountDataBatch: historyQ.NewAccountDataBatchInsertBuilder(maxBatchSize),
+		offersBatch:      historyQ.NewOffersBatchInsertBuilder(maxBatchSize),
+		trustLinesBatch:  historyQ.NewTrustLinesBatchInsertBuilder(maxBatchSize),
+	}
 }
 
 // AddChange adds a change to LedgerEntryChangeCache. All changes are stored
@@ -132,6 +133,11 @@ func (c *LedgerEntryChangeCache) addUpdatedChange(change io.Change) error {
 			))
 		default:
 			return errors.Errorf("Unknown LedgerEntryChangeType: %d", entryChange.Type)
+		}
+	} else {
+		c.cache[ledgerKeyString] = xdr.LedgerEntryChange{
+			Type:    xdr.LedgerEntryChangeTypeLedgerEntryUpdated,
+			Created: change.Post,
 		}
 	}
 
@@ -247,13 +253,13 @@ func (c *LedgerEntryChangeCache) updateEntry(entryChange xdr.LedgerEntryChange) 
 
 	switch entryChange.EntryType() {
 	case xdr.LedgerEntryTypeAccount:
-		rowsAffected, err = c.HistoryQ.UpdateAccount(entry.Data.MustAccount(), entry.LastModifiedLedgerSeq)
+		rowsAffected, err = c.historyQ.UpdateAccount(entry.Data.MustAccount(), entry.LastModifiedLedgerSeq)
 	case xdr.LedgerEntryTypeData:
-		rowsAffected, err = c.HistoryQ.UpdateAccountData(entry.Data.MustData(), entry.LastModifiedLedgerSeq)
+		rowsAffected, err = c.historyQ.UpdateAccountData(entry.Data.MustData(), entry.LastModifiedLedgerSeq)
 	case xdr.LedgerEntryTypeOffer:
-		rowsAffected, err = c.HistoryQ.UpdateOffer(entry.Data.MustOffer(), entry.LastModifiedLedgerSeq)
+		rowsAffected, err = c.historyQ.UpdateOffer(entry.Data.MustOffer(), entry.LastModifiedLedgerSeq)
 	case xdr.LedgerEntryTypeTrustline:
-		rowsAffected, err = c.HistoryQ.UpdateTrustLine(entry.Data.MustTrustLine(), entry.LastModifiedLedgerSeq)
+		rowsAffected, err = c.historyQ.UpdateTrustLine(entry.Data.MustTrustLine(), entry.LastModifiedLedgerSeq)
 	default:
 		return errors.Errorf("Unknown LedgerEntryType: %d", entryChange.EntryType())
 	}
@@ -281,13 +287,13 @@ func (c *LedgerEntryChangeCache) removeEntry(entryChange xdr.LedgerEntryChange) 
 	switch entryChange.EntryType() {
 	case xdr.LedgerEntryTypeAccount:
 		ledgerKeyAccount := entry.LedgerKey().MustAccount()
-		rowsAffected, err = c.HistoryQ.RemoveAccount(ledgerKeyAccount.AccountId.Address())
+		rowsAffected, err = c.historyQ.RemoveAccount(ledgerKeyAccount.AccountId.Address())
 	case xdr.LedgerEntryTypeData:
-		rowsAffected, err = c.HistoryQ.RemoveAccountData(entry.LedgerKey().MustData())
+		rowsAffected, err = c.historyQ.RemoveAccountData(entry.LedgerKey().MustData())
 	case xdr.LedgerEntryTypeOffer:
-		rowsAffected, err = c.HistoryQ.RemoveOffer(entry.LedgerKey().MustOffer().OfferId)
+		rowsAffected, err = c.historyQ.RemoveOffer(entry.LedgerKey().MustOffer().OfferId)
 	case xdr.LedgerEntryTypeTrustline:
-		rowsAffected, err = c.HistoryQ.RemoveTrustLine(entry.LedgerKey().MustTrustLine())
+		rowsAffected, err = c.historyQ.RemoveTrustLine(entry.LedgerKey().MustTrustLine())
 	default:
 		return errors.Errorf("Unknown LedgerEntryType: %d", entryChange.EntryType())
 	}
