@@ -137,7 +137,12 @@ func NewSystem(config Config) (*System, error) {
 		return nil, errors.Wrap(err, "error creating ledger backend")
 	}
 
-	historyQ := &history.Q{config.HistorySession}
+	// Make historySession synchronized so it can be used in the pipeline
+	// (saving to DB in multiple goroutines at the same time).
+	historySession := config.HistorySession.Clone()
+	historySession.Synchronized = true
+
+	historyQ := &history.Q{historySession}
 
 	session := &ingest.LiveSession{
 		Archive:          archive,
@@ -157,7 +162,7 @@ func NewSystem(config Config) (*System, error) {
 
 	system := &System{
 		session:                  session,
-		historySession:           config.HistorySession,
+		historySession:           historySession,
 		historyQ:                 historyQ,
 		graph:                    config.OrderBookGraph,
 		retry:                    alwaysRetry{time.Second},
