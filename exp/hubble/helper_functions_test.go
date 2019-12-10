@@ -61,3 +61,64 @@ func makeLedgerEntryChangeData(address, name, value string) *xdr.LedgerEntryChan
 		},
 	}
 }
+
+func makeLedgerEntryChangeSeqnumState(seqnum uint32) *xdr.LedgerEntryChange {
+	return &xdr.LedgerEntryChange{
+		Type: xdr.LedgerEntryChangeTypeLedgerEntryState,
+		State: &xdr.LedgerEntry{
+			LastModifiedLedgerSeq: xdr.Uint32(seqnum),
+			Data: xdr.LedgerEntryData{
+				Type:    xdr.LedgerEntryTypeAccount,
+				Account: &xdr.AccountEntry{},
+			},
+		},
+	}
+}
+
+func makeLedgerEntryChangeAccountRemoved(address string) *xdr.LedgerEntryChange {
+	return &xdr.LedgerEntryChange{
+		Type: xdr.LedgerEntryChangeTypeLedgerEntryRemoved,
+		Removed: &xdr.LedgerKey{
+			Account: &xdr.LedgerKeyAccount{
+				AccountId: xdr.MustAddress(address),
+			},
+		},
+	}
+}
+
+func makeLedgerEntryChangeTrustlineRemoved(issuer, code string) *xdr.LedgerEntryChange {
+	return &xdr.LedgerEntryChange{
+		Type: xdr.LedgerEntryChangeTypeLedgerEntryRemoved,
+		Removed: &xdr.LedgerKey{
+			Type: xdr.LedgerEntryTypeTrustline,
+			TrustLine: &xdr.LedgerKeyTrustLine{
+				AccountId: xdr.MustAddress(issuer),
+				Asset:     xdr.MustNewCreditAsset(code, issuer),
+			},
+		},
+	}
+}
+
+func makeLedgerEntryChangeDataRemoved(key string) *xdr.LedgerEntryChange {
+	return &xdr.LedgerEntryChange{
+		Type: xdr.LedgerEntryChangeTypeLedgerEntryRemoved,
+		Removed: &xdr.LedgerKey{
+			Type: xdr.LedgerEntryTypeData,
+			Data: &xdr.LedgerKeyData{
+				DataName: xdr.String64(key),
+			},
+		},
+	}
+}
+
+func makeLedgerEntryChangeOfferRemoved(id int) *xdr.LedgerEntryChange {
+	return &xdr.LedgerEntryChange{
+		Type: xdr.LedgerEntryChangeTypeLedgerEntryRemoved,
+		Removed: &xdr.LedgerKey{
+			Type: xdr.LedgerEntryTypeOffer,
+			Offer: &xdr.LedgerKeyOffer{
+				OfferId: xdr.Int64(id),
+			},
+		},
+	}
+}

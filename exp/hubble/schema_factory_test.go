@@ -11,6 +11,7 @@ import (
 )
 
 const wantAddress = "GBFLTCDLOE6YQ74B66RH3S2UW5I2MKZ5VLTM75F4YMIWUIXRIFVNRNIF"
+const wantAddress2 = "GBDT3K42LOPSHNAEHEJ6AVPADIJ4MAR64QEKKW2LQPBSKLYD22KUEH4P"
 
 func TestMakeNewAccountStateSuccess(t *testing.T) {
 	var trustlineKey = fmt.Sprintf("credit_alphanum4/USD/%s", wantAddress)
@@ -22,48 +23,28 @@ func TestMakeNewAccountStateSuccess(t *testing.T) {
 	}{
 		{"AccountRemoved",
 			&accountState{address: wantAddress},
-			&xdr.LedgerEntryChange{
-				Type: xdr.LedgerEntryChangeTypeLedgerEntryRemoved,
-				Removed: &xdr.LedgerKey{
-					Account: &xdr.LedgerKeyAccount{
-						AccountId: xdr.MustAddress(wantAddress),
-					},
-				},
-			},
+			makeLedgerEntryChangeAccountRemoved(wantAddress),
 			nil,
 		},
 		{"SeqnumNotChanged",
 			&accountState{seqnum: 11},
-			&xdr.LedgerEntryChange{
-				Type: xdr.LedgerEntryChangeTypeLedgerEntryState,
-				State: &xdr.LedgerEntry{
-					LastModifiedLedgerSeq: xdr.Uint32(11),
-					Data: xdr.LedgerEntryData{
-						Type:    xdr.LedgerEntryTypeAccount,
-						Account: &xdr.AccountEntry{},
-					},
-				},
-			},
+			makeLedgerEntryChangeSeqnumState(11),
 			&accountState{seqnum: 11},
 		},
 		{"SeqnumChanged",
 			&accountState{seqnum: 11},
-			&xdr.LedgerEntryChange{
-				Type: xdr.LedgerEntryChangeTypeLedgerEntryState,
-				State: &xdr.LedgerEntry{
-					LastModifiedLedgerSeq: xdr.Uint32(2947523),
-					Data: xdr.LedgerEntryData{
-						Type:    xdr.LedgerEntryTypeAccount,
-						Account: &xdr.AccountEntry{},
-					},
-				},
-			},
+			makeLedgerEntryChangeSeqnumState(2947523),
 			&accountState{seqnum: 2947523},
 		},
 		{"BalanceChanged",
 			&accountState{balance: 222},
 			makeLedgerEntryChangeAccount(&xdr.AccountEntry{Balance: xdr.Int64(111)}),
 			&accountState{balance: 111},
+		},
+		{"SignersRemoved",
+			&accountState{signers: []signer{{address: wantAddress, weight: uint32(1)}}},
+			makeLedgerEntryChangeAccount(&xdr.AccountEntry{Signers: []xdr.Signer{}}),
+			&accountState{},
 		},
 		{"SignersNotChanged",
 			&accountState{signers: []signer{{address: wantAddress, weight: uint32(1)}}},
@@ -75,7 +56,20 @@ func TestMakeNewAccountStateSuccess(t *testing.T) {
 			}),
 			&accountState{signers: []signer{{address: wantAddress, weight: uint32(1)}}},
 		},
-		{"SignersChanged",
+		{"SignersChangedSigner",
+			&accountState{signers: []signer{{address: wantAddress, weight: uint32(1)}}},
+			makeLedgerEntryChangeAccount(&xdr.AccountEntry{
+				Signers: []xdr.Signer{
+					{Key: xdr.MustSigner(wantAddress), Weight: xdr.Uint32(1)},
+					{Key: xdr.MustSigner(wantAddress2), Weight: xdr.Uint32(1)},
+				},
+			}),
+			&accountState{signers: []signer{
+				{address: wantAddress, weight: uint32(1)},
+				{address: wantAddress2, weight: uint32(1)},
+			}},
+		},
+		{"SignersChangedWeight",
 			&accountState{signers: []signer{{address: wantAddress, weight: uint32(1)}}},
 			makeLedgerEntryChangeAccount(&xdr.AccountEntry{
 				Signers: []xdr.Signer{{
@@ -89,16 +83,7 @@ func TestMakeNewAccountStateSuccess(t *testing.T) {
 			&accountState{trustlines: map[string]trustline{
 				trustlineKey: trustline{asset: trustlineKey, balance: uint32(0), limit: uint32(100)}},
 			},
-			&xdr.LedgerEntryChange{
-				Type: xdr.LedgerEntryChangeTypeLedgerEntryRemoved,
-				Removed: &xdr.LedgerKey{
-					Type: xdr.LedgerEntryTypeTrustline,
-					TrustLine: &xdr.LedgerKeyTrustLine{
-						AccountId: xdr.MustAddress(wantAddress),
-						Asset:     xdr.MustNewCreditAsset("USD", wantAddress),
-					},
-				},
-			},
+			makeLedgerEntryChangeTrustlineRemoved(wantAddress, "USD"),
 			&accountState{trustlines: map[string]trustline{}},
 		},
 		{"TrustlinesChanged",
@@ -112,15 +97,7 @@ func TestMakeNewAccountStateSuccess(t *testing.T) {
 		},
 		{"DataRemoved",
 			&accountState{data: map[string][]byte{"key": []byte("value")}},
-			&xdr.LedgerEntryChange{
-				Type: xdr.LedgerEntryChangeTypeLedgerEntryRemoved,
-				Removed: &xdr.LedgerKey{
-					Type: xdr.LedgerEntryTypeData,
-					Data: &xdr.LedgerKeyData{
-						DataName: xdr.String64("key"),
-					},
-				},
-			},
+			makeLedgerEntryChangeDataRemoved("key"),
 			&accountState{data: map[string][]byte{}},
 		},
 		{"DataChanged",
@@ -130,15 +107,7 @@ func TestMakeNewAccountStateSuccess(t *testing.T) {
 		},
 		{"OffersRemoved",
 			&accountState{offers: map[uint32]offer{1: offer{id: 1}}},
-			&xdr.LedgerEntryChange{
-				Type: xdr.LedgerEntryChangeTypeLedgerEntryRemoved,
-				Removed: &xdr.LedgerKey{
-					Type: xdr.LedgerEntryTypeOffer,
-					Offer: &xdr.LedgerKeyOffer{
-						OfferId: xdr.Int64(1),
-					},
-				},
-			},
+			makeLedgerEntryChangeOfferRemoved(1),
 			&accountState{offers: map[uint32]offer{}},
 		},
 		{"OffersChanged",
