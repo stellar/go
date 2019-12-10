@@ -1,6 +1,7 @@
 package ingest
 
 import (
+	"context"
 	"database/sql"
 	"testing"
 	"time"
@@ -20,7 +21,8 @@ func TestEmptySignature(t *testing.T) {
 	dbConn := testDB.Horizon(t)
 	ingestion := Ingestion{
 		DB: &db.Session{
-			DB: dbConn,
+			DB:  dbConn,
+			Ctx: context.Background(),
 		},
 	}
 	test.ResetHorizonDB(t, dbConn)
@@ -61,7 +63,8 @@ func TestFeeMax(t *testing.T) {
 
 	ingestion := Ingestion{
 		DB: &db.Session{
-			DB: testDB.Horizon(t),
+			DB:  testDB.Horizon(t),
+			Ctx: context.Background(),
 		},
 	}
 	ingestion.Start()
@@ -119,7 +122,8 @@ func TestTimeBoundsMaxBig(t *testing.T) {
 	dbConn := testDB.Horizon(t)
 	ingestion := Ingestion{
 		DB: &db.Session{
-			DB: dbConn,
+			DB:  dbConn,
+			Ctx: context.Background(),
 		},
 	}
 	test.ResetHorizonDB(t, dbConn)

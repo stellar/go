@@ -393,6 +393,17 @@ func TestGetAccountOffersHandler(t *testing.T) {
 	for _, offer := range offers {
 		tt.Assert.Equal(issuer.Address(), offer.Seller)
 	}
+
+	records, err = handler.GetResourcePage(
+		httptest.NewRecorder(),
+		makeRequest(
+			t,
+			map[string]string{},
+			map[string]string{},
+			q.Session,
+		),
+	)
+	tt.Assert.Error(err)
 }
 
 func pageableToOffers(t *testing.T, page []hal.Pageable) []horizon.Offer {

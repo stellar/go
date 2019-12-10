@@ -1,6 +1,7 @@
 package tickerdb
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -18,6 +19,7 @@ func TestBulkInsertTrades(t *testing.T) {
 
 	var session TickerSession
 	session.DB = db.Open()
+	session.Ctx = context.Background()
 	defer session.DB.Close()
 
 	// Run migrations to make sure the tests are run
@@ -123,6 +125,7 @@ func TestGetLastTrade(t *testing.T) {
 
 	var session TickerSession
 	session.DB = db.Open()
+	session.Ctx = context.Background()
 	defer session.DB.Close()
 
 	// Run migrations to make sure the tests are run
@@ -226,6 +229,7 @@ func TestDeleteOldTrades(t *testing.T) {
 
 	var session TickerSession
 	session.DB = db.Open()
+	session.Ctx = context.Background()
 	defer session.DB.Close()
 
 	// Run migrations to make sure the tests are run

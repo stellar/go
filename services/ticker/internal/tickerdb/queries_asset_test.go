@@ -1,6 +1,7 @@
 package tickerdb
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -17,6 +18,7 @@ func TestInsertOrUpdateAsset(t *testing.T) {
 
 	var session TickerSession
 	session.DB = db.Open()
+	session.Ctx = context.Background()
 	defer session.DB.Close()
 
 	// Run migrations to make sure the tests are run
@@ -157,6 +159,7 @@ func TestGetAssetByCodeAndIssuerAccount(t *testing.T) {
 
 	var session TickerSession
 	session.DB = db.Open()
+	session.Ctx = context.Background()
 	defer session.DB.Close()
 
 	// Run migrations to make sure the tests are run
