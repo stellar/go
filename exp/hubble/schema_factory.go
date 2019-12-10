@@ -20,16 +20,9 @@ func makeNewAccountState(state *accountState, change *xdr.LedgerEntryChange) (*a
 	}
 
 	// We should never be given a nil pointer for account state, rather one
-	// to an empty accountState struct. If we are given a nil pointer to state
-	// somehow, we replace it with the desired input. This prevents repeated,
-	// per-function checks for nil state.
+	// to an empty accountState struct.
 	if state == nil {
-		state = &accountState{}
-		accountID, aerr := makeAccountIDFromChange(change)
-		if aerr != nil {
-			return nil, errors.Wrap(aerr, "could not get ledger account address")
-		}
-		state.address = accountID
+		return nil, errors.Wrap(err, "cannot process nil state ptr")
 	}
 
 	var newAccountState accountState
@@ -154,9 +147,11 @@ func makeBalance(state *accountState, change *xdr.LedgerEntryChange) (uint32, er
 
 	entry, ok := change.GetLedgerEntry()
 	if !ok {
-		return state.balance, nil
+		return 0, fmt.Errorf("Could not get ledger entry")
 	}
 
+	// If the entry is not of account type (trustline, offer, etc.), then we return
+	// the current balance.
 	account, ok := entry.Data.GetAccount()
 	if !ok {
 		return state.balance, nil
@@ -174,9 +169,11 @@ func makeSigners(state *accountState, change *xdr.LedgerEntryChange) ([]signer, 
 
 	entry, ok := change.GetLedgerEntry()
 	if !ok {
-		return state.signers, nil
+		return nil, fmt.Errorf("Could not get ledger entry")
 	}
 
+	// If the entry is not of account type (i.e., trustline, offer, or data), then we
+	// return the current signers, as those would not be modified by this change.
 	account, ok := entry.Data.GetAccount()
 	if !ok {
 		return state.signers, nil
@@ -216,14 +213,19 @@ func makeTrustlines(state *accountState, change *xdr.LedgerEntryChange) (map[str
 		return trustlines, nil
 	}
 
-	// Get the trustline entry from the change and an error if we cannot.
+	// Get the trustline entry from the change. If the change does not contain
+	// a ledger entry, we return an error, as the only valid non-entry ledger changes
+	// are Removed.
 	entry, ok := change.GetLedgerEntry()
 	if !ok {
 		return nil, fmt.Errorf("Could not get ledger entry")
 	}
+
+	// If the change is not of type trustline, then we return the current trustlines,
+	// as those would not be changed.
 	trustlineEntry, ok := entry.Data.GetTrustLine()
 	if !ok {
-		return nil, fmt.Errorf("Could not get trustline entry")
+		return trustlines, nil
 	}
 
 	assetKey := trustlineEntry.Asset.String()
@@ -261,14 +263,19 @@ func makeOffers(state *accountState, change *xdr.LedgerEntryChange) (map[uint32]
 		return offers, nil
 	}
 
-	// Get and store the offer.
+	// Get the offer entry from the change. If the change does not contain
+	// a ledger entry, we return an error, as the only valid non-entry ledger changes
+	// are Removed.
 	entry, ok := change.GetLedgerEntry()
 	if !ok {
 		return nil, fmt.Errorf("Could not get ledger entry")
 	}
+
+	// If the change is not of type offer, then we return the current offers,
+	// as those would not be changed.
 	offerEntry, ok := entry.Data.GetOffer()
 	if !ok {
-		return nil, fmt.Errorf("Could not get offer entry")
+		return offers, nil
 	}
 
 	offerSellerAddress, err := offerEntry.SellerId.GetAddress()
@@ -318,9 +325,11 @@ func makeData(state *accountState, change *xdr.LedgerEntryChange) (map[string][]
 		return nil, fmt.Errorf("Could not get ledger entry")
 	}
 
+	// If the change is not of type data, then we return the current data,
+	// as those would not be changed.
 	dataEntry, ok := entry.Data.GetData()
 	if !ok {
-		return nil, fmt.Errorf("Could not get data entry")
+		return data, nil
 	}
 
 	data[string(dataEntry.DataName)] = dataEntry.DataValue
