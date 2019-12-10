@@ -201,6 +201,30 @@ type SequenceBumped struct {
 	NewSeq int64 `json:"new_seq"`
 }
 
+// UnmarshalJSON is the custom unmarshal method for SequenceBumped. It allows
+// parsing of new_seq as a string or an int64.
+func (effect *SequenceBumped) UnmarshalJSON(data []byte) error {
+	var temp struct {
+		NewSeq json.Number `json:"new_seq"`
+	}
+
+	if err := json.Unmarshal(data, &effect.Base); err != nil {
+		return err
+	}
+
+	if err := json.Unmarshal(data, &temp); err != nil {
+		return err
+	}
+
+	newSeq, err := temp.NewSeq.Int64()
+	if err != nil {
+		return err
+	}
+	effect.NewSeq = newSeq
+
+	return nil
+}
+
 type SignerCreated struct {
 	Base
 	Weight    int32  `json:"weight"`

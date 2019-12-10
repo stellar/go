@@ -150,3 +150,24 @@ func TestRegisterReportFunc(t *testing.T) {
 	Render(ctx, w, err)
 	assert.Equal(t, want, buf.String())
 }
+
+func TestUnRegisterErrors(t *testing.T) {
+	RegisterError(context.DeadlineExceeded, ServerError)
+	err := IsKnownError(context.DeadlineExceeded)
+	assert.Error(t, err, ServerError.Error())
+
+	UnRegisterErrors()
+
+	err = IsKnownError(context.DeadlineExceeded)
+	assert.NoError(t, err)
+}
+
+func IsTestKnownError(t *testing.T) {
+	RegisterError(context.DeadlineExceeded, ServerError)
+	defer UnRegisterErrors()
+	err := IsKnownError(context.DeadlineExceeded)
+	assert.Error(t, err, ServerError.Error())
+
+	err = IsKnownError(errors.New("foo"))
+	assert.NoError(t, err)
+}

@@ -46,6 +46,9 @@ func (dbb *DatabaseBackend) GetLatestLedgerSequence() (uint32, error) {
 	if err != nil {
 		return 0, errors.Wrap(err, "couldn't select ledger sequence")
 	}
+	if len(ledger) == 0 {
+		return 0, errors.New("no ledgers exist in ledgerheaders table")
+	}
 
 	return ledger[0].LedgerSeq, nil
 }

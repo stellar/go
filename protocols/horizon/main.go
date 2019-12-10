@@ -624,25 +624,51 @@ type Metrics struct {
 	TxsubTotal             LogTotalMetric `json:"txsub.total"`
 }
 
+type FeeDistribution struct {
+	Max  int64 `json:"max,string"`
+	Min  int64 `json:"min,string"`
+	Mode int64 `json:"mode,string"`
+	P10  int64 `json:"p10,string"`
+	P20  int64 `json:"p20,string"`
+	P30  int64 `json:"p30,string"`
+	P40  int64 `json:"p40,string"`
+	P50  int64 `json:"p50,string"`
+	P60  int64 `json:"p60,string"`
+	P70  int64 `json:"p70,string"`
+	P80  int64 `json:"p80,string"`
+	P90  int64 `json:"p90,string"`
+	P95  int64 `json:"p95,string"`
+	P99  int64 `json:"p99,string"`
+}
+
 // FeeStats represents a response of fees from horizon
 // To do: implement fee suggestions if agreement is reached in https://github.com/stellar/go/issues/926
 type FeeStats struct {
-	LastLedger          int     `json:"last_ledger,string"`
-	LastLedgerBaseFee   int     `json:"last_ledger_base_fee,string"`
+	// Action needed in release: horizon-v0.25.0
+	// Update type for LastLedger to uint32 and LastLedgerBaseFee to int64
+	LastLedger        int `json:"last_ledger,string"`
+	LastLedgerBaseFee int `json:"last_ledger_base_fee,string"`
+
 	LedgerCapacityUsage float64 `json:"ledger_capacity_usage,string"`
-	MinAcceptedFee      int     `json:"min_accepted_fee,string"`
-	ModeAcceptedFee     int     `json:"mode_accepted_fee,string"`
-	P10AcceptedFee      int     `json:"p10_accepted_fee,string"`
-	P20AcceptedFee      int     `json:"p20_accepted_fee,string"`
-	P30AcceptedFee      int     `json:"p30_accepted_fee,string"`
-	P40AcceptedFee      int     `json:"p40_accepted_fee,string"`
-	P50AcceptedFee      int     `json:"p50_accepted_fee,string"`
-	P60AcceptedFee      int     `json:"p60_accepted_fee,string"`
-	P70AcceptedFee      int     `json:"p70_accepted_fee,string"`
-	P80AcceptedFee      int     `json:"p80_accepted_fee,string"`
-	P90AcceptedFee      int     `json:"p90_accepted_fee,string"`
-	P95AcceptedFee      int     `json:"p95_accepted_fee,string"`
-	P99AcceptedFee      int     `json:"p99_accepted_fee,string"`
+
+	// Action needed in release: horizon-v0.25.0
+	// Remove AcceptedFee fields
+	MinAcceptedFee  int `json:"min_accepted_fee,string"`
+	ModeAcceptedFee int `json:"mode_accepted_fee,string"`
+	P10AcceptedFee  int `json:"p10_accepted_fee,string"`
+	P20AcceptedFee  int `json:"p20_accepted_fee,string"`
+	P30AcceptedFee  int `json:"p30_accepted_fee,string"`
+	P40AcceptedFee  int `json:"p40_accepted_fee,string"`
+	P50AcceptedFee  int `json:"p50_accepted_fee,string"`
+	P60AcceptedFee  int `json:"p60_accepted_fee,string"`
+	P70AcceptedFee  int `json:"p70_accepted_fee,string"`
+	P80AcceptedFee  int `json:"p80_accepted_fee,string"`
+	P90AcceptedFee  int `json:"p90_accepted_fee,string"`
+	P95AcceptedFee  int `json:"p95_accepted_fee,string"`
+	P99AcceptedFee  int `json:"p99_accepted_fee,string"`
+
+	FeeCharged FeeDistribution `json:"fee_charged"`
+	MaxFee     FeeDistribution `json:"max_fee"`
 }
 
 // TransactionsPage contains records of transaction information returned by Horizon

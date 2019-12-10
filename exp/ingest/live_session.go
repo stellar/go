@@ -8,6 +8,7 @@ import (
 
 	"github.com/stellar/go/exp/ingest/adapters"
 	"github.com/stellar/go/exp/ingest/io"
+	"github.com/stellar/go/exp/support/pipeline"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/support/historyarchive"
 )
@@ -196,6 +197,12 @@ func (s *LiveSession) resume(ledgerSequence uint32, ledgerAdapter *adapters.Ledg
 		select {
 		case err2 := <-errChan:
 			if err2 != nil {
+				// Return with no errors if pipeline shutdown
+				if err2 == pipeline.ErrShutdown {
+					s.LedgerReporter.OnEndLedger(nil, true)
+					return nil
+				}
+
 				if s.LedgerReporter != nil {
 					s.LedgerReporter.OnEndLedger(err2, false)
 				}
@@ -260,7 +267,7 @@ func (s *LiveSession) initState(historyAdapter *adapters.HistoryArchiveAdapter, 
 		tempSet = s.TempSet
 	}
 
-	stateReader, err := historyAdapter.GetState(sequence, tempSet)
+	stateReader, err := historyAdapter.GetState(sequence, tempSet, s.MaxStreamRetries)
 	if err != nil {
 		return errors.Wrap(err, "Error getting state from history archive")
 	}
@@ -273,6 +280,12 @@ func (s *LiveSession) initState(historyAdapter *adapters.HistoryArchiveAdapter, 
 	select {
 	case err := <-errChan:
 		if err != nil {
+			// Return with no errors if pipeline shutdown
+			if err == pipeline.ErrShutdown {
+				s.StateReporter.OnEndState(nil, true)
+				return nil
+			}
+
 			if s.StateReporter != nil {
 				s.StateReporter.OnEndState(err, false)
 			}

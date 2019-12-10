@@ -143,7 +143,7 @@ func TestNextEffectsPage(t *testing.T) {
 	efp, err := client.Effects(effectRequest)
 
 	if assert.NoError(t, err) {
-		assert.Equal(t, len(efp.Embedded.Records), 2)
+		assert.Len(t, efp.Embedded.Records, 2)
 	}
 
 	hmock.On(
@@ -153,7 +153,48 @@ func TestNextEffectsPage(t *testing.T) {
 
 	nextPage, err := client.NextEffectsPage(efp)
 	if assert.NoError(t, err) {
-		assert.Equal(t, len(nextPage.Embedded.Records), 0)
+		assert.Len(t, nextPage.Embedded.Records, 0)
+	}
+}
+
+func TestSequenceBumpedNewSeq(t *testing.T) {
+	hmock := httptest.NewClient()
+	client := &Client{
+		HorizonURL: "https://localhost/",
+		HTTP:       hmock,
+	}
+	effectRequest := EffectRequest{ForAccount: "GCDIZFWLOTBWHTPODXCBH6XNXPFMSQFRVIDRP3JLEKQZN66G7NF3ANOD"}
+	testCases := []struct {
+		desc    string
+		payload string
+	}{
+		{
+			desc:    "new_seq as a string",
+			payload: sequenceBumpedAsStringPage,
+		},
+		{
+			desc:    "new_seq as a number",
+			payload: sequenceBumpedAsNumberPage,
+		},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.desc, func(t *testing.T) {
+			hmock.On(
+				"GET",
+				"https://localhost/accounts/GCDIZFWLOTBWHTPODXCBH6XNXPFMSQFRVIDRP3JLEKQZN66G7NF3ANOD/effects",
+			).ReturnString(200, tc.payload)
+
+			efp, err := client.Effects(effectRequest)
+
+			if assert.NoError(t, err) {
+				assert.Len(t, efp.Embedded.Records, 1)
+			}
+
+			effect, ok := efp.Embedded.Records[0].(effects.SequenceBumped)
+			assert.True(t, ok)
+			assert.Equal(t, int64(300000000000), effect.NewSeq)
+
+		})
 	}
 }
 
@@ -215,10 +256,86 @@ var firstEffectsPage = `{
         "weight": 1,
         "public_key": "GCDIZFWLOTBWHTPODXCBH6XNXPFMSQFRVIDRP3JLEKQZN66G7NF3ANOD",
         "key": ""
-      }
+	  }
     ]
   }
 }`
+
+var sequenceBumpedAsNumberPage = `{
+	"_links": {
+	  "self": {
+		"href": "https://horizon-testnet.stellar.org/accounts/GCDIZFWLOTBWHTPODXCBH6XNXPFMSQFRVIDRP3JLEKQZN66G7NF3ANOD/effects?cursor=&limit=10&order=asc"
+	  },
+	  "next": {
+		"href": "https://horizon-testnet.stellar.org/accounts/GCDIZFWLOTBWHTPODXCBH6XNXPFMSQFRVIDRP3JLEKQZN66G7NF3ANOD/effects?cursor=1557363731492865-3&limit=10&order=asc"
+	  },
+	  "prev": {
+		"href": "https://horizon-testnet.stellar.org/accounts/GCDIZFWLOTBWHTPODXCBH6XNXPFMSQFRVIDRP3JLEKQZN66G7NF3ANOD/effects?cursor=1557363731492865-1&limit=10&order=desc"
+	  }
+	},
+	"_embedded": {
+	  "records": [
+		{
+		  "_links": {
+			"operation": {
+			  "href": "https://horizon-testnet.stellar.org/operations/249108107265"
+			},
+			"succeeds": {
+			  "href": "https://horizon-testnet.stellar.org/effects?order=desc\u0026cursor=249108107265-1"
+			},
+			"precedes": {
+			  "href": "https://horizon-testnet.stellar.org/effects?order=asc\u0026cursor=249108107265-1"
+			}
+		  },
+		  "id": "0000000249108107265-0000000001",
+		  "paging_token": "249108107265-1",
+		  "account": "GCQZP3IU7XU6EJ63JZXKCQOYT2RNXN3HB5CNHENNUEUHSMA4VUJJJSEN",
+		  "type": "sequence_bumped",
+		  "type_i": 43,
+		  "created_at": "2019-06-03T16:36:24Z",
+		  "new_seq": 300000000000
+		}
+	  ]
+	}
+  }`
+
+var sequenceBumpedAsStringPage = `{
+	"_links": {
+	  "self": {
+		"href": "https://horizon-testnet.stellar.org/accounts/GCDIZFWLOTBWHTPODXCBH6XNXPFMSQFRVIDRP3JLEKQZN66G7NF3ANOD/effects?cursor=&limit=10&order=asc"
+	  },
+	  "next": {
+		"href": "https://horizon-testnet.stellar.org/accounts/GCDIZFWLOTBWHTPODXCBH6XNXPFMSQFRVIDRP3JLEKQZN66G7NF3ANOD/effects?cursor=1557363731492865-3&limit=10&order=asc"
+	  },
+	  "prev": {
+		"href": "https://horizon-testnet.stellar.org/accounts/GCDIZFWLOTBWHTPODXCBH6XNXPFMSQFRVIDRP3JLEKQZN66G7NF3ANOD/effects?cursor=1557363731492865-1&limit=10&order=desc"
+	  }
+	},
+	"_embedded": {
+	  "records": [
+		{
+		  "_links": {
+			"operation": {
+			  "href": "https://horizon-testnet.stellar.org/operations/249108107265"
+			},
+			"succeeds": {
+			  "href": "https://horizon-testnet.stellar.org/effects?order=desc\u0026cursor=249108107265-1"
+			},
+			"precedes": {
+			  "href": "https://horizon-testnet.stellar.org/effects?order=asc\u0026cursor=249108107265-1"
+			}
+		  },
+		  "id": "0000000249108107265-0000000001",
+		  "paging_token": "249108107265-1",
+		  "account": "GCQZP3IU7XU6EJ63JZXKCQOYT2RNXN3HB5CNHENNUEUHSMA4VUJJJSEN",
+		  "type": "sequence_bumped",
+		  "type_i": 43,
+		  "created_at": "2019-06-03T16:36:24Z",
+		  "new_seq": "300000000000"
+		}
+	  ]
+	}
+  }`
 
 var emptyEffectsPage = `{
   "_links": {

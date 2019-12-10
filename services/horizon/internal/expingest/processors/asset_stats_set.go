@@ -22,26 +22,44 @@ type assetStatValue struct {
 type AssetStatSet map[assetStatKey]*assetStatValue
 
 // Add updates the set with a trustline entry from a history archive snapshot
-// if the trustline is authorized
+// if the trustline is authorized.
 func (s AssetStatSet) Add(trustLine xdr.TrustLineEntry) error {
 	if !xdr.TrustLineFlags(trustLine.Flags).IsAuthorized() {
 		return nil
 	}
 
+	return s.AddDelta(trustLine.Asset, int64(trustLine.Balance), 1)
+}
+
+// AddDelta adds a delta balance and delta accounts to a given asset.
+func (s AssetStatSet) AddDelta(asset xdr.Asset, deltaBalance int64, deltaAccounts int32) error {
+	if deltaBalance == 0 && deltaAccounts == 0 {
+		return nil
+	}
+
 	var key assetStatKey
-	if err := trustLine.Asset.Extract(&key.assetType, &key.assetCode, &key.assetIssuer); err != nil {
+	if err := asset.Extract(&key.assetType, &key.assetCode, &key.assetIssuer); err != nil {
 		return errors.Wrap(err, "could not extract asset info from trustline")
 	}
 
-	if current, ok := s[key]; !ok {
+	current, ok := s[key]
+	if !ok {
 		s[key] = &assetStatValue{
-			amount:      big.NewInt(int64(trustLine.Balance)),
-			numAccounts: 1,
+			amount:      big.NewInt(int64(deltaBalance)),
+			numAccounts: deltaAccounts,
 		}
 	} else {
-		current.amount.Add(current.amount, big.NewInt(int64(trustLine.Balance)))
-		current.numAccounts++
+		current.amount.Add(current.amount, big.NewInt(int64(deltaBalance)))
+		current.numAccounts += deltaAccounts
+		// Note: it's possible that after operations above:
+		// numAccounts != 0 && amount == 0 (ex. two accounts send some of their assets to third account)
+		//  OR
+		// numAccounts == 0 && amount != 0 (ex. issuer issued an asset)
+		if current.numAccounts == 0 && current.amount.Cmp(big.NewInt(0)) == 0 {
+			delete(s, key)
+		}
 	}
+
 	return nil
 }
 
