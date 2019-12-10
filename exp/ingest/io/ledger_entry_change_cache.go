@@ -48,15 +48,15 @@ import (
 //    c. REMOVED it returns error because we can't remove an entry that was
 //       already removed.
 type LedgerEntryChangeCache struct {
-	// ledger key => ledger entry change
-	cache map[string]xdr.LedgerEntryChange
+	// ledger key => Change
+	cache map[string]Change
 	mutex sync.Mutex
 }
 
 // NewLedgerEntryChangeCache returns a new LedgerEntryChangeCache.
 func NewLedgerEntryChangeCache() *LedgerEntryChangeCache {
 	return &LedgerEntryChangeCache{
-		cache: make(map[string]xdr.LedgerEntryChange),
+		cache: make(map[string]Change),
 	}
 }
 
@@ -87,34 +87,33 @@ func (c *LedgerEntryChangeCache) addCreatedChange(change Change) error {
 		return errors.Wrap(err, "Error MarshalBinaryBase64")
 	}
 
-	entryChange, exist := c.cache[ledgerKeyString]
-	if exist {
-		switch entryChange.Type {
-		case xdr.LedgerEntryChangeTypeLedgerEntryCreated:
-			return ingesterrors.NewStateError(errors.Errorf(
-				"can't create an entry that already exists (ledger key = %s)",
-				ledgerKeyString,
-			))
-		case xdr.LedgerEntryChangeTypeLedgerEntryUpdated:
-			return ingesterrors.NewStateError(errors.Errorf(
-				"can't create an entry that already exists (ledger key = %s)",
-				ledgerKeyString,
-			))
-		case xdr.LedgerEntryChangeTypeLedgerEntryRemoved:
-			// If existing type is removed it means that this entry does exist
-			// in a DB so we update entry change.
-			c.cache[ledgerKeyString] = xdr.LedgerEntryChange{
-				Type:    xdr.LedgerEntryChangeTypeLedgerEntryUpdated,
-				Updated: change.Post,
-			}
-		default:
-			return errors.Errorf("Unknown LedgerEntryChangeType: %d", entryChange.Type)
+	existingChange, exist := c.cache[ledgerKeyString]
+	if !exist {
+		c.cache[ledgerKeyString] = change
+		return nil
+	}
+
+	switch existingChange.LedgerEntryChangeType() {
+	case xdr.LedgerEntryChangeTypeLedgerEntryCreated:
+		return ingesterrors.NewStateError(errors.Errorf(
+			"can't create an entry that already exists (ledger key = %s)",
+			ledgerKeyString,
+		))
+	case xdr.LedgerEntryChangeTypeLedgerEntryUpdated:
+		return ingesterrors.NewStateError(errors.Errorf(
+			"can't create an entry that already exists (ledger key = %s)",
+			ledgerKeyString,
+		))
+	case xdr.LedgerEntryChangeTypeLedgerEntryRemoved:
+		// If existing type is removed it means that this entry does exist
+		// in a DB so we update entry change.
+		c.cache[ledgerKeyString] = Change{
+			Type: change.Post.LedgerKey().Type,
+			Pre:  existingChange.Pre,
+			Post: change.Post,
 		}
-	} else {
-		c.cache[ledgerKeyString] = xdr.LedgerEntryChange{
-			Type:    xdr.LedgerEntryChangeTypeLedgerEntryCreated,
-			Created: change.Post,
-		}
+	default:
+		return errors.Errorf("Unknown LedgerEntryChangeType: %d", existingChange.LedgerEntryChangeType())
 	}
 
 	return nil
@@ -128,34 +127,34 @@ func (c *LedgerEntryChangeCache) addUpdatedChange(change Change) error {
 		return errors.Wrap(err, "Error MarshalBinaryBase64")
 	}
 
-	entryChange, exist := c.cache[ledgerKeyString]
-	if exist {
-		switch entryChange.Type {
-		case xdr.LedgerEntryChangeTypeLedgerEntryCreated:
-			// If existing type is created it means that this entry does not
-			// exist in a DB so we update entry change.
-			c.cache[ledgerKeyString] = xdr.LedgerEntryChange{
-				Type:    xdr.LedgerEntryChangeTypeLedgerEntryCreated,
-				Created: change.Post,
-			}
-		case xdr.LedgerEntryChangeTypeLedgerEntryUpdated:
-			c.cache[ledgerKeyString] = xdr.LedgerEntryChange{
-				Type:    xdr.LedgerEntryChangeTypeLedgerEntryUpdated,
-				Updated: change.Post,
-			}
-		case xdr.LedgerEntryChangeTypeLedgerEntryRemoved:
-			return ingesterrors.NewStateError(errors.Errorf(
-				"can't update an entry that was previously removed (ledger key = %s)",
-				ledgerKeyString,
-			))
-		default:
-			return errors.Errorf("Unknown LedgerEntryChangeType: %d", entryChange.Type)
+	existingChange, exist := c.cache[ledgerKeyString]
+	if !exist {
+		c.cache[ledgerKeyString] = change
+		return nil
+	}
+
+	switch existingChange.LedgerEntryChangeType() {
+	case xdr.LedgerEntryChangeTypeLedgerEntryCreated:
+		// If existing type is created it means that this entry does not
+		// exist in a DB so we update entry change.
+		c.cache[ledgerKeyString] = Change{
+			Type: change.Post.LedgerKey().Type,
+			Pre:  existingChange.Pre, // = nil
+			Post: change.Post,
 		}
-	} else {
-		c.cache[ledgerKeyString] = xdr.LedgerEntryChange{
-			Type:    xdr.LedgerEntryChangeTypeLedgerEntryUpdated,
-			Created: change.Post,
+	case xdr.LedgerEntryChangeTypeLedgerEntryUpdated:
+		c.cache[ledgerKeyString] = Change{
+			Type: change.Post.LedgerKey().Type,
+			Pre:  existingChange.Pre,
+			Post: change.Post,
 		}
+	case xdr.LedgerEntryChangeTypeLedgerEntryRemoved:
+		return ingesterrors.NewStateError(errors.Errorf(
+			"can't update an entry that was previously removed (ledger key = %s)",
+			ledgerKeyString,
+		))
+	default:
+		return errors.Errorf("Unknown LedgerEntryChangeType: %d", existingChange.Type)
 	}
 
 	return nil
@@ -170,43 +169,42 @@ func (c *LedgerEntryChangeCache) addRemovedChange(change Change) error {
 		return errors.Wrap(err, "Error MarshalBinaryBase64")
 	}
 
-	entryChange, exist := c.cache[ledgerKeyString]
-	if exist {
-		switch entryChange.Type {
-		case xdr.LedgerEntryChangeTypeLedgerEntryCreated:
-			// If existing type is created it means that this will be no op.
-			// Entry was created and is now removed in a single ledger.
-			delete(c.cache, ledgerKeyString)
-		case xdr.LedgerEntryChangeTypeLedgerEntryUpdated:
-			c.cache[ledgerKeyString] = xdr.LedgerEntryChange{
-				Type:    xdr.LedgerEntryChangeTypeLedgerEntryRemoved,
-				Removed: &ledgerKey,
-			}
-		case xdr.LedgerEntryChangeTypeLedgerEntryRemoved:
-			return ingesterrors.NewStateError(errors.Errorf(
-				"can't remove an entry that was previously removed (ledger key = %s)",
-				ledgerKeyString,
-			))
-		default:
-			return errors.Errorf("Unknown LedgerEntryChangeType: %d", entryChange.Type)
+	existingChange, exist := c.cache[ledgerKeyString]
+	if !exist {
+		c.cache[ledgerKeyString] = change
+		return nil
+	}
+
+	switch existingChange.LedgerEntryChangeType() {
+	case xdr.LedgerEntryChangeTypeLedgerEntryCreated:
+		// If existing type is created it means that this will be no op.
+		// Entry was created and is now removed in a single ledger.
+		delete(c.cache, ledgerKeyString)
+	case xdr.LedgerEntryChangeTypeLedgerEntryUpdated:
+		c.cache[ledgerKeyString] = Change{
+			Type: change.Pre.LedgerKey().Type,
+			Pre:  existingChange.Pre,
+			Post: nil,
 		}
-	} else {
-		c.cache[ledgerKeyString] = xdr.LedgerEntryChange{
-			Type:    xdr.LedgerEntryChangeTypeLedgerEntryRemoved,
-			Removed: &ledgerKey,
-		}
+	case xdr.LedgerEntryChangeTypeLedgerEntryRemoved:
+		return ingesterrors.NewStateError(errors.Errorf(
+			"can't remove an entry that was previously removed (ledger key = %s)",
+			ledgerKeyString,
+		))
+	default:
+		return errors.Errorf("Unknown LedgerEntryChangeType: %d", existingChange.Type)
 	}
 
 	return nil
 }
 
-// GetChanges returns a slice of xdr.LedgerEntryChange's in the cache. The order
-// of changes is random but each change is connected to a separate entry.
-func (c *LedgerEntryChangeCache) GetChanges() []xdr.LedgerEntryChange {
+// GetChanges returns a slice of Change's in the cache. The of changes is random
+// but each change is connected to a separate entry.
+func (c *LedgerEntryChangeCache) GetChanges() []Change {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
 
-	changes := make([]xdr.LedgerEntryChange, 0, len(c.cache))
+	changes := make([]Change, 0, len(c.cache))
 
 	for _, entryChange := range c.cache {
 		changes = append(changes, entryChange)

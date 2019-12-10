@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/stellar/go/exp/ingest/io"
-	"github.com/stellar/go/exp/ingest/verify"
+	ingesterrors "github.com/stellar/go/exp/ingest/errors"
 	supportPipeline "github.com/stellar/go/exp/support/pipeline"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/support/errors"
@@ -647,7 +647,7 @@ func (s *AccountsSignerProcessorTestSuiteLedger) TestNewAccountNoRowsAffected() 
 	)
 
 	s.Assert().Error(err)
-	s.Assert().IsType(verify.StateError{}, errors.Cause(err))
+	s.Assert().IsType(ingesterrors.StateError{}, errors.Cause(err))
 	s.Assert().EqualError(
 		err,
 		"Error in AccountsForSigner handler: No rows affected when inserting "+
@@ -709,7 +709,7 @@ func (s *AccountsSignerProcessorTestSuiteLedger) TestRemoveAccountNoRowsAffected
 	)
 
 	s.Assert().Error(err)
-	s.Assert().IsType(verify.StateError{}, errors.Cause(err))
+	s.Assert().IsType(ingesterrors.StateError{}, errors.Cause(err))
 	s.Assert().EqualError(
 		err,
 		"Error in AccountsForSigner handler: Expected "+

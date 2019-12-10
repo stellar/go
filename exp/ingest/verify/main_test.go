@@ -5,8 +5,8 @@ import (
 	stdio "io"
 	"testing"
 
-	"github.com/stellar/go/exp/ingest/io"
 	ingesterrors "github.com/stellar/go/exp/ingest/errors"
+	"github.com/stellar/go/exp/ingest/io"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
 	"github.com/stretchr/testify/assert"

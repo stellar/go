@@ -5,9 +5,9 @@ import (
 	"fmt"
 
 	"github.com/stellar/go/exp/ingest"
+	ingesterrors "github.com/stellar/go/exp/ingest/errors"
 	"github.com/stellar/go/exp/ingest/pipeline"
 	"github.com/stellar/go/exp/ingest/processors"
-	"github.com/stellar/go/exp/ingest/verify"
 	"github.com/stellar/go/exp/orderbook"
 	supportPipeline "github.com/stellar/go/exp/support/pipeline"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
@@ -230,7 +230,7 @@ func postProcessingHook(
 		}
 
 		switch errors.Cause(err).(type) {
-		case verify.StateError:
+		case ingesterrors.StateError:
 			markStateInvalid(historySession, err)
 		default:
 			log.
@@ -305,7 +305,7 @@ func postProcessingHook(
 			if err != nil {
 				errorCount := system.incrementStateVerificationErrors()
 				switch errors.Cause(err).(type) {
-				case verify.StateError:
+				case ingesterrors.StateError:
 					markStateInvalid(historySession, err)
 				default:
 					logger := log.WithField("err", err).Warn

@@ -7,9 +7,9 @@ import (
 	stdio "io"
 	"math/big"
 
+	ingesterrors "github.com/stellar/go/exp/ingest/errors"
 	"github.com/stellar/go/exp/ingest/io"
 	ingestpipeline "github.com/stellar/go/exp/ingest/pipeline"
-	"github.com/stellar/go/exp/ingest/verify"
 	"github.com/stellar/go/exp/support/pipeline"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/support/errors"
@@ -191,6 +191,7 @@ func (p *DatabaseProcessor) ProcessLedger(ctx context.Context, store *pipeline.S
 	}()
 	defer w.Close()
 
+	ledgerCache := io.NewLedgerEntryChangeCache()
 	p.AssetStatSet = AssetStatSet{}
 
 	actionHandlers := map[DatabaseProcessorActionType]func(change io.Change) error{
@@ -231,23 +232,37 @@ func (p *DatabaseProcessor) ProcessLedger(ctx context.Context, store *pipeline.S
 			failedTxCount++
 		}
 
-		for _, action := range actions {
-			handler, ok := actionHandlers[action]
-			if !ok {
-				return errors.New("Unknown action")
+		// Remember that it's possible that transaction can remove a preauth
+		// tx signer even when it's a failed transaction.
+		for _, change := range transaction.GetChanges() {
+			err := ledgerCache.AddChange(change)
+			if err != nil {
+				return errors.Wrap(err, "error addint to ledgerCache")
 			}
+		}
 
-			// Remember that it's possible that transaction can remove a preauth
-			// tx signer even when it's a failed transaction.
+		select {
+		case <-ctx.Done():
+			return nil
+		default:
+			continue
+		}
+	}
 
-			for _, change := range transaction.GetChanges() {
-				err := handler(change)
-				if err != nil {
-					return errors.Wrap(
-						err,
-						fmt.Sprintf("Error in %s handler", action),
-					)
-				}
+	changes := ledgerCache.GetChanges()
+	for _, action := range actions {
+		handler, ok := actionHandlers[action]
+		if !ok {
+			return errors.New("Unknown action")
+		}
+
+		for _, change := range changes {
+			err := handler(change)
+			if err != nil {
+				return errors.Wrap(
+					err,
+					fmt.Sprintf("Error in %s handler", action),
+				)
 			}
 		}
 
@@ -312,7 +327,7 @@ func (p *DatabaseProcessor) ProcessLedger(ctx context.Context, store *pipeline.S
 			if assetStatNotFound {
 				// Insert
 				if delta.NumAccounts < 0 {
-					return verify.NewStateError(errors.Errorf(
+					return ingesterrors.NewStateError(errors.Errorf(
 						"NumAccounts negative but DB entry does not exist for asset: %s %s %s",
 						delta.AssetType,
 						delta.AssetCode,
@@ -343,7 +358,7 @@ func (p *DatabaseProcessor) ProcessLedger(ctx context.Context, store *pipeline.S
 				if statAccounts == 0 {
 					// Remove stats
 					if statBalance.Cmp(big.NewInt(0)) != 0 {
-						return verify.NewStateError(errors.Errorf(
+						return ingesterrors.NewStateError(errors.Errorf(
 							"Removing asset stat by final amount non-zero for: %s %s %s",
 							delta.AssetType,
 							delta.AssetCode,
@@ -374,7 +389,7 @@ func (p *DatabaseProcessor) ProcessLedger(ctx context.Context, store *pipeline.S
 			}
 
 			if rowsAffected != 1 {
-				return verify.NewStateError(errors.Errorf(
+				return ingesterrors.NewStateError(errors.Errorf(
 					"No rows affected when adjusting asset stat for asset: %s %s %s",
 					delta.AssetType,
 					delta.AssetCode,
@@ -495,7 +510,7 @@ func (p *DatabaseProcessor) processLedgerAccounts(change io.Change) error {
 	}
 
 	if rowsAffected != 1 {
-		return verify.NewStateError(errors.Errorf(
+		return ingesterrors.NewStateError(errors.Errorf(
 			"No rows affected when %s account %s",
 			action,
 			accountID,
@@ -550,7 +565,7 @@ func (p *DatabaseProcessor) processLedgerAccountData(change io.Change) error {
 	}
 
 	if rowsAffected != 1 {
-		return verify.NewStateError(errors.Errorf(
+		return ingesterrors.NewStateError(errors.Errorf(
 			"No rows affected when %s data: %s %s",
 			action,
 			ledgerKey.Data.AccountId.Address(),
@@ -581,7 +596,7 @@ func (p *DatabaseProcessor) processLedgerAccountSigners(change io.Change) error 
 			}
 
 			if rowsAffected != 1 {
-				return verify.NewStateError(errors.Errorf(
+				return ingesterrors.NewStateError(errors.Errorf(
 					"Expected account=%s signer=%s in database but not found when removing",
 					preAccountEntry.AccountId.Address(),
 					signer,
@@ -599,7 +614,7 @@ func (p *DatabaseProcessor) processLedgerAccountSigners(change io.Change) error 
 			}
 
 			if rowsAffected != 1 {
-				return verify.NewStateError(errors.Errorf(
+				return ingesterrors.NewStateError(errors.Errorf(
 					"No rows affected when inserting account=%s signer=%s to database",
 					postAccountEntry.AccountId.Address(),
 					signer,
@@ -647,7 +662,7 @@ func (p *DatabaseProcessor) processLedgerOffers(change io.Change) error {
 	}
 
 	if rowsAffected != 1 {
-		return verify.NewStateError(errors.Errorf(
+		return ingesterrors.NewStateError(errors.Errorf(
 			"No rows affected when %s offer %d",
 			action,
 			offerID,
@@ -700,7 +715,7 @@ func (p *DatabaseProcessor) adjustAssetStat(
 		// else, trustline was unauthorized and remains unauthorized
 		// so there is no change to accounts or balances
 	} else {
-		return verify.NewStateError(errors.New("both pre and post trustlines cannot be nil"))
+		return ingesterrors.NewStateError(errors.New("both pre and post trustlines cannot be nil"))
 	}
 
 	err := p.AssetStatSet.AddDelta(trustline.Asset, int64(deltaBalance), deltaAccounts)
@@ -768,7 +783,7 @@ func (p *DatabaseProcessor) processLedgerTrustLines(change io.Change) error {
 	}
 
 	if rowsAffected != 1 {
-		return verify.NewStateError(errors.Errorf(
+		return ingesterrors.NewStateError(errors.Errorf(
 			"No rows affected when %s trustline: %s %s",
 			action,
 			ledgerKey.TrustLine.AccountId.Address(),

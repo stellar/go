@@ -38,7 +38,7 @@ func (s *TestLedgerEntryChangeCacheExistingCreatedSuite) SetupTest() {
 	s.Assert().NoError(s.cache.AddChange(change))
 	changes := s.cache.GetChanges()
 	s.Assert().Len(changes, 1)
-	s.Assert().Equal(changes[0].Type, xdr.LedgerEntryChangeTypeLedgerEntryCreated)
+	s.Assert().Equal(changes[0].LedgerEntryChangeType(), xdr.LedgerEntryChangeTypeLedgerEntryCreated)
 }
 
 func (s *TestLedgerEntryChangeCacheExistingCreatedSuite) TestChangeCreated() {
@@ -86,7 +86,7 @@ func (s *TestLedgerEntryChangeCacheExistingCreatedSuite) TestChangeUpdated() {
 	s.Assert().NoError(s.cache.AddChange(change))
 	changes := s.cache.GetChanges()
 	s.Assert().Len(changes, 1)
-	s.Assert().Equal(changes[0].Type, xdr.LedgerEntryChangeTypeLedgerEntryCreated)
+	s.Assert().Equal(changes[0].LedgerEntryChangeType(), xdr.LedgerEntryChangeTypeLedgerEntryCreated)
 }
 
 func (s *TestLedgerEntryChangeCacheExistingCreatedSuite) TestChangeRemoved() {
@@ -146,7 +146,7 @@ func (s *TestLedgerEntryChangeCacheExistingUpdatedSuite) SetupTest() {
 	s.Assert().NoError(s.cache.AddChange(change))
 	changes := s.cache.GetChanges()
 	s.Assert().Len(changes, 1)
-	s.Assert().Equal(changes[0].Type, xdr.LedgerEntryChangeTypeLedgerEntryUpdated)
+	s.Assert().Equal(changes[0].LedgerEntryChangeType(), xdr.LedgerEntryChangeTypeLedgerEntryUpdated)
 }
 
 func (s *TestLedgerEntryChangeCacheExistingUpdatedSuite) TestChangeCreated() {
@@ -194,8 +194,8 @@ func (s *TestLedgerEntryChangeCacheExistingUpdatedSuite) TestChangeUpdated() {
 	s.Assert().NoError(s.cache.AddChange(change))
 	changes := s.cache.GetChanges()
 	s.Assert().Len(changes, 1)
-	s.Assert().Equal(changes[0].Type, xdr.LedgerEntryChangeTypeLedgerEntryUpdated)
-	s.Assert().Equal(changes[0].MustUpdated().LastModifiedLedgerSeq, xdr.Uint32(12))
+	s.Assert().Equal(changes[0].LedgerEntryChangeType(), xdr.LedgerEntryChangeTypeLedgerEntryUpdated)
+	s.Assert().Equal(changes[0].Post.LastModifiedLedgerSeq, xdr.Uint32(12))
 }
 
 func (s *TestLedgerEntryChangeCacheExistingUpdatedSuite) TestChangeRemoved() {
@@ -215,7 +215,7 @@ func (s *TestLedgerEntryChangeCacheExistingUpdatedSuite) TestChangeRemoved() {
 	s.Assert().NoError(s.cache.AddChange(change))
 	changes := s.cache.GetChanges()
 	s.Assert().Len(changes, 1)
-	s.Assert().Equal(changes[0].Type, xdr.LedgerEntryChangeTypeLedgerEntryRemoved)
+	s.Assert().Equal(changes[0].LedgerEntryChangeType(), xdr.LedgerEntryChangeTypeLedgerEntryRemoved)
 }
 
 func TestLedgerEntryChangeCacheExistingRemoved(t *testing.T) {
@@ -248,7 +248,7 @@ func (s *TestLedgerEntryChangeCacheExistingRemovedSuite) SetupTest() {
 	s.Assert().NoError(s.cache.AddChange(change))
 	changes := s.cache.GetChanges()
 	s.Assert().Len(changes, 1)
-	s.Assert().Equal(changes[0].Type, xdr.LedgerEntryChangeTypeLedgerEntryRemoved)
+	s.Assert().Equal(changes[0].LedgerEntryChangeType(), xdr.LedgerEntryChangeTypeLedgerEntryRemoved)
 }
 
 func (s *TestLedgerEntryChangeCacheExistingRemovedSuite) TestChangeCreated() {
@@ -268,8 +268,8 @@ func (s *TestLedgerEntryChangeCacheExistingRemovedSuite) TestChangeCreated() {
 	s.Assert().NoError(s.cache.AddChange(change))
 	changes := s.cache.GetChanges()
 	s.Assert().Len(changes, 1)
-	s.Assert().Equal(changes[0].Type, xdr.LedgerEntryChangeTypeLedgerEntryUpdated)
-	s.Assert().Equal(changes[0].MustUpdated().LastModifiedLedgerSeq, xdr.Uint32(12))
+	s.Assert().Equal(changes[0].LedgerEntryChangeType(), xdr.LedgerEntryChangeTypeLedgerEntryUpdated)
+	s.Assert().Equal(changes[0].Post.LastModifiedLedgerSeq, xdr.Uint32(12))
 }
 
 func (s *TestLedgerEntryChangeCacheExistingRemovedSuite) TestChangeUpdated() {
@@ -383,8 +383,8 @@ func TestLedgerEntryChangeCacheSquashMultiplePayments(t *testing.T) {
 	changes := cache.GetChanges()
 	assert.Len(t, changes, 2)
 	for _, change := range changes {
-		assert.Equal(t, change.Type, xdr.LedgerEntryChangeTypeLedgerEntryUpdated)
-		account := change.MustUpdated().Data.MustAccount()
+		assert.Equal(t, change.LedgerEntryChangeType(), xdr.LedgerEntryChangeTypeLedgerEntryUpdated)
+		account := change.Post.Data.MustAccount()
 		switch account.AccountId.Address() {
 		case "GAJ2T6NQ6TDZRVRSNWM3JC7L3TG4H7UBCVK3GUHKP3TQ5NQ3LM4JGBTJ":
 			assert.Equal(t, account.Balance, xdr.Int64(1000))

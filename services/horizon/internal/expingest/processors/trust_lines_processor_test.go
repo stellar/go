@@ -6,8 +6,8 @@ import (
 	stdio "io"
 	"testing"
 
+	ingesterrors "github.com/stellar/go/exp/ingest/errors"
 	"github.com/stellar/go/exp/ingest/io"
-	"github.com/stellar/go/exp/ingest/verify"
 	supportPipeline "github.com/stellar/go/exp/support/pipeline"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/support/errors"
@@ -541,7 +541,7 @@ func (s *TrustLinesProcessorTestSuiteLedger) TestUpdateTrustLineNoRowsAffected()
 	)
 
 	s.Assert().Error(err)
-	s.Assert().IsType(verify.StateError{}, errors.Cause(err))
+	s.Assert().IsType(ingesterrors.StateError{}, errors.Cause(err))
 	s.Assert().EqualError(err, "Error in TrustLines handler: No rows affected when updating trustline: GAOQJGUAB7NI7K7I62ORBXMN3J4SSWQUQ7FOEPSDJ322W2HMCNWPHXFB credit_alphanum4/EUR/GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H")
 }
 
@@ -945,6 +945,6 @@ func (s *TrustLinesProcessorTestSuiteLedger) TestRemoveTrustlineNoRowsAffected()
 	)
 
 	s.Assert().Error(err)
-	s.Assert().IsType(verify.StateError{}, errors.Cause(err))
+	s.Assert().IsType(ingesterrors.StateError{}, errors.Cause(err))
 	s.Assert().EqualError(err, "Error in TrustLines handler: No rows affected when removing trustline: GAOQJGUAB7NI7K7I62ORBXMN3J4SSWQUQ7FOEPSDJ322W2HMCNWPHXFB credit_alphanum4/EUR/GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H")
 }
