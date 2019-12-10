@@ -75,12 +75,12 @@ func (c *LedgerEntryChangeCache) addCreatedChange(change io.Change) error {
 		switch entryChange.Type {
 		case xdr.LedgerEntryChangeTypeLedgerEntryCreated:
 			return verify.NewStateError(errors.Errorf(
-				"Creating an entry that already exist. Ledger key = %s",
+				"can't create an entry that already exists (ledger key = %s)",
 				ledgerKeyString,
 			))
 		case xdr.LedgerEntryChangeTypeLedgerEntryUpdated:
 			return verify.NewStateError(errors.Errorf(
-				"Creating an entry that already exist. Ledger key = %s",
+				"can't create an entry that already exists (ledger key = %s)",
 				ledgerKeyString,
 			))
 		case xdr.LedgerEntryChangeTypeLedgerEntryRemoved:
@@ -128,7 +128,7 @@ func (c *LedgerEntryChangeCache) addUpdatedChange(change io.Change) error {
 			}
 		case xdr.LedgerEntryChangeTypeLedgerEntryRemoved:
 			return verify.NewStateError(errors.Errorf(
-				"Updating an entry that was previously removed. Ledger key = %s",
+				"can't update an entry that was previously removed (ledger key = %s)",
 				ledgerKeyString,
 			))
 		default:
@@ -167,7 +167,7 @@ func (c *LedgerEntryChangeCache) addRemovedChange(change io.Change) error {
 			}
 		case xdr.LedgerEntryChangeTypeLedgerEntryRemoved:
 			return verify.NewStateError(errors.Errorf(
-				"Removing an entry that was previously removed. Ledger key = %s",
+				"can't remove an entry that was previously removed (ledger key = %s)",
 				ledgerKeyString,
 			))
 		default:
