@@ -96,22 +96,22 @@ func compareAccountResults(
 
 	horizonRecord, err := hq.GetAccountByID(addr)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "getting history account record")
 	}
 
 	horizonData, err = hq.GetAccountDataByAccountID(addr)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "getting history account data")
 	}
 
 	horizonSigners, err = hq.GetAccountSignersByAccountID(addr)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "getting history signers")
 	}
 
 	horizonTrustLines, err = hq.GetTrustLinesByAccountID(addr)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "getting history trustlines")
 	}
 
 	err = resourceadapter.PopulateAccountEntry(
@@ -123,7 +123,7 @@ func compareAccountResults(
 		horizonTrustLines,
 	)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "populating account entry")
 	}
 
 	var expectedResource protocol.Account

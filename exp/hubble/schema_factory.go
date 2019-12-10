@@ -117,6 +117,7 @@ func makeAccountIDFromChange(change *xdr.LedgerEntryChange) (string, error) {
 	default:
 		return "", fmt.Errorf("Unknown entry type: %v", entryType)
 	}
+
 	address, err := accountID.GetAddress()
 	if err != nil {
 		return "", errors.Wrap(err, "could not get address")

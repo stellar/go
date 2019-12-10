@@ -1,6 +1,7 @@
 package expingest
 
 import (
+	"bytes"
 	"database/sql"
 	"fmt"
 	"time"
@@ -13,7 +14,7 @@ import (
 	"github.com/stellar/go/services/horizon/internal/expingest/processors"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/support/historyarchive"
-	ilog "github.com/stellar/go/support/log"
+	logpkg "github.com/stellar/go/support/log"
 	"github.com/stellar/go/xdr"
 )
 
@@ -30,8 +31,8 @@ const stateVerifierExpectedIngestionVersion = 9
 
 // verifyState is called as a go routine from pipeline post hook every 64
 // ledgers. It checks if the state is correct. If another go routine is already
-// running it exists.
-func (s *System) verifyState() error {
+// running it exits.
+func (s *System) verifyState(graphOffers map[xdr.Int64]xdr.OfferEntry) error {
 	s.stateVerificationMutex.Lock()
 	if s.stateVerificationRunning {
 		log.Warn("State verification is already running...")
@@ -40,7 +41,6 @@ func (s *System) verifyState() error {
 	}
 	s.stateVerificationRunning = true
 	s.stateVerificationMutex.Unlock()
-
 	if stateVerifierExpectedIngestionVersion != CurrentVersion {
 		log.Errorf(
 			"State verification expected version is %d but actual is: %d",
@@ -56,7 +56,6 @@ func (s *System) verifyState() error {
 	defer func() {
 		log.WithField("duration", time.Since(startTime).Seconds()).Info("State verification finished")
 		session.Rollback()
-
 		s.stateVerificationMutex.Lock()
 		s.stateVerificationRunning = false
 		s.stateVerificationMutex.Unlock()
@@ -78,7 +77,7 @@ func (s *System) verifyState() error {
 		return errors.Wrap(err, "Error running historyQ.GetLastLedgerExpIngestNonBlocking")
 	}
 
-	localLog := log.WithFields(ilog.F{
+	localLog := log.WithFields(logpkg.F{
 		"subservice": "state_verify",
 		"ledger":     ledgerSequence,
 	})
@@ -87,7 +86,6 @@ func (s *System) verifyState() error {
 		localLog.Info("Current ledger is not a checkpoint ledger. Cancelling...")
 		return nil
 	}
-
 	// Get root HAS to check if we're checking one of the latest ledgers or
 	// Horizon is catching up. It doesn't make sense to verify old ledgers as
 	// we want to check the latest state.
@@ -104,9 +102,13 @@ func (s *System) verifyState() error {
 	}
 
 	localLog.Info("Starting state verification. Waiting 40 seconds for stellar-core to publish HAS...")
-
-	// Wait for stellar-core to publish HAS
-	time.Sleep(40 * time.Second)
+	select {
+	case <-s.shutdown:
+		localLog.Info("State verifier shut down...")
+		return nil
+	case <-time.After(40 * time.Second):
+		// Wait for stellar-core to publish HAS
+	}
 
 	localLog.Info("Creating state reader...")
 
@@ -114,6 +116,7 @@ func (s *System) verifyState() error {
 		s.session.GetArchive(),
 		&io.MemoryTempSet{},
 		ledgerSequence,
+		s.maxStreamRetries,
 	)
 	if err != nil {
 		return errors.Wrap(err, "Error running io.MakeSingleLedgerStateReader")
@@ -132,6 +135,14 @@ func (s *System) verifyState() error {
 		keys, err = verifier.GetLedgerKeys(verifyBatchSize)
 		if err != nil {
 			return errors.Wrap(err, "verifier.GetLedgerKeys")
+		}
+
+		select {
+		case <-s.shutdown:
+			localLog.Info("State verifier shut down...")
+			return nil
+		default:
+			// continue
 		}
 
 		if len(keys) == 0 {
@@ -167,7 +178,7 @@ func (s *System) verifyState() error {
 			return errors.Wrap(err, "addDataToStateVerifier failed")
 		}
 
-		err = addOffersToStateVerifier(verifier, historyQ, offers)
+		err = addOffersToStateVerifier(verifier, historyQ, offers, graphOffers)
 		if err != nil {
 			return errors.Wrap(err, "addOffersToStateVerifier failed")
 		}
@@ -182,6 +193,15 @@ func (s *System) verifyState() error {
 	}
 
 	localLog.WithField("total", total).Info("Finished writing to StateVerifier")
+
+	if len(graphOffers) != 0 {
+		return verify.NewStateError(
+			fmt.Errorf(
+				"orderbook graph contains %v offers missing from HAS",
+				len(graphOffers),
+			),
+		)
+	}
 
 	countAccounts, err := historyQ.CountAccounts()
 	if err != nil {
@@ -384,7 +404,25 @@ func addDataToStateVerifier(verifier *verify.StateVerifier, q *history.Q, keys [
 	return nil
 }
 
-func addOffersToStateVerifier(verifier *verify.StateVerifier, q *history.Q, ids []int64) error {
+func offerEntryEquals(offer, other xdr.OfferEntry) (bool, error) {
+	serialized, err := offer.MarshalBinary()
+	if err != nil {
+		return false, errors.Wrap(err, "could not serialize offer")
+	}
+	otherSerialized, err := other.MarshalBinary()
+	if err != nil {
+		return false, errors.Wrap(err, "could not serialize offer")
+	}
+
+	return bytes.Equal(serialized, otherSerialized), nil
+}
+
+func addOffersToStateVerifier(
+	verifier *verify.StateVerifier,
+	q *history.Q,
+	ids []int64,
+	graphOffers map[xdr.Int64]xdr.OfferEntry,
+) error {
 	if len(ids) == 0 {
 		return nil
 	}
@@ -413,6 +451,23 @@ func addOffersToStateVerifier(verifier *verify.StateVerifier, q *history.Q, ids 
 				},
 			},
 		}
+		graphOffer, ok := graphOffers[row.OfferID]
+		if !ok {
+			return verify.NewStateError(
+				fmt.Errorf("offer %v is not in orderbook graph", row.OfferID),
+			)
+		}
+		if equal, err := offerEntryEquals(graphOffer, *entry.Data.Offer); err != nil {
+			return errors.Wrap(err, "could not compare offers")
+		} else if !equal {
+			return verify.NewStateError(
+				fmt.Errorf(
+					"offer %v from db does not match offer in orderbook graph",
+					row.OfferID,
+				),
+			)
+		}
+		delete(graphOffers, row.OfferID)
 		err := verifier.Write(entry)
 		if err != nil {
 			return err

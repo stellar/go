@@ -426,7 +426,7 @@ func TestPath(t *testing.T) {
 	tt.Assert.Equal("/foo-bar/blah", action.Path())
 }
 
-func TestGetURLParam(t *testing.T) {
+func TestBaseGetURLParam(t *testing.T) {
 	tt := test.Start(t)
 	defer tt.Finish()
 	action := makeTestAction()
@@ -444,6 +444,23 @@ func TestGetURLParam(t *testing.T) {
 	val, ok = action.GetURLParam("foobarcursor")
 	tt.Assert.Equal("", val)
 	tt.Assert.Equal(false, ok)
+}
+
+func TestGetURLParam(t *testing.T) {
+	tt := test.Start(t)
+	defer tt.Finish()
+	r := makeAction("/accounts/{account_id}/operations?limit=100", nil).R
+
+	// simulates a request where the named param is not passed.
+	// Regression for https://github.com/stellar/go/issues/1965
+	rctx := chi.RouteContext(r.Context())
+	rctx.URLParams.Keys = []string{
+		"account_id",
+	}
+
+	val, ok := GetURLParam(r, "account_id")
+	tt.Assert.Empty(val)
+	tt.Assert.False(ok)
 }
 
 func TestGetAssets(t *testing.T) {

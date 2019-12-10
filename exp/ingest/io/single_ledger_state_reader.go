@@ -31,6 +31,9 @@ type SingleLedgerStateReader struct {
 	streamOnce sync.Once
 	closeOnce  sync.Once
 	done       chan bool
+	// how many times should we retry when there are errors in
+	// the xdr stream returned by GetXdrStreamForHash()
+	maxStreamRetries int
 
 	// This should be set to true in tests only
 	disableBucketListHashValidation bool
@@ -62,11 +65,15 @@ const msrBufferSize = 50000
 // temp set.
 const preloadedEntries = 20000
 
-// MakeSingleLedgerStateReader is a factory method for SingleLedgerStateReader
+// MakeSingleLedgerStateReader is a factory method for SingleLedgerStateReader.
+// `maxStreamRetries` determines how many times the reader will retry when encountering
+// errors while streaming xdr bucket entries from the history archive.
+// Set `maxStreamRetries` to 0 if there should be no retry attempts
 func MakeSingleLedgerStateReader(
 	archive historyarchive.ArchiveInterface,
 	tempStore TempSet,
 	sequence uint32,
+	maxStreamRetries int,
 ) (*SingleLedgerStateReader, error) {
 	has, err := archive.GetCheckpointHAS(sequence)
 	if err != nil {
@@ -79,14 +86,15 @@ func MakeSingleLedgerStateReader(
 	}
 
 	return &SingleLedgerStateReader{
-		has:        &has,
-		archive:    archive,
-		tempStore:  tempStore,
-		sequence:   sequence,
-		readChan:   make(chan readResult, msrBufferSize),
-		streamOnce: sync.Once{},
-		closeOnce:  sync.Once{},
-		done:       make(chan bool),
+		has:              &has,
+		archive:          archive,
+		tempStore:        tempStore,
+		sequence:         sequence,
+		readChan:         make(chan readResult, msrBufferSize),
+		streamOnce:       sync.Once{},
+		closeOnce:        sync.Once{},
+		done:             make(chan bool),
+		maxStreamRetries: maxStreamRetries,
 	}, nil
 }
 
@@ -158,18 +166,68 @@ func (msr *SingleLedgerStateReader) streamBuckets() {
 	}
 }
 
-// streamBucketContents pushes value onto the read channel, returning false when the channel needs to be closed otherwise true
-func (msr *SingleLedgerStateReader) streamBucketContents(hash historyarchive.Hash) bool {
-	rdr, e := msr.archive.GetXdrStreamForHash(hash)
-	if e != nil {
-		msr.readChan <- msr.error(fmt.Errorf("cannot get xdr stream for hash '%s': %s", hash.String(), e))
-		return false
+// readBucketEntry will attempt to read a bucket entry from `stream`.
+// If any errors are encountered while reading from `stream`, readBucketEntry will
+// retry the operation using a new *historyarchive.XdrStream.
+// The total number of retries will not exceed `maxStreamRetries`.
+func (msr *SingleLedgerStateReader) readBucketEntry(stream *historyarchive.XdrStream, hash historyarchive.Hash) (
+	xdr.BucketEntry,
+	error,
+) {
+	var entry xdr.BucketEntry
+	var err error
+	currentPosition := stream.BytesRead()
+
+	for attempts := 0; ; attempts++ {
+		err = stream.ReadOne(&entry)
+		if err == nil || err == io.EOF {
+			break
+		}
+		if attempts >= msr.maxStreamRetries {
+			break
+		}
+
+		stream.Close()
+
+		var retryStream *historyarchive.XdrStream
+		retryStream, err = msr.newXDRStream(hash)
+		if err != nil {
+			err = errors.Wrap(err, "Error creating new xdr stream")
+			break
+		}
+
+		*stream = *retryStream
+
+		_, err = stream.Discard(currentPosition)
+		if err != nil {
+			err = errors.Wrap(err, "Error discarding from xdr stream")
+			break
+		}
 	}
 
-	if !msr.disableBucketListHashValidation {
+	return entry, err
+}
+
+func (msr *SingleLedgerStateReader) newXDRStream(hash historyarchive.Hash) (
+	*historyarchive.XdrStream,
+	error,
+) {
+	rdr, e := msr.archive.GetXdrStreamForHash(hash)
+	if e == nil && !msr.disableBucketListHashValidation {
 		// Calling SetExpectedHash will enable validation of the stream hash. If hashes
 		// don't match, rdr.Close() will return an error.
 		rdr.SetExpectedHash(hash)
+	}
+
+	return rdr, e
+}
+
+// streamBucketContents pushes value onto the read channel, returning false when the channel needs to be closed otherwise true
+func (msr *SingleLedgerStateReader) streamBucketContents(hash historyarchive.Hash) bool {
+	rdr, e := msr.newXDRStream(hash)
+	if e != nil {
+		msr.readChan <- msr.error(fmt.Errorf("cannot get xdr stream for hash '%s': %s", hash.String(), e))
+		return false
 	}
 
 	defer func() {
@@ -201,7 +259,8 @@ LoopBucketEntry:
 
 			for i := 0; i < preloadedEntries; i++ {
 				var entry xdr.BucketEntry
-				if e = rdr.ReadOne(&entry); e != nil {
+				entry, e = msr.readBucketEntry(rdr, hash)
+				if e != nil {
 					if e == io.EOF {
 						if len(batch) == 0 {
 							// No entries loaded for this batch, nothing more to process

@@ -27,7 +27,7 @@ func main() {
 	}
 	haa := adapters.MakeHistoryArchiveAdapter(archive)
 
-	sr, e := haa.GetState(seqNum, &io.MemoryTempSet{})
+	sr, e := haa.GetState(seqNum, &io.MemoryTempSet{}, 0)
 	if e != nil {
 		panic(e)
 	}
