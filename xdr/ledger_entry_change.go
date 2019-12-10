@@ -30,6 +30,8 @@ func (change *LedgerEntryChange) LedgerKey() LedgerKey {
 	}
 }
 
+// MarshalBinaryBase64 marshals XDR into a binary form and then encodes it
+// using base64.
 func (change LedgerEntryChange) MarshalBinaryBase64() (string, error) {
 	b, err := change.MarshalBinary()
 	if err != nil {
