@@ -163,8 +163,7 @@ func (c *LedgerEntryChangeCache) addUpdatedChange(change Change) error {
 // addRemovedChange adds a change to the cache, but returns an error if remove
 // change is unexpected.
 func (c *LedgerEntryChangeCache) addRemovedChange(change Change) error {
-	ledgerKey := change.Pre.LedgerKey()
-	ledgerKeyString, err := ledgerKey.MarshalBinaryBase64()
+	ledgerKeyString, err := change.Pre.LedgerKey().MarshalBinaryBase64()
 	if err != nil {
 		return errors.Wrap(err, "Error MarshalBinaryBase64")
 	}

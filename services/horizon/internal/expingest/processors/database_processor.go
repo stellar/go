@@ -234,35 +234,12 @@ func (p *DatabaseProcessor) ProcessLedger(ctx context.Context, store *pipeline.S
 
 		// Remember that it's possible that transaction can remove a preauth
 		// tx signer even when it's a failed transaction.
-		for _, change := range transaction.GetChanges() {
-			err := ledgerCache.AddChange(change)
-			if err != nil {
-				return errors.Wrap(err, "error addint to ledgerCache")
-			}
-		}
-
-		select {
-		case <-ctx.Done():
-			return nil
-		default:
-			continue
-		}
-	}
-
-	changes := ledgerCache.GetChanges()
-	for _, action := range actions {
-		handler, ok := actionHandlers[action]
-		if !ok {
-			return errors.New("Unknown action")
-		}
-
-		for _, change := range changes {
-			err := handler(change)
-			if err != nil {
-				return errors.Wrap(
-					err,
-					fmt.Sprintf("Error in %s handler", action),
-				)
+		if p.Action != Ledgers {
+			for _, change := range transaction.GetChanges() {
+				err := ledgerCache.AddChange(change)
+				if err != nil {
+					return errors.Wrap(err, "error addint to ledgerCache")
+				}
 			}
 		}
 
@@ -275,22 +252,39 @@ func (p *DatabaseProcessor) ProcessLedger(ctx context.Context, store *pipeline.S
 	}
 
 	// Process upgrades meta
-	for {
-		change, err := r.ReadUpgradeChange()
-		if err != nil {
-			if err == stdio.EOF {
-				break
-			} else {
-				return err
+	if p.Action != Ledgers {
+		for {
+			change, err := r.ReadUpgradeChange()
+			if err != nil {
+				if err == stdio.EOF {
+					break
+				} else {
+					return err
+				}
+			}
+
+			err = ledgerCache.AddChange(change)
+			if err != nil {
+				return errors.Wrap(err, "error addint to ledgerCache")
+			}
+
+			select {
+			case <-ctx.Done():
+				return nil
+			default:
+				continue
 			}
 		}
+	}
 
-		for _, action := range actions {
-			handler, ok := actionHandlers[action]
-			if !ok {
-				return errors.New("Unknown action")
-			}
+	changes := ledgerCache.GetChanges()
+	for _, action := range actions {
+		handler, ok := actionHandlers[action]
+		if !ok {
+			return errors.New("Unknown action")
+		}
 
+		for _, change := range changes {
 			err := handler(change)
 			if err != nil {
 				return errors.Wrap(
