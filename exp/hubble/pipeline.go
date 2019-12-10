@@ -14,15 +14,33 @@ import (
 
 const archivesURL = "http://history.stellar.org/prd/core-live/core_live_001/"
 
-// NewStatePipelineSession runs a single ledger session.
-func NewStatePipelineSession(esUrl, esIndex string) (*ingest.SingleLedgerSession, error) {
+// PipelineDefaultType is the default type of state pipeline.
+// This will just collect and store the current ledger state in memory.
+const PipelineDefaultType = "currentState"
+
+// PipelineSearchType is the other choice for type of state pipeline.
+// This state pipeline writes entries to a running Elasticsearch instance.
+const PipelineSearchType = "elasticSearch"
+
+// NewStatePipelineSession returns a single ledger state session.
+func NewStatePipelineSession(pipelineType, esURL, esIndex string) (*ingest.SingleLedgerSession, error) {
 	archive, err := newArchive()
 	if err != nil {
-		return nil, errors.Wrap(err, "couldn't create archive")
+		return nil, errors.Wrap(err, "could not create archive")
 	}
-	statePipeline, err := newStatePipeline(esUrl, esIndex)
-	if err != nil {
-		return nil, errors.Wrap(err, "couldn't create state pipeline")
+	var statePipeline *pipeline.StatePipeline
+	if pipelineType == PipelineSearchType {
+		statePipeline, err = newElasticSearchPipeline(esURL, esIndex)
+		if err != nil {
+			return nil, errors.Wrap(err, "could not create elastic search pipeline")
+		}
+	} else if pipelineType == PipelineDefaultType {
+		statePipeline, err = newCurrentStatePipeline()
+		if err != nil {
+			return nil, errors.Wrap(err, "could not create current state pipeline")
+		}
+	} else {
+		return nil, errors.Errorf("invalid state pipeline type: %s, can only have current or state", pipelineType)
 	}
 	session := &ingest.SingleLedgerSession{
 		Archive:       archive,
@@ -42,9 +60,20 @@ func newArchive() (*historyarchive.Archive, error) {
 	return archive, nil
 }
 
-func newStatePipeline(esUrl, esIndex string) (*pipeline.StatePipeline, error) {
+func newCurrentStatePipeline() (*pipeline.StatePipeline, error) {
 	sp := &pipeline.StatePipeline{}
-	client, err := newClientWithIndex(esUrl, esIndex)
+	csProcessor := &CurrentStateProcessor{
+		ledgerState: make(map[string]accountState),
+	}
+	sp.SetRoot(
+		pipeline.StateNode(csProcessor),
+	)
+	return sp, nil
+}
+
+func newElasticSearchPipeline(esURL, esIndex string) (*pipeline.StatePipeline, error) {
+	sp := &pipeline.StatePipeline{}
+	client, err := newClientWithIndex(esURL, esIndex)
 	if err != nil {
 		return nil, errors.Wrap(err, "couldn't create new es client and index")
 	}
@@ -58,16 +87,16 @@ func newStatePipeline(esUrl, esIndex string) (*pipeline.StatePipeline, error) {
 	return sp, nil
 }
 
-func newClientWithIndex(esUrl, esIndex string) (*elastic.Client, error) {
+func newClientWithIndex(esURL, esIndex string) (*elastic.Client, error) {
 	client, err := elastic.NewClient(
-		elastic.SetURL(esUrl),
+		elastic.SetURL(esURL),
 	)
 	if err != nil {
 		return nil, errors.Wrap(err, "couldn't create es client")
 	}
 
 	ctx := context.Background()
-	_, _, err = client.Ping(esUrl).Do(ctx)
+	_, _, err = client.Ping(esURL).Do(ctx)
 	if err != nil {
 		return nil, errors.Wrap(err, "couldn't ping es server")
 	}

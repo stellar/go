@@ -1,5 +1,5 @@
 # compliance-server
-This is a stand alone server written in go. It is designed to make [Compliance protocol](https://www.stellar.org/developers/learn/integration-guides/compliance-protocol.html) requests to other organizations. You can connect to it from the `bridge` server or any other server that can talk to it (check API section).
+This is a stand alone server written in go. It is designed to make [Compliance protocol](https://www.stellar.org/developers/guides/compliance-protocol.html) requests to other organizations. You can connect to it from the `bridge` server or any other server that can talk to it (check API section).
 
 ## Downloading the server
 [Prebuilt binaries](https://github.com/stellar/go/releases) of the compliance server are available on the [releases page](https://github.com/stellar/go/releases).

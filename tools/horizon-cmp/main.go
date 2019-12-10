@@ -28,6 +28,8 @@ import (
 const maxLevels = 3
 const pathsQueueCap = 10000
 
+const timeFormat = "2006-01-02-15-04-05"
+
 // pathAccessLog is a regexp that gets path from ELB access log line. Example:
 // 2015-05-13T23:39:43.945958Z my-loadbalancer 192.168.131.39:2817 10.0.0.1:80 0.000086 0.001048 0.001337 200 200 0 57 "GET https://www.example.com:443/transactions?order=desc HTTP/1.1" "curl/7.38.0" DHE-RSA-AES128-SHA TLSv1.2
 var pathAccessLog = regexp.MustCompile(`([A-Z]+) https?://[^/]*(/[^ ]*)`)
@@ -119,7 +121,7 @@ func run(cmd *cobra.Command) {
 	if err != nil {
 		panic(err)
 	}
-	outputDir := fmt.Sprintf("%s/horizon-cmp-diff/%d", pwd, time.Now().Unix())
+	outputDir := fmt.Sprintf("%s/horizon-cmp-diff/%s", pwd, time.Now().Format(timeFormat))
 
 	log.WithFields(slog.F{
 		"base":       horizonBase,
