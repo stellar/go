@@ -24,7 +24,7 @@ func (operation *TransactionOperation) ID() int64 {
 	return toid.New(
 		int32(operation.LedgerSequence),
 		int32(operation.Transaction.Index),
-		int32(operation.Index),
+		int32(operation.Index+1),
 	).ToInt64()
 }
 

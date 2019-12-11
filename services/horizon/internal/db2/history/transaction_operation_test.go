@@ -19,11 +19,12 @@ func TestTransactionOperationID(t *testing.T) {
 	transaction, err := buildTransaction(
 		1,
 		"AAAAACiSTRmpH6bHC6Ekna5e82oiGY5vKDEEUgkq9CB//t+rAAAAZAEXUhsAADDGAAAAAQAAAAAAAAAAAAAAAF3v3WAAAAABAAAACjEwOTUzMDMyNTAAAAAAAAEAAAAAAAAAAQAAAAAOr5CG1ax6qG2fBEgXJlF0sw5W0irOS6N/NRDbavBm4QAAAAAAAAAAE32fwAAAAAAAAAABf/7fqwAAAEAkWgyAgV5tF3m1y1TIDYkNXP8pZLAwcxhWEi4f3jcZJK7QrKSXhKoawVGrp5NNs4y9dgKt8zHZ8KbJreFBUsIB",
+		nil,
 	)
 	tt.NoError(err)
 
 	operation := TransactionOperation{
-		Index:          1,
+		Index:          0,
 		Transaction:    transaction,
 		Operation:      transaction.Envelope.Tx.Operations[0],
 		LedgerSequence: 1,
@@ -37,6 +38,7 @@ func TestTransactionOperationTransactionID(t *testing.T) {
 	transaction, err := buildTransaction(
 		1,
 		"AAAAACiSTRmpH6bHC6Ekna5e82oiGY5vKDEEUgkq9CB//t+rAAAAZAEXUhsAADDGAAAAAQAAAAAAAAAAAAAAAF3v3WAAAAABAAAACjEwOTUzMDMyNTAAAAAAAAEAAAAAAAAAAQAAAAAOr5CG1ax6qG2fBEgXJlF0sw5W0irOS6N/NRDbavBm4QAAAAAAAAAAE32fwAAAAAAAAAABf/7fqwAAAEAkWgyAgV5tF3m1y1TIDYkNXP8pZLAwcxhWEi4f3jcZJK7QrKSXhKoawVGrp5NNs4y9dgKt8zHZ8KbJreFBUsIB",
+		nil,
 	)
 	tt.NoError(err)
 
@@ -73,6 +75,7 @@ func TestOperationTransactionSourceAccount(t *testing.T) {
 			transaction, err := buildTransaction(
 				1,
 				"AAAAACiSTRmpH6bHC6Ekna5e82oiGY5vKDEEUgkq9CB//t+rAAAAZAEXUhsAADDGAAAAAQAAAAAAAAAAAAAAAF3v3WAAAAABAAAACjEwOTUzMDMyNTAAAAAAAAEAAAAAAAAAAQAAAAAOr5CG1ax6qG2fBEgXJlF0sw5W0irOS6N/NRDbavBm4QAAAAAAAAAAE32fwAAAAAAAAAABf/7fqwAAAEAkWgyAgV5tF3m1y1TIDYkNXP8pZLAwcxhWEi4f3jcZJK7QrKSXhKoawVGrp5NNs4y9dgKt8zHZ8KbJreFBUsIB",
+				nil,
 			)
 			tt.NoError(err)
 			op := transaction.Envelope.Tx.Operations[0]
@@ -98,6 +101,7 @@ func TestTransactionOperationType(t *testing.T) {
 	transaction, err := buildTransaction(
 		1,
 		"AAAAACiSTRmpH6bHC6Ekna5e82oiGY5vKDEEUgkq9CB//t+rAAAAZAEXUhsAADDGAAAAAQAAAAAAAAAAAAAAAF3v3WAAAAABAAAACjEwOTUzMDMyNTAAAAAAAAEAAAAAAAAAAQAAAAAOr5CG1ax6qG2fBEgXJlF0sw5W0irOS6N/NRDbavBm4QAAAAAAAAAAE32fwAAAAAAAAAABf/7fqwAAAEAkWgyAgV5tF3m1y1TIDYkNXP8pZLAwcxhWEi4f3jcZJK7QrKSXhKoawVGrp5NNs4y9dgKt8zHZ8KbJreFBUsIB",
+		nil,
 	)
 	tt.NoError(err)
 
@@ -110,36 +114,86 @@ func TestTransactionOperationType(t *testing.T) {
 
 	tt.Equal(xdr.OperationTypePayment, operation.OperationType())
 }
-
 func TestTransactionOperationDetails(t *testing.T) {
-	tt := assert.New(t)
-	transaction, err := buildTransaction(
-		1,
-		"AAAAACiSTRmpH6bHC6Ekna5e82oiGY5vKDEEUgkq9CB//t+rAAAAZAEXUhsAADDGAAAAAQAAAAAAAAAAAAAAAF3v3WAAAAABAAAACjEwOTUzMDMyNTAAAAAAAAEAAAAAAAAAAQAAAAAOr5CG1ax6qG2fBEgXJlF0sw5W0irOS6N/NRDbavBm4QAAAAAAAAAAE32fwAAAAAAAAAABf/7fqwAAAEAkWgyAgV5tF3m1y1TIDYkNXP8pZLAwcxhWEi4f3jcZJK7QrKSXhKoawVGrp5NNs4y9dgKt8zHZ8KbJreFBUsIB",
-	)
-	tt.NoError(err)
-
-	operation := TransactionOperation{
-		Index:          1,
-		Transaction:    transaction,
-		Operation:      transaction.Envelope.Tx.Operations[0],
-		LedgerSequence: 1,
+	testCases := []struct {
+		desc     string
+		envelope string
+		result   string
+		index    uint32
+		expected map[string]interface{}
+	}{
+		{
+			desc:     "createAccount",
+			envelope: "AAAAAGL8HQvQkbK2HA3WVjRrKmjX00fG8sLI7m0ERwJW/AX3AAAAZAAAAAAAAAAaAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAoZftFP3p4ifbTm6hQdieotu3Zw9E05GtoSh5MBytEpQAAAACVAvkAAAAAAAAAAABVvwF9wAAAEDHU95E9wxgETD8TqxUrkgC0/7XHyNDts6Q5huRHfDRyRcoHdv7aMp/sPvC3RPkXjOMjgbKJUX7SgExUeYB5f8F",
+			index:    0,
+			expected: map[string]interface{}{
+				"account":          "GCQZP3IU7XU6EJ63JZXKCQOYT2RNXN3HB5CNHENNUEUHSMA4VUJJJSEN",
+				"funder":           "GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H",
+				"starting_balance": "1000.0000000",
+			},
+		},
+		{
+			desc:     "payment",
+			envelope: "AAAAABpcjiETZ0uhwxJJhgBPYKWSVJy2TZ2LI87fqV1cUf/UAAAAZAAAADcAAAABAAAAAAAAAAAAAAABAAAAAAAAAAEAAAAAGlyOIRNnS6HDEkmGAE9gpZJUnLZNnYsjzt+pXVxR/9QAAAAAAAAAAAX14QAAAAAAAAAAAVxR/9QAAABAK6pcXYMzAEmH08CZ1LWmvtNDKauhx+OImtP/Lk4hVTMJRVBOebVs5WEPj9iSrgGT0EswuDCZ2i5AEzwgGof9Ag==",
+			index:    0,
+			expected: map[string]interface{}{
+				"amount":     "10.0000000",
+				"asset_type": "native",
+				"from":       "GANFZDRBCNTUXIODCJEYMACPMCSZEVE4WZGZ3CZDZ3P2SXK4KH75IK6Y",
+				"to":         "GANFZDRBCNTUXIODCJEYMACPMCSZEVE4WZGZ3CZDZ3P2SXK4KH75IK6Y",
+			},
+		},
+		{
+			desc:     "pathPaymentStrictReceive",
+			envelope: "AAAAAONt/6wGI884Zi6sYDYC1GOV/drnh4OcRrTrqJPoOTUKAAAAZAAAABAAAAADAAAAAAAAAAAAAAABAAAAAAAAAAIAAAAAAAAAADuaygAAAAAABAjoBMEUiZNLUjsWXL1iK59D90Li4w56076b8HKxZfIAAAABRVVSAAAAAAAuwvNzNk9twbuJHUBqnX26GYI3MbCdpQU9t4n6EVRXsQAAAAA7msoAAAAAAAAAAAAAAAAB6Dk1CgAAAEB+7jxesBKKrF343onyycjp2tiQLZiGH2ETl+9fuOqotveY2rIgvt9ng+QJ2aDP3+PnDsYEa9ZUaA+Zne2nIGgE",
+			result:   "AAAAAAAAAGQAAAAAAAAAAQAAAAAAAAACAAAAAAAAAAEAAAAALsLzczZPbcG7iR1Aap19uhmCNzGwnaUFPbeJ+hFUV7EAAAAAAAAAAgAAAAFFVVIAAAAAAC7C83M2T23Bu4kdQGqdfboZgjcxsJ2lBT23ifoRVFexAAAAADuaygAAAAAAAAAAADuaygAAAAAABAjoBMEUiZNLUjsWXL1iK59D90Li4w56076b8HKxZfIAAAABRVVSAAAAAAAuwvNzNk9twbuJHUBqnX26GYI3MbCdpQU9t4n6EVRXsQAAAAA7msoAAAAAAA==",
+			index:    0,
+			expected: map[string]interface{}{
+				"to":                "GACAR2AEYEKITE2LKI5RMXF5MIVZ6Q7XILROGDT22O7JX4DSWFS7FDDP",
+				"from":              "GDRW375MAYR46ODGF2WGANQC2RRZL7O246DYHHCGWTV2RE7IHE2QUQLD",
+				"path":              []map[string]interface{}{},
+				"amount":            "100.0000000",
+				"asset_code":        "EUR",
+				"asset_type":        "credit_alphanum4",
+				"source_max":        "100.0000000",
+				"asset_issuer":      "GAXMF43TGZHW3QN3REOUA2U5PW5BTARXGGYJ3JIFHW3YT6QRKRL3CPPU",
+				"source_amount":     "100.0000000",
+				"source_asset_type": "native",
+			},
+		},
 	}
+	for _, tc := range testCases {
+		t.Run(tc.desc, func(t *testing.T) {
+			tt := assert.New(t)
+			var result *string
+			if len(tc.result) > 0 {
+				result = &tc.result
+			}
 
-	expected := map[string]interface{}{
-		"asset_type": "native",
-		"from":       "GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY",
-		"to":         "GAHK7EEG2WWHVKDNT4CEQFZGKF2LGDSW2IVM4S5DP42RBW3K6BTODB4A",
-		"amount":     "32.7000000",
+			transaction, err := buildTransaction(
+				1,
+				tc.envelope,
+				result,
+			)
+			tt.NoError(err)
+
+			operation := TransactionOperation{
+				Index:          tc.index,
+				Transaction:    transaction,
+				Operation:      transaction.Envelope.Tx.Operations[tc.index],
+				LedgerSequence: 1,
+			}
+
+			tt.Equal(tc.expected, operation.Details())
+		})
 	}
-
-	tt.Equal(expected, operation.Details())
 }
 
-func buildTransaction(index uint32, envelope string) (io.LedgerTransaction, error) {
+func buildTransaction(index uint32, envelope string, result *string) (io.LedgerTransaction, error) {
 	transaction := io.LedgerTransaction{
 		Index:    1,
 		Envelope: xdr.TransactionEnvelope{},
+		Result:   xdr.TransactionResultPair{},
 	}
 	err := xdr.SafeUnmarshalBase64(
 		envelope,
@@ -147,6 +201,16 @@ func buildTransaction(index uint32, envelope string) (io.LedgerTransaction, erro
 	)
 	if err != nil {
 		return transaction, err
+	}
+
+	if result != nil {
+		err = xdr.SafeUnmarshalBase64(
+			*result,
+			&transaction.Result.Result,
+		)
+		if err != nil {
+			return transaction, err
+		}
 	}
 
 	return transaction, nil
