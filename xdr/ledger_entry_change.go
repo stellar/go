@@ -2,9 +2,20 @@ package xdr
 
 import "fmt"
 
-// EntryType is a helper to get at the entry type for a change.
+// EntryType is a helper to get the entry type for a change. It
+// panics if unable to do so.
 func (change *LedgerEntryChange) EntryType() LedgerEntryType {
 	return change.LedgerKey().Type
+}
+
+// GetEntryType is a helper to get the entry type for a change, and it
+// returns an error if unable to do so.
+func (change *LedgerEntryChange) GetEntryType() (LedgerEntryType, error) {
+	key, err := change.GetLedgerKey()
+	if err != nil {
+		return LedgerEntryTypeAccount, err
+	}
+	return key.Type, nil
 }
 
 // LedgerKey returns the key for the ledger entry that was changed
