@@ -82,12 +82,18 @@ func Parse(addressOrSeed string) (KP, error) {
 		return nil, err
 	}
 
-	_, err = strkey.Decode(strkey.VersionByteSeed, addressOrSeed)
-	if err == nil {
-		return &Full{addressOrSeed}, nil
+	return ParseFull(addressOrSeed)
+}
+
+// ParseFull constructs a new Full keypair from the provided string, which should
+// be a seed.
+func ParseFull(seed string) (*Full, error) {
+	_, err := strkey.Decode(strkey.VersionByteSeed, seed)
+	if err != nil {
+		return nil, err
 	}
 
-	return nil, err
+	return &Full{seed}, nil
 }
 
 // FromRawSeed creates a new keypair from the provided raw ED25519 seed
