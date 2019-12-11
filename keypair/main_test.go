@@ -108,6 +108,47 @@ var _ = DescribeTable("keypair.Parse()",
 	}),
 )
 
+type ParseFullCase struct {
+	Input    string
+	FullCase types.GomegaMatcher
+	ErrCase  types.GomegaMatcher
+}
+
+var _ = DescribeTable("keypair.ParseFull()",
+	func(c ParseFullCase) {
+		kp, err := ParseFull(c.Input)
+
+		Expect(kp).To(c.FullCase)
+		Expect(err).To(c.ErrCase)
+	},
+
+	Entry("a valid address", ParseFullCase{
+		Input:    "GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H",
+		FullCase: BeNil(),
+		ErrCase:  HaveOccurred(),
+	}),
+	Entry("a corrupted address", ParseFullCase{
+		Input:    "GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7O32H",
+		FullCase: BeNil(),
+		ErrCase:  HaveOccurred(),
+	}),
+	Entry("a valid seed", ParseFullCase{
+		Input:    "SDHOAMBNLGCE2MV5ZKIVZAQD3VCLGP53P3OBSBI6UN5L5XZI5TKHFQL4",
+		FullCase: Equal(&Full{seed: "SDHOAMBNLGCE2MV5ZKIVZAQD3VCLGP53P3OBSBI6UN5L5XZI5TKHFQL4"}),
+		ErrCase:  BeNil(),
+	}),
+	Entry("a corrupted seed", ParseFullCase{
+		Input:    "SDHOAMBNLGCE2MV5ZKIVZAQD3VCLGP53P3OBSBI6UN5L5XZI5TKHFQL3",
+		FullCase: BeNil(),
+		ErrCase:  HaveOccurred(),
+	}),
+	Entry("a blank string", ParseFullCase{
+		Input:    "",
+		FullCase: BeNil(),
+		ErrCase:  HaveOccurred(),
+	}),
+)
+
 var _ = Describe("keypair.Random()", func() {
 	It("does not return the same value twice", func() {
 		seen := map[string]bool{}
