@@ -41,7 +41,7 @@ func (skey *SignerKey) GetAddress() (string, error) {
 		key := skey.MustPreAuthTx()
 		copy(raw, key[:])
 	default:
-		return "", fmt.Errorf("Unknown signer key type: %v", skey.Type)
+		return "", fmt.Errorf("unknown signer key type: %v", skey.Type)
 	}
 
 	return strkey.Encode(vb, raw)
