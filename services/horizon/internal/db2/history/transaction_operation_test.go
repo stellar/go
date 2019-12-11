@@ -111,6 +111,31 @@ func TestTransactionOperationType(t *testing.T) {
 	tt.Equal(xdr.OperationTypePayment, operation.OperationType())
 }
 
+func TestTransactionOperationDetails(t *testing.T) {
+	tt := assert.New(t)
+	transaction, err := buildTransaction(
+		1,
+		"AAAAACiSTRmpH6bHC6Ekna5e82oiGY5vKDEEUgkq9CB//t+rAAAAZAEXUhsAADDGAAAAAQAAAAAAAAAAAAAAAF3v3WAAAAABAAAACjEwOTUzMDMyNTAAAAAAAAEAAAAAAAAAAQAAAAAOr5CG1ax6qG2fBEgXJlF0sw5W0irOS6N/NRDbavBm4QAAAAAAAAAAE32fwAAAAAAAAAABf/7fqwAAAEAkWgyAgV5tF3m1y1TIDYkNXP8pZLAwcxhWEi4f3jcZJK7QrKSXhKoawVGrp5NNs4y9dgKt8zHZ8KbJreFBUsIB",
+	)
+	tt.NoError(err)
+
+	operation := TransactionOperation{
+		Index:          1,
+		Transaction:    transaction,
+		Operation:      transaction.Envelope.Tx.Operations[0],
+		LedgerSequence: 1,
+	}
+
+	expected := map[string]interface{}{
+		"asset_type": "native",
+		"from":       "GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY",
+		"to":         "GAHK7EEG2WWHVKDNT4CEQFZGKF2LGDSW2IVM4S5DP42RBW3K6BTODB4A",
+		"amount":     "32.7000000",
+	}
+
+	tt.Equal(expected, operation.Details())
+}
+
 func buildTransaction(index uint32, envelope string) (io.LedgerTransaction, error) {
 	transaction := io.LedgerTransaction{
 		Index:    1,

@@ -1,8 +1,10 @@
 package history
 
 import (
+	"github.com/stellar/go/amount"
 	"github.com/stellar/go/exp/ingest/io"
 	"github.com/stellar/go/services/horizon/internal/toid"
+	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
 )
 
@@ -44,5 +46,37 @@ func (op *TransactionOperation) OperationType() xdr.OperationType {
 }
 
 // Details returns the operation details as a map which can be stored as JSON.
-// func (op *TransactionOperation) Details() map[string]interface{} {
-// }
+func (op *TransactionOperation) Details() map[string]interface{} {
+	details := map[string]interface{}{}
+	source := op.SourceAccount()
+	pop := op.Operation.Body.MustPaymentOp()
+	details["from"] = source.Address()
+	details["to"] = pop.Destination.Address()
+	details["amount"] = amount.String(pop.Amount)
+	assetDetails(details, pop.Asset, "")
+
+	return details
+}
+
+// assetDetails sets the details for `a` on `result` using keys with `prefix`
+func assetDetails(result map[string]interface{}, a xdr.Asset, prefix string) error {
+	var (
+		assetType string
+		code      string
+		issuer    string
+	)
+	err := a.Extract(&assetType, &code, &issuer)
+	if err != nil {
+		err = errors.Wrap(err, "xdr.Asset.Extract error")
+		return err
+	}
+	result[prefix+"asset_type"] = assetType
+
+	if a.Type == xdr.AssetTypeAssetTypeNative {
+		return nil
+	}
+
+	result[prefix+"asset_code"] = code
+	result[prefix+"asset_issuer"] = issuer
+	return nil
+}
