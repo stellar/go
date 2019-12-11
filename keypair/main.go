@@ -85,7 +85,7 @@ func Parse(addressOrSeed string) (KP, error) {
 	return ParseFull(addressOrSeed)
 }
 
-// Parse constructs a new Full keypair from the provided string, which should
+// ParseFull constructs a new Full keypair from the provided string, which should
 // be a seed.
 func ParseFull(seed string) (*Full, error) {
 	_, err := strkey.Decode(strkey.VersionByteSeed, seed)
