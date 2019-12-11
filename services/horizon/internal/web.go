@@ -61,6 +61,9 @@ func init() {
 	problem.RegisterError(db2.ErrInvalidLimit, problem.BadRequest)
 	problem.RegisterError(db2.ErrInvalidOrder, problem.BadRequest)
 	problem.RegisterError(sse.ErrRateLimited, hProblem.RateLimitExceeded)
+	problem.RegisterError(context.DeadlineExceeded, hProblem.Timeout)
+	problem.RegisterError(context.Canceled, hProblem.ServiceUnavailable)
+	problem.RegisterError(db.ErrCancelled, hProblem.ServiceUnavailable)
 }
 
 // mustInitWeb installed a new Web instance onto the provided app object.
@@ -313,7 +316,7 @@ func (w *web) mustInstallActions(
 	}
 
 	// Network state related endpoints
-	r.Get("/fee_stats", OperationFeeStatsAction{}.Handle)
+	r.Get("/fee_stats", FeeStatsAction{}.Handle)
 
 	// friendbot
 	if config.FriendbotURL != nil {

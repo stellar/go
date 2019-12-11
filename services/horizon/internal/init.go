@@ -90,6 +90,7 @@ func initExpIngester(app *App, orderBookGraph *orderbook.OrderBookGraph) {
 		StellarCoreURL:           app.config.StellarCoreURL,
 		OrderBookGraph:           orderBookGraph,
 		TempSet:                  tempSet,
+		MaxStreamRetries:         3,
 		DisableStateVerification: app.config.IngestDisableStateVerification,
 	})
 	if err != nil {

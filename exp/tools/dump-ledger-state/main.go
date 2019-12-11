@@ -46,10 +46,11 @@ func main() {
 	}
 
 	session := &ingest.SingleLedgerSession{
-		LedgerSequence: uint32(ledgerSequence),
-		Archive:        archive,
-		StatePipeline:  statePipeline,
-		TempSet:        &io.MemoryTempSet{},
+		LedgerSequence:   uint32(ledgerSequence),
+		Archive:          archive,
+		StatePipeline:    statePipeline,
+		TempSet:          &io.MemoryTempSet{},
+		MaxStreamRetries: 3,
 	}
 
 	doneStats := printPipelineStats(statePipeline)

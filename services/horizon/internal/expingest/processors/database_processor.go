@@ -13,8 +13,11 @@ import (
 	"github.com/stellar/go/exp/support/pipeline"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/support/errors"
+	logpkg "github.com/stellar/go/support/log"
 	"github.com/stellar/go/xdr"
 )
+
+var log = logpkg.DefaultLogger.WithField("service", "expingest")
 
 const maxBatchSize = 100000
 
@@ -188,6 +191,8 @@ func (p *DatabaseProcessor) ProcessLedger(ctx context.Context, store *pipeline.S
 	}()
 	defer w.Close()
 
+	p.AssetStatSet = AssetStatSet{}
+
 	actionHandlers := map[DatabaseProcessorActionType]func(change io.Change) error{
 		Accounts:          p.processLedgerAccounts,
 		AccountsForSigner: p.processLedgerAccountSigners,
@@ -202,9 +207,11 @@ func (p *DatabaseProcessor) ProcessLedger(ctx context.Context, store *pipeline.S
 		actions = []DatabaseProcessorActionType{
 			Accounts, AccountsForSigner, Data, Offers, TrustLines,
 		}
-	} else {
+	} else if p.Action != Ledgers {
 		actions = append(actions, p.Action)
 	}
+
+	var successTxCount, failedTxCount, opCount int
 
 	// Process transaction meta
 	for {
@@ -215,6 +222,13 @@ func (p *DatabaseProcessor) ProcessLedger(ctx context.Context, store *pipeline.S
 			} else {
 				return err
 			}
+		}
+
+		if transaction.Result.Result.Result.Code == xdr.TransactionResultCodeTxSuccess {
+			successTxCount++
+			opCount += len(transaction.Envelope.Tx.Operations)
+		} else {
+			failedTxCount++
 		}
 
 		for _, action := range actions {
@@ -277,6 +291,161 @@ func (p *DatabaseProcessor) ProcessLedger(ctx context.Context, store *pipeline.S
 		default:
 			continue
 		}
+	}
+
+	// Asset stats
+	if p.Action == All || p.Action == TrustLines {
+		assetStatsDeltas := p.AssetStatSet.All()
+		for _, delta := range assetStatsDeltas {
+			var rowsAffected int64
+
+			stat, err := p.AssetStatsQ.GetAssetStat(
+				delta.AssetType,
+				delta.AssetCode,
+				delta.AssetIssuer,
+			)
+			assetStatNotFound := err == sql.ErrNoRows
+			if !assetStatNotFound && err != nil {
+				return errors.Wrap(err, "could not fetch asset stat from db")
+			}
+
+			if assetStatNotFound {
+				// Insert
+				if delta.NumAccounts < 0 {
+					return verify.NewStateError(errors.Errorf(
+						"NumAccounts negative but DB entry does not exist for asset: %s %s %s",
+						delta.AssetType,
+						delta.AssetCode,
+						delta.AssetIssuer,
+					))
+				}
+
+				var errInsert error
+				rowsAffected, errInsert = p.AssetStatsQ.InsertAssetStat(delta)
+				if errInsert != nil {
+					return errors.Wrap(errInsert, "could not insert asset stat")
+				}
+			} else {
+				statBalance, ok := new(big.Int).SetString(stat.Amount, 10)
+				if !ok {
+					return errors.New("Error parsing: " + stat.Amount)
+				}
+
+				deltaBalance, ok := new(big.Int).SetString(delta.Amount, 10)
+				if !ok {
+					return errors.New("Error parsing: " + stat.Amount)
+				}
+
+				// statBalance = statBalance + deltaBalance
+				statBalance.Add(statBalance, deltaBalance)
+				statAccounts := stat.NumAccounts + delta.NumAccounts
+
+				if statAccounts == 0 {
+					// Remove stats
+					if statBalance.Cmp(big.NewInt(0)) != 0 {
+						return verify.NewStateError(errors.Errorf(
+							"Removing asset stat by final amount non-zero for: %s %s %s",
+							delta.AssetType,
+							delta.AssetCode,
+							delta.AssetIssuer,
+						))
+					}
+					rowsAffected, err = p.AssetStatsQ.RemoveAssetStat(
+						delta.AssetType,
+						delta.AssetCode,
+						delta.AssetIssuer,
+					)
+					if err != nil {
+						return errors.Wrap(err, "could not remove asset stat")
+					}
+				} else {
+					// Update
+					rowsAffected, err = p.AssetStatsQ.UpdateAssetStat(history.ExpAssetStat{
+						AssetType:   delta.AssetType,
+						AssetCode:   delta.AssetCode,
+						AssetIssuer: delta.AssetIssuer,
+						Amount:      statBalance.String(),
+						NumAccounts: statAccounts,
+					})
+					if err != nil {
+						return errors.Wrap(err, "could not update asset stat")
+					}
+				}
+			}
+
+			if rowsAffected != 1 {
+				return verify.NewStateError(errors.Errorf(
+					"No rows affected when adjusting asset stat for asset: %s %s %s",
+					delta.AssetType,
+					delta.AssetCode,
+					delta.AssetIssuer,
+				))
+			}
+		}
+	}
+
+	return p.ingestLedgerHeader(ctx, r, successTxCount, failedTxCount, opCount)
+}
+
+func (p *DatabaseProcessor) ingestLedgerHeader(
+	ctx context.Context, r io.LedgerReader, successTxCount, failedTxCount, opCount int,
+) error {
+	if p.Action != All && p.Action != Ledgers {
+		return nil
+	}
+
+	// Exit early if not ingesting into a DB
+	if v := ctx.Value(IngestUpdateDatabase); v == nil {
+		return nil
+	}
+
+	rowsAffected, err := p.LedgersQ.InsertExpLedger(
+		r.GetHeader(),
+		successTxCount,
+		failedTxCount,
+		opCount,
+		p.IngestVersion,
+	)
+	if err != nil {
+		return errors.Wrap(
+			err,
+			fmt.Sprintf("Could not insert ledger"),
+		)
+	}
+	if rowsAffected != 1 {
+		log.WithField("rowsAffected", rowsAffected).
+			WithField("sequence", r.GetSequence()).
+			Error("No rows affected when ingesting new ledger")
+		return errors.Errorf(
+			"No rows affected when ingesting new ledger: %v",
+			r.GetSequence(),
+		)
+	}
+
+	// use an older lookup sequence because the experimental ingestion system and the
+	// legacy ingestion system might not be in sync
+	seq := int32(r.GetSequence() - 10)
+
+	valid, err := p.LedgersQ.CheckExpLedger(seq)
+	// only validate the ledger if it is present in both ingestion systems
+	if err == sql.ErrNoRows {
+		return nil
+	}
+
+	if err != nil {
+		return errors.Wrap(
+			err,
+			fmt.Sprintf("Could not compare ledger %v", seq),
+		)
+	}
+
+	if !valid {
+		log.WithField("sequence", seq).
+			Error("row in exp_history_ledgers does not match ledger in history_ledgers")
+		return errors.Errorf(
+			"ledger %v in exp_history_ledgers does not match ledger in history_ledgers",
+			seq,
+		)
 	}
 
 	return nil
@@ -534,102 +703,9 @@ func (p *DatabaseProcessor) adjustAssetStat(
 		return verify.NewStateError(errors.New("both pre and post trustlines cannot be nil"))
 	}
 
-	if deltaBalance == 0 && deltaAccounts == 0 {
-		return nil
-	}
-
-	var assetType xdr.AssetType
-	var assetIssuer, assetCode string
-	if err := trustline.Asset.Extract(&assetType, &assetCode, &assetIssuer); err != nil {
-		return errors.Wrap(err, "could not extract asset info from trustline")
-	}
-
-	stat, err := p.AssetStatsQ.GetAssetStat(assetType, assetCode, assetIssuer)
-	assetStatNotFound := err == sql.ErrNoRows
-	if !assetStatNotFound && err != nil {
-		return errors.Wrap(err, "could not fetch asset stat from db")
-	}
-
-	currentBalance := big.NewInt(0)
-	if assetStatNotFound {
-		stat.AssetType = assetType
-		stat.AssetCode = assetCode
-		stat.AssetIssuer = assetIssuer
-	} else {
-		_, ok := currentBalance.SetString(stat.Amount, 10)
-		if !ok {
-			return verify.NewStateError(errors.Errorf(
-				"Could not parse asset stat amount %s when processing trustline: %s %s",
-				stat.Amount,
-				trustline.AccountId.Address(),
-				trustline.Asset.String(),
-			))
-		}
-	}
-	currentBalance = currentBalance.Add(currentBalance, big.NewInt(int64(deltaBalance)))
-	stat.Amount = currentBalance.String()
-	stat.NumAccounts += deltaAccounts
-
-	if currentBalance.Cmp(big.NewInt(0)) < 0 {
-		return verify.NewStateError(errors.Errorf(
-			"Asset stat has negative amount %s when processing trustline: %s %s",
-			stat.Amount,
-			trustline.AccountId.Address(),
-			trustline.Asset.String(),
-		))
-	}
-
-	if stat.NumAccounts < 0 {
-		return verify.NewStateError(errors.Errorf(
-			"Asset stat has negative num accounts when processing trustline: %s %s",
-			trustline.AccountId.Address(),
-			trustline.Asset.String(),
-		))
-	}
-
-	var rowsAffected int64
-	if assetStatNotFound {
-		// deltaAccounts is 0 if we are updating an account
-		// deltaAccounts is < 0 if we are removing an account
-		// therefore if deltaAccounts <= 0 the asset stat must exist in the db
-		if deltaAccounts <= 0 {
-			return verify.NewStateError(errors.Errorf(
-				"Expected asset stat to exist when processing trustline: %s %s",
-				trustline.AccountId.Address(),
-				trustline.Asset.String(),
-			))
-		}
-		rowsAffected, err = p.AssetStatsQ.InsertAssetStat(stat)
-		if err != nil {
-			return errors.Wrap(err, "could not insert asset stat")
-		}
-	} else if stat.NumAccounts == 0 {
-		if currentBalance.Cmp(big.NewInt(0)) != 0 {
-			return verify.NewStateError(errors.Errorf(
-				"Expected asset stat with no accounts to have amount of 0 "+
-					"(amount was %s) when processing trustline: %s %s",
-				stat.Amount,
-				trustline.AccountId.Address(),
-				trustline.Asset.String(),
-			))
-		}
-		rowsAffected, err = p.AssetStatsQ.RemoveAssetStat(assetType, assetCode, assetIssuer)
-		if err != nil {
-			return errors.Wrap(err, "could not update asset stat")
-		}
-	} else {
-		rowsAffected, err = p.AssetStatsQ.UpdateAssetStat(stat)
-		if err != nil {
-			return errors.Wrap(err, "could not update asset stat")
-		}
-	}
-
-	if rowsAffected != 1 {
-		return verify.NewStateError(errors.Errorf(
-			"No rows affected when adjusting asset stat from trustline: %s %s",
-			trustline.AccountId.Address(),
-			trustline.Asset.String(),
-		))
+	err := p.AssetStatSet.AddDelta(trustline.Asset, int64(deltaBalance), deltaAccounts)
+	if err != nil {
+		return errors.Wrap(err, "error running AssetStatSet.AddDelta")
 	}
 	return nil
 }

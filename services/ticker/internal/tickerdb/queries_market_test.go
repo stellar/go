@@ -1,6 +1,7 @@
 package tickerdb
 
 import (
+	"context"
 	"fmt"
 	"math"
 	"testing"
@@ -18,6 +19,7 @@ func TestRetrieveMarketData(t *testing.T) {
 
 	var session TickerSession
 	session.DB = db.Open()
+	session.Ctx = context.Background()
 	defer session.DB.Close()
 
 	// Run migrations to make sure the tests are run
@@ -306,6 +308,7 @@ func TestRetrievePartialMarkets(t *testing.T) {
 
 	var session TickerSession
 	session.DB = db.Open()
+	session.Ctx = context.Background()
 	defer session.DB.Close()
 
 	// Run migrations to make sure the tests are run
@@ -620,6 +623,7 @@ func Test24hStatsFallback(t *testing.T) {
 
 	var session TickerSession
 	session.DB = db.Open()
+	session.Ctx = context.Background()
 	defer session.DB.Close()
 
 	// Run migrations to make sure the tests are run
@@ -725,6 +729,7 @@ func TestPreferAnchorAssetCode(t *testing.T) {
 
 	var session TickerSession
 	session.DB = db.Open()
+	session.Ctx = context.Background()
 	defer session.DB.Close()
 
 	// Run migrations to make sure the tests are run

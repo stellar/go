@@ -112,7 +112,7 @@ func (s *OffersProcessorTestSuiteLedger) SetupTest() {
 	s.mockLedgerWriter = &io.MockLedgerWriter{}
 
 	s.processor = &DatabaseProcessor{
-		Action:  All,
+		Action:  Offers,
 		OffersQ: s.mockQ,
 	}
 

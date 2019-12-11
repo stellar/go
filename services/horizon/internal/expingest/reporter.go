@@ -3,13 +3,13 @@ package expingest
 import (
 	"time"
 
-	ilog "github.com/stellar/go/support/log"
+	logpkg "github.com/stellar/go/support/log"
 )
 
 // LoggingStateReporter logs the progress of a session running its
 // state pipelines
 type LoggingStateReporter struct {
-	Log      *ilog.Entry
+	Log      *logpkg.Entry
 	Interval int
 
 	entryCount int
@@ -41,12 +41,16 @@ func (lr *LoggingStateReporter) OnEndState(err error, shutdown bool) {
 	elapsedTime := time.Since(lr.startTime)
 
 	l := lr.Log.WithField("ledger", lr.sequence).
-		WithField("numEntries", lr.entryCount).
-		WithField("shutdown", shutdown).
 		WithField("duration", elapsedTime.Seconds())
+
+	if !shutdown {
+		l = l.WithField("numEntries", lr.entryCount)
+	}
 
 	if err != nil {
 		l.WithError(err).Error("Error processing History Archive Snapshot")
+	} else if shutdown {
+		l.Info("Processing History Archive Snapshot shutdown")
 	} else {
 		l.Info("Finished processing History Archive Snapshot")
 	}
@@ -55,7 +59,7 @@ func (lr *LoggingStateReporter) OnEndState(err error, shutdown bool) {
 // LoggingLedgerReporter logs the progress of a session running its
 // ledger pipelines
 type LoggingLedgerReporter struct {
-	Log *ilog.Entry
+	Log *logpkg.Entry
 
 	transactionCount int
 	sequence         uint32
@@ -80,12 +84,16 @@ func (lr *LoggingLedgerReporter) OnEndLedger(err error, shutdown bool) {
 	elapsedTime := time.Since(lr.startTime)
 
 	l := lr.Log.WithField("ledger", lr.sequence).
-		WithField("transactions", lr.transactionCount).
-		WithField("shutdown", shutdown).
 		WithField("duration", elapsedTime.Seconds())
+
+	if !shutdown {
+		l = l.WithField("transactions", lr.transactionCount)
+	}
 
 	if err != nil {
 		l.WithError(err).Error("Error processing ledger")
+	} else if shutdown {
+		l.Info("Processing ledger shutdown")
 	} else {
 		l.Info("Finished processing ledger")
 	}

@@ -110,6 +110,11 @@ func (handler GetOffersHandler) GetResourcePage(
 	return offers, nil
 }
 
+// AccountOffersQuery query struct for offers end-point
+type AccountOffersQuery struct {
+	AccountID string `schema:"account_id" valid:"accountID,required"`
+}
+
 // GetAccountOffersHandler is the action handler for the
 // `/accounts/{account_id}/offers` endpoint when using experimental ingestion.
 type GetAccountOffersHandler struct {
@@ -121,14 +126,15 @@ func (handler GetAccountOffersHandler) parseOffersQuery(r *http.Request) (histor
 		return history.OffersQuery{}, err
 	}
 
-	seller, err := GetString(r, "account_id")
+	qp := AccountOffersQuery{}
+	err = GetParams(&qp, r)
 	if err != nil {
 		return history.OffersQuery{}, err
 	}
 
 	query := history.OffersQuery{
 		PageQuery: pq,
-		SellerID:  seller,
+		SellerID:  qp.AccountID,
 	}
 
 	return query, nil

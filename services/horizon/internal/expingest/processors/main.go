@@ -19,6 +19,7 @@ const (
 	Data              DatabaseProcessorActionType = "Data"
 	Offers            DatabaseProcessorActionType = "Offers"
 	TrustLines        DatabaseProcessorActionType = "TrustLines"
+	Ledgers           DatabaseProcessorActionType = "Ledgers"
 	All               DatabaseProcessorActionType = "All"
 )
 
@@ -28,13 +29,17 @@ const (
 // *history.Q object to share a common transaction. `Action` defines what each
 // processor is responsible for.
 type DatabaseProcessor struct {
-	AccountsQ   history.QAccounts
-	DataQ       history.QData
-	SignersQ    history.QSigners
-	OffersQ     history.QOffers
-	TrustLinesQ history.QTrustLines
-	AssetStatsQ history.QAssetStats
-	Action      DatabaseProcessorActionType
+	AccountsQ     history.QAccounts
+	DataQ         history.QData
+	SignersQ      history.QSigners
+	OffersQ       history.QOffers
+	TrustLinesQ   history.QTrustLines
+	AssetStatsQ   history.QAssetStats
+	LedgersQ      history.QExpLedgers
+	Action        DatabaseProcessorActionType
+	IngestVersion int
+	// AssetStatSet is used in TrustLines processor
+	AssetStatSet AssetStatSet
 }
 
 // OrderbookProcessor is a processor (both state and ledger) that's responsible

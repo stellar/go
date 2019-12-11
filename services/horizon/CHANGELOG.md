@@ -6,6 +6,35 @@ file.  This project adheres to [Semantic Versioning](http://semver.org/).
 As this project is pre 1.0, breaking changes may happen for minor version
 bumps.  A breaking change will get clearly notified in this log.
 
+## v0.24.0
+
+* Add `fee_charged` and `max_fee` objects to `/fee_stats` endpoint ([#1964](https://github.com/stellar/go/pull/1964)).
+* Experimental ledger header ingestion processor ([#1949](https://github.com/stellar/go/pull/1949)).
+* Improved performance of asset stats processor ([#1987](https://github.com/stellar/go/pull/1987)).
+* Provide mechanism for retrying XDR stream errors ([#1899](https://github.com/stellar/go/pull/1899)).
+* Emit error level log after 3 failed attempts to validate state ([#1918](https://github.com/stellar/go/pull/1918)).
+* Fixed out of bounds error in ledger backend reader ([#1914](https://github.com/stellar/go/pull/1914)).
+* Fixed out of bounds error in URL params handler ([#1973](https://github.com/stellar/go/pull/1973)).
+* Rename `OperationFeeStats` to `FeeStats` ([#1952](https://github.com/stellar/go/pull/1952)).
+* All DB queries are now cancelled when request is cancelled/timeout. ([#1950](https://github.com/stellar/go/pull/1950)).
+* Fixed multiple issues connected to graceful shutdown of Horizon.
+
+### Scheduled Breaking Changes
+
+* All `*_accepted_fee` fields in `/fee_stats` endpoint are deprecated. Fields will be removed in Horizon 0.25.0.
+
+Previously scheduled breaking changes reminders:
+
+* The following operation type names have been deprecated: `path_payment`, `manage_offer` and `create_passive_offer`. The names will be changed to: `path_payment_strict_receive`, `manage_sell_offer` and `create_passive_sell_offer` in 0.25.0. This has been previously scheduled for 0.22.0 release.
+* `fee_paid` field on Transaction resource has been deprecated and will be removed in 0.25.0 (previously scheduled for 0.22.0). Please use new fields added in 0.18.0: `max_fee` that defines the maximum fee the source account is willing to pay and `fee_charged` that defines the fee that was actually paid for a transaction. See [CAP-0005](https://github.com/stellar/stellar-protocol/blob/master/core/cap-0005.md) for more information.
+* The type for the following attributes will be changed from `int64` to `string` in 0.25.0 (previously scheduled for 0.22.0):
+  - Attribute `offer_id` in [manage buy offer](https://www.stellar.org/developers/horizon/reference/resources/operation.html#manage-buy-offer) and [manage sell offer](https://www.stellar.org/developers/horizon/reference/resources/operation.html#manage-sell-offer) operations.
+  - Attribute `offer_id` in `Trade` effect.
+  - Attribute `id` in [Offer](https://www.stellar.org/developers/horizon/reference/resources/offer.html) resource.
+  - Attribute `timestamp` and `trade_count` in [Trade Aggregation](https://www.stellar.org/developers/horizon/reference/resources/trade_aggregation.html) resource.
+
+Check [Beta Testing New Ingestion System](https://github.com/stellar/go/blob/master/services/horizon/internal/expingest/BETA_TESTING.md) if you want to test the new ingestion system.
+
 ## v0.23.1
 
 * Add `ReadTimeout` to Horizon HTTP server configuration to fix potential DoS vector.

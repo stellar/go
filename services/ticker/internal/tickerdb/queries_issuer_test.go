@@ -1,6 +1,7 @@
 package tickerdb
 
 import (
+	"context"
 	"testing"
 
 	_ "github.com/lib/pq"
@@ -16,6 +17,7 @@ func TestInsertOrUpdateIssuer(t *testing.T) {
 
 	var session TickerSession
 	session.DB = db.Open()
+	session.Ctx = context.Background()
 	defer session.DB.Close()
 
 	// Run migrations to make sure the tests are run
