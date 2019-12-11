@@ -10,20 +10,43 @@ func (change *LedgerEntryChange) EntryType() LedgerEntryType {
 // LedgerKey returns the key for the ledger entry that was changed
 // in `change`.
 func (change *LedgerEntryChange) LedgerKey() LedgerKey {
+	key, err := change.GetLedgerKey()
+	if err != nil {
+		panic(err)
+	}
+	return key
+}
+
+// GetLedgerKey returns the key for the ledger entry changed in `change`,
+// or panics if it is unable to do so.
+func (change *LedgerEntryChange) GetLedgerKey() (LedgerKey, error) {
 	switch change.Type {
 	case LedgerEntryChangeTypeLedgerEntryCreated:
-		change := change.MustCreated()
-		return change.LedgerKey()
+		created, ok := change.GetCreated()
+		if !ok {
+			return LedgerKey{}, fmt.Errorf("could not get created")
+		}
+		return created.GetLedgerKey()
 	case LedgerEntryChangeTypeLedgerEntryRemoved:
-		return change.MustRemoved()
+		removed, ok := change.GetRemoved()
+		if !ok {
+			return LedgerKey{}, fmt.Errorf("could not get removed")
+		}
+		return removed, nil
 	case LedgerEntryChangeTypeLedgerEntryUpdated:
-		change := change.MustUpdated()
-		return change.LedgerKey()
+		updated, ok := change.GetUpdated()
+		if !ok {
+			return LedgerKey{}, fmt.Errorf("could not get updated")
+		}
+		return updated.GetLedgerKey()
 	case LedgerEntryChangeTypeLedgerEntryState:
-		change := change.MustState()
-		return change.LedgerKey()
+		state, ok := change.GetState()
+		if !ok {
+			return LedgerKey{}, fmt.Errorf("could not get state")
+		}
+		return state.GetLedgerKey()
 	default:
-		panic(fmt.Errorf("Unknown change type: %v", change.Type))
+		return LedgerKey{}, fmt.Errorf("unknown change type: %v", change.Type)
 	}
 }
 
