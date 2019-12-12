@@ -68,4 +68,15 @@ func (q *Q) ExpOperations() *OperationsQ {
 	return query
 }
 
-var selectExpOperation = sq.Select("hop.*").From("exp_history_operations hop")
+var selectExpOperation = sq.Select(
+	"hop.id, " +
+		"hop.transaction_id, " +
+		"hop.application_order, " +
+		"hop.type, " +
+		"hop.details, " +
+		"hop.source_account, " +
+		"ht.transaction_hash, " +
+		"ht.tx_result, " +
+		"ht.successful as transaction_successful").
+	From("exp_history_operations hop").
+	LeftJoin("exp_history_transactions ht ON ht.id = hop.transaction_id")
