@@ -214,7 +214,8 @@ func (p *DatabaseProcessor) ProcessLedger(ctx context.Context, store *pipeline.S
 
 	var successTxCount, failedTxCount, opCount int
 
-	// Process transaction meta
+	// Get all transactions
+	var transactions []io.LedgerTransaction
 	for {
 		transaction, err := r.Read()
 		if err != nil {
@@ -232,27 +233,49 @@ func (p *DatabaseProcessor) ProcessLedger(ctx context.Context, store *pipeline.S
 			failedTxCount++
 		}
 
+		transactions = append(transactions, transaction)
+	}
+
+	if p.Action != Ledgers {
 		// Remember that it's possible that transaction can remove a preauth
-		// tx signer even when it's a failed transaction.
-		if p.Action != Ledgers {
-			for _, change := range transaction.GetChanges() {
+		// tx signer even when it's a failed transaction so we need to check
+		// failed transactions too.
+
+		// Fees are processed before everything else.
+		for _, transaction := range transactions {
+			for _, change := range transaction.GetFeeChanges() {
 				err := ledgerCache.AddChange(change)
 				if err != nil {
-					return errors.Wrap(err, "error addint to ledgerCache")
+					return errors.Wrap(err, "error adding to ledgerCache")
 				}
+			}
+
+			select {
+			case <-ctx.Done():
+				return nil
+			default:
+				continue
 			}
 		}
 
-		select {
-		case <-ctx.Done():
-			return nil
-		default:
-			continue
-		}
-	}
+		// Tx meta
+		for _, transaction := range transactions {
+			for _, change := range transaction.GetChanges() {
+				err := ledgerCache.AddChange(change)
+				if err != nil {
+					return errors.Wrap(err, "error adding to ledgerCache")
+				}
+			}
 
-	// Process upgrades meta
-	if p.Action != Ledgers {
+			select {
+			case <-ctx.Done():
+				return nil
+			default:
+				continue
+			}
+		}
+
+		// Process upgrades meta
 		for {
 			change, err := r.ReadUpgradeChange()
 			if err != nil {

@@ -146,12 +146,16 @@ func (c *Change) AccountSignersChanged() bool {
 	return false
 }
 
+// GetFeeChanges returns a developer friendly representation of LedgerEntryChanges
+// connected to fees.
+func (t *LedgerTransaction) GetFeeChanges() []Change {
+	return getChangesFromLedgerEntryChanges(t.FeeChanges)
+}
+
 // GetChanges returns a developer friendly representation of LedgerEntryChanges.
-// It contains fee changes, transaction changes and operation changes in that
-// order.
+// It contains transaction changes and operation changes in that order.
 func (t *LedgerTransaction) GetChanges() []Change {
-	// Fee meta
-	changes := getChangesFromLedgerEntryChanges(t.FeeChanges)
+	var changes []Change
 
 	// Transaction meta
 	switch t.Meta.V {
