@@ -61,8 +61,12 @@ func NewLedgerEntryChangeCache() *LedgerEntryChangeCache {
 }
 
 // AddChange adds a change to LedgerEntryChangeCache. All changes are stored
-// in memory. The actual DB update is done in Commit() method.
-// TODO: it should call Commit() internally if the cache grows too much.
+// in memory. To get the final, squashed changes call GetChanges.
+//
+// Please note that the current ledger capacity in pubnet (max 1000 ops/ledger)
+// makes LedgerEntryChangeCache safe to use in terms of memory usage. If the
+// cache takes too much memory, you apply changes returned by GetChanges and
+// create a new LedgerEntryChangeCache object to continue ingestion.
 func (c *LedgerEntryChangeCache) AddChange(change Change) error {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
