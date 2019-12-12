@@ -381,8 +381,6 @@ func init() {
 	if err != nil {
 		stdLog.Fatal(err.Error())
 	}
-
-	viper.BindPFlags(rootCmd.PersistentFlags())
 }
 
 func initApp() *horizon.App {
