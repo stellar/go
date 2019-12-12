@@ -34,6 +34,7 @@ const (
 // KP is the main interface for this package
 type KP interface {
 	Address() string
+	FromAddress() *FromAddress
 	Hint() [4]byte
 	Verify(input []byte, signature []byte) error
 	Sign(input []byte) ([]byte, error)

@@ -43,6 +43,13 @@ func ItBehavesLikeAKP(subject *KP) {
 		})
 	})
 
+	Describe("FromAddress()", func() {
+		It("returns an address-only representation, or public key, of this key", func() {
+			fromAddress := (*subject).FromAddress()
+			Expect(fromAddress.Address()).To(Equal(address))
+		})
+	})
+
 	Describe("Hint()", func() {
 		It("returns the correct hint", func() {
 			Expect((*subject).Hint()).To(Equal(hint))
