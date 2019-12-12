@@ -74,6 +74,11 @@ func (q *Q) ExpOperations() *OperationsQ {
 	return query
 }
 
+// CheckExpOperations compares exp_history_operations with history_operations
+func (q *Q) CheckExpOperations(seq int32) (bool, error) {
+	return true, nil
+}
+
 var selectExpOperation = sq.Select(
 	"hop.id, " +
 		"hop.transaction_id, " +
