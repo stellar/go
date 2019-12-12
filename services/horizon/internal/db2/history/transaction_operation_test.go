@@ -385,6 +385,22 @@ func TestTransactionOperationDetails(t *testing.T) {
 				"selling_asset_issuer": "GC2BTZPHJEVOGPW6MJUVUPANWLRGK3JMD26ZMP64ZRMYXBRSW5CIKEW5",
 			},
 		},
+		{
+			desc:     "pathPaymentStrictSend",
+			envelope: "AAAAAOsC3UuQJXeJWl7o2Q9Wf2RvZiHiHKfSbtDNsXkn3NMiAAAAZAAKTgQAAAABAAAAAAAAAAAAAAABAAAAAAAAAA0AAAAAAAAAAAX14QAAAAAA4VWYSXp7+QFjS8+8WzU2KJTONKIIk2FHXORcby4KqbgAAAAAAAAAAAX14QAAAAABAAAAAAAAAAAAAAABJ9zTIgAAAEBPAPVBKa8d5/DyiTghHO8OnFNtxa4WSMW1geqCH+83EL+yyLszkzdIWSBX8/N9FC1Mo+DTRF/peVAsxlL4G04N",
+			result:   "AAAAAAAAAGQAAAAAAAAAAQAAAAAAAAANAAAAAAAAAAAAAAAA4VWYSXp7+QFjS8+8WzU2KJTONKIIk2FHXORcby4KqbgAAAAAAAAAAAX14QAAAAAA",
+			index:    0,
+			expected: map[string]interface{}{
+				"amount":            "10.0000000",
+				"asset_type":        "native",
+				"destination_min":   "10.0000000",
+				"from":              "GDVQFXKLSASXPCK2L3UNSD2WP5SG6ZRB4IOKPUTO2DG3C6JH3TJSEA7R",
+				"path":              []map[string]interface{}{map[string]interface{}{"asset_type": "native"}},
+				"source_amount":     "10.0000000",
+				"source_asset_type": "native",
+				"to":                "GDQVLGCJPJ57SALDJPH3YWZVGYUJJTRUUIEJGYKHLTSFY3ZOBKU3QIO3",
+			},
+		},
 	}
 	for _, tc := range testCases {
 		t.Run(tc.desc, func(t *testing.T) {
