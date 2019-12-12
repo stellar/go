@@ -21,6 +21,12 @@ func (kp *FromAddress) Address() string {
 	return kp.address
 }
 
+// FromAddress gets the address-only representation, or public key, of this
+// keypair, which is itself.
+func (kp *FromAddress) FromAddress() *FromAddress {
+	return kp
+}
+
 func (kp *FromAddress) Hint() (r [4]byte) {
 	copy(r[:], kp.publicKey()[28:])
 	return
