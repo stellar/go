@@ -33,6 +33,25 @@ func TestTransactionOperationID(t *testing.T) {
 	tt.Equal(ledger+tx+op, operation.ID())
 }
 
+func TestTransactionOperationOrder(t *testing.T) {
+	tt := assert.New(t)
+	transaction, err := buildTransaction(
+		1,
+		"AAAAACiSTRmpH6bHC6Ekna5e82oiGY5vKDEEUgkq9CB//t+rAAAAZAEXUhsAADDGAAAAAQAAAAAAAAAAAAAAAF3v3WAAAAABAAAACjEwOTUzMDMyNTAAAAAAAAEAAAAAAAAAAQAAAAAOr5CG1ax6qG2fBEgXJlF0sw5W0irOS6N/NRDbavBm4QAAAAAAAAAAE32fwAAAAAAAAAABf/7fqwAAAEAkWgyAgV5tF3m1y1TIDYkNXP8pZLAwcxhWEi4f3jcZJK7QrKSXhKoawVGrp5NNs4y9dgKt8zHZ8KbJreFBUsIB",
+		nil,
+	)
+	tt.NoError(err)
+
+	operation := TransactionOperation{
+		Index:          0,
+		Transaction:    transaction,
+		Operation:      transaction.Envelope.Tx.Operations[0],
+		LedgerSequence: 1,
+	}
+
+	tt.Equal(uint32(1), operation.Order())
+}
+
 func TestTransactionOperationTransactionID(t *testing.T) {
 	tt := assert.New(t)
 	transaction, err := buildTransaction(

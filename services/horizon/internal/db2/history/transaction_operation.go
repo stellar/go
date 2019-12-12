@@ -28,6 +28,11 @@ func (operation *TransactionOperation) ID() int64 {
 	).ToInt64()
 }
 
+// Order returns the operation order.
+func (operation *TransactionOperation) Order() uint32 {
+	return operation.Index + 1
+}
+
 // TransactionID returns the id for the transaction related with this operation.
 func (operation *TransactionOperation) TransactionID() int64 {
 	return toid.New(int32(operation.LedgerSequence), int32(operation.Transaction.Index), 0).ToInt64()
