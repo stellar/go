@@ -224,14 +224,48 @@ func TestTransactionOperationDetails(t *testing.T) {
 			},
 		},
 		{
-			desc:     "setOption - set flags",
-			envelope: "AAAAAPkmOJur5F/mOxTJDb+0bMLCJGDRl3meP2MBEDVKSPP4AAAAZAAAACYAAAABAAAAAAAAAAAAAAABAAAAAAAAAAUAAAAAAAAAAQAAAAAAAAABAAAAAwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABSkjz+AAAAECyjDa1e+jtXukTrHluO7x0Mx7Wj4mRoM4S5UAFmRV+2rVoxjMwqFJhtYnEAUV19+C5ycp5jOLLpWxrCeRKJQUG",
+			desc:     "setOption - set flags (all)",
+			envelope: "AAAAAOfbN5h8zjMqvileFVS66GUvvu5mbAKtbhD+buOEj6BzAAAAZAAGVyQAAAABAAAAAQAAAAAAAAAAAAAAAF3b7rYAAAAAAAAAAQAAAAAAAAAFAAAAAAAAAAAAAAABAAAABwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABhI+gcwAAAEAZ5WOkuymbGA/kmUxoKzpdc5Hupy6xgVDA2uzckBXDaPLieH9AMXi9c8ptXDBVBopJQy+31VA63yiR6+b2mOQH",
 			index:    0,
 			expected: map[string]interface{}{
-				"set_flags": []int32{1, 2},
+				"set_flags": []int32{1, 2, 4},
 				"set_flags_s": []string{
 					"auth_required",
 					"auth_revocable",
+					"auth_immutable",
+				},
+			},
+		},
+		{
+			desc:     "setOption - set flags (auth required)",
+			envelope: "AAAAAJBSxgo7D+SP4ldcjl6iwJjYtL5+AfTMUdled6cwnjBQAAAAZAAAABsAAAACAAAAAAAAAAAAAAABAAAAAAAAAAUAAAAAAAAAAQAAAAAAAAABAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABMJ4wUAAAAEDYxq3zpaFIC2JcuJUbrQ3MFXzqvu+5G7XUi4NnHlfbLutn76ylQcjuwLgbUG2lqcQfl75doPUZyurKtFP1rkMO",
+			index:    0,
+			expected: map[string]interface{}{
+				"set_flags": []int32{1},
+				"set_flags_s": []string{
+					"auth_required",
+				},
+			},
+		},
+		{
+			desc:     "setOption - set flags (auth  revocable)",
+			envelope: "AAAAAJBSxgo7D+SP4ldcjl6iwJjYtL5+AfTMUdled6cwnjBQAAAAZAAAABsAAAADAAAAAAAAAAAAAAABAAAAAAAAAAUAAAAAAAAAAQAAAAAAAAABAAAAAgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABMJ4wUAAAAEAKuQ1exMu8hdf8dOPeULX2DG7DZx5WWIUFHXJMWGG9KmVrQoZDt2S6a/1uYEVJnvvY/EoJM5RpVjh2ZCs30VYA",
+			index:    0,
+			expected: map[string]interface{}{
+				"set_flags": []int32{2},
+				"set_flags_s": []string{
+					"auth_revocable",
+				},
+			},
+		},
+		{
+			desc:     "setOption - set flags (auth  immutable)",
+			envelope: "AAAAAOZPoQTlXBixd6XSUExX/Yvos/pVllkUNdNvCdmC+mNkAAACvAAE5bIAAAAOAAAAAQAAAAAAAAAAAAAAAF3X8mwAAAAAAAAABwAAAAEAAAAA5k+hBOVcGLF3pdJQTFf9i+iz+lWWWRQ1028J2YL6Y2QAAAAAAAAAAPEmrGI5+i9IbPyf3l+6kVhML1lUZJJmyQvdBRccfZkgAAAAAACYloAAAAABAAAAAOZPoQTlXBixd6XSUExX/Yvos/pVllkUNdNvCdmC+mNkAAAAAAAAAAD66ofFUOv3/k5PaB0F6wr5c0jvwdDY933ssbjK656DmwAAAAAF9eEAAAAAAQAAAAD66ofFUOv3/k5PaB0F6wr5c0jvwdDY933ssbjK656DmwAAAAYAAAABVFNUAAAAAADxJqxiOfovSGz8n95fupFYTC9ZVGSSZskL3QUXHH2ZIAAAAAB3NZQAAAAAAQAAAADxJqxiOfovSGz8n95fupFYTC9ZVGSSZskL3QUXHH2ZIAAAAAEAAAAA+uqHxVDr9/5OT2gdBesK+XNI78HQ2Pd97LG4yuueg5sAAAABVFNUAAAAAADxJqxiOfovSGz8n95fupFYTC9ZVGSSZskL3QUXHH2ZIAAAAAB3NZQAAAAAAQAAAADxJqxiOfovSGz8n95fupFYTC9ZVGSSZskL3QUXHH2ZIAAAAAUAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAABF0c3QudGVzdGFzc2V0LmNvbQAAAAAAAAAAAAABAAAAAPEmrGI5+i9IbPyf3l+6kVhML1lUZJJmyQvdBRccfZkgAAAABQAAAAAAAAAAAAAAAQAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAAAAAPEmrGI5+i9IbPyf3l+6kVhML1lUZJJmyQvdBRccfZkgAAAABQAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA4L6Y2QAAABAd8d0e8OiMmmGlxLrPu8JfTLphUfFPgx0Fs/fwU6/ilzwbpTHCKICWGlSz8enjb57FXD6DliXcaWJeR/2Fj8tB+ueg5sAAABAkAwqpu1liQpxh3C2MdsDoOg/N4pxuUuzh0Ey/0g0QbWy0Y2bBkLPldsGj/pDNbKfkZPGfdx4MZ6rHbUdGEwgDRx9mSAAAABA/IRS0D7EcFS1J6uR4HnOvh8tikBhVe+0uI6DPkqv/GfSqeuoZIRyWxKSd/v64DxxozKZsmQmatLZqOnQwkuxCA==",
+			index:    5,
+			expected: map[string]interface{}{
+				"set_flags": []int32{4},
+				"set_flags_s": []string{
+					"auth_immutable",
 				},
 			},
 		},
@@ -244,11 +278,21 @@ func TestTransactionOperationDetails(t *testing.T) {
 			},
 		},
 		{
-			desc:     "setOption - thresholds",
+			desc:     "setOption - thresholds (medium, high)",
 			envelope: "AAAAAJBSxgo7D+SP4ldcjl6iwJjYtL5+AfTMUdled6cwnjBQAAAAZAAAABsAAAAFAAAAAAAAAAAAAAABAAAAAAAAAAUAAAAAAAAAAQAAAAAAAAABAAAAAAAAAAAAAAABAAAAAAAAAAEAAAACAAAAAQAAAAIAAAAAAAAAAAAAAAAAAAABMJ4wUAAAAEAnFzc6kqweyIL4TzIDbr+8GUOGGs1W5jcX5iSNw4DeonzQARlejYJ9NOn/XkrcoC9Hvd8hc5lNx+1h991GxJUJ",
 			index:    0,
 			expected: map[string]interface{}{
 				"low_threshold":  xdr.Uint32(0),
+				"med_threshold":  xdr.Uint32(2),
+				"high_threshold": xdr.Uint32(2),
+			},
+		},
+		{
+			desc:     "setOption - thresholds (low, medium, high)",
+			envelope: "AAAAAO5QGSKQkcErWDq9iKwemolyxv8LDVZBwWLQSiYp7iDVAAAAZAAAAAQAAAADAAAAAAAAAAAAAAABAAAAAAAAAAUAAAAAAAAAAQAAAAAAAAABAAAAAAAAAAAAAAABAAAAAgAAAAEAAAACAAAAAQAAAAIAAAAAAAAAAAAAAAAAAAABKe4g1QAAAEDglRRymtLjw+ImmGwTiBTKE7X7+2CywlHw8qed+t520SbAggcqboy5KXJaEP51/wRSMxtZUgDOFfaDn9Df04EA",
+			index:    0,
+			expected: map[string]interface{}{
+				"low_threshold":  xdr.Uint32(2),
 				"med_threshold":  xdr.Uint32(2),
 				"high_threshold": xdr.Uint32(2),
 			},
