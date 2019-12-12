@@ -39,7 +39,9 @@ const (
 	//      when preauth tx is failed.
 	// - 9: Fixes a bug in asset stats processor that counted unauthorized
 	//      trustlines.
-	CurrentVersion = 9
+	// - 10: Fixes a bug in meta processing (fees are now processed before
+	//      everything else).
+	CurrentVersion = 10
 )
 
 var log = logpkg.DefaultLogger.WithField("service", "expingest")

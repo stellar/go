@@ -410,3 +410,93 @@ func (s *AccountsProcessorTestSuiteLedger) TestProcessUpgradeChange() {
 
 	s.Assert().NoError(err)
 }
+
+func (s *AccountsProcessorTestSuiteLedger) TestFeeProcessedBeforeEverythingElse() {
+	s.mockLedgerReader.On("Read").
+		Return(io.LedgerTransaction{
+			Meta: createTransactionMeta([]xdr.OperationMeta{
+				xdr.OperationMeta{
+					Changes: []xdr.LedgerEntryChange{
+						xdr.LedgerEntryChange{
+							Type: xdr.LedgerEntryChangeTypeLedgerEntryState,
+							State: &xdr.LedgerEntry{
+								Data: xdr.LedgerEntryData{
+									Type: xdr.LedgerEntryTypeAccount,
+									Account: &xdr.AccountEntry{
+										AccountId: xdr.MustAddress("GAHK7EEG2WWHVKDNT4CEQFZGKF2LGDSW2IVM4S5DP42RBW3K6BTODB4A"),
+										Balance:   100,
+									},
+								},
+							},
+						},
+						xdr.LedgerEntryChange{
+							Type: xdr.LedgerEntryChangeTypeLedgerEntryUpdated,
+							Updated: &xdr.LedgerEntry{
+								Data: xdr.LedgerEntryData{
+									Type: xdr.LedgerEntryTypeAccount,
+									Account: &xdr.AccountEntry{
+										AccountId: xdr.MustAddress("GAHK7EEG2WWHVKDNT4CEQFZGKF2LGDSW2IVM4S5DP42RBW3K6BTODB4A"),
+										Balance:   300,
+									},
+								},
+							},
+						},
+					},
+				},
+			}),
+		}, nil).Once()
+
+	s.mockLedgerReader.On("Read").
+		Return(io.LedgerTransaction{
+			FeeChanges: []xdr.LedgerEntryChange{
+				xdr.LedgerEntryChange{
+					Type: xdr.LedgerEntryChangeTypeLedgerEntryState,
+					State: &xdr.LedgerEntry{
+						Data: xdr.LedgerEntryData{
+							Type: xdr.LedgerEntryTypeAccount,
+							Account: &xdr.AccountEntry{
+								AccountId: xdr.MustAddress("GAHK7EEG2WWHVKDNT4CEQFZGKF2LGDSW2IVM4S5DP42RBW3K6BTODB4A"),
+								Balance:   200,
+							},
+						},
+					},
+				},
+				xdr.LedgerEntryChange{
+					Type: xdr.LedgerEntryChangeTypeLedgerEntryUpdated,
+					Updated: &xdr.LedgerEntry{
+						Data: xdr.LedgerEntryData{
+							Type: xdr.LedgerEntryTypeAccount,
+							Account: &xdr.AccountEntry{
+								AccountId: xdr.MustAddress("GAHK7EEG2WWHVKDNT4CEQFZGKF2LGDSW2IVM4S5DP42RBW3K6BTODB4A"),
+								Balance:   100,
+							},
+						},
+					},
+				},
+			},
+			Meta: xdr.TransactionMeta{
+				Operations: &[]xdr.OperationMeta{},
+			},
+		}, nil).Once()
+
+	expectedAccount := xdr.AccountEntry{
+		AccountId: xdr.MustAddress("GAHK7EEG2WWHVKDNT4CEQFZGKF2LGDSW2IVM4S5DP42RBW3K6BTODB4A"),
+		// If fee meta wasn't procesed before everything else, this would be 100
+		Balance: 300,
+	}
+
+	s.mockQ.On("UpdateAccount", expectedAccount, xdr.Uint32(0)).Return(int64(1), nil).Once()
+
+	s.mockLedgerReader.
+		On("Read").
+		Return(io.LedgerTransaction{}, stdio.EOF).Once()
+
+	err := s.processor.ProcessLedger(
+		context.Background(),
+		&supportPipeline.Store{},
+		s.mockLedgerReader,
+		s.mockLedgerWriter,
+	)
+
+	s.Assert().NoError(err)
+}
