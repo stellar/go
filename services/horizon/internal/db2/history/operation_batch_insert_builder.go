@@ -3,7 +3,6 @@ package history
 import (
 	"encoding/json"
 
-	sq "github.com/Masterminds/squirrel"
 	"github.com/stellar/go/support/db"
 	"github.com/stellar/go/support/errors"
 )
@@ -59,35 +58,3 @@ func (i *operationBatchInsertBuilder) Add(
 func (i *operationBatchInsertBuilder) Exec() error {
 	return i.builder.Exec()
 }
-
-// ExpOperations provides a helper to filter the operations table with pre-defined
-// filters.  See `OperationsQ` for the available filters.
-func (q *Q) ExpOperations() *OperationsQ {
-	query := &OperationsQ{
-		parent:              q,
-		opIdCol:             "hop.id",
-		includeFailed:       false,
-		includeTransactions: false,
-		sql:                 selectExpOperation,
-	}
-
-	return query
-}
-
-// CheckExpOperations compares exp_history_operations with history_operations
-func (q *Q) CheckExpOperations(seq int32) (bool, error) {
-	return true, nil
-}
-
-var selectExpOperation = sq.Select(
-	"hop.id, " +
-		"hop.transaction_id, " +
-		"hop.application_order, " +
-		"hop.type, " +
-		"hop.details, " +
-		"hop.source_account, " +
-		"ht.transaction_hash, " +
-		"ht.tx_result, " +
-		"ht.successful as transaction_successful").
-	From("exp_history_operations hop").
-	LeftJoin("exp_history_transactions ht ON ht.id = hop.transaction_id")

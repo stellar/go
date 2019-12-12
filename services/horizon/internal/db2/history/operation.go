@@ -2,6 +2,7 @@ package history
 
 import (
 	"encoding/json"
+	"reflect"
 
 	sq "github.com/Masterminds/squirrel"
 	"github.com/go-errors/errors"
@@ -279,6 +280,61 @@ func (q *OperationsQ) Fetch() ([]Operation, []Transaction, error) {
 	return operations, transactions, nil
 }
 
+// CheckExpOperations checks that the operations in exp_history_operations
+// for the given ledger matches the same operations in history_operations
+func (q *Q) CheckExpOperations(seq int32) (bool, error) {
+	var operations, expOperations []Operation
+
+	err := q.Select(
+		&operations,
+		selectOperation.
+			Where("ht.ledger_sequence = ?", seq).
+			OrderBy("ht.application_order asc"),
+	)
+	if err != nil {
+		return false, err
+	}
+
+	err = q.Select(
+		&expOperations,
+		selectExpOperation.
+			Where("ht.ledger_sequence = ?", seq).
+			OrderBy("ht.application_order asc"),
+	)
+	if err != nil {
+		return false, err
+	}
+
+	operationsByID := buildOperationsByID(operations)
+	expOperationsByID := buildOperationsByID(expOperations)
+
+	for index := range expOperationsByID {
+		operation, ok := operationsByID[index]
+		expOperation := expOperationsByID[index]
+		if !ok {
+			continue
+		}
+
+		equal := reflect.DeepEqual(operation, expOperation)
+
+		if !equal {
+			return false, nil
+		}
+	}
+
+	// TODO: add extra check, make sure operations is empty
+
+	return true, nil
+}
+
+func buildOperationsByID(operations []Operation) map[int64]Operation {
+	operationsByIndex := map[int64]Operation{}
+	for _, operation := range operations {
+		operationsByIndex[operation.ID] = operation
+	}
+	return operationsByIndex
+}
+
 var selectOperation = sq.Select(
 	"hop.id, " +
 		"hop.transaction_id, " +
@@ -291,3 +347,16 @@ var selectOperation = sq.Select(
 		"ht.successful as transaction_successful").
 	From("history_operations hop").
 	LeftJoin("history_transactions ht ON ht.id = hop.transaction_id")
+
+var selectExpOperation = sq.Select(
+	"hop.id, " +
+		"hop.transaction_id, " +
+		"hop.application_order, " +
+		"hop.type, " +
+		"hop.details, " +
+		"hop.source_account, " +
+		"ht.transaction_hash, " +
+		"ht.tx_result, " +
+		"ht.successful as transaction_successful").
+	From("exp_history_operations hop").
+	LeftJoin("exp_history_transactions ht ON ht.id = hop.transaction_id")

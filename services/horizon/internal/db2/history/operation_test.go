@@ -1,10 +1,14 @@
 package history
 
 import (
+	"encoding/hex"
 	"testing"
 
+	"github.com/stellar/go/exp/ingest/io"
 	"github.com/stellar/go/services/horizon/internal/db2"
 	"github.com/stellar/go/services/horizon/internal/test"
+	"github.com/stellar/go/support/db"
+	"github.com/stellar/go/xdr"
 )
 
 func TestOperationQueries(t *testing.T) {
@@ -292,4 +296,125 @@ func TestOperationIncludeTransactions(t *testing.T) {
 	tt.Assert.Equal(op, expectedOperations[0])
 	tt.Assert.Equal(*transaction, expectedTransactions[0])
 	assertOperationMatchesTransaction(tt, op, *transaction)
+}
+
+func TestCheckExpOperations(t *testing.T) {
+	tt := test.Start(t)
+	defer tt.Finish()
+	test.ResetHorizonDB(t, tt.HorizonDB)
+	q := &Q{tt.HorizonSession()}
+
+	sequence := int32(56)
+
+	// first transaction
+	transactionResult := "AAAAAAAAAGQAAAAAAAAAAQAAAAAAAAABAAAAAAAAAAA="
+	transaction, err := buildTransaction(
+		1,
+		"AAAAABpcjiETZ0uhwxJJhgBPYKWSVJy2TZ2LI87fqV1cUf/UAAAAZAAAADcAAAABAAAAAAAAAAAAAAABAAAAAAAAAAEAAAAAGlyOIRNnS6HDEkmGAE9gpZJUnLZNnYsjzt+pXVxR/9QAAAAAAAAAAAX14QAAAAAAAAAAAVxR/9QAAABAK6pcXYMzAEmH08CZ1LWmvtNDKauhx+OImtP/Lk4hVTMJRVBOebVs5WEPj9iSrgGT0EswuDCZ2i5AEzwgGof9Ag==",
+		&transactionResult,
+	)
+	tt.Assert.NoError(err)
+
+	err = xdr.SafeUnmarshalBase64(
+		"AAAAAQAAAAIAAAADAAAAOAAAAAAAAAAAGlyOIRNnS6HDEkmGAE9gpZJUnLZNnYsjzt+pXVxR/9QAAAACVAvjnAAAADcAAAAAAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAABAAAAOAAAAAAAAAAAGlyOIRNnS6HDEkmGAE9gpZJUnLZNnYsjzt+pXVxR/9QAAAACVAvjnAAAADcAAAABAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAABAAAAAA==",
+		&transaction.Meta,
+	)
+	tt.Assert.NoError(err)
+
+	_, err = hex.Decode(transaction.Result.TransactionHash[:], []byte("2a805712c6d10f9e74bb0ccf54ae92a2b4b1e586451fe8133a2433816f6b567c"))
+	tt.Assert.NoError(err)
+
+	// second transaction
+	secondTransaction, err := buildTransaction(
+		2,
+		"AAAAAGL8HQvQkbK2HA3WVjRrKmjX00fG8sLI7m0ERwJW/AX3AAAAZAAAAAAAAAAaAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAoZftFP3p4ifbTm6hQdieotu3Zw9E05GtoSh5MBytEpQAAAACVAvkAAAAAAAAAAABVvwF9wAAAEDHU95E9wxgETD8TqxUrkgC0/7XHyNDts6Q5huRHfDRyRcoHdv7aMp/sPvC3RPkXjOMjgbKJUX7SgExUeYB5f8F",
+		&transactionResult,
+	)
+	tt.Assert.NoError(err)
+
+	err = xdr.SafeUnmarshalBase64(
+		"AAAAAQAAAAIAAAADAAAAOQAAAAAAAAAAYvwdC9CRsrYcDdZWNGsqaNfTR8bywsjubQRHAlb8BfcLGrZY9dZxbAAAAAAAAAAZAAAAAAAAAAEAAAAAYvwdC9CRsrYcDdZWNGsqaNfTR8bywsjubQRHAlb8BfcAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAABAAAAOQAAAAAAAAAAYvwdC9CRsrYcDdZWNGsqaNfTR8bywsjubQRHAlb8BfcLGrZY9dZxbAAAAAAAAAAaAAAAAAAAAAEAAAAAYvwdC9CRsrYcDdZWNGsqaNfTR8bywsjubQRHAlb8BfcAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAABAAAAAwAAAAMAAAA5AAAAAAAAAABi/B0L0JGythwN1lY0aypo19NHxvLCyO5tBEcCVvwF9wsatlj11nFsAAAAAAAAABoAAAAAAAAAAQAAAABi/B0L0JGythwN1lY0aypo19NHxvLCyO5tBEcCVvwF9wAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAEAAAA5AAAAAAAAAABi/B0L0JGythwN1lY0aypo19NHxvLCyO5tBEcCVvwF9wsatlahyo1sAAAAAAAAABoAAAAAAAAAAQAAAABi/B0L0JGythwN1lY0aypo19NHxvLCyO5tBEcCVvwF9wAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAA5AAAAAAAAAAChl+0U/eniJ9tObqFB2J6i27dnD0TTka2hKHkwHK0SlAAAAAJUC+QAAAAAOQAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAA==",
+		&secondTransaction.Meta,
+	)
+	tt.Assert.NoError(err)
+
+	_, err = hex.Decode(secondTransaction.Result.TransactionHash[:], []byte("0e5bd332291e3098e49886df2cdb9b5369a5f9e0a9973f0d9e1a9489c6581ba2"))
+	tt.Assert.NoError(err)
+
+	// third transaction
+	thirdTransaction, err := buildTransaction(
+		3,
+		"AAAAAGL8HQvQkbK2HA3WVjRrKmjX00fG8sLI7m0ERwJW/AX3AAAAZAAAAAAAAAAXAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAABJeTmKR1qr+CZoIyjAfGxrIXZ/tI1VId2OfZkRowDz4AAAACVAvkAAAAAAAAAAABVvwF9wAAAEDyHwhW9GXQVXG1qibbeqSjxYzhv5IC08K2vSkxzYTwJykvQ8l0+e4M4h2guoK89s8HUfIqIOzDmoGsNTaLcYUG",
+		&transactionResult,
+	)
+	tt.Assert.NoError(err)
+
+	err = xdr.SafeUnmarshalBase64(
+		"AAAAAQAAAAIAAAADAAAANQAAAAAAAAAAYvwdC9CRsrYcDdZWNGsqaNfTR8bywsjubQRHAlb8BfcLGrZdne46/AAAAAAAAAAWAAAAAAAAAAEAAAAAYvwdC9CRsrYcDdZWNGsqaNfTR8bywsjubQRHAlb8BfcAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAABAAAANQAAAAAAAAAAYvwdC9CRsrYcDdZWNGsqaNfTR8bywsjubQRHAlb8BfcLGrZdne46/AAAAAAAAAAXAAAAAAAAAAEAAAAAYvwdC9CRsrYcDdZWNGsqaNfTR8bywsjubQRHAlb8BfcAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAABAAAAAwAAAAMAAAA1AAAAAAAAAABi/B0L0JGythwN1lY0aypo19NHxvLCyO5tBEcCVvwF9wsatl2d7jr8AAAAAAAAABcAAAAAAAAAAQAAAABi/B0L0JGythwN1lY0aypo19NHxvLCyO5tBEcCVvwF9wAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAEAAAA1AAAAAAAAAABi/B0L0JGythwN1lY0aypo19NHxvLCyO5tBEcCVvwF9wsatltJ4lb8AAAAAAAAABcAAAAAAAAAAQAAAABi/B0L0JGythwN1lY0aypo19NHxvLCyO5tBEcCVvwF9wAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAA1AAAAAAAAAAAEl5OYpHWqv4JmgjKMB8bGshdn+0jVUh3Y59mRGjAPPgAAAAJUC+QAAAAANQAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAA==",
+		&thirdTransaction.Meta,
+	)
+	tt.Assert.NoError(err)
+
+	_, err = hex.Decode(thirdTransaction.Result.TransactionHash[:], []byte("df5f0e8b3b533dd9cda0ff7540bef3e9e19369060f8a4b0414b0e3c1b4315b1c"))
+	tt.Assert.NoError(err)
+
+	insertTransaction(tt, q, "exp_history_transactions", transaction, sequence)
+	insertTransaction(tt, q, "exp_history_transactions", secondTransaction, sequence)
+	insertTransaction(tt, q, "exp_history_transactions", thirdTransaction, sequence)
+	insertTransaction(tt, q, "history_transactions", transaction, sequence)
+	insertTransaction(tt, q, "history_transactions", secondTransaction, sequence)
+	insertTransaction(tt, q, "history_transactions", thirdTransaction, sequence)
+
+	operationBatch := q.NewOperationBatchInsertBuilder(100)
+
+	txs := []io.LedgerTransaction{
+		transaction,
+		secondTransaction,
+		thirdTransaction,
+	}
+
+	for _, t := range txs {
+		for i, op := range t.Envelope.Tx.Operations {
+			operation := TransactionOperation{
+				Index:          uint32(i),
+				Transaction:    t,
+				Operation:      op,
+				LedgerSequence: uint32(sequence),
+			}
+
+			err = operationBatch.Add(operation)
+			tt.Assert.NoError(err)
+		}
+	}
+
+	err = operationBatch.Exec()
+	tt.Assert.NoError(err)
+
+	batchBuilder := operationBatchInsertBuilder{
+		builder: db.BatchInsertBuilder{
+			Table:        q.GetTable("history_operations"),
+			MaxBatchSize: 100,
+		},
+	}
+
+	for _, t := range txs {
+		for i, op := range t.Envelope.Tx.Operations {
+			operation := TransactionOperation{
+				Index:          uint32(i),
+				Transaction:    t,
+				Operation:      op,
+				LedgerSequence: uint32(sequence),
+			}
+
+			err = batchBuilder.Add(operation)
+			tt.Assert.NoError(err)
+		}
+	}
+
+	err = batchBuilder.Exec()
+	tt.Assert.NoError(err)
+
+	valid, err := q.CheckExpOperations(sequence)
+	tt.Assert.True(valid)
+	tt.Assert.NoError(err)
 }
