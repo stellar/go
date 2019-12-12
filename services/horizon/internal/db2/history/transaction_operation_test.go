@@ -1,6 +1,7 @@
 package history
 
 import (
+	"encoding/hex"
 	"testing"
 
 	"github.com/stellar/go/exp/ingest/io"
@@ -19,6 +20,8 @@ func TestTransactionOperationID(t *testing.T) {
 	transaction, err := buildTransaction(
 		1,
 		"AAAAABpcjiETZ0uhwxJJhgBPYKWSVJy2TZ2LI87fqV1cUf/UAAAAZAAAADcAAAABAAAAAAAAAAAAAAABAAAAAAAAAAEAAAAAGlyOIRNnS6HDEkmGAE9gpZJUnLZNnYsjzt+pXVxR/9QAAAAAAAAAAAX14QAAAAAAAAAAAVxR/9QAAABAK6pcXYMzAEmH08CZ1LWmvtNDKauhx+OImtP/Lk4hVTMJRVBOebVs5WEPj9iSrgGT0EswuDCZ2i5AEzwgGof9Ag==",
+		nil,
+		nil,
 		nil,
 	)
 	tt.NoError(err)
@@ -39,6 +42,8 @@ func TestTransactionOperationOrder(t *testing.T) {
 		1,
 		"AAAAACiSTRmpH6bHC6Ekna5e82oiGY5vKDEEUgkq9CB//t+rAAAAZAEXUhsAADDGAAAAAQAAAAAAAAAAAAAAAF3v3WAAAAABAAAACjEwOTUzMDMyNTAAAAAAAAEAAAAAAAAAAQAAAAAOr5CG1ax6qG2fBEgXJlF0sw5W0irOS6N/NRDbavBm4QAAAAAAAAAAE32fwAAAAAAAAAABf/7fqwAAAEAkWgyAgV5tF3m1y1TIDYkNXP8pZLAwcxhWEi4f3jcZJK7QrKSXhKoawVGrp5NNs4y9dgKt8zHZ8KbJreFBUsIB",
 		nil,
+		nil,
+		nil,
 	)
 	tt.NoError(err)
 
@@ -57,6 +62,8 @@ func TestTransactionOperationTransactionID(t *testing.T) {
 	transaction, err := buildTransaction(
 		1,
 		"AAAAABpcjiETZ0uhwxJJhgBPYKWSVJy2TZ2LI87fqV1cUf/UAAAAZAAAADcAAAABAAAAAAAAAAAAAAABAAAAAAAAAAEAAAAAGlyOIRNnS6HDEkmGAE9gpZJUnLZNnYsjzt+pXVxR/9QAAAAAAAAAAAX14QAAAAAAAAAAAVxR/9QAAABAK6pcXYMzAEmH08CZ1LWmvtNDKauhx+OImtP/Lk4hVTMJRVBOebVs5WEPj9iSrgGT0EswuDCZ2i5AEzwgGof9Ag==",
+		nil,
+		nil,
 		nil,
 	)
 	tt.NoError(err)
@@ -95,6 +102,8 @@ func TestOperationTransactionSourceAccount(t *testing.T) {
 				1,
 				"AAAAABpcjiETZ0uhwxJJhgBPYKWSVJy2TZ2LI87fqV1cUf/UAAAAZAAAADcAAAABAAAAAAAAAAAAAAABAAAAAAAAAAEAAAAAGlyOIRNnS6HDEkmGAE9gpZJUnLZNnYsjzt+pXVxR/9QAAAAAAAAAAAX14QAAAAAAAAAAAVxR/9QAAABAK6pcXYMzAEmH08CZ1LWmvtNDKauhx+OImtP/Lk4hVTMJRVBOebVs5WEPj9iSrgGT0EswuDCZ2i5AEzwgGof9Ag==",
 				nil,
+				nil,
+				nil,
 			)
 			tt.NoError(err)
 			op := transaction.Envelope.Tx.Operations[0]
@@ -120,6 +129,8 @@ func TestTransactionOperationType(t *testing.T) {
 	transaction, err := buildTransaction(
 		1,
 		"AAAAABpcjiETZ0uhwxJJhgBPYKWSVJy2TZ2LI87fqV1cUf/UAAAAZAAAADcAAAABAAAAAAAAAAAAAAABAAAAAAAAAAEAAAAAGlyOIRNnS6HDEkmGAE9gpZJUnLZNnYsjzt+pXVxR/9QAAAAAAAAAAAX14QAAAAAAAAAAAVxR/9QAAABAK6pcXYMzAEmH08CZ1LWmvtNDKauhx+OImtP/Lk4hVTMJRVBOebVs5WEPj9iSrgGT0EswuDCZ2i5AEzwgGof9Ag==",
+		nil,
+		nil,
 		nil,
 	)
 	tt.NoError(err)
@@ -433,6 +444,8 @@ func TestTransactionOperationDetails(t *testing.T) {
 				1,
 				tc.envelope,
 				result,
+				nil,
+				nil,
 			)
 			tt.NoError(err)
 
@@ -448,7 +461,7 @@ func TestTransactionOperationDetails(t *testing.T) {
 	}
 }
 
-func buildTransaction(index uint32, envelope string, result *string) (io.LedgerTransaction, error) {
+func buildTransaction(index uint32, envelope string, result *string, transactionMeta *string, transactionHash *string) (io.LedgerTransaction, error) {
 	transaction := io.LedgerTransaction{
 		Index:    index,
 		Envelope: xdr.TransactionEnvelope{},
@@ -467,6 +480,23 @@ func buildTransaction(index uint32, envelope string, result *string) (io.LedgerT
 			*result,
 			&transaction.Result.Result,
 		)
+		if err != nil {
+			return transaction, err
+		}
+	}
+
+	if transactionMeta != nil {
+		err = xdr.SafeUnmarshalBase64(
+			*transactionMeta,
+			&transaction.Meta,
+		)
+		if err != nil {
+			return transaction, err
+		}
+	}
+
+	if transactionHash != nil {
+		_, err = hex.Decode(transaction.Result.TransactionHash[:], []byte(*transactionHash))
 		if err != nil {
 			return transaction, err
 		}
