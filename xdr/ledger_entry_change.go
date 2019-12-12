@@ -1,6 +1,9 @@
 package xdr
 
-import "fmt"
+import (
+	"encoding/base64"
+	"fmt"
+)
 
 // EntryType is a helper to get at the entry type for a change.
 func (change *LedgerEntryChange) EntryType() LedgerEntryType {
@@ -25,4 +28,15 @@ func (change *LedgerEntryChange) LedgerKey() LedgerKey {
 	default:
 		panic(fmt.Errorf("Unknown change type: %v", change.Type))
 	}
+}
+
+// MarshalBinaryBase64 marshals XDR into a binary form and then encodes it
+// using base64.
+func (change LedgerEntryChange) MarshalBinaryBase64() (string, error) {
+	b, err := change.MarshalBinary()
+	if err != nil {
+		return "", err
+	}
+
+	return base64.StdEncoding.EncodeToString(b), nil
 }

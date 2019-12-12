@@ -210,12 +210,6 @@ func (s *AccountsDataProcessorTestSuiteLedger) TestNewAccount() {
 			}),
 		}, nil).Once()
 
-	s.mockQ.On(
-		"InsertAccountData",
-		data,
-		lastModifiedLedgerSeq,
-	).Return(int64(1), nil).Once()
-
 	updatedData := xdr.DataEntry{
 		AccountId: xdr.MustAddress("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
 		DataName:  "test",
@@ -252,8 +246,9 @@ func (s *AccountsDataProcessorTestSuiteLedger) TestNewAccount() {
 				},
 			}),
 		}, nil).Once()
+	// We use LedgerEntryChangesCache so all changes are squashed
 	s.mockQ.On(
-		"UpdateAccountData",
+		"InsertAccountData",
 		updatedData,
 		lastModifiedLedgerSeq,
 	).Return(int64(1), nil).Once()
@@ -360,12 +355,6 @@ func (s *AccountsDataProcessorTestSuiteLedger) TestProcessUpgradeChange() {
 			}),
 		}, nil).Once()
 
-	s.mockQ.On(
-		"InsertAccountData",
-		data,
-		lastModifiedLedgerSeq,
-	).Return(int64(1), nil).Once()
-
 	s.mockLedgerReader.
 		On("Read").
 		Return(io.LedgerTransaction{}, stdio.EOF).Once()
@@ -402,7 +391,7 @@ func (s *AccountsDataProcessorTestSuiteLedger) TestProcessUpgradeChange() {
 	s.mockLedgerReader.On("Close").Return(nil).Once()
 
 	s.mockQ.On(
-		"UpdateAccountData",
+		"InsertAccountData",
 		modifiedData,
 		lastModifiedLedgerSeq+1,
 	).Return(int64(1), nil).Once()

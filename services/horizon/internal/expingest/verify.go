@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/stellar/go/exp/ingest/adapters"
+	ingesterrors "github.com/stellar/go/exp/ingest/errors"
 	"github.com/stellar/go/exp/ingest/io"
 	"github.com/stellar/go/exp/ingest/verify"
 	"github.com/stellar/go/services/horizon/internal/db2"
@@ -195,7 +196,7 @@ func (s *System) verifyState(graphOffers map[xdr.Int64]xdr.OfferEntry) error {
 	localLog.WithField("total", total).Info("Finished writing to StateVerifier")
 
 	if len(graphOffers) != 0 {
-		return verify.NewStateError(
+		return ingesterrors.NewStateError(
 			fmt.Errorf(
 				"orderbook graph contains %v offers missing from HAS",
 				len(graphOffers),
@@ -255,7 +256,7 @@ func checkAssetStats(set processors.AssetStatSet, q *history.Q) error {
 		for _, assetStat := range assetStats {
 			fromSet, removed := set.Remove(assetStat.AssetType, assetStat.AssetCode, assetStat.AssetIssuer)
 			if !removed {
-				return verify.NewStateError(
+				return ingesterrors.NewStateError(
 					fmt.Errorf(
 						"db contains asset stat with code %s issuer %s which is missing from HAS",
 						assetStat.AssetCode, assetStat.AssetIssuer,
@@ -264,7 +265,7 @@ func checkAssetStats(set processors.AssetStatSet, q *history.Q) error {
 			}
 
 			if fromSet != assetStat {
-				return verify.NewStateError(
+				return ingesterrors.NewStateError(
 					fmt.Errorf(
 						"db asset stat with code %s issuer %s does not match asset stat from HAS",
 						assetStat.AssetCode, assetStat.AssetIssuer,
@@ -277,7 +278,7 @@ func checkAssetStats(set processors.AssetStatSet, q *history.Q) error {
 	}
 
 	if len(set) > 0 {
-		return verify.NewStateError(
+		return ingesterrors.NewStateError(
 			fmt.Errorf(
 				"HAS contains %d more asset stats than db",
 				len(set),
@@ -327,7 +328,7 @@ func addAccountsToStateVerifier(verifier *verify.StateVerifier, q *history.Q, id
 
 		// Ensure master weight matches, if not it's a state error!
 		if int32(row.MasterWeight) != masterWeightMap[row.AccountID] {
-			return verify.NewStateError(errors.New("Master key weight in accounts does not match "))
+			return ingesterrors.NewStateError(errors.New("Master key weight in accounts does not match "))
 		}
 
 		account := &xdr.AccountEntry{
@@ -453,14 +454,14 @@ func addOffersToStateVerifier(
 		}
 		graphOffer, ok := graphOffers[row.OfferID]
 		if !ok {
-			return verify.NewStateError(
+			return ingesterrors.NewStateError(
 				fmt.Errorf("offer %v is not in orderbook graph", row.OfferID),
 			)
 		}
 		if equal, err := offerEntryEquals(graphOffer, *entry.Data.Offer); err != nil {
 			return errors.Wrap(err, "could not compare offers")
 		} else if !equal {
-			return verify.NewStateError(
+			return ingesterrors.NewStateError(
 				fmt.Errorf(
 					"offer %v from db does not match offer in orderbook graph",
 					row.OfferID,
@@ -521,7 +522,7 @@ func addTrustLinesToStateVerifier(
 			return err
 		}
 		if err := assetStats.Add(trustline); err != nil {
-			return verify.NewStateError(
+			return ingesterrors.NewStateError(
 				errors.Wrap(err, "could not add trustline to asset stats"),
 			)
 		}
