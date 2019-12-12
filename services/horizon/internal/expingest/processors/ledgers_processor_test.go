@@ -253,5 +253,5 @@ func (s *LedgersProcessorTestSuiteLedger) TestInsertExpLedgerNoRowsAffected() {
 		s.mockLedgerWriter,
 	)
 	s.Assert().Error(err)
-	s.Assert().EqualError(err, "No rows affected when ingesting new ledger: 20")
+	s.Assert().EqualError(err, "0 rows affected when ingesting new ledger: 20")
 }

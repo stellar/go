@@ -310,7 +310,7 @@ func (s *OffersProcessorTestSuiteLedger) TestUpdateOfferNoRowsAffected() {
 
 	s.Assert().Error(err)
 	s.Assert().IsType(ingesterrors.StateError{}, errors.Cause(err))
-	s.Assert().EqualError(err, "Error in Offers handler: No rows affected when updating offer 2")
+	s.Assert().EqualError(err, "Error in Offers handler: 0 rows affected when updating offer 2")
 }
 
 func (s *OffersProcessorTestSuiteLedger) TestRemoveOffer() {
@@ -503,5 +503,5 @@ func (s *OffersProcessorTestSuiteLedger) TestRemoveOfferNoRowsAffected() {
 
 	s.Assert().Error(err)
 	s.Assert().IsType(ingesterrors.StateError{}, errors.Cause(err))
-	s.Assert().EqualError(err, "Error in Offers handler: No rows affected when removing offer 3")
+	s.Assert().EqualError(err, "Error in Offers handler: 0 rows affected when removing offer 3")
 }

@@ -427,7 +427,7 @@ func (p *DatabaseProcessor) ingestLedgerHeader(
 			WithField("sequence", r.GetSequence()).
 			Error("Invalid number of rows affected when ingesting new ledger")
 		return errors.Errorf(
-			"No rows affected when ingesting new ledger: %v",
+			"0 rows affected when ingesting new ledger: %v",
 			r.GetSequence(),
 		)
 	}

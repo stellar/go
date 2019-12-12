@@ -648,7 +648,7 @@ func (s *AccountsSignerProcessorTestSuiteLedger) TestNewAccountNoRowsAffected() 
 	s.Assert().IsType(ingesterrors.StateError{}, errors.Cause(err))
 	s.Assert().EqualError(
 		err,
-		"Error in AccountsForSigner handler: No rows affected when inserting "+
+		"Error in AccountsForSigner handler: 0 rows affected when inserting "+
 			"account=GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML "+
 			"signer=GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML to database",
 	)
@@ -710,7 +710,8 @@ func (s *AccountsSignerProcessorTestSuiteLedger) TestRemoveAccountNoRowsAffected
 		err,
 		"Error in AccountsForSigner handler: Expected "+
 			"account=GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML "+
-			"signer=GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML in database but not found when removing",
+			"signer=GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML in database but not found when removing "+
+			"(rows affected = 0)",
 	)
 }
 
