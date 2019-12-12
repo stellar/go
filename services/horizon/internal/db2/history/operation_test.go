@@ -4,6 +4,7 @@ import (
 	"encoding/hex"
 	"testing"
 
+	sq "github.com/Masterminds/squirrel"
 	"github.com/stellar/go/exp/ingest/io"
 	"github.com/stellar/go/services/horizon/internal/db2"
 	"github.com/stellar/go/services/horizon/internal/test"
@@ -417,4 +418,44 @@ func TestCheckExpOperations(t *testing.T) {
 	valid, err := q.CheckExpOperations(sequence)
 	tt.Assert.True(valid)
 	tt.Assert.NoError(err)
+
+	operation := TransactionOperation{
+		Index:          0,
+		Transaction:    thirdTransaction,
+		Operation:      thirdTransaction.Envelope.Tx.Operations[0],
+		LedgerSequence: uint32(sequence),
+	}
+
+	for fieldName, value := range map[string]interface{}{
+		"application_order": 100,
+		"type":              13,
+		"details":           "{}",
+		"source_account":    "source_account",
+	} {
+		updateSQL := sq.Update("history_operations").
+			Set(fieldName, value).
+			Where(
+				"id = ?",
+				operation.ID(),
+			)
+		_, err = q.Exec(updateSQL)
+		tt.Assert.NoError(err)
+
+		valid, err = q.CheckExpOperations(sequence)
+		tt.Assert.NoError(err)
+		tt.Assert.False(valid)
+
+		_, err = q.Exec(sq.Delete("history_operations").
+			Where("id = ?", operation.ID()))
+		tt.Assert.NoError(err)
+
+		err = batchBuilder.Add(operation)
+		tt.Assert.NoError(err)
+		err = batchBuilder.Exec()
+		tt.Assert.NoError(err)
+
+		valid, err := q.CheckExpOperations(sequence)
+		tt.Assert.NoError(err)
+		tt.Assert.True(valid)
+	}
 }
