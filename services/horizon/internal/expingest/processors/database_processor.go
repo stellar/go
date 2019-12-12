@@ -384,7 +384,8 @@ func (p *DatabaseProcessor) ProcessLedger(ctx context.Context, store *pipeline.S
 
 			if rowsAffected != 1 {
 				return ingesterrors.NewStateError(errors.Errorf(
-					"No rows affected when adjusting asset stat for asset: %s %s %s",
+					"%d rows affected when adjusting asset stat for asset: %s %s %s",
+					rowsAffected,
 					delta.AssetType,
 					delta.AssetCode,
 					delta.AssetIssuer,
@@ -424,7 +425,7 @@ func (p *DatabaseProcessor) ingestLedgerHeader(
 	if rowsAffected != 1 {
 		log.WithField("rowsAffected", rowsAffected).
 			WithField("sequence", r.GetSequence()).
-			Error("No rows affected when ingesting new ledger")
+			Error("Invalid number of rows affected when ingesting new ledger")
 		return errors.Errorf(
 			"No rows affected when ingesting new ledger: %v",
 			r.GetSequence(),
@@ -505,7 +506,8 @@ func (p *DatabaseProcessor) processLedgerAccounts(change io.Change) error {
 
 	if rowsAffected != 1 {
 		return ingesterrors.NewStateError(errors.Errorf(
-			"No rows affected when %s account %s",
+			"%d No rows affected when %s account %s",
+			rowsAffected,
 			action,
 			accountID,
 		))
@@ -560,7 +562,8 @@ func (p *DatabaseProcessor) processLedgerAccountData(change io.Change) error {
 
 	if rowsAffected != 1 {
 		return ingesterrors.NewStateError(errors.Errorf(
-			"No rows affected when %s data: %s %s",
+			"%d rows affected when %s data: %s %s",
+			rowsAffected,
 			action,
 			ledgerKey.Data.AccountId.Address(),
 			ledgerKey.Data.DataName,
@@ -591,9 +594,10 @@ func (p *DatabaseProcessor) processLedgerAccountSigners(change io.Change) error 
 
 			if rowsAffected != 1 {
 				return ingesterrors.NewStateError(errors.Errorf(
-					"Expected account=%s signer=%s in database but not found when removing",
+					"Expected account=%s signer=%s in database but not found when removing (rows affected = %d)",
 					preAccountEntry.AccountId.Address(),
 					signer,
+					rowsAffected,
 				))
 			}
 		}
@@ -609,7 +613,8 @@ func (p *DatabaseProcessor) processLedgerAccountSigners(change io.Change) error 
 
 			if rowsAffected != 1 {
 				return ingesterrors.NewStateError(errors.Errorf(
-					"No rows affected when inserting account=%s signer=%s to database",
+					"%d rows affected when inserting account=%s signer=%s to database",
+					rowsAffected,
 					postAccountEntry.AccountId.Address(),
 					signer,
 				))
@@ -657,7 +662,8 @@ func (p *DatabaseProcessor) processLedgerOffers(change io.Change) error {
 
 	if rowsAffected != 1 {
 		return ingesterrors.NewStateError(errors.Errorf(
-			"No rows affected when %s offer %d",
+			"%d rows affected when %s offer %d",
+			rowsAffected,
 			action,
 			offerID,
 		))
@@ -778,7 +784,8 @@ func (p *DatabaseProcessor) processLedgerTrustLines(change io.Change) error {
 
 	if rowsAffected != 1 {
 		return ingesterrors.NewStateError(errors.Errorf(
-			"No rows affected when %s trustline: %s %s",
+			"%d rows affected when %s trustline: %s %s",
+			rowsAffected,
 			action,
 			ledgerKey.TrustLine.AccountId.Address(),
 			ledgerKey.TrustLine.Asset.String(),

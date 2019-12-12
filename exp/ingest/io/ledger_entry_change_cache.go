@@ -201,8 +201,8 @@ func (c *LedgerEntryChangeCache) addRemovedChange(change Change) error {
 	return nil
 }
 
-// GetChanges returns a slice of Change's in the cache. The of changes is random
-// but each change is connected to a separate entry.
+// GetChanges returns a slice of Changes in the cache. The order of changes is
+// random but each change is connected to a separate entry.
 func (c *LedgerEntryChangeCache) GetChanges() []Change {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
