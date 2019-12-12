@@ -12,6 +12,35 @@ import (
 	"github.com/stellar/go/support/strutils"
 )
 
+// ConfigOptions is a group of ConfigOptions that can be for convenience
+// initialized and set at the same time.
+type ConfigOptions []*ConfigOption
+
+// Init calls Init on each ConfigOption passing on the cobra.Command.
+func (cos ConfigOptions) Init(cmd *cobra.Command) error {
+	for _, co := range cos {
+		err := co.Init(cmd)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// Require calls Require on each ConfigOption.
+func (cos ConfigOptions) Require() {
+	for _, co := range cos {
+		co.Require()
+	}
+}
+
+// SetValues calls SetValue on each ConfigOption.
+func (cos ConfigOptions) SetValues() {
+	for _, co := range cos {
+		co.SetValue()
+	}
+}
+
 // ConfigOption is a complete description of the configuration of a command line option
 type ConfigOption struct {
 	Name           string              // e.g. "db-url"
