@@ -56,7 +56,6 @@ func (operation *TransactionOperation) OperationType() xdr.OperationType {
 // OperationResult returns the operation's result record
 func (operation *TransactionOperation) OperationResult() *xdr.OperationResultTr {
 	txr := operation.Transaction.Result.Result
-	// TODO check if the index should be 0 indexed
 	tr := txr.Result.MustResults()[operation.Index].MustTr()
 	return &tr
 }
