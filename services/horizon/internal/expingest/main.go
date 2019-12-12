@@ -39,7 +39,7 @@ const (
 	//      when preauth tx is failed.
 	// - 9: Fixes a bug in asset stats processor that counted unauthorized
 	//      trustlines.
-	// - 9: Fixes a bug in meta processing (fees are now processed before
+	// - 10: Fixes a bug in meta processing (fees are now processed before
 	//      everything else).
 	CurrentVersion = 10
 )
