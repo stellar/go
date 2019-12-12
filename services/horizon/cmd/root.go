@@ -97,7 +97,7 @@ func checkMigrations() {
 
 // configOpts defines the complete flag configuration for horizon.
 // Add a new entry here to connect a new field in the horizon.Config struct
-var configOpts = []*support.ConfigOption{
+var configOpts = support.ConfigOptions{
 	&support.ConfigOption{
 		Name:      "db-url",
 		EnvVar:    "DATABASE_URL",
@@ -377,11 +377,9 @@ var configOpts = []*support.ConfigOption{
 }
 
 func init() {
-	for _, co := range configOpts {
-		err := co.Init(rootCmd)
-		if err != nil {
-			stdLog.Fatal(err.Error())
-		}
+	err := configOpts.Init(rootCmd)
+	if err != nil {
+		stdLog.Fatal(err.Error())
 	}
 
 	viper.BindPFlags(rootCmd.PersistentFlags())
@@ -394,10 +392,8 @@ func initApp() *horizon.App {
 
 func initConfig() {
 	// Verify required options and load the config struct
-	for _, co := range configOpts {
-		co.Require()
-		co.SetValue()
-	}
+	configOpts.Require()
+	configOpts.SetValues()
 
 	if config.ApplyMigrations {
 		applyMigrations()
