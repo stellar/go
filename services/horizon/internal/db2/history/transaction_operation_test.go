@@ -335,6 +335,56 @@ func TestTransactionOperationDetails(t *testing.T) {
 				"trustor":      "GCVW5LCRZFP7PENXTAGOVIQXADDNUXXZJCNKF4VQB2IK7W2LPJWF73UG",
 			},
 		},
+		{
+			desc:     "accountMerge (Destination)",
+			envelope: "AAAAAI77mqNTy9VPgmgn+//uvjP8VJxJ1FHQ4jCrYS+K4+HvAAAAZAAAACsAAAABAAAAAAAAAAAAAAABAAAAAAAAAAgAAAAAYvwdC9CRsrYcDdZWNGsqaNfTR8bywsjubQRHAlb8BfcAAAAAAAAAAYrj4e8AAABA3jJ7wBrRpsrcnqBQWjyzwvVz2v5UJ56G60IhgsaWQFSf+7om462KToc+HJ27aLVOQ83dGh1ivp+VIuREJq/SBw==",
+			index:    0,
+			expected: map[string]interface{}{
+				"into":    "GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H",
+				"account": "GCHPXGVDKPF5KT4CNAT7X77OXYZ7YVE4JHKFDUHCGCVWCL4K4PQ67KKZ",
+			},
+		},
+		{
+			desc:     "inflation",
+			envelope: "AAAAAGL8HQvQkbK2HA3WVjRrKmjX00fG8sLI7m0ERwJW/AX3AAAAZAAAAAAAAAAVAAAAAAAAAAAAAAABAAAAAAAAAAkAAAAAAAAAAVb8BfcAAABABUHuXY+MTgW/wDv5+NDVh9fw4meszxeXO98HEQfgXVeCZ7eObCI2orSGUNA/SK6HV9/uTVSxIQQWIso1QoxHBQ==",
+			index:    0,
+			expected: map[string]interface{}{},
+		},
+		{
+			desc:     "manageData",
+			envelope: "AAAAADEhMVDHiYXdz5z8l73XGyrQ2RN85ZRW1uLsCNQumfsZAAAAZAAAADAAAAACAAAAAAAAAAAAAAABAAAAAAAAAAoAAAAFbmFtZTIAAAAAAAABAAAABDU2NzgAAAAAAAAAAS6Z+xkAAABAjxgnTRBCa0n1efZocxpEjXeITQ5sEYTVd9fowuto2kPw5eFwgVnz6OrKJwCRt5L8ylmWiATXVI3Zyfi3yTKqBA==",
+			index:    0,
+			expected: map[string]interface{}{
+				"name":  "name2",
+				"value": "NTY3OA==",
+			},
+		},
+		{
+			desc:     "bumpSequence",
+			envelope: "AAAAAKGX7RT96eIn205uoUHYnqLbt2cPRNORraEoeTAcrRKUAAAAZAAAAEXZZLgDAAAAAAAAAAAAAAABAAAAAAAAAAsAAABF2WS4AwAAAAAAAAABHK0SlAAAAECcI6ex0Dq6YAh6aK14jHxuAvhvKG2+NuzboAKrfYCaC1ZSQ77BYH/5MghPX97JO9WXV17ehNK7d0umxBgaJj8A",
+			index:    0,
+			expected: map[string]interface{}{
+				"bump_to": "300000000003",
+			},
+		},
+		{
+			desc:     "manageBuyOffer",
+			envelope: "AAAAAJ/0uhpjIPNaeEcEqBy5SVquaG77leHg6iNYV67vrxFhAAAAZAAFedEAAAAQAAAAAQAAAAAAAAAAAAAAAF3cTA8AAAABAAAADk1ha2UgQnV5IE9mZmVyAAAAAAABAAAAAAAAAAwAAAABWENaAAAAAAC0GeXnSSrjPt5iaVo8DbLiZW0sHr2WP9zMWYuGMrdEhQAAAAAAAAAANZresAAAAAgAAAABAAAAAAAAAAAAAAAAAAAAAe+vEWEAAABAY0cI3kQXv1EcCDDmf3hCKLLEiinkVPB2+rAJe8PnA8WY8r27xGr5LCikUj8n7wEAtzMM83VcPYIMoJROYMjvCA==",
+			index:    0,
+			expected: map[string]interface{}{
+				"price":  "8.0000000",
+				"amount": "89.9342000",
+				"price_r": map[string]interface{}{
+					"d": xdr.Int32(1),
+					"n": xdr.Int32(8),
+				},
+				"offer_id":             xdr.Int64(0),
+				"buying_asset_type":    "native",
+				"selling_asset_code":   "XCZ",
+				"selling_asset_type":   "credit_alphanum4",
+				"selling_asset_issuer": "GC2BTZPHJEVOGPW6MJUVUPANWLRGK3JMD26ZMP64ZRMYXBRSW5CIKEW5",
+			},
+		},
 	}
 	for _, tc := range testCases {
 		t.Run(tc.desc, func(t *testing.T) {
