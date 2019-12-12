@@ -450,7 +450,7 @@ func TestTransactionOperationDetails(t *testing.T) {
 
 func buildTransaction(index uint32, envelope string, result *string) (io.LedgerTransaction, error) {
 	transaction := io.LedgerTransaction{
-		Index:    1,
+		Index:    index,
 		Envelope: xdr.TransactionEnvelope{},
 		Result:   xdr.TransactionResultPair{},
 	}
