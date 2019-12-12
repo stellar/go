@@ -3,21 +3,16 @@ package history
 import (
 	"encoding/json"
 
+	sq "github.com/Masterminds/squirrel"
 	"github.com/stellar/go/support/db"
 	"github.com/stellar/go/support/errors"
-	"github.com/stellar/go/xdr"
 )
 
 // OperationBatchInsertBuilder is used to insert operations into the
 // exp_history_operations table
 type OperationBatchInsertBuilder interface {
 	Add(
-		id int64,
-		txid int64,
-		order int32,
-		typ xdr.OperationType,
-		details map[string]interface{},
-		source xdr.AccountId,
+		operation TransactionOperation,
 	) error
 	Exec() error
 }
@@ -39,27 +34,38 @@ func (q *Q) NewOperationBatchInsertBuilder(maxBatchSize int) OperationBatchInser
 
 // Add adds a new transaction to the batch
 func (i *operationBatchInsertBuilder) Add(
-	id int64,
-	txid int64,
-	order int32,
-	typ xdr.OperationType,
-	details map[string]interface{},
-	source xdr.AccountId,
+	operation TransactionOperation,
 ) error {
-	detailsJSON, err := json.Marshal(details)
+	detailsJSON, err := json.Marshal(operation.Details())
 	if err != nil {
 		return errors.Wrap(err, "Error marshaling details")
 	}
 	return i.builder.Row(map[string]interface{}{
-		"id":                id,
-		"transaction_id":    txid,
-		"application_order": order,
-		"type":              typ,
+		"id":                operation.ID(),
+		"transaction_id":    operation.TransactionID(),
+		"application_order": operation.Order(),
+		"type":              operation.OperationType(),
 		"details":           detailsJSON,
-		"source_account":    source.Address(),
+		"source_account":    operation.SourceAccount().Address(),
 	})
 }
 
 func (i *operationBatchInsertBuilder) Exec() error {
 	return i.builder.Exec()
 }
+
+// ExpOperations provides a helper to filter the operations table with pre-defined
+// filters.  See `OperationsQ` for the available filters.
+func (q *Q) ExpOperations() *OperationsQ {
+	query := &OperationsQ{
+		parent:              q,
+		opIdCol:             "hop.id",
+		includeFailed:       false,
+		includeTransactions: false,
+		sql:                 selectExpOperation,
+	}
+
+	return query
+}
+
+var selectExpOperation = sq.Select("hop.*").From("exp_history_operations hop")
