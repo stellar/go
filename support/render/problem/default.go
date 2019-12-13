@@ -5,7 +5,6 @@ import (
 	"net/http"
 
 	"github.com/stellar/go/support/log"
-	rendererrors "github.com/stellar/go/support/render/errors"
 )
 
 // DefaultServiceHost is the default service host used with the default problem
@@ -54,7 +53,7 @@ func RegisterHost(host string) {
 // RegisterReportFunc registers the report function that you want to use to
 // report errors. Once reportFn is initialzied, it will be used to report
 // unexpected errors.
-func RegisterReportFunc(fn rendererrors.ReportFunc) {
+func RegisterReportFunc(fn ReportFunc) {
 	Default.RegisterReportFunc(fn)
 }
 

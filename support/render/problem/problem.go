@@ -8,6 +8,7 @@
 package problem
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"strings"
@@ -103,6 +104,16 @@ func (ps *Problem) ServiceHost() string {
 // initialization sequence
 func (ps *Problem) RegisterError(err error, p P) {
 	ps.Errors.RegisterError(err, p)
+}
+
+// ReportFunc is a function type used to report unexpected errors.
+type ReportFunc func(context.Context, error)
+
+// RegisterReportFunc registers the report function that you want to use to
+// report errors. Once reportFn is initialzied, it will be used to report
+// unexpected errors.
+func (ps *Problem) RegisterReportFunc(fn ReportFunc) {
+	ps.Errors.RegisterReportFunc(rendererrors.ReportFunc(fn))
 }
 
 // RegisterHost registers the service host url. It is used to prepend the host
