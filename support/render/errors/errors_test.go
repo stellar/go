@@ -15,7 +15,7 @@ import (
 
 type testE struct {
 	statusCode int
-	ErrorStr   string `json:"error"`
+	ErrorStr   string `json:"error,omitempty"`
 }
 
 func (te testE) StatusCode() int {
@@ -28,7 +28,7 @@ func (te testE) Error() string {
 
 // TestErrorsRender tests the render cases
 func TestErrorsRender(t *testing.T) {
-	errors := New("application/error+json", empty500{}, nil, log.DefaultLogger)
+	errors := New("application/error+json", testE{statusCode: 500}, nil, log.DefaultLogger)
 
 	testCases := []struct {
 		name          string
@@ -42,7 +42,7 @@ func TestErrorsRender(t *testing.T) {
 			name:          "err not registered",
 			err:           fmt.Errorf("an error"),
 			errRegistered: false,
-			e:             DefaultE,
+			e:             testE{statusCode: 500},
 			wantBody:      `{}`,
 			wantCode:      500,
 		},
@@ -81,7 +81,7 @@ func TestErrorsRenderWithBefore(t *testing.T) {
 		}
 		return e
 	}
-	errors := New("application/error+json", empty500{}, beforeRender, log.DefaultLogger)
+	errors := New("application/error+json", testE{statusCode: 500}, beforeRender, log.DefaultLogger)
 
 	testCases := []struct {
 		name          string
@@ -95,7 +95,7 @@ func TestErrorsRenderWithBefore(t *testing.T) {
 			name:          "err not registered",
 			err:           fmt.Errorf("an error"),
 			errRegistered: false,
-			e:             DefaultE,
+			e:             testE{statusCode: 500},
 			wantBody:      `{}`,
 			wantCode:      501,
 		},
@@ -127,7 +127,7 @@ func TestErrorsRenderWithBefore(t *testing.T) {
 }
 
 func TestErrorsRegisterReportFunc(t *testing.T) {
-	errors := New(DefaultContentType, DefaultE, nil, log.DefaultLogger)
+	errors := New("application/error+json", testE{statusCode: 500}, nil, log.DefaultLogger)
 
 	var buf strings.Builder
 	ctx := context.Background()
@@ -155,11 +155,11 @@ func TestErrorsRegisterReportFunc(t *testing.T) {
 }
 
 func TestErrorsUnRegisterErrors(t *testing.T) {
-	problem := New(DefaultContentType, DefaultE, nil, log.DefaultLogger)
+	problem := New("application/error+json", testE{statusCode: 500}, nil, log.DefaultLogger)
 
-	problem.RegisterError(context.DeadlineExceeded, DefaultE)
+	problem.RegisterError(context.DeadlineExceeded, testE{statusCode: 500})
 	err := problem.IsKnownError(context.DeadlineExceeded)
-	assert.Error(t, err, DefaultE)
+	assert.Error(t, err, testE{statusCode: 500})
 
 	problem.UnRegisterErrors()
 
@@ -168,12 +168,12 @@ func TestErrorsUnRegisterErrors(t *testing.T) {
 }
 
 func TestErrorsIsKnownError(t *testing.T) {
-	errors := New(DefaultContentType, DefaultE, nil, log.DefaultLogger)
+	errors := New("application/error+json", testE{statusCode: 500}, nil, log.DefaultLogger)
 
-	errors.RegisterError(context.DeadlineExceeded, DefaultE)
+	errors.RegisterError(context.DeadlineExceeded, testE{statusCode: 500})
 	defer errors.UnRegisterErrors()
 	err := errors.IsKnownError(context.DeadlineExceeded)
-	assert.Error(t, err, DefaultE)
+	assert.Error(t, err, testE{statusCode: 500})
 
 	err = errors.IsKnownError(fmt.Errorf("foo"))
 	assert.NoError(t, err)
