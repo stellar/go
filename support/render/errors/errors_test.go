@@ -54,6 +54,22 @@ func TestErrorsRender(t *testing.T) {
 			wantBody:      `{"error":"nothing to see here"}`,
 			wantCode:      418,
 		},
+		{
+			name:          "E",
+			err:           testE{statusCode: 418, ErrorStr: "nothing to see here"},
+			errRegistered: false,
+			e:             testE{statusCode: 418, ErrorStr: "nothing to see here"},
+			wantBody:      `{"error":"nothing to see here"}`,
+			wantCode:      418,
+		},
+		{
+			name:          "*E",
+			err:           &testE{statusCode: 418, ErrorStr: "nothing to see here"},
+			errRegistered: false,
+			e:             testE{statusCode: 418, ErrorStr: "nothing to see here"},
+			wantBody:      `{"error":"nothing to see here"}`,
+			wantCode:      418,
+		},
 	}
 
 	for _, kase := range testCases {

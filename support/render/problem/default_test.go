@@ -105,7 +105,7 @@ func TestInflate(t *testing.T) {
 		want string
 	}{
 		"renders the type correctly",
-		P{Type: "https://stellar.org/horizon-errors/not_found"},
+		P{Type: "not_found"},
 		"https://stellar.org/horizon-errors/not_found",
 	}
 

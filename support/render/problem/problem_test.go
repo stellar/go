@@ -59,6 +59,50 @@ func TestProblemRender(t *testing.T) {
 	}
 }
 
+// TestProblemRenderPointer tests the render cases with *Ps
+func TestProblemRenderPointer(t *testing.T) {
+	problem := New("", log.DefaultLogger)
+
+	testCases := []struct {
+		name     string
+		p        *P
+		wantList []string
+		wantCode int
+	}{
+		{
+			"server error",
+			&ServerError,
+			[]string{"500"},
+			500,
+		}, {
+			"renders the type correctly",
+			&P{Type: "foo"},
+			[]string{"foo"},
+			0,
+		}, {
+			"renders the status correctly",
+			&P{Status: 201},
+			[]string{"201"},
+			201,
+		}, {
+			"renders the extras correctly",
+			&P{Extras: map[string]interface{}{"hello": "stellar"}},
+			[]string{"hello", "stellar"},
+			0,
+		},
+	}
+
+	for _, kase := range testCases {
+		t.Run(kase.name, func(t *testing.T) {
+			w := testProblemRender(context.Background(), problem, kase.p)
+			for _, wantItem := range kase.wantList {
+				assert.True(t, strings.Contains(w.Body.String(), wantItem), w.Body.String())
+				assert.Equal(t, kase.wantCode, w.Code)
+			}
+		})
+	}
+}
+
 // TestProblemServerErrorConversion tests that we convert errors to ServerError problems and also log the
 // stacktrace as unknown for non-rich errors
 func TestProblemServerErrorConversion(t *testing.T) {
@@ -104,7 +148,7 @@ func TestProblemServerErrorConversion(t *testing.T) {
 
 // TestProblemInflate test errors that come inflated from horizon
 func TestProblemInflate(t *testing.T) {
-	problem := New("", log.DefaultLogger)
+	problem := New("https://stellar.org/horizon-errors/", log.DefaultLogger)
 
 	testCase := struct {
 		name string
@@ -112,7 +156,7 @@ func TestProblemInflate(t *testing.T) {
 		want string
 	}{
 		"renders the type correctly",
-		P{Type: "https://stellar.org/horizon-errors/not_found"},
+		P{Type: "not_found"},
 		"https://stellar.org/horizon-errors/not_found",
 	}
 
