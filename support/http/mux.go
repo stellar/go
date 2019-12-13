@@ -8,12 +8,8 @@ import (
 
 // NewMux returns a new server mux configured with the common defaults used across all
 // stellar services.
-func NewMux(behindProxy bool) *chi.Mux {
+func NewMux() *chi.Mux {
 	mux := chi.NewMux()
-
-	if behindProxy {
-		mux.Use(middleware.RealIP)
-	}
 
 	mux.Use(middleware.RequestID)
 	mux.Use(middleware.Recoverer)
@@ -24,8 +20,8 @@ func NewMux(behindProxy bool) *chi.Mux {
 
 // NewAPIMux returns a new server mux configured with the common defaults used for a web API in
 // stellar.
-func NewAPIMux(behindProxy bool) *chi.Mux {
-	mux := NewMux(behindProxy)
+func NewAPIMux() *chi.Mux {
+	mux := NewMux()
 
 	c := cors.New(cors.Options{
 		AllowedOrigins: []string{"*"},
