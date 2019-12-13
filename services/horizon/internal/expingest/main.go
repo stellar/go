@@ -8,6 +8,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/jmoiron/sqlx"
 	"github.com/stellar/go/clients/stellarcore"
 	"github.com/stellar/go/exp/ingest"
 	"github.com/stellar/go/exp/ingest/io"
@@ -66,12 +67,14 @@ type Config struct {
 type dbQ interface {
 	Begin() error
 	Rollback() error
+	GetTx() *sqlx.Tx
 	GetLastLedgerExpIngest() (uint32, error)
 	GetExpIngestVersion() (int, error)
 	UpdateLastLedgerExpIngest(uint32) error
 	UpdateExpStateInvalid(bool) error
 	GetExpStateInvalid() (bool, error)
 	GetAllOffers() ([]history.Offer, error)
+	RemoveExpIngestHistory(uint32) (history.ExpIngestRemovalSummary, error)
 }
 
 type dbSession interface {
