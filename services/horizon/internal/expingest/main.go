@@ -299,6 +299,7 @@ func (s *System) Run() {
 				}).Error("Error running session, resuming from the last ingested ledger")
 			} else {
 				// LiveSession.Run returns nil => shutdown
+				log.Info("Session shut down")
 				return nil
 			}
 		} else {

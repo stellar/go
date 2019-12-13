@@ -200,7 +200,7 @@ func (p *Pipeline) processStateNode(ctx context.Context, store *Store, node *Pip
 		}
 	}()
 
-	finishUpdatingStats := p.updateStats(node, reader, writer)
+	// finishUpdatingStats := p.updateStats(node, reader, writer)
 
 	for i, child := range node.Children {
 		wg.Add(1)
@@ -217,7 +217,7 @@ func (p *Pipeline) processStateNode(ctx context.Context, store *Store, node *Pip
 
 	go func() {
 		wg.Wait()
-		finishUpdatingStats <- true
+		// finishUpdatingStats <- true
 
 		if node == p.root {
 			// If pipeline processing is finished run post-hooks and send error
