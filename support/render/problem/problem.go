@@ -3,8 +3,8 @@
 //
 // RFC7807: https://tools.ietf.org/html/rfc7807
 //
-// The P type is used to defines application problems, and the Render function for
-// serializing problems in a HTTP response.
+// The P type is used to define application problems.
+// The Render function is used to serialize problems in a HTTP response.
 package problem
 
 import (
