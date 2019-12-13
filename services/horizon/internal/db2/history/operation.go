@@ -322,8 +322,6 @@ func (q *Q) CheckExpOperations(seq int32) (bool, error) {
 		}
 	}
 
-	// TODO: add extra check, make sure operations is empty
-
 	return true, nil
 }
 
