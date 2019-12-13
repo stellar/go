@@ -1,3 +1,10 @@
+// Package problem provides utility functions for rendering errors as RFC7807
+// compatible responses.
+//
+// RFC7807: https://tools.ietf.org/html/rfc7807
+//
+// The P type is used to define application problems.
+// The Render function is used to serialize problems in a HTTP response.
 package problem
 
 import (
@@ -117,8 +124,7 @@ func RegisterReportFunc(fn ReportFunc) {
 }
 
 // Render writes a http response to `w`, compliant with the "Problem
-// Details for HTTP APIs" RFC:
-// https://tools.ietf.org/html/draft-ietf-appsawg-http-problem-00
+// Details for HTTP APIs" RFC: https://www.rfc-editor.org/rfc/rfc7807.txt
 func Render(ctx context.Context, w http.ResponseWriter, err error) {
 	origErr := errors.Cause(err)
 
