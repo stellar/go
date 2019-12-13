@@ -39,7 +39,7 @@ func (q *Q) NewOperationBatchInsertBuilder(maxBatchSize int) OperationBatchInser
 	}
 }
 
-// Add adds a new transaction to the batch
+// Add adds a transaction's operations to the batch
 func (i *operationBatchInsertBuilder) Add(
 	transaction io.LedgerTransaction,
 	sequence uint32,
