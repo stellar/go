@@ -86,6 +86,14 @@ func (p *Pipeline) setRunning(setRunning bool) error {
 	return nil
 }
 
+// IsRunning returns true if pipeline is running
+func (p *Pipeline) IsRunning() bool {
+	// Protects internal fields
+	p.mutex.Lock()
+	defer p.mutex.Unlock()
+	return p.running
+}
+
 // reset resets internal state of the pipeline and all the nodes and processors.
 func (p *Pipeline) reset() {
 	p.cancelled = false
@@ -259,7 +267,10 @@ func (p *Pipeline) Shutdown() {
 	}
 	p.shutDown = true
 	p.cancelled = true
-	p.cancelFunc()
+	// It's possible that Shutdown will be called before first run.
+	if p.cancelFunc != nil {
+		p.cancelFunc()
+	}
 }
 
 func (p *Pipeline) updateStats(node *PipelineNode, reader Reader, writer *multiWriter) chan<- bool {
