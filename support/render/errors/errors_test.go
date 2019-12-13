@@ -26,6 +26,10 @@ func (te testE) Error() string {
 	return te.ErrorStr
 }
 
+func (te testE) E() E {
+	return te
+}
+
 // TestErrorsRender tests the render cases
 func TestErrorsRender(t *testing.T) {
 	errors := New("application/error+json", testE{statusCode: 500}, nil, log.DefaultLogger)

@@ -24,6 +24,9 @@ type E interface {
 	// StatusCode returns the HTTP status code that will be used in the HTTP
 	// response when this error is rendered.
 	StatusCode() int
+	// E returns itself, and acts an an indicator a type implements this
+	// interface.
+	E() E
 }
 
 // Errors is a registry of errors to E error responses.

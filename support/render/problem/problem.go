@@ -68,6 +68,10 @@ func (p P) Error() string {
 	return fmt.Sprintf("problem: %s", p.Type)
 }
 
+func (p P) E() rendererrors.E {
+	return p
+}
+
 // Problem is an instance of the functionality served by the problem package.
 type Problem struct {
 	*rendererrors.Errors
