@@ -8,14 +8,12 @@
 package problem
 
 import (
-	"context"
-	"encoding/json"
 	"fmt"
 	"net/http"
 	"strings"
 
-	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/support/log"
+	rendererrors "github.com/stellar/go/support/render/errors"
 )
 
 var (
@@ -61,25 +59,32 @@ type P struct {
 	Extras map[string]interface{} `json:"extras,omitempty"`
 }
 
+func (p P) StatusCode() int {
+	return p.Status
+}
+
 func (p P) Error() string {
 	return fmt.Sprintf("problem: %s", p.Type)
 }
 
 // Problem is an instance of the functionality served by the problem package.
 type Problem struct {
-	serviceHost     string
-	log             *log.Entry
-	errToProblemMap map[error]P
-	reportFn        ReportFunc
+	*rendererrors.Errors
+	serviceHost string
 }
 
 // New returns a new instance of Problem.
 func New(serviceHost string, log *log.Entry) *Problem {
-	return &Problem{
-		serviceHost:     serviceHost,
-		log:             log,
-		errToProblemMap: map[error]P{},
+	ps := &Problem{
+		serviceHost: serviceHost,
 	}
+	ps.Errors = rendererrors.New(
+		"application/problem+json; charset=utf-8",
+		ServerError,
+		ps.beforeRender,
+		log,
+	)
+	return ps
 }
 
 // ServiceHost returns the service host the Problem instance is configured with.
@@ -97,27 +102,7 @@ func (ps *Problem) ServiceHost() string {
 // problem.RegisterError(sql.ErrNoRows, problem.NotFound) in you application
 // initialization sequence
 func (ps *Problem) RegisterError(err error, p P) {
-	ps.errToProblemMap[err] = p
-}
-
-// IsKnownError maps an error to a list of known errors
-func (ps *Problem) IsKnownError(err error) error {
-	origErr := errors.Cause(err)
-
-	switch origErr.(type) {
-	case error:
-		if err, ok := ps.errToProblemMap[origErr]; ok {
-			return err
-		}
-		return nil
-	default:
-		return nil
-	}
-}
-
-// UnRegisterErrors removes all registered errors
-func (ps *Problem) UnRegisterErrors() {
-	ps.errToProblemMap = map[error]P{}
+	ps.Errors.RegisterError(err, p)
 }
 
 // RegisterHost registers the service host url. It is used to prepend the host
@@ -127,62 +112,20 @@ func (ps *Problem) RegisterHost(host string) {
 	ps.serviceHost = host
 }
 
-// ReportFunc is a function type used to report unexpected errors.
-type ReportFunc func(context.Context, error)
-
-// RegisterReportFunc registers the report function that you want to use to
-// report errors. Once reportFn is initialzied, it will be used to report
-// unexpected errors.
-func (ps *Problem) RegisterReportFunc(fn ReportFunc) {
-	ps.reportFn = fn
-}
-
-// Render writes a http response to `w`, compliant with the "Problem
-// Details for HTTP APIs" RFC: https://www.rfc-editor.org/rfc/rfc7807.txt
-func (ps *Problem) Render(ctx context.Context, w http.ResponseWriter, err error) {
-	origErr := errors.Cause(err)
-
-	var problem P
-	switch p := origErr.(type) {
+func (ps *Problem) beforeRender(e rendererrors.E) rendererrors.E {
+	var p P
+	switch v := e.(type) {
 	case P:
-		problem = p
+		p = v
 	case *P:
-		problem = *p
-	case error:
-		var ok bool
-		problem, ok = ps.errToProblemMap[origErr]
-
-		// If this error is not a registered error
-		// log it and replace it with a 500 error
-		if !ok {
-			ps.log.Ctx(ctx).WithStack(err).Error(err)
-			if ps.reportFn != nil {
-				ps.reportFn(ctx, err)
-			}
-			problem = ServerError
-		}
+		p = *v
+	default:
+		return e
 	}
-
-	ps.renderProblem(ctx, w, problem)
-}
-
-func (ps *Problem) renderProblem(ctx context.Context, w http.ResponseWriter, p P) {
 	if ps.serviceHost != "" && !strings.HasPrefix(p.Type, ps.serviceHost) {
 		p.Type = ps.serviceHost + p.Type
 	}
-
-	w.Header().Set("Content-Type", "application/problem+json; charset=utf-8")
-
-	js, err := json.MarshalIndent(p, "", "  ")
-	if err != nil {
-		err = errors.Wrap(err, "failed to encode problem")
-		ps.log.Ctx(ctx).WithStack(err).Error(err)
-		http.Error(w, "error rendering problem", http.StatusInternalServerError)
-		return
-	}
-
-	w.WriteHeader(p.Status)
-	w.Write(js)
+	return p
 }
 
 // MakeInvalidFieldProblem is a helper function to make a BadRequest with extras
