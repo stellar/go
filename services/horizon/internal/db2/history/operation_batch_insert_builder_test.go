@@ -40,14 +40,7 @@ func TestAddOperation(t *testing.T) {
 
 	insertTransaction(tt, q, "exp_history_transactions", transaction, sequence)
 
-	operation := transactionOperationWrapper{
-		Index:          0,
-		Transaction:    transaction,
-		Operation:      transaction.Envelope.Tx.Operations[0],
-		LedgerSequence: uint32(sequence),
-	}
-
-	err = builder.Add(operation)
+	err = builder.Add(transaction, uint32(sequence))
 	tt.Assert.NoError(err)
 
 	err = builder.Exec()

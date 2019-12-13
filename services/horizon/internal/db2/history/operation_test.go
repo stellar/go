@@ -360,17 +360,8 @@ func TestCheckExpOperations(t *testing.T) {
 	}
 
 	for _, t := range txs {
-		for i, op := range t.Envelope.Tx.Operations {
-			operation := transactionOperationWrapper{
-				Index:          uint32(i),
-				Transaction:    t,
-				Operation:      op,
-				LedgerSequence: uint32(sequence),
-			}
-
-			err = operationBatch.Add(operation)
-			tt.Assert.NoError(err)
-		}
+		err = operationBatch.Add(t, uint32(sequence))
+		tt.Assert.NoError(err)
 	}
 
 	err = operationBatch.Exec()
@@ -384,17 +375,8 @@ func TestCheckExpOperations(t *testing.T) {
 	}
 
 	for _, t := range txs {
-		for i, op := range t.Envelope.Tx.Operations {
-			operation := transactionOperationWrapper{
-				Index:          uint32(i),
-				Transaction:    t,
-				Operation:      op,
-				LedgerSequence: uint32(sequence),
-			}
-
-			err = batchBuilder.Add(operation)
-			tt.Assert.NoError(err)
-		}
+		err = batchBuilder.Add(t, uint32(sequence))
+		tt.Assert.NoError(err)
 	}
 
 	err = batchBuilder.Exec()
@@ -434,7 +416,7 @@ func TestCheckExpOperations(t *testing.T) {
 			Where("id = ?", operation.ID()))
 		tt.Assert.NoError(err)
 
-		err = batchBuilder.Add(operation)
+		err = batchBuilder.Add(operation.Transaction, operation.LedgerSequence)
 		tt.Assert.NoError(err)
 		err = batchBuilder.Exec()
 		tt.Assert.NoError(err)
