@@ -293,7 +293,7 @@ func TestRemoveExpIngestHistory(t *testing.T) {
 		}
 
 		insertSQL := sq.Insert("exp_history_ledgers").SetMap(ledgerToMap(ledger))
-		_, err := q.Exec(insertSQL)
+		_, err = q.Exec(insertSQL)
 		tt.Assert.NoError(err)
 
 		ledger.Sequence++
