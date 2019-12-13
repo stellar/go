@@ -97,13 +97,6 @@ func (ps *Problem) ServiceHost() string {
 	return ps.serviceHost
 }
 
-// RegisterHost registers the service host url. It is used to prepend the host
-// url to the error type. If you don't wish to prepend anything to the error
-// type, register host as an empty string.
-func (ps *Problem) RegisterHost(host string) {
-	ps.serviceHost = host
-}
-
 // RegisterError records an error -> P mapping, allowing the app to register
 // specific errors that may occur in other packages to be rendered as a specific
 // P instance.
@@ -115,6 +108,13 @@ func (ps *Problem) RegisterHost(host string) {
 // initialization sequence
 func (ps *Problem) RegisterError(err error, p P) {
 	ps.Errors.RegisterError(err, p)
+}
+
+// RegisterHost registers the service host url. It is used to prepend the host
+// url to the error type. If you don't wish to prepend anything to the error
+// type, register host as an empty string.
+func (ps *Problem) RegisterHost(host string) {
+	ps.serviceHost = host
 }
 
 // ReportFunc is a function type used to report unexpected errors.
