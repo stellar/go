@@ -1,10 +1,12 @@
-// Package problem provides utility functions for rendering errors as RFC7807
-// compatible responses.
+// Package errors provides utility functions for rendering error responses.
 //
-// RFC7807: https://tools.ietf.org/html/rfc7807
+// The E interface is used to define error responses. Values that satisfy E
+// will be json marshaled.
 //
-// The P type is used to define application problems.
 // The Render function is used to serialize problems in a HTTP response.
+//
+// Errors that do not satisfy the E interface will be mapped to an E or to the
+// default E.
 package errors
 
 import (
@@ -18,11 +20,13 @@ import (
 
 // Renderable is a value that can be rendered as a HTTP JSON response.
 type E interface {
+	error
+	// StatusCode returns the HTTP status code that will be used in the HTTP
+	// response when this error is rendered.
 	StatusCode() int
-	Error() string
 }
 
-// Errors is a registry of errors to E responses.
+// Errors is a registry of errors to E error responses.
 type Errors struct {
 	log          *log.Entry
 	contentType  string
@@ -33,6 +37,15 @@ type Errors struct {
 }
 
 // New returns a new instance of Errors.
+//
+// Error responses are always rendered as JSON, but the specific content type
+// can be configured.
+//
+// The defaultE will be used for rendering an error in any case an error is not
+// mapped to an E.
+//
+// The beforeRender function is called before rendering any E, allowing for
+// modification.
 func New(contentType string, defaultE E, beforeRender func(e E) E, log *log.Entry) *Errors {
 	return &Errors{
 		log:          log,
