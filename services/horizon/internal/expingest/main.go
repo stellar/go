@@ -173,14 +173,14 @@ func NewSystem(config Config) (*System, error) {
 	addPipelineHooks(
 		system,
 		session.StatePipeline,
-		config.HistorySession,
+		historySession,
 		session,
 		config.OrderBookGraph,
 	)
 	addPipelineHooks(
 		system,
 		session.LedgerPipeline,
-		config.HistorySession,
+		historySession,
 		session,
 		config.OrderBookGraph,
 	)
