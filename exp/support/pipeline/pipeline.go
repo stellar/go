@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"strings"
 	"sync"
-	"time"
 
 	"github.com/stellar/go/support/errors"
 )
@@ -200,8 +199,6 @@ func (p *Pipeline) processStateNode(ctx context.Context, store *Store, node *Pip
 		}
 	}()
 
-	// finishUpdatingStats := p.updateStats(node, reader, writer)
-
 	for i, child := range node.Children {
 		wg.Add(1)
 		go func(i int, child *PipelineNode) {
@@ -217,8 +214,6 @@ func (p *Pipeline) processStateNode(ctx context.Context, store *Store, node *Pip
 
 	go func() {
 		wg.Wait()
-		// finishUpdatingStats <- true
-
 		if node == p.root {
 			// If pipeline processing is finished run post-hooks and send error
 			// if not already sent.
@@ -271,39 +266,4 @@ func (p *Pipeline) Shutdown() {
 	if p.cancelFunc != nil {
 		p.cancelFunc()
 	}
-}
-
-func (p *Pipeline) updateStats(node *PipelineNode, reader Reader, writer *multiWriter) chan<- bool {
-	// Update stats
-	interval := time.Second
-	done := make(chan bool)
-	ticker := time.NewTicker(interval)
-
-	go func() {
-		defer ticker.Stop()
-
-		for {
-			// This is not thread-safe: check if Mutex slows it down a lot...
-			readBuffer, readBufferIsBufferedReadWriter := reader.(*BufferedReadWriter)
-
-			node.writesPerSecond = (writer.wroteEntries - node.wroteEntries) * int(time.Second/interval)
-			node.wroteEntries = writer.wroteEntries
-
-			if readBufferIsBufferedReadWriter {
-				node.readsPerSecond = (readBuffer.readEntries - node.readEntries) * int(time.Second/interval)
-				node.readEntries = readBuffer.readEntries
-				node.queuedEntries = readBuffer.QueuedEntries()
-			}
-
-			select {
-			case <-ticker.C:
-				continue
-			case <-done:
-				// Pipeline done
-				return
-			}
-		}
-	}()
-
-	return done
 }
