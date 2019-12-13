@@ -5,7 +5,6 @@
 //
 // The P type is used to defins application problems, and the Render function for
 // serializing problems in a HTTP response.
-
 package problem
 
 import (
