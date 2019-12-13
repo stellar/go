@@ -141,7 +141,7 @@ func preProcessingHook(
 	ctx context.Context,
 	pipelineType pType,
 	system *System,
-	historySession *db.Session,
+	historyQ dbQ,
 ) (context.Context, error) {
 	var err error
 	defer func() {
@@ -149,18 +149,16 @@ func preProcessingHook(
 		// queries will fail indefinietly with a following error:
 		// current transaction is aborted, commands ignored until end of transaction block
 		if err != nil {
-			historySession.Rollback()
+			historyQ.Rollback()
 		}
 	}()
-
-	historyQ := &history.Q{historySession}
 
 	// Start a transaction only if not in a transaction already.
 	// The only case this can happen is during the first run when
 	// a transaction is started to get the latest ledger `FOR UPDATE`
 	// in `System.Run()`.
-	if tx := historySession.GetTx(); tx == nil {
-		err = historySession.Begin()
+	if tx := historyQ.GetTx(); tx == nil {
+		err = historyQ.Begin()
 		if err != nil {
 			return ctx, errors.Wrap(err, "Error starting a transaction")
 		}
@@ -180,6 +178,12 @@ func preProcessingHook(
 		// State pipeline is always fully run because loading offers
 		// from a database is done outside the pipeline.
 		updateDatabase = true
+		var summary history.ExpIngestRemovalSummary
+		summary, err = historyQ.RemoveExpIngestHistory(ledgerSeq)
+		if err != nil {
+			return ctx, errors.Wrap(err, "Error removing exp ingest history")
+		}
+		log.WithField("historyRemoved", summary).Info("removed entries from historical ingestion tables")
 	} else {
 		// mark the system as ready because we have progressed to running
 		// the ledger pipeline
@@ -197,7 +201,7 @@ func preProcessingHook(
 	// If we are not going to update a DB release a lock by rolling back a
 	// transaction.
 	if !updateDatabase {
-		historySession.Rollback()
+		historyQ.Rollback()
 	}
 
 	log.WithFields(logpkg.F{
@@ -348,9 +352,10 @@ func addPipelineHooks(
 	default:
 		panic(fmt.Sprintf("Unknown pipeline type %T", p))
 	}
+	historyQ := &history.Q{historySession}
 
 	p.AddPreProcessingHook(func(ctx context.Context) (context.Context, error) {
-		return preProcessingHook(ctx, pipelineType, system, historySession)
+		return preProcessingHook(ctx, pipelineType, system, historyQ)
 	})
 
 	p.AddPostProcessingHook(func(ctx context.Context, err error) error {
