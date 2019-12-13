@@ -11,8 +11,8 @@ import (
 	"github.com/stellar/go/xdr"
 )
 
-// TransactionOperation represents the data for a single operation within a transaction
-type TransactionOperation struct {
+// transactionOperationWrapper represents the data for a single operation within a transaction
+type transactionOperationWrapper struct {
 	Index          uint32
 	Transaction    io.LedgerTransaction
 	Operation      xdr.Operation
@@ -20,7 +20,7 @@ type TransactionOperation struct {
 }
 
 // ID returns the ID for the operation.
-func (operation *TransactionOperation) ID() int64 {
+func (operation *transactionOperationWrapper) ID() int64 {
 	return toid.New(
 		int32(operation.LedgerSequence),
 		int32(operation.Transaction.Index),
@@ -29,17 +29,17 @@ func (operation *TransactionOperation) ID() int64 {
 }
 
 // Order returns the operation order.
-func (operation *TransactionOperation) Order() uint32 {
+func (operation *transactionOperationWrapper) Order() uint32 {
 	return operation.Index + 1
 }
 
 // TransactionID returns the id for the transaction related with this operation.
-func (operation *TransactionOperation) TransactionID() int64 {
+func (operation *transactionOperationWrapper) TransactionID() int64 {
 	return toid.New(int32(operation.LedgerSequence), int32(operation.Transaction.Index), 0).ToInt64()
 }
 
 // SourceAccount returns the operation's source account.
-func (operation *TransactionOperation) SourceAccount() *xdr.AccountId {
+func (operation *transactionOperationWrapper) SourceAccount() *xdr.AccountId {
 	sourceAccount := operation.Operation.SourceAccount
 	if sourceAccount != nil {
 		return sourceAccount
@@ -49,24 +49,24 @@ func (operation *TransactionOperation) SourceAccount() *xdr.AccountId {
 }
 
 // OperationType returns the operation type.
-func (operation *TransactionOperation) OperationType() xdr.OperationType {
+func (operation *transactionOperationWrapper) OperationType() xdr.OperationType {
 	return operation.Operation.Body.Type
 }
 
 // OperationResult returns the operation's result record
-func (operation *TransactionOperation) OperationResult() *xdr.OperationResultTr {
+func (operation *transactionOperationWrapper) OperationResult() *xdr.OperationResultTr {
 	txr := operation.Transaction.Result.Result
 	tr := txr.Result.MustResults()[operation.Index].MustTr()
 	return &tr
 }
 
 // IsSuccessful returns whether the operation was successful or not
-func (operation *TransactionOperation) IsSuccessful() bool {
+func (operation *transactionOperationWrapper) IsSuccessful() bool {
 	return operation.Transaction.Result.Result.Result.Code == xdr.TransactionResultCodeTxSuccess
 }
 
 // Details returns the operation details as a map which can be stored as JSON.
-func (operation *TransactionOperation) Details() map[string]interface{} {
+func (operation *transactionOperationWrapper) Details() map[string]interface{} {
 	details := map[string]interface{}{}
 	source := operation.SourceAccount()
 

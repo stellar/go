@@ -50,17 +50,8 @@ func (p *OperationProcessor) ProcessLedger(ctx context.Context, store *pipeline.
 			}
 		}
 
-		for i, op := range transaction.Envelope.Tx.Operations {
-			operation := history.TransactionOperation{
-				Index:          uint32(i),
-				Transaction:    transaction,
-				Operation:      op,
-				LedgerSequence: sequence,
-			}
-
-			if err = operationBatch.Add(operation); err != nil {
-				return errors.Wrap(err, "Error batch inserting operation rows")
-			}
+		if err = operationBatch.Add(transaction, sequence); err != nil {
+			return errors.Wrap(err, "Error batch inserting operation rows")
 		}
 
 		select {

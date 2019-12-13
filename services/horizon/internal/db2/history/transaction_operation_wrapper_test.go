@@ -26,7 +26,7 @@ func TestTransactionOperationID(t *testing.T) {
 	)
 	tt.NoError(err)
 
-	operation := TransactionOperation{
+	operation := transactionOperationWrapper{
 		Index:          0,
 		Transaction:    transaction,
 		Operation:      transaction.Envelope.Tx.Operations[0],
@@ -47,7 +47,7 @@ func TestTransactionOperationOrder(t *testing.T) {
 	)
 	tt.NoError(err)
 
-	operation := TransactionOperation{
+	operation := transactionOperationWrapper{
 		Index:          0,
 		Transaction:    transaction,
 		Operation:      transaction.Envelope.Tx.Operations[0],
@@ -68,7 +68,7 @@ func TestTransactionOperationTransactionID(t *testing.T) {
 	)
 	tt.NoError(err)
 
-	operation := TransactionOperation{
+	operation := transactionOperationWrapper{
 		Index:          0,
 		Transaction:    transaction,
 		Operation:      transaction.Envelope.Tx.Operations[0],
@@ -112,7 +112,7 @@ func TestOperationTransactionSourceAccount(t *testing.T) {
 				op.SourceAccount = &sourceAccount
 			}
 
-			operation := TransactionOperation{
+			operation := transactionOperationWrapper{
 				Index:          1,
 				Transaction:    transaction,
 				Operation:      op,
@@ -135,7 +135,7 @@ func TestTransactionOperationType(t *testing.T) {
 	)
 	tt.NoError(err)
 
-	operation := TransactionOperation{
+	operation := transactionOperationWrapper{
 		Index:          1,
 		Transaction:    transaction,
 		Operation:      transaction.Envelope.Tx.Operations[0],
@@ -449,7 +449,7 @@ func TestTransactionOperationDetails(t *testing.T) {
 			)
 			tt.NoError(err)
 
-			operation := TransactionOperation{
+			operation := transactionOperationWrapper{
 				Index:          tc.index,
 				Transaction:    transaction,
 				Operation:      transaction.Envelope.Tx.Operations[tc.index],

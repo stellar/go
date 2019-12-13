@@ -93,23 +93,10 @@ func (s *OperationsProcessorTestSuiteLedger) TestAddOperationSucceeds() {
 	s.mockLedgerReader.
 		On("Close").
 		Return(nil).Once()
-	for _, tx := range []io.LedgerTransaction{
-		firstTx,
-		secondTx,
-		thirdTx,
-	} {
-		for i, op := range tx.Envelope.Tx.Operations {
-			operation := history.TransactionOperation{
-				Index:          uint32(i),
-				Transaction:    tx,
-				Operation:      op,
-				LedgerSequence: sequence,
-			}
 
-			s.mockBatchInsertBuilder.On("Add", operation).Return(nil).Once()
-		}
-
-	}
+	s.mockBatchInsertBuilder.On("Add", firstTx, sequence).Return(nil).Once()
+	s.mockBatchInsertBuilder.On("Add", secondTx, sequence).Return(nil).Once()
+	s.mockBatchInsertBuilder.On("Add", thirdTx, sequence).Return(nil).Once()
 
 	s.mockBatchInsertBuilder.On("Exec").Return(nil).Once()
 
@@ -141,13 +128,7 @@ func (s *OperationsProcessorTestSuiteLedger) TestAddOperationFails() {
 		On("Close").
 		Return(nil).Once()
 
-	operation := history.TransactionOperation{
-		Index:          uint32(0),
-		Transaction:    firstTx,
-		Operation:      firstTx.Envelope.Tx.Operations[0],
-		LedgerSequence: sequence,
-	}
-	s.mockBatchInsertBuilder.On("Add", operation).Return(errors.New("transient error")).Once()
+	s.mockBatchInsertBuilder.On("Add", firstTx, sequence).Return(errors.New("transient error")).Once()
 
 	err := s.processor.ProcessLedger(
 		s.context,

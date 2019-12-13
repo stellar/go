@@ -361,7 +361,7 @@ func TestCheckExpOperations(t *testing.T) {
 
 	for _, t := range txs {
 		for i, op := range t.Envelope.Tx.Operations {
-			operation := TransactionOperation{
+			operation := transactionOperationWrapper{
 				Index:          uint32(i),
 				Transaction:    t,
 				Operation:      op,
@@ -385,7 +385,7 @@ func TestCheckExpOperations(t *testing.T) {
 
 	for _, t := range txs {
 		for i, op := range t.Envelope.Tx.Operations {
-			operation := TransactionOperation{
+			operation := transactionOperationWrapper{
 				Index:          uint32(i),
 				Transaction:    t,
 				Operation:      op,
@@ -404,7 +404,7 @@ func TestCheckExpOperations(t *testing.T) {
 	tt.Assert.True(valid)
 	tt.Assert.NoError(err)
 
-	operation := TransactionOperation{
+	operation := transactionOperationWrapper{
 		Index:          0,
 		Transaction:    thirdTransaction,
 		Operation:      thirdTransaction.Envelope.Tx.Operations[0],

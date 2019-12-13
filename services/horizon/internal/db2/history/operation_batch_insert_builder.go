@@ -3,6 +3,7 @@ package history
 import (
 	"encoding/json"
 
+	"github.com/stellar/go/exp/ingest/io"
 	"github.com/stellar/go/support/db"
 	"github.com/stellar/go/support/errors"
 )
@@ -13,11 +14,12 @@ type QOperations interface {
 	CheckExpOperations(seq int32) (bool, error)
 }
 
-// OperationBatchInsertBuilder is used to insert operations into the
+// OperationBatchInsertBuilder is used to insert a transaction's operations into the
 // exp_history_operations table
 type OperationBatchInsertBuilder interface {
 	Add(
-		operation TransactionOperation,
+		transaction io.LedgerTransaction,
+		sequence uint32,
 	) error
 	Exec() error
 }
@@ -39,20 +41,35 @@ func (q *Q) NewOperationBatchInsertBuilder(maxBatchSize int) OperationBatchInser
 
 // Add adds a new transaction to the batch
 func (i *operationBatchInsertBuilder) Add(
-	operation TransactionOperation,
+	transaction io.LedgerTransaction,
+	sequence uint32,
 ) error {
-	detailsJSON, err := json.Marshal(operation.Details())
-	if err != nil {
-		return errors.Wrap(err, "Error marshaling details")
+	for opi, op := range transaction.Envelope.Tx.Operations {
+		operation := transactionOperationWrapper{
+			Index:          uint32(opi),
+			Transaction:    transaction,
+			Operation:      op,
+			LedgerSequence: sequence,
+		}
+
+		detailsJSON, err := json.Marshal(operation.Details())
+		if err != nil {
+			return errors.Wrap(err, "Error marshaling details")
+		}
+		err = i.builder.Row(map[string]interface{}{
+			"id":                operation.ID(),
+			"transaction_id":    operation.TransactionID(),
+			"application_order": operation.Order(),
+			"type":              operation.OperationType(),
+			"details":           detailsJSON,
+			"source_account":    operation.SourceAccount().Address(),
+		})
+		if err != nil {
+			return errors.Wrap(err, "Error batch inserting operation rows")
+		}
 	}
-	return i.builder.Row(map[string]interface{}{
-		"id":                operation.ID(),
-		"transaction_id":    operation.TransactionID(),
-		"application_order": operation.Order(),
-		"type":              operation.OperationType(),
-		"details":           detailsJSON,
-		"source_account":    operation.SourceAccount().Address(),
-	})
+
+	return nil
 }
 
 func (i *operationBatchInsertBuilder) Exec() error {
