@@ -297,6 +297,10 @@ func (s *System) Run() {
 					"err":                  err,
 					"last_ingested_ledger": lastIngestedLedger,
 				}).Error("Error running session, resuming from the last ingested ledger")
+			} else {
+				// LiveSession.Run returns nil => shutdown
+				log.Info("Session shut down")
+				return nil
 			}
 		} else {
 			// The other node already ingested a state (just now or in the past)

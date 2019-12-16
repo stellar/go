@@ -253,7 +253,6 @@ func (s *RunIngestionTestSuite) TestOutdatedIngestVersion() {
 	s.session.On("TruncateTables", history.ExperimentalIngestionTables).Return(nil).Once()
 	s.ingestSession.On("Run").Return(nil).Once()
 	s.historyQ.On("Rollback").Return(nil).Once()
-	s.ingestSession.On("Resume", uint32(4)).Return(nil).Once()
 	s.system.retry = expectError(s.Assert(), "")
 }
 
