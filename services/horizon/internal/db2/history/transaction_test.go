@@ -13,6 +13,7 @@ import (
 	"github.com/stellar/go/services/horizon/internal/test"
 	"github.com/stellar/go/services/horizon/internal/toid"
 	"github.com/stellar/go/xdr"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestTransactionQueries(t *testing.T) {
@@ -155,7 +156,7 @@ type testTransaction struct {
 	hash          string
 }
 
-func buildLedgerTransaction(tt *test.T, tx testTransaction) io.LedgerTransaction {
+func buildLedgerTransaction(t *testing.T, tx testTransaction) io.LedgerTransaction {
 	transaction := io.LedgerTransaction{
 		Index:      tx.index,
 		Envelope:   xdr.TransactionEnvelope{},
@@ -164,17 +165,19 @@ func buildLedgerTransaction(tt *test.T, tx testTransaction) io.LedgerTransaction
 		Meta:       xdr.TransactionMeta{},
 	}
 
+	tt := assert.New(t)
+
 	err := xdr.SafeUnmarshalBase64(tx.envelopeXDR, &transaction.Envelope)
-	tt.Assert.NoError(err)
+	tt.NoError(err)
 	err = xdr.SafeUnmarshalBase64(tx.resultXDR, &transaction.Result.Result)
-	tt.Assert.NoError(err)
+	tt.NoError(err)
 	err = xdr.SafeUnmarshalBase64(tx.metaXDR, &transaction.Meta)
-	tt.Assert.NoError(err)
+	tt.NoError(err)
 	err = xdr.SafeUnmarshalBase64(tx.feeChangesXDR, &transaction.FeeChanges)
-	tt.Assert.NoError(err)
+	tt.NoError(err)
 
 	_, err = hex.Decode(transaction.Result.TransactionHash[:], []byte(tx.hash))
-	tt.Assert.NoError(err)
+	tt.NoError(err)
 
 	return transaction
 }
@@ -186,7 +189,7 @@ func TestCheckExpTransactions(t *testing.T) {
 	q := &Q{tt.HorizonSession()}
 
 	transaction := buildLedgerTransaction(
-		tt,
+		tt.T,
 		testTransaction{
 			index:         1,
 			envelopeXDR:   "AAAAACiSTRmpH6bHC6Ekna5e82oiGY5vKDEEUgkq9CB//t+rAAAAZAEXUhsAADDGAAAAAQAAAAAAAAAAAAAAAF3v3WAAAAABAAAACjEwOTUzMDMyNTAAAAAAAAEAAAAAAAAAAQAAAAAOr5CG1ax6qG2fBEgXJlF0sw5W0irOS6N/NRDbavBm4QAAAAAAAAAAE32fwAAAAAAAAAABf/7fqwAAAEAkWgyAgV5tF3m1y1TIDYkNXP8pZLAwcxhWEi4f3jcZJK7QrKSXhKoawVGrp5NNs4y9dgKt8zHZ8KbJreFBUsIB",
@@ -198,7 +201,7 @@ func TestCheckExpTransactions(t *testing.T) {
 	)
 
 	otherTransaction := buildLedgerTransaction(
-		tt,
+		tt.T,
 		testTransaction{
 			index:         2,
 			envelopeXDR:   "AAAAAAGUcmKO5465JxTSLQOQljwk2SfqAJmZSG6JH6wtqpwhAAABLAAAAAAAAAABAAAAAAAAAAEAAAALaGVsbG8gd29ybGQAAAAAAwAAAAAAAAAAAAAAABbxCy3mLg3hiTqX4VUEEp60pFOrJNxYM1JtxXTwXhY2AAAAAAvrwgAAAAAAAAAAAQAAAAAW8Qst5i4N4Yk6l+FVBBKetKRTqyTcWDNSbcV08F4WNgAAAAAN4Lazj4x61AAAAAAAAAAFAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABLaqcIQAAAEBKwqWy3TaOxoGnfm9eUjfTRBvPf34dvDA0Nf+B8z4zBob90UXtuCqmQqwMCyH+okOI3c05br3khkH0yP4kCwcE",
@@ -309,7 +312,7 @@ func TestInsertExpTransactionDoesNotAllowDuplicateIndex(t *testing.T) {
 	sequence := uint32(123)
 	insertBuilder := q.NewTransactionBatchInsertBuilder(0)
 
-	firstTransaction := buildLedgerTransaction(tt, testTransaction{
+	firstTransaction := buildLedgerTransaction(tt.T, testTransaction{
 		index:         1,
 		envelopeXDR:   "AAAAACiSTRmpH6bHC6Ekna5e82oiGY5vKDEEUgkq9CB//t+rAAAAyAEXUhsAADDRAAAAAAAAAAAAAAABAAAAAAAAAAsBF1IbAABX4QAAAAAAAAAA",
 		resultXDR:     "AAAAAAAAASwAAAAAAAAAAwAAAAAAAAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAFAAAAAAAAAAA=",
@@ -317,7 +320,7 @@ func TestInsertExpTransactionDoesNotAllowDuplicateIndex(t *testing.T) {
 		metaXDR:       "AAAAAQAAAAAAAAAA",
 		hash:          "19aaa18db88605aedec04659fb45e06f240b022eb2d429e05133e4d53cd945ba",
 	})
-	secondTransaction := buildLedgerTransaction(tt, testTransaction{
+	secondTransaction := buildLedgerTransaction(tt.T, testTransaction{
 		index:         1,
 		envelopeXDR:   "AAAAACiSTRmpH6bHC6Ekna5e82oiGY5vKDEEUgkq9CB//t+rAAAAyAEXUhsAADDRAAAAAAAAAAIAAAAAAAAAewAAAAEAAAAAAAAACwEXUhsAAFfhAAAAAAAAAAA=",
 		resultXDR:     "AAAAAAAAASwAAAAAAAAAAwAAAAAAAAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAFAAAAAAAAAAA=",
@@ -414,7 +417,7 @@ func TestInsertExpTransaction(t *testing.T) {
 	}{
 		{
 			"successful transaction without signatures",
-			buildLedgerTransaction(tt, testTransaction{
+			buildLedgerTransaction(tt.T, testTransaction{
 				index:         1,
 				envelopeXDR:   "AAAAACiSTRmpH6bHC6Ekna5e82oiGY5vKDEEUgkq9CB//t+rAAAAyAEXUhsAADDRAAAAAAAAAAAAAAABAAAAAAAAAAsBF1IbAABX4QAAAAAAAAAA",
 				resultXDR:     "AAAAAAAAASwAAAAAAAAAAwAAAAAAAAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAFAAAAAAAAAAA=",
@@ -447,7 +450,7 @@ func TestInsertExpTransaction(t *testing.T) {
 		},
 		{
 			"successful transaction with multiple signatures",
-			buildLedgerTransaction(tt, testTransaction{
+			buildLedgerTransaction(tt.T, testTransaction{
 				index:         1,
 				envelopeXDR:   "AAAAACiSTRmpH6bHC6Ekna5e82oiGY5vKDEEUgkq9CB//t+rAAAAyAEXUhsAADDRAAAAAAAAAAAAAAABAAAAAAAAAAsBF1IbAABX4QAAAAAAAAACQmz0pAAAAEAwgPyQg4s//ITKYLKFTsD9h5WmdVMPMCqzNa2/xz7+oDDnjYFopbEInGX+OyCBjSYX5JHxfRu9Ze88GDJhwNkPto+xlgAAAEAnQnypOwpERbb0YCZkxdcFNWRgqQZs6TUBQ9RqVsiIN0ON3yakgh0xK2qj3D6TkDxQpFOb+I7ZX+uJDXgIX0gC",
 				resultXDR:     "AAAAAAAAASwAAAAAAAAAAwAAAAAAAAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAFAAAAAAAAAAA=",
@@ -480,7 +483,7 @@ func TestInsertExpTransaction(t *testing.T) {
 		},
 		{
 			"failed transaction",
-			buildLedgerTransaction(tt, testTransaction{
+			buildLedgerTransaction(tt.T, testTransaction{
 				index:         1,
 				envelopeXDR:   "AAAAACiSTRmpH6bHC6Ekna5e82oiGY5vKDEEUgkq9CB//t+rAAAAyAEXUhsAADDRAAAAAAAAAAAAAAABAAAAAAAAAAsBF1IbAABX4QAAAAAAAAABQmz0pAAAAEAwgPyQg4s//ITKYLKFTsD9h5WmdVMPMCqzNa2/xz7+oDDnjYFopbEInGX+OyCBjSYX5JHxfRu9Ze88GDJhwNkP",
 				resultXDR:     "AAAAAAAAAHv////6AAAAAA==",
@@ -513,7 +516,7 @@ func TestInsertExpTransaction(t *testing.T) {
 		},
 		{
 			"transaction with text memo",
-			buildLedgerTransaction(tt, testTransaction{
+			buildLedgerTransaction(tt.T, testTransaction{
 				index:         1,
 				envelopeXDR:   "AAAAACiSTRmpH6bHC6Ekna5e82oiGY5vKDEEUgkq9CB//t+rAAAAyAEXUhsAADDRAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAABAAAACXRlc3QgbWVtbwAAAAAAAAEAAAAAAAAACwEXUhsAAFfhAAAAAAAAAAA=",
 				resultXDR:     "AAAAAAAAASwAAAAAAAAAAwAAAAAAAAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAFAAAAAAAAAAA=",
@@ -546,7 +549,7 @@ func TestInsertExpTransaction(t *testing.T) {
 		},
 		{
 			"transaction with id memo",
-			buildLedgerTransaction(tt, testTransaction{
+			buildLedgerTransaction(tt.T, testTransaction{
 				index:         1,
 				envelopeXDR:   "AAAAACiSTRmpH6bHC6Ekna5e82oiGY5vKDEEUgkq9CB//t+rAAAAyAEXUhsAADDRAAAAAAAAAAIAAAAAAAAAewAAAAEAAAAAAAAACwEXUhsAAFfhAAAAAAAAAAA=",
 				resultXDR:     "AAAAAAAAASwAAAAAAAAAAwAAAAAAAAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAFAAAAAAAAAAA=",
@@ -579,7 +582,7 @@ func TestInsertExpTransaction(t *testing.T) {
 		},
 		{
 			"transaction with hash memo",
-			buildLedgerTransaction(tt, testTransaction{
+			buildLedgerTransaction(tt.T, testTransaction{
 				index:         1,
 				envelopeXDR:   "AAAAACiSTRmpH6bHC6Ekna5e82oiGY5vKDEEUgkq9CB//t+rAAAAyAEXUhsAADDRAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAADfi3vINWiGla+KkV7ZI9wLuGviJ099leQ6SoFCB6fq/EAAAABAAAAAAAAAAsBF1IbAABX4QAAAAAAAAAA",
 				resultXDR:     "AAAAAAAAASwAAAAAAAAAAwAAAAAAAAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAFAAAAAAAAAAA=",
@@ -612,7 +615,7 @@ func TestInsertExpTransaction(t *testing.T) {
 		},
 		{
 			"transaction with return memo",
-			buildLedgerTransaction(tt, testTransaction{
+			buildLedgerTransaction(tt.T, testTransaction{
 				index:         1,
 				envelopeXDR:   "AAAAACiSTRmpH6bHC6Ekna5e82oiGY5vKDEEUgkq9CB//t+rAAAAyAEXUhsAADDRAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAEzdjArlILa/LNv7o7lo/qv5+fVVPNl0yPgZQWB6u+gL4AAAABAAAAAAAAAAsBF1IbAABX4QAAAAAAAAAA",
 				resultXDR:     "AAAAAAAAASwAAAAAAAAAAwAAAAAAAAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAFAAAAAAAAAAA=",
@@ -645,7 +648,7 @@ func TestInsertExpTransaction(t *testing.T) {
 		},
 		{
 			"transaction with min time bound",
-			buildLedgerTransaction(tt, testTransaction{
+			buildLedgerTransaction(tt.T, testTransaction{
 				index:         1,
 				envelopeXDR:   "AAAAACiSTRmpH6bHC6Ekna5e82oiGY5vKDEEUgkq9CB//t+rAAAAZAAAAAAAAeJAAAAAAQAAAABd8tcbAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAALAAAAAAAS1ocAAAAAAAAAAA==",
 				resultXDR:     "AAAAAAAAASwAAAAAAAAAAwAAAAAAAAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAFAAAAAAAAAAA=",
@@ -678,7 +681,7 @@ func TestInsertExpTransaction(t *testing.T) {
 		},
 		{
 			"transaction with max time bound",
-			buildLedgerTransaction(tt, testTransaction{
+			buildLedgerTransaction(tt.T, testTransaction{
 				index:         1,
 				envelopeXDR:   "AAAAACiSTRmpH6bHC6Ekna5e82oiGY5vKDEEUgkq9CB//t+rAAAAZAAAAAAAAeJAAAAAAQAAAAAAAAAAAAAAAF3y1xsAAAAAAAAAAQAAAAAAAAALAAAAAAAS1ocAAAAAAAAAAA==",
 				resultXDR:     "AAAAAAAAASwAAAAAAAAAAwAAAAAAAAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAFAAAAAAAAAAA=",
@@ -711,7 +714,7 @@ func TestInsertExpTransaction(t *testing.T) {
 		},
 		{
 			"transaction with min and max time bound",
-			buildLedgerTransaction(tt, testTransaction{
+			buildLedgerTransaction(tt.T, testTransaction{
 				index:         1,
 				envelopeXDR:   "AAAAACiSTRmpH6bHC6Ekna5e82oiGY5vKDEEUgkq9CB//t+rAAAAZAAAAAAAAeJAAAAAAQAAAABd8VB7AAAAAF3y1xsAAAAAAAAAAQAAAAAAAAALAAAAAAAS1ocAAAAAAAAAAA==",
 				resultXDR:     "AAAAAAAAASwAAAAAAAAAAwAAAAAAAAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAFAAAAAAAAAAA=",
@@ -744,7 +747,7 @@ func TestInsertExpTransaction(t *testing.T) {
 		},
 		{
 			"transaction with multiple operations",
-			buildLedgerTransaction(tt, testTransaction{
+			buildLedgerTransaction(tt.T, testTransaction{
 				index:         1,
 				envelopeXDR:   "AAAAACiSTRmpH6bHC6Ekna5e82oiGY5vKDEEUgkq9CB//t+rAAAAyAAAAAAAAeJAAAAAAAAAAAAAAAACAAAAAAAAAAsAAAAAABLWhwAAAAAAAAALAAAAAAAS1ogAAAAAAAAAAA==",
 				resultXDR:     "AAAAAAAAASwAAAAAAAAAAwAAAAAAAAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAFAAAAAAAAAAA=",
