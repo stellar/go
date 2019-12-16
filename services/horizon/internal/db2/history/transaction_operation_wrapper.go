@@ -13,56 +13,56 @@ import (
 
 // transactionOperationWrapper represents the data for a single operation within a transaction
 type transactionOperationWrapper struct {
-	Index          uint32
-	Transaction    io.LedgerTransaction
-	Operation      xdr.Operation
-	LedgerSequence uint32
+	index          uint32
+	transaction    io.LedgerTransaction
+	operation      xdr.Operation
+	ledgerSequence uint32
 }
 
 // ID returns the ID for the operation.
 func (operation *transactionOperationWrapper) ID() int64 {
 	return toid.New(
-		int32(operation.LedgerSequence),
-		int32(operation.Transaction.Index),
-		int32(operation.Index+1),
+		int32(operation.ledgerSequence),
+		int32(operation.transaction.Index),
+		int32(operation.index+1),
 	).ToInt64()
 }
 
 // Order returns the operation order.
 func (operation *transactionOperationWrapper) Order() uint32 {
-	return operation.Index + 1
+	return operation.index + 1
 }
 
 // TransactionID returns the id for the transaction related with this operation.
 func (operation *transactionOperationWrapper) TransactionID() int64 {
-	return toid.New(int32(operation.LedgerSequence), int32(operation.Transaction.Index), 0).ToInt64()
+	return toid.New(int32(operation.ledgerSequence), int32(operation.transaction.Index), 0).ToInt64()
 }
 
 // SourceAccount returns the operation's source account.
 func (operation *transactionOperationWrapper) SourceAccount() *xdr.AccountId {
-	sourceAccount := operation.Operation.SourceAccount
+	sourceAccount := operation.operation.SourceAccount
 	if sourceAccount != nil {
 		return sourceAccount
 	}
 
-	return &operation.Transaction.Envelope.Tx.SourceAccount
+	return &operation.transaction.Envelope.Tx.SourceAccount
 }
 
 // OperationType returns the operation type.
 func (operation *transactionOperationWrapper) OperationType() xdr.OperationType {
-	return operation.Operation.Body.Type
+	return operation.operation.Body.Type
 }
 
 // OperationResult returns the operation's result record
 func (operation *transactionOperationWrapper) OperationResult() *xdr.OperationResultTr {
-	txr := operation.Transaction.Result.Result
-	tr := txr.Result.MustResults()[operation.Index].MustTr()
+	txr := operation.transaction.Result.Result
+	tr := txr.Result.MustResults()[operation.index].MustTr()
 	return &tr
 }
 
 // IsSuccessful returns whether the operation was successful or not
 func (operation *transactionOperationWrapper) IsSuccessful() bool {
-	return operation.Transaction.Result.Result.Result.Code == xdr.TransactionResultCodeTxSuccess
+	return operation.transaction.Result.Result.Result.Code == xdr.TransactionResultCodeTxSuccess
 }
 
 // Details returns the operation details as a map which can be stored as JSON.
@@ -72,18 +72,18 @@ func (operation *transactionOperationWrapper) Details() map[string]interface{} {
 
 	switch operation.OperationType() {
 	case xdr.OperationTypeCreateAccount:
-		op := operation.Operation.Body.MustCreateAccountOp()
+		op := operation.operation.Body.MustCreateAccountOp()
 		details["funder"] = source.Address()
 		details["account"] = op.Destination.Address()
 		details["starting_balance"] = amount.String(op.StartingBalance)
 	case xdr.OperationTypePayment:
-		op := operation.Operation.Body.MustPaymentOp()
+		op := operation.operation.Body.MustPaymentOp()
 		details["from"] = source.Address()
 		details["to"] = op.Destination.Address()
 		details["amount"] = amount.String(op.Amount)
 		assetDetails(details, op.Asset, "")
 	case xdr.OperationTypePathPaymentStrictReceive:
-		op := operation.Operation.Body.MustPathPaymentStrictReceiveOp()
+		op := operation.operation.Body.MustPathPaymentStrictReceiveOp()
 		details["from"] = source.Address()
 		details["to"] = op.Destination.Address()
 
@@ -106,7 +106,7 @@ func (operation *transactionOperationWrapper) Details() map[string]interface{} {
 		details["path"] = path
 
 	case xdr.OperationTypePathPaymentStrictSend:
-		op := operation.Operation.Body.MustPathPaymentStrictSendOp()
+		op := operation.operation.Body.MustPathPaymentStrictSendOp()
 		details["from"] = source.Address()
 		details["to"] = op.Destination.Address()
 
@@ -128,7 +128,7 @@ func (operation *transactionOperationWrapper) Details() map[string]interface{} {
 		}
 		details["path"] = path
 	case xdr.OperationTypeManageBuyOffer:
-		op := operation.Operation.Body.MustManageBuyOfferOp()
+		op := operation.operation.Body.MustManageBuyOfferOp()
 		details["offer_id"] = op.OfferId
 		details["amount"] = amount.String(op.BuyAmount)
 		details["price"] = op.Price.String()
@@ -139,7 +139,7 @@ func (operation *transactionOperationWrapper) Details() map[string]interface{} {
 		assetDetails(details, op.Buying, "buying_")
 		assetDetails(details, op.Selling, "selling_")
 	case xdr.OperationTypeManageSellOffer:
-		op := operation.Operation.Body.MustManageSellOfferOp()
+		op := operation.operation.Body.MustManageSellOfferOp()
 		details["offer_id"] = op.OfferId
 		details["amount"] = amount.String(op.Amount)
 		details["price"] = op.Price.String()
@@ -150,7 +150,7 @@ func (operation *transactionOperationWrapper) Details() map[string]interface{} {
 		assetDetails(details, op.Buying, "buying_")
 		assetDetails(details, op.Selling, "selling_")
 	case xdr.OperationTypeCreatePassiveSellOffer:
-		op := operation.Operation.Body.MustCreatePassiveSellOfferOp()
+		op := operation.operation.Body.MustCreatePassiveSellOfferOp()
 		details["amount"] = amount.String(op.Amount)
 		details["price"] = op.Price.String()
 		details["price_r"] = map[string]interface{}{
@@ -160,7 +160,7 @@ func (operation *transactionOperationWrapper) Details() map[string]interface{} {
 		assetDetails(details, op.Buying, "buying_")
 		assetDetails(details, op.Selling, "selling_")
 	case xdr.OperationTypeSetOptions:
-		op := operation.Operation.Body.MustSetOptionsOp()
+		op := operation.operation.Body.MustSetOptionsOp()
 
 		if op.InflationDest != nil {
 			details["inflation_dest"] = op.InflationDest.Address()
@@ -199,25 +199,25 @@ func (operation *transactionOperationWrapper) Details() map[string]interface{} {
 			details["signer_weight"] = op.Signer.Weight
 		}
 	case xdr.OperationTypeChangeTrust:
-		op := operation.Operation.Body.MustChangeTrustOp()
+		op := operation.operation.Body.MustChangeTrustOp()
 		assetDetails(details, op.Line, "")
 		details["trustor"] = source.Address()
 		details["trustee"] = details["asset_issuer"]
 		details["limit"] = amount.String(op.Limit)
 	case xdr.OperationTypeAllowTrust:
-		op := operation.Operation.Body.MustAllowTrustOp()
+		op := operation.operation.Body.MustAllowTrustOp()
 		assetDetails(details, op.Asset.ToAsset(*source), "")
 		details["trustee"] = source.Address()
 		details["trustor"] = op.Trustor.Address()
 		details["authorize"] = op.Authorize
 	case xdr.OperationTypeAccountMerge:
-		aid := operation.Operation.Body.MustDestination()
+		aid := operation.operation.Body.MustDestination()
 		details["account"] = source.Address()
 		details["into"] = aid.Address()
 	case xdr.OperationTypeInflation:
 		// no inflation details, presently
 	case xdr.OperationTypeManageData:
-		op := operation.Operation.Body.MustManageDataOp()
+		op := operation.operation.Body.MustManageDataOp()
 		details["name"] = string(op.DataName)
 		if op.DataValue != nil {
 			details["value"] = base64.StdEncoding.EncodeToString(*op.DataValue)
@@ -225,7 +225,7 @@ func (operation *transactionOperationWrapper) Details() map[string]interface{} {
 			details["value"] = nil
 		}
 	case xdr.OperationTypeBumpSequence:
-		op := operation.Operation.Body.MustBumpSequenceOp()
+		op := operation.operation.Body.MustBumpSequenceOp()
 		details["bump_to"] = fmt.Sprintf("%d", op.BumpTo)
 	default:
 		panic(fmt.Errorf("Unknown operation type: %s", operation.OperationType()))

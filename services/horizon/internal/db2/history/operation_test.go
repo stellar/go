@@ -387,10 +387,10 @@ func TestCheckExpOperations(t *testing.T) {
 	tt.Assert.NoError(err)
 
 	operation := transactionOperationWrapper{
-		Index:          0,
-		Transaction:    thirdTransaction,
-		Operation:      thirdTransaction.Envelope.Tx.Operations[0],
-		LedgerSequence: uint32(sequence),
+		index:          0,
+		transaction:    thirdTransaction,
+		operation:      thirdTransaction.Envelope.Tx.Operations[0],
+		ledgerSequence: uint32(sequence),
 	}
 
 	for fieldName, value := range map[string]interface{}{
@@ -416,7 +416,7 @@ func TestCheckExpOperations(t *testing.T) {
 			Where("id = ?", operation.ID()))
 		tt.Assert.NoError(err)
 
-		err = batchBuilder.Add(operation.Transaction, operation.LedgerSequence)
+		err = batchBuilder.Add(operation.transaction, operation.ledgerSequence)
 		tt.Assert.NoError(err)
 		err = batchBuilder.Exec()
 		tt.Assert.NoError(err)

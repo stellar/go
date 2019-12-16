@@ -46,10 +46,10 @@ func (i *operationBatchInsertBuilder) Add(
 ) error {
 	for opi, op := range transaction.Envelope.Tx.Operations {
 		operation := transactionOperationWrapper{
-			Index:          uint32(opi),
-			Transaction:    transaction,
-			Operation:      op,
-			LedgerSequence: sequence,
+			index:          uint32(opi),
+			transaction:    transaction,
+			operation:      op,
+			ledgerSequence: sequence,
 		}
 
 		detailsJSON, err := json.Marshal(operation.Details())

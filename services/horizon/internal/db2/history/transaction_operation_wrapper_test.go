@@ -27,10 +27,10 @@ func TestTransactionOperationID(t *testing.T) {
 	tt.NoError(err)
 
 	operation := transactionOperationWrapper{
-		Index:          0,
-		Transaction:    transaction,
-		Operation:      transaction.Envelope.Tx.Operations[0],
-		LedgerSequence: 56,
+		index:          0,
+		transaction:    transaction,
+		operation:      transaction.Envelope.Tx.Operations[0],
+		ledgerSequence: 56,
 	}
 
 	tt.Equal(int64(240518172673), operation.ID())
@@ -48,10 +48,10 @@ func TestTransactionOperationOrder(t *testing.T) {
 	tt.NoError(err)
 
 	operation := transactionOperationWrapper{
-		Index:          0,
-		Transaction:    transaction,
-		Operation:      transaction.Envelope.Tx.Operations[0],
-		LedgerSequence: 1,
+		index:          0,
+		transaction:    transaction,
+		operation:      transaction.Envelope.Tx.Operations[0],
+		ledgerSequence: 1,
 	}
 
 	tt.Equal(uint32(1), operation.Order())
@@ -69,10 +69,10 @@ func TestTransactionOperationTransactionID(t *testing.T) {
 	tt.NoError(err)
 
 	operation := transactionOperationWrapper{
-		Index:          0,
-		Transaction:    transaction,
-		Operation:      transaction.Envelope.Tx.Operations[0],
-		LedgerSequence: 56,
+		index:          0,
+		transaction:    transaction,
+		operation:      transaction.Envelope.Tx.Operations[0],
+		ledgerSequence: 56,
 	}
 
 	tt.Equal(int64(240518172672), operation.TransactionID())
@@ -113,10 +113,10 @@ func TestOperationTransactionSourceAccount(t *testing.T) {
 			}
 
 			operation := transactionOperationWrapper{
-				Index:          1,
-				Transaction:    transaction,
-				Operation:      op,
-				LedgerSequence: 1,
+				index:          1,
+				transaction:    transaction,
+				operation:      op,
+				ledgerSequence: 1,
 			}
 
 			tt.Equal(tc.expected, operation.SourceAccount().Address())
@@ -136,10 +136,10 @@ func TestTransactionOperationType(t *testing.T) {
 	tt.NoError(err)
 
 	operation := transactionOperationWrapper{
-		Index:          1,
-		Transaction:    transaction,
-		Operation:      transaction.Envelope.Tx.Operations[0],
-		LedgerSequence: 1,
+		index:          1,
+		transaction:    transaction,
+		operation:      transaction.Envelope.Tx.Operations[0],
+		ledgerSequence: 1,
 	}
 
 	tt.Equal(xdr.OperationTypePayment, operation.OperationType())
@@ -450,10 +450,10 @@ func TestTransactionOperationDetails(t *testing.T) {
 			tt.NoError(err)
 
 			operation := transactionOperationWrapper{
-				Index:          tc.index,
-				Transaction:    transaction,
-				Operation:      transaction.Envelope.Tx.Operations[tc.index],
-				LedgerSequence: 1,
+				index:          tc.index,
+				transaction:    transaction,
+				operation:      transaction.Envelope.Tx.Operations[tc.index],
+				ledgerSequence: 1,
 			}
 
 			tt.Equal(tc.expected, operation.Details())
