@@ -40,3 +40,20 @@ func (change LedgerEntryChange) MarshalBinaryBase64() (string, error) {
 
 	return base64.StdEncoding.EncodeToString(b), nil
 }
+
+// GetLedgerEntry returns the ledger entry that was changed in `change`, along
+// with a boolean indicating whether the entry value was valid.
+func (change *LedgerEntryChange) GetLedgerEntry() (LedgerEntry, bool) {
+	switch change.Type {
+	case LedgerEntryChangeTypeLedgerEntryCreated:
+		return change.GetCreated()
+	case LedgerEntryChangeTypeLedgerEntryState:
+		return change.GetState()
+	case LedgerEntryChangeTypeLedgerEntryUpdated:
+		return change.GetUpdated()
+	case LedgerEntryChangeTypeLedgerEntryRemoved:
+		return LedgerEntry{}, false
+	default:
+		return LedgerEntry{}, false
+	}
+}

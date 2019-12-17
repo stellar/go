@@ -170,7 +170,7 @@ func NewApp(config config.Config, migrateFlag bool, versionFlag bool, version st
 // Serve starts the server
 func (a *App) Serve() {
 	// External endpoints
-	external := supportHttp.NewAPIMux(false)
+	external := supportHttp.NewAPIMux()
 
 	// Middlewares
 	headers := http.Header{}
@@ -195,7 +195,7 @@ func (a *App) Serve() {
 	}()
 
 	// Internal endpoints
-	internal := supportHttp.NewAPIMux(false)
+	internal := supportHttp.NewAPIMux()
 
 	internal.Use(supportHttp.StripTrailingSlashMiddleware("/admin"))
 	internal.Use(supportHttp.HeadersMiddleware(headers, "/admin/"))

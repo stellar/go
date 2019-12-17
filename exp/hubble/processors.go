@@ -8,6 +8,7 @@ import (
 	stdio "io"
 	"strconv"
 
+	"github.com/kr/pretty"
 	"github.com/olivere/elastic/v7"
 	"github.com/stellar/go/exp/ingest/io"
 	ingestPipeline "github.com/stellar/go/exp/ingest/pipeline"
@@ -85,4 +86,66 @@ func (p *ESProcessor) PutEntry(ctx context.Context, entry string, id int) error 
 	idStr := strconv.Itoa(id)
 	_, err := p.client.Index().Index(p.index).Id(idStr).BodyString(entry).Do(ctx)
 	return err
+}
+
+// CurrentStateProcessor stores only the current state of each account
+// on the ledger.
+type CurrentStateProcessor struct {
+	ledgerState map[string]accountState
+}
+
+var _ ingestPipeline.StateProcessor = &CurrentStateProcessor{}
+
+// ProcessState updates the global state using current entries.
+func (p *CurrentStateProcessor) ProcessState(ctx context.Context, store *supportPipeline.Store, r io.StateReader, w io.StateWriter) error {
+	defer w.Close()
+	defer r.Close()
+
+	for {
+		entry, err := r.Read()
+		if err != nil {
+			if err == stdio.EOF {
+				break
+			} else {
+				return err
+			}
+		}
+
+		accountID, err := makeAccountIDFromChange(&entry)
+		if err != nil {
+			return errors.Wrap(err, "could not get ledger account address")
+		}
+		currentState := p.ledgerState[accountID]
+
+		// If we have stored no prior state for this account, we should initialize
+		// its state with the already-found address.
+		if currentState.address == "" {
+			currentState.address = accountID
+		}
+
+		newState, err := makeNewAccountState(&currentState, &entry)
+		if err != nil {
+			return errors.Wrap(err, "could not update account state")
+		}
+		p.ledgerState[accountID] = *newState
+
+		select {
+		case <-ctx.Done():
+			return nil
+		default:
+			continue
+		}
+	}
+	fmt.Printf("%# v", pretty.Formatter(p.ledgerState))
+	return nil
+}
+
+// Reset makes the internal ledger state an empty map.
+func (p *CurrentStateProcessor) Reset() {
+	p.ledgerState = make(map[string]accountState)
+}
+
+// Name returns the name of the processor.
+func (p *CurrentStateProcessor) Name() string {
+	return "CSProcessor"
 }

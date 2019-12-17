@@ -17,6 +17,12 @@ func (kp *Full) Address() string {
 	return strkey.MustEncode(strkey.VersionByteAccountID, kp.publicKey()[:])
 }
 
+// FromAddress gets the address-only representation, or public key, of this
+// Full keypair.
+func (kp *Full) FromAddress() *FromAddress {
+	return &FromAddress{address: kp.Address()}
+}
+
 func (kp *Full) Hint() (r [4]byte) {
 	copy(r[:], kp.publicKey()[28:])
 	return
