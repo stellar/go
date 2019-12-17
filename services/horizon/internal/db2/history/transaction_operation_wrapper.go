@@ -282,3 +282,59 @@ func operationFlagDetails(result map[string]interface{}, f int32, prefix string)
 	result[prefix+"_flags"] = n
 	result[prefix+"_flags_s"] = s
 }
+
+// Participants returns the accounts taking part in the operation.
+func (operation *transactionOperationWrapper) Participants() ([]xdr.AccountId, error) {
+	participants := []xdr.AccountId{}
+	participants = append(participants, *operation.SourceAccount())
+
+	op := operation.operation
+
+	switch operation.OperationType() {
+	case xdr.OperationTypeCreateAccount:
+		participants = append(participants, op.Body.MustCreateAccountOp().Destination)
+	case xdr.OperationTypePayment:
+		participants = append(participants, op.Body.MustPaymentOp().Destination)
+	case xdr.OperationTypePathPaymentStrictReceive:
+		participants = append(participants, op.Body.MustPathPaymentStrictReceiveOp().Destination)
+	case xdr.OperationTypePathPaymentStrictSend:
+		participants = append(participants, op.Body.MustPathPaymentStrictSendOp().Destination)
+	case xdr.OperationTypeManageBuyOffer:
+		// the only direct participant is the source_account
+	case xdr.OperationTypeManageSellOffer:
+		// the only direct participant is the source_account
+	case xdr.OperationTypeCreatePassiveSellOffer:
+		// the only direct participant is the source_account
+	case xdr.OperationTypeSetOptions:
+		// the only direct participant is the source_account
+	case xdr.OperationTypeChangeTrust:
+		// the only direct participant is the source_account
+	case xdr.OperationTypeAllowTrust:
+		participants = append(participants, op.Body.MustAllowTrustOp().Trustor)
+	case xdr.OperationTypeAccountMerge:
+		participants = append(participants, op.Body.MustDestination())
+	case xdr.OperationTypeInflation:
+		// the only direct participant is the source_account
+	case xdr.OperationTypeManageData:
+		// the only direct participant is the source_account
+	case xdr.OperationTypeBumpSequence:
+		// the only direct participant is the source_account
+	default:
+		return participants, fmt.Errorf("Unknown operation type: %s", op.Body.Type)
+	}
+
+	return dedupe(participants), nil
+}
+
+// dedupe remove any duplicate ids from `in`
+func dedupe(in []xdr.AccountId) (out []xdr.AccountId) {
+	set := map[string]xdr.AccountId{}
+	for _, id := range in {
+		set[id.Address()] = id
+	}
+
+	for _, id := range set {
+		out = append(out, id)
+	}
+	return
+}
