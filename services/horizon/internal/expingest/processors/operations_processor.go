@@ -39,7 +39,7 @@ func (p *OperationProcessor) ProcessLedger(ctx context.Context, store *pipeline.
 	operationBatch := p.OperationsQ.NewOperationBatchInsertBuilder(maxBatchSize)
 	sequence := r.GetSequence()
 
-	// Process transaction meta
+	// Process operations
 	for {
 		var transaction io.LedgerTransaction
 		transaction, err = r.Read()
