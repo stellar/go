@@ -5,8 +5,8 @@ import (
 	stdio "io"
 	"testing"
 
+	ingesterrors "github.com/stellar/go/exp/ingest/errors"
 	"github.com/stellar/go/exp/ingest/io"
-	"github.com/stellar/go/exp/ingest/verify"
 	supportPipeline "github.com/stellar/go/exp/support/pipeline"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/support/errors"
@@ -603,10 +603,6 @@ func (s *AccountsSignerProcessorTestSuiteLedger) TestRemoveAccount() {
 }
 
 func (s *AccountsSignerProcessorTestSuiteLedger) TestNewAccountNoRowsAffected() {
-	// Removes ReadUpgradeChange assertion
-	s.mockLedgerReader = &io.MockLedgerReader{}
-	s.mockLedgerReader.On("Close").Return(nil).Once()
-
 	s.mockLedgerReader.
 		On("Read").
 		Return(io.LedgerTransaction{
@@ -630,6 +626,8 @@ func (s *AccountsSignerProcessorTestSuiteLedger) TestNewAccountNoRowsAffected() 
 			}),
 		}, nil).Once()
 
+	s.mockLedgerReader.On("Read").Return(io.LedgerTransaction{}, stdio.EOF).Once()
+
 	s.mockQ.
 		On(
 			"CreateAccountSigner",
@@ -647,20 +645,16 @@ func (s *AccountsSignerProcessorTestSuiteLedger) TestNewAccountNoRowsAffected() 
 	)
 
 	s.Assert().Error(err)
-	s.Assert().IsType(verify.StateError{}, errors.Cause(err))
+	s.Assert().IsType(ingesterrors.StateError{}, errors.Cause(err))
 	s.Assert().EqualError(
 		err,
-		"Error in AccountsForSigner handler: No rows affected when inserting "+
+		"Error in AccountsForSigner handler: 0 rows affected when inserting "+
 			"account=GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML "+
 			"signer=GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML to database",
 	)
 }
 
 func (s *AccountsSignerProcessorTestSuiteLedger) TestRemoveAccountNoRowsAffected() {
-	// Removes ReadUpgradeChange assertion
-	s.mockLedgerReader = &io.MockLedgerReader{}
-	s.mockLedgerReader.On("Close").Return(nil).Once()
-
 	s.mockLedgerReader.
 		On("Read").
 		Return(io.LedgerTransaction{
@@ -693,6 +687,8 @@ func (s *AccountsSignerProcessorTestSuiteLedger) TestRemoveAccountNoRowsAffected
 			}),
 		}, nil).Once()
 
+	s.mockLedgerReader.On("Read").Return(io.LedgerTransaction{}, stdio.EOF).Once()
+
 	s.mockQ.
 		On(
 			"RemoveAccountSigner",
@@ -709,12 +705,13 @@ func (s *AccountsSignerProcessorTestSuiteLedger) TestRemoveAccountNoRowsAffected
 	)
 
 	s.Assert().Error(err)
-	s.Assert().IsType(verify.StateError{}, errors.Cause(err))
+	s.Assert().IsType(ingesterrors.StateError{}, errors.Cause(err))
 	s.Assert().EqualError(
 		err,
 		"Error in AccountsForSigner handler: Expected "+
 			"account=GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML "+
-			"signer=GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML in database but not found when removing",
+			"signer=GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML in database but not found when removing "+
+			"(rows affected = 0)",
 	)
 }
 
@@ -773,34 +770,6 @@ func (s *AccountsSignerProcessorTestSuiteLedger) TestProcessUpgradeChange() {
 			}),
 		}, nil).Once()
 
-	// Remove old signer
-	s.mockQ.
-		On(
-			"RemoveAccountSigner",
-			"GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML",
-			"GCBBDQLCTNASZJ3MTKAOYEOWRGSHDFAJVI7VPZUOP7KXNHYR3HP2BUKV",
-		).
-		Return(int64(1), nil).Once()
-
-	// Create new and old signer
-	s.mockQ.
-		On(
-			"CreateAccountSigner",
-			"GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML",
-			"GCBBDQLCTNASZJ3MTKAOYEOWRGSHDFAJVI7VPZUOP7KXNHYR3HP2BUKV",
-			int32(10),
-		).
-		Return(int64(1), nil).Once()
-
-	s.mockQ.
-		On(
-			"CreateAccountSigner",
-			"GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML",
-			"GCAHY6JSXQFKWKP6R7U5JPXDVNV4DJWOWRFLY3Y6YPBF64QRL4BPFDNS",
-			int32(15),
-		).
-		Return(int64(1), nil).Once()
-
 	s.mockLedgerReader.
 		On("Read").
 		Return(io.LedgerTransaction{}, stdio.EOF).Once()
@@ -836,13 +805,17 @@ func (s *AccountsSignerProcessorTestSuiteLedger) TestProcessUpgradeChange() {
 									Key:    xdr.MustSigner("GCBBDQLCTNASZJ3MTKAOYEOWRGSHDFAJVI7VPZUOP7KXNHYR3HP2BUKV"),
 									Weight: 12,
 								},
+								xdr.Signer{
+									Key:    xdr.MustSigner("GCAHY6JSXQFKWKP6R7U5JPXDVNV4DJWOWRFLY3Y6YPBF64QRL4BPFDNS"),
+									Weight: 15,
+								},
 							},
 						},
 					},
 				},
 			}, nil).Once()
 
-	// Update signer
+	// Remove old signer
 	s.mockQ.
 		On(
 			"RemoveAccountSigner",
@@ -851,12 +824,22 @@ func (s *AccountsSignerProcessorTestSuiteLedger) TestProcessUpgradeChange() {
 		).
 		Return(int64(1), nil).Once()
 
+	// Create new and old (updated) signer
 	s.mockQ.
 		On(
 			"CreateAccountSigner",
 			"GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML",
 			"GCBBDQLCTNASZJ3MTKAOYEOWRGSHDFAJVI7VPZUOP7KXNHYR3HP2BUKV",
 			int32(12),
+		).
+		Return(int64(1), nil).Once()
+
+	s.mockQ.
+		On(
+			"CreateAccountSigner",
+			"GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML",
+			"GCAHY6JSXQFKWKP6R7U5JPXDVNV4DJWOWRFLY3Y6YPBF64QRL4BPFDNS",
+			int32(15),
 		).
 		Return(int64(1), nil).Once()
 

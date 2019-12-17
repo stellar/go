@@ -17,6 +17,8 @@ var _ Session = &LiveSession{}
 
 const defaultCoreCursorName = "EXPINGESTLIVESESSION"
 
+// Run runs the session starting from the last checkpoint ledger.
+// Returns nil when session has been shutdown.
 func (s *LiveSession) Run() error {
 	s.standardSession.shutdown = make(chan bool)
 
@@ -96,6 +98,7 @@ func (s *LiveSession) updateCursor(ledgerSequence uint32) error {
 }
 
 // Resume resumes the session from `ledgerSequence`.
+// Returns nil when session has been shutdown.
 //
 // WARNING: it's likely that developers will use `GetLatestSuccessfullyProcessedLedger()`
 // to get the latest successfuly processed ledger after `Resume` returns error.
@@ -106,6 +109,14 @@ func (s *LiveSession) updateCursor(ledgerSequence uint32) error {
 // overwriting your local variable.
 func (s *LiveSession) Resume(ledgerSequence uint32) error {
 	s.standardSession.shutdown = make(chan bool)
+
+	err := s.validate()
+	if err != nil {
+		return errors.Wrap(err, "Validation error")
+	}
+
+	s.setRunningState(true)
+	defer s.setRunningState(false)
 
 	ledgerAdapter := &adapters.LedgerBackendAdapter{
 		Backend: s.LedgerBackend,
@@ -176,7 +187,6 @@ func (s *LiveSession) resume(ledgerSequence uint32, ledgerAdapter *adapters.Ledg
 
 				select {
 				case <-s.standardSession.shutdown:
-					s.LedgerPipeline.Shutdown()
 					return nil
 				case <-time.After(time.Second):
 					// TODO make the idle time smaller
@@ -193,27 +203,20 @@ func (s *LiveSession) resume(ledgerSequence uint32, ledgerAdapter *adapters.Ledg
 			ledgerReader = reporterLedgerReader{ledgerReader, s.LedgerReporter}
 		}
 
-		errChan := s.LedgerPipeline.Process(ledgerReader)
-		select {
-		case err2 := <-errChan:
-			if err2 != nil {
-				// Return with no errors if pipeline shutdown
-				if err2 == pipeline.ErrShutdown {
-					s.LedgerReporter.OnEndLedger(nil, true)
-					return nil
-				}
-
+		err = <-s.LedgerPipeline.Process(ledgerReader)
+		if err != nil {
+			// Return with no errors if pipeline shutdown
+			if err == pipeline.ErrShutdown {
 				if s.LedgerReporter != nil {
-					s.LedgerReporter.OnEndLedger(err2, false)
+					s.LedgerReporter.OnEndLedger(nil, true)
 				}
-				return errors.Wrap(err2, "Ledger pipeline errored")
+				return nil
 			}
-		case <-s.standardSession.shutdown:
+
 			if s.LedgerReporter != nil {
-				s.LedgerReporter.OnEndLedger(nil, true)
+				s.LedgerReporter.OnEndLedger(err, false)
 			}
-			s.LedgerPipeline.Shutdown()
-			return nil
+			return errors.Wrap(err, "Ledger pipeline errored")
 		}
 
 		if s.LedgerReporter != nil {
@@ -229,6 +232,14 @@ func (s *LiveSession) resume(ledgerSequence uint32, ledgerAdapter *adapters.Ledg
 		}
 
 		ledgerSequence++
+
+		// Exit early if Shutdown() was called.
+		select {
+		case <-s.standardSession.shutdown:
+			return nil
+		default:
+			// Continue
+		}
 	}
 
 	return nil
@@ -276,30 +287,47 @@ func (s *LiveSession) initState(historyAdapter *adapters.HistoryArchiveAdapter, 
 		stateReader = reporterStateReader{stateReader, s.StateReporter}
 	}
 
-	errChan := s.StatePipeline.Process(stateReader)
-	select {
-	case err := <-errChan:
-		if err != nil {
-			// Return with no errors if pipeline shutdown
-			if err == pipeline.ErrShutdown {
-				s.StateReporter.OnEndState(nil, true)
-				return nil
-			}
-
+	err = <-s.StatePipeline.Process(stateReader)
+	if err != nil {
+		// Return with no errors if pipeline shutdown
+		if err == pipeline.ErrShutdown {
 			if s.StateReporter != nil {
-				s.StateReporter.OnEndState(err, false)
+				s.StateReporter.OnEndState(nil, true)
 			}
-			return errors.Wrap(err, "State pipeline errored")
+			return nil
 		}
-	case <-s.standardSession.shutdown:
+
 		if s.StateReporter != nil {
-			s.StateReporter.OnEndState(nil, true)
+			s.StateReporter.OnEndState(err, false)
 		}
-		s.StatePipeline.Shutdown()
+		return errors.Wrap(err, "State pipeline errored")
 	}
 
 	if s.StateReporter != nil {
 		s.StateReporter.OnEndState(nil, false)
 	}
 	return nil
+}
+
+// Shutdown gracefully stops the pipelines and the session. This method blocks
+// until pipelines are gracefully shutdown.
+func (s *LiveSession) Shutdown() {
+	// Send shutdown signal
+	s.standardSession.Shutdown()
+
+	// Shutdown pipelines
+	s.StatePipeline.Shutdown()
+	s.LedgerPipeline.Shutdown()
+
+	// Shutdown signals sent, block/wait until pipelines are done
+	// shutting down.
+	for {
+		stateRunning := s.StatePipeline.IsRunning()
+		ledgerRunning := s.LedgerPipeline.IsRunning()
+		if stateRunning || ledgerRunning {
+			time.Sleep(time.Second)
+			continue
+		}
+		break
+	}
 }

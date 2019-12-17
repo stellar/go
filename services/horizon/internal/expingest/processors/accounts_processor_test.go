@@ -208,12 +208,6 @@ func (s *AccountsProcessorTestSuiteLedger) TestNewAccount() {
 			}),
 		}, nil).Once()
 
-	s.mockQ.On(
-		"InsertAccount",
-		account,
-		lastModifiedLedgerSeq,
-	).Return(int64(1), nil).Once()
-
 	updatedAccount := xdr.AccountEntry{
 		AccountId:  xdr.MustAddress("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
 		Thresholds: [4]byte{0, 1, 2, 3},
@@ -259,8 +253,10 @@ func (s *AccountsProcessorTestSuiteLedger) TestNewAccount() {
 				},
 			}),
 		}, nil).Once()
+
+	// We use LedgerEntryChangesCache so all changes are squashed
 	s.mockQ.On(
-		"UpdateAccount",
+		"InsertAccount",
 		updatedAccount,
 		lastModifiedLedgerSeq,
 	).Return(int64(1), nil).Once()
@@ -362,12 +358,6 @@ func (s *AccountsProcessorTestSuiteLedger) TestProcessUpgradeChange() {
 			}),
 		}, nil).Once()
 
-	s.mockQ.On(
-		"InsertAccount",
-		account,
-		lastModifiedLedgerSeq,
-	).Return(int64(1), nil).Once()
-
 	updatedAccount := xdr.AccountEntry{
 		AccountId:  xdr.MustAddress("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
 		Thresholds: [4]byte{0, 1, 2, 3},
@@ -406,10 +396,100 @@ func (s *AccountsProcessorTestSuiteLedger) TestProcessUpgradeChange() {
 	s.mockLedgerReader.On("Close").Return(nil).Once()
 
 	s.mockQ.On(
-		"UpdateAccount",
+		"InsertAccount",
 		updatedAccount,
 		lastModifiedLedgerSeq+1,
 	).Return(int64(1), nil).Once()
+
+	err := s.processor.ProcessLedger(
+		context.Background(),
+		&supportPipeline.Store{},
+		s.mockLedgerReader,
+		s.mockLedgerWriter,
+	)
+
+	s.Assert().NoError(err)
+}
+
+func (s *AccountsProcessorTestSuiteLedger) TestFeeProcessedBeforeEverythingElse() {
+	s.mockLedgerReader.On("Read").
+		Return(io.LedgerTransaction{
+			Meta: createTransactionMeta([]xdr.OperationMeta{
+				xdr.OperationMeta{
+					Changes: []xdr.LedgerEntryChange{
+						xdr.LedgerEntryChange{
+							Type: xdr.LedgerEntryChangeTypeLedgerEntryState,
+							State: &xdr.LedgerEntry{
+								Data: xdr.LedgerEntryData{
+									Type: xdr.LedgerEntryTypeAccount,
+									Account: &xdr.AccountEntry{
+										AccountId: xdr.MustAddress("GAHK7EEG2WWHVKDNT4CEQFZGKF2LGDSW2IVM4S5DP42RBW3K6BTODB4A"),
+										Balance:   100,
+									},
+								},
+							},
+						},
+						xdr.LedgerEntryChange{
+							Type: xdr.LedgerEntryChangeTypeLedgerEntryUpdated,
+							Updated: &xdr.LedgerEntry{
+								Data: xdr.LedgerEntryData{
+									Type: xdr.LedgerEntryTypeAccount,
+									Account: &xdr.AccountEntry{
+										AccountId: xdr.MustAddress("GAHK7EEG2WWHVKDNT4CEQFZGKF2LGDSW2IVM4S5DP42RBW3K6BTODB4A"),
+										Balance:   300,
+									},
+								},
+							},
+						},
+					},
+				},
+			}),
+		}, nil).Once()
+
+	s.mockLedgerReader.On("Read").
+		Return(io.LedgerTransaction{
+			FeeChanges: []xdr.LedgerEntryChange{
+				xdr.LedgerEntryChange{
+					Type: xdr.LedgerEntryChangeTypeLedgerEntryState,
+					State: &xdr.LedgerEntry{
+						Data: xdr.LedgerEntryData{
+							Type: xdr.LedgerEntryTypeAccount,
+							Account: &xdr.AccountEntry{
+								AccountId: xdr.MustAddress("GAHK7EEG2WWHVKDNT4CEQFZGKF2LGDSW2IVM4S5DP42RBW3K6BTODB4A"),
+								Balance:   200,
+							},
+						},
+					},
+				},
+				xdr.LedgerEntryChange{
+					Type: xdr.LedgerEntryChangeTypeLedgerEntryUpdated,
+					Updated: &xdr.LedgerEntry{
+						Data: xdr.LedgerEntryData{
+							Type: xdr.LedgerEntryTypeAccount,
+							Account: &xdr.AccountEntry{
+								AccountId: xdr.MustAddress("GAHK7EEG2WWHVKDNT4CEQFZGKF2LGDSW2IVM4S5DP42RBW3K6BTODB4A"),
+								Balance:   100,
+							},
+						},
+					},
+				},
+			},
+			Meta: xdr.TransactionMeta{
+				Operations: &[]xdr.OperationMeta{},
+			},
+		}, nil).Once()
+
+	expectedAccount := xdr.AccountEntry{
+		AccountId: xdr.MustAddress("GAHK7EEG2WWHVKDNT4CEQFZGKF2LGDSW2IVM4S5DP42RBW3K6BTODB4A"),
+		// If fee meta wasn't procesed before everything else, this would be 100
+		Balance: 300,
+	}
+
+	s.mockQ.On("UpdateAccount", expectedAccount, xdr.Uint32(0)).Return(int64(1), nil).Once()
+
+	s.mockLedgerReader.
+		On("Read").
+		Return(io.LedgerTransaction{}, stdio.EOF).Once()
 
 	err := s.processor.ProcessLedger(
 		context.Background(),
