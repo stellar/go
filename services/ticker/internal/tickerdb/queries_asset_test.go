@@ -53,6 +53,7 @@ func TestInsertOrUpdateAsset(t *testing.T) {
 
 	// Creating first asset:
 	firstTime := time.Now()
+	t.Log("firstTime:", firstTime)
 	a := Asset{
 		Code:          code,
 		IssuerAccount: issuerAccount,
@@ -88,6 +89,7 @@ func TestInsertOrUpdateAsset(t *testing.T) {
 
 	// Creating Seconde Asset:
 	secondTime := time.Now()
+	t.Log("secondTime:", secondTime)
 	a.LastValid = secondTime
 	a.LastChecked = secondTime
 	err = session.InsertOrUpdateAsset(&a, []string{"code", "issuer_account", "issuer_id"})
@@ -122,6 +124,7 @@ func TestInsertOrUpdateAsset(t *testing.T) {
 
 	// Creating Third Asset:
 	thirdTime := time.Now()
+	t.Log("thirdTime:", thirdTime)
 	a.LastValid = thirdTime
 	a.LastChecked = thirdTime
 	err = session.InsertOrUpdateAsset(&a, []string{"code", "issuer_id", "last_valid", "last_checked", "issuer_account"})

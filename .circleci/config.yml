@@ -328,10 +328,20 @@ workflows:
               branches:
                 ignore: /.*/
       - hold: # <<< A job that will require manual approval in the CircleCI web application.
+          filters:
+              tags:
+                only: /^horizon-v.*/
+              branches:
+                ignore: /.*/
           type: approval # <<< This key-value pair will set your workflow to a status of "On Hold"
           requires: # We only run the "hold" job when publish_horizon_docker_image has succeeded
            - publish_horizon_docker_image
-      # Pushing stellar/horizon:latest to docker hub requires manual approval
       - publish_latest_horizon_docker_image:
+          filters:
+              tags:
+                only: /^horizon-v.*/
+              branches:
+                ignore: /.*/
+          # Pushing stellar/horizon:latest to docker hub requires manual approval
           requires:
             - hold

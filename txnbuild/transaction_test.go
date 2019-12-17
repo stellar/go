@@ -1183,11 +1183,10 @@ func TestVerifyTxSignatureUnsignedTx(t *testing.T) {
 	// verify unsigned tx
 	err := tx.Build()
 	assert.NoError(t, err)
-	ok, err := verifyTxSignature(tx, kp0.Address())
+	err = verifyTxSignature(tx, kp0.Address())
 	if assert.Error(t, err) {
 		assert.Contains(t, err.Error(), "transaction not signed by GDQNY3PBOJOKYZSRMK2S7LHHGWZIUISD4QORETLMXEWXBI7KFZZMKTL3")
 	}
-	assert.Equal(t, false, ok)
 }
 
 func TestVerifyTxSignatureSingle(t *testing.T) {
@@ -1211,9 +1210,8 @@ func TestVerifyTxSignatureSingle(t *testing.T) {
 	assert.NoError(t, err)
 	err = tx.Sign(kp0)
 	assert.NoError(t, err)
-	ok, err := verifyTxSignature(tx, kp0.Address())
+	err = verifyTxSignature(tx, kp0.Address())
 	assert.NoError(t, err)
-	assert.Equal(t, true, ok)
 }
 
 func TestVerifyTxSignatureMultiple(t *testing.T) {
@@ -1237,12 +1235,10 @@ func TestVerifyTxSignatureMultiple(t *testing.T) {
 	assert.NoError(t, err)
 	err = tx.Sign(kp0, kp1)
 	assert.NoError(t, err)
-	ok, err := verifyTxSignature(tx, kp0.Address())
+	err = verifyTxSignature(tx, kp0.Address())
 	assert.NoError(t, err)
-	assert.Equal(t, true, ok)
-	ok, err = verifyTxSignature(tx, kp1.Address())
+	err = verifyTxSignature(tx, kp1.Address())
 	assert.NoError(t, err)
-	assert.Equal(t, true, ok)
 }
 func TestVerifyTxSignatureInvalid(t *testing.T) {
 	kp0 := newKeypair0()
@@ -1265,11 +1261,10 @@ func TestVerifyTxSignatureInvalid(t *testing.T) {
 	assert.NoError(t, err)
 	err = tx.Sign(kp0, kp1)
 	assert.NoError(t, err)
-	ok, err := verifyTxSignature(tx, "GATBMIXTHXYKSUZSZUEJKACZ2OS2IYUWP2AIF3CA32PIDLJ67CH6Y5UY")
+	err = verifyTxSignature(tx, "GATBMIXTHXYKSUZSZUEJKACZ2OS2IYUWP2AIF3CA32PIDLJ67CH6Y5UY")
 	if assert.Error(t, err) {
 		assert.Contains(t, err.Error(), "transaction not signed by GATBMIXTHXYKSUZSZUEJKACZ2OS2IYUWP2AIF3CA32PIDLJ67CH6Y5UY")
 	}
-	assert.Equal(t, false, ok)
 }
 
 func TestVerifyChallengeTxInvalid(t *testing.T) {

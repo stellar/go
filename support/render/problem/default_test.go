@@ -10,15 +10,12 @@ import (
 	"testing"
 
 	ge "github.com/go-errors/errors"
-	"github.com/stellar/go/support/log"
 	"github.com/stellar/go/support/test"
 	"github.com/stretchr/testify/assert"
 )
 
-// TestProblemRender tests the render cases
-func TestProblemRender(t *testing.T) {
-	problem := New("", log.DefaultLogger)
-
+// TestRender tests the render cases
+func TestRender(t *testing.T) {
 	testCases := []struct {
 		name     string
 		p        P
@@ -50,7 +47,7 @@ func TestProblemRender(t *testing.T) {
 
 	for _, kase := range testCases {
 		t.Run(kase.name, func(t *testing.T) {
-			w := testProblemRender(context.Background(), problem, kase.p)
+			w := testRender(context.Background(), kase.p)
 			for _, wantItem := range kase.wantList {
 				assert.True(t, strings.Contains(w.Body.String(), wantItem), w.Body.String())
 				assert.Equal(t, kase.wantCode, w.Code)
@@ -59,11 +56,9 @@ func TestProblemRender(t *testing.T) {
 	}
 }
 
-// TestProblemServerErrorConversion tests that we convert errors to ServerError problems and also log the
+// TestServerErrorConversion tests that we convert errors to ServerError problems and also log the
 // stacktrace as unknown for non-rich errors
-func TestProblemServerErrorConversion(t *testing.T) {
-	problem := New("", log.DefaultLogger)
-
+func TestServerErrorConversion(t *testing.T) {
 	testCases := []struct {
 		name          string
 		err           error
@@ -76,14 +71,14 @@ func TestProblemServerErrorConversion(t *testing.T) {
 		}, {
 			"rich errors",
 			ge.New("broke"),
-			"problem_test.go:",
+			"default_test.go:",
 		},
 	}
 
 	for _, kase := range testCases {
 		t.Run(kase.name, func(t *testing.T) {
 			ctx, buf := test.ContextWithLogBuffer()
-			w := testProblemRender(ctx, problem, kase.err)
+			w := testRender(ctx, kase.err)
 			logged := buf.String()
 
 			assert.True(t, strings.Contains(w.Body.String(), "server_error"), w.Body.String())
@@ -102,10 +97,8 @@ func TestProblemServerErrorConversion(t *testing.T) {
 	}
 }
 
-// TestProblemInflate test errors that come inflated from horizon
-func TestProblemInflate(t *testing.T) {
-	problem := New("", log.DefaultLogger)
-
+// TestInflate test errors that come inflated from horizon
+func TestInflate(t *testing.T) {
 	testCase := struct {
 		name string
 		p    P
@@ -117,7 +110,7 @@ func TestProblemInflate(t *testing.T) {
 	}
 
 	t.Run(testCase.name, func(t *testing.T) {
-		w := testProblemRender(context.Background(), problem, testCase.p)
+		w := testRender(context.Background(), testCase.p)
 		var payload P
 		err := json.Unmarshal([]byte(w.Body.String()), &payload)
 		if assert.NoError(t, err) {
@@ -126,15 +119,13 @@ func TestProblemInflate(t *testing.T) {
 	})
 }
 
-func testProblemRender(ctx context.Context, problem *Problem, err error) *httptest.ResponseRecorder {
+func testRender(ctx context.Context, err error) *httptest.ResponseRecorder {
 	w := httptest.NewRecorder()
-	problem.Render(ctx, w, err)
+	Render(ctx, w, err)
 	return w
 }
 
-func TestProblemRegisterReportFunc(t *testing.T) {
-	problem := New("", log.DefaultLogger)
-
+func TestRegisterReportFunc(t *testing.T) {
 	var buf strings.Builder
 	ctx := context.Background()
 
@@ -148,39 +139,35 @@ func TestProblemRegisterReportFunc(t *testing.T) {
 	w := httptest.NewRecorder()
 
 	// before register the reportFunc
-	problem.Render(ctx, w, err)
+	Render(ctx, w, err)
 	assert.Equal(t, "", buf.String())
 
-	problem.RegisterReportFunc(reportFunc)
-	defer problem.RegisterReportFunc(nil)
+	RegisterReportFunc(reportFunc)
+	defer RegisterReportFunc(nil)
 
 	// after register the reportFunc
 	want := "captured an unexpected error"
-	problem.Render(ctx, w, err)
+	Render(ctx, w, err)
 	assert.Equal(t, want, buf.String())
 }
 
-func TestProblemUnRegisterErrors(t *testing.T) {
-	problem := New("", log.DefaultLogger)
-
-	problem.RegisterError(context.DeadlineExceeded, ServerError)
-	err := problem.IsKnownError(context.DeadlineExceeded)
+func TestUnRegisterErrors(t *testing.T) {
+	RegisterError(context.DeadlineExceeded, ServerError)
+	err := IsKnownError(context.DeadlineExceeded)
 	assert.Error(t, err, ServerError.Error())
 
-	problem.UnRegisterErrors()
+	UnRegisterErrors()
 
-	err = problem.IsKnownError(context.DeadlineExceeded)
+	err = IsKnownError(context.DeadlineExceeded)
 	assert.NoError(t, err)
 }
 
-func TestProblemIsKnownError(t *testing.T) {
-	problem := New("", log.DefaultLogger)
-
-	problem.RegisterError(context.DeadlineExceeded, ServerError)
-	defer problem.UnRegisterErrors()
-	err := problem.IsKnownError(context.DeadlineExceeded)
+func TestIsKnownError(t *testing.T) {
+	RegisterError(context.DeadlineExceeded, ServerError)
+	defer UnRegisterErrors()
+	err := IsKnownError(context.DeadlineExceeded)
 	assert.Error(t, err, ServerError.Error())
 
-	err = problem.IsKnownError(errors.New("foo"))
+	err = IsKnownError(errors.New("foo"))
 	assert.NoError(t, err)
 }
