@@ -84,6 +84,10 @@ func (s *OperationsProcessorTestSuiteLedger) TestAddOperationSucceeds() {
 		On("Read").
 		Return(io.LedgerTransaction{}, stdio.EOF).Once()
 
+	s.mockQ.
+		On("CheckExpOperations", int32(sequence-10)).
+		Return(true, nil).Once()
+
 	s.mockBatchInsertBuilder.On("Add", firstTx, sequence).Return(nil).Once()
 	s.mockBatchInsertBuilder.On("Add", secondTx, sequence).Return(nil).Once()
 	s.mockBatchInsertBuilder.On("Add", thirdTx, sequence).Return(nil).Once()
@@ -108,7 +112,9 @@ func (s *OperationsProcessorTestSuiteLedger) TestAddOperationFails() {
 		On("Read").
 		Return(firstTx, nil).Once()
 
-	s.mockBatchInsertBuilder.On("Add", firstTx, sequence).Return(errors.New("transient error")).Once()
+	s.mockBatchInsertBuilder.
+		On("Add", firstTx, sequence).
+		Return(errors.New("transient error")).Once()
 
 	err := s.processor.ProcessLedger(
 		s.context,
@@ -121,14 +127,16 @@ func (s *OperationsProcessorTestSuiteLedger) TestAddOperationFails() {
 }
 
 func (s *OperationsProcessorTestSuiteLedger) TestExecFails() {
-	sequence := uint32(20)
+	sequence := uint32(56)
 	s.mockLedgerReader.On("GetSequence").Return(sequence).Once()
 
 	s.mockLedgerReader.
 		On("Read").
 		Return(io.LedgerTransaction{}, stdio.EOF).Once()
 
-	s.mockBatchInsertBuilder.On("Exec").Return(errors.New("transient error")).Once()
+	s.mockBatchInsertBuilder.On("Exec").
+		Return(errors.New("transient error")).
+		Once()
 
 	err := s.processor.ProcessLedger(
 		s.context,
@@ -138,4 +146,71 @@ func (s *OperationsProcessorTestSuiteLedger) TestExecFails() {
 	)
 	s.Assert().Error(err)
 	s.Assert().EqualError(err, "Error flushing operation batch: transient error")
+}
+
+func (s *OperationsProcessorTestSuiteLedger) TestCheckExpOperationsError() {
+	sequence := uint32(56)
+	s.mockLedgerReader.On("GetSequence").Return(sequence).Once()
+
+	firstTx := createTransaction(true, 1)
+
+	s.mockLedgerReader.
+		On("Read").
+		Return(firstTx, nil).Once()
+
+	s.mockLedgerReader.
+		On("Read").
+		Return(io.LedgerTransaction{}, stdio.EOF).Once()
+
+	s.mockBatchInsertBuilder.On("Add", firstTx, sequence).Return(nil).Once()
+	s.mockBatchInsertBuilder.On("Exec").Return(nil).Once()
+
+	s.mockQ.
+		On("CheckExpOperations", int32(sequence-10)).
+		Return(false, errors.New("transient check exp ledger error")).Once()
+
+	err := s.processor.ProcessLedger(
+		s.context,
+		&supportPipeline.Store{},
+		s.mockLedgerReader,
+		s.mockLedgerWriter,
+	)
+	s.Assert().Error(err)
+	s.Assert().EqualError(
+		err,
+		"Could not compare operations for ledger 46: transient check exp ledger error",
+	)
+}
+
+func (s *OperationsProcessorTestSuiteLedger) TestCheckExpOperationsDoesNotMatch() {
+	sequence := uint32(56)
+	s.mockLedgerReader.On("GetSequence").Return(sequence).Once()
+
+	firstTx := createTransaction(true, 1)
+
+	s.mockLedgerReader.
+		On("Read").
+		Return(firstTx, nil).Once()
+	s.mockLedgerReader.
+		On("Read").
+		Return(io.LedgerTransaction{}, stdio.EOF).Once()
+
+	s.mockBatchInsertBuilder.On("Add", firstTx, sequence).Return(nil).Once()
+	s.mockBatchInsertBuilder.On("Exec").Return(nil).Once()
+
+	s.mockQ.On("CheckExpOperations", int32(sequence-10)).
+		Return(false, nil).Once()
+
+	err := s.processor.ProcessLedger(
+		s.context,
+		&supportPipeline.Store{},
+		s.mockLedgerReader,
+		s.mockLedgerWriter,
+	)
+	s.Assert().Error(err)
+	s.Assert().EqualError(
+		err,
+		"rows for ledger 46 in exp_history_operations "+
+			"does not match operations in history_operations",
+	)
 }

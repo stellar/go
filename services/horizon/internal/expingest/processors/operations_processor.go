@@ -2,6 +2,7 @@ package processors
 
 import (
 	"context"
+	"fmt"
 	stdio "io"
 
 	"github.com/stellar/go/exp/ingest/io"
@@ -66,7 +67,25 @@ func (p *OperationProcessor) ProcessLedger(ctx context.Context, store *pipeline.
 		return errors.Wrap(err, "Error flushing operation batch")
 	}
 
-	// TODO add verifier
+	// use an older lookup sequence because the experimental ingestion system and the
+	// legacy ingestion system might not be in sync
+	checkSequence := int32(sequence - 10)
+	var valid bool
+	valid, err = p.OperationsQ.CheckExpOperations(checkSequence)
+	if err != nil {
+		return errors.Wrap(
+			err,
+			fmt.Sprintf("Could not compare operations for ledger %v", checkSequence),
+		)
+	}
+
+	if !valid {
+		return errors.Errorf(
+			"rows for ledger %v in exp_history_operations "+
+				"does not match operations in history_operations",
+			checkSequence,
+		)
+	}
 
 	return nil
 }
