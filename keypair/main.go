@@ -74,9 +74,9 @@ func Master(networkPassphrase string) KP {
 // an address, or a seed.  If the provided input is a seed, the resulting KP
 // will have signing capabilities.
 func Parse(addressOrSeed string) (KP, error) {
-	_, err := strkey.Decode(strkey.VersionByteAccountID, addressOrSeed)
+	addr, err := ParseAddress(addressOrSeed)
 	if err == nil {
-		return &FromAddress{addressOrSeed}, nil
+		return addr, nil
 	}
 
 	if err != strkey.ErrInvalidVersionByte {
@@ -84,6 +84,17 @@ func Parse(addressOrSeed string) (KP, error) {
 	}
 
 	return ParseFull(addressOrSeed)
+}
+
+// ParseAddress constructs a new FromAddress keypair from the provided string,
+// which should be an address.
+func ParseAddress(address string) (*FromAddress, error) {
+	_, err := strkey.Decode(strkey.VersionByteAccountID, address)
+	if err != nil {
+		return nil, err
+	}
+
+	return &FromAddress{address: address}, nil
 }
 
 // ParseFull constructs a new Full keypair from the provided string, which should
