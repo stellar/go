@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/jmoiron/sqlx"
 	"github.com/stellar/go/exp/orderbook"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/support/db"
@@ -44,6 +45,11 @@ func (m *mockDBQ) Rollback() error {
 	return args.Error(0)
 }
 
+func (m *mockDBQ) GetTx() *sqlx.Tx {
+	args := m.Called()
+	return args.Get(0).(*sqlx.Tx)
+}
+
 func (m *mockDBQ) GetLastLedgerExpIngest() (uint32, error) {
 	args := m.Called()
 	return args.Get(0).(uint32), args.Error(1)
@@ -72,6 +78,11 @@ func (m *mockDBQ) GetExpStateInvalid() (bool, error) {
 func (m *mockDBQ) GetAllOffers() ([]history.Offer, error) {
 	args := m.Called()
 	return args.Get(0).([]history.Offer), args.Error(1)
+}
+
+func (m *mockDBQ) RemoveExpIngestHistory(newerThanSequence uint32) (history.ExpIngestRemovalSummary, error) {
+	args := m.Called(newerThanSequence)
+	return args.Get(0).(history.ExpIngestRemovalSummary), args.Error(1)
 }
 
 type mockIngestSession struct {
@@ -242,7 +253,6 @@ func (s *RunIngestionTestSuite) TestOutdatedIngestVersion() {
 	s.session.On("TruncateTables", history.ExperimentalIngestionTables).Return(nil).Once()
 	s.ingestSession.On("Run").Return(nil).Once()
 	s.historyQ.On("Rollback").Return(nil).Once()
-	s.ingestSession.On("Resume", uint32(4)).Return(nil).Once()
 	s.system.retry = expectError(s.Assert(), "")
 }
 

@@ -75,10 +75,6 @@ func (s *LedgersProcessorTestSuiteLedger) SetupTest() {
 	s.mockLedgerReader.On("GetSequence").Return(uint32(20)).Maybe()
 
 	s.mockLedgerReader.
-		On("ReadUpgradeChange").
-		Return(io.Change{}, stdio.EOF).Once()
-
-	s.mockLedgerReader.
 		On("Read").
 		Return(createTransaction(true, 1), nil).Once()
 	s.mockLedgerReader.
@@ -119,10 +115,6 @@ func (s *LedgersProcessorTestSuiteLedger) TestInsertExpLedgerIgnoredWhenNotDatab
 	s.mockLedgerReader.
 		On("Read").
 		Return(io.LedgerTransaction{}, stdio.EOF).Once()
-
-	s.mockLedgerReader.
-		On("ReadUpgradeChange").
-		Return(io.Change{}, stdio.EOF).Once()
 
 	s.mockLedgerReader.
 		On("Close").
@@ -261,5 +253,5 @@ func (s *LedgersProcessorTestSuiteLedger) TestInsertExpLedgerNoRowsAffected() {
 		s.mockLedgerWriter,
 	)
 	s.Assert().Error(err)
-	s.Assert().EqualError(err, "No rows affected when ingesting new ledger: 20")
+	s.Assert().EqualError(err, "0 rows affected when ingesting new ledger: 20")
 }

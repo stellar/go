@@ -8,6 +8,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/jmoiron/sqlx"
 	"github.com/stellar/go/clients/stellarcore"
 	"github.com/stellar/go/exp/ingest"
 	"github.com/stellar/go/exp/ingest/io"
@@ -39,7 +40,9 @@ const (
 	//      when preauth tx is failed.
 	// - 9: Fixes a bug in asset stats processor that counted unauthorized
 	//      trustlines.
-	CurrentVersion = 9
+	// - 10: Fixes a bug in meta processing (fees are now processed before
+	//      everything else).
+	CurrentVersion = 10
 )
 
 var log = logpkg.DefaultLogger.WithField("service", "expingest")
@@ -64,12 +67,14 @@ type Config struct {
 type dbQ interface {
 	Begin() error
 	Rollback() error
+	GetTx() *sqlx.Tx
 	GetLastLedgerExpIngest() (uint32, error)
 	GetExpIngestVersion() (int, error)
 	UpdateLastLedgerExpIngest(uint32) error
 	UpdateExpStateInvalid(bool) error
 	GetExpStateInvalid() (bool, error)
 	GetAllOffers() ([]history.Offer, error)
+	RemoveExpIngestHistory(uint32) (history.ExpIngestRemovalSummary, error)
 }
 
 type dbSession interface {
@@ -292,6 +297,10 @@ func (s *System) Run() {
 					"err":                  err,
 					"last_ingested_ledger": lastIngestedLedger,
 				}).Error("Error running session, resuming from the last ingested ledger")
+			} else {
+				// LiveSession.Run returns nil => shutdown
+				log.Info("Session shut down")
+				return nil
 			}
 		} else {
 			// The other node already ingested a state (just now or in the past)
