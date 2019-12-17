@@ -40,6 +40,10 @@ func (s *OperationsProcessorTestSuiteLedger) SetupTest() {
 	s.mockLedgerWriter.On("Close").Return(nil).Once()
 	s.mockLedgerReader.On("IgnoreUpgradeChanges").Once()
 	s.mockLedgerReader.On("Close").Return(nil).Once()
+
+	s.mockQ.
+		On("NewOperationBatchInsertBuilder", maxBatchSize).
+		Return(s.mockBatchInsertBuilder).Once()
 }
 
 func (s *OperationsProcessorTestSuiteLedger) TearDownTest() {
@@ -49,6 +53,7 @@ func (s *OperationsProcessorTestSuiteLedger) TearDownTest() {
 }
 
 func (s *OperationsProcessorTestSuiteLedger) TestInsertExpLedgerIgnoredWhenNotDatabaseIngestion() {
+	s.mockQ = &history.MockQOperations{}
 	err := s.processor.ProcessLedger(
 		context.Background(),
 		&supportPipeline.Store{},
@@ -59,10 +64,6 @@ func (s *OperationsProcessorTestSuiteLedger) TestInsertExpLedgerIgnoredWhenNotDa
 }
 
 func (s *OperationsProcessorTestSuiteLedger) TestAddOperationSucceeds() {
-	s.mockQ.
-		On("NewOperationBatchInsertBuilder", maxBatchSize).
-		Return(s.mockBatchInsertBuilder).Once()
-
 	sequence := uint32(56)
 	s.mockLedgerReader.On("GetSequence").Return(sequence).Once()
 
@@ -99,10 +100,6 @@ func (s *OperationsProcessorTestSuiteLedger) TestAddOperationSucceeds() {
 }
 
 func (s *OperationsProcessorTestSuiteLedger) TestAddOperationFails() {
-	s.mockQ.
-		On("NewOperationBatchInsertBuilder", maxBatchSize).
-		Return(s.mockBatchInsertBuilder).Once()
-
 	sequence := uint32(56)
 	s.mockLedgerReader.On("GetSequence").Return(sequence).Once()
 
@@ -124,10 +121,6 @@ func (s *OperationsProcessorTestSuiteLedger) TestAddOperationFails() {
 }
 
 func (s *OperationsProcessorTestSuiteLedger) TestExecFails() {
-	s.mockQ.
-		On("NewOperationBatchInsertBuilder", maxBatchSize).
-		Return(s.mockBatchInsertBuilder).Once()
-
 	sequence := uint32(20)
 	s.mockLedgerReader.On("GetSequence").Return(sequence).Once()
 
