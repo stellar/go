@@ -40,6 +40,7 @@ func (s *OperationsProcessorTestSuiteLedger) SetupTest() {
 	s.mockLedgerWriter.
 		On("Close").
 		Return(nil).Once()
+	s.mockLedgerReader.On("IgnoreUpgradeChanges").Once()
 }
 
 func (s *OperationsProcessorTestSuiteLedger) TearDownTest() {
@@ -49,7 +50,6 @@ func (s *OperationsProcessorTestSuiteLedger) TearDownTest() {
 }
 
 func (s *OperationsProcessorTestSuiteLedger) TestInsertExpLedgerIgnoredWhenNotDatabaseIngestion() {
-	s.mockLedgerReader.On("IgnoreUpgradeChanges").Once()
 	s.mockLedgerReader.
 		On("Close").
 		Return(nil).Once()
@@ -64,8 +64,6 @@ func (s *OperationsProcessorTestSuiteLedger) TestInsertExpLedgerIgnoredWhenNotDa
 }
 
 func (s *OperationsProcessorTestSuiteLedger) TestAddOperationSucceeds() {
-	s.mockLedgerReader.On("IgnoreUpgradeChanges").Once()
-
 	s.mockQ.
 		On("NewOperationBatchInsertBuilder", maxBatchSize).
 		Return(s.mockBatchInsertBuilder).Once()
@@ -110,8 +108,6 @@ func (s *OperationsProcessorTestSuiteLedger) TestAddOperationSucceeds() {
 }
 
 func (s *OperationsProcessorTestSuiteLedger) TestAddOperationFails() {
-	s.mockLedgerReader.On("IgnoreUpgradeChanges").Once()
-
 	s.mockQ.
 		On("NewOperationBatchInsertBuilder", maxBatchSize).
 		Return(s.mockBatchInsertBuilder).Once()
@@ -141,8 +137,6 @@ func (s *OperationsProcessorTestSuiteLedger) TestAddOperationFails() {
 }
 
 func (s *OperationsProcessorTestSuiteLedger) TestExecFails() {
-	s.mockLedgerReader.On("IgnoreUpgradeChanges").Once()
-
 	s.mockQ.
 		On("NewOperationBatchInsertBuilder", maxBatchSize).
 		Return(s.mockBatchInsertBuilder).Once()
