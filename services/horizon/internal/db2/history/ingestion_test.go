@@ -64,7 +64,7 @@ func TestRemoveExpIngestHistory(t *testing.T) {
 
 		err = txInsertBuilder.Add(
 			buildLedgerTransaction(
-				tt,
+				tt.T,
 				testTransaction{
 					index:         1,
 					envelopeXDR:   "AAAAACiSTRmpH6bHC6Ekna5e82oiGY5vKDEEUgkq9CB//t+rAAAAyAEXUhsAADDRAAAAAAAAAAAAAAABAAAAAAAAAAsBF1IbAABX4QAAAAAAAAAA",
