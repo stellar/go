@@ -20,6 +20,20 @@ type Change struct {
 	Post *xdr.LedgerEntry
 }
 
+// LedgerEntryChangeType returns type in terms of LedgerEntryChangeType.
+func (c *Change) LedgerEntryChangeType() xdr.LedgerEntryChangeType {
+	switch {
+	case c.Pre == nil && c.Post != nil:
+		return xdr.LedgerEntryChangeTypeLedgerEntryCreated
+	case c.Pre != nil && c.Post == nil:
+		return xdr.LedgerEntryChangeTypeLedgerEntryRemoved
+	case c.Pre != nil && c.Post != nil:
+		return xdr.LedgerEntryChangeTypeLedgerEntryUpdated
+	default:
+		panic("Invalid state of Change (Pre == nil && Post == nil)")
+	}
+}
+
 // AccountChangedExceptSigners returns true if account has changed WITHOUT
 // checking the signers (except master key weight!). In other words, if the only
 // change is connected to signers, this function will return false.
@@ -132,12 +146,16 @@ func (c *Change) AccountSignersChanged() bool {
 	return false
 }
 
+// GetFeeChanges returns a developer friendly representation of LedgerEntryChanges
+// connected to fees.
+func (t *LedgerTransaction) GetFeeChanges() []Change {
+	return getChangesFromLedgerEntryChanges(t.FeeChanges)
+}
+
 // GetChanges returns a developer friendly representation of LedgerEntryChanges.
-// It contains fee changes, transaction changes and operation changes in that
-// order.
+// It contains transaction changes and operation changes in that order.
 func (t *LedgerTransaction) GetChanges() []Change {
-	// Fee meta
-	changes := getChangesFromLedgerEntryChanges(t.FeeChanges)
+	var changes []Change
 
 	// Transaction meta
 	switch t.Meta.V {
