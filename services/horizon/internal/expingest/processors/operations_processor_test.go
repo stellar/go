@@ -37,10 +37,9 @@ func (s *OperationsProcessorTestSuiteLedger) SetupTest() {
 		OperationsQ: s.mockQ,
 	}
 
-	s.mockLedgerWriter.
-		On("Close").
-		Return(nil).Once()
+	s.mockLedgerWriter.On("Close").Return(nil).Once()
 	s.mockLedgerReader.On("IgnoreUpgradeChanges").Once()
+	s.mockLedgerReader.On("Close").Return(nil).Once()
 }
 
 func (s *OperationsProcessorTestSuiteLedger) TearDownTest() {
@@ -50,10 +49,6 @@ func (s *OperationsProcessorTestSuiteLedger) TearDownTest() {
 }
 
 func (s *OperationsProcessorTestSuiteLedger) TestInsertExpLedgerIgnoredWhenNotDatabaseIngestion() {
-	s.mockLedgerReader.
-		On("Close").
-		Return(nil).Once()
-
 	err := s.processor.ProcessLedger(
 		context.Background(),
 		&supportPipeline.Store{},
@@ -88,10 +83,6 @@ func (s *OperationsProcessorTestSuiteLedger) TestAddOperationSucceeds() {
 		On("Read").
 		Return(io.LedgerTransaction{}, stdio.EOF).Once()
 
-	s.mockLedgerReader.
-		On("Close").
-		Return(nil).Once()
-
 	s.mockBatchInsertBuilder.On("Add", firstTx, sequence).Return(nil).Once()
 	s.mockBatchInsertBuilder.On("Add", secondTx, sequence).Return(nil).Once()
 	s.mockBatchInsertBuilder.On("Add", thirdTx, sequence).Return(nil).Once()
@@ -120,10 +111,6 @@ func (s *OperationsProcessorTestSuiteLedger) TestAddOperationFails() {
 		On("Read").
 		Return(firstTx, nil).Once()
 
-	s.mockLedgerReader.
-		On("Close").
-		Return(nil).Once()
-
 	s.mockBatchInsertBuilder.On("Add", firstTx, sequence).Return(errors.New("transient error")).Once()
 
 	err := s.processor.ProcessLedger(
@@ -147,10 +134,6 @@ func (s *OperationsProcessorTestSuiteLedger) TestExecFails() {
 	s.mockLedgerReader.
 		On("Read").
 		Return(io.LedgerTransaction{}, stdio.EOF).Once()
-
-	s.mockLedgerReader.
-		On("Close").
-		Return(nil).Once()
 
 	s.mockBatchInsertBuilder.On("Exec").Return(errors.New("transient error")).Once()
 
