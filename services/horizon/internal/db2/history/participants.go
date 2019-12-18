@@ -13,6 +13,8 @@ type QParticipants interface {
 	CheckExpParticipants(seq int32) (bool, error)
 	CreateExpAccounts(addresses []string) (map[string]int64, error)
 	NewTransactionParticipantsBatchInsertBuilder(maxBatchSize int) TransactionParticipantsBatchInsertBuilder
+	NewOperationParticipantBatchInsertBuilder(maxBatchSize int) OperationParticipantBatchInsertBuilder
+	CheckExpOperationParticipants(seq int32) (bool, error)
 }
 
 // CreateExpAccounts creates rows in the exp_history_accounts table for a given list of addresses.

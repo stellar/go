@@ -23,6 +23,7 @@ type ParticipantsProcessor struct {
 type participant struct {
 	accountID      int64
 	transactionSet map[int64]struct{}
+	operationSet   map[int64]struct{}
 }
 
 func (p *ParticipantsProcessor) loadAccountIDs(participantSet map[string]participant) error {
@@ -82,6 +83,34 @@ func (p *ParticipantsProcessor) addTransactionParticipants(
 	return nil
 }
 
+func (p *ParticipantsProcessor) addOperationsParticipants(
+	participantSet map[string]participant,
+	sequence uint32,
+	transaction io.LedgerTransaction,
+) error {
+	participants, err := history.OperationsParticipants(transaction, sequence)
+	if err != nil {
+		return errors.Wrap(err, "could not determine operation participants")
+	}
+
+	for operationID, p := range participants {
+		for _, participant := range p {
+			address := participant.Address()
+			entry, ok := participantSet[address]
+			if !ok {
+				entry.operationSet = map[int64]struct{}{
+					operationID: struct{}{},
+				}
+				participantSet[address] = entry
+			} else {
+				entry.operationSet[operationID] = struct{}{}
+			}
+		}
+	}
+
+	return nil
+}
+
 func (p *ParticipantsProcessor) insertDBTransactionParticipants(participantSet map[string]participant) error {
 	batch := p.ParticipantsQ.NewTransactionParticipantsBatchInsertBuilder(maxBatchSize)
 
@@ -95,6 +124,23 @@ func (p *ParticipantsProcessor) insertDBTransactionParticipants(participantSet m
 
 	if err := batch.Exec(); err != nil {
 		return errors.Wrap(err, "Could not flush transaction participants to db")
+	}
+	return nil
+}
+
+func (p *ParticipantsProcessor) insertDBOperationsParticipants(participantSet map[string]participant) error {
+	batch := p.ParticipantsQ.NewTransactionParticipantsBatchInsertBuilder(maxBatchSize)
+
+	for _, entry := range participantSet {
+		for operationID := range entry.operationSet {
+			if err := batch.Add(operationID, entry.accountID); err != nil {
+				return errors.Wrap(err, "could not insert operation participant in db")
+			}
+		}
+	}
+
+	if err := batch.Exec(); err != nil {
+		return errors.Wrap(err, "Could not flush operation participants to db")
 	}
 	return nil
 }
@@ -136,6 +182,11 @@ func (p *ParticipantsProcessor) ProcessLedger(ctx context.Context, store *pipeli
 			return err
 		}
 
+		err = p.addOperationsParticipants(participantSet, sequence, transaction)
+		if err != nil {
+			return err
+		}
+
 		select {
 		case <-ctx.Done():
 			return nil
@@ -150,6 +201,10 @@ func (p *ParticipantsProcessor) ProcessLedger(ctx context.Context, store *pipeli
 		}
 
 		if err = p.insertDBTransactionParticipants(participantSet); err != nil {
+			return err
+		}
+
+		if err = p.insertDBOperationsParticipants(participantSet); err != nil {
 			return err
 		}
 	}

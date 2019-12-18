@@ -336,9 +336,7 @@ func (q *Q) CheckExpOperationParticipants(seq int32) (bool, error) {
 // QOperations defines exp_history_operation related queries.
 type QOperations interface {
 	NewOperationBatchInsertBuilder(maxBatchSize int) OperationBatchInsertBuilder
-	NewOperationParticipantBatchInsertBuilder(maxBatchSize int) OperationParticipantBatchInsertBuilder
 	CheckExpOperations(seq int32) (bool, error)
-	CheckExpOperationParticipants(seq int32) (bool, error)
 }
 
 func buildOperationsByID(operations []Operation) map[int64]Operation {
