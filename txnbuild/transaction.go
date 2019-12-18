@@ -437,7 +437,7 @@ func ReadChallengeTx(challengeTx, serverAccountID, network string) (tx Transacti
 		return tx, clientAccountID, errors.New("transaction source account is not equal to server's account")
 	}
 
-	//verify sequence number
+	// verify sequence number
 	txSourceAccount, ok := tx.SourceAccount.(*SimpleAccount)
 	if !ok {
 		return tx, clientAccountID, errors.New("source account is not of type SimpleAccount unable to verify sequence number")
@@ -501,7 +501,8 @@ func ReadChallengeTx(challengeTx, serverAccountID, network string) (tx Transacti
 // Errors will be raised if:
 //  - The transaction is invalid according to ReadChallengeTx.
 //  - No client signatures are found on the transaction.
-//  - One or more signatures in the transaction are not identifiable as the server account or one of the signers provided in the arguments.
+//  - One or more signatures in the transaction are not identifiable as the
+//    server account or one of the signers provided in the arguments.
 func VerifyChallengeTxSigners(challengeTx, serverAccountID, network string, signers ...string) ([]string, error) {
 	tx, _, err := ReadChallengeTx(challengeTx, serverAccountID, network)
 	if err != nil {
@@ -518,7 +519,7 @@ func VerifyChallengeTxSigners(challengeTx, serverAccountID, network string, sign
 	// verify and return client signers. If an account has the server as a
 	// signer the server should not play a part in the authentication of the
 	// client.
-	clientSigners := make([]string, 0, len(signers)-1)
+	clientSigners := make([]string, 0, len(signers))
 	for _, signer := range signers {
 		if signer == serverKP.Address() {
 			continue
