@@ -4,14 +4,15 @@ import (
 	"github.com/stellar/go/exp/ingest/io"
 	"github.com/stellar/go/support/db"
 	"github.com/stellar/go/support/errors"
+	"github.com/stellar/go/xdr"
 )
 
 // OperationParticipantBatchInsertBuilder is used to insert a transaction's operations into the
 // exp_history_operations table
 type OperationParticipantBatchInsertBuilder interface {
 	Add(
-		transaction io.LedgerTransaction,
-		sequence uint32,
+		operationID int64,
+		accountID int64,
 	) error
 	Exec() error
 }
@@ -31,11 +32,25 @@ func (q *Q) NewOperationParticipantBatchInsertBuilder(maxBatchSize int) Operatio
 	}
 }
 
-// Add adds a transaction's operations to the batch
+// Add adds an operation participant to the batch
 func (i *operationParticipantBatchInsertBuilder) Add(
-	transaction io.LedgerTransaction,
-	sequence uint32,
+	operationID int64,
+	accountID int64,
 ) error {
+	return i.builder.Row(map[string]interface{}{
+		"history_operation_id": operationID,
+		"history_account_id":   accountID,
+	})
+}
+
+func (i *operationParticipantBatchInsertBuilder) Exec() error {
+	return i.builder.Exec()
+}
+
+// OperationsParticipants returns a map with all participants per operation
+func OperationsParticipants(transaction io.LedgerTransaction, sequence uint32) (map[int64][]xdr.AccountId, error) {
+	participants := map[int64][]xdr.AccountId{}
+
 	for opi, op := range transaction.Envelope.Tx.Operations {
 		operation := transactionOperationWrapper{
 			index:          uint32(opi),
@@ -44,46 +59,12 @@ func (i *operationParticipantBatchInsertBuilder) Add(
 			ledgerSequence: sequence,
 		}
 
-		participants, err := operation.Participants()
+		p, err := operation.Participants()
 		if err != nil {
-			return errors.Wrapf(err, "reading operation %v participants", operation.ID())
+			return participants, errors.Wrapf(err, "reading operation %v participants", operation.ID())
 		}
-
-		for _, participant := range participants {
-			accountID, err := addressTOID(participant.Address())
-			if err != nil {
-				return errors.Wrapf(err, "creating a exp_history_account for %v", participant.Address())
-			}
-
-			err = i.builder.Row(map[string]interface{}{
-				"history_operation_id": operation.ID(),
-				"history_account_id":   accountID,
-			})
-			if err != nil {
-				return errors.Wrap(err, "Error batch inserting operation rows")
-			}
-		}
+		participants[operation.ID()] = p
 	}
 
-	return nil
-}
-
-func addressTOID(address string) (int64, error) {
-	// fixed values for test
-	db := map[string]int64{
-		"GBUT7HKGKIRQBN7CLNOTOSFKY2X2N62FABMARJI7LFMQZQZU5ZZYHXXG": 1,
-		"GBN2NQDPELW7QZZBZQFTACZ7SZZVSTVU4BRFP2Q7NXFE4PKPTAB4AY4S": 2,
-	}
-
-	// Temporary workaround while we get Q.GetCreateAccountID
-	id, ok := db[address]
-
-	if !ok {
-		id = 0
-	}
-	return id, nil
-}
-
-func (i *operationParticipantBatchInsertBuilder) Exec() error {
-	return i.builder.Exec()
+	return participants, nil
 }

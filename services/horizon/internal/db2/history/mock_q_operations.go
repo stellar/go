@@ -16,7 +16,7 @@ func (m *MockQOperations) NewOperationBatchInsertBuilder(maxBatchSize int) Opera
 // NewOperationParticipantBatchInsertBuilder mock
 func (m *MockQOperations) NewOperationParticipantBatchInsertBuilder(maxBatchSize int) OperationParticipantBatchInsertBuilder {
 	a := m.Called(maxBatchSize)
-	return a.Get(0).(OperationBatchInsertBuilder)
+	return a.Get(0).(OperationParticipantBatchInsertBuilder)
 }
 
 // CheckExpOperations mock
