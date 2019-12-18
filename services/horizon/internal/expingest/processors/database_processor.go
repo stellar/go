@@ -334,7 +334,7 @@ func (p *DatabaseProcessor) ProcessLedger(ctx context.Context, store *pipeline.S
 		if len(p.batchUpsertAccounts) > 0 {
 			err = p.AccountsQ.UpsertAccounts(p.batchUpsertAccounts)
 			if err != nil {
-				return errors.Wrap(err, "errors in UpsertTrustLines")
+				return errors.Wrap(err, "errors in UpsertAccounts")
 			}
 		}
 	}
