@@ -8,12 +8,6 @@ import (
 	"github.com/stellar/go/support/errors"
 )
 
-// QOperations defines exp_history_operation related queries.
-type QOperations interface {
-	NewOperationBatchInsertBuilder(maxBatchSize int) OperationBatchInsertBuilder
-	CheckExpOperations(seq int32) (bool, error)
-}
-
 // OperationBatchInsertBuilder is used to insert a transaction's operations into the
 // exp_history_operations table
 type OperationBatchInsertBuilder interface {
