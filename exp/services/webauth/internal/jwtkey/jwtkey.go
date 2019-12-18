@@ -1,4 +1,4 @@
-// Package jwtkey provide utility functions for generating, serializing and
+// Package jwtkey provides utility functions for generating, serializing and
 // deserializing JWT ECDSA keys.
 //
 // TODO: Replace EC function usages with PKCS8 functions for supporting ECDSA

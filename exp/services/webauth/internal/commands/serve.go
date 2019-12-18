@@ -54,7 +54,7 @@ func (c *ServeCommand) Command() *cobra.Command {
 		},
 		{
 			Name:           "challenge-expires-in",
-			Usage:          "The time period that after which the challenge transaction expires",
+			Usage:          "The time period after which the challenge transaction expires",
 			OptType:        types.Int,
 			CustomSetValue: config.SetDuration,
 			ConfigKey:      &opts.ChallengeExpiresIn,
