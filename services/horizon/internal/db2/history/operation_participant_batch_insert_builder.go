@@ -31,11 +31,6 @@ func (q *Q) NewOperationParticipantBatchInsertBuilder(maxBatchSize int) Operatio
 	}
 }
 
-type participantMeta struct {
-	operation int64
-	address   string
-}
-
 // Add adds a transaction's operations to the batch
 func (i *operationParticipantBatchInsertBuilder) Add(
 	transaction io.LedgerTransaction,
