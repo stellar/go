@@ -219,7 +219,8 @@ func (p *DatabaseProcessor) ProcessLedger(ctx context.Context, store *pipeline.S
 	// Get all transactions
 	var transactions []io.LedgerTransaction
 	for {
-		transaction, err := r.Read()
+		var transaction io.LedgerTransaction
+		transaction, err = r.Read()
 		if err != nil {
 			if err == stdio.EOF {
 				break
@@ -246,7 +247,7 @@ func (p *DatabaseProcessor) ProcessLedger(ctx context.Context, store *pipeline.S
 		// Fees are processed before everything else.
 		for _, transaction := range transactions {
 			for _, change := range transaction.GetFeeChanges() {
-				err := ledgerCache.AddChange(change)
+				err = ledgerCache.AddChange(change)
 				if err != nil {
 					return errors.Wrap(err, "error adding to ledgerCache")
 				}
@@ -263,7 +264,7 @@ func (p *DatabaseProcessor) ProcessLedger(ctx context.Context, store *pipeline.S
 		// Tx meta
 		for _, transaction := range transactions {
 			for _, change := range transaction.GetChanges() {
-				err := ledgerCache.AddChange(change)
+				err = ledgerCache.AddChange(change)
 				if err != nil {
 					return errors.Wrap(err, "error adding to ledgerCache")
 				}
@@ -279,7 +280,8 @@ func (p *DatabaseProcessor) ProcessLedger(ctx context.Context, store *pipeline.S
 
 		// Process upgrades meta
 		for {
-			change, err := r.ReadUpgradeChange()
+			var change io.Change
+			change, err = r.ReadUpgradeChange()
 			if err != nil {
 				if err == stdio.EOF {
 					break
@@ -310,7 +312,7 @@ func (p *DatabaseProcessor) ProcessLedger(ctx context.Context, store *pipeline.S
 		}
 
 		for _, change := range changes {
-			err := handler(change)
+			err = handler(change)
 			if err != nil {
 				return errors.Wrap(
 					err,
