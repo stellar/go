@@ -59,52 +59,18 @@ func (h tokenHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_, clientAccountID, err := txnbuild.ReadChallengeTx(req.Transaction, h.SigningAddress.Address(), h.NetworkPassphrase)
+	_, err := txnbuild.VerifyChallengeTx(req.Transaction, h.SigningAddress.Address(), h.NetworkPassphrase)
 	if err != nil {
-		badRequest.Render(w)
+		unauthorized.Render(w)
 		return
 	}
 
-	clientAccount, err := h.HorizonClient.AccountDetail(horizonclient.AccountRequest{AccountID: clientAccountID})
+	tx, err := txnbuild.TransactionFromXDR(req.Transaction)
 	if err != nil {
 		serverError.Render(w)
 		return
 	}
-	clientSigners := make([]string, 0, len(clientAccount.Signers))
-	for _, signer := range clientAccount.Signers {
-		clientSigners = append(clientSigners, signer.Key)
-	}
-
-	clientSignersFound, err := txnbuild.VerifyChallengeTxSigners(req.Transaction, h.SigningAddress.Address(), h.NetworkPassphrase, clientSigners...)
-	if err != nil {
-		unauthorized.Render(w)
-		return
-	}
-
-	weightVerified := int32(0)
-	for _, signerFound := range clientSignersFound {
-		for _, signer := range clientAccount.Signers {
-			if signer.Key == signerFound {
-				weightVerified += signer.Weight
-			}
-		}
-	}
-
-	maxThreshold := byte(0)
-	if clientAccount.Thresholds.LowThreshold > maxThreshold {
-		maxThreshold = clientAccount.Thresholds.LowThreshold
-	}
-	if clientAccount.Thresholds.MedThreshold > maxThreshold {
-		maxThreshold = clientAccount.Thresholds.MedThreshold
-	}
-	if clientAccount.Thresholds.HighThreshold > maxThreshold {
-		maxThreshold = clientAccount.Thresholds.HighThreshold
-	}
-
-	if weightVerified < int32(maxThreshold) {
-		unauthorized.Render(w)
-		return
-	}
+	clientAccountID := tx.Operations[0].(*txnbuild.ManageData).SourceAccount.GetAccountID()
 
 	now := time.Now().UTC()
 	token := jwt.NewWithClaims(jwt.SigningMethodES256, jwt.MapClaims{
