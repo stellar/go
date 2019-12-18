@@ -325,11 +325,20 @@ func (q *Q) CheckExpOperations(seq int32) (bool, error) {
 	return true, nil
 }
 
+// CheckExpOperations checks that the participants in
+// exp_history_operation_participants for the given ledger matches the same
+// participants as in history_operation_participants
+func (q *Q) CheckExpOperationParticipants(seq int32) (bool, error) {
+	// TODO: Implement
+	return true, nil
+}
+
 // QOperations defines exp_history_operation related queries.
 type QOperations interface {
 	NewOperationBatchInsertBuilder(maxBatchSize int) OperationBatchInsertBuilder
 	NewOperationParticipantBatchInsertBuilder(maxBatchSize int) OperationParticipantBatchInsertBuilder
 	CheckExpOperations(seq int32) (bool, error)
+	CheckExpOperationParticipants(seq int32) (bool, error)
 }
 
 func buildOperationsByID(operations []Operation) map[int64]Operation {
