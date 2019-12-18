@@ -1,8 +1,14 @@
 # webauth
 
-This is a SEP-10 Web Authentication implementation based on SEP-10 v1.2.0.
+This is a [SEP-10] Web Authentication implementation based on SEP-10 v1.2.0.
 
-This implementation is not polished and is still experimental. Running this implementation in production is not recommended.
+SEP-10 defines an endpoint for authenticating a user in possession of a Stellar
+account using their Stellar account as credentials. This implementation is a
+standalone microservice that implements the minimum requirements as defined by
+the SEP-10 protocol and will be adapted as the protocol evolves.
+
+This implementation is not polished and is still experimental.
+Running this implementation in production is not recommended.
 
 ## Usage
 
@@ -42,3 +48,5 @@ Flags:
       --port int                    Port to listen and serve on (default 8000)
       --signing-key string          Stellar signing key used for signing transactions
 ```
+
+[SEP-10]: https://github.com/stellar/stellar-protocol/blob/2be91ce8d8032ca9b2f368800d06b9fba346a147/ecosystem/sep-0010.md
