@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/stellar/go/clients/horizonclient"
-	"github.com/stellar/go/exp/jwtkey"
+	"github.com/stellar/go/exp/support/jwtkey"
 	"github.com/stellar/go/keypair"
 	supporthttp "github.com/stellar/go/support/http"
 	supportlog "github.com/stellar/go/support/log"

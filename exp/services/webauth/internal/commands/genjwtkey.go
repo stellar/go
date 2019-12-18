@@ -2,7 +2,7 @@ package commands
 
 import (
 	"github.com/spf13/cobra"
-	"github.com/stellar/go/exp/jwtkey"
+	"github.com/stellar/go/exp/support/jwtkey"
 	supportlog "github.com/stellar/go/support/log"
 )
 

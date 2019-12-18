@@ -14,7 +14,7 @@ import (
 	"github.com/dgrijalva/jwt-go"
 	"github.com/stellar/go/clients/horizon"
 	"github.com/stellar/go/clients/horizonclient"
-	"github.com/stellar/go/exp/jwtkey"
+	"github.com/stellar/go/exp/support/jwtkey"
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/network"
 	supportlog "github.com/stellar/go/support/log"
