@@ -12,7 +12,8 @@ import (
 	"crypto/rand"
 	"crypto/x509"
 	"encoding/base64"
-	"fmt"
+
+	"github.com/stellar/go/support/errors"
 )
 
 // GenerateKey is a convenience function for generating an ECDSA key for use as
@@ -31,7 +32,7 @@ func GenerateKey() (*ecdsa.PrivateKey, error) {
 func PrivateKeyToString(k *ecdsa.PrivateKey) (string, error) {
 	b, err := x509.MarshalECPrivateKey(k)
 	if err != nil {
-		return "", fmt.Errorf("marshaling ECDSA private key: %w", err)
+		return "", errors.Wrap(err, "marshaling ECDSA private key")
 	}
 	return base64.StdEncoding.EncodeToString(b), nil
 }
@@ -41,7 +42,7 @@ func PrivateKeyToString(k *ecdsa.PrivateKey) (string, error) {
 func PublicKeyToString(k *ecdsa.PublicKey) (string, error) {
 	b, err := x509.MarshalPKIXPublicKey(k)
 	if err != nil {
-		return "", fmt.Errorf("marshaling ECDSA public key: %w", err)
+		return "", errors.Wrap(err, "marshaling ECDSA public key")
 	}
 	return base64.StdEncoding.EncodeToString(b), nil
 }
@@ -51,11 +52,11 @@ func PublicKeyToString(k *ecdsa.PublicKey) (string, error) {
 func PrivateKeyFromString(s string) (*ecdsa.PrivateKey, error) {
 	keyBytes, err := base64.StdEncoding.DecodeString(s)
 	if err != nil {
-		return nil, fmt.Errorf("base64 decoding ECDSA private key: %w", err)
+		return nil, errors.Wrap(err, "base64 decoding ECDSA private key")
 	}
 	key, err := x509.ParseECPrivateKey(keyBytes)
 	if err != nil {
-		return nil, fmt.Errorf("unmarshaling ECDSA private key: %w", err)
+		return nil, errors.Wrap(err, "unmarshaling ECDSA private key")
 	}
 	return key, nil
 }
@@ -65,15 +66,15 @@ func PrivateKeyFromString(s string) (*ecdsa.PrivateKey, error) {
 func PublicKeyFromString(s string) (*ecdsa.PublicKey, error) {
 	keyBytes, err := base64.StdEncoding.DecodeString(s)
 	if err != nil {
-		return nil, fmt.Errorf("base64 decoding ECDSA public key: %w", err)
+		return nil, errors.Wrap(err, "base64 decoding ECDSA public key")
 	}
 	keyI, err := x509.ParsePKIXPublicKey(keyBytes)
 	if err != nil {
-		return nil, fmt.Errorf("unmarshaling ECDSA public key: %w", err)
+		return nil, errors.Wrap(err, "unmarshaling ECDSA public key")
 	}
 	key, ok := keyI.(*ecdsa.PublicKey)
 	if !ok {
-		return nil, fmt.Errorf("public key not ECDSA key")
+		return nil, errors.Wrap(err, "public key not ECDSA key")
 	}
 	return key, nil
 }
