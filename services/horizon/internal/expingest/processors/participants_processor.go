@@ -97,7 +97,7 @@ func (p *ParticipantsProcessor) addOperationsParticipants(
 		for _, participant := range p {
 			address := participant.Address()
 			entry, ok := participantSet[address]
-			if !ok {
+			if !ok || entry.operationSet == nil {
 				entry.operationSet = map[int64]struct{}{
 					operationID: struct{}{},
 				}
