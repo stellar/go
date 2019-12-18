@@ -42,7 +42,7 @@ func (c *ServeCommand) Command() *cobra.Command {
 			Usage:       "Network passphrase of the Stellar network transactions should be signed for",
 			OptType:     types.String,
 			ConfigKey:   &opts.NetworkPassphrase,
-			FlagDefault: network.PublicNetworkPassphrase,
+			FlagDefault: network.TestNetworkPassphrase,
 			Required:    true,
 		},
 		{
