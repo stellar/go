@@ -129,7 +129,7 @@ func (p *ParticipantsProcessor) insertDBTransactionParticipants(participantSet m
 }
 
 func (p *ParticipantsProcessor) insertDBOperationsParticipants(participantSet map[string]participant) error {
-	batch := p.ParticipantsQ.NewTransactionParticipantsBatchInsertBuilder(maxBatchSize)
+	batch := p.ParticipantsQ.NewOperationParticipantBatchInsertBuilder(maxBatchSize)
 
 	for _, entry := range participantSet {
 		for operationID := range entry.operationSet {
