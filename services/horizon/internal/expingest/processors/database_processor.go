@@ -193,6 +193,8 @@ func (p *DatabaseProcessor) ProcessLedger(ctx context.Context, store *pipeline.S
 
 	ledgerCache := io.NewLedgerEntryChangeCache()
 	p.AssetStatSet = AssetStatSet{}
+	p.batchUpsertTrustLines = []xdr.LedgerEntry{}
+	p.batchUpsertAccounts = []xdr.LedgerEntry{}
 
 	actionHandlers := map[DatabaseProcessorActionType]func(change io.Change) error{
 		Accounts:          p.processLedgerAccounts,
@@ -325,8 +327,26 @@ func (p *DatabaseProcessor) ProcessLedger(ctx context.Context, store *pipeline.S
 		}
 	}
 
+	if p.Action == All || p.Action == Accounts {
+		// Upsert accounts
+		if len(p.batchUpsertAccounts) > 0 {
+			err = p.AccountsQ.UpsertAccounts(p.batchUpsertAccounts)
+			if err != nil {
+				return errors.Wrap(err, "errors in UpsertTrustLines")
+			}
+		}
+	}
+
 	// Asset stats
 	if p.Action == All || p.Action == TrustLines {
+		// Upsert trust lines
+		if len(p.batchUpsertTrustLines) > 0 {
+			err = p.TrustLinesQ.UpsertTrustLines(p.batchUpsertTrustLines)
+			if err != nil {
+				return errors.Wrap(err, "errors in UpsertTrustLines")
+			}
+		}
+
 		assetStatsDeltas := p.AssetStatSet.All()
 		for _, delta := range assetStatsDeltas {
 			var rowsAffected int64
@@ -498,42 +518,31 @@ func (p *DatabaseProcessor) processLedgerAccounts(change io.Change) error {
 		return nil
 	}
 
-	var rowsAffected int64
-	var action string
 	var accountID string
 
 	switch {
-	case change.Pre == nil && change.Post != nil:
-		// Created
-		action = "inserting"
-		account := change.Post.Data.MustAccount()
-		accountID = account.AccountId.Address()
-		rowsAffected, err = p.AccountsQ.InsertAccount(account, change.Post.LastModifiedLedgerSeq)
+	case change.Post != nil:
+		// Created and updated
+		p.batchUpsertAccounts = append(p.batchUpsertAccounts, *change.Post)
 	case change.Pre != nil && change.Post == nil:
 		// Removed
-		action = "removing"
 		account := change.Pre.Data.MustAccount()
 		accountID = account.AccountId.Address()
-		rowsAffected, err = p.AccountsQ.RemoveAccount(accountID)
+		rowsAffected, err := p.AccountsQ.RemoveAccount(accountID)
+
+		if err != nil {
+			return err
+		}
+
+		if rowsAffected != 1 {
+			return ingesterrors.NewStateError(errors.Errorf(
+				"%d No rows affected when removing account %s",
+				rowsAffected,
+				accountID,
+			))
+		}
 	default:
-		// Updated
-		action = "updating"
-		account := change.Post.Data.MustAccount()
-		accountID = account.AccountId.Address()
-		rowsAffected, err = p.AccountsQ.UpdateAccount(account, change.Post.LastModifiedLedgerSeq)
-	}
-
-	if err != nil {
-		return err
-	}
-
-	if rowsAffected != 1 {
-		return ingesterrors.NewStateError(errors.Errorf(
-			"%d No rows affected when %s account %s",
-			rowsAffected,
-			action,
-			accountID,
-		))
+		return errors.New("Invalid io.Change: change.Pre == nil && change.Post == nil")
 	}
 
 	return nil
@@ -759,19 +768,19 @@ func (p *DatabaseProcessor) processLedgerTrustLines(change io.Change) error {
 	var ledgerKey xdr.LedgerKey
 
 	switch {
-	case change.Pre == nil && change.Post != nil:
-		// Created
-		action = "inserting"
-		trustLine := change.Post.Data.MustTrustLine()
-		err = ledgerKey.SetTrustline(trustLine.AccountId, trustLine.Asset)
-		if err != nil {
-			return errors.Wrap(err, "Error creating ledger key")
+	case change.Post != nil:
+		// Created and updated
+		postTrustLine := change.Post.Data.MustTrustLine()
+		p.batchUpsertTrustLines = append(p.batchUpsertTrustLines, *change.Post)
+		if change.Pre == nil {
+			err = p.adjustAssetStat(nil, &postTrustLine)
+		} else {
+			preTrustLine := change.Pre.Data.MustTrustLine()
+			err = p.adjustAssetStat(&preTrustLine, &postTrustLine)
 		}
-		err = p.adjustAssetStat(nil, &trustLine)
 		if err != nil {
 			return errors.Wrap(err, "Error adjusting asset stat")
 		}
-		rowsAffected, err = p.TrustLinesQ.InsertTrustLine(trustLine, change.Post.LastModifiedLedgerSeq)
 	case change.Pre != nil && change.Post == nil:
 		// Removed
 		action = "removing"
@@ -785,35 +794,23 @@ func (p *DatabaseProcessor) processLedgerTrustLines(change io.Change) error {
 			return errors.Wrap(err, "Error adjusting asset stat")
 		}
 		rowsAffected, err = p.TrustLinesQ.RemoveTrustLine(*ledgerKey.TrustLine)
+		if err != nil {
+			return err
+		}
+
+		if rowsAffected != 1 {
+			return ingesterrors.NewStateError(errors.Errorf(
+				"%d rows affected when %s trustline: %s %s",
+				rowsAffected,
+				action,
+				ledgerKey.TrustLine.AccountId.Address(),
+				ledgerKey.TrustLine.Asset.String(),
+			))
+		}
 	default:
-		// Updated
-		action = "updating"
-		preTrustLine := change.Pre.Data.MustTrustLine()
-		trustLine := change.Post.Data.MustTrustLine()
-		err = ledgerKey.SetTrustline(trustLine.AccountId, trustLine.Asset)
-		if err != nil {
-			return errors.Wrap(err, "Error creating ledger key")
-		}
-		err = p.adjustAssetStat(&preTrustLine, &trustLine)
-		if err != nil {
-			return errors.Wrap(err, "Error adjusting asset stat")
-		}
-		rowsAffected, err = p.TrustLinesQ.UpdateTrustLine(trustLine, change.Post.LastModifiedLedgerSeq)
+		return errors.New("Invalid io.Change: change.Pre == nil && change.Post == nil")
 	}
 
-	if err != nil {
-		return err
-	}
-
-	if rowsAffected != 1 {
-		return ingesterrors.NewStateError(errors.Errorf(
-			"%d rows affected when %s trustline: %s %s",
-			rowsAffected,
-			action,
-			ledgerKey.TrustLine.AccountId.Address(),
-			ledgerKey.TrustLine.Asset.String(),
-		))
-	}
 	return nil
 }
 

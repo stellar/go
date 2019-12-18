@@ -26,6 +26,11 @@ func (m *MockQTrustLines) UpdateTrustLine(trustLine xdr.TrustLineEntry, lastModi
 	return a.Get(0).(int64), a.Error(1)
 }
 
+func (m *MockQTrustLines) UpsertTrustLines(trustLines []xdr.LedgerEntry) error {
+	a := m.Called(trustLines)
+	return a.Error(0)
+}
+
 func (m *MockQTrustLines) RemoveTrustLine(key xdr.LedgerKeyTrustLine) (int64, error) {
 	a := m.Called(key)
 	return a.Get(0).(int64), a.Error(1)

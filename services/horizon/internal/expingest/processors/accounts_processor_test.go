@@ -256,10 +256,17 @@ func (s *AccountsProcessorTestSuiteLedger) TestNewAccount() {
 
 	// We use LedgerEntryChangesCache so all changes are squashed
 	s.mockQ.On(
-		"InsertAccount",
-		updatedAccount,
-		lastModifiedLedgerSeq,
-	).Return(int64(1), nil).Once()
+		"UpsertAccounts",
+		[]xdr.LedgerEntry{
+			xdr.LedgerEntry{
+				LastModifiedLedgerSeq: lastModifiedLedgerSeq,
+				Data: xdr.LedgerEntryData{
+					Type:    xdr.LedgerEntryTypeAccount,
+					Account: &updatedAccount,
+				},
+			},
+		},
+	).Return(nil).Once()
 
 	s.mockLedgerReader.
 		On("Read").
@@ -396,10 +403,17 @@ func (s *AccountsProcessorTestSuiteLedger) TestProcessUpgradeChange() {
 	s.mockLedgerReader.On("Close").Return(nil).Once()
 
 	s.mockQ.On(
-		"InsertAccount",
-		updatedAccount,
-		lastModifiedLedgerSeq+1,
-	).Return(int64(1), nil).Once()
+		"UpsertAccounts",
+		[]xdr.LedgerEntry{
+			xdr.LedgerEntry{
+				LastModifiedLedgerSeq: lastModifiedLedgerSeq + 1,
+				Data: xdr.LedgerEntryData{
+					Type:    xdr.LedgerEntryTypeAccount,
+					Account: &updatedAccount,
+				},
+			},
+		},
+	).Return(nil).Once()
 
 	err := s.processor.ProcessLedger(
 		context.Background(),
@@ -485,7 +499,18 @@ func (s *AccountsProcessorTestSuiteLedger) TestFeeProcessedBeforeEverythingElse(
 		Balance: 300,
 	}
 
-	s.mockQ.On("UpdateAccount", expectedAccount, xdr.Uint32(0)).Return(int64(1), nil).Once()
+	s.mockQ.On(
+		"UpsertAccounts",
+		[]xdr.LedgerEntry{
+			xdr.LedgerEntry{
+				LastModifiedLedgerSeq: 0,
+				Data: xdr.LedgerEntryData{
+					Type:    xdr.LedgerEntryTypeAccount,
+					Account: &expectedAccount,
+				},
+			},
+		},
+	).Return(nil).Once()
 
 	s.mockLedgerReader.
 		On("Read").
