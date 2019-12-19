@@ -16,12 +16,13 @@ import (
 
 type ParticipantsProcessorTestSuiteLedger struct {
 	suite.Suite
-	processor              *ParticipantsProcessor
-	mockQ                  *history.MockQParticipants
-	mockBatchInsertBuilder *history.MockTransactionParticipantsBatchInsertBuilder
-	mockLedgerReader       *io.MockLedgerReader
-	mockLedgerWriter       *io.MockLedgerWriter
-	context                context.Context
+	processor                        *ParticipantsProcessor
+	mockQ                            *history.MockQParticipants
+	mockBatchInsertBuilder           *history.MockTransactionParticipantsBatchInsertBuilder
+	mockOperationsBatchInsertBuilder *history.MockOperationParticipantBatchInsertBuilder
+	mockLedgerReader                 *io.MockLedgerReader
+	mockLedgerWriter                 *io.MockLedgerWriter
+	context                          context.Context
 
 	firstTx         io.LedgerTransaction
 	secondTx        io.LedgerTransaction
@@ -41,6 +42,7 @@ func TestParticipantsProcessorTestSuiteLedger(t *testing.T) {
 func (s *ParticipantsProcessorTestSuiteLedger) SetupTest() {
 	s.mockQ = &history.MockQParticipants{}
 	s.mockBatchInsertBuilder = &history.MockTransactionParticipantsBatchInsertBuilder{}
+	s.mockOperationsBatchInsertBuilder = &history.MockOperationParticipantBatchInsertBuilder{}
 	s.mockLedgerReader = &io.MockLedgerReader{}
 	s.mockLedgerWriter = &io.MockLedgerWriter{}
 	s.context = context.WithValue(context.Background(), IngestUpdateDatabase, true)
@@ -119,6 +121,8 @@ func (s *ParticipantsProcessorTestSuiteLedger) TestEmptyParticipants() {
 
 	s.mockQ.On("CheckExpParticipants", int32(s.sequence-10)).
 		Return(true, nil).Once()
+	s.mockQ.On("CheckExpOperationParticipants", int32(s.sequence-10)).
+		Return(true, nil).Once()
 
 	err := s.processor.ProcessLedger(
 		s.context,
@@ -148,7 +152,7 @@ func (s *ParticipantsProcessorTestSuiteLedger) TestCheckExpParticipantsError() {
 	s.Assert().NoError(err)
 }
 
-func (s *ParticipantsProcessorTestSuiteLedger) TestCheckExpParticipantsDoesNotMatch() {
+func (s *ParticipantsProcessorTestSuiteLedger) TestCheckExpOperationParticipantsError() {
 	s.mockLedgerReader.On("GetSequence").Return(s.sequence).Once()
 
 	s.mockLedgerReader.
@@ -156,6 +160,31 @@ func (s *ParticipantsProcessorTestSuiteLedger) TestCheckExpParticipantsDoesNotMa
 		Return(io.LedgerTransaction{}, stdio.EOF).Once()
 
 	s.mockQ.On("CheckExpParticipants", int32(s.sequence-10)).
+		Return(true, nil).Once()
+	s.mockQ.On("CheckExpOperationParticipants", int32(s.sequence-10)).
+		Return(false, errors.New("transient error")).Once()
+
+	err := s.processor.ProcessLedger(
+		s.context,
+		&supportPipeline.Store{},
+		s.mockLedgerReader,
+		s.mockLedgerWriter,
+	)
+	s.Assert().NoError(err)
+}
+
+func (s *ParticipantsProcessorTestSuiteLedger) TestParticipantsCheckDoesNotMatch() {
+	s.mockLedgerReader.On("IgnoreUpgradeChanges").Once()
+
+	s.mockLedgerReader.On("GetSequence").Return(s.sequence).Once()
+
+	s.mockLedgerReader.
+		On("Read").
+		Return(io.LedgerTransaction{}, stdio.EOF).Once()
+
+	s.mockQ.On("CheckExpParticipants", int32(s.sequence-10)).
+		Return(false, nil).Once()
+	s.mockQ.On("CheckExpOperationParticipants", int32(s.sequence-10)).
 		Return(false, nil).Once()
 
 	err := s.processor.ProcessLedger(
@@ -186,6 +215,8 @@ func (s *ParticipantsProcessorTestSuiteLedger) TestIngestParticipantsSucceeds() 
 	s.mockQ.On("CreateExpAccounts", s.sortedAddresses).Return(s.addressToID, nil).Once()
 	s.mockQ.On("NewTransactionParticipantsBatchInsertBuilder", maxBatchSize).
 		Return(s.mockBatchInsertBuilder).Once()
+	s.mockQ.On("NewOperationParticipantBatchInsertBuilder", maxBatchSize).
+		Return(s.mockOperationsBatchInsertBuilder).Once()
 
 	s.mockBatchInsertBuilder.On(
 		"Add", s.firstTxID, s.addressToID[s.sortedAddresses[0]],
@@ -202,9 +233,25 @@ func (s *ParticipantsProcessorTestSuiteLedger) TestIngestParticipantsSucceeds() 
 		"Add", s.thirdTxID, s.addressToID[s.sortedAddresses[0]],
 	).Return(nil).Once()
 
+	s.mockOperationsBatchInsertBuilder.On(
+		"Add", s.firstTxID+1, s.addressToID[s.sortedAddresses[0]],
+	).Return(nil).Once()
+	s.mockOperationsBatchInsertBuilder.On(
+		"Add", s.secondTxID+1, s.addressToID[s.sortedAddresses[1]],
+	).Return(nil).Once()
+	s.mockOperationsBatchInsertBuilder.On(
+		"Add", s.secondTxID+1, s.addressToID[s.sortedAddresses[2]],
+	).Return(nil).Once()
+	s.mockOperationsBatchInsertBuilder.On(
+		"Add", s.thirdTxID+1, s.addressToID[s.sortedAddresses[0]],
+	).Return(nil).Once()
+
 	s.mockBatchInsertBuilder.On("Exec").Return(nil).Once()
+	s.mockOperationsBatchInsertBuilder.On("Exec").Return(nil).Once()
 
 	s.mockQ.On("CheckExpParticipants", int32(s.sequence-10)).
+		Return(true, nil).Once()
+	s.mockQ.On("CheckExpOperationParticipants", int32(s.sequence-10)).
 		Return(true, nil).Once()
 
 	err := s.processor.ProcessLedger(
@@ -279,6 +326,19 @@ func (s *ParticipantsProcessorTestSuiteLedger) TestBatchAddFails() {
 	s.mockBatchInsertBuilder.On(
 		"Add", s.thirdTxID, s.addressToID[s.sortedAddresses[0]],
 	).Return(nil).Maybe()
+
+	s.mockOperationsBatchInsertBuilder.On(
+		"Add", s.firstTxID+1, s.addressToID[s.sortedAddresses[0]],
+	).Return(nil).Once()
+	s.mockOperationsBatchInsertBuilder.On(
+		"Add", s.secondTxID+1, s.addressToID[s.sortedAddresses[1]],
+	).Return(nil).Once()
+	s.mockOperationsBatchInsertBuilder.On(
+		"Add", s.secondTxID+1, s.addressToID[s.sortedAddresses[2]],
+	).Return(nil).Once()
+	s.mockOperationsBatchInsertBuilder.On(
+		"Add", s.thirdTxID+1, s.addressToID[s.sortedAddresses[0]],
+	).Return(nil).Once()
 
 	err := s.processor.ProcessLedger(
 		s.context,

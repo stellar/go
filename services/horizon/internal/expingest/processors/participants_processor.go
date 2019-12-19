@@ -225,8 +225,16 @@ func (p *ParticipantsProcessor) ProcessLedger(ctx context.Context, store *pipeli
 			Error("participants do not match")
 	}
 
-	if _, err := p.ParticipantsQ.CheckExpOperationParticipants(int32(sequence - 10)); err != nil {
-		return err
+	valid, err = p.ParticipantsQ.CheckExpOperationParticipants(checkSequence)
+	if err != nil {
+		log.WithField("sequence", checkSequence).WithError(err).
+			Error("Could not compare operation participants for ledger")
+		return nil
+	}
+
+	if !valid {
+		log.WithField("sequence", checkSequence).
+			Error("operation participants do not match")
 	}
 
 	return nil
