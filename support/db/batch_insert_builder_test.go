@@ -19,6 +19,9 @@ func TestBatchInsertBuilder(t *testing.T) {
 		Table: sess.GetTable("people"),
 	}
 
+	// exec on the empty set should produce no errors
+	assert.NoError(t, insertBuilder.Exec())
+
 	var err error
 
 	err = insertBuilder.Row(map[string]interface{}{

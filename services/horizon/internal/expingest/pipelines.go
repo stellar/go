@@ -109,7 +109,11 @@ func orderBookGraphLedgerNode(graph *orderbook.OrderBookGraph) *supportPipeline.
 	})
 }
 
-func buildLedgerPipeline(historyQ *history.Q, graph *orderbook.OrderBookGraph) *pipeline.LedgerPipeline {
+func buildLedgerPipeline(
+	historyQ *history.Q,
+	graph *orderbook.OrderBookGraph,
+	ingestFailedTransactions bool,
+) *pipeline.LedgerPipeline {
 	ledgerPipeline := &pipeline.LedgerPipeline{}
 
 	ledgerPipeline.SetRoot(
@@ -129,6 +133,18 @@ func buildLedgerPipeline(historyQ *history.Q, graph *orderbook.OrderBookGraph) *
 							Action:        horizonProcessors.All,
 							IngestVersion: CurrentVersion,
 						}),
+						pipeline.LedgerNode(
+							&horizonProcessors.TransactionFilterProcessor{
+								IngestFailedTransactions: ingestFailedTransactions,
+							},
+						).Pipe(
+							pipeline.LedgerNode(&horizonProcessors.TransactionProcessor{
+								TransactionsQ: historyQ,
+							}),
+							pipeline.LedgerNode(&horizonProcessors.ParticipantsProcessor{
+								ParticipantsQ: historyQ,
+							}),
+						),
 					),
 				orderBookGraphLedgerNode(graph),
 			),

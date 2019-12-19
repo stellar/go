@@ -61,7 +61,8 @@ type Config struct {
 	// Set MaxStreamRetries to 0 if there should be no retry attempts
 	MaxStreamRetries int
 
-	OrderBookGraph *orderbook.OrderBookGraph
+	OrderBookGraph           *orderbook.OrderBookGraph
+	IngestFailedTransactions bool
 }
 
 type dbQ interface {
@@ -74,11 +75,11 @@ type dbQ interface {
 	UpdateExpStateInvalid(bool) error
 	GetExpStateInvalid() (bool, error)
 	GetAllOffers() ([]history.Offer, error)
+	TruncateExpingestStateTables() error
 	RemoveExpIngestHistory(uint32) (history.ExpIngestRemovalSummary, error)
 }
 
 type dbSession interface {
-	TruncateTables([]string) error
 	Clone() *db.Session
 }
 
@@ -154,7 +155,11 @@ func NewSystem(config Config) (*System, error) {
 		MaxStreamRetries: config.MaxStreamRetries,
 		LedgerBackend:    ledgerBackend,
 		StatePipeline:    buildStatePipeline(historyQ, config.OrderBookGraph),
-		LedgerPipeline:   buildLedgerPipeline(historyQ, config.OrderBookGraph),
+		LedgerPipeline: buildLedgerPipeline(
+			historyQ,
+			config.OrderBookGraph,
+			config.IngestFailedTransactions,
+		),
 		StellarCoreClient: &stellarcore.Client{
 			URL: config.StellarCoreURL,
 		},
@@ -281,9 +286,7 @@ func (s *System) Run() {
 				return errors.Wrap(err, "Error updating state invalid value")
 			}
 
-			err = s.historySession.TruncateTables(
-				history.ExperimentalIngestionTables,
-			)
+			err = s.historyQ.TruncateExpingestStateTables()
 			if err != nil {
 				return errors.Wrap(err, "Error clearing ingest tables")
 			}

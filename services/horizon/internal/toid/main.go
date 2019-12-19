@@ -114,7 +114,7 @@ func New(ledger int32, tx int32, op int32) *ID {
 }
 
 // ToInt64 converts this struct back into an int64
-func (id *ID) ToInt64() (result int64) {
+func (id ID) ToInt64() (result int64) {
 
 	if id.LedgerSequence < 0 {
 		panic("invalid ledger sequence")
@@ -135,7 +135,7 @@ func (id *ID) ToInt64() (result int64) {
 }
 
 // String returns a string representation of this id
-func (id *ID) String() string {
+func (id ID) String() string {
 	return fmt.Sprintf("%d", id.ToInt64())
 }
 

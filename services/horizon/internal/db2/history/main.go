@@ -109,20 +109,9 @@ const (
 
 )
 
-// ExperimentalIngestionTables is a list of tables populated by the experimental
-// ingestion system
-var ExperimentalIngestionTables = []string{
-	"accounts",
-	"accounts_data",
-	"accounts_signers",
-	"exp_asset_stats",
-	"offers",
-	"trust_lines",
-}
-
 // Account is a row of data from the `history_accounts` table
 type Account struct {
-	ID      int64
+	ID      int64  `db:"id"`
 	Address string `db:"address"`
 }
 

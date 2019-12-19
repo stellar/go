@@ -92,6 +92,7 @@ func initExpIngester(app *App, orderBookGraph *orderbook.OrderBookGraph) {
 		TempSet:                  tempSet,
 		MaxStreamRetries:         3,
 		DisableStateVerification: app.config.IngestDisableStateVerification,
+		IngestFailedTransactions: app.config.IngestFailedTransactions,
 	})
 	if err != nil {
 		log.Fatal(err)

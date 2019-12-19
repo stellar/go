@@ -40,7 +40,11 @@ func createTransaction(successful bool, numOps int) io.LedgerTransaction {
 
 	operations := []xdr.Operation{}
 	for i := 0; i < numOps; i++ {
-		operations = append(operations, xdr.Operation{})
+		operations = append(operations, xdr.Operation{
+			Body: xdr.OperationBody{
+				Type: xdr.OperationTypeBumpSequence,
+			},
+		})
 	}
 
 	return io.LedgerTransaction{
@@ -187,8 +191,7 @@ func (s *LedgersProcessorTestSuiteLedger) TestCheckExpLedgerError() {
 		s.mockLedgerReader,
 		s.mockLedgerWriter,
 	)
-	s.Assert().Error(err)
-	s.Assert().EqualError(err, "Could not compare ledger 10: transient check exp ledger error")
+	s.Assert().NoError(err)
 }
 
 func (s *LedgersProcessorTestSuiteLedger) TestCheckExpLedgerDoesNotMatch() {
@@ -209,11 +212,7 @@ func (s *LedgersProcessorTestSuiteLedger) TestCheckExpLedgerDoesNotMatch() {
 		s.mockLedgerReader,
 		s.mockLedgerWriter,
 	)
-	s.Assert().Error(err)
-	s.Assert().EqualError(
-		err,
-		"ledger 10 in exp_history_ledgers does not match ledger in history_ledgers",
-	)
+	s.Assert().NoError(err)
 }
 
 func (s *LedgersProcessorTestSuiteLedger) TestInsertExpLedgerReturnsError() {

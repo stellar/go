@@ -146,6 +146,11 @@ func (c *Change) AccountSignersChanged() bool {
 	return false
 }
 
+// Successful returns true if the transaction succeeded
+func (t *LedgerTransaction) Successful() bool {
+	return t.Result.Result.Result.Code == xdr.TransactionResultCodeTxSuccess
+}
+
 // GetFeeChanges returns a developer friendly representation of LedgerEntryChanges
 // connected to fees.
 func (t *LedgerTransaction) GetFeeChanges() []Change {

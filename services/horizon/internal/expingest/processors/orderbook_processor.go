@@ -61,7 +61,7 @@ func (p *OrderbookProcessor) ProcessLedger(ctx context.Context, store *pipeline.
 			}
 		}
 
-		if transaction.Result.Result.Result.Code != xdr.TransactionResultCodeTxSuccess {
+		if !transaction.Successful() {
 			continue
 		}
 

@@ -21,11 +21,6 @@ type mockDBSession struct {
 	mock.Mock
 }
 
-func (m *mockDBSession) TruncateTables(tables []string) error {
-	args := m.Called(tables)
-	return args.Error(0)
-}
-
 func (m *mockDBSession) Clone() *db.Session {
 	args := m.Called()
 	return args.Get(0).(*db.Session)
@@ -83,6 +78,11 @@ func (m *mockDBQ) GetAllOffers() ([]history.Offer, error) {
 func (m *mockDBQ) RemoveExpIngestHistory(newerThanSequence uint32) (history.ExpIngestRemovalSummary, error) {
 	args := m.Called(newerThanSequence)
 	return args.Get(0).(history.ExpIngestRemovalSummary), args.Error(1)
+}
+
+func (m *mockDBQ) TruncateExpingestStateTables() error {
+	args := m.Called()
+	return args.Error(0)
 }
 
 type mockIngestSession struct {
@@ -223,7 +223,7 @@ func (s *RunIngestionTestSuite) TestTruncateTablesReturnsError() {
 	s.historyQ.On("GetExpIngestVersion").Return(CurrentVersion, nil).Once()
 	s.historyQ.On("UpdateLastLedgerExpIngest", uint32(0)).Return(nil).Once()
 	s.historyQ.On("UpdateExpStateInvalid", false).Return(nil).Once()
-	s.session.On("TruncateTables", history.ExperimentalIngestionTables).Return(
+	s.historyQ.On("TruncateExpingestStateTables").Return(
 		errors.New("truncate error"),
 	).Once()
 	s.historyQ.On("Rollback").Return(nil).Once()
@@ -236,7 +236,7 @@ func (s *RunIngestionTestSuite) TestRunReturnsError() {
 	s.historyQ.On("GetExpIngestVersion").Return(CurrentVersion, nil).Once()
 	s.historyQ.On("UpdateLastLedgerExpIngest", uint32(0)).Return(nil).Once()
 	s.historyQ.On("UpdateExpStateInvalid", false).Return(nil).Once()
-	s.session.On("TruncateTables", history.ExperimentalIngestionTables).Return(nil).Once()
+	s.historyQ.On("TruncateExpingestStateTables").Return(nil).Once()
 	s.ingestSession.On("Run").Return(errors.New("run error")).Once()
 	s.ingestSession.On("GetLatestSuccessfullyProcessedLedger").Return(uint32(3), true).Once()
 	s.historyQ.On("Rollback").Return(nil).Once()
@@ -250,7 +250,7 @@ func (s *RunIngestionTestSuite) TestOutdatedIngestVersion() {
 	s.historyQ.On("GetExpIngestVersion").Return(CurrentVersion-1, nil).Once()
 	s.historyQ.On("UpdateLastLedgerExpIngest", uint32(0)).Return(nil).Once()
 	s.historyQ.On("UpdateExpStateInvalid", false).Return(nil).Once()
-	s.session.On("TruncateTables", history.ExperimentalIngestionTables).Return(nil).Once()
+	s.historyQ.On("TruncateExpingestStateTables").Return(nil).Once()
 	s.ingestSession.On("Run").Return(nil).Once()
 	s.historyQ.On("Rollback").Return(nil).Once()
 	s.system.retry = expectError(s.Assert(), "")
