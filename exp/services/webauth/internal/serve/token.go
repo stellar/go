@@ -2,13 +2,13 @@ package serve
 
 import (
 	"crypto/ecdsa"
-	"encoding/json"
 	"net/http"
 	"time"
 
 	"github.com/dgrijalva/jwt-go"
 	"github.com/stellar/go/clients/horizonclient"
 	"github.com/stellar/go/keypair"
+	"github.com/stellar/go/support/http/httpdecode"
 	supportlog "github.com/stellar/go/support/log"
 
 	"github.com/stellar/go/support/render/httpjson"
@@ -25,7 +25,7 @@ type tokenHandler struct {
 }
 
 type tokenRequest struct {
-	Transaction string `json:"transaction"`
+	Transaction string `json:"transaction" form:"transaction"`
 }
 
 type tokenResponse struct {
@@ -37,29 +37,12 @@ func (h tokenHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	req := tokenRequest{}
 
-	contentType := r.Header.Get("Content-Type")
-	switch contentType {
-	case "application/x-www-form-urlencoded":
-		defer r.Body.Close()
-		err := r.ParseForm()
-		if err != nil {
-			badRequest.Render(w)
-			return
-		}
-		req.Transaction = r.PostForm.Get("transaction")
-	case "application/json", "application/json; charset=utf-8":
-		defer r.Body.Close()
-		err := json.NewDecoder(r.Body).Decode(&req)
-		if err != nil {
-			badRequest.Render(w)
-			return
-		}
-	default:
-		unsupportedMediaType.Render(w)
-		return
+	err := httpdecode.Decode(r, &req)
+	if err != nil {
+		badRequest.Render(w)
 	}
 
-	_, err := txnbuild.VerifyChallengeTx(req.Transaction, h.SigningAddress.Address(), h.NetworkPassphrase)
+	_, err = txnbuild.VerifyChallengeTx(req.Transaction, h.SigningAddress.Address(), h.NetworkPassphrase)
 	if err != nil {
 		unauthorized.Render(w)
 		return
