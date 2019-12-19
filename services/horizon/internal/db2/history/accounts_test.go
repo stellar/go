@@ -248,6 +248,43 @@ func TestUpsertAccount(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, expectedBinary, actualBinary)
 	assert.Equal(t, uint32(1235), accounts[0].LastModifiedLedger)
+
+	accounts, err = q.GetAccountsByIDs([]string{account2.AccountId.Address()})
+	assert.NoError(t, err)
+	assert.Len(t, accounts, 1)
+
+	expectedBinary, err = account2.MarshalBinary()
+	assert.NoError(t, err)
+
+	dbEntry = xdr.AccountEntry{
+		AccountId:     xdr.MustAddress(accounts[0].AccountID),
+		Balance:       xdr.Int64(accounts[0].Balance),
+		SeqNum:        xdr.SequenceNumber(accounts[0].SequenceNumber),
+		NumSubEntries: xdr.Uint32(accounts[0].NumSubEntries),
+		InflationDest: &inflationDest,
+		Flags:         xdr.Uint32(accounts[0].Flags),
+		HomeDomain:    xdr.String32(accounts[0].HomeDomain),
+		Thresholds: xdr.Thresholds{
+			accounts[0].MasterWeight,
+			accounts[0].ThresholdLow,
+			accounts[0].ThresholdMedium,
+			accounts[0].ThresholdHigh,
+		},
+		Ext: xdr.AccountEntryExt{
+			V: 1,
+			V1: &xdr.AccountEntryV1{
+				Liabilities: xdr.Liabilities{
+					Buying:  xdr.Int64(accounts[0].BuyingLiabilities),
+					Selling: xdr.Int64(accounts[0].SellingLiabilities),
+				},
+			},
+		},
+	}
+
+	actualBinary, err = dbEntry.MarshalBinary()
+	assert.NoError(t, err)
+	assert.Equal(t, expectedBinary, actualBinary)
+	assert.Equal(t, uint32(1234), accounts[0].LastModifiedLedger)
 }
 
 func TestRemoveAccount(t *testing.T) {

@@ -96,6 +96,9 @@ func (q *Q) UpdateTrustLine(trustLine xdr.TrustLineEntry, lastModifiedLedger xdr
 }
 
 // UpsertTrustLines upserts a batch of trust lines in the trust lines table.
+// There's currently no limit of the number of trust lines this method can
+// accept other than 2GB limit of the query string length what should be enough
+// for each ledger with the current limits.
 func (q *Q) UpsertTrustLines(trustLines []xdr.LedgerEntry) error {
 	var ledgerKey, accountID, assetIssuer, assetCode []string
 	var balance, limit, buyingLiabilities, sellingLiabilities []xdr.Int64

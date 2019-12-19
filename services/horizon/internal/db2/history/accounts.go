@@ -115,6 +115,9 @@ func (q *Q) UpdateAccount(account xdr.AccountEntry, lastModifiedLedger xdr.Uint3
 }
 
 // UpsertAccounts upserts a batch of accounts in the accounts table.
+// There's currently no limit of the number of accounts this method can
+// accept other than 2GB limit of the query string length what should be enough
+// for each ledger with the current limits.
 func (q *Q) UpsertAccounts(accounts []xdr.LedgerEntry) error {
 	var accountID, inflationDestination []string
 	var homeDomain []xdr.String32
