@@ -27,6 +27,8 @@ type ExpIngestRemovalSummary struct {
 	LedgersRemoved                 int64
 	TransactionsRemoved            int64
 	TransactionParticipantsRemoved int64
+	OperationsRemoved              int64
+	OperationParticipantsRemoved   int64
 }
 
 // RemoveExpIngestHistory removes all rows in the experimental ingestion
@@ -69,5 +71,32 @@ func (q *Q) RemoveExpIngestHistory(newerThanSequence uint32) (ExpIngestRemovalSu
 	}
 
 	summary.TransactionParticipantsRemoved, err = result.RowsAffected()
+	if err != nil {
+		return summary, err
+	}
+
+	result, err = q.Exec(
+		sq.Delete("exp_history_operations").
+			Where("id >= ?", toid.ID{LedgerSequence: int32(newerThanSequence + 1)}.ToInt64()),
+	)
+	if err != nil {
+		return summary, err
+	}
+
+	summary.OperationsRemoved, err = result.RowsAffected()
+	if err != nil {
+		return summary, err
+	}
+
+	result, err = q.Exec(
+		sq.Delete("exp_history_operation_participants").
+			Where("history_operation_id >= ?", toid.ID{LedgerSequence: int32(newerThanSequence + 1)}.ToInt64()),
+	)
+	if err != nil {
+		return summary, err
+	}
+
+	summary.OperationParticipantsRemoved, err = result.RowsAffected()
+
 	return summary, err
 }

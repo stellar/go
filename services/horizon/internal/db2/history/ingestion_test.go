@@ -22,6 +22,8 @@ func TestRemoveExpIngestHistory(t *testing.T) {
 
 	txInsertBuilder := q.NewTransactionBatchInsertBuilder(0)
 	txParticipantsInsertBuilder := q.NewTransactionParticipantsBatchInsertBuilder(0)
+	opInsertBuilder := q.NewOperationBatchInsertBuilder(0)
+	opParticipantsInsertBuilder := q.NewOperationParticipantBatchInsertBuilder(0)
 	accountID := int64(1223)
 
 	ledger := Ledger{
@@ -62,18 +64,20 @@ func TestRemoveExpIngestHistory(t *testing.T) {
 		_, err = q.Exec(insertSQL)
 		tt.Assert.NoError(err)
 
+		tx := buildLedgerTransaction(
+			tt.T,
+			testTransaction{
+				index:         1,
+				envelopeXDR:   "AAAAACiSTRmpH6bHC6Ekna5e82oiGY5vKDEEUgkq9CB//t+rAAAAyAEXUhsAADDRAAAAAAAAAAAAAAABAAAAAAAAAAsBF1IbAABX4QAAAAAAAAAA",
+				resultXDR:     "AAAAAAAAASwAAAAAAAAAAwAAAAAAAAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAFAAAAAAAAAAA=",
+				feeChangesXDR: "AAAAAA==",
+				metaXDR:       "AAAAAQAAAAAAAAAA",
+				hash:          "19aaa18db88605aedec04659fb45e06f240b022eb2d429e05133e4d53cd945ba",
+			},
+		)
+
 		err = txInsertBuilder.Add(
-			buildLedgerTransaction(
-				tt.T,
-				testTransaction{
-					index:         1,
-					envelopeXDR:   "AAAAACiSTRmpH6bHC6Ekna5e82oiGY5vKDEEUgkq9CB//t+rAAAAyAEXUhsAADDRAAAAAAAAAAAAAAABAAAAAAAAAAsBF1IbAABX4QAAAAAAAAAA",
-					resultXDR:     "AAAAAAAAASwAAAAAAAAAAwAAAAAAAAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAFAAAAAAAAAAA=",
-					feeChangesXDR: "AAAAAA==",
-					metaXDR:       "AAAAAQAAAAAAAAAA",
-					hash:          "19aaa18db88605aedec04659fb45e06f240b022eb2d429e05133e4d53cd945ba",
-				},
-			),
+			tx,
 			uint32(ledger.Sequence),
 		)
 		tt.Assert.NoError(err)
@@ -82,6 +86,17 @@ func TestRemoveExpIngestHistory(t *testing.T) {
 			txParticipantsInsertBuilder.Add(toid.New(ledger.Sequence, 1, 0).ToInt64(), accountID),
 		)
 		tt.Assert.NoError(txParticipantsInsertBuilder.Exec())
+
+		err = opInsertBuilder.Add(
+			tx,
+			uint32(ledger.Sequence),
+		)
+		tt.Assert.NoError(err)
+		tt.Assert.NoError(opInsertBuilder.Exec())
+		tt.Assert.NoError(
+			opParticipantsInsertBuilder.Add(toid.New(ledger.Sequence, 1, 1).ToInt64(), accountID),
+		)
+		tt.Assert.NoError(opParticipantsInsertBuilder.Exec())
 
 		ledger.Sequence++
 	}
@@ -97,6 +112,25 @@ func TestRemoveExpIngestHistory(t *testing.T) {
 	tt.Assert.Len(transactions, 5)
 
 	tt.Assert.Len(getTransactionParticipants(tt, q), 5)
+
+	var operations []Operation
+	err = q.Select(&operations, selectExpOperation)
+	tt.Assert.NoError(err)
+	tt.Assert.Len(operations, 5)
+
+	type hop struct {
+		OperationID int64 `db:"history_operation_id"`
+		AccountID   int64 `db:"history_account_id"`
+	}
+
+	opParticipants := []hop{}
+	err = q.Select(&opParticipants, sq.Select(
+		"hopp.history_operation_id, "+
+			"hopp.history_account_id").
+		From("exp_history_operation_participants hopp"),
+	)
+	tt.Assert.NoError(err)
+	tt.Assert.Len(opParticipants, 5)
 
 	summary, err = q.RemoveExpIngestHistory(69863)
 	tt.Assert.Equal(ExpIngestRemovalSummary{}, summary)
@@ -119,6 +153,8 @@ func TestRemoveExpIngestHistory(t *testing.T) {
 			LedgersRemoved:                 2,
 			TransactionsRemoved:            2,
 			TransactionParticipantsRemoved: 2,
+			OperationsRemoved:              2,
+			OperationParticipantsRemoved:   2,
 		},
 		summary,
 	)
