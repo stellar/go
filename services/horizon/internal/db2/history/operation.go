@@ -2,6 +2,7 @@ package history
 
 import (
 	"encoding/json"
+	"fmt"
 	"reflect"
 
 	sq "github.com/Masterminds/squirrel"
@@ -331,13 +332,15 @@ type operationParticipant struct {
 	Address     string `db:"address"`
 }
 
-// CheckExpOperationParticipants checks that the participants in
-// exp_history_operation_participants for the given ledger matches the same
-// participants as in history_operation_participants
-func (q *Q) CheckExpOperationParticipants(seq int32) (bool, error) {
+func (q *Q) findOperationParticipants(
+	participantTable,
+	accountTable,
+	operationsTable string,
+	seq int32,
+) ([]operationParticipant, error) {
 	from := toid.ID{LedgerSequence: int32(seq)}.ToInt64()
 	to := toid.ID{LedgerSequence: int32(seq + 1)}.ToInt64()
-	expOps := []operationParticipant{}
+	participants := []operationParticipant{}
 
 	fields := sq.Select(
 		"hop.history_operation_id, " +
@@ -345,12 +348,45 @@ func (q *Q) CheckExpOperationParticipants(seq int32) (bool, error) {
 			"ha.address as address")
 
 	sql := fields.
-		From("exp_history_operation_participants hop").
-		Join("exp_history_operations ho ON hop.history_operation_id = ho.id").
-		Join("exp_history_accounts ha ON hop.history_account_id = ha.id").
+		From(
+			fmt.Sprintf("%s hop", participantTable),
+		).
+		Join(
+			fmt.Sprintf(
+				"%s ho ON hop.history_operation_id = ho.id",
+				operationsTable,
+			),
+		).
+		Join(
+			fmt.Sprintf(
+				"%s ha ON hop.history_account_id = ha.id",
+				accountTable,
+			),
+		).
 		Where("ho.id >= ? AND ho.id <= ? ", from, to)
 
-	err := q.Select(&expOps, sql)
+	err := q.Select(&participants, sql)
+
+	if err != nil {
+		return participants, errors.Errorf(
+			"could not load exp_history_operation_participants for ledger: %v",
+			seq,
+		)
+	}
+
+	return participants, nil
+}
+
+// CheckExpOperationParticipants checks that the participants in
+// exp_history_operation_participants for the given ledger matches the same
+// participants as in history_operation_participants
+func (q *Q) CheckExpOperationParticipants(seq int32) (bool, error) {
+	expOps, err := q.findOperationParticipants(
+		"exp_history_operation_participants",
+		"exp_history_accounts",
+		"exp_history_operations",
+		seq,
+	)
 
 	if err != nil {
 		return false, errors.Errorf(
@@ -359,15 +395,13 @@ func (q *Q) CheckExpOperationParticipants(seq int32) (bool, error) {
 		)
 	}
 
-	ops := []operationParticipant{}
+	ops, err := q.findOperationParticipants(
+		"history_operation_participants",
+		"history_accounts",
+		"history_operations",
+		seq,
+	)
 
-	sql = fields.
-		From("history_operation_participants hop").
-		Join("history_operations ho ON hop.history_operation_id = ho.id").
-		Join("history_accounts ha ON hop.history_account_id = ha.id").
-		Where("ho.id >= ? AND ho.id <= ? ", from, to)
-
-	err = q.Select(&ops, sql)
 	if err != nil {
 		return false, errors.Errorf(
 			"could not load history_operation_participants for ledger: %v",
