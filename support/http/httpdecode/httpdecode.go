@@ -51,3 +51,33 @@ func DecodeForm(r *http.Request, v interface{}) error {
 	dec.IgnoreUnknownKeys(true)
 	return dec.Decode(v, r.PostForm)
 }
+
+// Decode decodes form URL encoded requests and JSON requests from r into v.
+//
+// The requests Content-Type header informs if the request should be decoded
+// using a form URL encoded decoder or using a JSON decoder.
+//
+// A Content-Type of application/x-www-form-urlencoded will result in form
+// decoding. Any other content type will result in JSON decoding because it is
+// common to make JSON requests without a Content-Type where-as correctly
+// formatted form URL encoded requests are more often accompanied by the
+// appropriate Content-Type.
+//
+// An error is returned if the Content-Type cannot be parsed by a mime
+// media-type parser.
+//
+// See DecodeForm and DecodeJSON for details about the types of errors that may
+// occur.
+func Decode(r *http.Request, v interface{}) error {
+	contentType := r.Header.Get("Content-Type")
+	if contentType != "" {
+		mediaType, _, err := mime.ParseMediaType(contentType)
+		if err != nil {
+			return errors.Wrap(err, "content type could not be parsed")
+		}
+		if mediaType == "application/x-www-form-urlencoded" {
+			return DecodeForm(r, v)
+		}
+	}
+	return DecodeJSON(r, v)
+}
