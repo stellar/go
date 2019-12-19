@@ -140,7 +140,7 @@ func (p *ParticipantsProcessor) insertDBOperationsParticipants(participantSet ma
 	}
 
 	if err := batch.Exec(); err != nil {
-		return errors.Wrap(err, "Could not flush operation participants to db")
+		return errors.Wrap(err, "could not flush operation participants to db")
 	}
 	return nil
 }

@@ -460,3 +460,69 @@ func (s *ParticipantsProcessorTestSuiteLedger) TestBatchAddExecFails() {
 	)
 	s.Assert().EqualError(err, "Could not flush transaction participants to db: transient error")
 }
+
+func (s *ParticipantsProcessorTestSuiteLedger) TestOpeartionBatchAddExecFails() {
+	s.mockLedgerReader.On("IgnoreUpgradeChanges").Once()
+	s.mockLedgerReader.On("GetSequence").Return(s.sequence).Once()
+
+	s.mockLedgerReader.
+		On("Read").
+		Return(s.firstTx, nil).Once()
+	s.mockLedgerReader.
+		On("Read").
+		Return(s.secondTx, nil).Once()
+	s.mockLedgerReader.
+		On("Read").
+		Return(s.thirdTx, nil).Once()
+	s.mockLedgerReader.
+		On("Read").
+		Return(io.LedgerTransaction{}, stdio.EOF).Once()
+	s.mockLedgerReader.
+		On("Close").
+		Return(nil).Once()
+
+	s.mockQ.On("CreateExpAccounts", s.sortedAddresses).Return(s.addressToID, nil).Once()
+	s.mockQ.On("NewTransactionParticipantsBatchInsertBuilder", maxBatchSize).
+		Return(s.mockBatchInsertBuilder).Once()
+	s.mockQ.On("NewOperationParticipantBatchInsertBuilder", maxBatchSize).
+		Return(s.mockOperationsBatchInsertBuilder).Once()
+
+	s.mockBatchInsertBuilder.On(
+		"Add", s.firstTxID, s.addressToID[s.sortedAddresses[0]],
+	).Return(nil).Once()
+
+	s.mockBatchInsertBuilder.On(
+		"Add", s.secondTxID, s.addressToID[s.sortedAddresses[1]],
+	).Return(nil).Once()
+	s.mockBatchInsertBuilder.On(
+		"Add", s.secondTxID, s.addressToID[s.sortedAddresses[2]],
+	).Return(nil).Once()
+
+	s.mockBatchInsertBuilder.On(
+		"Add", s.thirdTxID, s.addressToID[s.sortedAddresses[0]],
+	).Return(nil).Once()
+
+	s.mockOperationsBatchInsertBuilder.On(
+		"Add", s.firstTxID+1, s.addressToID[s.sortedAddresses[0]],
+	).Return(nil).Once()
+	s.mockOperationsBatchInsertBuilder.On(
+		"Add", s.secondTxID+1, s.addressToID[s.sortedAddresses[1]],
+	).Return(nil).Once()
+	s.mockOperationsBatchInsertBuilder.On(
+		"Add", s.secondTxID+1, s.addressToID[s.sortedAddresses[2]],
+	).Return(nil).Once()
+	s.mockOperationsBatchInsertBuilder.On(
+		"Add", s.thirdTxID+1, s.addressToID[s.sortedAddresses[0]],
+	).Return(nil).Once()
+
+	s.mockBatchInsertBuilder.On("Exec").Return(nil).Once()
+	s.mockOperationsBatchInsertBuilder.On("Exec").Return(errors.New("transient error")).Once()
+
+	err := s.processor.ProcessLedger(
+		s.context,
+		&supportPipeline.Store{},
+		s.mockLedgerReader,
+		s.mockLedgerWriter,
+	)
+	s.Assert().EqualError(err, "could not flush operation participants to db: transient error")
+}
