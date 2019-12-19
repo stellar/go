@@ -7,6 +7,7 @@ import (
 	"github.com/stellar/go/exp/ingest/io"
 	"github.com/stellar/go/services/horizon/internal/db2"
 	"github.com/stellar/go/services/horizon/internal/test"
+	"github.com/stellar/go/services/horizon/internal/toid"
 	"github.com/stellar/go/support/db"
 )
 
@@ -425,5 +426,132 @@ func TestCheckExpOperations(t *testing.T) {
 		valid, err := q.CheckExpOperations(sequence)
 		tt.Assert.NoError(err)
 		tt.Assert.True(valid)
+	}
+}
+
+func TestCheckExpOperationParticipants(t *testing.T) {
+	tt := test.Start(t)
+	defer tt.Finish()
+	test.ResetHorizonDB(t, tt.HorizonDB)
+	q := &Q{tt.HorizonSession()}
+
+	sequence := int32(20)
+
+	valid, err := q.CheckExpOperationParticipants(sequence)
+	tt.Assert.NoError(err)
+	tt.Assert.True(valid)
+
+	addresses := []string{
+		"GAOQJGUAB7NI7K7I62ORBXMN3J4SSWQUQ7FOEPSDJ322W2HMCNWPHXFB",
+		"GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H",
+		"GCYVFGI3SEQJGBNQQG7YCMFWEYOHK3XPVOVPA6C566PXWN4SN7LILZSM",
+		"GBYSBDAJZMHL5AMD7QXQ3JEP3Q4GLKADWIJURAAHQALNAWD6Z5XF2RAC",
+	}
+	expAccounts, err := q.CreateExpAccounts(addresses)
+	tt.Assert.NoError(err)
+
+	operationIDs := []int64{
+		toid.New(sequence, 1, 1).ToInt64(),
+		toid.New(sequence, 2, 1).ToInt64(),
+		toid.New(sequence, 1, 1).ToInt64(),
+		toid.New(sequence+1, 1, 1).ToInt64(),
+	}
+
+	historyOperations := map[int64]map[string]interface{}{
+		operationIDs[0]: map[string]interface{}{
+			"id":                operationIDs[0],
+			"transaction_id":    toid.New(sequence, 1, 0).ToInt64(),
+			"application_order": 1,
+			"type":              1,
+			"details":           "{}",
+			"source_account":    addresses[0],
+		},
+		operationIDs[1]: map[string]interface{}{
+			"id":                operationIDs[1],
+			"transaction_id":    toid.New(sequence, 2, 0).ToInt64(),
+			"application_order": 1,
+			"type":              1,
+			"details":           "{}",
+			"source_account":    addresses[0],
+		},
+		// We skip operationIDs[2] since it is the same operation as operationIDs[0]
+		operationIDs[3]: map[string]interface{}{
+			"id":                operationIDs[3],
+			"transaction_id":    toid.New(sequence+1, 1, 0).ToInt64(),
+			"application_order": 1,
+			"type":              1,
+			"details":           "{}",
+			"source_account":    addresses[0],
+		},
+	}
+
+	sql := sq.Insert("exp_history_operations")
+
+	for _, historyOperation := range historyOperations {
+		_, err = q.Exec(sql.SetMap(historyOperation))
+		tt.Assert.NoError(err)
+	}
+
+	batch := q.NewOperationParticipantBatchInsertBuilder(0)
+	for i, address := range addresses {
+		tt.Assert.NoError(
+			batch.Add(operationIDs[i], expAccounts[address]),
+		)
+	}
+	tt.Assert.NoError(batch.Exec())
+
+	valid, err = q.CheckExpOperationParticipants(sequence)
+	tt.Assert.NoError(err)
+	tt.Assert.True(valid)
+
+	addresses = append(addresses, "GBXGQJWVLWOYHFLVTKWV5FGHA3LNYY2JQKM7OAJAUEQFU6LPCSEFVXON")
+	operationIDs = append(operationIDs, toid.New(sequence, 3, 1).ToInt64())
+
+	historyOperations[operationIDs[4]] = map[string]interface{}{
+		"id":                operationIDs[4],
+		"transaction_id":    toid.New(sequence, 3, 0).ToInt64(),
+		"application_order": 1,
+		"type":              1,
+		"details":           "{}",
+		"source_account":    addresses[0],
+	}
+
+	var accounts []Account
+	tt.Assert.NoError(q.CreateAccounts(&accounts, addresses))
+
+	accountsMap := map[string]int64{}
+	for _, account := range accounts {
+		accountsMap[account.Address] = account.ID
+	}
+
+	for i, address := range addresses {
+		_, err := q.Exec(sq.Insert("history_operation_participants").
+			SetMap(map[string]interface{}{
+				"history_operation_id": operationIDs[i],
+				"history_account_id":   accountsMap[address],
+			}))
+		tt.Assert.NoError(err)
+
+		historyOperation, ok := historyOperations[operationIDs[i]]
+
+		if ok {
+			_, err := q.Exec(sq.Insert("history_operations").
+				SetMap(historyOperation).
+				Suffix("ON CONFLICT (id) DO NOTHING"))
+
+			tt.Assert.NoError(err)
+		}
+
+		valid, err = q.CheckExpOperationParticipants(sequence)
+		tt.Assert.NoError(err)
+		// The first 3 operations all belong to ledger `sequence`.
+		// The 4th operatino belongs to the next ledger so it is
+		// ignored by CheckExpOperationParticipants.
+		// The last operation belongs to `sequence`, however, it is
+		// not present in exp_history_operation_participants so
+		// we expect CheckExpOperationParticipants to fail after the last
+		// transaction is added to history_operation_participants
+		expected := i == 2 || i == 3
+		tt.Assert.Equal(expected, valid)
 	}
 }

@@ -375,6 +375,14 @@ func (q *Q) CheckExpOperationParticipants(seq int32) (bool, error) {
 		)
 	}
 
+	if len(expOps) == 0 || len(ops) == 0 {
+		return true, nil
+	}
+
+	if len(expOps) != len(ops) {
+		return false, nil
+	}
+
 	expParticipants := buildOperationParticipantsByID(expOps)
 	participants := buildOperationParticipantsByID(ops)
 
@@ -382,7 +390,7 @@ func (q *Q) CheckExpOperationParticipants(seq int32) (bool, error) {
 		oops, ok := participants[operationID]
 
 		if !ok {
-			continue
+			return false, errors.Errorf("exp_operation_participants for operation %v are different to operation_participants", operationID)
 		}
 
 		equal := reflect.DeepEqual(ops, oops)
