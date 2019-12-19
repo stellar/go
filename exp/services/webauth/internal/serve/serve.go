@@ -23,7 +23,7 @@ type Options struct {
 	JWTExpiresIn       time.Duration
 }
 
-func Main(opts Options) {
+func Run(opts Options) {
 	handler := handler(opts)
 	addr := fmt.Sprintf(":%d", opts.Port)
 	supporthttp.Run(supporthttp.Config{
