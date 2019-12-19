@@ -325,11 +325,73 @@ func (q *Q) CheckExpOperations(seq int32) (bool, error) {
 	return true, nil
 }
 
-// CheckExpOperations checks that the participants in
+type operationParticipant struct {
+	OperationID int64  `db:"history_operation_id"`
+	AccountID   int64  `db:"history_account_id"`
+	Address     string `db:"address"`
+}
+
+// CheckExpOperationParticipants checks that the participants in
 // exp_history_operation_participants for the given ledger matches the same
 // participants as in history_operation_participants
 func (q *Q) CheckExpOperationParticipants(seq int32) (bool, error) {
-	// TODO: Implement
+	from := toid.ID{LedgerSequence: int32(seq)}.ToInt64()
+	to := toid.ID{LedgerSequence: int32(seq + 1)}.ToInt64()
+	expOps := []operationParticipant{}
+
+	fields := sq.Select(
+		"hop.history_operation_id, " +
+			"hop.history_account_id, " +
+			"ha.address as address")
+
+	sql := fields.
+		From("exp_history_operation_participants hop").
+		Join("exp_history_operations ho ON hop.history_operation_id = ho.id").
+		Join("exp_history_accounts ha ON hop.history_account_id = ha.id").
+		Where("ho.id >= ? AND ho.id <= ? ", from, to)
+
+	err := q.Select(&expOps, sql)
+
+	if err != nil {
+		return false, errors.Errorf(
+			"could not load exp_history_operation_participants for ledger: %v",
+			seq,
+		)
+	}
+
+	ops := []operationParticipant{}
+
+	sql = fields.
+		From("history_operation_participants hop").
+		Join("history_operations ho ON hop.history_operation_id = ho.id").
+		Join("history_accounts ha ON hop.history_account_id = ha.id").
+		Where("ho.id >= ? AND ho.id <= ? ", from, to)
+
+	err = q.Select(&ops, sql)
+	if err != nil {
+		return false, errors.Errorf(
+			"could not load history_operation_participants for ledger: %v",
+			seq,
+		)
+	}
+
+	expParticipants := buildOperationParticipantsByID(expOps)
+	participants := buildOperationParticipantsByID(ops)
+
+	for operationID, ops := range expParticipants {
+		oops, ok := participants[operationID]
+
+		if !ok {
+			continue
+		}
+
+		equal := reflect.DeepEqual(ops, oops)
+
+		if !equal {
+			return false, errors.Errorf("exp_operation_participants for operation %v are different to operation_participants", operationID)
+		}
+	}
+
 	return true, nil
 }
 
@@ -345,6 +407,19 @@ func buildOperationsByID(operations []Operation) map[int64]Operation {
 		operationsByIndex[operation.ID] = operation
 	}
 	return operationsByIndex
+}
+
+func buildOperationParticipantsByID(operations []operationParticipant) map[int64]map[string]struct{} {
+	set := map[int64]map[string]struct{}{}
+	for _, op := range operations {
+		participants, ok := set[op.OperationID]
+		if !ok {
+			participants = map[string]struct{}{}
+		}
+		participants[op.Address] = struct{}{}
+		set[op.OperationID] = participants
+	}
+	return set
 }
 
 var selectOperation = sq.Select(

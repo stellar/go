@@ -225,6 +225,10 @@ func (p *ParticipantsProcessor) ProcessLedger(ctx context.Context, store *pipeli
 			Error("participants do not match")
 	}
 
+	if _, err := p.ParticipantsQ.CheckExpOperationParticipants(int32(sequence - 10)); err != nil {
+		return err
+	}
+
 	return nil
 }
 
