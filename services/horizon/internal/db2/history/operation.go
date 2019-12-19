@@ -422,7 +422,7 @@ func buildOperationParticipantsByID(operations []operationParticipant) map[int64
 	return set
 }
 
-var selectOperation = sq.Select(
+var selectOperationFields = sq.Select(
 	"hop.id, " +
 		"hop.transaction_id, " +
 		"hop.application_order, " +
@@ -431,19 +431,12 @@ var selectOperation = sq.Select(
 		"hop.source_account, " +
 		"ht.transaction_hash, " +
 		"ht.tx_result, " +
-		"ht.successful as transaction_successful").
+		"ht.successful as transaction_successful")
+
+var selectOperation = selectOperationFields.
 	From("history_operations hop").
 	LeftJoin("history_transactions ht ON ht.id = hop.transaction_id")
 
-var selectExpOperation = sq.Select(
-	"hop.id, " +
-		"hop.transaction_id, " +
-		"hop.application_order, " +
-		"hop.type, " +
-		"hop.details, " +
-		"hop.source_account, " +
-		"ht.transaction_hash, " +
-		"ht.tx_result, " +
-		"ht.successful as transaction_successful").
+var selectExpOperation = selectOperationFields.
 	From("exp_history_operations hop").
 	LeftJoin("exp_history_transactions ht ON ht.id = hop.transaction_id")
