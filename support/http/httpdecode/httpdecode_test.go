@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestDecodeValidJSON(t *testing.T) {
+func TestDecodeJSON_valid(t *testing.T) {
 	body := `{"Foo":"bar"}`
 	r, _ := http.NewRequest("POST", "/", strings.NewReader(body))
 
@@ -22,7 +22,7 @@ func TestDecodeValidJSON(t *testing.T) {
 	assert.Equal(t, "bar", bodyDecoded.Foo)
 }
 
-func TestDecodeInvalidJSON(t *testing.T) {
+func TestDecodeJSON_invalid(t *testing.T) {
 	body := `{"Foo:"bar"}`
 	r, _ := http.NewRequest("POST", "/", strings.NewReader(body))
 
