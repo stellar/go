@@ -10,7 +10,7 @@ import (
 )
 
 func TestDecodeJSON_valid(t *testing.T) {
-	body := `{"Foo":"bar"}`
+	body := `{"foo":"bar"}`
 	r, _ := http.NewRequest("POST", "/", strings.NewReader(body))
 
 	bodyDecoded := struct {
@@ -23,7 +23,7 @@ func TestDecodeJSON_valid(t *testing.T) {
 }
 
 func TestDecodeJSON_invalid(t *testing.T) {
-	body := `{"Foo:"bar"}`
+	body := `{"foo:"bar"}`
 	r, _ := http.NewRequest("POST", "/", strings.NewReader(body))
 
 	bodyDecoded := struct {
