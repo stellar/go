@@ -102,7 +102,42 @@ func (s *ParticipantsProcessorTestSuiteLedger) TearDownTest() {
 	s.mockLedgerWriter.AssertExpectations(s.T())
 }
 
+func (s *ParticipantsProcessorTestSuiteLedger) mockSuccessfulTransactionBatchAdds() {
+	s.mockBatchInsertBuilder.On(
+		"Add", s.firstTxID, s.addressToID[s.sortedAddresses[0]],
+	).Return(nil).Once()
+
+	s.mockBatchInsertBuilder.On(
+		"Add", s.secondTxID, s.addressToID[s.sortedAddresses[1]],
+	).Return(nil).Once()
+	s.mockBatchInsertBuilder.On(
+		"Add", s.secondTxID, s.addressToID[s.sortedAddresses[2]],
+	).Return(nil).Once()
+
+	s.mockBatchInsertBuilder.On(
+		"Add", s.thirdTxID, s.addressToID[s.sortedAddresses[0]],
+	).Return(nil).Once()
+}
+
+func (s *ParticipantsProcessorTestSuiteLedger) mockSuccessfulOperationBatchAdds() {
+	s.mockOperationsBatchInsertBuilder.On(
+		"Add", s.firstTxID+1, s.addressToID[s.sortedAddresses[0]],
+	).Return(nil).Once()
+	s.mockOperationsBatchInsertBuilder.On(
+		"Add", s.secondTxID+1, s.addressToID[s.sortedAddresses[1]],
+	).Return(nil).Once()
+	s.mockOperationsBatchInsertBuilder.On(
+		"Add", s.secondTxID+1, s.addressToID[s.sortedAddresses[2]],
+	).Return(nil).Once()
+	s.mockOperationsBatchInsertBuilder.On(
+		"Add", s.thirdTxID+1, s.addressToID[s.sortedAddresses[0]],
+	).Return(nil).Once()
+}
 func (s *ParticipantsProcessorTestSuiteLedger) TestNoIngestUpdateDatabase() {
+	s.mockLedgerReader.
+		On("Close").
+		Return(nil).Once()
+
 	err := s.processor.ProcessLedger(
 		context.Background(),
 		&supportPipeline.Store{},
@@ -174,8 +209,6 @@ func (s *ParticipantsProcessorTestSuiteLedger) TestCheckExpOperationParticipants
 }
 
 func (s *ParticipantsProcessorTestSuiteLedger) TestParticipantsCheckDoesNotMatch() {
-	s.mockLedgerReader.On("IgnoreUpgradeChanges").Once()
-
 	s.mockLedgerReader.On("GetSequence").Return(s.sequence).Once()
 
 	s.mockLedgerReader.
@@ -196,9 +229,7 @@ func (s *ParticipantsProcessorTestSuiteLedger) TestParticipantsCheckDoesNotMatch
 	s.Assert().NoError(err)
 }
 
-func (s *ParticipantsProcessorTestSuiteLedger) TestIngestParticipantsSucceeds() {
-	s.mockLedgerReader.On("GetSequence").Return(s.sequence).Once()
-
+func (s *ParticipantsProcessorTestSuiteLedger) mockLedgerReads() {
 	s.mockLedgerReader.
 		On("Read").
 		Return(s.firstTx, nil).Once()
@@ -211,6 +242,12 @@ func (s *ParticipantsProcessorTestSuiteLedger) TestIngestParticipantsSucceeds() 
 	s.mockLedgerReader.
 		On("Read").
 		Return(io.LedgerTransaction{}, stdio.EOF).Once()
+}
+
+func (s *ParticipantsProcessorTestSuiteLedger) TestIngestParticipantsSucceeds() {
+	s.mockLedgerReader.On("GetSequence").Return(s.sequence).Once()
+
+	s.mockLedgerReads()
 
 	s.mockQ.On("CreateExpAccounts", s.sortedAddresses).Return(s.addressToID, nil).Once()
 	s.mockQ.On("NewTransactionParticipantsBatchInsertBuilder", maxBatchSize).
@@ -218,33 +255,8 @@ func (s *ParticipantsProcessorTestSuiteLedger) TestIngestParticipantsSucceeds() 
 	s.mockQ.On("NewOperationParticipantBatchInsertBuilder", maxBatchSize).
 		Return(s.mockOperationsBatchInsertBuilder).Once()
 
-	s.mockBatchInsertBuilder.On(
-		"Add", s.firstTxID, s.addressToID[s.sortedAddresses[0]],
-	).Return(nil).Once()
-
-	s.mockBatchInsertBuilder.On(
-		"Add", s.secondTxID, s.addressToID[s.sortedAddresses[1]],
-	).Return(nil).Once()
-	s.mockBatchInsertBuilder.On(
-		"Add", s.secondTxID, s.addressToID[s.sortedAddresses[2]],
-	).Return(nil).Once()
-
-	s.mockBatchInsertBuilder.On(
-		"Add", s.thirdTxID, s.addressToID[s.sortedAddresses[0]],
-	).Return(nil).Once()
-
-	s.mockOperationsBatchInsertBuilder.On(
-		"Add", s.firstTxID+1, s.addressToID[s.sortedAddresses[0]],
-	).Return(nil).Once()
-	s.mockOperationsBatchInsertBuilder.On(
-		"Add", s.secondTxID+1, s.addressToID[s.sortedAddresses[1]],
-	).Return(nil).Once()
-	s.mockOperationsBatchInsertBuilder.On(
-		"Add", s.secondTxID+1, s.addressToID[s.sortedAddresses[2]],
-	).Return(nil).Once()
-	s.mockOperationsBatchInsertBuilder.On(
-		"Add", s.thirdTxID+1, s.addressToID[s.sortedAddresses[0]],
-	).Return(nil).Once()
+	s.mockSuccessfulTransactionBatchAdds()
+	s.mockSuccessfulOperationBatchAdds()
 
 	s.mockBatchInsertBuilder.On("Exec").Return(nil).Once()
 	s.mockOperationsBatchInsertBuilder.On("Exec").Return(nil).Once()
@@ -266,18 +278,7 @@ func (s *ParticipantsProcessorTestSuiteLedger) TestIngestParticipantsSucceeds() 
 func (s *ParticipantsProcessorTestSuiteLedger) TestCreateExpAccountsFails() {
 	s.mockLedgerReader.On("GetSequence").Return(s.sequence).Once()
 
-	s.mockLedgerReader.
-		On("Read").
-		Return(s.firstTx, nil).Once()
-	s.mockLedgerReader.
-		On("Read").
-		Return(s.secondTx, nil).Once()
-	s.mockLedgerReader.
-		On("Read").
-		Return(s.thirdTx, nil).Once()
-	s.mockLedgerReader.
-		On("Read").
-		Return(io.LedgerTransaction{}, stdio.EOF).Once()
+	s.mockLedgerReads()
 
 	s.mockQ.On("CreateExpAccounts", s.sortedAddresses).
 		Return(s.addressToID, errors.New("transient error")).Once()
@@ -294,18 +295,7 @@ func (s *ParticipantsProcessorTestSuiteLedger) TestCreateExpAccountsFails() {
 func (s *ParticipantsProcessorTestSuiteLedger) TestBatchAddFails() {
 	s.mockLedgerReader.On("GetSequence").Return(s.sequence).Once()
 
-	s.mockLedgerReader.
-		On("Read").
-		Return(s.firstTx, nil).Once()
-	s.mockLedgerReader.
-		On("Read").
-		Return(s.secondTx, nil).Once()
-	s.mockLedgerReader.
-		On("Read").
-		Return(s.thirdTx, nil).Once()
-	s.mockLedgerReader.
-		On("Read").
-		Return(io.LedgerTransaction{}, stdio.EOF).Once()
+	s.mockLedgerReads()
 
 	s.mockQ.On("CreateExpAccounts", s.sortedAddresses).
 		Return(s.addressToID, nil).Once()
@@ -327,19 +317,6 @@ func (s *ParticipantsProcessorTestSuiteLedger) TestBatchAddFails() {
 		"Add", s.thirdTxID, s.addressToID[s.sortedAddresses[0]],
 	).Return(nil).Maybe()
 
-	s.mockOperationsBatchInsertBuilder.On(
-		"Add", s.firstTxID+1, s.addressToID[s.sortedAddresses[0]],
-	).Return(nil).Once()
-	s.mockOperationsBatchInsertBuilder.On(
-		"Add", s.secondTxID+1, s.addressToID[s.sortedAddresses[1]],
-	).Return(nil).Once()
-	s.mockOperationsBatchInsertBuilder.On(
-		"Add", s.secondTxID+1, s.addressToID[s.sortedAddresses[2]],
-	).Return(nil).Once()
-	s.mockOperationsBatchInsertBuilder.On(
-		"Add", s.thirdTxID+1, s.addressToID[s.sortedAddresses[0]],
-	).Return(nil).Once()
-
 	err := s.processor.ProcessLedger(
 		s.context,
 		&supportPipeline.Store{},
@@ -350,24 +327,9 @@ func (s *ParticipantsProcessorTestSuiteLedger) TestBatchAddFails() {
 }
 
 func (s *ParticipantsProcessorTestSuiteLedger) TestOperationParticipantsBatchAddFails() {
-	s.mockLedgerReader.On("IgnoreUpgradeChanges").Once()
 	s.mockLedgerReader.On("GetSequence").Return(s.sequence).Once()
 
-	s.mockLedgerReader.
-		On("Read").
-		Return(s.firstTx, nil).Once()
-	s.mockLedgerReader.
-		On("Read").
-		Return(s.secondTx, nil).Once()
-	s.mockLedgerReader.
-		On("Read").
-		Return(s.thirdTx, nil).Once()
-	s.mockLedgerReader.
-		On("Read").
-		Return(io.LedgerTransaction{}, stdio.EOF).Once()
-	s.mockLedgerReader.
-		On("Close").
-		Return(nil).Once()
+	s.mockLedgerReads()
 
 	s.mockQ.On("CreateExpAccounts", s.sortedAddresses).
 		Return(s.addressToID, nil).Once()
@@ -376,20 +338,7 @@ func (s *ParticipantsProcessorTestSuiteLedger) TestOperationParticipantsBatchAdd
 	s.mockQ.On("NewOperationParticipantBatchInsertBuilder", maxBatchSize).
 		Return(s.mockOperationsBatchInsertBuilder).Once()
 
-	s.mockBatchInsertBuilder.On(
-		"Add", s.firstTxID, s.addressToID[s.sortedAddresses[0]],
-	).Return(nil).Once()
-
-	s.mockBatchInsertBuilder.On(
-		"Add", s.secondTxID, s.addressToID[s.sortedAddresses[1]],
-	).Return(nil).Once()
-	s.mockBatchInsertBuilder.On(
-		"Add", s.secondTxID, s.addressToID[s.sortedAddresses[2]],
-	).Return(nil).Once()
-
-	s.mockBatchInsertBuilder.On(
-		"Add", s.thirdTxID, s.addressToID[s.sortedAddresses[0]],
-	).Return(nil).Once()
+	s.mockSuccessfulTransactionBatchAdds()
 
 	s.mockOperationsBatchInsertBuilder.On(
 		"Add", s.firstTxID+1, s.addressToID[s.sortedAddresses[0]],
@@ -418,37 +367,13 @@ func (s *ParticipantsProcessorTestSuiteLedger) TestOperationParticipantsBatchAdd
 func (s *ParticipantsProcessorTestSuiteLedger) TestBatchAddExecFails() {
 	s.mockLedgerReader.On("GetSequence").Return(s.sequence).Once()
 
-	s.mockLedgerReader.
-		On("Read").
-		Return(s.firstTx, nil).Once()
-	s.mockLedgerReader.
-		On("Read").
-		Return(s.secondTx, nil).Once()
-	s.mockLedgerReader.
-		On("Read").
-		Return(s.thirdTx, nil).Once()
-	s.mockLedgerReader.
-		On("Read").
-		Return(io.LedgerTransaction{}, stdio.EOF).Once()
+	s.mockLedgerReads()
 
 	s.mockQ.On("CreateExpAccounts", s.sortedAddresses).Return(s.addressToID, nil).Once()
 	s.mockQ.On("NewTransactionParticipantsBatchInsertBuilder", maxBatchSize).
 		Return(s.mockBatchInsertBuilder).Once()
 
-	s.mockBatchInsertBuilder.On(
-		"Add", s.firstTxID, s.addressToID[s.sortedAddresses[0]],
-	).Return(nil).Once()
-
-	s.mockBatchInsertBuilder.On(
-		"Add", s.secondTxID, s.addressToID[s.sortedAddresses[1]],
-	).Return(nil).Once()
-	s.mockBatchInsertBuilder.On(
-		"Add", s.secondTxID, s.addressToID[s.sortedAddresses[2]],
-	).Return(nil).Once()
-
-	s.mockBatchInsertBuilder.On(
-		"Add", s.thirdTxID, s.addressToID[s.sortedAddresses[0]],
-	).Return(nil).Once()
+	s.mockSuccessfulTransactionBatchAdds()
 
 	s.mockBatchInsertBuilder.On("Exec").Return(errors.New("transient error")).Once()
 
@@ -462,24 +387,9 @@ func (s *ParticipantsProcessorTestSuiteLedger) TestBatchAddExecFails() {
 }
 
 func (s *ParticipantsProcessorTestSuiteLedger) TestOpeartionBatchAddExecFails() {
-	s.mockLedgerReader.On("IgnoreUpgradeChanges").Once()
 	s.mockLedgerReader.On("GetSequence").Return(s.sequence).Once()
 
-	s.mockLedgerReader.
-		On("Read").
-		Return(s.firstTx, nil).Once()
-	s.mockLedgerReader.
-		On("Read").
-		Return(s.secondTx, nil).Once()
-	s.mockLedgerReader.
-		On("Read").
-		Return(s.thirdTx, nil).Once()
-	s.mockLedgerReader.
-		On("Read").
-		Return(io.LedgerTransaction{}, stdio.EOF).Once()
-	s.mockLedgerReader.
-		On("Close").
-		Return(nil).Once()
+	s.mockLedgerReads()
 
 	s.mockQ.On("CreateExpAccounts", s.sortedAddresses).Return(s.addressToID, nil).Once()
 	s.mockQ.On("NewTransactionParticipantsBatchInsertBuilder", maxBatchSize).
@@ -487,33 +397,8 @@ func (s *ParticipantsProcessorTestSuiteLedger) TestOpeartionBatchAddExecFails() 
 	s.mockQ.On("NewOperationParticipantBatchInsertBuilder", maxBatchSize).
 		Return(s.mockOperationsBatchInsertBuilder).Once()
 
-	s.mockBatchInsertBuilder.On(
-		"Add", s.firstTxID, s.addressToID[s.sortedAddresses[0]],
-	).Return(nil).Once()
-
-	s.mockBatchInsertBuilder.On(
-		"Add", s.secondTxID, s.addressToID[s.sortedAddresses[1]],
-	).Return(nil).Once()
-	s.mockBatchInsertBuilder.On(
-		"Add", s.secondTxID, s.addressToID[s.sortedAddresses[2]],
-	).Return(nil).Once()
-
-	s.mockBatchInsertBuilder.On(
-		"Add", s.thirdTxID, s.addressToID[s.sortedAddresses[0]],
-	).Return(nil).Once()
-
-	s.mockOperationsBatchInsertBuilder.On(
-		"Add", s.firstTxID+1, s.addressToID[s.sortedAddresses[0]],
-	).Return(nil).Once()
-	s.mockOperationsBatchInsertBuilder.On(
-		"Add", s.secondTxID+1, s.addressToID[s.sortedAddresses[1]],
-	).Return(nil).Once()
-	s.mockOperationsBatchInsertBuilder.On(
-		"Add", s.secondTxID+1, s.addressToID[s.sortedAddresses[2]],
-	).Return(nil).Once()
-	s.mockOperationsBatchInsertBuilder.On(
-		"Add", s.thirdTxID+1, s.addressToID[s.sortedAddresses[0]],
-	).Return(nil).Once()
+	s.mockSuccessfulTransactionBatchAdds()
+	s.mockSuccessfulOperationBatchAdds()
 
 	s.mockBatchInsertBuilder.On("Exec").Return(nil).Once()
 	s.mockOperationsBatchInsertBuilder.On("Exec").Return(errors.New("transient error")).Once()
