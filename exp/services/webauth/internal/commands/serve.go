@@ -91,5 +91,5 @@ func (c *ServeCommand) Command() *cobra.Command {
 }
 
 func (c *ServeCommand) Run(opts serve.Options) {
-	serve.Run(opts)
+	serve.Serve(opts)
 }
