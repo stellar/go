@@ -328,7 +328,6 @@ func (q *Q) CheckExpOperations(seq int32) (bool, error) {
 
 type operationParticipant struct {
 	OperationID int64  `db:"history_operation_id"`
-	AccountID   int64  `db:"history_account_id"`
 	Address     string `db:"address"`
 }
 
@@ -344,7 +343,6 @@ func (q *Q) findOperationParticipants(
 
 	fields := sq.Select(
 		"hop.history_operation_id, " +
-			"hop.history_account_id, " +
 			"ha.address as address")
 
 	sql := fields.
@@ -363,7 +361,10 @@ func (q *Q) findOperationParticipants(
 				accountTable,
 			),
 		).
-		Where("ho.id >= ? AND ho.id <= ? ", from, to)
+		Where("ho.id >= ? AND ho.id <= ? ", from, to).
+		OrderBy(
+			"hop.history_operation_id asc, ha.address asc",
+		)
 
 	err := q.Select(&participants, sql)
 
@@ -381,7 +382,7 @@ func (q *Q) findOperationParticipants(
 // exp_history_operation_participants for the given ledger matches the same
 // participants as in history_operation_participants
 func (q *Q) CheckExpOperationParticipants(seq int32) (bool, error) {
-	expOps, err := q.findOperationParticipants(
+	expParticipants, err := q.findOperationParticipants(
 		"exp_history_operation_participants",
 		"exp_history_accounts",
 		"exp_history_operations",
@@ -395,7 +396,7 @@ func (q *Q) CheckExpOperationParticipants(seq int32) (bool, error) {
 		)
 	}
 
-	ops, err := q.findOperationParticipants(
+	participants, err := q.findOperationParticipants(
 		"history_operation_participants",
 		"history_accounts",
 		"history_operations",
@@ -409,28 +410,18 @@ func (q *Q) CheckExpOperationParticipants(seq int32) (bool, error) {
 		)
 	}
 
-	if len(expOps) == 0 || len(ops) == 0 {
+	if len(expParticipants) == 0 || len(participants) == 0 {
 		return true, nil
 	}
 
-	if len(expOps) != len(ops) {
+	if len(expParticipants) != len(participants) {
 		return false, nil
 	}
 
-	expParticipants := buildOperationParticipantsByID(expOps)
-	participants := buildOperationParticipantsByID(ops)
-
-	for operationID, ops := range expParticipants {
-		oops, ok := participants[operationID]
-
-		if !ok {
-			return false, errors.Errorf("exp_operation_participants for operation %v are different to operation_participants", operationID)
-		}
-
-		equal := reflect.DeepEqual(ops, oops)
-
-		if !equal {
-			return false, errors.Errorf("exp_operation_participants for operation %v are different to operation_participants", operationID)
+	for i, expParticipant := range expParticipants {
+		participant := participants[i]
+		if expParticipant != participant {
+			return false, nil
 		}
 	}
 
@@ -449,19 +440,6 @@ func buildOperationsByID(operations []Operation) map[int64]Operation {
 		operationsByIndex[operation.ID] = operation
 	}
 	return operationsByIndex
-}
-
-func buildOperationParticipantsByID(operations []operationParticipant) map[int64]map[string]struct{} {
-	set := map[int64]map[string]struct{}{}
-	for _, op := range operations {
-		participants, ok := set[op.OperationID]
-		if !ok {
-			participants = map[string]struct{}{}
-		}
-		participants[op.Address] = struct{}{}
-		set[op.OperationID] = participants
-	}
-	return set
 }
 
 var selectOperationFields = sq.Select(
