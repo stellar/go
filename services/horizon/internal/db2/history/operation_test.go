@@ -525,7 +525,7 @@ func TestCheckExpOperationParticipants(t *testing.T) {
 	}
 
 	for i, address := range addresses {
-		_, err := q.Exec(sq.Insert("history_operation_participants").
+		_, err = q.Exec(sq.Insert("history_operation_participants").
 			SetMap(map[string]interface{}{
 				"history_operation_id": operationIDs[i],
 				"history_account_id":   accountsMap[address],
@@ -535,7 +535,7 @@ func TestCheckExpOperationParticipants(t *testing.T) {
 		historyOperation, ok := historyOperations[operationIDs[i]]
 
 		if ok {
-			_, err := q.Exec(sq.Insert("history_operations").
+			_, err = q.Exec(sq.Insert("history_operations").
 				SetMap(historyOperation).
 				Suffix("ON CONFLICT (id) DO NOTHING"))
 
