@@ -102,6 +102,21 @@ func (s *ParticipantsProcessorTestSuiteLedger) TearDownTest() {
 	s.mockLedgerWriter.AssertExpectations(s.T())
 }
 
+func (s *ParticipantsProcessorTestSuiteLedger) mockLedgerReads() {
+	s.mockLedgerReader.
+		On("Read").
+		Return(s.firstTx, nil).Once()
+	s.mockLedgerReader.
+		On("Read").
+		Return(s.secondTx, nil).Once()
+	s.mockLedgerReader.
+		On("Read").
+		Return(s.thirdTx, nil).Once()
+	s.mockLedgerReader.
+		On("Read").
+		Return(io.LedgerTransaction{}, stdio.EOF).Once()
+}
+
 func (s *ParticipantsProcessorTestSuiteLedger) mockSuccessfulTransactionBatchAdds() {
 	s.mockBatchInsertBuilder.On(
 		"Add", s.firstTxID, s.addressToID[s.sortedAddresses[0]],
@@ -134,10 +149,6 @@ func (s *ParticipantsProcessorTestSuiteLedger) mockSuccessfulOperationBatchAdds(
 	).Return(nil).Once()
 }
 func (s *ParticipantsProcessorTestSuiteLedger) TestNoIngestUpdateDatabase() {
-	s.mockLedgerReader.
-		On("Close").
-		Return(nil).Once()
-
 	err := s.processor.ProcessLedger(
 		context.Background(),
 		&supportPipeline.Store{},
@@ -227,21 +238,6 @@ func (s *ParticipantsProcessorTestSuiteLedger) TestParticipantsCheckDoesNotMatch
 		s.mockLedgerWriter,
 	)
 	s.Assert().NoError(err)
-}
-
-func (s *ParticipantsProcessorTestSuiteLedger) mockLedgerReads() {
-	s.mockLedgerReader.
-		On("Read").
-		Return(s.firstTx, nil).Once()
-	s.mockLedgerReader.
-		On("Read").
-		Return(s.secondTx, nil).Once()
-	s.mockLedgerReader.
-		On("Read").
-		Return(s.thirdTx, nil).Once()
-	s.mockLedgerReader.
-		On("Read").
-		Return(io.LedgerTransaction{}, stdio.EOF).Once()
 }
 
 func (s *ParticipantsProcessorTestSuiteLedger) TestIngestParticipantsSucceeds() {
