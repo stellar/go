@@ -16,9 +16,8 @@ import (
 )
 
 func TestChallenge(t *testing.T) {
-	serverKey, err := keypair.Random()
-	require.NoError(t, err)
-	account, err := keypair.Random()
+	serverKey := keypair.MustRandom()
+	account := keypair.MustRandom()
 
 	h := challengeHandler{
 		Logger:             supportlog.DefaultLogger,
@@ -40,7 +39,7 @@ func TestChallenge(t *testing.T) {
 		Transaction       string `json:"transaction"`
 		NetworkPassphrase string `json:"network_passphrase"`
 	}{}
-	err = json.NewDecoder(resp.Body).Decode(&res)
+	err := json.NewDecoder(resp.Body).Decode(&res)
 	require.NoError(t, err)
 
 	var tx xdr.TransactionEnvelope
