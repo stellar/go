@@ -5,7 +5,7 @@ import (
 	"net/http"
 )
 
-// Decode decodes JSON request from r into v.
+// DecodeJSON decodes JSON request from r into v.
 func DecodeJSON(r *http.Request, v interface{}) error {
 	dec := json.NewDecoder(r.Body)
 	dec.UseNumber()
