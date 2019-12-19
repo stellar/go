@@ -20,7 +20,6 @@
 // migrations/26_exp_history_ledgers.sql
 // migrations/27_exp_history_transactions.sql
 // migrations/28_exp_history_operations.sql
-// migrations/29_exp_history_operation_participants.sql
 // migrations/2_index_participants_by_toid.sql
 // migrations/3_use_sequence_in_history_accounts.sql
 // migrations/4_add_protocol_version.sql
@@ -472,12 +471,12 @@ func migrations27_exp_history_transactionsSql() (*asset, error) {
 		return nil, err
 	}
 
-	info := bindataFileInfo{name: "migrations/27_exp_history_transactions.sql", size: 630, mode: os.FileMode(420), modTime: time.Unix(1576693928, 0)}
+	info := bindataFileInfo{name: "migrations/27_exp_history_transactions.sql", size: 630, mode: os.FileMode(420), modTime: time.Unix(1576774540, 0)}
 	a := &asset{bytes: bytes, info: info}
 	return a, nil
 }
 
-var _migrations28_exp_history_operationsSql = []byte("\x1f\x8b\x08\x00\x00\x00\x00\x00\x00\xff\x7c\xce\xb1\x0a\xc2\x30\x10\x87\xf1\xfd\x9e\xe2\x3f\x2a\xd2\x27\xe8\x54\x6d\x06\xb1\xa0\x94\x3a\x97\x90\x9c\xf5\xa0\x5e\x4a\x92\x62\x7d\x7b\xc1\x49\x2c\xb8\x7e\xbf\xe5\x2b\x0a\xec\x1e\x32\x44\x9b\x19\xd7\x89\xe8\xd0\x9a\xaa\x33\xe8\xaa\x7d\x63\xc0\xcb\xd4\xdf\x25\xe5\x10\x5f\x7d\x98\x38\xda\x2c\x41\x13\x36\x04\x00\xcd\xf1\x64\xb0\xd6\x8f\x89\xba\x71\xf6\xa2\x03\x3c\xdf\xec\x3c\xe6\xdf\xec\x82\xa6\x1c\xad\xe8\x4a\x44\x3d\x2f\x9c\x68\x5b\x12\x7d\xcf\xd5\xe1\xa9\x44\x75\x7b\xbe\xfc\x9f\x73\x36\x39\xeb\xb9\xa4\x77\x00\x00\x00\xff\xff\x38\xa5\xef\x4a\xda\x00\x00\x00")
+var _migrations28_exp_history_operationsSql = []byte("\x1f\x8b\x08\x00\x00\x00\x00\x00\x00\xff\xac\x90\xc1\xaa\xc2\x30\x10\x45\xf7\xf9\x8a\x59\xbe\x87\xf4\x0b\xba\xaa\x36\x0b\xb1\xa0\x94\xba\x2e\x43\x12\xeb\x40\x9d\x84\x64\x8a\xf5\xef\x05\x17\x62\x2d\x54\x17\x6e\xe7\xdc\x81\x73\x6f\x96\xc1\xea\x42\x5d\x44\x71\x70\x0c\x4a\x6d\x6a\x5d\x34\x1a\x9a\x62\x5d\x69\x70\x63\x68\xcf\x94\xc4\xc7\x5b\xeb\x83\x8b\x28\xe4\x39\xc1\x9f\x02\x00\xa8\xb6\x3b\x0d\x73\xfa\x60\xc4\xa6\x1f\x2c\x71\x07\xd6\x9d\x70\xe8\xe5\xfd\x6c\x3c\x27\x89\x48\x3c\x23\xc4\xd6\x8d\x2e\xa9\xff\xfc\x1b\x99\x36\x60\x14\x32\x14\x90\x65\x59\x6c\x92\xfc\xa5\xe4\xeb\x82\xa5\xbf\xb2\x52\x65\xbd\x3f\x2c\x2f\x68\x30\x19\xb4\x2e\xff\x9c\x9d\x16\x7c\xfe\xdd\x03\x00\x00\xff\xff\x70\x31\x67\x84\xb7\x01\x00\x00")
 
 func migrations28_exp_history_operationsSqlBytes() ([]byte, error) {
 	return bindataRead(
@@ -492,27 +491,7 @@ func migrations28_exp_history_operationsSql() (*asset, error) {
 		return nil, err
 	}
 
-	info := bindataFileInfo{name: "migrations/28_exp_history_operations.sql", size: 218, mode: os.FileMode(420), modTime: time.Unix(1576693928, 0)}
-	a := &asset{bytes: bytes, info: info}
-	return a, nil
-}
-
-var _migrations29_exp_history_operation_participantsSql = []byte("\x1f\x8b\x08\x00\x00\x00\x00\x00\x00\xff\x8c\xce\xb1\x0a\xc2\x30\x10\xc6\xf1\xfd\x9e\xe2\x46\x45\xfa\x04\x9d\xaa\xcd\x20\x16\x94\x52\xe7\x70\x24\x67\x3d\xa8\x97\x90\xa4\x58\xdf\x5e\x70\x12\x0a\xe2\xfa\xf1\xff\xe0\x57\x55\xb8\x7b\xc8\x98\xa8\x30\x5e\x23\xc0\xa1\x37\xcd\x60\x70\x68\xf6\x9d\x41\x5e\xa2\xbd\x4b\x2e\x21\xbd\x6c\x88\x9c\xa8\x48\x50\x1b\x29\x15\x71\x12\x49\x4b\xc6\x0d\x20\x22\x76\xc7\x93\xc1\xdf\xe5\xa7\x13\x75\xd3\xec\x45\x47\xf4\x7c\xa3\x79\x5a\xcd\x2e\x68\x2e\x89\x64\x7d\x10\xf5\xbc\x70\x86\x6d\x0d\xf0\x8d\x6e\xc3\x53\x01\xda\xfe\x7c\xf9\x1f\xed\x28\x3b\xf2\x5c\xc3\x3b\x00\x00\xff\xff\x61\xb4\x05\xbd\xfe\x00\x00\x00")
-
-func migrations29_exp_history_operation_participantsSqlBytes() ([]byte, error) {
-	return bindataRead(
-		_migrations29_exp_history_operation_participantsSql,
-		"migrations/29_exp_history_operation_participants.sql",
-	)
-}
-
-func migrations29_exp_history_operation_participantsSql() (*asset, error) {
-	bytes, err := migrations29_exp_history_operation_participantsSqlBytes()
-	if err != nil {
-		return nil, err
-	}
-
-	info := bindataFileInfo{name: "migrations/29_exp_history_operation_participants.sql", size: 254, mode: os.FileMode(420), modTime: time.Unix(1576694029, 0)}
+	info := bindataFileInfo{name: "migrations/28_exp_history_operations.sql", size: 439, mode: os.FileMode(420), modTime: time.Unix(1576791021, 0)}
 	a := &asset{bytes: bytes, info: info}
 	return a, nil
 }
@@ -769,7 +748,6 @@ var _bindata = map[string]func() (*asset, error){
 	"migrations/26_exp_history_ledgers.sql":                   migrations26_exp_history_ledgersSql,
 	"migrations/27_exp_history_transactions.sql":              migrations27_exp_history_transactionsSql,
 	"migrations/28_exp_history_operations.sql":                migrations28_exp_history_operationsSql,
-	"migrations/29_exp_history_operation_participants.sql":    migrations29_exp_history_operation_participantsSql,
 	"migrations/2_index_participants_by_toid.sql":             migrations2_index_participants_by_toidSql,
 	"migrations/3_use_sequence_in_history_accounts.sql":       migrations3_use_sequence_in_history_accountsSql,
 	"migrations/4_add_protocol_version.sql":                   migrations4_add_protocol_versionSql,
@@ -843,7 +821,6 @@ var _bintree = &bintree{nil, map[string]*bintree{
 		"26_exp_history_ledgers.sql":                   &bintree{migrations26_exp_history_ledgersSql, map[string]*bintree{}},
 		"27_exp_history_transactions.sql":              &bintree{migrations27_exp_history_transactionsSql, map[string]*bintree{}},
 		"28_exp_history_operations.sql":                &bintree{migrations28_exp_history_operationsSql, map[string]*bintree{}},
-		"29_exp_history_operation_participants.sql":    &bintree{migrations29_exp_history_operation_participantsSql, map[string]*bintree{}},
 		"2_index_participants_by_toid.sql":             &bintree{migrations2_index_participants_by_toidSql, map[string]*bintree{}},
 		"3_use_sequence_in_history_accounts.sql":       &bintree{migrations3_use_sequence_in_history_accountsSql, map[string]*bintree{}},
 		"4_add_protocol_version.sql":                   &bintree{migrations4_add_protocol_versionSql, map[string]*bintree{}},
