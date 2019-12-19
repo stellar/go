@@ -54,11 +54,11 @@ func (c *ServeCommand) Command() *cobra.Command {
 		},
 		{
 			Name:           "challenge-expires-in",
-			Usage:          "The time period after which the challenge transaction expires",
+			Usage:          "The time period in seconds after which the challenge transaction expires",
 			OptType:        types.Int,
 			CustomSetValue: config.SetDuration,
 			ConfigKey:      &opts.ChallengeExpiresIn,
-			FlagDefault:    int(300 * time.Second),
+			FlagDefault:    300,
 			Required:       true,
 		},
 		{
@@ -70,11 +70,11 @@ func (c *ServeCommand) Command() *cobra.Command {
 		},
 		{
 			Name:           "jwt-expires-in",
-			Usage:          "The time period that after which the JWT expires",
+			Usage:          "The time period in seconds after which the JWT expires",
 			OptType:        types.Int,
 			CustomSetValue: config.SetDuration,
 			ConfigKey:      &opts.JWTExpiresIn,
-			FlagDefault:    int(300 * time.Minute),
+			FlagDefault:    300,
 			Required:       true,
 		},
 	}
