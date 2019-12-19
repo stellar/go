@@ -167,6 +167,7 @@ type QAccounts interface {
 	NewAccountsBatchInsertBuilder(maxBatchSize int) AccountsBatchInsertBuilder
 	InsertAccount(account xdr.AccountEntry, lastModifiedLedger xdr.Uint32) (int64, error)
 	UpdateAccount(account xdr.AccountEntry, lastModifiedLedger xdr.Uint32) (int64, error)
+	UpsertAccounts(accounts []xdr.LedgerEntry) error
 	RemoveAccount(accountID string) (int64, error)
 }
 
@@ -562,6 +563,7 @@ type QTrustLines interface {
 	NewTrustLinesBatchInsertBuilder(maxBatchSize int) TrustLinesBatchInsertBuilder
 	InsertTrustLine(trustLine xdr.TrustLineEntry, lastModifiedLedger xdr.Uint32) (int64, error)
 	UpdateTrustLine(trustLine xdr.TrustLineEntry, lastModifiedLedger xdr.Uint32) (int64, error)
+	UpsertTrustLines(trustLines []xdr.LedgerEntry) error
 	RemoveTrustLine(key xdr.LedgerKeyTrustLine) (int64, error)
 }
 

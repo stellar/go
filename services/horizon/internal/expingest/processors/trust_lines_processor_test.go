@@ -336,15 +336,24 @@ func (s *TrustLinesProcessorTestSuiteLedger) TestInsertTrustLine() {
 			}),
 		}, nil).Once()
 	s.mockQ.On(
-		"InsertTrustLine",
-		updatedTrustLine,
-		lastModifiedLedgerSeq,
-	).Return(int64(1), nil).Once()
-	s.mockQ.On(
-		"InsertTrustLine",
-		updatedUnauthorizedTrustline,
-		lastModifiedLedgerSeq,
-	).Return(int64(1), nil).Once()
+		"UpsertTrustLines",
+		[]xdr.LedgerEntry{
+			xdr.LedgerEntry{
+				LastModifiedLedgerSeq: lastModifiedLedgerSeq,
+				Data: xdr.LedgerEntryData{
+					Type:      xdr.LedgerEntryTypeTrustline,
+					TrustLine: &updatedTrustLine,
+				},
+			},
+			xdr.LedgerEntry{
+				LastModifiedLedgerSeq: lastModifiedLedgerSeq,
+				Data: xdr.LedgerEntryData{
+					Type:      xdr.LedgerEntryTypeTrustline,
+					TrustLine: &updatedUnauthorizedTrustline,
+				},
+			},
+		},
+	).Return(nil).Once()
 	s.mockAssetStatsQ.On("GetAssetStat",
 		xdr.AssetTypeAssetTypeCreditAlphanum4,
 		"EUR",
@@ -432,10 +441,17 @@ func (s *TrustLinesProcessorTestSuiteLedger) TestUpdateTrustLine() {
 		Return(io.Change{}, stdio.EOF).Once()
 
 	s.mockQ.On(
-		"UpdateTrustLine",
-		updatedTrustLine,
-		lastModifiedLedgerSeq,
-	).Return(int64(1), nil).Once()
+		"UpsertTrustLines",
+		[]xdr.LedgerEntry{
+			xdr.LedgerEntry{
+				LastModifiedLedgerSeq: lastModifiedLedgerSeq,
+				Data: xdr.LedgerEntryData{
+					Type:      xdr.LedgerEntryTypeTrustline,
+					TrustLine: &updatedTrustLine,
+				},
+			},
+		},
+	).Return(nil).Once()
 
 	s.mockAssetStatsQ.On("GetAssetStat",
 		xdr.AssetTypeAssetTypeCreditAlphanum4,
@@ -464,72 +480,6 @@ func (s *TrustLinesProcessorTestSuiteLedger) TestUpdateTrustLine() {
 	)
 
 	s.Assert().NoError(err)
-}
-
-func (s *TrustLinesProcessorTestSuiteLedger) TestUpdateTrustLineNoRowsAffected() {
-	lastModifiedLedgerSeq := xdr.Uint32(1234)
-
-	trustLine := xdr.TrustLineEntry{
-		AccountId: xdr.MustAddress("GAOQJGUAB7NI7K7I62ORBXMN3J4SSWQUQ7FOEPSDJ322W2HMCNWPHXFB"),
-		Asset:     xdr.MustNewCreditAsset("EUR", trustLineIssuer.Address()),
-		Balance:   0,
-		Flags:     xdr.Uint32(xdr.TrustLineFlagsAuthorizedFlag),
-	}
-	updatedTrustLine := xdr.TrustLineEntry{
-		AccountId: xdr.MustAddress("GAOQJGUAB7NI7K7I62ORBXMN3J4SSWQUQ7FOEPSDJ322W2HMCNWPHXFB"),
-		Asset:     xdr.MustNewCreditAsset("EUR", trustLineIssuer.Address()),
-		Balance:   10,
-		Flags:     xdr.Uint32(xdr.TrustLineFlagsAuthorizedFlag),
-	}
-	s.mockLedgerReader.On("Read").
-		Return(io.LedgerTransaction{
-			Meta: createTransactionMeta([]xdr.OperationMeta{
-				xdr.OperationMeta{
-					Changes: []xdr.LedgerEntryChange{
-						// State
-						xdr.LedgerEntryChange{
-							Type: xdr.LedgerEntryChangeTypeLedgerEntryState,
-							State: &xdr.LedgerEntry{
-								LastModifiedLedgerSeq: lastModifiedLedgerSeq - 1,
-								Data: xdr.LedgerEntryData{
-									Type:      xdr.LedgerEntryTypeTrustline,
-									TrustLine: &trustLine,
-								},
-							},
-						},
-						// Updated
-						xdr.LedgerEntryChange{
-							Type: xdr.LedgerEntryChangeTypeLedgerEntryUpdated,
-							Updated: &xdr.LedgerEntry{
-								LastModifiedLedgerSeq: lastModifiedLedgerSeq,
-								Data: xdr.LedgerEntryData{
-									Type:      xdr.LedgerEntryTypeTrustline,
-									TrustLine: &updatedTrustLine,
-								},
-							},
-						},
-					},
-				},
-			}),
-		}, nil).Once()
-	s.mockLedgerReader.On("Read").Return(io.LedgerTransaction{}, stdio.EOF).Once()
-
-	s.mockQ.On(
-		"UpdateTrustLine",
-		updatedTrustLine,
-		lastModifiedLedgerSeq,
-	).Return(int64(0), nil).Once()
-
-	err := s.processor.ProcessLedger(
-		context.Background(),
-		&supportPipeline.Store{},
-		s.mockLedgerReader,
-		s.mockLedgerWriter,
-	)
-
-	s.Assert().Error(err)
-	s.Assert().IsType(ingesterrors.StateError{}, errors.Cause(err))
-	s.Assert().EqualError(err, "Error in TrustLines handler: 0 rows affected when updating trustline: GAOQJGUAB7NI7K7I62ORBXMN3J4SSWQUQ7FOEPSDJ322W2HMCNWPHXFB credit_alphanum4/EUR/GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H")
 }
 
 func (s *TrustLinesProcessorTestSuiteLedger) TestUpdateTrustLineAuthorization() {
@@ -614,10 +564,25 @@ func (s *TrustLinesProcessorTestSuiteLedger) TestUpdateTrustLineAuthorization() 
 		}, nil).Once()
 
 	s.mockQ.On(
-		"UpdateTrustLine",
-		updatedTrustLine,
-		lastModifiedLedgerSeq,
-	).Return(int64(1), nil).Once()
+		"UpsertTrustLines",
+		[]xdr.LedgerEntry{
+			xdr.LedgerEntry{
+				LastModifiedLedgerSeq: lastModifiedLedgerSeq,
+				Data: xdr.LedgerEntryData{
+					Type:      xdr.LedgerEntryTypeTrustline,
+					TrustLine: &updatedTrustLine,
+				},
+			},
+			xdr.LedgerEntry{
+				LastModifiedLedgerSeq: lastModifiedLedgerSeq,
+				Data: xdr.LedgerEntryData{
+					Type:      xdr.LedgerEntryTypeTrustline,
+					TrustLine: &otherUpdatedTrustLine,
+				},
+			},
+		},
+	).Return(nil).Once()
+
 	s.mockAssetStatsQ.On("GetAssetStat",
 		xdr.AssetTypeAssetTypeCreditAlphanum4,
 		"EUR",
@@ -631,11 +596,6 @@ func (s *TrustLinesProcessorTestSuiteLedger) TestUpdateTrustLineAuthorization() 
 		NumAccounts: 1,
 	}).Return(int64(1), nil).Once()
 
-	s.mockQ.On(
-		"UpdateTrustLine",
-		otherUpdatedTrustLine,
-		lastModifiedLedgerSeq,
-	).Return(int64(1), nil).Once()
 	s.mockAssetStatsQ.On("GetAssetStat",
 		xdr.AssetTypeAssetTypeCreditAlphanum4,
 		"USD",
@@ -837,10 +797,17 @@ func (s *TrustLinesProcessorTestSuiteLedger) TestProcessUpgradeChange() {
 			}, nil).Once()
 
 	s.mockQ.On(
-		"InsertTrustLine",
-		updatedTrustLine,
-		lastModifiedLedgerSeq,
-	).Return(int64(1), nil).Once()
+		"UpsertTrustLines",
+		[]xdr.LedgerEntry{
+			xdr.LedgerEntry{
+				LastModifiedLedgerSeq: lastModifiedLedgerSeq,
+				Data: xdr.LedgerEntryData{
+					Type:      xdr.LedgerEntryTypeTrustline,
+					TrustLine: &updatedTrustLine,
+				},
+			},
+		},
+	).Return(nil).Once()
 
 	s.mockAssetStatsQ.On("GetAssetStat",
 		xdr.AssetTypeAssetTypeCreditAlphanum4,

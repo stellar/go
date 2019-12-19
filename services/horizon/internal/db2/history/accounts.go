@@ -2,6 +2,7 @@ package history
 
 import (
 	sq "github.com/Masterminds/squirrel"
+	"github.com/lib/pq"
 
 	"github.com/stellar/go/services/horizon/internal/db2"
 	"github.com/stellar/go/support/errors"
@@ -111,6 +112,110 @@ func (q *Q) UpdateAccount(account xdr.AccountEntry, lastModifiedLedger xdr.Uint3
 	}
 
 	return result.RowsAffected()
+}
+
+// UpsertAccounts upserts a batch of accounts in the accounts table.
+// There's currently no limit of the number of accounts this method can
+// accept other than 2GB limit of the query string length what should be enough
+// for each ledger with the current limits.
+func (q *Q) UpsertAccounts(accounts []xdr.LedgerEntry) error {
+	var accountID, inflationDestination []string
+	var homeDomain []xdr.String32
+	var balance, buyingLiabilities, sellingLiabilities []xdr.Int64
+	var sequenceNumber []xdr.SequenceNumber
+	var numSubEntries, flags, lastModifiedLedger []xdr.Uint32
+	var masterWeight, thresholdLow, thresholdMedium, thresholdHigh []uint8
+
+	for _, entry := range accounts {
+		if entry.Data.Type != xdr.LedgerEntryTypeAccount {
+			return errors.Errorf("Invalid entry type: %d", entry.Data.Type)
+		}
+
+		m := accountToMap(entry.Data.MustAccount(), entry.LastModifiedLedgerSeq)
+
+		accountID = append(accountID, m["account_id"].(string))
+		balance = append(balance, m["balance"].(xdr.Int64))
+		buyingLiabilities = append(buyingLiabilities, m["buying_liabilities"].(xdr.Int64))
+		sellingLiabilities = append(sellingLiabilities, m["selling_liabilities"].(xdr.Int64))
+		sequenceNumber = append(sequenceNumber, m["sequence_number"].(xdr.SequenceNumber))
+		numSubEntries = append(numSubEntries, m["num_subentries"].(xdr.Uint32))
+		inflationDestination = append(inflationDestination, m["inflation_destination"].(string))
+		flags = append(flags, m["flags"].(xdr.Uint32))
+		homeDomain = append(homeDomain, m["home_domain"].(xdr.String32))
+		masterWeight = append(masterWeight, m["master_weight"].(uint8))
+		thresholdLow = append(thresholdLow, m["threshold_low"].(uint8))
+		thresholdMedium = append(thresholdMedium, m["threshold_medium"].(uint8))
+		thresholdHigh = append(thresholdHigh, m["threshold_high"].(uint8))
+		lastModifiedLedger = append(lastModifiedLedger, m["last_modified_ledger"].(xdr.Uint32))
+	}
+
+	sql := `
+	WITH r AS
+		(SELECT
+			unnest(?::text[]),   /* account_id */
+			unnest(?::bigint[]), /*	balance */
+			unnest(?::bigint[]), /*	buying_liabilities */
+			unnest(?::bigint[]), /*	selling_liabilities */
+			unnest(?::bigint[]), /*	sequence_number */
+			unnest(?::int[]),    /*	num_subentries */
+			unnest(?::text[]),   /*	inflation_destination */
+			unnest(?::int[]),    /*	flags */
+			unnest(?::text[]),   /*	home_domain */
+			unnest(?::int[]),    /*	master_weight */
+			unnest(?::int[]),    /*	threshold_low */
+			unnest(?::int[]),    /*	threshold_medium */
+			unnest(?::int[]),    /*	threshold_high */
+			unnest(?::int[])     /*	last_modified_ledger */
+		)
+	INSERT INTO accounts ( 
+		account_id,
+		balance,
+		buying_liabilities,
+		selling_liabilities,
+		sequence_number,
+		num_subentries,
+		inflation_destination,
+		flags,
+		home_domain,
+		master_weight,
+		threshold_low,
+		threshold_medium,
+		threshold_high,
+		last_modified_ledger
+	)
+	SELECT * from r 
+	ON CONFLICT (account_id) DO UPDATE SET 
+		account_id = excluded.account_id,
+		balance = excluded.balance,
+		buying_liabilities = excluded.buying_liabilities,
+		selling_liabilities = excluded.selling_liabilities,
+		sequence_number = excluded.sequence_number,
+		num_subentries = excluded.num_subentries,
+		inflation_destination = excluded.inflation_destination,
+		flags = excluded.flags,
+		home_domain = excluded.home_domain,
+		master_weight = excluded.master_weight,
+		threshold_low = excluded.threshold_low,
+		threshold_medium = excluded.threshold_medium,
+		threshold_high = excluded.threshold_high,
+		last_modified_ledger = excluded.last_modified_ledger`
+
+	_, err := q.ExecRaw(sql,
+		pq.Array(accountID),
+		pq.Array(balance),
+		pq.Array(buyingLiabilities),
+		pq.Array(sellingLiabilities),
+		pq.Array(sequenceNumber),
+		pq.Array(numSubEntries),
+		pq.Array(inflationDestination),
+		pq.Array(flags),
+		pq.Array(homeDomain),
+		pq.Array(masterWeight),
+		pq.Array(thresholdLow),
+		pq.Array(thresholdMedium),
+		pq.Array(thresholdHigh),
+		pq.Array(lastModifiedLedger))
+	return err
 }
 
 // RemoveAccount deletes a row in the offers table.
