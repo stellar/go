@@ -73,6 +73,7 @@ type ingestionCheckFn func(*Q, int32) (bool, error)
 
 var participantChecks = []ingestionCheckFn{
 	checkExpTransactionParticipants,
+	checkExpOperationParticipants,
 }
 
 // CheckExpParticipants checks that the participants in the
