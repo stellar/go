@@ -56,6 +56,23 @@ func (h tokenHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	clientAccountID := tx.Operations[0].(*txnbuild.ManageData).SourceAccount.GetAccountID()
 
+	clientAccount, err := h.HorizonClient.AccountDetail(horizonclient.AccountRequest{AccountID: clientAccountID})
+	if err != nil {
+		serverError.Render(w)
+		return
+	}
+	verifiedWeight := false
+	for _, clientSigner := range clientAccount.Signers {
+		if clientSigner.Key == clientAccountID && clientSigner.Weight >= int32(clientAccount.Thresholds.HighThreshold) {
+			verifiedWeight = true
+			break
+		}
+	}
+	if !verifiedWeight {
+		unauthorized.Render(w)
+		return
+	}
+
 	now := time.Now().UTC()
 	token := jwt.NewWithClaims(jwt.SigningMethodES256, jwt.MapClaims{
 		"iss": h.SigningAddress.Address(),
