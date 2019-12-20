@@ -28,14 +28,14 @@ func (c *GenJWTKeyCommand) Run() {
 	}
 
 	if public, err := jwtkey.PublicKeyToString(&k.PublicKey); err == nil {
-		c.Logger.Print("Public:", public)
+		c.Logger.Printf("Public: %s", public)
 	} else {
-		c.Logger.Print("Public:", err)
+		c.Logger.Printf("Public: %s", err)
 	}
 
 	if private, err := jwtkey.PrivateKeyToString(k); err == nil {
-		c.Logger.Print("Private:", private)
+		c.Logger.Printf("Private: %s", private)
 	} else {
-		c.Logger.Print("Private:", err)
+		c.Logger.Printf("Private: %s", err)
 	}
 }
