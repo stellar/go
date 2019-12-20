@@ -167,8 +167,6 @@ func (s *ParticipantsProcessorTestSuiteLedger) TestEmptyParticipants() {
 
 	s.mockQ.On("CheckExpParticipants", int32(s.sequence-10)).
 		Return(true, nil).Once()
-	s.mockQ.On("CheckExpOperationParticipants", int32(s.sequence-10)).
-		Return(true, nil).Once()
 
 	err := s.processor.ProcessLedger(
 		s.context,
@@ -198,27 +196,6 @@ func (s *ParticipantsProcessorTestSuiteLedger) TestCheckExpParticipantsError() {
 	s.Assert().NoError(err)
 }
 
-func (s *ParticipantsProcessorTestSuiteLedger) TestCheckExpOperationParticipantsError() {
-	s.mockLedgerReader.On("GetSequence").Return(s.sequence).Once()
-
-	s.mockLedgerReader.
-		On("Read").
-		Return(io.LedgerTransaction{}, stdio.EOF).Once()
-
-	s.mockQ.On("CheckExpParticipants", int32(s.sequence-10)).
-		Return(true, nil).Once()
-	s.mockQ.On("CheckExpOperationParticipants", int32(s.sequence-10)).
-		Return(false, errors.New("transient error")).Once()
-
-	err := s.processor.ProcessLedger(
-		s.context,
-		&supportPipeline.Store{},
-		s.mockLedgerReader,
-		s.mockLedgerWriter,
-	)
-	s.Assert().NoError(err)
-}
-
 func (s *ParticipantsProcessorTestSuiteLedger) TestParticipantsCheckDoesNotMatch() {
 	s.mockLedgerReader.On("GetSequence").Return(s.sequence).Once()
 
@@ -227,8 +204,6 @@ func (s *ParticipantsProcessorTestSuiteLedger) TestParticipantsCheckDoesNotMatch
 		Return(io.LedgerTransaction{}, stdio.EOF).Once()
 
 	s.mockQ.On("CheckExpParticipants", int32(s.sequence-10)).
-		Return(false, nil).Once()
-	s.mockQ.On("CheckExpOperationParticipants", int32(s.sequence-10)).
 		Return(false, nil).Once()
 
 	err := s.processor.ProcessLedger(
@@ -258,8 +233,6 @@ func (s *ParticipantsProcessorTestSuiteLedger) TestIngestParticipantsSucceeds() 
 	s.mockOperationsBatchInsertBuilder.On("Exec").Return(nil).Once()
 
 	s.mockQ.On("CheckExpParticipants", int32(s.sequence-10)).
-		Return(true, nil).Once()
-	s.mockQ.On("CheckExpOperationParticipants", int32(s.sequence-10)).
 		Return(true, nil).Once()
 
 	err := s.processor.ProcessLedger(

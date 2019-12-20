@@ -437,7 +437,7 @@ func TestCheckExpOperationParticipants(t *testing.T) {
 
 	sequence := int32(20)
 
-	valid, err := q.CheckExpOperationParticipants(sequence)
+	valid, err := checkExpOperationParticipants(q, sequence)
 	tt.Assert.NoError(err)
 	tt.Assert.True(valid)
 
@@ -500,7 +500,7 @@ func TestCheckExpOperationParticipants(t *testing.T) {
 	}
 	tt.Assert.NoError(batch.Exec())
 
-	valid, err = q.CheckExpOperationParticipants(sequence)
+	valid, err = checkExpOperationParticipants(q, sequence)
 	tt.Assert.NoError(err)
 	tt.Assert.True(valid)
 
@@ -542,7 +542,7 @@ func TestCheckExpOperationParticipants(t *testing.T) {
 			tt.Assert.NoError(err)
 		}
 
-		valid, err = q.CheckExpOperationParticipants(sequence)
+		valid, err = checkExpOperationParticipants(q, sequence)
 		tt.Assert.NoError(err)
 		// The first 3 operations all belong to ledger `sequence`.
 		// The 4th operatino belongs to the next ledger so it is

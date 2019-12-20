@@ -380,10 +380,10 @@ func (q *Q) findOperationParticipants(
 	return participants, nil
 }
 
-// CheckExpOperationParticipants checks that the participants in
+// checkExpOperationParticipants checks that the participants in
 // exp_history_operation_participants for the given ledger matches the same
 // participants as in history_operation_participants
-func (q *Q) CheckExpOperationParticipants(seq int32) (bool, error) {
+func checkExpOperationParticipants(q *Q, seq int32) (bool, error) {
 	expParticipants, err := q.findOperationParticipants(
 		"exp_history_operation_participants",
 		"exp_history_accounts",
