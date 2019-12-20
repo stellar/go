@@ -13,6 +13,7 @@ type QParticipants interface {
 	CheckExpParticipants(seq int32) (bool, error)
 	CreateExpAccounts(addresses []string) (map[string]int64, error)
 	NewTransactionParticipantsBatchInsertBuilder(maxBatchSize int) TransactionParticipantsBatchInsertBuilder
+	NewOperationParticipantBatchInsertBuilder(maxBatchSize int) OperationParticipantBatchInsertBuilder
 }
 
 // CreateExpAccounts creates rows in the exp_history_accounts table for a given list of addresses.
@@ -68,9 +69,31 @@ func (q *Q) findTransactionParticipants(
 	return participants, err
 }
 
-// CheckExpParticipants checks that the participants in exp_history_transaction_participants
-// for the given ledger matches the same participants in history_transaction_participants
+type ingestionCheckFn func(*Q, int32) (bool, error)
+
+var participantChecks = []ingestionCheckFn{
+	checkExpTransactionParticipants,
+	checkExpOperationParticipants,
+}
+
+// CheckExpParticipants checks that the participants in the
+// experimental ingestion tables matches the participants in the
+// legacy ingestion tables
 func (q *Q) CheckExpParticipants(seq int32) (bool, error) {
+	for _, checkFn := range participantChecks {
+		if valid, err := checkFn(q, seq); err != nil {
+			return false, err
+		} else if !valid {
+			return false, nil
+		}
+	}
+	return true, nil
+}
+
+// checkExpTransactionParticipants checks that the participants in
+// exp_history_transaction_participants for the given ledger matches
+// the same participants in history_transaction_participants
+func checkExpTransactionParticipants(q *Q, seq int32) (bool, error) {
 	participants, err := q.findTransactionParticipants(
 		"history_transaction_participants", "history_accounts", seq,
 	)

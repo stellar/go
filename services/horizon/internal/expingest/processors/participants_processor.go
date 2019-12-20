@@ -23,6 +23,21 @@ type ParticipantsProcessor struct {
 type participant struct {
 	accountID      int64
 	transactionSet map[int64]struct{}
+	operationSet   map[int64]struct{}
+}
+
+func (p *participant) addTransactionID(id int64) {
+	if p.transactionSet == nil {
+		p.transactionSet = map[int64]struct{}{}
+	}
+	p.transactionSet[id] = struct{}{}
+}
+
+func (p *participant) addOperationID(id int64) {
+	if p.operationSet == nil {
+		p.operationSet = map[int64]struct{}{}
+	}
+	p.operationSet[id] = struct{}{}
 }
 
 func (p *ParticipantsProcessor) loadAccountIDs(participantSet map[string]participant) error {
@@ -43,9 +58,9 @@ func (p *ParticipantsProcessor) loadAccountIDs(participantSet map[string]partici
 			return errors.Errorf("no id found for account address %s", address)
 		}
 
-		account := participantSet[address]
-		account.accountID = id
-		participantSet[address] = account
+		participantForAddress := participantSet[address]
+		participantForAddress.accountID = id
+		participantSet[address] = participantForAddress
 	}
 
 	return nil
@@ -68,14 +83,30 @@ func (p *ParticipantsProcessor) addTransactionParticipants(
 
 	for _, participant := range transactionParticipants {
 		address := participant.Address()
-		entry, ok := participantSet[address]
-		if !ok {
-			entry.transactionSet = map[int64]struct{}{
-				transactionID: struct{}{},
-			}
+		entry := participantSet[address]
+		entry.addTransactionID(transactionID)
+		participantSet[address] = entry
+	}
+
+	return nil
+}
+
+func (p *ParticipantsProcessor) addOperationsParticipants(
+	participantSet map[string]participant,
+	sequence uint32,
+	transaction io.LedgerTransaction,
+) error {
+	participants, err := history.OperationsParticipants(transaction, sequence)
+	if err != nil {
+		return errors.Wrap(err, "could not determine operation participants")
+	}
+
+	for operationID, p := range participants {
+		for _, participant := range p {
+			address := participant.Address()
+			entry := participantSet[address]
+			entry.addOperationID(operationID)
 			participantSet[address] = entry
-		} else {
-			entry.transactionSet[transactionID] = struct{}{}
 		}
 	}
 
@@ -95,6 +126,23 @@ func (p *ParticipantsProcessor) insertDBTransactionParticipants(participantSet m
 
 	if err := batch.Exec(); err != nil {
 		return errors.Wrap(err, "Could not flush transaction participants to db")
+	}
+	return nil
+}
+
+func (p *ParticipantsProcessor) insertDBOperationsParticipants(participantSet map[string]participant) error {
+	batch := p.ParticipantsQ.NewOperationParticipantBatchInsertBuilder(maxBatchSize)
+
+	for _, entry := range participantSet {
+		for operationID := range entry.operationSet {
+			if err := batch.Add(operationID, entry.accountID); err != nil {
+				return errors.Wrap(err, "could not insert operation participant in db")
+			}
+		}
+	}
+
+	if err := batch.Exec(); err != nil {
+		return errors.Wrap(err, "could not flush operation participants to db")
 	}
 	return nil
 }
@@ -136,6 +184,11 @@ func (p *ParticipantsProcessor) ProcessLedger(ctx context.Context, store *pipeli
 			return err
 		}
 
+		err = p.addOperationsParticipants(participantSet, sequence, transaction)
+		if err != nil {
+			return err
+		}
+
 		select {
 		case <-ctx.Done():
 			return nil
@@ -150,6 +203,10 @@ func (p *ParticipantsProcessor) ProcessLedger(ctx context.Context, store *pipeli
 		}
 
 		if err = p.insertDBTransactionParticipants(participantSet); err != nil {
+			return err
+		}
+
+		if err = p.insertDBOperationsParticipants(participantSet); err != nil {
 			return err
 		}
 	}

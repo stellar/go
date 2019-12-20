@@ -48,7 +48,7 @@ func (s *PreProcessingHookTestSuite) TestStateHookSucceedsWithPreExistingTx() {
 	s.historyQ.On("GetTx").Return(&sqlx.Tx{}).Once()
 	s.historyQ.On("GetLastLedgerExpIngest").Return(uint32(0), nil).Once()
 	s.historyQ.On("RemoveExpIngestHistory", s.ledgerSeqFromContext).Return(
-		history.ExpIngestRemovalSummary{3, 3, 3}, nil,
+		history.ExpIngestRemovalSummary{3, 3, 3, 3, 3}, nil,
 	)
 
 	newCtx, err := preProcessingHook(s.ctx, statePipeline, s.system, s.historyQ)
@@ -63,7 +63,7 @@ func (s *PreProcessingHookTestSuite) TestStateHookSucceedsWithoutPreExistingTx()
 	s.historyQ.On("Begin").Return(nil).Once()
 	s.historyQ.On("GetLastLedgerExpIngest").Return(uint32(0), nil).Once()
 	s.historyQ.On("RemoveExpIngestHistory", s.ledgerSeqFromContext).Return(
-		history.ExpIngestRemovalSummary{3, 3, 3}, nil,
+		history.ExpIngestRemovalSummary{3, 3, 3, 3, 3}, nil,
 	)
 
 	newCtx, err := preProcessingHook(s.ctx, statePipeline, s.system, s.historyQ)

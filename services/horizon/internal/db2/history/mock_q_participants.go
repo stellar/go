@@ -24,6 +24,12 @@ func (m *MockQParticipants) NewTransactionParticipantsBatchInsertBuilder(maxBatc
 	return a.Get(0).(TransactionParticipantsBatchInsertBuilder)
 }
 
+// NewOperationParticipantBatchInsertBuilder mock
+func (m *MockQParticipants) NewOperationParticipantBatchInsertBuilder(maxBatchSize int) OperationParticipantBatchInsertBuilder {
+	a := m.Called(maxBatchSize)
+	return a.Get(0).(OperationParticipantBatchInsertBuilder)
+}
+
 // MockTransactionParticipantsBatchInsertBuilder is a mock implementation of the
 // TransactionParticipantsBatchInsertBuilder interface
 type MockTransactionParticipantsBatchInsertBuilder struct {

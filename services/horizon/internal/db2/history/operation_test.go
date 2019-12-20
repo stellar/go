@@ -3,8 +3,12 @@ package history
 import (
 	"testing"
 
+	sq "github.com/Masterminds/squirrel"
+	"github.com/stellar/go/exp/ingest/io"
 	"github.com/stellar/go/services/horizon/internal/db2"
 	"github.com/stellar/go/services/horizon/internal/test"
+	"github.com/stellar/go/services/horizon/internal/toid"
+	"github.com/stellar/go/support/db"
 )
 
 func TestOperationQueries(t *testing.T) {
@@ -292,4 +296,262 @@ func TestOperationIncludeTransactions(t *testing.T) {
 	tt.Assert.Equal(op, expectedOperations[0])
 	tt.Assert.Equal(*transaction, expectedTransactions[0])
 	assertOperationMatchesTransaction(tt, op, *transaction)
+}
+
+func TestCheckExpOperations(t *testing.T) {
+	tt := test.Start(t)
+	defer tt.Finish()
+	test.ResetHorizonDB(t, tt.HorizonDB)
+	q := &Q{tt.HorizonSession()}
+
+	sequence := int32(56)
+
+	transaction := buildLedgerTransaction(
+		t,
+		testTransaction{
+			index:         1,
+			envelopeXDR:   "AAAAABpcjiETZ0uhwxJJhgBPYKWSVJy2TZ2LI87fqV1cUf/UAAAAZAAAADcAAAABAAAAAAAAAAAAAAABAAAAAAAAAAEAAAAAGlyOIRNnS6HDEkmGAE9gpZJUnLZNnYsjzt+pXVxR/9QAAAAAAAAAAAX14QAAAAAAAAAAAVxR/9QAAABAK6pcXYMzAEmH08CZ1LWmvtNDKauhx+OImtP/Lk4hVTMJRVBOebVs5WEPj9iSrgGT0EswuDCZ2i5AEzwgGof9Ag==",
+			resultXDR:     "AAAAAAAAAGQAAAAAAAAAAQAAAAAAAAABAAAAAAAAAAA=",
+			metaXDR:       "AAAAAQAAAAIAAAADAAAAOAAAAAAAAAAAGlyOIRNnS6HDEkmGAE9gpZJUnLZNnYsjzt+pXVxR/9QAAAACVAvjnAAAADcAAAAAAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAABAAAAOAAAAAAAAAAAGlyOIRNnS6HDEkmGAE9gpZJUnLZNnYsjzt+pXVxR/9QAAAACVAvjnAAAADcAAAABAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAABAAAAAA==",
+			feeChangesXDR: "AAAAAgAAAAMAAAA3AAAAAAAAAAAaXI4hE2dLocMSSYYAT2ClklSctk2diyPO36ldXFH/1AAAAAJUC+QAAAAANwAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAEAAAA4AAAAAAAAAAAaXI4hE2dLocMSSYYAT2ClklSctk2diyPO36ldXFH/1AAAAAJUC+OcAAAANwAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAA==",
+			hash:          "2a805712c6d10f9e74bb0ccf54ae92a2b4b1e586451fe8133a2433816f6b567c",
+		},
+	)
+
+	// second transaction
+	secondTransaction := buildLedgerTransaction(
+		t,
+		testTransaction{
+			index:         2,
+			envelopeXDR:   "AAAAAGL8HQvQkbK2HA3WVjRrKmjX00fG8sLI7m0ERwJW/AX3AAAAZAAAAAAAAAAaAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAoZftFP3p4ifbTm6hQdieotu3Zw9E05GtoSh5MBytEpQAAAACVAvkAAAAAAAAAAABVvwF9wAAAEDHU95E9wxgETD8TqxUrkgC0/7XHyNDts6Q5huRHfDRyRcoHdv7aMp/sPvC3RPkXjOMjgbKJUX7SgExUeYB5f8F",
+			resultXDR:     "AAAAAAAAAGQAAAAAAAAAAQAAAAAAAAABAAAAAAAAAAA=",
+			metaXDR:       "AAAAAQAAAAIAAAADAAAAOQAAAAAAAAAAYvwdC9CRsrYcDdZWNGsqaNfTR8bywsjubQRHAlb8BfcLGrZY9dZxbAAAAAAAAAAZAAAAAAAAAAEAAAAAYvwdC9CRsrYcDdZWNGsqaNfTR8bywsjubQRHAlb8BfcAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAABAAAAOQAAAAAAAAAAYvwdC9CRsrYcDdZWNGsqaNfTR8bywsjubQRHAlb8BfcLGrZY9dZxbAAAAAAAAAAaAAAAAAAAAAEAAAAAYvwdC9CRsrYcDdZWNGsqaNfTR8bywsjubQRHAlb8BfcAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAABAAAAAwAAAAMAAAA5AAAAAAAAAABi/B0L0JGythwN1lY0aypo19NHxvLCyO5tBEcCVvwF9wsatlj11nFsAAAAAAAAABoAAAAAAAAAAQAAAABi/B0L0JGythwN1lY0aypo19NHxvLCyO5tBEcCVvwF9wAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAEAAAA5AAAAAAAAAABi/B0L0JGythwN1lY0aypo19NHxvLCyO5tBEcCVvwF9wsatlahyo1sAAAAAAAAABoAAAAAAAAAAQAAAABi/B0L0JGythwN1lY0aypo19NHxvLCyO5tBEcCVvwF9wAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAA5AAAAAAAAAAChl+0U/eniJ9tObqFB2J6i27dnD0TTka2hKHkwHK0SlAAAAAJUC+QAAAAAOQAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAA==",
+			feeChangesXDR: "AAAAAgAAAAMAAAA3AAAAAAAAAABi/B0L0JGythwN1lY0aypo19NHxvLCyO5tBEcCVvwF9wsatlj11nHQAAAAAAAAABkAAAAAAAAAAQAAAABi/B0L0JGythwN1lY0aypo19NHxvLCyO5tBEcCVvwF9wAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAEAAAA5AAAAAAAAAABi/B0L0JGythwN1lY0aypo19NHxvLCyO5tBEcCVvwF9wsatlj11nFsAAAAAAAAABkAAAAAAAAAAQAAAABi/B0L0JGythwN1lY0aypo19NHxvLCyO5tBEcCVvwF9wAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAA==",
+			hash:          "0e5bd332291e3098e49886df2cdb9b5369a5f9e0a9973f0d9e1a9489c6581ba2",
+		},
+	)
+
+	// third transaction
+	thirdTransaction := buildLedgerTransaction(
+		t,
+		testTransaction{
+			index:         3,
+			envelopeXDR:   "AAAAAGL8HQvQkbK2HA3WVjRrKmjX00fG8sLI7m0ERwJW/AX3AAAAZAAAAAAAAAAXAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAABJeTmKR1qr+CZoIyjAfGxrIXZ/tI1VId2OfZkRowDz4AAAACVAvkAAAAAAAAAAABVvwF9wAAAEDyHwhW9GXQVXG1qibbeqSjxYzhv5IC08K2vSkxzYTwJykvQ8l0+e4M4h2guoK89s8HUfIqIOzDmoGsNTaLcYUG",
+			resultXDR:     "AAAAAAAAAGQAAAAAAAAAAQAAAAAAAAABAAAAAAAAAAA=",
+			metaXDR:       "AAAAAQAAAAIAAAADAAAANQAAAAAAAAAAYvwdC9CRsrYcDdZWNGsqaNfTR8bywsjubQRHAlb8BfcLGrZdne46/AAAAAAAAAAWAAAAAAAAAAEAAAAAYvwdC9CRsrYcDdZWNGsqaNfTR8bywsjubQRHAlb8BfcAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAABAAAANQAAAAAAAAAAYvwdC9CRsrYcDdZWNGsqaNfTR8bywsjubQRHAlb8BfcLGrZdne46/AAAAAAAAAAXAAAAAAAAAAEAAAAAYvwdC9CRsrYcDdZWNGsqaNfTR8bywsjubQRHAlb8BfcAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAABAAAAAwAAAAMAAAA1AAAAAAAAAABi/B0L0JGythwN1lY0aypo19NHxvLCyO5tBEcCVvwF9wsatl2d7jr8AAAAAAAAABcAAAAAAAAAAQAAAABi/B0L0JGythwN1lY0aypo19NHxvLCyO5tBEcCVvwF9wAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAEAAAA1AAAAAAAAAABi/B0L0JGythwN1lY0aypo19NHxvLCyO5tBEcCVvwF9wsatltJ4lb8AAAAAAAAABcAAAAAAAAAAQAAAABi/B0L0JGythwN1lY0aypo19NHxvLCyO5tBEcCVvwF9wAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAA1AAAAAAAAAAAEl5OYpHWqv4JmgjKMB8bGshdn+0jVUh3Y59mRGjAPPgAAAAJUC+QAAAAANQAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAA==",
+			feeChangesXDR: "AAAAAgAAAAMAAAAwAAAAAAAAAABi/B0L0JGythwN1lY0aypo19NHxvLCyO5tBEcCVvwF9wsatl2d7jtgAAAAAAAAABYAAAAAAAAAAQAAAABi/B0L0JGythwN1lY0aypo19NHxvLCyO5tBEcCVvwF9wAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAEAAAA1AAAAAAAAAABi/B0L0JGythwN1lY0aypo19NHxvLCyO5tBEcCVvwF9wsatl2d7jr8AAAAAAAAABYAAAAAAAAAAQAAAABi/B0L0JGythwN1lY0aypo19NHxvLCyO5tBEcCVvwF9wAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAA==",
+			hash:          "df5f0e8b3b533dd9cda0ff7540bef3e9e19369060f8a4b0414b0e3c1b4315b1c",
+		},
+	)
+
+	insertTransaction(tt, q, "exp_history_transactions", transaction, sequence)
+	insertTransaction(tt, q, "exp_history_transactions", secondTransaction, sequence)
+	insertTransaction(tt, q, "exp_history_transactions", thirdTransaction, sequence)
+	insertTransaction(tt, q, "history_transactions", transaction, sequence)
+	insertTransaction(tt, q, "history_transactions", secondTransaction, sequence)
+	insertTransaction(tt, q, "history_transactions", thirdTransaction, sequence)
+
+	operationBatch := q.NewOperationBatchInsertBuilder(100)
+
+	txs := []io.LedgerTransaction{
+		transaction,
+		secondTransaction,
+		thirdTransaction,
+	}
+
+	var err error
+
+	for _, t := range txs {
+		err = operationBatch.Add(t, uint32(sequence))
+		tt.Assert.NoError(err)
+	}
+
+	err = operationBatch.Exec()
+	tt.Assert.NoError(err)
+
+	batchBuilder := operationBatchInsertBuilder{
+		builder: db.BatchInsertBuilder{
+			Table:        q.GetTable("history_operations"),
+			MaxBatchSize: 100,
+		},
+	}
+
+	for _, t := range txs {
+		err = batchBuilder.Add(t, uint32(sequence))
+		tt.Assert.NoError(err)
+	}
+
+	err = batchBuilder.Exec()
+	tt.Assert.NoError(err)
+
+	valid, err := q.CheckExpOperations(sequence)
+	tt.Assert.True(valid)
+	tt.Assert.NoError(err)
+
+	operation := transactionOperationWrapper{
+		index:          0,
+		transaction:    thirdTransaction,
+		operation:      thirdTransaction.Envelope.Tx.Operations[0],
+		ledgerSequence: uint32(sequence),
+	}
+
+	for fieldName, value := range map[string]interface{}{
+		"application_order": 100,
+		"type":              13,
+		"details":           "{}",
+		"source_account":    "source_account",
+	} {
+		updateSQL := sq.Update("history_operations").
+			Set(fieldName, value).
+			Where(
+				"id = ?",
+				operation.ID(),
+			)
+		_, err = q.Exec(updateSQL)
+		tt.Assert.NoError(err)
+
+		valid, err = q.CheckExpOperations(sequence)
+		tt.Assert.NoError(err)
+		tt.Assert.False(valid)
+
+		_, err = q.Exec(sq.Delete("history_operations").
+			Where("id = ?", operation.ID()))
+		tt.Assert.NoError(err)
+
+		err = batchBuilder.Add(operation.transaction, operation.ledgerSequence)
+		tt.Assert.NoError(err)
+		err = batchBuilder.Exec()
+		tt.Assert.NoError(err)
+
+		valid, err := q.CheckExpOperations(sequence)
+		tt.Assert.NoError(err)
+		tt.Assert.True(valid)
+	}
+}
+
+func TestCheckExpOperationParticipants(t *testing.T) {
+	tt := test.Start(t)
+	defer tt.Finish()
+	test.ResetHorizonDB(t, tt.HorizonDB)
+	q := &Q{tt.HorizonSession()}
+
+	sequence := int32(20)
+
+	valid, err := checkExpOperationParticipants(q, sequence)
+	tt.Assert.NoError(err)
+	tt.Assert.True(valid)
+
+	addresses := []string{
+		"GAOQJGUAB7NI7K7I62ORBXMN3J4SSWQUQ7FOEPSDJ322W2HMCNWPHXFB",
+		"GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H",
+		"GCYVFGI3SEQJGBNQQG7YCMFWEYOHK3XPVOVPA6C566PXWN4SN7LILZSM",
+		"GBYSBDAJZMHL5AMD7QXQ3JEP3Q4GLKADWIJURAAHQALNAWD6Z5XF2RAC",
+	}
+	expAccounts, err := q.CreateExpAccounts(addresses)
+	tt.Assert.NoError(err)
+
+	operationIDs := []int64{
+		toid.New(sequence, 1, 1).ToInt64(),
+		toid.New(sequence, 2, 1).ToInt64(),
+		toid.New(sequence, 1, 1).ToInt64(),
+		toid.New(sequence+1, 1, 1).ToInt64(),
+	}
+
+	historyOperations := map[int64]map[string]interface{}{
+		operationIDs[0]: map[string]interface{}{
+			"id":                operationIDs[0],
+			"transaction_id":    toid.New(sequence, 1, 0).ToInt64(),
+			"application_order": 1,
+			"type":              1,
+			"details":           "{}",
+			"source_account":    addresses[0],
+		},
+		operationIDs[1]: map[string]interface{}{
+			"id":                operationIDs[1],
+			"transaction_id":    toid.New(sequence, 2, 0).ToInt64(),
+			"application_order": 1,
+			"type":              1,
+			"details":           "{}",
+			"source_account":    addresses[0],
+		},
+		// We skip operationIDs[2] since it is the same operation as operationIDs[0]
+		operationIDs[3]: map[string]interface{}{
+			"id":                operationIDs[3],
+			"transaction_id":    toid.New(sequence+1, 1, 0).ToInt64(),
+			"application_order": 1,
+			"type":              1,
+			"details":           "{}",
+			"source_account":    addresses[0],
+		},
+	}
+
+	sql := sq.Insert("exp_history_operations")
+
+	for _, historyOperation := range historyOperations {
+		_, err = q.Exec(sql.SetMap(historyOperation))
+		tt.Assert.NoError(err)
+	}
+
+	batch := q.NewOperationParticipantBatchInsertBuilder(0)
+	for i, address := range addresses {
+		tt.Assert.NoError(
+			batch.Add(operationIDs[i], expAccounts[address]),
+		)
+	}
+	tt.Assert.NoError(batch.Exec())
+
+	valid, err = checkExpOperationParticipants(q, sequence)
+	tt.Assert.NoError(err)
+	tt.Assert.True(valid)
+
+	addresses = append(addresses, "GBXGQJWVLWOYHFLVTKWV5FGHA3LNYY2JQKM7OAJAUEQFU6LPCSEFVXON")
+	operationIDs = append(operationIDs, toid.New(sequence, 3, 1).ToInt64())
+
+	historyOperations[operationIDs[4]] = map[string]interface{}{
+		"id":                operationIDs[4],
+		"transaction_id":    toid.New(sequence, 3, 0).ToInt64(),
+		"application_order": 1,
+		"type":              1,
+		"details":           "{}",
+		"source_account":    addresses[0],
+	}
+
+	var accounts []Account
+	tt.Assert.NoError(q.CreateAccounts(&accounts, addresses))
+
+	accountsMap := map[string]int64{}
+	for _, account := range accounts {
+		accountsMap[account.Address] = account.ID
+	}
+
+	for i, address := range addresses {
+		_, err = q.Exec(sq.Insert("history_operation_participants").
+			SetMap(map[string]interface{}{
+				"history_operation_id": operationIDs[i],
+				"history_account_id":   accountsMap[address],
+			}))
+		tt.Assert.NoError(err)
+
+		historyOperation, ok := historyOperations[operationIDs[i]]
+
+		if ok {
+			_, err = q.Exec(sq.Insert("history_operations").
+				SetMap(historyOperation).
+				Suffix("ON CONFLICT (id) DO NOTHING"))
+
+			tt.Assert.NoError(err)
+		}
+
+		valid, err = checkExpOperationParticipants(q, sequence)
+		tt.Assert.NoError(err)
+		// The first 3 operations all belong to ledger `sequence`.
+		// The 4th operatino belongs to the next ledger so it is
+		// ignored by CheckExpOperationParticipants.
+		// The last operation belongs to `sequence`, however, it is
+		// not present in exp_history_operation_participants so
+		// we expect CheckExpOperationParticipants to fail after the last
+		// transaction is added to history_operation_participants
+		expected := i == 2 || i == 3
+		tt.Assert.Equal(expected, valid)
+	}
 }

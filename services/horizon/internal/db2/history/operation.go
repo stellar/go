@@ -2,6 +2,8 @@ package history
 
 import (
 	"encoding/json"
+	"fmt"
+	"reflect"
 
 	sq "github.com/Masterminds/squirrel"
 	"github.com/go-errors/errors"
@@ -279,7 +281,162 @@ func (q *OperationsQ) Fetch() ([]Operation, []Transaction, error) {
 	return operations, transactions, nil
 }
 
-var selectOperation = sq.Select(
+// CheckExpOperations checks that the operations in exp_history_operations
+// for the given ledger matches the same operations in history_operations
+func (q *Q) CheckExpOperations(seq int32) (bool, error) {
+	var operations, expOperations []Operation
+
+	err := q.Select(
+		&operations,
+		selectOperation.
+			Where("ht.ledger_sequence = ?", seq).
+			OrderBy("hop.id asc"),
+	)
+	if err != nil {
+		return false, err
+	}
+
+	err = q.Select(
+		&expOperations,
+		selectExpOperation.
+			Where("ht.ledger_sequence = ?", seq).
+			OrderBy("hop.id asc"),
+	)
+	if err != nil {
+		return false, err
+	}
+
+	// We only proceed with the comparison if we have operations data in both the
+	// legacy ingestion system and the experimental ingestion system.
+	// If there are no operations in either the legacy ingestion system or the
+	// experimental ingestion system we skip the check.
+	if len(operations) == 0 || len(expOperations) == 0 {
+		return true, nil
+	}
+
+	if len(operations) != len(expOperations) {
+		return false, nil
+	}
+
+	for i, operation := range operations {
+		expOperation := expOperations[i]
+		if !reflect.DeepEqual(operation, expOperation) {
+			return false, nil
+		}
+	}
+
+	return true, nil
+}
+
+type operationParticipant struct {
+	OperationID int64  `db:"history_operation_id"`
+	Address     string `db:"address"`
+}
+
+func (q *Q) findOperationParticipants(
+	participantTable,
+	accountTable,
+	operationsTable string,
+	seq int32,
+) ([]operationParticipant, error) {
+	from := toid.ID{LedgerSequence: int32(seq)}.ToInt64()
+	to := toid.ID{LedgerSequence: int32(seq + 1)}.ToInt64()
+	participants := []operationParticipant{}
+
+	fields := sq.Select(
+		"hop.history_operation_id, " +
+			"ha.address as address")
+
+	sql := fields.
+		From(
+			fmt.Sprintf("%s hop", participantTable),
+		).
+		Join(
+			fmt.Sprintf(
+				"%s ho ON hop.history_operation_id = ho.id",
+				operationsTable,
+			),
+		).
+		Join(
+			fmt.Sprintf(
+				"%s ha ON hop.history_account_id = ha.id",
+				accountTable,
+			),
+		).
+		Where("ho.id >= ? AND ho.id <= ? ", from, to).
+		OrderBy(
+			"hop.history_operation_id asc, ha.address asc",
+		)
+
+	err := q.Select(&participants, sql)
+
+	if err != nil {
+		return participants, errors.Errorf(
+			"could not load exp_history_operation_participants for ledger: %v",
+			seq,
+		)
+	}
+
+	return participants, nil
+}
+
+// checkExpOperationParticipants checks that the participants in
+// exp_history_operation_participants for the given ledger matches the same
+// participants as in history_operation_participants
+func checkExpOperationParticipants(q *Q, seq int32) (bool, error) {
+	expParticipants, err := q.findOperationParticipants(
+		"exp_history_operation_participants",
+		"exp_history_accounts",
+		"exp_history_operations",
+		seq,
+	)
+
+	if err != nil {
+		return false, errors.Errorf(
+			"could not load exp_history_operation_participants for ledger: %v",
+			seq,
+		)
+	}
+
+	participants, err := q.findOperationParticipants(
+		"history_operation_participants",
+		"history_accounts",
+		"history_operations",
+		seq,
+	)
+
+	if err != nil {
+		return false, errors.Errorf(
+			"could not load history_operation_participants for ledger: %v",
+			seq,
+		)
+	}
+
+	if len(expParticipants) == 0 || len(participants) == 0 {
+		return true, nil
+	}
+
+	if len(expParticipants) != len(participants) {
+		return false, nil
+	}
+
+	for i, expParticipant := range expParticipants {
+		participant := participants[i]
+		if expParticipant != participant {
+			return false, nil
+		}
+	}
+
+	return true, nil
+}
+
+// QOperations defines exp_history_operation related queries.
+type QOperations interface {
+	NewOperationBatchInsertBuilder(maxBatchSize int) OperationBatchInsertBuilder
+	CheckExpOperations(seq int32) (bool, error)
+}
+
+var selectOperationFields = sq.Select(
 	"hop.id, " +
 		"hop.transaction_id, " +
 		"hop.application_order, " +
@@ -288,6 +445,12 @@ var selectOperation = sq.Select(
 		"hop.source_account, " +
 		"ht.transaction_hash, " +
 		"ht.tx_result, " +
-		"ht.successful as transaction_successful").
+		"ht.successful as transaction_successful")
+
+var selectOperation = selectOperationFields.
 	From("history_operations hop").
 	LeftJoin("history_transactions ht ON ht.id = hop.transaction_id")
+
+var selectExpOperation = selectOperationFields.
+	From("exp_history_operations hop").
+	LeftJoin("exp_history_transactions ht ON ht.id = hop.transaction_id")

@@ -1,6 +1,7 @@
 package history
 
 import (
+	"fmt"
 	"testing"
 
 	sq "github.com/Masterminds/squirrel"
@@ -107,7 +108,7 @@ func TestTransactionParticipantsBatch(t *testing.T) {
 	)
 }
 
-func TestCheckExpParticipants(t *testing.T) {
+func TestCheckExpTransactionParticipants(t *testing.T) {
 	tt := test.Start(t)
 	defer tt.Finish()
 	test.ResetHorizonDB(t, tt.HorizonDB)
@@ -115,7 +116,7 @@ func TestCheckExpParticipants(t *testing.T) {
 
 	sequence := int32(20)
 
-	valid, err := q.CheckExpParticipants(sequence)
+	valid, err := checkExpTransactionParticipants(q, sequence)
 	tt.Assert.NoError(err)
 	tt.Assert.True(valid)
 
@@ -143,7 +144,7 @@ func TestCheckExpParticipants(t *testing.T) {
 	}
 	tt.Assert.NoError(batch.Exec())
 
-	valid, err = q.CheckExpParticipants(sequence)
+	valid, err = checkExpTransactionParticipants(q, sequence)
 	tt.Assert.NoError(err)
 	tt.Assert.True(valid)
 
@@ -164,7 +165,7 @@ func TestCheckExpParticipants(t *testing.T) {
 			}))
 		tt.Assert.NoError(err)
 
-		valid, err = q.CheckExpParticipants(sequence)
+		valid, err = checkExpTransactionParticipants(q, sequence)
 		tt.Assert.NoError(err)
 		// The first 3 transactions all belong to ledger `sequence`.
 		// The 4th transaction belongs to the next ledger so it is
@@ -175,5 +176,122 @@ func TestCheckExpParticipants(t *testing.T) {
 		// transaction is added to history_transaction_participants
 		expected := i == 2 || i == 3
 		tt.Assert.Equal(expected, valid)
+	}
+}
+
+func makeCheck(valid bool, err error) ingestionCheckFn {
+	return func(*Q, int32) (bool, error) {
+		return valid, err
+	}
+}
+
+func TestCheckExpParticipants(t *testing.T) {
+	originalChecks := participantChecks
+	defer func() {
+		participantChecks = originalChecks
+	}()
+	q := &Q{}
+
+	firstErr := fmt.Errorf("first error")
+	middleErr := fmt.Errorf("middle error")
+	lastErr := fmt.Errorf("last error")
+
+	for _, testCase := range []struct {
+		name          string
+		checks        []ingestionCheckFn
+		expectedBool  bool
+		expectedError error
+	}{
+		{
+			"all checks pass",
+			[]ingestionCheckFn{
+				makeCheck(true, nil),
+				makeCheck(true, nil),
+				makeCheck(true, nil),
+			},
+			true,
+			nil,
+		},
+		{
+			"first check fails",
+			[]ingestionCheckFn{
+				makeCheck(false, nil),
+				makeCheck(true, nil),
+				makeCheck(true, nil),
+			},
+			false,
+			nil,
+		},
+		{
+			"middle check fails",
+			[]ingestionCheckFn{
+				makeCheck(true, nil),
+				makeCheck(false, nil),
+				makeCheck(true, nil),
+			},
+			false,
+			nil,
+		},
+		{
+			"last check fails",
+			[]ingestionCheckFn{
+				makeCheck(true, nil),
+				makeCheck(true, nil),
+				makeCheck(false, nil),
+			},
+			false,
+			nil,
+		},
+		{
+			"first check returns error",
+			[]ingestionCheckFn{
+				makeCheck(true, firstErr),
+				makeCheck(true, nil),
+				makeCheck(true, nil),
+			},
+			false,
+			firstErr,
+		},
+		{
+			"middle check returns error",
+			[]ingestionCheckFn{
+				makeCheck(true, nil),
+				makeCheck(false, middleErr),
+				makeCheck(true, nil),
+			},
+			false,
+			middleErr,
+		},
+		{
+			"last check returns error",
+			[]ingestionCheckFn{
+				makeCheck(true, nil),
+				makeCheck(true, nil),
+				makeCheck(true, lastErr),
+			},
+			false,
+			lastErr,
+		},
+		{
+			"all checks returns error",
+			[]ingestionCheckFn{
+				makeCheck(true, firstErr),
+				makeCheck(false, middleErr),
+				makeCheck(true, lastErr),
+			},
+			false,
+			firstErr,
+		},
+	} {
+		t.Run(testCase.name, func(t *testing.T) {
+			participantChecks = testCase.checks
+			valid, err := q.CheckExpParticipants(int32(1))
+			if valid != testCase.expectedBool {
+				t.Fatalf("expected %v but got %v", testCase.expectedBool, valid)
+			}
+			if err != testCase.expectedError {
+				t.Fatalf("expected %v but got %v", testCase.expectedError, err)
+			}
+		})
 	}
 }

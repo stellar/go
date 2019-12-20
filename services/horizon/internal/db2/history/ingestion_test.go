@@ -10,6 +10,16 @@ import (
 	"github.com/stellar/go/services/horizon/internal/toid"
 )
 
+func assertCountRows(tt *test.T, q *Q, tables []string, expectedCount int) {
+	for _, table := range tables {
+		sql := sq.Select("count(*)").From(table)
+		var count int
+		err := q.Get(&count, sql)
+		tt.Assert.NoError(err)
+		tt.Assert.Equal(expectedCount, count)
+	}
+}
+
 func TestRemoveExpIngestHistory(t *testing.T) {
 	tt := test.Start(t)
 	defer tt.Finish()
@@ -22,7 +32,17 @@ func TestRemoveExpIngestHistory(t *testing.T) {
 
 	txInsertBuilder := q.NewTransactionBatchInsertBuilder(0)
 	txParticipantsInsertBuilder := q.NewTransactionParticipantsBatchInsertBuilder(0)
+	opInsertBuilder := q.NewOperationBatchInsertBuilder(0)
+	opParticipantsInsertBuilder := q.NewOperationParticipantBatchInsertBuilder(0)
 	accountID := int64(1223)
+
+	expTables := []string{
+		"exp_history_ledgers",
+		"exp_history_transactions",
+		"exp_history_transaction_participants",
+		"exp_history_operations",
+		"exp_history_operation_participants",
+	}
 
 	ledger := Ledger{
 		Sequence:                   69859,
@@ -62,18 +82,20 @@ func TestRemoveExpIngestHistory(t *testing.T) {
 		_, err = q.Exec(insertSQL)
 		tt.Assert.NoError(err)
 
+		tx := buildLedgerTransaction(
+			tt.T,
+			testTransaction{
+				index:         1,
+				envelopeXDR:   "AAAAACiSTRmpH6bHC6Ekna5e82oiGY5vKDEEUgkq9CB//t+rAAAAyAEXUhsAADDRAAAAAAAAAAAAAAABAAAAAAAAAAsBF1IbAABX4QAAAAAAAAAA",
+				resultXDR:     "AAAAAAAAASwAAAAAAAAAAwAAAAAAAAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAFAAAAAAAAAAA=",
+				feeChangesXDR: "AAAAAA==",
+				metaXDR:       "AAAAAQAAAAAAAAAA",
+				hash:          "19aaa18db88605aedec04659fb45e06f240b022eb2d429e05133e4d53cd945ba",
+			},
+		)
+
 		err = txInsertBuilder.Add(
-			buildLedgerTransaction(
-				tt,
-				testTransaction{
-					index:         1,
-					envelopeXDR:   "AAAAACiSTRmpH6bHC6Ekna5e82oiGY5vKDEEUgkq9CB//t+rAAAAyAEXUhsAADDRAAAAAAAAAAAAAAABAAAAAAAAAAsBF1IbAABX4QAAAAAAAAAA",
-					resultXDR:     "AAAAAAAAASwAAAAAAAAAAwAAAAAAAAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAFAAAAAAAAAAA=",
-					feeChangesXDR: "AAAAAA==",
-					metaXDR:       "AAAAAQAAAAAAAAAA",
-					hash:          "19aaa18db88605aedec04659fb45e06f240b022eb2d429e05133e4d53cd945ba",
-				},
-			),
+			tx,
 			uint32(ledger.Sequence),
 		)
 		tt.Assert.NoError(err)
@@ -83,34 +105,27 @@ func TestRemoveExpIngestHistory(t *testing.T) {
 		)
 		tt.Assert.NoError(txParticipantsInsertBuilder.Exec())
 
+		err = opInsertBuilder.Add(
+			tx,
+			uint32(ledger.Sequence),
+		)
+		tt.Assert.NoError(err)
+		tt.Assert.NoError(opInsertBuilder.Exec())
+		tt.Assert.NoError(
+			opParticipantsInsertBuilder.Add(toid.New(ledger.Sequence, 1, 1).ToInt64(), accountID),
+		)
+		tt.Assert.NoError(opParticipantsInsertBuilder.Exec())
+
 		ledger.Sequence++
 	}
 
-	var ledgers []Ledger
-	err = q.Select(&ledgers, selectLedgerFields.From("exp_history_ledgers hl"))
-	tt.Assert.NoError(err)
-	tt.Assert.Len(ledgers, 5)
-
-	var transactions []Transaction
-	err = q.Select(&transactions, selectExpTransaction)
-	tt.Assert.NoError(err)
-	tt.Assert.Len(transactions, 5)
-
-	tt.Assert.Len(getTransactionParticipants(tt, q), 5)
+	assertCountRows(tt, q, expTables, 5)
 
 	summary, err = q.RemoveExpIngestHistory(69863)
 	tt.Assert.Equal(ExpIngestRemovalSummary{}, summary)
 	tt.Assert.NoError(err)
 
-	err = q.Select(&ledgers, selectLedgerFields.From("exp_history_ledgers hl"))
-	tt.Assert.NoError(err)
-	tt.Assert.Len(ledgers, 5)
-
-	err = q.Select(&transactions, selectExpTransaction)
-	tt.Assert.NoError(err)
-	tt.Assert.Len(transactions, 5)
-
-	tt.Assert.Len(getTransactionParticipants(tt, q), 5)
+	assertCountRows(tt, q, expTables, 5)
 
 	cutoffSequence := 69861
 	summary, err = q.RemoveExpIngestHistory(uint32(cutoffSequence))
@@ -119,15 +134,19 @@ func TestRemoveExpIngestHistory(t *testing.T) {
 			LedgersRemoved:                 2,
 			TransactionsRemoved:            2,
 			TransactionParticipantsRemoved: 2,
+			OperationsRemoved:              2,
+			OperationParticipantsRemoved:   2,
 		},
 		summary,
 	)
 	tt.Assert.NoError(err)
 
+	var ledgers []Ledger
 	err = q.Select(&ledgers, selectLedgerFields.From("exp_history_ledgers hl"))
 	tt.Assert.NoError(err)
 	tt.Assert.Len(ledgers, 3)
 
+	var transactions []Transaction
 	err = q.Select(&transactions, selectExpTransaction)
 	tt.Assert.NoError(err)
 	tt.Assert.Len(transactions, 3)
@@ -135,12 +154,32 @@ func TestRemoveExpIngestHistory(t *testing.T) {
 	txParticipants := getTransactionParticipants(tt, q)
 	tt.Assert.Len(txParticipants, 3)
 
+	var operations []Operation
+	err = q.Select(&operations, selectExpOperation)
+	tt.Assert.NoError(err)
+	tt.Assert.Len(operations, 3)
+
+	type hop struct {
+		OperationID int64 `db:"history_operation_id"`
+		AccountID   int64 `db:"history_account_id"`
+	}
+	var opParticipants []hop
+	err = q.Select(&opParticipants, sq.Select(
+		"hopp.history_operation_id, "+
+			"hopp.history_account_id").
+		From("exp_history_operation_participants hopp"),
+	)
+	tt.Assert.NoError(err)
+	tt.Assert.Len(opParticipants, 3)
+
+	nextLedger := toid.ID{LedgerSequence: int32(cutoffSequence + 1)}
 	for i := range ledgers {
 		tt.Assert.LessOrEqual(ledgers[i].Sequence, int32(cutoffSequence))
 		tt.Assert.LessOrEqual(transactions[i].LedgerSequence, int32(cutoffSequence))
-		tt.Assert.Less(
-			txParticipants[i].TransactionID,
-			toid.ID{LedgerSequence: int32(cutoffSequence + 1)}.ToInt64(),
-		)
+
+		tt.Assert.Less(txParticipants[i].TransactionID, nextLedger.ToInt64())
+		tt.Assert.Less(operations[i].TransactionID, nextLedger.ToInt64())
+		tt.Assert.Less(operations[i].ID, nextLedger.ToInt64())
+		tt.Assert.Less(opParticipants[i].OperationID, nextLedger.ToInt64())
 	}
 }
