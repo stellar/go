@@ -22,7 +22,7 @@ import (
 func GenerateKey() (*ecdsa.PrivateKey, error) {
 	k, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "generating ECDSA key")
 	}
 	return k, nil
 }
