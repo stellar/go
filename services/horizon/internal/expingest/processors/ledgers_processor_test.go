@@ -39,10 +39,12 @@ func createTransaction(successful bool, numOps int) io.LedgerTransaction {
 	}
 
 	operations := []xdr.Operation{}
+	op := xdr.BumpSequenceOp{BumpTo: 30000}
 	for i := 0; i < numOps; i++ {
 		operations = append(operations, xdr.Operation{
 			Body: xdr.OperationBody{
-				Type: xdr.OperationTypeBumpSequence,
+				Type:           xdr.OperationTypeBumpSequence,
+				BumpSequenceOp: &op,
 			},
 		})
 	}
@@ -57,7 +59,8 @@ func createTransaction(successful bool, numOps int) io.LedgerTransaction {
 		},
 		Envelope: xdr.TransactionEnvelope{
 			Tx: xdr.Transaction{
-				Operations: operations,
+				SourceAccount: xdr.MustAddress("GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY"),
+				Operations:    operations,
 			},
 		},
 	}
