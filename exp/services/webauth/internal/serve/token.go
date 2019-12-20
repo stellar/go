@@ -40,6 +40,7 @@ func (h tokenHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	err := httpdecode.Decode(r, &req)
 	if err != nil {
 		badRequest.Render(w)
+		return
 	}
 
 	_, err = txnbuild.VerifyChallengeTx(req.Transaction, h.SigningAddress.Address(), h.NetworkPassphrase)
