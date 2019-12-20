@@ -1,19 +1,20 @@
 package history
 
 import (
-	"encoding/json"
-
-	"github.com/stellar/go/exp/ingest/io"
 	"github.com/stellar/go/support/db"
-	"github.com/stellar/go/support/errors"
+	"github.com/stellar/go/xdr"
 )
 
 // OperationBatchInsertBuilder is used to insert a transaction's operations into the
 // exp_history_operations table
 type OperationBatchInsertBuilder interface {
 	Add(
-		transaction io.LedgerTransaction,
-		sequence uint32,
+		id int64,
+		transactionID int64,
+		applicationOrder uint32,
+		operationType xdr.OperationType,
+		details []byte,
+		sourceAccount string,
 	) error
 	Exec() error
 }
@@ -35,35 +36,22 @@ func (q *Q) NewOperationBatchInsertBuilder(maxBatchSize int) OperationBatchInser
 
 // Add adds a transaction's operations to the batch
 func (i *operationBatchInsertBuilder) Add(
-	transaction io.LedgerTransaction,
-	sequence uint32,
+	id int64,
+	transactionID int64,
+	applicationOrder uint32,
+	operationType xdr.OperationType,
+	details []byte,
+	sourceAccount string,
 ) error {
-	for opi, op := range transaction.Envelope.Tx.Operations {
-		operation := transactionOperationWrapper{
-			index:          uint32(opi),
-			transaction:    transaction,
-			operation:      op,
-			ledgerSequence: sequence,
-		}
+	return i.builder.Row(map[string]interface{}{
+		"id":                id,
+		"transaction_id":    transactionID,
+		"application_order": applicationOrder,
+		"type":              operationType,
+		"details":           details,
+		"source_account":    sourceAccount,
+	})
 
-		detailsJSON, err := json.Marshal(operation.Details())
-		if err != nil {
-			return errors.Wrap(err, "Error marshaling details")
-		}
-		err = i.builder.Row(map[string]interface{}{
-			"id":                operation.ID(),
-			"transaction_id":    operation.TransactionID(),
-			"application_order": operation.Order(),
-			"type":              operation.OperationType(),
-			"details":           detailsJSON,
-			"source_account":    operation.SourceAccount().Address(),
-		})
-		if err != nil {
-			return errors.Wrap(err, "Error batch inserting operation rows")
-		}
-	}
-
-	return nil
 }
 
 func (i *operationBatchInsertBuilder) Exec() error {
