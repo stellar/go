@@ -1,8 +1,6 @@
 package main
 
 import (
-	"log"
-
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/stellar/go/exp/services/webauth/internal/commands"
@@ -26,6 +24,6 @@ func main() {
 
 	err := rootCmd.Execute()
 	if err != nil {
-		log.Fatal(err)
+		logger.Fatal(err)
 	}
 }
