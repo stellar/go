@@ -2,6 +2,7 @@ package processors
 
 import (
 	"context"
+	"encoding/json"
 	stdio "io"
 
 	"github.com/stellar/go/exp/ingest/io"
@@ -50,8 +51,35 @@ func (p *OperationProcessor) ProcessLedger(ctx context.Context, store *pipeline.
 			}
 		}
 
-		if err = operationBatch.Add(transaction, sequence); err != nil {
-			return errors.Wrap(err, "Error batch inserting operation rows")
+		for i, op := range transaction.Envelope.Tx.Operations {
+			operation := transactionOperationWrapper{
+				index:          uint32(i),
+				transaction:    transaction,
+				operation:      op,
+				ledgerSequence: sequence,
+			}
+
+			detailsJSON, err := json.Marshal(operation.Details())
+			if err != nil {
+				return errors.Wrapf(err, "Error marshaling details for operation %v", operation.ID())
+			}
+
+			operation.ID()
+			operation.TransactionID()
+			operation.Order()
+			operation.OperationType()
+			operation.SourceAccount().Address()
+
+			if err = operationBatch.Add(
+				operation.ID(),
+				operation.TransactionID(),
+				operation.Order(),
+				operation.OperationType(),
+				detailsJSON,
+				operation.SourceAccount().Address(),
+			); err != nil {
+				return errors.Wrap(err, "Error batch inserting operation rows")
+			}
 		}
 
 		select {

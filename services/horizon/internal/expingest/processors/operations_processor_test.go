@@ -2,6 +2,7 @@ package processors
 
 import (
 	"context"
+	"encoding/json"
 	stdio "io"
 	"testing"
 
@@ -9,6 +10,7 @@ import (
 	supportPipeline "github.com/stellar/go/exp/support/pipeline"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/support/errors"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -52,6 +54,36 @@ func (s *OperationsProcessorTestSuiteLedger) TearDownTest() {
 	s.mockLedgerWriter.AssertExpectations(s.T())
 }
 
+func (s *OperationsProcessorTestSuiteLedger) mockBatchInsertAdds(txs []io.LedgerTransaction, sequence uint32) error {
+	for _, t := range txs {
+		for i, op := range t.Envelope.Tx.Operations {
+			expected := transactionOperationWrapper{
+				index:          uint32(i),
+				transaction:    t,
+				operation:      op,
+				ledgerSequence: sequence,
+			}
+
+			detailsJSON, err := json.Marshal(expected.Details())
+			if err != nil {
+				return err
+			}
+
+			s.mockBatchInsertBuilder.On(
+				"Add",
+				expected.ID(),
+				expected.TransactionID(),
+				expected.Order(),
+				expected.OperationType(),
+				detailsJSON,
+				expected.SourceAccount().Address(),
+			).Return(nil).Once()
+		}
+	}
+
+	return nil
+}
+
 func (s *OperationsProcessorTestSuiteLedger) TestInsertExpLedgerIgnoredWhenNotDatabaseIngestion() {
 	s.mockQ = &history.MockQOperations{}
 	err := s.processor.ProcessLedger(
@@ -71,6 +103,12 @@ func (s *OperationsProcessorTestSuiteLedger) TestAddOperationSucceeds() {
 	secondTx := createTransaction(false, 3)
 	thirdTx := createTransaction(true, 4)
 
+	txs := []io.LedgerTransaction{
+		firstTx,
+		secondTx,
+		thirdTx,
+	}
+
 	s.mockLedgerReader.
 		On("Read").
 		Return(firstTx, nil).Once()
@@ -88,13 +126,14 @@ func (s *OperationsProcessorTestSuiteLedger) TestAddOperationSucceeds() {
 		On("CheckExpOperations", int32(sequence-10)).
 		Return(true, nil).Once()
 
-	s.mockBatchInsertBuilder.On("Add", firstTx, sequence).Return(nil).Once()
-	s.mockBatchInsertBuilder.On("Add", secondTx, sequence).Return(nil).Once()
-	s.mockBatchInsertBuilder.On("Add", thirdTx, sequence).Return(nil).Once()
+	var err error
+
+	err = s.mockBatchInsertAdds(txs, sequence)
+	s.Assert().NoError(err)
 
 	s.mockBatchInsertBuilder.On("Exec").Return(nil).Once()
 
-	err := s.processor.ProcessLedger(
+	err = s.processor.ProcessLedger(
 		s.context,
 		&supportPipeline.Store{},
 		s.mockLedgerReader,
@@ -113,8 +152,15 @@ func (s *OperationsProcessorTestSuiteLedger) TestAddOperationFails() {
 		Return(firstTx, nil).Once()
 
 	s.mockBatchInsertBuilder.
-		On("Add", firstTx, sequence).
-		Return(errors.New("transient error")).Once()
+		On(
+			"Add",
+			mock.Anything,
+			mock.Anything,
+			mock.Anything,
+			mock.Anything,
+			mock.Anything,
+			mock.Anything,
+		).Return(errors.New("transient error")).Once()
 
 	err := s.processor.ProcessLedger(
 		s.context,
@@ -162,7 +208,7 @@ func (s *OperationsProcessorTestSuiteLedger) TestCheckExpOperationsError() {
 		On("Read").
 		Return(io.LedgerTransaction{}, stdio.EOF).Once()
 
-	s.mockBatchInsertBuilder.On("Add", firstTx, sequence).Return(nil).Once()
+	s.mockBatchInsertAdds([]io.LedgerTransaction{firstTx}, sequence)
 	s.mockBatchInsertBuilder.On("Exec").Return(nil).Once()
 
 	s.mockQ.
@@ -191,7 +237,7 @@ func (s *OperationsProcessorTestSuiteLedger) TestCheckExpOperationsDoesNotMatch(
 		On("Read").
 		Return(io.LedgerTransaction{}, stdio.EOF).Once()
 
-	s.mockBatchInsertBuilder.On("Add", firstTx, sequence).Return(nil).Once()
+	s.mockBatchInsertAdds([]io.LedgerTransaction{firstTx}, sequence)
 	s.mockBatchInsertBuilder.On("Exec").Return(nil).Once()
 
 	s.mockQ.On("CheckExpOperations", int32(sequence-10)).
