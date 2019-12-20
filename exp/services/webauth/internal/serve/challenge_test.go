@@ -3,6 +3,7 @@ package serve
 import (
 	"encoding/json"
 	"io/ioutil"
+	"net/http"
 	"net/http/httptest"
 	"testing"
 	"time"
@@ -32,7 +33,7 @@ func TestChallenge(t *testing.T) {
 	h.ServeHTTP(w, r)
 	resp := w.Result()
 
-	require.Equal(t, 200, resp.StatusCode)
+	require.Equal(t, http.StatusOK, resp.StatusCode)
 	assert.Equal(t, "application/json; charset=utf-8", resp.Header.Get("Content-Type"))
 
 	res := struct {
@@ -70,7 +71,7 @@ func TestChallengeNoAccount(t *testing.T) {
 	h.ServeHTTP(w, r)
 	resp := w.Result()
 
-	require.Equal(t, 400, resp.StatusCode)
+	require.Equal(t, http.StatusBadRequest, resp.StatusCode)
 	assert.Equal(t, "application/json; charset=utf-8", resp.Header.Get("Content-Type"))
 
 	body, err := ioutil.ReadAll(resp.Body)
@@ -86,7 +87,7 @@ func TestChallengeInvalidAccount(t *testing.T) {
 	h.ServeHTTP(w, r)
 	resp := w.Result()
 
-	require.Equal(t, 400, resp.StatusCode)
+	require.Equal(t, http.StatusBadRequest, resp.StatusCode)
 	assert.Equal(t, "application/json; charset=utf-8", resp.Header.Get("Content-Type"))
 
 	body, err := ioutil.ReadAll(resp.Body)

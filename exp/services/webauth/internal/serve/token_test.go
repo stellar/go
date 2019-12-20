@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"strings"
@@ -92,7 +93,7 @@ func TestToken_formInputSuccess(t *testing.T) {
 	h.ServeHTTP(w, r)
 	resp := w.Result()
 
-	require.Equal(t, 200, resp.StatusCode)
+	require.Equal(t, http.StatusOK, resp.StatusCode)
 	assert.Equal(t, "application/json; charset=utf-8", resp.Header.Get("Content-Type"))
 
 	res := struct {
@@ -196,7 +197,7 @@ func TestToken_jsonInputSuccess(t *testing.T) {
 	h.ServeHTTP(w, r)
 	resp := w.Result()
 
-	require.Equal(t, 200, resp.StatusCode)
+	require.Equal(t, http.StatusOK, resp.StatusCode)
 	assert.Equal(t, "application/json; charset=utf-8", resp.Header.Get("Content-Type"))
 
 	res := struct {
@@ -313,7 +314,7 @@ func TestToken_jsonInputValidMultipleSigners(t *testing.T) {
 	h.ServeHTTP(w, r)
 	resp := w.Result()
 
-	require.Equal(t, 401, resp.StatusCode)
+	require.Equal(t, http.StatusUnauthorized, resp.StatusCode)
 	assert.Equal(t, "application/json; charset=utf-8", resp.Header.Get("Content-Type"))
 
 	respBodyBytes, err := ioutil.ReadAll(resp.Body)
@@ -395,7 +396,7 @@ func TestToken_jsonInputNotEnoughWeight(t *testing.T) {
 	h.ServeHTTP(w, r)
 	resp := w.Result()
 
-	require.Equal(t, 200, resp.StatusCode)
+	require.Equal(t, http.StatusOK, resp.StatusCode)
 	assert.Equal(t, "application/json; charset=utf-8", resp.Header.Get("Content-Type"))
 
 	res := struct {
