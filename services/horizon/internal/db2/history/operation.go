@@ -290,7 +290,7 @@ func (q *Q) CheckExpOperations(seq int32) (bool, error) {
 		&operations,
 		selectOperation.
 			Where("ht.ledger_sequence = ?", seq).
-			OrderBy("ht.application_order asc"),
+			OrderBy("hop.id asc"),
 	)
 	if err != nil {
 		return false, err
@@ -300,25 +300,27 @@ func (q *Q) CheckExpOperations(seq int32) (bool, error) {
 		&expOperations,
 		selectExpOperation.
 			Where("ht.ledger_sequence = ?", seq).
-			OrderBy("ht.application_order asc"),
+			OrderBy("hop.id asc"),
 	)
 	if err != nil {
 		return false, err
 	}
 
-	operationsByID := buildOperationsByID(operations)
-	expOperationsByID := buildOperationsByID(expOperations)
+	// We only proceed with the comparison if we have operations data in both the
+	// legacy ingestion system and the experimental ingestion system.
+	// If there are no operations in either the legacy ingestion system or the
+	// experimental ingestion system we skip the check.
+	if len(operations) == 0 || len(expOperations) == 0 {
+		return true, nil
+	}
 
-	for index := range expOperationsByID {
-		operation, ok := operationsByID[index]
-		expOperation := expOperationsByID[index]
-		if !ok {
-			continue
-		}
+	if len(operations) != len(expOperations) {
+		return false, nil
+	}
 
-		equal := reflect.DeepEqual(operation, expOperation)
-
-		if !equal {
+	for i, operation := range operations {
+		expOperation := expOperations[i]
+		if !reflect.DeepEqual(operation, expOperation) {
 			return false, nil
 		}
 	}
@@ -432,14 +434,6 @@ func (q *Q) CheckExpOperationParticipants(seq int32) (bool, error) {
 type QOperations interface {
 	NewOperationBatchInsertBuilder(maxBatchSize int) OperationBatchInsertBuilder
 	CheckExpOperations(seq int32) (bool, error)
-}
-
-func buildOperationsByID(operations []Operation) map[int64]Operation {
-	operationsByIndex := map[int64]Operation{}
-	for _, operation := range operations {
-		operationsByIndex[operation.ID] = operation
-	}
-	return operationsByIndex
 }
 
 var selectOperationFields = sq.Select(

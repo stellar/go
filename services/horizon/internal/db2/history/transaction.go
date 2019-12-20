@@ -165,14 +165,6 @@ func (q *TransactionsQ) Select(dest interface{}) error {
 	return nil
 }
 
-func buildTransactionsByIndex(transactions []Transaction) map[int32]Transaction {
-	transactionsByIndex := map[int32]Transaction{}
-	for _, transaction := range transactions {
-		transactionsByIndex[transaction.ApplicationOrder] = transaction
-	}
-	return transactionsByIndex
-}
-
 // CheckExpTransactions checks that the transactions in exp_history_transactions
 // for the given ledger matches the same transactions in history_transactions
 func (q *Q) CheckExpTransactions(seq int32) (bool, error) {
@@ -206,15 +198,12 @@ func (q *Q) CheckExpTransactions(seq int32) (bool, error) {
 		return true, nil
 	}
 
-	transactionsByIndex := buildTransactionsByIndex(transactions)
-	expTransactionsByIndex := buildTransactionsByIndex(expTransactions)
+	if len(transactions) != len(expTransactions) {
+		return false, nil
+	}
 
-	for index := range expTransactionsByIndex {
-		transaction, ok := transactionsByIndex[index]
-		expTransaction := expTransactionsByIndex[index]
-		if !ok {
-			return false, nil
-		}
+	for i, transaction := range transactions {
+		expTransaction := expTransactions[i]
 
 		// ignore created time and updated time
 		expTransaction.CreatedAt = transaction.CreatedAt
