@@ -22,10 +22,6 @@ var badRequest = errorResponse{
 	Status: http.StatusBadRequest,
 	Error:  "The request was invalid in some way.",
 }
-var unsupportedMediaType = errorResponse{
-	Status: http.StatusUnsupportedMediaType,
-	Error:  "The request is of content type or encoding that is unsupported.",
-}
 var unauthorized = errorResponse{
 	Status: http.StatusUnauthorized,
 	Error:  "The request could not be authenticated.",
