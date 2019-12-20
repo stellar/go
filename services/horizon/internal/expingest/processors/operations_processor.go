@@ -63,8 +63,8 @@ func (p *OperationProcessor) ProcessLedger(ctx context.Context, store *pipeline.
 				operation:      op,
 				ledgerSequence: sequence,
 			}
-
-			detailsJSON, err := json.Marshal(operation.Details())
+			var detailsJSON []byte
+			detailsJSON, err = json.Marshal(operation.Details())
 			if err != nil {
 				return errors.Wrapf(err, "Error marshaling details for operation %v", operation.ID())
 			}

@@ -106,7 +106,8 @@ func TestRemoveExpIngestHistory(t *testing.T) {
 		)
 		tt.Assert.NoError(txParticipantsInsertBuilder.Exec())
 
-		details, err := json.Marshal(map[string]interface{}{})
+		var details []byte
+		details, err = json.Marshal(map[string]interface{}{})
 		tt.Assert.NoError(err)
 
 		err = opInsertBuilder.Add(
