@@ -4,7 +4,6 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/stellar/go/exp/services/webauth/internal/commands"
-	jwtkeygencommands "github.com/stellar/go/exp/tools/jwtkeygen/commands"
 	supportlog "github.com/stellar/go/support/log"
 )
 
@@ -21,7 +20,7 @@ func main() {
 	}
 
 	rootCmd.AddCommand((&commands.ServeCommand{Logger: logger}).Command())
-	rootCmd.AddCommand((&jwtkeygencommands.GenJWTKeyCommand{Logger: logger}).Command())
+	rootCmd.AddCommand((&commands.GenJWTKeyCommand{Logger: logger}).Command())
 
 	err := rootCmd.Execute()
 	if err != nil {
