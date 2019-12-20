@@ -26,6 +26,20 @@ type participant struct {
 	operationSet   map[int64]struct{}
 }
 
+func (p *participant) addTransactionID(id int64) {
+	if p.transactionSet == nil {
+		p.transactionSet = map[int64]struct{}{}
+	}
+	p.transactionSet[id] = struct{}{}
+}
+
+func (p *participant) addOperationID(id int64) {
+	if p.operationSet == nil {
+		p.operationSet = map[int64]struct{}{}
+	}
+	p.operationSet[id] = struct{}{}
+}
+
 func (p *ParticipantsProcessor) loadAccountIDs(participantSet map[string]participant) error {
 	addresses := make([]string, 0, len(participantSet))
 	for address := range participantSet {
@@ -44,9 +58,9 @@ func (p *ParticipantsProcessor) loadAccountIDs(participantSet map[string]partici
 			return errors.Errorf("no id found for account address %s", address)
 		}
 
-		account := participantSet[address]
-		account.accountID = id
-		participantSet[address] = account
+		participantForAddress := participantSet[address]
+		participantForAddress.accountID = id
+		participantSet[address] = participantForAddress
 	}
 
 	return nil
@@ -69,15 +83,9 @@ func (p *ParticipantsProcessor) addTransactionParticipants(
 
 	for _, participant := range transactionParticipants {
 		address := participant.Address()
-		entry, ok := participantSet[address]
-		if !ok {
-			entry.transactionSet = map[int64]struct{}{
-				transactionID: struct{}{},
-			}
-			participantSet[address] = entry
-		} else {
-			entry.transactionSet[transactionID] = struct{}{}
-		}
+		entry := participantSet[address]
+		entry.addTransactionID(transactionID)
+		participantSet[address] = entry
 	}
 
 	return nil
@@ -96,15 +104,9 @@ func (p *ParticipantsProcessor) addOperationsParticipants(
 	for operationID, p := range participants {
 		for _, participant := range p {
 			address := participant.Address()
-			entry, ok := participantSet[address]
-			if !ok || entry.operationSet == nil {
-				entry.operationSet = map[int64]struct{}{
-					operationID: struct{}{},
-				}
-				participantSet[address] = entry
-			} else {
-				entry.operationSet[operationID] = struct{}{}
-			}
+			entry := participantSet[address]
+			entry.addOperationID(operationID)
+			participantSet[address] = entry
 		}
 	}
 
