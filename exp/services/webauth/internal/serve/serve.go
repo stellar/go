@@ -8,6 +8,7 @@ import (
 	"github.com/stellar/go/clients/horizonclient"
 	"github.com/stellar/go/exp/support/jwtkey"
 	"github.com/stellar/go/keypair"
+	"github.com/stellar/go/support/errors"
 	supporthttp "github.com/stellar/go/support/http"
 	supportlog "github.com/stellar/go/support/log"
 )
@@ -24,7 +25,12 @@ type Options struct {
 }
 
 func Serve(opts Options) {
-	handler := handler(opts)
+	handler, err := handler(opts)
+	if err != nil {
+		opts.Logger.Fatalf("Error: %v", err)
+		return
+	}
+
 	addr := fmt.Sprintf(":%d", opts.Port)
 	supporthttp.Run(supporthttp.Config{
 		ListenAddr: addr,
@@ -36,15 +42,15 @@ func Serve(opts Options) {
 	})
 }
 
-func handler(opts Options) http.Handler {
+func handler(opts Options) (http.Handler, error) {
 	signingKey, err := keypair.ParseFull(opts.SigningKey)
 	if err != nil {
-		opts.Logger.Fatalf("Error parsing signing key seed: %v", err)
+		return nil, errors.Wrap(err, "parsing signing key seed")
 	}
 
 	jwtPrivateKey, err := jwtkey.PrivateKeyFromString(opts.JWTPrivateKey)
 	if err != nil {
-		opts.Logger.Fatalf("Error parsing JWT private key: %v", err)
+		return nil, errors.Wrap(err, "parsing JWT private key")
 	}
 
 	httpClient := &http.Client{
@@ -77,5 +83,5 @@ func handler(opts Options) http.Handler {
 		JWTExpiresIn:      opts.JWTExpiresIn,
 	}.ServeHTTP)
 
-	return mux
+	return mux, nil
 }
