@@ -175,11 +175,7 @@ func (s *OperationsProcessorTestSuiteLedger) TestCheckExpOperationsError() {
 		s.mockLedgerReader,
 		s.mockLedgerWriter,
 	)
-	s.Assert().Error(err)
-	s.Assert().EqualError(
-		err,
-		"Could not compare operations for ledger 46: transient check exp ledger error",
-	)
+	s.Assert().NoError(err)
 }
 
 func (s *OperationsProcessorTestSuiteLedger) TestCheckExpOperationsDoesNotMatch() {
@@ -207,10 +203,5 @@ func (s *OperationsProcessorTestSuiteLedger) TestCheckExpOperationsDoesNotMatch(
 		s.mockLedgerReader,
 		s.mockLedgerWriter,
 	)
-	s.Assert().Error(err)
-	s.Assert().EqualError(
-		err,
-		"rows for ledger 46 in exp_history_operations "+
-			"does not match operations in history_operations",
-	)
+	s.Assert().NoError(err)
 }
