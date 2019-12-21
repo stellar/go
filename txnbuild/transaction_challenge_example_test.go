@@ -80,12 +80,14 @@ func ExampleVerifyChallengeTxThreshold() {
 			return
 		}
 
-		// Server gets list of account's signers and thresholds
+		// Server gets account
 		horizonClientAccount, err := horizonClient.AccountDetail(horizonclient.AccountRequest{AccountID: txClientAccountID})
 		if err != nil {
 			fmt.Println("Error:", err)
 			return
 		}
+
+		// Server gets list of signers from account
 		signers := txnbuild.SignersFromHorizon(horizonClientAccount.Signers)
 
 		// Server chooses the threshold to require: low, med or high
