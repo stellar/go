@@ -4,14 +4,36 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/stellar/go/clients/horizon"
+	"github.com/stellar/go/clients/horizonclient"
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/network"
 	"github.com/stellar/go/txnbuild"
 )
 
+var clientAccount, _ = keypair.ParseFull("SANVNCABRBVISCV7KH4SZVBKPJWWTT4424OVWUHUHPH2MVSF6RC7HPGN")
+var clientSigner1, _ = keypair.ParseFull("SBPQUZ6G4FZNWFHKUWC5BEYWF6R52E3SEP7R3GWYSM2XTKGF5LNTWW4R")
+var clientSigner2, _ = keypair.ParseFull("SBMSVD4KKELKGZXHBUQTIROWUAPQASDX7KEJITARP4VMZ6KLUHOGPTYW")
+var horizonClient = func() horizonclient.ClientInterface {
+	client := &horizonclient.MockClient{}
+	client.
+		On("AccountDetail", horizonclient.AccountRequest{AccountID: clientAccount.Address()}).
+		Return(
+			horizon.Account{
+				Thresholds: horizon.AccountThresholds{LowThreshold: 1, MedThreshold: 10, HighThreshold: 100},
+				Signers: []horizon.Signer{
+					{Key: clientSigner1.Address(), Weight: 40},
+					{Key: clientSigner2.Address(), Weight: 60},
+				},
+			},
+			nil,
+		)
+	return client
+}()
+
 func ExampleVerifyChallengeTxSigners_verifyAllClientSigners() {
-	serverAccount := keypair.MustRandom()
-	clientAccount := keypair.MustRandom()
+	serverAccount, _ := keypair.ParseFull("SCDXPYDGKV5HOAGVZN3FQSS5FKUPP5BAVBWH4FXKTAWAC24AE4757JSI")
+	clientAccount, _ := keypair.ParseFull("SANVNCABRBVISCV7KH4SZVBKPJWWTT4424OVWUHUHPH2MVSF6RC7HPGN")
 	clientSigner1, _ := keypair.ParseFull("SBPQUZ6G4FZNWFHKUWC5BEYWF6R52E3SEP7R3GWYSM2XTKGF5LNTWW4R")
 	clientSigner2, _ := keypair.ParseFull("SBMSVD4KKELKGZXHBUQTIROWUAPQASDX7KEJITARP4VMZ6KLUHOGPTYW")
 
@@ -52,11 +74,23 @@ func ExampleVerifyChallengeTxSigners_verifyAllClientSigners() {
 
 	// Server verifies signed challenge transaction
 	{
+		_, txClientAccountID, err := txnbuild.ReadChallengeTx(challengeTx, serverAccount.Address(), network.TestNetworkPassphrase)
+		if err != nil {
+			fmt.Println("Error:", err)
+			return
+		}
+
 		// Server gets list of account's signers
-		clientSigners := []string{clientSigner1.Address(), clientSigner2.Address()}
+		horizonClientAccount, err := horizonClient.AccountDetail(horizonclient.AccountRequest{AccountID: txClientAccountID})
+		if err != nil {
+			fmt.Println("Error:", err)
+			return
+		}
+		clientSigners := []string{}
 		fmt.Println("Client Signers:")
-		for _, clientSigner := range clientSigners {
-			fmt.Println(clientSigner)
+		for _, horizonSigner := range horizonClientAccount.Signers {
+			fmt.Println(horizonSigner.Key)
+			clientSigners = append(clientSigners, horizonSigner.Key)
 		}
 
 		// Server finds which client signers are found on transaction
@@ -88,9 +122,9 @@ func ExampleVerifyChallengeTxSigners_verifyAllClientSigners() {
 }
 
 func ExampleVerifyChallengeTxSigners_verifyAnyClientSigners() {
-	serverAccount := keypair.MustRandom()
-	clientAccount := keypair.MustRandom()
-	clientSigner1, _ := keypair.ParseFull("SBPQUZ6G4FZNWFHKUWC5BEYWF6R52E3SEP7R3GWYSM2XTKGF5LNTWW4R")
+	serverAccount, _ := keypair.ParseFull("SCDXPYDGKV5HOAGVZN3FQSS5FKUPP5BAVBWH4FXKTAWAC24AE4757JSI")
+	clientAccount, _ := keypair.ParseFull("SANVNCABRBVISCV7KH4SZVBKPJWWTT4424OVWUHUHPH2MVSF6RC7HPGN")
+	//clientSigner1, _ := keypair.ParseFull("SBPQUZ6G4FZNWFHKUWC5BEYWF6R52E3SEP7R3GWYSM2XTKGF5LNTWW4R")
 	clientSigner2, _ := keypair.ParseFull("SBMSVD4KKELKGZXHBUQTIROWUAPQASDX7KEJITARP4VMZ6KLUHOGPTYW")
 
 	// Server builds challenge transaction
@@ -131,11 +165,23 @@ func ExampleVerifyChallengeTxSigners_verifyAnyClientSigners() {
 
 	// Server verifies signed challenge transaction
 	{
+		_, txClientAccountID, err := txnbuild.ReadChallengeTx(challengeTx, serverAccount.Address(), network.TestNetworkPassphrase)
+		if err != nil {
+			fmt.Println("Error:", err)
+			return
+		}
+
 		// Server gets list of account's signers
-		clientSigners := []string{clientSigner1.Address(), clientSigner2.Address()}
+		horizonClientAccount, err := horizonClient.AccountDetail(horizonclient.AccountRequest{AccountID: txClientAccountID})
+		if err != nil {
+			fmt.Println("Error:", err)
+			return
+		}
+		clientSigners := []string{}
 		fmt.Println("Client Signers:")
-		for _, clientSigner := range clientSigners {
-			fmt.Println(clientSigner)
+		for _, horizonSigner := range horizonClientAccount.Signers {
+			fmt.Println(horizonSigner.Key)
+			clientSigners = append(clientSigners, horizonSigner.Key)
 		}
 
 		// Server finds which client signers are found on transaction
@@ -160,8 +206,8 @@ func ExampleVerifyChallengeTxSigners_verifyAnyClientSigners() {
 }
 
 func ExampleVerifyChallengeTxSigners_verifyClientMasterKeySigned() {
-	serverAccount := keypair.MustRandom()
-	clientAccount, _ := keypair.ParseFull("SDZQ46SVA4VEE4WGBKZMN76JDMFRNEICSLWPIGNINLEOFOSB7AVMV2PL")
+	serverAccount, _ := keypair.ParseFull("SCDXPYDGKV5HOAGVZN3FQSS5FKUPP5BAVBWH4FXKTAWAC24AE4757JSI")
+	clientAccount, _ := keypair.ParseFull("SANVNCABRBVISCV7KH4SZVBKPJWWTT4424OVWUHUHPH2MVSF6RC7HPGN")
 
 	// Server builds challenge transaction
 	var challengeTx string
@@ -201,29 +247,26 @@ func ExampleVerifyChallengeTxSigners_verifyClientMasterKeySigned() {
 
 	// Server verifies signed challenge transaction
 	{
-		// Server gets list of account's signers
-		clientSigners := []string{clientAccount.Address()}
-		fmt.Println("Client Signers:")
-		for _, clientSigner := range clientSigners {
-			fmt.Println(clientSigner)
-		}
-
-		// Server finds which client signers are found on transaction
-		signersFound, err := txnbuild.VerifyChallengeTxSigners(signedChallengeTx, serverAccount.Address(), network.TestNetworkPassphrase, clientSigners...)
+		_, txClientAccountID, err := txnbuild.ReadChallengeTx(challengeTx, serverAccount.Address(), network.TestNetworkPassphrase)
 		if err != nil {
 			fmt.Println("Error:", err)
 			return
 		}
 
-		fmt.Println("Client Signers Verified:")
+		// Server finds which client signers are found on transaction
+		signersFound, err := txnbuild.VerifyChallengeTxSigners(signedChallengeTx, serverAccount.Address(), network.TestNetworkPassphrase, txClientAccountID)
+		if err != nil {
+			fmt.Println("Error:", err)
+			return
+		}
+
+		fmt.Println("Client Master Key Verified:")
 		for _, signerFound := range signersFound {
 			fmt.Println(signerFound)
 		}
 	}
 
 	// Output:
-	// Client Signers:
-	// GDTEJZDQADCQZ4U6AFPWCOO55DYZCQ332KLYHHGEJIOFFL5HZN5MEGVY
-	// Client Signers Verified:
-	// GDTEJZDQADCQZ4U6AFPWCOO55DYZCQ332KLYHHGEJIOFFL5HZN5MEGVY
+	// Client Master Key Verified:
+	// GBOHBZB3Q3RMKXO3OSLJRDJNUSAPOXDVBDOMA52VHIGCIQEVZSXQ44CW
 }
