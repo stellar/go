@@ -81,28 +81,49 @@ func ExampleVerifyChallengeTxThreshold() {
 		}
 
 		// Server gets account
+		clientAccountExists := false
 		horizonClientAccount, err := horizonClient.AccountDetail(horizonclient.AccountRequest{AccountID: txClientAccountID})
-		if err != nil {
-			fmt.Println("Error:", err)
-			return
+		if err == nil {
+			clientAccountExists = true
+		} else {
+			if hErr, ok := err.(*horizonclient.Error); ok && hErr.Problem.Type == "https://stellar.org/horizon-errors/not_found" {
+				fmt.Println("Account does not exist, use master key to verify")
+			} else {
+				fmt.Println("Error:", err)
+				return
+			}
 		}
 
-		// Server gets list of signers from account
-		signers := txnbuild.SignersFromHorizon(horizonClientAccount.Signers)
+		if clientAccountExists {
+			// Server gets list of signers from account
+			signers := txnbuild.SignersFromHorizon(horizonClientAccount.Signers)
 
-		// Server chooses the threshold to require: low, med or high
-		threshold := txnbuild.Threshold(horizonClientAccount.Thresholds.MedThreshold)
+			// Server chooses the threshold to require: low, med or high
+			threshold := txnbuild.Threshold(horizonClientAccount.Thresholds.MedThreshold)
 
-		// Server finds which client signers are found on transaction
-		signersFound, err := txnbuild.VerifyChallengeTxThreshold(signedChallengeTx, serverAccount.Address(), network.TestNetworkPassphrase, threshold, signers)
-		if err != nil {
-			fmt.Println("Error:", err)
-			return
-		}
+			// Server finds which client signers are found on transaction
+			signersFound, err := txnbuild.VerifyChallengeTxThreshold(signedChallengeTx, serverAccount.Address(), network.TestNetworkPassphrase, threshold, signers)
+			if err != nil {
+				fmt.Println("Error:", err)
+				return
+			}
 
-		fmt.Println("Client Signers Verified:")
-		for _, signerFound := range signersFound {
-			fmt.Println(signerFound.Address, "weight:", signerFound.Weight)
+			fmt.Println("Client Signers Verified:")
+			for _, signerFound := range signersFound {
+				fmt.Println(signerFound.Address, "weight:", signerFound.Weight)
+			}
+		} else {
+			// Server finds which client signers are found on transaction
+			signersFound, err := txnbuild.VerifyChallengeTxSigners(signedChallengeTx, serverAccount.Address(), network.TestNetworkPassphrase, txClientAccountID)
+			if err != nil {
+				fmt.Println("Error:", err)
+				return
+			}
+
+			fmt.Println("Client Master Key Verified:")
+			for _, signerFound := range signersFound {
+				fmt.Println(signerFound)
+			}
 		}
 	}
 
@@ -110,70 +131,4 @@ func ExampleVerifyChallengeTxThreshold() {
 	// Client Signers Verified:
 	// GDQNY3PBOJOKYZSRMK2S7LHHGWZIUISD4QORETLMXEWXBI7KFZZMKTL3 weight: 40
 	// GAS4V4O2B7DW5T7IQRPEEVCRXMDZESKISR7DVIGKZQYYV3OSQ5SH5LVP weight: 60
-}
-
-func ExampleVerifyChallengeTxSigners_verifyClientMasterKeySigned() {
-	serverAccount, _ := keypair.ParseFull("SCDXPYDGKV5HOAGVZN3FQSS5FKUPP5BAVBWH4FXKTAWAC24AE4757JSI")
-	clientAccount, _ := keypair.ParseFull("SANVNCABRBVISCV7KH4SZVBKPJWWTT4424OVWUHUHPH2MVSF6RC7HPGN")
-
-	// Server builds challenge transaction
-	var challengeTx string
-	{
-		tx, err := txnbuild.BuildChallengeTx(serverAccount.Seed(), clientAccount.Address(), "test", network.TestNetworkPassphrase, time.Minute)
-		if err != nil {
-			fmt.Println("Error:", err)
-			return
-		}
-		challengeTx = tx
-	}
-
-	// Client reads and signs challenge transaction
-	var signedChallengeTx string
-	{
-		tx, txClientAccountID, err := txnbuild.ReadChallengeTx(challengeTx, serverAccount.Address(), network.TestNetworkPassphrase)
-		if err != nil {
-			fmt.Println("Error:", err)
-			return
-		}
-		if txClientAccountID != clientAccount.Address() {
-			fmt.Println("Error: challenge tx is not for expected client account")
-			return
-		}
-		// Signs with account master key
-		err = tx.Sign(clientAccount)
-		if err != nil {
-			fmt.Println("Error:", err)
-			return
-		}
-		signedChallengeTx, err = tx.Base64()
-		if err != nil {
-			fmt.Println("Error:", err)
-			return
-		}
-	}
-
-	// Server verifies signed challenge transaction
-	{
-		_, txClientAccountID, err := txnbuild.ReadChallengeTx(challengeTx, serverAccount.Address(), network.TestNetworkPassphrase)
-		if err != nil {
-			fmt.Println("Error:", err)
-			return
-		}
-
-		// Server finds which client signers are found on transaction
-		signersFound, err := txnbuild.VerifyChallengeTxSigners(signedChallengeTx, serverAccount.Address(), network.TestNetworkPassphrase, txClientAccountID)
-		if err != nil {
-			fmt.Println("Error:", err)
-			return
-		}
-
-		fmt.Println("Client Master Key Verified:")
-		for _, signerFound := range signersFound {
-			fmt.Println(signerFound)
-		}
-	}
-
-	// Output:
-	// Client Master Key Verified:
-	// GBOHBZB3Q3RMKXO3OSLJRDJNUSAPOXDVBDOMA52VHIGCIQEVZSXQ44CW
 }
