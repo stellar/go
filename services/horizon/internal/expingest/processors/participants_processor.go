@@ -96,7 +96,7 @@ func (p *ParticipantsProcessor) addOperationsParticipants(
 	sequence uint32,
 	transaction io.LedgerTransaction,
 ) error {
-	participants, err := history.OperationsParticipants(transaction, sequence)
+	participants, err := operationsParticipants(transaction, sequence)
 	if err != nil {
 		return errors.Wrap(err, "could not determine operation participants")
 	}

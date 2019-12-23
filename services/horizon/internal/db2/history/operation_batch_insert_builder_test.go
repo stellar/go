@@ -1,9 +1,11 @@
 package history
 
 import (
+	"encoding/json"
 	"testing"
 
 	"github.com/stellar/go/services/horizon/internal/test"
+	"github.com/stellar/go/services/horizon/internal/toid"
 	"github.com/stellar/go/xdr"
 )
 
@@ -33,7 +35,22 @@ func TestAddOperation(t *testing.T) {
 
 	insertTransaction(tt, q, "exp_history_transactions", transaction, sequence)
 
-	err := builder.Add(transaction, uint32(sequence))
+	details, err := json.Marshal(map[string]string{
+		"to":         "GANFZDRBCNTUXIODCJEYMACPMCSZEVE4WZGZ3CZDZ3P2SXK4KH75IK6Y",
+		"from":       "GANFZDRBCNTUXIODCJEYMACPMCSZEVE4WZGZ3CZDZ3P2SXK4KH75IK6Y",
+		"amount":     "10.0000000",
+		"asset_type": "native",
+	})
+	tt.Assert.NoError(err)
+
+	err = builder.Add(
+		toid.New(sequence, 1, 1).ToInt64(),
+		toid.New(sequence, 1, 0).ToInt64(),
+		1,
+		xdr.OperationTypePayment,
+		details,
+		"GANFZDRBCNTUXIODCJEYMACPMCSZEVE4WZGZ3CZDZ3P2SXK4KH75IK6Y",
+	)
 	tt.Assert.NoError(err)
 
 	err = builder.Exec()

@@ -1,6 +1,7 @@
 package history
 
 import (
+	"encoding/json"
 	"testing"
 
 	sq "github.com/Masterminds/squirrel"
@@ -9,6 +10,7 @@ import (
 	"github.com/stellar/go/services/horizon/internal/test"
 	"github.com/stellar/go/services/horizon/internal/toid"
 	"github.com/stellar/go/support/db"
+	"github.com/stellar/go/xdr"
 )
 
 func TestOperationQueries(t *testing.T) {
@@ -359,10 +361,18 @@ func TestCheckExpOperations(t *testing.T) {
 		thirdTransaction,
 	}
 
-	var err error
+	details, err := json.Marshal(map[string]interface{}{})
+	tt.Assert.NoError(err)
 
 	for _, t := range txs {
-		err = operationBatch.Add(t, uint32(sequence))
+		err = operationBatch.Add(
+			toid.New(sequence, int32(t.Index), 1).ToInt64(),
+			toid.New(sequence, int32(t.Index), 0).ToInt64(),
+			1,
+			xdr.OperationTypePayment,
+			details,
+			"GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY",
+		)
 		tt.Assert.NoError(err)
 	}
 
@@ -377,7 +387,14 @@ func TestCheckExpOperations(t *testing.T) {
 	}
 
 	for _, t := range txs {
-		err = batchBuilder.Add(t, uint32(sequence))
+		err = batchBuilder.Add(
+			toid.New(sequence, int32(t.Index), 1).ToInt64(),
+			toid.New(sequence, int32(t.Index), 0).ToInt64(),
+			1,
+			xdr.OperationTypePayment,
+			details,
+			"GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY",
+		)
 		tt.Assert.NoError(err)
 	}
 
@@ -388,24 +405,18 @@ func TestCheckExpOperations(t *testing.T) {
 	tt.Assert.True(valid)
 	tt.Assert.NoError(err)
 
-	operation := transactionOperationWrapper{
-		index:          0,
-		transaction:    thirdTransaction,
-		operation:      thirdTransaction.Envelope.Tx.Operations[0],
-		ledgerSequence: uint32(sequence),
-	}
-
+	operationID := toid.New(sequence, int32(thirdTransaction.Index), 1).ToInt64()
 	for fieldName, value := range map[string]interface{}{
 		"application_order": 100,
 		"type":              13,
-		"details":           "{}",
+		"details":           "{\"bump_to\": \"300000000003\"}",
 		"source_account":    "source_account",
 	} {
 		updateSQL := sq.Update("history_operations").
 			Set(fieldName, value).
 			Where(
 				"id = ?",
-				operation.ID(),
+				operationID,
 			)
 		_, err = q.Exec(updateSQL)
 		tt.Assert.NoError(err)
@@ -415,10 +426,17 @@ func TestCheckExpOperations(t *testing.T) {
 		tt.Assert.False(valid)
 
 		_, err = q.Exec(sq.Delete("history_operations").
-			Where("id = ?", operation.ID()))
+			Where("id = ?", operationID))
 		tt.Assert.NoError(err)
 
-		err = batchBuilder.Add(operation.transaction, operation.ledgerSequence)
+		err = batchBuilder.Add(
+			toid.New(sequence, int32(thirdTransaction.Index), 1).ToInt64(),
+			toid.New(sequence, int32(thirdTransaction.Index), 0).ToInt64(),
+			1,
+			xdr.OperationTypePayment,
+			details,
+			"GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY",
+		)
 		tt.Assert.NoError(err)
 		err = batchBuilder.Exec()
 		tt.Assert.NoError(err)

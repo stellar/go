@@ -1,10 +1,7 @@
 package history
 
 import (
-	"github.com/stellar/go/exp/ingest/io"
 	"github.com/stellar/go/support/db"
-	"github.com/stellar/go/support/errors"
-	"github.com/stellar/go/xdr"
 )
 
 // OperationParticipantBatchInsertBuilder is used to insert a transaction's operations into the
@@ -45,26 +42,4 @@ func (i *operationParticipantBatchInsertBuilder) Add(
 
 func (i *operationParticipantBatchInsertBuilder) Exec() error {
 	return i.builder.Exec()
-}
-
-// OperationsParticipants returns a map with all participants per operation
-func OperationsParticipants(transaction io.LedgerTransaction, sequence uint32) (map[int64][]xdr.AccountId, error) {
-	participants := map[int64][]xdr.AccountId{}
-
-	for opi, op := range transaction.Envelope.Tx.Operations {
-		operation := transactionOperationWrapper{
-			index:          uint32(opi),
-			transaction:    transaction,
-			operation:      op,
-			ledgerSequence: sequence,
-		}
-
-		p, err := operation.Participants()
-		if err != nil {
-			return participants, errors.Wrapf(err, "reading operation %v participants", operation.ID())
-		}
-		participants[operation.ID()] = p
-	}
-
-	return participants, nil
 }

@@ -1,6 +1,7 @@
 package history
 
 import (
+	"encoding/json"
 	"testing"
 	"time"
 
@@ -105,9 +106,17 @@ func TestRemoveExpIngestHistory(t *testing.T) {
 		)
 		tt.Assert.NoError(txParticipantsInsertBuilder.Exec())
 
+		var details []byte
+		details, err = json.Marshal(map[string]interface{}{})
+		tt.Assert.NoError(err)
+
 		err = opInsertBuilder.Add(
-			tx,
-			uint32(ledger.Sequence),
+			toid.New(ledger.Sequence, 1, 1).ToInt64(),
+			toid.New(ledger.Sequence, 1, 0).ToInt64(),
+			1,
+			1,
+			details,
+			"GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY",
 		)
 		tt.Assert.NoError(err)
 		tt.Assert.NoError(opInsertBuilder.Exec())
