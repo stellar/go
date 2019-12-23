@@ -216,6 +216,11 @@ func (q *EffectsQ) orderBookFilter(a xdr.Asset, prefix string) {
 	q.sql = q.sql.Where(clause, typ, code, iss)
 }
 
+// QEffects defines exp_history_effects related queries.
+type QEffects interface {
+	NewEffectBatchInsertBuilder(maxBatchSize int) EffectBatchInsertBuilder
+}
+
 var effectFields = sq.Select("heff.*, hacc.address")
 
 var selectEffect = effectFields.
