@@ -66,3 +66,53 @@ func TestAccountCreatedEffects(t *testing.T) {
 	assert.NoError(err)
 	assert.Equal(expected, effects)
 }
+
+func TestPaymentEffects(t *testing.T) {
+	assert := assert.New(t)
+
+	transaction := BuildLedgerTransaction(
+		t,
+		TestTransaction{
+			Index:         1,
+			EnvelopeXDR:   "AAAAABpcjiETZ0uhwxJJhgBPYKWSVJy2TZ2LI87fqV1cUf/UAAAAZAAAADcAAAABAAAAAAAAAAAAAAABAAAAAAAAAAEAAAAAGlyOIRNnS6HDEkmGAE9gpZJUnLZNnYsjzt+pXVxR/9QAAAAAAAAAAAX14QAAAAAAAAAAAVxR/9QAAABAK6pcXYMzAEmH08CZ1LWmvtNDKauhx+OImtP/Lk4hVTMJRVBOebVs5WEPj9iSrgGT0EswuDCZ2i5AEzwgGof9Ag==",
+			ResultXDR:     "AAAAAAAAAGQAAAAAAAAAAQAAAAAAAAABAAAAAAAAAAA=",
+			MetaXDR:       "AAAAAQAAAAIAAAADAAAAOAAAAAAAAAAAGlyOIRNnS6HDEkmGAE9gpZJUnLZNnYsjzt+pXVxR/9QAAAACVAvjnAAAADcAAAAAAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAABAAAAOAAAAAAAAAAAGlyOIRNnS6HDEkmGAE9gpZJUnLZNnYsjzt+pXVxR/9QAAAACVAvjnAAAADcAAAABAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAABAAAAAA==",
+			FeeChangesXDR: "AAAAAgAAAAMAAAA3AAAAAAAAAAAaXI4hE2dLocMSSYYAT2ClklSctk2diyPO36ldXFH/1AAAAAJUC+QAAAAANwAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAEAAAA4AAAAAAAAAAAaXI4hE2dLocMSSYYAT2ClklSctk2diyPO36ldXFH/1AAAAAJUC+OcAAAANwAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAA==",
+			Hash:          "2a805712c6d10f9e74bb0ccf54ae92a2b4b1e586451fe8133a2433816f6b567c",
+		},
+	)
+
+	expected := []map[string]interface{}{
+		map[string]interface{}{
+			"address": "GANFZDRBCNTUXIODCJEYMACPMCSZEVE4WZGZ3CZDZ3P2SXK4KH75IK6Y",
+			"details": map[string]interface{}{
+				"amount":     "10.0000000",
+				"asset_type": "native",
+			},
+			"effectType":  history.EffectAccountCredited,
+			"operationID": int64(240518172673),
+			"order":       uint32(1),
+		},
+		map[string]interface{}{
+			"address": "GANFZDRBCNTUXIODCJEYMACPMCSZEVE4WZGZ3CZDZ3P2SXK4KH75IK6Y",
+			"details": map[string]interface{}{
+				"amount":     "10.0000000",
+				"asset_type": "native",
+			},
+			"effectType":  history.EffectAccountDebited,
+			"operationID": int64(240518172673),
+			"order":       uint32(2),
+		},
+	}
+
+	op := transactionOperationWrapper{
+		index:          0,
+		transaction:    transaction,
+		operation:      transaction.Envelope.Tx.Operations[0],
+		ledgerSequence: uint32(56),
+	}
+
+	effects, err := op.Effects()
+	assert.NoError(err)
+	assert.Equal(expected, effects)
+}

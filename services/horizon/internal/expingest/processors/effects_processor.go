@@ -22,7 +22,7 @@ func (operation *transactionOperationWrapper) Effects() (effects []map[string]in
 	case xdr.OperationTypeCreateAccount:
 		effects = operation.accountCreatedEffects()
 	case xdr.OperationTypePayment:
-		// TBD
+		effects = operation.paymentEffects()
 	case xdr.OperationTypePathPaymentStrictReceive:
 		// TBD
 	case xdr.OperationTypePathPaymentStrictSend:
@@ -85,6 +85,30 @@ func (operation *transactionOperationWrapper) accountCreatedEffects() []map[stri
 				"public_key": op.Destination.Address(),
 				"weight":     keypair.DefaultSignerWeight,
 			},
+		),
+	}
+}
+
+func (operation *transactionOperationWrapper) paymentEffects() []map[string]interface{} {
+	op := operation.operation.Body.MustPaymentOp()
+
+	details := map[string]interface{}{"amount": amount.String(op.Amount)}
+	assetDetails(details, op.Asset, "")
+
+	return []map[string]interface{}{
+		buildEffectRow(
+			op.Destination.Address(),
+			operation.ID(),
+			history.EffectAccountCredited,
+			1,
+			details,
+		),
+		buildEffectRow(
+			operation.SourceAccount().Address(),
+			operation.ID(),
+			history.EffectAccountDebited,
+			2,
+			details,
 		),
 	}
 }
