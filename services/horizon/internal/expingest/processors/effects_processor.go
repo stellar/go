@@ -14,6 +14,22 @@ type EffectProcessor struct {
 	EffectsQ history.QEffects
 }
 
+type effectsWrapper struct {
+	effects []map[string]interface{}
+	order   uint32
+}
+
+func (e *effectsWrapper) add(address string, operationID int64, effectType history.EffectType, details map[string]interface{}) {
+	e.order++
+	e.effects = append(e.effects, map[string]interface{}{
+		"address":     address,
+		"operationID": operationID,
+		"effectType":  effectType,
+		"order":       e.order,
+		"details":     details,
+	})
+}
+
 // Effects returns the operation effects
 func (operation *transactionOperationWrapper) Effects() (effects []map[string]interface{}, err error) {
 	op := operation.operation
@@ -56,69 +72,61 @@ func (operation *transactionOperationWrapper) Effects() (effects []map[string]in
 
 func (operation *transactionOperationWrapper) accountCreatedEffects() []map[string]interface{} {
 	op := operation.operation.Body.MustCreateAccountOp()
-	return []map[string]interface{}{
-		buildEffectRow(
-			op.Destination.Address(),
-			operation.ID(),
-			history.EffectAccountCreated,
-			1,
-			map[string]interface{}{
-				"starting_balance": amount.String(op.StartingBalance),
-			},
-		),
-		buildEffectRow(
-			operation.SourceAccount().Address(),
-			operation.ID(),
-			history.EffectAccountDebited,
-			2,
-			map[string]interface{}{
-				"asset_type": "native",
-				"amount":     amount.String(op.StartingBalance),
-			},
-		),
-		buildEffectRow(
-			op.Destination.Address(),
-			operation.ID(),
-			history.EffectSignerCreated,
-			3,
-			map[string]interface{}{
-				"public_key": op.Destination.Address(),
-				"weight":     keypair.DefaultSignerWeight,
-			},
-		),
+	effects := effectsWrapper{
+		effects: []map[string]interface{}{},
 	}
+
+	effects.add(
+		op.Destination.Address(),
+		operation.ID(),
+		history.EffectAccountCreated,
+		map[string]interface{}{
+			"starting_balance": amount.String(op.StartingBalance),
+		},
+	)
+	effects.add(
+		operation.SourceAccount().Address(),
+		operation.ID(),
+		history.EffectAccountDebited,
+		map[string]interface{}{
+			"asset_type": "native",
+			"amount":     amount.String(op.StartingBalance),
+		},
+	)
+	effects.add(
+		op.Destination.Address(),
+		operation.ID(),
+		history.EffectSignerCreated,
+		map[string]interface{}{
+			"public_key": op.Destination.Address(),
+			"weight":     keypair.DefaultSignerWeight,
+		},
+	)
+
+	return effects.effects
 }
 
 func (operation *transactionOperationWrapper) paymentEffects() []map[string]interface{} {
 	op := operation.operation.Body.MustPaymentOp()
+	effects := effectsWrapper{
+		effects: []map[string]interface{}{},
+	}
 
 	details := map[string]interface{}{"amount": amount.String(op.Amount)}
 	assetDetails(details, op.Asset, "")
 
-	return []map[string]interface{}{
-		buildEffectRow(
-			op.Destination.Address(),
-			operation.ID(),
-			history.EffectAccountCredited,
-			1,
-			details,
-		),
-		buildEffectRow(
-			operation.SourceAccount().Address(),
-			operation.ID(),
-			history.EffectAccountDebited,
-			2,
-			details,
-		),
-	}
-}
+	effects.add(
+		op.Destination.Address(),
+		operation.ID(),
+		history.EffectAccountCredited,
+		details,
+	)
+	effects.add(
+		operation.SourceAccount().Address(),
+		operation.ID(),
+		history.EffectAccountDebited,
+		details,
+	)
 
-func buildEffectRow(address string, operationID int64, effectType history.EffectType, order uint32, details map[string]interface{}) map[string]interface{} {
-	return map[string]interface{}{
-		"address":     address,
-		"operationID": operationID,
-		"effectType":  effectType,
-		"order":       order,
-		"details":     details,
-	}
+	return effects.effects
 }
