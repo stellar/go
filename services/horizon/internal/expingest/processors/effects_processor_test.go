@@ -29,11 +29,11 @@ func TestOperationEffects(t *testing.T) {
 			feeChangesXDR: "AAAAAgAAAAMAAAA3AAAAAAAAAABi/B0L0JGythwN1lY0aypo19NHxvLCyO5tBEcCVvwF9wsatlj11nHQAAAAAAAAABkAAAAAAAAAAQAAAABi/B0L0JGythwN1lY0aypo19NHxvLCyO5tBEcCVvwF9wAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAEAAAA5AAAAAAAAAABi/B0L0JGythwN1lY0aypo19NHxvLCyO5tBEcCVvwF9wsatlj11nFsAAAAAAAAABkAAAAAAAAAAQAAAABi/B0L0JGythwN1lY0aypo19NHxvLCyO5tBEcCVvwF9wAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAA==",
 			hash:          "0e5bd332291e3098e49886df2cdb9b5369a5f9e0a9973f0d9e1a9489c6581ba2",
 			index:         0,
-			sequence:      56,
+			sequence:      57,
 			expected: []map[string]interface{}{
 				map[string]interface{}{
 					"address":     "GCQZP3IU7XU6EJ63JZXKCQOYT2RNXN3HB5CNHENNUEUHSMA4VUJJJSEN",
-					"operationID": int64(240518172673),
+					"operationID": int64(244813139969),
 					"details": map[string]interface{}{
 						"starting_balance": "1000.0000000",
 					},
@@ -42,7 +42,7 @@ func TestOperationEffects(t *testing.T) {
 				},
 				map[string]interface{}{
 					"address":     "GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H",
-					"operationID": int64(240518172673),
+					"operationID": int64(244813139969),
 					"details": map[string]interface{}{
 						"amount":     "1000.0000000",
 						"asset_type": "native",
@@ -52,7 +52,7 @@ func TestOperationEffects(t *testing.T) {
 				},
 				map[string]interface{}{
 					"address":     "GCQZP3IU7XU6EJ63JZXKCQOYT2RNXN3HB5CNHENNUEUHSMA4VUJJJSEN",
-					"operationID": int64(240518172673),
+					"operationID": int64(244813139969),
 					"details": map[string]interface{}{
 						"public_key": "GCQZP3IU7XU6EJ63JZXKCQOYT2RNXN3HB5CNHENNUEUHSMA4VUJJJSEN",
 						"weight":     1,
