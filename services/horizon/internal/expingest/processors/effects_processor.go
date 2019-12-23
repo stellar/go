@@ -44,10 +44,10 @@ func (operation *transactionOperationWrapper) Effects() (effects []map[string]in
 		effects = operation.pathPaymentStrictReceiveEffects()
 	case xdr.OperationTypePathPaymentStrictSend:
 		// TBD
-	case xdr.OperationTypeManageBuyOffer:
-		// TBD
 	case xdr.OperationTypeManageSellOffer:
 		effects = operation.manageSellOfferEffects()
+	case xdr.OperationTypeManageBuyOffer:
+		effects = operation.manageBuyOfferEffects()
 	case xdr.OperationTypeCreatePassiveSellOffer:
 		// TBD
 	case xdr.OperationTypeSetOptions:
@@ -170,6 +170,18 @@ func (operation *transactionOperationWrapper) manageSellOfferEffects() []map[str
 		operation: operation,
 	}
 	result := operation.OperationResult().MustManageSellOfferResult().MustSuccess()
+	ingestTradeEffects(&effects, *source, result.OffersClaimed)
+
+	return effects.effects
+}
+
+func (operation *transactionOperationWrapper) manageBuyOfferEffects() []map[string]interface{} {
+	source := operation.SourceAccount()
+	effects := effectsWrapper{
+		effects:   []map[string]interface{}{},
+		operation: operation,
+	}
+	result := operation.OperationResult().MustManageBuyOfferResult().MustSuccess()
 	ingestTradeEffects(&effects, *source, result.OffersClaimed)
 
 	return effects.effects
