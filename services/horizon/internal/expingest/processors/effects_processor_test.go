@@ -30,7 +30,7 @@ func TestAccountCreatedEffects(t *testing.T) {
 			"details": map[string]interface{}{
 				"starting_balance": "1000.0000000",
 			},
-			"effectType": history.EffectType(0),
+			"effectType": history.EffectAccountCreated,
 			"order":      uint32(1),
 		},
 		map[string]interface{}{
@@ -40,7 +40,7 @@ func TestAccountCreatedEffects(t *testing.T) {
 				"amount":     "1000.0000000",
 				"asset_type": "native",
 			},
-			"effectType": history.EffectType(3),
+			"effectType": history.EffectAccountDebited,
 			"order":      uint32(2),
 		},
 		map[string]interface{}{
@@ -50,7 +50,7 @@ func TestAccountCreatedEffects(t *testing.T) {
 				"public_key": "GCQZP3IU7XU6EJ63JZXKCQOYT2RNXN3HB5CNHENNUEUHSMA4VUJJJSEN",
 				"weight":     1,
 			},
-			"effectType": history.EffectType(10),
+			"effectType": history.EffectSignerCreated,
 			"order":      uint32(3),
 		},
 	}
