@@ -199,6 +199,28 @@ func (t *LedgerTransaction) GetChanges() ([]Change, error) {
 	return changes, nil
 }
 
+// GetOperationChanges returns a developer friendly representation of LedgerEntryChanges.
+// It contains only operation changes.
+func (t *LedgerTransaction) GetOperationChanges(operationIndex uint32) []Change {
+	var changes []Change
+
+	// Transaction meta
+	switch t.Meta.V {
+	case 0:
+		// TODO: How can we  distinguish between tx changes and operation changes?
+	case 1:
+		v1Meta := t.Meta.MustV1()
+		operationMeta := v1Meta.Operations[operationIndex]
+		changes = getChangesFromLedgerEntryChanges(
+			operationMeta.Changes,
+		)
+	default:
+		panic("Unkown TransactionMeta version")
+	}
+
+	return changes
+}
+
 // getChangesFromLedgerEntryChanges transforms LedgerEntryChanges to []Change.
 // Each `update` and `removed` is preceded with `state` and `create` changes
 // are alone, without `state`. The transformation we're doing is to move each

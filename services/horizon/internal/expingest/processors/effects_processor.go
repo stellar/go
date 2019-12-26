@@ -2,6 +2,7 @@ package processors
 
 import (
 	"fmt"
+	"reflect"
 
 	"github.com/stellar/go/amount"
 	"github.com/stellar/go/keypair"
@@ -51,7 +52,7 @@ func (operation *transactionOperationWrapper) Effects() (effects []map[string]in
 	case xdr.OperationTypeCreatePassiveSellOffer:
 		effects = operation.createPassiveSellOfferEffect()
 	case xdr.OperationTypeSetOptions:
-		// TBD
+		effects = operation.setOptionsEffects()
 	case xdr.OperationTypeChangeTrust:
 		// TBD
 	case xdr.OperationTypeAllowTrust:
@@ -208,6 +209,122 @@ func (operation *transactionOperationWrapper) createPassiveSellOfferEffect() []m
 	ingestTradeEffects(&effects, *source, claims)
 
 	return effects.effects
+}
+
+func (operation *transactionOperationWrapper) setOptionsEffects() []map[string]interface{} {
+	source := operation.SourceAccount()
+	op := operation.operation.Body.MustSetOptionsOp()
+
+	effects := effectsWrapper{
+		effects:   []map[string]interface{}{},
+		operation: operation,
+	}
+
+	if op.HomeDomain != nil {
+		effects.add(source.Address(), history.EffectAccountHomeDomainUpdated,
+			map[string]interface{}{
+				"home_domain": string(*op.HomeDomain),
+			},
+		)
+	}
+
+	thresholdDetails := map[string]interface{}{}
+
+	if op.LowThreshold != nil {
+		thresholdDetails["low_threshold"] = *op.LowThreshold
+	}
+
+	if op.MedThreshold != nil {
+		thresholdDetails["med_threshold"] = *op.MedThreshold
+	}
+
+	if op.HighThreshold != nil {
+		thresholdDetails["high_threshold"] = *op.HighThreshold
+	}
+
+	if len(thresholdDetails) > 0 {
+		effects.add(source.Address(), history.EffectAccountThresholdsUpdated, thresholdDetails)
+	}
+
+	flagDetails := map[string]interface{}{}
+	effectFlagDetails(flagDetails, op.SetFlags, true)
+	effectFlagDetails(flagDetails, op.ClearFlags, false)
+
+	if len(flagDetails) > 0 {
+		effects.add(source.Address(), history.EffectAccountFlagsUpdated, flagDetails)
+	}
+
+	if op.InflationDest != nil {
+		effects.add(source.Address(), history.EffectAccountInflationDestinationUpdated,
+			map[string]interface{}{
+				"inflation_destination": op.InflationDest.Address(),
+			},
+		)
+	}
+	changes := operation.transaction.GetOperationChanges(operation.index)
+
+	for _, change := range changes {
+		if change.Type != xdr.LedgerEntryTypeAccount {
+			continue
+		}
+
+		beforeAccount := change.Pre.Data.MustAccount()
+		afterAccount := change.Post.Data.MustAccount()
+
+		before := beforeAccount.SignerSummary()
+		after := afterAccount.SignerSummary()
+
+		// if before and after are the same, the signers have not changed
+		if reflect.DeepEqual(before, after) {
+			continue
+		}
+
+		for addy := range before {
+			weight, ok := after[addy]
+			if !ok {
+				effects.add(source.Address(), history.EffectSignerRemoved, map[string]interface{}{
+					"public_key": addy,
+				})
+				continue
+			}
+			effects.add(source.Address(), history.EffectSignerUpdated, map[string]interface{}{
+				"public_key": addy,
+				"weight":     weight,
+			})
+		}
+
+		// Add the "created" effects
+		for addy, weight := range after {
+			// if `addy` is in before, the previous for loop should have recorded
+			// the update, so skip this key
+			if _, ok := before[addy]; ok {
+				continue
+			}
+
+			effects.add(source.Address(), history.EffectSignerCreated, map[string]interface{}{
+				"public_key": addy,
+				"weight":     weight,
+			})
+		}
+	}
+
+	return effects.effects
+}
+
+func effectFlagDetails(flagDetails map[string]interface{}, flagPtr *xdr.Uint32, setValue bool) {
+	if flagPtr != nil {
+		flags := xdr.AccountFlags(*flagPtr)
+
+		if flags&xdr.AccountFlagsAuthRequiredFlag != 0 {
+			flagDetails["auth_required_flag"] = setValue
+		}
+		if flags&xdr.AccountFlagsAuthRevocableFlag != 0 {
+			flagDetails["auth_revocable_flag"] = setValue
+		}
+		if flags&xdr.AccountFlagsAuthImmutableFlag != 0 {
+			flagDetails["auth_immutable_flag"] = setValue
+		}
+	}
 }
 
 func ingestTradeEffects(effects *effectsWrapper, buyer xdr.AccountId, claims []xdr.ClaimOfferAtom) {
