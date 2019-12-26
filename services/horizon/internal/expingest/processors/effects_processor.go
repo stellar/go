@@ -49,7 +49,7 @@ func (operation *transactionOperationWrapper) Effects() (effects []map[string]in
 	case xdr.OperationTypeManageBuyOffer:
 		effects = operation.manageBuyOfferEffects()
 	case xdr.OperationTypeCreatePassiveSellOffer:
-		// TBD
+		effects = operation.createPassiveSellOfferEffect()
 	case xdr.OperationTypeSetOptions:
 		// TBD
 	case xdr.OperationTypeChangeTrust:
@@ -183,6 +183,29 @@ func (operation *transactionOperationWrapper) manageBuyOfferEffects() []map[stri
 	}
 	result := operation.OperationResult().MustManageBuyOfferResult().MustSuccess()
 	ingestTradeEffects(&effects, *source, result.OffersClaimed)
+
+	return effects.effects
+}
+
+func (operation *transactionOperationWrapper) createPassiveSellOfferEffect() []map[string]interface{} {
+	result := operation.OperationResult()
+	source := operation.SourceAccount()
+	effects := effectsWrapper{
+		effects:   []map[string]interface{}{},
+		operation: operation,
+	}
+
+	var claims []xdr.ClaimOfferAtom
+
+	// KNOWN ISSUE:  stellar-core creates results for CreatePassiveOffer operations
+	// with the wrong result arm set.
+	if result.Type == xdr.OperationTypeManageSellOffer {
+		claims = result.MustManageSellOfferResult().MustSuccess().OffersClaimed
+	} else {
+		claims = result.MustCreatePassiveSellOfferResult().MustSuccess().OffersClaimed
+	}
+
+	ingestTradeEffects(&effects, *source, claims)
 
 	return effects.effects
 }
