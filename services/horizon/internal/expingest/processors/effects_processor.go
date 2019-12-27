@@ -65,7 +65,7 @@ func (operation *transactionOperationWrapper) Effects() (effects []map[string]in
 	case xdr.OperationTypeManageData:
 		effects = operation.manageDataEffects()
 	case xdr.OperationTypeBumpSequence:
-		// TBD
+		effects = operation.bumpSequenceEffects()
 	default:
 		return effects, fmt.Errorf("Unknown operation type: %s", op.Body.Type)
 	}
@@ -452,6 +452,36 @@ func (operation *transactionOperationWrapper) manageDataEffects() []map[string]i
 	}
 
 	effects.add(source.Address(), effect, details)
+
+	return effects.effects
+}
+
+func (operation *transactionOperationWrapper) bumpSequenceEffects() []map[string]interface{} {
+	effects := effectsWrapper{
+		effects:   []map[string]interface{}{},
+		operation: operation,
+	}
+	source := operation.SourceAccount()
+	changes := operation.transaction.GetOperationChanges(operation.index)
+
+	// TODO/ASK: since we know this is bumpSequence operation change, how many
+	// changes can we expect to find here?
+	for _, change := range changes {
+		if change.Type != xdr.LedgerEntryTypeAccount {
+			continue
+		}
+
+		before := change.Pre
+		after := change.Post
+
+		beforeAccount := before.Data.MustAccount()
+		afterAccount := after.Data.MustAccount()
+
+		if beforeAccount.SeqNum != afterAccount.SeqNum {
+			details := map[string]interface{}{"new_seq": afterAccount.SeqNum}
+			effects.add(source.Address(), history.EffectSequenceBumped, details)
+		}
+	}
 
 	return effects.effects
 }
