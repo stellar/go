@@ -58,7 +58,7 @@ func (operation *transactionOperationWrapper) Effects() (effects []map[string]in
 	case xdr.OperationTypeAllowTrust:
 		effects = operation.allowTrustEffects()
 	case xdr.OperationTypeAccountMerge:
-		// TBD
+		effects = operation.accountMergeEffects()
 	case xdr.OperationTypeInflation:
 		// TBD
 	case xdr.OperationTypeManageData:
@@ -368,6 +368,27 @@ func (operation *transactionOperationWrapper) allowTrustEffects() []map[string]i
 	} else {
 		effects.add(source.Address(), history.EffectTrustlineDeauthorized, details)
 	}
+
+	return effects.effects
+}
+
+func (operation *transactionOperationWrapper) accountMergeEffects() []map[string]interface{} {
+	source := operation.SourceAccount()
+	effects := effectsWrapper{
+		effects:   []map[string]interface{}{},
+		operation: operation,
+	}
+
+	dest := operation.operation.Body.MustDestination()
+	result := operation.OperationResult().MustAccountMergeResult()
+	details := map[string]interface{}{
+		"amount":     amount.String(result.MustSourceAccountBalance()),
+		"asset_type": "native",
+	}
+
+	effects.add(source.Address(), history.EffectAccountDebited, details)
+	effects.add(dest.Address(), history.EffectAccountCredited, details)
+	effects.add(source.Address(), history.EffectAccountRemoved, map[string]interface{}{})
 
 	return effects.effects
 }
