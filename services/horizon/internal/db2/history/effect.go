@@ -226,7 +226,3 @@ var effectFields = sq.Select("heff.*, hacc.address")
 var selectEffect = effectFields.
 	From("history_effects heff").
 	LeftJoin("history_accounts hacc ON hacc.id = heff.history_account_id")
-
-var expSelectEffect = effectFields.
-	From("exp_history_effects heff").
-	LeftJoin("exp_history_accounts hacc ON hacc.id = heff.history_account_id")
