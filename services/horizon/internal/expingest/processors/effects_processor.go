@@ -1,6 +1,7 @@
 package processors
 
 import (
+	"encoding/base64"
 	"fmt"
 	"reflect"
 
@@ -62,7 +63,7 @@ func (operation *transactionOperationWrapper) Effects() (effects []map[string]in
 	case xdr.OperationTypeInflation:
 		effects = operation.inflationEffects()
 	case xdr.OperationTypeManageData:
-		// TBD
+		effects = operation.manageDataEffects()
 	case xdr.OperationTypeBumpSequence:
 		// TBD
 	default:
@@ -407,6 +408,50 @@ func (operation *transactionOperationWrapper) inflationEffects() []map[string]in
 			},
 		)
 	}
+
+	return effects.effects
+}
+
+func (operation *transactionOperationWrapper) manageDataEffects() []map[string]interface{} {
+	effects := effectsWrapper{
+		effects:   []map[string]interface{}{},
+		operation: operation,
+	}
+	source := operation.SourceAccount()
+	op := operation.operation.Body.MustManageDataOp()
+	details := map[string]interface{}{"name": op.DataName}
+	effect := history.EffectType(0)
+	changes := operation.transaction.GetOperationChanges(operation.index)
+
+	// TODO/ASK: since we know this is manageData operation change, how many
+	// changes can we find?' in this case the answer seems to be 2? One for
+	// changing sub-entries on account data and the other for adding data
+	for _, change := range changes {
+		if change.Type != xdr.LedgerEntryTypeData {
+			continue
+		}
+
+		before := change.Pre
+		after := change.Post
+
+		if after != nil {
+			raw := after.Data.MustData().DataValue
+			details["value"] = base64.StdEncoding.EncodeToString(raw)
+		}
+
+		switch {
+		case before == nil && after != nil:
+			effect = history.EffectDataCreated
+		case before != nil && after == nil:
+			effect = history.EffectDataRemoved
+		case before != nil && after != nil:
+			effect = history.EffectDataUpdated
+		default:
+			panic("Invalid before-and-after state")
+		}
+	}
+
+	effects.add(source.Address(), effect, details)
 
 	return effects.effects
 }
