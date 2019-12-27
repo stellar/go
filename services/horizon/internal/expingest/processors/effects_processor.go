@@ -56,7 +56,7 @@ func (operation *transactionOperationWrapper) Effects() (effects []map[string]in
 	case xdr.OperationTypeChangeTrust:
 		effects = operation.changeTrustEffects()
 	case xdr.OperationTypeAllowTrust:
-		// TBD
+		effects = operation.allowTrustEffects()
 	case xdr.OperationTypeAccountMerge:
 		// TBD
 	case xdr.OperationTypeInflation:
@@ -346,6 +346,28 @@ func (operation *transactionOperationWrapper) changeTrustEffects() []map[string]
 	}
 
 	effects.add(source.Address(), effect, details)
+
+	return effects.effects
+}
+
+func (operation *transactionOperationWrapper) allowTrustEffects() []map[string]interface{} {
+	source := operation.SourceAccount()
+	effects := effectsWrapper{
+		effects:   []map[string]interface{}{},
+		operation: operation,
+	}
+	op := operation.operation.Body.MustAllowTrustOp()
+	asset := op.Asset.ToAsset(*source)
+	details := map[string]interface{}{
+		"trustor": op.Trustor.Address(),
+	}
+	assetDetails(details, asset, "")
+
+	if op.Authorize {
+		effects.add(source.Address(), history.EffectTrustlineAuthorized, details)
+	} else {
+		effects.add(source.Address(), history.EffectTrustlineDeauthorized, details)
+	}
 
 	return effects.effects
 }
