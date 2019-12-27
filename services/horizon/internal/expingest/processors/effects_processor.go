@@ -60,7 +60,7 @@ func (operation *transactionOperationWrapper) Effects() (effects []map[string]in
 	case xdr.OperationTypeAccountMerge:
 		effects = operation.accountMergeEffects()
 	case xdr.OperationTypeInflation:
-		// TBD
+		effects = operation.inflationEffects()
 	case xdr.OperationTypeManageData:
 		// TBD
 	case xdr.OperationTypeBumpSequence:
@@ -389,6 +389,24 @@ func (operation *transactionOperationWrapper) accountMergeEffects() []map[string
 	effects.add(source.Address(), history.EffectAccountDebited, details)
 	effects.add(dest.Address(), history.EffectAccountCredited, details)
 	effects.add(source.Address(), history.EffectAccountRemoved, map[string]interface{}{})
+
+	return effects.effects
+}
+
+func (operation *transactionOperationWrapper) inflationEffects() []map[string]interface{} {
+	effects := effectsWrapper{
+		effects:   []map[string]interface{}{},
+		operation: operation,
+	}
+	payouts := operation.OperationResult().MustInflationResult().MustPayouts()
+	for _, payout := range payouts {
+		effects.add(payout.Destination.Address(), history.EffectAccountCredited,
+			map[string]interface{}{
+				"amount":     amount.String(payout.Amount),
+				"asset_type": "native",
+			},
+		)
+	}
 
 	return effects.effects
 }
