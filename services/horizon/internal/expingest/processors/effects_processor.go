@@ -54,7 +54,7 @@ func (operation *transactionOperationWrapper) Effects() (effects []map[string]in
 	case xdr.OperationTypeSetOptions:
 		effects = operation.setOptionsEffects()
 	case xdr.OperationTypeChangeTrust:
-		// TBD
+		effects = operation.changeTrustEffects()
 	case xdr.OperationTypeAllowTrust:
 		// TBD
 	case xdr.OperationTypeAccountMerge:
@@ -307,6 +307,45 @@ func (operation *transactionOperationWrapper) setOptionsEffects() []map[string]i
 			})
 		}
 	}
+
+	return effects.effects
+}
+
+func (operation *transactionOperationWrapper) changeTrustEffects() []map[string]interface{} {
+	source := operation.SourceAccount()
+
+	effects := effectsWrapper{
+		effects:   []map[string]interface{}{},
+		operation: operation,
+	}
+
+	op := operation.operation.Body.MustChangeTrustOp()
+	details := map[string]interface{}{"limit": amount.String(op.Limit)}
+
+	effect := history.EffectType(0)
+	assetDetails(details, op.Line, "")
+
+	changes := operation.transaction.GetOperationChanges(operation.index)
+
+	// TODO/ASK: since we know this is trustline change, how many changes can we find?
+	for _, change := range changes {
+		if change.Type != xdr.LedgerEntryTypeTrustline {
+			continue
+		}
+
+		switch {
+		case change.Pre == nil && change.Post != nil:
+			effect = history.EffectTrustlineCreated
+		case change.Pre != nil && change.Post == nil:
+			effect = history.EffectTrustlineRemoved
+		case change.Pre != nil && change.Post != nil:
+			effect = history.EffectTrustlineUpdated
+		default:
+			panic("Invalid change")
+		}
+	}
+
+	effects.add(source.Address(), effect, details)
 
 	return effects.effects
 }
