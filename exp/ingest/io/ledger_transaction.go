@@ -207,7 +207,11 @@ func (t *LedgerTransaction) GetOperationChanges(operationIndex uint32) []Change 
 	// Transaction meta
 	switch t.Meta.V {
 	case 0:
-		// TODO: How can we  distinguish between tx changes and operation changes?
+		// TODO: is this assumption correct? Do we have tx changes on V0?
+		operationMeta := t.Meta.MustOperations()[operationIndex]
+		changes = getChangesFromLedgerEntryChanges(
+			operationMeta.Changes,
+		)
 	case 1:
 		v1Meta := t.Meta.MustV1()
 		operationMeta := v1Meta.Operations[operationIndex]
