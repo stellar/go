@@ -95,10 +95,10 @@ type systemState string
 
 const (
 	initState                 systemState = "init"
-	loadOffersIntoMemoryState             = "loadOffersIntoMemory"
-	buildStateAndResumeState              = "buildStateAndResume"
-	resumeState                           = "resume"
-	shutdownState                         = "shutdown"
+	loadOffersIntoMemoryState systemState = "loadOffersIntoMemory"
+	buildStateAndResumeState  systemState = "buildStateAndResume"
+	resumeState               systemState = "resume"
+	shutdownState             systemState = "shutdown"
 )
 
 type state struct {
@@ -166,9 +166,6 @@ func NewSystem(config Config) (*System, error) {
 	}
 
 	system := &System{
-		state: state{
-			systemState: initState,
-		},
 		session:                  session,
 		historySession:           historySession,
 		historyQ:                 historyQ,
@@ -239,42 +236,11 @@ func (s *System) Run() {
 		}
 	}()
 
+	s.state = state{initState, 0}
+
 	for {
-		// Transaction will be commited or rolled back in pipelines post hooks
-		// or below in case of errors.
-		var err error
-		if tx := s.historyQ.GetTx(); tx == nil {
-			err = s.historyQ.Begin()
-			if err != nil {
-				log.WithError(err).Error("Error starting a transaction")
-				time.Sleep(time.Second)
-				continue
-			}
-		}
-
-		var nextState state
-		switch s.state.systemState {
-		case initState:
-			nextState, err = s.init()
-		case loadOffersIntoMemoryState:
-			nextState, err = s.loadOffersIntoMemory()
-		case buildStateAndResumeState:
-			nextState, err = s.buildStateAndResume()
-		case resumeState:
-			nextState, err = s.resume()
-		case shutdownState:
-			s.historyQ.Rollback()
-			log.Info("Shut down")
-			return
-		default:
-			panic("Unknown state " + s.state.systemState)
-		}
-
+		nextState, err := s.runCurrentState()
 		if err != nil {
-			// We rollback in pipelines post-hooks but the error can happen before
-			// pipeline starts processing.
-			s.historyQ.Rollback()
-
 			log.WithFields(logpkg.F{
 				"error":         err,
 				"current_state": s.state,
@@ -282,11 +248,16 @@ func (s *System) Run() {
 			}).Error("Error in ingestion state machine")
 		}
 
+		// Exit after processing shutdownState
+		if s.state.systemState == shutdownState {
+			return
+		}
+
 		select {
 		case <-s.shutdown:
 			log.Info("Received shut down signal...")
 			nextState = state{shutdownState, 0}
-		default:
+		case <-time.After(time.Second):
 		}
 
 		log.WithFields(logpkg.F{
@@ -295,8 +266,46 @@ func (s *System) Run() {
 		}).Info("Ingestion system state machine transition")
 
 		s.state = nextState
-		time.Sleep(time.Second)
 	}
+}
+
+func (s *System) runCurrentState() (state, error) {
+	// Transaction will be commited or rolled back in pipelines post hooks
+	// or below in case of errors.
+	if tx := s.historyQ.GetTx(); tx == nil {
+		err := s.historyQ.Begin()
+		if err != nil {
+			return state{initState, 0}, errors.Wrap(err, "Error in Begin")
+		}
+	}
+
+	var nextState state
+	var err error
+
+	switch s.state.systemState {
+	case initState:
+		nextState, err = s.init()
+	case loadOffersIntoMemoryState:
+		nextState, err = s.loadOffersIntoMemory()
+	case buildStateAndResumeState:
+		nextState, err = s.buildStateAndResume()
+	case resumeState:
+		nextState, err = s.resume()
+	case shutdownState:
+		s.historyQ.Rollback()
+		log.Info("Shut down")
+		return s.state, nil
+	default:
+		panic("Unknown state " + s.state.systemState)
+	}
+
+	if err != nil {
+		// We rollback in pipelines post-hooks but the error can happen before
+		// pipeline starts processing.
+		s.historyQ.Rollback()
+	}
+
+	return nextState, err
 }
 
 func (s *System) init() (state, error) {
@@ -348,6 +357,9 @@ func (s *System) init() (state, error) {
 	return state{loadOffersIntoMemoryState, lastIngestedLedger}, nil
 }
 
+// loadOffersIntoMemory loads offers into memory. If successful, it changes the
+// state to `resumeState`. In case of errors it always changes the state to
+// `init` because state function returning errors rollback DB transaction.
 func (s *System) loadOffersIntoMemory() (state, error) {
 	defer s.graph.Discard()
 
@@ -356,7 +368,7 @@ func (s *System) loadOffersIntoMemory() (state, error) {
 
 	offers, err := s.historyQ.GetAllOffers()
 	if err != nil {
-		return s.state, errors.Wrap(err, "GetAllOffers error")
+		return state{initState, 0}, errors.Wrap(err, "GetAllOffers error")
 	}
 
 	for _, offer := range offers {
@@ -375,14 +387,9 @@ func (s *System) loadOffersIntoMemory() (state, error) {
 		})
 	}
 
-	lastIngestedLedger, err := s.historyQ.GetLastLedgerExpIngest()
+	err = s.graph.Apply(s.state.latestSuccessfullyProcessedLedger)
 	if err != nil {
-		return s.state, errors.Wrap(err, "Error getting last ingested ledger")
-	}
-
-	err = s.graph.Apply(lastIngestedLedger)
-	if err != nil {
-		return s.state, errors.Wrap(err, "Error running graph.Apply")
+		return state{initState, 0}, errors.Wrap(err, "Error running graph.Apply")
 	}
 
 	log.WithField(

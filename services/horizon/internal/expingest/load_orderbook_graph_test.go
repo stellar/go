@@ -4,10 +4,11 @@ import (
 	"sort"
 	"testing"
 
+	"github.com/jmoiron/sqlx"
 	"github.com/stellar/go/exp/orderbook"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
-	"github.com/stellar/go/services/horizon/internal/test"
 	"github.com/stellar/go/xdr"
+	"github.com/stretchr/testify/suite"
 )
 
 var (
@@ -57,41 +58,88 @@ var (
 	}
 )
 
-func TestLoadOrderBookGraphFromEmptyDB(t *testing.T) {
-	tt := test.Start(t).Scenario("base")
-	defer tt.Finish()
-
-	q := &history.Q{tt.HorizonSession()}
-	graph := orderbook.NewOrderBookGraph()
-
-	err := loadOrderBookGraphFromDB(q, graph, 1)
-	tt.Assert.NoError(err)
-	tt.Assert.True(graph.IsEmpty())
+type LoadOffersIntoMemoryTestSuite struct {
+	suite.Suite
+	graph    *orderbook.OrderBookGraph
+	session  *mockDBSession
+	historyQ *mockDBQ
+	system   *System
 }
 
-func TestLoadOrderBookGraph(t *testing.T) {
-	tt := test.Start(t).Scenario("base")
-	defer tt.Finish()
+func (s *LoadOffersIntoMemoryTestSuite) SetupTest() {
+	s.graph = orderbook.NewOrderBookGraph()
+	s.session = &mockDBSession{}
+	s.historyQ = &mockDBQ{}
+	s.system = &System{
+		state:          state{loadOffersIntoMemoryState, 1},
+		historySession: s.session,
+		historyQ:       s.historyQ,
+		graph:          s.graph,
+	}
 
-	q := &history.Q{tt.HorizonSession()}
-	graph := orderbook.NewOrderBookGraph()
+	s.Assert().Equal(loadOffersIntoMemoryState, s.system.state.systemState)
+	s.Assert().Equal(uint32(1), s.system.state.latestSuccessfullyProcessedLedger)
 
-	tt.Assert.NoError(q.UpdateLastLedgerExpIngest(123))
-	_, err := q.InsertOffer(eurOffer, 123)
-	tt.Assert.NoError(err)
-	_, err = q.InsertOffer(twoEurOffer, 123)
-	tt.Assert.NoError(err)
+	s.historyQ.On("GetTx").Return(&sqlx.Tx{}).Once()
+}
 
-	err = loadOrderBookGraphFromDB(q, graph, 1)
-	tt.Assert.NoError(err)
-	tt.Assert.False(graph.IsEmpty())
+func (s *LoadOffersIntoMemoryTestSuite) TearDownTest() {
+	t := s.T()
+	s.session.AssertExpectations(t)
+	s.historyQ.AssertExpectations(t)
+}
 
-	offers := graph.Offers()
+func (s *LoadOffersIntoMemoryTestSuite) TestLoadOrderBookGraphFromEmptyDB() {
+	s.historyQ.On("GetAllOffers").Return([]history.Offer{}, nil).Once()
+
+	nextState, err := s.system.runCurrentState()
+	s.Assert().NoError(err)
+	s.Assert().Equal(resumeState, nextState.systemState)
+	s.Assert().Equal(uint32(1), nextState.latestSuccessfullyProcessedLedger)
+	s.Assert().True(s.graph.IsEmpty())
+}
+
+func (s *LoadOffersIntoMemoryTestSuite) TestLoadOrderBookGraph() {
+	s.historyQ.On("GetAllOffers").Return([]history.Offer{
+		history.Offer{
+			OfferID:      eurOffer.OfferId,
+			SellerID:     eurOffer.SellerId.Address(),
+			SellingAsset: eurOffer.Selling,
+			BuyingAsset:  eurOffer.Buying,
+			Amount:       eurOffer.Amount,
+			Pricen:       int32(eurOffer.Price.N),
+			Priced:       int32(eurOffer.Price.D),
+			Price:        float64(eurOffer.Price.N) / float64(eurOffer.Price.D),
+			Flags:        uint32(eurOffer.Flags),
+		},
+		history.Offer{
+			OfferID:      twoEurOffer.OfferId,
+			SellerID:     twoEurOffer.SellerId.Address(),
+			SellingAsset: twoEurOffer.Selling,
+			BuyingAsset:  twoEurOffer.Buying,
+			Amount:       twoEurOffer.Amount,
+			Pricen:       int32(twoEurOffer.Price.N),
+			Priced:       int32(twoEurOffer.Price.D),
+			Price:        float64(twoEurOffer.Price.N) / float64(twoEurOffer.Price.D),
+			Flags:        uint32(twoEurOffer.Flags),
+		},
+	}, nil).Once()
+
+	nextState, err := s.system.runCurrentState()
+	s.Assert().NoError(err)
+	s.Assert().Equal(resumeState, nextState.systemState)
+	s.Assert().Equal(uint32(1), nextState.latestSuccessfullyProcessedLedger)
+	s.Assert().False(s.graph.IsEmpty())
+	offers := s.graph.Offers()
 	sort.Slice(offers, func(i, j int) bool {
 		return offers[i].OfferId < offers[j].OfferId
 	})
 	expectedOffers := []xdr.OfferEntry{
 		eurOffer, twoEurOffer,
 	}
-	tt.Assert.Equal(expectedOffers, offers)
+	s.Assert().Equal(expectedOffers, offers)
+}
+
+func TestLoadOffersIntoMemoryTestSuite(t *testing.T) {
+	suite.Run(t, new(LoadOffersIntoMemoryTestSuite))
 }
