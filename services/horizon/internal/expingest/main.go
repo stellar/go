@@ -4,6 +4,7 @@
 package expingest
 
 import (
+	"fmt"
 	"runtime/debug"
 	"sync"
 	"time"
@@ -172,7 +173,6 @@ func NewSystem(config Config) (*System, error) {
 		graph:                    config.OrderBookGraph,
 		disableStateVerification: config.DisableStateVerification,
 		maxStreamRetries:         config.MaxStreamRetries,
-		shutdown:                 make(chan struct{}),
 	}
 
 	addPipelineHooks(
@@ -223,6 +223,7 @@ func NewSystem(config Config) (*System, error) {
 //   * If instances is a NOT leader, it runs ledger pipeline without updating a
 //     a database so order book graph is updated but database is not overwritten.
 func (s *System) Run() {
+	s.shutdown = make(chan struct{})
 	// Expingest is an experimental package so we don't want entire Horizon app
 	// to crash in case of unexpected errors.
 	// TODO: This should be removed when expingest is no longer experimental.
@@ -294,9 +295,9 @@ func (s *System) runCurrentState() (state, error) {
 	case shutdownState:
 		s.historyQ.Rollback()
 		log.Info("Shut down")
-		return s.state, nil
+		nextState, err = s.state, nil
 	default:
-		panic("Unknown state " + s.state.systemState)
+		panic(fmt.Sprintf("Unknown state %+v", s.state.systemState))
 	}
 
 	if err != nil {
