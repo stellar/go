@@ -19,16 +19,14 @@ type EffectProcessor struct {
 type effectsWrapper struct {
 	effects   []map[string]interface{}
 	operation *transactionOperationWrapper
-	order     uint32
 }
 
 func (e *effectsWrapper) add(address string, effectType history.EffectType, details map[string]interface{}) {
-	e.order++
 	e.effects = append(e.effects, map[string]interface{}{
 		"address":     address,
 		"operationID": e.operation.ID(),
 		"effectType":  effectType,
-		"order":       e.order,
+		"order":       uint32(len(e.effects) + 1),
 		"details":     details,
 	})
 }
