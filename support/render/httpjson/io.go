@@ -2,7 +2,6 @@ package httpjson
 
 import (
 	"encoding/json"
-	"io"
 	"net/http"
 
 	"github.com/stellar/go/support/errors"
@@ -27,6 +26,13 @@ func renderToString(data interface{}, pretty bool) ([]byte, error) {
 // Render write data to w, after marshalling to json. The response header is
 // set based on cType.
 func Render(w http.ResponseWriter, data interface{}, cType contentType) {
+	RenderStatus(w, http.StatusOK, data, cType)
+}
+
+// RenderStatus write data to w, after marshalling to json.
+// The response header is set based on cType.
+// The response status code is set to the statusCode.
+func RenderStatus(w http.ResponseWriter, statusCode int, data interface{}, cType contentType) {
 	js, err := renderToString(data, true)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -39,19 +45,8 @@ func Render(w http.ResponseWriter, data interface{}, cType contentType) {
 	} else {
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	}
+	w.WriteHeader(statusCode)
 	w.Write(js)
 }
 
 var ErrBadRequest = errors.New("bad request")
-
-// read decodes a json text from r into v.
-func read(r io.Reader, v interface{}) error {
-	dec := json.NewDecoder(r)
-	dec.UseNumber()
-	err := dec.Decode(v)
-	if err != nil {
-		return ErrBadRequest
-	}
-
-	return nil
-}

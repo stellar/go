@@ -6,8 +6,8 @@ import (
 	stdio "io"
 	"testing"
 
+	ingesterrors "github.com/stellar/go/exp/ingest/errors"
 	"github.com/stellar/go/exp/ingest/io"
-	"github.com/stellar/go/exp/ingest/verify"
 	supportPipeline "github.com/stellar/go/exp/support/pipeline"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/support/errors"
@@ -271,17 +271,6 @@ func (s *TrustLinesProcessorTestSuiteLedger) TestInsertTrustLine() {
 			}),
 		}, nil).Once()
 
-	s.mockQ.On(
-		"InsertTrustLine",
-		trustLine,
-		lastModifiedLedgerSeq,
-	).Return(int64(1), nil).Once()
-	s.mockQ.On(
-		"InsertTrustLine",
-		unauthorizedTrustline,
-		lastModifiedLedgerSeq,
-	).Return(int64(1), nil).Once()
-
 	updatedTrustLine := xdr.TrustLineEntry{
 		AccountId: xdr.MustAddress("GAOQJGUAB7NI7K7I62ORBXMN3J4SSWQUQ7FOEPSDJ322W2HMCNWPHXFB"),
 		Asset:     xdr.MustNewCreditAsset("EUR", trustLineIssuer.Address()),
@@ -347,12 +336,12 @@ func (s *TrustLinesProcessorTestSuiteLedger) TestInsertTrustLine() {
 			}),
 		}, nil).Once()
 	s.mockQ.On(
-		"UpdateTrustLine",
+		"InsertTrustLine",
 		updatedTrustLine,
 		lastModifiedLedgerSeq,
 	).Return(int64(1), nil).Once()
 	s.mockQ.On(
-		"UpdateTrustLine",
+		"InsertTrustLine",
 		updatedUnauthorizedTrustline,
 		lastModifiedLedgerSeq,
 	).Return(int64(1), nil).Once()
@@ -478,10 +467,6 @@ func (s *TrustLinesProcessorTestSuiteLedger) TestUpdateTrustLine() {
 }
 
 func (s *TrustLinesProcessorTestSuiteLedger) TestUpdateTrustLineNoRowsAffected() {
-	// Removes ReadUpgradeChange assertion
-	s.mockLedgerReader = &io.MockLedgerReader{}
-	s.mockLedgerReader.On("Close").Return(nil).Once()
-
 	lastModifiedLedgerSeq := xdr.Uint32(1234)
 
 	trustLine := xdr.TrustLineEntry{
@@ -527,6 +512,8 @@ func (s *TrustLinesProcessorTestSuiteLedger) TestUpdateTrustLineNoRowsAffected()
 				},
 			}),
 		}, nil).Once()
+	s.mockLedgerReader.On("Read").Return(io.LedgerTransaction{}, stdio.EOF).Once()
+
 	s.mockQ.On(
 		"UpdateTrustLine",
 		updatedTrustLine,
@@ -541,8 +528,8 @@ func (s *TrustLinesProcessorTestSuiteLedger) TestUpdateTrustLineNoRowsAffected()
 	)
 
 	s.Assert().Error(err)
-	s.Assert().IsType(verify.StateError{}, errors.Cause(err))
-	s.Assert().EqualError(err, "Error in TrustLines handler: No rows affected when updating trustline: GAOQJGUAB7NI7K7I62ORBXMN3J4SSWQUQ7FOEPSDJ322W2HMCNWPHXFB credit_alphanum4/EUR/GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H")
+	s.Assert().IsType(ingesterrors.StateError{}, errors.Cause(err))
+	s.Assert().EqualError(err, "Error in TrustLines handler: 0 rows affected when updating trustline: GAOQJGUAB7NI7K7I62ORBXMN3J4SSWQUQ7FOEPSDJ322W2HMCNWPHXFB credit_alphanum4/EUR/GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H")
 }
 
 func (s *TrustLinesProcessorTestSuiteLedger) TestUpdateTrustLineAuthorization() {
@@ -817,12 +804,6 @@ func (s *TrustLinesProcessorTestSuiteLedger) TestProcessUpgradeChange() {
 			}),
 		}, nil).Once()
 
-	s.mockQ.On(
-		"InsertTrustLine",
-		trustLine,
-		lastModifiedLedgerSeq,
-	).Return(int64(1), nil).Once()
-
 	s.mockLedgerReader.
 		On("Read").
 		Return(io.LedgerTransaction{}, stdio.EOF).Once()
@@ -856,7 +837,7 @@ func (s *TrustLinesProcessorTestSuiteLedger) TestProcessUpgradeChange() {
 			}, nil).Once()
 
 	s.mockQ.On(
-		"UpdateTrustLine",
+		"InsertTrustLine",
 		updatedTrustLine,
 		lastModifiedLedgerSeq,
 	).Return(int64(1), nil).Once()
@@ -891,10 +872,6 @@ func (s *TrustLinesProcessorTestSuiteLedger) TestProcessUpgradeChange() {
 }
 
 func (s *TrustLinesProcessorTestSuiteLedger) TestRemoveTrustlineNoRowsAffected() {
-	// Removes ReadUpgradeChange assertion
-	s.mockLedgerReader = &io.MockLedgerReader{}
-	s.mockLedgerReader.On("Close").Return(nil).Once()
-
 	s.mockLedgerReader.On("Read").
 		Return(io.LedgerTransaction{
 			Meta: createTransactionMeta([]xdr.OperationMeta{
@@ -928,6 +905,7 @@ func (s *TrustLinesProcessorTestSuiteLedger) TestRemoveTrustlineNoRowsAffected()
 				},
 			}),
 		}, nil).Once()
+	s.mockLedgerReader.On("Read").Return(io.LedgerTransaction{}, stdio.EOF).Once()
 
 	s.mockQ.On(
 		"RemoveTrustLine",
@@ -945,6 +923,6 @@ func (s *TrustLinesProcessorTestSuiteLedger) TestRemoveTrustlineNoRowsAffected()
 	)
 
 	s.Assert().Error(err)
-	s.Assert().IsType(verify.StateError{}, errors.Cause(err))
-	s.Assert().EqualError(err, "Error in TrustLines handler: No rows affected when removing trustline: GAOQJGUAB7NI7K7I62ORBXMN3J4SSWQUQ7FOEPSDJ322W2HMCNWPHXFB credit_alphanum4/EUR/GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H")
+	s.Assert().IsType(ingesterrors.StateError{}, errors.Cause(err))
+	s.Assert().EqualError(err, "Error in TrustLines handler: 0 rows affected when removing trustline: GAOQJGUAB7NI7K7I62ORBXMN3J4SSWQUQ7FOEPSDJ322W2HMCNWPHXFB credit_alphanum4/EUR/GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H")
 }
