@@ -45,7 +45,7 @@ func (operation *transactionOperationWrapper) Effects() (effects []map[string]in
 	case xdr.OperationTypePathPaymentStrictReceive:
 		effects = operation.pathPaymentStrictReceiveEffects()
 	case xdr.OperationTypePathPaymentStrictSend:
-		// TBD
+		effects = operation.pathPaymentStrictSendEffects()
 	case xdr.OperationTypeManageSellOffer:
 		effects = operation.manageSellOfferEffects()
 	case xdr.OperationTypeManageBuyOffer:
@@ -159,6 +159,29 @@ func (operation *transactionOperationWrapper) pathPaymentStrictReceiveEffects() 
 		history.EffectAccountDebited,
 		details,
 	)
+
+	ingestTradeEffects(&effects, *source, resultSuccess.Offers)
+
+	return effects.effects
+}
+
+func (operation *transactionOperationWrapper) pathPaymentStrictSendEffects() []map[string]interface{} {
+	effects := effectsWrapper{
+		effects:   []map[string]interface{}{},
+		operation: operation,
+	}
+	source := operation.SourceAccount()
+	op := operation.operation.Body.MustPathPaymentStrictSendOp()
+	resultSuccess := operation.OperationResult().MustPathPaymentStrictSendResult().MustSuccess()
+	result := operation.OperationResult().MustPathPaymentStrictSendResult()
+
+	details := map[string]interface{}{"amount": amount.String(result.DestAmount())}
+	assetDetails(details, op.DestAsset, "")
+	effects.add(op.Destination.Address(), history.EffectAccountCredited, details)
+
+	details = map[string]interface{}{"amount": amount.String(op.SendAmount)}
+	assetDetails(details, op.SendAsset, "")
+	effects.add(source.Address(), history.EffectAccountDebited, details)
 
 	ingestTradeEffects(&effects, *source, resultSuccess.Offers)
 
