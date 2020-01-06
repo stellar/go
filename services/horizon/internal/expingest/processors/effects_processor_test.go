@@ -590,7 +590,7 @@ func TestOperationEffects(t *testing.T) {
 				ledgerSequence: tc.sequence,
 			}
 
-			effects, err := operation.Effects()
+			effects, err := operation.effects()
 			tt.NoError(err)
 			tt.Equal(tc.expected, effects)
 		})

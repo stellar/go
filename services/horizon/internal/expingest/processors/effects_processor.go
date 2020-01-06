@@ -32,7 +32,7 @@ func (e *effectsWrapper) add(address string, effectType history.EffectType, deta
 }
 
 // Effects returns the operation effects
-func (operation *transactionOperationWrapper) Effects() (effects []map[string]interface{}, err error) {
+func (operation *transactionOperationWrapper) effects() (effects []map[string]interface{}, err error) {
 	op := operation.operation
 
 	switch operation.OperationType() {
