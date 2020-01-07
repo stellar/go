@@ -16,23 +16,31 @@ type EffectProcessor struct {
 	EffectsQ history.QEffects
 }
 
+type effect struct {
+	address     string
+	operationID int64
+	details     map[string]interface{}
+	effectType  history.EffectType
+	order       uint32
+}
+
 type effectsWrapper struct {
-	effects   []map[string]interface{}
+	effects   []effect
 	operation *transactionOperationWrapper
 }
 
 func (e *effectsWrapper) add(address string, effectType history.EffectType, details map[string]interface{}) {
-	e.effects = append(e.effects, map[string]interface{}{
-		"address":     address,
-		"operationID": e.operation.ID(),
-		"effectType":  effectType,
-		"order":       uint32(len(e.effects) + 1),
-		"details":     details,
+	e.effects = append(e.effects, effect{
+		address:     address,
+		operationID: e.operation.ID(),
+		effectType:  effectType,
+		order:       uint32(len(e.effects) + 1),
+		details:     details,
 	})
 }
 
 // Effects returns the operation effects
-func (operation *transactionOperationWrapper) effects() (effects []map[string]interface{}, err error) {
+func (operation *transactionOperationWrapper) effects() (effects []effect, err error) {
 	op := operation.operation
 
 	switch operation.OperationType() {
@@ -71,10 +79,10 @@ func (operation *transactionOperationWrapper) effects() (effects []map[string]in
 	return effects, err
 }
 
-func (operation *transactionOperationWrapper) accountCreatedEffects() []map[string]interface{} {
+func (operation *transactionOperationWrapper) accountCreatedEffects() []effect {
 	op := operation.operation.Body.MustCreateAccountOp()
 	effects := effectsWrapper{
-		effects:   []map[string]interface{}{},
+		effects:   []effect{},
 		operation: operation,
 	}
 
@@ -105,10 +113,10 @@ func (operation *transactionOperationWrapper) accountCreatedEffects() []map[stri
 	return effects.effects
 }
 
-func (operation *transactionOperationWrapper) paymentEffects() []map[string]interface{} {
+func (operation *transactionOperationWrapper) paymentEffects() []effect {
 	op := operation.operation.Body.MustPaymentOp()
 	effects := effectsWrapper{
-		effects:   []map[string]interface{}{},
+		effects:   []effect{},
 		operation: operation,
 	}
 
@@ -129,7 +137,7 @@ func (operation *transactionOperationWrapper) paymentEffects() []map[string]inte
 	return effects.effects
 }
 
-func (operation *transactionOperationWrapper) pathPaymentStrictReceiveEffects() []map[string]interface{} {
+func (operation *transactionOperationWrapper) pathPaymentStrictReceiveEffects() []effect {
 	op := operation.operation.Body.MustPathPaymentStrictReceiveOp()
 	resultSuccess := operation.OperationResult().MustPathPaymentStrictReceiveResult().MustSuccess()
 	source := operation.SourceAccount()
@@ -138,7 +146,7 @@ func (operation *transactionOperationWrapper) pathPaymentStrictReceiveEffects() 
 	assetDetails(details, op.DestAsset, "")
 
 	effects := effectsWrapper{
-		effects:   []map[string]interface{}{},
+		effects:   []effect{},
 		operation: operation,
 	}
 
@@ -163,9 +171,9 @@ func (operation *transactionOperationWrapper) pathPaymentStrictReceiveEffects() 
 	return effects.effects
 }
 
-func (operation *transactionOperationWrapper) pathPaymentStrictSendEffects() []map[string]interface{} {
+func (operation *transactionOperationWrapper) pathPaymentStrictSendEffects() []effect {
 	effects := effectsWrapper{
-		effects:   []map[string]interface{}{},
+		effects:   []effect{},
 		operation: operation,
 	}
 	source := operation.SourceAccount()
@@ -186,10 +194,10 @@ func (operation *transactionOperationWrapper) pathPaymentStrictSendEffects() []m
 	return effects.effects
 }
 
-func (operation *transactionOperationWrapper) manageSellOfferEffects() []map[string]interface{} {
+func (operation *transactionOperationWrapper) manageSellOfferEffects() []effect {
 	source := operation.SourceAccount()
 	effects := effectsWrapper{
-		effects:   []map[string]interface{}{},
+		effects:   []effect{},
 		operation: operation,
 	}
 	result := operation.OperationResult().MustManageSellOfferResult().MustSuccess()
@@ -198,10 +206,10 @@ func (operation *transactionOperationWrapper) manageSellOfferEffects() []map[str
 	return effects.effects
 }
 
-func (operation *transactionOperationWrapper) manageBuyOfferEffects() []map[string]interface{} {
+func (operation *transactionOperationWrapper) manageBuyOfferEffects() []effect {
 	source := operation.SourceAccount()
 	effects := effectsWrapper{
-		effects:   []map[string]interface{}{},
+		effects:   []effect{},
 		operation: operation,
 	}
 	result := operation.OperationResult().MustManageBuyOfferResult().MustSuccess()
@@ -210,11 +218,11 @@ func (operation *transactionOperationWrapper) manageBuyOfferEffects() []map[stri
 	return effects.effects
 }
 
-func (operation *transactionOperationWrapper) createPassiveSellOfferEffect() []map[string]interface{} {
+func (operation *transactionOperationWrapper) createPassiveSellOfferEffect() []effect {
 	result := operation.OperationResult()
 	source := operation.SourceAccount()
 	effects := effectsWrapper{
-		effects:   []map[string]interface{}{},
+		effects:   []effect{},
 		operation: operation,
 	}
 
@@ -233,12 +241,12 @@ func (operation *transactionOperationWrapper) createPassiveSellOfferEffect() []m
 	return effects.effects
 }
 
-func (operation *transactionOperationWrapper) setOptionsEffects() []map[string]interface{} {
+func (operation *transactionOperationWrapper) setOptionsEffects() []effect {
 	source := operation.SourceAccount()
 	op := operation.operation.Body.MustSetOptionsOp()
 
 	effects := effectsWrapper{
-		effects:   []map[string]interface{}{},
+		effects:   []effect{},
 		operation: operation,
 	}
 
@@ -333,11 +341,11 @@ func (operation *transactionOperationWrapper) setOptionsEffects() []map[string]i
 	return effects.effects
 }
 
-func (operation *transactionOperationWrapper) changeTrustEffects() []map[string]interface{} {
+func (operation *transactionOperationWrapper) changeTrustEffects() []effect {
 	source := operation.SourceAccount()
 
 	effects := effectsWrapper{
-		effects:   []map[string]interface{}{},
+		effects:   []effect{},
 		operation: operation,
 	}
 
@@ -372,10 +380,10 @@ func (operation *transactionOperationWrapper) changeTrustEffects() []map[string]
 	return effects.effects
 }
 
-func (operation *transactionOperationWrapper) allowTrustEffects() []map[string]interface{} {
+func (operation *transactionOperationWrapper) allowTrustEffects() []effect {
 	source := operation.SourceAccount()
 	effects := effectsWrapper{
-		effects:   []map[string]interface{}{},
+		effects:   []effect{},
 		operation: operation,
 	}
 	op := operation.operation.Body.MustAllowTrustOp()
@@ -394,10 +402,10 @@ func (operation *transactionOperationWrapper) allowTrustEffects() []map[string]i
 	return effects.effects
 }
 
-func (operation *transactionOperationWrapper) accountMergeEffects() []map[string]interface{} {
+func (operation *transactionOperationWrapper) accountMergeEffects() []effect {
 	source := operation.SourceAccount()
 	effects := effectsWrapper{
-		effects:   []map[string]interface{}{},
+		effects:   []effect{},
 		operation: operation,
 	}
 
@@ -415,9 +423,9 @@ func (operation *transactionOperationWrapper) accountMergeEffects() []map[string
 	return effects.effects
 }
 
-func (operation *transactionOperationWrapper) inflationEffects() []map[string]interface{} {
+func (operation *transactionOperationWrapper) inflationEffects() []effect {
 	effects := effectsWrapper{
-		effects:   []map[string]interface{}{},
+		effects:   []effect{},
 		operation: operation,
 	}
 	payouts := operation.OperationResult().MustInflationResult().MustPayouts()
@@ -433,9 +441,9 @@ func (operation *transactionOperationWrapper) inflationEffects() []map[string]in
 	return effects.effects
 }
 
-func (operation *transactionOperationWrapper) manageDataEffects() []map[string]interface{} {
+func (operation *transactionOperationWrapper) manageDataEffects() []effect {
 	effects := effectsWrapper{
-		effects:   []map[string]interface{}{},
+		effects:   []effect{},
 		operation: operation,
 	}
 	source := operation.SourceAccount()
@@ -477,9 +485,9 @@ func (operation *transactionOperationWrapper) manageDataEffects() []map[string]i
 	return effects.effects
 }
 
-func (operation *transactionOperationWrapper) bumpSequenceEffects() []map[string]interface{} {
+func (operation *transactionOperationWrapper) bumpSequenceEffects() []effect {
 	effects := effectsWrapper{
-		effects:   []map[string]interface{}{},
+		effects:   []effect{},
 		operation: operation,
 	}
 	source := operation.SourceAccount()

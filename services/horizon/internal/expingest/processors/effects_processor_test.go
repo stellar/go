@@ -19,7 +19,7 @@ func TestOperationEffects(t *testing.T) {
 		hash          string
 		index         uint32
 		sequence      uint32
-		expected      []map[string]interface{}
+		expected      []effect
 	}{
 		{
 			desc:          "createAccount",
@@ -30,35 +30,35 @@ func TestOperationEffects(t *testing.T) {
 			hash:          "0e5bd332291e3098e49886df2cdb9b5369a5f9e0a9973f0d9e1a9489c6581ba2",
 			index:         0,
 			sequence:      57,
-			expected: []map[string]interface{}{
-				map[string]interface{}{
-					"address":     "GCQZP3IU7XU6EJ63JZXKCQOYT2RNXN3HB5CNHENNUEUHSMA4VUJJJSEN",
-					"operationID": int64(244813139969),
-					"details": map[string]interface{}{
+			expected: []effect{
+				effect{
+					address:     "GCQZP3IU7XU6EJ63JZXKCQOYT2RNXN3HB5CNHENNUEUHSMA4VUJJJSEN",
+					operationID: int64(244813139969),
+					details: map[string]interface{}{
 						"starting_balance": "1000.0000000",
 					},
-					"effectType": history.EffectAccountCreated,
-					"order":      uint32(1),
+					effectType: history.EffectAccountCreated,
+					order:      uint32(1),
 				},
-				map[string]interface{}{
-					"address":     "GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H",
-					"operationID": int64(244813139969),
-					"details": map[string]interface{}{
+				effect{
+					address:     "GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H",
+					operationID: int64(244813139969),
+					details: map[string]interface{}{
 						"amount":     "1000.0000000",
 						"asset_type": "native",
 					},
-					"effectType": history.EffectAccountDebited,
-					"order":      uint32(2),
+					effectType: history.EffectAccountDebited,
+					order:      uint32(2),
 				},
-				map[string]interface{}{
-					"address":     "GCQZP3IU7XU6EJ63JZXKCQOYT2RNXN3HB5CNHENNUEUHSMA4VUJJJSEN",
-					"operationID": int64(244813139969),
-					"details": map[string]interface{}{
+				effect{
+					address:     "GCQZP3IU7XU6EJ63JZXKCQOYT2RNXN3HB5CNHENNUEUHSMA4VUJJJSEN",
+					operationID: int64(244813139969),
+					details: map[string]interface{}{
 						"public_key": "GCQZP3IU7XU6EJ63JZXKCQOYT2RNXN3HB5CNHENNUEUHSMA4VUJJJSEN",
 						"weight":     1,
 					},
-					"effectType": history.EffectSignerCreated,
-					"order":      uint32(3),
+					effectType: history.EffectSignerCreated,
+					order:      uint32(3),
 				},
 			},
 		},
@@ -71,26 +71,26 @@ func TestOperationEffects(t *testing.T) {
 			hash:          "2a805712c6d10f9e74bb0ccf54ae92a2b4b1e586451fe8133a2433816f6b567c",
 			index:         0,
 			sequence:      56,
-			expected: []map[string]interface{}{
-				map[string]interface{}{
-					"address": "GANFZDRBCNTUXIODCJEYMACPMCSZEVE4WZGZ3CZDZ3P2SXK4KH75IK6Y",
-					"details": map[string]interface{}{
+			expected: []effect{
+				effect{
+					address: "GANFZDRBCNTUXIODCJEYMACPMCSZEVE4WZGZ3CZDZ3P2SXK4KH75IK6Y",
+					details: map[string]interface{}{
 						"amount":     "10.0000000",
 						"asset_type": "native",
 					},
-					"effectType":  history.EffectAccountCredited,
-					"operationID": int64(240518172673),
-					"order":       uint32(1),
+					effectType:  history.EffectAccountCredited,
+					operationID: int64(240518172673),
+					order:       uint32(1),
 				},
-				map[string]interface{}{
-					"address": "GANFZDRBCNTUXIODCJEYMACPMCSZEVE4WZGZ3CZDZ3P2SXK4KH75IK6Y",
-					"details": map[string]interface{}{
+				effect{
+					address: "GANFZDRBCNTUXIODCJEYMACPMCSZEVE4WZGZ3CZDZ3P2SXK4KH75IK6Y",
+					details: map[string]interface{}{
 						"amount":     "10.0000000",
 						"asset_type": "native",
 					},
-					"effectType":  history.EffectAccountDebited,
-					"operationID": int64(240518172673),
-					"order":       uint32(2),
+					effectType:  history.EffectAccountDebited,
+					operationID: int64(240518172673),
+					order:       uint32(2),
 				},
 			},
 		},
@@ -103,34 +103,34 @@ func TestOperationEffects(t *testing.T) {
 			hash:          "96415ac1d2f79621b26b1568f963fd8dd6c50c20a22c7428cefbfe9dee867588",
 			index:         0,
 			sequence:      20,
-			expected: []map[string]interface{}{
-				map[string]interface{}{
-					"address": "GDEOVUDLCYTO46D6GD6WH7BFESPBV5RACC6F6NUFCIRU7PL2XONQHVGJ",
-					"details": map[string]interface{}{
+			expected: []effect{
+				effect{
+					address: "GDEOVUDLCYTO46D6GD6WH7BFESPBV5RACC6F6NUFCIRU7PL2XONQHVGJ",
+					details: map[string]interface{}{
 						"amount":       "1.0000000",
 						"asset_code":   "ARS",
 						"asset_type":   "credit_alphanum4",
 						"asset_issuer": "GCXI6Q73J7F6EUSBZTPW4G4OUGVDHABPYF2U4KO7MVEX52OH5VMVUCRF",
 					},
-					"effectType":  history.EffectAccountCredited,
-					"operationID": int64(85899350017),
-					"order":       uint32(1),
+					effectType:  history.EffectAccountCredited,
+					operationID: int64(85899350017),
+					order:       uint32(1),
 				},
-				map[string]interface{}{
-					"address": "GD3MMHD2YZWL5RAUWG6O3RMA5HTZYM7S3JLSZ2Z35JNJAWTDIKXY737V",
-					"details": map[string]interface{}{
+				effect{
+					address: "GD3MMHD2YZWL5RAUWG6O3RMA5HTZYM7S3JLSZ2Z35JNJAWTDIKXY737V",
+					details: map[string]interface{}{
 						"amount":       "0.0300000",
 						"asset_code":   "BRL",
 						"asset_type":   "credit_alphanum4",
 						"asset_issuer": "GCXI6Q73J7F6EUSBZTPW4G4OUGVDHABPYF2U4KO7MVEX52OH5VMVUCRF",
 					},
-					"effectType":  history.EffectAccountDebited,
-					"operationID": int64(85899350017),
-					"order":       uint32(2),
+					effectType:  history.EffectAccountDebited,
+					operationID: int64(85899350017),
+					order:       uint32(2),
 				},
-				map[string]interface{}{
-					"address": "GD3MMHD2YZWL5RAUWG6O3RMA5HTZYM7S3JLSZ2Z35JNJAWTDIKXY737V",
-					"details": map[string]interface{}{
+				effect{
+					address: "GD3MMHD2YZWL5RAUWG6O3RMA5HTZYM7S3JLSZ2Z35JNJAWTDIKXY737V",
+					details: map[string]interface{}{
 						"seller":              "GDEOVUDLCYTO46D6GD6WH7BFESPBV5RACC6F6NUFCIRU7PL2XONQHVGJ",
 						"offer_id":            xdr.Int64(10072128),
 						"sold_amount":         "0.0300000",
@@ -142,13 +142,13 @@ func TestOperationEffects(t *testing.T) {
 						"sold_asset_issuer":   "GCXI6Q73J7F6EUSBZTPW4G4OUGVDHABPYF2U4KO7MVEX52OH5VMVUCRF",
 						"bought_asset_issuer": "GCXI6Q73J7F6EUSBZTPW4G4OUGVDHABPYF2U4KO7MVEX52OH5VMVUCRF",
 					},
-					"effectType":  history.EffectTrade,
-					"operationID": int64(85899350017),
-					"order":       uint32(3),
+					effectType:  history.EffectTrade,
+					operationID: int64(85899350017),
+					order:       uint32(3),
 				},
-				map[string]interface{}{
-					"address": "GDEOVUDLCYTO46D6GD6WH7BFESPBV5RACC6F6NUFCIRU7PL2XONQHVGJ",
-					"details": map[string]interface{}{
+				effect{
+					address: "GDEOVUDLCYTO46D6GD6WH7BFESPBV5RACC6F6NUFCIRU7PL2XONQHVGJ",
+					details: map[string]interface{}{
 						"seller":              "GD3MMHD2YZWL5RAUWG6O3RMA5HTZYM7S3JLSZ2Z35JNJAWTDIKXY737V",
 						"offer_id":            xdr.Int64(10072128),
 						"sold_amount":         "1.0000000",
@@ -160,9 +160,9 @@ func TestOperationEffects(t *testing.T) {
 						"sold_asset_issuer":   "GCXI6Q73J7F6EUSBZTPW4G4OUGVDHABPYF2U4KO7MVEX52OH5VMVUCRF",
 						"bought_asset_issuer": "GCXI6Q73J7F6EUSBZTPW4G4OUGVDHABPYF2U4KO7MVEX52OH5VMVUCRF",
 					},
-					"effectType":  history.EffectTrade,
-					"operationID": int64(85899350017),
-					"order":       uint32(4),
+					effectType:  history.EffectTrade,
+					operationID: int64(85899350017),
+					order:       uint32(4),
 				},
 			},
 		},
@@ -175,7 +175,7 @@ func TestOperationEffects(t *testing.T) {
 			hash:          "ca756d1519ceda79f8722042b12cea7ba004c3bd961adb62b59f88a867f86eb3",
 			index:         0,
 			sequence:      56,
-			expected:      []map[string]interface{}{},
+			expected:      []effect{},
 		},
 		{
 			desc:          "manageSellOffer - with claims",
@@ -186,10 +186,10 @@ func TestOperationEffects(t *testing.T) {
 			hash:          "ef62da32b6b3eb3c4534dac2be1088387fb93b0093b47e113073c1431fac9db7",
 			index:         0,
 			sequence:      56,
-			expected: []map[string]interface{}{
-				map[string]interface{}{
-					"address": "GD5OGQTZZ2PYI2RSMOJA6BQ7CDCW2JXAXBKR6XZK6PPRFUZ3BUXNLFKP",
-					"details": map[string]interface{}{
+			expected: []effect{
+				effect{
+					address: "GD5OGQTZZ2PYI2RSMOJA6BQ7CDCW2JXAXBKR6XZK6PPRFUZ3BUXNLFKP",
+					details: map[string]interface{}{
 						"seller":              "GAHEPWQ2B5ZOPI2NB647QCIXFPQR4H56FPYADQY54GNMFG4IYB5ZAJ5H",
 						"offer_id":            xdr.Int64(9248760),
 						"sold_amount":         "999.9999999",
@@ -199,13 +199,13 @@ func TestOperationEffects(t *testing.T) {
 						"bought_asset_type":   "credit_alphanum4",
 						"bought_asset_issuer": "GBEYFNS6KJRFEI22X5OBUFKQ5LK7Z2FZVFMAXBINC2SOCKA25AS62PUN",
 					},
-					"effectType":  history.EffectTrade,
-					"operationID": int64(240518172673),
-					"order":       uint32(1),
+					effectType:  history.EffectTrade,
+					operationID: int64(240518172673),
+					order:       uint32(1),
 				},
-				map[string]interface{}{
-					"address": "GAHEPWQ2B5ZOPI2NB647QCIXFPQR4H56FPYADQY54GNMFG4IYB5ZAJ5H",
-					"details": map[string]interface{}{
+				effect{
+					address: "GAHEPWQ2B5ZOPI2NB647QCIXFPQR4H56FPYADQY54GNMFG4IYB5ZAJ5H",
+					details: map[string]interface{}{
 						"seller":            "GD5OGQTZZ2PYI2RSMOJA6BQ7CDCW2JXAXBKR6XZK6PPRFUZ3BUXNLFKP",
 						"offer_id":          xdr.Int64(9248760),
 						"sold_amount":       "505.0505050",
@@ -215,9 +215,9 @@ func TestOperationEffects(t *testing.T) {
 						"bought_asset_type": "native",
 						"sold_asset_issuer": "GBEYFNS6KJRFEI22X5OBUFKQ5LK7Z2FZVFMAXBINC2SOCKA25AS62PUN",
 					},
-					"effectType":  history.EffectTrade,
-					"operationID": int64(240518172673),
-					"order":       uint32(2),
+					effectType:  history.EffectTrade,
+					operationID: int64(240518172673),
+					order:       uint32(2),
 				},
 			},
 		},
@@ -230,10 +230,10 @@ func TestOperationEffects(t *testing.T) {
 			hash:          "9caa91eec6e29730f4aabafb60898a8ecedd3bf67b8628e6e32066fbba9bec5d",
 			index:         0,
 			sequence:      56,
-			expected: []map[string]interface{}{
-				map[string]interface{}{
-					"address": "GBFC3KATHWQOZ3TWJEOLMBBFMPZ4OS2KYVZRKWVRMQKZ2LFNRLQEIRCV",
-					"details": map[string]interface{}{
+			expected: []effect{
+				effect{
+					address: "GBFC3KATHWQOZ3TWJEOLMBBFMPZ4OS2KYVZRKWVRMQKZ2LFNRLQEIRCV",
+					details: map[string]interface{}{
 						"seller":              "GCA3EPMNR26H3BO55PQPAMOGKBAIMARLQHWCRK7KTUPGR62SDVLIL7D6",
 						"offer_id":            xdr.Int64(10104690),
 						"sold_amount":         "200.0000000",
@@ -243,13 +243,13 @@ func TestOperationEffects(t *testing.T) {
 						"bought_asset_type":   "credit_alphanum12",
 						"bought_asset_issuer": "GBFC3KATHWQOZ3TWJEOLMBBFMPZ4OS2KYVZRKWVRMQKZ2LFNRLQEIRCV",
 					},
-					"effectType":  history.EffectTrade,
-					"operationID": int64(240518172673),
-					"order":       uint32(1),
+					effectType:  history.EffectTrade,
+					operationID: int64(240518172673),
+					order:       uint32(1),
 				},
-				map[string]interface{}{
-					"address": "GCA3EPMNR26H3BO55PQPAMOGKBAIMARLQHWCRK7KTUPGR62SDVLIL7D6",
-					"details": map[string]interface{}{
+				effect{
+					address: "GCA3EPMNR26H3BO55PQPAMOGKBAIMARLQHWCRK7KTUPGR62SDVLIL7D6",
+					details: map[string]interface{}{
 						"seller":            "GBFC3KATHWQOZ3TWJEOLMBBFMPZ4OS2KYVZRKWVRMQKZ2LFNRLQEIRCV",
 						"offer_id":          xdr.Int64(10104690),
 						"sold_amount":       "200.0000000",
@@ -259,9 +259,9 @@ func TestOperationEffects(t *testing.T) {
 						"bought_asset_type": "native",
 						"sold_asset_issuer": "GBFC3KATHWQOZ3TWJEOLMBBFMPZ4OS2KYVZRKWVRMQKZ2LFNRLQEIRCV",
 					},
-					"effectType":  history.EffectTrade,
-					"operationID": int64(240518172673),
-					"order":       uint32(2),
+					effectType:  history.EffectTrade,
+					operationID: int64(240518172673),
+					order:       uint32(2),
 				},
 			},
 		},
@@ -274,10 +274,10 @@ func TestOperationEffects(t *testing.T) {
 			hash:          "e4b286344ae1c863ab15773ddf6649b08fe031383135194f8613a3a475c41a5a",
 			index:         0,
 			sequence:      56,
-			expected: []map[string]interface{}{
-				map[string]interface{}{
-					"address": "GAA7AZYCJ65VJSMFAGQLBNCXA43QQ6ZEUR4GL4YSVB2FXUAHLLYUHIO5",
-					"details": map[string]interface{}{
+			expected: []effect{
+				effect{
+					address: "GAA7AZYCJ65VJSMFAGQLBNCXA43QQ6ZEUR4GL4YSVB2FXUAHLLYUHIO5",
+					details: map[string]interface{}{
 						"bought_amount":       "100000.0000000",
 						"bought_asset_code":   "COP",
 						"bought_asset_issuer": "GC4XF7RE3R4P77GY5XNGICM56IOKUURWAAANPXHFC7G5H6FCNQVVH3OH",
@@ -287,13 +287,13 @@ func TestOperationEffects(t *testing.T) {
 						"sold_amount":         "100.0000000",
 						"sold_asset_type":     "native",
 					},
-					"effectType":  history.EffectTrade,
-					"operationID": int64(240518172673),
-					"order":       uint32(1),
+					effectType:  history.EffectTrade,
+					operationID: int64(240518172673),
+					order:       uint32(1),
 				},
-				map[string]interface{}{
-					"address": "GAZAIOXF7GBHGPHOYJSTPIIC4K6AJM55S5Q44OCJHEHIF6YU2IHO6VHU",
-					"details": map[string]interface{}{
+				effect{
+					address: "GAZAIOXF7GBHGPHOYJSTPIIC4K6AJM55S5Q44OCJHEHIF6YU2IHO6VHU",
+					details: map[string]interface{}{
 						"bought_amount":     "100.0000000",
 						"bought_asset_type": "native",
 						"offer_id":          xdr.Int64(10694502),
@@ -303,9 +303,9 @@ func TestOperationEffects(t *testing.T) {
 						"sold_asset_issuer": "GC4XF7RE3R4P77GY5XNGICM56IOKUURWAAANPXHFC7G5H6FCNQVVH3OH",
 						"sold_asset_type":   "credit_alphanum4",
 					},
-					"effectType":  history.EffectTrade,
-					"operationID": int64(240518172673),
-					"order":       uint32(2),
+					effectType:  history.EffectTrade,
+					operationID: int64(240518172673),
+					order:       uint32(2),
 				},
 			},
 		},
@@ -318,65 +318,65 @@ func TestOperationEffects(t *testing.T) {
 			hash:          "e76b7b0133690fbfb2de8fa9ca2273cb4f2e29447e0cf0e14a5f82d0daa48760",
 			index:         0,
 			sequence:      56,
-			expected: []map[string]interface{}{
-				map[string]interface{}{
-					"address": "GC4XF7RE3R4P77GY5XNGICM56IOKUURWAAANPXHFC7G5H6FCNQVVH3OH",
-					"details": map[string]interface{}{
+			expected: []effect{
+				effect{
+					address: "GC4XF7RE3R4P77GY5XNGICM56IOKUURWAAANPXHFC7G5H6FCNQVVH3OH",
+					details: map[string]interface{}{
 						"home_domain": "https://www.home.org/",
 					},
-					"effectType":  history.EffectAccountHomeDomainUpdated,
-					"operationID": int64(240518172673),
-					"order":       uint32(1),
+					effectType:  history.EffectAccountHomeDomainUpdated,
+					operationID: int64(240518172673),
+					order:       uint32(1),
 				},
-				map[string]interface{}{
-					"address": "GC4XF7RE3R4P77GY5XNGICM56IOKUURWAAANPXHFC7G5H6FCNQVVH3OH",
-					"details": map[string]interface{}{
+				effect{
+					address: "GC4XF7RE3R4P77GY5XNGICM56IOKUURWAAANPXHFC7G5H6FCNQVVH3OH",
+					details: map[string]interface{}{
 						"high_threshold": xdr.Uint32(3),
 						"low_threshold":  xdr.Uint32(1),
 						"med_threshold":  xdr.Uint32(2),
 					},
-					"effectType":  history.EffectAccountThresholdsUpdated,
-					"operationID": int64(240518172673),
-					"order":       uint32(2),
+					effectType:  history.EffectAccountThresholdsUpdated,
+					operationID: int64(240518172673),
+					order:       uint32(2),
 				},
-				map[string]interface{}{
-					"address": "GC4XF7RE3R4P77GY5XNGICM56IOKUURWAAANPXHFC7G5H6FCNQVVH3OH",
-					"details": map[string]interface{}{
+				effect{
+					address: "GC4XF7RE3R4P77GY5XNGICM56IOKUURWAAANPXHFC7G5H6FCNQVVH3OH",
+					details: map[string]interface{}{
 						"auth_required_flag":  true,
 						"auth_revocable_flag": false,
 					},
-					"effectType":  history.EffectAccountFlagsUpdated,
-					"operationID": int64(240518172673),
-					"order":       uint32(3),
+					effectType:  history.EffectAccountFlagsUpdated,
+					operationID: int64(240518172673),
+					order:       uint32(3),
 				},
-				map[string]interface{}{
-					"address": "GC4XF7RE3R4P77GY5XNGICM56IOKUURWAAANPXHFC7G5H6FCNQVVH3OH",
-					"details": map[string]interface{}{
+				effect{
+					address: "GC4XF7RE3R4P77GY5XNGICM56IOKUURWAAANPXHFC7G5H6FCNQVVH3OH",
+					details: map[string]interface{}{
 						"inflation_destination": "GAQHWQYBBW272OOXNQMMLCA5WY2XAZPODGB7Q3S5OKKIXVESKO55ZQ7C",
 					},
-					"effectType":  history.EffectAccountInflationDestinationUpdated,
-					"operationID": int64(240518172673),
-					"order":       uint32(4),
+					effectType:  history.EffectAccountInflationDestinationUpdated,
+					operationID: int64(240518172673),
+					order:       uint32(4),
 				},
-				map[string]interface{}{
-					"address": "GC4XF7RE3R4P77GY5XNGICM56IOKUURWAAANPXHFC7G5H6FCNQVVH3OH",
-					"details": map[string]interface{}{
+				effect{
+					address: "GC4XF7RE3R4P77GY5XNGICM56IOKUURWAAANPXHFC7G5H6FCNQVVH3OH",
+					details: map[string]interface{}{
 						"public_key": "GC4XF7RE3R4P77GY5XNGICM56IOKUURWAAANPXHFC7G5H6FCNQVVH3OH",
 						"weight":     int32(3),
 					},
-					"effectType":  history.EffectSignerUpdated,
-					"operationID": int64(240518172673),
-					"order":       uint32(5),
+					effectType:  history.EffectSignerUpdated,
+					operationID: int64(240518172673),
+					order:       uint32(5),
 				},
-				map[string]interface{}{
-					"address": "GC4XF7RE3R4P77GY5XNGICM56IOKUURWAAANPXHFC7G5H6FCNQVVH3OH",
-					"details": map[string]interface{}{
+				effect{
+					address: "GC4XF7RE3R4P77GY5XNGICM56IOKUURWAAANPXHFC7G5H6FCNQVVH3OH",
+					details: map[string]interface{}{
 						"public_key": "GAQHWQYBBW272OOXNQMMLCA5WY2XAZPODGB7Q3S5OKKIXVESKO55ZQ7C",
 						"weight":     int32(2),
 					},
-					"effectType":  history.EffectSignerCreated,
-					"operationID": int64(240518172673),
-					"order":       uint32(6),
+					effectType:  history.EffectSignerCreated,
+					operationID: int64(240518172673),
+					order:       uint32(6),
 				},
 			},
 		},
@@ -390,13 +390,13 @@ func TestOperationEffects(t *testing.T) {
 			hash:          "6fa467b53f5386d77ad35c2502ed2cd3dd8b460a5be22b6b2818b81bcd3ed2da",
 			index:         0,
 			sequence:      40,
-			expected: []map[string]interface{}{
-				map[string]interface{}{
-					"address":     "GCVW5LCRZFP7PENXTAGOVIQXADDNUXXZJCNKF4VQB2IK7W2LPJWF73UG",
-					"effectType":  history.EffectTrustlineCreated,
-					"operationID": int64(171798695937),
-					"order":       uint32(1),
-					"details": map[string]interface{}{
+			expected: []effect{
+				effect{
+					address:     "GCVW5LCRZFP7PENXTAGOVIQXADDNUXXZJCNKF4VQB2IK7W2LPJWF73UG",
+					effectType:  history.EffectTrustlineCreated,
+					operationID: int64(171798695937),
+					order:       uint32(1),
+					details: map[string]interface{}{
 						"limit":        "922337203685.4775807",
 						"asset_code":   "USD",
 						"asset_type":   "credit_alphanum4",
@@ -414,13 +414,13 @@ func TestOperationEffects(t *testing.T) {
 			hash:          "6d2e30fd57492bf2e2b132e1bc91a548a369189bebf77eb2b3d829121a9d2c50",
 			index:         0,
 			sequence:      41,
-			expected: []map[string]interface{}{
-				map[string]interface{}{
-					"address":     "GD4SMOE3VPSF7ZR3CTEQ3P5UNTBMEJDA2GLXTHR7MMARANKKJDZ7RPGF",
-					"effectType":  history.EffectTrustlineAuthorized,
-					"operationID": int64(176093663233),
-					"order":       uint32(1),
-					"details": map[string]interface{}{
+			expected: []effect{
+				effect{
+					address:     "GD4SMOE3VPSF7ZR3CTEQ3P5UNTBMEJDA2GLXTHR7MMARANKKJDZ7RPGF",
+					effectType:  history.EffectTrustlineAuthorized,
+					operationID: int64(176093663233),
+					order:       uint32(1),
+					details: map[string]interface{}{
 						"trustor":      "GCVW5LCRZFP7PENXTAGOVIQXADDNUXXZJCNKF4VQB2IK7W2LPJWF73UG",
 						"asset_code":   "USD",
 						"asset_type":   "credit_alphanum4",
@@ -438,33 +438,33 @@ func TestOperationEffects(t *testing.T) {
 			hash:          "e0773d07aba23d11e6a06b021682294be1f9f202a2926827022539662ce2c7fc",
 			index:         0,
 			sequence:      44,
-			expected: []map[string]interface{}{
-				map[string]interface{}{
-					"address":     "GCHPXGVDKPF5KT4CNAT7X77OXYZ7YVE4JHKFDUHCGCVWCL4K4PQ67KKZ",
-					"effectType":  history.EffectAccountDebited,
-					"operationID": int64(188978565121),
-					"order":       uint32(1),
-					"details": map[string]interface{}{
+			expected: []effect{
+				effect{
+					address:     "GCHPXGVDKPF5KT4CNAT7X77OXYZ7YVE4JHKFDUHCGCVWCL4K4PQ67KKZ",
+					effectType:  history.EffectAccountDebited,
+					operationID: int64(188978565121),
+					order:       uint32(1),
+					details: map[string]interface{}{
 						"amount":     "999.9999900",
 						"asset_type": "native",
 					},
 				},
-				map[string]interface{}{
-					"address":     "GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H",
-					"effectType":  history.EffectAccountCredited,
-					"operationID": int64(188978565121),
-					"order":       uint32(2),
-					"details": map[string]interface{}{
+				effect{
+					address:     "GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H",
+					effectType:  history.EffectAccountCredited,
+					operationID: int64(188978565121),
+					order:       uint32(2),
+					details: map[string]interface{}{
 						"amount":     "999.9999900",
 						"asset_type": "native",
 					},
 				},
-				map[string]interface{}{
-					"address":     "GCHPXGVDKPF5KT4CNAT7X77OXYZ7YVE4JHKFDUHCGCVWCL4K4PQ67KKZ",
-					"effectType":  history.EffectAccountRemoved,
-					"operationID": int64(188978565121),
-					"order":       uint32(3),
-					"details":     map[string]interface{}{},
+				effect{
+					address:     "GCHPXGVDKPF5KT4CNAT7X77OXYZ7YVE4JHKFDUHCGCVWCL4K4PQ67KKZ",
+					effectType:  history.EffectAccountRemoved,
+					operationID: int64(188978565121),
+					order:       uint32(3),
+					details:     map[string]interface{}{},
 				},
 			},
 		},
@@ -477,23 +477,23 @@ func TestOperationEffects(t *testing.T) {
 			hash:          "ea93efd8c2f4e45c0318c69ec958623a0e4374f40d569eec124d43c8a54d6256",
 			index:         0,
 			sequence:      47,
-			expected: []map[string]interface{}{
-				map[string]interface{}{
-					"address":     "GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H",
-					"effectType":  history.EffectAccountCredited,
-					"operationID": int64(201863467009),
-					"order":       uint32(1),
-					"details": map[string]interface{}{
+			expected: []effect{
+				effect{
+					address:     "GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H",
+					effectType:  history.EffectAccountCredited,
+					operationID: int64(201863467009),
+					order:       uint32(1),
+					details: map[string]interface{}{
 						"amount":     "15257676.9536092",
 						"asset_type": "native",
 					},
 				},
-				map[string]interface{}{
-					"address":     "GDR53WAEIKOU3ZKN34CSHAWH7HV6K63CBJRUTWUDBFSMY7RRQK3SPKOS",
-					"effectType":  history.EffectAccountCredited,
-					"operationID": int64(201863467009),
-					"order":       uint32(2),
-					"details": map[string]interface{}{
+				effect{
+					address:     "GDR53WAEIKOU3ZKN34CSHAWH7HV6K63CBJRUTWUDBFSMY7RRQK3SPKOS",
+					effectType:  history.EffectAccountCredited,
+					operationID: int64(201863467009),
+					order:       uint32(2),
+					details: map[string]interface{}{
 						"amount":     "3814420.0001419",
 						"asset_type": "native",
 					},
@@ -509,13 +509,13 @@ func TestOperationEffects(t *testing.T) {
 			hash:          "e4609180751e7702466a8845857df43e4d154ec84b6bad62ce507fe12f1daf99",
 			index:         0,
 			sequence:      49,
-			expected: []map[string]interface{}{
-				map[string]interface{}{
-					"address":     "GAYSCMKQY6EYLXOPTT6JPPOXDMVNBWITPTSZIVWW4LWARVBOTH5RTLAD",
-					"effectType":  history.EffectDataCreated,
-					"operationID": int64(210453401601),
-					"order":       uint32(1),
-					"details": map[string]interface{}{
+			expected: []effect{
+				effect{
+					address:     "GAYSCMKQY6EYLXOPTT6JPPOXDMVNBWITPTSZIVWW4LWARVBOTH5RTLAD",
+					effectType:  history.EffectDataCreated,
+					operationID: int64(210453401601),
+					order:       uint32(1),
+					details: map[string]interface{}{
 						"name":  xdr.String64("name2"),
 						"value": "NTY3OA==",
 					},
@@ -531,7 +531,7 @@ func TestOperationEffects(t *testing.T) {
 			hash:          "bc11b5c41de791369fd85fa1ccf01c35c20df5f98ff2f75d02ead61bfd520e21",
 			index:         0,
 			sequence:      61,
-			expected:      []map[string]interface{}{},
+			expected:      []effect{},
 		},
 		{
 
@@ -543,7 +543,7 @@ func TestOperationEffects(t *testing.T) {
 			hash:          "c8132b95c0063cafd20b26d27f06c12e688609d2d9d3724b840821e861870b8e",
 			index:         0,
 			sequence:      60,
-			expected:      []map[string]interface{}{},
+			expected:      []effect{},
 		},
 		{
 
@@ -555,13 +555,13 @@ func TestOperationEffects(t *testing.T) {
 			hash:          "829d53f2dceebe10af8007564b0aefde819b95734ad431df84270651e7ed8a90",
 			index:         0,
 			sequence:      58,
-			expected: []map[string]interface{}{
-				map[string]interface{}{
-					"address":     "GCQZP3IU7XU6EJ63JZXKCQOYT2RNXN3HB5CNHENNUEUHSMA4VUJJJSEN",
-					"effectType":  history.EffectSequenceBumped,
-					"operationID": int64(249108107265),
-					"order":       uint32(1),
-					"details": map[string]interface{}{
+			expected: []effect{
+				effect{
+					address:     "GCQZP3IU7XU6EJ63JZXKCQOYT2RNXN3HB5CNHENNUEUHSMA4VUJJJSEN",
+					effectType:  history.EffectSequenceBumped,
+					operationID: int64(249108107265),
+					order:       uint32(1),
+					details: map[string]interface{}{
 						"new_seq": xdr.SequenceNumber(300000000000),
 					},
 				},
