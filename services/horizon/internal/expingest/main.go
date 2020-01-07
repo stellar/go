@@ -4,6 +4,7 @@
 package expingest
 
 import (
+	"fmt"
 	"runtime/debug"
 	"sync"
 	"time"
@@ -91,16 +92,27 @@ type liveSession interface {
 	Shutdown()
 }
 
-type retry interface {
-	onError(func() error)
+type systemState string
+
+const (
+	initState                 systemState = "init"
+	loadOffersIntoMemoryState systemState = "loadOffersIntoMemory"
+	buildStateAndResumeState  systemState = "buildStateAndResume"
+	resumeState               systemState = "resume"
+	shutdownState             systemState = "shutdown"
+)
+
+type state struct {
+	systemState                       systemState
+	latestSuccessfullyProcessedLedger uint32
 }
 
 type System struct {
+	state            state
 	session          liveSession
 	historyQ         dbQ
 	historySession   dbSession
 	graph            *orderbook.OrderBookGraph
-	retry            retry
 	stateReady       bool
 	stateReadyLock   sync.RWMutex
 	maxStreamRetries int
@@ -114,22 +126,6 @@ type System struct {
 	stateVerificationErrors  int
 	stateVerificationRunning bool
 	disableStateVerification bool
-}
-
-type alwaysRetry struct {
-	backOff time.Duration
-}
-
-func (r alwaysRetry) onError(f func() error) {
-	for {
-		err := f()
-		if err != nil {
-			log.Error(err)
-			time.Sleep(r.backOff)
-			continue
-		}
-		break
-	}
 }
 
 func NewSystem(config Config) (*System, error) {
@@ -175,7 +171,6 @@ func NewSystem(config Config) (*System, error) {
 		historySession:           historySession,
 		historyQ:                 historyQ,
 		graph:                    config.OrderBookGraph,
-		retry:                    alwaysRetry{time.Second},
 		disableStateVerification: config.DisableStateVerification,
 		maxStreamRetries:         config.MaxStreamRetries,
 	}
@@ -242,110 +237,144 @@ func (s *System) Run() {
 		}
 	}()
 
-	// retryOnError loop is needed only in case of initial state sync errors.
-	// If the state is successfully ingested `resumeFromLedger` method continues
-	// processing ledgers.
-	s.retry.onError(func() error {
-		// Transaction will be commited or rolled back in pipelines post hooks.
-		err := s.historyQ.Begin()
+	s.state = state{initState, 0}
+
+	for {
+		nextState, err := s.runCurrentState()
 		if err != nil {
-			return errors.Wrap(err, "Error starting a transaction")
-		}
-		// We rollback in pipelines post-hooks but the error can happen before
-		// pipeline starts processing.
-		defer s.historyQ.Rollback()
-
-		// This will get the value `FOR UPDATE`, blocking it for other nodes.
-		lastIngestedLedger, err := s.historyQ.GetLastLedgerExpIngest()
-		if err != nil {
-			return errors.Wrap(err, "Error getting last ingested ledger")
+			log.WithFields(logpkg.F{
+				"error":         err,
+				"current_state": s.state,
+				"next_state":    nextState,
+			}).Error("Error in ingestion state machine")
 		}
 
-		ingestVersion, err := s.historyQ.GetExpIngestVersion()
-		if err != nil {
-			return errors.Wrap(err, "Error getting exp ingest version")
+		// Exit after processing shutdownState
+		if s.state.systemState == shutdownState {
+			return
 		}
 
-		if ingestVersion != CurrentVersion || lastIngestedLedger == 0 {
-			// This block is either starting from empty state or ingestion
-			// version upgrade.
-			// This will always run on a single instance due to the fact that
-			// `LastLedgerExpIngest` value is blocked for update and will always
-			// be updated when leading instance finishes processing state.
-			// In case of errors it will start `Run` from the beginning.
-			log.Info("Starting ingestion system from empty state...")
-
-			// Clear last_ingested_ledger in key value store
-			if err = s.historyQ.UpdateLastLedgerExpIngest(0); err != nil {
-				return errors.Wrap(err, "Error updating last ingested ledger")
-			}
-
-			// Clear invalid state in key value store. It's possible that upgraded
-			// ingestion is fixing it.
-			if err = s.historyQ.UpdateExpStateInvalid(false); err != nil {
-				return errors.Wrap(err, "Error updating state invalid value")
-			}
-
-			err = s.historyQ.TruncateExpingestStateTables()
-			if err != nil {
-				return errors.Wrap(err, "Error clearing ingest tables")
-			}
-
-			err = s.session.Run()
-			if err != nil {
-				// Check if session processed a state, if so, continue since the
-				// last processed ledger, otherwise start over.
-				var processed bool
-				lastIngestedLedger, processed = s.session.GetLatestSuccessfullyProcessedLedger()
-				if !processed {
-					return err
-				}
-
-				log.WithFields(logpkg.F{
-					"err":                  err,
-					"last_ingested_ledger": lastIngestedLedger,
-				}).Error("Error running session, resuming from the last ingested ledger")
-			} else {
-				// LiveSession.Run returns nil => shutdown
-				log.Info("Session shut down")
-				return nil
-			}
-		} else {
-			// The other node already ingested a state (just now or in the past)
-			// so we need to get offers from a DB, then resume session normally.
-			// State pipeline is NOT processed.
-			log.WithField("last_ledger", lastIngestedLedger).
-				Info("Resuming ingestion system from last processed ledger...")
-
-			err = loadOrderBookGraphFromDB(s.historyQ, s.graph, lastIngestedLedger)
-			if err != nil {
-				return errors.Wrap(err, "Error loading order book graph from db")
-			}
+		select {
+		case <-s.shutdown:
+			log.Info("Received shut down signal...")
+			nextState = state{shutdownState, 0}
+		case <-time.After(time.Second):
 		}
 
-		s.resumeFromLedger(lastIngestedLedger)
-		return nil
-	})
+		log.WithFields(logpkg.F{
+			"current_state": s.state,
+			"next_state":    nextState,
+		}).Info("Ingestion system state machine transition")
+
+		s.state = nextState
+	}
 }
 
-func loadOrderBookGraphFromDB(
-	historyQ dbQ,
-	graph *orderbook.OrderBookGraph,
-	lastIngestedLedger uint32,
-) error {
-	defer graph.Discard()
+func (s *System) runCurrentState() (state, error) {
+	// Transaction will be commited or rolled back in pipelines post hooks
+	// or below in case of errors.
+	if tx := s.historyQ.GetTx(); tx == nil {
+		err := s.historyQ.Begin()
+		if err != nil {
+			return state{initState, 0}, errors.Wrap(err, "Error in Begin")
+		}
+	}
+
+	var nextState state
+	var err error
+
+	switch s.state.systemState {
+	case initState:
+		nextState, err = s.init()
+	case loadOffersIntoMemoryState:
+		nextState, err = s.loadOffersIntoMemory()
+	case buildStateAndResumeState:
+		nextState, err = s.buildStateAndResume()
+	case resumeState:
+		nextState, err = s.resume()
+	case shutdownState:
+		s.historyQ.Rollback()
+		log.Info("Shut down")
+		nextState, err = s.state, nil
+	default:
+		panic(fmt.Sprintf("Unknown state %+v", s.state.systemState))
+	}
+
+	if err != nil {
+		// We rollback in pipelines post-hooks but the error can happen before
+		// pipeline starts processing.
+		s.historyQ.Rollback()
+	}
+
+	return nextState, err
+}
+
+func (s *System) init() (state, error) {
+	// This will get the value `FOR UPDATE`, blocking it for other nodes.
+	lastIngestedLedger, err := s.historyQ.GetLastLedgerExpIngest()
+	if err != nil {
+		return state{initState, 0}, errors.Wrap(err, "Error getting last ingested ledger")
+	}
+
+	ingestVersion, err := s.historyQ.GetExpIngestVersion()
+	if err != nil {
+		return state{initState, 0}, errors.Wrap(err, "Error getting exp ingest version")
+	}
+
+	if ingestVersion != CurrentVersion || lastIngestedLedger == 0 {
+		// This block is either starting from empty state or ingestion
+		// version upgrade.
+		// This will always run on a single instance due to the fact that
+		// `LastLedgerExpIngest` value is blocked for update and will always
+		// be updated when leading instance finishes processing state.
+		// In case of errors it will start `Init` from the beginning.
+		log.Info("Starting ingestion system from empty state...")
+
+		// Clear last_ingested_ledger in key value store
+		if err = s.historyQ.UpdateLastLedgerExpIngest(0); err != nil {
+			return state{initState, 0}, errors.Wrap(err, "Error updating last ingested ledger")
+		}
+
+		// Clear invalid state in key value store. It's possible that upgraded
+		// ingestion is fixing it.
+		if err = s.historyQ.UpdateExpStateInvalid(false); err != nil {
+			return state{initState, 0}, errors.Wrap(err, "Error updating state invalid value")
+		}
+
+		err = s.historyQ.TruncateExpingestStateTables()
+		if err != nil {
+			return state{initState, 0}, errors.Wrap(err, "Error clearing ingest tables")
+		}
+
+		return state{buildStateAndResumeState, 0}, nil
+	}
+
+	// The other node already ingested a state (just now or in the past)
+	// so we need to get offers from a DB, then resume session normally.
+	// State pipeline is NOT processed.
+	log.WithField("last_ledger", lastIngestedLedger).
+		Info("Resuming ingestion system from last processed ledger...")
+
+	return state{loadOffersIntoMemoryState, lastIngestedLedger}, nil
+}
+
+// loadOffersIntoMemory loads offers into memory. If successful, it changes the
+// state to `resumeState`. In case of errors it always changes the state to
+// `init` because state function returning errors rollback DB transaction.
+func (s *System) loadOffersIntoMemory() (state, error) {
+	defer s.graph.Discard()
 
 	log.Info("Loading offers from a database into memory store...")
 	start := time.Now()
 
-	offers, err := historyQ.GetAllOffers()
+	offers, err := s.historyQ.GetAllOffers()
 	if err != nil {
-		return err
+		return state{initState, 0}, errors.Wrap(err, "GetAllOffers error")
 	}
 
 	for _, offer := range offers {
 		sellerID := xdr.MustAddress(offer.SellerID)
-		graph.AddOffer(xdr.OfferEntry{
+		s.graph.AddOffer(xdr.OfferEntry{
 			SellerId: sellerID,
 			OfferId:  offer.OfferID,
 			Selling:  offer.SellingAsset,
@@ -359,43 +388,52 @@ func loadOrderBookGraphFromDB(
 		})
 	}
 
-	err = graph.Apply(lastIngestedLedger)
-	if err == nil {
-		log.WithField(
-			"duration",
-			time.Since(start).Seconds(),
-		).Info("Finished loading offers from a database into memory store")
+	err = s.graph.Apply(s.state.latestSuccessfullyProcessedLedger)
+	if err != nil {
+		return state{initState, 0}, errors.Wrap(err, "Error running graph.Apply")
 	}
 
-	return err
+	log.WithField(
+		"duration",
+		time.Since(start).Seconds(),
+	).Info("Finished loading offers from a database into memory store")
+
+	return state{resumeState, s.state.latestSuccessfullyProcessedLedger}, nil
 }
 
-func (s *System) resumeFromLedger(lastIngestedLedger uint32) {
-	s.retry.onError(func() error {
-		err := s.session.Resume(lastIngestedLedger + 1)
-		if err != nil {
-			// If no ledgers processed so far, try again with the
-			// lastIngestedLedger+1 (do nothing).
-			// Otherwise, set lastIngestedLedger to the last successfully
-			// ingested ledger in the session.
-			sessionLastLedger, processed := s.session.GetLatestSuccessfullyProcessedLedger()
-			if processed {
-				lastIngestedLedger = sessionLastLedger
-			}
-
-			select {
-			case <-s.shutdown:
-				log.WithField("err", err).
-					Error("System shut down but error returned from ingest.LiveSession")
-				return nil
-			default:
-				return errors.Wrap(err, "Error returned from ingest.LiveSession")
-			}
+func (s *System) buildStateAndResume() (state, error) {
+	err := s.session.Run()
+	if err != nil {
+		// Check if session processed a state, if so, continue since the
+		// last processed ledger, otherwise start over.
+		latestSuccessfullyProcessedLedger, processed := s.session.GetLatestSuccessfullyProcessedLedger()
+		if !processed {
+			return state{initState, 0}, err
 		}
 
-		log.Info("Session shut down")
-		return nil
-	})
+		return state{resumeState, latestSuccessfullyProcessedLedger}, err
+	}
+
+	return state{shutdownState, 0}, nil
+}
+
+func (s *System) resume() (state, error) {
+	err := s.session.Resume(s.state.latestSuccessfullyProcessedLedger + 1)
+	if err != nil {
+		err = errors.Wrap(err, "Error returned from ingest.LiveSession")
+		// If no ledgers processed so far, try again with the
+		// latestSuccessfullyProcessedLedger+1 (do nothing).
+		// Otherwise, set latestSuccessfullyProcessedLedger to the last
+		// successfully ingested ledger in the machine state.
+		sessionLastLedger, processed := s.session.GetLatestSuccessfullyProcessedLedger()
+		if processed {
+			return state{resumeState, sessionLastLedger}, err
+		}
+
+		return s.state, err
+	}
+
+	return state{shutdownState, 0}, nil
 }
 
 // StateReady returns true if the ingestion system has finished running it's state pipelines
