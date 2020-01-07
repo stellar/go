@@ -51,6 +51,10 @@ func (p *EffectProcessor) loadAccountIDs(accountSet map[string]int64) error {
 func operationsEffects(transaction io.LedgerTransaction, sequence uint32) ([]effect, error) {
 	effects := []effect{}
 
+	if !transaction.Successful() {
+		return effects, nil
+	}
+
 	for opi, op := range transaction.Envelope.Tx.Operations {
 		operation := transactionOperationWrapper{
 			index:          uint32(opi),
@@ -203,6 +207,10 @@ func (e *effectsWrapper) add(address string, effectType history.EffectType, deta
 
 // Effects returns the operation effects
 func (operation *transactionOperationWrapper) effects() (effects []effect, err error) {
+	if !operation.transaction.Successful() {
+		return []effect{}, err
+	}
+
 	op := operation.operation
 
 	switch operation.OperationType() {
