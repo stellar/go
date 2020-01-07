@@ -298,13 +298,20 @@ func (s *RangeSession) Shutdown() {
 	s.standardSession.Shutdown()
 
 	// Shutdown pipelines
-	s.StatePipeline.Shutdown()
+	if s.StatePipeline != nil {
+		s.StatePipeline.Shutdown()
+	}
 	s.LedgerPipeline.Shutdown()
 
 	// Shutdown signals sent, block/wait until pipelines are done
 	// shutting down.
 	for {
-		stateRunning := s.StatePipeline.IsRunning()
+		var stateRunning bool
+		if s.StatePipeline != nil {
+			stateRunning = s.StatePipeline.IsRunning()
+		} else {
+			stateRunning = false
+		}
 		ledgerRunning := s.LedgerPipeline.IsRunning()
 		if stateRunning || ledgerRunning {
 			time.Sleep(time.Second)
