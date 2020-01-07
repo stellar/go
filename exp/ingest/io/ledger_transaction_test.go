@@ -93,6 +93,21 @@ func TestFeeAndMetaChangesSeparate(t *testing.T) {
 	assert.Equal(t, metaChanges[0].Post.Data.MustAccount().Balance, xdr.Int64(400))
 }
 
+func TestFailedTransactionOperationChanges(t *testing.T) {
+	tx := LedgerTransaction{
+		Result: xdr.TransactionResultPair{
+			Result: xdr.TransactionResult{
+				Result: xdr.TransactionResultResult{
+					Code: xdr.TransactionResultCodeTxFailed,
+				},
+			},
+		},
+	}
+
+	feeChanges := tx.GetOperationChanges(0)
+	assert.Len(t, feeChanges, 0)
+}
+
 func TestMetaV2Order(t *testing.T) {
 	tx := LedgerTransaction{
 		Meta: xdr.TransactionMeta{

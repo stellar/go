@@ -204,6 +204,11 @@ func (t *LedgerTransaction) GetChanges() ([]Change, error) {
 func (t *LedgerTransaction) GetOperationChanges(operationIndex uint32) []Change {
 	var changes []Change
 
+	// If the transaction was not successful there are no changes
+	if !t.Successful() {
+		return []Change{}
+	}
+
 	// Transaction meta
 	switch t.Meta.V {
 	case 0:
