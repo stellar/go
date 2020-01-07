@@ -93,7 +93,6 @@ func (ingest *Ingestion) Flush() error {
 		LedgersTableName,
 		OperationParticipantsTableName,
 		OperationsTableName,
-		TradesTableName,
 		TransactionParticipantsTableName,
 		TransactionsTableName,
 	}
@@ -258,64 +257,6 @@ func (ingest *Ingestion) Start() (err error) {
 	return
 }
 
-// Trade records a trade into the history_trades table
-func (ingest *Ingestion) Trade(
-	opid int64,
-	order int32,
-	buyer xdr.AccountId,
-	trade xdr.ClaimOfferAtom,
-	ledgerClosedAt int64,
-) error {
-
-	q := history.Q{Session: ingest.DB}
-
-	sellerAccountId, err := q.GetCreateAccountID(trade.SellerId)
-	if err != nil {
-		return errors.Wrap(err, "failed to load seller account id")
-	}
-
-	buyerAccountId, err := q.GetCreateAccountID(buyer)
-	if err != nil {
-		return errors.Wrap(err, "failed to load buyer account id")
-	}
-	soldAssetId, err := q.GetCreateAssetID(trade.AssetSold)
-	if err != nil {
-		return errors.Wrap(err, "failed to get sold asset id")
-	}
-
-	boughtAssetId, err := q.GetCreateAssetID(trade.AssetBought)
-	if err != nil {
-		return errors.Wrap(err, "failed to get bought asset id")
-	}
-	var baseAssetId, counterAssetId int64
-	var baseAccountId, counterAccountId int64
-	var baseAmount, counterAmount xdr.Int64
-
-	//map seller and buyer to base and counter based on ordering of ids
-	if soldAssetId < boughtAssetId {
-		baseAccountId, baseAssetId, baseAmount, counterAccountId, counterAssetId, counterAmount =
-			sellerAccountId, soldAssetId, trade.AmountSold, buyerAccountId, boughtAssetId, trade.AmountBought
-	} else {
-		baseAccountId, baseAssetId, baseAmount, counterAccountId, counterAssetId, counterAmount =
-			buyerAccountId, boughtAssetId, trade.AmountBought, sellerAccountId, soldAssetId, trade.AmountSold
-	}
-
-	ingest.builders[TradesTableName].Values(
-		opid,
-		order,
-		time.Unix(ledgerClosedAt, 0).UTC(),
-		trade.OfferId,
-		baseAccountId,
-		baseAssetId,
-		baseAmount,
-		counterAccountId,
-		counterAssetId,
-		counterAmount,
-		soldAssetId < boughtAssetId,
-	)
-	return nil
-}
-
 // Transaction ingests the provided transaction data into a new row in the
 // `history_transactions` table
 func (ingest *Ingestion) Transaction(
@@ -450,23 +391,6 @@ func (ingest *Ingestion) createInsertBuilders() {
 			"\"order\"",
 			"type",
 			"details",
-		},
-	}
-
-	ingest.builders[TradesTableName] = &BatchInsertBuilder{
-		TableName: TradesTableName,
-		Columns: []string{
-			"history_operation_id",
-			"\"order\"",
-			"ledger_closed_at",
-			"offer_id",
-			"base_account_id",
-			"base_asset_id",
-			"base_amount",
-			"counter_account_id",
-			"counter_asset_id",
-			"counter_amount",
-			"base_is_seller",
 		},
 	}
 }
