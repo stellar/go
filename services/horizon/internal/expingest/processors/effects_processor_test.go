@@ -1,13 +1,287 @@
 package processors
 
 import (
+	"context"
+	stdio "io"
 	"testing"
 
+	"github.com/stellar/go/exp/ingest/io"
+	supportPipeline "github.com/stellar/go/exp/support/pipeline"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	. "github.com/stellar/go/services/horizon/internal/test/transactions"
+	"github.com/stellar/go/services/horizon/internal/toid"
+	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/suite"
 )
+
+type EffectsProcessorTestSuiteLedger struct {
+	suite.Suite
+	processor              *EffectProcessor
+	mockQ                  *history.MockQEffects
+	mockBatchInsertBuilder *history.MockEffectBatchInsertBuilder
+	mockLedgerReader       *io.MockLedgerReader
+	mockLedgerWriter       *io.MockLedgerWriter
+	context                context.Context
+
+	firstTx         io.LedgerTransaction
+	secondTx        io.LedgerTransaction
+	thirdTx         io.LedgerTransaction
+	firstTxID       int64
+	secondTxID      int64
+	thirdTxID       int64
+	sequence        uint32
+	sortedAddresses []string
+	addressToID     map[string]int64
+}
+
+func TestEffectsProcessorTestSuiteLedger(t *testing.T) {
+	suite.Run(t, new(EffectsProcessorTestSuiteLedger))
+}
+
+func (s *EffectsProcessorTestSuiteLedger) SetupTest() {
+	s.mockQ = &history.MockQEffects{}
+	s.mockBatchInsertBuilder = &history.MockEffectBatchInsertBuilder{}
+	s.mockLedgerReader = &io.MockLedgerReader{}
+	s.mockLedgerWriter = &io.MockLedgerWriter{}
+	s.context = context.WithValue(context.Background(), IngestUpdateDatabase, true)
+
+	s.sequence = uint32(20)
+
+	s.sortedAddresses = []string{
+		"GANFZDRBCNTUXIODCJEYMACPMCSZEVE4WZGZ3CZDZ3P2SXK4KH75IK6Y",
+		"GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H",
+		"GCQZP3IU7XU6EJ63JZXKCQOYT2RNXN3HB5CNHENNUEUHSMA4VUJJJSEN",
+	}
+
+	s.firstTx = BuildLedgerTransaction(
+		s.Suite.T(),
+		TestTransaction{
+			Index:         1,
+			EnvelopeXDR:   "AAAAAKGX7RT96eIn205uoUHYnqLbt2cPRNORraEoeTAcrRKUAAAAZAAAADkAAAABAAAAAAAAAAAAAAABAAAAAAAAAAsAAABF2WS4AAAAAAAAAAABHK0SlAAAAEDq0JVhKNIq9ag0sR+R/cv3d9tEuaYEm2BazIzILRdGj9alaVMZBhxoJ3ZIpP3rraCJzyoKZO+p5HBVe10a2+UG",
+			ResultXDR:     "AAAAAAAAAGQAAAAAAAAAAQAAAAAAAAALAAAAAAAAAAA=",
+			MetaXDR:       "AAAAAQAAAAIAAAADAAAAOgAAAAAAAAAAoZftFP3p4ifbTm6hQdieotu3Zw9E05GtoSh5MBytEpQAAAACVAvjnAAAADkAAAAAAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAABAAAAOgAAAAAAAAAAoZftFP3p4ifbTm6hQdieotu3Zw9E05GtoSh5MBytEpQAAAACVAvjnAAAADkAAAABAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAABAAAAAgAAAAMAAAA6AAAAAAAAAAChl+0U/eniJ9tObqFB2J6i27dnD0TTka2hKHkwHK0SlAAAAAJUC+OcAAAAOQAAAAEAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAEAAAA6AAAAAAAAAAChl+0U/eniJ9tObqFB2J6i27dnD0TTka2hKHkwHK0SlAAAAAJUC+OcAAAARdlkuAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAA==",
+			FeeChangesXDR: "AAAAAgAAAAMAAAA5AAAAAAAAAAChl+0U/eniJ9tObqFB2J6i27dnD0TTka2hKHkwHK0SlAAAAAJUC+QAAAAAOQAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAEAAAA6AAAAAAAAAAChl+0U/eniJ9tObqFB2J6i27dnD0TTka2hKHkwHK0SlAAAAAJUC+OcAAAAOQAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAA==",
+			Hash:          "829d53f2dceebe10af8007564b0aefde819b95734ad431df84270651e7ed8a90",
+		},
+	)
+	s.firstTxID = toid.New(int32(s.sequence), 1, 0).ToInt64()
+
+	s.secondTx = BuildLedgerTransaction(
+		s.Suite.T(),
+		TestTransaction{
+			Index:         2,
+			EnvelopeXDR:   "AAAAAGL8HQvQkbK2HA3WVjRrKmjX00fG8sLI7m0ERwJW/AX3AAAAZAAAAAAAAAAaAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAoZftFP3p4ifbTm6hQdieotu3Zw9E05GtoSh5MBytEpQAAAACVAvkAAAAAAAAAAABVvwF9wAAAEDHU95E9wxgETD8TqxUrkgC0/7XHyNDts6Q5huRHfDRyRcoHdv7aMp/sPvC3RPkXjOMjgbKJUX7SgExUeYB5f8F",
+			ResultXDR:     "AAAAAAAAAGQAAAAAAAAAAQAAAAAAAAABAAAAAAAAAAA=",
+			MetaXDR:       "AAAAAQAAAAIAAAADAAAAOQAAAAAAAAAAYvwdC9CRsrYcDdZWNGsqaNfTR8bywsjubQRHAlb8BfcLGrZY9dZxbAAAAAAAAAAZAAAAAAAAAAEAAAAAYvwdC9CRsrYcDdZWNGsqaNfTR8bywsjubQRHAlb8BfcAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAABAAAAOQAAAAAAAAAAYvwdC9CRsrYcDdZWNGsqaNfTR8bywsjubQRHAlb8BfcLGrZY9dZxbAAAAAAAAAAaAAAAAAAAAAEAAAAAYvwdC9CRsrYcDdZWNGsqaNfTR8bywsjubQRHAlb8BfcAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAABAAAAAwAAAAMAAAA5AAAAAAAAAABi/B0L0JGythwN1lY0aypo19NHxvLCyO5tBEcCVvwF9wsatlj11nFsAAAAAAAAABoAAAAAAAAAAQAAAABi/B0L0JGythwN1lY0aypo19NHxvLCyO5tBEcCVvwF9wAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAEAAAA5AAAAAAAAAABi/B0L0JGythwN1lY0aypo19NHxvLCyO5tBEcCVvwF9wsatlahyo1sAAAAAAAAABoAAAAAAAAAAQAAAABi/B0L0JGythwN1lY0aypo19NHxvLCyO5tBEcCVvwF9wAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAA5AAAAAAAAAAChl+0U/eniJ9tObqFB2J6i27dnD0TTka2hKHkwHK0SlAAAAAJUC+QAAAAAOQAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAA==",
+			FeeChangesXDR: "AAAAAgAAAAMAAAA3AAAAAAAAAABi/B0L0JGythwN1lY0aypo19NHxvLCyO5tBEcCVvwF9wsatlj11nHQAAAAAAAAABkAAAAAAAAAAQAAAABi/B0L0JGythwN1lY0aypo19NHxvLCyO5tBEcCVvwF9wAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAEAAAA5AAAAAAAAAABi/B0L0JGythwN1lY0aypo19NHxvLCyO5tBEcCVvwF9wsatlj11nFsAAAAAAAAABkAAAAAAAAAAQAAAABi/B0L0JGythwN1lY0aypo19NHxvLCyO5tBEcCVvwF9wAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAA==",
+			Hash:          "0e5bd332291e3098e49886df2cdb9b5369a5f9e0a9973f0d9e1a9489c6581ba2",
+		},
+	)
+
+	s.secondTxID = toid.New(int32(s.sequence), 2, 0).ToInt64()
+
+	s.thirdTx = BuildLedgerTransaction(
+		s.Suite.T(),
+		TestTransaction{
+			Index:         3,
+			EnvelopeXDR:   "AAAAABpcjiETZ0uhwxJJhgBPYKWSVJy2TZ2LI87fqV1cUf/UAAAAZAAAADcAAAABAAAAAAAAAAAAAAABAAAAAAAAAAEAAAAAGlyOIRNnS6HDEkmGAE9gpZJUnLZNnYsjzt+pXVxR/9QAAAAAAAAAAAX14QAAAAAAAAAAAVxR/9QAAABAK6pcXYMzAEmH08CZ1LWmvtNDKauhx+OImtP/Lk4hVTMJRVBOebVs5WEPj9iSrgGT0EswuDCZ2i5AEzwgGof9Ag==",
+			ResultXDR:     "AAAAAAAAAGQAAAAAAAAAAQAAAAAAAAABAAAAAAAAAAA=",
+			MetaXDR:       "AAAAAQAAAAIAAAADAAAAOAAAAAAAAAAAGlyOIRNnS6HDEkmGAE9gpZJUnLZNnYsjzt+pXVxR/9QAAAACVAvjnAAAADcAAAAAAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAABAAAAOAAAAAAAAAAAGlyOIRNnS6HDEkmGAE9gpZJUnLZNnYsjzt+pXVxR/9QAAAACVAvjnAAAADcAAAABAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAABAAAAAA==",
+			FeeChangesXDR: "AAAAAgAAAAMAAAA3AAAAAAAAAAAaXI4hE2dLocMSSYYAT2ClklSctk2diyPO36ldXFH/1AAAAAJUC+QAAAAANwAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAEAAAA4AAAAAAAAAAAaXI4hE2dLocMSSYYAT2ClklSctk2diyPO36ldXFH/1AAAAAJUC+OcAAAANwAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAA==",
+			Hash:          "2a805712c6d10f9e74bb0ccf54ae92a2b4b1e586451fe8133a2433816f6b567c",
+		},
+	)
+	s.thirdTxID = toid.New(int32(s.sequence), 3, 0).ToInt64()
+
+	s.addressToID = map[string]int64{
+		s.sortedAddresses[0]: 2,
+		s.sortedAddresses[1]: 20,
+		s.sortedAddresses[2]: 200,
+	}
+
+	s.processor = &EffectProcessor{
+		EffectsQ: s.mockQ,
+	}
+
+	s.mockLedgerReader.On("IgnoreUpgradeChanges").Once()
+	s.mockLedgerReader.
+		On("Close").
+		Return(nil).Once()
+
+	s.mockLedgerWriter.
+		On("Close").
+		Return(nil).Once()
+}
+
+func (s *EffectsProcessorTestSuiteLedger) TearDownTest() {
+	s.mockQ.AssertExpectations(s.T())
+	s.mockLedgerReader.AssertExpectations(s.T())
+	s.mockLedgerWriter.AssertExpectations(s.T())
+}
+
+func (s *EffectsProcessorTestSuiteLedger) mockLedgerReads() {
+	s.mockLedgerReader.
+		On("Read").
+		Return(s.firstTx, nil).Once()
+	s.mockLedgerReader.
+		On("Read").
+		Return(s.secondTx, nil).Once()
+	s.mockLedgerReader.
+		On("Read").
+		Return(s.thirdTx, nil).Once()
+	s.mockLedgerReader.
+		On("Read").
+		Return(io.LedgerTransaction{}, stdio.EOF).Once()
+}
+
+func (s *EffectsProcessorTestSuiteLedger) mockSuccessfulEffectBatchAdds() {
+	s.mockBatchInsertBuilder.On(
+		"Add",
+		s.addressToID[s.sortedAddresses[2]],
+		toid.New(int32(s.sequence), 1, 1).ToInt64(),
+		uint32(1),
+		history.EffectSequenceBumped,
+		[]byte{0x7b, 0x22, 0x6e, 0x65, 0x77, 0x5f, 0x73, 0x65, 0x71, 0x22, 0x3a, 0x33, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x7d},
+	).Return(nil).Once()
+	s.mockBatchInsertBuilder.On(
+		"Add",
+		s.addressToID[s.sortedAddresses[2]],
+		toid.New(int32(s.sequence), 2, 1).ToInt64(),
+		uint32(1),
+		history.EffectAccountCreated,
+		[]byte{0x7b, 0x22, 0x73, 0x74, 0x61, 0x72, 0x74, 0x69, 0x6e, 0x67, 0x5f, 0x62, 0x61, 0x6c, 0x61, 0x6e, 0x63, 0x65, 0x22, 0x3a, 0x22, 0x31, 0x30, 0x30, 0x30, 0x2e, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x22, 0x7d},
+	).Return(nil).Once()
+	s.mockBatchInsertBuilder.On(
+		"Add",
+		s.addressToID[s.sortedAddresses[1]],
+		toid.New(int32(s.sequence), 2, 1).ToInt64(),
+		uint32(2),
+		history.EffectAccountDebited,
+		[]byte{0x7b, 0x22, 0x61, 0x6d, 0x6f, 0x75, 0x6e, 0x74, 0x22, 0x3a, 0x22, 0x31, 0x30, 0x30, 0x30, 0x2e, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x22, 0x2c, 0x22, 0x61, 0x73, 0x73, 0x65, 0x74, 0x5f, 0x74, 0x79, 0x70, 0x65, 0x22, 0x3a, 0x22, 0x6e, 0x61, 0x74, 0x69, 0x76, 0x65, 0x22, 0x7d},
+	).Return(nil).Once()
+	s.mockBatchInsertBuilder.On(
+		"Add",
+		s.addressToID[s.sortedAddresses[2]],
+		toid.New(int32(s.sequence), 2, 1).ToInt64(),
+		uint32(3),
+		history.EffectSignerCreated,
+		[]byte{0x7b, 0x22, 0x70, 0x75, 0x62, 0x6c, 0x69, 0x63, 0x5f, 0x6b, 0x65, 0x79, 0x22, 0x3a, 0x22, 0x47, 0x43, 0x51, 0x5a, 0x50, 0x33, 0x49, 0x55, 0x37, 0x58, 0x55, 0x36, 0x45, 0x4a, 0x36, 0x33, 0x4a, 0x5a, 0x58, 0x4b, 0x43, 0x51, 0x4f, 0x59, 0x54, 0x32, 0x52, 0x4e, 0x58, 0x4e, 0x33, 0x48, 0x42, 0x35, 0x43, 0x4e, 0x48, 0x45, 0x4e, 0x4e, 0x55, 0x45, 0x55, 0x48, 0x53, 0x4d, 0x41, 0x34, 0x56, 0x55, 0x4a, 0x4a, 0x4a, 0x53, 0x45, 0x4e, 0x22, 0x2c, 0x22, 0x77, 0x65, 0x69, 0x67, 0x68, 0x74, 0x22, 0x3a, 0x31, 0x7d},
+	).Return(nil).Once()
+
+	s.mockBatchInsertBuilder.On(
+		"Add",
+		s.addressToID[s.sortedAddresses[0]],
+		toid.New(int32(s.sequence), 3, 1).ToInt64(),
+		uint32(1),
+		history.EffectAccountCredited,
+		[]byte{0x7b, 0x22, 0x61, 0x6d, 0x6f, 0x75, 0x6e, 0x74, 0x22, 0x3a, 0x22, 0x31, 0x30, 0x2e, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x22, 0x2c, 0x22, 0x61, 0x73, 0x73, 0x65, 0x74, 0x5f, 0x74, 0x79, 0x70, 0x65, 0x22, 0x3a, 0x22, 0x6e, 0x61, 0x74, 0x69, 0x76, 0x65, 0x22, 0x7d},
+	).Return(nil).Once()
+
+	s.mockBatchInsertBuilder.On(
+		"Add",
+		s.addressToID[s.sortedAddresses[0]],
+		toid.New(int32(s.sequence), 3, 1).ToInt64(),
+		uint32(2),
+		history.EffectAccountDebited,
+		[]byte{0x7b, 0x22, 0x61, 0x6d, 0x6f, 0x75, 0x6e, 0x74, 0x22, 0x3a, 0x22, 0x31, 0x30, 0x2e, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x22, 0x2c, 0x22, 0x61, 0x73, 0x73, 0x65, 0x74, 0x5f, 0x74, 0x79, 0x70, 0x65, 0x22, 0x3a, 0x22, 0x6e, 0x61, 0x74, 0x69, 0x76, 0x65, 0x22, 0x7d},
+	).Return(nil).Once()
+}
+
+func (s *EffectsProcessorTestSuiteLedger) TestNoIngestUpdateDatabase() {
+	err := s.processor.ProcessLedger(
+		context.Background(),
+		&supportPipeline.Store{},
+		s.mockLedgerReader,
+		s.mockLedgerWriter,
+	)
+	s.Assert().NoError(err)
+}
+
+func (s *EffectsProcessorTestSuiteLedger) TestEmptyEffects() {
+	s.mockLedgerReader.On("GetSequence").Return(s.sequence).Once()
+
+	s.mockLedgerReader.
+		On("Read").
+		Return(io.LedgerTransaction{}, stdio.EOF).Once()
+
+	err := s.processor.ProcessLedger(
+		s.context,
+		&supportPipeline.Store{},
+		s.mockLedgerReader,
+		s.mockLedgerWriter,
+	)
+	s.Assert().NoError(err)
+}
+
+func (s *EffectsProcessorTestSuiteLedger) TestIngestEffectsSucceeds() {
+	s.mockLedgerReader.On("GetSequence").Return(s.sequence).Once()
+
+	s.mockLedgerReads()
+
+	s.mockQ.On("CreateExpAccounts", s.sortedAddresses).Return(s.addressToID, nil).Once()
+	s.mockQ.On("NewEffectBatchInsertBuilder", maxBatchSize).
+		Return(s.mockBatchInsertBuilder).Once()
+
+	s.mockSuccessfulEffectBatchAdds()
+
+	s.mockBatchInsertBuilder.On("Exec").Return(nil).Once()
+
+	err := s.processor.ProcessLedger(
+		s.context,
+		&supportPipeline.Store{},
+		s.mockLedgerReader,
+		s.mockLedgerWriter,
+	)
+
+	s.Assert().NoError(err)
+}
+
+func (s *EffectsProcessorTestSuiteLedger) TestCreateExpAccountsFails() {
+	s.mockLedgerReader.On("GetSequence").Return(s.sequence).Once()
+
+	s.mockLedgerReads()
+
+	s.mockQ.On("CreateExpAccounts", s.sortedAddresses).
+		Return(s.addressToID, errors.New("transient error")).Once()
+
+	err := s.processor.ProcessLedger(
+		s.context,
+		&supportPipeline.Store{},
+		s.mockLedgerReader,
+		s.mockLedgerWriter,
+	)
+	s.Assert().EqualError(err, "Could not create account ids: transient error")
+}
+
+func (s *EffectsProcessorTestSuiteLedger) TestBatchAddFails() {
+	s.mockLedgerReader.On("GetSequence").Return(s.sequence).Once()
+
+	s.mockLedgerReads()
+
+	s.mockQ.On("CreateExpAccounts", s.sortedAddresses).
+		Return(s.addressToID, nil).Once()
+	s.mockQ.On("NewEffectBatchInsertBuilder", maxBatchSize).
+		Return(s.mockBatchInsertBuilder).Once()
+
+	s.mockBatchInsertBuilder.On(
+		"Add",
+		s.addressToID[s.sortedAddresses[2]],
+		toid.New(int32(s.sequence), 1, 1).ToInt64(),
+		uint32(1),
+		history.EffectSequenceBumped,
+		[]byte{0x7b, 0x22, 0x6e, 0x65, 0x77, 0x5f, 0x73, 0x65, 0x71, 0x22, 0x3a, 0x33, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x7d},
+	).Return(errors.New("transient error")).Once()
+
+	err := s.processor.ProcessLedger(
+		s.context,
+		&supportPipeline.Store{},
+		s.mockLedgerReader,
+		s.mockLedgerWriter,
+	)
+	s.Assert().EqualError(err, "could not insert operation effect in db: transient error")
+}
 
 func TestOperationEffects(t *testing.T) {
 	testCases := []struct {

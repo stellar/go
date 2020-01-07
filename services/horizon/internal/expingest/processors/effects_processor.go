@@ -1,13 +1,21 @@
 package processors
 
 import (
+	"context"
 	"encoding/base64"
+	"encoding/json"
 	"fmt"
+	stdio "io"
 	"reflect"
+	"sort"
 
 	"github.com/stellar/go/amount"
+	"github.com/stellar/go/exp/ingest/io"
+	ingestpipeline "github.com/stellar/go/exp/ingest/pipeline"
+	"github.com/stellar/go/exp/support/pipeline"
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
+	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
 )
 
@@ -15,6 +23,160 @@ import (
 type EffectProcessor struct {
 	EffectsQ history.QEffects
 }
+
+func (p *EffectProcessor) loadAccountIDs(accountSet map[string]int64) error {
+	addresses := make([]string, 0, len(accountSet))
+	for address := range accountSet {
+		addresses = append(addresses, address)
+	}
+	sort.Strings(addresses)
+
+	addressToID, err := p.EffectsQ.CreateExpAccounts(addresses)
+	if err != nil {
+		return errors.Wrap(err, "Could not create account ids")
+	}
+
+	for _, address := range addresses {
+		id, ok := addressToID[address]
+		if !ok {
+			return errors.Errorf("no id found for account address %s", address)
+		}
+
+		accountSet[address] = id
+	}
+
+	return nil
+}
+
+func operationsEffects(transaction io.LedgerTransaction, sequence uint32) ([]effect, error) {
+	effects := []effect{}
+
+	for opi, op := range transaction.Envelope.Tx.Operations {
+		operation := transactionOperationWrapper{
+			index:          uint32(opi),
+			transaction:    transaction,
+			operation:      op,
+			ledgerSequence: sequence,
+		}
+
+		p, err := operation.effects()
+		if err != nil {
+			return effects, errors.Wrapf(err, "reading operation %v effects", operation.ID())
+		}
+		effects = append(effects, p...)
+	}
+
+	return effects, nil
+}
+
+func (p *EffectProcessor) insertDBOperationsEffects(effects []effect, accountSet map[string]int64) error {
+	batch := p.EffectsQ.NewEffectBatchInsertBuilder(maxBatchSize)
+
+	for _, effect := range effects {
+		accountID, found := accountSet[effect.address]
+
+		if !found {
+			return errors.Errorf("Error finding exp_history_account_id for address %v", effect.address)
+		}
+
+		var detailsJSON []byte
+		detailsJSON, err := json.Marshal(effect.details)
+
+		if err != nil {
+			return errors.Wrapf(err, "Error marshaling details for operation effect %v", effect.operationID)
+		}
+
+		if err := batch.Add(
+			accountID,
+			effect.operationID,
+			effect.order,
+			effect.effectType,
+			detailsJSON,
+		); err != nil {
+			return errors.Wrap(err, "could not insert operation effect in db")
+		}
+	}
+
+	if err := batch.Exec(); err != nil {
+		return errors.Wrap(err, "could not flush operation effects to db")
+	}
+	return nil
+}
+
+func (p *EffectProcessor) ProcessLedger(ctx context.Context, store *pipeline.Store, r io.LedgerReader, w io.LedgerWriter) (err error) {
+	defer func() {
+		// io.LedgerReader.Close() returns error if upgrade changes have not
+		// been processed so it's worth checking the error.
+		closeErr := r.Close()
+		// Do not overwrite the previous error
+		if err == nil {
+			err = closeErr
+		}
+	}()
+	defer w.Close()
+	r.IgnoreUpgradeChanges()
+
+	// Exit early if not ingesting into a DB
+	if v := ctx.Value(IngestUpdateDatabase); v == nil {
+		return nil
+	}
+
+	effects := []effect{}
+	sequence := r.GetSequence()
+
+	for {
+		var transaction io.LedgerTransaction
+		transaction, err = r.Read()
+		if err != nil {
+			if err == stdio.EOF {
+				break
+			} else {
+				return err
+			}
+		}
+
+		e, err := operationsEffects(transaction, sequence)
+
+		if err != nil {
+			return err
+		}
+
+		effects = append(effects, e...)
+
+		select {
+		case <-ctx.Done():
+			return nil
+		default:
+			continue
+		}
+	}
+
+	if len(effects) > 0 {
+		accountSet := map[string]int64{}
+
+		for _, effect := range effects {
+			accountSet[effect.address] = 0
+		}
+
+		if err = p.loadAccountIDs(accountSet); err != nil {
+			return err
+		}
+
+		if err = p.insertDBOperationsEffects(effects, accountSet); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (p *EffectProcessor) Name() string {
+	return "EffectProcessor"
+}
+
+func (p *EffectProcessor) Reset() {}
+
+var _ ingestpipeline.LedgerProcessor = &EffectProcessor{}
 
 type effect struct {
 	address     string

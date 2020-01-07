@@ -219,6 +219,7 @@ func (q *EffectsQ) orderBookFilter(a xdr.Asset, prefix string) {
 // QEffects defines exp_history_effects related queries.
 type QEffects interface {
 	NewEffectBatchInsertBuilder(maxBatchSize int) EffectBatchInsertBuilder
+	CreateExpAccounts(addresses []string) (map[string]int64, error)
 }
 
 var effectFields = sq.Select("heff.*, hacc.address")
