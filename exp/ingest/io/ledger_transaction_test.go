@@ -17,7 +17,7 @@ func TestChangeAccountChangedExceptSignersInvalidType(t *testing.T) {
 	})
 }
 
-func TestFeeAndMetaChangesSeparate(t *testing.T) {
+func TestFeeMetaAndOperationsChangesSeparate(t *testing.T) {
 	tx := LedgerTransaction{
 		FeeChanges: xdr.LedgerEntryChanges{
 			xdr.LedgerEntryChange{
@@ -91,6 +91,11 @@ func TestFeeAndMetaChangesSeparate(t *testing.T) {
 	assert.Len(t, metaChanges, 1)
 	assert.Equal(t, metaChanges[0].Pre.Data.MustAccount().Balance, xdr.Int64(300))
 	assert.Equal(t, metaChanges[0].Post.Data.MustAccount().Balance, xdr.Int64(400))
+
+	operationChanges := tx.GetOperationChanges(0)
+	assert.Len(t, operationChanges, 1)
+	assert.Equal(t, operationChanges[0].Pre.Data.MustAccount().Balance, xdr.Int64(300))
+	assert.Equal(t, operationChanges[0].Post.Data.MustAccount().Balance, xdr.Int64(400))
 }
 
 func TestFailedTransactionOperationChanges(t *testing.T) {
