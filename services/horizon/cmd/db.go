@@ -63,7 +63,7 @@ var dbInitAssetStatsCmd = &cobra.Command{
 	Use:   "init-asset-stats",
 	Short: "initializes values for assets stats",
 	Run: func(cmd *cobra.Command, args []string) {
-		initConfig()
+		initRootConfig()
 
 		hdb, err := db.Open("postgres", config.DatabaseURL)
 		if err != nil {
@@ -102,7 +102,7 @@ var dbClearCmd = &cobra.Command{
 	Use:   "clear",
 	Short: "clears all imported historical data",
 	Run: func(cmd *cobra.Command, args []string) {
-		initConfig()
+		initRootConfig()
 
 		err := ingestSystem(ingest.Config{
 			IngestFailedTransactions: config.IngestFailedTransactions,
@@ -198,7 +198,7 @@ var dbRebaseCmd = &cobra.Command{
 	Short: "rebases clears the horizon db and ingests the latest ledger segment from stellar-core",
 	Long:  "...",
 	Run: func(cmd *cobra.Command, args []string) {
-		initConfig()
+		initRootConfig()
 
 		i := ingestSystem(ingest.Config{
 			IngestFailedTransactions: config.IngestFailedTransactions,
@@ -307,7 +307,7 @@ func ingestSystem(ingestConfig ingest.Config) *ingest.System {
 }
 
 func reingest(cmd reingestType, args ...int32) {
-	initConfig()
+	initRootConfig()
 
 	i := ingestSystem(ingest.Config{
 		IngestFailedTransactions: config.IngestFailedTransactions,

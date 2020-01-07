@@ -71,7 +71,7 @@ func (s *LoadOffersIntoMemoryTestSuite) SetupTest() {
 	s.session = &mockDBSession{}
 	s.historyQ = &mockDBQ{}
 	s.system = &System{
-		state:          state{loadOffersIntoMemoryState, 1},
+		state:          state{systemState: loadOffersIntoMemoryState, latestSuccessfullyProcessedLedger: 1},
 		historySession: s.session,
 		historyQ:       s.historyQ,
 		graph:          s.graph,

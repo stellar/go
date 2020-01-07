@@ -113,6 +113,19 @@ func (graph *OrderBookGraph) Offers() []xdr.OfferEntry {
 	return offers
 }
 
+// OffersMap returns a ID => OfferEntry map of offers contained in the order
+// book.
+func (graph *OrderBookGraph) OffersMap() map[xdr.Int64]xdr.OfferEntry {
+	offers := graph.Offers()
+	m := make(map[xdr.Int64]xdr.OfferEntry, len(offers))
+
+	for _, entry := range offers {
+		m[entry.OfferId] = entry
+	}
+
+	return m
+}
+
 // Batch creates a new batch of order book updates which can be applied
 // on this graph
 func (graph *OrderBookGraph) batch() *orderBookBatchedUpdates {

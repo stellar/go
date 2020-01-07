@@ -384,11 +384,11 @@ func init() {
 }
 
 func initApp() *horizon.App {
-	initConfig()
+	initRootConfig()
 	return horizon.NewApp(config)
 }
 
-func initConfig() {
+func initRootConfig() {
 	// Verify required options and load the config struct
 	configOpts.Require()
 	configOpts.SetValues()

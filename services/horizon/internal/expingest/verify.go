@@ -97,18 +97,25 @@ func (s *System) verifyState(graphOffers map[xdr.Int64]xdr.OfferEntry) error {
 		return errors.Wrap(err, "Error getting the latest ledger sequence")
 	}
 
-	if ledgerSequence < historyLatestSequence {
-		localLog.Info("Current ledger is old. Cancelling...")
-		return nil
-	}
+	if s.state.systemState == verifyRangeState {
+		if ledgerSequence != s.state.rangeToLedger {
+			localLog.Info("Current ledger is not the last ledger in the range. Cancelling...")
+			return nil
+		}
+	} else {
+		if ledgerSequence < historyLatestSequence {
+			localLog.Info("Current ledger is old. Cancelling...")
+			return nil
+		}
 
-	localLog.Info("Starting state verification. Waiting 40 seconds for stellar-core to publish HAS...")
-	select {
-	case <-s.shutdown:
-		localLog.Info("State verifier shut down...")
-		return nil
-	case <-time.After(40 * time.Second):
-		// Wait for stellar-core to publish HAS
+		localLog.Info("Starting state verification. Waiting 40 seconds for stellar-core to publish HAS...")
+		select {
+		case <-s.shutdown:
+			localLog.Info("State verifier shut down...")
+			return nil
+		case <-time.After(40 * time.Second):
+			// Wait for stellar-core to publish HAS
+		}
 	}
 
 	localLog.Info("Creating state reader...")
