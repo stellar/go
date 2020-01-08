@@ -350,6 +350,16 @@ func TestAccountsForAsset(t *testing.T) {
 	accounts, err = q.AccountsForAsset(usdTrustLine.Asset, pq)
 	assert.NoError(t, err)
 	tt.Assert.Len(accounts, 0)
+
+	pq = db2.PageQuery{
+		Order:  db2.OrderDescending,
+		Limit:  db2.DefaultPageSize,
+		Cursor: "",
+	}
+
+	accounts, err = q.AccountsForAsset(eurTrustLine.Asset, pq)
+	assert.NoError(t, err)
+	tt.Assert.Len(accounts, 1)
 }
 
 func TestAccountEntriesForSigner(t *testing.T) {
@@ -426,6 +436,16 @@ func TestAccountEntriesForSigner(t *testing.T) {
 	accounts, err = q.AccountEntriesForSigner(account3.AccountId.Address(), pq)
 	assert.NoError(t, err)
 	tt.Assert.Len(accounts, 2)
+
+	pq = db2.PageQuery{
+		Order:  db2.OrderDescending,
+		Limit:  db2.DefaultPageSize,
+		Cursor: "",
+	}
+
+	accounts, err = q.AccountEntriesForSigner(account1.AccountId.Address(), pq)
+	assert.NoError(t, err)
+	tt.Assert.Len(accounts, 1)
 }
 
 func TestGetAccountByID(t *testing.T) {
