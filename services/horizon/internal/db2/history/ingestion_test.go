@@ -38,6 +38,7 @@ func TestRemoveExpIngestHistory(t *testing.T) {
 	opParticipantsInsertBuilder := q.NewOperationParticipantBatchInsertBuilder(0)
 	tradeInsertBuilder := q.NewTradeBatchInsertBuilder(0)
 
+	effectsInsertBuilder := q.NewEffectBatchInsertBuilder(0)
 	accountID := int64(1223)
 
 	expTables := []string{
@@ -47,6 +48,7 @@ func TestRemoveExpIngestHistory(t *testing.T) {
 		"exp_history_operations",
 		"exp_history_operation_participants",
 		"exp_history_trades",
+		"exp_history_effects",
 	}
 
 	ledger := Ledger{
@@ -142,6 +144,16 @@ func TestRemoveExpIngestHistory(t *testing.T) {
 		tt.Assert.NoError(tradeInsertBuilder.Add(firstTrade))
 		tt.Assert.NoError(tradeInsertBuilder.Exec())
 
+		err = effectsInsertBuilder.Add(
+			accountID,
+			toid.New(ledger.Sequence, 1, 1).ToInt64(),
+			1,
+			3,
+			[]byte("{}"),
+		)
+		tt.Assert.NoError(err)
+		tt.Assert.NoError(effectsInsertBuilder.Exec())
+
 		ledger.Sequence++
 	}
 
@@ -163,6 +175,7 @@ func TestRemoveExpIngestHistory(t *testing.T) {
 			OperationsRemoved:              2,
 			OperationParticipantsRemoved:   2,
 			TradesRemoved:                  2,
+			EffectsRemoved:                 2,
 		},
 		summary,
 	)
@@ -203,6 +216,11 @@ func TestRemoveExpIngestHistory(t *testing.T) {
 	err = q.expTrades().Select(&trades)
 	tt.Assert.NoError(err)
 
+	var effects []Effect
+	err = q.Select(&effects, sq.Select("*").From("exp_history_effects"))
+	tt.Assert.NoError(err)
+	tt.Assert.Len(effects, 3)
+
 	nextLedger := toid.ID{LedgerSequence: int32(cutoffSequence + 1)}
 	for i := range ledgers {
 		tt.Assert.LessOrEqual(ledgers[i].Sequence, int32(cutoffSequence))
@@ -213,5 +231,6 @@ func TestRemoveExpIngestHistory(t *testing.T) {
 		tt.Assert.Less(operations[i].ID, nextLedger.ToInt64())
 		tt.Assert.Less(opParticipants[i].OperationID, nextLedger.ToInt64())
 		tt.Assert.Less(trades[i].HistoryOperationID, nextLedger.ToInt64())
+		tt.Assert.Less(effects[i].HistoryOperationID, nextLedger.ToInt64())
 	}
 }
