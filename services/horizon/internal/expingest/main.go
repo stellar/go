@@ -495,13 +495,24 @@ func (s *System) resume() (state, error) {
 }
 
 func (s *System) verifyRange() (state, error) {
+	// Simple check if DB clean
+	lastIngestedLedger, err := s.historyQ.GetLastLedgerExpIngest()
+	if err != nil {
+		err = errors.Wrap(err, "Error getting last ledger")
+		return state{systemState: shutdownState, returnError: err}, err
+	}
+
+	if lastIngestedLedger != 0 {
+		return state{systemState: shutdownState, returnError: errors.New("Database not empty")}, err
+	}
+
 	s.rangeSession.FromLedger = s.state.rangeFromLedger
 	s.rangeSession.ToLedger = s.state.rangeToLedger
 	// It's fine to change System settings because the next state of verifyRange
 	// is always shut down.
 	s.disableStateVerification = true
 
-	err := s.rangeSession.Run()
+	err = s.rangeSession.Run()
 	if err == nil {
 		if s.state.rangeVerifyState {
 			err = s.verifyState(s.graph.OffersMap())

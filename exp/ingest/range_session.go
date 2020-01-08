@@ -243,6 +243,8 @@ func (s *RangeSession) validate() error {
 		return errors.New("Archive not set but required by StatePipeline")
 	case s.LedgerPipeline == nil:
 		return errors.New("Ledger pipeline not set")
+	case s.NetworkPassphrase == "":
+		return errors.New("Network passphrase not set")
 	}
 
 	return nil
