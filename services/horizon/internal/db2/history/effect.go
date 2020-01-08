@@ -242,15 +242,7 @@ func (q *Q) findOperationEffects(
 
 	err := q.Select(&effects, sql)
 
-	if err != nil {
-		return effects, errors.Errorf(
-			"could not load %s for ledger: %v",
-			effectsTable,
-			seq,
-		)
-	}
-
-	return effects, nil
+	return effects, err
 }
 
 // CheckExpOperationEffects checks that the effects in exp_history_effects for
@@ -263,7 +255,8 @@ func (q *Q) CheckExpOperationEffects(seq int32) (bool, error) {
 	)
 
 	if err != nil {
-		return false, errors.Errorf(
+		return false, errors.Wrapf(
+			err,
 			"could not load exp_history_effects for ledger: %v",
 			seq,
 		)
@@ -276,7 +269,8 @@ func (q *Q) CheckExpOperationEffects(seq int32) (bool, error) {
 	)
 
 	if err != nil {
-		return false, errors.Errorf(
+		return false, errors.Wrapf(
+			err,
 			"could not load history_effects for ledger: %v",
 			seq,
 		)
