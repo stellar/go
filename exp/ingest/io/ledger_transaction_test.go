@@ -109,8 +109,8 @@ func TestFailedTransactionOperationChanges(t *testing.T) {
 		},
 	}
 
-	feeChanges := tx.GetOperationChanges(0)
-	assert.Len(t, feeChanges, 0)
+	operationChanges := tx.GetOperationChanges(0)
+	assert.Len(t, operationChanges, 0)
 }
 
 func TestMetaV2Order(t *testing.T) {
