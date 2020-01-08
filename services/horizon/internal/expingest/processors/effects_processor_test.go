@@ -221,6 +221,46 @@ func (s *EffectsProcessorTestSuiteLedger) TestEmptyEffects() {
 		On("Read").
 		Return(io.LedgerTransaction{}, stdio.EOF).Once()
 
+	s.mockQ.On("CheckExpOperationEffects", int32(s.sequence-10)).
+		Return(true, nil).Once()
+
+	err := s.processor.ProcessLedger(
+		s.context,
+		&supportPipeline.Store{},
+		s.mockLedgerReader,
+		s.mockLedgerWriter,
+	)
+	s.Assert().NoError(err)
+}
+func (s *EffectsProcessorTestSuiteLedger) TestCheckExpOperationEffectsError() {
+	s.mockLedgerReader.On("GetSequence").Return(s.sequence).Once()
+
+	s.mockLedgerReader.
+		On("Read").
+		Return(io.LedgerTransaction{}, stdio.EOF).Once()
+
+	s.mockQ.On("CheckExpOperationEffects", int32(s.sequence-10)).
+		Return(false, errors.New("transient error")).Once()
+
+	err := s.processor.ProcessLedger(
+		s.context,
+		&supportPipeline.Store{},
+		s.mockLedgerReader,
+		s.mockLedgerWriter,
+	)
+	s.Assert().NoError(err)
+}
+
+func (s *EffectsProcessorTestSuiteLedger) TestCheckExpOperationEffectsDoesNotMatch() {
+	s.mockLedgerReader.On("GetSequence").Return(s.sequence).Once()
+
+	s.mockLedgerReader.
+		On("Read").
+		Return(io.LedgerTransaction{}, stdio.EOF).Once()
+
+	s.mockQ.On("CheckExpOperationEffects", int32(s.sequence-10)).
+		Return(false, nil).Once()
+
 	err := s.processor.ProcessLedger(
 		s.context,
 		&supportPipeline.Store{},
@@ -238,6 +278,8 @@ func (s *EffectsProcessorTestSuiteLedger) TestIngestEffectsSucceeds() {
 	s.mockQ.On("CreateExpAccounts", s.sortedAddresses).Return(s.addressToID, nil).Once()
 	s.mockQ.On("NewEffectBatchInsertBuilder", maxBatchSize).
 		Return(s.mockBatchInsertBuilder).Once()
+	s.mockQ.On("CheckExpOperationEffects", int32(s.sequence-10)).
+		Return(true, nil).Once()
 
 	s.mockSuccessfulEffectBatchAdds()
 

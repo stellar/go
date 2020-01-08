@@ -139,10 +139,10 @@ func (p *EffectProcessor) ProcessLedger(ctx context.Context, store *pipeline.Sto
 			}
 		}
 
-		e, err := operationsEffects(transaction, sequence)
+		e, err2 := operationsEffects(transaction, sequence)
 
-		if err != nil {
-			return err
+		if err2 != nil {
+			return err2
 		}
 
 		effects = append(effects, e...)
@@ -169,6 +169,22 @@ func (p *EffectProcessor) ProcessLedger(ctx context.Context, store *pipeline.Sto
 		if err = p.insertDBOperationsEffects(effects, accountSet); err != nil {
 			return err
 		}
+	}
+
+	// use an older lookup sequence because the experimental ingestion system and the
+	// legacy ingestion system might not be in sync
+	checkSequence := int32(sequence - 10)
+	var valid bool
+	valid, err = p.EffectsQ.CheckExpOperationEffects(checkSequence)
+	if err != nil {
+		log.WithField("sequence", checkSequence).WithError(err).
+			Error("Could not compare effects for ledger")
+		return nil
+	}
+
+	if !valid {
+		log.WithField("sequence", checkSequence).
+			Error("effects do not match")
 	}
 
 	return nil
