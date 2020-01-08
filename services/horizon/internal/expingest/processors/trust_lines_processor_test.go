@@ -12,6 +12,7 @@ import (
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -337,23 +338,29 @@ func (s *TrustLinesProcessorTestSuiteLedger) TestInsertTrustLine() {
 		}, nil).Once()
 	s.mockQ.On(
 		"UpsertTrustLines",
-		[]xdr.LedgerEntry{
-			xdr.LedgerEntry{
-				LastModifiedLedgerSeq: lastModifiedLedgerSeq,
-				Data: xdr.LedgerEntryData{
-					Type:      xdr.LedgerEntryTypeTrustline,
-					TrustLine: &updatedTrustLine,
+		mock.AnythingOfType("[]xdr.LedgerEntry"),
+	).Run(func(args mock.Arguments) {
+		arg := args.Get(0).([]xdr.LedgerEntry)
+		s.Assert().ElementsMatch(
+			[]xdr.LedgerEntry{
+				xdr.LedgerEntry{
+					LastModifiedLedgerSeq: lastModifiedLedgerSeq,
+					Data: xdr.LedgerEntryData{
+						Type:      xdr.LedgerEntryTypeTrustline,
+						TrustLine: &updatedTrustLine,
+					},
+				},
+				xdr.LedgerEntry{
+					LastModifiedLedgerSeq: lastModifiedLedgerSeq,
+					Data: xdr.LedgerEntryData{
+						Type:      xdr.LedgerEntryTypeTrustline,
+						TrustLine: &updatedUnauthorizedTrustline,
+					},
 				},
 			},
-			xdr.LedgerEntry{
-				LastModifiedLedgerSeq: lastModifiedLedgerSeq,
-				Data: xdr.LedgerEntryData{
-					Type:      xdr.LedgerEntryTypeTrustline,
-					TrustLine: &updatedUnauthorizedTrustline,
-				},
-			},
-		},
-	).Return(nil).Once()
+			arg,
+		)
+	}).Return(nil).Once()
 	s.mockAssetStatsQ.On("GetAssetStat",
 		xdr.AssetTypeAssetTypeCreditAlphanum4,
 		"EUR",
@@ -565,23 +572,29 @@ func (s *TrustLinesProcessorTestSuiteLedger) TestUpdateTrustLineAuthorization() 
 
 	s.mockQ.On(
 		"UpsertTrustLines",
-		[]xdr.LedgerEntry{
-			xdr.LedgerEntry{
-				LastModifiedLedgerSeq: lastModifiedLedgerSeq,
-				Data: xdr.LedgerEntryData{
-					Type:      xdr.LedgerEntryTypeTrustline,
-					TrustLine: &updatedTrustLine,
+		mock.AnythingOfType("[]xdr.LedgerEntry"),
+	).Run(func(args mock.Arguments) {
+		arg := args.Get(0).([]xdr.LedgerEntry)
+		s.Assert().ElementsMatch(
+			[]xdr.LedgerEntry{
+				xdr.LedgerEntry{
+					LastModifiedLedgerSeq: lastModifiedLedgerSeq,
+					Data: xdr.LedgerEntryData{
+						Type:      xdr.LedgerEntryTypeTrustline,
+						TrustLine: &updatedTrustLine,
+					},
+				},
+				xdr.LedgerEntry{
+					LastModifiedLedgerSeq: lastModifiedLedgerSeq,
+					Data: xdr.LedgerEntryData{
+						Type:      xdr.LedgerEntryTypeTrustline,
+						TrustLine: &otherUpdatedTrustLine,
+					},
 				},
 			},
-			xdr.LedgerEntry{
-				LastModifiedLedgerSeq: lastModifiedLedgerSeq,
-				Data: xdr.LedgerEntryData{
-					Type:      xdr.LedgerEntryTypeTrustline,
-					TrustLine: &otherUpdatedTrustLine,
-				},
-			},
-		},
-	).Return(nil).Once()
+			arg,
+		)
+	}).Return(nil).Once()
 
 	s.mockAssetStatsQ.On("GetAssetStat",
 		xdr.AssetTypeAssetTypeCreditAlphanum4,
