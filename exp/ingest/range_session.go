@@ -35,13 +35,7 @@ func (s *RangeSession) Run() error {
 	}
 
 	if s.StatePipeline != nil {
-		// Validate bucket list hash
-		err = s.validateBucketList(currentLedger, historyAdapter, ledgerAdapter)
-		if err != nil {
-			return errors.Wrap(err, "Error validating bucket list hash")
-		}
-
-		err = s.initState(historyAdapter, currentLedger)
+		err = s.initState(historyAdapter, ledgerAdapter, currentLedger)
 		if err != nil {
 			return errors.Wrap(err, "initState error")
 		}
@@ -241,7 +235,7 @@ func (s *RangeSession) validate() error {
 		return errors.New("FromLedger and ToLedger must be set")
 	case s.FromLedger > s.ToLedger:
 		return errors.New("FromLedger must be less than of equal to ToLedger")
-	case s.StatePipeline != nil && !historyarchive.IsCheckpoint(s.FromLedger):
+	case s.StatePipeline != nil && !historyarchive.IsCheckpoint(s.FromLedger) && s.FromLedger != 1:
 		return errors.New("FromLedger must be a checkpoint ledger if StatePipeline is not nil")
 	case s.LedgerBackend == nil:
 		return errors.New("LedgerBackend not set")
@@ -254,15 +248,34 @@ func (s *RangeSession) validate() error {
 	return nil
 }
 
-func (s *RangeSession) initState(historyAdapter *adapters.HistoryArchiveAdapter, sequence uint32) error {
-	var tempSet io.TempSet = &io.MemoryTempSet{}
-	if s.TempSet != nil {
-		tempSet = s.TempSet
-	}
+func (s *RangeSession) initState(
+	historyAdapter *adapters.HistoryArchiveAdapter,
+	ledgerAdapter *adapters.LedgerBackendAdapter,
+	sequence uint32,
+) error {
+	var stateReader io.StateReader
+	var err error
 
-	stateReader, err := historyAdapter.GetState(sequence, tempSet, s.MaxStreamRetries)
-	if err != nil {
-		return errors.Wrap(err, "Error getting state from history archive")
+	if sequence == 1 {
+		stateReader = &io.GenesisLedgerStateReader{
+			NetworkPassphrase: s.NetworkPassphrase,
+		}
+	} else {
+		// Validate bucket list hash
+		err = s.validateBucketList(sequence, historyAdapter, ledgerAdapter)
+		if err != nil {
+			return errors.Wrap(err, "Error validating bucket list hash")
+		}
+
+		var tempSet io.TempSet = &io.MemoryTempSet{}
+		if s.TempSet != nil {
+			tempSet = s.TempSet
+		}
+
+		stateReader, err = historyAdapter.GetState(sequence, tempSet, s.MaxStreamRetries)
+		if err != nil {
+			return errors.Wrap(err, "Error getting state from history archive")
+		}
 	}
 	if s.StateReporter != nil {
 		s.StateReporter.OnStartState(sequence)

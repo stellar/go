@@ -60,6 +60,8 @@ type RangeSession struct {
 	// ToLedger at which ledger processing should stop. ToLedger will be the
 	// last processed ledger.
 	ToLedger uint32
+	// NetworkPassphrase is a passphrase of the network this session is using.
+	NetworkPassphrase string
 
 	Archive       historyarchive.ArchiveInterface
 	LedgerBackend ledgerbackend.LedgerBackend

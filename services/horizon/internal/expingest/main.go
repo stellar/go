@@ -49,8 +49,9 @@ const (
 var log = logpkg.DefaultLogger.WithField("service", "expingest")
 
 type Config struct {
-	CoreSession    *db.Session
-	StellarCoreURL string
+	CoreSession       *db.Session
+	StellarCoreURL    string
+	NetworkPassphrase string
 
 	HistorySession           *db.Session
 	HistoryArchiveURL        string
@@ -178,11 +179,12 @@ func NewSystem(config Config) (*System, error) {
 	}
 
 	rangeSession := &ingest.RangeSession{
-		Archive:          archive,
-		MaxStreamRetries: config.MaxStreamRetries,
-		LedgerBackend:    ledgerBackend,
-		StatePipeline:    statePipeline,
-		LedgerPipeline:   ledgerPipeline,
+		Archive:           archive,
+		MaxStreamRetries:  config.MaxStreamRetries,
+		LedgerBackend:     ledgerBackend,
+		StatePipeline:     statePipeline,
+		LedgerPipeline:    ledgerPipeline,
+		NetworkPassphrase: config.NetworkPassphrase,
 
 		StateReporter:  &LoggingStateReporter{Log: log, Interval: 100000},
 		LedgerReporter: &LoggingLedgerReporter{Log: log},

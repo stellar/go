@@ -94,7 +94,7 @@ var ingestVerifyRangeCmd = &cobra.Command{
 			log.Fatalf("cannot open Horizon DB: %v", err)
 		}
 
-		if !historyarchive.IsCheckpoint(ingestVerifyFrom) {
+		if !historyarchive.IsCheckpoint(ingestVerifyFrom) && ingestVerifyFrom != 1 {
 			log.Fatal("`--from` must be a checkpoint ledger")
 		}
 
@@ -104,6 +104,7 @@ var ingestVerifyRangeCmd = &cobra.Command{
 
 		ingestConfig := expingest.Config{
 			CoreSession:              coreSession,
+			NetworkPassphrase:        config.NetworkPassphrase,
 			HistorySession:           horizonSession,
 			HistoryArchiveURL:        config.HistoryArchiveURLs[0],
 			OrderBookGraph:           orderbook.NewOrderBookGraph(),
