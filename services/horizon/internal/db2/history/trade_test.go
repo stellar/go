@@ -5,6 +5,7 @@ import (
 	"time"
 
 	sq "github.com/Masterminds/squirrel"
+	"github.com/guregu/null"
 	"github.com/stellar/go/services/horizon/internal/db2"
 	"github.com/stellar/go/services/horizon/internal/test"
 	"github.com/stellar/go/services/horizon/internal/toid"
@@ -71,24 +72,6 @@ func TestTradeQueries(t *testing.T) {
 	tt.Assert.Equal(xdr.Int64(1000000000), trades[0].BaseAmount)
 	tt.Assert.Equal(xdr.Int64(2000000000), trades[0].CounterAmount)
 	tt.Assert.Equal(false, trades[0].BaseIsSeller)
-}
-
-type tradeRow struct {
-	HistoryOperationID int64     `db:"history_operation_id"`
-	Order              int32     `db:"order"`
-	LedgerCloseTime    time.Time `db:"ledger_closed_at"`
-	OfferID            int64     `db:"offer_id"`
-	BaseOfferID        int64     `db:"base_offer_id"`
-	BaseAccountID      int64     `db:"base_account_id"`
-	BaseAssetID        int64     `db:"base_asset_id"`
-	BaseAmount         xdr.Int64 `db:"base_amount"`
-	CounterOfferID     int64     `db:"counter_offer_id"`
-	CounterAccountID   int64     `db:"counter_account_id"`
-	CounterAssetID     int64     `db:"counter_asset_id"`
-	CounterAmount      xdr.Int64 `db:"counter_amount"`
-	BaseIsSeller       bool      `db:"base_is_seller"`
-	PriceN             int       `db:"price_n"`
-	PriceD             int       `db:"price_d"`
 }
 
 func createInsertTrades(
@@ -166,19 +149,46 @@ func createExpAccountsAndAssets(
 	return accountIDs, assetIDs
 }
 
+func newInt64(v int64) *int64 {
+	p := new(int64)
+	*p = v
+	return p
+}
+
+func buildIDtoAccountMapping(addresses []string, ids []int64) map[int64]xdr.AccountId {
+	idToAccount := map[int64]xdr.AccountId{}
+	for i, id := range ids {
+		account := xdr.MustAddress(addresses[i])
+		idToAccount[id] = account
+	}
+
+	return idToAccount
+}
+
+func buildIDtoAssetMapping(assets []xdr.Asset, ids []int64) map[int64]xdr.Asset {
+	idToAsset := map[int64]xdr.Asset{}
+	for i, id := range ids {
+		idToAsset[id] = assets[i]
+	}
+
+	return idToAsset
+}
+
 func TestInsertExpTrade(t *testing.T) {
 	tt := test.Start(t)
 	defer tt.Finish()
 	test.ResetHorizonDB(t, tt.HorizonDB)
 	q := &Q{tt.HorizonSession()}
 
+	addresses := []string{
+		"GB2QIYT2IAUFMRXKLSLLPRECC6OCOGJMADSPTRK7TGNT2SFR2YGWDARD",
+		"GAXMF43TGZHW3QN3REOUA2U5PW5BTARXGGYJ3JIFHW3YT6QRKRL3CPPU",
+	}
+	assets := []xdr.Asset{eurAsset, usdAsset, nativeAsset}
 	accountIDs, assetIDs := createExpAccountsAndAssets(
 		tt, q,
-		[]string{
-			"GB2QIYT2IAUFMRXKLSLLPRECC6OCOGJMADSPTRK7TGNT2SFR2YGWDARD",
-			"GAXMF43TGZHW3QN3REOUA2U5PW5BTARXGGYJ3JIFHW3YT6QRKRL3CPPU",
-		},
-		[]xdr.Asset{eurAsset, usdAsset, nativeAsset},
+		addresses,
+		assets,
 	)
 
 	first, second, third := createInsertTrades(accountIDs, assetIDs, 3)
@@ -189,64 +199,108 @@ func TestInsertExpTrade(t *testing.T) {
 	)
 	tt.Assert.NoError(builder.Exec())
 
-	var rows []tradeRow
-	err := q.Select(
-		&rows,
-		sq.Select("*").From("exp_history_trades").OrderBy("history_operation_id", "\"order\""),
-	)
-	tt.Assert.NoError(err)
+	var rows []Trade
+	tt.Assert.NoError(q.expTrades().Select(&rows))
 
-	expected := []tradeRow{
-		tradeRow{
+	idToAccount := buildIDtoAccountMapping(addresses, accountIDs)
+	idToAsset := buildIDtoAssetMapping(assets, assetIDs)
+
+	firstSellerAccount := idToAccount[first.SellerAccountID]
+	firstBuyerAccount := idToAccount[first.BuyerAccountID]
+	var firstSoldAssetType, firstSoldAssetCode, firstSoldAssetIssuer string
+	idToAsset[first.SoldAssetID].MustExtract(
+		&firstSoldAssetType, &firstSoldAssetCode, &firstSoldAssetIssuer,
+	)
+	var firstBoughtAssetType, firstBoughtAssetCode, firstBoughtAssetIssuer string
+	idToAsset[first.BoughtAssetID].MustExtract(
+		&firstBoughtAssetType, &firstBoughtAssetCode, &firstBoughtAssetIssuer,
+	)
+
+	secondSellerAccount := idToAccount[second.SellerAccountID]
+	secondBuyerAccount := idToAccount[second.BuyerAccountID]
+	var secondSoldAssetType, secondSoldAssetCode, secondSoldAssetIssuer string
+	idToAsset[second.SoldAssetID].MustExtract(
+		&secondSoldAssetType, &secondSoldAssetCode, &secondSoldAssetIssuer,
+	)
+	var secondBoughtAssetType, secondBoughtAssetCode, secondBoughtAssetIssuer string
+	idToAsset[second.BoughtAssetID].MustExtract(
+		&secondBoughtAssetType, &secondBoughtAssetCode, &secondBoughtAssetIssuer,
+	)
+
+	thirdSellerAccount := idToAccount[third.SellerAccountID]
+	thirdBuyerAccount := idToAccount[third.BuyerAccountID]
+	var thirdSoldAssetType, thirdSoldAssetCode, thirdSoldAssetIssuer string
+	idToAsset[third.SoldAssetID].MustExtract(
+		&thirdSoldAssetType, &thirdSoldAssetCode, &thirdSoldAssetIssuer,
+	)
+	var thirdBoughtAssetType, thirdBoughtAssetCode, thirdBoughtAssetIssuer string
+	idToAsset[third.BoughtAssetID].MustExtract(
+		&thirdBoughtAssetType, &thirdBoughtAssetCode, &thirdBoughtAssetIssuer,
+	)
+
+	expected := []Trade{
+		Trade{
 			HistoryOperationID: first.HistoryOperationID,
 			Order:              first.Order,
 			LedgerCloseTime:    first.LedgerCloseTime,
 			OfferID:            int64(first.Trade.OfferId),
-			BaseOfferID:        EncodeOfferId(uint64(first.Trade.OfferId), CoreOfferIDType),
-			BaseAccountID:      first.SellerAccountID,
-			BaseAssetID:        first.SoldAssetID,
+			BaseOfferID:        newInt64(EncodeOfferId(uint64(first.Trade.OfferId), CoreOfferIDType)),
+			BaseAccount:        firstSellerAccount.Address(),
+			BaseAssetType:      firstSoldAssetType,
+			BaseAssetIssuer:    firstSoldAssetIssuer,
+			BaseAssetCode:      firstSoldAssetCode,
 			BaseAmount:         first.Trade.AmountSold,
-			CounterOfferID:     first.BuyOfferID,
-			CounterAccountID:   first.BuyerAccountID,
-			CounterAssetID:     first.BoughtAssetID,
+			CounterOfferID:     newInt64(first.BuyOfferID),
+			CounterAccount:     firstBuyerAccount.Address(),
+			CounterAssetType:   firstBoughtAssetType,
+			CounterAssetIssuer: firstBoughtAssetIssuer,
+			CounterAssetCode:   firstBoughtAssetCode,
 			CounterAmount:      first.Trade.AmountBought,
 			BaseIsSeller:       true,
-			PriceN:             int(first.SellPrice.N),
-			PriceD:             int(first.SellPrice.D),
+			PriceN:             null.NewInt(int64(first.SellPrice.N), true),
+			PriceD:             null.NewInt(int64(first.SellPrice.D), true),
 		},
-		tradeRow{
+		Trade{
 			HistoryOperationID: second.HistoryOperationID,
 			Order:              second.Order,
 			LedgerCloseTime:    second.LedgerCloseTime,
 			OfferID:            int64(second.Trade.OfferId),
-			BaseOfferID:        EncodeOfferId(uint64(second.Trade.OfferId), CoreOfferIDType),
-			BaseAccountID:      second.SellerAccountID,
-			BaseAssetID:        second.SoldAssetID,
+			BaseOfferID:        newInt64(EncodeOfferId(uint64(second.Trade.OfferId), CoreOfferIDType)),
+			BaseAccount:        secondSellerAccount.Address(),
+			BaseAssetType:      secondSoldAssetType,
+			BaseAssetIssuer:    secondSoldAssetIssuer,
+			BaseAssetCode:      secondSoldAssetCode,
 			BaseAmount:         second.Trade.AmountSold,
-			CounterOfferID:     EncodeOfferId(uint64(second.HistoryOperationID), TOIDType),
-			CounterAccountID:   second.BuyerAccountID,
-			CounterAssetID:     second.BoughtAssetID,
+			CounterOfferID:     newInt64(EncodeOfferId(uint64(second.HistoryOperationID), TOIDType)),
+			CounterAccount:     secondBuyerAccount.Address(),
+			CounterAssetType:   secondBoughtAssetType,
+			CounterAssetCode:   secondBoughtAssetCode,
+			CounterAssetIssuer: secondBoughtAssetIssuer,
 			CounterAmount:      second.Trade.AmountBought,
 			BaseIsSeller:       true,
-			PriceN:             int(second.SellPrice.N),
-			PriceD:             int(second.SellPrice.D),
+			PriceN:             null.NewInt(int64(second.SellPrice.N), true),
+			PriceD:             null.NewInt(int64(second.SellPrice.D), true),
 		},
-		tradeRow{
+		Trade{
 			HistoryOperationID: third.HistoryOperationID,
 			Order:              third.Order,
 			LedgerCloseTime:    third.LedgerCloseTime,
 			OfferID:            int64(third.Trade.OfferId),
-			BaseOfferID:        third.BuyOfferID,
-			BaseAccountID:      third.BuyerAccountID,
-			BaseAssetID:        third.BoughtAssetID,
+			BaseOfferID:        newInt64(third.BuyOfferID),
+			BaseAccount:        thirdBuyerAccount.Address(),
+			BaseAssetType:      thirdBoughtAssetType,
+			BaseAssetCode:      thirdBoughtAssetCode,
+			BaseAssetIssuer:    thirdBoughtAssetIssuer,
 			BaseAmount:         third.Trade.AmountBought,
-			CounterOfferID:     EncodeOfferId(uint64(third.Trade.OfferId), CoreOfferIDType),
-			CounterAccountID:   third.SellerAccountID,
-			CounterAssetID:     third.SoldAssetID,
+			CounterOfferID:     newInt64(EncodeOfferId(uint64(third.Trade.OfferId), CoreOfferIDType)),
+			CounterAccount:     thirdSellerAccount.Address(),
+			CounterAssetType:   thirdSoldAssetType,
+			CounterAssetCode:   thirdSoldAssetCode,
+			CounterAssetIssuer: thirdSoldAssetIssuer,
 			CounterAmount:      third.Trade.AmountSold,
 			BaseIsSeller:       false,
-			PriceN:             int(third.SellPrice.D),
-			PriceD:             int(third.SellPrice.N),
+			PriceN:             null.NewInt(int64(third.SellPrice.D), true),
+			PriceD:             null.NewInt(int64(third.SellPrice.N), true),
 		},
 	}
 	tt.Assert.Len(rows, len(expected))
@@ -317,14 +371,8 @@ func TestCheckExpTrades(t *testing.T) {
 	assets = assets[1:4]
 	expAssetIDs = expAssetIDs[1:4]
 
-	idToAccount := map[int64]xdr.AccountId{}
-	for i, id := range expAccountIDs {
-		idToAccount[id] = xdr.MustAddress(addresses[i])
-	}
-	idToAsset := map[int64]xdr.Asset{}
-	for i, id := range expAssetIDs {
-		idToAsset[id] = assets[i]
-	}
+	idToAccount := buildIDtoAccountMapping(addresses, expAccountIDs)
+	idToAsset := buildIDtoAssetMapping(assets, expAssetIDs)
 
 	first, second, third := createInsertTrades(
 		expAccountIDs, expAssetIDs, sequence,
