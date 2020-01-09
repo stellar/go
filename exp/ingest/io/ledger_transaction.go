@@ -204,22 +204,30 @@ func (t *LedgerTransaction) GetChanges() ([]Change, error) {
 func (t *LedgerTransaction) GetOperationChanges(operationIndex uint32) []Change {
 	var changes []Change
 
-	// If the transaction was not successful there are no changes
-	if !t.Successful() {
-		return []Change{}
-	}
-
 	// Transaction meta
 	switch t.Meta.V {
 	case 0:
-		// TODO: is this assumption correct? Do we have tx changes on V0?
-		operationMeta := t.Meta.MustOperations()[operationIndex]
+		ops := t.Meta.MustOperations()
+
+		// This and the similar check in the line below is performed since if
+		// the operation failed it might not contain operations in meta.
+		if len(ops) == 0 || int(operationIndex) >= len(ops) {
+			return []Change{}
+		}
+
+		operationMeta := ops[operationIndex]
 		changes = getChangesFromLedgerEntryChanges(
 			operationMeta.Changes,
 		)
 	case 1:
 		v1Meta := t.Meta.MustV1()
-		operationMeta := v1Meta.Operations[operationIndex]
+		ops := v1Meta.Operations
+
+		if len(ops) == 0 || int(operationIndex) >= len(ops) {
+			return []Change{}
+		}
+
+		operationMeta := ops[operationIndex]
 		changes = getChangesFromLedgerEntryChanges(
 			operationMeta.Changes,
 		)
