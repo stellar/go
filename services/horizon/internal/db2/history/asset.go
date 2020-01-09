@@ -2,6 +2,7 @@ package history
 
 import (
 	sq "github.com/Masterminds/squirrel"
+	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
 )
 
@@ -83,4 +84,52 @@ func (q *Q) GetCreateAssetID(
 		assetType, assetCode, assetIssuer)
 
 	return
+}
+
+// CreateExpAssets creates rows in the exp_history_assets table for a given list of assets.
+func (q *Q) CreateExpAssets(assets []xdr.Asset) ([]Asset, error) {
+	assetStrings := make([]string, len(assets))
+	sql := sq.Insert("exp_history_assets").Columns("asset_type", "asset_code", "asset_issuer")
+
+	for i, asset := range assets {
+		var assetType, assetCode, assetIssuer string
+		err := asset.Extract(&assetType, &assetCode, &assetIssuer)
+		if err != nil {
+			return nil, errors.Wrap(err, "could not extract asset details")
+		}
+		sql = sql.Values(assetType, assetCode, assetIssuer)
+
+		assetString := assetType + "/" + assetCode + "/" + assetIssuer
+		assetStrings[i] = assetString
+	}
+
+	_, err := q.Exec(sql.Suffix("ON CONFLICT (asset_code, asset_type, asset_issuer) DO NOTHING"))
+	if err != nil {
+		return nil, err
+	}
+
+	var rows []Asset
+	err = q.Select(&rows, sq.Select("*").From("exp_history_assets").Where(sq.Eq{
+		"concat(asset_type, '/', asset_code, '/', asset_issuer)": assetStrings,
+	}))
+	if err != nil {
+		return nil, err
+	}
+
+	if len(rows) == len(assets) {
+		return rows, nil
+	}
+
+	rowForAsset := map[string]Asset{}
+	for _, row := range rows {
+		assetString := row.Type + "/" + row.Code + "/" + row.Issuer
+		rowForAsset[assetString] = row
+	}
+
+	rows = make([]Asset, len(assets))
+	for i, assetString := range assetStrings {
+		rows[i] = rowForAsset[assetString]
+	}
+
+	return rows, nil
 }
