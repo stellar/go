@@ -8,11 +8,6 @@ import (
 	"github.com/stellar/go/services/horizon/internal/toid"
 )
 
-// TODO: move to history/effects.go
-var expSelectEffect = effectFields.
-	From("exp_history_effects heff").
-	LeftJoin("exp_history_accounts hacc ON hacc.id = heff.history_account_id")
-
 func TestAddEffect(t *testing.T) {
 	tt := test.Start(t)
 	defer tt.Finish()
