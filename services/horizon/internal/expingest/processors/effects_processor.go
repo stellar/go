@@ -637,9 +637,6 @@ func (operation *transactionOperationWrapper) manageDataEffects() []effect {
 	effect := history.EffectType(0)
 	changes := operation.transaction.GetOperationChanges(operation.index)
 
-	// TODO/ASK: since we know this is manageData operation change, how many
-	// changes can we find?' in this case the answer seems to be 2? One for
-	// changing sub-entries on account data and the other for adding data
 	for _, change := range changes {
 		if change.Type != xdr.LedgerEntryTypeData {
 			continue
@@ -663,6 +660,8 @@ func (operation *transactionOperationWrapper) manageDataEffects() []effect {
 		default:
 			panic("Invalid before-and-after state")
 		}
+
+		break
 	}
 
 	effects.add(source.Address(), effect, details)
@@ -678,8 +677,6 @@ func (operation *transactionOperationWrapper) bumpSequenceEffects() []effect {
 	source := operation.SourceAccount()
 	changes := operation.transaction.GetOperationChanges(operation.index)
 
-	// TODO/ASK: since we know this is bumpSequence operation change, how many
-	// changes can we expect to find here?
 	for _, change := range changes {
 		if change.Type != xdr.LedgerEntryTypeAccount {
 			continue
@@ -695,6 +692,8 @@ func (operation *transactionOperationWrapper) bumpSequenceEffects() []effect {
 			details := map[string]interface{}{"new_seq": afterAccount.SeqNum}
 			effects.add(source.Address(), history.EffectSequenceBumped, details)
 		}
+
+		break
 	}
 
 	return effects.effects
