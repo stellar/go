@@ -22,6 +22,7 @@
 // migrations/28_exp_history_operations.sql (439B)
 // migrations/29_exp_history_assets.sql (206B)
 // migrations/2_index_participants_by_toid.sql (277B)
+// migrations/30_exp_history_trades.sql (2.297kB)
 // migrations/3_use_sequence_in_history_accounts.sql (447B)
 // migrations/4_add_protocol_version.sql (188B)
 // migrations/5_create_trades_table.sql (1.1kB)
@@ -513,7 +514,7 @@ func migrations29_exp_history_assetsSql() (*asset, error) {
 		return nil, err
 	}
 
-	info := bindataFileInfo{name: "migrations/29_exp_history_assets.sql", size: 206, mode: os.FileMode(0644), modTime: time.Unix(1578465135, 0)}
+	info := bindataFileInfo{name: "migrations/29_exp_history_assets.sql", size: 206, mode: os.FileMode(0644), modTime: time.Unix(1578477173, 0)}
 	a := &asset{bytes: bytes, info: info, digest: [32]uint8{0x25, 0xdf, 0x37, 0x6, 0x2c, 0x6e, 0x52, 0x9b, 0x16, 0x17, 0x9c, 0x29, 0x41, 0x41, 0xa6, 0x14, 0x59, 0xff, 0x29, 0xfa, 0x12, 0x2a, 0x8d, 0xce, 0x42, 0xad, 0xa6, 0x26, 0xef, 0x6f, 0x27, 0x17}}
 	return a, nil
 }
@@ -535,6 +536,26 @@ func migrations2_index_participants_by_toidSql() (*asset, error) {
 
 	info := bindataFileInfo{name: "migrations/2_index_participants_by_toid.sql", size: 277, mode: os.FileMode(0644), modTime: time.Unix(1566825316, 0)}
 	a := &asset{bytes: bytes, info: info, digest: [32]uint8{0xdd, 0x9f, 0x5c, 0xe6, 0xd0, 0x43, 0x82, 0xa3, 0x8d, 0xb3, 0x64, 0xb1, 0x2, 0x4b, 0xe1, 0x96, 0x3, 0x92, 0xb3, 0xea, 0x3c, 0x2e, 0xb2, 0xad, 0x47, 0xcd, 0x92, 0x4c, 0x6c, 0x5c, 0x46, 0xfd}}
+	return a, nil
+}
+
+var _migrations30_exp_history_tradesSql = []byte("\x1f\x8b\x08\x00\x00\x00\x00\x00\x00\xff\xac\x96\x41\x8f\xda\x3c\x10\x86\xef\xf9\x15\xa3\x3d\x81\x3e\xf8\xd4\x73\xb7\xad\xb4\x65\xd3\x16\x2d\x0a\x2d\x0b\x52\x6f\x96\x63\x0f\xc4\xda\x60\x47\xf6\x44\xec\xf6\xd7\x57\x4e\x1a\x36\x09\x86\x0d\x6a\x39\xce\x8c\x9f\x79\xfd\x7a\x1c\x33\x9d\xc2\x7f\x7b\xb5\xb3\x9c\x10\x36\x45\x14\x4d\xa7\x70\x40\x10\x5c\x6b\x43\x20\x2c\xfa\x38\x3e\x17\x2c\x53\x8e\x8c\x7d\x61\x64\xb9\x44\x07\xdc\xbd\xaf\x6a\x67\xab\xf8\x6e\x1d\xc3\xfa\xee\xf3\x22\x0e\xd5\x8d\x7c\x91\xff\x2d\xe6\x0f\x31\x74\x93\x4d\x4a\x69\x91\x97\x52\xe9\x1d\x48\xdc\xf2\x32\xa7\x40\x46\x18\xed\xc8\x72\xa5\x43\x49\xa5\x25\x3e\xd7\xbc\xf1\x6d\x25\x2b\x45\xc1\x4b\x87\x40\x19\xf6\x9a\x02\xf1\x34\x47\xc8\xb8\x03\x8b\x5b\xb4\xa8\x05\xb6\xe9\x40\xe6\xb8\x82\x0b\x61\x4a\x1f\xe3\x5a\xbe\x06\x9d\xc3\x5a\x84\x8f\x1e\x10\xa4\x01\xef\xd5\x81\x6b\xf2\x8b\x85\x29\x5e\x80\x32\xe3\x3a\xd8\xff\x41\x69\x47\xc8\xe5\xc4\x2f\x69\x6a\x5f\x15\x50\x86\x1e\xd9\x76\xb0\xd3\xbd\x93\xa8\x14\xd4\x1b\x71\x51\xf4\xf6\x11\x78\xb7\x9a\xa0\x29\xd0\x72\x52\x46\x33\x25\x21\x55\x3b\xa5\x09\x92\xe5\x1a\x92\xcd\x62\x31\xa9\x2a\x6f\x8c\x95\x68\x6f\x40\x69\xc2\x1d\xda\x5e\x36\x47\xb9\x43\xcb\x44\x6e\x1c\x4a\xc6\x09\x48\xed\xd1\x11\xdf\x17\x70\x50\x94\x99\xb2\x8e\xc0\x2f\xa3\xb1\xb7\xd4\x6c\xb7\x68\xcf\xb6\x4d\xb9\xc3\x66\xcf\x81\x22\x58\xc5\x5f\xe2\x55\x9c\xcc\xe2\xc7\xa0\x4b\x23\x25\xc7\x6d\x90\xf7\xe8\x1a\x4c\xe5\x69\x1f\xb2\xf7\xe8\xb0\xdc\xaa\x2b\xda\x7f\xa2\xf8\xc8\xfa\x4b\xd1\x47\xce\x05\xdd\xd5\xc6\x94\x63\x0e\xf3\x1c\x2d\xa4\xc6\xe4\xc8\x75\x9d\x2b\xac\x12\xc8\xf4\x9f\x85\xed\x98\xec\xc4\x2a\x46\xef\x34\xbb\x0a\x82\xc9\xd9\x32\x79\x5c\xaf\xee\xe6\xc9\x3a\x30\xa6\xac\xe5\x38\x13\x19\x8a\x27\x98\x7d\x8b\x67\x0f\x30\x1a\xb5\xcf\xe2\xd3\x47\x78\x37\x1e\x0f\xe1\x85\x18\x8d\xbf\x1f\x4e\x2c\x1f\xc8\xec\x18\xdc\x6b\xd1\x73\xbf\x56\x1a\xf9\x0f\x52\x73\x45\xe7\xc9\x7d\xfc\xb3\xe6\x92\x95\x2c\x7d\x61\xed\xa1\x87\x65\x12\xba\xbe\x9b\xc7\x79\xf2\x15\x52\xb2\x88\x30\xea\x5d\x12\x0f\xbf\xcc\xae\x0e\x62\x30\xb9\x39\xb6\x8b\xdc\xde\xe4\x0f\x81\x9f\x5e\x96\x41\x1d\x06\x8b\xef\x8f\xdd\x45\xfa\x60\xea\xdb\xb4\xa6\x6f\x6e\xcc\x53\x59\x5c\xe5\x44\x33\x77\x67\xd9\x05\x57\x96\xf9\x4f\xe9\x15\xf4\xce\x94\x4f\x4e\x86\x7c\x72\xf2\xf5\x6e\xb5\xdf\x24\xf3\x1f\x9b\x53\x15\x4a\x0e\x69\x1c\x7a\x5d\x26\xcd\x4b\x72\x7e\x8f\x57\x6e\x2f\xa4\xbe\xfd\xff\xe5\xde\x1c\x74\x14\xdd\xaf\x96\xdf\xcf\xbf\x86\x82\x3b\xc1\x25\xde\x46\xbf\x03\x00\x00\xff\xff\xd4\x84\xb9\x21\xf9\x08\x00\x00")
+
+func migrations30_exp_history_tradesSqlBytes() ([]byte, error) {
+	return bindataRead(
+		_migrations30_exp_history_tradesSql,
+		"migrations/30_exp_history_trades.sql",
+	)
+}
+
+func migrations30_exp_history_tradesSql() (*asset, error) {
+	bytes, err := migrations30_exp_history_tradesSqlBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "migrations/30_exp_history_trades.sql", size: 2297, mode: os.FileMode(0644), modTime: time.Unix(1578567404, 0)}
+	a := &asset{bytes: bytes, info: info, digest: [32]uint8{0xaf, 0x32, 0xe, 0xc2, 0x9, 0x37, 0x62, 0x5f, 0x79, 0xfe, 0x3e, 0x11, 0x22, 0x66, 0x56, 0x36, 0x8, 0x0, 0x76, 0x70, 0xc3, 0x5c, 0x16, 0xe3, 0x2b, 0x73, 0x57, 0xe8, 0x38, 0x6c, 0x62, 0x1e}}
 	return a, nil
 }
 
@@ -833,6 +854,8 @@ var _bindata = map[string]func() (*asset, error){
 
 	"migrations/2_index_participants_by_toid.sql": migrations2_index_participants_by_toidSql,
 
+	"migrations/30_exp_history_trades.sql": migrations30_exp_history_tradesSql,
+
 	"migrations/3_use_sequence_in_history_accounts.sql": migrations3_use_sequence_in_history_accountsSql,
 
 	"migrations/4_add_protocol_version.sql": migrations4_add_protocol_versionSql,
@@ -914,6 +937,7 @@ var _bintree = &bintree{nil, map[string]*bintree{
 		"28_exp_history_operations.sql":                &bintree{migrations28_exp_history_operationsSql, map[string]*bintree{}},
 		"29_exp_history_assets.sql":                    &bintree{migrations29_exp_history_assetsSql, map[string]*bintree{}},
 		"2_index_participants_by_toid.sql":             &bintree{migrations2_index_participants_by_toidSql, map[string]*bintree{}},
+		"30_exp_history_trades.sql":                    &bintree{migrations30_exp_history_tradesSql, map[string]*bintree{}},
 		"3_use_sequence_in_history_accounts.sql":       &bintree{migrations3_use_sequence_in_history_accountsSql, map[string]*bintree{}},
 		"4_add_protocol_version.sql":                   &bintree{migrations4_add_protocol_versionSql, map[string]*bintree{}},
 		"5_create_trades_table.sql":                    &bintree{migrations5_create_trades_tableSql, map[string]*bintree{}},

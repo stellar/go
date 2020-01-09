@@ -9,6 +9,7 @@ import (
 	"github.com/guregu/null"
 	"github.com/stellar/go/services/horizon/internal/test"
 	"github.com/stellar/go/services/horizon/internal/toid"
+	"github.com/stellar/go/xdr"
 )
 
 func assertCountRows(tt *test.T, q *Q, tables []string, expectedCount int) {
@@ -35,6 +36,8 @@ func TestRemoveExpIngestHistory(t *testing.T) {
 	txParticipantsInsertBuilder := q.NewTransactionParticipantsBatchInsertBuilder(0)
 	opInsertBuilder := q.NewOperationBatchInsertBuilder(0)
 	opParticipantsInsertBuilder := q.NewOperationParticipantBatchInsertBuilder(0)
+	tradeInsertBuilder := q.NewTradeBatchInsertBuilder(0)
+
 	accountID := int64(1223)
 
 	expTables := []string{
@@ -43,6 +46,7 @@ func TestRemoveExpIngestHistory(t *testing.T) {
 		"exp_history_transaction_participants",
 		"exp_history_operations",
 		"exp_history_operation_participants",
+		"exp_history_trades",
 	}
 
 	ledger := Ledger{
@@ -71,6 +75,15 @@ func TestRemoveExpIngestHistory(t *testing.T) {
 		"7db1e4f145e9ee75162040d26284795e0697e2e84084624e7c6c723ebbf80118",
 		"8db1e4f145e9ee75162040d26284795e0697e2e84084624e7c6c723ebbf80118",
 	}
+
+	accountIDs, assetIDs := createExpAccountsAndAssets(
+		tt, q,
+		[]string{
+			"GB2QIYT2IAUFMRXKLSLLPRECC6OCOGJMADSPTRK7TGNT2SFR2YGWDARD",
+			"GAXMF43TGZHW3QN3REOUA2U5PW5BTARXGGYJ3JIFHW3YT6QRKRL3CPPU",
+		},
+		[]xdr.Asset{eurAsset, usdAsset, nativeAsset},
+	)
 
 	for i, hash := range hashes {
 		ledger.TotalOrderID.ID = toid.New(ledger.Sequence, 0, 0).ToInt64()
@@ -125,6 +138,10 @@ func TestRemoveExpIngestHistory(t *testing.T) {
 		)
 		tt.Assert.NoError(opParticipantsInsertBuilder.Exec())
 
+		firstTrade, _, _ := createInsertTrades(accountIDs, assetIDs, ledger.Sequence)
+		tt.Assert.NoError(tradeInsertBuilder.Add(firstTrade))
+		tt.Assert.NoError(tradeInsertBuilder.Exec())
+
 		ledger.Sequence++
 	}
 
@@ -145,6 +162,7 @@ func TestRemoveExpIngestHistory(t *testing.T) {
 			TransactionParticipantsRemoved: 2,
 			OperationsRemoved:              2,
 			OperationParticipantsRemoved:   2,
+			TradesRemoved:                  2,
 		},
 		summary,
 	)
@@ -181,6 +199,10 @@ func TestRemoveExpIngestHistory(t *testing.T) {
 	tt.Assert.NoError(err)
 	tt.Assert.Len(opParticipants, 3)
 
+	var trades []Trade
+	err = q.expTrades().Select(&trades)
+	tt.Assert.NoError(err)
+
 	nextLedger := toid.ID{LedgerSequence: int32(cutoffSequence + 1)}
 	for i := range ledgers {
 		tt.Assert.LessOrEqual(ledgers[i].Sequence, int32(cutoffSequence))
@@ -190,5 +212,6 @@ func TestRemoveExpIngestHistory(t *testing.T) {
 		tt.Assert.Less(operations[i].TransactionID, nextLedger.ToInt64())
 		tt.Assert.Less(operations[i].ID, nextLedger.ToInt64())
 		tt.Assert.Less(opParticipants[i].OperationID, nextLedger.ToInt64())
+		tt.Assert.Less(trades[i].HistoryOperationID, nextLedger.ToInt64())
 	}
 }
