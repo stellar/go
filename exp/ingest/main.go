@@ -48,6 +48,40 @@ type LiveSession struct {
 	latestSuccessfullyProcessedLedger uint32
 }
 
+// RangeSession runs ingestion between `FromLedger` and `ToLedger` ledgers
+// (inclusive).
+// It does not update cursors in stellar-core.
+type RangeSession struct {
+	standardSession
+
+	// FromLedger indicates session starting ledger. If StatePipeline is not nil
+	// this must be a checkpoint ledger.
+	FromLedger uint32
+	// ToLedger at which ledger processing should stop. ToLedger will be the
+	// last processed ledger.
+	ToLedger uint32
+	// NetworkPassphrase is a passphrase of the network this session is using.
+	NetworkPassphrase string
+
+	Archive       historyarchive.ArchiveInterface
+	LedgerBackend ledgerbackend.LedgerBackend
+	// StatePipeline can be nil. In such case state is not processed and Archive
+	// can be nil as well.
+	StatePipeline  *pipeline.StatePipeline
+	StateReporter  StateReporter
+	LedgerPipeline *pipeline.LedgerPipeline
+	LedgerReporter LedgerReporter
+	// TempSet is a store used to hold temporary objects generated during
+	// state processing. If nil, defaults to io.MemoryTempSet.
+	TempSet io.TempSet
+	// MaxStreamRetries determines how many times the reader will retry when encountering
+	// errors while streaming xdr bucket entries from the history archive.
+	// Default MaxStreamRetries value (0) means that there should be no retry attempts
+	MaxStreamRetries int
+
+	latestSuccessfullyProcessedLedger uint32
+}
+
 // SingleLedgerSession initializes the ledger state using `Archive` and `StatePipeline`
 // and terminates. Useful for finding stats for a single ledger. Set `LedgerSequence`
 // to `0` to process the latest checkpoint.

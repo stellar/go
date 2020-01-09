@@ -132,7 +132,7 @@ func (s *RunIngestionTestSuite) SetupTest() {
 	s.historyQ = &mockDBQ{}
 	s.ingestSession = &mockIngestSession{}
 	s.system = &System{
-		state:          state{initState, 0},
+		state:          state{systemState: initState},
 		session:        s.ingestSession,
 		historySession: s.session,
 		historyQ:       s.historyQ,
@@ -411,7 +411,7 @@ func (s *ResumeIngestionTestSuite) SetupTest() {
 	s.historyQ = &mockDBQ{}
 	s.ingestSession = &mockIngestSession{}
 	s.system = &System{
-		state:          state{resumeState, 1},
+		state:          state{systemState: resumeState, latestSuccessfullyProcessedLedger: 1},
 		session:        s.ingestSession,
 		historySession: s.session,
 		historyQ:       s.historyQ,

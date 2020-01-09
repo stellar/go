@@ -49,8 +49,9 @@ const (
 var log = logpkg.DefaultLogger.WithField("service", "expingest")
 
 type Config struct {
-	CoreSession    *db.Session
-	StellarCoreURL string
+	CoreSession       *db.Session
+	StellarCoreURL    string
+	NetworkPassphrase string
 
 	HistorySession           *db.Session
 	HistoryArchiveURL        string
@@ -99,17 +100,25 @@ const (
 	loadOffersIntoMemoryState systemState = "loadOffersIntoMemory"
 	buildStateAndResumeState  systemState = "buildStateAndResume"
 	resumeState               systemState = "resume"
+	verifyRangeState          systemState = "verifyRange"
 	shutdownState             systemState = "shutdown"
 )
 
 type state struct {
 	systemState                       systemState
 	latestSuccessfullyProcessedLedger uint32
+
+	rangeFromLedger  uint32
+	rangeToLedger    uint32
+	rangeVerifyState bool
+
+	returnError error
 }
 
 type System struct {
 	state            state
 	session          liveSession
+	rangeSession     *ingest.RangeSession
 	historyQ         dbQ
 	historySession   dbSession
 	graph            *orderbook.OrderBookGraph
@@ -146,16 +155,19 @@ func NewSystem(config Config) (*System, error) {
 
 	historyQ := &history.Q{historySession}
 
+	statePipeline := buildStatePipeline(historyQ, config.OrderBookGraph)
+	ledgerPipeline := buildLedgerPipeline(
+		historyQ,
+		config.OrderBookGraph,
+		config.IngestFailedTransactions,
+	)
+
 	session := &ingest.LiveSession{
 		Archive:          archive,
 		MaxStreamRetries: config.MaxStreamRetries,
 		LedgerBackend:    ledgerBackend,
-		StatePipeline:    buildStatePipeline(historyQ, config.OrderBookGraph),
-		LedgerPipeline: buildLedgerPipeline(
-			historyQ,
-			config.OrderBookGraph,
-			config.IngestFailedTransactions,
-		),
+		StatePipeline:    statePipeline,
+		LedgerPipeline:   ledgerPipeline,
 		StellarCoreClient: &stellarcore.Client{
 			URL: config.StellarCoreURL,
 		},
@@ -166,8 +178,23 @@ func NewSystem(config Config) (*System, error) {
 		TempSet: config.TempSet,
 	}
 
+	rangeSession := &ingest.RangeSession{
+		Archive:           archive,
+		MaxStreamRetries:  config.MaxStreamRetries,
+		LedgerBackend:     ledgerBackend,
+		StatePipeline:     statePipeline,
+		LedgerPipeline:    ledgerPipeline,
+		NetworkPassphrase: config.NetworkPassphrase,
+
+		StateReporter:  &LoggingStateReporter{Log: log, Interval: 100000},
+		LedgerReporter: &LoggingLedgerReporter{Log: log},
+
+		TempSet: config.TempSet,
+	}
+
 	system := &System{
 		session:                  session,
+		rangeSession:             rangeSession,
 		historySession:           historySession,
 		historyQ:                 historyQ,
 		graph:                    config.OrderBookGraph,
@@ -223,6 +250,23 @@ func NewSystem(config Config) (*System, error) {
 //   * If instances is a NOT leader, it runs ledger pipeline without updating a
 //     a database so order book graph is updated but database is not overwritten.
 func (s *System) Run() {
+	s.state = state{systemState: initState}
+	s.run()
+}
+
+// VerifyRange runs the ingestion pipeline on the range of ledgers. When
+// verifyState is true it verifies the state when ingestion is complete.
+func (s *System) VerifyRange(fromLedger, toLedger uint32, verifyState bool) error {
+	s.state = state{
+		systemState:      verifyRangeState,
+		rangeFromLedger:  fromLedger,
+		rangeToLedger:    toLedger,
+		rangeVerifyState: verifyState,
+	}
+	return s.run()
+}
+
+func (s *System) run() error {
 	s.shutdown = make(chan struct{})
 	// Expingest is an experimental package so we don't want entire Horizon app
 	// to crash in case of unexpected errors.
@@ -237,7 +281,7 @@ func (s *System) Run() {
 		}
 	}()
 
-	s.state = state{initState, 0}
+	log.WithFields(logpkg.F{"current_state": s.state}).Info("Ingestion system initial state")
 
 	for {
 		nextState, err := s.runCurrentState()
@@ -251,13 +295,13 @@ func (s *System) Run() {
 
 		// Exit after processing shutdownState
 		if s.state.systemState == shutdownState {
-			return
+			return s.state.returnError
 		}
 
 		select {
 		case <-s.shutdown:
 			log.Info("Received shut down signal...")
-			nextState = state{shutdownState, 0}
+			nextState = state{systemState: shutdownState}
 		case <-time.After(time.Second):
 		}
 
@@ -276,7 +320,7 @@ func (s *System) runCurrentState() (state, error) {
 	if tx := s.historyQ.GetTx(); tx == nil {
 		err := s.historyQ.Begin()
 		if err != nil {
-			return state{initState, 0}, errors.Wrap(err, "Error in Begin")
+			return state{systemState: initState}, errors.Wrap(err, "Error in Begin")
 		}
 	}
 
@@ -292,6 +336,8 @@ func (s *System) runCurrentState() (state, error) {
 		nextState, err = s.buildStateAndResume()
 	case resumeState:
 		nextState, err = s.resume()
+	case verifyRangeState:
+		nextState, err = s.verifyRange()
 	case shutdownState:
 		s.historyQ.Rollback()
 		log.Info("Shut down")
@@ -313,12 +359,12 @@ func (s *System) init() (state, error) {
 	// This will get the value `FOR UPDATE`, blocking it for other nodes.
 	lastIngestedLedger, err := s.historyQ.GetLastLedgerExpIngest()
 	if err != nil {
-		return state{initState, 0}, errors.Wrap(err, "Error getting last ingested ledger")
+		return state{systemState: initState}, errors.Wrap(err, "Error getting last ingested ledger")
 	}
 
 	ingestVersion, err := s.historyQ.GetExpIngestVersion()
 	if err != nil {
-		return state{initState, 0}, errors.Wrap(err, "Error getting exp ingest version")
+		return state{systemState: initState}, errors.Wrap(err, "Error getting exp ingest version")
 	}
 
 	if ingestVersion != CurrentVersion || lastIngestedLedger == 0 {
@@ -332,21 +378,21 @@ func (s *System) init() (state, error) {
 
 		// Clear last_ingested_ledger in key value store
 		if err = s.historyQ.UpdateLastLedgerExpIngest(0); err != nil {
-			return state{initState, 0}, errors.Wrap(err, "Error updating last ingested ledger")
+			return state{systemState: initState}, errors.Wrap(err, "Error updating last ingested ledger")
 		}
 
 		// Clear invalid state in key value store. It's possible that upgraded
 		// ingestion is fixing it.
 		if err = s.historyQ.UpdateExpStateInvalid(false); err != nil {
-			return state{initState, 0}, errors.Wrap(err, "Error updating state invalid value")
+			return state{systemState: initState}, errors.Wrap(err, "Error updating state invalid value")
 		}
 
 		err = s.historyQ.TruncateExpingestStateTables()
 		if err != nil {
-			return state{initState, 0}, errors.Wrap(err, "Error clearing ingest tables")
+			return state{systemState: initState}, errors.Wrap(err, "Error clearing ingest tables")
 		}
 
-		return state{buildStateAndResumeState, 0}, nil
+		return state{systemState: buildStateAndResumeState}, nil
 	}
 
 	// The other node already ingested a state (just now or in the past)
@@ -355,7 +401,10 @@ func (s *System) init() (state, error) {
 	log.WithField("last_ledger", lastIngestedLedger).
 		Info("Resuming ingestion system from last processed ledger...")
 
-	return state{loadOffersIntoMemoryState, lastIngestedLedger}, nil
+	return state{
+		systemState:                       loadOffersIntoMemoryState,
+		latestSuccessfullyProcessedLedger: lastIngestedLedger,
+	}, nil
 }
 
 // loadOffersIntoMemory loads offers into memory. If successful, it changes the
@@ -369,7 +418,7 @@ func (s *System) loadOffersIntoMemory() (state, error) {
 
 	offers, err := s.historyQ.GetAllOffers()
 	if err != nil {
-		return state{initState, 0}, errors.Wrap(err, "GetAllOffers error")
+		return state{systemState: initState}, errors.Wrap(err, "GetAllOffers error")
 	}
 
 	for _, offer := range offers {
@@ -390,7 +439,7 @@ func (s *System) loadOffersIntoMemory() (state, error) {
 
 	err = s.graph.Apply(s.state.latestSuccessfullyProcessedLedger)
 	if err != nil {
-		return state{initState, 0}, errors.Wrap(err, "Error running graph.Apply")
+		return state{systemState: initState}, errors.Wrap(err, "Error running graph.Apply")
 	}
 
 	log.WithField(
@@ -398,7 +447,10 @@ func (s *System) loadOffersIntoMemory() (state, error) {
 		time.Since(start).Seconds(),
 	).Info("Finished loading offers from a database into memory store")
 
-	return state{resumeState, s.state.latestSuccessfullyProcessedLedger}, nil
+	return state{
+		systemState:                       resumeState,
+		latestSuccessfullyProcessedLedger: s.state.latestSuccessfullyProcessedLedger,
+	}, nil
 }
 
 func (s *System) buildStateAndResume() (state, error) {
@@ -408,13 +460,16 @@ func (s *System) buildStateAndResume() (state, error) {
 		// last processed ledger, otherwise start over.
 		latestSuccessfullyProcessedLedger, processed := s.session.GetLatestSuccessfullyProcessedLedger()
 		if !processed {
-			return state{initState, 0}, err
+			return state{systemState: initState}, err
 		}
 
-		return state{resumeState, latestSuccessfullyProcessedLedger}, err
+		return state{
+			systemState:                       resumeState,
+			latestSuccessfullyProcessedLedger: latestSuccessfullyProcessedLedger,
+		}, err
 	}
 
-	return state{shutdownState, 0}, nil
+	return state{systemState: shutdownState}, nil
 }
 
 func (s *System) resume() (state, error) {
@@ -427,13 +482,44 @@ func (s *System) resume() (state, error) {
 		// successfully ingested ledger in the machine state.
 		sessionLastLedger, processed := s.session.GetLatestSuccessfullyProcessedLedger()
 		if processed {
-			return state{resumeState, sessionLastLedger}, err
+			return state{
+				systemState:                       resumeState,
+				latestSuccessfullyProcessedLedger: sessionLastLedger,
+			}, err
 		}
 
 		return s.state, err
 	}
 
-	return state{shutdownState, 0}, nil
+	return state{systemState: shutdownState}, nil
+}
+
+func (s *System) verifyRange() (state, error) {
+	// Simple check if DB clean
+	lastIngestedLedger, err := s.historyQ.GetLastLedgerExpIngest()
+	if err != nil {
+		err = errors.Wrap(err, "Error getting last ledger")
+		return state{systemState: shutdownState, returnError: err}, err
+	}
+
+	if lastIngestedLedger != 0 {
+		return state{systemState: shutdownState, returnError: errors.New("Database not empty")}, err
+	}
+
+	s.rangeSession.FromLedger = s.state.rangeFromLedger
+	s.rangeSession.ToLedger = s.state.rangeToLedger
+	// It's fine to change System settings because the next state of verifyRange
+	// is always shut down.
+	s.disableStateVerification = true
+
+	err = s.rangeSession.Run()
+	if err == nil {
+		if s.state.rangeVerifyState {
+			err = s.verifyState(s.graph.OffersMap())
+		}
+	}
+
+	return state{systemState: shutdownState, returnError: err}, err
 }
 
 // StateReady returns true if the ingestion system has finished running it's state pipelines
