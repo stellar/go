@@ -51,6 +51,8 @@ type LiveSession struct {
 // RangeSession runs ingestion between `FromLedger` and `ToLedger` ledgers
 // (inclusive).
 // It does not update cursors in stellar-core.
+// It assumes ledgers within the range exist in LedgerBackend. If ledger is not
+// found an error will be returned.
 type RangeSession struct {
 	standardSession
 

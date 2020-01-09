@@ -146,30 +146,7 @@ func (s *RangeSession) resume(ledgerSequence uint32, ledgerAdapter *adapters.Led
 	for {
 		ledgerReader, err := ledgerAdapter.GetLedger(ledgerSequence)
 		if err != nil {
-			if err == io.ErrNotFound {
-				// Ensure that there are no gaps. This is "just in case". There shouldn't
-				// be any gaps if CURSOR in core is updated and core version is v11.2.0+.
-				var latestLedger uint32
-				latestLedger, err = ledgerAdapter.GetLatestLedgerSequence()
-				if err != nil {
-					return err
-				}
-
-				if latestLedger > ledgerSequence {
-					return errors.Errorf("Gap detected (ledger %d does not exist but %d is latest)", ledgerSequence, latestLedger)
-				}
-
-				select {
-				case <-s.standardSession.shutdown:
-					return nil
-				case <-time.After(time.Second):
-					// TODO make the idle time smaller
-				}
-
-				continue
-			}
-
-			return errors.Wrap(err, "Error getting ledger")
+			return errors.Wrap(err, fmt.Sprintf("Error getting ledger %d", ledgerSequence))
 		}
 
 		if s.LedgerReporter != nil {
