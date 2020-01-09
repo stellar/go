@@ -119,7 +119,11 @@ func (p *DatabaseProcessor) ProcessLedger(ctx context.Context, store *pipeline.S
 }
 
 func (p *DatabaseProcessor) processLedgerAccountsForSigner(transaction io.LedgerTransaction) error {
-	for _, change := range transaction.GetChanges() {
+	changes, err := transaction.GetChanges()
+	if err != nil {
+		return err
+	}
+	for _, change := range changes {
 		if change.Type != xdr.LedgerEntryTypeAccount {
 			continue
 		}
