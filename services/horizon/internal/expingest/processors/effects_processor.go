@@ -134,13 +134,12 @@ func (p *EffectProcessor) ProcessLedger(ctx context.Context, store *pipeline.Sto
 		}
 
 		if transaction.Successful() {
-			e, err2 := operationsEffects(transaction, sequence)
-
-			if err2 != nil {
-				return err2
+			var effectsForTx []effect
+			effectsForTx, err = operationsEffects(transaction, sequence)
+			if err != nil {
+				return err
 			}
-
-			effects = append(effects, e...)
+			effects = append(effects, effectsForTx...)
 		}
 
 		select {
