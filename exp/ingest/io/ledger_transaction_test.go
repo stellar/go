@@ -92,7 +92,8 @@ func TestFeeMetaAndOperationsChangesSeparate(t *testing.T) {
 	assert.Equal(t, metaChanges[0].Pre.Data.MustAccount().Balance, xdr.Int64(300))
 	assert.Equal(t, metaChanges[0].Post.Data.MustAccount().Balance, xdr.Int64(400))
 
-	operationChanges := tx.GetOperationChanges(0)
+	operationChanges, err := tx.GetOperationChanges(0)
+	assert.NoError(t, err)
 	assert.Len(t, operationChanges, 1)
 	assert.Equal(t, operationChanges[0].Pre.Data.MustAccount().Balance, xdr.Int64(300))
 	assert.Equal(t, operationChanges[0].Post.Data.MustAccount().Balance, xdr.Int64(400))
@@ -137,8 +138,14 @@ func TestFailedTransactionOperationChangesMeta(t *testing.T) {
 				Meta: tc.meta,
 			}
 
-			operationChanges := tx.GetOperationChanges(0)
-			assert.Len(t, operationChanges, 0)
+			operationChanges, err := tx.GetOperationChanges(0)
+			if tx.Meta.V == 0 {
+				assert.Error(t, err)
+				assert.EqualError(t, err, "TransactionMeta.V=0 not supported")
+			} else {
+				assert.NoError(t, err)
+				assert.Len(t, operationChanges, 0)
+			}
 		})
 	}
 }

@@ -201,14 +201,13 @@ func (t *LedgerTransaction) GetChanges() ([]Change, error) {
 
 // GetOperationChanges returns a developer friendly representation of LedgerEntryChanges.
 // It contains only operation changes.
-func (t *LedgerTransaction) GetOperationChanges(operationIndex uint32) []Change {
+func (t *LedgerTransaction) GetOperationChanges(operationIndex uint32) ([]Change, error) {
 	var changes []Change
 
 	// Transaction meta
 	switch t.Meta.V {
 	case 0:
-		ops := t.Meta.MustOperations()
-		changes = operationChanges(ops, operationIndex)
+		return changes, errors.New("TransactionMeta.V=0 not supported")
 	case 1:
 		v1Meta := t.Meta.MustV1()
 		changes = operationChanges(v1Meta.Operations, operationIndex)
@@ -216,10 +215,10 @@ func (t *LedgerTransaction) GetOperationChanges(operationIndex uint32) []Change 
 		v2Meta := t.Meta.MustV2()
 		changes = operationChanges(v2Meta.Operations, operationIndex)
 	default:
-		panic("Unkown TransactionMeta version")
+		return changes, errors.New("Unsupported TransactionMeta version")
 	}
 
-	return changes
+	return changes, nil
 }
 
 func operationChanges(ops []xdr.OperationMeta, index uint32) []Change {

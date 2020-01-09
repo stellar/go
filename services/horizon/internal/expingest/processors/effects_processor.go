@@ -242,9 +242,9 @@ func (operation *transactionOperationWrapper) effects() (effects []effect, err e
 	case xdr.OperationTypeCreatePassiveSellOffer:
 		effects = operation.createPassiveSellOfferEffect()
 	case xdr.OperationTypeSetOptions:
-		effects = operation.setOptionsEffects()
+		effects, err = operation.setOptionsEffects()
 	case xdr.OperationTypeChangeTrust:
-		effects = operation.changeTrustEffects()
+		effects, err = operation.changeTrustEffects()
 	case xdr.OperationTypeAllowTrust:
 		effects = operation.allowTrustEffects()
 	case xdr.OperationTypeAccountMerge:
@@ -252,9 +252,9 @@ func (operation *transactionOperationWrapper) effects() (effects []effect, err e
 	case xdr.OperationTypeInflation:
 		effects = operation.inflationEffects()
 	case xdr.OperationTypeManageData:
-		effects = operation.manageDataEffects()
+		effects, err = operation.manageDataEffects()
 	case xdr.OperationTypeBumpSequence:
-		effects = operation.bumpSequenceEffects()
+		effects, err = operation.bumpSequenceEffects()
 	default:
 		return effects, fmt.Errorf("Unknown operation type: %s", op.Body.Type)
 	}
@@ -424,7 +424,7 @@ func (operation *transactionOperationWrapper) createPassiveSellOfferEffect() []e
 	return effects.effects
 }
 
-func (operation *transactionOperationWrapper) setOptionsEffects() []effect {
+func (operation *transactionOperationWrapper) setOptionsEffects() ([]effect, error) {
 	source := operation.SourceAccount()
 	op := operation.operation.Body.MustSetOptionsOp()
 
@@ -474,7 +474,10 @@ func (operation *transactionOperationWrapper) setOptionsEffects() []effect {
 			},
 		)
 	}
-	changes := operation.transaction.GetOperationChanges(operation.index)
+	changes, err := operation.transaction.GetOperationChanges(operation.index)
+	if err != nil {
+		return effects.effects, err
+	}
 
 	for _, change := range changes {
 		if change.Type != xdr.LedgerEntryTypeAccount {
@@ -521,10 +524,10 @@ func (operation *transactionOperationWrapper) setOptionsEffects() []effect {
 		}
 	}
 
-	return effects.effects
+	return effects.effects, nil
 }
 
-func (operation *transactionOperationWrapper) changeTrustEffects() []effect {
+func (operation *transactionOperationWrapper) changeTrustEffects() ([]effect, error) {
 	source := operation.SourceAccount()
 
 	effects := effectsWrapper{
@@ -538,7 +541,10 @@ func (operation *transactionOperationWrapper) changeTrustEffects() []effect {
 	effect := history.EffectType(0)
 	assetDetails(details, op.Line, "")
 
-	changes := operation.transaction.GetOperationChanges(operation.index)
+	changes, err := operation.transaction.GetOperationChanges(operation.index)
+	if err != nil {
+		return effects.effects, err
+	}
 
 	for _, change := range changes {
 		if change.Type != xdr.LedgerEntryTypeTrustline {
@@ -561,7 +567,7 @@ func (operation *transactionOperationWrapper) changeTrustEffects() []effect {
 
 	effects.add(source.Address(), effect, details)
 
-	return effects.effects
+	return effects.effects, nil
 }
 
 func (operation *transactionOperationWrapper) allowTrustEffects() []effect {
@@ -625,7 +631,7 @@ func (operation *transactionOperationWrapper) inflationEffects() []effect {
 	return effects.effects
 }
 
-func (operation *transactionOperationWrapper) manageDataEffects() []effect {
+func (operation *transactionOperationWrapper) manageDataEffects() ([]effect, error) {
 	effects := effectsWrapper{
 		effects:   []effect{},
 		operation: operation,
@@ -634,7 +640,10 @@ func (operation *transactionOperationWrapper) manageDataEffects() []effect {
 	op := operation.operation.Body.MustManageDataOp()
 	details := map[string]interface{}{"name": op.DataName}
 	effect := history.EffectType(0)
-	changes := operation.transaction.GetOperationChanges(operation.index)
+	changes, err := operation.transaction.GetOperationChanges(operation.index)
+	if err != nil {
+		return effects.effects, err
+	}
 
 	for _, change := range changes {
 		if change.Type != xdr.LedgerEntryTypeData {
@@ -665,16 +674,19 @@ func (operation *transactionOperationWrapper) manageDataEffects() []effect {
 
 	effects.add(source.Address(), effect, details)
 
-	return effects.effects
+	return effects.effects, nil
 }
 
-func (operation *transactionOperationWrapper) bumpSequenceEffects() []effect {
+func (operation *transactionOperationWrapper) bumpSequenceEffects() ([]effect, error) {
 	effects := effectsWrapper{
 		effects:   []effect{},
 		operation: operation,
 	}
 	source := operation.SourceAccount()
-	changes := operation.transaction.GetOperationChanges(operation.index)
+	changes, err := operation.transaction.GetOperationChanges(operation.index)
+	if err != nil {
+		return effects.effects, err
+	}
 
 	for _, change := range changes {
 		if change.Type != xdr.LedgerEntryTypeAccount {
@@ -695,7 +707,7 @@ func (operation *transactionOperationWrapper) bumpSequenceEffects() []effect {
 		break
 	}
 
-	return effects.effects
+	return effects.effects, nil
 }
 
 func effectFlagDetails(flagDetails map[string]interface{}, flagPtr *xdr.Uint32, setValue bool) {
