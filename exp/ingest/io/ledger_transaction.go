@@ -208,34 +208,29 @@ func (t *LedgerTransaction) GetOperationChanges(operationIndex uint32) []Change 
 	switch t.Meta.V {
 	case 0:
 		ops := t.Meta.MustOperations()
-
-		// This and the similar check in the line below is performed since if
-		// the operation failed it might not contain operations in meta.
-		if len(ops) == 0 || int(operationIndex) >= len(ops) {
-			return []Change{}
-		}
-
-		operationMeta := ops[operationIndex]
-		changes = getChangesFromLedgerEntryChanges(
-			operationMeta.Changes,
-		)
+		changes = operationChanges(ops, operationIndex)
 	case 1:
 		v1Meta := t.Meta.MustV1()
-		ops := v1Meta.Operations
-
-		if len(ops) == 0 || int(operationIndex) >= len(ops) {
-			return []Change{}
-		}
-
-		operationMeta := ops[operationIndex]
-		changes = getChangesFromLedgerEntryChanges(
-			operationMeta.Changes,
-		)
+		changes = operationChanges(v1Meta.Operations, operationIndex)
+	case 2:
+		v2Meta := t.Meta.MustV2()
+		changes = operationChanges(v2Meta.Operations, operationIndex)
 	default:
 		panic("Unkown TransactionMeta version")
 	}
 
 	return changes
+}
+
+func operationChanges(ops []xdr.OperationMeta, index uint32) []Change {
+	if len(ops) == 0 || int(index) >= len(ops) {
+		return []Change{}
+	}
+
+	operationMeta := ops[index]
+	return getChangesFromLedgerEntryChanges(
+		operationMeta.Changes,
+	)
 }
 
 // getChangesFromLedgerEntryChanges transforms LedgerEntryChanges to []Change.

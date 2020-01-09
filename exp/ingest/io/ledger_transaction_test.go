@@ -98,43 +98,50 @@ func TestFeeMetaAndOperationsChangesSeparate(t *testing.T) {
 	assert.Equal(t, operationChanges[0].Post.Data.MustAccount().Balance, xdr.Int64(400))
 }
 
-func TestFailedTransactionOperationChangesMetaV0(t *testing.T) {
-	tx := LedgerTransaction{
-		Result: xdr.TransactionResultPair{
-			Result: xdr.TransactionResult{
-				Result: xdr.TransactionResultResult{
-					Code: xdr.TransactionResultCodeTxFailed,
-				},
+func TestFailedTransactionOperationChangesMeta(t *testing.T) {
+	testCases := []struct {
+		desc string
+		meta xdr.TransactionMeta
+	}{
+		{
+			desc: "V0",
+			meta: xdr.TransactionMeta{
+				Operations: &[]xdr.OperationMeta{},
 			},
 		},
-		Meta: xdr.TransactionMeta{
-			Operations: &[]xdr.OperationMeta{},
-		},
-	}
-
-	operationChanges := tx.GetOperationChanges(0)
-	assert.Len(t, operationChanges, 0)
-}
-
-func TestFailedTransactionOperationChangesMetaV1(t *testing.T) {
-	tx := LedgerTransaction{
-		Result: xdr.TransactionResultPair{
-			Result: xdr.TransactionResult{
-				Result: xdr.TransactionResultResult{
-					Code: xdr.TransactionResultCodeTxFailed,
-				},
+		{
+			desc: "V1",
+			meta: xdr.TransactionMeta{
+				V:  1,
+				V1: &xdr.TransactionMetaV1{},
 			},
 		},
-		Meta: xdr.TransactionMeta{
-			V:  1,
-			V1: &xdr.TransactionMetaV1{},
+		{
+			desc: "V2",
+			meta: xdr.TransactionMeta{
+				V:  2,
+				V2: &xdr.TransactionMetaV2{},
+			},
 		},
 	}
+	for _, tc := range testCases {
+		t.Run(tc.desc, func(t *testing.T) {
+			tx := LedgerTransaction{
+				Result: xdr.TransactionResultPair{
+					Result: xdr.TransactionResult{
+						Result: xdr.TransactionResultResult{
+							Code: xdr.TransactionResultCodeTxFailed,
+						},
+					},
+				},
+				Meta: tc.meta,
+			}
 
-	operationChanges := tx.GetOperationChanges(0)
-	assert.Len(t, operationChanges, 0)
+			operationChanges := tx.GetOperationChanges(0)
+			assert.Len(t, operationChanges, 0)
+		})
+	}
 }
-
 func TestMetaV2Order(t *testing.T) {
 	tx := LedgerTransaction{
 		Meta: xdr.TransactionMeta{
