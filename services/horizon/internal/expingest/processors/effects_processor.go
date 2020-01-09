@@ -51,10 +51,6 @@ func (p *EffectProcessor) loadAccountIDs(accountSet map[string]int64) error {
 func operationsEffects(transaction io.LedgerTransaction, sequence uint32) ([]effect, error) {
 	effects := []effect{}
 
-	if !transaction.Successful() {
-		return effects, nil
-	}
-
 	for opi, op := range transaction.Envelope.Tx.Operations {
 		operation := transactionOperationWrapper{
 			index:          uint32(opi),
@@ -139,13 +135,15 @@ func (p *EffectProcessor) ProcessLedger(ctx context.Context, store *pipeline.Sto
 			}
 		}
 
-		e, err2 := operationsEffects(transaction, sequence)
+		if transaction.Successful() {
+			e, err2 := operationsEffects(transaction, sequence)
 
-		if err2 != nil {
-			return err2
+			if err2 != nil {
+				return err2
+			}
+
+			effects = append(effects, e...)
 		}
-
-		effects = append(effects, e...)
 
 		select {
 		case <-ctx.Done():
