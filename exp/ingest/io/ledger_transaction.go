@@ -182,8 +182,22 @@ func (t *LedgerTransaction) GetChanges() []Change {
 			)
 			changes = append(changes, opChanges...)
 		}
+	case 2:
+		v2Meta := t.Meta.MustV2()
+		txChangesBefore := getChangesFromLedgerEntryChanges(v2Meta.TxChangesBefore)
+		changes = append(changes, txChangesBefore...)
+
+		for _, operationMeta := range v2Meta.Operations {
+			opChanges := getChangesFromLedgerEntryChanges(
+				operationMeta.Changes,
+			)
+			changes = append(changes, opChanges...)
+		}
+
+		txChangesAfter := getChangesFromLedgerEntryChanges(v2Meta.TxChangesAfter)
+		changes = append(changes, txChangesAfter...)
 	default:
-		panic("Unkown TransactionMeta version")
+		panic("Unsupported TransactionMeta version")
 	}
 
 	return changes
