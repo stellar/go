@@ -541,7 +541,6 @@ func (operation *transactionOperationWrapper) changeTrustEffects() []effect {
 
 	changes := operation.transaction.GetOperationChanges(operation.index)
 
-	// TODO/ASK: since we know this is trustline change, how many changes can we find?
 	for _, change := range changes {
 		if change.Type != xdr.LedgerEntryTypeTrustline {
 			continue
@@ -557,6 +556,8 @@ func (operation *transactionOperationWrapper) changeTrustEffects() []effect {
 		default:
 			panic("Invalid change")
 		}
+
+		break
 	}
 
 	effects.add(source.Address(), effect, details)
