@@ -108,7 +108,7 @@ func (i *tradeBatchInsertBuilder) Add(entries ...InsertTrade) error {
 			"price_d":              entry.SellPrice.D,
 		})
 		if err != nil {
-			return errors.Wrap(err, "failed to exec sql")
+			return errors.Wrap(err, "failed to add trade")
 		}
 	}
 
