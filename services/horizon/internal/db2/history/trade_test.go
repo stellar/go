@@ -1,11 +1,14 @@
-package history_test
+package history
 
 import (
 	"testing"
+	"time"
 
+	sq "github.com/Masterminds/squirrel"
 	"github.com/stellar/go/services/horizon/internal/db2"
-	. "github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/services/horizon/internal/test"
+	"github.com/stellar/go/services/horizon/internal/toid"
+	supportTime "github.com/stellar/go/support/time"
 	"github.com/stellar/go/xdr"
 )
 
@@ -68,4 +71,349 @@ func TestTradeQueries(t *testing.T) {
 	tt.Assert.Equal(xdr.Int64(1000000000), trades[0].BaseAmount)
 	tt.Assert.Equal(xdr.Int64(2000000000), trades[0].CounterAmount)
 	tt.Assert.Equal(false, trades[0].BaseIsSeller)
+}
+
+type tradeRow struct {
+	HistoryOperationID int64     `db:"history_operation_id"`
+	Order              int32     `db:"order"`
+	LedgerCloseTime    time.Time `db:"ledger_closed_at"`
+	OfferID            int64     `db:"offer_id"`
+	BaseOfferID        int64     `db:"base_offer_id"`
+	BaseAccountID      int64     `db:"base_account_id"`
+	BaseAssetID        int64     `db:"base_asset_id"`
+	BaseAmount         xdr.Int64 `db:"base_amount"`
+	CounterOfferID     int64     `db:"counter_offer_id"`
+	CounterAccountID   int64     `db:"counter_account_id"`
+	CounterAssetID     int64     `db:"counter_asset_id"`
+	CounterAmount      xdr.Int64 `db:"counter_amount"`
+	BaseIsSeller       bool      `db:"base_is_seller"`
+	PriceN             int       `db:"price_n"`
+	PriceD             int       `db:"price_d"`
+}
+
+func createInsertTrades(
+	accountIDs []int64, assetIDs []int64, ledger int32,
+) (InsertTrade, InsertTrade, InsertTrade) {
+	first := InsertTrade{
+		HistoryOperationID: toid.New(ledger, 1, 1).ToInt64(),
+		Order:              1,
+		LedgerCloseTime:    supportTime.MillisFromSeconds(time.Now().Unix()).ToTime(),
+		BuyOfferExists:     true,
+		BuyOfferID:         32145,
+		SellerAccountID:    accountIDs[0],
+		BuyerAccountID:     accountIDs[1],
+		SoldAssetID:        assetIDs[0],
+		BoughtAssetID:      assetIDs[1],
+		SellPrice: xdr.Price{
+			N: 1,
+			D: 3,
+		},
+		Trade: xdr.ClaimOfferAtom{
+			OfferId:      214515,
+			AmountSold:   7986,
+			AmountBought: 896,
+		},
+	}
+
+	second := first
+	second.BuyOfferExists = false
+	second.BuyOfferID = 89
+	second.Order = 2
+
+	third := InsertTrade{
+		HistoryOperationID: toid.New(ledger, 2, 1).ToInt64(),
+		Order:              1,
+		LedgerCloseTime:    time.Now().UTC(),
+		BuyOfferExists:     true,
+		BuyOfferID:         2,
+		SellerAccountID:    accountIDs[1],
+		BuyerAccountID:     accountIDs[0],
+		SoldAssetID:        assetIDs[2],
+		BoughtAssetID:      assetIDs[1],
+		SellPrice: xdr.Price{
+			N: 1156,
+			D: 3,
+		},
+		Trade: xdr.ClaimOfferAtom{
+			OfferId:      7,
+			AmountSold:   123,
+			AmountBought: 6,
+		},
+	}
+
+	return first, second, third
+}
+
+func createExpAccountsAndAssets(
+	tt *test.T, q *Q, accounts []string, assets []xdr.Asset,
+) ([]int64, []int64) {
+	addressToAccounts, err := q.CreateExpAccounts(accounts)
+	tt.Assert.NoError(err)
+
+	accountIDs := []int64{}
+	for _, account := range accounts {
+		accountIDs = append(accountIDs, addressToAccounts[account])
+	}
+
+	assetRows, err := q.CreateExpAssets(assets)
+	tt.Assert.NoError(err)
+
+	assetIDs := []int64{}
+	for _, row := range assetRows {
+		assetIDs = append(assetIDs, row.ID)
+	}
+
+	return accountIDs, assetIDs
+}
+
+func TestInsertExpTrade(t *testing.T) {
+	tt := test.Start(t)
+	defer tt.Finish()
+	test.ResetHorizonDB(t, tt.HorizonDB)
+	q := &Q{tt.HorizonSession()}
+
+	accountIDs, assetIDs := createExpAccountsAndAssets(
+		tt, q,
+		[]string{
+			"GB2QIYT2IAUFMRXKLSLLPRECC6OCOGJMADSPTRK7TGNT2SFR2YGWDARD",
+			"GAXMF43TGZHW3QN3REOUA2U5PW5BTARXGGYJ3JIFHW3YT6QRKRL3CPPU",
+		},
+		[]xdr.Asset{eurAsset, usdAsset, nativeAsset},
+	)
+
+	first, second, third := createInsertTrades(accountIDs, assetIDs, 3)
+
+	builder := q.NewTradeBatchInsertBuilder(1)
+	tt.Assert.NoError(
+		builder.Add(first, second, third),
+	)
+	tt.Assert.NoError(builder.Exec())
+
+	var rows []tradeRow
+	err := q.Select(
+		&rows,
+		sq.Select("*").From("exp_history_trades").OrderBy("history_operation_id", "\"order\""),
+	)
+	tt.Assert.NoError(err)
+
+	expected := []tradeRow{
+		tradeRow{
+			HistoryOperationID: first.HistoryOperationID,
+			Order:              first.Order,
+			LedgerCloseTime:    first.LedgerCloseTime,
+			OfferID:            int64(first.Trade.OfferId),
+			BaseOfferID:        EncodeOfferId(uint64(first.Trade.OfferId), CoreOfferIDType),
+			BaseAccountID:      first.SellerAccountID,
+			BaseAssetID:        first.SoldAssetID,
+			BaseAmount:         first.Trade.AmountSold,
+			CounterOfferID:     first.BuyOfferID,
+			CounterAccountID:   first.BuyerAccountID,
+			CounterAssetID:     first.BoughtAssetID,
+			CounterAmount:      first.Trade.AmountBought,
+			BaseIsSeller:       true,
+			PriceN:             int(first.SellPrice.N),
+			PriceD:             int(first.SellPrice.D),
+		},
+		tradeRow{
+			HistoryOperationID: second.HistoryOperationID,
+			Order:              second.Order,
+			LedgerCloseTime:    second.LedgerCloseTime,
+			OfferID:            int64(second.Trade.OfferId),
+			BaseOfferID:        EncodeOfferId(uint64(second.Trade.OfferId), CoreOfferIDType),
+			BaseAccountID:      second.SellerAccountID,
+			BaseAssetID:        second.SoldAssetID,
+			BaseAmount:         second.Trade.AmountSold,
+			CounterOfferID:     EncodeOfferId(uint64(second.HistoryOperationID), TOIDType),
+			CounterAccountID:   second.BuyerAccountID,
+			CounterAssetID:     second.BoughtAssetID,
+			CounterAmount:      second.Trade.AmountBought,
+			BaseIsSeller:       true,
+			PriceN:             int(second.SellPrice.N),
+			PriceD:             int(second.SellPrice.D),
+		},
+		tradeRow{
+			HistoryOperationID: third.HistoryOperationID,
+			Order:              third.Order,
+			LedgerCloseTime:    third.LedgerCloseTime,
+			OfferID:            int64(third.Trade.OfferId),
+			BaseOfferID:        third.BuyOfferID,
+			BaseAccountID:      third.BuyerAccountID,
+			BaseAssetID:        third.BoughtAssetID,
+			BaseAmount:         third.Trade.AmountBought,
+			CounterOfferID:     EncodeOfferId(uint64(third.Trade.OfferId), CoreOfferIDType),
+			CounterAccountID:   third.SellerAccountID,
+			CounterAssetID:     third.SoldAssetID,
+			CounterAmount:      third.Trade.AmountSold,
+			BaseIsSeller:       false,
+			PriceN:             int(third.SellPrice.D),
+			PriceD:             int(third.SellPrice.N),
+		},
+	}
+	tt.Assert.Len(rows, len(expected))
+
+	for i := 0; i < len(rows); i++ {
+		tt.Assert.Equal(expected[i].LedgerCloseTime.Unix(), rows[i].LedgerCloseTime.Unix())
+		rows[i].LedgerCloseTime = expected[i].LedgerCloseTime
+		tt.Assert.Equal(
+			expected[i],
+			rows[i],
+		)
+	}
+}
+
+func createTradeRows(
+	tt *test.T, q *Q,
+	idToAccount map[int64]xdr.AccountId,
+	idToAsset map[int64]xdr.Asset,
+	entries ...InsertTrade,
+) {
+	for _, entry := range entries {
+		entry.Trade.SellerId = idToAccount[entry.SellerAccountID]
+		entry.Trade.AssetSold = idToAsset[entry.SoldAssetID]
+		entry.Trade.AssetBought = idToAsset[entry.BoughtAssetID]
+
+		err := q.InsertTrade(
+			entry.HistoryOperationID,
+			entry.Order,
+			idToAccount[entry.BuyerAccountID],
+			entry.BuyOfferExists,
+			xdr.OfferEntry{OfferId: xdr.Int64(entry.BuyOfferID)},
+			entry.Trade,
+			entry.SellPrice,
+			supportTime.MillisFromSeconds(entry.LedgerCloseTime.Unix()),
+		)
+		tt.Assert.NoError(err)
+	}
+}
+
+func TestCheckExpTrades(t *testing.T) {
+	tt := test.Start(t)
+	defer tt.Finish()
+	test.ResetHorizonDB(t, tt.HorizonDB)
+	q := &Q{tt.HorizonSession()}
+
+	sequence := int32(56)
+	valid, err := q.CheckExpTrades(sequence)
+	tt.Assert.NoError(err)
+	tt.Assert.True(valid)
+
+	addresses := []string{
+		"GB2QIYT2IAUFMRXKLSLLPRECC6OCOGJMADSPTRK7TGNT2SFR2YGWDARD",
+		"GAXMF43TGZHW3QN3REOUA2U5PW5BTARXGGYJ3JIFHW3YT6QRKRL3CPPU",
+	}
+	assets := []xdr.Asset{
+		xdr.MustNewCreditAsset("CHF", issuer.Address()),
+		eurAsset, usdAsset, nativeAsset,
+		xdr.MustNewCreditAsset("BTC", issuer.Address()),
+	}
+
+	expAccountIDs, expAssetIDs := createExpAccountsAndAssets(
+		tt, q,
+		addresses,
+		assets,
+	)
+
+	chfAssetID, btcAssetID := expAssetIDs[0], expAssetIDs[4]
+	assets = assets[1:4]
+	expAssetIDs = expAssetIDs[1:4]
+
+	idToAccount := map[int64]xdr.AccountId{}
+	for i, id := range expAccountIDs {
+		idToAccount[id] = xdr.MustAddress(addresses[i])
+	}
+	idToAsset := map[int64]xdr.Asset{}
+	for i, id := range expAssetIDs {
+		idToAsset[id] = assets[i]
+	}
+
+	first, second, third := createInsertTrades(
+		expAccountIDs, expAssetIDs, sequence,
+	)
+
+	builder := q.NewTradeBatchInsertBuilder(1)
+	tt.Assert.NoError(
+		builder.Add(first, second, third),
+	)
+	tt.Assert.NoError(builder.Exec())
+
+	valid, err = q.CheckExpTrades(sequence)
+	tt.Assert.NoError(err)
+	tt.Assert.True(valid)
+
+	// create different asset id ordering in history_assets compared to exp_history_assets
+	_, err = q.GetCreateAssetID(assets[1])
+	tt.Assert.NoError(err)
+	_, err = q.GetCreateAssetID(assets[0])
+	tt.Assert.NoError(err)
+	_, err = q.GetCreateAssetID(assets[2])
+	tt.Assert.NoError(err)
+	createTradeRows(
+		tt, q, idToAccount, idToAsset, first, second, third,
+	)
+
+	valid, err = q.CheckExpTrades(sequence)
+	tt.Assert.NoError(err)
+	tt.Assert.True(valid)
+
+	tradeForOtherLedger, _, _ := createInsertTrades(
+		expAccountIDs, expAssetIDs, sequence+1,
+	)
+	tt.Assert.NoError(
+		builder.Add(tradeForOtherLedger),
+	)
+	tt.Assert.NoError(builder.Exec())
+
+	valid, err = q.CheckExpTrades(sequence)
+	tt.Assert.NoError(err)
+	tt.Assert.True(valid)
+
+	newAddress := "GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY"
+	newAccounts, err := q.CreateExpAccounts([]string{newAddress})
+	tt.Assert.NoError(err)
+	newAccountID := newAccounts[newAddress]
+
+	for fieldName, value := range map[string]interface{}{
+		"ledger_closed_at":   time.Now().Add(time.Hour),
+		"offer_id":           67,
+		"base_offer_id":      67,
+		"base_account_id":    newAccountID,
+		"base_asset_id":      chfAssetID,
+		"base_amount":        67,
+		"counter_offer_id":   67,
+		"counter_account_id": newAccountID,
+		"counter_asset_id":   btcAssetID,
+		"counter_amount":     67,
+		"base_is_seller":     second.SoldAssetID >= second.BoughtAssetID,
+		"price_n":            67,
+		"price_d":            67,
+	} {
+		updateSQL := sq.Update("exp_history_trades").
+			Set(fieldName, value).
+			Where(
+				"history_operation_id = ? AND \"order\" = ?",
+				second.HistoryOperationID, second.Order,
+			)
+		_, err = q.Exec(updateSQL)
+		tt.Assert.NoError(err)
+
+		valid, err = q.CheckExpTrades(sequence)
+		tt.Assert.NoError(err)
+		tt.Assert.False(valid)
+
+		_, err = q.Exec(sq.Delete("exp_history_trades").
+			Where(
+				"history_operation_id = ? AND \"order\" = ?",
+				second.HistoryOperationID, second.Order,
+			))
+		tt.Assert.NoError(err)
+
+		tt.Assert.NoError(
+			builder.Add(second),
+		)
+		tt.Assert.NoError(builder.Exec())
+
+		valid, err := q.CheckExpTrades(sequence)
+		tt.Assert.NoError(err)
+		tt.Assert.True(valid)
+	}
 }
