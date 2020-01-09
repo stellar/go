@@ -489,7 +489,10 @@ func (s *AccountsProcessorTestSuiteLedger) TestFeeProcessedBeforeEverythingElse(
 				},
 			},
 			Meta: xdr.TransactionMeta{
-				Operations: &[]xdr.OperationMeta{},
+				V: 1,
+				V1: &xdr.TransactionMetaV1{
+					Operations: []xdr.OperationMeta{},
+				},
 			},
 		}, nil).Once()
 

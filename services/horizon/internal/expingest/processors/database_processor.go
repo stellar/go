@@ -263,7 +263,11 @@ func (p *DatabaseProcessor) ProcessLedger(ctx context.Context, store *pipeline.S
 
 		// Tx meta
 		for _, transaction := range transactions {
-			for _, change := range transaction.GetChanges() {
+			changes, err := transaction.GetChanges()
+			if err != nil {
+				return errors.Wrap(err, "Error in transaction.GetChanges()")
+			}
+			for _, change := range changes {
 				err = ledgerCache.AddChange(change)
 				if err != nil {
 					return errors.Wrap(err, "error adding to ledgerCache")

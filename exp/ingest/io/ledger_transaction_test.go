@@ -46,29 +46,32 @@ func TestFeeAndMetaChangesSeparate(t *testing.T) {
 			},
 		},
 		Meta: xdr.TransactionMeta{
-			Operations: &[]xdr.OperationMeta{
-				{
-					Changes: xdr.LedgerEntryChanges{
-						xdr.LedgerEntryChange{
-							Type: xdr.LedgerEntryChangeTypeLedgerEntryState,
-							State: &xdr.LedgerEntry{
-								Data: xdr.LedgerEntryData{
-									Type: xdr.LedgerEntryTypeAccount,
-									Account: &xdr.AccountEntry{
-										AccountId: xdr.MustAddress("GAHK7EEG2WWHVKDNT4CEQFZGKF2LGDSW2IVM4S5DP42RBW3K6BTODB4A"),
-										Balance:   300,
+			V: 1,
+			V1: &xdr.TransactionMetaV1{
+				Operations: []xdr.OperationMeta{
+					{
+						Changes: xdr.LedgerEntryChanges{
+							xdr.LedgerEntryChange{
+								Type: xdr.LedgerEntryChangeTypeLedgerEntryState,
+								State: &xdr.LedgerEntry{
+									Data: xdr.LedgerEntryData{
+										Type: xdr.LedgerEntryTypeAccount,
+										Account: &xdr.AccountEntry{
+											AccountId: xdr.MustAddress("GAHK7EEG2WWHVKDNT4CEQFZGKF2LGDSW2IVM4S5DP42RBW3K6BTODB4A"),
+											Balance:   300,
+										},
 									},
 								},
 							},
-						},
-						xdr.LedgerEntryChange{
-							Type: xdr.LedgerEntryChangeTypeLedgerEntryUpdated,
-							Updated: &xdr.LedgerEntry{
-								Data: xdr.LedgerEntryData{
-									Type: xdr.LedgerEntryTypeAccount,
-									Account: &xdr.AccountEntry{
-										AccountId: xdr.MustAddress("GAHK7EEG2WWHVKDNT4CEQFZGKF2LGDSW2IVM4S5DP42RBW3K6BTODB4A"),
-										Balance:   400,
+							xdr.LedgerEntryChange{
+								Type: xdr.LedgerEntryChangeTypeLedgerEntryUpdated,
+								Updated: &xdr.LedgerEntry{
+									Data: xdr.LedgerEntryData{
+										Type: xdr.LedgerEntryTypeAccount,
+										Account: &xdr.AccountEntry{
+											AccountId: xdr.MustAddress("GAHK7EEG2WWHVKDNT4CEQFZGKF2LGDSW2IVM4S5DP42RBW3K6BTODB4A"),
+											Balance:   400,
+										},
 									},
 								},
 							},
@@ -83,7 +86,8 @@ func TestFeeAndMetaChangesSeparate(t *testing.T) {
 	assert.Equal(t, feeChanges[0].Pre.Data.MustAccount().Balance, xdr.Int64(100))
 	assert.Equal(t, feeChanges[0].Post.Data.MustAccount().Balance, xdr.Int64(200))
 
-	metaChanges := tx.GetChanges()
+	metaChanges, err := tx.GetChanges()
+	assert.NoError(t, err)
 	assert.Len(t, metaChanges, 1)
 	assert.Equal(t, metaChanges[0].Pre.Data.MustAccount().Balance, xdr.Int64(300))
 	assert.Equal(t, metaChanges[0].Post.Data.MustAccount().Balance, xdr.Int64(400))
@@ -203,7 +207,8 @@ func TestMetaV2Order(t *testing.T) {
 			},
 		}}
 
-	metaChanges := tx.GetChanges()
+	metaChanges, err := tx.GetChanges()
+	assert.NoError(t, err)
 	assert.Len(t, metaChanges, 4)
 
 	change := metaChanges[0]

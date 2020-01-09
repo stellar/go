@@ -159,18 +159,14 @@ func (t *LedgerTransaction) GetFeeChanges() []Change {
 
 // GetChanges returns a developer friendly representation of LedgerEntryChanges.
 // It contains transaction changes and operation changes in that order.
-func (t *LedgerTransaction) GetChanges() []Change {
+// It doesn't support legacy TransactionMeta.V=0.
+func (t *LedgerTransaction) GetChanges() ([]Change, error) {
 	var changes []Change
 
 	// Transaction meta
 	switch t.Meta.V {
 	case 0:
-		for _, operationMeta := range *t.Meta.Operations {
-			opChanges := getChangesFromLedgerEntryChanges(
-				operationMeta.Changes,
-			)
-			changes = append(changes, opChanges...)
-		}
+		return changes, errors.New("TransactionMeta.V=0 not supported")
 	case 1:
 		v1Meta := t.Meta.MustV1()
 		txChanges := getChangesFromLedgerEntryChanges(v1Meta.TxChanges)
@@ -197,10 +193,10 @@ func (t *LedgerTransaction) GetChanges() []Change {
 		txChangesAfter := getChangesFromLedgerEntryChanges(v2Meta.TxChangesAfter)
 		changes = append(changes, txChangesAfter...)
 	default:
-		panic("Unsupported TransactionMeta version")
+		return changes, errors.New("Unsupported TransactionMeta version")
 	}
 
-	return changes
+	return changes, nil
 }
 
 // getChangesFromLedgerEntryChanges transforms LedgerEntryChanges to []Change.

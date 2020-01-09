@@ -8,6 +8,7 @@ import (
 	"github.com/stellar/go/exp/ingest/io"
 	ingestpipeline "github.com/stellar/go/exp/ingest/pipeline"
 	"github.com/stellar/go/exp/support/pipeline"
+	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
 )
 
@@ -65,7 +66,11 @@ func (p *OrderbookProcessor) ProcessLedger(ctx context.Context, store *pipeline.
 			continue
 		}
 
-		for _, change := range transaction.GetChanges() {
+		changes, err := transaction.GetChanges()
+		if err != nil {
+			return errors.Wrap(err, "Error in transaction.GetChanges()")
+		}
+		for _, change := range changes {
 			p.processChange(change)
 		}
 
