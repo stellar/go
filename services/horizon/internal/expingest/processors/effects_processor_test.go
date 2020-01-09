@@ -281,6 +281,22 @@ func (s *EffectsProcessorTestSuiteLedger) TestCheckExpOperationEffectsDoesNotMat
 	s.Assert().NoError(err)
 }
 
+func (s *EffectsProcessorTestSuiteLedger) TestCheckExpOperationEffectsMinLedger() {
+	// CheckExpOperationEffects should not be called
+	s.mockLedgerReader.On("GetSequence").Return(uint32(10)).Once()
+	s.mockLedgerReader.
+		On("Read").
+		Return(io.LedgerTransaction{}, stdio.EOF).Once()
+
+	err := s.processor.ProcessLedger(
+		s.context,
+		&supportPipeline.Store{},
+		s.mockLedgerReader,
+		s.mockLedgerWriter,
+	)
+	s.Assert().NoError(err)
+}
+
 func (s *EffectsProcessorTestSuiteLedger) TestIngestEffectsSucceeds() {
 	s.mockLedgerReader.On("GetSequence").Return(s.sequence).Once()
 
