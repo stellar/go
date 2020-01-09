@@ -13,6 +13,7 @@ import (
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -25,17 +26,17 @@ type EffectsProcessorTestSuiteLedger struct {
 	mockLedgerWriter       *io.MockLedgerWriter
 	context                context.Context
 
-	firstTx         io.LedgerTransaction
-	secondTx        io.LedgerTransaction
-	thirdTx         io.LedgerTransaction
-	failedTx        io.LedgerTransaction
-	firstTxID       int64
-	secondTxID      int64
-	thirdTxID       int64
-	failedTxID      int64
-	sequence        uint32
-	sortedAddresses []string
-	addressToID     map[string]int64
+	firstTx     io.LedgerTransaction
+	secondTx    io.LedgerTransaction
+	thirdTx     io.LedgerTransaction
+	failedTx    io.LedgerTransaction
+	firstTxID   int64
+	secondTxID  int64
+	thirdTxID   int64
+	failedTxID  int64
+	sequence    uint32
+	addresses   []string
+	addressToID map[string]int64
 }
 
 func TestEffectsProcessorTestSuiteLedger(t *testing.T) {
@@ -51,7 +52,7 @@ func (s *EffectsProcessorTestSuiteLedger) SetupTest() {
 
 	s.sequence = uint32(20)
 
-	s.sortedAddresses = []string{
+	s.addresses = []string{
 		"GANFZDRBCNTUXIODCJEYMACPMCSZEVE4WZGZ3CZDZ3P2SXK4KH75IK6Y",
 		"GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H",
 		"GCQZP3IU7XU6EJ63JZXKCQOYT2RNXN3HB5CNHENNUEUHSMA4VUJJJSEN",
@@ -111,9 +112,9 @@ func (s *EffectsProcessorTestSuiteLedger) SetupTest() {
 	s.failedTxID = toid.New(int32(s.sequence), 4, 0).ToInt64()
 
 	s.addressToID = map[string]int64{
-		s.sortedAddresses[0]: 2,
-		s.sortedAddresses[1]: 20,
-		s.sortedAddresses[2]: 200,
+		s.addresses[0]: 2,
+		s.addresses[1]: 20,
+		s.addresses[2]: 200,
 	}
 
 	s.processor = &EffectProcessor{
@@ -154,7 +155,7 @@ func (s *EffectsProcessorTestSuiteLedger) mockLedgerReads() {
 func (s *EffectsProcessorTestSuiteLedger) mockSuccessfulEffectBatchAdds() {
 	s.mockBatchInsertBuilder.On(
 		"Add",
-		s.addressToID[s.sortedAddresses[2]],
+		s.addressToID[s.addresses[2]],
 		toid.New(int32(s.sequence), 1, 1).ToInt64(),
 		uint32(1),
 		history.EffectSequenceBumped,
@@ -162,7 +163,7 @@ func (s *EffectsProcessorTestSuiteLedger) mockSuccessfulEffectBatchAdds() {
 	).Return(nil).Once()
 	s.mockBatchInsertBuilder.On(
 		"Add",
-		s.addressToID[s.sortedAddresses[2]],
+		s.addressToID[s.addresses[2]],
 		toid.New(int32(s.sequence), 2, 1).ToInt64(),
 		uint32(1),
 		history.EffectAccountCreated,
@@ -170,7 +171,7 @@ func (s *EffectsProcessorTestSuiteLedger) mockSuccessfulEffectBatchAdds() {
 	).Return(nil).Once()
 	s.mockBatchInsertBuilder.On(
 		"Add",
-		s.addressToID[s.sortedAddresses[1]],
+		s.addressToID[s.addresses[1]],
 		toid.New(int32(s.sequence), 2, 1).ToInt64(),
 		uint32(2),
 		history.EffectAccountDebited,
@@ -178,7 +179,7 @@ func (s *EffectsProcessorTestSuiteLedger) mockSuccessfulEffectBatchAdds() {
 	).Return(nil).Once()
 	s.mockBatchInsertBuilder.On(
 		"Add",
-		s.addressToID[s.sortedAddresses[2]],
+		s.addressToID[s.addresses[2]],
 		toid.New(int32(s.sequence), 2, 1).ToInt64(),
 		uint32(3),
 		history.EffectSignerCreated,
@@ -187,7 +188,7 @@ func (s *EffectsProcessorTestSuiteLedger) mockSuccessfulEffectBatchAdds() {
 
 	s.mockBatchInsertBuilder.On(
 		"Add",
-		s.addressToID[s.sortedAddresses[0]],
+		s.addressToID[s.addresses[0]],
 		toid.New(int32(s.sequence), 3, 1).ToInt64(),
 		uint32(1),
 		history.EffectAccountCredited,
@@ -196,12 +197,22 @@ func (s *EffectsProcessorTestSuiteLedger) mockSuccessfulEffectBatchAdds() {
 
 	s.mockBatchInsertBuilder.On(
 		"Add",
-		s.addressToID[s.sortedAddresses[0]],
+		s.addressToID[s.addresses[0]],
 		toid.New(int32(s.sequence), 3, 1).ToInt64(),
 		uint32(2),
 		history.EffectAccountDebited,
 		[]byte("{\"amount\":\"10.0000000\",\"asset_type\":\"native\"}"),
 	).Return(nil).Once()
+}
+
+func (s *EffectsProcessorTestSuiteLedger) mockSuccessfulCreateExpAccounts() {
+	s.mockQ.On(
+		"CreateExpAccounts",
+		mock.AnythingOfType("[]string"),
+	).Run(func(args mock.Arguments) {
+		arg := args.Get(0).([]string)
+		s.Assert().ElementsMatch(s.addresses, arg)
+	}).Return(s.addressToID, nil).Once()
 }
 
 func (s *EffectsProcessorTestSuiteLedger) TestNoIngestUpdateDatabase() {
@@ -274,8 +285,7 @@ func (s *EffectsProcessorTestSuiteLedger) TestIngestEffectsSucceeds() {
 	s.mockLedgerReader.On("GetSequence").Return(s.sequence).Once()
 
 	s.mockLedgerReads()
-
-	s.mockQ.On("CreateExpAccounts", s.sortedAddresses).Return(s.addressToID, nil).Once()
+	s.mockSuccessfulCreateExpAccounts()
 	s.mockQ.On("NewEffectBatchInsertBuilder", maxBatchSize).
 		Return(s.mockBatchInsertBuilder).Once()
 	s.mockQ.On("CheckExpOperationEffects", int32(s.sequence-10)).
@@ -300,7 +310,7 @@ func (s *EffectsProcessorTestSuiteLedger) TestCreateExpAccountsFails() {
 
 	s.mockLedgerReads()
 
-	s.mockQ.On("CreateExpAccounts", s.sortedAddresses).
+	s.mockQ.On("CreateExpAccounts", mock.AnythingOfType("[]string")).
 		Return(s.addressToID, errors.New("transient error")).Once()
 
 	err := s.processor.ProcessLedger(
@@ -317,14 +327,13 @@ func (s *EffectsProcessorTestSuiteLedger) TestBatchAddFails() {
 
 	s.mockLedgerReads()
 
-	s.mockQ.On("CreateExpAccounts", s.sortedAddresses).
-		Return(s.addressToID, nil).Once()
+	s.mockSuccessfulCreateExpAccounts()
 	s.mockQ.On("NewEffectBatchInsertBuilder", maxBatchSize).
 		Return(s.mockBatchInsertBuilder).Once()
 
 	s.mockBatchInsertBuilder.On(
 		"Add",
-		s.addressToID[s.sortedAddresses[2]],
+		s.addressToID[s.addresses[2]],
 		toid.New(int32(s.sequence), 1, 1).ToInt64(),
 		uint32(1),
 		history.EffectSequenceBumped,

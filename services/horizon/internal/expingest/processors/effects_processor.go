@@ -7,7 +7,6 @@ import (
 	"fmt"
 	stdio "io"
 	"reflect"
-	"sort"
 
 	"github.com/stellar/go/amount"
 	"github.com/stellar/go/exp/ingest/io"
@@ -29,7 +28,6 @@ func (p *EffectProcessor) loadAccountIDs(accountSet map[string]int64) error {
 	for address := range accountSet {
 		addresses = append(addresses, address)
 	}
-	sort.Strings(addresses)
 
 	addressToID, err := p.EffectsQ.CreateExpAccounts(addresses)
 	if err != nil {
