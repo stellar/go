@@ -276,6 +276,10 @@ func (q *Q) CheckExpOperationEffects(seq int32) (bool, error) {
 		)
 	}
 
+	// We only proceed with the comparison if we have data in both the
+	// legacy ingestion system and the experimental ingestion system.
+	// If there is no data in either the legacy ingestion system or the
+	// experimental ingestion system we skip the check.
 	if len(expEffects) == 0 || len(effects) == 0 {
 		return true, nil
 	}
