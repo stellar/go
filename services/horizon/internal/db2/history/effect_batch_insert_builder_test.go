@@ -38,7 +38,12 @@ func TestAddEffect(t *testing.T) {
 	tt.Assert.NoError(err)
 
 	effects := []Effect{}
-	err = q.Select(&effects, expSelectEffect)
+	err = q.Select(
+		&effects,
+		effectFields.
+			From("exp_history_effects heff").
+			LeftJoin("exp_history_accounts hacc ON hacc.id = heff.history_account_id"),
+	)
 
 	tt.Assert.NoError(err)
 	tt.Assert.Len(effects, 1)
