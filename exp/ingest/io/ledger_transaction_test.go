@@ -236,6 +236,17 @@ func TestMetaV2Order(t *testing.T) {
 	assert.Equal(t, change.Post.Data.MustAccount().Balance, xdr.Int64(400))
 }
 
+func TestMetaV0(t *testing.T) {
+	tx := LedgerTransaction{
+		Meta: xdr.TransactionMeta{
+			V: 0,
+		}}
+
+	_, err := tx.GetChanges()
+	assert.Error(t, err)
+	assert.EqualError(t, err, "TransactionMeta.V=0 not supported")
+}
+
 func TestChangeAccountChangedExceptSignersLastModifiedLedgerSeq(t *testing.T) {
 	change := Change{
 		Type: xdr.LedgerEntryTypeAccount,
