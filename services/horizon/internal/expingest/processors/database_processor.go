@@ -263,7 +263,8 @@ func (p *DatabaseProcessor) ProcessLedger(ctx context.Context, store *pipeline.S
 
 		// Tx meta
 		for _, transaction := range transactions {
-			changes, err := transaction.GetChanges()
+			var changes []io.Change
+			changes, err = transaction.GetChanges()
 			if err != nil {
 				return errors.Wrap(err, "Error in transaction.GetChanges()")
 			}
