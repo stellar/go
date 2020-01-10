@@ -351,7 +351,7 @@ type QTrades interface {
 	CreateExpAccounts(addresses []string) (map[string]int64, error)
 	NewTradeBatchInsertBuilder(maxBatchSize int) TradeBatchInsertBuilder
 	CheckExpTrades(seq int32) (bool, error)
-	CreateExpAssets(assets []xdr.Asset) ([]Asset, error)
+	CreateExpAssets(assets []xdr.Asset) (map[string]Asset, error)
 }
 
 // CheckExpTrades checks that the trades in exp_history_trades

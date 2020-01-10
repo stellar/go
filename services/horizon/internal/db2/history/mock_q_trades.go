@@ -19,9 +19,9 @@ func (m *MockQTrades) CreateExpAccounts(addresses []string) (map[string]int64, e
 	return a.Get(0).(map[string]int64), a.Error(1)
 }
 
-func (m *MockQTrades) CreateExpAssets(assets []xdr.Asset) ([]Asset, error) {
+func (m *MockQTrades) CreateExpAssets(assets []xdr.Asset) (map[string]Asset, error) {
 	a := m.Called(assets)
-	return a.Get(0).([]Asset), a.Error(1)
+	return a.Get(0).(map[string]Asset), a.Error(1)
 }
 
 func (m *MockQTrades) NewTradeBatchInsertBuilder(maxBatchSize int) TradeBatchInsertBuilder {

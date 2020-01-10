@@ -44,7 +44,7 @@ func (p *TradeProcessor) ProcessLedger(ctx context.Context, store *pipeline.Stor
 	var inserts []history.InsertTrade
 	var buyers []string
 	accountSet := map[string]int64{}
-	assetSet := map[string]xdr.Asset{}
+	assets := []xdr.Asset{}
 
 	for {
 		var transaction io.LedgerTransaction
@@ -72,8 +72,7 @@ func (p *TradeProcessor) ProcessLedger(ctx context.Context, store *pipeline.Stor
 			buyer := txBuyers[i]
 			accountSet[insert.Trade.SellerId.Address()] = 0
 			accountSet[buyer] = 0
-			assetSet[insert.Trade.AssetSold.String()] = insert.Trade.AssetSold
-			assetSet[insert.Trade.AssetBought.String()] = insert.Trade.AssetBought
+			assets = append(assets, insert.Trade.AssetSold, insert.Trade.AssetBought)
 
 			inserts = append(inserts, insert)
 			buyers = append(buyers, buyer)
@@ -89,28 +88,22 @@ func (p *TradeProcessor) ProcessLedger(ctx context.Context, store *pipeline.Stor
 
 	if len(inserts) > 0 {
 		batch := p.TradesQ.NewTradeBatchInsertBuilder(maxBatchSize)
-		accountSet, err = p.TradesQ.CreateExpAccounts(accountSetToList(accountSet))
+		accountSet, err = p.TradesQ.CreateExpAccounts(mapKeysToList(accountSet))
 		if err != nil {
 			return errors.Wrap(err, "Error creating account ids")
 		}
 
-		assetStrings, assets := assetSetToList(assetSet)
-		var assetRows []history.Asset
-		assetRows, err = p.TradesQ.CreateExpAssets(assets)
+		var assetMap map[string]history.Asset
+		assetMap, err = p.TradesQ.CreateExpAssets(assets)
 		if err != nil {
 			return errors.Wrap(err, "Error creating asset ids")
-		}
-
-		assetToID := map[string]int64{}
-		for i, row := range assetRows {
-			assetToID[assetStrings[i]] = row.ID
 		}
 
 		for i, insert := range inserts {
 			insert.BuyerAccountID = accountSet[buyers[i]]
 			insert.SellerAccountID = accountSet[insert.Trade.SellerId.Address()]
-			insert.SoldAssetID = assetToID[insert.Trade.AssetSold.String()]
-			insert.BoughtAssetID = assetToID[insert.Trade.AssetBought.String()]
+			insert.SoldAssetID = assetMap[insert.Trade.AssetSold.String()].ID
+			insert.BoughtAssetID = assetMap[insert.Trade.AssetBought.String()].ID
 			if err = batch.Add(insert); err != nil {
 				return errors.Wrap(err, "Error adding trade to batch")
 			}
@@ -281,22 +274,12 @@ func beforeAndAfter(m *meta.Bundle, target xdr.LedgerKey, opidx int) (
 	return before, after, nil
 }
 
-func accountSetToList(set map[string]int64) []string {
+func mapKeysToList(set map[string]int64) []string {
 	keys := make([]string, 0, len(set))
 	for key := range set {
 		keys = append(keys, key)
 	}
 	return keys
-}
-
-func assetSetToList(set map[string]xdr.Asset) ([]string, []xdr.Asset) {
-	values := make([]xdr.Asset, 0, len(set))
-	keys := make([]string, 0, len(set))
-	for key, value := range set {
-		keys = append(keys, key)
-		values = append(values, value)
-	}
-	return keys, values
 }
 
 // Name processor name
