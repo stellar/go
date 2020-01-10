@@ -224,9 +224,9 @@ func (s *TrustLinesProcessorTestSuiteLedger) TestInsertTrustLine() {
 		}),
 	}
 	// should be ignored because it's not an trust line type
-	s.Assert().NoError(
-		s.processor.processLedgerTrustLines(accountTransaction.GetChanges()[0]),
-	)
+	changes, err := accountTransaction.GetChanges()
+	s.Assert().NoError(err)
+	s.Assert().NoError(s.processor.processLedgerTrustLines(changes[0]))
 
 	// add trust line
 	trustLine := xdr.TrustLineEntry{
@@ -378,7 +378,7 @@ func (s *TrustLinesProcessorTestSuiteLedger) TestInsertTrustLine() {
 		On("Read").
 		Return(io.LedgerTransaction{}, stdio.EOF).Once()
 
-	err := s.processor.ProcessLedger(
+	err = s.processor.ProcessLedger(
 		context.Background(),
 		&supportPipeline.Store{},
 		s.mockLedgerReader,

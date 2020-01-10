@@ -159,9 +159,9 @@ func (s *OffersProcessorTestSuiteLedger) TestInsertOffer() {
 		}),
 	}
 	// should be ignored because it's not an offer type
-	s.Assert().NoError(
-		s.processor.processLedgerOffers(accountTransaction.GetChanges()[0]),
-	)
+	changes, err := accountTransaction.GetChanges()
+	s.Assert().NoError(err)
+	s.Assert().NoError(s.processor.processLedgerOffers(changes[0]))
 
 	// add offer
 	offer := xdr.OfferEntry{
@@ -239,7 +239,7 @@ func (s *OffersProcessorTestSuiteLedger) TestInsertOffer() {
 		On("Read").
 		Return(io.LedgerTransaction{}, stdio.EOF).Once()
 
-	err := s.processor.ProcessLedger(
+	err = s.processor.ProcessLedger(
 		context.Background(),
 		&supportPipeline.Store{},
 		s.mockLedgerReader,

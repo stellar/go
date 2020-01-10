@@ -65,7 +65,12 @@ func (p *OrderbookProcessor) ProcessLedger(ctx context.Context, store *pipeline.
 			continue
 		}
 
-		for _, change := range transaction.GetChanges() {
+		changes, err := transaction.GetChanges()
+		if err != nil {
+			return err
+		}
+
+		for _, change := range changes {
 			if change.Type != xdr.LedgerEntryTypeOffer {
 				continue
 			}
