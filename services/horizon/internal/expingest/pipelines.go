@@ -147,6 +147,9 @@ func buildLedgerPipeline(
 							pipeline.LedgerNode(&horizonProcessors.OperationProcessor{
 								OperationsQ: historyQ,
 							}),
+							pipeline.LedgerNode(&horizonProcessors.EffectProcessor{
+								EffectsQ: historyQ,
+							}),
 						),
 					),
 				orderBookGraphLedgerNode(graph),

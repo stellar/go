@@ -17,7 +17,7 @@ func TestChangeAccountChangedExceptSignersInvalidType(t *testing.T) {
 	})
 }
 
-func TestFeeAndMetaChangesSeparate(t *testing.T) {
+func TestFeeMetaAndOperationsChangesSeparate(t *testing.T) {
 	tx := LedgerTransaction{
 		FeeChanges: xdr.LedgerEntryChanges{
 			xdr.LedgerEntryChange{
@@ -91,8 +91,64 @@ func TestFeeAndMetaChangesSeparate(t *testing.T) {
 	assert.Len(t, metaChanges, 1)
 	assert.Equal(t, metaChanges[0].Pre.Data.MustAccount().Balance, xdr.Int64(300))
 	assert.Equal(t, metaChanges[0].Post.Data.MustAccount().Balance, xdr.Int64(400))
+
+	operationChanges, err := tx.GetOperationChanges(0)
+	assert.NoError(t, err)
+	assert.Len(t, operationChanges, 1)
+	assert.Equal(t, operationChanges[0].Pre.Data.MustAccount().Balance, xdr.Int64(300))
+	assert.Equal(t, operationChanges[0].Post.Data.MustAccount().Balance, xdr.Int64(400))
 }
 
+func TestFailedTransactionOperationChangesMeta(t *testing.T) {
+	testCases := []struct {
+		desc string
+		meta xdr.TransactionMeta
+	}{
+		{
+			desc: "V0",
+			meta: xdr.TransactionMeta{
+				Operations: &[]xdr.OperationMeta{},
+			},
+		},
+		{
+			desc: "V1",
+			meta: xdr.TransactionMeta{
+				V:  1,
+				V1: &xdr.TransactionMetaV1{},
+			},
+		},
+		{
+			desc: "V2",
+			meta: xdr.TransactionMeta{
+				V:  2,
+				V2: &xdr.TransactionMetaV2{},
+			},
+		},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.desc, func(t *testing.T) {
+			tx := LedgerTransaction{
+				Result: xdr.TransactionResultPair{
+					Result: xdr.TransactionResult{
+						Result: xdr.TransactionResultResult{
+							Code: xdr.TransactionResultCodeTxFailed,
+						},
+					},
+				},
+				Meta: tc.meta,
+			}
+
+			operationChanges, err := tx.GetOperationChanges(0)
+			if tx.Meta.V == 0 {
+				assert.Error(t, err)
+				assert.EqualError(t, err, "TransactionMeta.V=0 not supported")
+			} else {
+				assert.NoError(t, err)
+				assert.Len(t, operationChanges, 0)
+			}
+		})
+	}
+}
 func TestMetaV2Order(t *testing.T) {
 	tx := LedgerTransaction{
 		Meta: xdr.TransactionMeta{

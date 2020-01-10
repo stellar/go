@@ -199,6 +199,39 @@ func (t *LedgerTransaction) GetChanges() ([]Change, error) {
 	return changes, nil
 }
 
+// GetOperationChanges returns a developer friendly representation of LedgerEntryChanges.
+// It contains only operation changes.
+func (t *LedgerTransaction) GetOperationChanges(operationIndex uint32) ([]Change, error) {
+	var changes []Change
+
+	// Transaction meta
+	switch t.Meta.V {
+	case 0:
+		return changes, errors.New("TransactionMeta.V=0 not supported")
+	case 1:
+		v1Meta := t.Meta.MustV1()
+		changes = operationChanges(v1Meta.Operations, operationIndex)
+	case 2:
+		v2Meta := t.Meta.MustV2()
+		changes = operationChanges(v2Meta.Operations, operationIndex)
+	default:
+		return changes, errors.New("Unsupported TransactionMeta version")
+	}
+
+	return changes, nil
+}
+
+func operationChanges(ops []xdr.OperationMeta, index uint32) []Change {
+	if len(ops) == 0 || int(index) >= len(ops) {
+		return []Change{}
+	}
+
+	operationMeta := ops[index]
+	return getChangesFromLedgerEntryChanges(
+		operationMeta.Changes,
+	)
+}
+
 // getChangesFromLedgerEntryChanges transforms LedgerEntryChanges to []Change.
 // Each `update` and `removed` is preceded with `state` and `create` changes
 // are alone, without `state`. The transformation we're doing is to move each
