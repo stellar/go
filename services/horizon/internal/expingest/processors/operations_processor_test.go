@@ -50,6 +50,7 @@ func (s *OperationsProcessorTestSuiteLedger) SetupTest() {
 
 func (s *OperationsProcessorTestSuiteLedger) TearDownTest() {
 	s.mockQ.AssertExpectations(s.T())
+	s.mockBatchInsertBuilder.AssertExpectations(s.T())
 	s.mockLedgerReader.AssertExpectations(s.T())
 	s.mockLedgerWriter.AssertExpectations(s.T())
 }

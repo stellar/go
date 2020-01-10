@@ -3,7 +3,6 @@ package processors
 import (
 	"context"
 	stdio "io"
-	"sort"
 
 	"github.com/stellar/go/exp/ingest/io"
 	ingestpipeline "github.com/stellar/go/exp/ingest/pipeline"
@@ -45,7 +44,6 @@ func (p *ParticipantsProcessor) loadAccountIDs(participantSet map[string]partici
 	for address := range participantSet {
 		addresses = append(addresses, address)
 	}
-	sort.Strings(addresses)
 
 	addressToID, err := p.ParticipantsQ.CreateExpAccounts(addresses)
 	if err != nil {
