@@ -1,0 +1,60 @@
+#! /usr/bin/env bash
+set -e
+
+service postgresql start
+
+# Calculate params for AWS Batch
+if [ ! -z "$AWS_BATCH_JOB_ARRAY_INDEX" ]; then
+	# The batch should have three env variables:
+	# * BATCH_START_LEDGER - start ledger of the job, must be equal 1 or a
+	#   checkpoint ledger (i + 1) % 64 == 0.
+	# * BATCH_SIZE - size of the batch in ledgers, must be multiple of 64!
+	# * BRANCH - git branch to build
+	#
+	# Ex: BATCH_START_LEDGER=63, BATCH_SIZE=64 will create the following ranges:
+	# AWS_BATCH_JOB_ARRAY_INDEX=0: [63, 127]
+	# AWS_BATCH_JOB_ARRAY_INDEX=1: [127, 191]
+	# AWS_BATCH_JOB_ARRAY_INDEX=2: [191, 255]
+	# AWS_BATCH_JOB_ARRAY_INDEX=3: [255, 319]
+	# ...
+
+	if [ $BATCH_START_LEDGER -eq 1 ]; then
+		export FROM=`expr "$BATCH_SIZE" \* "$AWS_BATCH_JOB_ARRAY_INDEX" + "$BATCH_START_LEDGER" - "2"`
+		export TO=`expr "$BATCH_SIZE" \* "$AWS_BATCH_JOB_ARRAY_INDEX" + "$BATCH_START_LEDGER" + "$BATCH_SIZE" - "2"`
+		if [ $FROM -eq -1 ]; then
+			export FROM="1"
+		fi
+	else
+		export FROM=`expr "$BATCH_SIZE" \* "$AWS_BATCH_JOB_ARRAY_INDEX" + "$BATCH_START_LEDGER"`
+		export TO=`expr "$BATCH_SIZE" \* "$AWS_BATCH_JOB_ARRAY_INDEX" + "$BATCH_START_LEDGER" + "$BATCH_SIZE"`
+	fi
+fi
+
+export LEDGER_COUNT=`expr "$TO" - "$FROM" + "1"`
+
+echo "FROM: $FROM TO: $TO"
+
+stellar-core new-db
+stellar-core catchup $TO/$LEDGER_COUNT
+
+# pubnet horizon config
+export NETWORK_PASSPHRASE="Public Global Stellar Network ; September 2015"
+export HISTORY_ARCHIVE_URLS="https://history.stellar.org/prd/core-live/core_live_001"
+export DATABASE_URL="postgres://postgres:postgres@localhost:5432/horizon?sslmode=disable"
+export INGEST="false"
+export ENABLE_EXPERIMENTAL_INGESTION="true"
+export INGEST_FAILED_TRANSACTIONS=true
+export STELLAR_CORE_URL="http://localhost:11626"
+export STELLAR_CORE_DATABASE_URL="postgres://postgres:postgres@localhost:5432/core?sslmode=disable"
+
+git clone https://github.com/stellar/go.git stellar-go
+cd stellar-go
+if [ ! -z "$BRANCH" ]; then
+	git checkout $BRANCH
+fi
+
+/usr/local/go/bin/go build -v ./services/horizon
+./horizon db migrate up
+./horizon expingest verify-range --from $FROM --to $TO --verify-state
+
+echo "OK"
