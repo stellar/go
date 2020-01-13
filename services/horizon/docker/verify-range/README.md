@@ -6,31 +6,31 @@ This docker image allows running multiple instances of `horizon expingest verify
 
 ### Running locally
 
-Name | Description
--|- 
-`BRANCH` | Git branch to build (useful for testing PRs)
-`FROM` | First ledger of the range (must be checkpoint ledger)
-`TO` | Last ledger of the range (must be checkpoint ledger)
+| Name     | Description                                           |
+|----------|-------------------------------------------------------|
+| `BRANCH` | Git branch to build (useful for testing PRs)          |
+| `FROM`   | First ledger of the range (must be checkpoint ledger) |
+| `TO`     | Last ledger of the range (must be checkpoint ledger)  |
 
 ### Running in AWS Batch
 
-Name | Description
--|- 
-`BRANCH` | Git branch to build (useful for testing PRs)
-`BATCH_START_LEDGER` | First ledger of the AWS Batch Job, must be a checkpoint ledger or 1.
-`BATCH_SIZE` | Size of the batch, must be multiple of 64.
+| Name                 | Description                                                          |
+|----------------------|----------------------------------------------------------------------|
+| `BRANCH`             | Git branch to build (useful for testing PRs)                         |
+| `BATCH_START_LEDGER` | First ledger of the AWS Batch Job, must be a checkpoint ledger or 1. |
+| `BATCH_SIZE`         | Size of the batch, must be multiple of 64.                           |
 
 #### Example
 
 When you start 10 jobs with `BATCH_START_LEDGER=63` and `BATCH_SIZE=64`
 it will run the following ranges:
 
-`AWS_BATCH_JOB_ARRAY_INDEX` | `FROM` | `TO`
--|-|-
-0 | 63 | 127
-1 | 127 | 191
-2 | 191 | 255
-3 | 255 | 319
+| `AWS_BATCH_JOB_ARRAY_INDEX` | `FROM` | `TO` |
+|-----------------------------|--------|------|
+| 0                           | 63     | 127  |
+| 1                           | 127    | 191  |
+| 2                           | 191    | 255  |
+| 3                           | 255    | 319  |
 
 ## Tips when using AWS Batch
 
