@@ -18,13 +18,13 @@ func TestCreateExpAssetIDs(t *testing.T) {
 	assets := []xdr.Asset{
 		nativeAsset, eurAsset,
 	}
-	rows, err := q.CreateExpAssets(assets)
+	assetMap, err := q.CreateExpAssets(assets)
 	tt.Assert.NoError(err)
-	tt.Assert.Len(rows, len(assets))
+	tt.Assert.Len(assetMap, len(assets))
 
 	set := map[int64]bool{}
-	for i, asset := range assets {
-		row := rows[i]
+	for _, asset := range assets {
+		row := assetMap[asset.String()]
 
 		tt.Assert.False(set[row.ID])
 		set[row.ID] = true
@@ -38,15 +38,15 @@ func TestCreateExpAssetIDs(t *testing.T) {
 	}
 
 	// CreateExpAssets handles duplicates
-	rows, err = q.CreateExpAssets([]xdr.Asset{
+	assetMap, err = q.CreateExpAssets([]xdr.Asset{
 		nativeAsset, nativeAsset, eurAsset, eurAsset,
 		nativeAsset, nativeAsset, eurAsset, eurAsset,
 	})
 	tt.Assert.NoError(err)
-	tt.Assert.Len(rows, 8)
+	tt.Assert.Len(assetMap, len(assets))
 
-	for i, row := range rows {
-		asset := assets[(i/2)%2]
+	for _, asset := range assets {
+		row := assetMap[asset.String()]
 
 		tt.Assert.True(set[row.ID])
 
@@ -60,15 +60,15 @@ func TestCreateExpAssetIDs(t *testing.T) {
 
 	// CreateExpAssets handles duplicates and new rows
 	assets = append(assets, usdAsset)
-	rows, err = q.CreateExpAssets(assets)
+	assetMap, err = q.CreateExpAssets(assets)
 	tt.Assert.NoError(err)
-	tt.Assert.Len(rows, 3)
+	tt.Assert.Len(assetMap, len(assets))
 
-	for i, row := range rows {
-		asset := assets[i]
+	for _, asset := range assets {
+		row := assetMap[asset.String()]
 
-		// only the last asset is new
-		tt.Assert.Equal(set[row.ID], i < 2)
+		inSet := !asset.Equals(usdAsset)
+		tt.Assert.Equal(inSet, set[row.ID])
 
 		var assetType, assetCode, assetIssuer string
 		asset.MustExtract(&assetType, &assetCode, &assetIssuer)

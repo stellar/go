@@ -347,6 +347,13 @@ func getCanonicalAssetOrder(assetId1 int64, assetId2 int64) (orderPreserved bool
 	}
 }
 
+type QTrades interface {
+	CreateExpAccounts(addresses []string) (map[string]int64, error)
+	NewTradeBatchInsertBuilder(maxBatchSize int) TradeBatchInsertBuilder
+	CheckExpTrades(seq int32) (bool, error)
+	CreateExpAssets(assets []xdr.Asset) (map[string]Asset, error)
+}
+
 // CheckExpTrades checks that the trades in exp_history_trades
 // for the given ledger matches the same transactions in history_trades
 func (q *Q) CheckExpTrades(seq int32) (bool, error) {

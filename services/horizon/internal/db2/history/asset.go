@@ -87,11 +87,13 @@ func (q *Q) GetCreateAssetID(
 }
 
 // CreateExpAssets creates rows in the exp_history_assets table for a given list of assets.
-func (q *Q) CreateExpAssets(assets []xdr.Asset) ([]Asset, error) {
-	assetStrings := make([]string, len(assets))
+func (q *Q) CreateExpAssets(assets []xdr.Asset) (map[string]Asset, error) {
+	searchStrings := make([]string, 0, len(assets))
+	assetToKey := map[[3]string]string{}
+
 	sql := sq.Insert("exp_history_assets").Columns("asset_type", "asset_code", "asset_issuer")
 
-	for i, asset := range assets {
+	for _, asset := range assets {
 		var assetType, assetCode, assetIssuer string
 		err := asset.Extract(&assetType, &assetCode, &assetIssuer)
 		if err != nil {
@@ -99,8 +101,15 @@ func (q *Q) CreateExpAssets(assets []xdr.Asset) ([]Asset, error) {
 		}
 		sql = sql.Values(assetType, assetCode, assetIssuer)
 
-		assetString := assetType + "/" + assetCode + "/" + assetIssuer
-		assetStrings[i] = assetString
+		assetTuple := [3]string{
+			assetType,
+			assetCode,
+			assetIssuer,
+		}
+		if _, contains := assetToKey[assetTuple]; !contains {
+			searchStrings = append(searchStrings, assetType+"/"+assetCode+"/"+assetIssuer)
+			assetToKey[assetTuple] = asset.String()
+		}
 	}
 
 	_, err := q.Exec(sql.Suffix("ON CONFLICT (asset_code, asset_type, asset_issuer) DO NOTHING"))
@@ -110,26 +119,21 @@ func (q *Q) CreateExpAssets(assets []xdr.Asset) ([]Asset, error) {
 
 	var rows []Asset
 	err = q.Select(&rows, sq.Select("*").From("exp_history_assets").Where(sq.Eq{
-		"concat(asset_type, '/', asset_code, '/', asset_issuer)": assetStrings,
+		"concat(asset_type, '/', asset_code, '/', asset_issuer)": searchStrings,
 	}))
 	if err != nil {
 		return nil, err
 	}
 
-	if len(rows) == len(assets) {
-		return rows, nil
-	}
-
-	rowForAsset := map[string]Asset{}
+	assetMap := map[string]Asset{}
 	for _, row := range rows {
-		assetString := row.Type + "/" + row.Code + "/" + row.Issuer
-		rowForAsset[assetString] = row
+		key := assetToKey[[3]string{
+			row.Type,
+			row.Code,
+			row.Issuer,
+		}]
+		assetMap[key] = row
 	}
 
-	rows = make([]Asset, len(assets))
-	for i, assetString := range assetStrings {
-		rows[i] = rowForAsset[assetString]
-	}
-
-	return rows, nil
+	return assetMap, nil
 }

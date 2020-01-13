@@ -138,12 +138,12 @@ func createExpAccountsAndAssets(
 		accountIDs = append(accountIDs, addressToAccounts[account])
 	}
 
-	assetRows, err := q.CreateExpAssets(assets)
+	assetMap, err := q.CreateExpAssets(assets)
 	tt.Assert.NoError(err)
 
 	assetIDs := []int64{}
-	for _, row := range assetRows {
-		assetIDs = append(assetIDs, row.ID)
+	for _, asset := range assets {
+		assetIDs = append(assetIDs, assetMap[asset.String()].ID)
 	}
 
 	return accountIDs, assetIDs
