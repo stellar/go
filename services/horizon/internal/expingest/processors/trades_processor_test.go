@@ -473,38 +473,45 @@ func (s *TradeProcessorTestSuiteLedger) mockReadTradeTransactions(
 		Index:      1,
 		FeeChanges: []xdr.LedgerEntryChange{},
 		Meta: xdr.TransactionMeta{
-			V:          0,
-			Operations: &[]xdr.OperationMeta{},
+			V: 2,
+			V2: &xdr.TransactionMetaV2{
+				Operations: []xdr.OperationMeta{
+					xdr.OperationMeta{
+						Changes: xdr.LedgerEntryChanges{},
+					},
+				},
+			},
 		},
 	}
 
 	for i, trade := range s.allTrades {
-		tx.FeeChanges = append(
-			tx.FeeChanges,
-			xdr.LedgerEntryChange{
-				Type: xdr.LedgerEntryChangeTypeLedgerEntryState,
-				State: &xdr.LedgerEntry{
-					Data: xdr.LedgerEntryData{
+		tx.Meta.V2.Operations = append(tx.Meta.V2.Operations, xdr.OperationMeta{
+			Changes: xdr.LedgerEntryChanges{
+				xdr.LedgerEntryChange{
+					Type: xdr.LedgerEntryChangeTypeLedgerEntryState,
+					State: &xdr.LedgerEntry{
+						Data: xdr.LedgerEntryData{
+							Type: xdr.LedgerEntryTypeOffer,
+							Offer: &xdr.OfferEntry{
+								Price:    s.sellPrices[i],
+								SellerId: trade.SellerId,
+								OfferId:  trade.OfferId,
+							},
+						},
+					},
+				},
+				xdr.LedgerEntryChange{
+					Type: xdr.LedgerEntryChangeTypeLedgerEntryRemoved,
+					Removed: &xdr.LedgerKey{
 						Type: xdr.LedgerEntryTypeOffer,
-						Offer: &xdr.OfferEntry{
-							Price:    s.sellPrices[i],
+						Offer: &xdr.LedgerKeyOffer{
 							SellerId: trade.SellerId,
 							OfferId:  trade.OfferId,
 						},
 					},
 				},
 			},
-			xdr.LedgerEntryChange{
-				Type: xdr.LedgerEntryChangeTypeLedgerEntryRemoved,
-				Removed: &xdr.LedgerKey{
-					Type: xdr.LedgerEntryTypeOffer,
-					Offer: &xdr.LedgerKeyOffer{
-						SellerId: trade.SellerId,
-						OfferId:  trade.OfferId,
-					},
-				},
-			},
-		)
+		})
 	}
 
 	s.mockLedgerReader.

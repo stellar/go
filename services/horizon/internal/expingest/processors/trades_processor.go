@@ -8,7 +8,6 @@ import (
 	"github.com/stellar/go/exp/ingest/io"
 	ingestpipeline "github.com/stellar/go/exp/ingest/pipeline"
 	"github.com/stellar/go/exp/support/pipeline"
-	"github.com/stellar/go/meta"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/services/horizon/internal/toid"
 	"github.com/stellar/go/support/errors"
@@ -63,7 +62,7 @@ func (p *TradeProcessor) ProcessLedger(ctx context.Context, store *pipeline.Stor
 
 		var txInserts []history.InsertTrade
 		var txBuyers []string
-		txInserts, txBuyers, err = extractTrades(ledger, transaction)
+		txInserts, txBuyers, err = p.extractTrades(ledger, transaction)
 		if err != nil {
 			return err
 		}
@@ -147,16 +146,45 @@ func (p *TradeProcessor) checkTrades(ledger xdr.LedgerHeaderHistoryEntry) {
 	}
 }
 
-func extractTrades(
+func (p *TradeProcessor) findTradeSellPrice(
+	transaction io.LedgerTransaction,
+	opidx int,
+	trade xdr.ClaimOfferAtom,
+) (xdr.Price, error) {
+	var price xdr.Price
+	key := xdr.LedgerKey{}
+	key.SetOffer(trade.SellerId, uint64(trade.OfferId))
+
+	changes, err := transaction.GetOperationChanges(uint32(opidx))
+	if err != nil {
+		return price, errors.Wrap(err, "could not determine changes for operation")
+	}
+
+	found := false
+	var change io.Change
+	for i := len(changes) - 1; i >= 0; i-- {
+		change = changes[i]
+		if change.Pre != nil && key.Equals(change.Pre.LedgerKey()) {
+			found = true
+			break
+		}
+	}
+
+	if !found {
+		return price, errors.Wrap(err, "could not find change for trade offer")
+	}
+
+	return change.Pre.Data.Offer.Price, nil
+}
+
+func (p *TradeProcessor) extractTrades(
 	ledger xdr.LedgerHeaderHistoryEntry,
 	transaction io.LedgerTransaction,
 ) ([]history.InsertTrade, []string, error) {
-	m := &meta.Bundle{
-		FeeMeta:         transaction.FeeChanges,
-		TransactionMeta: transaction.Meta,
-	}
 	var inserts []history.InsertTrade
 	var buyerAccounts []string
+
+	closeTime := time.Unix(int64(ledger.Header.ScpValue.CloseTime), 0).UTC()
 
 	opResults := transaction.Result.Result.Result.MustResults()
 	for opidx, op := range transaction.Envelope.Tx.Operations {
@@ -204,6 +232,9 @@ func extractTrades(
 			}
 		}
 
+		opID := toid.New(
+			int32(ledger.Header.LedgerSeq), int32(transaction.Index), int32(opidx+1),
+		).ToInt64()
 		for order, trade := range trades {
 			// stellar-core will opportunisticly garbage collect invalid offers (in the
 			// event that a trader spends down their balance).  These garbage collected
@@ -215,29 +246,19 @@ func extractTrades(
 				continue
 			}
 
-			//extract original offer price
-			key := xdr.LedgerKey{}
-			key.SetOffer(trade.SellerId, uint64(trade.OfferId))
-			before, _, err := beforeAndAfter(m, key, opidx)
+			sellOfferPrice, err := p.findTradeSellPrice(transaction, opidx, trade)
 			if err != nil {
-				return nil, nil, errors.Wrap(err, "beforeAndAfter error")
+				return nil, nil, err
 			}
-			sellOfferPrice := before.Data.Offer.Price
-
-			closeTime := time.Unix(int64(ledger.Header.ScpValue.CloseTime), 0).UTC()
 
 			inserts = append(inserts, history.InsertTrade{
-				HistoryOperationID: toid.New(
-					int32(ledger.Header.LedgerSeq),
-					int32(transaction.Index),
-					int32(opidx+1),
-				).ToInt64(),
-				Order:           int32(order),
-				LedgerCloseTime: closeTime,
-				BuyOfferExists:  buyOfferExists,
-				Trade:           trade,
-				SellPrice:       sellOfferPrice,
-				BuyOfferID:      int64(buyOffer.OfferId),
+				HistoryOperationID: opID,
+				Order:              int32(order),
+				LedgerCloseTime:    closeTime,
+				BuyOfferExists:     buyOfferExists,
+				Trade:              trade,
+				SellPrice:          sellOfferPrice,
+				BuyOfferID:         int64(buyOffer.OfferId),
 			})
 
 			var buyerAddress string
@@ -251,27 +272,6 @@ func extractTrades(
 	}
 
 	return inserts, buyerAccounts, nil
-}
-
-// beforeAndAfter loads the ledger entry for `target` before the current
-// operation was applied and after the operation was applied.
-func beforeAndAfter(m *meta.Bundle, target xdr.LedgerKey, opidx int) (
-	*xdr.LedgerEntry,
-	*xdr.LedgerEntry,
-	error,
-) {
-	before, err := m.StateBefore(target, opidx)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	var after *xdr.LedgerEntry
-	after, err = m.StateAfter(target, opidx)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	return before, after, nil
 }
 
 func mapKeysToList(set map[string]int64) []string {
