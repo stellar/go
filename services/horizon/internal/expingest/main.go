@@ -12,6 +12,7 @@ import (
 	"github.com/jmoiron/sqlx"
 	"github.com/stellar/go/clients/stellarcore"
 	"github.com/stellar/go/exp/ingest"
+	"github.com/stellar/go/exp/ingest/adapters"
 	"github.com/stellar/go/exp/ingest/io"
 	"github.com/stellar/go/exp/ingest/ledgerbackend"
 	"github.com/stellar/go/exp/orderbook"
@@ -77,8 +78,8 @@ type dbQ interface {
 	UpdateExpStateInvalid(bool) error
 	GetExpStateInvalid() (bool, error)
 	GetAllOffers() ([]history.Offer, error)
+	GetLatestLedger() (uint32, error)
 	TruncateExpingestStateTables() error
-	RemoveExpIngestHistory(uint32) (history.ExpIngestRemovalSummary, error)
 }
 
 type dbSession interface {
@@ -87,6 +88,7 @@ type dbSession interface {
 
 type liveSession interface {
 	Run() error
+	RunFromCheckpoint(checkpointLedger uint32) error
 	GetArchive() historyarchive.ArchiveInterface
 	Resume(ledgerSequence uint32) error
 	GetLatestSuccessfullyProcessedLedger() (ledgerSequence uint32, processed bool)
@@ -97,6 +99,8 @@ type systemState string
 
 const (
 	initState                 systemState = "init"
+	catchupHistoryState       systemState = "catchupHistory"
+	waitForCheckpointState    systemState = "waitForCheckpoint"
 	loadOffersIntoMemoryState systemState = "loadOffersIntoMemory"
 	buildStateAndResumeState  systemState = "buildStateAndResume"
 	resumeState               systemState = "resume"
@@ -108,6 +112,8 @@ type state struct {
 	systemState                       systemState
 	latestSuccessfullyProcessedLedger uint32
 
+	checkpointLedger uint32
+
 	rangeFromLedger  uint32
 	rangeToLedger    uint32
 	rangeVerifyState bool
@@ -116,11 +122,13 @@ type state struct {
 }
 
 type System struct {
+	config           Config
 	state            state
 	session          liveSession
 	rangeSession     *ingest.RangeSession
 	historyQ         dbQ
 	historySession   dbSession
+	historyAdapter   adapters.HistoryArchiveAdapterInterface
 	graph            *orderbook.OrderBookGraph
 	stateReady       bool
 	stateReadyLock   sync.RWMutex
@@ -193,9 +201,11 @@ func NewSystem(config Config) (*System, error) {
 	}
 
 	system := &System{
+		config:                   config,
 		session:                  session,
 		rangeSession:             rangeSession,
 		historySession:           historySession,
+		historyAdapter:           adapters.MakeHistoryArchiveAdapter(session.GetArchive()),
 		historyQ:                 historyQ,
 		graph:                    config.OrderBookGraph,
 		disableStateVerification: config.DisableStateVerification,
@@ -367,6 +377,11 @@ func (s *System) init() (state, error) {
 		return state{systemState: initState}, errors.Wrap(err, "Error getting exp ingest version")
 	}
 
+	lastHistoryLedger, err := s.historyQ.GetLatestLedger()
+	if err != nil {
+		return state{systemState: initState}, errors.Wrap(err, "Error getting last history ledger sequence")
+	}
+
 	if ingestVersion != CurrentVersion || lastIngestedLedger == 0 {
 		// This block is either starting from empty state or ingestion
 		// version upgrade.
@@ -376,23 +391,61 @@ func (s *System) init() (state, error) {
 		// In case of errors it will start `Init` from the beginning.
 		log.Info("Starting ingestion system from empty state...")
 
-		// Clear last_ingested_ledger in key value store
-		if err = s.historyQ.UpdateLastLedgerExpIngest(0); err != nil {
-			return state{systemState: initState}, errors.Wrap(err, "Error updating last ingested ledger")
+		if lastHistoryLedger != 0 {
+			// There are ledgers in history_ledgers table. This means that the
+			// old or new ingest system was running prior the upgrade. In both
+			// cases we need to:
+			// * Wait for the checkpoint ledger if the latest history ledger is
+			//   greater that the latest checkpoint ledger.
+			// * Catchup history data if the latest history ledger is less than
+			//   the latest checkpoint ledger.
+			// * Build state from the last checkpoint if the latest history ledger
+			//   is equal to the latest checkpoint ledger.
+			lastCheckpoint, err := s.historyAdapter.GetLatestLedgerSequence()
+			if err != nil {
+				return state{systemState: initState}, errors.Wrap(err, "Error getting last checkpoint")
+			}
+
+			switch {
+			case lastHistoryLedger > lastCheckpoint:
+				return state{systemState: waitForCheckpointState}, nil
+			case lastHistoryLedger < lastCheckpoint:
+				return state{
+					systemState:     catchupHistoryState,
+					rangeFromLedger: lastHistoryLedger + 1,
+					rangeToLedger:   lastCheckpoint,
+				}, nil
+			default: // lastHistoryLedger == lastCheckpoint
+				// Build state but make sure it's using `lastCheckpoint`. It's possible
+				// that the new checkpoint will be created during state transition.
+				return state{
+					systemState:      buildStateAndResumeState,
+					checkpointLedger: lastCheckpoint,
+				}, nil
+			}
 		}
 
-		// Clear invalid state in key value store. It's possible that upgraded
-		// ingestion is fixing it.
-		if err = s.historyQ.UpdateExpStateInvalid(false); err != nil {
-			return state{systemState: initState}, errors.Wrap(err, "Error updating state invalid value")
-		}
+		return state{
+			systemState:      buildStateAndResumeState,
+			checkpointLedger: 0,
+		}, nil
+	}
 
-		err = s.historyQ.TruncateExpingestStateTables()
-		if err != nil {
-			return state{systemState: initState}, errors.Wrap(err, "Error clearing ingest tables")
+	// Expingest was running in the past but was turned off.
+	// Now it's on by default.
+	if lastHistoryLedger != lastIngestedLedger {
+		switch {
+		case lastHistoryLedger > lastIngestedLedger:
+			// TODO
+			// Here instead of ingesting state only it's easier to build state
+			// from scratch.
+		case lastHistoryLedger < lastIngestedLedger:
+			return state{
+				systemState:     catchupHistoryState,
+				rangeFromLedger: lastHistoryLedger + 1,
+				rangeToLedger:   lastIngestedLedger,
+			}, nil
 		}
-
-		return state{systemState: buildStateAndResumeState}, nil
 	}
 
 	// The other node already ingested a state (just now or in the past)
@@ -454,7 +507,29 @@ func (s *System) loadOffersIntoMemory() (state, error) {
 }
 
 func (s *System) buildStateAndResume() (state, error) {
-	err := s.session.Run()
+	// Clear last_ingested_ledger in key value store
+	err := s.historyQ.UpdateLastLedgerExpIngest(0)
+	if err != nil {
+		return state{systemState: initState}, errors.Wrap(err, "Error updating last ingested ledger")
+	}
+
+	// Clear invalid state in key value store. It's possible that upgraded
+	// ingestion is fixing it.
+	err = s.historyQ.UpdateExpStateInvalid(false)
+	if err != nil {
+		return state{systemState: initState}, errors.Wrap(err, "Error updating state invalid value")
+	}
+
+	err = s.historyQ.TruncateExpingestStateTables()
+	if err != nil {
+		return state{systemState: initState}, errors.Wrap(err, "Error clearing ingest tables")
+	}
+
+	if s.state.checkpointLedger != 0 {
+		err = s.session.RunFromCheckpoint(s.state.checkpointLedger)
+	} else {
+		err = s.session.Run()
+	}
 	if err != nil {
 		// Check if session processed a state, if so, continue since the
 		// last processed ledger, otherwise start over.
@@ -492,6 +567,26 @@ func (s *System) resume() (state, error) {
 	}
 
 	return state{systemState: shutdownState}, nil
+}
+
+func (s *System) catchupHistory() (state, error) {
+	s.rangeSession.FromLedger = s.state.rangeFromLedger
+	s.rangeSession.ToLedger = s.state.rangeToLedger
+	// Temporarily disable disableStateVerification
+	s.disableStateVerification = true
+	defer func() {
+		// Revert previous value
+		s.disableStateVerification = s.config.DisableStateVerification
+	}()
+
+	err := s.rangeSession.Run()
+	return state{systemState: initState}, err
+}
+
+func (s *System) waitForCheckpoint() (state, error) {
+	log.Info("Waiting for the next checkpoint...")
+	time.Sleep(10 * time.Second)
+	return state{systemState: initState}, nil
 }
 
 func (s *System) verifyRange() (state, error) {
@@ -551,6 +646,9 @@ func (s *System) resetStateVerificationErrors() {
 func (s *System) Shutdown() {
 	log.Info("Shutting down ingestion system...")
 	s.session.Shutdown()
+	if s.rangeSession != nil {
+		s.rangeSession.Shutdown()
+	}
 	s.stateVerificationMutex.Lock()
 	defer s.stateVerificationMutex.Unlock()
 	if s.stateVerificationRunning {

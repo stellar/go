@@ -120,8 +120,9 @@ func buildLedgerPipeline(
 		pipeline.LedgerNode(&processors.RootProcessor{}).
 			Pipe(
 				// This subtree will only run when `IngestUpdateDatabase` is set.
-				pipeline.LedgerNode(&horizonProcessors.ContextFilter{horizonProcessors.IngestUpdateDatabase}).
-					Pipe(
+				pipeline.LedgerNode(&horizonProcessors.ContextFilter{horizonProcessors.IngestUpdateDatabase}).Pipe(
+					// This subtree will only run when `IngestUpdateState` is set.
+					pipeline.LedgerNode(&horizonProcessors.ContextFilter{horizonProcessors.IngestUpdateState}).Pipe(
 						pipeline.LedgerNode(&horizonProcessors.DatabaseProcessor{
 							AccountsQ:     historyQ,
 							DataQ:         historyQ,
@@ -129,33 +130,32 @@ func buildLedgerPipeline(
 							SignersQ:      historyQ,
 							TrustLinesQ:   historyQ,
 							AssetStatsQ:   historyQ,
-							LedgersQ:      historyQ,
 							Action:        horizonProcessors.All,
 							IngestVersion: CurrentVersion,
 						}),
-						pipeline.LedgerNode(
-							&horizonProcessors.TransactionFilterProcessor{
-								IngestFailedTransactions: ingestFailedTransactions,
-							},
-						).Pipe(
-							pipeline.LedgerNode(&horizonProcessors.TransactionProcessor{
-								TransactionsQ: historyQ,
-							}),
-							pipeline.LedgerNode(&horizonProcessors.ParticipantsProcessor{
-								ParticipantsQ: historyQ,
-							}),
-							pipeline.LedgerNode(&horizonProcessors.OperationProcessor{
-								OperationsQ: historyQ,
-							}),
-							pipeline.LedgerNode(&horizonProcessors.EffectProcessor{
-								EffectsQ: historyQ,
-							}),
-							pipeline.LedgerNode(&horizonProcessors.TradeProcessor{
-								TradesQ: historyQ,
-							}),
-						),
 					),
-				orderBookGraphLedgerNode(graph),
+					pipeline.LedgerNode(&horizonProcessors.TransactionFilterProcessor{IngestFailedTransactions: ingestFailedTransactions}).Pipe(
+						pipeline.LedgerNode(&horizonProcessors.TransactionProcessor{
+							TransactionsQ: historyQ,
+						}),
+						pipeline.LedgerNode(&horizonProcessors.ParticipantsProcessor{
+							ParticipantsQ: historyQ,
+						}),
+						pipeline.LedgerNode(&horizonProcessors.OperationProcessor{
+							OperationsQ: historyQ,
+						}),
+						pipeline.LedgerNode(&horizonProcessors.EffectProcessor{
+							EffectsQ: historyQ,
+						}),
+						pipeline.LedgerNode(&horizonProcessors.TradeProcessor{
+							TradesQ: historyQ,
+						}),
+					),
+				),
+				// This subtree will only run when `IngestUpdateState` is set.
+				pipeline.LedgerNode(&horizonProcessors.ContextFilter{horizonProcessors.IngestUpdateState}).Pipe(
+					orderBookGraphLedgerNode(graph),
+				),
 			),
 	)
 
@@ -203,12 +203,6 @@ func preProcessingHook(
 		// State pipeline is always fully run because loading offers
 		// from a database is done outside the pipeline.
 		updateDatabase = true
-		var summary history.ExpIngestRemovalSummary
-		summary, err = historyQ.RemoveExpIngestHistory(ledgerSeq)
-		if err != nil {
-			return ctx, errors.Wrap(err, "Error removing exp ingest history")
-		}
-		log.WithField("historyRemoved", summary).Info("removed entries from historical ingestion tables")
 	} else {
 		// mark the system as ready because we have progressed to running
 		// the ledger pipeline
@@ -221,6 +215,11 @@ func preProcessingHook(
 			updateDatabase = true
 			ctx = context.WithValue(ctx, horizonProcessors.IngestUpdateDatabase, true)
 		}
+	}
+
+	// Update context so pipeline skip state processors when doing history catchup.
+	if system.state.systemState != catchupHistoryState {
+		ctx = context.WithValue(ctx, horizonProcessors.IngestUpdateState, true)
 	}
 
 	// If we are not going to update a DB release a lock by rolling back a
@@ -282,22 +281,25 @@ func postProcessingHook(
 		// This is "just in case" if lastIngestedLedger is not selected
 		// `FOR UPDATE` due to a bug or accident. In such case we error and
 		// rollback.
-		var lastIngestedLedger uint32
-		lastIngestedLedger, err = historyQ.GetLastLedgerExpIngest()
-		if err != nil {
-			return errors.Wrap(err, "Error getting last ledger")
-		}
+		// We skip key_value-store updates during history catchup.
+		if system.state.systemState != catchupHistoryState {
+			var lastIngestedLedger uint32
+			lastIngestedLedger, err = historyQ.GetLastLedgerExpIngest()
+			if err != nil {
+				return errors.Wrap(err, "Error getting last ledger")
+			}
 
-		if lastIngestedLedger != 0 && lastIngestedLedger+1 != ledgerSeq {
-			return errors.New("The local latest sequence is not equal to global sequence + 1")
-		}
+			if lastIngestedLedger != 0 && lastIngestedLedger+1 != ledgerSeq {
+				return errors.New("The local latest sequence is not equal to global sequence + 1")
+			}
 
-		if err = historyQ.UpdateLastLedgerExpIngest(ledgerSeq); err != nil {
-			return errors.Wrap(err, "Error updating last ingested ledger")
-		}
+			if err = historyQ.UpdateLastLedgerExpIngest(ledgerSeq); err != nil {
+				return errors.Wrap(err, "Error updating last ingested ledger")
+			}
 
-		if err = historyQ.UpdateExpIngestVersion(CurrentVersion); err != nil {
-			return errors.Wrap(err, "Error updating expingest version")
+			if err = historyQ.UpdateExpIngestVersion(CurrentVersion); err != nil {
+				return errors.Wrap(err, "Error updating expingest version")
+			}
 		}
 
 		if err = historySession.Commit(); err != nil {

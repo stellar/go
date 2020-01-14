@@ -100,7 +100,7 @@ func (s *RangeSession) Resume(ledgerSequence uint32) error {
 // SingleLedgerStateReader).
 func (s *RangeSession) validateBucketList(
 	ledgerSequence uint32,
-	historyAdapter *adapters.HistoryArchiveAdapter,
+	historyAdapter adapters.HistoryArchiveAdapterInterface,
 	ledgerAdapter *adapters.LedgerBackendAdapter,
 ) error {
 	historyBucketListHash, err := historyAdapter.BucketListHash(ledgerSequence)
@@ -228,7 +228,7 @@ func (s *RangeSession) validate() error {
 }
 
 func (s *RangeSession) initState(
-	historyAdapter *adapters.HistoryArchiveAdapter,
+	historyAdapter adapters.HistoryArchiveAdapterInterface,
 	ledgerAdapter *adapters.LedgerBackendAdapter,
 	sequence uint32,
 ) error {

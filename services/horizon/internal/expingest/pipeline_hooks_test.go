@@ -47,9 +47,6 @@ func (s *PreProcessingHookTestSuite) TearDownTest() {
 func (s *PreProcessingHookTestSuite) TestStateHookSucceedsWithPreExistingTx() {
 	s.historyQ.On("GetTx").Return(&sqlx.Tx{}).Once()
 	s.historyQ.On("GetLastLedgerExpIngest").Return(uint32(0), nil).Once()
-	s.historyQ.On("RemoveExpIngestHistory", s.ledgerSeqFromContext).Return(
-		history.ExpIngestRemovalSummary{3, 3, 3, 3, 3, 3, 3}, nil,
-	)
 
 	newCtx, err := preProcessingHook(s.ctx, statePipeline, s.system, s.historyQ)
 	s.Assert().NoError(err)
@@ -62,9 +59,6 @@ func (s *PreProcessingHookTestSuite) TestStateHookSucceedsWithoutPreExistingTx()
 	s.historyQ.On("GetTx").Return(nilTx).Once()
 	s.historyQ.On("Begin").Return(nil).Once()
 	s.historyQ.On("GetLastLedgerExpIngest").Return(uint32(0), nil).Once()
-	s.historyQ.On("RemoveExpIngestHistory", s.ledgerSeqFromContext).Return(
-		history.ExpIngestRemovalSummary{3, 3, 3, 3, 3, 3, 3}, nil,
-	)
 
 	newCtx, err := preProcessingHook(s.ctx, statePipeline, s.system, s.historyQ)
 	s.Assert().NoError(err)
@@ -81,20 +75,6 @@ func (s *PreProcessingHookTestSuite) TestStateHookRollsbackOnGetLastLedgerExpIng
 	s.Assert().Nil(newCtx.Value(horizonProcessors.IngestUpdateDatabase))
 	s.Assert().False(s.system.StateReady())
 	s.Assert().EqualError(err, "Error getting last ledger: transient error")
-}
-
-func (s *PreProcessingHookTestSuite) TestStateHookRollsbackOnRemoveExpIngestHistoryError() {
-	s.historyQ.On("GetTx").Return(&sqlx.Tx{}).Once()
-	s.historyQ.On("GetLastLedgerExpIngest").Return(uint32(0), nil).Once()
-	s.historyQ.On("RemoveExpIngestHistory", s.ledgerSeqFromContext).Return(
-		history.ExpIngestRemovalSummary{}, errors.New("transient error"),
-	)
-	s.historyQ.On("Rollback").Return(nil).Once()
-
-	newCtx, err := preProcessingHook(s.ctx, statePipeline, s.system, s.historyQ)
-	s.Assert().Nil(newCtx.Value(horizonProcessors.IngestUpdateDatabase))
-	s.Assert().False(s.system.StateReady())
-	s.Assert().EqualError(err, "Error removing exp ingest history: transient error")
 }
 
 func (s *PreProcessingHookTestSuite) TestStateHookRollsbackOnBeginError() {
@@ -255,7 +235,7 @@ func TestPostProcessingHook(t *testing.T) {
 				tt.Assert.NoError(err)
 			}
 
-			err = postProcessingHook(ctx, testCase.err, statePipeline, nil, graph, session)
+			err = postProcessingHook(ctx, testCase.err, statePipeline, &System{}, graph, session)
 			if testCase.expectedError == "" {
 				tt.Assert.NoError(err)
 				tt.Assert.Equal(graph.Offers(), []xdr.OfferEntry{eurOffer})

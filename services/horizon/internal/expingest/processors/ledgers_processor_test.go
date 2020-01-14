@@ -2,7 +2,6 @@ package processors
 
 import (
 	"context"
-	"database/sql"
 	stdio "io"
 	"testing"
 
@@ -16,7 +15,7 @@ import (
 
 type LedgersProcessorTestSuiteLedger struct {
 	suite.Suite
-	processor        *DatabaseProcessor
+	processor        *LedgersProcessor
 	mockQ            *history.MockQLedgers
 	mockLedgerReader *io.MockLedgerReader
 	mockLedgerWriter *io.MockLedgerWriter
@@ -73,13 +72,13 @@ func (s *LedgersProcessorTestSuiteLedger) SetupTest() {
 	s.ingestVersion = 100
 	s.context = context.WithValue(context.Background(), IngestUpdateDatabase, true)
 
-	s.processor = &DatabaseProcessor{
-		Action:        Ledgers,
+	s.processor = &LedgersProcessor{
 		LedgersQ:      s.mockQ,
 		IngestVersion: s.ingestVersion,
 	}
 
 	s.mockLedgerReader.On("GetSequence").Return(uint32(20)).Maybe()
+	s.mockLedgerReader.On("IgnoreUpgradeChanges").Return().Maybe()
 
 	s.mockLedgerReader.
 		On("Read").
@@ -97,7 +96,6 @@ func (s *LedgersProcessorTestSuiteLedger) SetupTest() {
 	s.mockLedgerReader.
 		On("Close").
 		Return(nil).Once()
-
 	s.mockLedgerWriter.
 		On("Close").
 		Return(nil).Once()
@@ -118,10 +116,7 @@ func (s *LedgersProcessorTestSuiteLedger) TearDownTest() {
 func (s *LedgersProcessorTestSuiteLedger) TestInsertExpLedgerIgnoredWhenNotDatabaseIngestion() {
 	// Clear mockLedgerReader expectations
 	s.mockLedgerReader = &io.MockLedgerReader{}
-
-	s.mockLedgerReader.
-		On("Read").
-		Return(io.LedgerTransaction{}, stdio.EOF).Once()
+	s.mockLedgerReader.On("IgnoreUpgradeChanges").Return().Maybe()
 
 	s.mockLedgerReader.
 		On("Close").
@@ -145,7 +140,6 @@ func (s *LedgersProcessorTestSuiteLedger) TestInsertExpLedgerSucceeds() {
 		s.opCount,
 		s.ingestVersion,
 	).Return(int64(1), nil)
-	s.mockQ.On("CheckExpLedger", int32(10)).Return(true, nil)
 
 	err := s.processor.ProcessLedger(
 		s.context,
@@ -165,7 +159,6 @@ func (s *LedgersProcessorTestSuiteLedger) TestCheckExpLedgerNotFound() {
 		s.opCount,
 		s.ingestVersion,
 	).Return(int64(1), nil)
-	s.mockQ.On("CheckExpLedger", int32(10)).Return(false, sql.ErrNoRows)
 
 	err := s.processor.ProcessLedger(
 		s.context,
@@ -185,8 +178,6 @@ func (s *LedgersProcessorTestSuiteLedger) TestCheckExpLedgerError() {
 		s.opCount,
 		s.ingestVersion,
 	).Return(int64(1), nil)
-	s.mockQ.On("CheckExpLedger", int32(10)).
-		Return(false, errors.New("transient check exp ledger error"))
 
 	err := s.processor.ProcessLedger(
 		s.context,
@@ -206,8 +197,6 @@ func (s *LedgersProcessorTestSuiteLedger) TestCheckExpLedgerDoesNotMatch() {
 		s.opCount,
 		s.ingestVersion,
 	).Return(int64(1), nil)
-	s.mockQ.On("CheckExpLedger", int32(10)).
-		Return(false, nil)
 
 	err := s.processor.ProcessLedger(
 		s.context,
