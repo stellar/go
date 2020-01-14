@@ -151,6 +151,11 @@ func (t *LedgerTransaction) Successful() bool {
 	return t.Result.Result.Result.Code == xdr.TransactionResultCodeTxSuccess
 }
 
+// TxInternalError returns true if the transaction result is TxInternalError
+func (t *LedgerTransaction) TxInternalError() bool {
+	return t.Result.Result.Result.Code == xdr.TransactionResultCodeTxInternalError
+}
+
 // GetFeeChanges returns a developer friendly representation of LedgerEntryChanges
 // connected to fees.
 func (t *LedgerTransaction) GetFeeChanges() []Change {
@@ -158,8 +163,9 @@ func (t *LedgerTransaction) GetFeeChanges() []Change {
 }
 
 // GetChanges returns a developer friendly representation of LedgerEntryChanges.
-// It contains transaction changes and operation changes in that order.
-// It doesn't support legacy TransactionMeta.V=0.
+// It contains transaction changes and operation changes in that order. If the
+// transaction failed with TxInternalError, operations and txChangesAfter are
+// omitted. It doesn't support legacy TransactionMeta.V=0.
 func (t *LedgerTransaction) GetChanges() ([]Change, error) {
 	var changes []Change
 
@@ -172,16 +178,28 @@ func (t *LedgerTransaction) GetChanges() ([]Change, error) {
 		txChanges := getChangesFromLedgerEntryChanges(v1Meta.TxChanges)
 		changes = append(changes, txChanges...)
 
+		// Ignore operations meta if txInternalError https://github.com/stellar/go/issues/2111
+		if t.TxInternalError() {
+			return changes, nil
+		}
+
 		for _, operationMeta := range v1Meta.Operations {
 			opChanges := getChangesFromLedgerEntryChanges(
 				operationMeta.Changes,
 			)
 			changes = append(changes, opChanges...)
 		}
+
 	case 2:
 		v2Meta := t.Meta.MustV2()
 		txChangesBefore := getChangesFromLedgerEntryChanges(v2Meta.TxChangesBefore)
 		changes = append(changes, txChangesBefore...)
+
+		// Ignore operations meta and txChangesAfter if txInternalError
+		// https://github.com/stellar/go/issues/2111
+		if t.TxInternalError() {
+			return changes, nil
+		}
 
 		for _, operationMeta := range v2Meta.Operations {
 			opChanges := getChangesFromLedgerEntryChanges(
@@ -202,7 +220,12 @@ func (t *LedgerTransaction) GetChanges() ([]Change, error) {
 // GetOperationChanges returns a developer friendly representation of LedgerEntryChanges.
 // It contains only operation changes.
 func (t *LedgerTransaction) GetOperationChanges(operationIndex uint32) ([]Change, error) {
-	var changes []Change
+	changes := []Change{}
+
+	// Ignore operations meta if txInternalError https://github.com/stellar/go/issues/2111
+	if t.Meta.V > 0 && t.TxInternalError() {
+		return changes, nil
+	}
 
 	// Transaction meta
 	switch t.Meta.V {
