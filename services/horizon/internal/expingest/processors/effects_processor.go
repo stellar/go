@@ -7,6 +7,7 @@ import (
 	"fmt"
 	stdio "io"
 	"reflect"
+	"sort"
 
 	"github.com/stellar/go/amount"
 	"github.com/stellar/go/exp/ingest/io"
@@ -170,6 +171,7 @@ func (p *EffectProcessor) ProcessLedger(ctx context.Context, store *pipeline.Sto
 	// legacy ingestion system might not be in sync
 	if sequence > 10 {
 		checkSequence := int32(sequence - 10)
+
 		var valid bool
 		valid, err = p.EffectsQ.CheckExpOperationEffects(checkSequence)
 		if err != nil {
@@ -495,7 +497,13 @@ func (operation *transactionOperationWrapper) setOptionsEffects() ([]effect, err
 			continue
 		}
 
-		for addy := range before {
+		sortedSigners := []string{}
+		for signer := range before {
+			sortedSigners = append(sortedSigners, signer)
+		}
+		sort.Strings(sortedSigners)
+
+		for _, addy := range sortedSigners {
 			weight, ok := after[addy]
 			if !ok {
 				effects.add(source.Address(), history.EffectSignerRemoved, map[string]interface{}{
@@ -509,8 +517,15 @@ func (operation *transactionOperationWrapper) setOptionsEffects() ([]effect, err
 			})
 		}
 
+		sortedSigners = []string{}
+		for signer := range after {
+			sortedSigners = append(sortedSigners, signer)
+		}
+		sort.Strings(sortedSigners)
+
 		// Add the "created" effects
-		for addy, weight := range after {
+		for _, addy := range sortedSigners {
+			weight := after[addy]
 			// if `addy` is in before, the previous for loop should have recorded
 			// the update, so skip this key
 			if _, ok := before[addy]; ok {
