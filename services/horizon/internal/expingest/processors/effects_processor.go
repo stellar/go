@@ -497,13 +497,13 @@ func (operation *transactionOperationWrapper) setOptionsEffects() ([]effect, err
 			continue
 		}
 
-		sortedSigners := []string{}
+		beforeSortedSigners := []string{}
 		for signer := range before {
-			sortedSigners = append(sortedSigners, signer)
+			beforeSortedSigners = append(beforeSortedSigners, signer)
 		}
-		sort.Strings(sortedSigners)
+		sort.Strings(beforeSortedSigners)
 
-		for _, addy := range sortedSigners {
+		for _, addy := range beforeSortedSigners {
 			weight, ok := after[addy]
 			if !ok {
 				effects.add(source.Address(), history.EffectSignerRemoved, map[string]interface{}{
@@ -517,14 +517,14 @@ func (operation *transactionOperationWrapper) setOptionsEffects() ([]effect, err
 			})
 		}
 
-		sortedSigners = []string{}
+		afterSortedSigners := []string{}
 		for signer := range after {
-			sortedSigners = append(sortedSigners, signer)
+			afterSortedSigners = append(afterSortedSigners, signer)
 		}
-		sort.Strings(sortedSigners)
+		sort.Strings(afterSortedSigners)
 
 		// Add the "created" effects
-		for _, addy := range sortedSigners {
+		for _, addy := range afterSortedSigners {
 			weight := after[addy]
 			// if `addy` is in before, the previous for loop should have recorded
 			// the update, so skip this key

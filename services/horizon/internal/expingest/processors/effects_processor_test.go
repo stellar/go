@@ -1053,3 +1053,126 @@ func TestOperationEffects(t *testing.T) {
 		})
 	}
 }
+func TestOperationEffectsSetOptionsSignersOrder(t *testing.T) {
+	tt := assert.New(t)
+	transaction := io.LedgerTransaction{
+		Meta: createTransactionMeta([]xdr.OperationMeta{
+			xdr.OperationMeta{
+				Changes: []xdr.LedgerEntryChange{
+					// State
+					xdr.LedgerEntryChange{
+						Type: xdr.LedgerEntryChangeTypeLedgerEntryState,
+						State: &xdr.LedgerEntry{
+							Data: xdr.LedgerEntryData{
+								Type: xdr.LedgerEntryTypeAccount,
+								Account: &xdr.AccountEntry{
+									AccountId: xdr.MustAddress("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
+									Signers: []xdr.Signer{
+										xdr.Signer{
+											Key:    xdr.MustSigner("GCBBDQLCTNASZJ3MTKAOYEOWRGSHDFAJVI7VPZUOP7KXNHYR3HP2BUKV"),
+											Weight: 10,
+										},
+										xdr.Signer{
+											Key:    xdr.MustSigner("GCAHY6JSXQFKWKP6R7U5JPXDVNV4DJWOWRFLY3Y6YPBF64QRL4BPFDNS"),
+											Weight: 10,
+										},
+									},
+								},
+							},
+						},
+					},
+					// Updated
+					xdr.LedgerEntryChange{
+						Type: xdr.LedgerEntryChangeTypeLedgerEntryUpdated,
+						Updated: &xdr.LedgerEntry{
+							Data: xdr.LedgerEntryData{
+								Type: xdr.LedgerEntryTypeAccount,
+								Account: &xdr.AccountEntry{
+									AccountId: xdr.MustAddress("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
+									Signers: []xdr.Signer{
+										xdr.Signer{
+											Key:    xdr.MustSigner("GCBBDQLCTNASZJ3MTKAOYEOWRGSHDFAJVI7VPZUOP7KXNHYR3HP2BUKV"),
+											Weight: 16,
+										},
+										xdr.Signer{
+											Key:    xdr.MustSigner("GCAHY6JSXQFKWKP6R7U5JPXDVNV4DJWOWRFLY3Y6YPBF64QRL4BPFDNS"),
+											Weight: 15,
+										},
+										xdr.Signer{
+											Key:    xdr.MustSigner("GCR3TQ2TVH3QRI7GQMC3IJGUUBR32YQHWBIKIMTYRQ2YH4XUTDB75UKE"),
+											Weight: 14,
+										},
+										xdr.Signer{
+											Key:    xdr.MustSigner("GA4O5DLUUTLCTMM2UOWOYPNIH2FTD4NLO6KDZOFQRUISQ3FYKABGJLPC"),
+											Weight: 17,
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		}),
+	}
+	transaction.Index = 1
+	transaction.Envelope.Tx.SourceAccount = xdr.MustAddress("GCBBDQLCTNASZJ3MTKAOYEOWRGSHDFAJVI7VPZUOP7KXNHYR3HP2BUKV")
+
+	operation := transactionOperationWrapper{
+		index:       0,
+		transaction: transaction,
+		operation: xdr.Operation{
+			Body: xdr.OperationBody{
+				Type:         xdr.OperationTypeSetOptions,
+				SetOptionsOp: &xdr.SetOptionsOp{},
+			},
+		},
+		ledgerSequence: 46,
+	}
+
+	effects, err := operation.effects()
+	tt.NoError(err)
+	expected := []effect{
+		effect{
+			address:     "GCBBDQLCTNASZJ3MTKAOYEOWRGSHDFAJVI7VPZUOP7KXNHYR3HP2BUKV",
+			operationID: int64(197568499713),
+			details: map[string]interface{}{
+				"public_key": "GCAHY6JSXQFKWKP6R7U5JPXDVNV4DJWOWRFLY3Y6YPBF64QRL4BPFDNS",
+				"weight":     int32(15),
+			},
+			effectType: history.EffectSignerUpdated,
+			order:      uint32(1),
+		},
+		effect{
+			address:     "GCBBDQLCTNASZJ3MTKAOYEOWRGSHDFAJVI7VPZUOP7KXNHYR3HP2BUKV",
+			operationID: int64(197568499713),
+			details: map[string]interface{}{
+				"public_key": "GCBBDQLCTNASZJ3MTKAOYEOWRGSHDFAJVI7VPZUOP7KXNHYR3HP2BUKV",
+				"weight":     int32(16),
+			},
+			effectType: history.EffectSignerUpdated,
+			order:      uint32(2),
+		},
+		effect{
+			address:     "GCBBDQLCTNASZJ3MTKAOYEOWRGSHDFAJVI7VPZUOP7KXNHYR3HP2BUKV",
+			operationID: int64(197568499713),
+			details: map[string]interface{}{
+				"public_key": "GA4O5DLUUTLCTMM2UOWOYPNIH2FTD4NLO6KDZOFQRUISQ3FYKABGJLPC",
+				"weight":     int32(17),
+			},
+			effectType: history.EffectSignerCreated,
+			order:      uint32(3),
+		},
+		effect{
+			address:     "GCBBDQLCTNASZJ3MTKAOYEOWRGSHDFAJVI7VPZUOP7KXNHYR3HP2BUKV",
+			operationID: int64(197568499713),
+			details: map[string]interface{}{
+				"public_key": "GCR3TQ2TVH3QRI7GQMC3IJGUUBR32YQHWBIKIMTYRQ2YH4XUTDB75UKE",
+				"weight":     int32(14),
+			},
+			effectType: history.EffectSignerCreated,
+			order:      uint32(4),
+		},
+	}
+	tt.Equal(expected, effects)
+}
