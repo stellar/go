@@ -11,8 +11,3 @@ func (m *MockQTransactions) NewTransactionBatchInsertBuilder(maxBatchSize int) T
 	a := m.Called(maxBatchSize)
 	return a.Get(0).(TransactionBatchInsertBuilder)
 }
-
-func (m *MockQTransactions) CheckExpTransactions(seq int32) (bool, error) {
-	a := m.Called(seq)
-	return a.Get(0).(bool), a.Error(1)
-}

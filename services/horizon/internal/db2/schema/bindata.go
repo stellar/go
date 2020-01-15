@@ -24,6 +24,7 @@
 // migrations/2_index_participants_by_toid.sql (277B)
 // migrations/30_exp_history_trades.sql (2.297kB)
 // migrations/31_exp_history_effects.sql (209B)
+// migrations/32_drop_exp_history_tables.sql (3.826kB)
 // migrations/3_use_sequence_in_history_accounts.sql (447B)
 // migrations/4_add_protocol_version.sql (188B)
 // migrations/5_create_trades_table.sql (1.1kB)
@@ -115,7 +116,7 @@ func migrations10_add_trades_priceSql() (*asset, error) {
 		return nil, err
 	}
 
-	info := bindataFileInfo{name: "migrations/10_add_trades_price.sql", size: 1220, mode: os.FileMode(0644), modTime: time.Unix(1566075719, 0)}
+	info := bindataFileInfo{name: "migrations/10_add_trades_price.sql", size: 1220, mode: os.FileMode(0644), modTime: time.Unix(1566825316, 0)}
 	a := &asset{bytes: bytes, info: info, digest: [32]uint8{0x85, 0x1e, 0x7f, 0x86, 0xc2, 0x2c, 0xc9, 0x91, 0xe2, 0x3f, 0x1a, 0xb2, 0x15, 0xea, 0x6c, 0x5, 0xfa, 0x1f, 0x99, 0xd2, 0xbb, 0x1, 0x5e, 0x75, 0x91, 0x8b, 0xb, 0x46, 0xa, 0x6, 0xbc, 0x61}}
 	return a, nil
 }
@@ -135,7 +136,7 @@ func migrations11_add_trades_account_indexSql() (*asset, error) {
 		return nil, err
 	}
 
-	info := bindataFileInfo{name: "migrations/11_add_trades_account_index.sql", size: 273, mode: os.FileMode(0644), modTime: time.Unix(1566075719, 0)}
+	info := bindataFileInfo{name: "migrations/11_add_trades_account_index.sql", size: 273, mode: os.FileMode(0644), modTime: time.Unix(1566825316, 0)}
 	a := &asset{bytes: bytes, info: info, digest: [32]uint8{0x98, 0xa4, 0x60, 0x40, 0x6b, 0xa6, 0x5e, 0xcc, 0x67, 0xb3, 0x85, 0x82, 0xce, 0x39, 0xc6, 0xbb, 0x2c, 0xa7, 0x2e, 0xb6, 0x9a, 0xd, 0xba, 0x91, 0x28, 0x80, 0x77, 0x46, 0x8c, 0x67, 0x55, 0x9f}}
 	return a, nil
 }
@@ -155,7 +156,7 @@ func migrations12_asset_stats_amount_stringSql() (*asset, error) {
 		return nil, err
 	}
 
-	info := bindataFileInfo{name: "migrations/12_asset_stats_amount_string.sql", size: 197, mode: os.FileMode(0644), modTime: time.Unix(1566075719, 0)}
+	info := bindataFileInfo{name: "migrations/12_asset_stats_amount_string.sql", size: 197, mode: os.FileMode(0644), modTime: time.Unix(1566825316, 0)}
 	a := &asset{bytes: bytes, info: info, digest: [32]uint8{0x3a, 0xd1, 0x4c, 0x37, 0xe7, 0xfd, 0xdb, 0x3a, 0xf2, 0x37, 0x9b, 0x8d, 0x77, 0x99, 0x61, 0x15, 0x10, 0x51, 0xe5, 0xe5, 0x7f, 0xec, 0x7e, 0x7, 0xe5, 0x18, 0x8a, 0xf2, 0xb4, 0x66, 0x17, 0x60}}
 	return a, nil
 }
@@ -175,7 +176,7 @@ func migrations13_trade_offer_idsSql() (*asset, error) {
 		return nil, err
 	}
 
-	info := bindataFileInfo{name: "migrations/13_trade_offer_ids.sql", size: 484, mode: os.FileMode(0644), modTime: time.Unix(1571945053, 0)}
+	info := bindataFileInfo{name: "migrations/13_trade_offer_ids.sql", size: 484, mode: os.FileMode(0644), modTime: time.Unix(1572426892, 0)}
 	a := &asset{bytes: bytes, info: info, digest: [32]uint8{0x77, 0x71, 0x79, 0x45, 0x9b, 0x9e, 0x80, 0x36, 0x80, 0x5a, 0xc2, 0x1f, 0xb4, 0xba, 0xdd, 0x85, 0x65, 0xd0, 0x5c, 0x47, 0x47, 0xf, 0x4d, 0xc7, 0x9b, 0x92, 0x36, 0xd7, 0xe6, 0x57, 0x46, 0xa}}
 	return a, nil
 }
@@ -195,7 +196,7 @@ func migrations14_fix_asset_toml_fieldSql() (*asset, error) {
 		return nil, err
 	}
 
-	info := bindataFileInfo{name: "migrations/14_fix_asset_toml_field.sql", size: 156, mode: os.FileMode(0644), modTime: time.Unix(1566075719, 0)}
+	info := bindataFileInfo{name: "migrations/14_fix_asset_toml_field.sql", size: 156, mode: os.FileMode(0644), modTime: time.Unix(1566825316, 0)}
 	a := &asset{bytes: bytes, info: info, digest: [32]uint8{0xdf, 0x28, 0x86, 0x8, 0xa5, 0xec, 0x44, 0x7b, 0xf7, 0x88, 0x3b, 0x6d, 0xf6, 0x5c, 0x6a, 0x17, 0x92, 0xbc, 0xd2, 0x88, 0x94, 0xd4, 0x42, 0xb1, 0xc2, 0xac, 0x97, 0xb6, 0xd0, 0xeb, 0xd8, 0xa7}}
 	return a, nil
 }
@@ -215,7 +216,7 @@ func migrations15_ledger_failed_txsSql() (*asset, error) {
 		return nil, err
 	}
 
-	info := bindataFileInfo{name: "migrations/15_ledger_failed_txs.sql", size: 333, mode: os.FileMode(0644), modTime: time.Unix(1566075719, 0)}
+	info := bindataFileInfo{name: "migrations/15_ledger_failed_txs.sql", size: 333, mode: os.FileMode(0644), modTime: time.Unix(1566825316, 0)}
 	a := &asset{bytes: bytes, info: info, digest: [32]uint8{0xeb, 0x7, 0xd7, 0xc9, 0x5d, 0xbe, 0xd2, 0x21, 0xc1, 0xb0, 0x20, 0xc8, 0x5f, 0x3a, 0xe9, 0x99, 0xba, 0x5d, 0x83, 0xb4, 0xe8, 0x9f, 0x2d, 0xc3, 0x9a, 0xe1, 0x46, 0xf2, 0xd1, 0x1b, 0x48, 0x7a}}
 	return a, nil
 }
@@ -235,7 +236,7 @@ func migrations16_ingest_failed_transactionsSql() (*asset, error) {
 		return nil, err
 	}
 
-	info := bindataFileInfo{name: "migrations/16_ingest_failed_transactions.sql", size: 509, mode: os.FileMode(0644), modTime: time.Unix(1566075719, 0)}
+	info := bindataFileInfo{name: "migrations/16_ingest_failed_transactions.sql", size: 509, mode: os.FileMode(0644), modTime: time.Unix(1566825316, 0)}
 	a := &asset{bytes: bytes, info: info, digest: [32]uint8{0xf9, 0x24, 0xd, 0x8a, 0x56, 0x1d, 0x41, 0x6a, 0x4, 0x7b, 0xe1, 0x9f, 0xfb, 0x78, 0x2, 0xec, 0xe2, 0x98, 0xac, 0xef, 0xc7, 0xc0, 0x96, 0xd1, 0xbf, 0x8f, 0xc6, 0x16, 0xa7, 0x3c, 0x4a, 0x33}}
 	return a, nil
 }
@@ -255,7 +256,7 @@ func migrations17_transaction_fee_paidSql() (*asset, error) {
 		return nil, err
 	}
 
-	info := bindataFileInfo{name: "migrations/17_transaction_fee_paid.sql", size: 287, mode: os.FileMode(0644), modTime: time.Unix(1566075719, 0)}
+	info := bindataFileInfo{name: "migrations/17_transaction_fee_paid.sql", size: 287, mode: os.FileMode(0644), modTime: time.Unix(1566825316, 0)}
 	a := &asset{bytes: bytes, info: info, digest: [32]uint8{0x64, 0x93, 0x1c, 0x21, 0xf6, 0x63, 0xac, 0x5c, 0x8, 0x6b, 0xe9, 0x4f, 0xcb, 0xcb, 0xae, 0xdf, 0xa, 0x28, 0xa8, 0x6a, 0xfd, 0x61, 0x29, 0xc2, 0x60, 0xaf, 0xb7, 0x74, 0xfd, 0x0, 0x85, 0xb7}}
 	return a, nil
 }
@@ -275,7 +276,7 @@ func migrations18_account_for_signersSql() (*asset, error) {
 		return nil, err
 	}
 
-	info := bindataFileInfo{name: "migrations/18_account_for_signers.sql", size: 481, mode: os.FileMode(0644), modTime: time.Unix(1566075719, 0)}
+	info := bindataFileInfo{name: "migrations/18_account_for_signers.sql", size: 481, mode: os.FileMode(0644), modTime: time.Unix(1566913223, 0)}
 	a := &asset{bytes: bytes, info: info, digest: [32]uint8{0x37, 0xdc, 0xe4, 0xb4, 0xd5, 0xcc, 0x53, 0xd9, 0x42, 0x8c, 0x12, 0x37, 0xcf, 0x13, 0x2c, 0x47, 0xe, 0xc7, 0xba, 0xe5, 0xc2, 0x17, 0x73, 0xe2, 0xc, 0xd2, 0x4a, 0xb3, 0x62, 0x75, 0x54, 0x7f}}
 	return a, nil
 }
@@ -295,7 +296,7 @@ func migrations19_offersSql() (*asset, error) {
 		return nil, err
 	}
 
-	info := bindataFileInfo{name: "migrations/19_offers.sql", size: 1064, mode: os.FileMode(0644), modTime: time.Unix(1568706917, 0)}
+	info := bindataFileInfo{name: "migrations/19_offers.sql", size: 1064, mode: os.FileMode(0644), modTime: time.Unix(1572426892, 0)}
 	a := &asset{bytes: bytes, info: info, digest: [32]uint8{0xbd, 0xff, 0xef, 0xfe, 0xb0, 0x5b, 0xa3, 0x92, 0xac, 0x9d, 0x98, 0x6c, 0xd4, 0x90, 0x9c, 0xe9, 0xae, 0x89, 0xfc, 0x54, 0x2b, 0xe3, 0x33, 0x1f, 0x0, 0xd6, 0x24, 0x9a, 0x1, 0xe1, 0xa6, 0x39}}
 	return a, nil
 }
@@ -315,7 +316,7 @@ func migrations1_initial_schemaSql() (*asset, error) {
 		return nil, err
 	}
 
-	info := bindataFileInfo{name: "migrations/1_initial_schema.sql", size: 9977, mode: os.FileMode(0644), modTime: time.Unix(1571945053, 0)}
+	info := bindataFileInfo{name: "migrations/1_initial_schema.sql", size: 9977, mode: os.FileMode(0644), modTime: time.Unix(1576519637, 0)}
 	a := &asset{bytes: bytes, info: info, digest: [32]uint8{0x6d, 0xdd, 0xc3, 0x1d, 0x39, 0xb7, 0x5e, 0x6a, 0x64, 0x2b, 0xd5, 0x66, 0x83, 0x61, 0x79, 0xf7, 0x59, 0xce, 0x51, 0x66, 0x3c, 0xd0, 0xf3, 0x14, 0x35, 0xcd, 0x21, 0xc0, 0xae, 0x24, 0x84, 0x35}}
 	return a, nil
 }
@@ -335,7 +336,7 @@ func migrations20_account_for_signer_indexSql() (*asset, error) {
 		return nil, err
 	}
 
-	info := bindataFileInfo{name: "migrations/20_account_for_signer_index.sql", size: 140, mode: os.FileMode(0644), modTime: time.Unix(1571945053, 0)}
+	info := bindataFileInfo{name: "migrations/20_account_for_signer_index.sql", size: 140, mode: os.FileMode(0644), modTime: time.Unix(1576519637, 0)}
 	a := &asset{bytes: bytes, info: info, digest: [32]uint8{0x7, 0xd5, 0x6a, 0x4f, 0x6a, 0x95, 0xe0, 0x16, 0xa8, 0x25, 0xd7, 0x4, 0xec, 0x85, 0xe9, 0x13, 0x33, 0x4c, 0x9a, 0xa8, 0x74, 0xf9, 0x63, 0x52, 0xa5, 0x18, 0xaa, 0xdb, 0x4, 0xb5, 0xf7, 0x6e}}
 	return a, nil
 }
@@ -355,7 +356,7 @@ func migrations21_trades_remove_zero_amount_constraintsSql() (*asset, error) {
 		return nil, err
 	}
 
-	info := bindataFileInfo{name: "migrations/21_trades_remove_zero_amount_constraints.sql", size: 765, mode: os.FileMode(0644), modTime: time.Unix(1571945053, 0)}
+	info := bindataFileInfo{name: "migrations/21_trades_remove_zero_amount_constraints.sql", size: 765, mode: os.FileMode(0644), modTime: time.Unix(1572426892, 0)}
 	a := &asset{bytes: bytes, info: info, digest: [32]uint8{0x24, 0x1a, 0x4b, 0x15, 0xd5, 0xce, 0x4, 0xe9, 0x43, 0x61, 0x69, 0xce, 0xed, 0x82, 0x11, 0x4e, 0xc7, 0x58, 0xef, 0x4a, 0x46, 0xef, 0x2a, 0x28, 0x13, 0x5e, 0x59, 0xf0, 0x69, 0x50, 0x45, 0x84}}
 	return a, nil
 }
@@ -375,7 +376,7 @@ func migrations22_trust_linesSql() (*asset, error) {
 		return nil, err
 	}
 
-	info := bindataFileInfo{name: "migrations/22_trust_lines.sql", size: 955, mode: os.FileMode(0644), modTime: time.Unix(1576794170, 0)}
+	info := bindataFileInfo{name: "migrations/22_trust_lines.sql", size: 955, mode: os.FileMode(0644), modTime: time.Unix(1578941604, 0)}
 	a := &asset{bytes: bytes, info: info, digest: [32]uint8{0xe7, 0xd9, 0x90, 0x83, 0xc9, 0xb3, 0x1b, 0xc4, 0xe9, 0xc4, 0xbb, 0xcb, 0xb5, 0x92, 0x15, 0xaa, 0xef, 0x5d, 0x4e, 0xcf, 0x16, 0x6b, 0x49, 0xef, 0x85, 0x1a, 0xbf, 0xb6, 0x71, 0xb3, 0x92, 0x33}}
 	return a, nil
 }
@@ -395,7 +396,7 @@ func migrations23_exp_asset_statsSql() (*asset, error) {
 		return nil, err
 	}
 
-	info := bindataFileInfo{name: "migrations/23_exp_asset_stats.sql", size: 883, mode: os.FileMode(0644), modTime: time.Unix(1574194052, 0)}
+	info := bindataFileInfo{name: "migrations/23_exp_asset_stats.sql", size: 883, mode: os.FileMode(0644), modTime: time.Unix(1578941604, 0)}
 	a := &asset{bytes: bytes, info: info, digest: [32]uint8{0x5f, 0x23, 0x96, 0xcb, 0x81, 0x52, 0xd5, 0xb, 0x3c, 0xd4, 0xb9, 0xd9, 0x24, 0xd3, 0x1a, 0x3d, 0x1a, 0xe0, 0xd2, 0x4, 0x40, 0xf5, 0x75, 0xe2, 0x1d, 0x26, 0xd3, 0x19, 0xcf, 0x70, 0xf, 0x36}}
 	return a, nil
 }
@@ -415,7 +416,7 @@ func migrations24_accountsSql() (*asset, error) {
 		return nil, err
 	}
 
-	info := bindataFileInfo{name: "migrations/24_accounts.sql", size: 1402, mode: os.FileMode(0644), modTime: time.Unix(1576794170, 0)}
+	info := bindataFileInfo{name: "migrations/24_accounts.sql", size: 1402, mode: os.FileMode(0644), modTime: time.Unix(1578941604, 0)}
 	a := &asset{bytes: bytes, info: info, digest: [32]uint8{0xa5, 0xf8, 0xf7, 0xeb, 0xe2, 0x3d, 0xda, 0xe, 0xc2, 0x78, 0x88, 0x16, 0x22, 0xbf, 0x22, 0xa8, 0x5a, 0x17, 0x72, 0xd9, 0xab, 0x56, 0xa8, 0x55, 0x5a, 0x3f, 0x47, 0xf6, 0x18, 0xfa, 0x43, 0xa7}}
 	return a, nil
 }
@@ -435,7 +436,7 @@ func migrations25_expingest_rename_columnsSql() (*asset, error) {
 		return nil, err
 	}
 
-	info := bindataFileInfo{name: "migrations/25_expingest_rename_columns.sql", size: 641, mode: os.FileMode(0644), modTime: time.Unix(1576794170, 0)}
+	info := bindataFileInfo{name: "migrations/25_expingest_rename_columns.sql", size: 641, mode: os.FileMode(0644), modTime: time.Unix(1578941604, 0)}
 	a := &asset{bytes: bytes, info: info, digest: [32]uint8{0x80, 0x44, 0x81, 0x62, 0xeb, 0xcf, 0x82, 0xaa, 0x9, 0x14, 0x4c, 0xb6, 0xd2, 0x2c, 0x41, 0x2d, 0xf0, 0x34, 0x4a, 0x18, 0x5a, 0x95, 0x3e, 0x8d, 0x60, 0xbe, 0x5, 0x10, 0xf5, 0xc2, 0x9c, 0x3a}}
 	return a, nil
 }
@@ -455,7 +456,7 @@ func migrations26_exp_history_ledgersSql() (*asset, error) {
 		return nil, err
 	}
 
-	info := bindataFileInfo{name: "migrations/26_exp_history_ledgers.sql", size: 209, mode: os.FileMode(0644), modTime: time.Unix(1576794170, 0)}
+	info := bindataFileInfo{name: "migrations/26_exp_history_ledgers.sql", size: 209, mode: os.FileMode(0644), modTime: time.Unix(1578941604, 0)}
 	a := &asset{bytes: bytes, info: info, digest: [32]uint8{0xb0, 0xf9, 0xc6, 0xfd, 0xcb, 0x11, 0xc3, 0xc0, 0xbf, 0xac, 0x33, 0x8a, 0xc5, 0x8d, 0x47, 0xfd, 0x59, 0xd1, 0x1d, 0x69, 0x17, 0xba, 0xc7, 0xbb, 0xe6, 0x40, 0x58, 0x32, 0x14, 0x97, 0x96, 0x76}}
 	return a, nil
 }
@@ -475,7 +476,7 @@ func migrations27_exp_history_transactionsSql() (*asset, error) {
 		return nil, err
 	}
 
-	info := bindataFileInfo{name: "migrations/27_exp_history_transactions.sql", size: 630, mode: os.FileMode(0644), modTime: time.Unix(1578352512, 0)}
+	info := bindataFileInfo{name: "migrations/27_exp_history_transactions.sql", size: 630, mode: os.FileMode(0644), modTime: time.Unix(1579093592, 0)}
 	a := &asset{bytes: bytes, info: info, digest: [32]uint8{0x13, 0xbf, 0x14, 0x32, 0x4a, 0xc, 0x39, 0x8a, 0xff, 0x9d, 0xaf, 0x3f, 0x8e, 0xb4, 0xe, 0xf2, 0x2b, 0x26, 0x67, 0xf6, 0xcd, 0x20, 0xe2, 0x5b, 0x98, 0x78, 0xc2, 0x10, 0xcc, 0x52, 0xd6, 0xc3}}
 	return a, nil
 }
@@ -495,7 +496,7 @@ func migrations28_exp_history_operationsSql() (*asset, error) {
 		return nil, err
 	}
 
-	info := bindataFileInfo{name: "migrations/28_exp_history_operations.sql", size: 439, mode: os.FileMode(0644), modTime: time.Unix(1578352512, 0)}
+	info := bindataFileInfo{name: "migrations/28_exp_history_operations.sql", size: 439, mode: os.FileMode(0644), modTime: time.Unix(1578941604, 0)}
 	a := &asset{bytes: bytes, info: info, digest: [32]uint8{0x59, 0x2d, 0xc6, 0x70, 0x76, 0x72, 0xc5, 0xb1, 0xc6, 0xe7, 0xa0, 0xb2, 0xfc, 0x78, 0x71, 0xa, 0x43, 0x8e, 0x53, 0x9, 0x19, 0x10, 0xcb, 0x75, 0x3b, 0x66, 0x1, 0x57, 0x43, 0xd2, 0x8e, 0x89}}
 	return a, nil
 }
@@ -515,7 +516,7 @@ func migrations29_exp_history_assetsSql() (*asset, error) {
 		return nil, err
 	}
 
-	info := bindataFileInfo{name: "migrations/29_exp_history_assets.sql", size: 206, mode: os.FileMode(0644), modTime: time.Unix(1578594301, 0)}
+	info := bindataFileInfo{name: "migrations/29_exp_history_assets.sql", size: 206, mode: os.FileMode(0644), modTime: time.Unix(1578941604, 0)}
 	a := &asset{bytes: bytes, info: info, digest: [32]uint8{0x25, 0xdf, 0x37, 0x6, 0x2c, 0x6e, 0x52, 0x9b, 0x16, 0x17, 0x9c, 0x29, 0x41, 0x41, 0xa6, 0x14, 0x59, 0xff, 0x29, 0xfa, 0x12, 0x2a, 0x8d, 0xce, 0x42, 0xad, 0xa6, 0x26, 0xef, 0x6f, 0x27, 0x17}}
 	return a, nil
 }
@@ -535,7 +536,7 @@ func migrations2_index_participants_by_toidSql() (*asset, error) {
 		return nil, err
 	}
 
-	info := bindataFileInfo{name: "migrations/2_index_participants_by_toid.sql", size: 277, mode: os.FileMode(0644), modTime: time.Unix(1566075719, 0)}
+	info := bindataFileInfo{name: "migrations/2_index_participants_by_toid.sql", size: 277, mode: os.FileMode(0644), modTime: time.Unix(1566825316, 0)}
 	a := &asset{bytes: bytes, info: info, digest: [32]uint8{0xdd, 0x9f, 0x5c, 0xe6, 0xd0, 0x43, 0x82, 0xa3, 0x8d, 0xb3, 0x64, 0xb1, 0x2, 0x4b, 0xe1, 0x96, 0x3, 0x92, 0xb3, 0xea, 0x3c, 0x2e, 0xb2, 0xad, 0x47, 0xcd, 0x92, 0x4c, 0x6c, 0x5c, 0x46, 0xfd}}
 	return a, nil
 }
@@ -555,7 +556,7 @@ func migrations30_exp_history_tradesSql() (*asset, error) {
 		return nil, err
 	}
 
-	info := bindataFileInfo{name: "migrations/30_exp_history_trades.sql", size: 2297, mode: os.FileMode(0644), modTime: time.Unix(1578594301, 0)}
+	info := bindataFileInfo{name: "migrations/30_exp_history_trades.sql", size: 2297, mode: os.FileMode(0644), modTime: time.Unix(1578941604, 0)}
 	a := &asset{bytes: bytes, info: info, digest: [32]uint8{0xaf, 0x32, 0xe, 0xc2, 0x9, 0x37, 0x62, 0x5f, 0x79, 0xfe, 0x3e, 0x11, 0x22, 0x66, 0x56, 0x36, 0x8, 0x0, 0x76, 0x70, 0xc3, 0x5c, 0x16, 0xe3, 0x2b, 0x73, 0x57, 0xe8, 0x38, 0x6c, 0x62, 0x1e}}
 	return a, nil
 }
@@ -575,8 +576,28 @@ func migrations31_exp_history_effectsSql() (*asset, error) {
 		return nil, err
 	}
 
-	info := bindataFileInfo{name: "migrations/31_exp_history_effects.sql", size: 209, mode: os.FileMode(0644), modTime: time.Unix(1578594271, 0)}
+	info := bindataFileInfo{name: "migrations/31_exp_history_effects.sql", size: 209, mode: os.FileMode(0644), modTime: time.Unix(1578949976, 0)}
 	a := &asset{bytes: bytes, info: info, digest: [32]uint8{0xdf, 0x34, 0xf6, 0x6e, 0x86, 0x85, 0x4e, 0xfb, 0x74, 0xee, 0x7d, 0x4, 0xd2, 0xc7, 0x83, 0xae, 0x97, 0xab, 0xca, 0xe1, 0xb3, 0x7c, 0x25, 0xa8, 0x7f, 0x65, 0x2b, 0x1e, 0xdb, 0x88, 0x9b, 0xf}}
+	return a, nil
+}
+
+var _migrations32_drop_exp_history_tablesSql = []byte("\x1f\x8b\x08\x00\x00\x00\x00\x00\x00\xff\xbc\x57\xd1\x6e\xda\x30\x14\x7d\xe7\x2b\xae\xfa\x04\x1a\x4c\x7b\x5e\xb7\x49\x1d\xcd\x36\x54\x14\x36\x0a\xd2\xde\x22\xc7\xbe\x10\xab\xc1\x8e\x6c\x23\xda\x7d\xfd\x94\xa4\x69\x1d\xc7\xa4\x66\x43\xbc\xfa\x5c\x9f\x7b\x7c\x7c\x7c\x03\x93\x09\xbc\xdb\xf1\xad\x22\x06\x61\x5d\x0c\x06\xb7\xcb\xc5\x4f\x58\xdd\x7c\x9d\x47\x80\x8f\x45\x92\x71\x6d\xa4\x7a\x4a\x70\xb3\x41\x6a\x34\x50\xa2\x29\x61\x78\x7d\xb4\xd0\x28\xc2\x30\xa0\x8e\x68\x8d\x21\x7c\xb2\x40\x45\x0c\x97\x22\x29\x88\x32\x9c\xf2\x82\x88\x93\xf6\x85\x69\x16\x9a\xd0\x7f\xe8\x42\x28\x95\xfb\xa0\x4a\xab\x47\x40\x75\x8e\x6c\x8b\xca\x2e\xb4\xef\xe9\x56\x1e\xc4\x60\x30\x5d\x46\x37\xab\xa8\x67\xf3\x70\x00\x00\x30\x9f\xdd\x45\xe0\x40\x15\xc0\x05\xcd\xf7\x8c\x8b\x2d\x30\xdc\x90\x7d\x6e\xdc\x65\x2a\x85\x36\x8a\x70\xd1\x41\xb8\x60\xf8\x88\x7a\x30\xba\xee\x91\xd1\x3a\xb1\x47\x8b\x8d\x5f\x44\xd0\xcb\x65\x79\xc4\x34\xd8\xa5\x9d\x69\xe7\xad\xdf\xa5\x56\xed\x45\x84\x5a\x8f\xc8\x23\xed\x15\xbd\xac\x98\x37\x3d\xf3\x57\x5e\x26\x63\xf5\x58\xf3\x25\xac\x42\xce\x29\xa2\x9c\x09\x07\x04\x4a\x84\x90\x06\xa8\xc2\x72\x36\x78\x66\x31\xd1\x1f\xab\xda\xbe\x3c\x96\x75\xc3\xb2\xc8\x17\x40\x86\xba\x81\x3c\xd2\x3b\x88\xad\xbe\x03\x36\x07\x98\x4c\x60\x54\x8f\xb5\x14\x29\xd9\x6b\x04\x93\xa1\xd3\x14\x0c\x49\x73\x84\x8c\x68\x50\xb8\x41\x85\x82\xa2\xcd\x0e\x46\x76\x1e\x30\x10\xc1\x5c\xcf\x27\x93\x6a\xf5\x80\xc0\x24\x94\x5e\x1d\x88\x30\xe5\x66\x2a\x8b\x27\x30\x99\xd4\x2d\xda\xf7\xc0\x85\x36\x48\xd8\xb8\xdc\xd2\xd4\xbe\x2a\x30\x19\x96\x94\xde\xd1\x52\xf6\xf1\xe4\xa1\x3a\x88\xee\x1f\x09\xf5\x15\x94\x6e\x75\x73\xcc\x19\xa4\x7c\xcb\x85\x81\x78\xb1\x82\x78\x3d\x9f\x8f\xab\xca\x2b\xa9\x18\xaa\x2b\xe0\xc2\xe0\x16\x95\x83\xd6\xd3\x3e\xa1\xb9\xd4\xc8\x12\x62\xc0\xf0\x1d\x6a\x43\x76\x05\x1c\xb8\xc9\xe4\xbe\x5e\x81\x3f\x52\xa0\xb3\x55\x6e\x36\xa8\x8e\xb6\x4d\x89\xc6\xe6\xcc\x9e\x22\x58\x46\xdf\xa2\x65\x14\x4f\xa3\x7b\xaf\x4b\x43\xce\x46\x36\x51\xe9\xd1\x29\x34\x95\xa7\x2e\xc9\xae\xa4\xf6\xcb\xad\xba\xa2\x3a\x8b\xe2\x17\xae\xff\x14\xfd\xc2\xd3\xa3\xbb\x3a\x18\xd7\x89\xc6\x3c\x47\x05\xa9\x94\x39\x12\x51\x63\x85\xe2\x14\x13\xf1\xbc\xd1\x5e\x63\xad\xb5\x8a\xc3\xb9\xcd\xb6\x02\x2f\x38\x5d\xc4\xf7\xab\xe5\xcd\x2c\x5e\x79\x62\x9a\x58\x8e\x27\x34\x43\xfa\x00\xd3\x1f\xd1\xf4\x0e\x86\x43\xfb\x2e\xbe\x7c\x86\x0f\xa3\x51\x08\x9f\x8f\xa3\xf1\xf7\x53\xc7\xf2\x40\xce\x96\xc1\x4e\x0b\xc7\xfd\x5a\x69\x3d\x54\x9f\x9f\xe8\x2c\xbe\x8d\x7e\xd7\xbc\x46\xb1\x24\x7d\x4a\xec\xd0\xc3\x22\xf6\x3d\xdf\xf5\xfd\x2c\xfe\x0e\xa9\x51\x88\x30\x74\x1e\x89\xf5\xd9\x38\xc2\x5d\x5d\x44\x30\x73\x73\x6d\xbd\xbc\x4e\xf2\x43\xc8\xbb\x8f\x25\xa8\x43\xb0\x78\x37\x76\xbd\xec\xc1\xac\x6f\xb3\x35\x7d\x73\x29\x1f\xf6\xc5\x49\x4e\x34\xb9\x3b\xca\x5d\x10\xae\x92\x72\x94\x9e\xc0\xde\x4a\xf9\xb8\x13\xf2\x71\x67\x7a\x5b\xed\xd7\xf1\xec\xd7\xba\xab\x82\xb3\x90\xc6\xbe\xaf\xcb\xb8\xf9\x92\x1c\x3f\xe3\x89\xc7\xeb\x51\x7f\xfc\xdf\xa5\xe7\x67\xd3\x33\x74\xc6\xdf\x4d\x7f\x03\x00\x00\xff\xff\xf1\x72\xe9\x29\xf2\x0e\x00\x00")
+
+func migrations32_drop_exp_history_tablesSqlBytes() ([]byte, error) {
+	return bindataRead(
+		_migrations32_drop_exp_history_tablesSql,
+		"migrations/32_drop_exp_history_tables.sql",
+	)
+}
+
+func migrations32_drop_exp_history_tablesSql() (*asset, error) {
+	bytes, err := migrations32_drop_exp_history_tablesSqlBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "migrations/32_drop_exp_history_tables.sql", size: 3826, mode: os.FileMode(0644), modTime: time.Unix(1579093894, 0)}
+	a := &asset{bytes: bytes, info: info, digest: [32]uint8{0x1d, 0xf2, 0xbb, 0xf, 0x6d, 0x53, 0xdf, 0x60, 0x63, 0x87, 0x3c, 0xe9, 0xdb, 0x18, 0x23, 0x51, 0x40, 0xa4, 0x38, 0xdf, 0xb2, 0x9a, 0xb, 0xa0, 0xe6, 0xbe, 0x91, 0x3b, 0x41, 0x53, 0x69, 0x9d}}
 	return a, nil
 }
 
@@ -595,7 +616,7 @@ func migrations3_use_sequence_in_history_accountsSql() (*asset, error) {
 		return nil, err
 	}
 
-	info := bindataFileInfo{name: "migrations/3_use_sequence_in_history_accounts.sql", size: 447, mode: os.FileMode(0644), modTime: time.Unix(1566075719, 0)}
+	info := bindataFileInfo{name: "migrations/3_use_sequence_in_history_accounts.sql", size: 447, mode: os.FileMode(0644), modTime: time.Unix(1566825316, 0)}
 	a := &asset{bytes: bytes, info: info, digest: [32]uint8{0x5, 0xcc, 0xcc, 0x51, 0xec, 0x12, 0x8, 0x85, 0x4d, 0x85, 0x25, 0x32, 0x18, 0x23, 0x54, 0xc5, 0x10, 0x42, 0x5b, 0x51, 0x28, 0xe4, 0x9, 0xa2, 0x56, 0xdc, 0xb5, 0xf8, 0x41, 0x1b, 0x28, 0x8}}
 	return a, nil
 }
@@ -615,7 +636,7 @@ func migrations4_add_protocol_versionSql() (*asset, error) {
 		return nil, err
 	}
 
-	info := bindataFileInfo{name: "migrations/4_add_protocol_version.sql", size: 188, mode: os.FileMode(0644), modTime: time.Unix(1566075719, 0)}
+	info := bindataFileInfo{name: "migrations/4_add_protocol_version.sql", size: 188, mode: os.FileMode(0644), modTime: time.Unix(1566825316, 0)}
 	a := &asset{bytes: bytes, info: info, digest: [32]uint8{0x26, 0x7f, 0xb6, 0x87, 0x30, 0xa5, 0x8c, 0xee, 0x55, 0xbb, 0x12, 0x6, 0x1b, 0xee, 0xfc, 0x6a, 0xa0, 0x71, 0x60, 0xcc, 0xf7, 0x36, 0x56, 0xb3, 0x39, 0x1f, 0x1a, 0xd2, 0x6, 0xe4, 0x58, 0x8e}}
 	return a, nil
 }
@@ -635,7 +656,7 @@ func migrations5_create_trades_tableSql() (*asset, error) {
 		return nil, err
 	}
 
-	info := bindataFileInfo{name: "migrations/5_create_trades_table.sql", size: 1100, mode: os.FileMode(0644), modTime: time.Unix(1566075719, 0)}
+	info := bindataFileInfo{name: "migrations/5_create_trades_table.sql", size: 1100, mode: os.FileMode(0644), modTime: time.Unix(1566825316, 0)}
 	a := &asset{bytes: bytes, info: info, digest: [32]uint8{0x4f, 0x51, 0x6e, 0x49, 0x10, 0xd6, 0xf1, 0x48, 0xc6, 0x8d, 0xe5, 0xbe, 0x2, 0x94, 0xba, 0x20, 0x37, 0x7b, 0x10, 0x8b, 0x84, 0x7, 0xac, 0x1b, 0xb4, 0xac, 0xc3, 0x6d, 0xbc, 0x54, 0x81, 0xe3}}
 	return a, nil
 }
@@ -655,7 +676,7 @@ func migrations6_create_assets_tableSql() (*asset, error) {
 		return nil, err
 	}
 
-	info := bindataFileInfo{name: "migrations/6_create_assets_table.sql", size: 366, mode: os.FileMode(0644), modTime: time.Unix(1566075719, 0)}
+	info := bindataFileInfo{name: "migrations/6_create_assets_table.sql", size: 366, mode: os.FileMode(0644), modTime: time.Unix(1566825316, 0)}
 	a := &asset{bytes: bytes, info: info, digest: [32]uint8{0xb1, 0x3f, 0x47, 0xea, 0x8a, 0x5d, 0x60, 0xc8, 0x90, 0x36, 0xc8, 0x4f, 0x68, 0xc5, 0xd3, 0xa0, 0xcd, 0xae, 0x5a, 0xc3, 0x75, 0xbd, 0xb4, 0xbb, 0x51, 0xf2, 0x68, 0x54, 0x79, 0xac, 0xa2, 0x8a}}
 	return a, nil
 }
@@ -675,7 +696,7 @@ func migrations7_modify_trades_tableSql() (*asset, error) {
 		return nil, err
 	}
 
-	info := bindataFileInfo{name: "migrations/7_modify_trades_table.sql", size: 2303, mode: os.FileMode(0644), modTime: time.Unix(1566075719, 0)}
+	info := bindataFileInfo{name: "migrations/7_modify_trades_table.sql", size: 2303, mode: os.FileMode(0644), modTime: time.Unix(1566825316, 0)}
 	a := &asset{bytes: bytes, info: info, digest: [32]uint8{0xb1, 0x2e, 0xba, 0x36, 0x5e, 0x3a, 0x3f, 0x3a, 0x8f, 0xe4, 0xfd, 0xc6, 0xb8, 0xeb, 0xbf, 0xda, 0x2b, 0xc6, 0xcd, 0xe3, 0xb5, 0x9a, 0x78, 0xf9, 0x9c, 0x2d, 0xcf, 0xe7, 0xb1, 0x6e, 0xa0, 0x3e}}
 	return a, nil
 }
@@ -695,7 +716,7 @@ func migrations8_add_aggregatorsSql() (*asset, error) {
 		return nil, err
 	}
 
-	info := bindataFileInfo{name: "migrations/8_add_aggregators.sql", size: 907, mode: os.FileMode(0644), modTime: time.Unix(1566075719, 0)}
+	info := bindataFileInfo{name: "migrations/8_add_aggregators.sql", size: 907, mode: os.FileMode(0644), modTime: time.Unix(1566825316, 0)}
 	a := &asset{bytes: bytes, info: info, digest: [32]uint8{0xae, 0xba, 0x87, 0x6f, 0x41, 0xf3, 0xf6, 0x28, 0x25, 0xc2, 0x19, 0xdf, 0x41, 0x9a, 0x4b, 0xf3, 0x8, 0x37, 0x29, 0x2b, 0x92, 0x12, 0x9f, 0xb5, 0x9f, 0x9d, 0x50, 0x82, 0x6, 0xa5, 0xbb, 0xf6}}
 	return a, nil
 }
@@ -715,7 +736,7 @@ func migrations8_create_asset_stats_tableSql() (*asset, error) {
 		return nil, err
 	}
 
-	info := bindataFileInfo{name: "migrations/8_create_asset_stats_table.sql", size: 441, mode: os.FileMode(0644), modTime: time.Unix(1566075719, 0)}
+	info := bindataFileInfo{name: "migrations/8_create_asset_stats_table.sql", size: 441, mode: os.FileMode(0644), modTime: time.Unix(1566825316, 0)}
 	a := &asset{bytes: bytes, info: info, digest: [32]uint8{0x2d, 0x21, 0x5, 0xfc, 0x3f, 0xe0, 0xe1, 0xe6, 0x50, 0x2c, 0x25, 0xc0, 0x23, 0x87, 0xa3, 0x99, 0xad, 0xc8, 0xc1, 0x67, 0xca, 0x65, 0xc0, 0x91, 0xf6, 0x5c, 0x29, 0xab, 0x78, 0xbe, 0xe4, 0x5e}}
 	return a, nil
 }
@@ -735,7 +756,7 @@ func migrations9_add_header_xdrSql() (*asset, error) {
 		return nil, err
 	}
 
-	info := bindataFileInfo{name: "migrations/9_add_header_xdr.sql", size: 161, mode: os.FileMode(0644), modTime: time.Unix(1566075719, 0)}
+	info := bindataFileInfo{name: "migrations/9_add_header_xdr.sql", size: 161, mode: os.FileMode(0644), modTime: time.Unix(1566825316, 0)}
 	a := &asset{bytes: bytes, info: info, digest: [32]uint8{0x44, 0xe5, 0x20, 0x47, 0xc8, 0x66, 0xd0, 0x16, 0xfa, 0xeb, 0xe, 0xba, 0x80, 0xbd, 0xc3, 0xa6, 0x0, 0x9e, 0xc, 0xb5, 0x45, 0xb9, 0x78, 0x26, 0x8, 0xef, 0x94, 0x23, 0xbe, 0x85, 0x2c, 0xe4}}
 	return a, nil
 }
@@ -831,38 +852,71 @@ func AssetNames() []string {
 
 // _bindata is a table, holding each asset generator, mapped to its name.
 var _bindata = map[string]func() (*asset, error){
-	"migrations/10_add_trades_price.sql":                      migrations10_add_trades_priceSql,
-	"migrations/11_add_trades_account_index.sql":              migrations11_add_trades_account_indexSql,
-	"migrations/12_asset_stats_amount_string.sql":             migrations12_asset_stats_amount_stringSql,
-	"migrations/13_trade_offer_ids.sql":                       migrations13_trade_offer_idsSql,
-	"migrations/14_fix_asset_toml_field.sql":                  migrations14_fix_asset_toml_fieldSql,
-	"migrations/15_ledger_failed_txs.sql":                     migrations15_ledger_failed_txsSql,
-	"migrations/16_ingest_failed_transactions.sql":            migrations16_ingest_failed_transactionsSql,
-	"migrations/17_transaction_fee_paid.sql":                  migrations17_transaction_fee_paidSql,
-	"migrations/18_account_for_signers.sql":                   migrations18_account_for_signersSql,
-	"migrations/19_offers.sql":                                migrations19_offersSql,
-	"migrations/1_initial_schema.sql":                         migrations1_initial_schemaSql,
-	"migrations/20_account_for_signer_index.sql":              migrations20_account_for_signer_indexSql,
+	"migrations/10_add_trades_price.sql": migrations10_add_trades_priceSql,
+
+	"migrations/11_add_trades_account_index.sql": migrations11_add_trades_account_indexSql,
+
+	"migrations/12_asset_stats_amount_string.sql": migrations12_asset_stats_amount_stringSql,
+
+	"migrations/13_trade_offer_ids.sql": migrations13_trade_offer_idsSql,
+
+	"migrations/14_fix_asset_toml_field.sql": migrations14_fix_asset_toml_fieldSql,
+
+	"migrations/15_ledger_failed_txs.sql": migrations15_ledger_failed_txsSql,
+
+	"migrations/16_ingest_failed_transactions.sql": migrations16_ingest_failed_transactionsSql,
+
+	"migrations/17_transaction_fee_paid.sql": migrations17_transaction_fee_paidSql,
+
+	"migrations/18_account_for_signers.sql": migrations18_account_for_signersSql,
+
+	"migrations/19_offers.sql": migrations19_offersSql,
+
+	"migrations/1_initial_schema.sql": migrations1_initial_schemaSql,
+
+	"migrations/20_account_for_signer_index.sql": migrations20_account_for_signer_indexSql,
+
 	"migrations/21_trades_remove_zero_amount_constraints.sql": migrations21_trades_remove_zero_amount_constraintsSql,
-	"migrations/22_trust_lines.sql":                           migrations22_trust_linesSql,
-	"migrations/23_exp_asset_stats.sql":                       migrations23_exp_asset_statsSql,
-	"migrations/24_accounts.sql":                              migrations24_accountsSql,
-	"migrations/25_expingest_rename_columns.sql":              migrations25_expingest_rename_columnsSql,
-	"migrations/26_exp_history_ledgers.sql":                   migrations26_exp_history_ledgersSql,
-	"migrations/27_exp_history_transactions.sql":              migrations27_exp_history_transactionsSql,
-	"migrations/28_exp_history_operations.sql":                migrations28_exp_history_operationsSql,
-	"migrations/29_exp_history_assets.sql":                    migrations29_exp_history_assetsSql,
-	"migrations/2_index_participants_by_toid.sql":             migrations2_index_participants_by_toidSql,
-	"migrations/30_exp_history_trades.sql":                    migrations30_exp_history_tradesSql,
-	"migrations/31_exp_history_effects.sql":                   migrations31_exp_history_effectsSql,
-	"migrations/3_use_sequence_in_history_accounts.sql":       migrations3_use_sequence_in_history_accountsSql,
-	"migrations/4_add_protocol_version.sql":                   migrations4_add_protocol_versionSql,
-	"migrations/5_create_trades_table.sql":                    migrations5_create_trades_tableSql,
-	"migrations/6_create_assets_table.sql":                    migrations6_create_assets_tableSql,
-	"migrations/7_modify_trades_table.sql":                    migrations7_modify_trades_tableSql,
-	"migrations/8_add_aggregators.sql":                        migrations8_add_aggregatorsSql,
-	"migrations/8_create_asset_stats_table.sql":               migrations8_create_asset_stats_tableSql,
-	"migrations/9_add_header_xdr.sql":                         migrations9_add_header_xdrSql,
+
+	"migrations/22_trust_lines.sql": migrations22_trust_linesSql,
+
+	"migrations/23_exp_asset_stats.sql": migrations23_exp_asset_statsSql,
+
+	"migrations/24_accounts.sql": migrations24_accountsSql,
+
+	"migrations/25_expingest_rename_columns.sql": migrations25_expingest_rename_columnsSql,
+
+	"migrations/26_exp_history_ledgers.sql": migrations26_exp_history_ledgersSql,
+
+	"migrations/27_exp_history_transactions.sql": migrations27_exp_history_transactionsSql,
+
+	"migrations/28_exp_history_operations.sql": migrations28_exp_history_operationsSql,
+
+	"migrations/29_exp_history_assets.sql": migrations29_exp_history_assetsSql,
+
+	"migrations/2_index_participants_by_toid.sql": migrations2_index_participants_by_toidSql,
+
+	"migrations/30_exp_history_trades.sql": migrations30_exp_history_tradesSql,
+
+	"migrations/31_exp_history_effects.sql": migrations31_exp_history_effectsSql,
+
+	"migrations/32_drop_exp_history_tables.sql": migrations32_drop_exp_history_tablesSql,
+
+	"migrations/3_use_sequence_in_history_accounts.sql": migrations3_use_sequence_in_history_accountsSql,
+
+	"migrations/4_add_protocol_version.sql": migrations4_add_protocol_versionSql,
+
+	"migrations/5_create_trades_table.sql": migrations5_create_trades_tableSql,
+
+	"migrations/6_create_assets_table.sql": migrations6_create_assets_tableSql,
+
+	"migrations/7_modify_trades_table.sql": migrations7_modify_trades_tableSql,
+
+	"migrations/8_add_aggregators.sql": migrations8_add_aggregatorsSql,
+
+	"migrations/8_create_asset_stats_table.sql": migrations8_create_asset_stats_tableSql,
+
+	"migrations/9_add_header_xdr.sql": migrations9_add_header_xdrSql,
 }
 
 // AssetDir returns the file names below a certain
@@ -931,6 +985,7 @@ var _bintree = &bintree{nil, map[string]*bintree{
 		"2_index_participants_by_toid.sql":             &bintree{migrations2_index_participants_by_toidSql, map[string]*bintree{}},
 		"30_exp_history_trades.sql":                    &bintree{migrations30_exp_history_tradesSql, map[string]*bintree{}},
 		"31_exp_history_effects.sql":                   &bintree{migrations31_exp_history_effectsSql, map[string]*bintree{}},
+		"32_drop_exp_history_tables.sql":               &bintree{migrations32_drop_exp_history_tablesSql, map[string]*bintree{}},
 		"3_use_sequence_in_history_accounts.sql":       &bintree{migrations3_use_sequence_in_history_accountsSql, map[string]*bintree{}},
 		"4_add_protocol_version.sql":                   &bintree{migrations4_add_protocol_versionSql, map[string]*bintree{}},
 		"5_create_trades_table.sql":                    &bintree{migrations5_create_trades_tableSql, map[string]*bintree{}},

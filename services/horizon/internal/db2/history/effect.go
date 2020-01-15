@@ -216,102 +216,12 @@ func (q *EffectsQ) orderBookFilter(a xdr.Asset, prefix string) {
 	q.sql = q.sql.Where(clause, typ, code, iss)
 }
 
-func (q *Q) findOperationEffects(
-	effectsTable,
-	accountTable string,
-	seq int32,
-) ([]Effect, error) {
-	from := toid.ID{LedgerSequence: int32(seq)}.ToInt64()
-	to := toid.ID{LedgerSequence: int32(seq + 1)}.ToInt64()
-	effects := []Effect{}
-
-	sql := effectFields.
-		From(
-			fmt.Sprintf("%s heff", effectsTable),
-		).
-		Join(
-			fmt.Sprintf(
-				"%s hacc ON hacc.id = heff.history_account_id",
-				accountTable,
-			),
-		).
-		Where("heff.history_operation_id >= ? AND heff.history_operation_id <= ? ", from, to).
-		OrderBy(
-			"heff.history_operation_id asc, heff.order asc",
-		)
-
-	err := q.Select(&effects, sql)
-
-	return effects, err
-}
-
-// CheckExpOperationEffects checks that the effects in exp_history_effects for
-// the given ledger matches the same effects as in history_effects
-func (q *Q) CheckExpOperationEffects(seq int32) (bool, error) {
-	expEffects, err := q.findOperationEffects(
-		"exp_history_effects",
-		"exp_history_accounts",
-		seq,
-	)
-
-	if err != nil {
-		return false, errors.Wrapf(
-			err,
-			"could not load exp_history_effects for ledger: %v",
-			seq,
-		)
-	}
-
-	effects, err := q.findOperationEffects(
-		"history_effects",
-		"history_accounts",
-		seq,
-	)
-
-	if err != nil {
-		return false, errors.Wrapf(
-			err,
-			"could not load history_effects for ledger: %v",
-			seq,
-		)
-	}
-
-	// We only proceed with the comparison if we have data in both the
-	// legacy ingestion system and the experimental ingestion system.
-	// If there is no data in either the legacy ingestion system or the
-	// experimental ingestion system we skip the check.
-	if len(expEffects) == 0 || len(effects) == 0 {
-		return true, nil
-	}
-
-	if len(expEffects) != len(effects) {
-		return false, nil
-	}
-
-	for i, expEffect := range expEffects {
-		effect := effects[i]
-
-		// Make HistoryAccountID the same since we don't care about this value
-		expEffect.HistoryAccountID = 0
-		effect.HistoryAccountID = 0
-
-		if expEffect != effect {
-			return false, nil
-		}
-	}
-
-	return true, nil
-}
-
-// QEffects defines exp_history_effects related queries.
+// QEffects defines history_effects related queries.
 type QEffects interface {
 	NewEffectBatchInsertBuilder(maxBatchSize int) EffectBatchInsertBuilder
-	CreateExpAccounts(addresses []string) (map[string]int64, error)
-	CheckExpOperationEffects(seq int32) (bool, error)
+	CreateAccounts(addresses []string) (map[string]int64, error)
 }
 
-var effectFields = sq.Select("heff.*, hacc.address")
-
-var selectEffect = effectFields.
+var selectEffect = sq.Select("heff.*, hacc.address").
 	From("history_effects heff").
 	LeftJoin("history_accounts hacc ON hacc.id = heff.history_account_id")

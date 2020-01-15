@@ -21,9 +21,9 @@ func (q *Q) TruncateExpingestStateTables() error {
 	})
 }
 
-// ExpIngestRemovalSummary describes how many rows in the experimental ingestion
-// history tables have been deleted by RemoveExpIngestHistory()
-type ExpIngestRemovalSummary struct {
+// IngestHistoryRemovalSummary describes how many rows in the ingestion
+// history tables have been deleted by RemoveIngestHistory()
+type IngestHistoryRemovalSummary struct {
 	LedgersRemoved                 int64
 	TransactionsRemoved            int64
 	TransactionParticipantsRemoved int64
@@ -33,13 +33,13 @@ type ExpIngestRemovalSummary struct {
 	EffectsRemoved                 int64
 }
 
-// RemoveExpIngestHistory removes all rows in the experimental ingestion
+// RemoveIngestHistory removes all rows in the ingestion
 // history tables which have a ledger sequence higher than `newerThanSequence`
-func (q *Q) RemoveExpIngestHistory(newerThanSequence uint32) (ExpIngestRemovalSummary, error) {
-	summary := ExpIngestRemovalSummary{}
+func (q *Q) RemoveIngestHistory(newerThanSequence uint32) (IngestHistoryRemovalSummary, error) {
+	summary := IngestHistoryRemovalSummary{}
 
 	result, err := q.Exec(
-		sq.Delete("exp_history_ledgers").
+		sq.Delete("history_ledgers").
 			Where("sequence > ?", newerThanSequence),
 	)
 	if err != nil {
@@ -52,7 +52,7 @@ func (q *Q) RemoveExpIngestHistory(newerThanSequence uint32) (ExpIngestRemovalSu
 	}
 
 	result, err = q.Exec(
-		sq.Delete("exp_history_transactions").
+		sq.Delete("history_transactions").
 			Where("ledger_sequence > ?", newerThanSequence),
 	)
 	if err != nil {
@@ -65,7 +65,7 @@ func (q *Q) RemoveExpIngestHistory(newerThanSequence uint32) (ExpIngestRemovalSu
 	}
 
 	result, err = q.Exec(
-		sq.Delete("exp_history_transaction_participants").
+		sq.Delete("history_transaction_participants").
 			Where("history_transaction_id >= ?", toid.ID{LedgerSequence: int32(newerThanSequence + 1)}.ToInt64()),
 	)
 	if err != nil {
@@ -78,7 +78,7 @@ func (q *Q) RemoveExpIngestHistory(newerThanSequence uint32) (ExpIngestRemovalSu
 	}
 
 	result, err = q.Exec(
-		sq.Delete("exp_history_operations").
+		sq.Delete("history_operations").
 			Where("id >= ?", toid.ID{LedgerSequence: int32(newerThanSequence + 1)}.ToInt64()),
 	)
 	if err != nil {
@@ -91,7 +91,7 @@ func (q *Q) RemoveExpIngestHistory(newerThanSequence uint32) (ExpIngestRemovalSu
 	}
 
 	result, err = q.Exec(
-		sq.Delete("exp_history_operation_participants").
+		sq.Delete("history_operation_participants").
 			Where("history_operation_id >= ?", toid.ID{LedgerSequence: int32(newerThanSequence + 1)}.ToInt64()),
 	)
 	if err != nil {
@@ -104,7 +104,7 @@ func (q *Q) RemoveExpIngestHistory(newerThanSequence uint32) (ExpIngestRemovalSu
 	}
 
 	result, err = q.Exec(
-		sq.Delete("exp_history_trades").
+		sq.Delete("history_trades").
 			Where("history_operation_id >= ?", toid.ID{LedgerSequence: int32(newerThanSequence + 1)}.ToInt64()),
 	)
 	if err != nil {
@@ -117,7 +117,7 @@ func (q *Q) RemoveExpIngestHistory(newerThanSequence uint32) (ExpIngestRemovalSu
 	}
 
 	result, err = q.Exec(
-		sq.Delete("exp_history_effects").
+		sq.Delete("history_effects").
 			Where("history_operation_id >= ?", toid.ID{LedgerSequence: int32(newerThanSequence + 1)}.ToInt64()),
 	)
 	if err != nil {

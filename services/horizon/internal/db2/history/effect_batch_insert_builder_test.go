@@ -15,7 +15,7 @@ func TestAddEffect(t *testing.T) {
 	q := &Q{tt.HorizonSession()}
 
 	address := "GBXGQJWVLWOYHFLVTKWV5FGHA3LNYY2JQKM7OAJAUEQFU6LPCSEFVXON"
-	accounIDs, err := q.CreateExpAccounts([]string{address})
+	accounIDs, err := q.CreateAccounts([]string{address})
 	tt.Assert.NoError(err)
 
 	builder := q.NewEffectBatchInsertBuilder(2)
@@ -38,14 +38,7 @@ func TestAddEffect(t *testing.T) {
 	tt.Assert.NoError(err)
 
 	effects := []Effect{}
-	err = q.Select(
-		&effects,
-		effectFields.
-			From("exp_history_effects heff").
-			LeftJoin("exp_history_accounts hacc ON hacc.id = heff.history_account_id"),
-	)
-
-	tt.Assert.NoError(err)
+	tt.Assert.NoError(q.Effects().Select(&effects))
 	tt.Assert.Len(effects, 1)
 
 	effect := effects[0]

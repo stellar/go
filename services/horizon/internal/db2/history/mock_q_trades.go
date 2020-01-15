@@ -9,17 +9,12 @@ type MockQTrades struct {
 	mock.Mock
 }
 
-func (m *MockQTrades) CheckExpTrades(seq int32) (bool, error) {
-	a := m.Called(seq)
-	return a.Get(0).(bool), a.Error(1)
-}
-
-func (m *MockQTrades) CreateExpAccounts(addresses []string) (map[string]int64, error) {
+func (m *MockQTrades) CreateAccounts(addresses []string) (map[string]int64, error) {
 	a := m.Called(addresses)
 	return a.Get(0).(map[string]int64), a.Error(1)
 }
 
-func (m *MockQTrades) CreateExpAssets(assets []xdr.Asset) (map[string]Asset, error) {
+func (m *MockQTrades) CreateAssets(assets []xdr.Asset) (map[string]Asset, error) {
 	a := m.Called(assets)
 	return a.Get(0).(map[string]Asset), a.Error(1)
 }

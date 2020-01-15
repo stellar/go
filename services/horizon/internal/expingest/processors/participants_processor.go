@@ -45,7 +45,7 @@ func (p *ParticipantsProcessor) loadAccountIDs(participantSet map[string]partici
 		addresses = append(addresses, address)
 	}
 
-	addressToID, err := p.ParticipantsQ.CreateExpAccounts(addresses)
+	addressToID, err := p.ParticipantsQ.CreateAccounts(addresses)
 	if err != nil {
 		return errors.Wrap(err, "Could not create account ids")
 	}
@@ -206,24 +206,6 @@ func (p *ParticipantsProcessor) ProcessLedger(ctx context.Context, store *pipeli
 
 		if err = p.insertDBOperationsParticipants(participantSet); err != nil {
 			return err
-		}
-	}
-
-	// use an older lookup sequence because the experimental ingestion system and the
-	// legacy ingestion system might not be in sync
-	if sequence > 10 {
-		checkSequence := int32(sequence - 10)
-		var valid bool
-		valid, err = p.ParticipantsQ.CheckExpParticipants(checkSequence)
-		if err != nil {
-			log.WithField("sequence", checkSequence).WithError(err).
-				Error("Could not compare participants for ledger")
-			return nil
-		}
-
-		if !valid {
-			log.WithField("sequence", checkSequence).
-				Error("participants do not match")
 		}
 	}
 

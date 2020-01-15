@@ -20,7 +20,7 @@ import (
 )
 
 // TransactionBatchInsertBuilder is used to insert transactions into the
-// exp_history_transactions table
+// history_transactions table
 type TransactionBatchInsertBuilder interface {
 	Add(transaction io.LedgerTransaction, sequence uint32) error
 	Exec() error
@@ -35,7 +35,7 @@ type transactionBatchInsertBuilder struct {
 func (q *Q) NewTransactionBatchInsertBuilder(maxBatchSize int) TransactionBatchInsertBuilder {
 	return &transactionBatchInsertBuilder{
 		builder: db.BatchInsertBuilder{
-			Table:        q.GetTable("exp_history_transactions"),
+			Table:        q.GetTable("history_transactions"),
 			MaxBatchSize: maxBatchSize,
 		},
 	}

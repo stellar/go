@@ -30,7 +30,7 @@ func (p *EffectProcessor) loadAccountIDs(accountSet map[string]int64) error {
 		addresses = append(addresses, address)
 	}
 
-	addressToID, err := p.EffectsQ.CreateExpAccounts(addresses)
+	addressToID, err := p.EffectsQ.CreateAccounts(addresses)
 	if err != nil {
 		return errors.Wrap(err, "Could not create account ids")
 	}
@@ -75,7 +75,7 @@ func (p *EffectProcessor) insertDBOperationsEffects(effects []effect, accountSet
 		accountID, found := accountSet[effect.address]
 
 		if !found {
-			return errors.Errorf("Error finding exp_history_account_id for address %v", effect.address)
+			return errors.Errorf("Error finding history_account_id for address %v", effect.address)
 		}
 
 		var detailsJSON []byte
@@ -164,25 +164,6 @@ func (p *EffectProcessor) ProcessLedger(ctx context.Context, store *pipeline.Sto
 
 		if err = p.insertDBOperationsEffects(effects, accountSet); err != nil {
 			return err
-		}
-	}
-
-	// use an older lookup sequence because the experimental ingestion system and the
-	// legacy ingestion system might not be in sync
-	if sequence > 10 {
-		checkSequence := int32(sequence - 10)
-
-		var valid bool
-		valid, err = p.EffectsQ.CheckExpOperationEffects(checkSequence)
-		if err != nil {
-			log.WithField("sequence", checkSequence).WithError(err).
-				Error("Could not compare effects for ledger")
-			return nil
-		}
-
-		if !valid {
-			log.WithField("sequence", checkSequence).
-				Error("effects do not match")
 		}
 	}
 

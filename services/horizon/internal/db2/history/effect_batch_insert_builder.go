@@ -5,7 +5,7 @@ import (
 )
 
 // EffectBatchInsertBuilder is used to insert effects into the
-// exp_history_effects table
+// history_effects table
 type EffectBatchInsertBuilder interface {
 	Add(
 		accountID int64,
@@ -26,7 +26,7 @@ type effectBatchInsertBuilder struct {
 func (q *Q) NewEffectBatchInsertBuilder(maxBatchSize int) EffectBatchInsertBuilder {
 	return &effectBatchInsertBuilder{
 		builder: db.BatchInsertBuilder{
-			Table:        q.GetTable("exp_history_effects"),
+			Table:        q.GetTable("history_effects"),
 			MaxBatchSize: maxBatchSize,
 		},
 	}

@@ -55,16 +55,26 @@ func (q *Q) AccountsByAddresses(dest interface{}, addresses []string) error {
 	return q.Select(dest, sql)
 }
 
-// CreateAccounts creates rows for addresses in history_accounts table and
-// put. `ON CONFLICT` is required when running a distributed ingestion.
-func (q *Q) CreateAccounts(dest interface{}, addresses []string) error {
+// CreateAccounts creates rows in the history_accounts table for a given list of addresses.
+// CreateAccounts returns a mapping of account address to its corresponding id in the history_accounts table
+func (q *Q) CreateAccounts(addresses []string) (map[string]int64, error) {
+	var accounts []Account
 	sql := sq.Insert("history_accounts").Columns("address")
 	for _, address := range addresses {
 		sql = sql.Values(address)
 	}
 	sql = sql.Suffix("ON CONFLICT (address) DO UPDATE SET address=EXCLUDED.address RETURNING *")
 
-	return q.Select(dest, sql)
+	err := q.Select(&accounts, sql)
+	if err != nil {
+		return nil, err
+	}
+
+	addressToID := map[string]int64{}
+	for _, account := range accounts {
+		addressToID[account.Address] = account.ID
+	}
+	return addressToID, nil
 }
 
 // Return id for account. If account doesn't exist, it will be created and the new id returned.

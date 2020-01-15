@@ -4,7 +4,6 @@ import (
 	"testing"
 	"time"
 
-	sq "github.com/Masterminds/squirrel"
 	"github.com/guregu/null"
 	"github.com/stellar/go/services/horizon/internal/db2"
 	"github.com/stellar/go/services/horizon/internal/test"
@@ -127,10 +126,10 @@ func createInsertTrades(
 	return first, second, third
 }
 
-func createExpAccountsAndAssets(
+func createAccountsAndAssets(
 	tt *test.T, q *Q, accounts []string, assets []xdr.Asset,
 ) ([]int64, []int64) {
-	addressToAccounts, err := q.CreateExpAccounts(accounts)
+	addressToAccounts, err := q.CreateAccounts(accounts)
 	tt.Assert.NoError(err)
 
 	accountIDs := []int64{}
@@ -138,7 +137,7 @@ func createExpAccountsAndAssets(
 		accountIDs = append(accountIDs, addressToAccounts[account])
 	}
 
-	assetMap, err := q.CreateExpAssets(assets)
+	assetMap, err := q.CreateAssets(assets)
 	tt.Assert.NoError(err)
 
 	assetIDs := []int64{}
@@ -174,7 +173,7 @@ func buildIDtoAssetMapping(assets []xdr.Asset, ids []int64) map[int64]xdr.Asset 
 	return idToAsset
 }
 
-func TestInsertExpTrade(t *testing.T) {
+func TestBatchInsertTrade(t *testing.T) {
 	tt := test.Start(t)
 	defer tt.Finish()
 	test.ResetHorizonDB(t, tt.HorizonDB)
@@ -185,7 +184,7 @@ func TestInsertExpTrade(t *testing.T) {
 		"GAXMF43TGZHW3QN3REOUA2U5PW5BTARXGGYJ3JIFHW3YT6QRKRL3CPPU",
 	}
 	assets := []xdr.Asset{eurAsset, usdAsset, nativeAsset}
-	accountIDs, assetIDs := createExpAccountsAndAssets(
+	accountIDs, assetIDs := createAccountsAndAssets(
 		tt, q,
 		addresses,
 		assets,
@@ -200,7 +199,7 @@ func TestInsertExpTrade(t *testing.T) {
 	tt.Assert.NoError(builder.Exec())
 
 	var rows []Trade
-	tt.Assert.NoError(q.expTrades().Select(&rows))
+	tt.Assert.NoError(q.Trades().Select(&rows))
 
 	idToAccount := buildIDtoAccountMapping(addresses, accountIDs)
 	idToAsset := buildIDtoAssetMapping(assets, assetIDs)
@@ -337,131 +336,5 @@ func createTradeRows(
 			supportTime.MillisFromSeconds(entry.LedgerCloseTime.Unix()),
 		)
 		tt.Assert.NoError(err)
-	}
-}
-
-func TestCheckExpTrades(t *testing.T) {
-	tt := test.Start(t)
-	defer tt.Finish()
-	test.ResetHorizonDB(t, tt.HorizonDB)
-	q := &Q{tt.HorizonSession()}
-
-	sequence := int32(56)
-	valid, err := q.CheckExpTrades(sequence)
-	tt.Assert.NoError(err)
-	tt.Assert.True(valid)
-
-	addresses := []string{
-		"GB2QIYT2IAUFMRXKLSLLPRECC6OCOGJMADSPTRK7TGNT2SFR2YGWDARD",
-		"GAXMF43TGZHW3QN3REOUA2U5PW5BTARXGGYJ3JIFHW3YT6QRKRL3CPPU",
-	}
-	assets := []xdr.Asset{
-		xdr.MustNewCreditAsset("CHF", issuer.Address()),
-		eurAsset, usdAsset, nativeAsset,
-		xdr.MustNewCreditAsset("BTC", issuer.Address()),
-	}
-
-	expAccountIDs, expAssetIDs := createExpAccountsAndAssets(
-		tt, q,
-		addresses,
-		assets,
-	)
-
-	chfAssetID, btcAssetID := expAssetIDs[0], expAssetIDs[4]
-	assets = assets[1:4]
-	expAssetIDs = expAssetIDs[1:4]
-
-	idToAccount := buildIDtoAccountMapping(addresses, expAccountIDs)
-	idToAsset := buildIDtoAssetMapping(assets, expAssetIDs)
-
-	first, second, third := createInsertTrades(
-		expAccountIDs, expAssetIDs, sequence,
-	)
-
-	builder := q.NewTradeBatchInsertBuilder(1)
-	tt.Assert.NoError(
-		builder.Add(first, second, third),
-	)
-	tt.Assert.NoError(builder.Exec())
-
-	valid, err = q.CheckExpTrades(sequence)
-	tt.Assert.NoError(err)
-	tt.Assert.True(valid)
-
-	// create different asset id ordering in history_assets compared to exp_history_assets
-	_, err = q.GetCreateAssetID(assets[1])
-	tt.Assert.NoError(err)
-	_, err = q.GetCreateAssetID(assets[0])
-	tt.Assert.NoError(err)
-	_, err = q.GetCreateAssetID(assets[2])
-	tt.Assert.NoError(err)
-	createTradeRows(
-		tt, q, idToAccount, idToAsset, first, second, third,
-	)
-
-	valid, err = q.CheckExpTrades(sequence)
-	tt.Assert.NoError(err)
-	tt.Assert.True(valid)
-
-	tradeForOtherLedger, _, _ := createInsertTrades(
-		expAccountIDs, expAssetIDs, sequence+1,
-	)
-	tt.Assert.NoError(
-		builder.Add(tradeForOtherLedger),
-	)
-	tt.Assert.NoError(builder.Exec())
-
-	valid, err = q.CheckExpTrades(sequence)
-	tt.Assert.NoError(err)
-	tt.Assert.True(valid)
-
-	newAddress := "GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY"
-	newAccounts, err := q.CreateExpAccounts([]string{newAddress})
-	tt.Assert.NoError(err)
-	newAccountID := newAccounts[newAddress]
-
-	for fieldName, value := range map[string]interface{}{
-		"ledger_closed_at":   time.Now().Add(time.Hour),
-		"offer_id":           67,
-		"base_offer_id":      67,
-		"base_account_id":    newAccountID,
-		"base_asset_id":      chfAssetID,
-		"base_amount":        67,
-		"counter_offer_id":   67,
-		"counter_account_id": newAccountID,
-		"counter_asset_id":   btcAssetID,
-		"counter_amount":     67,
-		"base_is_seller":     second.SoldAssetID >= second.BoughtAssetID,
-		"price_n":            67,
-		"price_d":            67,
-	} {
-		updateSQL := sq.Update("exp_history_trades").
-			Set(fieldName, value).
-			Where(
-				"history_operation_id = ? AND \"order\" = ?",
-				second.HistoryOperationID, second.Order,
-			)
-		_, err = q.Exec(updateSQL)
-		tt.Assert.NoError(err)
-
-		valid, err = q.CheckExpTrades(sequence)
-		tt.Assert.NoError(err)
-		tt.Assert.False(valid)
-
-		_, err = q.Exec(sq.Delete("exp_history_trades").
-			Where(
-				"history_operation_id = ? AND \"order\" = ?",
-				second.HistoryOperationID, second.Order,
-			))
-		tt.Assert.NoError(err)
-
-		tt.Assert.NoError(
-			builder.Add(second),
-		)
-		tt.Assert.NoError(builder.Exec())
-
-		valid, err := q.CheckExpTrades(sequence)
-		tt.Assert.NoError(err)
-		tt.Assert.True(valid)
 	}
 }

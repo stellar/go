@@ -12,9 +12,3 @@ func (m *MockQOperations) NewOperationBatchInsertBuilder(maxBatchSize int) Opera
 	a := m.Called(maxBatchSize)
 	return a.Get(0).(OperationBatchInsertBuilder)
 }
-
-// CheckExpOperations mock
-func (m *MockQOperations) CheckExpOperations(seq int32) (bool, error) {
-	a := m.Called(seq)
-	return a.Get(0).(bool), a.Error(1)
-}

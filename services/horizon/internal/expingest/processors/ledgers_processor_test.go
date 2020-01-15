@@ -2,7 +2,6 @@ package processors
 
 import (
 	"context"
-	"database/sql"
 	stdio "io"
 	"testing"
 
@@ -115,7 +114,7 @@ func (s *LedgersProcessorTestSuiteLedger) TearDownTest() {
 	s.mockLedgerWriter.AssertExpectations(s.T())
 }
 
-func (s *LedgersProcessorTestSuiteLedger) TestInsertExpLedgerIgnoredWhenNotDatabaseIngestion() {
+func (s *LedgersProcessorTestSuiteLedger) TestInsertLedgerIgnoredWhenNotDatabaseIngestion() {
 	// Clear mockLedgerReader expectations
 	s.mockLedgerReader = &io.MockLedgerReader{}
 
@@ -136,16 +135,15 @@ func (s *LedgersProcessorTestSuiteLedger) TestInsertExpLedgerIgnoredWhenNotDatab
 	s.Assert().NoError(err)
 }
 
-func (s *LedgersProcessorTestSuiteLedger) TestInsertExpLedgerSucceeds() {
+func (s *LedgersProcessorTestSuiteLedger) TestInsertLedgerSucceeds() {
 	s.mockQ.On(
-		"InsertExpLedger",
+		"InsertLedger",
 		s.header,
 		s.successCount,
 		s.failedCount,
 		s.opCount,
 		s.ingestVersion,
 	).Return(int64(1), nil)
-	s.mockQ.On("CheckExpLedger", int32(10)).Return(true, nil)
 
 	err := s.processor.ProcessLedger(
 		s.context,
@@ -156,71 +154,9 @@ func (s *LedgersProcessorTestSuiteLedger) TestInsertExpLedgerSucceeds() {
 	s.Assert().NoError(err)
 }
 
-func (s *LedgersProcessorTestSuiteLedger) TestCheckExpLedgerNotFound() {
+func (s *LedgersProcessorTestSuiteLedger) TestInsertLedgerReturnsError() {
 	s.mockQ.On(
-		"InsertExpLedger",
-		s.header,
-		s.successCount,
-		s.failedCount,
-		s.opCount,
-		s.ingestVersion,
-	).Return(int64(1), nil)
-	s.mockQ.On("CheckExpLedger", int32(10)).Return(false, sql.ErrNoRows)
-
-	err := s.processor.ProcessLedger(
-		s.context,
-		&supportPipeline.Store{},
-		s.mockLedgerReader,
-		s.mockLedgerWriter,
-	)
-	s.Assert().NoError(err)
-}
-
-func (s *LedgersProcessorTestSuiteLedger) TestCheckExpLedgerError() {
-	s.mockQ.On(
-		"InsertExpLedger",
-		s.header,
-		s.successCount,
-		s.failedCount,
-		s.opCount,
-		s.ingestVersion,
-	).Return(int64(1), nil)
-	s.mockQ.On("CheckExpLedger", int32(10)).
-		Return(false, errors.New("transient check exp ledger error"))
-
-	err := s.processor.ProcessLedger(
-		s.context,
-		&supportPipeline.Store{},
-		s.mockLedgerReader,
-		s.mockLedgerWriter,
-	)
-	s.Assert().NoError(err)
-}
-
-func (s *LedgersProcessorTestSuiteLedger) TestCheckExpLedgerDoesNotMatch() {
-	s.mockQ.On(
-		"InsertExpLedger",
-		s.header,
-		s.successCount,
-		s.failedCount,
-		s.opCount,
-		s.ingestVersion,
-	).Return(int64(1), nil)
-	s.mockQ.On("CheckExpLedger", int32(10)).
-		Return(false, nil)
-
-	err := s.processor.ProcessLedger(
-		s.context,
-		&supportPipeline.Store{},
-		s.mockLedgerReader,
-		s.mockLedgerWriter,
-	)
-	s.Assert().NoError(err)
-}
-
-func (s *LedgersProcessorTestSuiteLedger) TestInsertExpLedgerReturnsError() {
-	s.mockQ.On(
-		"InsertExpLedger",
+		"InsertLedger",
 		s.header,
 		s.successCount,
 		s.failedCount,
@@ -238,9 +174,9 @@ func (s *LedgersProcessorTestSuiteLedger) TestInsertExpLedgerReturnsError() {
 	s.Assert().EqualError(err, "Could not insert ledger: transient error")
 }
 
-func (s *LedgersProcessorTestSuiteLedger) TestInsertExpLedgerNoRowsAffected() {
+func (s *LedgersProcessorTestSuiteLedger) TestInsertLedgerNoRowsAffected() {
 	s.mockQ.On(
-		"InsertExpLedger",
+		"InsertLedger",
 		s.header,
 		s.successCount,
 		s.failedCount,

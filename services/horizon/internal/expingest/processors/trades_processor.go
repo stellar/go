@@ -87,13 +87,13 @@ func (p *TradeProcessor) ProcessLedger(ctx context.Context, store *pipeline.Stor
 
 	if len(inserts) > 0 {
 		batch := p.TradesQ.NewTradeBatchInsertBuilder(maxBatchSize)
-		accountSet, err = p.TradesQ.CreateExpAccounts(mapKeysToList(accountSet))
+		accountSet, err = p.TradesQ.CreateAccounts(mapKeysToList(accountSet))
 		if err != nil {
 			return errors.Wrap(err, "Error creating account ids")
 		}
 
 		var assetMap map[string]history.Asset
-		assetMap, err = p.TradesQ.CreateExpAssets(assets)
+		assetMap, err = p.TradesQ.CreateAssets(assets)
 		if err != nil {
 			return errors.Wrap(err, "Error creating asset ids")
 		}
@@ -120,30 +120,7 @@ func (p *TradeProcessor) ProcessLedger(ctx context.Context, store *pipeline.Stor
 		}
 	}
 
-	p.checkTrades(ledger)
-
 	return nil
-}
-
-func (p *TradeProcessor) checkTrades(ledger xdr.LedgerHeaderHistoryEntry) {
-	// use an older lookup sequence because the experimental ingestion system and the
-	// legacy ingestion system might not be in sync
-	if sequence := ledger.Header.LedgerSeq; sequence > 10 {
-		checkSequence := int32(sequence - 10)
-		var valid bool
-		valid, err := p.TradesQ.CheckExpTrades(checkSequence)
-		if err != nil {
-			log.WithField("sequence", checkSequence).WithError(err).
-				Error("Could not compare trades for ledger")
-			return
-		}
-
-		if !valid {
-			log.WithField("sequence", checkSequence).
-				Error("rows for ledger in exp_history_trades does not match " +
-					"trades in history_trades")
-		}
-	}
 }
 
 func (p *TradeProcessor) findTradeSellPrice(

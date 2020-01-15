@@ -78,9 +78,9 @@ func (m *mockDBQ) GetAllOffers() ([]history.Offer, error) {
 	return args.Get(0).([]history.Offer), args.Error(1)
 }
 
-func (m *mockDBQ) RemoveExpIngestHistory(newerThanSequence uint32) (history.ExpIngestRemovalSummary, error) {
+func (m *mockDBQ) RemoveIngestHistory(newerThanSequence uint32) (history.IngestHistoryRemovalSummary, error) {
 	args := m.Called(newerThanSequence)
-	return args.Get(0).(history.ExpIngestRemovalSummary), args.Error(1)
+	return args.Get(0).(history.IngestHistoryRemovalSummary), args.Error(1)
 }
 
 func (m *mockDBQ) TruncateExpingestStateTables() error {

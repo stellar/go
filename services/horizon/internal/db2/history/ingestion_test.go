@@ -22,14 +22,14 @@ func assertCountRows(tt *test.T, q *Q, tables []string, expectedCount int) {
 	}
 }
 
-func TestRemoveExpIngestHistory(t *testing.T) {
+func TestRemoveIngestHistory(t *testing.T) {
 	tt := test.Start(t)
 	defer tt.Finish()
 	test.ResetHorizonDB(t, tt.HorizonDB)
 	q := &Q{tt.HorizonSession()}
 
-	summary, err := q.RemoveExpIngestHistory(69859)
-	tt.Assert.Equal(ExpIngestRemovalSummary{}, summary)
+	summary, err := q.RemoveIngestHistory(69859)
+	tt.Assert.Equal(IngestHistoryRemovalSummary{}, summary)
 	tt.Assert.NoError(err)
 
 	txInsertBuilder := q.NewTransactionBatchInsertBuilder(0)
@@ -41,14 +41,14 @@ func TestRemoveExpIngestHistory(t *testing.T) {
 	effectsInsertBuilder := q.NewEffectBatchInsertBuilder(0)
 	accountID := int64(1223)
 
-	expTables := []string{
-		"exp_history_ledgers",
-		"exp_history_transactions",
-		"exp_history_transaction_participants",
-		"exp_history_operations",
-		"exp_history_operation_participants",
-		"exp_history_trades",
-		"exp_history_effects",
+	historyIngestionTables := []string{
+		"history_ledgers",
+		"history_transactions",
+		"history_transaction_participants",
+		"history_operations",
+		"history_operation_participants",
+		"history_trades",
+		"history_effects",
 	}
 
 	ledger := Ledger{
@@ -78,7 +78,7 @@ func TestRemoveExpIngestHistory(t *testing.T) {
 		"8db1e4f145e9ee75162040d26284795e0697e2e84084624e7c6c723ebbf80118",
 	}
 
-	accountIDs, assetIDs := createExpAccountsAndAssets(
+	accountIDs, assetIDs := createAccountsAndAssets(
 		tt, q,
 		[]string{
 			"GB2QIYT2IAUFMRXKLSLLPRECC6OCOGJMADSPTRK7TGNT2SFR2YGWDARD",
@@ -94,7 +94,7 @@ func TestRemoveExpIngestHistory(t *testing.T) {
 			ledger.PreviousLedgerHash = null.NewString(hashes[i-1], true)
 		}
 
-		insertSQL := sq.Insert("exp_history_ledgers").SetMap(ledgerToMap(ledger))
+		insertSQL := sq.Insert("history_ledgers").SetMap(ledgerToMap(ledger))
 		_, err = q.Exec(insertSQL)
 		tt.Assert.NoError(err)
 
@@ -157,18 +157,18 @@ func TestRemoveExpIngestHistory(t *testing.T) {
 		ledger.Sequence++
 	}
 
-	assertCountRows(tt, q, expTables, 5)
+	assertCountRows(tt, q, historyIngestionTables, 5)
 
-	summary, err = q.RemoveExpIngestHistory(69863)
-	tt.Assert.Equal(ExpIngestRemovalSummary{}, summary)
+	summary, err = q.RemoveIngestHistory(69863)
+	tt.Assert.Equal(IngestHistoryRemovalSummary{}, summary)
 	tt.Assert.NoError(err)
 
-	assertCountRows(tt, q, expTables, 5)
+	assertCountRows(tt, q, historyIngestionTables, 5)
 
 	cutoffSequence := 69861
-	summary, err = q.RemoveExpIngestHistory(uint32(cutoffSequence))
+	summary, err = q.RemoveIngestHistory(uint32(cutoffSequence))
 	tt.Assert.Equal(
-		ExpIngestRemovalSummary{
+		IngestHistoryRemovalSummary{
 			LedgersRemoved:                 2,
 			TransactionsRemoved:            2,
 			TransactionParticipantsRemoved: 2,
@@ -182,12 +182,12 @@ func TestRemoveExpIngestHistory(t *testing.T) {
 	tt.Assert.NoError(err)
 
 	var ledgers []Ledger
-	err = q.Select(&ledgers, selectLedgerFields.From("exp_history_ledgers hl"))
+	err = q.Ledgers().Select(&ledgers)
 	tt.Assert.NoError(err)
 	tt.Assert.Len(ledgers, 3)
 
 	var transactions []Transaction
-	err = q.Select(&transactions, selectExpTransaction)
+	err = q.Transactions().Select(&transactions)
 	tt.Assert.NoError(err)
 	tt.Assert.Len(transactions, 3)
 
@@ -195,7 +195,7 @@ func TestRemoveExpIngestHistory(t *testing.T) {
 	tt.Assert.Len(txParticipants, 3)
 
 	var operations []Operation
-	err = q.Select(&operations, selectExpOperation)
+	err = q.Select(&operations, selectOperation)
 	tt.Assert.NoError(err)
 	tt.Assert.Len(operations, 3)
 
@@ -207,17 +207,17 @@ func TestRemoveExpIngestHistory(t *testing.T) {
 	err = q.Select(&opParticipants, sq.Select(
 		"hopp.history_operation_id, "+
 			"hopp.history_account_id").
-		From("exp_history_operation_participants hopp"),
+		From("history_operation_participants hopp"),
 	)
 	tt.Assert.NoError(err)
 	tt.Assert.Len(opParticipants, 3)
 
 	var trades []Trade
-	err = q.expTrades().Select(&trades)
+	err = q.Trades().Select(&trades)
 	tt.Assert.NoError(err)
 
 	var effects []Effect
-	err = q.Select(&effects, sq.Select("*").From("exp_history_effects"))
+	err = q.Select(&effects, sq.Select("*").From("history_effects"))
 	tt.Assert.NoError(err)
 	tt.Assert.Len(effects, 3)
 

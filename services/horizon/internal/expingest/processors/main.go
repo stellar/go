@@ -36,7 +36,7 @@ type DatabaseProcessor struct {
 	OffersQ       history.QOffers
 	TrustLinesQ   history.QTrustLines
 	AssetStatsQ   history.QAssetStats
-	LedgersQ      history.QExpLedgers
+	LedgersQ      history.QLedgers
 	Action        DatabaseProcessorActionType
 	IngestVersion int
 	// AssetStatSet is used in TrustLines processor
