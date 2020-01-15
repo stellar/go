@@ -312,7 +312,4 @@ func TestPostProcessingHookHistoryCatchup(t *testing.T) {
 
 	err := postProcessingHook(ctx, nil, ledgerPipeline, system, orderbook.NewOrderBookGraph(), historyQ)
 	assert.NoError(t, err)
-	// s.Assert().NotNil(newCtx.Value(horizonProcessors.IngestUpdateDatabase))
-	// s.Assert().Nil(newCtx.Value(horizonProcessors.IngestUpdateState))
-	// s.Assert().True(s.system.StateReady())
 }

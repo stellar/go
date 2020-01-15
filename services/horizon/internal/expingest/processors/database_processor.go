@@ -191,6 +191,13 @@ func (p *DatabaseProcessor) ProcessLedger(ctx context.Context, store *pipeline.S
 	}()
 	defer w.Close()
 
+	// Exit early if not ingesting state (history catchup). The filtering in parent
+	// processor should do it, unfortunately it won't work in case of meta upgrades.
+	// Should be fixed after ingest refactoring.
+	if v := ctx.Value(IngestUpdateState); v == nil {
+		return nil
+	}
+
 	ledgerCache := io.NewLedgerEntryChangeCache()
 	p.AssetStatSet = AssetStatSet{}
 	p.batchUpsertTrustLines = []xdr.LedgerEntry{}
