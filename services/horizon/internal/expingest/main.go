@@ -341,6 +341,10 @@ func (s *System) runCurrentState() (state, error) {
 	switch s.state.systemState {
 	case initState:
 		nextState, err = s.init()
+	case catchupHistoryState:
+		nextState, err = s.catchupHistory()
+	case waitForCheckpointState:
+		nextState, err = s.waitForCheckpoint()
 	case loadOffersIntoMemoryState:
 		nextState, err = s.loadOffersIntoMemory()
 	case buildStateAndResumeState:
