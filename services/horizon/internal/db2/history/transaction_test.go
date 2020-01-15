@@ -271,8 +271,6 @@ func TestInsertTransaction(t *testing.T) {
 	*ledger.FailedTransactionCount = 3
 	_, err := q.Exec(sq.Insert("history_ledgers").SetMap(ledgerToMap(ledger)))
 	tt.Assert.NoError(err)
-	_, err = q.Exec(sq.Insert("history_ledgers").SetMap(ledgerToMap(ledger)))
-	tt.Assert.NoError(err)
 
 	insertBuilder := q.NewTransactionBatchInsertBuilder(0)
 	success := new(bool)
@@ -652,7 +650,7 @@ func TestInsertTransaction(t *testing.T) {
 			tt.Assert.NoError(insertBuilder.Exec())
 
 			var transactions []Transaction
-			tt.Assert.NoError(q.Transactions().Select(&transactions))
+			tt.Assert.NoError(q.Transactions().IncludeFailed().Select(&transactions))
 			tt.Assert.Len(transactions, 1)
 
 			transaction := transactions[0]
@@ -662,10 +660,10 @@ func TestInsertTransaction(t *testing.T) {
 			transaction.UpdatedAt = testCase.expected.UpdatedAt
 
 			// compare ClosedAt separately because reflect.DeepEqual does not handle time.Time
-			expClosedAt := transaction.LedgerCloseTime
+			closedAt := transaction.LedgerCloseTime
 			transaction.LedgerCloseTime = testCase.expected.LedgerCloseTime
 
-			tt.Assert.True(expClosedAt.Equal(testCase.expected.LedgerCloseTime))
+			tt.Assert.True(closedAt.Equal(testCase.expected.LedgerCloseTime))
 			tt.Assert.Equal(transaction, testCase.expected)
 
 			_, err = q.Exec(sq.Delete("history_transactions"))
