@@ -28,8 +28,8 @@ func TestRemoveIngestHistory(t *testing.T) {
 	test.ResetHorizonDB(t, tt.HorizonDB)
 	q := &Q{tt.HorizonSession()}
 
-	summary, err := q.RemoveExpIngestHistory(69859)
-	tt.Assert.Equal(ExpIngestRemovalSummary{}, summary)
+	summary, err := q.RemoveIngestHistory(69859)
+	tt.Assert.Equal(IngestHistoryRemovalSummary{}, summary)
 	tt.Assert.NoError(err)
 
 	txInsertBuilder := q.NewTransactionBatchInsertBuilder(0)
@@ -159,16 +159,16 @@ func TestRemoveIngestHistory(t *testing.T) {
 
 	assertCountRows(tt, q, historyIngestionTables, 5)
 
-	summary, err = q.RemoveExpIngestHistory(69863)
-	tt.Assert.Equal(ExpIngestRemovalSummary{}, summary)
+	summary, err = q.RemoveIngestHistory(69863)
+	tt.Assert.Equal(IngestHistoryRemovalSummary{}, summary)
 	tt.Assert.NoError(err)
 
 	assertCountRows(tt, q, historyIngestionTables, 5)
 
 	cutoffSequence := 69861
-	summary, err = q.RemoveExpIngestHistory(uint32(cutoffSequence))
+	summary, err = q.RemoveIngestHistory(uint32(cutoffSequence))
 	tt.Assert.Equal(
-		ExpIngestRemovalSummary{
+		IngestHistoryRemovalSummary{
 			LedgersRemoved:                 2,
 			TransactionsRemoved:            2,
 			TransactionParticipantsRemoved: 2,

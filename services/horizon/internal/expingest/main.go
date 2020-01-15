@@ -78,7 +78,7 @@ type dbQ interface {
 	GetExpStateInvalid() (bool, error)
 	GetAllOffers() ([]history.Offer, error)
 	TruncateExpingestStateTables() error
-	RemoveExpIngestHistory(uint32) (history.ExpIngestRemovalSummary, error)
+	RemoveIngestHistory(uint32) (history.IngestHistoryRemovalSummary, error)
 }
 
 type dbSession interface {

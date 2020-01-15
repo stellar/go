@@ -203,8 +203,8 @@ func preProcessingHook(
 		// State pipeline is always fully run because loading offers
 		// from a database is done outside the pipeline.
 		updateDatabase = true
-		var summary history.ExpIngestRemovalSummary
-		summary, err = historyQ.RemoveExpIngestHistory(ledgerSeq)
+		var summary history.IngestHistoryRemovalSummary
+		summary, err = historyQ.RemoveIngestHistory(ledgerSeq)
 		if err != nil {
 			return ctx, errors.Wrap(err, "Error removing exp ingest history")
 		}

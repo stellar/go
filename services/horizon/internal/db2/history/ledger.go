@@ -85,8 +85,8 @@ func (q *LedgersQ) Select(dest interface{}) error {
 	return q.Err
 }
 
-// QExpLedgers defines experimental ingestion ledger related queries.
-type QExpLedgers interface {
+// QLedgers defines ingestion ledger related queries.
+type QLedgers interface {
 	InsertLedger(
 		ledger xdr.LedgerHeaderHistoryEntry,
 		successTxsCount int,

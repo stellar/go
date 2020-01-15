@@ -21,9 +21,9 @@ func (q *Q) TruncateExpingestStateTables() error {
 	})
 }
 
-// ExpIngestRemovalSummary describes how many rows in the experimental ingestion
-// history tables have been deleted by RemoveExpIngestHistory()
-type ExpIngestRemovalSummary struct {
+// IngestHistoryRemovalSummary describes how many rows in the ingestion
+// history tables have been deleted by RemoveIngestHistory()
+type IngestHistoryRemovalSummary struct {
 	LedgersRemoved                 int64
 	TransactionsRemoved            int64
 	TransactionParticipantsRemoved int64
@@ -33,10 +33,10 @@ type ExpIngestRemovalSummary struct {
 	EffectsRemoved                 int64
 }
 
-// RemoveExpIngestHistory removes all rows in the experimental ingestion
+// RemoveIngestHistory removes all rows in the ingestion
 // history tables which have a ledger sequence higher than `newerThanSequence`
-func (q *Q) RemoveExpIngestHistory(newerThanSequence uint32) (ExpIngestRemovalSummary, error) {
-	summary := ExpIngestRemovalSummary{}
+func (q *Q) RemoveIngestHistory(newerThanSequence uint32) (IngestHistoryRemovalSummary, error) {
+	summary := IngestHistoryRemovalSummary{}
 
 	result, err := q.Exec(
 		sq.Delete("history_ledgers").
