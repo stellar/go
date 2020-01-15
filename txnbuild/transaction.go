@@ -414,14 +414,16 @@ func (tx *Transaction) SignWithKeyString(keys ...string) error {
 	return tx.Sign(signers...)
 }
 
-// ReadChallengeTx verifies that a SEP 10 challenge transaction for use in web
-// authentication is signed by the server and returns the transaction and
-// client account ID.
+// ReadChallengeTx reads a SEP 10 challenge transaction and returns the decoded
+// transaction and client account ID contained within.
+//
+// It also verifies that transaction is signed by the server.
 //
 // It does not verify that the transaction has been signed by the client or
-// that any other signatures other than the servers on the transaction are
-// valid. Use VerifyChallengeTxSigners to verify a set of client signers have
-// signed the transaction.
+// that any signatures other than the servers on the transaction are valid. Use
+// one of the following functions to completely verify the transaction:
+// - VerifyChallengeTxThreshold
+// - VerifyChallengeTxSigners
 func ReadChallengeTx(challengeTx, serverAccountID, network string) (tx Transaction, clientAccountID string, err error) {
 	tx, err = TransactionFromXDR(challengeTx)
 	if err != nil {
