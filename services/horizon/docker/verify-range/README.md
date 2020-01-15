@@ -34,7 +34,7 @@ it will run the following ranges:
 
 ## Tips when using AWS Batch
 
-* In "Job definition" set vCPUs to 2 and Memory to 4096 what represents `c5.large` instances Horizon should be using.
+* In "Job definition" set vCPUs to 2 and Memory to 4096. This represents the `c5.large` instances Horizon should be using.
 * In "Compute environments":
     * Set instance type to "c5.large".
     * Set "Maximum vCPUs" to 2x the number of instances you want to start (because "c5.large" has 2 vCPUs). Ex. 10 vCPUs = 5 x "c5.large" instances.
