@@ -146,14 +146,18 @@ func (c *Change) AccountSignersChanged() bool {
 	return false
 }
 
-// Successful returns true if the transaction succeeded
-func (t *LedgerTransaction) Successful() bool {
-	return t.Result.Result.Result.Code == xdr.TransactionResultCodeTxSuccess
+// TxResultCode returns the transaction result code
+func (t *LedgerTransaction) TxResultCode() xdr.TransactionResultCode {
+	return t.Result.Result.Result.Code
 }
 
-// TxInternalError returns true if the transaction result is TxInternalError
-func (t *LedgerTransaction) TxInternalError() bool {
-	return t.Result.Result.Result.Code == xdr.TransactionResultCodeTxInternalError
+// Successful returns true if the transaction succeeded
+func (t *LedgerTransaction) Successful() bool {
+	return t.TxResultCode() == xdr.TransactionResultCodeTxSuccess
+}
+
+func (t *LedgerTransaction) txInternalError() bool {
+	return t.TxResultCode() == xdr.TransactionResultCodeTxInternalError
 }
 
 // GetFeeChanges returns a developer friendly representation of LedgerEntryChanges
@@ -179,7 +183,7 @@ func (t *LedgerTransaction) GetChanges() ([]Change, error) {
 		changes = append(changes, txChanges...)
 
 		// Ignore operations meta if txInternalError https://github.com/stellar/go/issues/2111
-		if t.TxInternalError() {
+		if t.txInternalError() {
 			return changes, nil
 		}
 
@@ -197,7 +201,7 @@ func (t *LedgerTransaction) GetChanges() ([]Change, error) {
 
 		// Ignore operations meta and txChangesAfter if txInternalError
 		// https://github.com/stellar/go/issues/2111
-		if t.TxInternalError() {
+		if t.txInternalError() {
 			return changes, nil
 		}
 
@@ -228,7 +232,7 @@ func (t *LedgerTransaction) GetOperationChanges(operationIndex uint32) ([]Change
 		return changes, errors.New("TransactionMeta.V=0 not supported")
 	case 1:
 		// Ignore operations meta if txInternalError https://github.com/stellar/go/issues/2111
-		if t.TxInternalError() {
+		if t.txInternalError() {
 			return changes, nil
 		}
 
@@ -236,7 +240,7 @@ func (t *LedgerTransaction) GetOperationChanges(operationIndex uint32) ([]Change
 		changes = operationChanges(v1Meta.Operations, operationIndex)
 	case 2:
 		// Ignore operations meta if txInternalError https://github.com/stellar/go/issues/2111
-		if t.TxInternalError() {
+		if t.txInternalError() {
 			return changes, nil
 		}
 
