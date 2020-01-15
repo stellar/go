@@ -228,7 +228,8 @@ func (s *RunIngestionTestSuite) TestUpdateLastLedgerExpIngestReturnsError() {
 
 	nextState, err := s.system.runCurrentState()
 	s.Assert().NoError(err)
-	s.Assert().Equal(buildStateAndResumeState, nextState.systemState)
+	s.Assert().Equal(buildStateAndResumeIngestionState, nextState.systemState)
+	s.Assert().Equal(uint32(0), nextState.checkpointLedger)
 
 	s.system.state = nextState
 
@@ -249,7 +250,8 @@ func (s *RunIngestionTestSuite) TestUpdateExpStateInvalidReturnsError() {
 
 	nextState, err := s.system.runCurrentState()
 	s.Assert().NoError(err)
-	s.Assert().Equal(buildStateAndResumeState, nextState.systemState)
+	s.Assert().Equal(buildStateAndResumeIngestionState, nextState.systemState)
+	s.Assert().Equal(uint32(0), nextState.checkpointLedger)
 
 	s.system.state = nextState
 
@@ -273,7 +275,8 @@ func (s *RunIngestionTestSuite) TestTruncateTablesReturnsError() {
 
 	nextState, err := s.system.runCurrentState()
 	s.Assert().NoError(err)
-	s.Assert().Equal(buildStateAndResumeState, nextState.systemState)
+	s.Assert().Equal(buildStateAndResumeIngestionState, nextState.systemState)
+	s.Assert().Equal(uint32(0), nextState.checkpointLedger)
 
 	s.system.state = nextState
 
@@ -335,8 +338,20 @@ func (s *RunIngestionTestSuite) TestNoExpIngestUpgradeHistoryLedgerEqualLatestCh
 
 	nextState, err := s.system.runCurrentState()
 	s.Assert().NoError(err)
-	s.Assert().Equal(buildStateAndResumeState, nextState.systemState)
+	s.Assert().Equal(buildStateAndResumeIngestionState, nextState.systemState)
 	s.Assert().Equal(uint32(63), nextState.checkpointLedger)
+
+	s.system.state = nextState
+
+	s.historyQ.On("GetTx").Return(&sqlx.Tx{}).Once()
+	s.historyQ.On("UpdateLastLedgerExpIngest", uint32(0)).Return(nil).Once()
+	s.historyQ.On("UpdateExpStateInvalid", false).Return(nil).Once()
+	s.historyQ.On("TruncateExpingestStateTables").Return(nil).Once()
+	s.ingestSession.On("RunFromCheckpoint", uint32(63)).Return(nil).Once()
+
+	nextState, err = s.system.runCurrentState()
+	s.Assert().NoError(err)
+	s.Assert().Equal(shutdownState, nextState.systemState)
 }
 
 // TestUpgradeHistoryLedgerGreaterThanLatestCheckpoint is testing a scenario
@@ -373,7 +388,7 @@ func (s *RunIngestionTestSuite) TestUpgradeHistoryLedgerLessThanLatestCheckpoint
 
 // TestUpgradeHistoryLedgerLessThanLatestCheckpoint is testing a scenario
 // when CurrentVersion has been upgraded but latest history ledger is less
-// than the latest checkpoint ledger. In such case we buildStateAndResume
+// than the latest checkpoint ledger. In such case we buildStateAndResumeIngestion
 // but from the latest checkpoint as of this state call. This is to prevent
 // situations when after state transition the new checkpoint is created. This
 // would skip 64 ledgers in history tables.
@@ -385,7 +400,7 @@ func (s *RunIngestionTestSuite) TestUpgradeHistoryLedgerEqualLatestCheckpoint() 
 
 	nextState, err := s.system.runCurrentState()
 	s.Assert().NoError(err)
-	s.Assert().Equal(buildStateAndResumeState, nextState.systemState)
+	s.Assert().Equal(buildStateAndResumeIngestionState, nextState.systemState)
 	s.Assert().Equal(uint32(63), nextState.checkpointLedger)
 }
 
@@ -436,7 +451,8 @@ func (s *RunIngestionTestSuite) TestRunReturnsErrorAfterProcessingNoLedgers() {
 
 	nextState, err := s.system.runCurrentState()
 	s.Assert().NoError(err)
-	s.Assert().Equal(buildStateAndResumeState, nextState.systemState)
+	s.Assert().Equal(buildStateAndResumeIngestionState, nextState.systemState)
+	s.Assert().Equal(uint32(0), nextState.checkpointLedger)
 
 	s.system.state = nextState
 
@@ -461,7 +477,9 @@ func (s *RunIngestionTestSuite) TestRunReturnsError() {
 
 	nextState, err := s.system.runCurrentState()
 	s.Assert().NoError(err)
-	s.Assert().Equal(buildStateAndResumeState, nextState.systemState)
+	s.Assert().Equal(buildStateAndResumeIngestionState, nextState.systemState)
+	s.Assert().Equal(uint32(0), nextState.checkpointLedger)
+
 	s.system.state = nextState
 
 	nextState, err = s.system.runCurrentState()
@@ -484,7 +502,8 @@ func (s *RunIngestionTestSuite) TestOutdatedIngestVersionNoHistoryData() {
 
 	nextState, err := s.system.runCurrentState()
 	s.Assert().NoError(err)
-	s.Assert().Equal(buildStateAndResumeState, nextState.systemState)
+	s.Assert().Equal(buildStateAndResumeIngestionState, nextState.systemState)
+	s.Assert().Equal(uint32(0), nextState.checkpointLedger)
 }
 
 func (s *RunIngestionTestSuite) TestOutdatedIngestVersionHistoryBehindCheckpointLedger() {
@@ -521,7 +540,7 @@ func (s *RunIngestionTestSuite) TestOutdatedIngestVersionHistoryEqualCheckpointL
 
 	nextState, err := s.system.runCurrentState()
 	s.Assert().NoError(err)
-	s.Assert().Equal(buildStateAndResumeState, nextState.systemState)
+	s.Assert().Equal(buildStateAndResumeIngestionState, nextState.systemState)
 	s.Assert().Equal(uint32(127), nextState.checkpointLedger)
 }
 

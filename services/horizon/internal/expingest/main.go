@@ -99,14 +99,14 @@ type liveSession interface {
 type systemState string
 
 const (
-	initState                 systemState = "init"
-	catchupHistoryState       systemState = "catchupHistory"
-	waitForCheckpointState    systemState = "waitForCheckpoint"
-	loadOffersIntoMemoryState systemState = "loadOffersIntoMemory"
-	buildStateAndResumeState  systemState = "buildStateAndResume"
-	resumeState               systemState = "resume"
-	verifyRangeState          systemState = "verifyRange"
-	shutdownState             systemState = "shutdown"
+	initState                         systemState = "init"
+	catchupHistoryState               systemState = "catchupHistory"
+	waitForCheckpointState            systemState = "waitForCheckpoint"
+	loadOffersIntoMemoryState         systemState = "loadOffersIntoMemory"
+	buildStateAndResumeIngestionState systemState = "buildStateAndResumeIngestion"
+	resumeState                       systemState = "resume"
+	verifyRangeState                  systemState = "verifyRange"
+	shutdownState                     systemState = "shutdown"
 )
 
 type state struct {
@@ -347,8 +347,8 @@ func (s *System) runCurrentState() (state, error) {
 		nextState, err = s.waitForCheckpoint()
 	case loadOffersIntoMemoryState:
 		nextState, err = s.loadOffersIntoMemory()
-	case buildStateAndResumeState:
-		nextState, err = s.buildStateAndResume()
+	case buildStateAndResumeIngestionState:
+		nextState, err = s.buildStateAndResumeIngestion()
 	case resumeState:
 		nextState, err = s.resume()
 	case verifyRangeState:
@@ -424,14 +424,14 @@ func (s *System) init() (state, error) {
 				// Build state but make sure it's using `lastCheckpoint`. It's possible
 				// that the new checkpoint will be created during state transition.
 				return state{
-					systemState:      buildStateAndResumeState,
+					systemState:      buildStateAndResumeIngestionState,
 					checkpointLedger: lastCheckpoint,
 				}, nil
 			}
 		}
 
 		return state{
-			systemState:      buildStateAndResumeState,
+			systemState:      buildStateAndResumeIngestionState,
 			checkpointLedger: 0,
 		}, nil
 	}
@@ -520,7 +520,7 @@ func (s *System) loadOffersIntoMemory() (state, error) {
 	}, nil
 }
 
-func (s *System) buildStateAndResume() (state, error) {
+func (s *System) buildStateAndResumeIngestion() (state, error) {
 	// Clear last_ingested_ledger in key value store
 	err := s.historyQ.UpdateLastLedgerExpIngest(0)
 	if err != nil {
