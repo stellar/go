@@ -70,6 +70,7 @@ type Config struct {
 
 type dbQ interface {
 	Begin() error
+	Commit() error
 	Rollback() error
 	GetTx() *sqlx.Tx
 	GetLastLedgerExpIngest() (uint32, error)
@@ -431,33 +432,42 @@ func (s *System) init() (state, error) {
 		}, nil
 	}
 
-	// Expingest was running in the past but was turned off.
-	// Now it's on by default.
-	if lastHistoryLedger != lastIngestedLedger {
-		switch {
-		case lastHistoryLedger > lastIngestedLedger:
-			// TODO
-			// Here instead of ingesting state only it's easier to build state
-			// from scratch.
-		case lastHistoryLedger < lastIngestedLedger:
-			return state{
-				systemState:     catchupHistoryState,
-				rangeFromLedger: lastHistoryLedger + 1,
-				rangeToLedger:   lastIngestedLedger,
-			}, nil
+	switch {
+	case lastHistoryLedger > lastIngestedLedger:
+		// Expingest was running at some point the past but was turned off.
+		// Now it's on by default but the latest history ledger is greater
+		// than the latest expingest ledger. We reset the exp ledger sequence
+		// so init state will rebuild the state correctly.
+		err := s.historyQ.UpdateLastLedgerExpIngest(0)
+		if err != nil {
+			return state{systemState: initState}, errors.Wrap(err, "Error updating last ingested ledger")
 		}
+		err = s.historyQ.Commit()
+		if err != nil {
+			return state{systemState: initState}, errors.Wrap(err, "Error updating last ingested ledger")
+		}
+		return state{systemState: initState}, nil
+	case lastHistoryLedger < lastIngestedLedger:
+		// Expingest was running at some point the past but was turned off.
+		// Now it's on by default but the latest history ledger is less
+		// than the latest expingest ledger. We catchup history.
+		return state{
+			systemState:     catchupHistoryState,
+			rangeFromLedger: lastHistoryLedger + 1,
+			rangeToLedger:   lastIngestedLedger,
+		}, nil
+	default: // lastHistoryLedger == lastIngestedLedger
+		// The other node already ingested a state (just now or in the past)
+		// so we need to get offers from a DB, then resume session normally.
+		// State pipeline is NOT processed.
+		log.WithField("last_ledger", lastIngestedLedger).
+			Info("Resuming ingestion system from last processed ledger...")
+
+		return state{
+			systemState:                       loadOffersIntoMemoryState,
+			latestSuccessfullyProcessedLedger: lastIngestedLedger,
+		}, nil
 	}
-
-	// The other node already ingested a state (just now or in the past)
-	// so we need to get offers from a DB, then resume session normally.
-	// State pipeline is NOT processed.
-	log.WithField("last_ledger", lastIngestedLedger).
-		Info("Resuming ingestion system from last processed ledger...")
-
-	return state{
-		systemState:                       loadOffersIntoMemoryState,
-		latestSuccessfullyProcessedLedger: lastIngestedLedger,
-	}, nil
 }
 
 // loadOffersIntoMemory loads offers into memory. If successful, it changes the

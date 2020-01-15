@@ -36,6 +36,11 @@ func (m *mockDBQ) Begin() error {
 	return args.Error(0)
 }
 
+func (m *mockDBQ) Commit() error {
+	args := m.Called()
+	return args.Error(0)
+}
+
 func (m *mockDBQ) Rollback() error {
 	args := m.Called()
 	return args.Error(0)
@@ -284,11 +289,11 @@ func (s *RunIngestionTestSuite) TestTruncateTablesReturnsError() {
 	s.Assert().Equal(initState, nextState.systemState)
 }
 
-// TestNoExpIngestUpgradeHistoryLedgerGreaterThanExpIngestLatest is testing a scenario
+// TestNoExpIngestUpgradeHistoryLedgerGreaterThanLatestCheckpoint is testing a scenario
 // when user upgrades to the new system but latest history ledger is
 // greater than the latest checkpoint ledger. In such case we just wait for the next
 // checkpoint.
-func (s *RunIngestionTestSuite) TestNoExpIngestUpgradeHistoryLedgerGreaterThanExpIngestLatest() {
+func (s *RunIngestionTestSuite) TestNoExpIngestUpgradeHistoryLedgerGreaterThanLatestCheckpoint() {
 	s.historyQ.On("GetLastLedgerExpIngest").Return(uint32(0), nil).Once()
 	s.historyQ.On("GetExpIngestVersion").Return(CurrentVersion-1, nil).Once()
 	s.historyQ.On("GetLatestLedger").Return(uint32(100), nil).Once()
@@ -299,11 +304,11 @@ func (s *RunIngestionTestSuite) TestNoExpIngestUpgradeHistoryLedgerGreaterThanEx
 	s.Assert().Equal(waitForCheckpointState, nextState.systemState)
 }
 
-// TestNoExpIngestUpgradeHistoryLedgerLessThanExpIngestLatest is testing a scenario
+// TestNoExpIngestUpgradeHistoryLedgerLessThanLatestCheckpoint is testing a scenario
 // when user upgrades to the new system but latest history ledger is less
 // than the latest checkpoint ledger. In such case we catchup history ledgers
 // to the checkpoint ledger.
-func (s *RunIngestionTestSuite) TestNoExpIngestUpgradeHistoryLedgerLessThanExpIngestLatest() {
+func (s *RunIngestionTestSuite) TestNoExpIngestUpgradeHistoryLedgerLessThanLatestCheckpoint() {
 	s.historyQ.On("GetLastLedgerExpIngest").Return(uint32(0), nil).Once()
 	s.historyQ.On("GetExpIngestVersion").Return(CurrentVersion-1, nil).Once()
 	s.historyQ.On("GetLatestLedger").Return(uint32(50), nil).Once()
@@ -316,13 +321,13 @@ func (s *RunIngestionTestSuite) TestNoExpIngestUpgradeHistoryLedgerLessThanExpIn
 	s.Assert().Equal(uint32(63), nextState.rangeToLedger)
 }
 
-// TestNoExpIngestUpgradeHistoryLedgerLessThanExpIngestLatest is testing a scenario
+// TestNoExpIngestUpgradeHistoryLedgerLessThanLatestCheckpoint is testing a scenario
 // when user upgrades to the new system but latest history ledger is less
 // than the latest checkpoint ledger. In such case we buildStateAndResume
 // but from the latest checkpoint as of this state call. This is to prevent
 // situations when after state transition the new checkpoint is created. This
 // would skip 64 ledgers in history tables.
-func (s *RunIngestionTestSuite) TestNoExpIngestUpgradeHistoryLedgerEqualExpIngestLatest() {
+func (s *RunIngestionTestSuite) TestNoExpIngestUpgradeHistoryLedgerEqualLatestCheckpoint() {
 	s.historyQ.On("GetLastLedgerExpIngest").Return(uint32(0), nil).Once()
 	s.historyQ.On("GetExpIngestVersion").Return(CurrentVersion-1, nil).Once()
 	s.historyQ.On("GetLatestLedger").Return(uint32(63), nil).Once()
@@ -334,11 +339,11 @@ func (s *RunIngestionTestSuite) TestNoExpIngestUpgradeHistoryLedgerEqualExpInges
 	s.Assert().Equal(uint32(63), nextState.checkpointLedger)
 }
 
-// TestUpgradeHistoryLedgerGreaterThanExpIngestLatest is testing a scenario
+// TestUpgradeHistoryLedgerGreaterThanLatestCheckpoint is testing a scenario
 // when CurrentVersion has been upgraded but latest history ledger is greater
 // than the latest checkpoint ledger. In such case we just wait for the next
 // checkpoint.
-func (s *RunIngestionTestSuite) TestUpgradeHistoryLedgerGreaterThanExpIngestLatest() {
+func (s *RunIngestionTestSuite) TestUpgradeHistoryLedgerGreaterThanLatestCheckpoint() {
 	s.historyQ.On("GetLastLedgerExpIngest").Return(uint32(63), nil).Once()
 	s.historyQ.On("GetExpIngestVersion").Return(CurrentVersion-1, nil).Once()
 	s.historyQ.On("GetLatestLedger").Return(uint32(100), nil).Once()
@@ -349,11 +354,11 @@ func (s *RunIngestionTestSuite) TestUpgradeHistoryLedgerGreaterThanExpIngestLate
 	s.Assert().Equal(waitForCheckpointState, nextState.systemState)
 }
 
-// TestUpgradeHistoryLedgerLessThanExpIngestLatest is testing a scenario
+// TestUpgradeHistoryLedgerLessThanLatestCheckpoint is testing a scenario
 // when CurrentVersion has been upgraded but latest history ledger is less
 // than the latest checkpoint ledger. In such case we catchup history ledgers
 // to the checkpoint ledger.
-func (s *RunIngestionTestSuite) TestUpgradeHistoryLedgerLessThanExpIngestLatest() {
+func (s *RunIngestionTestSuite) TestUpgradeHistoryLedgerLessThanLatestCheckpoint() {
 	s.historyQ.On("GetLastLedgerExpIngest").Return(uint32(63), nil).Once()
 	s.historyQ.On("GetExpIngestVersion").Return(CurrentVersion-1, nil).Once()
 	s.historyQ.On("GetLatestLedger").Return(uint32(50), nil).Once()
@@ -366,13 +371,13 @@ func (s *RunIngestionTestSuite) TestUpgradeHistoryLedgerLessThanExpIngestLatest(
 	s.Assert().Equal(uint32(63), nextState.rangeToLedger)
 }
 
-// TestUpgradeHistoryLedgerLessThanExpIngestLatest is testing a scenario
+// TestUpgradeHistoryLedgerLessThanLatestCheckpoint is testing a scenario
 // when CurrentVersion has been upgraded but latest history ledger is less
 // than the latest checkpoint ledger. In such case we buildStateAndResume
 // but from the latest checkpoint as of this state call. This is to prevent
 // situations when after state transition the new checkpoint is created. This
 // would skip 64 ledgers in history tables.
-func (s *RunIngestionTestSuite) TestUpgradeHistoryLedgerEqualExpIngestLatest() {
+func (s *RunIngestionTestSuite) TestUpgradeHistoryLedgerEqualLatestCheckpoint() {
 	s.historyQ.On("GetLastLedgerExpIngest").Return(uint32(63), nil).Once()
 	s.historyQ.On("GetExpIngestVersion").Return(CurrentVersion-1, nil).Once()
 	s.historyQ.On("GetLatestLedger").Return(uint32(63), nil).Once()
@@ -382,6 +387,39 @@ func (s *RunIngestionTestSuite) TestUpgradeHistoryLedgerEqualExpIngestLatest() {
 	s.Assert().NoError(err)
 	s.Assert().Equal(buildStateAndResumeState, nextState.systemState)
 	s.Assert().Equal(uint32(63), nextState.checkpointLedger)
+}
+
+// TestNoUpgradeHistoryLedgerGreaterThanExpIngestLatest is testing a scenario when
+// CurrentVersion in DB matches CurrentVersion in the code so system starts resume
+// path but last history ledger is greater than the last expingest ledger.
+// In such case reset the exp ledger sequence.
+func (s *RunIngestionTestSuite) TestNoUpgradeHistoryLedgerGreaterThanExpIngestLatest() {
+	s.historyQ.On("GetLastLedgerExpIngest").Return(uint32(63), nil).Once()
+	s.historyQ.On("GetExpIngestVersion").Return(CurrentVersion, nil).Once()
+	s.historyQ.On("GetLatestLedger").Return(uint32(65), nil).Once()
+
+	s.historyQ.On("UpdateLastLedgerExpIngest", uint32(0)).Return(nil).Once()
+	s.historyQ.On("Commit").Return(nil).Once()
+
+	nextState, err := s.system.runCurrentState()
+	s.Assert().NoError(err)
+	s.Assert().Equal(initState, nextState.systemState)
+}
+
+// TestNoUpgradeHistoryLedgerLessThanExpIngestLatest is testing a scenario when
+// CurrentVersion in DB matches CurrentVersion in the code so system starts resume
+// path but last history ledger is less than the last expingest ledger.
+// In such case we catchup history.
+func (s *RunIngestionTestSuite) TestNoUpgradeHistoryLedgerLessThanExpIngestLatest() {
+	s.historyQ.On("GetLastLedgerExpIngest").Return(uint32(63), nil).Once()
+	s.historyQ.On("GetExpIngestVersion").Return(CurrentVersion, nil).Once()
+	s.historyQ.On("GetLatestLedger").Return(uint32(60), nil).Once()
+
+	nextState, err := s.system.runCurrentState()
+	s.Assert().NoError(err)
+	s.Assert().Equal(catchupHistoryState, nextState.systemState)
+	s.Assert().Equal(uint32(61), nextState.rangeFromLedger)
+	s.Assert().Equal(uint32(63), nextState.rangeToLedger)
 }
 
 func (s *RunIngestionTestSuite) TestRunReturnsErrorAfterProcessingNoLedgers() {
