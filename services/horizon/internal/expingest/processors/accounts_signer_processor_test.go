@@ -160,6 +160,7 @@ func TestAccountsSignerProcessorTestSuiteLedger(t *testing.T) {
 
 type AccountsSignerProcessorTestSuiteLedger struct {
 	suite.Suite
+	context          context.Context
 	processor        *DatabaseProcessor
 	mockQ            *history.MockQSigners
 	mockLedgerReader *io.MockLedgerReader
@@ -170,6 +171,8 @@ func (s *AccountsSignerProcessorTestSuiteLedger) SetupTest() {
 	s.mockQ = &history.MockQSigners{}
 	s.mockLedgerReader = &io.MockLedgerReader{}
 	s.mockLedgerWriter = &io.MockLedgerWriter{}
+
+	s.context = context.WithValue(context.Background(), IngestUpdateState, true)
 
 	s.processor = &DatabaseProcessor{
 		Action:   AccountsForSigner,
@@ -196,13 +199,35 @@ func (s *AccountsSignerProcessorTestSuiteLedger) TearDownTest() {
 	s.mockLedgerWriter.AssertExpectations(s.T())
 }
 
+func (s *AccountsSignerProcessorTestSuiteLedger) TestNoIngestUpdateState() {
+	s.mockLedgerReader = &io.MockLedgerReader{}
+	s.mockLedgerWriter = &io.MockLedgerWriter{}
+
+	s.mockLedgerReader.
+		On("Close").
+		Return(nil).Once()
+
+	s.mockLedgerWriter.
+		On("Close").
+		Return(nil).Once()
+
+	err := s.processor.ProcessLedger(
+		context.Background(),
+		&supportPipeline.Store{},
+		s.mockLedgerReader,
+		s.mockLedgerWriter,
+	)
+
+	s.Assert().NoError(err)
+}
+
 func (s *AccountsSignerProcessorTestSuiteLedger) TestNoTransactions() {
 	s.mockLedgerReader.
 		On("Read").
 		Return(io.LedgerTransaction{}, stdio.EOF).Once()
 
 	err := s.processor.ProcessLedger(
-		context.Background(),
+		s.context,
 		&supportPipeline.Store{},
 		s.mockLedgerReader,
 		s.mockLedgerWriter,
@@ -249,7 +274,7 @@ func (s *AccountsSignerProcessorTestSuiteLedger) TestNewAccount() {
 		Return(io.LedgerTransaction{}, stdio.EOF).Once()
 
 	err := s.processor.ProcessLedger(
-		context.Background(),
+		s.context,
 		&supportPipeline.Store{},
 		s.mockLedgerReader,
 		s.mockLedgerWriter,
@@ -343,7 +368,7 @@ func (s *AccountsSignerProcessorTestSuiteLedger) TestNewSigner() {
 		Return(io.LedgerTransaction{}, stdio.EOF).Once()
 
 	err := s.processor.ProcessLedger(
-		context.Background(),
+		s.context,
 		&supportPipeline.Store{},
 		s.mockLedgerReader,
 		s.mockLedgerWriter,
@@ -436,7 +461,7 @@ func (s *AccountsSignerProcessorTestSuiteLedger) TestSignerRemoved() {
 		Return(io.LedgerTransaction{}, stdio.EOF).Once()
 
 	err := s.processor.ProcessLedger(
-		context.Background(),
+		s.context,
 		&supportPipeline.Store{},
 		s.mockLedgerReader,
 		s.mockLedgerWriter,
@@ -538,7 +563,7 @@ func (s *AccountsSignerProcessorTestSuiteLedger) TestSignerPreAuthTxRemovedTxFai
 		Return(io.LedgerTransaction{}, stdio.EOF).Once()
 
 	err := s.processor.ProcessLedger(
-		context.Background(),
+		s.context,
 		&supportPipeline.Store{},
 		s.mockLedgerReader,
 		s.mockLedgerWriter,
@@ -593,7 +618,7 @@ func (s *AccountsSignerProcessorTestSuiteLedger) TestRemoveAccount() {
 		Return(io.LedgerTransaction{}, stdio.EOF).Once()
 
 	err := s.processor.ProcessLedger(
-		context.Background(),
+		s.context,
 		&supportPipeline.Store{},
 		s.mockLedgerReader,
 		s.mockLedgerWriter,
@@ -638,7 +663,7 @@ func (s *AccountsSignerProcessorTestSuiteLedger) TestNewAccountNoRowsAffected() 
 		Return(int64(0), nil).Once()
 
 	err := s.processor.ProcessLedger(
-		context.Background(),
+		s.context,
 		&supportPipeline.Store{},
 		s.mockLedgerReader,
 		s.mockLedgerWriter,
@@ -698,7 +723,7 @@ func (s *AccountsSignerProcessorTestSuiteLedger) TestRemoveAccountNoRowsAffected
 		Return(int64(0), nil).Once()
 
 	err := s.processor.ProcessLedger(
-		context.Background(),
+		s.context,
 		&supportPipeline.Store{},
 		s.mockLedgerReader,
 		s.mockLedgerWriter,
@@ -850,7 +875,7 @@ func (s *AccountsSignerProcessorTestSuiteLedger) TestProcessUpgradeChange() {
 	s.mockLedgerReader.On("Close").Return(nil).Once()
 
 	err := s.processor.ProcessLedger(
-		context.Background(),
+		s.context,
 		&supportPipeline.Store{},
 		s.mockLedgerReader,
 		s.mockLedgerWriter,

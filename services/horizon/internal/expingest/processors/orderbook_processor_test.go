@@ -109,6 +109,21 @@ func TestProcessOrderBookState(t *testing.T) {
 	}
 }
 
+func TestProcessOrderBookLedgerNoIngestUpdateState(t *testing.T) {
+	reader := &io.MockLedgerReader{}
+	writer := &io.MockLedgerWriter{}
+	graph := orderbook.NewOrderBookGraph()
+	processor := OrderbookProcessor{graph}
+
+	reader.On("Close").Return(nil).Once()
+	writer.On("Close").Return(nil).Once()
+	if err := processor.ProcessLedger(context.Background(), nil, reader, writer); err != nil {
+		t.Fatalf("unexpected error %v", err)
+	}
+	writer.AssertExpectations(t)
+	reader.AssertExpectations(t)
+}
+
 func TestProcessOrderBookLedger(t *testing.T) {
 	reader := &io.MockLedgerReader{}
 	writer := &io.MockLedgerWriter{}
@@ -119,7 +134,7 @@ func TestProcessOrderBookLedger(t *testing.T) {
 	reader.On("ReadUpgradeChange").Return(io.Change{}, stdio.EOF).Once()
 	reader.On("Close").Return(nil).Once()
 	writer.On("Close").Return(nil).Once()
-	if err := processor.ProcessLedger(context.Background(), nil, reader, writer); err != nil {
+	if err := processor.ProcessLedger(context.WithValue(context.Background(), IngestUpdateState, true), nil, reader, writer); err != nil {
 		t.Fatalf("unexpected error %v", err)
 	}
 	writer.AssertExpectations(t)
@@ -320,7 +335,7 @@ func TestProcessOrderBookLedger(t *testing.T) {
 	reader.On("Close").Return(nil).Once()
 	writer.On("Close").Return(nil).Once()
 
-	if err := processor.ProcessLedger(context.Background(), nil, reader, writer); err != nil {
+	if err := processor.ProcessLedger(context.WithValue(context.Background(), IngestUpdateState, true), nil, reader, writer); err != nil {
 		t.Fatalf("unexpected error %v", err)
 	}
 
@@ -412,7 +427,7 @@ func TestProcessOrderBookLedgerProcessUpgradeChanges(t *testing.T) {
 	reader.On("Close").Return(nil).Once()
 	writer.On("Close").Return(nil).Once()
 
-	if err := processor.ProcessLedger(context.Background(), nil, reader, writer); err != nil {
+	if err := processor.ProcessLedger(context.WithValue(context.Background(), IngestUpdateState, true), nil, reader, writer); err != nil {
 		t.Fatalf("unexpected error %v", err)
 	}
 
