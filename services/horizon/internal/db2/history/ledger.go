@@ -3,7 +3,6 @@ package history
 import (
 	"encoding/hex"
 	"fmt"
-	"reflect"
 	"time"
 
 	sq "github.com/Masterminds/squirrel"
@@ -100,7 +99,6 @@ func (q *LedgersQ) Select(dest interface{}) error {
 
 // QExpLedgers defines experimental ingestion ledger related queries.
 type QExpLedgers interface {
-	CheckExpLedger(seq int32) (bool, error)
 	InsertExpLedger(
 		ledger xdr.LedgerHeaderHistoryEntry,
 		successTxsCount int,
@@ -108,32 +106,6 @@ type QExpLedgers interface {
 		opCount int,
 		ingestVersion int,
 	) (int64, error)
-}
-
-// CheckExpLedger checks that the ledger in exp_history_ledgers
-// matches the one in history_ledgers  for a given sequence number
-func (q *Q) CheckExpLedger(seq int32) (bool, error) {
-	expLedger, err := q.expLedgerBySequence(seq)
-	if err != nil {
-		return false, err
-	}
-
-	var ledger Ledger
-	err = q.LedgerBySequence(&ledger, seq)
-	if err != nil {
-		return false, err
-	}
-
-	// ignore importer version created time, and updated time
-	expLedger.ImporterVersion = ledger.ImporterVersion
-	expLedger.CreatedAt = ledger.CreatedAt
-	expLedger.UpdatedAt = ledger.UpdatedAt
-
-	// compare ClosedAt separately because reflect.DeepEqual does not handle time.Time
-	expClosedAt := expLedger.ClosedAt
-	expLedger.ClosedAt = ledger.ClosedAt
-
-	return expClosedAt.Equal(ledger.ClosedAt) && reflect.DeepEqual(expLedger, ledger), nil
 }
 
 // InsertExpLedger creates a row in the exp_history_ledgers table.

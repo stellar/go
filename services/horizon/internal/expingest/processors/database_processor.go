@@ -482,27 +482,6 @@ func (p *DatabaseProcessor) ingestLedgerHeader(
 		)
 	}
 
-	// use an older lookup sequence because the experimental ingestion system and the
-	// legacy ingestion system might not be in sync
-	seq := int32(r.GetSequence() - 10)
-
-	valid, err := p.LedgersQ.CheckExpLedger(seq)
-	// only validate the ledger if it is present in both ingestion systems
-	if err == sql.ErrNoRows {
-		return nil
-	}
-
-	if err != nil {
-		log.WithField("sequence", seq).WithError(err).
-			Error("Could not compare ledger")
-		return nil
-	}
-
-	if !valid {
-		log.WithField("sequence", seq).
-			Error("row in exp_history_ledgers does not match ledger in history_ledgers")
-	}
-
 	return nil
 }
 

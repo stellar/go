@@ -558,8 +558,6 @@ func (s *TradeProcessorTestSuiteLedger) TestIngestTradesSucceeds() {
 	}
 
 	s.mockBatchInsertBuilder.On("Exec").Return(nil).Once()
-	s.mockQ.On("CheckExpTrades", int32(ledger.Header.LedgerSeq)-10).
-		Return(true, nil).Once()
 
 	err := s.processor.ProcessLedger(
 		s.context,

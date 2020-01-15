@@ -9,7 +9,6 @@ import (
 	sq "github.com/Masterminds/squirrel"
 	"github.com/guregu/null"
 	"github.com/stellar/go/exp/ingest/io"
-	"github.com/stellar/go/services/horizon/internal/db2/sqx"
 	"github.com/stellar/go/services/horizon/internal/test"
 	"github.com/stellar/go/services/horizon/internal/toid"
 	"github.com/stellar/go/xdr"
@@ -180,127 +179,6 @@ func buildLedgerTransaction(t *testing.T, tx testTransaction) io.LedgerTransacti
 	tt.NoError(err)
 
 	return transaction
-}
-
-func TestCheckExpTransactions(t *testing.T) {
-	tt := test.Start(t)
-	defer tt.Finish()
-	test.ResetHorizonDB(t, tt.HorizonDB)
-	q := &Q{tt.HorizonSession()}
-
-	transaction := buildLedgerTransaction(
-		tt.T,
-		testTransaction{
-			index:         1,
-			envelopeXDR:   "AAAAACiSTRmpH6bHC6Ekna5e82oiGY5vKDEEUgkq9CB//t+rAAAAZAEXUhsAADDGAAAAAQAAAAAAAAAAAAAAAF3v3WAAAAABAAAACjEwOTUzMDMyNTAAAAAAAAEAAAAAAAAAAQAAAAAOr5CG1ax6qG2fBEgXJlF0sw5W0irOS6N/NRDbavBm4QAAAAAAAAAAE32fwAAAAAAAAAABf/7fqwAAAEAkWgyAgV5tF3m1y1TIDYkNXP8pZLAwcxhWEi4f3jcZJK7QrKSXhKoawVGrp5NNs4y9dgKt8zHZ8KbJreFBUsIB",
-			resultXDR:     "AAAAAAAAAGQAAAAAAAAAAQAAAAAAAAABAAAAAAAAAAA=",
-			feeChangesXDR: "AAAAAgAAAAMBnyVBAAAAAAAAAAAokk0ZqR+mxwuhJJ2uXvNqIhmObygxBFIJKvQgf/7fqwAALNdjj1x7ARdSGwAAMMUAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAEBnye/AAAAAAAAAAAokk0ZqR+mxwuhJJ2uXvNqIhmObygxBFIJKvQgf/7fqwAALNdjj1wXARdSGwAAMMUAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAA==",
-			metaXDR:       "AAAAAAAAAAMAAAACAAAAAAAAAAMAAAAAAAAAABbxCy3mLg3hiTqX4VUEEp60pFOrJNxYM1JtxXTwXhY2AAAAAAvrwgAAAAADAAAAAAAAAAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAMAAAAAAAAAAAGUcmKO5465JxTSLQOQljwk2SfqAJmZSG6JH6wtqpwhDeC2s5t4PNQAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAwAAAAEAAAADAAAAAAAAAAABlHJijueOuScU0i0DkJY8JNkn6gCZmUhuiR+sLaqcIQAAAAAL68IAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAMAAAADAAAAAAAAAAAW8Qst5i4N4Yk6l+FVBBKetKRTqyTcWDNSbcV08F4WNgAAAAAL68IAAAAAAwAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAEAAAADAAAAAAAAAAAW8Qst5i4N4Yk6l+FVBBKetKRTqyTcWDNSbcV08F4WNg3gtrObeDzUAAAAAwAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAEAAAABAAAAAwAAAAAAAAAAAZRyYo7njrknFNItA5CWPCTZJ+oAmZlIbokfrC2qnCEAAAAAC+vCAAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
-			hash:          "ea1e96dd4aa8a16e357842b0fcdb66c1ab03fade7dcd3a99f88ed28ea8c30f6a",
-		},
-	)
-
-	otherTransaction := buildLedgerTransaction(
-		tt.T,
-		testTransaction{
-			index:         2,
-			envelopeXDR:   "AAAAAAGUcmKO5465JxTSLQOQljwk2SfqAJmZSG6JH6wtqpwhAAABLAAAAAAAAAABAAAAAAAAAAEAAAALaGVsbG8gd29ybGQAAAAAAwAAAAAAAAAAAAAAABbxCy3mLg3hiTqX4VUEEp60pFOrJNxYM1JtxXTwXhY2AAAAAAvrwgAAAAAAAAAAAQAAAAAW8Qst5i4N4Yk6l+FVBBKetKRTqyTcWDNSbcV08F4WNgAAAAAN4Lazj4x61AAAAAAAAAAFAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABLaqcIQAAAEBKwqWy3TaOxoGnfm9eUjfTRBvPf34dvDA0Nf+B8z4zBob90UXtuCqmQqwMCyH+okOI3c05br3khkH0yP4kCwcE",
-			resultXDR:     "AAAAAAAAASwAAAAAAAAAAwAAAAAAAAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAFAAAAAAAAAAA=",
-			feeChangesXDR: "AAAAAgAAAAMBnyVBAAAAAAAAAAAokk0ZqR+mxwuhJJ2uXvNqIhmObygxBFIJKvQgf/7fqwAALNdjj1x7ARdSGwAAMMUAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAEBnye/AAAAAAAAAAAokk0ZqR+mxwuhJJ2uXvNqIhmObygxBFIJKvQgf/7fqwAALNdjj1wXARdSGwAAMMUAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAA==",
-			metaXDR:       "AAAAAAAAAAMAAAACAAAAAAAAHqEAAAAAAAAAAB+lHtRjj4+h2/0Tj8iBQiaUDzLo4oRCLyUnytFHzAyIAAAAAAvrwgAAAB6hAAAAAAAAAAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAQAAHqEAAAAAAAAAABbxCy3mLg3hiTqX4VUEEp60pFOrJNxYM1JtxXTwXhY2DeC2s4+MeHwAAAADAAAAAgAAAAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAgAAAAAAAB6hAAAAAAAAAACzMOD+8iU8qo+qbTYewT8lxKE/s1cE3FOCVWxsqJ74GwAAAAAL68IAAAAeoQAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAEAAB6hAAAAAAAAAAAW8Qst5i4N4Yk6l+FVBBKetKRTqyTcWDNSbcV08F4WNg3gtrODoLZ8AAAAAwAAAAIAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAIAAAAAAAAeoQAAAAAAAAAASZcLtOTqf+cdbsq8HmLMkeqU06LN94UTWXuSBem5Z88AAAAAC+vCAAAAHqEAAAAAAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAABAAAeoQAAAAAAAAAAFvELLeYuDeGJOpfhVQQSnrSkU6sk3FgzUm3FdPBeFjYN4Lazd7T0fAAAAAMAAAACAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAA=",
-			hash:          "3389e9f0f1a65f19736cacf544c2e825313e8447f569233bb8db39aa607c8889",
-		},
-	)
-
-	sequence := int32(123)
-	valid, err := q.CheckExpTransactions(sequence)
-	tt.Assert.True(valid)
-	tt.Assert.NoError(err)
-
-	insertTransaction(tt, q, "exp_history_transactions", transaction, sequence)
-	insertTransaction(tt, q, "exp_history_transactions", otherTransaction, sequence)
-	insertTransaction(tt, q, "history_transactions", transaction, sequence)
-
-	ledger := Ledger{
-		Sequence:                   sequence,
-		LedgerHash:                 "4db1e4f145e9ee75162040d26284795e0697e2e84084624e7c6c723ebbf80118",
-		PreviousLedgerHash:         null.NewString("4b0b8bace3b2438b2404776ce57643966855487ba6384724a3c664c7aa4cd9e4", true),
-		TotalOrderID:               TotalOrderID{toid.New(int32(69859), 0, 0).ToInt64()},
-		ImporterVersion:            321,
-		TransactionCount:           12,
-		SuccessfulTransactionCount: new(int32),
-		FailedTransactionCount:     new(int32),
-		OperationCount:             23,
-		TotalCoins:                 23451,
-		FeePool:                    213,
-		BaseReserve:                687,
-		MaxTxSetSize:               345,
-		ProtocolVersion:            12,
-		BaseFee:                    100,
-		ClosedAt:                   time.Now().UTC().Truncate(time.Second),
-		LedgerHeaderXDR:            null.NewString("temp", true),
-	}
-	*ledger.SuccessfulTransactionCount = 12
-	*ledger.FailedTransactionCount = 3
-	_, err = q.Exec(sq.Insert("history_ledgers").SetMap(ledgerToMap(ledger)))
-	tt.Assert.NoError(err)
-	_, err = q.Exec(sq.Insert("exp_history_ledgers").SetMap(ledgerToMap(ledger)))
-	tt.Assert.NoError(err)
-
-	valid, err = q.CheckExpTransactions(sequence)
-	tt.Assert.False(valid)
-	tt.Assert.NoError(err)
-
-	insertTransaction(tt, q, "history_transactions", otherTransaction, sequence)
-
-	valid, err = q.CheckExpTransactions(sequence)
-	tt.Assert.True(valid)
-	tt.Assert.NoError(err)
-
-	for fieldName, value := range map[string]interface{}{
-		"id":               999,
-		"transaction_hash": "hash",
-		"account":          "account",
-		"account_sequence": "999",
-		"max_fee":          999,
-		"fee_charged":      999,
-		"operation_count":  999,
-		"tx_envelope":      "envelope",
-		"tx_result":        "result",
-		"tx_meta":          "meta",
-		"tx_fee_meta":      "fee_meta",
-		"signatures":       sqx.StringArray([]string{"sig1", "sig2"}),
-		"time_bounds":      sq.Expr("int8range(?,?)", 123, 456),
-		"memo_type":        "invalid",
-		"memo":             "invalid-memo",
-		"successful":       false,
-	} {
-		updateSQL := sq.Update("history_transactions").
-			Set(fieldName, value).
-			Where(
-				"ledger_sequence = ? AND application_order = ?",
-				sequence, otherTransaction.Index,
-			)
-		_, err = q.Exec(updateSQL)
-		tt.Assert.NoError(err)
-
-		valid, err = q.CheckExpTransactions(sequence)
-		tt.Assert.NoError(err)
-		tt.Assert.False(valid)
-
-		_, err = q.Exec(sq.Delete("history_transactions").
-			Where(
-				"ledger_sequence = ? AND application_order = ?",
-				sequence, otherTransaction.Index,
-			))
-		tt.Assert.NoError(err)
-
-		insertTransaction(tt, q, "history_transactions", otherTransaction, sequence)
-
-		valid, err := q.CheckExpTransactions(ledger.Sequence)
-		tt.Assert.NoError(err)
-		tt.Assert.True(valid)
-	}
 }
 
 func TestInsertExpTransactionDoesNotAllowDuplicateIndex(t *testing.T) {
