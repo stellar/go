@@ -14,7 +14,7 @@ Running this implementation in production is not recommended.
 
 ## Usage
 
-````
+```
 $ webauth --help
 SEP-10 Web Authentication Server
 
