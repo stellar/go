@@ -114,7 +114,7 @@ func (s *LedgersProcessorTestSuiteLedger) TearDownTest() {
 	s.mockLedgerWriter.AssertExpectations(s.T())
 }
 
-func (s *LedgersProcessorTestSuiteLedger) TestInsertExpLedgerIgnoredWhenNotDatabaseIngestion() {
+func (s *LedgersProcessorTestSuiteLedger) TestInsertLedgerIgnoredWhenNotDatabaseIngestion() {
 	// Clear mockLedgerReader expectations
 	s.mockLedgerReader = &io.MockLedgerReader{}
 
@@ -135,9 +135,9 @@ func (s *LedgersProcessorTestSuiteLedger) TestInsertExpLedgerIgnoredWhenNotDatab
 	s.Assert().NoError(err)
 }
 
-func (s *LedgersProcessorTestSuiteLedger) TestInsertExpLedgerSucceeds() {
+func (s *LedgersProcessorTestSuiteLedger) TestInsertLedgerSucceeds() {
 	s.mockQ.On(
-		"InsertExpLedger",
+		"InsertLedger",
 		s.header,
 		s.successCount,
 		s.failedCount,
@@ -154,9 +154,9 @@ func (s *LedgersProcessorTestSuiteLedger) TestInsertExpLedgerSucceeds() {
 	s.Assert().NoError(err)
 }
 
-func (s *LedgersProcessorTestSuiteLedger) TestInsertExpLedgerReturnsError() {
+func (s *LedgersProcessorTestSuiteLedger) TestInsertLedgerReturnsError() {
 	s.mockQ.On(
-		"InsertExpLedger",
+		"InsertLedger",
 		s.header,
 		s.successCount,
 		s.failedCount,
@@ -174,9 +174,9 @@ func (s *LedgersProcessorTestSuiteLedger) TestInsertExpLedgerReturnsError() {
 	s.Assert().EqualError(err, "Could not insert ledger: transient error")
 }
 
-func (s *LedgersProcessorTestSuiteLedger) TestInsertExpLedgerNoRowsAffected() {
+func (s *LedgersProcessorTestSuiteLedger) TestInsertLedgerNoRowsAffected() {
 	s.mockQ.On(
-		"InsertExpLedger",
+		"InsertLedger",
 		s.header,
 		s.successCount,
 		s.failedCount,

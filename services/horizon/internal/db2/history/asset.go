@@ -86,12 +86,12 @@ func (q *Q) GetCreateAssetID(
 	return
 }
 
-// CreateExpAssets creates rows in the exp_history_assets table for a given list of assets.
-func (q *Q) CreateExpAssets(assets []xdr.Asset) (map[string]Asset, error) {
+// CreateAssets creates rows in the history_assets table for a given list of assets.
+func (q *Q) CreateAssets(assets []xdr.Asset) (map[string]Asset, error) {
 	searchStrings := make([]string, 0, len(assets))
 	assetToKey := map[[3]string]string{}
 
-	sql := sq.Insert("exp_history_assets").Columns("asset_type", "asset_code", "asset_issuer")
+	sql := sq.Insert("history_assets").Columns("asset_type", "asset_code", "asset_issuer")
 
 	for _, asset := range assets {
 		var assetType, assetCode, assetIssuer string
@@ -118,7 +118,7 @@ func (q *Q) CreateExpAssets(assets []xdr.Asset) (map[string]Asset, error) {
 	}
 
 	var rows []Asset
-	err = q.Select(&rows, sq.Select("*").From("exp_history_assets").Where(sq.Eq{
+	err = q.Select(&rows, sq.Select("*").From("history_assets").Where(sq.Eq{
 		"concat(asset_type, '/', asset_code, '/', asset_issuer)": searchStrings,
 	}))
 	if err != nil {

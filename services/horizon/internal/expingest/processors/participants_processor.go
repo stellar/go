@@ -45,7 +45,7 @@ func (p *ParticipantsProcessor) loadAccountIDs(participantSet map[string]partici
 		addresses = append(addresses, address)
 	}
 
-	addressToID, err := p.ParticipantsQ.CreateExpAccounts(addresses)
+	addressToID, err := p.ParticipantsQ.CreateAccounts(addresses)
 	if err != nil {
 		return errors.Wrap(err, "Could not create account ids")
 	}

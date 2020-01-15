@@ -9,7 +9,7 @@ type MockQLedgers struct {
 	mock.Mock
 }
 
-func (m *MockQLedgers) InsertExpLedger(
+func (m *MockQLedgers) InsertLedger(
 	ledger xdr.LedgerHeaderHistoryEntry,
 	successTxsCount int,
 	failedTxsCount int,

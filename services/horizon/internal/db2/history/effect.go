@@ -216,14 +216,12 @@ func (q *EffectsQ) orderBookFilter(a xdr.Asset, prefix string) {
 	q.sql = q.sql.Where(clause, typ, code, iss)
 }
 
-// QEffects defines exp_history_effects related queries.
+// QEffects defines history_effects related queries.
 type QEffects interface {
 	NewEffectBatchInsertBuilder(maxBatchSize int) EffectBatchInsertBuilder
-	CreateExpAccounts(addresses []string) (map[string]int64, error)
+	CreateAccounts(addresses []string) (map[string]int64, error)
 }
 
-var effectFields = sq.Select("heff.*, hacc.address")
-
-var selectEffect = effectFields.
+var selectEffect = sq.Select("heff.*, hacc.address").
 	From("history_effects heff").
 	LeftJoin("history_accounts hacc ON hacc.id = heff.history_account_id")

@@ -107,7 +107,7 @@ func TestInsertLedger(t *testing.T) {
 	tt.Assert.NoError(err)
 	expectedLedger.LedgerHeaderXDR = null.NewString(ledgerHeaderBase64, true)
 
-	rowsAffected, err := q.InsertExpLedger(
+	rowsAffected, err := q.InsertLedger(
 		ledgerEntry,
 		12,
 		3,
@@ -117,7 +117,8 @@ func TestInsertLedger(t *testing.T) {
 	tt.Assert.NoError(err)
 	tt.Assert.Equal(rowsAffected, int64(1))
 
-	ledgerFromDB, err := q.expLedgerBySequence(69859)
+	var ledgerFromDB Ledger
+	err = q.LedgerBySequence(&ledgerFromDB, 69859)
 	tt.Assert.NoError(err)
 
 	expectedLedger.CreatedAt = ledgerFromDB.CreatedAt

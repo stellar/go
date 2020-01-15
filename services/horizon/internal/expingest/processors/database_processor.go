@@ -459,7 +459,7 @@ func (p *DatabaseProcessor) ingestLedgerHeader(
 		return nil
 	}
 
-	rowsAffected, err := p.LedgersQ.InsertExpLedger(
+	rowsAffected, err := p.LedgersQ.InsertLedger(
 		r.GetHeader(),
 		successTxCount,
 		failedTxCount,

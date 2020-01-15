@@ -205,9 +205,9 @@ func (s *EffectsProcessorTestSuiteLedger) mockSuccessfulEffectBatchAdds() {
 	).Return(nil).Once()
 }
 
-func (s *EffectsProcessorTestSuiteLedger) mockSuccessfulCreateExpAccounts() {
+func (s *EffectsProcessorTestSuiteLedger) mockSuccessfulCreateAccounts() {
 	s.mockQ.On(
-		"CreateExpAccounts",
+		"CreateAccounts",
 		mock.AnythingOfType("[]string"),
 	).Run(func(args mock.Arguments) {
 		arg := args.Get(0).([]string)
@@ -245,7 +245,7 @@ func (s *EffectsProcessorTestSuiteLedger) TestIngestEffectsSucceeds() {
 	s.mockLedgerReader.On("GetSequence").Return(s.sequence).Once()
 
 	s.mockLedgerReads()
-	s.mockSuccessfulCreateExpAccounts()
+	s.mockSuccessfulCreateAccounts()
 	s.mockQ.On("NewEffectBatchInsertBuilder", maxBatchSize).
 		Return(s.mockBatchInsertBuilder).Once()
 
@@ -263,12 +263,12 @@ func (s *EffectsProcessorTestSuiteLedger) TestIngestEffectsSucceeds() {
 	s.Assert().NoError(err)
 }
 
-func (s *EffectsProcessorTestSuiteLedger) TestCreateExpAccountsFails() {
+func (s *EffectsProcessorTestSuiteLedger) TestCreateAccountsFails() {
 	s.mockLedgerReader.On("GetSequence").Return(s.sequence).Once()
 
 	s.mockLedgerReads()
 
-	s.mockQ.On("CreateExpAccounts", mock.AnythingOfType("[]string")).
+	s.mockQ.On("CreateAccounts", mock.AnythingOfType("[]string")).
 		Return(s.addressToID, errors.New("transient error")).Once()
 
 	err := s.processor.ProcessLedger(
@@ -285,7 +285,7 @@ func (s *EffectsProcessorTestSuiteLedger) TestBatchAddFails() {
 
 	s.mockLedgerReads()
 
-	s.mockSuccessfulCreateExpAccounts()
+	s.mockSuccessfulCreateAccounts()
 	s.mockQ.On("NewEffectBatchInsertBuilder", maxBatchSize).
 		Return(s.mockBatchInsertBuilder).Once()
 

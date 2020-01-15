@@ -168,7 +168,7 @@ type QTransactions interface {
 	NewTransactionBatchInsertBuilder(maxBatchSize int) TransactionBatchInsertBuilder
 }
 
-var selectTransactionFields = sq.Select(
+var selectTransaction = sq.Select(
 	"ht.id, " +
 		"ht.transaction_hash, " +
 		"ht.ledger_sequence, " +
@@ -192,12 +192,6 @@ var selectTransactionFields = sq.Select(
 		"ht.memo, " +
 		"lower(ht.time_bounds) AS valid_after, " +
 		"upper(ht.time_bounds) AS valid_before, " +
-		"hl.closed_at AS ledger_close_time")
-
-var selectTransaction = selectTransactionFields.
+		"hl.closed_at AS ledger_close_time").
 	From("history_transactions ht").
 	LeftJoin("history_ledgers hl ON ht.ledger_sequence = hl.sequence")
-
-var selectExpTransaction = selectTransactionFields.
-	From("exp_history_transactions ht").
-	LeftJoin("exp_history_ledgers hl ON ht.ledger_sequence = hl.sequence")

@@ -7,18 +7,18 @@ import (
 	"github.com/stellar/go/xdr"
 )
 
-func TestCreateExpAssetIDs(t *testing.T) {
+func TestCreateAssets(t *testing.T) {
 	tt := test.Start(t)
 	defer tt.Finish()
 	test.ResetHorizonDB(t, tt.HorizonDB)
 
 	q := &Q{tt.HorizonSession()}
 
-	// CreateExpAssets creates new rows
+	// CreateAssets creates new rows
 	assets := []xdr.Asset{
 		nativeAsset, eurAsset,
 	}
-	assetMap, err := q.CreateExpAssets(assets)
+	assetMap, err := q.CreateAssets(assets)
 	tt.Assert.NoError(err)
 	tt.Assert.Len(assetMap, len(assets))
 
@@ -37,8 +37,8 @@ func TestCreateExpAssetIDs(t *testing.T) {
 		tt.Assert.Equal(row.Issuer, assetIssuer)
 	}
 
-	// CreateExpAssets handles duplicates
-	assetMap, err = q.CreateExpAssets([]xdr.Asset{
+	// CreateAssets handles duplicates
+	assetMap, err = q.CreateAssets([]xdr.Asset{
 		nativeAsset, nativeAsset, eurAsset, eurAsset,
 		nativeAsset, nativeAsset, eurAsset, eurAsset,
 	})
@@ -58,9 +58,9 @@ func TestCreateExpAssetIDs(t *testing.T) {
 		tt.Assert.Equal(row.Issuer, assetIssuer)
 	}
 
-	// CreateExpAssets handles duplicates and new rows
+	// CreateAssets handles duplicates and new rows
 	assets = append(assets, usdAsset)
-	assetMap, err = q.CreateExpAssets(assets)
+	assetMap, err = q.CreateAssets(assets)
 	tt.Assert.NoError(err)
 	tt.Assert.Len(assetMap, len(assets))
 

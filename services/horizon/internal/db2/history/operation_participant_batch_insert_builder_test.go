@@ -29,7 +29,7 @@ func TestAddOperationParticipants(t *testing.T) {
 	err = q.Select(&ops, sq.Select(
 		"hopp.history_operation_id, "+
 			"hopp.history_account_id").
-		From("exp_history_operation_participants hopp"),
+		From("history_operation_participants hopp"),
 	)
 
 	if tt.Assert.NoError(err) {

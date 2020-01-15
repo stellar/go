@@ -9,7 +9,7 @@ type MockQParticipants struct {
 	mock.Mock
 }
 
-func (m *MockQParticipants) CreateExpAccounts(addresses []string) (map[string]int64, error) {
+func (m *MockQParticipants) CreateAccounts(addresses []string) (map[string]int64, error) {
 	a := m.Called(addresses)
 	return a.Get(0).(map[string]int64), a.Error(1)
 }

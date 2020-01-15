@@ -37,19 +37,6 @@ func (q *Q) Trades() *TradesQ {
 	}
 }
 
-func (q *Q) expTrades() *TradesQ {
-	return &TradesQ{
-		parent: q,
-		sql: joinTradeAssets(
-			joinTradeAccounts(
-				selectTradeFields.From("exp_history_trades htrd"),
-				"exp_history_accounts",
-			),
-			"exp_history_assets",
-		),
-	}
-}
-
 // ReverseTrades provides a helper to filter rows from the `history_trades` table
 // with pre-defined filters and reversed base/counter.  See `TradesQ` methods for the available filters.
 func (q *Q) ReverseTrades() *TradesQ {
@@ -347,7 +334,7 @@ func getCanonicalAssetOrder(assetId1 int64, assetId2 int64) (orderPreserved bool
 }
 
 type QTrades interface {
-	CreateExpAccounts(addresses []string) (map[string]int64, error)
+	CreateAccounts(addresses []string) (map[string]int64, error)
 	NewTradeBatchInsertBuilder(maxBatchSize int) TradeBatchInsertBuilder
-	CreateExpAssets(assets []xdr.Asset) (map[string]Asset, error)
+	CreateAssets(assets []xdr.Asset) (map[string]Asset, error)
 }

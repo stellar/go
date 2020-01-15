@@ -9,7 +9,7 @@ import (
 )
 
 // InsertTrade represents the arguments to TradeBatchInsertBuilder.Add() which is used to insert
-// rows into the exp_history_trades table
+// rows into the history_trades table
 type InsertTrade struct {
 	HistoryOperationID int64
 	Order              int32
@@ -25,7 +25,7 @@ type InsertTrade struct {
 }
 
 // TradeBatchInsertBuilder is used to insert trades into the
-// exp_history_trades table
+// history_trades table
 type TradeBatchInsertBuilder interface {
 	Add(entries ...InsertTrade) error
 	Exec() error
@@ -40,7 +40,7 @@ type tradeBatchInsertBuilder struct {
 func (q *Q) NewTradeBatchInsertBuilder(maxBatchSize int) TradeBatchInsertBuilder {
 	return &tradeBatchInsertBuilder{
 		builder: db.BatchInsertBuilder{
-			Table:        q.GetTable("exp_history_trades"),
+			Table:        q.GetTable("history_trades"),
 			MaxBatchSize: maxBatchSize,
 		},
 	}

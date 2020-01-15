@@ -85,7 +85,7 @@ func (s *OperationsProcessorTestSuiteLedger) mockBatchInsertAdds(txs []io.Ledger
 	return nil
 }
 
-func (s *OperationsProcessorTestSuiteLedger) TestInsertExpLedgerIgnoredWhenNotDatabaseIngestion() {
+func (s *OperationsProcessorTestSuiteLedger) TestInsertOperationsIgnoredWhenNotDatabaseIngestion() {
 	s.mockQ = &history.MockQOperations{}
 	err := s.processor.ProcessLedger(
 		context.Background(),

@@ -126,10 +126,10 @@ func createInsertTrades(
 	return first, second, third
 }
 
-func createExpAccountsAndAssets(
+func createAccountsAndAssets(
 	tt *test.T, q *Q, accounts []string, assets []xdr.Asset,
 ) ([]int64, []int64) {
-	addressToAccounts, err := q.CreateExpAccounts(accounts)
+	addressToAccounts, err := q.CreateAccounts(accounts)
 	tt.Assert.NoError(err)
 
 	accountIDs := []int64{}
@@ -137,7 +137,7 @@ func createExpAccountsAndAssets(
 		accountIDs = append(accountIDs, addressToAccounts[account])
 	}
 
-	assetMap, err := q.CreateExpAssets(assets)
+	assetMap, err := q.CreateAssets(assets)
 	tt.Assert.NoError(err)
 
 	assetIDs := []int64{}
@@ -173,7 +173,7 @@ func buildIDtoAssetMapping(assets []xdr.Asset, ids []int64) map[int64]xdr.Asset 
 	return idToAsset
 }
 
-func TestInsertExpTrade(t *testing.T) {
+func TestBatchInsertTrade(t *testing.T) {
 	tt := test.Start(t)
 	defer tt.Finish()
 	test.ResetHorizonDB(t, tt.HorizonDB)
@@ -184,7 +184,7 @@ func TestInsertExpTrade(t *testing.T) {
 		"GAXMF43TGZHW3QN3REOUA2U5PW5BTARXGGYJ3JIFHW3YT6QRKRL3CPPU",
 	}
 	assets := []xdr.Asset{eurAsset, usdAsset, nativeAsset}
-	accountIDs, assetIDs := createExpAccountsAndAssets(
+	accountIDs, assetIDs := createAccountsAndAssets(
 		tt, q,
 		addresses,
 		assets,
@@ -199,7 +199,7 @@ func TestInsertExpTrade(t *testing.T) {
 	tt.Assert.NoError(builder.Exec())
 
 	var rows []Trade
-	tt.Assert.NoError(q.expTrades().Select(&rows))
+	tt.Assert.NoError(q.Trades().Select(&rows))
 
 	idToAccount := buildIDtoAccountMapping(addresses, accountIDs)
 	idToAsset := buildIDtoAssetMapping(assets, assetIDs)

@@ -5,7 +5,7 @@ import (
 )
 
 // OperationParticipantBatchInsertBuilder is used to insert a transaction's operations into the
-// exp_history_operations table
+// history_operations table
 type OperationParticipantBatchInsertBuilder interface {
 	Add(
 		operationID int64,
@@ -23,7 +23,7 @@ type operationParticipantBatchInsertBuilder struct {
 func (q *Q) NewOperationParticipantBatchInsertBuilder(maxBatchSize int) OperationParticipantBatchInsertBuilder {
 	return &operationParticipantBatchInsertBuilder{
 		builder: db.BatchInsertBuilder{
-			Table:        q.GetTable("exp_history_operation_participants"),
+			Table:        q.GetTable("history_operation_participants"),
 			MaxBatchSize: maxBatchSize,
 		},
 	}

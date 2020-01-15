@@ -136,16 +136,6 @@ func TestExtraChecksTransactionSuccessfulFalseResultTrue(t *testing.T) {
 	tt.Assert.Contains(err.Error(), "Corrupted data! `successful=false` but returned transaction is success")
 }
 
-func insertTransaction(
-	tt *test.T, q *Q, tableName string, transaction io.LedgerTransaction, sequence int32,
-) {
-	m, err := transactionToMap(transaction, uint32(sequence))
-	tt.Assert.NoError(err)
-	insertSQL := sq.Insert(tableName).SetMap(m)
-	_, err = q.Exec(insertSQL)
-	tt.Assert.NoError(err)
-}
-
 type testTransaction struct {
 	index         uint32
 	envelopeXDR   string
@@ -181,7 +171,7 @@ func buildLedgerTransaction(t *testing.T, tx testTransaction) io.LedgerTransacti
 	return transaction
 }
 
-func TestInsertExpTransactionDoesNotAllowDuplicateIndex(t *testing.T) {
+func TestInsertTransactionDoesNotAllowDuplicateIndex(t *testing.T) {
 	tt := test.Start(t)
 	defer tt.Finish()
 	test.ResetHorizonDB(t, tt.HorizonDB)
@@ -213,9 +203,9 @@ func TestInsertExpTransactionDoesNotAllowDuplicateIndex(t *testing.T) {
 	tt.Assert.NoError(insertBuilder.Add(secondTransaction, sequence))
 	tt.Assert.EqualError(
 		insertBuilder.Exec(),
-		"error adding values while inserting to exp_history_transactions: "+
+		"error adding values while inserting to history_transactions: "+
 			"exec failed: pq: duplicate key value violates unique constraint "+
-			"\"exp_history_transactions_id_idx\"",
+			"\"history_transactions_id_idx\"",
 	)
 
 	ledger := Ledger{
@@ -239,11 +229,11 @@ func TestInsertExpTransactionDoesNotAllowDuplicateIndex(t *testing.T) {
 	}
 	*ledger.SuccessfulTransactionCount = 12
 	*ledger.FailedTransactionCount = 3
-	_, err := q.Exec(sq.Insert("exp_history_ledgers").SetMap(ledgerToMap(ledger)))
+	_, err := q.Exec(sq.Insert("history_ledgers").SetMap(ledgerToMap(ledger)))
 	tt.Assert.NoError(err)
 
 	var transactions []Transaction
-	tt.Assert.NoError(q.Select(&transactions, selectExpTransaction))
+	tt.Assert.NoError(q.Transactions().Select(&transactions))
 	tt.Assert.Len(transactions, 1)
 	tt.Assert.Equal(
 		"19aaa18db88605aedec04659fb45e06f240b022eb2d429e05133e4d53cd945ba",
@@ -251,7 +241,7 @@ func TestInsertExpTransactionDoesNotAllowDuplicateIndex(t *testing.T) {
 	)
 }
 
-func TestInsertExpTransaction(t *testing.T) {
+func TestInsertTransaction(t *testing.T) {
 	tt := test.Start(t)
 	defer tt.Finish()
 	test.ResetHorizonDB(t, tt.HorizonDB)
@@ -281,7 +271,7 @@ func TestInsertExpTransaction(t *testing.T) {
 	*ledger.FailedTransactionCount = 3
 	_, err := q.Exec(sq.Insert("history_ledgers").SetMap(ledgerToMap(ledger)))
 	tt.Assert.NoError(err)
-	_, err = q.Exec(sq.Insert("exp_history_ledgers").SetMap(ledgerToMap(ledger)))
+	_, err = q.Exec(sq.Insert("history_ledgers").SetMap(ledgerToMap(ledger)))
 	tt.Assert.NoError(err)
 
 	insertBuilder := q.NewTransactionBatchInsertBuilder(0)
@@ -662,7 +652,7 @@ func TestInsertExpTransaction(t *testing.T) {
 			tt.Assert.NoError(insertBuilder.Exec())
 
 			var transactions []Transaction
-			tt.Assert.NoError(q.Select(&transactions, selectExpTransaction))
+			tt.Assert.NoError(q.Transactions().Select(&transactions))
 			tt.Assert.Len(transactions, 1)
 
 			transaction := transactions[0]
@@ -678,7 +668,7 @@ func TestInsertExpTransaction(t *testing.T) {
 			tt.Assert.True(expClosedAt.Equal(testCase.expected.LedgerCloseTime))
 			tt.Assert.Equal(transaction, testCase.expected)
 
-			_, err = q.Exec(sq.Delete("exp_history_transactions"))
+			_, err = q.Exec(sq.Delete("history_transactions"))
 			tt.Assert.NoError(err)
 		})
 	}

@@ -182,7 +182,7 @@ func (s *ParticipantsProcessorTestSuiteLedger) TestIngestParticipantsSucceeds() 
 
 	s.mockLedgerReads()
 
-	s.mockQ.On("CreateExpAccounts", mock.AnythingOfType("[]string")).
+	s.mockQ.On("CreateAccounts", mock.AnythingOfType("[]string")).
 		Run(func(args mock.Arguments) {
 			arg := args.Get(0).([]string)
 			s.Assert().ElementsMatch(
@@ -210,12 +210,12 @@ func (s *ParticipantsProcessorTestSuiteLedger) TestIngestParticipantsSucceeds() 
 	s.Assert().NoError(err)
 }
 
-func (s *ParticipantsProcessorTestSuiteLedger) TestCreateExpAccountsFails() {
+func (s *ParticipantsProcessorTestSuiteLedger) TestCreateAccountsFails() {
 	s.mockLedgerReader.On("GetSequence").Return(s.sequence).Once()
 
 	s.mockLedgerReads()
 
-	s.mockQ.On("CreateExpAccounts", mock.AnythingOfType("[]string")).
+	s.mockQ.On("CreateAccounts", mock.AnythingOfType("[]string")).
 		Return(s.addressToID, errors.New("transient error")).Once()
 
 	err := s.processor.ProcessLedger(
@@ -232,7 +232,7 @@ func (s *ParticipantsProcessorTestSuiteLedger) TestBatchAddFails() {
 
 	s.mockLedgerReads()
 
-	s.mockQ.On("CreateExpAccounts", mock.AnythingOfType("[]string")).
+	s.mockQ.On("CreateAccounts", mock.AnythingOfType("[]string")).
 		Run(func(args mock.Arguments) {
 			arg := args.Get(0).([]string)
 			s.Assert().ElementsMatch(
@@ -272,7 +272,7 @@ func (s *ParticipantsProcessorTestSuiteLedger) TestOperationParticipantsBatchAdd
 
 	s.mockLedgerReads()
 
-	s.mockQ.On("CreateExpAccounts", mock.AnythingOfType("[]string")).
+	s.mockQ.On("CreateAccounts", mock.AnythingOfType("[]string")).
 		Run(func(args mock.Arguments) {
 			arg := args.Get(0).([]string)
 			s.Assert().ElementsMatch(
@@ -316,7 +316,7 @@ func (s *ParticipantsProcessorTestSuiteLedger) TestBatchAddExecFails() {
 
 	s.mockLedgerReads()
 
-	s.mockQ.On("CreateExpAccounts", mock.AnythingOfType("[]string")).
+	s.mockQ.On("CreateAccounts", mock.AnythingOfType("[]string")).
 		Run(func(args mock.Arguments) {
 			arg := args.Get(0).([]string)
 			s.Assert().ElementsMatch(
@@ -345,7 +345,7 @@ func (s *ParticipantsProcessorTestSuiteLedger) TestOpeartionBatchAddExecFails() 
 
 	s.mockLedgerReads()
 
-	s.mockQ.On("CreateExpAccounts", mock.AnythingOfType("[]string")).
+	s.mockQ.On("CreateAccounts", mock.AnythingOfType("[]string")).
 		Run(func(args mock.Arguments) {
 			arg := args.Get(0).([]string)
 			s.Assert().ElementsMatch(

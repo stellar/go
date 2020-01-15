@@ -49,7 +49,7 @@ func (s *TransactionsProcessorTestSuiteLedger) TearDownTest() {
 	s.mockLedgerWriter.AssertExpectations(s.T())
 }
 
-func (s *TransactionsProcessorTestSuiteLedger) TestInsertExpLedgerIgnoredWhenNotDatabaseIngestion() {
+func (s *TransactionsProcessorTestSuiteLedger) TestInsertLedgerLedgerIgnoredWhenNotDatabaseIngestion() {
 	s.mockLedgerReader.On("IgnoreUpgradeChanges").Once()
 	s.mockLedgerReader.
 		On("Close").

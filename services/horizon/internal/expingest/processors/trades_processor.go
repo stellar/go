@@ -87,13 +87,13 @@ func (p *TradeProcessor) ProcessLedger(ctx context.Context, store *pipeline.Stor
 
 	if len(inserts) > 0 {
 		batch := p.TradesQ.NewTradeBatchInsertBuilder(maxBatchSize)
-		accountSet, err = p.TradesQ.CreateExpAccounts(mapKeysToList(accountSet))
+		accountSet, err = p.TradesQ.CreateAccounts(mapKeysToList(accountSet))
 		if err != nil {
 			return errors.Wrap(err, "Error creating account ids")
 		}
 
 		var assetMap map[string]history.Asset
-		assetMap, err = p.TradesQ.CreateExpAssets(assets)
+		assetMap, err = p.TradesQ.CreateAssets(assets)
 		if err != nil {
 			return errors.Wrap(err, "Error creating asset ids")
 		}

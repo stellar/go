@@ -2,7 +2,6 @@ package history
 
 import (
 	"encoding/json"
-	"fmt"
 
 	sq "github.com/Masterminds/squirrel"
 	"github.com/go-errors/errors"
@@ -280,64 +279,12 @@ func (q *OperationsQ) Fetch() ([]Operation, []Transaction, error) {
 	return operations, transactions, nil
 }
 
-type operationParticipant struct {
-	OperationID int64  `db:"history_operation_id"`
-	Address     string `db:"address"`
-}
-
-func (q *Q) findOperationParticipants(
-	participantTable,
-	accountTable,
-	operationsTable string,
-	seq int32,
-) ([]operationParticipant, error) {
-	from := toid.ID{LedgerSequence: int32(seq)}.ToInt64()
-	to := toid.ID{LedgerSequence: int32(seq + 1)}.ToInt64()
-	participants := []operationParticipant{}
-
-	fields := sq.Select(
-		"hop.history_operation_id, " +
-			"ha.address as address")
-
-	sql := fields.
-		From(
-			fmt.Sprintf("%s hop", participantTable),
-		).
-		Join(
-			fmt.Sprintf(
-				"%s ho ON hop.history_operation_id = ho.id",
-				operationsTable,
-			),
-		).
-		Join(
-			fmt.Sprintf(
-				"%s ha ON hop.history_account_id = ha.id",
-				accountTable,
-			),
-		).
-		Where("ho.id >= ? AND ho.id <= ? ", from, to).
-		OrderBy(
-			"hop.history_operation_id asc, ha.address asc",
-		)
-
-	err := q.Select(&participants, sql)
-
-	if err != nil {
-		return participants, errors.Errorf(
-			"could not load exp_history_operation_participants for ledger: %v",
-			seq,
-		)
-	}
-
-	return participants, nil
-}
-
-// QOperations defines exp_history_operation related queries.
+// QOperations defines history_operation related queries.
 type QOperations interface {
 	NewOperationBatchInsertBuilder(maxBatchSize int) OperationBatchInsertBuilder
 }
 
-var selectOperationFields = sq.Select(
+var selectOperation = sq.Select(
 	"hop.id, " +
 		"hop.transaction_id, " +
 		"hop.application_order, " +
@@ -346,12 +293,6 @@ var selectOperationFields = sq.Select(
 		"hop.source_account, " +
 		"ht.transaction_hash, " +
 		"ht.tx_result, " +
-		"ht.successful as transaction_successful")
-
-var selectOperation = selectOperationFields.
+		"ht.successful as transaction_successful").
 	From("history_operations hop").
 	LeftJoin("history_transactions ht ON ht.id = hop.transaction_id")
-
-var selectExpOperation = selectOperationFields.
-	From("exp_history_operations hop").
-	LeftJoin("exp_history_transactions ht ON ht.id = hop.transaction_id")

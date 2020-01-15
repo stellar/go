@@ -30,7 +30,7 @@ func (p *EffectProcessor) loadAccountIDs(accountSet map[string]int64) error {
 		addresses = append(addresses, address)
 	}
 
-	addressToID, err := p.EffectsQ.CreateExpAccounts(addresses)
+	addressToID, err := p.EffectsQ.CreateAccounts(addresses)
 	if err != nil {
 		return errors.Wrap(err, "Could not create account ids")
 	}
