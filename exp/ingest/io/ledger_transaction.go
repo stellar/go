@@ -222,19 +222,24 @@ func (t *LedgerTransaction) GetChanges() ([]Change, error) {
 func (t *LedgerTransaction) GetOperationChanges(operationIndex uint32) ([]Change, error) {
 	changes := []Change{}
 
-	// Ignore operations meta if txInternalError https://github.com/stellar/go/issues/2111
-	if t.Meta.V > 0 && t.TxInternalError() {
-		return changes, nil
-	}
-
 	// Transaction meta
 	switch t.Meta.V {
 	case 0:
 		return changes, errors.New("TransactionMeta.V=0 not supported")
 	case 1:
+		// Ignore operations meta if txInternalError https://github.com/stellar/go/issues/2111
+		if t.TxInternalError() {
+			return changes, nil
+		}
+
 		v1Meta := t.Meta.MustV1()
 		changes = operationChanges(v1Meta.Operations, operationIndex)
 	case 2:
+		// Ignore operations meta if txInternalError https://github.com/stellar/go/issues/2111
+		if t.TxInternalError() {
+			return changes, nil
+		}
+
 		v2Meta := t.Meta.MustV2()
 		changes = operationChanges(v2Meta.Operations, operationIndex)
 	default:
