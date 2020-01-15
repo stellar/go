@@ -13,6 +13,7 @@ import (
 	"github.com/stellar/go/services/horizon/internal/test"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -29,7 +30,9 @@ func TestPreProcessingHookTestSuite(t *testing.T) {
 }
 
 func (s *PreProcessingHookTestSuite) SetupTest() {
-	s.system = &System{}
+	s.system = &System{
+		state: state{systemState: resumeState},
+	}
 	s.historyQ = &mockDBQ{}
 	s.ledgerSeqFromContext = uint32(5)
 
@@ -110,6 +113,7 @@ func (s *PreProcessingHookTestSuite) TestLedgerHookSucceedsWithoutPreExistingTx(
 	newCtx, err := preProcessingHook(s.ctx, ledgerPipeline, s.system, s.historyQ)
 	s.Assert().NoError(err)
 	s.Assert().Nil(newCtx.Value(horizonProcessors.IngestUpdateDatabase))
+	s.Assert().NotNil(newCtx.Value(horizonProcessors.IngestUpdateState))
 	s.Assert().True(s.system.StateReady())
 }
 
@@ -120,6 +124,19 @@ func (s *PreProcessingHookTestSuite) TestLedgerHookSucceedsAsMaster() {
 	newCtx, err := preProcessingHook(s.ctx, ledgerPipeline, s.system, s.historyQ)
 	s.Assert().NoError(err)
 	s.Assert().NotNil(newCtx.Value(horizonProcessors.IngestUpdateDatabase))
+	s.Assert().NotNil(newCtx.Value(horizonProcessors.IngestUpdateState))
+	s.Assert().True(s.system.StateReady())
+}
+
+func (s *PreProcessingHookTestSuite) TestLedgerHookSucceedsAsMasterHistoryCatchup() {
+	s.system.state = state{systemState: catchupHistoryState}
+	s.historyQ.On("GetTx").Return(&sqlx.Tx{}).Once()
+	s.historyQ.On("GetLastLedgerExpIngest").Return(s.ledgerSeqFromContext-1, nil).Once()
+
+	newCtx, err := preProcessingHook(s.ctx, ledgerPipeline, s.system, s.historyQ)
+	s.Assert().NoError(err)
+	s.Assert().NotNil(newCtx.Value(horizonProcessors.IngestUpdateDatabase))
+	s.Assert().Nil(newCtx.Value(horizonProcessors.IngestUpdateState))
 	s.Assert().True(s.system.StateReady())
 }
 
@@ -235,7 +252,7 @@ func TestPostProcessingHook(t *testing.T) {
 				tt.Assert.NoError(err)
 			}
 
-			err = postProcessingHook(ctx, testCase.err, statePipeline, &System{}, graph, session)
+			err = postProcessingHook(ctx, testCase.err, statePipeline, &System{}, graph, historyQ)
 			if testCase.expectedError == "" {
 				tt.Assert.NoError(err)
 				tt.Assert.Equal(graph.Offers(), []xdr.OfferEntry{eurOffer})
@@ -274,4 +291,28 @@ func TestPostProcessingHook(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestPostProcessingHookHistoryCatchup(t *testing.T) {
+	system := &System{
+		state: state{systemState: catchupHistoryState},
+	}
+	historyQ := &mockDBQ{}
+	ctx := context.WithValue(
+		context.Background(),
+		pipeline.LedgerSequenceContextKey,
+		uint32(5),
+	)
+
+	historyQ.On("GetTx").Return(&sqlx.Tx{}).Once()
+	// Doesn't update version and last ledger in catchupHistoryState
+	historyQ.On("Commit").Return(nil).Once()
+	historyQ.On("GetExpStateInvalid").Return(false, nil).Once()
+	historyQ.On("Rollback").Return(nil).Once() // defer
+
+	err := postProcessingHook(ctx, nil, ledgerPipeline, system, orderbook.NewOrderBookGraph(), historyQ)
+	assert.NoError(t, err)
+	// s.Assert().NotNil(newCtx.Value(horizonProcessors.IngestUpdateDatabase))
+	// s.Assert().Nil(newCtx.Value(horizonProcessors.IngestUpdateState))
+	// s.Assert().True(s.system.StateReady())
 }

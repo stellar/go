@@ -36,6 +36,11 @@ func (m *mockDBQ) Begin() error {
 	return args.Error(0)
 }
 
+func (m *mockDBQ) Clone() *db.Session {
+	args := m.Called()
+	return args.Get(0).(*db.Session)
+}
+
 func (m *mockDBQ) Commit() error {
 	args := m.Called()
 	return args.Error(0)
@@ -71,6 +76,11 @@ func (m *mockDBQ) UpdateLastLedgerExpIngest(sequence uint32) error {
 
 func (m *mockDBQ) UpdateExpStateInvalid(invalid bool) error {
 	args := m.Called(invalid)
+	return args.Error(0)
+}
+
+func (m *mockDBQ) UpdateExpIngestVersion(version int) error {
+	args := m.Called(version)
 	return args.Error(0)
 }
 

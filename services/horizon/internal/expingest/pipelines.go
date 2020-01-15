@@ -243,11 +243,10 @@ func postProcessingHook(
 	pipelineType pType,
 	system *System,
 	graph *orderbook.OrderBookGraph,
-	historySession *db.Session,
+	historyQ dbQ,
 ) error {
-	defer historySession.Rollback()
+	defer historyQ.Rollback()
 	defer graph.Discard()
-	historyQ := &history.Q{historySession}
 	isMaster := false
 
 	ledgerSeq := pipeline.GetLedgerSequenceFromContext(ctx)
@@ -259,7 +258,7 @@ func postProcessingHook(
 
 		switch errors.Cause(err).(type) {
 		case ingesterrors.StateError:
-			markStateInvalid(historySession, err)
+			markStateInvalid(historyQ, err)
 		default:
 			log.
 				WithFields(logpkg.F{
@@ -272,7 +271,7 @@ func postProcessingHook(
 		return err
 	}
 
-	if tx := historySession.GetTx(); tx != nil {
+	if tx := historyQ.GetTx(); tx != nil {
 		isMaster = true
 
 		// If we're in a transaction we're updating database with new data.
@@ -302,7 +301,7 @@ func postProcessingHook(
 			}
 		}
 
-		if err = historySession.Commit(); err != nil {
+		if err = historyQ.Commit(); err != nil {
 			return errors.Wrap(err, "Error commiting db transaction")
 		}
 	}
@@ -333,7 +332,7 @@ func postProcessingHook(
 				errorCount := system.incrementStateVerificationErrors()
 				switch errors.Cause(err).(type) {
 				case ingesterrors.StateError:
-					markStateInvalid(historySession, err)
+					markStateInvalid(historyQ, err)
 				default:
 					logger := log.WithField("err", err).Warn
 					if errorCount >= stateVerificationErrorThreshold {
@@ -351,9 +350,9 @@ func postProcessingHook(
 	return nil
 }
 
-func markStateInvalid(historySession *db.Session, err error) {
+func markStateInvalid(historyQ dbQ, err error) {
 	log.WithField("err", err).Error("STATE IS INVALID!")
-	q := &history.Q{historySession.Clone()}
+	q := &history.Q{historyQ.Clone()}
 	if err := q.UpdateExpStateInvalid(true); err != nil {
 		log.WithField("err", err).Error("Error updating state invalid value")
 	}
@@ -382,6 +381,6 @@ func addPipelineHooks(
 	})
 
 	p.AddPostProcessingHook(func(ctx context.Context, err error) error {
-		return postProcessingHook(ctx, err, pipelineType, system, graph, historySession)
+		return postProcessingHook(ctx, err, pipelineType, system, graph, historyQ)
 	})
 }

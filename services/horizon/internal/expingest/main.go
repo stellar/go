@@ -71,12 +71,14 @@ type Config struct {
 type dbQ interface {
 	Begin() error
 	Commit() error
+	Clone() *db.Session
 	Rollback() error
 	GetTx() *sqlx.Tx
 	GetLastLedgerExpIngest() (uint32, error)
 	GetExpIngestVersion() (int, error)
 	UpdateLastLedgerExpIngest(uint32) error
 	UpdateExpStateInvalid(bool) error
+	UpdateExpIngestVersion(int) error
 	GetExpStateInvalid() (bool, error)
 	GetAllOffers() ([]history.Offer, error)
 	GetLatestLedger() (uint32, error)
