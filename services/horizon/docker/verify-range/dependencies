@@ -20,4 +20,6 @@ sudo -u postgres createdb horizon
 
 sudo -u postgres psql -c "ALTER USER postgres PASSWORD 'postgres';"
 
-echo "Done installing dependencies..."
+git clone https://github.com/stellar/go.git stellar-go
+cd stellar-go
+/usr/local/go/bin/go build -v ./services/horizon

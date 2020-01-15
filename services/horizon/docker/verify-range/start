@@ -39,7 +39,7 @@ dump_horizon_db() {
 	echo "dumping history_effects"
 	sudo -u postgres psql -d horizon -t -A -F"," --variable="FETCH_COUNT=10000" -c "select history_effects.history_operation_id, history_effects.order, type, details, history_accounts.address from history_effects left join history_accounts on history_accounts.id = history_effects.history_account_id" >> $1
 	echo "dumping history_ledgers"
-	sudo -u postgres psql -d horizon -t -A -F"," --variable="FETCH_COUNT=10000" -c "select * from history_ledgers" >> $1
+	sudo -u postgres psql -d horizon -t -A -F"," --variable="FETCH_COUNT=10000" -c "select sequence, ledger_hash, previous_ledger_hash, transaction_count, operation_count, closed_at, id, total_coins, fee_pool, base_fee, base_reserve, max_tx_set_size, protocol_version, ledger_header, successful_transaction_count, failed_transaction_count from history_ledgers" >> $1
 	echo "dumping history_operations"
 	sudo -u postgres psql -d horizon -t -A -F"," --variable="FETCH_COUNT=10000" -c "select * from history_operations" >> $1
 	echo "dumping history_operation_participants"
@@ -47,7 +47,7 @@ dump_horizon_db() {
 	echo "dumping history_trades"
 	sudo -u postgres psql -d horizon -t -A -F"," --variable="FETCH_COUNT=10000" -c "select history_trades.history_operation_id, history_trades.order, history_trades.ledger_closed_at, history_trades.offer_id, history_trades.base_is_seller, history_trades.price_n, history_trades.price_d, history_trades.base_offer_id, history_trades.counter_offer_id, baccount.address, caccount.address, basset.asset_type, basset.asset_code, basset.asset_issuer, casset.asset_type, casset.asset_code, casset.asset_issuer from history_trades left join history_accounts baccount on baccount.id = history_trades.base_account_id left join history_accounts caccount on caccount.id = history_trades.counter_account_id left join history_assets basset on basset.id = history_trades.base_asset_id left join history_assets casset on casset.id = history_trades.counter_asset_id limit 1;" >> $1
 	echo "dumping history_transactions"
-	sudo -u postgres psql -d horizon -t -A -F"," --variable="FETCH_COUNT=10000" -c "select * from history_transactions" >> $1
+	sudo -u postgres psql -d horizon -t -A -F"," --variable="FETCH_COUNT=10000" -c "select transaction_hash, ledger_sequence, application_order, account, account_sequence, max_fee, operation_count, id, tx_envelope, tx_result, tx_meta, tx_fee_meta, signatures, memo_type, memo, time_bounds, successful, fee_charged from history_transactions" >> $1
 	echo "dumping history_transaction_participants"
 	sudo -u postgres psql -d horizon -t -A -F"," --variable="FETCH_COUNT=10000" -c "select history_transaction_id, address from history_transaction_participants left join history_accounts on history_accounts.id = history_transaction_participants.history_account_id" >> $1
 }
@@ -65,11 +65,12 @@ export INGEST_FAILED_TRANSACTIONS=true
 export STELLAR_CORE_URL="http://localhost:11626"
 export STELLAR_CORE_DATABASE_URL="postgres://postgres:postgres@localhost:5432/core?sslmode=disable"
 
-git clone https://github.com/stellar/go.git stellar-go
 cd stellar-go
+git pull origin
 if [ ! -z "$BRANCH" ]; then
 	git checkout $BRANCH
 fi
+git log -1
 
 /usr/local/go/bin/go build -v ./services/horizon
 ./horizon db migrate up
@@ -89,11 +90,15 @@ if [ ! -z "$VERIFY_HISTORY" ]; then
 	export ENABLE_EXPERIMENTAL_INGESTION="false"
 
 	./horizon db migrate up
-	./horizon db reingest range $FROM $TO
+	# We ignore the first ledger when reingesting using legacy ingestion because
+	# verify range doesn't ingest history for the first ledger. $FROM ledger from
+	# this job will be checked because it's $TO of the previous job.
+	export FROM_LEGACY=`expr "$FROM" + "1"`
+	./horizon db reingest range $FROM_LEGACY $TO
 
 	dump_horizon_db "legacy_history"
 
-	diff legacy_history exp_history
+	diff --speed-large-files legacy_history exp_history
 fi
 
 echo "OK"
