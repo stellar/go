@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"strings"
@@ -92,7 +93,7 @@ func TestToken_formInputSuccess(t *testing.T) {
 	h.ServeHTTP(w, r)
 	resp := w.Result()
 
-	require.Equal(t, 200, resp.StatusCode)
+	require.Equal(t, http.StatusOK, resp.StatusCode)
 	assert.Equal(t, "application/json; charset=utf-8", resp.Header.Get("Content-Type"))
 
 	res := struct {
@@ -196,7 +197,7 @@ func TestToken_jsonInputSuccess(t *testing.T) {
 	h.ServeHTTP(w, r)
 	resp := w.Result()
 
-	require.Equal(t, 200, resp.StatusCode)
+	require.Equal(t, http.StatusOK, resp.StatusCode)
 	assert.Equal(t, "application/json; charset=utf-8", resp.Header.Get("Content-Type"))
 
 	res := struct {
@@ -227,7 +228,7 @@ func TestToken_jsonInputSuccess(t *testing.T) {
 	assert.Equal(t, exp.Sub(iat), time.Minute)
 }
 
-func TestToken_jsonInputSuccessMultipleSigners(t *testing.T) {
+func TestToken_jsonInputValidMultipleSigners(t *testing.T) {
 	serverKey := keypair.MustRandom()
 	t.Logf("Server signing key: %s", serverKey.Address())
 
@@ -313,7 +314,7 @@ func TestToken_jsonInputSuccessMultipleSigners(t *testing.T) {
 	h.ServeHTTP(w, r)
 	resp := w.Result()
 
-	require.Equal(t, 200, resp.StatusCode)
+	require.Equal(t, http.StatusOK, resp.StatusCode)
 	assert.Equal(t, "application/json; charset=utf-8", resp.Header.Get("Content-Type"))
 
 	res := struct {
@@ -390,6 +391,88 @@ func TestToken_jsonInputNotEnoughWeight(t *testing.T) {
 					{
 						Key:    account.Address(),
 						Weight: 10,
+					},
+				}},
+			nil,
+		)
+
+	h := tokenHandler{
+		Logger:            supportlog.DefaultLogger,
+		HorizonClient:     horizonClient,
+		NetworkPassphrase: network.TestNetworkPassphrase,
+		SigningAddress:    serverKey.FromAddress(),
+		JWTPrivateKey:     jwtPrivateKey,
+		JWTExpiresIn:      time.Minute,
+	}
+
+	body := struct {
+		Transaction string `json:"transaction"`
+	}{
+		Transaction: txSigned,
+	}
+	bodyBytes, err := json.Marshal(body)
+	require.NoError(t, err)
+	r := httptest.NewRequest("POST", "/", bytes.NewReader(bodyBytes))
+	r.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	h.ServeHTTP(w, r)
+	resp := w.Result()
+
+	require.Equal(t, 401, resp.StatusCode)
+	assert.Equal(t, "application/json; charset=utf-8", resp.Header.Get("Content-Type"))
+
+	respBodyBytes, err := ioutil.ReadAll(resp.Body)
+	require.NoError(t, err)
+
+	assert.JSONEq(t, `{"error":"The request could not be authenticated."}`, string(respBodyBytes))
+}
+
+func TestToken_jsonInputUnrecognizedSigner(t *testing.T) {
+	serverKey := keypair.MustRandom()
+	t.Logf("Server signing key: %s", serverKey.Address())
+
+	jwtPrivateKey, err := jwtkey.GenerateKey()
+	require.NoError(t, err)
+
+	account := keypair.MustRandom()
+	t.Logf("Client account: %s", account.Address())
+
+	chTx, err := txnbuild.BuildChallengeTx(
+		serverKey.Seed(),
+		account.Address(),
+		"testserver",
+		network.TestNetworkPassphrase,
+		time.Minute,
+	)
+	require.NoError(t, err)
+	t.Logf("Tx: %s", chTx)
+
+	var tx xdr.TransactionEnvelope
+	err = xdr.SafeUnmarshalBase64(chTx, &tx)
+	require.NoError(t, err)
+	hash, err := network.HashTransaction(&tx.Tx, network.TestNetworkPassphrase)
+	require.NoError(t, err)
+	sigDec, err := account.SignDecorated(hash[:])
+	require.NoError(t, err)
+	tx.Signatures = append(tx.Signatures, sigDec)
+	txSigned, err := xdr.MarshalBase64(tx)
+	require.NoError(t, err)
+	t.Logf("Signed: %s", txSigned)
+
+	horizonClient := &horizonclient.MockClient{}
+	horizonClient.
+		On("AccountDetail", horizonclient.AccountRequest{AccountID: account.Address()}).
+		Return(
+			horizon.Account{
+				Thresholds: horizon.AccountThresholds{
+					LowThreshold:  1,
+					MedThreshold:  10,
+					HighThreshold: 100,
+				},
+				Signers: []horizon.Signer{
+					{
+						Key:    keypair.MustRandom().Address(),
+						Weight: 100,
 					},
 				}},
 			nil,

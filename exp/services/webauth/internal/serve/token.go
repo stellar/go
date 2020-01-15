@@ -2,13 +2,13 @@ package serve
 
 import (
 	"crypto/ecdsa"
-	"encoding/json"
 	"net/http"
 	"time"
 
 	"github.com/dgrijalva/jwt-go"
 	"github.com/stellar/go/clients/horizonclient"
 	"github.com/stellar/go/keypair"
+	"github.com/stellar/go/support/http/httpdecode"
 	supportlog "github.com/stellar/go/support/log"
 
 	"github.com/stellar/go/support/render/httpjson"
@@ -25,7 +25,7 @@ type tokenHandler struct {
 }
 
 type tokenRequest struct {
-	Transaction string `json:"transaction"`
+	Transaction string `json:"transaction" form:"transaction"`
 }
 
 type tokenResponse struct {
@@ -37,25 +37,9 @@ func (h tokenHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	req := tokenRequest{}
 
-	contentType := r.Header.Get("Content-Type")
-	switch contentType {
-	case "application/x-www-form-urlencoded":
-		defer r.Body.Close()
-		err := r.ParseForm()
-		if err != nil {
-			badRequest.Render(w)
-			return
-		}
-		req.Transaction = r.PostForm.Get("transaction")
-	case "application/json", "application/json; charset=utf-8":
-		defer r.Body.Close()
-		err := json.NewDecoder(r.Body).Decode(&req)
-		if err != nil {
-			badRequest.Render(w)
-			return
-		}
-	default:
-		unsupportedMediaType.Render(w)
+	err := httpdecode.Decode(r, &req)
+	if err != nil {
+		badRequest.Render(w)
 		return
 	}
 
@@ -70,6 +54,7 @@ func (h tokenHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		serverError.Render(w)
 		return
 	}
+
 	clientSigners := make([]string, 0, len(clientAccount.Signers))
 	for _, signer := range clientAccount.Signers {
 		clientSigners = append(clientSigners, signer.Key)
@@ -90,18 +75,7 @@ func (h tokenHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	maxThreshold := byte(0)
-	if clientAccount.Thresholds.LowThreshold > maxThreshold {
-		maxThreshold = clientAccount.Thresholds.LowThreshold
-	}
-	if clientAccount.Thresholds.MedThreshold > maxThreshold {
-		maxThreshold = clientAccount.Thresholds.MedThreshold
-	}
-	if clientAccount.Thresholds.HighThreshold > maxThreshold {
-		maxThreshold = clientAccount.Thresholds.HighThreshold
-	}
-
-	if weightVerified < int32(maxThreshold) {
+	if weightVerified < int32(clientAccount.Thresholds.HighThreshold) {
 		unauthorized.Render(w)
 		return
 	}

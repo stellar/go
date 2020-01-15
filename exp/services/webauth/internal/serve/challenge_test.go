@@ -3,6 +3,7 @@ package serve
 import (
 	"encoding/json"
 	"io/ioutil"
+	"net/http"
 	"net/http/httptest"
 	"testing"
 	"time"
@@ -16,9 +17,8 @@ import (
 )
 
 func TestChallenge(t *testing.T) {
-	serverKey, err := keypair.Random()
-	require.NoError(t, err)
-	account, err := keypair.Random()
+	serverKey := keypair.MustRandom()
+	account := keypair.MustRandom()
 
 	h := challengeHandler{
 		Logger:             supportlog.DefaultLogger,
@@ -33,14 +33,14 @@ func TestChallenge(t *testing.T) {
 	h.ServeHTTP(w, r)
 	resp := w.Result()
 
-	require.Equal(t, 200, resp.StatusCode)
+	require.Equal(t, http.StatusOK, resp.StatusCode)
 	assert.Equal(t, "application/json; charset=utf-8", resp.Header.Get("Content-Type"))
 
 	res := struct {
 		Transaction       string `json:"transaction"`
 		NetworkPassphrase string `json:"network_passphrase"`
 	}{}
-	err = json.NewDecoder(resp.Body).Decode(&res)
+	err := json.NewDecoder(resp.Body).Decode(&res)
 	require.NoError(t, err)
 
 	var tx xdr.TransactionEnvelope
@@ -71,7 +71,7 @@ func TestChallengeNoAccount(t *testing.T) {
 	h.ServeHTTP(w, r)
 	resp := w.Result()
 
-	require.Equal(t, 400, resp.StatusCode)
+	require.Equal(t, http.StatusBadRequest, resp.StatusCode)
 	assert.Equal(t, "application/json; charset=utf-8", resp.Header.Get("Content-Type"))
 
 	body, err := ioutil.ReadAll(resp.Body)
@@ -87,7 +87,7 @@ func TestChallengeInvalidAccount(t *testing.T) {
 	h.ServeHTTP(w, r)
 	resp := w.Result()
 
-	require.Equal(t, 400, resp.StatusCode)
+	require.Equal(t, http.StatusBadRequest, resp.StatusCode)
 	assert.Equal(t, "application/json; charset=utf-8", resp.Header.Get("Content-Type"))
 
 	body, err := ioutil.ReadAll(resp.Body)

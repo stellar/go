@@ -1,6 +1,8 @@
 # webauth
 
-This is a [SEP-10] Web Authentication implementation based on SEP-10 v1.2.0.
+This is a [SEP-10] Web Authentication implementation based on SEP-10 v1.2.0
+that requires the master key have a high threshold for authentication to
+succeed.
 
 SEP-10 defines an endpoint for authenticating a user in possession of a Stellar
 account using their Stellar account as credentials. This implementation is a
@@ -12,7 +14,7 @@ Running this implementation in production is not recommended.
 
 ## Usage
 
-````
+```
 $ webauth --help
 SEP-10 Web Authentication Server
 
@@ -40,9 +42,9 @@ Usage:
   webauth serve [flags]
 
 Flags:
-      --challenge-expires-in int    The time period after which the challenge transaction expires (default 300000000000)
+      --challenge-expires-in int    The time period in seconds after which the challenge transaction expires (default 300)
       --horizon-url string          Horizon URL used for looking up account details (default "https://horizon-testnet.stellar.org/")
-      --jwt-expires-in int          The time period that after which the JWT expires (default 18000000000000)
+      --jwt-expires-in int          The time period in seconds after which the JWT expires (default 300)
       --jwt-key string              Base64 encoded ECDSA private key used for signing JWTs
       --network-passphrase string   Network passphrase of the Stellar network transactions should be signed for (default "Test SDF Network ; September 2015")
       --port int                    Port to listen and serve on (default 8000)
