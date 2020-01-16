@@ -1118,3 +1118,33 @@ func TestOperationEffectsSetOptionsSignersOrder(t *testing.T) {
 	}
 	tt.Equal(expected, effects)
 }
+
+func TestOperationRegressionAccountTrustItself(t *testing.T) {
+	tt := assert.New(t)
+	// NOTE:  when an account trusts itself, the transaction is successful but
+	// no ledger entries are actually modified.
+	transaction := io.LedgerTransaction{
+		Meta: createTransactionMeta([]xdr.OperationMeta{}),
+	}
+	transaction.Index = 1
+	transaction.Envelope.Tx.SourceAccount = xdr.MustAddress("GCBBDQLCTNASZJ3MTKAOYEOWRGSHDFAJVI7VPZUOP7KXNHYR3HP2BUKV")
+
+	operation := transactionOperationWrapper{
+		index:       0,
+		transaction: transaction,
+		operation: xdr.Operation{
+			Body: xdr.OperationBody{
+				Type: xdr.OperationTypeChangeTrust,
+				ChangeTrustOp: &xdr.ChangeTrustOp{
+					Line:  xdr.MustNewCreditAsset("COP", "GCBBDQLCTNASZJ3MTKAOYEOWRGSHDFAJVI7VPZUOP7KXNHYR3HP2BUKV"),
+					Limit: xdr.Int64(1000),
+				},
+			},
+		},
+		ledgerSequence: 46,
+	}
+
+	effects, err := operation.effects()
+	tt.NoError(err)
+	tt.Equal([]effect{}, effects)
+}
