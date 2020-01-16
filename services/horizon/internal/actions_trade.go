@@ -201,7 +201,7 @@ func (action *TradeAggregateIndexAction) loadRecords() {
 	if err != nil {
 		if historyQ.NoRows(err) {
 			notFound := problem.NotFound
-			problem.AddInvalidField(
+			problem.SetInvalidField(
 				&notFound,
 				"base_asset",
 				errors.New("not found"),
@@ -217,7 +217,7 @@ func (action *TradeAggregateIndexAction) loadRecords() {
 	if err != nil {
 		if historyQ.NoRows(err) {
 			notFound := problem.NotFound
-			problem.AddInvalidField(
+			problem.SetInvalidField(
 				&notFound,
 				"counter_asset",
 				errors.New("not found"),

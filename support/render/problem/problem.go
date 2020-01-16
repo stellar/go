@@ -188,12 +188,12 @@ func (ps *Problem) renderProblem(ctx context.Context, w http.ResponseWriter, p P
 // MakeInvalidFieldProblem is a helper function to make a BadRequest with extras
 func MakeInvalidFieldProblem(name string, reason error) *P {
 	br := BadRequest
-	AddInvalidField(&br, name, reason)
+	SetInvalidField(&br, name, reason)
 	return &br
 }
 
-// AddInvalidField adds invalid field extras to a given P
-func AddInvalidField(p *P, name string, reason error) {
+// SetInvalidField adds invalid field extras to a given P
+func SetInvalidField(p *P, name string, reason error) {
 	p.Extras = map[string]interface{}{
 		"invalid_field": name,
 		"reason":        reason.Error(),
