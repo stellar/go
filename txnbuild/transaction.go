@@ -585,7 +585,7 @@ func VerifyChallengeTxSigners(challengeTx, serverAccountID, network string, sign
 
 // VerifyChallengeTx is a factory method that verifies a SEP 10 challenge transaction,
 // for use in web authentication. It can be used by a server to verify that the challenge
-// has been signed by the client.
+// has been signed by the client account's master key.
 // More details on SEP 10: https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0010.md
 //
 // Deprecated: Use VerifyChallengeTxSigners.
