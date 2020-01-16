@@ -549,6 +549,10 @@ func VerifyChallengeTxThreshold(challengeTx, serverAccountID, network string, th
 //  - One or more signatures in the transaction are not identifiable as the
 //    server account or one of the signers provided in the arguments.
 func VerifyChallengeTxSigners(challengeTx, serverAccountID, network string, signers ...string) ([]string, error) {
+	if len(signers) == 0 {
+		return nil, errors.New("no signers provided")
+	}
+
 	tx, _, err := ReadChallengeTx(challengeTx, serverAccountID, network)
 	if err != nil {
 		return nil, err
