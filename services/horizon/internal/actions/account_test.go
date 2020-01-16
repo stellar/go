@@ -155,9 +155,10 @@ var (
 	}
 )
 
-func TestAccountInfo(t *testing.T) {
+func TestAccountFromCoreDB(t *testing.T) {
 	tt := test.Start(t).Scenario("allow_trust")
 	defer tt.Finish()
+	test.ResetHorizonDB(t, tt.HorizonDB)
 
 	account, err := AccountInfo(
 		tt.Ctx,
@@ -179,6 +180,46 @@ func TestAccountInfo(t *testing.T) {
 		}
 	}
 }
+
+func TestAccountFromExpIngest(t *testing.T) {
+	tt := test.Start(t).Scenario("allow_trust")
+	defer tt.Finish()
+	test.ResetHorizonDB(t, tt.HorizonDB)
+
+	q := &history.Q{tt.HorizonSession()}
+	_, err := q.InsertAccount(account1, 1234)
+	tt.Assert.NoError(err)
+	_, err = q.InsertAccount(account2, 1234)
+	tt.Assert.NoError(err)
+
+	for _, row := range accountSigners {
+		_, err = q.CreateAccountSigner(row.Account, row.Signer, row.Weight)
+		tt.Assert.NoError(err)
+	}
+
+	_, err = q.InsertAccountData(data1, 1234)
+	assert.NoError(t, err)
+
+	_, err = q.InsertTrustLine(eurTrustLine, 1234)
+	assert.NoError(t, err)
+
+	account, err := AccountInfo(
+		tt.Ctx,
+		&core.Q{tt.CoreSession()},
+		q,
+		accountOne,
+		true,
+	)
+	tt.Assert.NoError(err)
+
+	tt.Assert.Equal(accountOne, account.AccountID)
+	tt.Assert.Equal(account.LastModifiedLedger, uint32(1234))
+	tt.Assert.Len(account.Balances, 2)
+	tt.Assert.Len(account.Signers, 2)
+	_, ok := account.Data[string(data1.DataName)]
+	tt.Assert.True(ok)
+}
+
 func TestGetAccountsHandlerPageNoResults(t *testing.T) {
 	tt := test.Start(t)
 	defer tt.Finish()
