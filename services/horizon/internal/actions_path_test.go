@@ -49,9 +49,6 @@ func inMemoryPathFindingClient(
 		&ExperimentalIngestionMiddleware{
 			EnableExperimentalIngestion: true,
 			HorizonSession:              tt.HorizonSession(),
-			StateReady: func() bool {
-				return true
-			},
 		},
 	)
 	return test.NewRequestHelper(router)
@@ -87,9 +84,6 @@ func dbPathFindingClient(
 		&ExperimentalIngestionMiddleware{
 			EnableExperimentalIngestion: false,
 			HorizonSession:              tt.HorizonSession(),
-			StateReady: func() bool {
-				return false
-			},
 		},
 	)
 	return test.NewRequestHelper(router)
