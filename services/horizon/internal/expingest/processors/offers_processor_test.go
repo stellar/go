@@ -5,8 +5,8 @@ import (
 	stdio "io"
 	"testing"
 
+	ingesterrors "github.com/stellar/go/exp/ingest/errors"
 	"github.com/stellar/go/exp/ingest/io"
-	"github.com/stellar/go/exp/ingest/verify"
 	supportPipeline "github.com/stellar/go/exp/support/pipeline"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/support/errors"
@@ -14,7 +14,7 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
-func TestOffersrocessorTestSuiteState(t *testing.T) {
+func TestOffersProcessorTestSuiteState(t *testing.T) {
 	suite.Run(t, new(OffersProcessorTestSuiteState))
 }
 
@@ -56,8 +56,9 @@ func (s *OffersProcessorTestSuiteState) TearDownTest() {
 
 func (s *OffersProcessorTestSuiteState) TestCreateOffer() {
 	offer := xdr.OfferEntry{
-		OfferId: xdr.Int64(1),
-		Price:   xdr.Price{1, 2},
+		SellerId: xdr.MustAddress("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
+		OfferId:  xdr.Int64(1),
+		Price:    xdr.Price{1, 2},
 	}
 	lastModifiedLedgerSeq := xdr.Uint32(123)
 	s.mockStateReader.
@@ -118,6 +119,10 @@ func (s *OffersProcessorTestSuiteLedger) SetupTest() {
 
 	// Reader and Writer should be always closed and once
 	s.mockLedgerReader.
+		On("ReadUpgradeChange").
+		Return(io.Change{}, stdio.EOF).Once()
+
+	s.mockLedgerReader.
 		On("Close").
 		Return(nil).Once()
 
@@ -133,34 +138,36 @@ func (s *OffersProcessorTestSuiteLedger) TearDownTest() {
 }
 
 func (s *OffersProcessorTestSuiteLedger) TestInsertOffer() {
-	// should be ignored because it's not an offer type
-	s.mockLedgerReader.
-		On("Read").
-		Return(io.LedgerTransaction{
-			Meta: createTransactionMeta([]xdr.OperationMeta{
-				xdr.OperationMeta{
-					Changes: []xdr.LedgerEntryChange{
-						xdr.LedgerEntryChange{
-							Type: xdr.LedgerEntryChangeTypeLedgerEntryCreated,
-							Created: &xdr.LedgerEntry{
-								Data: xdr.LedgerEntryData{
-									Type: xdr.LedgerEntryTypeAccount,
-									Account: &xdr.AccountEntry{
-										AccountId:  xdr.MustAddress("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
-										Thresholds: [4]byte{1, 1, 1, 1},
-									},
+	accountTransaction := io.LedgerTransaction{
+		Meta: createTransactionMeta([]xdr.OperationMeta{
+			xdr.OperationMeta{
+				Changes: []xdr.LedgerEntryChange{
+					xdr.LedgerEntryChange{
+						Type: xdr.LedgerEntryChangeTypeLedgerEntryCreated,
+						Created: &xdr.LedgerEntry{
+							Data: xdr.LedgerEntryData{
+								Type: xdr.LedgerEntryTypeAccount,
+								Account: &xdr.AccountEntry{
+									AccountId:  xdr.MustAddress("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
+									Thresholds: [4]byte{1, 1, 1, 1},
 								},
 							},
 						},
 					},
 				},
-			}),
-		}, nil).Once()
+			},
+		}),
+	}
+	// should be ignored because it's not an offer type
+	s.Assert().NoError(
+		s.processor.processLedgerOffers(accountTransaction.GetChanges()[0]),
+	)
 
 	// add offer
 	offer := xdr.OfferEntry{
-		OfferId: xdr.Int64(2),
-		Price:   xdr.Price{1, 2},
+		SellerId: xdr.MustAddress("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
+		OfferId:  xdr.Int64(2),
+		Price:    xdr.Price{1, 2},
 	}
 	lastModifiedLedgerSeq := xdr.Uint32(1234)
 	s.mockLedgerReader.On("Read").
@@ -172,6 +179,7 @@ func (s *OffersProcessorTestSuiteLedger) TestInsertOffer() {
 						xdr.LedgerEntryChange{
 							Type: xdr.LedgerEntryChangeTypeLedgerEntryCreated,
 							Created: &xdr.LedgerEntry{
+								LastModifiedLedgerSeq: lastModifiedLedgerSeq,
 								Data: xdr.LedgerEntryData{
 									Type:  xdr.LedgerEntryTypeOffer,
 									Offer: &offer,
@@ -182,17 +190,11 @@ func (s *OffersProcessorTestSuiteLedger) TestInsertOffer() {
 				},
 			}),
 		}, nil).Once()
-	s.mockLedgerReader.On("GetSequence").Return(uint32(lastModifiedLedgerSeq))
-
-	s.mockQ.On(
-		"InsertOffer",
-		offer,
-		lastModifiedLedgerSeq,
-	).Return(int64(1), nil).Once()
 
 	updatedOffer := xdr.OfferEntry{
-		OfferId: xdr.Int64(2),
-		Price:   xdr.Price{1, 6},
+		SellerId: xdr.MustAddress("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
+		OfferId:  xdr.Int64(2),
+		Price:    xdr.Price{1, 6},
 	}
 	s.mockLedgerReader.On("Read").
 		Return(io.LedgerTransaction{
@@ -203,6 +205,7 @@ func (s *OffersProcessorTestSuiteLedger) TestInsertOffer() {
 						xdr.LedgerEntryChange{
 							Type: xdr.LedgerEntryChangeTypeLedgerEntryState,
 							State: &xdr.LedgerEntry{
+								LastModifiedLedgerSeq: lastModifiedLedgerSeq - 1,
 								Data: xdr.LedgerEntryData{
 									Type:  xdr.LedgerEntryTypeOffer,
 									Offer: &offer,
@@ -213,6 +216,7 @@ func (s *OffersProcessorTestSuiteLedger) TestInsertOffer() {
 						xdr.LedgerEntryChange{
 							Type: xdr.LedgerEntryChangeTypeLedgerEntryUpdated,
 							Updated: &xdr.LedgerEntry{
+								LastModifiedLedgerSeq: lastModifiedLedgerSeq,
 								Data: xdr.LedgerEntryData{
 									Type:  xdr.LedgerEntryTypeOffer,
 									Offer: &updatedOffer,
@@ -223,8 +227,10 @@ func (s *OffersProcessorTestSuiteLedger) TestInsertOffer() {
 				},
 			}),
 		}, nil).Once()
+
+	// We use LedgerEntryChangesCache so all changes are squashed
 	s.mockQ.On(
-		"UpdateOffer",
+		"InsertOffer",
 		updatedOffer,
 		lastModifiedLedgerSeq,
 	).Return(int64(1), nil).Once()
@@ -245,15 +251,16 @@ func (s *OffersProcessorTestSuiteLedger) TestInsertOffer() {
 
 func (s *OffersProcessorTestSuiteLedger) TestUpdateOfferNoRowsAffected() {
 	lastModifiedLedgerSeq := xdr.Uint32(1234)
-	s.mockLedgerReader.On("GetSequence").Return(uint32(lastModifiedLedgerSeq))
 
 	offer := xdr.OfferEntry{
-		OfferId: xdr.Int64(2),
-		Price:   xdr.Price{1, 2},
+		SellerId: xdr.MustAddress("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
+		OfferId:  xdr.Int64(2),
+		Price:    xdr.Price{1, 2},
 	}
 	updatedOffer := xdr.OfferEntry{
-		OfferId: xdr.Int64(2),
-		Price:   xdr.Price{1, 6},
+		SellerId: xdr.MustAddress("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
+		OfferId:  xdr.Int64(2),
+		Price:    xdr.Price{1, 6},
 	}
 	s.mockLedgerReader.On("Read").
 		Return(io.LedgerTransaction{
@@ -264,6 +271,7 @@ func (s *OffersProcessorTestSuiteLedger) TestUpdateOfferNoRowsAffected() {
 						xdr.LedgerEntryChange{
 							Type: xdr.LedgerEntryChangeTypeLedgerEntryState,
 							State: &xdr.LedgerEntry{
+								LastModifiedLedgerSeq: lastModifiedLedgerSeq - 1,
 								Data: xdr.LedgerEntryData{
 									Type:  xdr.LedgerEntryTypeOffer,
 									Offer: &offer,
@@ -274,6 +282,7 @@ func (s *OffersProcessorTestSuiteLedger) TestUpdateOfferNoRowsAffected() {
 						xdr.LedgerEntryChange{
 							Type: xdr.LedgerEntryChangeTypeLedgerEntryUpdated,
 							Updated: &xdr.LedgerEntry{
+								LastModifiedLedgerSeq: lastModifiedLedgerSeq,
 								Data: xdr.LedgerEntryData{
 									Type:  xdr.LedgerEntryTypeOffer,
 									Offer: &updatedOffer,
@@ -284,6 +293,8 @@ func (s *OffersProcessorTestSuiteLedger) TestUpdateOfferNoRowsAffected() {
 				},
 			}),
 		}, nil).Once()
+	s.mockLedgerReader.On("Read").Return(io.LedgerTransaction{}, stdio.EOF).Once()
+
 	s.mockQ.On(
 		"UpdateOffer",
 		updatedOffer,
@@ -298,8 +309,8 @@ func (s *OffersProcessorTestSuiteLedger) TestUpdateOfferNoRowsAffected() {
 	)
 
 	s.Assert().Error(err)
-	s.Assert().IsType(verify.StateError{}, errors.Cause(err))
-	s.Assert().EqualError(err, "Error in processLedgerOffers: No rows affected when updating offer 2")
+	s.Assert().IsType(ingesterrors.StateError{}, errors.Cause(err))
+	s.Assert().EqualError(err, "Error in Offers handler: 0 rows affected when updating offer 2")
 }
 
 func (s *OffersProcessorTestSuiteLedger) TestRemoveOffer() {
@@ -315,8 +326,9 @@ func (s *OffersProcessorTestSuiteLedger) TestRemoveOffer() {
 								Data: xdr.LedgerEntryData{
 									Type: xdr.LedgerEntryTypeOffer,
 									Offer: &xdr.OfferEntry{
-										OfferId: xdr.Int64(3),
-										Price:   xdr.Price{3, 1},
+										SellerId: xdr.MustAddress("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
+										OfferId:  xdr.Int64(3),
+										Price:    xdr.Price{3, 1},
 									},
 								},
 							},
@@ -326,7 +338,8 @@ func (s *OffersProcessorTestSuiteLedger) TestRemoveOffer() {
 							Removed: &xdr.LedgerKey{
 								Type: xdr.LedgerEntryTypeOffer,
 								Offer: &xdr.LedgerKeyOffer{
-									OfferId: xdr.Int64(3),
+									SellerId: xdr.MustAddress("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
+									OfferId:  xdr.Int64(3),
 								},
 							},
 						},
@@ -334,16 +347,101 @@ func (s *OffersProcessorTestSuiteLedger) TestRemoveOffer() {
 				},
 			}),
 		}, nil).Once()
-	s.mockLedgerReader.On("GetSequence").Return(uint32(123))
+
+	s.mockLedgerReader.
+		On("Read").
+		Return(io.LedgerTransaction{}, stdio.EOF).Once()
 
 	s.mockQ.On(
 		"RemoveOffer",
 		xdr.Int64(3),
 	).Return(int64(1), nil).Once()
 
+	err := s.processor.ProcessLedger(
+		context.Background(),
+		&supportPipeline.Store{},
+		s.mockLedgerReader,
+		s.mockLedgerWriter,
+	)
+
+	s.Assert().NoError(err)
+}
+
+func (s *OffersProcessorTestSuiteLedger) TestProcessUpgradeChange() {
+	// Removes ReadUpgradeChange assertion
+	s.mockLedgerReader = &io.MockLedgerReader{}
+
+	// add offer
+	offer := xdr.OfferEntry{
+		SellerId: xdr.MustAddress("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
+		OfferId:  xdr.Int64(2),
+		Price:    xdr.Price{1, 2},
+	}
+	lastModifiedLedgerSeq := xdr.Uint32(1234)
+	s.mockLedgerReader.On("Read").
+		Return(io.LedgerTransaction{
+			Meta: createTransactionMeta([]xdr.OperationMeta{
+				xdr.OperationMeta{
+					Changes: []xdr.LedgerEntryChange{
+						// State
+						xdr.LedgerEntryChange{
+							Type: xdr.LedgerEntryChangeTypeLedgerEntryCreated,
+							Created: &xdr.LedgerEntry{
+								LastModifiedLedgerSeq: lastModifiedLedgerSeq,
+								Data: xdr.LedgerEntryData{
+									Type:  xdr.LedgerEntryTypeOffer,
+									Offer: &offer,
+								},
+							},
+						},
+					},
+				},
+			}),
+		}, nil).Once()
+
 	s.mockLedgerReader.
 		On("Read").
 		Return(io.LedgerTransaction{}, stdio.EOF).Once()
+
+	updatedOffer := xdr.OfferEntry{
+		SellerId: xdr.MustAddress("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
+		OfferId:  xdr.Int64(2),
+		Price:    xdr.Price{1, 6},
+	}
+
+	s.mockLedgerReader.
+		On("ReadUpgradeChange").
+		Return(
+			io.Change{
+				Type: xdr.LedgerEntryTypeOffer,
+				Pre: &xdr.LedgerEntry{
+					LastModifiedLedgerSeq: lastModifiedLedgerSeq,
+					Data: xdr.LedgerEntryData{
+						Type:  xdr.LedgerEntryTypeOffer,
+						Offer: &offer,
+					},
+				},
+				Post: &xdr.LedgerEntry{
+					LastModifiedLedgerSeq: lastModifiedLedgerSeq,
+					Data: xdr.LedgerEntryData{
+						Type:  xdr.LedgerEntryTypeOffer,
+						Offer: &updatedOffer,
+					},
+				},
+			}, nil).Once()
+
+	// We use LedgerEntryChangesCache so all changes are squashed
+	s.mockQ.On(
+		"InsertOffer",
+		updatedOffer,
+		lastModifiedLedgerSeq,
+	).Return(int64(1), nil).Once()
+
+	s.mockLedgerReader.
+		On("ReadUpgradeChange").
+		Return(io.Change{}, stdio.EOF).Once()
+
+	s.mockLedgerReader.On("Close").Return(nil).Once()
 
 	err := s.processor.ProcessLedger(
 		context.Background(),
@@ -368,8 +466,9 @@ func (s *OffersProcessorTestSuiteLedger) TestRemoveOfferNoRowsAffected() {
 								Data: xdr.LedgerEntryData{
 									Type: xdr.LedgerEntryTypeOffer,
 									Offer: &xdr.OfferEntry{
-										OfferId: xdr.Int64(3),
-										Price:   xdr.Price{3, 1},
+										SellerId: xdr.MustAddress("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
+										OfferId:  xdr.Int64(3),
+										Price:    xdr.Price{3, 1},
 									},
 								},
 							},
@@ -379,7 +478,8 @@ func (s *OffersProcessorTestSuiteLedger) TestRemoveOfferNoRowsAffected() {
 							Removed: &xdr.LedgerKey{
 								Type: xdr.LedgerEntryTypeOffer,
 								Offer: &xdr.LedgerKeyOffer{
-									OfferId: xdr.Int64(3),
+									SellerId: xdr.MustAddress("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
+									OfferId:  xdr.Int64(3),
 								},
 							},
 						},
@@ -387,7 +487,7 @@ func (s *OffersProcessorTestSuiteLedger) TestRemoveOfferNoRowsAffected() {
 				},
 			}),
 		}, nil).Once()
-	s.mockLedgerReader.On("GetSequence").Return(uint32(123))
+	s.mockLedgerReader.On("Read").Return(io.LedgerTransaction{}, stdio.EOF).Once()
 
 	s.mockQ.On(
 		"RemoveOffer",
@@ -402,6 +502,6 @@ func (s *OffersProcessorTestSuiteLedger) TestRemoveOfferNoRowsAffected() {
 	)
 
 	s.Assert().Error(err)
-	s.Assert().IsType(verify.StateError{}, errors.Cause(err))
-	s.Assert().EqualError(err, "Error in processLedgerOffers: No rows affected when removing offer 3")
+	s.Assert().IsType(ingesterrors.StateError{}, errors.Cause(err))
+	s.Assert().EqualError(err, "Error in Offers handler: 0 rows affected when removing offer 3")
 }

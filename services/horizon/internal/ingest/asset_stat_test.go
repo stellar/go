@@ -1,6 +1,7 @@
 package ingest
 
 import (
+	"context"
 	"fmt"
 	"sort"
 	"testing"
@@ -117,7 +118,7 @@ func TestStatTrustlinesInfo(t *testing.T) {
 			tt := test.Start(t).ScenarioWithoutHorizon(kase.scenario)
 			defer tt.Finish()
 
-			session := &db.Session{DB: tt.CoreDB}
+			session := &db.Session{DB: tt.CoreDB, Ctx: context.Background()}
 
 			for i, asset := range kase.assetState {
 				numAccounts, amount, err := statTrustlinesInfo(session, asset.assetType, asset.assetCode, asset.assetIssuer)
@@ -160,7 +161,7 @@ func TestStatAccountInfo(t *testing.T) {
 			tt := test.Start(t).ScenarioWithoutHorizon("asset_stat_account")
 			defer tt.Finish()
 
-			session := &db.Session{DB: tt.CoreDB}
+			session := &db.Session{DB: tt.CoreDB, Ctx: context.Background()}
 
 			flags, toml, err := statAccountInfo(session, kase.account)
 			tt.Require.NoError(err)
@@ -364,7 +365,7 @@ func TestAssetModified(t *testing.T) {
 			if kase.needsCoreQ {
 				tt := test.Start(t).ScenarioWithoutHorizon("asset_stat_operations")
 				defer tt.Finish()
-				session = &db.Session{DB: tt.CoreDB}
+				session = &db.Session{DB: tt.CoreDB, Ctx: context.Background()}
 			}
 
 			assetsStats := AssetStats{CoreSession: session}

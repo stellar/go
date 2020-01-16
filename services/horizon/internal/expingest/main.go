@@ -8,6 +8,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/jmoiron/sqlx"
 	"github.com/stellar/go/clients/stellarcore"
 	"github.com/stellar/go/exp/ingest"
 	"github.com/stellar/go/exp/ingest/io"
@@ -17,7 +18,7 @@ import (
 	"github.com/stellar/go/support/db"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/support/historyarchive"
-	ilog "github.com/stellar/go/support/log"
+	logpkg "github.com/stellar/go/support/log"
 	"github.com/stellar/go/xdr"
 )
 
@@ -28,17 +29,23 @@ const (
 	//
 	// Version history:
 	// - 1: Initial version
-	// - 2: We added the orderbook, offers processors and distributed
-	//      ingestion.
-	// - 3: Fixes a bug that could potentialy result in invalid state
+	// - 2: Added the orderbook, offers processors and distributed ingestion.
+	// - 3: Fixed a bug that could potentialy result in invalid state
 	//      (#1722). Update the version to clear the state.
-	// - 4: Fixes a bug in AccountSignersChanged method.
-	// - 5: Fixes AccountSigners processor to remove preauth tx signer
+	// - 4: Fixed a bug in AccountSignersChanged method.
+	// - 5: Added trust lines.
+	// - 6: Added accounts and accounts data.
+	// - 7: Fixes a bug in AccountSignersChanged method.
+	// - 8: Fixes AccountSigners processor to remove preauth tx signer
 	//      when preauth tx is failed.
-	CurrentVersion = 5
+	// - 9: Fixes a bug in asset stats processor that counted unauthorized
+	//      trustlines.
+	// - 10: Fixes a bug in meta processing (fees are now processed before
+	//      everything else).
+	CurrentVersion = 10
 )
 
-var log = ilog.DefaultLogger.WithField("service", "expingest")
+var log = logpkg.DefaultLogger.WithField("service", "expingest")
 
 type Config struct {
 	CoreSession    *db.Session
@@ -49,18 +56,25 @@ type Config struct {
 	TempSet                  io.TempSet
 	DisableStateVerification bool
 
+	// MaxStreamRetries determines how many times the reader will retry when encountering
+	// errors while streaming xdr bucket entries from the history archive.
+	// Set MaxStreamRetries to 0 if there should be no retry attempts
+	MaxStreamRetries int
+
 	OrderBookGraph *orderbook.OrderBookGraph
 }
 
 type dbQ interface {
 	Begin() error
 	Rollback() error
+	GetTx() *sqlx.Tx
 	GetLastLedgerExpIngest() (uint32, error)
 	GetExpIngestVersion() (int, error)
 	UpdateLastLedgerExpIngest(uint32) error
 	UpdateExpStateInvalid(bool) error
 	GetExpStateInvalid() (bool, error)
 	GetAllOffers() ([]history.Offer, error)
+	RemoveExpIngestHistory(uint32) (history.ExpIngestRemovalSummary, error)
 }
 
 type dbSession interface {
@@ -81,15 +95,22 @@ type retry interface {
 }
 
 type System struct {
-	session        liveSession
-	historyQ       dbQ
-	historySession dbSession
-	graph          *orderbook.OrderBookGraph
-	retry          retry
+	session          liveSession
+	historyQ         dbQ
+	historySession   dbSession
+	graph            *orderbook.OrderBookGraph
+	retry            retry
+	stateReady       bool
+	stateReadyLock   sync.RWMutex
+	maxStreamRetries int
+	wg               sync.WaitGroup
+	shutdown         chan struct{}
 
 	// stateVerificationRunning is true when verification routine is currently
 	// running.
-	stateVerificationMutex   sync.Mutex
+	stateVerificationMutex sync.Mutex
+	// number of consecutive state verification runs which encountered errors
+	stateVerificationErrors  int
 	stateVerificationRunning bool
 	disableStateVerification bool
 }
@@ -124,10 +145,11 @@ func NewSystem(config Config) (*System, error) {
 	historyQ := &history.Q{config.HistorySession}
 
 	session := &ingest.LiveSession{
-		Archive:        archive,
-		LedgerBackend:  ledgerBackend,
-		StatePipeline:  buildStatePipeline(historyQ, config.OrderBookGraph),
-		LedgerPipeline: buildLedgerPipeline(historyQ, config.OrderBookGraph),
+		Archive:          archive,
+		MaxStreamRetries: config.MaxStreamRetries,
+		LedgerBackend:    ledgerBackend,
+		StatePipeline:    buildStatePipeline(historyQ, config.OrderBookGraph),
+		LedgerPipeline:   buildLedgerPipeline(historyQ, config.OrderBookGraph),
 		StellarCoreClient: &stellarcore.Client{
 			URL: config.StellarCoreURL,
 		},
@@ -145,6 +167,7 @@ func NewSystem(config Config) (*System, error) {
 		graph:                    config.OrderBookGraph,
 		retry:                    alwaysRetry{time.Second},
 		disableStateVerification: config.DisableStateVerification,
+		maxStreamRetries:         config.MaxStreamRetries,
 	}
 
 	addPipelineHooks(
@@ -195,12 +218,14 @@ func NewSystem(config Config) (*System, error) {
 //   * If instances is a NOT leader, it runs ledger pipeline without updating a
 //     a database so order book graph is updated but database is not overwritten.
 func (s *System) Run() {
+	s.shutdown = make(chan struct{})
 	// Expingest is an experimental package so we don't want entire Horizon app
 	// to crash in case of unexpected errors.
 	// TODO: This should be removed when expingest is no longer experimental.
 	defer func() {
+		s.wg.Wait()
 		if r := recover(); r != nil {
-			log.WithFields(ilog.F{
+			log.WithFields(logpkg.F{
 				"err":   r,
 				"stack": string(debug.Stack()),
 			}).Error("expingest panic")
@@ -268,10 +293,14 @@ func (s *System) Run() {
 					return err
 				}
 
-				log.WithFields(ilog.F{
+				log.WithFields(logpkg.F{
 					"err":                  err,
 					"last_ingested_ledger": lastIngestedLedger,
 				}).Error("Error running session, resuming from the last ingested ledger")
+			} else {
+				// LiveSession.Run returns nil => shutdown
+				log.Info("Session shut down")
+				return nil
 			}
 		} else {
 			// The other node already ingested a state (just now or in the past)
@@ -280,7 +309,7 @@ func (s *System) Run() {
 			log.WithField("last_ledger", lastIngestedLedger).
 				Info("Resuming ingestion system from last processed ledger...")
 
-			err = loadOrderBookGraphFromDB(s.historyQ, s.graph)
+			err = loadOrderBookGraphFromDB(s.historyQ, s.graph, lastIngestedLedger)
 			if err != nil {
 				return errors.Wrap(err, "Error loading order book graph from db")
 			}
@@ -291,7 +320,11 @@ func (s *System) Run() {
 	})
 }
 
-func loadOrderBookGraphFromDB(historyQ dbQ, graph *orderbook.OrderBookGraph) error {
+func loadOrderBookGraphFromDB(
+	historyQ dbQ,
+	graph *orderbook.OrderBookGraph,
+	lastIngestedLedger uint32,
+) error {
 	defer graph.Discard()
 
 	log.Info("Loading offers from a database into memory store...")
@@ -318,7 +351,7 @@ func loadOrderBookGraphFromDB(historyQ dbQ, graph *orderbook.OrderBookGraph) err
 		})
 	}
 
-	err = graph.Apply()
+	err = graph.Apply(lastIngestedLedger)
 	if err == nil {
 		log.WithField(
 			"duration",
@@ -341,7 +374,15 @@ func (s *System) resumeFromLedger(lastIngestedLedger uint32) {
 			if processed {
 				lastIngestedLedger = sessionLastLedger
 			}
-			return errors.Wrap(err, "Error returned from ingest.LiveSession")
+
+			select {
+			case <-s.shutdown:
+				log.WithField("err", err).
+					Error("System shut down but error returned from ingest.LiveSession")
+				return nil
+			default:
+				return errors.Wrap(err, "Error returned from ingest.LiveSession")
+			}
 		}
 
 		log.Info("Session shut down")
@@ -349,9 +390,41 @@ func (s *System) resumeFromLedger(lastIngestedLedger uint32) {
 	})
 }
 
+// StateReady returns true if the ingestion system has finished running it's state pipelines
+func (s *System) StateReady() bool {
+	s.stateReadyLock.RLock()
+	defer s.stateReadyLock.RUnlock()
+	return s.stateReady
+}
+
+func (s *System) setStateReady() {
+	s.stateReadyLock.Lock()
+	defer s.stateReadyLock.Unlock()
+	s.stateReady = true
+}
+
+func (s *System) incrementStateVerificationErrors() int {
+	s.stateVerificationMutex.Lock()
+	defer s.stateVerificationMutex.Unlock()
+	s.stateVerificationErrors++
+	return s.stateVerificationErrors
+}
+
+func (s *System) resetStateVerificationErrors() {
+	s.stateVerificationMutex.Lock()
+	defer s.stateVerificationMutex.Unlock()
+	s.stateVerificationErrors = 0
+}
+
 func (s *System) Shutdown() {
 	log.Info("Shutting down ingestion system...")
 	s.session.Shutdown()
+	s.stateVerificationMutex.Lock()
+	defer s.stateVerificationMutex.Unlock()
+	if s.stateVerificationRunning {
+		log.Info("Shutting down state verifier...")
+	}
+	close(s.shutdown)
 }
 
 func createArchive(archiveURL string) (*historyarchive.Archive, error) {

@@ -43,6 +43,13 @@ func ItBehavesLikeAKP(subject *KP) {
 		})
 	})
 
+	Describe("FromAddress()", func() {
+		It("returns an address-only representation, or public key, of this key", func() {
+			fromAddress := (*subject).FromAddress()
+			Expect(fromAddress.Address()).To(Equal(address))
+		})
+	})
+
 	Describe("Hint()", func() {
 		It("returns the correct hint", func() {
 			Expect((*subject).Hint()).To(Equal(hint))
@@ -105,6 +112,88 @@ var _ = DescribeTable("keypair.Parse()",
 		Input:    "",
 		TypeCase: BeNil(),
 		ErrCase:  HaveOccurred(),
+	}),
+)
+
+type ParseFullCase struct {
+	Input    string
+	FullCase types.GomegaMatcher
+	ErrCase  types.GomegaMatcher
+}
+
+var _ = DescribeTable("keypair.ParseFull()",
+	func(c ParseFullCase) {
+		kp, err := ParseFull(c.Input)
+
+		Expect(kp).To(c.FullCase)
+		Expect(err).To(c.ErrCase)
+	},
+
+	Entry("a valid address", ParseFullCase{
+		Input:    "GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H",
+		FullCase: BeNil(),
+		ErrCase:  HaveOccurred(),
+	}),
+	Entry("a corrupted address", ParseFullCase{
+		Input:    "GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7O32H",
+		FullCase: BeNil(),
+		ErrCase:  HaveOccurred(),
+	}),
+	Entry("a valid seed", ParseFullCase{
+		Input:    "SDHOAMBNLGCE2MV5ZKIVZAQD3VCLGP53P3OBSBI6UN5L5XZI5TKHFQL4",
+		FullCase: Equal(&Full{seed: "SDHOAMBNLGCE2MV5ZKIVZAQD3VCLGP53P3OBSBI6UN5L5XZI5TKHFQL4"}),
+		ErrCase:  BeNil(),
+	}),
+	Entry("a corrupted seed", ParseFullCase{
+		Input:    "SDHOAMBNLGCE2MV5ZKIVZAQD3VCLGP53P3OBSBI6UN5L5XZI5TKHFQL3",
+		FullCase: BeNil(),
+		ErrCase:  HaveOccurred(),
+	}),
+	Entry("a blank string", ParseFullCase{
+		Input:    "",
+		FullCase: BeNil(),
+		ErrCase:  HaveOccurred(),
+	}),
+)
+
+type ParseAddressCase struct {
+	Input       string
+	AddressCase types.GomegaMatcher
+	ErrCase     types.GomegaMatcher
+}
+
+var _ = DescribeTable("keypair.ParseAddress()",
+	func(c ParseAddressCase) {
+		kp, err := ParseAddress(c.Input)
+
+		Expect(kp).To(c.AddressCase)
+		Expect(err).To(c.ErrCase)
+	},
+
+	Entry("a valid address", ParseAddressCase{
+		Input:       "GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H",
+		AddressCase: Equal(&FromAddress{address: "GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H"}),
+		ErrCase:     BeNil(),
+	}),
+	Entry("a corrupted address", ParseAddressCase{
+		Input:       "GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7O32H",
+		AddressCase: BeNil(),
+		ErrCase:     HaveOccurred(),
+	}),
+	Entry("a valid seed", ParseAddressCase{
+		Input:       "SDHOAMBNLGCE2MV5ZKIVZAQD3VCLGP53P3OBSBI6UN5L5XZI5TKHFQL4",
+		AddressCase: BeNil(),
+		ErrCase:     HaveOccurred(),
+	}),
+	Entry("a corrupted seed", ParseAddressCase{
+		Input:       "SDHOAMBNLGCE2MV5ZKIVZAQD3VCLGP53P3OBSBI6UN5L5XZI5TKHFQL3",
+		AddressCase: BeNil(),
+		ErrCase:     HaveOccurred(),
+	}),
+	Entry("a blank string", ParseAddressCase{
+		Input:       "",
+		AddressCase: BeNil(),
+		ErrCase:     HaveOccurred(),
 	}),
 )
 

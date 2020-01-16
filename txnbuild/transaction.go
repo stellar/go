@@ -477,32 +477,38 @@ func VerifyChallengeTx(challengeTx, serverAccountID, network string) (bool, erro
 	}
 
 	// verify signature from operation source
-	ok, err = verifyTxSignature(tx, op.SourceAccount.GetAccountID())
+	err = verifyTxSignature(tx, op.SourceAccount.GetAccountID())
 	if err != nil {
-		return ok, err
+		return false, err
 	}
 
 	// verify signature from server signing key
-	return verifyTxSignature(tx, serverAccountID)
+	err = verifyTxSignature(tx, serverAccountID)
+	if err != nil {
+		return false, err
+	}
+
+	return true, nil
 }
 
 // verifyTxSignature checks if a transaction has been signed by the provided Stellar account.
-func verifyTxSignature(tx Transaction, accountID string) (bool, error) {
-	signerFound := false
+func verifyTxSignature(tx Transaction, accountID string) error {
+	if tx.xdrEnvelope == nil {
+		return errors.New("transaction has no signatures")
+	}
+
 	txHash, err := tx.Hash()
 	if err != nil {
-		return signerFound, err
+		return err
 	}
 
 	kp, err := keypair.Parse(accountID)
 	if err != nil {
-		return signerFound, err
+		return err
 	}
 
 	// find and verify signatures
-	if tx.xdrEnvelope == nil {
-		return signerFound, errors.New("transaction has no signatures")
-	}
+	signerFound := false
 	for _, s := range tx.xdrEnvelope.Signatures {
 		e := kp.Verify(txHash[:], s.Signature)
 		if e == nil {
@@ -510,9 +516,9 @@ func verifyTxSignature(tx Transaction, accountID string) (bool, error) {
 			break
 		}
 	}
-
 	if !signerFound {
-		return signerFound, errors.Errorf("transaction not signed by %s", accountID)
+		return errors.Errorf("transaction not signed by %s", accountID)
 	}
-	return signerFound, nil
+
+	return nil
 }

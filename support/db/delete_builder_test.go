@@ -1,6 +1,7 @@
 package db
 
 import (
+	"context"
 	"testing"
 
 	"github.com/stellar/go/support/db/dbtest"
@@ -11,7 +12,7 @@ import (
 func TestDeleteBuilder_Exec(t *testing.T) {
 	db := dbtest.Postgres(t).Load(testSchema)
 	defer db.Close()
-	sess := &Session{DB: db.Open()}
+	sess := &Session{DB: db.Open(), Ctx: context.Background()}
 	defer sess.DB.Close()
 
 	tbl := sess.GetTable("people")

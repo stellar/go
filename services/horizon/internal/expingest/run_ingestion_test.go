@@ -3,7 +3,9 @@ package expingest
 import (
 	"sort"
 	"testing"
+	"time"
 
+	"github.com/jmoiron/sqlx"
 	"github.com/stellar/go/exp/orderbook"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/support/db"
@@ -43,6 +45,11 @@ func (m *mockDBQ) Rollback() error {
 	return args.Error(0)
 }
 
+func (m *mockDBQ) GetTx() *sqlx.Tx {
+	args := m.Called()
+	return args.Get(0).(*sqlx.Tx)
+}
+
 func (m *mockDBQ) GetLastLedgerExpIngest() (uint32, error) {
 	args := m.Called()
 	return args.Get(0).(uint32), args.Error(1)
@@ -71,6 +78,11 @@ func (m *mockDBQ) GetExpStateInvalid() (bool, error) {
 func (m *mockDBQ) GetAllOffers() ([]history.Offer, error) {
 	args := m.Called()
 	return args.Get(0).([]history.Offer), args.Error(1)
+}
+
+func (m *mockDBQ) RemoveExpIngestHistory(newerThanSequence uint32) (history.ExpIngestRemovalSummary, error) {
+	args := m.Called(newerThanSequence)
+	return args.Get(0).(history.ExpIngestRemovalSummary), args.Error(1)
 }
 
 type mockIngestSession struct {
@@ -241,7 +253,6 @@ func (s *RunIngestionTestSuite) TestOutdatedIngestVersion() {
 	s.session.On("TruncateTables", history.ExperimentalIngestionTables).Return(nil).Once()
 	s.ingestSession.On("Run").Return(nil).Once()
 	s.historyQ.On("Rollback").Return(nil).Once()
-	s.ingestSession.On("Resume", uint32(4)).Return(nil).Once()
 	s.system.retry = expectError(s.Assert(), "")
 }
 
@@ -443,4 +454,55 @@ func (s *ResumeIngestionTestSuite) TestLedgerUpdatesOnlyIfProcessed() {
 
 func TestResumeIngestionTestSuite(t *testing.T) {
 	suite.Run(t, new(ResumeIngestionTestSuite))
+}
+
+type SystemShutdownTestSuite struct {
+	suite.Suite
+	graph         *orderbook.OrderBookGraph
+	session       *mockDBSession
+	historyQ      *mockDBQ
+	ingestSession *mockIngestSession
+	system        *System
+}
+
+func (s *SystemShutdownTestSuite) SetupTest() {
+	s.graph = orderbook.NewOrderBookGraph()
+	s.session = &mockDBSession{}
+	s.historyQ = &mockDBQ{}
+	s.ingestSession = &mockIngestSession{}
+	s.system = &System{
+		session:        s.ingestSession,
+		historySession: s.session,
+		historyQ:       s.historyQ,
+		graph:          s.graph,
+		shutdown:       make(chan struct{}),
+	}
+}
+
+func (s *SystemShutdownTestSuite) TearDownTest() {
+	t := s.T()
+	s.session.AssertExpectations(t)
+	s.ingestSession.AssertExpectations(t)
+	s.historyQ.AssertExpectations(t)
+}
+
+func (s *SystemShutdownTestSuite) TestShutdownSucceeds() {
+	s.ingestSession.On("Shutdown").Return(nil).Once()
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		select {
+		case <-s.system.shutdown:
+			s.Assert().True(true, "channel was closed")
+		case <-time.After(2 * time.Second):
+			s.Assert().Fail("channel should have been closed")
+		}
+	}()
+	time.Sleep(100 * time.Millisecond)
+	s.system.Shutdown()
+	<-done
+}
+
+func TestSystemShutdownTestSuite(t *testing.T) {
+	suite.Run(t, new(SystemShutdownTestSuite))
 }

@@ -1,0 +1,236 @@
+package history
+
+import (
+	"testing"
+
+	"github.com/stellar/go/services/horizon/internal/test"
+	"github.com/stellar/go/xdr"
+	"github.com/stretchr/testify/assert"
+)
+
+var (
+	trustLineIssuer = xdr.MustAddress("GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H")
+
+	eurTrustLine = xdr.TrustLineEntry{
+		AccountId: xdr.MustAddress("GAOQJGUAB7NI7K7I62ORBXMN3J4SSWQUQ7FOEPSDJ322W2HMCNWPHXFB"),
+		Asset:     xdr.MustNewCreditAsset("EUR", trustLineIssuer.Address()),
+		Balance:   20000,
+		Limit:     223456789,
+		Flags:     1,
+		Ext: xdr.TrustLineEntryExt{
+			V: 1,
+			V1: &xdr.TrustLineEntryV1{
+				Liabilities: xdr.Liabilities{
+					Buying:  3,
+					Selling: 4,
+				},
+			},
+		},
+	}
+
+	usdTrustLine = xdr.TrustLineEntry{
+		AccountId: xdr.MustAddress("GCYVFGI3SEQJGBNQQG7YCMFWEYOHK3XPVOVPA6C566PXWN4SN7LILZSM"),
+		Asset:     xdr.MustNewCreditAsset("USDUSD", trustLineIssuer.Address()),
+		Balance:   10000,
+		Limit:     123456789,
+		Flags:     0,
+		Ext: xdr.TrustLineEntryExt{
+			V: 1,
+			V1: &xdr.TrustLineEntryV1{
+				Liabilities: xdr.Liabilities{
+					Buying:  1,
+					Selling: 2,
+				},
+			},
+		},
+	}
+
+	usdTrustLine2 = xdr.TrustLineEntry{
+		AccountId: xdr.MustAddress("GBYSBDAJZMHL5AMD7QXQ3JEP3Q4GLKADWIJURAAHQALNAWD6Z5XF2RAC"),
+		Asset:     xdr.MustNewCreditAsset("USDUSD", trustLineIssuer.Address()),
+		Balance:   10000,
+		Limit:     123456789,
+		Flags:     0,
+		Ext: xdr.TrustLineEntryExt{
+			V: 1,
+			V1: &xdr.TrustLineEntryV1{
+				Liabilities: xdr.Liabilities{
+					Buying:  1,
+					Selling: 2,
+				},
+			},
+		},
+	}
+)
+
+func TestIsAuthorized(t *testing.T) {
+	tt := assert.New(t)
+	tl := TrustLine{
+		Flags: 1,
+	}
+	tt.True(tl.IsAuthorized())
+
+	tl = TrustLine{
+		Flags: 0,
+	}
+	tt.False(tl.IsAuthorized())
+}
+func TestInsertTrustLine(t *testing.T) {
+	tt := test.Start(t)
+	defer tt.Finish()
+	test.ResetHorizonDB(t, tt.HorizonDB)
+	q := &Q{tt.HorizonSession()}
+
+	rows, err := q.InsertTrustLine(eurTrustLine, 1234)
+	assert.NoError(t, err)
+	assert.Equal(t, int64(1), rows)
+
+	rows, err = q.InsertTrustLine(usdTrustLine, 1235)
+	assert.NoError(t, err)
+	assert.Equal(t, int64(1), rows)
+
+	keys := []xdr.LedgerKeyTrustLine{
+		{Asset: eurTrustLine.Asset, AccountId: eurTrustLine.AccountId},
+		{Asset: usdTrustLine.Asset, AccountId: usdTrustLine.AccountId},
+	}
+
+	lines, err := q.GetTrustLinesByKeys(keys)
+	assert.NoError(t, err)
+	assert.Len(t, lines, 2)
+}
+
+func TestUpdateTrustLine(t *testing.T) {
+	tt := test.Start(t)
+	defer tt.Finish()
+	test.ResetHorizonDB(t, tt.HorizonDB)
+	q := &Q{tt.HorizonSession()}
+
+	rows, err := q.InsertTrustLine(eurTrustLine, 1234)
+	assert.NoError(t, err)
+	assert.Equal(t, int64(1), rows)
+
+	modifiedTrustLine := eurTrustLine
+	modifiedTrustLine.Balance = 30000
+
+	rows, err = q.UpdateTrustLine(modifiedTrustLine, 1235)
+	assert.NoError(t, err)
+	assert.Equal(t, int64(1), rows)
+
+	keys := []xdr.LedgerKeyTrustLine{
+		{Asset: eurTrustLine.Asset, AccountId: eurTrustLine.AccountId},
+	}
+	lines, err := q.GetTrustLinesByKeys(keys)
+	assert.NoError(t, err)
+	assert.Len(t, lines, 1)
+
+	expectedBinary, err := modifiedTrustLine.MarshalBinary()
+	assert.NoError(t, err)
+
+	dbEntry := xdr.TrustLineEntry{
+		AccountId: xdr.MustAddress(lines[0].AccountID),
+		Asset:     xdr.MustNewCreditAsset(lines[0].AssetCode, lines[0].AssetIssuer),
+		Balance:   xdr.Int64(lines[0].Balance),
+		Limit:     xdr.Int64(lines[0].Limit),
+		Flags:     xdr.Uint32(lines[0].Flags),
+		Ext: xdr.TrustLineEntryExt{
+			V: 1,
+			V1: &xdr.TrustLineEntryV1{
+				Liabilities: xdr.Liabilities{
+					Buying:  xdr.Int64(lines[0].BuyingLiabilities),
+					Selling: xdr.Int64(lines[0].SellingLiabilities),
+				},
+			},
+		},
+	}
+
+	actualBinary, err := dbEntry.MarshalBinary()
+	assert.NoError(t, err)
+	assert.Equal(t, expectedBinary, actualBinary)
+	assert.Equal(t, uint32(1235), lines[0].LastModifiedLedger)
+}
+
+func TestRemoveTrustLine(t *testing.T) {
+	tt := test.Start(t)
+	defer tt.Finish()
+	test.ResetHorizonDB(t, tt.HorizonDB)
+	q := &Q{tt.HorizonSession()}
+
+	rows, err := q.InsertTrustLine(eurTrustLine, 1234)
+	assert.NoError(t, err)
+	assert.Equal(t, int64(1), rows)
+
+	key := xdr.LedgerKeyTrustLine{Asset: eurTrustLine.Asset, AccountId: eurTrustLine.AccountId}
+	rows, err = q.RemoveTrustLine(key)
+	assert.NoError(t, err)
+	assert.Equal(t, int64(1), rows)
+
+	lines, err := q.GetTrustLinesByKeys([]xdr.LedgerKeyTrustLine{key})
+	assert.NoError(t, err)
+	assert.Len(t, lines, 0)
+
+	// Doesn't exist anymore
+	rows, err = q.RemoveTrustLine(key)
+	assert.NoError(t, err)
+	assert.Equal(t, int64(0), rows)
+}
+func TestGetTrustLinesByAccountsID(t *testing.T) {
+	tt := test.Start(t)
+	defer tt.Finish()
+	test.ResetHorizonDB(t, tt.HorizonDB)
+	q := &Q{tt.HorizonSession()}
+
+	_, err := q.InsertTrustLine(eurTrustLine, 1234)
+	tt.Assert.NoError(err)
+	_, err = q.InsertTrustLine(usdTrustLine, 1235)
+	tt.Assert.NoError(err)
+	_, err = q.InsertTrustLine(usdTrustLine2, 1235)
+	tt.Assert.NoError(err)
+
+	ids := []string{
+		eurTrustLine.AccountId.Address(),
+		usdTrustLine.AccountId.Address(),
+	}
+
+	records, err := q.GetTrustLinesByAccountsID(ids)
+	tt.Assert.NoError(err)
+	tt.Assert.Len(records, 2)
+
+	m := map[string]xdr.TrustLineEntry{
+		eurTrustLine.AccountId.Address(): eurTrustLine,
+		usdTrustLine.AccountId.Address(): usdTrustLine,
+	}
+
+	for _, record := range records {
+		xtl, ok := m[record.AccountID]
+		tt.Assert.True(ok)
+		asset := xdr.MustNewCreditAsset(record.AssetCode, record.AssetIssuer)
+		tt.Assert.Equal(xtl.Asset, asset)
+		tt.Assert.Equal(xtl.AccountId.Address(), record.AccountID)
+		delete(m, record.AccountID)
+	}
+
+	tt.Assert.Len(m, 0)
+}
+
+func TestGetTrustLinesByAccountID(t *testing.T) {
+	tt := test.Start(t)
+	defer tt.Finish()
+	test.ResetHorizonDB(t, tt.HorizonDB)
+	q := &Q{tt.HorizonSession()}
+
+	_, err := q.InsertTrustLine(eurTrustLine, 1234)
+	tt.Assert.NoError(err)
+
+	record, err := q.GetTrustLinesByAccountID(eurTrustLine.AccountId.Address())
+	tt.Assert.NoError(err)
+
+	asset := xdr.MustNewCreditAsset(record[0].AssetCode, record[0].AssetIssuer)
+	tt.Assert.Equal(eurTrustLine.Asset, asset)
+	tt.Assert.Equal(eurTrustLine.AccountId.Address(), record[0].AccountID)
+	tt.Assert.Equal(int64(eurTrustLine.Balance), record[0].Balance)
+	tt.Assert.Equal(int64(eurTrustLine.Limit), record[0].Limit)
+	tt.Assert.Equal(uint32(eurTrustLine.Flags), record[0].Flags)
+	tt.Assert.Equal(int64(eurTrustLine.Ext.V1.Liabilities.Buying), record[0].BuyingLiabilities)
+	tt.Assert.Equal(int64(eurTrustLine.Ext.V1.Liabilities.Selling), record[0].SellingLiabilities)
+
+}

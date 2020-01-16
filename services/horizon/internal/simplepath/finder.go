@@ -21,7 +21,7 @@ type Finder struct {
 var _ paths.Finder = &Finder{}
 
 // Find performs a path find with the provided query.
-func (f *Finder) Find(q paths.Query, maxLength uint) (result []paths.Path, err error) {
+func (f *Finder) Find(q paths.Query, maxLength uint) (result []paths.Path, lastLedger uint32, err error) {
 	log.WithField("source_assets", q.SourceAssets).
 		WithField("destination_asset", q.DestinationAsset).
 		WithField("destination_amount", q.DestinationAmount).
@@ -65,6 +65,6 @@ func (f *Finder) FindFixedPaths(
 	amountToSpend xdr.Int64,
 	destinationAssets []xdr.Asset,
 	maxLength uint,
-) ([]paths.Path, error) {
-	return nil, errors.New("Not implemented")
+) ([]paths.Path, uint32, error) {
+	return nil, 0, errors.New("Not implemented")
 }

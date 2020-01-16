@@ -3,6 +3,7 @@ package ingest
 import (
 	"github.com/stellar/go/exp/ingest/adapters"
 	"github.com/stellar/go/exp/ingest/io"
+	"github.com/stellar/go/exp/support/pipeline"
 	"github.com/stellar/go/support/errors"
 )
 
@@ -42,7 +43,7 @@ func (s *SingleLedgerSession) processState(historyAdapter *adapters.HistoryArchi
 		tempSet = s.TempSet
 	}
 
-	stateReader, err := historyAdapter.GetState(sequence, tempSet)
+	stateReader, err := historyAdapter.GetState(sequence, tempSet, s.MaxStreamRetries)
 	if err != nil {
 		return errors.Wrap(err, "Error getting state from history archive")
 	}
@@ -55,6 +56,12 @@ func (s *SingleLedgerSession) processState(historyAdapter *adapters.HistoryArchi
 	select {
 	case err := <-errChan:
 		if err != nil {
+			// Return with no errors if pipeline shutdown
+			if err == pipeline.ErrShutdown {
+				s.StateReporter.OnEndState(nil, true)
+				return nil
+			}
+
 			if s.StateReporter != nil {
 				s.StateReporter.OnEndState(err, false)
 			}

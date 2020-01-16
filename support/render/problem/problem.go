@@ -1,3 +1,10 @@
+// Package problem provides utility functions for rendering errors as RFC7807
+// compatible responses.
+//
+// RFC7807: https://tools.ietf.org/html/rfc7807
+//
+// The P type is used to define application problems.
+// The Render function is used to serialize problems in a HTTP response.
 package problem
 
 import (
@@ -9,11 +16,6 @@ import (
 
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/support/log"
-)
-
-var (
-	ServiceHost     = "https://stellar.org/horizon-errors/"
-	errToProblemMap = map[error]P{}
 )
 
 var (
@@ -63,6 +65,28 @@ func (p P) Error() string {
 	return fmt.Sprintf("problem: %s", p.Type)
 }
 
+// Problem is an instance of the functionality served by the problem package.
+type Problem struct {
+	serviceHost     string
+	log             *log.Entry
+	errToProblemMap map[error]P
+	reportFn        ReportFunc
+}
+
+// New returns a new instance of Problem.
+func New(serviceHost string, log *log.Entry) *Problem {
+	return &Problem{
+		serviceHost:     serviceHost,
+		log:             log,
+		errToProblemMap: map[error]P{},
+	}
+}
+
+// ServiceHost returns the service host the Problem instance is configured with.
+func (ps *Problem) ServiceHost() string {
+	return ps.serviceHost
+}
+
 // RegisterError records an error -> P mapping, allowing the app to register
 // specific errors that may occur in other packages to be rendered as a specific
 // P instance.
@@ -72,34 +96,50 @@ func (p P) Error() string {
 //
 // problem.RegisterError(sql.ErrNoRows, problem.NotFound) in you application
 // initialization sequence
-func RegisterError(err error, p P) {
-	errToProblemMap[err] = p
+func (ps *Problem) RegisterError(err error, p P) {
+	ps.errToProblemMap[err] = p
+}
+
+// IsKnownError maps an error to a list of known errors
+func (ps *Problem) IsKnownError(err error) error {
+	origErr := errors.Cause(err)
+
+	switch origErr.(type) {
+	case error:
+		if err, ok := ps.errToProblemMap[origErr]; ok {
+			return err
+		}
+		return nil
+	default:
+		return nil
+	}
+}
+
+// UnRegisterErrors removes all registered errors
+func (ps *Problem) UnRegisterErrors() {
+	ps.errToProblemMap = map[error]P{}
 }
 
 // RegisterHost registers the service host url. It is used to prepend the host
 // url to the error type. If you don't wish to prepend anything to the error
 // type, register host as an empty string.
-// The default service host points to `https://stellar.org/horizon-errors/`.
-func RegisterHost(host string) {
-	ServiceHost = host
+func (ps *Problem) RegisterHost(host string) {
+	ps.serviceHost = host
 }
 
 // ReportFunc is a function type used to report unexpected errors.
 type ReportFunc func(context.Context, error)
 
-var reportFn ReportFunc
-
 // RegisterReportFunc registers the report function that you want to use to
 // report errors. Once reportFn is initialzied, it will be used to report
 // unexpected errors.
-func RegisterReportFunc(fn ReportFunc) {
-	reportFn = fn
+func (ps *Problem) RegisterReportFunc(fn ReportFunc) {
+	ps.reportFn = fn
 }
 
 // Render writes a http response to `w`, compliant with the "Problem
-// Details for HTTP APIs" RFC:
-// https://tools.ietf.org/html/draft-ietf-appsawg-http-problem-00
-func Render(ctx context.Context, w http.ResponseWriter, err error) {
+// Details for HTTP APIs" RFC: https://www.rfc-editor.org/rfc/rfc7807.txt
+func (ps *Problem) Render(ctx context.Context, w http.ResponseWriter, err error) {
 	origErr := errors.Cause(err)
 
 	var problem P
@@ -110,25 +150,25 @@ func Render(ctx context.Context, w http.ResponseWriter, err error) {
 		problem = *p
 	case error:
 		var ok bool
-		problem, ok = errToProblemMap[origErr]
+		problem, ok = ps.errToProblemMap[origErr]
 
 		// If this error is not a registered error
 		// log it and replace it with a 500 error
 		if !ok {
-			log.Ctx(ctx).WithStack(err).Error(err)
-			if reportFn != nil {
-				reportFn(ctx, err)
+			ps.log.Ctx(ctx).WithStack(err).Error(err)
+			if ps.reportFn != nil {
+				ps.reportFn(ctx, err)
 			}
 			problem = ServerError
 		}
 	}
 
-	renderProblem(ctx, w, problem)
+	ps.renderProblem(ctx, w, problem)
 }
 
-func renderProblem(ctx context.Context, w http.ResponseWriter, p P) {
-	if ServiceHost != "" && !strings.HasPrefix(p.Type, ServiceHost) {
-		p.Type = ServiceHost + p.Type
+func (ps *Problem) renderProblem(ctx context.Context, w http.ResponseWriter, p P) {
+	if ps.serviceHost != "" && !strings.HasPrefix(p.Type, ps.serviceHost) {
+		p.Type = ps.serviceHost + p.Type
 	}
 
 	w.Header().Set("Content-Type", "application/problem+json; charset=utf-8")
@@ -136,7 +176,7 @@ func renderProblem(ctx context.Context, w http.ResponseWriter, p P) {
 	js, err := json.MarshalIndent(p, "", "  ")
 	if err != nil {
 		err = errors.Wrap(err, "failed to encode problem")
-		log.Ctx(ctx).WithStack(err).Error(err)
+		ps.log.Ctx(ctx).WithStack(err).Error(err)
 		http.Error(w, "error rendering problem", http.StatusInternalServerError)
 		return
 	}

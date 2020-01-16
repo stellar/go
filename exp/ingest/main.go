@@ -1,6 +1,7 @@
 package ingest
 
 import (
+	"fmt"
 	"sync"
 
 	"github.com/stellar/go/clients/stellarcore"
@@ -39,6 +40,10 @@ type LiveSession struct {
 	// TempSet is a store used to hold temporary objects generated during
 	// state processing. If nil, defaults to io.MemoryTempSet.
 	TempSet io.TempSet
+	// MaxStreamRetries determines how many times the reader will retry when encountering
+	// errors while streaming xdr bucket entries from the history archive.
+	// Default MaxStreamRetries value (0) means that there should be no retry attempts
+	MaxStreamRetries int
 
 	latestSuccessfullyProcessedLedger uint32
 }
@@ -56,6 +61,10 @@ type SingleLedgerSession struct {
 	// TempSet is a store used to hold temporary objects generated during
 	// state processing. If nil, defaults to io.MemoryTempSet.
 	TempSet io.TempSet
+	// MaxStreamRetries determines how many times the reader will retry when encountering
+	// errors while streaming xdr bucket entries from the history archive.
+	// Set MaxStreamRetries to 0 if there should be no retry attempts
+	MaxStreamRetries int
 }
 
 // Session is an implementation of a ingesting scenario. Some useful sessions
@@ -158,4 +167,14 @@ func (r reporterLedgerReader) Read() (io.LedgerTransaction, error) {
 	}
 
 	return entry, err
+}
+
+func (r reporterLedgerReader) GetUpgradeChanges() []io.Change {
+	// upgradeChangesContainer is implemented by *io.DBLedgerReader and readerWrapperLedger.
+	reader, ok := r.LedgerReader.(io.UpgradeChangesContainer)
+	if !ok {
+		panic(fmt.Sprintf("Cannot get upgrade changes from unknown reader type: %T", r.LedgerReader))
+	}
+
+	return reader.GetUpgradeChanges()
 }
