@@ -9,21 +9,21 @@ import (
 func TestOperationFeeTestsActions_Show(t *testing.T) {
 	testCases := []struct {
 		scenario            string
-		lastbasefee         int
-		max                 int
-		min                 int
-		mode                int
-		p10                 int
-		p20                 int
-		p30                 int
-		p40                 int
-		p50                 int
-		p60                 int
-		p70                 int
-		p80                 int
-		p90                 int
-		p95                 int
-		p99                 int
+		lastbasefee         int64
+		maxFeeMax           int
+		maxFeeMin           int
+		maxFeeMode          int
+		maxFeeP10           int
+		maxFeeP20           int
+		maxFeeP30           int
+		maxFeeP40           int
+		maxFeeP50           int
+		maxFeeP60           int
+		maxFeeP70           int
+		maxFeeP80           int
+		maxFeeP90           int
+		maxFeeP95           int
+		maxFeeP99           int
 		feeChargedMax       int64
 		feeChargedMin       int64
 		feeChargedMode      int64
@@ -44,20 +44,20 @@ func TestOperationFeeTestsActions_Show(t *testing.T) {
 		{
 			scenario:            "operation_fee_stats_1",
 			lastbasefee:         100,
-			max:                 100,
-			min:                 100,
-			mode:                100,
-			p10:                 100,
-			p20:                 100,
-			p30:                 100,
-			p40:                 100,
-			p50:                 100,
-			p60:                 100,
-			p70:                 100,
-			p80:                 100,
-			p90:                 100,
-			p95:                 100,
-			p99:                 100,
+			maxFeeMax:           100,
+			maxFeeMin:           100,
+			maxFeeMode:          100,
+			maxFeeP10:           100,
+			maxFeeP20:           100,
+			maxFeeP30:           100,
+			maxFeeP40:           100,
+			maxFeeP50:           100,
+			maxFeeP60:           100,
+			maxFeeP70:           100,
+			maxFeeP80:           100,
+			maxFeeP90:           100,
+			maxFeeP95:           100,
+			maxFeeP99:           100,
 			feeChargedMax:       100,
 			feeChargedMin:       100,
 			feeChargedMode:      100,
@@ -79,20 +79,20 @@ func TestOperationFeeTestsActions_Show(t *testing.T) {
 			scenario:            "operation_fee_stats_2",
 			ledgerCapacityUsage: 0.00,
 			lastbasefee:         100,
-			max:                 100,
-			min:                 100,
-			mode:                100,
-			p10:                 100,
-			p20:                 100,
-			p30:                 100,
-			p40:                 100,
-			p50:                 100,
-			p60:                 100,
-			p70:                 100,
-			p80:                 100,
-			p90:                 100,
-			p95:                 100,
-			p99:                 100,
+			maxFeeMax:           100,
+			maxFeeMin:           100,
+			maxFeeMode:          100,
+			maxFeeP10:           100,
+			maxFeeP20:           100,
+			maxFeeP30:           100,
+			maxFeeP40:           100,
+			maxFeeP50:           100,
+			maxFeeP60:           100,
+			maxFeeP70:           100,
+			maxFeeP80:           100,
+			maxFeeP90:           100,
+			maxFeeP95:           100,
+			maxFeeP99:           100,
 			feeChargedMax:       100,
 			feeChargedMin:       100,
 			feeChargedMode:      100,
@@ -113,20 +113,20 @@ func TestOperationFeeTestsActions_Show(t *testing.T) {
 			scenario:            "operation_fee_stats_3",
 			ledgerCapacityUsage: 0.03,
 			lastbasefee:         100,
-			max:                 400,
-			min:                 200,
-			mode:                400,
-			p10:                 200,
-			p20:                 300,
-			p30:                 400,
-			p40:                 400,
-			p50:                 400,
-			p60:                 400,
-			p70:                 400,
-			p80:                 400,
-			p90:                 400,
-			p95:                 400,
-			p99:                 400,
+			maxFeeMax:           400,
+			maxFeeMin:           200,
+			maxFeeMode:          400,
+			maxFeeP10:           200,
+			maxFeeP20:           300,
+			maxFeeP30:           400,
+			maxFeeP40:           400,
+			maxFeeP50:           400,
+			maxFeeP60:           400,
+			maxFeeP70:           400,
+			maxFeeP80:           400,
+			maxFeeP90:           400,
+			maxFeeP95:           400,
+			maxFeeP99:           400,
 			feeChargedMax:       100,
 			feeChargedMin:       100,
 			feeChargedMode:      100,
@@ -164,34 +164,19 @@ func TestOperationFeeTestsActions_Show(t *testing.T) {
 				ht.Assert.Equal(kase.lastbasefee, result.LastLedgerBaseFee, "base_fee")
 				ht.Assert.Equal(kase.ledgerCapacityUsage, result.LedgerCapacityUsage, "ledger_capacity_usage")
 
-				ht.Assert.Equal(kase.min, result.MinAcceptedFee, "min")
-				ht.Assert.Equal(kase.mode, result.ModeAcceptedFee, "mode")
-				ht.Assert.Equal(kase.p10, result.P10AcceptedFee, "p10")
-				ht.Assert.Equal(kase.p20, result.P20AcceptedFee, "p20")
-				ht.Assert.Equal(kase.p30, result.P30AcceptedFee, "p30")
-				ht.Assert.Equal(kase.p40, result.P40AcceptedFee, "p40")
-				ht.Assert.Equal(kase.p50, result.P50AcceptedFee, "p50")
-				ht.Assert.Equal(kase.p60, result.P60AcceptedFee, "p60")
-				ht.Assert.Equal(kase.p70, result.P70AcceptedFee, "p70")
-				ht.Assert.Equal(kase.p80, result.P80AcceptedFee, "p80")
-				ht.Assert.Equal(kase.p90, result.P90AcceptedFee, "p90")
-				ht.Assert.Equal(kase.p95, result.P95AcceptedFee, "p95")
-				ht.Assert.Equal(kase.p99, result.P99AcceptedFee, "p99")
-
-				// AcceptedFee is an alias for MaxFee data
-				ht.Assert.Equal(int64(kase.min), result.MaxFee.Min, "min")
-				ht.Assert.Equal(int64(kase.mode), result.MaxFee.Mode, "mode")
-				ht.Assert.Equal(int64(kase.p10), result.MaxFee.P10, "p10")
-				ht.Assert.Equal(int64(kase.p20), result.MaxFee.P20, "p20")
-				ht.Assert.Equal(int64(kase.p30), result.MaxFee.P30, "p30")
-				ht.Assert.Equal(int64(kase.p40), result.MaxFee.P40, "p40")
-				ht.Assert.Equal(int64(kase.p50), result.MaxFee.P50, "p50")
-				ht.Assert.Equal(int64(kase.p60), result.MaxFee.P60, "p60")
-				ht.Assert.Equal(int64(kase.p70), result.MaxFee.P70, "p70")
-				ht.Assert.Equal(int64(kase.p80), result.MaxFee.P80, "p80")
-				ht.Assert.Equal(int64(kase.p90), result.MaxFee.P90, "p90")
-				ht.Assert.Equal(int64(kase.p95), result.MaxFee.P95, "p95")
-				ht.Assert.Equal(int64(kase.p99), result.MaxFee.P99, "p99")
+				ht.Assert.Equal(int64(kase.maxFeeMin), result.MaxFee.Min, "min")
+				ht.Assert.Equal(int64(kase.maxFeeMode), result.MaxFee.Mode, "mode")
+				ht.Assert.Equal(int64(kase.maxFeeP10), result.MaxFee.P10, "p10")
+				ht.Assert.Equal(int64(kase.maxFeeP20), result.MaxFee.P20, "p20")
+				ht.Assert.Equal(int64(kase.maxFeeP30), result.MaxFee.P30, "p30")
+				ht.Assert.Equal(int64(kase.maxFeeP40), result.MaxFee.P40, "p40")
+				ht.Assert.Equal(int64(kase.maxFeeP50), result.MaxFee.P50, "p50")
+				ht.Assert.Equal(int64(kase.maxFeeP60), result.MaxFee.P60, "p60")
+				ht.Assert.Equal(int64(kase.maxFeeP70), result.MaxFee.P70, "p70")
+				ht.Assert.Equal(int64(kase.maxFeeP80), result.MaxFee.P80, "p80")
+				ht.Assert.Equal(int64(kase.maxFeeP90), result.MaxFee.P90, "p90")
+				ht.Assert.Equal(int64(kase.maxFeeP95), result.MaxFee.P95, "p95")
+				ht.Assert.Equal(int64(kase.maxFeeP99), result.MaxFee.P99, "p99")
 
 				ht.Assert.Equal(kase.feeChargedMax, result.FeeCharged.Max, "fee_charged_max")
 				ht.Assert.Equal(kase.feeChargedMin, result.FeeCharged.Min, "fee_charged_min")
@@ -234,24 +219,9 @@ func TestOperationFeeTestsActions_ShowMultiOp(t *testing.T) {
 		var result hProtocol.FeeStats
 		err := json.Unmarshal(w.Body.Bytes(), &result)
 		ht.Require.NoError(err)
-		ht.Assert.Equal(100, result.LastLedgerBaseFee, "base_fee")
+		ht.Assert.Equal(int64(100), result.LastLedgerBaseFee, "base_fee")
 		ht.Assert.Equal(0.06, result.LedgerCapacityUsage, "ledger_capacity_usage")
 
-		ht.Assert.Equal(100, result.MinAcceptedFee, "min")
-		ht.Assert.Equal(200, result.ModeAcceptedFee, "mode")
-		ht.Assert.Equal(100, result.P10AcceptedFee, "p10")
-		ht.Assert.Equal(150, result.P20AcceptedFee, "p20")
-		ht.Assert.Equal(200, result.P30AcceptedFee, "p30")
-		ht.Assert.Equal(200, result.P40AcceptedFee, "p40")
-		ht.Assert.Equal(200, result.P50AcceptedFee, "p50")
-		ht.Assert.Equal(200, result.P60AcceptedFee, "p60")
-		ht.Assert.Equal(200, result.P70AcceptedFee, "p70")
-		ht.Assert.Equal(200, result.P80AcceptedFee, "p80")
-		ht.Assert.Equal(200, result.P90AcceptedFee, "p90")
-		ht.Assert.Equal(200, result.P95AcceptedFee, "p95")
-		ht.Assert.Equal(200, result.P99AcceptedFee, "p99")
-
-		// AcceptedFee is an alias for MaxFee data
 		ht.Assert.Equal(int64(200), result.MaxFee.Max, "max_fee_max")
 		ht.Assert.Equal(int64(100), result.MaxFee.Min, "max_fee_min")
 		ht.Assert.Equal(int64(200), result.MaxFee.Mode, "max_fee_mode")
@@ -315,23 +285,9 @@ func TestOperationFeeTestsActions_NotInterpolating(t *testing.T) {
 		var result hProtocol.FeeStats
 		err := json.Unmarshal(w.Body.Bytes(), &result)
 		ht.Require.NoError(err)
-		ht.Assert.Equal(100, result.LastLedgerBaseFee, "base_fee")
+		ht.Assert.Equal(int64(100), result.LastLedgerBaseFee, "base_fee")
 		ht.Assert.Equal(0.09, result.LedgerCapacityUsage, "ledger_capacity_usage")
-		ht.Assert.Equal(200, result.MinAcceptedFee, "min")
-		ht.Assert.Equal(400, result.ModeAcceptedFee, "mode")
-		ht.Assert.Equal(200, result.P10AcceptedFee, "p10")
-		ht.Assert.Equal(300, result.P20AcceptedFee, "p20")
-		ht.Assert.Equal(400, result.P30AcceptedFee, "p30")
-		ht.Assert.Equal(400, result.P40AcceptedFee, "p40")
-		ht.Assert.Equal(400, result.P50AcceptedFee, "p50")
-		ht.Assert.Equal(400, result.P60AcceptedFee, "p60")
-		ht.Assert.Equal(400, result.P70AcceptedFee, "p70")
-		ht.Assert.Equal(400, result.P80AcceptedFee, "p80")
-		ht.Assert.Equal(16000, result.P90AcceptedFee, "p90")
-		ht.Assert.Equal(16000, result.P95AcceptedFee, "p95")
-		ht.Assert.Equal(16000, result.P99AcceptedFee, "p99")
 
-		// AcceptedFee is an alias for MaxFee data
 		ht.Assert.Equal(int64(16000), result.MaxFee.Max, "max_fee_max")
 		ht.Assert.Equal(int64(200), result.MaxFee.Min, "max_fee_min")
 		ht.Assert.Equal(int64(400), result.MaxFee.Mode, "max_fee_mode")

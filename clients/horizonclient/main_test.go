@@ -322,22 +322,38 @@ func TestFeeStats(t *testing.T) {
 	fees, err := client.FeeStats()
 
 	if assert.NoError(t, err) {
-		assert.Equal(t, fees.LastLedger, 22606298)
-		assert.Equal(t, fees.LastLedgerBaseFee, 100)
-		assert.Equal(t, fees.LedgerCapacityUsage, 0.97)
-		assert.Equal(t, fees.MinAcceptedFee, 130)
-		assert.Equal(t, fees.ModeAcceptedFee, 250)
-		assert.Equal(t, fees.P10AcceptedFee, 150)
-		assert.Equal(t, fees.P20AcceptedFee, 200)
-		assert.Equal(t, fees.P30AcceptedFee, 300)
-		assert.Equal(t, fees.P40AcceptedFee, 400)
-		assert.Equal(t, fees.P50AcceptedFee, 500)
-		assert.Equal(t, fees.P60AcceptedFee, 1000)
-		assert.Equal(t, fees.P70AcceptedFee, 2000)
-		assert.Equal(t, fees.P80AcceptedFee, 3000)
-		assert.Equal(t, fees.P90AcceptedFee, 4000)
-		assert.Equal(t, fees.P95AcceptedFee, 5000)
-		assert.Equal(t, fees.P99AcceptedFee, 8000)
+		assert.Equal(t, uint32(22606298), fees.LastLedger)
+		assert.Equal(t, int64(100), fees.LastLedgerBaseFee)
+		assert.Equal(t, 0.97, fees.LedgerCapacityUsage)
+		assert.Equal(t, int64(130), fees.MaxFee.Min)
+		assert.Equal(t, int64(8000), fees.MaxFee.Max)
+		assert.Equal(t, int64(250), fees.MaxFee.Mode)
+		assert.Equal(t, int64(150), fees.MaxFee.P10)
+		assert.Equal(t, int64(200), fees.MaxFee.P20)
+		assert.Equal(t, int64(300), fees.MaxFee.P30)
+		assert.Equal(t, int64(400), fees.MaxFee.P40)
+		assert.Equal(t, int64(500), fees.MaxFee.P50)
+		assert.Equal(t, int64(1000), fees.MaxFee.P60)
+		assert.Equal(t, int64(2000), fees.MaxFee.P70)
+		assert.Equal(t, int64(3000), fees.MaxFee.P80)
+		assert.Equal(t, int64(4000), fees.MaxFee.P90)
+		assert.Equal(t, int64(5000), fees.MaxFee.P95)
+		assert.Equal(t, int64(8000), fees.MaxFee.P99)
+
+		assert.Equal(t, int64(100), fees.FeeCharged.Min)
+		assert.Equal(t, int64(100), fees.FeeCharged.Max)
+		assert.Equal(t, int64(100), fees.FeeCharged.Mode)
+		assert.Equal(t, int64(100), fees.FeeCharged.P10)
+		assert.Equal(t, int64(100), fees.FeeCharged.P20)
+		assert.Equal(t, int64(100), fees.FeeCharged.P30)
+		assert.Equal(t, int64(100), fees.FeeCharged.P40)
+		assert.Equal(t, int64(100), fees.FeeCharged.P50)
+		assert.Equal(t, int64(100), fees.FeeCharged.P60)
+		assert.Equal(t, int64(100), fees.FeeCharged.P70)
+		assert.Equal(t, int64(100), fees.FeeCharged.P80)
+		assert.Equal(t, int64(100), fees.FeeCharged.P90)
+		assert.Equal(t, int64(100), fees.FeeCharged.P95)
+		assert.Equal(t, int64(100), fees.FeeCharged.P99)
 	}
 
 	// connection error
@@ -1121,19 +1137,38 @@ var feesResponse = `{
   "last_ledger": "22606298",
   "last_ledger_base_fee": "100",
   "ledger_capacity_usage": "0.97",
-  "min_accepted_fee": "130",
-  "mode_accepted_fee": "250",
-  "p10_accepted_fee": "150",
-  "p20_accepted_fee": "200",
-  "p30_accepted_fee": "300",
-  "p40_accepted_fee": "400",
-  "p50_accepted_fee": "500",
-  "p60_accepted_fee": "1000",
-  "p70_accepted_fee": "2000",
-  "p80_accepted_fee": "3000",
-  "p90_accepted_fee": "4000",
-  "p95_accepted_fee": "5000",
-  "p99_accepted_fee": "8000"
+  "max_fee": {
+    "min": "130",
+    "max": "8000",
+    "mode": "250",
+    "p10": "150",
+    "p20": "200",
+    "p30": "300",
+    "p40": "400",
+    "p50": "500",
+    "p60": "1000",
+    "p70": "2000",
+    "p80": "3000",
+    "p90": "4000",
+    "p95": "5000",
+    "p99": "8000"
+  },
+  "fee_charged": {
+    "min": "100",
+    "max": "100",
+    "mode": "100",
+    "p10": "100",
+    "p20": "100",
+    "p30": "100",
+    "p40": "100",
+    "p50": "100",
+    "p60": "100",
+    "p70": "100",
+    "p80": "100",
+    "p90": "100",
+    "p95": "100",
+    "p99": "100"
+  }
 }`
 
 var offersResponse = `{

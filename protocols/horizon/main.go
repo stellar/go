@@ -644,28 +644,9 @@ type FeeDistribution struct {
 // FeeStats represents a response of fees from horizon
 // To do: implement fee suggestions if agreement is reached in https://github.com/stellar/go/issues/926
 type FeeStats struct {
-	// Action needed in release: horizon-v0.25.0
-	// Update type for LastLedger to uint32 and LastLedgerBaseFee to int64
-	LastLedger        int `json:"last_ledger,string"`
-	LastLedgerBaseFee int `json:"last_ledger_base_fee,string"`
-
+	LastLedger          uint32  `json:"last_ledger,string"`
+	LastLedgerBaseFee   int64   `json:"last_ledger_base_fee,string"`
 	LedgerCapacityUsage float64 `json:"ledger_capacity_usage,string"`
-
-	// Action needed in release: horizon-v0.25.0
-	// Remove AcceptedFee fields
-	MinAcceptedFee  int `json:"min_accepted_fee,string"`
-	ModeAcceptedFee int `json:"mode_accepted_fee,string"`
-	P10AcceptedFee  int `json:"p10_accepted_fee,string"`
-	P20AcceptedFee  int `json:"p20_accepted_fee,string"`
-	P30AcceptedFee  int `json:"p30_accepted_fee,string"`
-	P40AcceptedFee  int `json:"p40_accepted_fee,string"`
-	P50AcceptedFee  int `json:"p50_accepted_fee,string"`
-	P60AcceptedFee  int `json:"p60_accepted_fee,string"`
-	P70AcceptedFee  int `json:"p70_accepted_fee,string"`
-	P80AcceptedFee  int `json:"p80_accepted_fee,string"`
-	P90AcceptedFee  int `json:"p90_accepted_fee,string"`
-	P95AcceptedFee  int `json:"p95_accepted_fee,string"`
-	P99AcceptedFee  int `json:"p99_accepted_fee,string"`
 
 	FeeCharged FeeDistribution `json:"fee_charged"`
 	MaxFee     FeeDistribution `json:"max_fee"`
