@@ -14,7 +14,6 @@ import (
 	"github.com/stellar/go/services/horizon/internal/db2/core"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/services/horizon/internal/expingest"
-	"github.com/stellar/go/services/horizon/internal/ingest"
 	"github.com/stellar/go/services/horizon/internal/simplepath"
 	"github.com/stellar/go/services/horizon/internal/txsub"
 	results "github.com/stellar/go/services/horizon/internal/txsub/results/db"
@@ -43,31 +42,6 @@ func mustInitCoreDB(app *App) {
 	session.DB.SetMaxIdleConns(app.config.CoreDBMaxIdleConnections)
 	session.DB.SetMaxOpenConns(app.config.CoreDBMaxOpenConnections)
 	app.coreQ = &core.Q{session}
-}
-
-func initIngester(app *App) {
-	if !app.config.Ingest {
-		return
-	}
-
-	if app.config.NetworkPassphrase == "" {
-		log.Fatal("Cannot start ingestion without network passphrase. Please confirm connectivity with stellar-core.")
-	}
-
-	app.ingester = ingest.New(
-		app.config.NetworkPassphrase,
-		app.config.StellarCoreURL,
-		app.CoreSession(context.Background()),
-		app.HorizonSession(context.Background()),
-		ingest.Config{
-			EnableAssetStats:         app.config.EnableAssetStats,
-			IngestFailedTransactions: app.config.IngestFailedTransactions,
-			CursorName:               app.config.CursorName,
-		},
-	)
-
-	app.ingester.SkipCursorUpdate = app.config.SkipCursorUpdate
-	app.ingester.HistoryRetentionCount = app.config.HistoryRetentionCount
 }
 
 func initExpIngester(app *App, orderBookGraph *orderbook.OrderBookGraph) {
@@ -153,16 +127,6 @@ func initDbMetrics(app *App) {
 	app.metrics.Register("history.open_connections", app.horizonConnGauge)
 	app.metrics.Register("stellar_core.open_connections", app.coreConnGauge)
 	app.metrics.Register("goroutines", app.goroutineGauge)
-}
-
-func initIngesterMetrics(app *App) {
-	if app.ingester == nil {
-		return
-	}
-	app.metrics.Register("ingester.ingest_ledger",
-		app.ingester.Metrics.IngestLedgerTimer)
-	app.metrics.Register("ingester.clear_ledger",
-		app.ingester.Metrics.ClearLedgerTimer)
 }
 
 func initTxSubMetrics(app *App) {

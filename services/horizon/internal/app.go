@@ -18,7 +18,6 @@ import (
 	"github.com/stellar/go/services/horizon/internal/db2/core"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/services/horizon/internal/expingest"
-	"github.com/stellar/go/services/horizon/internal/ingest"
 	"github.com/stellar/go/services/horizon/internal/ledger"
 	"github.com/stellar/go/services/horizon/internal/logmetrics"
 	"github.com/stellar/go/services/horizon/internal/operationfeestats"
@@ -48,7 +47,6 @@ type App struct {
 	coreSupportedProtocolVersion int32
 	submitter                    *txsub.System
 	paths                        paths.Finder
-	ingester                     *ingest.System
 	expingester                  *expingest.System
 	reaper                       *reap.System
 	ticks                        *time.Ticker
@@ -405,10 +403,6 @@ func (a *App) Tick() {
 	go func() { a.UpdateStellarCoreInfo(); wg.Done() }()
 	wg.Wait()
 
-	if a.ingester != nil {
-		go a.ingester.Tick()
-	}
-
 	wg.Add(2)
 	go func() { a.reaper.Tick(); wg.Done() }()
 	go func() { a.submitter.Tick(a.ctx); wg.Done() }()
@@ -442,21 +436,17 @@ func (a *App) init() {
 	mustInitHorizonDB(a)
 	mustInitCoreDB(a)
 
-	// ingester
-	initIngester(a)
-
 	var orderBookGraph *orderbook.OrderBookGraph
-	if a.config.EnableExperimentalIngestion {
+	if a.config.Ingest {
 		orderBookGraph = orderbook.NewOrderBookGraph()
 		// expingester
 		initExpIngester(a, orderBookGraph)
+		// path-finder
+		initPathFinder(a, orderBookGraph)
 	}
 
 	// txsub
 	initSubmissionSystem(a)
-
-	// path-finder
-	initPathFinder(a, orderBookGraph)
 
 	// reaper
 	a.reaper = reap.New(a.config.HistoryRetentionCount, a.HorizonSession(context.Background()))
@@ -499,9 +489,6 @@ func (a *App) init() {
 
 	// txsub.metrics
 	initTxSubMetrics(a)
-
-	// ingester.metrics
-	initIngesterMetrics(a)
 
 	// redis
 	initRedis(a)
