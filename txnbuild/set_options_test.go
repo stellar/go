@@ -3,7 +3,7 @@ package txnbuild
 import (
 	"testing"
 
-	"github.com/stellar/go/clients/horizon"
+	hProtocol "github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/xdr"
 	"github.com/stretchr/testify/assert"
 )
@@ -139,14 +139,14 @@ func TestEmptyHomeDomainOK(t *testing.T) {
 }
 
 func TestSignerFromHorizon(t *testing.T) {
-	horizonSigner := horizon.Signer{Key: "GAABGBW5DINUS456OTHH6IUPTQSQZVVFCZGAO467OLIPFUWTMV6XR5XS", Weight: 10}
+	horizonSigner := hProtocol.Signer{Key: "GAABGBW5DINUS456OTHH6IUPTQSQZVVFCZGAO467OLIPFUWTMV6XR5XS", Weight: 10}
 	wantSigner := Signer{Address: "GAABGBW5DINUS456OTHH6IUPTQSQZVVFCZGAO467OLIPFUWTMV6XR5XS", Weight: 10}
 	signer := SignerFromHorizon(horizonSigner)
 	assert.Equal(t, wantSigner, signer)
 }
 
 func TestSignersFromHorizon(t *testing.T) {
-	horizonSigners := []horizon.Signer{
+	horizonSigners := []hProtocol.Signer{
 		{Key: "GAABGBW5DINUS456OTHH6IUPTQSQZVVFCZGAO467OLIPFUWTMV6XR5XS", Weight: 0},
 		{Key: "GAT4FUGQNKOIDLOIXCJJYFSAFJHQY5MZEZLRBXXFKDCXGUHJQ63XZFTD", Weight: 10},
 		{Key: "GCB35H32SU5ME4OALQUPOM4AADJICL2H2NLWAGLOMMTSYOVTXWYP6Q4T", Weight: 100},
