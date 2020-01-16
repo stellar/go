@@ -138,6 +138,13 @@ func TestEmptyHomeDomainOK(t *testing.T) {
 
 }
 
+func TestSignerFromHorizon(t *testing.T) {
+	horizonSigner := horizon.Signer{Key: "GAABGBW5DINUS456OTHH6IUPTQSQZVVFCZGAO467OLIPFUWTMV6XR5XS", Weight: 10}
+	wantSigner := Signer{Address: "GAABGBW5DINUS456OTHH6IUPTQSQZVVFCZGAO467OLIPFUWTMV6XR5XS", Weight: 10}
+	signer := SignerFromHorizon(horizonSigner)
+	assert.Equal(t, wantSigner, signer)
+}
+
 func TestSignersFromHorizon(t *testing.T) {
 	horizonSigners := []horizon.Signer{
 		{Key: "GAABGBW5DINUS456OTHH6IUPTQSQZVVFCZGAO467OLIPFUWTMV6XR5XS", Weight: 0},

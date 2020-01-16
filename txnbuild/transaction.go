@@ -414,14 +414,16 @@ func (tx *Transaction) SignWithKeyString(keys ...string) error {
 	return tx.Sign(signers...)
 }
 
-// ReadChallengeTx verifies that a SEP 10 challenge transaction for use in web
-// authentication is signed by the server and returns the transaction and
-// client account ID.
+// ReadChallengeTx reads a SEP 10 challenge transaction and returns the decoded
+// transaction and client account ID contained within.
+//
+// It also verifies that transaction is signed by the server.
 //
 // It does not verify that the transaction has been signed by the client or
-// that any other signatures other than the servers on the transaction are
-// valid. Use VerifyChallengeTxSigners to verify a set of client signers have
-// signed the transaction.
+// that any signatures other than the servers on the transaction are valid. Use
+// one of the following functions to completely verify the transaction:
+// - VerifyChallengeTxThreshold
+// - VerifyChallengeTxSigners
 func ReadChallengeTx(challengeTx, serverAccountID, network string) (tx Transaction, clientAccountID string, err error) {
 	tx, err = TransactionFromXDR(challengeTx)
 	if err != nil {
@@ -547,6 +549,10 @@ func VerifyChallengeTxThreshold(challengeTx, serverAccountID, network string, th
 //  - One or more signatures in the transaction are not identifiable as the
 //    server account or one of the signers provided in the arguments.
 func VerifyChallengeTxSigners(challengeTx, serverAccountID, network string, signers ...string) ([]string, error) {
+	if len(signers) == 0 {
+		return nil, errors.New("no signers provided")
+	}
+
 	tx, _, err := ReadChallengeTx(challengeTx, serverAccountID, network)
 	if err != nil {
 		return nil, err
@@ -583,7 +589,7 @@ func VerifyChallengeTxSigners(challengeTx, serverAccountID, network string, sign
 
 // VerifyChallengeTx is a factory method that verifies a SEP 10 challenge transaction,
 // for use in web authentication. It can be used by a server to verify that the challenge
-// has been signed by the client.
+// has been signed by the client account's master key.
 // More details on SEP 10: https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0010.md
 //
 // Deprecated: Use VerifyChallengeTxSigners.
