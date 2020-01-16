@@ -525,43 +525,45 @@ func (operation *transactionOperationWrapper) setOptionsEffects() ([]effect, err
 
 func (operation *transactionOperationWrapper) changeTrustEffects() ([]effect, error) {
 	source := operation.SourceAccount()
-
 	effects := effectsWrapper{
 		effects:   []effect{},
 		operation: operation,
 	}
 
 	op := operation.operation.Body.MustChangeTrustOp()
-	details := map[string]interface{}{"limit": amount.String(op.Limit)}
-
-	effect := history.EffectType(0)
-	assetDetails(details, op.Line, "")
-
 	changes, err := operation.transaction.GetOperationChanges(operation.index)
 	if err != nil {
 		return effects.effects, err
 	}
 
-	for _, change := range changes {
-		if change.Type != xdr.LedgerEntryTypeTrustline {
-			continue
+	// NOTE:  when an account trusts itself, the transaction is successful but
+	// no ledger entries are actually modified.
+	if len(changes) > 0 {
+		details := map[string]interface{}{"limit": amount.String(op.Limit)}
+		effect := history.EffectType(0)
+		assetDetails(details, op.Line, "")
+
+		for _, change := range changes {
+			if change.Type != xdr.LedgerEntryTypeTrustline {
+				continue
+			}
+
+			switch {
+			case change.Pre == nil && change.Post != nil:
+				effect = history.EffectTrustlineCreated
+			case change.Pre != nil && change.Post == nil:
+				effect = history.EffectTrustlineRemoved
+			case change.Pre != nil && change.Post != nil:
+				effect = history.EffectTrustlineUpdated
+			default:
+				panic("Invalid change")
+			}
+
+			break
 		}
 
-		switch {
-		case change.Pre == nil && change.Post != nil:
-			effect = history.EffectTrustlineCreated
-		case change.Pre != nil && change.Post == nil:
-			effect = history.EffectTrustlineRemoved
-		case change.Pre != nil && change.Post != nil:
-			effect = history.EffectTrustlineUpdated
-		default:
-			panic("Invalid change")
-		}
-
-		break
+		effects.add(source.Address(), effect, details)
 	}
-
-	effects.add(source.Address(), effect, details)
 
 	return effects.effects, nil
 }
