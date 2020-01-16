@@ -198,6 +198,46 @@ func TestSequenceBumpedNewSeq(t *testing.T) {
 	}
 }
 
+func TestTradeEffectOfferID(t *testing.T) {
+	hmock := httptest.NewClient()
+	client := &Client{
+		HorizonURL: "https://localhost/",
+		HTTP:       hmock,
+	}
+	effectRequest := EffectRequest{ForAccount: "GCDIZFWLOTBWHTPODXCBH6XNXPFMSQFRVIDRP3JLEKQZN66G7NF3ANOD"}
+	testCases := []struct {
+		desc    string
+		payload string
+	}{
+		{
+			desc:    "offer_id as a number",
+			payload: tradeEffectNumberOfferID,
+		},
+		{
+			desc:    "offer_id as a string",
+			payload: tradeEffectStringOfferID,
+		},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.desc, func(t *testing.T) {
+			hmock.On(
+				"GET",
+				"https://localhost/accounts/GCDIZFWLOTBWHTPODXCBH6XNXPFMSQFRVIDRP3JLEKQZN66G7NF3ANOD/effects",
+			).ReturnString(200, tc.payload)
+
+			efp, err := client.Effects(effectRequest)
+
+			if assert.NoError(t, err) {
+				assert.Len(t, efp.Embedded.Records, 1)
+			}
+
+			effect, ok := efp.Embedded.Records[0].(effects.Trade)
+			assert.True(t, ok)
+			assert.Equal(t, int64(127538672), effect.OfferID)
+		})
+	}
+}
+
 var effectStreamResponse = `data: {"_links":{"operation":{"href":"https://horizon-testnet.stellar.org/operations/2531135896703017"},"succeeds":{"href":"https://horizon-testnet.stellar.org/effects?order=desc\u0026cursor=2531135896703017-1"},"precedes":{"href":"https://horizon-testnet.stellar.org/effects?order=asc\u0026cursor=2531135896703017-1"}},"id":"0002531135896703017-0000000001","paging_token":"2531135896703017-1","account":"GBNZN27NAOHRJRCMHQF2ZN2F6TAPVEWKJIGZIRNKIADWIS2HDENIS6CI","type":"account_credited","type_i":2,"created_at":"2019-04-03T10:14:17Z","asset_type":"credit_alphanum4","asset_code":"qwop","asset_issuer":"GBM4HXXNDBWWQBXOL4QCTZIUQAP6XFUI3FPINUGUPBMULMTEHJPIKX6T","amount":"0.0460000"}
 `
 
@@ -336,6 +376,78 @@ var sequenceBumpedAsStringPage = `{
 	  ]
 	}
   }`
+
+var tradeEffectNumberOfferID = `
+{
+	"_embedded": {
+	  "records": [
+		{
+		  "_links": {
+			"operation": {
+			  "href": "https://horizon-testnet.stellar.org/operations/224209713045979100"
+			},
+			"succeeds": {
+			  "href": "https://horizon-testnet.stellar.org/effects?order=desc&cursor=224209713045979100-3"
+			},
+			"precedes": {
+			  "href": "https://horizon-testnet.stellar.org/effects?order=asc&cursor=224209713045979100-3"
+			}
+		  },
+		  "id": "2214209713045979100-0000000003",
+		  "paging_token": "224209713045979100-3",
+		  "account": "GCDIZFWLOTBWHTPODXCBH6XNXPFMSQFRVIDRP3JLEKQZN66G7NF3ANOD",
+		  "type": "trade",
+		  "type_i": 33,
+		  "created_at": "2019-11-01T23:05:58Z",
+		  "seller": "GDUKMGUGDZQK6YHYA5Z6AY2G4XDSZPSZ3SW5UN3ARVMO6QSRDWP5YLEX",
+		  "offer_id": 127538672,
+		  "sold_amount": "14.5984123",
+		  "sold_asset_type": "native",
+		  "bought_amount": "1.0000000",
+		  "bought_asset_type": "credit_alphanum4",
+		  "bought_asset_code": "USD",
+		  "bought_asset_issuer": "GDUKMGUGDZQK6YHYA5Z6AY2G4XDSZPSZ3SW5UN3ARVMO6QSRDWP5YLEX"
+		}
+	  ]
+	}
+}
+`
+
+var tradeEffectStringOfferID = `
+{
+	"_embedded": {
+	  "records": [
+		{
+		  "_links": {
+			"operation": {
+			  "href": "https://horizon-testnet.stellar.org/operations/224209713045979100"
+			},
+			"succeeds": {
+			  "href": "https://horizon-testnet.stellar.org/effects?order=desc&cursor=224209713045979100-3"
+			},
+			"precedes": {
+			  "href": "https://horizon-testnet.stellar.org/effects?order=asc&cursor=224209713045979100-3"
+			}
+		  },
+		  "id": "2214209713045979100-0000000003",
+		  "paging_token": "224209713045979100-3",
+		  "account": "GCDIZFWLOTBWHTPODXCBH6XNXPFMSQFRVIDRP3JLEKQZN66G7NF3ANOD",
+		  "type": "trade",
+		  "type_i": 33,
+		  "created_at": "2019-11-01T23:05:58Z",
+		  "seller": "GDUKMGUGDZQK6YHYA5Z6AY2G4XDSZPSZ3SW5UN3ARVMO6QSRDWP5YLEX",
+		  "offer_id": "127538672",
+		  "sold_amount": "14.5984123",
+		  "sold_asset_type": "native",
+		  "bought_amount": "1.0000000",
+		  "bought_asset_type": "credit_alphanum4",
+		  "bought_asset_code": "USD",
+		  "bought_asset_issuer": "GDUKMGUGDZQK6YHYA5Z6AY2G4XDSZPSZ3SW5UN3ARVMO6QSRDWP5YLEX"
+		}
+	  ]
+	}
+}
+`
 
 var emptyEffectsPage = `{
   "_links": {

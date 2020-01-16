@@ -223,15 +223,13 @@ func (l Ledger) PagingToken() string {
 	return l.PT
 }
 
-// Offer is the display form of an offer to trade currency.
-type Offer struct {
+// Action needed in release: horizon-v0.25.0: Move back to Offer, remove embedded struct
+type offerBase struct {
 	Links struct {
 		Self       hal.Link `json:"self"`
 		OfferMaker hal.Link `json:"offer_maker"`
 	} `json:"_links"`
 
-	// Action needed in release: horizon-v0.25.0
-	ID                 int64      `json:"id"`
 	PT                 string     `json:"paging_token"`
 	Seller             string     `json:"seller"`
 	Selling            Asset      `json:"selling"`
@@ -243,8 +241,41 @@ type Offer struct {
 	LastModifiedTime   *time.Time `json:"last_modified_time"`
 }
 
+// Offer is the display form of an offer to trade currency.
+type Offer struct {
+	offerBase
+	// Action needed in release: horizon-v0.25.0: Make id a string
+	ID int64 `json:"id"`
+}
+
 func (o Offer) PagingToken() string {
 	return o.PT
+}
+
+// UnmarshalJSON is the custom unmarshal method for Offer. It allows
+// parsing of id as a string or an int64.
+// Action needed in release: horizon-v0.25.0: Delete
+func (o *Offer) UnmarshalJSON(data []byte) error {
+	var temp struct {
+		ID json.Number `json:"id"`
+	}
+
+	if err := json.Unmarshal(data, &o.offerBase); err != nil {
+		return err
+	}
+
+	if err := json.Unmarshal(data, &temp); err != nil {
+		return err
+	}
+
+	offerID, err := temp.ID.Int64()
+	if err != nil {
+		return err
+	}
+
+	o.ID = offerID
+
+	return nil
 }
 
 // OrderBookSummary represents a snapshot summary of a given order book
@@ -382,12 +413,9 @@ type TradeEffect struct {
 	LedgerCloseTime   time.Time `json:"created_at"`
 }
 
-// TradeAggregation represents trade data aggregation over a period of time
-type TradeAggregation struct {
-	// Action needed in release: horizon-v0.22.0
-	Timestamp int64 `json:"timestamp"`
-	// Action needed in release: horizon-v0.22.0
-	TradeCount    int64     `json:"trade_count"`
+// Action needed in release: horizon-v0.25.0: Move back to TradeAggregation,
+// remove embedded struct
+type tradeAggregationBase struct {
 	BaseVolume    string    `json:"base_volume"`
 	CounterVolume string    `json:"counter_volume"`
 	Average       string    `json:"avg"`
@@ -401,9 +429,51 @@ type TradeAggregation struct {
 	CloseR        xdr.Price `json:"close_r"`
 }
 
+// TradeAggregation represents trade data aggregation over a period of time
+type TradeAggregation struct {
+	tradeAggregationBase
+	// Action needed in release: horizon-v0.25.0: Make timestamp a string
+	Timestamp int64 `json:"timestamp"`
+	// Action needed in release: horizon-v0.25.0: Make trade_count a string
+	TradeCount int64 `json:"trade_count"`
+}
+
 // PagingToken implementation for hal.Pageable. Not actually used
 func (res TradeAggregation) PagingToken() string {
 	return string(res.Timestamp)
+}
+
+// UnmarshalJSON is the custom unmarshal method for TradeAggregation. It allows
+// parsing of timestamp and trade_count as a string or an int64.
+// Action needed in release: horizon-v0.25.0: Delete
+func (res *TradeAggregation) UnmarshalJSON(data []byte) error {
+	var temp struct {
+		Timestamp  json.Number `json:"timestamp"`
+		TradeCount json.Number `json:"trade_count"`
+	}
+
+	if err := json.Unmarshal(data, &res.tradeAggregationBase); err != nil {
+		return err
+	}
+
+	if err := json.Unmarshal(data, &temp); err != nil {
+		return err
+	}
+
+	timestamp, err := temp.Timestamp.Int64()
+	if err != nil {
+		return err
+	}
+
+	tradeCount, err := temp.TradeCount.Int64()
+	if err != nil {
+		return err
+	}
+
+	res.Timestamp = timestamp
+	res.TradeCount = tradeCount
+
+	return nil
 }
 
 // Transaction represents a single, successful transaction
@@ -425,22 +495,18 @@ type Transaction struct {
 	LedgerCloseTime time.Time `json:"created_at"`
 	Account         string    `json:"source_account"`
 	AccountSequence string    `json:"source_account_sequence"`
-	// Action needed in release: horizon-v0.25.0
-	// Action needed in release: horizonclient-v2.0.0
-	// Remove this field.
-	FeePaid        int32    `json:"fee_paid"`
-	FeeCharged     int32    `json:"fee_charged"`
-	MaxFee         int32    `json:"max_fee"`
-	OperationCount int32    `json:"operation_count"`
-	EnvelopeXdr    string   `json:"envelope_xdr"`
-	ResultXdr      string   `json:"result_xdr"`
-	ResultMetaXdr  string   `json:"result_meta_xdr"`
-	FeeMetaXdr     string   `json:"fee_meta_xdr"`
-	MemoType       string   `json:"memo_type"`
-	Memo           string   `json:"memo,omitempty"`
-	Signatures     []string `json:"signatures"`
-	ValidAfter     string   `json:"valid_after,omitempty"`
-	ValidBefore    string   `json:"valid_before,omitempty"`
+	FeeCharged      int32     `json:"fee_charged"`
+	MaxFee          int32     `json:"max_fee"`
+	OperationCount  int32     `json:"operation_count"`
+	EnvelopeXdr     string    `json:"envelope_xdr"`
+	ResultXdr       string    `json:"result_xdr"`
+	ResultMetaXdr   string    `json:"result_meta_xdr"`
+	FeeMetaXdr      string    `json:"fee_meta_xdr"`
+	MemoType        string    `json:"memo_type"`
+	Memo            string    `json:"memo,omitempty"`
+	Signatures      []string  `json:"signatures"`
+	ValidAfter      string    `json:"valid_after,omitempty"`
+	ValidBefore     string    `json:"valid_before,omitempty"`
 }
 
 // MarshalJSON implements a custom marshaler for Transaction.
