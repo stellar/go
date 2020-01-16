@@ -52,10 +52,11 @@ func TestAccount_MustGetData(t *testing.T) {
 // Transaction Tests
 func TestTransactionJSONMarshal(t *testing.T) {
 	transaction := Transaction{
-		ID:       "12345",
-		FeePaid:  10,
-		MemoType: "text",
-		Memo:     "",
+		ID:         "12345",
+		MaxFee:     11,
+		FeeCharged: 10,
+		MemoType:   "text",
+		Memo:       "",
 	}
 	marshaledTransaction, marshalErr := json.Marshal(transaction)
 	assert.Nil(t, marshalErr)
