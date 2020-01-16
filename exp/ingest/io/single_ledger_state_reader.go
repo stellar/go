@@ -179,9 +179,11 @@ func (msr *SingleLedgerStateReader) readBucketEntry(stream *historyarchive.XdrSt
 	currentPosition := stream.BytesRead()
 
 	for attempts := 0; ; attempts++ {
-		err = stream.ReadOne(&entry)
-		if err == nil || err == io.EOF {
-			break
+		if err == nil {
+			err = stream.ReadOne(&entry)
+			if err == nil || err == io.EOF {
+				break
+			}
 		}
 		if attempts >= msr.maxStreamRetries {
 			break
@@ -193,7 +195,7 @@ func (msr *SingleLedgerStateReader) readBucketEntry(stream *historyarchive.XdrSt
 		retryStream, err = msr.newXDRStream(hash)
 		if err != nil {
 			err = errors.Wrap(err, "Error creating new xdr stream")
-			break
+			continue
 		}
 
 		*stream = *retryStream
@@ -201,7 +203,7 @@ func (msr *SingleLedgerStateReader) readBucketEntry(stream *historyarchive.XdrSt
 		_, err = stream.Discard(currentPosition)
 		if err != nil {
 			err = errors.Wrap(err, "Error discarding from xdr stream")
-			break
+			continue
 		}
 	}
 

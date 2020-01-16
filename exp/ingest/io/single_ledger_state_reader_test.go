@@ -397,11 +397,44 @@ func (s *ReadBucketEntryTestSuite) TestReadEntryRetryFailsToCreateNewStream() {
 		On("GetXdrStreamForHash", emptyHash).
 		Return(nilStream, errors.New("cannot create new stream")).Once()
 
+	s.mockArchive.
+		On("GetXdrStreamForHash", emptyHash).
+		Return(nilStream, errors.New("cannot create new stream")).Once()
+
 	stream, err := s.reader.newXDRStream(emptyHash)
 	s.Require().NoError(err)
 
 	_, err = s.reader.readBucketEntry(stream, emptyHash)
 	s.Require().EqualError(err, "Error creating new xdr stream: cannot create new stream")
+}
+
+func (s *ReadBucketEntryTestSuite) TestReadEntryRetrySucceedsAfterFailsToCreateNewStream() {
+	emptyHash := historyarchive.EmptyXdrArrayHash()
+
+	s.mockArchive.
+		On("GetXdrStreamForHash", emptyHash).
+		Return(createInvalidXdrStream(nil), nil).Once()
+
+	var nilStream *historyarchive.XdrStream
+	s.mockArchive.
+		On("GetXdrStreamForHash", emptyHash).
+		Return(nilStream, errors.New("cannot create new stream")).Once()
+
+	firstEntry := metaEntry(1)
+
+	s.mockArchive.
+		On("GetXdrStreamForHash", emptyHash).
+		Return(createXdrStream(firstEntry), nil).Once()
+
+	stream, err := s.reader.newXDRStream(emptyHash)
+	s.Require().NoError(err)
+
+	entry, err := s.reader.readBucketEntry(stream, emptyHash)
+	s.Require().NoError(err)
+	s.Require().Equal(entry, firstEntry)
+
+	_, err = s.reader.readBucketEntry(stream, emptyHash)
+	s.Require().Equal(io.EOF, err)
 }
 
 func (s *ReadBucketEntryTestSuite) TestReadEntryRetrySucceeds() {
@@ -492,6 +525,10 @@ func (s *ReadBucketEntryTestSuite) TestReadEntryRetryFailsWithDiscardError() {
 		On("GetXdrStreamForHash", emptyHash).
 		Return(xdrStreamFromBuffer(b), nil).Once()
 
+	s.mockArchive.
+		On("GetXdrStreamForHash", emptyHash).
+		Return(xdrStreamFromBuffer(b), nil).Once()
+
 	stream, err := s.reader.newXDRStream(emptyHash)
 	s.Require().NoError(err)
 
@@ -501,6 +538,46 @@ func (s *ReadBucketEntryTestSuite) TestReadEntryRetryFailsWithDiscardError() {
 
 	_, err = s.reader.readBucketEntry(stream, emptyHash)
 	s.Require().EqualError(err, "Error discarding from xdr stream: EOF")
+}
+
+func (s *ReadBucketEntryTestSuite) TestReadEntryRetrySucceedsAfterDiscardError() {
+	emptyHash := historyarchive.EmptyXdrArrayHash()
+
+	firstEntry := metaEntry(1)
+	secondEntry := metaEntry(2)
+
+	b := &bytes.Buffer{}
+	s.Require().NoError(historyarchive.WriteFramedXdr(b, firstEntry))
+	writeInvalidFrame(b)
+
+	s.mockArchive.
+		On("GetXdrStreamForHash", emptyHash).
+		Return(xdrStreamFromBuffer(b), nil).Once()
+
+	b = &bytes.Buffer{}
+	b.WriteString("a")
+
+	s.mockArchive.
+		On("GetXdrStreamForHash", emptyHash).
+		Return(xdrStreamFromBuffer(b), nil).Once()
+
+	s.mockArchive.
+		On("GetXdrStreamForHash", emptyHash).
+		Return(createXdrStream(firstEntry, secondEntry), nil).Once()
+
+	stream, err := s.reader.newXDRStream(emptyHash)
+	s.Require().NoError(err)
+
+	entry, err := s.reader.readBucketEntry(stream, emptyHash)
+	s.Require().NoError(err)
+	s.Require().Equal(entry, firstEntry)
+
+	entry, err = s.reader.readBucketEntry(stream, emptyHash)
+	s.Require().NoError(err)
+	s.Require().Equal(entry, secondEntry)
+
+	_, err = s.reader.readBucketEntry(stream, emptyHash)
+	s.Require().Equal(io.EOF, err)
 }
 
 func metaEntry(version uint32) xdr.BucketEntry {

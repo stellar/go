@@ -493,6 +493,10 @@ func VerifyChallengeTx(challengeTx, serverAccountID, network string) (bool, erro
 
 // verifyTxSignature checks if a transaction has been signed by the provided Stellar account.
 func verifyTxSignature(tx Transaction, accountID string) error {
+	if tx.xdrEnvelope == nil {
+		return errors.New("transaction has no signatures")
+	}
+
 	txHash, err := tx.Hash()
 	if err != nil {
 		return err
@@ -504,10 +508,6 @@ func verifyTxSignature(tx Transaction, accountID string) error {
 	}
 
 	// find and verify signatures
-	if tx.xdrEnvelope == nil {
-		return errors.New("transaction has no signatures")
-	}
-
 	signerFound := false
 	for _, s := range tx.xdrEnvelope.Signatures {
 		e := kp.Verify(txHash[:], s.Signature)
