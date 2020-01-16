@@ -192,7 +192,7 @@ func MakeInvalidFieldProblem(name string, reason error) *P {
 	return &br
 }
 
-// SetInvalidField adds invalid field extras to a given P
+// SetInvalidField sets the invalid_field key in extras with the given reason.
 func SetInvalidField(p *P, name string, reason error) {
 	p.Extras = map[string]interface{}{
 		"invalid_field": name,
