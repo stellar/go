@@ -200,13 +200,11 @@ func (action *TradeAggregateIndexAction) loadRecords() {
 	baseAssetID, err := historyQ.GetAssetID(action.BaseAssetFilter)
 	if err != nil {
 		if historyQ.NoRows(err) {
-			notFound := problem.NotFound
-			problem.SetInvalidField(
-				&notFound,
+			action.Err = problem.NewProblemWithInvalidField(
+				problem.NotFound,
 				"base_asset",
 				errors.New("not found"),
 			)
-			action.Err = notFound
 		} else {
 			action.Err = err
 		}
@@ -216,13 +214,11 @@ func (action *TradeAggregateIndexAction) loadRecords() {
 	counterAssetID, err := historyQ.GetAssetID(action.CounterAssetFilter)
 	if err != nil {
 		if historyQ.NoRows(err) {
-			notFound := problem.NotFound
-			problem.SetInvalidField(
-				&notFound,
+			action.Err = problem.NewProblemWithInvalidField(
+				problem.NotFound,
 				"counter_asset",
 				errors.New("not found"),
 			)
-			action.Err = notFound
 		} else {
 			action.Err = err
 		}
