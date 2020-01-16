@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/network"
 	"github.com/stellar/go/strkey"
 	"github.com/stellar/go/xdr"
@@ -1564,6 +1565,181 @@ func TestReadChallengeTx_invalidDataValueWrongByteLength(t *testing.T) {
 	assert.Equal(t, tx, readTx)
 	assert.Equal(t, clientKP.Address(), readClientAccountID)
 	assert.EqualError(t, err, "random nonce before encoding as base64 should be 48 bytes long")
+}
+
+func TestVerifyChallengeTxThreshold_validServerAndClientKeyMeetingThreshold(t *testing.T) {
+	serverKP := newKeypair0()
+	clientKP := newKeypair1()
+	txSource := NewSimpleAccount(serverKP.Address(), -1)
+	opSource := NewSimpleAccount(clientKP.Address(), 0)
+	op := ManageData{
+		SourceAccount: &opSource,
+		Name:          "testserver auth",
+		Value:         []byte(base64.StdEncoding.EncodeToString(make([]byte, 48))),
+	}
+	tx := Transaction{
+		SourceAccount: &txSource,
+		Operations:    []Operation{&op},
+		Timebounds:    NewTimeout(1000),
+		Network:       network.TestNetworkPassphrase,
+	}
+	threshold := Threshold(1)
+	signers := []Signer{
+		{Address: clientKP.Address(), Weight: 1},
+	}
+
+	err := tx.Build()
+	require.NoError(t, err)
+	err = tx.Sign(serverKP, clientKP)
+	assert.NoError(t, err)
+	tx64, err := tx.Base64()
+	require.NoError(t, err)
+	signersFound, err := VerifyChallengeTxThreshold(tx64, serverKP.Address(), network.TestNetworkPassphrase, threshold, signers)
+	assert.Equal(t, signers, signersFound)
+	assert.NoError(t, err)
+}
+
+func TestVerifyChallengeTxThreshold_validServerAndMultipleClientKeyMeetingThreshold(t *testing.T) {
+	serverKP := newKeypair0()
+	clientKP1 := newKeypair1()
+	clientKP2 := newKeypair2()
+	txSource := NewSimpleAccount(serverKP.Address(), -1)
+	opSource := NewSimpleAccount(clientKP1.Address(), 0)
+	op := ManageData{
+		SourceAccount: &opSource,
+		Name:          "testserver auth",
+		Value:         []byte(base64.StdEncoding.EncodeToString(make([]byte, 48))),
+	}
+	tx := Transaction{
+		SourceAccount: &txSource,
+		Operations:    []Operation{&op},
+		Timebounds:    NewTimeout(1000),
+		Network:       network.TestNetworkPassphrase,
+	}
+	threshold := Threshold(3)
+	signers := []Signer{
+		{Address: clientKP1.Address(), Weight: 1},
+		{Address: clientKP2.Address(), Weight: 2},
+	}
+
+	err := tx.Build()
+	require.NoError(t, err)
+	err = tx.Sign(serverKP, clientKP1, clientKP2)
+	assert.NoError(t, err)
+	tx64, err := tx.Base64()
+	require.NoError(t, err)
+	signersFound, err := VerifyChallengeTxThreshold(tx64, serverKP.Address(), network.TestNetworkPassphrase, threshold, signers)
+	assert.Equal(t, signers, signersFound)
+	assert.NoError(t, err)
+}
+
+func TestVerifyChallengeTxThreshold_validServerAndMultipleClientKeyMeetingThresholdSomeUnused(t *testing.T) {
+	serverKP := newKeypair0()
+	clientKP1 := newKeypair1()
+	clientKP2 := newKeypair2()
+	clientKP3 := keypair.MustRandom()
+	txSource := NewSimpleAccount(serverKP.Address(), -1)
+	opSource := NewSimpleAccount(clientKP1.Address(), 0)
+	op := ManageData{
+		SourceAccount: &opSource,
+		Name:          "testserver auth",
+		Value:         []byte(base64.StdEncoding.EncodeToString(make([]byte, 48))),
+	}
+	tx := Transaction{
+		SourceAccount: &txSource,
+		Operations:    []Operation{&op},
+		Timebounds:    NewTimeout(1000),
+		Network:       network.TestNetworkPassphrase,
+	}
+	threshold := Threshold(3)
+	signers := []Signer{
+		{Address: clientKP1.Address(), Weight: 1},
+		{Address: clientKP2.Address(), Weight: 2},
+		{Address: clientKP3.Address(), Weight: 2},
+	}
+
+	err := tx.Build()
+	require.NoError(t, err)
+	err = tx.Sign(serverKP, clientKP1, clientKP2)
+	assert.NoError(t, err)
+	tx64, err := tx.Base64()
+	require.NoError(t, err)
+	signersFound, err := VerifyChallengeTxThreshold(tx64, serverKP.Address(), network.TestNetworkPassphrase, threshold, signers)
+	wantSignersFound := []Signer{
+		{Address: clientKP1.Address(), Weight: 1},
+		{Address: clientKP2.Address(), Weight: 2},
+	}
+	assert.Equal(t, wantSignersFound, signersFound)
+	assert.NoError(t, err)
+}
+
+func TestVerifyChallengeTxThreshold_invalidServerAndMultipleClientKeyNotMeetingThreshold(t *testing.T) {
+	serverKP := newKeypair0()
+	clientKP1 := newKeypair1()
+	clientKP2 := newKeypair2()
+	clientKP3 := keypair.MustRandom()
+	txSource := NewSimpleAccount(serverKP.Address(), -1)
+	opSource := NewSimpleAccount(clientKP1.Address(), 0)
+	op := ManageData{
+		SourceAccount: &opSource,
+		Name:          "testserver auth",
+		Value:         []byte(base64.StdEncoding.EncodeToString(make([]byte, 48))),
+	}
+	tx := Transaction{
+		SourceAccount: &txSource,
+		Operations:    []Operation{&op},
+		Timebounds:    NewTimeout(1000),
+		Network:       network.TestNetworkPassphrase,
+	}
+	threshold := Threshold(10)
+	signers := []Signer{
+		{Address: clientKP1.Address(), Weight: 1},
+		{Address: clientKP2.Address(), Weight: 2},
+		{Address: clientKP3.Address(), Weight: 2},
+	}
+
+	err := tx.Build()
+	require.NoError(t, err)
+	err = tx.Sign(serverKP, clientKP1, clientKP2)
+	assert.NoError(t, err)
+	tx64, err := tx.Base64()
+	require.NoError(t, err)
+	_, err = VerifyChallengeTxThreshold(tx64, serverKP.Address(), network.TestNetworkPassphrase, threshold, signers)
+	assert.EqualError(t, err, "signers with weight 3 do not meet threshold 10")
+}
+
+func TestVerifyChallengeTxThreshold_invalidClientKeyUnrecognized(t *testing.T) {
+	serverKP := newKeypair0()
+	clientKP1 := newKeypair1()
+	clientKP2 := newKeypair2()
+	clientKP3 := keypair.MustRandom()
+	txSource := NewSimpleAccount(serverKP.Address(), -1)
+	opSource := NewSimpleAccount(clientKP1.Address(), 0)
+	op := ManageData{
+		SourceAccount: &opSource,
+		Name:          "testserver auth",
+		Value:         []byte(base64.StdEncoding.EncodeToString(make([]byte, 48))),
+	}
+	tx := Transaction{
+		SourceAccount: &txSource,
+		Operations:    []Operation{&op},
+		Timebounds:    NewTimeout(1000),
+		Network:       network.TestNetworkPassphrase,
+	}
+	threshold := Threshold(10)
+	signers := []Signer{
+		{Address: clientKP1.Address(), Weight: 1},
+		{Address: clientKP2.Address(), Weight: 2},
+	}
+
+	err := tx.Build()
+	require.NoError(t, err)
+	err = tx.Sign(serverKP, clientKP1, clientKP2, clientKP3)
+	assert.NoError(t, err)
+	tx64, err := tx.Base64()
+	require.NoError(t, err)
+	_, err = VerifyChallengeTxThreshold(tx64, serverKP.Address(), network.TestNetworkPassphrase, threshold, signers)
+	assert.EqualError(t, err, "transaction has unrecognized signatures")
 }
 
 func TestVerifyChallengeTxSigners_validServerAndClientMasterKey(t *testing.T) {
