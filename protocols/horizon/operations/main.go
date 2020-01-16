@@ -11,29 +11,23 @@ import (
 	"github.com/stellar/go/xdr"
 )
 
-// OperationTypeNames maps from operation type to the string used to represent that type
+// TypeNames maps from operation type to the string used to represent that type
 // in horizon's JSON responses
 var TypeNames = map[xdr.OperationType]string{
-	xdr.OperationTypeCreateAccount: "create_account",
-	xdr.OperationTypePayment:       "payment",
-	// Action needed in release: horizon-v0.25.0
-	// Change name to `path_payment_strict_receive`
-	xdr.OperationTypePathPaymentStrictReceive: "path_payment",
-	// Action needed in release: horizon-v0.25.0
-	// Change name to `manage_sell_offer`
-	xdr.OperationTypeManageSellOffer: "manage_offer",
-	// Action needed in release: horizon-v0.25.0
-	// Change name to `create_passive_sell_offer`
-	xdr.OperationTypeCreatePassiveSellOffer: "create_passive_offer",
-	xdr.OperationTypeSetOptions:             "set_options",
-	xdr.OperationTypeChangeTrust:            "change_trust",
-	xdr.OperationTypeAllowTrust:             "allow_trust",
-	xdr.OperationTypeAccountMerge:           "account_merge",
-	xdr.OperationTypeInflation:              "inflation",
-	xdr.OperationTypeManageData:             "manage_data",
-	xdr.OperationTypeBumpSequence:           "bump_sequence",
-	xdr.OperationTypeManageBuyOffer:         "manage_buy_offer",
-	xdr.OperationTypePathPaymentStrictSend:  "path_payment_strict_send",
+	xdr.OperationTypeCreateAccount:            "create_account",
+	xdr.OperationTypePayment:                  "payment",
+	xdr.OperationTypePathPaymentStrictReceive: "path_payment_strict_receive",
+	xdr.OperationTypeManageSellOffer:          "manage_sell_offer",
+	xdr.OperationTypeCreatePassiveSellOffer:   "create_passive_sell_offer",
+	xdr.OperationTypeSetOptions:               "set_options",
+	xdr.OperationTypeChangeTrust:              "change_trust",
+	xdr.OperationTypeAllowTrust:               "allow_trust",
+	xdr.OperationTypeAccountMerge:             "account_merge",
+	xdr.OperationTypeInflation:                "inflation",
+	xdr.OperationTypeManageData:               "manage_data",
+	xdr.OperationTypeBumpSequence:             "bump_sequence",
+	xdr.OperationTypeManageBuyOffer:           "manage_buy_offer",
+	xdr.OperationTypePathPaymentStrictSend:    "path_payment_strict_send",
 }
 
 // Base represents the common attributes of an operation resource
