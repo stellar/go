@@ -1,7 +1,7 @@
 package txnbuild
 
 import (
-	"github.com/stellar/go/clients/horizon"
+	hProtocol "github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
 )
@@ -35,7 +35,7 @@ type Signer struct {
 
 // SignerFromHorizon converts a signer retrieved from Horizon to a txnbuild
 // Signer.
-func SignerFromHorizon(horizonSigner horizon.Signer) Signer {
+func SignerFromHorizon(horizonSigner hProtocol.Signer) Signer {
 	return Signer{
 		Address: horizonSigner.Key,
 		Weight:  Threshold(horizonSigner.Weight),
@@ -44,7 +44,7 @@ func SignerFromHorizon(horizonSigner horizon.Signer) Signer {
 
 // SignersFromHorizon converts a list of signers retrieved from Horizon to
 // txnbuild Signers.
-func SignersFromHorizon(horizonSigners []horizon.Signer) []Signer {
+func SignersFromHorizon(horizonSigners []hProtocol.Signer) []Signer {
 	signers := make([]Signer, 0, len(horizonSigners))
 	for _, hs := range horizonSigners {
 		signers = append(signers, SignerFromHorizon(hs))
