@@ -64,5 +64,6 @@ func TestPopulateOperation_WithTransaction(t *testing.T) {
 	PopulateBaseOperation(ctx, &dest, operationsRow, &transactionRow, ledger)
 	assert.True(t, dest.TransactionSuccessful)
 	assert.True(t, dest.Transaction.Successful)
-	assert.Equal(t, int32(100), dest.Transaction.FeePaid)
+	assert.Equal(t, int32(100), dest.Transaction.FeeCharged)
+	assert.Equal(t, int32(10000), dest.Transaction.MaxFee)
 }
