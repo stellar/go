@@ -5,11 +5,13 @@ import (
 	"testing"
 
 	"github.com/stellar/go/protocols/horizon"
+	"github.com/stellar/go/services/horizon/internal/test"
 )
 
 func TestAccountActions_Show(t *testing.T) {
 	ht := StartHTTPTest(t, "allow_trust")
 	defer ht.Finish()
+	test.ResetHorizonDB(t, ht.HorizonDB)
 
 	// existing account
 	w := ht.Get(
@@ -40,6 +42,7 @@ func TestAccountActions_Show(t *testing.T) {
 func TestAccountActions_ShowRegressions(t *testing.T) {
 	ht := StartHTTPTest(t, "base")
 	defer ht.Finish()
+	test.ResetHorizonDB(t, ht.HorizonDB)
 
 	w := ht.Get(
 		"/accounts/GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H",

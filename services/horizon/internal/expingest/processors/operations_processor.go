@@ -93,25 +93,6 @@ func (p *OperationProcessor) ProcessLedger(ctx context.Context, store *pipeline.
 		return errors.Wrap(err, "Error flushing operation batch")
 	}
 
-	// use an older lookup sequence because the experimental ingestion system and the
-	// legacy ingestion system might not be in sync
-	if sequence > 10 {
-		checkSequence := int32(sequence - 10)
-		var valid bool
-		valid, err = p.OperationsQ.CheckExpOperations(checkSequence)
-		if err != nil {
-			log.WithField("sequence", checkSequence).WithError(err).
-				Error("Could not compare operations for ledger")
-			return nil
-		}
-
-		if !valid {
-			log.WithField("sequence", checkSequence).
-				Error("rows for ledger in exp_history_operations does not match " +
-					"operations in history_operations")
-		}
-	}
-
 	return nil
 }
 

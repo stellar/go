@@ -205,9 +205,9 @@ func (s *EffectsProcessorTestSuiteLedger) mockSuccessfulEffectBatchAdds() {
 	).Return(nil).Once()
 }
 
-func (s *EffectsProcessorTestSuiteLedger) mockSuccessfulCreateExpAccounts() {
+func (s *EffectsProcessorTestSuiteLedger) mockSuccessfulCreateAccounts() {
 	s.mockQ.On(
-		"CreateExpAccounts",
+		"CreateAccounts",
 		mock.AnythingOfType("[]string"),
 	).Run(func(args mock.Arguments) {
 		arg := args.Get(0).([]string)
@@ -232,62 +232,6 @@ func (s *EffectsProcessorTestSuiteLedger) TestEmptyEffects() {
 		On("Read").
 		Return(io.LedgerTransaction{}, stdio.EOF).Once()
 
-	s.mockQ.On("CheckExpOperationEffects", int32(s.sequence-10)).
-		Return(true, nil).Once()
-
-	err := s.processor.ProcessLedger(
-		s.context,
-		&supportPipeline.Store{},
-		s.mockLedgerReader,
-		s.mockLedgerWriter,
-	)
-	s.Assert().NoError(err)
-}
-func (s *EffectsProcessorTestSuiteLedger) TestCheckExpOperationEffectsError() {
-	s.mockLedgerReader.On("GetSequence").Return(s.sequence).Once()
-
-	s.mockLedgerReader.
-		On("Read").
-		Return(io.LedgerTransaction{}, stdio.EOF).Once()
-
-	s.mockQ.On("CheckExpOperationEffects", int32(s.sequence-10)).
-		Return(false, errors.New("transient error")).Once()
-
-	err := s.processor.ProcessLedger(
-		s.context,
-		&supportPipeline.Store{},
-		s.mockLedgerReader,
-		s.mockLedgerWriter,
-	)
-	s.Assert().NoError(err)
-}
-
-func (s *EffectsProcessorTestSuiteLedger) TestCheckExpOperationEffectsDoesNotMatch() {
-	s.mockLedgerReader.On("GetSequence").Return(s.sequence).Once()
-
-	s.mockLedgerReader.
-		On("Read").
-		Return(io.LedgerTransaction{}, stdio.EOF).Once()
-
-	s.mockQ.On("CheckExpOperationEffects", int32(s.sequence-10)).
-		Return(false, nil).Once()
-
-	err := s.processor.ProcessLedger(
-		s.context,
-		&supportPipeline.Store{},
-		s.mockLedgerReader,
-		s.mockLedgerWriter,
-	)
-	s.Assert().NoError(err)
-}
-
-func (s *EffectsProcessorTestSuiteLedger) TestCheckExpOperationEffectsMinLedger() {
-	// CheckExpOperationEffects should not be called
-	s.mockLedgerReader.On("GetSequence").Return(uint32(10)).Once()
-	s.mockLedgerReader.
-		On("Read").
-		Return(io.LedgerTransaction{}, stdio.EOF).Once()
-
 	err := s.processor.ProcessLedger(
 		s.context,
 		&supportPipeline.Store{},
@@ -301,11 +245,9 @@ func (s *EffectsProcessorTestSuiteLedger) TestIngestEffectsSucceeds() {
 	s.mockLedgerReader.On("GetSequence").Return(s.sequence).Once()
 
 	s.mockLedgerReads()
-	s.mockSuccessfulCreateExpAccounts()
+	s.mockSuccessfulCreateAccounts()
 	s.mockQ.On("NewEffectBatchInsertBuilder", maxBatchSize).
 		Return(s.mockBatchInsertBuilder).Once()
-	s.mockQ.On("CheckExpOperationEffects", int32(s.sequence-10)).
-		Return(true, nil).Once()
 
 	s.mockSuccessfulEffectBatchAdds()
 
@@ -321,12 +263,12 @@ func (s *EffectsProcessorTestSuiteLedger) TestIngestEffectsSucceeds() {
 	s.Assert().NoError(err)
 }
 
-func (s *EffectsProcessorTestSuiteLedger) TestCreateExpAccountsFails() {
+func (s *EffectsProcessorTestSuiteLedger) TestCreateAccountsFails() {
 	s.mockLedgerReader.On("GetSequence").Return(s.sequence).Once()
 
 	s.mockLedgerReads()
 
-	s.mockQ.On("CreateExpAccounts", mock.AnythingOfType("[]string")).
+	s.mockQ.On("CreateAccounts", mock.AnythingOfType("[]string")).
 		Return(s.addressToID, errors.New("transient error")).Once()
 
 	err := s.processor.ProcessLedger(
@@ -343,7 +285,7 @@ func (s *EffectsProcessorTestSuiteLedger) TestBatchAddFails() {
 
 	s.mockLedgerReads()
 
-	s.mockSuccessfulCreateExpAccounts()
+	s.mockSuccessfulCreateAccounts()
 	s.mockQ.On("NewEffectBatchInsertBuilder", maxBatchSize).
 		Return(s.mockBatchInsertBuilder).Once()
 
@@ -1052,4 +994,157 @@ func TestOperationEffects(t *testing.T) {
 			tt.Equal(tc.expected, effects)
 		})
 	}
+}
+func TestOperationEffectsSetOptionsSignersOrder(t *testing.T) {
+	tt := assert.New(t)
+	transaction := io.LedgerTransaction{
+		Meta: createTransactionMeta([]xdr.OperationMeta{
+			xdr.OperationMeta{
+				Changes: []xdr.LedgerEntryChange{
+					// State
+					xdr.LedgerEntryChange{
+						Type: xdr.LedgerEntryChangeTypeLedgerEntryState,
+						State: &xdr.LedgerEntry{
+							Data: xdr.LedgerEntryData{
+								Type: xdr.LedgerEntryTypeAccount,
+								Account: &xdr.AccountEntry{
+									AccountId: xdr.MustAddress("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
+									Signers: []xdr.Signer{
+										xdr.Signer{
+											Key:    xdr.MustSigner("GCBBDQLCTNASZJ3MTKAOYEOWRGSHDFAJVI7VPZUOP7KXNHYR3HP2BUKV"),
+											Weight: 10,
+										},
+										xdr.Signer{
+											Key:    xdr.MustSigner("GCAHY6JSXQFKWKP6R7U5JPXDVNV4DJWOWRFLY3Y6YPBF64QRL4BPFDNS"),
+											Weight: 10,
+										},
+									},
+								},
+							},
+						},
+					},
+					// Updated
+					xdr.LedgerEntryChange{
+						Type: xdr.LedgerEntryChangeTypeLedgerEntryUpdated,
+						Updated: &xdr.LedgerEntry{
+							Data: xdr.LedgerEntryData{
+								Type: xdr.LedgerEntryTypeAccount,
+								Account: &xdr.AccountEntry{
+									AccountId: xdr.MustAddress("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
+									Signers: []xdr.Signer{
+										xdr.Signer{
+											Key:    xdr.MustSigner("GCBBDQLCTNASZJ3MTKAOYEOWRGSHDFAJVI7VPZUOP7KXNHYR3HP2BUKV"),
+											Weight: 16,
+										},
+										xdr.Signer{
+											Key:    xdr.MustSigner("GCAHY6JSXQFKWKP6R7U5JPXDVNV4DJWOWRFLY3Y6YPBF64QRL4BPFDNS"),
+											Weight: 15,
+										},
+										xdr.Signer{
+											Key:    xdr.MustSigner("GCR3TQ2TVH3QRI7GQMC3IJGUUBR32YQHWBIKIMTYRQ2YH4XUTDB75UKE"),
+											Weight: 14,
+										},
+										xdr.Signer{
+											Key:    xdr.MustSigner("GA4O5DLUUTLCTMM2UOWOYPNIH2FTD4NLO6KDZOFQRUISQ3FYKABGJLPC"),
+											Weight: 17,
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		}),
+	}
+	transaction.Index = 1
+	transaction.Envelope.Tx.SourceAccount = xdr.MustAddress("GCBBDQLCTNASZJ3MTKAOYEOWRGSHDFAJVI7VPZUOP7KXNHYR3HP2BUKV")
+
+	operation := transactionOperationWrapper{
+		index:       0,
+		transaction: transaction,
+		operation: xdr.Operation{
+			Body: xdr.OperationBody{
+				Type:         xdr.OperationTypeSetOptions,
+				SetOptionsOp: &xdr.SetOptionsOp{},
+			},
+		},
+		ledgerSequence: 46,
+	}
+
+	effects, err := operation.effects()
+	tt.NoError(err)
+	expected := []effect{
+		effect{
+			address:     "GCBBDQLCTNASZJ3MTKAOYEOWRGSHDFAJVI7VPZUOP7KXNHYR3HP2BUKV",
+			operationID: int64(197568499713),
+			details: map[string]interface{}{
+				"public_key": "GCAHY6JSXQFKWKP6R7U5JPXDVNV4DJWOWRFLY3Y6YPBF64QRL4BPFDNS",
+				"weight":     int32(15),
+			},
+			effectType: history.EffectSignerUpdated,
+			order:      uint32(1),
+		},
+		effect{
+			address:     "GCBBDQLCTNASZJ3MTKAOYEOWRGSHDFAJVI7VPZUOP7KXNHYR3HP2BUKV",
+			operationID: int64(197568499713),
+			details: map[string]interface{}{
+				"public_key": "GCBBDQLCTNASZJ3MTKAOYEOWRGSHDFAJVI7VPZUOP7KXNHYR3HP2BUKV",
+				"weight":     int32(16),
+			},
+			effectType: history.EffectSignerUpdated,
+			order:      uint32(2),
+		},
+		effect{
+			address:     "GCBBDQLCTNASZJ3MTKAOYEOWRGSHDFAJVI7VPZUOP7KXNHYR3HP2BUKV",
+			operationID: int64(197568499713),
+			details: map[string]interface{}{
+				"public_key": "GA4O5DLUUTLCTMM2UOWOYPNIH2FTD4NLO6KDZOFQRUISQ3FYKABGJLPC",
+				"weight":     int32(17),
+			},
+			effectType: history.EffectSignerCreated,
+			order:      uint32(3),
+		},
+		effect{
+			address:     "GCBBDQLCTNASZJ3MTKAOYEOWRGSHDFAJVI7VPZUOP7KXNHYR3HP2BUKV",
+			operationID: int64(197568499713),
+			details: map[string]interface{}{
+				"public_key": "GCR3TQ2TVH3QRI7GQMC3IJGUUBR32YQHWBIKIMTYRQ2YH4XUTDB75UKE",
+				"weight":     int32(14),
+			},
+			effectType: history.EffectSignerCreated,
+			order:      uint32(4),
+		},
+	}
+	tt.Equal(expected, effects)
+}
+
+func TestOperationRegressionAccountTrustItself(t *testing.T) {
+	tt := assert.New(t)
+	// NOTE:  when an account trusts itself, the transaction is successful but
+	// no ledger entries are actually modified.
+	transaction := io.LedgerTransaction{
+		Meta: createTransactionMeta([]xdr.OperationMeta{}),
+	}
+	transaction.Index = 1
+	transaction.Envelope.Tx.SourceAccount = xdr.MustAddress("GCBBDQLCTNASZJ3MTKAOYEOWRGSHDFAJVI7VPZUOP7KXNHYR3HP2BUKV")
+
+	operation := transactionOperationWrapper{
+		index:       0,
+		transaction: transaction,
+		operation: xdr.Operation{
+			Body: xdr.OperationBody{
+				Type: xdr.OperationTypeChangeTrust,
+				ChangeTrustOp: &xdr.ChangeTrustOp{
+					Line:  xdr.MustNewCreditAsset("COP", "GCBBDQLCTNASZJ3MTKAOYEOWRGSHDFAJVI7VPZUOP7KXNHYR3HP2BUKV"),
+					Limit: xdr.Int64(1000),
+				},
+			},
+		},
+		ledgerSequence: 46,
+	}
+
+	effects, err := operation.effects()
+	tt.NoError(err)
+	tt.Equal([]effect{}, effects)
 }

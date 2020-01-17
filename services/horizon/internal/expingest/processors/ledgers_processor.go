@@ -12,7 +12,7 @@ import (
 )
 
 type LedgersProcessor struct {
-	LedgersQ      history.QExpLedgers
+	LedgersQ      history.QLedgers
 	IngestVersion int
 }
 
@@ -62,7 +62,7 @@ func (p *LedgersProcessor) ProcessLedger(ctx context.Context, store *pipeline.St
 		}
 	}
 
-	rowsAffected, err := p.LedgersQ.InsertExpLedger(
+	rowsAffected, err := p.LedgersQ.InsertLedger(
 		r.GetHeader(),
 		successTxCount,
 		failedTxCount,

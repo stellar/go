@@ -49,7 +49,7 @@ func (s *TransactionsProcessorTestSuiteLedger) TearDownTest() {
 	s.mockLedgerWriter.AssertExpectations(s.T())
 }
 
-func (s *TransactionsProcessorTestSuiteLedger) TestInsertExpLedgerIgnoredWhenNotDatabaseIngestion() {
+func (s *TransactionsProcessorTestSuiteLedger) TestInsertLedgerLedgerIgnoredWhenNotDatabaseIngestion() {
 	s.mockLedgerReader.On("IgnoreUpgradeChanges").Once()
 	s.mockLedgerReader.
 		On("Close").
@@ -99,8 +99,6 @@ func (s *TransactionsProcessorTestSuiteLedger) TestAddTransactionsSucceeds() {
 	s.mockBatchInsertBuilder.On("Add", secondTx, sequence).Return(nil).Once()
 	s.mockBatchInsertBuilder.On("Add", thirdTx, sequence).Return(nil).Once()
 	s.mockBatchInsertBuilder.On("Exec").Return(nil).Once()
-
-	s.mockQ.On("CheckExpTransactions", int32(sequence-10)).Return(true, nil).Once()
 
 	err := s.processor.ProcessLedger(
 		s.context,
@@ -176,80 +174,4 @@ func (s *TransactionsProcessorTestSuiteLedger) TestExecFails() {
 	)
 	s.Assert().Error(err)
 	s.Assert().EqualError(err, "Error flushing transaction batch: transient error")
-}
-
-func (s *TransactionsProcessorTestSuiteLedger) TestCheckExpTransactionsError() {
-	s.mockLedgerReader.On("IgnoreUpgradeChanges").Once()
-
-	s.mockQ.
-		On("NewTransactionBatchInsertBuilder", maxBatchSize).
-		Return(s.mockBatchInsertBuilder).Once()
-
-	sequence := uint32(20)
-	s.mockLedgerReader.On("GetSequence").Return(sequence).Once()
-
-	firstTx := createTransaction(true, 1)
-
-	s.mockLedgerReader.
-		On("Read").
-		Return(firstTx, nil).Once()
-	s.mockLedgerReader.
-		On("Read").
-		Return(io.LedgerTransaction{}, stdio.EOF).Once()
-
-	s.mockLedgerReader.
-		On("Close").
-		Return(nil).Once()
-
-	s.mockBatchInsertBuilder.On("Add", firstTx, sequence).Return(nil).Once()
-	s.mockBatchInsertBuilder.On("Exec").Return(nil).Once()
-
-	s.mockQ.On("CheckExpTransactions", int32(sequence-10)).
-		Return(false, errors.New("transient check exp ledger error")).Once()
-
-	err := s.processor.ProcessLedger(
-		s.context,
-		&supportPipeline.Store{},
-		s.mockLedgerReader,
-		s.mockLedgerWriter,
-	)
-	s.Assert().NoError(err)
-}
-
-func (s *TransactionsProcessorTestSuiteLedger) TestCheckExpTransactionsDoesNotMatch() {
-	s.mockLedgerReader.On("IgnoreUpgradeChanges").Once()
-
-	s.mockQ.
-		On("NewTransactionBatchInsertBuilder", maxBatchSize).
-		Return(s.mockBatchInsertBuilder).Once()
-
-	sequence := uint32(20)
-	s.mockLedgerReader.On("GetSequence").Return(sequence).Once()
-
-	firstTx := createTransaction(true, 1)
-
-	s.mockLedgerReader.
-		On("Read").
-		Return(firstTx, nil).Once()
-	s.mockLedgerReader.
-		On("Read").
-		Return(io.LedgerTransaction{}, stdio.EOF).Once()
-
-	s.mockLedgerReader.
-		On("Close").
-		Return(nil).Once()
-
-	s.mockBatchInsertBuilder.On("Add", firstTx, sequence).Return(nil).Once()
-	s.mockBatchInsertBuilder.On("Exec").Return(nil).Once()
-
-	s.mockQ.On("CheckExpTransactions", int32(sequence-10)).
-		Return(false, nil).Once()
-
-	err := s.processor.ProcessLedger(
-		s.context,
-		&supportPipeline.Store{},
-		s.mockLedgerReader,
-		s.mockLedgerWriter,
-	)
-	s.Assert().NoError(err)
 }

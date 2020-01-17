@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"reflect"
+	"sort"
 	"time"
 
 	"github.com/stellar/go/clients/stellarcore"
@@ -504,7 +505,13 @@ func (is *Session) ingestSignerEffects(effects *EffectIngestion, op xdr.SetOptio
 		return
 	}
 
-	for addy := range before {
+	beforeSortedSigners := []string{}
+	for signer := range before {
+		beforeSortedSigners = append(beforeSortedSigners, signer)
+	}
+	sort.Strings(beforeSortedSigners)
+
+	for _, addy := range beforeSortedSigners {
 		weight, ok := after[addy]
 		if !ok {
 			effects.Add(source, history.EffectSignerRemoved, map[string]interface{}{
@@ -517,8 +524,16 @@ func (is *Session) ingestSignerEffects(effects *EffectIngestion, op xdr.SetOptio
 			"weight":     weight,
 		})
 	}
+
+	afterSortedSigners := []string{}
+	for signer := range after {
+		afterSortedSigners = append(afterSortedSigners, signer)
+	}
+	sort.Strings(afterSortedSigners)
+
 	// Add the "created" effects
-	for addy, weight := range after {
+	for _, addy := range afterSortedSigners {
+		weight := after[addy]
 		// if `addy` is in before, the previous for loop should have recorded
 		// the update, so skip this key
 		if _, ok := before[addy]; ok {

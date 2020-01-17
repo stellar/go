@@ -119,8 +119,11 @@ func TestNextTradeAggregationsPage(t *testing.T) {
 	tradeAggs, err := client.TradeAggregations(taRequest)
 
 	if assert.NoError(t, err) {
-		assert.Equal(t, len(tradeAggs.Embedded.Records), 2)
+		assert.Len(t, tradeAggs.Embedded.Records, 2)
 	}
+
+	assert.Equal(t, int64(1565026860000), tradeAggs.Embedded.Records[0].Timestamp)
+	assert.Equal(t, int64(3), tradeAggs.Embedded.Records[0].TradeCount)
 
 	hmock.On(
 		"GET",
@@ -170,6 +173,38 @@ func TestPrevTradeAggregationsPage(t *testing.T) {
 	if assert.NoError(t, err) {
 		assert.Equal(t, len(prevPage.Embedded.Records), 2)
 	}
+}
+
+func TestTradeAggregationsPageStringPayload(t *testing.T) {
+	hmock := httptest.NewClient()
+	client := &Client{
+		HorizonURL: "https://localhost/",
+		HTTP:       hmock,
+	}
+
+	taRequest := TradeAggregationRequest{
+		StartTime:          testTime,
+		EndTime:            testTime,
+		Resolution:         DayResolution,
+		BaseAssetType:      AssetTypeNative,
+		CounterAssetType:   AssetType4,
+		CounterAssetCode:   "SLT",
+		CounterAssetIssuer: "GCKA6K5PCQ6PNF5RQBF7PQDJWRHO6UOGFMRLK3DYHDOI244V47XKQ4GP",
+		Order:              OrderDesc,
+	}
+
+	hmock.On(
+		"GET",
+		"https://localhost/trade_aggregations?base_asset_type=native&counter_asset_code=SLT&counter_asset_issuer=GCKA6K5PCQ6PNF5RQBF7PQDJWRHO6UOGFMRLK3DYHDOI244V47XKQ4GP&counter_asset_type=credit_alphanum4&end_time=1517521726000&offset=0&order=desc&resolution=86400000&start_time=1517521726000",
+	).ReturnString(200, stringTradeAggsPage)
+	tradeAggs, err := client.TradeAggregations(taRequest)
+
+	if assert.NoError(t, err) {
+		assert.Len(t, tradeAggs.Embedded.Records, 1)
+	}
+
+	assert.Equal(t, int64(1565026860000), tradeAggs.Embedded.Records[0].Timestamp)
+	assert.Equal(t, int64(3), tradeAggs.Embedded.Records[0].TradeCount)
 }
 
 var tradeAggsResponse = `{
@@ -327,5 +362,39 @@ var emptyTradeAggsPage = `{
   },
   "_embedded": {
     "records": []
+  }
+}`
+
+var stringTradeAggsPage = `{
+  "_embedded": {
+    "records": [
+      {
+        "timestamp": "1565026860000",
+        "trade_count": "3",
+        "base_volume": "23781.2128418",
+        "counter_volume": "2.0000000",
+        "avg": "0.0000841",
+        "high": "0.0000841",
+        "high_r": {
+          "N": 841,
+          "D": 10000000
+        },
+        "low": "0.0000841",
+        "low_r": {
+          "N": 841,
+          "D": 10000000
+        },
+        "open": "0.0000841",
+        "open_r": {
+          "N": 841,
+          "D": 10000000
+        },
+        "close": "0.0000841",
+        "close_r": {
+          "N": 841,
+          "D": 10000000
+        }
+      }
+    ]
   }
 }`

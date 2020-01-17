@@ -7,6 +7,7 @@ import (
 	"fmt"
 	stdio "io"
 	"reflect"
+	"sort"
 
 	"github.com/stellar/go/amount"
 	"github.com/stellar/go/exp/ingest/io"
@@ -29,7 +30,7 @@ func (p *EffectProcessor) loadAccountIDs(accountSet map[string]int64) error {
 		addresses = append(addresses, address)
 	}
 
-	addressToID, err := p.EffectsQ.CreateExpAccounts(addresses)
+	addressToID, err := p.EffectsQ.CreateAccounts(addresses)
 	if err != nil {
 		return errors.Wrap(err, "Could not create account ids")
 	}
@@ -74,7 +75,7 @@ func (p *EffectProcessor) insertDBOperationsEffects(effects []effect, accountSet
 		accountID, found := accountSet[effect.address]
 
 		if !found {
-			return errors.Errorf("Error finding exp_history_account_id for address %v", effect.address)
+			return errors.Errorf("Error finding history_account_id for address %v", effect.address)
 		}
 
 		var detailsJSON []byte
@@ -163,24 +164,6 @@ func (p *EffectProcessor) ProcessLedger(ctx context.Context, store *pipeline.Sto
 
 		if err = p.insertDBOperationsEffects(effects, accountSet); err != nil {
 			return err
-		}
-	}
-
-	// use an older lookup sequence because the experimental ingestion system and the
-	// legacy ingestion system might not be in sync
-	if sequence > 10 {
-		checkSequence := int32(sequence - 10)
-		var valid bool
-		valid, err = p.EffectsQ.CheckExpOperationEffects(checkSequence)
-		if err != nil {
-			log.WithField("sequence", checkSequence).WithError(err).
-				Error("Could not compare effects for ledger")
-			return nil
-		}
-
-		if !valid {
-			log.WithField("sequence", checkSequence).
-				Error("effects do not match")
 		}
 	}
 
@@ -495,7 +478,13 @@ func (operation *transactionOperationWrapper) setOptionsEffects() ([]effect, err
 			continue
 		}
 
-		for addy := range before {
+		beforeSortedSigners := []string{}
+		for signer := range before {
+			beforeSortedSigners = append(beforeSortedSigners, signer)
+		}
+		sort.Strings(beforeSortedSigners)
+
+		for _, addy := range beforeSortedSigners {
 			weight, ok := after[addy]
 			if !ok {
 				effects.add(source.Address(), history.EffectSignerRemoved, map[string]interface{}{
@@ -509,8 +498,15 @@ func (operation *transactionOperationWrapper) setOptionsEffects() ([]effect, err
 			})
 		}
 
+		afterSortedSigners := []string{}
+		for signer := range after {
+			afterSortedSigners = append(afterSortedSigners, signer)
+		}
+		sort.Strings(afterSortedSigners)
+
 		// Add the "created" effects
-		for addy, weight := range after {
+		for _, addy := range afterSortedSigners {
+			weight := after[addy]
 			// if `addy` is in before, the previous for loop should have recorded
 			// the update, so skip this key
 			if _, ok := before[addy]; ok {
@@ -529,43 +525,45 @@ func (operation *transactionOperationWrapper) setOptionsEffects() ([]effect, err
 
 func (operation *transactionOperationWrapper) changeTrustEffects() ([]effect, error) {
 	source := operation.SourceAccount()
-
 	effects := effectsWrapper{
 		effects:   []effect{},
 		operation: operation,
 	}
 
 	op := operation.operation.Body.MustChangeTrustOp()
-	details := map[string]interface{}{"limit": amount.String(op.Limit)}
-
-	effect := history.EffectType(0)
-	assetDetails(details, op.Line, "")
-
 	changes, err := operation.transaction.GetOperationChanges(operation.index)
 	if err != nil {
 		return effects.effects, err
 	}
 
-	for _, change := range changes {
-		if change.Type != xdr.LedgerEntryTypeTrustline {
-			continue
+	// NOTE:  when an account trusts itself, the transaction is successful but
+	// no ledger entries are actually modified.
+	if len(changes) > 0 {
+		details := map[string]interface{}{"limit": amount.String(op.Limit)}
+		effect := history.EffectType(0)
+		assetDetails(details, op.Line, "")
+
+		for _, change := range changes {
+			if change.Type != xdr.LedgerEntryTypeTrustline {
+				continue
+			}
+
+			switch {
+			case change.Pre == nil && change.Post != nil:
+				effect = history.EffectTrustlineCreated
+			case change.Pre != nil && change.Post == nil:
+				effect = history.EffectTrustlineRemoved
+			case change.Pre != nil && change.Post != nil:
+				effect = history.EffectTrustlineUpdated
+			default:
+				panic("Invalid change")
+			}
+
+			break
 		}
 
-		switch {
-		case change.Pre == nil && change.Post != nil:
-			effect = history.EffectTrustlineCreated
-		case change.Pre != nil && change.Post == nil:
-			effect = history.EffectTrustlineRemoved
-		case change.Pre != nil && change.Post != nil:
-			effect = history.EffectTrustlineUpdated
-		default:
-			panic("Invalid change")
-		}
-
-		break
+		effects.add(source.Address(), effect, details)
 	}
-
-	effects.add(source.Address(), effect, details)
 
 	return effects.effects, nil
 }

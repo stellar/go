@@ -85,7 +85,7 @@ func (s *OperationsProcessorTestSuiteLedger) mockBatchInsertAdds(txs []io.Ledger
 	return nil
 }
 
-func (s *OperationsProcessorTestSuiteLedger) TestInsertExpLedgerIgnoredWhenNotDatabaseIngestion() {
+func (s *OperationsProcessorTestSuiteLedger) TestInsertOperationsIgnoredWhenNotDatabaseIngestion() {
 	s.mockQ = &history.MockQOperations{}
 	err := s.processor.ProcessLedger(
 		context.Background(),
@@ -122,10 +122,6 @@ func (s *OperationsProcessorTestSuiteLedger) TestAddOperationSucceeds() {
 	s.mockLedgerReader.
 		On("Read").
 		Return(io.LedgerTransaction{}, stdio.EOF).Once()
-
-	s.mockQ.
-		On("CheckExpOperations", int32(sequence-10)).
-		Return(true, nil).Once()
 
 	var err error
 
@@ -193,62 +189,4 @@ func (s *OperationsProcessorTestSuiteLedger) TestExecFails() {
 	)
 	s.Assert().Error(err)
 	s.Assert().EqualError(err, "Error flushing operation batch: transient error")
-}
-
-func (s *OperationsProcessorTestSuiteLedger) TestCheckExpOperationsError() {
-	sequence := uint32(56)
-	s.mockLedgerReader.On("GetSequence").Return(sequence).Once()
-
-	firstTx := createTransaction(true, 1)
-
-	s.mockLedgerReader.
-		On("Read").
-		Return(firstTx, nil).Once()
-
-	s.mockLedgerReader.
-		On("Read").
-		Return(io.LedgerTransaction{}, stdio.EOF).Once()
-
-	s.mockBatchInsertAdds([]io.LedgerTransaction{firstTx}, sequence)
-	s.mockBatchInsertBuilder.On("Exec").Return(nil).Once()
-
-	s.mockQ.
-		On("CheckExpOperations", int32(sequence-10)).
-		Return(false, errors.New("transient check exp ledger error")).Once()
-
-	err := s.processor.ProcessLedger(
-		s.context,
-		&supportPipeline.Store{},
-		s.mockLedgerReader,
-		s.mockLedgerWriter,
-	)
-	s.Assert().NoError(err)
-}
-
-func (s *OperationsProcessorTestSuiteLedger) TestCheckExpOperationsDoesNotMatch() {
-	sequence := uint32(56)
-	s.mockLedgerReader.On("GetSequence").Return(sequence).Once()
-
-	firstTx := createTransaction(true, 1)
-
-	s.mockLedgerReader.
-		On("Read").
-		Return(firstTx, nil).Once()
-	s.mockLedgerReader.
-		On("Read").
-		Return(io.LedgerTransaction{}, stdio.EOF).Once()
-
-	s.mockBatchInsertAdds([]io.LedgerTransaction{firstTx}, sequence)
-	s.mockBatchInsertBuilder.On("Exec").Return(nil).Once()
-
-	s.mockQ.On("CheckExpOperations", int32(sequence-10)).
-		Return(false, nil).Once()
-
-	err := s.processor.ProcessLedger(
-		s.context,
-		&supportPipeline.Store{},
-		s.mockLedgerReader,
-		s.mockLedgerWriter,
-	)
-	s.Assert().NoError(err)
 }

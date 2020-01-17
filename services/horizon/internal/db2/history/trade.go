@@ -3,7 +3,6 @@ package history
 import (
 	"fmt"
 	"math"
-	"reflect"
 
 	sq "github.com/Masterminds/squirrel"
 	"github.com/stellar/go/services/horizon/internal/db2"
@@ -34,19 +33,6 @@ func (q *Q) Trades() *TradesQ {
 				"history_accounts",
 			),
 			"history_assets",
-		),
-	}
-}
-
-func (q *Q) expTrades() *TradesQ {
-	return &TradesQ{
-		parent: q,
-		sql: joinTradeAssets(
-			joinTradeAccounts(
-				selectTradeFields.From("exp_history_trades htrd"),
-				"exp_history_accounts",
-			),
-			"exp_history_assets",
 		),
 	}
 }
@@ -348,67 +334,7 @@ func getCanonicalAssetOrder(assetId1 int64, assetId2 int64) (orderPreserved bool
 }
 
 type QTrades interface {
-	CreateExpAccounts(addresses []string) (map[string]int64, error)
+	CreateAccounts(addresses []string) (map[string]int64, error)
 	NewTradeBatchInsertBuilder(maxBatchSize int) TradeBatchInsertBuilder
-	CheckExpTrades(seq int32) (bool, error)
-	CreateExpAssets(assets []xdr.Asset) (map[string]Asset, error)
-}
-
-// CheckExpTrades checks that the trades in exp_history_trades
-// for the given ledger matches the same transactions in history_trades
-func (q *Q) CheckExpTrades(seq int32) (bool, error) {
-	var trades, expTrades []Trade
-
-	err := q.Trades().ForLedger(seq, "asc").Select(&trades)
-	if err != nil {
-		return false, err
-	}
-
-	err = q.expTrades().ForLedger(seq, "asc").Select(&expTrades)
-	if err != nil {
-		return false, err
-	}
-
-	// We only proceed with the comparison if we have trade data in both the
-	// legacy ingestion system and the experimental ingestion system.
-	// If there are no trades in either the legacy ingestion system or the
-	// experimental ingestion system we skip the check.
-	if len(trades) == 0 || len(expTrades) == 0 {
-		return true, nil
-	}
-
-	if len(trades) != len(expTrades) {
-		return false, nil
-	}
-
-	for i, trade := range trades {
-		expTrade := expTrades[i]
-
-		// compare LedgerCloseTime separately
-		expClosedAt := expTrade.LedgerCloseTime
-		expTrade.LedgerCloseTime = trade.LedgerCloseTime
-		if expClosedAt.Unix() != trade.LedgerCloseTime.Unix() {
-			return false, nil
-		}
-
-		// a given set of assets may not have the same ordering in history_assets and exp_history_assets
-		// the ordering affects the value of BaseIsSeller (see how getCanonicalAssetOrder() is used above)
-		if expTrade.BaseIsSeller != trade.BaseIsSeller {
-			expTrade.BaseOfferID, expTrade.CounterOfferID = expTrade.CounterOfferID, expTrade.BaseOfferID
-			expTrade.BaseAccount, expTrade.CounterAccount = expTrade.CounterAccount, expTrade.BaseAccount
-			expTrade.BaseAssetType, expTrade.CounterAssetType = expTrade.CounterAssetType, expTrade.BaseAssetType
-			expTrade.BaseAssetCode, expTrade.CounterAssetCode = expTrade.CounterAssetCode, expTrade.BaseAssetCode
-			expTrade.BaseAssetIssuer, expTrade.CounterAssetIssuer = expTrade.CounterAssetIssuer, expTrade.BaseAssetIssuer
-			expTrade.BaseAmount, expTrade.CounterAmount = expTrade.CounterAmount, expTrade.BaseAmount
-			expTrade.PriceN, expTrade.PriceD = expTrade.PriceD, expTrade.PriceN
-
-			expTrade.BaseIsSeller = trade.BaseIsSeller
-		}
-
-		if !reflect.DeepEqual(expTrade, trade) {
-			return false, nil
-		}
-	}
-
-	return true, nil
+	CreateAssets(assets []xdr.Asset) (map[string]Asset, error)
 }

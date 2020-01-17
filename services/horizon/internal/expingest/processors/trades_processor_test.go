@@ -533,7 +533,7 @@ func (s *TradeProcessorTestSuiteLedger) TestIngestTradesSucceeds() {
 	ledger := xdr.LedgerHeaderHistoryEntry{Header: xdr.LedgerHeader{LedgerSeq: 100}}
 	inserts := s.mockReadTradeTransactions(ledger)
 
-	s.mockQ.On("CreateExpAccounts", mock.AnythingOfType("[]string")).
+	s.mockQ.On("CreateAccounts", mock.AnythingOfType("[]string")).
 		Run(func(args mock.Arguments) {
 			arg := args.Get(0).([]string)
 			s.Assert().ElementsMatch(
@@ -542,7 +542,7 @@ func (s *TradeProcessorTestSuiteLedger) TestIngestTradesSucceeds() {
 			)
 		}).Return(s.accountToID, nil).Once()
 
-	s.mockQ.On("CreateExpAssets", mock.AnythingOfType("[]xdr.Asset")).
+	s.mockQ.On("CreateAssets", mock.AnythingOfType("[]xdr.Asset")).
 		Run(func(args mock.Arguments) {
 			arg := args.Get(0).([]xdr.Asset)
 			s.Assert().ElementsMatch(
@@ -558,8 +558,6 @@ func (s *TradeProcessorTestSuiteLedger) TestIngestTradesSucceeds() {
 	}
 
 	s.mockBatchInsertBuilder.On("Exec").Return(nil).Once()
-	s.mockQ.On("CheckExpTrades", int32(ledger.Header.LedgerSeq)-10).
-		Return(true, nil).Once()
 
 	err := s.processor.ProcessLedger(
 		s.context,
@@ -571,11 +569,11 @@ func (s *TradeProcessorTestSuiteLedger) TestIngestTradesSucceeds() {
 	s.Assert().NoError(err)
 }
 
-func (s *TradeProcessorTestSuiteLedger) TestCreateExpAccountsError() {
+func (s *TradeProcessorTestSuiteLedger) TestCreateAccountsError() {
 	ledger := xdr.LedgerHeaderHistoryEntry{Header: xdr.LedgerHeader{LedgerSeq: 100}}
 	s.mockReadTradeTransactions(ledger)
 
-	s.mockQ.On("CreateExpAccounts", mock.AnythingOfType("[]string")).
+	s.mockQ.On("CreateAccounts", mock.AnythingOfType("[]string")).
 		Run(func(args mock.Arguments) {
 			arg := args.Get(0).([]string)
 			s.Assert().ElementsMatch(
@@ -594,11 +592,11 @@ func (s *TradeProcessorTestSuiteLedger) TestCreateExpAccountsError() {
 	s.Assert().EqualError(err, "Error creating account ids: create accounts error")
 }
 
-func (s *TradeProcessorTestSuiteLedger) TestCreateExpAssetsError() {
+func (s *TradeProcessorTestSuiteLedger) TestCreateAssetsError() {
 	ledger := xdr.LedgerHeaderHistoryEntry{Header: xdr.LedgerHeader{LedgerSeq: 100}}
 	s.mockReadTradeTransactions(ledger)
 
-	s.mockQ.On("CreateExpAccounts", mock.AnythingOfType("[]string")).
+	s.mockQ.On("CreateAccounts", mock.AnythingOfType("[]string")).
 		Run(func(args mock.Arguments) {
 			arg := args.Get(0).([]string)
 			s.Assert().ElementsMatch(
@@ -607,7 +605,7 @@ func (s *TradeProcessorTestSuiteLedger) TestCreateExpAssetsError() {
 			)
 		}).Return(s.accountToID, nil).Once()
 
-	s.mockQ.On("CreateExpAssets", mock.AnythingOfType("[]xdr.Asset")).
+	s.mockQ.On("CreateAssets", mock.AnythingOfType("[]xdr.Asset")).
 		Run(func(args mock.Arguments) {
 			arg := args.Get(0).([]xdr.Asset)
 			s.Assert().ElementsMatch(
@@ -630,7 +628,7 @@ func (s *TradeProcessorTestSuiteLedger) TestBatchAddError() {
 	ledger := xdr.LedgerHeaderHistoryEntry{Header: xdr.LedgerHeader{LedgerSeq: 100}}
 	s.mockReadTradeTransactions(ledger)
 
-	s.mockQ.On("CreateExpAccounts", mock.AnythingOfType("[]string")).
+	s.mockQ.On("CreateAccounts", mock.AnythingOfType("[]string")).
 		Run(func(args mock.Arguments) {
 			arg := args.Get(0).([]string)
 			s.Assert().ElementsMatch(
@@ -639,7 +637,7 @@ func (s *TradeProcessorTestSuiteLedger) TestBatchAddError() {
 			)
 		}).Return(s.accountToID, nil).Once()
 
-	s.mockQ.On("CreateExpAssets", mock.AnythingOfType("[]xdr.Asset")).
+	s.mockQ.On("CreateAssets", mock.AnythingOfType("[]xdr.Asset")).
 		Run(func(args mock.Arguments) {
 			arg := args.Get(0).([]xdr.Asset)
 			s.Assert().ElementsMatch(
@@ -665,7 +663,7 @@ func (s *TradeProcessorTestSuiteLedger) TestBatchExecError() {
 	ledger := xdr.LedgerHeaderHistoryEntry{Header: xdr.LedgerHeader{LedgerSeq: 100}}
 	insert := s.mockReadTradeTransactions(ledger)
 
-	s.mockQ.On("CreateExpAccounts", mock.AnythingOfType("[]string")).
+	s.mockQ.On("CreateAccounts", mock.AnythingOfType("[]string")).
 		Run(func(args mock.Arguments) {
 			arg := args.Get(0).([]string)
 			s.Assert().ElementsMatch(
@@ -674,7 +672,7 @@ func (s *TradeProcessorTestSuiteLedger) TestBatchExecError() {
 			)
 		}).Return(s.accountToID, nil).Once()
 
-	s.mockQ.On("CreateExpAssets", mock.AnythingOfType("[]xdr.Asset")).
+	s.mockQ.On("CreateAssets", mock.AnythingOfType("[]xdr.Asset")).
 		Run(func(args mock.Arguments) {
 			arg := args.Get(0).([]xdr.Asset)
 			s.Assert().ElementsMatch(
@@ -701,7 +699,7 @@ func (s *TradeProcessorTestSuiteLedger) TestIgnoreCheckIfSmallLedger() {
 	ledger := xdr.LedgerHeaderHistoryEntry{Header: xdr.LedgerHeader{LedgerSeq: 10}}
 	insert := s.mockReadTradeTransactions(ledger)
 
-	s.mockQ.On("CreateExpAccounts", mock.AnythingOfType("[]string")).
+	s.mockQ.On("CreateAccounts", mock.AnythingOfType("[]string")).
 		Run(func(args mock.Arguments) {
 			arg := args.Get(0).([]string)
 			s.Assert().ElementsMatch(
@@ -710,7 +708,7 @@ func (s *TradeProcessorTestSuiteLedger) TestIgnoreCheckIfSmallLedger() {
 			)
 		}).Return(s.accountToID, nil).Once()
 
-	s.mockQ.On("CreateExpAssets", mock.AnythingOfType("[]xdr.Asset")).
+	s.mockQ.On("CreateAssets", mock.AnythingOfType("[]xdr.Asset")).
 		Run(func(args mock.Arguments) {
 			arg := args.Get(0).([]xdr.Asset)
 			s.Assert().ElementsMatch(

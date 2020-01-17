@@ -82,6 +82,23 @@ func Test_ingestOperationEffects(t *testing.T) {
 	err = effects[1].UnmarshalDetails(&ad)
 	tt.Require.NoError(err)
 	tt.Assert.Equal("100.0000000", ad.Amount)
+
+	err = q.Effects().ForOperation(137438961665).Page(pq).Select(&effects)
+	tt.Require.NoError(err)
+
+	// ensure signer updates are stored ordered by detail's public_key
+	if tt.Assert.Len(effects, 2) {
+		tt.Assert.Equal(history.EffectSignerRemoved, effects[0].Type)
+		tt.Assert.Equal(
+			"{\"public_key\": \"GB6J3WOLKYQE6KVDZEA4JDMFTTONUYP3PUHNDNZRWIKA6JQWIMJZATFE\"}",
+			effects[0].DetailsString.String,
+		)
+		tt.Assert.Equal(history.EffectSignerUpdated, effects[1].Type)
+		tt.Assert.Equal(
+			"{\"weight\": 2, \"public_key\": \"GCIFFRQKHMH6JD7CK5OI4XVCYCMNRNF6PYA7JTCR3FPHPJZQTYYFB5ES\"}",
+			effects[1].DetailsString.String,
+		)
+	}
 }
 
 func Test_ingestBumpSeq(t *testing.T) {
