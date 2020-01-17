@@ -194,7 +194,7 @@ func (p *DatabaseProcessor) ProcessLedger(ctx context.Context, store *pipeline.S
 	// Exit early if not ingesting state (history catchup). The filtering in parent
 	// processor should do it, unfortunately it won't work in case of meta upgrades.
 	// Should be fixed after ingest refactoring.
-	if v := ctx.Value(IngestUpdateState); !(v != nil && v.(bool) == true) {
+	if v := ctx.Value(IngestUpdateState); !(v != nil && v.(bool)) {
 		return nil
 	}
 
