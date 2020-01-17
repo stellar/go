@@ -616,7 +616,8 @@ func (q *Q) ElderLedger(dest interface{}) error {
 	return q.GetRaw(dest, `SELECT COALESCE(MIN(sequence), 0) FROM history_ledgers`)
 }
 
-// GetLatestLedger loads the latest known ledger
+// GetLatestLedger loads the latest known ledger. Returns 0 if no ledgers in
+// `history_ledgers` table.
 func (q *Q) GetLatestLedger() (uint32, error) {
 	var value uint32
 	err := q.LatestLedger(&value)
