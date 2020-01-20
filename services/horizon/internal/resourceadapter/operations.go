@@ -45,12 +45,22 @@ func NewOperation(
 	case xdr.OperationTypeManageBuyOffer:
 		e := operations.ManageBuyOffer{}
 		e.Offer.Base = base
-		err = operationRow.UnmarshalDetails(&e)
+		err = operationRow.UnmarshalDetails(&e.Offer)
+		if err == nil {
+			hmo := history.ManageOffer{}
+			err = operationRow.UnmarshalDetails(&hmo)
+			e.OfferID = hmo.OfferID
+		}
 		result = e
 	case xdr.OperationTypeManageSellOffer:
 		e := operations.ManageSellOffer{}
 		e.Offer.Base = base
-		err = operationRow.UnmarshalDetails(&e)
+		err = operationRow.UnmarshalDetails(&e.Offer)
+		if err == nil {
+			hmo := history.ManageOffer{}
+			err = operationRow.UnmarshalDetails(&hmo)
+			e.OfferID = hmo.OfferID
+		}
 		result = e
 	case xdr.OperationTypeCreatePassiveSellOffer:
 		e := operations.CreatePassiveSellOffer{}

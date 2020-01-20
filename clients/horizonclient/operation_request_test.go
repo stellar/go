@@ -187,12 +187,8 @@ func TestManageSellManageBuyOfferOfferID(t *testing.T) {
 		payload string
 	}{
 		{
-			desc:    "offer_id as a number",
-			payload: numberManageSellBuyOfferOperations,
-		},
-		{
 			desc:    "offer_id as a string",
-			payload: stringManageSellBuyOfferOperations,
+			payload: manageSellBuyOfferOperationsPage,
 		},
 	}
 	for _, tc := range testCases {
@@ -411,7 +407,7 @@ var numberManageSellBuyOfferOperations = `{
 	}
   }`
 
-var stringManageSellBuyOfferOperations = `{
+var manageSellBuyOfferOperationsPage = `{
 	"_links": {
 	  "self": {
 		"href": "https://horizon-testnet.stellar.org/operations?cursor=661424967682&limit=2&order=asc"
