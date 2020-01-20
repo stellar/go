@@ -172,6 +172,8 @@ func (s *AccountsProcessorTestSuiteLedger) TestNoIngestUpdateState() {
 	s.mockLedgerReader = &io.MockLedgerReader{}
 	s.mockLedgerWriter = &io.MockLedgerWriter{}
 
+	s.mockLedgerReader.On("IgnoreUpgradeChanges").Once()
+
 	s.mockLedgerReader.
 		On("Close").
 		Return(nil).Once()

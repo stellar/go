@@ -37,7 +37,7 @@ func (s *LiveSession) Run() error {
 // RunFromCheckpoint runs the session starting from the provided checkpoint ledger.
 // Returns nil when session has been shutdown.
 func (s *LiveSession) RunFromCheckpoint(checkpointLedger uint32) error {
-	s.standardSession.shutdown = make(chan bool)
+	s.standardSession.Init()
 
 	err := s.validate()
 	if err != nil {
@@ -123,7 +123,7 @@ func (s *LiveSession) updateCursor(ledgerSequence uint32) error {
 // You should always check if the second returned value is equal `false` before
 // overwriting your local variable.
 func (s *LiveSession) Resume(ledgerSequence uint32) error {
-	s.standardSession.shutdown = make(chan bool)
+	s.standardSession.Init()
 
 	err := s.validate()
 	if err != nil {

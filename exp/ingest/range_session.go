@@ -17,7 +17,8 @@ var _ Session = &RangeSession{}
 // Run runs the session starting from the last checkpoint ledger.
 // Returns nil when session has been shutdown.
 func (s *RangeSession) Run() error {
-	s.standardSession.shutdown = make(chan bool)
+	s.standardSession.Init()
+	s.latestSuccessfullyProcessedLedger = 0
 
 	err := s.validate()
 	if err != nil {
@@ -74,7 +75,8 @@ func (s *RangeSession) GetArchive() historyarchive.ArchiveInterface {
 // You should always check if the second returned value is equal `false` before
 // overwriting your local variable.
 func (s *RangeSession) Resume(ledgerSequence uint32) error {
-	s.standardSession.shutdown = make(chan bool)
+	s.standardSession.Init()
+	s.latestSuccessfullyProcessedLedger = 0
 
 	err := s.validate()
 	if err != nil {

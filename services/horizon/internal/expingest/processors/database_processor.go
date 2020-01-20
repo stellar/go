@@ -195,6 +195,7 @@ func (p *DatabaseProcessor) ProcessLedger(ctx context.Context, store *pipeline.S
 	// processor should do it, unfortunately it won't work in case of meta upgrades.
 	// Should be fixed after ingest refactoring.
 	if v := ctx.Value(IngestUpdateState); !(v != nil && v.(bool)) {
+		r.IgnoreUpgradeChanges()
 		return nil
 	}
 

@@ -586,17 +586,31 @@ func (s *System) resume() (state, error) {
 }
 
 func (s *System) catchupHistory() (state, error) {
-	s.rangeSession.FromLedger = s.state.rangeFromLedger
+	statePipeline := s.rangeSession.StatePipeline
+	s.rangeSession.StatePipeline = nil
+	// -1 here because RangeSession is ingesting state at FromLedger and then
+	// continues with ingestion from FromLedger + 1
+	s.rangeSession.FromLedger = s.state.rangeFromLedger - 1
 	s.rangeSession.ToLedger = s.state.rangeToLedger
 	// Temporarily disable disableStateVerification
 	s.disableStateVerification = true
 	defer func() {
-		// Revert previous value
+		// Revert previous values
+		s.rangeSession.StatePipeline = statePipeline
 		s.disableStateVerification = s.config.DisableStateVerification
 	}()
 
 	err := s.rangeSession.Run()
-	return state{systemState: initState}, err
+	if err != nil {
+		return state{systemState: initState}, err
+	}
+
+	err = s.historyQ.Commit()
+	if err != nil {
+		return state{systemState: initState}, err
+	}
+
+	return state{systemState: initState}, nil
 }
 
 func (s *System) waitForCheckpoint() (state, error) {

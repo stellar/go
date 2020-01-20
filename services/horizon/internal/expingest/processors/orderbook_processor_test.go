@@ -115,6 +115,8 @@ func TestProcessOrderBookLedgerNoIngestUpdateState(t *testing.T) {
 	graph := orderbook.NewOrderBookGraph()
 	processor := OrderbookProcessor{graph}
 
+	reader.On("IgnoreUpgradeChanges").Once()
+
 	reader.On("Close").Return(nil).Once()
 	writer.On("Close").Return(nil).Once()
 	if err := processor.ProcessLedger(context.Background(), nil, reader, writer); err != nil {

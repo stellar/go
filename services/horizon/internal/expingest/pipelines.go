@@ -135,6 +135,9 @@ func buildLedgerPipeline(
 						}),
 					),
 					pipeline.LedgerNode(&horizonProcessors.TransactionFilterProcessor{IngestFailedTransactions: ingestFailedTransactions}).Pipe(
+						pipeline.LedgerNode(&horizonProcessors.LedgersProcessor{
+							LedgersQ: historyQ,
+						}),
 						pipeline.LedgerNode(&horizonProcessors.TransactionProcessor{
 							TransactionsQ: historyQ,
 						}),
@@ -178,6 +181,16 @@ func preProcessingHook(
 		}
 	}()
 
+	// When doing catchupHistoryState we just set context and exit. This is to
+	// run history catchup in a single transaction.
+	if system.state.systemState == catchupHistoryState {
+		ctx = context.WithValue(ctx, horizonProcessors.IngestUpdateDatabase, true)
+		return ctx, nil
+	}
+
+	// Otherwise ingest state too.
+	ctx = context.WithValue(ctx, horizonProcessors.IngestUpdateState, true)
+
 	// Start a transaction only if not in a transaction already.
 	// The only case this can happen is during the first run when
 	// a transaction is started to get the latest ledger `FOR UPDATE`
@@ -217,11 +230,6 @@ func preProcessingHook(
 		}
 	}
 
-	// Update context so pipeline skip state processors when doing history catchup.
-	if system.state.systemState != catchupHistoryState {
-		ctx = context.WithValue(ctx, horizonProcessors.IngestUpdateState, true)
-	}
-
 	// If we are not going to update a DB release a lock by rolling back a
 	// transaction.
 	if !updateDatabase {
@@ -245,6 +253,16 @@ func postProcessingHook(
 	graph *orderbook.OrderBookGraph,
 	historyQ dbQ,
 ) error {
+	// When doing catchupHistoryState we just exit. Tx will be commited when
+	// all ledgers are ingested.
+	if system.state.systemState == catchupHistoryState {
+		if err == supportPipeline.ErrShutdown {
+			return nil
+		}
+
+		return err
+	}
+
 	defer historyQ.Rollback()
 	defer graph.Discard()
 	isMaster := false
@@ -280,25 +298,22 @@ func postProcessingHook(
 		// This is "just in case" if lastIngestedLedger is not selected
 		// `FOR UPDATE` due to a bug or accident. In such case we error and
 		// rollback.
-		// We skip key_value-store updates during history catchup.
-		if system.state.systemState != catchupHistoryState {
-			var lastIngestedLedger uint32
-			lastIngestedLedger, err = historyQ.GetLastLedgerExpIngest()
-			if err != nil {
-				return errors.Wrap(err, "Error getting last ledger")
-			}
+		var lastIngestedLedger uint32
+		lastIngestedLedger, err = historyQ.GetLastLedgerExpIngest()
+		if err != nil {
+			return errors.Wrap(err, "Error getting last ledger")
+		}
 
-			if lastIngestedLedger != 0 && lastIngestedLedger+1 != ledgerSeq {
-				return errors.New("The local latest sequence is not equal to global sequence + 1")
-			}
+		if lastIngestedLedger != 0 && lastIngestedLedger+1 != ledgerSeq {
+			return errors.New("The local latest sequence is not equal to global sequence + 1")
+		}
 
-			if err = historyQ.UpdateLastLedgerExpIngest(ledgerSeq); err != nil {
-				return errors.Wrap(err, "Error updating last ingested ledger")
-			}
+		if err = historyQ.UpdateLastLedgerExpIngest(ledgerSeq); err != nil {
+			return errors.Wrap(err, "Error updating last ingested ledger")
+		}
 
-			if err = historyQ.UpdateExpIngestVersion(CurrentVersion); err != nil {
-				return errors.Wrap(err, "Error updating expingest version")
-			}
+		if err = historyQ.UpdateExpIngestVersion(CurrentVersion); err != nil {
+			return errors.Wrap(err, "Error updating expingest version")
 		}
 
 		if err = historyQ.Commit(); err != nil {

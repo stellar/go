@@ -123,21 +123,18 @@ func (s *PreProcessingHookTestSuite) TestLedgerHookSucceedsAsMaster() {
 
 	newCtx, err := preProcessingHook(s.ctx, ledgerPipeline, s.system, s.historyQ)
 	s.Assert().NoError(err)
-	s.Assert().NotNil(newCtx.Value(horizonProcessors.IngestUpdateDatabase))
-	s.Assert().NotNil(newCtx.Value(horizonProcessors.IngestUpdateState))
+	s.Assert().True(newCtx.Value(horizonProcessors.IngestUpdateDatabase).(bool))
+	s.Assert().True(newCtx.Value(horizonProcessors.IngestUpdateState).(bool))
 	s.Assert().True(s.system.StateReady())
 }
 
 func (s *PreProcessingHookTestSuite) TestLedgerHookSucceedsAsMasterHistoryCatchup() {
 	s.system.state = state{systemState: catchupHistoryState}
-	s.historyQ.On("GetTx").Return(&sqlx.Tx{}).Once()
-	s.historyQ.On("GetLastLedgerExpIngest").Return(s.ledgerSeqFromContext-1, nil).Once()
 
 	newCtx, err := preProcessingHook(s.ctx, ledgerPipeline, s.system, s.historyQ)
 	s.Assert().NoError(err)
 	s.Assert().NotNil(newCtx.Value(horizonProcessors.IngestUpdateDatabase))
 	s.Assert().Nil(newCtx.Value(horizonProcessors.IngestUpdateState))
-	s.Assert().True(s.system.StateReady())
 }
 
 func (s *PreProcessingHookTestSuite) TestLedgerHookRollsbackOnGetLastLedgerExpIngestError() {

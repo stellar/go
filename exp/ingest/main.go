@@ -14,8 +14,10 @@ import (
 
 // standardSession contains common methods used by all sessions.
 type standardSession struct {
-	shutdown chan bool
-	rwLock   sync.RWMutex
+	rwLock sync.RWMutex
+
+	shutdownMutex sync.Mutex
+	shutdown      chan bool
 
 	runningMutex sync.Mutex
 	running      bool
