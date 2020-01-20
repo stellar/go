@@ -465,12 +465,6 @@ func (a *App) init() {
 	requiresExperimentalIngestion := &ExperimentalIngestionMiddleware{
 		EnableExperimentalIngestion: a.config.EnableExperimentalIngestion,
 		HorizonSession:              a.historyQ.Session,
-		StateReady: func() bool {
-			if !a.config.EnableExperimentalIngestion {
-				return false
-			}
-			return a.expingester.StateReady()
-		},
 	}
 	// web.actions
 	a.web.mustInstallActions(a.config, a.paths, orderBookGraph, requiresExperimentalIngestion)

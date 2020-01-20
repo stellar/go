@@ -54,7 +54,6 @@ func (s *PreProcessingHookTestSuite) TestStateHookSucceedsWithPreExistingTx() {
 	newCtx, err := preProcessingHook(s.ctx, statePipeline, s.system, s.historyQ)
 	s.Assert().NoError(err)
 	s.Assert().Nil(newCtx.Value(horizonProcessors.IngestUpdateDatabase))
-	s.Assert().False(s.system.StateReady())
 }
 
 func (s *PreProcessingHookTestSuite) TestStateHookSucceedsWithoutPreExistingTx() {
@@ -66,7 +65,6 @@ func (s *PreProcessingHookTestSuite) TestStateHookSucceedsWithoutPreExistingTx()
 	newCtx, err := preProcessingHook(s.ctx, statePipeline, s.system, s.historyQ)
 	s.Assert().NoError(err)
 	s.Assert().Nil(newCtx.Value(horizonProcessors.IngestUpdateDatabase))
-	s.Assert().False(s.system.StateReady())
 }
 
 func (s *PreProcessingHookTestSuite) TestStateHookRollsbackOnGetLastLedgerExpIngestError() {
@@ -76,7 +74,6 @@ func (s *PreProcessingHookTestSuite) TestStateHookRollsbackOnGetLastLedgerExpIng
 
 	newCtx, err := preProcessingHook(s.ctx, statePipeline, s.system, s.historyQ)
 	s.Assert().Nil(newCtx.Value(horizonProcessors.IngestUpdateDatabase))
-	s.Assert().False(s.system.StateReady())
 	s.Assert().EqualError(err, "Error getting last ledger: transient error")
 }
 
@@ -88,7 +85,6 @@ func (s *PreProcessingHookTestSuite) TestStateHookRollsbackOnBeginError() {
 
 	newCtx, err := preProcessingHook(s.ctx, statePipeline, s.system, s.historyQ)
 	s.Assert().Nil(newCtx.Value(horizonProcessors.IngestUpdateDatabase))
-	s.Assert().False(s.system.StateReady())
 	s.Assert().EqualError(err, "Error starting a transaction: transient error")
 }
 
@@ -100,7 +96,6 @@ func (s *PreProcessingHookTestSuite) TestLedgerHookSucceedsWithPreExistingTx() {
 	newCtx, err := preProcessingHook(s.ctx, ledgerPipeline, s.system, s.historyQ)
 	s.Assert().NoError(err)
 	s.Assert().Nil(newCtx.Value(horizonProcessors.IngestUpdateDatabase))
-	s.Assert().True(s.system.StateReady())
 }
 
 func (s *PreProcessingHookTestSuite) TestLedgerHookSucceedsWithoutPreExistingTx() {
@@ -114,7 +109,6 @@ func (s *PreProcessingHookTestSuite) TestLedgerHookSucceedsWithoutPreExistingTx(
 	s.Assert().NoError(err)
 	s.Assert().Nil(newCtx.Value(horizonProcessors.IngestUpdateDatabase))
 	s.Assert().NotNil(newCtx.Value(horizonProcessors.IngestUpdateState))
-	s.Assert().True(s.system.StateReady())
 }
 
 func (s *PreProcessingHookTestSuite) TestLedgerHookSucceedsAsMaster() {
@@ -125,7 +119,6 @@ func (s *PreProcessingHookTestSuite) TestLedgerHookSucceedsAsMaster() {
 	s.Assert().NoError(err)
 	s.Assert().True(newCtx.Value(horizonProcessors.IngestUpdateDatabase).(bool))
 	s.Assert().True(newCtx.Value(horizonProcessors.IngestUpdateState).(bool))
-	s.Assert().True(s.system.StateReady())
 }
 
 func (s *PreProcessingHookTestSuite) TestLedgerHookSucceedsAsMasterHistoryCatchup() {
@@ -144,7 +137,6 @@ func (s *PreProcessingHookTestSuite) TestLedgerHookRollsbackOnGetLastLedgerExpIn
 
 	newCtx, err := preProcessingHook(s.ctx, ledgerPipeline, s.system, s.historyQ)
 	s.Assert().Nil(newCtx.Value(horizonProcessors.IngestUpdateDatabase))
-	s.Assert().False(s.system.StateReady())
 	s.Assert().EqualError(err, "Error getting last ledger: transient error")
 }
 
@@ -156,7 +148,6 @@ func (s *PreProcessingHookTestSuite) TestLedgerHookRollsbackOnBeginError() {
 
 	newCtx, err := preProcessingHook(s.ctx, ledgerPipeline, s.system, s.historyQ)
 	s.Assert().Nil(newCtx.Value(horizonProcessors.IngestUpdateDatabase))
-	s.Assert().False(s.system.StateReady())
 	s.Assert().EqualError(err, "Error starting a transaction: transient error")
 }
 

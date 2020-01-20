@@ -216,18 +216,12 @@ func preProcessingHook(
 		// State pipeline is always fully run because loading offers
 		// from a database is done outside the pipeline.
 		updateDatabase = true
-	} else {
-		// mark the system as ready because we have progressed to running
-		// the ledger pipeline
-		system.setStateReady()
-
-		if lastIngestedLedger+1 == ledgerSeq {
-			// lastIngestedLedger+1 == ledgerSeq what means that this instance
-			// is the main ingesting instance in this round and should update a
-			// database.
-			updateDatabase = true
-			ctx = context.WithValue(ctx, horizonProcessors.IngestUpdateDatabase, true)
-		}
+	} else if lastIngestedLedger+1 == ledgerSeq {
+		// lastIngestedLedger+1 == ledgerSeq what means that this instance
+		// is the main ingesting instance in this round and should update a
+		// database.
+		updateDatabase = true
+		ctx = context.WithValue(ctx, horizonProcessors.IngestUpdateDatabase, true)
 	}
 
 	// If we are not going to update a DB release a lock by rolling back a

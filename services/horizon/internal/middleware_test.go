@@ -9,9 +9,11 @@ import (
 	"github.com/stellar/go/services/horizon/internal/actions"
 	horizonContext "github.com/stellar/go/services/horizon/internal/context"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
+	"github.com/stellar/go/services/horizon/internal/expingest"
 	hProblem "github.com/stellar/go/services/horizon/internal/render/problem"
 	"github.com/stellar/go/services/horizon/internal/test"
 	"github.com/stellar/go/support/db"
+	"github.com/stellar/go/xdr"
 	"github.com/stellar/throttled"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
@@ -155,12 +157,14 @@ func TestRequiresExperimentalIngestion(t *testing.T) {
 	defer tt.Finish()
 	test.ResetHorizonDB(t, tt.HorizonDB)
 
+	q := &history.Q{tt.HorizonSession()}
+
 	request, err := http.NewRequest("GET", "http://localhost", nil)
 	if err != nil {
 		tt.Assert.NoError(err)
 	}
-	expectTransaction := true
 
+	expectTransaction := true
 	endpoint := func(w http.ResponseWriter, r *http.Request) {
 		session := r.Context().Value(&horizonContext.SessionContextKey).(*db.Session)
 		if (session.GetTx() == nil) == expectTransaction {
@@ -168,47 +172,145 @@ func TestRequiresExperimentalIngestion(t *testing.T) {
 		}
 		w.WriteHeader(http.StatusOK)
 	}
-	ready := false
+
 	requiresExperimentalIngestion := &ExperimentalIngestionMiddleware{
 		EnableExperimentalIngestion: false,
 		HorizonSession:              tt.HorizonSession(),
-		StateReady: func() bool {
-			return ready
-		},
 	}
 	handler := requiresExperimentalIngestion.Wrap(http.HandlerFunc(endpoint))
-	q := &history.Q{tt.HorizonSession()}
 
-	// requiresExperimentalIngestion responds with 404 if experimental ingestion is not enabled
-	w := httptest.NewRecorder()
-	handler.ServeHTTP(w, request)
-	tt.Assert.Equal(http.StatusNotFound, w.Code)
+	for i, testCase := range []struct {
+		name                        string
+		enableExperimentalIngestion bool
+		stateInvalid                bool
+		latestHistoryLedger         xdr.Uint32
+		lastIngestedLedger          uint32
+		ingestionVersion            int
+		sseRequest                  bool
+		expectedStatus              int
+		expectTransaction           bool
+	}{
+		{
+			name:                        "responds with 404 if experimental ingestion is not enabled",
+			enableExperimentalIngestion: false,
+			stateInvalid:                false,
+			latestHistoryLedger:         1,
+			lastIngestedLedger:          1,
+			ingestionVersion:            expingest.CurrentVersion,
+			sseRequest:                  false,
+			expectedStatus:              http.StatusNotFound,
+			expectTransaction:           false,
+		},
+		{
+			name:                        "responds with 500 if q.GetExpStateInvalid returns true",
+			enableExperimentalIngestion: true,
+			stateInvalid:                true,
+			latestHistoryLedger:         2,
+			lastIngestedLedger:          2,
+			ingestionVersion:            expingest.CurrentVersion,
+			sseRequest:                  false,
+			expectedStatus:              http.StatusInternalServerError,
+			expectTransaction:           false,
+		},
+		{
+			name:                        "responds with still ingesting if lastIngestedLedger <= 0",
+			enableExperimentalIngestion: true,
+			stateInvalid:                false,
+			latestHistoryLedger:         0,
+			lastIngestedLedger:          0,
+			ingestionVersion:            expingest.CurrentVersion,
+			sseRequest:                  false,
+			expectedStatus:              hProblem.StillIngesting.Status,
+			expectTransaction:           false,
+		},
+		{
+			name:                        "responds with still ingesting if lastIngestedLedger < latestHistoryLedger",
+			enableExperimentalIngestion: true,
+			stateInvalid:                false,
+			latestHistoryLedger:         3,
+			lastIngestedLedger:          2,
+			ingestionVersion:            expingest.CurrentVersion,
+			sseRequest:                  false,
+			expectedStatus:              hProblem.StillIngesting.Status,
+			expectTransaction:           false,
+		},
+		{
+			name:                        "responds with still ingesting if lastIngestedLedger > latestHistoryLedger",
+			enableExperimentalIngestion: true,
+			stateInvalid:                false,
+			latestHistoryLedger:         4,
+			lastIngestedLedger:          5,
+			ingestionVersion:            expingest.CurrentVersion,
+			sseRequest:                  false,
+			expectedStatus:              hProblem.StillIngesting.Status,
+			expectTransaction:           false,
+		},
+		{
+			name:                        "responds with still ingesting if version != expingest.CurrentVersion",
+			enableExperimentalIngestion: true,
+			stateInvalid:                false,
+			latestHistoryLedger:         5,
+			lastIngestedLedger:          5,
+			ingestionVersion:            expingest.CurrentVersion - 1,
+			sseRequest:                  false,
+			expectedStatus:              hProblem.StillIngesting.Status,
+			expectTransaction:           false,
+		},
+		{
+			name:                        "succeeds",
+			enableExperimentalIngestion: true,
+			stateInvalid:                false,
+			latestHistoryLedger:         6,
+			lastIngestedLedger:          6,
+			ingestionVersion:            expingest.CurrentVersion,
+			sseRequest:                  false,
+			expectedStatus:              http.StatusOK,
+			expectTransaction:           true,
+		},
+		{
+			name:                        "succeeds with SSE request",
+			enableExperimentalIngestion: true,
+			stateInvalid:                false,
+			latestHistoryLedger:         7,
+			lastIngestedLedger:          7,
+			ingestionVersion:            expingest.CurrentVersion,
+			sseRequest:                  true,
+			expectedStatus:              http.StatusOK,
+			expectTransaction:           false,
+		},
+	} {
+		t.Run(testCase.name, func(t *testing.T) {
+			requiresExperimentalIngestion.EnableExperimentalIngestion = testCase.enableExperimentalIngestion
 
-	requiresExperimentalIngestion.EnableExperimentalIngestion = true
-	// requiresExperimentalIngestion responds with hProblem.StillIngesting
-	// if Ready() is false
-	w = httptest.NewRecorder()
-	handler.ServeHTTP(w, request)
-	tt.Assert.Equal(hProblem.StillIngesting.Status, w.Code)
+			tt.Assert.NoError(q.UpdateExpStateInvalid(testCase.stateInvalid))
+			_, err = q.InsertLedger(xdr.LedgerHeaderHistoryEntry{
+				Hash: xdr.Hash{byte(i)},
+				Header: xdr.LedgerHeader{
+					LedgerSeq:          testCase.latestHistoryLedger,
+					PreviousLedgerHash: xdr.Hash{byte(i)},
+				},
+			}, 0, 0, 0, 0)
+			tt.Assert.NoError(err)
+			tt.Assert.NoError(q.UpdateLastLedgerExpIngest(testCase.lastIngestedLedger))
+			tt.Assert.NoError(q.UpdateExpIngestVersion(testCase.ingestionVersion))
 
-	ready = true
-	tt.Assert.NoError(q.UpdateExpStateInvalid(true))
-	// requiresExperimentalIngestion responds with 500 if q.GetExpStateInvalid returns true
-	w = httptest.NewRecorder()
-	handler.ServeHTTP(w, request)
-	tt.Assert.Equal(http.StatusInternalServerError, w.Code)
+			if testCase.sseRequest {
+				request.Header.Set("Accept", "text/event-stream")
+			} else {
+				request.Header.Del("Accept")
+			}
 
-	tt.Assert.NoError(q.UpdateLastLedgerExpIngest(3))
-	tt.Assert.NoError(q.UpdateExpStateInvalid(false))
-	w = httptest.NewRecorder()
-	handler.ServeHTTP(w, request)
-	tt.Assert.Equal(http.StatusOK, w.Code)
-	tt.Assert.Equal(w.Header().Get(actions.LastLedgerHeaderName), "3")
-
-	request.Header.Set("Accept", "text/event-stream")
-	expectTransaction = false
-	w = httptest.NewRecorder()
-	handler.ServeHTTP(w, request)
-	tt.Assert.Equal(http.StatusOK, w.Code)
-	tt.Assert.Equal(w.Header().Get(actions.LastLedgerHeaderName), "")
+			w := httptest.NewRecorder()
+			expectTransaction = testCase.expectTransaction
+			handler.ServeHTTP(w, request)
+			tt.Assert.Equal(testCase.expectedStatus, w.Code)
+			if testCase.expectedStatus == http.StatusOK && !testCase.sseRequest {
+				tt.Assert.Equal(
+					w.Header().Get(actions.LastLedgerHeaderName),
+					strconv.FormatInt(int64(testCase.lastIngestedLedger), 10))
+			} else {
+				tt.Assert.Equal(w.Header().Get(actions.LastLedgerHeaderName), "")
+			}
+		})
+	}
 }

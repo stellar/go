@@ -133,8 +133,6 @@ type System struct {
 	historySession   dbSession
 	historyAdapter   adapters.HistoryArchiveAdapterInterface
 	graph            *orderbook.OrderBookGraph
-	stateReady       bool
-	stateReadyLock   sync.RWMutex
 	maxStreamRetries int
 	wg               sync.WaitGroup
 	shutdown         chan struct{}
@@ -645,19 +643,6 @@ func (s *System) verifyRange() (state, error) {
 	}
 
 	return state{systemState: shutdownState, returnError: err}, err
-}
-
-// StateReady returns true if the ingestion system has finished running it's state pipelines
-func (s *System) StateReady() bool {
-	s.stateReadyLock.RLock()
-	defer s.stateReadyLock.RUnlock()
-	return s.stateReady
-}
-
-func (s *System) setStateReady() {
-	s.stateReadyLock.Lock()
-	defer s.stateReadyLock.Unlock()
-	s.stateReady = true
 }
 
 func (s *System) incrementStateVerificationErrors() int {
