@@ -1,25 +1,19 @@
 package processors
 
 import (
-	"context"
-	stdio "io"
 	"testing"
 
-	"github.com/stellar/go/exp/ingest/io"
-	supportPipeline "github.com/stellar/go/exp/support/pipeline"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/support/errors"
+	"github.com/stellar/go/xdr"
 	"github.com/stretchr/testify/suite"
 )
 
 type TransactionsProcessorTestSuiteLedger struct {
 	suite.Suite
-	processor              *TransactionProcessor
+	processor              *NewTransactionProcessor
 	mockQ                  *history.MockQTransactions
 	mockBatchInsertBuilder *history.MockTransactionsBatchInsertBuilder
-	mockLedgerReader       *io.MockLedgerReader
-	mockLedgerWriter       *io.MockLedgerWriter
-	context                context.Context
 }
 
 func TestTransactionsProcessorTestSuiteLedger(t *testing.T) {
@@ -29,149 +23,72 @@ func TestTransactionsProcessorTestSuiteLedger(t *testing.T) {
 func (s *TransactionsProcessorTestSuiteLedger) SetupTest() {
 	s.mockQ = &history.MockQTransactions{}
 	s.mockBatchInsertBuilder = &history.MockTransactionsBatchInsertBuilder{}
-	s.mockLedgerReader = &io.MockLedgerReader{}
-	s.mockLedgerWriter = &io.MockLedgerWriter{}
-	s.context = context.WithValue(context.Background(), IngestUpdateDatabase, true)
 
-	s.processor = &TransactionProcessor{
+	s.mockQ.
+		On("NewTransactionBatchInsertBuilder", maxBatchSize).
+		Return(s.mockBatchInsertBuilder).Once()
+
+	s.processor = &NewTransactionProcessor{
 		TransactionsQ: s.mockQ,
 	}
 
-	s.mockLedgerWriter.
-		On("Close").
-		Return(nil).Once()
+	header := xdr.LedgerHeader{
+		LedgerSeq: xdr.Uint32(20),
+	}
+	err := s.processor.Init(header, LedgerChangesMode)
+	s.Assert().NoError(err)
 }
 
 func (s *TransactionsProcessorTestSuiteLedger) TearDownTest() {
 	s.mockQ.AssertExpectations(s.T())
 	s.mockBatchInsertBuilder.AssertExpectations(s.T())
-	s.mockLedgerReader.AssertExpectations(s.T())
-	s.mockLedgerWriter.AssertExpectations(s.T())
-}
-
-func (s *TransactionsProcessorTestSuiteLedger) TestInsertLedgerLedgerIgnoredWhenNotDatabaseIngestion() {
-	s.mockLedgerReader.On("IgnoreUpgradeChanges").Once()
-	s.mockLedgerReader.
-		On("Close").
-		Return(nil).Once()
-
-	err := s.processor.ProcessLedger(
-		context.Background(),
-		&supportPipeline.Store{},
-		s.mockLedgerReader,
-		s.mockLedgerWriter,
-	)
-	s.Assert().NoError(err)
 }
 
 func (s *TransactionsProcessorTestSuiteLedger) TestAddTransactionsSucceeds() {
-	s.mockLedgerReader.On("IgnoreUpgradeChanges").Once()
-
-	s.mockQ.
-		On("NewTransactionBatchInsertBuilder", maxBatchSize).
-		Return(s.mockBatchInsertBuilder).Once()
-
 	sequence := uint32(20)
-	s.mockLedgerReader.On("GetSequence").Return(sequence).Once()
 
 	firstTx := createTransaction(true, 1)
 	secondTx := createTransaction(false, 3)
 	thirdTx := createTransaction(true, 4)
 
-	s.mockLedgerReader.
-		On("Read").
-		Return(firstTx, nil).Once()
-	s.mockLedgerReader.
-		On("Read").
-		Return(secondTx, nil).Once()
-	s.mockLedgerReader.
-		On("Read").
-		Return(thirdTx, nil).Once()
-	s.mockLedgerReader.
-		On("Read").
-		Return(io.LedgerTransaction{}, stdio.EOF).Once()
-
-	s.mockLedgerReader.
-		On("Close").
-		Return(nil).Once()
-
 	s.mockBatchInsertBuilder.On("Add", firstTx, sequence).Return(nil).Once()
 	s.mockBatchInsertBuilder.On("Add", secondTx, sequence).Return(nil).Once()
 	s.mockBatchInsertBuilder.On("Add", thirdTx, sequence).Return(nil).Once()
 	s.mockBatchInsertBuilder.On("Exec").Return(nil).Once()
+	s.Assert().NoError(s.processor.Commit())
 
-	err := s.processor.ProcessLedger(
-		s.context,
-		&supportPipeline.Store{},
-		s.mockLedgerReader,
-		s.mockLedgerWriter,
-	)
+	err := s.processor.ProcessTransaction(firstTx)
+	s.Assert().NoError(err)
+
+	err = s.processor.ProcessTransaction(secondTx)
+	s.Assert().NoError(err)
+
+	err = s.processor.ProcessTransaction(thirdTx)
 	s.Assert().NoError(err)
 }
 
 func (s *TransactionsProcessorTestSuiteLedger) TestAddTransactionsFails() {
-	s.mockLedgerReader.On("IgnoreUpgradeChanges").Once()
-
-	s.mockQ.
-		On("NewTransactionBatchInsertBuilder", maxBatchSize).
-		Return(s.mockBatchInsertBuilder).Once()
-
 	sequence := uint32(20)
-	s.mockLedgerReader.On("GetSequence").Return(sequence).Once()
-
 	firstTx := createTransaction(true, 1)
-	s.mockLedgerReader.
-		On("Read").
-		Return(firstTx, nil).Once()
-
-	s.mockLedgerReader.
-		On("Close").
-		Return(nil).Once()
-
 	s.mockBatchInsertBuilder.On("Add", firstTx, sequence).
 		Return(errors.New("transient error")).Once()
 
-	err := s.processor.ProcessLedger(
-		s.context,
-		&supportPipeline.Store{},
-		s.mockLedgerReader,
-		s.mockLedgerWriter,
-	)
+	err := s.processor.ProcessTransaction(firstTx)
 	s.Assert().Error(err)
-	s.Assert().EqualError(err, "Error batch inserting transaction rows: transient error")
+	s.Assert().EqualError(err, "transient error")
 }
 
 func (s *TransactionsProcessorTestSuiteLedger) TestExecFails() {
-	s.mockLedgerReader.On("IgnoreUpgradeChanges").Once()
-
-	s.mockQ.
-		On("NewTransactionBatchInsertBuilder", maxBatchSize).
-		Return(s.mockBatchInsertBuilder).Once()
-
 	sequence := uint32(20)
-	s.mockLedgerReader.On("GetSequence").Return(sequence).Once()
-
 	firstTx := createTransaction(true, 1)
-	s.mockLedgerReader.
-		On("Read").
-		Return(firstTx, nil).Once()
-	s.mockLedgerReader.
-		On("Read").
-		Return(io.LedgerTransaction{}, stdio.EOF).Once()
-
-	s.mockLedgerReader.
-		On("Close").
-		Return(nil).Once()
 
 	s.mockBatchInsertBuilder.On("Add", firstTx, sequence).Return(nil).Once()
 	s.mockBatchInsertBuilder.On("Exec").Return(errors.New("transient error")).Once()
 
-	err := s.processor.ProcessLedger(
-		s.context,
-		&supportPipeline.Store{},
-		s.mockLedgerReader,
-		s.mockLedgerWriter,
-	)
+	err := s.processor.ProcessTransaction(firstTx)
+	s.Assert().NoError(err)
+
+	err = s.processor.Commit()
 	s.Assert().Error(err)
-	s.Assert().EqualError(err, "Error flushing transaction batch: transient error")
+	s.Assert().EqualError(err, "transient error")
 }
