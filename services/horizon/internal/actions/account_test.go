@@ -155,32 +155,6 @@ var (
 	}
 )
 
-func TestAccountFromCoreDB(t *testing.T) {
-	tt := test.Start(t).Scenario("allow_trust")
-	defer tt.Finish()
-	test.ResetHorizonDB(t, tt.HorizonDB)
-
-	account, err := AccountInfo(
-		tt.Ctx,
-		&core.Q{tt.CoreSession()},
-		&history.Q{tt.HorizonSession()},
-		signer,
-		false,
-	)
-	tt.Assert.NoError(err)
-
-	tt.Assert.Equal("8589934593", account.Sequence)
-	tt.Assert.NotEqual(0, account.LastModifiedLedger)
-
-	for _, balance := range account.Balances {
-		if balance.Type == "native" {
-			tt.Assert.Equal(uint32(0), balance.LastModifiedLedger)
-		} else {
-			tt.Assert.NotEqual(uint32(0), balance.LastModifiedLedger)
-		}
-	}
-}
-
 func TestAccountFromExpIngest(t *testing.T) {
 	tt := test.Start(t).Scenario("allow_trust")
 	defer tt.Finish()
@@ -208,7 +182,6 @@ func TestAccountFromExpIngest(t *testing.T) {
 		&core.Q{tt.CoreSession()},
 		q,
 		accountOne,
-		true,
 	)
 	tt.Assert.NoError(err)
 

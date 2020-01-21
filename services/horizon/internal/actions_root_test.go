@@ -63,7 +63,6 @@ func TestRootActionWithIngestion(t *testing.T) {
 	ht.App.config.StellarCoreURL = server.URL
 	ht.App.config.NetworkPassphrase = "test"
 	ht.App.UpdateStellarCoreInfo()
-	ht.App.config.EnableExperimentalIngestion = true
 
 	w := ht.Get("/")
 
