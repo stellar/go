@@ -92,7 +92,13 @@ func ExampleVerifyChallengeTxThreshold() {
 
 		if clientAccountExists {
 			// Server gets list of signers from account
-			signers := txnbuild.SignersFromHorizon(horizonClientAccount.Signers)
+			signers := make([]txnbuild.Signer, 0, len(horizonClientAccount.Signers))
+			for _, hs := range horizonClientAccount.Signers {
+				signers = append(signers, txnbuild.Signer{
+					Address: hs.Key,
+					Weight:  txnbuild.Threshold(hs.Weight),
+				})
+			}
 
 			// Server chooses the threshold to require: low, med or high
 			threshold := txnbuild.Threshold(horizonClientAccount.Thresholds.MedThreshold)

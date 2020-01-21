@@ -1,7 +1,6 @@
 package txnbuild
 
 import (
-	hProtocol "github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
 )
@@ -31,25 +30,6 @@ type Threshold uint8
 type Signer struct {
 	Address string
 	Weight  Threshold
-}
-
-// SignerFromHorizon converts a signer retrieved from Horizon to a txnbuild
-// Signer.
-func SignerFromHorizon(horizonSigner hProtocol.Signer) Signer {
-	return Signer{
-		Address: horizonSigner.Key,
-		Weight:  Threshold(horizonSigner.Weight),
-	}
-}
-
-// SignersFromHorizon converts a list of signers retrieved from Horizon to
-// txnbuild Signers.
-func SignersFromHorizon(horizonSigners []hProtocol.Signer) []Signer {
-	signers := make([]Signer, 0, len(horizonSigners))
-	for _, hs := range horizonSigners {
-		signers = append(signers, SignerFromHorizon(hs))
-	}
-	return signers
 }
 
 // NewHomeDomain is syntactic sugar that makes instantiating SetOptions more convenient.
