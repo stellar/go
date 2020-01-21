@@ -37,7 +37,7 @@ func (s *SingleLedgerSession) Resume(ledgerSequence uint32) error {
 	panic("Not possible to resume SingleLedgerSession")
 }
 
-func (s *SingleLedgerSession) processState(historyAdapter *adapters.HistoryArchiveAdapter, sequence uint32) error {
+func (s *SingleLedgerSession) processState(historyAdapter adapters.HistoryArchiveAdapterInterface, sequence uint32) error {
 	var tempSet io.TempSet = &io.MemoryTempSet{}
 	if s.TempSet != nil {
 		tempSet = s.TempSet

@@ -52,6 +52,14 @@ func (p *OrderbookProcessor) ProcessLedger(ctx context.Context, store *pipeline.
 	}()
 	defer w.Close()
 
+	// Exit early if not ingesting state (history catchup). The filtering in parent
+	// processor should do it, unfortunately it won't work in case of meta upgrades.
+	// Should be fixed after ingest refactoring.
+	if v := ctx.Value(IngestUpdateState); !(v != nil && v.(bool)) {
+		r.IgnoreUpgradeChanges()
+		return nil
+	}
+
 	for {
 		transaction, err := r.Read()
 		if err != nil {

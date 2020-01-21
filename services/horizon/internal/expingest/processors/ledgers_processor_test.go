@@ -15,7 +15,7 @@ import (
 
 type LedgersProcessorTestSuiteLedger struct {
 	suite.Suite
-	processor        *DatabaseProcessor
+	processor        *LedgersProcessor
 	mockQ            *history.MockQLedgers
 	mockLedgerReader *io.MockLedgerReader
 	mockLedgerWriter *io.MockLedgerWriter
@@ -72,13 +72,13 @@ func (s *LedgersProcessorTestSuiteLedger) SetupTest() {
 	s.ingestVersion = 100
 	s.context = context.WithValue(context.Background(), IngestUpdateDatabase, true)
 
-	s.processor = &DatabaseProcessor{
-		Action:        Ledgers,
+	s.processor = &LedgersProcessor{
 		LedgersQ:      s.mockQ,
 		IngestVersion: s.ingestVersion,
 	}
 
 	s.mockLedgerReader.On("GetSequence").Return(uint32(20)).Maybe()
+	s.mockLedgerReader.On("IgnoreUpgradeChanges").Return().Maybe()
 
 	s.mockLedgerReader.
 		On("Read").
@@ -96,7 +96,6 @@ func (s *LedgersProcessorTestSuiteLedger) SetupTest() {
 	s.mockLedgerReader.
 		On("Close").
 		Return(nil).Once()
-
 	s.mockLedgerWriter.
 		On("Close").
 		Return(nil).Once()
@@ -117,10 +116,7 @@ func (s *LedgersProcessorTestSuiteLedger) TearDownTest() {
 func (s *LedgersProcessorTestSuiteLedger) TestInsertLedgerIgnoredWhenNotDatabaseIngestion() {
 	// Clear mockLedgerReader expectations
 	s.mockLedgerReader = &io.MockLedgerReader{}
-
-	s.mockLedgerReader.
-		On("Read").
-		Return(io.LedgerTransaction{}, stdio.EOF).Once()
+	s.mockLedgerReader.On("IgnoreUpgradeChanges").Return().Maybe()
 
 	s.mockLedgerReader.
 		On("Close").

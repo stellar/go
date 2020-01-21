@@ -191,6 +191,14 @@ func (p *DatabaseProcessor) ProcessLedger(ctx context.Context, store *pipeline.S
 	}()
 	defer w.Close()
 
+	// Exit early if not ingesting state (history catchup). The filtering in parent
+	// processor should do it, unfortunately it won't work in case of meta upgrades.
+	// Should be fixed after ingest refactoring.
+	if v := ctx.Value(IngestUpdateState); !(v != nil && v.(bool)) {
+		r.IgnoreUpgradeChanges()
+		return nil
+	}
+
 	ledgerCache := io.NewLedgerEntryChangeCache()
 	p.AssetStatSet = AssetStatSet{}
 	p.batchUpsertTrustLines = []xdr.LedgerEntry{}
@@ -210,7 +218,7 @@ func (p *DatabaseProcessor) ProcessLedger(ctx context.Context, store *pipeline.S
 		actions = []DatabaseProcessorActionType{
 			Accounts, AccountsForSigner, Data, Offers, TrustLines,
 		}
-	} else if p.Action != Ledgers {
+	} else {
 		actions = append(actions, p.Action)
 	}
 
@@ -239,73 +247,71 @@ func (p *DatabaseProcessor) ProcessLedger(ctx context.Context, store *pipeline.S
 		transactions = append(transactions, transaction)
 	}
 
-	if p.Action != Ledgers {
-		// Remember that it's possible that transaction can remove a preauth
-		// tx signer even when it's a failed transaction so we need to check
-		// failed transactions too.
+	// Remember that it's possible that transaction can remove a preauth
+	// tx signer even when it's a failed transaction so we need to check
+	// failed transactions too.
 
-		// Fees are processed before everything else.
-		for _, transaction := range transactions {
-			for _, change := range transaction.GetFeeChanges() {
-				err = ledgerCache.AddChange(change)
-				if err != nil {
-					return errors.Wrap(err, "error adding to ledgerCache")
-				}
-			}
-
-			select {
-			case <-ctx.Done():
-				return nil
-			default:
-				continue
-			}
-		}
-
-		// Tx meta
-		for _, transaction := range transactions {
-			var changes []io.Change
-			changes, err = transaction.GetChanges()
-			if err != nil {
-				return errors.Wrap(err, "Error in transaction.GetChanges()")
-			}
-			for _, change := range changes {
-				err = ledgerCache.AddChange(change)
-				if err != nil {
-					return errors.Wrap(err, "error adding to ledgerCache")
-				}
-			}
-
-			select {
-			case <-ctx.Done():
-				return nil
-			default:
-				continue
-			}
-		}
-
-		// Process upgrades meta
-		for {
-			var change io.Change
-			change, err = r.ReadUpgradeChange()
-			if err != nil {
-				if err == stdio.EOF {
-					break
-				} else {
-					return err
-				}
-			}
-
+	// Fees are processed before everything else.
+	for _, transaction := range transactions {
+		for _, change := range transaction.GetFeeChanges() {
 			err = ledgerCache.AddChange(change)
 			if err != nil {
-				return errors.Wrap(err, "error addint to ledgerCache")
+				return errors.Wrap(err, "error adding to ledgerCache")
 			}
+		}
 
-			select {
-			case <-ctx.Done():
-				return nil
-			default:
-				continue
+		select {
+		case <-ctx.Done():
+			return nil
+		default:
+			continue
+		}
+	}
+
+	// Tx meta
+	for _, transaction := range transactions {
+		var changes []io.Change
+		changes, err = transaction.GetChanges()
+		if err != nil {
+			return errors.Wrap(err, "Error in transaction.GetChanges()")
+		}
+		for _, change := range changes {
+			err = ledgerCache.AddChange(change)
+			if err != nil {
+				return errors.Wrap(err, "error adding to ledgerCache")
 			}
+		}
+
+		select {
+		case <-ctx.Done():
+			return nil
+		default:
+			continue
+		}
+	}
+
+	// Process upgrades meta
+	for {
+		var change io.Change
+		change, err = r.ReadUpgradeChange()
+		if err != nil {
+			if err == stdio.EOF {
+				break
+			} else {
+				return err
+			}
+		}
+
+		err = ledgerCache.AddChange(change)
+		if err != nil {
+			return errors.Wrap(err, "error addint to ledgerCache")
+		}
+
+		select {
+		case <-ctx.Done():
+			return nil
+		default:
+			continue
 		}
 	}
 
@@ -442,44 +448,6 @@ func (p *DatabaseProcessor) ProcessLedger(ctx context.Context, store *pipeline.S
 				))
 			}
 		}
-	}
-
-	return p.ingestLedgerHeader(ctx, r, successTxCount, failedTxCount, opCount)
-}
-
-func (p *DatabaseProcessor) ingestLedgerHeader(
-	ctx context.Context, r io.LedgerReader, successTxCount, failedTxCount, opCount int,
-) error {
-	if p.Action != All && p.Action != Ledgers {
-		return nil
-	}
-
-	// Exit early if not ingesting into a DB
-	if v := ctx.Value(IngestUpdateDatabase); v == nil {
-		return nil
-	}
-
-	rowsAffected, err := p.LedgersQ.InsertLedger(
-		r.GetHeader(),
-		successTxCount,
-		failedTxCount,
-		opCount,
-		p.IngestVersion,
-	)
-	if err != nil {
-		return errors.Wrap(
-			err,
-			fmt.Sprintf("Could not insert ledger"),
-		)
-	}
-	if rowsAffected != 1 {
-		log.WithField("rowsAffected", rowsAffected).
-			WithField("sequence", r.GetSequence()).
-			Error("Invalid number of rows affected when ingesting new ledger")
-		return errors.Errorf(
-			"0 rows affected when ingesting new ledger: %v",
-			r.GetSequence(),
-		)
 	}
 
 	return nil

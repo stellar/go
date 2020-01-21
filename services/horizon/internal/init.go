@@ -55,8 +55,9 @@ func initExpIngester(app *App, orderBookGraph *orderbook.OrderBookGraph) {
 
 	var err error
 	app.expingester, err = expingest.NewSystem(expingest.Config{
-		CoreSession:    app.CoreSession(context.Background()),
-		HistorySession: app.HorizonSession(context.Background()),
+		CoreSession:       app.CoreSession(context.Background()),
+		HistorySession:    app.HorizonSession(context.Background()),
+		NetworkPassphrase: app.config.NetworkPassphrase,
 		// TODO:
 		// Use the first archive for now. We don't have a mechanism to
 		// use multiple archives at the same time currently.

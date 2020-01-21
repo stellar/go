@@ -120,8 +120,9 @@ func buildLedgerPipeline(
 		pipeline.LedgerNode(&processors.RootProcessor{}).
 			Pipe(
 				// This subtree will only run when `IngestUpdateDatabase` is set.
-				pipeline.LedgerNode(&horizonProcessors.ContextFilter{horizonProcessors.IngestUpdateDatabase}).
-					Pipe(
+				pipeline.LedgerNode(&horizonProcessors.ContextFilter{horizonProcessors.IngestUpdateDatabase}).Pipe(
+					// This subtree will only run when `IngestUpdateState` is set.
+					pipeline.LedgerNode(&horizonProcessors.ContextFilter{horizonProcessors.IngestUpdateState}).Pipe(
 						pipeline.LedgerNode(&horizonProcessors.DatabaseProcessor{
 							AccountsQ:     historyQ,
 							DataQ:         historyQ,
@@ -129,33 +130,35 @@ func buildLedgerPipeline(
 							SignersQ:      historyQ,
 							TrustLinesQ:   historyQ,
 							AssetStatsQ:   historyQ,
-							LedgersQ:      historyQ,
 							Action:        horizonProcessors.All,
 							IngestVersion: CurrentVersion,
 						}),
-						pipeline.LedgerNode(
-							&horizonProcessors.TransactionFilterProcessor{
-								IngestFailedTransactions: ingestFailedTransactions,
-							},
-						).Pipe(
-							pipeline.LedgerNode(&horizonProcessors.TransactionProcessor{
-								TransactionsQ: historyQ,
-							}),
-							pipeline.LedgerNode(&horizonProcessors.ParticipantsProcessor{
-								ParticipantsQ: historyQ,
-							}),
-							pipeline.LedgerNode(&horizonProcessors.OperationProcessor{
-								OperationsQ: historyQ,
-							}),
-							pipeline.LedgerNode(&horizonProcessors.EffectProcessor{
-								EffectsQ: historyQ,
-							}),
-							pipeline.LedgerNode(&horizonProcessors.TradeProcessor{
-								TradesQ: historyQ,
-							}),
-						),
 					),
-				orderBookGraphLedgerNode(graph),
+					pipeline.LedgerNode(&horizonProcessors.TransactionFilterProcessor{IngestFailedTransactions: ingestFailedTransactions}).Pipe(
+						pipeline.LedgerNode(&horizonProcessors.LedgersProcessor{
+							LedgersQ: historyQ,
+						}),
+						pipeline.LedgerNode(&horizonProcessors.TransactionProcessor{
+							TransactionsQ: historyQ,
+						}),
+						pipeline.LedgerNode(&horizonProcessors.ParticipantsProcessor{
+							ParticipantsQ: historyQ,
+						}),
+						pipeline.LedgerNode(&horizonProcessors.OperationProcessor{
+							OperationsQ: historyQ,
+						}),
+						pipeline.LedgerNode(&horizonProcessors.EffectProcessor{
+							EffectsQ: historyQ,
+						}),
+						pipeline.LedgerNode(&horizonProcessors.TradeProcessor{
+							TradesQ: historyQ,
+						}),
+					),
+				),
+				// This subtree will only run when `IngestUpdateState` is set.
+				pipeline.LedgerNode(&horizonProcessors.ContextFilter{horizonProcessors.IngestUpdateState}).Pipe(
+					orderBookGraphLedgerNode(graph),
+				),
 			),
 	)
 
@@ -177,6 +180,16 @@ func preProcessingHook(
 			historyQ.Rollback()
 		}
 	}()
+
+	// When doing catchupHistoryState we just set context and exit. This is to
+	// run history catchup in a single transaction.
+	if system.state.systemState == catchupHistoryState {
+		ctx = context.WithValue(ctx, horizonProcessors.IngestUpdateDatabase, true)
+		return ctx, nil
+	}
+
+	// Otherwise ingest state too.
+	ctx = context.WithValue(ctx, horizonProcessors.IngestUpdateState, true)
 
 	// Start a transaction only if not in a transaction already.
 	// The only case this can happen is during the first run when
@@ -203,12 +216,6 @@ func preProcessingHook(
 		// State pipeline is always fully run because loading offers
 		// from a database is done outside the pipeline.
 		updateDatabase = true
-		var summary history.IngestHistoryRemovalSummary
-		summary, err = historyQ.RemoveIngestHistory(ledgerSeq)
-		if err != nil {
-			return ctx, errors.Wrap(err, "Error removing exp ingest history")
-		}
-		log.WithField("historyRemoved", summary).Info("removed entries from historical ingestion tables")
 	} else if lastIngestedLedger+1 == ledgerSeq {
 		// lastIngestedLedger+1 == ledgerSeq what means that this instance
 		// is the main ingesting instance in this round and should update a
@@ -238,11 +245,20 @@ func postProcessingHook(
 	pipelineType pType,
 	system *System,
 	graph *orderbook.OrderBookGraph,
-	historySession *db.Session,
+	historyQ dbQ,
 ) error {
-	defer historySession.Rollback()
+	// When doing catchupHistoryState we just exit. Tx will be commited when
+	// all ledgers are ingested.
+	if system.state.systemState == catchupHistoryState {
+		if err == supportPipeline.ErrShutdown {
+			return nil
+		}
+
+		return err
+	}
+
+	defer historyQ.Rollback()
 	defer graph.Discard()
-	historyQ := &history.Q{historySession}
 	isMaster := false
 
 	ledgerSeq := pipeline.GetLedgerSequenceFromContext(ctx)
@@ -254,7 +270,7 @@ func postProcessingHook(
 
 		switch errors.Cause(err).(type) {
 		case ingesterrors.StateError:
-			markStateInvalid(historySession, err)
+			markStateInvalid(historyQ, err)
 		default:
 			log.
 				WithFields(logpkg.F{
@@ -267,7 +283,7 @@ func postProcessingHook(
 		return err
 	}
 
-	if tx := historySession.GetTx(); tx != nil {
+	if tx := historyQ.GetTx(); tx != nil {
 		isMaster = true
 
 		// If we're in a transaction we're updating database with new data.
@@ -294,7 +310,7 @@ func postProcessingHook(
 			return errors.Wrap(err, "Error updating expingest version")
 		}
 
-		if err = historySession.Commit(); err != nil {
+		if err = historyQ.Commit(); err != nil {
 			return errors.Wrap(err, "Error commiting db transaction")
 		}
 	}
@@ -325,7 +341,7 @@ func postProcessingHook(
 				errorCount := system.incrementStateVerificationErrors()
 				switch errors.Cause(err).(type) {
 				case ingesterrors.StateError:
-					markStateInvalid(historySession, err)
+					markStateInvalid(historyQ, err)
 				default:
 					logger := log.WithField("err", err).Warn
 					if errorCount >= stateVerificationErrorThreshold {
@@ -343,9 +359,9 @@ func postProcessingHook(
 	return nil
 }
 
-func markStateInvalid(historySession *db.Session, err error) {
+func markStateInvalid(historyQ dbQ, err error) {
 	log.WithField("err", err).Error("STATE IS INVALID!")
-	q := &history.Q{historySession.Clone()}
+	q := &history.Q{historyQ.Clone()}
 	if err := q.UpdateExpStateInvalid(true); err != nil {
 		log.WithField("err", err).Error("Error updating state invalid value")
 	}
@@ -374,6 +390,6 @@ func addPipelineHooks(
 	})
 
 	p.AddPostProcessingHook(func(ctx context.Context, err error) error {
-		return postProcessingHook(ctx, err, pipelineType, system, graph, historySession)
+		return postProcessingHook(ctx, err, pipelineType, system, graph, historyQ)
 	})
 }

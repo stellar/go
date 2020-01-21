@@ -162,6 +162,7 @@ func TestTrustLinesProcessorTestSuiteLedger(t *testing.T) {
 
 type TrustLinesProcessorTestSuiteLedger struct {
 	suite.Suite
+	context          context.Context
 	processor        *DatabaseProcessor
 	mockQ            *history.MockQTrustLines
 	mockAssetStatsQ  *history.MockQAssetStats
@@ -174,6 +175,8 @@ func (s *TrustLinesProcessorTestSuiteLedger) SetupTest() {
 	s.mockLedgerReader = &io.MockLedgerReader{}
 	s.mockLedgerWriter = &io.MockLedgerWriter{}
 	s.mockAssetStatsQ = &history.MockQAssetStats{}
+
+	s.context = context.WithValue(context.Background(), IngestUpdateState, true)
 
 	s.processor = &DatabaseProcessor{
 		Action:      TrustLines,
@@ -200,6 +203,30 @@ func (s *TrustLinesProcessorTestSuiteLedger) TearDownTest() {
 	s.mockAssetStatsQ.AssertExpectations(s.T())
 	s.mockLedgerReader.AssertExpectations(s.T())
 	s.mockLedgerWriter.AssertExpectations(s.T())
+}
+
+func (s *TrustLinesProcessorTestSuiteLedger) TestNoIngestUpdateState() {
+	s.mockLedgerReader = &io.MockLedgerReader{}
+	s.mockLedgerWriter = &io.MockLedgerWriter{}
+
+	s.mockLedgerReader.On("IgnoreUpgradeChanges").Once()
+
+	s.mockLedgerReader.
+		On("Close").
+		Return(nil).Once()
+
+	s.mockLedgerWriter.
+		On("Close").
+		Return(nil).Once()
+
+	err := s.processor.ProcessLedger(
+		context.Background(),
+		&supportPipeline.Store{},
+		s.mockLedgerReader,
+		s.mockLedgerWriter,
+	)
+
+	s.Assert().NoError(err)
 }
 
 func (s *TrustLinesProcessorTestSuiteLedger) TestInsertTrustLine() {
@@ -379,7 +406,7 @@ func (s *TrustLinesProcessorTestSuiteLedger) TestInsertTrustLine() {
 		Return(io.LedgerTransaction{}, stdio.EOF).Once()
 
 	err = s.processor.ProcessLedger(
-		context.Background(),
+		s.context,
 		&supportPipeline.Store{},
 		s.mockLedgerReader,
 		s.mockLedgerWriter,
@@ -480,7 +507,7 @@ func (s *TrustLinesProcessorTestSuiteLedger) TestUpdateTrustLine() {
 	}).Return(int64(1), nil).Once()
 
 	err := s.processor.ProcessLedger(
-		context.Background(),
+		s.context,
 		&supportPipeline.Store{},
 		s.mockLedgerReader,
 		s.mockLedgerWriter,
@@ -631,7 +658,7 @@ func (s *TrustLinesProcessorTestSuiteLedger) TestUpdateTrustLineAuthorization() 
 		Return(io.LedgerTransaction{}, stdio.EOF).Once()
 
 	err := s.processor.ProcessLedger(
-		context.Background(),
+		s.context,
 		&supportPipeline.Store{},
 		s.mockLedgerReader,
 		s.mockLedgerWriter,
@@ -735,7 +762,7 @@ func (s *TrustLinesProcessorTestSuiteLedger) TestRemoveTrustLine() {
 		Return(io.LedgerTransaction{}, stdio.EOF).Once()
 
 	err := s.processor.ProcessLedger(
-		context.Background(),
+		s.context,
 		&supportPipeline.Store{},
 		s.mockLedgerReader,
 		s.mockLedgerWriter,
@@ -842,7 +869,7 @@ func (s *TrustLinesProcessorTestSuiteLedger) TestProcessUpgradeChange() {
 	s.mockLedgerReader.On("Close").Return(nil).Once()
 
 	err := s.processor.ProcessLedger(
-		context.Background(),
+		s.context,
 		&supportPipeline.Store{},
 		s.mockLedgerReader,
 		s.mockLedgerWriter,
@@ -896,7 +923,7 @@ func (s *TrustLinesProcessorTestSuiteLedger) TestRemoveTrustlineNoRowsAffected()
 	).Return(int64(0), nil).Once()
 
 	err := s.processor.ProcessLedger(
-		context.Background(),
+		s.context,
 		&supportPipeline.Store{},
 		s.mockLedgerReader,
 		s.mockLedgerWriter,

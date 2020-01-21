@@ -10,6 +10,7 @@ type PipelineContextKey string
 
 const (
 	IngestUpdateDatabase = PipelineContextKey("IngestUpdateDatabase")
+	IngestUpdateState    = PipelineContextKey("IngestUpdateState")
 )
 
 type DatabaseProcessorActionType string
@@ -20,7 +21,6 @@ const (
 	Data              DatabaseProcessorActionType = "Data"
 	Offers            DatabaseProcessorActionType = "Offers"
 	TrustLines        DatabaseProcessorActionType = "TrustLines"
-	Ledgers           DatabaseProcessorActionType = "Ledgers"
 	All               DatabaseProcessorActionType = "All"
 )
 
@@ -36,7 +36,6 @@ type DatabaseProcessor struct {
 	OffersQ       history.QOffers
 	TrustLinesQ   history.QTrustLines
 	AssetStatsQ   history.QAssetStats
-	LedgersQ      history.QLedgers
 	Action        DatabaseProcessorActionType
 	IngestVersion int
 	// AssetStatSet is used in TrustLines processor

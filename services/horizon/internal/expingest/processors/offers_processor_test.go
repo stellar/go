@@ -101,6 +101,7 @@ func TestOffersProcessorTestSuiteLedger(t *testing.T) {
 
 type OffersProcessorTestSuiteLedger struct {
 	suite.Suite
+	context          context.Context
 	processor        *DatabaseProcessor
 	mockQ            *history.MockQOffers
 	mockLedgerReader *io.MockLedgerReader
@@ -111,6 +112,8 @@ func (s *OffersProcessorTestSuiteLedger) SetupTest() {
 	s.mockQ = &history.MockQOffers{}
 	s.mockLedgerReader = &io.MockLedgerReader{}
 	s.mockLedgerWriter = &io.MockLedgerWriter{}
+
+	s.context = context.WithValue(context.Background(), IngestUpdateState, true)
 
 	s.processor = &DatabaseProcessor{
 		Action:  Offers,
@@ -135,6 +138,30 @@ func (s *OffersProcessorTestSuiteLedger) TearDownTest() {
 	s.mockQ.AssertExpectations(s.T())
 	s.mockLedgerReader.AssertExpectations(s.T())
 	s.mockLedgerWriter.AssertExpectations(s.T())
+}
+
+func (s *OffersProcessorTestSuiteLedger) TestNoIngestUpdateState() {
+	s.mockLedgerReader = &io.MockLedgerReader{}
+	s.mockLedgerWriter = &io.MockLedgerWriter{}
+
+	s.mockLedgerReader.On("IgnoreUpgradeChanges").Once()
+
+	s.mockLedgerReader.
+		On("Close").
+		Return(nil).Once()
+
+	s.mockLedgerWriter.
+		On("Close").
+		Return(nil).Once()
+
+	err := s.processor.ProcessLedger(
+		context.Background(),
+		&supportPipeline.Store{},
+		s.mockLedgerReader,
+		s.mockLedgerWriter,
+	)
+
+	s.Assert().NoError(err)
 }
 
 func (s *OffersProcessorTestSuiteLedger) TestInsertOffer() {
@@ -240,7 +267,7 @@ func (s *OffersProcessorTestSuiteLedger) TestInsertOffer() {
 		Return(io.LedgerTransaction{}, stdio.EOF).Once()
 
 	err = s.processor.ProcessLedger(
-		context.Background(),
+		s.context,
 		&supportPipeline.Store{},
 		s.mockLedgerReader,
 		s.mockLedgerWriter,
@@ -302,7 +329,7 @@ func (s *OffersProcessorTestSuiteLedger) TestUpdateOfferNoRowsAffected() {
 	).Return(int64(0), nil).Once()
 
 	err := s.processor.ProcessLedger(
-		context.Background(),
+		s.context,
 		&supportPipeline.Store{},
 		s.mockLedgerReader,
 		s.mockLedgerWriter,
@@ -358,7 +385,7 @@ func (s *OffersProcessorTestSuiteLedger) TestRemoveOffer() {
 	).Return(int64(1), nil).Once()
 
 	err := s.processor.ProcessLedger(
-		context.Background(),
+		s.context,
 		&supportPipeline.Store{},
 		s.mockLedgerReader,
 		s.mockLedgerWriter,
@@ -444,7 +471,7 @@ func (s *OffersProcessorTestSuiteLedger) TestProcessUpgradeChange() {
 	s.mockLedgerReader.On("Close").Return(nil).Once()
 
 	err := s.processor.ProcessLedger(
-		context.Background(),
+		s.context,
 		&supportPipeline.Store{},
 		s.mockLedgerReader,
 		s.mockLedgerWriter,
@@ -495,7 +522,7 @@ func (s *OffersProcessorTestSuiteLedger) TestRemoveOfferNoRowsAffected() {
 	).Return(int64(0), nil).Once()
 
 	err := s.processor.ProcessLedger(
-		context.Background(),
+		s.context,
 		&supportPipeline.Store{},
 		s.mockLedgerReader,
 		s.mockLedgerWriter,

@@ -37,7 +37,7 @@ func (p *OperationProcessor) ProcessLedger(ctx context.Context, store *pipeline.
 	r.IgnoreUpgradeChanges()
 
 	// Exit early if not ingesting into a DB
-	if v := ctx.Value(IngestUpdateDatabase); v == nil {
+	if v := ctx.Value(IngestUpdateDatabase); !(v != nil && v.(bool)) {
 		return nil
 	}
 

@@ -129,6 +129,7 @@ func TestAccountsProcessorTestSuiteLedger(t *testing.T) {
 
 type AccountsProcessorTestSuiteLedger struct {
 	suite.Suite
+	context          context.Context
 	processor        *DatabaseProcessor
 	mockQ            *history.MockQAccounts
 	mockLedgerReader *io.MockLedgerReader
@@ -139,6 +140,8 @@ func (s *AccountsProcessorTestSuiteLedger) SetupTest() {
 	s.mockQ = &history.MockQAccounts{}
 	s.mockLedgerReader = &io.MockLedgerReader{}
 	s.mockLedgerWriter = &io.MockLedgerWriter{}
+
+	s.context = context.WithValue(context.Background(), IngestUpdateState, true)
 
 	s.processor = &DatabaseProcessor{
 		Action:    Accounts,
@@ -165,13 +168,37 @@ func (s *AccountsProcessorTestSuiteLedger) TearDownTest() {
 	s.mockLedgerWriter.AssertExpectations(s.T())
 }
 
+func (s *AccountsProcessorTestSuiteLedger) TestNoIngestUpdateState() {
+	s.mockLedgerReader = &io.MockLedgerReader{}
+	s.mockLedgerWriter = &io.MockLedgerWriter{}
+
+	s.mockLedgerReader.On("IgnoreUpgradeChanges").Once()
+
+	s.mockLedgerReader.
+		On("Close").
+		Return(nil).Once()
+
+	s.mockLedgerWriter.
+		On("Close").
+		Return(nil).Once()
+
+	err := s.processor.ProcessLedger(
+		context.Background(),
+		&supportPipeline.Store{},
+		s.mockLedgerReader,
+		s.mockLedgerWriter,
+	)
+
+	s.Assert().NoError(err)
+}
+
 func (s *AccountsProcessorTestSuiteLedger) TestNoTransactions() {
 	s.mockLedgerReader.
 		On("Read").
 		Return(io.LedgerTransaction{}, stdio.EOF).Once()
 
 	err := s.processor.ProcessLedger(
-		context.Background(),
+		s.context,
 		&supportPipeline.Store{},
 		s.mockLedgerReader,
 		s.mockLedgerWriter,
@@ -273,7 +300,7 @@ func (s *AccountsProcessorTestSuiteLedger) TestNewAccount() {
 		Return(io.LedgerTransaction{}, stdio.EOF).Once()
 
 	err := s.processor.ProcessLedger(
-		context.Background(),
+		s.context,
 		&supportPipeline.Store{},
 		s.mockLedgerReader,
 		s.mockLedgerWriter,
@@ -325,7 +352,7 @@ func (s *AccountsProcessorTestSuiteLedger) TestRemoveAccount() {
 		Return(io.LedgerTransaction{}, stdio.EOF).Once()
 
 	err := s.processor.ProcessLedger(
-		context.Background(),
+		s.context,
 		&supportPipeline.Store{},
 		s.mockLedgerReader,
 		s.mockLedgerWriter,
@@ -416,7 +443,7 @@ func (s *AccountsProcessorTestSuiteLedger) TestProcessUpgradeChange() {
 	).Return(nil).Once()
 
 	err := s.processor.ProcessLedger(
-		context.Background(),
+		s.context,
 		&supportPipeline.Store{},
 		s.mockLedgerReader,
 		s.mockLedgerWriter,
@@ -520,7 +547,7 @@ func (s *AccountsProcessorTestSuiteLedger) TestFeeProcessedBeforeEverythingElse(
 		Return(io.LedgerTransaction{}, stdio.EOF).Once()
 
 	err := s.processor.ProcessLedger(
-		context.Background(),
+		s.context,
 		&supportPipeline.Store{},
 		s.mockLedgerReader,
 		s.mockLedgerWriter,

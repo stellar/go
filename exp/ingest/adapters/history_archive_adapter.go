@@ -14,8 +14,17 @@ type HistoryArchiveAdapter struct {
 	archive historyarchive.ArchiveInterface
 }
 
+type HistoryArchiveAdapterInterface interface {
+	GetLatestLedgerSequence() (uint32, error)
+	BucketListHash(sequence uint32) (xdr.Hash, error)
+	GetState(
+		sequence uint32, tempSet io.TempSet, maxStreamRetries int,
+	) (io.StateReader, error)
+	GetLedger(sequence uint32) (io.ArchiveLedgerReader, error)
+}
+
 // MakeHistoryArchiveAdapter is a factory method to make a HistoryArchiveAdapter
-func MakeHistoryArchiveAdapter(archive historyarchive.ArchiveInterface) *HistoryArchiveAdapter {
+func MakeHistoryArchiveAdapter(archive historyarchive.ArchiveInterface) HistoryArchiveAdapterInterface {
 	return &HistoryArchiveAdapter{archive: archive}
 }
 
