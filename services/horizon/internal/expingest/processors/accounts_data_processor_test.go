@@ -28,6 +28,8 @@ func (s *AccountsDataProcessorTestSuiteState) SetupTest() {
 		On("NewAccountDataBatchInsertBuilder", maxBatchSize).
 		Return(s.mockBatchInsertBuilder).Once()
 
+	s.mockQ.On("TruncateAccountDataTable").Return(nil).Once()
+
 	s.processor = &AccountDataProcessor{
 		DataQ: s.mockQ,
 	}

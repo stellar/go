@@ -30,6 +30,11 @@ func (p *AccountDataProcessor) Init(header xdr.LedgerHeader, mode ChangesMode) e
 	switch p.mode {
 	case InitChangesMode:
 		p.batch = p.DataQ.NewAccountDataBatchInsertBuilder(maxBatchSize)
+		// Truncate table
+		err := p.DataQ.TruncateAccountDataTable()
+		if err != nil {
+			return errors.Wrap(err, "error truncating table")
+		}
 	case LedgerChangesMode:
 		p.cache = io.NewLedgerEntryChangeCache()
 	default:

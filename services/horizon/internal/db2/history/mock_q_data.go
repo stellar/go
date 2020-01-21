@@ -35,3 +35,8 @@ func (m *MockQData) RemoveAccountData(key xdr.LedgerKeyData) (int64, error) {
 	a := m.Called(key)
 	return a.Get(0).(int64), a.Error(1)
 }
+
+func (m *MockQData) TruncateAccountDataTable() error {
+	a := m.Called()
+	return a.Error(0)
+}
