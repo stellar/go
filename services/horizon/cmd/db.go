@@ -11,6 +11,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"github.com/stellar/go/services/horizon/internal/db2/schema"
+	"github.com/stellar/go/services/horizon/internal/expingest"
 	"github.com/stellar/go/services/horizon/internal/ingest"
 	"github.com/stellar/go/services/horizon/internal/util"
 	"github.com/stellar/go/support/db"
@@ -245,17 +246,50 @@ var dbReingestRangeCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
-		argsInt32 := make([]int32, 0, len(args))
+		argsInt32 := make([]uint32, 0, len(args))
 		for _, arg := range args {
 			seq, err := strconv.Atoi(arg)
 			if err != nil {
 				cmd.Usage()
 				log.Fatalf(`Invalid sequence number "%s"`, arg)
 			}
-			argsInt32 = append(argsInt32, int32(seq))
+			argsInt32 = append(argsInt32, uint32(seq))
 		}
 
-		reingest(byRange, argsInt32...)
+		initRootConfig()
+
+		coreSession, err := db.Open("postgres", config.StellarCoreDatabaseURL)
+		if err != nil {
+			log.Fatalf("cannot open Core DB: %v", err)
+		}
+
+		horizonSession, err := db.Open("postgres", config.DatabaseURL)
+		if err != nil {
+			log.Fatalf("cannot open Horizon DB: %v", err)
+		}
+
+		ingestConfig := expingest.Config{
+			CoreSession:              coreSession,
+			NetworkPassphrase:        config.NetworkPassphrase,
+			HistorySession:           horizonSession,
+			HistoryArchiveURL:        config.HistoryArchiveURLs[0],
+			IngestFailedTransactions: config.IngestFailedTransactions,
+		}
+
+		system, err := expingest.NewSystem(ingestConfig)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		err = system.ReingestRange(
+			argsInt32[0],
+			argsInt32[1],
+		)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		hlog.Info("Range run successfully!")
 	},
 }
 

@@ -122,7 +122,7 @@ func (s *PreProcessingHookTestSuite) TestLedgerHookSucceedsAsMaster() {
 }
 
 func (s *PreProcessingHookTestSuite) TestLedgerHookSucceedsAsMasterHistoryCatchup() {
-	s.system.state = state{systemState: catchupHistoryState}
+	s.system.state = state{systemState: ingestHistoryRangeState}
 
 	newCtx, err := preProcessingHook(s.ctx, ledgerPipeline, s.system, s.historyQ)
 	s.Assert().NoError(err)
@@ -283,7 +283,7 @@ func TestPostProcessingHook(t *testing.T) {
 
 func TestPostProcessingHookHistoryCatchup(t *testing.T) {
 	system := &System{
-		state: state{systemState: catchupHistoryState},
+		state: state{systemState: ingestHistoryRangeState},
 	}
 	historyQ := &mockDBQ{}
 	ctx := context.WithValue(
@@ -293,7 +293,7 @@ func TestPostProcessingHookHistoryCatchup(t *testing.T) {
 	)
 
 	historyQ.On("GetTx").Return(&sqlx.Tx{}).Once()
-	// Doesn't update version and last ledger in catchupHistoryState
+	// Doesn't update version and last ledger in ingestHistoryRangeState
 	historyQ.On("Commit").Return(nil).Once()
 	historyQ.On("GetExpStateInvalid").Return(false, nil).Once()
 	historyQ.On("Rollback").Return(nil).Once() // defer
