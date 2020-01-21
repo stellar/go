@@ -59,8 +59,7 @@ func TestDataActions_Show(t *testing.T) {
 		ht.Assert.Equal([]byte(data1.DataValue), w.Body.Bytes())
 	}
 
-	// regression: https://github.com/stellar/go/services/horizon/internal/issues/325
-	// names with special characters do not work
+	// regression: names with special characters do not work
 	w = ht.Get(prefix + "/data/name%20")
 	if ht.Assert.Equal(200, w.Code) {
 		err := json.Unmarshal(w.Body.Bytes(), &result)
