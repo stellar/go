@@ -3,7 +3,6 @@ package txnbuild
 import (
 	"testing"
 
-	hProtocol "github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/xdr"
 	"github.com/stretchr/testify/assert"
 )
@@ -136,28 +135,4 @@ func TestEmptyHomeDomainOK(t *testing.T) {
 
 	assert.Equal(t, string(*options.xdrOp.HomeDomain), "", "empty string home domain is set")
 
-}
-
-func TestSignerFromHorizon(t *testing.T) {
-	horizonSigner := hProtocol.Signer{Key: "GAABGBW5DINUS456OTHH6IUPTQSQZVVFCZGAO467OLIPFUWTMV6XR5XS", Weight: 10}
-	wantSigner := Signer{Address: "GAABGBW5DINUS456OTHH6IUPTQSQZVVFCZGAO467OLIPFUWTMV6XR5XS", Weight: 10}
-	signer := SignerFromHorizon(horizonSigner)
-	assert.Equal(t, wantSigner, signer)
-}
-
-func TestSignersFromHorizon(t *testing.T) {
-	horizonSigners := []hProtocol.Signer{
-		{Key: "GAABGBW5DINUS456OTHH6IUPTQSQZVVFCZGAO467OLIPFUWTMV6XR5XS", Weight: 0},
-		{Key: "GAT4FUGQNKOIDLOIXCJJYFSAFJHQY5MZEZLRBXXFKDCXGUHJQ63XZFTD", Weight: 10},
-		{Key: "GCB35H32SU5ME4OALQUPOM4AADJICL2H2NLWAGLOMMTSYOVTXWYP6Q4T", Weight: 100},
-		{Key: "GAVJHRCK5CEFE3MHL4JALMNX35Z5NLUIODSJIC44VRRLQQZGTDJWANV4", Weight: 255},
-	}
-	wantSigners := []Signer{
-		{Address: "GAABGBW5DINUS456OTHH6IUPTQSQZVVFCZGAO467OLIPFUWTMV6XR5XS", Weight: 0},
-		{Address: "GAT4FUGQNKOIDLOIXCJJYFSAFJHQY5MZEZLRBXXFKDCXGUHJQ63XZFTD", Weight: 10},
-		{Address: "GCB35H32SU5ME4OALQUPOM4AADJICL2H2NLWAGLOMMTSYOVTXWYP6Q4T", Weight: 100},
-		{Address: "GAVJHRCK5CEFE3MHL4JALMNX35Z5NLUIODSJIC44VRRLQQZGTDJWANV4", Weight: 255},
-	}
-	signers := SignersFromHorizon(horizonSigners)
-	assert.Equal(t, wantSigners, signers)
 }

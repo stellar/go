@@ -92,20 +92,20 @@ func ExampleVerifyChallengeTxThreshold() {
 
 		if clientAccountExists {
 			// Server gets list of signers from account
-			signers := txnbuild.SignersFromHorizon(horizonClientAccount.Signers)
+			signerSummary := horizonClientAccount.SignerSummary()
 
 			// Server chooses the threshold to require: low, med or high
 			threshold := txnbuild.Threshold(horizonClientAccount.Thresholds.MedThreshold)
 
 			// Server verifies threshold is met
-			signersFound, err := txnbuild.VerifyChallengeTxThreshold(signedChallengeTx, serverAccount.Address(), network.TestNetworkPassphrase, threshold, signers)
+			signers, err := txnbuild.VerifyChallengeTxThreshold(signedChallengeTx, serverAccount.Address(), network.TestNetworkPassphrase, threshold, signerSummary)
 			if err != nil {
 				fmt.Println("Error:", err)
 				return
 			}
 			fmt.Println("Client Signers Verified:")
-			for _, signerFound := range signersFound {
-				fmt.Println(signerFound.Address, "weight:", signerFound.Weight)
+			for _, signer := range signers {
+				fmt.Println(signer, "weight:", signerSummary[signer])
 			}
 		} else {
 			// Server verifies that master key has signed challenge transaction
