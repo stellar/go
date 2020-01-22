@@ -10,6 +10,7 @@ import (
 	"github.com/stellar/go/services/horizon/internal/db2/core"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/services/horizon/internal/test"
+	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/support/render/problem"
 	"github.com/stellar/go/xdr"
 )
@@ -252,6 +253,21 @@ func TestAccountInfo(t *testing.T) {
 	tt.Assert.Equal("8589934593", account.Sequence)
 	tt.Assert.Equal(uint32(5), account.LastModifiedLedger)
 	tt.Assert.Len(account.Signers, 2)
+
+	// Regression: no trades link
+	tt.Assert.Contains(account.Links.Trades.Href, "/trades")
+	// Regression: no data link
+	tt.Assert.Contains(account.Links.Data.Href, "/data/{key}")
+	tt.Assert.True(account.Links.Data.Templated)
+
+	// try to fetch account which does not exist
+	_, err = AccountInfo(
+		tt.Ctx,
+		&core.Q{tt.CoreSession()},
+		&history.Q{tt.HorizonSession()},
+		"GDBAPLDCAEJV6LSEDFEAUDAVFYSNFRUYZ4X75YYJJMMX5KFVUOHX46SQ",
+	)
+	tt.Assert.True(q.NoRows(errors.Cause(err)))
 }
 
 func TestGetAccountsHandlerPageNoResults(t *testing.T) {
