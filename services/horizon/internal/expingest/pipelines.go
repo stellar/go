@@ -181,9 +181,9 @@ func preProcessingHook(
 		}
 	}()
 
-	// When doing catchupHistoryState we just set context and exit. This is to
+	// When doing ingestHistoryRangeState we just set context and exit. This is to
 	// run history catchup in a single transaction.
-	if system.state.systemState == catchupHistoryState {
+	if system.state.systemState == ingestHistoryRangeState {
 		ctx = context.WithValue(ctx, horizonProcessors.IngestUpdateDatabase, true)
 		return ctx, nil
 	}
@@ -247,9 +247,9 @@ func postProcessingHook(
 	graph *orderbook.OrderBookGraph,
 	historyQ dbQ,
 ) error {
-	// When doing catchupHistoryState we just exit. Tx will be commited when
+	// When doing ingestHistoryRangeState we just exit. Tx will be commited when
 	// all ledgers are ingested.
-	if system.state.systemState == catchupHistoryState {
+	if system.state.systemState == ingestHistoryRangeState {
 		if err == supportPipeline.ErrShutdown {
 			return nil
 		}

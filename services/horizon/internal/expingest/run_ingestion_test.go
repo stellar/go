@@ -104,6 +104,11 @@ func (m *mockDBQ) TruncateExpingestStateTables() error {
 	return args.Error(0)
 }
 
+func (m *mockDBQ) DeleteRangeAll(start, end int64) error {
+	args := m.Called(start, end)
+	return args.Error(0)
+}
+
 type mockIngestSession struct {
 	mock.Mock
 }
@@ -329,7 +334,7 @@ func (s *RunIngestionTestSuite) TestNoExpIngestUpgradeHistoryLedgerLessThanLates
 
 	nextState, err := s.system.runCurrentState()
 	s.Assert().NoError(err)
-	s.Assert().Equal(catchupHistoryState, nextState.systemState)
+	s.Assert().Equal(ingestHistoryRangeState, nextState.systemState)
 	s.Assert().Equal(uint32(51), nextState.rangeFromLedger)
 	s.Assert().Equal(uint32(63), nextState.rangeToLedger)
 }
@@ -391,7 +396,7 @@ func (s *RunIngestionTestSuite) TestUpgradeHistoryLedgerLessThanLatestCheckpoint
 
 	nextState, err := s.system.runCurrentState()
 	s.Assert().NoError(err)
-	s.Assert().Equal(catchupHistoryState, nextState.systemState)
+	s.Assert().Equal(ingestHistoryRangeState, nextState.systemState)
 	s.Assert().Equal(uint32(51), nextState.rangeFromLedger)
 	s.Assert().Equal(uint32(63), nextState.rangeToLedger)
 }
@@ -442,7 +447,7 @@ func (s *RunIngestionTestSuite) TestNoUpgradeHistoryLedgerLessThanExpIngestLates
 
 	nextState, err := s.system.runCurrentState()
 	s.Assert().NoError(err)
-	s.Assert().Equal(catchupHistoryState, nextState.systemState)
+	s.Assert().Equal(ingestHistoryRangeState, nextState.systemState)
 	s.Assert().Equal(uint32(61), nextState.rangeFromLedger)
 	s.Assert().Equal(uint32(63), nextState.rangeToLedger)
 }
@@ -524,7 +529,7 @@ func (s *RunIngestionTestSuite) TestOutdatedIngestVersionHistoryBehindCheckpoint
 
 	nextState, err := s.system.runCurrentState()
 	s.Assert().NoError(err)
-	s.Assert().Equal(catchupHistoryState, nextState.systemState)
+	s.Assert().Equal(ingestHistoryRangeState, nextState.systemState)
 	s.Assert().Equal(uint32(101), nextState.rangeFromLedger)
 	s.Assert().Equal(uint32(127), nextState.rangeToLedger)
 }

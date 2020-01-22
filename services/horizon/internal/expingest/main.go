@@ -17,6 +17,7 @@ import (
 	"github.com/stellar/go/exp/ingest/ledgerbackend"
 	"github.com/stellar/go/exp/orderbook"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
+	"github.com/stellar/go/services/horizon/internal/toid"
 	"github.com/stellar/go/support/db"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/support/historyarchive"
@@ -83,6 +84,7 @@ type dbQ interface {
 	GetAllOffers() ([]history.Offer, error)
 	GetLatestLedger() (uint32, error)
 	TruncateExpingestStateTables() error
+	DeleteRangeAll(start, end int64) error
 }
 
 type dbSession interface {
@@ -102,7 +104,7 @@ type systemState string
 
 const (
 	initState                         systemState = "init"
-	catchupHistoryState               systemState = "catchupHistory"
+	ingestHistoryRangeState           systemState = "ingestHistoryRange"
 	waitForCheckpointState            systemState = "waitForCheckpoint"
 	loadOffersIntoMemoryState         systemState = "loadOffersIntoMemory"
 	buildStateAndResumeIngestionState systemState = "buildStateAndResumeIngestion"
@@ -117,9 +119,12 @@ type state struct {
 
 	checkpointLedger uint32
 
-	rangeFromLedger  uint32
-	rangeToLedger    uint32
-	rangeVerifyState bool
+	rangeFromLedger   uint32
+	rangeToLedger     uint32
+	rangeVerifyState  bool
+	rangeClearHistory bool
+
+	shutdownWhenDone bool
 
 	returnError error
 }
@@ -277,6 +282,19 @@ func (s *System) VerifyRange(fromLedger, toLedger uint32, verifyState bool) erro
 	return s.run()
 }
 
+// ReingestRange runs the ingestion pipeline on the range of ledgers ingesting
+// history data only.
+func (s *System) ReingestRange(fromLedger, toLedger uint32) error {
+	s.state = state{
+		systemState:       ingestHistoryRangeState,
+		rangeFromLedger:   fromLedger,
+		rangeToLedger:     toLedger,
+		rangeClearHistory: true,
+		shutdownWhenDone:  true,
+	}
+	return s.run()
+}
+
 func (s *System) run() error {
 	s.shutdown = make(chan struct{})
 	// Expingest is an experimental package so we don't want entire Horizon app
@@ -341,8 +359,8 @@ func (s *System) runCurrentState() (state, error) {
 	switch s.state.systemState {
 	case initState:
 		nextState, err = s.init()
-	case catchupHistoryState:
-		nextState, err = s.catchupHistory()
+	case ingestHistoryRangeState:
+		nextState, err = s.ingestHistoryRange()
 	case waitForCheckpointState:
 		nextState, err = s.waitForCheckpoint()
 	case loadOffersIntoMemoryState:
@@ -416,7 +434,7 @@ func (s *System) init() (state, error) {
 				return state{systemState: waitForCheckpointState}, nil
 			case lastHistoryLedger < lastCheckpoint:
 				return state{
-					systemState:     catchupHistoryState,
+					systemState:     ingestHistoryRangeState,
 					rangeFromLedger: lastHistoryLedger + 1,
 					rangeToLedger:   lastCheckpoint,
 				}, nil
@@ -456,7 +474,7 @@ func (s *System) init() (state, error) {
 		// Now it's on by default but the latest history ledger is less
 		// than the latest expingest ledger. We catchup history.
 		return state{
-			systemState:     catchupHistoryState,
+			systemState:     ingestHistoryRangeState,
 			rangeFromLedger: lastHistoryLedger + 1,
 			rangeToLedger:   lastIngestedLedger,
 		}, nil
@@ -583,7 +601,32 @@ func (s *System) resume() (state, error) {
 	return state{systemState: shutdownState}, nil
 }
 
-func (s *System) catchupHistory() (state, error) {
+// ingestHistoryRange is used when catching up history data and when reingesting
+// range.
+func (s *System) ingestHistoryRange() (state, error) {
+	returnState := initState
+	if s.state.shutdownWhenDone {
+		// Shutdown when done - used in `reingest range` command.
+		returnState = shutdownState
+	}
+
+	if s.state.rangeClearHistory {
+		// Clear history data before ingesting - used in `reingest range` command.
+		start, end, err := toid.LedgerRangeInclusive(
+			int32(s.state.rangeFromLedger),
+			int32(s.state.rangeToLedger),
+		)
+
+		if err != nil {
+			return state{systemState: returnState}, errors.Wrap(err, "Invalid range")
+		}
+
+		err = s.historyQ.DeleteRangeAll(start, end)
+		if err != nil {
+			return state{systemState: returnState}, err
+		}
+	}
+
 	statePipeline := s.rangeSession.StatePipeline
 	s.rangeSession.StatePipeline = nil
 	// -1 here because RangeSession is ingesting state at FromLedger and then
@@ -600,15 +643,15 @@ func (s *System) catchupHistory() (state, error) {
 
 	err := s.rangeSession.Run()
 	if err != nil {
-		return state{systemState: initState}, err
+		return state{systemState: returnState}, err
 	}
 
 	err = s.historyQ.Commit()
 	if err != nil {
-		return state{systemState: initState}, err
+		return state{systemState: returnState}, err
 	}
 
-	return state{systemState: initState}, nil
+	return state{systemState: returnState}, nil
 }
 
 func (s *System) waitForCheckpoint() (state, error) {
