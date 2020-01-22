@@ -612,21 +612,10 @@ func (s *System) ingestHistoryRange() (state, error) {
 
 	if s.state.rangeClearHistory {
 		// Clear history data before ingesting - used in `reingest range` command.
-		var start, end int64
-		if s.state.rangeFromLedger == 1 {
-			start = 0
-		} else {
-			start = toid.New(int32(s.state.rangeFromLedger), 0, 0).ToInt64()
-		}
-
-		// In DeleteRangeAll `end` is exclusive so we add 1 to remove the last ledger
-		// too.
-		if s.state.rangeToLedger == 1 {
-			end = toid.New(1, 0, 0).ToInt64()
-		} else {
-			end = toid.New(int32(s.state.rangeToLedger+1), 0, 0).ToInt64()
-		}
-
+		start, end := toid.LedgerRangeInclusive(
+			int32(s.state.rangeFromLedger),
+			int32(s.state.rangeToLedger),
+		)
 		err := s.historyQ.DeleteRangeAll(start, end)
 		if err != nil {
 			return state{systemState: returnState}, err
