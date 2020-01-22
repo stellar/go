@@ -492,9 +492,6 @@ func ReadChallengeTx(challengeTx, serverAccountID, network string) (tx Transacti
 	return tx, clientAccountID, nil
 }
 
-// SignerSummary is a map of signers to their weights.
-type SignerSummary map[string]int32
-
 // VerifyChallengeTxThreshold verifies that for a SEP 10 challenge transaction
 // all signatures on the transaction are accounted for and that the signatures
 // meet a threshold on an account. A transaction is verified if it is signed by
