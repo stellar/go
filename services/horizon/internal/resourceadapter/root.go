@@ -22,7 +22,7 @@ func PopulateRoot(
 	friendBotURL *url.URL,
 	templates map[string]string,
 ) {
-	dest.ExpHorizonSequence = ledgerState.ExpHistoryLatest
+	dest.IngestSequence = ledgerState.ExpHistoryLatest
 	dest.HorizonSequence = ledgerState.HistoryLatest
 	dest.HistoryElderSequence = ledgerState.HistoryElder
 	dest.CoreSequence = ledgerState.CoreLatest

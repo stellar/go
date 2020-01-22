@@ -303,7 +303,7 @@ type Root struct {
 
 	HorizonVersion               string `json:"horizon_version"`
 	StellarCoreVersion           string `json:"core_version"`
-	ExpHorizonSequence           uint32 `json:"exp_history_latest_ledger,omitempty"`
+	IngestSequence               uint32 `json:"ingest_latest_ledger"`
 	HorizonSequence              int32  `json:"history_latest_ledger"`
 	HistoryElderSequence         int32  `json:"history_elder_ledger"`
 	CoreSequence                 int32  `json:"core_latest_ledger"`

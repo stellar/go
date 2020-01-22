@@ -297,11 +297,13 @@ func (s *System) ReingestRange(fromLedger, toLedger uint32) error {
 
 func (s *System) run() error {
 	s.shutdown = make(chan struct{})
-	// Expingest is an experimental package so we don't want entire Horizon app
-	// to crash in case of unexpected errors.
-	// TODO: This should be removed when expingest is no longer experimental.
 	defer func() {
 		s.wg.Wait()
+		// TODO this will likely be discussed during code review:
+		// I'm wondering if we should leave recover here... With recover, in case
+		// of panic() ingestion will stop running but the webserver will be active
+		// but serving stale data. Are we OK with serving stale data (esp. state)
+		// while the bug is being fixed?
 		if r := recover(); r != nil {
 			log.WithFields(logpkg.F{
 				"err":   r,
