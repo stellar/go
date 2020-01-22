@@ -1780,6 +1780,44 @@ func TestVerifyChallengeTxThreshold_invalidNoSigners(t *testing.T) {
 	assert.EqualError(t, err, "no signers provided")
 }
 
+func TestVerifyChallengeTxThreshold_weightsAddToMoreThan8Bits(t *testing.T) {
+	serverKP := newKeypair0()
+	clientKP1 := newKeypair1()
+	clientKP2 := newKeypair2()
+	txSource := NewSimpleAccount(serverKP.Address(), -1)
+	opSource := NewSimpleAccount(clientKP1.Address(), 0)
+	op := ManageData{
+		SourceAccount: &opSource,
+		Name:          "testserver auth",
+		Value:         []byte(base64.StdEncoding.EncodeToString(make([]byte, 48))),
+	}
+	tx := Transaction{
+		SourceAccount: &txSource,
+		Operations:    []Operation{&op},
+		Timebounds:    NewTimeout(1000),
+		Network:       network.TestNetworkPassphrase,
+	}
+	threshold := Threshold(1)
+	signerSummary := SignerSummary{
+		clientKP1.Address(): 255,
+		clientKP2.Address(): 1,
+	}
+	wantSigners := []string{
+		clientKP1.Address(),
+		clientKP2.Address(),
+	}
+
+	err := tx.Build()
+	require.NoError(t, err)
+	err = tx.Sign(serverKP, clientKP1, clientKP2)
+	assert.NoError(t, err)
+	tx64, err := tx.Base64()
+	require.NoError(t, err)
+	signersFound, err := VerifyChallengeTxThreshold(tx64, serverKP.Address(), network.TestNetworkPassphrase, threshold, signerSummary)
+	assert.Equal(t, wantSigners, signersFound)
+	assert.NoError(t, err)
+}
+
 func TestVerifyChallengeTxSigners_validServerAndClientMasterKey(t *testing.T) {
 	serverKP := newKeypair0()
 	clientKP := newKeypair1()

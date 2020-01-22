@@ -516,12 +516,12 @@ func VerifyChallengeTxThreshold(challengeTx, serverAccountID, network string, th
 		return nil, err
 	}
 
-	weight := Threshold(0)
+	weight := int32(0)
 	for _, s := range signersFound {
-		weight += Threshold(signerSummary[s])
+		weight += signerSummary[s]
 	}
 
-	if weight < threshold {
+	if weight < int32(threshold) {
 		return nil, errors.Errorf("signers with weight %d do not meet threshold %d", weight, threshold)
 	}
 
