@@ -19,6 +19,17 @@ func (q *Q) CountAccountsData() (int, error) {
 	return count, nil
 }
 
+// GetAccountDataByName loads account data for a given account ID and data name
+func (q *Q) GetAccountDataByName(id, name string) (Data, error) {
+	var data Data
+	sql := selectAccountData.Where(sq.Eq{
+		"account_id": id,
+		"name":       name,
+	}).Limit(1)
+	err := q.Get(&data, sql)
+	return data, err
+}
+
 // GetAccountDataByAccountID loads account data for a given account ID
 func (q *Q) GetAccountDataByAccountID(id string) ([]Data, error) {
 	var data []Data

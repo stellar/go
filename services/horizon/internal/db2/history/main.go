@@ -261,6 +261,21 @@ type Effect struct {
 	DetailsString      null.String `db:"details"`
 }
 
+// TradeEffectDetails is a struct of data from `effects.DetailsString`
+// when the effect type is trade
+type TradeEffectDetails struct {
+	Seller            string `json:"seller"`
+	OfferID           int64  `json:"offer_id"`
+	SoldAmount        string `json:"sold_amount"`
+	SoldAssetType     string `json:"sold_asset_type"`
+	SoldAssetCode     string `json:"sold_asset_code,omitempty"`
+	SoldAssetIssuer   string `json:"sold_asset_issuer,omitempty"`
+	BoughtAmount      string `json:"bought_amount"`
+	BoughtAssetType   string `json:"bought_asset_type"`
+	BoughtAssetCode   string `json:"bought_asset_code,omitempty"`
+	BoughtAssetIssuer string `json:"bought_asset_issuer,omitempty"`
+}
+
 // SequenceBumped is a struct of data from `effects.DetailsString`
 // when the effect type is sequence bumped.
 type SequenceBumped struct {
@@ -382,6 +397,12 @@ type Operation struct {
 	SourceAccount    string            `db:"source_account"`
 	// Check db2/history.Transaction.Successful field comment for more information.
 	TransactionSuccessful *bool `db:"transaction_successful"`
+}
+
+// ManageOffer is a struct of data from `operations.DetailsString`
+// when the operation type is manage sell offer or manage buy offer
+type ManageOffer struct {
+	OfferID int64 `json:"offer_id"`
 }
 
 // Offer is row of data from the `offers` table from horizon DB
@@ -614,6 +635,14 @@ func (q *Q) NewTrustLinesBatchInsertBuilder(maxBatchSize int) TrustLinesBatchIns
 // ElderLedger loads the oldest ledger known to the history database
 func (q *Q) ElderLedger(dest interface{}) error {
 	return q.GetRaw(dest, `SELECT COALESCE(MIN(sequence), 0) FROM history_ledgers`)
+}
+
+// GetLatestLedger loads the latest known ledger. Returns 0 if no ledgers in
+// `history_ledgers` table.
+func (q *Q) GetLatestLedger() (uint32, error) {
+	var value uint32
+	err := q.LatestLedger(&value)
+	return value, err
 }
 
 // LatestLedger loads the latest known ledger

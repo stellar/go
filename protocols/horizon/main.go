@@ -230,8 +230,7 @@ type Offer struct {
 		OfferMaker hal.Link `json:"offer_maker"`
 	} `json:"_links"`
 
-	// Action needed in release: horizon-v0.25.0
-	ID                 int64      `json:"id"`
+	ID                 int64      `json:"id,string"`
 	PT                 string     `json:"paging_token"`
 	Seller             string     `json:"seller"`
 	Selling            Asset      `json:"selling"`
@@ -384,10 +383,8 @@ type TradeEffect struct {
 
 // TradeAggregation represents trade data aggregation over a period of time
 type TradeAggregation struct {
-	// Action needed in release: horizon-v0.22.0
-	Timestamp int64 `json:"timestamp"`
-	// Action needed in release: horizon-v0.22.0
-	TradeCount    int64     `json:"trade_count"`
+	Timestamp     int64     `json:"timestamp,string"`
+	TradeCount    int64     `json:"trade_count,string"`
 	BaseVolume    string    `json:"base_volume"`
 	CounterVolume string    `json:"counter_volume"`
 	Average       string    `json:"avg"`
@@ -425,22 +422,18 @@ type Transaction struct {
 	LedgerCloseTime time.Time `json:"created_at"`
 	Account         string    `json:"source_account"`
 	AccountSequence string    `json:"source_account_sequence"`
-	// Action needed in release: horizon-v0.25.0
-	// Action needed in release: horizonclient-v2.0.0
-	// Remove this field.
-	FeePaid        int32    `json:"fee_paid"`
-	FeeCharged     int32    `json:"fee_charged"`
-	MaxFee         int32    `json:"max_fee"`
-	OperationCount int32    `json:"operation_count"`
-	EnvelopeXdr    string   `json:"envelope_xdr"`
-	ResultXdr      string   `json:"result_xdr"`
-	ResultMetaXdr  string   `json:"result_meta_xdr"`
-	FeeMetaXdr     string   `json:"fee_meta_xdr"`
-	MemoType       string   `json:"memo_type"`
-	Memo           string   `json:"memo,omitempty"`
-	Signatures     []string `json:"signatures"`
-	ValidAfter     string   `json:"valid_after,omitempty"`
-	ValidBefore    string   `json:"valid_before,omitempty"`
+	FeeCharged      int32     `json:"fee_charged"`
+	MaxFee          int32     `json:"max_fee"`
+	OperationCount  int32     `json:"operation_count"`
+	EnvelopeXdr     string    `json:"envelope_xdr"`
+	ResultXdr       string    `json:"result_xdr"`
+	ResultMetaXdr   string    `json:"result_meta_xdr"`
+	FeeMetaXdr      string    `json:"fee_meta_xdr"`
+	MemoType        string    `json:"memo_type"`
+	Memo            string    `json:"memo,omitempty"`
+	Signatures      []string  `json:"signatures"`
+	ValidAfter      string    `json:"valid_after,omitempty"`
+	ValidBefore     string    `json:"valid_before,omitempty"`
 }
 
 // MarshalJSON implements a custom marshaler for Transaction.
@@ -644,28 +637,9 @@ type FeeDistribution struct {
 // FeeStats represents a response of fees from horizon
 // To do: implement fee suggestions if agreement is reached in https://github.com/stellar/go/issues/926
 type FeeStats struct {
-	// Action needed in release: horizon-v0.25.0
-	// Update type for LastLedger to uint32 and LastLedgerBaseFee to int64
-	LastLedger        int `json:"last_ledger,string"`
-	LastLedgerBaseFee int `json:"last_ledger_base_fee,string"`
-
+	LastLedger          uint32  `json:"last_ledger,string"`
+	LastLedgerBaseFee   int64   `json:"last_ledger_base_fee,string"`
 	LedgerCapacityUsage float64 `json:"ledger_capacity_usage,string"`
-
-	// Action needed in release: horizon-v0.25.0
-	// Remove AcceptedFee fields
-	MinAcceptedFee  int `json:"min_accepted_fee,string"`
-	ModeAcceptedFee int `json:"mode_accepted_fee,string"`
-	P10AcceptedFee  int `json:"p10_accepted_fee,string"`
-	P20AcceptedFee  int `json:"p20_accepted_fee,string"`
-	P30AcceptedFee  int `json:"p30_accepted_fee,string"`
-	P40AcceptedFee  int `json:"p40_accepted_fee,string"`
-	P50AcceptedFee  int `json:"p50_accepted_fee,string"`
-	P60AcceptedFee  int `json:"p60_accepted_fee,string"`
-	P70AcceptedFee  int `json:"p70_accepted_fee,string"`
-	P80AcceptedFee  int `json:"p80_accepted_fee,string"`
-	P90AcceptedFee  int `json:"p90_accepted_fee,string"`
-	P95AcceptedFee  int `json:"p95_accepted_fee,string"`
-	P99AcceptedFee  int `json:"p99_accepted_fee,string"`
 
 	FeeCharged FeeDistribution `json:"fee_charged"`
 	MaxFee     FeeDistribution `json:"max_fee"`

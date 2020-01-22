@@ -14,7 +14,6 @@ import (
 	"github.com/stellar/go/services/horizon/internal/db2/core"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/services/horizon/internal/expingest"
-	"github.com/stellar/go/services/horizon/internal/ingest"
 	"github.com/stellar/go/services/horizon/internal/simplepath"
 	"github.com/stellar/go/services/horizon/internal/txsub"
 	results "github.com/stellar/go/services/horizon/internal/txsub/results/db"
@@ -45,31 +44,6 @@ func mustInitCoreDB(app *App) {
 	app.coreQ = &core.Q{session}
 }
 
-func initIngester(app *App) {
-	if !app.config.Ingest {
-		return
-	}
-
-	if app.config.NetworkPassphrase == "" {
-		log.Fatal("Cannot start ingestion without network passphrase. Please confirm connectivity with stellar-core.")
-	}
-
-	app.ingester = ingest.New(
-		app.config.NetworkPassphrase,
-		app.config.StellarCoreURL,
-		app.CoreSession(context.Background()),
-		app.HorizonSession(context.Background()),
-		ingest.Config{
-			EnableAssetStats:         app.config.EnableAssetStats,
-			IngestFailedTransactions: app.config.IngestFailedTransactions,
-			CursorName:               app.config.CursorName,
-		},
-	)
-
-	app.ingester.SkipCursorUpdate = app.config.SkipCursorUpdate
-	app.ingester.HistoryRetentionCount = app.config.HistoryRetentionCount
-}
-
 func initExpIngester(app *App, orderBookGraph *orderbook.OrderBookGraph) {
 	var tempSet ingestio.TempSet = &ingestio.MemoryTempSet{}
 	switch app.config.IngestStateReaderTempSet {
@@ -81,8 +55,9 @@ func initExpIngester(app *App, orderBookGraph *orderbook.OrderBookGraph) {
 
 	var err error
 	app.expingester, err = expingest.NewSystem(expingest.Config{
-		CoreSession:    app.CoreSession(context.Background()),
-		HistorySession: app.HorizonSession(context.Background()),
+		CoreSession:       app.CoreSession(context.Background()),
+		HistorySession:    app.HorizonSession(context.Background()),
+		NetworkPassphrase: app.config.NetworkPassphrase,
 		// TODO:
 		// Use the first archive for now. We don't have a mechanism to
 		// use multiple archives at the same time currently.
@@ -100,11 +75,7 @@ func initExpIngester(app *App, orderBookGraph *orderbook.OrderBookGraph) {
 }
 
 func initPathFinder(app *App, orderBookGraph *orderbook.OrderBookGraph) {
-	if app.config.EnableExperimentalIngestion {
-		app.paths = simplepath.NewInMemoryFinder(orderBookGraph)
-	} else {
-		app.paths = &simplepath.Finder{app.CoreQ()}
-	}
+	app.paths = simplepath.NewInMemoryFinder(orderBookGraph)
 }
 
 // initSentry initialized the default sentry client with the configured DSN
@@ -153,16 +124,6 @@ func initDbMetrics(app *App) {
 	app.metrics.Register("history.open_connections", app.horizonConnGauge)
 	app.metrics.Register("stellar_core.open_connections", app.coreConnGauge)
 	app.metrics.Register("goroutines", app.goroutineGauge)
-}
-
-func initIngesterMetrics(app *App) {
-	if app.ingester == nil {
-		return
-	}
-	app.metrics.Register("ingester.ingest_ledger",
-		app.ingester.Metrics.IngestLedgerTimer)
-	app.metrics.Register("ingester.clear_ledger",
-		app.ingester.Metrics.ClearLedgerTimer)
 }
 
 func initTxSubMetrics(app *App) {

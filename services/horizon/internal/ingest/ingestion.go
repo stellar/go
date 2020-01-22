@@ -160,14 +160,14 @@ func (ingest *Ingestion) UpdateAccountIDs(tables []TableName) error {
 
 	if len(addresses) > 0 {
 		// TODO we should probably batch this too
-		dbAccounts = make([]history.Account, 0, len(addresses))
-		err = q.CreateAccounts(&dbAccounts, addresses)
+		var accountMap map[string]int64
+		accountMap, err = q.CreateAccounts(addresses)
 		if err != nil {
 			return errors.Wrap(err, "q.CreateAccounts error")
 		}
 
-		for _, row := range dbAccounts {
-			accounts[Address(row.Address)] = row.ID
+		for address, rowID := range accountMap {
+			accounts[Address(address)] = rowID
 		}
 	}
 

@@ -198,31 +198,7 @@ type AccountFlagsUpdated struct {
 
 type SequenceBumped struct {
 	Base
-	NewSeq int64 `json:"new_seq"`
-}
-
-// UnmarshalJSON is the custom unmarshal method for SequenceBumped. It allows
-// parsing of new_seq as a string or an int64.
-func (effect *SequenceBumped) UnmarshalJSON(data []byte) error {
-	var temp struct {
-		NewSeq json.Number `json:"new_seq"`
-	}
-
-	if err := json.Unmarshal(data, &effect.Base); err != nil {
-		return err
-	}
-
-	if err := json.Unmarshal(data, &temp); err != nil {
-		return err
-	}
-
-	newSeq, err := temp.NewSeq.Int64()
-	if err != nil {
-		return err
-	}
-	effect.NewSeq = newSeq
-
-	return nil
+	NewSeq int64 `json:"new_seq,string"`
 }
 
 type SignerCreated struct {
@@ -280,9 +256,8 @@ type TrustlineDeauthorized struct {
 
 type Trade struct {
 	Base
-	Seller string `json:"seller"`
-	// Action needed in release: horizon-v0.25.0
-	OfferID           int64  `json:"offer_id"`
+	Seller            string `json:"seller"`
+	OfferID           int64  `json:"offer_id,string"`
 	SoldAmount        string `json:"sold_amount"`
 	SoldAssetType     string `json:"sold_asset_type"`
 	SoldAssetCode     string `json:"sold_asset_code,omitempty"`

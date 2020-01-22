@@ -20,7 +20,24 @@ const defaultCoreCursorName = "EXPINGESTLIVESESSION"
 // Run runs the session starting from the last checkpoint ledger.
 // Returns nil when session has been shutdown.
 func (s *LiveSession) Run() error {
-	s.standardSession.shutdown = make(chan bool)
+	err := s.validate()
+	if err != nil {
+		return errors.Wrap(err, "Validation error")
+	}
+
+	historyAdapter := adapters.MakeHistoryArchiveAdapter(s.Archive)
+	checkpointLedger, err := historyAdapter.GetLatestLedgerSequence()
+	if err != nil {
+		return errors.Wrap(err, "Error getting the latest ledger sequence")
+	}
+
+	return s.RunFromCheckpoint(checkpointLedger)
+}
+
+// RunFromCheckpoint runs the session starting from the provided checkpoint ledger.
+// Returns nil when session has been shutdown.
+func (s *LiveSession) RunFromCheckpoint(checkpointLedger uint32) error {
+	s.standardSession.Init()
 
 	err := s.validate()
 	if err != nil {
@@ -30,11 +47,7 @@ func (s *LiveSession) Run() error {
 	s.setRunningState(true)
 	defer s.setRunningState(false)
 
-	historyAdapter := adapters.MakeHistoryArchiveAdapter(s.Archive)
-	currentLedger, err := historyAdapter.GetLatestLedgerSequence()
-	if err != nil {
-		return errors.Wrap(err, "Error getting the latest ledger sequence")
-	}
+	currentLedger := checkpointLedger
 
 	// Update cursor
 	err = s.updateCursor(currentLedger)
@@ -45,6 +58,8 @@ func (s *LiveSession) Run() error {
 	ledgerAdapter := &adapters.LedgerBackendAdapter{
 		Backend: s.LedgerBackend,
 	}
+
+	historyAdapter := adapters.MakeHistoryArchiveAdapter(s.Archive)
 
 	// Validate bucket list hash
 	err = s.validateBucketList(currentLedger, historyAdapter, ledgerAdapter)
@@ -108,7 +123,7 @@ func (s *LiveSession) updateCursor(ledgerSequence uint32) error {
 // You should always check if the second returned value is equal `false` before
 // overwriting your local variable.
 func (s *LiveSession) Resume(ledgerSequence uint32) error {
-	s.standardSession.shutdown = make(chan bool)
+	s.standardSession.Init()
 
 	err := s.validate()
 	if err != nil {
@@ -134,7 +149,7 @@ func (s *LiveSession) Resume(ledgerSequence uint32) error {
 // SingleLedgerStateReader).
 func (s *LiveSession) validateBucketList(
 	ledgerSequence uint32,
-	historyAdapter *adapters.HistoryArchiveAdapter,
+	historyAdapter adapters.HistoryArchiveAdapterInterface,
 	ledgerAdapter *adapters.LedgerBackendAdapter,
 ) error {
 	historyBucketListHash, err := historyAdapter.BucketListHash(ledgerSequence)
@@ -272,7 +287,7 @@ func (s *LiveSession) validate() error {
 	return nil
 }
 
-func (s *LiveSession) initState(historyAdapter *adapters.HistoryArchiveAdapter, sequence uint32) error {
+func (s *LiveSession) initState(historyAdapter adapters.HistoryArchiveAdapterInterface, sequence uint32) error {
 	var tempSet io.TempSet = &io.MemoryTempSet{}
 	if s.TempSet != nil {
 		tempSet = s.TempSet
