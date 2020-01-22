@@ -2,6 +2,7 @@ package txnbuild_test
 
 import (
 	"fmt"
+	"sort"
 	"time"
 
 	"github.com/stellar/go/clients/horizon"
@@ -104,6 +105,7 @@ func ExampleVerifyChallengeTxThreshold() {
 				return
 			}
 			fmt.Println("Client Signers Verified:")
+			sort.Strings(signers)
 			for _, signer := range signers {
 				fmt.Println(signer, "weight:", signerSummary[signer])
 			}
@@ -123,6 +125,6 @@ func ExampleVerifyChallengeTxThreshold() {
 
 	// Output:
 	// Client Signers Verified:
-	// GDQNY3PBOJOKYZSRMK2S7LHHGWZIUISD4QORETLMXEWXBI7KFZZMKTL3 weight: 40
 	// GAS4V4O2B7DW5T7IQRPEEVCRXMDZESKISR7DVIGKZQYYV3OSQ5SH5LVP weight: 60
+	// GDQNY3PBOJOKYZSRMK2S7LHHGWZIUISD4QORETLMXEWXBI7KFZZMKTL3 weight: 40
 }
