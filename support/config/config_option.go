@@ -1,6 +1,7 @@
 package config
 
 import (
+	"fmt"
 	"go/types"
 	stdLog "log"
 	"net/url"
@@ -82,6 +83,13 @@ func (co *ConfigOption) SetValue() {
 	}
 }
 
+// UsageText returns the string to use for the usage text of the option. The
+// string returned will be the Usage defined on the ConfigOption, along with
+// the environment variable.
+func (co *ConfigOption) UsageText() string {
+	return fmt.Sprintf("%s (%s)", co.Usage, co.EnvVar)
+}
+
 // setSimpleValue sets the value of a ConfigOption's configKey, based on the ConfigOption's default type.
 func (co *ConfigOption) setSimpleValue() {
 	if co.ConfigKey != nil {
@@ -106,13 +114,13 @@ func (co *ConfigOption) setFlag(cmd *cobra.Command) error {
 		if co.FlagDefault == nil {
 			co.FlagDefault = ""
 		}
-		cmd.PersistentFlags().String(co.Name, co.FlagDefault.(string), co.Usage)
+		cmd.PersistentFlags().String(co.Name, co.FlagDefault.(string), co.UsageText())
 	case types.Int:
-		cmd.PersistentFlags().Int(co.Name, co.FlagDefault.(int), co.Usage)
+		cmd.PersistentFlags().Int(co.Name, co.FlagDefault.(int), co.UsageText())
 	case types.Bool:
-		cmd.PersistentFlags().Bool(co.Name, co.FlagDefault.(bool), co.Usage)
+		cmd.PersistentFlags().Bool(co.Name, co.FlagDefault.(bool), co.UsageText())
 	case types.Uint:
-		cmd.PersistentFlags().Uint(co.Name, co.FlagDefault.(uint), co.Usage)
+		cmd.PersistentFlags().Uint(co.Name, co.FlagDefault.(uint), co.UsageText())
 	default:
 		return errors.New("Unexpected OptType")
 	}
