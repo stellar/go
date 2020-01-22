@@ -1598,7 +1598,7 @@ func TestVerifyChallengeTxThreshold_validServerAndClientKeyMeetingThreshold(t *t
 	tx64, err := tx.Base64()
 	require.NoError(t, err)
 	signersFound, err := VerifyChallengeTxThreshold(tx64, serverKP.Address(), network.TestNetworkPassphrase, threshold, signerSummary)
-	assert.Equal(t, wantSigners, signersFound)
+	assert.ElementsMatch(t, wantSigners, signersFound)
 	assert.NoError(t, err)
 }
 
@@ -1636,7 +1636,7 @@ func TestVerifyChallengeTxThreshold_validServerAndMultipleClientKeyMeetingThresh
 	tx64, err := tx.Base64()
 	require.NoError(t, err)
 	signersFound, err := VerifyChallengeTxThreshold(tx64, serverKP.Address(), network.TestNetworkPassphrase, threshold, signerSummary)
-	assert.Equal(t, wantSigners, signersFound)
+	assert.ElementsMatch(t, wantSigners, signersFound)
 	assert.NoError(t, err)
 }
 
@@ -1676,7 +1676,7 @@ func TestVerifyChallengeTxThreshold_validServerAndMultipleClientKeyMeetingThresh
 	tx64, err := tx.Base64()
 	require.NoError(t, err)
 	signersFound, err := VerifyChallengeTxThreshold(tx64, serverKP.Address(), network.TestNetworkPassphrase, threshold, signerSummary)
-	assert.Equal(t, wantSigners, signersFound)
+	assert.ElementsMatch(t, wantSigners, signersFound)
 	assert.NoError(t, err)
 }
 
