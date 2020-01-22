@@ -128,6 +128,15 @@ func (a *Account) GetData(key string) ([]byte, error) {
 	return base64.StdEncoding.DecodeString(a.Data[key])
 }
 
+// SignerSummary returns a map of signer's keys to weights.
+func (a *Account) SignerSummary() map[string]int32 {
+	m := map[string]int32{}
+	for _, s := range a.Signers {
+		m[s.Key] = s.Weight
+	}
+	return m
+}
+
 // AccountSigner is the account signer information.
 type AccountSigner struct {
 	Links struct {

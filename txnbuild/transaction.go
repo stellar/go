@@ -492,6 +492,9 @@ func ReadChallengeTx(challengeTx, serverAccountID, network string) (tx Transacti
 	return tx, clientAccountID, nil
 }
 
+// SignerSummary is a map of signers to their weights.
+type SignerSummary map[string]int32
+
 // VerifyChallengeTxThreshold verifies that for a SEP 10 challenge transaction
 // all signatures on the transaction are accounted for and that the signatures
 // meet a threshold on an account. A transaction is verified if it is signed by
@@ -505,31 +508,24 @@ func ReadChallengeTx(challengeTx, serverAccountID, network string) (tx Transacti
 //  - One or more signatures in the transaction are not identifiable as the
 //    server account or one of the signers provided in the arguments.
 //  - The signatures are all valid but do not meet the threshold.
-func VerifyChallengeTxThreshold(challengeTx, serverAccountID, network string, threshold Threshold, signers []Signer) (signersFound []Signer, err error) {
-	signerMap := map[string]Signer{}
-	signerAddresses := make([]string, 0, len(signers))
-	for _, s := range signers {
-		signerMap[s.Address] = s
-		signerAddresses = append(signerAddresses, s.Address)
+func VerifyChallengeTxThreshold(challengeTx, serverAccountID, network string, threshold Threshold, signerSummary SignerSummary) (signersFound []string, err error) {
+	signerAddresses := make([]string, 0, len(signerSummary))
+	for s := range signerSummary {
+		signerAddresses = append(signerAddresses, s)
 	}
 
-	signerAddressesFound, err := VerifyChallengeTxSigners(challengeTx, serverAccountID, network, signerAddresses...)
+	signersFound, err = VerifyChallengeTxSigners(challengeTx, serverAccountID, network, signerAddresses...)
 	if err != nil {
 		return nil, err
 	}
 
 	weight := Threshold(0)
-	for _, s := range signerAddressesFound {
-		weight += signerMap[s].Weight
+	for _, s := range signersFound {
+		weight += Threshold(signerSummary[s])
 	}
 
 	if weight < threshold {
 		return nil, errors.Errorf("signers with weight %d do not meet threshold %d", weight, threshold)
-	}
-
-	signersFound = make([]Signer, 0, len(signerAddressesFound))
-	for _, s := range signerAddressesFound {
-		signersFound = append(signersFound, signerMap[s])
 	}
 
 	return signersFound, nil

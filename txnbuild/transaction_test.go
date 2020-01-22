@@ -1584,8 +1584,11 @@ func TestVerifyChallengeTxThreshold_validServerAndClientKeyMeetingThreshold(t *t
 		Network:       network.TestNetworkPassphrase,
 	}
 	threshold := Threshold(1)
-	signers := []Signer{
-		{Address: clientKP.Address(), Weight: 1},
+	signerSummary := SignerSummary{
+		clientKP.Address(): 1,
+	}
+	wantSigners := []string{
+		clientKP.Address(),
 	}
 
 	err := tx.Build()
@@ -1594,8 +1597,8 @@ func TestVerifyChallengeTxThreshold_validServerAndClientKeyMeetingThreshold(t *t
 	assert.NoError(t, err)
 	tx64, err := tx.Base64()
 	require.NoError(t, err)
-	signersFound, err := VerifyChallengeTxThreshold(tx64, serverKP.Address(), network.TestNetworkPassphrase, threshold, signers)
-	assert.Equal(t, signers, signersFound)
+	signersFound, err := VerifyChallengeTxThreshold(tx64, serverKP.Address(), network.TestNetworkPassphrase, threshold, signerSummary)
+	assert.Equal(t, wantSigners, signersFound)
 	assert.NoError(t, err)
 }
 
@@ -1617,9 +1620,13 @@ func TestVerifyChallengeTxThreshold_validServerAndMultipleClientKeyMeetingThresh
 		Network:       network.TestNetworkPassphrase,
 	}
 	threshold := Threshold(3)
-	signers := []Signer{
-		{Address: clientKP1.Address(), Weight: 1},
-		{Address: clientKP2.Address(), Weight: 2},
+	signerSummary := map[string]int32{
+		clientKP1.Address(): 1,
+		clientKP2.Address(): 2,
+	}
+	wantSigners := []string{
+		clientKP1.Address(),
+		clientKP2.Address(),
 	}
 
 	err := tx.Build()
@@ -1628,8 +1635,8 @@ func TestVerifyChallengeTxThreshold_validServerAndMultipleClientKeyMeetingThresh
 	assert.NoError(t, err)
 	tx64, err := tx.Base64()
 	require.NoError(t, err)
-	signersFound, err := VerifyChallengeTxThreshold(tx64, serverKP.Address(), network.TestNetworkPassphrase, threshold, signers)
-	assert.Equal(t, signers, signersFound)
+	signersFound, err := VerifyChallengeTxThreshold(tx64, serverKP.Address(), network.TestNetworkPassphrase, threshold, signerSummary)
+	assert.Equal(t, wantSigners, signersFound)
 	assert.NoError(t, err)
 }
 
@@ -1652,10 +1659,14 @@ func TestVerifyChallengeTxThreshold_validServerAndMultipleClientKeyMeetingThresh
 		Network:       network.TestNetworkPassphrase,
 	}
 	threshold := Threshold(3)
-	signers := []Signer{
-		{Address: clientKP1.Address(), Weight: 1},
-		{Address: clientKP2.Address(), Weight: 2},
-		{Address: clientKP3.Address(), Weight: 2},
+	signerSummary := SignerSummary{
+		clientKP1.Address(): 1,
+		clientKP2.Address(): 2,
+		clientKP3.Address(): 2,
+	}
+	wantSigners := []string{
+		clientKP1.Address(),
+		clientKP2.Address(),
 	}
 
 	err := tx.Build()
@@ -1664,12 +1675,8 @@ func TestVerifyChallengeTxThreshold_validServerAndMultipleClientKeyMeetingThresh
 	assert.NoError(t, err)
 	tx64, err := tx.Base64()
 	require.NoError(t, err)
-	signersFound, err := VerifyChallengeTxThreshold(tx64, serverKP.Address(), network.TestNetworkPassphrase, threshold, signers)
-	wantSignersFound := []Signer{
-		{Address: clientKP1.Address(), Weight: 1},
-		{Address: clientKP2.Address(), Weight: 2},
-	}
-	assert.Equal(t, wantSignersFound, signersFound)
+	signersFound, err := VerifyChallengeTxThreshold(tx64, serverKP.Address(), network.TestNetworkPassphrase, threshold, signerSummary)
+	assert.Equal(t, wantSigners, signersFound)
 	assert.NoError(t, err)
 }
 
@@ -1692,10 +1699,10 @@ func TestVerifyChallengeTxThreshold_invalidServerAndMultipleClientKeyNotMeetingT
 		Network:       network.TestNetworkPassphrase,
 	}
 	threshold := Threshold(10)
-	signers := []Signer{
-		{Address: clientKP1.Address(), Weight: 1},
-		{Address: clientKP2.Address(), Weight: 2},
-		{Address: clientKP3.Address(), Weight: 2},
+	signerSummary := SignerSummary{
+		clientKP1.Address(): 1,
+		clientKP2.Address(): 2,
+		clientKP3.Address(): 2,
 	}
 
 	err := tx.Build()
@@ -1704,7 +1711,7 @@ func TestVerifyChallengeTxThreshold_invalidServerAndMultipleClientKeyNotMeetingT
 	assert.NoError(t, err)
 	tx64, err := tx.Base64()
 	require.NoError(t, err)
-	_, err = VerifyChallengeTxThreshold(tx64, serverKP.Address(), network.TestNetworkPassphrase, threshold, signers)
+	_, err = VerifyChallengeTxThreshold(tx64, serverKP.Address(), network.TestNetworkPassphrase, threshold, signerSummary)
 	assert.EqualError(t, err, "signers with weight 3 do not meet threshold 10")
 }
 
@@ -1727,9 +1734,9 @@ func TestVerifyChallengeTxThreshold_invalidClientKeyUnrecognized(t *testing.T) {
 		Network:       network.TestNetworkPassphrase,
 	}
 	threshold := Threshold(10)
-	signers := []Signer{
-		{Address: clientKP1.Address(), Weight: 1},
-		{Address: clientKP2.Address(), Weight: 2},
+	signerSummary := map[string]int32{
+		clientKP1.Address(): 1,
+		clientKP2.Address(): 2,
 	}
 
 	err := tx.Build()
@@ -1738,7 +1745,7 @@ func TestVerifyChallengeTxThreshold_invalidClientKeyUnrecognized(t *testing.T) {
 	assert.NoError(t, err)
 	tx64, err := tx.Base64()
 	require.NoError(t, err)
-	_, err = VerifyChallengeTxThreshold(tx64, serverKP.Address(), network.TestNetworkPassphrase, threshold, signers)
+	_, err = VerifyChallengeTxThreshold(tx64, serverKP.Address(), network.TestNetworkPassphrase, threshold, signerSummary)
 	assert.EqualError(t, err, "transaction has unrecognized signatures")
 }
 
@@ -1761,7 +1768,7 @@ func TestVerifyChallengeTxThreshold_invalidNoSigners(t *testing.T) {
 		Network:       network.TestNetworkPassphrase,
 	}
 	threshold := Threshold(10)
-	signers := []Signer{}
+	signerSummary := SignerSummary{}
 
 	err := tx.Build()
 	require.NoError(t, err)
@@ -1769,7 +1776,7 @@ func TestVerifyChallengeTxThreshold_invalidNoSigners(t *testing.T) {
 	assert.NoError(t, err)
 	tx64, err := tx.Base64()
 	require.NoError(t, err)
-	_, err = VerifyChallengeTxThreshold(tx64, serverKP.Address(), network.TestNetworkPassphrase, threshold, signers)
+	_, err = VerifyChallengeTxThreshold(tx64, serverKP.Address(), network.TestNetworkPassphrase, threshold, signerSummary)
 	assert.EqualError(t, err, "no signers provided")
 }
 
