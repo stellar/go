@@ -120,16 +120,15 @@ func AccountInfo(ctx context.Context, cq *core.Q, hq *history.Q, addr string) (*
 	}
 
 	if err == nil {
-		err = accountResourcesEqual(*resource, *otherResource)
-	}
-	if err != nil {
-		log.Ctx(ctx).WithFields(log.F{
-			"err":            err,
-			"accounts_check": true, // So it's easy to find all diffs
-		}).Warn("error comparing core and horizon accounts")
+		if err = accountResourcesEqual(*resource, *otherResource); err != nil {
+			log.Ctx(ctx).WithFields(log.F{
+				"err":            err,
+				"accounts_check": true, // So it's easy to find all diffs
+			}).Warn("error comparing core and horizon accounts")
+		}
 	}
 
-	return resource, nil
+	return resource, err
 }
 
 // accountResourcesEqual compares two protocol.Account objects and returns an

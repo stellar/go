@@ -10,6 +10,7 @@ import (
 	"github.com/stellar/go/services/horizon/internal/db2/core"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/services/horizon/internal/test"
+	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/support/render/problem"
 	"github.com/stellar/go/xdr"
 )
@@ -155,42 +156,118 @@ var (
 	}
 )
 
-func TestAccountFromExpIngest(t *testing.T) {
+func TestAccountInfo(t *testing.T) {
 	tt := test.Start(t).Scenario("allow_trust")
 	defer tt.Finish()
 	test.ResetHorizonDB(t, tt.HorizonDB)
-
 	q := &history.Q{tt.HorizonSession()}
-	_, err := q.InsertAccount(account1, 1234)
-	tt.Assert.NoError(err)
-	_, err = q.InsertAccount(account2, 1234)
-	tt.Assert.NoError(err)
 
-	for _, row := range accountSigners {
-		_, err = q.CreateAccountSigner(row.Account, row.Signer, row.Weight)
-		tt.Assert.NoError(err)
+	var thresholds xdr.Thresholds
+	tt.Assert.NoError(
+		xdr.SafeUnmarshalBase64("AQAAAA==", &thresholds),
+	)
+	accountID := xdr.MustAddress(
+		"GCXKG6RN4ONIEPCMNFB732A436Z5PNDSRLGWK7GBLCMQLIFO4S7EYWVU",
+	)
+	accountEntry := xdr.AccountEntry{
+		AccountId:     accountID,
+		Balance:       9999999900,
+		SeqNum:        8589934593,
+		NumSubEntries: 1,
+		InflationDest: nil,
+		HomeDomain:    "",
+		Thresholds:    thresholds,
+		Flags:         0,
 	}
+	_, err := q.InsertAccount(accountEntry, 4)
+	tt.Assert.NoError(err)
 
-	_, err = q.InsertAccountData(data1, 1234)
-	assert.NoError(t, err)
-
-	_, err = q.InsertTrustLine(eurTrustLine, 1234)
+	_, err = q.InsertTrustLine(xdr.TrustLineEntry{
+		AccountId: accountID,
+		Asset: xdr.MustNewCreditAsset(
+			"USD",
+			"GC23QF2HUE52AMXUFUH3AYJAXXGXXV2VHXYYR6EYXETPKDXZSAW67XO4",
+		),
+		Balance: 0,
+		Limit:   9223372036854775807,
+		Flags:   1,
+	}, 6)
 	assert.NoError(t, err)
 
 	account, err := AccountInfo(
 		tt.Ctx,
 		&core.Q{tt.CoreSession()},
-		q,
-		accountOne,
+		&history.Q{tt.HorizonSession()},
+		accountID.Address(),
 	)
 	tt.Assert.NoError(err)
 
-	tt.Assert.Equal(accountOne, account.AccountID)
-	tt.Assert.Equal(account.LastModifiedLedger, uint32(1234))
+	tt.Assert.Equal("8589934593", account.Sequence)
+	tt.Assert.Equal(uint32(4), account.LastModifiedLedger)
 	tt.Assert.Len(account.Balances, 2)
+
+	for _, balance := range account.Balances {
+		if balance.Type == "native" {
+			tt.Assert.Equal(uint32(0), balance.LastModifiedLedger)
+		} else {
+			tt.Assert.Equal("USD", balance.Code)
+			tt.Assert.Equal(
+				"GC23QF2HUE52AMXUFUH3AYJAXXGXXV2VHXYYR6EYXETPKDXZSAW67XO4",
+				balance.Issuer,
+			)
+			tt.Assert.NotEqual(uint32(0), balance.LastModifiedLedger)
+		}
+	}
+
+	// core account and horizon ingestion account differ
+	// horizon ingestion account has a signer whereas core account
+	// has no signers
+	_, err = q.CreateAccountSigner(
+		accountID.Address(),
+		"GBXGQJWVLWOYHFLVTKWV5FGHA3LNYY2JQKM7OAJAUEQFU6LPCSEFVXON",
+		100,
+	)
+	tt.Assert.NoError(err)
+
+	_, err = AccountInfo(
+		tt.Ctx,
+		&core.Q{tt.CoreSession()},
+		&history.Q{tt.HorizonSession()},
+		accountID.Address(),
+	)
+	tt.Assert.EqualError(err, "Signer is different")
+
+	// even though horizon ingestion account differs from core account,
+	// no error is returned because they have different last modified ledgers
+	_, err = q.UpdateAccount(accountEntry, 5)
+	tt.Assert.NoError(err)
+
+	account, err = AccountInfo(
+		tt.Ctx,
+		&core.Q{tt.CoreSession()},
+		&history.Q{tt.HorizonSession()},
+		accountID.Address(),
+	)
+	tt.Assert.NoError(err)
+
+	tt.Assert.Equal("8589934593", account.Sequence)
+	tt.Assert.Equal(uint32(5), account.LastModifiedLedger)
 	tt.Assert.Len(account.Signers, 2)
-	_, ok := account.Data[string(data1.DataName)]
-	tt.Assert.True(ok)
+
+	// Regression: no trades link
+	tt.Assert.Contains(account.Links.Trades.Href, "/trades")
+	// Regression: no data link
+	tt.Assert.Contains(account.Links.Data.Href, "/data/{key}")
+	tt.Assert.True(account.Links.Data.Templated)
+
+	// try to fetch account which does not exist
+	_, err = AccountInfo(
+		tt.Ctx,
+		&core.Q{tt.CoreSession()},
+		&history.Q{tt.HorizonSession()},
+		"GDBAPLDCAEJV6LSEDFEAUDAVFYSNFRUYZ4X75YYJJMMX5KFVUOHX46SQ",
+	)
+	tt.Assert.True(q.NoRows(errors.Cause(err)))
 }
 
 func TestGetAccountsHandlerPageNoResults(t *testing.T) {
