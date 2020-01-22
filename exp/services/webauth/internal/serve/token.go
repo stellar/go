@@ -55,9 +55,9 @@ func (h tokenHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	requiredThreshold := txnbuild.Threshold(clientAccount.Thresholds.HighThreshold)
-	clientSigners := txnbuild.SignersFromHorizon(clientAccount.Signers)
+	clientSignerSummary := clientAccount.SignerSummary()
 
-	_, err = txnbuild.VerifyChallengeTxThreshold(req.Transaction, h.SigningAddress.Address(), h.NetworkPassphrase, requiredThreshold, clientSigners)
+	_, err = txnbuild.VerifyChallengeTxThreshold(req.Transaction, h.SigningAddress.Address(), h.NetworkPassphrase, requiredThreshold, clientSignerSummary)
 	if err != nil {
 		unauthorized.Render(w)
 		return
