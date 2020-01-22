@@ -20,7 +20,6 @@ func PopulateRoot(
 	currentProtocolVersion int32,
 	coreSupportedProtocolVersion int32,
 	friendBotURL *url.URL,
-	experimentalIngestionEnabled bool,
 	templates map[string]string,
 ) {
 	dest.ExpHorizonSequence = ledgerState.ExpHistoryLatest
@@ -45,18 +44,16 @@ func PopulateRoot(
 	dest.Links.Assets = lb.Link("/assets{?asset_code,asset_issuer,cursor,limit,order}")
 	dest.Links.Metrics = lb.Link("/metrics")
 
-	if experimentalIngestionEnabled {
-		accountsLink := lb.Link(templates["accounts"])
-		offerLink := lb.Link("/offers/{offer_id}")
-		offersLink := lb.Link(templates["offers"])
-		strictReceivePaths := lb.Link(templates["strictReceivePaths"])
-		strictSendPaths := lb.Link(templates["strictSendPaths"])
-		dest.Links.Accounts = &accountsLink
-		dest.Links.Offer = &offerLink
-		dest.Links.Offers = &offersLink
-		dest.Links.StrictReceivePaths = &strictReceivePaths
-		dest.Links.StrictSendPaths = &strictSendPaths
-	}
+	accountsLink := lb.Link(templates["accounts"])
+	offerLink := lb.Link("/offers/{offer_id}")
+	offersLink := lb.Link(templates["offers"])
+	strictReceivePaths := lb.Link(templates["strictReceivePaths"])
+	strictSendPaths := lb.Link(templates["strictSendPaths"])
+	dest.Links.Accounts = &accountsLink
+	dest.Links.Offer = &offerLink
+	dest.Links.Offers = &offersLink
+	dest.Links.StrictReceivePaths = &strictReceivePaths
+	dest.Links.StrictSendPaths = &strictSendPaths
 
 	dest.Links.OrderBook = lb.Link("/order_book{?selling_asset_type,selling_asset_code,selling_asset_issuer,buying_asset_type,buying_asset_code,buying_asset_issuer,limit}")
 	dest.Links.Self = lb.Link("/")

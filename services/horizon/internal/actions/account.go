@@ -105,30 +105,18 @@ func accountFromExperimentalIngestion(ctx context.Context, hq *history.Q, addr s
 }
 
 // AccountInfo returns the information about an account identified by addr.
-func AccountInfo(ctx context.Context, cq *core.Q, hq *history.Q, addr string, enableExperimentalIngestion bool) (*protocol.Account, error) {
+func AccountInfo(ctx context.Context, cq *core.Q, hq *history.Q, addr string) (*protocol.Account, error) {
 	var resource, otherResource *protocol.Account
 	var err error
 
-	if enableExperimentalIngestion {
-		resource, err = accountFromExperimentalIngestion(ctx, hq, addr)
-		if err != nil {
-			return nil, err
-		}
+	resource, err = accountFromExperimentalIngestion(ctx, hq, addr)
+	if err != nil {
+		return nil, err
+	}
 
-		otherResource, err = accountFromCoreDB(ctx, cq, addr)
-		if err != nil {
-			err = errors.Wrap(err, "Could not fetch account from core DB")
-		}
-	} else {
-		resource, err = accountFromCoreDB(ctx, cq, addr)
-		if err != nil {
-			return nil, err
-		}
-
-		otherResource, err = accountFromExperimentalIngestion(ctx, hq, addr)
-		if err != nil {
-			err = errors.Wrap(err, "Could not fetch account from expingest tables")
-		}
+	otherResource, err = accountFromCoreDB(ctx, cq, addr)
+	if err != nil {
+		err = errors.Wrap(err, "Could not fetch account from core DB")
 	}
 
 	if err == nil {

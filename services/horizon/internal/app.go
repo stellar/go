@@ -463,8 +463,7 @@ func (a *App) init() {
 	a.web.mustInstallMiddlewares(a, a.config.ConnectionTimeout)
 
 	requiresExperimentalIngestion := &ExperimentalIngestionMiddleware{
-		EnableExperimentalIngestion: a.config.EnableExperimentalIngestion,
-		HorizonSession:              a.historyQ.Session,
+		HorizonSession: a.historyQ.Session,
 	}
 	// web.actions
 	a.web.mustInstallActions(a.config, a.paths, orderBookGraph, requiresExperimentalIngestion)

@@ -75,11 +75,7 @@ func initExpIngester(app *App, orderBookGraph *orderbook.OrderBookGraph) {
 }
 
 func initPathFinder(app *App, orderBookGraph *orderbook.OrderBookGraph) {
-	if app.config.EnableExperimentalIngestion {
-		app.paths = simplepath.NewInMemoryFinder(orderBookGraph)
-	} else {
-		app.paths = &simplepath.Finder{app.CoreQ()}
-	}
+	app.paths = simplepath.NewInMemoryFinder(orderBookGraph)
 }
 
 // initSentry initialized the default sentry client with the configured DSN

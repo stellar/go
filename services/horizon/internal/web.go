@@ -122,43 +122,6 @@ func (w *web) mustInstallMiddlewares(app *App, connTimeout time.Duration) {
 	r.Use(w.RateLimitMiddleware)
 }
 
-func installPathFindingRoutes(
-	findPaths FindPathsHandler,
-	findFixedPaths FindFixedPathsHandler,
-	r *chi.Mux,
-	expIngest bool,
-	requiresExperimentalIngestion *ExperimentalIngestionMiddleware,
-) {
-	r.Group(func(r chi.Router) {
-		r.Use(acceptOnlyJSON)
-		if expIngest {
-			r.Use(requiresExperimentalIngestion.Wrap)
-		}
-		r.Method("GET", "/paths", findPaths)
-		r.Method("GET", "/paths/strict-receive", findPaths)
-		r.Method("GET", "/paths/strict-send", findFixedPaths)
-	})
-}
-
-func installAccountOfferRoute(
-	offersAction actions.GetAccountOffersHandler,
-	streamHandler sse.StreamHandler,
-	enableExperimentalIngestion bool,
-	r *chi.Mux,
-	requiresExperimentalIngestion *ExperimentalIngestionMiddleware,
-) {
-	path := "/accounts/{account_id}/offers"
-	if enableExperimentalIngestion {
-		r.With(requiresExperimentalIngestion.Wrap).Method(
-			http.MethodGet,
-			path,
-			streamablePageHandler(offersAction, streamHandler),
-		)
-	} else {
-		r.Get(path, OffersByAccountAction{}.Handle)
-	}
-}
-
 // mustInstallActions installs the routing configuration of horizon onto the
 // provided app.  All route registration should be implemented here.
 func (w *web) mustInstallActions(
@@ -211,12 +174,10 @@ func (w *web) mustInstallActions(
 		LedgerSource: ledger.NewHistoryDBSource(w.sseUpdateFrequency),
 	}
 
-	installAccountOfferRoute(
-		actions.GetAccountOffersHandler{},
-		streamHandler,
-		config.EnableExperimentalIngestion,
-		r,
-		requiresExperimentalIngestion,
+	r.With(requiresExperimentalIngestion.Wrap).Method(
+		http.MethodGet,
+		"/accounts/{account_id}/offers",
+		streamablePageHandler(actions.GetAccountOffersHandler{}, streamHandler),
 	)
 
 	// transaction history actions
@@ -263,28 +224,24 @@ func (w *web) mustInstallActions(
 		r.Get("/{offer_id}/trades", TradeIndexAction{}.Handle)
 	})
 
-	if config.EnableExperimentalIngestion {
-		r.With(requiresExperimentalIngestion.Wrap).Method(
-			http.MethodGet,
-			"/order_book",
-			streamableObjectActionHandler{
-				streamHandler: streamHandler,
-				action: actions.GetOrderbookHandler{
-					OrderBookGraph: orderBookGraph,
-				},
+	r.With(requiresExperimentalIngestion.Wrap).Method(
+		http.MethodGet,
+		"/order_book",
+		streamableObjectActionHandler{
+			streamHandler: streamHandler,
+			action: actions.GetOrderbookHandler{
+				OrderBookGraph: orderBookGraph,
 			},
-		)
-	} else {
-		r.Get("/order_book", OrderBookShowAction{}.Handle)
-	}
+		},
+	)
 
 	// Transaction submission API
 	r.Post("/transactions", TransactionCreateAction{}.Handle)
 
 	findPaths := FindPathsHandler{
 		staleThreshold:       config.StaleThreshold,
-		checkHistoryIsStale:  !config.EnableExperimentalIngestion,
-		setLastLedgerHeader:  config.EnableExperimentalIngestion,
+		checkHistoryIsStale:  false,
+		setLastLedgerHeader:  true,
 		maxPathLength:        config.MaxPathLength,
 		maxAssetsParamLength: maxAssetsForPathFinding,
 		pathFinder:           pathFinder,
@@ -292,28 +249,25 @@ func (w *web) mustInstallActions(
 	}
 	findFixedPaths := FindFixedPathsHandler{
 		maxPathLength:        config.MaxPathLength,
-		setLastLedgerHeader:  config.EnableExperimentalIngestion,
+		setLastLedgerHeader:  true,
 		maxAssetsParamLength: maxAssetsForPathFinding,
 		pathFinder:           pathFinder,
 		coreQ:                w.coreQ,
 	}
-	installPathFindingRoutes(
-		findPaths,
-		findFixedPaths,
-		w.router,
-		config.EnableExperimentalIngestion,
-		requiresExperimentalIngestion,
-	)
 
-	if config.EnableExperimentalIngestion {
-		r.With(requiresExperimentalIngestion.Wrap).Method(
-			http.MethodGet,
-			"/assets",
-			restPageHandler(actions.AssetStatsHandler{}),
-		)
-	} else if config.EnableAssetStats {
-		r.Get("/assets", AssetsAction{}.Handle)
-	}
+	r.Group(func(r chi.Router) {
+		r.Use(acceptOnlyJSON)
+		r.Use(requiresExperimentalIngestion.Wrap)
+		r.Method("GET", "/paths", findPaths)
+		r.Method("GET", "/paths/strict-receive", findPaths)
+		r.Method("GET", "/paths/strict-send", findFixedPaths)
+	})
+
+	r.With(requiresExperimentalIngestion.Wrap).Method(
+		http.MethodGet,
+		"/assets",
+		restPageHandler(actions.AssetStatsHandler{}),
+	)
 
 	// Network state related endpoints
 	r.Get("/fee_stats", FeeStatsAction{}.Handle)

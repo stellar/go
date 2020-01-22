@@ -178,8 +178,6 @@ type showActionQueryParams struct {
 func (w *web) getAccountInfo(ctx context.Context, qp *showActionQueryParams) (interface{}, error) {
 	// Use AppFromContext to prevent larger refactoring of actions code. Will
 	// be removed once this endpoint is migrated to use new actions design.
-	app := AppFromContext(ctx)
-
 	horizonSession, err := w.horizonSession(ctx)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting horizon db session")
@@ -196,7 +194,7 @@ func (w *web) getAccountInfo(ctx context.Context, qp *showActionQueryParams) (in
 	defer horizonSession.Rollback()
 	historyQ := &history.Q{horizonSession}
 
-	return actions.AccountInfo(ctx, &core.Q{w.coreSession(ctx)}, historyQ, qp.AccountID, app.config.EnableExperimentalIngestion)
+	return actions.AccountInfo(ctx, &core.Q{w.coreSession(ctx)}, historyQ, qp.AccountID)
 }
 
 // getTransactionPage returns a page containing the transaction records of an account or a ledger.

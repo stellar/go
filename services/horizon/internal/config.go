@@ -44,11 +44,6 @@ type Config struct {
 	TLSKey string
 	// Ingest toggles whether this horizon instance should run the data ingestion subsystem.
 	Ingest bool
-	// EnableExperimentalIngestion  a feature flag that enables the exprimental ingestion subsystem.
-	// If this flag is true then the following features in horizon will be available:
-	// * In-Memory path finding
-	// * Accounts for signers endpoint
-	EnableExperimentalIngestion bool
 	// IngestStateReaderTempSet defines where to store temporary objects during state
 	// ingestion. Possible options are `memory` and `postgres`.
 	IngestStateReaderTempSet string
@@ -71,11 +66,6 @@ type Config struct {
 	// SkipCursorUpdate causes the ingestor to skip reporting the "last imported
 	// ledger" state to stellar-core.
 	SkipCursorUpdate bool
-	// EnableAssetStats is a feature flag that determines whether to calculate
-	// asset stats during the ingestion and expose `/assets` endpoint.
-	// Enabling it has a negative impact on CPU when ingesting ledgers full of
-	// many different assets related operations.
-	EnableAssetStats bool
 	// IngestDisableStateVerification disables state verification
 	// `System.verifyState()` when set to `true`.
 	IngestDisableStateVerification bool
