@@ -15,15 +15,6 @@ import (
 	hlog "github.com/stellar/go/support/log"
 )
 
-type reingestType int
-
-const (
-	byAll reingestType = iota
-	byRange
-	bySeq
-	byOutdated
-)
-
 var dbCmd = &cobra.Command{
 	Use:   "db [command]",
 	Short: "commands to manage horizon's postgres db",
