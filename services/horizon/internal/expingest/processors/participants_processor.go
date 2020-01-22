@@ -2,7 +2,6 @@ package processors
 
 import (
 	"context"
-	"fmt"
 	stdio "io"
 
 	"github.com/stellar/go/exp/ingest/io"
@@ -83,7 +82,7 @@ func participantsForChanges(
 		case xdr.LedgerEntryChangeTypeLedgerEntryState:
 			participant = participantsForLedgerEntry(c.MustState())
 		default:
-			return nil, fmt.Errorf("Unknown change type: %s", c.Type)
+			return nil, errors.Errorf("Unknown change type: %s", c.Type)
 		}
 
 		if participant != nil {
