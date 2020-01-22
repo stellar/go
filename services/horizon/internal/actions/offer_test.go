@@ -8,9 +8,7 @@ import (
 	"time"
 
 	"github.com/stellar/go/protocols/horizon"
-	"github.com/stellar/go/services/horizon/internal/db2/core"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
-	"github.com/stellar/go/services/horizon/internal/ingest"
 	"github.com/stellar/go/services/horizon/internal/test"
 	"github.com/stellar/go/support/render/hal"
 	"github.com/stellar/go/support/render/problem"
@@ -71,21 +69,19 @@ func TestGetOfferByIDHandler(t *testing.T) {
 
 	q := &history.Q{tt.HorizonSession()}
 	handler := GetOfferByID{}
-	ingestion := ingest.Ingestion{DB: tt.HorizonSession()}
 
 	ledgerCloseTime := time.Now().Unix()
-	tt.Assert.NoError(ingestion.Start())
-	ingestion.Ledger(
-		1,
-		&core.LedgerHeader{Sequence: 3, CloseTime: ledgerCloseTime},
-		0,
-		0,
-		0,
-	)
-	tt.Assert.NoError(ingestion.Flush())
-	tt.Assert.NoError(ingestion.Close())
+	_, err := q.InsertLedger(xdr.LedgerHeaderHistoryEntry{
+		Header: xdr.LedgerHeader{
+			LedgerSeq: 3,
+			ScpValue: xdr.StellarValue{
+				CloseTime: xdr.TimePoint(ledgerCloseTime),
+			},
+		},
+	}, 0, 0, 0, 0)
+	tt.Assert.NoError(err)
 
-	_, err := q.InsertOffer(eurOffer, 3)
+	_, err = q.InsertOffer(eurOffer, 3)
 	tt.Assert.NoError(err)
 	_, err = q.InsertOffer(usdOffer, 4)
 	tt.Assert.NoError(err)
@@ -181,21 +177,19 @@ func TestGetOffersHandler(t *testing.T) {
 
 	q := &history.Q{tt.HorizonSession()}
 	handler := GetOffersHandler{}
-	ingestion := ingest.Ingestion{DB: tt.HorizonSession()}
 
 	ledgerCloseTime := time.Now().Unix()
-	tt.Assert.NoError(ingestion.Start())
-	ingestion.Ledger(
-		1,
-		&core.LedgerHeader{Sequence: 3, CloseTime: ledgerCloseTime},
-		0,
-		0,
-		0,
-	)
-	tt.Assert.NoError(ingestion.Flush())
-	tt.Assert.NoError(ingestion.Close())
+	_, err := q.InsertLedger(xdr.LedgerHeaderHistoryEntry{
+		Header: xdr.LedgerHeader{
+			LedgerSeq: 3,
+			ScpValue: xdr.StellarValue{
+				CloseTime: xdr.TimePoint(ledgerCloseTime),
+			},
+		},
+	}, 0, 0, 0, 0)
+	tt.Assert.NoError(err)
 
-	_, err := q.InsertOffer(eurOffer, 3)
+	_, err = q.InsertOffer(eurOffer, 3)
 	tt.Assert.NoError(err)
 	_, err = q.InsertOffer(twoEurOffer, 3)
 	tt.Assert.NoError(err)
