@@ -339,20 +339,6 @@ var configOpts = support.ConfigOptions{
 		Usage:       "causes the ingester to skip reporting the last imported ledger state to stellar-core",
 	},
 	&support.ConfigOption{
-		Name:        "enable-asset-stats",
-		ConfigKey:   &config.EnableAssetStats,
-		OptType:     types.Bool,
-		FlagDefault: false,
-		Usage:       "enables asset stats during the ingestion and expose `/assets` endpoint, Enabling it has a negative impact on CPU",
-	},
-	&support.ConfigOption{
-		Name:        "enable-experimental-ingestion",
-		ConfigKey:   &config.EnableExperimentalIngestion,
-		OptType:     types.Bool,
-		FlagDefault: false,
-		Usage:       "[EXPERIMENTAL] enables experimental ingestion system",
-	},
-	&support.ConfigOption{
 		Name:        "ingest-state-reader-temp-set",
 		ConfigKey:   &config.IngestStateReaderTempSet,
 		OptType:     types.String,

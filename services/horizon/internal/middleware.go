@@ -261,8 +261,7 @@ func acceptOnlyJSON(h http.Handler) http.Handler {
 // correct. Otherwise returns `500 Internal Server Error` to prevent
 // returning invalid data to the user.
 type ExperimentalIngestionMiddleware struct {
-	EnableExperimentalIngestion bool
-	HorizonSession              *db.Session
+	HorizonSession *db.Session
 }
 
 func ingestionStatus(q *history.Q) (uint32, bool, error) {
@@ -296,11 +295,6 @@ func ingestionStatus(q *history.Q) (uint32, bool, error) {
 // Wrap executes the middleware on a given http handler
 func (m *ExperimentalIngestionMiddleware) Wrap(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if !m.EnableExperimentalIngestion {
-			problem.Render(r.Context(), w, problem.NotFound)
-			return
-		}
-
 		session := m.HorizonSession.Clone()
 		q := &history.Q{session}
 		sseRequest := render.Negotiate(r) == render.MimeEventStream
