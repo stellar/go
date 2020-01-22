@@ -8,9 +8,9 @@ import (
 	ingestpipeline "github.com/stellar/go/exp/ingest/pipeline"
 	"github.com/stellar/go/exp/support/pipeline"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
-	"github.com/stellar/go/services/horizon/internal/ingest/participants"
 	"github.com/stellar/go/services/horizon/internal/toid"
 	"github.com/stellar/go/support/errors"
+	"github.com/stellar/go/xdr"
 )
 
 // ParticipantsProcessor is a processor which ingests various participants
@@ -64,16 +64,121 @@ func (p *ParticipantsProcessor) loadAccountIDs(participantSet map[string]partici
 	return nil
 }
 
+func participantsForChanges(
+	changes xdr.LedgerEntryChanges,
+) ([]xdr.AccountId, error) {
+	var participants []xdr.AccountId
+
+	for _, c := range changes {
+		var participant *xdr.AccountId
+
+		switch c.Type {
+		case xdr.LedgerEntryChangeTypeLedgerEntryCreated:
+			participant = participantsForLedgerEntry(c.MustCreated())
+		case xdr.LedgerEntryChangeTypeLedgerEntryRemoved:
+			participant = participantsForLedgerKey(c.MustRemoved())
+		case xdr.LedgerEntryChangeTypeLedgerEntryUpdated:
+			participant = participantsForLedgerEntry(c.MustUpdated())
+		case xdr.LedgerEntryChangeTypeLedgerEntryState:
+			participant = participantsForLedgerEntry(c.MustState())
+		default:
+			return nil, errors.Errorf("Unknown change type: %s", c.Type)
+		}
+
+		if participant != nil {
+			participants = append(participants, *participant)
+		}
+	}
+
+	return participants, nil
+}
+
+func participantsForLedgerEntry(le xdr.LedgerEntry) *xdr.AccountId {
+	if le.Data.Type != xdr.LedgerEntryTypeAccount {
+		return nil
+	}
+	aid := le.Data.MustAccount().AccountId
+	return &aid
+}
+
+func participantsForLedgerKey(lk xdr.LedgerKey) *xdr.AccountId {
+	if lk.Type != xdr.LedgerEntryTypeAccount {
+		return nil
+	}
+	aid := lk.MustAccount().AccountId
+	return &aid
+}
+
+func participantsForMeta(
+	meta xdr.TransactionMeta,
+) ([]xdr.AccountId, error) {
+	var participants []xdr.AccountId
+	if meta.Operations == nil {
+		return participants, nil
+	}
+
+	for _, op := range *meta.Operations {
+		var accounts []xdr.AccountId
+		accounts, err := participantsForChanges(op.Changes)
+		if err != nil {
+			return nil, err
+		}
+
+		participants = append(participants, accounts...)
+	}
+
+	return participants, nil
+}
+
+func participantsForTransaction(
+	sequence uint32,
+	transaction io.LedgerTransaction,
+) ([]xdr.AccountId, error) {
+	participants := []xdr.AccountId{
+		transaction.Envelope.Tx.SourceAccount,
+	}
+
+	p, err := participantsForMeta(transaction.Meta)
+	if err != nil {
+		return nil, err
+	}
+	participants = append(participants, p...)
+
+	p, err = participantsForChanges(transaction.FeeChanges)
+	if err != nil {
+		return nil, err
+	}
+	participants = append(participants, p...)
+
+	for opi, op := range transaction.Envelope.Tx.Operations {
+		operation := transactionOperationWrapper{
+			index:          uint32(opi),
+			transaction:    transaction,
+			operation:      op,
+			ledgerSequence: sequence,
+		}
+
+		p, err := operation.Participants()
+		if err != nil {
+			return nil, errors.Wrapf(
+				err, "could not determin operation %v participants", operation.ID(),
+			)
+		}
+		participants = append(participants, p...)
+	}
+
+	return dedupe(participants), nil
+}
+
 func (p *ParticipantsProcessor) addTransactionParticipants(
 	participantSet map[string]participant,
 	sequence uint32,
 	transaction io.LedgerTransaction,
 ) error {
 	transactionID := toid.New(int32(sequence), int32(transaction.Index), 0).ToInt64()
-	transactionParticipants, err := participants.ForTransaction(
-		&transaction.Envelope.Tx,
-		&transaction.Meta,
-		&transaction.FeeChanges,
+	transactionParticipants, err := participantsForTransaction(
+		sequence,
+		transaction,
 	)
 	if err != nil {
 		return errors.Wrap(err, "Could not determine participants for transaction")
