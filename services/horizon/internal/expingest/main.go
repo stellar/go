@@ -612,11 +612,16 @@ func (s *System) ingestHistoryRange() (state, error) {
 
 	if s.state.rangeClearHistory {
 		// Clear history data before ingesting - used in `reingest range` command.
-		start, end := toid.LedgerRangeInclusive(
+		start, end, err := toid.LedgerRangeInclusive(
 			int32(s.state.rangeFromLedger),
 			int32(s.state.rangeToLedger),
 		)
-		err := s.historyQ.DeleteRangeAll(start, end)
+
+		if err != nil {
+			return state{systemState: returnState}, errors.Wrap(err, "Invalid range")
+		}
+
+		err = s.historyQ.DeleteRangeAll(start, end)
 		if err != nil {
 			return state{systemState: returnState}, err
 		}
