@@ -112,41 +112,6 @@ func (s *Session) DeleteRange(
 	return err
 }
 
-// DeleteRangeAll deletes a range of rows from all history tables between
-// `start` and `end` (exclusive).
-func (s *Session) DeleteRangeAll(start, end int64) error {
-	err := s.DeleteRange(start, end, "history_effects", "history_operation_id")
-	if err != nil {
-		return errors.Wrap(err, "Error clearing history_effects")
-	}
-	err = s.DeleteRange(start, end, "history_operation_participants", "history_operation_id")
-	if err != nil {
-		return errors.Wrap(err, "Error clearing history_operation_participants")
-	}
-	err = s.DeleteRange(start, end, "history_operations", "id")
-	if err != nil {
-		return errors.Wrap(err, "Error clearing history_operations")
-	}
-	err = s.DeleteRange(start, end, "history_transaction_participants", "history_transaction_id")
-	if err != nil {
-		return errors.Wrap(err, "Error clearing history_transaction_participants")
-	}
-	err = s.DeleteRange(start, end, "history_transactions", "id")
-	if err != nil {
-		return errors.Wrap(err, "Error clearing history_transactions")
-	}
-	err = s.DeleteRange(start, end, "history_ledgers", "id")
-	if err != nil {
-		return errors.Wrap(err, "Error clearing history_ledgers")
-	}
-	err = s.DeleteRange(start, end, "history_trades", "history_operation_id")
-	if err != nil {
-		return errors.Wrap(err, "Error clearing history_trades")
-	}
-
-	return nil
-}
-
 // Get runs `query`, setting the first result found on `dest`, if
 // any.
 func (s *Session) Get(dest interface{}, query sq.Sqlizer) error {

@@ -12,6 +12,7 @@ import (
 
 	"github.com/stellar/go/services/horizon/internal/db2"
 	"github.com/stellar/go/support/db"
+	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
 )
 
@@ -669,4 +670,39 @@ func (q *Q) OldestOutdatedLedgers(dest interface{}, currentVersion int) error {
 		WHERE importer_version < $1
 		ORDER BY sequence ASC
 		LIMIT 1000000`, currentVersion)
+}
+
+// DeleteRangeAll deletes a range of rows from all history tables between
+// `start` and `end` (exclusive).
+func (q *Q) DeleteRangeAll(start, end int64) error {
+	err := q.DeleteRange(start, end, "history_effects", "history_operation_id")
+	if err != nil {
+		return errors.Wrap(err, "Error clearing history_effects")
+	}
+	err = q.DeleteRange(start, end, "history_operation_participants", "history_operation_id")
+	if err != nil {
+		return errors.Wrap(err, "Error clearing history_operation_participants")
+	}
+	err = q.DeleteRange(start, end, "history_operations", "id")
+	if err != nil {
+		return errors.Wrap(err, "Error clearing history_operations")
+	}
+	err = q.DeleteRange(start, end, "history_transaction_participants", "history_transaction_id")
+	if err != nil {
+		return errors.Wrap(err, "Error clearing history_transaction_participants")
+	}
+	err = q.DeleteRange(start, end, "history_transactions", "id")
+	if err != nil {
+		return errors.Wrap(err, "Error clearing history_transactions")
+	}
+	err = q.DeleteRange(start, end, "history_ledgers", "id")
+	if err != nil {
+		return errors.Wrap(err, "Error clearing history_ledgers")
+	}
+	err = q.DeleteRange(start, end, "history_trades", "history_operation_id")
+	if err != nil {
+		return errors.Wrap(err, "Error clearing history_trades")
+	}
+
+	return nil
 }
