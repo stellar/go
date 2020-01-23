@@ -19,10 +19,10 @@ func TestHealth(t *testing.T) {
 	resp := w.Result()
 
 	require.Equal(t, http.StatusOK, resp.StatusCode)
-	assert.Equal(t, "application/json; charset=utf-8", resp.Header.Get("Content-Type"))
+	assert.Equal(t, "application/health+json; charset=utf-8", resp.Header.Get("Content-Type"))
 
 	body, err := ioutil.ReadAll(resp.Body)
 	require.NoError(t, err)
 
-	assert.JSONEq(t, `{"ok":true}`, string(body))
+	assert.JSONEq(t, `{"status":"pass"}`, string(body))
 }

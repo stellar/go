@@ -9,12 +9,12 @@ import (
 type healthHandler struct{}
 
 type healthResponse struct {
-	OK bool `json:"ok"`
+	Status string `json:"status"`
 }
 
 func (h healthHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	res := healthResponse{
-		OK: true,
+		Status: "pass",
 	}
-	httpjson.Render(w, res, httpjson.JSON)
+	httpjson.Render(w, res, httpjson.HEALTHJSON)
 }
