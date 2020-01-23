@@ -12,7 +12,7 @@ The new ingestion system solves issues found in the previous version like: incon
 
 ## Why would you want to upgrade?
 
-* Ingestion can now run on multiple servers what means that even if one of your ingesting instances is down, the ingestion will continue on other instances.
+* Ingestion can now run on multiple servers, which means that even if one of your ingesting instances is down, the ingestion will continue on other instances.
 * New features like faster path-finding, accounts for signer endpoint, finding all accounts with a given asset, etc. More new features (and plugins!) to come.
 * Ingestion does not generate a high load on Stellar-Core database.
 * With batched requests (not implemented yet) you can get a consistent snapshot of the data as of the latest ledgers. Previously it wasn't because some entries were loaded from Stellar-Core database and others from Horizon database (that could be at the different ledger).
@@ -35,7 +35,7 @@ The new ingestion system solves issues found in the previous version like: incon
   * `exp_asset_stats` table: less than 1 MB
 * A new flags needs be added so Horizon can ingest state from history archives:
   * `HISTORY_ARCHIVE_URLS="archive1,archive2,archive3"` (for public network you can use one of SDF's archives, ex. `https://history.stellar.org/prd/core-live/core_live_001`)
-* The `/paths` and `/order_book` endpoints are served from in-memory graph so are only available on ingesting instances. You some of the instances in your cluser are not ingesting you can configure the proxy server to route these endpoints to ingesting instances.
+* Horizon serves the endpoints `/paths` and `/order_book` from an in-memory graph, which is only available on ingesting instances. If some of the instances in your cluster are not ingesting, you can configure the proxy server to route those endpoints to the ingesting instances.
 
 ## Known issues
 
