@@ -1,8 +1,8 @@
-# Beta Testing New Ingestion System
+# Testing New Ingestion System
 
 This document aims to be a guide with all information needed to start testing new ingestion system in Horizon. If there are any issues you are facing not covered in this document, please add an issue in this repository. For questions please use [Stack Exchange](https://stellar.stackexchange.com) or ask it in one of our online [communities](https://www.stellar.org/community/#communities).
 
-Please remember that this is still experimental version of the system!
+Please remember that this is still experimental version of the system and should only be used in staging environments!
 
 Thank you for helping us test new ingestion system in Horizon!
 
@@ -10,29 +10,42 @@ Thank you for helping us test new ingestion system in Horizon!
 
 The new ingestion system solves issues found in the previous version like: inconsistent data, relying on Stellar-Core database directly, slow responses for specific queries, etc. It allows new kind of features in Horizon, ex. faster path-finding. We published a [blog post](https://www.stellar.org/developers/blog/our-new-horizon-ingestion-engine) with more details, please check it out!
 
-## Prerequisities
+## Why would you want to upgrade?
 
-* The init stage (state ingestion) for public network requires around 1.5GB of RAM. The memory is released after the state ingestion. State ingestion is performed only once, restarting the server will not trigger it unless Horizon has been upgraded to a newer version (with updated ingestion pipeline). We are currently working on alternative solutions to make RAM requirements smaller however we believe that it will become smaller and smaller as more buckets are [CAP-20](https://github.com/stellar/stellar-protocol/blob/master/core/cap-0020.md) compatible. The CPU footprint of the new ingestion is really small. We were able to run experimental ingestion on `c5.large` instance on AWS. The init stage takes a few minutes on `c5.large`.
-* The state data requires additional 5GB DB disk space for public network (as of version 0.22.0):
-  * `accounts_signers` table: 1914 MB
-  * `trust_lines` table: 1780 MB
-  * `accounts` table: 1332 MB
-  * `offers` table: 26 MB
-  * `accounts_data` table: 13 MB
+* Ingestion can now run on multiple servers what means that even if one of your ingesting instances is down, the ingestion will continue on other instances.
+* New features like faster path-finding, accounts for signer endpoint, finding all accounts with a given asset, etc. More new features (and plugins!) to come.
+* Ingestion does not generate a high load on Stellar-Core database.
+* With batched requests (not implemented yet) you can get a consistent snapshot of the data as of the latest ledgers. Previously it wasn't because some entries were loaded from Stellar-Core database and others from Horizon database (that could be at the different ledger).
+* We will update Horizon 0.* releases with security fixes but the 1.x release will become the default one soon. So it's better to test it as soon as possible in your organization. And again, use it in staging environments only!
+
+## Before you upgrade
+
+* You can rollback to the older version but only when using alpha or beta versions. We won't support rolling back when a stable version is released. To rollback: migrate DB down, rollback to the previous version and run `horizon db init-asset-stats` to regenerate assets stats in your DB.
+* If you were using the new ingestion in one of the previous versions of Horizon, you must first remove `ENABLE_EXPERIMENTAL_INGESTION` feature flag and restart all Horizon instances before deploying a new version.
+* The init stage (state ingestion) for public network requires around 1.5GB of RAM. The memory is released after the state ingestion. State ingestion is performed only once, restarting the server will not trigger it unless Horizon has been upgraded to a newer version (with updated ingestion pipeline). We are currently working on alternative solutions to make RAM requirements smaller however we believe that it will become smaller and smaller as more buckets are [CAP-20](https://github.com/stellar/stellar-protocol/blob/master/core/cap-0020.md) compatible.
+* The CPU footprint of the new ingestion is really small. We were able to run ingestion on `c5.large` instance on AWS however we highly recommend `c5.xlarge` instances. The init stage takes a few minutes on `c5.xlarge`. `c5.xlarge` is equivalent of 4 vCPUs and 8GB of RAM. The definition of vCPU for c5 large family in AWS is the following:
+> The 2nd generation Intel Xeon Scalable Processors (Cascade Lake) or 1st generation Intel Xeon Platinum 8000 series (Skylake-SP) processor with a sustained all core Turbo frequency of up to 3.4GHz, and single core turbo frequency of up to 3.5 GHz.
+
+* The state data requires additional 6GB DB disk space for public network (as of January 2020). The usage can increase when the number of Stellar ledger entries increase.
+  * `accounts_signers` table: 2340 MB
+  * `trust_lines` table: 2052 MB
+  * `accounts` table: 1545 MB
+  * `offers` table: 61 MB
+  * `accounts_data` table: 15 MB
   * `exp_asset_stats` table: less than 1 MB
-* Flags needed to enable experimental ingestion:
-  * `ENABLE_EXPERIMENTAL_INGESTION=true`
+* A new flags needs be added so Horizon can ingest state from history archives:
   * `HISTORY_ARCHIVE_URLS="archive1,archive2,archive3"` (for public network you can use one of SDF's archives, ex. `https://history.stellar.org/prd/core-live/core_live_001`)
+* The `/paths` and `/order_book` endpoints are served from in-memory graph so are only available on ingesting instances. You some of the instances in your cluser are not ingesting you can configure the proxy server to route these endpoints to ingesting instances.
 
 ## Known issues
 
 ### Some endpoints are not available during state ingestion
 
-Endpoints that display state information like `/paths` (built using offers) are not available during state ingestion and return `503 Service Unavailable`/`Still Ingesting` error. We are currently thinking whether to change this behaviour. The main argument against it is displaying stale data.
+Endpoints that display state information like `/paths` (built using offers) are not available during state ingestion and return `503 Service Unavailable`/`Still Ingesting` error. The endpoints will become available after state ingestion is done (usually a couple minutes).
 
 ### State ingestion is taking a lot of time
 
-Since Horizon 0.21.0 the state ingestion shouldn't take more than a couple minutes on AWS `c5.large` instance.
+The state ingestion shouldn't take more than a couple minutes on AWS `c5.xlarge` instance.
 
 It's possible that the progress logs (see below) will not show anything new for a longer period of time or print a lot of progress entries every few seconds. This is happening because of the way history archives are designed, the ingestion is still working but it's processing so called `DEADENTRY`'ies: if there is a lot of them in the bucket, there are no _active_ entries to process. We plan to improve the progress logs to display actual percentage progress so it's easier to estimate ETA.
 
@@ -42,9 +55,13 @@ If you see that ingestion is not proceeding for a very long period of time:
 
 ### CPU usage goes high every few minutes
 
-This is _by design_. Horizon 0.21.0 introduced a state verifier routine that compares state in local storage to history archives every 64 ledgers to ensure data changes are applied correctly. If data corruption is detected Horizon will block access to endpoints serving invalid data.
+This is _by design_. Horizon runs a state verifier routine that compares state in local storage to history archives every 64 ledgers to ensure data changes are applied correctly. If data corruption is detected Horizon will block access to endpoints serving invalid data.
 
 We recommend to keep this security feature turned on however if it's causing problems (due to CPU usage) this can be disabled by `--ingest-disable-state-verification` CLI param or `INGEST-DISABLE-STATE-VERIFICATION` env variable.
+
+### I see `Waiting for the next checkpoint...` messages
+
+If you were running the new system in the past (`ENABLE_EXPERIMENTAL_INGESTION` flag) it's possible that the old and new systems are not in sync. In such case, the upgrade code will activate and will make sure the data is in sync. When this happens you may see `Waiting for the next checkpoint...` messages for up to 5 minutes.
 
 ## Reading the logs
 
@@ -55,7 +72,7 @@ It starts with informing you about state ingestion:
 INFO[2019-08-29T13:04:13.473+02:00] Starting ingestion system from empty state...  pid=5965 service=expingest temp_set="*io.MemoryTempSet"
 INFO[2019-08-29T13:04:15.263+02:00] Reading from History Archive Snapshot         ledger=25565887 pid=5965 service=expingest
 ```
-During state ingestion, Horizon will log number of processed entries every 100,000 entries (there are currently around 5.5M entries in the public network):
+During state ingestion, Horizon will log number of processed entries every 100,000 entries (there are currently around 7M entries in the public network):
 ```
 INFO[2019-08-29T13:04:34.652+02:00] Processing entries from History Archive Snapshot  ledger=25565887 numEntries=100000 pid=5965 service=expingest
 INFO[2019-08-29T13:04:38.487+02:00] Processing entries from History Archive Snapshot  ledger=25565887 numEntries=200000 pid=5965 service=expingest
