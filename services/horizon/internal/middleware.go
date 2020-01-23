@@ -241,20 +241,6 @@ func requestMetricsMiddleware(h http.Handler) http.Handler {
 	})
 }
 
-// acceptOnlyJSON inspects the accept header of the request and responds with
-// an error if the content type is not JSON
-func acceptOnlyJSON(h http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		contentType := render.Negotiate(r)
-		if contentType != render.MimeHal && contentType != render.MimeJSON {
-			problem.Render(r.Context(), w, hProblem.NotAcceptable)
-			return
-		}
-
-		h.ServeHTTP(w, r)
-	})
-}
-
 // StateMiddleware is a middleware which enables a state handler if the state
 // has been initialized.
 // It also ensures that state (ledger entries) has been verified and are
