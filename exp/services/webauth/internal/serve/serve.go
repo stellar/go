@@ -68,6 +68,7 @@ func handler(opts Options) (http.Handler, error) {
 	mux.NotFound(errorHandler{Error: notFound}.ServeHTTP)
 	mux.MethodNotAllowed(errorHandler{Error: methodNotAllowed}.ServeHTTP)
 
+	mux.Get("/health", healthHandler{}.ServeHTTP)
 	mux.Get("/", challengeHandler{
 		Logger:             opts.Logger,
 		NetworkPassphrase:  opts.NetworkPassphrase,
