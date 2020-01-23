@@ -42,10 +42,6 @@ func inMemoryPathFindingClient(
 	}
 
 	router.Group(func(r chi.Router) {
-		// requiresExperimentalIngestion := &ExperimentalIngestionMiddleware{
-		// 	HorizonSession: tt.HorizonSession(),
-		// }
-		// router.Use(requiresExperimentalIngestion.Wrap)
 		router.Method("GET", "/paths", findPaths)
 		router.Method("GET", "/paths/strict-receive", findPaths)
 		router.Method("GET", "/paths/strict-send", findFixedPaths)
@@ -77,10 +73,6 @@ func dbPathFindingClient(
 	}
 
 	router.Group(func(r chi.Router) {
-		// requiresExperimentalIngestion := &ExperimentalIngestionMiddleware{
-		// 	HorizonSession: tt.HorizonSession(),
-		// }
-		// router.Use(requiresExperimentalIngestion.Wrap)
 		router.Method("GET", "/paths", findPaths)
 		router.Method("GET", "/paths/strict-receive", findPaths)
 		router.Method("GET", "/paths/strict-send", findFixedPaths)

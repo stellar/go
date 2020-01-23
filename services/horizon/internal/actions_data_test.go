@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/stellar/go/services/horizon/internal/db2/history"
+	"github.com/stellar/go/services/horizon/internal/expingest"
 	"github.com/stellar/go/services/horizon/internal/test"
 	"github.com/stellar/go/xdr"
 	"github.com/stretchr/testify/assert"
@@ -31,6 +32,18 @@ func TestDataActions_Show(t *testing.T) {
 	defer ht.Finish()
 	test.ResetHorizonDB(t, ht.HorizonDB)
 	q := &history.Q{ht.HorizonSession()}
+
+	// Makes StateMiddleware happy
+	err := q.UpdateLastLedgerExpIngest(100)
+	ht.Assert.NoError(err)
+	err = q.UpdateExpIngestVersion(expingest.CurrentVersion)
+	ht.Assert.NoError(err)
+	_, err = q.InsertLedger(xdr.LedgerHeaderHistoryEntry{
+		Header: xdr.LedgerHeader{
+			LedgerSeq: 100,
+		},
+	}, 0, 0, 0, 0)
+	ht.Assert.NoError(err)
 
 	rows, err := q.InsertAccountData(data1, 1234)
 	assert.NoError(t, err)

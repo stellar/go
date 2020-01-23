@@ -128,7 +128,7 @@ func (w *web) mustInstallActions(
 	config Config,
 	pathFinder paths.Finder,
 	orderBookGraph *orderbook.OrderBookGraph,
-	requiresExperimentalIngestion *ExperimentalIngestionMiddleware,
+	stateMiddleware *StateMiddleware,
 ) {
 	if w == nil {
 		log.Fatal("missing web instance for installing web actions")
@@ -137,6 +137,75 @@ func (w *web) mustInstallActions(
 	r := w.router
 	r.Get("/", RootAction{}.Handle)
 	r.Get("/metrics", MetricsAction{}.Handle)
+
+	streamHandler := sse.StreamHandler{
+		RateLimiter:  w.rateLimiter,
+		LedgerSource: ledger.NewHistoryDBSource(w.sseUpdateFrequency),
+	}
+
+	// State endpoints behind stateMiddleware
+	r.Group(func(r chi.Router) {
+		r.Use(stateMiddleware.Wrap)
+
+		r.Route("/accounts", func(r chi.Router) {
+			r.Method(http.MethodGet, "/", restPageHandler(actions.GetAccountsHandler{}))
+			r.Route("/{account_id}", func(r chi.Router) {
+				r.Get("/", w.streamShowActionHandler(w.getAccountInfo, true))
+				r.Get("/data/{key}", DataShowAction{}.Handle)
+				r.Method(http.MethodGet, "/offers", streamablePageHandler(actions.GetAccountOffersHandler{}, streamHandler))
+			})
+		})
+
+		r.Route("/offers", func(r chi.Router) {
+			r.Method(http.MethodGet, "/", restPageHandler(actions.GetOffersHandler{}))
+			r.Method(http.MethodGet, "/{id}", objectActionHandler{actions.GetOfferByID{}})
+		})
+
+		r.Method(http.MethodGet, "/assets", restPageHandler(actions.AssetStatsHandler{}))
+
+		// Endpoints available on ingesting instances only.
+		if config.Ingest {
+			findPaths := FindPathsHandler{
+				staleThreshold:       config.StaleThreshold,
+				checkHistoryIsStale:  false,
+				setLastLedgerHeader:  true,
+				maxPathLength:        config.MaxPathLength,
+				maxAssetsParamLength: maxAssetsForPathFinding,
+				pathFinder:           pathFinder,
+				coreQ:                w.coreQ,
+			}
+			findFixedPaths := FindFixedPathsHandler{
+				maxPathLength:        config.MaxPathLength,
+				setLastLedgerHeader:  true,
+				maxAssetsParamLength: maxAssetsForPathFinding,
+				pathFinder:           pathFinder,
+				coreQ:                w.coreQ,
+			}
+
+			r.Method(http.MethodGet, "/paths", findPaths)
+			r.Method(http.MethodGet, "/paths/strict-receive", findPaths)
+			r.Method(http.MethodGet, "/paths/strict-send", findFixedPaths)
+
+			r.Method(
+				http.MethodGet,
+				"/order_book",
+				streamableObjectActionHandler{
+					streamHandler: streamHandler,
+					action: actions.GetOrderbookHandler{
+						OrderBookGraph: orderBookGraph,
+					},
+				},
+			)
+		}
+	})
+
+	// account actions - /accounts/{account_id} has been created above so we
+	// need to use absolute routes here.
+	r.Get("/accounts/{account_id}/transactions", w.streamIndexActionHandler(w.getTransactionPage, w.streamTransactions))
+	r.Get("/accounts/{account_id}/operations", OperationIndexAction{}.Handle)
+	r.Get("/accounts/{account_id}/payments", OperationIndexAction{OnlyPayments: true}.Handle)
+	r.Get("/accounts/{account_id}/effects", EffectIndexAction{}.Handle)
+	r.Get("/accounts/{account_id}/trades", TradeIndexAction{}.Handle)
 
 	// ledger actions
 	r.Route("/ledgers", func(r chi.Router) {
@@ -149,36 +218,6 @@ func (w *web) mustInstallActions(
 			r.Get("/effects", EffectIndexAction{}.Handle)
 		})
 	})
-
-	// account actions
-	r.Route("/accounts", func(r chi.Router) {
-		r.With(requiresExperimentalIngestion.Wrap).
-			Method(
-				http.MethodGet,
-				"/",
-				restPageHandler(actions.GetAccountsHandler{}),
-			)
-		r.Route("/{account_id}", func(r chi.Router) {
-			r.Get("/", w.streamShowActionHandler(w.getAccountInfo, true))
-			r.Get("/transactions", w.streamIndexActionHandler(w.getTransactionPage, w.streamTransactions))
-			r.Get("/operations", OperationIndexAction{}.Handle)
-			r.Get("/payments", OperationIndexAction{OnlyPayments: true}.Handle)
-			r.Get("/effects", EffectIndexAction{}.Handle)
-			r.Get("/trades", TradeIndexAction{}.Handle)
-			r.Get("/data/{key}", DataShowAction{}.Handle)
-		})
-	})
-
-	streamHandler := sse.StreamHandler{
-		RateLimiter:  w.rateLimiter,
-		LedgerSource: ledger.NewHistoryDBSource(w.sseUpdateFrequency),
-	}
-
-	r.With(requiresExperimentalIngestion.Wrap).Method(
-		http.MethodGet,
-		"/accounts/{account_id}/offers",
-		streamablePageHandler(actions.GetAccountOffersHandler{}, streamHandler),
-	)
 
 	// transaction history actions
 	r.Route("/transactions", func(r chi.Router) {
@@ -207,67 +246,12 @@ func (w *web) mustInstallActions(
 	// trading related endpoints
 	r.Get("/trades", TradeIndexAction{}.Handle)
 	r.Get("/trade_aggregations", TradeAggregateIndexAction{}.Handle)
-
-	r.Route("/offers", func(r chi.Router) {
-		r.With(requiresExperimentalIngestion.Wrap).
-			Method(
-				http.MethodGet,
-				"/",
-				restPageHandler(actions.GetOffersHandler{}),
-			)
-		r.With(acceptOnlyJSON, requiresExperimentalIngestion.Wrap).
-			Method(
-				http.MethodGet,
-				"/{id}",
-				objectActionHandler{actions.GetOfferByID{}},
-			)
-		r.Get("/{offer_id}/trades", TradeIndexAction{}.Handle)
-	})
-
-	r.With(requiresExperimentalIngestion.Wrap).Method(
-		http.MethodGet,
-		"/order_book",
-		streamableObjectActionHandler{
-			streamHandler: streamHandler,
-			action: actions.GetOrderbookHandler{
-				OrderBookGraph: orderBookGraph,
-			},
-		},
-	)
+	// /offers/{offer_id} has been created above so we need to use absolute
+	// routes here.
+	r.Get("/offers/{offer_id}/trades", TradeIndexAction{}.Handle)
 
 	// Transaction submission API
 	r.Post("/transactions", TransactionCreateAction{}.Handle)
-
-	findPaths := FindPathsHandler{
-		staleThreshold:       config.StaleThreshold,
-		checkHistoryIsStale:  false,
-		setLastLedgerHeader:  true,
-		maxPathLength:        config.MaxPathLength,
-		maxAssetsParamLength: maxAssetsForPathFinding,
-		pathFinder:           pathFinder,
-		coreQ:                w.coreQ,
-	}
-	findFixedPaths := FindFixedPathsHandler{
-		maxPathLength:        config.MaxPathLength,
-		setLastLedgerHeader:  true,
-		maxAssetsParamLength: maxAssetsForPathFinding,
-		pathFinder:           pathFinder,
-		coreQ:                w.coreQ,
-	}
-
-	r.Group(func(r chi.Router) {
-		r.Use(acceptOnlyJSON)
-		r.Use(requiresExperimentalIngestion.Wrap)
-		r.Method("GET", "/paths", findPaths)
-		r.Method("GET", "/paths/strict-receive", findPaths)
-		r.Method("GET", "/paths/strict-send", findFixedPaths)
-	})
-
-	r.With(requiresExperimentalIngestion.Wrap).Method(
-		http.MethodGet,
-		"/assets",
-		restPageHandler(actions.AssetStatsHandler{}),
-	)
 
 	// Network state related endpoints
 	r.Get("/fee_stats", FeeStatsAction{}.Handle)
