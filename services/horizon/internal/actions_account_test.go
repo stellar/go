@@ -2,11 +2,28 @@ package horizon
 
 import (
 	"testing"
+
+	"github.com/stellar/go/services/horizon/internal/db2/history"
+	"github.com/stellar/go/services/horizon/internal/expingest"
+	"github.com/stellar/go/xdr"
 )
 
 func TestAccountActions_InvalidID(t *testing.T) {
 	ht := StartHTTPTestWithoutScenario(t)
 	defer ht.Finish()
+
+	// Makes StateMiddleware happy
+	q := history.Q{ht.HorizonSession()}
+	err := q.UpdateLastLedgerExpIngest(100)
+	ht.Assert.NoError(err)
+	err = q.UpdateExpIngestVersion(expingest.CurrentVersion)
+	ht.Assert.NoError(err)
+	_, err = q.InsertLedger(xdr.LedgerHeaderHistoryEntry{
+		Header: xdr.LedgerHeader{
+			LedgerSeq: 100,
+		},
+	}, 0, 0, 0, 0)
+	ht.Assert.NoError(err)
 
 	// existing account
 	w := ht.Get(

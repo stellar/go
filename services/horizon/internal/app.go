@@ -462,7 +462,7 @@ func (a *App) init() {
 	// This parameter will be removed soon.
 	a.web.mustInstallMiddlewares(a, a.config.ConnectionTimeout)
 
-	requiresExperimentalIngestion := &ExperimentalIngestionMiddleware{
+	requiresExperimentalIngestion := &StateMiddleware{
 		HorizonSession: a.historyQ.Session,
 	}
 	// web.actions
