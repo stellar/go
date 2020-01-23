@@ -1,4 +1,4 @@
-package serve
+package healthjson
 
 import (
 	"io/ioutil"
@@ -11,7 +11,7 @@ import (
 )
 
 func TestHealth(t *testing.T) {
-	h := healthHandler{}
+	h := PassHandler{}
 
 	r := httptest.NewRequest("GET", "/", nil)
 	w := httptest.NewRecorder()
