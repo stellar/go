@@ -241,26 +241,12 @@ func requestMetricsMiddleware(h http.Handler) http.Handler {
 	})
 }
 
-// acceptOnlyJSON inspects the accept header of the request and responds with
-// an error if the content type is not JSON
-func acceptOnlyJSON(h http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		contentType := render.Negotiate(r)
-		if contentType != render.MimeHal && contentType != render.MimeJSON {
-			problem.Render(r.Context(), w, hProblem.NotAcceptable)
-			return
-		}
-
-		h.ServeHTTP(w, r)
-	})
-}
-
-// ExperimentalIngestionMiddleware is a middleware which enables a handler
-// if the experimental ingestion system is enabled and initialized.
+// StateMiddleware is a middleware which enables a state handler if the state
+// has been initialized.
 // It also ensures that state (ledger entries) has been verified and are
 // correct. Otherwise returns `500 Internal Server Error` to prevent
 // returning invalid data to the user.
-type ExperimentalIngestionMiddleware struct {
+type StateMiddleware struct {
 	HorizonSession *db.Session
 }
 
@@ -293,7 +279,7 @@ func ingestionStatus(q *history.Q) (uint32, bool, error) {
 }
 
 // Wrap executes the middleware on a given http handler
-func (m *ExperimentalIngestionMiddleware) Wrap(h http.Handler) http.Handler {
+func (m *StateMiddleware) Wrap(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		session := m.HorizonSession.Clone()
 		q := &history.Q{session}

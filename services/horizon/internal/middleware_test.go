@@ -152,7 +152,7 @@ func TestRateLimit_Redis(t *testing.T) {
 	assert.Equal(t, 200, w.Code)
 }
 
-func TestRequiresExperimentalIngestion(t *testing.T) {
+func TestStateMiddleware(t *testing.T) {
 	tt := test.Start(t)
 	defer tt.Finish()
 	test.ResetHorizonDB(t, tt.HorizonDB)
@@ -173,10 +173,10 @@ func TestRequiresExperimentalIngestion(t *testing.T) {
 		w.WriteHeader(http.StatusOK)
 	}
 
-	requiresExperimentalIngestion := &ExperimentalIngestionMiddleware{
+	stateMiddleware := &StateMiddleware{
 		HorizonSession: tt.HorizonSession(),
 	}
-	handler := requiresExperimentalIngestion.Wrap(http.HandlerFunc(endpoint))
+	handler := stateMiddleware.Wrap(http.HandlerFunc(endpoint))
 
 	for i, testCase := range []struct {
 		name                string

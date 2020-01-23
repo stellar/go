@@ -690,6 +690,9 @@ func GetParams(dst interface{}, r *http.Request) error {
 	// contain `account_id` and URL Query params will contain `foo`.
 	if rctx := chi.RouteContext(r.Context()); rctx != nil {
 		for _, key := range rctx.URLParams.Keys {
+			if key == "*" {
+				continue
+			}
 			val := query.Get(key)
 			if len(val) > 0 {
 				return problem.MakeInvalidFieldProblem(
