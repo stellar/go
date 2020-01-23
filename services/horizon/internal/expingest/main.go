@@ -5,7 +5,6 @@ package expingest
 
 import (
 	"fmt"
-	"runtime/debug"
 	"sync"
 	"time"
 
@@ -297,17 +296,8 @@ func (s *System) ReingestRange(fromLedger, toLedger uint32) error {
 
 func (s *System) run() error {
 	s.shutdown = make(chan struct{})
-	// Expingest is an experimental package so we don't want entire Horizon app
-	// to crash in case of unexpected errors.
-	// TODO: This should be removed when expingest is no longer experimental.
 	defer func() {
 		s.wg.Wait()
-		if r := recover(); r != nil {
-			log.WithFields(logpkg.F{
-				"err":   r,
-				"stack": string(debug.Stack()),
-			}).Error("expingest panic")
-		}
 	}()
 
 	log.WithFields(logpkg.F{"current_state": s.state}).Info("Ingestion system initial state")

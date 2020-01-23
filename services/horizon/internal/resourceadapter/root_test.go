@@ -62,7 +62,6 @@ func TestPopulateRoot(t *testing.T) {
 	assert.Equal(t, "passphrase", res.NetworkPassphrase)
 	assert.Empty(t, res.Links.Friendbot)
 
-	// With experimental ingestion
 	res = &horizon.Root{}
 	PopulateRoot(context.Background(),
 		res,

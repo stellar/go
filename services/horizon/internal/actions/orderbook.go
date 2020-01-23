@@ -14,7 +14,7 @@ import (
 	"github.com/stellar/go/xdr"
 )
 
-// LastLedgerHeaderName is the header which is set on all experimental ingestion endpoints
+// LastLedgerHeaderName is the header which is set on all endpoints
 const LastLedgerHeaderName = "Latest-Ledger"
 
 // HeaderWriter is an interface for setting HTTP response headers

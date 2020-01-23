@@ -49,7 +49,7 @@ func (handler GetOfferByID) GetResource(
 	}
 
 	var offerResponse horizon.Offer
-	resourceadapter.PopulateHistoryOffer(ctx, &offerResponse, record, ledger)
+	resourceadapter.PopulateOffer(ctx, &offerResponse, record, ledger)
 	return offerResponse, nil
 }
 
@@ -189,7 +189,7 @@ func getOffersPage(ctx context.Context, historyQ *history.Q, query history.Offer
 			ledgerPtr = nil
 		}
 
-		resourceadapter.PopulateHistoryOffer(ctx, &offerResponse, record, ledgerPtr)
+		resourceadapter.PopulateOffer(ctx, &offerResponse, record, ledgerPtr)
 		offers = append(offers, offerResponse)
 	}
 

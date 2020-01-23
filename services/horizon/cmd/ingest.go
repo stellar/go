@@ -61,7 +61,7 @@ var ingestVerifyRangeCmdOpts = []*support.ConfigOption{
 
 var ingestVerifyRangeCmd = &cobra.Command{
 	Use:   "verify-range",
-	Short: "[experimental] runs ingestion pipeline within a range. warning! requires clean DB.",
+	Short: "runs ingestion pipeline within a range. warning! requires clean DB.",
 	Long:  "runs ingestion pipeline between X and Y sequence number (inclusive)",
 	Run: func(cmd *cobra.Command, args []string) {
 		for _, co := range ingestVerifyRangeCmdOpts {
