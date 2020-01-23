@@ -5,7 +5,6 @@ package expingest
 
 import (
 	"fmt"
-	"runtime/debug"
 	"sync"
 	"time"
 
@@ -299,17 +298,6 @@ func (s *System) run() error {
 	s.shutdown = make(chan struct{})
 	defer func() {
 		s.wg.Wait()
-		// TODO this will likely be discussed during code review:
-		// I'm wondering if we should leave recover here... With recover, in case
-		// of panic() ingestion will stop running but the webserver will be active
-		// but serving stale data. Are we OK with serving stale data (esp. state)
-		// while the bug is being fixed?
-		if r := recover(); r != nil {
-			log.WithFields(logpkg.F{
-				"err":   r,
-				"stack": string(debug.Stack()),
-			}).Error("expingest panic")
-		}
 	}()
 
 	log.WithFields(logpkg.F{"current_state": s.state}).Info("Ingestion system initial state")
