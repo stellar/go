@@ -200,12 +200,13 @@ func (w *web) mustInstallActions(
 	})
 
 	// account actions - /accounts/{account_id} has been created above so we
-	// need to use absolute routes here.
-	r.Get("/accounts/{account_id}/transactions", w.streamIndexActionHandler(w.getTransactionPage, w.streamTransactions))
-	r.Get("/accounts/{account_id}/operations", OperationIndexAction{}.Handle)
-	r.Get("/accounts/{account_id}/payments", OperationIndexAction{OnlyPayments: true}.Handle)
-	r.Get("/accounts/{account_id}/effects", EffectIndexAction{}.Handle)
-	r.Get("/accounts/{account_id}/trades", TradeIndexAction{}.Handle)
+	// need to use absolute routes here. Make sure we use regexp check here for
+	// emptiness. Without it, requesting `/accounts//payments` return all payments!
+	r.Get("/accounts/{account_id:\\w+}/transactions", w.streamIndexActionHandler(w.getTransactionPage, w.streamTransactions))
+	r.Get("/accounts/{account_id:\\w+}/operations", OperationIndexAction{}.Handle)
+	r.Get("/accounts/{account_id:\\w+}/payments", OperationIndexAction{OnlyPayments: true}.Handle)
+	r.Get("/accounts/{account_id:\\w+}/effects", EffectIndexAction{}.Handle)
+	r.Get("/accounts/{account_id:\\w+}/trades", TradeIndexAction{}.Handle)
 
 	// ledger actions
 	r.Route("/ledgers", func(r chi.Router) {
