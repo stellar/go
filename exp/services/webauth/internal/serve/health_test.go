@@ -13,7 +13,7 @@ import (
 func TestHealth(t *testing.T) {
 	h := healthHandler{}
 
-	r := httptest.NewRequest("POST", "/", nil)
+	r := httptest.NewRequest("GET", "/", nil)
 	w := httptest.NewRecorder()
 	h.ServeHTTP(w, r)
 	resp := w.Result()
