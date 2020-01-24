@@ -11,7 +11,6 @@ import (
 	"github.com/stellar/go/support/errors"
 	supporthttp "github.com/stellar/go/support/http"
 	supportlog "github.com/stellar/go/support/log"
-	"github.com/stellar/go/support/render/health"
 )
 
 type Options struct {
@@ -69,7 +68,6 @@ func handler(opts Options) (http.Handler, error) {
 	mux.NotFound(errorHandler{Error: notFound}.ServeHTTP)
 	mux.MethodNotAllowed(errorHandler{Error: methodNotAllowed}.ServeHTTP)
 
-	mux.Get("/health", health.PassHandler{}.ServeHTTP)
 	mux.Get("/", challengeHandler{
 		Logger:             opts.Logger,
 		NetworkPassphrase:  opts.NetworkPassphrase,
