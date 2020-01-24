@@ -203,7 +203,6 @@ type QData interface {
 	InsertAccountData(data xdr.DataEntry, lastModifiedLedger xdr.Uint32) (int64, error)
 	UpdateAccountData(data xdr.DataEntry, lastModifiedLedger xdr.Uint32) (int64, error)
 	RemoveAccountData(key xdr.LedgerKeyData) (int64, error)
-	TruncateAccountDataTable() error
 }
 
 // Asset is a row of data from the `history_assets` table
