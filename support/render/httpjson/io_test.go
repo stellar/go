@@ -29,6 +29,12 @@ func TestRender(t *testing.T) {
 			wantContentType: "application/hal+json; charset=utf-8",
 			wantBody:        `{"key":"value"}`,
 		},
+		{
+			data:            map[string]interface{}{"key": "value"},
+			contentType:     HEALTHJSON,
+			wantContentType: "application/health+json; charset=utf-8",
+			wantBody:        `{"key":"value"}`,
+		},
 	}
 
 	for i, tc := range cases {
@@ -67,6 +73,13 @@ func TestRenderStatus(t *testing.T) {
 			status:          400,
 			contentType:     HALJSON,
 			wantContentType: "application/hal+json; charset=utf-8",
+			wantBody:        `{"key":"value"}`,
+		},
+		{
+			data:            map[string]interface{}{"key": "value"},
+			status:          400,
+			contentType:     HEALTHJSON,
+			wantContentType: "application/health+json; charset=utf-8",
 			wantBody:        `{"key":"value"}`,
 		},
 	}

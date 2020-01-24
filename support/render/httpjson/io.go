@@ -12,6 +12,7 @@ type contentType int
 const (
 	JSON contentType = iota
 	HALJSON
+	HEALTHJSON
 )
 
 // renderToString renders the provided data as a json string
@@ -40,9 +41,12 @@ func RenderStatus(w http.ResponseWriter, statusCode int, data interface{}, cType
 	}
 
 	w.Header().Set("Content-Disposition", "inline")
-	if cType == HALJSON {
+	switch cType {
+	case HALJSON:
 		w.Header().Set("Content-Type", "application/hal+json; charset=utf-8")
-	} else {
+	case HEALTHJSON:
+		w.Header().Set("Content-Type", "application/health+json; charset=utf-8")
+	default:
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	}
 	w.WriteHeader(statusCode)
