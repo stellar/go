@@ -28,7 +28,7 @@ The [testing guide](internal/expingest/TESTING.md) contains all the information 
 ### Added
 
 - Add [/accounts](https://www.stellar.org/developers/horizon/reference/endpoints/accounts.html) endpoint, which allows filtering accounts that have a given signer or a trustline to an asset.
-- Add [/offers](https://www.stellar.org/developers/horizon/reference/endpoints/offers.html) endpoint, which allows listing all offers on the network with the ability to filter by seller account or by selling or buying asset.
+- Add [/offers](https://www.stellar.org/developers/horizon/reference/endpoints/offers.html) endpoint, which lists all offers on the network and allows filtering by seller account or by selling or buying asset.
 - Add [/paths/strict-send](https://www.stellar.org/developers/horizon/reference/endpoints/path-finding-strict-send.html) endpoint, which enables discovery of optimal "strict send" paths between assets.
 - Add [/paths/strict-receive](https://www.stellar.org/developers/horizon/reference/endpoints/path-finding-strict-receive.html) endpoint, which enables discovery of optimal "strict receive" paths between assets.
 - Add the fields `max_fee` and `fee_charged` to [/fee_stats](https://www.stellar.org/developers/horizon/reference/endpoints/fee-stats.html).
