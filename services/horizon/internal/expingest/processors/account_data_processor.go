@@ -21,14 +21,6 @@ func (p *AccountDataProcessor) Init(header xdr.LedgerHeader) error {
 	return nil
 }
 
-func (p *AccountDataProcessor) ClearState(header xdr.LedgerHeader) error {
-	err := p.DataQ.TruncateAccountDataTable()
-	if err != nil {
-		return errors.Wrap(err, "error truncating table")
-	}
-	return nil
-}
-
 func (p *AccountDataProcessor) ProcessChange(change io.Change) error {
 	// We're interested in data only
 	if change.Type != xdr.LedgerEntryTypeData {

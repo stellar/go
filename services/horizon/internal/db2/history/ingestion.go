@@ -15,9 +15,3 @@ func (q *Q) TruncateExpingestStateTables() error {
 		"trust_lines",
 	})
 }
-
-func (q *Q) TruncateAccountDataTable() error {
-	return q.TruncateTables([]string{
-		"accounts_data",
-	})
-}

@@ -359,10 +359,9 @@ LoopBucketEntry:
 			}
 
 			if !seen {
-				// Return LEDGER_ENTRY_STATE changes only now.
 				liveEntry := entry.MustLiveEntry()
 				entryChange := xdr.LedgerEntryChange{
-					Type:  xdr.LedgerEntryChangeTypeLedgerEntryState,
+					Type:  xdr.LedgerEntryChangeTypeLedgerEntryCreated,
 					State: &liveEntry,
 				}
 				msr.readChan <- readResult{entryChange, nil}
