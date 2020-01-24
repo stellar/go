@@ -1,4 +1,4 @@
-package healthjson
+package health
 
 import (
 	"io/ioutil"

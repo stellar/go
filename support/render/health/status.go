@@ -1,4 +1,4 @@
-package healthjson
+package health
 
 // Status indicates whether the service is health or not.
 type Status string

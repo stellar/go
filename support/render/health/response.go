@@ -1,4 +1,4 @@
-package healthjson
+package health
 
 // Response implements the most basic required fields for the health response
 // based on the format defined in the draft IETF network working group
