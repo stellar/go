@@ -23,6 +23,8 @@ The new engine resolves multiple issues that were present in the old system. For
 
 Finally, the rearchitecting makes new reliability features possible. An example is the new internal state verifier, which guarantees consistency between the local Horizon state and the public history archives.
 
+The [testing guide](internal/expingest/TESTING.md) contains all the information needed to start testing the new ingestion system.
+
 ### Added
 
 - Add [/accounts](https://www.stellar.org/developers/horizon/reference/endpoints/accounts.html) endpoint, which allows filtering accounts who have a given signer or have a trustline to an asset.
