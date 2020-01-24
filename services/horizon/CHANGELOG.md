@@ -27,10 +27,10 @@ The [testing guide](internal/expingest/TESTING.md) contains all the information 
 
 ### Added
 
-- Add [/accounts](https://www.stellar.org/developers/horizon/reference/endpoints/accounts.html) endpoint, which allows filtering accounts who have a given signer or have a trustline to an asset.
-- Add [/offers](https://www.stellar.org/developers/horizon/reference/endpoints/offers.html) endpoint, which allows listing all offers in the network with filter support by seller, selling or buying asset.
+- Add [/accounts](https://www.stellar.org/developers/horizon/reference/endpoints/accounts.html) endpoint, which allows filtering accounts that have a given signer or a trustline to an asset.
+- Add [/offers](https://www.stellar.org/developers/horizon/reference/endpoints/offers.html) endpoint, which allows listing all offers on the network with the ability to filter by seller account or by selling or buying asset.
 - Add [/paths/strict-send](https://www.stellar.org/developers/horizon/reference/endpoints/path-finding-strict-send.html) endpoint, which enables discovery of optimal "strict send" paths between assets.
-- Add [/paths/strict-receive](https://www.stellar.org/developers/horizon/reference/endpoints/path-finding-strict-receive.html) end-point, which enables discovery of optimal "strict receive" paths between assets.
+- Add [/paths/strict-receive](https://www.stellar.org/developers/horizon/reference/endpoints/path-finding-strict-receive.html) endpoint, which enables discovery of optimal "strict receive" paths between assets.
 - Add the fields `max_fee` and `fee_charged` to [/fee_stats](https://www.stellar.org/developers/horizon/reference/endpoints/fee-stats.html).
 
 ### Breaking changes
@@ -38,7 +38,7 @@ The [testing guide](internal/expingest/TESTING.md) contains all the information 
 ### Changed
 
 - Change multiple operation types to their canonical names for [operation resources](https://www.stellar.org/developers/horizon/reference/resources/operation.html) ([#2134](https://github.com/stellar/go/pull/2134)).
-- Change the type of multiple fields from `number` to `string`:
+- Change the type of the following fields from `number` to `string`:
 
     - Attribute `offer_id` in [manage buy offer](https://www.stellar.org/developers/horizon/reference/resources/operation.html#manage-buy-offer) and [manage sell offer](https://www.stellar.org/developers/horizon/reference/resources/operation.html#manage-sell-offer) operations.
     - Attribute `offer_id` in `Trade` [effect](https://www.stellar.org/developers/horizon/reference/resources/effect.html#trading-effects).
