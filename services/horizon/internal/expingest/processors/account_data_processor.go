@@ -8,37 +8,23 @@ import (
 	"github.com/stellar/go/xdr"
 )
 
-type ChangesMode int
-
-const (
-	InitChangesMode ChangesMode = iota
-	LedgerChangesMode
-)
-
 type AccountDataProcessor struct {
 	DataQ history.QData
 
-	mode  ChangesMode
 	cache *io.LedgerEntryChangeCache
 	batch history.AccountDataBatchInsertBuilder
 }
 
-func (p *AccountDataProcessor) Init(header xdr.LedgerHeader, mode ChangesMode) error {
-	p.mode = mode
-	p.batch = nil
-	p.cache = nil
-	switch p.mode {
-	case InitChangesMode:
-		p.batch = p.DataQ.NewAccountDataBatchInsertBuilder(maxBatchSize)
-		// Truncate table
-		err := p.DataQ.TruncateAccountDataTable()
-		if err != nil {
-			return errors.Wrap(err, "error truncating table")
-		}
-	case LedgerChangesMode:
-		p.cache = io.NewLedgerEntryChangeCache()
-	default:
-		return errors.New("Invalid changes mode")
+func (p *AccountDataProcessor) Init(header xdr.LedgerHeader) error {
+	p.batch = p.DataQ.NewAccountDataBatchInsertBuilder(maxBatchSize)
+	p.cache = io.NewLedgerEntryChangeCache()
+	return nil
+}
+
+func (p *AccountDataProcessor) ClearState(header xdr.LedgerHeader) error {
+	err := p.DataQ.TruncateAccountDataTable()
+	if err != nil {
+		return errors.Wrap(err, "error truncating table")
 	}
 	return nil
 }
@@ -49,88 +35,78 @@ func (p *AccountDataProcessor) ProcessChange(change io.Change) error {
 		return nil
 	}
 
-	switch p.mode {
-	case InitChangesMode:
-		err := p.batch.Add(
-			change.Post.Data.MustData(),
-			change.Post.LastModifiedLedgerSeq,
-		)
+	err := p.cache.AddChange(change)
+	if err != nil {
+		return errors.Wrap(err, "error adding to ledgerCache")
+	}
+
+	// Size is not implemented yet but should return number of entries in the cache.
+	if p.cache.Size() > maxBatchSize {
+		err = p.Commit()
 		if err != nil {
-			return errors.Wrap(err, "error adding row to batch")
+			return errors.Wrap(err, "error in Commit")
 		}
-	case LedgerChangesMode:
-		err := p.cache.AddChange(change)
-		if err != nil {
-			return errors.Wrap(err, "error adding to ledgerCache")
-		}
-	default:
-		return errors.New("Invalid changes mode")
 	}
 
 	return nil
 }
 
 func (p *AccountDataProcessor) Commit() error {
-	switch p.mode {
-	case InitChangesMode:
-		err := p.batch.Exec()
-		if err != nil {
-			return errors.Wrap(err, "error executing batch")
-		}
-	case LedgerChangesMode:
-		changes := p.cache.GetChanges()
-		for _, change := range changes {
-			var err error
-			var rowsAffected int64
-			var action string
-			var ledgerKey xdr.LedgerKey
+	changes := p.cache.GetChanges()
+	for _, change := range changes {
+		var err error
+		var rowsAffected int64
+		var action string
+		var ledgerKey xdr.LedgerKey
 
-			switch {
-			case change.Pre == nil && change.Post != nil:
-				// Created
-				action = "inserting"
-				data := change.Post.Data.MustData()
-				err = ledgerKey.SetData(data.AccountId, string(data.DataName))
-				if err != nil {
-					return errors.Wrap(err, "Error creating ledger key")
-				}
-				rowsAffected, err = p.DataQ.InsertAccountData(data, change.Post.LastModifiedLedgerSeq)
-			case change.Pre != nil && change.Post == nil:
-				// Removed
-				action = "removing"
-				data := change.Pre.Data.MustData()
-				err = ledgerKey.SetData(data.AccountId, string(data.DataName))
-				if err != nil {
-					return errors.Wrap(err, "Error creating ledger key")
-				}
-				rowsAffected, err = p.DataQ.RemoveAccountData(*ledgerKey.Data)
-			default:
-				// Updated
-				action = "updating"
-				data := change.Post.Data.MustData()
-				err = ledgerKey.SetData(data.AccountId, string(data.DataName))
-				if err != nil {
-					return errors.Wrap(err, "Error creating ledger key")
-				}
-				rowsAffected, err = p.DataQ.UpdateAccountData(data, change.Post.LastModifiedLedgerSeq)
-			}
-
+		switch {
+		case change.Pre == nil && change.Post != nil:
+			// Created
+			action = "inserting"
+			err = p.batch.Add(
+				change.Post.Data.MustData(),
+				change.Post.LastModifiedLedgerSeq,
+			)
+			rowsAffected = 1 // We don't track this when batch inserting
+		case change.Pre != nil && change.Post == nil:
+			// Removed
+			action = "removing"
+			data := change.Pre.Data.MustData()
+			err = ledgerKey.SetData(data.AccountId, string(data.DataName))
 			if err != nil {
-				return err
+				return errors.Wrap(err, "Error creating ledger key")
 			}
-
-			if rowsAffected != 1 {
-				return ingesterrors.NewStateError(errors.Errorf(
-					"%d rows affected when %s data: %s %s",
-					rowsAffected,
-					action,
-					ledgerKey.Data.AccountId.Address(),
-					ledgerKey.Data.DataName,
-				))
+			rowsAffected, err = p.DataQ.RemoveAccountData(*ledgerKey.Data)
+		default:
+			// Updated
+			action = "updating"
+			data := change.Post.Data.MustData()
+			err = ledgerKey.SetData(data.AccountId, string(data.DataName))
+			if err != nil {
+				return errors.Wrap(err, "Error creating ledger key")
 			}
+			rowsAffected, err = p.DataQ.UpdateAccountData(data, change.Post.LastModifiedLedgerSeq)
 		}
-	default:
-		return errors.New("Invalid changes mode")
+
+		if err != nil {
+			return err
+		}
+
+		if rowsAffected != 1 {
+			return ingesterrors.NewStateError(errors.Errorf(
+				"%d rows affected when %s data: %s %s",
+				rowsAffected,
+				action,
+				ledgerKey.Data.AccountId.Address(),
+				ledgerKey.Data.DataName,
+			))
+		}
 	}
+
+	err := p.batch.Exec()
+	if err != nil {
+		return errors.Wrap(err, "error executing batch")
+	}
+
 	return nil
 }
