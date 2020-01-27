@@ -50,6 +50,7 @@ var replaceRegexps = []replace{
 	{regexp.MustCompile(`"trade_count":( ?)([0-9]+)`), `"trade_count":${1}"${2}"`},
 	{regexp.MustCompile(`"type":( ?)"manage_offer",`), `"type":${1}"manage_sell_offer",`},
 	{regexp.MustCompile(`"type":( ?)"path_payment",`), `"type":${1}"path_payment_strict_receive",`},
+	{regexp.MustCompile(`"type":( ?)"create_passive_offer",`), `"type":${1}"create_passive_sell_offer",`},
 	{regexp.MustCompile(
 		// Removes paging_token from /accounts/*
 		`"data":( ?){([^}]*)},\s*"paging_token":( ?)"([0-9A-Z]*)"`),
