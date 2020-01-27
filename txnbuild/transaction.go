@@ -585,7 +585,7 @@ func VerifyChallengeTxSigners(challengeTx, serverAccountID, network string, sign
 // has been signed by the client account's master key.
 // More details on SEP 10: https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0010.md
 //
-// Deprecated: Use VerifyChallengeTxSigners.
+// Deprecated: Use VerifyChallengeTxThreshold or VerifyChallengeTxSigners.
 func VerifyChallengeTx(challengeTx, serverAccountID, network string) (bool, error) {
 	tx, clientAccountID, err := ReadChallengeTx(challengeTx, serverAccountID, network)
 	if err != nil {
