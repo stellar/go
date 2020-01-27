@@ -34,7 +34,31 @@ var removeRegexps = []*regexp.Regexp{
 	// regexp.MustCompile(`\s*"last_modified_ledger": [0-9]+,`),
 	// regexp.MustCompile(`\s*"public_key": "G.*",`),
 	// regexp.MustCompile(`,\s*"paging_token": ?""`),
+	regexp.MustCompile(`\s*"fee_paid": ?[0-9]+,`),
 }
+
+type replace struct {
+	regexp *regexp.Regexp
+	repl   string
+}
+
+var replaceRegexps = []replace{
+	// Offer ID in /offers
+	{regexp.MustCompile(`"id":( ?)([0-9]+)`), `"id":${1}"${2}"`},
+	{regexp.MustCompile(`"offer_id":( ?)([0-9]+)`), `"offer_id":${1}"${2}"`},
+	{regexp.MustCompile(`"timestamp":( ?)([0-9]+)`), `"timestamp":${1}"${2}"`},
+	{regexp.MustCompile(`"trade_count":( ?)([0-9]+)`), `"trade_count":${1}"${2}"`},
+	{regexp.MustCompile(`"type":( ?)"manage_offer",`), `"type":${1}"manage_sell_offer",`},
+	{regexp.MustCompile(`"type":( ?)"path_payment",`), `"type":${1}"path_payment_strict_receive",`},
+	{regexp.MustCompile(`"type":( ?)"create_passive_offer",`), `"type":${1}"create_passive_sell_offer",`},
+	{regexp.MustCompile(
+		// Removes paging_token from /accounts/*
+		`"data":( ?){([^}]*)},\s*"paging_token":( ?)"([0-9A-Z]*)"`),
+		`"data":${1}{${2}},"paging_token":${3}""`,
+	},
+}
+
+var accountDetailsPathRegexp = regexp.MustCompile(`^/accounts/[A-Z]+[^/]+$`)
 
 type Response struct {
 	Domain string
@@ -113,7 +137,14 @@ func NewResponse(domain, path string, stream bool) *Response {
 		normalizedBody = reg.ReplaceAllString(normalizedBody, "")
 	}
 
-	response.NormalizedBody = normalizedBody
+	for _, reg := range replaceRegexps {
+		normalizedBody = reg.regexp.ReplaceAllString(normalizedBody, reg.repl)
+	}
+
+	// 1.0.0-alpha - skip Latest-Ledger in /accounts/{id}
+	if !accountDetailsPathRegexp.Match([]byte(path)) {
+		response.NormalizedBody = fmt.Sprintf("Latest-Ledger: %s\n%s", resp.Header.Get("Latest-Ledger"), normalizedBody)
+	}
 	return response
 }
 
