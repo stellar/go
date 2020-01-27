@@ -28,8 +28,6 @@ func (s *AccountsDataProcessorTestSuiteState) SetupTest() {
 		On("NewAccountDataBatchInsertBuilder", maxBatchSize).
 		Return(s.mockBatchInsertBuilder).Once()
 
-	s.mockQ.On("TruncateAccountDataTable").Return(nil).Once()
-
 	s.processor = &AccountDataProcessor{
 		DataQ: s.mockQ,
 	}
@@ -37,7 +35,7 @@ func (s *AccountsDataProcessorTestSuiteState) SetupTest() {
 	header := xdr.LedgerHeader{
 		LedgerSeq: xdr.Uint32(63),
 	}
-	err := s.processor.Init(header, InitChangesMode)
+	err := s.processor.Init(header)
 	s.Assert().NoError(err)
 }
 
@@ -82,12 +80,18 @@ func TestAccountsDataProcessorTestSuiteLedger(t *testing.T) {
 
 type AccountsDataProcessorTestSuiteLedger struct {
 	suite.Suite
-	processor *AccountDataProcessor
-	mockQ     *history.MockQData
+	processor              *AccountDataProcessor
+	mockQ                  *history.MockQData
+	mockBatchInsertBuilder *history.MockAccountDataBatchInsertBuilder
 }
 
 func (s *AccountsDataProcessorTestSuiteLedger) SetupTest() {
 	s.mockQ = &history.MockQData{}
+	s.mockBatchInsertBuilder = &history.MockAccountDataBatchInsertBuilder{}
+
+	s.mockQ.
+		On("NewAccountDataBatchInsertBuilder", maxBatchSize).
+		Return(s.mockBatchInsertBuilder).Once()
 
 	s.processor = &AccountDataProcessor{
 		DataQ: s.mockQ,
@@ -96,11 +100,12 @@ func (s *AccountsDataProcessorTestSuiteLedger) SetupTest() {
 	header := xdr.LedgerHeader{
 		LedgerSeq: xdr.Uint32(63),
 	}
-	err := s.processor.Init(header, LedgerChangesMode)
+	err := s.processor.Init(header)
 	s.Assert().NoError(err)
 }
 
 func (s *AccountsDataProcessorTestSuiteLedger) TearDownTest() {
+	s.mockBatchInsertBuilder.On("Exec").Return(nil).Once()
 	s.Assert().NoError(s.processor.Commit())
 	s.mockQ.AssertExpectations(s.T())
 }
@@ -156,11 +161,11 @@ func (s *AccountsDataProcessorTestSuiteLedger) TestNewAccountData() {
 	s.Assert().NoError(err)
 
 	// We use LedgerEntryChangesCache so all changes are squashed
-	s.mockQ.On(
-		"InsertAccountData",
+	s.mockBatchInsertBuilder.On(
+		"Add",
 		updatedData,
 		lastModifiedLedgerSeq,
-	).Return(int64(1), nil).Once()
+	).Return(nil).Once()
 }
 
 func (s *AccountsDataProcessorTestSuiteLedger) TestUpdateAccountData() {

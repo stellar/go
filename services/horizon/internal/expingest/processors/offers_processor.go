@@ -8,26 +8,25 @@ import (
 	"github.com/stellar/go/xdr"
 )
 
-type AccountDataProcessor struct {
-	DataQ history.QData
+type OffersProcessor struct {
+	OffersQ history.QOffers
 
 	cache *io.LedgerEntryChangeCache
-	batch history.AccountDataBatchInsertBuilder
+	batch history.OffersBatchInsertBuilder
 }
 
-func (p *AccountDataProcessor) Init(header xdr.LedgerHeader) error {
+func (p *OffersProcessor) Init(header xdr.LedgerHeader) error {
 	p.init()
 	return nil
 }
 
-func (p *AccountDataProcessor) init() {
-	p.batch = p.DataQ.NewAccountDataBatchInsertBuilder(maxBatchSize)
+func (p *OffersProcessor) init() {
+	p.batch = p.OffersQ.NewOffersBatchInsertBuilder(maxBatchSize)
 	p.cache = io.NewLedgerEntryChangeCache()
 }
 
-func (p *AccountDataProcessor) ProcessChange(change io.Change) error {
-	// We're interested in data only
-	if change.Type != xdr.LedgerEntryTypeData {
+func (p *OffersProcessor) ProcessChange(change io.Change) error {
+	if change.Type != xdr.LedgerEntryTypeOffer {
 		return nil
 	}
 
@@ -47,41 +46,35 @@ func (p *AccountDataProcessor) ProcessChange(change io.Change) error {
 	return nil
 }
 
-func (p *AccountDataProcessor) Commit() error {
+func (p *OffersProcessor) Commit() error {
 	changes := p.cache.GetChanges()
 	for _, change := range changes {
-		var err error
 		var rowsAffected int64
+		var err error
 		var action string
-		var ledgerKey xdr.LedgerKey
+		var offerID xdr.Int64
 
 		switch {
 		case change.Pre == nil && change.Post != nil:
 			// Created
 			action = "inserting"
 			err = p.batch.Add(
-				change.Post.Data.MustData(),
+				change.Post.Data.MustOffer(),
 				change.Post.LastModifiedLedgerSeq,
 			)
 			rowsAffected = 1 // We don't track this when batch inserting
 		case change.Pre != nil && change.Post == nil:
 			// Removed
 			action = "removing"
-			data := change.Pre.Data.MustData()
-			err = ledgerKey.SetData(data.AccountId, string(data.DataName))
-			if err != nil {
-				return errors.Wrap(err, "Error creating ledger key")
-			}
-			rowsAffected, err = p.DataQ.RemoveAccountData(*ledgerKey.Data)
+			offer := change.Pre.Data.MustOffer()
+			offerID = offer.OfferId
+			rowsAffected, err = p.OffersQ.RemoveOffer(offer.OfferId)
 		default:
 			// Updated
 			action = "updating"
-			data := change.Post.Data.MustData()
-			err = ledgerKey.SetData(data.AccountId, string(data.DataName))
-			if err != nil {
-				return errors.Wrap(err, "Error creating ledger key")
-			}
-			rowsAffected, err = p.DataQ.UpdateAccountData(data, change.Post.LastModifiedLedgerSeq)
+			offer := change.Post.Data.MustOffer()
+			offerID = offer.OfferId
+			rowsAffected, err = p.OffersQ.UpdateOffer(offer, change.Post.LastModifiedLedgerSeq)
 		}
 
 		if err != nil {
@@ -90,11 +83,10 @@ func (p *AccountDataProcessor) Commit() error {
 
 		if rowsAffected != 1 {
 			return ingesterrors.NewStateError(errors.Errorf(
-				"%d rows affected when %s data: %s %s",
+				"%d rows affected when %s offer %d",
 				rowsAffected,
 				action,
-				ledgerKey.Data.AccountId.Address(),
-				ledgerKey.Data.DataName,
+				offerID,
 			))
 		}
 	}

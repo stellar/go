@@ -35,7 +35,7 @@ func (s *TransactionsProcessorTestSuiteLedger) SetupTest() {
 	header := xdr.LedgerHeader{
 		LedgerSeq: xdr.Uint32(20),
 	}
-	err := s.processor.Init(header, LedgerChangesMode)
+	err := s.processor.Init(header)
 	s.Assert().NoError(err)
 }
 
