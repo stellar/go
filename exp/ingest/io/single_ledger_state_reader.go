@@ -1,6 +1,7 @@
 package io
 
 import (
+	"context"
 	"encoding/base64"
 	"fmt"
 	"io"
@@ -23,6 +24,7 @@ type readResult struct {
 // entries returned by `Read()` are exactly the ledger entries present at the given
 // ledger.
 type SingleLedgerStateReader struct {
+	ctx        context.Context
 	has        *historyarchive.HistoryArchiveState
 	archive    historyarchive.ArchiveInterface
 	tempStore  TempSet
@@ -65,11 +67,33 @@ const msrBufferSize = 50000
 // temp set.
 const preloadedEntries = 20000
 
-// MakeSingleLedgerStateReader is a factory method for SingleLedgerStateReader.
+// NewStateReader constructs a StateReader for the most recently published checkpoint ledger.
 // `maxStreamRetries` determines how many times the reader will retry when encountering
 // errors while streaming xdr bucket entries from the history archive.
 // Set `maxStreamRetries` to 0 if there should be no retry attempts
-func MakeSingleLedgerStateReader(
+func NewStateReader(
+	ctx context.Context,
+	archive historyarchive.ArchiveInterface,
+	tempStore TempSet,
+	maxStreamRetries int,
+
+) (*SingleLedgerStateReader, error) {
+	has, e := archive.GetRootHAS()
+	if e != nil {
+		return nil, fmt.Errorf("could not get root HAS: %s", e)
+	}
+
+	return NewStateReaderForLedger(
+		ctx, archive, tempStore, has.CurrentLedger, maxStreamRetries,
+	)
+}
+
+// NewStateReaderForLedger constructs a StateReader for a given sequence number.
+// `maxStreamRetries` determines how many times the reader will retry when encountering
+// errors while streaming xdr bucket entries from the history archive.
+// Set `maxStreamRetries` to 0 if there should be no retry attempts
+func NewStateReaderForLedger(
+	ctx context.Context,
 	archive historyarchive.ArchiveInterface,
 	tempStore TempSet,
 	sequence uint32,
@@ -86,6 +110,7 @@ func MakeSingleLedgerStateReader(
 	}
 
 	return &SingleLedgerStateReader{
+		ctx:              ctx,
 		has:              &has,
 		archive:          archive,
 		tempStore:        tempStore,
@@ -260,6 +285,13 @@ LoopBucketEntry:
 			preloadKeys := []string{}
 
 			for i := 0; i < preloadedEntries; i++ {
+				select {
+				case <-msr.ctx.Done():
+					msr.readChan <- msr.error(errors.Wrap(msr.ctx.Err(), "context is done"))
+					return false
+				default:
+				}
+
 				var entry xdr.BucketEntry
 				entry, e = msr.readBucketEntry(rdr, hash)
 				if e != nil {

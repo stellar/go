@@ -1,6 +1,8 @@
 package ingest
 
 import (
+	"context"
+
 	"github.com/stellar/go/exp/ingest/adapters"
 	"github.com/stellar/go/exp/ingest/io"
 	"github.com/stellar/go/exp/support/pipeline"
@@ -43,7 +45,7 @@ func (s *SingleLedgerSession) processState(historyAdapter adapters.HistoryArchiv
 		tempSet = s.TempSet
 	}
 
-	stateReader, err := historyAdapter.GetState(sequence, tempSet, s.MaxStreamRetries)
+	stateReader, err := historyAdapter.GetState(context.TODO(), sequence, tempSet, s.MaxStreamRetries)
 	if err != nil {
 		return errors.Wrap(err, "Error getting state from history archive")
 	}

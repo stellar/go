@@ -293,7 +293,7 @@ func (s *LiveSession) initState(historyAdapter adapters.HistoryArchiveAdapterInt
 		tempSet = s.TempSet
 	}
 
-	stateReader, err := historyAdapter.GetState(sequence, tempSet, s.MaxStreamRetries)
+	stateReader, err := historyAdapter.GetState(context.TODO(), sequence, tempSet, s.MaxStreamRetries)
 	if err != nil {
 		return errors.Wrap(err, "Error getting state from history archive")
 	}

@@ -2,6 +2,7 @@ package expingest
 
 import (
 	"bytes"
+	"context"
 	"database/sql"
 	"fmt"
 	"time"
@@ -120,7 +121,8 @@ func (s *System) verifyState(graphOffers map[xdr.Int64]xdr.OfferEntry) error {
 
 	localLog.Info("Creating state reader...")
 
-	stateReader, err := io.MakeSingleLedgerStateReader(
+	stateReader, err := io.NewStateReaderForLedger(
+		context.TODO(),
 		s.session.GetArchive(),
 		&io.MemoryTempSet{},
 		ledgerSequence,
