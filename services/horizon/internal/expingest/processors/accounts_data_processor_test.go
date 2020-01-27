@@ -34,10 +34,7 @@ func (s *AccountsDataProcessorTestSuiteState) SetupTest() {
 		DataQ: s.mockQ,
 	}
 
-	header := xdr.LedgerHeader{
-		LedgerSeq: xdr.Uint32(63),
-	}
-	err := s.processor.Init(header)
+	err := s.processor.Init(63)
 	s.Assert().NoError(err)
 }
 
@@ -93,10 +90,7 @@ func (s *AccountsDataProcessorTestSuiteLedger) SetupTest() {
 		DataQ: s.mockQ,
 	}
 
-	header := xdr.LedgerHeader{
-		LedgerSeq: xdr.Uint32(63),
-	}
-	err := s.processor.Init(header)
+	err := s.processor.Init(63)
 	s.Assert().NoError(err)
 }
 
