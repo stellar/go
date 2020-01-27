@@ -69,7 +69,7 @@ func (v *StateVerifier) GetLedgerKeys(count int) ([]xdr.LedgerKey, error) {
 			return keys, err
 		}
 
-		entry := entryChange.MustState()
+		entry := *entryChange.Post
 
 		if v.TransformFunction != nil {
 			ignore, _ := v.TransformFunction(entry)

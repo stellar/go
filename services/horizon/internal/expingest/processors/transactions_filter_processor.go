@@ -15,17 +15,7 @@ type TransactionFilterProcessor struct {
 }
 
 func (p *TransactionFilterProcessor) ProcessLedger(ctx context.Context, store *pipeline.Store, r io.LedgerReader, w io.LedgerWriter) (err error) {
-	defer func() {
-		// io.LedgerReader.Close() returns error if upgrade changes have not
-		// been processed so it's worth checking the error.
-		closeErr := r.Close()
-		// Do not overwrite the previous error
-		if err == nil {
-			err = closeErr
-		}
-	}()
 	defer w.Close()
-	r.IgnoreUpgradeChanges()
 
 	for {
 		var transaction io.LedgerTransaction

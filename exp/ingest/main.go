@@ -1,7 +1,6 @@
 package ingest
 
 import (
-	"fmt"
 	"sync"
 
 	"github.com/stellar/go/clients/stellarcore"
@@ -209,10 +208,10 @@ func (r reporterLedgerReader) Read() (io.LedgerTransaction, error) {
 
 func (r reporterLedgerReader) GetUpgradeChanges() []io.Change {
 	// upgradeChangesContainer is implemented by *io.DBLedgerReader and readerWrapperLedger.
-	reader, ok := r.LedgerReader.(io.UpgradeChangesContainer)
-	if !ok {
-		panic(fmt.Sprintf("Cannot get upgrade changes from unknown reader type: %T", r.LedgerReader))
-	}
+	// reader, ok := r.LedgerReader.(io.UpgradeChangesContainer)
+	// if !ok {
+	// 	panic(fmt.Sprintf("Cannot get upgrade changes from unknown reader type: %T", r.LedgerReader))
+	// }
 
-	return reader.GetUpgradeChanges()
+	return nil
 }

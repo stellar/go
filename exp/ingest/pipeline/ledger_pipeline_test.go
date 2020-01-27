@@ -65,26 +65,9 @@ type testLedgerProcessor struct {
 }
 
 func (p *testLedgerProcessor) ProcessLedger(ctx context.Context, store *supportPipeline.Store, r io.LedgerReader, w io.LedgerWriter) (err error) {
-	defer func() {
-		// io.LedgerReader.Close() returns error if upgrade changes have not
-		// been processed so it's worth checking the error.
-		closeErr := r.Close()
-		// Do not overwrite the previous error
-		if err == nil {
-			err = closeErr
-		}
-	}()
 	defer w.Close()
 
 	_, err = r.Read()
-	assert.Error(p.t, err)
-	assert.Equal(p.t, stdio.EOF, err)
-
-	change, err := r.ReadUpgradeChange()
-	assert.NoError(p.t, err)
-	assert.Equal(p.t, change.Type, xdr.LedgerEntryTypeAccount)
-
-	_, err = r.ReadUpgradeChange()
 	assert.Error(p.t, err)
 	assert.Equal(p.t, stdio.EOF, err)
 

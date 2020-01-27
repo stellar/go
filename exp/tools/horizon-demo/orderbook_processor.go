@@ -48,7 +48,6 @@ func (p *OrderbookProcessor) ProcessState(ctx context.Context, store *pipeline.S
 }
 
 func (p *OrderbookProcessor) ProcessLedger(ctx context.Context, store *pipeline.Store, r io.LedgerReader, w io.LedgerWriter) error {
-	defer r.Close()
 	defer w.Close()
 
 	for {

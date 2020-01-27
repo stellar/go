@@ -78,7 +78,6 @@ func (p *DatabaseProcessor) ProcessState(ctx context.Context, store *pipeline.St
 }
 
 func (p *DatabaseProcessor) ProcessLedger(ctx context.Context, store *pipeline.Store, r io.LedgerReader, w io.LedgerWriter) error {
-	defer r.Close()
 	defer w.Close()
 
 	for {

@@ -45,7 +45,7 @@ func main() {
 			return
 		}
 
-		if ae, valid := le.State.Data.GetAccount(); valid {
+		if ae, valid := le.Post.Data.GetAccount(); valid {
 			addr := ae.AccountId.Address()
 			if _, exists := accounts[addr]; exists {
 				log.Fatalf("error, total seen %d entries of which %d were unique accounts; repeated account: %s", i, count, addr)

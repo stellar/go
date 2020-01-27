@@ -2,7 +2,6 @@ package pipeline
 
 import (
 	"context"
-	"fmt"
 	stdio "io"
 
 	"github.com/stellar/go/exp/ingest/io"
@@ -51,16 +50,20 @@ func (w *ledgerReaderWrapper) GetContext() context.Context {
 	ctx = context.WithValue(ctx, LedgerSequenceContextKey, w.LedgerReader.GetSequence())
 	ctx = context.WithValue(ctx, LedgerHeaderContextKey, w.LedgerReader.GetHeader())
 
-	// Save upgrade changes in context. UpgradeChangesContainer is implemented by
-	// *io.DBLedgerReader and readerWrapperLedger.
-	reader, ok := w.LedgerReader.(io.UpgradeChangesContainer)
-	if !ok {
-		panic(fmt.Sprintf("Cannot get upgrade changes from unknown reader type: %T", w.LedgerReader))
-	}
+	// // Save upgrade changes in context. UpgradeChangesContainer is implemented by
+	// // *io.DBLedgerReader and readerWrapperLedger.
+	// reader, ok := w.LedgerReader.(io.UpgradeChangesContainer)
+	// if !ok {
+	// 	panic(fmt.Sprintf("Cannot get upgrade changes from unknown reader type: %T", w.LedgerReader))
+	// }
 
-	ctx = context.WithValue(ctx, LedgerUpgradeChangesContextKey, reader.GetUpgradeChanges())
+	// ctx = context.WithValue(ctx, LedgerUpgradeChangesContextKey, reader.GetUpgradeChanges())
 
 	return ctx
+}
+
+func (w *ledgerReaderWrapper) Close() error {
+	return nil
 }
 
 func (w *ledgerReaderWrapper) Read() (interface{}, error) {
@@ -131,12 +134,12 @@ func (w *readerWrapperLedger) Close() error {
 		return errors.New("Ledger upgrade changes not read! Use ReadUpgradeChange() method.")
 	}
 
-	// Call IgnoreUpgradeChanges on a wrapped reader because `readerWrapperLedger`
-	// is responsible for streaming ledger upgrade changes now.
-	wrapper, ok := w.Reader.(*ledgerReaderWrapper)
-	if ok {
-		wrapper.LedgerReader.IgnoreUpgradeChanges()
-	}
+	// // Call IgnoreUpgradeChanges on a wrapped reader because `readerWrapperLedger`
+	// // is responsible for streaming ledger upgrade changes now.
+	// wrapper, ok := w.Reader.(*ledgerReaderWrapper)
+	// if ok {
+	// 	wrapper.LedgerReader.IgnoreUpgradeChanges()
+	// }
 
 	return w.Reader.Close()
 }

@@ -50,7 +50,6 @@ func (p *ContextFilter) ProcessState(ctx context.Context, store *pipeline.Store,
 }
 
 func (p *ContextFilter) ProcessLedger(ctx context.Context, store *pipeline.Store, r io.LedgerReader, w io.LedgerWriter) error {
-	defer r.Close()
 	defer w.Close()
 
 	// Exit early if Key not found in `ctx`
