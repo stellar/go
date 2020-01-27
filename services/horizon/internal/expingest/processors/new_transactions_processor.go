@@ -13,7 +13,7 @@ type NewTransactionProcessor struct {
 	batch    history.TransactionBatchInsertBuilder
 }
 
-func (p *NewTransactionProcessor) Init(header xdr.LedgerHeader, mode ChangesMode) error {
+func (p *NewTransactionProcessor) Init(header xdr.LedgerHeader) error {
 	p.sequence = uint32(header.LedgerSeq)
 	p.batch = p.TransactionsQ.NewTransactionBatchInsertBuilder(maxBatchSize)
 	return nil
