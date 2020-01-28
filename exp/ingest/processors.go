@@ -108,7 +108,7 @@ func ProcessLedgerTransactions(
 		)
 	}
 
-	if err := txProcessor.Init(ledgerReader.GetHeader().Header); err != nil {
+	if err = txProcessor.Init(ledgerReader.GetHeader().Header); err != nil {
 		return errors.Wrapf(
 			err,
 			"could not initialize sequence processor for ledger %v",
@@ -117,7 +117,8 @@ func ProcessLedgerTransactions(
 	}
 
 	for {
-		tx, err := ledgerReader.Read()
+		var tx io.LedgerTransaction
+		tx, err = ledgerReader.Read()
 		if err == stdio.EOF {
 			break
 		}
@@ -141,7 +142,7 @@ func ProcessLedgerTransactions(
 		}
 	}
 
-	if err := txProcessor.Commit(); err != nil {
+	if err = txProcessor.Commit(); err != nil {
 		return errors.Wrapf(err, "could not commit processor for ledger %v", ledger)
 	}
 
@@ -166,7 +167,7 @@ func ProcessHAS(
 		return errors.Wrap(err, "could not create state reader")
 	}
 
-	if err := changeProcessor.Init(ledger); err != nil {
+	if err = changeProcessor.Init(ledger); err != nil {
 		return errors.Wrapf(
 			err,
 			"could not initialize cumulative processor for ledger %v",
@@ -175,7 +176,8 @@ func ProcessHAS(
 	}
 
 	for {
-		entryChange, err := reader.Read()
+		var entryChange xdr.LedgerEntryChange
+		entryChange, err = reader.Read()
 		if err == stdio.EOF {
 			break
 		}
@@ -203,7 +205,7 @@ func ProcessHAS(
 		}
 	}
 
-	if err := changeProcessor.Commit(); err != nil {
+	if err = changeProcessor.Commit(); err != nil {
 		return errors.Wrapf(err, "could not commit processor for sequence %v", ledger)
 	}
 
@@ -225,7 +227,7 @@ func ProcessLedgerChanges(
 		)
 	}
 
-	if err := changeProcessor.Init(ledger); err != nil {
+	if err = changeProcessor.Init(ledger); err != nil {
 		return errors.Wrapf(
 			err,
 			"could not initialize sequence processor for ledger %v",
@@ -259,7 +261,7 @@ func ProcessLedgerChanges(
 		}
 	}
 
-	if err := changeProcessor.Commit(); err != nil {
+	if err = changeProcessor.Commit(); err != nil {
 		return errors.Wrapf(err, "could not commit processor for ledger %v", ledger)
 	}
 
