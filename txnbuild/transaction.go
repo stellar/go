@@ -546,34 +546,63 @@ func VerifyChallengeTxSigners(challengeTx, serverAccountID, network string, sign
 		return nil, errors.New("no signers provided")
 	}
 
+	// Read the transaction which validates its structure.
 	tx, _, err := ReadChallengeTx(challengeTx, serverAccountID, network)
 	if err != nil {
 		return nil, err
 	}
 
+	// Ensure the server account ID is an address and not a seed.
 	serverKP, err := keypair.ParseAddress(serverAccountID)
 	if err != nil {
 		return nil, err
 	}
 
-	// Remove the server signer from the signers list if it is present. It's
-	// important when verifying signers of a challenge transaction that we only
-	// verify and return client signers. If an account has the server as a
-	// signer the server should not play a part in the authentication of the
-	// client.
-	clientSigners := make([]string, 0, len(signers))
+	// Deduplicate the client signers and ensure the server is not included
+	// anywhere we check or output the list of signers.
+	clientSignersSet := map[string]struct{}{}
 	for _, signer := range signers {
+		// Ignore the server signer if it is in the signers list. It's
+		// important when verifying signers of a challenge transaction that we
+		// only verify and return client signers. If an account has the server
+		// as a signer the server should not play a part in the authentication
+		// of the client.
 		if signer == serverKP.Address() {
 			continue
 		}
+		clientSignersSet[signer] = struct{}{}
+	}
+	clientSigners := make([]string, 0, len(clientSignersSet))
+	for signer := range clientSignersSet {
 		clientSigners = append(clientSigners, signer)
 	}
 
-	signersFound, err := verifyTxSignatures(tx, clientSigners...)
+	// Verify that all the transaction's signers (server and client) in one
+	// hit. We do this in one hit here even though the server signature was
+	// checked in the ReadChallengeTx to ensure that every signature and signer
+	// are consumed only once on the transaction.
+	allSigners := append([]string{serverKP.Address()}, clientSigners...)
+	allSignersFound, err := verifyTxSignatures(tx, allSigners...)
 	if err != nil {
 		return nil, err
 	}
-	if len(signersFound) != len(tx.xdrEnvelope.Signatures)-1 {
+
+	// Remove the server from the list of signers found.
+	signersFound := make([]string, 0, len(allSignersFound)-1)
+	for _, signer := range allSignersFound {
+		if signer == serverKP.Address() {
+			continue
+		}
+		signersFound = append(signersFound, signer)
+	}
+
+	// Confirm we found at least one client signer.
+	if len(signersFound) == 0 {
+		return nil, errors.Errorf("transaction not signed by %s", strings.Join(clientSigners, ", "))
+	}
+
+	// Confirm all signatures were consumed by a signer.
+	if len(allSignersFound) != len(tx.xdrEnvelope.Signatures) {
 		return signersFound, errors.Errorf("transaction has unrecognized signatures")
 	}
 
@@ -602,7 +631,10 @@ func VerifyChallengeTx(challengeTx, serverAccountID, network string) (bool, erro
 
 // verifyTxSignature checks if a transaction has been signed by the provided Stellar account.
 func verifyTxSignature(tx Transaction, signer string) error {
-	_, err := verifyTxSignatures(tx, signer)
+	signersFound, err := verifyTxSignatures(tx, signer)
+	if len(signersFound) == 0 {
+		return errors.Errorf("transaction not signed by %s", signer)
+	}
 	return err
 }
 
@@ -620,6 +652,7 @@ func verifyTxSignatures(tx Transaction, signers ...string) ([]string, error) {
 	}
 
 	// find and verify signatures
+	signatureUsed := map[int]bool{}
 	signersFound := map[string]struct{}{}
 	for _, signer := range signers {
 		kp, err := keypair.ParseAddress(signer)
@@ -627,19 +660,20 @@ func verifyTxSignatures(tx Transaction, signers ...string) ([]string, error) {
 			return nil, err
 		}
 
-		for _, decSig := range tx.xdrEnvelope.Signatures {
+		for i, decSig := range tx.xdrEnvelope.Signatures {
+			if signatureUsed[i] {
+				continue
+			}
 			if decSig.Hint != kp.Hint() {
 				continue
 			}
 			err := kp.Verify(txHash[:], decSig.Signature)
 			if err == nil {
+				signatureUsed[i] = true
 				signersFound[signer] = struct{}{}
 				break
 			}
 		}
-	}
-	if len(signersFound) == 0 {
-		return nil, errors.Errorf("transaction not signed by %s", strings.Join(signers, ", "))
 	}
 
 	signersFoundList := make([]string, 0, len(signersFound))
