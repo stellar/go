@@ -7,7 +7,6 @@ import (
 	"github.com/stellar/go/exp/ingest/io"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/support/errors"
-	"github.com/stellar/go/xdr"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
 )
@@ -30,14 +29,10 @@ func (s *OperationsProcessorTestSuiteLedger) SetupTest() {
 		On("NewOperationBatchInsertBuilder", maxBatchSize).
 		Return(s.mockBatchInsertBuilder).Once()
 
-	s.processor = &OperationProcessor{
-		OperationsQ: s.mockQ,
-	}
-	header := xdr.LedgerHeader{
-		LedgerSeq: xdr.Uint32(56),
-	}
-	err := s.processor.Init(header)
-	s.Assert().NoError(err)
+	s.processor = NewOperationProcessor(
+		s.mockQ,
+		56,
+	)
 }
 
 func (s *OperationsProcessorTestSuiteLedger) TearDownTest() {

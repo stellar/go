@@ -21,10 +21,12 @@ type OperationProcessor struct {
 	batch    history.OperationBatchInsertBuilder
 }
 
-func (p *OperationProcessor) Init(header xdr.LedgerHeader) error {
-	p.sequence = uint32(header.LedgerSeq)
-	p.batch = p.OperationsQ.NewOperationBatchInsertBuilder(maxBatchSize)
-	return nil
+func NewOperationProcessor(operationsQ history.QOperations, sequence uint32) *OperationProcessor {
+	return &OperationProcessor{
+		OperationsQ: operationsQ,
+		sequence:    sequence,
+		batch:       operationsQ.NewOperationBatchInsertBuilder(maxBatchSize),
+	}
 }
 
 // ProcessTransaction process the given transaction
