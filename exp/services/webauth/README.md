@@ -42,13 +42,13 @@ Usage:
   webauth serve [flags]
 
 Flags:
-      --challenge-expires-in int    The time period in seconds after which the challenge transaction expires (default 300)
-      --horizon-url string          Horizon URL used for looking up account details (default "https://horizon-testnet.stellar.org/")
-      --jwt-expires-in int          The time period in seconds after which the JWT expires (default 300)
-      --jwt-key string              Base64 encoded ECDSA private key used for signing JWTs
-      --network-passphrase string   Network passphrase of the Stellar network transactions should be signed for (default "Test SDF Network ; September 2015")
-      --port int                    Port to listen and serve on (default 8000)
-      --signing-key string          Stellar signing key used for signing transactions
+      --challenge-expires-in int    The time period in seconds after which the challenge transaction expires (CHALLENGE_EXPIRES_IN) (default 300)
+      --horizon-url string          Horizon URL used for looking up account details (HORIZON_URL) (default "https://horizon-testnet.stellar.org/")
+      --jwt-expires-in int          The time period in seconds after which the JWT expires (JWT_EXPIRES_IN) (default 300)
+      --jwt-key string              Base64 encoded ECDSA private key used for signing JWTs (JWT_KEY)
+      --network-passphrase string   Network passphrase of the Stellar network transactions should be signed for (NETWORK_PASSPHRASE) (default "Test SDF Network ; September 2015")
+      --port int                    Port to listen and serve on (PORT) (default 8000)
+      --signing-key string          Stellar signing key used for signing transactions (SIGNING_KEY)
 ```
 
 [SEP-10]: https://github.com/stellar/stellar-protocol/blob/2be91ce8d8032ca9b2f368800d06b9fba346a147/ecosystem/sep-0010.md
