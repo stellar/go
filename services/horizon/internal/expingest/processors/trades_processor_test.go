@@ -1,14 +1,11 @@
 package processors
 
 import (
-	"context"
 	"fmt"
-	stdio "io"
 	"testing"
 	"time"
 
 	"github.com/stellar/go/exp/ingest/io"
-	supportPipeline "github.com/stellar/go/exp/support/pipeline"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/services/horizon/internal/toid"
 	"github.com/stellar/go/xdr"
@@ -21,9 +18,6 @@ type TradeProcessorTestSuiteLedger struct {
 	processor              *TradeProcessor
 	mockQ                  *history.MockQTrades
 	mockBatchInsertBuilder *history.MockTradeBatchInsertBuilder
-	mockLedgerReader       *io.MockLedgerReader
-	mockLedgerWriter       *io.MockLedgerWriter
-	context                context.Context
 
 	sourceAccount              xdr.AccountId
 	opSourceAccount            xdr.AccountId
@@ -40,6 +34,8 @@ type TradeProcessorTestSuiteLedger struct {
 
 	accountToID map[string]int64
 	assetToID   map[string]history.Asset
+
+	txs []io.LedgerTransaction
 }
 
 func TestTradeProcessorTestSuiteLedger(t *testing.T) {
@@ -49,9 +45,6 @@ func TestTradeProcessorTestSuiteLedger(t *testing.T) {
 func (s *TradeProcessorTestSuiteLedger) SetupTest() {
 	s.mockQ = &history.MockQTrades{}
 	s.mockBatchInsertBuilder = &history.MockTradeBatchInsertBuilder{}
-	s.mockLedgerReader = &io.MockLedgerReader{}
-	s.mockLedgerWriter = &io.MockLedgerWriter{}
-	s.context = context.WithValue(context.Background(), IngestUpdateDatabase, true)
 
 	s.sourceAccount = xdr.MustAddress("GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY")
 	s.opSourceAccount = xdr.MustAddress("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML")
@@ -129,75 +122,27 @@ func (s *TradeProcessorTestSuiteLedger) SetupTest() {
 		s.sellPrices = append(s.sellPrices, xdr.Price{N: n, D: 100})
 	}
 
-	s.processor = &TradeProcessor{
-		TradesQ: s.mockQ,
-	}
-
-	s.mockLedgerReader.On("IgnoreUpgradeChanges").Once()
-	s.mockLedgerReader.
-		On("Close").
-		Return(nil).Once()
-
-	s.mockLedgerWriter.
-		On("Close").
-		Return(nil).Once()
+	s.processor = NewTradeProcessor(
+		s.mockQ,
+		xdr.LedgerHeaderHistoryEntry{
+			Header: xdr.LedgerHeader{
+				LedgerSeq: 100,
+			},
+		},
+	)
 }
 
 func (s *TradeProcessorTestSuiteLedger) TearDownTest() {
 	s.mockQ.AssertExpectations(s.T())
 	s.mockBatchInsertBuilder.AssertExpectations(s.T())
-	s.mockLedgerReader.AssertExpectations(s.T())
-	s.mockLedgerWriter.AssertExpectations(s.T())
 }
 
 func (s *TradeProcessorTestSuiteLedger) TestIgnoreFailedTransactions() {
-	s.mockLedgerReader.
-		On("GetHeader").
-		Return(xdr.LedgerHeaderHistoryEntry{}).Once()
-	s.mockLedgerReader.
-		On("Read").
-		Return(createTransaction(false, 1), nil).Once()
-	s.mockLedgerReader.
-		On("Read").
-		Return(io.LedgerTransaction{}, stdio.EOF).Once()
-
-	err := s.processor.ProcessLedger(
-		s.context,
-		&supportPipeline.Store{},
-		s.mockLedgerReader,
-		s.mockLedgerWriter,
-	)
-
+	err := s.processor.ProcessTransaction(createTransaction(false, 1))
 	s.Assert().NoError(err)
-}
 
-func (s *TradeProcessorTestSuiteLedger) TestReturnIfNotUpdatingDB() {
-	err := s.processor.ProcessLedger(
-		context.Background(),
-		&supportPipeline.Store{},
-		s.mockLedgerReader,
-		s.mockLedgerWriter,
-	)
-
+	err = s.processor.Commit()
 	s.Assert().NoError(err)
-}
-
-func (s *TradeProcessorTestSuiteLedger) TestReadError() {
-	s.mockLedgerReader.
-		On("GetHeader").
-		Return(xdr.LedgerHeaderHistoryEntry{}).Once()
-	s.mockLedgerReader.
-		On("Read").
-		Return(io.LedgerTransaction{}, fmt.Errorf("transient read error")).Once()
-
-	err := s.processor.ProcessLedger(
-		s.context,
-		&supportPipeline.Store{},
-		s.mockLedgerReader,
-		s.mockLedgerWriter,
-	)
-
-	s.Assert().EqualError(err, "transient read error")
 }
 
 func (s *TradeProcessorTestSuiteLedger) mockReadTradeTransactions(
@@ -514,15 +459,10 @@ func (s *TradeProcessorTestSuiteLedger) mockReadTradeTransactions(
 		})
 	}
 
-	s.mockLedgerReader.
-		On("GetHeader").
-		Return(ledger).Once()
-	s.mockLedgerReader.
-		On("Read").
-		Return(tx, nil).Once()
-	s.mockLedgerReader.
-		On("Read").
-		Return(io.LedgerTransaction{}, stdio.EOF).Once()
+	s.txs = []io.LedgerTransaction{
+		tx,
+	}
+
 	s.mockQ.On("NewTradeBatchInsertBuilder", maxBatchSize).
 		Return(s.mockBatchInsertBuilder).Once()
 
@@ -530,8 +470,7 @@ func (s *TradeProcessorTestSuiteLedger) mockReadTradeTransactions(
 }
 
 func (s *TradeProcessorTestSuiteLedger) TestIngestTradesSucceeds() {
-	ledger := xdr.LedgerHeaderHistoryEntry{Header: xdr.LedgerHeader{LedgerSeq: 100}}
-	inserts := s.mockReadTradeTransactions(ledger)
+	inserts := s.mockReadTradeTransactions(s.processor.ledger)
 
 	s.mockQ.On("CreateAccounts", mock.AnythingOfType("[]string")).
 		Run(func(args mock.Arguments) {
@@ -559,19 +498,17 @@ func (s *TradeProcessorTestSuiteLedger) TestIngestTradesSucceeds() {
 
 	s.mockBatchInsertBuilder.On("Exec").Return(nil).Once()
 
-	err := s.processor.ProcessLedger(
-		s.context,
-		&supportPipeline.Store{},
-		s.mockLedgerReader,
-		s.mockLedgerWriter,
-	)
+	for _, tx := range s.txs {
+		err := s.processor.ProcessTransaction(tx)
+		s.Assert().NoError(err)
+	}
 
+	err := s.processor.Commit()
 	s.Assert().NoError(err)
 }
 
 func (s *TradeProcessorTestSuiteLedger) TestCreateAccountsError() {
-	ledger := xdr.LedgerHeaderHistoryEntry{Header: xdr.LedgerHeader{LedgerSeq: 100}}
-	s.mockReadTradeTransactions(ledger)
+	s.mockReadTradeTransactions(s.processor.ledger)
 
 	s.mockQ.On("CreateAccounts", mock.AnythingOfType("[]string")).
 		Run(func(args mock.Arguments) {
@@ -582,19 +519,18 @@ func (s *TradeProcessorTestSuiteLedger) TestCreateAccountsError() {
 			)
 		}).Return(map[string]int64{}, fmt.Errorf("create accounts error")).Once()
 
-	err := s.processor.ProcessLedger(
-		s.context,
-		&supportPipeline.Store{},
-		s.mockLedgerReader,
-		s.mockLedgerWriter,
-	)
+	for _, tx := range s.txs {
+		err := s.processor.ProcessTransaction(tx)
+		s.Assert().NoError(err)
+	}
+
+	err := s.processor.Commit()
 
 	s.Assert().EqualError(err, "Error creating account ids: create accounts error")
 }
 
 func (s *TradeProcessorTestSuiteLedger) TestCreateAssetsError() {
-	ledger := xdr.LedgerHeaderHistoryEntry{Header: xdr.LedgerHeader{LedgerSeq: 100}}
-	s.mockReadTradeTransactions(ledger)
+	s.mockReadTradeTransactions(s.processor.ledger)
 
 	s.mockQ.On("CreateAccounts", mock.AnythingOfType("[]string")).
 		Run(func(args mock.Arguments) {
@@ -614,19 +550,17 @@ func (s *TradeProcessorTestSuiteLedger) TestCreateAssetsError() {
 			)
 		}).Return(s.assetToID, fmt.Errorf("create assets error")).Once()
 
-	err := s.processor.ProcessLedger(
-		s.context,
-		&supportPipeline.Store{},
-		s.mockLedgerReader,
-		s.mockLedgerWriter,
-	)
+	for _, tx := range s.txs {
+		err := s.processor.ProcessTransaction(tx)
+		s.Assert().NoError(err)
+	}
 
+	err := s.processor.Commit()
 	s.Assert().EqualError(err, "Error creating asset ids: create assets error")
 }
 
 func (s *TradeProcessorTestSuiteLedger) TestBatchAddError() {
-	ledger := xdr.LedgerHeaderHistoryEntry{Header: xdr.LedgerHeader{LedgerSeq: 100}}
-	s.mockReadTradeTransactions(ledger)
+	s.mockReadTradeTransactions(s.processor.ledger)
 
 	s.mockQ.On("CreateAccounts", mock.AnythingOfType("[]string")).
 		Run(func(args mock.Arguments) {
@@ -649,19 +583,17 @@ func (s *TradeProcessorTestSuiteLedger) TestBatchAddError() {
 	s.mockBatchInsertBuilder.On("Add", mock.AnythingOfType("[]history.InsertTrade")).
 		Return(fmt.Errorf("batch add error")).Once()
 
-	err := s.processor.ProcessLedger(
-		s.context,
-		&supportPipeline.Store{},
-		s.mockLedgerReader,
-		s.mockLedgerWriter,
-	)
+	for _, tx := range s.txs {
+		err := s.processor.ProcessTransaction(tx)
+		s.Assert().NoError(err)
+	}
 
+	err := s.processor.Commit()
 	s.Assert().EqualError(err, "Error adding trade to batch: batch add error")
 }
 
 func (s *TradeProcessorTestSuiteLedger) TestBatchExecError() {
-	ledger := xdr.LedgerHeaderHistoryEntry{Header: xdr.LedgerHeader{LedgerSeq: 100}}
-	insert := s.mockReadTradeTransactions(ledger)
+	insert := s.mockReadTradeTransactions(s.processor.ledger)
 
 	s.mockQ.On("CreateAccounts", mock.AnythingOfType("[]string")).
 		Run(func(args mock.Arguments) {
@@ -684,20 +616,17 @@ func (s *TradeProcessorTestSuiteLedger) TestBatchExecError() {
 	s.mockBatchInsertBuilder.On("Add", mock.AnythingOfType("[]history.InsertTrade")).
 		Return(nil).Times(len(insert))
 	s.mockBatchInsertBuilder.On("Exec").Return(fmt.Errorf("exec error")).Once()
+	for _, tx := range s.txs {
+		err := s.processor.ProcessTransaction(tx)
+		s.Assert().NoError(err)
+	}
 
-	err := s.processor.ProcessLedger(
-		s.context,
-		&supportPipeline.Store{},
-		s.mockLedgerReader,
-		s.mockLedgerWriter,
-	)
-
+	err := s.processor.Commit()
 	s.Assert().EqualError(err, "Error flushing operation batch: exec error")
 }
 
 func (s *TradeProcessorTestSuiteLedger) TestIgnoreCheckIfSmallLedger() {
-	ledger := xdr.LedgerHeaderHistoryEntry{Header: xdr.LedgerHeader{LedgerSeq: 10}}
-	insert := s.mockReadTradeTransactions(ledger)
+	insert := s.mockReadTradeTransactions(s.processor.ledger)
 
 	s.mockQ.On("CreateAccounts", mock.AnythingOfType("[]string")).
 		Run(func(args mock.Arguments) {
@@ -721,12 +650,11 @@ func (s *TradeProcessorTestSuiteLedger) TestIgnoreCheckIfSmallLedger() {
 		Return(nil).Times(len(insert))
 	s.mockBatchInsertBuilder.On("Exec").Return(nil).Once()
 
-	err := s.processor.ProcessLedger(
-		s.context,
-		&supportPipeline.Store{},
-		s.mockLedgerReader,
-		s.mockLedgerWriter,
-	)
+	for _, tx := range s.txs {
+		err := s.processor.ProcessTransaction(tx)
+		s.Assert().NoError(err)
+	}
 
+	err := s.processor.Commit()
 	s.Assert().NoError(err)
 }
