@@ -250,6 +250,7 @@ type QAssetStats interface {
 	GetAssetStat(assetType xdr.AssetType, assetCode, assetIssuer string) (ExpAssetStat, error)
 	RemoveAssetStat(assetType xdr.AssetType, assetCode, assetIssuer string) (int64, error)
 	GetAssetStats(assetCode, assetIssuer string, page db2.PageQuery) ([]ExpAssetStat, error)
+	CountTrustLines() (int, error)
 }
 
 // Effect is a row of data from the `history_effects` table

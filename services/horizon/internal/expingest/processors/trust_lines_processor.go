@@ -47,7 +47,6 @@ func (p *TrustLinesProcessor) ProcessChange(change io.Change) error {
 }
 
 func (p *TrustLinesProcessor) Commit() error {
-
 	changes := p.cache.GetChanges()
 	for _, change := range changes {
 		var rowsAffected int64
