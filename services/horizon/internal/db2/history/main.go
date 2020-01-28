@@ -459,6 +459,7 @@ type QSigners interface {
 	NewAccountSignersBatchInsertBuilder(maxBatchSize int) AccountSignersBatchInsertBuilder
 	CreateAccountSigner(account, signer string, weight int32) (int64, error)
 	RemoveAccountSigner(account, signer string) (int64, error)
+	CountAccounts() (int, error)
 }
 
 // OffersQuery is a helper struct to configure queries to offers
