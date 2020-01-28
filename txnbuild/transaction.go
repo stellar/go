@@ -577,7 +577,7 @@ func VerifyChallengeTxSigners(challengeTx, serverAccountID, network string, sign
 		clientSigners = append(clientSigners, signer)
 	}
 
-	// Verify that all the transaction's signers (server and client) in one
+	// Verify all the transaction's signers (server and client) in one
 	// hit. We do this in one hit here even though the server signature was
 	// checked in the ReadChallengeTx to ensure that every signature and signer
 	// are consumed only once on the transaction.
