@@ -93,9 +93,9 @@ func GroupLedgerTransactionProcessors(
 	return ltGroup(processors)
 }
 
-func RunTransactionProcessorOnLedger(
+func ProcessLedgerTransactions(
 	ctx context.Context,
-	ltProcessor LedgerTransactionProcessor,
+	txProcessor LedgerTransactionProcessor,
 	ledgerBackend ledgerbackend.LedgerBackend,
 	ledger uint32,
 ) error {
@@ -108,7 +108,7 @@ func RunTransactionProcessorOnLedger(
 		)
 	}
 
-	if err := ltProcessor.Init(ledgerReader.GetHeader().Header); err != nil {
+	if err := txProcessor.Init(ledgerReader.GetHeader().Header); err != nil {
 		return errors.Wrapf(
 			err,
 			"could not initialize sequence processor for ledger %v",
@@ -124,7 +124,7 @@ func RunTransactionProcessorOnLedger(
 		if err != nil {
 			return errors.Wrapf(err, "could not read transaction in ledger %v", ledger)
 		}
-		if err = ltProcessor.ProcessTransaction(tx); err != nil {
+		if err = txProcessor.ProcessTransaction(tx); err != nil {
 			return errors.Wrapf(
 				err,
 				"could not process transaction %v in ledger %v",
@@ -141,14 +141,14 @@ func RunTransactionProcessorOnLedger(
 		}
 	}
 
-	if err := ltProcessor.Commit(); err != nil {
+	if err := txProcessor.Commit(); err != nil {
 		return errors.Wrapf(err, "could not commit processor for ledger %v", ledger)
 	}
 
 	return nil
 }
 
-func RunChangeProcessorOnHAS(
+func ProcessHAS(
 	ctx context.Context,
 	changeProcessor ChangeProcessor,
 	archive historyarchive.ArchiveInterface,
@@ -210,7 +210,7 @@ func RunChangeProcessorOnHAS(
 	return nil
 }
 
-func RunChangeProcessorOnLedger(
+func ProcessLedgerChanges(
 	ctx context.Context,
 	changeProcessor ChangeProcessor,
 	ledgerBackend ledgerbackend.LedgerBackend,
