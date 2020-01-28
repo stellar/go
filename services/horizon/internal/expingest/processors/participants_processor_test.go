@@ -75,11 +75,7 @@ func (s *ParticipantsProcessorTestSuiteLedger) SetupTest() {
 
 	s.processor = NewParticipantsProcessor(
 		s.mockQ,
-		xdr.LedgerHeaderHistoryEntry{
-			Header: xdr.LedgerHeader{
-				LedgerSeq: xdr.Uint32(sequence),
-			},
-		},
+		sequence,
 	)
 
 	s.txs = []io.LedgerTransaction{

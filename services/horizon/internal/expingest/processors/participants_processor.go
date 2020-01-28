@@ -13,14 +13,14 @@ import (
 type ParticipantsProcessor struct {
 	ParticipantsQ history.QParticipants
 
-	ledger         xdr.LedgerHeaderHistoryEntry
+	sequence       uint32
 	participantSet map[string]participant
 }
 
-func NewParticipantsProcessor(participantsQ history.QParticipants, ledger xdr.LedgerHeaderHistoryEntry) *ParticipantsProcessor {
+func NewParticipantsProcessor(participantsQ history.QParticipants, sequence uint32) *ParticipantsProcessor {
 	return &ParticipantsProcessor{
 		ParticipantsQ:  participantsQ,
-		ledger:         ledger,
+		sequence:       sequence,
 		participantSet: map[string]participant{},
 	}
 }
@@ -257,14 +257,12 @@ func (p *ParticipantsProcessor) insertDBOperationsParticipants(participantSet ma
 }
 
 func (p *ParticipantsProcessor) ProcessTransaction(transaction io.LedgerTransaction) (err error) {
-	sequence := uint32(p.ledger.Header.LedgerSeq)
-
-	err = p.addTransactionParticipants(p.participantSet, sequence, transaction)
+	err = p.addTransactionParticipants(p.participantSet, p.sequence, transaction)
 	if err != nil {
 		return err
 	}
 
-	err = p.addOperationsParticipants(p.participantSet, sequence, transaction)
+	err = p.addOperationsParticipants(p.participantSet, p.sequence, transaction)
 	if err != nil {
 		return err
 	}

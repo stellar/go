@@ -9,7 +9,7 @@ import (
 
 type LedgersProcessor struct {
 	LedgersQ       history.QLedgers
-	Ledger         xdr.LedgerHeaderHistoryEntry
+	ledger         xdr.LedgerHeaderHistoryEntry
 	IngestVersion  int
 	successTxCount int
 	failedTxCount  int
@@ -18,7 +18,7 @@ type LedgersProcessor struct {
 
 func NewLedgerProcessor(ledger xdr.LedgerHeaderHistoryEntry, ledgerQ history.QLedgers, ingestVersion int) *LedgersProcessor {
 	return &LedgersProcessor{
-		Ledger:        ledger,
+		ledger:        ledger,
 		LedgersQ:      ledgerQ,
 		IngestVersion: ingestVersion,
 	}
@@ -37,7 +37,7 @@ func (p *LedgersProcessor) ProcessTransaction(transaction io.LedgerTransaction) 
 
 func (p *LedgersProcessor) Commit() error {
 	rowsAffected, err := p.LedgersQ.InsertLedger(
-		p.Ledger,
+		p.ledger,
 		p.successTxCount,
 		p.failedTxCount,
 		p.opCount,
@@ -48,7 +48,7 @@ func (p *LedgersProcessor) Commit() error {
 		return errors.Wrap(err, "Could not insert ledger")
 	}
 
-	sequence := uint32(p.Ledger.Header.LedgerSeq)
+	sequence := uint32(p.ledger.Header.LedgerSeq)
 
 	if rowsAffected != 1 {
 		log.WithField("rowsAffected", rowsAffected).

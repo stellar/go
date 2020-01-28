@@ -19,14 +19,14 @@ import (
 type EffectProcessor struct {
 	EffectsQ history.QEffects
 
-	ledger  xdr.LedgerHeaderHistoryEntry
-	effects []effect
+	sequence uint32
+	effects  []effect
 }
 
-func NewEffectProcessor(effectsQ history.QEffects, ledger xdr.LedgerHeaderHistoryEntry) *EffectProcessor {
+func NewEffectProcessor(effectsQ history.QEffects, sequence uint32) *EffectProcessor {
 	return &EffectProcessor{
 		EffectsQ: effectsQ,
-		ledger:   ledger,
+		sequence: sequence,
 	}
 }
 
@@ -115,7 +115,7 @@ func (p *EffectProcessor) ProcessTransaction(transaction io.LedgerTransaction) (
 	}
 
 	var effectsForTx []effect
-	effectsForTx, err = operationsEffects(transaction, uint32(p.ledger.Header.LedgerSeq))
+	effectsForTx, err = operationsEffects(transaction, p.sequence)
 	if err != nil {
 		return err
 	}

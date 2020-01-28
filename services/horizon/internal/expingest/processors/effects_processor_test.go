@@ -111,11 +111,7 @@ func (s *EffectsProcessorTestSuiteLedger) SetupTest() {
 
 	s.processor = NewEffectProcessor(
 		s.mockQ,
-		xdr.LedgerHeaderHistoryEntry{
-			Header: xdr.LedgerHeader{
-				LedgerSeq: 20,
-			},
-		},
+		20,
 	)
 
 	s.txs = []io.LedgerTransaction{
