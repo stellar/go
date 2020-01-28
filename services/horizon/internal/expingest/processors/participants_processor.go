@@ -1,12 +1,7 @@
 package processors
 
 import (
-	"context"
-	stdio "io"
-
 	"github.com/stellar/go/exp/ingest/io"
-	ingestpipeline "github.com/stellar/go/exp/ingest/pipeline"
-	"github.com/stellar/go/exp/support/pipeline"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/services/horizon/internal/toid"
 	"github.com/stellar/go/support/errors"
@@ -17,6 +12,17 @@ import (
 // from different sources (transactions, operations, etc)
 type ParticipantsProcessor struct {
 	ParticipantsQ history.QParticipants
+
+	ledger         xdr.LedgerHeaderHistoryEntry
+	participantSet map[string]participant
+}
+
+func NewParticipantsProcessor(participantsQ history.QParticipants, ledger xdr.LedgerHeaderHistoryEntry) *ParticipantsProcessor {
+	return &ParticipantsProcessor{
+		ParticipantsQ:  participantsQ,
+		ledger:         ledger,
+		participantSet: map[string]participant{},
+	}
 }
 
 type participant struct {
@@ -250,77 +256,39 @@ func (p *ParticipantsProcessor) insertDBOperationsParticipants(participantSet ma
 	return nil
 }
 
-func (p *ParticipantsProcessor) ProcessLedger(ctx context.Context, store *pipeline.Store, r io.LedgerReader, w io.LedgerWriter) (err error) {
-	defer func() {
-		// io.LedgerReader.Close() returns error if upgrade changes have not
-		// been processed so it's worth checking the error.
-		closeErr := r.Close()
-		// Do not overwrite the previous error
-		if err == nil {
-			err = closeErr
-		}
-	}()
-	defer w.Close()
-	r.IgnoreUpgradeChanges()
+func (p *ParticipantsProcessor) ProcessTransaction(transaction io.LedgerTransaction) (err error) {
+	sequence := uint32(p.ledger.Header.LedgerSeq)
 
-	// Exit early if not ingesting into a DB
-	if v := ctx.Value(IngestUpdateDatabase); !(v != nil && v.(bool)) {
-		return nil
+	err = p.addTransactionParticipants(p.participantSet, sequence, transaction)
+	if err != nil {
+		return err
 	}
 
-	participantSet := map[string]participant{}
-	sequence := r.GetSequence()
-
-	for {
-		var transaction io.LedgerTransaction
-		transaction, err = r.Read()
-		if err != nil {
-			if err == stdio.EOF {
-				break
-			} else {
-				return err
-			}
-		}
-
-		err = p.addTransactionParticipants(participantSet, sequence, transaction)
-		if err != nil {
-			return err
-		}
-
-		err = p.addOperationsParticipants(participantSet, sequence, transaction)
-		if err != nil {
-			return err
-		}
-
-		select {
-		case <-ctx.Done():
-			return nil
-		default:
-			continue
-		}
-	}
-
-	if len(participantSet) > 0 {
-		if err = p.loadAccountIDs(participantSet); err != nil {
-			return err
-		}
-
-		if err = p.insertDBTransactionParticipants(participantSet); err != nil {
-			return err
-		}
-
-		if err = p.insertDBOperationsParticipants(participantSet); err != nil {
-			return err
-		}
+	err = p.addOperationsParticipants(p.participantSet, sequence, transaction)
+	if err != nil {
+		return err
 	}
 
 	return nil
 }
 
-func (p *ParticipantsProcessor) Name() string {
-	return "ParticipantsProcessor"
+func (p *ParticipantsProcessor) Commit() (err error) {
+	if len(p.participantSet) > 0 {
+		if err = p.loadAccountIDs(p.participantSet); err != nil {
+			return err
+		}
+
+		if err = p.insertDBTransactionParticipants(p.participantSet); err != nil {
+			return err
+		}
+
+		if err = p.insertDBOperationsParticipants(p.participantSet); err != nil {
+			return err
+		}
+	}
+
+	return err
 }
 
-func (p *ParticipantsProcessor) Reset() {}
-
-var _ ingestpipeline.LedgerProcessor = &ParticipantsProcessor{}
+// TODO: remove comment after https://github.com/stellar/go/pull/2172/files is merged
+// var _ io.ChangeReader = &ParticipantsProcessor{}
