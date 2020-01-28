@@ -560,7 +560,8 @@ func VerifyChallengeTxSigners(challengeTx, serverAccountID, network string, sign
 
 	// Deduplicate the client signers and ensure the server is not included
 	// anywhere we check or output the list of signers.
-	clientSignersSet := map[string]struct{}{}
+	clientSigners := []string{}
+	clientSignersSeen := map[string]struct{}{}
 	for _, signer := range signers {
 		// Ignore the server signer if it is in the signers list. It's
 		// important when verifying signers of a challenge transaction that we
@@ -570,11 +571,11 @@ func VerifyChallengeTxSigners(challengeTx, serverAccountID, network string, sign
 		if signer == serverKP.Address() {
 			continue
 		}
-		clientSignersSet[signer] = struct{}{}
-	}
-	clientSigners := make([]string, 0, len(clientSignersSet))
-	for signer := range clientSignersSet {
+		if _, seen := clientSignersSeen[signer]; seen {
+			continue
+		}
 		clientSigners = append(clientSigners, signer)
+		clientSignersSeen[signer] = struct{}{}
 	}
 
 	// Verify all the transaction's signers (server and client) in one
