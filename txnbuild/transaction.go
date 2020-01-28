@@ -588,16 +588,23 @@ func VerifyChallengeTxSigners(challengeTx, serverAccountID, network string, sign
 		return nil, err
 	}
 
-	// Remove the server from the list of signers found.
+	// Confirm the server is in the list of signers found and remove it.
+	serverSignerFound := false
 	signersFound := make([]string, 0, len(allSignersFound)-1)
 	for _, signer := range allSignersFound {
 		if signer == serverKP.Address() {
+			serverSignerFound = true
 			continue
 		}
 		signersFound = append(signersFound, signer)
 	}
 
-	// Confirm we found at least one client signer.
+	// Confirm we matched a signature to the server signer.
+	if !serverSignerFound {
+		return nil, errors.Errorf("transaction not signed by %s", serverKP.Address())
+	}
+
+	// Confirm we matched signatures to the client signers.
 	if len(signersFound) == 0 {
 		return nil, errors.Errorf("transaction not signed by %s", strings.Join(clientSigners, ", "))
 	}
