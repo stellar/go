@@ -2195,6 +2195,35 @@ func TestVerifyChallengeTxSigners_invalidServerAndClientSignersFailsDuplicateSig
 	assert.EqualError(t, err, "transaction has unrecognized signatures")
 }
 
+func TestVerifyChallengeTxSigners_invalidServerAndClientSignersFailsSignerSeed(t *testing.T) {
+	serverKP := newKeypair0()
+	clientKP := newKeypair1()
+	clientKP2 := newKeypair2()
+	txSource := NewSimpleAccount(serverKP.Address(), -1)
+	opSource := NewSimpleAccount(clientKP.Address(), 0)
+	op := ManageData{
+		SourceAccount: &opSource,
+		Name:          "testserver auth",
+		Value:         []byte(base64.StdEncoding.EncodeToString(make([]byte, 48))),
+	}
+	tx := Transaction{
+		SourceAccount: &txSource,
+		Operations:    []Operation{&op},
+		Timebounds:    NewTimeout(1000),
+		Network:       network.TestNetworkPassphrase,
+	}
+
+	err := tx.Build()
+	require.NoError(t, err)
+	err = tx.Sign(serverKP, clientKP2, clientKP2)
+	assert.NoError(t, err)
+	tx64, err := tx.Base64()
+	require.NoError(t, err)
+	signersFound, err := VerifyChallengeTxSigners(tx64, serverKP.Address(), network.TestNetworkPassphrase, clientKP2.Seed())
+	assert.Empty(t, signersFound)
+	assert.EqualError(t, err, "signer not address: invalid version byte")
+}
+
 func TestVerifyChallengeTxSigners_invalidNoSigners(t *testing.T) {
 	serverKP := newKeypair0()
 	clientKP := newKeypair1()

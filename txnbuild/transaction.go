@@ -665,7 +665,7 @@ func verifyTxSignatures(tx Transaction, signers ...string) ([]string, error) {
 	for _, signer := range signers {
 		kp, err := keypair.ParseAddress(signer)
 		if err != nil {
-			return nil, err
+			return nil, errors.Wrap(err, "signer not address")
 		}
 
 		for i, decSig := range tx.xdrEnvelope.Signatures {
