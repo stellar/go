@@ -1,18 +1,14 @@
 package processors
 
 import (
-	"context"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	stdio "io"
 	"reflect"
 	"sort"
 
 	"github.com/stellar/go/amount"
 	"github.com/stellar/go/exp/ingest/io"
-	ingestpipeline "github.com/stellar/go/exp/ingest/pipeline"
-	"github.com/stellar/go/exp/support/pipeline"
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/support/errors"
@@ -22,6 +18,16 @@ import (
 // EffectProcessor process effects
 type EffectProcessor struct {
 	EffectsQ history.QEffects
+
+	ledger  xdr.LedgerHeaderHistoryEntry
+	effects []effect
+}
+
+func NewEffectProcessor(effectsQ history.QEffects, ledger xdr.LedgerHeaderHistoryEntry) *EffectProcessor {
+	return &EffectProcessor{
+		EffectsQ: effectsQ,
+		ledger:   ledger,
+	}
 }
 
 func (p *EffectProcessor) loadAccountIDs(accountSet map[string]int64) error {
@@ -102,59 +108,27 @@ func (p *EffectProcessor) insertDBOperationsEffects(effects []effect, accountSet
 	return nil
 }
 
-func (p *EffectProcessor) ProcessLedger(ctx context.Context, store *pipeline.Store, r io.LedgerReader, w io.LedgerWriter) (err error) {
-	defer func() {
-		// io.LedgerReader.Close() returns error if upgrade changes have not
-		// been processed so it's worth checking the error.
-		closeErr := r.Close()
-		// Do not overwrite the previous error
-		if err == nil {
-			err = closeErr
-		}
-	}()
-	defer w.Close()
-	r.IgnoreUpgradeChanges()
-
-	// Exit early if not ingesting into a DB
-	if v := ctx.Value(IngestUpdateDatabase); !(v != nil && v.(bool)) {
+func (p *EffectProcessor) ProcessTransaction(transaction io.LedgerTransaction) (err error) {
+	// Failed transactions don't have operation effects
+	if !transaction.Successful() {
 		return nil
 	}
 
-	effects := []effect{}
-	sequence := r.GetSequence()
-
-	for {
-		var transaction io.LedgerTransaction
-		transaction, err = r.Read()
-		if err != nil {
-			if err == stdio.EOF {
-				break
-			} else {
-				return err
-			}
-		}
-
-		if transaction.Successful() {
-			var effectsForTx []effect
-			effectsForTx, err = operationsEffects(transaction, sequence)
-			if err != nil {
-				return err
-			}
-			effects = append(effects, effectsForTx...)
-		}
-
-		select {
-		case <-ctx.Done():
-			return nil
-		default:
-			continue
-		}
+	var effectsForTx []effect
+	effectsForTx, err = operationsEffects(transaction, uint32(p.ledger.Header.LedgerSeq))
+	if err != nil {
+		return err
 	}
+	p.effects = append(p.effects, effectsForTx...)
 
-	if len(effects) > 0 {
+	return nil
+}
+
+func (p *EffectProcessor) Commit() (err error) {
+	if len(p.effects) > 0 {
 		accountSet := map[string]int64{}
 
-		for _, effect := range effects {
+		for _, effect := range p.effects {
 			accountSet[effect.address] = 0
 		}
 
@@ -162,21 +136,16 @@ func (p *EffectProcessor) ProcessLedger(ctx context.Context, store *pipeline.Sto
 			return err
 		}
 
-		if err = p.insertDBOperationsEffects(effects, accountSet); err != nil {
+		if err = p.insertDBOperationsEffects(p.effects, accountSet); err != nil {
 			return err
 		}
 	}
 
-	return nil
+	return err
 }
 
-func (p *EffectProcessor) Name() string {
-	return "EffectProcessor"
-}
-
-func (p *EffectProcessor) Reset() {}
-
-var _ ingestpipeline.LedgerProcessor = &EffectProcessor{}
+// TODO: remove comment after https://github.com/stellar/go/pull/2172/files is merged
+// var _ io.ChangeReader = &EffectProcessor{}
 
 type effect struct {
 	address     string
