@@ -9,14 +9,15 @@ import (
 )
 
 type AccountsProcessor struct {
-	AccountsQ history.QAccounts
+	accountsQ history.QAccounts
 
 	cache *io.LedgerEntryChangeCache
 }
 
-func (p *AccountsProcessor) Init(header xdr.LedgerHeader) error {
+func NewAccountsProcessor(accountsQ history.QAccounts) *AccountsProcessor {
+	p := &AccountsProcessor{accountsQ: accountsQ}
 	p.reset()
-	return nil
+	return p
 }
 
 func (p *AccountsProcessor) reset() {
@@ -66,7 +67,7 @@ func (p *AccountsProcessor) Commit() error {
 			// Removed
 			account := change.Pre.Data.MustAccount()
 			accountID := account.AccountId.Address()
-			rowsAffected, err := p.AccountsQ.RemoveAccount(accountID)
+			rowsAffected, err := p.accountsQ.RemoveAccount(accountID)
 
 			if err != nil {
 				return err
@@ -86,7 +87,7 @@ func (p *AccountsProcessor) Commit() error {
 
 	// Upsert accounts
 	if len(batchUpsertAccounts) > 0 {
-		err := p.AccountsQ.UpsertAccounts(batchUpsertAccounts)
+		err := p.accountsQ.UpsertAccounts(batchUpsertAccounts)
 		if err != nil {
 			return errors.Wrap(err, "errors in UpsertAccounts")
 		}

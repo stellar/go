@@ -12,32 +12,28 @@ import (
 )
 
 type AssetStatsProcessor struct {
-	AssetStatsQ history.QAssetStats
+	assetStatsQ history.QAssetStats
 
-	cache        *io.LedgerEntryChangeCache
-	assetStatSet AssetStatSet
-	// insertOnlyMode is a mode in which we don't use ledger cache and we just
-	// add trust lines to assetStatSet, then we insert all the stats in one
-	// insert query. This is done to make history buckets processing faster
-	// (batch inserting).
-	insertOnlyMode bool
+	cache               *io.LedgerEntryChangeCache
+	assetStatSet        AssetStatSet
+	useLedgerEntryCache bool
 }
 
-func (p *AssetStatsProcessor) Init(header xdr.LedgerHeader) error {
+// NewAssetStatsProcessor constructs a new AssetStatsProcessor instance.
+// If useLedgerEntryCache is false we don't use ledger cache and we just
+// add trust lines to assetStatSet, then we insert all the stats in one
+// insert query. This is done to make history buckets processing faster
+// (batch inserting).
+func NewAssetStatsProcessor(
+	assetStatsQ history.QAssetStats,
+	useLedgerEntryCache bool,
+) *AssetStatsProcessor {
+	p := &AssetStatsProcessor{
+		assetStatsQ:         assetStatsQ,
+		useLedgerEntryCache: useLedgerEntryCache,
+	}
 	p.reset()
-
-	// We check the number of existing trust line in the DB to check if asset
-	// stats table is empty too. If so, we switch to insertOnlyMode.
-	count, err := p.AssetStatsQ.CountTrustLines()
-	if err != nil {
-		return errors.Wrap(err, "error in CountTrustLines")
-	}
-
-	if count == 0 {
-		p.insertOnlyMode = true
-	}
-
-	return nil
+	return p
 }
 
 func (p *AssetStatsProcessor) reset() {
@@ -50,39 +46,38 @@ func (p *AssetStatsProcessor) ProcessChange(change io.Change) error {
 		return nil
 	}
 
-	if p.insertOnlyMode {
-		if !(change.Pre == nil && change.Post != nil) {
-			return errors.New("AssetStatsProcessor is in insert only mode")
-		}
-
-		postTrustLine := change.Post.Data.MustTrustLine()
-		err := p.adjustAssetStat(nil, &postTrustLine)
+	if p.useLedgerEntryCache {
+		err := p.cache.AddChange(change)
 		if err != nil {
-			return errors.Wrap(err, "Error adjusting asset stat")
+			return errors.Wrap(err, "error adding to ledgerCache")
 		}
 
+		if p.cache.Size() > maxBatchSize {
+			err = p.Commit()
+			if err != nil {
+				return errors.Wrap(err, "error in Commit")
+			}
+			p.reset()
+		}
 		return nil
 	}
 
-	err := p.cache.AddChange(change)
-	if err != nil {
-		return errors.Wrap(err, "error adding to ledgerCache")
+	if !(change.Pre == nil && change.Post != nil) {
+		return errors.New("AssetStatsProcessor is in insert only mode")
 	}
 
-	if p.cache.Size() > maxBatchSize {
-		err = p.Commit()
-		if err != nil {
-			return errors.Wrap(err, "error in Commit")
-		}
-		p.reset()
+	postTrustLine := change.Post.Data.MustTrustLine()
+	err := p.adjustAssetStat(nil, &postTrustLine)
+	if err != nil {
+		return errors.Wrap(err, "Error adjusting asset stat")
 	}
 
 	return nil
 }
 
 func (p *AssetStatsProcessor) Commit() error {
-	if p.insertOnlyMode {
-		return p.AssetStatsQ.InsertAssetStats(p.assetStatSet.All(), maxBatchSize)
+	if !p.useLedgerEntryCache {
+		return p.assetStatsQ.InsertAssetStats(p.assetStatSet.All(), maxBatchSize)
 	}
 
 	changes := p.cache.GetChanges()
@@ -116,7 +111,7 @@ func (p *AssetStatsProcessor) Commit() error {
 	for _, delta := range assetStatsDeltas {
 		var rowsAffected int64
 
-		stat, err := p.AssetStatsQ.GetAssetStat(
+		stat, err := p.assetStatsQ.GetAssetStat(
 			delta.AssetType,
 			delta.AssetCode,
 			delta.AssetIssuer,
@@ -138,7 +133,7 @@ func (p *AssetStatsProcessor) Commit() error {
 			}
 
 			var errInsert error
-			rowsAffected, errInsert = p.AssetStatsQ.InsertAssetStat(delta)
+			rowsAffected, errInsert = p.assetStatsQ.InsertAssetStat(delta)
 			if errInsert != nil {
 				return errors.Wrap(errInsert, "could not insert asset stat")
 			}
@@ -167,7 +162,7 @@ func (p *AssetStatsProcessor) Commit() error {
 						delta.AssetIssuer,
 					))
 				}
-				rowsAffected, err = p.AssetStatsQ.RemoveAssetStat(
+				rowsAffected, err = p.assetStatsQ.RemoveAssetStat(
 					delta.AssetType,
 					delta.AssetCode,
 					delta.AssetIssuer,
@@ -177,7 +172,7 @@ func (p *AssetStatsProcessor) Commit() error {
 				}
 			} else {
 				// Update
-				rowsAffected, err = p.AssetStatsQ.UpdateAssetStat(history.ExpAssetStat{
+				rowsAffected, err = p.assetStatsQ.UpdateAssetStat(history.ExpAssetStat{
 					AssetType:   delta.AssetType,
 					AssetCode:   delta.AssetCode,
 					AssetIssuer: delta.AssetIssuer,

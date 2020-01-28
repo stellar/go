@@ -11,15 +11,9 @@ import (
 
 func TestProcessOrderBookState(t *testing.T) {
 	graph := orderbook.NewOrderBookGraph()
-	processor := NewOrderbookProcessor{OrderBookGraph: graph}
+	processor := NewOrderbookProcessor(graph)
 
-	header := xdr.LedgerHeader{
-		LedgerSeq: xdr.Uint32(63),
-	}
-	err := processor.Init(header)
-	assert.NoError(t, err)
-
-	err = processor.ProcessChange(io.Change{
+	err := processor.ProcessChange(io.Change{
 		Type: xdr.LedgerEntryTypeOffer,
 		Pre:  nil,
 		Post: &xdr.LedgerEntry{
@@ -90,16 +84,10 @@ func TestProcessOrderBookState(t *testing.T) {
 
 func TestProcessOrderBookLedger(t *testing.T) {
 	graph := orderbook.NewOrderBookGraph()
-	processor := NewOrderbookProcessor{OrderBookGraph: graph}
-
-	header := xdr.LedgerHeader{
-		LedgerSeq: xdr.Uint32(63),
-	}
-	err := processor.Init(header)
-	assert.NoError(t, err)
+	processor := NewOrderbookProcessor(graph)
 
 	// should be ignored because it's not an offer type
-	err = processor.ProcessChange(io.Change{
+	err := processor.ProcessChange(io.Change{
 		Type: xdr.LedgerEntryTypeAccount,
 		Pre:  nil,
 		Post: &xdr.LedgerEntry{
@@ -230,15 +218,9 @@ func TestProcessOrderBookLedger(t *testing.T) {
 
 func TestProcessOrderBookLedgerProcessUpgradeChanges(t *testing.T) {
 	graph := orderbook.NewOrderBookGraph()
-	processor := NewOrderbookProcessor{OrderBookGraph: graph}
+	processor := NewOrderbookProcessor(graph)
 
-	header := xdr.LedgerHeader{
-		LedgerSeq: xdr.Uint32(63),
-	}
-	err := processor.Init(header)
-	assert.NoError(t, err)
-
-	err = processor.ProcessChange(io.Change{
+	err := processor.ProcessChange(io.Change{
 		Type: xdr.LedgerEntryTypeOffer,
 		Pre:  nil,
 		Post: &xdr.LedgerEntry{

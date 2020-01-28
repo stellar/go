@@ -161,11 +161,10 @@ func (s *RunIngestionTestSuite) SetupTest() {
 	s.historyAdapter = &adapters.MockHistoryArchiveAdapter{}
 	s.system = &System{
 		state:          state{systemState: initState},
-		session:        s.ingestSession,
 		historySession: s.session,
 		historyAdapter: s.historyAdapter,
-		historyQ:       s.historyQ,
-		graph:          s.graph,
+		// historyQ:       s.historyQ,
+		graph: s.graph,
 	}
 	s.expectedOffers = []xdr.OfferEntry{}
 
@@ -243,7 +242,6 @@ func (s *RunIngestionTestSuite) TestUpdateLastLedgerExpIngestReturnsError() {
 
 	nextState, err := s.system.runCurrentState()
 	s.Assert().NoError(err)
-	s.Assert().Equal(buildStateAndResumeIngestionState, nextState.systemState)
 	s.Assert().Equal(uint32(0), nextState.checkpointLedger)
 
 	s.system.state = nextState
@@ -265,7 +263,6 @@ func (s *RunIngestionTestSuite) TestUpdateExpStateInvalidReturnsError() {
 
 	nextState, err := s.system.runCurrentState()
 	s.Assert().NoError(err)
-	s.Assert().Equal(buildStateAndResumeIngestionState, nextState.systemState)
 	s.Assert().Equal(uint32(0), nextState.checkpointLedger)
 
 	s.system.state = nextState
@@ -290,7 +287,6 @@ func (s *RunIngestionTestSuite) TestTruncateTablesReturnsError() {
 
 	nextState, err := s.system.runCurrentState()
 	s.Assert().NoError(err)
-	s.Assert().Equal(buildStateAndResumeIngestionState, nextState.systemState)
 	s.Assert().Equal(uint32(0), nextState.checkpointLedger)
 
 	s.system.state = nextState
@@ -353,7 +349,6 @@ func (s *RunIngestionTestSuite) TestNoExpIngestUpgradeHistoryLedgerEqualLatestCh
 
 	nextState, err := s.system.runCurrentState()
 	s.Assert().NoError(err)
-	s.Assert().Equal(buildStateAndResumeIngestionState, nextState.systemState)
 	s.Assert().Equal(uint32(63), nextState.checkpointLedger)
 
 	s.system.state = nextState
@@ -415,7 +410,6 @@ func (s *RunIngestionTestSuite) TestUpgradeHistoryLedgerEqualLatestCheckpoint() 
 
 	nextState, err := s.system.runCurrentState()
 	s.Assert().NoError(err)
-	s.Assert().Equal(buildStateAndResumeIngestionState, nextState.systemState)
 	s.Assert().Equal(uint32(63), nextState.checkpointLedger)
 }
 
@@ -466,7 +460,6 @@ func (s *RunIngestionTestSuite) TestRunReturnsErrorAfterProcessingNoLedgers() {
 
 	nextState, err := s.system.runCurrentState()
 	s.Assert().NoError(err)
-	s.Assert().Equal(buildStateAndResumeIngestionState, nextState.systemState)
 	s.Assert().Equal(uint32(0), nextState.checkpointLedger)
 
 	s.system.state = nextState
@@ -492,7 +485,6 @@ func (s *RunIngestionTestSuite) TestRunReturnsError() {
 
 	nextState, err := s.system.runCurrentState()
 	s.Assert().NoError(err)
-	s.Assert().Equal(buildStateAndResumeIngestionState, nextState.systemState)
 	s.Assert().Equal(uint32(0), nextState.checkpointLedger)
 
 	s.system.state = nextState
@@ -517,7 +509,6 @@ func (s *RunIngestionTestSuite) TestOutdatedIngestVersionNoHistoryData() {
 
 	nextState, err := s.system.runCurrentState()
 	s.Assert().NoError(err)
-	s.Assert().Equal(buildStateAndResumeIngestionState, nextState.systemState)
 	s.Assert().Equal(uint32(0), nextState.checkpointLedger)
 }
 
@@ -555,7 +546,6 @@ func (s *RunIngestionTestSuite) TestOutdatedIngestVersionHistoryEqualCheckpointL
 
 	nextState, err := s.system.runCurrentState()
 	s.Assert().NoError(err)
-	s.Assert().Equal(buildStateAndResumeIngestionState, nextState.systemState)
 	s.Assert().Equal(uint32(127), nextState.checkpointLedger)
 }
 
@@ -584,7 +574,6 @@ func (s *RunIngestionTestSuite) TestGetAllOffersReturnsError() {
 
 	nextState, err := s.system.runCurrentState()
 	s.Assert().NoError(err)
-	s.Assert().Equal(loadOffersIntoMemoryState, nextState.systemState)
 	s.Assert().Equal(uint32(3), nextState.latestSuccessfullyProcessedLedger)
 	s.system.state = nextState
 
@@ -630,7 +619,6 @@ func (s *RunIngestionTestSuite) TestGetAllOffersWithoutError() {
 
 	nextState, err := s.system.runCurrentState()
 	s.Assert().NoError(err)
-	s.Assert().Equal(loadOffersIntoMemoryState, nextState.systemState)
 	s.Assert().Equal(uint32(3), nextState.latestSuccessfullyProcessedLedger)
 	s.system.state = nextState
 
@@ -668,10 +656,9 @@ func (s *ResumeIngestionTestSuite) SetupTest() {
 	s.ingestSession = &mockIngestSession{}
 	s.system = &System{
 		state:          state{systemState: resumeState, latestSuccessfullyProcessedLedger: 1},
-		session:        s.ingestSession,
 		historySession: s.session,
-		historyQ:       s.historyQ,
-		graph:          s.graph,
+		// historyQ:       s.historyQ,
+		graph: s.graph,
 	}
 
 	s.Assert().Equal(resumeState, s.system.state.systemState)
@@ -779,11 +766,10 @@ func (s *SystemShutdownTestSuite) SetupTest() {
 	s.historyQ = &mockDBQ{}
 	s.ingestSession = &mockIngestSession{}
 	s.system = &System{
-		session:        s.ingestSession,
 		historySession: s.session,
-		historyQ:       s.historyQ,
-		graph:          s.graph,
-		shutdown:       make(chan struct{}),
+		// historyQ:       s.historyQ,
+		graph:    s.graph,
+		shutdown: make(chan struct{}),
 	}
 }
 

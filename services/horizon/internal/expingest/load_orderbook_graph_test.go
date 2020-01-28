@@ -71,13 +71,11 @@ func (s *LoadOffersIntoMemoryTestSuite) SetupTest() {
 	s.session = &mockDBSession{}
 	s.historyQ = &mockDBQ{}
 	s.system = &System{
-		state:          state{systemState: loadOffersIntoMemoryState, latestSuccessfullyProcessedLedger: 1},
 		historySession: s.session,
-		historyQ:       s.historyQ,
-		graph:          s.graph,
+		// historyQ:       s.historyQ,
+		graph: s.graph,
 	}
 
-	s.Assert().Equal(loadOffersIntoMemoryState, s.system.state.systemState)
 	s.Assert().Equal(uint32(1), s.system.state.latestSuccessfullyProcessedLedger)
 
 	s.historyQ.On("GetTx").Return(&sqlx.Tx{}).Once()

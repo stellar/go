@@ -22,10 +22,7 @@ type AssetStatsProcessorTestSuiteState struct {
 
 func (s *AssetStatsProcessorTestSuiteState) SetupTest() {
 	s.mockQ = &history.MockQAssetStats{}
-
-	s.processor = &AssetStatsProcessor{
-		AssetStatsQ: s.mockQ,
-	}
+	s.processor = NewAssetStatsProcessor(s.mockQ, false)
 }
 
 func (s *AssetStatsProcessorTestSuiteState) TearDownTest() {
@@ -34,14 +31,6 @@ func (s *AssetStatsProcessorTestSuiteState) TearDownTest() {
 }
 
 func (s *AssetStatsProcessorTestSuiteState) TestCreateTrustLine() {
-	s.mockQ.On("CountTrustLines").Return(0, nil).Once()
-
-	header := xdr.LedgerHeader{
-		LedgerSeq: xdr.Uint32(63),
-	}
-	err := s.processor.Init(header)
-	s.Assert().NoError(err)
-
 	trustLine := xdr.TrustLineEntry{
 		AccountId: xdr.MustAddress("GAOQJGUAB7NI7K7I62ORBXMN3J4SSWQUQ7FOEPSDJ322W2HMCNWPHXFB"),
 		Asset:     xdr.MustNewCreditAsset("EUR", trustLineIssuer.Address()),
@@ -49,7 +38,7 @@ func (s *AssetStatsProcessorTestSuiteState) TestCreateTrustLine() {
 	}
 	lastModifiedLedgerSeq := xdr.Uint32(123)
 
-	err = s.processor.ProcessChange(io.Change{
+	err := s.processor.ProcessChange(io.Change{
 		Type: xdr.LedgerEntryTypeTrustline,
 		Pre:  nil,
 		Post: &xdr.LedgerEntry{
@@ -74,20 +63,12 @@ func (s *AssetStatsProcessorTestSuiteState) TestCreateTrustLine() {
 }
 
 func (s *AssetStatsProcessorTestSuiteState) TestCreateTrustLineUnauthorized() {
-	s.mockQ.On("CountTrustLines").Return(0, nil).Once()
-
-	header := xdr.LedgerHeader{
-		LedgerSeq: xdr.Uint32(63),
-	}
-	err := s.processor.Init(header)
-	s.Assert().NoError(err)
-
 	trustLine := xdr.TrustLineEntry{
 		AccountId: xdr.MustAddress("GAOQJGUAB7NI7K7I62ORBXMN3J4SSWQUQ7FOEPSDJ322W2HMCNWPHXFB"),
 		Asset:     xdr.MustNewCreditAsset("EUR", trustLineIssuer.Address()),
 	}
 	lastModifiedLedgerSeq := xdr.Uint32(123)
-	err = s.processor.ProcessChange(io.Change{
+	err := s.processor.ProcessChange(io.Change{
 		Type: xdr.LedgerEntryTypeTrustline,
 		Pre:  nil,
 		Post: &xdr.LedgerEntry{
@@ -117,9 +98,7 @@ type AssetStatsProcessorTestSuiteLedger struct {
 func (s *AssetStatsProcessorTestSuiteLedger) SetupTest() {
 	s.mockQ = &history.MockQAssetStats{}
 
-	s.processor = &AssetStatsProcessor{
-		AssetStatsQ: s.mockQ,
-	}
+	s.processor = NewAssetStatsProcessor(s.mockQ, true)
 }
 
 func (s *AssetStatsProcessorTestSuiteLedger) TearDownTest() {
@@ -127,17 +106,8 @@ func (s *AssetStatsProcessorTestSuiteLedger) TearDownTest() {
 }
 
 func (s *AssetStatsProcessorTestSuiteLedger) TestInsertTrustLine() {
-	// No insertOnlyMode
-	s.mockQ.On("CountTrustLines").Return(100, nil).Once()
-
-	header := xdr.LedgerHeader{
-		LedgerSeq: xdr.Uint32(63),
-	}
-	err := s.processor.Init(header)
-	s.Assert().NoError(err)
-
 	// should be ignored because it's not an trust line type
-	err = s.processor.ProcessChange(io.Change{
+	err := s.processor.ProcessChange(io.Change{
 		Type: xdr.LedgerEntryTypeAccount,
 		Pre:  nil,
 		Post: &xdr.LedgerEntry{
@@ -259,15 +229,6 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestInsertTrustLine() {
 }
 
 func (s *AssetStatsProcessorTestSuiteLedger) TestUpdateTrustLine() {
-	// No insertOnlyMode
-	s.mockQ.On("CountTrustLines").Return(100, nil).Once()
-
-	header := xdr.LedgerHeader{
-		LedgerSeq: xdr.Uint32(63),
-	}
-	err := s.processor.Init(header)
-	s.Assert().NoError(err)
-
 	lastModifiedLedgerSeq := xdr.Uint32(1234)
 
 	trustLine := xdr.TrustLineEntry{
@@ -283,7 +244,7 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestUpdateTrustLine() {
 		Flags:     xdr.Uint32(xdr.TrustLineFlagsAuthorizedFlag),
 	}
 
-	err = s.processor.ProcessChange(io.Change{
+	err := s.processor.ProcessChange(io.Change{
 		Type: xdr.LedgerEntryTypeTrustline,
 		Pre: &xdr.LedgerEntry{
 			LastModifiedLedgerSeq: lastModifiedLedgerSeq,
@@ -325,15 +286,6 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestUpdateTrustLine() {
 }
 
 func (s *AssetStatsProcessorTestSuiteLedger) TestUpdateTrustLineAuthorization() {
-	// No insertOnlyMode
-	s.mockQ.On("CountTrustLines").Return(100, nil).Once()
-
-	header := xdr.LedgerHeader{
-		LedgerSeq: xdr.Uint32(63),
-	}
-	err := s.processor.Init(header)
-	s.Assert().NoError(err)
-
 	lastModifiedLedgerSeq := xdr.Uint32(1234)
 
 	trustLine := xdr.TrustLineEntry{
@@ -360,7 +312,7 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestUpdateTrustLineAuthorization() 
 		Balance:   10,
 	}
 
-	err = s.processor.ProcessChange(io.Change{
+	err := s.processor.ProcessChange(io.Change{
 		Type: xdr.LedgerEntryTypeTrustline,
 		Pre: &xdr.LedgerEntry{
 			LastModifiedLedgerSeq: lastModifiedLedgerSeq - 1,
@@ -431,22 +383,13 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestUpdateTrustLineAuthorization() 
 }
 
 func (s *AssetStatsProcessorTestSuiteLedger) TestRemoveTrustLine() {
-	// No insertOnlyMode
-	s.mockQ.On("CountTrustLines").Return(100, nil).Once()
-
-	header := xdr.LedgerHeader{
-		LedgerSeq: xdr.Uint32(63),
-	}
-	err := s.processor.Init(header)
-	s.Assert().NoError(err)
-
 	unauthorizedTrustLine := xdr.TrustLineEntry{
 		AccountId: xdr.MustAddress("GAOQJGUAB7NI7K7I62ORBXMN3J4SSWQUQ7FOEPSDJ322W2HMCNWPHXFB"),
 		Asset:     xdr.MustNewCreditAsset("USD", trustLineIssuer.Address()),
 		Balance:   0,
 	}
 
-	err = s.processor.ProcessChange(io.Change{
+	err := s.processor.ProcessChange(io.Change{
 		Type: xdr.LedgerEntryTypeTrustline,
 		Pre: &xdr.LedgerEntry{
 			Data: xdr.LedgerEntryData{
@@ -495,15 +438,6 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestRemoveTrustLine() {
 }
 
 func (s *AssetStatsProcessorTestSuiteLedger) TestProcessUpgradeChange() {
-	// No insertOnlyMode
-	s.mockQ.On("CountTrustLines").Return(100, nil).Once()
-
-	header := xdr.LedgerHeader{
-		LedgerSeq: xdr.Uint32(63),
-	}
-	err := s.processor.Init(header)
-	s.Assert().NoError(err)
-
 	// add trust line
 	lastModifiedLedgerSeq := xdr.Uint32(1234)
 	trustLine := xdr.TrustLineEntry{
@@ -513,7 +447,7 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestProcessUpgradeChange() {
 		Flags:     xdr.Uint32(xdr.TrustLineFlagsAuthorizedFlag),
 	}
 
-	err = s.processor.ProcessChange(io.Change{
+	err := s.processor.ProcessChange(io.Change{
 		Type: xdr.LedgerEntryTypeTrustline,
 		Post: &xdr.LedgerEntry{
 			LastModifiedLedgerSeq: lastModifiedLedgerSeq,

@@ -30,15 +30,7 @@ func (s *OffersProcessorTestSuiteState) SetupTest() {
 		On("NewOffersBatchInsertBuilder", maxBatchSize).
 		Return(s.mockBatchInsertBuilder).Once()
 
-	s.processor = &OffersProcessor{
-		OffersQ: s.mockQ,
-	}
-
-	header := xdr.LedgerHeader{
-		LedgerSeq: xdr.Uint32(63),
-	}
-	err := s.processor.Init(header)
-	s.Assert().NoError(err)
+	s.processor = NewOffersProcessor(s.mockQ)
 }
 
 func (s *OffersProcessorTestSuiteState) TearDownTest() {
@@ -92,15 +84,7 @@ func (s *OffersProcessorTestSuiteLedger) SetupTest() {
 		On("NewOffersBatchInsertBuilder", maxBatchSize).
 		Return(s.mockBatchInsertBuilder).Once()
 
-	s.processor = &OffersProcessor{
-		OffersQ: s.mockQ,
-	}
-
-	header := xdr.LedgerHeader{
-		LedgerSeq: xdr.Uint32(63),
-	}
-	err := s.processor.Init(header)
-	s.Assert().NoError(err)
+	s.processor = NewOffersProcessor(s.mockQ)
 }
 
 func (s *OffersProcessorTestSuiteLedger) TearDownTest() {

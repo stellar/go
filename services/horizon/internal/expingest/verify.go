@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/stellar/go/exp/ingest/adapters"
 	ingesterrors "github.com/stellar/go/exp/ingest/errors"
 	"github.com/stellar/go/exp/ingest/io"
 	"github.com/stellar/go/exp/ingest/verify"
@@ -90,9 +89,7 @@ func (s *System) verifyState(graphOffers map[xdr.Int64]xdr.OfferEntry) error {
 	// Get root HAS to check if we're checking one of the latest ledgers or
 	// Horizon is catching up. It doesn't make sense to verify old ledgers as
 	// we want to check the latest state.
-	archive := s.session.GetArchive()
-	historyAdapter := adapters.MakeHistoryArchiveAdapter(archive)
-	historyLatestSequence, err := historyAdapter.GetLatestLedgerSequence()
+	historyLatestSequence, err := s.historyAdapter.GetLatestLedgerSequence()
 	if err != nil {
 		return errors.Wrap(err, "Error getting the latest ledger sequence")
 	}
@@ -121,7 +118,7 @@ func (s *System) verifyState(graphOffers map[xdr.Int64]xdr.OfferEntry) error {
 	localLog.Info("Creating state reader...")
 
 	stateReader, err := io.MakeSingleLedgerStateReader(
-		s.session.GetArchive(),
+		s.historyArchive,
 		&io.MemoryTempSet{},
 		ledgerSequence,
 		s.maxStreamRetries,

@@ -28,15 +28,7 @@ func (s *AccountsDataProcessorTestSuiteState) SetupTest() {
 		On("NewAccountDataBatchInsertBuilder", maxBatchSize).
 		Return(s.mockBatchInsertBuilder).Once()
 
-	s.processor = &AccountDataProcessor{
-		DataQ: s.mockQ,
-	}
-
-	header := xdr.LedgerHeader{
-		LedgerSeq: xdr.Uint32(63),
-	}
-	err := s.processor.Init(header)
-	s.Assert().NoError(err)
+	s.processor = NewAccountDataProcessor(s.mockQ)
 }
 
 func (s *AccountsDataProcessorTestSuiteState) TearDownTest() {
@@ -93,15 +85,7 @@ func (s *AccountsDataProcessorTestSuiteLedger) SetupTest() {
 		On("NewAccountDataBatchInsertBuilder", maxBatchSize).
 		Return(s.mockBatchInsertBuilder).Once()
 
-	s.processor = &AccountDataProcessor{
-		DataQ: s.mockQ,
-	}
-
-	header := xdr.LedgerHeader{
-		LedgerSeq: xdr.Uint32(63),
-	}
-	err := s.processor.Init(header)
-	s.Assert().NoError(err)
+	s.processor = NewAccountDataProcessor(s.mockQ)
 }
 
 func (s *AccountsDataProcessorTestSuiteLedger) TearDownTest() {

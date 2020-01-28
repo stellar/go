@@ -9,19 +9,20 @@ import (
 )
 
 type OffersProcessor struct {
-	OffersQ history.QOffers
+	offersQ history.QOffers
 
 	cache *io.LedgerEntryChangeCache
 	batch history.OffersBatchInsertBuilder
 }
 
-func (p *OffersProcessor) Init(header xdr.LedgerHeader) error {
+func NewOffersProcessor(offersQ history.QOffers) *OffersProcessor {
+	p := &OffersProcessor{offersQ: offersQ}
 	p.reset()
-	return nil
+	return p
 }
 
 func (p *OffersProcessor) reset() {
-	p.batch = p.OffersQ.NewOffersBatchInsertBuilder(maxBatchSize)
+	p.batch = p.offersQ.NewOffersBatchInsertBuilder(maxBatchSize)
 	p.cache = io.NewLedgerEntryChangeCache()
 }
 
@@ -68,13 +69,13 @@ func (p *OffersProcessor) Commit() error {
 			action = "removing"
 			offer := change.Pre.Data.MustOffer()
 			offerID = offer.OfferId
-			rowsAffected, err = p.OffersQ.RemoveOffer(offer.OfferId)
+			rowsAffected, err = p.offersQ.RemoveOffer(offer.OfferId)
 		default:
 			// Updated
 			action = "updating"
 			offer := change.Post.Data.MustOffer()
 			offerID = offer.OfferId
-			rowsAffected, err = p.OffersQ.UpdateOffer(offer, change.Post.LastModifiedLedgerSeq)
+			rowsAffected, err = p.offersQ.UpdateOffer(offer, change.Post.LastModifiedLedgerSeq)
 		}
 
 		if err != nil {

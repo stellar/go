@@ -16,7 +16,11 @@ type LedgersProcessor struct {
 	opCount        int
 }
 
-func NewLedgerProcessor(ledger xdr.LedgerHeaderHistoryEntry, ledgerQ history.QLedgers, ingestVersion int) *LedgersProcessor {
+func NewLedgerProcessor(
+	ledgerQ history.QLedgers,
+	ledger xdr.LedgerHeaderHistoryEntry,
+	ingestVersion int,
+) *LedgersProcessor {
 	return &LedgersProcessor{
 		ledger:        ledger,
 		ledgersQ:      ledgerQ,
