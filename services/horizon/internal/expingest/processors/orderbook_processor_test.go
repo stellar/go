@@ -11,7 +11,7 @@ import (
 
 func TestProcessOrderBookState(t *testing.T) {
 	graph := orderbook.NewOrderBookGraph()
-	processor := OrderbookProcessor{OrderBookGraph: graph}
+	processor := NewOrderbookProcessor{OrderBookGraph: graph}
 
 	header := xdr.LedgerHeader{
 		LedgerSeq: xdr.Uint32(63),
@@ -90,7 +90,7 @@ func TestProcessOrderBookState(t *testing.T) {
 
 func TestProcessOrderBookLedger(t *testing.T) {
 	graph := orderbook.NewOrderBookGraph()
-	processor := OrderbookProcessor{OrderBookGraph: graph}
+	processor := NewOrderbookProcessor{OrderBookGraph: graph}
 
 	header := xdr.LedgerHeader{
 		LedgerSeq: xdr.Uint32(63),
@@ -230,7 +230,7 @@ func TestProcessOrderBookLedger(t *testing.T) {
 
 func TestProcessOrderBookLedgerProcessUpgradeChanges(t *testing.T) {
 	graph := orderbook.NewOrderBookGraph()
-	processor := OrderbookProcessor{OrderBookGraph: graph}
+	processor := NewOrderbookProcessor{OrderBookGraph: graph}
 
 	header := xdr.LedgerHeader{
 		LedgerSeq: xdr.Uint32(63),

@@ -1,6 +1,7 @@
 package processors
 
 import (
+	"github.com/stellar/go/exp/orderbook"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/xdr"
 )
@@ -43,6 +44,13 @@ type DatabaseProcessor struct {
 	batchUpsertTrustLines []xdr.LedgerEntry
 	// batchUpsertAccounts is a slice of accounts to upsert in batch
 	batchUpsertAccounts []xdr.LedgerEntry
+}
+
+// OrderbookProcessor is a processor (both state and ledger) that's responsible
+// for updating orderbook graph with new/updated/removed offers. Orderbook graph
+// can be later used for path finding.
+type OrderbookProcessor struct {
+	OrderBookGraph *orderbook.OrderBookGraph
 }
 
 // ContextFilter writes read objects only if a given key is present in the
