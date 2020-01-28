@@ -506,12 +506,12 @@ func ReadChallengeTx(challengeTx, serverAccountID, network string) (tx Transacti
 //    server account or one of the signers provided in the arguments.
 //  - The signatures are all valid but do not meet the threshold.
 func VerifyChallengeTxThreshold(challengeTx, serverAccountID, network string, threshold Threshold, signerSummary SignerSummary) (signersFound []string, err error) {
-	signerAddresses := make([]string, 0, len(signerSummary))
+	signers := make([]string, 0, len(signerSummary))
 	for s := range signerSummary {
-		signerAddresses = append(signerAddresses, s)
+		signers = append(signers, s)
 	}
 
-	signersFound, err = VerifyChallengeTxSigners(challengeTx, serverAccountID, network, signerAddresses...)
+	signersFound, err = VerifyChallengeTxSigners(challengeTx, serverAccountID, network, signers...)
 	if err != nil {
 		return nil, err
 	}
