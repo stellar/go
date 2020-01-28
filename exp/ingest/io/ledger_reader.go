@@ -32,7 +32,8 @@ type DBLedgerReader struct {
 // Ensure DBLedgerReader implements LedgerReader
 var _ LedgerReader = (*DBLedgerReader)(nil)
 
-// NewDBLedgerReader is a factory method for LedgerReader.
+// NewDBLedgerReader creates a new DBLedgerReader instance.
+// Note that DBLedgerReader is not thread safe and should not be shared by multiple goroutines
 func NewDBLedgerReader(sequence uint32, backend ledgerbackend.LedgerBackend) (*DBLedgerReader, error) {
 	reader := &DBLedgerReader{
 		sequence: sequence,

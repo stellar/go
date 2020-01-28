@@ -15,7 +15,7 @@ type AccountDataProcessor struct {
 	batch history.AccountDataBatchInsertBuilder
 }
 
-func (p *AccountDataProcessor) Init(sequence uint32) error {
+func (p *AccountDataProcessor) Init(header xdr.LedgerHeader) error {
 	p.batch = p.DataQ.NewAccountDataBatchInsertBuilder(maxBatchSize)
 	p.cache = io.NewLedgerEntryChangeCache()
 	return nil

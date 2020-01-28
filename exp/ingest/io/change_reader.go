@@ -7,16 +7,16 @@ import (
 	"github.com/stellar/go/xdr"
 )
 
-// ChangeReader provides convenient, streaming access to changes within a ledger.
+// ChangeReader provides convenient, streaming access to a sequence of Changes
 type ChangeReader interface {
-	GetSequence() uint32
-	GetHeader() xdr.LedgerHeaderHistoryEntry
 	// Read should return the next `Change` in the leader. If there are no more
 	// changes left it should return an `io.EOF` error.
 	Read() (Change, error)
 }
 
-type changeReader struct {
+// LedgerChangeReader is a ChangeReader which returns Changes from Stellar Core
+// for a single ledger
+type LedgerChangeReader struct {
 	dbReader               DBLedgerReader
 	streamedFeeChanges     bool
 	streamedMetaChanges    bool
@@ -25,30 +25,32 @@ type changeReader struct {
 	pendingIndex           int
 }
 
-// Ensure changeReader implements ChangeReader
-var _ ChangeReader = (*changeReader)(nil)
+// Ensure LedgerChangeReader implements ChangeReader
+var _ ChangeReader = (*LedgerChangeReader)(nil)
 
-// NewChangeReader constructs a new ChangeReader instance bound to the given eldger
-func NewChangeReader(sequence uint32, backend ledgerbackend.LedgerBackend) (ChangeReader, error) {
+// NewLedgerChangeReader constructs a new LedgerChangeReader instance bound to the given ledger.
+// Note that the returned LedgerChangeReader is not thread safe and should not be shared
+// by multiple goroutines.
+func NewLedgerChangeReader(sequence uint32, backend ledgerbackend.LedgerBackend) (*LedgerChangeReader, error) {
 	reader, err := NewDBLedgerReader(sequence, backend)
 	if err != nil {
 		return nil, err
 	}
 
-	return &changeReader{dbReader: *reader}, nil
+	return &LedgerChangeReader{dbReader: *reader}, nil
 }
 
 // GetSequence returns the ledger sequence for the reader
-func (r *changeReader) GetSequence() uint32 {
+func (r *LedgerChangeReader) GetSequence() uint32 {
 	return r.dbReader.GetSequence()
 }
 
 // GetSequence returns the ledger header for the reader
-func (r *changeReader) GetHeader() xdr.LedgerHeaderHistoryEntry {
+func (r *LedgerChangeReader) GetHeader() xdr.LedgerHeaderHistoryEntry {
 	return r.dbReader.GetHeader()
 }
 
-func (r *changeReader) getNextFeeChange() (Change, error) {
+func (r *LedgerChangeReader) getNextFeeChange() (Change, error) {
 	if r.streamedFeeChanges {
 		return Change{}, io.EOF
 	}
@@ -76,7 +78,7 @@ func (r *changeReader) getNextFeeChange() (Change, error) {
 	}
 }
 
-func (r *changeReader) getNextMetaChange() (Change, error) {
+func (r *LedgerChangeReader) getNextMetaChange() (Change, error) {
 	if r.streamedMetaChanges {
 		return Change{}, io.EOF
 	}
@@ -103,7 +105,7 @@ func (r *changeReader) getNextMetaChange() (Change, error) {
 	}
 }
 
-func (r *changeReader) getNextUpgradeChange() (Change, error) {
+func (r *LedgerChangeReader) getNextUpgradeChange() (Change, error) {
 	if r.streamedUpgradeChanges {
 		return Change{}, io.EOF
 	}
@@ -121,7 +123,10 @@ func (r *changeReader) getNextUpgradeChange() (Change, error) {
 	return change, nil
 }
 
-func (r *changeReader) Read() (Change, error) {
+// Read returns the next change in the stream.
+// If there are no changes remaining io.EOF is returned
+// as an error.
+func (r *LedgerChangeReader) Read() (Change, error) {
 	if r.pendingIndex < len(r.pending) {
 		next := r.pending[r.pendingIndex]
 		r.pendingIndex++

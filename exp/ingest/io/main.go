@@ -15,7 +15,7 @@ type StateReader interface {
 	GetSequence() uint32
 	// Read should return next ledger entry. If there are no more
 	// entries it should return `io.EOF` error.
-	Read() (xdr.LedgerEntryChange, error)
+	Read() (Change, error)
 	// Close should be called when reading is finished. This is especially
 	// helpful when there are still some entries available so reader can stop
 	// streaming them.

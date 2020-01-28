@@ -1,7 +1,6 @@
 package io
 
 import (
-	"github.com/stellar/go/xdr"
 	"github.com/stretchr/testify/mock"
 )
 
@@ -16,9 +15,9 @@ func (m *MockStateReader) GetSequence() uint32 {
 	return args.Get(0).(uint32)
 }
 
-func (m *MockStateReader) Read() (xdr.LedgerEntryChange, error) {
+func (m *MockStateReader) Read() (Change, error) {
 	args := m.Called()
-	return args.Get(0).(xdr.LedgerEntryChange), args.Error(1)
+	return args.Get(0).(Change), args.Error(1)
 }
 
 func (m *MockStateReader) Close() error {
