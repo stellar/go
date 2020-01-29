@@ -9,35 +9,26 @@ import (
 )
 
 type SignersProcessor struct {
-	SignersQ history.QSigners
+	signersQ history.QSigners
 
 	cache *io.LedgerEntryChangeCache
 	batch history.AccountSignersBatchInsertBuilder
 	// insertOnlyMode is a mode in which we don't use ledger cache and we just
 	// add signers to a batch, then we Exec all signers in one insert query.
 	// This is done to make history buckets processing faster (batch inserting).
-	insertOnlyMode bool
+	useLedgerEntryCache bool
 }
 
-func (p *SignersProcessor) Init(header xdr.LedgerHeader) error {
+func NewSignersProcessor(
+	signersQ history.QSigners, useLedgerEntryCache bool,
+) *SignersProcessor {
+	p := &SignersProcessor{signersQ: signersQ, useLedgerEntryCache: useLedgerEntryCache}
 	p.reset()
-
-	// We check the number of existing trust line in the DB to check if asset
-	// stats table is empty too. If so, we switch to insertOnlyMode.
-	count, err := p.SignersQ.CountAccounts()
-	if err != nil {
-		return errors.Wrap(err, "error in CountTrustLines")
-	}
-
-	if count == 0 {
-		p.insertOnlyMode = true
-	}
-
-	return nil
+	return p
 }
 
 func (p *SignersProcessor) reset() {
-	p.batch = p.SignersQ.NewAccountSignersBatchInsertBuilder(maxBatchSize)
+	p.batch = p.signersQ.NewAccountSignersBatchInsertBuilder(maxBatchSize)
 	p.cache = io.NewLedgerEntryChangeCache()
 }
 
@@ -46,46 +37,46 @@ func (p *SignersProcessor) ProcessChange(change io.Change) error {
 		return nil
 	}
 
-	if p.insertOnlyMode {
-		if !(change.Pre == nil && change.Post != nil) {
-			return errors.New("AssetStatsProSignersProcessorcessor is in insert only mode")
+	if p.useLedgerEntryCache {
+		err := p.cache.AddChange(change)
+		if err != nil {
+			return errors.Wrap(err, "error adding to ledgerCache")
 		}
 
-		accountEntry := change.Post.Data.MustAccount()
-		account := accountEntry.AccountId.Address()
-
-		for signer, weight := range accountEntry.SignerSummary() {
-			err := p.batch.Add(history.AccountSigner{
-				Account: account,
-				Signer:  signer,
-				Weight:  weight,
-			})
+		if p.cache.Size() > maxBatchSize {
+			err = p.Commit()
 			if err != nil {
-				return errors.Wrap(err, "Error adding row to accountSignerBatch")
+				return errors.Wrap(err, "error in Commit")
 			}
+			p.reset()
 		}
 
 		return nil
 	}
 
-	err := p.cache.AddChange(change)
-	if err != nil {
-		return errors.Wrap(err, "error adding to ledgerCache")
+	if !(change.Pre == nil && change.Post != nil) {
+		return errors.New("AssetStatsProSignersProcessorcessor is in insert only mode")
 	}
 
-	if p.cache.Size() > maxBatchSize {
-		err = p.Commit()
+	accountEntry := change.Post.Data.MustAccount()
+	account := accountEntry.AccountId.Address()
+
+	for signer, weight := range accountEntry.SignerSummary() {
+		err := p.batch.Add(history.AccountSigner{
+			Account: account,
+			Signer:  signer,
+			Weight:  weight,
+		})
 		if err != nil {
-			return errors.Wrap(err, "error in Commit")
+			return errors.Wrap(err, "Error adding row to accountSignerBatch")
 		}
-		p.reset()
 	}
 
 	return nil
 }
 
 func (p *SignersProcessor) Commit() error {
-	if p.insertOnlyMode {
+	if !p.useLedgerEntryCache {
 		return p.batch.Exec()
 	}
 
@@ -96,7 +87,7 @@ func (p *SignersProcessor) Commit() error {
 		if change.Pre != nil {
 			preAccountEntry := change.Pre.Data.MustAccount()
 			for signer := range preAccountEntry.SignerSummary() {
-				rowsAffected, err := p.SignersQ.RemoveAccountSigner(preAccountEntry.AccountId.Address(), signer)
+				rowsAffected, err := p.signersQ.RemoveAccountSigner(preAccountEntry.AccountId.Address(), signer)
 				if err != nil {
 					return errors.Wrap(err, "Error removing a signer")
 				}
@@ -115,7 +106,7 @@ func (p *SignersProcessor) Commit() error {
 		if change.Post != nil {
 			postAccountEntry := change.Post.Data.MustAccount()
 			for signer, weight := range postAccountEntry.SignerSummary() {
-				rowsAffected, err := p.SignersQ.CreateAccountSigner(postAccountEntry.AccountId.Address(), signer, weight)
+				rowsAffected, err := p.signersQ.CreateAccountSigner(postAccountEntry.AccountId.Address(), signer, weight)
 				if err != nil {
 					return errors.Wrap(err, "Error inserting a signer")
 				}

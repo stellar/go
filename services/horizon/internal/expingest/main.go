@@ -9,10 +9,8 @@ import (
 	"time"
 
 	"github.com/jmoiron/sqlx"
-	"github.com/stellar/go/clients/stellarcore"
-	"github.com/stellar/go/exp/ingest"
 	"github.com/stellar/go/exp/ingest/adapters"
-	"github.com/stellar/go/exp/ingest/io"
+	ingesterrors "github.com/stellar/go/exp/ingest/errors"
 	"github.com/stellar/go/exp/ingest/ledgerbackend"
 	"github.com/stellar/go/exp/orderbook"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
@@ -45,6 +43,8 @@ const (
 	// - 10: Fixes a bug in meta processing (fees are now processed before
 	//      everything else).
 	CurrentVersion = 10
+
+	stateVerificationErrorThreshold = 3
 )
 
 var log = logpkg.DefaultLogger.WithField("service", "expingest")
@@ -56,7 +56,6 @@ type Config struct {
 
 	HistorySession           *db.Session
 	HistoryArchiveURL        string
-	TempSet                  io.TempSet
 	DisableStateVerification bool
 
 	// MaxStreamRetries determines how many times the reader will retry when encountering
@@ -90,33 +89,20 @@ type dbSession interface {
 	Clone() *db.Session
 }
 
-type liveSession interface {
-	Run() error
-	RunFromCheckpoint(checkpointLedger uint32) error
-	GetArchive() historyarchive.ArchiveInterface
-	Resume(ledgerSequence uint32) error
-	GetLatestSuccessfullyProcessedLedger() (ledgerSequence uint32, processed bool)
-	Shutdown()
-}
-
 type systemState string
 
 const (
-	initState                         systemState = "init"
-	ingestHistoryRangeState           systemState = "ingestHistoryRange"
-	waitForCheckpointState            systemState = "waitForCheckpoint"
-	loadOffersIntoMemoryState         systemState = "loadOffersIntoMemory"
-	buildStateAndResumeIngestionState systemState = "buildStateAndResumeIngestion"
-	resumeState                       systemState = "resume"
-	verifyRangeState                  systemState = "verifyRange"
-	shutdownState                     systemState = "shutdown"
+	initState               systemState = "init"
+	ingestHistoryRangeState systemState = "ingestHistoryRange"
+	waitForCheckpointState  systemState = "waitForCheckpoint"
+	resumeState             systemState = "resume"
+	verifyRangeState        systemState = "verifyRange"
+	shutdownState           systemState = "shutdown"
 )
 
 type state struct {
 	systemState                       systemState
 	latestSuccessfullyProcessedLedger uint32
-
-	checkpointLedger uint32
 
 	rangeFromLedger   uint32
 	rangeToLedger     uint32
@@ -129,14 +115,17 @@ type state struct {
 }
 
 type System struct {
-	config           Config
-	state            state
-	session          liveSession
-	rangeSession     *ingest.RangeSession
-	historyQ         dbQ
-	historySession   dbSession
-	historyAdapter   adapters.HistoryArchiveAdapterInterface
-	graph            *orderbook.OrderBookGraph
+	config Config
+	state  state
+
+	graph          *orderbook.OrderBookGraph
+	historyQ       *history.Q
+	historySession dbSession
+
+	historyArchive *historyarchive.Archive
+	ledgerBackend  *ledgerbackend.DatabaseBackend
+	historyAdapter adapters.HistoryArchiveAdapterInterface
+
 	maxStreamRetries int
 	wg               sync.WaitGroup
 	shutdown         chan struct{}
@@ -168,69 +157,17 @@ func NewSystem(config Config) (*System, error) {
 
 	historyQ := &history.Q{historySession}
 
-	statePipeline := buildStatePipeline(historyQ, config.OrderBookGraph)
-	ledgerPipeline := buildLedgerPipeline(
-		historyQ,
-		config.OrderBookGraph,
-		config.IngestFailedTransactions,
-	)
-
-	session := &ingest.LiveSession{
-		Archive:          archive,
-		MaxStreamRetries: config.MaxStreamRetries,
-		LedgerBackend:    ledgerBackend,
-		StatePipeline:    statePipeline,
-		LedgerPipeline:   ledgerPipeline,
-		StellarCoreClient: &stellarcore.Client{
-			URL: config.StellarCoreURL,
-		},
-
-		StateReporter:  &LoggingStateReporter{Log: log, Interval: 100000},
-		LedgerReporter: &LoggingLedgerReporter{Log: log},
-
-		TempSet: config.TempSet,
-	}
-
-	rangeSession := &ingest.RangeSession{
-		Archive:           archive,
-		MaxStreamRetries:  config.MaxStreamRetries,
-		LedgerBackend:     ledgerBackend,
-		StatePipeline:     statePipeline,
-		LedgerPipeline:    ledgerPipeline,
-		NetworkPassphrase: config.NetworkPassphrase,
-
-		StateReporter:  &LoggingStateReporter{Log: log, Interval: 100000},
-		LedgerReporter: &LoggingLedgerReporter{Log: log},
-
-		TempSet: config.TempSet,
-	}
-
 	system := &System{
+		historyArchive:           archive,
+		historyAdapter:           adapters.MakeHistoryArchiveAdapter(archive),
+		ledgerBackend:            ledgerBackend,
 		config:                   config,
-		session:                  session,
-		rangeSession:             rangeSession,
 		historySession:           historySession,
-		historyAdapter:           adapters.MakeHistoryArchiveAdapter(session.GetArchive()),
 		historyQ:                 historyQ,
 		graph:                    config.OrderBookGraph,
 		disableStateVerification: config.DisableStateVerification,
 		maxStreamRetries:         config.MaxStreamRetries,
 	}
-
-	addPipelineHooks(
-		system,
-		session.StatePipeline,
-		historySession,
-		session,
-		config.OrderBookGraph,
-	)
-	addPipelineHooks(
-		system,
-		session.LedgerPipeline,
-		historySession,
-		session,
-		config.OrderBookGraph,
-	)
 
 	return system, nil
 }
@@ -334,13 +271,12 @@ func (s *System) run() error {
 }
 
 func (s *System) runCurrentState() (state, error) {
-	// Transaction will be commited or rolled back in pipelines post hooks
-	// or below in case of errors.
-	if tx := s.historyQ.GetTx(); tx == nil {
-		err := s.historyQ.Begin()
-		if err != nil {
-			return state{systemState: initState}, errors.Wrap(err, "Error in Begin")
-		}
+	// Every node in the state machine is responsible for
+	// creating and disposing its own transaction.
+	// We should never enter a new state with the transaction
+	// from the previous state.
+	if s.historyQ.GetTx() != nil {
+		panic("unexpected transaction")
 	}
 
 	var nextState state
@@ -353,32 +289,27 @@ func (s *System) runCurrentState() (state, error) {
 		nextState, err = s.ingestHistoryRange()
 	case waitForCheckpointState:
 		nextState, err = s.waitForCheckpoint()
-	case loadOffersIntoMemoryState:
-		nextState, err = s.loadOffersIntoMemory()
-	case buildStateAndResumeIngestionState:
-		nextState, err = s.buildStateAndResumeIngestion()
 	case resumeState:
 		nextState, err = s.resume()
 	case verifyRangeState:
 		nextState, err = s.verifyRange()
 	case shutdownState:
-		s.historyQ.Rollback()
 		log.Info("Shut down")
 		nextState, err = s.state, nil
 	default:
 		panic(fmt.Sprintf("Unknown state %+v", s.state.systemState))
 	}
 
-	if err != nil {
-		// We rollback in pipelines post-hooks but the error can happen before
-		// pipeline starts processing.
-		s.historyQ.Rollback()
-	}
-
 	return nextState, err
 }
 
 func (s *System) init() (state, error) {
+	if err := s.historyQ.Begin(); err != nil {
+		return state{systemState: initState}, errors.Wrap(err, "Error starting a transaction")
+	}
+	defer s.historyQ.Rollback()
+	defer s.graph.Discard()
+
 	// This will get the value `FOR UPDATE`, blocking it for other nodes.
 	lastIngestedLedger, err := s.historyQ.GetLastLedgerExpIngest()
 	if err != nil {
@@ -404,7 +335,13 @@ func (s *System) init() (state, error) {
 		// In case of errors it will start `Init` from the beginning.
 		log.Info("Starting ingestion system from empty state...")
 
-		if lastHistoryLedger != 0 {
+		var lastCheckpoint uint32
+		lastCheckpoint, err = s.historyAdapter.GetLatestLedgerSequence()
+		if err != nil {
+			return state{systemState: initState}, errors.Wrap(err, "Error getting last checkpoint")
+		}
+
+		if lastHistoryLedger > 0 && lastHistoryLedger != lastCheckpoint {
 			// There are ledgers in history_ledgers table. This means that the
 			// old or new ingest system was running prior the upgrade. In both
 			// cases we need to:
@@ -414,33 +351,58 @@ func (s *System) init() (state, error) {
 			//   the latest checkpoint ledger.
 			// * Build state from the last checkpoint if the latest history ledger
 			//   is equal to the latest checkpoint ledger.
-			lastCheckpoint, err := s.historyAdapter.GetLatestLedgerSequence()
-			if err != nil {
-				return state{systemState: initState}, errors.Wrap(err, "Error getting last checkpoint")
-			}
 
-			switch {
-			case lastHistoryLedger > lastCheckpoint:
+			if lastHistoryLedger > lastCheckpoint {
 				return state{systemState: waitForCheckpointState}, nil
-			case lastHistoryLedger < lastCheckpoint:
-				return state{
-					systemState:     ingestHistoryRangeState,
-					rangeFromLedger: lastHistoryLedger + 1,
-					rangeToLedger:   lastCheckpoint,
-				}, nil
-			default: // lastHistoryLedger == lastCheckpoint
-				// Build state but make sure it's using `lastCheckpoint`. It's possible
-				// that the new checkpoint will be created during state transition.
-				return state{
-					systemState:      buildStateAndResumeIngestionState,
-					checkpointLedger: lastCheckpoint,
-				}, nil
+
 			}
+			// lastHistoryLedger < lastCheckpoint
+			return state{
+				systemState:     ingestHistoryRangeState,
+				rangeFromLedger: lastHistoryLedger + 1,
+				rangeToLedger:   lastCheckpoint,
+			}, nil
+		}
+
+		err = s.historyQ.TruncateExpingestStateTables()
+		if err != nil {
+			return state{systemState: initState},
+				errors.Wrap(err, "Error clearing ingest tables")
+		}
+
+		err = s.runHistoryArchiveIngestion(lastCheckpoint)
+		if err != nil {
+			return state{systemState: initState},
+				errors.Wrap(err, "Error ingesting history archive")
+		}
+
+		// Clear last_ingested_ledger in key value store
+		err = s.historyQ.UpdateLastLedgerExpIngest(lastCheckpoint)
+		if err != nil {
+			return state{systemState: initState},
+				errors.Wrap(err, "Error updating last ingested ledger")
+		}
+
+		// Clear invalid state in key value store. It's possible that upgraded
+		// ingestion is fixing it.
+		err = s.historyQ.UpdateExpStateInvalid(false)
+		if err != nil {
+			return state{systemState: initState},
+				errors.Wrap(err, "Error updating state invalid value")
+		}
+
+		if err = s.graph.Apply(lastCheckpoint); err != nil {
+			return state{systemState: initState},
+				errors.Wrap(err, "Error applying graph history archive changes")
+		}
+		if err = s.historyQ.Commit(); err != nil {
+			return state{systemState: initState},
+				errors.Wrap(err, "Error commiting history archive transaction")
 		}
 
 		return state{
-			systemState:      buildStateAndResumeIngestionState,
-			checkpointLedger: 0,
+			systemState:                       resumeState,
+			latestSuccessfullyProcessedLedger: lastCheckpoint,
 		}, nil
 	}
 
@@ -450,7 +412,7 @@ func (s *System) init() (state, error) {
 		// Now it's on by default but the latest history ledger is greater
 		// than the latest expingest ledger. We reset the exp ledger sequence
 		// so init state will rebuild the state correctly.
-		err := s.historyQ.UpdateLastLedgerExpIngest(0)
+		err = s.historyQ.UpdateLastLedgerExpIngest(0)
 		if err != nil {
 			return state{systemState: initState}, errors.Wrap(err, "Error updating last ingested ledger")
 		}
@@ -475,17 +437,19 @@ func (s *System) init() (state, error) {
 		log.WithField("last_ledger", lastIngestedLedger).
 			Info("Resuming ingestion system from last processed ledger...")
 
+		if err = s.loadOffersIntoMemory(); err != nil {
+			return state{systemState: initState},
+				errors.Wrap(err, "Error loading offers into in memory graph")
+		}
+
 		return state{
-			systemState:                       loadOffersIntoMemoryState,
+			systemState:                       resumeState,
 			latestSuccessfullyProcessedLedger: lastIngestedLedger,
 		}, nil
 	}
 }
 
-// loadOffersIntoMemory loads offers into memory. If successful, it changes the
-// state to `resumeState`. In case of errors it always changes the state to
-// `init` because state function returning errors rollback DB transaction.
-func (s *System) loadOffersIntoMemory() (state, error) {
+func (s *System) loadOffersIntoMemory() error {
 	defer s.graph.Discard()
 
 	log.Info("Loading offers from a database into memory store...")
@@ -493,7 +457,7 @@ func (s *System) loadOffersIntoMemory() (state, error) {
 
 	offers, err := s.historyQ.GetAllOffers()
 	if err != nil {
-		return state{systemState: initState}, errors.Wrap(err, "GetAllOffers error")
+		return errors.Wrap(err, "GetAllOffers error")
 	}
 
 	for _, offer := range offers {
@@ -514,7 +478,7 @@ func (s *System) loadOffersIntoMemory() (state, error) {
 
 	err = s.graph.Apply(s.state.latestSuccessfullyProcessedLedger)
 	if err != nil {
-		return state{systemState: initState}, errors.Wrap(err, "Error running graph.Apply")
+		return errors.Wrap(err, "Error running graph.Apply")
 	}
 
 	log.WithField(
@@ -522,82 +486,151 @@ func (s *System) loadOffersIntoMemory() (state, error) {
 		time.Since(start).Seconds(),
 	).Info("Finished loading offers from a database into memory store")
 
-	return state{
-		systemState:                       resumeState,
-		latestSuccessfullyProcessedLedger: s.state.latestSuccessfullyProcessedLedger,
-	}, nil
+	return nil
 }
 
-func (s *System) buildStateAndResumeIngestion() (state, error) {
-	// Clear last_ingested_ledger in key value store
-	err := s.historyQ.UpdateLastLedgerExpIngest(0)
+func (s *System) resume() (state, error) {
+	if err := s.historyQ.Begin(); err != nil {
+		return s.state,
+			errors.Wrap(err, "Error starting a transaction")
+	}
+	defer s.historyQ.Rollback()
+	defer s.graph.Discard()
+
+	// This will get the value `FOR UPDATE`, blocking it for other nodes.
+	lastIngestedLedger, err := s.historyQ.GetLastLedgerExpIngest()
 	if err != nil {
-		return state{systemState: initState}, errors.Wrap(err, "Error updating last ingested ledger")
+		return s.state,
+			errors.Wrap(err, "Error getting last ingested ledger")
 	}
 
-	// Clear invalid state in key value store. It's possible that upgraded
-	// ingestion is fixing it.
-	err = s.historyQ.UpdateExpStateInvalid(false)
-	if err != nil {
-		return state{systemState: initState}, errors.Wrap(err, "Error updating state invalid value")
+	ingestLedger := s.state.latestSuccessfullyProcessedLedger + 1
+
+	if ingestLedger > lastIngestedLedger+1 {
+		return state{systemState: initState},
+			errors.Wrap(
+				err,
+				"expected ingest ledger to be at most one greater"+
+					"than last ingested ledger in db",
+			)
 	}
 
-	err = s.historyQ.TruncateExpingestStateTables()
-	if err != nil {
-		return state{systemState: initState}, errors.Wrap(err, "Error clearing ingest tables")
-	}
+	if ingestLedger < lastIngestedLedger {
+		// rollback because we will not be updating the DB
+		// so there is no need to hold on to the distributed lock
+		// and thereby block the other nodes from ingesting
+		if err = s.historyQ.Rollback(); err != nil {
+			return s.state,
+				errors.Wrap(err, "Error rolling back transaction")
+		}
 
-	if s.state.checkpointLedger != 0 {
-		err = s.session.RunFromCheckpoint(s.state.checkpointLedger)
-	} else {
-		err = s.session.Run()
-	}
-	if err != nil {
-		// Check if session processed a state, if so, continue since the
-		// last processed ledger, otherwise start over.
-		latestSuccessfullyProcessedLedger, processed := s.session.GetLatestSuccessfullyProcessedLedger()
-		if !processed {
-			return state{systemState: initState}, err
+		orderBookProcessor := s.buildOrderBookChangeProcessor()
+		err = s.runChangeProcessorOnLedger(orderBookProcessor, ingestLedger)
+		if err != nil {
+			return s.state,
+				errors.Wrap(err, "Error running change processor on ledger")
+
+		}
+
+		if err = s.graph.Apply(ingestLedger); err != nil {
+			return s.state,
+				errors.Wrap(err, "Error applying graph changes from ledger")
 		}
 
 		return state{
 			systemState:                       resumeState,
-			latestSuccessfullyProcessedLedger: latestSuccessfullyProcessedLedger,
-		}, err
+			latestSuccessfullyProcessedLedger: ingestLedger,
+		}, nil
 	}
 
-	return state{systemState: shutdownState}, nil
+	err = s.runAllProcessorsOnLedger(ingestLedger)
+	if err != nil {
+		return s.state,
+			errors.Wrap(err, "Error running processors on ledger")
+	}
+
+	err = s.historyQ.UpdateLastLedgerExpIngest(ingestLedger)
+	if err != nil {
+		return s.state,
+			errors.Wrap(err, "Error updating last ingested ledger")
+	}
+
+	if err = s.graph.Apply(ingestLedger); err != nil {
+		return s.state,
+			errors.Wrap(err, "Error applying graph changes from ledger")
+	}
+
+	if err = s.historyQ.Commit(); err != nil {
+		return s.state,
+			errors.Wrap(err, "Error commiting processor transaction")
+	}
+
+	s.maybeVerifyState(ingestLedger)
+
+	return state{
+		systemState:                       resumeState,
+		latestSuccessfullyProcessedLedger: ingestLedger,
+	}, nil
 }
 
-func (s *System) resume() (state, error) {
-	err := s.session.Resume(s.state.latestSuccessfullyProcessedLedger + 1)
+func (s *System) maybeVerifyState(lastIngestedLedger uint32) {
+	stateInvalid, err := s.historyQ.GetExpStateInvalid()
 	if err != nil {
-		err = errors.Wrap(err, "Error returned from ingest.LiveSession")
-		// If no ledgers processed so far, try again with the
-		// latestSuccessfullyProcessedLedger+1 (do nothing).
-		// Otherwise, set latestSuccessfullyProcessedLedger to the last
-		// successfully ingested ledger in the machine state.
-		sessionLastLedger, processed := s.session.GetLatestSuccessfullyProcessedLedger()
-		if processed {
-			return state{
-				systemState:                       resumeState,
-				latestSuccessfullyProcessedLedger: sessionLastLedger,
-			}, err
-		}
-
-		return s.state, err
+		log.WithField("err", err).Error("Error getting state invalid value")
 	}
 
-	return state{systemState: shutdownState}, nil
+	// Run verification routine only when...
+	if !stateInvalid && // state has not been proved to be invalid...
+		!s.disableStateVerification && // state verification is not disabled...
+		historyarchive.IsCheckpoint(lastIngestedLedger) { // it's a checkpoint ledger.
+		s.wg.Add(1)
+		go func(graphOffersMap map[xdr.Int64]xdr.OfferEntry) {
+			defer s.wg.Done()
+
+			err := s.verifyState(graphOffersMap)
+			if err != nil {
+				errorCount := s.incrementStateVerificationErrors()
+				switch errors.Cause(err).(type) {
+				case ingesterrors.StateError:
+					markStateInvalid(s.historyQ, err)
+				default:
+					logger := log.WithField("err", err).Warn
+					if errorCount >= stateVerificationErrorThreshold {
+						logger = log.WithField("err", err).Error
+					}
+					logger("State verification errored")
+				}
+			} else {
+				s.resetStateVerificationErrors()
+			}
+		}(s.graph.OffersMap())
+	}
 }
 
 // ingestHistoryRange is used when catching up history data and when reingesting
 // range.
 func (s *System) ingestHistoryRange() (state, error) {
 	returnState := initState
+	validateStartLedger := true
+	// unless we're running the horizon reingest range command we should
+	// always check that the start ledger is equal to the last ledger
+	// in the db plus one
 	if s.state.shutdownWhenDone {
 		// Shutdown when done - used in `reingest range` command.
 		returnState = shutdownState
+		validateStartLedger = false
+	}
+
+	if err := s.historyQ.Begin(); err != nil {
+		return state{systemState: returnState},
+			errors.Wrap(err, "Error starting a transaction")
+	}
+	defer s.historyQ.Rollback()
+
+	// acquire distributed lock so no one else can perform ingestion operations.
+	if _, err := s.historyQ.GetLastLedgerExpIngest(); err != nil {
+		return state{systemState: returnState},
+			errors.Wrap(err, "Error getting last ingested ledger")
 	}
 
 	if s.state.rangeClearHistory {
@@ -608,7 +641,8 @@ func (s *System) ingestHistoryRange() (state, error) {
 		)
 
 		if err != nil {
-			return state{systemState: returnState}, errors.Wrap(err, "Invalid range")
+			return state{systemState: returnState},
+				errors.Wrap(err, "Invalid range")
 		}
 
 		err = s.historyQ.DeleteRangeAll(start, end)
@@ -617,31 +651,39 @@ func (s *System) ingestHistoryRange() (state, error) {
 		}
 	}
 
-	statePipeline := s.rangeSession.StatePipeline
-	s.rangeSession.StatePipeline = nil
-	// -1 here because RangeSession is ingesting state at FromLedger and then
-	// continues with ingestion from FromLedger + 1
-	s.rangeSession.FromLedger = s.state.rangeFromLedger - 1
-	s.rangeSession.ToLedger = s.state.rangeToLedger
-	// Temporarily disable disableStateVerification
-	s.disableStateVerification = true
-	defer func() {
-		// Revert previous values
-		s.rangeSession.StatePipeline = statePipeline
-		s.disableStateVerification = s.config.DisableStateVerification
-	}()
-
-	err := s.rangeSession.Run()
-	if err != nil {
-		return state{systemState: returnState}, err
+	if validateStartLedger {
+		err := s.assertLatestHistoryLedgerIs(s.state.rangeFromLedger - 1)
+		if err != nil {
+			return state{systemState: returnState}, err
+		}
 	}
 
-	err = s.historyQ.Commit()
-	if err != nil {
+	for cur := s.state.rangeFromLedger; cur <= s.state.rangeToLedger; cur++ {
+		if err := s.runTransactionProcessorsOnLedger(cur); err != nil {
+			return state{systemState: returnState}, err
+		}
+	}
+
+	if err := s.historyQ.Commit(); err != nil {
 		return state{systemState: returnState}, err
 	}
 
 	return state{systemState: returnState}, nil
+}
+
+func (s *System) assertLatestHistoryLedgerIs(expected uint32) error {
+	lastHistoryLedger, err := s.historyQ.GetLatestLedger()
+	if err != nil {
+		return errors.Wrap(err, "could not get latest history ledger")
+	}
+	if lastHistoryLedger != expected {
+		return errors.Errorf(
+			"expected latest history ledger to be %v but got %v",
+			expected,
+			lastHistoryLedger,
+		)
+	}
+	return nil
 }
 
 func (s *System) waitForCheckpoint() (state, error) {
@@ -651,6 +693,12 @@ func (s *System) waitForCheckpoint() (state, error) {
 }
 
 func (s *System) verifyRange() (state, error) {
+	if err := s.historyQ.Begin(); err != nil {
+		err = errors.Wrap(err, "Error starting a transaction")
+		return state{systemState: shutdownState, returnError: err}, err
+	}
+	defer s.historyQ.Rollback()
+
 	// Simple check if DB clean
 	lastIngestedLedger, err := s.historyQ.GetLastLedgerExpIngest()
 	if err != nil {
@@ -659,20 +707,74 @@ func (s *System) verifyRange() (state, error) {
 	}
 
 	if lastIngestedLedger != 0 {
-		return state{systemState: shutdownState, returnError: errors.New("Database not empty")}, err
+		err = errors.New("Database not empty")
+		return state{systemState: shutdownState, returnError: err}, err
 	}
 
-	s.rangeSession.FromLedger = s.state.rangeFromLedger
-	s.rangeSession.ToLedger = s.state.rangeToLedger
-	// It's fine to change System settings because the next state of verifyRange
-	// is always shut down.
-	s.disableStateVerification = true
+	log.WithFields(logpkg.F{
+		"ledger": s.state.rangeFromLedger,
+	}).Info("Processing state")
 
-	err = s.rangeSession.Run()
-	if err == nil {
-		if s.state.rangeVerifyState {
-			err = s.verifyState(s.graph.OffersMap())
+	startTime := time.Now()
+	err = s.runHistoryArchiveIngestion(s.state.rangeFromLedger)
+	if err != nil {
+		err = errors.Wrap(err, "Error ingesting history archive")
+		return state{systemState: shutdownState, returnError: err}, err
+
+	}
+
+	log.WithFields(logpkg.F{
+		"ledger":   s.state.rangeFromLedger,
+		"duration": time.Since(startTime).Seconds(),
+	}).Info("Processed state")
+
+	if err = s.historyQ.Commit(); err != nil {
+		err = errors.Wrap(err, "Error commiting")
+		return state{systemState: shutdownState, returnError: err}, err
+	}
+
+	for sequence := s.state.rangeFromLedger + 1; sequence <= s.state.rangeToLedger; sequence++ {
+		log.WithFields(logpkg.F{
+			"ledger": sequence,
+		}).Info("Processing ledger")
+
+		startTime := time.Now()
+
+		if err = s.historyQ.Begin(); err != nil {
+			err = errors.Wrap(err, "Error starting a transaction")
+			return state{systemState: shutdownState, returnError: err}, err
 		}
+
+		err = s.runAllProcessorsOnLedger(sequence)
+		if err != nil {
+			err = errors.Wrap(err, "Error running processors on ledger")
+			return state{systemState: shutdownState, returnError: err}, err
+		}
+
+		err = s.historyQ.UpdateLastLedgerExpIngest(sequence)
+		if err != nil {
+			err = errors.Wrap(err, "Error updating last ingested ledger")
+			return state{systemState: shutdownState, returnError: err}, err
+		}
+
+		if err = s.graph.Apply(sequence); err != nil {
+			err = errors.Wrap(err, "Error applying graph history archive changes")
+			return state{systemState: shutdownState, returnError: err}, err
+		}
+
+		if err = s.historyQ.Commit(); err != nil {
+			err = errors.Wrap(err, "Error commiting")
+			return state{systemState: shutdownState, returnError: err}, err
+		}
+
+		log.WithFields(logpkg.F{
+			"ledger":   sequence,
+			"duration": time.Since(startTime).Seconds(),
+		}).Info("Processed ledger")
+	}
+
+	if s.state.rangeVerifyState {
+		err = s.verifyState(s.graph.OffersMap())
 	}
 
 	return state{systemState: shutdownState, returnError: err}, err
@@ -693,16 +795,20 @@ func (s *System) resetStateVerificationErrors() {
 
 func (s *System) Shutdown() {
 	log.Info("Shutting down ingestion system...")
-	s.session.Shutdown()
-	if s.rangeSession != nil {
-		s.rangeSession.Shutdown()
-	}
 	s.stateVerificationMutex.Lock()
 	defer s.stateVerificationMutex.Unlock()
 	if s.stateVerificationRunning {
 		log.Info("Shutting down state verifier...")
 	}
 	close(s.shutdown)
+}
+
+func markStateInvalid(historyQ dbQ, err error) {
+	log.WithField("err", err).Error("STATE IS INVALID!")
+	q := &history.Q{historyQ.Clone()}
+	if err := q.UpdateExpStateInvalid(true); err != nil {
+		log.WithField("err", err).Error("Error updating state invalid value")
+	}
 }
 
 func createArchive(archiveURL string) (*historyarchive.Archive, error) {

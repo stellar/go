@@ -359,9 +359,10 @@ LoopBucketEntry:
 			}
 
 			if !seen {
+				// Return LEDGER_ENTRY_STATE changes only now.
 				liveEntry := entry.MustLiveEntry()
 				entryChange := xdr.LedgerEntryChange{
-					Type:  xdr.LedgerEntryChangeTypeLedgerEntryCreated,
+					Type:  xdr.LedgerEntryChangeTypeLedgerEntryState,
 					State: &liveEntry,
 				}
 				msr.readChan <- readResult{entryChange, nil}
@@ -408,7 +409,7 @@ func (msr *SingleLedgerStateReader) GetSequence() uint32 {
 }
 
 // Read returns a new ledger entry change on each call, returning io.EOF when the stream ends.
-func (msr *SingleLedgerStateReader) Read() (xdr.LedgerEntryChange, error) {
+func (msr *SingleLedgerStateReader) Read() (Change, error) {
 	msr.streamOnce.Do(func() {
 		go msr.streamBuckets()
 	})
@@ -417,13 +418,16 @@ func (msr *SingleLedgerStateReader) Read() (xdr.LedgerEntryChange, error) {
 	result, ok := <-msr.readChan
 	if !ok {
 		// when channel is closed then return io.EOF
-		return xdr.LedgerEntryChange{}, io.EOF
+		return Change{}, io.EOF
 	}
 
 	if result.e != nil {
-		return xdr.LedgerEntryChange{}, errors.Wrap(result.e, "Error while reading from buckets")
+		return Change{}, errors.Wrap(result.e, "Error while reading from buckets")
 	}
-	return result.entryChange, nil
+	return Change{
+		Type: result.entryChange.EntryType(),
+		Post: result.entryChange.State,
+	}, nil
 }
 
 func (msr *SingleLedgerStateReader) error(err error) readResult {

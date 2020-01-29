@@ -27,16 +27,7 @@ type TrustLinesProcessorTestSuiteState struct {
 
 func (s *TrustLinesProcessorTestSuiteState) SetupTest() {
 	s.mockQ = &history.MockQTrustLines{}
-
-	s.processor = &TrustLinesProcessor{
-		TrustLinesQ: s.mockQ,
-	}
-
-	header := xdr.LedgerHeader{
-		LedgerSeq: xdr.Uint32(63),
-	}
-	err := s.processor.Init(header)
-	s.Assert().NoError(err)
+	s.processor = NewTrustLinesProcessor(s.mockQ)
 }
 
 func (s *TrustLinesProcessorTestSuiteState) TearDownTest() {
@@ -125,18 +116,7 @@ type TrustLinesProcessorTestSuiteLedger struct {
 
 func (s *TrustLinesProcessorTestSuiteLedger) SetupTest() {
 	s.mockQ = &history.MockQTrustLines{}
-
-	s.context = context.WithValue(context.Background(), IngestUpdateState, true)
-
-	s.processor = &TrustLinesProcessor{
-		TrustLinesQ: s.mockQ,
-	}
-
-	header := xdr.LedgerHeader{
-		LedgerSeq: xdr.Uint32(63),
-	}
-	err := s.processor.Init(header)
-	s.Assert().NoError(err)
+	s.processor = NewTrustLinesProcessor(s.mockQ)
 }
 
 func (s *TrustLinesProcessorTestSuiteLedger) TearDownTest() {

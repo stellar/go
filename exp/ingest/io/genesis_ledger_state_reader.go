@@ -27,12 +27,12 @@ func (r *GenesisLedgerStateReader) GetSequence() uint32 {
 }
 
 // Read returns a new ledger entry change on each call, returning io.EOF when the stream ends.
-func (r *GenesisLedgerStateReader) Read() (xdr.LedgerEntryChange, error) {
+func (r *GenesisLedgerStateReader) Read() (Change, error) {
 	r.mutex.Lock()
 	defer r.mutex.Unlock()
 
 	if r.done {
-		return xdr.LedgerEntryChange{}, io.EOF
+		return Change{}, io.EOF
 	}
 
 	masterKeyPair := keypair.Master(r.NetworkPassphrase)
@@ -52,9 +52,9 @@ func (r *GenesisLedgerStateReader) Read() (xdr.LedgerEntryChange, error) {
 	}
 
 	r.done = true
-	return xdr.LedgerEntryChange{
-		Type:  xdr.LedgerEntryChangeTypeLedgerEntryState,
-		State: &masterAccountEntry,
+	return Change{
+		Type: masterAccountEntry.Data.Type,
+		Post: &masterAccountEntry,
 	}, nil
 }
 

@@ -23,15 +23,7 @@ type AccountsProcessorTestSuiteState struct {
 func (s *AccountsProcessorTestSuiteState) SetupTest() {
 	s.mockQ = &history.MockQAccounts{}
 
-	s.processor = &AccountsProcessor{
-		AccountsQ: s.mockQ,
-	}
-
-	header := xdr.LedgerHeader{
-		LedgerSeq: xdr.Uint32(63),
-	}
-	err := s.processor.Init(header)
-	s.Assert().NoError(err)
+	s.processor = NewAccountsProcessor(s.mockQ)
 }
 
 func (s *AccountsProcessorTestSuiteState) TearDownTest() {
@@ -92,15 +84,7 @@ type AccountsProcessorTestSuiteLedger struct {
 func (s *AccountsProcessorTestSuiteLedger) SetupTest() {
 	s.mockQ = &history.MockQAccounts{}
 
-	s.processor = &AccountsProcessor{
-		AccountsQ: s.mockQ,
-	}
-
-	header := xdr.LedgerHeader{
-		LedgerSeq: xdr.Uint32(63),
-	}
-	err := s.processor.Init(header)
-	s.Assert().NoError(err)
+	s.processor = NewAccountsProcessor(s.mockQ)
 }
 
 func (s *AccountsProcessorTestSuiteLedger) TearDownTest() {

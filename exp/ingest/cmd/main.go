@@ -81,7 +81,7 @@ func useAdapter() {
 	log.Infof("latest ledger is %d, closed at %s (%d)", ledgerSequence,
 		time.Unix(int64(h.Header.ScpValue.CloseTime), 0), h.Header.ScpValue.CloseTime)
 
-	lrc.Close()
+	// lrc.Close()
 	lba.Close()
 }
 

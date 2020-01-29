@@ -9,14 +9,15 @@ import (
 )
 
 type AccountDataProcessor struct {
-	DataQ history.QData
+	dataQ history.QData
 
 	cache *io.LedgerEntryChangeCache
 }
 
-func (p *AccountDataProcessor) Init(header xdr.LedgerHeader) error {
+func NewAccountDataProcessor(dataQ history.QData) *AccountDataProcessor {
+	p := &AccountDataProcessor{dataQ: dataQ}
 	p.reset()
-	return nil
+	return p
 }
 
 func (p *AccountDataProcessor) reset() {
@@ -46,7 +47,7 @@ func (p *AccountDataProcessor) ProcessChange(change io.Change) error {
 }
 
 func (p *AccountDataProcessor) Commit() error {
-	batch := p.DataQ.NewAccountDataBatchInsertBuilder(maxBatchSize)
+	batch := p.dataQ.NewAccountDataBatchInsertBuilder(maxBatchSize)
 
 	changes := p.cache.GetChanges()
 	for _, change := range changes {
@@ -72,7 +73,7 @@ func (p *AccountDataProcessor) Commit() error {
 			if err != nil {
 				return errors.Wrap(err, "Error creating ledger key")
 			}
-			rowsAffected, err = p.DataQ.RemoveAccountData(*ledgerKey.Data)
+			rowsAffected, err = p.dataQ.RemoveAccountData(*ledgerKey.Data)
 		default:
 			// Updated
 			action = "updating"
@@ -81,7 +82,7 @@ func (p *AccountDataProcessor) Commit() error {
 			if err != nil {
 				return errors.Wrap(err, "Error creating ledger key")
 			}
-			rowsAffected, err = p.DataQ.UpdateAccountData(data, change.Post.LastModifiedLedgerSeq)
+			rowsAffected, err = p.dataQ.UpdateAccountData(data, change.Post.LastModifiedLedgerSeq)
 		}
 
 		if err != nil {

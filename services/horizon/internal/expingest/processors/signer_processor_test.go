@@ -30,9 +30,7 @@ func (s *AccountsSignerProcessorTestSuiteState) SetupTest() {
 		On("NewAccountSignersBatchInsertBuilder", maxBatchSize).
 		Return(s.mockBatchInsertBuilder).Once()
 
-	s.processor = &SignersProcessor{
-		SignersQ: s.mockQ,
-	}
+	s.processor = NewSignersProcessor(s.mockQ, false)
 }
 
 func (s *AccountsSignerProcessorTestSuiteState) TearDownTest() {
@@ -44,26 +42,10 @@ func (s *AccountsSignerProcessorTestSuiteState) TearDownTest() {
 }
 
 func (s *AccountsSignerProcessorTestSuiteState) TestNoEntries() {
-	s.mockQ.On("CountAccounts").Return(0, nil).Once()
-
-	header := xdr.LedgerHeader{
-		LedgerSeq: xdr.Uint32(63),
-	}
-	err := s.processor.Init(header)
-	s.Assert().NoError(err)
-
 	// Nothing processed, assertions in TearDownTest.
 }
 
 func (s *AccountsSignerProcessorTestSuiteState) TestCreatesSigners() {
-	s.mockQ.On("CountAccounts").Return(0, nil).Once()
-
-	header := xdr.LedgerHeader{
-		LedgerSeq: xdr.Uint32(63),
-	}
-	err := s.processor.Init(header)
-	s.Assert().NoError(err)
-
 	s.mockBatchInsertBuilder.
 		On("Add", history.AccountSigner{
 			Account: "GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML",
@@ -71,7 +53,7 @@ func (s *AccountsSignerProcessorTestSuiteState) TestCreatesSigners() {
 			Weight:  int32(1),
 		}).Return(nil).Once()
 
-	err = s.processor.ProcessChange(io.Change{
+	err := s.processor.ProcessChange(io.Change{
 		Type: xdr.LedgerEntryTypeAccount,
 		Pre:  nil,
 		Post: &xdr.LedgerEntry{
@@ -131,18 +113,7 @@ func (s *AccountsSignerProcessorTestSuiteLedger) SetupTest() {
 		On("NewAccountSignersBatchInsertBuilder", maxBatchSize).
 		Return(&history.MockAccountSignersBatchInsertBuilder{}).Once()
 
-	s.processor = &SignersProcessor{
-		SignersQ: s.mockQ,
-	}
-
-	// No insertOnlyMode
-	s.mockQ.On("CountAccounts").Return(100, nil).Once()
-
-	header := xdr.LedgerHeader{
-		LedgerSeq: xdr.Uint32(63),
-	}
-	err := s.processor.Init(header)
-	s.Assert().NoError(err)
+	s.processor = NewSignersProcessor(s.mockQ, true)
 }
 
 func (s *AccountsSignerProcessorTestSuiteLedger) TearDownTest() {

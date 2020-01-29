@@ -70,8 +70,8 @@ func (s *LedgersProcessorTestSuiteLedger) SetupTest() {
 		},
 	}
 	s.processor = NewLedgerProcessor(
-		s.header,
 		s.mockQ,
+		s.header,
 		s.ingestVersion,
 	)
 

@@ -9,14 +9,15 @@ import (
 )
 
 type TrustLinesProcessor struct {
-	TrustLinesQ history.QTrustLines
+	trustLinesQ history.QTrustLines
 
 	cache *io.LedgerEntryChangeCache
 }
 
-func (p *TrustLinesProcessor) Init(header xdr.LedgerHeader) error {
+func NewTrustLinesProcessor(trustLinesQ history.QTrustLines) *TrustLinesProcessor {
+	p := &TrustLinesProcessor{trustLinesQ: trustLinesQ}
 	p.reset()
-	return nil
+	return p
 }
 
 func (p *TrustLinesProcessor) reset() {
@@ -66,7 +67,7 @@ func (p *TrustLinesProcessor) Commit() error {
 			if err != nil {
 				return errors.Wrap(err, "Error creating ledger key")
 			}
-			rowsAffected, err = p.TrustLinesQ.RemoveTrustLine(*ledgerKey.TrustLine)
+			rowsAffected, err = p.trustLinesQ.RemoveTrustLine(*ledgerKey.TrustLine)
 			if err != nil {
 				return err
 			}
@@ -87,7 +88,7 @@ func (p *TrustLinesProcessor) Commit() error {
 
 	// Upsert accounts
 	if len(batchUpsertTrustLines) > 0 {
-		err := p.TrustLinesQ.UpsertTrustLines(batchUpsertTrustLines)
+		err := p.trustLinesQ.UpsertTrustLines(batchUpsertTrustLines)
 		if err != nil {
 			return errors.Wrap(err, "errors in UpsertTrustLines")
 		}

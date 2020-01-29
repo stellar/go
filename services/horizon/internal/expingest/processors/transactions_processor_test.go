@@ -27,10 +27,7 @@ func (s *TransactionsProcessorTestSuiteLedger) SetupTest() {
 		On("NewTransactionBatchInsertBuilder", maxBatchSize).
 		Return(s.mockBatchInsertBuilder).Once()
 
-	s.processor = NewTransactionProcessor(
-		s.mockQ,
-		20,
-	)
+	s.processor = NewTransactionProcessor(s.mockQ, 20)
 }
 
 func (s *TransactionsProcessorTestSuiteLedger) TearDownTest() {

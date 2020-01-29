@@ -65,7 +65,7 @@ func TestGetState_Read(t *testing.T) {
 	if !assert.NotNil(t, lec) {
 		return
 	}
-	assert.Equal(t, "GAFBQT4VRORLEVEECUYDQGWNVQ563ZN76LGRJR7T7KDL32EES54UOQST", lec.State.Data.Account.AccountId.Address())
+	assert.Equal(t, "GAFBQT4VRORLEVEECUYDQGWNVQ563ZN76LGRJR7T7KDL32EES54UOQST", lec.Post.Data.Account.AccountId.Address())
 }
 
 func getTestArchive() (*historyarchive.Archive, error) {
