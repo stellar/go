@@ -215,3 +215,10 @@ func (c *LedgerEntryChangeCache) GetChanges() []Change {
 
 	return changes
 }
+
+// Size returns number of ledger entries in the cache.
+func (c *LedgerEntryChangeCache) Size() int {
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
+	return len(c.cache)
+}
