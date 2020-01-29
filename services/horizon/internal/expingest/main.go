@@ -106,8 +106,6 @@ type state struct {
 	systemState                       systemState
 	latestSuccessfullyProcessedLedger uint32
 
-	checkpointLedger uint32
-
 	rangeFromLedger   uint32
 	rangeToLedger     uint32
 	rangeVerifyState  bool
@@ -339,7 +337,8 @@ func (s *System) init() (state, error) {
 		// In case of errors it will start `Init` from the beginning.
 		log.Info("Starting ingestion system from empty state...")
 
-		lastCheckpoint, err := s.historyAdapter.GetLatestLedgerSequence()
+		var lastCheckpoint uint32
+		lastCheckpoint, err = s.historyAdapter.GetLatestLedgerSequence()
 		if err != nil {
 			return state{systemState: initState}, errors.Wrap(err, "Error getting last checkpoint")
 		}
@@ -415,7 +414,7 @@ func (s *System) init() (state, error) {
 		// Now it's on by default but the latest history ledger is greater
 		// than the latest expingest ledger. We reset the exp ledger sequence
 		// so init state will rebuild the state correctly.
-		err := s.historyQ.UpdateLastLedgerExpIngest(0)
+		err = s.historyQ.UpdateLastLedgerExpIngest(0)
 		if err != nil {
 			return state{systemState: initState}, errors.Wrap(err, "Error updating last ingested ledger")
 		}
