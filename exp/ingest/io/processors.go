@@ -39,21 +39,25 @@ func StreamLedgerTransactions(
 func StreamChanges(
 	changeProcessor ChangeProcessor,
 	reader ChangeReader,
-) error {
+) (int, error) {
+	processedChanges := 0
+
 	for {
 		change, err := reader.Read()
 		if err == io.EOF {
-			return nil
+			return processedChanges, nil
 		}
 		if err != nil {
-			return errors.Wrapf(err, "could not read transaction")
+			return processedChanges, errors.Wrapf(err, "could not read transaction")
 		}
 
 		if err = changeProcessor.ProcessChange(change); err != nil {
-			return errors.Wrap(
+			return processedChanges, errors.Wrap(
 				err,
 				"could not process change",
 			)
 		}
+
+		processedChanges++
 	}
 }
