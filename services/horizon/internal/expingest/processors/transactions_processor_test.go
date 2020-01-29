@@ -5,13 +5,12 @@ import (
 
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/support/errors"
-	"github.com/stellar/go/xdr"
 	"github.com/stretchr/testify/suite"
 )
 
 type TransactionsProcessorTestSuiteLedger struct {
 	suite.Suite
-	processor              *NewTransactionProcessor
+	processor              *TransactionProcessor
 	mockQ                  *history.MockQTransactions
 	mockBatchInsertBuilder *history.MockTransactionsBatchInsertBuilder
 }
@@ -28,15 +27,10 @@ func (s *TransactionsProcessorTestSuiteLedger) SetupTest() {
 		On("NewTransactionBatchInsertBuilder", maxBatchSize).
 		Return(s.mockBatchInsertBuilder).Once()
 
-	s.processor = &NewTransactionProcessor{
-		TransactionsQ: s.mockQ,
-	}
-
-	header := xdr.LedgerHeader{
-		LedgerSeq: xdr.Uint32(20),
-	}
-	err := s.processor.Init(header)
-	s.Assert().NoError(err)
+	s.processor = NewTransactionProcessor(
+		s.mockQ,
+		20,
+	)
 }
 
 func (s *TransactionsProcessorTestSuiteLedger) TearDownTest() {
@@ -75,7 +69,7 @@ func (s *TransactionsProcessorTestSuiteLedger) TestAddTransactionsFails() {
 
 	err := s.processor.ProcessTransaction(firstTx)
 	s.Assert().Error(err)
-	s.Assert().EqualError(err, "transient error")
+	s.Assert().EqualError(err, "Error batch inserting transaction rows: transient error")
 }
 
 func (s *TransactionsProcessorTestSuiteLedger) TestExecFails() {
@@ -90,5 +84,5 @@ func (s *TransactionsProcessorTestSuiteLedger) TestExecFails() {
 
 	err = s.processor.Commit()
 	s.Assert().Error(err)
-	s.Assert().EqualError(err, "transient error")
+	s.Assert().EqualError(err, "Error flushing transaction batch: transient error")
 }

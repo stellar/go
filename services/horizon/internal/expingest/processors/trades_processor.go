@@ -1,13 +1,9 @@
 package processors
 
 import (
-	"context"
-	stdio "io"
 	"time"
 
 	"github.com/stellar/go/exp/ingest/io"
-	ingestpipeline "github.com/stellar/go/exp/ingest/pipeline"
-	"github.com/stellar/go/exp/support/pipeline"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/services/horizon/internal/toid"
 	"github.com/stellar/go/support/errors"
@@ -16,102 +12,69 @@ import (
 
 // TradeProcessor operations processor
 type TradeProcessor struct {
-	TradesQ history.QTrades
+	tradesQ    history.QTrades
+	ledger     xdr.LedgerHeaderHistoryEntry
+	inserts    []history.InsertTrade
+	buyers     []string
+	accountSet map[string]int64
+	assets     []xdr.Asset
 }
 
-// ProcessLedger process the given ledger
-func (p *TradeProcessor) ProcessLedger(ctx context.Context, store *pipeline.Store, r io.LedgerReader, w io.LedgerWriter) (err error) {
-	defer func() {
-		// io.LedgerReader.Close() returns error if upgrade changes have not
-		// been processed so it's worth checking the error.
-		closeErr := r.Close()
-		// Do not overwrite the previous error
-		if err == nil {
-			err = closeErr
-		}
-	}()
-	defer w.Close()
-	r.IgnoreUpgradeChanges()
+func NewTradeProcessor(tradesQ history.QTrades, ledger xdr.LedgerHeaderHistoryEntry) *TradeProcessor {
+	return &TradeProcessor{
+		tradesQ:    tradesQ,
+		ledger:     ledger,
+		accountSet: map[string]int64{},
+	}
+}
 
-	// Exit early if not ingesting into a DB
-	if v := ctx.Value(IngestUpdateDatabase); !(v != nil && v.(bool)) {
+// ProcessTransaction process the given transaction
+func (p *TradeProcessor) ProcessTransaction(transaction io.LedgerTransaction) (err error) {
+	if !transaction.Successful() {
 		return nil
 	}
 
-	ledger := r.GetHeader()
-
-	var inserts []history.InsertTrade
-	var buyers []string
-	accountSet := map[string]int64{}
-	assets := []xdr.Asset{}
-
-	for {
-		var transaction io.LedgerTransaction
-		transaction, err = r.Read()
-		if err != nil {
-			if err == stdio.EOF {
-				break
-			} else {
-				return err
-			}
-		}
-
-		if !transaction.Successful() {
-			continue
-		}
-
-		var txInserts []history.InsertTrade
-		var txBuyers []string
-		txInserts, txBuyers, err = p.extractTrades(ledger, transaction)
-		if err != nil {
-			return err
-		}
-
-		for i, insert := range txInserts {
-			buyer := txBuyers[i]
-			accountSet[insert.Trade.SellerId.Address()] = 0
-			accountSet[buyer] = 0
-			assets = append(assets, insert.Trade.AssetSold, insert.Trade.AssetBought)
-
-			inserts = append(inserts, insert)
-			buyers = append(buyers, buyer)
-		}
-
-		select {
-		case <-ctx.Done():
-			return nil
-		default:
-			continue
-		}
+	var txInserts []history.InsertTrade
+	var txBuyers []string
+	txInserts, txBuyers, err = p.extractTrades(p.ledger, transaction)
+	if err != nil {
+		return err
 	}
 
-	if len(inserts) > 0 {
-		batch := p.TradesQ.NewTradeBatchInsertBuilder(maxBatchSize)
-		accountSet, err = p.TradesQ.CreateAccounts(mapKeysToList(accountSet))
+	for i, insert := range txInserts {
+		buyer := txBuyers[i]
+		p.accountSet[insert.Trade.SellerId.Address()] = 0
+		p.accountSet[buyer] = 0
+		p.assets = append(p.assets, insert.Trade.AssetSold, insert.Trade.AssetBought)
+
+		p.inserts = append(p.inserts, insert)
+		p.buyers = append(p.buyers, buyer)
+	}
+
+	return nil
+}
+
+func (p *TradeProcessor) Commit() error {
+	if len(p.inserts) > 0 {
+		batch := p.tradesQ.NewTradeBatchInsertBuilder(maxBatchSize)
+		accountSet, err := p.tradesQ.CreateAccounts(mapKeysToList(p.accountSet))
 		if err != nil {
 			return errors.Wrap(err, "Error creating account ids")
 		}
 
 		var assetMap map[string]history.Asset
-		assetMap, err = p.TradesQ.CreateAssets(assets)
+		assetMap, err = p.tradesQ.CreateAssets(p.assets)
 		if err != nil {
 			return errors.Wrap(err, "Error creating asset ids")
 		}
 
-		for i, insert := range inserts {
-			insert.BuyerAccountID = accountSet[buyers[i]]
+		for i, insert := range p.inserts {
+			insert.BuyerAccountID = accountSet[p.buyers[i]]
 			insert.SellerAccountID = accountSet[insert.Trade.SellerId.Address()]
 			insert.SoldAssetID = assetMap[insert.Trade.AssetSold.String()].ID
 			insert.BoughtAssetID = assetMap[insert.Trade.AssetBought.String()].ID
 			if err = batch.Add(insert); err != nil {
 				return errors.Wrap(err, "Error adding trade to batch")
-			}
-
-			select {
-			case <-ctx.Done():
-				return nil
-			default:
-				continue
 			}
 		}
 
@@ -259,12 +222,5 @@ func mapKeysToList(set map[string]int64) []string {
 	return keys
 }
 
-// Name processor name
-func (p *TradeProcessor) Name() string {
-	return "TradeProcessor"
-}
-
-// Reset resets processor
-func (p *TradeProcessor) Reset() {}
-
-var _ ingestpipeline.LedgerProcessor = &TradeProcessor{}
+// TODO: remove comment after https://github.com/stellar/go/pull/2172/files is merged
+// var _ io.ChangeReader = &TradeProcessor{}
