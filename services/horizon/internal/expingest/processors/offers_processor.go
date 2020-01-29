@@ -16,11 +16,11 @@ type OffersProcessor struct {
 }
 
 func (p *OffersProcessor) Init(header xdr.LedgerHeader) error {
-	p.init()
+	p.reset()
 	return nil
 }
 
-func (p *OffersProcessor) init() {
+func (p *OffersProcessor) reset() {
 	p.batch = p.OffersQ.NewOffersBatchInsertBuilder(maxBatchSize)
 	p.cache = io.NewLedgerEntryChangeCache()
 }
@@ -40,7 +40,7 @@ func (p *OffersProcessor) ProcessChange(change io.Change) error {
 		if err != nil {
 			return errors.Wrap(err, "error in Commit")
 		}
-		p.init()
+		p.reset()
 	}
 
 	return nil

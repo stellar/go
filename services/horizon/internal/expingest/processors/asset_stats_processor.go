@@ -24,7 +24,7 @@ type AssetStatsProcessor struct {
 }
 
 func (p *AssetStatsProcessor) Init(header xdr.LedgerHeader) error {
-	p.init()
+	p.reset()
 
 	// We check the number of existing trust line in the DB to check if asset
 	// stats table is empty too. If so, we switch to insertOnlyMode.
@@ -40,7 +40,7 @@ func (p *AssetStatsProcessor) Init(header xdr.LedgerHeader) error {
 	return nil
 }
 
-func (p *AssetStatsProcessor) init() {
+func (p *AssetStatsProcessor) reset() {
 	p.cache = io.NewLedgerEntryChangeCache()
 	p.assetStatSet = AssetStatSet{}
 }
@@ -74,7 +74,7 @@ func (p *AssetStatsProcessor) ProcessChange(change io.Change) error {
 		if err != nil {
 			return errors.Wrap(err, "error in Commit")
 		}
-		p.init()
+		p.reset()
 	}
 
 	return nil

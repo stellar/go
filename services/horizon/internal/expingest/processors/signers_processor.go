@@ -20,7 +20,7 @@ type SignersProcessor struct {
 }
 
 func (p *SignersProcessor) Init(header xdr.LedgerHeader) error {
-	p.init()
+	p.reset()
 
 	// We check the number of existing trust line in the DB to check if asset
 	// stats table is empty too. If so, we switch to insertOnlyMode.
@@ -36,7 +36,7 @@ func (p *SignersProcessor) Init(header xdr.LedgerHeader) error {
 	return nil
 }
 
-func (p *SignersProcessor) init() {
+func (p *SignersProcessor) reset() {
 	p.batch = p.SignersQ.NewAccountSignersBatchInsertBuilder(maxBatchSize)
 	p.cache = io.NewLedgerEntryChangeCache()
 }
@@ -78,7 +78,7 @@ func (p *SignersProcessor) ProcessChange(change io.Change) error {
 		if err != nil {
 			return errors.Wrap(err, "error in Commit")
 		}
-		p.init()
+		p.reset()
 	}
 
 	return nil

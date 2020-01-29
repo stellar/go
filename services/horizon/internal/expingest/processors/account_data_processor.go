@@ -12,16 +12,14 @@ type AccountDataProcessor struct {
 	DataQ history.QData
 
 	cache *io.LedgerEntryChangeCache
-	batch history.AccountDataBatchInsertBuilder
 }
 
 func (p *AccountDataProcessor) Init(header xdr.LedgerHeader) error {
-	p.init()
+	p.reset()
 	return nil
 }
 
-func (p *AccountDataProcessor) init() {
-	p.batch = p.DataQ.NewAccountDataBatchInsertBuilder(maxBatchSize)
+func (p *AccountDataProcessor) reset() {
 	p.cache = io.NewLedgerEntryChangeCache()
 }
 
@@ -41,13 +39,15 @@ func (p *AccountDataProcessor) ProcessChange(change io.Change) error {
 		if err != nil {
 			return errors.Wrap(err, "error in Commit")
 		}
-		p.init()
+		p.reset()
 	}
 
 	return nil
 }
 
 func (p *AccountDataProcessor) Commit() error {
+	batch := p.DataQ.NewAccountDataBatchInsertBuilder(maxBatchSize)
+
 	changes := p.cache.GetChanges()
 	for _, change := range changes {
 		var err error
@@ -59,7 +59,7 @@ func (p *AccountDataProcessor) Commit() error {
 		case change.Pre == nil && change.Post != nil:
 			// Created
 			action = "inserting"
-			err = p.batch.Add(
+			err = batch.Add(
 				change.Post.Data.MustData(),
 				change.Post.LastModifiedLedgerSeq,
 			)
@@ -99,7 +99,7 @@ func (p *AccountDataProcessor) Commit() error {
 		}
 	}
 
-	err := p.batch.Exec()
+	err := batch.Exec()
 	if err != nil {
 		return errors.Wrap(err, "error executing batch")
 	}

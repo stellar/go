@@ -11,17 +11,15 @@ import (
 type AccountsProcessor struct {
 	AccountsQ history.QAccounts
 
-	cache               *io.LedgerEntryChangeCache
-	batchUpsertAccounts []xdr.LedgerEntry
+	cache *io.LedgerEntryChangeCache
 }
 
 func (p *AccountsProcessor) Init(header xdr.LedgerHeader) error {
-	p.init()
+	p.reset()
 	return nil
 }
 
-func (p *AccountsProcessor) init() {
-	p.batchUpsertAccounts = []xdr.LedgerEntry{}
+func (p *AccountsProcessor) reset() {
 	p.cache = io.NewLedgerEntryChangeCache()
 }
 
@@ -40,13 +38,15 @@ func (p *AccountsProcessor) ProcessChange(change io.Change) error {
 		if err != nil {
 			return errors.Wrap(err, "error in Commit")
 		}
-		p.init()
+		p.reset()
 	}
 
 	return nil
 }
 
 func (p *AccountsProcessor) Commit() error {
+	batchUpsertAccounts := []xdr.LedgerEntry{}
+
 	changes := p.cache.GetChanges()
 	for _, change := range changes {
 		changed, err := change.AccountChangedExceptSigners()
@@ -61,7 +61,7 @@ func (p *AccountsProcessor) Commit() error {
 		switch {
 		case change.Post != nil:
 			// Created and updated
-			p.batchUpsertAccounts = append(p.batchUpsertAccounts, *change.Post)
+			batchUpsertAccounts = append(batchUpsertAccounts, *change.Post)
 		case change.Pre != nil && change.Post == nil:
 			// Removed
 			account := change.Pre.Data.MustAccount()
@@ -85,8 +85,8 @@ func (p *AccountsProcessor) Commit() error {
 	}
 
 	// Upsert accounts
-	if len(p.batchUpsertAccounts) > 0 {
-		err := p.AccountsQ.UpsertAccounts(p.batchUpsertAccounts)
+	if len(batchUpsertAccounts) > 0 {
+		err := p.AccountsQ.UpsertAccounts(batchUpsertAccounts)
 		if err != nil {
 			return errors.Wrap(err, "errors in UpsertAccounts")
 		}

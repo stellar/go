@@ -11,17 +11,15 @@ import (
 type TrustLinesProcessor struct {
 	TrustLinesQ history.QTrustLines
 
-	cache                 *io.LedgerEntryChangeCache
-	batchUpsertTrustLines []xdr.LedgerEntry
+	cache *io.LedgerEntryChangeCache
 }
 
 func (p *TrustLinesProcessor) Init(header xdr.LedgerHeader) error {
-	p.init()
+	p.reset()
 	return nil
 }
 
-func (p *TrustLinesProcessor) init() {
-	p.batchUpsertTrustLines = []xdr.LedgerEntry{}
+func (p *TrustLinesProcessor) reset() {
 	p.cache = io.NewLedgerEntryChangeCache()
 }
 
@@ -40,13 +38,15 @@ func (p *TrustLinesProcessor) ProcessChange(change io.Change) error {
 		if err != nil {
 			return errors.Wrap(err, "error in Commit")
 		}
-		p.init()
+		p.reset()
 	}
 
 	return nil
 }
 
 func (p *TrustLinesProcessor) Commit() error {
+	batchUpsertTrustLines := []xdr.LedgerEntry{}
+
 	changes := p.cache.GetChanges()
 	for _, change := range changes {
 		var rowsAffected int64
@@ -57,7 +57,7 @@ func (p *TrustLinesProcessor) Commit() error {
 		switch {
 		case change.Post != nil:
 			// Created and updated
-			p.batchUpsertTrustLines = append(p.batchUpsertTrustLines, *change.Post)
+			batchUpsertTrustLines = append(batchUpsertTrustLines, *change.Post)
 		case change.Pre != nil && change.Post == nil:
 			// Removed
 			action = "removing"
@@ -86,8 +86,8 @@ func (p *TrustLinesProcessor) Commit() error {
 	}
 
 	// Upsert accounts
-	if len(p.batchUpsertTrustLines) > 0 {
-		err := p.TrustLinesQ.UpsertTrustLines(p.batchUpsertTrustLines)
+	if len(batchUpsertTrustLines) > 0 {
+		err := p.TrustLinesQ.UpsertTrustLines(batchUpsertTrustLines)
 		if err != nil {
 			return errors.Wrap(err, "errors in UpsertTrustLines")
 		}
