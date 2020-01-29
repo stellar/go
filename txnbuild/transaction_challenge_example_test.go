@@ -80,15 +80,14 @@ func ExampleVerifyChallengeTxThreshold() {
 		// Server gets account
 		clientAccountExists := false
 		horizonClientAccount, err := horizonClient.AccountDetail(horizonclient.AccountRequest{AccountID: txClientAccountID})
-		if err == nil {
+		if horizonclient.IsNotFoundError(err) {
+			clientAccountExists = false
+			fmt.Println("Account does not exist, use master key to verify")
+		} else if err == nil {
 			clientAccountExists = true
 		} else {
-			if hErr, ok := err.(*horizonclient.Error); ok && hErr.Problem.Type == "https://stellar.org/horizon-errors/not_found" {
-				fmt.Println("Account does not exist, use master key to verify")
-			} else {
-				fmt.Println("Error:", err)
-				return
-			}
+			fmt.Println("Error:", err)
+			return
 		}
 
 		if clientAccountExists {
