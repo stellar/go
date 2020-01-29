@@ -543,19 +543,16 @@ func (s *System) resume() (state, error) {
 		}, nil
 	}
 
-	changeProcessor := s.buildChangeProcessor(ledgerSource)
-	err = s.runChangeProcessorOnLedger(changeProcessor, ingestLedger)
+	err = s.runAllProcessorsOnLedger(ingestLedger)
 	if err != nil {
 		return s.state,
-			errors.Wrap(err, "Error running change processor on ledger")
-
+			errors.Wrap(err, "Error running processors on ledger")
 	}
 
-	err = s.runTransactionProcessors(ingestLedger)
+	err = s.historyQ.UpdateLastLedgerExpIngest(ingestLedger)
 	if err != nil {
 		return s.state,
-			errors.Wrap(err, "Error running transaction processor on ledger")
-
+			errors.Wrap(err, "Error updating last ingested ledger")
 	}
 
 	if err = s.graph.Apply(ingestLedger); err != nil {
@@ -662,7 +659,7 @@ func (s *System) ingestHistoryRange() (state, error) {
 	}
 
 	for cur := s.state.rangeFromLedger; cur <= s.state.rangeToLedger; cur++ {
-		if err := s.runTransactionProcessors(cur); err != nil {
+		if err := s.runTransactionProcessorsOnLedger(cur); err != nil {
 			return state{systemState: returnState}, err
 		}
 	}
@@ -748,14 +745,9 @@ func (s *System) verifyRange() (state, error) {
 			return state{systemState: shutdownState, returnError: err}, err
 		}
 
-		changeProcessor := s.buildChangeProcessor(ledgerSource)
-		err = s.runChangeProcessorOnLedger(changeProcessor, sequence)
+		err = s.runAllProcessorsOnLedger(sequence)
 		if err != nil {
-			err = errors.Wrap(err, "Error running change processor on ledger")
-			return state{systemState: shutdownState, returnError: err}, err
-		}
-
-		if err = s.runTransactionProcessors(sequence); err != nil {
+			err = errors.Wrap(err, "Error running processors on ledger")
 			return state{systemState: shutdownState, returnError: err}, err
 		}
 

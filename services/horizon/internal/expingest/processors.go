@@ -217,7 +217,7 @@ func (s *System) runChangeProcessorOnLedger(
 	return nil
 }
 
-func (s *System) runTransactionProcessors(ledger uint32) error {
+func (s *System) runTransactionProcessorsOnLedger(ledger uint32) error {
 	ledgerReader, err := io.NewDBLedgerReader(ledger, s.ledgerBackend)
 	if err != nil {
 		return errors.Wrap(err, "Error creating ledger reader")
@@ -232,6 +232,22 @@ func (s *System) runTransactionProcessors(ledger uint32) error {
 	err = txProcessor.Commit()
 	if err != nil {
 		return errors.Wrap(err, "Error commiting changes from processor")
+	}
+
+	return nil
+}
+
+func (s *System) runAllProcessorsOnLedger(ledger uint32) error {
+	err := s.runChangeProcessorOnLedger(
+		s.buildChangeProcessor(ledgerSource), ledger,
+	)
+	if err != nil {
+		return err
+	}
+
+	err = s.runTransactionProcessorsOnLedger(ledger)
+	if err != nil {
+		return err
 	}
 
 	return nil
