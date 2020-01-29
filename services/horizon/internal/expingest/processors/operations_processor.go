@@ -15,7 +15,7 @@ import (
 
 // OperationProcessor operations processor
 type OperationProcessor struct {
-	OperationsQ history.QOperations
+	operationsQ history.QOperations
 
 	sequence uint32
 	batch    history.OperationBatchInsertBuilder
@@ -23,7 +23,7 @@ type OperationProcessor struct {
 
 func NewOperationProcessor(operationsQ history.QOperations, sequence uint32) *OperationProcessor {
 	return &OperationProcessor{
-		OperationsQ: operationsQ,
+		operationsQ: operationsQ,
 		sequence:    sequence,
 		batch:       operationsQ.NewOperationBatchInsertBuilder(maxBatchSize),
 	}

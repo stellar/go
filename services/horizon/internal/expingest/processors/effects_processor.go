@@ -17,15 +17,14 @@ import (
 
 // EffectProcessor process effects
 type EffectProcessor struct {
-	EffectsQ history.QEffects
-
-	sequence uint32
 	effects  []effect
+	effectsQ history.QEffects
+	sequence uint32
 }
 
 func NewEffectProcessor(effectsQ history.QEffects, sequence uint32) *EffectProcessor {
 	return &EffectProcessor{
-		EffectsQ: effectsQ,
+		effectsQ: effectsQ,
 		sequence: sequence,
 	}
 }
@@ -36,7 +35,7 @@ func (p *EffectProcessor) loadAccountIDs(accountSet map[string]int64) error {
 		addresses = append(addresses, address)
 	}
 
-	addressToID, err := p.EffectsQ.CreateAccounts(addresses)
+	addressToID, err := p.effectsQ.CreateAccounts(addresses)
 	if err != nil {
 		return errors.Wrap(err, "Could not create account ids")
 	}
@@ -75,7 +74,7 @@ func operationsEffects(transaction io.LedgerTransaction, sequence uint32) ([]eff
 }
 
 func (p *EffectProcessor) insertDBOperationsEffects(effects []effect, accountSet map[string]int64) error {
-	batch := p.EffectsQ.NewEffectBatchInsertBuilder(maxBatchSize)
+	batch := p.effectsQ.NewEffectBatchInsertBuilder(maxBatchSize)
 
 	for _, effect := range effects {
 		accountID, found := accountSet[effect.address]

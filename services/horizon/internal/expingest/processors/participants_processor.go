@@ -11,15 +11,14 @@ import (
 // ParticipantsProcessor is a processor which ingests various participants
 // from different sources (transactions, operations, etc)
 type ParticipantsProcessor struct {
-	ParticipantsQ history.QParticipants
-
+	participantsQ  history.QParticipants
 	sequence       uint32
 	participantSet map[string]participant
 }
 
 func NewParticipantsProcessor(participantsQ history.QParticipants, sequence uint32) *ParticipantsProcessor {
 	return &ParticipantsProcessor{
-		ParticipantsQ:  participantsQ,
+		participantsQ:  participantsQ,
 		sequence:       sequence,
 		participantSet: map[string]participant{},
 	}
@@ -51,7 +50,7 @@ func (p *ParticipantsProcessor) loadAccountIDs(participantSet map[string]partici
 		addresses = append(addresses, address)
 	}
 
-	addressToID, err := p.ParticipantsQ.CreateAccounts(addresses)
+	addressToID, err := p.participantsQ.CreateAccounts(addresses)
 	if err != nil {
 		return errors.Wrap(err, "Could not create account ids")
 	}
@@ -223,7 +222,7 @@ func (p *ParticipantsProcessor) addOperationsParticipants(
 }
 
 func (p *ParticipantsProcessor) insertDBTransactionParticipants(participantSet map[string]participant) error {
-	batch := p.ParticipantsQ.NewTransactionParticipantsBatchInsertBuilder(maxBatchSize)
+	batch := p.participantsQ.NewTransactionParticipantsBatchInsertBuilder(maxBatchSize)
 
 	for _, entry := range participantSet {
 		for transactionID := range entry.transactionSet {
@@ -240,7 +239,7 @@ func (p *ParticipantsProcessor) insertDBTransactionParticipants(participantSet m
 }
 
 func (p *ParticipantsProcessor) insertDBOperationsParticipants(participantSet map[string]participant) error {
-	batch := p.ParticipantsQ.NewOperationParticipantBatchInsertBuilder(maxBatchSize)
+	batch := p.participantsQ.NewOperationParticipantBatchInsertBuilder(maxBatchSize)
 
 	for _, entry := range participantSet {
 		for operationID := range entry.operationSet {

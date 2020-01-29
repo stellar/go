@@ -12,8 +12,7 @@ import (
 
 // TradeProcessor operations processor
 type TradeProcessor struct {
-	TradesQ history.QTrades
-
+	tradesQ    history.QTrades
 	ledger     xdr.LedgerHeaderHistoryEntry
 	inserts    []history.InsertTrade
 	buyers     []string
@@ -23,7 +22,7 @@ type TradeProcessor struct {
 
 func NewTradeProcessor(tradesQ history.QTrades, ledger xdr.LedgerHeaderHistoryEntry) *TradeProcessor {
 	return &TradeProcessor{
-		TradesQ:    tradesQ,
+		tradesQ:    tradesQ,
 		ledger:     ledger,
 		accountSet: map[string]int64{},
 	}
@@ -57,14 +56,14 @@ func (p *TradeProcessor) ProcessTransaction(transaction io.LedgerTransaction) (e
 
 func (p *TradeProcessor) Commit() error {
 	if len(p.inserts) > 0 {
-		batch := p.TradesQ.NewTradeBatchInsertBuilder(maxBatchSize)
-		accountSet, err := p.TradesQ.CreateAccounts(mapKeysToList(p.accountSet))
+		batch := p.tradesQ.NewTradeBatchInsertBuilder(maxBatchSize)
+		accountSet, err := p.tradesQ.CreateAccounts(mapKeysToList(p.accountSet))
 		if err != nil {
 			return errors.Wrap(err, "Error creating account ids")
 		}
 
 		var assetMap map[string]history.Asset
-		assetMap, err = p.TradesQ.CreateAssets(p.assets)
+		assetMap, err = p.tradesQ.CreateAssets(p.assets)
 		if err != nil {
 			return errors.Wrap(err, "Error creating asset ids")
 		}

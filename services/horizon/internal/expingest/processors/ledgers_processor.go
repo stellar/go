@@ -8,9 +8,9 @@ import (
 )
 
 type LedgersProcessor struct {
-	LedgersQ       history.QLedgers
+	ledgersQ       history.QLedgers
 	ledger         xdr.LedgerHeaderHistoryEntry
-	IngestVersion  int
+	ingestVersion  int
 	successTxCount int
 	failedTxCount  int
 	opCount        int
@@ -19,8 +19,8 @@ type LedgersProcessor struct {
 func NewLedgerProcessor(ledger xdr.LedgerHeaderHistoryEntry, ledgerQ history.QLedgers, ingestVersion int) *LedgersProcessor {
 	return &LedgersProcessor{
 		ledger:        ledger,
-		LedgersQ:      ledgerQ,
-		IngestVersion: ingestVersion,
+		ledgersQ:      ledgerQ,
+		ingestVersion: ingestVersion,
 	}
 }
 
@@ -36,12 +36,12 @@ func (p *LedgersProcessor) ProcessTransaction(transaction io.LedgerTransaction) 
 }
 
 func (p *LedgersProcessor) Commit() error {
-	rowsAffected, err := p.LedgersQ.InsertLedger(
+	rowsAffected, err := p.ledgersQ.InsertLedger(
 		p.ledger,
 		p.successTxCount,
 		p.failedTxCount,
 		p.opCount,
-		p.IngestVersion,
+		p.ingestVersion,
 	)
 
 	if err != nil {
