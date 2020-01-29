@@ -186,7 +186,15 @@ func (s *System) runHistoryArchiveIngestion(
 	}
 	defer stateReader.Close()
 
+	log.Info("Ingesting entries from HAS")
+	stateReader = newLoggerStateReader(
+		stateReader,
+		log,
+		100000,
+	)
+
 	err = io.StreamChanges(changeProcessor, stateReader)
+
 	if err != nil {
 		return errors.Wrap(err, "Error streaming changes from HAS")
 	}
@@ -206,6 +214,8 @@ func (s *System) runChangeProcessorOnLedger(
 	if err != nil {
 		return errors.Wrap(err, "Error creating ledger change reader")
 	}
+
+	log.Info("Ingesting entries from HAS")
 	if err = io.StreamChanges(changeProcessor, changeReader); err != nil {
 		return errors.Wrap(err, "Error streaming changes from ledger")
 	}
