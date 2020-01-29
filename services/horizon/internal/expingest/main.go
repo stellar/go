@@ -11,7 +11,6 @@ import (
 	"github.com/jmoiron/sqlx"
 	"github.com/stellar/go/exp/ingest/adapters"
 	ingesterrors "github.com/stellar/go/exp/ingest/errors"
-	"github.com/stellar/go/exp/ingest/io"
 	"github.com/stellar/go/exp/ingest/ledgerbackend"
 	"github.com/stellar/go/exp/orderbook"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
@@ -57,7 +56,6 @@ type Config struct {
 
 	HistorySession           *db.Session
 	HistoryArchiveURL        string
-	TempSet                  io.TempSet
 	DisableStateVerification bool
 
 	// MaxStreamRetries determines how many times the reader will retry when encountering
@@ -493,7 +491,7 @@ func (s *System) loadOffersIntoMemory() error {
 
 func (s *System) resume() (state, error) {
 	if err := s.historyQ.Begin(); err != nil {
-		return state{systemState: resumeState},
+		return s.state,
 			errors.Wrap(err, "Error starting a transaction")
 	}
 	defer s.historyQ.Rollback()
@@ -502,7 +500,7 @@ func (s *System) resume() (state, error) {
 	// This will get the value `FOR UPDATE`, blocking it for other nodes.
 	lastIngestedLedger, err := s.historyQ.GetLastLedgerExpIngest()
 	if err != nil {
-		return state{systemState: resumeState},
+		return s.state,
 			errors.Wrap(err, "Error getting last ingested ledger")
 	}
 
@@ -522,20 +520,20 @@ func (s *System) resume() (state, error) {
 		// so there is no need to hold on to the distributed lock
 		// and thereby block the other nodes from ingesting
 		if err = s.historyQ.Rollback(); err != nil {
-			return state{systemState: resumeState},
+			return s.state,
 				errors.Wrap(err, "Error rolling back transaction")
 		}
 
 		orderBookProcessor := s.buildOrderBookChangeProcessor()
 		err = s.runChangeProcessorOnLedger(orderBookProcessor, ingestLedger)
 		if err != nil {
-			return state{systemState: resumeState},
+			return s.state,
 				errors.Wrap(err, "Error running change processor on ledger")
 
 		}
 
 		if err = s.graph.Apply(ingestLedger); err != nil {
-			return state{systemState: resumeState},
+			return s.state,
 				errors.Wrap(err, "Error applying graph changes from ledger")
 		}
 
@@ -548,25 +546,25 @@ func (s *System) resume() (state, error) {
 	changeProcessor := s.buildChangeProcessor(ledgerSource)
 	err = s.runChangeProcessorOnLedger(changeProcessor, ingestLedger)
 	if err != nil {
-		return state{systemState: resumeState},
+		return s.state,
 			errors.Wrap(err, "Error running change processor on ledger")
 
 	}
 
 	err = s.runTransactionProcessors(ingestLedger)
 	if err != nil {
-		return state{systemState: resumeState},
+		return s.state,
 			errors.Wrap(err, "Error running transaction processor on ledger")
 
 	}
 
 	if err = s.graph.Apply(ingestLedger); err != nil {
-		return state{systemState: resumeState},
+		return s.state,
 			errors.Wrap(err, "Error applying graph changes from ledger")
 	}
 
 	if err = s.historyQ.Commit(); err != nil {
-		return state{systemState: resumeState},
+		return s.state,
 			errors.Wrap(err, "Error commiting processor transaction")
 	}
 
@@ -698,6 +696,12 @@ func (s *System) waitForCheckpoint() (state, error) {
 }
 
 func (s *System) verifyRange() (state, error) {
+	if err := s.historyQ.Begin(); err != nil {
+		err = errors.Wrap(err, "Error starting a transaction")
+		return state{systemState: shutdownState, returnError: err}, err
+	}
+	defer s.historyQ.Rollback()
+
 	// Simple check if DB clean
 	lastIngestedLedger, err := s.historyQ.GetLastLedgerExpIngest()
 	if err != nil {
@@ -706,21 +710,79 @@ func (s *System) verifyRange() (state, error) {
 	}
 
 	if lastIngestedLedger != 0 {
-		return state{systemState: shutdownState, returnError: errors.New("Database not empty")}, err
+		err = errors.New("Database not empty")
+		return state{systemState: shutdownState, returnError: err}, err
 	}
 
-	// TODO implement
-	// s.rangeSession.FromLedger = s.state.rangeFromLedger
-	// s.rangeSession.ToLedger = s.state.rangeToLedger
-	// // It's fine to change System settings because the next state of verifyRange
-	// // is always shut down.
-	// s.disableStateVerification = true
+	log.WithFields(logpkg.F{
+		"ledger": s.state.rangeFromLedger,
+	}).Info("Processing state")
 
-	// err = s.rangeSession.Run()
-	if err == nil {
-		if s.state.rangeVerifyState {
-			err = s.verifyState(s.graph.OffersMap())
+	startTime := time.Now()
+	err = s.runHistoryArchiveIngestion(s.state.rangeFromLedger)
+	if err != nil {
+		err = errors.Wrap(err, "Error ingesting history archive")
+		return state{systemState: shutdownState, returnError: err}, err
+
+	}
+
+	log.WithFields(logpkg.F{
+		"ledger":   s.state.rangeFromLedger,
+		"duration": time.Since(startTime).Seconds(),
+	}).Info("Processed state")
+
+	if err = s.historyQ.Commit(); err != nil {
+		err = errors.Wrap(err, "Error commiting")
+		return state{systemState: shutdownState, returnError: err}, err
+	}
+
+	for sequence := s.state.rangeFromLedger + 1; sequence <= s.state.rangeToLedger; sequence++ {
+		log.WithFields(logpkg.F{
+			"ledger": sequence,
+		}).Info("Processing ledger")
+
+		startTime := time.Now()
+
+		if err = s.historyQ.Begin(); err != nil {
+			err = errors.Wrap(err, "Error starting a transaction")
+			return state{systemState: shutdownState, returnError: err}, err
 		}
+
+		changeProcessor := s.buildChangeProcessor(ledgerSource)
+		err = s.runChangeProcessorOnLedger(changeProcessor, sequence)
+		if err != nil {
+			err = errors.Wrap(err, "Error running change processor on ledger")
+			return state{systemState: shutdownState, returnError: err}, err
+		}
+
+		if err = s.runTransactionProcessors(sequence); err != nil {
+			return state{systemState: shutdownState, returnError: err}, err
+		}
+
+		err = s.historyQ.UpdateLastLedgerExpIngest(sequence)
+		if err != nil {
+			err = errors.Wrap(err, "Error updating last ingested ledger")
+			return state{systemState: shutdownState, returnError: err}, err
+		}
+
+		if err = s.graph.Apply(sequence); err != nil {
+			err = errors.Wrap(err, "Error applying graph history archive changes")
+			return state{systemState: shutdownState, returnError: err}, err
+		}
+
+		if err = s.historyQ.Commit(); err != nil {
+			err = errors.Wrap(err, "Error commiting")
+			return state{systemState: shutdownState, returnError: err}, err
+		}
+
+		log.WithFields(logpkg.F{
+			"ledger":   sequence,
+			"duration": time.Since(startTime).Seconds(),
+		}).Info("Processed ledger")
+	}
+
+	if s.state.rangeVerifyState {
+		err = s.verifyState(s.graph.OffersMap())
 	}
 
 	return state{systemState: shutdownState, returnError: err}, err

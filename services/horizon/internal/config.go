@@ -44,9 +44,6 @@ type Config struct {
 	TLSKey string
 	// Ingest toggles whether this horizon instance should run the data ingestion subsystem.
 	Ingest bool
-	// IngestStateReaderTempSet defines where to store temporary objects during state
-	// ingestion. Possible options are `memory` and `postgres`.
-	IngestStateReaderTempSet string
 	// IngestFailedTransactions toggles whether to ingest failed transactions
 	IngestFailedTransactions bool
 	// CursorName is the cursor used for ingesting from stellar-core.

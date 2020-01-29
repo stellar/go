@@ -162,16 +162,25 @@ func (s *System) runHistoryArchiveIngestion(
 ) error {
 	changeProcessor := s.buildChangeProcessor(historyArchiveSource)
 
-	if err := s.validateBucketList(checkpointLedger); err != nil {
-		return errors.Wrap(err, "Error validating bucket list from HAS")
-	}
+	var stateReader io.ChangeReader
+	var err error
 
-	stateReader, err := io.MakeSingleLedgerStateReader(
-		s.historyArchive,
-		s.config.TempSet,
-		checkpointLedger,
-		s.maxStreamRetries,
-	)
+	if checkpointLedger == 1 {
+		stateReader = &io.GenesisLedgerStateReader{
+			NetworkPassphrase: s.config.NetworkPassphrase,
+		}
+	} else {
+		if err = s.validateBucketList(checkpointLedger); err != nil {
+			return errors.Wrap(err, "Error validating bucket list from HAS")
+		}
+
+		stateReader, err = io.MakeSingleLedgerStateReader(
+			s.historyArchive,
+			&io.MemoryTempSet{},
+			checkpointLedger,
+			s.maxStreamRetries,
+		)
+	}
 	if err != nil {
 		return errors.Wrap(err, "Error creating HAS reader")
 	}

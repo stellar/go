@@ -339,13 +339,6 @@ var configOpts = support.ConfigOptions{
 		Usage:       "causes the ingester to skip reporting the last imported ledger state to stellar-core",
 	},
 	&support.ConfigOption{
-		Name:        "ingest-state-reader-temp-set",
-		ConfigKey:   &config.IngestStateReaderTempSet,
-		OptType:     types.String,
-		FlagDefault: "memory",
-		Usage:       "defines where to store temporary objects during state ingestion: `memory` (default, more RAM usage, faster) or `postgres` (less RAM usage, slower)",
-	},
-	&support.ConfigOption{
 		Name:        "ingest-disable-state-verification",
 		ConfigKey:   &config.IngestDisableStateVerification,
 		OptType:     types.Bool,
@@ -402,10 +395,6 @@ func initRootConfig() {
 
 	// Configure log level
 	log.DefaultLogger.Logger.SetLevel(config.LogLevel)
-
-	if config.IngestStateReaderTempSet != "memory" && config.IngestStateReaderTempSet != "postgres" {
-		log.Fatal("Invalid `ingest-state-reader-temp-set` value: " + config.IngestStateReaderTempSet)
-	}
 
 	// Configure DB params. When config.MaxDBConnections is set, set other
 	// DB params to that value for backward compatibility.
