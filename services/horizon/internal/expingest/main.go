@@ -508,11 +508,6 @@ func (s *System) buildState() (state, error) {
 	defer s.historyQ.Rollback()
 	defer s.graph.Discard()
 
-	if err := s.updateCursor(s.state.checkpointLedger - 1); err != nil {
-		// Don't return updateCursor error.
-		log.WithError(err).Warn("error updating stellar-core cursor")
-	}
-
 	// We need to get this value `FOR UPDATE` so all other instances
 	// are blocked.
 	lastIngestedLedger, err := s.historyQ.GetLastLedgerExpIngest()
@@ -531,6 +526,11 @@ func (s *System) buildState() (state, error) {
 	if !(ingestVersion != CurrentVersion || lastIngestedLedger == 0) {
 		log.Info("Another instance completed `buildState`. Skipping...")
 		return state{systemState: initState}, nil
+	}
+
+	if err := s.updateCursor(s.state.checkpointLedger - 1); err != nil {
+		// Don't return updateCursor error.
+		log.WithError(err).Warn("error updating stellar-core cursor")
 	}
 
 	log.Info("Starting ingestion system from empty state...")

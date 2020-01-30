@@ -6,6 +6,7 @@ import (
 	"github.com/stellar/go/exp/ingest/adapters"
 	"github.com/stellar/go/exp/orderbook"
 	"github.com/stellar/go/support/errors"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -15,13 +16,14 @@ func TestBuildStateTestSuite(t *testing.T) {
 
 type BuildStateTestSuite struct {
 	suite.Suite
-	graph            *orderbook.OrderBookGraph
-	historyQ         *mockDBQ
-	historyAdapter   *adapters.MockHistoryArchiveAdapter
-	system           *System
-	runner           *mockProcessorsRunner
-	checkpointLedger uint32
-	lastLedger       uint32
+	graph             *orderbook.OrderBookGraph
+	historyQ          *mockDBQ
+	historyAdapter    *adapters.MockHistoryArchiveAdapter
+	system            *System
+	runner            *mockProcessorsRunner
+	stellarCoreClient *mockStellarCoreClient
+	checkpointLedger  uint32
+	lastLedger        uint32
 }
 
 func (s *BuildStateTestSuite) SetupTest() {
@@ -29,14 +31,16 @@ func (s *BuildStateTestSuite) SetupTest() {
 	s.historyQ = &mockDBQ{}
 	s.runner = &mockProcessorsRunner{}
 	s.historyAdapter = &adapters.MockHistoryArchiveAdapter{}
+	s.stellarCoreClient = &mockStellarCoreClient{}
 	s.checkpointLedger = uint32(63)
 	s.lastLedger = 0
 	s.system = &System{
-		state:          state{systemState: buildStateState, checkpointLedger: s.checkpointLedger},
-		historyQ:       s.historyQ,
-		historyAdapter: s.historyAdapter,
-		graph:          s.graph,
-		runner:         s.runner,
+		state:             state{systemState: buildStateState, checkpointLedger: s.checkpointLedger},
+		historyQ:          s.historyQ,
+		historyAdapter:    s.historyAdapter,
+		graph:             s.graph,
+		runner:            s.runner,
+		stellarCoreClient: s.stellarCoreClient,
 	}
 
 	s.Assert().Equal(buildStateState, s.system.state.systemState)
@@ -48,7 +52,9 @@ func (s *BuildStateTestSuite) SetupTest() {
 func (s *BuildStateTestSuite) TearDownTest() {
 	t := s.T()
 	s.historyQ.AssertExpectations(t)
+	s.historyAdapter.AssertExpectations(t)
 	s.runner.AssertExpectations(t)
+	s.stellarCoreClient.AssertExpectations(t)
 }
 
 func (s *BuildStateTestSuite) mockCommonHistoryQ() {
@@ -57,6 +63,12 @@ func (s *BuildStateTestSuite) mockCommonHistoryQ() {
 	s.historyQ.On("UpdateLastLedgerExpIngest", s.lastLedger).Return(nil).Once()
 	s.historyQ.On("UpdateExpStateInvalid", false).Return(nil).Once()
 	s.historyQ.On("TruncateExpingestStateTables").Return(nil).Once()
+	s.stellarCoreClient.On(
+		"SetCursor",
+		mock.AnythingOfType("*context.timerCtx"),
+		defaultCoreCursorName,
+		int32(62),
+	).Return(nil).Once()
 }
 
 func (s *BuildStateTestSuite) TestCheckPointLedgerIsZero() {
@@ -115,6 +127,12 @@ func (s *BuildStateTestSuite) TestUpdateLastLedgerExpIngestReturnsError() {
 	s.historyQ.On("GetLastLedgerExpIngest").Return(s.lastLedger, nil).Once()
 	s.historyQ.On("GetExpIngestVersion").Return(CurrentVersion, nil).Once()
 	s.historyQ.On("UpdateLastLedgerExpIngest", s.lastLedger).Return(errors.New("my error")).Once()
+	s.stellarCoreClient.On(
+		"SetCursor",
+		mock.AnythingOfType("*context.timerCtx"),
+		defaultCoreCursorName,
+		int32(62),
+	).Return(nil).Once()
 
 	nextState, err := s.system.runCurrentState()
 
@@ -128,6 +146,12 @@ func (s *BuildStateTestSuite) TestUpdateExpStateInvalidReturnsError() {
 	s.historyQ.On("GetExpIngestVersion").Return(CurrentVersion, nil).Once()
 	s.historyQ.On("UpdateLastLedgerExpIngest", s.lastLedger).Return(nil).Once()
 	s.historyQ.On("UpdateExpStateInvalid", false).Return(errors.New("my error")).Once()
+	s.stellarCoreClient.On(
+		"SetCursor",
+		mock.AnythingOfType("*context.timerCtx"),
+		defaultCoreCursorName,
+		int32(62),
+	).Return(nil).Once()
 
 	nextState, err := s.system.runCurrentState()
 
@@ -142,6 +166,13 @@ func (s *BuildStateTestSuite) TestTruncateExpingestStateTablesReturnsError() {
 	s.historyQ.On("UpdateLastLedgerExpIngest", s.lastLedger).Return(nil).Once()
 	s.historyQ.On("UpdateExpStateInvalid", false).Return(nil).Once()
 	s.historyQ.On("TruncateExpingestStateTables").Return(errors.New("my error")).Once()
+
+	s.stellarCoreClient.On(
+		"SetCursor",
+		mock.AnythingOfType("*context.timerCtx"),
+		defaultCoreCursorName,
+		int32(62),
+	).Return(nil).Once()
 
 	nextState, err := s.system.runCurrentState()
 
