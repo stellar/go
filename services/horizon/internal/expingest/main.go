@@ -532,7 +532,7 @@ func (s *System) buildState() (state, error) {
 	// Double check if we should proceed with state ingestion. It's possible that
 	// another ingesting instance will be redirected to this state from `init`
 	// but it's first to complete the task.
-	if !(ingestVersion != CurrentVersion || lastIngestedLedger == 0) {
+	if ingestVersion == CurrentVersion && lastIngestedLedger > 0 {
 		log.Info("Another instance completed `buildState`. Skipping...")
 		return state{systemState: initState}, nil
 	}

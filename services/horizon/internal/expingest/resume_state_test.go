@@ -144,6 +144,7 @@ func (s *ResumeTestTestSuite) TestIngestOrderbookOnlyWhenLastLedgerExpEqualsCurr
 	// Rollback to release the lock as we're not updating DB
 	s.historyQ.On("Rollback").Return(nil).Once()
 	s.runner.On("RunOrderBookProcessorOnLedger", uint32(101)).Return(nil).Once()
+	s.graph.On("Apply", uint32(101)).Return(nil).Once()
 
 	nextState, err := s.system.runCurrentState()
 	s.Assert().NoError(err)
