@@ -189,6 +189,57 @@ func (s *InitStateTestSuite) TestResumeStateBehind() {
 	s.Assert().Equal(uint32(130), nextState.rangeToLedger)
 }
 
+// TestResumeStateBehindHistory0 is testing the case when:
+// * state doesn't need to be rebuilt or was just rebuilt,
+// * there are no ledgers in history tables.
+// In such case we load offers and continue ingesting the next ledger.
+func (s *InitStateTestSuite) TestResumeStateBehindHistory0() {
+	s.historyQ.On("Begin").Return(nil).Once()
+	s.historyQ.On("GetLastLedgerExpIngest").Return(uint32(130), nil).Once()
+	s.historyQ.On("GetExpIngestVersion").Return(CurrentVersion, nil).Once()
+	s.historyQ.On("GetLatestLedger").Return(uint32(0), nil).Once()
+
+	s.historyQ.On("GetAllOffers").Return(
+		[]history.Offer{
+			history.Offer{
+				OfferID:      eurOffer.OfferId,
+				SellerID:     eurOffer.SellerId.Address(),
+				SellingAsset: eurOffer.Selling,
+				BuyingAsset:  eurOffer.Buying,
+				Amount:       eurOffer.Amount,
+				Pricen:       int32(eurOffer.Price.N),
+				Priced:       int32(eurOffer.Price.D),
+				Price:        float64(eurOffer.Price.N) / float64(eurOffer.Price.D),
+				Flags:        uint32(eurOffer.Flags),
+			},
+			history.Offer{
+				OfferID:      twoEurOffer.OfferId,
+				SellerID:     twoEurOffer.SellerId.Address(),
+				SellingAsset: twoEurOffer.Selling,
+				BuyingAsset:  twoEurOffer.Buying,
+				Amount:       twoEurOffer.Amount,
+				Pricen:       int32(twoEurOffer.Price.N),
+				Priced:       int32(twoEurOffer.Price.D),
+				Price:        float64(twoEurOffer.Price.N) / float64(twoEurOffer.Price.D),
+				Flags:        uint32(twoEurOffer.Flags),
+			},
+		},
+		nil,
+	).Once()
+
+	nextState, err := s.system.runCurrentState()
+	s.Assert().NoError(err)
+	s.Assert().Equal(resumeState, nextState.systemState)
+	s.Assert().Equal(uint32(130), nextState.latestSuccessfullyProcessedLedger)
+
+	// Also make sure offers are loaded
+	offers := s.graph.Offers()
+	sort.Slice(offers, func(i, j int) bool {
+		return offers[i].OfferId < offers[j].OfferId
+	})
+	s.Assert().Equal([]xdr.OfferEntry{eurOffer, twoEurOffer}, offers)
+}
+
 // TestResumeStateBehind is testing the case when:
 // * state doesn't need to be rebuilt,
 // * history is in sync with expingest.

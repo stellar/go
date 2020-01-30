@@ -124,6 +124,26 @@ func (s *ResumeTestTestSuite) TestIngestOrderbookOnly() {
 	s.Assert().True(nextState.noSleep)
 }
 
+// TestIngestOrderbookOnlyWhenLastLedgerExpEqualsCurrent is very similar to the test above
+// but it checks the `ingestLedger <= lastIngestedLedger` that, if incorrect, could lead
+// to a nasty off-by-one error.
+func (s *ResumeTestTestSuite) TestIngestOrderbookOnlyWhenLastLedgerExpEqualsCurrent() {
+	s.historyQ.On("Begin").Return(nil).Once()
+	s.historyQ.On("GetLastLedgerExpIngest").Return(uint32(101), nil).Once()
+
+	s.ledgeBackend.On("GetLatestLedgerSequence").Return(uint32(111), nil).Once()
+
+	// Rollback to release the lock as we're not updating DB
+	s.historyQ.On("Rollback").Return(nil).Once()
+	s.runner.On("RunOrderBookProcessorOnLedger", uint32(101)).Return(nil).Once()
+
+	nextState, err := s.system.runCurrentState()
+	s.Assert().NoError(err)
+	s.Assert().Equal(resumeState, nextState.systemState)
+	s.Assert().Equal(uint32(101), nextState.latestSuccessfullyProcessedLedger)
+	s.Assert().True(nextState.noSleep)
+}
+
 func (s *ResumeTestTestSuite) TestIngestAllMasterNode() {
 	s.historyQ.On("Begin").Return(nil).Once()
 	s.historyQ.On("GetLastLedgerExpIngest").Return(uint32(100), nil).Once()

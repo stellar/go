@@ -300,6 +300,7 @@ func (s *System) run() error {
 		case <-s.shutdown:
 			log.Info("Received shut down signal...")
 			nextState = state{systemState: shutdownState}
+			return nil
 		case <-time.After(sleepDuration):
 		}
 
@@ -429,7 +430,11 @@ func (s *System) init() (state, error) {
 			return state{systemState: initState}, errors.Wrap(err, "Error updating last ingested ledger")
 		}
 		return state{systemState: initState}, nil
-	case lastHistoryLedger < lastIngestedLedger:
+	// lastHistoryLedger != 0 check is here to check the case when one node ingested
+	// the state (so latest exp ingest is > 0) but no history has been ingested yet.
+	// In such case we execute default case and resume from the last ingested
+	// ledger.
+	case lastHistoryLedger != 0 && lastHistoryLedger < lastIngestedLedger:
 		// Expingest was running at some point the past but was turned off.
 		// Now it's on by default but the latest history ledger is less
 		// than the latest expingest ledger. We catchup history.
@@ -528,7 +533,7 @@ func (s *System) buildState() (state, error) {
 		return state{systemState: initState}, nil
 	}
 
-	if err := s.updateCursor(s.state.checkpointLedger - 1); err != nil {
+	if err = s.updateCursor(s.state.checkpointLedger - 1); err != nil {
 		// Don't return updateCursor error.
 		log.WithError(err).Warn("error updating stellar-core cursor")
 	}
@@ -635,10 +640,9 @@ func (s *System) resume() (state, error) {
 		return s.state, nil
 	}
 
-	log.WithField("sequence", ingestLedger).Info("Processing ledger")
 	startTime := time.Now()
 
-	if ingestLedger < lastIngestedLedger {
+	if ingestLedger <= lastIngestedLedger {
 		// rollback because we will not be updating the DB
 		// so there is no need to hold on to the distributed lock
 		// and thereby block the other nodes from ingesting
@@ -646,6 +650,14 @@ func (s *System) resume() (state, error) {
 			return s.state,
 				errors.Wrap(err, "Error rolling back transaction")
 		}
+
+		log.WithFields(logpkg.F{
+			"sequence": ingestLedger,
+			"state":    false,
+			"ledger":   false,
+			"graph":    true,
+			"commit":   false,
+		}).Info("Processing ledger")
 
 		err = s.runner.RunOrderBookProcessorOnLedger(ingestLedger)
 		if err != nil {
@@ -676,6 +688,14 @@ func (s *System) resume() (state, error) {
 			noSleep: true,
 		}, nil
 	}
+
+	log.WithFields(logpkg.F{
+		"sequence": ingestLedger,
+		"state":    true,
+		"ledger":   true,
+		"graph":    true,
+		"commit":   true,
+	}).Info("Processing ledger")
 
 	err = s.runner.RunAllProcessorsOnLedger(ingestLedger)
 	if err != nil {
