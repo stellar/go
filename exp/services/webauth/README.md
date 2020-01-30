@@ -1,8 +1,8 @@
 # webauth
 
-This is a [SEP-10] Web Authentication implementation based on SEP-10 v1.2.0
-that requires the master key have a high threshold for authentication to
-succeed.
+This is a [SEP-10] Web Authentication implementation based on SEP-10 v1.3.0
+that requires an user to prove they hold an account by signing the challenge
+transaction with signers of the account meeting the high threshold.
 
 SEP-10 defines an endpoint for authenticating a user in possession of a Stellar
 account using their Stellar account as credentials. This implementation is a
