@@ -51,7 +51,7 @@ func (s *System) verifyState(graphOffers map[xdr.Int64]xdr.OfferEntry) error {
 	}
 
 	startTime := time.Now()
-	session := s.historySession.Clone()
+	session := s.historyQ.Clone()
 
 	defer func() {
 		log.WithField("duration", time.Since(startTime).Seconds()).Info("State verification finished")
