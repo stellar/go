@@ -135,6 +135,7 @@ type System struct {
 
 	graph    *orderbook.OrderBookGraph
 	historyQ dbQ
+	runner   ProcessorsRunner
 
 	historyArchive *historyarchive.Archive
 	ledgerBackend  *ledgerbackend.DatabaseBackend
@@ -166,15 +167,24 @@ func NewSystem(config Config) (*System, error) {
 
 	historyQ := &history.Q{config.HistorySession.Clone()}
 
+	historyAdapter := adapters.MakeHistoryArchiveAdapter(archive)
+
 	system := &System{
 		historyArchive:           archive,
-		historyAdapter:           adapters.MakeHistoryArchiveAdapter(archive),
+		historyAdapter:           historyAdapter,
 		ledgerBackend:            ledgerBackend,
 		config:                   config,
 		historyQ:                 historyQ,
 		graph:                    config.OrderBookGraph,
 		disableStateVerification: config.DisableStateVerification,
 		maxStreamRetries:         config.MaxStreamRetries,
+		runner: ProcessorsRunner{
+			graph:          config.OrderBookGraph,
+			historyQ:       historyQ,
+			historyArchive: archive,
+			historyAdapter: historyAdapter,
+			ledgerBackend:  ledgerBackend,
+		},
 	}
 
 	return system, nil
@@ -522,7 +532,7 @@ func (s *System) buildState() (state, error) {
 	}).Info("Processing state")
 	startTime := time.Now()
 
-	err = s.runHistoryArchiveIngestion(s.state.checkpointLedger)
+	err = s.runner.RunHistoryArchiveIngestion(s.state.checkpointLedger)
 	if err != nil {
 		return state{systemState: initState}, errors.Wrap(err, "Error ingesting history archive")
 	}
@@ -599,8 +609,7 @@ func (s *System) resume() (state, error) {
 				errors.Wrap(err, "Error rolling back transaction")
 		}
 
-		orderBookProcessor := s.buildOrderBookChangeProcessor()
-		err = s.runChangeProcessorOnLedger(orderBookProcessor, ingestLedger)
+		err = s.runner.RunOrderBookProcessorOnLedger(ingestLedger)
 		if err != nil {
 			return s.state,
 				errors.Wrap(err, "Error running change processor on ledger")
@@ -627,7 +636,7 @@ func (s *System) resume() (state, error) {
 		}, nil
 	}
 
-	err = s.runAllProcessorsOnLedger(ingestLedger)
+	err = s.runner.RunAllProcessorsOnLedger(ingestLedger)
 	if err != nil {
 		return s.state,
 			errors.Wrap(err, "Error running processors on ledger")
@@ -764,7 +773,7 @@ func (s *System) ingestHistoryRange() (state, error) {
 		log.WithField("sequence", cur).Info("Processing ledger")
 		startTime := time.Now()
 
-		if err := s.runTransactionProcessorsOnLedger(cur); err != nil {
+		if err := s.runner.RunTransactionProcessorsOnLedger(cur); err != nil {
 			return state{systemState: returnState}, err
 		}
 
@@ -816,7 +825,7 @@ func (s *System) verifyRange() (state, error) {
 	}).Info("Processing state")
 	startTime := time.Now()
 
-	err = s.runHistoryArchiveIngestion(s.state.rangeFromLedger)
+	err = s.runner.RunHistoryArchiveIngestion(s.state.rangeFromLedger)
 	if err != nil {
 		err = errors.Wrap(err, "Error ingesting history archive")
 		return state{systemState: shutdownState, returnError: err}, err
@@ -847,7 +856,7 @@ func (s *System) verifyRange() (state, error) {
 			return state{systemState: shutdownState, returnError: err}, err
 		}
 
-		err = s.runAllProcessorsOnLedger(sequence)
+		err = s.runner.RunAllProcessorsOnLedger(sequence)
 		if err != nil {
 			err = errors.Wrap(err, "Error running processors on ledger")
 			return state{systemState: shutdownState, returnError: err}, err

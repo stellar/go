@@ -134,3 +134,29 @@ func (m *mockDBQ) CreateAssets(assets []xdr.Asset) (map[string]history.Asset, er
 	args := m.Called(assets)
 	return args.Get(0).(map[string]history.Asset), args.Error(1)
 }
+
+type mockProcessorsRunner struct {
+	mock.Mock
+}
+
+func (m *mockProcessorsRunner) RunHistoryArchiveIngestion(checkpointLedger uint32) error {
+	args := m.Called(checkpointLedger)
+	return args.Error(0)
+}
+
+func (m *mockProcessorsRunner) RunAllProcessorsOnLedger(sequence uint32) error {
+	args := m.Called(sequence)
+	return args.Error(0)
+}
+
+func (m *mockProcessorsRunner) RunTransactionProcessorsOnLedger(sequence uint32) error {
+	args := m.Called(sequence)
+	return args.Error(0)
+}
+
+func (m *mockProcessorsRunner) RunOrderBookProcessorOnLedger(sequence uint32) error {
+	args := m.Called(sequence)
+	return args.Error(0)
+}
+
+var _ ProcessorsRunnerInterface = (*mockProcessorsRunner)(nil)
