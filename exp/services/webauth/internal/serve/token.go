@@ -43,32 +43,22 @@ func (h tokenHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_, err = txnbuild.VerifyChallengeTx(req.Transaction, h.SigningAddress.Address(), h.NetworkPassphrase)
+	_, clientAccountID, err := txnbuild.ReadChallengeTx(req.Transaction, h.SigningAddress.Address(), h.NetworkPassphrase)
 	if err != nil {
-		unauthorized.Render(w)
+		badRequest.Render(w)
 		return
 	}
-
-	tx, err := txnbuild.TransactionFromXDR(req.Transaction)
-	if err != nil {
-		serverError.Render(w)
-		return
-	}
-	clientAccountID := tx.Operations[0].(*txnbuild.ManageData).SourceAccount.GetAccountID()
 
 	clientAccount, err := h.HorizonClient.AccountDetail(horizonclient.AccountRequest{AccountID: clientAccountID})
 	if err != nil {
 		serverError.Render(w)
 		return
 	}
-	verifiedWeight := false
-	for _, clientSigner := range clientAccount.Signers {
-		if clientSigner.Key == clientAccountID && clientSigner.Weight >= int32(clientAccount.Thresholds.HighThreshold) {
-			verifiedWeight = true
-			break
-		}
-	}
-	if !verifiedWeight {
+	requiredThreshold := txnbuild.Threshold(clientAccount.Thresholds.HighThreshold)
+	clientSignerSummary := clientAccount.SignerSummary()
+
+	_, err = txnbuild.VerifyChallengeTxThreshold(req.Transaction, h.SigningAddress.Address(), h.NetworkPassphrase, requiredThreshold, clientSignerSummary)
+	if err != nil {
 		unauthorized.Render(w)
 		return
 	}

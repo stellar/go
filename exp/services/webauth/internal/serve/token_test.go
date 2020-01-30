@@ -314,13 +314,35 @@ func TestToken_jsonInputValidMultipleSigners(t *testing.T) {
 	h.ServeHTTP(w, r)
 	resp := w.Result()
 
-	require.Equal(t, http.StatusUnauthorized, resp.StatusCode)
+	require.Equal(t, http.StatusOK, resp.StatusCode)
 	assert.Equal(t, "application/json; charset=utf-8", resp.Header.Get("Content-Type"))
 
-	respBodyBytes, err := ioutil.ReadAll(resp.Body)
+	res := struct {
+		Token string `json:"token"`
+	}{}
+	err = json.NewDecoder(resp.Body).Decode(&res)
 	require.NoError(t, err)
 
-	assert.JSONEq(t, `{"error":"The request could not be authenticated."}`, string(respBodyBytes))
+	t.Logf("JWT: %s", res.Token)
+
+	token, err := jwt.Parse(res.Token, func(token *jwt.Token) (interface{}, error) {
+		if _, ok := token.Method.(*jwt.SigningMethodECDSA); !ok {
+			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
+		}
+		return &jwtPrivateKey.PublicKey, nil
+	})
+	require.NoError(t, err)
+
+	claims := token.Claims.(jwt.MapClaims)
+	assert.Equal(t, serverKey.Address(), claims["iss"])
+	assert.Equal(t, account.Address(), claims["sub"])
+	assert.Equal(t, account.Address(), claims["sub"])
+	iat := time.Unix(int64(claims["iat"].(float64)), 0)
+	exp := time.Unix(int64(claims["exp"].(float64)), 0)
+	assert.True(t, iat.Before(time.Now()))
+	assert.True(t, exp.After(time.Now()))
+	assert.True(t, time.Now().Add(time.Minute).After(exp))
+	assert.Equal(t, exp.Sub(iat), time.Minute)
 }
 
 func TestToken_jsonInputNotEnoughWeight(t *testing.T) {
