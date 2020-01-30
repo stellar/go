@@ -113,6 +113,10 @@ const (
 	shutdownState           systemState = "shutdown"
 )
 
+const (
+	lastIngestedErrMsg string = "Error getting last ingested ledger"
+)
+
 type state struct {
 	systemState                       systemState
 	latestSuccessfullyProcessedLedger uint32
@@ -332,7 +336,7 @@ func (s *System) init() (state, error) {
 	// This will get the value `FOR UPDATE`, blocking it for other nodes.
 	lastIngestedLedger, err := s.historyQ.GetLastLedgerExpIngest()
 	if err != nil {
-		return state{systemState: initState}, errors.Wrap(err, "Error getting last ingested ledger")
+		return state{systemState: initState}, errors.Wrap(err, lastIngestedErrMsg)
 	}
 
 	ingestVersion, err := s.historyQ.GetExpIngestVersion()
@@ -491,7 +495,7 @@ func (s *System) buildState() (state, error) {
 	// are blocked.
 	lastIngestedLedger, err := s.historyQ.GetLastLedgerExpIngest()
 	if err != nil {
-		return state{systemState: initState}, errors.Wrap(err, "Error getting last ledger")
+		return state{systemState: initState}, errors.Wrap(err, lastIngestedErrMsg)
 	}
 
 	ingestVersion, err := s.historyQ.GetExpIngestVersion()
@@ -583,7 +587,7 @@ func (s *System) resume() (state, error) {
 	lastIngestedLedger, err := s.historyQ.GetLastLedgerExpIngest()
 	if err != nil {
 		return s.state,
-			errors.Wrap(err, "Error getting last ingested ledger")
+			errors.Wrap(err, lastIngestedErrMsg)
 	}
 
 	ingestLedger := s.state.latestSuccessfullyProcessedLedger + 1
@@ -738,7 +742,7 @@ func (s *System) ingestHistoryRange() (state, error) {
 	// acquire distributed lock so no one else can perform ingestion operations.
 	if _, err := s.historyQ.GetLastLedgerExpIngest(); err != nil {
 		return state{systemState: returnState},
-			errors.Wrap(err, "Error getting last ingested ledger")
+			errors.Wrap(err, lastIngestedErrMsg)
 	}
 
 	if s.state.rangeClearHistory {
@@ -819,7 +823,7 @@ func (s *System) verifyRange() (state, error) {
 	// Simple check if DB clean
 	lastIngestedLedger, err := s.historyQ.GetLastLedgerExpIngest()
 	if err != nil {
-		err = errors.Wrap(err, "Error getting last ledger")
+		err = errors.Wrap(err, lastIngestedErrMsg)
 		return state{systemState: shutdownState, returnError: err}, err
 	}
 
