@@ -254,7 +254,7 @@ func (s *BuildStateTestSuite) TestUpdateCommitReturnsError() {
 	nextState, err := s.system.runCurrentState()
 
 	s.Assert().Error(err)
-	s.Assert().EqualError(err, "Error commiting db transaction: my error")
+	s.Assert().EqualError(err, "Error committing db transaction: my error")
 	s.Assert().Equal(initState, nextState.systemState)
 }
 
