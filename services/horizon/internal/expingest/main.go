@@ -146,7 +146,7 @@ type System struct {
 	config Config
 	state  state
 
-	graph    *orderbook.OrderBookGraph
+	graph    orderbook.OBGraph
 	historyQ dbQ
 	runner   ProcessorsRunnerInterface
 

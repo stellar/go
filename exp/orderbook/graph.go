@@ -32,6 +32,14 @@ type tradingPair struct {
 	sellingAsset string
 }
 
+// OBGraph is an interface for orderbook graphs
+type OBGraph interface {
+	AddOffer(offer xdr.OfferEntry) *OrderBookGraph
+	Apply(ledger uint32) error
+	Discard()
+	OffersMap() map[xdr.Int64]xdr.OfferEntry
+}
+
 // OrderBookGraph is an in memory graph representation of all the offers in the stellar ledger
 type OrderBookGraph struct {
 	// edgesForSellingAsset maps an asset to all offers which sell that asset
@@ -53,6 +61,8 @@ type OrderBookGraph struct {
 	batchedUpdates *orderBookBatchedUpdates
 	lock           sync.RWMutex
 }
+
+var _ OBGraph = (*OrderBookGraph)(nil)
 
 // NewOrderBookGraph constructs a new OrderBookGraph
 func NewOrderBookGraph() *OrderBookGraph {

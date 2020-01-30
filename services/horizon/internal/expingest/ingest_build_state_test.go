@@ -4,7 +4,6 @@ import (
 	"testing"
 
 	"github.com/stellar/go/exp/ingest/adapters"
-	"github.com/stellar/go/exp/orderbook"
 	"github.com/stellar/go/support/errors"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
@@ -16,7 +15,7 @@ func TestBuildStateTestSuite(t *testing.T) {
 
 type BuildStateTestSuite struct {
 	suite.Suite
-	graph             *orderbook.OrderBookGraph
+	graph             *mockOrderBookGraph
 	historyQ          *mockDBQ
 	historyAdapter    *adapters.MockHistoryArchiveAdapter
 	system            *System
@@ -27,7 +26,7 @@ type BuildStateTestSuite struct {
 }
 
 func (s *BuildStateTestSuite) SetupTest() {
-	s.graph = orderbook.NewOrderBookGraph()
+	s.graph = &mockOrderBookGraph{}
 	s.historyQ = &mockDBQ{}
 	s.runner = &mockProcessorsRunner{}
 	s.historyAdapter = &adapters.MockHistoryArchiveAdapter{}
@@ -47,6 +46,7 @@ func (s *BuildStateTestSuite) SetupTest() {
 	s.historyQ.On("GetTx").Return(nil).Once()
 	s.historyQ.On("Begin").Return(nil).Once()
 	s.historyQ.On("Rollback").Return(nil).Once()
+	s.graph.On("Discard").Once()
 }
 
 func (s *BuildStateTestSuite) TearDownTest() {
@@ -55,6 +55,7 @@ func (s *BuildStateTestSuite) TearDownTest() {
 	s.historyAdapter.AssertExpectations(t)
 	s.runner.AssertExpectations(t)
 	s.stellarCoreClient.AssertExpectations(t)
+	s.graph.AssertExpectations(t)
 }
 
 func (s *BuildStateTestSuite) mockCommonHistoryQ() {
@@ -76,6 +77,9 @@ func (s *BuildStateTestSuite) TestCheckPointLedgerIsZero() {
 	*s.historyQ = mockDBQ{}
 	s.historyQ.On("GetTx").Return(nil).Once()
 
+	// Recreate orderbook graph to remove Discard assertion
+	*s.graph = mockOrderBookGraph{}
+
 	s.system.state.checkpointLedger = 0
 
 	nextState, err := s.system.runCurrentState()
@@ -89,6 +93,9 @@ func (s *BuildStateTestSuite) TestBeginReturnsError() {
 	*s.historyQ = mockDBQ{}
 	s.historyQ.On("GetTx").Return(nil).Once()
 	s.historyQ.On("Begin").Return(errors.New("my error")).Once()
+
+	// Recreate orderbook graph to remove Discard assertion
+	*s.graph = mockOrderBookGraph{}
 
 	nextState, err := s.system.runCurrentState()
 	s.Assert().Error(err)
@@ -251,6 +258,30 @@ func (s *BuildStateTestSuite) TestUpdateCommitReturnsError() {
 	s.Assert().Equal(initState, nextState.systemState)
 }
 
+func (s *BuildStateTestSuite) TestOBGraphApplyReturnsError() {
+	s.mockCommonHistoryQ()
+	s.runner.
+		On("RunHistoryArchiveIngestion", s.checkpointLedger).
+		Return(nil).
+		Once()
+	s.historyQ.On("UpdateLastLedgerExpIngest", s.checkpointLedger).
+		Return(nil).
+		Once()
+	s.historyQ.On("UpdateExpIngestVersion", CurrentVersion).
+		Return(nil).
+		Once()
+	s.historyQ.On("Commit").
+		Return(nil).
+		Once()
+
+	s.graph.On("Apply", s.checkpointLedger).Return(errors.New("my error")).Once()
+	nextState, err := s.system.runCurrentState()
+
+	s.Assert().Error(err)
+	s.Assert().EqualError(err, "Error applying order book changes: my error")
+	s.Assert().Equal(initState, nextState.systemState)
+}
+
 func (s *BuildStateTestSuite) TestBuildStateSucceeds() {
 	s.mockCommonHistoryQ()
 	s.runner.
@@ -266,6 +297,8 @@ func (s *BuildStateTestSuite) TestBuildStateSucceeds() {
 	s.historyQ.On("Commit").
 		Return(nil).
 		Once()
+
+	s.graph.On("Apply", s.checkpointLedger).Return(nil).Once()
 	nextState, err := s.system.runCurrentState()
 
 	s.Assert().NoError(err)
