@@ -11,11 +11,11 @@ import (
 )
 
 func TestLoggerStateReader(t *testing.T) {
-	mockChangeReader := &io.MockChangeReader{}
-	mockChangeReader.
+	mockStateReader := &io.MockStateReader{}
+	mockStateReader.
 		On("Read").
 		Return(io.Change{}, nil).Times(5)
-	mockChangeReader.
+	mockStateReader.
 		On("Read").
 		Return(io.Change{}, stdio.EOF).Once()
 
@@ -25,7 +25,7 @@ func TestLoggerStateReader(t *testing.T) {
 	done := logger.StartTest(logpkg.InfoLevel)
 
 	loggerStateReader := newLoggerStateReader(
-		mockChangeReader,
+		mockStateReader,
 		logger,
 		2,
 	)
@@ -44,5 +44,5 @@ func TestLoggerStateReader(t *testing.T) {
 		assert.Equal(t, "Entries processed from HAS: 4", logged[1].Message)
 	}
 
-	mockChangeReader.AssertExpectations(t)
+	mockStateReader.AssertExpectations(t)
 }

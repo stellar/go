@@ -5,22 +5,21 @@ import (
 	logpkg "github.com/stellar/go/support/log"
 )
 
-// loggerStateReader decorates a state reader, reporting the number of processed
-// entries from the history archive.
+// loggerStateReader extends io.StateReader with logging capabilities.
 //
 type loggerStateReader struct {
-	reader      io.ChangeReader
+	io.StateReader
 	logger      *logpkg.Entry
 	readChanges int
 	// how often should the logger report
 	every int
 }
 
-func newLoggerStateReader(reader io.ChangeReader, logger *logpkg.Entry, every int) *loggerStateReader {
+func newLoggerStateReader(reader io.StateReader, logger *logpkg.Entry, every int) *loggerStateReader {
 	return &loggerStateReader{
-		reader: reader,
-		logger: logger,
-		every:  every,
+		StateReader: reader,
+		logger:      logger,
+		every:       every,
 	}
 }
 
@@ -29,7 +28,7 @@ var _ io.ChangeReader = &loggerStateReader{}
 
 // Read returns a new ledger entry change on each call, returning io.EOF when the stream ends.
 func (lsr *loggerStateReader) Read() (io.Change, error) {
-	change, err := lsr.reader.Read()
+	change, err := lsr.StateReader.Read()
 
 	if err == nil {
 		lsr.readChanges++
