@@ -162,7 +162,7 @@ func (s *System) runHistoryArchiveIngestion(
 ) error {
 	changeProcessor := s.buildChangeProcessor(historyArchiveSource)
 
-	var stateReader io.ChangeReader
+	var stateReader io.StateReader
 	var err error
 
 	if checkpointLedger == 1 {
@@ -180,10 +180,11 @@ func (s *System) runHistoryArchiveIngestion(
 			checkpointLedger,
 			s.maxStreamRetries,
 		)
+		if err != nil {
+			return errors.Wrap(err, "Error creating HAS reader")
+		}
 	}
-	if err != nil {
-		return errors.Wrap(err, "Error creating HAS reader")
-	}
+	defer stateReader.Close()
 
 	err = io.StreamChanges(changeProcessor, stateReader)
 	if err != nil {
