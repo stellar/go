@@ -1,11 +1,13 @@
 package expingest
 
 import (
+	"context"
 	"testing"
 
 	"github.com/jmoiron/sqlx"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/support/db"
+	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -18,6 +20,27 @@ func TestCheckVerifyStateVersion(t *testing.T) {
 		stateVerifierExpectedIngestionVersion,
 		"State verifier is outdated, update it, then update stateVerifierExpectedIngestionVersion value",
 	)
+}
+
+// TestStateMachineRunReturnsErrorWhenNextStateIsShutdownWithError checks if the
+// state that goes to shutdownState and returns an error will make `run` function
+// return that error. This is essential because some command rely on this to return
+// non-zero exit code.
+func TestStateMachineRunReturnsErrorWhenNextStateIsShutdownWithError(t *testing.T) {
+	historyQ := &mockDBQ{}
+	system := &System{
+		state: state{
+			systemState: verifyRangeState,
+		},
+		historyQ: historyQ,
+	}
+
+	historyQ.On("GetTx").Return(nil).Once()
+	historyQ.On("Begin").Return(errors.New("my error")).Once()
+
+	err := system.run()
+	assert.Error(t, err)
+	assert.EqualError(t, err, "Error starting a transaction: my error")
 }
 
 type mockDBQ struct {
@@ -160,3 +183,14 @@ func (m *mockProcessorsRunner) RunOrderBookProcessorOnLedger(sequence uint32) er
 }
 
 var _ ProcessorsRunnerInterface = (*mockProcessorsRunner)(nil)
+
+type mockStellarCoreClient struct {
+	mock.Mock
+}
+
+func (m *mockStellarCoreClient) SetCursor(ctx context.Context, id string, cursor int32) error {
+	args := m.Called(ctx, id, cursor)
+	return args.Error(0)
+}
+
+var _ stellarCoreClient = (*mockStellarCoreClient)(nil)

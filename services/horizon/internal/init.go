@@ -54,6 +54,7 @@ func initExpIngester(app *App, orderBookGraph *orderbook.OrderBookGraph) {
 		// use multiple archives at the same time currently.
 		HistoryArchiveURL:        app.config.HistoryArchiveURLs[0],
 		StellarCoreURL:           app.config.StellarCoreURL,
+		StellarCoreCursor:        app.config.CursorName,
 		OrderBookGraph:           orderBookGraph,
 		MaxStreamRetries:         3,
 		DisableStateVerification: app.config.IngestDisableStateVerification,

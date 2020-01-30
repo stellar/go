@@ -4,11 +4,13 @@
 package expingest
 
 import (
+	"context"
 	"fmt"
 	"sync"
 	"time"
 
 	"github.com/jmoiron/sqlx"
+	"github.com/stellar/go/clients/stellarcore"
 	"github.com/stellar/go/exp/ingest/adapters"
 	ingesterrors "github.com/stellar/go/exp/ingest/errors"
 	"github.com/stellar/go/exp/ingest/ledgerbackend"
@@ -44,6 +46,7 @@ const (
 	//      everything else).
 	CurrentVersion = 10
 
+	defaultCoreCursorName           = "HORIZON"
 	stateVerificationErrorThreshold = 3
 )
 
@@ -52,6 +55,7 @@ var log = logpkg.DefaultLogger.WithField("service", "expingest")
 type Config struct {
 	CoreSession       *db.Session
 	StellarCoreURL    string
+	StellarCoreCursor string
 	NetworkPassphrase string
 
 	HistorySession           *db.Session
@@ -126,7 +130,12 @@ type state struct {
 
 	shutdownWhenDone bool
 
-	returnError error
+	// noSleep informs state machine to not sleep between state transitions
+	noSleep bool
+}
+
+type stellarCoreClient interface {
+	SetCursor(ctx context.Context, id string, cursor int32) error
 }
 
 type System struct {
@@ -138,8 +147,10 @@ type System struct {
 	runner   ProcessorsRunnerInterface
 
 	historyArchive *historyarchive.Archive
-	ledgerBackend  *ledgerbackend.DatabaseBackend
+	ledgerBackend  ledgerbackend.LedgerBackend
 	historyAdapter adapters.HistoryArchiveAdapterInterface
+
+	stellarCoreClient stellarCoreClient
 
 	maxStreamRetries int
 	wg               sync.WaitGroup
@@ -178,6 +189,9 @@ func NewSystem(config Config) (*System, error) {
 		graph:                    config.OrderBookGraph,
 		disableStateVerification: config.DisableStateVerification,
 		maxStreamRetries:         config.MaxStreamRetries,
+		stellarCoreClient: &stellarcore.Client{
+			URL: config.StellarCoreURL,
+		},
 		runner: &ProcessorsRunner{
 			graph:          config.OrderBookGraph,
 			historyQ:       historyQ,
@@ -268,15 +282,21 @@ func (s *System) run() error {
 		}
 
 		// Exit after processing shutdownState
-		if s.state.systemState == shutdownState {
-			return s.state.returnError
+		if nextState.systemState == shutdownState {
+			log.Info("Shut down")
+			return err
+		}
+
+		sleepDuration := time.Second
+		if nextState.noSleep {
+			sleepDuration = 0
 		}
 
 		select {
 		case <-s.shutdown:
 			log.Info("Received shut down signal...")
 			nextState = state{systemState: shutdownState}
-		case <-time.After(time.Second):
+		case <-time.After(sleepDuration):
 		}
 
 		log.WithFields(logpkg.F{
@@ -313,9 +333,6 @@ func (s *System) runCurrentState() (state, error) {
 		nextState, err = s.resume()
 	case verifyRangeState:
 		nextState, err = s.verifyRange()
-	case shutdownState:
-		log.Info("Shut down")
-		nextState, err = s.state, nil
 	default:
 		panic(fmt.Sprintf("Unknown state %+v", s.state.systemState))
 	}
@@ -487,6 +504,11 @@ func (s *System) buildState() (state, error) {
 	defer s.historyQ.Rollback()
 	defer s.graph.Discard()
 
+	if err := s.updateCursor(s.state.checkpointLedger - 1); err != nil {
+		// Don't return updateCursor error.
+		log.WithError(err).Warn("error updating stellar-core cursor")
+	}
+
 	// We need to get this value `FOR UPDATE` so all other instances
 	// are blocked.
 	lastIngestedLedger, err := s.historyQ.GetLastLedgerExpIngest()
@@ -572,6 +594,9 @@ func (s *System) resume() (state, error) {
 		return state{systemState: initState}, errors.New("unexpected latestSuccessfullyProcessedLedger value")
 	}
 
+	// Remove noSleep if set before. This allows returning s.state in most cases.
+	s.state.noSleep = false
+
 	if err := s.historyQ.Begin(); err != nil {
 		return s.state,
 			errors.Wrap(err, "Error starting a transaction")
@@ -590,11 +615,20 @@ func (s *System) resume() (state, error) {
 
 	if ingestLedger > lastIngestedLedger+1 {
 		return state{systemState: initState},
-			errors.Wrap(
-				err,
-				"expected ingest ledger to be at most one greater"+
-					"than last ingested ledger in db",
-			)
+			errors.New("expected ingest ledger to be at most one greater " +
+				"than last ingested ledger in db")
+	}
+
+	// Check if ledger is closed
+	latestLedgerCore, err := s.ledgerBackend.GetLatestLedgerSequence()
+	if err != nil {
+		return s.state,
+			errors.Wrap(err, "Error getting lastest ledger in stellar-core")
+	}
+
+	if latestLedgerCore < ingestLedger {
+		// Go to the next state, machine will wait for 1s. before continuing.
+		return s.state, nil
 	}
 
 	log.WithField("sequence", ingestLedger).Info("Processing ledger")
@@ -633,6 +667,9 @@ func (s *System) resume() (state, error) {
 		return state{
 			systemState:                       resumeState,
 			latestSuccessfullyProcessedLedger: ingestLedger,
+			// Catching up so don't wait before the next ledger because
+			// we are sure it's already there.
+			noSleep: true,
 		}, nil
 	}
 
@@ -658,6 +695,11 @@ func (s *System) resume() (state, error) {
 			errors.Wrap(err, "Error commiting processor transaction")
 	}
 
+	if err = s.updateCursor(ingestLedger); err != nil {
+		// Don't return updateCursor error.
+		log.WithError(err).Warn("error updating stellar-core cursor")
+	}
+
 	log.WithFields(logpkg.F{
 		"sequence": ingestLedger,
 		"duration": time.Since(startTime).Seconds(),
@@ -672,6 +714,9 @@ func (s *System) resume() (state, error) {
 	return state{
 		systemState:                       resumeState,
 		latestSuccessfullyProcessedLedger: ingestLedger,
+		// noSleep = false only when there are no more ledgers to ingest. We
+		// check this in top of this function.
+		noSleep: true,
 	}, nil
 }
 
@@ -811,7 +856,7 @@ func (s *System) waitForCheckpoint() (state, error) {
 func (s *System) verifyRange() (state, error) {
 	if err := s.historyQ.Begin(); err != nil {
 		err = errors.Wrap(err, "Error starting a transaction")
-		return state{systemState: shutdownState, returnError: err}, err
+		return state{systemState: shutdownState}, err
 	}
 	defer s.historyQ.Rollback()
 	defer s.graph.Discard()
@@ -820,12 +865,12 @@ func (s *System) verifyRange() (state, error) {
 	lastIngestedLedger, err := s.historyQ.GetLastLedgerExpIngest()
 	if err != nil {
 		err = errors.Wrap(err, "Error getting last ledger")
-		return state{systemState: shutdownState, returnError: err}, err
+		return state{systemState: shutdownState}, err
 	}
 
 	if lastIngestedLedger != 0 {
 		err = errors.New("Database not empty")
-		return state{systemState: shutdownState, returnError: err}, err
+		return state{systemState: shutdownState}, err
 	}
 
 	log.WithFields(logpkg.F{
@@ -836,18 +881,18 @@ func (s *System) verifyRange() (state, error) {
 	err = s.runner.RunHistoryArchiveIngestion(s.state.rangeFromLedger)
 	if err != nil {
 		err = errors.Wrap(err, "Error ingesting history archive")
-		return state{systemState: shutdownState, returnError: err}, err
+		return state{systemState: shutdownState}, err
 	}
 
 	if err = s.historyQ.Commit(); err != nil {
 		err = errors.Wrap(err, "Error commiting")
-		return state{systemState: shutdownState, returnError: err}, err
+		return state{systemState: shutdownState}, err
 	}
 
 	err = s.graph.Apply(s.state.checkpointLedger)
 	if err != nil {
 		err = errors.Wrap(err, "Error applying order book changes")
-		return state{systemState: shutdownState, returnError: err}, err
+		return state{systemState: shutdownState}, err
 	}
 
 	log.WithFields(logpkg.F{
@@ -861,29 +906,29 @@ func (s *System) verifyRange() (state, error) {
 
 		if err = s.historyQ.Begin(); err != nil {
 			err = errors.Wrap(err, "Error starting a transaction")
-			return state{systemState: shutdownState, returnError: err}, err
+			return state{systemState: shutdownState}, err
 		}
 
 		err = s.runner.RunAllProcessorsOnLedger(sequence)
 		if err != nil {
 			err = errors.Wrap(err, "Error running processors on ledger")
-			return state{systemState: shutdownState, returnError: err}, err
+			return state{systemState: shutdownState}, err
 		}
 
 		err = s.historyQ.UpdateLastLedgerExpIngest(sequence)
 		if err != nil {
 			err = errors.Wrap(err, "Error updating last ingested ledger")
-			return state{systemState: shutdownState, returnError: err}, err
+			return state{systemState: shutdownState}, err
 		}
 
 		if err = s.graph.Apply(sequence); err != nil {
 			err = errors.Wrap(err, "Error applying graph history archive changes")
-			return state{systemState: shutdownState, returnError: err}, err
+			return state{systemState: shutdownState}, err
 		}
 
 		if err = s.historyQ.Commit(); err != nil {
 			err = errors.Wrap(err, "Error commiting")
-			return state{systemState: shutdownState, returnError: err}, err
+			return state{systemState: shutdownState}, err
 		}
 
 		log.WithFields(logpkg.F{
@@ -900,7 +945,7 @@ func (s *System) verifyRange() (state, error) {
 		err = s.verifyState(s.graph.OffersMap())
 	}
 
-	return state{systemState: shutdownState, returnError: err}, err
+	return state{systemState: shutdownState}, err
 }
 
 func (s *System) incrementStateVerificationErrors() int {
@@ -914,6 +959,25 @@ func (s *System) resetStateVerificationErrors() {
 	s.stateVerificationMutex.Lock()
 	defer s.stateVerificationMutex.Unlock()
 	s.stateVerificationErrors = 0
+}
+
+func (s *System) updateCursor(ledgerSequence uint32) error {
+	if s.stellarCoreClient == nil {
+		return nil
+	}
+
+	cursor := defaultCoreCursorName
+	if s.config.StellarCoreCursor != "" {
+		cursor = s.config.StellarCoreCursor
+	}
+
+	ctx, _ := context.WithTimeout(context.Background(), time.Second)
+	err := s.stellarCoreClient.SetCursor(ctx, cursor, int32(ledgerSequence))
+	if err != nil {
+		return errors.Wrap(err, "Setting stellar-core cursor failed")
+	}
+
+	return nil
 }
 
 func (s *System) Shutdown() {
