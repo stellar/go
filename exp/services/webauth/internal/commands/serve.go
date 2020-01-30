@@ -76,6 +76,13 @@ func (c *ServeCommand) Command() *cobra.Command {
 			FlagDefault:    300,
 			Required:       true,
 		},
+		{
+			Name:        "allow-accounts-that-do-not-exist",
+			Usage:       "Allow accounts that do not exist",
+			OptType:     types.Bool,
+			ConfigKey:   &opts.AllowAccountsThatDoNotExist,
+			FlagDefault: false,
+		},
 	}
 	cmd := &cobra.Command{
 		Use:   "serve",
