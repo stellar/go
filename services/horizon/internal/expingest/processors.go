@@ -186,7 +186,9 @@ func (s *System) runHistoryArchiveIngestion(
 	}
 	defer stateReader.Close()
 
-	log.Info("Ingesting entries from HAS")
+	log.WithField("ledger", checkpointLedger).
+		Info("Processing entries from History Archive Snapshot")
+
 	stateReader = newLoggerStateReader(
 		stateReader,
 		log,
@@ -215,7 +217,6 @@ func (s *System) runChangeProcessorOnLedger(
 		return errors.Wrap(err, "Error creating ledger change reader")
 	}
 
-	log.Info("Ingesting entries from HAS")
 	if err = io.StreamChanges(changeProcessor, changeReader); err != nil {
 		return errors.Wrap(err, "Error streaming changes from ledger")
 	}
