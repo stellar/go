@@ -652,9 +652,18 @@ func (s *System) ingestHistoryRange() (state, error) {
 	}
 
 	if validateStartLedger {
-		err := s.assertLatestHistoryLedgerIs(s.state.rangeFromLedger - 1)
+		lastHistoryLedger, err := s.historyQ.GetLatestLedger()
 		if err != nil {
-			return state{systemState: returnState}, err
+			return state{systemState: returnState},
+				errors.Wrap(err, "could not get latest history ledger")
+		}
+
+		// We should be ingesting the ledger which occurs after
+		// lastHistoryLedger. Otherwise, some other horizon node has
+		// already completed the ingest history range operation and
+		// we should go back to the init state
+		if lastHistoryLedger != s.state.rangeFromLedger-1 {
+			return state{systemState: returnState}, nil
 		}
 	}
 
@@ -669,21 +678,6 @@ func (s *System) ingestHistoryRange() (state, error) {
 	}
 
 	return state{systemState: returnState}, nil
-}
-
-func (s *System) assertLatestHistoryLedgerIs(expected uint32) error {
-	lastHistoryLedger, err := s.historyQ.GetLatestLedger()
-	if err != nil {
-		return errors.Wrap(err, "could not get latest history ledger")
-	}
-	if lastHistoryLedger != expected {
-		return errors.Errorf(
-			"expected latest history ledger to be %v but got %v",
-			expected,
-			lastHistoryLedger,
-		)
-	}
-	return nil
 }
 
 func (s *System) waitForCheckpoint() (state, error) {
