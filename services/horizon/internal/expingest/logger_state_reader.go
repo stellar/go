@@ -9,17 +9,17 @@ import (
 //
 type loggerStateReader struct {
 	io.StateReader
-	logger      *logpkg.Entry
-	readChanges int
+	logger     *logpkg.Entry
+	entryCount int
 	// how often should the logger report
-	every int
+	frequency int
 }
 
 func newLoggerStateReader(reader io.StateReader, logger *logpkg.Entry, every int) *loggerStateReader {
 	return &loggerStateReader{
 		StateReader: reader,
 		logger:      logger,
-		every:       every,
+		frequency:   every,
 	}
 }
 
@@ -31,10 +31,12 @@ func (lsr *loggerStateReader) Read() (io.Change, error) {
 	change, err := lsr.StateReader.Read()
 
 	if err == nil {
-		lsr.readChanges++
+		lsr.entryCount++
 
-		if lsr.readChanges%lsr.every == 0 {
-			lsr.logger.Infof("Entries processed from HAS: %d", lsr.readChanges)
+		if lsr.entryCount%lsr.frequency == 0 {
+			lsr.logger.WithField("ledger", lsr.GetSequence()).
+				WithField("numEntries", lsr.entryCount).
+				Info("Processing entries from History Archive Snapshot")
 		}
 	}
 
