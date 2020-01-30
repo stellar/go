@@ -122,6 +122,7 @@ const (
 	getExpIngestVersionErrMsg       string = "Error getting exp ingest version"
 	updateLastLedgerExpIngestErrMsg string = "Error updating last ingested ledger"
 	commitErrMsg                    string = "Error committing db transaction"
+	updateExpStateInvalidErrMsg     string = "Error updating state invalid value"
 )
 
 type state struct {
@@ -548,7 +549,7 @@ func (s *System) buildState() (state, error) {
 	// ingestion is fixing it.
 	err = s.historyQ.UpdateExpStateInvalid(false)
 	if err != nil {
-		return state{systemState: initState}, errors.Wrap(err, "Error updating state invalid value")
+		return state{systemState: initState}, errors.Wrap(err, updateExpStateInvalidErrMsg)
 	}
 
 	err = s.historyQ.TruncateExpingestStateTables()
@@ -1001,7 +1002,7 @@ func markStateInvalid(historyQ dbQ, err error) {
 	log.WithField("err", err).Error("STATE IS INVALID!")
 	q := &history.Q{historyQ.Clone()}
 	if err := q.UpdateExpStateInvalid(true); err != nil {
-		log.WithField("err", err).Error("Error updating state invalid value")
+		log.WithField("err", err).Error(updateExpStateInvalidErrMsg)
 	}
 }
 
