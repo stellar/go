@@ -975,7 +975,8 @@ func (s *System) updateCursor(ledgerSequence uint32) error {
 		cursor = s.config.StellarCoreCursor
 	}
 
-	ctx, _ := context.WithTimeout(context.Background(), time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
 	err := s.stellarCoreClient.SetCursor(ctx, cursor, int32(ledgerSequence))
 	if err != nil {
 		return errors.Wrap(err, "Setting stellar-core cursor failed")
