@@ -342,7 +342,8 @@ func (s *System) init() (state, error) {
 		// `LastLedgerExpIngest` value is blocked for update and will always
 		// be updated when leading instance finishes processing state.
 		// In case of errors it will start `Init` from the beginning.
-		lastCheckpoint, err := s.historyAdapter.GetLatestLedgerSequence()
+		var lastCheckpoint uint32
+		lastCheckpoint, err = s.historyAdapter.GetLatestLedgerSequence()
 		if err != nil {
 			return state{systemState: initState}, errors.Wrap(err, "Error getting last checkpoint")
 		}
