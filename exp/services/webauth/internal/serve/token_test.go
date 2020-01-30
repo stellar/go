@@ -337,7 +337,6 @@ func TestToken_jsonInputValidMultipleSigners(t *testing.T) {
 	claims := token.Claims.(jwt.MapClaims)
 	assert.Equal(t, serverKey.Address(), claims["iss"])
 	assert.Equal(t, account.Address(), claims["sub"])
-	assert.Equal(t, account.Address(), claims["sub"])
 	iat := time.Unix(int64(claims["iat"].(float64)), 0)
 	exp := time.Unix(int64(claims["exp"].(float64)), 0)
 	assert.True(t, iat.Before(time.Now()))
