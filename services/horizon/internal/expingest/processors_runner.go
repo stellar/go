@@ -161,6 +161,15 @@ func (s *ProcessorsRunner) RunHistoryArchiveIngestion(checkpointLedger uint32) e
 	}
 	defer stateReader.Close()
 
+	log.WithField("ledger", checkpointLedger).
+		Info("Processing entries from History Archive Snapshot")
+
+	stateReader = newLoggerStateReader(
+		stateReader,
+		log,
+		100000,
+	)
+
 	err = io.StreamChanges(changeProcessor, stateReader)
 	if err != nil {
 		return errors.Wrap(err, "Error streaming changes from HAS")
