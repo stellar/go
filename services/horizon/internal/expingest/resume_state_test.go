@@ -5,7 +5,6 @@ import (
 
 	"github.com/stellar/go/exp/ingest/adapters"
 	"github.com/stellar/go/exp/ingest/ledgerbackend"
-	"github.com/stellar/go/exp/orderbook"
 	"github.com/stellar/go/support/errors"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
@@ -17,7 +16,7 @@ func TestResumeTestTestSuite(t *testing.T) {
 
 type ResumeTestTestSuite struct {
 	suite.Suite
-	graph             *orderbook.OrderBookGraph
+	graph             *mockOrderBookGraph
 	ledgeBackend      *ledgerbackend.MockDatabaseBackend
 	historyQ          *mockDBQ
 	historyAdapter    *adapters.MockHistoryArchiveAdapter
@@ -27,7 +26,7 @@ type ResumeTestTestSuite struct {
 }
 
 func (s *ResumeTestTestSuite) SetupTest() {
-	s.graph = orderbook.NewOrderBookGraph()
+	s.graph = &mockOrderBookGraph{}
 	s.ledgeBackend = &ledgerbackend.MockDatabaseBackend{}
 	s.historyQ = &mockDBQ{}
 	s.historyAdapter = &adapters.MockHistoryArchiveAdapter{}
@@ -50,6 +49,7 @@ func (s *ResumeTestTestSuite) SetupTest() {
 	// Checking if in tx in runCurrentState()
 	s.historyQ.On("GetTx").Return(nil).Once()
 	s.historyQ.On("Rollback").Return(nil).Once()
+	s.graph.On("Discard").Once()
 }
 
 func (s *ResumeTestTestSuite) TearDownTest() {
@@ -59,12 +59,16 @@ func (s *ResumeTestTestSuite) TearDownTest() {
 	s.historyAdapter.AssertExpectations(t)
 	s.ledgeBackend.AssertExpectations(t)
 	s.stellarCoreClient.AssertExpectations(t)
+	s.graph.AssertExpectations(t)
 }
 
 func (s *ResumeTestTestSuite) TestInvalidParam() {
 	// Recreate mock in this single test to remove Rollback assertion.
 	*s.historyQ = mockDBQ{}
 	s.historyQ.On("GetTx").Return(nil).Maybe()
+
+	// Recreate orderbook graph to remove Discard assertion
+	*s.graph = mockOrderBookGraph{}
 
 	s.system.state.latestSuccessfullyProcessedLedger = 0
 	nextState, err := s.system.runCurrentState()
@@ -78,6 +82,9 @@ func (s *ResumeTestTestSuite) TestBeginReturnsError() {
 	*s.historyQ = mockDBQ{}
 	s.historyQ.On("GetTx").Return(nil).Once()
 	s.historyQ.On("Begin").Return(errors.New("my error")).Once()
+
+	// Recreate orderbook graph to remove Discard assertion
+	*s.graph = mockOrderBookGraph{}
 
 	nextState, err := s.system.runCurrentState()
 	s.Assert().Error(err)
@@ -116,6 +123,7 @@ func (s *ResumeTestTestSuite) TestIngestOrderbookOnly() {
 	// Rollback to release the lock as we're not updating DB
 	s.historyQ.On("Rollback").Return(nil).Once()
 	s.runner.On("RunOrderBookProcessorOnLedger", uint32(101)).Return(nil).Once()
+	s.graph.On("Apply", uint32(101)).Return(nil).Once()
 
 	nextState, err := s.system.runCurrentState()
 	s.Assert().NoError(err)
@@ -133,6 +141,7 @@ func (s *ResumeTestTestSuite) TestIngestAllMasterNode() {
 	s.runner.On("RunAllProcessorsOnLedger", uint32(101)).Return(nil).Once()
 	s.historyQ.On("UpdateLastLedgerExpIngest", uint32(101)).Return(nil).Once()
 	s.historyQ.On("Commit").Return(nil).Once()
+	s.graph.On("Apply", uint32(101)).Return(nil).Once()
 
 	s.stellarCoreClient.On(
 		"SetCursor",
@@ -159,6 +168,7 @@ func (s *ResumeTestTestSuite) TestErrorSettingCursorIgnored() {
 	s.runner.On("RunAllProcessorsOnLedger", uint32(101)).Return(nil).Once()
 	s.historyQ.On("UpdateLastLedgerExpIngest", uint32(101)).Return(nil).Once()
 	s.historyQ.On("Commit").Return(nil).Once()
+	s.graph.On("Apply", uint32(101)).Return(nil).Once()
 
 	s.stellarCoreClient.On(
 		"SetCursor",
