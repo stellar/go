@@ -135,7 +135,7 @@ type System struct {
 
 	graph    *orderbook.OrderBookGraph
 	historyQ dbQ
-	runner   ProcessorsRunner
+	runner   ProcessorsRunnerInterface
 
 	historyArchive *historyarchive.Archive
 	ledgerBackend  *ledgerbackend.DatabaseBackend
@@ -178,7 +178,7 @@ func NewSystem(config Config) (*System, error) {
 		graph:                    config.OrderBookGraph,
 		disableStateVerification: config.DisableStateVerification,
 		maxStreamRetries:         config.MaxStreamRetries,
-		runner: ProcessorsRunner{
+		runner: &ProcessorsRunner{
 			graph:          config.OrderBookGraph,
 			historyQ:       historyQ,
 			historyArchive: archive,
@@ -723,6 +723,12 @@ func (s *System) ingestHistoryRange() (state, error) {
 		validateStartLedger = false
 	}
 
+	if s.state.rangeFromLedger == 0 || s.state.rangeToLedger == 0 ||
+		s.state.rangeFromLedger > s.state.rangeToLedger {
+		return state{systemState: returnState},
+			errors.Errorf("invalid range: [%d, %d]", s.state.rangeFromLedger, s.state.rangeToLedger)
+	}
+
 	if err := s.historyQ.Begin(); err != nil {
 		return state{systemState: returnState},
 			errors.Wrap(err, "Error starting a transaction")
@@ -749,7 +755,8 @@ func (s *System) ingestHistoryRange() (state, error) {
 
 		err = s.historyQ.DeleteRangeAll(start, end)
 		if err != nil {
-			return state{systemState: returnState}, err
+			return state{systemState: returnState},
+				errors.Wrap(err, "error in DeleteRangeAll")
 		}
 	}
 
@@ -774,7 +781,8 @@ func (s *System) ingestHistoryRange() (state, error) {
 		startTime := time.Now()
 
 		if err := s.runner.RunTransactionProcessorsOnLedger(cur); err != nil {
-			return state{systemState: returnState}, err
+			return state{systemState: returnState},
+				errors.Wrap(err, fmt.Sprintf("error processing ledger sequence=%d", cur))
 		}
 
 		log.WithFields(logpkg.F{
@@ -788,7 +796,7 @@ func (s *System) ingestHistoryRange() (state, error) {
 	}
 
 	if err := s.historyQ.Commit(); err != nil {
-		return state{systemState: returnState}, err
+		return state{systemState: returnState}, errors.Wrap(err, "error in Commit")
 	}
 
 	return state{systemState: returnState}, nil
