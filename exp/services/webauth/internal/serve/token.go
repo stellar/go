@@ -16,12 +16,13 @@ import (
 )
 
 type tokenHandler struct {
-	Logger            *supportlog.Entry
-	HorizonClient     horizonclient.ClientInterface
-	NetworkPassphrase string
-	SigningAddress    *keypair.FromAddress
-	JWTPrivateKey     *ecdsa.PrivateKey
-	JWTExpiresIn      time.Duration
+	Logger                      *supportlog.Entry
+	HorizonClient               horizonclient.ClientInterface
+	NetworkPassphrase           string
+	SigningAddress              *keypair.FromAddress
+	JWTPrivateKey               *ecdsa.PrivateKey
+	JWTExpiresIn                time.Duration
+	AllowAccountsThatDoNotExist bool
 }
 
 type tokenRequest struct {
@@ -49,18 +50,36 @@ func (h tokenHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	var clientAccountExists bool
 	clientAccount, err := h.HorizonClient.AccountDetail(horizonclient.AccountRequest{AccountID: clientAccountID})
-	if err != nil {
+	switch {
+	case err == nil:
+		clientAccountExists = true
+	case horizonclient.IsNotFoundError(err):
+		clientAccountExists = false
+	default:
 		serverError.Render(w)
 		return
 	}
-	requiredThreshold := txnbuild.Threshold(clientAccount.Thresholds.HighThreshold)
-	clientSignerSummary := clientAccount.SignerSummary()
 
-	_, err = txnbuild.VerifyChallengeTxThreshold(req.Transaction, h.SigningAddress.Address(), h.NetworkPassphrase, requiredThreshold, clientSignerSummary)
-	if err != nil {
-		unauthorized.Render(w)
-		return
+	if clientAccountExists {
+		requiredThreshold := txnbuild.Threshold(clientAccount.Thresholds.HighThreshold)
+		clientSignerSummary := clientAccount.SignerSummary()
+		_, err = txnbuild.VerifyChallengeTxThreshold(req.Transaction, h.SigningAddress.Address(), h.NetworkPassphrase, requiredThreshold, clientSignerSummary)
+		if err != nil {
+			unauthorized.Render(w)
+			return
+		}
+	} else {
+		if !h.AllowAccountsThatDoNotExist {
+			unauthorized.Render(w)
+			return
+		}
+		_, err = txnbuild.VerifyChallengeTxSigners(req.Transaction, h.SigningAddress.Address(), h.NetworkPassphrase, clientAccountID)
+		if err != nil {
+			unauthorized.Render(w)
+			return
+		}
 	}
 
 	now := time.Now().UTC()
