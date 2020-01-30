@@ -532,7 +532,7 @@ func (s *System) buildState() (state, error) {
 		return state{systemState: initState}, nil
 	}
 
-	if err := s.updateCursor(s.state.checkpointLedger - 1); err != nil {
+	if err = s.updateCursor(s.state.checkpointLedger - 1); err != nil {
 		// Don't return updateCursor error.
 		log.WithError(err).Warn("error updating stellar-core cursor")
 	}
