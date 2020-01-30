@@ -15,14 +15,15 @@ import (
 )
 
 type Options struct {
-	Logger             *supportlog.Entry
-	HorizonURL         string
-	Port               int
-	NetworkPassphrase  string
-	SigningKey         string
-	ChallengeExpiresIn time.Duration
-	JWTPrivateKey      string
-	JWTExpiresIn       time.Duration
+	Logger                      *supportlog.Entry
+	HorizonURL                  string
+	Port                        int
+	NetworkPassphrase           string
+	SigningKey                  string
+	ChallengeExpiresIn          time.Duration
+	JWTPrivateKey               string
+	JWTExpiresIn                time.Duration
+	AllowAccountsThatDoNotExist bool
 }
 
 func Serve(opts Options) {
@@ -77,12 +78,13 @@ func handler(opts Options) (http.Handler, error) {
 		ChallengeExpiresIn: opts.ChallengeExpiresIn,
 	}.ServeHTTP)
 	mux.Post("/", tokenHandler{
-		Logger:            opts.Logger,
-		HorizonClient:     horizonClient,
-		NetworkPassphrase: opts.NetworkPassphrase,
-		SigningAddress:    signingKey.FromAddress(),
-		JWTPrivateKey:     jwtPrivateKey,
-		JWTExpiresIn:      opts.JWTExpiresIn,
+		Logger:                      opts.Logger,
+		HorizonClient:               horizonClient,
+		NetworkPassphrase:           opts.NetworkPassphrase,
+		SigningAddress:              signingKey.FromAddress(),
+		JWTPrivateKey:               jwtPrivateKey,
+		JWTExpiresIn:                opts.JWTExpiresIn,
+		AllowAccountsThatDoNotExist: opts.AllowAccountsThatDoNotExist,
 	}.ServeHTTP)
 
 	return mux, nil
