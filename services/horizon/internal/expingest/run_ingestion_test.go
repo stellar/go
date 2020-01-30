@@ -1,203 +1,62 @@
 package expingest
 
-// import (
-// 	"sort"
-// 	"testing"
-// 	"time"
+import (
+	"sort"
+	"testing"
 
-// 	"github.com/jmoiron/sqlx"
-// 	"github.com/stellar/go/exp/ingest/adapters"
-// 	"github.com/stellar/go/exp/orderbook"
-// 	"github.com/stellar/go/services/horizon/internal/db2/history"
-// 	"github.com/stellar/go/support/db"
-// 	"github.com/stellar/go/support/errors"
-// 	"github.com/stellar/go/support/historyarchive"
-// 	"github.com/stellar/go/xdr"
-// 	"github.com/stretchr/testify/assert"
-// 	"github.com/stretchr/testify/mock"
-// 	"github.com/stretchr/testify/suite"
-// )
+	"github.com/stellar/go/exp/ingest/adapters"
+	"github.com/stellar/go/exp/orderbook"
+	"github.com/stellar/go/support/errors"
+	"github.com/stellar/go/xdr"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/suite"
+)
 
-// type mockDBSession struct {
-// 	mock.Mock
-// }
+type RunIngestionTestSuite struct {
+	suite.Suite
+	graph          *orderbook.OrderBookGraph
+	historyQ       *mockDBQ
+	historyAdapter *adapters.MockHistoryArchiveAdapter
+	system         *System
+	expectedOffers []xdr.OfferEntry
+}
 
-// func (m *mockDBSession) Clone() *db.Session {
-// 	args := m.Called()
-// 	return args.Get(0).(*db.Session)
-// }
+func (s *RunIngestionTestSuite) SetupTest() {
+	s.graph = orderbook.NewOrderBookGraph()
+	s.historyQ = &mockDBQ{}
+	s.historyAdapter = &adapters.MockHistoryArchiveAdapter{}
+	s.system = &System{
+		state:          state{systemState: initState},
+		historyAdapter: s.historyAdapter,
+		historyQ:       s.historyQ,
+		graph:          s.graph,
+	}
+	s.expectedOffers = []xdr.OfferEntry{}
 
-// type mockDBQ struct {
-// 	mock.Mock
-// }
+	s.Assert().Equal(initState, s.system.state.systemState)
+	s.historyQ.On("GetTx").Return(nil).Once()
+}
 
-// func (m *mockDBQ) Begin() error {
-// 	args := m.Called()
-// 	return args.Error(0)
-// }
+func (s *RunIngestionTestSuite) TearDownTest() {
+	t := s.T()
+	s.historyQ.AssertExpectations(t)
+	assertions := assert.New(t)
 
-// func (m *mockDBQ) Clone() *db.Session {
-// 	args := m.Called()
-// 	return args.Get(0).(*db.Session)
-// }
+	offers := s.graph.Offers()
+	sort.Slice(offers, func(i, j int) bool {
+		return offers[i].OfferId < offers[j].OfferId
+	})
+	assertions.Equal(s.expectedOffers, offers)
+}
 
-// func (m *mockDBQ) Commit() error {
-// 	args := m.Called()
-// 	return args.Error(0)
-// }
+func (s *RunIngestionTestSuite) TestBeginReturnsError() {
+	s.historyQ.On("Begin").Return(errors.New("begin error")).Once()
 
-// func (m *mockDBQ) Rollback() error {
-// 	args := m.Called()
-// 	return args.Error(0)
-// }
-
-// func (m *mockDBQ) GetTx() *sqlx.Tx {
-// 	args := m.Called()
-// 	if args.Get(0) == nil {
-// 		return nil
-// 	}
-// 	return args.Get(0).(*sqlx.Tx)
-// }
-
-// func (m *mockDBQ) GetLastLedgerExpIngest() (uint32, error) {
-// 	args := m.Called()
-// 	return args.Get(0).(uint32), args.Error(1)
-// }
-
-// func (m *mockDBQ) GetExpIngestVersion() (int, error) {
-// 	args := m.Called()
-// 	return args.Get(0).(int), args.Error(1)
-// }
-
-// func (m *mockDBQ) UpdateLastLedgerExpIngest(sequence uint32) error {
-// 	args := m.Called(sequence)
-// 	return args.Error(0)
-// }
-
-// func (m *mockDBQ) UpdateExpStateInvalid(invalid bool) error {
-// 	args := m.Called(invalid)
-// 	return args.Error(0)
-// }
-
-// func (m *mockDBQ) UpdateExpIngestVersion(version int) error {
-// 	args := m.Called(version)
-// 	return args.Error(0)
-// }
-
-// func (m *mockDBQ) GetExpStateInvalid() (bool, error) {
-// 	args := m.Called()
-// 	return args.Get(0).(bool), args.Error(1)
-// }
-
-// func (m *mockDBQ) GetAllOffers() ([]history.Offer, error) {
-// 	args := m.Called()
-// 	return args.Get(0).([]history.Offer), args.Error(1)
-// }
-
-// func (m *mockDBQ) GetLatestLedger() (uint32, error) {
-// 	args := m.Called()
-// 	return args.Get(0).(uint32), args.Error(1)
-// }
-
-// func (m *mockDBQ) TruncateExpingestStateTables() error {
-// 	args := m.Called()
-// 	return args.Error(0)
-// }
-
-// func (m *mockDBQ) DeleteRangeAll(start, end int64) error {
-// 	args := m.Called(start, end)
-// 	return args.Error(0)
-// }
-
-// type mockIngestSession struct {
-// 	mock.Mock
-// }
-
-// func (m *mockIngestSession) Run() error {
-// 	args := m.Called()
-// 	return args.Error(0)
-// }
-
-// func (m *mockIngestSession) RunFromCheckpoint(checkpointLedger uint32) error {
-// 	args := m.Called(checkpointLedger)
-// 	return args.Error(0)
-// }
-
-// func (m *mockIngestSession) Resume(ledgerSequence uint32) error {
-// 	args := m.Called(ledgerSequence)
-// 	return args.Error(0)
-// }
-
-// func (m *mockIngestSession) GetArchive() historyarchive.ArchiveInterface {
-// 	args := m.Called()
-// 	return args.Get(0).(historyarchive.ArchiveInterface)
-// }
-
-// func (m *mockIngestSession) GetLatestSuccessfullyProcessedLedger() (ledgerSequence uint32, processed bool) {
-// 	args := m.Called()
-// 	return args.Get(0).(uint32), args.Bool(1)
-// }
-
-// func (m *mockIngestSession) Shutdown() {
-// 	m.Called()
-// }
-
-// type RunIngestionTestSuite struct {
-// 	suite.Suite
-// 	graph          *orderbook.OrderBookGraph
-// 	session        *mockDBSession
-// 	historyQ       *mockDBQ
-// 	historyAdapter *adapters.MockHistoryArchiveAdapter
-// 	ingestSession  *mockIngestSession
-// 	system         *System
-// 	expectedOffers []xdr.OfferEntry
-// }
-
-// func (s *RunIngestionTestSuite) SetupTest() {
-// 	s.graph = orderbook.NewOrderBookGraph()
-// 	s.session = &mockDBSession{}
-// 	s.historyQ = &mockDBQ{}
-// 	s.ingestSession = &mockIngestSession{}
-// 	s.historyAdapter = &adapters.MockHistoryArchiveAdapter{}
-// 	s.system = &System{
-// 		state:          state{systemState: initState},
-// 		historySession: s.session,
-// 		historyAdapter: s.historyAdapter,
-// 		// historyQ:       s.historyQ,
-// 		graph: s.graph,
-// 	}
-// 	s.expectedOffers = []xdr.OfferEntry{}
-
-// 	s.Assert().Equal(initState, s.system.state.systemState)
-
-// 	s.historyQ.On("GetTx").Return(nil).Once()
-// 	s.historyQ.On("Begin").Return(nil).Once()
-// }
-
-// func (s *RunIngestionTestSuite) TearDownTest() {
-// 	t := s.T()
-// 	s.session.AssertExpectations(t)
-// 	s.ingestSession.AssertExpectations(t)
-// 	s.historyQ.AssertExpectations(t)
-// 	assertions := assert.New(t)
-
-// 	offers := s.graph.Offers()
-// 	sort.Slice(offers, func(i, j int) bool {
-// 		return offers[i].OfferId < offers[j].OfferId
-// 	})
-// 	assertions.Equal(s.expectedOffers, offers)
-// }
-
-// func (s *RunIngestionTestSuite) TestBeginReturnsError() {
-// 	*s.historyQ = mockDBQ{}
-// 	s.historyQ.On("GetTx").Return(nil).Once()
-// 	s.historyQ.On("Begin").Return(errors.New("begin error")).Once()
-
-// 	nextState, err := s.system.runCurrentState()
-// 	s.Assert().Error(err)
-// 	s.Assert().EqualError(err, "Error in Begin: begin error")
-// 	s.Assert().Equal(initState, nextState.systemState)
-// }
+	nextState, err := s.system.runCurrentState()
+	s.Assert().Error(err)
+	s.Assert().EqualError(err, "Error starting a transaction: begin error")
+	s.Assert().Equal(initState, nextState.systemState)
+}
 
 // func (s *RunIngestionTestSuite) TestGetLastLedgerExpIngestReturnsError() {
 // 	s.historyQ.On("GetLastLedgerExpIngest").Return(
@@ -636,9 +495,9 @@ package expingest
 // 	s.expectedOffers = []xdr.OfferEntry{eurOffer, twoEurOffer}
 // }
 
-// func TestRunIngestionTestSuite(t *testing.T) {
-// 	suite.Run(t, new(RunIngestionTestSuite))
-// }
+func TestRunIngestionTestSuite(t *testing.T) {
+	suite.Run(t, new(RunIngestionTestSuite))
+}
 
 // type ResumeIngestionTestSuite struct {
 // 	suite.Suite

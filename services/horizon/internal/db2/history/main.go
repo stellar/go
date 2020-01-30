@@ -253,6 +253,10 @@ type QAssetStats interface {
 	CountTrustLines() (int, error)
 }
 
+type QCreateAccountsHistory interface {
+	CreateAccounts(addresses []string) (map[string]int64, error)
+}
+
 // Effect is a row of data from the `history_effects` table
 type Effect struct {
 	HistoryAccountID   int64       `db:"history_account_id"`

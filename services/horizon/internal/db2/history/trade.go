@@ -334,7 +334,7 @@ func getCanonicalAssetOrder(assetId1 int64, assetId2 int64) (orderPreserved bool
 }
 
 type QTrades interface {
-	CreateAccounts(addresses []string) (map[string]int64, error)
+	QCreateAccountsHistory
 	NewTradeBatchInsertBuilder(maxBatchSize int) TradeBatchInsertBuilder
 	CreateAssets(assets []xdr.Asset) (map[string]Asset, error)
 }

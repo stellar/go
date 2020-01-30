@@ -1,61 +1,55 @@
 package expingest
 
-// import (
-// 	"sort"
-// 	"testing"
+import (
+	"github.com/stellar/go/xdr"
+)
 
-// 	"github.com/stellar/go/exp/orderbook"
-// 	"github.com/stellar/go/services/horizon/internal/db2/history"
-// 	"github.com/stellar/go/xdr"
-// 	"github.com/stretchr/testify/suite"
-// )
+var (
+	issuer   = xdr.MustAddress("GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H")
+	usdAsset = xdr.Asset{
+		Type: xdr.AssetTypeAssetTypeCreditAlphanum4,
+		AlphaNum4: &xdr.AssetAlphaNum4{
+			AssetCode: [4]byte{'u', 's', 'd', 0},
+			Issuer:    issuer,
+		},
+	}
 
-// var (
-// 	issuer   = xdr.MustAddress("GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H")
-// 	usdAsset = xdr.Asset{
-// 		Type: xdr.AssetTypeAssetTypeCreditAlphanum4,
-// 		AlphaNum4: &xdr.AssetAlphaNum4{
-// 			AssetCode: [4]byte{'u', 's', 'd', 0},
-// 			Issuer:    issuer,
-// 		},
-// 	}
+	nativeAsset = xdr.Asset{
+		Type: xdr.AssetTypeAssetTypeNative,
+	}
 
-// 	nativeAsset = xdr.Asset{
-// 		Type: xdr.AssetTypeAssetTypeNative,
-// 	}
-
-// 	eurAsset = xdr.Asset{
-// 		Type: xdr.AssetTypeAssetTypeCreditAlphanum4,
-// 		AlphaNum4: &xdr.AssetAlphaNum4{
-// 			AssetCode: [4]byte{'e', 'u', 'r', 0},
-// 			Issuer:    issuer,
-// 		},
-// 	}
-// 	eurOffer = xdr.OfferEntry{
-// 		SellerId: issuer,
-// 		OfferId:  xdr.Int64(4),
-// 		Buying:   eurAsset,
-// 		Selling:  nativeAsset,
-// 		Price: xdr.Price{
-// 			N: 1,
-// 			D: 1,
-// 		},
-// 		Flags:  1,
-// 		Amount: xdr.Int64(500),
-// 	}
-// 	twoEurOffer = xdr.OfferEntry{
-// 		SellerId: issuer,
-// 		OfferId:  xdr.Int64(5),
-// 		Buying:   eurAsset,
-// 		Selling:  nativeAsset,
-// 		Price: xdr.Price{
-// 			N: 2,
-// 			D: 1,
-// 		},
-// 		Flags:  2,
-// 		Amount: xdr.Int64(500),
-// 	}
-// )
+	eurAsset = xdr.Asset{
+		Type: xdr.AssetTypeAssetTypeCreditAlphanum4,
+		AlphaNum4: &xdr.AssetAlphaNum4{
+			AssetCode: [4]byte{'e', 'u', 'r', 0},
+			Issuer:    issuer,
+		},
+	}
+	eurOffer = xdr.OfferEntry{
+		SellerId: issuer,
+		OfferId:  xdr.Int64(4),
+		Buying:   eurAsset,
+		Selling:  nativeAsset,
+		Price: xdr.Price{
+			N: 1,
+			D: 1,
+		},
+		Flags:  1,
+		Amount: xdr.Int64(500),
+	}
+	twoEurOffer = xdr.OfferEntry{
+		SellerId: issuer,
+		OfferId:  xdr.Int64(5),
+		Buying:   eurAsset,
+		Selling:  nativeAsset,
+		Price: xdr.Price{
+			N: 2,
+			D: 1,
+		},
+		Flags:  2,
+		Amount: xdr.Int64(500),
+	}
+)
 
 // type LoadOffersIntoMemoryTestSuite struct {
 // 	suite.Suite
