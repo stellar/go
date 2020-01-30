@@ -12,9 +12,8 @@ type mockOrderBookGraph struct {
 	mock.Mock
 }
 
-func (m *mockOrderBookGraph) AddOffer(offer xdr.OfferEntry) *orderbook.OrderBookGraph {
-	args := m.Called(offer)
-	return args.Get(0).(*orderbook.OrderBookGraph)
+func (m *mockOrderBookGraph) AddOffer(offer xdr.OfferEntry) {
+	m.Called(offer)
 }
 
 func (m *mockOrderBookGraph) Apply(ledger uint32) error {

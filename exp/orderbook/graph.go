@@ -34,7 +34,7 @@ type tradingPair struct {
 
 // OBGraph is an interface for orderbook graphs
 type OBGraph interface {
-	AddOffer(offer xdr.OfferEntry) *OrderBookGraph
+	AddOffer(offer xdr.OfferEntry)
 	Apply(ledger uint32) error
 	Discard()
 	OffersMap() map[xdr.Int64]xdr.OfferEntry
@@ -79,9 +79,8 @@ func NewOrderBookGraph() *OrderBookGraph {
 // AddOffer will queue an operation to add the given offer to the order book in
 // the internal batch.
 // You need to run Apply() to apply all enqueued operations.
-func (graph *OrderBookGraph) AddOffer(offer xdr.OfferEntry) *OrderBookGraph {
+func (graph *OrderBookGraph) AddOffer(offer xdr.OfferEntry) {
 	graph.batchedUpdates.addOffer(offer)
-	return graph
 }
 
 // RemoveOffer will queue an operation to remove the given offer from the order book in
