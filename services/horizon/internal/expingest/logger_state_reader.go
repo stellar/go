@@ -23,8 +23,8 @@ func newLoggerStateReader(reader io.StateReader, logger *logpkg.Entry, every int
 	}
 }
 
-// Ensure loggerStateReader implements ChangeReader
-var _ io.ChangeReader = &loggerStateReader{}
+// Ensure loggerStateReader implements StateReader
+var _ io.StateReader = &loggerStateReader{}
 
 // Read returns a new ledger entry change on each call, returning io.EOF when the stream ends.
 func (lsr *loggerStateReader) Read() (io.Change, error) {
