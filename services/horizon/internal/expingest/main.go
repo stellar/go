@@ -118,7 +118,11 @@ const (
 )
 
 const (
-	lastIngestedErrMsg string = "Error getting last ingested ledger"
+	getLastIngestedErrMsg           string = "Error getting last ingested ledger"
+	getExpIngestVersionErrMsg       string = "Error getting exp ingest version"
+	updateLastLedgerExpIngestErrMsg string = "Error updating last ingested ledger"
+	commitErrMsg                    string = "Error committing db transaction"
+	updateExpStateInvalidErrMsg     string = "Error updating state invalid value"
 )
 
 type state struct {
@@ -146,7 +150,7 @@ type System struct {
 	config Config
 	state  state
 
-	graph    *orderbook.OrderBookGraph
+	graph    orderbook.OBGraph
 	historyQ dbQ
 	runner   ProcessorsRunnerInterface
 
@@ -354,12 +358,12 @@ func (s *System) init() (state, error) {
 	// This will get the value `FOR UPDATE`, blocking it for other nodes.
 	lastIngestedLedger, err := s.historyQ.GetLastLedgerExpIngest()
 	if err != nil {
-		return state{systemState: initState}, errors.Wrap(err, lastIngestedErrMsg)
+		return state{systemState: initState}, errors.Wrap(err, getLastIngestedErrMsg)
 	}
 
 	ingestVersion, err := s.historyQ.GetExpIngestVersion()
 	if err != nil {
-		return state{systemState: initState}, errors.Wrap(err, "Error getting exp ingest version")
+		return state{systemState: initState}, errors.Wrap(err, getExpIngestVersionErrMsg)
 	}
 
 	lastHistoryLedger, err := s.historyQ.GetLatestLedger()
@@ -423,11 +427,11 @@ func (s *System) init() (state, error) {
 		// so init state will rebuild the state correctly.
 		err = s.historyQ.UpdateLastLedgerExpIngest(0)
 		if err != nil {
-			return state{systemState: initState}, errors.Wrap(err, "Error updating last ingested ledger")
+			return state{systemState: initState}, errors.Wrap(err, updateLastLedgerExpIngestErrMsg)
 		}
 		err = s.historyQ.Commit()
 		if err != nil {
-			return state{systemState: initState}, errors.Wrap(err, "Error updating last ingested ledger")
+			return state{systemState: initState}, errors.Wrap(err, commitErrMsg)
 		}
 		return state{systemState: initState}, nil
 	// lastHistoryLedger != 0 check is here to check the case when one node ingested
@@ -517,12 +521,12 @@ func (s *System) buildState() (state, error) {
 	// are blocked.
 	lastIngestedLedger, err := s.historyQ.GetLastLedgerExpIngest()
 	if err != nil {
-		return state{systemState: initState}, errors.Wrap(err, lastIngestedErrMsg)
+		return state{systemState: initState}, errors.Wrap(err, getLastIngestedErrMsg)
 	}
 
 	ingestVersion, err := s.historyQ.GetExpIngestVersion()
 	if err != nil {
-		return state{systemState: initState}, errors.Wrap(err, "Error getting exp ingest version")
+		return state{systemState: initState}, errors.Wrap(err, getExpIngestVersionErrMsg)
 	}
 
 	// Double check if we should proceed with state ingestion. It's possible that
@@ -543,14 +547,14 @@ func (s *System) buildState() (state, error) {
 	// Clear last_ingested_ledger in key value store
 	err = s.historyQ.UpdateLastLedgerExpIngest(0)
 	if err != nil {
-		return state{systemState: initState}, errors.Wrap(err, "Error updating last ingested ledger")
+		return state{systemState: initState}, errors.Wrap(err, updateLastLedgerExpIngestErrMsg)
 	}
 
 	// Clear invalid state in key value store. It's possible that upgraded
 	// ingestion is fixing it.
 	err = s.historyQ.UpdateExpStateInvalid(false)
 	if err != nil {
-		return state{systemState: initState}, errors.Wrap(err, "Error updating state invalid value")
+		return state{systemState: initState}, errors.Wrap(err, updateExpStateInvalidErrMsg)
 	}
 
 	err = s.historyQ.TruncateExpingestStateTables()
@@ -569,7 +573,7 @@ func (s *System) buildState() (state, error) {
 	}
 
 	if err = s.historyQ.UpdateLastLedgerExpIngest(s.state.checkpointLedger); err != nil {
-		return state{systemState: initState}, errors.Wrap(err, "Error updating last ingested ledger")
+		return state{systemState: initState}, errors.Wrap(err, updateLastLedgerExpIngestErrMsg)
 	}
 
 	if err = s.historyQ.UpdateExpIngestVersion(CurrentVersion); err != nil {
@@ -578,7 +582,7 @@ func (s *System) buildState() (state, error) {
 
 	err = s.historyQ.Commit()
 	if err != nil {
-		return state{systemState: initState}, errors.Wrap(err, "Error commiting db transaction")
+		return state{systemState: initState}, errors.Wrap(err, commitErrMsg)
 	}
 
 	err = s.graph.Apply(s.state.checkpointLedger)
@@ -617,7 +621,7 @@ func (s *System) resume() (state, error) {
 	lastIngestedLedger, err := s.historyQ.GetLastLedgerExpIngest()
 	if err != nil {
 		return s.state,
-			errors.Wrap(err, lastIngestedErrMsg)
+			errors.Wrap(err, getLastIngestedErrMsg)
 	}
 
 	ingestLedger := s.state.latestSuccessfullyProcessedLedger + 1
@@ -706,7 +710,7 @@ func (s *System) resume() (state, error) {
 	err = s.historyQ.UpdateLastLedgerExpIngest(ingestLedger)
 	if err != nil {
 		return s.state,
-			errors.Wrap(err, "Error updating last ingested ledger")
+			errors.Wrap(err, updateLastLedgerExpIngestErrMsg)
 	}
 
 	if err = s.graph.Apply(ingestLedger); err != nil {
@@ -716,7 +720,7 @@ func (s *System) resume() (state, error) {
 
 	if err = s.historyQ.Commit(); err != nil {
 		return s.state,
-			errors.Wrap(err, "Error commiting processor transaction")
+			errors.Wrap(err, commitErrMsg)
 	}
 
 	if err = s.updateCursor(ingestLedger); err != nil {
@@ -807,7 +811,7 @@ func (s *System) ingestHistoryRange() (state, error) {
 	// acquire distributed lock so no one else can perform ingestion operations.
 	if _, err := s.historyQ.GetLastLedgerExpIngest(); err != nil {
 		return state{systemState: returnState},
-			errors.Wrap(err, lastIngestedErrMsg)
+			errors.Wrap(err, getLastIngestedErrMsg)
 	}
 
 	if s.state.rangeClearHistory {
@@ -865,7 +869,7 @@ func (s *System) ingestHistoryRange() (state, error) {
 	}
 
 	if err := s.historyQ.Commit(); err != nil {
-		return state{systemState: returnState}, errors.Wrap(err, "error in Commit")
+		return state{systemState: returnState}, errors.Wrap(err, commitErrMsg)
 	}
 
 	return state{systemState: returnState}, nil
@@ -888,7 +892,7 @@ func (s *System) verifyRange() (state, error) {
 	// Simple check if DB clean
 	lastIngestedLedger, err := s.historyQ.GetLastLedgerExpIngest()
 	if err != nil {
-		err = errors.Wrap(err, lastIngestedErrMsg)
+		err = errors.Wrap(err, getLastIngestedErrMsg)
 		return state{systemState: shutdownState}, err
 	}
 
@@ -909,7 +913,7 @@ func (s *System) verifyRange() (state, error) {
 	}
 
 	if err = s.historyQ.Commit(); err != nil {
-		err = errors.Wrap(err, "Error commiting")
+		err = errors.Wrap(err, commitErrMsg)
 		return state{systemState: shutdownState}, err
 	}
 
@@ -941,7 +945,7 @@ func (s *System) verifyRange() (state, error) {
 
 		err = s.historyQ.UpdateLastLedgerExpIngest(sequence)
 		if err != nil {
-			err = errors.Wrap(err, "Error updating last ingested ledger")
+			err = errors.Wrap(err, updateLastLedgerExpIngestErrMsg)
 			return state{systemState: shutdownState}, err
 		}
 
@@ -951,8 +955,7 @@ func (s *System) verifyRange() (state, error) {
 		}
 
 		if err = s.historyQ.Commit(); err != nil {
-			err = errors.Wrap(err, "Error commiting")
-			return state{systemState: shutdownState}, err
+			return state{systemState: shutdownState}, errors.Wrap(err, commitErrMsg)
 		}
 
 		log.WithFields(logpkg.F{
@@ -1019,7 +1022,7 @@ func markStateInvalid(historyQ dbQ, err error) {
 	log.WithField("err", err).Error("STATE IS INVALID!")
 	q := &history.Q{historyQ.Clone()}
 	if err := q.UpdateExpStateInvalid(true); err != nil {
-		log.WithField("err", err).Error("Error updating state invalid value")
+		log.WithField("err", err).Error(updateExpStateInvalidErrMsg)
 	}
 }
 

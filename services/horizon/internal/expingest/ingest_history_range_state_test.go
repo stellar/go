@@ -258,6 +258,6 @@ func (s *IngestHistoryRangeStateTestSuite) TestShutdownWhenDoneWithError() {
 
 	nextState, err := s.system.runCurrentState()
 	s.Assert().Error(err)
-	s.Assert().EqualError(err, "error in Commit: my error")
+	s.Assert().EqualError(err, "Error committing db transaction: my error")
 	s.Assert().Equal(shutdownState, nextState.systemState)
 }
