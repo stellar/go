@@ -2,6 +2,7 @@ package expingest
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	"github.com/stellar/go/exp/ingest/adapters"
@@ -79,6 +80,24 @@ func (s *InitStateTestSuite) TestGetExpIngestVersionReturnsError() {
 	s.Assert().Error(err)
 	s.Assert().EqualError(err, "Error getting exp ingest version: my error")
 	s.Assert().Equal(initState, nextState.systemState)
+}
+
+func (s *InitStateTestSuite) TestCurrentVersionIsOutdated() {
+	s.historyQ.On("Begin").Return(nil).Once()
+	s.historyQ.On("GetLastLedgerExpIngest").Return(uint32(1), nil).Once()
+	s.historyQ.On("GetExpIngestVersion").Return(CurrentVersion+1, nil).Once()
+
+	nextState, err := s.system.runCurrentState()
+	s.Assert().Error(err)
+	s.Assert().EqualError(
+		err,
+		fmt.Sprintf(
+			"ingestion version in db %v is greater than current version %v",
+			CurrentVersion+1,
+			CurrentVersion,
+		),
+	)
+	s.Assert().Equal(shutdownState, nextState.systemState)
 }
 
 func (s *InitStateTestSuite) TestGetLatestLedgerReturnsError() {

@@ -351,6 +351,15 @@ func (s *System) init() (state, error) {
 		return state{systemState: initState}, errors.Wrap(err, getExpIngestVersionErrMsg)
 	}
 
+	if ingestVersion > CurrentVersion {
+		return state{systemState: shutdownState},
+			errors.Errorf(
+				"ingestion version in db %v is greater than current version %v",
+				ingestVersion,
+				CurrentVersion,
+			)
+	}
+
 	lastHistoryLedger, err := s.historyQ.GetLatestLedger()
 	if err != nil {
 		return state{systemState: initState}, errors.Wrap(err, "Error getting last history ledger sequence")
@@ -621,6 +630,35 @@ func (s *System) resume() (state, error) {
 		return state{systemState: initState},
 			errors.New("expected ingest ledger to be at most one greater " +
 				"than last ingested ledger in db")
+	}
+
+	ingestVersion, err := s.historyQ.GetExpIngestVersion()
+	if err != nil {
+		return s.state, errors.Wrap(err, getExpIngestVersionErrMsg)
+	}
+
+	if ingestVersion != CurrentVersion {
+		return state{systemState: initState},
+			errors.Errorf(
+				"ingestion version in db %v does not match expected version %v",
+				ingestVersion,
+				CurrentVersion,
+			)
+	}
+
+	lastHistoryLedger, err := s.historyQ.GetLatestLedger()
+	if err != nil {
+		return s.state,
+			errors.Wrap(err, "could not get latest history ledger")
+	}
+
+	if lastHistoryLedger != 0 && lastHistoryLedger != lastIngestedLedger {
+		return state{systemState: initState},
+			errors.Errorf(
+				"last history ledger %v does not match last ingested ledger %v",
+				lastHistoryLedger,
+				lastIngestedLedger,
+			)
 	}
 
 	// Check if ledger is closed
