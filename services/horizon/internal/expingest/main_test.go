@@ -1,14 +1,63 @@
 package expingest
 
 import (
+	"context"
 	"testing"
 
 	"github.com/jmoiron/sqlx"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/support/db"
+	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+)
+
+var (
+	issuer   = xdr.MustAddress("GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H")
+	usdAsset = xdr.Asset{
+		Type: xdr.AssetTypeAssetTypeCreditAlphanum4,
+		AlphaNum4: &xdr.AssetAlphaNum4{
+			AssetCode: [4]byte{'u', 's', 'd', 0},
+			Issuer:    issuer,
+		},
+	}
+
+	nativeAsset = xdr.Asset{
+		Type: xdr.AssetTypeAssetTypeNative,
+	}
+
+	eurAsset = xdr.Asset{
+		Type: xdr.AssetTypeAssetTypeCreditAlphanum4,
+		AlphaNum4: &xdr.AssetAlphaNum4{
+			AssetCode: [4]byte{'e', 'u', 'r', 0},
+			Issuer:    issuer,
+		},
+	}
+	eurOffer = xdr.OfferEntry{
+		SellerId: issuer,
+		OfferId:  xdr.Int64(4),
+		Buying:   eurAsset,
+		Selling:  nativeAsset,
+		Price: xdr.Price{
+			N: 1,
+			D: 1,
+		},
+		Flags:  1,
+		Amount: xdr.Int64(500),
+	}
+	twoEurOffer = xdr.OfferEntry{
+		SellerId: issuer,
+		OfferId:  xdr.Int64(5),
+		Buying:   eurAsset,
+		Selling:  nativeAsset,
+		Price: xdr.Price{
+			N: 2,
+			D: 1,
+		},
+		Flags:  2,
+		Amount: xdr.Int64(500),
+	}
 )
 
 func TestCheckVerifyStateVersion(t *testing.T) {
@@ -18,6 +67,55 @@ func TestCheckVerifyStateVersion(t *testing.T) {
 		stateVerifierExpectedIngestionVersion,
 		"State verifier is outdated, update it, then update stateVerifierExpectedIngestionVersion value",
 	)
+}
+
+func TestStateMachineRunReturnsUnexpectedTransaction(t *testing.T) {
+	historyQ := &mockDBQ{}
+	system := &System{
+		historyQ: historyQ,
+	}
+
+	historyQ.On("GetTx").Return(&sqlx.Tx{}).Once()
+
+	assert.PanicsWithValue(t, "unexpected transaction", func() {
+		system.Run()
+	})
+}
+
+func TestStateMachineTransition(t *testing.T) {
+	historyQ := &mockDBQ{}
+	system := &System{
+		historyQ: historyQ,
+	}
+
+	historyQ.On("GetTx").Return(nil).Once()
+	historyQ.On("Begin").Return(errors.New("my error")).Once()
+	historyQ.On("GetTx").Return(&sqlx.Tx{}).Once()
+
+	assert.PanicsWithValue(t, "unexpected transaction", func() {
+		system.Run()
+	})
+}
+
+// TestStateMachineRunReturnsErrorWhenNextStateIsShutdownWithError checks if the
+// state that goes to shutdownState and returns an error will make `run` function
+// return that error. This is essential because some command rely on this to return
+// non-zero exit code.
+func TestStateMachineRunReturnsErrorWhenNextStateIsShutdownWithError(t *testing.T) {
+	historyQ := &mockDBQ{}
+	system := &System{
+		state: state{
+			systemState: verifyRangeState,
+		},
+		historyQ: historyQ,
+	}
+
+	historyQ.On("GetTx").Return(nil).Once()
+	historyQ.On("Begin").Return(errors.New("my error")).Once()
+
+	err := system.run()
+	assert.Error(t, err)
+	assert.EqualError(t, err, "Error starting a transaction: my error")
 }
 
 type mockDBQ struct {
@@ -134,3 +232,40 @@ func (m *mockDBQ) CreateAssets(assets []xdr.Asset) (map[string]history.Asset, er
 	args := m.Called(assets)
 	return args.Get(0).(map[string]history.Asset), args.Error(1)
 }
+
+type mockProcessorsRunner struct {
+	mock.Mock
+}
+
+func (m *mockProcessorsRunner) RunHistoryArchiveIngestion(checkpointLedger uint32) error {
+	args := m.Called(checkpointLedger)
+	return args.Error(0)
+}
+
+func (m *mockProcessorsRunner) RunAllProcessorsOnLedger(sequence uint32) error {
+	args := m.Called(sequence)
+	return args.Error(0)
+}
+
+func (m *mockProcessorsRunner) RunTransactionProcessorsOnLedger(sequence uint32) error {
+	args := m.Called(sequence)
+	return args.Error(0)
+}
+
+func (m *mockProcessorsRunner) RunOrderBookProcessorOnLedger(sequence uint32) error {
+	args := m.Called(sequence)
+	return args.Error(0)
+}
+
+var _ ProcessorRunnerInterface = (*mockProcessorsRunner)(nil)
+
+type mockStellarCoreClient struct {
+	mock.Mock
+}
+
+func (m *mockStellarCoreClient) SetCursor(ctx context.Context, id string, cursor int32) error {
+	args := m.Called(ctx, id, cursor)
+	return args.Error(0)
+}
+
+var _ stellarCoreClient = (*mockStellarCoreClient)(nil)

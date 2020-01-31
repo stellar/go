@@ -4,9 +4,13 @@ import (
 	"bytes"
 	"fmt"
 
+	"github.com/stellar/go/exp/ingest/adapters"
 	"github.com/stellar/go/exp/ingest/io"
+	"github.com/stellar/go/exp/ingest/ledgerbackend"
+	"github.com/stellar/go/exp/orderbook"
 	"github.com/stellar/go/services/horizon/internal/expingest/processors"
 	"github.com/stellar/go/support/errors"
+	"github.com/stellar/go/support/historyarchive"
 	"github.com/stellar/go/xdr"
 )
 
@@ -18,63 +22,36 @@ const (
 	ledgerSource         = ingestionSource(iota)
 )
 
-type horizonChangeProcessor interface {
-	io.ChangeProcessor
-	// TODO maybe rename to Flush()
-	Commit() error
-}
-
-type groupChangeProcessors []horizonChangeProcessor
-
-func (g groupChangeProcessors) ProcessChange(change io.Change) error {
-	for _, p := range g {
-		if err := p.ProcessChange(change); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func (g groupChangeProcessors) Commit() error {
-	for _, p := range g {
-		if err := p.Commit(); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
 type horizonTransactionProcessor interface {
 	io.LedgerTransactionProcessor
 	// TODO maybe rename to Flush()
 	Commit() error
 }
 
-type groupTransactionProcessors []horizonTransactionProcessor
-
-func (g groupTransactionProcessors) ProcessTransaction(tx io.LedgerTransaction) error {
-	for _, p := range g {
-		if err := p.ProcessTransaction(tx); err != nil {
-			return err
-		}
-	}
-	return nil
+type ProcessorRunnerInterface interface {
+	RunHistoryArchiveIngestion(checkpointLedger uint32) error
+	RunAllProcessorsOnLedger(sequence uint32) error
+	RunTransactionProcessorsOnLedger(sequence uint32) error
+	RunOrderBookProcessorOnLedger(sequence uint32) error
 }
 
-func (g groupTransactionProcessors) Commit() error {
-	for _, p := range g {
-		if err := p.Commit(); err != nil {
-			return err
-		}
-	}
-	return nil
+var _ ProcessorRunnerInterface = (*ProcessorRunner)(nil)
+
+type ProcessorRunner struct {
+	config Config
+
+	graph          *orderbook.OrderBookGraph
+	historyQ       dbQ
+	historyArchive *historyarchive.Archive
+	historyAdapter adapters.HistoryArchiveAdapterInterface
+	ledgerBackend  *ledgerbackend.DatabaseBackend
 }
 
-func (s *System) buildOrderBookChangeProcessor() horizonChangeProcessor {
+func (s *ProcessorRunner) buildOrderBookChangeProcessor() horizonChangeProcessor {
 	return processors.NewOrderbookProcessor(s.graph)
 }
 
-func (s *System) buildChangeProcessor(source ingestionSource) horizonChangeProcessor {
+func (s *ProcessorRunner) buildChangeProcessor(source ingestionSource) horizonChangeProcessor {
 	useLedgerCache := source == ledgerSource
 	return groupChangeProcessors{
 		processors.NewOrderbookProcessor(s.graph),
@@ -98,7 +75,7 @@ func (p skipFailedTransactions) ProcessTransaction(tx io.LedgerTransaction) erro
 	return p.horizonTransactionProcessor.ProcessTransaction(tx)
 }
 
-func (s *System) buildTransactionProcessor(
+func (s *ProcessorRunner) buildTransactionProcessor(
 	ledger xdr.LedgerHeaderHistoryEntry,
 ) horizonTransactionProcessor {
 	sequence := uint32(ledger.Header.LedgerSeq)
@@ -125,7 +102,7 @@ func (s *System) buildTransactionProcessor(
 // The hashes of actual buckets of this HAS file are checked using
 // historyarchive.XdrStream.SetExpectedHash (this is done in
 // SingleLedgerStateReader).
-func (s *System) validateBucketList(ledgerSequence uint32) error {
+func (s *ProcessorRunner) validateBucketList(ledgerSequence uint32) error {
 	historyBucketListHash, err := s.historyAdapter.BucketListHash(ledgerSequence)
 	if err != nil {
 		return errors.Wrap(err, "Error getting bucket list hash")
@@ -157,9 +134,7 @@ func (s *System) validateBucketList(ledgerSequence uint32) error {
 	return nil
 }
 
-func (s *System) runHistoryArchiveIngestion(
-	checkpointLedger uint32,
-) error {
+func (s *ProcessorRunner) RunHistoryArchiveIngestion(checkpointLedger uint32) error {
 	changeProcessor := s.buildChangeProcessor(historyArchiveSource)
 
 	var stateReader io.StateReader
@@ -178,7 +153,7 @@ func (s *System) runHistoryArchiveIngestion(
 			s.historyArchive,
 			&io.MemoryTempSet{},
 			checkpointLedger,
-			s.maxStreamRetries,
+			s.config.MaxStreamRetries,
 		)
 		if err != nil {
 			return errors.Wrap(err, "Error creating HAS reader")
@@ -208,7 +183,7 @@ func (s *System) runHistoryArchiveIngestion(
 	return nil
 }
 
-func (s *System) runChangeProcessorOnLedger(
+func (s *ProcessorRunner) runChangeProcessorOnLedger(
 	changeProcessor horizonChangeProcessor, ledger uint32,
 ) error {
 	changeReader, err := io.NewLedgerChangeReader(ledger, s.ledgerBackend)
@@ -227,7 +202,7 @@ func (s *System) runChangeProcessorOnLedger(
 	return nil
 }
 
-func (s *System) runTransactionProcessorsOnLedger(ledger uint32) error {
+func (s *ProcessorRunner) RunTransactionProcessorsOnLedger(ledger uint32) error {
 	ledgerReader, err := io.NewDBLedgerReader(ledger, s.ledgerBackend)
 	if err != nil {
 		return errors.Wrap(err, "Error creating ledger reader")
@@ -247,7 +222,7 @@ func (s *System) runTransactionProcessorsOnLedger(ledger uint32) error {
 	return nil
 }
 
-func (s *System) runAllProcessorsOnLedger(ledger uint32) error {
+func (s *ProcessorRunner) RunAllProcessorsOnLedger(ledger uint32) error {
 	err := s.runChangeProcessorOnLedger(
 		s.buildChangeProcessor(ledgerSource), ledger,
 	)
@@ -255,10 +230,15 @@ func (s *System) runAllProcessorsOnLedger(ledger uint32) error {
 		return err
 	}
 
-	err = s.runTransactionProcessorsOnLedger(ledger)
+	err = s.RunTransactionProcessorsOnLedger(ledger)
 	if err != nil {
 		return err
 	}
 
 	return nil
+}
+
+func (s *ProcessorRunner) RunOrderBookProcessorOnLedger(ledger uint32) error {
+	orderBookProcessor := s.buildOrderBookChangeProcessor()
+	return s.runChangeProcessorOnLedger(orderBookProcessor, ledger)
 }

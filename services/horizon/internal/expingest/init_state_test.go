@@ -1,11 +1,9 @@
 package expingest
 
 import (
-	"sort"
 	"testing"
 
 	"github.com/stellar/go/exp/ingest/adapters"
-	"github.com/stellar/go/exp/orderbook"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
@@ -18,14 +16,14 @@ func TestInitStateTestSuite(t *testing.T) {
 
 type InitStateTestSuite struct {
 	suite.Suite
-	graph          *orderbook.OrderBookGraph
+	graph          *mockOrderBookGraph
 	historyQ       *mockDBQ
 	historyAdapter *adapters.MockHistoryArchiveAdapter
 	system         *System
 }
 
 func (s *InitStateTestSuite) SetupTest() {
-	s.graph = orderbook.NewOrderBookGraph()
+	s.graph = &mockOrderBookGraph{}
 	s.historyQ = &mockDBQ{}
 	s.historyAdapter = &adapters.MockHistoryArchiveAdapter{}
 	s.system = &System{
@@ -44,6 +42,8 @@ func (s *InitStateTestSuite) SetupTest() {
 func (s *InitStateTestSuite) TearDownTest() {
 	t := s.T()
 	s.historyQ.AssertExpectations(t)
+	s.historyAdapter.AssertExpectations(t)
+	s.graph.AssertExpectations(t)
 }
 
 func (s *InitStateTestSuite) TestBeginReturnsError() {
@@ -189,6 +189,78 @@ func (s *InitStateTestSuite) TestResumeStateBehind() {
 	s.Assert().Equal(uint32(130), nextState.rangeToLedger)
 }
 
+// TestResumeStateBehindHistory0 is testing the case when:
+// * state doesn't need to be rebuilt or was just rebuilt,
+// * there are no ledgers in history tables.
+// In such case we load offers and continue ingesting the next ledger.
+func (s *InitStateTestSuite) TestResumeStateBehindHistory0() {
+	s.historyQ.On("Begin").Return(nil).Once()
+	s.historyQ.On("GetLastLedgerExpIngest").Return(uint32(130), nil).Once()
+	s.historyQ.On("GetExpIngestVersion").Return(CurrentVersion, nil).Once()
+	s.historyQ.On("GetLatestLedger").Return(uint32(0), nil).Once()
+
+	s.historyQ.On("GetAllOffers").Return(
+		[]history.Offer{
+			history.Offer{
+				OfferID:      eurOffer.OfferId,
+				SellerID:     eurOffer.SellerId.Address(),
+				SellingAsset: eurOffer.Selling,
+				BuyingAsset:  eurOffer.Buying,
+				Amount:       eurOffer.Amount,
+				Pricen:       int32(eurOffer.Price.N),
+				Priced:       int32(eurOffer.Price.D),
+				Price:        float64(eurOffer.Price.N) / float64(eurOffer.Price.D),
+				Flags:        uint32(eurOffer.Flags),
+			},
+			history.Offer{
+				OfferID:      twoEurOffer.OfferId,
+				SellerID:     twoEurOffer.SellerId.Address(),
+				SellingAsset: twoEurOffer.Selling,
+				BuyingAsset:  twoEurOffer.Buying,
+				Amount:       twoEurOffer.Amount,
+				Pricen:       int32(twoEurOffer.Price.N),
+				Priced:       int32(twoEurOffer.Price.D),
+				Price:        float64(twoEurOffer.Price.N) / float64(twoEurOffer.Price.D),
+				Flags:        uint32(twoEurOffer.Flags),
+			},
+		},
+		nil,
+	).Once()
+
+	s.graph.On("Clear").Once()
+	s.graph.On("AddOffer", xdr.OfferEntry{
+		SellerId: eurOffer.SellerId,
+		OfferId:  eurOffer.OfferId,
+		Selling:  eurOffer.Selling,
+		Buying:   eurOffer.Buying,
+		Amount:   eurOffer.Amount,
+		Price: xdr.Price{
+			N: xdr.Int32(eurOffer.Price.N),
+			D: xdr.Int32(eurOffer.Price.D),
+		},
+		Flags: xdr.Uint32(eurOffer.Flags),
+	}).Once()
+	s.graph.On("AddOffer", xdr.OfferEntry{
+		SellerId: twoEurOffer.SellerId,
+		OfferId:  twoEurOffer.OfferId,
+		Selling:  twoEurOffer.Selling,
+		Buying:   twoEurOffer.Buying,
+		Amount:   twoEurOffer.Amount,
+		Price: xdr.Price{
+			N: xdr.Int32(twoEurOffer.Price.N),
+			D: xdr.Int32(twoEurOffer.Price.D),
+		},
+		Flags: xdr.Uint32(twoEurOffer.Flags),
+	}).Once()
+	s.graph.On("Apply", uint32(130)).Return(nil).Once()
+	s.graph.On("Discard").Once()
+
+	nextState, err := s.system.runCurrentState()
+	s.Assert().NoError(err)
+	s.Assert().Equal(resumeState, nextState.systemState)
+	s.Assert().Equal(uint32(130), nextState.latestSuccessfullyProcessedLedger)
+}
+
 // TestResumeStateBehind is testing the case when:
 // * state doesn't need to be rebuilt,
 // * history is in sync with expingest.
@@ -226,15 +298,36 @@ func (s *InitStateTestSuite) TestResumeStateSync() {
 		nil,
 	).Once()
 
+	s.graph.On("Clear").Once()
+	s.graph.On("AddOffer", xdr.OfferEntry{
+		SellerId: eurOffer.SellerId,
+		OfferId:  eurOffer.OfferId,
+		Selling:  eurOffer.Selling,
+		Buying:   eurOffer.Buying,
+		Amount:   eurOffer.Amount,
+		Price: xdr.Price{
+			N: xdr.Int32(eurOffer.Price.N),
+			D: xdr.Int32(eurOffer.Price.D),
+		},
+		Flags: xdr.Uint32(eurOffer.Flags),
+	}).Once()
+	s.graph.On("AddOffer", xdr.OfferEntry{
+		SellerId: twoEurOffer.SellerId,
+		OfferId:  twoEurOffer.OfferId,
+		Selling:  twoEurOffer.Selling,
+		Buying:   twoEurOffer.Buying,
+		Amount:   twoEurOffer.Amount,
+		Price: xdr.Price{
+			N: xdr.Int32(twoEurOffer.Price.N),
+			D: xdr.Int32(twoEurOffer.Price.D),
+		},
+		Flags: xdr.Uint32(twoEurOffer.Flags),
+	}).Once()
+	s.graph.On("Apply", uint32(130)).Return(nil).Once()
+	s.graph.On("Discard").Once()
+
 	nextState, err := s.system.runCurrentState()
 	s.Assert().NoError(err)
 	s.Assert().Equal(resumeState, nextState.systemState)
 	s.Assert().Equal(uint32(130), nextState.latestSuccessfullyProcessedLedger)
-
-	// Also make sure offers are loaded
-	offers := s.graph.Offers()
-	sort.Slice(offers, func(i, j int) bool {
-		return offers[i].OfferId < offers[j].OfferId
-	})
-	s.Assert().Equal([]xdr.OfferEntry{eurOffer, twoEurOffer}, offers)
 }
