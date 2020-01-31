@@ -1,6 +1,7 @@
 package expingest
 
 import (
+	"context"
 	"testing"
 
 	"github.com/stellar/go/exp/ingest/adapters"
@@ -34,6 +35,7 @@ func (s *BuildStateTestSuite) SetupTest() {
 	s.checkpointLedger = uint32(63)
 	s.lastLedger = 0
 	s.system = &System{
+		ctx:               context.Background(),
 		state:             state{systemState: buildStateState, checkpointLedger: s.checkpointLedger},
 		historyQ:          s.historyQ,
 		historyAdapter:    s.historyAdapter,

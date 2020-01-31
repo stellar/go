@@ -73,6 +73,7 @@ func TestStateMachineRunReturnsUnexpectedTransaction(t *testing.T) {
 	historyQ := &mockDBQ{}
 	system := &System{
 		historyQ: historyQ,
+		ctx:      context.Background(),
 	}
 
 	historyQ.On("GetTx").Return(&sqlx.Tx{}).Once()
@@ -86,6 +87,7 @@ func TestStateMachineTransition(t *testing.T) {
 	historyQ := &mockDBQ{}
 	system := &System{
 		historyQ: historyQ,
+		ctx:      context.Background(),
 	}
 
 	historyQ.On("GetTx").Return(nil).Once()
@@ -97,6 +99,24 @@ func TestStateMachineTransition(t *testing.T) {
 	})
 }
 
+func TestContextCancel(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	historyQ := &mockDBQ{}
+	system := &System{
+		historyQ: historyQ,
+		ctx:      ctx,
+		state: state{
+			systemState: initState,
+		},
+	}
+
+	historyQ.On("GetTx").Return(nil).Once()
+	historyQ.On("Begin").Return(errors.New("my error")).Once()
+
+	cancel()
+	assert.NoError(t, system.run())
+}
+
 // TestStateMachineRunReturnsErrorWhenNextStateIsShutdownWithError checks if the
 // state that goes to shutdownState and returns an error will make `run` function
 // return that error. This is essential because some command rely on this to return
@@ -104,6 +124,7 @@ func TestStateMachineTransition(t *testing.T) {
 func TestStateMachineRunReturnsErrorWhenNextStateIsShutdownWithError(t *testing.T) {
 	historyQ := &mockDBQ{}
 	system := &System{
+		ctx: context.Background(),
 		state: state{
 			systemState: verifyRangeState,
 		},

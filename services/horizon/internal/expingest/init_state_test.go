@@ -1,6 +1,7 @@
 package expingest
 
 import (
+	"context"
 	"testing"
 
 	"github.com/stellar/go/exp/ingest/adapters"
@@ -27,6 +28,7 @@ func (s *InitStateTestSuite) SetupTest() {
 	s.historyQ = &mockDBQ{}
 	s.historyAdapter = &adapters.MockHistoryArchiveAdapter{}
 	s.system = &System{
+		ctx:            context.Background(),
 		state:          state{systemState: initState},
 		historyQ:       s.historyQ,
 		historyAdapter: s.historyAdapter,
