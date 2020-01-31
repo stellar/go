@@ -107,7 +107,7 @@ func (s *System) verifyState(graphOffers map[xdr.Int64]xdr.OfferEntry) error {
 
 		localLog.Info("Starting state verification. Waiting 40 seconds for stellar-core to publish HAS...")
 		select {
-		case <-s.shutdown:
+		case <-s.ctx.Done():
 			localLog.Info("State verifier shut down...")
 			return nil
 		case <-time.After(40 * time.Second):
@@ -117,14 +117,14 @@ func (s *System) verifyState(graphOffers map[xdr.Int64]xdr.OfferEntry) error {
 
 	localLog.Info("Creating state reader...")
 
-	stateReader, err := io.MakeSingleLedgerStateReader(
-		s.historyArchive,
-		&io.MemoryTempSet{},
+	stateReader, err := s.historyAdapter.GetState(
+		s.ctx,
 		ledgerSequence,
-		s.maxStreamRetries,
+		&io.MemoryTempSet{},
+		s.config.MaxStreamRetries,
 	)
 	if err != nil {
-		return errors.Wrap(err, "Error running io.MakeSingleLedgerStateReader")
+		return errors.Wrap(err, "Error running GetState")
 	}
 	defer stateReader.Close()
 
@@ -140,14 +140,6 @@ func (s *System) verifyState(graphOffers map[xdr.Int64]xdr.OfferEntry) error {
 		keys, err = verifier.GetLedgerKeys(verifyBatchSize)
 		if err != nil {
 			return errors.Wrap(err, "verifier.GetLedgerKeys")
-		}
-
-		select {
-		case <-s.shutdown:
-			localLog.Info("State verifier shut down...")
-			return nil
-		default:
-			// continue
 		}
 
 		if len(keys) == 0 {

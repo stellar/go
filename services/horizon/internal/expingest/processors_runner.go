@@ -2,6 +2,7 @@ package expingest
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 
 	"github.com/stellar/go/exp/ingest/adapters"
@@ -40,6 +41,7 @@ var _ ProcessorRunnerInterface = (*ProcessorRunner)(nil)
 type ProcessorRunner struct {
 	config Config
 
+	ctx            context.Context
 	graph          *orderbook.OrderBookGraph
 	historyQ       dbQ
 	historyArchive *historyarchive.Archive
@@ -108,7 +110,7 @@ func (s *ProcessorRunner) validateBucketList(ledgerSequence uint32) error {
 		return errors.Wrap(err, "Error getting bucket list hash")
 	}
 
-	ledgerReader, err := io.NewDBLedgerReader(ledgerSequence, s.ledgerBackend)
+	ledgerReader, err := io.NewDBLedgerReader(s.ctx, ledgerSequence, s.ledgerBackend)
 	if err != nil {
 		if err == io.ErrNotFound {
 			return fmt.Errorf(
@@ -149,10 +151,10 @@ func (s *ProcessorRunner) RunHistoryArchiveIngestion(checkpointLedger uint32) er
 			return errors.Wrap(err, "Error validating bucket list from HAS")
 		}
 
-		stateReader, err = io.MakeSingleLedgerStateReader(
-			s.historyArchive,
-			&io.MemoryTempSet{},
+		stateReader, err = s.historyAdapter.GetState(
+			s.ctx,
 			checkpointLedger,
+			&io.MemoryTempSet{},
 			s.config.MaxStreamRetries,
 		)
 		if err != nil {
@@ -186,7 +188,7 @@ func (s *ProcessorRunner) RunHistoryArchiveIngestion(checkpointLedger uint32) er
 func (s *ProcessorRunner) runChangeProcessorOnLedger(
 	changeProcessor horizonChangeProcessor, ledger uint32,
 ) error {
-	changeReader, err := io.NewLedgerChangeReader(ledger, s.ledgerBackend)
+	changeReader, err := io.NewLedgerChangeReader(s.ctx, ledger, s.ledgerBackend)
 	if err != nil {
 		return errors.Wrap(err, "Error creating ledger change reader")
 	}
@@ -203,7 +205,7 @@ func (s *ProcessorRunner) runChangeProcessorOnLedger(
 }
 
 func (s *ProcessorRunner) RunTransactionProcessorsOnLedger(ledger uint32) error {
-	ledgerReader, err := io.NewDBLedgerReader(ledger, s.ledgerBackend)
+	ledgerReader, err := io.NewDBLedgerReader(s.ctx, ledger, s.ledgerBackend)
 	if err != nil {
 		return errors.Wrap(err, "Error creating ledger reader")
 	}
