@@ -298,7 +298,7 @@ func (s *System) run() error {
 
 	for {
 		nextState, err := s.runCurrentState()
-		if err != nil {
+		if err != nil && errors.Cause(err) != context.Canceled {
 			log.WithFields(logpkg.F{
 				"error":         err,
 				"current_state": s.state,
