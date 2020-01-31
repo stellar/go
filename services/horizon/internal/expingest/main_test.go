@@ -7,6 +7,7 @@ import (
 
 	"github.com/jmoiron/sqlx"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
+	"github.com/stellar/go/support/db"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
 	"github.com/stretchr/testify/assert"
@@ -67,6 +68,36 @@ func TestCheckVerifyStateVersion(t *testing.T) {
 		stateVerifierExpectedIngestionVersion,
 		"State verifier is outdated, update it, then update stateVerifierExpectedIngestionVersion value",
 	)
+}
+
+func TestNewSystem(t *testing.T) {
+	config := Config{
+		CoreSession: &db.Session{
+			DB:           &sqlx.DB{},
+			Ctx:          context.Background(),
+			Synchronized: false,
+		},
+		HistorySession: &db.Session{
+			DB:           &sqlx.DB{},
+			Ctx:          context.Background(),
+			Synchronized: false,
+		},
+		DisableStateVerification: true,
+		HistoryArchiveURL:        "https://history.stellar.org/prd/core-live/core_live_001",
+		IngestFailedTransactions: true,
+	}
+
+	system, err := NewSystem(config)
+	assert.NoError(t, err)
+
+	assert.Equal(t, config, system.config)
+	assert.Equal(t, config.OrderBookGraph, system.graph)
+	assert.Equal(t, config.DisableStateVerification, system.disableStateVerification)
+	assert.Equal(t, config.MaxStreamRetries, system.maxStreamRetries)
+
+	assert.Equal(t, config, system.runner.(*ProcessorRunner).config)
+	assert.Equal(t, config.OrderBookGraph, system.runner.(*ProcessorRunner).graph)
+	assert.Equal(t, system.ctx, system.runner.(*ProcessorRunner).ctx)
 }
 
 func TestStateMachineRunReturnsUnexpectedTransaction(t *testing.T) {
