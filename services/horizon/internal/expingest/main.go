@@ -9,7 +9,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/jmoiron/sqlx"
 	"github.com/stellar/go/clients/stellarcore"
 	"github.com/stellar/go/exp/ingest/adapters"
 	ingesterrors "github.com/stellar/go/exp/ingest/errors"
@@ -71,40 +70,6 @@ type Config struct {
 	IngestFailedTransactions bool
 }
 
-type dbQ interface {
-	history.QAccounts
-	history.QAssetStats
-	history.QData
-	history.QEffects
-	history.QLedgers
-	history.QOffers
-	history.QOperations
-	// QParticipants
-	// Copy the small interfaces with shared methods directly, otherwise error:
-	// duplicate method CreateAccounts
-	NewTransactionParticipantsBatchInsertBuilder(maxBatchSize int) history.TransactionParticipantsBatchInsertBuilder
-	NewOperationParticipantBatchInsertBuilder(maxBatchSize int) history.OperationParticipantBatchInsertBuilder
-	history.QSigners
-	//QTrades
-	NewTradeBatchInsertBuilder(maxBatchSize int) history.TradeBatchInsertBuilder
-	CreateAssets(assets []xdr.Asset) (map[string]history.Asset, error)
-	history.QTransactions
-	history.QTrustLines
-
-	Begin() error
-	Commit() error
-	Clone() *db.Session
-	Rollback() error
-	GetTx() *sqlx.Tx
-	GetExpIngestVersion() (int, error)
-	UpdateExpStateInvalid(bool) error
-	UpdateExpIngestVersion(int) error
-	GetExpStateInvalid() (bool, error)
-	GetLatestLedger() (uint32, error)
-	TruncateExpingestStateTables() error
-	DeleteRangeAll(start, end int64) error
-}
-
 type systemState string
 
 const (
@@ -154,7 +119,7 @@ type System struct {
 	state  state
 
 	graph    orderbook.OBGraph
-	historyQ dbQ
+	historyQ history.IngestionQ
 	runner   ProcessorRunnerInterface
 
 	historyArchive *historyarchive.Archive
@@ -907,6 +872,12 @@ func (s *System) waitForCheckpoint() (state, error) {
 }
 
 func (s *System) verifyRange() (state, error) {
+	if s.state.rangeFromLedger == 0 || s.state.rangeToLedger == 0 ||
+		s.state.rangeFromLedger > s.state.rangeToLedger {
+		return state{systemState: shutdownState},
+			errors.Errorf("invalid range: [%d, %d]", s.state.rangeFromLedger, s.state.rangeToLedger)
+	}
+
 	if err := s.historyQ.Begin(); err != nil {
 		err = errors.Wrap(err, "Error starting a transaction")
 		return state{systemState: shutdownState}, err
@@ -937,12 +908,18 @@ func (s *System) verifyRange() (state, error) {
 		return state{systemState: shutdownState}, err
 	}
 
+	err = s.historyQ.UpdateLastLedgerExpIngest(s.state.rangeFromLedger)
+	if err != nil {
+		err = errors.Wrap(err, updateLastLedgerExpIngestErrMsg)
+		return state{systemState: shutdownState}, err
+	}
+
 	if err = s.historyQ.Commit(); err != nil {
 		err = errors.Wrap(err, commitErrMsg)
 		return state{systemState: shutdownState}, err
 	}
 
-	err = s.graph.Apply(s.state.checkpointLedger)
+	err = s.graph.Apply(s.state.rangeFromLedger)
 	if err != nil {
 		err = errors.Wrap(err, "Error applying order book changes")
 		return state{systemState: shutdownState}, err
@@ -1043,9 +1020,9 @@ func (s *System) Shutdown() {
 	s.cancel()
 }
 
-func markStateInvalid(historyQ dbQ, err error) {
+func markStateInvalid(historyQ history.IngestionQ, err error) {
 	log.WithField("err", err).Error("STATE IS INVALID!")
-	q := &history.Q{historyQ.Clone()}
+	q := historyQ.CloneIngestionQ()
 	if err := q.UpdateExpStateInvalid(true); err != nil {
 		log.WithField("err", err).Error(updateExpStateInvalidErrMsg)
 	}

@@ -51,25 +51,23 @@ func (s *System) verifyState(graphOffers map[xdr.Int64]xdr.OfferEntry) error {
 	}
 
 	startTime := time.Now()
-	session := s.historyQ.Clone()
+	historyQ := s.historyQ.CloneIngestionQ()
 
 	defer func() {
 		log.WithField("duration", time.Since(startTime).Seconds()).Info("State verification finished")
-		session.Rollback()
+		historyQ.Rollback()
 		s.stateVerificationMutex.Lock()
 		s.stateVerificationRunning = false
 		s.stateVerificationMutex.Unlock()
 	}()
 
-	err := session.BeginTx(&sql.TxOptions{
+	err := historyQ.BeginTx(&sql.TxOptions{
 		Isolation: sql.LevelRepeatableRead,
 		ReadOnly:  true,
 	})
 	if err != nil {
 		return errors.Wrap(err, "Error starting transaction")
 	}
-
-	historyQ := &history.Q{session}
 
 	// Ensure the ledger is a checkpoint ledger
 	ledgerSequence, err := historyQ.GetLastLedgerExpIngestNonBlocking()
@@ -234,7 +232,7 @@ func (s *System) verifyState(graphOffers map[xdr.Int64]xdr.OfferEntry) error {
 	return nil
 }
 
-func checkAssetStats(set processors.AssetStatSet, q *history.Q) error {
+func checkAssetStats(set processors.AssetStatSet, q history.IngestionQ) error {
 	page := db2.PageQuery{
 		Order: "asc",
 		Limit: assetStatsBatchSize,
@@ -284,7 +282,7 @@ func checkAssetStats(set processors.AssetStatSet, q *history.Q) error {
 	return nil
 }
 
-func addAccountsToStateVerifier(verifier *verify.StateVerifier, q *history.Q, ids []string) error {
+func addAccountsToStateVerifier(verifier *verify.StateVerifier, q history.IngestionQ, ids []string) error {
 	if len(ids) == 0 {
 		return nil
 	}
@@ -370,7 +368,7 @@ func addAccountsToStateVerifier(verifier *verify.StateVerifier, q *history.Q, id
 	return nil
 }
 
-func addDataToStateVerifier(verifier *verify.StateVerifier, q *history.Q, keys []xdr.LedgerKeyData) error {
+func addDataToStateVerifier(verifier *verify.StateVerifier, q history.IngestionQ, keys []xdr.LedgerKeyData) error {
 	if len(keys) == 0 {
 		return nil
 	}
@@ -416,7 +414,7 @@ func offerEntryEquals(offer, other xdr.OfferEntry) (bool, error) {
 
 func addOffersToStateVerifier(
 	verifier *verify.StateVerifier,
-	q *history.Q,
+	q history.IngestionQ,
 	ids []int64,
 	graphOffers map[xdr.Int64]xdr.OfferEntry,
 ) error {
@@ -477,7 +475,7 @@ func addOffersToStateVerifier(
 func addTrustLinesToStateVerifier(
 	verifier *verify.StateVerifier,
 	assetStats processors.AssetStatSet,
-	q *history.Q,
+	q history.IngestionQ,
 	keys []xdr.LedgerKeyTrustLine,
 ) error {
 	if len(keys) == 0 {

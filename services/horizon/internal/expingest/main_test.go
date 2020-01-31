@@ -2,11 +2,11 @@ package expingest
 
 import (
 	"context"
+	"database/sql"
 	"testing"
 
 	"github.com/jmoiron/sqlx"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
-	"github.com/stellar/go/support/db"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
 	"github.com/stretchr/testify/assert"
@@ -119,24 +119,25 @@ func TestContextCancel(t *testing.T) {
 
 // TestStateMachineRunReturnsErrorWhenNextStateIsShutdownWithError checks if the
 // state that goes to shutdownState and returns an error will make `run` function
-// return that error. This is essential because some command rely on this to return
+// return that error. This is essential because some commands rely on this to return
 // non-zero exit code.
 func TestStateMachineRunReturnsErrorWhenNextStateIsShutdownWithError(t *testing.T) {
 	historyQ := &mockDBQ{}
+	graph := &mockOrderBookGraph{}
 	system := &System{
 		ctx: context.Background(),
 		state: state{
 			systemState: verifyRangeState,
 		},
 		historyQ: historyQ,
+		graph:    graph,
 	}
 
 	historyQ.On("GetTx").Return(nil).Once()
-	historyQ.On("Begin").Return(errors.New("my error")).Once()
 
 	err := system.run()
 	assert.Error(t, err)
-	assert.EqualError(t, err, "Error starting a transaction: my error")
+	assert.EqualError(t, err, "invalid range: [0, 0]")
 }
 
 type mockDBQ struct {
@@ -159,9 +160,14 @@ func (m *mockDBQ) Begin() error {
 	return args.Error(0)
 }
 
-func (m *mockDBQ) Clone() *db.Session {
+func (m *mockDBQ) BeginTx(txOpts *sql.TxOptions) error {
+	args := m.Called(txOpts)
+	return args.Error(0)
+}
+
+func (m *mockDBQ) CloneIngestionQ() history.IngestionQ {
 	args := m.Called()
-	return args.Get(0).(*db.Session)
+	return args.Get(0).(history.IngestionQ)
 }
 
 func (m *mockDBQ) Commit() error {

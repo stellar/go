@@ -16,6 +16,16 @@ func (m *MockQOffers) GetAllOffers() ([]Offer, error) {
 	return a.Get(0).([]Offer), a.Error(1)
 }
 
+func (m *MockQOffers) GetOffersByIDs(ids []int64) ([]Offer, error) {
+	a := m.Called(ids)
+	return a.Get(0).([]Offer), a.Error(1)
+}
+
+func (m *MockQOffers) CountOffers() (int, error) {
+	a := m.Called()
+	return a.Get(0).(int), a.Error(1)
+}
+
 func (m *MockQOffers) NewOffersBatchInsertBuilder(maxBatchSize int) OffersBatchInsertBuilder {
 	a := m.Called(maxBatchSize)
 	return a.Get(0).(OffersBatchInsertBuilder)

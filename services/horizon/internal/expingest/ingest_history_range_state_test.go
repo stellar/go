@@ -45,6 +45,8 @@ func (s *IngestHistoryRangeStateTestSuite) SetupTest() {
 func (s *IngestHistoryRangeStateTestSuite) TearDownTest() {
 	t := s.T()
 	s.historyQ.AssertExpectations(t)
+	s.historyAdapter.AssertExpectations(t)
+	s.runner.AssertExpectations(t)
 }
 
 func (s *IngestHistoryRangeStateTestSuite) TestInvalidRange() {
