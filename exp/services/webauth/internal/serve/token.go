@@ -21,6 +21,7 @@ type tokenHandler struct {
 	NetworkPassphrase           string
 	SigningAddress              *keypair.FromAddress
 	JWTPrivateKey               *ecdsa.PrivateKey
+	JWTIssuer                   string
 	JWTExpiresIn                time.Duration
 	AllowAccountsThatDoNotExist bool
 }
@@ -84,7 +85,7 @@ func (h tokenHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	now := time.Now().UTC()
 	token := jwt.NewWithClaims(jwt.SigningMethodES256, jwt.MapClaims{
-		"iss": h.SigningAddress.Address(),
+		"iss": h.JWTIssuer,
 		"sub": clientAccountID,
 		"iat": now.Unix(),
 		"exp": now.Add(h.JWTExpiresIn).Unix(),

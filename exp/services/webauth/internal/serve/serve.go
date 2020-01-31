@@ -22,6 +22,7 @@ type Options struct {
 	SigningKey                  string
 	ChallengeExpiresIn          time.Duration
 	JWTPrivateKey               string
+	JWTIssuer                   string
 	JWTExpiresIn                time.Duration
 	AllowAccountsThatDoNotExist bool
 }
@@ -83,6 +84,7 @@ func handler(opts Options) (http.Handler, error) {
 		NetworkPassphrase:           opts.NetworkPassphrase,
 		SigningAddress:              signingKey.FromAddress(),
 		JWTPrivateKey:               jwtPrivateKey,
+		JWTIssuer:                   opts.JWTIssuer,
 		JWTExpiresIn:                opts.JWTExpiresIn,
 		AllowAccountsThatDoNotExist: opts.AllowAccountsThatDoNotExist,
 	}.ServeHTTP)

@@ -68,6 +68,13 @@ func (c *ServeCommand) Command() *cobra.Command {
 			Required:  true,
 		},
 		{
+			Name:      "jwt-issuer",
+			Usage:     "The issuer to set in the JWT iss claim",
+			OptType:   types.String,
+			ConfigKey: &opts.JWTIssuer,
+			Required:  true,
+		},
+		{
 			Name:           "jwt-expires-in",
 			Usage:          "The time period in seconds after which the JWT expires",
 			OptType:        types.Int,
