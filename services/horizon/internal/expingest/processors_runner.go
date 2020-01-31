@@ -8,6 +8,7 @@ import (
 	"github.com/stellar/go/exp/ingest/io"
 	"github.com/stellar/go/exp/ingest/ledgerbackend"
 	"github.com/stellar/go/exp/orderbook"
+	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/services/horizon/internal/expingest/processors"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/support/historyarchive"
@@ -41,7 +42,7 @@ type ProcessorRunner struct {
 	config Config
 
 	graph          *orderbook.OrderBookGraph
-	historyQ       dbQ
+	historyQ       history.IngestionQ
 	historyArchive *historyarchive.Archive
 	historyAdapter adapters.HistoryArchiveAdapterInterface
 	ledgerBackend  *ledgerbackend.DatabaseBackend

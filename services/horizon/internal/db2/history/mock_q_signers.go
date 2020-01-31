@@ -44,6 +44,11 @@ func (m *MockQSigners) RemoveAccountSigner(account, signer string) (int64, error
 	return a.Get(0).(int64), a.Error(1)
 }
 
+func (m *MockQSigners) SignersForAccounts(accounts []string) ([]AccountSigner, error) {
+	a := m.Called(accounts)
+	return a.Get(0).([]AccountSigner), a.Error(1)
+}
+
 func (m *MockQSigners) CountAccounts() (int, error) {
 	a := m.Called()
 	return a.Get(0).(int), a.Error(1)
