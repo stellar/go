@@ -1,16 +1,12 @@
 package processors
 
 import (
-	"context"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	stdio "io"
 
 	"github.com/stellar/go/amount"
 	"github.com/stellar/go/exp/ingest/io"
-	ingestpipeline "github.com/stellar/go/exp/ingest/pipeline"
-	"github.com/stellar/go/exp/support/pipeline"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/services/horizon/internal/toid"
 	"github.com/stellar/go/support/errors"
@@ -19,92 +15,56 @@ import (
 
 // OperationProcessor operations processor
 type OperationProcessor struct {
-	OperationsQ history.QOperations
+	operationsQ history.QOperations
+
+	sequence uint32
+	batch    history.OperationBatchInsertBuilder
 }
 
-// ProcessLedger process the given ledger
-func (p *OperationProcessor) ProcessLedger(ctx context.Context, store *pipeline.Store, r io.LedgerReader, w io.LedgerWriter) (err error) {
-	defer func() {
-		// io.LedgerReader.Close() returns error if upgrade changes have not
-		// been processed so it's worth checking the error.
-		closeErr := r.Close()
-		// Do not overwrite the previous error
-		if err == nil {
-			err = closeErr
-		}
-	}()
-	defer w.Close()
-	r.IgnoreUpgradeChanges()
-
-	// Exit early if not ingesting into a DB
-	if v := ctx.Value(IngestUpdateDatabase); !(v != nil && v.(bool)) {
-		return nil
+func NewOperationProcessor(operationsQ history.QOperations, sequence uint32) *OperationProcessor {
+	return &OperationProcessor{
+		operationsQ: operationsQ,
+		sequence:    sequence,
+		batch:       operationsQ.NewOperationBatchInsertBuilder(maxBatchSize),
 	}
+}
 
-	operationBatch := p.OperationsQ.NewOperationBatchInsertBuilder(maxBatchSize)
-	sequence := r.GetSequence()
-
-	// Process operations
-	for {
-		var transaction io.LedgerTransaction
-		transaction, err = r.Read()
+// ProcessTransaction process the given transaction
+func (p *OperationProcessor) ProcessTransaction(transaction io.LedgerTransaction) (err error) {
+	for i, op := range transaction.Envelope.Tx.Operations {
+		operation := transactionOperationWrapper{
+			index:          uint32(i),
+			transaction:    transaction,
+			operation:      op,
+			ledgerSequence: p.sequence,
+		}
+		var detailsJSON []byte
+		detailsJSON, err = json.Marshal(operation.Details())
 		if err != nil {
-			if err == stdio.EOF {
-				break
-			} else {
-				return err
-			}
+			return errors.Wrapf(err, "Error marshaling details for operation %v", operation.ID())
 		}
 
-		for i, op := range transaction.Envelope.Tx.Operations {
-			operation := transactionOperationWrapper{
-				index:          uint32(i),
-				transaction:    transaction,
-				operation:      op,
-				ledgerSequence: sequence,
-			}
-			var detailsJSON []byte
-			detailsJSON, err = json.Marshal(operation.Details())
-			if err != nil {
-				return errors.Wrapf(err, "Error marshaling details for operation %v", operation.ID())
-			}
-
-			if err = operationBatch.Add(
-				operation.ID(),
-				operation.TransactionID(),
-				operation.Order(),
-				operation.OperationType(),
-				detailsJSON,
-				operation.SourceAccount().Address(),
-			); err != nil {
-				return errors.Wrap(err, "Error batch inserting operation rows")
-			}
-		}
-
-		select {
-		case <-ctx.Done():
-			return nil
-		default:
-			continue
+		if err = p.batch.Add(
+			operation.ID(),
+			operation.TransactionID(),
+			operation.Order(),
+			operation.OperationType(),
+			detailsJSON,
+			operation.SourceAccount().Address(),
+		); err != nil {
+			return errors.Wrap(err, "Error batch inserting operation rows")
 		}
 	}
 
-	if err = operationBatch.Exec(); err != nil {
-		return errors.Wrap(err, "Error flushing operation batch")
-	}
-
-	return nil
+	return err
 }
 
-// Name processor name
-func (p *OperationProcessor) Name() string {
-	return "OperationProcessor"
+func (p *OperationProcessor) Commit() error {
+	return p.batch.Exec()
 }
 
-// Reset resets processor
-func (p *OperationProcessor) Reset() {}
-
-var _ ingestpipeline.LedgerProcessor = &OperationProcessor{}
+// TODO: remove comment after https://github.com/stellar/go/pull/2172/files is merged
+// var _ io.ChangeReader = &OperationProcessor{}
 
 // transactionOperationWrapper represents the data for a single operation within a transaction
 type transactionOperationWrapper struct {

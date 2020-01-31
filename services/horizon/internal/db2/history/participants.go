@@ -6,7 +6,7 @@ import (
 
 // QParticipants defines ingestion participant related queries.
 type QParticipants interface {
-	CreateAccounts(addresses []string) (map[string]int64, error)
+	QCreateAccountsHistory
 	NewTransactionParticipantsBatchInsertBuilder(maxBatchSize int) TransactionParticipantsBatchInsertBuilder
 	NewOperationParticipantBatchInsertBuilder(maxBatchSize int) OperationParticipantBatchInsertBuilder
 }

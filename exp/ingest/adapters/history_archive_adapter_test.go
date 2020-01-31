@@ -1,6 +1,7 @@
 package adapters
 
 import (
+	"context"
 	"fmt"
 	stdio "io"
 	"testing"
@@ -37,7 +38,7 @@ func TestGetState_Sequence(t *testing.T) {
 		return
 	}
 
-	sr, e := haa.GetState(seq, &io.MemoryTempSet{}, 0)
+	sr, e := haa.GetState(context.Background(), seq, &io.MemoryTempSet{}, 0)
 	if !assert.NoError(t, e) {
 		return
 	}
@@ -51,7 +52,7 @@ func TestGetState_Read(t *testing.T) {
 	}
 	haa := MakeHistoryArchiveAdapter(archive)
 
-	sr, e := haa.GetState(21686847, &io.MemoryTempSet{}, 0)
+	sr, e := haa.GetState(context.Background(), 21686847, &io.MemoryTempSet{}, 0)
 	if !assert.NoError(t, e) {
 		return
 	}
@@ -65,7 +66,7 @@ func TestGetState_Read(t *testing.T) {
 	if !assert.NotNil(t, lec) {
 		return
 	}
-	assert.Equal(t, "GAFBQT4VRORLEVEECUYDQGWNVQ563ZN76LGRJR7T7KDL32EES54UOQST", lec.State.Data.Account.AccountId.Address())
+	assert.Equal(t, "GAFBQT4VRORLEVEECUYDQGWNVQ563ZN76LGRJR7T7KDL32EES54UOQST", lec.Post.Data.Account.AccountId.Address())
 }
 
 func getTestArchive() (*historyarchive.Archive, error) {

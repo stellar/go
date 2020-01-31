@@ -1,94 +1,71 @@
 package processors
 
 import (
-	"context"
-	stdio "io"
-
 	"github.com/stellar/go/exp/ingest/io"
-	ingestpipeline "github.com/stellar/go/exp/ingest/pipeline"
-	"github.com/stellar/go/exp/support/pipeline"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/support/errors"
+	"github.com/stellar/go/xdr"
 )
 
 type LedgersProcessor struct {
-	LedgersQ      history.QLedgers
-	IngestVersion int
+	ledgersQ       history.QLedgers
+	ledger         xdr.LedgerHeaderHistoryEntry
+	ingestVersion  int
+	successTxCount int
+	failedTxCount  int
+	opCount        int
 }
 
-func (p *LedgersProcessor) ProcessLedger(ctx context.Context, store *pipeline.Store, r io.LedgerReader, w io.LedgerWriter) (err error) {
-	defer func() {
-		// io.LedgerReader.Close() returns error if upgrade changes have not
-		// been processed so it's worth checking the error.
-		closeErr := r.Close()
-		// Do not overwrite the previous error
-		if err == nil {
-			err = closeErr
-		}
-	}()
-	defer w.Close()
-	r.IgnoreUpgradeChanges()
+func NewLedgerProcessor(
+	ledgerQ history.QLedgers,
+	ledger xdr.LedgerHeaderHistoryEntry,
+	ingestVersion int,
+) *LedgersProcessor {
+	return &LedgersProcessor{
+		ledger:        ledger,
+		ledgersQ:      ledgerQ,
+		ingestVersion: ingestVersion,
+	}
+}
 
-	// Exit early if not ingesting into a DB
-	if v := ctx.Value(IngestUpdateDatabase); !(v != nil && v.(bool)) {
-		return nil
+func (p *LedgersProcessor) ProcessTransaction(transaction io.LedgerTransaction) (err error) {
+	if transaction.Successful() {
+		p.successTxCount++
+		p.opCount += len(transaction.Envelope.Tx.Operations)
+	} else {
+		p.failedTxCount++
 	}
 
-	var successTxCount, failedTxCount, opCount int
+	return nil
+}
 
-	for {
-		var transaction io.LedgerTransaction
-		transaction, err = r.Read()
-		if err != nil {
-			if err == stdio.EOF {
-				break
-			} else {
-				return err
-			}
-		}
-
-		if transaction.Successful() {
-			successTxCount++
-			opCount += len(transaction.Envelope.Tx.Operations)
-		} else {
-			failedTxCount++
-		}
-
-		select {
-		case <-ctx.Done():
-			return nil
-		default:
-			continue
-		}
-	}
-
-	rowsAffected, err := p.LedgersQ.InsertLedger(
-		r.GetHeader(),
-		successTxCount,
-		failedTxCount,
-		opCount,
-		p.IngestVersion,
+func (p *LedgersProcessor) Commit() error {
+	rowsAffected, err := p.ledgersQ.InsertLedger(
+		p.ledger,
+		p.successTxCount,
+		p.failedTxCount,
+		p.opCount,
+		p.ingestVersion,
 	)
+
 	if err != nil {
 		return errors.Wrap(err, "Could not insert ledger")
 	}
+
+	sequence := uint32(p.ledger.Header.LedgerSeq)
+
 	if rowsAffected != 1 {
 		log.WithField("rowsAffected", rowsAffected).
-			WithField("sequence", r.GetSequence()).
+			WithField("sequence", sequence).
 			Error("Invalid number of rows affected when ingesting new ledger")
 		return errors.Errorf(
 			"0 rows affected when ingesting new ledger: %v",
-			r.GetSequence(),
+			sequence,
 		)
 	}
 
 	return nil
 }
 
-func (p *LedgersProcessor) Name() string {
-	return "LedgersProcessor"
-}
-
-func (p *LedgersProcessor) Reset() {}
-
-var _ ingestpipeline.LedgerProcessor = &LedgersProcessor{}
+// TODO: remove comment after https://github.com/stellar/go/pull/2172/files is merged
+// var _ io.ChangeReader = &LedgersProcessor{}

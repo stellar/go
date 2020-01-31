@@ -1,35 +1,46 @@
 package io
 
 import (
+	"context"
 	"io"
-	"sync"
 
 	"github.com/stellar/go/exp/ingest/ledgerbackend"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
 )
 
+// LedgerReader provides convenient, streaming access to the transactions within a ledger.
+type LedgerReader interface {
+	GetSequence() uint32
+	GetHeader() xdr.LedgerHeaderHistoryEntry
+	// Read should return the next transaction. If there are no more
+	// transactions it should return `io.EOF` error.
+	Read() (LedgerTransaction, error)
+}
+
 // DBLedgerReader is a database-backed implementation of the io.LedgerReader interface.
 // Use NewDBLedgerReader to create a new instance.
 type DBLedgerReader struct {
-	sequence                uint32
-	backend                 ledgerbackend.LedgerBackend
-	header                  xdr.LedgerHeaderHistoryEntry
-	transactions            []LedgerTransaction
-	upgradeChanges          []Change
-	readMutex               sync.Mutex
-	readIdx                 int
-	upgradeReadIdx          int
-	readUpgradeChangeCalled bool
-	ignoreUpgradeChanges    bool
+	ctx            context.Context
+	sequence       uint32
+	backend        ledgerbackend.LedgerBackend
+	header         xdr.LedgerHeaderHistoryEntry
+	transactions   []LedgerTransaction
+	upgradeChanges []Change
+	readIdx        int
+	upgradeReadIdx int
 }
 
 // Ensure DBLedgerReader implements LedgerReader
 var _ LedgerReader = (*DBLedgerReader)(nil)
 
-// NewDBLedgerReader is a factory method for LedgerReader.
-func NewDBLedgerReader(sequence uint32, backend ledgerbackend.LedgerBackend) (*DBLedgerReader, error) {
+// NewDBLedgerReader creates a new DBLedgerReader instance.
+// Note that DBLedgerReader is not thread safe and should not be shared by multiple goroutines
+func NewDBLedgerReader(
+	ctx context.Context, sequence uint32, backend ledgerbackend.LedgerBackend,
+) (*DBLedgerReader, error) {
 	reader := &DBLedgerReader{
+		ctx:      ctx,
 		sequence: sequence,
 		backend:  backend,
 	}
@@ -55,9 +66,9 @@ func (dblrc *DBLedgerReader) GetHeader() xdr.LedgerHeaderHistoryEntry {
 // Read returns the next transaction in the ledger, ordered by tx number, each time it is called. When there
 // are no more transactions to return, an EOF error is returned.
 func (dblrc *DBLedgerReader) Read() (LedgerTransaction, error) {
-	// Protect all accesses to dblrc.readIdx
-	dblrc.readMutex.Lock()
-	defer dblrc.readMutex.Unlock()
+	if err := dblrc.ctx.Err(); err != nil {
+		return LedgerTransaction{}, err
+	}
 
 	if dblrc.readIdx < len(dblrc.transactions) {
 		dblrc.readIdx++
@@ -66,13 +77,12 @@ func (dblrc *DBLedgerReader) Read() (LedgerTransaction, error) {
 	return LedgerTransaction{}, io.EOF
 }
 
-// ReadUpgradeChange returns the next upgrade change in the ledger, each time it
+// readUpgradeChange returns the next upgrade change in the ledger, each time it
 // is called. When there are no more upgrades to return, an EOF error is returned.
-func (dblrc *DBLedgerReader) ReadUpgradeChange() (Change, error) {
-	// Protect all accesses to dblrc.upgradeReadIdx
-	dblrc.readMutex.Lock()
-	defer dblrc.readMutex.Unlock()
-	dblrc.readUpgradeChangeCalled = true
+func (dblrc *DBLedgerReader) readUpgradeChange() (Change, error) {
+	if err := dblrc.ctx.Err(); err != nil {
+		return Change{}, err
+	}
 
 	if dblrc.upgradeReadIdx < len(dblrc.upgradeChanges) {
 		dblrc.upgradeReadIdx++
@@ -81,26 +91,9 @@ func (dblrc *DBLedgerReader) ReadUpgradeChange() (Change, error) {
 	return Change{}, io.EOF
 }
 
-// GetUpgradeChanges returns all ledger upgrade changes.
-func (dblrc *DBLedgerReader) GetUpgradeChanges() []Change {
-	return dblrc.upgradeChanges
-}
-
-func (dblrc *DBLedgerReader) IgnoreUpgradeChanges() {
-	dblrc.ignoreUpgradeChanges = true
-}
-
-// Close moves the read pointer so that subsequent calls to Read() will return EOF.
-func (dblrc *DBLedgerReader) Close() error {
-	dblrc.readMutex.Lock()
-	dblrc.readIdx = len(dblrc.transactions)
-	if !dblrc.ignoreUpgradeChanges &&
-		(!dblrc.readUpgradeChangeCalled || dblrc.upgradeReadIdx != len(dblrc.upgradeChanges)) {
-		return errors.New("Ledger upgrade changes not read! Use ReadUpgradeChange() method.")
-	}
-	dblrc.readMutex.Unlock()
-
-	return nil
+// Rewind resets the reader back to the first transaction in the ledger
+func (dblrc *DBLedgerReader) rewind() {
+	dblrc.readIdx = 0
 }
 
 // Init pulls data from the backend to set this object up for use.

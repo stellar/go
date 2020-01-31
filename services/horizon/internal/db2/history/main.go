@@ -3,12 +3,14 @@
 package history
 
 import (
+	"database/sql"
 	"fmt"
 	"sync"
 	"time"
 
 	sq "github.com/Masterminds/squirrel"
 	"github.com/guregu/null"
+	"github.com/jmoiron/sqlx"
 
 	"github.com/stellar/go/services/horizon/internal/db2"
 	"github.com/stellar/go/support/db"
@@ -152,9 +154,45 @@ type accountsBatchInsertBuilder struct {
 	builder db.BatchInsertBuilder
 }
 
+type IngestionQ interface {
+	QAccounts
+	QAssetStats
+	QData
+	QEffects
+	QLedgers
+	QOffers
+	QOperations
+	// QParticipants
+	// Copy the small interfaces with shared methods directly, otherwise error:
+	// duplicate method CreateAccounts
+	NewTransactionParticipantsBatchInsertBuilder(maxBatchSize int) TransactionParticipantsBatchInsertBuilder
+	NewOperationParticipantBatchInsertBuilder(maxBatchSize int) OperationParticipantBatchInsertBuilder
+	QSigners
+	//QTrades
+	NewTradeBatchInsertBuilder(maxBatchSize int) TradeBatchInsertBuilder
+	CreateAssets(assets []xdr.Asset) (map[string]Asset, error)
+	QTransactions
+	QTrustLines
+
+	Begin() error
+	BeginTx(*sql.TxOptions) error
+	Commit() error
+	CloneIngestionQ() IngestionQ
+	Rollback() error
+	GetTx() *sqlx.Tx
+	GetExpIngestVersion() (int, error)
+	UpdateExpStateInvalid(bool) error
+	UpdateExpIngestVersion(int) error
+	GetExpStateInvalid() (bool, error)
+	GetLatestLedger() (uint32, error)
+	TruncateExpingestStateTables() error
+	DeleteRangeAll(start, end int64) error
+}
+
 // QAccounts defines account related queries.
 type QAccounts interface {
 	NewAccountsBatchInsertBuilder(maxBatchSize int) AccountsBatchInsertBuilder
+	GetAccountsByIDs(ids []string) ([]AccountEntry, error)
 	InsertAccount(account xdr.AccountEntry, lastModifiedLedger xdr.Uint32) (int64, error)
 	UpdateAccount(account xdr.AccountEntry, lastModifiedLedger xdr.Uint32) (int64, error)
 	UpsertAccounts(accounts []xdr.LedgerEntry) error
@@ -201,6 +239,8 @@ type accountDataBatchInsertBuilder struct {
 // QData defines account data related queries.
 type QData interface {
 	NewAccountDataBatchInsertBuilder(maxBatchSize int) AccountDataBatchInsertBuilder
+	CountAccountsData() (int, error)
+	GetAccountDataByKeys(keys []xdr.LedgerKeyData) ([]Data, error)
 	InsertAccountData(data xdr.DataEntry, lastModifiedLedger xdr.Uint32) (int64, error)
 	UpdateAccountData(data xdr.DataEntry, lastModifiedLedger xdr.Uint32) (int64, error)
 	RemoveAccountData(key xdr.LedgerKeyData) (int64, error)
@@ -250,6 +290,11 @@ type QAssetStats interface {
 	GetAssetStat(assetType xdr.AssetType, assetCode, assetIssuer string) (ExpAssetStat, error)
 	RemoveAssetStat(assetType xdr.AssetType, assetCode, assetIssuer string) (int64, error)
 	GetAssetStats(assetCode, assetIssuer string, page db2.PageQuery) ([]ExpAssetStat, error)
+	CountTrustLines() (int, error)
+}
+
+type QCreateAccountsHistory interface {
+	CreateAccounts(addresses []string) (map[string]int64, error)
 }
 
 // Effect is a row of data from the `history_effects` table
@@ -458,6 +503,8 @@ type QSigners interface {
 	NewAccountSignersBatchInsertBuilder(maxBatchSize int) AccountSignersBatchInsertBuilder
 	CreateAccountSigner(account, signer string, weight int32) (int64, error)
 	RemoveAccountSigner(account, signer string) (int64, error)
+	SignersForAccounts(accounts []string) ([]AccountSigner, error)
+	CountAccounts() (int, error)
 }
 
 // OffersQuery is a helper struct to configure queries to offers
@@ -471,6 +518,8 @@ type OffersQuery struct {
 // QOffers defines offer related queries.
 type QOffers interface {
 	GetAllOffers() ([]Offer, error)
+	GetOffersByIDs(ids []int64) ([]Offer, error)
+	CountOffers() (int, error)
 	NewOffersBatchInsertBuilder(maxBatchSize int) OffersBatchInsertBuilder
 	InsertOffer(offer xdr.OfferEntry, lastModifiedLedger xdr.Uint32) (int64, error)
 	UpdateOffer(offer xdr.OfferEntry, lastModifiedLedger xdr.Uint32) (int64, error)
@@ -572,6 +621,7 @@ type TrustLine struct {
 // QTrustLines defines trust lines related queries.
 type QTrustLines interface {
 	NewTrustLinesBatchInsertBuilder(maxBatchSize int) TrustLinesBatchInsertBuilder
+	GetTrustLinesByKeys(keys []xdr.LedgerKeyTrustLine) ([]TrustLine, error)
 	InsertTrustLine(trustLine xdr.TrustLineEntry, lastModifiedLedger xdr.Uint32) (int64, error)
 	UpdateTrustLine(trustLine xdr.TrustLineEntry, lastModifiedLedger xdr.Uint32) (int64, error)
 	UpsertTrustLines(trustLines []xdr.LedgerEntry) error
@@ -670,6 +720,11 @@ func (q *Q) OldestOutdatedLedgers(dest interface{}, currentVersion int) error {
 		WHERE importer_version < $1
 		ORDER BY sequence ASC
 		LIMIT 1000000`, currentVersion)
+}
+
+// CloneIngestionQ clones underlying db.Session and returns IngestionQ
+func (q *Q) CloneIngestionQ() IngestionQ {
+	return &Q{q.Clone()}
 }
 
 // DeleteRangeAll deletes a range of rows from all history tables between

@@ -28,6 +28,7 @@ require (
 	github.com/gorilla/schema v1.1.0
 	github.com/graph-gophers/graphql-go v0.0.0-20190225005345-3e8838d4614c
 	github.com/guregu/null v2.1.3-0.20151024101046-79c5bd36b615+incompatible
+	github.com/hashicorp/golang-lru v0.5.0 // indirect
 	github.com/howeyc/gopass v0.0.0-20170109162249-bf9dde6d0d2c
 	github.com/imkira/go-interpol v1.1.0 // indirect
 	github.com/inconshreveable/mousetrap v1.0.0 // indirect
@@ -37,7 +38,7 @@ require (
 	github.com/klauspost/compress v0.0.0-20161106143436-e3b7981a12dd // indirect
 	github.com/klauspost/cpuid v0.0.0-20160302075316-09cded8978dc // indirect
 	github.com/klauspost/crc32 v0.0.0-20161016154125-cb6bfca970f6 // indirect
-	github.com/kr/pretty v0.0.0-20150520163514-e6ac2fc51e89
+	github.com/kr/pretty v0.0.0-20150520163514-e6ac2fc51e89 // indirect
 	github.com/kr/text v0.0.0-20150520163712-e373e137fafd // indirect
 	github.com/lann/builder v0.0.0-20140829050551-c603884a2c1f // indirect
 	github.com/lib/pq v1.2.0
@@ -49,9 +50,9 @@ require (
 	github.com/mndrix/ps v0.0.0-20131111202200-33ddf69629c1 // indirect
 	github.com/moul/http2curl v0.0.0-20161031194548-4e24498b31db // indirect
 	github.com/nullstyle/go-xdr v0.0.0-20180726165426-f4c839f75077 // indirect
-	github.com/olivere/elastic/v7 v7.0.9
 	github.com/onsi/ginkgo v1.7.0
 	github.com/onsi/gomega v1.4.3
+	github.com/opentracing/opentracing-go v1.1.0 // indirect
 	github.com/pkg/errors v0.8.1
 	github.com/rcrowley/go-metrics v0.0.0-20181016184325-3113b8401b8a
 	github.com/rs/cors v0.0.0-20160617231935-a62a804a8a00
@@ -74,8 +75,6 @@ require (
 	github.com/tyler-smith/go-bip39 v0.0.0-20180618194314-52158e4697b8
 	github.com/valyala/bytebufferpool v1.0.0 // indirect
 	github.com/valyala/fasthttp v0.0.0-20170109085056-0a7f0a797cd6 // indirect
-	github.com/xdrpp/goxdr v0.0.0-20191113231906-019d11aacd2b
-	github.com/xdrpp/stc v0.0.0-20191113232203-b257d8ace4e0
 	github.com/xeipuuv/gojsonpointer v0.0.0-20151027082146-e0fe6f683076 // indirect
 	github.com/xeipuuv/gojsonreference v0.0.0-20150808065054-e02fc20de94c // indirect
 	github.com/xeipuuv/gojsonschema v0.0.0-20161231055540-f06f290571ce // indirect
@@ -88,6 +87,7 @@ require (
 	golang.org/x/net v0.0.0-20190827160401-ba9fcec4b297 // indirect
 	golang.org/x/tools v0.0.0-20190624180213-70d37148ca0c // indirect
 	google.golang.org/appengine v1.6.1 // indirect
+	gopkg.in/check.v1 v1.0.0-20180628173108-788fd7840127 // indirect
 	gopkg.in/gavv/httpexpect.v1 v1.0.0-20170111145843-40724cf1e4a0
 	gopkg.in/gorp.v1 v1.7.1 // indirect
 	gopkg.in/tylerb/graceful.v1 v1.2.13

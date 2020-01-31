@@ -486,7 +486,8 @@ func TestOrderbookGetResource(t *testing.T) {
 	}
 
 	asksButNoBidsGraph := orderbook.NewOrderBookGraph()
-	if err := asksButNoBidsGraph.AddOffer(twoEurOffer).Apply(1); err != nil {
+	asksButNoBidsGraph.AddOffer(twoEurOffer)
+	if err := asksButNoBidsGraph.Apply(1); err != nil {
 		t.Fatalf("unexpected error %v", err)
 	}
 	asksButNoBidsResponse := empty
@@ -502,7 +503,8 @@ func TestOrderbookGetResource(t *testing.T) {
 	sellEurOffer.Buying, sellEurOffer.Selling = sellEurOffer.Selling, sellEurOffer.Buying
 	sellEurOffer.OfferId = 15
 	bidsButNoAsksGraph := orderbook.NewOrderBookGraph()
-	if err := bidsButNoAsksGraph.AddOffer(sellEurOffer).Apply(2); err != nil {
+	bidsButNoAsksGraph.AddOffer(sellEurOffer)
+	if err := bidsButNoAsksGraph.Apply(2); err != nil {
 		t.Fatalf("unexpected error %v", err)
 	}
 	bidsButNoAsksResponse := empty
@@ -515,31 +517,36 @@ func TestOrderbookGetResource(t *testing.T) {
 	}
 
 	fullGraph := orderbook.NewOrderBookGraph()
-	if err := fullGraph.AddOffer(twoEurOffer).Apply(3); err != nil {
+	fullGraph.AddOffer(twoEurOffer)
+	if err := fullGraph.Apply(3); err != nil {
 		t.Fatalf("unexpected error %v", err)
 	}
 	otherEurOffer := twoEurOffer
 	otherEurOffer.Amount = xdr.Int64(math.MaxInt64)
 	otherEurOffer.OfferId = 16
-	if err := fullGraph.AddOffer(otherEurOffer).Apply(4); err != nil {
+	fullGraph.AddOffer(otherEurOffer)
+	if err := fullGraph.Apply(4); err != nil {
 		t.Fatalf("unexpected error %v", err)
 	}
 	threeEurOffer := twoEurOffer
 	threeEurOffer.Price.N = 3
 	threeEurOffer.OfferId = 20
-	if err := fullGraph.AddOffer(threeEurOffer).Apply(5); err != nil {
+	fullGraph.AddOffer(threeEurOffer)
+	if err := fullGraph.Apply(5); err != nil {
 		t.Fatalf("unexpected error %v", err)
 	}
 
 	sellEurOffer.Price.N = 9
 	sellEurOffer.Price.D = 10
-	if err := fullGraph.AddOffer(sellEurOffer).Apply(6); err != nil {
+	fullGraph.AddOffer(sellEurOffer)
+	if err := fullGraph.Apply(6); err != nil {
 		t.Fatalf("unexpected error %v", err)
 	}
 	otherSellEurOffer := sellEurOffer
 	otherSellEurOffer.OfferId = 17
 	otherSellEurOffer.Price.N *= 2
-	if err := fullGraph.AddOffer(otherSellEurOffer).Apply(7); err != nil {
+	fullGraph.AddOffer(otherSellEurOffer)
+	if err := fullGraph.Apply(7); err != nil {
 		t.Fatalf("unexpected error %v", err)
 	}
 

@@ -2,11 +2,9 @@ package processors
 
 import (
 	"context"
-	stdio "io"
 	"testing"
 
 	"github.com/stellar/go/exp/ingest/io"
-	supportPipeline "github.com/stellar/go/exp/support/pipeline"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/xdr"
 	"github.com/stretchr/testify/suite"
@@ -18,72 +16,23 @@ func TestAccountsProcessorTestSuiteState(t *testing.T) {
 
 type AccountsProcessorTestSuiteState struct {
 	suite.Suite
-	processor              *DatabaseProcessor
-	mockQ                  *history.MockQAccounts
-	mockBatchInsertBuilder *history.MockAccountsBatchInsertBuilder
-	mockStateReader        *io.MockStateReader
-	mockStateWriter        *io.MockStateWriter
+	processor *AccountsProcessor
+	mockQ     *history.MockQAccounts
 }
 
 func (s *AccountsProcessorTestSuiteState) SetupTest() {
 	s.mockQ = &history.MockQAccounts{}
-	s.mockBatchInsertBuilder = &history.MockAccountsBatchInsertBuilder{}
-	s.mockStateReader = &io.MockStateReader{}
-	s.mockStateWriter = &io.MockStateWriter{}
 
-	s.processor = &DatabaseProcessor{
-		Action:    Accounts,
-		AccountsQ: s.mockQ,
-	}
-
-	// Reader and Writer should be always closed and once
-	s.mockStateReader.On("Close").Return(nil).Once()
-	s.mockStateWriter.On("Close").Return(nil).Once()
-
-	s.mockQ.
-		On("NewAccountsBatchInsertBuilder", maxBatchSize).
-		Return(s.mockBatchInsertBuilder).Once()
+	s.processor = NewAccountsProcessor(s.mockQ)
 }
 
 func (s *AccountsProcessorTestSuiteState) TearDownTest() {
+	s.Assert().NoError(s.processor.Commit())
 	s.mockQ.AssertExpectations(s.T())
-	s.mockBatchInsertBuilder.AssertExpectations(s.T())
-	s.mockStateReader.AssertExpectations(s.T())
-	s.mockStateWriter.AssertExpectations(s.T())
 }
 
 func (s *AccountsProcessorTestSuiteState) TestNoEntries() {
-	s.mockStateReader.
-		On("Read").
-		Return(xdr.LedgerEntryChange{}, stdio.EOF).Once()
-
-	s.mockBatchInsertBuilder.On("Exec").Return(nil).Once()
-
-	err := s.processor.ProcessState(
-		context.Background(),
-		&supportPipeline.Store{},
-		s.mockStateReader,
-		s.mockStateWriter,
-	)
-
-	s.Assert().NoError(err)
-}
-
-func (s *AccountsProcessorTestSuiteState) TestInvalidEntry() {
-	s.mockStateReader.
-		On("Read").
-		Return(xdr.LedgerEntryChange{
-			Type: xdr.LedgerEntryChangeTypeLedgerEntryCreated,
-		}, nil).Once()
-
-	err := s.processor.ProcessState(
-		context.Background(),
-		&supportPipeline.Store{},
-		s.mockStateReader,
-		s.mockStateWriter,
-	)
-
-	s.Assert().EqualError(err, "DatabaseProcessor requires LedgerEntryChangeTypeLedgerEntryState changes only")
+	// Nothing processed, assertions in TearDownTest.
 }
 
 func (s *AccountsProcessorTestSuiteState) TestCreatesAccounts() {
@@ -92,34 +41,32 @@ func (s *AccountsProcessorTestSuiteState) TestCreatesAccounts() {
 		Thresholds: [4]byte{1, 1, 1, 1},
 	}
 	lastModifiedLedgerSeq := xdr.Uint32(123)
-	s.mockStateReader.
-		On("Read").
-		Return(xdr.LedgerEntryChange{
-			Type: xdr.LedgerEntryChangeTypeLedgerEntryState,
-			State: &xdr.LedgerEntry{
+
+	// We use LedgerEntryChangesCache so all changes are squashed
+	s.mockQ.On(
+		"UpsertAccounts",
+		[]xdr.LedgerEntry{
+			xdr.LedgerEntry{
+				LastModifiedLedgerSeq: lastModifiedLedgerSeq,
 				Data: xdr.LedgerEntryData{
 					Type:    xdr.LedgerEntryTypeAccount,
 					Account: &account,
 				},
-				LastModifiedLedgerSeq: lastModifiedLedgerSeq,
 			},
-		}, nil).Once()
+		},
+	).Return(nil).Once()
 
-	s.mockBatchInsertBuilder.On("Add", account, lastModifiedLedgerSeq).Return(nil).Once()
-
-	s.mockStateReader.
-		On("Read").
-		Return(xdr.LedgerEntryChange{}, stdio.EOF).Once()
-
-	s.mockBatchInsertBuilder.On("Exec").Return(nil).Once()
-
-	err := s.processor.ProcessState(
-		context.Background(),
-		&supportPipeline.Store{},
-		s.mockStateReader,
-		s.mockStateWriter,
-	)
-
+	err := s.processor.ProcessChange(io.Change{
+		Type: xdr.LedgerEntryTypeAccount,
+		Pre:  nil,
+		Post: &xdr.LedgerEntry{
+			Data: xdr.LedgerEntryData{
+				Type:    xdr.LedgerEntryTypeAccount,
+				Account: &account,
+			},
+			LastModifiedLedgerSeq: lastModifiedLedgerSeq,
+		},
+	})
 	s.Assert().NoError(err)
 }
 
@@ -129,82 +76,24 @@ func TestAccountsProcessorTestSuiteLedger(t *testing.T) {
 
 type AccountsProcessorTestSuiteLedger struct {
 	suite.Suite
-	context          context.Context
-	processor        *DatabaseProcessor
-	mockQ            *history.MockQAccounts
-	mockLedgerReader *io.MockLedgerReader
-	mockLedgerWriter *io.MockLedgerWriter
+	context   context.Context
+	processor *AccountsProcessor
+	mockQ     *history.MockQAccounts
 }
 
 func (s *AccountsProcessorTestSuiteLedger) SetupTest() {
 	s.mockQ = &history.MockQAccounts{}
-	s.mockLedgerReader = &io.MockLedgerReader{}
-	s.mockLedgerWriter = &io.MockLedgerWriter{}
 
-	s.context = context.WithValue(context.Background(), IngestUpdateState, true)
-
-	s.processor = &DatabaseProcessor{
-		Action:    Accounts,
-		AccountsQ: s.mockQ,
-	}
-
-	// Reader and Writer should be always closed and once
-	s.mockLedgerReader.
-		On("ReadUpgradeChange").
-		Return(io.Change{}, stdio.EOF).Once()
-
-	s.mockLedgerReader.
-		On("Close").
-		Return(nil).Once()
-
-	s.mockLedgerWriter.
-		On("Close").
-		Return(nil).Once()
+	s.processor = NewAccountsProcessor(s.mockQ)
 }
 
 func (s *AccountsProcessorTestSuiteLedger) TearDownTest() {
+	s.Assert().NoError(s.processor.Commit())
 	s.mockQ.AssertExpectations(s.T())
-	s.mockLedgerReader.AssertExpectations(s.T())
-	s.mockLedgerWriter.AssertExpectations(s.T())
-}
-
-func (s *AccountsProcessorTestSuiteLedger) TestNoIngestUpdateState() {
-	s.mockLedgerReader = &io.MockLedgerReader{}
-	s.mockLedgerWriter = &io.MockLedgerWriter{}
-
-	s.mockLedgerReader.On("IgnoreUpgradeChanges").Once()
-
-	s.mockLedgerReader.
-		On("Close").
-		Return(nil).Once()
-
-	s.mockLedgerWriter.
-		On("Close").
-		Return(nil).Once()
-
-	err := s.processor.ProcessLedger(
-		context.Background(),
-		&supportPipeline.Store{},
-		s.mockLedgerReader,
-		s.mockLedgerWriter,
-	)
-
-	s.Assert().NoError(err)
 }
 
 func (s *AccountsProcessorTestSuiteLedger) TestNoTransactions() {
-	s.mockLedgerReader.
-		On("Read").
-		Return(io.LedgerTransaction{}, stdio.EOF).Once()
-
-	err := s.processor.ProcessLedger(
-		s.context,
-		&supportPipeline.Store{},
-		s.mockLedgerReader,
-		s.mockLedgerWriter,
-	)
-
-	s.Assert().NoError(err)
+	// Nothing processed, assertions in TearDownTest.
 }
 
 func (s *AccountsProcessorTestSuiteLedger) TestNewAccount() {
@@ -214,26 +103,18 @@ func (s *AccountsProcessorTestSuiteLedger) TestNewAccount() {
 	}
 	lastModifiedLedgerSeq := xdr.Uint32(123)
 
-	s.mockLedgerReader.
-		On("Read").
-		Return(io.LedgerTransaction{
-			Meta: createTransactionMeta([]xdr.OperationMeta{
-				xdr.OperationMeta{
-					Changes: []xdr.LedgerEntryChange{
-						xdr.LedgerEntryChange{
-							Type: xdr.LedgerEntryChangeTypeLedgerEntryCreated,
-							Created: &xdr.LedgerEntry{
-								LastModifiedLedgerSeq: lastModifiedLedgerSeq,
-								Data: xdr.LedgerEntryData{
-									Type:    xdr.LedgerEntryTypeAccount,
-									Account: &account,
-								},
-							},
-						},
-					},
-				},
-			}),
-		}, nil).Once()
+	err := s.processor.ProcessChange(io.Change{
+		Type: xdr.LedgerEntryTypeAccount,
+		Pre:  nil,
+		Post: &xdr.LedgerEntry{
+			Data: xdr.LedgerEntryData{
+				Type:    xdr.LedgerEntryTypeAccount,
+				Account: &account,
+			},
+			LastModifiedLedgerSeq: lastModifiedLedgerSeq,
+		},
+	})
+	s.Assert().NoError(err)
 
 	updatedAccount := xdr.AccountEntry{
 		AccountId:  xdr.MustAddress("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
@@ -241,45 +122,24 @@ func (s *AccountsProcessorTestSuiteLedger) TestNewAccount() {
 		HomeDomain: "stellar.org",
 	}
 
-	// failed tx shouldn't be ignored in accounts processor (seqnum and fees!)
-	s.mockLedgerReader.On("Read").
-		Return(io.LedgerTransaction{
-			Result: xdr.TransactionResultPair{
-				Result: xdr.TransactionResult{
-					Result: xdr.TransactionResultResult{
-						Code: xdr.TransactionResultCodeTxFailed,
-					},
-				},
+	err = s.processor.ProcessChange(io.Change{
+		Type: xdr.LedgerEntryTypeAccount,
+		Pre: &xdr.LedgerEntry{
+			LastModifiedLedgerSeq: lastModifiedLedgerSeq - 1,
+			Data: xdr.LedgerEntryData{
+				Type:    xdr.LedgerEntryTypeAccount,
+				Account: &account,
 			},
-			Meta: createTransactionMeta([]xdr.OperationMeta{
-				xdr.OperationMeta{
-					Changes: []xdr.LedgerEntryChange{
-						// State
-						xdr.LedgerEntryChange{
-							Type: xdr.LedgerEntryChangeTypeLedgerEntryState,
-							State: &xdr.LedgerEntry{
-								LastModifiedLedgerSeq: lastModifiedLedgerSeq - 1,
-								Data: xdr.LedgerEntryData{
-									Type:    xdr.LedgerEntryTypeAccount,
-									Account: &account,
-								},
-							},
-						},
-						// Updated
-						xdr.LedgerEntryChange{
-							Type: xdr.LedgerEntryChangeTypeLedgerEntryUpdated,
-							Updated: &xdr.LedgerEntry{
-								LastModifiedLedgerSeq: lastModifiedLedgerSeq,
-								Data: xdr.LedgerEntryData{
-									Type:    xdr.LedgerEntryTypeAccount,
-									Account: &updatedAccount,
-								},
-							},
-						},
-					},
-				},
-			}),
-		}, nil).Once()
+		},
+		Post: &xdr.LedgerEntry{
+			LastModifiedLedgerSeq: lastModifiedLedgerSeq,
+			Data: xdr.LedgerEntryData{
+				Type:    xdr.LedgerEntryTypeAccount,
+				Account: &updatedAccount,
+			},
+		},
+	})
+	s.Assert().NoError(err)
 
 	// We use LedgerEntryChangesCache so all changes are squashed
 	s.mockQ.On(
@@ -294,103 +154,49 @@ func (s *AccountsProcessorTestSuiteLedger) TestNewAccount() {
 			},
 		},
 	).Return(nil).Once()
-
-	s.mockLedgerReader.
-		On("Read").
-		Return(io.LedgerTransaction{}, stdio.EOF).Once()
-
-	err := s.processor.ProcessLedger(
-		s.context,
-		&supportPipeline.Store{},
-		s.mockLedgerReader,
-		s.mockLedgerWriter,
-	)
-
-	s.Assert().NoError(err)
 }
 
 func (s *AccountsProcessorTestSuiteLedger) TestRemoveAccount() {
-	// add offer
-	s.mockLedgerReader.On("Read").
-		Return(io.LedgerTransaction{
-			Meta: createTransactionMeta([]xdr.OperationMeta{
-				xdr.OperationMeta{
-					Changes: []xdr.LedgerEntryChange{
-						xdr.LedgerEntryChange{
-							Type: xdr.LedgerEntryChangeTypeLedgerEntryState,
-							State: &xdr.LedgerEntry{
-								Data: xdr.LedgerEntryData{
-									Type: xdr.LedgerEntryTypeAccount,
-									Account: &xdr.AccountEntry{
-										AccountId:  xdr.MustAddress("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
-										Thresholds: [4]byte{1, 1, 1, 1},
-									},
-								},
-							},
-						},
-						xdr.LedgerEntryChange{
-							Type: xdr.LedgerEntryChangeTypeLedgerEntryRemoved,
-							Removed: &xdr.LedgerKey{
-								Type: xdr.LedgerEntryTypeAccount,
-								Account: &xdr.LedgerKeyAccount{
-									AccountId: xdr.MustAddress("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
-								},
-							},
-						},
-					},
-				},
-			}),
-		}, nil).Once()
-
 	s.mockQ.On(
 		"RemoveAccount",
 		"GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML",
 	).Return(int64(1), nil).Once()
 
-	s.mockLedgerReader.
-		On("Read").
-		Return(io.LedgerTransaction{}, stdio.EOF).Once()
-
-	err := s.processor.ProcessLedger(
-		s.context,
-		&supportPipeline.Store{},
-		s.mockLedgerReader,
-		s.mockLedgerWriter,
-	)
-
+	err := s.processor.ProcessChange(io.Change{
+		Type: xdr.LedgerEntryTypeAccount,
+		Pre: &xdr.LedgerEntry{
+			Data: xdr.LedgerEntryData{
+				Type: xdr.LedgerEntryTypeAccount,
+				Account: &xdr.AccountEntry{
+					AccountId:  xdr.MustAddress("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
+					Thresholds: [4]byte{1, 1, 1, 1},
+				},
+			},
+		},
+		Post: nil,
+	})
 	s.Assert().NoError(err)
 }
 
 func (s *AccountsProcessorTestSuiteLedger) TestProcessUpgradeChange() {
-	// Removes ReadUpgradeChange assertion
-	s.mockLedgerReader = &io.MockLedgerReader{}
-
 	account := xdr.AccountEntry{
 		AccountId:  xdr.MustAddress("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
 		Thresholds: [4]byte{1, 1, 1, 1},
 	}
 	lastModifiedLedgerSeq := xdr.Uint32(123)
 
-	s.mockLedgerReader.
-		On("Read").
-		Return(io.LedgerTransaction{
-			Meta: createTransactionMeta([]xdr.OperationMeta{
-				xdr.OperationMeta{
-					Changes: []xdr.LedgerEntryChange{
-						xdr.LedgerEntryChange{
-							Type: xdr.LedgerEntryChangeTypeLedgerEntryCreated,
-							Created: &xdr.LedgerEntry{
-								LastModifiedLedgerSeq: lastModifiedLedgerSeq,
-								Data: xdr.LedgerEntryData{
-									Type:    xdr.LedgerEntryTypeAccount,
-									Account: &account,
-								},
-							},
-						},
-					},
-				},
-			}),
-		}, nil).Once()
+	err := s.processor.ProcessChange(io.Change{
+		Type: xdr.LedgerEntryTypeAccount,
+		Pre:  nil,
+		Post: &xdr.LedgerEntry{
+			LastModifiedLedgerSeq: lastModifiedLedgerSeq,
+			Data: xdr.LedgerEntryData{
+				Type:    xdr.LedgerEntryTypeAccount,
+				Account: &account,
+			},
+		},
+	})
+	s.Assert().NoError(err)
 
 	updatedAccount := xdr.AccountEntry{
 		AccountId:  xdr.MustAddress("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
@@ -398,36 +204,24 @@ func (s *AccountsProcessorTestSuiteLedger) TestProcessUpgradeChange() {
 		HomeDomain: "stellar.org",
 	}
 
-	s.mockLedgerReader.
-		On("Read").
-		Return(io.LedgerTransaction{}, stdio.EOF).Once()
-
-	s.mockLedgerReader.
-		On("ReadUpgradeChange").
-		Return(
-			io.Change{
-				Type: xdr.LedgerEntryTypeAccount,
-				Pre: &xdr.LedgerEntry{
-					LastModifiedLedgerSeq: lastModifiedLedgerSeq,
-					Data: xdr.LedgerEntryData{
-						Type:    xdr.LedgerEntryTypeAccount,
-						Account: &account,
-					},
-				},
-				Post: &xdr.LedgerEntry{
-					LastModifiedLedgerSeq: lastModifiedLedgerSeq + 1,
-					Data: xdr.LedgerEntryData{
-						Type:    xdr.LedgerEntryTypeAccount,
-						Account: &updatedAccount,
-					},
-				},
-			}, nil).Once()
-
-	s.mockLedgerReader.
-		On("ReadUpgradeChange").
-		Return(io.Change{}, stdio.EOF).Once()
-
-	s.mockLedgerReader.On("Close").Return(nil).Once()
+	err = s.processor.ProcessChange(io.Change{
+		Type: xdr.LedgerEntryTypeAccount,
+		Pre: &xdr.LedgerEntry{
+			LastModifiedLedgerSeq: lastModifiedLedgerSeq,
+			Data: xdr.LedgerEntryData{
+				Type:    xdr.LedgerEntryTypeAccount,
+				Account: &account,
+			},
+		},
+		Post: &xdr.LedgerEntry{
+			LastModifiedLedgerSeq: lastModifiedLedgerSeq + 1,
+			Data: xdr.LedgerEntryData{
+				Type:    xdr.LedgerEntryTypeAccount,
+				Account: &updatedAccount,
+			},
+		},
+	})
+	s.Assert().NoError(err)
 
 	s.mockQ.On(
 		"UpsertAccounts",
@@ -441,92 +235,58 @@ func (s *AccountsProcessorTestSuiteLedger) TestProcessUpgradeChange() {
 			},
 		},
 	).Return(nil).Once()
-
-	err := s.processor.ProcessLedger(
-		s.context,
-		&supportPipeline.Store{},
-		s.mockLedgerReader,
-		s.mockLedgerWriter,
-	)
-
-	s.Assert().NoError(err)
 }
 
 func (s *AccountsProcessorTestSuiteLedger) TestFeeProcessedBeforeEverythingElse() {
-	s.mockLedgerReader.On("Read").
-		Return(io.LedgerTransaction{
-			Meta: createTransactionMeta([]xdr.OperationMeta{
-				xdr.OperationMeta{
-					Changes: []xdr.LedgerEntryChange{
-						xdr.LedgerEntryChange{
-							Type: xdr.LedgerEntryChangeTypeLedgerEntryState,
-							State: &xdr.LedgerEntry{
-								Data: xdr.LedgerEntryData{
-									Type: xdr.LedgerEntryTypeAccount,
-									Account: &xdr.AccountEntry{
-										AccountId: xdr.MustAddress("GAHK7EEG2WWHVKDNT4CEQFZGKF2LGDSW2IVM4S5DP42RBW3K6BTODB4A"),
-										Balance:   100,
-									},
-								},
-							},
-						},
-						xdr.LedgerEntryChange{
-							Type: xdr.LedgerEntryChangeTypeLedgerEntryUpdated,
-							Updated: &xdr.LedgerEntry{
-								Data: xdr.LedgerEntryData{
-									Type: xdr.LedgerEntryTypeAccount,
-									Account: &xdr.AccountEntry{
-										AccountId: xdr.MustAddress("GAHK7EEG2WWHVKDNT4CEQFZGKF2LGDSW2IVM4S5DP42RBW3K6BTODB4A"),
-										Balance:   300,
-									},
-								},
-							},
-						},
-					},
+	err := s.processor.ProcessChange(io.Change{
+		Type: xdr.LedgerEntryTypeAccount,
+		Pre: &xdr.LedgerEntry{
+			Data: xdr.LedgerEntryData{
+				Type: xdr.LedgerEntryTypeAccount,
+				Account: &xdr.AccountEntry{
+					AccountId: xdr.MustAddress("GAHK7EEG2WWHVKDNT4CEQFZGKF2LGDSW2IVM4S5DP42RBW3K6BTODB4A"),
+					Balance:   200,
 				},
-			}),
-		}, nil).Once()
+			},
+		},
+		Post: &xdr.LedgerEntry{
+			Data: xdr.LedgerEntryData{
+				Type: xdr.LedgerEntryTypeAccount,
+				Account: &xdr.AccountEntry{
+					AccountId: xdr.MustAddress("GAHK7EEG2WWHVKDNT4CEQFZGKF2LGDSW2IVM4S5DP42RBW3K6BTODB4A"),
+					Balance:   100,
+				},
+			},
+		},
+	})
+	s.Assert().NoError(err)
 
-	s.mockLedgerReader.On("Read").
-		Return(io.LedgerTransaction{
-			FeeChanges: []xdr.LedgerEntryChange{
-				xdr.LedgerEntryChange{
-					Type: xdr.LedgerEntryChangeTypeLedgerEntryState,
-					State: &xdr.LedgerEntry{
-						Data: xdr.LedgerEntryData{
-							Type: xdr.LedgerEntryTypeAccount,
-							Account: &xdr.AccountEntry{
-								AccountId: xdr.MustAddress("GAHK7EEG2WWHVKDNT4CEQFZGKF2LGDSW2IVM4S5DP42RBW3K6BTODB4A"),
-								Balance:   200,
-							},
-						},
-					},
-				},
-				xdr.LedgerEntryChange{
-					Type: xdr.LedgerEntryChangeTypeLedgerEntryUpdated,
-					Updated: &xdr.LedgerEntry{
-						Data: xdr.LedgerEntryData{
-							Type: xdr.LedgerEntryTypeAccount,
-							Account: &xdr.AccountEntry{
-								AccountId: xdr.MustAddress("GAHK7EEG2WWHVKDNT4CEQFZGKF2LGDSW2IVM4S5DP42RBW3K6BTODB4A"),
-								Balance:   100,
-							},
-						},
-					},
+	err = s.processor.ProcessChange(io.Change{
+		Type: xdr.LedgerEntryTypeAccount,
+		Pre: &xdr.LedgerEntry{
+			Data: xdr.LedgerEntryData{
+				Type: xdr.LedgerEntryTypeAccount,
+				Account: &xdr.AccountEntry{
+					AccountId: xdr.MustAddress("GAHK7EEG2WWHVKDNT4CEQFZGKF2LGDSW2IVM4S5DP42RBW3K6BTODB4A"),
+					Balance:   100,
 				},
 			},
-			Meta: xdr.TransactionMeta{
-				V: 1,
-				V1: &xdr.TransactionMetaV1{
-					Operations: []xdr.OperationMeta{},
+		},
+		Post: &xdr.LedgerEntry{
+			Data: xdr.LedgerEntryData{
+				Type: xdr.LedgerEntryTypeAccount,
+				Account: &xdr.AccountEntry{
+					AccountId: xdr.MustAddress("GAHK7EEG2WWHVKDNT4CEQFZGKF2LGDSW2IVM4S5DP42RBW3K6BTODB4A"),
+					Balance:   300,
 				},
 			},
-		}, nil).Once()
+		},
+	})
+	s.Assert().NoError(err)
 
 	expectedAccount := xdr.AccountEntry{
 		AccountId: xdr.MustAddress("GAHK7EEG2WWHVKDNT4CEQFZGKF2LGDSW2IVM4S5DP42RBW3K6BTODB4A"),
-		// If fee meta wasn't procesed before everything else, this would be 100
-		Balance: 300,
+		Balance:   300,
 	}
 
 	s.mockQ.On(
@@ -541,17 +301,4 @@ func (s *AccountsProcessorTestSuiteLedger) TestFeeProcessedBeforeEverythingElse(
 			},
 		},
 	).Return(nil).Once()
-
-	s.mockLedgerReader.
-		On("Read").
-		Return(io.LedgerTransaction{}, stdio.EOF).Once()
-
-	err := s.processor.ProcessLedger(
-		s.context,
-		&supportPipeline.Store{},
-		s.mockLedgerReader,
-		s.mockLedgerWriter,
-	)
-
-	s.Assert().NoError(err)
 }

@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/stellar/go/exp/ingest/adapters"
 	ingesterrors "github.com/stellar/go/exp/ingest/errors"
 	"github.com/stellar/go/exp/ingest/io"
 	"github.com/stellar/go/exp/ingest/verify"
@@ -52,25 +51,23 @@ func (s *System) verifyState(graphOffers map[xdr.Int64]xdr.OfferEntry) error {
 	}
 
 	startTime := time.Now()
-	session := s.historySession.Clone()
+	historyQ := s.historyQ.CloneIngestionQ()
 
 	defer func() {
 		log.WithField("duration", time.Since(startTime).Seconds()).Info("State verification finished")
-		session.Rollback()
+		historyQ.Rollback()
 		s.stateVerificationMutex.Lock()
 		s.stateVerificationRunning = false
 		s.stateVerificationMutex.Unlock()
 	}()
 
-	err := session.BeginTx(&sql.TxOptions{
+	err := historyQ.BeginTx(&sql.TxOptions{
 		Isolation: sql.LevelRepeatableRead,
 		ReadOnly:  true,
 	})
 	if err != nil {
 		return errors.Wrap(err, "Error starting transaction")
 	}
-
-	historyQ := &history.Q{session}
 
 	// Ensure the ledger is a checkpoint ledger
 	ledgerSequence, err := historyQ.GetLastLedgerExpIngestNonBlocking()
@@ -90,9 +87,7 @@ func (s *System) verifyState(graphOffers map[xdr.Int64]xdr.OfferEntry) error {
 	// Get root HAS to check if we're checking one of the latest ledgers or
 	// Horizon is catching up. It doesn't make sense to verify old ledgers as
 	// we want to check the latest state.
-	archive := s.session.GetArchive()
-	historyAdapter := adapters.MakeHistoryArchiveAdapter(archive)
-	historyLatestSequence, err := historyAdapter.GetLatestLedgerSequence()
+	historyLatestSequence, err := s.historyAdapter.GetLatestLedgerSequence()
 	if err != nil {
 		return errors.Wrap(err, "Error getting the latest ledger sequence")
 	}
@@ -110,7 +105,7 @@ func (s *System) verifyState(graphOffers map[xdr.Int64]xdr.OfferEntry) error {
 
 		localLog.Info("Starting state verification. Waiting 40 seconds for stellar-core to publish HAS...")
 		select {
-		case <-s.shutdown:
+		case <-s.ctx.Done():
 			localLog.Info("State verifier shut down...")
 			return nil
 		case <-time.After(40 * time.Second):
@@ -120,14 +115,14 @@ func (s *System) verifyState(graphOffers map[xdr.Int64]xdr.OfferEntry) error {
 
 	localLog.Info("Creating state reader...")
 
-	stateReader, err := io.MakeSingleLedgerStateReader(
-		s.session.GetArchive(),
-		&io.MemoryTempSet{},
+	stateReader, err := s.historyAdapter.GetState(
+		s.ctx,
 		ledgerSequence,
-		s.maxStreamRetries,
+		&io.MemoryTempSet{},
+		s.config.MaxStreamRetries,
 	)
 	if err != nil {
-		return errors.Wrap(err, "Error running io.MakeSingleLedgerStateReader")
+		return errors.Wrap(err, "Error running GetState")
 	}
 	defer stateReader.Close()
 
@@ -143,14 +138,6 @@ func (s *System) verifyState(graphOffers map[xdr.Int64]xdr.OfferEntry) error {
 		keys, err = verifier.GetLedgerKeys(verifyBatchSize)
 		if err != nil {
 			return errors.Wrap(err, "verifier.GetLedgerKeys")
-		}
-
-		select {
-		case <-s.shutdown:
-			localLog.Info("State verifier shut down...")
-			return nil
-		default:
-			// continue
 		}
 
 		if len(keys) == 0 {
@@ -245,7 +232,7 @@ func (s *System) verifyState(graphOffers map[xdr.Int64]xdr.OfferEntry) error {
 	return nil
 }
 
-func checkAssetStats(set processors.AssetStatSet, q *history.Q) error {
+func checkAssetStats(set processors.AssetStatSet, q history.IngestionQ) error {
 	page := db2.PageQuery{
 		Order: "asc",
 		Limit: assetStatsBatchSize,
@@ -295,7 +282,7 @@ func checkAssetStats(set processors.AssetStatSet, q *history.Q) error {
 	return nil
 }
 
-func addAccountsToStateVerifier(verifier *verify.StateVerifier, q *history.Q, ids []string) error {
+func addAccountsToStateVerifier(verifier *verify.StateVerifier, q history.IngestionQ, ids []string) error {
 	if len(ids) == 0 {
 		return nil
 	}
@@ -381,7 +368,7 @@ func addAccountsToStateVerifier(verifier *verify.StateVerifier, q *history.Q, id
 	return nil
 }
 
-func addDataToStateVerifier(verifier *verify.StateVerifier, q *history.Q, keys []xdr.LedgerKeyData) error {
+func addDataToStateVerifier(verifier *verify.StateVerifier, q history.IngestionQ, keys []xdr.LedgerKeyData) error {
 	if len(keys) == 0 {
 		return nil
 	}
@@ -427,7 +414,7 @@ func offerEntryEquals(offer, other xdr.OfferEntry) (bool, error) {
 
 func addOffersToStateVerifier(
 	verifier *verify.StateVerifier,
-	q *history.Q,
+	q history.IngestionQ,
 	ids []int64,
 	graphOffers map[xdr.Int64]xdr.OfferEntry,
 ) error {
@@ -488,7 +475,7 @@ func addOffersToStateVerifier(
 func addTrustLinesToStateVerifier(
 	verifier *verify.StateVerifier,
 	assetStats processors.AssetStatSet,
-	q *history.Q,
+	q history.IngestionQ,
 	keys []xdr.LedgerKeyTrustLine,
 ) error {
 	if len(keys) == 0 {

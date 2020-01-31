@@ -2,6 +2,7 @@ package io
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"io"
 	"io/ioutil"
@@ -45,6 +46,7 @@ func (s *SingleLedgerStateReaderTestSuite) SetupTest() {
 		Return(true, nil).Times(21)
 
 	s.reader, err = MakeSingleLedgerStateReader(
+		context.Background(),
 		s.mockArchive,
 		&MemoryTempSet{},
 		ledgerSeq,
@@ -83,12 +85,12 @@ func (s *SingleLedgerStateReaderTestSuite) TestSimple() {
 			Return(createXdrStream(), nil).Once()
 	}
 
-	var e xdr.LedgerEntryChange
+	var e Change
 	var err error
 	e, err = s.reader.Read()
 	s.Require().NoError(err)
 
-	id := e.State.Data.MustAccount().AccountId
+	id := e.Post.Data.MustAccount().AccountId
 	s.Assert().Equal("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML", id.Address())
 
 	_, err = s.reader.Read()
@@ -202,7 +204,7 @@ func (s *SingleLedgerStateReaderTestSuite) TestEnsureLatestLiveEntry() {
 	entry, err := s.reader.Read()
 	s.Require().Nil(err)
 	// Latest entry balance is 1
-	s.Assert().Equal(xdr.Int64(1), entry.State.Data.Account.Balance)
+	s.Assert().Equal(xdr.Int64(1), entry.Post.Data.Account.Balance)
 
 	_, err = s.reader.Read()
 	s.Require().Equal(err, io.EOF)
@@ -265,6 +267,7 @@ type ReadBucketEntryTestSuite struct {
 	suite.Suite
 	mockArchive *historyarchive.MockArchive
 	reader      *SingleLedgerStateReader
+	cancel      context.CancelFunc
 }
 
 func (s *ReadBucketEntryTestSuite) SetupTest() {
@@ -275,13 +278,16 @@ func (s *ReadBucketEntryTestSuite) SetupTest() {
 		On("GetCheckpointHAS", ledgerSeq).
 		Return(historyarchive.HistoryArchiveState{}, nil)
 
+	ctx, cancel := context.WithCancel(context.Background())
 	var err error
 	s.reader, err = MakeSingleLedgerStateReader(
+		ctx,
 		s.mockArchive,
 		&MemoryTempSet{},
 		ledgerSeq,
 		2,
 	)
+	s.cancel = cancel
 	s.Require().NoError(err)
 }
 
@@ -331,6 +337,42 @@ func (s *ReadBucketEntryTestSuite) TestReadAllEntries() {
 
 	_, err = s.reader.readBucketEntry(stream, emptyHash)
 	s.Require().Equal(io.EOF, err)
+}
+
+func (s *ReadBucketEntryTestSuite) TestFirstReadFailsWithContextError() {
+	emptyHash := historyarchive.EmptyXdrArrayHash()
+	firstEntry := metaEntry(1)
+	secondEntry := metaEntry(2)
+	s.mockArchive.
+		On("GetXdrStreamForHash", emptyHash).
+		Return(createXdrStream(firstEntry, secondEntry), nil).Once()
+
+	stream, err := s.reader.newXDRStream(emptyHash)
+	s.Require().NoError(err)
+	s.cancel()
+
+	_, err = s.reader.readBucketEntry(stream, emptyHash)
+	s.Require().Equal(context.Canceled, err)
+}
+
+func (s *ReadBucketEntryTestSuite) TestSecondReadFailsWithContextError() {
+	emptyHash := historyarchive.EmptyXdrArrayHash()
+	firstEntry := metaEntry(1)
+	secondEntry := metaEntry(2)
+	s.mockArchive.
+		On("GetXdrStreamForHash", emptyHash).
+		Return(createXdrStream(firstEntry, secondEntry), nil).Once()
+
+	stream, err := s.reader.newXDRStream(emptyHash)
+	s.Require().NoError(err)
+
+	entry, err := s.reader.readBucketEntry(stream, emptyHash)
+	s.Require().NoError(err)
+	s.Require().Equal(entry, firstEntry)
+	s.cancel()
+
+	_, err = s.reader.readBucketEntry(stream, emptyHash)
+	s.Require().Equal(context.Canceled, err)
 }
 
 func (s *ReadBucketEntryTestSuite) TestReadEntryAllRetriesFail() {

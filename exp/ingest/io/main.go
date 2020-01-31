@@ -15,7 +15,7 @@ type StateReader interface {
 	GetSequence() uint32
 	// Read should return next ledger entry. If there are no more
 	// entries it should return `io.EOF` error.
-	Read() (xdr.LedgerEntryChange, error)
+	Read() (Change, error)
 	// Close should be called when reading is finished. This is especially
 	// helpful when there are still some entries available so reader can stop
 	// streaming them.
@@ -33,36 +33,6 @@ type StateWriter interface {
 	// Close should be called when there are no more entries
 	// to write.
 	Close() error
-}
-
-// LedgerReader provides convenient, streaming access to the transactions within a ledger.
-type LedgerReader interface {
-	GetSequence() uint32
-	GetHeader() xdr.LedgerHeaderHistoryEntry
-	// Read should return the next transaction. If there are no more
-	// transactions it should return `io.EOF` error.
-	Read() (LedgerTransaction, error)
-	// Read should return the next ledger entry change from ledger upgrades. If
-	// there are no more changes it should return `io.EOF` error.
-	// Ledger upgrades MUST be processed AFTER all transactions and only ONCE.
-	// If app is tracking state in more than one store, all of them need to
-	// be updated with upgrade changes.
-	// Values returned by this method must not be modified.
-	ReadUpgradeChange() (Change, error)
-	// IgnoreLedgerEntryChanges will change `Close()`` behaviour to not error
-	// when changes returned by `ReadUpgradeChange` are not fully read.
-	IgnoreUpgradeChanges()
-	// Close should be called when reading is finished. This is especially
-	// helpful when there are still some transactions available so reader can stop
-	// streaming them.
-	// Close should return error if `ReadUpgradeChange` are not fully read or
-	// `ReadUpgradeChange` was not called even once. However, this behaviour can
-	// be disabled by calling `IgnoreUpgradeChanges()`.
-	Close() error
-}
-
-type UpgradeChangesContainer interface {
-	GetUpgradeChanges() []Change
 }
 
 // LedgerWriter provides convenient, streaming access to the transactions within a ledger.

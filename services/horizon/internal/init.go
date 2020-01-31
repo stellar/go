@@ -9,7 +9,6 @@ import (
 	raven "github.com/getsentry/raven-go"
 	"github.com/gomodule/redigo/redis"
 	metrics "github.com/rcrowley/go-metrics"
-	ingestio "github.com/stellar/go/exp/ingest/io"
 	"github.com/stellar/go/exp/orderbook"
 	"github.com/stellar/go/services/horizon/internal/db2/core"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
@@ -45,14 +44,6 @@ func mustInitCoreDB(app *App) {
 }
 
 func initExpIngester(app *App, orderBookGraph *orderbook.OrderBookGraph) {
-	var tempSet ingestio.TempSet = &ingestio.MemoryTempSet{}
-	switch app.config.IngestStateReaderTempSet {
-	case "postgres":
-		tempSet = &ingestio.PostgresTempSet{
-			Session: app.HorizonSession(context.Background()),
-		}
-	}
-
 	var err error
 	app.expingester, err = expingest.NewSystem(expingest.Config{
 		CoreSession:       app.CoreSession(context.Background()),
@@ -63,8 +54,8 @@ func initExpIngester(app *App, orderBookGraph *orderbook.OrderBookGraph) {
 		// use multiple archives at the same time currently.
 		HistoryArchiveURL:        app.config.HistoryArchiveURLs[0],
 		StellarCoreURL:           app.config.StellarCoreURL,
+		StellarCoreCursor:        app.config.CursorName,
 		OrderBookGraph:           orderBookGraph,
-		TempSet:                  tempSet,
 		MaxStreamRetries:         3,
 		DisableStateVerification: app.config.IngestDisableStateVerification,
 		IngestFailedTransactions: app.config.IngestFailedTransactions,

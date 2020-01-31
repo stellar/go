@@ -1,12 +1,9 @@
 package processors
 
 import (
-	"context"
-	stdio "io"
 	"testing"
 
 	"github.com/stellar/go/exp/ingest/io"
-	supportPipeline "github.com/stellar/go/exp/support/pipeline"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	. "github.com/stellar/go/services/horizon/internal/test/transactions"
 	"github.com/stellar/go/services/horizon/internal/toid"
@@ -22,9 +19,6 @@ type EffectsProcessorTestSuiteLedger struct {
 	processor              *EffectProcessor
 	mockQ                  *history.MockQEffects
 	mockBatchInsertBuilder *history.MockEffectBatchInsertBuilder
-	mockLedgerReader       *io.MockLedgerReader
-	mockLedgerWriter       *io.MockLedgerWriter
-	context                context.Context
 
 	firstTx     io.LedgerTransaction
 	secondTx    io.LedgerTransaction
@@ -37,6 +31,7 @@ type EffectsProcessorTestSuiteLedger struct {
 	sequence    uint32
 	addresses   []string
 	addressToID map[string]int64
+	txs         []io.LedgerTransaction
 }
 
 func TestEffectsProcessorTestSuiteLedger(t *testing.T) {
@@ -46,9 +41,6 @@ func TestEffectsProcessorTestSuiteLedger(t *testing.T) {
 func (s *EffectsProcessorTestSuiteLedger) SetupTest() {
 	s.mockQ = &history.MockQEffects{}
 	s.mockBatchInsertBuilder = &history.MockEffectBatchInsertBuilder{}
-	s.mockLedgerReader = &io.MockLedgerReader{}
-	s.mockLedgerWriter = &io.MockLedgerWriter{}
-	s.context = context.WithValue(context.Background(), IngestUpdateDatabase, true)
 
 	s.sequence = uint32(20)
 
@@ -117,39 +109,20 @@ func (s *EffectsProcessorTestSuiteLedger) SetupTest() {
 		s.addresses[2]: 200,
 	}
 
-	s.processor = &EffectProcessor{
-		EffectsQ: s.mockQ,
+	s.processor = NewEffectProcessor(
+		s.mockQ,
+		20,
+	)
+
+	s.txs = []io.LedgerTransaction{
+		s.firstTx,
+		s.secondTx,
+		s.thirdTx,
 	}
-
-	s.mockLedgerReader.On("IgnoreUpgradeChanges").Once()
-	s.mockLedgerReader.
-		On("Close").
-		Return(nil).Once()
-
-	s.mockLedgerWriter.
-		On("Close").
-		Return(nil).Once()
 }
 
 func (s *EffectsProcessorTestSuiteLedger) TearDownTest() {
 	s.mockQ.AssertExpectations(s.T())
-	s.mockLedgerReader.AssertExpectations(s.T())
-	s.mockLedgerWriter.AssertExpectations(s.T())
-}
-
-func (s *EffectsProcessorTestSuiteLedger) mockLedgerReads() {
-	s.mockLedgerReader.
-		On("Read").
-		Return(s.firstTx, nil).Once()
-	s.mockLedgerReader.
-		On("Read").
-		Return(s.secondTx, nil).Once()
-	s.mockLedgerReader.
-		On("Read").
-		Return(s.thirdTx, nil).Once()
-	s.mockLedgerReader.
-		On("Read").
-		Return(io.LedgerTransaction{}, stdio.EOF).Once()
 }
 
 func (s *EffectsProcessorTestSuiteLedger) mockSuccessfulEffectBatchAdds() {
@@ -215,36 +188,12 @@ func (s *EffectsProcessorTestSuiteLedger) mockSuccessfulCreateAccounts() {
 	}).Return(s.addressToID, nil).Once()
 }
 
-func (s *EffectsProcessorTestSuiteLedger) TestNoIngestUpdateDatabase() {
-	err := s.processor.ProcessLedger(
-		context.Background(),
-		&supportPipeline.Store{},
-		s.mockLedgerReader,
-		s.mockLedgerWriter,
-	)
-	s.Assert().NoError(err)
-}
-
 func (s *EffectsProcessorTestSuiteLedger) TestEmptyEffects() {
-	s.mockLedgerReader.On("GetSequence").Return(s.sequence).Once()
-
-	s.mockLedgerReader.
-		On("Read").
-		Return(io.LedgerTransaction{}, stdio.EOF).Once()
-
-	err := s.processor.ProcessLedger(
-		s.context,
-		&supportPipeline.Store{},
-		s.mockLedgerReader,
-		s.mockLedgerWriter,
-	)
+	err := s.processor.Commit()
 	s.Assert().NoError(err)
 }
 
 func (s *EffectsProcessorTestSuiteLedger) TestIngestEffectsSucceeds() {
-	s.mockLedgerReader.On("GetSequence").Return(s.sequence).Once()
-
-	s.mockLedgerReads()
 	s.mockSuccessfulCreateAccounts()
 	s.mockQ.On("NewEffectBatchInsertBuilder", maxBatchSize).
 		Return(s.mockBatchInsertBuilder).Once()
@@ -253,38 +202,27 @@ func (s *EffectsProcessorTestSuiteLedger) TestIngestEffectsSucceeds() {
 
 	s.mockBatchInsertBuilder.On("Exec").Return(nil).Once()
 
-	err := s.processor.ProcessLedger(
-		s.context,
-		&supportPipeline.Store{},
-		s.mockLedgerReader,
-		s.mockLedgerWriter,
-	)
-
+	for _, tx := range s.txs {
+		err := s.processor.ProcessTransaction(tx)
+		s.Assert().NoError(err)
+	}
+	err := s.processor.Commit()
 	s.Assert().NoError(err)
 }
 
 func (s *EffectsProcessorTestSuiteLedger) TestCreateAccountsFails() {
-	s.mockLedgerReader.On("GetSequence").Return(s.sequence).Once()
-
-	s.mockLedgerReads()
-
 	s.mockQ.On("CreateAccounts", mock.AnythingOfType("[]string")).
 		Return(s.addressToID, errors.New("transient error")).Once()
 
-	err := s.processor.ProcessLedger(
-		s.context,
-		&supportPipeline.Store{},
-		s.mockLedgerReader,
-		s.mockLedgerWriter,
-	)
+	for _, tx := range s.txs {
+		err := s.processor.ProcessTransaction(tx)
+		s.Assert().NoError(err)
+	}
+	err := s.processor.Commit()
 	s.Assert().EqualError(err, "Could not create account ids: transient error")
 }
 
 func (s *EffectsProcessorTestSuiteLedger) TestBatchAddFails() {
-	s.mockLedgerReader.On("GetSequence").Return(s.sequence).Once()
-
-	s.mockLedgerReads()
-
 	s.mockSuccessfulCreateAccounts()
 	s.mockQ.On("NewEffectBatchInsertBuilder", maxBatchSize).
 		Return(s.mockBatchInsertBuilder).Once()
@@ -297,13 +235,11 @@ func (s *EffectsProcessorTestSuiteLedger) TestBatchAddFails() {
 		history.EffectSequenceBumped,
 		[]byte("{\"new_seq\":300000000000}"),
 	).Return(errors.New("transient error")).Once()
-
-	err := s.processor.ProcessLedger(
-		s.context,
-		&supportPipeline.Store{},
-		s.mockLedgerReader,
-		s.mockLedgerWriter,
-	)
+	for _, tx := range s.txs {
+		err := s.processor.ProcessTransaction(tx)
+		s.Assert().NoError(err)
+	}
+	err := s.processor.Commit()
 	s.Assert().EqualError(err, "could not insert operation effect in db: transient error")
 }
 

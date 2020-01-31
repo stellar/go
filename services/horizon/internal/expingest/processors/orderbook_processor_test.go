@@ -1,8 +1,6 @@
 package processors
 
 import (
-	"context"
-	stdio "io"
 	"testing"
 
 	"github.com/stellar/go/exp/ingest/io"
@@ -12,81 +10,56 @@ import (
 )
 
 func TestProcessOrderBookState(t *testing.T) {
-	reader := &io.MockStateReader{}
-	writer := &io.MockStateWriter{}
 	graph := orderbook.NewOrderBookGraph()
-	processor := OrderbookProcessor{graph}
+	processor := NewOrderbookProcessor(graph)
 
-	reader.On("Read").Return(xdr.LedgerEntryChange{}, stdio.EOF).Once()
-	reader.On("Close").Return(nil).Once()
-	writer.On("Close").Return(nil).Once()
-	if err := processor.ProcessState(context.Background(), nil, reader, writer); err != nil {
-		t.Fatalf("unexpected error %v", err)
-	}
-	writer.AssertExpectations(t)
-	if err := graph.Apply(1); err != nil {
-		t.Fatalf("unexpected error %v", err)
-	}
-
-	if !graph.IsEmpty() {
-		t.Fatal("expected graph to be empty")
-	}
-
-	reader.On("Read").Return(
-		xdr.LedgerEntryChange{
-			Type: xdr.LedgerEntryChangeTypeLedgerEntryState,
-			State: &xdr.LedgerEntry{
-				Data: xdr.LedgerEntryData{
-					Type: xdr.LedgerEntryTypeOffer,
-					Offer: &xdr.OfferEntry{
-						OfferId: xdr.Int64(1),
-						Price:   xdr.Price{1, 2},
-					},
+	err := processor.ProcessChange(io.Change{
+		Type: xdr.LedgerEntryTypeOffer,
+		Pre:  nil,
+		Post: &xdr.LedgerEntry{
+			Data: xdr.LedgerEntryData{
+				Type: xdr.LedgerEntryTypeOffer,
+				Offer: &xdr.OfferEntry{
+					OfferId:  xdr.Int64(1),
+					SellerId: xdr.MustAddress("GCFMARUTEFR6NW5HU5JZIVHEN5MO764GQKGRLHOIRY265Z343NZ7AK3J"),
+					Price:    xdr.Price{1, 2},
 				},
 			},
 		},
-		nil,
-	).Once()
-	reader.On("Read").Return(
-		xdr.LedgerEntryChange{
-			Type: xdr.LedgerEntryChangeTypeLedgerEntryState,
-			State: &xdr.LedgerEntry{
-				Data: xdr.LedgerEntryData{
-					Type: xdr.LedgerEntryTypeOffer,
-					Offer: &xdr.OfferEntry{
-						OfferId: xdr.Int64(2),
-						Price:   xdr.Price{1, 2},
-					},
+	})
+	assert.NoError(t, err)
+	err = processor.ProcessChange(io.Change{
+		Type: xdr.LedgerEntryTypeOffer,
+		Pre:  nil,
+		Post: &xdr.LedgerEntry{
+			Data: xdr.LedgerEntryData{
+				Type: xdr.LedgerEntryTypeOffer,
+				Offer: &xdr.OfferEntry{
+					OfferId:  xdr.Int64(2),
+					SellerId: xdr.MustAddress("GCFMARUTEFR6NW5HU5JZIVHEN5MO764GQKGRLHOIRY265Z343NZ7AK3J"),
+					Price:    xdr.Price{1, 2},
 				},
 			},
 		},
-		nil,
-	).Once()
-	reader.On("Read").Return(
-		xdr.LedgerEntryChange{
-			Type: xdr.LedgerEntryChangeTypeLedgerEntryState,
-			State: &xdr.LedgerEntry{
-				Data: xdr.LedgerEntryData{
-					Type: xdr.LedgerEntryTypeOffer,
-					Offer: &xdr.OfferEntry{
-						OfferId: xdr.Int64(3),
-						Price:   xdr.Price{1, 2},
-					},
+	})
+	assert.NoError(t, err)
+	err = processor.ProcessChange(io.Change{
+		Type: xdr.LedgerEntryTypeOffer,
+		Pre:  nil,
+		Post: &xdr.LedgerEntry{
+			Data: xdr.LedgerEntryData{
+				Type: xdr.LedgerEntryTypeOffer,
+				Offer: &xdr.OfferEntry{
+					OfferId:  xdr.Int64(3),
+					SellerId: xdr.MustAddress("GCFMARUTEFR6NW5HU5JZIVHEN5MO764GQKGRLHOIRY265Z343NZ7AK3J"),
+					Price:    xdr.Price{1, 2},
 				},
 			},
 		},
-		nil,
-	).Once()
-	reader.On("Read").Return(xdr.LedgerEntryChange{}, stdio.EOF).Once()
-	reader.On("Close").Return(nil).Once()
-	writer.On("Close").Return(nil).Once()
+	})
+	assert.NoError(t, err)
 
-	if err := processor.ProcessState(context.Background(), nil, reader, writer); err != nil {
-		t.Fatalf("unexpected error %v", err)
-	}
-
-	writer.AssertExpectations(t)
-	reader.AssertExpectations(t)
+	assert.NoError(t, processor.Commit())
 	if err := graph.Apply(2); err != nil {
 		t.Fatalf("unexpected error %v", err)
 	}
@@ -109,240 +82,117 @@ func TestProcessOrderBookState(t *testing.T) {
 	}
 }
 
-func TestProcessOrderBookLedgerNoIngestUpdateState(t *testing.T) {
-	reader := &io.MockLedgerReader{}
-	writer := &io.MockLedgerWriter{}
-	graph := orderbook.NewOrderBookGraph()
-	processor := OrderbookProcessor{graph}
-
-	reader.On("IgnoreUpgradeChanges").Once()
-
-	reader.On("Close").Return(nil).Once()
-	writer.On("Close").Return(nil).Once()
-	if err := processor.ProcessLedger(context.Background(), nil, reader, writer); err != nil {
-		t.Fatalf("unexpected error %v", err)
-	}
-	writer.AssertExpectations(t)
-	reader.AssertExpectations(t)
-}
-
 func TestProcessOrderBookLedger(t *testing.T) {
-	reader := &io.MockLedgerReader{}
-	writer := &io.MockLedgerWriter{}
 	graph := orderbook.NewOrderBookGraph()
-	processor := OrderbookProcessor{graph}
-
-	reader.On("Read").Return(io.LedgerTransaction{}, stdio.EOF).Once()
-	reader.On("ReadUpgradeChange").Return(io.Change{}, stdio.EOF).Once()
-	reader.On("Close").Return(nil).Once()
-	writer.On("Close").Return(nil).Once()
-	if err := processor.ProcessLedger(context.WithValue(context.Background(), IngestUpdateState, true), nil, reader, writer); err != nil {
-		t.Fatalf("unexpected error %v", err)
-	}
-	writer.AssertExpectations(t)
-	reader.AssertExpectations(t)
-	if err := graph.Apply(1); err != nil {
-		t.Fatalf("unexpected error %v", err)
-	}
-
-	if !graph.IsEmpty() {
-		t.Fatal("expected graph to be empty")
-	}
+	processor := NewOrderbookProcessor(graph)
 
 	// should be ignored because it's not an offer type
-	reader.On("Read").
-		Return(io.LedgerTransaction{
-			Meta: createTransactionMeta([]xdr.OperationMeta{
-				xdr.OperationMeta{
-					Changes: []xdr.LedgerEntryChange{
-						xdr.LedgerEntryChange{
-							Type: xdr.LedgerEntryChangeTypeLedgerEntryCreated,
-							Created: &xdr.LedgerEntry{
-								Data: xdr.LedgerEntryData{
-									Type: xdr.LedgerEntryTypeAccount,
-									Account: &xdr.AccountEntry{
-										AccountId:  xdr.MustAddress("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
-										Thresholds: [4]byte{1, 1, 1, 1},
-									},
-								},
-							},
-						},
-					},
-				},
-			}),
-		}, nil).Once()
-
-	// should be ignored because transaction was not successful
-	reader.On("Read").
-		Return(io.LedgerTransaction{
-			Result: xdr.TransactionResultPair{
-				Result: xdr.TransactionResult{
-					Result: xdr.TransactionResultResult{
-						Code: xdr.TransactionResultCodeTxFailed,
-					},
+	err := processor.ProcessChange(io.Change{
+		Type: xdr.LedgerEntryTypeAccount,
+		Pre:  nil,
+		Post: &xdr.LedgerEntry{
+			Data: xdr.LedgerEntryData{
+				Type: xdr.LedgerEntryTypeAccount,
+				Account: &xdr.AccountEntry{
+					AccountId:  xdr.MustAddress("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
+					Thresholds: [4]byte{1, 1, 1, 1},
 				},
 			},
-			Meta: createTransactionMeta([]xdr.OperationMeta{
-				xdr.OperationMeta{
-					Changes: []xdr.LedgerEntryChange{
-						// State
-						xdr.LedgerEntryChange{
-							Type: xdr.LedgerEntryChangeTypeLedgerEntryCreated,
-							Created: &xdr.LedgerEntry{
-								Data: xdr.LedgerEntryData{
-									Type: xdr.LedgerEntryTypeOffer,
-									Offer: &xdr.OfferEntry{
-										OfferId: xdr.Int64(6),
-										Price:   xdr.Price{1, 2},
-									},
-								},
-							},
-						},
-					},
+		},
+	})
+	assert.NoError(t, err)
+
+	err = processor.ProcessChange(io.Change{
+		Type: xdr.LedgerEntryTypeOffer,
+		Pre:  nil,
+		Post: &xdr.LedgerEntry{
+			Data: xdr.LedgerEntryData{
+				Type: xdr.LedgerEntryTypeOffer,
+				Offer: &xdr.OfferEntry{
+					OfferId:  xdr.Int64(1),
+					SellerId: xdr.MustAddress("GCFMARUTEFR6NW5HU5JZIVHEN5MO764GQKGRLHOIRY265Z343NZ7AK3J"),
+					Price:    xdr.Price{1, 2},
 				},
-			}),
-		}, nil).Once()
+			},
+		},
+	})
+	assert.NoError(t, err)
 
-	// add offer
-	reader.On("Read").
-		Return(io.LedgerTransaction{
-			Meta: createTransactionMeta([]xdr.OperationMeta{
-				xdr.OperationMeta{
-					Changes: []xdr.LedgerEntryChange{
-						// State
-						xdr.LedgerEntryChange{
-							Type: xdr.LedgerEntryChangeTypeLedgerEntryCreated,
-							Created: &xdr.LedgerEntry{
-								Data: xdr.LedgerEntryData{
-									Type: xdr.LedgerEntryTypeOffer,
-									Offer: &xdr.OfferEntry{
-										OfferId: xdr.Int64(1),
-										Price:   xdr.Price{1, 2},
-									},
-								},
-							},
-						},
-					},
+	err = processor.ProcessChange(io.Change{
+		Type: xdr.LedgerEntryTypeOffer,
+		Pre:  nil,
+		Post: &xdr.LedgerEntry{
+			Data: xdr.LedgerEntryData{
+				Type: xdr.LedgerEntryTypeOffer,
+				Offer: &xdr.OfferEntry{
+					OfferId:  xdr.Int64(2),
+					SellerId: xdr.MustAddress("GCFMARUTEFR6NW5HU5JZIVHEN5MO764GQKGRLHOIRY265Z343NZ7AK3J"),
+					Price:    xdr.Price{1, 3},
 				},
-			}),
-		}, nil).Once()
+			},
+		},
+	})
+	assert.NoError(t, err)
 
-	// add another 2 offers
-	reader.On("Read").
-		Return(io.LedgerTransaction{
-			Meta: createTransactionMeta([]xdr.OperationMeta{
-				xdr.OperationMeta{
-					Changes: []xdr.LedgerEntryChange{
-						xdr.LedgerEntryChange{
-							Type: xdr.LedgerEntryChangeTypeLedgerEntryCreated,
-							Created: &xdr.LedgerEntry{
-								Data: xdr.LedgerEntryData{
-									Type: xdr.LedgerEntryTypeOffer,
-									Offer: &xdr.OfferEntry{
-										OfferId: xdr.Int64(2),
-										Price:   xdr.Price{1, 3},
-									},
-								},
-							},
-						},
-						xdr.LedgerEntryChange{
-							Type: xdr.LedgerEntryChangeTypeLedgerEntryCreated,
-							Created: &xdr.LedgerEntry{
-								Data: xdr.LedgerEntryData{
-									Type: xdr.LedgerEntryTypeOffer,
-									Offer: &xdr.OfferEntry{
-										OfferId: xdr.Int64(3),
-										Price:   xdr.Price{3, 1},
-									},
-								},
-							},
-						},
-					},
+	err = processor.ProcessChange(io.Change{
+		Type: xdr.LedgerEntryTypeOffer,
+		Pre:  nil,
+		Post: &xdr.LedgerEntry{
+			Data: xdr.LedgerEntryData{
+				Type: xdr.LedgerEntryTypeOffer,
+				Offer: &xdr.OfferEntry{
+					OfferId:  xdr.Int64(3),
+					SellerId: xdr.MustAddress("GCFMARUTEFR6NW5HU5JZIVHEN5MO764GQKGRLHOIRY265Z343NZ7AK3J"),
+					Price:    xdr.Price{3, 1},
 				},
-			}),
-		}, nil).Once()
+			},
+		},
+	})
+	assert.NoError(t, err)
 
-	// update an offer
-	reader.On("Read").
-		Return(io.LedgerTransaction{
-			Meta: createTransactionMeta([]xdr.OperationMeta{
-				xdr.OperationMeta{
-					Changes: []xdr.LedgerEntryChange{
-						// State
-						xdr.LedgerEntryChange{
-							Type: xdr.LedgerEntryChangeTypeLedgerEntryState,
-							State: &xdr.LedgerEntry{
-								Data: xdr.LedgerEntryData{
-									Type: xdr.LedgerEntryTypeOffer,
-									Offer: &xdr.OfferEntry{
-										OfferId: xdr.Int64(2),
-										Price:   xdr.Price{1, 3},
-									},
-								},
-							},
-						},
-						// Updated
-						xdr.LedgerEntryChange{
-							Type: xdr.LedgerEntryChangeTypeLedgerEntryUpdated,
-							Updated: &xdr.LedgerEntry{
-								Data: xdr.LedgerEntryData{
-									Type: xdr.LedgerEntryTypeOffer,
-									Offer: &xdr.OfferEntry{
-										OfferId: xdr.Int64(2),
-										Price:   xdr.Price{1, 6},
-									},
-								},
-							},
-						},
-					},
+	err = processor.ProcessChange(io.Change{
+		Type: xdr.LedgerEntryTypeOffer,
+		Pre: &xdr.LedgerEntry{
+			Data: xdr.LedgerEntryData{
+				Type: xdr.LedgerEntryTypeOffer,
+				Offer: &xdr.OfferEntry{
+					OfferId:  xdr.Int64(2),
+					SellerId: xdr.MustAddress("GCFMARUTEFR6NW5HU5JZIVHEN5MO764GQKGRLHOIRY265Z343NZ7AK3J"),
+					Price:    xdr.Price{1, 3},
 				},
-			}),
-		}, nil).Once()
-
-	reader.On("Read").
-		Return(io.LedgerTransaction{
-			Meta: createTransactionMeta([]xdr.OperationMeta{
-				xdr.OperationMeta{
-					Changes: []xdr.LedgerEntryChange{
-						xdr.LedgerEntryChange{
-							Type: xdr.LedgerEntryChangeTypeLedgerEntryState,
-							State: &xdr.LedgerEntry{
-								Data: xdr.LedgerEntryData{
-									Type: xdr.LedgerEntryTypeOffer,
-									Offer: &xdr.OfferEntry{
-										OfferId: xdr.Int64(3),
-										Price:   xdr.Price{3, 1},
-									},
-								},
-							},
-						},
-						xdr.LedgerEntryChange{
-							Type: xdr.LedgerEntryChangeTypeLedgerEntryRemoved,
-							Removed: &xdr.LedgerKey{
-								Type: xdr.LedgerEntryTypeOffer,
-								Offer: &xdr.LedgerKeyOffer{
-									OfferId: xdr.Int64(3),
-								},
-							},
-						},
-					},
+			},
+		},
+		Post: &xdr.LedgerEntry{
+			Data: xdr.LedgerEntryData{
+				Type: xdr.LedgerEntryTypeOffer,
+				Offer: &xdr.OfferEntry{
+					OfferId:  xdr.Int64(2),
+					SellerId: xdr.MustAddress("GCFMARUTEFR6NW5HU5JZIVHEN5MO764GQKGRLHOIRY265Z343NZ7AK3J"),
+					Price:    xdr.Price{1, 6},
 				},
-			}),
-		}, nil).Once()
+			},
+		},
+	})
+	assert.NoError(t, err)
 
-	reader.On("Read").
-		Return(io.LedgerTransaction{}, stdio.EOF).Once()
+	err = processor.ProcessChange(io.Change{
+		Type: xdr.LedgerEntryTypeOffer,
+		Pre: &xdr.LedgerEntry{
+			Data: xdr.LedgerEntryData{
+				Type: xdr.LedgerEntryTypeOffer,
+				Offer: &xdr.OfferEntry{
+					OfferId:  xdr.Int64(3),
+					SellerId: xdr.MustAddress("GCFMARUTEFR6NW5HU5JZIVHEN5MO764GQKGRLHOIRY265Z343NZ7AK3J"),
+					Price:    xdr.Price{3, 1},
+				},
+			},
+		},
+		Post: nil,
+	})
+	assert.NoError(t, err)
 
-	reader.On("ReadUpgradeChange").Return(io.Change{}, stdio.EOF).Once()
-	reader.On("Close").Return(nil).Once()
-	writer.On("Close").Return(nil).Once()
+	assert.NoError(t, processor.Commit())
 
-	if err := processor.ProcessLedger(context.WithValue(context.Background(), IngestUpdateState, true), nil, reader, writer); err != nil {
-		t.Fatalf("unexpected error %v", err)
-	}
-
-	writer.AssertExpectations(t)
-	reader.AssertExpectations(t)
 	if err := graph.Apply(2); err != nil {
 		t.Fatalf("unexpected error %v", err)
 	}
@@ -367,47 +217,34 @@ func TestProcessOrderBookLedger(t *testing.T) {
 }
 
 func TestProcessOrderBookLedgerProcessUpgradeChanges(t *testing.T) {
-	reader := &io.MockLedgerReader{}
-	writer := &io.MockLedgerWriter{}
 	graph := orderbook.NewOrderBookGraph()
-	processor := OrderbookProcessor{graph}
+	processor := NewOrderbookProcessor(graph)
 
-	// add offer
-	reader.On("Read").
-		Return(io.LedgerTransaction{
-			Meta: createTransactionMeta([]xdr.OperationMeta{
-				xdr.OperationMeta{
-					Changes: []xdr.LedgerEntryChange{
-						// State
-						xdr.LedgerEntryChange{
-							Type: xdr.LedgerEntryChangeTypeLedgerEntryCreated,
-							Created: &xdr.LedgerEntry{
-								Data: xdr.LedgerEntryData{
-									Type: xdr.LedgerEntryTypeOffer,
-									Offer: &xdr.OfferEntry{
-										OfferId: xdr.Int64(1),
-										Price:   xdr.Price{1, 2},
-									},
-								},
-							},
-						},
-					},
+	err := processor.ProcessChange(io.Change{
+		Type: xdr.LedgerEntryTypeOffer,
+		Pre:  nil,
+		Post: &xdr.LedgerEntry{
+			Data: xdr.LedgerEntryData{
+				Type: xdr.LedgerEntryTypeOffer,
+				Offer: &xdr.OfferEntry{
+					OfferId:  xdr.Int64(1),
+					SellerId: xdr.MustAddress("GCFMARUTEFR6NW5HU5JZIVHEN5MO764GQKGRLHOIRY265Z343NZ7AK3J"),
+					Price:    xdr.Price{1, 2},
 				},
-			}),
-		}, nil).Once()
+			},
+		},
+	})
+	assert.NoError(t, err)
 
-	reader.On("Read").
-		Return(io.LedgerTransaction{}, stdio.EOF).Once()
-
-	// Process upgrade changes
-	reader.On("ReadUpgradeChange").Return(io.Change{
+	err = processor.ProcessChange(io.Change{
 		Type: xdr.LedgerEntryTypeOffer,
 		Pre: &xdr.LedgerEntry{
 			Data: xdr.LedgerEntryData{
 				Type: xdr.LedgerEntryTypeOffer,
 				Offer: &xdr.OfferEntry{
-					OfferId: xdr.Int64(1),
-					Price:   xdr.Price{1, 2},
+					OfferId:  xdr.Int64(1),
+					SellerId: xdr.MustAddress("GCFMARUTEFR6NW5HU5JZIVHEN5MO764GQKGRLHOIRY265Z343NZ7AK3J"),
+					Price:    xdr.Price{1, 2},
 				},
 			},
 		},
@@ -415,26 +252,16 @@ func TestProcessOrderBookLedgerProcessUpgradeChanges(t *testing.T) {
 			Data: xdr.LedgerEntryData{
 				Type: xdr.LedgerEntryTypeOffer,
 				Offer: &xdr.OfferEntry{
-					OfferId: xdr.Int64(1),
-					Price:   xdr.Price{100, 2},
+					OfferId:  xdr.Int64(1),
+					SellerId: xdr.MustAddress("GCFMARUTEFR6NW5HU5JZIVHEN5MO764GQKGRLHOIRY265Z343NZ7AK3J"),
+					Price:    xdr.Price{100, 2},
 				},
 			},
 		},
-	}, nil).Once()
+	})
+	assert.NoError(t, err)
 
-	reader.
-		On("ReadUpgradeChange").
-		Return(io.Change{}, stdio.EOF).Once()
-
-	reader.On("Close").Return(nil).Once()
-	writer.On("Close").Return(nil).Once()
-
-	if err := processor.ProcessLedger(context.WithValue(context.Background(), IngestUpdateState, true), nil, reader, writer); err != nil {
-		t.Fatalf("unexpected error %v", err)
-	}
-
-	writer.AssertExpectations(t)
-	reader.AssertExpectations(t)
+	assert.NoError(t, processor.Commit())
 
 	if err := graph.Apply(2); err != nil {
 		t.Fatalf("unexpected error %v", err)
