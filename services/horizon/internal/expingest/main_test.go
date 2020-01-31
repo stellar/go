@@ -97,6 +97,7 @@ func TestNewSystem(t *testing.T) {
 
 	assert.Equal(t, config, system.runner.(*ProcessorRunner).config)
 	assert.Equal(t, config.OrderBookGraph, system.runner.(*ProcessorRunner).graph)
+	assert.Equal(t, system.ctx, system.runner.(*ProcessorRunner).ctx)
 }
 
 func TestStateMachineRunReturnsUnexpectedTransaction(t *testing.T) {
