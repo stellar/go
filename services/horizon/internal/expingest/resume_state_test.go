@@ -2,6 +2,7 @@ package expingest
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	"github.com/stellar/go/exp/ingest/adapters"
@@ -116,9 +117,96 @@ func (s *ResumeTestTestSuite) TestGetLatestLedgerLessThanCurrent() {
 	s.Assert().Equal(initState, nextState.systemState)
 }
 
+func (s *ResumeTestTestSuite) TestGetIngestionVersionError() {
+	s.historyQ.On("Begin").Return(nil).Once()
+	s.historyQ.On("GetLastLedgerExpIngest").Return(uint32(100), nil).Once()
+	s.historyQ.On("GetExpIngestVersion").Return(0, errors.New("my error")).Once()
+
+	nextState, err := s.system.runCurrentState()
+	s.Assert().Error(err)
+	s.Assert().EqualError(err, "Error getting exp ingest version: my error")
+	s.Assert().Equal(resumeState, nextState.systemState)
+	s.Assert().Equal(uint32(100), nextState.latestSuccessfullyProcessedLedger)
+}
+
+func (s *ResumeTestTestSuite) TestIngestionVersionLessThanCurrentVersion() {
+	s.historyQ.On("Begin").Return(nil).Once()
+	s.historyQ.On("GetLastLedgerExpIngest").Return(uint32(100), nil).Once()
+	s.historyQ.On("GetExpIngestVersion").Return(CurrentVersion-1, nil).Once()
+
+	nextState, err := s.system.runCurrentState()
+	s.Assert().Error(err)
+	s.Assert().EqualError(
+		err,
+		fmt.Sprintf(
+			"ingestion version in db %v does not match expected version %v",
+			CurrentVersion-1,
+			CurrentVersion,
+		),
+	)
+	s.Assert().Equal(initState, nextState.systemState)
+}
+
+func (s *ResumeTestTestSuite) TestIngestionVersionGreaterThanCurrentVersion() {
+	s.historyQ.On("Begin").Return(nil).Once()
+	s.historyQ.On("GetLastLedgerExpIngest").Return(uint32(100), nil).Once()
+	s.historyQ.On("GetExpIngestVersion").Return(CurrentVersion+1, nil).Once()
+
+	nextState, err := s.system.runCurrentState()
+	s.Assert().Error(err)
+	s.Assert().EqualError(
+		err,
+		fmt.Sprintf(
+			"ingestion version in db %v does not match expected version %v",
+			CurrentVersion+1,
+			CurrentVersion,
+		),
+	)
+	s.Assert().Equal(initState, nextState.systemState)
+}
+
+func (s *ResumeTestTestSuite) TestGetLatestLedgerError() {
+	s.historyQ.On("Begin").Return(nil).Once()
+	s.historyQ.On("GetLastLedgerExpIngest").Return(uint32(100), nil).Once()
+	s.historyQ.On("GetExpIngestVersion").Return(CurrentVersion, nil).Once()
+	s.historyQ.On("GetLatestLedger").Return(uint32(0), errors.New("my error"))
+
+	nextState, err := s.system.runCurrentState()
+	s.Assert().Error(err)
+	s.Assert().EqualError(err, "could not get latest history ledger: my error")
+	s.Assert().Equal(resumeState, nextState.systemState)
+	s.Assert().Equal(uint32(100), nextState.latestSuccessfullyProcessedLedger)
+}
+
+func (s *ResumeTestTestSuite) TestLatestHistoryLedgerLessThanIngestLedger() {
+	s.historyQ.On("Begin").Return(nil).Once()
+	s.historyQ.On("GetLastLedgerExpIngest").Return(uint32(100), nil).Once()
+	s.historyQ.On("GetExpIngestVersion").Return(CurrentVersion, nil).Once()
+	s.historyQ.On("GetLatestLedger").Return(uint32(99), nil)
+
+	nextState, err := s.system.runCurrentState()
+	s.Assert().Error(err)
+	s.Assert().EqualError(err, "last history ledger 99 does not match last ingested ledger 100")
+	s.Assert().Equal(initState, nextState.systemState)
+}
+
+func (s *ResumeTestTestSuite) TestLatestHistoryLedgerGreaterThanIngestLedger() {
+	s.historyQ.On("Begin").Return(nil).Once()
+	s.historyQ.On("GetLastLedgerExpIngest").Return(uint32(100), nil).Once()
+	s.historyQ.On("GetExpIngestVersion").Return(CurrentVersion, nil).Once()
+	s.historyQ.On("GetLatestLedger").Return(uint32(101), nil)
+
+	nextState, err := s.system.runCurrentState()
+	s.Assert().Error(err)
+	s.Assert().EqualError(err, "last history ledger 101 does not match last ingested ledger 100")
+	s.Assert().Equal(initState, nextState.systemState)
+}
+
 func (s *ResumeTestTestSuite) TestIngestOrderbookOnly() {
 	s.historyQ.On("Begin").Return(nil).Once()
 	s.historyQ.On("GetLastLedgerExpIngest").Return(uint32(110), nil).Once()
+	s.historyQ.On("GetExpIngestVersion").Return(CurrentVersion, nil).Once()
+	s.historyQ.On("GetLatestLedger").Return(uint32(0), nil)
 
 	s.ledgeBackend.On("GetLatestLedgerSequence").Return(uint32(111), nil).Once()
 
@@ -140,6 +228,8 @@ func (s *ResumeTestTestSuite) TestIngestOrderbookOnly() {
 func (s *ResumeTestTestSuite) TestIngestOrderbookOnlyWhenLastLedgerExpEqualsCurrent() {
 	s.historyQ.On("Begin").Return(nil).Once()
 	s.historyQ.On("GetLastLedgerExpIngest").Return(uint32(101), nil).Once()
+	s.historyQ.On("GetExpIngestVersion").Return(CurrentVersion, nil).Once()
+	s.historyQ.On("GetLatestLedger").Return(uint32(101), nil)
 
 	s.ledgeBackend.On("GetLatestLedgerSequence").Return(uint32(111), nil).Once()
 
@@ -158,6 +248,8 @@ func (s *ResumeTestTestSuite) TestIngestOrderbookOnlyWhenLastLedgerExpEqualsCurr
 func (s *ResumeTestTestSuite) TestIngestAllMasterNode() {
 	s.historyQ.On("Begin").Return(nil).Once()
 	s.historyQ.On("GetLastLedgerExpIngest").Return(uint32(100), nil).Once()
+	s.historyQ.On("GetExpIngestVersion").Return(CurrentVersion, nil).Once()
+	s.historyQ.On("GetLatestLedger").Return(uint32(0), nil)
 
 	s.ledgeBackend.On("GetLatestLedgerSequence").Return(uint32(111), nil).Once()
 
@@ -185,6 +277,8 @@ func (s *ResumeTestTestSuite) TestIngestAllMasterNode() {
 func (s *ResumeTestTestSuite) TestErrorSettingCursorIgnored() {
 	s.historyQ.On("Begin").Return(nil).Once()
 	s.historyQ.On("GetLastLedgerExpIngest").Return(uint32(100), nil).Once()
+	s.historyQ.On("GetExpIngestVersion").Return(CurrentVersion, nil).Once()
+	s.historyQ.On("GetLatestLedger").Return(uint32(0), nil)
 
 	s.ledgeBackend.On("GetLatestLedgerSequence").Return(uint32(111), nil).Once()
 
@@ -212,6 +306,8 @@ func (s *ResumeTestTestSuite) TestErrorSettingCursorIgnored() {
 func (s *ResumeTestTestSuite) TestNoNewLedgers() {
 	s.historyQ.On("Begin").Return(nil).Once()
 	s.historyQ.On("GetLastLedgerExpIngest").Return(uint32(100), nil).Once()
+	s.historyQ.On("GetExpIngestVersion").Return(CurrentVersion, nil).Once()
+	s.historyQ.On("GetLatestLedger").Return(uint32(0), nil)
 
 	s.ledgeBackend.On("GetLatestLedgerSequence").Return(uint32(100), nil).Once()
 
