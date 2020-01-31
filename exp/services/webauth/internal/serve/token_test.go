@@ -83,6 +83,7 @@ func TestToken_formInputSuccess(t *testing.T) {
 		NetworkPassphrase: network.TestNetworkPassphrase,
 		SigningAddress:    serverKey.FromAddress(),
 		JWTPrivateKey:     jwtPrivateKey,
+		JWTIssuer:         "https://example.com",
 		JWTExpiresIn:      time.Minute,
 	}
 
@@ -114,7 +115,7 @@ func TestToken_formInputSuccess(t *testing.T) {
 	require.NoError(t, err)
 
 	claims := token.Claims.(jwt.MapClaims)
-	assert.Equal(t, serverKey.Address(), claims["iss"])
+	assert.Equal(t, "https://example.com", claims["iss"])
 	assert.Equal(t, account.Address(), claims["sub"])
 	assert.Equal(t, account.Address(), claims["sub"])
 	iat := time.Unix(int64(claims["iat"].(float64)), 0)
@@ -182,6 +183,7 @@ func TestToken_jsonInputSuccess(t *testing.T) {
 		NetworkPassphrase: network.TestNetworkPassphrase,
 		SigningAddress:    serverKey.FromAddress(),
 		JWTPrivateKey:     jwtPrivateKey,
+		JWTIssuer:         "https://example.com",
 		JWTExpiresIn:      time.Minute,
 	}
 
@@ -218,7 +220,7 @@ func TestToken_jsonInputSuccess(t *testing.T) {
 	require.NoError(t, err)
 
 	claims := token.Claims.(jwt.MapClaims)
-	assert.Equal(t, serverKey.Address(), claims["iss"])
+	assert.Equal(t, "https://example.com", claims["iss"])
 	assert.Equal(t, account.Address(), claims["sub"])
 	assert.Equal(t, account.Address(), claims["sub"])
 	iat := time.Unix(int64(claims["iat"].(float64)), 0)
@@ -299,6 +301,7 @@ func TestToken_jsonInputValidMultipleSigners(t *testing.T) {
 		NetworkPassphrase: network.TestNetworkPassphrase,
 		SigningAddress:    serverKey.FromAddress(),
 		JWTPrivateKey:     jwtPrivateKey,
+		JWTIssuer:         "https://example.com",
 		JWTExpiresIn:      time.Minute,
 	}
 
@@ -335,7 +338,7 @@ func TestToken_jsonInputValidMultipleSigners(t *testing.T) {
 	require.NoError(t, err)
 
 	claims := token.Claims.(jwt.MapClaims)
-	assert.Equal(t, serverKey.Address(), claims["iss"])
+	assert.Equal(t, "https://example.com", claims["iss"])
 	assert.Equal(t, account.Address(), claims["sub"])
 	iat := time.Unix(int64(claims["iat"].(float64)), 0)
 	exp := time.Unix(int64(claims["exp"].(float64)), 0)
@@ -402,6 +405,7 @@ func TestToken_jsonInputNotEnoughWeight(t *testing.T) {
 		NetworkPassphrase: network.TestNetworkPassphrase,
 		SigningAddress:    serverKey.FromAddress(),
 		JWTPrivateKey:     jwtPrivateKey,
+		JWTIssuer:         "https://example.com",
 		JWTExpiresIn:      time.Minute,
 	}
 
@@ -484,6 +488,7 @@ func TestToken_jsonInputUnrecognizedSigner(t *testing.T) {
 		NetworkPassphrase: network.TestNetworkPassphrase,
 		SigningAddress:    serverKey.FromAddress(),
 		JWTPrivateKey:     jwtPrivateKey,
+		JWTIssuer:         "https://example.com",
 		JWTExpiresIn:      time.Minute,
 	}
 
@@ -561,6 +566,7 @@ func TestToken_jsonInputAccountNotExistSuccess(t *testing.T) {
 		NetworkPassphrase:           network.TestNetworkPassphrase,
 		SigningAddress:              serverKey.FromAddress(),
 		JWTPrivateKey:               jwtPrivateKey,
+		JWTIssuer:                   "https://example.com",
 		JWTExpiresIn:                time.Minute,
 		AllowAccountsThatDoNotExist: true,
 	}
@@ -598,7 +604,7 @@ func TestToken_jsonInputAccountNotExistSuccess(t *testing.T) {
 	require.NoError(t, err)
 
 	claims := token.Claims.(jwt.MapClaims)
-	assert.Equal(t, serverKey.Address(), claims["iss"])
+	assert.Equal(t, "https://example.com", claims["iss"])
 	assert.Equal(t, account.Address(), claims["sub"])
 	assert.Equal(t, account.Address(), claims["sub"])
 	iat := time.Unix(int64(claims["iat"].(float64)), 0)
@@ -664,6 +670,7 @@ func TestToken_jsonInputAccountNotExistFail(t *testing.T) {
 		NetworkPassphrase:           network.TestNetworkPassphrase,
 		SigningAddress:              serverKey.FromAddress(),
 		JWTPrivateKey:               jwtPrivateKey,
+		JWTIssuer:                   "https://example.com",
 		JWTExpiresIn:                time.Minute,
 		AllowAccountsThatDoNotExist: true,
 	}
@@ -742,6 +749,7 @@ func TestToken_jsonInputAccountNotExistNotAllowed(t *testing.T) {
 		NetworkPassphrase:           network.TestNetworkPassphrase,
 		SigningAddress:              serverKey.FromAddress(),
 		JWTPrivateKey:               jwtPrivateKey,
+		JWTIssuer:                   "https://example.com",
 		JWTExpiresIn:                time.Minute,
 		AllowAccountsThatDoNotExist: false,
 	}

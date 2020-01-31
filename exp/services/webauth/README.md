@@ -48,6 +48,7 @@ Flags:
       --challenge-expires-in int           The time period in seconds after which the challenge transaction expires (CHALLENGE_EXPIRES_IN) (default 300)
       --horizon-url string                 Horizon URL used for looking up account details (HORIZON_URL) (default "https://horizon-testnet.stellar.org/")
       --jwt-expires-in int                 The time period in seconds after which the JWT expires (JWT_EXPIRES_IN) (default 300)
+      --jwt-issuer string                  The issuer to set in the JWT iss claim (JWT_ISSUER)
       --jwt-key string                     Base64 encoded ECDSA private key used for signing JWTs (JWT_KEY)
       --network-passphrase string          Network passphrase of the Stellar network transactions should be signed for (NETWORK_PASSPHRASE) (default "Test SDF Network ; September 2015")
       --port int                           Port to listen and serve on (PORT) (default 8000)
