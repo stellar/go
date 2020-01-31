@@ -184,6 +184,7 @@ func NewSystem(config Config) (*System, error) {
 		},
 		runner: &ProcessorRunner{
 			ctx:            ctx,
+			config:         config,
 			graph:          config.OrderBookGraph,
 			historyQ:       historyQ,
 			historyArchive: archive,
