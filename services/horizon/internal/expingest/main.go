@@ -354,7 +354,7 @@ func (s *System) init() (state, error) {
 	if ingestVersion > CurrentVersion {
 		return state{systemState: shutdownState},
 			errors.Errorf(
-				"ingestion version in db %v is greater than current version %v",
+				"ingestion version in db %d is greater than current version %d",
 				ingestVersion,
 				CurrentVersion,
 			)
