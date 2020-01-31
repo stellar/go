@@ -1,6 +1,7 @@
 package io
 
 import (
+	"context"
 	"io"
 
 	"github.com/stellar/go/exp/ingest/ledgerbackend"
@@ -31,8 +32,10 @@ var _ ChangeReader = (*LedgerChangeReader)(nil)
 // NewLedgerChangeReader constructs a new LedgerChangeReader instance bound to the given ledger.
 // Note that the returned LedgerChangeReader is not thread safe and should not be shared
 // by multiple goroutines.
-func NewLedgerChangeReader(sequence uint32, backend ledgerbackend.LedgerBackend) (*LedgerChangeReader, error) {
-	reader, err := NewDBLedgerReader(sequence, backend)
+func NewLedgerChangeReader(
+	ctx context.Context, sequence uint32, backend ledgerbackend.LedgerBackend,
+) (*LedgerChangeReader, error) {
+	reader, err := NewDBLedgerReader(ctx, sequence, backend)
 	if err != nil {
 		return nil, err
 	}
@@ -45,7 +48,7 @@ func (r *LedgerChangeReader) GetSequence() uint32 {
 	return r.dbReader.GetSequence()
 }
 
-// GetSequence returns the ledger header for the reader
+// GetHeader returns the ledger header for the reader
 func (r *LedgerChangeReader) GetHeader() xdr.LedgerHeaderHistoryEntry {
 	return r.dbReader.GetHeader()
 }
@@ -127,6 +130,10 @@ func (r *LedgerChangeReader) getNextUpgradeChange() (Change, error) {
 // If there are no changes remaining io.EOF is returned
 // as an error.
 func (r *LedgerChangeReader) Read() (Change, error) {
+	if err := r.dbReader.ctx.Err(); err != nil {
+		return Change{}, err
+	}
+
 	if r.pendingIndex < len(r.pending) {
 		next := r.pending[r.pendingIndex]
 		r.pendingIndex++

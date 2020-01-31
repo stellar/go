@@ -1,6 +1,7 @@
 package io
 
 import (
+	"context"
 	"io"
 
 	"github.com/stellar/go/exp/ingest/ledgerbackend"
@@ -20,6 +21,7 @@ type LedgerReader interface {
 // DBLedgerReader is a database-backed implementation of the io.LedgerReader interface.
 // Use NewDBLedgerReader to create a new instance.
 type DBLedgerReader struct {
+	ctx            context.Context
 	sequence       uint32
 	backend        ledgerbackend.LedgerBackend
 	header         xdr.LedgerHeaderHistoryEntry
@@ -34,8 +36,11 @@ var _ LedgerReader = (*DBLedgerReader)(nil)
 
 // NewDBLedgerReader creates a new DBLedgerReader instance.
 // Note that DBLedgerReader is not thread safe and should not be shared by multiple goroutines
-func NewDBLedgerReader(sequence uint32, backend ledgerbackend.LedgerBackend) (*DBLedgerReader, error) {
+func NewDBLedgerReader(
+	ctx context.Context, sequence uint32, backend ledgerbackend.LedgerBackend,
+) (*DBLedgerReader, error) {
 	reader := &DBLedgerReader{
+		ctx:      ctx,
 		sequence: sequence,
 		backend:  backend,
 	}
@@ -61,6 +66,10 @@ func (dblrc *DBLedgerReader) GetHeader() xdr.LedgerHeaderHistoryEntry {
 // Read returns the next transaction in the ledger, ordered by tx number, each time it is called. When there
 // are no more transactions to return, an EOF error is returned.
 func (dblrc *DBLedgerReader) Read() (LedgerTransaction, error) {
+	if err := dblrc.ctx.Err(); err != nil {
+		return LedgerTransaction{}, err
+	}
+
 	if dblrc.readIdx < len(dblrc.transactions) {
 		dblrc.readIdx++
 		return dblrc.transactions[dblrc.readIdx-1], nil
@@ -71,6 +80,10 @@ func (dblrc *DBLedgerReader) Read() (LedgerTransaction, error) {
 // readUpgradeChange returns the next upgrade change in the ledger, each time it
 // is called. When there are no more upgrades to return, an EOF error is returned.
 func (dblrc *DBLedgerReader) readUpgradeChange() (Change, error) {
+	if err := dblrc.ctx.Err(); err != nil {
+		return Change{}, err
+	}
+
 	if dblrc.upgradeReadIdx < len(dblrc.upgradeChanges) {
 		dblrc.upgradeReadIdx++
 		return dblrc.upgradeChanges[dblrc.upgradeReadIdx-1], nil
