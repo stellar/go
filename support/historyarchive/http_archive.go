@@ -33,10 +33,11 @@ func checkResp(r *http.Response) error {
 func (b *HttpArchiveBackend) GetFile(pth string) (io.ReadCloser, error) {
 	var derived url.URL = b.base
 	derived.Path = path.Join(derived.Path, pth)
-	req, err := http.NewRequestWithContext(b.ctx, "GET", derived.String(), nil)
+	req, err := http.NewRequest("GET", derived.String(), nil)
 	if err != nil {
 		return nil, err
 	}
+	req = req.WithContext(b.ctx)
 	resp, err := b.client.Do(req)
 	if err != nil {
 		if resp != nil && resp.Body != nil {
@@ -57,10 +58,11 @@ func (b *HttpArchiveBackend) GetFile(pth string) (io.ReadCloser, error) {
 func (b *HttpArchiveBackend) Head(pth string) (*http.Response, error) {
 	var derived url.URL = b.base
 	derived.Path = path.Join(derived.Path, pth)
-	req, err := http.NewRequestWithContext(b.ctx, "HEAD", derived.String(), nil)
+	req, err := http.NewRequest("HEAD", derived.String(), nil)
 	if err != nil {
 		return nil, err
 	}
+	req = req.WithContext(b.ctx)
 	resp, err := b.client.Do(req)
 	if err != nil {
 		return nil, err
