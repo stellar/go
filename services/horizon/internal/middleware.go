@@ -285,41 +285,60 @@ func (m *StateMiddleware) Wrap(h http.Handler) http.Handler {
 		q := &history.Q{session}
 		sseRequest := render.Negotiate(r) == render.MimeEventStream
 
-		if !sseRequest {
-			// For non streaming requests we want to start a repeatable read session to
-			// ensure that the data we fetch from the db belong to the same ledger.
-			// Otherwise, because the ingestion system is running concurrently with this request,
-			// it is possible to have one read fetch data from ledger N and another read
-			// fetch data from ledger N+1 .
-			session.Ctx = r.Context()
-			err := session.BeginTx(&sql.TxOptions{
-				Isolation: sql.LevelRepeatableRead,
-				ReadOnly:  true,
-			})
-			if err != nil {
-				err = supportErrors.Wrap(err, "Error starting exp ingestion read transaction")
-				problem.Render(r.Context(), w, err)
-				return
-			}
-			defer session.Rollback()
+		// We want to start a repeatable read session to ensure that the data we
+		// fetch from the db belong to the same ledger.
+		// Otherwise, because the ingestion system is running concurrently with this request,
+		// it is possible to have one read fetch data from ledger N and another read
+		// fetch data from ledger N+1 .
+		session.Ctx = r.Context()
+		err := session.BeginTx(&sql.TxOptions{
+			Isolation: sql.LevelRepeatableRead,
+			ReadOnly:  true,
+		})
+		if err != nil {
+			err = supportErrors.Wrap(err, "Error starting exp ingestion read transaction")
+			problem.Render(r.Context(), w, err)
+			return
 		}
+		defer session.Rollback()
 
-		if stateInvalid, err := q.GetExpStateInvalid(); err != nil {
+		stateInvalid, err := q.GetExpStateInvalid()
+		if err != nil {
 			err = supportErrors.Wrap(err, "Error running GetExpStateInvalid")
 			problem.Render(r.Context(), w, err)
 			return
-		} else if stateInvalid {
+		}
+		if stateInvalid {
 			problem.Render(r.Context(), w, problem.ServerError)
 			return
 		}
 
-		if lastIngestedLedger, ready, err := ingestionStatus(q); err != nil {
+		lastIngestedLedger, ready, err := ingestionStatus(q)
+		if err != nil {
 			problem.Render(r.Context(), w, err)
 			return
-		} else if !ready {
+		}
+		if !ready {
 			problem.Render(r.Context(), w, hProblem.StillIngesting)
 			return
-		} else if !sseRequest {
+		}
+
+		// for SSE requests we need to discard the repeatable read transaction
+		// otherwise, the stream will not pick up updates occurring in future
+		// ledgers
+		if sseRequest {
+			if err = session.Rollback(); err != nil {
+				problem.Render(
+					r.Context(),
+					w,
+					supportErrors.Wrap(
+						err,
+						"Could not roll back repeatable read session for SSE request",
+					),
+				)
+				return
+			}
+		} else {
 			actions.SetLastLedgerHeader(w, lastIngestedLedger)
 		}
 
