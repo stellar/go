@@ -63,9 +63,6 @@ func (p *OperationProcessor) Commit() error {
 	return p.batch.Exec()
 }
 
-// TODO: remove comment after https://github.com/stellar/go/pull/2172/files is merged
-// var _ io.ChangeReader = &OperationProcessor{}
-
 // transactionOperationWrapper represents the data for a single operation within a transaction
 type transactionOperationWrapper struct {
 	index          uint32

@@ -143,9 +143,6 @@ func (p *EffectProcessor) Commit() (err error) {
 	return err
 }
 
-// TODO: remove comment after https://github.com/stellar/go/pull/2172/files is merged
-// var _ io.ChangeReader = &EffectProcessor{}
-
 type effect struct {
 	address     string
 	operationID int64
