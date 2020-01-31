@@ -152,7 +152,7 @@ type System struct {
 
 	graph    orderbook.OBGraph
 	historyQ dbQ
-	runner   ProcessorsRunnerInterface
+	runner   ProcessorRunnerInterface
 
 	historyArchive *historyarchive.Archive
 	ledgerBackend  ledgerbackend.LedgerBackend
@@ -200,7 +200,7 @@ func NewSystem(config Config) (*System, error) {
 		stellarCoreClient: &stellarcore.Client{
 			URL: config.StellarCoreURL,
 		},
-		runner: &ProcessorsRunner{
+		runner: &ProcessorRunner{
 			graph:          config.OrderBookGraph,
 			historyQ:       historyQ,
 			historyArchive: archive,
@@ -454,7 +454,7 @@ func (s *System) init() (state, error) {
 		log.WithField("last_ledger", lastIngestedLedger).
 			Info("Resuming ingestion system from last processed ledger...")
 
-		if err = s.loadOffersIntoMemory(); err != nil {
+		if err = s.loadOffersIntoMemory(lastIngestedLedger); err != nil {
 			return state{systemState: initState},
 				errors.Wrap(err, "Error loading offers into in memory graph")
 		}
@@ -466,8 +466,10 @@ func (s *System) init() (state, error) {
 	}
 }
 
-func (s *System) loadOffersIntoMemory() error {
+func (s *System) loadOffersIntoMemory(sequence uint32) error {
 	defer s.graph.Discard()
+
+	s.graph.Clear()
 
 	log.Info("Loading offers from a database into memory store...")
 	start := time.Now()
@@ -493,7 +495,7 @@ func (s *System) loadOffersIntoMemory() error {
 		})
 	}
 
-	err = s.graph.Apply(s.state.latestSuccessfullyProcessedLedger)
+	err = s.graph.Apply(sequence)
 	if err != nil {
 		return errors.Wrap(err, "Error running graph.Apply")
 	}

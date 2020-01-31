@@ -37,7 +37,9 @@ type OBGraph interface {
 	AddOffer(offer xdr.OfferEntry)
 	Apply(ledger uint32) error
 	Discard()
+	Offers() []xdr.OfferEntry
 	OffersMap() map[xdr.Int64]xdr.OfferEntry
+	Clear()
 }
 
 // OrderBookGraph is an in memory graph representation of all the offers in the stellar ledger
@@ -120,6 +122,18 @@ func (graph *OrderBookGraph) Offers() []xdr.OfferEntry {
 	}
 
 	return offers
+}
+
+// Clear removes all offers from the graph.
+func (graph *OrderBookGraph) Clear() {
+	graph.lock.Lock()
+	defer graph.lock.Unlock()
+
+	graph.edgesForSellingAsset = map[string]edgeSet{}
+	graph.edgesForBuyingAsset = map[string]edgeSet{}
+	graph.tradingPairForOffer = map[xdr.Int64]tradingPair{}
+	graph.batchedUpdates = graph.batch()
+	graph.lastLedger = 0
 }
 
 // OffersMap returns a ID => OfferEntry map of offers contained in the order

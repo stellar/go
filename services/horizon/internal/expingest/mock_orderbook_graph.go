@@ -25,7 +25,16 @@ func (m *mockOrderBookGraph) Discard() {
 	m.Called()
 }
 
+func (m *mockOrderBookGraph) Offers() []xdr.OfferEntry {
+	args := m.Called()
+	return args.Get(0).([]xdr.OfferEntry)
+}
+
 func (m *mockOrderBookGraph) OffersMap() map[xdr.Int64]xdr.OfferEntry {
 	args := m.Called()
 	return args.Get(0).(map[xdr.Int64]xdr.OfferEntry)
+}
+
+func (m *mockOrderBookGraph) Clear() {
+	m.Called()
 }

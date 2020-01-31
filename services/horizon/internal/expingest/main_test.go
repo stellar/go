@@ -13,6 +13,53 @@ import (
 	"github.com/stretchr/testify/mock"
 )
 
+var (
+	issuer   = xdr.MustAddress("GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H")
+	usdAsset = xdr.Asset{
+		Type: xdr.AssetTypeAssetTypeCreditAlphanum4,
+		AlphaNum4: &xdr.AssetAlphaNum4{
+			AssetCode: [4]byte{'u', 's', 'd', 0},
+			Issuer:    issuer,
+		},
+	}
+
+	nativeAsset = xdr.Asset{
+		Type: xdr.AssetTypeAssetTypeNative,
+	}
+
+	eurAsset = xdr.Asset{
+		Type: xdr.AssetTypeAssetTypeCreditAlphanum4,
+		AlphaNum4: &xdr.AssetAlphaNum4{
+			AssetCode: [4]byte{'e', 'u', 'r', 0},
+			Issuer:    issuer,
+		},
+	}
+	eurOffer = xdr.OfferEntry{
+		SellerId: issuer,
+		OfferId:  xdr.Int64(4),
+		Buying:   eurAsset,
+		Selling:  nativeAsset,
+		Price: xdr.Price{
+			N: 1,
+			D: 1,
+		},
+		Flags:  1,
+		Amount: xdr.Int64(500),
+	}
+	twoEurOffer = xdr.OfferEntry{
+		SellerId: issuer,
+		OfferId:  xdr.Int64(5),
+		Buying:   eurAsset,
+		Selling:  nativeAsset,
+		Price: xdr.Price{
+			N: 2,
+			D: 1,
+		},
+		Flags:  2,
+		Amount: xdr.Int64(500),
+	}
+)
+
 func TestCheckVerifyStateVersion(t *testing.T) {
 	assert.Equal(
 		t,
@@ -20,6 +67,34 @@ func TestCheckVerifyStateVersion(t *testing.T) {
 		stateVerifierExpectedIngestionVersion,
 		"State verifier is outdated, update it, then update stateVerifierExpectedIngestionVersion value",
 	)
+}
+
+func TestStateMachineRunReturnsUnexpectedTransaction(t *testing.T) {
+	historyQ := &mockDBQ{}
+	system := &System{
+		historyQ: historyQ,
+	}
+
+	historyQ.On("GetTx").Return(&sqlx.Tx{}).Once()
+
+	assert.PanicsWithValue(t, "unexpected transaction", func() {
+		system.Run()
+	})
+}
+
+func TestStateMachineTransition(t *testing.T) {
+	historyQ := &mockDBQ{}
+	system := &System{
+		historyQ: historyQ,
+	}
+
+	historyQ.On("GetTx").Return(nil).Once()
+	historyQ.On("Begin").Return(errors.New("my error")).Once()
+	historyQ.On("GetTx").Return(&sqlx.Tx{}).Once()
+
+	assert.PanicsWithValue(t, "unexpected transaction", func() {
+		system.Run()
+	})
 }
 
 // TestStateMachineRunReturnsErrorWhenNextStateIsShutdownWithError checks if the
@@ -182,7 +257,7 @@ func (m *mockProcessorsRunner) RunOrderBookProcessorOnLedger(sequence uint32) er
 	return args.Error(0)
 }
 
-var _ ProcessorsRunnerInterface = (*mockProcessorsRunner)(nil)
+var _ ProcessorRunnerInterface = (*mockProcessorsRunner)(nil)
 
 type mockStellarCoreClient struct {
 	mock.Mock

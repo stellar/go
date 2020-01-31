@@ -28,16 +28,16 @@ type horizonTransactionProcessor interface {
 	Commit() error
 }
 
-type ProcessorsRunnerInterface interface {
+type ProcessorRunnerInterface interface {
 	RunHistoryArchiveIngestion(checkpointLedger uint32) error
 	RunAllProcessorsOnLedger(sequence uint32) error
 	RunTransactionProcessorsOnLedger(sequence uint32) error
 	RunOrderBookProcessorOnLedger(sequence uint32) error
 }
 
-var _ ProcessorsRunnerInterface = (*ProcessorsRunner)(nil)
+var _ ProcessorRunnerInterface = (*ProcessorRunner)(nil)
 
-type ProcessorsRunner struct {
+type ProcessorRunner struct {
 	config Config
 
 	graph          *orderbook.OrderBookGraph
@@ -47,11 +47,11 @@ type ProcessorsRunner struct {
 	ledgerBackend  *ledgerbackend.DatabaseBackend
 }
 
-func (s *ProcessorsRunner) buildOrderBookChangeProcessor() horizonChangeProcessor {
+func (s *ProcessorRunner) buildOrderBookChangeProcessor() horizonChangeProcessor {
 	return processors.NewOrderbookProcessor(s.graph)
 }
 
-func (s *ProcessorsRunner) buildChangeProcessor(source ingestionSource) horizonChangeProcessor {
+func (s *ProcessorRunner) buildChangeProcessor(source ingestionSource) horizonChangeProcessor {
 	useLedgerCache := source == ledgerSource
 	return groupChangeProcessors{
 		processors.NewOrderbookProcessor(s.graph),
@@ -75,7 +75,7 @@ func (p skipFailedTransactions) ProcessTransaction(tx io.LedgerTransaction) erro
 	return p.horizonTransactionProcessor.ProcessTransaction(tx)
 }
 
-func (s *ProcessorsRunner) buildTransactionProcessor(
+func (s *ProcessorRunner) buildTransactionProcessor(
 	ledger xdr.LedgerHeaderHistoryEntry,
 ) horizonTransactionProcessor {
 	sequence := uint32(ledger.Header.LedgerSeq)
@@ -102,7 +102,7 @@ func (s *ProcessorsRunner) buildTransactionProcessor(
 // The hashes of actual buckets of this HAS file are checked using
 // historyarchive.XdrStream.SetExpectedHash (this is done in
 // SingleLedgerStateReader).
-func (s *ProcessorsRunner) validateBucketList(ledgerSequence uint32) error {
+func (s *ProcessorRunner) validateBucketList(ledgerSequence uint32) error {
 	historyBucketListHash, err := s.historyAdapter.BucketListHash(ledgerSequence)
 	if err != nil {
 		return errors.Wrap(err, "Error getting bucket list hash")
@@ -134,7 +134,7 @@ func (s *ProcessorsRunner) validateBucketList(ledgerSequence uint32) error {
 	return nil
 }
 
-func (s *ProcessorsRunner) RunHistoryArchiveIngestion(checkpointLedger uint32) error {
+func (s *ProcessorRunner) RunHistoryArchiveIngestion(checkpointLedger uint32) error {
 	changeProcessor := s.buildChangeProcessor(historyArchiveSource)
 
 	var stateReader io.StateReader
@@ -183,7 +183,7 @@ func (s *ProcessorsRunner) RunHistoryArchiveIngestion(checkpointLedger uint32) e
 	return nil
 }
 
-func (s *ProcessorsRunner) runChangeProcessorOnLedger(
+func (s *ProcessorRunner) runChangeProcessorOnLedger(
 	changeProcessor horizonChangeProcessor, ledger uint32,
 ) error {
 	changeReader, err := io.NewLedgerChangeReader(ledger, s.ledgerBackend)
@@ -202,7 +202,7 @@ func (s *ProcessorsRunner) runChangeProcessorOnLedger(
 	return nil
 }
 
-func (s *ProcessorsRunner) RunTransactionProcessorsOnLedger(ledger uint32) error {
+func (s *ProcessorRunner) RunTransactionProcessorsOnLedger(ledger uint32) error {
 	ledgerReader, err := io.NewDBLedgerReader(ledger, s.ledgerBackend)
 	if err != nil {
 		return errors.Wrap(err, "Error creating ledger reader")
@@ -222,7 +222,7 @@ func (s *ProcessorsRunner) RunTransactionProcessorsOnLedger(ledger uint32) error
 	return nil
 }
 
-func (s *ProcessorsRunner) RunAllProcessorsOnLedger(ledger uint32) error {
+func (s *ProcessorRunner) RunAllProcessorsOnLedger(ledger uint32) error {
 	err := s.runChangeProcessorOnLedger(
 		s.buildChangeProcessor(ledgerSource), ledger,
 	)
@@ -238,7 +238,7 @@ func (s *ProcessorsRunner) RunAllProcessorsOnLedger(ledger uint32) error {
 	return nil
 }
 
-func (s *ProcessorsRunner) RunOrderBookProcessorOnLedger(ledger uint32) error {
+func (s *ProcessorRunner) RunOrderBookProcessorOnLedger(ledger uint32) error {
 	orderBookProcessor := s.buildOrderBookChangeProcessor()
 	return s.runChangeProcessorOnLedger(orderBookProcessor, ledger)
 }
