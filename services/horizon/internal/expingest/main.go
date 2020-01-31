@@ -559,10 +559,14 @@ func (s *System) buildState() (state, error) {
 		return state{systemState: initState}, errors.Wrap(err, updateExpStateInvalidErrMsg)
 	}
 
+	// State tables should be empty.
 	err = s.historyQ.TruncateExpingestStateTables()
 	if err != nil {
 		return state{systemState: initState}, errors.Wrap(err, "Error clearing ingest tables")
 	}
+
+	// Graph should be empty.
+	s.graph.Clear()
 
 	log.WithFields(logpkg.F{
 		"ledger": s.state.checkpointLedger,

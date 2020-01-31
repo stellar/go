@@ -190,6 +190,7 @@ func (s *BuildStateTestSuite) TestTruncateExpingestStateTablesReturnsError() {
 
 func (s *BuildStateTestSuite) TestRunHistoryArchiveIngestionReturnsError() {
 	s.mockCommonHistoryQ()
+	s.graph.On("Clear").Return().Once()
 	s.runner.
 		On("RunHistoryArchiveIngestion", s.checkpointLedger).
 		Return(errors.New("my error")).
@@ -203,6 +204,7 @@ func (s *BuildStateTestSuite) TestRunHistoryArchiveIngestionReturnsError() {
 
 func (s *BuildStateTestSuite) TestUpdateLastLedgerExpIngestAfterIngestReturnsError() {
 	s.mockCommonHistoryQ()
+	s.graph.On("Clear").Return(nil).Once()
 	s.runner.
 		On("RunHistoryArchiveIngestion", s.checkpointLedger).
 		Return(nil).
@@ -219,6 +221,7 @@ func (s *BuildStateTestSuite) TestUpdateLastLedgerExpIngestAfterIngestReturnsErr
 
 func (s *BuildStateTestSuite) TestUpdateExpIngestVersionIngestReturnsError() {
 	s.mockCommonHistoryQ()
+	s.graph.On("Clear").Return(nil).Once()
 	s.runner.
 		On("RunHistoryArchiveIngestion", s.checkpointLedger).
 		Return(nil).
@@ -251,6 +254,7 @@ func (s *BuildStateTestSuite) TestUpdateCommitReturnsError() {
 	s.historyQ.On("Commit").
 		Return(errors.New("my error")).
 		Once()
+	s.graph.On("Clear").Return(nil).Once()
 	nextState, err := s.system.runCurrentState()
 
 	s.Assert().Error(err)
@@ -274,6 +278,7 @@ func (s *BuildStateTestSuite) TestOBGraphApplyReturnsError() {
 		Return(nil).
 		Once()
 
+	s.graph.On("Clear").Return().Once()
 	s.graph.On("Apply", s.checkpointLedger).Return(errors.New("my error")).Once()
 	nextState, err := s.system.runCurrentState()
 
@@ -298,6 +303,7 @@ func (s *BuildStateTestSuite) TestBuildStateSucceeds() {
 		Return(nil).
 		Once()
 
+	s.graph.On("Clear").Return(nil).Once()
 	s.graph.On("Apply", s.checkpointLedger).Return(nil).Once()
 	nextState, err := s.system.runCurrentState()
 
