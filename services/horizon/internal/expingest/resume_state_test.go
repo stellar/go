@@ -1,6 +1,7 @@
 package expingest
 
 import (
+	"context"
 	"testing"
 
 	"github.com/stellar/go/exp/ingest/adapters"
@@ -33,6 +34,7 @@ func (s *ResumeTestTestSuite) SetupTest() {
 	s.runner = &mockProcessorsRunner{}
 	s.stellarCoreClient = &mockStellarCoreClient{}
 	s.system = &System{
+		ctx: context.Background(),
 		state: state{
 			systemState:                       resumeState,
 			latestSuccessfullyProcessedLedger: 100,

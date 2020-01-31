@@ -1,6 +1,7 @@
 package io
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"testing"
@@ -25,7 +26,7 @@ func TestNewLedgerChangeReaderFails(t *testing.T) {
 		ledgerbackend.LedgerCloseMeta{},
 		fmt.Errorf("ledger error"),
 	).Once()
-	_, err := NewLedgerChangeReader(seq, mock)
+	_, err := NewLedgerChangeReader(context.Background(), seq, mock)
 	assert.EqualError(
 		t,
 		err,
@@ -41,7 +42,7 @@ func TestNewLedgerChangeReaderLedgerDoesNotExist(t *testing.T) {
 		ledgerbackend.LedgerCloseMeta{},
 		nil,
 	).Once()
-	_, err := NewLedgerChangeReader(seq, mock)
+	_, err := NewLedgerChangeReader(context.Background(), seq, mock)
 	assert.Equal(
 		t,
 		err,
@@ -68,7 +69,7 @@ func TestNewLedgerChangeReaderSucceeds(t *testing.T) {
 		nil,
 	).Once()
 
-	reader, err := NewLedgerChangeReader(seq, mock)
+	reader, err := NewLedgerChangeReader(context.Background(), seq, mock)
 	assert.NoError(t, err)
 
 	assert.Equal(t, reader.GetSequence(), seq)
@@ -95,13 +96,20 @@ type balanceEntry struct {
 	balance int64
 }
 
+func parseChange(change Change) balanceEntry {
+	address := change.Post.Data.Account.AccountId.Address()
+	balance := int64(change.Post.Data.Account.Balance)
+
+	return balanceEntry{address, balance}
+}
+
 func assertChangesEqual(
 	t *testing.T,
 	sequence uint32,
 	backend ledgerbackend.LedgerBackend,
 	expected []balanceEntry,
 ) {
-	reader, err := NewLedgerChangeReader(sequence, backend)
+	reader, err := NewLedgerChangeReader(context.Background(), sequence, backend)
 	assert.NoError(t, err)
 
 	changes := []balanceEntry{}
@@ -113,10 +121,8 @@ func assertChangesEqual(
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
-		address := change.Post.Data.Account.AccountId.Address()
-		balance := int64(change.Post.Data.Account.Balance)
 
-		changes = append(changes, balanceEntry{address, balance})
+		changes = append(changes, parseChange(change))
 	}
 
 	assert.Equal(t, expected, changes)
@@ -260,5 +266,74 @@ func TestLedgerChangeReaderOrder(t *testing.T) {
 
 	assertChangesEqual(t, seq, mock, []balanceEntry{})
 	mock.AssertExpectations(t)
+}
 
+func TestLedgerChangeReaderContext(t *testing.T) {
+	mock := &ledgerbackend.MockDatabaseBackend{}
+	seq := uint32(123)
+
+	ledger := ledgerbackend.LedgerCloseMeta{
+		TransactionResult: []xdr.TransactionResultPair{
+			xdr.TransactionResultPair{},
+			xdr.TransactionResultPair{},
+		},
+		TransactionEnvelope: []xdr.TransactionEnvelope{
+			xdr.TransactionEnvelope{},
+			xdr.TransactionEnvelope{},
+		},
+		TransactionMeta: []xdr.TransactionMeta{
+			xdr.TransactionMeta{
+				V: 1,
+				V1: &xdr.TransactionMetaV1{
+					Operations: []xdr.OperationMeta{},
+				},
+			},
+			xdr.TransactionMeta{
+				V: 1,
+				V1: &xdr.TransactionMetaV1{
+					Operations: []xdr.OperationMeta{},
+				},
+			},
+		},
+		TransactionFeeChanges: []xdr.LedgerEntryChanges{
+			xdr.LedgerEntryChanges{
+				buildChange(feeAddress, 100),
+			},
+			xdr.LedgerEntryChanges{
+				buildChange(feeAddress, 300),
+			},
+		},
+		UpgradesMeta: []xdr.LedgerEntryChanges{
+			xdr.LedgerEntryChanges{
+				buildChange(upgradeAddress, 2),
+			},
+			xdr.LedgerEntryChanges{
+				buildChange(upgradeAddress, 3),
+			},
+		},
+	}
+
+	mock.On("GetLedger", seq).Return(true, ledger, nil).Once()
+	ctx, cancel := context.WithCancel(context.Background())
+	reader, err := NewLedgerChangeReader(ctx, seq, mock)
+	mock.AssertExpectations(t)
+	assert.NoError(t, err)
+
+	cancel()
+	_, err = reader.Read()
+	assert.Equal(t, context.Canceled, err)
+
+	mock.On("GetLedger", seq).Return(true, ledger, nil).Once()
+	ctx, cancel = context.WithCancel(context.Background())
+	reader, err = NewLedgerChangeReader(ctx, seq, mock)
+	mock.AssertExpectations(t)
+	assert.NoError(t, err)
+
+	change, err := reader.Read()
+	assert.Equal(t, balanceEntry{feeAddress, 100}, parseChange(change))
+	assert.NoError(t, err)
+
+	cancel()
+	_, err = reader.Read()
+	assert.Equal(t, context.Canceled, err)
 }

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	stdio "io"
@@ -27,7 +28,7 @@ func main() {
 	}
 	haa := adapters.MakeHistoryArchiveAdapter(archive)
 
-	sr, e := haa.GetState(seqNum, &io.MemoryTempSet{}, 0)
+	sr, e := haa.GetState(context.Background(), seqNum, &io.MemoryTempSet{}, 0)
 	if e != nil {
 		panic(e)
 	}

@@ -1,6 +1,7 @@
 package io
 
 import (
+	"context"
 	"encoding/base64"
 	"fmt"
 	"io"
@@ -23,6 +24,7 @@ type readResult struct {
 // entries returned by `Read()` are exactly the ledger entries present at the given
 // ledger.
 type SingleLedgerStateReader struct {
+	ctx        context.Context
 	has        *historyarchive.HistoryArchiveState
 	archive    historyarchive.ArchiveInterface
 	tempStore  TempSet
@@ -70,6 +72,7 @@ const preloadedEntries = 20000
 // errors while streaming xdr bucket entries from the history archive.
 // Set `maxStreamRetries` to 0 if there should be no retry attempts
 func MakeSingleLedgerStateReader(
+	ctx context.Context,
 	archive historyarchive.ArchiveInterface,
 	tempStore TempSet,
 	sequence uint32,
@@ -86,6 +89,7 @@ func MakeSingleLedgerStateReader(
 	}
 
 	return &SingleLedgerStateReader{
+		ctx:              ctx,
 		has:              &has,
 		archive:          archive,
 		tempStore:        tempStore,
@@ -179,6 +183,10 @@ func (msr *SingleLedgerStateReader) readBucketEntry(stream *historyarchive.XdrSt
 	currentPosition := stream.BytesRead()
 
 	for attempts := 0; ; attempts++ {
+		if msr.ctx.Err() != nil {
+			err = msr.ctx.Err()
+			break
+		}
 		if err == nil {
 			err = stream.ReadOne(&entry)
 			if err == nil || err == io.EOF {

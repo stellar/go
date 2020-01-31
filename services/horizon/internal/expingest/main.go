@@ -147,6 +147,9 @@ type stellarCoreClient interface {
 }
 
 type System struct {
+	ctx    context.Context
+	cancel context.CancelFunc
+
 	config Config
 	state  state
 
@@ -162,7 +165,6 @@ type System struct {
 
 	maxStreamRetries int
 	wg               sync.WaitGroup
-	shutdown         chan struct{}
 
 	// stateVerificationRunning is true when verification routine is currently
 	// running.
@@ -174,21 +176,36 @@ type System struct {
 }
 
 func NewSystem(config Config) (*System, error) {
-	archive, err := createArchive(config.HistoryArchiveURL)
+	ctx, cancel := context.WithCancel(context.Background())
+
+	archive, err := historyarchive.Connect(
+		config.HistoryArchiveURL,
+		historyarchive.ConnectOptions{
+			Context: ctx,
+		},
+	)
 	if err != nil {
+		cancel()
 		return nil, errors.Wrap(err, "error creating history archive")
 	}
 
-	ledgerBackend, err := ledgerbackend.NewDatabaseBackendFromSession(config.CoreSession)
+	coreSession := config.CoreSession.Clone()
+	coreSession.Ctx = ctx
+
+	ledgerBackend, err := ledgerbackend.NewDatabaseBackendFromSession(coreSession)
 	if err != nil {
+		cancel()
 		return nil, errors.Wrap(err, "error creating ledger backend")
 	}
 
 	historyQ := &history.Q{config.HistorySession.Clone()}
+	historyQ.Ctx = ctx
 
 	historyAdapter := adapters.MakeHistoryArchiveAdapter(archive)
 
 	system := &System{
+		ctx:                      ctx,
+		cancel:                   cancel,
 		historyArchive:           archive,
 		historyAdapter:           historyAdapter,
 		ledgerBackend:            ledgerBackend,
@@ -201,6 +218,7 @@ func NewSystem(config Config) (*System, error) {
 			URL: config.StellarCoreURL,
 		},
 		runner: &ProcessorRunner{
+			ctx:            ctx,
 			graph:          config.OrderBookGraph,
 			historyQ:       historyQ,
 			historyArchive: archive,
@@ -272,7 +290,6 @@ func (s *System) ReingestRange(fromLedger, toLedger uint32) error {
 }
 
 func (s *System) run() error {
-	s.shutdown = make(chan struct{})
 	defer func() {
 		s.wg.Wait()
 	}()
@@ -281,7 +298,7 @@ func (s *System) run() error {
 
 	for {
 		nextState, err := s.runCurrentState()
-		if err != nil {
+		if err != nil && errors.Cause(err) != context.Canceled {
 			log.WithFields(logpkg.F{
 				"error":         err,
 				"current_state": s.state,
@@ -301,7 +318,7 @@ func (s *System) run() error {
 		}
 
 		select {
-		case <-s.shutdown:
+		case <-s.ctx.Done():
 			log.Info("Received shut down signal...")
 			nextState = state{systemState: shutdownState}
 			return nil
@@ -1021,7 +1038,7 @@ func (s *System) Shutdown() {
 	if s.stateVerificationRunning {
 		log.Info("Shutting down state verifier...")
 	}
-	close(s.shutdown)
+	s.cancel()
 }
 
 func markStateInvalid(historyQ dbQ, err error) {
@@ -1030,11 +1047,4 @@ func markStateInvalid(historyQ dbQ, err error) {
 	if err := q.UpdateExpStateInvalid(true); err != nil {
 		log.WithField("err", err).Error(updateExpStateInvalidErrMsg)
 	}
-}
-
-func createArchive(archiveURL string) (*historyarchive.Archive, error) {
-	return historyarchive.Connect(
-		archiveURL,
-		historyarchive.ConnectOptions{},
-	)
 }

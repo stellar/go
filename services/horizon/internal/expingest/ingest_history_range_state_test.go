@@ -1,6 +1,7 @@
 package expingest
 
 import (
+	"context"
 	"testing"
 
 	"github.com/stellar/go/exp/ingest/adapters"
@@ -26,6 +27,7 @@ func (s *IngestHistoryRangeStateTestSuite) SetupTest() {
 	s.historyAdapter = &adapters.MockHistoryArchiveAdapter{}
 	s.runner = &mockProcessorsRunner{}
 	s.system = &System{
+		ctx: context.Background(),
 		state: state{
 			systemState: ingestHistoryRangeState,
 		},
