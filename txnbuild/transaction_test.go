@@ -1719,6 +1719,7 @@ func TestVerifyChallengeTxThreshold_validServerAndMultipleClientKeyMeetingThresh
 	clientKP3 := keypair.MustRandom()
 	preauthTxHash := "TAQCSRX2RIDJNHFIFHWD63X7D7D6TRT5Y2S6E3TEMXTG5W3OECHZ2OG4"
 	xHash := "XDRPF6NZRR7EEVO7ESIWUDXHAOMM2QSKIQQBJK6I2FB7YKDZES5UCLWD"
+	unknownSignerType := "?ARPF6NZRR7EEVO7ESIWUDXHAOMM2QSKIQQBJK6I2FB7YKDZES5UCLWD"
 	txSource := NewSimpleAccount(serverKP.Address(), -1)
 	opSource := NewSimpleAccount(clientKP1.Address(), 0)
 	op := ManageData{
@@ -1739,6 +1740,7 @@ func TestVerifyChallengeTxThreshold_validServerAndMultipleClientKeyMeetingThresh
 		clientKP3.Address(): 2,
 		preauthTxHash:       10,
 		xHash:               10,
+		unknownSignerType:   10,
 	}
 	wantSigners := []string{
 		clientKP1.Address(),
@@ -2187,6 +2189,7 @@ func TestVerifyChallengeTxSigners_validIgnorePreauthTxHashAndXHash(t *testing.T)
 	clientKP2 := newKeypair2()
 	preauthTxHash := "TAQCSRX2RIDJNHFIFHWD63X7D7D6TRT5Y2S6E3TEMXTG5W3OECHZ2OG4"
 	xHash := "XDRPF6NZRR7EEVO7ESIWUDXHAOMM2QSKIQQBJK6I2FB7YKDZES5UCLWD"
+	unknownSignerType := "?ARPF6NZRR7EEVO7ESIWUDXHAOMM2QSKIQQBJK6I2FB7YKDZES5UCLWD"
 	txSource := NewSimpleAccount(serverKP.Address(), -1)
 	opSource := NewSimpleAccount(clientKP.Address(), 0)
 	op := ManageData{
@@ -2207,7 +2210,7 @@ func TestVerifyChallengeTxSigners_validIgnorePreauthTxHashAndXHash(t *testing.T)
 	assert.NoError(t, err)
 	tx64, err := tx.Base64()
 	require.NoError(t, err)
-	signersFound, err := VerifyChallengeTxSigners(tx64, serverKP.Address(), network.TestNetworkPassphrase, clientKP2.Address(), preauthTxHash, xHash)
+	signersFound, err := VerifyChallengeTxSigners(tx64, serverKP.Address(), network.TestNetworkPassphrase, clientKP2.Address(), preauthTxHash, xHash, unknownSignerType)
 	assert.Equal(t, []string{clientKP2.Address()}, signersFound)
 	assert.NoError(t, err)
 }

@@ -578,12 +578,14 @@ func VerifyChallengeTxSigners(challengeTx, serverAccountID, network string, sign
 		if signer == serverKP.Address() {
 			continue
 		}
+		// Deduplicate.
 		if _, seen := clientSignersSeen[signer]; seen {
 			continue
 		}
+		// Ignore non-G... account/address signers.
 		strkeyVersionByte, err := strkey.Version(signer)
 		if err != nil {
-			return nil, errors.Wrap(err, "signer not strkey")
+			continue
 		}
 		if strkeyVersionByte != strkey.VersionByteAccountID {
 			continue
