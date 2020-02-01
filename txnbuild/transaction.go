@@ -583,8 +583,8 @@ func VerifyChallengeTxSigners(challengeTx, serverAccountID, network string, sign
 			continue
 		}
 		// Ignore non-G... account/address signers.
-		strkeyVersionByte, err := strkey.Version(signer)
-		if err != nil {
+		strkeyVersionByte, strkeyErr := strkey.Version(signer)
+		if strkeyErr != nil {
 			continue
 		}
 		if strkeyVersionByte != strkey.VersionByteAccountID {
