@@ -553,10 +553,6 @@ func VerifyChallengeTxThreshold(challengeTx, serverAccountID, network string, th
 //    server account or one of the signers provided in the arguments.
 //  - Any signers appearing to be an accountID/address strkey (start with G) are corrupt.
 func VerifyChallengeTxSigners(challengeTx, serverAccountID, network string, signers ...string) ([]string, error) {
-	if len(signers) == 0 {
-		return nil, errors.New("no signers provided")
-	}
-
 	// Read the transaction which validates its structure.
 	tx, _, err := ReadChallengeTx(challengeTx, serverAccountID, network)
 	if err != nil {
@@ -585,8 +581,20 @@ func VerifyChallengeTxSigners(challengeTx, serverAccountID, network string, sign
 		if _, seen := clientSignersSeen[signer]; seen {
 			continue
 		}
+		strkeyVersionByte, err := strkey.Version(signer)
+		if err != nil {
+			return nil, errors.Wrap(err, "signer not strkey")
+		}
+		if strkeyVersionByte != strkey.VersionByteAccountID {
+			continue
+		}
 		clientSigners = append(clientSigners, signer)
 		clientSignersSeen[signer] = struct{}{}
+	}
+
+	// Don't continue if none of the signers provided are in the final list.
+	if len(clientSigners) == 0 {
+		return nil, errors.New("no verifiable signers provided, at least one G... address must be provided")
 	}
 
 	// Verify all the transaction's signers (server and client) in one
@@ -676,13 +684,6 @@ func verifyTxSignatures(tx Transaction, signers ...string) ([]string, error) {
 	signatureUsed := map[int]bool{}
 	signersFound := map[string]struct{}{}
 	for _, signer := range signers {
-		strkeyVersionByte, err := strkey.Version(signer)
-		if err != nil {
-			return nil, errors.Wrap(err, "signer not strkey")
-		}
-		if strkeyVersionByte != strkey.VersionByteAccountID {
-			continue
-		}
 		kp, err := keypair.ParseAddress(signer)
 		if err != nil {
 			return nil, errors.Wrap(err, "signer not address")

@@ -1853,7 +1853,7 @@ func TestVerifyChallengeTxThreshold_invalidNoSigners(t *testing.T) {
 	tx64, err := tx.Base64()
 	require.NoError(t, err)
 	_, err = VerifyChallengeTxThreshold(tx64, serverKP.Address(), network.TestNetworkPassphrase, threshold, signerSummary)
-	assert.EqualError(t, err, "no signers provided")
+	assert.EqualError(t, err, "no verifiable signers provided, at least one G... address must be provided")
 }
 
 func TestVerifyChallengeTxThreshold_weightsAddToMoreThan8Bits(t *testing.T) {
@@ -2296,7 +2296,7 @@ func TestVerifyChallengeTxSigners_invalidServerAndClientSignersFailsSignerSeed(t
 	require.NoError(t, err)
 	signersFound, err := VerifyChallengeTxSigners(tx64, serverKP.Address(), network.TestNetworkPassphrase, clientKP2.Seed())
 	assert.Empty(t, signersFound)
-	assert.EqualError(t, err, "signer not address: invalid version byte")
+	assert.EqualError(t, err, "no verifiable signers provided, at least one G... address must be provided")
 }
 
 func TestVerifyChallengeTxSigners_invalidNoSigners(t *testing.T) {
@@ -2323,7 +2323,7 @@ func TestVerifyChallengeTxSigners_invalidNoSigners(t *testing.T) {
 	tx64, err := tx.Base64()
 	require.NoError(t, err)
 	_, err = VerifyChallengeTxSigners(tx64, serverKP.Address(), network.TestNetworkPassphrase)
-	assert.EqualError(t, err, "no signers provided")
+	assert.EqualError(t, err, "no verifiable signers provided, at least one G... address must be provided")
 }
 
 func TestVerifyTxSignatureUnsignedTx(t *testing.T) {
