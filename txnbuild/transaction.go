@@ -21,6 +21,7 @@ import (
 
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/network"
+	"github.com/stellar/go/strkey"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
 )
@@ -499,12 +500,17 @@ func ReadChallengeTx(challengeTx, serverAccountID, network string) (tx Transacti
 // provided as an argument, and those signatures meet a threshold on the
 // account.
 //
+// Signers that are not prefixed as an address/account ID strkey (G...) will be
+// ignored, however signers that that are prefixed but are corrupted in some
+// other way will cause an error to be returned.
+//
 // Errors will be raised if:
 //  - The transaction is invalid according to ReadChallengeTx.
 //  - No client signatures are found on the transaction.
 //  - One or more signatures in the transaction are not identifiable as the
 //    server account or one of the signers provided in the arguments.
 //  - The signatures are all valid but do not meet the threshold.
+//  - Any signers appearing to be an accountID/address strkey (start with G) are corrupt.
 func VerifyChallengeTxThreshold(challengeTx, serverAccountID, network string, threshold Threshold, signerSummary SignerSummary) (signersFound []string, err error) {
 	signers := make([]string, 0, len(signerSummary))
 	for s := range signerSummary {
@@ -536,11 +542,16 @@ func VerifyChallengeTxThreshold(challengeTx, serverAccountID, network string, th
 // to a signer for verification to succeed. If verification succeeds a list of
 // signers that were found is returned, excluding the server account ID.
 //
+// Signers that are not prefixed as an address/account ID strkey (G...) will be
+// ignored, however signers that that are prefixed but are corrupted in some
+// other way will cause an error to be returned.
+//
 // Errors will be raised if:
 //  - The transaction is invalid according to ReadChallengeTx.
 //  - No client signatures are found on the transaction.
 //  - One or more signatures in the transaction are not identifiable as the
 //    server account or one of the signers provided in the arguments.
+//  - Any signers appearing to be an accountID/address strkey (start with G) are corrupt.
 func VerifyChallengeTxSigners(challengeTx, serverAccountID, network string, signers ...string) ([]string, error) {
 	if len(signers) == 0 {
 		return nil, errors.New("no signers provided")
@@ -648,7 +659,9 @@ func verifyTxSignature(tx Transaction, signer string) error {
 
 // verifyTxSignature checks if a transaction has been signed by one or more of
 // the signers, returning a list of signers that were found to have signed the
-// transaction.
+// transaction. Signers that are not prefixed as an address/account ID strkey
+// will be ignored, however signers that that are prefixed but are corrupted in
+// some other way will cause an error to be returned.
 func verifyTxSignatures(tx Transaction, signers ...string) ([]string, error) {
 	if tx.xdrEnvelope == nil {
 		return nil, errors.New("transaction has no signatures")
@@ -663,6 +676,13 @@ func verifyTxSignatures(tx Transaction, signers ...string) ([]string, error) {
 	signatureUsed := map[int]bool{}
 	signersFound := map[string]struct{}{}
 	for _, signer := range signers {
+		strkeyVersionByte, err := strkey.Version(signer)
+		if err != nil {
+			return nil, errors.Wrap(err, "signer not strkey")
+		}
+		if strkeyVersionByte != strkey.VersionByteAccountID {
+			continue
+		}
 		kp, err := keypair.ParseAddress(signer)
 		if err != nil {
 			return nil, errors.Wrap(err, "signer not address")
