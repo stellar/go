@@ -667,9 +667,7 @@ func verifyTxSignature(tx Transaction, signer string) error {
 
 // verifyTxSignature checks if a transaction has been signed by one or more of
 // the signers, returning a list of signers that were found to have signed the
-// transaction. Signers that are not prefixed as an address/account ID strkey
-// will be ignored, however signers that that are prefixed but are corrupted in
-// some other way will cause an error to be returned.
+// transaction.
 func verifyTxSignatures(tx Transaction, signers ...string) ([]string, error) {
 	if tx.xdrEnvelope == nil {
 		return nil, errors.New("transaction has no signatures")
