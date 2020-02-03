@@ -21,6 +21,7 @@ import (
 
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/network"
+	"github.com/stellar/go/strkey"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
 )
@@ -499,6 +500,9 @@ func ReadChallengeTx(challengeTx, serverAccountID, network string) (tx Transacti
 // provided as an argument, and those signatures meet a threshold on the
 // account.
 //
+// Signers that are not prefixed as an address/account ID strkey (G...) will be
+// ignored.
+//
 // Errors will be raised if:
 //  - The transaction is invalid according to ReadChallengeTx.
 //  - No client signatures are found on the transaction.
@@ -536,16 +540,15 @@ func VerifyChallengeTxThreshold(challengeTx, serverAccountID, network string, th
 // to a signer for verification to succeed. If verification succeeds a list of
 // signers that were found is returned, excluding the server account ID.
 //
+// Signers that are not prefixed as an address/account ID strkey (G...) will be
+// ignored.
+//
 // Errors will be raised if:
 //  - The transaction is invalid according to ReadChallengeTx.
 //  - No client signatures are found on the transaction.
 //  - One or more signatures in the transaction are not identifiable as the
 //    server account or one of the signers provided in the arguments.
 func VerifyChallengeTxSigners(challengeTx, serverAccountID, network string, signers ...string) ([]string, error) {
-	if len(signers) == 0 {
-		return nil, errors.New("no signers provided")
-	}
-
 	// Read the transaction which validates its structure.
 	tx, _, err := ReadChallengeTx(challengeTx, serverAccountID, network)
 	if err != nil {
@@ -571,11 +574,25 @@ func VerifyChallengeTxSigners(challengeTx, serverAccountID, network string, sign
 		if signer == serverKP.Address() {
 			continue
 		}
+		// Deduplicate.
 		if _, seen := clientSignersSeen[signer]; seen {
+			continue
+		}
+		// Ignore non-G... account/address signers.
+		strkeyVersionByte, strkeyErr := strkey.Version(signer)
+		if strkeyErr != nil {
+			continue
+		}
+		if strkeyVersionByte != strkey.VersionByteAccountID {
 			continue
 		}
 		clientSigners = append(clientSigners, signer)
 		clientSignersSeen[signer] = struct{}{}
+	}
+
+	// Don't continue if none of the signers provided are in the final list.
+	if len(clientSigners) == 0 {
+		return nil, errors.New("no verifiable signers provided, at least one G... address must be provided")
 	}
 
 	// Verify all the transaction's signers (server and client) in one

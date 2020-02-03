@@ -1712,6 +1712,52 @@ func TestVerifyChallengeTxThreshold_validServerAndMultipleClientKeyMeetingThresh
 	assert.NoError(t, err)
 }
 
+func TestVerifyChallengeTxThreshold_validServerAndMultipleClientKeyMeetingThresholdSomeUnusedIgnorePreauthTxHashAndXHash(t *testing.T) {
+	serverKP := newKeypair0()
+	clientKP1 := newKeypair1()
+	clientKP2 := newKeypair2()
+	clientKP3 := keypair.MustRandom()
+	preauthTxHash := "TAQCSRX2RIDJNHFIFHWD63X7D7D6TRT5Y2S6E3TEMXTG5W3OECHZ2OG4"
+	xHash := "XDRPF6NZRR7EEVO7ESIWUDXHAOMM2QSKIQQBJK6I2FB7YKDZES5UCLWD"
+	unknownSignerType := "?ARPF6NZRR7EEVO7ESIWUDXHAOMM2QSKIQQBJK6I2FB7YKDZES5UCLWD"
+	txSource := NewSimpleAccount(serverKP.Address(), -1)
+	opSource := NewSimpleAccount(clientKP1.Address(), 0)
+	op := ManageData{
+		SourceAccount: &opSource,
+		Name:          "testserver auth",
+		Value:         []byte(base64.StdEncoding.EncodeToString(make([]byte, 48))),
+	}
+	tx := Transaction{
+		SourceAccount: &txSource,
+		Operations:    []Operation{&op},
+		Timebounds:    NewTimeout(1000),
+		Network:       network.TestNetworkPassphrase,
+	}
+	threshold := Threshold(3)
+	signerSummary := SignerSummary{
+		clientKP1.Address(): 1,
+		clientKP2.Address(): 2,
+		clientKP3.Address(): 2,
+		preauthTxHash:       10,
+		xHash:               10,
+		unknownSignerType:   10,
+	}
+	wantSigners := []string{
+		clientKP1.Address(),
+		clientKP2.Address(),
+	}
+
+	err := tx.Build()
+	require.NoError(t, err)
+	err = tx.Sign(serverKP, clientKP1, clientKP2)
+	assert.NoError(t, err)
+	tx64, err := tx.Base64()
+	require.NoError(t, err)
+	signersFound, err := VerifyChallengeTxThreshold(tx64, serverKP.Address(), network.TestNetworkPassphrase, threshold, signerSummary)
+	assert.ElementsMatch(t, wantSigners, signersFound)
+	assert.NoError(t, err)
+}
+
 func TestVerifyChallengeTxThreshold_invalidServerAndMultipleClientKeyNotMeetingThreshold(t *testing.T) {
 	serverKP := newKeypair0()
 	clientKP1 := newKeypair1()
@@ -1809,7 +1855,7 @@ func TestVerifyChallengeTxThreshold_invalidNoSigners(t *testing.T) {
 	tx64, err := tx.Base64()
 	require.NoError(t, err)
 	_, err = VerifyChallengeTxThreshold(tx64, serverKP.Address(), network.TestNetworkPassphrase, threshold, signerSummary)
-	assert.EqualError(t, err, "no signers provided")
+	assert.EqualError(t, err, "no verifiable signers provided, at least one G... address must be provided")
 }
 
 func TestVerifyChallengeTxThreshold_weightsAddToMoreThan8Bits(t *testing.T) {
@@ -2137,6 +2183,38 @@ func TestVerifyChallengeTxSigners_validServerAndClientSignersIgnoresDuplicateSig
 	assert.NoError(t, err)
 }
 
+func TestVerifyChallengeTxSigners_validIgnorePreauthTxHashAndXHash(t *testing.T) {
+	serverKP := newKeypair0()
+	clientKP := newKeypair1()
+	clientKP2 := newKeypair2()
+	preauthTxHash := "TAQCSRX2RIDJNHFIFHWD63X7D7D6TRT5Y2S6E3TEMXTG5W3OECHZ2OG4"
+	xHash := "XDRPF6NZRR7EEVO7ESIWUDXHAOMM2QSKIQQBJK6I2FB7YKDZES5UCLWD"
+	unknownSignerType := "?ARPF6NZRR7EEVO7ESIWUDXHAOMM2QSKIQQBJK6I2FB7YKDZES5UCLWD"
+	txSource := NewSimpleAccount(serverKP.Address(), -1)
+	opSource := NewSimpleAccount(clientKP.Address(), 0)
+	op := ManageData{
+		SourceAccount: &opSource,
+		Name:          "testserver auth",
+		Value:         []byte(base64.StdEncoding.EncodeToString(make([]byte, 48))),
+	}
+	tx := Transaction{
+		SourceAccount: &txSource,
+		Operations:    []Operation{&op},
+		Timebounds:    NewTimeout(1000),
+		Network:       network.TestNetworkPassphrase,
+	}
+
+	err := tx.Build()
+	require.NoError(t, err)
+	err = tx.Sign(serverKP, clientKP2)
+	assert.NoError(t, err)
+	tx64, err := tx.Base64()
+	require.NoError(t, err)
+	signersFound, err := VerifyChallengeTxSigners(tx64, serverKP.Address(), network.TestNetworkPassphrase, clientKP2.Address(), preauthTxHash, xHash, unknownSignerType)
+	assert.Equal(t, []string{clientKP2.Address()}, signersFound)
+	assert.NoError(t, err)
+}
+
 func TestVerifyChallengeTxSigners_invalidServerAndClientSignersIgnoresDuplicateSignerInError(t *testing.T) {
 	serverKP := newKeypair0()
 	clientKP := newKeypair1()
@@ -2221,7 +2299,7 @@ func TestVerifyChallengeTxSigners_invalidServerAndClientSignersFailsSignerSeed(t
 	require.NoError(t, err)
 	signersFound, err := VerifyChallengeTxSigners(tx64, serverKP.Address(), network.TestNetworkPassphrase, clientKP2.Seed())
 	assert.Empty(t, signersFound)
-	assert.EqualError(t, err, "signer not address: invalid version byte")
+	assert.EqualError(t, err, "no verifiable signers provided, at least one G... address must be provided")
 }
 
 func TestVerifyChallengeTxSigners_invalidNoSigners(t *testing.T) {
@@ -2248,7 +2326,7 @@ func TestVerifyChallengeTxSigners_invalidNoSigners(t *testing.T) {
 	tx64, err := tx.Base64()
 	require.NoError(t, err)
 	_, err = VerifyChallengeTxSigners(tx64, serverKP.Address(), network.TestNetworkPassphrase)
-	assert.EqualError(t, err, "no signers provided")
+	assert.EqualError(t, err, "no verifiable signers provided, at least one G... address must be provided")
 }
 
 func TestVerifyTxSignatureUnsignedTx(t *testing.T) {
