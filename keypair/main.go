@@ -128,6 +128,26 @@ func MustParse(addressOrSeed string) KP {
 	return kp
 }
 
+// MustParseAddress is the panic-on-fail version of ParseAddress
+func MustParseAddress(address string) *FromAddress {
+	kp, err := ParseAddress(address)
+	if err != nil {
+		panic(err)
+	}
+
+	return kp
+}
+
+// MustParseFull is the panic-on-fail version of ParseFull
+func MustParseFull(seed string) *Full {
+	kp, err := ParseFull(seed)
+	if err != nil {
+		panic(err)
+	}
+
+	return kp
+}
+
 // MustRandom is the panic-on-fail version of Random.
 func MustRandom() *Full {
 	kp, err := Random()
