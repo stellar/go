@@ -152,6 +152,32 @@ func (s *AccountsSignerProcessorTestSuiteLedger) TestNewAccount() {
 	s.Assert().NoError(s.processor.Commit())
 }
 
+func (s *AccountsSignerProcessorTestSuiteLedger) TestNoUpdatesWhenNoSignerChanges() {
+	err := s.processor.ProcessChange(io.Change{
+		Type: xdr.LedgerEntryTypeAccount,
+		Pre: &xdr.LedgerEntry{
+			Data: xdr.LedgerEntryData{
+				Type: xdr.LedgerEntryTypeAccount,
+				Account: &xdr.AccountEntry{
+					AccountId:  xdr.MustAddress("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
+					Thresholds: [4]byte{1, 1, 1, 1},
+				},
+			},
+		},
+		Post: &xdr.LedgerEntry{
+			Data: xdr.LedgerEntryData{
+				Type: xdr.LedgerEntryTypeAccount,
+				Account: &xdr.AccountEntry{
+					AccountId:  xdr.MustAddress("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
+					Thresholds: [4]byte{1, 1, 1, 1},
+				},
+			},
+		},
+	})
+	s.Assert().NoError(err)
+	s.Assert().NoError(s.processor.Commit())
+}
+
 func (s *AccountsSignerProcessorTestSuiteLedger) TestNewSigner() {
 	// Remove old signer
 	s.mockQ.

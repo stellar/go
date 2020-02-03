@@ -82,6 +82,10 @@ func (p *SignersProcessor) Commit() error {
 
 	changes := p.cache.GetChanges()
 	for _, change := range changes {
+		if !change.AccountSignersChanged() {
+			continue
+		}
+
 		// The code below removes all Pre signers adds Post signers but
 		// can be improved by finding a diff (check performance first).
 		if change.Pre != nil {
