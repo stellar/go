@@ -1,0 +1,715 @@
+package expingest
+
+import (
+	"fmt"
+	"time"
+
+	"github.com/stellar/go/services/horizon/internal/toid"
+	"github.com/stellar/go/support/errors"
+	logpkg "github.com/stellar/go/support/log"
+)
+
+type stateMachineNode interface {
+	run(*System) (transition, error)
+	String() string
+}
+
+type transition struct {
+	node          stateMachineNode
+	sleepDuration time.Duration
+}
+
+var defaultSleep = time.Second
+
+func stop() transition {
+	return transition{node: stopState{}, sleepDuration: 0}
+}
+
+func start() transition {
+	return transition{node: startState{}, sleepDuration: defaultSleep}
+}
+
+func rebuild(checkpointLedger uint32) transition {
+	return transition{
+		node: buildState{
+			checkpointLedger: checkpointLedger,
+		},
+		sleepDuration: defaultSleep,
+	}
+}
+
+func resume(latestSuccessfullyProcessedLedger uint32) transition {
+	return transition{
+		node: resumeState{
+			latestSuccessfullyProcessedLedger: latestSuccessfullyProcessedLedger,
+		},
+		sleepDuration: defaultSleep,
+	}
+}
+
+func resumeImmediately(latestSuccessfullyProcessedLedger uint32) transition {
+	return transition{
+		node: resumeState{
+			latestSuccessfullyProcessedLedger: latestSuccessfullyProcessedLedger,
+		},
+		sleepDuration: 0,
+	}
+}
+
+func retryResume(r resumeState) transition {
+	return transition{
+		node:          r,
+		sleepDuration: defaultSleep,
+	}
+}
+
+func historyRange(fromLedger, toLedger uint32) transition {
+	return transition{
+		node: historyRangeState{
+			fromLedger: fromLedger,
+			toLedger:   toLedger,
+		},
+		sleepDuration: defaultSleep,
+	}
+}
+
+func waitForCheckPoint() transition {
+	return transition{
+		node:          waitForCheckpointState{},
+		sleepDuration: 0,
+	}
+}
+
+type stopState struct{}
+
+func (stopState) String() string {
+	return "stop"
+}
+
+func (stopState) run(s *System) (transition, error) {
+	return stop(), errors.New("Cannot run terminal state")
+}
+
+type startState struct{}
+
+func (startState) String() string {
+	return "start"
+}
+
+func (startState) run(s *System) (transition, error) {
+	if err := s.historyQ.Begin(); err != nil {
+		return start(), errors.Wrap(err, "Error starting a transaction")
+	}
+	defer s.historyQ.Rollback()
+
+	// This will get the value `FOR UPDATE`, blocking it for other nodes.
+	lastIngestedLedger, err := s.historyQ.GetLastLedgerExpIngest()
+	if err != nil {
+		return start(), errors.Wrap(err, getLastIngestedErrMsg)
+	}
+
+	ingestVersion, err := s.historyQ.GetExpIngestVersion()
+	if err != nil {
+		return start(), errors.Wrap(err, getExpIngestVersionErrMsg)
+	}
+
+	if ingestVersion > CurrentVersion {
+		log.WithFields(logpkg.F{
+			"ingestVersion":  ingestVersion,
+			"currentVersion": CurrentVersion,
+		}).Info("ingestion version in db is greater than current version, going to terminate")
+		return stop(), nil
+	}
+
+	lastHistoryLedger, err := s.historyQ.GetLatestLedger()
+	if err != nil {
+		return start(), errors.Wrap(err, "Error getting last history ledger sequence")
+	}
+
+	if ingestVersion != CurrentVersion || lastIngestedLedger == 0 {
+		// This block is either starting from empty state or ingestion
+		// version upgrade.
+		// This will always run on a single instance due to the fact that
+		// `LastLedgerExpIngest` value is blocked for update and will always
+		// be updated when leading instance finishes processing state.
+		// In case of errors it will start `Init` from the beginning.
+		var lastCheckpoint uint32
+		lastCheckpoint, err = s.historyAdapter.GetLatestLedgerSequence()
+		if err != nil {
+			return start(), errors.Wrap(err, "Error getting last checkpoint")
+		}
+
+		if lastHistoryLedger != 0 {
+			// There are ledgers in history_ledgers table. This means that the
+			// old or new ingest system was running prior the upgrade. In both
+			// cases we need to:
+			// * Wait for the checkpoint ledger if the latest history ledger is
+			//   greater that the latest checkpoint ledger.
+			// * Catchup history data if the latest history ledger is less than
+			//   the latest checkpoint ledger.
+			// * Build state from the last checkpoint if the latest history ledger
+			//   is equal to the latest checkpoint ledger.
+			switch {
+			case lastHistoryLedger > lastCheckpoint:
+				return waitForCheckPoint(), nil
+			case lastHistoryLedger < lastCheckpoint:
+				return historyRange(lastHistoryLedger+1, lastCheckpoint), nil
+			default: // lastHistoryLedger == lastCheckpoint
+				// Build state but make sure it's using `lastCheckpoint`. It's possible
+				// that the new checkpoint will be created during state transition.
+				return rebuild(lastCheckpoint), nil
+			}
+		}
+
+		return rebuild(lastCheckpoint), nil
+	}
+
+	switch {
+	case lastHistoryLedger > lastIngestedLedger:
+		// Expingest was running at some point the past but was turned off.
+		// Now it's on by default but the latest history ledger is greater
+		// than the latest expingest ledger. We reset the exp ledger sequence
+		// so init state will rebuild the state correctly.
+		err = s.historyQ.UpdateLastLedgerExpIngest(0)
+		if err != nil {
+			return start(), errors.Wrap(err, updateLastLedgerExpIngestErrMsg)
+		}
+		err = s.historyQ.Commit()
+		if err != nil {
+			return start(), errors.Wrap(err, commitErrMsg)
+		}
+		return start(), nil
+	// lastHistoryLedger != 0 check is here to check the case when one node ingested
+	// the state (so latest exp ingest is > 0) but no history has been ingested yet.
+	// In such case we execute default case and resume from the last ingested
+	// ledger.
+	case lastHistoryLedger != 0 && lastHistoryLedger < lastIngestedLedger:
+		// Expingest was running at some point the past but was turned off.
+		// Now it's on by default but the latest history ledger is less
+		// than the latest expingest ledger. We catchup history.
+		return historyRange(lastHistoryLedger+1, lastIngestedLedger), nil
+	default: // lastHistoryLedger == lastIngestedLedger
+		// The other node already ingested a state (just now or in the past)
+		// so we need to get offers from a DB, then resume session normally.
+		// State pipeline is NOT processed.
+		log.WithField("last_ledger", lastIngestedLedger).
+			Info("Resuming ingestion system from last processed ledger...")
+
+		if err = s.loadOffersIntoMemory(lastIngestedLedger); err != nil {
+			return start(), errors.Wrap(err, "Error loading offers into in memory graph")
+		}
+
+		return resume(lastIngestedLedger), nil
+	}
+}
+
+type buildState struct {
+	checkpointLedger uint32
+}
+
+func (b buildState) String() string {
+	return fmt.Sprintf("buildFromCheckpoint(checkpointLedger=%d)", b.checkpointLedger)
+}
+
+func (b buildState) run(s *System) (transition, error) {
+	if b.checkpointLedger == 0 {
+		return start(), errors.New("unexpected checkpointLedger value")
+	}
+
+	if err := s.historyQ.Begin(); err != nil {
+		return start(), errors.Wrap(err, "Error starting a transaction")
+	}
+	defer s.historyQ.Rollback()
+	defer s.graph.Discard()
+
+	// We need to get this value `FOR UPDATE` so all other instances
+	// are blocked.
+	lastIngestedLedger, err := s.historyQ.GetLastLedgerExpIngest()
+	if err != nil {
+		return start(), errors.Wrap(err, getLastIngestedErrMsg)
+	}
+
+	ingestVersion, err := s.historyQ.GetExpIngestVersion()
+	if err != nil {
+		return start(), errors.Wrap(err, getExpIngestVersionErrMsg)
+	}
+
+	// Double check if we should proceed with state ingestion. It's possible that
+	// another ingesting instance will be redirected to this state from `init`
+	// but it's first to complete the task.
+	if ingestVersion == CurrentVersion && lastIngestedLedger > 0 {
+		log.Info("Another instance completed `buildState`. Skipping...")
+		return start(), nil
+	}
+
+	if err = s.updateCursor(b.checkpointLedger - 1); err != nil {
+		// Don't return updateCursor error.
+		log.WithError(err).Warn("error updating stellar-core cursor")
+	}
+
+	log.Info("Starting ingestion system from empty state...")
+
+	// Clear last_ingested_ledger in key value store
+	err = s.historyQ.UpdateLastLedgerExpIngest(0)
+	if err != nil {
+		return start(), errors.Wrap(err, updateLastLedgerExpIngestErrMsg)
+	}
+
+	// Clear invalid state in key value store. It's possible that upgraded
+	// ingestion is fixing it.
+	err = s.historyQ.UpdateExpStateInvalid(false)
+	if err != nil {
+		return start(), errors.Wrap(err, updateExpStateInvalidErrMsg)
+	}
+
+	// State tables should be empty.
+	err = s.historyQ.TruncateExpingestStateTables()
+	if err != nil {
+		return start(), errors.Wrap(err, "Error clearing ingest tables")
+	}
+
+	// Graph should be empty.
+	s.graph.Clear()
+
+	log.WithFields(logpkg.F{
+		"ledger": b.checkpointLedger,
+	}).Info("Processing state")
+	startTime := time.Now()
+
+	err = s.runner.RunHistoryArchiveIngestion(b.checkpointLedger)
+	if err != nil {
+		return start(), errors.Wrap(err, "Error ingesting history archive")
+	}
+
+	if err = s.historyQ.UpdateLastLedgerExpIngest(b.checkpointLedger); err != nil {
+		return start(), errors.Wrap(err, updateLastLedgerExpIngestErrMsg)
+	}
+
+	if err = s.historyQ.UpdateExpIngestVersion(CurrentVersion); err != nil {
+		return start(), errors.Wrap(err, "Error updating expingest version")
+	}
+
+	err = s.historyQ.Commit()
+	if err != nil {
+		return start(), errors.Wrap(err, commitErrMsg)
+	}
+
+	err = s.graph.Apply(b.checkpointLedger)
+	if err != nil {
+		return start(), errors.Wrap(err, "Error applying order book changes")
+	}
+
+	log.WithFields(logpkg.F{
+		"ledger":   b.checkpointLedger,
+		"duration": time.Since(startTime).Seconds(),
+	}).Info("Processed state")
+
+	// If successful, continue from the next ledger
+	return resume(b.checkpointLedger), nil
+}
+
+type resumeState struct {
+	latestSuccessfullyProcessedLedger uint32
+}
+
+func (r resumeState) String() string {
+	return fmt.Sprintf("resume(latestSuccessfullyProcessedLedger=%d)", r.latestSuccessfullyProcessedLedger)
+}
+
+func (r resumeState) run(s *System) (transition, error) {
+	if r.latestSuccessfullyProcessedLedger == 0 {
+		return start(), errors.New("unexpected latestSuccessfullyProcessedLedger value")
+	}
+
+	if err := s.historyQ.Begin(); err != nil {
+		return retryResume(r),
+			errors.Wrap(err, "Error starting a transaction")
+	}
+	defer s.historyQ.Rollback()
+	defer s.graph.Discard()
+
+	// This will get the value `FOR UPDATE`, blocking it for other nodes.
+	lastIngestedLedger, err := s.historyQ.GetLastLedgerExpIngest()
+	if err != nil {
+		return retryResume(r), errors.Wrap(err, getLastIngestedErrMsg)
+	}
+
+	ingestLedger := r.latestSuccessfullyProcessedLedger + 1
+
+	if ingestLedger > lastIngestedLedger+1 {
+		return start(), errors.New("expected ingest ledger to be at most one greater " +
+			"than last ingested ledger in db")
+	}
+
+	ingestVersion, err := s.historyQ.GetExpIngestVersion()
+	if err != nil {
+		return retryResume(r), errors.Wrap(err, getExpIngestVersionErrMsg)
+	}
+
+	if ingestVersion != CurrentVersion {
+		log.WithFields(logpkg.F{
+			"ingestVersion":  ingestVersion,
+			"currentVersion": CurrentVersion,
+		}).Info("ingestion version in db is not current, going back to start state")
+		return start(), nil
+	}
+
+	lastHistoryLedger, err := s.historyQ.GetLatestLedger()
+	if err != nil {
+		return retryResume(r), errors.Wrap(err, "could not get latest history ledger")
+	}
+
+	if lastHistoryLedger != 0 && lastHistoryLedger != lastIngestedLedger {
+		log.WithFields(logpkg.F{
+			"lastHistoryLedger":  lastHistoryLedger,
+			"lastIngestedLedger": lastIngestedLedger,
+		}).Info(
+			"last history ledger does not match last ingested ledger, " +
+				"going back to start state",
+		)
+		return start(), nil
+	}
+
+	// Check if ledger is closed
+	latestLedgerCore, err := s.ledgerBackend.GetLatestLedgerSequence()
+	if err != nil {
+		return retryResume(r), errors.Wrap(err, "Error getting lastest ledger in stellar-core")
+	}
+
+	if latestLedgerCore < ingestLedger {
+		// Go to the next state, machine will wait for 1s. before continuing.
+		return retryResume(r), nil
+	}
+
+	startTime := time.Now()
+
+	if ingestLedger <= lastIngestedLedger {
+		// rollback because we will not be updating the DB
+		// so there is no need to hold on to the distributed lock
+		// and thereby block the other nodes from ingesting
+		if err = s.historyQ.Rollback(); err != nil {
+			return retryResume(r), errors.Wrap(err, "Error rolling back transaction")
+		}
+
+		log.WithFields(logpkg.F{
+			"sequence": ingestLedger,
+			"state":    false,
+			"ledger":   false,
+			"graph":    true,
+			"commit":   false,
+		}).Info("Processing ledger")
+
+		err = s.runner.RunOrderBookProcessorOnLedger(ingestLedger)
+		if err != nil {
+			return retryResume(r), errors.Wrap(err, "Error running change processor on ledger")
+
+		}
+
+		if err = s.graph.Apply(ingestLedger); err != nil {
+			return retryResume(r), errors.Wrap(err, "Error applying graph changes from ledger")
+		}
+
+		log.WithFields(logpkg.F{
+			"sequence": ingestLedger,
+			"duration": time.Since(startTime).Seconds(),
+			"state":    false,
+			"ledger":   false,
+			"graph":    true,
+			"commit":   false,
+		}).Info("Processed ledger")
+
+		return resumeImmediately(ingestLedger), nil
+	}
+
+	log.WithFields(logpkg.F{
+		"sequence": ingestLedger,
+		"state":    true,
+		"ledger":   true,
+		"graph":    true,
+		"commit":   true,
+	}).Info("Processing ledger")
+
+	err = s.runner.RunAllProcessorsOnLedger(ingestLedger)
+	if err != nil {
+		return retryResume(r), errors.Wrap(err, "Error running processors on ledger")
+	}
+
+	err = s.historyQ.UpdateLastLedgerExpIngest(ingestLedger)
+	if err != nil {
+		return retryResume(r), errors.Wrap(err, updateLastLedgerExpIngestErrMsg)
+	}
+
+	if err = s.graph.Apply(ingestLedger); err != nil {
+		return retryResume(r), errors.Wrap(err, "Error applying graph changes from ledger")
+	}
+
+	if err = s.historyQ.Commit(); err != nil {
+		return retryResume(r), errors.Wrap(err, commitErrMsg)
+	}
+
+	if err = s.updateCursor(ingestLedger); err != nil {
+		// Don't return updateCursor error.
+		log.WithError(err).Warn("error updating stellar-core cursor")
+	}
+
+	log.WithFields(logpkg.F{
+		"sequence": ingestLedger,
+		"duration": time.Since(startTime).Seconds(),
+		"state":    true,
+		"ledger":   true,
+		"graph":    true,
+		"commit":   true,
+	}).Info("Processed ledger")
+
+	s.maybeVerifyState(ingestLedger)
+
+	return resumeImmediately(ingestLedger), nil
+}
+
+type historyRangeState struct {
+	fromLedger       uint32
+	toLedger         uint32
+	shutdownWhenDone bool
+	clearHistory     bool
+}
+
+func (h historyRangeState) String() string {
+	return fmt.Sprintf(
+		"historyRange(fromLedger=%d, toLedger=%d, shutdownWhenDone=%t, clearHistory=%t)",
+		h.fromLedger,
+		h.toLedger,
+		h.shutdownWhenDone,
+		h.clearHistory,
+	)
+}
+
+// historyRangeState is used when catching up history data and when reingesting
+// range.
+func (h historyRangeState) run(s *System) (transition, error) {
+	next := start()
+	validateStartLedger := true
+	// unless we're running the horizon reingest range command we should
+	// always check that the start ledger is equal to the last ledger
+	// in the db plus one
+	if h.shutdownWhenDone {
+		// Shutdown when done - used in `reingest range` command.
+		next = stop()
+		validateStartLedger = false
+	}
+
+	if h.fromLedger == 0 || h.toLedger == 0 ||
+		h.fromLedger > h.toLedger {
+		return next, errors.Errorf("invalid range: [%d, %d]", h.fromLedger, h.toLedger)
+	}
+
+	if err := s.historyQ.Begin(); err != nil {
+		return next, errors.Wrap(err, "Error starting a transaction")
+	}
+	defer s.historyQ.Rollback()
+
+	// acquire distributed lock so no one else can perform ingestion operations.
+	if _, err := s.historyQ.GetLastLedgerExpIngest(); err != nil {
+		return next, errors.Wrap(err, getLastIngestedErrMsg)
+	}
+
+	if h.clearHistory {
+		// Clear history data before ingesting - used in `reingest range` command.
+		start, end, err := toid.LedgerRangeInclusive(
+			int32(h.fromLedger),
+			int32(h.toLedger),
+		)
+
+		if err != nil {
+			return next, errors.Wrap(err, "Invalid range")
+		}
+
+		err = s.historyQ.DeleteRangeAll(start, end)
+		if err != nil {
+			return next, errors.Wrap(err, "error in DeleteRangeAll")
+		}
+	}
+
+	if validateStartLedger {
+		lastHistoryLedger, err := s.historyQ.GetLatestLedger()
+		if err != nil {
+			return next, errors.Wrap(err, "could not get latest history ledger")
+		}
+
+		// We should be ingesting the ledger which occurs after
+		// lastHistoryLedger. Otherwise, some other horizon node has
+		// already completed the ingest history range operation and
+		// we should go back to the init state
+		if lastHistoryLedger != h.fromLedger-1 {
+			return next, nil
+		}
+	}
+
+	for cur := h.fromLedger; cur <= h.toLedger; cur++ {
+		log.WithFields(logpkg.F{
+			"sequence": cur,
+			"state":    false,
+			"ledger":   true,
+			"graph":    false,
+			"commit":   false,
+		}).Info("Processing ledger")
+		startTime := time.Now()
+
+		if err := s.runner.RunTransactionProcessorsOnLedger(cur); err != nil {
+			return next,
+				errors.Wrap(err, fmt.Sprintf("error processing ledger sequence=%d", cur))
+		}
+
+		log.WithFields(logpkg.F{
+			"sequence": cur,
+			"duration": time.Since(startTime).Seconds(),
+			"state":    false,
+			"ledger":   true,
+			"graph":    false,
+			"commit":   false,
+		}).Info("Processed ledger")
+	}
+
+	if err := s.historyQ.Commit(); err != nil {
+		return next, errors.Wrap(err, commitErrMsg)
+	}
+
+	return next, nil
+}
+
+type waitForCheckpointState struct{}
+
+func (waitForCheckpointState) String() string {
+	return "waitForCheckpoint"
+}
+
+func (waitForCheckpointState) run(*System) (transition, error) {
+	log.Info("Waiting for the next checkpoint...")
+	time.Sleep(10 * time.Second)
+	return start(), nil
+}
+
+type verifyRangeState struct {
+	fromLedger  uint32
+	toLedger    uint32
+	verifyState bool
+}
+
+func (v verifyRangeState) String() string {
+	return fmt.Sprintf(
+		"verifyRange(fromLedger=%d, toLedger=%d, verifyState=%t)",
+		v.fromLedger,
+		v.toLedger,
+		v.verifyState,
+	)
+}
+
+func (v verifyRangeState) run(s *System) (transition, error) {
+	if v.fromLedger == 0 || v.toLedger == 0 ||
+		v.fromLedger > v.toLedger {
+		return stop(), errors.Errorf("invalid range: [%d, %d]", v.fromLedger, v.toLedger)
+	}
+
+	if err := s.historyQ.Begin(); err != nil {
+		err = errors.Wrap(err, "Error starting a transaction")
+		return stop(), err
+	}
+	defer s.historyQ.Rollback()
+	defer s.graph.Discard()
+
+	// Simple check if DB clean
+	lastIngestedLedger, err := s.historyQ.GetLastLedgerExpIngest()
+	if err != nil {
+		err = errors.Wrap(err, getLastIngestedErrMsg)
+		return stop(), err
+	}
+
+	if lastIngestedLedger != 0 {
+		err = errors.New("Database not empty")
+		return stop(), err
+	}
+
+	log.WithFields(logpkg.F{
+		"ledger": v.fromLedger,
+	}).Info("Processing state")
+	startTime := time.Now()
+
+	err = s.runner.RunHistoryArchiveIngestion(v.fromLedger)
+	if err != nil {
+		err = errors.Wrap(err, "Error ingesting history archive")
+		return stop(), err
+	}
+
+	err = s.historyQ.UpdateLastLedgerExpIngest(v.fromLedger)
+	if err != nil {
+		err = errors.Wrap(err, updateLastLedgerExpIngestErrMsg)
+		return stop(), err
+	}
+
+	if err = s.historyQ.Commit(); err != nil {
+		err = errors.Wrap(err, commitErrMsg)
+		return stop(), err
+	}
+
+	err = s.graph.Apply(v.fromLedger)
+	if err != nil {
+		err = errors.Wrap(err, "Error applying order book changes")
+		return stop(), err
+	}
+
+	log.WithFields(logpkg.F{
+		"ledger":   v.fromLedger,
+		"duration": time.Since(startTime).Seconds(),
+	}).Info("Processed state")
+
+	for sequence := v.fromLedger + 1; sequence <= v.toLedger; sequence++ {
+		log.WithFields(logpkg.F{
+			"sequence": sequence,
+			"state":    true,
+			"ledger":   true,
+			"graph":    true,
+			"commit":   true,
+		}).Info("Processing ledger")
+		startTime := time.Now()
+
+		if err = s.historyQ.Begin(); err != nil {
+			err = errors.Wrap(err, "Error starting a transaction")
+			return stop(), err
+		}
+
+		err = s.runner.RunAllProcessorsOnLedger(sequence)
+		if err != nil {
+			err = errors.Wrap(err, "Error running processors on ledger")
+			return stop(), err
+		}
+
+		err = s.historyQ.UpdateLastLedgerExpIngest(sequence)
+		if err != nil {
+			err = errors.Wrap(err, updateLastLedgerExpIngestErrMsg)
+			return stop(), err
+		}
+
+		if err = s.graph.Apply(sequence); err != nil {
+			err = errors.Wrap(err, "Error applying graph history archive changes")
+			return stop(), err
+		}
+
+		if err = s.historyQ.Commit(); err != nil {
+			return stop(), errors.Wrap(err, commitErrMsg)
+		}
+
+		log.WithFields(logpkg.F{
+			"sequence": sequence,
+			"duration": time.Since(startTime).Seconds(),
+			"state":    true,
+			"ledger":   true,
+			"graph":    true,
+			"commit":   true,
+		}).Info("Processed ledger")
+	}
+
+	if v.verifyState {
+		err = s.verifyState(s.graph.OffersMap(), false)
+	}
+
+	return stop(), err
+}

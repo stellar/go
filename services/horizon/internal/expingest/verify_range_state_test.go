@@ -30,18 +30,12 @@ func (s *VerifyRangeStateTestSuite) SetupTest() {
 	s.historyAdapter = &adapters.MockHistoryArchiveAdapter{}
 	s.runner = &mockProcessorsRunner{}
 	s.system = &System{
-		state: state{
-			systemState: verifyRangeState,
-		},
 		historyQ:       s.historyQ,
 		historyAdapter: s.historyAdapter,
 		runner:         s.runner,
 		graph:          s.graph,
 	}
 
-	s.Assert().Equal(verifyRangeState, s.system.state.systemState)
-	// Checking if in tx in runCurrentState()
-	s.historyQ.On("GetTx").Return(nil).Once()
 	s.historyQ.On("Rollback").Return(nil).Once()
 	s.graph.On("Discard").Once()
 }
@@ -58,104 +52,103 @@ func (s *VerifyRangeStateTestSuite) TestInvalidRange() {
 	// Recreate mock in this single test to remove Rollback assertion.
 	*s.historyQ = mockDBQ{}
 	*s.graph = mockOrderBookGraph{}
-	s.historyQ.On("GetTx").Return(nil).Maybe()
 
-	s.system.state.rangeFromLedger = 0
-	s.system.state.rangeToLedger = 0
-	nextState, err := s.system.runCurrentState()
+	next, err := verifyRangeState{fromLedger: 0, toLedger: 0}.run(s.system)
 	s.Assert().Error(err)
 	s.Assert().EqualError(err, "invalid range: [0, 0]")
-	s.Assert().Equal(shutdownState, nextState.systemState)
+	s.Assert().Equal(
+		transition{node: stopState{}, sleepDuration: 0},
+		next,
+	)
 
-	s.system.state.rangeFromLedger = 0
-	s.system.state.rangeToLedger = 100
-	nextState, err = s.system.runCurrentState()
+	next, err = verifyRangeState{fromLedger: 0, toLedger: 100}.run(s.system)
 	s.Assert().Error(err)
 	s.Assert().EqualError(err, "invalid range: [0, 100]")
-	s.Assert().Equal(shutdownState, nextState.systemState)
+	s.Assert().Equal(
+		transition{node: stopState{}, sleepDuration: 0},
+		next,
+	)
 
-	s.system.state.rangeFromLedger = 100
-	s.system.state.rangeToLedger = 0
-	nextState, err = s.system.runCurrentState()
+	next, err = verifyRangeState{fromLedger: 100, toLedger: 0}.run(s.system)
 	s.Assert().Error(err)
 	s.Assert().EqualError(err, "invalid range: [100, 0]")
-	s.Assert().Equal(shutdownState, nextState.systemState)
+	s.Assert().Equal(
+		transition{node: stopState{}, sleepDuration: 0},
+		next,
+	)
 
-	s.system.state.rangeFromLedger = 100
-	s.system.state.rangeToLedger = 99
-	nextState, err = s.system.runCurrentState()
+	next, err = verifyRangeState{fromLedger: 100, toLedger: 99}.run(s.system)
 	s.Assert().Error(err)
 	s.Assert().EqualError(err, "invalid range: [100, 99]")
-	s.Assert().Equal(shutdownState, nextState.systemState)
+	s.Assert().Equal(
+		transition{node: stopState{}, sleepDuration: 0},
+		next,
+	)
 }
 
 func (s *VerifyRangeStateTestSuite) TestBeginReturnsError() {
-	s.system.state.rangeFromLedger = 100
-	s.system.state.rangeToLedger = 200
-
 	// Recreate mock in this single test to remove Rollback assertion.
 	*s.historyQ = mockDBQ{}
 	*s.graph = mockOrderBookGraph{}
-	s.historyQ.On("GetTx").Return(nil).Once()
 	s.historyQ.On("Begin").Return(errors.New("my error")).Once()
 
-	nextState, err := s.system.runCurrentState()
+	next, err := verifyRangeState{fromLedger: 100, toLedger: 200}.run(s.system)
 	s.Assert().Error(err)
 	s.Assert().EqualError(err, "Error starting a transaction: my error")
-	s.Assert().Equal(shutdownState, nextState.systemState)
+	s.Assert().Equal(
+		transition{node: stopState{}, sleepDuration: 0},
+		next,
+	)
 }
 
 func (s *VerifyRangeStateTestSuite) TestGetLastLedgerExpIngestReturnsError() {
-	s.system.state.rangeFromLedger = 100
-	s.system.state.rangeToLedger = 200
-
 	s.historyQ.On("Begin").Return(nil).Once()
 	s.historyQ.On("GetLastLedgerExpIngest").Return(uint32(0), errors.New("my error")).Once()
 
-	nextState, err := s.system.runCurrentState()
+	next, err := verifyRangeState{fromLedger: 100, toLedger: 200}.run(s.system)
 	s.Assert().Error(err)
 	s.Assert().EqualError(err, "Error getting last ingested ledger: my error")
-	s.Assert().Equal(shutdownState, nextState.systemState)
+	s.Assert().Equal(
+		transition{node: stopState{}, sleepDuration: 0},
+		next,
+	)
 }
 
 func (s *VerifyRangeStateTestSuite) TestGetLastLedgerExpIngestNonEmpty() {
-	s.system.state.rangeFromLedger = 100
-	s.system.state.rangeToLedger = 200
-
 	s.historyQ.On("Begin").Return(nil).Once()
 	s.historyQ.On("GetLastLedgerExpIngest").Return(uint32(100), nil).Once()
 
-	nextState, err := s.system.runCurrentState()
+	next, err := verifyRangeState{fromLedger: 100, toLedger: 200}.run(s.system)
 	s.Assert().Error(err)
 	s.Assert().EqualError(err, "Database not empty")
-	s.Assert().Equal(shutdownState, nextState.systemState)
+	s.Assert().Equal(
+		transition{node: stopState{}, sleepDuration: 0},
+		next,
+	)
 }
 
 func (s *VerifyRangeStateTestSuite) TestRunHistoryArchiveIngestionReturnsError() {
-	s.system.state.rangeFromLedger = 100
-	s.system.state.rangeToLedger = 200
-
 	s.historyQ.On("Begin").Return(nil).Once()
 	s.historyQ.On("GetLastLedgerExpIngest").Return(uint32(0), nil).Once()
 
 	s.runner.On("RunHistoryArchiveIngestion", uint32(100)).Return(errors.New("my error")).Once()
 
-	nextState, err := s.system.runCurrentState()
+	next, err := verifyRangeState{fromLedger: 100, toLedger: 200}.run(s.system)
 	s.Assert().Error(err)
 	s.Assert().EqualError(err, "Error ingesting history archive: my error")
-	s.Assert().Equal(shutdownState, nextState.systemState)
+	s.Assert().Equal(
+		transition{node: stopState{}, sleepDuration: 0},
+		next,
+	)
 }
 
 func (s *VerifyRangeStateTestSuite) TestSuccess() {
-	s.system.state.rangeFromLedger = 100
-	s.system.state.rangeToLedger = 200
-
 	s.historyQ.On("Begin").Return(nil).Once()
 	s.historyQ.On("GetLastLedgerExpIngest").Return(uint32(0), nil).Once()
 	s.runner.On("RunHistoryArchiveIngestion", uint32(100)).Return(nil).Once()
 	s.historyQ.On("UpdateLastLedgerExpIngest", uint32(100)).Return(nil).Once()
 	s.historyQ.On("Commit").Return(nil).Once()
-	s.graph.On("Apply", uint32(s.system.state.rangeFromLedger)).Return(nil).Once()
+	s.graph.On("Apply", uint32(100)).Return(nil).Once()
 
 	for i := uint32(101); i <= 200; i++ {
 		s.historyQ.On("Begin").Return(nil).Once()
@@ -165,22 +158,21 @@ func (s *VerifyRangeStateTestSuite) TestSuccess() {
 		s.graph.On("Apply", i).Return(nil).Once()
 	}
 
-	nextState, err := s.system.runCurrentState()
+	next, err := verifyRangeState{fromLedger: 100, toLedger: 200}.run(s.system)
 	s.Assert().NoError(err)
-	s.Assert().Equal(shutdownState, nextState.systemState)
+	s.Assert().Equal(
+		transition{node: stopState{}, sleepDuration: 0},
+		next,
+	)
 }
 
 func (s *VerifyRangeStateTestSuite) TestSuccessWithVerify() {
-	s.system.state.rangeFromLedger = 100
-	s.system.state.rangeToLedger = 110
-	s.system.state.rangeVerifyState = true
-
 	s.historyQ.On("Begin").Return(nil).Once()
 	s.historyQ.On("GetLastLedgerExpIngest").Return(uint32(0), nil).Once()
 	s.runner.On("RunHistoryArchiveIngestion", uint32(100)).Return(nil).Once()
 	s.historyQ.On("UpdateLastLedgerExpIngest", uint32(100)).Return(nil).Once()
 	s.historyQ.On("Commit").Return(nil).Once()
-	s.graph.On("Apply", uint32(s.system.state.rangeFromLedger)).Return(nil).Once()
+	s.graph.On("Apply", uint32(100)).Return(nil).Once()
 
 	for i := uint32(101); i <= 110; i++ {
 		s.historyQ.On("Begin").Return(nil).Once()
@@ -227,9 +219,14 @@ func (s *VerifyRangeStateTestSuite) TestSuccessWithVerify() {
 	}).Return(errors.New("my error")).Once()
 	clonedQ.On("Rollback").Return(nil).Once()
 
-	nextState, err := s.system.runCurrentState()
+	next, err := verifyRangeState{
+		fromLedger: 100, toLedger: 110, verifyState: true,
+	}.run(s.system)
 	s.Assert().Error(err)
 	s.Assert().EqualError(err, "Error starting transaction: my error")
-	s.Assert().Equal(shutdownState, nextState.systemState)
+	s.Assert().Equal(
+		transition{node: stopState{}, sleepDuration: 0},
+		next,
+	)
 	clonedQ.AssertExpectations(s.T())
 }
