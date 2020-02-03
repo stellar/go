@@ -510,7 +510,6 @@ func ReadChallengeTx(challengeTx, serverAccountID, network string) (tx Transacti
 //  - One or more signatures in the transaction are not identifiable as the
 //    server account or one of the signers provided in the arguments.
 //  - The signatures are all valid but do not meet the threshold.
-//  - Any signers appearing to be an accountID/address strkey (start with G) are corrupt.
 func VerifyChallengeTxThreshold(challengeTx, serverAccountID, network string, threshold Threshold, signerSummary SignerSummary) (signersFound []string, err error) {
 	signers := make([]string, 0, len(signerSummary))
 	for s := range signerSummary {
@@ -551,7 +550,6 @@ func VerifyChallengeTxThreshold(challengeTx, serverAccountID, network string, th
 //  - No client signatures are found on the transaction.
 //  - One or more signatures in the transaction are not identifiable as the
 //    server account or one of the signers provided in the arguments.
-//  - Any signers appearing to be an accountID/address strkey (start with G) are corrupt.
 func VerifyChallengeTxSigners(challengeTx, serverAccountID, network string, signers ...string) ([]string, error) {
 	// Read the transaction which validates its structure.
 	tx, _, err := ReadChallengeTx(challengeTx, serverAccountID, network)
