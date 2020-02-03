@@ -501,8 +501,7 @@ func ReadChallengeTx(challengeTx, serverAccountID, network string) (tx Transacti
 // account.
 //
 // Signers that are not prefixed as an address/account ID strkey (G...) will be
-// ignored, however signers that that are prefixed but are corrupted in some
-// other way will cause an error to be returned.
+// ignored.
 //
 // Errors will be raised if:
 //  - The transaction is invalid according to ReadChallengeTx.
@@ -542,8 +541,7 @@ func VerifyChallengeTxThreshold(challengeTx, serverAccountID, network string, th
 // signers that were found is returned, excluding the server account ID.
 //
 // Signers that are not prefixed as an address/account ID strkey (G...) will be
-// ignored, however signers that that are prefixed but are corrupted in some
-// other way will cause an error to be returned.
+// ignored.
 //
 // Errors will be raised if:
 //  - The transaction is invalid according to ReadChallengeTx.
