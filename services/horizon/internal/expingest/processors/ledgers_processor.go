@@ -66,6 +66,3 @@ func (p *LedgersProcessor) Commit() error {
 
 	return nil
 }
-
-// TODO: remove comment after https://github.com/stellar/go/pull/2172/files is merged
-// var _ io.ChangeReader = &LedgersProcessor{}
