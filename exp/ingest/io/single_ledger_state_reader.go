@@ -3,7 +3,6 @@ package io
 import (
 	"context"
 	"encoding/base64"
-	"fmt"
 	"io"
 	"sync"
 
@@ -80,7 +79,7 @@ func MakeSingleLedgerStateReader(
 ) (*SingleLedgerStateReader, error) {
 	has, err := archive.GetCheckpointHAS(sequence)
 	if err != nil {
-		return nil, fmt.Errorf("unable to get checkpoint HAS at ledger sequence %d: %s", sequence, err)
+		return nil, errors.Wrapf(err, "unable to get checkpoint HAS at ledger sequence %d", sequence)
 	}
 
 	err = tempStore.Open()
@@ -155,12 +154,16 @@ func (msr *SingleLedgerStateReader) streamBuckets() {
 
 		exists, err := msr.archive.BucketExists(hash)
 		if err != nil {
-			msr.readChan <- msr.error(fmt.Errorf("error checking if bucket exists: %s", hash))
+			msr.readChan <- msr.error(
+				errors.Wrapf(err, "error checking if bucket exists: %s", hash),
+			)
 			return
 		}
 
 		if !exists {
-			msr.readChan <- msr.error(fmt.Errorf("bucket hash does not exist: %s", hash))
+			msr.readChan <- msr.error(
+				errors.Errorf("bucket hash does not exist: %s", hash),
+			)
 			return
 		}
 
@@ -236,7 +239,9 @@ func (msr *SingleLedgerStateReader) newXDRStream(hash historyarchive.Hash) (
 func (msr *SingleLedgerStateReader) streamBucketContents(hash historyarchive.Hash) bool {
 	rdr, e := msr.newXDRStream(hash)
 	if e != nil {
-		msr.readChan <- msr.error(fmt.Errorf("cannot get xdr stream for hash '%s': %s", hash.String(), e))
+		msr.readChan <- msr.error(
+			errors.Wrapf(e, "cannot get xdr stream for hash '%s'", hash.String()),
+		)
 		return false
 	}
 
@@ -279,7 +284,9 @@ LoopBucketEntry:
 						lastBatch = true
 						break
 					}
-					msr.readChan <- msr.error(fmt.Errorf("Error on XDR record %d of hash '%s': %s", n, hash.String(), e))
+					msr.readChan <- msr.error(
+						errors.Wrapf(e, "Error on XDR record %d of hash '%s'", n, hash.String()),
+					)
 					return false
 				}
 
@@ -302,7 +309,9 @@ LoopBucketEntry:
 				// We're using compressed keys here
 				keyBytes, e := key.MarshalBinaryCompress()
 				if e != nil {
-					msr.readChan <- msr.error(fmt.Errorf("Error marshaling XDR record %d of hash '%s': %s", n, hash.String(), e))
+					msr.readChan <- msr.error(
+						errors.Wrapf(e, "Error marshaling XDR record %d of hash '%s'", n, hash.String()),
+					)
 					return false
 				}
 
@@ -327,7 +336,12 @@ LoopBucketEntry:
 		switch entry.Type {
 		case xdr.BucketEntryTypeMetaentry:
 			if n != 0 {
-				msr.readChan <- msr.error(fmt.Errorf("METAENTRY not the first entry (n=%d) in the bucket hash '%s'", n, hash.String()))
+				msr.readChan <- msr.error(
+					errors.Errorf(
+						"METAENTRY not the first entry (n=%d) in the bucket hash '%s'",
+						n, hash.String(),
+					),
+				)
 				return false
 			}
 			// We can't use MustMetaEntry() here. Check:
@@ -340,14 +354,20 @@ LoopBucketEntry:
 		case xdr.BucketEntryTypeDeadentry:
 			key = entry.MustDeadEntry()
 		default:
-			msr.readChan <- msr.error(fmt.Errorf("Unknown BucketEntryType=%d: %d@%s", entry.Type, n, hash.String()))
+			msr.readChan <- msr.error(
+				errors.Errorf("Unknown BucketEntryType=%d: %d@%s", entry.Type, n, hash.String()),
+			)
 			return false
 		}
 
 		// We're using compressed keys here
 		keyBytes, e := key.MarshalBinaryCompress()
 		if e != nil {
-			msr.readChan <- msr.error(fmt.Errorf("Error marshaling XDR record %d of hash '%s': %s", n, hash.String(), e))
+			msr.readChan <- msr.error(
+				errors.Wrapf(
+					e, "Error marshaling XDR record %d of hash '%s'", n, hash.String(),
+				),
+			)
 			return false
 		}
 
@@ -356,7 +376,9 @@ LoopBucketEntry:
 		switch entry.Type {
 		case xdr.BucketEntryTypeLiveentry, xdr.BucketEntryTypeInitentry:
 			if entry.Type == xdr.BucketEntryTypeInitentry && bucketProtocolVersion < 11 {
-				msr.readChan <- msr.error(fmt.Errorf("Read INITENTRY from version <11 bucket: %d@%s", n, hash.String()))
+				msr.readChan <- msr.error(
+					errors.Errorf("Read INITENTRY from version <11 bucket: %d@%s", n, hash.String()),
+				)
 				return false
 			}
 
@@ -395,7 +417,9 @@ LoopBucketEntry:
 				return false
 			}
 		default:
-			msr.readChan <- msr.error(fmt.Errorf("Unexpected entry type %d: %d@%s", entry.Type, n, hash.String()))
+			msr.readChan <- msr.error(
+				errors.Errorf("Unexpected entry type %d: %d@%s", entry.Type, n, hash.String()),
+			)
 			return false
 		}
 

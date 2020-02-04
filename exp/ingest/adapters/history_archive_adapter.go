@@ -2,7 +2,6 @@ package adapters
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/stellar/go/exp/ingest/io"
 	"github.com/stellar/go/support/errors"
@@ -30,9 +29,9 @@ func MakeHistoryArchiveAdapter(archive historyarchive.ArchiveInterface) HistoryA
 
 // GetLatestLedgerSequence returns the latest ledger sequence or an error
 func (haa *HistoryArchiveAdapter) GetLatestLedgerSequence() (uint32, error) {
-	has, e := haa.archive.GetRootHAS()
-	if e != nil {
-		return 0, fmt.Errorf("could not get root HAS: %s", e)
+	has, err := haa.archive.GetRootHAS()
+	if err != nil {
+		return 0, errors.Wrap(err, "could not get root HAS")
 	}
 
 	return has.CurrentLedger, nil
@@ -46,12 +45,12 @@ func (haa *HistoryArchiveAdapter) BucketListHash(sequence uint32) (xdr.Hash, err
 		return xdr.Hash{}, errors.Wrap(err, "error checking if category checkpoint exists")
 	}
 	if !exists {
-		return xdr.Hash{}, fmt.Errorf("history checkpoint does not exist for ledger %d", sequence)
+		return xdr.Hash{}, errors.Errorf("history checkpoint does not exist for ledger %d", sequence)
 	}
 
 	has, err := haa.archive.GetCheckpointHAS(sequence)
 	if err != nil {
-		return xdr.Hash{}, fmt.Errorf("unable to get checkpoint HAS at ledger sequence %d: %s", sequence, err)
+		return xdr.Hash{}, errors.Wrapf(err, "unable to get checkpoint HAS at ledger sequence %d", sequence)
 	}
 
 	return has.BucketListHash()
@@ -69,7 +68,7 @@ func (haa *HistoryArchiveAdapter) GetState(
 		return nil, errors.Wrap(err, "error checking if category checkpoint exists")
 	}
 	if !exists {
-		return nil, fmt.Errorf("history checkpoint does not exist for ledger %d", sequence)
+		return nil, errors.Errorf("history checkpoint does not exist for ledger %d", sequence)
 	}
 
 	sr, e := io.MakeSingleLedgerStateReader(ctx, haa.archive, tempSet, sequence, maxStreamRetries)
