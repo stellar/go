@@ -136,16 +136,13 @@ func TestContextCancel(t *testing.T) {
 	system := &System{
 		historyQ: historyQ,
 		ctx:      ctx,
-		state: state{
-			systemState: initState,
-		},
 	}
 
 	historyQ.On("GetTx").Return(nil).Once()
 	historyQ.On("Begin").Return(errors.New("my error")).Once()
 
 	cancel()
-	assert.NoError(t, system.run())
+	assert.NoError(t, system.runStateMachine(startState{}))
 }
 
 // TestStateMachineRunReturnsErrorWhenNextStateIsShutdownWithError checks if the
@@ -156,17 +153,14 @@ func TestStateMachineRunReturnsErrorWhenNextStateIsShutdownWithError(t *testing.
 	historyQ := &mockDBQ{}
 	graph := &mockOrderBookGraph{}
 	system := &System{
-		ctx: context.Background(),
-		state: state{
-			systemState: verifyRangeState,
-		},
+		ctx:      context.Background(),
 		historyQ: historyQ,
 		graph:    graph,
 	}
 
 	historyQ.On("GetTx").Return(nil).Once()
 
-	err := system.run()
+	err := system.runStateMachine(verifyRangeState{})
 	assert.Error(t, err)
 	assert.EqualError(t, err, "invalid range: [0, 0]")
 }

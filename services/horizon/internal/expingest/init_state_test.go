@@ -29,15 +29,11 @@ func (s *InitStateTestSuite) SetupTest() {
 	s.historyAdapter = &adapters.MockHistoryArchiveAdapter{}
 	s.system = &System{
 		ctx:            context.Background(),
-		state:          state{systemState: initState},
 		historyQ:       s.historyQ,
 		historyAdapter: s.historyAdapter,
 		graph:          s.graph,
 	}
 
-	s.Assert().Equal(initState, s.system.state.systemState)
-	// Checking if in tx in runCurrentState()
-	s.historyQ.On("GetTx").Return(nil).Once()
 	s.historyQ.On("Rollback").Return(nil).Once()
 }
 
@@ -51,23 +47,22 @@ func (s *InitStateTestSuite) TearDownTest() {
 func (s *InitStateTestSuite) TestBeginReturnsError() {
 	// Recreate mock in this single test to remove Rollback assertion.
 	*s.historyQ = mockDBQ{}
-	s.historyQ.On("GetTx").Return(nil).Once()
 	s.historyQ.On("Begin").Return(errors.New("my error")).Once()
 
-	nextState, err := s.system.runCurrentState()
+	next, err := startState{}.run(s.system)
 	s.Assert().Error(err)
 	s.Assert().EqualError(err, "Error starting a transaction: my error")
-	s.Assert().Equal(initState, nextState.systemState)
+	s.Assert().Equal(transition{node: startState{}, sleepDuration: defaultSleep}, next)
 }
 
 func (s *InitStateTestSuite) TestGetLastLedgerExpIngestReturnsError() {
 	s.historyQ.On("Begin").Return(nil).Once()
 	s.historyQ.On("GetLastLedgerExpIngest").Return(uint32(0), errors.New("my error")).Once()
 
-	nextState, err := s.system.runCurrentState()
+	next, err := startState{}.run(s.system)
 	s.Assert().Error(err)
 	s.Assert().EqualError(err, "Error getting last ingested ledger: my error")
-	s.Assert().Equal(initState, nextState.systemState)
+	s.Assert().Equal(transition{node: startState{}, sleepDuration: defaultSleep}, next)
 }
 
 func (s *InitStateTestSuite) TestGetExpIngestVersionReturnsError() {
@@ -75,10 +70,20 @@ func (s *InitStateTestSuite) TestGetExpIngestVersionReturnsError() {
 	s.historyQ.On("GetLastLedgerExpIngest").Return(uint32(0), nil).Once()
 	s.historyQ.On("GetExpIngestVersion").Return(0, errors.New("my error")).Once()
 
-	nextState, err := s.system.runCurrentState()
+	next, err := startState{}.run(s.system)
 	s.Assert().Error(err)
 	s.Assert().EqualError(err, "Error getting exp ingest version: my error")
-	s.Assert().Equal(initState, nextState.systemState)
+	s.Assert().Equal(transition{node: startState{}, sleepDuration: defaultSleep}, next)
+}
+
+func (s *InitStateTestSuite) TestCurrentVersionIsOutdated() {
+	s.historyQ.On("Begin").Return(nil).Once()
+	s.historyQ.On("GetLastLedgerExpIngest").Return(uint32(1), nil).Once()
+	s.historyQ.On("GetExpIngestVersion").Return(CurrentVersion+1, nil).Once()
+
+	next, err := startState{}.run(s.system)
+	s.Assert().NoError(err)
+	s.Assert().Equal(transition{node: stopState{}, sleepDuration: 0}, next)
 }
 
 func (s *InitStateTestSuite) TestGetLatestLedgerReturnsError() {
@@ -87,10 +92,10 @@ func (s *InitStateTestSuite) TestGetLatestLedgerReturnsError() {
 	s.historyQ.On("GetExpIngestVersion").Return(0, nil).Once()
 	s.historyQ.On("GetLatestLedger").Return(uint32(0), errors.New("my error")).Once()
 
-	nextState, err := s.system.runCurrentState()
+	next, err := startState{}.run(s.system)
 	s.Assert().Error(err)
 	s.Assert().EqualError(err, "Error getting last history ledger sequence: my error")
-	s.Assert().Equal(initState, nextState.systemState)
+	s.Assert().Equal(transition{node: startState{}, sleepDuration: defaultSleep}, next)
 }
 
 func (s *InitStateTestSuite) TestBuildStateEmptyDatabase() {
@@ -101,10 +106,12 @@ func (s *InitStateTestSuite) TestBuildStateEmptyDatabase() {
 
 	s.historyAdapter.On("GetLatestLedgerSequence").Return(uint32(63), nil).Once()
 
-	nextState, err := s.system.runCurrentState()
+	next, err := startState{}.run(s.system)
 	s.Assert().NoError(err)
-	s.Assert().Equal(buildStateState, nextState.systemState)
-	s.Assert().Equal(uint32(63), nextState.checkpointLedger)
+	s.Assert().Equal(
+		transition{node: buildState{checkpointLedger: 63}, sleepDuration: defaultSleep},
+		next,
+	)
 }
 
 // TestBuildStateWait is testing the case when:
@@ -118,9 +125,12 @@ func (s *InitStateTestSuite) TestBuildStateWait() {
 
 	s.historyAdapter.On("GetLatestLedgerSequence").Return(uint32(63), nil).Once()
 
-	nextState, err := s.system.runCurrentState()
+	next, err := startState{}.run(s.system)
 	s.Assert().NoError(err)
-	s.Assert().Equal(waitForCheckpointState, nextState.systemState)
+	s.Assert().Equal(
+		transition{node: waitForCheckpointState{}, sleepDuration: 0},
+		next,
+	)
 }
 
 // TestBuildStateCatchup is testing the case when:
@@ -134,11 +144,15 @@ func (s *InitStateTestSuite) TestBuildStateCatchup() {
 
 	s.historyAdapter.On("GetLatestLedgerSequence").Return(uint32(127), nil).Once()
 
-	nextState, err := s.system.runCurrentState()
+	next, err := startState{}.run(s.system)
 	s.Assert().NoError(err)
-	s.Assert().Equal(ingestHistoryRangeState, nextState.systemState)
-	s.Assert().Equal(uint32(101), nextState.rangeFromLedger)
-	s.Assert().Equal(uint32(127), nextState.rangeToLedger)
+	s.Assert().Equal(
+		transition{
+			node:          historyRangeState{fromLedger: 101, toLedger: 127},
+			sleepDuration: defaultSleep,
+		},
+		next,
+	)
 }
 
 // TestBuildStateOldHistory is testing the case when:
@@ -152,10 +166,15 @@ func (s *InitStateTestSuite) TestBuildStateOldHistory() {
 
 	s.historyAdapter.On("GetLatestLedgerSequence").Return(uint32(127), nil).Once()
 
-	nextState, err := s.system.runCurrentState()
+	next, err := startState{}.run(s.system)
 	s.Assert().NoError(err)
-	s.Assert().Equal(buildStateState, nextState.systemState)
-	s.Assert().Equal(uint32(127), nextState.checkpointLedger)
+	s.Assert().Equal(
+		transition{
+			node:          buildState{checkpointLedger: 127},
+			sleepDuration: defaultSleep,
+		},
+		next,
+	)
 }
 
 // TestResumeStateBehind is testing the case when:
@@ -170,9 +189,9 @@ func (s *InitStateTestSuite) TestResumeStateInFront() {
 	s.historyQ.On("UpdateLastLedgerExpIngest", uint32(0)).Return(nil).Once()
 	s.historyQ.On("Commit").Return(nil).Once()
 
-	nextState, err := s.system.runCurrentState()
+	next, err := startState{}.run(s.system)
 	s.Assert().NoError(err)
-	s.Assert().Equal(initState, nextState.systemState)
+	s.Assert().Equal(transition{node: startState{}, sleepDuration: defaultSleep}, next)
 }
 
 // TestResumeStateBehind is testing the case when:
@@ -184,11 +203,15 @@ func (s *InitStateTestSuite) TestResumeStateBehind() {
 	s.historyQ.On("GetExpIngestVersion").Return(CurrentVersion, nil).Once()
 	s.historyQ.On("GetLatestLedger").Return(uint32(100), nil).Once()
 
-	nextState, err := s.system.runCurrentState()
+	next, err := startState{}.run(s.system)
 	s.Assert().NoError(err)
-	s.Assert().Equal(ingestHistoryRangeState, nextState.systemState)
-	s.Assert().Equal(uint32(101), nextState.rangeFromLedger)
-	s.Assert().Equal(uint32(130), nextState.rangeToLedger)
+	s.Assert().Equal(
+		transition{
+			node:          historyRangeState{fromLedger: 101, toLedger: 130},
+			sleepDuration: defaultSleep,
+		},
+		next,
+	)
 }
 
 // TestResumeStateBehindHistory0 is testing the case when:
@@ -257,10 +280,15 @@ func (s *InitStateTestSuite) TestResumeStateBehindHistory0() {
 	s.graph.On("Apply", uint32(130)).Return(nil).Once()
 	s.graph.On("Discard").Once()
 
-	nextState, err := s.system.runCurrentState()
+	next, err := startState{}.run(s.system)
 	s.Assert().NoError(err)
-	s.Assert().Equal(resumeState, nextState.systemState)
-	s.Assert().Equal(uint32(130), nextState.latestSuccessfullyProcessedLedger)
+	s.Assert().Equal(
+		transition{
+			node:          resumeState{latestSuccessfullyProcessedLedger: 130},
+			sleepDuration: defaultSleep,
+		},
+		next,
+	)
 }
 
 // TestResumeStateBehind is testing the case when:
@@ -328,8 +356,13 @@ func (s *InitStateTestSuite) TestResumeStateSync() {
 	s.graph.On("Apply", uint32(130)).Return(nil).Once()
 	s.graph.On("Discard").Once()
 
-	nextState, err := s.system.runCurrentState()
+	next, err := startState{}.run(s.system)
 	s.Assert().NoError(err)
-	s.Assert().Equal(resumeState, nextState.systemState)
-	s.Assert().Equal(uint32(130), nextState.latestSuccessfullyProcessedLedger)
+	s.Assert().Equal(
+		transition{
+			node:          resumeState{latestSuccessfullyProcessedLedger: 130},
+			sleepDuration: defaultSleep,
+		},
+		next,
+	)
 }

@@ -34,11 +34,7 @@ func (s *ResumeTestTestSuite) SetupTest() {
 	s.runner = &mockProcessorsRunner{}
 	s.stellarCoreClient = &mockStellarCoreClient{}
 	s.system = &System{
-		ctx: context.Background(),
-		state: state{
-			systemState:                       resumeState,
-			latestSuccessfullyProcessedLedger: 100,
-		},
+		ctx:               context.Background(),
 		historyQ:          s.historyQ,
 		historyAdapter:    s.historyAdapter,
 		runner:            s.runner,
@@ -47,9 +43,6 @@ func (s *ResumeTestTestSuite) SetupTest() {
 		stellarCoreClient: s.stellarCoreClient,
 	}
 
-	s.Assert().Equal(resumeState, s.system.state.systemState)
-	// Checking if in tx in runCurrentState()
-	s.historyQ.On("GetTx").Return(nil).Once()
 	s.historyQ.On("Rollback").Return(nil).Once()
 	s.graph.On("Discard").Once()
 }
@@ -67,58 +60,162 @@ func (s *ResumeTestTestSuite) TearDownTest() {
 func (s *ResumeTestTestSuite) TestInvalidParam() {
 	// Recreate mock in this single test to remove Rollback assertion.
 	*s.historyQ = mockDBQ{}
-	s.historyQ.On("GetTx").Return(nil).Maybe()
 
 	// Recreate orderbook graph to remove Discard assertion
 	*s.graph = mockOrderBookGraph{}
 
-	s.system.state.latestSuccessfullyProcessedLedger = 0
-	nextState, err := s.system.runCurrentState()
+	next, err := resumeState{latestSuccessfullyProcessedLedger: 0}.run(s.system)
 	s.Assert().Error(err)
 	s.Assert().EqualError(err, "unexpected latestSuccessfullyProcessedLedger value")
-	s.Assert().Equal(initState, nextState.systemState)
+	s.Assert().Equal(
+		transition{node: startState{}, sleepDuration: defaultSleep},
+		next,
+	)
 }
 
 func (s *ResumeTestTestSuite) TestBeginReturnsError() {
 	// Recreate mock in this single test to remove Rollback assertion.
 	*s.historyQ = mockDBQ{}
-	s.historyQ.On("GetTx").Return(nil).Once()
 	s.historyQ.On("Begin").Return(errors.New("my error")).Once()
 
 	// Recreate orderbook graph to remove Discard assertion
 	*s.graph = mockOrderBookGraph{}
 
-	nextState, err := s.system.runCurrentState()
+	next, err := resumeState{latestSuccessfullyProcessedLedger: 100}.run(s.system)
 	s.Assert().Error(err)
 	s.Assert().EqualError(err, "Error starting a transaction: my error")
-	s.Assert().Equal(resumeState, nextState.systemState)
-	s.Assert().Equal(uint32(100), nextState.latestSuccessfullyProcessedLedger)
+	s.Assert().Equal(
+		transition{
+			node:          resumeState{latestSuccessfullyProcessedLedger: 100},
+			sleepDuration: defaultSleep,
+		},
+		next,
+	)
 }
 
 func (s *ResumeTestTestSuite) TestGetLastLedgerExpIngestReturnsError() {
 	s.historyQ.On("Begin").Return(nil).Once()
 	s.historyQ.On("GetLastLedgerExpIngest").Return(uint32(0), errors.New("my error")).Once()
 
-	nextState, err := s.system.runCurrentState()
+	next, err := resumeState{latestSuccessfullyProcessedLedger: 100}.run(s.system)
 	s.Assert().Error(err)
 	s.Assert().EqualError(err, "Error getting last ingested ledger: my error")
-	s.Assert().Equal(resumeState, nextState.systemState)
-	s.Assert().Equal(uint32(100), nextState.latestSuccessfullyProcessedLedger)
+	s.Assert().Equal(
+		transition{
+			node:          resumeState{latestSuccessfullyProcessedLedger: 100},
+			sleepDuration: defaultSleep,
+		},
+		next,
+	)
 }
 
 func (s *ResumeTestTestSuite) TestGetLatestLedgerLessThanCurrent() {
 	s.historyQ.On("Begin").Return(nil).Once()
 	s.historyQ.On("GetLastLedgerExpIngest").Return(uint32(99), nil).Once()
 
-	nextState, err := s.system.runCurrentState()
+	next, err := resumeState{latestSuccessfullyProcessedLedger: 100}.run(s.system)
 	s.Assert().Error(err)
 	s.Assert().EqualError(err, "expected ingest ledger to be at most one greater than last ingested ledger in db")
-	s.Assert().Equal(initState, nextState.systemState)
+	s.Assert().Equal(
+		transition{node: startState{}, sleepDuration: defaultSleep},
+		next,
+	)
+}
+
+func (s *ResumeTestTestSuite) TestGetIngestionVersionError() {
+	s.historyQ.On("Begin").Return(nil).Once()
+	s.historyQ.On("GetLastLedgerExpIngest").Return(uint32(100), nil).Once()
+	s.historyQ.On("GetExpIngestVersion").Return(0, errors.New("my error")).Once()
+
+	next, err := resumeState{latestSuccessfullyProcessedLedger: 100}.run(s.system)
+	s.Assert().Error(err)
+	s.Assert().EqualError(err, "Error getting exp ingest version: my error")
+	s.Assert().Equal(
+		transition{
+			node:          resumeState{latestSuccessfullyProcessedLedger: 100},
+			sleepDuration: defaultSleep,
+		},
+		next,
+	)
+}
+
+func (s *ResumeTestTestSuite) TestIngestionVersionLessThanCurrentVersion() {
+	s.historyQ.On("Begin").Return(nil).Once()
+	s.historyQ.On("GetLastLedgerExpIngest").Return(uint32(100), nil).Once()
+	s.historyQ.On("GetExpIngestVersion").Return(CurrentVersion-1, nil).Once()
+
+	next, err := resumeState{latestSuccessfullyProcessedLedger: 100}.run(s.system)
+	s.Assert().NoError(err)
+	s.Assert().Equal(
+		transition{node: startState{}, sleepDuration: defaultSleep},
+		next,
+	)
+}
+
+func (s *ResumeTestTestSuite) TestIngestionVersionGreaterThanCurrentVersion() {
+	s.historyQ.On("Begin").Return(nil).Once()
+	s.historyQ.On("GetLastLedgerExpIngest").Return(uint32(100), nil).Once()
+	s.historyQ.On("GetExpIngestVersion").Return(CurrentVersion+1, nil).Once()
+
+	next, err := resumeState{latestSuccessfullyProcessedLedger: 100}.run(s.system)
+	s.Assert().NoError(err)
+	s.Assert().Equal(
+		transition{node: startState{}, sleepDuration: defaultSleep},
+		next,
+	)
+}
+
+func (s *ResumeTestTestSuite) TestGetLatestLedgerError() {
+	s.historyQ.On("Begin").Return(nil).Once()
+	s.historyQ.On("GetLastLedgerExpIngest").Return(uint32(100), nil).Once()
+	s.historyQ.On("GetExpIngestVersion").Return(CurrentVersion, nil).Once()
+	s.historyQ.On("GetLatestLedger").Return(uint32(0), errors.New("my error"))
+
+	next, err := resumeState{latestSuccessfullyProcessedLedger: 100}.run(s.system)
+	s.Assert().Error(err)
+	s.Assert().EqualError(err, "could not get latest history ledger: my error")
+	s.Assert().Equal(
+		transition{
+			node:          resumeState{latestSuccessfullyProcessedLedger: 100},
+			sleepDuration: defaultSleep,
+		},
+		next,
+	)
+}
+
+func (s *ResumeTestTestSuite) TestLatestHistoryLedgerLessThanIngestLedger() {
+	s.historyQ.On("Begin").Return(nil).Once()
+	s.historyQ.On("GetLastLedgerExpIngest").Return(uint32(100), nil).Once()
+	s.historyQ.On("GetExpIngestVersion").Return(CurrentVersion, nil).Once()
+	s.historyQ.On("GetLatestLedger").Return(uint32(99), nil)
+
+	next, err := resumeState{latestSuccessfullyProcessedLedger: 100}.run(s.system)
+	s.Assert().NoError(err)
+	s.Assert().Equal(
+		transition{node: startState{}, sleepDuration: defaultSleep},
+		next,
+	)
+}
+
+func (s *ResumeTestTestSuite) TestLatestHistoryLedgerGreaterThanIngestLedger() {
+	s.historyQ.On("Begin").Return(nil).Once()
+	s.historyQ.On("GetLastLedgerExpIngest").Return(uint32(100), nil).Once()
+	s.historyQ.On("GetExpIngestVersion").Return(CurrentVersion, nil).Once()
+	s.historyQ.On("GetLatestLedger").Return(uint32(101), nil)
+
+	next, err := resumeState{latestSuccessfullyProcessedLedger: 100}.run(s.system)
+	s.Assert().NoError(err)
+	s.Assert().Equal(
+		transition{node: startState{}, sleepDuration: defaultSleep},
+		next,
+	)
 }
 
 func (s *ResumeTestTestSuite) TestIngestOrderbookOnly() {
 	s.historyQ.On("Begin").Return(nil).Once()
 	s.historyQ.On("GetLastLedgerExpIngest").Return(uint32(110), nil).Once()
+	s.historyQ.On("GetExpIngestVersion").Return(CurrentVersion, nil).Once()
+	s.historyQ.On("GetLatestLedger").Return(uint32(0), nil)
 
 	s.ledgeBackend.On("GetLatestLedgerSequence").Return(uint32(111), nil).Once()
 
@@ -127,11 +224,15 @@ func (s *ResumeTestTestSuite) TestIngestOrderbookOnly() {
 	s.runner.On("RunOrderBookProcessorOnLedger", uint32(101)).Return(nil).Once()
 	s.graph.On("Apply", uint32(101)).Return(nil).Once()
 
-	nextState, err := s.system.runCurrentState()
+	next, err := resumeState{latestSuccessfullyProcessedLedger: 100}.run(s.system)
 	s.Assert().NoError(err)
-	s.Assert().Equal(resumeState, nextState.systemState)
-	s.Assert().Equal(uint32(101), nextState.latestSuccessfullyProcessedLedger)
-	s.Assert().True(nextState.noSleep)
+	s.Assert().Equal(
+		transition{
+			node:          resumeState{latestSuccessfullyProcessedLedger: 101},
+			sleepDuration: 0,
+		},
+		next,
+	)
 }
 
 // TestIngestOrderbookOnlyWhenLastLedgerExpEqualsCurrent is very similar to the test above
@@ -140,6 +241,8 @@ func (s *ResumeTestTestSuite) TestIngestOrderbookOnly() {
 func (s *ResumeTestTestSuite) TestIngestOrderbookOnlyWhenLastLedgerExpEqualsCurrent() {
 	s.historyQ.On("Begin").Return(nil).Once()
 	s.historyQ.On("GetLastLedgerExpIngest").Return(uint32(101), nil).Once()
+	s.historyQ.On("GetExpIngestVersion").Return(CurrentVersion, nil).Once()
+	s.historyQ.On("GetLatestLedger").Return(uint32(101), nil)
 
 	s.ledgeBackend.On("GetLatestLedgerSequence").Return(uint32(111), nil).Once()
 
@@ -148,16 +251,22 @@ func (s *ResumeTestTestSuite) TestIngestOrderbookOnlyWhenLastLedgerExpEqualsCurr
 	s.runner.On("RunOrderBookProcessorOnLedger", uint32(101)).Return(nil).Once()
 	s.graph.On("Apply", uint32(101)).Return(nil).Once()
 
-	nextState, err := s.system.runCurrentState()
+	next, err := resumeState{latestSuccessfullyProcessedLedger: 100}.run(s.system)
 	s.Assert().NoError(err)
-	s.Assert().Equal(resumeState, nextState.systemState)
-	s.Assert().Equal(uint32(101), nextState.latestSuccessfullyProcessedLedger)
-	s.Assert().True(nextState.noSleep)
+	s.Assert().Equal(
+		transition{
+			node:          resumeState{latestSuccessfullyProcessedLedger: 101},
+			sleepDuration: 0,
+		},
+		next,
+	)
 }
 
 func (s *ResumeTestTestSuite) TestIngestAllMasterNode() {
 	s.historyQ.On("Begin").Return(nil).Once()
 	s.historyQ.On("GetLastLedgerExpIngest").Return(uint32(100), nil).Once()
+	s.historyQ.On("GetExpIngestVersion").Return(CurrentVersion, nil).Once()
+	s.historyQ.On("GetLatestLedger").Return(uint32(0), nil)
 
 	s.ledgeBackend.On("GetLatestLedgerSequence").Return(uint32(111), nil).Once()
 
@@ -175,16 +284,22 @@ func (s *ResumeTestTestSuite) TestIngestAllMasterNode() {
 
 	s.historyQ.On("GetExpStateInvalid").Return(false, nil).Once()
 
-	nextState, err := s.system.runCurrentState()
+	next, err := resumeState{latestSuccessfullyProcessedLedger: 100}.run(s.system)
 	s.Assert().NoError(err)
-	s.Assert().Equal(resumeState, nextState.systemState)
-	s.Assert().Equal(uint32(101), nextState.latestSuccessfullyProcessedLedger)
-	s.Assert().True(nextState.noSleep)
+	s.Assert().Equal(
+		transition{
+			node:          resumeState{latestSuccessfullyProcessedLedger: 101},
+			sleepDuration: 0,
+		},
+		next,
+	)
 }
 
 func (s *ResumeTestTestSuite) TestErrorSettingCursorIgnored() {
 	s.historyQ.On("Begin").Return(nil).Once()
 	s.historyQ.On("GetLastLedgerExpIngest").Return(uint32(100), nil).Once()
+	s.historyQ.On("GetExpIngestVersion").Return(CurrentVersion, nil).Once()
+	s.historyQ.On("GetLatestLedger").Return(uint32(0), nil)
 
 	s.ledgeBackend.On("GetLatestLedgerSequence").Return(uint32(111), nil).Once()
 
@@ -202,24 +317,34 @@ func (s *ResumeTestTestSuite) TestErrorSettingCursorIgnored() {
 
 	s.historyQ.On("GetExpStateInvalid").Return(false, nil).Once()
 
-	nextState, err := s.system.runCurrentState()
+	next, err := resumeState{latestSuccessfullyProcessedLedger: 100}.run(s.system)
 	s.Assert().NoError(err)
-	s.Assert().Equal(resumeState, nextState.systemState)
-	s.Assert().Equal(uint32(101), nextState.latestSuccessfullyProcessedLedger)
-	s.Assert().True(nextState.noSleep)
+	s.Assert().Equal(
+		transition{
+			node:          resumeState{latestSuccessfullyProcessedLedger: 101},
+			sleepDuration: 0,
+		},
+		next,
+	)
 }
 
 func (s *ResumeTestTestSuite) TestNoNewLedgers() {
 	s.historyQ.On("Begin").Return(nil).Once()
 	s.historyQ.On("GetLastLedgerExpIngest").Return(uint32(100), nil).Once()
+	s.historyQ.On("GetExpIngestVersion").Return(CurrentVersion, nil).Once()
+	s.historyQ.On("GetLatestLedger").Return(uint32(0), nil)
 
 	s.ledgeBackend.On("GetLatestLedgerSequence").Return(uint32(100), nil).Once()
 
-	nextState, err := s.system.runCurrentState()
+	next, err := resumeState{latestSuccessfullyProcessedLedger: 100}.run(s.system)
 	s.Assert().NoError(err)
-	s.Assert().Equal(resumeState, nextState.systemState)
-	// Check the same ledger later
-	s.Assert().Equal(uint32(100), nextState.latestSuccessfullyProcessedLedger)
-	// Sleep because we learned the ledger is not there yet.
-	s.Assert().False(nextState.noSleep)
+	s.Assert().Equal(
+		transition{
+			// Check the same ledger later
+			node: resumeState{latestSuccessfullyProcessedLedger: 100},
+			// Sleep because we learned the ledger is not there yet.
+			sleepDuration: defaultSleep,
+		},
+		next,
+	)
 }

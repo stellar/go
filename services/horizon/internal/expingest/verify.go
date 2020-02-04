@@ -32,7 +32,10 @@ const stateVerifierExpectedIngestionVersion = 10
 // verifyState is called as a go routine from pipeline post hook every 64
 // ledgers. It checks if the state is correct. If another go routine is already
 // running it exits.
-func (s *System) verifyState(graphOffers map[xdr.Int64]xdr.OfferEntry) error {
+func (s *System) verifyState(
+	graphOffers map[xdr.Int64]xdr.OfferEntry,
+	verifyAgainstLatestCheckpoint bool,
+) error {
 	s.stateVerificationMutex.Lock()
 	if s.stateVerificationRunning {
 		log.Warn("State verification is already running...")
@@ -84,20 +87,17 @@ func (s *System) verifyState(graphOffers map[xdr.Int64]xdr.OfferEntry) error {
 		localLog.Info("Current ledger is not a checkpoint ledger. Cancelling...")
 		return nil
 	}
-	// Get root HAS to check if we're checking one of the latest ledgers or
-	// Horizon is catching up. It doesn't make sense to verify old ledgers as
-	// we want to check the latest state.
-	historyLatestSequence, err := s.historyAdapter.GetLatestLedgerSequence()
-	if err != nil {
-		return errors.Wrap(err, "Error getting the latest ledger sequence")
-	}
 
-	if s.state.systemState == verifyRangeState {
-		if ledgerSequence != s.state.rangeToLedger {
-			localLog.Info("Current ledger is not the last ledger in the range. Cancelling...")
-			return nil
+	if verifyAgainstLatestCheckpoint {
+		// Get root HAS to check if we're checking one of the latest ledgers or
+		// Horizon is catching up. It doesn't make sense to verify old ledgers as
+		// we want to check the latest state.
+		var historyLatestSequence uint32
+		historyLatestSequence, err = s.historyAdapter.GetLatestLedgerSequence()
+		if err != nil {
+			return errors.Wrap(err, "Error getting the latest ledger sequence")
 		}
-	} else {
+
 		if ledgerSequence < historyLatestSequence {
 			localLog.Info("Current ledger is old. Cancelling...")
 			return nil

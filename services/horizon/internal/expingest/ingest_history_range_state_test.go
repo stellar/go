@@ -27,18 +27,12 @@ func (s *IngestHistoryRangeStateTestSuite) SetupTest() {
 	s.historyAdapter = &adapters.MockHistoryArchiveAdapter{}
 	s.runner = &mockProcessorsRunner{}
 	s.system = &System{
-		ctx: context.Background(),
-		state: state{
-			systemState: ingestHistoryRangeState,
-		},
+		ctx:            context.Background(),
 		historyQ:       s.historyQ,
 		historyAdapter: s.historyAdapter,
 		runner:         s.runner,
 	}
 
-	s.Assert().Equal(ingestHistoryRangeState, s.system.state.systemState)
-	// Checking if in tx in runCurrentState()
-	s.historyQ.On("GetTx").Return(nil).Once()
 	s.historyQ.On("Rollback").Return(nil).Once()
 }
 
@@ -52,114 +46,86 @@ func (s *IngestHistoryRangeStateTestSuite) TearDownTest() {
 func (s *IngestHistoryRangeStateTestSuite) TestInvalidRange() {
 	// Recreate mock in this single test to remove Rollback assertion.
 	*s.historyQ = mockDBQ{}
-	s.historyQ.On("GetTx").Return(nil).Maybe()
 
-	s.system.state.rangeFromLedger = 0
-	s.system.state.rangeToLedger = 0
-	nextState, err := s.system.runCurrentState()
+	next, err := historyRangeState{fromLedger: 0, toLedger: 0}.run(s.system)
 	s.Assert().Error(err)
 	s.Assert().EqualError(err, "invalid range: [0, 0]")
-	s.Assert().Equal(initState, nextState.systemState)
+	s.Assert().Equal(transition{node: startState{}, sleepDuration: defaultSleep}, next)
 
-	s.system.state.rangeFromLedger = 0
-	s.system.state.rangeToLedger = 100
-	nextState, err = s.system.runCurrentState()
+	next, err = historyRangeState{fromLedger: 0, toLedger: 100}.run(s.system)
 	s.Assert().Error(err)
 	s.Assert().EqualError(err, "invalid range: [0, 100]")
-	s.Assert().Equal(initState, nextState.systemState)
+	s.Assert().Equal(transition{node: startState{}, sleepDuration: defaultSleep}, next)
 
-	s.system.state.rangeFromLedger = 100
-	s.system.state.rangeToLedger = 0
-	nextState, err = s.system.runCurrentState()
+	next, err = historyRangeState{fromLedger: 100, toLedger: 0}.run(s.system)
 	s.Assert().Error(err)
 	s.Assert().EqualError(err, "invalid range: [100, 0]")
-	s.Assert().Equal(initState, nextState.systemState)
+	s.Assert().Equal(transition{node: startState{}, sleepDuration: defaultSleep}, next)
 
-	s.system.state.rangeFromLedger = 100
-	s.system.state.rangeToLedger = 99
-	nextState, err = s.system.runCurrentState()
+	next, err = historyRangeState{fromLedger: 100, toLedger: 99}.run(s.system)
 	s.Assert().Error(err)
 	s.Assert().EqualError(err, "invalid range: [100, 99]")
-	s.Assert().Equal(initState, nextState.systemState)
+	s.Assert().Equal(transition{node: startState{}, sleepDuration: defaultSleep}, next)
 }
 
 func (s *IngestHistoryRangeStateTestSuite) TestBeginReturnsError() {
-	s.system.state.rangeFromLedger = 100
-	s.system.state.rangeToLedger = 200
-
 	// Recreate mock in this single test to remove Rollback assertion.
 	*s.historyQ = mockDBQ{}
-	s.historyQ.On("GetTx").Return(nil).Once()
 	s.historyQ.On("Begin").Return(errors.New("my error")).Once()
 
-	nextState, err := s.system.runCurrentState()
+	next, err := historyRangeState{fromLedger: 100, toLedger: 200}.run(s.system)
 	s.Assert().Error(err)
 	s.Assert().EqualError(err, "Error starting a transaction: my error")
-	s.Assert().Equal(initState, nextState.systemState)
+	s.Assert().Equal(transition{node: startState{}, sleepDuration: defaultSleep}, next)
 }
 
 func (s *IngestHistoryRangeStateTestSuite) TestGetLastLedgerExpIngestReturnsError() {
-	s.system.state.rangeFromLedger = 100
-	s.system.state.rangeToLedger = 200
-
 	s.historyQ.On("Begin").Return(nil).Once()
 	s.historyQ.On("GetLastLedgerExpIngest").Return(uint32(0), errors.New("my error")).Once()
 
-	nextState, err := s.system.runCurrentState()
+	next, err := historyRangeState{fromLedger: 100, toLedger: 200}.run(s.system)
 	s.Assert().Error(err)
 	s.Assert().EqualError(err, "Error getting last ingested ledger: my error")
-	s.Assert().Equal(initState, nextState.systemState)
+	s.Assert().Equal(transition{node: startState{}, sleepDuration: defaultSleep}, next)
 }
 
 func (s *IngestHistoryRangeStateTestSuite) TestGetLatestLedgerReturnsError() {
-	s.system.state.rangeFromLedger = 100
-	s.system.state.rangeToLedger = 200
-
 	s.historyQ.On("Begin").Return(nil).Once()
 	s.historyQ.On("GetLastLedgerExpIngest").Return(uint32(0), nil).Once()
 	s.historyQ.On("GetLatestLedger").Return(uint32(0), errors.New("my error")).Once()
 
-	nextState, err := s.system.runCurrentState()
+	next, err := historyRangeState{fromLedger: 100, toLedger: 200}.run(s.system)
 	s.Assert().Error(err)
 	s.Assert().EqualError(err, "could not get latest history ledger: my error")
-	s.Assert().Equal(initState, nextState.systemState)
+	s.Assert().Equal(transition{node: startState{}, sleepDuration: defaultSleep}, next)
 }
 
 // TestAnotherNodeIngested tests the case when another node has ingested the range.
 // In such case we go back to `init` state without processing.
 func (s *IngestHistoryRangeStateTestSuite) TestAnotherNodeIngested() {
-	s.system.state.rangeFromLedger = 100
-	s.system.state.rangeToLedger = 200
-
 	s.historyQ.On("Begin").Return(nil).Once()
 	s.historyQ.On("GetLastLedgerExpIngest").Return(uint32(0), nil).Once()
 	s.historyQ.On("GetLatestLedger").Return(uint32(200), nil).Once()
 
-	nextState, err := s.system.runCurrentState()
+	next, err := historyRangeState{fromLedger: 100, toLedger: 200}.run(s.system)
 	s.Assert().NoError(err)
-	s.Assert().Equal(initState, nextState.systemState)
+	s.Assert().Equal(transition{node: startState{}, sleepDuration: defaultSleep}, next)
 }
 
 func (s *IngestHistoryRangeStateTestSuite) TestRunTransactionProcessorsOnLedgerReturnsError() {
-	s.system.state.rangeFromLedger = 100
-	s.system.state.rangeToLedger = 200
-
 	s.historyQ.On("Begin").Return(nil).Once()
 	s.historyQ.On("GetLastLedgerExpIngest").Return(uint32(0), nil).Once()
 	s.historyQ.On("GetLatestLedger").Return(uint32(99), nil).Once()
 
 	s.runner.On("RunTransactionProcessorsOnLedger", uint32(100)).Return(errors.New("my error")).Once()
 
-	nextState, err := s.system.runCurrentState()
+	next, err := historyRangeState{fromLedger: 100, toLedger: 200}.run(s.system)
 	s.Assert().Error(err)
 	s.Assert().EqualError(err, "error processing ledger sequence=100: my error")
-	s.Assert().Equal(initState, nextState.systemState)
+	s.Assert().Equal(transition{node: startState{}, sleepDuration: defaultSleep}, next)
 }
 
 func (s *IngestHistoryRangeStateTestSuite) TestSuccess() {
-	s.system.state.rangeFromLedger = 100
-	s.system.state.rangeToLedger = 200
-
 	s.historyQ.On("Begin").Return(nil).Once()
 	s.historyQ.On("GetLastLedgerExpIngest").Return(uint32(0), nil).Once()
 	s.historyQ.On("GetLatestLedger").Return(uint32(99), nil).Once()
@@ -170,15 +136,12 @@ func (s *IngestHistoryRangeStateTestSuite) TestSuccess() {
 
 	s.historyQ.On("Commit").Return(nil).Once()
 
-	nextState, err := s.system.runCurrentState()
+	next, err := historyRangeState{fromLedger: 100, toLedger: 200}.run(s.system)
 	s.Assert().NoError(err)
-	s.Assert().Equal(initState, nextState.systemState)
+	s.Assert().Equal(transition{node: startState{}, sleepDuration: defaultSleep}, next)
 }
 
 func (s *IngestHistoryRangeStateTestSuite) TestSuccessOneLedger() {
-	s.system.state.rangeFromLedger = 100
-	s.system.state.rangeToLedger = 100
-
 	s.historyQ.On("Begin").Return(nil).Once()
 	s.historyQ.On("GetLastLedgerExpIngest").Return(uint32(0), nil).Once()
 	s.historyQ.On("GetLatestLedger").Return(uint32(99), nil).Once()
@@ -187,17 +150,13 @@ func (s *IngestHistoryRangeStateTestSuite) TestSuccessOneLedger() {
 
 	s.historyQ.On("Commit").Return(nil).Once()
 
-	nextState, err := s.system.runCurrentState()
+	next, err := historyRangeState{fromLedger: 100, toLedger: 100}.run(s.system)
 	s.Assert().NoError(err)
-	s.Assert().Equal(initState, nextState.systemState)
+	s.Assert().Equal(transition{node: startState{}, sleepDuration: defaultSleep}, next)
 }
 
 // TestClearHistorySuccess tests clearing history before ingesting history range.
 func (s *IngestHistoryRangeStateTestSuite) TestClearHistorySuccess() {
-	s.system.state.rangeFromLedger = 100
-	s.system.state.rangeToLedger = 200
-	s.system.state.rangeClearHistory = true
-
 	s.historyQ.On("Begin").Return(nil).Once()
 	s.historyQ.On("GetLastLedgerExpIngest").Return(uint32(0), nil).Once()
 	s.historyQ.On("GetLatestLedger").Return(uint32(99), nil).Once()
@@ -222,16 +181,14 @@ func (s *IngestHistoryRangeStateTestSuite) TestClearHistorySuccess() {
 
 	s.historyQ.On("Commit").Return(nil).Once()
 
-	nextState, err := s.system.runCurrentState()
+	next, err := historyRangeState{
+		fromLedger: 100, toLedger: 200, shutdownWhenDone: false, clearHistory: true,
+	}.run(s.system)
 	s.Assert().NoError(err)
-	s.Assert().Equal(initState, nextState.systemState)
+	s.Assert().Equal(transition{node: startState{}, sleepDuration: defaultSleep}, next)
 }
 
 func (s *IngestHistoryRangeStateTestSuite) TestShutdownWhenDoneSuccess() {
-	s.system.state.rangeFromLedger = 100
-	s.system.state.rangeToLedger = 200
-	s.system.state.shutdownWhenDone = true
-
 	s.historyQ.On("Begin").Return(nil).Once()
 	s.historyQ.On("GetLastLedgerExpIngest").Return(uint32(0), nil).Once()
 
@@ -241,16 +198,14 @@ func (s *IngestHistoryRangeStateTestSuite) TestShutdownWhenDoneSuccess() {
 
 	s.historyQ.On("Commit").Return(nil).Once()
 
-	nextState, err := s.system.runCurrentState()
+	next, err := historyRangeState{
+		fromLedger: 100, toLedger: 200, shutdownWhenDone: true,
+	}.run(s.system)
 	s.Assert().NoError(err)
-	s.Assert().Equal(shutdownState, nextState.systemState)
+	s.Assert().Equal(transition{node: stopState{}, sleepDuration: 0}, next)
 }
 
 func (s *IngestHistoryRangeStateTestSuite) TestShutdownWhenDoneWithError() {
-	s.system.state.rangeFromLedger = 100
-	s.system.state.rangeToLedger = 200
-	s.system.state.shutdownWhenDone = true
-
 	s.historyQ.On("Begin").Return(nil).Once()
 	s.historyQ.On("GetLastLedgerExpIngest").Return(uint32(0), nil).Once()
 
@@ -260,8 +215,10 @@ func (s *IngestHistoryRangeStateTestSuite) TestShutdownWhenDoneWithError() {
 
 	s.historyQ.On("Commit").Return(errors.New("my error")).Once()
 
-	nextState, err := s.system.runCurrentState()
+	next, err := historyRangeState{
+		fromLedger: 100, toLedger: 200, shutdownWhenDone: true,
+	}.run(s.system)
 	s.Assert().Error(err)
 	s.Assert().EqualError(err, "Error committing db transaction: my error")
-	s.Assert().Equal(shutdownState, nextState.systemState)
+	s.Assert().Equal(transition{node: stopState{}, sleepDuration: 0}, next)
 }
