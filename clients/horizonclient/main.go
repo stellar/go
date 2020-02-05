@@ -214,7 +214,7 @@ type HorizonRequest interface {
 }
 
 // AccountsRequest struct contains data for making requests to the accounts endpoint of a horizon server.
-// "Signer" or "Asset" fields should be set when retrieving AccountsData.
+// Either "Signer" or "Asset" fields should be set when retrieving AccountsData.
 // At the moment, you can't use both filters are the same time.
 type AccountsRequest struct {
 	Signer string
