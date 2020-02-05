@@ -11,6 +11,19 @@ import (
 	"github.com/stellar/go/protocols/horizon/operations"
 )
 
+func ExampleClient_Accounts() {
+	client := horizonclient.DefaultPublicNetClient
+	accountsRequest := horizonclient.AccountsRequest{Signer: "GCLWGQPMKXQSPF776IU33AH4PZNOOWNAWGGKVTBQMIC5IMKUNP3E6NVU"}
+
+	account, err := client.Accounts(accountsRequest)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	fmt.Print(account)
+}
+
 func ExampleClient_AccountDetail() {
 	client := horizonclient.DefaultPublicNetClient
 	accountRequest := horizonclient.AccountRequest{AccountID: "GCLWGQPMKXQSPF776IU33AH4PZNOOWNAWGGKVTBQMIC5IMKUNP3E6NVU"}

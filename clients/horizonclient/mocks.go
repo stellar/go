@@ -15,6 +15,12 @@ type MockClient struct {
 	mock.Mock
 }
 
+// Accounts is a mocking method
+func (m *MockClient) Accounts(request AccountsRequest) (hProtocol.AccountsPage, error) {
+	a := m.Called(request)
+	return a.Get(0).(hProtocol.AccountsPage), a.Error(1)
+}
+
 // AccountDetail is a mocking method
 func (m *MockClient) AccountDetail(request AccountRequest) (hProtocol.Account, error) {
 	a := m.Called(request)
