@@ -531,6 +531,14 @@ type AccountData struct {
 	Value string `json:"value"`
 }
 
+// AccountsPage returns a list of account records
+type AccountsPage struct {
+	Links    hal.Links `json:"_links"`
+	Embedded struct {
+		Records []Account `json:"records"`
+	} `json:"_embedded"`
+}
+
 // TradeAggregationsPage returns a list of aggregated trade records, aggregated by resolution
 type TradeAggregationsPage struct {
 	Links    hal.Links `json:"_links"`

@@ -141,6 +141,7 @@ type Client struct {
 
 // ClientInterface contains methods implemented by the horizon client
 type ClientInterface interface {
+	Accounts(request AccountsRequest) (hProtocol.AccountsPage, error)
 	AccountDetail(request AccountRequest) (hProtocol.Account, error)
 	AccountData(request AccountRequest) (hProtocol.AccountData, error)
 	Effects(request EffectRequest) (effects.EffectsPage, error)
@@ -212,7 +213,18 @@ type HorizonRequest interface {
 	BuildURL() (string, error)
 }
 
-// AccountRequest struct contains data for making requests to the accounts endpoint of a horizon server.
+// AccountsRequest struct contains data for making requests to the accounts endpoint of a horizon server.
+// Either "Signer" or "Asset" fields should be set when retrieving Accounts.
+// At the moment, you can't use both filters at the same time.
+type AccountsRequest struct {
+	Signer string
+	Asset  string
+	Order  Order
+	Cursor string
+	Limit  uint
+}
+
+// AccountRequest struct contains data for making requests to the show account endpoint of a horizon server.
 // "AccountID" and "DataKey" fields should both be set when retrieving AccountData.
 // When getting the AccountDetail, only "AccountID" needs to be set.
 type AccountRequest struct {

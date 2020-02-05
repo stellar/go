@@ -226,6 +226,14 @@ func (c *Client) HorizonTimeOut() time.Duration {
 	return c.horizonTimeOut
 }
 
+// Accounts returns accounts who have a given signer or
+// have a trustline to an asset.
+// See https://www.stellar.org/developers/horizon/reference/endpoints/accounts.html
+func (c *Client) Accounts(request AccountsRequest) (accounts hProtocol.AccountsPage, err error) {
+	err = c.sendRequest(request, &accounts)
+	return
+}
+
 // AccountDetail returns information for a single account.
 // See https://www.stellar.org/developers/horizon/reference/endpoints/accounts-single.html
 func (c *Client) AccountDetail(request AccountRequest) (account hProtocol.Account, err error) {

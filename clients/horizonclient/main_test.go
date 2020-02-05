@@ -27,6 +27,86 @@ func TestFixHTTP(t *testing.T) {
 	assert.IsType(t, client.HTTP, &http.Client{})
 }
 
+func TestAccounts(t *testing.T) {
+	tt := assert.New(t)
+	hmock := httptest.NewClient()
+	client := &Client{
+		HorizonURL: "https://localhost/",
+		HTTP:       hmock,
+	}
+
+	accountRequest := AccountsRequest{}
+	_, err := client.Accounts(accountRequest)
+	if tt.Error(err) {
+		tt.Contains(err.Error(), "invalid request: no parameters - Signer or Asset must be provided")
+	}
+
+	accountRequest = AccountsRequest{
+		Signer: "GCLWGQPMKXQSPF776IU33AH4PZNOOWNAWGGKVTBQMIC5IMKUNP3E6NVU",
+		Asset:  "COP:GCLWGQPMKXQSPF776IU33AH4PZNOOWNAWGGKVTBQMIC5IMKUNP3E6NVU",
+	}
+	_, err = client.Accounts(accountRequest)
+	if tt.Error(err) {
+		tt.Contains(err.Error(), "invalid request: too many parameters - Signer and Asset provided, provide a single filter")
+	}
+
+	var accounts hProtocol.AccountsPage
+
+	hmock.On(
+		"GET",
+		"https://localhost/accounts?signer=GAI3SO3S4E67HAUZPZ2D3VBFXY4AT6N7WQI7K5WFGRXWENTZJG2B6CYP",
+	).ReturnString(200, accountsResponse)
+
+	accountRequest = AccountsRequest{
+		Signer: "GAI3SO3S4E67HAUZPZ2D3VBFXY4AT6N7WQI7K5WFGRXWENTZJG2B6CYP",
+	}
+	accounts, err = client.Accounts(accountRequest)
+	tt.NoError(err)
+	tt.Len(accounts.Embedded.Records, 1)
+
+	hmock.On(
+		"GET",
+		"https://localhost/accounts?asset=COP%3AGAI3SO3S4E67HAUZPZ2D3VBFXY4AT6N7WQI7K5WFGRXWENTZJG2B6CYP",
+	).ReturnString(200, accountsResponse)
+
+	accountRequest = AccountsRequest{
+		Asset: "COP:GAI3SO3S4E67HAUZPZ2D3VBFXY4AT6N7WQI7K5WFGRXWENTZJG2B6CYP",
+	}
+	accounts, err = client.Accounts(accountRequest)
+	tt.NoError(err)
+	tt.Len(accounts.Embedded.Records, 1)
+
+	hmock.On(
+		"GET",
+		"https://localhost/accounts?signer=GAI3SO3S4E67HAUZPZ2D3VBFXY4AT6N7WQI7K5WFGRXWENTZJG2B6CYP&cursor=GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H&limit=200&order=desc",
+	).ReturnString(200, accountsResponse)
+
+	accountRequest = AccountsRequest{
+		Signer: "GAI3SO3S4E67HAUZPZ2D3VBFXY4AT6N7WQI7K5WFGRXWENTZJG2B6CYP",
+		Order:  "desc",
+		Cursor: "GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H",
+		Limit:  200,
+	}
+	accounts, err = client.Accounts(accountRequest)
+	tt.NoError(err)
+	tt.Len(accounts.Embedded.Records, 1)
+
+	// connection error
+	hmock.On(
+		"GET",
+		"https://localhost/accounts?signer=GAI3SO3S4E67HAUZPZ2D3VBFXY4AT6N7WQI7K5WFGRXWENTZJG2B6CYP",
+	).ReturnError("http.Client error")
+
+	accountRequest = AccountsRequest{
+		Signer: "GAI3SO3S4E67HAUZPZ2D3VBFXY4AT6N7WQI7K5WFGRXWENTZJG2B6CYP",
+	}
+	accounts, err = client.Accounts(accountRequest)
+	if tt.Error(err) {
+		tt.Contains(err.Error(), "http.Client error")
+		_, ok := err.(*Error)
+		tt.Equal(ok, false)
+	}
+}
 func TestAccountDetail(t *testing.T) {
 	hmock := httptest.NewClient()
 	client := &Client{
@@ -738,6 +818,92 @@ func TestFetchTimebounds(t *testing.T) {
 	// time should be 200, serverTime + 100seconds
 	assert.Equal(t, st.MaxTime, int64(200))
 }
+
+var accountsResponse = `{
+  "_links": {
+    "self": {
+      "href": "https://horizon-testnet.stellar.org/accounts?cursor=\u0026limit=10\u0026order=asc\u0026signer=GAI3SO3S4E67HAUZPZ2D3VBFXY4AT6N7WQI7K5WFGRXWENTZJG2B6CYP"
+    },
+    "next": {
+      "href": "https://horizon-testnet.stellar.org/accounts?cursor=GAI3SO3S4E67HAUZPZ2D3VBFXY4AT6N7WQI7K5WFGRXWENTZJG2B6CYP\u0026limit=10\u0026order=asc\u0026signer=GAI3SO3S4E67HAUZPZ2D3VBFXY4AT6N7WQI7K5WFGRXWENTZJG2B6CYP"
+    },
+    "prev": {
+      "href": "https://horizon-testnet.stellar.org/accounts?cursor=GAI3SO3S4E67HAUZPZ2D3VBFXY4AT6N7WQI7K5WFGRXWENTZJG2B6CYP\u0026limit=10\u0026order=desc\u0026signer=GAI3SO3S4E67HAUZPZ2D3VBFXY4AT6N7WQI7K5WFGRXWENTZJG2B6CYP"
+    }
+  },
+  "_embedded": {
+    "records": [
+      {
+        "_links": {
+          "self": {
+            "href": "https://horizon-testnet.stellar.org/accounts/GAI3SO3S4E67HAUZPZ2D3VBFXY4AT6N7WQI7K5WFGRXWENTZJG2B6CYP"
+          },
+          "transactions": {
+            "href": "https://horizon-testnet.stellar.org/accounts/GAI3SO3S4E67HAUZPZ2D3VBFXY4AT6N7WQI7K5WFGRXWENTZJG2B6CYP/transactions{?cursor,limit,order}",
+            "templated": true
+          },
+          "operations": {
+            "href": "https://horizon-testnet.stellar.org/accounts/GAI3SO3S4E67HAUZPZ2D3VBFXY4AT6N7WQI7K5WFGRXWENTZJG2B6CYP/operations{?cursor,limit,order}",
+            "templated": true
+          },
+          "payments": {
+            "href": "https://horizon-testnet.stellar.org/accounts/GAI3SO3S4E67HAUZPZ2D3VBFXY4AT6N7WQI7K5WFGRXWENTZJG2B6CYP/payments{?cursor,limit,order}",
+            "templated": true
+          },
+          "effects": {
+            "href": "https://horizon-testnet.stellar.org/accounts/GAI3SO3S4E67HAUZPZ2D3VBFXY4AT6N7WQI7K5WFGRXWENTZJG2B6CYP/effects{?cursor,limit,order}",
+            "templated": true
+          },
+          "offers": {
+            "href": "https://horizon-testnet.stellar.org/accounts/GAI3SO3S4E67HAUZPZ2D3VBFXY4AT6N7WQI7K5WFGRXWENTZJG2B6CYP/offers{?cursor,limit,order}",
+            "templated": true
+          },
+          "trades": {
+            "href": "https://horizon-testnet.stellar.org/accounts/GAI3SO3S4E67HAUZPZ2D3VBFXY4AT6N7WQI7K5WFGRXWENTZJG2B6CYP/trades{?cursor,limit,order}",
+            "templated": true
+          },
+          "data": {
+            "href": "https://horizon-testnet.stellar.org/accounts/GAI3SO3S4E67HAUZPZ2D3VBFXY4AT6N7WQI7K5WFGRXWENTZJG2B6CYP/data/{key}",
+            "templated": true
+          }
+        },
+        "id": "GAI3SO3S4E67HAUZPZ2D3VBFXY4AT6N7WQI7K5WFGRXWENTZJG2B6CYP",
+        "account_id": "GAI3SO3S4E67HAUZPZ2D3VBFXY4AT6N7WQI7K5WFGRXWENTZJG2B6CYP",
+        "sequence": "47236050321450",
+        "subentry_count": 0,
+        "last_modified_ledger": 116787,
+        "thresholds": {
+          "low_threshold": 0,
+          "med_threshold": 0,
+          "high_threshold": 0
+        },
+        "flags": {
+          "auth_required": false,
+          "auth_revocable": false,
+          "auth_immutable": false
+        },
+        "balances": [
+          {
+            "balance": "100.8182300",
+            "buying_liabilities": "0.0000000",
+            "selling_liabilities": "0.0000000",
+            "asset_type": "native"
+          }
+        ],
+        "signers": [
+          {
+            "weight": 1,
+            "key": "GAI3SO3S4E67HAUZPZ2D3VBFXY4AT6N7WQI7K5WFGRXWENTZJG2B6CYP",
+            "type": "ed25519_public_key"
+          }
+        ],
+        "data": {},
+        "paging_token": "GAI3SO3S4E67HAUZPZ2D3VBFXY4AT6N7WQI7K5WFGRXWENTZJG2B6CYP"
+      }
+    ]
+  }
+}
+`
 
 var accountResponse = `{
   "_links": {
