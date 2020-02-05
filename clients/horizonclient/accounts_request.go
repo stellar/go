@@ -8,7 +8,7 @@ import (
 )
 
 // BuildURL creates the endpoint to be queried based on the data in the AccountsRequest struct.
-// "Signer" or "Asset" fields should be set when retrieving AccountsData.
+// Either "Signer" or "Asset" fields should be set when retrieving Accounts.
 // At the moment, you can't use both filters at the same time.
 func (r AccountsRequest) BuildURL() (endpoint string, err error) {
 
