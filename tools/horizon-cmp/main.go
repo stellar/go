@@ -58,6 +58,14 @@ var rootCmd = &cobra.Command{
 	},
 }
 
+var historyCmd = &cobra.Command{
+	Use:   "history",
+	Short: "compares history endpoints for a given range of ledgers",
+	Run: func(cmd *cobra.Command, args []string) {
+		runHistoryCmp(cmd)
+	},
+}
+
 func init() {
 	log = slog.New()
 	log.SetLevel(slog.InfoLevel)
@@ -69,11 +77,13 @@ func init() {
 
 	visitedPaths = make(map[string]bool)
 
-	rootCmd.Flags().StringVarP(&horizonBase, "base", "b", "", "URL of the base/old version Horizon server")
-	rootCmd.Flags().StringVarP(&horizonTest, "test", "t", "", "URL of the test/new version Horizon server")
+	rootCmd.PersistentFlags().StringVarP(&horizonBase, "base", "b", "", "URL of the base/old version Horizon server")
+	rootCmd.PersistentFlags().StringVarP(&horizonTest, "test", "t", "", "URL of the test/new version Horizon server")
 	rootCmd.Flags().StringVarP(&elbAccessLogFile, "elb-access-log-file", "a", "", "ELB access log file to replay")
 	rootCmd.Flags().IntVarP(&elbAccessLogStartLine, "elb-access-log-start-line", "s", 1, "Start line of ELB access log (useful to continue from a given point)")
 	rootCmd.Flags().IntVar(&requestsPerSecond, "rps", 1, "Requests per second")
+
+	rootCmd.AddCommand(historyCmd)
 }
 
 func main() {
@@ -88,7 +98,7 @@ func run(cmd *cobra.Command) {
 	}
 
 	// Get latest ledger and operate on it's cursor to get responses at a given ledger.
-	ledger := getLatestLedger()
+	ledger := getLatestLedger(horizonBase)
 	cursor := ledger.PagingToken()
 
 	var accessLog *cmp.Scanner
@@ -196,9 +206,9 @@ func run(cmd *cobra.Command) {
 	wg.Wait()
 }
 
-func getLatestLedger() protocol.Ledger {
+func getLatestLedger(url string) protocol.Ledger {
 	horizon := client.Client{
-		HorizonURL: horizonBase,
+		HorizonURL: url,
 		HTTP:       http.DefaultClient,
 	}
 
