@@ -44,7 +44,7 @@ func runHistoryCmp(cmd *cobra.Command) {
 	}
 
 	// Check this after all calculations to catch possible underflow
-	if from > to {
+	if from > to || from == 0 || to == 0 {
 		log.Error("Invalid --from/--to range")
 		cmd.Help()
 		os.Exit(1)
