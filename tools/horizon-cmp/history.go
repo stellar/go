@@ -26,8 +26,8 @@ func init() {
 }
 
 func runHistoryCmp(cmd *cobra.Command) {
-	if from != 0 && to != 0 {
-		// 120 ledgers = ~10 minutes
+	if count == 0 && from == 0 && to == 0 {
+		// Defaults to checking the last 120 ledgers = ~10 minutes.
 		count = 120
 	}
 
