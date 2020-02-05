@@ -73,14 +73,12 @@ func TestCheckVerifyStateVersion(t *testing.T) {
 func TestNewSystem(t *testing.T) {
 	config := Config{
 		CoreSession: &db.Session{
-			DB:           &sqlx.DB{},
-			Ctx:          context.Background(),
-			Synchronized: false,
+			DB:  &sqlx.DB{},
+			Ctx: context.Background(),
 		},
 		HistorySession: &db.Session{
-			DB:           &sqlx.DB{},
-			Ctx:          context.Background(),
-			Synchronized: false,
+			DB:  &sqlx.DB{},
+			Ctx: context.Background(),
 		},
 		DisableStateVerification: true,
 		HistoryArchiveURL:        "https://history.stellar.org/prd/core-live/core_live_001",
