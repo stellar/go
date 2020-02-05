@@ -255,7 +255,7 @@ var configOpts = support.ConfigOptions{
 		ConfigKey:   &config.MaxPathLength,
 		OptType:     types.Uint,
 		FlagDefault: uint(4),
-		Usage:       "the maximum number of assets on the path in `/paths` endpoint",
+		Usage:       "the maximum number of assets on the path in `/paths` endpoint, warning: increasing this value will increase /paths response time",
 	},
 	&support.ConfigOption{
 		Name:      "network-passphrase",
