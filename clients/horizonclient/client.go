@@ -231,9 +231,6 @@ func (c *Client) HorizonTimeOut() time.Duration {
 // See https://www.stellar.org/developers/horizon/reference/endpoints/accounts.html
 func (c *Client) Accounts(request AccountsRequest) (accounts hProtocol.AccountsPage, err error) {
 	err = c.sendRequest(request, &accounts)
-	if err != nil {
-		return
-	}
 	return
 }
 
