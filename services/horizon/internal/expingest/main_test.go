@@ -153,6 +153,9 @@ func TestReingestRange(t *testing.T) {
 	historyQ.On("Rollback").Return(nil).Once()
 
 	system.ReingestRange(1, 10)
+
+	historyQ.AssertExpectations(t)
+	runner.AssertExpectations(t)
 }
 
 func TestContextCancel(t *testing.T) {
