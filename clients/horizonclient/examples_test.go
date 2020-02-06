@@ -521,6 +521,24 @@ func ExampleClient_Paths() {
 	fmt.Print(paths)
 }
 
+func ExampleClient_StrictSendPaths() {
+	client := horizonclient.DefaultPublicNetClient
+	// Find paths for USD->EUR
+	pr := horizonclient.StrictSendPathsRequest{
+		SourceAmount:      "20",
+		SourceAssetCode:   "USD",
+		SourceAssetIssuer: "GDUKMGUGDZQK6YHYA5Z6AY2G4XDSZPSZ3SW5UN3ARVMO6QSRDWP5YLEX",
+		SourceAssetType:   horizonclient.AssetType4,
+		DestinationAssets: "EURT:GAP5LETOV6YIE62YAM56STDANPRDO7ZFDBGSNHJQIYGGKSMOZAHOOS2S",
+	}
+	paths, err := client.StrictSendPaths(pr)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	fmt.Print(paths)
+}
+
 func ExampleClient_Payments() {
 	client := horizonclient.DefaultPublicNetClient
 	// payments for an account

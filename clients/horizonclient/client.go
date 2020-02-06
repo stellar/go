@@ -416,6 +416,12 @@ func (c *Client) Paths(request PathsRequest) (paths hProtocol.PathsPage, err err
 	return
 }
 
+// StrictSendPaths returns the available paths to make a strict send path payment. See https://www.stellar.org/developers/horizon/reference/endpoints/path-finding-strict-send.html
+func (c *Client) StrictSendPaths(request StrictSendPathsRequest) (paths hProtocol.PathsPage, err error) {
+	err = c.sendRequest(request, &paths)
+	return
+}
+
 // Payments returns stellar account_merge, create_account, path payment and payment operations.
 // It can be used to return payments for an account, a ledger, a transaction and all payments on the network.
 func (c *Client) Payments(request OperationRequest) (ops operations.OperationsPage, err error) {

@@ -346,6 +346,17 @@ type PathsRequest struct {
 	SourceAccount          string
 }
 
+// StrictSendPathsRequest struct contains data for getting available payment paths from a horizon server.
+// All parameters are required.
+type StrictSendPathsRequest struct {
+	DestinationAccount string
+	DestinationAssets  string
+	SourceAssetType    AssetType
+	SourceAssetCode    string
+	SourceAssetIssuer  string
+	SourceAmount       string
+}
+
 // TradeRequest struct contains data for getting trade details from a horizon server.
 // "ForAccount", "ForOfferID": Only one of these can be set at a time. If none are provided, the
 // default is to return all trades.
