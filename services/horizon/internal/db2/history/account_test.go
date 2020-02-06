@@ -71,7 +71,7 @@ func TestCreateAccounts(t *testing.T) {
 		"GAOQJGUAB7NI7K7I62ORBXMN3J4SSWQUQ7FOEPSDJ322W2HMCNWPHXFB",
 		"GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H",
 	}
-	accounts, err := q.CreateAccounts(addresses)
+	accounts, err := q.CreateAccounts(addresses, 1)
 	tt.Assert.NoError(err)
 	tt.Assert.Len(accounts, 2)
 	assertAccountsContainAddresses(tt, accounts, addresses)
@@ -79,7 +79,7 @@ func TestCreateAccounts(t *testing.T) {
 	dupAccounts, err := q.CreateAccounts([]string{
 		"GAOQJGUAB7NI7K7I62ORBXMN3J4SSWQUQ7FOEPSDJ322W2HMCNWPHXFB",
 		"GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H",
-	})
+	}, 2)
 	tt.Assert.NoError(err)
 	tt.Assert.Equal(accounts, dupAccounts)
 
@@ -89,7 +89,7 @@ func TestCreateAccounts(t *testing.T) {
 		"GCYVFGI3SEQJGBNQQG7YCMFWEYOHK3XPVOVPA6C566PXWN4SN7LILZSM",
 		"GBYSBDAJZMHL5AMD7QXQ3JEP3Q4GLKADWIJURAAHQALNAWD6Z5XF2RAC",
 	}
-	accounts, err = q.CreateAccounts(addresses)
+	accounts, err = q.CreateAccounts(addresses, 1)
 	tt.Assert.NoError(err)
 	assertAccountsContainAddresses(tt, accounts, addresses)
 	for address, accountID := range dupAccounts {
