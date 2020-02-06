@@ -410,8 +410,21 @@ func (c *Client) OrderBook(request OrderBookRequest) (obs hProtocol.OrderBookSum
 	return
 }
 
-// Paths returns the available paths to make a payment. See https://www.stellar.org/developers/horizon/reference/endpoints/path-finding.html
+// Paths returns the available paths to make a strict receive path payment. See https://www.stellar.org/developers/horizon/reference/endpoints/path-finding-strict-receive.html
+// This function is an alias for `client.StrictReceivePaths` and will be deprecated, use `client.StrictReceivePaths` instead.
 func (c *Client) Paths(request PathsRequest) (paths hProtocol.PathsPage, err error) {
+	paths, err = c.StrictReceivePaths(request)
+	return
+}
+
+// StrictReceivePaths returns the available paths to make a strict receive path payment. See https://www.stellar.org/developers/horizon/reference/endpoints/path-finding-strict-receive.html
+func (c *Client) StrictReceivePaths(request PathsRequest) (paths hProtocol.PathsPage, err error) {
+	err = c.sendRequest(request, &paths)
+	return
+}
+
+// StrictSendPaths returns the available paths to make a strict send path payment. See https://www.stellar.org/developers/horizon/reference/endpoints/path-finding-strict-send.html
+func (c *Client) StrictSendPaths(request StrictSendPathsRequest) (paths hProtocol.PathsPage, err error) {
 	err = c.sendRequest(request, &paths)
 	return
 }
