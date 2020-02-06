@@ -513,7 +513,7 @@ func ExampleClient_Paths() {
 		DestinationAssetType:   horizonclient.AssetType4,
 		SourceAccount:          "GDZST3XVCDTUJ76ZAV2HA72KYQODXXZ5PTMAPZGDHZ6CS7RO7MGG3DBM",
 	}
-	paths, err := client.Paths(pr)
+	paths, err := client.StrictReceivePaths(pr)
 	if err != nil {
 		fmt.Println(err)
 		return
