@@ -279,6 +279,9 @@ type feeStatsRequest struct {
 // The query parameters (Order, Cursor and Limit) are optional. All or none can be set.
 type OfferRequest struct {
 	ForAccount string
+	Selling    string
+	Seller     string
+	Buying     string
 	Order      Order
 	Cursor     string
 	Limit      uint
