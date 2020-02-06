@@ -346,8 +346,10 @@ type PathsRequest struct {
 	SourceAccount          string
 }
 
-// StrictSendPathsRequest struct contains data for getting available payment paths from a horizon server.
-// All parameters are required.
+// StrictSendPathsRequest struct contains data for getting available strict send paths from a horizon server.
+// All the Source related parameters are required and you need to include either
+// DestinationAccount or DestinationAssets.
+// See https://www.stellar.org/developers/horizon/reference/endpoints/path-finding-strict-send.html
 type StrictSendPathsRequest struct {
 	DestinationAccount string
 	DestinationAssets  string
