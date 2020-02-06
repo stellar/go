@@ -185,6 +185,18 @@ jobs:
       - govet
       - staticcheck
 
+  # check_code_1_14 performs code checks using Go 1.14.
+  check_code_1_14:
+    working_directory: /go/src/github.com/stellar/go
+    docker:
+      - image: circleci/golang:1.14rc1-stretch
+    steps:
+      - install_go_deps
+      - check_go_deps
+      - gofmt
+      - govet
+      - staticcheck
+
   # test_code_1_12 performs all package tests using Go 1.12.
   test_code_1_12:
     working_directory: /go/src/github.com/stellar/go
@@ -210,6 +222,27 @@ jobs:
     working_directory: /go/src/github.com/stellar/go
     docker:
       - image: circleci/golang:1.13-stretch
+        environment:
+          GO111MODULE: "on"
+          PGHOST: localhost
+          PGPORT: 5432
+          PGUSER: circleci
+          MYSQL_HOST: 127.0.0.1
+          MYSQL_PORT: 3306
+      - image: circleci/postgres:9.6.5-alpine-ram
+        environment:
+          POSTGRES_USER: circleci
+      - image: circleci/redis:5.0-alpine
+    steps:
+      - install_go_deps
+      - test_packages
+      - send_coverage_report
+
+  # test_code_1_14 performs all package tests using Go 1.14.
+  test_code_1_14:
+    working_directory: /go/src/github.com/stellar/go
+    docker:
+      - image: circleci/golang:1.14rc1-stretch
         environment:
           GO111MODULE: "on"
           PGHOST: localhost
@@ -307,6 +340,8 @@ workflows:
       - check_code_1_13
       - test_code_1_12
       - test_code_1_13
+      - check_code_1_14
+      - test_code_1_14
       - publish_state_diff_docker_image:
           filters:
               branches:
