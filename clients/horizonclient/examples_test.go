@@ -423,6 +423,20 @@ func ExampleClient_Offers() {
 		return
 	}
 	fmt.Print(offers)
+
+	offerRequest = horizonclient.OfferRequest{
+		Seller:  "GCLWGQPMKXQSPF776IU33AH4PZNOOWNAWGGKVTBQMIC5IMKUNP3E6NVU",
+		Selling: "COP:GCLWGQPMKXQSPF776IU33AH4PZNOOWNAWGGKVTBQMIC5IMKUNP3E6NVU",
+		Buying:  "EUR:GCLWGQPMKXQSPF776IU33AH4PZNOOWNAWGGKVTBQMIC5IMKUNP3E6NVU",
+		Order:   horizonclient.OrderDesc,
+	}
+
+	offers, err = client.Offers(offerRequest)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	fmt.Print(offers)
 }
 
 func ExampleClient_OperationDetail() {

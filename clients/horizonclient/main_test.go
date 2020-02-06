@@ -477,6 +477,81 @@ func TestOfferRequest(t *testing.T) {
 		assert.Equal(t, record.Amount, "1999979.8700000")
 		assert.Equal(t, record.LastModifiedLedger, int32(103307))
 	}
+
+	hmock.On(
+		"GET",
+		"https://localhost/offers?seller=GDOJCPYIB66RY4XNDLRRHQQXB27YLNNAGAYV5HMHEYNYY4KUNV5FDV2F",
+	).ReturnString(200, offersResponse)
+
+	offersRequest = OfferRequest{
+		Seller: "GDOJCPYIB66RY4XNDLRRHQQXB27YLNNAGAYV5HMHEYNYY4KUNV5FDV2F",
+	}
+
+	offers, err = client.Offers(offersRequest)
+	if assert.NoError(t, err) {
+		assert.Len(t, offers.Embedded.Records, 1)
+	}
+
+	hmock.On(
+		"GET",
+		"https://localhost/offers?buying=COP%3AGDOJCPYIB66RY4XNDLRRHQQXB27YLNNAGAYV5HMHEYNYY4KUNV5FDV2F",
+	).ReturnString(200, offersResponse)
+
+	offersRequest = OfferRequest{
+		Buying: "COP:GDOJCPYIB66RY4XNDLRRHQQXB27YLNNAGAYV5HMHEYNYY4KUNV5FDV2F",
+	}
+
+	offers, err = client.Offers(offersRequest)
+	if assert.NoError(t, err) {
+		assert.Len(t, offers.Embedded.Records, 1)
+	}
+
+	hmock.On(
+		"GET",
+		"https://localhost/offers?selling=EUR%3AGDOJCPYIB66RY4XNDLRRHQQXB27YLNNAGAYV5HMHEYNYY4KUNV5FDV2F",
+	).ReturnString(200, offersResponse)
+
+	offersRequest = OfferRequest{
+		Selling: "EUR:GDOJCPYIB66RY4XNDLRRHQQXB27YLNNAGAYV5HMHEYNYY4KUNV5FDV2F",
+	}
+
+	offers, err = client.Offers(offersRequest)
+	if assert.NoError(t, err) {
+		assert.Len(t, offers.Embedded.Records, 1)
+	}
+
+	hmock.On(
+		"GET",
+		"https://localhost/offers?selling=EUR%3AGDOJCPYIB66RY4XNDLRRHQQXB27YLNNAGAYV5HMHEYNYY4KUNV5FDV2F",
+	).ReturnString(200, offersResponse)
+
+	offersRequest = OfferRequest{
+		Selling: "EUR:GDOJCPYIB66RY4XNDLRRHQQXB27YLNNAGAYV5HMHEYNYY4KUNV5FDV2F",
+	}
+
+	offers, err = client.Offers(offersRequest)
+	if assert.NoError(t, err) {
+		assert.Len(t, offers.Embedded.Records, 1)
+	}
+
+	hmock.On(
+		"GET",
+		"https://localhost/offers?buying=EUR%3AGDOJCPYIB66RY4XNDLRRHQQXB27YLNNAGAYV5HMHEYNYY4KUNV5FDV2F&seller=GDOJCPYIB66RY4XNDLRRHQQXB27YLNNAGAYV5HMHEYNYY4KUNV5FDV2F&selling=EUR%3AGDOJCPYIB66RY4XNDLRRHQQXB27YLNNAGAYV5HMHEYNYY4KUNV5FDV2F&cursor=30&limit=20&order=desc",
+	).ReturnString(200, offersResponse)
+
+	offersRequest = OfferRequest{
+		Seller:  "GDOJCPYIB66RY4XNDLRRHQQXB27YLNNAGAYV5HMHEYNYY4KUNV5FDV2F",
+		Buying:  "EUR:GDOJCPYIB66RY4XNDLRRHQQXB27YLNNAGAYV5HMHEYNYY4KUNV5FDV2F",
+		Selling: "EUR:GDOJCPYIB66RY4XNDLRRHQQXB27YLNNAGAYV5HMHEYNYY4KUNV5FDV2F",
+		Order:   "desc",
+		Limit:   20,
+		Cursor:  "30",
+	}
+
+	offers, err = client.Offers(offersRequest)
+	if assert.NoError(t, err) {
+		assert.Len(t, offers.Embedded.Records, 1)
+	}
 }
 
 func TestOperationsRequest(t *testing.T) {
