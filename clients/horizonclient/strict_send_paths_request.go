@@ -8,19 +8,18 @@ import (
 )
 
 // BuildURL creates the endpoint to be queried based on the data in the PathsRequest struct.
-func (pr PathsRequest) BuildURL() (endpoint string, err error) {
-	endpoint = "paths"
+func (pr StrictSendPathsRequest) BuildURL() (endpoint string, err error) {
+	endpoint = "paths/strict-send"
 
 	// add the parameters to a map here so it is easier for addQueryParams to populate the parameter list
-	// We can't use assetCode and assetIssuer types here because the paremeter names are different
+	// We can't use assetCode and assetIssuer types here because the parameter names are different
 	paramMap := make(map[string]string)
+	paramMap["destination_assets"] = pr.DestinationAssets
 	paramMap["destination_account"] = pr.DestinationAccount
-	paramMap["destination_asset_type"] = string(pr.DestinationAssetType)
-	paramMap["destination_asset_code"] = pr.DestinationAssetCode
-	paramMap["destination_asset_issuer"] = pr.DestinationAssetIssuer
-	paramMap["destination_amount"] = pr.DestinationAmount
-	paramMap["source_account"] = pr.SourceAccount
-	paramMap["source_assets"] = pr.SourceAssets
+	paramMap["source_asset_type"] = string(pr.SourceAssetType)
+	paramMap["source_asset_code"] = pr.SourceAssetCode
+	paramMap["source_asset_issuer"] = pr.SourceAssetIssuer
+	paramMap["source_amount"] = pr.SourceAmount
 
 	queryParams := addQueryParams(paramMap)
 	if queryParams != "" {
