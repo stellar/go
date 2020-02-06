@@ -12,7 +12,7 @@ func (pr StrictSendPathsRequest) BuildURL() (endpoint string, err error) {
 	endpoint = "paths/strict-send"
 
 	// add the parameters to a map here so it is easier for addQueryParams to populate the parameter list
-	// We can't use assetCode and assetIssuer types here because the paremeter names are different
+	// We can't use assetCode and assetIssuer types here because the parameter names are different
 	paramMap := make(map[string]string)
 	paramMap["destination_assets"] = pr.DestinationAssets
 	paramMap["destination_account"] = pr.DestinationAccount
