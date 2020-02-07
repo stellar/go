@@ -168,8 +168,20 @@ func run(cmd *cobra.Command) {
 		go func() {
 			defer wg.Done()
 
-			a := cmp.NewResponse(horizonBase, pl.Path, pl.Stream)
-			b := cmp.NewResponse(horizonTest, pl.Path, pl.Stream)
+			var requestWg sync.WaitGroup
+			requestWg.Add(2)
+
+			var a, b *cmp.Response
+			go func() {
+				a = cmp.NewResponse(horizonBase, pl.Path, pl.Stream)
+				requestWg.Done()
+			}()
+			go func() {
+				b = cmp.NewResponse(horizonTest, pl.Path, pl.Stream)
+				requestWg.Done()
+			}()
+
+			requestWg.Wait()
 
 			var status string
 			if a.Equal(b) {
