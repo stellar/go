@@ -63,7 +63,7 @@ func (q *Q) CreateAccounts(addresses []string, batchSize int) (map[string]int64,
 	builder := &db.BatchInsertBuilder{
 		Table:        q.GetTable("history_accounts"),
 		MaxBatchSize: batchSize,
-		Suffix:       "ON CONFLICT (address) DO UPDATE SET address=EXCLUDED.address",
+		Suffix:       "ON CONFLICT (address) DO NOTHING",
 	}
 
 	for _, address := range addresses {
