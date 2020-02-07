@@ -61,7 +61,7 @@ func (lcr *loggingChangeReader) Read() (io.Change, error) {
 					WithField("currentHeapSizeMB", curHeap).
 					WithField("systemHeapSizeMB", sysHeap)
 			}
-			logger.Info("Processing ingestion changes")
+			logger.Info("Processing ledger entry changes")
 		}
 	}
 
