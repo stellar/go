@@ -292,7 +292,11 @@ func (m *mockProcessorsRunner) SetLedgerBackend(ledgerBackend ledgerbackend.Ledg
 	m.Called(ledgerBackend)
 }
 
-func (m *mockProcessorsRunner) LogMemoryStats() {
+func (m *mockProcessorsRunner) EnableMemoryStatsLogging() {
+	m.Called()
+}
+
+func (m *mockProcessorsRunner) DisableMemoryStatsLogging() {
 	m.Called()
 }
 

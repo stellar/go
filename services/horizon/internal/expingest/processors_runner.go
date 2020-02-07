@@ -33,7 +33,8 @@ type horizonTransactionProcessor interface {
 
 type ProcessorRunnerInterface interface {
 	SetLedgerBackend(ledgerBackend ledgerbackend.LedgerBackend)
-	LogMemoryStats()
+	EnableMemoryStatsLogging()
+	DisableMemoryStatsLogging()
 	RunHistoryArchiveIngestion(checkpointLedger uint32) error
 	RunAllProcessorsOnLedger(sequence uint32) error
 	RunTransactionProcessorsOnLedger(sequence uint32) error
@@ -58,8 +59,12 @@ func (s *ProcessorRunner) SetLedgerBackend(ledgerBackend ledgerbackend.LedgerBac
 	s.ledgerBackend = ledgerBackend
 }
 
-func (s *ProcessorRunner) LogMemoryStats() {
+func (s *ProcessorRunner) EnableMemoryStatsLogging() {
 	s.logMemoryStats = true
+}
+
+func (s *ProcessorRunner) DisableMemoryStatsLogging() {
+	s.logMemoryStats = false
 }
 
 func (s *ProcessorRunner) buildOrderBookChangeProcessor() horizonChangeProcessor {
@@ -179,14 +184,13 @@ func (s *ProcessorRunner) RunHistoryArchiveIngestion(checkpointLedger uint32) er
 	log.WithField("ledger", checkpointLedger).
 		Info("Processing entries from History Archive Snapshot")
 
-	stateReader = newLoggerStateReader(
+	err = io.StreamChanges(changeProcessor, newloggingChangeReader(
 		stateReader,
-		log,
+		"historyArchive",
+		checkpointLedger,
 		logFrequency,
 		s.logMemoryStats,
-	)
-
-	err = io.StreamChanges(changeProcessor, stateReader)
+	))
 	if err != nil {
 		return errors.Wrap(err, "Error streaming changes from HAS")
 	}
@@ -208,9 +212,10 @@ func (s *ProcessorRunner) runChangeProcessorOnLedger(
 	if err != nil {
 		return errors.Wrap(err, "Error creating ledger change reader")
 	}
-	changeReader = newLoggerChangeReader(
+	changeReader = newloggingChangeReader(
 		changeReader,
-		log,
+		"ledger",
+		ledger,
 		logFrequency,
 		s.logMemoryStats,
 	)

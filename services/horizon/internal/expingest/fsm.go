@@ -285,7 +285,7 @@ func (b buildState) run(s *System) (transition, error) {
 		return start(), errors.Wrap(err, "Error updating expingest version")
 	}
 
-	if err = completeIngestion(s, b.checkpointLedger); err != nil {
+	if err = s.completeIngestion(b.checkpointLedger); err != nil {
 		return start(), err
 	}
 
@@ -424,7 +424,7 @@ func (r resumeState) run(s *System) (transition, error) {
 		return retryResume(r), errors.Wrap(err, "Error running processors on ledger")
 	}
 
-	if err = completeIngestion(s, ingestLedger); err != nil {
+	if err = s.completeIngestion(ingestLedger); err != nil {
 		return retryResume(r), err
 	}
 
@@ -620,7 +620,7 @@ func (v verifyRangeState) run(s *System) (transition, error) {
 		return stop(), err
 	}
 
-	if err = completeIngestion(s, v.fromLedger); err != nil {
+	if err = s.completeIngestion(v.fromLedger); err != nil {
 		return stop(), err
 	}
 
@@ -650,7 +650,7 @@ func (v verifyRangeState) run(s *System) (transition, error) {
 			return stop(), err
 		}
 
-		if err = completeIngestion(s, sequence); err != nil {
+		if err = s.completeIngestion(sequence); err != nil {
 			return stop(), err
 		}
 
@@ -697,13 +697,16 @@ func (stressTestState) run(s *System) (transition, error) {
 		return stop(), err
 	}
 
+	curHeap, sysHeap := getMemStats()
 	sequence := lastIngestedLedger + 1
 	log.WithFields(logpkg.F{
-		"sequence": sequence,
-		"state":    true,
-		"ledger":   true,
-		"graph":    true,
-		"commit":   true,
+		"currentHeapSizeMB": curHeap,
+		"systemHeapSizeMB":  sysHeap,
+		"sequence":          sequence,
+		"state":             true,
+		"ledger":            true,
+		"graph":             true,
+		"commit":            true,
 	}).Info("Processing ledger")
 	startTime := time.Now()
 
@@ -712,23 +715,26 @@ func (stressTestState) run(s *System) (transition, error) {
 		return stop(), err
 	}
 
-	if err = completeIngestion(s, sequence); err != nil {
+	if err = s.completeIngestion(sequence); err != nil {
 		return stop(), err
 	}
 
+	curHeap, sysHeap = getMemStats()
 	log.WithFields(logpkg.F{
-		"sequence": sequence,
-		"duration": time.Since(startTime).Seconds(),
-		"state":    true,
-		"ledger":   true,
-		"graph":    true,
-		"commit":   true,
+		"currentHeapSizeMB": curHeap,
+		"systemHeapSizeMB":  sysHeap,
+		"sequence":          sequence,
+		"duration":          time.Since(startTime).Seconds(),
+		"state":             true,
+		"ledger":            true,
+		"graph":             true,
+		"commit":            true,
 	}).Info("Processed ledger")
 
 	return stop(), nil
 }
 
-func completeIngestion(s *System, ledger uint32) error {
+func (s *System) completeIngestion(ledger uint32) error {
 	if ledger == 0 {
 		return errors.New("ledger must be positive")
 	}
@@ -738,13 +744,13 @@ func completeIngestion(s *System, ledger uint32) error {
 		return err
 	}
 
+	if err := s.historyQ.Commit(); err != nil {
+		return errors.Wrap(err, commitErrMsg)
+	}
+
 	if err := s.graph.Apply(ledger); err != nil {
 		err = errors.Wrap(err, "Error applying order book changes")
 		return err
-	}
-
-	if err := s.historyQ.Commit(); err != nil {
-		return errors.Wrap(err, commitErrMsg)
 	}
 
 	return nil

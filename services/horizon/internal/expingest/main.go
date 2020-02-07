@@ -214,7 +214,7 @@ func (s *System) StressTest(numTransactions, changesPerTransaction int) error {
 		return errors.Errorf("changes per transaction cannot exceed %d", maxChangesPerTransaction)
 	}
 
-	s.runner.LogMemoryStats()
+	s.runner.EnableMemoryStatsLogging()
 	s.runner.SetLedgerBackend(fakeLedgerBackend{
 		numTransactions:       numTransactions,
 		changesPerTransaction: changesPerTransaction,

@@ -36,7 +36,7 @@ func (s *StressTestStateTestSuite) SetupTest() {
 	s.historyQ.On("GetTx").Return(nil).Once()
 	s.historyQ.On("Rollback").Return(nil).Once()
 	s.graph.On("Discard").Once()
-	s.runner.On("LogMemoryStats").Return()
+	s.runner.On("EnableMemoryStatsLogging").Return()
 	s.runner.On("SetLedgerBackend", fakeLedgerBackend{
 		numTransactions:       10,
 		changesPerTransaction: 4,
@@ -123,6 +123,7 @@ func (s *StressTestStateTestSuite) TestApplyReturnsError() {
 	s.historyQ.On("GetLastLedgerExpIngest").Return(uint32(0), nil).Once()
 	s.runner.On("RunAllProcessorsOnLedger", uint32(1)).Return(nil).Once()
 	s.historyQ.On("UpdateLastLedgerExpIngest", uint32(1)).Return(nil).Once()
+	s.historyQ.On("Commit").Return(nil).Once()
 	s.graph.On("Apply", uint32(1)).Return(errors.New("my error")).Once()
 
 	err := s.system.StressTest(10, 4)
@@ -134,7 +135,6 @@ func (s *StressTestStateTestSuite) TestCommitReturnsError() {
 	s.historyQ.On("GetLastLedgerExpIngest").Return(uint32(0), nil).Once()
 	s.runner.On("RunAllProcessorsOnLedger", uint32(1)).Return(nil).Once()
 	s.historyQ.On("UpdateLastLedgerExpIngest", uint32(1)).Return(nil).Once()
-	s.graph.On("Apply", uint32(1)).Return(nil).Once()
 	s.historyQ.On("Commit").Return(errors.New("my error")).Once()
 
 	err := s.system.StressTest(10, 4)
@@ -146,8 +146,8 @@ func (s *StressTestStateTestSuite) TestSucceeds() {
 	s.historyQ.On("GetLastLedgerExpIngest").Return(uint32(0), nil).Once()
 	s.runner.On("RunAllProcessorsOnLedger", uint32(1)).Return(nil).Once()
 	s.historyQ.On("UpdateLastLedgerExpIngest", uint32(1)).Return(nil).Once()
-	s.graph.On("Apply", uint32(1)).Return(nil).Once()
 	s.historyQ.On("Commit").Return(nil).Once()
+	s.graph.On("Apply", uint32(1)).Return(nil).Once()
 
 	err := s.system.StressTest(10, 4)
 	s.Assert().NoError(err)

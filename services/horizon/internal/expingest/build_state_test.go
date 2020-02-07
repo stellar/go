@@ -247,9 +247,6 @@ func (s *BuildStateTestSuite) TestUpdateCommitReturnsError() {
 		Return(nil).
 		Once()
 	s.graph.On("Clear").Return(nil).Once()
-	s.graph.On("Apply", s.checkpointLedger).
-		Return(nil).
-		Once()
 	s.historyQ.On("Commit").
 		Return(errors.New("my error")).
 		Once()
@@ -270,6 +267,9 @@ func (s *BuildStateTestSuite) TestOBGraphApplyReturnsError() {
 		Return(nil).
 		Once()
 	s.historyQ.On("UpdateExpIngestVersion", CurrentVersion).
+		Return(nil).
+		Once()
+	s.historyQ.On("Commit").
 		Return(nil).
 		Once()
 

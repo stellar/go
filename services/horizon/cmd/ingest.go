@@ -172,16 +172,10 @@ var ingestStressTestCmd = &cobra.Command{
 			log.Fatalf("cannot open Horizon DB: %v", err)
 		}
 
-		if stressTestNumTransactions > 1000 {
-			log.Fatal("`--transactions` cannot exceed 1000")
-		}
 		if stressTestNumTransactions <= 0 {
 			log.Fatal("`--transactions` must be positive")
 		}
 
-		if stressTestChangesPerTransaction > 4000 {
-			log.Fatal("`--changes` cannot exceed 4000")
-		}
 		if stressTestChangesPerTransaction <= 0 {
 			log.Fatal("`--changes` must be positive")
 		}
