@@ -63,14 +63,8 @@ func (s *StressTestStateTestSuite) TestBounds() {
 	err = s.system.StressTest(0, 4)
 	s.Assert().EqualError(err, "transactions must be positive")
 
-	err = s.system.StressTest(2000, 4)
-	s.Assert().EqualError(err, "transactions cannot exceed 1000")
-
 	err = s.system.StressTest(100, -2)
 	s.Assert().EqualError(err, "changes per transaction must be positive")
-
-	err = s.system.StressTest(100, 6000)
-	s.Assert().EqualError(err, "changes per transaction cannot exceed 4000")
 }
 
 func (s *StressTestStateTestSuite) TestBeginReturnsError() {
