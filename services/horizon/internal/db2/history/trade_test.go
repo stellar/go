@@ -129,7 +129,7 @@ func createInsertTrades(
 func createAccountsAndAssets(
 	tt *test.T, q *Q, accounts []string, assets []xdr.Asset,
 ) ([]int64, []int64) {
-	addressToAccounts, err := q.CreateAccounts(accounts)
+	addressToAccounts, err := q.CreateAccounts(accounts, 2)
 	tt.Assert.NoError(err)
 
 	accountIDs := []int64{}
@@ -137,7 +137,7 @@ func createAccountsAndAssets(
 		accountIDs = append(accountIDs, addressToAccounts[account])
 	}
 
-	assetMap, err := q.CreateAssets(assets)
+	assetMap, err := q.CreateAssets(assets, 2)
 	tt.Assert.NoError(err)
 
 	assetIDs := []int64{}
