@@ -106,7 +106,7 @@ var dbReapCmd = &cobra.Command{
 var dbReingestCmd = &cobra.Command{
 	Use:   "reingest",
 	Short: "reingest commands",
-	Long:  "reingest backfills historical ingestion data for every ledger or ledgers specified by subcommand",
+	Long:  "reingest ingests historical data for every ledger or ledgers specified by subcommand",
 	Run: func(cmd *cobra.Command, args []string) {
 		fmt.Println("Use one of the subcomands...")
 		cmd.Usage()
