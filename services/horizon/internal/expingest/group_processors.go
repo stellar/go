@@ -16,7 +16,7 @@ type groupChangeProcessors []horizonChangeProcessor
 func (g groupChangeProcessors) ProcessChange(change io.Change) error {
 	for _, p := range g {
 		if err := p.ProcessChange(change); err != nil {
-			return err
+			return errors.Wrapf(err, "error in %T.ProcessChange", p)
 		}
 	}
 	return nil
@@ -25,7 +25,7 @@ func (g groupChangeProcessors) ProcessChange(change io.Change) error {
 func (g groupChangeProcessors) Commit() error {
 	for _, p := range g {
 		if err := p.Commit(); err != nil {
-			return err
+			return errors.Wrapf(err, "error in %T.Commit", p)
 		}
 	}
 	return nil
