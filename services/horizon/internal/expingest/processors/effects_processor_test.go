@@ -182,6 +182,7 @@ func (s *EffectsProcessorTestSuiteLedger) mockSuccessfulCreateAccounts() {
 	s.mockQ.On(
 		"CreateAccounts",
 		mock.AnythingOfType("[]string"),
+		maxBatchSize,
 	).Run(func(args mock.Arguments) {
 		arg := args.Get(0).([]string)
 		s.Assert().ElementsMatch(s.addresses, arg)
@@ -211,7 +212,7 @@ func (s *EffectsProcessorTestSuiteLedger) TestIngestEffectsSucceeds() {
 }
 
 func (s *EffectsProcessorTestSuiteLedger) TestCreateAccountsFails() {
-	s.mockQ.On("CreateAccounts", mock.AnythingOfType("[]string")).
+	s.mockQ.On("CreateAccounts", mock.AnythingOfType("[]string"), maxBatchSize).
 		Return(s.addressToID, errors.New("transient error")).Once()
 
 	for _, tx := range s.txs {

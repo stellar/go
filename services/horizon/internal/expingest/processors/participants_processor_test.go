@@ -128,7 +128,7 @@ func (s *ParticipantsProcessorTestSuiteLedger) TestEmptyParticipants() {
 }
 
 func (s *ParticipantsProcessorTestSuiteLedger) TestIngestParticipantsSucceeds() {
-	s.mockQ.On("CreateAccounts", mock.AnythingOfType("[]string")).
+	s.mockQ.On("CreateAccounts", mock.AnythingOfType("[]string"), maxBatchSize).
 		Run(func(args mock.Arguments) {
 			arg := args.Get(0).([]string)
 			s.Assert().ElementsMatch(
@@ -156,7 +156,7 @@ func (s *ParticipantsProcessorTestSuiteLedger) TestIngestParticipantsSucceeds() 
 }
 
 func (s *ParticipantsProcessorTestSuiteLedger) TestCreateAccountsFails() {
-	s.mockQ.On("CreateAccounts", mock.AnythingOfType("[]string")).
+	s.mockQ.On("CreateAccounts", mock.AnythingOfType("[]string"), maxBatchSize).
 		Return(s.addressToID, errors.New("transient error")).Once()
 	for _, tx := range s.txs {
 		err := s.processor.ProcessTransaction(tx)
@@ -167,7 +167,7 @@ func (s *ParticipantsProcessorTestSuiteLedger) TestCreateAccountsFails() {
 }
 
 func (s *ParticipantsProcessorTestSuiteLedger) TestBatchAddFails() {
-	s.mockQ.On("CreateAccounts", mock.AnythingOfType("[]string")).
+	s.mockQ.On("CreateAccounts", mock.AnythingOfType("[]string"), maxBatchSize).
 		Run(func(args mock.Arguments) {
 			arg := args.Get(0).([]string)
 			s.Assert().ElementsMatch(
@@ -201,7 +201,7 @@ func (s *ParticipantsProcessorTestSuiteLedger) TestBatchAddFails() {
 }
 
 func (s *ParticipantsProcessorTestSuiteLedger) TestOperationParticipantsBatchAddFails() {
-	s.mockQ.On("CreateAccounts", mock.AnythingOfType("[]string")).
+	s.mockQ.On("CreateAccounts", mock.AnythingOfType("[]string"), maxBatchSize).
 		Run(func(args mock.Arguments) {
 			arg := args.Get(0).([]string)
 			s.Assert().ElementsMatch(
@@ -240,7 +240,7 @@ func (s *ParticipantsProcessorTestSuiteLedger) TestOperationParticipantsBatchAdd
 }
 
 func (s *ParticipantsProcessorTestSuiteLedger) TestBatchAddExecFails() {
-	s.mockQ.On("CreateAccounts", mock.AnythingOfType("[]string")).
+	s.mockQ.On("CreateAccounts", mock.AnythingOfType("[]string"), maxBatchSize).
 		Run(func(args mock.Arguments) {
 			arg := args.Get(0).([]string)
 			s.Assert().ElementsMatch(
@@ -264,7 +264,7 @@ func (s *ParticipantsProcessorTestSuiteLedger) TestBatchAddExecFails() {
 }
 
 func (s *ParticipantsProcessorTestSuiteLedger) TestOpeartionBatchAddExecFails() {
-	s.mockQ.On("CreateAccounts", mock.AnythingOfType("[]string")).
+	s.mockQ.On("CreateAccounts", mock.AnythingOfType("[]string"), maxBatchSize).
 		Run(func(args mock.Arguments) {
 			arg := args.Get(0).([]string)
 			s.Assert().ElementsMatch(

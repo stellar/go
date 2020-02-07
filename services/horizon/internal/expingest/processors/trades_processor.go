@@ -57,13 +57,13 @@ func (p *TradeProcessor) ProcessTransaction(transaction io.LedgerTransaction) (e
 func (p *TradeProcessor) Commit() error {
 	if len(p.inserts) > 0 {
 		batch := p.tradesQ.NewTradeBatchInsertBuilder(maxBatchSize)
-		accountSet, err := p.tradesQ.CreateAccounts(mapKeysToList(p.accountSet))
+		accountSet, err := p.tradesQ.CreateAccounts(mapKeysToList(p.accountSet), maxBatchSize)
 		if err != nil {
 			return errors.Wrap(err, "Error creating account ids")
 		}
 
 		var assetMap map[string]history.Asset
-		assetMap, err = p.tradesQ.CreateAssets(p.assets)
+		assetMap, err = p.tradesQ.CreateAssets(p.assets, maxBatchSize)
 		if err != nil {
 			return errors.Wrap(err, "Error creating asset ids")
 		}
