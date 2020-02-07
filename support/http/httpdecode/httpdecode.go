@@ -61,6 +61,7 @@ func DecodeForm(r *http.Request, v interface{}) error {
 }
 
 // Decode decodes form URL encoded requests and JSON requests from r into v.
+// Also decodes query parameters.
 //
 // The requests Content-Type header informs if the request should be decoded
 // using a form URL encoded decoder or using a JSON decoder.
@@ -74,8 +75,8 @@ func DecodeForm(r *http.Request, v interface{}) error {
 // An error is returned if the Content-Type cannot be parsed by a mime
 // media-type parser.
 //
-// See DecodeForm and DecodeJSON for details about the types of errors that may
-// occur.
+// See DecodeQuery, DecodeForm and DecodeJSON for details about the types of
+// errors that may occur.
 func Decode(r *http.Request, v interface{}) error {
 	err := DecodeQuery(r, v)
 	if err != nil {
