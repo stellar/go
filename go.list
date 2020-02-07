@@ -29,7 +29,7 @@ github.com/fortytw2/leaktest v1.3.0
 github.com/fsnotify/fsnotify v1.4.7
 github.com/gavv/monotime v0.0.0-20161010190848-47d58efa6955
 github.com/getsentry/raven-go v0.0.0-20160805001729-c9d3cc542ad1
-github.com/go-chi/chi v3.1.5+incompatible
+github.com/go-chi/chi v4.0.3+incompatible
 github.com/go-errors/errors v0.0.0-20150906023321-a41850380601
 github.com/go-kit/kit v0.8.0
 github.com/go-logfmt/logfmt v0.3.0
