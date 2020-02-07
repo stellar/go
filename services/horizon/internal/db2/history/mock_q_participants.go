@@ -9,8 +9,8 @@ type MockQParticipants struct {
 	mock.Mock
 }
 
-func (m *MockQParticipants) CreateAccounts(addresses []string) (map[string]int64, error) {
-	a := m.Called(addresses)
+func (m *MockQParticipants) CreateAccounts(addresses []string, maxBatchSize int) (map[string]int64, error) {
+	a := m.Called(addresses, maxBatchSize)
 	return a.Get(0).(map[string]int64), a.Error(1)
 }
 

@@ -278,7 +278,7 @@ func (m *mockDBQ) NewTradeBatchInsertBuilder(maxBatchSize int) history.TradeBatc
 	return args.Get(0).(history.TradeBatchInsertBuilder)
 }
 
-func (m *mockDBQ) CreateAssets(assets []xdr.Asset) (map[string]history.Asset, error) {
+func (m *mockDBQ) CreateAssets(assets []xdr.Asset, batchSize int) (map[string]history.Asset, error) {
 	args := m.Called(assets)
 	return args.Get(0).(map[string]history.Asset), args.Error(1)
 }

@@ -50,7 +50,7 @@ func (p *ParticipantsProcessor) loadAccountIDs(participantSet map[string]partici
 		addresses = append(addresses, address)
 	}
 
-	addressToID, err := p.participantsQ.CreateAccounts(addresses)
+	addressToID, err := p.participantsQ.CreateAccounts(addresses, maxBatchSize)
 	if err != nil {
 		return errors.Wrap(err, "Could not create account ids")
 	}

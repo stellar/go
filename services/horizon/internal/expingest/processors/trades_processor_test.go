@@ -472,7 +472,7 @@ func (s *TradeProcessorTestSuiteLedger) mockReadTradeTransactions(
 func (s *TradeProcessorTestSuiteLedger) TestIngestTradesSucceeds() {
 	inserts := s.mockReadTradeTransactions(s.processor.ledger)
 
-	s.mockQ.On("CreateAccounts", mock.AnythingOfType("[]string")).
+	s.mockQ.On("CreateAccounts", mock.AnythingOfType("[]string"), maxBatchSize).
 		Run(func(args mock.Arguments) {
 			arg := args.Get(0).([]string)
 			s.Assert().ElementsMatch(
@@ -481,7 +481,7 @@ func (s *TradeProcessorTestSuiteLedger) TestIngestTradesSucceeds() {
 			)
 		}).Return(s.accountToID, nil).Once()
 
-	s.mockQ.On("CreateAssets", mock.AnythingOfType("[]xdr.Asset")).
+	s.mockQ.On("CreateAssets", mock.AnythingOfType("[]xdr.Asset"), maxBatchSize).
 		Run(func(args mock.Arguments) {
 			arg := args.Get(0).([]xdr.Asset)
 			s.Assert().ElementsMatch(
@@ -510,7 +510,7 @@ func (s *TradeProcessorTestSuiteLedger) TestIngestTradesSucceeds() {
 func (s *TradeProcessorTestSuiteLedger) TestCreateAccountsError() {
 	s.mockReadTradeTransactions(s.processor.ledger)
 
-	s.mockQ.On("CreateAccounts", mock.AnythingOfType("[]string")).
+	s.mockQ.On("CreateAccounts", mock.AnythingOfType("[]string"), maxBatchSize).
 		Run(func(args mock.Arguments) {
 			arg := args.Get(0).([]string)
 			s.Assert().ElementsMatch(
@@ -532,7 +532,7 @@ func (s *TradeProcessorTestSuiteLedger) TestCreateAccountsError() {
 func (s *TradeProcessorTestSuiteLedger) TestCreateAssetsError() {
 	s.mockReadTradeTransactions(s.processor.ledger)
 
-	s.mockQ.On("CreateAccounts", mock.AnythingOfType("[]string")).
+	s.mockQ.On("CreateAccounts", mock.AnythingOfType("[]string"), maxBatchSize).
 		Run(func(args mock.Arguments) {
 			arg := args.Get(0).([]string)
 			s.Assert().ElementsMatch(
@@ -541,7 +541,7 @@ func (s *TradeProcessorTestSuiteLedger) TestCreateAssetsError() {
 			)
 		}).Return(s.accountToID, nil).Once()
 
-	s.mockQ.On("CreateAssets", mock.AnythingOfType("[]xdr.Asset")).
+	s.mockQ.On("CreateAssets", mock.AnythingOfType("[]xdr.Asset"), maxBatchSize).
 		Run(func(args mock.Arguments) {
 			arg := args.Get(0).([]xdr.Asset)
 			s.Assert().ElementsMatch(
@@ -562,7 +562,7 @@ func (s *TradeProcessorTestSuiteLedger) TestCreateAssetsError() {
 func (s *TradeProcessorTestSuiteLedger) TestBatchAddError() {
 	s.mockReadTradeTransactions(s.processor.ledger)
 
-	s.mockQ.On("CreateAccounts", mock.AnythingOfType("[]string")).
+	s.mockQ.On("CreateAccounts", mock.AnythingOfType("[]string"), maxBatchSize).
 		Run(func(args mock.Arguments) {
 			arg := args.Get(0).([]string)
 			s.Assert().ElementsMatch(
@@ -571,7 +571,7 @@ func (s *TradeProcessorTestSuiteLedger) TestBatchAddError() {
 			)
 		}).Return(s.accountToID, nil).Once()
 
-	s.mockQ.On("CreateAssets", mock.AnythingOfType("[]xdr.Asset")).
+	s.mockQ.On("CreateAssets", mock.AnythingOfType("[]xdr.Asset"), maxBatchSize).
 		Run(func(args mock.Arguments) {
 			arg := args.Get(0).([]xdr.Asset)
 			s.Assert().ElementsMatch(
@@ -595,7 +595,7 @@ func (s *TradeProcessorTestSuiteLedger) TestBatchAddError() {
 func (s *TradeProcessorTestSuiteLedger) TestBatchExecError() {
 	insert := s.mockReadTradeTransactions(s.processor.ledger)
 
-	s.mockQ.On("CreateAccounts", mock.AnythingOfType("[]string")).
+	s.mockQ.On("CreateAccounts", mock.AnythingOfType("[]string"), maxBatchSize).
 		Run(func(args mock.Arguments) {
 			arg := args.Get(0).([]string)
 			s.Assert().ElementsMatch(
@@ -604,7 +604,7 @@ func (s *TradeProcessorTestSuiteLedger) TestBatchExecError() {
 			)
 		}).Return(s.accountToID, nil).Once()
 
-	s.mockQ.On("CreateAssets", mock.AnythingOfType("[]xdr.Asset")).
+	s.mockQ.On("CreateAssets", mock.AnythingOfType("[]xdr.Asset"), maxBatchSize).
 		Run(func(args mock.Arguments) {
 			arg := args.Get(0).([]xdr.Asset)
 			s.Assert().ElementsMatch(
@@ -628,7 +628,7 @@ func (s *TradeProcessorTestSuiteLedger) TestBatchExecError() {
 func (s *TradeProcessorTestSuiteLedger) TestIgnoreCheckIfSmallLedger() {
 	insert := s.mockReadTradeTransactions(s.processor.ledger)
 
-	s.mockQ.On("CreateAccounts", mock.AnythingOfType("[]string")).
+	s.mockQ.On("CreateAccounts", mock.AnythingOfType("[]string"), maxBatchSize).
 		Run(func(args mock.Arguments) {
 			arg := args.Get(0).([]string)
 			s.Assert().ElementsMatch(
@@ -637,7 +637,7 @@ func (s *TradeProcessorTestSuiteLedger) TestIgnoreCheckIfSmallLedger() {
 			)
 		}).Return(s.accountToID, nil).Once()
 
-	s.mockQ.On("CreateAssets", mock.AnythingOfType("[]xdr.Asset")).
+	s.mockQ.On("CreateAssets", mock.AnythingOfType("[]xdr.Asset"), maxBatchSize).
 		Run(func(args mock.Arguments) {
 			arg := args.Get(0).([]xdr.Asset)
 			s.Assert().ElementsMatch(

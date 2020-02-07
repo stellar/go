@@ -9,13 +9,13 @@ type MockQTrades struct {
 	mock.Mock
 }
 
-func (m *MockQTrades) CreateAccounts(addresses []string) (map[string]int64, error) {
-	a := m.Called(addresses)
+func (m *MockQTrades) CreateAccounts(addresses []string, maxBatchSize int) (map[string]int64, error) {
+	a := m.Called(addresses, maxBatchSize)
 	return a.Get(0).(map[string]int64), a.Error(1)
 }
 
-func (m *MockQTrades) CreateAssets(assets []xdr.Asset) (map[string]Asset, error) {
-	a := m.Called(assets)
+func (m *MockQTrades) CreateAssets(assets []xdr.Asset, maxBatchSize int) (map[string]Asset, error) {
+	a := m.Called(assets, maxBatchSize)
 	return a.Get(0).(map[string]Asset), a.Error(1)
 }
 

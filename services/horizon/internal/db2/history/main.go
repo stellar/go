@@ -170,7 +170,7 @@ type IngestionQ interface {
 	QSigners
 	//QTrades
 	NewTradeBatchInsertBuilder(maxBatchSize int) TradeBatchInsertBuilder
-	CreateAssets(assets []xdr.Asset) (map[string]Asset, error)
+	CreateAssets(assets []xdr.Asset, batchSize int) (map[string]Asset, error)
 	QTransactions
 	QTrustLines
 
@@ -294,7 +294,7 @@ type QAssetStats interface {
 }
 
 type QCreateAccountsHistory interface {
-	CreateAccounts(addresses []string) (map[string]int64, error)
+	CreateAccounts(addresses []string, maxBatchSize int) (map[string]int64, error)
 }
 
 // Effect is a row of data from the `history_effects` table
