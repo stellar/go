@@ -45,6 +45,9 @@ const (
 
 	defaultCoreCursorName           = "HORIZON"
 	stateVerificationErrorThreshold = 3
+
+	maxTransactionsPerLedger = 1000
+	maxChangesPerTransaction = 4000
 )
 
 var log = logpkg.DefaultLogger.WithField("service", "expingest")
@@ -195,6 +198,28 @@ func NewSystem(config Config) (*System, error) {
 //     a database so order book graph is updated but database is not overwritten.
 func (s *System) Run() {
 	s.runStateMachine(startState{})
+}
+
+func (s *System) StressTest(numTransactions, changesPerTransaction int) error {
+	if numTransactions <= 0 {
+		return errors.New("transactions must be positive")
+	}
+	if numTransactions > maxTransactionsPerLedger {
+		return errors.Errorf("transactions cannot exceed %d", maxTransactionsPerLedger)
+	}
+	if changesPerTransaction <= 0 {
+		return errors.New("changes per transaction must be positive")
+	}
+	if changesPerTransaction > maxChangesPerTransaction {
+		return errors.Errorf("changes per transaction cannot exceed %d", maxChangesPerTransaction)
+	}
+
+	s.runner.LogMemoryStats()
+	s.runner.SetLedgerBackend(fakeLedgerBackend{
+		numTransactions:       numTransactions,
+		changesPerTransaction: changesPerTransaction,
+	})
+	return s.runStateMachine(stressTestState{})
 }
 
 // VerifyRange runs the ingestion pipeline on the range of ledgers. When

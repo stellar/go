@@ -281,22 +281,12 @@ func (b buildState) run(s *System) (transition, error) {
 		return start(), errors.Wrap(err, "Error ingesting history archive")
 	}
 
-	if err = s.historyQ.UpdateLastLedgerExpIngest(b.checkpointLedger); err != nil {
-		return start(), errors.Wrap(err, updateLastLedgerExpIngestErrMsg)
-	}
-
 	if err = s.historyQ.UpdateExpIngestVersion(CurrentVersion); err != nil {
 		return start(), errors.Wrap(err, "Error updating expingest version")
 	}
 
-	err = s.historyQ.Commit()
-	if err != nil {
-		return start(), errors.Wrap(err, commitErrMsg)
-	}
-
-	err = s.graph.Apply(b.checkpointLedger)
-	if err != nil {
-		return start(), errors.Wrap(err, "Error applying order book changes")
+	if err = completeIngestion(s, b.checkpointLedger); err != nil {
+		return start(), err
 	}
 
 	log.WithFields(logpkg.F{
@@ -434,17 +424,8 @@ func (r resumeState) run(s *System) (transition, error) {
 		return retryResume(r), errors.Wrap(err, "Error running processors on ledger")
 	}
 
-	err = s.historyQ.UpdateLastLedgerExpIngest(ingestLedger)
-	if err != nil {
-		return retryResume(r), errors.Wrap(err, updateLastLedgerExpIngestErrMsg)
-	}
-
-	if err = s.graph.Apply(ingestLedger); err != nil {
-		return retryResume(r), errors.Wrap(err, "Error applying graph changes from ledger")
-	}
-
-	if err = s.historyQ.Commit(); err != nil {
-		return retryResume(r), errors.Wrap(err, commitErrMsg)
+	if err = completeIngestion(s, ingestLedger); err != nil {
+		return retryResume(r), err
 	}
 
 	if err = s.updateCursor(ingestLedger); err != nil {
@@ -639,20 +620,7 @@ func (v verifyRangeState) run(s *System) (transition, error) {
 		return stop(), err
 	}
 
-	err = s.historyQ.UpdateLastLedgerExpIngest(v.fromLedger)
-	if err != nil {
-		err = errors.Wrap(err, updateLastLedgerExpIngestErrMsg)
-		return stop(), err
-	}
-
-	if err = s.historyQ.Commit(); err != nil {
-		err = errors.Wrap(err, commitErrMsg)
-		return stop(), err
-	}
-
-	err = s.graph.Apply(v.fromLedger)
-	if err != nil {
-		err = errors.Wrap(err, "Error applying order book changes")
+	if err = completeIngestion(s, v.fromLedger); err != nil {
 		return stop(), err
 	}
 
@@ -682,19 +650,8 @@ func (v verifyRangeState) run(s *System) (transition, error) {
 			return stop(), err
 		}
 
-		err = s.historyQ.UpdateLastLedgerExpIngest(sequence)
-		if err != nil {
-			err = errors.Wrap(err, updateLastLedgerExpIngestErrMsg)
+		if err = completeIngestion(s, sequence); err != nil {
 			return stop(), err
-		}
-
-		if err = s.graph.Apply(sequence); err != nil {
-			err = errors.Wrap(err, "Error applying graph history archive changes")
-			return stop(), err
-		}
-
-		if err = s.historyQ.Commit(); err != nil {
-			return stop(), errors.Wrap(err, commitErrMsg)
 		}
 
 		log.WithFields(logpkg.F{
@@ -712,4 +669,83 @@ func (v verifyRangeState) run(s *System) (transition, error) {
 	}
 
 	return stop(), err
+}
+
+type stressTestState struct{}
+
+func (stressTestState) String() string {
+	return "stressTest"
+}
+
+func (stressTestState) run(s *System) (transition, error) {
+	if err := s.historyQ.Begin(); err != nil {
+		err = errors.Wrap(err, "Error starting a transaction")
+		return stop(), err
+	}
+	defer s.historyQ.Rollback()
+	defer s.graph.Discard()
+
+	// Simple check if DB clean
+	lastIngestedLedger, err := s.historyQ.GetLastLedgerExpIngest()
+	if err != nil {
+		err = errors.Wrap(err, getLastIngestedErrMsg)
+		return stop(), err
+	}
+
+	if lastIngestedLedger != 0 {
+		err = errors.New("Database not empty")
+		return stop(), err
+	}
+
+	sequence := lastIngestedLedger + 1
+	log.WithFields(logpkg.F{
+		"sequence": sequence,
+		"state":    true,
+		"ledger":   true,
+		"graph":    true,
+		"commit":   true,
+	}).Info("Processing ledger")
+	startTime := time.Now()
+
+	if err = s.runner.RunAllProcessorsOnLedger(sequence); err != nil {
+		err = errors.Wrap(err, "Error running processors on ledger")
+		return stop(), err
+	}
+
+	if err = completeIngestion(s, sequence); err != nil {
+		return stop(), err
+	}
+
+	log.WithFields(logpkg.F{
+		"sequence": sequence,
+		"duration": time.Since(startTime).Seconds(),
+		"state":    true,
+		"ledger":   true,
+		"graph":    true,
+		"commit":   true,
+	}).Info("Processed ledger")
+
+	return stop(), nil
+}
+
+func completeIngestion(s *System, ledger uint32) error {
+	if ledger == 0 {
+		return errors.New("ledger must be positive")
+	}
+
+	if err := s.historyQ.UpdateLastLedgerExpIngest(ledger); err != nil {
+		err = errors.Wrap(err, updateLastLedgerExpIngestErrMsg)
+		return err
+	}
+
+	if err := s.graph.Apply(ledger); err != nil {
+		err = errors.Wrap(err, "Error applying order book changes")
+		return err
+	}
+
+	if err := s.historyQ.Commit(); err != nil {
+		return errors.Wrap(err, commitErrMsg)
+	}
+
+	return nil
 }

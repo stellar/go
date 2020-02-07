@@ -31,6 +31,7 @@ func TestLoggerStateReader(t *testing.T) {
 		mockStateReader,
 		logger,
 		2,
+		false,
 	)
 
 	for {

@@ -22,6 +22,7 @@ const (
 	_                    = iota
 	historyArchiveSource = ingestionSource(iota)
 	ledgerSource         = ingestionSource(iota)
+	logFrequency         = 100000
 )
 
 type horizonTransactionProcessor interface {
@@ -31,6 +32,8 @@ type horizonTransactionProcessor interface {
 }
 
 type ProcessorRunnerInterface interface {
+	SetLedgerBackend(ledgerBackend ledgerbackend.LedgerBackend)
+	LogMemoryStats()
 	RunHistoryArchiveIngestion(checkpointLedger uint32) error
 	RunAllProcessorsOnLedger(sequence uint32) error
 	RunTransactionProcessorsOnLedger(sequence uint32) error
@@ -47,7 +50,16 @@ type ProcessorRunner struct {
 	historyQ       history.IngestionQ
 	historyArchive *historyarchive.Archive
 	historyAdapter adapters.HistoryArchiveAdapterInterface
-	ledgerBackend  *ledgerbackend.DatabaseBackend
+	ledgerBackend  ledgerbackend.LedgerBackend
+	logMemoryStats bool
+}
+
+func (s *ProcessorRunner) SetLedgerBackend(ledgerBackend ledgerbackend.LedgerBackend) {
+	s.ledgerBackend = ledgerBackend
+}
+
+func (s *ProcessorRunner) LogMemoryStats() {
+	s.logMemoryStats = true
 }
 
 func (s *ProcessorRunner) buildOrderBookChangeProcessor() horizonChangeProcessor {
@@ -170,7 +182,8 @@ func (s *ProcessorRunner) RunHistoryArchiveIngestion(checkpointLedger uint32) er
 	stateReader = newLoggerStateReader(
 		stateReader,
 		log,
-		100000,
+		logFrequency,
+		s.logMemoryStats,
 	)
 
 	err = io.StreamChanges(changeProcessor, stateReader)
@@ -189,10 +202,18 @@ func (s *ProcessorRunner) RunHistoryArchiveIngestion(checkpointLedger uint32) er
 func (s *ProcessorRunner) runChangeProcessorOnLedger(
 	changeProcessor horizonChangeProcessor, ledger uint32,
 ) error {
-	changeReader, err := io.NewLedgerChangeReader(s.ctx, ledger, s.ledgerBackend)
+	var changeReader io.ChangeReader
+	var err error
+	changeReader, err = io.NewLedgerChangeReader(s.ctx, ledger, s.ledgerBackend)
 	if err != nil {
 		return errors.Wrap(err, "Error creating ledger change reader")
 	}
+	changeReader = newLoggerChangeReader(
+		changeReader,
+		log,
+		logFrequency,
+		s.logMemoryStats,
+	)
 	if err = io.StreamChanges(changeProcessor, changeReader); err != nil {
 		return errors.Wrap(err, "Error streaming changes from ledger")
 	}
