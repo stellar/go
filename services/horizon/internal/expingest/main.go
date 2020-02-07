@@ -212,7 +212,7 @@ func (s *System) VerifyRange(fromLedger, toLedger uint32, verifyState bool) erro
 func (s *System) ReingestRange(fromLedger, toLedger uint32) error {
 	return s.runStateMachine(historyRangeState{
 		fromLedger:       fromLedger,
-		toLedger:         fromLedger,
+		toLedger:         toLedger,
 		shutdownWhenDone: true,
 		clearHistory:     true,
 	})
