@@ -2,12 +2,37 @@ package httpdecode
 
 import (
 	"encoding/json"
+	"fmt"
 	"mime"
 	"net/http"
 
+	"github.com/go-chi/chi"
 	"github.com/gorilla/schema"
 	"github.com/stellar/go/support/errors"
 )
+
+// DecodePath decodes parameters from the path in a request used with the
+// github.com/go-chi/chi muxing module.
+func DecodePath(r *http.Request, v interface{}) error {
+	rctx := chi.RouteContext(r.Context())
+	if rctx == nil {
+		return nil
+	}
+	params := rctx.URLParams
+	paramMap := map[string][]string{}
+	for i, k := range params.Keys {
+		if i >= len(params.Values) {
+			break
+		}
+		v := params.Values[i]
+		paramMap[k] = append(paramMap[k], v)
+	}
+	fmt.Println(params)
+	dec := schema.NewDecoder()
+	dec.SetAliasTag("path")
+	dec.IgnoreUnknownKeys(true)
+	return dec.Decode(v, paramMap)
+}
 
 // DecodeQuery decodes the query string from r into v.
 func DecodeQuery(r *http.Request, v interface{}) error {
@@ -77,7 +102,11 @@ func DecodeForm(r *http.Request, v interface{}) error {
 // See DecodeForm and DecodeJSON for details about the types of errors that may
 // occur.
 func Decode(r *http.Request, v interface{}) error {
-	err := DecodeQuery(r, v)
+	err := DecodePath(r, v)
+	if err != nil {
+		return errors.Wrap(err, "path params could not be parsed")
+	}
+	err = DecodeQuery(r, v)
 	if err != nil {
 		return errors.Wrap(err, "query could not be parsed")
 	}

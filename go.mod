@@ -19,7 +19,7 @@ require (
 	github.com/fatih/structs v1.0.0 // indirect
 	github.com/gavv/monotime v0.0.0-20161010190848-47d58efa6955 // indirect
 	github.com/getsentry/raven-go v0.0.0-20160805001729-c9d3cc542ad1
-	github.com/go-chi/chi v3.1.5+incompatible
+	github.com/go-chi/chi v4.0.3+incompatible
 	github.com/go-errors/errors v0.0.0-20150906023321-a41850380601
 	github.com/gobuffalo/packr v1.12.1 // indirect
 	github.com/goji/httpauth v0.0.0-20160601135302-2da839ab0f4d
