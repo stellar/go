@@ -62,24 +62,17 @@ func checkPaths(paths []string) {
 		a := cmp.NewResponse(horizonBase, path, false)
 		b := cmp.NewResponse(horizonTest, path, false)
 
-		var status string
-		if a.Equal(b) {
-			status = "ok"
-		} else {
-			status = "diff"
-		}
-
 		log = log.WithFields(slog.F{
 			"status_code": a.StatusCode,
 			"size_base":   a.Size(),
 			"size_test":   b.Size(),
 		})
 
-		if status == "diff" {
+		if a.Equal(b) {
+			log.Info(path)
+		} else {
 			log.Error("DIFF " + path)
 			os.Exit(1)
-		} else {
-			log.Info(path)
 		}
 	}
 }
