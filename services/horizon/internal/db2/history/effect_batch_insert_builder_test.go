@@ -15,7 +15,7 @@ func TestAddEffect(t *testing.T) {
 	q := &Q{tt.HorizonSession()}
 
 	address := "GBXGQJWVLWOYHFLVTKWV5FGHA3LNYY2JQKM7OAJAUEQFU6LPCSEFVXON"
-	accounIDs, err := q.CreateAccounts([]string{address})
+	accounIDs, err := q.CreateAccounts([]string{address}, 1)
 	tt.Assert.NoError(err)
 
 	builder := q.NewEffectBatchInsertBuilder(2)

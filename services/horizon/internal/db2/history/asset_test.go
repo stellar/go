@@ -18,7 +18,7 @@ func TestCreateAssets(t *testing.T) {
 	assets := []xdr.Asset{
 		nativeAsset, eurAsset,
 	}
-	assetMap, err := q.CreateAssets(assets)
+	assetMap, err := q.CreateAssets(assets, 1)
 	tt.Assert.NoError(err)
 	tt.Assert.Len(assetMap, len(assets))
 
@@ -38,10 +38,13 @@ func TestCreateAssets(t *testing.T) {
 	}
 
 	// CreateAssets handles duplicates
-	assetMap, err = q.CreateAssets([]xdr.Asset{
-		nativeAsset, nativeAsset, eurAsset, eurAsset,
-		nativeAsset, nativeAsset, eurAsset, eurAsset,
-	})
+	assetMap, err = q.CreateAssets(
+		[]xdr.Asset{
+			nativeAsset, nativeAsset, eurAsset, eurAsset,
+			nativeAsset, nativeAsset, eurAsset, eurAsset,
+		},
+		2,
+	)
 	tt.Assert.NoError(err)
 	tt.Assert.Len(assetMap, len(assets))
 
@@ -60,7 +63,7 @@ func TestCreateAssets(t *testing.T) {
 
 	// CreateAssets handles duplicates and new rows
 	assets = append(assets, usdAsset)
-	assetMap, err = q.CreateAssets(assets)
+	assetMap, err = q.CreateAssets(assets, 2)
 	tt.Assert.NoError(err)
 	tt.Assert.Len(assetMap, len(assets))
 
