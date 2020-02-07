@@ -7,6 +7,7 @@ import (
 
 	"github.com/jmoiron/sqlx"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
+	"github.com/stellar/go/services/horizon/internal/toid"
 	"github.com/stellar/go/support/db"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
@@ -143,7 +144,9 @@ func TestReingestRange(t *testing.T) {
 	historyQ.On("Begin").Return(nil).Once()
 	historyQ.On("GetLastLedgerExpIngest").Return(uint32(0), nil).Once()
 
-	historyQ.On("DeleteRangeAll", int64(0), int64(47244640256)).Return(nil).Once()
+	toidEnd := toid.New(11, 0, 0).ToInt64()
+	historyQ.On("DeleteRangeAll", int64(0), toidEnd).Return(nil).Once()
+	assert.Equal(t, int64(47244640256), toidEnd)
 
 	for i := 1; i <= 10; i++ {
 		runner.On("RunTransactionProcessorsOnLedger", uint32(i)).Return(nil).Once()
