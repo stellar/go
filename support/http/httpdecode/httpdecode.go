@@ -9,6 +9,14 @@ import (
 	"github.com/stellar/go/support/errors"
 )
 
+// DecodeQuery decodes the query string from r into v.
+func DecodeQuery(r *http.Request, v interface{}) error {
+	dec := schema.NewDecoder()
+	dec.SetAliasTag("query")
+	dec.IgnoreUnknownKeys(true)
+	return dec.Decode(v, r.URL.Query())
+}
+
 // DecodeJSON decodes JSON request from r into v.
 func DecodeJSON(r *http.Request, v interface{}) error {
 	dec := json.NewDecoder(r.Body)
@@ -53,6 +61,7 @@ func DecodeForm(r *http.Request, v interface{}) error {
 }
 
 // Decode decodes form URL encoded requests and JSON requests from r into v.
+// Also decodes query parameters.
 //
 // The requests Content-Type header informs if the request should be decoded
 // using a form URL encoded decoder or using a JSON decoder.
@@ -66,9 +75,13 @@ func DecodeForm(r *http.Request, v interface{}) error {
 // An error is returned if the Content-Type cannot be parsed by a mime
 // media-type parser.
 //
-// See DecodeForm and DecodeJSON for details about the types of errors that may
-// occur.
+// See DecodeQuery, DecodeForm and DecodeJSON for details about the types of
+// errors that may occur.
 func Decode(r *http.Request, v interface{}) error {
+	err := DecodeQuery(r, v)
+	if err != nil {
+		return errors.Wrap(err, "query could not be parsed")
+	}
 	contentType := r.Header.Get("Content-Type")
 	if contentType != "" {
 		mediaType, _, err := mime.ParseMediaType(contentType)
