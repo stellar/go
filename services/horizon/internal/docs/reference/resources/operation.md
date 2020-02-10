@@ -10,23 +10,22 @@ To learn more about the concept of operations in the Stellar network, take a loo
 
 ## Operation Types
 
-| type                                          | type_i | description                                                                                                |
-|-----------------------------------------------|--------|------------------------------------------------------------------------------------------------------------|
-| [CREATE_ACCOUNT](#create-account)                       | 0      | Creates a new account in Stellar network.
-| [PAYMENT](#payment)                                     | 1      | Sends a simple payment between two accounts in Stellar network.
-| [PATH_PAYMENT_STRICT_RECEIVE](#path-payment)            | 2      | Sends a path payment strict receive between two accounts in the Stellar network.
-| [PATH_PAYMENT_STRICT_SEND](#path-payment-strict-send)   | 13     | Sends a path payment strict send between two accounts in the Stellar network.
-| [MANAGE_SELL_OFFER](#manage-sell-offer)                 | 3      | Creates, updates or deletes a sell offer in the Stellar network.
-| [MANAGE_BUY_OFFER](#manage-buy-offer)                   | 12     | Creates, updates or deletes a buy offer in the Stellar network.
-| [CREATE_PASSIVE_SELL_OFFER](#create-passive-sell-offer) | 4      | Creates an offer that won't consume a counter offer that exactly matches this offer.
-| [SET_OPTIONS](#set-options)                             | 5      | Sets account options (inflation destination, adding signers, etc.)
-| [CHANGE_TRUST](#change-trust)                           | 6      | Creates, updates or deletes a trust line.
-| [ALLOW_TRUST](#allow-trust)                             | 7      | Updates the "authorized" flag of an existing trust line this is called by the issuer of the related asset.
-| [ACCOUNT_MERGE](#account-merge)                         | 8      | Deletes account and transfers remaining balance to destination account.
-| [INFLATION](#inflation)                                 | 9      | Runs inflation.
-| [MANAGE_DATA](#manage-data)                             | 10     | Set, modify or delete a Data Entry (name/value pair) for an account.
-| [BUMP_SEQUENCE](#bump-sequence)                         | 11     | Bumps forward the sequence number of an account.
-
+| type                                                    | type_i | description                                                                                                |
+|---------------------------------------------------------|--------|------------------------------------------------------------------------------------------------------------|
+| [CREATE_ACCOUNT](#create-account)                       | 0      | Creates a new account in Stellar network.                                                                  |
+| [PAYMENT](#payment)                                     | 1      | Sends a simple payment between two accounts in Stellar network.                                            |
+| [PATH_PAYMENT_STRICT_RECEIVE](#path-payment)            | 2      | Sends a path payment strict receive between two accounts in the Stellar network.                           |
+| [PATH_PAYMENT_STRICT_SEND](#path-payment-strict-send)   | 13     | Sends a path payment strict send between two accounts in the Stellar network.                              |
+| [MANAGE_SELL_OFFER](#manage-sell-offer)                 | 3      | Creates, updates or deletes a sell offer in the Stellar network.                                           |
+| [MANAGE_BUY_OFFER](#manage-buy-offer)                   | 12     | Creates, updates or deletes a buy offer in the Stellar network.                                            |
+| [CREATE_PASSIVE_SELL_OFFER](#create-passive-sell-offer) | 4      | Creates an offer that won't consume a counter offer that exactly matches this offer.                       |
+| [SET_OPTIONS](#set-options)                             | 5      | Sets account options (inflation destination, adding signers, etc.)                                         |
+| [CHANGE_TRUST](#change-trust)                           | 6      | Creates, updates or deletes a trust line.                                                                  |
+| [ALLOW_TRUST](#allow-trust)                             | 7      | Updates the "authorized" flag of an existing trust line this is called by the issuer of the related asset. |
+| [ACCOUNT_MERGE](#account-merge)                         | 8      | Deletes account and transfers remaining balance to destination account.                                    |
+| [INFLATION](#inflation)                                 | 9      | Runs inflation.                                                                                            |
+| [MANAGE_DATA](#manage-data)                             | 10     | Set, modify or delete a Data Entry (name/value pair) for an account.                                       |
+| [BUMP_SEQUENCE](#bump-sequence)                         | 11     | Bumps forward the sequence number of an account.                                                           |
 
 
 Every operation type shares a set of common attributes and links, some operations also contain
@@ -36,23 +35,23 @@ additional attributes and links specific to that operation type.
 
 ## Common Attributes
 
-|              | Type   |                                                                                                                             |
-|--------------|--------|-----------------------------------------------------------------------------------------------------------------------------|
-| id           | number | The canonical id of this operation, suitable for use as the :id parameter for url templates that require an operation's ID. |
-| paging_token | any    | A [paging token](./page.md) suitable for use as a `cursor` parameter.                                                       |
-| transaction_successful | bool    | *From 0.17.0* Indicates if this operation is part of successful transaction. |
-| type         | string | A string representation of the type of operation.                                                                           |
-| type_i       | number | Specifies the type of operation, See "Types" section below for reference.                                                   |
+|                        | Type   |                                                                                                                             |
+|------------------------|--------|-----------------------------------------------------------------------------------------------------------------------------|
+| id                     | number | The canonical id of this operation, suitable for use as the :id parameter for url templates that require an operation's ID. |
+| paging_token           | any    | A [paging token](./page.md) suitable for use as a `cursor` parameter.                                                       |
+| transaction_successful | bool   | *From 0.17.0* Indicates if this operation is part of successful transaction.                                                |
+| type                   | string | A string representation of the type of operation.                                                                           |
+| type_i                 | number | Specifies the type of operation, See "Types" section below for reference.                                                   |
 
 ## Common Links
 
-|             |                  Relation                 |
-| ----------- | ----------------------------------------- |
-| self        | Relative link to the current operation    |
+|             | Relation                                                                  |
+|-------------|---------------------------------------------------------------------------|
+| self        | Relative link to the current operation                                    |
 | succeeds    | Relative link to the list of operations succeeding the current operation. |
-| precedes    | Relative link to the list of operations preceding the current operation. |
-| effects | The effects this operation triggered |
-| transaction | The transaction this operation is part of |
+| precedes    | Relative link to the list of operations preceding the current operation.  |
+| effects     | The effects this operation triggered                                      |
+| transaction | The transaction this operation is part of                                 |
 
 
 Each operation type will have a different set of attributes, in addition to the
@@ -65,11 +64,11 @@ Create Account operation represents a new account creation.
 
 #### Attributes
 
-| Field           |  Type  | Description       |
-| --------------- | ------ | ----------------- |
-| account     | string | A new account that was funded. |
-| funder     | string | Account that funded a new account. |
-| starting_balance | string | Amount the account was funded. |
+| Field            | Type   | Description                        |
+|------------------|--------|------------------------------------|
+| account          | string | A new account that was funded.     |
+| funder           | string | Account that funded a new account. |
+| starting_balance | string | Amount the account was funded.     |
 
 
 #### Example
@@ -111,20 +110,20 @@ can be either a simple native asset payment or a fiat asset payment.
 
 #### Attributes
 
-| Field           |  Type  | Description       |
-| --------------- | ------ | ----------------- |
-| from          | string | Sender of a payment.  |
-| to     | string | Destination of a payment. |
-| asset_type | string | Asset type (native / alphanum4 / alphanum12) |
-| asset_code | string | Code of the destination asset. |
-| asset_issuer | string | Asset issuer. |
-| amount          | string | Amount sent. |
+| Field        | Type   | Description                                  |
+|--------------|--------|----------------------------------------------|
+| from         | string | Sender of a payment.                         |
+| to           | string | Destination of a payment.                    |
+| asset_type   | string | Asset type (native / alphanum4 / alphanum12) |
+| asset_code   | string | Code of the destination asset.               |
+| asset_issuer | string | Asset issuer.                                |
+| amount       | string | Amount sent.                                 |
 
 #### Links
 
-|          |                            Example                            |      Relation     |
-| -------- | ------------------------------------------------------------- | ----------------- |
-| sender   | /accounts/GA5WBPYA5Y4WAEHXWR2UKO2UO4BUGHUQ74EUPKON2QHV4WRHOIRNKKH2  | Sending account   |
+|          | Example                                                            | Relation          |
+|----------|--------------------------------------------------------------------|-------------------|
+| sender   | /accounts/GA5WBPYA5Y4WAEHXWR2UKO2UO4BUGHUQ74EUPKON2QHV4WRHOIRNKKH2 | Sending account   |
 | receiver | /accounts/GCEZWKCA5VLDNRLN3RPRJMRZOX3Z6G5CHCGSNFHEYVXM3XOJMDS674JZ | Receiving account |
 
 #### Example
@@ -169,20 +168,20 @@ A path payment strict receive operation represents a payment from one account to
 
 #### Attributes
 
-| Field           |  Type  | Description       |
-| --------------- | ------ | ----------------- |
-| from          | string | Sender of a payment.  |
-| to     | string | Destination of a payment. |
-| asset_code | string | Code of the destination asset. |
-| asset_issuer | string | Destination asset issuer. |
-| asset_type | string | Destination asset type (native / alphanum4 / alphanum12) |
-| amount          | string | Amount received. |
-| source_asset_code | string | Code of the source asset. |
-| source_asset_issuer | string | Source asset issuer. |
-| source_asset_type | string | Source asset type (native / alphanum4 / alphanum12) |
-| source_max | string | Max send amount. |
-| source_amount | string | Amount sent. |
-| path | array of [Assets](./asset.md) | Additional hops the operation went through to get to the destination asset. |
+| Field               | Type                          | Description                                                                 |
+|---------------------|-------------------------------|-----------------------------------------------------------------------------|
+| from                | string                        | Sender of a payment.                                                        |
+| to                  | string                        | Destination of a payment.                                                   |
+| asset_code          | string                        | Code of the destination asset.                                              |
+| asset_issuer        | string                        | Destination asset issuer.                                                   |
+| asset_type          | string                        | Destination asset type (native / alphanum4 / alphanum12)                    |
+| amount              | string                        | Amount received.                                                            |
+| source_asset_code   | string                        | Code of the source asset.                                                   |
+| source_asset_issuer | string                        | Source asset issuer.                                                        |
+| source_asset_type   | string                        | Source asset type (native / alphanum4 / alphanum12)                         |
+| source_max          | string                        | Max send amount.                                                            |
+| source_amount       | string                        | Amount sent.                                                                |
+| path                | array of [Assets](./asset.md) | Additional hops the operation went through to get to the destination asset. |
 
 #### Example
 
@@ -235,20 +234,20 @@ Unlike [path payment strict receive](#path-payment), this operation sends precis
 
 #### Attributes
 
-| Field           |  Type  | Description       |
-| --------------- | ------ | ----------------- |
-| from          | string | Sender of a payment.  |
-| to     | string | Destination of a payment. |
-| asset_type | string | Destination asset type (native / alphanum4 / alphanum12) |
-| asset_code | string | Code of the destination asset. |
-| asset_issuer | string | Destination asset issuer. |
-| amount          | string | Amount received. |
-| source_asset_type | string | Source asset type (native / alphanum4 / alphanum12) |
-| source_asset_code | string | Source asset code. |
-| source_asset_issuer | string | Source asset issuer. |
-| source_amount | string | Amount sent. |
-| destination_min | string | The minimum amount of destination asset expected to be received. |
-| path | array of [Assets](./asset.md) | Additional hops the operation went through to get to the destination asset. |
+| Field               | Type                          | Description                                                                 |
+|---------------------|-------------------------------|-----------------------------------------------------------------------------|
+| from                | string                        | Sender of a payment.                                                        |
+| to                  | string                        | Destination of a payment.                                                   |
+| asset_type          | string                        | Destination asset type (native / alphanum4 / alphanum12)                    |
+| asset_code          | string                        | Code of the destination asset.                                              |
+| asset_issuer        | string                        | Destination asset issuer.                                                   |
+| amount              | string                        | Amount received.                                                            |
+| source_asset_type   | string                        | Source asset type (native / alphanum4 / alphanum12)                         |
+| source_asset_code   | string                        | Source asset code.                                                          |
+| source_asset_issuer | string                        | Source asset issuer.                                                        |
+| source_amount       | string                        | Amount sent.                                                                |
+| destination_min     | string                        | The minimum amount of destination asset expected to be received.            |
+| path                | array of [Assets](./asset.md) | Additional hops the operation went through to get to the destination asset. |
 
 
 #### Example
@@ -320,18 +319,18 @@ Both will fill only partially (or not at all) if there are few (or no) offers th
 
 #### Attributes
 
-| Field           |  Type  | Description       |
-| --------------- | ------ | ----------------- |
-| offer_id | string | Offer ID. |
-| amount     | string | Amount of asset to be sold. |
-| buying_asset_code | string | The code of asset to buy. |
-| buying_asset_issuer | string | The issuer of asset to buy. |
-| buying_asset_type | string | Type of asset to buy (native / alphanum4 / alphanum12) |
-| price | string | Price of selling_asset in units of buying_asset |
-| price_r | Object | n: price numerator, d: price denominator |
-| selling_asset_code | string | The code of asset to sell. |
-| selling_asset_issuer | string | The issuer of asset to sell. |
-| selling_asset_type | string | Type of asset to sell (native / alphanum4 / alphanum12) |
+| Field                | Type   | Description                                             |
+|----------------------|--------|---------------------------------------------------------|
+| offer_id             | string | Offer ID.                                               |
+| amount               | string | Amount of asset to be sold.                             |
+| buying_asset_code    | string | The code of asset to buy.                               |
+| buying_asset_issuer  | string | The issuer of asset to buy.                             |
+| buying_asset_type    | string | Type of asset to buy (native / alphanum4 / alphanum12)  |
+| price                | string | Price of selling_asset in units of buying_asset         |
+| price_r              | Object | n: price numerator, d: price denominator                |
+| selling_asset_code   | string | The code of asset to sell.                              |
+| selling_asset_issuer | string | The issuer of asset to sell.                            |
+| selling_asset_type   | string | Type of asset to sell (native / alphanum4 / alphanum12) |
 
 #### Example
 
@@ -393,19 +392,18 @@ offers or payments, this offer can potentially be filled.
 
 #### Attributes
 
-| Field           |  Type  | Description       |
-| --------------- | ------ | ----------------- |
-| offer_id | string | Offer ID. |
-| buy_amount     | string | Amount of asset to be bought. |
-| buying_asset_code | string | The code of asset to buy. |
-| buying_asset_issuer | string | The issuer of asset to buy. |
-| buying_asset_type | string | Type of asset to buy (native / alphanum4 / alphanum12) |
-| price | string | Price of thing being bought in terms of what you are selling. |
-| price_r | Object | n: price numerator, d: price denominator |
-| selling_asset_code | string | The code of asset to sell. |
-| selling_asset_issuer | string | The issuer of asset to sell. |
-| selling_asset_type | string | Type of asset to sell (native / alphanum4 / alphanum12) |
-
+| Field                | Type   | Description                                                   |
+|----------------------|--------|---------------------------------------------------------------|
+| offer_id             | string | Offer ID.                                                     |
+| buy_amount           | string | Amount of asset to be bought.                                 |
+| buying_asset_code    | string | The code of asset to buy.                                     |
+| buying_asset_issuer  | string | The issuer of asset to buy.                                   |
+| buying_asset_type    | string | Type of asset to buy (native / alphanum4 / alphanum12)        |
+| price                | string | Price of thing being bought in terms of what you are selling. |
+| price_r              | Object | n: price numerator, d: price denominator                      |
+| selling_asset_code   | string | The code of asset to sell.                                    |
+| selling_asset_issuer | string | The issuer of asset to sell.                                  |
+| selling_asset_type   | string | Type of asset to sell (native / alphanum4 / alphanum12)       |
 #### Example
 
 ```json
@@ -514,19 +512,19 @@ Use “Set Options” operation to set following options to your account:
 
 #### Attributes
 
-| Field           |  Type  | Description       |
-| --------------- | ------ | ----------------- |
-| signer_key | string | The public key of the new signer. |
-| signer_weight | int | The weight of the new signer (1-255). |
-| master_key_weight | int | The weight of the master key (1-255). |
-| low_threshold | int | The sum weight for the low threshold. |
-| med_threshold | int | The sum weight for the medium threshold. |
-| high_threshold | int | The sum weight for the high threshold. |
-| home_domain | string | The home domain used for reverse federation lookup |
-| set_flags | array | The array of numeric values of flags that has been set in this operation |
-| set_flags_s | array | The array of string values of flags that has been set in this operation |
-| clear_flags | array | The array of numeric values of flags that has been cleared in this operation |
-| clear_flags_s | array | The array of string values of flags that has been cleared in this operation |
+| Field             | Type   | Description                                                                  |
+|-------------------|--------|------------------------------------------------------------------------------|
+| signer_key        | string | The public key of the new signer.                                            |
+| signer_weight     | int    | The weight of the new signer (1-255).                                        |
+| master_key_weight | int    | The weight of the master key (1-255).                                        |
+| low_threshold     | int    | The sum weight for the low threshold.                                        |
+| med_threshold     | int    | The sum weight for the medium threshold.                                     |
+| high_threshold    | int    | The sum weight for the high threshold.                                       |
+| home_domain       | string | The home domain used for reverse federation lookup                           |
+| set_flags         | array  | The array of numeric values of flags that has been set in this operation     |
+| set_flags_s       | array  | The array of string values of flags that has been set in this operation      |
+| clear_flags       | array  | The array of numeric values of flags that has been cleared in this operation |
+| clear_flags_s     | array  | The array of string values of flags that has been cleared in this operation  |
 
 
 #### Example
@@ -576,14 +574,14 @@ Use “Change Trust” operation to create/update/delete a trust line from the s
 
 #### Attributes
 
-| Field           |  Type  | Description       |
-| --------------- | ------ | ----------------- |
-| asset_code | string | Asset code. |
-| asset_issuer | string | Asset issuer. |
-| asset_type | string | Asset type (native / alphanum4 / alphanum12) |
-| trustee | string | Trustee account. |
-| trustor | string | Trustor account. |
-| limit | string | The limit for the asset. |
+| Field        | Type   | Description                                  |
+|--------------|--------|----------------------------------------------|
+| asset_code   | string | Asset code.                                  |
+| asset_issuer | string | Asset issuer.                                |
+| asset_type   | string | Asset type (native / alphanum4 / alphanum12) |
+| trustee      | string | Trustee account.                             |
+| trustor      | string | Trustor account.                             |
+| limit        | string | The limit for the asset.                     |
 
 #### Example
 
@@ -630,14 +628,14 @@ Heads up! Unless the issuing account has `AUTH_REVOCABLE_FLAG` set than the "aut
 
 #### Attributes
 
-| Field      |  Type  | Description       |
-| ---------- | ------ | ----------------- |
-| asset_code | string | Asset code. |
-| asset_issuer | string | Asset issuer. |
-| asset_type | string | Asset type (native / alphanum4 / alphanum12) |
-| authorize | bool | `true` when allowing trust, `false` when revoking trust |
-| trustee | string | Trustee account. |
-| trustor | string | Trustor account. |
+| Field        | Type   | Description                                             |
+|--------------|--------|---------------------------------------------------------|
+| asset_code   | string | Asset code.                                             |
+| asset_issuer | string | Asset issuer.                                           |
+| asset_type   | string | Asset type (native / alphanum4 / alphanum12)            |
+| authorize    | bool   | `true` when allowing trust, `false` when revoking trust |
+| trustee      | string | Trustee account.                                        |
+| trustor      | string | Trustor account.                                        |
 
 #### Example
 
@@ -682,9 +680,9 @@ Removes the account and transfers all remaining XLM to the destination account.
 
 #### Attributes
 
-| Field           |  Type  | Description       |
-| --------------- | ------ | ----------------- |
-| into | string | Account ID where funds of deleted account were transferred. |
+| Field | Type   | Description                                                 |
+|-------|--------|-------------------------------------------------------------|
+| into  | string | Account ID where funds of deleted account were transferred. |
 
 #### Example
 ```json
@@ -796,9 +794,9 @@ Bumps forward the sequence number of the source account of the operation, allowi
 
 #### Attributes
 
-| Field      |  Type  | Description                                                      |
-| ---------- | ------ | ---------------------------------------------------------------- |
-| bumpTo     | number | Desired value for the operation’s source account sequence number.|
+| Field  | Type   | Description                                                       |
+|--------|--------|-------------------------------------------------------------------|
+| bumpTo | number | Desired value for the operation’s source account sequence number. |
 
 #### Example
 ```json
@@ -832,10 +830,10 @@ Bumps forward the sequence number of the source account of the operation, allowi
 
 ## Endpoints
 
-|                   Resource                   |    Type    |            Resource URI Template            |
-| -------------------------------------------- | ---------- | ---------------------------------- |
-| [All Operations](../operations-all.md)            | Collection | `/operations`                      |
-| [Operations Details](../operations-single.md)      | Single     | `/operations/:id`                  |
+| Resource                                           | Type       | Resource URI Template                           |
+|----------------------------------------------------|------------|-------------------------------------------------|
+| [All Operations](../operations-all.md)             | Collection | `/operations`                                   |
+| [Operations Details](../operations-single.md)      | Single     | `/operations/:id`                               |
 | [Ledger Operations](../operations-for-ledger.md)   | Collection | `/ledgers/{id}/operations{?cursor,limit,order}` |
-| [Account Operations](../operations-for-account.md) | Collection | `/accounts/:account_id/operations` |
-| [Account Payments](../payments-for-account.md)     | Collection | `/accounts/:account_id/payments` |
+| [Account Operations](../operations-for-account.md) | Collection | `/accounts/:account_id/operations`              |
+| [Account Payments](../payments-for-account.md)     | Collection | `/accounts/:account_id/payments`                |
