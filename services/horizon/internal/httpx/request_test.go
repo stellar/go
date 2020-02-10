@@ -20,7 +20,7 @@ func TestRequestContext_cancelsContextWhenClientClosesConnection(t *testing.T) {
 	handler := func(w http.ResponseWriter, r *http.Request) {
 		defer close(finishedInServer)
 		t.Log("Server: Request received")
-		ctx, _ := RequestContext(r.Context(), w, r)
+		ctx := RequestContext(r.Context(), w, r)
 		t.Log("Server: Sending response")
 		w.WriteHeader(200)
 		w.Write([]byte("response body"))
