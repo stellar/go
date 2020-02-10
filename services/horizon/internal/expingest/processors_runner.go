@@ -58,10 +58,6 @@ type ProcessorRunner struct {
 	ledgerBackend  *ledgerbackend.DatabaseBackend
 }
 
-func (s *ProcessorRunner) buildOrderBookChangeProcessor() horizonChangeProcessor {
-	return processors.NewOrderbookProcessor(s.graph)
-}
-
 func (s *ProcessorRunner) buildChangeProcessor(changeStats *io.StatsChangeProcessor, source ingestionSource) horizonChangeProcessor {
 	statsChangeProcessor := &statsChangeProcessor{
 		StatsChangeProcessor: changeStats,
