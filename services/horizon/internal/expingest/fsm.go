@@ -281,7 +281,7 @@ func (b buildState) run(s *System) (transition, error) {
 	}).Info("Processing state")
 	startTime := time.Now()
 
-	err = s.runner.RunHistoryArchiveIngestion(b.checkpointLedger)
+	stats, err := s.runner.RunHistoryArchiveIngestion(b.checkpointLedger)
 	if err != nil {
 		return start(), errors.Wrap(err, "Error ingesting history archive")
 	}
@@ -307,6 +307,22 @@ func (b buildState) run(s *System) (transition, error) {
 	log.WithFields(logpkg.F{
 		"ledger":   b.checkpointLedger,
 		"duration": time.Since(startTime).Seconds(),
+
+		"stats_accounts_created": stats.AccountsCreated,
+		"stats_accounts_updated": stats.AccountsUpdated,
+		"stats_accounts_removed": stats.AccountsRemoved,
+
+		"stats_data_created": stats.DataCreated,
+		"stats_data_updated": stats.DataUpdated,
+		"stats_data_removed": stats.DataRemoved,
+
+		"stats_offers_created": stats.OffersCreated,
+		"stats_offers_updated": stats.OffersUpdated,
+		"stats_offers_removed": stats.OffersRemoved,
+
+		"stats_trust_lines_created": stats.TrustLinesCreated,
+		"stats_trust_lines_updated": stats.TrustLinesUpdated,
+		"stats_trust_lines_removed": stats.TrustLinesRemoved,
 	}).Info("Processed state")
 
 	// If successful, continue from the next ledger
@@ -404,7 +420,7 @@ func (r resumeState) run(s *System) (transition, error) {
 			"commit":   false,
 		}).Info("Processing ledger")
 
-		err = s.runner.RunOrderBookProcessorOnLedger(ingestLedger)
+		stats, err := s.runner.RunOrderBookProcessorOnLedger(ingestLedger)
 		if err != nil {
 			return retryResume(r), errors.Wrap(err, "Error running change processor on ledger")
 
@@ -421,6 +437,22 @@ func (r resumeState) run(s *System) (transition, error) {
 			"ledger":   false,
 			"graph":    true,
 			"commit":   false,
+
+			"stats_accounts_created": stats.AccountsCreated,
+			"stats_accounts_updated": stats.AccountsUpdated,
+			"stats_accounts_removed": stats.AccountsRemoved,
+
+			"stats_data_created": stats.DataCreated,
+			"stats_data_updated": stats.DataUpdated,
+			"stats_data_removed": stats.DataRemoved,
+
+			"stats_offers_created": stats.OffersCreated,
+			"stats_offers_updated": stats.OffersUpdated,
+			"stats_offers_removed": stats.OffersRemoved,
+
+			"stats_trust_lines_created": stats.TrustLinesCreated,
+			"stats_trust_lines_updated": stats.TrustLinesUpdated,
+			"stats_trust_lines_removed": stats.TrustLinesRemoved,
 		}).Info("Processed ledger")
 
 		return resumeImmediately(ingestLedger), nil
@@ -434,7 +466,7 @@ func (r resumeState) run(s *System) (transition, error) {
 		"commit":   true,
 	}).Info("Processing ledger")
 
-	err = s.runner.RunAllProcessorsOnLedger(ingestLedger)
+	stats, err := s.runner.RunAllProcessorsOnLedger(ingestLedger)
 	if err != nil {
 		return retryResume(r), errors.Wrap(err, "Error running processors on ledger")
 	}
@@ -464,6 +496,22 @@ func (r resumeState) run(s *System) (transition, error) {
 		"ledger":   true,
 		"graph":    true,
 		"commit":   true,
+
+		"stats_accounts_created": stats.AccountsCreated,
+		"stats_accounts_updated": stats.AccountsUpdated,
+		"stats_accounts_removed": stats.AccountsRemoved,
+
+		"stats_data_created": stats.DataCreated,
+		"stats_data_updated": stats.DataUpdated,
+		"stats_data_removed": stats.DataRemoved,
+
+		"stats_offers_created": stats.OffersCreated,
+		"stats_offers_updated": stats.OffersUpdated,
+		"stats_offers_removed": stats.OffersRemoved,
+
+		"stats_trust_lines_created": stats.TrustLinesCreated,
+		"stats_trust_lines_updated": stats.TrustLinesUpdated,
+		"stats_trust_lines_removed": stats.TrustLinesRemoved,
 	}).Info("Processed ledger")
 
 	s.maybeVerifyState(ingestLedger)
@@ -677,7 +725,7 @@ func (v verifyRangeState) run(s *System) (transition, error) {
 	}).Info("Processing state")
 	startTime := time.Now()
 
-	err = s.runner.RunHistoryArchiveIngestion(v.fromLedger)
+	stats, err := s.runner.RunHistoryArchiveIngestion(v.fromLedger)
 	if err != nil {
 		err = errors.Wrap(err, "Error ingesting history archive")
 		return stop(), err
@@ -703,6 +751,22 @@ func (v verifyRangeState) run(s *System) (transition, error) {
 	log.WithFields(logpkg.F{
 		"ledger":   v.fromLedger,
 		"duration": time.Since(startTime).Seconds(),
+
+		"stats_accounts_created": stats.AccountsCreated,
+		"stats_accounts_updated": stats.AccountsUpdated,
+		"stats_accounts_removed": stats.AccountsRemoved,
+
+		"stats_data_created": stats.DataCreated,
+		"stats_data_updated": stats.DataUpdated,
+		"stats_data_removed": stats.DataRemoved,
+
+		"stats_offers_created": stats.OffersCreated,
+		"stats_offers_updated": stats.OffersUpdated,
+		"stats_offers_removed": stats.OffersRemoved,
+
+		"stats_trust_lines_created": stats.TrustLinesCreated,
+		"stats_trust_lines_updated": stats.TrustLinesUpdated,
+		"stats_trust_lines_removed": stats.TrustLinesRemoved,
 	}).Info("Processed state")
 
 	for sequence := v.fromLedger + 1; sequence <= v.toLedger; sequence++ {
@@ -720,7 +784,7 @@ func (v verifyRangeState) run(s *System) (transition, error) {
 			return stop(), err
 		}
 
-		err = s.runner.RunAllProcessorsOnLedger(sequence)
+		stats, err := s.runner.RunAllProcessorsOnLedger(sequence)
 		if err != nil {
 			err = errors.Wrap(err, "Error running processors on ledger")
 			return stop(), err
@@ -748,6 +812,22 @@ func (v verifyRangeState) run(s *System) (transition, error) {
 			"ledger":   true,
 			"graph":    true,
 			"commit":   true,
+
+			"stats_accounts_created": stats.AccountsCreated,
+			"stats_accounts_updated": stats.AccountsUpdated,
+			"stats_accounts_removed": stats.AccountsRemoved,
+
+			"stats_data_created": stats.DataCreated,
+			"stats_data_updated": stats.DataUpdated,
+			"stats_data_removed": stats.DataRemoved,
+
+			"stats_offers_created": stats.OffersCreated,
+			"stats_offers_updated": stats.OffersUpdated,
+			"stats_offers_removed": stats.OffersRemoved,
+
+			"stats_trust_lines_created": stats.TrustLinesCreated,
+			"stats_trust_lines_updated": stats.TrustLinesUpdated,
+			"stats_trust_lines_removed": stats.TrustLinesRemoved,
 		}).Info("Processed ledger")
 	}
 
