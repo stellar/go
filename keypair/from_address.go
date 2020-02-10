@@ -46,6 +46,10 @@ func (kp *FromAddress) Sign(input []byte) ([]byte, error) {
 	return nil, ErrCannotSign
 }
 
+func (kp *FromAddress) SignBase64(input []byte) (string, error) {
+	return "", ErrCannotSign
+}
+
 func (kp *FromAddress) SignDecorated(input []byte) (xdr.DecoratedSignature, error) {
 	return xdr.DecoratedSignature{}, ErrCannotSign
 }

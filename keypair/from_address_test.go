@@ -21,6 +21,13 @@ var _ = Describe("keypair.FromAddress", func() {
 		})
 
 	})
+	Describe("SignBase64()", func() {
+		It("fails", func() {
+			_, err := subject.SignBase64(message)
+			Expect(err).To(HaveOccurred())
+		})
+
+	})
 	Describe("SignDecorated()", func() {
 		It("fails", func() {
 			_, err := subject.SignDecorated(message)
