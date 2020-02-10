@@ -66,23 +66,23 @@ func (q SellingBuyingAssetQueryParams) Selling() *xdr.Asset {
 
 			return &asset
 		}
-	} else {
-		if len(q.SellingAssetType) == 0 {
-			return nil
-		}
-
-		selling, err := xdr.BuildAsset(
-			q.SellingAssetType,
-			q.SellingAssetIssuer,
-			q.SellingAssetCode,
-		)
-
-		if err != nil {
-			panic(err)
-		}
-
-		return &selling
 	}
+
+	if len(q.SellingAssetType) == 0 {
+		return nil
+	}
+
+	selling, err := xdr.BuildAsset(
+		q.SellingAssetType,
+		q.SellingAssetIssuer,
+		q.SellingAssetCode,
+	)
+
+	if err != nil {
+		panic(err)
+	}
+
+	return &selling
 }
 
 // Buying returns an *xdr.Asset representing the buying side of the offer.
@@ -98,21 +98,21 @@ func (q SellingBuyingAssetQueryParams) Buying() *xdr.Asset {
 
 			return &asset
 		}
-	} else {
-		if len(q.BuyingAssetType) == 0 {
-			return nil
-		}
-
-		buying, err := xdr.BuildAsset(
-			q.BuyingAssetType,
-			q.BuyingAssetIssuer,
-			q.BuyingAssetCode,
-		)
-
-		if err != nil {
-			panic(err)
-		}
-
-		return &buying
 	}
+
+	if len(q.BuyingAssetType) == 0 {
+		return nil
+	}
+
+	buying, err := xdr.BuildAsset(
+		q.BuyingAssetType,
+		q.BuyingAssetIssuer,
+		q.BuyingAssetCode,
+	)
+
+	if err != nil {
+		panic(err)
+	}
+
+	return &buying
 }
