@@ -75,7 +75,7 @@ func TestRootActionWithIngestion(t *testing.T) {
 			actual.Links.Accounts.Href,
 		)
 		ht.Assert.Equal(
-			"http://localhost/offers{?selling_asset_type,selling_asset_issuer,selling_asset_code,buying_asset_type,buying_asset_issuer,buying_asset_code,seller,cursor,limit,order}",
+			"http://localhost/offers{?selling,buying,seller,cursor,limit,order}",
 			actual.Links.Offers.Href,
 		)
 
