@@ -91,7 +91,7 @@ The list of offers.
             "href": "https://horizon-testnet.stellar.org/
           }
         },
-        "id": 5443256,
+        "id": "5443256",
         "paging_token": "5443256",
         "seller": "GBYUUJHG6F4EPJGNLERINATVQLNDOFRUD7SGJZ26YZLG5PAYLG7XUSGF",
         "selling": {

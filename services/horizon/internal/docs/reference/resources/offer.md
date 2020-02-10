@@ -9,7 +9,7 @@ Horizon only returns offers that belong to a particular account.  When it does, 
 ## Attributes
 | Attribute    | Type             |                                                                                                                        |
 |--------------|------------------|------------------------------------------------------------------------------------------------------------------------|
-| id           | integer           | The ID of this offer. |
+| id           | string           | The ID of this offer. |
 | paging_token | string           | A [paging token](./page.md) suitable for use as a `cursor` parameter.                                                                |
 | seller      | string           | Account id of the account making this offer.                                                    |
 | selling     | [Asset](http://stellar.org/developers/learn/concepts/assets.html)           | The Asset this offer wants to sell.                      |
@@ -37,9 +37,44 @@ Thus to get price you would take n / d.
 |--------------|---------------------------------------------------------------------------------------------------|------------------------------------------------------------|-------------|
 | seller      | `/accounts/{seller}?cursor,limit,order}`      | Link to details about the account that made this offer. | true        |
 
+## Example
+
+```json
+{
+  "_links": {
+    "self": {
+      "href": "https://horizon-testnet.stellar.org/offers/2611"
+    },
+    "offer_maker": {
+      "href": "https://horizon-testnet.stellar.org/accounts/GDG3NOK5YI7A4FCBHE6SKI4L65R7UPRBZUZVBT44IBTQBWGUSTJDDKBQ"
+    }
+  },
+  "id": "2611",
+  "paging_token": "2611",
+  "seller": "GDG3NOK5YI7A4FCBHE6SKI4L65R7UPRBZUZVBT44IBTQBWGUSTJDDKBQ",
+  "selling": {
+    "asset_type": "credit_alphanum12",
+    "asset_code": "USD",
+    "asset_issuer": "GCL3BJDFYQ2KAV7ARC4YCTERNJFOBOBQXSG556TX4YMOPKGEDV5K6LCQ"
+  },
+  "buying": {
+    "asset_type": "native"
+  },
+  "amount": "1.0000000",
+  "price_r": {
+    "n": 1463518003,
+    "d": 25041627
+  },
+  "price": "58.4434072",
+  "last_modified_ledger": 196458,
+  "last_modified_time": "2020-02-10T18:51:42Z"
+}
+```
 
 ## Endpoints
 
 | Resource                 | Type       | Resource URI Template                |
 |--------------------------|------------|--------------------------------------|
-| [Account Offers](../offers-for-account.md)       | Collection | `/accounts/:account_id/offers`       |
+| [Offers](../endpoints/offers.md)       | Collection | `/offers`       |
+| [Account Offers](../endpoints/offers-for-account.md)       | Collection | `/accounts/:account_id/offers`       |
+| [Offers Details](../endpoints/offer-details.md)       | Single | `/offers/:offer_id`       |

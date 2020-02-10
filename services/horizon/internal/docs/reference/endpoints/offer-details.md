@@ -40,7 +40,7 @@ This endpoint responds with the details of a single offer for a given ID. See [o
       "href": "https://horizon-testnet.stellar.org/accounts/GAQHWQYBBW272OOXNQMMLCA5WY2XAZPODGB7Q3S5OKKIXVESKO55ZQ7C"
     }
   },
-  "id": 1347876,
+  "id": "1347876",
   "paging_token": "1347876",
   "seller": "GAQHWQYBBW272OOXNQMMLCA5WY2XAZPODGB7Q3S5OKKIXVESKO55ZQ7C",
   "selling": {
