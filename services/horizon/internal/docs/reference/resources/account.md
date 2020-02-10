@@ -46,6 +46,7 @@ When horizon returns information about an account it uses the following format:
 | asset_type    | string           | Either native, credit_alphanum4, or credit_alphanum12.                        |
 | asset_code     | optional, string           | The code for the asset.                       |
 | asset_issuer     | optional, string           | The stellar address of the given asset's issuer.  |
+| is_authorized     | optional, bool           | The trustline status. If unauthorized, you are not allowed to receive this type of asset.   |
 
 ### Flag Object
 |    Attribute     |  Type  |                                                                                                                                |
