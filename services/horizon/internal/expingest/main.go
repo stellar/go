@@ -197,6 +197,22 @@ func (s *System) Run() {
 	s.runStateMachine(startState{})
 }
 
+func (s *System) StressTest(numTransactions, changesPerTransaction int) error {
+	if numTransactions <= 0 {
+		return errors.New("transactions must be positive")
+	}
+	if changesPerTransaction <= 0 {
+		return errors.New("changes per transaction must be positive")
+	}
+
+	s.runner.EnableMemoryStatsLogging()
+	s.runner.SetLedgerBackend(fakeLedgerBackend{
+		numTransactions:       numTransactions,
+		changesPerTransaction: changesPerTransaction,
+	})
+	return s.runStateMachine(stressTestState{})
+}
+
 // VerifyRange runs the ingestion pipeline on the range of ledgers. When
 // verifyState is true it verifies the state when ingestion is complete.
 func (s *System) VerifyRange(fromLedger, toLedger uint32, verifyState bool) error {

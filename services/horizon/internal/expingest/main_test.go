@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/jmoiron/sqlx"
+	"github.com/stellar/go/exp/ingest/ledgerbackend"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/support/db"
 	"github.com/stellar/go/support/errors"
@@ -290,6 +291,18 @@ func (m *mockDBQ) CreateAssets(assets []xdr.Asset, batchSize int) (map[string]hi
 
 type mockProcessorsRunner struct {
 	mock.Mock
+}
+
+func (m *mockProcessorsRunner) SetLedgerBackend(ledgerBackend ledgerbackend.LedgerBackend) {
+	m.Called(ledgerBackend)
+}
+
+func (m *mockProcessorsRunner) EnableMemoryStatsLogging() {
+	m.Called()
+}
+
+func (m *mockProcessorsRunner) DisableMemoryStatsLogging() {
+	m.Called()
 }
 
 func (m *mockProcessorsRunner) RunHistoryArchiveIngestion(checkpointLedger uint32) error {

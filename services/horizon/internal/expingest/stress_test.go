@@ -1,0 +1,148 @@
+package expingest
+
+import (
+	"testing"
+
+	"github.com/stellar/go/exp/ingest/adapters"
+	"github.com/stellar/go/support/errors"
+	"github.com/stretchr/testify/suite"
+)
+
+func TestStressTestStateTestSuite(t *testing.T) {
+	suite.Run(t, new(StressTestStateTestSuite))
+}
+
+type StressTestStateTestSuite struct {
+	suite.Suite
+	graph          *mockOrderBookGraph
+	historyQ       *mockDBQ
+	historyAdapter *adapters.MockHistoryArchiveAdapter
+	runner         *mockProcessorsRunner
+	system         *System
+}
+
+func (s *StressTestStateTestSuite) SetupTest() {
+	s.graph = &mockOrderBookGraph{}
+	s.historyQ = &mockDBQ{}
+	s.historyAdapter = &adapters.MockHistoryArchiveAdapter{}
+	s.runner = &mockProcessorsRunner{}
+	s.system = &System{
+		historyQ:       s.historyQ,
+		historyAdapter: s.historyAdapter,
+		runner:         s.runner,
+		graph:          s.graph,
+	}
+
+	s.historyQ.On("GetTx").Return(nil).Once()
+	s.historyQ.On("Rollback").Return(nil).Once()
+	s.graph.On("Discard").Once()
+	s.runner.On("EnableMemoryStatsLogging").Return()
+	s.runner.On("SetLedgerBackend", fakeLedgerBackend{
+		numTransactions:       10,
+		changesPerTransaction: 4,
+	}).Return()
+
+}
+
+func (s *StressTestStateTestSuite) TearDownTest() {
+	t := s.T()
+	s.historyQ.AssertExpectations(t)
+	s.historyAdapter.AssertExpectations(t)
+	s.runner.AssertExpectations(t)
+	s.graph.AssertExpectations(t)
+}
+
+func (s *StressTestStateTestSuite) TestBounds() {
+	*s.historyQ = mockDBQ{}
+	*s.graph = mockOrderBookGraph{}
+	*s.runner = mockProcessorsRunner{}
+
+	err := s.system.StressTest(-1, 4)
+	s.Assert().EqualError(err, "transactions must be positive")
+
+	err = s.system.StressTest(0, 4)
+	s.Assert().EqualError(err, "transactions must be positive")
+
+	err = s.system.StressTest(100, -2)
+	s.Assert().EqualError(err, "changes per transaction must be positive")
+}
+
+func (s *StressTestStateTestSuite) TestBeginReturnsError() {
+	*s.historyQ = mockDBQ{}
+	*s.graph = mockOrderBookGraph{}
+	s.historyQ.On("GetTx").Return(nil).Once()
+	s.historyQ.On("Begin").Return(errors.New("my error")).Once()
+
+	err := s.system.StressTest(10, 4)
+	s.Assert().EqualError(err, "Error starting a transaction: my error")
+}
+
+func (s *StressTestStateTestSuite) TestGetLastLedgerExpIngestReturnsError() {
+	s.historyQ.On("Begin").Return(nil).Once()
+	s.historyQ.On("GetLastLedgerExpIngest").Return(uint32(0), errors.New("my error")).Once()
+
+	err := s.system.StressTest(10, 4)
+	s.Assert().EqualError(err, "Error getting last ingested ledger: my error")
+}
+
+func (s *StressTestStateTestSuite) TestGetLastLedgerExpIngestNonEmpty() {
+	s.historyQ.On("Begin").Return(nil).Once()
+	s.historyQ.On("GetLastLedgerExpIngest").Return(uint32(100), nil).Once()
+
+	err := s.system.StressTest(10, 4)
+	s.Assert().EqualError(err, "Database not empty")
+}
+
+func (s *StressTestStateTestSuite) TestRunAllProcessorsOnLedgerReturnsError() {
+	s.historyQ.On("Begin").Return(nil).Once()
+	s.historyQ.On("GetLastLedgerExpIngest").Return(uint32(0), nil).Once()
+	s.runner.On("RunAllProcessorsOnLedger", uint32(1)).Return(errors.New("my error")).Once()
+
+	err := s.system.StressTest(10, 4)
+	s.Assert().EqualError(err, "Error running processors on ledger: my error")
+}
+
+func (s *StressTestStateTestSuite) TestUpdateLastLedgerExpIngestReturnsError() {
+	s.historyQ.On("Begin").Return(nil).Once()
+	s.historyQ.On("GetLastLedgerExpIngest").Return(uint32(0), nil).Once()
+	s.runner.On("RunAllProcessorsOnLedger", uint32(1)).Return(nil).Once()
+	s.historyQ.On("UpdateLastLedgerExpIngest", uint32(1)).Return(errors.New("my error")).Once()
+
+	err := s.system.StressTest(10, 4)
+	s.Assert().EqualError(err, "Error updating last ingested ledger: my error")
+}
+
+func (s *StressTestStateTestSuite) TestApplyReturnsError() {
+	s.historyQ.On("Begin").Return(nil).Once()
+	s.historyQ.On("GetLastLedgerExpIngest").Return(uint32(0), nil).Once()
+	s.runner.On("RunAllProcessorsOnLedger", uint32(1)).Return(nil).Once()
+	s.historyQ.On("UpdateLastLedgerExpIngest", uint32(1)).Return(nil).Once()
+	s.historyQ.On("Commit").Return(nil).Once()
+	s.graph.On("Apply", uint32(1)).Return(errors.New("my error")).Once()
+
+	err := s.system.StressTest(10, 4)
+	s.Assert().EqualError(err, "Error applying order book changes: my error")
+}
+
+func (s *StressTestStateTestSuite) TestCommitReturnsError() {
+	s.historyQ.On("Begin").Return(nil).Once()
+	s.historyQ.On("GetLastLedgerExpIngest").Return(uint32(0), nil).Once()
+	s.runner.On("RunAllProcessorsOnLedger", uint32(1)).Return(nil).Once()
+	s.historyQ.On("UpdateLastLedgerExpIngest", uint32(1)).Return(nil).Once()
+	s.historyQ.On("Commit").Return(errors.New("my error")).Once()
+
+	err := s.system.StressTest(10, 4)
+	s.Assert().EqualError(err, "Error committing db transaction: my error")
+}
+
+func (s *StressTestStateTestSuite) TestSucceeds() {
+	s.historyQ.On("Begin").Return(nil).Once()
+	s.historyQ.On("GetLastLedgerExpIngest").Return(uint32(0), nil).Once()
+	s.runner.On("RunAllProcessorsOnLedger", uint32(1)).Return(nil).Once()
+	s.historyQ.On("UpdateLastLedgerExpIngest", uint32(1)).Return(nil).Once()
+	s.historyQ.On("Commit").Return(nil).Once()
+	s.graph.On("Apply", uint32(1)).Return(nil).Once()
+
+	err := s.system.StressTest(10, 4)
+	s.Assert().NoError(err)
+}

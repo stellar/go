@@ -204,6 +204,9 @@ func (s *BuildStateTestSuite) TestUpdateLastLedgerExpIngestAfterIngestReturnsErr
 		On("RunHistoryArchiveIngestion", s.checkpointLedger).
 		Return(nil).
 		Once()
+	s.historyQ.On("UpdateExpIngestVersion", CurrentVersion).
+		Return(nil).
+		Once()
 	s.historyQ.On("UpdateLastLedgerExpIngest", s.checkpointLedger).
 		Return(errors.New("my error")).
 		Once()
@@ -219,9 +222,6 @@ func (s *BuildStateTestSuite) TestUpdateExpIngestVersionIngestReturnsError() {
 	s.graph.On("Clear").Return(nil).Once()
 	s.runner.
 		On("RunHistoryArchiveIngestion", s.checkpointLedger).
-		Return(nil).
-		Once()
-	s.historyQ.On("UpdateLastLedgerExpIngest", s.checkpointLedger).
 		Return(nil).
 		Once()
 	s.historyQ.On("UpdateExpIngestVersion", CurrentVersion).
@@ -246,10 +246,10 @@ func (s *BuildStateTestSuite) TestUpdateCommitReturnsError() {
 	s.historyQ.On("UpdateExpIngestVersion", CurrentVersion).
 		Return(nil).
 		Once()
+	s.graph.On("Clear").Return(nil).Once()
 	s.historyQ.On("Commit").
 		Return(errors.New("my error")).
 		Once()
-	s.graph.On("Clear").Return(nil).Once()
 	next, err := buildState{checkpointLedger: s.checkpointLedger}.run(s.system)
 
 	s.Assert().Error(err)
