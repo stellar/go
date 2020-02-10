@@ -14,7 +14,7 @@ To learn more about the concept of operations in the Stellar network, take a loo
 |-----------------------------------------------|--------|------------------------------------------------------------------------------------------------------------|
 | [CREATE_ACCOUNT](#create-account)                       | 0      | Creates a new account in Stellar network.
 | [PAYMENT](#payment)                                     | 1      | Sends a simple payment between two accounts in Stellar network.
-| [PATH_PAYMENT](#path-payment)                           | 2      | Sends a path payment between two accounts in the Stellar network.
+| [PATH_PAYMENT_STRICT_RECEIVE](#path-payment)            | 2      | Sends a path payment strict receive between two accounts in the Stellar network.
 | [MANAGE_SELL_OFFER](#manage-sell-offer)                 | 3      | Creates, updates or deletes a sell offer in the Stellar network.
 | [MANAGE_BUY_OFFER](#manage-buy-offer)                   | 12     | Creates, updates or deletes a buy offer in the Stellar network.
 | [CREATE_PASSIVE_SELL_OFFER](#create-passive-sell-offer) | 4      | Creates an offer that won't consume a counter offer that exactly matches this offer.
@@ -161,9 +161,9 @@ can be either a simple native asset payment or a fiat asset payment.
 ```
 
 <a id="path-payment"></a>
-### Path Payment
+### Path Payment Strict Receive
 
-A path payment operation represents a payment from one account to another through a path.  This type of payment starts as one type of asset and ends as another type of asset. There can be other assets that are traded into and out of along the path.
+A path payment strict receive operation represents a payment from one account to another through a path.  This type of payment starts as one type of asset and ends as another type of asset. There can be other assets that are traded into and out of along the path.
 
 
 #### Attributes
@@ -219,7 +219,7 @@ A path payment operation represents a payment from one account to another throug
   "to": "GA5WBPYA5Y4WAEHXWR2UKO2UO4BUGHUQ74EUPKON2QHV4WRHOIRNKKH2",
   "transaction_successful": true,
   "type_i": 2,
-  "type": "path_payment"
+  "type": "path_payment_strict_receive"
 }
 ```
 
@@ -300,7 +300,7 @@ Both will fill only partially (or not at all) if there are few (or no) offers th
   "selling_asset_type": "credit_alphanum4",
   "transaction_successful": true,
   "type_i": 3,
-  "type": "manage_offer" // `manage_sell_offer` from v0.19.0
+  "type": "manage_sell_offer"
 }
 ```
 
@@ -423,7 +423,7 @@ As in [Manage Sell Offer](#manage-sell-offer) operation.
   "selling_asset_type": "native",
   "transaction_successful": true,
   "type_i": 4,
-  "type": "create_passive_offer" // `create_passive_sell_offer` from v0.18.0
+  "type": "create_passive_sell_offer"
 }
 ```
 
