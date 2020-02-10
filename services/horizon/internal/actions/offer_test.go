@@ -446,7 +446,7 @@ func pageableToOffers(t *testing.T, page []hal.Pageable) []horizon.Offer {
 
 func TestOffersQueryURLTemplate(t *testing.T) {
 	tt := assert.New(t)
-	expected := "/offers{?selling_asset_type,selling_asset_issuer,selling_asset_code,buying_asset_type,buying_asset_issuer,buying_asset_code,seller,cursor,limit,order}"
+	expected := "/offers{?selling,buying,seller,cursor,limit,order}"
 	offersQuery := OffersQuery{}
 	tt.Equal(expected, offersQuery.URITemplate())
 }

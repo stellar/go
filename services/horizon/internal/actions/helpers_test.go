@@ -780,6 +780,8 @@ func TestGetURIParams(t *testing.T) {
 		"buying_asset_type",
 		"buying_asset_issuer",
 		"buying_asset_code",
+		"selling",
+		"buying",
 		"account_id",
 	}
 
