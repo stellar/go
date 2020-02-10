@@ -41,6 +41,24 @@ var _ = Describe("keypair.Full", func() {
 		}),
 	)
 
+	DescribeTable("SignBase64()",
+		func(c SignCase) {
+			sig, err := subject.SignBase64([]byte(c.Message))
+
+			Expect(sig).To(Equal(c.Signature))
+			Expect(err).To(BeNil())
+		},
+
+		Entry("hello", SignCase{
+			"hello",
+			"LnXMINUZERyqqt3fRku2UNLq8KXRjXRWk6FhAPKkk3vB3/qLCx9honaZbX7o3rLQ3Z7lEFVgd7At7BZ5LpFcCg==",
+		}),
+		Entry("this is a message", SignCase{
+			"this is a message",
+			"e36Z09ZgpTkTBk1dqWq8+gxCKojx3KfxTNvSIEW1UAMOYPzRqthf0Iu3Ql2VymkMj2MjGJX2sN18DHNyJwkqAA==",
+		}),
+	)
+
 	Describe("SignDecorated()", func() {
 		It("returns the correct xdr struct", func() {
 			sig, err := subject.SignDecorated(message)
