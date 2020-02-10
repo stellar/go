@@ -598,7 +598,6 @@ func TestGetParams(t *testing.T) {
 	}
 
 	account := "GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H"
-	usd := xdr.MustNewCreditAsset("USD", account)
 
 	// Simulate chi's URL params. The following would be equivalent to having a
 	// chi route like the following `/accounts/{account_id}`
