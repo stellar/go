@@ -6,7 +6,6 @@ This endpoint allows filtering accounts who have a given `signer` or have a trus
 
 To find all accounts who are trustees to an asset, pass the query parameter `asset` using the canonical representation for an issued assets which is `Code:IssuerAccountID`. Read more about canonical representation of assets in [SEP-0011](https://github.com/stellar/stellar-protocol/blob/0c675fb3a482183dcf0f5db79c12685acf82a95c/ecosystem/sep-0011.md#values).
 
-**Note**: This endpoint is still experimental and available only if Horizon is running the [new ingestion system](https://github.com/stellar/go/blob/master/services/horizon/internal/expingest/BETA_TESTING.md).
 
 ## Request
 
