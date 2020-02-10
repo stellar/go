@@ -7,7 +7,6 @@ import (
 
 	"github.com/jmoiron/sqlx"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
-	"github.com/stellar/go/services/horizon/internal/toid"
 	"github.com/stellar/go/support/db"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
@@ -129,38 +128,6 @@ func TestStateMachineTransition(t *testing.T) {
 	})
 }
 
-// TestReingestRange ensures that state params are correctly passed.
-func TestReingestRange(t *testing.T) {
-	historyQ := &mockDBQ{}
-	runner := &mockProcessorsRunner{}
-	system := &System{
-		historyQ: historyQ,
-		runner:   runner,
-		ctx:      context.Background(),
-	}
-
-	historyQ.On("GetTx").Return(nil).Once()
-
-	historyQ.On("Begin").Return(nil).Once()
-	historyQ.On("GetLastLedgerExpIngest").Return(uint32(0), nil).Once()
-
-	toidEnd := toid.New(11, 0, 0).ToInt64()
-	historyQ.On("DeleteRangeAll", int64(0), toidEnd).Return(nil).Once()
-	assert.Equal(t, int64(47244640256), toidEnd)
-
-	for i := 1; i <= 10; i++ {
-		runner.On("RunTransactionProcessorsOnLedger", uint32(i)).Return(nil).Once()
-	}
-
-	historyQ.On("Commit").Return(nil).Once()
-	historyQ.On("Rollback").Return(nil).Once()
-
-	system.ReingestRange(1, 10)
-
-	historyQ.AssertExpectations(t)
-	runner.AssertExpectations(t)
-}
-
 func TestContextCancel(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	historyQ := &mockDBQ{}
@@ -245,6 +212,11 @@ func (m *mockDBQ) GetTx() *sqlx.Tx {
 }
 
 func (m *mockDBQ) GetLastLedgerExpIngest() (uint32, error) {
+	args := m.Called()
+	return args.Get(0).(uint32), args.Error(1)
+}
+
+func (m *mockDBQ) GetLastLedgerExpIngestNonBlocking() (uint32, error) {
 	args := m.Called()
 	return args.Get(0).(uint32), args.Error(1)
 }

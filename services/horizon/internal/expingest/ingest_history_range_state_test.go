@@ -155,59 +155,127 @@ func (s *IngestHistoryRangeStateTestSuite) TestSuccessOneLedger() {
 	s.Assert().Equal(transition{node: startState{}, sleepDuration: defaultSleep}, next)
 }
 
-// TestClearHistorySuccess tests clearing history before ingesting history range.
-func (s *IngestHistoryRangeStateTestSuite) TestClearHistorySuccess() {
-	s.historyQ.On("Begin").Return(nil).Once()
-	s.historyQ.On("GetLastLedgerExpIngest").Return(uint32(0), nil).Once()
-	s.historyQ.On("GetLatestLedger").Return(uint32(99), nil).Once()
-
-	toidFrom := int64(429496729600)
-	toidTo := int64(863288426496)
-	s.historyQ.On("DeleteRangeAll", toidFrom, toidTo).Return(nil).Once()
-
-	from := toid.Parse(toidFrom)
-	s.Assert().Equal(int32(100), from.LedgerSequence)
-	s.Assert().Equal(int32(0), from.TransactionOrder)
-	s.Assert().Equal(int32(0), from.OperationOrder)
-
-	to := toid.Parse(toidTo)
-	s.Assert().Equal(int32(201), to.LedgerSequence)
-	s.Assert().Equal(int32(0), to.TransactionOrder)
-	s.Assert().Equal(int32(0), to.OperationOrder)
-
-	for i := 100; i <= 200; i++ {
-		s.runner.On("RunTransactionProcessorsOnLedger", uint32(i)).Return(nil).Once()
-	}
-
-	s.historyQ.On("Commit").Return(nil).Once()
-
-	next, err := historyRangeState{
-		fromLedger: 100, toLedger: 200, shutdownWhenDone: false, clearHistory: true,
-	}.run(s.system)
-	s.Assert().NoError(err)
-	s.Assert().Equal(transition{node: startState{}, sleepDuration: defaultSleep}, next)
+func TestReingestHistoryRangeStateTestSuite(t *testing.T) {
+	suite.Run(t, new(ReingestHistoryRangeStateTestSuite))
 }
 
-func (s *IngestHistoryRangeStateTestSuite) TestShutdownWhenDoneSuccess() {
-	s.historyQ.On("Begin").Return(nil).Once()
-	s.historyQ.On("GetLastLedgerExpIngest").Return(uint32(0), nil).Once()
-
-	for i := 100; i <= 200; i++ {
-		s.runner.On("RunTransactionProcessorsOnLedger", uint32(i)).Return(nil).Once()
-	}
-
-	s.historyQ.On("Commit").Return(nil).Once()
-
-	next, err := historyRangeState{
-		fromLedger: 100, toLedger: 200, shutdownWhenDone: true,
-	}.run(s.system)
-	s.Assert().NoError(err)
-	s.Assert().Equal(transition{node: stopState{}, sleepDuration: 0}, next)
+type ReingestHistoryRangeStateTestSuite struct {
+	suite.Suite
+	historyQ       *mockDBQ
+	historyAdapter *adapters.MockHistoryArchiveAdapter
+	runner         *mockProcessorsRunner
+	system         *System
 }
 
-func (s *IngestHistoryRangeStateTestSuite) TestShutdownWhenDoneWithError() {
+func (s *ReingestHistoryRangeStateTestSuite) SetupTest() {
+	s.historyQ = &mockDBQ{}
+	s.historyAdapter = &adapters.MockHistoryArchiveAdapter{}
+	s.runner = &mockProcessorsRunner{}
+	s.system = &System{
+		ctx:            context.Background(),
+		historyQ:       s.historyQ,
+		historyAdapter: s.historyAdapter,
+		runner:         s.runner,
+	}
+
+	s.historyQ.On("GetTx").Return(nil).Once()
+	s.historyQ.On("Rollback").Return(nil).Once()
 	s.historyQ.On("Begin").Return(nil).Once()
-	s.historyQ.On("GetLastLedgerExpIngest").Return(uint32(0), nil).Once()
+}
+
+func (s *ReingestHistoryRangeStateTestSuite) TearDownTest() {
+	t := s.T()
+	s.historyQ.AssertExpectations(t)
+	s.historyAdapter.AssertExpectations(t)
+	s.runner.AssertExpectations(t)
+}
+
+func (s *ReingestHistoryRangeStateTestSuite) TestInvalidRange() {
+	// Recreate mock in this single test to remove Rollback assertion.
+	*s.historyQ = mockDBQ{}
+	s.historyQ.On("GetTx").Return(nil)
+
+	err := s.system.ReingestRange(0, 0, false)
+	s.Assert().EqualError(err, "invalid range: [0, 0]")
+
+	err = s.system.ReingestRange(0, 100, false)
+	s.Assert().EqualError(err, "invalid range: [0, 100]")
+
+	err = s.system.ReingestRange(100, 0, false)
+	s.Assert().EqualError(err, "invalid range: [100, 0]")
+
+	err = s.system.ReingestRange(100, 99, false)
+	s.Assert().EqualError(err, "invalid range: [100, 99]")
+}
+
+func (s *ReingestHistoryRangeStateTestSuite) TestBeginReturnsError() {
+	// Recreate mock in this single test to remove Rollback assertion.
+	*s.historyQ = mockDBQ{}
+	s.historyQ.On("GetTx").Return(nil)
+	s.historyQ.On("Begin").Return(errors.New("my error")).Once()
+
+	err := s.system.ReingestRange(100, 200, false)
+	s.Assert().EqualError(err, "Error starting a transaction: my error")
+}
+
+func (s *ReingestHistoryRangeStateTestSuite) TestGetLastLedgerExpIngestNonBlockingError() {
+	s.historyQ.On("GetLastLedgerExpIngestNonBlocking").Return(uint32(0), errors.New("my error")).Once()
+
+	err := s.system.ReingestRange(100, 200, false)
+	s.Assert().EqualError(err, "Error getting last ingested ledger: my error")
+}
+
+func (s *ReingestHistoryRangeStateTestSuite) TestReingestRangeOverlaps() {
+	s.historyQ.On("GetLastLedgerExpIngestNonBlocking").Return(uint32(190), nil).Once()
+
+	err := s.system.ReingestRange(100, 200, false)
+	s.Assert().Equal(err, ErrReingestRangeConflict)
+}
+
+func (s *ReingestHistoryRangeStateTestSuite) TestReingestRangeOverlapsAtEnd() {
+	s.historyQ.On("GetLastLedgerExpIngestNonBlocking").Return(uint32(200), nil).Once()
+
+	err := s.system.ReingestRange(100, 200, false)
+	s.Assert().Equal(err, ErrReingestRangeConflict)
+}
+
+func (s *ReingestHistoryRangeStateTestSuite) TestClearHistoryFails() {
+	s.historyQ.On("GetLastLedgerExpIngestNonBlocking").Return(uint32(0), nil).Once()
+
+	toidFrom := toid.New(100, 0, 0)
+	toidTo := toid.New(201, 0, 0)
+	s.historyQ.On(
+		"DeleteRangeAll", toidFrom.ToInt64(), toidTo.ToInt64(),
+	).Return(errors.New("my error")).Once()
+
+	err := s.system.ReingestRange(100, 200, false)
+	s.Assert().EqualError(err, "error in DeleteRangeAll: my error")
+}
+
+func (s *ReingestHistoryRangeStateTestSuite) TestRunTransactionProcessorsOnLedgerReturnsError() {
+	s.historyQ.On("GetLastLedgerExpIngestNonBlocking").Return(uint32(0), nil).Once()
+
+	toidFrom := toid.New(100, 0, 0)
+	toidTo := toid.New(201, 0, 0)
+	s.historyQ.On(
+		"DeleteRangeAll", toidFrom.ToInt64(), toidTo.ToInt64(),
+	).Return(nil).Once()
+
+	s.runner.On("RunTransactionProcessorsOnLedger", uint32(100)).
+		Return(errors.New("my error")).Once()
+
+	err := s.system.ReingestRange(100, 200, false)
+	s.Assert().EqualError(err, "error processing ledger sequence=100: my error")
+}
+
+func (s *ReingestHistoryRangeStateTestSuite) TestCommitFails() {
+	s.historyQ.On("GetLastLedgerExpIngestNonBlocking").Return(uint32(0), nil).Once()
+
+	toidFrom := toid.New(100, 0, 0)
+	toidTo := toid.New(201, 0, 0)
+	s.historyQ.On(
+		"DeleteRangeAll", toidFrom.ToInt64(), toidTo.ToInt64(),
+	).Return(nil).Once()
 
 	for i := 100; i <= 200; i++ {
 		s.runner.On("RunTransactionProcessorsOnLedger", uint32(i)).Return(nil).Once()
@@ -215,10 +283,67 @@ func (s *IngestHistoryRangeStateTestSuite) TestShutdownWhenDoneWithError() {
 
 	s.historyQ.On("Commit").Return(errors.New("my error")).Once()
 
-	next, err := historyRangeState{
-		fromLedger: 100, toLedger: 200, shutdownWhenDone: true,
-	}.run(s.system)
-	s.Assert().Error(err)
+	err := s.system.ReingestRange(100, 200, false)
 	s.Assert().EqualError(err, "Error committing db transaction: my error")
-	s.Assert().Equal(transition{node: stopState{}, sleepDuration: 0}, next)
+}
+
+func (s *ReingestHistoryRangeStateTestSuite) TestSuccess() {
+	s.historyQ.On("GetLastLedgerExpIngestNonBlocking").Return(uint32(0), nil).Once()
+
+	toidFrom := toid.New(100, 0, 0)
+	toidTo := toid.New(201, 0, 0)
+	s.historyQ.On(
+		"DeleteRangeAll", toidFrom.ToInt64(), toidTo.ToInt64(),
+	).Return(nil).Once()
+
+	for i := 100; i <= 200; i++ {
+		s.runner.On("RunTransactionProcessorsOnLedger", uint32(i)).Return(nil).Once()
+	}
+
+	s.historyQ.On("Commit").Return(nil).Once()
+
+	err := s.system.ReingestRange(100, 200, false)
+	s.Assert().NoError(err)
+}
+
+func (s *ReingestHistoryRangeStateTestSuite) TestSuccessOneLedger() {
+	s.historyQ.On("GetLastLedgerExpIngestNonBlocking").Return(uint32(0), nil).Once()
+
+	toidFrom := toid.New(100, 0, 0)
+	toidTo := toid.New(101, 0, 0)
+	s.historyQ.On(
+		"DeleteRangeAll", toidFrom.ToInt64(), toidTo.ToInt64(),
+	).Return(nil).Once()
+
+	s.runner.On("RunTransactionProcessorsOnLedger", uint32(100)).Return(nil).Once()
+	s.historyQ.On("Commit").Return(nil).Once()
+
+	err := s.system.ReingestRange(100, 100, false)
+	s.Assert().NoError(err)
+}
+
+func (s *ReingestHistoryRangeStateTestSuite) TestGetLastLedgerExpIngestError() {
+	s.historyQ.On("GetLastLedgerExpIngest").Return(uint32(0), errors.New("my error")).Once()
+
+	err := s.system.ReingestRange(100, 200, true)
+	s.Assert().EqualError(err, "Error getting last ingested ledger: my error")
+}
+
+func (s *ReingestHistoryRangeStateTestSuite) TestReingestRangeForce() {
+	s.historyQ.On("GetLastLedgerExpIngest").Return(uint32(190), nil).Once()
+
+	toidFrom := toid.New(100, 0, 0)
+	toidTo := toid.New(201, 0, 0)
+	s.historyQ.On(
+		"DeleteRangeAll", toidFrom.ToInt64(), toidTo.ToInt64(),
+	).Return(nil).Once()
+
+	for i := 100; i <= 200; i++ {
+		s.runner.On("RunTransactionProcessorsOnLedger", uint32(i)).Return(nil).Once()
+	}
+
+	s.historyQ.On("Commit").Return(nil).Once()
+
+	err := s.system.ReingestRange(100, 200, true)
+	s.Assert().NoError(err)
 }

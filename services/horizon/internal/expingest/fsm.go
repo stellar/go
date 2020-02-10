@@ -9,6 +9,13 @@ import (
 	logpkg "github.com/stellar/go/support/log"
 )
 
+var (
+	defaultSleep = time.Second
+	// ErrReingestRangeConflict indicates that the reingest range overlaps with
+	// horizon's most recently ingested ledger
+	ErrReingestRangeConflict = errors.New("reingest range overlaps with horizon ingestion")
+)
+
 type stateMachineNode interface {
 	run(*System) (transition, error)
 	String() string
@@ -18,8 +25,6 @@ type transition struct {
 	node          stateMachineNode
 	sleepDuration time.Duration
 }
-
-var defaultSleep = time.Second
 
 func stop() transition {
 	return transition{node: stopState{}, sleepDuration: 0}
@@ -467,84 +472,61 @@ func (r resumeState) run(s *System) (transition, error) {
 }
 
 type historyRangeState struct {
-	fromLedger       uint32
-	toLedger         uint32
-	shutdownWhenDone bool
-	clearHistory     bool
+	fromLedger uint32
+	toLedger   uint32
 }
 
 func (h historyRangeState) String() string {
 	return fmt.Sprintf(
-		"historyRange(fromLedger=%d, toLedger=%d, shutdownWhenDone=%t, clearHistory=%t)",
+		"historyRange(fromLedger=%d, toLedger=%d)",
 		h.fromLedger,
 		h.toLedger,
-		h.shutdownWhenDone,
-		h.clearHistory,
 	)
 }
 
-// historyRangeState is used when catching up history data and when reingesting
-// range.
+// historyRangeState is used when catching up history data
 func (h historyRangeState) run(s *System) (transition, error) {
-	next := start()
-	validateStartLedger := true
-	// unless we're running the horizon reingest range command we should
-	// always check that the start ledger is equal to the last ledger
-	// in the db plus one
-	if h.shutdownWhenDone {
-		// Shutdown when done - used in `reingest range` command.
-		next = stop()
-		validateStartLedger = false
-	}
-
 	if h.fromLedger == 0 || h.toLedger == 0 ||
 		h.fromLedger > h.toLedger {
-		return next, errors.Errorf("invalid range: [%d, %d]", h.fromLedger, h.toLedger)
+		return start(), errors.Errorf("invalid range: [%d, %d]", h.fromLedger, h.toLedger)
 	}
 
 	if err := s.historyQ.Begin(); err != nil {
-		return next, errors.Wrap(err, "Error starting a transaction")
+		return start(), errors.Wrap(err, "Error starting a transaction")
 	}
 	defer s.historyQ.Rollback()
 
 	// acquire distributed lock so no one else can perform ingestion operations.
 	if _, err := s.historyQ.GetLastLedgerExpIngest(); err != nil {
-		return next, errors.Wrap(err, getLastIngestedErrMsg)
+		return start(), errors.Wrap(err, getLastIngestedErrMsg)
 	}
 
-	if h.clearHistory {
-		// Clear history data before ingesting - used in `reingest range` command.
-		start, end, err := toid.LedgerRangeInclusive(
-			int32(h.fromLedger),
-			int32(h.toLedger),
-		)
-
-		if err != nil {
-			return next, errors.Wrap(err, "Invalid range")
-		}
-
-		err = s.historyQ.DeleteRangeAll(start, end)
-		if err != nil {
-			return next, errors.Wrap(err, "error in DeleteRangeAll")
-		}
+	lastHistoryLedger, err := s.historyQ.GetLatestLedger()
+	if err != nil {
+		return start(), errors.Wrap(err, "could not get latest history ledger")
 	}
 
-	if validateStartLedger {
-		lastHistoryLedger, err := s.historyQ.GetLatestLedger()
-		if err != nil {
-			return next, errors.Wrap(err, "could not get latest history ledger")
-		}
-
-		// We should be ingesting the ledger which occurs after
-		// lastHistoryLedger. Otherwise, some other horizon node has
-		// already completed the ingest history range operation and
-		// we should go back to the init state
-		if lastHistoryLedger != h.fromLedger-1 {
-			return next, nil
-		}
+	// We should be ingesting the ledger which occurs after
+	// lastHistoryLedger. Otherwise, some other horizon node has
+	// already completed the ingest history range operation and
+	// we should go back to the init state
+	if lastHistoryLedger != h.fromLedger-1 {
+		return start(), nil
 	}
 
-	for cur := h.fromLedger; cur <= h.toLedger; cur++ {
+	if err = ingestHistoryRange(s, h.fromLedger, h.toLedger); err != nil {
+		return start(), err
+	}
+
+	if err = s.historyQ.Commit(); err != nil {
+		return start(), errors.Wrap(err, commitErrMsg)
+	}
+
+	return start(), nil
+}
+
+func ingestHistoryRange(s *System, from, to uint32) error {
+	for cur := from; cur <= to; cur++ {
 		log.WithFields(logpkg.F{
 			"sequence": cur,
 			"state":    false,
@@ -555,8 +537,7 @@ func (h historyRangeState) run(s *System) (transition, error) {
 		startTime := time.Now()
 
 		if err := s.runner.RunTransactionProcessorsOnLedger(cur); err != nil {
-			return next,
-				errors.Wrap(err, fmt.Sprintf("error processing ledger sequence=%d", cur))
+			return errors.Wrap(err, fmt.Sprintf("error processing ledger sequence=%d", cur))
 		}
 
 		log.WithFields(logpkg.F{
@@ -568,12 +549,75 @@ func (h historyRangeState) run(s *System) (transition, error) {
 			"commit":   false,
 		}).Info("Processed ledger")
 	}
+	return nil
+}
 
-	if err := s.historyQ.Commit(); err != nil {
-		return next, errors.Wrap(err, commitErrMsg)
+type reingestHistoryRangeState struct {
+	fromLedger uint32
+	toLedger   uint32
+	force      bool
+}
+
+func (h reingestHistoryRangeState) String() string {
+	return fmt.Sprintf(
+		"reingestHistoryRange(fromLedger=%d, toLedger=%d, force=%t)",
+		h.fromLedger,
+		h.toLedger,
+		h.force,
+	)
+}
+
+// reingestHistoryRangeState is used as a command to reingest historical data
+func (h reingestHistoryRangeState) run(s *System) (transition, error) {
+	if h.fromLedger == 0 || h.toLedger == 0 ||
+		h.fromLedger > h.toLedger {
+		return stop(), errors.Errorf("invalid range: [%d, %d]", h.fromLedger, h.toLedger)
 	}
 
-	return next, nil
+	if err := s.historyQ.Begin(); err != nil {
+		return stop(), errors.Wrap(err, "Error starting a transaction")
+	}
+	defer s.historyQ.Rollback()
+
+	if h.force {
+		// acquire distributed lock so no one else can perform ingestion operations.
+		if _, err := s.historyQ.GetLastLedgerExpIngest(); err != nil {
+			return stop(), errors.Wrap(err, getLastIngestedErrMsg)
+		}
+	} else {
+		lastIngestedLedger, err := s.historyQ.GetLastLedgerExpIngestNonBlocking()
+		if err != nil {
+			return stop(), errors.Wrap(err, getLastIngestedErrMsg)
+		}
+
+		if lastIngestedLedger > 0 && h.toLedger >= lastIngestedLedger {
+			return stop(), ErrReingestRangeConflict
+		}
+	}
+
+	// Clear history data before ingesting - used in `reingest range` command.
+	start, end, err := toid.LedgerRangeInclusive(
+		int32(h.fromLedger),
+		int32(h.toLedger),
+	)
+	if err != nil {
+		return stop(), errors.Wrap(err, "Invalid range")
+	}
+
+	err = s.historyQ.DeleteRangeAll(start, end)
+	if err != nil {
+		return stop(), errors.Wrap(err, "error in DeleteRangeAll")
+	}
+
+	if err = ingestHistoryRange(s, h.fromLedger, h.toLedger); err != nil {
+		return stop(), err
+	}
+
+	if err := s.historyQ.Commit(); err != nil {
+		return stop(), errors.Wrap(err, commitErrMsg)
+	}
+
+	return stop(), nil
 }
 
 type waitForCheckpointState struct{}

@@ -3,6 +3,7 @@ package cmd
 import (
 	"database/sql"
 	"fmt"
+	"go/types"
 	"log"
 	"os"
 	"strconv"
@@ -11,7 +12,9 @@ import (
 	"github.com/spf13/viper"
 	"github.com/stellar/go/services/horizon/internal/db2/schema"
 	"github.com/stellar/go/services/horizon/internal/expingest"
+	support "github.com/stellar/go/support/config"
 	"github.com/stellar/go/support/db"
+	"github.com/stellar/go/support/errors"
 	hlog "github.com/stellar/go/support/log"
 )
 
@@ -103,11 +106,24 @@ var dbReapCmd = &cobra.Command{
 var dbReingestCmd = &cobra.Command{
 	Use:   "reingest",
 	Short: "reingest commands",
-	Long:  "reingest runs the ingestion pipeline over every ledger or ledgers specified by subcommand",
+	Long:  "reingest ingests historical data for every ledger or ledgers specified by subcommand",
 	Run: func(cmd *cobra.Command, args []string) {
 		fmt.Println("Use one of the subcomands...")
 		cmd.Usage()
 		os.Exit(1)
+	},
+}
+
+var reingestForce bool
+var reingestRangeCmdOpts = []*support.ConfigOption{
+	&support.ConfigOption{
+		Name:        "force",
+		ConfigKey:   &reingestForce,
+		OptType:     types.Bool,
+		Required:    false,
+		FlagDefault: false,
+		Usage: "[optional] if this flag is set, horizon will be blocked " +
+			"from ingesting until the reingestion command completes",
 	},
 }
 
@@ -116,19 +132,24 @@ var dbReingestRangeCmd = &cobra.Command{
 	Short: "reingests ledgers within a range",
 	Long:  "reingests ledgers between X and Y sequence number (closed intervals)",
 	Run: func(cmd *cobra.Command, args []string) {
+		for _, co := range reingestRangeCmdOpts {
+			co.Require()
+			co.SetValue()
+		}
+
 		if len(args) != 2 {
 			cmd.Usage()
 			os.Exit(1)
 		}
 
-		argsInt32 := make([]uint32, 0, len(args))
-		for _, arg := range args {
+		argsInt32 := make([]uint32, 2)
+		for i, arg := range args {
 			seq, err := strconv.Atoi(arg)
 			if err != nil {
 				cmd.Usage()
 				log.Fatalf(`Invalid sequence number "%s"`, arg)
 			}
-			argsInt32 = append(argsInt32, uint32(seq))
+			argsInt32[i] = uint32(seq)
 		}
 
 		initRootConfig()
@@ -159,16 +180,39 @@ var dbReingestRangeCmd = &cobra.Command{
 		err = system.ReingestRange(
 			argsInt32[0],
 			argsInt32[1],
+			reingestForce,
 		)
-		if err != nil {
-			log.Fatal(err)
+		if err == nil {
+			hlog.Info("Range run successfully!")
+			return
 		}
 
-		hlog.Info("Range run successfully!")
+		if errors.Cause(err) == expingest.ErrReingestRangeConflict {
+			message := `
+			The range you have provided overlaps with Horizon's most recently ingested ledger.
+			It is not possible to run the reingest command on this range in parallel with
+			Horizon's ingestion system.
+			Either reduce the range so that it doesn't overlap with Horizon's ingestion system,
+			or, use the force flag to ensure that Horizon's ingestion system is blocked until
+			the reingest command completes.
+			`
+			log.Fatal(message)
+		}
+
+		log.Fatal(err)
 	},
 }
 
 func init() {
+	for _, co := range reingestRangeCmdOpts {
+		err := co.Init(dbReingestRangeCmd)
+		if err != nil {
+			log.Fatal(err.Error())
+		}
+	}
+
+	viper.BindPFlags(dbReingestRangeCmd.PersistentFlags())
+
 	rootCmd.AddCommand(dbCmd)
 	dbCmd.AddCommand(
 		dbInitCmd,

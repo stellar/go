@@ -209,12 +209,11 @@ func (s *System) VerifyRange(fromLedger, toLedger uint32, verifyState bool) erro
 
 // ReingestRange runs the ingestion pipeline on the range of ledgers ingesting
 // history data only.
-func (s *System) ReingestRange(fromLedger, toLedger uint32) error {
-	return s.runStateMachine(historyRangeState{
-		fromLedger:       fromLedger,
-		toLedger:         toLedger,
-		shutdownWhenDone: true,
-		clearHistory:     true,
+func (s *System) ReingestRange(fromLedger, toLedger uint32, force bool) error {
+	return s.runStateMachine(reingestHistoryRangeState{
+		fromLedger: fromLedger,
+		toLedger:   toLedger,
+		force:      force,
 	})
 }
 
