@@ -49,7 +49,7 @@ func (kp *Full) Sign(input []byte) ([]byte, error) {
 }
 
 // SignBase64 signs the input data and returns a base64 encoded string, the
-// common format signatures are exchanged.
+// common format in which signatures are exchanged.
 func (kp *Full) SignBase64(input []byte) (string, error) {
 	sig, err := kp.Sign(input)
 	if err != nil {
