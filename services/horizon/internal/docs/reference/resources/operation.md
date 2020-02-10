@@ -250,7 +250,7 @@ Both will fill only partially (or not at all) if there are few (or no) offers th
 
 | Field           |  Type  | Description       |
 | --------------- | ------ | ----------------- |
-| offer_id | number | Offer ID. |
+| offer_id | string | Offer ID. |
 | amount     | string | Amount of asset to be sold. |
 | buying_asset_code | string | The code of asset to buy. |
 | buying_asset_issuer | string | The issuer of asset to buy. |
@@ -288,7 +288,7 @@ Both will fill only partially (or not at all) if there are few (or no) offers th
   "buying_asset_issuer": "GAC2ZUXVI5266NMMGDPBMXHH4BTZKJ7MMTGXRZGX2R5YLMFRYLJ7U5EA",
   "buying_asset_type": "credit_alphanum4",
   "id": 592323234762753,
-  "offer_id": 8,
+  "offer_id": "8",
   "paging_token": "592323234762753",
   "price": "2.0",
   "price_r": {
@@ -323,7 +323,7 @@ offers or payments, this offer can potentially be filled.
 
 | Field           |  Type  | Description       |
 | --------------- | ------ | ----------------- |
-| offer_id | number | Offer ID. |
+| offer_id | string | Offer ID. |
 | buy_amount     | string | Amount of asset to be bought. |
 | buying_asset_code | string | The code of asset to buy. |
 | buying_asset_issuer | string | The issuer of asset to buy. |
@@ -361,7 +361,7 @@ offers or payments, this offer can potentially be filled.
   "buying_asset_issuer": "GAC2ZUXVI5266NMMGDPBMXHH4BTZKJ7MMTGXRZGX2R5YLMFRYLJ7U5EA",
   "buying_asset_type": "credit_alphanum4",
   "id": 592323234762753,
-  "offer_id": 8,
+  "offer_id": "8",
   "paging_token": "592323234762753",
   "price": "2.0",
   "price_r": {
@@ -413,7 +413,7 @@ As in [Manage Sell Offer](#manage-sell-offer) operation.
   "buying_asset_issuer": "GDS5JW5E6DRSSN5XK4LW7E6VUMFKKE2HU5WCOVFTO7P2RP7OXVCBLJ3Y",
   "buying_asset_type": "credit_alphanum4",
   "id": 1127729562914817,
-  "offer_id": 9,
+  "offer_id": "9",
   "paging_token": "1127729562914817",
   "price": "1.0",
   "price_r": {
