@@ -44,7 +44,7 @@ func (kp *Full) Verify(input []byte, sig []byte) error {
 
 func (kp *Full) Sign(input []byte) ([]byte, error) {
 	_, priv := kp.keys()
-	return ed25519.Sign(priv, input)[:], nil
+	return ed25519.Sign(priv, input), nil
 }
 
 func (kp *Full) SignDecorated(input []byte) (xdr.DecoratedSignature, error) {
