@@ -15,6 +15,7 @@ To learn more about the concept of operations in the Stellar network, take a loo
 | [CREATE_ACCOUNT](#create-account)                       | 0      | Creates a new account in Stellar network.
 | [PAYMENT](#payment)                                     | 1      | Sends a simple payment between two accounts in Stellar network.
 | [PATH_PAYMENT_STRICT_RECEIVE](#path-payment)            | 2      | Sends a path payment strict receive between two accounts in the Stellar network.
+| [PATH_PAYMENT_STRICT_SEND](#path-payment-strict-send)   | 13     | Sends a path payment strict send between two accounts in the Stellar network.
 | [MANAGE_SELL_OFFER](#manage-sell-offer)                 | 3      | Creates, updates or deletes a sell offer in the Stellar network.
 | [MANAGE_BUY_OFFER](#manage-buy-offer)                   | 12     | Creates, updates or deletes a buy offer in the Stellar network.
 | [CREATE_PASSIVE_SELL_OFFER](#create-passive-sell-offer) | 4      | Creates an offer that won't consume a counter offer that exactly matches this offer.
@@ -181,6 +182,7 @@ A path payment strict receive operation represents a payment from one account to
 | source_asset_type | string | Source asset type (native / alphanum4 / alphanum12) |
 | source_max | string | Max send amount. |
 | source_amount | string | Amount sent. |
+| path | array of [Assets](./asset.md) | Additional hops the operation went through to get to the destination asset. |
 
 #### Example
 
@@ -220,6 +222,76 @@ A path payment strict receive operation represents a payment from one account to
   "transaction_successful": true,
   "type_i": 2,
   "type": "path_payment_strict_receive"
+}
+```
+
+<a id="path-payment-strict-send"></a>
+### Path Payment Strict Send
+
+A path payment strict send operation represents a payment from one account to another through a path.  This type of payment starts as one type of asset and ends as another type of asset. There can be other assets that are traded into and out of along the path.
+
+Unlike [path payment strict receive](#path-payment), this operation sends precisely the source amount, ensuring that the destination account receives at least the minimum specified amount (the amount received will vary based on offers in the order books).
+
+
+#### Attributes
+
+| Field           |  Type  | Description       |
+| --------------- | ------ | ----------------- |
+| from          | string | Sender of a payment.  |
+| to     | string | Destination of a payment. |
+| asset_type | string | Destination asset type (native / alphanum4 / alphanum12) |
+| asset_code | string | Code of the destination asset. |
+| asset_issuer | string | Destination asset issuer. |
+| amount          | string | Amount received. |
+| source_asset_type | string | Source asset type (native / alphanum4 / alphanum12) |
+| source_asset_code | string | Source asset code. |
+| source_asset_issuer | string | Source asset issuer. |
+| source_amount | string | Amount sent. |
+| destination_min | string | The minimum amount of destination asset expected to be received. |
+| path | array of [Assets](./asset.md) | Additional hops the operation went through to get to the destination asset. |
+
+
+#### Example
+
+```json
+{
+  "_links": {
+    "self": {
+      "href": "/operations/120903307907612673"
+    },
+    "transaction": {
+      "href": "/transactions/f60f32eff7f1dd0649cfe2986955d12f6ff45288357fe1526600642ea1b418aa"
+    },
+    "effects": {
+      "href": "/operations/120903307907612673/effects"
+    },
+    "succeeds": {
+      "href": "/effects?order=desc&cursor=120903307907612673"
+    },
+    "precedes": {
+      "href": "/effects?order=asc&cursor=120903307907612673"
+    }
+  },
+  "id": "120903307907612673",
+  "paging_token": "120903307907612673",
+  "transaction_successful": true,
+  "source_account": "GCXVEEBWI4YMRK6AFJQSEUBYDQL4PZ24ECAPJE2ZIAPIQZLZIBAX3LIF",
+  "type": "path_payment_strict_send",
+  "type_i": 13,
+  "created_at": "2020-02-09T20:32:53Z",
+  "transaction_hash": "f60f32eff7f1dd0649cfe2986955d12f6ff45288357fe1526600642ea1b418aa",
+  "asset_type": "native",
+  "from": "GCXVEEBWI4YMRK6AFJQSEUBYDQL4PZ24ECAPJE2ZIAPIQZLZIBAX3LIF",
+  "to": "GCXVEEBWI4YMRK6AFJQSEUBYDQL4PZ24ECAPJE2ZIAPIQZLZIBAX3LIF",
+  "amount": "0.0859000",
+  "path": [
+
+  ],
+  "source_amount": "1000.0000000",
+  "destination_min": "0.0859000",
+  "source_asset_type": "credit_alphanum4",
+  "source_asset_code": "KIN",
+  "source_asset_issuer": "GBDEVU63Y6NTHJQQZIKVTC23NWLQVP3WJ2RI2OTSJTNYOIGICST6DUXR"
 }
 ```
 
