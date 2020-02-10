@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/stellar/go/exp/ingest/io"
 	"github.com/stellar/go/services/horizon/internal/toid"
 	"github.com/stellar/go/support/errors"
 	logpkg "github.com/stellar/go/support/log"
@@ -420,7 +421,8 @@ func (r resumeState) run(s *System) (transition, error) {
 			"commit":   false,
 		}).Info("Processing ledger")
 
-		stats, err := s.runner.RunOrderBookProcessorOnLedger(ingestLedger)
+		var stats io.StatsChangeProcessorResults
+		stats, err = s.runner.RunOrderBookProcessorOnLedger(ingestLedger)
 		if err != nil {
 			return retryResume(r), errors.Wrap(err, "Error running change processor on ledger")
 
@@ -784,7 +786,8 @@ func (v verifyRangeState) run(s *System) (transition, error) {
 			return stop(), err
 		}
 
-		stats, err := s.runner.RunAllProcessorsOnLedger(sequence)
+		var stats io.StatsChangeProcessorResults
+		stats, err = s.runner.RunAllProcessorsOnLedger(sequence)
 		if err != nil {
 			err = errors.Wrap(err, "Error running processors on ledger")
 			return stop(), err
