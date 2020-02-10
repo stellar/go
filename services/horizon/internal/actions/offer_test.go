@@ -302,6 +302,23 @@ func TestGetOffersHandler(t *testing.T) {
 
 		offers = pageableToOffers(t, records)
 		tt.Assert.Equal(asset, offers[0].Selling)
+
+		records, err = handler.GetResourcePage(
+			httptest.NewRecorder(),
+			makeRequest(
+				t,
+				map[string]string{
+					"selling": asset.Code + ":" + asset.Issuer,
+				},
+				map[string]string{},
+				q.Session,
+			),
+		)
+		tt.Assert.NoError(err)
+		tt.Assert.Len(records, 1)
+
+		offers = pageableToOffers(t, records)
+		tt.Assert.Equal(asset, offers[0].Selling)
 	})
 
 	t.Run("Filter by buying asset", func(t *testing.T) {
@@ -340,6 +357,25 @@ func TestGetOffersHandler(t *testing.T) {
 					"buying_asset_type":   asset.Type,
 					"buying_asset_code":   asset.Code,
 					"buying_asset_issuer": asset.Issuer,
+				},
+				map[string]string{},
+				q.Session,
+			),
+		)
+		tt.Assert.NoError(err)
+		tt.Assert.Len(records, 1)
+
+		offers = pageableToOffers(t, records)
+		for _, offer := range offers {
+			tt.Assert.Equal(asset, offer.Buying)
+		}
+
+		records, err = handler.GetResourcePage(
+			httptest.NewRecorder(),
+			makeRequest(
+				t,
+				map[string]string{
+					"buying": asset.Code + ":" + asset.Issuer,
 				},
 				map[string]string{},
 				q.Session,
