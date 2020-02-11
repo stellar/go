@@ -50,8 +50,8 @@ github.com/gavv/monotime v0.0.0-20161010190848-47d58efa6955 h1:gmtGRvSexPU4B1T/y
 github.com/gavv/monotime v0.0.0-20161010190848-47d58efa6955/go.mod h1:vmp8DIyckQMXOPl0AQVHt+7n5h7Gb7hS6CUydiV8QeA=
 github.com/getsentry/raven-go v0.0.0-20160805001729-c9d3cc542ad1 h1:qIqziX4EA/OBdmMgtaqdKBWWOZIfyXYClCoa56NgVEk=
 github.com/getsentry/raven-go v0.0.0-20160805001729-c9d3cc542ad1/go.mod h1:KungGk8q33+aIAZUIVWZDr2OfAEBsO49PX4NzFV5kcQ=
-github.com/go-chi/chi v3.1.5+incompatible h1:TcUFIZz4n9dleJjD6lxsoqPJDiEVQEWcNjj3mevAEFQ=
-github.com/go-chi/chi v3.1.5+incompatible/go.mod h1:eB3wogJHnLi3x/kFX2A+IbTBlXxmMeXJVKy9tTv1XzQ=
+github.com/go-chi/chi v4.0.3+incompatible h1:gakN3pDJnzZN5jqFV2TEdF66rTfKeITyR8qu6ekICEY=
+github.com/go-chi/chi v4.0.3+incompatible/go.mod h1:eB3wogJHnLi3x/kFX2A+IbTBlXxmMeXJVKy9tTv1XzQ=
 github.com/go-errors/errors v0.0.0-20150906023321-a41850380601 h1:jxTbmDuqQUTI6MscgbqB39vtxGfr2fi61nYIcFQUnlE=
 github.com/go-errors/errors v0.0.0-20150906023321-a41850380601/go.mod h1:f4zRHt4oKfwPJE5k8C9vpYG+aDHdBFUsgrm6/TyX73Q=
 github.com/go-kit/kit v0.8.0/go.mod h1:xBxKIO96dXMWWy0MnWVtmwkA9/13aqxPnvrjFYMA2as=

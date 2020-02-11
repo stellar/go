@@ -3,12 +3,57 @@ package httpdecode
 import (
 	"bufio"
 	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
 
+	"github.com/go-chi/chi"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+func TestDecodePath_valid(t *testing.T) {
+	pathDecoded := struct {
+		Foo string `path:"foo"`
+	}{}
+	mux := chi.NewMux()
+	mux.Post("/path/{foo}/path", func(w http.ResponseWriter, r *http.Request) {
+		err := DecodePath(r, &pathDecoded)
+		require.NoError(t, err)
+	})
+	w := httptest.NewRecorder()
+	r, _ := http.NewRequest("POST", "/path/bar/path", nil)
+	mux.ServeHTTP(w, r)
+
+	assert.Equal(t, "bar", pathDecoded.Foo)
+}
+
+func TestDecodePath_empty(t *testing.T) {
+	pathDecoded := struct {
+		Foo string `path:"foo"`
+	}{}
+	mux := chi.NewMux()
+	mux.Post("/path/{foo}/path", func(w http.ResponseWriter, r *http.Request) {
+		err := DecodePath(r, &pathDecoded)
+		require.NoError(t, err)
+	})
+	w := httptest.NewRecorder()
+	r, _ := http.NewRequest("POST", "/path//path", nil)
+	mux.ServeHTTP(w, r)
+
+	assert.Equal(t, "", pathDecoded.Foo)
+}
+
+func TestDecodePath_notUsingChi(t *testing.T) {
+	pathDecoded := struct {
+		Foo string `path:"foo"`
+	}{}
+	r, _ := http.NewRequest("POST", "/path/bar/path", nil)
+	err := DecodePath(r, &pathDecoded)
+	require.NoError(t, err)
+
+	assert.Equal(t, "", pathDecoded.Foo)
+}
 
 func TestDecodeQuery_valid(t *testing.T) {
 	q := "foo=bar&list=a&list=b&enc=%2B+-%2F"
@@ -322,4 +367,90 @@ func TestDecode_validJSONAndQuery(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, "bar", bodyDecoded.FooName)
 	assert.Equal(t, "boo", bodyDecoded.FarName)
+}
+
+func TestDecode_validFormAndPath(t *testing.T) {
+	decoded := struct {
+		FooName string `json:"foo" form:"foo"`
+		FarName string `path:"foo"`
+	}{}
+
+	mux := chi.NewMux()
+	mux.Post("/path/{foo}/path", func(w http.ResponseWriter, r *http.Request) {
+		err := Decode(r, &decoded)
+		require.NoError(t, err)
+	})
+	w := httptest.NewRecorder()
+	body := `foo=bar`
+	r, _ := http.NewRequest("POST", "/path/boo/path", strings.NewReader(body))
+	r.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	mux.ServeHTTP(w, r)
+
+	assert.Equal(t, "bar", decoded.FooName)
+	assert.Equal(t, "boo", decoded.FarName)
+}
+
+func TestDecode_validJSONAndPath(t *testing.T) {
+	decoded := struct {
+		FooName string `json:"foo" form:"foo"`
+		FarName string `path:"foo"`
+	}{}
+
+	mux := chi.NewMux()
+	mux.Post("/path/{foo}/path", func(w http.ResponseWriter, r *http.Request) {
+		err := Decode(r, &decoded)
+		require.NoError(t, err)
+	})
+	w := httptest.NewRecorder()
+	body := `{"foo":"bar"}`
+	r, _ := http.NewRequest("POST", "/path/boo/path", strings.NewReader(body))
+	mux.ServeHTTP(w, r)
+
+	assert.Equal(t, "bar", decoded.FooName)
+	assert.Equal(t, "boo", decoded.FarName)
+}
+
+func TestDecode_validFormAndPathAndQuery(t *testing.T) {
+	decoded := struct {
+		FooName   string `json:"foo" form:"foo"`
+		FarName   string `path:"foo"`
+		QueryName string `query:"q"`
+	}{}
+
+	mux := chi.NewMux()
+	mux.Post("/path/{foo}/path", func(w http.ResponseWriter, r *http.Request) {
+		err := Decode(r, &decoded)
+		require.NoError(t, err)
+	})
+	w := httptest.NewRecorder()
+	body := `foo=bar`
+	r, _ := http.NewRequest("POST", "/path/boo/path?q=search+value", strings.NewReader(body))
+	r.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	mux.ServeHTTP(w, r)
+
+	assert.Equal(t, "bar", decoded.FooName)
+	assert.Equal(t, "boo", decoded.FarName)
+	assert.Equal(t, "search value", decoded.QueryName)
+}
+
+func TestDecode_validJSONAndPathAndQuery(t *testing.T) {
+	decoded := struct {
+		FooName   string `json:"foo" form:"foo"`
+		FarName   string `path:"foo"`
+		QueryName string `query:"q"`
+	}{}
+
+	mux := chi.NewMux()
+	mux.Post("/path/{foo}/path", func(w http.ResponseWriter, r *http.Request) {
+		err := Decode(r, &decoded)
+		require.NoError(t, err)
+	})
+	w := httptest.NewRecorder()
+	body := `{"foo":"bar"}`
+	r, _ := http.NewRequest("POST", "/path/boo/path?q=search+value", strings.NewReader(body))
+	mux.ServeHTTP(w, r)
+
+	assert.Equal(t, "bar", decoded.FooName)
+	assert.Equal(t, "boo", decoded.FarName)
+	assert.Equal(t, "search value", decoded.QueryName)
 }
