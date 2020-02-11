@@ -477,6 +477,9 @@ func (a *App) init() {
 	// db-metrics
 	initDbMetrics(a)
 
+	// ingest.metrics
+	initIngestMetrics(a)
+
 	// web.metrics
 	initWebMetrics(a)
 

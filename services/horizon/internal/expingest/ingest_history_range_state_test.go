@@ -32,6 +32,7 @@ func (s *IngestHistoryRangeStateTestSuite) SetupTest() {
 		historyAdapter: s.historyAdapter,
 		runner:         s.runner,
 	}
+	s.system.initMetrics()
 
 	s.historyQ.On("Rollback").Return(nil).Once()
 }

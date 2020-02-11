@@ -57,7 +57,9 @@ func (s *System) verifyState(
 	historyQ := s.historyQ.CloneIngestionQ()
 
 	defer func() {
-		log.WithField("duration", time.Since(startTime).Seconds()).Info("State verification finished")
+		duration := time.Since(startTime)
+		s.Metrics.StateVerifyTimer.Update(duration)
+		log.WithField("duration", duration.Seconds()).Info("State verification finished")
 		historyQ.Rollback()
 		s.stateVerificationMutex.Lock()
 		s.stateVerificationRunning = false

@@ -1,6 +1,8 @@
 package horizon
 
 import (
+	"time"
+
 	metrics "github.com/rcrowley/go-metrics"
 	"github.com/stellar/go/services/horizon/internal/actions"
 	"github.com/stellar/go/support/render/hal"
@@ -72,15 +74,15 @@ func (action *MetricsAction) LoadSnapshot() {
 			t := metric.Snapshot()
 			ps := t.Percentiles([]float64{0.5, 0.75, 0.95, 0.99, 0.999})
 			values["count"] = t.Count()
-			values["min"] = t.Min()
-			values["max"] = t.Max()
-			values["mean"] = t.Mean()
-			values["stddev"] = t.StdDev()
-			values["median"] = ps[0]
-			values["75%"] = ps[1]
-			values["95%"] = ps[2]
-			values["99%"] = ps[3]
-			values["99.9%"] = ps[4]
+			values["min"] = time.Duration(t.Min()).Seconds()
+			values["max"] = time.Duration(t.Max()).Seconds()
+			values["mean"] = time.Duration(t.Mean()).Seconds()
+			values["stddev"] = time.Duration(t.StdDev()).Seconds()
+			values["median"] = ps[0] / float64(time.Second)
+			values["75%"] = ps[1] / float64(time.Second)
+			values["95%"] = ps[2] / float64(time.Second)
+			values["99%"] = ps[3] / float64(time.Second)
+			values["99.9%"] = ps[4] / float64(time.Second)
 			values["1m.rate"] = t.Rate1()
 			values["5m.rate"] = t.Rate5()
 			values["15m.rate"] = t.Rate15()
