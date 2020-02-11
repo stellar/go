@@ -147,7 +147,7 @@ var configOpts = support.ConfigOptions{
 		ConfigKey:   &config.InternalPort,
 		OptType:     types.Uint,
 		FlagDefault: uint(0),
-		Usage:       "WARNING: this should not be accesible from the Internet, tcp port to listen on for internal http requests, 0 (default) disables the internal server",
+		Usage:       "WARNING: this should not be accessible from the Internet and does not use TLS, tcp port to listen on for internal http requests, 0 (default) disables the internal server",
 	},
 	&support.ConfigOption{
 		Name:        "max-db-connections",
