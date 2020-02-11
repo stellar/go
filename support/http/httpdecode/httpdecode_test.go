@@ -409,3 +409,48 @@ func TestDecode_validJSONAndPath(t *testing.T) {
 	assert.Equal(t, "bar", decoded.FooName)
 	assert.Equal(t, "boo", decoded.FarName)
 }
+
+func TestDecode_validFormAndPathAndQuery(t *testing.T) {
+	decoded := struct {
+		FooName   string `json:"foo" form:"foo"`
+		FarName   string `path:"foo"`
+		QueryName string `query:"q"`
+	}{}
+
+	mux := chi.NewMux()
+	mux.Post("/path/{foo}/path", func(w http.ResponseWriter, r *http.Request) {
+		err := Decode(r, &decoded)
+		require.NoError(t, err)
+	})
+	w := httptest.NewRecorder()
+	body := `foo=bar`
+	r, _ := http.NewRequest("POST", "/path/boo/path?q=search+value", strings.NewReader(body))
+	r.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	mux.ServeHTTP(w, r)
+
+	assert.Equal(t, "bar", decoded.FooName)
+	assert.Equal(t, "boo", decoded.FarName)
+	assert.Equal(t, "search value", decoded.QueryName)
+}
+
+func TestDecode_validJSONAndPathAndQuery(t *testing.T) {
+	decoded := struct {
+		FooName   string `json:"foo" form:"foo"`
+		FarName   string `path:"foo"`
+		QueryName string `query:"q"`
+	}{}
+
+	mux := chi.NewMux()
+	mux.Post("/path/{foo}/path", func(w http.ResponseWriter, r *http.Request) {
+		err := Decode(r, &decoded)
+		require.NoError(t, err)
+	})
+	w := httptest.NewRecorder()
+	body := `{"foo":"bar"}`
+	r, _ := http.NewRequest("POST", "/path/boo/path?q=search+value", strings.NewReader(body))
+	mux.ServeHTTP(w, r)
+
+	assert.Equal(t, "bar", decoded.FooName)
+	assert.Equal(t, "boo", decoded.FarName)
+	assert.Equal(t, "search value", decoded.QueryName)
+}
