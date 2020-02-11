@@ -50,8 +50,7 @@ func contextMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 		ctx = hchi.WithChiRequestID(ctx)
-		ctx, cancel := httpx.RequestContext(ctx, w, r)
-		defer cancel()
+		ctx = httpx.RequestContext(ctx, w, r)
 
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
