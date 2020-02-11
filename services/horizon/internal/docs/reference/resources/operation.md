@@ -39,7 +39,7 @@ additional attributes and links specific to that operation type.
 |------------------------|--------|-----------------------------------------------------------------------------------------------------------------------------|
 | id                     | number | The canonical id of this operation, suitable for use as the :id parameter for url templates that require an operation's ID. |
 | paging_token           | any    | A [paging token](./page.md) suitable for use as a `cursor` parameter.                                                       |
-| transaction_successful | bool   | *From 0.17.0* Indicates if this operation is part of successful transaction.                                                |
+| transaction_successful | bool   | Indicates if this operation is part of successful transaction.                                                              |
 | type                   | string | A string representation of the type of operation.                                                                           |
 | type_i                 | number | Specifies the type of operation, See "Types" section below for reference.                                                   |
 
