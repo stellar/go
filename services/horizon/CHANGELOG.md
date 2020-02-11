@@ -3,7 +3,7 @@
 All notable changes to this project will be documented in this
 file. This project adheres to [Semantic Versioning](http://semver.org/).
 
-## 1.0.0 Alpha
+## 1.0.0 Beta
 
 ### New Ingestion System
 
@@ -49,6 +49,7 @@ The [testing guide](https://github.com/stellar/go/blob/release-horizon-v0.25.0/s
 
 ### Removed
 
+- `/metrics` endpoint is no longer part of the public API. It is now served on `INTERNAL_PORT/metrics`. `INTERNAL_PORT` can be set using env variable or `--internal-port` CLI param.
 - Remove the following fields from [/fee_stats](https://www.stellar.org/developers/horizon/reference/endpoints/fee-stats.html):
 
     - `min_accepted_fee`

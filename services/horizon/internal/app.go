@@ -95,6 +95,24 @@ func (a *App) Serve() {
 
 	log.Infof("Starting horizon on %s (ingest: %v)", addr, a.config.Ingest)
 
+	if a.config.InternalPort != 0 {
+		go func() {
+			internalAddr := fmt.Sprintf(":%d", a.config.InternalPort)
+			log.Infof("Starting internal server on %s", internalAddr)
+
+			internalSrv := &http.Server{
+				Addr:        internalAddr,
+				Handler:     a.web.internalRouter,
+				ReadTimeout: 5 * time.Second,
+			}
+
+			err := internalSrv.ListenAndServe()
+			if err != nil {
+				log.Warn(errors.Wrap(err, "error in internalSrv.ListenAndServe()"))
+			}
+		}()
+	}
+
 	go a.run()
 
 	// WaitGroup for all go routines. Makes sure that DB is closed when
