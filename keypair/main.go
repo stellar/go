@@ -38,6 +38,7 @@ type KP interface {
 	Hint() [4]byte
 	Verify(input []byte, signature []byte) error
 	Sign(input []byte) ([]byte, error)
+	SignBase64(input []byte) (string, error)
 	SignDecorated(input []byte) (xdr.DecoratedSignature, error)
 }
 
