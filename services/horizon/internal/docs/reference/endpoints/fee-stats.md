@@ -7,8 +7,6 @@ clientData:
 This endpoint gives useful information about per-operation fee stats in the last 5 ledgers. It can be used to
 predict a fee set on the transaction that will be submitted to the network.
 
-Note: All `*_accepted_fee` fields are deprecated and  will be removed in Horizon `0.25.0`. Use the `max_fee` and `fee_charged` keys instead.
-
 ## Request
 
 ```

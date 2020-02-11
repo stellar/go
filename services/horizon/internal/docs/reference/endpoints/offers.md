@@ -5,8 +5,6 @@ title: Offers
 People on the Stellar network can make [offers](../resources/offer.md) to buy or sell assets. This
 endpoint represents all the current offers, allowing filtering by `seller`, `selling_asset` or `buying_asset`.
 
-**Note**: This endpoint is still experimental and available only if Horizon is running the [new ingestion system](https://github.com/stellar/go/blob/master/services/horizon/internal/expingest/BETA_TESTING.md).
-
 ## Request
 
 ```
@@ -93,7 +91,7 @@ The list of offers.
             "href": "https://horizon-testnet.stellar.org/
           }
         },
-        "id": 5443256,
+        "id": "5443256",
         "paging_token": "5443256",
         "seller": "GBYUUJHG6F4EPJGNLERINATVQLNDOFRUD7SGJZ26YZLG5PAYLG7XUSGF",
         "selling": {
