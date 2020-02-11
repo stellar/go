@@ -27,7 +27,6 @@ func DecodePath(r *http.Request, v interface{}) error {
 		v := params.Values[i]
 		paramMap[k] = append(paramMap[k], v)
 	}
-	fmt.Println(params)
 	dec := schema.NewDecoder()
 	dec.SetAliasTag("path")
 	dec.IgnoreUnknownKeys(true)
