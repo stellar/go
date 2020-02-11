@@ -2,7 +2,6 @@ package httpdecode
 
 import (
 	"encoding/json"
-	"fmt"
 	"mime"
 	"net/http"
 
