@@ -272,8 +272,9 @@ func TestMetrics(t *testing.T) {
 		assert.Equal(t, metrics.GoRoutines.Value, 1893)
 		assert.Equal(t, metrics.HistoryElderLedger.Value, 1)
 		assert.Equal(t, metrics.HistoryLatestLedger.Value, 22826153)
-		assert.Equal(t, metrics.IngesterClearLedger.Median, float64(0))
-		assert.Equal(t, metrics.IngesterIngestLedger.Percent99_9, 185115016.58600014)
+		assert.Equal(t, metrics.IngestLedgerGraphOnlyIngestion.Min, float64(10))
+		assert.Equal(t, metrics.IngestLedgerIngestion.Median, float64(0.0706217925))
+		assert.Equal(t, metrics.IngestStateVerify.Percent99_9, float64(230.123456))
 		assert.Equal(t, metrics.LoggingDebug.Count, 0)
 		assert.Equal(t, metrics.LoggingError.Rate15m, float64(0))
 		assert.Equal(t, metrics.LoggingInfo.MeanRate, 227.30356525388274)
@@ -993,7 +994,7 @@ var metricsResponse = `{
   "history.open_connections": {
     "value": 27
 	},
-	 "ingester.clear_ledger": {
+  "ingest.ledger_graph_only_ingestion": {
     "15m.rate": 0,
     "1m.rate": 0,
     "5m.rate": 0,
@@ -1006,24 +1007,40 @@ var metricsResponse = `{
     "mean": 0,
     "mean.rate": 0,
     "median": 0,
-    "min": 0,
+    "min": 10,
     "stddev": 0
   },
-  "ingester.ingest_ledger": {
-    "15m.rate": 0.19938341023530404,
-    "1m.rate": 0.19999701234910322,
-    "5m.rate": 0.1995375686820368,
-    "75%": 4269214,
-    "95%": 108334280.2,
-    "99%": 127591193.57000005,
-    "99.9%": 185115016.58600014,
-    "count": 14554,
-    "max": 186210682,
-    "mean": 13162584.692607004,
-    "mean.rate": 0.19725951740668984,
-    "median": 344771,
-    "min": 15636,
-    "stddev": 32661253.395383343
+  "ingest.ledger_ingestion": {
+    "15m.rate": 4.292383845297832,
+    "1m.rate": 1.6828538278349856,
+    "5m.rate": 3.7401206537727854,
+    "75%": 0.0918039395,
+    "95%": 0.11669889484999994,
+    "99%": 0.143023258,
+    "99.9%": 0.143023258,
+    "count": 36,
+    "max": 0.143023258,
+    "mean": 0.074862138,
+    "mean.rate": 0.48723881363424204,
+    "median": 0.0706217925,
+    "min": 0.03396778,
+    "stddev": 0.023001478
+  },
+  "ingest.state_verify": {
+    "15m.rate": 0,
+    "1m.rate": 0,
+    "5m.rate": 0,
+    "75%": 0,
+    "95%": 0,
+    "99%": 0,
+    "99.9%": 230.123456,
+    "count": 0,
+    "max": 0,
+    "mean": 0,
+    "mean.rate": 0,
+    "median": 0,
+    "min": 0,
+    "stddev": 0
   },
   "logging.debug": {
     "15m.rate": 0,
