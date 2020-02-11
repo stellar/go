@@ -45,7 +45,7 @@ func (kp *Full) Verify(input []byte, sig []byte) error {
 
 func (kp *Full) Sign(input []byte) ([]byte, error) {
 	_, priv := kp.keys()
-	return xdr.Signature(ed25519.Sign(priv, input)[:]), nil
+	return ed25519.Sign(priv, input), nil
 }
 
 // SignBase64 signs the input data and returns a base64 encoded string, the
