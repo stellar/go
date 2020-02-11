@@ -39,7 +39,7 @@ func (action *MetricsAction) PrometheusFormat() error {
 		case metrics.Gauge:
 			fmt.Fprintf(action.W, "%s %d\n", name, metric.Value())
 		case metrics.GaugeFloat64:
-			fmt.Fprintf(action.W, "%s %d\n", name, metric.Value())
+			fmt.Fprintf(action.W, "%s %f\n", name, metric.Value())
 		case metrics.Histogram:
 			h := metric.Snapshot()
 			ps := h.Percentiles([]float64{0.5, 0.75, 0.95, 0.99, 0.999})
