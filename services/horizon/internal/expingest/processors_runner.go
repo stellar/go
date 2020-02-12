@@ -291,5 +291,10 @@ func (s *ProcessorRunner) RunOrderBookProcessorOnLedger(ledger uint32) (io.Stats
 		processors.NewOrderbookProcessor(s.graph),
 	}
 
-	return changeStats.GetResults(), s.runChangeProcessorOnLedger(groupProcessor, ledger)
+	err := s.runChangeProcessorOnLedger(groupProcessor, ledger)
+	if err != nil {
+		return changeStats.GetResults(), err
+	}
+
+	return changeStats.GetResults(), nil
 }
