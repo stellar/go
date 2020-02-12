@@ -35,6 +35,7 @@ func (s *VerifyRangeStateTestSuite) SetupTest() {
 		runner:         s.runner,
 		graph:          s.graph,
 	}
+	s.system.initMetrics()
 
 	s.historyQ.On("Rollback").Return(nil).Once()
 	s.graph.On("Discard").Once()

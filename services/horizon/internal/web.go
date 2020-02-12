@@ -40,6 +40,7 @@ const (
 type web struct {
 	appCtx             context.Context
 	router             *chi.Mux
+	internalRouter     *chi.Mux
 	rateLimiter        *throttled.HTTPRateLimiter
 	sseUpdateFrequency time.Duration
 	staleThreshold     uint
@@ -78,6 +79,7 @@ func mustInitWeb(ctx context.Context, hq *history.Q, cq *core.Q, updateFreq time
 	return &web{
 		appCtx:             ctx,
 		router:             chi.NewRouter(),
+		internalRouter:     chi.NewRouter(),
 		historyQ:           hq,
 		coreQ:              cq,
 		sseUpdateFrequency: updateFreq,
@@ -120,6 +122,12 @@ func (w *web) mustInstallMiddlewares(app *App, connTimeout time.Duration) {
 	r.Use(c.Handler)
 
 	r.Use(w.RateLimitMiddleware)
+
+	// Internal middlewares
+	w.internalRouter.Use(chimiddleware.StripSlashes)
+	w.internalRouter.Use(appContextMiddleware(app))
+	w.internalRouter.Use(chimiddleware.RequestID)
+	w.internalRouter.Use(loggerMiddleware)
 }
 
 // mustInstallActions installs the routing configuration of horizon onto the
@@ -136,7 +144,6 @@ func (w *web) mustInstallActions(
 
 	r := w.router
 	r.Get("/", RootAction{}.Handle)
-	r.Get("/metrics", MetricsAction{}.Handle)
 
 	streamHandler := sse.StreamHandler{
 		RateLimiter:  w.rateLimiter,
@@ -268,6 +275,9 @@ func (w *web) mustInstallActions(
 	}
 
 	r.NotFound(NotFoundAction{}.Handle)
+
+	// internal
+	w.internalRouter.Get("/metrics", MetricsAction{}.Handle)
 }
 
 func maybeInitWebRateLimiter(rateQuota *throttled.RateQuota) *throttled.HTTPRateLimiter {

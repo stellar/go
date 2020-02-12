@@ -33,6 +33,7 @@ func (s *InitStateTestSuite) SetupTest() {
 		historyAdapter: s.historyAdapter,
 		graph:          s.graph,
 	}
+	s.system.initMetrics()
 
 	s.historyQ.On("Rollback").Return(nil).Once()
 }
