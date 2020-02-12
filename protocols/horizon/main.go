@@ -290,7 +290,6 @@ type Root struct {
 		AccountTransactions hal.Link  `json:"account_transactions"`
 		Assets              hal.Link  `json:"assets"`
 		Friendbot           *hal.Link `json:"friendbot,omitempty"`
-		Metrics             hal.Link  `json:"metrics"`
 		Offer               *hal.Link `json:"offer,omitempty"`
 		Offers              *hal.Link `json:"offers,omitempty"`
 		OrderBook           hal.Link  `json:"order_book"`

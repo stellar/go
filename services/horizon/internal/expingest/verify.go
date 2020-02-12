@@ -44,6 +44,9 @@ func (s *System) verifyState(
 	}
 	s.stateVerificationRunning = true
 	s.stateVerificationMutex.Unlock()
+
+	updateMetrics := false
+
 	if stateVerifierExpectedIngestionVersion != CurrentVersion {
 		log.Errorf(
 			"State verification expected version is %d but actual is: %d",
@@ -58,7 +61,9 @@ func (s *System) verifyState(
 
 	defer func() {
 		duration := time.Since(startTime)
-		s.Metrics.StateVerifyTimer.Update(duration)
+		if updateMetrics {
+			s.Metrics.StateVerifyTimer.Update(duration)
+		}
 		log.WithField("duration", duration.Seconds()).Info("State verification finished")
 		historyQ.Rollback()
 		s.stateVerificationMutex.Lock()
@@ -231,6 +236,7 @@ func (s *System) verifyState(
 	}
 
 	localLog.Info("State correct")
+	updateMetrics = true
 	return nil
 }
 

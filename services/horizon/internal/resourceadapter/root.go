@@ -42,7 +42,6 @@ func PopulateRoot(
 	dest.Links.Account = lb.Link("/accounts/{account_id}")
 	dest.Links.AccountTransactions = lb.PagedLink("/accounts/{account_id}/transactions")
 	dest.Links.Assets = lb.Link("/assets{?asset_code,asset_issuer,cursor,limit,order}")
-	dest.Links.Metrics = lb.Link("/metrics")
 
 	accountsLink := lb.Link(templates["accounts"])
 	offerLink := lb.Link("/offers/{offer_id}")
