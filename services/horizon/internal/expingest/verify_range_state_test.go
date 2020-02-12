@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/stellar/go/exp/ingest/adapters"
+	"github.com/stellar/go/exp/ingest/io"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
 	"github.com/stretchr/testify/mock"
@@ -132,7 +133,7 @@ func (s *VerifyRangeStateTestSuite) TestRunHistoryArchiveIngestionReturnsError()
 	s.historyQ.On("Begin").Return(nil).Once()
 	s.historyQ.On("GetLastLedgerExpIngest").Return(uint32(0), nil).Once()
 
-	s.runner.On("RunHistoryArchiveIngestion", uint32(100)).Return(errors.New("my error")).Once()
+	s.runner.On("RunHistoryArchiveIngestion", uint32(100)).Return(io.StatsChangeProcessorResults{}, errors.New("my error")).Once()
 
 	next, err := verifyRangeState{fromLedger: 100, toLedger: 200}.run(s.system)
 	s.Assert().Error(err)
@@ -146,14 +147,14 @@ func (s *VerifyRangeStateTestSuite) TestRunHistoryArchiveIngestionReturnsError()
 func (s *VerifyRangeStateTestSuite) TestSuccess() {
 	s.historyQ.On("Begin").Return(nil).Once()
 	s.historyQ.On("GetLastLedgerExpIngest").Return(uint32(0), nil).Once()
-	s.runner.On("RunHistoryArchiveIngestion", uint32(100)).Return(nil).Once()
+	s.runner.On("RunHistoryArchiveIngestion", uint32(100)).Return(io.StatsChangeProcessorResults{}, nil).Once()
 	s.historyQ.On("UpdateLastLedgerExpIngest", uint32(100)).Return(nil).Once()
 	s.historyQ.On("Commit").Return(nil).Once()
 	s.graph.On("Apply", uint32(100)).Return(nil).Once()
 
 	for i := uint32(101); i <= 200; i++ {
 		s.historyQ.On("Begin").Return(nil).Once()
-		s.runner.On("RunAllProcessorsOnLedger", i).Return(nil).Once()
+		s.runner.On("RunAllProcessorsOnLedger", i).Return(io.StatsChangeProcessorResults{}, nil).Once()
 		s.historyQ.On("UpdateLastLedgerExpIngest", i).Return(nil).Once()
 		s.historyQ.On("Commit").Return(nil).Once()
 		s.graph.On("Apply", i).Return(nil).Once()
@@ -170,14 +171,14 @@ func (s *VerifyRangeStateTestSuite) TestSuccess() {
 func (s *VerifyRangeStateTestSuite) TestSuccessWithVerify() {
 	s.historyQ.On("Begin").Return(nil).Once()
 	s.historyQ.On("GetLastLedgerExpIngest").Return(uint32(0), nil).Once()
-	s.runner.On("RunHistoryArchiveIngestion", uint32(100)).Return(nil).Once()
+	s.runner.On("RunHistoryArchiveIngestion", uint32(100)).Return(io.StatsChangeProcessorResults{}, nil).Once()
 	s.historyQ.On("UpdateLastLedgerExpIngest", uint32(100)).Return(nil).Once()
 	s.historyQ.On("Commit").Return(nil).Once()
 	s.graph.On("Apply", uint32(100)).Return(nil).Once()
 
 	for i := uint32(101); i <= 110; i++ {
 		s.historyQ.On("Begin").Return(nil).Once()
-		s.runner.On("RunAllProcessorsOnLedger", i).Return(nil).Once()
+		s.runner.On("RunAllProcessorsOnLedger", i).Return(io.StatsChangeProcessorResults{}, nil).Once()
 		s.historyQ.On("UpdateLastLedgerExpIngest", i).Return(nil).Once()
 		s.historyQ.On("Commit").Return(nil).Once()
 		s.graph.On("Apply", i).Return(nil).Once()

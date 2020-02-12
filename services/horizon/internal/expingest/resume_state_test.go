@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/stellar/go/exp/ingest/adapters"
+	"github.com/stellar/go/exp/ingest/io"
 	"github.com/stellar/go/exp/ingest/ledgerbackend"
 	"github.com/stellar/go/support/errors"
 	"github.com/stretchr/testify/mock"
@@ -222,7 +223,7 @@ func (s *ResumeTestTestSuite) TestIngestOrderbookOnly() {
 
 	// Rollback to release the lock as we're not updating DB
 	s.historyQ.On("Rollback").Return(nil).Once()
-	s.runner.On("RunOrderBookProcessorOnLedger", uint32(101)).Return(nil).Once()
+	s.runner.On("RunOrderBookProcessorOnLedger", uint32(101)).Return(io.StatsChangeProcessorResults{}, nil).Once()
 	s.graph.On("Apply", uint32(101)).Return(nil).Once()
 
 	next, err := resumeState{latestSuccessfullyProcessedLedger: 100}.run(s.system)
@@ -249,7 +250,7 @@ func (s *ResumeTestTestSuite) TestIngestOrderbookOnlyWhenLastLedgerExpEqualsCurr
 
 	// Rollback to release the lock as we're not updating DB
 	s.historyQ.On("Rollback").Return(nil).Once()
-	s.runner.On("RunOrderBookProcessorOnLedger", uint32(101)).Return(nil).Once()
+	s.runner.On("RunOrderBookProcessorOnLedger", uint32(101)).Return(io.StatsChangeProcessorResults{}, nil).Once()
 	s.graph.On("Apply", uint32(101)).Return(nil).Once()
 
 	next, err := resumeState{latestSuccessfullyProcessedLedger: 100}.run(s.system)
@@ -271,7 +272,7 @@ func (s *ResumeTestTestSuite) TestIngestAllMasterNode() {
 
 	s.ledgeBackend.On("GetLatestLedgerSequence").Return(uint32(111), nil).Once()
 
-	s.runner.On("RunAllProcessorsOnLedger", uint32(101)).Return(nil).Once()
+	s.runner.On("RunAllProcessorsOnLedger", uint32(101)).Return(io.StatsChangeProcessorResults{}, nil).Once()
 	s.historyQ.On("UpdateLastLedgerExpIngest", uint32(101)).Return(nil).Once()
 	s.historyQ.On("Commit").Return(nil).Once()
 	s.graph.On("Apply", uint32(101)).Return(nil).Once()
@@ -304,7 +305,7 @@ func (s *ResumeTestTestSuite) TestErrorSettingCursorIgnored() {
 
 	s.ledgeBackend.On("GetLatestLedgerSequence").Return(uint32(111), nil).Once()
 
-	s.runner.On("RunAllProcessorsOnLedger", uint32(101)).Return(nil).Once()
+	s.runner.On("RunAllProcessorsOnLedger", uint32(101)).Return(io.StatsChangeProcessorResults{}, nil).Once()
 	s.historyQ.On("UpdateLastLedgerExpIngest", uint32(101)).Return(nil).Once()
 	s.historyQ.On("Commit").Return(nil).Once()
 	s.graph.On("Apply", uint32(101)).Return(nil).Once()

@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/jmoiron/sqlx"
+	"github.com/stellar/go/exp/ingest/io"
 	"github.com/stellar/go/exp/ingest/ledgerbackend"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/support/db"
@@ -305,14 +306,14 @@ func (m *mockProcessorsRunner) DisableMemoryStatsLogging() {
 	m.Called()
 }
 
-func (m *mockProcessorsRunner) RunHistoryArchiveIngestion(checkpointLedger uint32) error {
+func (m *mockProcessorsRunner) RunHistoryArchiveIngestion(checkpointLedger uint32) (io.StatsChangeProcessorResults, error) {
 	args := m.Called(checkpointLedger)
-	return args.Error(0)
+	return args.Get(0).(io.StatsChangeProcessorResults), args.Error(1)
 }
 
-func (m *mockProcessorsRunner) RunAllProcessorsOnLedger(sequence uint32) error {
+func (m *mockProcessorsRunner) RunAllProcessorsOnLedger(sequence uint32) (io.StatsChangeProcessorResults, error) {
 	args := m.Called(sequence)
-	return args.Error(0)
+	return args.Get(0).(io.StatsChangeProcessorResults), args.Error(1)
 }
 
 func (m *mockProcessorsRunner) RunTransactionProcessorsOnLedger(sequence uint32) error {
@@ -320,9 +321,9 @@ func (m *mockProcessorsRunner) RunTransactionProcessorsOnLedger(sequence uint32)
 	return args.Error(0)
 }
 
-func (m *mockProcessorsRunner) RunOrderBookProcessorOnLedger(sequence uint32) error {
+func (m *mockProcessorsRunner) RunOrderBookProcessorOnLedger(sequence uint32) (io.StatsChangeProcessorResults, error) {
 	args := m.Called(sequence)
-	return args.Error(0)
+	return args.Get(0).(io.StatsChangeProcessorResults), args.Error(1)
 }
 
 var _ ProcessorRunnerInterface = (*mockProcessorsRunner)(nil)
