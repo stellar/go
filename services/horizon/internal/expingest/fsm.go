@@ -295,25 +295,9 @@ func (b buildState) run(s *System) (transition, error) {
 		return start(), err
 	}
 
-	log.WithFields(logpkg.F{
+	loggerWithChangeStats(stats).WithFields(logpkg.F{
 		"ledger":   b.checkpointLedger,
 		"duration": time.Since(startTime).Seconds(),
-
-		"stats_accounts_created": stats.AccountsCreated,
-		"stats_accounts_updated": stats.AccountsUpdated,
-		"stats_accounts_removed": stats.AccountsRemoved,
-
-		"stats_data_created": stats.DataCreated,
-		"stats_data_updated": stats.DataUpdated,
-		"stats_data_removed": stats.DataRemoved,
-
-		"stats_offers_created": stats.OffersCreated,
-		"stats_offers_updated": stats.OffersUpdated,
-		"stats_offers_removed": stats.OffersRemoved,
-
-		"stats_trust_lines_created": stats.TrustLinesCreated,
-		"stats_trust_lines_updated": stats.TrustLinesUpdated,
-		"stats_trust_lines_removed": stats.TrustLinesRemoved,
 	}).Info("Processed state")
 
 	// If successful, continue from the next ledger
@@ -424,29 +408,13 @@ func (r resumeState) run(s *System) (transition, error) {
 
 		duration := time.Since(startTime)
 		s.Metrics.LedgerInMemoryIngestionTimer.Update(duration)
-		log.WithFields(logpkg.F{
+		loggerWithChangeStats(stats).WithFields(logpkg.F{
 			"sequence": ingestLedger,
 			"duration": duration.Seconds(),
 			"state":    false,
 			"ledger":   false,
 			"graph":    true,
 			"commit":   false,
-
-			"stats_accounts_created": stats.AccountsCreated,
-			"stats_accounts_updated": stats.AccountsUpdated,
-			"stats_accounts_removed": stats.AccountsRemoved,
-
-			"stats_data_created": stats.DataCreated,
-			"stats_data_updated": stats.DataUpdated,
-			"stats_data_removed": stats.DataRemoved,
-
-			"stats_offers_created": stats.OffersCreated,
-			"stats_offers_updated": stats.OffersUpdated,
-			"stats_offers_removed": stats.OffersRemoved,
-
-			"stats_trust_lines_created": stats.TrustLinesCreated,
-			"stats_trust_lines_updated": stats.TrustLinesUpdated,
-			"stats_trust_lines_removed": stats.TrustLinesRemoved,
 		}).Info("Processed ledger")
 
 		return resumeImmediately(ingestLedger), nil
@@ -476,29 +444,13 @@ func (r resumeState) run(s *System) (transition, error) {
 
 	duration := time.Since(startTime)
 	s.Metrics.LedgerIngestionTimer.Update(duration)
-	log.WithFields(logpkg.F{
+	loggerWithChangeStats(stats).WithFields(logpkg.F{
 		"sequence": ingestLedger,
 		"duration": duration.Seconds(),
 		"state":    true,
 		"ledger":   true,
 		"graph":    true,
 		"commit":   true,
-
-		"stats_accounts_created": stats.AccountsCreated,
-		"stats_accounts_updated": stats.AccountsUpdated,
-		"stats_accounts_removed": stats.AccountsRemoved,
-
-		"stats_data_created": stats.DataCreated,
-		"stats_data_updated": stats.DataUpdated,
-		"stats_data_removed": stats.DataRemoved,
-
-		"stats_offers_created": stats.OffersCreated,
-		"stats_offers_updated": stats.OffersUpdated,
-		"stats_offers_removed": stats.OffersRemoved,
-
-		"stats_trust_lines_created": stats.TrustLinesCreated,
-		"stats_trust_lines_updated": stats.TrustLinesUpdated,
-		"stats_trust_lines_removed": stats.TrustLinesRemoved,
 	}).Info("Processed ledger")
 
 	s.maybeVerifyState(ingestLedger)
@@ -722,25 +674,9 @@ func (v verifyRangeState) run(s *System) (transition, error) {
 		return stop(), err
 	}
 
-	log.WithFields(logpkg.F{
+	loggerWithChangeStats(stats).WithFields(logpkg.F{
 		"ledger":   v.fromLedger,
 		"duration": time.Since(startTime).Seconds(),
-
-		"stats_accounts_created": stats.AccountsCreated,
-		"stats_accounts_updated": stats.AccountsUpdated,
-		"stats_accounts_removed": stats.AccountsRemoved,
-
-		"stats_data_created": stats.DataCreated,
-		"stats_data_updated": stats.DataUpdated,
-		"stats_data_removed": stats.DataRemoved,
-
-		"stats_offers_created": stats.OffersCreated,
-		"stats_offers_updated": stats.OffersUpdated,
-		"stats_offers_removed": stats.OffersRemoved,
-
-		"stats_trust_lines_created": stats.TrustLinesCreated,
-		"stats_trust_lines_updated": stats.TrustLinesUpdated,
-		"stats_trust_lines_removed": stats.TrustLinesRemoved,
 	}).Info("Processed state")
 
 	for sequence := v.fromLedger + 1; sequence <= v.toLedger; sequence++ {
@@ -769,29 +705,13 @@ func (v verifyRangeState) run(s *System) (transition, error) {
 			return stop(), err
 		}
 
-		log.WithFields(logpkg.F{
+		loggerWithChangeStats(stats).WithFields(logpkg.F{
 			"sequence": sequence,
 			"duration": time.Since(startTime).Seconds(),
 			"state":    true,
 			"ledger":   true,
 			"graph":    true,
 			"commit":   true,
-
-			"stats_accounts_created": stats.AccountsCreated,
-			"stats_accounts_updated": stats.AccountsUpdated,
-			"stats_accounts_removed": stats.AccountsRemoved,
-
-			"stats_data_created": stats.DataCreated,
-			"stats_data_updated": stats.DataUpdated,
-			"stats_data_removed": stats.DataRemoved,
-
-			"stats_offers_created": stats.OffersCreated,
-			"stats_offers_updated": stats.OffersUpdated,
-			"stats_offers_removed": stats.OffersRemoved,
-
-			"stats_trust_lines_created": stats.TrustLinesCreated,
-			"stats_trust_lines_updated": stats.TrustLinesUpdated,
-			"stats_trust_lines_removed": stats.TrustLinesRemoved,
 		}).Info("Processed ledger")
 	}
 
@@ -852,7 +772,7 @@ func (stressTestState) run(s *System) (transition, error) {
 	}
 
 	curHeap, sysHeap = getMemStats()
-	log.WithFields(logpkg.F{
+	loggerWithChangeStats(stats).WithFields(logpkg.F{
 		"currentHeapSizeMB": curHeap,
 		"systemHeapSizeMB":  sysHeap,
 		"sequence":          sequence,
@@ -861,22 +781,6 @@ func (stressTestState) run(s *System) (transition, error) {
 		"ledger":            true,
 		"graph":             true,
 		"commit":            true,
-
-		"stats_accounts_created": stats.AccountsCreated,
-		"stats_accounts_updated": stats.AccountsUpdated,
-		"stats_accounts_removed": stats.AccountsRemoved,
-
-		"stats_data_created": stats.DataCreated,
-		"stats_data_updated": stats.DataUpdated,
-		"stats_data_removed": stats.DataRemoved,
-
-		"stats_offers_created": stats.OffersCreated,
-		"stats_offers_updated": stats.OffersUpdated,
-		"stats_offers_removed": stats.OffersRemoved,
-
-		"stats_trust_lines_created": stats.TrustLinesCreated,
-		"stats_trust_lines_updated": stats.TrustLinesUpdated,
-		"stats_trust_lines_removed": stats.TrustLinesRemoved,
 	}).Info("Processed ledger")
 
 	return stop(), nil
@@ -902,4 +806,24 @@ func (s *System) completeIngestion(ledger uint32) error {
 	}
 
 	return nil
+}
+
+func loggerWithChangeStats(stats io.StatsChangeProcessorResults) *logpkg.Entry {
+	return log.WithFields(logpkg.F{
+		"stats_accounts_created": stats.AccountsCreated,
+		"stats_accounts_updated": stats.AccountsUpdated,
+		"stats_accounts_removed": stats.AccountsRemoved,
+
+		"stats_data_created": stats.DataCreated,
+		"stats_data_updated": stats.DataUpdated,
+		"stats_data_removed": stats.DataRemoved,
+
+		"stats_offers_created": stats.OffersCreated,
+		"stats_offers_updated": stats.OffersUpdated,
+		"stats_offers_removed": stats.OffersRemoved,
+
+		"stats_trust_lines_created": stats.TrustLinesCreated,
+		"stats_trust_lines_updated": stats.TrustLinesUpdated,
+		"stats_trust_lines_removed": stats.TrustLinesRemoved,
+	})
 }
