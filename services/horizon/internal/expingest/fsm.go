@@ -405,7 +405,7 @@ func (r resumeState) run(s *System) (transition, error) {
 		}
 
 		duration := time.Since(startTime)
-		s.Metrics.LedgerGraphOnlyIngestionTimer.Update(duration)
+		s.Metrics.LedgerInMemoryIngestionTimer.Update(duration)
 		log.WithFields(logpkg.F{
 			"sequence": ingestLedger,
 			"duration": duration.Seconds(),

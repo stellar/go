@@ -87,9 +87,9 @@ type System struct {
 		// duration of ledger ingestion (including updating DB and graph).
 		LedgerIngestionTimer metrics.Timer
 
-		// LedgerGraphOnlyIngestionTimer exposes timing metrics about the rate and
-		// duration of ingestion into graph only.
-		LedgerGraphOnlyIngestionTimer metrics.Timer
+		// LedgerInMemoryIngestionTimer exposes timing metrics about the rate and
+		// duration of ingestion into in-memory graph only.
+		LedgerInMemoryIngestionTimer metrics.Timer
 
 		// StateVerifyTimer exposes timing metrics about the rate and
 		// duration of state verification.
@@ -182,7 +182,7 @@ func NewSystem(config Config) (*System, error) {
 
 func (s *System) initMetrics() {
 	s.Metrics.LedgerIngestionTimer = metrics.NewTimer()
-	s.Metrics.LedgerGraphOnlyIngestionTimer = metrics.NewTimer()
+	s.Metrics.LedgerInMemoryIngestionTimer = metrics.NewTimer()
 	s.Metrics.StateVerifyTimer = metrics.NewTimer()
 }
 

@@ -124,7 +124,7 @@ func initIngestMetrics(app *App) {
 		return
 	}
 	app.metrics.Register("ingest.ledger_ingestion", app.expingester.Metrics.LedgerIngestionTimer)
-	app.metrics.Register("ingest.ledger_graph_only_ingestion", app.expingester.Metrics.LedgerGraphOnlyIngestionTimer)
+	app.metrics.Register("ingest.ledger_in_memory_ingestion", app.expingester.Metrics.LedgerInMemoryIngestionTimer)
 	app.metrics.Register("ingest.state_verify", app.expingester.Metrics.StateVerifyTimer)
 }
 
