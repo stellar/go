@@ -404,9 +404,11 @@ func (r resumeState) run(s *System) (transition, error) {
 			return retryResume(r), errors.Wrap(err, "Error applying graph changes from ledger")
 		}
 
+		duration := time.Since(startTime)
+		s.Metrics.LedgerInMemoryIngestionTimer.Update(duration)
 		log.WithFields(logpkg.F{
 			"sequence": ingestLedger,
-			"duration": time.Since(startTime).Seconds(),
+			"duration": duration.Seconds(),
 			"state":    false,
 			"ledger":   false,
 			"graph":    true,
@@ -438,9 +440,11 @@ func (r resumeState) run(s *System) (transition, error) {
 		log.WithError(err).Warn("error updating stellar-core cursor")
 	}
 
+	duration := time.Since(startTime)
+	s.Metrics.LedgerIngestionTimer.Update(duration)
 	log.WithFields(logpkg.F{
 		"sequence": ingestLedger,
-		"duration": time.Since(startTime).Seconds(),
+		"duration": duration.Seconds(),
 		"state":    true,
 		"ledger":   true,
 		"graph":    true,

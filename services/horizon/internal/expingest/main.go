@@ -8,6 +8,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/rcrowley/go-metrics"
 	"github.com/stellar/go/clients/stellarcore"
 	"github.com/stellar/go/exp/ingest/adapters"
 	ingesterrors "github.com/stellar/go/exp/ingest/errors"
@@ -81,6 +82,20 @@ type stellarCoreClient interface {
 }
 
 type System struct {
+	Metrics struct {
+		// LedgerIngestionTimer exposes timing metrics about the rate and
+		// duration of ledger ingestion (including updating DB and graph).
+		LedgerIngestionTimer metrics.Timer
+
+		// LedgerInMemoryIngestionTimer exposes timing metrics about the rate and
+		// duration of ingestion into in-memory graph only.
+		LedgerInMemoryIngestionTimer metrics.Timer
+
+		// StateVerifyTimer exposes timing metrics about the rate and
+		// duration of state verification.
+		StateVerifyTimer metrics.Timer
+	}
+
 	ctx    context.Context
 	cancel context.CancelFunc
 
@@ -161,7 +176,14 @@ func NewSystem(config Config) (*System, error) {
 		},
 	}
 
+	system.initMetrics()
 	return system, nil
+}
+
+func (s *System) initMetrics() {
+	s.Metrics.LedgerIngestionTimer = metrics.NewTimer()
+	s.Metrics.LedgerInMemoryIngestionTimer = metrics.NewTimer()
+	s.Metrics.StateVerifyTimer = metrics.NewTimer()
 }
 
 // Run starts ingestion system. Ingestion system supports distributed ingestion

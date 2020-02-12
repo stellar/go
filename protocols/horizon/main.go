@@ -593,28 +593,29 @@ type LogTotalMetric struct {
 
 // Metrics represents a response of metrics from horizon
 type Metrics struct {
-	Links                  hal.Links      `json:"_links"`
-	GoRoutines             SingleMetric   `json:"goroutines"`
-	HistoryElderLedger     SingleMetric   `json:"history.elder_ledger"`
-	HistoryLatestLedger    SingleMetric   `json:"history.latest_ledger"`
-	HistoryOpenConnections SingleMetric   `json:"history.open_connections"`
-	IngesterIngestLedger   LogTotalMetric `json:"ingester.ingest_ledger"`
-	IngesterClearLedger    LogTotalMetric `json:"ingester.clear_ledger"`
-	LoggingDebug           LogMetric      `json:"logging.debug"`
-	LoggingError           LogMetric      `json:"logging.error"`
-	LoggingInfo            LogMetric      `json:"logging.info"`
-	LoggingPanic           LogMetric      `json:"logging.panic"`
-	LoggingWarning         LogMetric      `json:"logging.warning"`
-	RequestsFailed         LogMetric      `json:"requests.failed"`
-	RequestsSucceeded      LogMetric      `json:"requests.succeeded"`
-	RequestsTotal          LogTotalMetric `json:"requests.total"`
-	CoreLatestLedger       SingleMetric   `json:"stellar_core.latest_ledger"`
-	CoreOpenConnections    SingleMetric   `json:"stellar_core.open_connections"`
-	TxsubBuffered          SingleMetric   `json:"txsub.buffered"`
-	TxsubFailed            LogMetric      `json:"txsub.failed"`
-	TxsubOpen              SingleMetric   `json:"txsub.open"`
-	TxsubSucceeded         LogMetric      `json:"txsub.succeeded"`
-	TxsubTotal             LogTotalMetric `json:"txsub.total"`
+	Links                          hal.Links      `json:"_links"`
+	GoRoutines                     SingleMetric   `json:"goroutines"`
+	HistoryElderLedger             SingleMetric   `json:"history.elder_ledger"`
+	HistoryLatestLedger            SingleMetric   `json:"history.latest_ledger"`
+	HistoryOpenConnections         SingleMetric   `json:"history.open_connections"`
+	IngestLedgerIngestion          LogTotalMetric `json:"ingest.ledger_ingestion"`
+	IngestLedgerGraphOnlyIngestion LogTotalMetric `json:"ingest.ledger_graph_only_ingestion"`
+	IngestStateVerify              LogTotalMetric `json:"ingest.state_verify"`
+	LoggingDebug                   LogMetric      `json:"logging.debug"`
+	LoggingError                   LogMetric      `json:"logging.error"`
+	LoggingInfo                    LogMetric      `json:"logging.info"`
+	LoggingPanic                   LogMetric      `json:"logging.panic"`
+	LoggingWarning                 LogMetric      `json:"logging.warning"`
+	RequestsFailed                 LogMetric      `json:"requests.failed"`
+	RequestsSucceeded              LogMetric      `json:"requests.succeeded"`
+	RequestsTotal                  LogTotalMetric `json:"requests.total"`
+	CoreLatestLedger               SingleMetric   `json:"stellar_core.latest_ledger"`
+	CoreOpenConnections            SingleMetric   `json:"stellar_core.open_connections"`
+	TxsubBuffered                  SingleMetric   `json:"txsub.buffered"`
+	TxsubFailed                    LogMetric      `json:"txsub.failed"`
+	TxsubOpen                      SingleMetric   `json:"txsub.open"`
+	TxsubSucceeded                 LogMetric      `json:"txsub.succeeded"`
+	TxsubTotal                     LogTotalMetric `json:"txsub.total"`
 }
 
 type FeeDistribution struct {

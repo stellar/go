@@ -42,6 +42,7 @@ func (s *ResumeTestTestSuite) SetupTest() {
 		graph:             s.graph,
 		stellarCoreClient: s.stellarCoreClient,
 	}
+	s.system.initMetrics()
 
 	s.historyQ.On("Rollback").Return(nil).Once()
 	s.graph.On("Discard").Once()

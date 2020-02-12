@@ -32,6 +32,7 @@ func (s *StressTestStateTestSuite) SetupTest() {
 		runner:         s.runner,
 		graph:          s.graph,
 	}
+	s.system.initMetrics()
 
 	s.historyQ.On("GetTx").Return(nil).Once()
 	s.historyQ.On("Rollback").Return(nil).Once()

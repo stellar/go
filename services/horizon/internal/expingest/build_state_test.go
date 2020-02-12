@@ -42,6 +42,7 @@ func (s *BuildStateTestSuite) SetupTest() {
 		runner:            s.runner,
 		stellarCoreClient: s.stellarCoreClient,
 	}
+	s.system.initMetrics()
 
 	s.historyQ.On("Begin").Return(nil).Once()
 	s.historyQ.On("Rollback").Return(nil).Once()
