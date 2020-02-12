@@ -4,8 +4,6 @@ title: Offer Details
 
 Returns information and links relating to a single [offer](../resources/offer.md).
 
-**Note**: This endpoint is still experimental and available only if Horizon is running the [new ingestion system](https://github.com/stellar/go/blob/master/services/horizon/internal/expingest/BETA_TESTING.md).
-
 ## Request
 
 ```
@@ -42,7 +40,7 @@ This endpoint responds with the details of a single offer for a given ID. See [o
       "href": "https://horizon-testnet.stellar.org/accounts/GAQHWQYBBW272OOXNQMMLCA5WY2XAZPODGB7Q3S5OKKIXVESKO55ZQ7C"
     }
   },
-  "id": 1347876,
+  "id": "1347876",
   "paging_token": "1347876",
   "seller": "GAQHWQYBBW272OOXNQMMLCA5WY2XAZPODGB7Q3S5OKKIXVESKO55ZQ7C",
   "selling": {

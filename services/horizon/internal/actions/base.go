@@ -47,6 +47,20 @@ func (base *Base) Execute(action interface{}) {
 	ctx := base.R.Context()
 	contentType := render.Negotiate(base.R)
 
+	if base.R.URL.Query().Get("prometheus_format") == "true" {
+		action, ok := action.(PrometheusResponder)
+		if !ok {
+			goto NotAcceptable
+		}
+
+		err := action.PrometheusFormat()
+		if err != nil {
+			problem.Render(ctx, base.W, err)
+			return
+		}
+		return
+	}
+
 	switch contentType {
 	case render.MimeHal, render.MimeJSON:
 		action, ok := action.(JSONer)

@@ -43,6 +43,7 @@ func (s *BuildStateTestSuite) SetupTest() {
 		runner:            s.runner,
 		stellarCoreClient: s.stellarCoreClient,
 	}
+	s.system.initMetrics()
 
 	s.historyQ.On("Begin").Return(nil).Once()
 	s.historyQ.On("Rollback").Return(nil).Once()
@@ -205,6 +206,9 @@ func (s *BuildStateTestSuite) TestUpdateLastLedgerExpIngestAfterIngestReturnsErr
 		On("RunHistoryArchiveIngestion", s.checkpointLedger).
 		Return(io.StatsChangeProcessorResults{}, nil).
 		Once()
+	s.historyQ.On("UpdateExpIngestVersion", CurrentVersion).
+		Return(nil).
+		Once()
 	s.historyQ.On("UpdateLastLedgerExpIngest", s.checkpointLedger).
 		Return(errors.New("my error")).
 		Once()
@@ -221,9 +225,6 @@ func (s *BuildStateTestSuite) TestUpdateExpIngestVersionIngestReturnsError() {
 	s.runner.
 		On("RunHistoryArchiveIngestion", s.checkpointLedger).
 		Return(io.StatsChangeProcessorResults{}, nil).
-		Once()
-	s.historyQ.On("UpdateLastLedgerExpIngest", s.checkpointLedger).
-		Return(nil).
 		Once()
 	s.historyQ.On("UpdateExpIngestVersion", CurrentVersion).
 		Return(errors.New("my error")).
@@ -247,10 +248,10 @@ func (s *BuildStateTestSuite) TestUpdateCommitReturnsError() {
 	s.historyQ.On("UpdateExpIngestVersion", CurrentVersion).
 		Return(nil).
 		Once()
+	s.graph.On("Clear").Return(nil).Once()
 	s.historyQ.On("Commit").
 		Return(errors.New("my error")).
 		Once()
-	s.graph.On("Clear").Return(nil).Once()
 	next, err := buildState{checkpointLedger: s.checkpointLedger}.run(s.system)
 
 	s.Assert().Error(err)

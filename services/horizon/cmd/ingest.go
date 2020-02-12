@@ -129,6 +129,83 @@ var ingestVerifyRangeCmd = &cobra.Command{
 	},
 }
 
+var stressTestNumTransactions, stressTestChangesPerTransaction int
+
+var stressTestCmdOpts = []*support.ConfigOption{
+	&support.ConfigOption{
+		Name:        "transactions",
+		ConfigKey:   &stressTestNumTransactions,
+		OptType:     types.Int,
+		Required:    false,
+		FlagDefault: int(1000),
+		Usage:       "total number of transactions to ingest (at most 1000)",
+	},
+	&support.ConfigOption{
+		Name:        "changes",
+		ConfigKey:   &stressTestChangesPerTransaction,
+		OptType:     types.Int,
+		Required:    false,
+		FlagDefault: int(4000),
+		Usage:       "changes per transaction to ingest (at most 4000)",
+	},
+}
+
+var ingestStressTestCmd = &cobra.Command{
+	Use:   "stress-test",
+	Short: "runs ingestion pipeline on a ledger with many changes. warning! requires clean DB.",
+	Long:  "runs ingestion pipeline on a ledger with many changes. warning! requires clean DB.",
+	Run: func(cmd *cobra.Command, args []string) {
+		for _, co := range stressTestCmdOpts {
+			co.Require()
+			co.SetValue()
+		}
+
+		initRootConfig()
+
+		coreSession, err := db.Open("postgres", config.StellarCoreDatabaseURL)
+		if err != nil {
+			log.Fatalf("cannot open Core DB: %v", err)
+		}
+
+		horizonSession, err := db.Open("postgres", config.DatabaseURL)
+		if err != nil {
+			log.Fatalf("cannot open Horizon DB: %v", err)
+		}
+
+		if stressTestNumTransactions <= 0 {
+			log.Fatal("`--transactions` must be positive")
+		}
+
+		if stressTestChangesPerTransaction <= 0 {
+			log.Fatal("`--changes` must be positive")
+		}
+
+		ingestConfig := expingest.Config{
+			CoreSession:              coreSession,
+			NetworkPassphrase:        config.NetworkPassphrase,
+			HistorySession:           horizonSession,
+			HistoryArchiveURL:        config.HistoryArchiveURLs[0],
+			OrderBookGraph:           orderbook.NewOrderBookGraph(),
+			IngestFailedTransactions: config.IngestFailedTransactions,
+		}
+
+		system, err := expingest.NewSystem(ingestConfig)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		err = system.StressTest(
+			stressTestNumTransactions,
+			stressTestChangesPerTransaction,
+		)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		log.Info("Stress test completed successfully!")
+	},
+}
+
 func init() {
 	for _, co := range ingestVerifyRangeCmdOpts {
 		err := co.Init(ingestVerifyRangeCmd)
@@ -137,8 +214,15 @@ func init() {
 		}
 	}
 
+	for _, co := range stressTestCmdOpts {
+		err := co.Init(ingestStressTestCmd)
+		if err != nil {
+			log.Fatal(err.Error())
+		}
+	}
+
 	viper.BindPFlags(ingestVerifyRangeCmd.PersistentFlags())
 
 	rootCmd.AddCommand(ingestCmd)
-	ingestCmd.AddCommand(ingestVerifyRangeCmd)
+	ingestCmd.AddCommand(ingestVerifyRangeCmd, ingestStressTestCmd)
 }

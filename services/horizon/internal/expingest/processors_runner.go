@@ -22,6 +22,7 @@ const (
 	_                    = iota
 	historyArchiveSource = ingestionSource(iota)
 	ledgerSource         = ingestionSource(iota)
+	logFrequency         = 100000
 )
 
 type horizonTransactionProcessor interface {
@@ -39,6 +40,9 @@ func (statsChangeProcessor) Commit() error {
 }
 
 type ProcessorRunnerInterface interface {
+	SetLedgerBackend(ledgerBackend ledgerbackend.LedgerBackend)
+	EnableMemoryStatsLogging()
+	DisableMemoryStatsLogging()
 	RunHistoryArchiveIngestion(checkpointLedger uint32) (io.StatsChangeProcessorResults, error)
 	RunAllProcessorsOnLedger(sequence uint32) (io.StatsChangeProcessorResults, error)
 	RunTransactionProcessorsOnLedger(sequence uint32) error
@@ -55,7 +59,20 @@ type ProcessorRunner struct {
 	historyQ       history.IngestionQ
 	historyArchive *historyarchive.Archive
 	historyAdapter adapters.HistoryArchiveAdapterInterface
-	ledgerBackend  *ledgerbackend.DatabaseBackend
+	ledgerBackend  ledgerbackend.LedgerBackend
+	logMemoryStats bool
+}
+
+func (s *ProcessorRunner) SetLedgerBackend(ledgerBackend ledgerbackend.LedgerBackend) {
+	s.ledgerBackend = ledgerBackend
+}
+
+func (s *ProcessorRunner) EnableMemoryStatsLogging() {
+	s.logMemoryStats = true
+}
+
+func (s *ProcessorRunner) DisableMemoryStatsLogging() {
+	s.logMemoryStats = false
 }
 
 func (s *ProcessorRunner) buildChangeProcessor(changeStats *io.StatsChangeProcessor, source ingestionSource) horizonChangeProcessor {
@@ -177,13 +194,13 @@ func (s *ProcessorRunner) RunHistoryArchiveIngestion(checkpointLedger uint32) (i
 	log.WithField("ledger", checkpointLedger).
 		Info("Processing entries from History Archive Snapshot")
 
-	stateReader = newLoggerStateReader(
+	err = io.StreamChanges(changeProcessor, newloggingChangeReader(
 		stateReader,
-		log,
-		100000,
-	)
-
-	err = io.StreamChanges(changeProcessor, stateReader)
+		"historyArchive",
+		checkpointLedger,
+		logFrequency,
+		s.logMemoryStats,
+	))
 	if err != nil {
 		return changeStats.GetResults(), errors.Wrap(err, "Error streaming changes from HAS")
 	}
@@ -199,10 +216,19 @@ func (s *ProcessorRunner) RunHistoryArchiveIngestion(checkpointLedger uint32) (i
 func (s *ProcessorRunner) runChangeProcessorOnLedger(
 	changeProcessor horizonChangeProcessor, ledger uint32,
 ) error {
-	changeReader, err := io.NewLedgerChangeReader(s.ctx, ledger, s.ledgerBackend)
+	var changeReader io.ChangeReader
+	var err error
+	changeReader, err = io.NewLedgerChangeReader(s.ctx, ledger, s.ledgerBackend)
 	if err != nil {
 		return errors.Wrap(err, "Error creating ledger change reader")
 	}
+	changeReader = newloggingChangeReader(
+		changeReader,
+		"ledger",
+		ledger,
+		logFrequency,
+		s.logMemoryStats,
+	)
 	if err = io.StreamChanges(changeProcessor, changeReader); err != nil {
 		return errors.Wrap(err, "Error streaming changes from ledger")
 	}
