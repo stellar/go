@@ -311,14 +311,16 @@ func (m *mockProcessorsRunner) RunHistoryArchiveIngestion(checkpointLedger uint3
 	return args.Get(0).(io.StatsChangeProcessorResults), args.Error(1)
 }
 
-func (m *mockProcessorsRunner) RunAllProcessorsOnLedger(sequence uint32) (io.StatsChangeProcessorResults, error) {
+func (m *mockProcessorsRunner) RunAllProcessorsOnLedger(sequence uint32) (io.StatsChangeProcessorResults, io.StatsLedgerTransactionProcessorResults, error) {
 	args := m.Called(sequence)
-	return args.Get(0).(io.StatsChangeProcessorResults), args.Error(1)
+	return args.Get(0).(io.StatsChangeProcessorResults),
+		args.Get(1).(io.StatsLedgerTransactionProcessorResults),
+		args.Error(2)
 }
 
-func (m *mockProcessorsRunner) RunTransactionProcessorsOnLedger(sequence uint32) error {
+func (m *mockProcessorsRunner) RunTransactionProcessorsOnLedger(sequence uint32) (io.StatsLedgerTransactionProcessorResults, error) {
 	args := m.Called(sequence)
-	return args.Error(0)
+	return args.Get(0).(io.StatsLedgerTransactionProcessorResults), args.Error(1)
 }
 
 func (m *mockProcessorsRunner) RunOrderBookProcessorOnLedger(sequence uint32) (io.StatsChangeProcessorResults, error) {

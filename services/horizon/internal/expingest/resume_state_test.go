@@ -272,7 +272,7 @@ func (s *ResumeTestTestSuite) TestIngestAllMasterNode() {
 
 	s.ledgeBackend.On("GetLatestLedgerSequence").Return(uint32(111), nil).Once()
 
-	s.runner.On("RunAllProcessorsOnLedger", uint32(101)).Return(io.StatsChangeProcessorResults{}, nil).Once()
+	s.runner.On("RunAllProcessorsOnLedger", uint32(101)).Return(io.StatsChangeProcessorResults{}, io.StatsLedgerTransactionProcessorResults{}, nil).Once()
 	s.historyQ.On("UpdateLastLedgerExpIngest", uint32(101)).Return(nil).Once()
 	s.historyQ.On("Commit").Return(nil).Once()
 	s.graph.On("Apply", uint32(101)).Return(nil).Once()
@@ -305,7 +305,7 @@ func (s *ResumeTestTestSuite) TestErrorSettingCursorIgnored() {
 
 	s.ledgeBackend.On("GetLatestLedgerSequence").Return(uint32(111), nil).Once()
 
-	s.runner.On("RunAllProcessorsOnLedger", uint32(101)).Return(io.StatsChangeProcessorResults{}, nil).Once()
+	s.runner.On("RunAllProcessorsOnLedger", uint32(101)).Return(io.StatsChangeProcessorResults{}, io.StatsLedgerTransactionProcessorResults{}, nil).Once()
 	s.historyQ.On("UpdateLastLedgerExpIngest", uint32(101)).Return(nil).Once()
 	s.historyQ.On("Commit").Return(nil).Once()
 	s.graph.On("Apply", uint32(101)).Return(nil).Once()

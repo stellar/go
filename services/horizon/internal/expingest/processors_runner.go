@@ -39,14 +39,26 @@ func (statsChangeProcessor) Commit() error {
 	return nil
 }
 
+type statsLedgerTransactionProcessor struct {
+	*io.StatsLedgerTransactionProcessor
+}
+
+func (statsLedgerTransactionProcessor) Commit() error {
+	return nil
+}
+
 type ProcessorRunnerInterface interface {
 	SetLedgerBackend(ledgerBackend ledgerbackend.LedgerBackend)
 	EnableMemoryStatsLogging()
 	DisableMemoryStatsLogging()
 	RunHistoryArchiveIngestion(checkpointLedger uint32) (io.StatsChangeProcessorResults, error)
-	RunAllProcessorsOnLedger(sequence uint32) (io.StatsChangeProcessorResults, error)
-	RunTransactionProcessorsOnLedger(sequence uint32) error
+	RunTransactionProcessorsOnLedger(sequence uint32) (io.StatsLedgerTransactionProcessorResults, error)
 	RunOrderBookProcessorOnLedger(sequence uint32) (io.StatsChangeProcessorResults, error)
+	RunAllProcessorsOnLedger(sequence uint32) (
+		io.StatsChangeProcessorResults,
+		io.StatsLedgerTransactionProcessorResults,
+		error,
+	)
 }
 
 var _ ProcessorRunnerInterface = (*ProcessorRunner)(nil)
@@ -105,10 +117,16 @@ func (p skipFailedTransactions) ProcessTransaction(tx io.LedgerTransaction) erro
 }
 
 func (s *ProcessorRunner) buildTransactionProcessor(
+	ledgerTransactionStats *io.StatsLedgerTransactionProcessor,
 	ledger xdr.LedgerHeaderHistoryEntry,
 ) horizonTransactionProcessor {
+	statsLedgerTransactionProcessor := &statsLedgerTransactionProcessor{
+		StatsLedgerTransactionProcessor: ledgerTransactionStats,
+	}
+
 	sequence := uint32(ledger.Header.LedgerSeq)
 	group := groupTransactionProcessors{
+		statsLedgerTransactionProcessor,
 		processors.NewEffectProcessor(s.historyQ, sequence),
 		processors.NewLedgerProcessor(s.historyQ, ledger, CurrentVersion),
 		processors.NewOperationProcessor(s.historyQ, sequence),
@@ -241,42 +259,45 @@ func (s *ProcessorRunner) runChangeProcessorOnLedger(
 	return nil
 }
 
-func (s *ProcessorRunner) RunTransactionProcessorsOnLedger(ledger uint32) error {
+func (s *ProcessorRunner) RunTransactionProcessorsOnLedger(ledger uint32) (io.StatsLedgerTransactionProcessorResults, error) {
+	ledgerTransactionStats := io.StatsLedgerTransactionProcessor{}
+
 	ledgerReader, err := io.NewDBLedgerReader(s.ctx, ledger, s.ledgerBackend)
 	if err != nil {
-		return errors.Wrap(err, "Error creating ledger reader")
+		return ledgerTransactionStats.GetResults(), errors.Wrap(err, "Error creating ledger reader")
 	}
 
-	txProcessor := s.buildTransactionProcessor(ledgerReader.GetHeader())
+	txProcessor := s.buildTransactionProcessor(&ledgerTransactionStats, ledgerReader.GetHeader())
 	err = io.StreamLedgerTransactions(txProcessor, ledgerReader)
 	if err != nil {
-		return errors.Wrap(err, "Error streaming changes from ledger")
+		return ledgerTransactionStats.GetResults(), errors.Wrap(err, "Error streaming changes from ledger")
 	}
 
 	err = txProcessor.Commit()
 	if err != nil {
-		return errors.Wrap(err, "Error commiting changes from processor")
+		return ledgerTransactionStats.GetResults(), errors.Wrap(err, "Error commiting changes from processor")
 	}
 
-	return nil
+	return ledgerTransactionStats.GetResults(), nil
 }
 
-func (s *ProcessorRunner) RunAllProcessorsOnLedger(ledger uint32) (io.StatsChangeProcessorResults, error) {
+func (s *ProcessorRunner) RunAllProcessorsOnLedger(ledger uint32) (io.StatsChangeProcessorResults, io.StatsLedgerTransactionProcessorResults, error) {
 	changeStats := io.StatsChangeProcessor{}
+	var statsLedgerTransactionProcessorResults io.StatsLedgerTransactionProcessorResults
 
 	err := s.runChangeProcessorOnLedger(
 		s.buildChangeProcessor(&changeStats, ledgerSource), ledger,
 	)
 	if err != nil {
-		return changeStats.GetResults(), err
+		return changeStats.GetResults(), statsLedgerTransactionProcessorResults, err
 	}
 
-	err = s.RunTransactionProcessorsOnLedger(ledger)
+	statsLedgerTransactionProcessorResults, err = s.RunTransactionProcessorsOnLedger(ledger)
 	if err != nil {
-		return changeStats.GetResults(), err
+		return changeStats.GetResults(), statsLedgerTransactionProcessorResults, err
 	}
 
-	return changeStats.GetResults(), nil
+	return changeStats.GetResults(), statsLedgerTransactionProcessorResults, nil
 }
 
 func (s *ProcessorRunner) RunOrderBookProcessorOnLedger(ledger uint32) (io.StatsChangeProcessorResults, error) {

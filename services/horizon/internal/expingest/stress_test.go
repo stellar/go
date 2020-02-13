@@ -98,7 +98,7 @@ func (s *StressTestStateTestSuite) TestGetLastLedgerExpIngestNonEmpty() {
 func (s *StressTestStateTestSuite) TestRunAllProcessorsOnLedgerReturnsError() {
 	s.historyQ.On("Begin").Return(nil).Once()
 	s.historyQ.On("GetLastLedgerExpIngest").Return(uint32(0), nil).Once()
-	s.runner.On("RunAllProcessorsOnLedger", uint32(1)).Return(io.StatsChangeProcessorResults{}, errors.New("my error")).Once()
+	s.runner.On("RunAllProcessorsOnLedger", uint32(1)).Return(io.StatsChangeProcessorResults{}, io.StatsLedgerTransactionProcessorResults{}, errors.New("my error")).Once()
 
 	err := s.system.StressTest(10, 4)
 	s.Assert().EqualError(err, "Error running processors on ledger: my error")
@@ -107,7 +107,7 @@ func (s *StressTestStateTestSuite) TestRunAllProcessorsOnLedgerReturnsError() {
 func (s *StressTestStateTestSuite) TestUpdateLastLedgerExpIngestReturnsError() {
 	s.historyQ.On("Begin").Return(nil).Once()
 	s.historyQ.On("GetLastLedgerExpIngest").Return(uint32(0), nil).Once()
-	s.runner.On("RunAllProcessorsOnLedger", uint32(1)).Return(io.StatsChangeProcessorResults{}, nil).Once()
+	s.runner.On("RunAllProcessorsOnLedger", uint32(1)).Return(io.StatsChangeProcessorResults{}, io.StatsLedgerTransactionProcessorResults{}, nil).Once()
 	s.historyQ.On("UpdateLastLedgerExpIngest", uint32(1)).Return(errors.New("my error")).Once()
 
 	err := s.system.StressTest(10, 4)
@@ -117,7 +117,7 @@ func (s *StressTestStateTestSuite) TestUpdateLastLedgerExpIngestReturnsError() {
 func (s *StressTestStateTestSuite) TestApplyReturnsError() {
 	s.historyQ.On("Begin").Return(nil).Once()
 	s.historyQ.On("GetLastLedgerExpIngest").Return(uint32(0), nil).Once()
-	s.runner.On("RunAllProcessorsOnLedger", uint32(1)).Return(io.StatsChangeProcessorResults{}, nil).Once()
+	s.runner.On("RunAllProcessorsOnLedger", uint32(1)).Return(io.StatsChangeProcessorResults{}, io.StatsLedgerTransactionProcessorResults{}, nil).Once()
 	s.historyQ.On("UpdateLastLedgerExpIngest", uint32(1)).Return(nil).Once()
 	s.historyQ.On("Commit").Return(nil).Once()
 	s.graph.On("Apply", uint32(1)).Return(errors.New("my error")).Once()
@@ -129,7 +129,7 @@ func (s *StressTestStateTestSuite) TestApplyReturnsError() {
 func (s *StressTestStateTestSuite) TestCommitReturnsError() {
 	s.historyQ.On("Begin").Return(nil).Once()
 	s.historyQ.On("GetLastLedgerExpIngest").Return(uint32(0), nil).Once()
-	s.runner.On("RunAllProcessorsOnLedger", uint32(1)).Return(io.StatsChangeProcessorResults{}, nil).Once()
+	s.runner.On("RunAllProcessorsOnLedger", uint32(1)).Return(io.StatsChangeProcessorResults{}, io.StatsLedgerTransactionProcessorResults{}, nil).Once()
 	s.historyQ.On("UpdateLastLedgerExpIngest", uint32(1)).Return(nil).Once()
 	s.historyQ.On("Commit").Return(errors.New("my error")).Once()
 
@@ -140,7 +140,7 @@ func (s *StressTestStateTestSuite) TestCommitReturnsError() {
 func (s *StressTestStateTestSuite) TestSucceeds() {
 	s.historyQ.On("Begin").Return(nil).Once()
 	s.historyQ.On("GetLastLedgerExpIngest").Return(uint32(0), nil).Once()
-	s.runner.On("RunAllProcessorsOnLedger", uint32(1)).Return(io.StatsChangeProcessorResults{}, nil).Once()
+	s.runner.On("RunAllProcessorsOnLedger", uint32(1)).Return(io.StatsChangeProcessorResults{}, io.StatsLedgerTransactionProcessorResults{}, nil).Once()
 	s.historyQ.On("UpdateLastLedgerExpIngest", uint32(1)).Return(nil).Once()
 	s.historyQ.On("Commit").Return(nil).Once()
 	s.graph.On("Apply", uint32(1)).Return(nil).Once()
