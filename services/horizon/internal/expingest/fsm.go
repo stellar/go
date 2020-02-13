@@ -295,10 +295,13 @@ func (b buildState) run(s *System) (transition, error) {
 		return start(), err
 	}
 
-	loggerWithChangeStats(stats).WithFields(logpkg.F{
-		"ledger":   b.checkpointLedger,
-		"duration": time.Since(startTime).Seconds(),
-	}).Info("Processed state")
+	log.
+		WithFields(stats.Map()).
+		WithFields(logpkg.F{
+			"ledger":   b.checkpointLedger,
+			"duration": time.Since(startTime).Seconds(),
+		}).
+		Info("Processed state")
 
 	// If successful, continue from the next ledger
 	return resume(b.checkpointLedger), nil
@@ -408,14 +411,17 @@ func (r resumeState) run(s *System) (transition, error) {
 
 		duration := time.Since(startTime)
 		s.Metrics.LedgerInMemoryIngestionTimer.Update(duration)
-		loggerWithChangeStats(stats).WithFields(logpkg.F{
-			"sequence": ingestLedger,
-			"duration": duration.Seconds(),
-			"state":    false,
-			"ledger":   false,
-			"graph":    true,
-			"commit":   false,
-		}).Info("Processed ledger")
+		log.
+			WithFields(stats.Map()).
+			WithFields(logpkg.F{
+				"sequence": ingestLedger,
+				"duration": duration.Seconds(),
+				"state":    false,
+				"ledger":   false,
+				"graph":    true,
+				"commit":   false,
+			}).
+			Info("Processed ledger")
 
 		return resumeImmediately(ingestLedger), nil
 	}
@@ -428,7 +434,7 @@ func (r resumeState) run(s *System) (transition, error) {
 		"commit":   true,
 	}).Info("Processing ledger")
 
-	stats, err := s.runner.RunAllProcessorsOnLedger(ingestLedger)
+	changeStats, ledgerTransactionStats, err := s.runner.RunAllProcessorsOnLedger(ingestLedger)
 	if err != nil {
 		return retryResume(r), errors.Wrap(err, "Error running processors on ledger")
 	}
@@ -444,14 +450,18 @@ func (r resumeState) run(s *System) (transition, error) {
 
 	duration := time.Since(startTime)
 	s.Metrics.LedgerIngestionTimer.Update(duration)
-	loggerWithChangeStats(stats).WithFields(logpkg.F{
-		"sequence": ingestLedger,
-		"duration": duration.Seconds(),
-		"state":    true,
-		"ledger":   true,
-		"graph":    true,
-		"commit":   true,
-	}).Info("Processed ledger")
+	log.
+		WithFields(changeStats.Map()).
+		WithFields(ledgerTransactionStats.Map()).
+		WithFields(logpkg.F{
+			"sequence": ingestLedger,
+			"duration": duration.Seconds(),
+			"state":    true,
+			"ledger":   true,
+			"graph":    true,
+			"commit":   true,
+		}).
+		Info("Processed ledger")
 
 	s.maybeVerifyState(ingestLedger)
 
@@ -523,18 +533,22 @@ func ingestHistoryRange(s *System, from, to uint32) error {
 		}).Info("Processing ledger")
 		startTime := time.Now()
 
-		if err := s.runner.RunTransactionProcessorsOnLedger(cur); err != nil {
+		ledgerTransactionStats, err := s.runner.RunTransactionProcessorsOnLedger(cur)
+		if err != nil {
 			return errors.Wrap(err, fmt.Sprintf("error processing ledger sequence=%d", cur))
 		}
 
-		log.WithFields(logpkg.F{
-			"sequence": cur,
-			"duration": time.Since(startTime).Seconds(),
-			"state":    false,
-			"ledger":   true,
-			"graph":    false,
-			"commit":   false,
-		}).Info("Processed ledger")
+		log.
+			WithFields(ledgerTransactionStats.Map()).
+			WithFields(logpkg.F{
+				"sequence": cur,
+				"duration": time.Since(startTime).Seconds(),
+				"state":    false,
+				"ledger":   true,
+				"graph":    false,
+				"commit":   false,
+			}).
+			Info("Processed ledger")
 	}
 	return nil
 }
@@ -674,10 +688,13 @@ func (v verifyRangeState) run(s *System) (transition, error) {
 		return stop(), err
 	}
 
-	loggerWithChangeStats(stats).WithFields(logpkg.F{
-		"ledger":   v.fromLedger,
-		"duration": time.Since(startTime).Seconds(),
-	}).Info("Processed state")
+	log.
+		WithFields(stats.Map()).
+		WithFields(logpkg.F{
+			"ledger":   v.fromLedger,
+			"duration": time.Since(startTime).Seconds(),
+		}).
+		Info("Processed state")
 
 	for sequence := v.fromLedger + 1; sequence <= v.toLedger; sequence++ {
 		log.WithFields(logpkg.F{
@@ -694,8 +711,9 @@ func (v verifyRangeState) run(s *System) (transition, error) {
 			return stop(), err
 		}
 
-		var stats io.StatsChangeProcessorResults
-		stats, err = s.runner.RunAllProcessorsOnLedger(sequence)
+		var changeStats io.StatsChangeProcessorResults
+		var ledgerTransactionStats io.StatsLedgerTransactionProcessorResults
+		changeStats, ledgerTransactionStats, err = s.runner.RunAllProcessorsOnLedger(sequence)
 		if err != nil {
 			err = errors.Wrap(err, "Error running processors on ledger")
 			return stop(), err
@@ -705,14 +723,18 @@ func (v verifyRangeState) run(s *System) (transition, error) {
 			return stop(), err
 		}
 
-		loggerWithChangeStats(stats).WithFields(logpkg.F{
-			"sequence": sequence,
-			"duration": time.Since(startTime).Seconds(),
-			"state":    true,
-			"ledger":   true,
-			"graph":    true,
-			"commit":   true,
-		}).Info("Processed ledger")
+		log.
+			WithFields(changeStats.Map()).
+			WithFields(ledgerTransactionStats.Map()).
+			WithFields(logpkg.F{
+				"sequence": sequence,
+				"duration": time.Since(startTime).Seconds(),
+				"state":    true,
+				"ledger":   true,
+				"graph":    true,
+				"commit":   true,
+			}).
+			Info("Processed ledger")
 	}
 
 	if v.verifyState {
@@ -761,7 +783,7 @@ func (stressTestState) run(s *System) (transition, error) {
 	}).Info("Processing ledger")
 	startTime := time.Now()
 
-	stats, err := s.runner.RunAllProcessorsOnLedger(sequence)
+	changeStats, ledgerTransactionStats, err := s.runner.RunAllProcessorsOnLedger(sequence)
 	if err != nil {
 		err = errors.Wrap(err, "Error running processors on ledger")
 		return stop(), err
@@ -772,16 +794,20 @@ func (stressTestState) run(s *System) (transition, error) {
 	}
 
 	curHeap, sysHeap = getMemStats()
-	loggerWithChangeStats(stats).WithFields(logpkg.F{
-		"currentHeapSizeMB": curHeap,
-		"systemHeapSizeMB":  sysHeap,
-		"sequence":          sequence,
-		"duration":          time.Since(startTime).Seconds(),
-		"state":             true,
-		"ledger":            true,
-		"graph":             true,
-		"commit":            true,
-	}).Info("Processed ledger")
+	log.
+		WithFields(changeStats.Map()).
+		WithFields(ledgerTransactionStats.Map()).
+		WithFields(logpkg.F{
+			"currentHeapSizeMB": curHeap,
+			"systemHeapSizeMB":  sysHeap,
+			"sequence":          sequence,
+			"duration":          time.Since(startTime).Seconds(),
+			"state":             true,
+			"ledger":            true,
+			"graph":             true,
+			"commit":            true,
+		}).
+		Info("Processed ledger")
 
 	return stop(), nil
 }
@@ -806,24 +832,4 @@ func (s *System) completeIngestion(ledger uint32) error {
 	}
 
 	return nil
-}
-
-func loggerWithChangeStats(stats io.StatsChangeProcessorResults) *logpkg.Entry {
-	return log.WithFields(logpkg.F{
-		"stats_accounts_created": stats.AccountsCreated,
-		"stats_accounts_updated": stats.AccountsUpdated,
-		"stats_accounts_removed": stats.AccountsRemoved,
-
-		"stats_data_created": stats.DataCreated,
-		"stats_data_updated": stats.DataUpdated,
-		"stats_data_removed": stats.DataRemoved,
-
-		"stats_offers_created": stats.OffersCreated,
-		"stats_offers_updated": stats.OffersUpdated,
-		"stats_offers_removed": stats.OffersRemoved,
-
-		"stats_trust_lines_created": stats.TrustLinesCreated,
-		"stats_trust_lines_updated": stats.TrustLinesUpdated,
-		"stats_trust_lines_removed": stats.TrustLinesRemoved,
-	})
 }

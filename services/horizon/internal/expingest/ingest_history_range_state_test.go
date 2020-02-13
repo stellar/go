@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/stellar/go/exp/ingest/adapters"
+	"github.com/stellar/go/exp/ingest/io"
 	"github.com/stellar/go/services/horizon/internal/toid"
 	"github.com/stellar/go/support/errors"
 	"github.com/stretchr/testify/suite"
@@ -118,7 +119,7 @@ func (s *IngestHistoryRangeStateTestSuite) TestRunTransactionProcessorsOnLedgerR
 	s.historyQ.On("GetLastLedgerExpIngest").Return(uint32(0), nil).Once()
 	s.historyQ.On("GetLatestLedger").Return(uint32(99), nil).Once()
 
-	s.runner.On("RunTransactionProcessorsOnLedger", uint32(100)).Return(errors.New("my error")).Once()
+	s.runner.On("RunTransactionProcessorsOnLedger", uint32(100)).Return(io.StatsLedgerTransactionProcessorResults{}, errors.New("my error")).Once()
 
 	next, err := historyRangeState{fromLedger: 100, toLedger: 200}.run(s.system)
 	s.Assert().Error(err)
@@ -132,7 +133,7 @@ func (s *IngestHistoryRangeStateTestSuite) TestSuccess() {
 	s.historyQ.On("GetLatestLedger").Return(uint32(99), nil).Once()
 
 	for i := 100; i <= 200; i++ {
-		s.runner.On("RunTransactionProcessorsOnLedger", uint32(i)).Return(nil).Once()
+		s.runner.On("RunTransactionProcessorsOnLedger", uint32(i)).Return(io.StatsLedgerTransactionProcessorResults{}, nil).Once()
 	}
 
 	s.historyQ.On("Commit").Return(nil).Once()
@@ -147,7 +148,7 @@ func (s *IngestHistoryRangeStateTestSuite) TestSuccessOneLedger() {
 	s.historyQ.On("GetLastLedgerExpIngest").Return(uint32(0), nil).Once()
 	s.historyQ.On("GetLatestLedger").Return(uint32(99), nil).Once()
 
-	s.runner.On("RunTransactionProcessorsOnLedger", uint32(100)).Return(nil).Once()
+	s.runner.On("RunTransactionProcessorsOnLedger", uint32(100)).Return(io.StatsLedgerTransactionProcessorResults{}, nil).Once()
 
 	s.historyQ.On("Commit").Return(nil).Once()
 
@@ -263,7 +264,7 @@ func (s *ReingestHistoryRangeStateTestSuite) TestRunTransactionProcessorsOnLedge
 	).Return(nil).Once()
 
 	s.runner.On("RunTransactionProcessorsOnLedger", uint32(100)).
-		Return(errors.New("my error")).Once()
+		Return(io.StatsLedgerTransactionProcessorResults{}, errors.New("my error")).Once()
 
 	err := s.system.ReingestRange(100, 200, false)
 	s.Assert().EqualError(err, "error processing ledger sequence=100: my error")
@@ -279,7 +280,7 @@ func (s *ReingestHistoryRangeStateTestSuite) TestCommitFails() {
 	).Return(nil).Once()
 
 	for i := 100; i <= 200; i++ {
-		s.runner.On("RunTransactionProcessorsOnLedger", uint32(i)).Return(nil).Once()
+		s.runner.On("RunTransactionProcessorsOnLedger", uint32(i)).Return(io.StatsLedgerTransactionProcessorResults{}, nil).Once()
 	}
 
 	s.historyQ.On("Commit").Return(errors.New("my error")).Once()
@@ -298,7 +299,7 @@ func (s *ReingestHistoryRangeStateTestSuite) TestSuccess() {
 	).Return(nil).Once()
 
 	for i := 100; i <= 200; i++ {
-		s.runner.On("RunTransactionProcessorsOnLedger", uint32(i)).Return(nil).Once()
+		s.runner.On("RunTransactionProcessorsOnLedger", uint32(i)).Return(io.StatsLedgerTransactionProcessorResults{}, nil).Once()
 	}
 
 	s.historyQ.On("Commit").Return(nil).Once()
@@ -316,7 +317,7 @@ func (s *ReingestHistoryRangeStateTestSuite) TestSuccessOneLedger() {
 		"DeleteRangeAll", toidFrom.ToInt64(), toidTo.ToInt64(),
 	).Return(nil).Once()
 
-	s.runner.On("RunTransactionProcessorsOnLedger", uint32(100)).Return(nil).Once()
+	s.runner.On("RunTransactionProcessorsOnLedger", uint32(100)).Return(io.StatsLedgerTransactionProcessorResults{}, nil).Once()
 	s.historyQ.On("Commit").Return(nil).Once()
 
 	err := s.system.ReingestRange(100, 100, false)
@@ -340,7 +341,7 @@ func (s *ReingestHistoryRangeStateTestSuite) TestReingestRangeForce() {
 	).Return(nil).Once()
 
 	for i := 100; i <= 200; i++ {
-		s.runner.On("RunTransactionProcessorsOnLedger", uint32(i)).Return(nil).Once()
+		s.runner.On("RunTransactionProcessorsOnLedger", uint32(i)).Return(io.StatsLedgerTransactionProcessorResults{}, nil).Once()
 	}
 
 	s.historyQ.On("Commit").Return(nil).Once()
