@@ -75,3 +75,23 @@ func (p *StatsChangeProcessor) ProcessChange(change Change) error {
 func (p *StatsChangeProcessor) GetResults() StatsChangeProcessorResults {
 	return p.results
 }
+
+func (stats *StatsChangeProcessorResults) Map() map[string]interface{} {
+	return map[string]interface{}{
+		"stats_accounts_created": stats.AccountsCreated,
+		"stats_accounts_updated": stats.AccountsUpdated,
+		"stats_accounts_removed": stats.AccountsRemoved,
+
+		"stats_data_created": stats.DataCreated,
+		"stats_data_updated": stats.DataUpdated,
+		"stats_data_removed": stats.DataRemoved,
+
+		"stats_offers_created": stats.OffersCreated,
+		"stats_offers_updated": stats.OffersUpdated,
+		"stats_offers_removed": stats.OffersRemoved,
+
+		"stats_trust_lines_created": stats.TrustLinesCreated,
+		"stats_trust_lines_updated": stats.TrustLinesUpdated,
+		"stats_trust_lines_removed": stats.TrustLinesRemoved,
+	}
+}

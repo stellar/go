@@ -296,7 +296,7 @@ func (b buildState) run(s *System) (transition, error) {
 	}
 
 	log.
-		WithFields(changeStatsFields(stats)).
+		WithFields(stats.Map()).
 		WithFields(logpkg.F{
 			"ledger":   b.checkpointLedger,
 			"duration": time.Since(startTime).Seconds(),
@@ -412,7 +412,7 @@ func (r resumeState) run(s *System) (transition, error) {
 		duration := time.Since(startTime)
 		s.Metrics.LedgerInMemoryIngestionTimer.Update(duration)
 		log.
-			WithFields(changeStatsFields(stats)).
+			WithFields(stats.Map()).
 			WithFields(logpkg.F{
 				"sequence": ingestLedger,
 				"duration": duration.Seconds(),
@@ -451,8 +451,8 @@ func (r resumeState) run(s *System) (transition, error) {
 	duration := time.Since(startTime)
 	s.Metrics.LedgerIngestionTimer.Update(duration)
 	log.
-		WithFields(changeStatsFields(changeStats)).
-		WithFields(ledgerTransactionStatsFields(ledgerTransactionStats)).
+		WithFields(changeStats.Map()).
+		WithFields(ledgerTransactionStats.Map()).
 		WithFields(logpkg.F{
 			"sequence": ingestLedger,
 			"duration": duration.Seconds(),
@@ -539,7 +539,7 @@ func ingestHistoryRange(s *System, from, to uint32) error {
 		}
 
 		log.
-			WithFields(ledgerTransactionStatsFields(ledgerTransactionStats)).
+			WithFields(ledgerTransactionStats.Map()).
 			WithFields(logpkg.F{
 				"sequence": cur,
 				"duration": time.Since(startTime).Seconds(),
@@ -689,7 +689,7 @@ func (v verifyRangeState) run(s *System) (transition, error) {
 	}
 
 	log.
-		WithFields(changeStatsFields(stats)).
+		WithFields(stats.Map()).
 		WithFields(logpkg.F{
 			"ledger":   v.fromLedger,
 			"duration": time.Since(startTime).Seconds(),
@@ -724,8 +724,8 @@ func (v verifyRangeState) run(s *System) (transition, error) {
 		}
 
 		log.
-			WithFields(changeStatsFields(changeStats)).
-			WithFields(ledgerTransactionStatsFields(ledgerTransactionStats)).
+			WithFields(changeStats.Map()).
+			WithFields(ledgerTransactionStats.Map()).
 			WithFields(logpkg.F{
 				"sequence": sequence,
 				"duration": time.Since(startTime).Seconds(),
@@ -795,8 +795,8 @@ func (stressTestState) run(s *System) (transition, error) {
 
 	curHeap, sysHeap = getMemStats()
 	log.
-		WithFields(changeStatsFields(changeStats)).
-		WithFields(ledgerTransactionStatsFields(ledgerTransactionStats)).
+		WithFields(changeStats.Map()).
+		WithFields(ledgerTransactionStats.Map()).
 		WithFields(logpkg.F{
 			"currentHeapSizeMB": curHeap,
 			"systemHeapSizeMB":  sysHeap,
@@ -832,51 +832,4 @@ func (s *System) completeIngestion(ledger uint32) error {
 	}
 
 	return nil
-}
-
-func changeStatsFields(stats io.StatsChangeProcessorResults) logpkg.F {
-	return logpkg.F{
-		"stats_accounts_created": stats.AccountsCreated,
-		"stats_accounts_updated": stats.AccountsUpdated,
-		"stats_accounts_removed": stats.AccountsRemoved,
-
-		"stats_data_created": stats.DataCreated,
-		"stats_data_updated": stats.DataUpdated,
-		"stats_data_removed": stats.DataRemoved,
-
-		"stats_offers_created": stats.OffersCreated,
-		"stats_offers_updated": stats.OffersUpdated,
-		"stats_offers_removed": stats.OffersRemoved,
-
-		"stats_trust_lines_created": stats.TrustLinesCreated,
-		"stats_trust_lines_updated": stats.TrustLinesUpdated,
-		"stats_trust_lines_removed": stats.TrustLinesRemoved,
-	}
-}
-
-func ledgerTransactionStatsFields(stats io.StatsLedgerTransactionProcessorResults) logpkg.F {
-	return logpkg.F{
-		"stats_transactions":            stats.Transactions,
-		"stats_transactions_successful": stats.TransactionsSuccessful,
-		"stats_transactions_failed":     stats.TransactionsFailed,
-
-		"stats_operations":               stats.Operations,
-		"stats_operations_in_successful": stats.OperationsInSuccessful,
-		"stats_operations_in_failed":     stats.OperationsInFailed,
-
-		"stats_operations_create_account":              stats.OperationsCreateAccount,
-		"stats_operations_payment":                     stats.OperationsPayment,
-		"stats_operations_path_payment_strict_receive": stats.OperationsPathPaymentStrictReceive,
-		"stats_operations_manage_sell_offer":           stats.OperationsManageSellOffer,
-		"stats_operations_create_passive_sell_offer":   stats.OperationsCreatePassiveSellOffer,
-		"stats_operations_set_options":                 stats.OperationsSetOptions,
-		"stats_operations_change_trust":                stats.OperationsChangeTrust,
-		"stats_operations_allow_trust":                 stats.OperationsAllowTrust,
-		"stats_operations_account_merge":               stats.OperationsAccountMerge,
-		"stats_operations_inflation":                   stats.OperationsInflation,
-		"stats_operations_manage_data":                 stats.OperationsManageData,
-		"stats_operations_bump_sequence":               stats.OperationsBumpSequence,
-		"stats_operations_manage_buy_offer":            stats.OperationsManageBuyOffer,
-		"stats_operations_path_payment_strict_send":    stats.OperationsPathPaymentStrictSend,
-	}
 }

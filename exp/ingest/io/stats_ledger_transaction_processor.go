@@ -93,3 +93,30 @@ func (p *StatsLedgerTransactionProcessor) ProcessTransaction(transaction LedgerT
 func (p *StatsLedgerTransactionProcessor) GetResults() StatsLedgerTransactionProcessorResults {
 	return p.results
 }
+
+func (stats *StatsLedgerTransactionProcessorResults) Map() map[string]interface{} {
+	return map[string]interface{}{
+		"stats_transactions":            stats.Transactions,
+		"stats_transactions_successful": stats.TransactionsSuccessful,
+		"stats_transactions_failed":     stats.TransactionsFailed,
+
+		"stats_operations":               stats.Operations,
+		"stats_operations_in_successful": stats.OperationsInSuccessful,
+		"stats_operations_in_failed":     stats.OperationsInFailed,
+
+		"stats_operations_create_account":              stats.OperationsCreateAccount,
+		"stats_operations_payment":                     stats.OperationsPayment,
+		"stats_operations_path_payment_strict_receive": stats.OperationsPathPaymentStrictReceive,
+		"stats_operations_manage_sell_offer":           stats.OperationsManageSellOffer,
+		"stats_operations_create_passive_sell_offer":   stats.OperationsCreatePassiveSellOffer,
+		"stats_operations_set_options":                 stats.OperationsSetOptions,
+		"stats_operations_change_trust":                stats.OperationsChangeTrust,
+		"stats_operations_allow_trust":                 stats.OperationsAllowTrust,
+		"stats_operations_account_merge":               stats.OperationsAccountMerge,
+		"stats_operations_inflation":                   stats.OperationsInflation,
+		"stats_operations_manage_data":                 stats.OperationsManageData,
+		"stats_operations_bump_sequence":               stats.OperationsBumpSequence,
+		"stats_operations_manage_buy_offer":            stats.OperationsManageBuyOffer,
+		"stats_operations_path_payment_strict_send":    stats.OperationsPathPaymentStrictSend,
+	}
+}
