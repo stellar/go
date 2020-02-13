@@ -281,6 +281,22 @@ func TestSellingBuyingAssetQueryParamsWithCanonicalRepresenation(t *testing.T) {
 			expectedInvalidField: "selling_asset_type",
 			expectedErr:          "Ambiguous parameter, you can't include both `selling` and `selling_asset_type`. Remove all parameters of the form `selling_`",
 		},
+		{
+			desc: "invalid selling asset",
+			urlParams: map[string]string{
+				"selling": "LOLUSD",
+			},
+			expectedInvalidField: "selling",
+			expectedErr:          "Asset must be the string \"native\" or a string of the form \"Code:IssuerAccountID\" for issued assets.",
+		},
+		{
+			desc: "invalid buying asset",
+			urlParams: map[string]string{
+				"buying": "LOLEUR:",
+			},
+			expectedInvalidField: "buying",
+			expectedErr:          "Asset must be the string \"native\" or a string of the form \"Code:IssuerAccountID\" for issued assets.",
+		},
 	}
 	for _, tc := range testCases {
 		t.Run(tc.desc, func(t *testing.T) {
