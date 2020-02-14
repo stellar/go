@@ -128,12 +128,12 @@ func handler(deps handlerDeps) http.Handler {
 			// TODO: mux.Put("/", accountPutHandler{}.ServeHTTP)
 			// TODO: mux.Get("/", accountGetHandler{}.ServeHTTP)
 			// TODO: mux.Delete("/", accountDeleteHandler{}.ServeHTTP)
-			// TODO: mux.Post("/sign", accountSignHandler{
-			// TODO: 	Logger:            deps.Logger,
-			// TODO: 	SigningKey:        deps.SigningKey,
-			// TODO: 	NetworkPassphrase: deps.NetworkPassphrase,
-			// TODO: 	AccountStore:      deps.AccountStore,
-			// TODO: }.ServeHTTP)
+			mux.Post("/sign", accountSignHandler{
+				Logger:            deps.Logger,
+				SigningKey:        deps.SigningKey,
+				NetworkPassphrase: deps.NetworkPassphrase,
+				AccountStore:      deps.AccountStore,
+			}.ServeHTTP)
 		})
 	})
 
