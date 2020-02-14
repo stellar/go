@@ -112,7 +112,7 @@ func handler(deps handlerDeps) http.Handler {
 	mux.Get("/health", health.PassHandler{}.ServeHTTP)
 	mux.Route("/accounts", func(mux chi.Router) {
 		mux.Use(auth.SEP10(deps.SEP10JWTPublicKey))
-		mux.Use(auth.Firebase(deps.FirebaseApp))
+		mux.Use(auth.Firebase(auth.FirebaseTokenVerifierLive{App: deps.FirebaseApp}))
 		// TODO: mux.Get("/", accountListHandler{
 		// TODO: 	Logger:         deps.Logger,
 		// TODO: 	SigningAddress: deps.SigningKey.FromAddress(),
