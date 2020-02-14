@@ -27,6 +27,24 @@ func TestResultProvider(t *testing.T) {
 	tt.Assert.Equal(hash, ret.Hash)
 }
 
+func TestResultProviderHorizonOnly(t *testing.T) {
+	tt := test.Start(t).Scenario("base")
+	defer tt.Finish()
+
+	rp := &DB{
+		History: &history.Q{Session: tt.HorizonSession()},
+	}
+
+	hash := "adf1efb9fd253f53cbbe6230c131d2af19830328e52b610464652d67d2fb7195"
+	_, err := tt.CoreSession().ExecRaw("INSERT INTO txhistory VALUES ('" + hash + "', 5, 1, 'AAAAAGL8HQvQkbK2HA3WVjRrKmjX00fG8sLI7m0ERwJW/AX3AAAAZAAAAAAAAAABAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAArqN6LeOagjxMaUP96Bzfs9e0corNZXzBWJkFoK7kvkwAAAAAO5rKAAAAAAAAAAABVvwF9wAAAECDzqvkQBQoNAJifPRXDoLhvtycT3lFPCQ51gkdsFHaBNWw05S/VhW0Xgkr0CBPE4NaFV2Kmcs3ZwLmib4TRrML', 'I3Tpk0m57326ml2zM5t4/ajzR3exrzO6RorVwN+UbU0AAAAAAAAAZAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAA==', 'AAAAAQAAAAAAAAABAAAAAwAAAAMAAAACAAAAAAAAAABi/B0L0JGythwN1lY0aypo19NHxvLCyO5tBEcCVvwF9w3gtrOnY/7UAAAAAAAAAAMAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAEAAAACAAAAAAAAAABi/B0L0JGythwN1lY0aypo19NHxvLCyO5tBEcCVvwF9w3gtrNryTTUAAAAAAAAAAMAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAAAAAAAAAACuo3ot45qCPExpQ/3oHN+z17Ryis1lfMFYmQWgruS+TAAAAAA7msoAAAAAAgAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAA==');")
+	tt.Require.NoError(err)
+
+	ret := rp.ResultByHash(tt.Ctx, hash)
+
+	tt.Require.Equal(ret.Err, txsub.ErrNoResults)
+	tt.Assert.Empty(ret.Hash)
+}
+
 func TestResultFailed(t *testing.T) {
 	tt := test.Start(t).Scenario("failed_transactions")
 	defer tt.Finish()

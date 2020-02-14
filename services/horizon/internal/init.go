@@ -198,7 +198,41 @@ func dialRedis(redisURL *url.URL) func() (redis.Conn, error) {
 }
 
 func initSubmissionSystem(app *App) {
-	cq := &core.Q{Session: app.CoreSession(context.Background())}
+	// Due to a delay between Stellar-Core closing a ledger and Horizon
+	// ingesting it, it's possible that results of transaction submitted to
+	// Stellar-Core via Horizon may not be immediately visible. This is
+	// happening because `txsub` package checks two sources when checking a
+	// transaction result: Stellar-Core and Horizon DB.
+	//
+	// The extreme case is https://github.com/stellar/go/issues/2272 where
+	// results of transaction creating an account are not visible: requesting
+	// account details in Horizon returns `404 Not Found`:
+	//
+	// ```
+	// 	 Horizon DB                  Core DB                  User
+	// 		 |                          |                      |
+	// 		 |                          |                      |
+	// 		 |                          | <------- Submit create_account op
+	// 		 |                          |                      |
+	// 		 |                  Insert transaction             |
+	// 		 |                          |                      |
+	// 		 |                     Tx found -----------------> |
+	// 		 |                          |                      |
+	// 		 |                          |                      |
+	// 		 | <--------------------------------------- Get account info
+	// 		 |                          |                      |
+	// 		 |                          |                      |
+	// Account NOT found ---------------------------------------> |
+	// 		 |                          |                      |
+	//    Insert account                   |                      |
+	// ```
+	//
+	// To fix this Skip checking Stellar-Core DB for transaction results if
+	// Horizon is ingesting failed transactions.
+	var cq *core.Q
+	if !app.config.IngestFailedTransactions {
+		cq = &core.Q{Session: app.CoreSession(context.Background())}
+	}
 
 	app.submitter = &txsub.System{
 		Pending:         txsub.NewDefaultSubmissionList(),
