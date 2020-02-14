@@ -113,27 +113,27 @@ func handler(deps handlerDeps) http.Handler {
 	mux.Route("/accounts", func(mux chi.Router) {
 		mux.Use(auth.SEP10(deps.SEP10JWTPublicKey))
 		mux.Use(auth.Firebase(deps.FirebaseApp))
-		mux.Get("/", accountListHandler{
-			Logger:         deps.Logger,
-			SigningAddress: deps.SigningKey.FromAddress(),
-			AccountStore:   deps.AccountStore,
-		}.ServeHTTP)
+		// TODO: mux.Get("/", accountListHandler{
+		// TODO: 	Logger:         deps.Logger,
+		// TODO: 	SigningAddress: deps.SigningKey.FromAddress(),
+		// TODO: 	AccountStore:   deps.AccountStore,
+		// TODO: }.ServeHTTP)
 		mux.Route("/{address}", func(mux chi.Router) {
-			mux.Post("/", accountPostHandler{
-				Logger:         deps.Logger,
-				SigningAddress: deps.SigningKey.FromAddress(),
-				AccountStore:   deps.AccountStore,
-				HorizonClient:  deps.HorizonClient,
-			}.ServeHTTP)
+			// TODO: mux.Post("/", accountPostHandler{
+			// TODO: 	Logger:         deps.Logger,
+			// TODO: 	SigningAddress: deps.SigningKey.FromAddress(),
+			// TODO: 	AccountStore:   deps.AccountStore,
+			// TODO: 	HorizonClient:  deps.HorizonClient,
+			// TODO: }.ServeHTTP)
 			// TODO: mux.Put("/", accountPutHandler{}.ServeHTTP)
 			// TODO: mux.Get("/", accountGetHandler{}.ServeHTTP)
 			// TODO: mux.Delete("/", accountDeleteHandler{}.ServeHTTP)
-			mux.Post("/sign", accountSignHandler{
-				Logger:            deps.Logger,
-				SigningKey:        deps.SigningKey,
-				NetworkPassphrase: deps.NetworkPassphrase,
-				AccountStore:      deps.AccountStore,
-			}.ServeHTTP)
+			// TODO: mux.Post("/sign", accountSignHandler{
+			// TODO: 	Logger:            deps.Logger,
+			// TODO: 	SigningKey:        deps.SigningKey,
+			// TODO: 	NetworkPassphrase: deps.NetworkPassphrase,
+			// TODO: 	AccountStore:      deps.AccountStore,
+			// TODO: }.ServeHTTP)
 		})
 	})
 
