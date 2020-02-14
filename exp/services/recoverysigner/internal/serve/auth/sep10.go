@@ -10,8 +10,8 @@ import (
 	"github.com/stellar/go/support/errors"
 )
 
-// SEP10 provides middleware for handling an authentication SEP-10 JWT.
-func SEP10(k *ecdsa.PublicKey) func(http.Handler) http.Handler {
+// SEP10Middleware provides middleware for handling an authentication SEP-10 JWT.
+func SEP10Middleware(k *ecdsa.PublicKey) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			if address, ok := sep10ClaimsFromRequest(r, k); ok {

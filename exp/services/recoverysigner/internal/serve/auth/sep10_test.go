@@ -22,7 +22,7 @@ func TestSEP10_addsAddressToClaimIfJWTValid(t *testing.T) {
 	next := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx = r.Context()
 	})
-	middleware := SEP10(&k.PublicKey)
+	middleware := SEP10Middleware(&k.PublicKey)
 	handler := middleware(next)
 
 	r := httptest.NewRequest("GET", "/", nil)
@@ -52,7 +52,7 @@ func TestSEP10_doesNotAddAddressToClaimIfJWTNotPresent(t *testing.T) {
 	next := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx = r.Context()
 	})
-	middleware := SEP10(&k.PublicKey)
+	middleware := SEP10Middleware(&k.PublicKey)
 	handler := middleware(next)
 
 	r := httptest.NewRequest("GET", "/", nil)
@@ -74,7 +74,7 @@ func TestSEP10_doesNotAddAddressToClaimIfJWTNoSignature(t *testing.T) {
 	next := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx = r.Context()
 	})
-	middleware := SEP10(&k.PublicKey)
+	middleware := SEP10Middleware(&k.PublicKey)
 	handler := middleware(next)
 
 	r := httptest.NewRequest("GET", "/", nil)
@@ -102,7 +102,7 @@ func TestSEP10_doesNotAddAddressToClaimIfJWTWrongAlg(t *testing.T) {
 	next := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx = r.Context()
 	})
-	middleware := SEP10(&k.PublicKey)
+	middleware := SEP10Middleware(&k.PublicKey)
 	handler := middleware(next)
 
 	r := httptest.NewRequest("GET", "/", nil)
@@ -133,7 +133,7 @@ func TestSEP10_doesNotAddAddressToClaimIfJWTInvalidSignature(t *testing.T) {
 	next := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx = r.Context()
 	})
-	middleware := SEP10(&k.PublicKey)
+	middleware := SEP10Middleware(&k.PublicKey)
 	handler := middleware(next)
 
 	r := httptest.NewRequest("GET", "/", nil)
@@ -161,7 +161,7 @@ func TestSEP10_doesNotAddAddressToClaimIfJWTExpired(t *testing.T) {
 	next := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx = r.Context()
 	})
-	middleware := SEP10(&k.PublicKey)
+	middleware := SEP10Middleware(&k.PublicKey)
 	handler := middleware(next)
 
 	r := httptest.NewRequest("GET", "/", nil)

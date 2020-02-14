@@ -20,7 +20,7 @@ func (v FirebaseTokenVerifierFunc) Verify(r *http.Request) (*firebaseauth.Token,
 	return v(r)
 }
 
-func Firebase(v FirebaseTokenVerifier) func(http.Handler) http.Handler {
+func FirebaseMiddleware(v FirebaseTokenVerifier) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			if token, ok := v.Verify(r); ok {

@@ -29,7 +29,7 @@ func TestFirebase_tokenWithPhoneNumber(t *testing.T) {
 
 	w := httptest.NewRecorder()
 	r := httptest.NewRequest("GET", "/", nil)
-	Firebase(tokenVerifier)(next).ServeHTTP(w, r)
+	FirebaseMiddleware(tokenVerifier)(next).ServeHTTP(w, r)
 
 	wantClaims := Claims{
 		PhoneNumber: "+10000000000",
@@ -58,7 +58,7 @@ func TestFirebase_tokenWithEmail(t *testing.T) {
 
 	w := httptest.NewRecorder()
 	r := httptest.NewRequest("GET", "/", nil)
-	Firebase(tokenVerifier)(next).ServeHTTP(w, r)
+	FirebaseMiddleware(tokenVerifier)(next).ServeHTTP(w, r)
 
 	wantClaims := Claims{
 		Email: "user@example.com",
@@ -89,7 +89,7 @@ func TestFirebase_tokenWithPhoneNumberAndEmail(t *testing.T) {
 
 	w := httptest.NewRecorder()
 	r := httptest.NewRequest("GET", "/", nil)
-	Firebase(tokenVerifier)(next).ServeHTTP(w, r)
+	FirebaseMiddleware(tokenVerifier)(next).ServeHTTP(w, r)
 
 	wantClaims := Claims{
 		PhoneNumber: "+10000000000",
@@ -125,7 +125,7 @@ func TestFirebase_tokenWithPhoneNumberAndEmailAppendsToOtherClaims(t *testing.T)
 		Address: "GCJYKECSRMIQX3KK62VPJ64NFNWV3EKJPUAXSXKKA7XSHN43VDHNKANO",
 	}
 	r = r.WithContext(NewContext(r.Context(), initialClaims))
-	Firebase(tokenVerifier)(next).ServeHTTP(w, r)
+	FirebaseMiddleware(tokenVerifier)(next).ServeHTTP(w, r)
 
 	wantClaims := Claims{
 		Address:     "GCJYKECSRMIQX3KK62VPJ64NFNWV3EKJPUAXSXKKA7XSHN43VDHNKANO",
@@ -152,7 +152,7 @@ func TestFirebase_tokenWithNone(t *testing.T) {
 
 	w := httptest.NewRecorder()
 	r := httptest.NewRequest("GET", "/", nil)
-	Firebase(tokenVerifier)(next).ServeHTTP(w, r)
+	FirebaseMiddleware(tokenVerifier)(next).ServeHTTP(w, r)
 
 	wantClaims := Claims{}
 	assert.Equal(t, wantClaims, claims)
@@ -174,7 +174,7 @@ func TestFirebase_noToken(t *testing.T) {
 
 	w := httptest.NewRecorder()
 	r := httptest.NewRequest("GET", "/", nil)
-	Firebase(tokenVerifier)(next).ServeHTTP(w, r)
+	FirebaseMiddleware(tokenVerifier)(next).ServeHTTP(w, r)
 
 	wantClaims := Claims{}
 	assert.Equal(t, wantClaims, claims)
