@@ -198,7 +198,10 @@ func dialRedis(redisURL *url.URL) func() (redis.Conn, error) {
 }
 
 func initSubmissionSystem(app *App) {
-	cq := &core.Q{Session: app.CoreSession(context.Background())}
+	var cq *core.Q
+	if !app.config.IngestFailedTransactions {
+		cq = &core.Q{Session: app.CoreSession(context.Background())}
+	}
 
 	app.submitter = &txsub.System{
 		Pending:         txsub.NewDefaultSubmissionList(),
