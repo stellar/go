@@ -14,7 +14,7 @@ import (
 	"github.com/stellar/go/xdr"
 )
 
-// DB provides transactio submission results by querying the
+// DB provides transaction submission results by querying the
 // connected horizon and, if set, stellar core databases.
 type DB struct {
 	Core    *core.Q
