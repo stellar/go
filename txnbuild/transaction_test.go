@@ -2293,7 +2293,7 @@ func TestVerifyChallengeTxSigners_invalidServerAndClientSignersFailsSignerSeed(t
 
 	err := tx.Build()
 	require.NoError(t, err)
-	err = tx.Sign(serverKP, clientKP2, clientKP2)
+	err = tx.Sign(serverKP, clientKP2)
 	assert.NoError(t, err)
 	tx64, err := tx.Base64()
 	require.NoError(t, err)
