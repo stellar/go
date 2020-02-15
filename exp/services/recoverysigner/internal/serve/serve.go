@@ -29,7 +29,7 @@ type Options struct {
 }
 
 func Serve(opts Options) {
-	deps, err := getDeps(opts)
+	deps, err := getHandlerDeps(opts)
 	if err != nil {
 		opts.Logger.Fatalf("Error: %v", err)
 		return
@@ -58,7 +58,7 @@ type handlerDeps struct {
 	FirebaseApp       *firebase.App
 }
 
-func getDeps(opts Options) (handlerDeps, error) {
+func getHandlerDeps(opts Options) (handlerDeps, error) {
 	// TODO: Replace this signing key with randomly generating a unique signing
 	// key for each account so that it is not possible to identify which
 	// accounts are recoverable via a recovery signer.
