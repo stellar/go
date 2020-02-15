@@ -51,10 +51,8 @@ func (ms *memoryStore) FindWithIdentityAddress(address string) ([]Account, error
 
 	accounts := []Account{}
 	for _, a := range ms.accounts {
-		if address == a.OwnerIdentities.Address {
-			accounts = append(accounts, a)
-		}
-		if address == a.OtherIdentities.Address {
+		if address == a.OwnerIdentities.Address ||
+			address == a.OtherIdentities.Address {
 			accounts = append(accounts, a)
 		}
 	}
@@ -67,12 +65,8 @@ func (ms *memoryStore) FindWithIdentityPhoneNumber(phoneNumber string) ([]Accoun
 
 	accounts := []Account{}
 	for _, a := range ms.accounts {
-		if phoneNumber == a.OwnerIdentities.PhoneNumber {
-			accounts = append(accounts, a)
-		}
-	}
-	for _, a := range ms.accounts {
-		if phoneNumber == a.OtherIdentities.PhoneNumber {
+		if phoneNumber == a.OwnerIdentities.PhoneNumber ||
+			phoneNumber == a.OtherIdentities.PhoneNumber {
 			accounts = append(accounts, a)
 		}
 	}
@@ -85,12 +79,8 @@ func (ms *memoryStore) FindWithIdentityEmail(email string) ([]Account, error) {
 
 	accounts := []Account{}
 	for _, a := range ms.accounts {
-		if email == a.OwnerIdentities.Email {
-			accounts = append(accounts, a)
-		}
-	}
-	for _, a := range ms.accounts {
-		if email == a.OtherIdentities.Email {
+		if email == a.OwnerIdentities.Email ||
+			email == a.OtherIdentities.Email {
 			accounts = append(accounts, a)
 		}
 	}
