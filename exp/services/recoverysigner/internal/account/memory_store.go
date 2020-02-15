@@ -37,11 +37,12 @@ func (ms *memoryStore) Get(address string) (Account, error) {
 	ms.accountsMu.Lock()
 	defer ms.accountsMu.Unlock()
 
-	if a, ok := ms.accounts[address]; ok {
-		return a, nil
-	} else {
+	a, ok := ms.accounts[address]
+	if !ok {
 		return Account{}, ErrNotFound
 	}
+
+	return a, nil
 }
 
 func (ms *memoryStore) FindWithIdentityAddress(address string) ([]Account, error) {
