@@ -12,7 +12,6 @@ import (
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/services/horizon/internal/expingest/processors"
 	"github.com/stellar/go/support/errors"
-	"github.com/stellar/go/support/historyarchive"
 	"github.com/stellar/go/xdr"
 )
 
@@ -67,9 +66,8 @@ type ProcessorRunner struct {
 	config Config
 
 	ctx            context.Context
-	graph          *orderbook.OrderBookGraph
+	graph          orderbook.OBGraph
 	historyQ       history.IngestionQ
-	historyArchive *historyarchive.Archive
 	historyAdapter adapters.HistoryArchiveAdapterInterface
 	ledgerBackend  ledgerbackend.LedgerBackend
 	logMemoryStats bool

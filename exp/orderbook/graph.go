@@ -39,6 +39,7 @@ type OBGraph interface {
 	Discard()
 	Offers() []xdr.OfferEntry
 	OffersMap() map[xdr.Int64]xdr.OfferEntry
+	RemoveOffer(xdr.Int64) OBGraph
 	Clear()
 }
 
@@ -88,7 +89,7 @@ func (graph *OrderBookGraph) AddOffer(offer xdr.OfferEntry) {
 // RemoveOffer will queue an operation to remove the given offer from the order book in
 // the internal batch.
 // You need to run Apply() to apply all enqueued operations.
-func (graph *OrderBookGraph) RemoveOffer(offerID xdr.Int64) *OrderBookGraph {
+func (graph *OrderBookGraph) RemoveOffer(offerID xdr.Int64) OBGraph {
 	graph.batchedUpdates.removeOffer(offerID)
 	return graph
 }

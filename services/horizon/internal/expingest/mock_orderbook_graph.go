@@ -35,6 +35,11 @@ func (m *mockOrderBookGraph) OffersMap() map[xdr.Int64]xdr.OfferEntry {
 	return args.Get(0).(map[xdr.Int64]xdr.OfferEntry)
 }
 
+func (m *mockOrderBookGraph) RemoveOffer(id xdr.Int64) orderbook.OBGraph {
+	args := m.Called(id)
+	return args.Get(0).(orderbook.OBGraph)
+}
+
 func (m *mockOrderBookGraph) Clear() {
 	m.Called()
 }
