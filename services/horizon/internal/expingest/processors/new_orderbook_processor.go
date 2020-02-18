@@ -11,12 +11,12 @@ import (
 // for updating orderbook graph with new/updated/removed offers. Orderbook graph
 // can be later used for path finding.
 type OrderbookProcessor struct {
-	graph *orderbook.OrderBookGraph
+	graph orderbook.OBGraph
 
 	cache *io.LedgerEntryChangeCache
 }
 
-func NewOrderbookProcessor(graph *orderbook.OrderBookGraph) *OrderbookProcessor {
+func NewOrderbookProcessor(graph orderbook.OBGraph) *OrderbookProcessor {
 	return &OrderbookProcessor{
 		graph: graph,
 		cache: io.NewLedgerEntryChangeCache(),

@@ -170,7 +170,6 @@ func NewSystem(config Config) (*System, error) {
 			config:         config,
 			graph:          config.OrderBookGraph,
 			historyQ:       historyQ,
-			historyArchive: archive,
 			historyAdapter: historyAdapter,
 			ledgerBackend:  ledgerBackend,
 		},
