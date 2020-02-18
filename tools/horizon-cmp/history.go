@@ -72,7 +72,6 @@ func checkPaths(paths []string) {
 			log.Info(path)
 		} else {
 			log.Error("DIFF " + path)
-			a.SaveDiff(".", b)
 			os.Exit(1)
 		}
 	}
