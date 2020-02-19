@@ -6,6 +6,7 @@ import (
 
 	firebase "firebase.google.com/go"
 	firebaseauth "firebase.google.com/go/auth"
+	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/support/http/httpauthz"
 	"google.golang.org/api/option"
 )
@@ -36,28 +37,32 @@ func FirebaseMiddleware(v FirebaseTokenVerifier) func(http.Handler) http.Handler
 	}
 }
 
-func NewFirebaseApp(firebaseProjectID string) (*firebase.App, error) {
+func NewFirebaseAuthClient(firebaseProjectID string) (*firebaseauth.Client, error) {
 	credentialsJSON := `{"type":"service_account","project_id":"` + firebaseProjectID + `"}`
 	firebaseCredentials := option.WithCredentialsJSON([]byte(credentialsJSON))
-	return firebase.NewApp(context.Background(), nil, firebaseCredentials)
+	firebaseApp, err := firebase.NewApp(context.Background(), nil, firebaseCredentials)
+	if err != nil {
+		return nil, errors.Wrap(err, "instantiating firebase app")
+	}
+	firebaseAuthClient, err := firebaseApp.Auth(context.Background())
+	if err != nil {
+		return nil, errors.Wrap(err, "instantiating firebase auth client")
+	}
+	return firebaseAuthClient, nil
 }
 
 type FirebaseTokenVerifierLive struct {
-	App *firebase.App
+	AuthClient *firebaseauth.Client
 }
 
 func (v FirebaseTokenVerifierLive) Verify(r *http.Request) (*firebaseauth.Token, bool) {
 	ctx := r.Context()
-	client, err := v.App.Auth(ctx)
-	if err != nil {
-		return nil, false
-	}
 	authHeader := r.Header.Get("Authorization")
 	tokenEncoded := httpauthz.ParseBearerToken(authHeader)
 	if tokenEncoded == "" {
 		return nil, false
 	}
-	token, err := client.VerifyIDToken(ctx, tokenEncoded)
+	token, err := v.AuthClient.VerifyIDToken(ctx, tokenEncoded)
 	if err != nil {
 		return nil, false
 	}
