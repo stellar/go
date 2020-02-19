@@ -1363,19 +1363,37 @@ var feesResponse = `{
   "last_ledger": "22606298",
   "last_ledger_base_fee": "100",
   "ledger_capacity_usage": "0.97",
-  "min_accepted_fee": "130",
-  "mode_accepted_fee": "250",
-  "p10_accepted_fee": "150",
-  "p20_accepted_fee": "200",
-  "p30_accepted_fee": "300",
-  "p40_accepted_fee": "400",
-  "p50_accepted_fee": "500",
-  "p60_accepted_fee": "1000",
-  "p70_accepted_fee": "2000",
-  "p80_accepted_fee": "3000",
-  "p90_accepted_fee": "4000",
-  "p95_accepted_fee": "5000",
-  "p99_accepted_fee": "8000"
+  "fee_charged": {
+    "max": "100",
+    "min": "100",
+    "mode": "100",
+    "p10": "100",
+    "p20": "100",
+    "p30": "100",
+    "p40": "100",
+    "p50": "100",
+    "p60": "100",
+    "p70": "100",
+    "p80": "100",
+    "p90": "100",
+    "p95": "100",
+    "p99": "100"
+  },
+  "max_fee": {
+    "min": "130",
+    "mode": "250",
+    "p10": "150",
+    "p20": "200",
+    "p30": "300",
+    "p40": "400",
+    "p50": "500",
+    "p60": "1000",
+    "p70": "2000",
+    "p80": "3000",
+    "p90": "4000",
+    "p95": "5000",
+    "p99": "8000"
+  }
 }`
 
 var offersResponse = `{

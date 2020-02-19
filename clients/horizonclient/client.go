@@ -311,9 +311,30 @@ func (c *Client) Metrics() (metrics hProtocol.Metrics, err error) {
 
 // FeeStats returns information about fees in the last 5 ledgers.
 // See https://www.stellar.org/developers/horizon/reference/endpoints/fee-stats.html
-func (c *Client) FeeStats() (feestats hProtocol.FeeStats, err error) {
+func (c *Client) FeeStats() (feeStats hProtocol.FeeStats, err error) {
 	request := feeStatsRequest{endpoint: "fee_stats"}
-	err = c.sendRequest(request, &feestats)
+	err = c.sendRequest(request, &feeStats)
+	if err != nil {
+		return
+	}
+
+	// Action needed in release: horizonclient-v3.0.0
+	// Remove this back-fill, this is done to allow people to use this client
+	// with horizon < 1.0 or >= 1.0
+	feeStats.MinAcceptedFee = int(feeStats.MaxFee.Min)
+	feeStats.ModeAcceptedFee = int(feeStats.MaxFee.Mode)
+	feeStats.P10AcceptedFee = int(feeStats.MaxFee.P10)
+	feeStats.P20AcceptedFee = int(feeStats.MaxFee.P20)
+	feeStats.P30AcceptedFee = int(feeStats.MaxFee.P30)
+	feeStats.P40AcceptedFee = int(feeStats.MaxFee.P40)
+	feeStats.P50AcceptedFee = int(feeStats.MaxFee.P50)
+	feeStats.P60AcceptedFee = int(feeStats.MaxFee.P60)
+	feeStats.P70AcceptedFee = int(feeStats.MaxFee.P70)
+	feeStats.P80AcceptedFee = int(feeStats.MaxFee.P80)
+	feeStats.P90AcceptedFee = int(feeStats.MaxFee.P90)
+	feeStats.P95AcceptedFee = int(feeStats.MaxFee.P95)
+	feeStats.P99AcceptedFee = int(feeStats.MaxFee.P99)
+
 	return
 }
 
