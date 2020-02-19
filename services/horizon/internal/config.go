@@ -16,7 +16,7 @@ type Config struct {
 	StellarCoreURL         string
 	HistoryArchiveURLs     []string
 	Port                   uint
-	InternalPort           uint
+	AdminPort              uint
 
 	// MaxDBConnections has a priority over all 4 values below.
 	MaxDBConnections            int

@@ -143,11 +143,11 @@ var configOpts = support.ConfigOptions{
 		Usage:       "tcp port to listen on for http requests",
 	},
 	&support.ConfigOption{
-		Name:        "internal-port",
-		ConfigKey:   &config.InternalPort,
+		Name:        "admin-port",
+		ConfigKey:   &config.AdminPort,
 		OptType:     types.Uint,
 		FlagDefault: uint(0),
-		Usage:       "WARNING: this should not be accessible from the Internet and does not use TLS, tcp port to listen on for internal http requests, 0 (default) disables the internal server",
+		Usage:       "WARNING: this should not be accessible from the Internet and does not use TLS, tcp port to listen on for admin http requests, 0 (default) disables the admin server",
 	},
 	&support.ConfigOption{
 		Name:        "max-db-connections",

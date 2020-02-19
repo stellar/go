@@ -4,7 +4,7 @@ title: Metrics
 
 The metrics endpoint returns a host of useful data points for monitoring the health of the underlying Horizon process. 
 
-Since Horizon 1.0.0 this endpoint is not part of the public API. It's available in the internal server (listening on the internal port set via `INTERNAL_PORT` env variable or `--internal-port` CLI param).
+Since Horizon 1.0.0 this endpoint is not part of the public API. It's available in the internal server (listening on the internal port set via `ADMIN_PORT` env variable or `--admin-port` CLI param).
 
 ## Request
 
