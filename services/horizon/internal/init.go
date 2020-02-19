@@ -222,9 +222,9 @@ func initSubmissionSystem(app *App) {
 	// 		 | <--------------------------------------- Get account info
 	// 		 |                          |                      |
 	// 		 |                          |                      |
-	// Account NOT found ------------------------------------> |
+	//         Account NOT found ------------------------------------> |
 	// 		 |                          |                      |
-	// Insert account                   |                      |
+	//         Insert account                   |                      |
 	// ```
 	//
 	// To fix this skip checking Stellar-Core DB for transaction results if
