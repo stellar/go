@@ -3,21 +3,31 @@ package auth
 import (
 	"context"
 	"net/http"
-	"strings"
 
 	firebase "firebase.google.com/go"
 	firebaseauth "firebase.google.com/go/auth"
+	"github.com/stellar/go/support/http/httpauthz"
 	"google.golang.org/api/option"
 )
 
-func Firebase(app *firebase.App) func(http.Handler) http.Handler {
+type FirebaseTokenVerifier interface {
+	Verify(r *http.Request) (*firebaseauth.Token, bool)
+}
+
+type FirebaseTokenVerifierFunc func(r *http.Request) (*firebaseauth.Token, bool)
+
+func (v FirebaseTokenVerifierFunc) Verify(r *http.Request) (*firebaseauth.Token, bool) {
+	return v(r)
+}
+
+func FirebaseMiddleware(v FirebaseTokenVerifier) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			if token, ok := firebaseTokenFromRequest(r, app); ok {
+			if token, ok := v.Verify(r); ok {
 				ctx := r.Context()
 				claims, _ := FromContext(ctx)
-				claims.PhoneNumber = token.Claims["phone_number"].(string)
-				claims.Email = token.Claims["email"].(string)
+				claims.PhoneNumber, _ = token.Claims["phone_number"].(string)
+				claims.Email, _ = token.Claims["email"].(string)
 				ctx = NewContext(ctx, claims)
 				r = r.WithContext(ctx)
 			}
@@ -32,14 +42,21 @@ func NewFirebaseApp(firebaseProjectID string) (*firebase.App, error) {
 	return firebase.NewApp(context.Background(), nil, firebaseCredentials)
 }
 
-func firebaseTokenFromRequest(r *http.Request, app *firebase.App) (*firebaseauth.Token, bool) {
+type FirebaseTokenVerifierLive struct {
+	App *firebase.App
+}
+
+func (v FirebaseTokenVerifierLive) Verify(r *http.Request) (*firebaseauth.Token, bool) {
 	ctx := r.Context()
-	client, err := app.Auth(ctx)
+	client, err := v.App.Auth(ctx)
 	if err != nil {
 		return nil, false
 	}
 	authHeader := r.Header.Get("Authorization")
-	tokenEncoded := strings.TrimPrefix(authHeader, "BEARER ")
+	tokenEncoded := httpauthz.ParseBearerToken(authHeader)
+	if tokenEncoded == "" {
+		return nil, false
+	}
 	token, err := client.VerifyIDToken(ctx, tokenEncoded)
 	if err != nil {
 		return nil, false
