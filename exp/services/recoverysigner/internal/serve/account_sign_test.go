@@ -56,7 +56,7 @@ func TestAccountSign_authenticatedButNotFound(t *testing.T) {
 }
 
 // Test that when the account exists but the authenticated client does not have
-// perission to access it returns not found.
+// permission to access it returns not found.
 func TestAccountSign_accountAuthenticatedButNotPermitted(t *testing.T) {
 	s := account.NewMemoryStore()
 	s.Add(account.Account{
@@ -99,7 +99,7 @@ func TestAccountSign_accountAuthenticatedButNotPermitted(t *testing.T) {
 }
 
 // Test that when the account exists but the authenticated client does not have
-// perission to access it returns not found.
+// permission to access it returns not found.
 func TestAccountSign_phoneNumberAuthenticatedButNotPermitted(t *testing.T) {
 	s := account.NewMemoryStore()
 	s.Add(account.Account{
@@ -154,7 +154,7 @@ func TestAccountSign_phoneNumberAuthenticatedButNotPermitted(t *testing.T) {
 }
 
 // Test that when the account exists but the authenticated client does not have
-// perission to access it returns not found.
+// permission to access it returns not found.
 func TestAccountSign_emailAuthenticatedButNotPermitted(t *testing.T) {
 	s := account.NewMemoryStore()
 	s.Add(account.Account{
