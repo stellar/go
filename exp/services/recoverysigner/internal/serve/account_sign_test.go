@@ -1,0 +1,800 @@
+package serve
+
+import (
+	"context"
+	"io/ioutil"
+	"net/http"
+	"net/http/httptest"
+	"strings"
+	"testing"
+
+	"github.com/go-chi/chi"
+	"github.com/stellar/go/exp/services/recoverysigner/internal/account"
+	"github.com/stellar/go/exp/services/recoverysigner/internal/serve/auth"
+	"github.com/stellar/go/keypair"
+	"github.com/stellar/go/network"
+	supportlog "github.com/stellar/go/support/log"
+	"github.com/stellar/go/txnbuild"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+)
+
+// Test that when the account does not exist it returns not found.
+func TestAccountSign_authenticatedButNotFound(t *testing.T) {
+	s := account.NewMemoryStore()
+	h := accountSignHandler{
+		Logger:            supportlog.DefaultLogger,
+		AccountStore:      s,
+		SigningKey:        keypair.MustParseFull("SBIB72S6JMTGJRC6LMKLC5XMHZ2IOHZSZH4SASTN47LECEEJ7QEB6EYK"),
+		NetworkPassphrase: network.TestNetworkPassphrase,
+	}
+
+	ctx := context.Background()
+	ctx = auth.NewContext(ctx, auth.Claims{Address: "GA6HNE7O2N2IXIOBZNZ4IPTS2P6DSAJJF5GD5PDLH5GYOZ6WMPSKCXD4"})
+	req := `{
+	"transaction": ""
+}`
+	r := httptest.NewRequest("POST", "/GA6HNE7O2N2IXIOBZNZ4IPTS2P6DSAJJF5GD5PDLH5GYOZ6WMPSKCXD4/sign", strings.NewReader(req))
+	r = r.WithContext(ctx)
+
+	w := httptest.NewRecorder()
+	m := chi.NewMux()
+	m.Post("/{address}/sign", h.ServeHTTP)
+	m.ServeHTTP(w, r)
+	resp := w.Result()
+
+	require.Equal(t, http.StatusNotFound, resp.StatusCode)
+	assert.Equal(t, "application/json; charset=utf-8", resp.Header.Get("Content-Type"))
+
+	body, err := ioutil.ReadAll(resp.Body)
+	require.NoError(t, err)
+
+	wantBody := `{
+	"error": "The resource at the url requested was not found."
+}`
+	assert.JSONEq(t, wantBody, string(body))
+}
+
+// Test that when the account exists but the authenticated client does not have
+// permission to access it returns not found.
+func TestAccountSign_accountAuthenticatedButNotPermitted(t *testing.T) {
+	s := account.NewMemoryStore()
+	s.Add(account.Account{
+		Address: "GA6HNE7O2N2IXIOBZNZ4IPTS2P6DSAJJF5GD5PDLH5GYOZ6WMPSKCXD4",
+	})
+	s.Add(account.Account{
+		Address: "GBLOP46WEVXWO5N75TDX7GXLYFQE3XLDT5NQ2VYIBEWWEMSZWR3AUISZ",
+	})
+	h := accountSignHandler{
+		Logger:            supportlog.DefaultLogger,
+		AccountStore:      s,
+		SigningKey:        keypair.MustParseFull("SBIB72S6JMTGJRC6LMKLC5XMHZ2IOHZSZH4SASTN47LECEEJ7QEB6EYK"),
+		NetworkPassphrase: network.TestNetworkPassphrase,
+	}
+
+	ctx := context.Background()
+	ctx = auth.NewContext(ctx, auth.Claims{Address: "GBLOP46WEVXWO5N75TDX7GXLYFQE3XLDT5NQ2VYIBEWWEMSZWR3AUISZ"})
+	req := `{
+	"transaction": ""
+}`
+	r := httptest.NewRequest("POST", "/GA6HNE7O2N2IXIOBZNZ4IPTS2P6DSAJJF5GD5PDLH5GYOZ6WMPSKCXD4/sign", strings.NewReader(req))
+	r = r.WithContext(ctx)
+
+	w := httptest.NewRecorder()
+	m := chi.NewMux()
+	m.Post("/{address}/sign", h.ServeHTTP)
+	m.ServeHTTP(w, r)
+	resp := w.Result()
+
+	require.Equal(t, http.StatusNotFound, resp.StatusCode)
+	assert.Equal(t, "application/json; charset=utf-8", resp.Header.Get("Content-Type"))
+
+	body, err := ioutil.ReadAll(resp.Body)
+	require.NoError(t, err)
+
+	wantBody := `{
+	"error": "The resource at the url requested was not found."
+}`
+	assert.JSONEq(t, wantBody, string(body))
+}
+
+// Test that when the account exists but the authenticated client does not have
+// permission to access it returns not found.
+func TestAccountSign_phoneNumberAuthenticatedButNotPermitted(t *testing.T) {
+	s := account.NewMemoryStore()
+	s.Add(account.Account{
+		Address: "GA6HNE7O2N2IXIOBZNZ4IPTS2P6DSAJJF5GD5PDLH5GYOZ6WMPSKCXD4",
+		OwnerIdentities: account.Identities{
+			PhoneNumber: "+10000000000",
+		},
+		OtherIdentities: account.Identities{
+			PhoneNumber: "+10000000000",
+		},
+	})
+	s.Add(account.Account{
+		Address: "GBLOP46WEVXWO5N75TDX7GXLYFQE3XLDT5NQ2VYIBEWWEMSZWR3AUISZ",
+		OwnerIdentities: account.Identities{
+			PhoneNumber: "+20000000000",
+		},
+		OtherIdentities: account.Identities{
+			PhoneNumber: "+20000000000",
+		},
+	})
+	h := accountSignHandler{
+		Logger:            supportlog.DefaultLogger,
+		AccountStore:      s,
+		SigningKey:        keypair.MustParseFull("SBIB72S6JMTGJRC6LMKLC5XMHZ2IOHZSZH4SASTN47LECEEJ7QEB6EYK"),
+		NetworkPassphrase: network.TestNetworkPassphrase,
+	}
+
+	ctx := context.Background()
+	ctx = auth.NewContext(ctx, auth.Claims{PhoneNumber: "+20000000000"})
+	req := `{
+	"transaction": ""
+}`
+	r := httptest.NewRequest("POST", "/GA6HNE7O2N2IXIOBZNZ4IPTS2P6DSAJJF5GD5PDLH5GYOZ6WMPSKCXD4/sign", strings.NewReader(req))
+	r = r.WithContext(ctx)
+
+	w := httptest.NewRecorder()
+	m := chi.NewMux()
+	m.Post("/{address}/sign", h.ServeHTTP)
+	m.ServeHTTP(w, r)
+	resp := w.Result()
+
+	require.Equal(t, http.StatusNotFound, resp.StatusCode)
+	assert.Equal(t, "application/json; charset=utf-8", resp.Header.Get("Content-Type"))
+
+	body, err := ioutil.ReadAll(resp.Body)
+	require.NoError(t, err)
+
+	wantBody := `{
+	"error": "The resource at the url requested was not found."
+}`
+	assert.JSONEq(t, wantBody, string(body))
+}
+
+// Test that when the account exists but the authenticated client does not have
+// permission to access it returns not found.
+func TestAccountSign_emailAuthenticatedButNotPermitted(t *testing.T) {
+	s := account.NewMemoryStore()
+	s.Add(account.Account{
+		Address: "GA6HNE7O2N2IXIOBZNZ4IPTS2P6DSAJJF5GD5PDLH5GYOZ6WMPSKCXD4",
+		OwnerIdentities: account.Identities{
+			Email: "user1@example.com",
+		},
+		OtherIdentities: account.Identities{
+			Email: "user1@example.com",
+		},
+	})
+	s.Add(account.Account{
+		Address: "GBLOP46WEVXWO5N75TDX7GXLYFQE3XLDT5NQ2VYIBEWWEMSZWR3AUISZ",
+		OwnerIdentities: account.Identities{
+			Email: "user2@example.com",
+		},
+		OtherIdentities: account.Identities{
+			Email: "user2@example.com",
+		},
+	})
+	h := accountSignHandler{
+		Logger:            supportlog.DefaultLogger,
+		AccountStore:      s,
+		SigningKey:        keypair.MustParseFull("SBIB72S6JMTGJRC6LMKLC5XMHZ2IOHZSZH4SASTN47LECEEJ7QEB6EYK"),
+		NetworkPassphrase: network.TestNetworkPassphrase,
+	}
+
+	ctx := context.Background()
+	ctx = auth.NewContext(ctx, auth.Claims{PhoneNumber: "user2@example.com"})
+	req := `{
+	"transaction": ""
+}`
+	r := httptest.NewRequest("POST", "/GA6HNE7O2N2IXIOBZNZ4IPTS2P6DSAJJF5GD5PDLH5GYOZ6WMPSKCXD4/sign", strings.NewReader(req))
+	r = r.WithContext(ctx)
+
+	w := httptest.NewRecorder()
+	m := chi.NewMux()
+	m.Post("/{address}/sign", h.ServeHTTP)
+	m.ServeHTTP(w, r)
+	resp := w.Result()
+
+	require.Equal(t, http.StatusNotFound, resp.StatusCode)
+	assert.Equal(t, "application/json; charset=utf-8", resp.Header.Get("Content-Type"))
+
+	body, err := ioutil.ReadAll(resp.Body)
+	require.NoError(t, err)
+
+	wantBody := `{
+	"error": "The resource at the url requested was not found."
+}`
+	assert.JSONEq(t, wantBody, string(body))
+}
+
+// Test that when the source account of the transaction matches the account the
+// request is for, that the transaction is signed and a signature is returned.
+// The operation source account does not need to be set.
+func TestAccountSign_accountAuthenticatedTxSourceAccountValid(t *testing.T) {
+	s := account.NewMemoryStore()
+	s.Add(account.Account{
+		Address: "GA6HNE7O2N2IXIOBZNZ4IPTS2P6DSAJJF5GD5PDLH5GYOZ6WMPSKCXD4",
+	})
+	h := accountSignHandler{
+		Logger:            supportlog.DefaultLogger,
+		AccountStore:      s,
+		SigningKey:        keypair.MustParseFull("SBIB72S6JMTGJRC6LMKLC5XMHZ2IOHZSZH4SASTN47LECEEJ7QEB6EYK"),
+		NetworkPassphrase: network.TestNetworkPassphrase,
+	}
+
+	tx := txnbuild.Transaction{
+		Network:       network.TestNetworkPassphrase,
+		SourceAccount: &txnbuild.SimpleAccount{AccountID: "GA6HNE7O2N2IXIOBZNZ4IPTS2P6DSAJJF5GD5PDLH5GYOZ6WMPSKCXD4"},
+		Timebounds:    txnbuild.NewTimebounds(0, 1),
+		Operations: []txnbuild.Operation{
+			&txnbuild.SetOptions{
+				Signer: &txnbuild.Signer{
+					Address: "GD7CGJSJ5OBOU5KOP2UQDH3MPY75UTEY27HVV5XPSL2X6DJ2VGTOSXEU",
+					Weight:  20,
+				},
+			},
+		},
+	}
+	err := tx.Build()
+	require.NoError(t, err)
+	txEnc, err := tx.Base64()
+	require.NoError(t, err)
+	t.Log("Tx:", txEnc)
+
+	ctx := context.Background()
+	ctx = auth.NewContext(ctx, auth.Claims{Address: "GA6HNE7O2N2IXIOBZNZ4IPTS2P6DSAJJF5GD5PDLH5GYOZ6WMPSKCXD4"})
+	req := `{
+	"transaction": "` + txEnc + `"
+}`
+	r := httptest.NewRequest("POST", "/GA6HNE7O2N2IXIOBZNZ4IPTS2P6DSAJJF5GD5PDLH5GYOZ6WMPSKCXD4/sign", strings.NewReader(req))
+	r = r.WithContext(ctx)
+
+	w := httptest.NewRecorder()
+	m := chi.NewMux()
+	m.Post("/{address}/sign", h.ServeHTTP)
+	m.ServeHTTP(w, r)
+	resp := w.Result()
+
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+	assert.Equal(t, "application/json; charset=utf-8", resp.Header.Get("Content-Type"))
+
+	body, err := ioutil.ReadAll(resp.Body)
+	require.NoError(t, err)
+
+	wantBody := `{
+	"public_key": "GBOG4KF66M4AFRBUHOTJQJRO7BGGFCSGIICTI5BHXHKXCWV2C67QRN5H",
+	"signature": "okp0ISR/hjU6ItsfXie6ArlQ3YWkBBqEAM5TJrthALdawV5DzcpuwBKi0QE/iBgoU7eY0hY3RPdxm8mXGNYfCQ==",
+	"network_passphrase": "Test SDF Network ; September 2015"
+}`
+	assert.JSONEq(t, wantBody, string(body))
+}
+
+// Test that when the source account of the transaction and operation are both
+// set to values that match the account the request is for, that the
+// transaction is signed and a signature is returned.
+func TestAccountSign_accountAuthenticatedTxAndOpSourceAccountValid(t *testing.T) {
+	s := account.NewMemoryStore()
+	s.Add(account.Account{
+		Address: "GA6HNE7O2N2IXIOBZNZ4IPTS2P6DSAJJF5GD5PDLH5GYOZ6WMPSKCXD4",
+	})
+	h := accountSignHandler{
+		Logger:            supportlog.DefaultLogger,
+		AccountStore:      s,
+		SigningKey:        keypair.MustParseFull("SBIB72S6JMTGJRC6LMKLC5XMHZ2IOHZSZH4SASTN47LECEEJ7QEB6EYK"),
+		NetworkPassphrase: network.TestNetworkPassphrase,
+	}
+
+	tx := txnbuild.Transaction{
+		Network:       network.TestNetworkPassphrase,
+		SourceAccount: &txnbuild.SimpleAccount{AccountID: "GA6HNE7O2N2IXIOBZNZ4IPTS2P6DSAJJF5GD5PDLH5GYOZ6WMPSKCXD4"},
+		Timebounds:    txnbuild.NewTimebounds(0, 1),
+		Operations: []txnbuild.Operation{
+			&txnbuild.SetOptions{
+				SourceAccount: &txnbuild.SimpleAccount{AccountID: "GA6HNE7O2N2IXIOBZNZ4IPTS2P6DSAJJF5GD5PDLH5GYOZ6WMPSKCXD4"},
+				Signer: &txnbuild.Signer{
+					Address: "GD7CGJSJ5OBOU5KOP2UQDH3MPY75UTEY27HVV5XPSL2X6DJ2VGTOSXEU",
+					Weight:  20,
+				},
+			},
+		},
+	}
+	err := tx.Build()
+	require.NoError(t, err)
+	txEnc, err := tx.Base64()
+	require.NoError(t, err)
+	t.Log("Tx:", txEnc)
+
+	ctx := context.Background()
+	ctx = auth.NewContext(ctx, auth.Claims{Address: "GA6HNE7O2N2IXIOBZNZ4IPTS2P6DSAJJF5GD5PDLH5GYOZ6WMPSKCXD4"})
+	req := `{
+	"transaction": "` + txEnc + `"
+}`
+	r := httptest.NewRequest("POST", "/GA6HNE7O2N2IXIOBZNZ4IPTS2P6DSAJJF5GD5PDLH5GYOZ6WMPSKCXD4/sign", strings.NewReader(req))
+	r = r.WithContext(ctx)
+
+	w := httptest.NewRecorder()
+	m := chi.NewMux()
+	m.Post("/{address}/sign", h.ServeHTTP)
+	m.ServeHTTP(w, r)
+	resp := w.Result()
+
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+	assert.Equal(t, "application/json; charset=utf-8", resp.Header.Get("Content-Type"))
+
+	body, err := ioutil.ReadAll(resp.Body)
+	require.NoError(t, err)
+
+	wantBody := `{
+	"public_key": "GBOG4KF66M4AFRBUHOTJQJRO7BGGFCSGIICTI5BHXHKXCWV2C67QRN5H",
+	"signature": "MKAkl+R3VT5DJw6Qed8jO8ERD4RcQ4dJlN+UR2n7nT6AVBXnKBk0zqBZnDuB153zfTYmuA5kmsRiNr5terHVBg==",
+	"network_passphrase": "Test SDF Network ; September 2015"
+}`
+	assert.JSONEq(t, wantBody, string(body))
+}
+
+// Test that when the source account of the transaction is not the account sign
+// the request is calling sign on a bad request response is returned.
+func TestAccountSign_accountAuthenticatedTxSourceAccountInvalid(t *testing.T) {
+	s := account.NewMemoryStore()
+	s.Add(account.Account{
+		Address: "GA6HNE7O2N2IXIOBZNZ4IPTS2P6DSAJJF5GD5PDLH5GYOZ6WMPSKCXD4",
+	})
+	h := accountSignHandler{
+		Logger:            supportlog.DefaultLogger,
+		AccountStore:      s,
+		SigningKey:        keypair.MustParseFull("SBIB72S6JMTGJRC6LMKLC5XMHZ2IOHZSZH4SASTN47LECEEJ7QEB6EYK"),
+		NetworkPassphrase: network.TestNetworkPassphrase,
+	}
+
+	tx := txnbuild.Transaction{
+		Network:       network.TestNetworkPassphrase,
+		SourceAccount: &txnbuild.SimpleAccount{AccountID: "GA47G3ZQBUR5NF2ZECG774O3QGKFMAW75XLXSCDICFDDV5GKGRFGFSOI"},
+		Timebounds:    txnbuild.NewTimebounds(0, 1),
+		Operations: []txnbuild.Operation{
+			&txnbuild.SetOptions{
+				SourceAccount: &txnbuild.SimpleAccount{AccountID: "GA6HNE7O2N2IXIOBZNZ4IPTS2P6DSAJJF5GD5PDLH5GYOZ6WMPSKCXD4"},
+				Signer: &txnbuild.Signer{
+					Address: "GD7CGJSJ5OBOU5KOP2UQDH3MPY75UTEY27HVV5XPSL2X6DJ2VGTOSXEU",
+					Weight:  20,
+				},
+			},
+		},
+	}
+	err := tx.Build()
+	require.NoError(t, err)
+	txEnc, err := tx.Base64()
+	require.NoError(t, err)
+	t.Log("Tx:", txEnc)
+
+	ctx := context.Background()
+	ctx = auth.NewContext(ctx, auth.Claims{Address: "GA6HNE7O2N2IXIOBZNZ4IPTS2P6DSAJJF5GD5PDLH5GYOZ6WMPSKCXD4"})
+	req := `{
+	"transaction": "` + txEnc + `"
+}`
+	r := httptest.NewRequest("POST", "/GA6HNE7O2N2IXIOBZNZ4IPTS2P6DSAJJF5GD5PDLH5GYOZ6WMPSKCXD4/sign", strings.NewReader(req))
+	r = r.WithContext(ctx)
+
+	w := httptest.NewRecorder()
+	m := chi.NewMux()
+	m.Post("/{address}/sign", h.ServeHTTP)
+	m.ServeHTTP(w, r)
+	resp := w.Result()
+
+	require.Equal(t, http.StatusBadRequest, resp.StatusCode)
+	assert.Equal(t, "application/json; charset=utf-8", resp.Header.Get("Content-Type"))
+
+	body, err := ioutil.ReadAll(resp.Body)
+	require.NoError(t, err)
+
+	wantBody := `{"error": "The request was invalid in some way."}`
+	assert.JSONEq(t, wantBody, string(body))
+}
+
+// Test that when the source account of the operation is not the account sign
+// the request is calling sign on a bad request response is returned.
+func TestAccountSign_accountAuthenticatedOpSourceAccountInvalid(t *testing.T) {
+	s := account.NewMemoryStore()
+	s.Add(account.Account{
+		Address: "GA6HNE7O2N2IXIOBZNZ4IPTS2P6DSAJJF5GD5PDLH5GYOZ6WMPSKCXD4",
+	})
+	h := accountSignHandler{
+		Logger:            supportlog.DefaultLogger,
+		AccountStore:      s,
+		SigningKey:        keypair.MustParseFull("SBIB72S6JMTGJRC6LMKLC5XMHZ2IOHZSZH4SASTN47LECEEJ7QEB6EYK"),
+		NetworkPassphrase: network.TestNetworkPassphrase,
+	}
+
+	tx := txnbuild.Transaction{
+		Network:       network.TestNetworkPassphrase,
+		SourceAccount: &txnbuild.SimpleAccount{AccountID: "GA6HNE7O2N2IXIOBZNZ4IPTS2P6DSAJJF5GD5PDLH5GYOZ6WMPSKCXD4"},
+		Timebounds:    txnbuild.NewTimebounds(0, 1),
+		Operations: []txnbuild.Operation{
+			&txnbuild.SetOptions{
+				SourceAccount: &txnbuild.SimpleAccount{AccountID: "GA47G3ZQBUR5NF2ZECG774O3QGKFMAW75XLXSCDICFDDV5GKGRFGFSOI"},
+				Signer: &txnbuild.Signer{
+					Address: "GD7CGJSJ5OBOU5KOP2UQDH3MPY75UTEY27HVV5XPSL2X6DJ2VGTOSXEU",
+					Weight:  20,
+				},
+			},
+		},
+	}
+	err := tx.Build()
+	require.NoError(t, err)
+	txEnc, err := tx.Base64()
+	require.NoError(t, err)
+	t.Log("Tx:", txEnc)
+
+	ctx := context.Background()
+	ctx = auth.NewContext(ctx, auth.Claims{Address: "GA6HNE7O2N2IXIOBZNZ4IPTS2P6DSAJJF5GD5PDLH5GYOZ6WMPSKCXD4"})
+	req := `{
+	"transaction": "` + txEnc + `"
+}`
+	r := httptest.NewRequest("POST", "/GA6HNE7O2N2IXIOBZNZ4IPTS2P6DSAJJF5GD5PDLH5GYOZ6WMPSKCXD4/sign", strings.NewReader(req))
+	r = r.WithContext(ctx)
+
+	w := httptest.NewRecorder()
+	m := chi.NewMux()
+	m.Post("/{address}/sign", h.ServeHTTP)
+	m.ServeHTTP(w, r)
+	resp := w.Result()
+
+	require.Equal(t, http.StatusBadRequest, resp.StatusCode)
+	assert.Equal(t, "application/json; charset=utf-8", resp.Header.Get("Content-Type"))
+
+	body, err := ioutil.ReadAll(resp.Body)
+	require.NoError(t, err)
+
+	wantBody := `{"error": "The request was invalid in some way."}`
+	assert.JSONEq(t, wantBody, string(body))
+}
+
+// Test that when the source account of the operation and transaction is not
+// the account sign the request is calling sign on a bad request response is
+// returned.
+func TestAccountSign_accountAuthenticatedTxAndOpSourceAccountInvalid(t *testing.T) {
+	s := account.NewMemoryStore()
+	s.Add(account.Account{
+		Address: "GA6HNE7O2N2IXIOBZNZ4IPTS2P6DSAJJF5GD5PDLH5GYOZ6WMPSKCXD4",
+	})
+	h := accountSignHandler{
+		Logger:            supportlog.DefaultLogger,
+		AccountStore:      s,
+		SigningKey:        keypair.MustParseFull("SBIB72S6JMTGJRC6LMKLC5XMHZ2IOHZSZH4SASTN47LECEEJ7QEB6EYK"),
+		NetworkPassphrase: network.TestNetworkPassphrase,
+	}
+
+	tx := txnbuild.Transaction{
+		Network:       network.TestNetworkPassphrase,
+		SourceAccount: &txnbuild.SimpleAccount{AccountID: "GA47G3ZQBUR5NF2ZECG774O3QGKFMAW75XLXSCDICFDDV5GKGRFGFSOI"},
+		Timebounds:    txnbuild.NewTimebounds(0, 1),
+		Operations: []txnbuild.Operation{
+			&txnbuild.SetOptions{
+				SourceAccount: &txnbuild.SimpleAccount{AccountID: "GA47G3ZQBUR5NF2ZECG774O3QGKFMAW75XLXSCDICFDDV5GKGRFGFSOI"},
+				Signer: &txnbuild.Signer{
+					Address: "GD7CGJSJ5OBOU5KOP2UQDH3MPY75UTEY27HVV5XPSL2X6DJ2VGTOSXEU",
+					Weight:  20,
+				},
+			},
+		},
+	}
+	err := tx.Build()
+	require.NoError(t, err)
+	txEnc, err := tx.Base64()
+	require.NoError(t, err)
+	t.Log("Tx:", txEnc)
+
+	ctx := context.Background()
+	ctx = auth.NewContext(ctx, auth.Claims{Address: "GA6HNE7O2N2IXIOBZNZ4IPTS2P6DSAJJF5GD5PDLH5GYOZ6WMPSKCXD4"})
+	req := `{
+	"transaction": "` + txEnc + `"
+}`
+	r := httptest.NewRequest("POST", "/GA6HNE7O2N2IXIOBZNZ4IPTS2P6DSAJJF5GD5PDLH5GYOZ6WMPSKCXD4/sign", strings.NewReader(req))
+	r = r.WithContext(ctx)
+
+	w := httptest.NewRecorder()
+	m := chi.NewMux()
+	m.Post("/{address}/sign", h.ServeHTTP)
+	m.ServeHTTP(w, r)
+	resp := w.Result()
+
+	require.Equal(t, http.StatusBadRequest, resp.StatusCode)
+	assert.Equal(t, "application/json; charset=utf-8", resp.Header.Get("Content-Type"))
+
+	body, err := ioutil.ReadAll(resp.Body)
+	require.NoError(t, err)
+
+	wantBody := `{"error": "The request was invalid in some way."}`
+	assert.JSONEq(t, wantBody, string(body))
+}
+
+// Test that when authenticated with a phone number signing is possible.
+func TestAccountSign_phoneNumberOwnerAuthenticated(t *testing.T) {
+	s := account.NewMemoryStore()
+	s.Add(account.Account{
+		Address: "GA6HNE7O2N2IXIOBZNZ4IPTS2P6DSAJJF5GD5PDLH5GYOZ6WMPSKCXD4",
+		OwnerIdentities: account.Identities{
+			PhoneNumber: "+10000000000",
+		},
+	})
+	h := accountSignHandler{
+		Logger:            supportlog.DefaultLogger,
+		AccountStore:      s,
+		SigningKey:        keypair.MustParseFull("SBIB72S6JMTGJRC6LMKLC5XMHZ2IOHZSZH4SASTN47LECEEJ7QEB6EYK"),
+		NetworkPassphrase: network.TestNetworkPassphrase,
+	}
+
+	tx := txnbuild.Transaction{
+		Network:       network.TestNetworkPassphrase,
+		SourceAccount: &txnbuild.SimpleAccount{AccountID: "GA6HNE7O2N2IXIOBZNZ4IPTS2P6DSAJJF5GD5PDLH5GYOZ6WMPSKCXD4"},
+		Timebounds:    txnbuild.NewTimebounds(0, 1),
+		Operations: []txnbuild.Operation{
+			&txnbuild.SetOptions{
+				Signer: &txnbuild.Signer{
+					Address: "GD7CGJSJ5OBOU5KOP2UQDH3MPY75UTEY27HVV5XPSL2X6DJ2VGTOSXEU",
+					Weight:  20,
+				},
+			},
+		},
+	}
+	err := tx.Build()
+	require.NoError(t, err)
+	txEnc, err := tx.Base64()
+	require.NoError(t, err)
+	t.Log("Tx:", txEnc)
+
+	ctx := context.Background()
+	ctx = auth.NewContext(ctx, auth.Claims{PhoneNumber: "+10000000000"})
+	req := `{
+	"transaction": "` + txEnc + `"
+}`
+	r := httptest.NewRequest("POST", "/GA6HNE7O2N2IXIOBZNZ4IPTS2P6DSAJJF5GD5PDLH5GYOZ6WMPSKCXD4/sign", strings.NewReader(req))
+	r = r.WithContext(ctx)
+
+	w := httptest.NewRecorder()
+	m := chi.NewMux()
+	m.Post("/{address}/sign", h.ServeHTTP)
+	m.ServeHTTP(w, r)
+	resp := w.Result()
+
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+	assert.Equal(t, "application/json; charset=utf-8", resp.Header.Get("Content-Type"))
+
+	body, err := ioutil.ReadAll(resp.Body)
+	require.NoError(t, err)
+
+	wantBody := `{
+	"public_key": "GBOG4KF66M4AFRBUHOTJQJRO7BGGFCSGIICTI5BHXHKXCWV2C67QRN5H",
+	"signature": "okp0ISR/hjU6ItsfXie6ArlQ3YWkBBqEAM5TJrthALdawV5DzcpuwBKi0QE/iBgoU7eY0hY3RPdxm8mXGNYfCQ==",
+	"network_passphrase": "Test SDF Network ; September 2015"
+}`
+	assert.JSONEq(t, wantBody, string(body))
+}
+
+// Test that when authenticated with a phone number signing is possible.
+func TestAccountSign_phoneNumberOtherAuthenticated(t *testing.T) {
+	s := account.NewMemoryStore()
+	s.Add(account.Account{
+		Address: "GA6HNE7O2N2IXIOBZNZ4IPTS2P6DSAJJF5GD5PDLH5GYOZ6WMPSKCXD4",
+		OtherIdentities: account.Identities{
+			PhoneNumber: "+10000000000",
+		},
+	})
+	h := accountSignHandler{
+		Logger:            supportlog.DefaultLogger,
+		AccountStore:      s,
+		SigningKey:        keypair.MustParseFull("SBIB72S6JMTGJRC6LMKLC5XMHZ2IOHZSZH4SASTN47LECEEJ7QEB6EYK"),
+		NetworkPassphrase: network.TestNetworkPassphrase,
+	}
+
+	tx := txnbuild.Transaction{
+		Network:       network.TestNetworkPassphrase,
+		SourceAccount: &txnbuild.SimpleAccount{AccountID: "GA6HNE7O2N2IXIOBZNZ4IPTS2P6DSAJJF5GD5PDLH5GYOZ6WMPSKCXD4"},
+		Timebounds:    txnbuild.NewTimebounds(0, 1),
+		Operations: []txnbuild.Operation{
+			&txnbuild.SetOptions{
+				Signer: &txnbuild.Signer{
+					Address: "GD7CGJSJ5OBOU5KOP2UQDH3MPY75UTEY27HVV5XPSL2X6DJ2VGTOSXEU",
+					Weight:  20,
+				},
+			},
+		},
+	}
+	err := tx.Build()
+	require.NoError(t, err)
+	txEnc, err := tx.Base64()
+	require.NoError(t, err)
+	t.Log("Tx:", txEnc)
+
+	ctx := context.Background()
+	ctx = auth.NewContext(ctx, auth.Claims{PhoneNumber: "+10000000000"})
+	req := `{
+	"transaction": "` + txEnc + `"
+}`
+	r := httptest.NewRequest("POST", "/GA6HNE7O2N2IXIOBZNZ4IPTS2P6DSAJJF5GD5PDLH5GYOZ6WMPSKCXD4/sign", strings.NewReader(req))
+	r = r.WithContext(ctx)
+
+	w := httptest.NewRecorder()
+	m := chi.NewMux()
+	m.Post("/{address}/sign", h.ServeHTTP)
+	m.ServeHTTP(w, r)
+	resp := w.Result()
+
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+	assert.Equal(t, "application/json; charset=utf-8", resp.Header.Get("Content-Type"))
+
+	body, err := ioutil.ReadAll(resp.Body)
+	require.NoError(t, err)
+
+	wantBody := `{
+	"public_key": "GBOG4KF66M4AFRBUHOTJQJRO7BGGFCSGIICTI5BHXHKXCWV2C67QRN5H",
+	"signature": "okp0ISR/hjU6ItsfXie6ArlQ3YWkBBqEAM5TJrthALdawV5DzcpuwBKi0QE/iBgoU7eY0hY3RPdxm8mXGNYfCQ==",
+	"network_passphrase": "Test SDF Network ; September 2015"
+}`
+	assert.JSONEq(t, wantBody, string(body))
+}
+
+// Test that when authenticated with a email signing is possible.
+func TestAccountSign_emailOwnerAuthenticated(t *testing.T) {
+	s := account.NewMemoryStore()
+	s.Add(account.Account{
+		Address: "GA6HNE7O2N2IXIOBZNZ4IPTS2P6DSAJJF5GD5PDLH5GYOZ6WMPSKCXD4",
+		OwnerIdentities: account.Identities{
+			Email: "user1@example.com",
+		},
+	})
+	h := accountSignHandler{
+		Logger:            supportlog.DefaultLogger,
+		AccountStore:      s,
+		SigningKey:        keypair.MustParseFull("SBIB72S6JMTGJRC6LMKLC5XMHZ2IOHZSZH4SASTN47LECEEJ7QEB6EYK"),
+		NetworkPassphrase: network.TestNetworkPassphrase,
+	}
+
+	tx := txnbuild.Transaction{
+		Network:       network.TestNetworkPassphrase,
+		SourceAccount: &txnbuild.SimpleAccount{AccountID: "GA6HNE7O2N2IXIOBZNZ4IPTS2P6DSAJJF5GD5PDLH5GYOZ6WMPSKCXD4"},
+		Timebounds:    txnbuild.NewTimebounds(0, 1),
+		Operations: []txnbuild.Operation{
+			&txnbuild.SetOptions{
+				Signer: &txnbuild.Signer{
+					Address: "GD7CGJSJ5OBOU5KOP2UQDH3MPY75UTEY27HVV5XPSL2X6DJ2VGTOSXEU",
+					Weight:  20,
+				},
+			},
+		},
+	}
+	err := tx.Build()
+	require.NoError(t, err)
+	txEnc, err := tx.Base64()
+	require.NoError(t, err)
+	t.Log("Tx:", txEnc)
+
+	ctx := context.Background()
+	ctx = auth.NewContext(ctx, auth.Claims{Email: "user1@example.com"})
+	req := `{
+	"transaction": "` + txEnc + `"
+}`
+	r := httptest.NewRequest("POST", "/GA6HNE7O2N2IXIOBZNZ4IPTS2P6DSAJJF5GD5PDLH5GYOZ6WMPSKCXD4/sign", strings.NewReader(req))
+	r = r.WithContext(ctx)
+
+	w := httptest.NewRecorder()
+	m := chi.NewMux()
+	m.Post("/{address}/sign", h.ServeHTTP)
+	m.ServeHTTP(w, r)
+	resp := w.Result()
+
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+	assert.Equal(t, "application/json; charset=utf-8", resp.Header.Get("Content-Type"))
+
+	body, err := ioutil.ReadAll(resp.Body)
+	require.NoError(t, err)
+
+	wantBody := `{
+	"public_key": "GBOG4KF66M4AFRBUHOTJQJRO7BGGFCSGIICTI5BHXHKXCWV2C67QRN5H",
+	"signature": "okp0ISR/hjU6ItsfXie6ArlQ3YWkBBqEAM5TJrthALdawV5DzcpuwBKi0QE/iBgoU7eY0hY3RPdxm8mXGNYfCQ==",
+	"network_passphrase": "Test SDF Network ; September 2015"
+}`
+	assert.JSONEq(t, wantBody, string(body))
+}
+
+// Test that when authenticated with a email signing is possible.
+func TestAccountSign_emailOtherAuthenticated(t *testing.T) {
+	s := account.NewMemoryStore()
+	s.Add(account.Account{
+		Address: "GA6HNE7O2N2IXIOBZNZ4IPTS2P6DSAJJF5GD5PDLH5GYOZ6WMPSKCXD4",
+		OtherIdentities: account.Identities{
+			Email: "user1@example.com",
+		},
+	})
+	h := accountSignHandler{
+		Logger:            supportlog.DefaultLogger,
+		AccountStore:      s,
+		SigningKey:        keypair.MustParseFull("SBIB72S6JMTGJRC6LMKLC5XMHZ2IOHZSZH4SASTN47LECEEJ7QEB6EYK"),
+		NetworkPassphrase: network.TestNetworkPassphrase,
+	}
+
+	tx := txnbuild.Transaction{
+		Network:       network.TestNetworkPassphrase,
+		SourceAccount: &txnbuild.SimpleAccount{AccountID: "GA6HNE7O2N2IXIOBZNZ4IPTS2P6DSAJJF5GD5PDLH5GYOZ6WMPSKCXD4"},
+		Timebounds:    txnbuild.NewTimebounds(0, 1),
+		Operations: []txnbuild.Operation{
+			&txnbuild.SetOptions{
+				Signer: &txnbuild.Signer{
+					Address: "GD7CGJSJ5OBOU5KOP2UQDH3MPY75UTEY27HVV5XPSL2X6DJ2VGTOSXEU",
+					Weight:  20,
+				},
+			},
+		},
+	}
+	err := tx.Build()
+	require.NoError(t, err)
+	txEnc, err := tx.Base64()
+	require.NoError(t, err)
+	t.Log("Tx:", txEnc)
+
+	ctx := context.Background()
+	ctx = auth.NewContext(ctx, auth.Claims{Email: "user1@example.com"})
+	req := `{
+	"transaction": "` + txEnc + `"
+}`
+	r := httptest.NewRequest("POST", "/GA6HNE7O2N2IXIOBZNZ4IPTS2P6DSAJJF5GD5PDLH5GYOZ6WMPSKCXD4/sign", strings.NewReader(req))
+	r = r.WithContext(ctx)
+
+	w := httptest.NewRecorder()
+	m := chi.NewMux()
+	m.Post("/{address}/sign", h.ServeHTTP)
+	m.ServeHTTP(w, r)
+	resp := w.Result()
+
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+	assert.Equal(t, "application/json; charset=utf-8", resp.Header.Get("Content-Type"))
+
+	body, err := ioutil.ReadAll(resp.Body)
+	require.NoError(t, err)
+
+	wantBody := `{
+	"public_key": "GBOG4KF66M4AFRBUHOTJQJRO7BGGFCSGIICTI5BHXHKXCWV2C67QRN5H",
+	"signature": "okp0ISR/hjU6ItsfXie6ArlQ3YWkBBqEAM5TJrthALdawV5DzcpuwBKi0QE/iBgoU7eY0hY3RPdxm8mXGNYfCQ==",
+	"network_passphrase": "Test SDF Network ; September 2015"
+}`
+	assert.JSONEq(t, wantBody, string(body))
+}
+
+// Test that when the transaction cannot be parsed it errors.
+func TestAccountSign_cannotParseTransaction(t *testing.T) {
+	s := account.NewMemoryStore()
+	s.Add(account.Account{
+		Address: "GA6HNE7O2N2IXIOBZNZ4IPTS2P6DSAJJF5GD5PDLH5GYOZ6WMPSKCXD4",
+	})
+	h := accountSignHandler{
+		Logger:            supportlog.DefaultLogger,
+		AccountStore:      s,
+		SigningKey:        keypair.MustParseFull("SBIB72S6JMTGJRC6LMKLC5XMHZ2IOHZSZH4SASTN47LECEEJ7QEB6EYK"),
+		NetworkPassphrase: network.TestNetworkPassphrase,
+	}
+
+	txEnc := "AAAAADx2k+7TdIuhwctzxD5y0/w5ASkvTD68az9Nh2fWY+ShAAAAZAAAAAAAAAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAPHaT7tN0i6HBy3PEPnLT/DkBKS9MPrxrP02HZ9Zj5KEAAAAAAJiWgAAAAAAAAAA"
+
+	ctx := context.Background()
+	ctx = auth.NewContext(ctx, auth.Claims{Address: "GA6HNE7O2N2IXIOBZNZ4IPTS2P6DSAJJF5GD5PDLH5GYOZ6WMPSKCXD4"})
+	req := `{
+	"transaction": "` + txEnc + `"
+}`
+	r := httptest.NewRequest("POST", "/GA6HNE7O2N2IXIOBZNZ4IPTS2P6DSAJJF5GD5PDLH5GYOZ6WMPSKCXD4/sign", strings.NewReader(req))
+	r = r.WithContext(ctx)
+
+	w := httptest.NewRecorder()
+	m := chi.NewMux()
+	m.Post("/{address}/sign", h.ServeHTTP)
+	m.ServeHTTP(w, r)
+	resp := w.Result()
+
+	require.Equal(t, http.StatusBadRequest, resp.StatusCode)
+	assert.Equal(t, "application/json; charset=utf-8", resp.Header.Get("Content-Type"))
+
+	body, err := ioutil.ReadAll(resp.Body)
+	require.NoError(t, err)
+
+	wantBody := `{"error": "The request was invalid in some way."}`
+	assert.JSONEq(t, wantBody, string(body))
+}
