@@ -119,12 +119,12 @@ func handler(deps handlerDeps) http.Handler {
 		// TODO: 	AccountStore:   deps.AccountStore,
 		// TODO: }.ServeHTTP)
 		mux.Route("/{address}", func(mux chi.Router) {
-			// TODO: mux.Post("/", accountPostHandler{
-			// TODO: 	Logger:         deps.Logger,
-			// TODO: 	SigningAddress: deps.SigningKey.FromAddress(),
-			// TODO: 	AccountStore:   deps.AccountStore,
-			// TODO: 	HorizonClient:  deps.HorizonClient,
-			// TODO: }.ServeHTTP)
+			mux.Post("/", accountPostHandler{
+				Logger:         deps.Logger,
+				SigningAddress: deps.SigningKey.FromAddress(),
+				AccountStore:   deps.AccountStore,
+				HorizonClient:  deps.HorizonClient,
+			}.ServeHTTP)
 			// TODO: mux.Put("/", accountPutHandler{}.ServeHTTP)
 			// TODO: mux.Get("/", accountGetHandler{}.ServeHTTP)
 			// TODO: mux.Delete("/", accountDeleteHandler{}.ServeHTTP)
