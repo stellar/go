@@ -222,25 +222,23 @@ func initSubmissionSystem(app *App) {
 	// 		 | <--------------------------------------- Get account info
 	// 		 |                          |                      |
 	// 		 |                          |                      |
-	// Account NOT found ---------------------------------------> |
+	//         Account NOT found ------------------------------------> |
 	// 		 |                          |                      |
-	//    Insert account                   |                      |
+	//         Insert account                   |                      |
 	// ```
 	//
-	// To fix this Skip checking Stellar-Core DB for transaction results if
+	// To fix this skip checking Stellar-Core DB for transaction results if
 	// Horizon is ingesting failed transactions.
-	var cq *core.Q
-	if !app.config.IngestFailedTransactions {
-		cq = &core.Q{Session: app.CoreSession(context.Background())}
-	}
+	cq := &core.Q{Session: app.CoreSession(context.Background())}
 
 	app.submitter = &txsub.System{
 		Pending:         txsub.NewDefaultSubmissionList(),
 		Submitter:       txsub.NewDefaultSubmitter(http.DefaultClient, app.config.StellarCoreURL),
 		SubmissionQueue: sequence.NewManager(),
 		Results: &results.DB{
-			Core:    cq,
-			History: &history.Q{Session: app.HorizonSession(context.Background())},
+			Core:           &core.Q{Session: app.CoreSession(context.Background())},
+			History:        &history.Q{Session: app.HorizonSession(context.Background())},
+			SkipCoreChecks: app.config.IngestFailedTransactions,
 		},
 		Sequences:         cq.SequenceProvider(),
 		NetworkPassphrase: app.config.NetworkPassphrase,

@@ -95,13 +95,13 @@ func (a *App) Serve() {
 
 	log.Infof("Starting horizon on %s (ingest: %v)", addr, a.config.Ingest)
 
-	if a.config.InternalPort != 0 {
+	if a.config.AdminPort != 0 {
 		go func() {
-			internalAddr := fmt.Sprintf(":%d", a.config.InternalPort)
-			log.Infof("Starting internal server on %s", internalAddr)
+			adminAddr := fmt.Sprintf(":%d", a.config.AdminPort)
+			log.Infof("Starting internal server on %s", adminAddr)
 
 			internalSrv := &http.Server{
-				Addr:        internalAddr,
+				Addr:        adminAddr,
 				Handler:     a.web.internalRouter,
 				ReadTimeout: 5 * time.Second,
 			}
