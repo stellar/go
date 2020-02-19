@@ -16,9 +16,9 @@ func SEP10Middleware(k *ecdsa.PublicKey) func(http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			if address, ok := sep10ClaimsFromRequest(r, k); ok {
 				ctx := r.Context()
-				claims, _ := FromContext(ctx)
-				claims.Address = address
-				ctx = NewContext(ctx, claims)
+				auth, _ := FromContext(ctx)
+				auth.Address = address
+				ctx = NewContext(ctx, auth)
 				r = r.WithContext(ctx)
 			}
 			next.ServeHTTP(w, r)

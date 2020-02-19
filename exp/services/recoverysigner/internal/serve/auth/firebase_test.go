@@ -21,7 +21,7 @@ func TestFirebase_tokenWithPhoneNumber(t *testing.T) {
 		return token, true
 	})
 
-	claims := Claims{}
+	claims := Auth{}
 	claimsOK := false
 	next := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		claims, claimsOK = FromContext(r.Context())
@@ -31,7 +31,7 @@ func TestFirebase_tokenWithPhoneNumber(t *testing.T) {
 	r := httptest.NewRequest("GET", "/", nil)
 	FirebaseMiddleware(tokenVerifier)(next).ServeHTTP(w, r)
 
-	wantClaims := Claims{
+	wantClaims := Auth{
 		PhoneNumber: "+10000000000",
 	}
 	assert.Equal(t, wantClaims, claims)
@@ -50,7 +50,7 @@ func TestFirebase_tokenWithEmail(t *testing.T) {
 		return token, true
 	})
 
-	claims := Claims{}
+	claims := Auth{}
 	claimsOK := false
 	next := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		claims, claimsOK = FromContext(r.Context())
@@ -60,7 +60,7 @@ func TestFirebase_tokenWithEmail(t *testing.T) {
 	r := httptest.NewRequest("GET", "/", nil)
 	FirebaseMiddleware(tokenVerifier)(next).ServeHTTP(w, r)
 
-	wantClaims := Claims{
+	wantClaims := Auth{
 		Email: "user@example.com",
 	}
 	assert.Equal(t, wantClaims, claims)
@@ -81,7 +81,7 @@ func TestFirebase_tokenWithPhoneNumberAndEmail(t *testing.T) {
 		return token, true
 	})
 
-	claims := Claims{}
+	claims := Auth{}
 	claimsOK := false
 	next := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		claims, claimsOK = FromContext(r.Context())
@@ -91,7 +91,7 @@ func TestFirebase_tokenWithPhoneNumberAndEmail(t *testing.T) {
 	r := httptest.NewRequest("GET", "/", nil)
 	FirebaseMiddleware(tokenVerifier)(next).ServeHTTP(w, r)
 
-	wantClaims := Claims{
+	wantClaims := Auth{
 		PhoneNumber: "+10000000000",
 		Email:       "user@example.com",
 	}
@@ -113,7 +113,7 @@ func TestFirebase_tokenWithPhoneNumberAndEmailAppendsToOtherClaims(t *testing.T)
 		return token, true
 	})
 
-	claims := Claims{}
+	claims := Auth{}
 	claimsOK := false
 	next := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		claims, claimsOK = FromContext(r.Context())
@@ -121,13 +121,13 @@ func TestFirebase_tokenWithPhoneNumberAndEmailAppendsToOtherClaims(t *testing.T)
 
 	w := httptest.NewRecorder()
 	r := httptest.NewRequest("GET", "/", nil)
-	initialClaims := Claims{
+	initialClaims := Auth{
 		Address: "GCJYKECSRMIQX3KK62VPJ64NFNWV3EKJPUAXSXKKA7XSHN43VDHNKANO",
 	}
 	r = r.WithContext(NewContext(r.Context(), initialClaims))
 	FirebaseMiddleware(tokenVerifier)(next).ServeHTTP(w, r)
 
-	wantClaims := Claims{
+	wantClaims := Auth{
 		Address:     "GCJYKECSRMIQX3KK62VPJ64NFNWV3EKJPUAXSXKKA7XSHN43VDHNKANO",
 		PhoneNumber: "+10000000000",
 		Email:       "user@example.com",
@@ -144,7 +144,7 @@ func TestFirebase_tokenWithNone(t *testing.T) {
 		return &firebaseauth.Token{}, true
 	})
 
-	claims := Claims{}
+	claims := Auth{}
 	claimsOK := false
 	next := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		claims, claimsOK = FromContext(r.Context())
@@ -154,7 +154,7 @@ func TestFirebase_tokenWithNone(t *testing.T) {
 	r := httptest.NewRequest("GET", "/", nil)
 	FirebaseMiddleware(tokenVerifier)(next).ServeHTTP(w, r)
 
-	wantClaims := Claims{}
+	wantClaims := Auth{}
 	assert.Equal(t, wantClaims, claims)
 	assert.Equal(t, true, claimsOK)
 }
@@ -166,7 +166,7 @@ func TestFirebase_noToken(t *testing.T) {
 		return nil, false
 	})
 
-	claims := Claims{}
+	claims := Auth{}
 	claimsOK := false
 	next := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		claims, claimsOK = FromContext(r.Context())
@@ -176,7 +176,7 @@ func TestFirebase_noToken(t *testing.T) {
 	r := httptest.NewRequest("GET", "/", nil)
 	FirebaseMiddleware(tokenVerifier)(next).ServeHTTP(w, r)
 
-	wantClaims := Claims{}
+	wantClaims := Auth{}
 	assert.Equal(t, wantClaims, claims)
 	assert.Equal(t, false, claimsOK)
 }

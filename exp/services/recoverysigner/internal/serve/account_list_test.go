@@ -44,7 +44,7 @@ func TestAccountList_authenticatedButNonePermitted(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	ctx = auth.NewContext(ctx, auth.Claims{Address: "GCNPATZQVSFGGSAHR4T54WNELPHYEBTSKH4IIKUTC7CHPLG6EPPC4PJL"})
+	ctx = auth.NewContext(ctx, auth.Auth{Address: "GCNPATZQVSFGGSAHR4T54WNELPHYEBTSKH4IIKUTC7CHPLG6EPPC4PJL"})
 	r := httptest.NewRequest("", "/", nil)
 	r = r.WithContext(ctx)
 
@@ -94,7 +94,7 @@ func TestAccountList_authenticatedByPhoneNumber(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	ctx = auth.NewContext(ctx, auth.Claims{PhoneNumber: "+10000000000"})
+	ctx = auth.NewContext(ctx, auth.Auth{PhoneNumber: "+10000000000"})
 	r := httptest.NewRequest("", "/", nil)
 	r = r.WithContext(ctx)
 
@@ -157,7 +157,7 @@ func TestAccountList_authenticatedByEmail(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	ctx = auth.NewContext(ctx, auth.Claims{Email: "user1@example.com"})
+	ctx = auth.NewContext(ctx, auth.Auth{Email: "user1@example.com"})
 	r := httptest.NewRequest("", "/", nil)
 	r = r.WithContext(ctx)
 
@@ -220,7 +220,7 @@ func TestAccountList_notAuthenticated(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	ctx = auth.NewContext(ctx, auth.Claims{})
+	ctx = auth.NewContext(ctx, auth.Auth{})
 	r := httptest.NewRequest("", "/", nil)
 	r = r.WithContext(ctx)
 

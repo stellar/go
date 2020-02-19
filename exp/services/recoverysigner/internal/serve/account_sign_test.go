@@ -30,7 +30,7 @@ func TestAccountSign_authenticatedButNotFound(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	ctx = auth.NewContext(ctx, auth.Claims{Address: "GA6HNE7O2N2IXIOBZNZ4IPTS2P6DSAJJF5GD5PDLH5GYOZ6WMPSKCXD4"})
+	ctx = auth.NewContext(ctx, auth.Auth{Address: "GA6HNE7O2N2IXIOBZNZ4IPTS2P6DSAJJF5GD5PDLH5GYOZ6WMPSKCXD4"})
 	req := `{
 	"transaction": ""
 }`
@@ -73,7 +73,7 @@ func TestAccountSign_accountAuthenticatedButNotPermitted(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	ctx = auth.NewContext(ctx, auth.Claims{Address: "GBLOP46WEVXWO5N75TDX7GXLYFQE3XLDT5NQ2VYIBEWWEMSZWR3AUISZ"})
+	ctx = auth.NewContext(ctx, auth.Auth{Address: "GBLOP46WEVXWO5N75TDX7GXLYFQE3XLDT5NQ2VYIBEWWEMSZWR3AUISZ"})
 	req := `{
 	"transaction": ""
 }`
@@ -128,7 +128,7 @@ func TestAccountSign_phoneNumberAuthenticatedButNotPermitted(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	ctx = auth.NewContext(ctx, auth.Claims{PhoneNumber: "+20000000000"})
+	ctx = auth.NewContext(ctx, auth.Auth{PhoneNumber: "+20000000000"})
 	req := `{
 	"transaction": ""
 }`
@@ -183,7 +183,7 @@ func TestAccountSign_emailAuthenticatedButNotPermitted(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	ctx = auth.NewContext(ctx, auth.Claims{PhoneNumber: "user2@example.com"})
+	ctx = auth.NewContext(ctx, auth.Auth{PhoneNumber: "user2@example.com"})
 	req := `{
 	"transaction": ""
 }`
@@ -243,7 +243,7 @@ func TestAccountSign_accountAuthenticatedTxSourceAccountValid(t *testing.T) {
 	t.Log("Tx:", txEnc)
 
 	ctx := context.Background()
-	ctx = auth.NewContext(ctx, auth.Claims{Address: "GA6HNE7O2N2IXIOBZNZ4IPTS2P6DSAJJF5GD5PDLH5GYOZ6WMPSKCXD4"})
+	ctx = auth.NewContext(ctx, auth.Auth{Address: "GA6HNE7O2N2IXIOBZNZ4IPTS2P6DSAJJF5GD5PDLH5GYOZ6WMPSKCXD4"})
 	req := `{
 	"transaction": "` + txEnc + `"
 }`
@@ -306,7 +306,7 @@ func TestAccountSign_accountAuthenticatedTxAndOpSourceAccountValid(t *testing.T)
 	t.Log("Tx:", txEnc)
 
 	ctx := context.Background()
-	ctx = auth.NewContext(ctx, auth.Claims{Address: "GA6HNE7O2N2IXIOBZNZ4IPTS2P6DSAJJF5GD5PDLH5GYOZ6WMPSKCXD4"})
+	ctx = auth.NewContext(ctx, auth.Auth{Address: "GA6HNE7O2N2IXIOBZNZ4IPTS2P6DSAJJF5GD5PDLH5GYOZ6WMPSKCXD4"})
 	req := `{
 	"transaction": "` + txEnc + `"
 }`
@@ -368,7 +368,7 @@ func TestAccountSign_accountAuthenticatedTxSourceAccountInvalid(t *testing.T) {
 	t.Log("Tx:", txEnc)
 
 	ctx := context.Background()
-	ctx = auth.NewContext(ctx, auth.Claims{Address: "GA6HNE7O2N2IXIOBZNZ4IPTS2P6DSAJJF5GD5PDLH5GYOZ6WMPSKCXD4"})
+	ctx = auth.NewContext(ctx, auth.Auth{Address: "GA6HNE7O2N2IXIOBZNZ4IPTS2P6DSAJJF5GD5PDLH5GYOZ6WMPSKCXD4"})
 	req := `{
 	"transaction": "` + txEnc + `"
 }`
@@ -426,7 +426,7 @@ func TestAccountSign_accountAuthenticatedOpSourceAccountInvalid(t *testing.T) {
 	t.Log("Tx:", txEnc)
 
 	ctx := context.Background()
-	ctx = auth.NewContext(ctx, auth.Claims{Address: "GA6HNE7O2N2IXIOBZNZ4IPTS2P6DSAJJF5GD5PDLH5GYOZ6WMPSKCXD4"})
+	ctx = auth.NewContext(ctx, auth.Auth{Address: "GA6HNE7O2N2IXIOBZNZ4IPTS2P6DSAJJF5GD5PDLH5GYOZ6WMPSKCXD4"})
 	req := `{
 	"transaction": "` + txEnc + `"
 }`
@@ -485,7 +485,7 @@ func TestAccountSign_accountAuthenticatedTxAndOpSourceAccountInvalid(t *testing.
 	t.Log("Tx:", txEnc)
 
 	ctx := context.Background()
-	ctx = auth.NewContext(ctx, auth.Claims{Address: "GA6HNE7O2N2IXIOBZNZ4IPTS2P6DSAJJF5GD5PDLH5GYOZ6WMPSKCXD4"})
+	ctx = auth.NewContext(ctx, auth.Auth{Address: "GA6HNE7O2N2IXIOBZNZ4IPTS2P6DSAJJF5GD5PDLH5GYOZ6WMPSKCXD4"})
 	req := `{
 	"transaction": "` + txEnc + `"
 }`
@@ -544,7 +544,7 @@ func TestAccountSign_phoneNumberOwnerAuthenticated(t *testing.T) {
 	t.Log("Tx:", txEnc)
 
 	ctx := context.Background()
-	ctx = auth.NewContext(ctx, auth.Claims{PhoneNumber: "+10000000000"})
+	ctx = auth.NewContext(ctx, auth.Auth{PhoneNumber: "+10000000000"})
 	req := `{
 	"transaction": "` + txEnc + `"
 }`
@@ -607,7 +607,7 @@ func TestAccountSign_phoneNumberOtherAuthenticated(t *testing.T) {
 	t.Log("Tx:", txEnc)
 
 	ctx := context.Background()
-	ctx = auth.NewContext(ctx, auth.Claims{PhoneNumber: "+10000000000"})
+	ctx = auth.NewContext(ctx, auth.Auth{PhoneNumber: "+10000000000"})
 	req := `{
 	"transaction": "` + txEnc + `"
 }`
@@ -670,7 +670,7 @@ func TestAccountSign_emailOwnerAuthenticated(t *testing.T) {
 	t.Log("Tx:", txEnc)
 
 	ctx := context.Background()
-	ctx = auth.NewContext(ctx, auth.Claims{Email: "user1@example.com"})
+	ctx = auth.NewContext(ctx, auth.Auth{Email: "user1@example.com"})
 	req := `{
 	"transaction": "` + txEnc + `"
 }`
@@ -733,7 +733,7 @@ func TestAccountSign_emailOtherAuthenticated(t *testing.T) {
 	t.Log("Tx:", txEnc)
 
 	ctx := context.Background()
-	ctx = auth.NewContext(ctx, auth.Claims{Email: "user1@example.com"})
+	ctx = auth.NewContext(ctx, auth.Auth{Email: "user1@example.com"})
 	req := `{
 	"transaction": "` + txEnc + `"
 }`
@@ -776,7 +776,7 @@ func TestAccountSign_cannotParseTransaction(t *testing.T) {
 	txEnc := "AAAAADx2k+7TdIuhwctzxD5y0/w5ASkvTD68az9Nh2fWY+ShAAAAZAAAAAAAAAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAPHaT7tN0i6HBy3PEPnLT/DkBKS9MPrxrP02HZ9Zj5KEAAAAAAJiWgAAAAAAAAAA"
 
 	ctx := context.Background()
-	ctx = auth.NewContext(ctx, auth.Claims{Address: "GA6HNE7O2N2IXIOBZNZ4IPTS2P6DSAJJF5GD5PDLH5GYOZ6WMPSKCXD4"})
+	ctx = auth.NewContext(ctx, auth.Auth{Address: "GA6HNE7O2N2IXIOBZNZ4IPTS2P6DSAJJF5GD5PDLH5GYOZ6WMPSKCXD4"})
 	req := `{
 	"transaction": "` + txEnc + `"
 }`
