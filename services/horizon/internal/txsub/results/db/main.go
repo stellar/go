@@ -19,6 +19,8 @@ import (
 type DB struct {
 	Core    *core.Q
 	History *history.Q
+	// SkipCoreChecks makes DB skip checking transaction result in Core DB if `true`.
+	SkipCoreChecks bool
 }
 
 var _ txsub.ResultProvider = &DB{}
@@ -38,7 +40,7 @@ func (rp *DB) ResultByHash(ctx context.Context, hash string) txsub.Result {
 		return txsub.Result{Err: err}
 	}
 
-	if rp.Core != nil {
+	if !rp.SkipCoreChecks {
 		// query core database
 		var cr core.Transaction
 		// In the past we were searching for the transaction in core DB *after* the

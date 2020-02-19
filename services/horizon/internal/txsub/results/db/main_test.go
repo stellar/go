@@ -32,7 +32,9 @@ func TestResultProviderHorizonOnly(t *testing.T) {
 	defer tt.Finish()
 
 	rp := &DB{
-		History: &history.Q{Session: tt.HorizonSession()},
+		Core:           &core.Q{Session: tt.CoreSession()},
+		History:        &history.Q{Session: tt.HorizonSession()},
+		SkipCoreChecks: true,
 	}
 
 	hash := "adf1efb9fd253f53cbbe6230c131d2af19830328e52b610464652d67d2fb7195"
