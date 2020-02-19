@@ -183,6 +183,16 @@ func run(cmd *cobra.Command) {
 
 			requestWg.Wait()
 
+			// Retry when LatestLedger not equal but only if not empty because
+			// older Horizon versions don't send this header.
+			if a.LatestLedger != "" && b.LatestLedger != "" &&
+				a.LatestLedger != b.LatestLedger {
+				visitedPaths[pl.ID()] = false
+				paths <- pl
+				log.Warnf("LatestLedger does not match, retry queued: %s", pl.Path)
+				return
+			}
+
 			var status string
 			if a.Equal(b) {
 				status = "ok"
