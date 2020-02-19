@@ -29,7 +29,7 @@ type Options struct {
 }
 
 func Serve(opts Options) {
-	deps, err := getDeps(opts)
+	deps, err := getHandlerDeps(opts)
 	if err != nil {
 		opts.Logger.Fatalf("Error: %v", err)
 		return
@@ -58,7 +58,7 @@ type handlerDeps struct {
 	FirebaseApp       *firebase.App
 }
 
-func getDeps(opts Options) (handlerDeps, error) {
+func getHandlerDeps(opts Options) (handlerDeps, error) {
 	// TODO: Replace this signing key with randomly generating a unique signing
 	// key for each account so that it is not possible to identify which
 	// accounts are recoverable via a recovery signer.
@@ -111,8 +111,8 @@ func handler(deps handlerDeps) http.Handler {
 
 	mux.Get("/health", health.PassHandler{}.ServeHTTP)
 	mux.Route("/accounts", func(mux chi.Router) {
-		mux.Use(auth.SEP10(deps.SEP10JWTPublicKey))
-		mux.Use(auth.Firebase(deps.FirebaseApp))
+		mux.Use(auth.SEP10Middleware(deps.SEP10JWTPublicKey))
+		mux.Use(auth.FirebaseMiddleware(auth.FirebaseTokenVerifierLive{App: deps.FirebaseApp}))
 		mux.Get("/", accountListHandler{
 			Logger:         deps.Logger,
 			SigningAddress: deps.SigningKey.FromAddress(),

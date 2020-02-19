@@ -3,11 +3,11 @@ package auth
 import (
 	"crypto/ecdsa"
 	"net/http"
-	"strings"
 
 	"github.com/dgrijalva/jwt-go"
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/support/errors"
+	"github.com/stellar/go/support/http/httpauthz"
 )
 
 // SEP10 provides middleware for handling an authentication SEP-10 JWT.
@@ -39,10 +39,10 @@ func (c sep10JWTClaims) Valid() error {
 
 func sep10ClaimsFromRequest(r *http.Request, k *ecdsa.PublicKey) (address string, ok bool) {
 	authHeader := r.Header.Get("Authorization")
-	if authHeader == "" {
+	tokenEncoded := httpauthz.ParseBearerToken(authHeader)
+	if tokenEncoded == "" {
 		return "", false
 	}
-	tokenEncoded := strings.TrimPrefix(authHeader, "BEARER ")
 	tokenClaims := sep10JWTClaims{}
 	token, err := jwt.ParseWithClaims(tokenEncoded, &tokenClaims, func(token *jwt.Token) (interface{}, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodECDSA); !ok {
