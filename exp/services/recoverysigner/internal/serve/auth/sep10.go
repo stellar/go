@@ -42,7 +42,7 @@ func sep10ClaimsFromRequest(r *http.Request, k *ecdsa.PublicKey) (address string
 	if authHeader == "" {
 		return "", false
 	}
-	tokenEncoded := strings.TrimPrefix(authHeader, "BEARER ")
+	tokenEncoded := strings.TrimPrefix(authHeader, "Bearer ")
 	tokenClaims := sep10JWTClaims{}
 	token, err := jwt.ParseWithClaims(tokenEncoded, &tokenClaims, func(token *jwt.Token) (interface{}, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodECDSA); !ok {

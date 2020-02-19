@@ -53,7 +53,7 @@ func (v FirebaseTokenVerifierLive) Verify(r *http.Request) (*firebaseauth.Token,
 		return nil, false
 	}
 	authHeader := r.Header.Get("Authorization")
-	tokenEncoded := strings.TrimPrefix(authHeader, "BEARER ")
+	tokenEncoded := strings.TrimPrefix(authHeader, "Bearer ")
 	token, err := client.VerifyIDToken(ctx, tokenEncoded)
 	if err != nil {
 		return nil, false
