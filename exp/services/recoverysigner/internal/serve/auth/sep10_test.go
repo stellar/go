@@ -38,7 +38,7 @@ func TestSEP10_addsAddressToClaimIfJWTValid(t *testing.T) {
 	claims, ok := FromContext(ctx)
 	assert.Equal(t, true, ok)
 
-	wantClaims := Claims{
+	wantClaims := Auth{
 		Address: "GDKABHI4LTLG7UCE6O7Y4D6REHJVS4DLXTVVXTE3BPRRLXPASHSOKG2D",
 	}
 	assert.Equal(t, wantClaims, claims)
@@ -62,7 +62,7 @@ func TestSEP10_doesNotAddAddressToClaimIfJWTNotPresent(t *testing.T) {
 	claims, ok := FromContext(ctx)
 	assert.Equal(t, false, ok)
 
-	wantClaims := Claims{}
+	wantClaims := Auth{}
 	assert.Equal(t, wantClaims, claims)
 }
 
@@ -90,7 +90,7 @@ func TestSEP10_doesNotAddAddressToClaimIfJWTNoSignature(t *testing.T) {
 	claims, ok := FromContext(ctx)
 	assert.Equal(t, false, ok)
 
-	wantClaims := Claims{}
+	wantClaims := Auth{}
 	assert.Equal(t, wantClaims, claims)
 }
 
@@ -118,7 +118,7 @@ func TestSEP10_doesNotAddAddressToClaimIfJWTWrongAlg(t *testing.T) {
 	claims, ok := FromContext(ctx)
 	assert.Equal(t, false, ok)
 
-	wantClaims := Claims{}
+	wantClaims := Auth{}
 	assert.Equal(t, wantClaims, claims)
 }
 
@@ -149,7 +149,7 @@ func TestSEP10_doesNotAddAddressToClaimIfJWTInvalidSignature(t *testing.T) {
 	claims, ok := FromContext(ctx)
 	assert.Equal(t, false, ok)
 
-	wantClaims := Claims{}
+	wantClaims := Auth{}
 	assert.Equal(t, wantClaims, claims)
 }
 
@@ -178,6 +178,6 @@ func TestSEP10_doesNotAddAddressToClaimIfJWTExpired(t *testing.T) {
 	claims, ok := FromContext(ctx)
 	assert.Equal(t, false, ok)
 
-	wantClaims := Claims{}
+	wantClaims := Auth{}
 	assert.Equal(t, wantClaims, claims)
 }
