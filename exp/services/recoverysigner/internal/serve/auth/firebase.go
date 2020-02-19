@@ -3,10 +3,10 @@ package auth
 import (
 	"context"
 	"net/http"
-	"strings"
 
 	firebase "firebase.google.com/go"
 	firebaseauth "firebase.google.com/go/auth"
+	"github.com/stellar/go/support/http/httpauthz"
 	"google.golang.org/api/option"
 )
 
@@ -53,7 +53,10 @@ func (v FirebaseTokenVerifierLive) Verify(r *http.Request) (*firebaseauth.Token,
 		return nil, false
 	}
 	authHeader := r.Header.Get("Authorization")
-	tokenEncoded := strings.TrimPrefix(authHeader, "Bearer ")
+	tokenEncoded := httpauthz.ParseBearerToken(authHeader)
+	if tokenEncoded == "" {
+		return nil, false
+	}
 	token, err := client.VerifyIDToken(ctx, tokenEncoded)
 	if err != nil {
 		return nil, false
