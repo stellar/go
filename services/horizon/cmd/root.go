@@ -261,7 +261,7 @@ var configOpts = support.ConfigOptions{
 		Name:        "max-path-length",
 		ConfigKey:   &config.MaxPathLength,
 		OptType:     types.Uint,
-		FlagDefault: uint(4),
+		FlagDefault: uint(3),
 		Usage:       "the maximum number of assets on the path in `/paths` endpoint, warning: increasing this value will increase /paths response time",
 	},
 	&support.ConfigOption{
