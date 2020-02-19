@@ -65,8 +65,9 @@ type Response struct {
 	Path   string
 	Stream bool
 
-	StatusCode int
-	Body       string
+	StatusCode   int
+	LatestLedger string
+	Body         string
 	// NormalizedBody is body without parts that identify a single
 	// server (ex. domain) and fields known to be different between
 	// instances (ex. `result_meta_xdr`).
@@ -125,6 +126,7 @@ func NewResponse(domain, path string, stream bool) *Response {
 		response.Body = fmt.Sprintf("Empty body [%d]", rand.Uint64())
 	}
 
+	response.LatestLedger = resp.Header.Get("Latest-Ledger")
 	response.Body = string(body)
 
 	normalizedBody := response.Body

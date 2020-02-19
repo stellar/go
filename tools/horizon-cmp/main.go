@@ -35,8 +35,10 @@ const timeFormat = "2006-01-02-15-04-05"
 var pathAccessLog = regexp.MustCompile(`([A-Z]+) https?://[^/]*(/[^ ]*)`)
 
 var (
-	paths        = make(chan cmp.Path, pathsQueueCap)
-	visitedPaths map[string]bool
+	paths = make(chan cmp.Path, pathsQueueCap)
+
+	visitedPathsMutex sync.Mutex
+	visitedPaths      map[string]bool
 )
 
 // CLI params
@@ -158,10 +160,13 @@ func run(cmd *cobra.Command) {
 			continue
 		}
 
+		visitedPathsMutex.Lock()
 		if visitedPaths[pl.ID()] {
+			visitedPathsMutex.Unlock()
 			continue
 		}
 		visitedPaths[pl.ID()] = true
+		visitedPathsMutex.Unlock()
 
 		time.Sleep(time.Second / time.Duration(requestsPerSecond))
 		wg.Add(1)
@@ -182,6 +187,18 @@ func run(cmd *cobra.Command) {
 			}()
 
 			requestWg.Wait()
+
+			// Retry when LatestLedger not equal but only if not empty because
+			// older Horizon versions don't send this header.
+			if a.LatestLedger != "" && b.LatestLedger != "" &&
+				a.LatestLedger != b.LatestLedger {
+				visitedPathsMutex.Lock()
+				visitedPaths[pl.ID()] = false
+				visitedPathsMutex.Unlock()
+				paths <- pl
+				log.Warnf("LatestLedger does not match, retry queued: %s", pl.Path)
+				return
+			}
 
 			var status string
 			if a.Equal(b) {
