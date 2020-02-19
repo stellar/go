@@ -89,7 +89,7 @@ func (h accountSignHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	tx.Network = h.NetworkPassphrase
 
 	// Check that the transaction's source account and any operations it
-	// contain references only to this account.
+	// contains references only to this account.
 	if tx.SourceAccount.GetAccountID() != req.Address {
 		badRequest.Render(w)
 		return
