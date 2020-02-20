@@ -418,6 +418,36 @@ func TestFeeStats(t *testing.T) {
 		assert.Equal(t, fees.P90AcceptedFee, 4000)
 		assert.Equal(t, fees.P95AcceptedFee, 5000)
 		assert.Equal(t, fees.P99AcceptedFee, 8000)
+
+		assert.Equal(t, fees.MaxFee.Min, int64(130))
+		assert.Equal(t, fees.MaxFee.Max, int64(8000))
+		assert.Equal(t, fees.MaxFee.Mode, int64(250))
+		assert.Equal(t, fees.MaxFee.P10, int64(150))
+		assert.Equal(t, fees.MaxFee.P20, int64(200))
+		assert.Equal(t, fees.MaxFee.P30, int64(300))
+		assert.Equal(t, fees.MaxFee.P40, int64(400))
+		assert.Equal(t, fees.MaxFee.P50, int64(500))
+		assert.Equal(t, fees.MaxFee.P60, int64(1000))
+		assert.Equal(t, fees.MaxFee.P70, int64(2000))
+		assert.Equal(t, fees.MaxFee.P80, int64(3000))
+		assert.Equal(t, fees.MaxFee.P90, int64(4000))
+		assert.Equal(t, fees.MaxFee.P95, int64(5000))
+		assert.Equal(t, fees.MaxFee.P99, int64(8000))
+
+		assert.Equal(t, fees.FeeCharged.Min, int64(100))
+		assert.Equal(t, fees.FeeCharged.Max, int64(199))
+		assert.Equal(t, fees.FeeCharged.Mode, int64(140))
+		assert.Equal(t, fees.FeeCharged.P10, int64(100))
+		assert.Equal(t, fees.FeeCharged.P20, int64(120))
+		assert.Equal(t, fees.FeeCharged.P30, int64(130))
+		assert.Equal(t, fees.FeeCharged.P40, int64(140))
+		assert.Equal(t, fees.FeeCharged.P50, int64(150))
+		assert.Equal(t, fees.FeeCharged.P60, int64(160))
+		assert.Equal(t, fees.FeeCharged.P70, int64(170))
+		assert.Equal(t, fees.FeeCharged.P80, int64(180))
+		assert.Equal(t, fees.FeeCharged.P90, int64(190))
+		assert.Equal(t, fees.FeeCharged.P95, int64(195))
+		assert.Equal(t, fees.FeeCharged.P99, int64(199))
 	}
 
 	// connection error
@@ -1363,19 +1393,38 @@ var feesResponse = `{
   "last_ledger": "22606298",
   "last_ledger_base_fee": "100",
   "ledger_capacity_usage": "0.97",
-  "min_accepted_fee": "130",
-  "mode_accepted_fee": "250",
-  "p10_accepted_fee": "150",
-  "p20_accepted_fee": "200",
-  "p30_accepted_fee": "300",
-  "p40_accepted_fee": "400",
-  "p50_accepted_fee": "500",
-  "p60_accepted_fee": "1000",
-  "p70_accepted_fee": "2000",
-  "p80_accepted_fee": "3000",
-  "p90_accepted_fee": "4000",
-  "p95_accepted_fee": "5000",
-  "p99_accepted_fee": "8000"
+  "fee_charged": {
+    "max": "199",
+    "min": "100",
+    "mode": "140",
+    "p10": "100",
+    "p20": "120",
+    "p30": "130",
+    "p40": "140",
+    "p50": "150",
+    "p60": "160",
+    "p70": "170",
+    "p80": "180",
+    "p90": "190",
+    "p95": "195",
+    "p99": "199"
+  },
+  "max_fee": {
+    "min": "130",
+    "max": "8000",
+    "mode": "250",
+    "p10": "150",
+    "p20": "200",
+    "p30": "300",
+    "p40": "400",
+    "p50": "500",
+    "p60": "1000",
+    "p70": "2000",
+    "p80": "3000",
+    "p90": "4000",
+    "p95": "5000",
+    "p99": "8000"
+  }
 }`
 
 var offersResponse = `{
