@@ -7,3 +7,6 @@ keystore:
 
 webauth:
 	$(MAKE) -C exp/services/webauth/ docker-build
+
+recoverysigner:
+	$(MAKE) -C exp/services/recoverysigner/ docker-build
