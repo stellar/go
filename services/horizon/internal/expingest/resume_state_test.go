@@ -264,6 +264,33 @@ func (s *ResumeTestTestSuite) TestIngestOrderbookOnlyWhenLastLedgerExpEqualsCurr
 	)
 }
 
+// TestNewLedgerButInMemoryOnly tests a scenario when there's a new ledger to
+// ingest into a DB but the instances is ingesting into memory only. In such
+// case it should wait for another instance to ingest into a DB.
+func (s *ResumeTestTestSuite) TestNewLedgerButInMemoryOnly() {
+	s.system.config.IngestInMemoryOnly = true
+	defer func() {
+		s.system.config.IngestInMemoryOnly = false
+	}()
+
+	s.historyQ.On("Begin").Return(nil).Once()
+	s.historyQ.On("GetLastLedgerExpIngest").Return(uint32(100), nil).Once()
+	s.historyQ.On("GetExpIngestVersion").Return(CurrentVersion, nil).Once()
+	s.historyQ.On("GetLatestLedger").Return(uint32(0), nil)
+
+	s.ledgeBackend.On("GetLatestLedgerSequence").Return(uint32(111), nil).Once()
+
+	next, err := resumeState{latestSuccessfullyProcessedLedger: 100}.run(s.system)
+	s.Assert().NoError(err)
+	s.Assert().Equal(
+		transition{
+			node:          resumeState{latestSuccessfullyProcessedLedger: 100},
+			sleepDuration: defaultSleep,
+		},
+		next,
+	)
+}
+
 func (s *ResumeTestTestSuite) TestIngestAllMasterNode() {
 	s.historyQ.On("Begin").Return(nil).Once()
 	s.historyQ.On("GetLastLedgerExpIngest").Return(uint32(100), nil).Once()

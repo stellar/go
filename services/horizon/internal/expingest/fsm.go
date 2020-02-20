@@ -222,6 +222,11 @@ func (b buildState) run(s *System) (transition, error) {
 		return start(), errors.New("unexpected checkpointLedger value")
 	}
 
+	// If ingesting into memory wait until other ingesting instance ingests state.
+	if s.config.IngestInMemoryOnly {
+		return start(), nil
+	}
+
 	if err := s.historyQ.Begin(); err != nil {
 		return start(), errors.Wrap(err, "Error starting a transaction")
 	}
@@ -424,6 +429,12 @@ func (r resumeState) run(s *System) (transition, error) {
 			Info("Processed ledger")
 
 		return resumeImmediately(ingestLedger), nil
+	}
+
+	// If ingesting into memory wait until other ingesting instance updates DB.
+	if s.config.IngestInMemoryOnly {
+		log.Info("Waiting for other ingesting instance to ingest into DB...")
+		return retryResume(r), nil
 	}
 
 	log.WithFields(logpkg.F{
