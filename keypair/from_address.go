@@ -1,6 +1,8 @@
 package keypair
 
 import (
+	"encoding"
+
 	"github.com/stellar/go/strkey"
 	"github.com/stellar/go/xdr"
 
@@ -56,4 +58,19 @@ func (kp *FromAddress) SignDecorated(input []byte) (xdr.DecoratedSignature, erro
 
 func (kp *FromAddress) publicKey() ed25519.PublicKey {
 	return ed25519.PublicKey(strkey.MustDecode(strkey.VersionByteAccountID, kp.address))
+}
+
+var _ = encoding.TextMarshaler(&FromAddress{})
+
+func (kp *FromAddress) UnmarshalText(text []byte) error {
+	textKP, err := ParseAddress(string(text))
+	if err != nil {
+		return err
+	}
+	*kp = *textKP
+	return nil
+}
+
+func (kp *FromAddress) MarshalText() ([]byte, error) {
+	return []byte(kp.address), nil
 }
