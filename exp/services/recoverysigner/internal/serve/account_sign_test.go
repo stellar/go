@@ -98,6 +98,66 @@ func TestAccountSign_accountAuthenticatedButNotPermitted(t *testing.T) {
 	assert.JSONEq(t, wantBody, string(body))
 }
 
+func TestAccountSign_accountAuthenticatedButInvalidAddress(t *testing.T) {
+	s := account.NewMemoryStore()
+	h := accountSignHandler{
+		Logger:            supportlog.DefaultLogger,
+		AccountStore:      s,
+		SigningKey:        keypair.MustParseFull("SBIB72S6JMTGJRC6LMKLC5XMHZ2IOHZSZH4SASTN47LECEEJ7QEB6EYK"),
+		NetworkPassphrase: network.TestNetworkPassphrase,
+	}
+
+	ctx := context.Background()
+	ctx = auth.NewContext(ctx, auth.Auth{Address: "GA6HNE7O2N2IXIOBZNZ4IPTS2P6DSAJJF5GD5PDLH5GYOZ6WMPSKCXD4"})
+	r := httptest.NewRequest("POST", "/ZA6HNE7O2N2IXIOBZNZ4IPTS2P6DSAJJF5GD5PDLH5GYOZ6WMPSKCXD4/sign", nil)
+	r = r.WithContext(ctx)
+
+	w := httptest.NewRecorder()
+	m := chi.NewMux()
+	m.Post("/{address}/sign", h.ServeHTTP)
+	m.ServeHTTP(w, r)
+	resp := w.Result()
+
+	require.Equal(t, http.StatusBadRequest, resp.StatusCode)
+	assert.Equal(t, "application/json; charset=utf-8", resp.Header.Get("Content-Type"))
+
+	body, err := ioutil.ReadAll(resp.Body)
+	require.NoError(t, err)
+
+	wantBody := `{"error": "The request was invalid in some way."}`
+	assert.JSONEq(t, wantBody, string(body))
+}
+
+func TestAccountSign_accountAuthenticatedButEmptyAddress(t *testing.T) {
+	s := account.NewMemoryStore()
+	h := accountSignHandler{
+		Logger:            supportlog.DefaultLogger,
+		AccountStore:      s,
+		SigningKey:        keypair.MustParseFull("SBIB72S6JMTGJRC6LMKLC5XMHZ2IOHZSZH4SASTN47LECEEJ7QEB6EYK"),
+		NetworkPassphrase: network.TestNetworkPassphrase,
+	}
+
+	ctx := context.Background()
+	ctx = auth.NewContext(ctx, auth.Auth{Address: "GA6HNE7O2N2IXIOBZNZ4IPTS2P6DSAJJF5GD5PDLH5GYOZ6WMPSKCXD4"})
+	r := httptest.NewRequest("POST", "//sign", nil)
+	r = r.WithContext(ctx)
+
+	w := httptest.NewRecorder()
+	m := chi.NewMux()
+	m.Post("/{address}/sign", h.ServeHTTP)
+	m.ServeHTTP(w, r)
+	resp := w.Result()
+
+	require.Equal(t, http.StatusBadRequest, resp.StatusCode)
+	assert.Equal(t, "application/json; charset=utf-8", resp.Header.Get("Content-Type"))
+
+	body, err := ioutil.ReadAll(resp.Body)
+	require.NoError(t, err)
+
+	wantBody := `{"error": "The request was invalid in some way."}`
+	assert.JSONEq(t, wantBody, string(body))
+}
+
 // Test that when the account exists but the authenticated client does not have
 // permission to access it returns not found.
 func TestAccountSign_phoneNumberAuthenticatedButNotPermitted(t *testing.T) {
