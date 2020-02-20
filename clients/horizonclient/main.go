@@ -86,7 +86,7 @@ var (
 	ErrResultNotPopulated = errors.New("result_xdr not populated")
 
 	// HorizonTimeOut is the default number of seconds before a request to horizon times out.
-	HorizonTimeOut = time.Duration(60)
+	HorizonTimeOut = 60 * time.Second
 
 	// MinuteResolution represents 1 minute used as `resolution` parameter in trade aggregation
 	MinuteResolution = time.Duration(1 * time.Minute)

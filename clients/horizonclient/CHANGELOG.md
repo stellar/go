@@ -6,6 +6,7 @@ file.  This project adheres to [Semantic Versioning](http://semver.org/).
 ## Unreleased
 
 - Add `IsNotFoundError`
+- Change HorizonTimeOut to 60 seconds, which was set to 60 nanoseconds contrary to its documentation.
 
 ## [v2.0.0](https://github.com/stellar/go/releases/tag/horizonclient-v2.0.0) - 2020-01-13
 
