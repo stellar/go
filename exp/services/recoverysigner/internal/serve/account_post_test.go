@@ -182,7 +182,7 @@ func TestAccountPost_notAuthenticatedForAccount(t *testing.T) {
 	req := `{
 	"type": "personal"
 }`
-	r := httptest.NewRequest("POST", "/GAIXCQJ2W2N6TAS6AYW4LW2EBV7XNRUCLNHQB37FARDEWBQXRWP47Q6N", strings.NewReader(req))
+	r := httptest.NewRequest("POST", "/GDUKTYDY3RDNTNOUFJ2GPL5PIZTMTRD5P2CT274SYH67Q5J3NYI7XKYB", strings.NewReader(req))
 	r = r.WithContext(ctx)
 
 	w := httptest.NewRecorder()
@@ -202,6 +202,6 @@ func TestAccountPost_notAuthenticatedForAccount(t *testing.T) {
 }`
 	assert.JSONEq(t, wantBody, string(body))
 
-	_, err = s.Get("GDIXCQJ2W2N6TAS6AYW4LW2EBV7XNRUCLNHQB37FARDEWBQXRWP47Q6N")
+	_, err = s.Get("GDUKTYDY3RDNTNOUFJ2GPL5PIZTMTRD5P2CT274SYH67Q5J3NYI7XKYB")
 	assert.Equal(t, account.ErrNotFound, err)
 }
