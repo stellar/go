@@ -26,7 +26,7 @@ type SingleLedgerStateReader struct {
 	ctx        context.Context
 	has        *historyarchive.HistoryArchiveState
 	archive    historyarchive.ArchiveInterface
-	tempStore  TempSet
+	tempStore  tempSet
 	sequence   uint32
 	readChan   chan readResult
 	streamOnce sync.Once
@@ -40,13 +40,13 @@ type SingleLedgerStateReader struct {
 	disableBucketListHashValidation bool
 }
 
-// Ensure SingleLedgerStateReader implements StateReader
-var _ StateReader = &SingleLedgerStateReader{}
+// Ensure SingleLedgerStateReader implements ChangeReader
+var _ ChangeReader = &SingleLedgerStateReader{}
 
-// TempSet is an interface that must be implemented by stores that
+// tempSet is an interface that must be implemented by stores that
 // hold temporary set of objects for state reader. The implementation
 // does not need to be thread-safe.
-type TempSet interface {
+type tempSet interface {
 	Open() error
 	// Preload batch-loads keys into internal cache (if a store has any) to
 	// improve execution time by removing many round-trips.
@@ -73,7 +73,6 @@ const preloadedEntries = 20000
 func MakeSingleLedgerStateReader(
 	ctx context.Context,
 	archive historyarchive.ArchiveInterface,
-	tempStore TempSet,
 	sequence uint32,
 	maxStreamRetries int,
 ) (*SingleLedgerStateReader, error) {
@@ -82,6 +81,7 @@ func MakeSingleLedgerStateReader(
 		return nil, errors.Wrapf(err, "unable to get checkpoint HAS at ledger sequence %d", sequence)
 	}
 
+	tempStore := &memoryTempSet{}
 	err = tempStore.Open()
 	if err != nil {
 		return nil, errors.Wrap(err, "unable to get open temp store")
@@ -433,11 +433,6 @@ LoopBucketEntry:
 	}
 
 	panic("Shouldn't happen")
-}
-
-// GetSequence impl.
-func (msr *SingleLedgerStateReader) GetSequence() uint32 {
-	return msr.sequence
 }
 
 // Read returns a new ledger entry change on each call, returning io.EOF when the stream ends.

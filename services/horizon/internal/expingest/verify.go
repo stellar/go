@@ -7,7 +7,6 @@ import (
 	"time"
 
 	ingesterrors "github.com/stellar/go/exp/ingest/errors"
-	"github.com/stellar/go/exp/ingest/io"
 	"github.com/stellar/go/exp/ingest/verify"
 	"github.com/stellar/go/services/horizon/internal/db2"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
@@ -125,7 +124,6 @@ func (s *System) verifyState(
 	stateReader, err := s.historyAdapter.GetState(
 		s.ctx,
 		ledgerSequence,
-		&io.MemoryTempSet{},
 		s.config.MaxStreamRetries,
 	)
 	if err != nil {

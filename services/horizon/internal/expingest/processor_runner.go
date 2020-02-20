@@ -183,11 +183,11 @@ func (s *ProcessorRunner) RunHistoryArchiveIngestion(checkpointLedger uint32) (i
 	changeStats := io.StatsChangeProcessor{}
 	changeProcessor := s.buildChangeProcessor(&changeStats, historyArchiveSource)
 
-	var stateReader io.StateReader
+	var changeReader io.ChangeReader
 	var err error
 
 	if checkpointLedger == 1 {
-		stateReader = &io.GenesisLedgerStateReader{
+		changeReader = &io.GenesisLedgerStateReader{
 			NetworkPassphrase: s.config.NetworkPassphrase,
 		}
 	} else {
@@ -195,23 +195,22 @@ func (s *ProcessorRunner) RunHistoryArchiveIngestion(checkpointLedger uint32) (i
 			return changeStats.GetResults(), errors.Wrap(err, "Error validating bucket list from HAS")
 		}
 
-		stateReader, err = s.historyAdapter.GetState(
+		changeReader, err = s.historyAdapter.GetState(
 			s.ctx,
 			checkpointLedger,
-			&io.MemoryTempSet{},
 			s.config.MaxStreamRetries,
 		)
 		if err != nil {
 			return changeStats.GetResults(), errors.Wrap(err, "Error creating HAS reader")
 		}
 	}
-	defer stateReader.Close()
+	defer changeReader.Close()
 
 	log.WithField("ledger", checkpointLedger).
 		Info("Processing entries from History Archive Snapshot")
 
 	err = io.StreamChanges(changeProcessor, newloggingChangeReader(
-		stateReader,
+		changeReader,
 		"historyArchive",
 		checkpointLedger,
 		logFrequency,

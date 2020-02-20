@@ -24,7 +24,7 @@ func StreamLedgerTransactions(
 			return nil
 		}
 		if err != nil {
-			return errors.Wrapf(err, "could not read transaction")
+			return errors.Wrap(err, "could not read transaction")
 		}
 		if err = txProcessor.ProcessTransaction(tx); err != nil {
 			return errors.Wrapf(
@@ -46,7 +46,7 @@ func StreamChanges(
 			return nil
 		}
 		if err != nil {
-			return errors.Wrapf(err, "could not read transaction")
+			return errors.Wrap(err, "could not read transaction")
 		}
 
 		if err = changeProcessor.ProcessChange(change); err != nil {

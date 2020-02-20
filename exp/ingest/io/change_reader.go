@@ -13,6 +13,10 @@ type ChangeReader interface {
 	// Read should return the next `Change` in the leader. If there are no more
 	// changes left it should return an `io.EOF` error.
 	Read() (Change, error)
+	// Close should be called when reading is finished. This is especially
+	// helpful when there are still some changes available so reader can stop
+	// streaming them.
+	Close() error
 }
 
 // LedgerChangeReader is a ChangeReader which returns Changes from Stellar Core
@@ -41,11 +45,6 @@ func NewLedgerChangeReader(
 	}
 
 	return &LedgerChangeReader{dbReader: *reader}, nil
-}
-
-// GetSequence returns the ledger sequence for the reader
-func (r *LedgerChangeReader) GetSequence() uint32 {
-	return r.dbReader.GetSequence()
 }
 
 // GetHeader returns the ledger header for the reader
@@ -155,4 +154,12 @@ func (r *LedgerChangeReader) Read() (Change, error) {
 	}
 
 	return r.getNextUpgradeChange()
+}
+
+func (r *LedgerChangeReader) Close() error {
+	r.pending = nil
+	r.streamedFeeChanges = true
+	r.streamedMetaChanges = true
+	r.streamedUpgradeChanges = true
+	return r.dbReader.Close()
 }

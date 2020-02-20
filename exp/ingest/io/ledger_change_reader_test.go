@@ -72,7 +72,6 @@ func TestNewLedgerChangeReaderSucceeds(t *testing.T) {
 	reader, err := NewLedgerChangeReader(context.Background(), seq, mock)
 	assert.NoError(t, err)
 
-	assert.Equal(t, reader.GetSequence(), seq)
 	assert.Equal(t, reader.GetHeader(), header)
 }
 

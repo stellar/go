@@ -22,16 +22,16 @@ func allChanges(changeReader io.ChangeReader) ([]io.Change, error) {
 	}
 }
 
-func createMockReader(changes []io.Change, err error) *io.MockStateReader {
-	mockStateReader := &io.MockStateReader{}
+func createMockReader(changes []io.Change, err error) *io.MockChangeReader {
+	mockChangeReader := &io.MockChangeReader{}
 	for _, change := range changes {
-		mockStateReader.On("Read").
+		mockChangeReader.On("Read").
 			Return(change, nil).Once()
 	}
-	mockStateReader.On("Read").
+	mockChangeReader.On("Read").
 		Return(io.Change{}, err).Once()
 
-	return mockStateReader
+	return mockChangeReader
 }
 
 func TestLoggingChangeReader(t *testing.T) {
