@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"net/http"
 
-	firebase "firebase.google.com/go"
+	firebaseauth "firebase.google.com/go/auth"
 	"github.com/go-chi/chi"
 	"github.com/stellar/go/clients/horizonclient"
 	"github.com/stellar/go/exp/services/recoverysigner/internal/account"
@@ -49,13 +49,13 @@ func Serve(opts Options) {
 }
 
 type handlerDeps struct {
-	Logger            *supportlog.Entry
-	HorizonClient     horizonclient.ClientInterface
-	NetworkPassphrase string
-	SigningKey        *keypair.Full
-	AccountStore      account.Store
-	SEP10JWTPublicKey *ecdsa.PublicKey
-	FirebaseApp       *firebase.App
+	Logger             *supportlog.Entry
+	HorizonClient      horizonclient.ClientInterface
+	NetworkPassphrase  string
+	SigningKey         *keypair.Full
+	AccountStore       account.Store
+	SEP10JWTPublicKey  *ecdsa.PublicKey
+	FirebaseAuthClient *firebaseauth.Client
 }
 
 func getHandlerDeps(opts Options) (handlerDeps, error) {
@@ -85,19 +85,19 @@ func getHandlerDeps(opts Options) (handlerDeps, error) {
 	// TODO: Replace this in-memory store with Postgres.
 	accountStore := account.NewMemoryStore()
 
-	firebaseApp, err := auth.NewFirebaseApp(opts.FirebaseProjectID)
+	firebaseAuthClient, err := auth.NewFirebaseAuthClient(opts.FirebaseProjectID)
 	if err != nil {
-		return handlerDeps{}, errors.Wrap(err, "error creating firebase app")
+		return handlerDeps{}, errors.Wrap(err, "error setting up firebase auth client")
 	}
 
 	deps := handlerDeps{
-		Logger:            opts.Logger,
-		HorizonClient:     horizonClient,
-		NetworkPassphrase: opts.NetworkPassphrase,
-		SigningKey:        signingKey,
-		AccountStore:      accountStore,
-		SEP10JWTPublicKey: sep10JWTPublicKey,
-		FirebaseApp:       firebaseApp,
+		Logger:             opts.Logger,
+		HorizonClient:      horizonClient,
+		NetworkPassphrase:  opts.NetworkPassphrase,
+		SigningKey:         signingKey,
+		AccountStore:       accountStore,
+		SEP10JWTPublicKey:  sep10JWTPublicKey,
+		FirebaseAuthClient: firebaseAuthClient,
 	}
 
 	return deps, nil
@@ -112,7 +112,7 @@ func handler(deps handlerDeps) http.Handler {
 	mux.Get("/health", health.PassHandler{}.ServeHTTP)
 	mux.Route("/accounts", func(mux chi.Router) {
 		mux.Use(auth.SEP10Middleware(deps.SEP10JWTPublicKey))
-		mux.Use(auth.FirebaseMiddleware(auth.FirebaseTokenVerifierLive{App: deps.FirebaseApp}))
+		mux.Use(auth.FirebaseMiddleware(auth.FirebaseTokenVerifierLive{AuthClient: deps.FirebaseAuthClient}))
 		mux.Get("/", accountListHandler{
 			Logger:         deps.Logger,
 			SigningAddress: deps.SigningKey.FromAddress(),
