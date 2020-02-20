@@ -29,11 +29,11 @@ func TestStateVerifierTestSuite(t *testing.T) {
 type StateVerifierTestSuite struct {
 	suite.Suite
 	verifier        *StateVerifier
-	mockStateReader *io.MockStateReader
+	mockStateReader *io.MockChangeReader
 }
 
 func (s *StateVerifierTestSuite) SetupTest() {
-	s.mockStateReader = &io.MockStateReader{}
+	s.mockStateReader = &io.MockChangeReader{}
 	s.verifier = &StateVerifier{
 		StateReader: s.mockStateReader,
 	}

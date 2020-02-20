@@ -6,44 +6,9 @@ import (
 	stdio "io"
 	"testing"
 
-	"github.com/stellar/go/exp/ingest/io"
 	"github.com/stellar/go/support/historyarchive"
 	"github.com/stretchr/testify/assert"
 )
-
-// commented out this test for now
-// func TestGetLatestLedgerSequence(t *testing.T) {
-// 	archive, e := getTestArchive()
-// 	if !assert.NoError(t, e) {
-// 		return
-// 	}
-
-// 	haa := MakeHistoryArchiveAdapter(archive)
-// 	seq, e := haa.GetLatestLedgerSequence()
-// 	if !assert.NoError(t, e) {
-// 		return
-// 	}
-// 	assert.Equal(t, uint32(931455), seq)
-// }
-
-func TestGetState_Sequence(t *testing.T) {
-	archive, e := getTestArchive()
-	if !assert.NoError(t, e) {
-		return
-	}
-	haa := MakeHistoryArchiveAdapter(archive)
-
-	seq, e := haa.GetLatestLedgerSequence()
-	if !assert.NoError(t, e) {
-		return
-	}
-
-	sr, e := haa.GetState(context.Background(), seq, &io.MemoryTempSet{}, 0)
-	if !assert.NoError(t, e) {
-		return
-	}
-	assert.Equal(t, sr.GetSequence(), seq)
-}
 
 func TestGetState_Read(t *testing.T) {
 	archive, e := getTestArchive()
@@ -52,7 +17,7 @@ func TestGetState_Read(t *testing.T) {
 	}
 	haa := MakeHistoryArchiveAdapter(archive)
 
-	sr, e := haa.GetState(context.Background(), 21686847, &io.MemoryTempSet{}, 0)
+	sr, e := haa.GetState(context.Background(), 21686847, 0)
 	if !assert.NoError(t, e) {
 		return
 	}
