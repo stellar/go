@@ -418,6 +418,36 @@ func TestFeeStats(t *testing.T) {
 		assert.Equal(t, fees.P90AcceptedFee, 4000)
 		assert.Equal(t, fees.P95AcceptedFee, 5000)
 		assert.Equal(t, fees.P99AcceptedFee, 8000)
+
+		assert.Equal(t, fees.MaxFee.Min, int64(130))
+		assert.Equal(t, fees.MaxFee.Max, int64(8000))
+		assert.Equal(t, fees.MaxFee.Mode, int64(250))
+		assert.Equal(t, fees.MaxFee.P10, int64(150))
+		assert.Equal(t, fees.MaxFee.P20, int64(200))
+		assert.Equal(t, fees.MaxFee.P30, int64(300))
+		assert.Equal(t, fees.MaxFee.P40, int64(400))
+		assert.Equal(t, fees.MaxFee.P50, int64(500))
+		assert.Equal(t, fees.MaxFee.P60, int64(1000))
+		assert.Equal(t, fees.MaxFee.P70, int64(2000))
+		assert.Equal(t, fees.MaxFee.P80, int64(3000))
+		assert.Equal(t, fees.MaxFee.P90, int64(4000))
+		assert.Equal(t, fees.MaxFee.P95, int64(5000))
+		assert.Equal(t, fees.MaxFee.P99, int64(8000))
+
+		assert.Equal(t, fees.FeeCharged.Min, int64(100))
+		assert.Equal(t, fees.FeeCharged.Max, int64(199))
+		assert.Equal(t, fees.FeeCharged.Mode, int64(140))
+		assert.Equal(t, fees.FeeCharged.P10, int64(100))
+		assert.Equal(t, fees.FeeCharged.P20, int64(120))
+		assert.Equal(t, fees.FeeCharged.P30, int64(130))
+		assert.Equal(t, fees.FeeCharged.P40, int64(140))
+		assert.Equal(t, fees.FeeCharged.P50, int64(150))
+		assert.Equal(t, fees.FeeCharged.P60, int64(160))
+		assert.Equal(t, fees.FeeCharged.P70, int64(170))
+		assert.Equal(t, fees.FeeCharged.P80, int64(180))
+		assert.Equal(t, fees.FeeCharged.P90, int64(190))
+		assert.Equal(t, fees.FeeCharged.P95, int64(195))
+		assert.Equal(t, fees.FeeCharged.P99, int64(199))
 	}
 
 	// connection error
@@ -1364,23 +1394,24 @@ var feesResponse = `{
   "last_ledger_base_fee": "100",
   "ledger_capacity_usage": "0.97",
   "fee_charged": {
-    "max": "100",
+    "max": "199",
     "min": "100",
-    "mode": "100",
+    "mode": "140",
     "p10": "100",
-    "p20": "100",
-    "p30": "100",
-    "p40": "100",
-    "p50": "100",
-    "p60": "100",
-    "p70": "100",
-    "p80": "100",
-    "p90": "100",
-    "p95": "100",
-    "p99": "100"
+    "p20": "120",
+    "p30": "130",
+    "p40": "140",
+    "p50": "150",
+    "p60": "160",
+    "p70": "170",
+    "p80": "180",
+    "p90": "190",
+    "p95": "195",
+    "p99": "199"
   },
   "max_fee": {
     "min": "130",
+    "max": "8000",
     "mode": "250",
     "p10": "150",
     "p20": "200",
