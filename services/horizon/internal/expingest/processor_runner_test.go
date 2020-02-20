@@ -101,7 +101,6 @@ func TestProcessorRunnerRunHistoryArchiveIngestionHistoryArchive(t *testing.T) {
 			"GetState",
 			mock.AnythingOfType("*context.emptyCtx"),
 			uint32(63),
-			&io.MemoryTempSet{},
 			config.MaxStreamRetries,
 		).
 		Return(

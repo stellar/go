@@ -48,7 +48,6 @@ func (s *SingleLedgerStateReaderTestSuite) SetupTest() {
 	s.reader, err = MakeSingleLedgerStateReader(
 		context.Background(),
 		s.mockArchive,
-		&MemoryTempSet{},
 		ledgerSeq,
 		0,
 	)
@@ -283,7 +282,6 @@ func (s *ReadBucketEntryTestSuite) SetupTest() {
 	s.reader, err = MakeSingleLedgerStateReader(
 		ctx,
 		s.mockArchive,
-		&MemoryTempSet{},
 		ledgerSeq,
 		2,
 	)
