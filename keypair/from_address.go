@@ -61,6 +61,7 @@ func (kp *FromAddress) publicKey() ed25519.PublicKey {
 }
 
 var _ = encoding.TextMarshaler(&FromAddress{})
+var _ = encoding.TextUnmarshaler(&FromAddress{})
 
 func (kp *FromAddress) UnmarshalText(text []byte) error {
 	textKP, err := ParseAddress(string(text))
