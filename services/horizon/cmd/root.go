@@ -143,11 +143,11 @@ var configOpts = support.ConfigOptions{
 		Usage:       "tcp port to listen on for http requests",
 	},
 	&support.ConfigOption{
-		Name:        "internal-port",
-		ConfigKey:   &config.InternalPort,
+		Name:        "admin-port",
+		ConfigKey:   &config.AdminPort,
 		OptType:     types.Uint,
 		FlagDefault: uint(0),
-		Usage:       "WARNING: this should not be accessible from the Internet and does not use TLS, tcp port to listen on for internal http requests, 0 (default) disables the internal server",
+		Usage:       "WARNING: this should not be accessible from the Internet and does not use TLS, tcp port to listen on for admin http requests, 0 (default) disables the admin server",
 	},
 	&support.ConfigOption{
 		Name:        "max-db-connections",
@@ -261,7 +261,7 @@ var configOpts = support.ConfigOptions{
 		Name:        "max-path-length",
 		ConfigKey:   &config.MaxPathLength,
 		OptType:     types.Uint,
-		FlagDefault: uint(4),
+		FlagDefault: uint(3),
 		Usage:       "the maximum number of assets on the path in `/paths` endpoint, warning: increasing this value will increase /paths response time",
 	},
 	&support.ConfigOption{
