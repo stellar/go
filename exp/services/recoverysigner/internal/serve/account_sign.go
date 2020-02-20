@@ -20,8 +20,8 @@ type accountSignHandler struct {
 }
 
 type accountSignRequest struct {
-	Address     string `path:"address"`
-	Transaction string `json:"transaction" form:"transaction"`
+	Address     *keypair.FromAddress `path:"address"`
+	Transaction string               `json:"transaction" form:"transaction"`
 }
 
 type accountSignResponse struct {
@@ -43,13 +43,13 @@ func (h accountSignHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// Decode request.
 	req := accountSignRequest{}
 	err := httpdecode.Decode(r, &req)
-	if err != nil || req.Address == "" {
+	if err != nil || req.Address == nil {
 		badRequest.Render(w)
 		return
 	}
 
 	// Find the account that the request is for.
-	acc, err := h.AccountStore.Get(req.Address)
+	acc, err := h.AccountStore.Get(req.Address.Address())
 	if err == account.ErrNotFound {
 		notFound.Render(w)
 		return
@@ -90,7 +90,7 @@ func (h accountSignHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	// Check that the transaction's source account and any operations it
 	// contains references only to this account.
-	if tx.SourceAccount.GetAccountID() != req.Address {
+	if tx.SourceAccount.GetAccountID() != req.Address.Address() {
 		badRequest.Render(w)
 		return
 	}
@@ -99,7 +99,7 @@ func (h accountSignHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		if opSourceAccount == nil {
 			continue
 		}
-		if op.GetSourceAccount().GetAccountID() != req.Address {
+		if op.GetSourceAccount().GetAccountID() != req.Address.Address() {
 			badRequest.Render(w)
 			return
 		}
