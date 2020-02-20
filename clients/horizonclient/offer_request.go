@@ -12,29 +12,33 @@ import (
 
 // BuildURL creates the endpoint to be queried based on the data in the OfferRequest struct.
 func (or OfferRequest) BuildURL() (endpoint string, err error) {
-	// backwards compatibility  support
-	if len(or.ForAccount) > 0 {
-		endpoint = fmt.Sprintf("accounts/%s/offers", or.ForAccount)
-		queryParams := addQueryParams(cursor(or.Cursor), limit(or.Limit), or.Order)
-		if queryParams != "" {
-			endpoint = fmt.Sprintf("%s?%s", endpoint, queryParams)
-		}
+	if len(or.OfferID) > 0 {
+		endpoint = fmt.Sprintf("offers/%s", or.OfferID)
 	} else {
-		query := url.Values{}
-		if len(or.Seller) > 0 {
-			query.Add("seller", or.Seller)
-		}
-		if len(or.Selling) > 0 {
-			query.Add("selling", or.Selling)
-		}
-		if len(or.Buying) > 0 {
-			query.Add("buying", or.Buying)
-		}
+		// backwards compatibility  support
+		if len(or.ForAccount) > 0 {
+			endpoint = fmt.Sprintf("accounts/%s/offers", or.ForAccount)
+			queryParams := addQueryParams(cursor(or.Cursor), limit(or.Limit), or.Order)
+			if queryParams != "" {
+				endpoint = fmt.Sprintf("%s?%s", endpoint, queryParams)
+			}
+		} else {
+			query := url.Values{}
+			if len(or.Seller) > 0 {
+				query.Add("seller", or.Seller)
+			}
+			if len(or.Selling) > 0 {
+				query.Add("selling", or.Selling)
+			}
+			if len(or.Buying) > 0 {
+				query.Add("buying", or.Buying)
+			}
 
-		endpoint = fmt.Sprintf("offers?%s", query.Encode())
-		pageParams := addQueryParams(cursor(or.Cursor), limit(or.Limit), or.Order)
-		if pageParams != "" {
-			endpoint = fmt.Sprintf("%s&%s", endpoint, pageParams)
+			endpoint = fmt.Sprintf("offers?%s", query.Encode())
+			pageParams := addQueryParams(cursor(or.Cursor), limit(or.Limit), or.Order)
+			if pageParams != "" {
+				endpoint = fmt.Sprintf("%s&%s", endpoint, pageParams)
+			}
 		}
 	}
 
