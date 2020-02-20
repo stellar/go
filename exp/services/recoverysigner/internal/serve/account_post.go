@@ -20,7 +20,7 @@ type accountPostHandler struct {
 }
 
 type accountPostRequest struct {
-	Address         string                       `path:"address"`
+	Address         *keypair.FromAddress         `path:"address"`
 	Type            string                       `json:"type" form:"type"`
 	OwnerIdentities accountPostRequestIdentities `json:"owner_identities" form:"owner_identities"`
 	OtherIdentities accountPostRequestIdentities `json:"other_identities" form:"other_identities"`
@@ -43,18 +43,18 @@ func (h accountPostHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	req := accountPostRequest{}
 	err := httpdecode.Decode(r, &req)
-	if err != nil || req.Address == "" {
+	if err != nil || req.Address == nil {
 		badRequest.Render(w)
 		return
 	}
 
-	if req.Address != claims.Address {
+	if req.Address.Address() != claims.Address {
 		unauthorized.Render(w)
 		return
 	}
 
 	acc := account.Account{
-		Address: req.Address,
+		Address: req.Address.Address(),
 		Type:    req.Type, // TODO: Validate input type.
 		OwnerIdentities: account.Identities{
 			Address:     req.OwnerIdentities.Address,
@@ -78,7 +78,7 @@ func (h accountPostHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	resp := accountResponse{
-		Address:  req.Address,
+		Address:  req.Address.Address(),
 		Type:     req.Type,
 		Identity: "account",
 		Signer:   h.SigningAddress.Address(),
