@@ -232,8 +232,8 @@ func (l Ledger) PagingToken() string {
 	return l.PT
 }
 
-// Action needed in release: horizon-v0.25.0: Move back to Offer, remove embedded struct
-type offerBase struct {
+// Offer is the display form of an offer to trade currency.
+type Offer struct {
 	Links struct {
 		Self       hal.Link `json:"self"`
 		OfferMaker hal.Link `json:"offer_maker"`
@@ -248,11 +248,7 @@ type offerBase struct {
 	Price              string     `json:"price"`
 	LastModifiedLedger int32      `json:"last_modified_ledger"`
 	LastModifiedTime   *time.Time `json:"last_modified_time"`
-}
 
-// Offer is the display form of an offer to trade currency.
-type Offer struct {
-	offerBase
 	// Action needed in release: horizon-v0.25.0: Make id a string
 	ID int64 `json:"id"`
 }
@@ -269,7 +265,26 @@ func (o *Offer) UnmarshalJSON(data []byte) error {
 		ID json.Number `json:"id"`
 	}
 
-	if err := json.Unmarshal(data, &o.offerBase); err != nil {
+	// This is a temporary workaround so that we can parse ID as number or
+	// string and the rest of the fields with their original values
+	var offerBase struct {
+		Links struct {
+			Self       hal.Link `json:"self"`
+			OfferMaker hal.Link `json:"offer_maker"`
+		} `json:"_links"`
+
+		PT                 string     `json:"paging_token"`
+		Seller             string     `json:"seller"`
+		Selling            Asset      `json:"selling"`
+		Buying             Asset      `json:"buying"`
+		Amount             string     `json:"amount"`
+		PriceR             Price      `json:"price_r"`
+		Price              string     `json:"price"`
+		LastModifiedLedger int32      `json:"last_modified_ledger"`
+		LastModifiedTime   *time.Time `json:"last_modified_time"`
+	}
+
+	if err := json.Unmarshal(data, &offerBase); err != nil {
 		return err
 	}
 
@@ -281,6 +296,17 @@ func (o *Offer) UnmarshalJSON(data []byte) error {
 	if err != nil {
 		return err
 	}
+
+	o.Links = offerBase.Links
+	o.PT = offerBase.PT
+	o.Seller = offerBase.Seller
+	o.Selling = offerBase.Selling
+	o.Buying = offerBase.Buying
+	o.Amount = offerBase.Amount
+	o.PriceR = offerBase.PriceR
+	o.Price = offerBase.Price
+	o.LastModifiedLedger = offerBase.LastModifiedLedger
+	o.LastModifiedTime = offerBase.LastModifiedTime
 
 	o.ID = offerID
 
