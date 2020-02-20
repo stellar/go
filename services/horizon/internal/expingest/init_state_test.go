@@ -178,7 +178,7 @@ func (s *InitStateTestSuite) TestBuildStateOldHistory() {
 	)
 }
 
-// TestResumeStateBehind is testing the case when:
+// TestResumeStateInFront is testing the case when:
 // * state doesn't need to be rebuilt,
 // * history is in front of expingest.
 func (s *InitStateTestSuite) TestResumeStateInFront() {
@@ -189,6 +189,26 @@ func (s *InitStateTestSuite) TestResumeStateInFront() {
 
 	s.historyQ.On("UpdateLastLedgerExpIngest", uint32(0)).Return(nil).Once()
 	s.historyQ.On("Commit").Return(nil).Once()
+
+	next, err := startState{}.run(s.system)
+	s.Assert().NoError(err)
+	s.Assert().Equal(transition{node: startState{}, sleepDuration: defaultSleep}, next)
+}
+
+// TestResumeStateInFrontInMemoryOnly is testing the case when:
+// * state doesn't need to be rebuilt,
+// * history is in front of expingest,
+// * Horizon is ingesting into memory only.
+func (s *InitStateTestSuite) TestResumeStateInFrontInMemoryOnly() {
+	s.system.config.IngestInMemoryOnly = true
+	defer func() {
+		s.system.config.IngestInMemoryOnly = false
+	}()
+
+	s.historyQ.On("Begin").Return(nil).Once()
+	s.historyQ.On("GetLastLedgerExpIngest").Return(uint32(100), nil).Once()
+	s.historyQ.On("GetExpIngestVersion").Return(CurrentVersion, nil).Once()
+	s.historyQ.On("GetLatestLedger").Return(uint32(130), nil).Once()
 
 	next, err := startState{}.run(s.system)
 	s.Assert().NoError(err)

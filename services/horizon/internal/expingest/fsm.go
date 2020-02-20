@@ -172,6 +172,12 @@ func (startState) run(s *System) (transition, error) {
 
 	switch {
 	case lastHistoryLedger > lastIngestedLedger:
+		// If ingesting into memory wait until other ingesting instance ingests state.
+		if s.config.IngestInMemoryOnly {
+			log.Info("Waiting for other ingesting instance to ingest into DB...")
+			return start(), nil
+		}
+
 		// Expingest was running at some point the past but was turned off.
 		// Now it's on by default but the latest history ledger is greater
 		// than the latest expingest ledger. We reset the exp ledger sequence
@@ -224,6 +230,7 @@ func (b buildState) run(s *System) (transition, error) {
 
 	// If ingesting into memory wait until other ingesting instance ingests state.
 	if s.config.IngestInMemoryOnly {
+		log.Info("Waiting for other ingesting instance to ingest into DB...")
 		return start(), nil
 	}
 
@@ -494,6 +501,12 @@ func (h historyRangeState) String() string {
 
 // historyRangeState is used when catching up history data
 func (h historyRangeState) run(s *System) (transition, error) {
+	// If ingesting into memory wait until other ingesting instance ingests state.
+	if s.config.IngestInMemoryOnly {
+		log.Info("Waiting for other ingesting instance to ingest into DB...")
+		return start(), nil
+	}
+
 	if h.fromLedger == 0 || h.toLedger == 0 ||
 		h.fromLedger > h.toLedger {
 		return start(), errors.Errorf("invalid range: [%d, %d]", h.fromLedger, h.toLedger)
