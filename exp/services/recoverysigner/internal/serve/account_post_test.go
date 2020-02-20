@@ -26,7 +26,7 @@ func TestAccountPost_new(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	ctx = auth.NewContext(ctx, auth.Claims{Address: "GDIXCQJ2W2N6TAS6AYW4LW2EBV7XNRUCLNHQB37FARDEWBQXRWP47Q6N"})
+	ctx = auth.NewContext(ctx, auth.Auth{Address: "GDIXCQJ2W2N6TAS6AYW4LW2EBV7XNRUCLNHQB37FARDEWBQXRWP47Q6N"})
 	req := `{
 	"type": "share",
 	"owner_identities": {
@@ -95,7 +95,7 @@ func TestAccountPost_accountAlreadyExists(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	ctx = auth.NewContext(ctx, auth.Claims{Address: "GDIXCQJ2W2N6TAS6AYW4LW2EBV7XNRUCLNHQB37FARDEWBQXRWP47Q6N"})
+	ctx = auth.NewContext(ctx, auth.Auth{Address: "GDIXCQJ2W2N6TAS6AYW4LW2EBV7XNRUCLNHQB37FARDEWBQXRWP47Q6N"})
 	req := `{
 	"type": "share"
 }`
@@ -137,7 +137,7 @@ func TestAccountPost_notAuthenticatedForAccount(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	ctx = auth.NewContext(ctx, auth.Claims{Address: "GDIXCQJ2W2N6TAS6AYW4LW2EBV7XNRUCLNHQB37FARDEWBQXRWP47Q6N"})
+	ctx = auth.NewContext(ctx, auth.Auth{Address: "GDIXCQJ2W2N6TAS6AYW4LW2EBV7XNRUCLNHQB37FARDEWBQXRWP47Q6N"})
 	req := `{
 	"type": "personal"
 }`
