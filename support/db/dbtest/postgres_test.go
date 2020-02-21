@@ -20,7 +20,7 @@ func TestPostgres(t *testing.T) {
 
 	conn = db.Open()
 	_, err = conn.Exec("SELECT 1")
-	require.EqualError(t, err, fmt.Sprintf("pq: database \"%s\" does not exist", db.databaseName))
+	require.EqualError(t, err, fmt.Sprintf("pq: database \"%s\" does not exist", db.dbName))
 	require.Contains(t, err.Error(), "data")
 
 	// ensure Close() can be called multiple times
