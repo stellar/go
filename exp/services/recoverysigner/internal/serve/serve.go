@@ -4,6 +4,7 @@ import (
 	"crypto/ecdsa"
 	"fmt"
 	"net/http"
+	"time"
 
 	firebaseauth "firebase.google.com/go/auth"
 	"github.com/go-chi/chi"
@@ -77,7 +78,7 @@ func getHandlerDeps(opts Options) (handlerDeps, error) {
 	horizonClient := &horizonclient.Client{
 		HorizonURL: opts.HorizonURL,
 		HTTP: &http.Client{
-			Timeout: horizonclient.HorizonTimeOut,
+			Timeout: time.Second * time.Duration(horizonclient.HorizonTimeOut),
 		},
 	}
 	horizonClient.SetHorizonTimeOut(uint(horizonclient.HorizonTimeOut))

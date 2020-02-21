@@ -57,7 +57,7 @@ func handler(opts Options) (http.Handler, error) {
 	}
 
 	httpClient := &http.Client{
-		Timeout: horizonclient.HorizonTimeOut,
+		Timeout: time.Second * time.Duration(horizonclient.HorizonTimeOut),
 	}
 
 	horizonClient := &horizonclient.Client{

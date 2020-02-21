@@ -86,7 +86,7 @@ var (
 	ErrResultNotPopulated = errors.New("result_xdr not populated")
 
 	// HorizonTimeOut is the default number of seconds before a request to horizon times out.
-	HorizonTimeOut = time.Duration(60)
+	HorizonTimeOut = uint(60)
 
 	// MinuteResolution represents 1 minute used as `resolution` parameter in trade aggregation
 	MinuteResolution = time.Duration(1 * time.Minute)
@@ -131,8 +131,9 @@ type Client struct {
 	AppName string
 
 	// AppVersion is the version of the application using the horizonclient package
-	AppVersion     string
-	horizonTimeOut time.Duration
+	AppVersion string
+	// horizonTimeOut is the timeout in seconds
+	horizonTimeOut uint
 	isTestNet      bool
 
 	// clock is a Clock returning the current time.

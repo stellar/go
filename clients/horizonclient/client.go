@@ -57,7 +57,7 @@ func (c *Client) sendRequestURL(requestURL string, method string, a interface{})
 	if c.horizonTimeOut == 0 {
 		c.horizonTimeOut = HorizonTimeOut
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*c.horizonTimeOut)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*time.Duration(c.horizonTimeOut))
 	resp, err := c.HTTP.Do(req.WithContext(ctx))
 	if err != nil {
 		cancel()
@@ -217,12 +217,12 @@ func (c *Client) fixHorizonURL() string {
 
 // SetHorizonTimeOut allows users to set the number of seconds before a horizon request is cancelled.
 func (c *Client) SetHorizonTimeOut(t uint) *Client {
-	c.horizonTimeOut = time.Duration(t)
+	c.horizonTimeOut = t
 	return c
 }
 
 // HorizonTimeOut returns the current timeout for a horizon client
-func (c *Client) HorizonTimeOut() time.Duration {
+func (c *Client) HorizonTimeOut() uint {
 	return c.horizonTimeOut
 }
 
