@@ -151,6 +151,7 @@ type ClientInterface interface {
 	Metrics() (hProtocol.Metrics, error)
 	FeeStats() (hProtocol.FeeStats, error)
 	Offers(request OfferRequest) (hProtocol.OffersPage, error)
+	OfferDetails(offerID string) (offer hProtocol.Offer, err error)
 	Operations(request OperationRequest) (operations.OperationsPage, error)
 	OperationDetail(id string) (operations.Operation, error)
 	SubmitTransactionXDR(transactionXdr string) (hProtocol.TransactionSuccess, error)
@@ -275,9 +276,9 @@ type feeStatsRequest struct {
 }
 
 // OfferRequest struct contains data for getting offers made by an account from a horizon server.
-// "ForAccount" is required.
 // The query parameters (Order, Cursor and Limit) are optional. All or none can be set.
 type OfferRequest struct {
+	OfferID    string
 	ForAccount string
 	Selling    string
 	Seller     string

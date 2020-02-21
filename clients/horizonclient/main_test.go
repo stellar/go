@@ -553,6 +553,40 @@ func TestOfferRequest(t *testing.T) {
 		assert.Len(t, offers.Embedded.Records, 1)
 	}
 }
+func TestOfferDetailsRequest(t *testing.T) {
+	hmock := httptest.NewClient()
+	client := &Client{
+		HorizonURL: "https://localhost/",
+		HTTP:       hmock,
+	}
+
+	// account offers
+	hmock.On(
+		"GET",
+		"https://localhost/offers/5635",
+	).ReturnString(200, offerResponse)
+
+	record, err := client.OfferDetails("5635")
+	if assert.NoError(t, err) {
+		assert.IsType(t, record, hProtocol.Offer{})
+		assert.Equal(t, record.ID, int64(5635))
+		assert.Equal(t, record.Seller, "GD6UOZ3FGFI5L2X6F52YPJ6ICSW375BNBZIQC4PCLSEOO6SMX7CUS5MB")
+		assert.Equal(t, record.PT, "5635")
+		assert.Equal(t, record.Selling.Type, "native")
+		assert.Equal(t, record.Buying.Code, "AstroDollar")
+		assert.Equal(t, record.Buying.Issuer, "GDA2EHKPDEWZTAL6B66FO77HMOZL3RHZTIJO7KJJK5RQYSDUXEYMPJYY")
+		assert.Equal(t, record.Amount, "100.0000000")
+		assert.Equal(t, record.LastModifiedLedger, int32(356183))
+	}
+
+	_, err = client.OfferDetails("S6ES")
+	assert.Error(t, err)
+	assert.EqualError(t, err, "invalid offer ID provided")
+
+	_, err = client.OfferDetails("")
+	assert.Error(t, err)
+	assert.EqualError(t, err, "no offer ID provided")
+}
 
 func TestOperationsRequest(t *testing.T) {
 	hmock := httptest.NewClient()
@@ -1476,6 +1510,38 @@ var offersResponse = `{
     ]
   }
 }`
+
+var offerResponse = `
+{
+  "_links": {
+    "self": {
+      "href": "https://horizon-testnet.stellar.org/offers/5635"
+    },
+    "offer_maker": {
+      "href": "https://horizon-testnet.stellar.org/accounts/GD6UOZ3FGFI5L2X6F52YPJ6ICSW375BNBZIQC4PCLSEOO6SMX7CUS5MB"
+    }
+  },
+  "id": "5635",
+  "paging_token": "5635",
+  "seller": "GD6UOZ3FGFI5L2X6F52YPJ6ICSW375BNBZIQC4PCLSEOO6SMX7CUS5MB",
+  "selling": {
+    "asset_type": "native"
+  },
+  "buying": {
+    "asset_type": "credit_alphanum12",
+    "asset_code": "AstroDollar",
+    "asset_issuer": "GDA2EHKPDEWZTAL6B66FO77HMOZL3RHZTIJO7KJJK5RQYSDUXEYMPJYY"
+  },
+  "amount": "100.0000000",
+  "price_r": {
+    "n": 10,
+    "d": 1
+  },
+  "price": "10.0000000",
+  "last_modified_ledger": 356183,
+  "last_modified_time": "2020-02-20T20:44:55Z"
+}
+`
 
 var multipleOpsResponse = `{
   "_links": {

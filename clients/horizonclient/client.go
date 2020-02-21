@@ -9,6 +9,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 	"time"
 
@@ -321,6 +322,23 @@ func (c *Client) FeeStats() (feestats hProtocol.FeeStats, err error) {
 // See https://www.stellar.org/developers/horizon/reference/endpoints/offers-for-account.html
 func (c *Client) Offers(request OfferRequest) (offers hProtocol.OffersPage, err error) {
 	err = c.sendRequest(request, &offers)
+	return
+}
+
+// OfferDetails returns information for a single offer.
+// See https://www.stellar.org/developers/horizon/reference/endpoints/offer-details.html
+func (c *Client) OfferDetails(offerID string) (offer hProtocol.Offer, err error) {
+	if len(offerID) == 0 {
+		err = errors.New("no offer ID provided")
+		return
+	}
+
+	if _, err = strconv.ParseInt(offerID, 10, 64); err != nil {
+		err = errors.New("invalid offer ID provided")
+		return
+	}
+
+	err = c.sendRequest(OfferRequest{OfferID: offerID}, &offer)
 	return
 }
 

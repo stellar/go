@@ -75,6 +75,12 @@ func (m *MockClient) Offers(request OfferRequest) (hProtocol.OffersPage, error) 
 	return a.Get(0).(hProtocol.OffersPage), a.Error(1)
 }
 
+// OfferDetail is a mocking method
+func (m *MockClient) OfferDetails(offerID string) (hProtocol.Offer, error) {
+	a := m.Called(offerID)
+	return a.Get(0).(hProtocol.Offer), a.Error(1)
+}
+
 // Operations is a mocking method
 func (m *MockClient) Operations(request OperationRequest) (operations.OperationsPage, error) {
 	a := m.Called(request)
