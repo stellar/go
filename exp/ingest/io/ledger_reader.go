@@ -16,6 +16,10 @@ type LedgerReader interface {
 	// Read should return the next transaction. If there are no more
 	// transactions it should return `io.EOF` error.
 	Read() (LedgerTransaction, error)
+	// Close should be called when reading is finished. This is especially
+	// helpful when there are still some transactions available so reader can stop
+	// streaming them.
+	Close() error
 }
 
 // DBLedgerReader is a database-backed implementation of the io.LedgerReader interface.
@@ -131,4 +135,10 @@ func (dblrc *DBLedgerReader) storeTransactions(lcm ledgerbackend.LedgerCloseMeta
 			FeeChanges: lcm.TransactionFeeChanges[i],
 		})
 	}
+}
+
+func (dblrc *DBLedgerReader) Close() error {
+	dblrc.transactions = nil
+	dblrc.upgradeChanges = nil
+	return nil
 }

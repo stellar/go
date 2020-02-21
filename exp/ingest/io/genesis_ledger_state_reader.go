@@ -18,13 +18,8 @@ type GenesisLedgerStateReader struct {
 	done  bool
 }
 
-// Ensure GenesisLedgerStateReader implements StateReader
-var _ StateReader = &GenesisLedgerStateReader{}
-
-// GetSequence returns the sequence of the ledger.
-func (r *GenesisLedgerStateReader) GetSequence() uint32 {
-	return 1
-}
+// Ensure GenesisLedgerStateReader implements ChangeReader
+var _ ChangeReader = &GenesisLedgerStateReader{}
 
 // Read returns a new ledger entry change on each call, returning io.EOF when the stream ends.
 func (r *GenesisLedgerStateReader) Read() (Change, error) {
