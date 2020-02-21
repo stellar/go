@@ -14,7 +14,7 @@ file.  This project adheres to [Semantic Versioning](http://semver.org/).
 `client.StrictReceivePaths`:
 
 ```go
-    client := horizonclient.DefaultPublicNetClient
+	client := horizonclient.DefaultPublicNetClient
 	// Find paths for XLM->NGN
 	pr := horizonclient.PathsRequest{
 		DestinationAccount:     "GCLWGQPMKXQSPF776IU33AH4PZNOOWNAWGGKVTBQMIC5IMKUNP3E6NVU",
@@ -35,7 +35,7 @@ file.  This project adheres to [Semantic Versioning](http://semver.org/).
 `client.StrictSendPaths`:
 
 ```go
-    client := horizonclient.DefaultPublicNetClient
+	client := horizonclient.DefaultPublicNetClient
 	// Find paths for USD->EUR
 	pr := horizonclient.StrictSendPathsRequest{
 		SourceAmount:      "20",
@@ -50,25 +50,23 @@ file.  This project adheres to [Semantic Versioning](http://semver.org/).
 - Add `client.OfferDetails` ([#2303](https://github.com/stellar/go/pull/2303)).
 
 ```go
-    client := horizonclient.DefaultPublicNetClient
+	client := horizonclient.DefaultPublicNetClient
 	offer, err := client.OfferDetails("2")
 	if err != nil {
 		fmt.Println(err)
 		return
-	}
-
+	}	
 	fmt.Print(offer)
 ```
 
 - Add support to `client.Offers` for the filters: `Seller`, `Selling` and `Buying` ([#2230](https://github.com/stellar/go/pull/2230)).
 ```go
-    offerRequest = horizonclient.OfferRequest{
+	offerRequest = horizonclient.OfferRequest{
 		Seller:  "GCLWGQPMKXQSPF776IU33AH4PZNOOWNAWGGKVTBQMIC5IMKUNP3E6NVU",
 		Selling: "COP:GCLWGQPMKXQSPF776IU33AH4PZNOOWNAWGGKVTBQMIC5IMKUNP3E6NVU",
 		Buying:  "EUR:GCLWGQPMKXQSPF776IU33AH4PZNOOWNAWGGKVTBQMIC5IMKUNP3E6NVU",
 		Order:   horizonclient.OrderDesc,
-	}
-
+	}	
 	offers, err = client.Offers(offerRequest)
 	if err != nil {
 		fmt.Println(err)
@@ -82,15 +80,13 @@ This feature allows account retrieval filtering by signer or by a trustline to a
 
 ```go
 	client := horizonclient.DefaultPublicNetClient
-    accountID := "GCLWGQPMKXQSPF776IU33AH4PZNOOWNAWGGKVTBQMIC5IMKUNP3E6NVU"
-	accountsRequest := horizonclient.AccountsRequest{Signer: accountID}
-
+	accountID := "GCLWGQPMKXQSPF776IU33AH4PZNOOWNAWGGKVTBQMIC5IMKUNP3E6NVU"
+	accountsRequest := horizonclient.AccountsRequest{Signer: accountID}	
 	account, err := client.Accounts(accountsRequest)
 	if err != nil {
 		fmt.Println(err)
 		return
-	}
-
+	}	
 	fmt.Print(account)
 ```
 
