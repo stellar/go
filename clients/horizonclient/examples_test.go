@@ -263,7 +263,6 @@ func ExampleClient_NextOffersPage() {
 		fmt.Println(nextPage)
 	}
 }
-
 func ExampleClient_NextOperationsPage() {
 	client := horizonclient.DefaultPublicNetClient
 	// all operations
@@ -408,6 +407,17 @@ func ExampleClient_NextTransactionsPage() {
 		}
 		fmt.Println(nextPage)
 	}
+}
+
+func ExampleClient_OfferDetails() {
+	client := horizonclient.DefaultPublicNetClient
+	offer, err := client.OfferDetails("2")
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	fmt.Print(offer)
 }
 
 func ExampleClient_Offers() {
