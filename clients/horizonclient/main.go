@@ -89,22 +89,22 @@ var (
 	HorizonTimeOut = 60 * time.Second
 
 	// MinuteResolution represents 1 minute used as `resolution` parameter in trade aggregation
-	MinuteResolution = 1 * time.Minute
+	MinuteResolution = time.Duration(1 * time.Minute)
 
 	// FiveMinuteResolution represents 5 minutes used as `resolution` parameter in trade aggregation
-	FiveMinuteResolution = 5 * time.Minute
+	FiveMinuteResolution = time.Duration(5 * time.Minute)
 
 	// FifteenMinuteResolution represents 15 minutes used as `resolution` parameter in trade aggregation
-	FifteenMinuteResolution = 15 * time.Minute
+	FifteenMinuteResolution = time.Duration(15 * time.Minute)
 
 	// HourResolution represents 1 hour used as `resolution` parameter in trade aggregation
-	HourResolution = 1 * time.Hour
+	HourResolution = time.Duration(1 * time.Hour)
 
 	// DayResolution represents 1 day used as `resolution` parameter in trade aggregation
-	DayResolution = 24 * time.Hour
+	DayResolution = time.Duration(24 * time.Hour)
 
 	// WeekResolution represents 1 week used as `resolution` parameter in trade aggregation
-	WeekResolution = 168 * time.Hour
+	WeekResolution = time.Duration(168 * time.Hour)
 )
 
 // HTTP represents the HTTP client that a horizon client uses to communicate
