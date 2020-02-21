@@ -64,7 +64,7 @@ func handler(opts Options) (http.Handler, error) {
 		HorizonURL: opts.HorizonURL,
 		HTTP:       httpClient,
 	}
-	horizonClient.SetHorizonTimeOut(uint(horizonclient.HorizonTimeOut))
+	horizonClient.SetHorizonTimeOut(horizonclient.HorizonTimeOut)
 
 	mux := supporthttp.NewAPIMux()
 

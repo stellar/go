@@ -81,7 +81,7 @@ func getHandlerDeps(opts Options) (handlerDeps, error) {
 			Timeout: time.Second * time.Duration(horizonclient.HorizonTimeOut),
 		},
 	}
-	horizonClient.SetHorizonTimeOut(uint(horizonclient.HorizonTimeOut))
+	horizonClient.SetHorizonTimeOut(horizonclient.HorizonTimeOut)
 
 	// TODO: Replace this in-memory store with Postgres.
 	accountStore := account.NewMemoryStore()
