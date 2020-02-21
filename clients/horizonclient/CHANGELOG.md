@@ -76,9 +76,9 @@ file.  This project adheres to [Semantic Versioning](http://semver.org/).
 	}
 	fmt.Print(offers)
 ```
-- Add `client.Accounts` ([#2229](https://github.com/stellar/go/pull/2229).
+- Add `client.Accounts` ([#2229](https://github.com/stellar/go/pull/2229)).
 
-This feature allows account retrieval filtering by signer or with a trust line to an asset.
+This feature allows account retrieval filtering by signer or by a trustline to an asset.
 
 ```go
 	client := horizonclient.DefaultPublicNetClient
@@ -100,7 +100,7 @@ This feature allows account retrieval filtering by signer or with a trust line t
 
 - Make `hProtocol.FeeStats` backwards compatible with Horizon `0.24.1` and `1.0` deprecating usage of `*_accepted_fee` ([#2290](https://github.com/stellar/go/pull/2290)).
 
-All the `_accepted_fee` fields were removed in Horizon 1.0, however we extended this version of the SDK to backfill the `FeeStat` struct using data from `MaxFee`. This is a temporary workaround and it will be released in horizonclient 3.0, start using data from `FeeStat.MaxFee` instead.
+All the `_accepted_fee` fields were removed in Horizon 1.0, however we extended this version of the SDK to backfill the `FeeStat` struct using data from `MaxFee`. This is a temporary workaround and it will be removed in horizonclient 3.0. Please start using data from `FeeStat.MaxFee` instead.
 
 
 ## [v2.0.0](https://github.com/stellar/go/releases/tag/horizonclient-v2.0.0) - 2020-01-13
