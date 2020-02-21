@@ -66,6 +66,7 @@ type Config struct {
 	MaxStreamRetries int
 
 	OrderBookGraph           *orderbook.OrderBookGraph
+	IngestInMemoryOnly       bool
 	IngestFailedTransactions bool
 }
 

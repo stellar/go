@@ -86,6 +86,23 @@ func (s *BuildStateTestSuite) TestCheckPointLedgerIsZero() {
 	s.Assert().Equal(transition{node: startState{}, sleepDuration: defaultSleep}, next)
 }
 
+func (s *BuildStateTestSuite) TestIngestInMemoryOnly() {
+	// Recreate mock in this single test to remove Rollback assertion.
+	*s.historyQ = mockDBQ{}
+
+	// Recreate orderbook graph to remove Discard assertion
+	*s.graph = mockOrderBookGraph{}
+
+	s.system.config.IngestInMemoryOnly = true
+	defer func() {
+		s.system.config.IngestInMemoryOnly = false
+	}()
+
+	next, err := buildState{checkpointLedger: s.checkpointLedger}.run(s.system)
+	s.Assert().NoError(err)
+	s.Assert().Equal(transition{node: startState{}, sleepDuration: defaultSleep}, next)
+}
+
 func (s *BuildStateTestSuite) TestBeginReturnsError() {
 	// Recreate mock in this single test to remove Rollback assertion.
 	*s.historyQ = mockDBQ{}

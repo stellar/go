@@ -45,6 +45,8 @@ type Config struct {
 	TLSKey string
 	// Ingest toggles whether this horizon instance should run the data ingestion subsystem.
 	Ingest bool
+	// IngestInMemoryOnly causes this horizon process to ingest data from stellar-core into memory structures only.
+	IngestInMemoryOnly bool
 	// IngestFailedTransactions toggles whether to ingest failed transactions
 	IngestFailedTransactions bool
 	// CursorName is the cursor used for ingesting from stellar-core.
