@@ -15,11 +15,12 @@ import (
 // DB represents an ephemeral database that can be starts blank and can be used
 // to run tests against.
 type DB struct {
-	Dialect string
-	DSN     string
-	t       *testing.T
-	closer  func()
-	closed  bool
+	Dialect      string
+	DSN          string
+	databaseName string
+	t            *testing.T
+	closer       func()
+	closed       bool
 }
 
 // randomName returns a new psuedo-random name that is sufficient for naming a
