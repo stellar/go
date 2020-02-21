@@ -355,7 +355,7 @@ func (c *Client) OfferDetail(offerID string) (offer hProtocol.Offer, err error) 
 	}
 
 	if _, err = strconv.ParseInt(offerID, 10, 64); err != nil {
-		err = errors.New("Invalid offer ID provided")
+		err = errors.New("invalid offer ID provided")
 		return
 	}
 
