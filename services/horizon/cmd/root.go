@@ -394,9 +394,14 @@ func initRootConfig() {
 	checkMigrations()
 
 	// Validate options that should be provided together
-	validateBothOrNeither("ingest", "history-archive-urls")
 	validateBothOrNeither("tls-cert", "tls-key")
 	validateBothOrNeither("rate-limit-redis-key", "redis-url")
+
+	// config.HistoryArchiveURLs contains a single empty value when empty so using
+	// viper.GetString is easier.
+	if config.Ingest && viper.GetString("history-archive-urls") == "" {
+		stdLog.Fatalf("--history-archive-urls must be set when --ingest is set")
+	}
 
 	// Configure log file
 	if config.LogFile != "" {
