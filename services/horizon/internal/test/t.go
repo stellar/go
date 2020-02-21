@@ -47,14 +47,14 @@ func (t *T) HorizonSession() *db.Session {
 // Scenario loads the named sql scenario into the database
 func (t *T) Scenario(name string) *T {
 	clearHorizonDB(t.T, t.HorizonDB)
-	LoadScenario(name)
+	t.loadScenario(name, true)
 	t.UpdateLedgerState()
 	return t
 }
 
 // ScenarioWithoutHorizon loads the named sql scenario into the database
 func (t *T) ScenarioWithoutHorizon(name string) *T {
-	LoadScenarioWithoutHorizon(name)
+	t.loadScenario(name, false)
 	ResetHorizonDB(t.T, t.HorizonDB)
 	t.UpdateLedgerState()
 	return t

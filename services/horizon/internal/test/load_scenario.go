@@ -4,13 +4,13 @@ import (
 	"github.com/stellar/go/services/horizon/internal/test/scenarios"
 )
 
-func loadScenario(scenarioName string, includeHorizon bool) {
+func (t *T) loadScenario(scenarioName string, includeHorizon bool) {
 	stellarCorePath := scenarioName + "-core.sql"
 
-	scenarios.Load(StellarCoreDatabaseURL(), stellarCorePath)
+	scenarios.Load(t.CoreDB, StellarCoreDatabaseURL(), stellarCorePath)
 
 	if includeHorizon {
 		horizonPath := scenarioName + "-horizon.sql"
-		scenarios.Load(DatabaseURL(), horizonPath)
+		scenarios.Load(t.HorizonDB, DatabaseURL(), horizonPath)
 	}
 }

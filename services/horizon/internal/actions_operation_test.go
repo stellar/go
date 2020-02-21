@@ -260,7 +260,7 @@ func TestOperationActions_Show(t *testing.T) {
 	ht.Assert.Equal(410, w.Code)
 }
 
-func TestOperationActions_Regressions(t *testing.T) {
+func TestOperationActions_StreamRegression(t *testing.T) {
 	ht := StartHTTPTest(t, "base")
 	defer ht.Finish()
 
@@ -270,10 +270,14 @@ func TestOperationActions_Regressions(t *testing.T) {
 	if ht.Assert.Equal(404, w.Code) {
 		ht.Assert.ProblemType(w.Body, "not_found")
 	}
+}
+
+func TestOperationActions_ShowRegression(t *testing.T) {
+	ht := StartHTTPTest(t, "trades")
+	defer ht.Finish()
 
 	// #202 - price is not shown on manage_offer operations
-	test.LoadScenario("trades")
-	w = ht.Get("/operations/25769807873")
+	w := ht.Get("/operations/25769807873")
 	if ht.Assert.Equal(200, w.Code) {
 		var result operations.ManageSellOffer
 		err := json.Unmarshal(w.Body.Bytes(), &result)
