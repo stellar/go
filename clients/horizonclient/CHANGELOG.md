@@ -6,6 +6,7 @@ file.  This project adheres to [Semantic Versioning](http://semver.org/).
 ## Unreleased
 
 - Add `IsNotFoundError`
+- Change `HorizonTimeOut` type from `time.Duration` to `uint`
 
 ## [v2.0.0](https://github.com/stellar/go/releases/tag/horizonclient-v2.0.0) - 2020-01-13
 
