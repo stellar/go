@@ -76,7 +76,7 @@ func (m *MockClient) Offers(request OfferRequest) (hProtocol.OffersPage, error) 
 }
 
 // OfferDetail is a mocking method
-func (m *MockClient) OfferDetail(offerID string) (hProtocol.Offer, error) {
+func (m *MockClient) OfferDetails(offerID string) (hProtocol.Offer, error) {
 	a := m.Called(offerID)
 	return a.Get(0).(hProtocol.Offer), a.Error(1)
 }

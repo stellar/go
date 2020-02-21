@@ -348,7 +348,7 @@ func (c *Client) Offers(request OfferRequest) (offers hProtocol.OffersPage, err 
 
 // OfferDetails returns information for a single offer.
 // See https://www.stellar.org/developers/horizon/reference/endpoints/offer-details.html
-func (c *Client) OfferDetail(offerID string) (offer hProtocol.Offer, err error) {
+func (c *Client) OfferDetails(offerID string) (offer hProtocol.Offer, err error) {
 	if len(offerID) == 0 {
 		err = errors.New("no offer ID provided")
 		return

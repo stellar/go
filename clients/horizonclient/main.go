@@ -151,7 +151,7 @@ type ClientInterface interface {
 	Metrics() (hProtocol.Metrics, error)
 	FeeStats() (hProtocol.FeeStats, error)
 	Offers(request OfferRequest) (hProtocol.OffersPage, error)
-	OfferDetail(offerID string) (offer hProtocol.Offer, err error)
+	OfferDetails(offerID string) (offer hProtocol.Offer, err error)
 	Operations(request OperationRequest) (operations.OperationsPage, error)
 	OperationDetail(id string) (operations.Operation, error)
 	SubmitTransactionXDR(transactionXdr string) (hProtocol.TransactionSuccess, error)

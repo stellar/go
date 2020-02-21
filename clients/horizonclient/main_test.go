@@ -566,7 +566,7 @@ func TestOfferRequest(t *testing.T) {
 		assert.Len(t, offers.Embedded.Records, 1)
 	}
 }
-func TestOfferDetailRequest(t *testing.T) {
+func TestOfferDetailsRequest(t *testing.T) {
 	hmock := httptest.NewClient()
 	client := &Client{
 		HorizonURL: "https://localhost/",
@@ -579,7 +579,7 @@ func TestOfferDetailRequest(t *testing.T) {
 		"https://localhost/offers/5635",
 	).ReturnString(200, offerResponse)
 
-	record, err := client.OfferDetail("5635")
+	record, err := client.OfferDetails("5635")
 	if assert.NoError(t, err) {
 		assert.IsType(t, record, hProtocol.Offer{})
 		assert.Equal(t, record.ID, int64(5635))
@@ -592,11 +592,11 @@ func TestOfferDetailRequest(t *testing.T) {
 		assert.Equal(t, record.LastModifiedLedger, int32(356183))
 	}
 
-	_, err = client.OfferDetail("S6ES")
+	_, err = client.OfferDetails("S6ES")
 	assert.Error(t, err)
-	assert.EqualError(t, err, "Invalid offer ID provided")
+	assert.EqualError(t, err, "invalid offer ID provided")
 
-	_, err = client.OfferDetail("")
+	_, err = client.OfferDetails("")
 	assert.Error(t, err)
 	assert.EqualError(t, err, "no offer ID provided")
 }
