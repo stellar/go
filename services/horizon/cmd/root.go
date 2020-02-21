@@ -397,6 +397,12 @@ func initRootConfig() {
 	validateBothOrNeither("tls-cert", "tls-key")
 	validateBothOrNeither("rate-limit-redis-key", "redis-url")
 
+	// config.HistoryArchiveURLs contains a single empty value when empty so using
+	// viper.GetString is easier.
+	if config.Ingest && viper.GetString("history-archive-urls") == "" {
+		stdLog.Fatalf("--history-archive-urls must be set when --ingest is set")
+	}
+
 	// Configure log file
 	if config.LogFile != "" {
 		logFile, err := os.OpenFile(config.LogFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
