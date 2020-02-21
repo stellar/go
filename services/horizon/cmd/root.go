@@ -394,6 +394,7 @@ func initRootConfig() {
 	checkMigrations()
 
 	// Validate options that should be provided together
+	validateBothOrNeither("ingest", "history-archive-urls")
 	validateBothOrNeither("tls-cert", "tls-key")
 	validateBothOrNeither("rate-limit-redis-key", "redis-url")
 
