@@ -4,6 +4,7 @@ import (
 	"crypto/ecdsa"
 	"fmt"
 	"net/http"
+	"time"
 
 	firebaseauth "firebase.google.com/go/auth"
 	"github.com/go-chi/chi"
@@ -74,13 +75,15 @@ func getHandlerDeps(opts Options) (handlerDeps, error) {
 	}
 	opts.Logger.Info("SEP-10 JWT Public key: ", sep10JWTPublicKey)
 
+	horizonTimeout := 1 * time.Minute
+	httpClient := &http.Client{
+		Timeout: horizonTimeout,
+	}
 	horizonClient := &horizonclient.Client{
 		HorizonURL: opts.HorizonURL,
-		HTTP: &http.Client{
-			Timeout: horizonclient.HorizonTimeOut,
-		},
+		HTTP:       httpClient,
 	}
-	horizonClient.SetHorizonTimeOut(uint(horizonclient.HorizonTimeOut))
+	horizonClient.SetHorizonTimeOut(uint(horizonTimeout / time.Second))
 
 	// TODO: Replace this in-memory store with Postgres.
 	accountStore := account.NewMemoryStore()
