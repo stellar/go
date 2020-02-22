@@ -14,9 +14,7 @@ func NewMux(l *log.Entry) *chi.Mux {
 
 	mux.Use(middleware.RequestID)
 	mux.Use(middleware.Recoverer)
-	if l != nil {
-		mux.Use(SetLoggerMiddleware(l))
-	}
+	mux.Use(SetLoggerMiddleware(l))
 	mux.Use(LoggingMiddleware)
 
 	return mux
