@@ -23,6 +23,7 @@ import (
 	"github.com/stellar/go/support/db/schema"
 	"github.com/stellar/go/support/errors"
 	supportHttp "github.com/stellar/go/support/http"
+	supportLog "github.com/stellar/go/support/log"
 )
 
 var app *App
@@ -231,7 +232,7 @@ func NewApp(config config.Config, migrateFlag bool, versionFlag bool, version st
 
 // Serve starts the server
 func (a *App) Serve() {
-	mux := supportHttp.NewAPIMux()
+	mux := supportHttp.NewAPIMux(supportLog.DefaultLogger)
 
 	// Middlewares
 	headers := make(http.Header)

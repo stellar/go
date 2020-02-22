@@ -126,7 +126,7 @@ func initDriver(cfg Config) (federation.Driver, error) {
 }
 
 func initMux(driver federation.Driver) *chi.Mux {
-	mux := http.NewAPIMux()
+	mux := http.NewAPIMux(log.DefaultLogger)
 
 	fed := &federation.Handler{
 		Driver: driver,
