@@ -12,7 +12,7 @@ import (
 )
 
 func ExampleResponse() {
-	mux := supporthttp.NewAPIMux()
+	mux := supporthttp.NewAPIMux(nil)
 
 	mux.Get("/health", func(w http.ResponseWriter, r *http.Request) {
 		healthCheckResult := false
@@ -44,7 +44,7 @@ func ExampleResponse() {
 }
 
 func ExampleHandler() {
-	mux := supporthttp.NewAPIMux()
+	mux := supporthttp.NewAPIMux(nil)
 
 	mux.Get("/health", health.PassHandler{}.ServeHTTP)
 
