@@ -928,6 +928,16 @@ func TestFetchTimebounds(t *testing.T) {
 	assert.Equal(t, st.MaxTime, int64(200))
 }
 
+func TestVersion(t *testing.T) {
+	hmock := httptest.NewClient()
+	client := &Client{
+		HorizonURL: "https://localhost/",
+		HTTP:       hmock,
+	}
+
+	assert.Equal(t, "2.1.0", client.Version())
+}
+
 var accountsResponse = `{
   "_links": {
     "self": {
