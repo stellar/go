@@ -1,4 +1,4 @@
-package commands
+package cmd
 
 import (
 	"go/types"
@@ -68,6 +68,13 @@ func (c *ServeCommand) Command() *cobra.Command {
 			Required:  true,
 		},
 		{
+			Name:      "jwt-issuer",
+			Usage:     "The issuer to set in the JWT iss claim",
+			OptType:   types.String,
+			ConfigKey: &opts.JWTIssuer,
+			Required:  true,
+		},
+		{
 			Name:           "jwt-expires-in",
 			Usage:          "The time period in seconds after which the JWT expires",
 			OptType:        types.Int,
@@ -75,6 +82,13 @@ func (c *ServeCommand) Command() *cobra.Command {
 			ConfigKey:      &opts.JWTExpiresIn,
 			FlagDefault:    300,
 			Required:       true,
+		},
+		{
+			Name:        "allow-accounts-that-do-not-exist",
+			Usage:       "Allow accounts that do not exist",
+			OptType:     types.Bool,
+			ConfigKey:   &opts.AllowAccountsThatDoNotExist,
+			FlagDefault: false,
 		},
 	}
 	cmd := &cobra.Command{

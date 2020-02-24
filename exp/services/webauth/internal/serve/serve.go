@@ -11,17 +11,20 @@ import (
 	"github.com/stellar/go/support/errors"
 	supporthttp "github.com/stellar/go/support/http"
 	supportlog "github.com/stellar/go/support/log"
+	"github.com/stellar/go/support/render/health"
 )
 
 type Options struct {
-	Logger             *supportlog.Entry
-	HorizonURL         string
-	Port               int
-	NetworkPassphrase  string
-	SigningKey         string
-	ChallengeExpiresIn time.Duration
-	JWTPrivateKey      string
-	JWTExpiresIn       time.Duration
+	Logger                      *supportlog.Entry
+	HorizonURL                  string
+	Port                        int
+	NetworkPassphrase           string
+	SigningKey                  string
+	ChallengeExpiresIn          time.Duration
+	JWTPrivateKey               string
+	JWTIssuer                   string
+	JWTExpiresIn                time.Duration
+	AllowAccountsThatDoNotExist bool
 }
 
 func Serve(opts Options) {
@@ -53,21 +56,22 @@ func handler(opts Options) (http.Handler, error) {
 		return nil, errors.Wrap(err, "parsing JWT private key")
 	}
 
+	horizonTimeout := 1 * time.Minute
 	httpClient := &http.Client{
-		Timeout: horizonclient.HorizonTimeOut,
+		Timeout: horizonTimeout,
 	}
-
 	horizonClient := &horizonclient.Client{
 		HorizonURL: opts.HorizonURL,
 		HTTP:       httpClient,
 	}
-	horizonClient.SetHorizonTimeOut(uint(horizonclient.HorizonTimeOut))
+	horizonClient.SetHorizonTimeOut(uint(horizonTimeout / time.Second))
 
 	mux := supporthttp.NewAPIMux()
 
 	mux.NotFound(errorHandler{Error: notFound}.ServeHTTP)
 	mux.MethodNotAllowed(errorHandler{Error: methodNotAllowed}.ServeHTTP)
 
+	mux.Get("/health", health.PassHandler{}.ServeHTTP)
 	mux.Get("/", challengeHandler{
 		Logger:             opts.Logger,
 		NetworkPassphrase:  opts.NetworkPassphrase,
@@ -75,12 +79,14 @@ func handler(opts Options) (http.Handler, error) {
 		ChallengeExpiresIn: opts.ChallengeExpiresIn,
 	}.ServeHTTP)
 	mux.Post("/", tokenHandler{
-		Logger:            opts.Logger,
-		HorizonClient:     horizonClient,
-		NetworkPassphrase: opts.NetworkPassphrase,
-		SigningAddress:    signingKey.FromAddress(),
-		JWTPrivateKey:     jwtPrivateKey,
-		JWTExpiresIn:      opts.JWTExpiresIn,
+		Logger:                      opts.Logger,
+		HorizonClient:               horizonClient,
+		NetworkPassphrase:           opts.NetworkPassphrase,
+		SigningAddress:              signingKey.FromAddress(),
+		JWTPrivateKey:               jwtPrivateKey,
+		JWTIssuer:                   opts.JWTIssuer,
+		JWTExpiresIn:                opts.JWTExpiresIn,
+		AllowAccountsThatDoNotExist: opts.AllowAccountsThatDoNotExist,
 	}.ServeHTTP)
 
 	return mux, nil

@@ -38,6 +38,7 @@ type KP interface {
 	Hint() [4]byte
 	Verify(input []byte, signature []byte) error
 	Sign(input []byte) ([]byte, error)
+	SignBase64(input []byte) (string, error)
 	SignDecorated(input []byte) (xdr.DecoratedSignature, error)
 }
 
@@ -121,6 +122,26 @@ func FromRawSeed(rawSeed [32]byte) (*Full, error) {
 // MustParse is the panic-on-fail version of Parse
 func MustParse(addressOrSeed string) KP {
 	kp, err := Parse(addressOrSeed)
+	if err != nil {
+		panic(err)
+	}
+
+	return kp
+}
+
+// MustParseAddress is the panic-on-fail version of ParseAddress
+func MustParseAddress(address string) *FromAddress {
+	kp, err := ParseAddress(address)
+	if err != nil {
+		panic(err)
+	}
+
+	return kp
+}
+
+// MustParseFull is the panic-on-fail version of ParseFull
+func MustParseFull(seed string) *Full {
+	kp, err := ParseFull(seed)
 	if err != nil {
 		panic(err)
 	}

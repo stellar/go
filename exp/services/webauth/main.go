@@ -3,7 +3,7 @@ package main
 import (
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
-	"github.com/stellar/go/exp/services/webauth/internal/commands"
+	"github.com/stellar/go/exp/services/webauth/cmd"
 	supportlog "github.com/stellar/go/support/log"
 )
 
@@ -19,8 +19,8 @@ func main() {
 		},
 	}
 
-	rootCmd.AddCommand((&commands.ServeCommand{Logger: logger}).Command())
-	rootCmd.AddCommand((&commands.GenJWTKeyCommand{Logger: logger}).Command())
+	rootCmd.AddCommand((&cmd.ServeCommand{Logger: logger}).Command())
+	rootCmd.AddCommand((&cmd.GenJWTKeyCommand{Logger: logger}).Command())
 
 	err := rootCmd.Execute()
 	if err != nil {

@@ -4,6 +4,7 @@ go 1.12
 
 require (
 	bitbucket.org/ww/goautoneg v0.0.0-20120707110453-75cd24fc2f2c
+	firebase.google.com/go v3.12.0+incompatible
 	github.com/BurntSushi/toml v0.3.1
 	github.com/Masterminds/squirrel v0.0.0-20161115235646-20f192218cf5
 	github.com/ajg/form v0.0.0-20160822230020-523a5da1a92f // indirect
@@ -19,16 +20,17 @@ require (
 	github.com/fatih/structs v1.0.0 // indirect
 	github.com/gavv/monotime v0.0.0-20161010190848-47d58efa6955 // indirect
 	github.com/getsentry/raven-go v0.0.0-20160805001729-c9d3cc542ad1
-	github.com/go-chi/chi v3.1.5+incompatible
+	github.com/go-chi/chi v4.0.3+incompatible
 	github.com/go-errors/errors v0.0.0-20150906023321-a41850380601
 	github.com/gobuffalo/packr v1.12.1 // indirect
 	github.com/goji/httpauth v0.0.0-20160601135302-2da839ab0f4d
 	github.com/gomodule/redigo v2.0.0+incompatible
 	github.com/google/go-querystring v0.0.0-20160401233042-9235644dd9e5 // indirect
+	github.com/google/martian v2.1.0+incompatible // indirect
+	github.com/googleapis/gax-go v2.0.2+incompatible // indirect
 	github.com/gorilla/schema v1.1.0
 	github.com/graph-gophers/graphql-go v0.0.0-20190225005345-3e8838d4614c
 	github.com/guregu/null v2.1.3-0.20151024101046-79c5bd36b615+incompatible
-	github.com/hashicorp/golang-lru v0.5.0 // indirect
 	github.com/howeyc/gopass v0.0.0-20170109162249-bf9dde6d0d2c
 	github.com/imkira/go-interpol v1.1.0 // indirect
 	github.com/inconshreveable/mousetrap v1.0.0 // indirect
@@ -86,6 +88,7 @@ require (
 	golang.org/x/crypto v0.0.0-20191112222119-e1110fd1c708
 	golang.org/x/net v0.0.0-20190827160401-ba9fcec4b297 // indirect
 	golang.org/x/tools v0.0.0-20190624180213-70d37148ca0c // indirect
+	google.golang.org/api v0.3.1
 	google.golang.org/appengine v1.6.1 // indirect
 	gopkg.in/check.v1 v1.0.0-20180628173108-788fd7840127 // indirect
 	gopkg.in/gavv/httpexpect.v1 v1.0.0-20170111145843-40724cf1e4a0

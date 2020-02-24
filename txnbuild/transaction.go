@@ -16,10 +16,12 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/network"
+	"github.com/stellar/go/strkey"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
 )
@@ -413,77 +415,238 @@ func (tx *Transaction) SignWithKeyString(keys ...string) error {
 	return tx.Sign(signers...)
 }
 
-// VerifyChallengeTx is a factory method that verifies a SEP 10 challenge transaction,
-// for use in web authentication. It can be used by a server to verify that the challenge
-// has been signed by the client.
-// More details on SEP 10: https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0010.md
-func VerifyChallengeTx(challengeTx, serverAccountID, network string) (bool, error) {
-	tx, err := TransactionFromXDR(challengeTx)
+// ReadChallengeTx reads a SEP 10 challenge transaction and returns the decoded
+// transaction and client account ID contained within.
+//
+// It also verifies that transaction is signed by the server.
+//
+// It does not verify that the transaction has been signed by the client or
+// that any signatures other than the servers on the transaction are valid. Use
+// one of the following functions to completely verify the transaction:
+// - VerifyChallengeTxThreshold
+// - VerifyChallengeTxSigners
+func ReadChallengeTx(challengeTx, serverAccountID, network string) (tx Transaction, clientAccountID string, err error) {
+	tx, err = TransactionFromXDR(challengeTx)
 	if err != nil {
-		return false, err
+		return tx, clientAccountID, err
 	}
 	tx.Network = network
 
 	// verify transaction source
 	if tx.SourceAccount == nil {
-		return false, errors.New("transaction requires a source account")
+		return tx, clientAccountID, errors.New("transaction requires a source account")
 	}
 	if tx.SourceAccount.GetAccountID() != serverAccountID {
-		return false, errors.New("transaction source account is not equal to server's account")
+		return tx, clientAccountID, errors.New("transaction source account is not equal to server's account")
 	}
 
-	//verify sequence number
+	// verify sequence number
 	txSourceAccount, ok := tx.SourceAccount.(*SimpleAccount)
 	if !ok {
-		return false, errors.New("source account is not of type SimpleAccount unable to verify sequence number")
+		return tx, clientAccountID, errors.New("source account is not of type SimpleAccount unable to verify sequence number")
 	}
 	if txSourceAccount.Sequence != 0 {
-		return false, errors.New("transaction sequence number must be 0")
+		return tx, clientAccountID, errors.New("transaction sequence number must be 0")
 	}
 
 	// verify timebounds
 	if tx.Timebounds.MaxTime == TimeoutInfinite {
-		return false, errors.New("transaction requires non-infinite timebounds")
+		return tx, clientAccountID, errors.New("transaction requires non-infinite timebounds")
 	}
 	currentTime := time.Now().UTC().Unix()
 	if currentTime < tx.Timebounds.MinTime || currentTime > tx.Timebounds.MaxTime {
-		return false, errors.Errorf("transaction is not within range of the specified timebounds (currentTime=%d, MinTime=%d, MaxTime=%d)",
+		return tx, clientAccountID, errors.Errorf("transaction is not within range of the specified timebounds (currentTime=%d, MinTime=%d, MaxTime=%d)",
 			currentTime, tx.Timebounds.MinTime, tx.Timebounds.MaxTime)
 	}
 
 	// verify operation
 	if len(tx.Operations) != 1 {
-		return false, errors.New("transaction requires a single manage_data operation")
+		return tx, clientAccountID, errors.New("transaction requires a single manage_data operation")
 	}
 	op, ok := tx.Operations[0].(*ManageData)
 	if !ok {
-		return false, errors.New("operation type should be manage_data")
+		return tx, clientAccountID, errors.New("operation type should be manage_data")
 	}
 	if op.SourceAccount == nil {
-		return false, errors.New("operation should have a source account")
+		return tx, clientAccountID, errors.New("operation should have a source account")
 	}
+	clientAccountID = op.SourceAccount.GetAccountID()
 
 	// verify manage data value
 	nonceB64 := string(op.Value)
 	if len(nonceB64) != 64 {
-		return false, errors.New("random nonce encoded as base64 should be 64 bytes long")
+		return tx, clientAccountID, errors.New("random nonce encoded as base64 should be 64 bytes long")
 	}
 	nonceBytes, err := base64.StdEncoding.DecodeString(nonceB64)
 	if err != nil {
-		return false, errors.Wrap(err, "failed to decode random nonce provided in manage_data operation")
+		return tx, clientAccountID, errors.Wrap(err, "failed to decode random nonce provided in manage_data operation")
 	}
 	if len(nonceBytes) != 48 {
-		return false, errors.New("random nonce before encoding as base64 should be 48 bytes long")
+		return tx, clientAccountID, errors.New("random nonce before encoding as base64 should be 48 bytes long")
 	}
 
-	// verify signature from operation source
-	err = verifyTxSignature(tx, op.SourceAccount.GetAccountID())
+	err = verifyTxSignature(tx, serverAccountID)
+	if err != nil {
+		return tx, clientAccountID, err
+	}
+
+	return tx, clientAccountID, nil
+}
+
+// VerifyChallengeTxThreshold verifies that for a SEP 10 challenge transaction
+// all signatures on the transaction are accounted for and that the signatures
+// meet a threshold on an account. A transaction is verified if it is signed by
+// the server account, and all other signatures match a signer that has been
+// provided as an argument, and those signatures meet a threshold on the
+// account.
+//
+// Signers that are not prefixed as an address/account ID strkey (G...) will be
+// ignored.
+//
+// Errors will be raised if:
+//  - The transaction is invalid according to ReadChallengeTx.
+//  - No client signatures are found on the transaction.
+//  - One or more signatures in the transaction are not identifiable as the
+//    server account or one of the signers provided in the arguments.
+//  - The signatures are all valid but do not meet the threshold.
+func VerifyChallengeTxThreshold(challengeTx, serverAccountID, network string, threshold Threshold, signerSummary SignerSummary) (signersFound []string, err error) {
+	signers := make([]string, 0, len(signerSummary))
+	for s := range signerSummary {
+		signers = append(signers, s)
+	}
+
+	signersFound, err = VerifyChallengeTxSigners(challengeTx, serverAccountID, network, signers...)
+	if err != nil {
+		return nil, err
+	}
+
+	weight := int32(0)
+	for _, s := range signersFound {
+		weight += signerSummary[s]
+	}
+
+	if weight < int32(threshold) {
+		return nil, errors.Errorf("signers with weight %d do not meet threshold %d", weight, threshold)
+	}
+
+	return signersFound, nil
+}
+
+// VerifyChallengeTxSigners verifies that for a SEP 10 challenge transaction
+// all signatures on the transaction are accounted for. A transaction is
+// verified if it is signed by the server account, and all other signatures
+// match a signer that has been provided as an argument. Additional signers can
+// be provided that do not have a signature, but all signatures must be matched
+// to a signer for verification to succeed. If verification succeeds a list of
+// signers that were found is returned, excluding the server account ID.
+//
+// Signers that are not prefixed as an address/account ID strkey (G...) will be
+// ignored.
+//
+// Errors will be raised if:
+//  - The transaction is invalid according to ReadChallengeTx.
+//  - No client signatures are found on the transaction.
+//  - One or more signatures in the transaction are not identifiable as the
+//    server account or one of the signers provided in the arguments.
+func VerifyChallengeTxSigners(challengeTx, serverAccountID, network string, signers ...string) ([]string, error) {
+	// Read the transaction which validates its structure.
+	tx, _, err := ReadChallengeTx(challengeTx, serverAccountID, network)
+	if err != nil {
+		return nil, err
+	}
+
+	// Ensure the server account ID is an address and not a seed.
+	serverKP, err := keypair.ParseAddress(serverAccountID)
+	if err != nil {
+		return nil, err
+	}
+
+	// Deduplicate the client signers and ensure the server is not included
+	// anywhere we check or output the list of signers.
+	clientSigners := []string{}
+	clientSignersSeen := map[string]struct{}{}
+	for _, signer := range signers {
+		// Ignore the server signer if it is in the signers list. It's
+		// important when verifying signers of a challenge transaction that we
+		// only verify and return client signers. If an account has the server
+		// as a signer the server should not play a part in the authentication
+		// of the client.
+		if signer == serverKP.Address() {
+			continue
+		}
+		// Deduplicate.
+		if _, seen := clientSignersSeen[signer]; seen {
+			continue
+		}
+		// Ignore non-G... account/address signers.
+		strkeyVersionByte, strkeyErr := strkey.Version(signer)
+		if strkeyErr != nil {
+			continue
+		}
+		if strkeyVersionByte != strkey.VersionByteAccountID {
+			continue
+		}
+		clientSigners = append(clientSigners, signer)
+		clientSignersSeen[signer] = struct{}{}
+	}
+
+	// Don't continue if none of the signers provided are in the final list.
+	if len(clientSigners) == 0 {
+		return nil, errors.New("no verifiable signers provided, at least one G... address must be provided")
+	}
+
+	// Verify all the transaction's signers (server and client) in one
+	// hit. We do this in one hit here even though the server signature was
+	// checked in the ReadChallengeTx to ensure that every signature and signer
+	// are consumed only once on the transaction.
+	allSigners := append([]string{serverKP.Address()}, clientSigners...)
+	allSignersFound, err := verifyTxSignatures(tx, allSigners...)
+	if err != nil {
+		return nil, err
+	}
+
+	// Confirm the server is in the list of signers found and remove it.
+	serverSignerFound := false
+	signersFound := make([]string, 0, len(allSignersFound)-1)
+	for _, signer := range allSignersFound {
+		if signer == serverKP.Address() {
+			serverSignerFound = true
+			continue
+		}
+		signersFound = append(signersFound, signer)
+	}
+
+	// Confirm we matched a signature to the server signer.
+	if !serverSignerFound {
+		return nil, errors.Errorf("transaction not signed by %s", serverKP.Address())
+	}
+
+	// Confirm we matched signatures to the client signers.
+	if len(signersFound) == 0 {
+		return nil, errors.Errorf("transaction not signed by %s", strings.Join(clientSigners, ", "))
+	}
+
+	// Confirm all signatures were consumed by a signer.
+	if len(allSignersFound) != len(tx.xdrEnvelope.Signatures) {
+		return signersFound, errors.Errorf("transaction has unrecognized signatures")
+	}
+
+	return signersFound, nil
+}
+
+// VerifyChallengeTx is a factory method that verifies a SEP 10 challenge transaction,
+// for use in web authentication. It can be used by a server to verify that the challenge
+// has been signed by the client account's master key.
+// More details on SEP 10: https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0010.md
+//
+// Deprecated: Use VerifyChallengeTxThreshold or VerifyChallengeTxSigners.
+func VerifyChallengeTx(challengeTx, serverAccountID, network string) (bool, error) {
+	tx, clientAccountID, err := ReadChallengeTx(challengeTx, serverAccountID, network)
 	if err != nil {
 		return false, err
 	}
 
-	// verify signature from server signing key
-	err = verifyTxSignature(tx, serverAccountID)
+	err = verifyTxSignature(tx, clientAccountID)
 	if err != nil {
 		return false, err
 	}
@@ -492,33 +655,58 @@ func VerifyChallengeTx(challengeTx, serverAccountID, network string) (bool, erro
 }
 
 // verifyTxSignature checks if a transaction has been signed by the provided Stellar account.
-func verifyTxSignature(tx Transaction, accountID string) error {
+func verifyTxSignature(tx Transaction, signer string) error {
+	signersFound, err := verifyTxSignatures(tx, signer)
+	if len(signersFound) == 0 {
+		return errors.Errorf("transaction not signed by %s", signer)
+	}
+	return err
+}
+
+// verifyTxSignature checks if a transaction has been signed by one or more of
+// the signers, returning a list of signers that were found to have signed the
+// transaction.
+func verifyTxSignatures(tx Transaction, signers ...string) ([]string, error) {
 	if tx.xdrEnvelope == nil {
-		return errors.New("transaction has no signatures")
+		return nil, errors.New("transaction has no signatures")
 	}
 
 	txHash, err := tx.Hash()
 	if err != nil {
-		return err
-	}
-
-	kp, err := keypair.Parse(accountID)
-	if err != nil {
-		return err
+		return nil, err
 	}
 
 	// find and verify signatures
-	signerFound := false
-	for _, s := range tx.xdrEnvelope.Signatures {
-		e := kp.Verify(txHash[:], s.Signature)
-		if e == nil {
-			signerFound = true
-			break
+	signatureUsed := map[int]bool{}
+	signersFound := map[string]struct{}{}
+	for _, signer := range signers {
+		kp, err := keypair.ParseAddress(signer)
+		if err != nil {
+			return nil, errors.Wrap(err, "signer not address")
+		}
+
+		for i, decSig := range tx.xdrEnvelope.Signatures {
+			if signatureUsed[i] {
+				continue
+			}
+			if decSig.Hint != kp.Hint() {
+				continue
+			}
+			err := kp.Verify(txHash[:], decSig.Signature)
+			if err == nil {
+				signatureUsed[i] = true
+				signersFound[signer] = struct{}{}
+				break
+			}
 		}
 	}
-	if !signerFound {
-		return errors.Errorf("transaction not signed by %s", accountID)
-	}
 
-	return nil
+	signersFoundList := make([]string, 0, len(signersFound))
+	for _, signer := range signers {
+		if _, ok := signersFound[signer]; ok {
+			signersFoundList = append(signersFoundList, signer)
+			delete(signersFound, signer)
+		}
+	}
+	return signersFoundList, nil
 }

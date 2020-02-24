@@ -1,7 +1,7 @@
 version: '3'
 services:
   core-postgres:
-    image: postgres:9.6-alpine
+    image: postgres:9.6.17-alpine
     restart: on-failure
     environment:
       - POSTGRES_PASSWORD=mysecretpassword
@@ -30,9 +30,10 @@ services:
     network_mode: '${NETWORK_MODE:-bridge}'
 
   horizon-postgres:
-    image: postgres:9.6-alpine
+    image: postgres:9.6.17-alpine
     restart: on-failure
     environment:
+      - POSTGRES_HOST_AUTH_METHOD=trust
       - POSTGRES_DB=horizon
     ports:
       - "5432:5432"

@@ -3,9 +3,11 @@ package txnbuild
 import (
 	"crypto/sha256"
 	"encoding/base64"
+	"strings"
 	"testing"
 	"time"
 
+	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/network"
 	"github.com/stellar/go/strkey"
 	"github.com/stellar/go/xdr"
@@ -1161,6 +1163,1170 @@ func TestSignWithSecretKey(t *testing.T) {
 	actual, err := tx1.Base64()
 	assert.NoError(t, err)
 	assert.Equal(t, expected, actual, "base64 xdr should match")
+}
+
+func TestReadChallengeTx_validSignedByServerAndClient(t *testing.T) {
+	serverKP := newKeypair0()
+	clientKP := newKeypair1()
+	txSource := NewSimpleAccount(serverKP.Address(), -1)
+	opSource := NewSimpleAccount(clientKP.Address(), 0)
+	op := ManageData{
+		SourceAccount: &opSource,
+		Name:          "testserver auth",
+		Value:         []byte(base64.StdEncoding.EncodeToString(make([]byte, 48))),
+	}
+	tx := Transaction{
+		SourceAccount: &txSource,
+		Operations:    []Operation{&op},
+		Timebounds:    NewTimeout(1000),
+		Network:       network.TestNetworkPassphrase,
+	}
+
+	err := tx.Build()
+	require.NoError(t, err)
+	err = tx.Sign(serverKP, clientKP)
+	assert.NoError(t, err)
+	tx64, err := tx.Base64()
+	require.NoError(t, err)
+	readTx, readClientAccountID, err := ReadChallengeTx(tx64, serverKP.Address(), network.TestNetworkPassphrase)
+	assert.Equal(t, tx, readTx)
+	assert.Equal(t, clientKP.Address(), readClientAccountID)
+	assert.NoError(t, err)
+}
+
+func TestReadChallengeTx_validSignedByServer(t *testing.T) {
+	serverKP := newKeypair0()
+	clientKP := newKeypair1()
+	txSource := NewSimpleAccount(serverKP.Address(), -1)
+	opSource := NewSimpleAccount(clientKP.Address(), 0)
+	op := ManageData{
+		SourceAccount: &opSource,
+		Name:          "testserver auth",
+		Value:         []byte(base64.StdEncoding.EncodeToString(make([]byte, 48))),
+	}
+	tx := Transaction{
+		SourceAccount: &txSource,
+		Operations:    []Operation{&op},
+		Timebounds:    NewTimeout(1000),
+		Network:       network.TestNetworkPassphrase,
+	}
+
+	err := tx.Build()
+	require.NoError(t, err)
+	err = tx.Sign(serverKP)
+	assert.NoError(t, err)
+	tx64, err := tx.Base64()
+	require.NoError(t, err)
+	readTx, readClientAccountID, err := ReadChallengeTx(tx64, serverKP.Address(), network.TestNetworkPassphrase)
+	assert.Equal(t, tx, readTx)
+	assert.Equal(t, clientKP.Address(), readClientAccountID)
+	assert.NoError(t, err)
+}
+
+func TestReadChallengeTx_invalidNotSignedByServer(t *testing.T) {
+	serverKP := newKeypair0()
+	clientKP := newKeypair1()
+	txSource := NewSimpleAccount(serverKP.Address(), -1)
+	opSource := NewSimpleAccount(clientKP.Address(), 0)
+	op := ManageData{
+		SourceAccount: &opSource,
+		Name:          "testserver auth",
+		Value:         []byte(base64.StdEncoding.EncodeToString(make([]byte, 48))),
+	}
+	tx := Transaction{
+		SourceAccount: &txSource,
+		Operations:    []Operation{&op},
+		Timebounds:    NewTimeout(1000),
+		Network:       network.TestNetworkPassphrase,
+	}
+
+	err := tx.Build()
+	require.NoError(t, err)
+	tx64, err := tx.Base64()
+	require.NoError(t, err)
+	readTx, readClientAccountID, err := ReadChallengeTx(tx64, serverKP.Address(), network.TestNetworkPassphrase)
+	assert.Equal(t, tx, readTx)
+	assert.Equal(t, clientKP.Address(), readClientAccountID)
+	assert.EqualError(t, err, "transaction not signed by "+serverKP.Address())
+}
+
+func TestReadChallengeTx_invalidCorrupted(t *testing.T) {
+	serverKP := newKeypair0()
+	clientKP := newKeypair1()
+	txSource := NewSimpleAccount(serverKP.Address(), -1)
+	opSource := NewSimpleAccount(clientKP.Address(), 0)
+	op := ManageData{
+		SourceAccount: &opSource,
+		Name:          "testserver auth",
+		Value:         []byte(base64.StdEncoding.EncodeToString(make([]byte, 48))),
+	}
+	tx := Transaction{
+		SourceAccount: &txSource,
+		Operations:    []Operation{&op},
+		Timebounds:    NewTimeout(1000),
+		Network:       network.TestNetworkPassphrase,
+	}
+
+	err := tx.Build()
+	require.NoError(t, err)
+	err = tx.Sign(serverKP)
+	assert.NoError(t, err)
+	tx64, err := tx.Base64()
+	require.NoError(t, err)
+	tx64 = strings.ReplaceAll(tx64, "A", "B")
+	readTx, readClientAccountID, err := ReadChallengeTx(tx64, serverKP.Address(), network.TestNetworkPassphrase)
+	assert.Equal(t, Transaction{}, readTx)
+	assert.Equal(t, "", readClientAccountID)
+	assert.EqualError(t, err, "unable to unmarshal transaction envelope: xdr:decode: switch '68174084' is not valid enum value for union")
+}
+
+func TestReadChallengeTx_invalidServerAccountIDMismatch(t *testing.T) {
+	serverKP := newKeypair0()
+	clientKP := newKeypair1()
+	txSource := NewSimpleAccount(newKeypair2().Address(), -1)
+	opSource := NewSimpleAccount(clientKP.Address(), 0)
+	op := ManageData{
+		SourceAccount: &opSource,
+		Name:          "testserver auth",
+		Value:         []byte(base64.StdEncoding.EncodeToString(make([]byte, 48))),
+	}
+	tx := Transaction{
+		SourceAccount: &txSource,
+		Operations:    []Operation{&op},
+		Timebounds:    NewTimeout(1000),
+		Network:       network.TestNetworkPassphrase,
+	}
+
+	err := tx.Build()
+	require.NoError(t, err)
+	err = tx.Sign(serverKP)
+	assert.NoError(t, err)
+	tx64, err := tx.Base64()
+	require.NoError(t, err)
+	readTx, readClientAccountID, err := ReadChallengeTx(tx64, serverKP.Address(), network.TestNetworkPassphrase)
+	assert.Equal(t, tx, readTx)
+	assert.Equal(t, "", readClientAccountID)
+	assert.EqualError(t, err, "transaction source account is not equal to server's account")
+}
+
+func TestReadChallengeTx_invalidSeqNoNotZero(t *testing.T) {
+	serverKP := newKeypair0()
+	clientKP := newKeypair1()
+	txSource := NewSimpleAccount(serverKP.Address(), 1234)
+	opSource := NewSimpleAccount(clientKP.Address(), 0)
+	op := ManageData{
+		SourceAccount: &opSource,
+		Name:          "testserver auth",
+		Value:         []byte(base64.StdEncoding.EncodeToString(make([]byte, 48))),
+	}
+	tx := Transaction{
+		SourceAccount: &txSource,
+		Operations:    []Operation{&op},
+		Timebounds:    NewTimeout(1000),
+		Network:       network.TestNetworkPassphrase,
+	}
+
+	err := tx.Build()
+	require.NoError(t, err)
+	err = tx.Sign(serverKP)
+	assert.NoError(t, err)
+	tx64, err := tx.Base64()
+	require.NoError(t, err)
+	readTx, readClientAccountID, err := ReadChallengeTx(tx64, serverKP.Address(), network.TestNetworkPassphrase)
+	assert.Equal(t, tx, readTx)
+	assert.Equal(t, "", readClientAccountID)
+	assert.EqualError(t, err, "transaction sequence number must be 0")
+}
+
+func TestReadChallengeTx_invalidTimeboundsInfinite(t *testing.T) {
+	serverKP := newKeypair0()
+	clientKP := newKeypair1()
+	txSource := NewSimpleAccount(serverKP.Address(), -1)
+	opSource := NewSimpleAccount(clientKP.Address(), 0)
+	op := ManageData{
+		SourceAccount: &opSource,
+		Name:          "testserver auth",
+		Value:         []byte(base64.StdEncoding.EncodeToString(make([]byte, 48))),
+	}
+	tx := Transaction{
+		SourceAccount: &txSource,
+		Operations:    []Operation{&op},
+		Timebounds:    NewInfiniteTimeout(),
+		Network:       network.TestNetworkPassphrase,
+	}
+
+	err := tx.Build()
+	require.NoError(t, err)
+	err = tx.Sign(serverKP)
+	assert.NoError(t, err)
+	tx64, err := tx.Base64()
+	require.NoError(t, err)
+	readTx, readClientAccountID, err := ReadChallengeTx(tx64, serverKP.Address(), network.TestNetworkPassphrase)
+	assert.Equal(t, tx, readTx)
+	assert.Equal(t, "", readClientAccountID)
+	assert.EqualError(t, err, "transaction requires non-infinite timebounds")
+}
+
+func TestReadChallengeTx_invalidTimeboundsOutsideRange(t *testing.T) {
+	serverKP := newKeypair0()
+	clientKP := newKeypair1()
+	txSource := NewSimpleAccount(serverKP.Address(), -1)
+	opSource := NewSimpleAccount(clientKP.Address(), 0)
+	op := ManageData{
+		SourceAccount: &opSource,
+		Name:          "testserver auth",
+		Value:         []byte(base64.StdEncoding.EncodeToString(make([]byte, 48))),
+	}
+	tx := Transaction{
+		SourceAccount: &txSource,
+		Operations:    []Operation{&op},
+		Timebounds:    NewTimebounds(0, 100),
+		Network:       network.TestNetworkPassphrase,
+	}
+
+	err := tx.Build()
+	require.NoError(t, err)
+	err = tx.Sign(serverKP)
+	assert.NoError(t, err)
+	tx64, err := tx.Base64()
+	require.NoError(t, err)
+	readTx, readClientAccountID, err := ReadChallengeTx(tx64, serverKP.Address(), network.TestNetworkPassphrase)
+	assert.Equal(t, tx, readTx)
+	assert.Equal(t, "", readClientAccountID)
+	assert.Error(t, err)
+	assert.Regexp(t, "transaction is not within range of the specified timebounds", err.Error())
+}
+
+func TestReadChallengeTx_invalidTooManyOperations(t *testing.T) {
+	serverKP := newKeypair0()
+	clientKP := newKeypair1()
+	txSource := NewSimpleAccount(serverKP.Address(), -1)
+	opSource := NewSimpleAccount(clientKP.Address(), 0)
+	op := ManageData{
+		SourceAccount: &opSource,
+		Name:          "testserver auth",
+		Value:         []byte(base64.StdEncoding.EncodeToString(make([]byte, 48))),
+	}
+	tx := Transaction{
+		SourceAccount: &txSource,
+		Operations:    []Operation{&op, &op},
+		Timebounds:    NewTimeout(300),
+		Network:       network.TestNetworkPassphrase,
+	}
+
+	err := tx.Build()
+	require.NoError(t, err)
+	err = tx.Sign(serverKP)
+	assert.NoError(t, err)
+	tx64, err := tx.Base64()
+	require.NoError(t, err)
+	readTx, readClientAccountID, err := ReadChallengeTx(tx64, serverKP.Address(), network.TestNetworkPassphrase)
+	assert.Equal(t, tx, readTx)
+	assert.Equal(t, "", readClientAccountID)
+	assert.EqualError(t, err, "transaction requires a single manage_data operation")
+}
+
+func TestReadChallengeTx_invalidOperationWrongType(t *testing.T) {
+	serverKP := newKeypair0()
+	clientKP := newKeypair1()
+	txSource := NewSimpleAccount(serverKP.Address(), -1)
+	opSource := NewSimpleAccount(clientKP.Address(), 0)
+	op := BumpSequence{
+		SourceAccount: &opSource,
+		BumpTo:        0,
+	}
+	tx := Transaction{
+		SourceAccount: &txSource,
+		Operations:    []Operation{&op},
+		Timebounds:    NewTimeout(300),
+		Network:       network.TestNetworkPassphrase,
+	}
+
+	err := tx.Build()
+	require.NoError(t, err)
+	err = tx.Sign(serverKP)
+	assert.NoError(t, err)
+	tx64, err := tx.Base64()
+	require.NoError(t, err)
+	readTx, readClientAccountID, err := ReadChallengeTx(tx64, serverKP.Address(), network.TestNetworkPassphrase)
+	assert.Equal(t, tx, readTx)
+	assert.Equal(t, "", readClientAccountID)
+	assert.EqualError(t, err, "operation type should be manage_data")
+}
+
+func TestReadChallengeTx_invalidOperationNoSourceAccount(t *testing.T) {
+	serverKP := newKeypair0()
+	txSource := NewSimpleAccount(serverKP.Address(), -1)
+	op := ManageData{
+		Name:  "testserver auth",
+		Value: []byte(base64.StdEncoding.EncodeToString(make([]byte, 48))),
+	}
+	tx := Transaction{
+		SourceAccount: &txSource,
+		Operations:    []Operation{&op},
+		Timebounds:    NewTimeout(300),
+		Network:       network.TestNetworkPassphrase,
+	}
+
+	err := tx.Build()
+	require.NoError(t, err)
+	err = tx.Sign(serverKP)
+	assert.NoError(t, err)
+	tx64, err := tx.Base64()
+	require.NoError(t, err)
+	readTx, readClientAccountID, err := ReadChallengeTx(tx64, serverKP.Address(), network.TestNetworkPassphrase)
+	assert.Equal(t, tx, readTx)
+	assert.Equal(t, "", readClientAccountID)
+	assert.EqualError(t, err, "operation should have a source account")
+}
+
+func TestReadChallengeTx_invalidDataValueWrongEncodedLength(t *testing.T) {
+	serverKP := newKeypair0()
+	clientKP := newKeypair1()
+	txSource := NewSimpleAccount(serverKP.Address(), -1)
+	opSource := NewSimpleAccount(clientKP.Address(), 0)
+	op := ManageData{
+		SourceAccount: &opSource,
+		Name:          "testserver auth",
+		Value:         []byte(base64.StdEncoding.EncodeToString(make([]byte, 45))),
+	}
+	tx := Transaction{
+		SourceAccount: &txSource,
+		Operations:    []Operation{&op},
+		Timebounds:    NewTimeout(300),
+		Network:       network.TestNetworkPassphrase,
+	}
+
+	err := tx.Build()
+	require.NoError(t, err)
+	err = tx.Sign(serverKP)
+	assert.NoError(t, err)
+	tx64, err := tx.Base64()
+	require.NoError(t, err)
+	readTx, readClientAccountID, err := ReadChallengeTx(tx64, serverKP.Address(), network.TestNetworkPassphrase)
+	assert.Equal(t, tx, readTx)
+	assert.Equal(t, clientKP.Address(), readClientAccountID)
+	assert.EqualError(t, err, "random nonce encoded as base64 should be 64 bytes long")
+}
+
+func TestReadChallengeTx_invalidDataValueCorruptBase64(t *testing.T) {
+	serverKP := newKeypair0()
+	clientKP := newKeypair1()
+	txSource := NewSimpleAccount(serverKP.Address(), -1)
+	opSource := NewSimpleAccount(clientKP.Address(), 0)
+	op := ManageData{
+		SourceAccount: &opSource,
+		Name:          "testserver auth",
+		Value:         []byte("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA?AAAAAAAAAAAAAAAAAAAAAAAAAA"),
+	}
+	tx := Transaction{
+		SourceAccount: &txSource,
+		Operations:    []Operation{&op},
+		Timebounds:    NewTimeout(300),
+		Network:       network.TestNetworkPassphrase,
+	}
+
+	err := tx.Build()
+	require.NoError(t, err)
+	err = tx.Sign(serverKP)
+	assert.NoError(t, err)
+	tx64, err := tx.Base64()
+	require.NoError(t, err)
+	readTx, readClientAccountID, err := ReadChallengeTx(tx64, serverKP.Address(), network.TestNetworkPassphrase)
+	assert.Equal(t, tx, readTx)
+	assert.Equal(t, clientKP.Address(), readClientAccountID)
+	assert.EqualError(t, err, "failed to decode random nonce provided in manage_data operation: illegal base64 data at input byte 37")
+}
+
+func TestReadChallengeTx_invalidDataValueWrongByteLength(t *testing.T) {
+	serverKP := newKeypair0()
+	clientKP := newKeypair1()
+	txSource := NewSimpleAccount(serverKP.Address(), -1)
+	opSource := NewSimpleAccount(clientKP.Address(), 0)
+	op := ManageData{
+		SourceAccount: &opSource,
+		Name:          "testserver auth",
+		Value:         []byte(base64.StdEncoding.EncodeToString(make([]byte, 47))),
+	}
+	tx := Transaction{
+		SourceAccount: &txSource,
+		Operations:    []Operation{&op},
+		Timebounds:    NewTimeout(300),
+		Network:       network.TestNetworkPassphrase,
+	}
+
+	err := tx.Build()
+	require.NoError(t, err)
+	err = tx.Sign(serverKP)
+	assert.NoError(t, err)
+	tx64, err := tx.Base64()
+	require.NoError(t, err)
+	readTx, readClientAccountID, err := ReadChallengeTx(tx64, serverKP.Address(), network.TestNetworkPassphrase)
+	assert.Equal(t, tx, readTx)
+	assert.Equal(t, clientKP.Address(), readClientAccountID)
+	assert.EqualError(t, err, "random nonce before encoding as base64 should be 48 bytes long")
+}
+
+func TestVerifyChallengeTxThreshold_invalidServer(t *testing.T) {
+	serverKP := newKeypair0()
+	clientKP := newKeypair1()
+	txSource := NewSimpleAccount(serverKP.Address(), -1)
+	opSource := NewSimpleAccount(clientKP.Address(), 0)
+	op := ManageData{
+		SourceAccount: &opSource,
+		Name:          "testserver auth",
+		Value:         []byte(base64.StdEncoding.EncodeToString(make([]byte, 48))),
+	}
+	tx := Transaction{
+		SourceAccount: &txSource,
+		Operations:    []Operation{&op},
+		Timebounds:    NewTimeout(1000),
+		Network:       network.TestNetworkPassphrase,
+	}
+	threshold := Threshold(1)
+	signerSummary := SignerSummary{
+		clientKP.Address(): 1,
+	}
+
+	err := tx.Build()
+	require.NoError(t, err)
+	err = tx.Sign(clientKP)
+	assert.NoError(t, err)
+	tx64, err := tx.Base64()
+	require.NoError(t, err)
+	signersFound, err := VerifyChallengeTxThreshold(tx64, serverKP.Address(), network.TestNetworkPassphrase, threshold, signerSummary)
+	assert.Empty(t, signersFound)
+	assert.EqualError(t, err, "transaction not signed by "+serverKP.Address())
+}
+
+func TestVerifyChallengeTxThreshold_validServerAndClientKeyMeetingThreshold(t *testing.T) {
+	serverKP := newKeypair0()
+	clientKP := newKeypair1()
+	txSource := NewSimpleAccount(serverKP.Address(), -1)
+	opSource := NewSimpleAccount(clientKP.Address(), 0)
+	op := ManageData{
+		SourceAccount: &opSource,
+		Name:          "testserver auth",
+		Value:         []byte(base64.StdEncoding.EncodeToString(make([]byte, 48))),
+	}
+	tx := Transaction{
+		SourceAccount: &txSource,
+		Operations:    []Operation{&op},
+		Timebounds:    NewTimeout(1000),
+		Network:       network.TestNetworkPassphrase,
+	}
+	threshold := Threshold(1)
+	signerSummary := SignerSummary{
+		clientKP.Address(): 1,
+	}
+	wantSigners := []string{
+		clientKP.Address(),
+	}
+
+	err := tx.Build()
+	require.NoError(t, err)
+	err = tx.Sign(serverKP, clientKP)
+	assert.NoError(t, err)
+	tx64, err := tx.Base64()
+	require.NoError(t, err)
+	signersFound, err := VerifyChallengeTxThreshold(tx64, serverKP.Address(), network.TestNetworkPassphrase, threshold, signerSummary)
+	assert.ElementsMatch(t, wantSigners, signersFound)
+	assert.NoError(t, err)
+}
+
+func TestVerifyChallengeTxThreshold_validServerAndMultipleClientKeyMeetingThreshold(t *testing.T) {
+	serverKP := newKeypair0()
+	clientKP1 := newKeypair1()
+	clientKP2 := newKeypair2()
+	txSource := NewSimpleAccount(serverKP.Address(), -1)
+	opSource := NewSimpleAccount(clientKP1.Address(), 0)
+	op := ManageData{
+		SourceAccount: &opSource,
+		Name:          "testserver auth",
+		Value:         []byte(base64.StdEncoding.EncodeToString(make([]byte, 48))),
+	}
+	tx := Transaction{
+		SourceAccount: &txSource,
+		Operations:    []Operation{&op},
+		Timebounds:    NewTimeout(1000),
+		Network:       network.TestNetworkPassphrase,
+	}
+	threshold := Threshold(3)
+	signerSummary := map[string]int32{
+		clientKP1.Address(): 1,
+		clientKP2.Address(): 2,
+	}
+	wantSigners := []string{
+		clientKP1.Address(),
+		clientKP2.Address(),
+	}
+
+	err := tx.Build()
+	require.NoError(t, err)
+	err = tx.Sign(serverKP, clientKP1, clientKP2)
+	assert.NoError(t, err)
+	tx64, err := tx.Base64()
+	require.NoError(t, err)
+	signersFound, err := VerifyChallengeTxThreshold(tx64, serverKP.Address(), network.TestNetworkPassphrase, threshold, signerSummary)
+	assert.ElementsMatch(t, wantSigners, signersFound)
+	assert.NoError(t, err)
+}
+
+func TestVerifyChallengeTxThreshold_validServerAndMultipleClientKeyMeetingThresholdSomeUnused(t *testing.T) {
+	serverKP := newKeypair0()
+	clientKP1 := newKeypair1()
+	clientKP2 := newKeypair2()
+	clientKP3 := keypair.MustRandom()
+	txSource := NewSimpleAccount(serverKP.Address(), -1)
+	opSource := NewSimpleAccount(clientKP1.Address(), 0)
+	op := ManageData{
+		SourceAccount: &opSource,
+		Name:          "testserver auth",
+		Value:         []byte(base64.StdEncoding.EncodeToString(make([]byte, 48))),
+	}
+	tx := Transaction{
+		SourceAccount: &txSource,
+		Operations:    []Operation{&op},
+		Timebounds:    NewTimeout(1000),
+		Network:       network.TestNetworkPassphrase,
+	}
+	threshold := Threshold(3)
+	signerSummary := SignerSummary{
+		clientKP1.Address(): 1,
+		clientKP2.Address(): 2,
+		clientKP3.Address(): 2,
+	}
+	wantSigners := []string{
+		clientKP1.Address(),
+		clientKP2.Address(),
+	}
+
+	err := tx.Build()
+	require.NoError(t, err)
+	err = tx.Sign(serverKP, clientKP1, clientKP2)
+	assert.NoError(t, err)
+	tx64, err := tx.Base64()
+	require.NoError(t, err)
+	signersFound, err := VerifyChallengeTxThreshold(tx64, serverKP.Address(), network.TestNetworkPassphrase, threshold, signerSummary)
+	assert.ElementsMatch(t, wantSigners, signersFound)
+	assert.NoError(t, err)
+}
+
+func TestVerifyChallengeTxThreshold_validServerAndMultipleClientKeyMeetingThresholdSomeUnusedIgnorePreauthTxHashAndXHash(t *testing.T) {
+	serverKP := newKeypair0()
+	clientKP1 := newKeypair1()
+	clientKP2 := newKeypair2()
+	clientKP3 := keypair.MustRandom()
+	preauthTxHash := "TAQCSRX2RIDJNHFIFHWD63X7D7D6TRT5Y2S6E3TEMXTG5W3OECHZ2OG4"
+	xHash := "XDRPF6NZRR7EEVO7ESIWUDXHAOMM2QSKIQQBJK6I2FB7YKDZES5UCLWD"
+	unknownSignerType := "?ARPF6NZRR7EEVO7ESIWUDXHAOMM2QSKIQQBJK6I2FB7YKDZES5UCLWD"
+	txSource := NewSimpleAccount(serverKP.Address(), -1)
+	opSource := NewSimpleAccount(clientKP1.Address(), 0)
+	op := ManageData{
+		SourceAccount: &opSource,
+		Name:          "testserver auth",
+		Value:         []byte(base64.StdEncoding.EncodeToString(make([]byte, 48))),
+	}
+	tx := Transaction{
+		SourceAccount: &txSource,
+		Operations:    []Operation{&op},
+		Timebounds:    NewTimeout(1000),
+		Network:       network.TestNetworkPassphrase,
+	}
+	threshold := Threshold(3)
+	signerSummary := SignerSummary{
+		clientKP1.Address(): 1,
+		clientKP2.Address(): 2,
+		clientKP3.Address(): 2,
+		preauthTxHash:       10,
+		xHash:               10,
+		unknownSignerType:   10,
+	}
+	wantSigners := []string{
+		clientKP1.Address(),
+		clientKP2.Address(),
+	}
+
+	err := tx.Build()
+	require.NoError(t, err)
+	err = tx.Sign(serverKP, clientKP1, clientKP2)
+	assert.NoError(t, err)
+	tx64, err := tx.Base64()
+	require.NoError(t, err)
+	signersFound, err := VerifyChallengeTxThreshold(tx64, serverKP.Address(), network.TestNetworkPassphrase, threshold, signerSummary)
+	assert.ElementsMatch(t, wantSigners, signersFound)
+	assert.NoError(t, err)
+}
+
+func TestVerifyChallengeTxThreshold_invalidServerAndMultipleClientKeyNotMeetingThreshold(t *testing.T) {
+	serverKP := newKeypair0()
+	clientKP1 := newKeypair1()
+	clientKP2 := newKeypair2()
+	clientKP3 := keypair.MustRandom()
+	txSource := NewSimpleAccount(serverKP.Address(), -1)
+	opSource := NewSimpleAccount(clientKP1.Address(), 0)
+	op := ManageData{
+		SourceAccount: &opSource,
+		Name:          "testserver auth",
+		Value:         []byte(base64.StdEncoding.EncodeToString(make([]byte, 48))),
+	}
+	tx := Transaction{
+		SourceAccount: &txSource,
+		Operations:    []Operation{&op},
+		Timebounds:    NewTimeout(1000),
+		Network:       network.TestNetworkPassphrase,
+	}
+	threshold := Threshold(10)
+	signerSummary := SignerSummary{
+		clientKP1.Address(): 1,
+		clientKP2.Address(): 2,
+		clientKP3.Address(): 2,
+	}
+
+	err := tx.Build()
+	require.NoError(t, err)
+	err = tx.Sign(serverKP, clientKP1, clientKP2)
+	assert.NoError(t, err)
+	tx64, err := tx.Base64()
+	require.NoError(t, err)
+	_, err = VerifyChallengeTxThreshold(tx64, serverKP.Address(), network.TestNetworkPassphrase, threshold, signerSummary)
+	assert.EqualError(t, err, "signers with weight 3 do not meet threshold 10")
+}
+
+func TestVerifyChallengeTxThreshold_invalidClientKeyUnrecognized(t *testing.T) {
+	serverKP := newKeypair0()
+	clientKP1 := newKeypair1()
+	clientKP2 := newKeypair2()
+	clientKP3 := keypair.MustRandom()
+	txSource := NewSimpleAccount(serverKP.Address(), -1)
+	opSource := NewSimpleAccount(clientKP1.Address(), 0)
+	op := ManageData{
+		SourceAccount: &opSource,
+		Name:          "testserver auth",
+		Value:         []byte(base64.StdEncoding.EncodeToString(make([]byte, 48))),
+	}
+	tx := Transaction{
+		SourceAccount: &txSource,
+		Operations:    []Operation{&op},
+		Timebounds:    NewTimeout(1000),
+		Network:       network.TestNetworkPassphrase,
+	}
+	threshold := Threshold(10)
+	signerSummary := map[string]int32{
+		clientKP1.Address(): 1,
+		clientKP2.Address(): 2,
+	}
+
+	err := tx.Build()
+	require.NoError(t, err)
+	err = tx.Sign(serverKP, clientKP1, clientKP2, clientKP3)
+	assert.NoError(t, err)
+	tx64, err := tx.Base64()
+	require.NoError(t, err)
+	_, err = VerifyChallengeTxThreshold(tx64, serverKP.Address(), network.TestNetworkPassphrase, threshold, signerSummary)
+	assert.EqualError(t, err, "transaction has unrecognized signatures")
+}
+
+func TestVerifyChallengeTxThreshold_invalidNoSigners(t *testing.T) {
+	serverKP := newKeypair0()
+	clientKP1 := newKeypair1()
+	clientKP2 := newKeypair2()
+	clientKP3 := keypair.MustRandom()
+	txSource := NewSimpleAccount(serverKP.Address(), -1)
+	opSource := NewSimpleAccount(clientKP1.Address(), 0)
+	op := ManageData{
+		SourceAccount: &opSource,
+		Name:          "testserver auth",
+		Value:         []byte(base64.StdEncoding.EncodeToString(make([]byte, 48))),
+	}
+	tx := Transaction{
+		SourceAccount: &txSource,
+		Operations:    []Operation{&op},
+		Timebounds:    NewTimeout(1000),
+		Network:       network.TestNetworkPassphrase,
+	}
+	threshold := Threshold(10)
+	signerSummary := SignerSummary{}
+
+	err := tx.Build()
+	require.NoError(t, err)
+	err = tx.Sign(serverKP, clientKP1, clientKP2, clientKP3)
+	assert.NoError(t, err)
+	tx64, err := tx.Base64()
+	require.NoError(t, err)
+	_, err = VerifyChallengeTxThreshold(tx64, serverKP.Address(), network.TestNetworkPassphrase, threshold, signerSummary)
+	assert.EqualError(t, err, "no verifiable signers provided, at least one G... address must be provided")
+}
+
+func TestVerifyChallengeTxThreshold_weightsAddToMoreThan8Bits(t *testing.T) {
+	serverKP := newKeypair0()
+	clientKP1 := newKeypair1()
+	clientKP2 := newKeypair2()
+	txSource := NewSimpleAccount(serverKP.Address(), -1)
+	opSource := NewSimpleAccount(clientKP1.Address(), 0)
+	op := ManageData{
+		SourceAccount: &opSource,
+		Name:          "testserver auth",
+		Value:         []byte(base64.StdEncoding.EncodeToString(make([]byte, 48))),
+	}
+	tx := Transaction{
+		SourceAccount: &txSource,
+		Operations:    []Operation{&op},
+		Timebounds:    NewTimeout(1000),
+		Network:       network.TestNetworkPassphrase,
+	}
+	threshold := Threshold(1)
+	signerSummary := SignerSummary{
+		clientKP1.Address(): 255,
+		clientKP2.Address(): 1,
+	}
+	wantSigners := []string{
+		clientKP1.Address(),
+		clientKP2.Address(),
+	}
+
+	err := tx.Build()
+	require.NoError(t, err)
+	err = tx.Sign(serverKP, clientKP1, clientKP2)
+	assert.NoError(t, err)
+	tx64, err := tx.Base64()
+	require.NoError(t, err)
+	signersFound, err := VerifyChallengeTxThreshold(tx64, serverKP.Address(), network.TestNetworkPassphrase, threshold, signerSummary)
+	assert.ElementsMatch(t, wantSigners, signersFound)
+	assert.NoError(t, err)
+}
+
+func TestVerifyChallengeTxSigners_invalidServer(t *testing.T) {
+	serverKP := newKeypair0()
+	clientKP := newKeypair1()
+	txSource := NewSimpleAccount(serverKP.Address(), -1)
+	opSource := NewSimpleAccount(clientKP.Address(), 0)
+	op := ManageData{
+		SourceAccount: &opSource,
+		Name:          "testserver auth",
+		Value:         []byte(base64.StdEncoding.EncodeToString(make([]byte, 48))),
+	}
+	tx := Transaction{
+		SourceAccount: &txSource,
+		Operations:    []Operation{&op},
+		Timebounds:    NewTimeout(1000),
+		Network:       network.TestNetworkPassphrase,
+	}
+
+	err := tx.Build()
+	require.NoError(t, err)
+	err = tx.Sign(clientKP)
+	assert.NoError(t, err)
+	tx64, err := tx.Base64()
+	require.NoError(t, err)
+	signersFound, err := VerifyChallengeTxSigners(tx64, serverKP.Address(), network.TestNetworkPassphrase, clientKP.Address())
+	assert.Empty(t, signersFound)
+	assert.EqualError(t, err, "transaction not signed by "+serverKP.Address())
+}
+
+func TestVerifyChallengeTxSigners_validServerAndClientMasterKey(t *testing.T) {
+	serverKP := newKeypair0()
+	clientKP := newKeypair1()
+	txSource := NewSimpleAccount(serverKP.Address(), -1)
+	opSource := NewSimpleAccount(clientKP.Address(), 0)
+	op := ManageData{
+		SourceAccount: &opSource,
+		Name:          "testserver auth",
+		Value:         []byte(base64.StdEncoding.EncodeToString(make([]byte, 48))),
+	}
+	tx := Transaction{
+		SourceAccount: &txSource,
+		Operations:    []Operation{&op},
+		Timebounds:    NewTimeout(1000),
+		Network:       network.TestNetworkPassphrase,
+	}
+
+	err := tx.Build()
+	require.NoError(t, err)
+	err = tx.Sign(serverKP, clientKP)
+	assert.NoError(t, err)
+	tx64, err := tx.Base64()
+	require.NoError(t, err)
+	signersFound, err := VerifyChallengeTxSigners(tx64, serverKP.Address(), network.TestNetworkPassphrase, clientKP.Address())
+	assert.Equal(t, []string{clientKP.Address()}, signersFound)
+	assert.NoError(t, err)
+}
+
+func TestVerifyChallengeTxSigners_invalidServerAndNoClient(t *testing.T) {
+	serverKP := newKeypair0()
+	clientKP := newKeypair1()
+	txSource := NewSimpleAccount(serverKP.Address(), -1)
+	opSource := NewSimpleAccount(clientKP.Address(), 0)
+	op := ManageData{
+		SourceAccount: &opSource,
+		Name:          "testserver auth",
+		Value:         []byte(base64.StdEncoding.EncodeToString(make([]byte, 48))),
+	}
+	tx := Transaction{
+		SourceAccount: &txSource,
+		Operations:    []Operation{&op},
+		Timebounds:    NewTimeout(1000),
+		Network:       network.TestNetworkPassphrase,
+	}
+
+	err := tx.Build()
+	require.NoError(t, err)
+	err = tx.Sign(serverKP)
+	assert.NoError(t, err)
+	tx64, err := tx.Base64()
+	require.NoError(t, err)
+	signersFound, err := VerifyChallengeTxSigners(tx64, serverKP.Address(), network.TestNetworkPassphrase, clientKP.Address())
+	assert.Empty(t, signersFound)
+	assert.EqualError(t, err, "transaction not signed by "+clientKP.Address())
+}
+
+func TestVerifyChallengeTxSigners_invalidServerAndUnrecognizedClient(t *testing.T) {
+	serverKP := newKeypair0()
+	clientKP := newKeypair1()
+	unrecognizedKP := newKeypair2()
+	txSource := NewSimpleAccount(serverKP.Address(), -1)
+	opSource := NewSimpleAccount(clientKP.Address(), 0)
+	op := ManageData{
+		SourceAccount: &opSource,
+		Name:          "testserver auth",
+		Value:         []byte(base64.StdEncoding.EncodeToString(make([]byte, 48))),
+	}
+	tx := Transaction{
+		SourceAccount: &txSource,
+		Operations:    []Operation{&op},
+		Timebounds:    NewTimeout(1000),
+		Network:       network.TestNetworkPassphrase,
+	}
+
+	err := tx.Build()
+	require.NoError(t, err)
+	err = tx.Sign(serverKP, unrecognizedKP)
+	assert.NoError(t, err)
+	tx64, err := tx.Base64()
+	require.NoError(t, err)
+	signersFound, err := VerifyChallengeTxSigners(tx64, serverKP.Address(), network.TestNetworkPassphrase, clientKP.Address())
+	assert.Empty(t, signersFound)
+	assert.EqualError(t, err, "transaction not signed by "+clientKP.Address())
+}
+
+func TestVerifyChallengeTxSigners_validServerAndMultipleClientSigners(t *testing.T) {
+	serverKP := newKeypair0()
+	clientKP := newKeypair1()
+	clientKP2 := newKeypair2()
+	txSource := NewSimpleAccount(serverKP.Address(), -1)
+	opSource := NewSimpleAccount(clientKP.Address(), 0)
+	op := ManageData{
+		SourceAccount: &opSource,
+		Name:          "testserver auth",
+		Value:         []byte(base64.StdEncoding.EncodeToString(make([]byte, 48))),
+	}
+	tx := Transaction{
+		SourceAccount: &txSource,
+		Operations:    []Operation{&op},
+		Timebounds:    NewTimeout(1000),
+		Network:       network.TestNetworkPassphrase,
+	}
+
+	err := tx.Build()
+	require.NoError(t, err)
+	err = tx.Sign(serverKP, clientKP, clientKP2)
+	assert.NoError(t, err)
+	tx64, err := tx.Base64()
+	require.NoError(t, err)
+	signersFound, err := VerifyChallengeTxSigners(tx64, serverKP.Address(), network.TestNetworkPassphrase, clientKP.Address(), clientKP2.Address())
+	assert.Equal(t, []string{clientKP.Address(), clientKP2.Address()}, signersFound)
+	assert.NoError(t, err)
+}
+
+func TestVerifyChallengeTxSigners_validServerAndMultipleClientSignersReverseOrder(t *testing.T) {
+	serverKP := newKeypair0()
+	clientKP := newKeypair1()
+	clientKP2 := newKeypair2()
+	txSource := NewSimpleAccount(serverKP.Address(), -1)
+	opSource := NewSimpleAccount(clientKP.Address(), 0)
+	op := ManageData{
+		SourceAccount: &opSource,
+		Name:          "testserver auth",
+		Value:         []byte(base64.StdEncoding.EncodeToString(make([]byte, 48))),
+	}
+	tx := Transaction{
+		SourceAccount: &txSource,
+		Operations:    []Operation{&op},
+		Timebounds:    NewTimeout(1000),
+		Network:       network.TestNetworkPassphrase,
+	}
+
+	err := tx.Build()
+	require.NoError(t, err)
+	err = tx.Sign(serverKP, clientKP2, clientKP)
+	assert.NoError(t, err)
+	tx64, err := tx.Base64()
+	require.NoError(t, err)
+	signersFound, err := VerifyChallengeTxSigners(tx64, serverKP.Address(), network.TestNetworkPassphrase, clientKP.Address(), clientKP2.Address())
+	assert.Equal(t, []string{clientKP.Address(), clientKP2.Address()}, signersFound)
+	assert.NoError(t, err)
+}
+
+func TestVerifyChallengeTxSigners_validServerAndClientSignersNotMasterKey(t *testing.T) {
+	serverKP := newKeypair0()
+	clientKP := newKeypair1()
+	clientKP2 := newKeypair2()
+	txSource := NewSimpleAccount(serverKP.Address(), -1)
+	opSource := NewSimpleAccount(clientKP.Address(), 0)
+	op := ManageData{
+		SourceAccount: &opSource,
+		Name:          "testserver auth",
+		Value:         []byte(base64.StdEncoding.EncodeToString(make([]byte, 48))),
+	}
+	tx := Transaction{
+		SourceAccount: &txSource,
+		Operations:    []Operation{&op},
+		Timebounds:    NewTimeout(1000),
+		Network:       network.TestNetworkPassphrase,
+	}
+
+	err := tx.Build()
+	require.NoError(t, err)
+	err = tx.Sign(serverKP, clientKP2)
+	assert.NoError(t, err)
+	tx64, err := tx.Base64()
+	require.NoError(t, err)
+	signersFound, err := VerifyChallengeTxSigners(tx64, serverKP.Address(), network.TestNetworkPassphrase, clientKP2.Address())
+	assert.Equal(t, []string{clientKP2.Address()}, signersFound)
+	assert.NoError(t, err)
+}
+
+func TestVerifyChallengeTxSigners_validServerAndClientSignersIgnoresServerSigner(t *testing.T) {
+	serverKP := newKeypair0()
+	clientKP := newKeypair1()
+	clientKP2 := newKeypair2()
+	txSource := NewSimpleAccount(serverKP.Address(), -1)
+	opSource := NewSimpleAccount(clientKP.Address(), 0)
+	op := ManageData{
+		SourceAccount: &opSource,
+		Name:          "testserver auth",
+		Value:         []byte(base64.StdEncoding.EncodeToString(make([]byte, 48))),
+	}
+	tx := Transaction{
+		SourceAccount: &txSource,
+		Operations:    []Operation{&op},
+		Timebounds:    NewTimeout(1000),
+		Network:       network.TestNetworkPassphrase,
+	}
+
+	err := tx.Build()
+	require.NoError(t, err)
+	err = tx.Sign(serverKP, clientKP2)
+	assert.NoError(t, err)
+	tx64, err := tx.Base64()
+	require.NoError(t, err)
+	signersFound, err := VerifyChallengeTxSigners(tx64, serverKP.Address(), network.TestNetworkPassphrase, serverKP.Address(), clientKP2.Address())
+	assert.Equal(t, []string{clientKP2.Address()}, signersFound)
+	assert.NoError(t, err)
+}
+
+func TestVerifyChallengeTxSigners_invalidServerNoClientSignersIgnoresServerSigner(t *testing.T) {
+	serverKP := newKeypair0()
+	clientKP := newKeypair1()
+	clientKP2 := newKeypair2()
+	txSource := NewSimpleAccount(serverKP.Address(), -1)
+	opSource := NewSimpleAccount(clientKP.Address(), 0)
+	op := ManageData{
+		SourceAccount: &opSource,
+		Name:          "testserver auth",
+		Value:         []byte(base64.StdEncoding.EncodeToString(make([]byte, 48))),
+	}
+	tx := Transaction{
+		SourceAccount: &txSource,
+		Operations:    []Operation{&op},
+		Timebounds:    NewTimeout(1000),
+		Network:       network.TestNetworkPassphrase,
+	}
+
+	err := tx.Build()
+	require.NoError(t, err)
+	err = tx.Sign(serverKP)
+	assert.NoError(t, err)
+	tx64, err := tx.Base64()
+	require.NoError(t, err)
+	signersFound, err := VerifyChallengeTxSigners(tx64, serverKP.Address(), network.TestNetworkPassphrase, serverKP.Address(), clientKP2.Address())
+	assert.Empty(t, signersFound)
+	assert.EqualError(t, err, "transaction not signed by "+clientKP2.Address())
+}
+
+func TestVerifyChallengeTxSigners_validServerAndClientSignersIgnoresDuplicateSigner(t *testing.T) {
+	serverKP := newKeypair0()
+	clientKP := newKeypair1()
+	clientKP2 := newKeypair2()
+	txSource := NewSimpleAccount(serverKP.Address(), -1)
+	opSource := NewSimpleAccount(clientKP.Address(), 0)
+	op := ManageData{
+		SourceAccount: &opSource,
+		Name:          "testserver auth",
+		Value:         []byte(base64.StdEncoding.EncodeToString(make([]byte, 48))),
+	}
+	tx := Transaction{
+		SourceAccount: &txSource,
+		Operations:    []Operation{&op},
+		Timebounds:    NewTimeout(1000),
+		Network:       network.TestNetworkPassphrase,
+	}
+
+	err := tx.Build()
+	require.NoError(t, err)
+	err = tx.Sign(serverKP, clientKP2)
+	assert.NoError(t, err)
+	tx64, err := tx.Base64()
+	require.NoError(t, err)
+	signersFound, err := VerifyChallengeTxSigners(tx64, serverKP.Address(), network.TestNetworkPassphrase, clientKP2.Address(), clientKP2.Address())
+	assert.Equal(t, []string{clientKP2.Address()}, signersFound)
+	assert.NoError(t, err)
+}
+
+func TestVerifyChallengeTxSigners_validIgnorePreauthTxHashAndXHash(t *testing.T) {
+	serverKP := newKeypair0()
+	clientKP := newKeypair1()
+	clientKP2 := newKeypair2()
+	preauthTxHash := "TAQCSRX2RIDJNHFIFHWD63X7D7D6TRT5Y2S6E3TEMXTG5W3OECHZ2OG4"
+	xHash := "XDRPF6NZRR7EEVO7ESIWUDXHAOMM2QSKIQQBJK6I2FB7YKDZES5UCLWD"
+	unknownSignerType := "?ARPF6NZRR7EEVO7ESIWUDXHAOMM2QSKIQQBJK6I2FB7YKDZES5UCLWD"
+	txSource := NewSimpleAccount(serverKP.Address(), -1)
+	opSource := NewSimpleAccount(clientKP.Address(), 0)
+	op := ManageData{
+		SourceAccount: &opSource,
+		Name:          "testserver auth",
+		Value:         []byte(base64.StdEncoding.EncodeToString(make([]byte, 48))),
+	}
+	tx := Transaction{
+		SourceAccount: &txSource,
+		Operations:    []Operation{&op},
+		Timebounds:    NewTimeout(1000),
+		Network:       network.TestNetworkPassphrase,
+	}
+
+	err := tx.Build()
+	require.NoError(t, err)
+	err = tx.Sign(serverKP, clientKP2)
+	assert.NoError(t, err)
+	tx64, err := tx.Base64()
+	require.NoError(t, err)
+	signersFound, err := VerifyChallengeTxSigners(tx64, serverKP.Address(), network.TestNetworkPassphrase, clientKP2.Address(), preauthTxHash, xHash, unknownSignerType)
+	assert.Equal(t, []string{clientKP2.Address()}, signersFound)
+	assert.NoError(t, err)
+}
+
+func TestVerifyChallengeTxSigners_invalidServerAndClientSignersIgnoresDuplicateSignerInError(t *testing.T) {
+	serverKP := newKeypair0()
+	clientKP := newKeypair1()
+	clientKP2 := newKeypair2()
+	txSource := NewSimpleAccount(serverKP.Address(), -1)
+	opSource := NewSimpleAccount(clientKP.Address(), 0)
+	op := ManageData{
+		SourceAccount: &opSource,
+		Name:          "testserver auth",
+		Value:         []byte(base64.StdEncoding.EncodeToString(make([]byte, 48))),
+	}
+	tx := Transaction{
+		SourceAccount: &txSource,
+		Operations:    []Operation{&op},
+		Timebounds:    NewTimeout(1000),
+		Network:       network.TestNetworkPassphrase,
+	}
+
+	err := tx.Build()
+	require.NoError(t, err)
+	err = tx.Sign(serverKP, clientKP2)
+	assert.NoError(t, err)
+	tx64, err := tx.Base64()
+	require.NoError(t, err)
+	signersFound, err := VerifyChallengeTxSigners(tx64, serverKP.Address(), network.TestNetworkPassphrase, clientKP.Address(), clientKP.Address())
+	assert.Empty(t, signersFound)
+	assert.EqualError(t, err, "transaction not signed by "+clientKP.Address())
+}
+
+func TestVerifyChallengeTxSigners_invalidServerAndClientSignersFailsDuplicateSignatures(t *testing.T) {
+	serverKP := newKeypair0()
+	clientKP := newKeypair1()
+	clientKP2 := newKeypair2()
+	txSource := NewSimpleAccount(serverKP.Address(), -1)
+	opSource := NewSimpleAccount(clientKP.Address(), 0)
+	op := ManageData{
+		SourceAccount: &opSource,
+		Name:          "testserver auth",
+		Value:         []byte(base64.StdEncoding.EncodeToString(make([]byte, 48))),
+	}
+	tx := Transaction{
+		SourceAccount: &txSource,
+		Operations:    []Operation{&op},
+		Timebounds:    NewTimeout(1000),
+		Network:       network.TestNetworkPassphrase,
+	}
+
+	err := tx.Build()
+	require.NoError(t, err)
+	err = tx.Sign(serverKP, clientKP2, clientKP2)
+	assert.NoError(t, err)
+	tx64, err := tx.Base64()
+	require.NoError(t, err)
+	signersFound, err := VerifyChallengeTxSigners(tx64, serverKP.Address(), network.TestNetworkPassphrase, clientKP2.Address())
+	assert.Equal(t, []string{clientKP2.Address()}, signersFound)
+	assert.EqualError(t, err, "transaction has unrecognized signatures")
+}
+
+func TestVerifyChallengeTxSigners_invalidServerAndClientSignersFailsSignerSeed(t *testing.T) {
+	serverKP := newKeypair0()
+	clientKP := newKeypair1()
+	clientKP2 := newKeypair2()
+	txSource := NewSimpleAccount(serverKP.Address(), -1)
+	opSource := NewSimpleAccount(clientKP.Address(), 0)
+	op := ManageData{
+		SourceAccount: &opSource,
+		Name:          "testserver auth",
+		Value:         []byte(base64.StdEncoding.EncodeToString(make([]byte, 48))),
+	}
+	tx := Transaction{
+		SourceAccount: &txSource,
+		Operations:    []Operation{&op},
+		Timebounds:    NewTimeout(1000),
+		Network:       network.TestNetworkPassphrase,
+	}
+
+	err := tx.Build()
+	require.NoError(t, err)
+	err = tx.Sign(serverKP, clientKP2)
+	assert.NoError(t, err)
+	tx64, err := tx.Base64()
+	require.NoError(t, err)
+	signersFound, err := VerifyChallengeTxSigners(tx64, serverKP.Address(), network.TestNetworkPassphrase, clientKP2.Seed())
+	assert.Empty(t, signersFound)
+	assert.EqualError(t, err, "no verifiable signers provided, at least one G... address must be provided")
+}
+
+func TestVerifyChallengeTxSigners_invalidNoSigners(t *testing.T) {
+	serverKP := newKeypair0()
+	clientKP := newKeypair1()
+	txSource := NewSimpleAccount(serverKP.Address(), -1)
+	opSource := NewSimpleAccount(clientKP.Address(), 0)
+	op := ManageData{
+		SourceAccount: &opSource,
+		Name:          "testserver auth",
+		Value:         []byte(base64.StdEncoding.EncodeToString(make([]byte, 48))),
+	}
+	tx := Transaction{
+		SourceAccount: &txSource,
+		Operations:    []Operation{&op},
+		Timebounds:    NewTimeout(1000),
+		Network:       network.TestNetworkPassphrase,
+	}
+
+	err := tx.Build()
+	require.NoError(t, err)
+	err = tx.Sign(serverKP, clientKP)
+	assert.NoError(t, err)
+	tx64, err := tx.Base64()
+	require.NoError(t, err)
+	_, err = VerifyChallengeTxSigners(tx64, serverKP.Address(), network.TestNetworkPassphrase)
+	assert.EqualError(t, err, "no verifiable signers provided, at least one G... address must be provided")
 }
 
 func TestVerifyTxSignatureUnsignedTx(t *testing.T) {
