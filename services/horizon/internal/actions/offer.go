@@ -3,7 +3,6 @@ package actions
 import (
 	"context"
 	"net/http"
-	"strings"
 
 	"github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
@@ -49,7 +48,7 @@ func (handler GetOfferByID) GetResource(
 	}
 
 	var offerResponse horizon.Offer
-	resourceadapter.PopulateHistoryOffer(ctx, &offerResponse, record, ledger)
+	resourceadapter.PopulateOffer(ctx, &offerResponse, record, ledger)
 	return offerResponse, nil
 }
 
@@ -61,7 +60,8 @@ type OffersQuery struct {
 
 // URITemplate returns a rfc6570 URI template the query struct
 func (q OffersQuery) URITemplate() string {
-	return "/offers{?" + strings.Join(GetURIParams(&q, true), ",") + "}"
+	// building this manually since we don't want to include all the params in SellingBuyingAssetQueryParams
+	return "/offers{?selling,buying,seller,cursor,limit,order}"
 }
 
 // Validate runs custom validations.
@@ -189,7 +189,7 @@ func getOffersPage(ctx context.Context, historyQ *history.Q, query history.Offer
 			ledgerPtr = nil
 		}
 
-		resourceadapter.PopulateHistoryOffer(ctx, &offerResponse, record, ledgerPtr)
+		resourceadapter.PopulateOffer(ctx, &offerResponse, record, ledgerPtr)
 		offers = append(offers, offerResponse)
 	}
 

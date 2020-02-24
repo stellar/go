@@ -704,7 +704,7 @@ var accountOffersResponse = `{
             "href": "https://horizon.stellar.org/accounts/GC2BQYBXFOVPRDH35D5HT2AFVCDGXJM5YVTAF5THFSAISYOWAJQKRESK"
           }
         },
-        "id": 161,
+        "id": "161",
         "paging_token": "161",
         "seller": "GC2BQYBXFOVPRDH35D5HT2AFVCDGXJM5YVTAF5THFSAISYOWAJQKRESK",
         "selling": {
@@ -731,7 +731,7 @@ var accountOffersResponse = `{
             "href": "https://horizon.stellar.org/accounts/GC2BQYBXFOVPRDH35D5HT2AFVCDGXJM5YVTAF5THFSAISYOWAJQKRESK"
           }
         },
-        "id": 2539,
+        "id": "2539",
         "paging_token": "2539",
         "seller": "GC2BQYBXFOVPRDH35D5HT2AFVCDGXJM5YVTAF5THFSAISYOWAJQKRESK",
         "selling": {

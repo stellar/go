@@ -32,6 +32,17 @@ type tradingPair struct {
 	sellingAsset string
 }
 
+// OBGraph is an interface for orderbook graphs
+type OBGraph interface {
+	AddOffer(offer xdr.OfferEntry)
+	Apply(ledger uint32) error
+	Discard()
+	Offers() []xdr.OfferEntry
+	OffersMap() map[xdr.Int64]xdr.OfferEntry
+	RemoveOffer(xdr.Int64) OBGraph
+	Clear()
+}
+
 // OrderBookGraph is an in memory graph representation of all the offers in the stellar ledger
 type OrderBookGraph struct {
 	// edgesForSellingAsset maps an asset to all offers which sell that asset
@@ -54,6 +65,8 @@ type OrderBookGraph struct {
 	lock           sync.RWMutex
 }
 
+var _ OBGraph = (*OrderBookGraph)(nil)
+
 // NewOrderBookGraph constructs a new OrderBookGraph
 func NewOrderBookGraph() *OrderBookGraph {
 	graph := &OrderBookGraph{
@@ -69,15 +82,14 @@ func NewOrderBookGraph() *OrderBookGraph {
 // AddOffer will queue an operation to add the given offer to the order book in
 // the internal batch.
 // You need to run Apply() to apply all enqueued operations.
-func (graph *OrderBookGraph) AddOffer(offer xdr.OfferEntry) *OrderBookGraph {
+func (graph *OrderBookGraph) AddOffer(offer xdr.OfferEntry) {
 	graph.batchedUpdates.addOffer(offer)
-	return graph
 }
 
 // RemoveOffer will queue an operation to remove the given offer from the order book in
 // the internal batch.
 // You need to run Apply() to apply all enqueued operations.
-func (graph *OrderBookGraph) RemoveOffer(offerID xdr.Int64) *OrderBookGraph {
+func (graph *OrderBookGraph) RemoveOffer(offerID xdr.Int64) OBGraph {
 	graph.batchedUpdates.removeOffer(offerID)
 	return graph
 }
@@ -111,6 +123,31 @@ func (graph *OrderBookGraph) Offers() []xdr.OfferEntry {
 	}
 
 	return offers
+}
+
+// Clear removes all offers from the graph.
+func (graph *OrderBookGraph) Clear() {
+	graph.lock.Lock()
+	defer graph.lock.Unlock()
+
+	graph.edgesForSellingAsset = map[string]edgeSet{}
+	graph.edgesForBuyingAsset = map[string]edgeSet{}
+	graph.tradingPairForOffer = map[xdr.Int64]tradingPair{}
+	graph.batchedUpdates = graph.batch()
+	graph.lastLedger = 0
+}
+
+// OffersMap returns a ID => OfferEntry map of offers contained in the order
+// book.
+func (graph *OrderBookGraph) OffersMap() map[xdr.Int64]xdr.OfferEntry {
+	offers := graph.Offers()
+	m := make(map[xdr.Int64]xdr.OfferEntry, len(offers))
+
+	for _, entry := range offers {
+		m[entry.OfferId] = entry
+	}
+
+	return m
 }
 
 // Batch creates a new batch of order book updates which can be applied

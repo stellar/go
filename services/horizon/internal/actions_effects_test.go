@@ -5,6 +5,7 @@ import (
 
 	"github.com/stellar/go/protocols/horizon/effects"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
+	"github.com/stellar/go/services/horizon/internal/expingest"
 	"github.com/stellar/go/services/horizon/internal/test"
 )
 
@@ -39,6 +40,17 @@ func TestEffectActions_Index(t *testing.T) {
 		if ht.Assert.Equal(200, w.Code) {
 			ht.Assert.PageOf(2, w.Body)
 		}
+
+		// Makes StateMiddleware happy
+		q := history.Q{ht.HorizonSession()}
+		err := q.UpdateLastLedgerExpIngest(3)
+		ht.Assert.NoError(err)
+		err = q.UpdateExpIngestVersion(expingest.CurrentVersion)
+		ht.Assert.NoError(err)
+
+		// checks if empty param returns 404 instead of all payments
+		w = ht.Get("/accounts//effects")
+		ht.Assert.NotEqual(404, w.Code)
 
 		// filtered by account
 		w = ht.Get("/accounts/GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H/effects")

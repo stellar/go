@@ -113,7 +113,7 @@ func ExamplePayment_setBaseFee() {
 		Operations:    []Operation{&op1, &op2},
 		Timebounds:    NewInfiniteTimeout(), // Use a real timeout in production!
 		Network:       network.TestNetworkPassphrase,
-		BaseFee:       uint32(feeStats.P50AcceptedFee),
+		BaseFee:       uint32(feeStats.MaxFee.P50),
 	}
 
 	txe, err := tx.BuildSignEncode(kp.(*keypair.Full))

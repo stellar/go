@@ -21,7 +21,7 @@ func (s *Session) Begin() error {
 		return errors.New("already in transaction")
 	}
 
-	tx, err := s.DB.Beginx()
+	tx, err := s.DB.BeginTxx(s.Ctx, nil)
 	if err != nil {
 		if s.cancelled(err) {
 			return ErrCancelled

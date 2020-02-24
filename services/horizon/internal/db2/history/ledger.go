@@ -3,7 +3,6 @@ package history
 import (
 	"encoding/hex"
 	"fmt"
-	"reflect"
 	"time"
 
 	sq "github.com/Masterminds/squirrel"
@@ -21,18 +20,6 @@ func (q *Q) LedgerBySequence(dest interface{}, seq int32) error {
 		Where("sequence = ?", seq)
 
 	return q.Get(dest, sql)
-}
-
-// expLedgerBySequence returns a row from the exp_history_ledgers table
-func (q *Q) expLedgerBySequence(seq int32) (Ledger, error) {
-	sql := selectLedgerFields.
-		From("exp_history_ledgers hl").
-		Limit(1).
-		Where("sequence = ?", seq)
-
-	var dest Ledger
-	err := q.Get(&dest, sql)
-	return dest, err
 }
 
 // Ledgers provides a helper to filter rows from the `history_ledgers` table
@@ -98,10 +85,9 @@ func (q *LedgersQ) Select(dest interface{}) error {
 	return q.Err
 }
 
-// QExpLedgers defines experimental ingestion ledger related queries.
-type QExpLedgers interface {
-	CheckExpLedger(seq int32) (bool, error)
-	InsertExpLedger(
+// QLedgers defines ingestion ledger related queries.
+type QLedgers interface {
+	InsertLedger(
 		ledger xdr.LedgerHeaderHistoryEntry,
 		successTxsCount int,
 		failedTxsCount int,
@@ -110,35 +96,9 @@ type QExpLedgers interface {
 	) (int64, error)
 }
 
-// CheckExpLedger checks that the ledger in exp_history_ledgers
-// matches the one in history_ledgers  for a given sequence number
-func (q *Q) CheckExpLedger(seq int32) (bool, error) {
-	expLedger, err := q.expLedgerBySequence(seq)
-	if err != nil {
-		return false, err
-	}
-
-	var ledger Ledger
-	err = q.LedgerBySequence(&ledger, seq)
-	if err != nil {
-		return false, err
-	}
-
-	// ignore importer version created time, and updated time
-	expLedger.ImporterVersion = ledger.ImporterVersion
-	expLedger.CreatedAt = ledger.CreatedAt
-	expLedger.UpdatedAt = ledger.UpdatedAt
-
-	// compare ClosedAt separately because reflect.DeepEqual does not handle time.Time
-	expClosedAt := expLedger.ClosedAt
-	expLedger.ClosedAt = ledger.ClosedAt
-
-	return expClosedAt.Equal(ledger.ClosedAt) && reflect.DeepEqual(expLedger, ledger), nil
-}
-
-// InsertExpLedger creates a row in the exp_history_ledgers table.
+// InsertLedger creates a row in the history_ledgers table.
 // Returns number of rows affected and error.
-func (q *Q) InsertExpLedger(
+func (q *Q) InsertLedger(
 	ledger xdr.LedgerHeaderHistoryEntry,
 	successTxsCount int,
 	failedTxsCount int,
@@ -156,35 +116,13 @@ func (q *Q) InsertExpLedger(
 		return 0, err
 	}
 
-	sql := sq.Insert("exp_history_ledgers").SetMap(m)
+	sql := sq.Insert("history_ledgers").SetMap(m)
 	result, err := q.Exec(sql)
 	if err != nil {
 		return 0, err
 	}
 
 	return result.RowsAffected()
-}
-
-// ExpIngestRemovalSummary describes how many rows in the experimental ingestion
-// history tables have been deleted by RemoveExpIngestHistory()
-type ExpIngestRemovalSummary struct {
-	LedgersRemoved int64
-}
-
-// RemoveExpIngestHistory removes all rows in the experimental ingestion
-// history tables which have a ledger sequence higher than `newerThanSequence`
-func (q *Q) RemoveExpIngestHistory(newerThanSequence uint32) (ExpIngestRemovalSummary, error) {
-	result, err := q.Exec(
-		sq.Delete("exp_history_ledgers").
-			Where("sequence > ?", newerThanSequence),
-	)
-	if err != nil {
-		return ExpIngestRemovalSummary{}, err
-	}
-
-	summary := ExpIngestRemovalSummary{}
-	summary.LedgersRemoved, err = result.RowsAffected()
-	return summary, err
 }
 
 func ledgerHeaderToMap(
@@ -222,7 +160,7 @@ func ledgerHeaderToMap(
 	}, nil
 }
 
-var selectLedgerFields = sq.Select(
+var selectLedger = sq.Select(
 	"hl.id",
 	"hl.sequence",
 	"hl.importer_version",
@@ -242,5 +180,4 @@ var selectLedgerFields = sq.Select(
 	"hl.max_tx_set_size",
 	"hl.protocol_version",
 	"hl.ledger_header",
-)
-var selectLedger = selectLedgerFields.From("history_ledgers hl")
+).From("history_ledgers hl")

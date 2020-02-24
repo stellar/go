@@ -19,6 +19,17 @@ func TestLatestLedger(t *testing.T) {
 	}
 }
 
+func TestGetLatestLedgerEmptyDB(t *testing.T) {
+	tt := test.Start(t)
+	defer tt.Finish()
+	test.ResetHorizonDB(t, tt.HorizonDB)
+	q := &Q{tt.HorizonSession()}
+
+	value, err := q.GetLatestLedger()
+	tt.Assert.NoError(err)
+	tt.Assert.Equal(uint32(0), value)
+}
+
 func TestElderLedger(t *testing.T) {
 	tt := test.Start(t).Scenario("base")
 	defer tt.Finish()

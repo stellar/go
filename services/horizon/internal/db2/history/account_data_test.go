@@ -154,3 +154,26 @@ func TestGetAccountDataByAccountID(t *testing.T) {
 	tt.Assert.Equal(data2.DataName, xdr.String64(records[1].Name))
 	tt.Assert.Equal([]byte(data2.DataValue), []byte(records[1].Value))
 }
+
+func TestGetAccountDataByName(t *testing.T) {
+	tt := test.Start(t)
+	defer tt.Finish()
+	test.ResetHorizonDB(t, tt.HorizonDB)
+	q := &Q{tt.HorizonSession()}
+
+	_, err := q.InsertAccountData(data1, 1234)
+	assert.NoError(t, err)
+	_, err = q.InsertAccountData(data2, 1235)
+	assert.NoError(t, err)
+
+	record, err := q.GetAccountDataByName(data1.AccountId.Address(), string(data1.DataName))
+	assert.NoError(t, err)
+	tt.Assert.Equal(data1.DataName, xdr.String64(record.Name))
+	tt.Assert.Equal([]byte(data1.DataValue), []byte(record.Value))
+
+	record, err = q.GetAccountDataByName(data1.AccountId.Address(), string(data2.DataName))
+	assert.NoError(t, err)
+	tt.Assert.Equal(data2.DataName, xdr.String64(record.Name))
+	tt.Assert.Equal([]byte(data2.DataValue), []byte(record.Value))
+
+}

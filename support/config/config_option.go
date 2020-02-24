@@ -102,6 +102,8 @@ func (co *ConfigOption) setSimpleValue() {
 			*(co.ConfigKey.(*bool)) = viper.GetBool(co.Name)
 		case types.Uint:
 			*(co.ConfigKey.(*uint)) = uint(viper.GetInt(co.Name))
+		case types.Uint32:
+			*(co.ConfigKey.(*uint32)) = uint32(viper.GetInt(co.Name))
 		}
 	}
 }
@@ -121,6 +123,8 @@ func (co *ConfigOption) setFlag(cmd *cobra.Command) error {
 		cmd.PersistentFlags().Bool(co.Name, co.FlagDefault.(bool), co.UsageText())
 	case types.Uint:
 		cmd.PersistentFlags().Uint(co.Name, co.FlagDefault.(uint), co.UsageText())
+	case types.Uint32:
+		cmd.PersistentFlags().Uint32(co.Name, co.FlagDefault.(uint32), co.UsageText())
 	default:
 		return errors.New("Unexpected OptType")
 	}

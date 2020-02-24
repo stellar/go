@@ -29,7 +29,6 @@ func TestPopulateRoot(t *testing.T) {
 		100,
 		101,
 		urlMustParse(t, "https://friendbot.example.com"),
-		false,
 		templates,
 	)
 
@@ -40,11 +39,6 @@ func TestPopulateRoot(t *testing.T) {
 	assert.Equal(t, "cVersion", res.StellarCoreVersion)
 	assert.Equal(t, "passphrase", res.NetworkPassphrase)
 	assert.Equal(t, "https://friendbot.example.com/{?addr}", res.Links.Friendbot.Href)
-	assert.Empty(t, res.Links.Accounts)
-	assert.Empty(t, res.Links.Offer)
-	assert.Empty(t, res.Links.Offers)
-	assert.Empty(t, res.Links.StrictReceivePaths)
-	assert.Empty(t, res.Links.StrictSendPaths)
 
 	// Without testbot
 	res = &horizon.Root{}
@@ -57,7 +51,6 @@ func TestPopulateRoot(t *testing.T) {
 		100,
 		101,
 		nil,
-		false,
 		templates,
 	)
 
@@ -69,7 +62,6 @@ func TestPopulateRoot(t *testing.T) {
 	assert.Equal(t, "passphrase", res.NetworkPassphrase)
 	assert.Empty(t, res.Links.Friendbot)
 
-	// With experimental ingestion
 	res = &horizon.Root{}
 	PopulateRoot(context.Background(),
 		res,
@@ -80,7 +72,6 @@ func TestPopulateRoot(t *testing.T) {
 		100,
 		101,
 		urlMustParse(t, "https://friendbot.example.com"),
-		true,
 		templates,
 	)
 
