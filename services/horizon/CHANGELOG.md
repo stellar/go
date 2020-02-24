@@ -3,11 +3,27 @@
 All notable changes to this project will be documented in this
 file. This project adheres to [Semantic Versioning](http://semver.org/).
 
-## 1.0.0 Beta
+## 1.0.0
+
+### Before you upgrade
+
+* If you were using the new ingestion in one of the previous versions of Horizon, you must first remove `ENABLE_EXPERIMENTAL_INGESTION` feature flag and restart all Horizon instances before deploying a new version.
+* The init stage (state ingestion) for the public Stellar network requires around 1.5GB of RAM. This memory is released after the state ingestion. State ingestion is performed only once. Restarting the server will not trigger it unless Horizon has been upgraded to a newer version (with an updated ingestion pipeline). It's worth noting that the required memory will become smaller and smaller as more of the buckets in the history archive become [CAP-20](https://github.com/stellar/stellar-protocol/blob/master/core/cap-0020.md) compatible. Some endpoints are **not available** during state ingestion.
+* The CPU footprint of the new ingestion is modest. We were able to successfully run ingestion on an [AWS `c5.xlarge`](https://aws.amazon.com/ec2/instance-types/c5/) instance. The init stage takes a few minutes on `c5.xlarge`. `c5.xlarge` is the equivalent of 4 vCPUs and 8GB of RAM. The definition of vCPU for the c5 large family in AWS is the following:
+> The 2nd generation Intel Xeon Scalable Processors (Cascade Lake) or 1st generation Intel Xeon Platinum 8000 series (Skylake-SP) processor with a sustained all core Turbo frequency of up to 3.4GHz, and single core turbo frequency of up to 3.5 GHz.
+
+* The state data requires an additional 6GB DB disk space for the public Stellar network (as of February 2020). The disk usage will increase when the number of Stellar ledger entries increases.
+  * `accounts_signers` table: 2340 MB
+  * `trust_lines` table: 2052 MB
+  * `accounts` table: 1545 MB
+  * `offers` table: 61 MB
+  * `accounts_data` table: 15 MB
+  * `exp_asset_stats` table: less than 1 MB
+* A new environment variable (or command line flag) needs to be set so that Horizon can ingest state from the history archives:
+   * `HISTORY_ARCHIVE_URLS="archive1,archive2,archive3"` (if you don't have your own pubnet history archive, you can use one of SDF's archives, for example `https://history.stellar.org/prd/core-live/core_live_001`)
+* Horizon serves the endpoints `/paths` and `/order_book` from an in-memory graph, which is only available on ingesting instances. If some of the instances in your cluster are not configured to ingest, you can configure your proxy server to route those endpoints to the ingesting instances. This is beyond the scope of this document - consult the relevant documentation for your proxy server. A better solution for this will be released in the next Horizon version.
 
 ### New Ingestion System
-
-This alpha release previews the first major release of Horizon. This release is NOT recommended for production deployments. It is suitable for testing setups, staging servers, and developer use. This release allows Horizon operators to become familiar with Horizon's significant new features, and try them out in their own setups, in advance of the stable release.
 
 The most substantial element of this release is a full rewrite of Horizon's ledger ingestion engine, which enables some key features:
 
@@ -23,7 +39,7 @@ The new engine resolves multiple issues that were present in the old system. For
 
 Finally, the rearchitecting makes new reliability features possible. An example is the new internal state verifier, which guarantees consistency between the local Horizon state and the public history archives.
 
-The [testing guide](https://github.com/stellar/go/blob/release-horizon-v0.25.0/services/horizon/internal/expingest/TESTING.md) contains all the information needed to start testing the new ingestion system.
+The [admin guide](https://github.com/stellar/go/blob/release-horizon-v0.25.0/services/horizon/internal/docs/admin.md) contains all the information needed to operate the new ingestion system.
 
 ### Added
 
