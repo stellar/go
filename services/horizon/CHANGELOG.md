@@ -39,7 +39,7 @@ The new engine resolves multiple issues that were present in the old system. For
 
 Finally, the rearchitecting makes new reliability features possible. An example is the new internal state verifier, which guarantees consistency between the local Horizon state and the public history archives.
 
-The [testing guide](https://github.com/stellar/go/blob/release-horizon-v0.25.0/services/horizon/internal/expingest/TESTING.md) contains all the information needed to start testing the new ingestion system.
+The [admin guide](https://github.com/stellar/go/blob/release-horizon-v0.25.0/services/horizon/internal/docs/admin.md) contains all the information needed to operate the new ingestion system.
 
 ### Added
 
