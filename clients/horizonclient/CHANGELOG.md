@@ -5,7 +5,7 @@ file.  This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## Unreleased
 
-## [v2.1.0](https://github.com/stellar/go/releases/tag/horizonclient-v2.1.0) - 2020-02-21
+## [v2.1.0](https://github.com/stellar/go/releases/tag/horizonclient-v2.1.0) - 2020-02-24
 
 ### Add
 
