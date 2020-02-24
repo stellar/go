@@ -10,6 +10,18 @@ import (
 	"github.com/stellar/go/support/log"
 )
 
+// SetLogger is a middleware that sets a logger on the context.
+func SetLoggerMiddleware(l *log.Entry) func(stdhttp.Handler) stdhttp.Handler {
+	return func(next stdhttp.Handler) stdhttp.Handler {
+		return stdhttp.HandlerFunc(func(w stdhttp.ResponseWriter, r *stdhttp.Request) {
+			ctx := r.Context()
+			ctx = log.Set(ctx, l)
+			r = r.WithContext(ctx)
+			next.ServeHTTP(w, r)
+		})
+	}
+}
+
 // LoggingMiddleware is a middleware that logs requests to the logger.
 func LoggingMiddleware(next stdhttp.Handler) stdhttp.Handler {
 	return stdhttp.HandlerFunc(func(w stdhttp.ResponseWriter, r *stdhttp.Request) {

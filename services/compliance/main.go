@@ -22,6 +22,7 @@ import (
 	"github.com/stellar/go/support/db/schema"
 	"github.com/stellar/go/support/errors"
 	supportHttp "github.com/stellar/go/support/http"
+	supportLog "github.com/stellar/go/support/log"
 )
 
 var app *App
@@ -170,7 +171,7 @@ func NewApp(config config.Config, migrateFlag bool, versionFlag bool, version st
 // Serve starts the server
 func (a *App) Serve() {
 	// External endpoints
-	external := supportHttp.NewAPIMux()
+	external := supportHttp.NewAPIMux(supportLog.DefaultLogger)
 
 	// Middlewares
 	headers := http.Header{}
@@ -195,7 +196,7 @@ func (a *App) Serve() {
 	}()
 
 	// Internal endpoints
-	internal := supportHttp.NewAPIMux()
+	internal := supportHttp.NewAPIMux(supportLog.DefaultLogger)
 
 	internal.Use(supportHttp.StripTrailingSlashMiddleware("/admin"))
 	internal.Use(supportHttp.HeadersMiddleware(headers, "/admin/"))

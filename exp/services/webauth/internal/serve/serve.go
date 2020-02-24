@@ -66,7 +66,7 @@ func handler(opts Options) (http.Handler, error) {
 	}
 	horizonClient.SetHorizonTimeOut(uint(horizonTimeout / time.Second))
 
-	mux := supporthttp.NewAPIMux()
+	mux := supporthttp.NewAPIMux(opts.Logger)
 
 	mux.NotFound(errorHandler{Error: notFound}.ServeHTTP)
 	mux.MethodNotAllowed(errorHandler{Error: methodNotAllowed}.ServeHTTP)
