@@ -1,7 +1,7 @@
 package dbtest
 
 import (
-	"os/exec"
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -11,12 +11,17 @@ func TestPostgres(t *testing.T) {
 	db := Postgres(t)
 	t.Log("tempdb url", db.DSN)
 
-	err := exec.Command("psql", db.DSN, "-c", "SELECT 1").Run()
+	conn := db.Open()
+	_, err := conn.Exec("SELECT 1")
 	require.NoError(t, err)
+	require.NoError(t, conn.Close())
 
 	db.Close()
-	err = exec.Command("psql", db.DSN, "-c", "SELECT 1").Run()
-	require.Error(t, err)
+
+	conn = db.Open()
+	_, err = conn.Exec("SELECT 1")
+	require.EqualError(t, err, fmt.Sprintf("pq: database \"%s\" does not exist", db.dbName))
+	require.Contains(t, err.Error(), "data")
 
 	// ensure Close() can be called multiple times
 	db.Close()
