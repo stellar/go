@@ -8,6 +8,7 @@ import (
 	"github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/protocols/horizon/operations"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
+	"github.com/stellar/go/services/horizon/internal/expingest"
 )
 
 func TestPaymentActions(t *testing.T) {
@@ -29,6 +30,17 @@ func TestPaymentActions(t *testing.T) {
 	if ht.Assert.Equal(200, w.Code) {
 		ht.Assert.PageOf(1, w.Body)
 	}
+
+	// Makes StateMiddleware happy
+	q := history.Q{ht.HorizonSession()}
+	err := q.UpdateLastLedgerExpIngest(3)
+	ht.Assert.NoError(err)
+	err = q.UpdateExpIngestVersion(expingest.CurrentVersion)
+	ht.Assert.NoError(err)
+
+	// checks if empty param returns 404 instead of all payments
+	w = ht.Get("/accounts//payments")
+	ht.Assert.NotEqual(404, w.Code)
 
 	// filtered by account
 	w = ht.Get("/accounts/GA5WBPYA5Y4WAEHXWR2UKO2UO4BUGHUQ74EUPKON2QHV4WRHOIRNKKH2/payments")

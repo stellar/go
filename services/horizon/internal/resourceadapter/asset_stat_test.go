@@ -6,34 +6,10 @@ import (
 
 	"github.com/stellar/go/protocols/horizon"
 	protocol "github.com/stellar/go/protocols/horizon"
-	"github.com/stellar/go/services/horizon/internal/db2/assets"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/xdr"
 	"github.com/stretchr/testify/assert"
 )
-
-func TestLargeAmount(t *testing.T) {
-	row := assets.AssetStatsR{
-		SortKey:     "",
-		Type:        "credit_alphanum4",
-		Code:        "XIM",
-		Issuer:      "GBZ35ZJRIKJGYH5PBKLKOZ5L6EXCNTO7BKIL7DAVVDFQ2ODJEEHHJXIM",
-		Amount:      "100000000000000000000", // 10T
-		NumAccounts: 429,
-		Flags:       0,
-		Toml:        "https://xim.com/.well-known/stellar.toml",
-	}
-	var res protocol.AssetStat
-	err := PopulateAssetStat(context.Background(), &res, row)
-	assert.NoError(t, err)
-
-	assert.Equal(t, "credit_alphanum4", res.Type)
-	assert.Equal(t, "XIM", res.Code)
-	assert.Equal(t, "GBZ35ZJRIKJGYH5PBKLKOZ5L6EXCNTO7BKIL7DAVVDFQ2ODJEEHHJXIM", res.Issuer)
-	assert.Equal(t, "10000000000000.0000000", res.Amount)
-	assert.Equal(t, int32(429), res.NumAccounts)
-	assert.Equal(t, "https://xim.com/.well-known/stellar.toml", res.Links.Toml.Href)
-}
 
 func TestPopulateExpAssetStat(t *testing.T) {
 	row := history.ExpAssetStat{
@@ -50,7 +26,7 @@ func TestPopulateExpAssetStat(t *testing.T) {
 	}
 
 	var res protocol.AssetStat
-	err := PopulateExpAssetStat(context.Background(), &res, row, issuer)
+	err := PopulateAssetStat(context.Background(), &res, row, issuer)
 	assert.NoError(t, err)
 
 	assert.Equal(t, "credit_alphanum4", res.Type)
@@ -66,7 +42,7 @@ func TestPopulateExpAssetStat(t *testing.T) {
 	issuer.Flags = uint32(xdr.AccountFlagsAuthRequiredFlag) |
 		uint32(xdr.AccountFlagsAuthImmutableFlag)
 
-	err = PopulateExpAssetStat(context.Background(), &res, row, issuer)
+	err = PopulateAssetStat(context.Background(), &res, row, issuer)
 	assert.NoError(t, err)
 
 	assert.Equal(t, "credit_alphanum4", res.Type)

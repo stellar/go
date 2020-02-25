@@ -6,8 +6,9 @@ import (
 
 	sq "github.com/Masterminds/squirrel"
 	"github.com/stellar/go/services/horizon/internal/db2"
+	"github.com/stellar/go/services/horizon/internal/toid"
 	"github.com/stellar/go/support/errors"
-	"github.com/stellar/go/support/time"
+	supportTime "github.com/stellar/go/support/time"
 	"github.com/stellar/go/xdr"
 )
 
@@ -24,21 +25,31 @@ func (r *Trade) HasPrice() bool {
 // Trades provides a helper to filter rows from the `history_trades` table
 // with pre-defined filters.  See `TradesQ` methods for the available filters.
 func (q *Q) Trades() *TradesQ {
-	trades := &TradesQ{
+	return &TradesQ{
 		parent: q,
-		sql:    selectTrade,
+		sql: joinTradeAssets(
+			joinTradeAccounts(
+				selectTradeFields.From("history_trades htrd"),
+				"history_accounts",
+			),
+			"history_assets",
+		),
 	}
-	return trades.JoinAccounts().JoinAssets()
 }
 
 // ReverseTrades provides a helper to filter rows from the `history_trades` table
 // with pre-defined filters and reversed base/counter.  See `TradesQ` methods for the available filters.
 func (q *Q) ReverseTrades() *TradesQ {
-	trades := &TradesQ{
+	return &TradesQ{
 		parent: q,
-		sql:    selectReverseTrade,
+		sql: joinTradeAssets(
+			joinTradeAccounts(
+				selectReverseTradeFields.From("history_trades htrd"),
+				"history_accounts",
+			),
+			"history_assets",
+		),
 	}
-	return trades.JoinAccounts().JoinAssets()
 }
 
 // TradesForAssetPair provides a helper to filter rows from the `history_trades` table
@@ -66,7 +77,23 @@ func (q *TradesQ) forAssetPair(baseAssetId int64, counterAssetId int64) *TradesQ
 	return q
 }
 
-//filter Trades by account id
+// ForLedger adds a filter which only includes trades within the given ledger sequence
+func (q *TradesQ) ForLedger(sequence int32, order string) *TradesQ {
+	from := toid.ID{LedgerSequence: sequence}.ToInt64()
+	to := toid.ID{LedgerSequence: sequence + 1}.ToInt64()
+
+	q.sql = q.sql.Where(
+		"htrd.history_operation_id >= ? AND htrd.history_operation_id <= ? ",
+		from,
+		to,
+	).OrderBy(
+		"htrd.history_operation_id " + order + ", htrd.order " + order,
+	)
+
+	return q
+}
+
+// ForAccount filter Trades by account id
 func (q *TradesQ) ForAccount(aid string) *TradesQ {
 	var account Account
 	q.Err = q.parent.AccountByAddress(&account, aid)
@@ -134,21 +161,19 @@ func (q *TradesQ) Select(dest interface{}) error {
 	return q.Err
 }
 
-func (q *TradesQ) JoinAccounts() *TradesQ {
-	q.sql = q.sql.
-		Join("history_accounts base_accounts ON base_account_id = base_accounts.id").
-		Join("history_accounts counter_accounts ON counter_account_id = counter_accounts.id")
-	return q
+func joinTradeAccounts(selectBuilder sq.SelectBuilder, historyAccountsTable string) sq.SelectBuilder {
+	return selectBuilder.
+		Join(historyAccountsTable + " base_accounts ON base_account_id = base_accounts.id").
+		Join(historyAccountsTable + " counter_accounts ON counter_account_id = counter_accounts.id")
 }
 
-func (q *TradesQ) JoinAssets() *TradesQ {
-	q.sql = q.sql.
-		Join("history_assets base_assets ON base_asset_id = base_assets.id").
-		Join("history_assets counter_assets ON counter_asset_id = counter_assets.id")
-	return q
+func joinTradeAssets(selectBuilder sq.SelectBuilder, historyAssetsTable string) sq.SelectBuilder {
+	return selectBuilder.
+		Join(historyAssetsTable + " base_assets ON base_asset_id = base_assets.id").
+		Join(historyAssetsTable + " counter_assets ON counter_asset_id = counter_assets.id")
 }
 
-var selectTrade = sq.Select(
+var selectTradeFields = sq.Select(
 	"history_operation_id",
 	"htrd.\"order\"",
 	"htrd.ledger_closed_at",
@@ -168,9 +193,9 @@ var selectTrade = sq.Select(
 	"htrd.base_is_seller",
 	"htrd.price_n",
 	"htrd.price_d",
-).From("history_trades htrd")
+)
 
-var selectReverseTrade = sq.Select(
+var selectReverseTradeFields = sq.Select(
 	"history_operation_id",
 	"htrd.\"order\"",
 	"htrd.ledger_closed_at",
@@ -190,7 +215,7 @@ var selectReverseTrade = sq.Select(
 	"NOT(htrd.base_is_seller) as base_is_seller",
 	"htrd.price_d as price_n",
 	"htrd.price_n as price_d",
-).From("history_trades htrd")
+)
 
 var tradesInsert = sq.Insert("history_trades").Columns(
 	"history_operation_id",
@@ -219,7 +244,7 @@ func (q *Q) InsertTrade(
 	buyOffer xdr.OfferEntry,
 	trade xdr.ClaimOfferAtom,
 	sellPrice xdr.Price,
-	ledgerClosedAt time.Millis,
+	ledgerClosedAt supportTime.Millis,
 ) error {
 	sellerAccountId, err := q.GetCreateAccountID(trade.SellerId)
 	if err != nil {
@@ -306,4 +331,10 @@ func getCanonicalAssetOrder(assetId1 int64, assetId2 int64) (orderPreserved bool
 	} else {
 		return false, assetId2, assetId1
 	}
+}
+
+type QTrades interface {
+	QCreateAccountsHistory
+	NewTradeBatchInsertBuilder(maxBatchSize int) TradeBatchInsertBuilder
+	CreateAssets(assets []xdr.Asset, maxBatchSize int) (map[string]Asset, error)
 }

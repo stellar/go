@@ -3,15 +3,18 @@
 package history
 
 import (
+	"database/sql"
 	"fmt"
 	"sync"
 	"time"
 
 	sq "github.com/Masterminds/squirrel"
 	"github.com/guregu/null"
+	"github.com/jmoiron/sqlx"
 
 	"github.com/stellar/go/services/horizon/internal/db2"
 	"github.com/stellar/go/support/db"
+	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
 )
 
@@ -109,20 +112,9 @@ const (
 
 )
 
-// ExperimentalIngestionTables is a list of tables populated by the experimental
-// ingestion system
-var ExperimentalIngestionTables = []string{
-	"accounts",
-	"accounts_data",
-	"accounts_signers",
-	"exp_asset_stats",
-	"offers",
-	"trust_lines",
-}
-
 // Account is a row of data from the `history_accounts` table
 type Account struct {
-	ID      int64
+	ID      int64  `db:"id"`
 	Address string `db:"address"`
 }
 
@@ -162,11 +154,48 @@ type accountsBatchInsertBuilder struct {
 	builder db.BatchInsertBuilder
 }
 
+type IngestionQ interface {
+	QAccounts
+	QAssetStats
+	QData
+	QEffects
+	QLedgers
+	QOffers
+	QOperations
+	// QParticipants
+	// Copy the small interfaces with shared methods directly, otherwise error:
+	// duplicate method CreateAccounts
+	NewTransactionParticipantsBatchInsertBuilder(maxBatchSize int) TransactionParticipantsBatchInsertBuilder
+	NewOperationParticipantBatchInsertBuilder(maxBatchSize int) OperationParticipantBatchInsertBuilder
+	QSigners
+	//QTrades
+	NewTradeBatchInsertBuilder(maxBatchSize int) TradeBatchInsertBuilder
+	CreateAssets(assets []xdr.Asset, batchSize int) (map[string]Asset, error)
+	QTransactions
+	QTrustLines
+
+	Begin() error
+	BeginTx(*sql.TxOptions) error
+	Commit() error
+	CloneIngestionQ() IngestionQ
+	Rollback() error
+	GetTx() *sqlx.Tx
+	GetExpIngestVersion() (int, error)
+	UpdateExpStateInvalid(bool) error
+	UpdateExpIngestVersion(int) error
+	GetExpStateInvalid() (bool, error)
+	GetLatestLedger() (uint32, error)
+	TruncateExpingestStateTables() error
+	DeleteRangeAll(start, end int64) error
+}
+
 // QAccounts defines account related queries.
 type QAccounts interface {
 	NewAccountsBatchInsertBuilder(maxBatchSize int) AccountsBatchInsertBuilder
+	GetAccountsByIDs(ids []string) ([]AccountEntry, error)
 	InsertAccount(account xdr.AccountEntry, lastModifiedLedger xdr.Uint32) (int64, error)
 	UpdateAccount(account xdr.AccountEntry, lastModifiedLedger xdr.Uint32) (int64, error)
+	UpsertAccounts(accounts []xdr.LedgerEntry) error
 	RemoveAccount(accountID string) (int64, error)
 }
 
@@ -210,6 +239,8 @@ type accountDataBatchInsertBuilder struct {
 // QData defines account data related queries.
 type QData interface {
 	NewAccountDataBatchInsertBuilder(maxBatchSize int) AccountDataBatchInsertBuilder
+	CountAccountsData() (int, error)
+	GetAccountDataByKeys(keys []xdr.LedgerKeyData) ([]Data, error)
 	InsertAccountData(data xdr.DataEntry, lastModifiedLedger xdr.Uint32) (int64, error)
 	UpdateAccountData(data xdr.DataEntry, lastModifiedLedger xdr.Uint32) (int64, error)
 	RemoveAccountData(key xdr.LedgerKeyData) (int64, error)
@@ -259,6 +290,11 @@ type QAssetStats interface {
 	GetAssetStat(assetType xdr.AssetType, assetCode, assetIssuer string) (ExpAssetStat, error)
 	RemoveAssetStat(assetType xdr.AssetType, assetCode, assetIssuer string) (int64, error)
 	GetAssetStats(assetCode, assetIssuer string, page db2.PageQuery) ([]ExpAssetStat, error)
+	CountTrustLines() (int, error)
+}
+
+type QCreateAccountsHistory interface {
+	CreateAccounts(addresses []string, maxBatchSize int) (map[string]int64, error)
 }
 
 // Effect is a row of data from the `history_effects` table
@@ -269,6 +305,21 @@ type Effect struct {
 	Order              int32       `db:"order"`
 	Type               EffectType  `db:"type"`
 	DetailsString      null.String `db:"details"`
+}
+
+// TradeEffectDetails is a struct of data from `effects.DetailsString`
+// when the effect type is trade
+type TradeEffectDetails struct {
+	Seller            string `json:"seller"`
+	OfferID           int64  `json:"offer_id"`
+	SoldAmount        string `json:"sold_amount"`
+	SoldAssetType     string `json:"sold_asset_type"`
+	SoldAssetCode     string `json:"sold_asset_code,omitempty"`
+	SoldAssetIssuer   string `json:"sold_asset_issuer,omitempty"`
+	BoughtAmount      string `json:"bought_amount"`
+	BoughtAssetType   string `json:"bought_asset_type"`
+	BoughtAssetCode   string `json:"bought_asset_code,omitempty"`
+	BoughtAssetIssuer string `json:"bought_asset_issuer,omitempty"`
 }
 
 // SequenceBumped is a struct of data from `effects.DetailsString`
@@ -394,6 +445,12 @@ type Operation struct {
 	TransactionSuccessful *bool `db:"transaction_successful"`
 }
 
+// ManageOffer is a struct of data from `operations.DetailsString`
+// when the operation type is manage sell offer or manage buy offer
+type ManageOffer struct {
+	OfferID int64 `json:"offer_id"`
+}
+
 // Offer is row of data from the `offers` table from horizon DB
 type Offer struct {
 	SellerID string    `db:"seller_id"`
@@ -446,6 +503,8 @@ type QSigners interface {
 	NewAccountSignersBatchInsertBuilder(maxBatchSize int) AccountSignersBatchInsertBuilder
 	CreateAccountSigner(account, signer string, weight int32) (int64, error)
 	RemoveAccountSigner(account, signer string) (int64, error)
+	SignersForAccounts(accounts []string) ([]AccountSigner, error)
+	CountAccounts() (int, error)
 }
 
 // OffersQuery is a helper struct to configure queries to offers
@@ -459,6 +518,8 @@ type OffersQuery struct {
 // QOffers defines offer related queries.
 type QOffers interface {
 	GetAllOffers() ([]Offer, error)
+	GetOffersByIDs(ids []int64) ([]Offer, error)
+	CountOffers() (int, error)
 	NewOffersBatchInsertBuilder(maxBatchSize int) OffersBatchInsertBuilder
 	InsertOffer(offer xdr.OfferEntry, lastModifiedLedger xdr.Uint32) (int64, error)
 	UpdateOffer(offer xdr.OfferEntry, lastModifiedLedger xdr.Uint32) (int64, error)
@@ -560,8 +621,10 @@ type TrustLine struct {
 // QTrustLines defines trust lines related queries.
 type QTrustLines interface {
 	NewTrustLinesBatchInsertBuilder(maxBatchSize int) TrustLinesBatchInsertBuilder
+	GetTrustLinesByKeys(keys []xdr.LedgerKeyTrustLine) ([]TrustLine, error)
 	InsertTrustLine(trustLine xdr.TrustLineEntry, lastModifiedLedger xdr.Uint32) (int64, error)
 	UpdateTrustLine(trustLine xdr.TrustLineEntry, lastModifiedLedger xdr.Uint32) (int64, error)
+	UpsertTrustLines(trustLines []xdr.LedgerEntry) error
 	RemoveTrustLine(key xdr.LedgerKeyTrustLine) (int64, error)
 }
 
@@ -625,6 +688,14 @@ func (q *Q) ElderLedger(dest interface{}) error {
 	return q.GetRaw(dest, `SELECT COALESCE(MIN(sequence), 0) FROM history_ledgers`)
 }
 
+// GetLatestLedger loads the latest known ledger. Returns 0 if no ledgers in
+// `history_ledgers` table.
+func (q *Q) GetLatestLedger() (uint32, error) {
+	var value uint32
+	err := q.LatestLedger(&value)
+	return value, err
+}
+
 // LatestLedger loads the latest known ledger
 func (q *Q) LatestLedger(dest interface{}) error {
 	return q.GetRaw(dest, `SELECT COALESCE(MAX(sequence), 0) FROM history_ledgers`)
@@ -649,4 +720,44 @@ func (q *Q) OldestOutdatedLedgers(dest interface{}, currentVersion int) error {
 		WHERE importer_version < $1
 		ORDER BY sequence ASC
 		LIMIT 1000000`, currentVersion)
+}
+
+// CloneIngestionQ clones underlying db.Session and returns IngestionQ
+func (q *Q) CloneIngestionQ() IngestionQ {
+	return &Q{q.Clone()}
+}
+
+// DeleteRangeAll deletes a range of rows from all history tables between
+// `start` and `end` (exclusive).
+func (q *Q) DeleteRangeAll(start, end int64) error {
+	err := q.DeleteRange(start, end, "history_effects", "history_operation_id")
+	if err != nil {
+		return errors.Wrap(err, "Error clearing history_effects")
+	}
+	err = q.DeleteRange(start, end, "history_operation_participants", "history_operation_id")
+	if err != nil {
+		return errors.Wrap(err, "Error clearing history_operation_participants")
+	}
+	err = q.DeleteRange(start, end, "history_operations", "id")
+	if err != nil {
+		return errors.Wrap(err, "Error clearing history_operations")
+	}
+	err = q.DeleteRange(start, end, "history_transaction_participants", "history_transaction_id")
+	if err != nil {
+		return errors.Wrap(err, "Error clearing history_transaction_participants")
+	}
+	err = q.DeleteRange(start, end, "history_transactions", "id")
+	if err != nil {
+		return errors.Wrap(err, "Error clearing history_transactions")
+	}
+	err = q.DeleteRange(start, end, "history_ledgers", "id")
+	if err != nil {
+		return errors.Wrap(err, "Error clearing history_ledgers")
+	}
+	err = q.DeleteRange(start, end, "history_trades", "history_operation_id")
+	if err != nil {
+		return errors.Wrap(err, "Error clearing history_trades")
+	}
+
+	return nil
 }

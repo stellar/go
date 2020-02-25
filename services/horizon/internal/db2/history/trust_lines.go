@@ -4,6 +4,7 @@ import (
 	"encoding/base64"
 
 	sq "github.com/Masterminds/squirrel"
+	"github.com/lib/pq"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
 )
@@ -92,6 +93,98 @@ func (q *Q) UpdateTrustLine(trustLine xdr.TrustLineEntry, lastModifiedLedger xdr
 	}
 
 	return result.RowsAffected()
+}
+
+// UpsertTrustLines upserts a batch of trust lines in the trust lines table.
+// There's currently no limit of the number of trust lines this method can
+// accept other than 2GB limit of the query string length what should be enough
+// for each ledger with the current limits.
+func (q *Q) UpsertTrustLines(trustLines []xdr.LedgerEntry) error {
+	var ledgerKey, accountID, assetIssuer, assetCode []string
+	var balance, limit, buyingLiabilities, sellingLiabilities []xdr.Int64
+	var flags, lastModifiedLedger []xdr.Uint32
+	var assetType []xdr.AssetType
+
+	for _, entry := range trustLines {
+		if entry.Data.Type != xdr.LedgerEntryTypeTrustline {
+			return errors.Errorf("Invalid entry type: %d", entry.Data.Type)
+		}
+
+		key, err := trustLineEntryToLedgerKeyString(entry.Data.MustTrustLine())
+		if err != nil {
+			return errors.Wrap(err, "Error running trustLineEntryToLedgerKeyString")
+		}
+
+		m := trustLineToMap(entry.Data.MustTrustLine(), entry.LastModifiedLedgerSeq)
+
+		ledgerKey = append(ledgerKey, key)
+		accountID = append(accountID, m["account_id"].(string))
+		assetType = append(assetType, m["asset_type"].(xdr.AssetType))
+		assetIssuer = append(assetIssuer, m["asset_issuer"].(string))
+		assetCode = append(assetCode, m["asset_code"].(string))
+		balance = append(balance, m["balance"].(xdr.Int64))
+		limit = append(limit, m["trust_line_limit"].(xdr.Int64))
+		buyingLiabilities = append(buyingLiabilities, m["buying_liabilities"].(xdr.Int64))
+		sellingLiabilities = append(sellingLiabilities, m["selling_liabilities"].(xdr.Int64))
+		flags = append(flags, m["flags"].(xdr.Uint32))
+		lastModifiedLedger = append(lastModifiedLedger, m["last_modified_ledger"].(xdr.Uint32))
+	}
+
+	sql := `
+	WITH r AS
+		(SELECT
+			unnest(?::text[]),
+			unnest(?::text[]),
+			unnest(?::int[]),
+			unnest(?::text[]),
+			unnest(?::text[]),
+			unnest(?::bigint[]),
+			unnest(?::bigint[]),
+			unnest(?::bigint[]),
+			unnest(?::bigint[]),
+			unnest(?::int[]),
+			unnest(?::int[])
+		)
+	INSERT INTO trust_lines ( 
+		ledger_key,
+		account_id,
+		asset_type,
+		asset_issuer,
+		asset_code,
+		balance,
+		trust_line_limit,
+		buying_liabilities,
+		selling_liabilities,
+		flags,
+		last_modified_ledger
+	)
+	SELECT * from r 
+	ON CONFLICT (ledger_key) DO UPDATE SET 
+		ledger_key = excluded.ledger_key,
+		account_id = excluded.account_id,
+		asset_type = excluded.asset_type,
+		asset_issuer = excluded.asset_issuer,
+		asset_code = excluded.asset_code,
+		balance = excluded.balance,
+		trust_line_limit = excluded.trust_line_limit,
+		buying_liabilities = excluded.buying_liabilities,
+		selling_liabilities = excluded.selling_liabilities,
+		flags = excluded.flags,
+		last_modified_ledger = excluded.last_modified_ledger`
+
+	_, err := q.ExecRaw(sql,
+		pq.Array(ledgerKey),
+		pq.Array(accountID),
+		pq.Array(assetType),
+		pq.Array(assetIssuer),
+		pq.Array(assetCode),
+		pq.Array(balance),
+		pq.Array(limit),
+		pq.Array(buyingLiabilities),
+		pq.Array(sellingLiabilities),
+		pq.Array(flags),
+		pq.Array(lastModifiedLedger))
+	return err
 }
 
 // RemoveTrustLine deletes a row in the trust lines table.

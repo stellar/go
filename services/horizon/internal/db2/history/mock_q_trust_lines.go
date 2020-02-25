@@ -16,6 +16,11 @@ func (m *MockQTrustLines) NewTrustLinesBatchInsertBuilder(maxBatchSize int) Trus
 	return a.Get(0).(TrustLinesBatchInsertBuilder)
 }
 
+func (m *MockQTrustLines) GetTrustLinesByKeys(keys []xdr.LedgerKeyTrustLine) ([]TrustLine, error) {
+	a := m.Called(keys)
+	return a.Get(0).([]TrustLine), a.Error(1)
+}
+
 func (m *MockQTrustLines) InsertTrustLine(trustLine xdr.TrustLineEntry, lastModifiedLedger xdr.Uint32) (int64, error) {
 	a := m.Called(trustLine, lastModifiedLedger)
 	return a.Get(0).(int64), a.Error(1)
@@ -24,6 +29,11 @@ func (m *MockQTrustLines) InsertTrustLine(trustLine xdr.TrustLineEntry, lastModi
 func (m *MockQTrustLines) UpdateTrustLine(trustLine xdr.TrustLineEntry, lastModifiedLedger xdr.Uint32) (int64, error) {
 	a := m.Called(trustLine, lastModifiedLedger)
 	return a.Get(0).(int64), a.Error(1)
+}
+
+func (m *MockQTrustLines) UpsertTrustLines(trustLines []xdr.LedgerEntry) error {
+	a := m.Called(trustLines)
+	return a.Error(0)
 }
 
 func (m *MockQTrustLines) RemoveTrustLine(key xdr.LedgerKeyTrustLine) (int64, error) {

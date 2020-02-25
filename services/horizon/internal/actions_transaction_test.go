@@ -6,6 +6,8 @@ import (
 	"testing"
 
 	"github.com/stellar/go/protocols/horizon"
+	"github.com/stellar/go/services/horizon/internal/db2/history"
+	"github.com/stellar/go/services/horizon/internal/expingest"
 	"github.com/stellar/go/services/horizon/internal/txsub"
 	"github.com/stellar/go/services/horizon/internal/txsub/sequence"
 )
@@ -178,6 +180,17 @@ func TestTransactionActions_Index(t *testing.T) {
 	// missing ledger
 	w = ht.Get("/ledgers/100/transactions")
 	ht.Assert.Equal(404, w.Code)
+
+	// Makes StateMiddleware happy
+	q := history.Q{ht.HorizonSession()}
+	err := q.UpdateLastLedgerExpIngest(100)
+	ht.Assert.NoError(err)
+	err = q.UpdateExpIngestVersion(expingest.CurrentVersion)
+	ht.Assert.NoError(err)
+
+	// checks if empty param returns 404 instead of all payments
+	w = ht.Get("/accounts//transactions")
+	ht.Assert.NotEqual(404, w.Code)
 
 	// filtering by account
 	w = ht.Get("/accounts/GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H/transactions")

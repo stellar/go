@@ -17,35 +17,11 @@ import (
 
 var _ actions.JSONer = (*FeeStatsAction)(nil)
 
-// this struct is very similar to hProtocol.feeStats but drops the usage of int
-// in favor of int64
-type feeStats struct {
-	LastLedger          uint32  `json:"last_ledger,string"`
-	LastLedgerBaseFee   int64   `json:"last_ledger_base_fee,string"`
-	LedgerCapacityUsage float64 `json:"ledger_capacity_usage,string"`
-	MinAcceptedFee      int64   `json:"min_accepted_fee,string"`
-	ModeAcceptedFee     int64   `json:"mode_accepted_fee,string"`
-	P10AcceptedFee      int64   `json:"p10_accepted_fee,string"`
-	P20AcceptedFee      int64   `json:"p20_accepted_fee,string"`
-	P30AcceptedFee      int64   `json:"p30_accepted_fee,string"`
-	P40AcceptedFee      int64   `json:"p40_accepted_fee,string"`
-	P50AcceptedFee      int64   `json:"p50_accepted_fee,string"`
-	P60AcceptedFee      int64   `json:"p60_accepted_fee,string"`
-	P70AcceptedFee      int64   `json:"p70_accepted_fee,string"`
-	P80AcceptedFee      int64   `json:"p80_accepted_fee,string"`
-	P90AcceptedFee      int64   `json:"p90_accepted_fee,string"`
-	P95AcceptedFee      int64   `json:"p95_accepted_fee,string"`
-	P99AcceptedFee      int64   `json:"p99_accepted_fee,string"`
-
-	FeeCharged hProtocol.FeeDistribution `json:"fee_charged"`
-	MaxFee     hProtocol.FeeDistribution `json:"max_fee"`
-}
-
 // FeeStatsAction renders a few useful statistics that describe the
 // current state of operation fees on the network.
 type FeeStatsAction struct {
 	Action
-	feeStats feeStats
+	feeStats hProtocol.FeeStats
 }
 
 // JSON is a method for actions.JSON
@@ -124,21 +100,4 @@ func (action *FeeStatsAction) loadRecords() {
 	action.feeStats.MaxFee.P90 = cur.MaxFeeP90
 	action.feeStats.MaxFee.P95 = cur.MaxFeeP95
 	action.feeStats.MaxFee.P99 = cur.MaxFeeP99
-
-	// AcceptedFee is an alias for MaxFee
-	// Action needed in release: horizon-v0.25.0
-	// Remove AcceptedFee fields
-	action.feeStats.MinAcceptedFee = action.feeStats.MaxFee.Min
-	action.feeStats.ModeAcceptedFee = action.feeStats.MaxFee.Mode
-	action.feeStats.P10AcceptedFee = action.feeStats.MaxFee.P10
-	action.feeStats.P20AcceptedFee = action.feeStats.MaxFee.P20
-	action.feeStats.P30AcceptedFee = action.feeStats.MaxFee.P30
-	action.feeStats.P40AcceptedFee = action.feeStats.MaxFee.P40
-	action.feeStats.P50AcceptedFee = action.feeStats.MaxFee.P50
-	action.feeStats.P60AcceptedFee = action.feeStats.MaxFee.P60
-	action.feeStats.P70AcceptedFee = action.feeStats.MaxFee.P70
-	action.feeStats.P80AcceptedFee = action.feeStats.MaxFee.P80
-	action.feeStats.P90AcceptedFee = action.feeStats.MaxFee.P90
-	action.feeStats.P95AcceptedFee = action.feeStats.MaxFee.P95
-	action.feeStats.P99AcceptedFee = action.feeStats.MaxFee.P99
 }

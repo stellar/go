@@ -11,29 +11,23 @@ import (
 	"github.com/stellar/go/xdr"
 )
 
-// OperationTypeNames maps from operation type to the string used to represent that type
+// TypeNames maps from operation type to the string used to represent that type
 // in horizon's JSON responses
 var TypeNames = map[xdr.OperationType]string{
-	xdr.OperationTypeCreateAccount: "create_account",
-	xdr.OperationTypePayment:       "payment",
-	// Action needed in release: horizon-v0.25.0
-	// Change name to `path_payment_strict_receive`
-	xdr.OperationTypePathPaymentStrictReceive: "path_payment",
-	// Action needed in release: horizon-v0.25.0
-	// Change name to `manage_sell_offer`
-	xdr.OperationTypeManageSellOffer: "manage_offer",
-	// Action needed in release: horizon-v0.25.0
-	// Change name to `create_passive_sell_offer`
-	xdr.OperationTypeCreatePassiveSellOffer: "create_passive_offer",
-	xdr.OperationTypeSetOptions:             "set_options",
-	xdr.OperationTypeChangeTrust:            "change_trust",
-	xdr.OperationTypeAllowTrust:             "allow_trust",
-	xdr.OperationTypeAccountMerge:           "account_merge",
-	xdr.OperationTypeInflation:              "inflation",
-	xdr.OperationTypeManageData:             "manage_data",
-	xdr.OperationTypeBumpSequence:           "bump_sequence",
-	xdr.OperationTypeManageBuyOffer:         "manage_buy_offer",
-	xdr.OperationTypePathPaymentStrictSend:  "path_payment_strict_send",
+	xdr.OperationTypeCreateAccount:            "create_account",
+	xdr.OperationTypePayment:                  "payment",
+	xdr.OperationTypePathPaymentStrictReceive: "path_payment_strict_receive",
+	xdr.OperationTypeManageSellOffer:          "manage_sell_offer",
+	xdr.OperationTypeCreatePassiveSellOffer:   "create_passive_sell_offer",
+	xdr.OperationTypeSetOptions:               "set_options",
+	xdr.OperationTypeChangeTrust:              "change_trust",
+	xdr.OperationTypeAllowTrust:               "allow_trust",
+	xdr.OperationTypeAccountMerge:             "account_merge",
+	xdr.OperationTypeInflation:                "inflation",
+	xdr.OperationTypeManageData:               "manage_data",
+	xdr.OperationTypeBumpSequence:             "bump_sequence",
+	xdr.OperationTypeManageBuyOffer:           "manage_buy_offer",
+	xdr.OperationTypePathPaymentStrictSend:    "path_payment_strict_send",
 }
 
 // Base represents the common attributes of an operation resource
@@ -151,55 +145,14 @@ type CreatePassiveSellOffer struct {
 // is ManageSellOffer.
 type ManageSellOffer struct {
 	Offer
-	// Action needed in release: horizon-v0.25.0: Make offer_id a string
-	OfferID int64 `json:"offer_id"`
-}
-
-// UnmarshalJSON is the custom unmarshal method for ManageSellOffer. It allows
-// parsing of offer_id as a string or an int64.
-// Action needed in release: horizon-v0.25.0: Delete
-func (operation *ManageSellOffer) UnmarshalJSON(data []byte) error {
-	if err := json.Unmarshal(data, &operation.Offer); err != nil {
-		return err
-	}
-
-	offerID, err := base.ExtractOfferID(data)
-
-	if err != nil {
-		return err
-	}
-
-	operation.OfferID = offerID
-
-	return nil
+	OfferID int64 `json:"offer_id,string"`
 }
 
 // ManageBuyOffer is the json resource representing a single operation whose type
 // is ManageBuyOffer.
 type ManageBuyOffer struct {
 	Offer
-
-	// Action needed in release: horizon-v0.25.0: Make offer_id a string
-	OfferID int64 `json:"offer_id"`
-}
-
-// UnmarshalJSON is the custom unmarshal method for ManageBuyOffer. It allows
-// parsing of offer_id as a string or an int64.
-// Action needed in release: horizon-v0.25.0: Delete
-func (operation *ManageBuyOffer) UnmarshalJSON(data []byte) error {
-	if err := json.Unmarshal(data, &operation.Offer); err != nil {
-		return err
-	}
-
-	offerID, err := base.ExtractOfferID(data)
-
-	if err != nil {
-		return err
-	}
-
-	operation.OfferID = offerID
-
-	return nil
+	OfferID int64 `json:"offer_id,string"`
 }
 
 // SetOptions is the json resource representing a single operation whose type is

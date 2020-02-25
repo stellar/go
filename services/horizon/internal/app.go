@@ -18,7 +18,6 @@ import (
 	"github.com/stellar/go/services/horizon/internal/db2/core"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/services/horizon/internal/expingest"
-	"github.com/stellar/go/services/horizon/internal/ingest"
 	"github.com/stellar/go/services/horizon/internal/ledger"
 	"github.com/stellar/go/services/horizon/internal/logmetrics"
 	"github.com/stellar/go/services/horizon/internal/operationfeestats"
@@ -48,7 +47,6 @@ type App struct {
 	coreSupportedProtocolVersion int32
 	submitter                    *txsub.System
 	paths                        paths.Finder
-	ingester                     *ingest.System
 	expingester                  *expingest.System
 	reaper                       *reap.System
 	ticks                        *time.Ticker
@@ -96,6 +94,24 @@ func (a *App) Serve() {
 	}
 
 	log.Infof("Starting horizon on %s (ingest: %v)", addr, a.config.Ingest)
+
+	if a.config.AdminPort != 0 {
+		go func() {
+			adminAddr := fmt.Sprintf(":%d", a.config.AdminPort)
+			log.Infof("Starting internal server on %s", adminAddr)
+
+			internalSrv := &http.Server{
+				Addr:        adminAddr,
+				Handler:     a.web.internalRouter,
+				ReadTimeout: 5 * time.Second,
+			}
+
+			err := internalSrv.ListenAndServe()
+			if err != nil {
+				log.Warn(errors.Wrap(err, "error in internalSrv.ListenAndServe()"))
+			}
+		}()
+	}
 
 	go a.run()
 
@@ -405,10 +421,6 @@ func (a *App) Tick() {
 	go func() { a.UpdateStellarCoreInfo(); wg.Done() }()
 	wg.Wait()
 
-	if a.ingester != nil {
-		go a.ingester.Tick()
-	}
-
 	wg.Add(2)
 	go func() { a.reaper.Tick(); wg.Done() }()
 	go func() { a.submitter.Tick(a.ctx); wg.Done() }()
@@ -442,21 +454,17 @@ func (a *App) init() {
 	mustInitHorizonDB(a)
 	mustInitCoreDB(a)
 
-	// ingester
-	initIngester(a)
-
 	var orderBookGraph *orderbook.OrderBookGraph
-	if a.config.EnableExperimentalIngestion {
+	if a.config.Ingest {
 		orderBookGraph = orderbook.NewOrderBookGraph()
 		// expingester
 		initExpIngester(a, orderBookGraph)
+		// path-finder
+		initPathFinder(a, orderBookGraph)
 	}
 
 	// txsub
 	initSubmissionSystem(a)
-
-	// path-finder
-	initPathFinder(a, orderBookGraph)
 
 	// reaper
 	a.reaper = reap.New(a.config.HistoryRetentionCount, a.HorizonSession(context.Background()))
@@ -472,15 +480,8 @@ func (a *App) init() {
 	// This parameter will be removed soon.
 	a.web.mustInstallMiddlewares(a, a.config.ConnectionTimeout)
 
-	requiresExperimentalIngestion := &ExperimentalIngestionMiddleware{
-		EnableExperimentalIngestion: a.config.EnableExperimentalIngestion,
-		HorizonSession:              a.historyQ.Session,
-		StateReady: func() bool {
-			if !a.config.EnableExperimentalIngestion {
-				return false
-			}
-			return a.expingester.StateReady()
-		},
+	requiresExperimentalIngestion := &StateMiddleware{
+		HorizonSession: a.historyQ.Session,
 	}
 	// web.actions
 	a.web.mustInstallActions(a.config, a.paths, orderBookGraph, requiresExperimentalIngestion)
@@ -494,14 +495,14 @@ func (a *App) init() {
 	// db-metrics
 	initDbMetrics(a)
 
+	// ingest.metrics
+	initIngestMetrics(a)
+
 	// web.metrics
 	initWebMetrics(a)
 
 	// txsub.metrics
 	initTxSubMetrics(a)
-
-	// ingester.metrics
-	initIngesterMetrics(a)
 
 	// redis
 	initRedis(a)

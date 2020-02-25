@@ -8,9 +8,7 @@ import (
 	"time"
 
 	"github.com/stellar/go/protocols/horizon"
-	"github.com/stellar/go/services/horizon/internal/db2/core"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
-	"github.com/stellar/go/services/horizon/internal/ingest"
 	"github.com/stellar/go/services/horizon/internal/test"
 	"github.com/stellar/go/support/render/hal"
 	"github.com/stellar/go/support/render/problem"
@@ -71,21 +69,19 @@ func TestGetOfferByIDHandler(t *testing.T) {
 
 	q := &history.Q{tt.HorizonSession()}
 	handler := GetOfferByID{}
-	ingestion := ingest.Ingestion{DB: tt.HorizonSession()}
 
 	ledgerCloseTime := time.Now().Unix()
-	tt.Assert.NoError(ingestion.Start())
-	ingestion.Ledger(
-		1,
-		&core.LedgerHeader{Sequence: 3, CloseTime: ledgerCloseTime},
-		0,
-		0,
-		0,
-	)
-	tt.Assert.NoError(ingestion.Flush())
-	tt.Assert.NoError(ingestion.Close())
+	_, err := q.InsertLedger(xdr.LedgerHeaderHistoryEntry{
+		Header: xdr.LedgerHeader{
+			LedgerSeq: 3,
+			ScpValue: xdr.StellarValue{
+				CloseTime: xdr.TimePoint(ledgerCloseTime),
+			},
+		},
+	}, 0, 0, 0, 0)
+	tt.Assert.NoError(err)
 
-	_, err := q.InsertOffer(eurOffer, 3)
+	_, err = q.InsertOffer(eurOffer, 3)
 	tt.Assert.NoError(err)
 	_, err = q.InsertOffer(usdOffer, 4)
 	tt.Assert.NoError(err)
@@ -181,21 +177,19 @@ func TestGetOffersHandler(t *testing.T) {
 
 	q := &history.Q{tt.HorizonSession()}
 	handler := GetOffersHandler{}
-	ingestion := ingest.Ingestion{DB: tt.HorizonSession()}
 
 	ledgerCloseTime := time.Now().Unix()
-	tt.Assert.NoError(ingestion.Start())
-	ingestion.Ledger(
-		1,
-		&core.LedgerHeader{Sequence: 3, CloseTime: ledgerCloseTime},
-		0,
-		0,
-		0,
-	)
-	tt.Assert.NoError(ingestion.Flush())
-	tt.Assert.NoError(ingestion.Close())
+	_, err := q.InsertLedger(xdr.LedgerHeaderHistoryEntry{
+		Header: xdr.LedgerHeader{
+			LedgerSeq: 3,
+			ScpValue: xdr.StellarValue{
+				CloseTime: xdr.TimePoint(ledgerCloseTime),
+			},
+		},
+	}, 0, 0, 0, 0)
+	tt.Assert.NoError(err)
 
-	_, err := q.InsertOffer(eurOffer, 3)
+	_, err = q.InsertOffer(eurOffer, 3)
 	tt.Assert.NoError(err)
 	_, err = q.InsertOffer(twoEurOffer, 3)
 	tt.Assert.NoError(err)
@@ -308,6 +302,23 @@ func TestGetOffersHandler(t *testing.T) {
 
 		offers = pageableToOffers(t, records)
 		tt.Assert.Equal(asset, offers[0].Selling)
+
+		records, err = handler.GetResourcePage(
+			httptest.NewRecorder(),
+			makeRequest(
+				t,
+				map[string]string{
+					"selling": asset.Code + ":" + asset.Issuer,
+				},
+				map[string]string{},
+				q.Session,
+			),
+		)
+		tt.Assert.NoError(err)
+		tt.Assert.Len(records, 1)
+
+		offers = pageableToOffers(t, records)
+		tt.Assert.Equal(asset, offers[0].Selling)
 	})
 
 	t.Run("Filter by buying asset", func(t *testing.T) {
@@ -346,6 +357,25 @@ func TestGetOffersHandler(t *testing.T) {
 					"buying_asset_type":   asset.Type,
 					"buying_asset_code":   asset.Code,
 					"buying_asset_issuer": asset.Issuer,
+				},
+				map[string]string{},
+				q.Session,
+			),
+		)
+		tt.Assert.NoError(err)
+		tt.Assert.Len(records, 1)
+
+		offers = pageableToOffers(t, records)
+		for _, offer := range offers {
+			tt.Assert.Equal(asset, offer.Buying)
+		}
+
+		records, err = handler.GetResourcePage(
+			httptest.NewRecorder(),
+			makeRequest(
+				t,
+				map[string]string{
+					"buying": asset.Code + ":" + asset.Issuer,
 				},
 				map[string]string{},
 				q.Session,
@@ -416,7 +446,7 @@ func pageableToOffers(t *testing.T, page []hal.Pageable) []horizon.Offer {
 
 func TestOffersQueryURLTemplate(t *testing.T) {
 	tt := assert.New(t)
-	expected := "/offers{?selling_asset_type,selling_asset_issuer,selling_asset_code,buying_asset_type,buying_asset_issuer,buying_asset_code,seller,cursor,limit,order}"
+	expected := "/offers{?selling,buying,seller,cursor,limit,order}"
 	offersQuery := OffersQuery{}
 	tt.Equal(expected, offersQuery.URITemplate())
 }

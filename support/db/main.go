@@ -61,22 +61,6 @@ type InsertBuilder struct {
 	sql         squirrel.InsertBuilder
 }
 
-// BatchInsertBuilder works like sq.InsertBuilder but has a better support for batching
-// large number of rows.
-// It is NOT safe for concurrent use.
-type BatchInsertBuilder struct {
-	Table *Table
-	// MaxBatchSize defines the maximum size of a batch. If this number is
-	// reached after calling Row() it will call Exec() immediately inserting
-	// all rows to a DB.
-	// Zero (default) will not add rows until explicitly calling Exec.
-	MaxBatchSize int
-
-	columns []string
-	rows    [][]interface{}
-	sql     squirrel.InsertBuilder
-}
-
 // GetBuilder is a helper struct used to construct sql queries of the SELECT
 // variety.
 type GetBuilder struct {

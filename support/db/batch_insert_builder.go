@@ -8,6 +8,24 @@ import (
 	"github.com/stellar/go/support/errors"
 )
 
+// BatchInsertBuilder works like sq.InsertBuilder but has a better support for batching
+// large number of rows.
+// It is NOT safe for concurrent use.
+type BatchInsertBuilder struct {
+	Table *Table
+	// MaxBatchSize defines the maximum size of a batch. If this number is
+	// reached after calling Row() it will call Exec() immediately inserting
+	// all rows to a DB.
+	// Zero (default) will not add rows until explicitly calling Exec.
+	MaxBatchSize int
+
+	// Suffix adds a sql expression to the end of the query (e.g. an ON CONFLICT clause)
+	Suffix string
+
+	columns []string
+	rows    [][]interface{}
+}
+
 // Row adds a new row to the batch. All rows must have exactly the same columns
 // (map keys). Otherwise, error will be returned. Please note that rows are not
 // added one by one but in batches when `Exec` is called (or `MaxBatchSize` is
@@ -47,29 +65,37 @@ func (b *BatchInsertBuilder) Row(row map[string]interface{}) error {
 	return nil
 }
 
+func (b *BatchInsertBuilder) insertSQL() sq.InsertBuilder {
+	insertStatement := sq.Insert(b.Table.Name).Columns(b.columns...)
+	if len(b.Suffix) > 0 {
+		return insertStatement.Suffix(b.Suffix)
+	}
+	return insertStatement
+}
+
 // Exec inserts rows in batches. In case of errors it's possible that some batches
 // were added so this should be run in a DB transaction for easy rollbacks.
 func (b *BatchInsertBuilder) Exec() error {
-	b.sql = sq.Insert(b.Table.Name).Columns(b.columns...)
+	sql := b.insertSQL()
 	paramsCount := 0
 
 	for _, row := range b.rows {
-		b.sql = b.sql.Values(row...)
+		sql = sql.Values(row...)
 		paramsCount += len(row)
 
 		if paramsCount > postgresQueryMaxParams-2*len(b.columns) {
-			_, err := b.Table.Session.Exec(b.sql)
+			_, err := b.Table.Session.Exec(sql)
 			if err != nil {
 				return errors.Wrap(err, fmt.Sprintf("error adding values while inserting to %s", b.Table.Name))
 			}
 			paramsCount = 0
-			b.sql = sq.Insert(b.Table.Name).Columns(b.columns...)
+			sql = b.insertSQL()
 		}
 	}
 
 	// Insert last batch
 	if paramsCount > 0 {
-		_, err := b.Table.Session.Exec(b.sql)
+		_, err := b.Table.Session.Exec(sql)
 		if err != nil {
 			return errors.Wrap(err, fmt.Sprintf("error adding values while inserting to %s", b.Table.Name))
 		}

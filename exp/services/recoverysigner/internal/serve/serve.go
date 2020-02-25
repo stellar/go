@@ -107,7 +107,7 @@ func getHandlerDeps(opts Options) (handlerDeps, error) {
 }
 
 func handler(deps handlerDeps) http.Handler {
-	mux := supporthttp.NewAPIMux()
+	mux := supporthttp.NewAPIMux(deps.Logger)
 
 	mux.NotFound(errorHandler{Error: notFound}.ServeHTTP)
 	mux.MethodNotAllowed(errorHandler{Error: methodNotAllowed}.ServeHTTP)

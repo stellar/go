@@ -107,13 +107,28 @@ func NewEffect(
 		result = e
 	case history.EffectTrade:
 		e := effects.Trade{Base: basev}
-		err = row.UnmarshalDetails(&e)
+		tradeDetails := history.TradeEffectDetails{}
+		err = row.UnmarshalDetails(&tradeDetails)
+		if err == nil {
+			e.Seller = tradeDetails.Seller
+			e.OfferID = tradeDetails.OfferID
+			e.SoldAmount = tradeDetails.SoldAmount
+			e.SoldAssetType = tradeDetails.SoldAssetType
+			e.SoldAssetCode = tradeDetails.SoldAssetCode
+			e.SoldAssetIssuer = tradeDetails.SoldAssetIssuer
+			e.BoughtAmount = tradeDetails.BoughtAmount
+			e.BoughtAssetType = tradeDetails.BoughtAssetType
+			e.BoughtAssetCode = tradeDetails.BoughtAssetCode
+			e.BoughtAssetIssuer = tradeDetails.BoughtAssetIssuer
+		}
 		result = e
 	case history.EffectSequenceBumped:
 		e := effects.SequenceBumped{Base: basev}
 		hsb := history.SequenceBumped{}
 		err = row.UnmarshalDetails(&hsb)
-		e.NewSeq = hsb.NewSeq
+		if err == nil {
+			e.NewSeq = hsb.NewSeq
+		}
 		result = e
 	default:
 		result = basev

@@ -1,10 +1,88 @@
 # Changelog
 
 All notable changes to this project will be documented in this
-file.  This project adheres to [Semantic Versioning](http://semver.org/).
+file. This project adheres to [Semantic Versioning](http://semver.org/).
 
-As this project is pre 1.0, breaking changes may happen for minor version
-bumps.  A breaking change will get clearly notified in this log.
+## 1.0.0
+
+### Before you upgrade
+
+* If you were using the new ingestion in one of the previous versions of Horizon, you must first remove `ENABLE_EXPERIMENTAL_INGESTION` feature flag and restart all Horizon instances before deploying a new version.
+* The init stage (state ingestion) for the public Stellar network requires around 1.5GB of RAM. This memory is released after the state ingestion. State ingestion is performed only once. Restarting the server will not trigger it unless Horizon has been upgraded to a newer version (with an updated ingestion pipeline). It's worth noting that the required memory will become smaller and smaller as more of the buckets in the history archive become [CAP-20](https://github.com/stellar/stellar-protocol/blob/master/core/cap-0020.md) compatible. Some endpoints are **not available** during state ingestion.
+* The CPU footprint of the new ingestion is modest. We were able to successfully run ingestion on an [AWS `c5.xlarge`](https://aws.amazon.com/ec2/instance-types/c5/) instance. The init stage takes a few minutes on `c5.xlarge`. `c5.xlarge` is the equivalent of 4 vCPUs and 8GB of RAM. The definition of vCPU for the c5 large family in AWS is the following:
+> The 2nd generation Intel Xeon Scalable Processors (Cascade Lake) or 1st generation Intel Xeon Platinum 8000 series (Skylake-SP) processor with a sustained all core Turbo frequency of up to 3.4GHz, and single core turbo frequency of up to 3.5 GHz.
+
+* The state data requires an additional 6GB DB disk space for the public Stellar network (as of February 2020). The disk usage will increase when the number of Stellar ledger entries increases.
+  * `accounts_signers` table: 2340 MB
+  * `trust_lines` table: 2052 MB
+  * `accounts` table: 1545 MB
+  * `offers` table: 61 MB
+  * `accounts_data` table: 15 MB
+  * `exp_asset_stats` table: less than 1 MB
+* A new environment variable (or command line flag) needs to be set so that Horizon can ingest state from the history archives:
+   * `HISTORY_ARCHIVE_URLS="archive1,archive2,archive3"` (if you don't have your own pubnet history archive, you can use one of SDF's archives, for example `https://history.stellar.org/prd/core-live/core_live_001`)
+* Horizon serves the endpoints `/paths` and `/order_book` from an in-memory graph, which is only available on ingesting instances. If some of the instances in your cluster are not configured to ingest, you can configure your proxy server to route those endpoints to the ingesting instances. This is beyond the scope of this document - consult the relevant documentation for your proxy server. A better solution for this will be released in the next Horizon version.
+
+### New Ingestion System
+
+The most substantial element of this release is a full rewrite of Horizon's ledger ingestion engine, which enables some key features:
+
+* A set of important new endpoints (see below). Some of these were impossible under the previous ingestion architecture.
+* An in-memory order book graph for rapid querying.
+* The ability to run parallel ingestion over multiple Horizon hosts, improving service availability for production deployments.
+
+The new engine resolves multiple issues that were present in the old system. For example:
+
+* Horizon's coupling to Stellar-Core's database is dramatically reduced.
+* Data inconsistency due to lag between endpoints is eliminated.
+* Slow endpoints (path-finding for example) are now speedy.
+
+Finally, the rearchitecting makes new reliability features possible. An example is the new internal state verifier, which guarantees consistency between the local Horizon state and the public history archives.
+
+The [admin guide](https://github.com/stellar/go/blob/release-horizon-v0.25.0/services/horizon/internal/docs/admin.md) contains all the information needed to operate the new ingestion system.
+
+### Added
+
+- Add [/accounts](https://www.stellar.org/developers/horizon/reference/endpoints/accounts.html) endpoint, which allows filtering accounts that have a given signer or a trustline to an asset.
+- Add [/offers](https://www.stellar.org/developers/horizon/reference/endpoints/offers.html) endpoint, which lists all offers on the network and allows filtering by seller account or by selling or buying asset.
+- Add [/paths/strict-send](https://www.stellar.org/developers/horizon/reference/endpoints/path-finding-strict-send.html) endpoint, which enables discovery of optimal "strict send" paths between assets.
+- Add [/paths/strict-receive](https://www.stellar.org/developers/horizon/reference/endpoints/path-finding-strict-receive.html) endpoint, which enables discovery of optimal "strict receive" paths between assets.
+- Add the fields `max_fee` and `fee_charged` to [/fee_stats](https://www.stellar.org/developers/horizon/reference/endpoints/fee-stats.html).
+
+### Breaking changes
+
+### Changed
+
+- Change multiple operation types to their canonical names for [operation resources](https://www.stellar.org/developers/horizon/reference/resources/operation.html) ([#2134](https://github.com/stellar/go/pull/2134)).
+- Change the type of the following fields from `number` to `string`:
+
+    - Attribute `offer_id` in [manage buy offer](https://www.stellar.org/developers/horizon/reference/resources/operation.html#manage-buy-offer) and [manage sell offer](https://www.stellar.org/developers/horizon/reference/resources/operation.html#manage-sell-offer) operations.
+    - Attribute `offer_id` in `Trade` [effect](https://www.stellar.org/developers/horizon/reference/resources/effect.html#trading-effects).
+    - Attribute `id` in [Offer](https://www.stellar.org/developers/horizon/reference/resources/offer.html) resource.
+    - Attribute `timestamp` and `trade_count` in [Trade Aggregation](https://www.stellar.org/developers/horizon/reference/resources/trade_aggregation.html) resource.
+
+    See [#1609](https://github.com/stellar/go/issues/1609), [#1909](https://github.com/stellar/go/pull/1909) and [#1912](https://github.com/stellar/go/issues/1912) for more details.
+
+### Removed
+
+- `/metrics` endpoint is no longer part of the public API. It is now served on `ADMIN_PORT/metrics`. `ADMIN_PORT` can be set using env variable or `--admin-port` CLI param.
+- Remove the following fields from [/fee_stats](https://www.stellar.org/developers/horizon/reference/endpoints/fee-stats.html):
+
+    - `min_accepted_fee`
+    - `mode_accepted_fee`
+    - `p10_accepted_fee`
+    - `p20_accepted_fee`
+    - `p30_accepted_fee`
+    - `p40_accepted_fee`
+    - `p50_accepted_fee`
+    - `p60_accepted_fee`
+    - `p70_accepted_fee`
+    - `p80_accepted_fee`
+    - `p90_accepted_fee`
+    - `p95_accepted_fee`
+    - `p99_accepted_fee`
+
+- Remove `fee_paid` field from [Transaction resource](https://www.stellar.org/developers/horizon/reference/resources/transaction.html) (Use `fee_charged` and `max_fee` fields instead - see [#1372](https://github.com/stellar/go/issues/1372)).
 
 ## v0.24.1
 
@@ -124,7 +202,7 @@ If you want to use experimental ingestion skip this version and use v0.20.1 inst
 ### Changes
 
 * Experimental ingestion system is now run concurrently on all Horizon servers (with feature flag set - see below). This improves ingestion availability.
-* Add experimental path finding endpoints which use an in memory order book for improved performance. To enable the endpoints set `--enable-experimental-ingestion` CLI param or `ENABLE_EXPERIMENTAL_INGESTION=true` env variable. Note that the `enable-experimental-ingestion` flag enables both the new path finding endpoints and the accounts for signer endpoint. There are two path finding endpoints. `/paths/strict-send` returns payment paths where both the source and destination assets are fixed. This endpoint is able to answer questions like: "Get me the most EUR possible for my 10 USD." `/paths/strict-receive` is the other endpoint which is an alias to the existing `/paths` endpoint. 
+* Add experimental path finding endpoints which use an in memory order book for improved performance. To enable the endpoints set `--enable-experimental-ingestion` CLI param or `ENABLE_EXPERIMENTAL_INGESTION=true` env variable. Note that the `enable-experimental-ingestion` flag enables both the new path finding endpoints and the accounts for signer endpoint. There are two path finding endpoints. `/paths/strict-send` returns payment paths where both the source and destination assets are fixed. This endpoint is able to answer questions like: "Get me the most EUR possible for my 10 USD." `/paths/strict-receive` is the other endpoint which is an alias to the existing `/paths` endpoint.
 * `--enable-accounts-for-signer` CLI param or `ENABLE_ACCOUNTS_FOR_SIGNER=true` env variable are merged with `--enable-experimental-ingestion` CLI param or `ENABLE_EXPERIMENTAL_INGESTION=true` env variable.
 * Add experimental get offers by id endpoint`/offers/{id}` which uses the new ingestion system to fill up the offers table. To enable it, set `--enable-experimental-ingestion` CLI param or `ENABLE_EXPERIMENTAL_INGESTION=true` env variable.
 
@@ -434,7 +512,7 @@ This release is a bug fix release for v0.12.1 and v0.12.2.  *Please see the upgr
 
 ### Changes
 
-- Remove strict validation on the `resolution` parameter for trade aggregations endpoint.  We will add this feature back in to the next major release. 
+- Remove strict validation on the `resolution` parameter for trade aggregations endpoint.  We will add this feature back in to the next major release.
 
 
 ## v0.12.1 - 2017-03-13
@@ -449,7 +527,7 @@ This release is a bug fix release for v0.12.0.  *Please see the upgrade notes be
 
 ## v0.12.0 - 2017-03-08
 
-Big release this time for horizon:  We've made a number of breaking changes since v0.11.0 and have revised both our database schema as well as our data ingestion system.  We recommend that you take a backup of your horizon database prior to upgrading, just in case.  
+Big release this time for horizon:  We've made a number of breaking changes since v0.11.0 and have revised both our database schema as well as our data ingestion system.  We recommend that you take a backup of your horizon database prior to upgrading, just in case.
 
 ### Upgrade Notes
 
@@ -469,17 +547,17 @@ Since this release changes both the schema and the data ingestion system, we rec
 
 ### Bug fixes
 
-- Ingestion performance and stability has been improved. 
+- Ingestion performance and stability has been improved.
 - Changes to an account's inflation destination no longer produce erroneous "signer_updated" effects. (https://github.com/stellar/horizon/issues/390)
 
 
 ### Changed
 
-- BREAKING CHANGE: The `base_fee` property of the ledger resource has been renamed to `base_fee_in_stroops` 
-- BREAKING CHANGE: The `base_reserve` property of the ledger resource has been renamed to `base_reserve_in_stroops` and is now expressed in stroops (rather than lumens) and as a JSON number. 
+- BREAKING CHANGE: The `base_fee` property of the ledger resource has been renamed to `base_fee_in_stroops`
+- BREAKING CHANGE: The `base_reserve` property of the ledger resource has been renamed to `base_reserve_in_stroops` and is now expressed in stroops (rather than lumens) and as a JSON number.
 - BREAKING CHANGE: The "Orderbook Trades" (`/orderbook/trades`) endpoint has been removed and replaced by the "All Trades" (`/trades`) endpoint.
-- BREAKING CHANGE: The Trade resource has been modified to generalize assets as (`base`, `counter`) pairs, rather than the previous (`sold`,`bought`) pairs.  
-- Full reingestion (i.e. running `horizon db reingest`) now runs in reverse chronological order.  
+- BREAKING CHANGE: The Trade resource has been modified to generalize assets as (`base`, `counter`) pairs, rather than the previous (`sold`,`bought`) pairs.
+- Full reingestion (i.e. running `horizon db reingest`) now runs in reverse chronological order.
 
 ### Removed
 
@@ -505,7 +583,7 @@ Since this release changes both the schema and the data ingestion system, we rec
 ## [v0.10.1] - 2017-03-29
 
 ### Fixed
-- Ingestion was fixed to protect against text memos that contain null bytes.  While memos with null bytes are legal in stellar-core, PostgreSQL does not support such values in string columns.  Horizon now strips those null bytes to fix the issue. 
+- Ingestion was fixed to protect against text memos that contain null bytes.  While memos with null bytes are legal in stellar-core, PostgreSQL does not support such values in string columns.  Horizon now strips those null bytes to fix the issue.
 
 ## [v0.10.0] - 2017-03-20
 
@@ -603,7 +681,7 @@ This release contains the initial implementation of the "Abridged History System
 
 - BREAKING: When making a streaming request, a normal error response will be returned if an error occurs prior to sending the first event.  Additionally, the initial http response and streaming preamble will not be sent until the first event is available.
 - BREAKING: `horizon_latest_ledger` has renamed to `history_latest_ledger`
-- Horizon no longer needs to begin the ingestion of historical data from ledger sequence 1.  
+- Horizon no longer needs to begin the ingestion of historical data from ledger sequence 1.
 - Rows in the `history_accounts` table are no longer identified using the "Total Order ID" that other historical records  use, but are rather using a simple auto-incremented id.
 
 ### Removed

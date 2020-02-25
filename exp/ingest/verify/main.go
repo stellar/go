@@ -36,7 +36,7 @@ type TransformLedgerEntryFunction func(xdr.LedgerEntry) (ignore bool, newEntry x
 // It's user responsibility to call `StateReader.Close()` when reading is done.
 // Check Horizon for an example how to use this tool.
 type StateVerifier struct {
-	StateReader io.StateReader
+	StateReader io.ChangeReader
 	// TransformFunction transforms (or ignores) ledger entries streamed from
 	// checkpoint buckets to match the form added by `Write`. Read
 	// TransformLedgerEntryFunction godoc for more information.
@@ -69,7 +69,7 @@ func (v *StateVerifier) GetLedgerKeys(count int) ([]xdr.LedgerKey, error) {
 			return keys, err
 		}
 
-		entry := entryChange.MustState()
+		entry := *entryChange.Post
 
 		if v.TransformFunction != nil {
 			ignore, _ := v.TransformFunction(entry)

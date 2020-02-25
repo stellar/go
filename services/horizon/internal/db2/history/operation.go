@@ -279,6 +279,11 @@ func (q *OperationsQ) Fetch() ([]Operation, []Transaction, error) {
 	return operations, transactions, nil
 }
 
+// QOperations defines history_operation related queries.
+type QOperations interface {
+	NewOperationBatchInsertBuilder(maxBatchSize int) OperationBatchInsertBuilder
+}
+
 var selectOperation = sq.Select(
 	"hop.id, " +
 		"hop.transaction_id, " +
