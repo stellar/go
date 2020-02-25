@@ -38,6 +38,27 @@ horizon-cmp -t https://new-horizon.host.org -b https://horizon.stellar.org -a ./
 
 Additionally you can specify which line to start in by using the flag `-s`.
 
+### History
+
+You can use the `history` command to compare the history endpoints for a given range of ledgers.
+
+```
+horizon-cmp history -t https://new-horizon.domain.org -b https://base-horizon.domain.org
+```
+
+By default this command will check the last 120 ledgers (~10 minutes), but you can specify `--from` and `--to`.
+
+```
+horizon-cmp history -t https://new-horizon.domain.org -b https://base-horizon.domain.org --count 20
+```
+
+or
+
+```
+horizon-cmp history -t https://new-horizon.domain.org -b https://base-horizon.domain.org --from 10 --to 20
+```
+
+
 ### Request per second
 
 By default `horizon-cmp` will send 1 request per second, however, you can change this value using the `--rps` flag.  The following will run `10` request per second. Please note that sending too many requests to a production server can result in rate limiting of requests.
