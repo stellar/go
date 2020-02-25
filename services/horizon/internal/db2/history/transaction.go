@@ -163,6 +163,11 @@ func (q *TransactionsQ) Select(dest interface{}) error {
 	return nil
 }
 
+// QTransactions defines transaction related queries.
+type QTransactions interface {
+	NewTransactionBatchInsertBuilder(maxBatchSize int) TransactionBatchInsertBuilder
+}
+
 var selectTransaction = sq.Select(
 	"ht.id, " +
 		"ht.transaction_hash, " +

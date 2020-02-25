@@ -81,6 +81,11 @@ func (t *Hash) Scan(src interface{}) error {
 	return nil
 }
 
+// Scan reads from src into an LedgerUpgrade struct
+func (t *LedgerUpgrade) Scan(src interface{}) error {
+	return safeBase64Scan(src, t)
+}
+
 // Scan reads from src into an LedgerEntryChanges struct
 func (t *LedgerEntryChanges) Scan(src interface{}) error {
 	return safeBase64Scan(src, t)

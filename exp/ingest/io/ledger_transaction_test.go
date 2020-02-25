@@ -17,7 +17,7 @@ func TestChangeAccountChangedExceptSignersInvalidType(t *testing.T) {
 	})
 }
 
-func TestFeeAndMetaChangesSeparate(t *testing.T) {
+func TestFeeMetaAndOperationsChangesSeparate(t *testing.T) {
 	tx := LedgerTransaction{
 		FeeChanges: xdr.LedgerEntryChanges{
 			xdr.LedgerEntryChange{
@@ -46,29 +46,32 @@ func TestFeeAndMetaChangesSeparate(t *testing.T) {
 			},
 		},
 		Meta: xdr.TransactionMeta{
-			Operations: &[]xdr.OperationMeta{
-				{
-					Changes: xdr.LedgerEntryChanges{
-						xdr.LedgerEntryChange{
-							Type: xdr.LedgerEntryChangeTypeLedgerEntryState,
-							State: &xdr.LedgerEntry{
-								Data: xdr.LedgerEntryData{
-									Type: xdr.LedgerEntryTypeAccount,
-									Account: &xdr.AccountEntry{
-										AccountId: xdr.MustAddress("GAHK7EEG2WWHVKDNT4CEQFZGKF2LGDSW2IVM4S5DP42RBW3K6BTODB4A"),
-										Balance:   300,
+			V: 1,
+			V1: &xdr.TransactionMetaV1{
+				Operations: []xdr.OperationMeta{
+					{
+						Changes: xdr.LedgerEntryChanges{
+							xdr.LedgerEntryChange{
+								Type: xdr.LedgerEntryChangeTypeLedgerEntryState,
+								State: &xdr.LedgerEntry{
+									Data: xdr.LedgerEntryData{
+										Type: xdr.LedgerEntryTypeAccount,
+										Account: &xdr.AccountEntry{
+											AccountId: xdr.MustAddress("GAHK7EEG2WWHVKDNT4CEQFZGKF2LGDSW2IVM4S5DP42RBW3K6BTODB4A"),
+											Balance:   300,
+										},
 									},
 								},
 							},
-						},
-						xdr.LedgerEntryChange{
-							Type: xdr.LedgerEntryChangeTypeLedgerEntryUpdated,
-							Updated: &xdr.LedgerEntry{
-								Data: xdr.LedgerEntryData{
-									Type: xdr.LedgerEntryTypeAccount,
-									Account: &xdr.AccountEntry{
-										AccountId: xdr.MustAddress("GAHK7EEG2WWHVKDNT4CEQFZGKF2LGDSW2IVM4S5DP42RBW3K6BTODB4A"),
-										Balance:   400,
+							xdr.LedgerEntryChange{
+								Type: xdr.LedgerEntryChangeTypeLedgerEntryUpdated,
+								Updated: &xdr.LedgerEntry{
+									Data: xdr.LedgerEntryData{
+										Type: xdr.LedgerEntryTypeAccount,
+										Account: &xdr.AccountEntry{
+											AccountId: xdr.MustAddress("GAHK7EEG2WWHVKDNT4CEQFZGKF2LGDSW2IVM4S5DP42RBW3K6BTODB4A"),
+											Balance:   400,
+										},
 									},
 								},
 							},
@@ -83,10 +86,260 @@ func TestFeeAndMetaChangesSeparate(t *testing.T) {
 	assert.Equal(t, feeChanges[0].Pre.Data.MustAccount().Balance, xdr.Int64(100))
 	assert.Equal(t, feeChanges[0].Post.Data.MustAccount().Balance, xdr.Int64(200))
 
-	metaChanges := tx.GetChanges()
+	metaChanges, err := tx.GetChanges()
+	assert.NoError(t, err)
 	assert.Len(t, metaChanges, 1)
 	assert.Equal(t, metaChanges[0].Pre.Data.MustAccount().Balance, xdr.Int64(300))
 	assert.Equal(t, metaChanges[0].Post.Data.MustAccount().Balance, xdr.Int64(400))
+
+	operationChanges, err := tx.GetOperationChanges(0)
+	assert.NoError(t, err)
+	assert.Len(t, operationChanges, 1)
+	assert.Equal(t, operationChanges[0].Pre.Data.MustAccount().Balance, xdr.Int64(300))
+	assert.Equal(t, operationChanges[0].Post.Data.MustAccount().Balance, xdr.Int64(400))
+
+	// Ignore operation meta if tx result is txInternalError
+	// https://github.com/stellar/go/issues/2111
+	tx.Result.Result.Result.Code = xdr.TransactionResultCodeTxInternalError
+	metaChanges, err = tx.GetChanges()
+	assert.NoError(t, err)
+	assert.Len(t, metaChanges, 0)
+
+	operationChanges, err = tx.GetOperationChanges(0)
+	assert.NoError(t, err)
+	assert.Len(t, operationChanges, 0)
+}
+
+func TestFailedTransactionOperationChangesMeta(t *testing.T) {
+	testCases := []struct {
+		desc string
+		meta xdr.TransactionMeta
+	}{
+		{
+			desc: "V0",
+			meta: xdr.TransactionMeta{
+				Operations: &[]xdr.OperationMeta{},
+			},
+		},
+		{
+			desc: "V1",
+			meta: xdr.TransactionMeta{
+				V:  1,
+				V1: &xdr.TransactionMetaV1{},
+			},
+		},
+		{
+			desc: "V2",
+			meta: xdr.TransactionMeta{
+				V:  2,
+				V2: &xdr.TransactionMetaV2{},
+			},
+		},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.desc, func(t *testing.T) {
+			tx := LedgerTransaction{
+				Result: xdr.TransactionResultPair{
+					Result: xdr.TransactionResult{
+						Result: xdr.TransactionResultResult{
+							Code: xdr.TransactionResultCodeTxFailed,
+						},
+					},
+				},
+				Meta: tc.meta,
+			}
+
+			operationChanges, err := tx.GetOperationChanges(0)
+			if tx.Meta.V == 0 {
+				assert.Error(t, err)
+				assert.EqualError(t, err, "TransactionMeta.V=0 not supported")
+			} else {
+				assert.NoError(t, err)
+				assert.Len(t, operationChanges, 0)
+			}
+		})
+	}
+}
+func TestMetaV2Order(t *testing.T) {
+	tx := LedgerTransaction{
+		Meta: xdr.TransactionMeta{
+			V: 2,
+			V2: &xdr.TransactionMetaV2{
+				TxChangesBefore: xdr.LedgerEntryChanges{
+					xdr.LedgerEntryChange{
+						Type: xdr.LedgerEntryChangeTypeLedgerEntryState,
+						State: &xdr.LedgerEntry{
+							Data: xdr.LedgerEntryData{
+								Type: xdr.LedgerEntryTypeAccount,
+								Account: &xdr.AccountEntry{
+									AccountId: xdr.MustAddress("GACMZD5VJXTRLKVET72CETCYKELPNCOTTBDC6DHFEUPLG5DHEK534JQX"),
+									Balance:   100,
+								},
+							},
+						},
+					},
+					xdr.LedgerEntryChange{
+						Type: xdr.LedgerEntryChangeTypeLedgerEntryUpdated,
+						Updated: &xdr.LedgerEntry{
+							Data: xdr.LedgerEntryData{
+								Type: xdr.LedgerEntryTypeAccount,
+								Account: &xdr.AccountEntry{
+									AccountId: xdr.MustAddress("GACMZD5VJXTRLKVET72CETCYKELPNCOTTBDC6DHFEUPLG5DHEK534JQX"),
+									Balance:   200,
+								},
+							},
+						},
+					},
+					xdr.LedgerEntryChange{
+						Type: xdr.LedgerEntryChangeTypeLedgerEntryState,
+						State: &xdr.LedgerEntry{
+							Data: xdr.LedgerEntryData{
+								Type: xdr.LedgerEntryTypeAccount,
+								Account: &xdr.AccountEntry{
+									AccountId: xdr.MustAddress("GAHK7EEG2WWHVKDNT4CEQFZGKF2LGDSW2IVM4S5DP42RBW3K6BTODB4A"),
+									Balance:   100,
+								},
+							},
+						},
+					},
+					xdr.LedgerEntryChange{
+						Type: xdr.LedgerEntryChangeTypeLedgerEntryUpdated,
+						Updated: &xdr.LedgerEntry{
+							Data: xdr.LedgerEntryData{
+								Type: xdr.LedgerEntryTypeAccount,
+								Account: &xdr.AccountEntry{
+									AccountId: xdr.MustAddress("GAHK7EEG2WWHVKDNT4CEQFZGKF2LGDSW2IVM4S5DP42RBW3K6BTODB4A"),
+									Balance:   200,
+								},
+							},
+						},
+					},
+				},
+				Operations: []xdr.OperationMeta{
+					{
+						Changes: xdr.LedgerEntryChanges{
+							xdr.LedgerEntryChange{
+								Type: xdr.LedgerEntryChangeTypeLedgerEntryState,
+								State: &xdr.LedgerEntry{
+									Data: xdr.LedgerEntryData{
+										Type: xdr.LedgerEntryTypeAccount,
+										Account: &xdr.AccountEntry{
+											AccountId: xdr.MustAddress("GAHK7EEG2WWHVKDNT4CEQFZGKF2LGDSW2IVM4S5DP42RBW3K6BTODB4A"),
+											Balance:   300,
+										},
+									},
+								},
+							},
+							xdr.LedgerEntryChange{
+								Type: xdr.LedgerEntryChangeTypeLedgerEntryUpdated,
+								Updated: &xdr.LedgerEntry{
+									Data: xdr.LedgerEntryData{
+										Type: xdr.LedgerEntryTypeAccount,
+										Account: &xdr.AccountEntry{
+											AccountId: xdr.MustAddress("GAHK7EEG2WWHVKDNT4CEQFZGKF2LGDSW2IVM4S5DP42RBW3K6BTODB4A"),
+											Balance:   400,
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+				TxChangesAfter: xdr.LedgerEntryChanges{
+					xdr.LedgerEntryChange{
+						Type: xdr.LedgerEntryChangeTypeLedgerEntryState,
+						State: &xdr.LedgerEntry{
+							Data: xdr.LedgerEntryData{
+								Type: xdr.LedgerEntryTypeAccount,
+								Account: &xdr.AccountEntry{
+									AccountId: xdr.MustAddress("GACMZD5VJXTRLKVET72CETCYKELPNCOTTBDC6DHFEUPLG5DHEK534JQX"),
+									Balance:   300,
+								},
+							},
+						},
+					},
+					xdr.LedgerEntryChange{
+						Type: xdr.LedgerEntryChangeTypeLedgerEntryUpdated,
+						Updated: &xdr.LedgerEntry{
+							Data: xdr.LedgerEntryData{
+								Type: xdr.LedgerEntryTypeAccount,
+								Account: &xdr.AccountEntry{
+									AccountId: xdr.MustAddress("GACMZD5VJXTRLKVET72CETCYKELPNCOTTBDC6DHFEUPLG5DHEK534JQX"),
+									Balance:   400,
+								},
+							},
+						},
+					},
+				},
+			},
+		}}
+
+	metaChanges, err := tx.GetChanges()
+	assert.NoError(t, err)
+	assert.Len(t, metaChanges, 4)
+
+	change := metaChanges[0]
+	id := change.Pre.Data.MustAccount().AccountId
+	assert.Equal(t, id.Address(), "GACMZD5VJXTRLKVET72CETCYKELPNCOTTBDC6DHFEUPLG5DHEK534JQX")
+	assert.Equal(t, change.Pre.Data.MustAccount().Balance, xdr.Int64(100))
+	assert.Equal(t, change.Post.Data.MustAccount().Balance, xdr.Int64(200))
+
+	change = metaChanges[1]
+	id = change.Pre.Data.MustAccount().AccountId
+	assert.Equal(t, id.Address(), "GAHK7EEG2WWHVKDNT4CEQFZGKF2LGDSW2IVM4S5DP42RBW3K6BTODB4A")
+	assert.Equal(t, change.Pre.Data.MustAccount().Balance, xdr.Int64(100))
+	assert.Equal(t, change.Post.Data.MustAccount().Balance, xdr.Int64(200))
+
+	change = metaChanges[2]
+	id = change.Pre.Data.MustAccount().AccountId
+	assert.Equal(t, id.Address(), "GAHK7EEG2WWHVKDNT4CEQFZGKF2LGDSW2IVM4S5DP42RBW3K6BTODB4A")
+	assert.Equal(t, change.Pre.Data.MustAccount().Balance, xdr.Int64(300))
+	assert.Equal(t, change.Post.Data.MustAccount().Balance, xdr.Int64(400))
+
+	change = metaChanges[3]
+	id = change.Pre.Data.MustAccount().AccountId
+	assert.Equal(t, id.Address(), "GACMZD5VJXTRLKVET72CETCYKELPNCOTTBDC6DHFEUPLG5DHEK534JQX")
+	assert.Equal(t, change.Pre.Data.MustAccount().Balance, xdr.Int64(300))
+	assert.Equal(t, change.Post.Data.MustAccount().Balance, xdr.Int64(400))
+
+	operationChanges, err := tx.GetOperationChanges(0)
+	assert.NoError(t, err)
+	assert.Len(t, operationChanges, 1)
+
+	// Ignore operations meta and txChangesAfter if txInternalError
+	// https://github.com/stellar/go/issues/2111
+	tx.Result.Result.Result.Code = xdr.TransactionResultCodeTxInternalError
+	metaChanges, err = tx.GetChanges()
+	assert.NoError(t, err)
+	assert.Len(t, metaChanges, 2)
+
+	change = metaChanges[0]
+	id = change.Pre.Data.MustAccount().AccountId
+	assert.Equal(t, id.Address(), "GACMZD5VJXTRLKVET72CETCYKELPNCOTTBDC6DHFEUPLG5DHEK534JQX")
+	assert.Equal(t, change.Pre.Data.MustAccount().Balance, xdr.Int64(100))
+	assert.Equal(t, change.Post.Data.MustAccount().Balance, xdr.Int64(200))
+
+	change = metaChanges[1]
+	id = change.Pre.Data.MustAccount().AccountId
+	assert.Equal(t, id.Address(), "GAHK7EEG2WWHVKDNT4CEQFZGKF2LGDSW2IVM4S5DP42RBW3K6BTODB4A")
+	assert.Equal(t, change.Pre.Data.MustAccount().Balance, xdr.Int64(100))
+	assert.Equal(t, change.Post.Data.MustAccount().Balance, xdr.Int64(200))
+
+	operationChanges, err = tx.GetOperationChanges(0)
+	assert.NoError(t, err)
+	assert.Len(t, operationChanges, 0)
+
+}
+
+func TestMetaV0(t *testing.T) {
+	tx := LedgerTransaction{
+		Meta: xdr.TransactionMeta{
+			V: 0,
+		}}
+
+	_, err := tx.GetChanges()
+	assert.Error(t, err)
+	assert.EqualError(t, err, "TransactionMeta.V=0 not supported")
 }
 
 func TestChangeAccountChangedExceptSignersLastModifiedLedgerSeq(t *testing.T) {

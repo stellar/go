@@ -7,12 +7,13 @@ import (
 	"net/http/httptest"
 
 	supporthttp "github.com/stellar/go/support/http"
+	"github.com/stellar/go/support/log"
 	"github.com/stellar/go/support/render/health"
 	"github.com/stellar/go/support/render/httpjson"
 )
 
 func ExampleResponse() {
-	mux := supporthttp.NewAPIMux()
+	mux := supporthttp.NewAPIMux(log.DefaultLogger)
 
 	mux.Get("/health", func(w http.ResponseWriter, r *http.Request) {
 		healthCheckResult := false
@@ -44,7 +45,7 @@ func ExampleResponse() {
 }
 
 func ExampleHandler() {
-	mux := supporthttp.NewAPIMux()
+	mux := supporthttp.NewAPIMux(log.DefaultLogger)
 
 	mux.Get("/health", health.PassHandler{}.ServeHTTP)
 

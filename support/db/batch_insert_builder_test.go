@@ -19,6 +19,9 @@ func TestBatchInsertBuilder(t *testing.T) {
 		Table: sess.GetTable("people"),
 	}
 
+	// exec on the empty set should produce no errors
+	assert.NoError(t, insertBuilder.Exec())
+
 	var err error
 
 	err = insertBuilder.Row(map[string]interface{}{
@@ -57,24 +60,75 @@ func TestBatchInsertBuilder(t *testing.T) {
 	err = insertBuilder.Exec()
 	assert.NoError(t, err)
 
-	query, args, err := insertBuilder.sql.ToSql()
-	assert.NoError(t, err)
-	assert.Equal(t, "INSERT INTO people (hunger_level,name) VALUES (?,?),(?,?)", query)
-	assert.Equal(t, []interface{}{
-		"120", "bubba",
-		"1202", "bubba2",
-	}, args)
-
 	// Check rows
 	var found []person
 	err = sess.SelectRaw(&found, `SELECT * FROM people WHERE name like 'bubba%'`)
 
 	require.NoError(t, err)
-	if assert.Len(t, found, 2) {
-		assert.Equal(t, "bubba", found[0].Name)
-		assert.Equal(t, "120", found[0].HungerLevel)
+	assert.Equal(
+		t,
+		found,
+		[]person{
+			person{Name: "bubba", HungerLevel: "120"},
+			person{Name: "bubba2", HungerLevel: "1202"},
+		},
+	)
 
-		assert.Equal(t, "bubba2", found[1].Name)
-		assert.Equal(t, "1202", found[1].HungerLevel)
-	}
+	err = insertBuilder.Row(map[string]interface{}{
+		"name":         "bubba",
+		"hunger_level": "1",
+	})
+	assert.NoError(t, err)
+
+	err = insertBuilder.Exec()
+	assert.EqualError(
+		t, err, "error adding values while inserting to people: exec failed: pq:"+
+			" duplicate key value violates unique constraint \"people_pkey\"",
+	)
+
+	insertBuilder.Suffix = "ON CONFLICT (name) DO NOTHING"
+
+	err = insertBuilder.Row(map[string]interface{}{
+		"name":         "bubba",
+		"hunger_level": "1",
+	})
+	assert.NoError(t, err)
+
+	err = insertBuilder.Exec()
+	assert.NoError(t, err)
+
+	err = sess.SelectRaw(&found, `SELECT * FROM people WHERE name like 'bubba%'`)
+
+	require.NoError(t, err)
+	assert.Equal(
+		t,
+		found,
+		[]person{
+			person{Name: "bubba", HungerLevel: "120"},
+			person{Name: "bubba2", HungerLevel: "1202"},
+		},
+	)
+
+	insertBuilder.Suffix = "ON CONFLICT (name) DO UPDATE SET hunger_level = EXCLUDED.hunger_level"
+
+	err = insertBuilder.Row(map[string]interface{}{
+		"name":         "bubba",
+		"hunger_level": "1",
+	})
+	assert.NoError(t, err)
+
+	err = insertBuilder.Exec()
+	assert.NoError(t, err)
+
+	err = sess.SelectRaw(&found, `SELECT * FROM people WHERE name like 'bubba%'`)
+
+	require.NoError(t, err)
+	assert.Equal(
+		t,
+		found,
+		[]person{
+			person{Name: "bubba2", HungerLevel: "1202"},
+			person{Name: "bubba", HungerLevel: "1"},
+		},
+	)
 }

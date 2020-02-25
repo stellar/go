@@ -5,6 +5,9 @@
 keystore:
 	$(MAKE) -C services/keystore/ docker-build
 
+ticker:
+	$(MAKE) -C services/ticker/ docker-build
+
 webauth:
 	$(MAKE) -C exp/services/webauth/ docker-build
 
