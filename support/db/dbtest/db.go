@@ -14,7 +14,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// DB represents an ephemeral database that can be starts blank and can be used
+// DB represents an ephemeral database that starts blank and can be used
 // to run tests against.
 type DB struct {
 	Dialect string
