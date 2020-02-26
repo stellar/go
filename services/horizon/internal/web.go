@@ -118,6 +118,7 @@ func (w *web) mustInstallMiddlewares(app *App, connTimeout time.Duration) {
 	c := cors.New(cors.Options{
 		AllowedOrigins: []string{"*"},
 		AllowedHeaders: []string{"*"},
+		ExposedHeaders: []string{"Date"},
 	})
 	r.Use(c.Handler)
 
