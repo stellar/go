@@ -2,7 +2,6 @@ package serve
 
 type accountResponse struct {
 	Address    string                    `json:"address"`
-	Type       string                    `json:"-"`
 	Identities accountResponseIdentities `json:"identities"`
 	Identity   string                    `json:"identity"`
 	Signer     string                    `json:"signer"`
