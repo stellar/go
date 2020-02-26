@@ -28,11 +28,11 @@ This repo contains various tools and services that you can use and deploy, as we
 
 ## Dependencies
 
-This repository is officially supported on the last two releases of Go, which is currently Go 1.12 and Go 1.13.
+This repository is officially supported on the last two releases of Go, which is currently Go 1.13 and Go 1.14.
 
 It depends on a [number of external dependencies](./go.mod), and uses Go [Modules](https://github.com/golang/go/wiki/Modules) to manage them. Running any `go` command will automatically download dependencies required for that operation.
 
-You can choose to checkout this repository into a [GOPATH](https://github.com/golang/go/wiki/GOPATH) or into any directory, but if you are using a GOPATH with Go 1.12 or earlier you must set environment variable `GO111MODULE=on` to enable Modules.
+You can choose to checkout this repository into a [GOPATH](https://github.com/golang/go/wiki/GOPATH) or into any directory.
 
 ## Directory Layout
 
