@@ -82,3 +82,72 @@ func TestIsNotFoundError(t *testing.T) {
 		})
 	}
 }
+
+func TestGetError(t *testing.T) {
+	testCases := []struct {
+		desc    string
+		err     error
+		wantErr error
+	}{
+		{
+			desc:    "nil error",
+			err:     nil,
+			wantErr: nil,
+		},
+		{
+			desc:    "another Go type of error",
+			err:     errors.New("error"),
+			wantErr: nil,
+		},
+		{
+			desc: "not found problem (pointer)",
+			err: &Error{
+				Problem: problem.P{
+					Type:   "https://stellar.org/horizon-errors/not_found",
+					Title:  "Resource Missing",
+					Status: 404,
+				},
+			},
+			wantErr: &Error{
+				Problem: problem.P{
+					Type:   "https://stellar.org/horizon-errors/not_found",
+					Title:  "Resource Missing",
+					Status: 404,
+				},
+			},
+		},
+		{
+			desc: "not found problem (not a pointer)",
+			err: Error{
+				Problem: problem.P{
+					Type:   "https://stellar.org/horizon-errors/not_found",
+					Title:  "Resource Missing",
+					Status: 404,
+				},
+			},
+			wantErr: &Error{
+				Problem: problem.P{
+					Type:   "https://stellar.org/horizon-errors/not_found",
+					Title:  "Resource Missing",
+					Status: 404,
+				},
+			},
+		},
+		{
+			desc:    "a nil *horizonclient.Error",
+			err:     (*Error)(nil),
+			wantErr: nil,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.desc, func(t *testing.T) {
+			gotErr := GetError(tc.err)
+			if tc.wantErr == nil {
+				assert.Nil(t, gotErr)
+			} else {
+				assert.Equal(t, tc.wantErr, gotErr)
+			}
+		})
+	}
+}
