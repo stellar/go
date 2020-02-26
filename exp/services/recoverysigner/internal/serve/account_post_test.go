@@ -29,15 +29,17 @@ func TestAccountPost_new(t *testing.T) {
 	ctx = auth.NewContext(ctx, auth.Auth{Address: "GDIXCQJ2W2N6TAS6AYW4LW2EBV7XNRUCLNHQB37FARDEWBQXRWP47Q6N"})
 	req := `{
 	"type": "share",
-	"owner_identities": {
-		"account": "GBF3XFXGBGNQDN3HOSZ7NVRF6TJ2JOD5U6ELIWJOOEI6T5WKMQT2YSXQ",
-		"phone_number": "+10000000000",
-		"email": "user1@example.com"
-	},
-	"other_identities": {
-		"account": "GB5VOTKJ3IPGIYQBJ6GVJMUVEAIYGXZUJE4WYLPBJSHOTKLZTETBYOBI",
-		"phone_number": "+20000000000",
-		"email": "user2@example.com"
+	"identities": {
+		"owner": {
+			"account": "GBF3XFXGBGNQDN3HOSZ7NVRF6TJ2JOD5U6ELIWJOOEI6T5WKMQT2YSXQ",
+			"phone_number": "+10000000000",
+			"email": "user1@example.com"
+		},
+		"other": {
+			"account": "GB5VOTKJ3IPGIYQBJ6GVJMUVEAIYGXZUJE4WYLPBJSHOTKLZTETBYOBI",
+			"phone_number": "+20000000000",
+			"email": "user2@example.com"
+		}
 	}
 }`
 	r := httptest.NewRequest("POST", "/GDIXCQJ2W2N6TAS6AYW4LW2EBV7XNRUCLNHQB37FARDEWBQXRWP47Q6N", strings.NewReader(req))
@@ -57,7 +59,10 @@ func TestAccountPost_new(t *testing.T) {
 
 	wantBody := `{
 	"address": "GDIXCQJ2W2N6TAS6AYW4LW2EBV7XNRUCLNHQB37FARDEWBQXRWP47Q6N",
-	"type": "share",
+	"identities": {
+		"owner": { "present": true },
+		"other": { "present": true }
+	},
 	"identity": "account",
 	"signer": "GCAPXRXSU7P6D353YGXMP6ROJIC744HO5OZCIWTXZQK2X757YU5KCHUE"
 }`
@@ -67,7 +72,6 @@ func TestAccountPost_new(t *testing.T) {
 	require.NoError(t, err)
 	wantAcc := account.Account{
 		Address: "GDIXCQJ2W2N6TAS6AYW4LW2EBV7XNRUCLNHQB37FARDEWBQXRWP47Q6N",
-		Type:    "share",
 		OwnerIdentities: account.Identities{
 			Address:     "GBF3XFXGBGNQDN3HOSZ7NVRF6TJ2JOD5U6ELIWJOOEI6T5WKMQT2YSXQ",
 			PhoneNumber: "+10000000000",
@@ -86,7 +90,6 @@ func TestAccountPost_accountAddressInvalid(t *testing.T) {
 	s := account.NewMemoryStore()
 	s.Add(account.Account{
 		Address: "GDIXCQJ2W2N6TAS6AYW4LW2EBV7XNRUCLNHQB37FARDEWBQXRWP47Q6N",
-		Type:    "personal",
 	})
 	h := accountPostHandler{
 		Logger:         supportlog.DefaultLogger,
@@ -96,9 +99,7 @@ func TestAccountPost_accountAddressInvalid(t *testing.T) {
 
 	ctx := context.Background()
 	ctx = auth.NewContext(ctx, auth.Auth{Address: "GDIXCQJ2W2N6TAS6AYW4LW2EBV7XNRUCLNHQB37FARDEWBQXRWP47Q6N"})
-	req := `{
-	"type": "share"
-}`
+	req := `{}`
 	r := httptest.NewRequest("POST", "/ZDIXCQJ2W2N6TAS6AYW4LW2EBV7XNRUCLNHQB37FARDEWBQXRWP47Q6N", strings.NewReader(req))
 	r = r.WithContext(ctx)
 
@@ -127,7 +128,6 @@ func TestAccountPost_accountAlreadyExists(t *testing.T) {
 	s := account.NewMemoryStore()
 	s.Add(account.Account{
 		Address: "GDIXCQJ2W2N6TAS6AYW4LW2EBV7XNRUCLNHQB37FARDEWBQXRWP47Q6N",
-		Type:    "personal",
 	})
 	h := accountPostHandler{
 		Logger:         supportlog.DefaultLogger,
@@ -137,9 +137,7 @@ func TestAccountPost_accountAlreadyExists(t *testing.T) {
 
 	ctx := context.Background()
 	ctx = auth.NewContext(ctx, auth.Auth{Address: "GDIXCQJ2W2N6TAS6AYW4LW2EBV7XNRUCLNHQB37FARDEWBQXRWP47Q6N"})
-	req := `{
-	"type": "share"
-}`
+	req := `{}`
 	r := httptest.NewRequest("POST", "/GDIXCQJ2W2N6TAS6AYW4LW2EBV7XNRUCLNHQB37FARDEWBQXRWP47Q6N", strings.NewReader(req))
 	r = r.WithContext(ctx)
 
@@ -164,7 +162,6 @@ func TestAccountPost_accountAlreadyExists(t *testing.T) {
 	require.NoError(t, err)
 	wantAcc := account.Account{
 		Address: "GDIXCQJ2W2N6TAS6AYW4LW2EBV7XNRUCLNHQB37FARDEWBQXRWP47Q6N",
-		Type:    "personal",
 	}
 	assert.Equal(t, wantAcc, acc)
 }
@@ -179,9 +176,7 @@ func TestAccountPost_notAuthenticatedForAccount(t *testing.T) {
 
 	ctx := context.Background()
 	ctx = auth.NewContext(ctx, auth.Auth{Address: "GDIXCQJ2W2N6TAS6AYW4LW2EBV7XNRUCLNHQB37FARDEWBQXRWP47Q6N"})
-	req := `{
-	"type": "personal"
-}`
+	req := `{}`
 	r := httptest.NewRequest("POST", "/GDUKTYDY3RDNTNOUFJ2GPL5PIZTMTRD5P2CT274SYH67Q5J3NYI7XKYB", strings.NewReader(req))
 	r = r.WithContext(ctx)
 

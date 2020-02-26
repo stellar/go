@@ -45,8 +45,15 @@ func (h accountListHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		} else {
 			accResp := accountResponse{
-				Address:  acc.Address,
-				Type:     acc.Type,
+				Address: acc.Address,
+				Identities: accountResponseIdentities{
+					Owner: accountResponseIdentity{
+						Present: acc.OwnerIdentities.Present(),
+					},
+					Other: accountResponseIdentity{
+						Present: acc.OtherIdentities.Present(),
+					},
+				},
 				Identity: "account",
 				Signer:   h.SigningAddress.Address(),
 			}
@@ -69,8 +76,15 @@ func (h accountListHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				identity = "other"
 			}
 			accResp := accountResponse{
-				Address:  acc.Address,
-				Type:     acc.Type,
+				Address: acc.Address,
+				Identities: accountResponseIdentities{
+					Owner: accountResponseIdentity{
+						Present: acc.OwnerIdentities.Present(),
+					},
+					Other: accountResponseIdentity{
+						Present: acc.OtherIdentities.Present(),
+					},
+				},
 				Identity: identity,
 				Signer:   h.SigningAddress.Address(),
 			}
@@ -95,8 +109,15 @@ func (h accountListHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				identity = "other"
 			}
 			accResp := accountResponse{
-				Address:  acc.Address,
-				Type:     acc.Type,
+				Address: acc.Address,
+				Identities: accountResponseIdentities{
+					Owner: accountResponseIdentity{
+						Present: acc.OwnerIdentities.Present(),
+					},
+					Other: accountResponseIdentity{
+						Present: acc.OtherIdentities.Present(),
+					},
+				},
 				Identity: identity,
 				Signer:   h.SigningAddress.Address(),
 			}
@@ -121,8 +142,15 @@ func (h accountListHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				identity = "other"
 			}
 			accResp := accountResponse{
-				Address:  acc.Address,
-				Type:     acc.Type,
+				Address: acc.Address,
+				Identities: accountResponseIdentities{
+					Owner: accountResponseIdentity{
+						Present: acc.OwnerIdentities.Present(),
+					},
+					Other: accountResponseIdentity{
+						Present: acc.OtherIdentities.Present(),
+					},
+				},
 				Identity: identity,
 				Signer:   h.SigningAddress.Address(),
 			}

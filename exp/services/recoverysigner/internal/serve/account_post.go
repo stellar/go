@@ -20,13 +20,16 @@ type accountPostHandler struct {
 }
 
 type accountPostRequest struct {
-	Address         *keypair.FromAddress         `path:"address"`
-	Type            string                       `json:"type" form:"type"`
-	OwnerIdentities accountPostRequestIdentities `json:"owner_identities" form:"owner_identities"`
-	OtherIdentities accountPostRequestIdentities `json:"other_identities" form:"other_identities"`
+	Address    *keypair.FromAddress         `path:"address"`
+	Identities accountPostRequestIdentities `json:"identities" form:"identities"`
 }
 
 type accountPostRequestIdentities struct {
+	Owner accountPostRequestIdentity `json:"owner" form:"owner"`
+	Other accountPostRequestIdentity `json:"other" form:"other"`
+}
+
+type accountPostRequestIdentity struct {
 	Address     string `json:"account" form:"account"`
 	PhoneNumber string `json:"phone_number" form:"phone_number"`
 	Email       string `json:"email" form:"email"`
@@ -55,16 +58,15 @@ func (h accountPostHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	acc := account.Account{
 		Address: req.Address.Address(),
-		Type:    req.Type, // TODO: Validate input type.
 		OwnerIdentities: account.Identities{
-			Address:     req.OwnerIdentities.Address,
-			PhoneNumber: req.OwnerIdentities.PhoneNumber,
-			Email:       req.OwnerIdentities.Email,
+			Address:     req.Identities.Owner.Address,
+			PhoneNumber: req.Identities.Owner.PhoneNumber,
+			Email:       req.Identities.Owner.Email,
 		},
 		OtherIdentities: account.Identities{
-			Address:     req.OtherIdentities.Address,
-			PhoneNumber: req.OtherIdentities.PhoneNumber,
-			Email:       req.OtherIdentities.Email,
+			Address:     req.Identities.Other.Address,
+			PhoneNumber: req.Identities.Other.PhoneNumber,
+			Email:       req.Identities.Other.Email,
 		},
 	}
 	err = h.AccountStore.Add(acc)
@@ -78,8 +80,15 @@ func (h accountPostHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	resp := accountResponse{
-		Address:  req.Address.Address(),
-		Type:     req.Type,
+		Address: req.Address.Address(),
+		Identities: accountResponseIdentities{
+			Owner: accountResponseIdentity{
+				Present: acc.OwnerIdentities.Present(),
+			},
+			Other: accountResponseIdentity{
+				Present: acc.OtherIdentities.Present(),
+			},
+		},
 		Identity: "account",
 		Signer:   h.SigningAddress.Address(),
 	}
