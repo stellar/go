@@ -40,3 +40,8 @@ func (m *MockQAssetStats) GetAssetStats(assetCode, assetIssuer string, page db2.
 	a := m.Called(assetCode, assetIssuer, page)
 	return a.Get(0).([]ExpAssetStat), a.Error(1)
 }
+
+func (m *MockQAssetStats) CountTrustLines() (int, error) {
+	a := m.Called()
+	return a.Get(0).(int), a.Error(1)
+}

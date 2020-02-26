@@ -6,7 +6,8 @@ import "github.com/stretchr/testify/assert"
 const testSchema = `
 CREATE TABLE  IF NOT EXISTS people (
     name character varying NOT NULL,
-    hunger_level integer NOT NULL
+    hunger_level integer NOT NULL,
+    PRIMARY KEY (name)
 );
 DELETE FROM people;
 INSERT INTO people (name, hunger_level) VALUES ('scott', 1000000);

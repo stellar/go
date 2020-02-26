@@ -150,7 +150,7 @@ func (handler AssetStatsHandler) GetResourcePage(
 	for _, record := range assetStats {
 		var assetStatResponse horizon.AssetStat
 
-		resourceadapter.PopulateExpAssetStat(
+		resourceadapter.PopulateAssetStat(
 			ctx,
 			&assetStatResponse,
 			record,

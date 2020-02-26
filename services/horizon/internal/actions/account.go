@@ -2,8 +2,6 @@ package actions
 
 import (
 	"context"
-	"encoding/json"
-	"fmt"
 	"net/http"
 	"strings"
 
@@ -18,8 +16,7 @@ import (
 	"github.com/stellar/go/xdr"
 )
 
-// AccountInfo returns the information about an account identified by addr.
-func AccountInfo(ctx context.Context, cq *core.Q, hq *history.Q, addr string, enableExperimentalIngestion bool) (*protocol.Account, error) {
+func accountFromCoreDB(ctx context.Context, cq *core.Q, addr string) (*protocol.Account, error) {
 	var (
 		coreRecord     core.Account
 		coreData       []core.AccountData
@@ -60,16 +57,70 @@ func AccountInfo(ctx context.Context, cq *core.Q, hq *history.Q, addr string, en
 		return nil, errors.Wrap(err, "populating account")
 	}
 
-	if enableExperimentalIngestion {
-		c, err := json.Marshal(resource)
-		if err != nil {
-			return nil, errors.Wrap(err, "error marshaling resource")
-		}
+	return &resource, nil
+}
 
-		// We send JSON bytes to compareAccountResults to prevent modifying
-		// `resource` in any way.
-		err = compareAccountResults(ctx, hq, c, addr)
-		if err != nil {
+func accountFromExperimentalIngestion(ctx context.Context, hq *history.Q, addr string) (*protocol.Account, error) {
+	var (
+		horizonRecord     history.AccountEntry
+		horizonData       []history.Data
+		horizonSigners    []history.AccountSigner
+		horizonTrustLines []history.TrustLine
+		resouce           protocol.Account
+	)
+
+	horizonRecord, err := hq.GetAccountByID(addr)
+	if err != nil {
+		return nil, errors.Wrap(err, "getting history account record")
+	}
+
+	horizonData, err = hq.GetAccountDataByAccountID(addr)
+	if err != nil {
+		return nil, errors.Wrap(err, "getting history account data")
+	}
+
+	horizonSigners, err = hq.GetAccountSignersByAccountID(addr)
+	if err != nil {
+		return nil, errors.Wrap(err, "getting history signers")
+	}
+
+	horizonTrustLines, err = hq.GetTrustLinesByAccountID(addr)
+	if err != nil {
+		return nil, errors.Wrap(err, "getting history trustlines")
+	}
+
+	err = resourceadapter.PopulateAccountEntry(
+		ctx,
+		&resouce,
+		horizonRecord,
+		horizonData,
+		horizonSigners,
+		horizonTrustLines,
+	)
+	if err != nil {
+		return nil, errors.Wrap(err, "populating account entry")
+	}
+
+	return &resouce, nil
+}
+
+// AccountInfo returns the information about an account identified by addr.
+func AccountInfo(ctx context.Context, cq *core.Q, hq *history.Q, addr string) (*protocol.Account, error) {
+	var resource, otherResource *protocol.Account
+	var err error
+
+	resource, err = accountFromExperimentalIngestion(ctx, hq, addr)
+	if err != nil {
+		return nil, err
+	}
+
+	otherResource, err = accountFromCoreDB(ctx, cq, addr)
+	if err != nil {
+		err = errors.Wrap(err, "Could not fetch account from core DB")
+	}
+
+	if err == nil {
+		if err = accountResourcesEqual(*resource, *otherResource); err != nil {
 			log.Ctx(ctx).WithFields(log.F{
 				"err":            err,
 				"accounts_check": true, // So it's easy to find all diffs
@@ -77,72 +128,7 @@ func AccountInfo(ctx context.Context, cq *core.Q, hq *history.Q, addr string, en
 		}
 	}
 
-	return &resource, nil
-}
-
-func compareAccountResults(
-	ctx context.Context,
-	hq *history.Q,
-	expectedResourceBytes []byte,
-	addr string,
-) error {
-	var (
-		horizonRecord     history.AccountEntry
-		horizonData       []history.Data
-		horizonSigners    []history.AccountSigner
-		horizonTrustLines []history.TrustLine
-		newResource       protocol.Account
-	)
-
-	horizonRecord, err := hq.GetAccountByID(addr)
-	if err != nil {
-		return errors.Wrap(err, "getting history account record")
-	}
-
-	horizonData, err = hq.GetAccountDataByAccountID(addr)
-	if err != nil {
-		return errors.Wrap(err, "getting history account data")
-	}
-
-	horizonSigners, err = hq.GetAccountSignersByAccountID(addr)
-	if err != nil {
-		return errors.Wrap(err, "getting history signers")
-	}
-
-	horizonTrustLines, err = hq.GetTrustLinesByAccountID(addr)
-	if err != nil {
-		return errors.Wrap(err, "getting history trustlines")
-	}
-
-	err = resourceadapter.PopulateAccountEntry(
-		ctx,
-		&newResource,
-		horizonRecord,
-		horizonData,
-		horizonSigners,
-		horizonTrustLines,
-	)
-	if err != nil {
-		return errors.Wrap(err, "populating account entry")
-	}
-
-	var expectedResource protocol.Account
-	err = json.Unmarshal(expectedResourceBytes, &expectedResource)
-	if err != nil {
-		return errors.Wrap(err, "Error unmarshaling expectedResourceBytes")
-	}
-
-	if err = accountResourcesEqual(newResource, expectedResource); err != nil {
-		return errors.Wrap(
-			err,
-			fmt.Sprintf(
-				"Core and Horizon accounts responses do not match: %+v %+v",
-				expectedResource, newResource,
-			))
-
-	}
-
-	return nil
+	return resource, err
 }
 
 // accountResourcesEqual compares two protocol.Account objects and returns an

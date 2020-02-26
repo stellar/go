@@ -82,7 +82,7 @@ func run(cmd *cobra.Command, args []string) {
 }
 
 func initRouter(fb *internal.Bot) *chi.Mux {
-	mux := http.NewAPIMux()
+	mux := http.NewAPIMux(log.DefaultLogger)
 
 	handler := &internal.FriendbotHandler{Friendbot: fb}
 	mux.Get("/", handler.Handle)

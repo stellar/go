@@ -9,12 +9,10 @@ import (
 	raven "github.com/getsentry/raven-go"
 	"github.com/gomodule/redigo/redis"
 	metrics "github.com/rcrowley/go-metrics"
-	ingestio "github.com/stellar/go/exp/ingest/io"
 	"github.com/stellar/go/exp/orderbook"
 	"github.com/stellar/go/services/horizon/internal/db2/core"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/services/horizon/internal/expingest"
-	"github.com/stellar/go/services/horizon/internal/ingest"
 	"github.com/stellar/go/services/horizon/internal/simplepath"
 	"github.com/stellar/go/services/horizon/internal/txsub"
 	results "github.com/stellar/go/services/horizon/internal/txsub/results/db"
@@ -45,53 +43,23 @@ func mustInitCoreDB(app *App) {
 	app.coreQ = &core.Q{session}
 }
 
-func initIngester(app *App) {
-	if !app.config.Ingest {
-		return
-	}
-
-	if app.config.NetworkPassphrase == "" {
-		log.Fatal("Cannot start ingestion without network passphrase. Please confirm connectivity with stellar-core.")
-	}
-
-	app.ingester = ingest.New(
-		app.config.NetworkPassphrase,
-		app.config.StellarCoreURL,
-		app.CoreSession(context.Background()),
-		app.HorizonSession(context.Background()),
-		ingest.Config{
-			EnableAssetStats:         app.config.EnableAssetStats,
-			IngestFailedTransactions: app.config.IngestFailedTransactions,
-			CursorName:               app.config.CursorName,
-		},
-	)
-
-	app.ingester.SkipCursorUpdate = app.config.SkipCursorUpdate
-	app.ingester.HistoryRetentionCount = app.config.HistoryRetentionCount
-}
-
 func initExpIngester(app *App, orderBookGraph *orderbook.OrderBookGraph) {
-	var tempSet ingestio.TempSet = &ingestio.MemoryTempSet{}
-	switch app.config.IngestStateReaderTempSet {
-	case "postgres":
-		tempSet = &ingestio.PostgresTempSet{
-			Session: app.HorizonSession(context.Background()),
-		}
-	}
-
 	var err error
 	app.expingester, err = expingest.NewSystem(expingest.Config{
-		CoreSession:    app.CoreSession(context.Background()),
-		HistorySession: app.HorizonSession(context.Background()),
+		CoreSession:       app.CoreSession(context.Background()),
+		HistorySession:    app.HorizonSession(context.Background()),
+		NetworkPassphrase: app.config.NetworkPassphrase,
 		// TODO:
 		// Use the first archive for now. We don't have a mechanism to
 		// use multiple archives at the same time currently.
 		HistoryArchiveURL:        app.config.HistoryArchiveURLs[0],
 		StellarCoreURL:           app.config.StellarCoreURL,
+		StellarCoreCursor:        app.config.CursorName,
 		OrderBookGraph:           orderBookGraph,
-		TempSet:                  tempSet,
 		MaxStreamRetries:         3,
 		DisableStateVerification: app.config.IngestDisableStateVerification,
+		IngestFailedTransactions: app.config.IngestFailedTransactions,
+		IngestInMemoryOnly:       app.config.IngestInMemoryOnly,
 	})
 	if err != nil {
 		log.Fatal(err)
@@ -99,11 +67,7 @@ func initExpIngester(app *App, orderBookGraph *orderbook.OrderBookGraph) {
 }
 
 func initPathFinder(app *App, orderBookGraph *orderbook.OrderBookGraph) {
-	if app.config.EnableExperimentalIngestion {
-		app.paths = simplepath.NewInMemoryFinder(orderBookGraph)
-	} else {
-		app.paths = &simplepath.Finder{app.CoreQ()}
-	}
+	app.paths = simplepath.NewInMemoryFinder(orderBookGraph)
 }
 
 // initSentry initialized the default sentry client with the configured DSN
@@ -154,14 +118,15 @@ func initDbMetrics(app *App) {
 	app.metrics.Register("goroutines", app.goroutineGauge)
 }
 
-func initIngesterMetrics(app *App) {
-	if app.ingester == nil {
+// initIngestMetrics registers the metrics for the ingestion into the provided
+// app's metrics registry.
+func initIngestMetrics(app *App) {
+	if app.expingester == nil {
 		return
 	}
-	app.metrics.Register("ingester.ingest_ledger",
-		app.ingester.Metrics.IngestLedgerTimer)
-	app.metrics.Register("ingester.clear_ledger",
-		app.ingester.Metrics.ClearLedgerTimer)
+	app.metrics.Register("ingest.ledger_ingestion", app.expingester.Metrics.LedgerIngestionTimer)
+	app.metrics.Register("ingest.ledger_in_memory_ingestion", app.expingester.Metrics.LedgerInMemoryIngestionTimer)
+	app.metrics.Register("ingest.state_verify", app.expingester.Metrics.StateVerifyTimer)
 }
 
 func initTxSubMetrics(app *App) {
@@ -234,6 +199,37 @@ func dialRedis(redisURL *url.URL) func() (redis.Conn, error) {
 }
 
 func initSubmissionSystem(app *App) {
+	// Due to a delay between Stellar-Core closing a ledger and Horizon
+	// ingesting it, it's possible that results of transaction submitted to
+	// Stellar-Core via Horizon may not be immediately visible. This is
+	// happening because `txsub` package checks two sources when checking a
+	// transaction result: Stellar-Core and Horizon DB.
+	//
+	// The extreme case is https://github.com/stellar/go/issues/2272 where
+	// results of transaction creating an account are not visible: requesting
+	// account details in Horizon returns `404 Not Found`:
+	//
+	// ```
+	// 	 Horizon DB                  Core DB                  User
+	// 		 |                          |                      |
+	// 		 |                          |                      |
+	// 		 |                          | <------- Submit create_account op
+	// 		 |                          |                      |
+	// 		 |                  Insert transaction             |
+	// 		 |                          |                      |
+	// 		 |                     Tx found -----------------> |
+	// 		 |                          |                      |
+	// 		 |                          |                      |
+	// 		 | <--------------------------------------- Get account info
+	// 		 |                          |                      |
+	// 		 |                          |                      |
+	//         Account NOT found ------------------------------------> |
+	// 		 |                          |                      |
+	//         Insert account                   |                      |
+	// ```
+	//
+	// To fix this skip checking Stellar-Core DB for transaction results if
+	// Horizon is ingesting failed transactions.
 	cq := &core.Q{Session: app.CoreSession(context.Background())}
 
 	app.submitter = &txsub.System{
@@ -241,8 +237,9 @@ func initSubmissionSystem(app *App) {
 		Submitter:       txsub.NewDefaultSubmitter(http.DefaultClient, app.config.StellarCoreURL),
 		SubmissionQueue: sequence.NewManager(),
 		Results: &results.DB{
-			Core:    cq,
-			History: &history.Q{Session: app.HorizonSession(context.Background())},
+			Core:           &core.Q{Session: app.CoreSession(context.Background())},
+			History:        &history.Q{Session: app.HorizonSession(context.Background())},
+			SkipCoreChecks: app.config.IngestFailedTransactions,
 		},
 		Sequences:         cq.SequenceProvider(),
 		NetworkPassphrase: app.config.NetworkPassphrase,

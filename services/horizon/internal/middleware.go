@@ -14,6 +14,7 @@ import (
 	horizonContext "github.com/stellar/go/services/horizon/internal/context"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/services/horizon/internal/errors"
+	"github.com/stellar/go/services/horizon/internal/expingest"
 	"github.com/stellar/go/services/horizon/internal/hchi"
 	"github.com/stellar/go/services/horizon/internal/httpx"
 	"github.com/stellar/go/services/horizon/internal/render"
@@ -239,69 +240,66 @@ func requestMetricsMiddleware(h http.Handler) http.Handler {
 	})
 }
 
-// acceptOnlyJSON inspects the accept header of the request and responds with
-// an error if the content type is not JSON
-func acceptOnlyJSON(h http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		contentType := render.Negotiate(r)
-		if contentType != render.MimeHal && contentType != render.MimeJSON {
-			problem.Render(r.Context(), w, hProblem.NotAcceptable)
-			return
-		}
-
-		h.ServeHTTP(w, r)
-	})
-}
-
-// ExperimentalIngestionMiddleware is a middleware which enables a handler
-// if the experimental ingestion system is enabled and initialized.
+// StateMiddleware is a middleware which enables a state handler if the state
+// has been initialized.
 // It also ensures that state (ledger entries) has been verified and are
 // correct. Otherwise returns `500 Internal Server Error` to prevent
 // returning invalid data to the user.
-type ExperimentalIngestionMiddleware struct {
-	EnableExperimentalIngestion bool
-	HorizonSession              *db.Session
-	StateReady                  func() bool
+type StateMiddleware struct {
+	HorizonSession *db.Session
+}
+
+func ingestionStatus(q *history.Q) (uint32, bool, error) {
+	version, err := q.GetExpIngestVersion()
+	if err != nil {
+		return 0, false, supportErrors.Wrap(
+			err, "Error running GetExpIngestVersion",
+		)
+	}
+
+	lastIngestedLedger, err := q.GetLastLedgerExpIngestNonBlocking()
+	if err != nil {
+		return 0, false, supportErrors.Wrap(
+			err, "Error running GetLastLedgerExpIngestNonBlocking",
+		)
+	}
+
+	var lastHistoryLedger uint32
+	err = q.LatestLedger(&lastHistoryLedger)
+	if err != nil {
+		return 0, false, supportErrors.Wrap(err, "Error running LatestLedger")
+	}
+
+	ready := version == expingest.CurrentVersion &&
+		lastIngestedLedger > 0 &&
+		lastIngestedLedger == lastHistoryLedger
+
+	return lastIngestedLedger, ready, nil
 }
 
 // Wrap executes the middleware on a given http handler
-func (m *ExperimentalIngestionMiddleware) Wrap(h http.Handler) http.Handler {
+func (m *StateMiddleware) Wrap(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if !m.EnableExperimentalIngestion {
-			problem.Render(r.Context(), w, problem.NotFound)
-			return
-		}
-
-		// expingest has not finished processing any ledger so no data.
-		if !m.StateReady() {
-			problem.Render(r.Context(), w, hProblem.StillIngesting)
-			return
-		}
-
 		session := m.HorizonSession.Clone()
 		q := &history.Q{session}
+		sseRequest := render.Negotiate(r) == render.MimeEventStream
 
-		if render.Negotiate(r) != render.MimeEventStream {
-			session.Ctx = r.Context()
-			err := session.BeginTx(&sql.TxOptions{
-				Isolation: sql.LevelRepeatableRead,
-				ReadOnly:  true,
-			})
-			if err != nil {
-				err = supportErrors.Wrap(err, "Error starting exp ingestion read transaction")
-				problem.Render(r.Context(), w, err)
-				return
-			}
-			defer session.Rollback()
-
-			lastIngestedLedger, err := q.GetLastLedgerExpIngestNonBlocking()
-			if err != nil {
-				err = supportErrors.Wrap(err, "Error running GetLastLedgerExpIngestNonBlocking")
-				problem.Render(r.Context(), w, err)
-				return
-			}
-			actions.SetLastLedgerHeader(w, lastIngestedLedger)
+		// We want to start a repeatable read session to ensure that the data we
+		// fetch from the db belong to the same ledger.
+		// Otherwise, because the ingestion system is running concurrently with this request,
+		// it is possible to have one read fetch data from ledger N and another read
+		// fetch data from ledger N+1 .
+		session.Ctx = r.Context()
+		err := session.BeginTx(&sql.TxOptions{
+			Isolation: sql.LevelRepeatableRead,
+			ReadOnly:  true,
+		})
+		if err != nil {
+			err = supportErrors.Wrap(err, "Error starting exp ingestion read transaction")
+			problem.Render(r.Context(), w, err)
+			return
 		}
+		defer session.Rollback()
 
 		stateInvalid, err := q.GetExpStateInvalid()
 		if err != nil {
@@ -312,6 +310,35 @@ func (m *ExperimentalIngestionMiddleware) Wrap(h http.Handler) http.Handler {
 		if stateInvalid {
 			problem.Render(r.Context(), w, problem.ServerError)
 			return
+		}
+
+		lastIngestedLedger, ready, err := ingestionStatus(q)
+		if err != nil {
+			problem.Render(r.Context(), w, err)
+			return
+		}
+		if !ready {
+			problem.Render(r.Context(), w, hProblem.StillIngesting)
+			return
+		}
+
+		// for SSE requests we need to discard the repeatable read transaction
+		// otherwise, the stream will not pick up updates occurring in future
+		// ledgers
+		if sseRequest {
+			if err = session.Rollback(); err != nil {
+				problem.Render(
+					r.Context(),
+					w,
+					supportErrors.Wrap(
+						err,
+						"Could not roll back repeatable read session for SSE request",
+					),
+				)
+				return
+			}
+		} else {
+			actions.SetLastLedgerHeader(w, lastIngestedLedger)
 		}
 
 		h.ServeHTTP(w, r.WithContext(

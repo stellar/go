@@ -98,6 +98,12 @@ func (dbb *DatabaseBackend) GetLedger(sequence uint32) (bool, LedgerCloseMeta, e
 		lcm.TransactionEnvelope = append(lcm.TransactionEnvelope, tx.TXBody)
 		lcm.TransactionResult = append(lcm.TransactionResult, tx.TXResult)
 		lcm.TransactionMeta = append(lcm.TransactionMeta, tx.TXMeta)
+
+		if lcm.LedgerHeader.Header.LedgerVersion < 10 && tx.TXMeta.V != 2 {
+			return false, lcm,
+				errors.New("TransactionMeta.V=2 is required in protocol version older than version 10. " +
+					"Please process ledgers again using stellar-core with SUPPORTED_META_VERSION=2 in the config file.")
+		}
 	}
 
 	// Query - txfeehistory

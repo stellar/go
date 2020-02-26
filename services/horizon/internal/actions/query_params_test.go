@@ -6,6 +6,11 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/stellar/go/support/render/problem"
+	"github.com/stellar/go/xdr"
+)
+
+var (
+	native = xdr.MustNewNativeAsset()
 )
 
 func TestSellingBuyingAssetQueryParams(t *testing.T) {
@@ -184,6 +189,13 @@ func TestSellingBuyingAssetQueryParams(t *testing.T) {
 				"selling_asset_issuer": "GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H",
 			},
 		},
+		{
+			desc: "Valid parameters with canonical representation",
+			urlParams: map[string]string{
+				"buying":  "USD:GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H",
+				"selling": "EUR:GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H",
+			},
+		},
 	}
 	for _, tc := range testCases {
 		t.Run(tc.desc, func(t *testing.T) {
@@ -194,6 +206,109 @@ func TestSellingBuyingAssetQueryParams(t *testing.T) {
 
 			if len(tc.expectedInvalidField) == 0 {
 				tt.NoError(err)
+			} else {
+				if tt.IsType(&problem.P{}, err) {
+					p := err.(*problem.P)
+					tt.Equal("bad_request", p.Type)
+					tt.Equal(tc.expectedInvalidField, p.Extras["invalid_field"])
+					tt.Equal(
+						tc.expectedErr,
+						p.Extras["reason"],
+					)
+				}
+			}
+
+		})
+	}
+}
+
+func TestSellingBuyingAssetQueryParamsWithCanonicalRepresenation(t *testing.T) {
+
+	testCases := []struct {
+		desc                 string
+		urlParams            map[string]string
+		expectedSelling      *xdr.Asset
+		expectedBuying       *xdr.Asset
+		expectedInvalidField string
+		expectedErr          string
+	}{
+		{
+			desc: "selling native and buying issued asset",
+			urlParams: map[string]string{
+				"buying":  "native",
+				"selling": "EUR:GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H",
+			},
+			expectedBuying:  &native,
+			expectedSelling: &euro,
+		},
+		{
+			desc: "selling issued and buying native asset",
+			urlParams: map[string]string{
+				"buying":  "USD:GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H",
+				"selling": "native",
+			},
+			expectedBuying:  &usd,
+			expectedSelling: &native,
+		},
+		{
+			desc: "selling and buying issued assets",
+			urlParams: map[string]string{
+				"buying":  "USD:GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H",
+				"selling": "EUR:GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H",
+			},
+			expectedBuying:  &usd,
+			expectedSelling: &euro,
+		},
+		{
+			desc: "new and old format for buying",
+			urlParams: map[string]string{
+				"buying":              "USD:GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H",
+				"buying_asset_type":   "credit_alphanum4",
+				"buying_asset_code":   "USD",
+				"buying_asset_issuer": "GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H",
+			},
+			expectedInvalidField: "buying_asset_type",
+			expectedErr:          "Ambiguous parameter, you can't include both `buying` and `buying_asset_type`. Remove all parameters of the form `buying_`",
+		},
+		{
+			desc: "new and old format for selling",
+			urlParams: map[string]string{
+				"selling":              "USD:GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H",
+				"selling_asset_type":   "credit_alphanum4",
+				"selling_asset_code":   "USD",
+				"selling_asset_issuer": "GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H",
+			},
+			expectedInvalidField: "selling_asset_type",
+			expectedErr:          "Ambiguous parameter, you can't include both `selling` and `selling_asset_type`. Remove all parameters of the form `selling_`",
+		},
+		{
+			desc: "invalid selling asset",
+			urlParams: map[string]string{
+				"selling": "LOLUSD",
+			},
+			expectedInvalidField: "selling",
+			expectedErr:          "Asset must be the string \"native\" or a string of the form \"Code:IssuerAccountID\" for issued assets.",
+		},
+		{
+			desc: "invalid buying asset",
+			urlParams: map[string]string{
+				"buying": "LOLEUR:",
+			},
+			expectedInvalidField: "buying",
+			expectedErr:          "Asset must be the string \"native\" or a string of the form \"Code:IssuerAccountID\" for issued assets.",
+		},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.desc, func(t *testing.T) {
+			tt := assert.New(t)
+			r := makeAction("/", tc.urlParams).R
+			qp := SellingBuyingAssetQueryParams{}
+			err := GetParams(&qp, r)
+
+			if len(tc.expectedInvalidField) == 0 {
+				tt.NoError(err)
+				tt.Equal(tc.expectedBuying, qp.Buying())
+				tt.Equal(tc.expectedSelling, qp.Selling())
 			} else {
 				if tt.IsType(&problem.P{}, err) {
 					p := err.(*problem.P)

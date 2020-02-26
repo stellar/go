@@ -1,7 +1,5 @@
 package base
 
-import "encoding/json"
-
 type Price struct {
 	N int32 `json:"n"`
 	D int32 `json:"d"`
@@ -22,23 +20,4 @@ type Asset struct {
 // value from the old field to the new field.
 type Rehydratable interface {
 	Rehydrate() error
-}
-
-// ExtractOfferID extracts offer_id from a JSON payload
-// Action needed in release: horizon-v0.25.0: remove
-func ExtractOfferID(data []byte) (int64, error) {
-	var temp struct {
-		OfferID json.Number `json:"offer_id"`
-	}
-
-	if err := json.Unmarshal(data, &temp); err != nil {
-		return 0, err
-	}
-
-	offerID, err := temp.OfferID.Int64()
-	if err != nil {
-		return 0, err
-	}
-
-	return offerID, nil
 }

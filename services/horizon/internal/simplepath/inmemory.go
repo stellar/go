@@ -19,7 +19,7 @@ var (
 )
 
 // InMemoryFinder is an implementation of the path finding interface
-// using the experimental in memory orderbook
+// using the in memory orderbook
 type InMemoryFinder struct {
 	graph *orderbook.OrderBookGraph
 }

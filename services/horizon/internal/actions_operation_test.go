@@ -260,7 +260,7 @@ func TestOperationActions_Show(t *testing.T) {
 	ht.Assert.Equal(410, w.Code)
 }
 
-func TestOperationActions_Regressions(t *testing.T) {
+func TestOperationActions_StreamRegression(t *testing.T) {
 	ht := StartHTTPTest(t, "base")
 	defer ht.Finish()
 
@@ -270,10 +270,14 @@ func TestOperationActions_Regressions(t *testing.T) {
 	if ht.Assert.Equal(404, w.Code) {
 		ht.Assert.ProblemType(w.Body, "not_found")
 	}
+}
+
+func TestOperationActions_ShowRegression(t *testing.T) {
+	ht := StartHTTPTest(t, "trades")
+	defer ht.Finish()
 
 	// #202 - price is not shown on manage_offer operations
-	test.LoadScenario("trades")
-	w = ht.Get("/operations/25769807873")
+	w := ht.Get("/operations/25769807873")
 	if ht.Assert.Equal(200, w.Code) {
 		var result operations.ManageSellOffer
 		err := json.Unmarshal(w.Body.Bytes(), &result)
@@ -322,6 +326,35 @@ func TestOperationEffect_BumpSequence(t *testing.T) {
 		var result []effects.SequenceBumped
 		ht.UnmarshalPage(w.Body, &result)
 		ht.Assert.Equal(int64(300000000000), result[0].NewSeq)
+
+		data, err := json.Marshal(&result[0])
+		ht.Assert.NoError(err)
+		effect := struct {
+			NewSeq string `json:"new_seq"`
+		}{}
+
+		json.Unmarshal(data, &effect)
+		ht.Assert.Equal("300000000000", effect.NewSeq)
+	}
+}
+func TestOperationEffect_Trade(t *testing.T) {
+	ht := StartHTTPTest(t, "kahuna")
+	defer ht.Finish()
+
+	w := ht.Get("/operations/103079219201/effects")
+	if ht.Assert.Equal(200, w.Code) {
+		var result []effects.Trade
+		ht.UnmarshalPage(w.Body, &result)
+		ht.Assert.Equal(int64(3), result[0].OfferID)
+
+		data, err := json.Marshal(&result[0])
+		ht.Assert.NoError(err)
+		effect := struct {
+			OfferID string `json:"offer_id"`
+		}{}
+
+		json.Unmarshal(data, &effect)
+		ht.Assert.Equal("3", effect.OfferID)
 	}
 }
 

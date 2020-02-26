@@ -41,19 +41,12 @@ func inMemoryPathFindingClient(
 		coreQ:                &core.Q{tt.CoreSession()},
 	}
 
-	installPathFindingRoutes(
-		findPaths,
-		findFixedPaths,
-		router,
-		false,
-		&ExperimentalIngestionMiddleware{
-			EnableExperimentalIngestion: true,
-			HorizonSession:              tt.HorizonSession(),
-			StateReady: func() bool {
-				return true
-			},
-		},
-	)
+	router.Group(func(r chi.Router) {
+		router.Method("GET", "/paths", findPaths)
+		router.Method("GET", "/paths/strict-receive", findPaths)
+		router.Method("GET", "/paths/strict-send", findFixedPaths)
+	})
+
 	return test.NewRequestHelper(router)
 }
 
@@ -79,19 +72,11 @@ func dbPathFindingClient(
 		coreQ:                &core.Q{tt.CoreSession()},
 	}
 
-	installPathFindingRoutes(
-		findPaths,
-		findFixedPaths,
-		router,
-		false,
-		&ExperimentalIngestionMiddleware{
-			EnableExperimentalIngestion: false,
-			HorizonSession:              tt.HorizonSession(),
-			StateReady: func() bool {
-				return false
-			},
-		},
-	)
+	router.Group(func(r chi.Router) {
+		router.Method("GET", "/paths", findPaths)
+		router.Method("GET", "/paths/strict-receive", findPaths)
+		router.Method("GET", "/paths/strict-send", findFixedPaths)
+	})
 	return test.NewRequestHelper(router)
 }
 

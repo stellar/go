@@ -143,6 +143,13 @@ var configOpts = support.ConfigOptions{
 		Usage:       "tcp port to listen on for http requests",
 	},
 	&support.ConfigOption{
+		Name:        "admin-port",
+		ConfigKey:   &config.AdminPort,
+		OptType:     types.Uint,
+		FlagDefault: uint(0),
+		Usage:       "WARNING: this should not be accessible from the Internet and does not use TLS, tcp port to listen on for admin http requests, 0 (default) disables the admin server",
+	},
+	&support.ConfigOption{
 		Name:        "max-db-connections",
 		ConfigKey:   &config.MaxDBConnections,
 		OptType:     types.Int,
@@ -254,8 +261,8 @@ var configOpts = support.ConfigOptions{
 		Name:        "max-path-length",
 		ConfigKey:   &config.MaxPathLength,
 		OptType:     types.Uint,
-		FlagDefault: uint(4),
-		Usage:       "the maximum number of assets on the path in `/paths` endpoint",
+		FlagDefault: uint(3),
+		Usage:       "the maximum number of assets on the path in `/paths` endpoint, warning: increasing this value will increase /paths response time",
 	},
 	&support.ConfigOption{
 		Name:      "network-passphrase",
@@ -303,6 +310,13 @@ var configOpts = support.ConfigOptions{
 		Usage:       "causes this horizon process to ingest data from stellar-core into horizon's db",
 	},
 	&support.ConfigOption{
+		Name:        "exp-ingest-in-memory-only",
+		ConfigKey:   &config.IngestInMemoryOnly,
+		OptType:     types.Bool,
+		FlagDefault: false,
+		Usage:       "[experimental flag!] causes this horizon process to ingest data from stellar-core into memory structures only, ignored when --ingest not set",
+	},
+	&support.ConfigOption{
 		Name:        "ingest-failed-transactions",
 		ConfigKey:   &config.IngestFailedTransactions,
 		OptType:     types.Bool,
@@ -339,32 +353,11 @@ var configOpts = support.ConfigOptions{
 		Usage:       "causes the ingester to skip reporting the last imported ledger state to stellar-core",
 	},
 	&support.ConfigOption{
-		Name:        "enable-asset-stats",
-		ConfigKey:   &config.EnableAssetStats,
-		OptType:     types.Bool,
-		FlagDefault: false,
-		Usage:       "enables asset stats during the ingestion and expose `/assets` endpoint, Enabling it has a negative impact on CPU",
-	},
-	&support.ConfigOption{
-		Name:        "enable-experimental-ingestion",
-		ConfigKey:   &config.EnableExperimentalIngestion,
-		OptType:     types.Bool,
-		FlagDefault: false,
-		Usage:       "[EXPERIMENTAL] enables experimental ingestion system",
-	},
-	&support.ConfigOption{
-		Name:        "ingest-state-reader-temp-set",
-		ConfigKey:   &config.IngestStateReaderTempSet,
-		OptType:     types.String,
-		FlagDefault: "memory",
-		Usage:       "defines where to store temporary objects during state ingestion: `memory` (default, more RAM usage, faster) or `postgres` (less RAM usage, slower)",
-	},
-	&support.ConfigOption{
 		Name:        "ingest-disable-state-verification",
 		ConfigKey:   &config.IngestDisableStateVerification,
 		OptType:     types.Bool,
 		FlagDefault: false,
-		Usage:       "experimental ingestion system runs a verification routing to compare state in local database with history buckets, this can be disabled however it's not recommended",
+		Usage:       "ingestion system runs a verification routing to compare state in local database with history buckets, this can be disabled however it's not recommended",
 	},
 	&support.ConfigOption{
 		Name:        "apply-migrations",
@@ -384,11 +377,11 @@ func init() {
 }
 
 func initApp() *horizon.App {
-	initConfig()
+	initRootConfig()
 	return horizon.NewApp(config)
 }
 
-func initConfig() {
+func initRootConfig() {
 	// Verify required options and load the config struct
 	configOpts.Require()
 	configOpts.SetValues()
@@ -404,6 +397,12 @@ func initConfig() {
 	validateBothOrNeither("tls-cert", "tls-key")
 	validateBothOrNeither("rate-limit-redis-key", "redis-url")
 
+	// config.HistoryArchiveURLs contains a single empty value when empty so using
+	// viper.GetString is easier.
+	if config.Ingest && viper.GetString("history-archive-urls") == "" {
+		stdLog.Fatalf("--history-archive-urls must be set when --ingest is set")
+	}
+
 	// Configure log file
 	if config.LogFile != "" {
 		logFile, err := os.OpenFile(config.LogFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
@@ -416,10 +415,6 @@ func initConfig() {
 
 	// Configure log level
 	log.DefaultLogger.Logger.SetLevel(config.LogLevel)
-
-	if config.IngestStateReaderTempSet != "memory" && config.IngestStateReaderTempSet != "postgres" {
-		log.Fatal("Invalid `ingest-state-reader-temp-set` value: " + config.IngestStateReaderTempSet)
-	}
 
 	// Configure DB params. When config.MaxDBConnections is set, set other
 	// DB params to that value for backward compatibility.

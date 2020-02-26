@@ -232,13 +232,14 @@ func (l Ledger) PagingToken() string {
 	return l.PT
 }
 
-// Action needed in release: horizon-v0.25.0: Move back to Offer, remove embedded struct
-type offerBase struct {
+// Offer is the display form of an offer to trade currency.
+type Offer struct {
 	Links struct {
 		Self       hal.Link `json:"self"`
 		OfferMaker hal.Link `json:"offer_maker"`
 	} `json:"_links"`
 
+	ID                 int64      `json:"id,string"`
 	PT                 string     `json:"paging_token"`
 	Seller             string     `json:"seller"`
 	Selling            Asset      `json:"selling"`
@@ -250,41 +251,8 @@ type offerBase struct {
 	LastModifiedTime   *time.Time `json:"last_modified_time"`
 }
 
-// Offer is the display form of an offer to trade currency.
-type Offer struct {
-	offerBase
-	// Action needed in release: horizon-v0.25.0: Make id a string
-	ID int64 `json:"id"`
-}
-
 func (o Offer) PagingToken() string {
 	return o.PT
-}
-
-// UnmarshalJSON is the custom unmarshal method for Offer. It allows
-// parsing of id as a string or an int64.
-// Action needed in release: horizon-v0.25.0: Delete
-func (o *Offer) UnmarshalJSON(data []byte) error {
-	var temp struct {
-		ID json.Number `json:"id"`
-	}
-
-	if err := json.Unmarshal(data, &o.offerBase); err != nil {
-		return err
-	}
-
-	if err := json.Unmarshal(data, &temp); err != nil {
-		return err
-	}
-
-	offerID, err := temp.ID.Int64()
-	if err != nil {
-		return err
-	}
-
-	o.ID = offerID
-
-	return nil
 }
 
 // OrderBookSummary represents a snapshot summary of a given order book
@@ -331,7 +299,6 @@ type Root struct {
 		AccountTransactions hal.Link  `json:"account_transactions"`
 		Assets              hal.Link  `json:"assets"`
 		Friendbot           *hal.Link `json:"friendbot,omitempty"`
-		Metrics             hal.Link  `json:"metrics"`
 		Offer               *hal.Link `json:"offer,omitempty"`
 		Offers              *hal.Link `json:"offers,omitempty"`
 		OrderBook           hal.Link  `json:"order_book"`
@@ -344,7 +311,7 @@ type Root struct {
 
 	HorizonVersion               string `json:"horizon_version"`
 	StellarCoreVersion           string `json:"core_version"`
-	ExpHorizonSequence           uint32 `json:"exp_history_latest_ledger,omitempty"`
+	IngestSequence               uint32 `json:"ingest_latest_ledger"`
 	HorizonSequence              int32  `json:"history_latest_ledger"`
 	HistoryElderSequence         int32  `json:"history_elder_ledger"`
 	CoreSequence                 int32  `json:"core_latest_ledger"`
@@ -422,9 +389,10 @@ type TradeEffect struct {
 	LedgerCloseTime   time.Time `json:"created_at"`
 }
 
-// Action needed in release: horizon-v0.25.0: Move back to TradeAggregation,
-// remove embedded struct
-type tradeAggregationBase struct {
+// TradeAggregation represents trade data aggregation over a period of time
+type TradeAggregation struct {
+	Timestamp     int64     `json:"timestamp,string"`
+	TradeCount    int64     `json:"trade_count,string"`
 	BaseVolume    string    `json:"base_volume"`
 	CounterVolume string    `json:"counter_volume"`
 	Average       string    `json:"avg"`
@@ -438,51 +406,9 @@ type tradeAggregationBase struct {
 	CloseR        xdr.Price `json:"close_r"`
 }
 
-// TradeAggregation represents trade data aggregation over a period of time
-type TradeAggregation struct {
-	tradeAggregationBase
-	// Action needed in release: horizon-v0.25.0: Make timestamp a string
-	Timestamp int64 `json:"timestamp"`
-	// Action needed in release: horizon-v0.25.0: Make trade_count a string
-	TradeCount int64 `json:"trade_count"`
-}
-
 // PagingToken implementation for hal.Pageable. Not actually used
 func (res TradeAggregation) PagingToken() string {
 	return string(res.Timestamp)
-}
-
-// UnmarshalJSON is the custom unmarshal method for TradeAggregation. It allows
-// parsing of timestamp and trade_count as a string or an int64.
-// Action needed in release: horizon-v0.25.0: Delete
-func (res *TradeAggregation) UnmarshalJSON(data []byte) error {
-	var temp struct {
-		Timestamp  json.Number `json:"timestamp"`
-		TradeCount json.Number `json:"trade_count"`
-	}
-
-	if err := json.Unmarshal(data, &res.tradeAggregationBase); err != nil {
-		return err
-	}
-
-	if err := json.Unmarshal(data, &temp); err != nil {
-		return err
-	}
-
-	timestamp, err := temp.Timestamp.Int64()
-	if err != nil {
-		return err
-	}
-
-	tradeCount, err := temp.TradeCount.Int64()
-	if err != nil {
-		return err
-	}
-
-	res.Timestamp = timestamp
-	res.TradeCount = tradeCount
-
-	return nil
 }
 
 // Transaction represents a single, successful transaction
@@ -675,28 +601,29 @@ type LogTotalMetric struct {
 
 // Metrics represents a response of metrics from horizon
 type Metrics struct {
-	Links                  hal.Links      `json:"_links"`
-	GoRoutines             SingleMetric   `json:"goroutines"`
-	HistoryElderLedger     SingleMetric   `json:"history.elder_ledger"`
-	HistoryLatestLedger    SingleMetric   `json:"history.latest_ledger"`
-	HistoryOpenConnections SingleMetric   `json:"history.open_connections"`
-	IngesterIngestLedger   LogTotalMetric `json:"ingester.ingest_ledger"`
-	IngesterClearLedger    LogTotalMetric `json:"ingester.clear_ledger"`
-	LoggingDebug           LogMetric      `json:"logging.debug"`
-	LoggingError           LogMetric      `json:"logging.error"`
-	LoggingInfo            LogMetric      `json:"logging.info"`
-	LoggingPanic           LogMetric      `json:"logging.panic"`
-	LoggingWarning         LogMetric      `json:"logging.warning"`
-	RequestsFailed         LogMetric      `json:"requests.failed"`
-	RequestsSucceeded      LogMetric      `json:"requests.succeeded"`
-	RequestsTotal          LogTotalMetric `json:"requests.total"`
-	CoreLatestLedger       SingleMetric   `json:"stellar_core.latest_ledger"`
-	CoreOpenConnections    SingleMetric   `json:"stellar_core.open_connections"`
-	TxsubBuffered          SingleMetric   `json:"txsub.buffered"`
-	TxsubFailed            LogMetric      `json:"txsub.failed"`
-	TxsubOpen              SingleMetric   `json:"txsub.open"`
-	TxsubSucceeded         LogMetric      `json:"txsub.succeeded"`
-	TxsubTotal             LogTotalMetric `json:"txsub.total"`
+	Links                          hal.Links      `json:"_links"`
+	GoRoutines                     SingleMetric   `json:"goroutines"`
+	HistoryElderLedger             SingleMetric   `json:"history.elder_ledger"`
+	HistoryLatestLedger            SingleMetric   `json:"history.latest_ledger"`
+	HistoryOpenConnections         SingleMetric   `json:"history.open_connections"`
+	IngestLedgerIngestion          LogTotalMetric `json:"ingest.ledger_ingestion"`
+	IngestLedgerGraphOnlyIngestion LogTotalMetric `json:"ingest.ledger_graph_only_ingestion"`
+	IngestStateVerify              LogTotalMetric `json:"ingest.state_verify"`
+	LoggingDebug                   LogMetric      `json:"logging.debug"`
+	LoggingError                   LogMetric      `json:"logging.error"`
+	LoggingInfo                    LogMetric      `json:"logging.info"`
+	LoggingPanic                   LogMetric      `json:"logging.panic"`
+	LoggingWarning                 LogMetric      `json:"logging.warning"`
+	RequestsFailed                 LogMetric      `json:"requests.failed"`
+	RequestsSucceeded              LogMetric      `json:"requests.succeeded"`
+	RequestsTotal                  LogTotalMetric `json:"requests.total"`
+	CoreLatestLedger               SingleMetric   `json:"stellar_core.latest_ledger"`
+	CoreOpenConnections            SingleMetric   `json:"stellar_core.open_connections"`
+	TxsubBuffered                  SingleMetric   `json:"txsub.buffered"`
+	TxsubFailed                    LogMetric      `json:"txsub.failed"`
+	TxsubOpen                      SingleMetric   `json:"txsub.open"`
+	TxsubSucceeded                 LogMetric      `json:"txsub.succeeded"`
+	TxsubTotal                     LogTotalMetric `json:"txsub.total"`
 }
 
 type FeeDistribution struct {
@@ -719,28 +646,9 @@ type FeeDistribution struct {
 // FeeStats represents a response of fees from horizon
 // To do: implement fee suggestions if agreement is reached in https://github.com/stellar/go/issues/926
 type FeeStats struct {
-	// Action needed in release: horizon-v0.25.0
-	// Update type for LastLedger to uint32 and LastLedgerBaseFee to int64
-	LastLedger        int `json:"last_ledger,string"`
-	LastLedgerBaseFee int `json:"last_ledger_base_fee,string"`
-
+	LastLedger          uint32  `json:"last_ledger,string"`
+	LastLedgerBaseFee   int64   `json:"last_ledger_base_fee,string"`
 	LedgerCapacityUsage float64 `json:"ledger_capacity_usage,string"`
-
-	// Action needed in release: horizon-v0.25.0
-	// Remove AcceptedFee fields
-	MinAcceptedFee  int `json:"min_accepted_fee,string"`
-	ModeAcceptedFee int `json:"mode_accepted_fee,string"`
-	P10AcceptedFee  int `json:"p10_accepted_fee,string"`
-	P20AcceptedFee  int `json:"p20_accepted_fee,string"`
-	P30AcceptedFee  int `json:"p30_accepted_fee,string"`
-	P40AcceptedFee  int `json:"p40_accepted_fee,string"`
-	P50AcceptedFee  int `json:"p50_accepted_fee,string"`
-	P60AcceptedFee  int `json:"p60_accepted_fee,string"`
-	P70AcceptedFee  int `json:"p70_accepted_fee,string"`
-	P80AcceptedFee  int `json:"p80_accepted_fee,string"`
-	P90AcceptedFee  int `json:"p90_accepted_fee,string"`
-	P95AcceptedFee  int `json:"p95_accepted_fee,string"`
-	P99AcceptedFee  int `json:"p99_accepted_fee,string"`
 
 	FeeCharged FeeDistribution `json:"fee_charged"`
 	MaxFee     FeeDistribution `json:"max_fee"`

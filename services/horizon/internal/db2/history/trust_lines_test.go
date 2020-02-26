@@ -149,6 +149,131 @@ func TestUpdateTrustLine(t *testing.T) {
 	assert.Equal(t, uint32(1235), lines[0].LastModifiedLedger)
 }
 
+func TestUpsertTrustLines(t *testing.T) {
+	tt := test.Start(t)
+	defer tt.Finish()
+	test.ResetHorizonDB(t, tt.HorizonDB)
+	q := &Q{tt.HorizonSession()}
+
+	// Upserting nothing is no op
+	err := q.UpsertTrustLines([]xdr.LedgerEntry{})
+	assert.NoError(t, err)
+
+	ledgerEntries := []xdr.LedgerEntry{
+		xdr.LedgerEntry{
+			LastModifiedLedgerSeq: 1,
+			Data: xdr.LedgerEntryData{
+				Type:      xdr.LedgerEntryTypeTrustline,
+				TrustLine: &eurTrustLine,
+			},
+		},
+		xdr.LedgerEntry{
+			LastModifiedLedgerSeq: 2,
+			Data: xdr.LedgerEntryData{
+				Type:      xdr.LedgerEntryTypeTrustline,
+				TrustLine: &usdTrustLine,
+			},
+		},
+	}
+
+	err = q.UpsertTrustLines(ledgerEntries)
+	assert.NoError(t, err)
+
+	keys := []xdr.LedgerKeyTrustLine{
+		{Asset: eurTrustLine.Asset, AccountId: eurTrustLine.AccountId},
+	}
+	lines, err := q.GetTrustLinesByKeys(keys)
+	assert.NoError(t, err)
+	assert.Len(t, lines, 1)
+
+	keys = []xdr.LedgerKeyTrustLine{
+		{Asset: usdTrustLine.Asset, AccountId: usdTrustLine.AccountId},
+	}
+	lines, err = q.GetTrustLinesByKeys(keys)
+	assert.NoError(t, err)
+	assert.Len(t, lines, 1)
+
+	modifiedTrustLine := eurTrustLine
+	modifiedTrustLine.Balance = 30000
+
+	ledgerEntries = []xdr.LedgerEntry{
+		xdr.LedgerEntry{
+			LastModifiedLedgerSeq: 1000,
+			Data: xdr.LedgerEntryData{
+				Type:      xdr.LedgerEntryTypeTrustline,
+				TrustLine: &modifiedTrustLine,
+			},
+		},
+	}
+
+	err = q.UpsertTrustLines(ledgerEntries)
+	assert.NoError(t, err)
+
+	keys = []xdr.LedgerKeyTrustLine{
+		{Asset: eurTrustLine.Asset, AccountId: eurTrustLine.AccountId},
+	}
+	lines, err = q.GetTrustLinesByKeys(keys)
+	assert.NoError(t, err)
+	assert.Len(t, lines, 1)
+
+	expectedBinary, err := modifiedTrustLine.MarshalBinary()
+	assert.NoError(t, err)
+
+	dbEntry := xdr.TrustLineEntry{
+		AccountId: xdr.MustAddress(lines[0].AccountID),
+		Asset:     xdr.MustNewCreditAsset(lines[0].AssetCode, lines[0].AssetIssuer),
+		Balance:   xdr.Int64(lines[0].Balance),
+		Limit:     xdr.Int64(lines[0].Limit),
+		Flags:     xdr.Uint32(lines[0].Flags),
+		Ext: xdr.TrustLineEntryExt{
+			V: 1,
+			V1: &xdr.TrustLineEntryV1{
+				Liabilities: xdr.Liabilities{
+					Buying:  xdr.Int64(lines[0].BuyingLiabilities),
+					Selling: xdr.Int64(lines[0].SellingLiabilities),
+				},
+			},
+		},
+	}
+
+	actualBinary, err := dbEntry.MarshalBinary()
+	assert.NoError(t, err)
+	assert.Equal(t, expectedBinary, actualBinary)
+	assert.Equal(t, uint32(1000), lines[0].LastModifiedLedger)
+
+	keys = []xdr.LedgerKeyTrustLine{
+		{Asset: usdTrustLine.Asset, AccountId: usdTrustLine.AccountId},
+	}
+	lines, err = q.GetTrustLinesByKeys(keys)
+	assert.NoError(t, err)
+	assert.Len(t, lines, 1)
+
+	expectedBinary, err = usdTrustLine.MarshalBinary()
+	assert.NoError(t, err)
+
+	dbEntry = xdr.TrustLineEntry{
+		AccountId: xdr.MustAddress(lines[0].AccountID),
+		Asset:     xdr.MustNewCreditAsset(lines[0].AssetCode, lines[0].AssetIssuer),
+		Balance:   xdr.Int64(lines[0].Balance),
+		Limit:     xdr.Int64(lines[0].Limit),
+		Flags:     xdr.Uint32(lines[0].Flags),
+		Ext: xdr.TrustLineEntryExt{
+			V: 1,
+			V1: &xdr.TrustLineEntryV1{
+				Liabilities: xdr.Liabilities{
+					Buying:  xdr.Int64(lines[0].BuyingLiabilities),
+					Selling: xdr.Int64(lines[0].SellingLiabilities),
+				},
+			},
+		},
+	}
+
+	actualBinary, err = dbEntry.MarshalBinary()
+	assert.NoError(t, err)
+	assert.Equal(t, expectedBinary, actualBinary)
+	assert.Equal(t, uint32(2), lines[0].LastModifiedLedger)
+}
+
 func TestRemoveTrustLine(t *testing.T) {
 	tt := test.Start(t)
 	defer tt.Finish()

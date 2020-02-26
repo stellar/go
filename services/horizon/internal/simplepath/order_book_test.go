@@ -56,28 +56,6 @@ func TestOrderBook(t *testing.T) {
 	})
 }
 
-func TestOrderBook_BadCost(t *testing.T) {
-	tt := test.Start(t).Scenario("bad_cost")
-	defer tt.Finish()
-
-	ob := orderBook{
-		Selling: makeAsset(
-			xdr.AssetTypeAssetTypeCreditAlphanum4,
-			"EUR",
-			"GDSBCQO34HWPGUGQSP3QBFEXVTSR2PW46UIGTHVWGWJGQKH3AFNHXHXN"),
-		Buying: makeAsset(
-			xdr.AssetTypeAssetTypeCreditAlphanum4,
-			"USD",
-			"GDSBCQO34HWPGUGQSP3QBFEXVTSR2PW46UIGTHVWGWJGQKH3AFNHXHXN"),
-		Q: &core.Q{Session: tt.CoreSession()},
-	}
-
-	r, err := ob.CostToConsumeLiquidity(2000000000)
-	if tt.Assert.NoError(err) {
-		tt.Assert.Equal(xdr.Int64(10000000), r)
-	}
-}
-
 func TestWillAddOverflow(t *testing.T) {
 	testCases := []struct {
 		a                int64

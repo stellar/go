@@ -56,17 +56,17 @@ func handler(opts Options) (http.Handler, error) {
 		return nil, errors.Wrap(err, "parsing JWT private key")
 	}
 
+	horizonTimeout := 1 * time.Minute
 	httpClient := &http.Client{
-		Timeout: horizonclient.HorizonTimeOut,
+		Timeout: horizonTimeout,
 	}
-
 	horizonClient := &horizonclient.Client{
 		HorizonURL: opts.HorizonURL,
 		HTTP:       httpClient,
 	}
-	horizonClient.SetHorizonTimeOut(uint(horizonclient.HorizonTimeOut))
+	horizonClient.SetHorizonTimeOut(uint(horizonTimeout / time.Second))
 
-	mux := supporthttp.NewAPIMux()
+	mux := supporthttp.NewAPIMux(opts.Logger)
 
 	mux.NotFound(errorHandler{Error: notFound}.ServeHTTP)
 	mux.MethodNotAllowed(errorHandler{Error: methodNotAllowed}.ServeHTTP)

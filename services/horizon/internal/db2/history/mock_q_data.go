@@ -16,6 +16,11 @@ func (m *MockQData) GetAccountDataByKeys(keys []xdr.LedgerKeyData) ([]Data, erro
 	return a.Get(0).([]Data), a.Error(1)
 }
 
+func (m *MockQData) CountAccountsData() (int, error) {
+	a := m.Called()
+	return a.Get(0).(int), a.Error(1)
+}
+
 func (m *MockQData) NewAccountDataBatchInsertBuilder(maxBatchSize int) AccountDataBatchInsertBuilder {
 	a := m.Called(maxBatchSize)
 	return a.Get(0).(AccountDataBatchInsertBuilder)
