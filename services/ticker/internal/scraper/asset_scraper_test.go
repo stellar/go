@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	hProtocol "github.com/stellar/go/protocols/horizon"
+	"github.com/stellar/go/support/render/hal"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -128,4 +129,13 @@ func TestIsDomainVerified(t *testing.T) {
 	orgURL = "https://stellar.com/"
 	hasCurrency = true
 	assert.False(t, isDomainVerified(orgURL, tomlURL, hasCurrency))
+}
+
+func TestIgnoreInvalidTOMLUrls(t *testing.T) {
+	invalidURL := "https:// there is something wrong here.com/stellar.toml"
+	assetStat := hProtocol.AssetStat{}
+	assetStat.Links.Toml = hal.Link{Href: invalidURL}
+
+	_, err := fetchTOMLData(assetStat)
+	assert.EqualError(t, err, "invalid URL or request: parse https:// there is something wrong here.com/stellar.toml: invalid character \" \" in host name")
 }
