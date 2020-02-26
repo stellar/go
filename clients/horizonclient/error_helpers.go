@@ -19,3 +19,19 @@ func IsNotFoundError(err error) bool {
 
 	return hErr.Problem.Type == "https://stellar.org/horizon-errors/not_found"
 }
+
+// GetError returns an error that can be interpreted as a horizon-specific
+// error. If err cannot be interpreted as a horizon-specific error, a nil error
+// is returned. The caller should still check whether err is nil.
+func GetError(err error) *Error {
+	var hErr *Error
+
+	switch e := err.(type) {
+	case *Error:
+		hErr = e
+	case Error:
+		hErr = &e
+	}
+
+	return hErr
+}
