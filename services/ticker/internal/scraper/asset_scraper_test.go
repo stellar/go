@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	hProtocol "github.com/stellar/go/protocols/horizon"
+	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/support/render/hal"
 	"github.com/stretchr/testify/assert"
 )
@@ -137,5 +138,12 @@ func TestIgnoreInvalidTOMLUrls(t *testing.T) {
 	assetStat.Links.Toml = hal.Link{Href: invalidURL}
 
 	_, err := fetchTOMLData(assetStat)
-	assert.EqualError(t, err, "invalid URL or request: parse https:// there is something wrong here.com/stellar.toml: invalid character \" \" in host name")
+
+	urlErr, ok := errors.Cause(err).(*url.Error)
+	if !ok {
+		t.Fatalf("err expected to be a url.Error but was %#v", err)
+	}
+	assert.Equal(t, "parse", urlErr.Op)
+	assert.Equal(t, "https:// there is something wrong here.com/stellar.toml", urlErr.URL)
+	assert.EqualError(t, urlErr.Err, `invalid character " " in host name`)
 }
