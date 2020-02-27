@@ -135,11 +135,11 @@ commands:
 #-----------------------------------------------------------------------------#
 
 jobs:
-  # check_code_1_13 performs code checks using Go 1.13.
-  check_code_1_13:
+  # check_code_1_14 performs code checks using Go 1.14.
+  check_code_1_14:
     working_directory: /go/src/github.com/stellar/go
     docker:
-      - image: circleci/golang:1.13-stretch
+      - image: circleci/golang:1.14-stretch
     steps:
       - install_go_deps
       - check_go_deps
@@ -147,11 +147,11 @@ jobs:
       - govet
       - staticcheck
 
-  # test_code_1_12 performs all package tests using Go 1.12.
-  test_code_1_12:
+  # test_code_1_13 performs all package tests using Go 1.13.
+  test_code_1_13:
     working_directory: /go/src/github.com/stellar/go
     docker:
-      - image: circleci/golang:1.12-stretch
+      - image: circleci/golang:1.13-stretch
         environment:
           GO111MODULE: "on"
           PGHOST: localhost
@@ -168,11 +168,11 @@ jobs:
       - install_go_deps
       - test_packages
 
-  # test_code_1_13 performs all package tests using Go 1.13.
-  test_code_1_13:
+  # test_code_1_14 performs all package tests using Go 1.14.
+  test_code_1_14:
     working_directory: /go/src/github.com/stellar/go
     docker:
-      - image: circleci/golang:1.13-stretch
+      - image: circleci/golang:1.14-stretch
         environment:
           GO111MODULE: "on"
           PGHOST: localhost
@@ -197,7 +197,7 @@ jobs:
   publish_artifacts:
     working_directory: /go/src/github.com/stellar/go
     docker:
-      - image: circleci/golang:1.13-stretch
+      - image: circleci/golang:1.14-stretch
     steps:
       - check_deprecations
       - install_go_deps
@@ -268,9 +268,9 @@ workflows:
 
   check_code_and_test:
     jobs:
-      - check_code_1_13
-      - test_code_1_12
+      - check_code_1_14
       - test_code_1_13
+      - test_code_1_14
       - publish_state_diff_docker_image:
           filters:
               branches:
