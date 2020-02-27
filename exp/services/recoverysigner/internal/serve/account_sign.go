@@ -25,7 +25,7 @@ type accountSignRequest struct {
 }
 
 type accountSignResponse struct {
-	PublicKey         string `json:"public_key"`
+	Signer            string `json:"signer"`
 	Signature         string `json:"signature"`
 	NetworkPassphrase string `json:"network_passphrase"`
 }
@@ -119,7 +119,7 @@ func (h accountSignHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	resp := accountSignResponse{
-		PublicKey:         h.SigningKey.Address(),
+		Signer:            h.SigningKey.Address(),
 		Signature:         sig,
 		NetworkPassphrase: h.NetworkPassphrase,
 	}
