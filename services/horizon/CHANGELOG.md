@@ -3,6 +3,11 @@
 All notable changes to this project will be documented in this
 file. This project adheres to [Semantic Versioning](http://semver.org/).
 
+## Unreleased
+
+* Fix `horizon db reap` bug which caused the command to exit without deleting any history table rows.
+* The horizon reap system now also deletes rows from `history_trades`. Previously, the reap system only deleted rows from `history_operation_participants`, `history_operations`, `history_transaction_participants`, `history_transactions`, `history_ledgers`, and `history_effects`.
+
 ## 1.0.0
 
 ### Before you upgrade
