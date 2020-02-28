@@ -2,6 +2,7 @@ package horizon
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -14,8 +15,10 @@ import (
 
 	"github.com/go-chi/chi"
 	"github.com/stellar/go/services/horizon/internal/actions"
+	horizonContext "github.com/stellar/go/services/horizon/internal/context"
 	"github.com/stellar/go/services/horizon/internal/ledger"
 	"github.com/stellar/go/services/horizon/internal/render/sse"
+	"github.com/stellar/go/support/db"
 	"github.com/stellar/go/support/render/hal"
 )
 
@@ -460,5 +463,81 @@ func TestObjectStream(t *testing.T) {
 		}
 
 		st.Wait(true)
+	})
+}
+
+func TestRepeatableReadStream(t *testing.T) {
+	t.Run("page stream creates repeatable read tx", func(t *testing.T) {
+		action := &testPageAction{
+			objects: map[uint32][]string{
+				3: []string{"a", "b", "c"},
+				4: []string{"a", "b", "c", "d", "e"},
+			},
+		}
+
+		session := &db.MockSession{}
+		session.On("BeginTx", &sql.TxOptions{
+			Isolation: sql.LevelRepeatableRead,
+			ReadOnly:  true,
+		}).Return(nil).Once()
+		session.On("Rollback").Return(nil).Once()
+
+		session.On("BeginTx", &sql.TxOptions{
+			Isolation: sql.LevelRepeatableRead,
+			ReadOnly:  true,
+		}).Return(nil).Once()
+		session.On("Rollback").Return(nil).Once()
+
+		request := streamRequest(t, "")
+		request = request.WithContext(context.WithValue(
+			request.Context(),
+			&horizonContext.SessionContextKey,
+			session,
+		))
+
+		st := NewStreamablePageTest(
+			action,
+			3,
+			request,
+			expectResponse(t, unmarashalPage, []string{"a", "b", "c", "d", "e"}),
+		)
+		st.Wait(false)
+	})
+
+	t.Run("object stream creates repeatable read tx", func(t *testing.T) {
+		action := &testObjectAction{
+			objects: map[uint32]stringObject{
+				3: "a",
+				4: "b",
+			},
+		}
+
+		session := &db.MockSession{}
+		session.On("BeginTx", &sql.TxOptions{
+			Isolation: sql.LevelRepeatableRead,
+			ReadOnly:  true,
+		}).Return(nil).Once()
+		session.On("Rollback").Return(nil).Once()
+
+		session.On("BeginTx", &sql.TxOptions{
+			Isolation: sql.LevelRepeatableRead,
+			ReadOnly:  true,
+		}).Return(nil).Once()
+		session.On("Rollback").Return(nil).Once()
+
+		request := streamRequest(t, "")
+		request = request.WithContext(context.WithValue(
+			request.Context(),
+			&horizonContext.SessionContextKey,
+			session,
+		))
+
+		st := NewstreamableObjectTest(
+			action,
+			3,
+			request,
+			expectResponse(t, unmarashalString, []string{"a", "b"}),
+		)
+		st.Wait(false)
 	})
 }
