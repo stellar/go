@@ -5,6 +5,8 @@ file.  This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## Unreleased
 
+* Dropped support for Go 1.12.
+
 ## [v1.5.0](https://github.com/stellar/go/releases/tag/horizonclient-v1.5.0) - 2019-10-09
 
 * Dropped support for Go 1.10, 1.11.
