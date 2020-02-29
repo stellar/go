@@ -5,6 +5,10 @@ file.  This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## Unreleased
 
+- Fixed a bug where HorizonTimeOut has misleading units of time by:
+  - Removed HorizonTimeOut (seconds)
+  - Added HorizonTimeout (nanoseconds)
+
 ## [v2.1.0](https://github.com/stellar/go/releases/tag/horizonclient-v2.1.0) - 2020-02-24
 
 ### Add

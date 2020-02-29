@@ -85,8 +85,8 @@ var (
 	// "result_xdr" extra field populated when it is expected to be.
 	ErrResultNotPopulated = errors.New("result_xdr not populated")
 
-	// HorizonTimeOut is the default number of seconds before a request to horizon times out.
-	HorizonTimeOut = time.Duration(60)
+	// HorizonTimeout is the default number of nanoseconds before a request to horizon times out.
+	HorizonTimeout = 60 * time.Second
 
 	// MinuteResolution represents 1 minute used as `resolution` parameter in trade aggregation
 	MinuteResolution = time.Duration(1 * time.Minute)
@@ -132,7 +132,7 @@ type Client struct {
 
 	// AppVersion is the version of the application using the horizonclient package
 	AppVersion     string
-	horizonTimeOut time.Duration
+	horizonTimeout time.Duration
 	isTestNet      bool
 
 	// clock is a Clock returning the current time.
@@ -198,7 +198,7 @@ type ClientInterface interface {
 var DefaultTestNetClient = &Client{
 	HorizonURL:     "https://horizon-testnet.stellar.org/",
 	HTTP:           http.DefaultClient,
-	horizonTimeOut: HorizonTimeOut,
+	horizonTimeout: HorizonTimeout,
 	isTestNet:      true,
 }
 
@@ -206,7 +206,7 @@ var DefaultTestNetClient = &Client{
 var DefaultPublicNetClient = &Client{
 	HorizonURL:     "https://horizon.stellar.org/",
 	HTTP:           http.DefaultClient,
-	horizonTimeOut: HorizonTimeOut,
+	horizonTimeout: HorizonTimeout,
 }
 
 // HorizonRequest contains methods implemented by request structs for horizon endpoints.
