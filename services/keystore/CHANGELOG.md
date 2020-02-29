@@ -1,5 +1,7 @@
 ## Unreleased
 
+- Dropped support for Go 1.12.
+
 ## [v1.2.0] - 2019-11-20
 
 - Add `ReadTimeout` to Keystore HTTP server configuration to fix potential DoS vector.
