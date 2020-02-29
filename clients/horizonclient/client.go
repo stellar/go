@@ -112,10 +112,10 @@ func (c *Client) sendRequestURL(requestURL string, method string, a interface{})
 	}
 	c.setClientAppHeaders(req)
 	c.setDefaultClient()
-	if c.horizonTimeOut == 0 {
-		c.horizonTimeOut = HorizonTimeOut
+	if c.horizonTimeout == 0 {
+		c.horizonTimeout = HorizonTimeout
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*c.horizonTimeOut)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*c.horizonTimeout)
 	resp, err := c.HTTP.Do(req.WithContext(ctx))
 	if err != nil {
 		cancel()
@@ -273,15 +273,16 @@ func (c *Client) fixHorizonURL() string {
 	return strings.TrimRight(c.HorizonURL, "/") + "/"
 }
 
-// SetHorizonTimeOut allows users to set the number of seconds before a horizon request is cancelled.
-func (c *Client) SetHorizonTimeOut(t uint) *Client {
-	c.horizonTimeOut = time.Duration(t)
+// SetHorizonTimeout allows users to set the timeout before a horizon request is cancelled.
+// The timeout is specified as a time.Duration which is in nanoseconds.
+func (c *Client) SetHorizonTimeout(t time.Duration) *Client {
+	c.horizonTimeout = t
 	return c
 }
 
-// HorizonTimeOut returns the current timeout for a horizon client
-func (c *Client) HorizonTimeOut() time.Duration {
-	return c.horizonTimeOut
+// HorizonTimeout returns the current timeout for a horizon client
+func (c *Client) HorizonTimeout() time.Duration {
+	return c.horizonTimeout
 }
 
 // Accounts returns accounts who have a given signer or
