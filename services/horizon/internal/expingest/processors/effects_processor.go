@@ -457,10 +457,13 @@ func (operation *transactionOperationWrapper) setOptionsEffects() ([]effect, err
 				})
 				continue
 			}
-			effects.add(source.Address(), history.EffectSignerUpdated, map[string]interface{}{
-				"public_key": addy,
-				"weight":     weight,
-			})
+
+			if weight != before[addy] {
+				effects.add(source.Address(), history.EffectSignerUpdated, map[string]interface{}{
+					"public_key": addy,
+					"weight":     weight,
+				})
+			}
 		}
 
 		afterSortedSigners := []string{}
