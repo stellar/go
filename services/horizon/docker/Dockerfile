@@ -1,4 +1,4 @@
-FROM golang:1.13-stretch AS builder
+FROM golang:1.14-stretch AS builder
 
 WORKDIR /go/src/github.com/stellar/go
 COPY go.mod go.sum ./

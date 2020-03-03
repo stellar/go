@@ -1,4 +1,4 @@
-FROM golang:1.13-stretch as build
+FROM golang:1.14-stretch as build
 
 ADD . /src/ticker
 WORKDIR /src/ticker
