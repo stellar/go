@@ -1,6 +1,7 @@
 # Recovery Signer
 
-This is a [SEP-XX] Recovery Signer implementation based on SEP-XX v?.?.?.
+This is an incomplete and work-in-progress implementation of the [SEP-30]
+Recovery Signer protocol.
 
 A Recovery Signer is a server that can help a user regain control of a Stellar
 account if they have lost their secret key. A user registers their account with
@@ -46,4 +47,4 @@ Flags:
       --signing-key string            Stellar signing key used for signing transactions (will be deprecated with per-account keys in the future) (SIGNING_KEY)
 ```
 
-[SEP-XX]: https://github.com/stellar/stellar-protocol/...
+[SEP-30]: https://github.com/stellar/stellar-protocol/blob/600c326b210d71ee031d7f3a40ca88191b4cdf9c/ecosystem/sep-0030.md
