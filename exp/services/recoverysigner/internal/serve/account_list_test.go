@@ -1,0 +1,241 @@
+package serve
+
+import (
+	"context"
+	"io/ioutil"
+	"net/http"
+	"net/http/httptest"
+	"testing"
+
+	"github.com/stellar/go/exp/services/recoverysigner/internal/account"
+	"github.com/stellar/go/exp/services/recoverysigner/internal/serve/auth"
+	"github.com/stellar/go/keypair"
+	supportlog "github.com/stellar/go/support/log"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+)
+
+// Test that when authenticated with an account, but no matching accounts,
+// empty list is returned.
+func TestAccountList_authenticatedButNonePermitted(t *testing.T) {
+	s := account.NewMemoryStore()
+	s.Add(account.Account{
+		Address: "GDIXCQJ2W2N6TAS6AYW4LW2EBV7XNRUCLNHQB37FARDEWBQXRWP47Q6N",
+	})
+	s.Add(account.Account{
+		Address: "GDU2CH4V3QYQB2BLMX45XQLVBEKSIN2EZLP37I6MZZ7NAR5U3TLZDQEY",
+		OwnerIdentities: account.Identities{
+			Address: "GDIXCQJ2W2N6TAS6AYW4LW2EBV7XNRUCLNHQB37FARDEWBQXRWP47Q6N",
+		},
+	})
+	s.Add(account.Account{
+		Address: "GCS4CVAAX7MVUNHP24655TNHIJ4YFN7GW5V3RFDC2BXVVMVDTB3GYH5U",
+		OtherIdentities: account.Identities{
+			Address: "GDIXCQJ2W2N6TAS6AYW4LW2EBV7XNRUCLNHQB37FARDEWBQXRWP47Q6N",
+		},
+	})
+	h := accountListHandler{
+		Logger:         supportlog.DefaultLogger,
+		AccountStore:   s,
+		SigningAddress: keypair.MustParseAddress("GCAPXRXSU7P6D353YGXMP6ROJIC744HO5OZCIWTXZQK2X757YU5KCHUE"),
+	}
+
+	ctx := context.Background()
+	ctx = auth.NewContext(ctx, auth.Auth{Address: "GCNPATZQVSFGGSAHR4T54WNELPHYEBTSKH4IIKUTC7CHPLG6EPPC4PJL"})
+	r := httptest.NewRequest("", "/", nil)
+	r = r.WithContext(ctx)
+
+	w := httptest.NewRecorder()
+	h.ServeHTTP(w, r)
+	resp := w.Result()
+
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+	assert.Equal(t, "application/json; charset=utf-8", resp.Header.Get("Content-Type"))
+
+	body, err := ioutil.ReadAll(resp.Body)
+	require.NoError(t, err)
+
+	wantBody := `{
+	"accounts": []
+}`
+	assert.JSONEq(t, wantBody, string(body))
+}
+
+func TestAccountList_authenticatedByPhoneNumber(t *testing.T) {
+	s := account.NewMemoryStore()
+	s.Add(account.Account{
+		Address: "GDIXCQJ2W2N6TAS6AYW4LW2EBV7XNRUCLNHQB37FARDEWBQXRWP47Q6N",
+		OwnerIdentities: account.Identities{
+			PhoneNumber: "+10000000000",
+		},
+	})
+	s.Add(account.Account{
+		Address: "GDU2CH4V3QYQB2BLMX45XQLVBEKSIN2EZLP37I6MZZ7NAR5U3TLZDQEY",
+		OtherIdentities: account.Identities{
+			PhoneNumber: "+10000000000",
+		},
+	})
+	s.Add(account.Account{
+		Address: "GCS4CVAAX7MVUNHP24655TNHIJ4YFN7GW5V3RFDC2BXVVMVDTB3GYH5U",
+		OtherIdentities: account.Identities{
+			PhoneNumber: "+20000000000",
+		},
+	})
+	h := accountListHandler{
+		Logger:         supportlog.DefaultLogger,
+		AccountStore:   s,
+		SigningAddress: keypair.MustParseAddress("GCAPXRXSU7P6D353YGXMP6ROJIC744HO5OZCIWTXZQK2X757YU5KCHUE"),
+	}
+
+	ctx := context.Background()
+	ctx = auth.NewContext(ctx, auth.Auth{PhoneNumber: "+10000000000"})
+	r := httptest.NewRequest("", "/", nil)
+	r = r.WithContext(ctx)
+
+	w := httptest.NewRecorder()
+	h.ServeHTTP(w, r)
+	resp := w.Result()
+
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+	assert.Equal(t, "application/json; charset=utf-8", resp.Header.Get("Content-Type"))
+
+	body, err := ioutil.ReadAll(resp.Body)
+	require.NoError(t, err)
+
+	wantBody := `{
+	"accounts": [
+		{
+			"address": "GDIXCQJ2W2N6TAS6AYW4LW2EBV7XNRUCLNHQB37FARDEWBQXRWP47Q6N",
+			"identities": {
+				"owner": { "present": true },
+				"other": { "present": false }
+			},
+			"identity": "owner",
+			"signer": "GCAPXRXSU7P6D353YGXMP6ROJIC744HO5OZCIWTXZQK2X757YU5KCHUE"
+		},
+		{
+			"address": "GDU2CH4V3QYQB2BLMX45XQLVBEKSIN2EZLP37I6MZZ7NAR5U3TLZDQEY",
+			"identities": {
+				"owner": { "present": false },
+				"other": { "present": true }
+			},
+			"identity": "other",
+			"signer": "GCAPXRXSU7P6D353YGXMP6ROJIC744HO5OZCIWTXZQK2X757YU5KCHUE"
+		}
+	]
+}`
+	assert.JSONEq(t, wantBody, string(body))
+}
+
+func TestAccountList_authenticatedByEmail(t *testing.T) {
+	s := account.NewMemoryStore()
+	s.Add(account.Account{
+		Address: "GDIXCQJ2W2N6TAS6AYW4LW2EBV7XNRUCLNHQB37FARDEWBQXRWP47Q6N",
+		OwnerIdentities: account.Identities{
+			Email: "user1@example.com",
+		},
+	})
+	s.Add(account.Account{
+		Address: "GDU2CH4V3QYQB2BLMX45XQLVBEKSIN2EZLP37I6MZZ7NAR5U3TLZDQEY",
+		OtherIdentities: account.Identities{
+			Email: "user1@example.com",
+		},
+	})
+	s.Add(account.Account{
+		Address: "GCS4CVAAX7MVUNHP24655TNHIJ4YFN7GW5V3RFDC2BXVVMVDTB3GYH5U",
+		OtherIdentities: account.Identities{
+			Email: "user2@example.com",
+		},
+	})
+	h := accountListHandler{
+		Logger:         supportlog.DefaultLogger,
+		AccountStore:   s,
+		SigningAddress: keypair.MustParseAddress("GCAPXRXSU7P6D353YGXMP6ROJIC744HO5OZCIWTXZQK2X757YU5KCHUE"),
+	}
+
+	ctx := context.Background()
+	ctx = auth.NewContext(ctx, auth.Auth{Email: "user1@example.com"})
+	r := httptest.NewRequest("", "/", nil)
+	r = r.WithContext(ctx)
+
+	w := httptest.NewRecorder()
+	h.ServeHTTP(w, r)
+	resp := w.Result()
+
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+	assert.Equal(t, "application/json; charset=utf-8", resp.Header.Get("Content-Type"))
+
+	body, err := ioutil.ReadAll(resp.Body)
+	require.NoError(t, err)
+
+	wantBody := `{
+	"accounts": [
+		{
+			"address": "GDIXCQJ2W2N6TAS6AYW4LW2EBV7XNRUCLNHQB37FARDEWBQXRWP47Q6N",
+			"identities": {
+				"owner": { "present": true },
+				"other": { "present": false }
+			},
+			"identity": "owner",
+			"signer": "GCAPXRXSU7P6D353YGXMP6ROJIC744HO5OZCIWTXZQK2X757YU5KCHUE"
+		},
+		{
+			"address": "GDU2CH4V3QYQB2BLMX45XQLVBEKSIN2EZLP37I6MZZ7NAR5U3TLZDQEY",
+			"identities": {
+				"owner": { "present": false },
+				"other": { "present": true }
+			},
+			"identity": "other",
+			"signer": "GCAPXRXSU7P6D353YGXMP6ROJIC744HO5OZCIWTXZQK2X757YU5KCHUE"
+		}
+	]
+}`
+	assert.JSONEq(t, wantBody, string(body))
+}
+
+func TestAccountList_notAuthenticated(t *testing.T) {
+	s := account.NewMemoryStore()
+	s.Add(account.Account{
+		Address: "GDIXCQJ2W2N6TAS6AYW4LW2EBV7XNRUCLNHQB37FARDEWBQXRWP47Q6N",
+		OwnerIdentities: account.Identities{
+			Email: "user1@example.com",
+		},
+	})
+	s.Add(account.Account{
+		Address: "GDU2CH4V3QYQB2BLMX45XQLVBEKSIN2EZLP37I6MZZ7NAR5U3TLZDQEY",
+		OtherIdentities: account.Identities{
+			Email: "user1@example.com",
+		},
+	})
+	s.Add(account.Account{
+		Address: "GCS4CVAAX7MVUNHP24655TNHIJ4YFN7GW5V3RFDC2BXVVMVDTB3GYH5U",
+		OtherIdentities: account.Identities{
+			Email: "user2@example.com",
+		},
+	})
+	h := accountListHandler{
+		Logger:         supportlog.DefaultLogger,
+		AccountStore:   s,
+		SigningAddress: keypair.MustParseAddress("GCAPXRXSU7P6D353YGXMP6ROJIC744HO5OZCIWTXZQK2X757YU5KCHUE"),
+	}
+
+	ctx := context.Background()
+	ctx = auth.NewContext(ctx, auth.Auth{})
+	r := httptest.NewRequest("", "/", nil)
+	r = r.WithContext(ctx)
+
+	w := httptest.NewRecorder()
+	h.ServeHTTP(w, r)
+	resp := w.Result()
+
+	require.Equal(t, http.StatusUnauthorized, resp.StatusCode)
+	assert.Equal(t, "application/json; charset=utf-8", resp.Header.Get("Content-Type"))
+
+	body, err := ioutil.ReadAll(resp.Body)
+	require.NoError(t, err)
+
+	wantBody := `{
+	"error": "The request could not be authenticated."
+}`
+	assert.JSONEq(t, wantBody, string(body))
+}

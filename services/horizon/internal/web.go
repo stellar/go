@@ -14,6 +14,7 @@ import (
 	"github.com/rs/cors"
 	"github.com/sebest/xff"
 
+	"github.com/stellar/go/exp/orderbook"
 	"github.com/stellar/go/services/horizon/internal/actions"
 	"github.com/stellar/go/services/horizon/internal/db2"
 	"github.com/stellar/go/services/horizon/internal/db2/core"
@@ -39,6 +40,7 @@ const (
 type web struct {
 	appCtx             context.Context
 	router             *chi.Mux
+	internalRouter     *chi.Mux
 	rateLimiter        *throttled.HTTPRateLimiter
 	sseUpdateFrequency time.Duration
 	staleThreshold     uint
@@ -60,6 +62,9 @@ func init() {
 	problem.RegisterError(db2.ErrInvalidLimit, problem.BadRequest)
 	problem.RegisterError(db2.ErrInvalidOrder, problem.BadRequest)
 	problem.RegisterError(sse.ErrRateLimited, hProblem.RateLimitExceeded)
+	problem.RegisterError(context.DeadlineExceeded, hProblem.Timeout)
+	problem.RegisterError(context.Canceled, hProblem.ServiceUnavailable)
+	problem.RegisterError(db.ErrCancelled, hProblem.ServiceUnavailable)
 }
 
 // mustInitWeb installed a new Web instance onto the provided app object.
@@ -74,6 +79,7 @@ func mustInitWeb(ctx context.Context, hq *history.Q, cq *core.Q, updateFreq time
 	return &web{
 		appCtx:             ctx,
 		router:             chi.NewRouter(),
+		internalRouter:     chi.NewRouter(),
 		historyQ:           hq,
 		coreQ:              cq,
 		sseUpdateFrequency: updateFreq,
@@ -94,7 +100,6 @@ func (w *web) mustInstallMiddlewares(app *App, connTimeout time.Duration) {
 	}
 
 	r := w.router
-	r.Use(chimiddleware.Timeout(connTimeout))
 	r.Use(chimiddleware.StripSlashes)
 
 	//TODO: remove this middleware
@@ -105,6 +110,7 @@ func (w *web) mustInstallMiddlewares(app *App, connTimeout time.Duration) {
 	r.Use(contextMiddleware)
 	r.Use(xff.Handler)
 	r.Use(loggerMiddleware)
+	r.Use(timeoutMiddleware(connTimeout))
 	r.Use(requestMetricsMiddleware)
 	r.Use(recoverMiddleware)
 	r.Use(chimiddleware.Compress(flate.DefaultCompression, "application/hal+json"))
@@ -112,57 +118,103 @@ func (w *web) mustInstallMiddlewares(app *App, connTimeout time.Duration) {
 	c := cors.New(cors.Options{
 		AllowedOrigins: []string{"*"},
 		AllowedHeaders: []string{"*"},
+		ExposedHeaders: []string{"Date"},
 	})
 	r.Use(c.Handler)
 
 	r.Use(w.RateLimitMiddleware)
-}
 
-func installPathFindingRoutes(
-	findPaths FindPathsHandler,
-	findFixedPaths FindFixedPathsHandler,
-	r *chi.Mux,
-	expIngest bool,
-) {
-	r.Group(func(r chi.Router) {
-		r.Use(acceptOnlyJSON)
-		if expIngest {
-			r.Use(requiresExperimentalIngestion)
-		}
-		r.Method("GET", "/paths", findPaths)
-		r.Method("GET", "/paths/strict-receive", findPaths)
-		r.Method("GET", "/paths/strict-send", findFixedPaths)
-	})
-}
-
-func installAccountOfferRoute(
-	offersAction actions.GetAccountOffersHandler,
-	streamHandler sse.StreamHandler,
-	enableExperimentalIngestion bool,
-	r *chi.Mux,
-) {
-	path := "/accounts/{account_id}/offers"
-	if enableExperimentalIngestion {
-		r.With(requiresExperimentalIngestion).Method(
-			http.MethodGet,
-			path,
-			streamablePageHandler(offersAction, streamHandler),
-		)
-	} else {
-		r.Get(path, OffersByAccountAction{}.Handle)
-	}
+	// Internal middlewares
+	w.internalRouter.Use(chimiddleware.StripSlashes)
+	w.internalRouter.Use(appContextMiddleware(app))
+	w.internalRouter.Use(chimiddleware.RequestID)
+	w.internalRouter.Use(loggerMiddleware)
 }
 
 // mustInstallActions installs the routing configuration of horizon onto the
 // provided app.  All route registration should be implemented here.
-func (w *web) mustInstallActions(config Config, pathFinder paths.Finder) {
+func (w *web) mustInstallActions(
+	config Config,
+	pathFinder paths.Finder,
+	orderBookGraph *orderbook.OrderBookGraph,
+	stateMiddleware *StateMiddleware,
+) {
 	if w == nil {
 		log.Fatal("missing web instance for installing web actions")
 	}
 
 	r := w.router
 	r.Get("/", RootAction{}.Handle)
-	r.Get("/metrics", MetricsAction{}.Handle)
+
+	streamHandler := sse.StreamHandler{
+		RateLimiter:  w.rateLimiter,
+		LedgerSource: ledger.NewHistoryDBSource(w.sseUpdateFrequency),
+	}
+
+	// State endpoints behind stateMiddleware
+	r.Group(func(r chi.Router) {
+		r.Use(stateMiddleware.Wrap)
+
+		r.Route("/accounts", func(r chi.Router) {
+			r.Method(http.MethodGet, "/", restPageHandler(actions.GetAccountsHandler{}))
+			r.Route("/{account_id}", func(r chi.Router) {
+				r.Get("/", w.streamShowActionHandler(w.getAccountInfo, true))
+				r.Get("/data/{key}", DataShowAction{}.Handle)
+				r.Method(http.MethodGet, "/offers", streamablePageHandler(actions.GetAccountOffersHandler{}, streamHandler))
+			})
+		})
+
+		r.Route("/offers", func(r chi.Router) {
+			r.Method(http.MethodGet, "/", restPageHandler(actions.GetOffersHandler{}))
+			r.Method(http.MethodGet, "/{id}", objectActionHandler{actions.GetOfferByID{}})
+		})
+
+		r.Method(http.MethodGet, "/assets", restPageHandler(actions.AssetStatsHandler{}))
+
+		// Endpoints available on ingesting instances only.
+		if config.Ingest {
+			findPaths := FindPathsHandler{
+				staleThreshold:       config.StaleThreshold,
+				checkHistoryIsStale:  false,
+				setLastLedgerHeader:  true,
+				maxPathLength:        config.MaxPathLength,
+				maxAssetsParamLength: maxAssetsForPathFinding,
+				pathFinder:           pathFinder,
+				coreQ:                w.coreQ,
+			}
+			findFixedPaths := FindFixedPathsHandler{
+				maxPathLength:        config.MaxPathLength,
+				setLastLedgerHeader:  true,
+				maxAssetsParamLength: maxAssetsForPathFinding,
+				pathFinder:           pathFinder,
+				coreQ:                w.coreQ,
+			}
+
+			r.Method(http.MethodGet, "/paths", findPaths)
+			r.Method(http.MethodGet, "/paths/strict-receive", findPaths)
+			r.Method(http.MethodGet, "/paths/strict-send", findFixedPaths)
+
+			r.Method(
+				http.MethodGet,
+				"/order_book",
+				streamableObjectActionHandler{
+					streamHandler: streamHandler,
+					action: actions.GetOrderbookHandler{
+						OrderBookGraph: orderBookGraph,
+					},
+				},
+			)
+		}
+	})
+
+	// account actions - /accounts/{account_id} has been created above so we
+	// need to use absolute routes here. Make sure we use regexp check here for
+	// emptiness. Without it, requesting `/accounts//payments` return all payments!
+	r.Get("/accounts/{account_id:\\w+}/transactions", w.streamIndexActionHandler(w.getTransactionPage, w.streamTransactions))
+	r.Get("/accounts/{account_id:\\w+}/operations", OperationIndexAction{}.Handle)
+	r.Get("/accounts/{account_id:\\w+}/payments", OperationIndexAction{OnlyPayments: true}.Handle)
+	r.Get("/accounts/{account_id:\\w+}/effects", EffectIndexAction{}.Handle)
+	r.Get("/accounts/{account_id:\\w+}/trades", TradeIndexAction{}.Handle)
 
 	// ledger actions
 	r.Route("/ledgers", func(r chi.Router) {
@@ -175,36 +227,6 @@ func (w *web) mustInstallActions(config Config, pathFinder paths.Finder) {
 			r.Get("/effects", EffectIndexAction{}.Handle)
 		})
 	})
-
-	// account actions
-	r.Route("/accounts", func(r chi.Router) {
-		r.With(requiresExperimentalIngestion).
-			Get("/", accountIndexActionHandler(w.getAccountPage))
-		r.Route("/{account_id}", func(r chi.Router) {
-			r.Get("/", w.streamShowActionHandler(w.getAccountInfo, true))
-			r.Get("/transactions", w.streamIndexActionHandler(w.getTransactionPage, w.streamTransactions))
-			r.Get("/operations", OperationIndexAction{}.Handle)
-			r.Get("/payments", OperationIndexAction{OnlyPayments: true}.Handle)
-			r.Get("/effects", EffectIndexAction{}.Handle)
-			r.Get("/trades", TradeIndexAction{}.Handle)
-			r.Get("/data/{key}", DataShowAction{}.Handle)
-		})
-	})
-	offersHandler := actions.GetAccountOffersHandler{
-		HistoryQ: w.historyQ,
-	}
-
-	streamHandler := sse.StreamHandler{
-		RateLimiter:  w.rateLimiter,
-		LedgerSource: ledger.NewHistoryDBSource(w.sseUpdateFrequency),
-	}
-
-	installAccountOfferRoute(
-		offersHandler,
-		streamHandler,
-		config.EnableExperimentalIngestion,
-		r,
-	)
 
 	// transaction history actions
 	r.Route("/transactions", func(r chi.Router) {
@@ -233,46 +255,15 @@ func (w *web) mustInstallActions(config Config, pathFinder paths.Finder) {
 	// trading related endpoints
 	r.Get("/trades", TradeIndexAction{}.Handle)
 	r.Get("/trade_aggregations", TradeAggregateIndexAction{}.Handle)
-
-	r.Route("/offers", func(r chi.Router) {
-		r.With(requiresExperimentalIngestion).
-			Method(
-				http.MethodGet,
-				"/",
-				restPageHandler(actions.GetOffersHandler{HistoryQ: w.historyQ}),
-			)
-		r.With(acceptOnlyJSON, requiresExperimentalIngestion).
-			Get("/{id}", getOfferResource)
-		r.Get("/{offer_id}/trades", TradeIndexAction{}.Handle)
-	})
-	r.Get("/order_book", OrderBookShowAction{}.Handle)
+	// /offers/{offer_id} has been created above so we need to use absolute
+	// routes here.
+	r.Get("/offers/{offer_id}/trades", TradeIndexAction{}.Handle)
 
 	// Transaction submission API
 	r.Post("/transactions", TransactionCreateAction{}.Handle)
 
-	findPaths := FindPathsHandler{
-		staleThreshold:       config.StaleThreshold,
-		checkHistoryIsStale:  !config.EnableExperimentalIngestion,
-		maxPathLength:        config.MaxPathLength,
-		maxAssetsParamLength: maxAssetsForPathFinding,
-		pathFinder:           pathFinder,
-		coreQ:                w.coreQ,
-	}
-	findFixedPaths := FindFixedPathsHandler{
-		maxPathLength:        config.MaxPathLength,
-		maxAssetsParamLength: maxAssetsForPathFinding,
-		pathFinder:           pathFinder,
-		coreQ:                w.coreQ,
-	}
-	installPathFindingRoutes(findPaths, findFixedPaths, w.router, config.EnableExperimentalIngestion)
-
-	if config.EnableAssetStats {
-		// Asset related endpoints
-		r.Get("/assets", AssetsAction{}.Handle)
-	}
-
 	// Network state related endpoints
-	r.Get("/fee_stats", OperationFeeStatsAction{}.Handle)
+	r.Get("/fee_stats", FeeStatsAction{}.Handle)
 
 	// friendbot
 	if config.FriendbotURL != nil {
@@ -285,6 +276,9 @@ func (w *web) mustInstallActions(config Config, pathFinder paths.Finder) {
 	}
 
 	r.NotFound(NotFoundAction{}.Handle)
+
+	// internal
+	w.internalRouter.Get("/metrics", MetricsAction{}.Handle)
 }
 
 func maybeInitWebRateLimiter(rateQuota *throttled.RateQuota) *throttled.HTTPRateLimiter {

@@ -198,7 +198,7 @@ type AccountFlagsUpdated struct {
 
 type SequenceBumped struct {
 	Base
-	NewSeq int64 `json:"new_seq"`
+	NewSeq int64 `json:"new_seq,string"`
 }
 
 type SignerCreated struct {
@@ -256,9 +256,8 @@ type TrustlineDeauthorized struct {
 
 type Trade struct {
 	Base
-	Seller string `json:"seller"`
-	// Action needed in release: horizon-v0.23.0
-	OfferID           int64  `json:"offer_id"`
+	Seller            string `json:"seller"`
+	OfferID           int64  `json:"offer_id,string"`
 	SoldAmount        string `json:"sold_amount"`
 	SoldAssetType     string `json:"sold_asset_type"`
 	SoldAssetCode     string `json:"sold_asset_code,omitempty"`

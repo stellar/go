@@ -123,3 +123,37 @@ func TestRemoveAccountSigner(t *testing.T) {
 	tt.Assert.NoError(err)
 	tt.Assert.Len(results, 0)
 }
+
+func TestGetAccountSignersByAccountID(t *testing.T) {
+	tt := test.Start(t).Scenario("base")
+	defer tt.Finish()
+	q := &Q{tt.HorizonSession()}
+
+	account := "GA5WBPYA5Y4WAEHXWR2UKO2UO4BUGHUQ74EUPKON2QHV4WRHOIRNKKH6"
+	signer := "GC23QF2HUE52AMXUFUH3AYJAXXGXXV2VHXYYR6EYXETPKDXZSAW67XO7"
+	weight := int32(123)
+	_, err := q.CreateAccountSigner(account, signer, weight)
+	tt.Assert.NoError(err)
+
+	signer2 := "GC2WJF6YWMAEHGGAK2UOMZCIOMH4RU7KY2CQEWZQJV2ZQJVXJ335ZSXG"
+	weight2 := int32(100)
+	_, err = q.CreateAccountSigner(account, signer2, weight2)
+	tt.Assert.NoError(err)
+
+	expected := []AccountSigner{
+		AccountSigner{
+			Account: account,
+			Signer:  signer,
+			Weight:  weight,
+		},
+		AccountSigner{
+			Account: account,
+			Signer:  signer2,
+			Weight:  weight2,
+		},
+	}
+	results, err := q.GetAccountSignersByAccountID(account)
+	tt.Assert.NoError(err)
+	tt.Assert.Len(results, 2)
+	tt.Assert.Equal(expected, results)
+}

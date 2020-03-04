@@ -1,10 +1,19 @@
 package horizon
 
 import (
+	"net/http"
+	"net/http/httptest"
 	"strconv"
 	"testing"
 
+	"github.com/stellar/go/services/horizon/internal/actions"
+	horizonContext "github.com/stellar/go/services/horizon/internal/context"
+	"github.com/stellar/go/services/horizon/internal/db2/history"
+	"github.com/stellar/go/services/horizon/internal/expingest"
+	hProblem "github.com/stellar/go/services/horizon/internal/render/problem"
 	"github.com/stellar/go/services/horizon/internal/test"
+	"github.com/stellar/go/support/db"
+	"github.com/stellar/go/xdr"
 	"github.com/stellar/throttled"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
@@ -141,4 +150,145 @@ func TestRateLimit_Redis(t *testing.T) {
 
 	w = rh.Get("/", test.RequestHelperRemoteAddr("127.0.0.2"))
 	assert.Equal(t, 200, w.Code)
+}
+
+func TestStateMiddleware(t *testing.T) {
+	tt := test.Start(t)
+	defer tt.Finish()
+	test.ResetHorizonDB(t, tt.HorizonDB)
+
+	q := &history.Q{tt.HorizonSession()}
+
+	request, err := http.NewRequest("GET", "http://localhost", nil)
+	if err != nil {
+		tt.Assert.NoError(err)
+	}
+
+	expectTransaction := true
+	endpoint := func(w http.ResponseWriter, r *http.Request) {
+		session := r.Context().Value(&horizonContext.SessionContextKey).(*db.Session)
+		if (session.GetTx() == nil) == expectTransaction {
+			t.Fatalf("expected transaction to be in session: %v", expectTransaction)
+		}
+		w.WriteHeader(http.StatusOK)
+	}
+
+	stateMiddleware := &StateMiddleware{
+		HorizonSession: tt.HorizonSession(),
+	}
+	handler := stateMiddleware.Wrap(http.HandlerFunc(endpoint))
+
+	for i, testCase := range []struct {
+		name                string
+		stateInvalid        bool
+		latestHistoryLedger xdr.Uint32
+		lastIngestedLedger  uint32
+		ingestionVersion    int
+		sseRequest          bool
+		expectedStatus      int
+		expectTransaction   bool
+	}{
+		{
+			name:                "responds with 500 if q.GetExpStateInvalid returns true",
+			stateInvalid:        true,
+			latestHistoryLedger: 2,
+			lastIngestedLedger:  2,
+			ingestionVersion:    expingest.CurrentVersion,
+			sseRequest:          false,
+			expectedStatus:      http.StatusInternalServerError,
+			expectTransaction:   false,
+		},
+		{
+			name:                "responds with still ingesting if lastIngestedLedger <= 0",
+			stateInvalid:        false,
+			latestHistoryLedger: 0,
+			lastIngestedLedger:  0,
+			ingestionVersion:    expingest.CurrentVersion,
+			sseRequest:          false,
+			expectedStatus:      hProblem.StillIngesting.Status,
+			expectTransaction:   false,
+		},
+		{
+			name:                "responds with still ingesting if lastIngestedLedger < latestHistoryLedger",
+			stateInvalid:        false,
+			latestHistoryLedger: 3,
+			lastIngestedLedger:  2,
+			ingestionVersion:    expingest.CurrentVersion,
+			sseRequest:          false,
+			expectedStatus:      hProblem.StillIngesting.Status,
+			expectTransaction:   false,
+		},
+		{
+			name:                "responds with still ingesting if lastIngestedLedger > latestHistoryLedger",
+			stateInvalid:        false,
+			latestHistoryLedger: 4,
+			lastIngestedLedger:  5,
+			ingestionVersion:    expingest.CurrentVersion,
+			sseRequest:          false,
+			expectedStatus:      hProblem.StillIngesting.Status,
+			expectTransaction:   false,
+		},
+		{
+			name:                "responds with still ingesting if version != expingest.CurrentVersion",
+			stateInvalid:        false,
+			latestHistoryLedger: 5,
+			lastIngestedLedger:  5,
+			ingestionVersion:    expingest.CurrentVersion - 1,
+			sseRequest:          false,
+			expectedStatus:      hProblem.StillIngesting.Status,
+			expectTransaction:   false,
+		},
+		{
+			name:                "succeeds",
+			stateInvalid:        false,
+			latestHistoryLedger: 6,
+			lastIngestedLedger:  6,
+			ingestionVersion:    expingest.CurrentVersion,
+			sseRequest:          false,
+			expectedStatus:      http.StatusOK,
+			expectTransaction:   true,
+		},
+		{
+			name:                "succeeds with SSE request",
+			stateInvalid:        false,
+			latestHistoryLedger: 7,
+			lastIngestedLedger:  7,
+			ingestionVersion:    expingest.CurrentVersion,
+			sseRequest:          true,
+			expectedStatus:      http.StatusOK,
+			expectTransaction:   false,
+		},
+	} {
+		t.Run(testCase.name, func(t *testing.T) {
+			tt.Assert.NoError(q.UpdateExpStateInvalid(testCase.stateInvalid))
+			_, err = q.InsertLedger(xdr.LedgerHeaderHistoryEntry{
+				Hash: xdr.Hash{byte(i)},
+				Header: xdr.LedgerHeader{
+					LedgerSeq:          testCase.latestHistoryLedger,
+					PreviousLedgerHash: xdr.Hash{byte(i)},
+				},
+			}, 0, 0, 0, 0)
+			tt.Assert.NoError(err)
+			tt.Assert.NoError(q.UpdateLastLedgerExpIngest(testCase.lastIngestedLedger))
+			tt.Assert.NoError(q.UpdateExpIngestVersion(testCase.ingestionVersion))
+
+			if testCase.sseRequest {
+				request.Header.Set("Accept", "text/event-stream")
+			} else {
+				request.Header.Del("Accept")
+			}
+
+			w := httptest.NewRecorder()
+			expectTransaction = testCase.expectTransaction
+			handler.ServeHTTP(w, request)
+			tt.Assert.Equal(testCase.expectedStatus, w.Code)
+			if testCase.expectedStatus == http.StatusOK && !testCase.sseRequest {
+				tt.Assert.Equal(
+					w.Header().Get(actions.LastLedgerHeaderName),
+					strconv.FormatInt(int64(testCase.lastIngestedLedger), 10))
+			} else {
+				tt.Assert.Equal(w.Header().Get(actions.LastLedgerHeaderName), "")
+			}
+		})
+	}
 }

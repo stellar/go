@@ -7,7 +7,7 @@ import (
 )
 
 func TestMemoryTempSet(t *testing.T) {
-	s := MemoryTempSet{}
+	s := memoryTempSet{}
 	assert.Nil(t, s.m)
 	err := s.Open()
 	assert.NoError(t, err)

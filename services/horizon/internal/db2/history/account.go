@@ -3,6 +3,8 @@ package history
 import (
 	sq "github.com/Masterminds/squirrel"
 	"github.com/stellar/go/services/horizon/internal/db2"
+	"github.com/stellar/go/support/db"
+	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
 )
 
@@ -55,16 +57,50 @@ func (q *Q) AccountsByAddresses(dest interface{}, addresses []string) error {
 	return q.Select(dest, sql)
 }
 
-// CreateAccounts creates rows for addresses in history_accounts table and
-// put. `ON CONFLICT` is required when running a distributed ingestion.
-func (q *Q) CreateAccounts(dest interface{}, addresses []string) error {
-	sql := sq.Insert("history_accounts").Columns("address")
-	for _, address := range addresses {
-		sql = sql.Values(address)
+// CreateAccounts creates rows in the history_accounts table for a given list of addresses.
+// CreateAccounts returns a mapping of account address to its corresponding id in the history_accounts table
+func (q *Q) CreateAccounts(addresses []string, batchSize int) (map[string]int64, error) {
+	builder := &db.BatchInsertBuilder{
+		Table:        q.GetTable("history_accounts"),
+		MaxBatchSize: batchSize,
+		Suffix:       "ON CONFLICT (address) DO NOTHING",
 	}
-	sql = sql.Suffix("ON CONFLICT (address) DO UPDATE SET address=EXCLUDED.address RETURNING *")
 
-	return q.Select(dest, sql)
+	for _, address := range addresses {
+		err := builder.Row(map[string]interface{}{
+			"address": address,
+		})
+		if err != nil {
+			return nil, errors.Wrap(err, "could not insert history_accounts row")
+		}
+	}
+
+	err := builder.Exec()
+	if err != nil {
+		return nil, errors.Wrap(err, "could not exec asset insert builder")
+	}
+
+	var accounts []Account
+	addressToID := map[string]int64{}
+	const selectBatchSize = 10000
+
+	for i := 0; i < len(addresses); i += selectBatchSize {
+		end := i + selectBatchSize
+		if end > len(addresses) {
+			end = len(addresses)
+		}
+		subset := addresses[i:end]
+
+		if err := q.AccountsByAddresses(&accounts, subset); err != nil {
+			return nil, errors.Wrap(err, "could not select accounts")
+		}
+
+		for _, account := range accounts {
+			addressToID[account.Address] = account.ID
+		}
+	}
+
+	return addressToID, nil
 }
 
 // Return id for account. If account doesn't exist, it will be created and the new id returned.

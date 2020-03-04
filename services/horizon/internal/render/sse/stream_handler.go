@@ -74,6 +74,7 @@ func (handler StreamHandler) ServeStream(
 		case currentLedgerSequence = <-handler.LedgerSource.NextLedger(currentLedgerSequence):
 			continue
 		case <-ctx.Done():
+			stream.Done()
 			return
 		}
 	}

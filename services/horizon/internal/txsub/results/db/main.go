@@ -14,11 +14,13 @@ import (
 	"github.com/stellar/go/xdr"
 )
 
-// DB provides transactio submission results by querying the
-// connected horizon and stellar core databases.
+// DB provides transaction submission results by querying the
+// connected horizon and, if set, stellar core databases.
 type DB struct {
 	Core    *core.Q
 	History *history.Q
+	// SkipCoreChecks makes DB skip checking transaction result in Core DB if `true`.
+	SkipCoreChecks bool
 }
 
 var _ txsub.ResultProvider = &DB{}
@@ -38,26 +40,28 @@ func (rp *DB) ResultByHash(ctx context.Context, hash string) txsub.Result {
 		return txsub.Result{Err: err}
 	}
 
-	// query core database
-	var cr core.Transaction
-	// In the past we were searching for the transaction in core DB *after* the
-	// latest ingested ledger. This was incorrect because history DB contains
-	// successful transactions only. So it was possible that the transaction was
-	// never found and clients were receiving Timeout errors.
-	// However we can't change it to simply find a transaction by hash because
-	// `txhistory` table does not have an index on `txid` field. Because of this
-	// we query the last 120 ledgers (~10 minutes) to not kill the DB by searching
-	// for a value on a table with millions of rows but also to support returning
-	// the failed tx result (when resubmitting) for 10 minutes (or before core
-	// clears `txhistory` table, whatever is first).
-	// If you are modifying the code here, please do not make this error again.
-	err = rp.Core.TransactionByHashAfterLedger(&cr, hash, historyLatest-120)
-	if err == nil {
-		return txResultFromCore(cr)
-	}
+	if !rp.SkipCoreChecks {
+		// query core database
+		var cr core.Transaction
+		// In the past we were searching for the transaction in core DB *after* the
+		// latest ingested ledger. This was incorrect because history DB contains
+		// successful transactions only. So it was possible that the transaction was
+		// never found and clients were receiving Timeout errors.
+		// However we can't change it to simply find a transaction by hash because
+		// `txhistory` table does not have an index on `txid` field. Because of this
+		// we query the last 120 ledgers (~10 minutes) to not kill the DB by searching
+		// for a value on a table with millions of rows but also to support returning
+		// the failed tx result (when resubmitting) for 10 minutes (or before core
+		// clears `txhistory` table, whatever is first).
+		// If you are modifying the code here, please do not make this error again.
+		err = rp.Core.TransactionByHashAfterLedger(&cr, hash, historyLatest-120)
+		if err == nil {
+			return txResultFromCore(cr)
+		}
 
-	if !rp.Core.NoRows(err) {
-		return txsub.Result{Err: err}
+		if !rp.Core.NoRows(err) {
+			return txsub.Result{Err: err}
+		}
 	}
 
 	// if no result was found in either db, return ErrNoResults

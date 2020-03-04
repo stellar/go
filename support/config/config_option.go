@@ -1,6 +1,7 @@
 package config
 
 import (
+	"fmt"
 	"go/types"
 	stdLog "log"
 	"net/url"
@@ -11,6 +12,35 @@ import (
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/support/strutils"
 )
+
+// ConfigOptions is a group of ConfigOptions that can be for convenience
+// initialized and set at the same time.
+type ConfigOptions []*ConfigOption
+
+// Init calls Init on each ConfigOption passing on the cobra.Command.
+func (cos ConfigOptions) Init(cmd *cobra.Command) error {
+	for _, co := range cos {
+		err := co.Init(cmd)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// Require calls Require on each ConfigOption.
+func (cos ConfigOptions) Require() {
+	for _, co := range cos {
+		co.Require()
+	}
+}
+
+// SetValues calls SetValue on each ConfigOption.
+func (cos ConfigOptions) SetValues() {
+	for _, co := range cos {
+		co.SetValue()
+	}
+}
 
 // ConfigOption is a complete description of the configuration of a command line option
 type ConfigOption struct {
@@ -53,6 +83,13 @@ func (co *ConfigOption) SetValue() {
 	}
 }
 
+// UsageText returns the string to use for the usage text of the option. The
+// string returned will be the Usage defined on the ConfigOption, along with
+// the environment variable.
+func (co *ConfigOption) UsageText() string {
+	return fmt.Sprintf("%s (%s)", co.Usage, co.EnvVar)
+}
+
 // setSimpleValue sets the value of a ConfigOption's configKey, based on the ConfigOption's default type.
 func (co *ConfigOption) setSimpleValue() {
 	if co.ConfigKey != nil {
@@ -65,6 +102,8 @@ func (co *ConfigOption) setSimpleValue() {
 			*(co.ConfigKey.(*bool)) = viper.GetBool(co.Name)
 		case types.Uint:
 			*(co.ConfigKey.(*uint)) = uint(viper.GetInt(co.Name))
+		case types.Uint32:
+			*(co.ConfigKey.(*uint32)) = uint32(viper.GetInt(co.Name))
 		}
 	}
 }
@@ -77,15 +116,21 @@ func (co *ConfigOption) setFlag(cmd *cobra.Command) error {
 		if co.FlagDefault == nil {
 			co.FlagDefault = ""
 		}
-		cmd.PersistentFlags().String(co.Name, co.FlagDefault.(string), co.Usage)
+		cmd.PersistentFlags().String(co.Name, co.FlagDefault.(string), co.UsageText())
 	case types.Int:
-		cmd.PersistentFlags().Int(co.Name, co.FlagDefault.(int), co.Usage)
+		cmd.PersistentFlags().Int(co.Name, co.FlagDefault.(int), co.UsageText())
 	case types.Bool:
-		cmd.PersistentFlags().Bool(co.Name, co.FlagDefault.(bool), co.Usage)
+		cmd.PersistentFlags().Bool(co.Name, co.FlagDefault.(bool), co.UsageText())
 	case types.Uint:
-		cmd.PersistentFlags().Uint(co.Name, co.FlagDefault.(uint), co.Usage)
+		cmd.PersistentFlags().Uint(co.Name, co.FlagDefault.(uint), co.UsageText())
+	case types.Uint32:
+		cmd.PersistentFlags().Uint32(co.Name, co.FlagDefault.(uint32), co.UsageText())
 	default:
 		return errors.New("Unexpected OptType")
+	}
+
+	if err := viper.BindPFlag(co.Name, cmd.PersistentFlags().Lookup(co.Name)); err != nil {
+		return err
 	}
 
 	if err := viper.BindEnv(co.Name, co.EnvVar); err != nil {

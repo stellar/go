@@ -168,9 +168,9 @@ New payment:
 
 ## Testing it out
 
-We now know how to get a stream of transactions to an account. Let's check if our solution actually works and if new payments appear. Let's watch as we send a payment ([`create_account` operation](/developers/guides/concepts/list-of-operations.html#create-account)) from our account to another account.
+We now know how to get a stream of transactions to an account. Let's check if our solution actually works and if new payments appear. Let's watch as we send a payment ([`create_account` operation](../../../guides/concepts/list-of-operations.html#create-account)) from our account to another account.
 
-We use the `create_account` operation because we are sending payment to a new, unfunded account. If we were sending payment to an account that is already funded, we would use the [`payment` operation](/developers/guides/concepts/list-of-operations.html#payment).
+We use the `create_account` operation because we are sending payment to a new, unfunded account. If we were sending payment to an account that is already funded, we would use the [`payment` operation](../../../guides/concepts/list-of-operations.html#payment).
 
 First, let's check our account sequence number so we can create a payment transaction. To do this we send a request to horizon:
 

@@ -50,6 +50,12 @@ type Account struct {
 	Balances             []Balance         `json:"balances"`
 	Signers              []Signer          `json:"signers"`
 	Data                 map[string]string `json:"data"`
+	PT                   string            `json:"paging_token"`
+}
+
+// PagingToken implementation for hal.Pageable
+func (res Account) PagingToken() string {
+	return res.PT
 }
 
 // GetAccountID returns the Stellar account ID. This is to satisfy the
@@ -120,6 +126,15 @@ func (a *Account) MustGetData(key string) []byte {
 // not exist, empty slice will be returned.
 func (a *Account) GetData(key string) ([]byte, error) {
 	return base64.StdEncoding.DecodeString(a.Data[key])
+}
+
+// SignerSummary returns a map of signer's keys to weights.
+func (a *Account) SignerSummary() map[string]int32 {
+	m := map[string]int32{}
+	for _, s := range a.Signers {
+		m[s.Key] = s.Weight
+	}
+	return m
 }
 
 // AccountSigner is the account signer information.
@@ -224,8 +239,7 @@ type Offer struct {
 		OfferMaker hal.Link `json:"offer_maker"`
 	} `json:"_links"`
 
-	// Action needed in release: horizon-v0.23.0
-	ID                 int64      `json:"id"`
+	ID                 int64      `json:"id,string"`
 	PT                 string     `json:"paging_token"`
 	Seller             string     `json:"seller"`
 	Selling            Asset      `json:"selling"`
@@ -285,18 +299,19 @@ type Root struct {
 		AccountTransactions hal.Link  `json:"account_transactions"`
 		Assets              hal.Link  `json:"assets"`
 		Friendbot           *hal.Link `json:"friendbot,omitempty"`
-		Metrics             hal.Link  `json:"metrics"`
 		Offer               *hal.Link `json:"offer,omitempty"`
 		Offers              *hal.Link `json:"offers,omitempty"`
 		OrderBook           hal.Link  `json:"order_book"`
 		Self                hal.Link  `json:"self"`
+		StrictReceivePaths  *hal.Link `json:"strict_receive_paths"`
+		StrictSendPaths     *hal.Link `json:"strict_send_paths"`
 		Transaction         hal.Link  `json:"transaction"`
 		Transactions        hal.Link  `json:"transactions"`
 	} `json:"_links"`
 
 	HorizonVersion               string `json:"horizon_version"`
 	StellarCoreVersion           string `json:"core_version"`
-	ExpHorizonSequence           uint32 `json:"exp_history_latest_ledger,omitempty"`
+	IngestSequence               uint32 `json:"ingest_latest_ledger"`
 	HorizonSequence              int32  `json:"history_latest_ledger"`
 	HistoryElderSequence         int32  `json:"history_elder_ledger"`
 	CoreSequence                 int32  `json:"core_latest_ledger"`
@@ -376,10 +391,8 @@ type TradeEffect struct {
 
 // TradeAggregation represents trade data aggregation over a period of time
 type TradeAggregation struct {
-	// Action needed in release: horizon-v0.22.0
-	Timestamp int64 `json:"timestamp"`
-	// Action needed in release: horizon-v0.22.0
-	TradeCount    int64     `json:"trade_count"`
+	Timestamp     int64     `json:"timestamp,string"`
+	TradeCount    int64     `json:"trade_count,string"`
 	BaseVolume    string    `json:"base_volume"`
 	CounterVolume string    `json:"counter_volume"`
 	Average       string    `json:"avg"`
@@ -417,22 +430,18 @@ type Transaction struct {
 	LedgerCloseTime time.Time `json:"created_at"`
 	Account         string    `json:"source_account"`
 	AccountSequence string    `json:"source_account_sequence"`
-	// Action needed in release: horizon-v0.23.0
-	// Action needed in release: horizonclient-v2.0.0
-	// Remove this field.
-	FeePaid        int32    `json:"fee_paid"`
-	FeeCharged     int32    `json:"fee_charged"`
-	MaxFee         int32    `json:"max_fee"`
-	OperationCount int32    `json:"operation_count"`
-	EnvelopeXdr    string   `json:"envelope_xdr"`
-	ResultXdr      string   `json:"result_xdr"`
-	ResultMetaXdr  string   `json:"result_meta_xdr"`
-	FeeMetaXdr     string   `json:"fee_meta_xdr"`
-	MemoType       string   `json:"memo_type"`
-	Memo           string   `json:"memo,omitempty"`
-	Signatures     []string `json:"signatures"`
-	ValidAfter     string   `json:"valid_after,omitempty"`
-	ValidBefore    string   `json:"valid_before,omitempty"`
+	FeeCharged      int32     `json:"fee_charged"`
+	MaxFee          int32     `json:"max_fee"`
+	OperationCount  int32     `json:"operation_count"`
+	EnvelopeXdr     string    `json:"envelope_xdr"`
+	ResultXdr       string    `json:"result_xdr"`
+	ResultMetaXdr   string    `json:"result_meta_xdr"`
+	FeeMetaXdr      string    `json:"fee_meta_xdr"`
+	MemoType        string    `json:"memo_type"`
+	Memo            string    `json:"memo,omitempty"`
+	Signatures      []string  `json:"signatures"`
+	ValidAfter      string    `json:"valid_after,omitempty"`
+	ValidBefore     string    `json:"valid_before,omitempty"`
 }
 
 // MarshalJSON implements a custom marshaler for Transaction.
@@ -592,49 +601,57 @@ type LogTotalMetric struct {
 
 // Metrics represents a response of metrics from horizon
 type Metrics struct {
-	Links                  hal.Links      `json:"_links"`
-	GoRoutines             SingleMetric   `json:"goroutines"`
-	HistoryElderLedger     SingleMetric   `json:"history.elder_ledger"`
-	HistoryLatestLedger    SingleMetric   `json:"history.latest_ledger"`
-	HistoryOpenConnections SingleMetric   `json:"history.open_connections"`
-	IngesterIngestLedger   LogTotalMetric `json:"ingester.ingest_ledger"`
-	IngesterClearLedger    LogTotalMetric `json:"ingester.clear_ledger"`
-	LoggingDebug           LogMetric      `json:"logging.debug"`
-	LoggingError           LogMetric      `json:"logging.error"`
-	LoggingInfo            LogMetric      `json:"logging.info"`
-	LoggingPanic           LogMetric      `json:"logging.panic"`
-	LoggingWarning         LogMetric      `json:"logging.warning"`
-	RequestsFailed         LogMetric      `json:"requests.failed"`
-	RequestsSucceeded      LogMetric      `json:"requests.succeeded"`
-	RequestsTotal          LogTotalMetric `json:"requests.total"`
-	CoreLatestLedger       SingleMetric   `json:"stellar_core.latest_ledger"`
-	CoreOpenConnections    SingleMetric   `json:"stellar_core.open_connections"`
-	TxsubBuffered          SingleMetric   `json:"txsub.buffered"`
-	TxsubFailed            LogMetric      `json:"txsub.failed"`
-	TxsubOpen              SingleMetric   `json:"txsub.open"`
-	TxsubSucceeded         LogMetric      `json:"txsub.succeeded"`
-	TxsubTotal             LogTotalMetric `json:"txsub.total"`
+	Links                          hal.Links      `json:"_links"`
+	GoRoutines                     SingleMetric   `json:"goroutines"`
+	HistoryElderLedger             SingleMetric   `json:"history.elder_ledger"`
+	HistoryLatestLedger            SingleMetric   `json:"history.latest_ledger"`
+	HistoryOpenConnections         SingleMetric   `json:"history.open_connections"`
+	IngestLedgerIngestion          LogTotalMetric `json:"ingest.ledger_ingestion"`
+	IngestLedgerGraphOnlyIngestion LogTotalMetric `json:"ingest.ledger_graph_only_ingestion"`
+	IngestStateVerify              LogTotalMetric `json:"ingest.state_verify"`
+	LoggingDebug                   LogMetric      `json:"logging.debug"`
+	LoggingError                   LogMetric      `json:"logging.error"`
+	LoggingInfo                    LogMetric      `json:"logging.info"`
+	LoggingPanic                   LogMetric      `json:"logging.panic"`
+	LoggingWarning                 LogMetric      `json:"logging.warning"`
+	RequestsFailed                 LogMetric      `json:"requests.failed"`
+	RequestsSucceeded              LogMetric      `json:"requests.succeeded"`
+	RequestsTotal                  LogTotalMetric `json:"requests.total"`
+	CoreLatestLedger               SingleMetric   `json:"stellar_core.latest_ledger"`
+	CoreOpenConnections            SingleMetric   `json:"stellar_core.open_connections"`
+	TxsubBuffered                  SingleMetric   `json:"txsub.buffered"`
+	TxsubFailed                    LogMetric      `json:"txsub.failed"`
+	TxsubOpen                      SingleMetric   `json:"txsub.open"`
+	TxsubSucceeded                 LogMetric      `json:"txsub.succeeded"`
+	TxsubTotal                     LogTotalMetric `json:"txsub.total"`
+}
+
+type FeeDistribution struct {
+	Max  int64 `json:"max,string"`
+	Min  int64 `json:"min,string"`
+	Mode int64 `json:"mode,string"`
+	P10  int64 `json:"p10,string"`
+	P20  int64 `json:"p20,string"`
+	P30  int64 `json:"p30,string"`
+	P40  int64 `json:"p40,string"`
+	P50  int64 `json:"p50,string"`
+	P60  int64 `json:"p60,string"`
+	P70  int64 `json:"p70,string"`
+	P80  int64 `json:"p80,string"`
+	P90  int64 `json:"p90,string"`
+	P95  int64 `json:"p95,string"`
+	P99  int64 `json:"p99,string"`
 }
 
 // FeeStats represents a response of fees from horizon
 // To do: implement fee suggestions if agreement is reached in https://github.com/stellar/go/issues/926
 type FeeStats struct {
-	LastLedger          int     `json:"last_ledger,string"`
-	LastLedgerBaseFee   int     `json:"last_ledger_base_fee,string"`
+	LastLedger          uint32  `json:"last_ledger,string"`
+	LastLedgerBaseFee   int64   `json:"last_ledger_base_fee,string"`
 	LedgerCapacityUsage float64 `json:"ledger_capacity_usage,string"`
-	MinAcceptedFee      int     `json:"min_accepted_fee,string"`
-	ModeAcceptedFee     int     `json:"mode_accepted_fee,string"`
-	P10AcceptedFee      int     `json:"p10_accepted_fee,string"`
-	P20AcceptedFee      int     `json:"p20_accepted_fee,string"`
-	P30AcceptedFee      int     `json:"p30_accepted_fee,string"`
-	P40AcceptedFee      int     `json:"p40_accepted_fee,string"`
-	P50AcceptedFee      int     `json:"p50_accepted_fee,string"`
-	P60AcceptedFee      int     `json:"p60_accepted_fee,string"`
-	P70AcceptedFee      int     `json:"p70_accepted_fee,string"`
-	P80AcceptedFee      int     `json:"p80_accepted_fee,string"`
-	P90AcceptedFee      int     `json:"p90_accepted_fee,string"`
-	P95AcceptedFee      int     `json:"p95_accepted_fee,string"`
-	P99AcceptedFee      int     `json:"p99_accepted_fee,string"`
+
+	FeeCharged FeeDistribution `json:"fee_charged"`
+	MaxFee     FeeDistribution `json:"max_fee"`
 }
 
 // TransactionsPage contains records of transaction information returned by Horizon

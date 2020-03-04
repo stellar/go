@@ -1,6 +1,7 @@
 package tickerdb
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -17,6 +18,7 @@ func TestInsertOrUpdateAsset(t *testing.T) {
 
 	var session TickerSession
 	session.DB = db.Open()
+	session.Ctx = context.Background()
 	defer session.DB.Close()
 
 	// Run migrations to make sure the tests are run
@@ -51,6 +53,7 @@ func TestInsertOrUpdateAsset(t *testing.T) {
 
 	// Creating first asset:
 	firstTime := time.Now()
+	t.Log("firstTime:", firstTime)
 	a := Asset{
 		Code:          code,
 		IssuerAccount: issuerAccount,
@@ -86,6 +89,7 @@ func TestInsertOrUpdateAsset(t *testing.T) {
 
 	// Creating Seconde Asset:
 	secondTime := time.Now()
+	t.Log("secondTime:", secondTime)
 	a.LastValid = secondTime
 	a.LastChecked = secondTime
 	err = session.InsertOrUpdateAsset(&a, []string{"code", "issuer_account", "issuer_id"})
@@ -120,6 +124,7 @@ func TestInsertOrUpdateAsset(t *testing.T) {
 
 	// Creating Third Asset:
 	thirdTime := time.Now()
+	t.Log("thirdTime:", thirdTime)
 	a.LastValid = thirdTime
 	a.LastChecked = thirdTime
 	err = session.InsertOrUpdateAsset(&a, []string{"code", "issuer_id", "last_valid", "last_checked", "issuer_account"})
@@ -157,6 +162,7 @@ func TestGetAssetByCodeAndIssuerAccount(t *testing.T) {
 
 	var session TickerSession
 	session.DB = db.Open()
+	session.Ctx = context.Background()
 	defer session.DB.Close()
 
 	// Run migrations to make sure the tests are run
