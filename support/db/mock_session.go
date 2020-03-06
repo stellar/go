@@ -19,6 +19,11 @@ func (m *MockSession) Begin() error {
 	return args.Error(0)
 }
 
+func (m *MockSession) BeginTx(opts *sql.TxOptions) error {
+	args := m.Called(opts)
+	return args.Error(0)
+}
+
 func (m *MockSession) Rollback() error {
 	args := m.Called()
 	return args.Error(0)

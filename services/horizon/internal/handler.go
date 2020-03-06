@@ -4,12 +4,14 @@ import (
 	"bytes"
 	"context"
 	"crypto/sha256"
+	"database/sql"
 	"encoding/json"
 	"net/http"
 	"strings"
 	"time"
 
 	"github.com/stellar/go/services/horizon/internal/actions"
+	horizonContext "github.com/stellar/go/services/horizon/internal/context"
 	"github.com/stellar/go/services/horizon/internal/db2"
 	"github.com/stellar/go/services/horizon/internal/hchi"
 	"github.com/stellar/go/services/horizon/internal/ledger"
@@ -18,6 +20,7 @@ import (
 	"github.com/stellar/go/services/horizon/internal/render/sse"
 	"github.com/stellar/go/services/horizon/internal/toid"
 	"github.com/stellar/go/strkey"
+	"github.com/stellar/go/support/db"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/support/render/hal"
 	"github.com/stellar/go/support/render/httpjson"
@@ -413,6 +416,31 @@ func (handler streamableObjectActionHandler) ServeHTTP(
 	problem.Render(r.Context(), w, hProblem.NotAcceptable)
 }
 
+func repeatableReadStream(
+	r *http.Request,
+	generateEvents sse.GenerateEventsFunc,
+) sse.GenerateEventsFunc {
+	var session db.SessionInterface
+	if val := r.Context().Value(&horizonContext.SessionContextKey); val != nil {
+		session = val.(db.SessionInterface)
+	}
+
+	return func() ([]sse.Event, error) {
+		if session != nil {
+			err := session.BeginTx(&sql.TxOptions{
+				Isolation: sql.LevelRepeatableRead,
+				ReadOnly:  true,
+			})
+			if err != nil {
+				return nil, errors.Wrap(err, "Error starting repeatable read transaction")
+			}
+			defer session.Rollback()
+		}
+
+		return generateEvents()
+	}
+}
+
 func (handler streamableObjectActionHandler) renderStream(
 	w http.ResponseWriter,
 	r *http.Request,
@@ -423,7 +451,7 @@ func (handler streamableObjectActionHandler) renderStream(
 		w,
 		r,
 		singleObjectStreamLimit,
-		func() ([]sse.Event, error) {
+		repeatableReadStream(r, func() ([]sse.Event, error) {
 			response, err := handler.action.GetResource(w, r)
 			if err != nil {
 				return nil, err
@@ -434,7 +462,7 @@ func (handler streamableObjectActionHandler) renderStream(
 				return []sse.Event{sse.Event{Data: response}}, nil
 			}
 			return []sse.Event{}, nil
-		},
+		}),
 	)
 }
 
@@ -495,7 +523,7 @@ func (handler pageActionHandler) renderStream(w http.ResponseWriter, r *http.Req
 		w,
 		r,
 		int(pq.Limit),
-		func() ([]sse.Event, error) {
+		repeatableReadStream(r, func() ([]sse.Event, error) {
 			records, err := handler.action.GetResourcePage(w, r)
 			if err != nil {
 				return nil, err
@@ -515,7 +543,7 @@ func (handler pageActionHandler) renderStream(w http.ResponseWriter, r *http.Req
 			}
 
 			return events, nil
-		},
+		}),
 	)
 }
 

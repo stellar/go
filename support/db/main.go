@@ -105,6 +105,7 @@ type Session struct {
 }
 
 type SessionInterface interface {
+	BeginTx(opts *sql.TxOptions) error
 	Begin() error
 	Rollback() error
 	TruncateTables(tables []string) error

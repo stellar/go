@@ -2,6 +2,7 @@ package actions
 
 import (
 	"context"
+	"database/sql"
 	"net/http"
 	"strings"
 
@@ -25,7 +26,16 @@ func accountFromCoreDB(ctx context.Context, cq *core.Q, addr string) (*protocol.
 		resource       protocol.Account
 	)
 
-	err := cq.AccountByAddress(&coreRecord, addr)
+	err := cq.BeginTx(&sql.TxOptions{
+		Isolation: sql.LevelRepeatableRead,
+		ReadOnly:  true,
+	})
+	if err != nil {
+		return nil, errors.Wrap(err, "starting repeatable read transaction")
+	}
+	defer cq.Rollback()
+
+	err = cq.AccountByAddress(&coreRecord, addr)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting core account record")
 	}
