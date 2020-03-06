@@ -101,6 +101,8 @@ func Postgres(t *testing.T) *DB {
 	result.Dialect = "postgres"
 	result.t = t
 
+	t.Log("Test Database:", result.dbName)
+
 	pgUser := os.Getenv("PGUSER")
 	if len(pgUser) == 0 {
 		pgUser = "postgres"
