@@ -96,11 +96,10 @@ func execStatement(t *testing.T, pguser, query string) {
 // default port, have the command line postgres tools installed, and that the
 // current user has access to the server.  It panics on the event of a failure.
 func Postgres(t *testing.T) *DB {
-	db := DB{
-		dbName:  randomName(),
-		Dialect: "postgres",
-		t:       t,
-	}
+	var result DB
+	result.dbName = randomName()
+	result.Dialect = "postgres"
+	result.t = t
 
 	t.Log("Test Database:", dbName)
 
@@ -110,12 +109,12 @@ func Postgres(t *testing.T) *DB {
 	}
 
 	// create the db
-	execStatement(t, pgUser, "CREATE DATABASE "+pq.QuoteIdentifier(db.dbName))
+	execStatement(t, pgUser, "CREATE DATABASE "+pq.QuoteIdentifier(result.dbName))
 
-	result.DSN = fmt.Sprintf("postgres://%s@localhost/%s?sslmode=disable", pgUser, db.dbName)
+	result.DSN = fmt.Sprintf("postgres://%s@localhost/%s?sslmode=disable", pgUser, result.dbName)
 
 	result.closer = func() {
-		execStatement(t, pgUser, "DROP DATABASE "+pq.QuoteIdentifier(db.dbName))
+		execStatement(t, pgUser, "DROP DATABASE "+pq.QuoteIdentifier(result.dbName))
 	}
 
 	return &result
