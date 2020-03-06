@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"strings"
 	"testing"
 
@@ -856,5 +857,67 @@ func TestAccountSign_cannotParseTransaction(t *testing.T) {
 	require.NoError(t, err)
 
 	wantBody := `{"error": "The request was invalid in some way."}`
+	assert.JSONEq(t, wantBody, string(body))
+}
+
+// Test that the request can be made as content-text form instead of JSON.
+func TestAccountSign_validContentTypeForm(t *testing.T) {
+	s := account.NewMemoryStore()
+	s.Add(account.Account{
+		Address: "GA6HNE7O2N2IXIOBZNZ4IPTS2P6DSAJJF5GD5PDLH5GYOZ6WMPSKCXD4",
+	})
+	h := accountSignHandler{
+		Logger:            supportlog.DefaultLogger,
+		AccountStore:      s,
+		SigningKey:        keypair.MustParseFull("SBIB72S6JMTGJRC6LMKLC5XMHZ2IOHZSZH4SASTN47LECEEJ7QEB6EYK"),
+		NetworkPassphrase: network.TestNetworkPassphrase,
+	}
+
+	tx := txnbuild.Transaction{
+		Network:       network.TestNetworkPassphrase,
+		SourceAccount: &txnbuild.SimpleAccount{AccountID: "GA6HNE7O2N2IXIOBZNZ4IPTS2P6DSAJJF5GD5PDLH5GYOZ6WMPSKCXD4"},
+		Timebounds:    txnbuild.NewTimebounds(0, 1),
+		Operations: []txnbuild.Operation{
+			&txnbuild.SetOptions{
+				Signer: &txnbuild.Signer{
+					Address: "GD7CGJSJ5OBOU5KOP2UQDH3MPY75UTEY27HVV5XPSL2X6DJ2VGTOSXEU",
+					Weight:  20,
+				},
+			},
+		},
+	}
+	err := tx.Build()
+	require.NoError(t, err)
+	txEnc, err := tx.Base64()
+	require.NoError(t, err)
+	t.Log("Tx:", txEnc)
+
+	ctx := context.Background()
+	ctx = auth.NewContext(ctx, auth.Auth{Address: "GA6HNE7O2N2IXIOBZNZ4IPTS2P6DSAJJF5GD5PDLH5GYOZ6WMPSKCXD4"})
+	reqValues := url.Values{}
+	reqValues.Set("transaction", txEnc)
+	req := reqValues.Encode()
+	t.Log("Request Body:", req)
+	r := httptest.NewRequest("POST", "/GA6HNE7O2N2IXIOBZNZ4IPTS2P6DSAJJF5GD5PDLH5GYOZ6WMPSKCXD4/sign", strings.NewReader(req))
+	r = r.WithContext(ctx)
+	r.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+	w := httptest.NewRecorder()
+	m := chi.NewMux()
+	m.Post("/{address}/sign", h.ServeHTTP)
+	m.ServeHTTP(w, r)
+	resp := w.Result()
+
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+	assert.Equal(t, "application/json; charset=utf-8", resp.Header.Get("Content-Type"))
+
+	body, err := ioutil.ReadAll(resp.Body)
+	require.NoError(t, err)
+
+	wantBody := `{
+	"signer": "GBOG4KF66M4AFRBUHOTJQJRO7BGGFCSGIICTI5BHXHKXCWV2C67QRN5H",
+	"signature": "okp0ISR/hjU6ItsfXie6ArlQ3YWkBBqEAM5TJrthALdawV5DzcpuwBKi0QE/iBgoU7eY0hY3RPdxm8mXGNYfCQ==",
+	"network_passphrase": "Test SDF Network ; September 2015"
+}`
 	assert.JSONEq(t, wantBody, string(body))
 }
