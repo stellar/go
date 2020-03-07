@@ -7,7 +7,7 @@ import (
 	"github.com/stellar/go/support/db"
 )
 
-//go:generate go-bindata -ignore .+\.go$ -pkg db -o bindata.go ./...
+//go:generate go-bindata -nometadata -ignore .+\.go$ -pkg db -o bindata.go ./...
 
 // Migrations represents all of the schema migration
 var Migrations migrate.MigrationSource = &migrate.AssetMigrationSource{

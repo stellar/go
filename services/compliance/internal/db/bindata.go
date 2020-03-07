@@ -23,7 +23,7 @@ import (
 func bindataRead(data []byte, name string) ([]byte, error) {
 	gz, err := gzip.NewReader(bytes.NewBuffer(data))
 	if err != nil {
-		return nil, fmt.Errorf("read %q: %v", name, err)
+		return nil, fmt.Errorf("read %q: %w", name, err)
 	}
 
 	var buf bytes.Buffer
@@ -31,7 +31,7 @@ func bindataRead(data []byte, name string) ([]byte, error) {
 	clErr := gz.Close()
 
 	if err != nil {
-		return nil, fmt.Errorf("read %q: %v", name, err)
+		return nil, fmt.Errorf("read %q: %w", name, err)
 	}
 	if clErr != nil {
 		return nil, err
@@ -87,7 +87,7 @@ func latestSql() (*asset, error) {
 		return nil, err
 	}
 
-	info := bindataFileInfo{name: "latest.sql", size: 7872, mode: os.FileMode(0644), modTime: time.Unix(1559692126, 0)}
+	info := bindataFileInfo{name: "latest.sql", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
 	a := &asset{bytes: bytes, info: info, digest: [32]uint8{0xe6, 0xa3, 0x40, 0x86, 0x73, 0xaf, 0xcc, 0xe4, 0xb8, 0x1a, 0x9e, 0xfd, 0x6f, 0xed, 0xe9, 0xe2, 0x34, 0x9d, 0xac, 0x24, 0x6d, 0xf5, 0xe4, 0xd8, 0xb, 0xca, 0xe8, 0xf9, 0x3f, 0xe1, 0x73, 0x36}}
 	return a, nil
 }
@@ -107,7 +107,7 @@ func migrations01_initSql() (*asset, error) {
 		return nil, err
 	}
 
-	info := bindataFileInfo{name: "migrations/01_init.sql", size: 992, mode: os.FileMode(0644), modTime: time.Unix(1559692126, 0)}
+	info := bindataFileInfo{name: "migrations/01_init.sql", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
 	a := &asset{bytes: bytes, info: info, digest: [32]uint8{0x1c, 0x1f, 0x65, 0xdd, 0x6e, 0xc, 0xa7, 0x34, 0x47, 0xb6, 0x79, 0x15, 0xe3, 0x89, 0x5, 0xce, 0xb2, 0x6d, 0x6a, 0xc3, 0xc3, 0xb7, 0xcd, 0x41, 0xe3, 0x70, 0x61, 0x88, 0x67, 0xe2, 0x14, 0x3e}}
 	return a, nil
 }
@@ -127,7 +127,7 @@ func migrations02_auth_dataSql() (*asset, error) {
 		return nil, err
 	}
 
-	info := bindataFileInfo{name: "migrations/02_auth_data.sql", size: 272, mode: os.FileMode(0644), modTime: time.Unix(1559692126, 0)}
+	info := bindataFileInfo{name: "migrations/02_auth_data.sql", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
 	a := &asset{bytes: bytes, info: info, digest: [32]uint8{0x44, 0xe, 0xd, 0x9d, 0x9f, 0xc7, 0x29, 0x66, 0x52, 0x32, 0x41, 0x21, 0xaf, 0x86, 0xc0, 0x7e, 0x2d, 0xa9, 0x63, 0xfc, 0x67, 0x55, 0xc5, 0xca, 0xff, 0xe8, 0xca, 0x7d, 0x6a, 0x4c, 0x84, 0xaf}}
 	return a, nil
 }
@@ -147,7 +147,7 @@ func migrations03_table_namesSql() (*asset, error) {
 		return nil, err
 	}
 
-	info := bindataFileInfo{name: "migrations/03_table_names.sql", size: 436, mode: os.FileMode(0644), modTime: time.Unix(1559692126, 0)}
+	info := bindataFileInfo{name: "migrations/03_table_names.sql", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
 	a := &asset{bytes: bytes, info: info, digest: [32]uint8{0xd7, 0x1d, 0xf4, 0xb6, 0xa, 0xf9, 0xd2, 0x5b, 0xde, 0xed, 0xda, 0x7, 0xef, 0x14, 0x75, 0x5d, 0xc3, 0xa6, 0xa5, 0xfc, 0x57, 0x63, 0xcc, 0x25, 0xe0, 0x1a, 0x46, 0x57, 0x87, 0x74, 0xfc, 0x8}}
 	return a, nil
 }
@@ -243,12 +243,9 @@ func AssetNames() []string {
 
 // _bindata is a table, holding each asset generator, mapped to its name.
 var _bindata = map[string]func() (*asset, error){
-	"latest.sql": latestSql,
-
-	"migrations/01_init.sql": migrations01_initSql,
-
-	"migrations/02_auth_data.sql": migrations02_auth_dataSql,
-
+	"latest.sql":                    latestSql,
+	"migrations/01_init.sql":        migrations01_initSql,
+	"migrations/02_auth_data.sql":   migrations02_auth_dataSql,
 	"migrations/03_table_names.sql": migrations03_table_namesSql,
 }
 
