@@ -1,6 +1,8 @@
 package history
 
 import (
+	"sort"
+
 	sq "github.com/Masterminds/squirrel"
 	"github.com/stellar/go/support/db"
 	"github.com/stellar/go/support/errors"
@@ -40,6 +42,11 @@ func (q *Q) CreateAssets(assets []xdr.Asset, batchSize int) (map[string]Asset, e
 		Suffix:       "ON CONFLICT (asset_code, asset_type, asset_issuer) DO NOTHING",
 	}
 
+	// sort assets before inserting rows into history_assets to prevent deadlocks on acquiring a ShareLock
+	// https://github.com/stellar/go/issues/2370
+	sort.Slice(assets, func(i, j int) bool {
+		return assets[i].String() < assets[j].String()
+	})
 	for _, asset := range assets {
 		var assetType, assetCode, assetIssuer string
 		err := asset.Extract(&assetType, &assetCode, &assetIssuer)

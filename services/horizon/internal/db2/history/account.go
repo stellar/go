@@ -1,6 +1,8 @@
 package history
 
 import (
+	"sort"
+
 	sq "github.com/Masterminds/squirrel"
 	"github.com/stellar/go/services/horizon/internal/db2"
 	"github.com/stellar/go/support/db"
@@ -59,6 +61,9 @@ func (q *Q) CreateAccounts(addresses []string, batchSize int) (map[string]int64,
 		Suffix:       "ON CONFLICT (address) DO NOTHING",
 	}
 
+	// sort assets before inserting rows into history_assets to prevent deadlocks on acquiring a ShareLock
+	// https://github.com/stellar/go/issues/2370
+	sort.Strings(addresses)
 	for _, address := range addresses {
 		err := builder.Row(map[string]interface{}{
 			"address": address,
