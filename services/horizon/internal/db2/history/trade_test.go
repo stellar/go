@@ -313,28 +313,3 @@ func TestBatchInsertTrade(t *testing.T) {
 		)
 	}
 }
-
-func createTradeRows(
-	tt *test.T, q *Q,
-	idToAccount map[int64]xdr.AccountId,
-	idToAsset map[int64]xdr.Asset,
-	entries ...InsertTrade,
-) {
-	for _, entry := range entries {
-		entry.Trade.SellerId = idToAccount[entry.SellerAccountID]
-		entry.Trade.AssetSold = idToAsset[entry.SoldAssetID]
-		entry.Trade.AssetBought = idToAsset[entry.BoughtAssetID]
-
-		err := q.InsertTrade(
-			entry.HistoryOperationID,
-			entry.Order,
-			idToAccount[entry.BuyerAccountID],
-			entry.BuyOfferExists,
-			xdr.OfferEntry{OfferId: xdr.Int64(entry.BuyOfferID)},
-			entry.Trade,
-			entry.SellPrice,
-			supportTime.MillisFromSeconds(entry.LedgerCloseTime.Unix()),
-		)
-		tt.Assert.NoError(err)
-	}
-}

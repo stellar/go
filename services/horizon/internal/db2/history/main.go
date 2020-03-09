@@ -149,11 +149,6 @@ type AccountsBatchInsertBuilder interface {
 	Exec() error
 }
 
-// accountsBatchInsertBuilder is a simple wrapper around db.BatchInsertBuilder
-type accountsBatchInsertBuilder struct {
-	builder db.BatchInsertBuilder
-}
-
 type IngestionQ interface {
 	QAccounts
 	QAssetStats
@@ -193,8 +188,6 @@ type IngestionQ interface {
 type QAccounts interface {
 	NewAccountsBatchInsertBuilder(maxBatchSize int) AccountsBatchInsertBuilder
 	GetAccountsByIDs(ids []string) ([]AccountEntry, error)
-	InsertAccount(account xdr.AccountEntry, lastModifiedLedger xdr.Uint32) (int64, error)
-	UpdateAccount(account xdr.AccountEntry, lastModifiedLedger xdr.Uint32) (int64, error)
 	UpsertAccounts(accounts []xdr.LedgerEntry) error
 	RemoveAccount(accountID string) (int64, error)
 }
