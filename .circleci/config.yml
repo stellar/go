@@ -14,6 +14,14 @@ commands:
           name: Run gofmt
           command: ./gofmt.sh
 
+  # gogenerate validates that any generated code has been updated if needed.
+  gogenerate:
+    steps:
+      - checkout
+      - run:
+          name: Check generated code
+          command: ./gogenerate.sh
+
   # govet does govet checks in the entire codebase.
   govet:
     steps:
@@ -144,6 +152,7 @@ jobs:
       - install_go_deps
       - check_go_deps
       - gofmt
+      - gogenerate
       - govet
       - staticcheck
 
