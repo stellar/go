@@ -434,9 +434,5 @@ func markStateInvalid(historyQ history.IngestionQ, err error) {
 
 func isCancelledError(err error) bool {
 	cause := errors.Cause(err)
-	if err == nil {
-		return false
-	}
-
 	return cause == context.Canceled || cause == db.ErrCancelled
 }
