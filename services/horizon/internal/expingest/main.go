@@ -347,9 +347,7 @@ func (s *System) loadOffersIntoMemory(sequence uint32) error {
 
 func (s *System) maybeVerifyState(lastIngestedLedger uint32) {
 	stateInvalid, err := s.historyQ.GetExpStateInvalid()
-	if cause := errors.Cause(err); cause != nil &&
-		cause != context.Canceled &&
-		cause != db.ErrCancelled {
+	if err != nil && !isCancelledError(err) {
 		log.WithField("err", err).Error("Error getting state invalid value")
 	}
 
@@ -363,13 +361,12 @@ func (s *System) maybeVerifyState(lastIngestedLedger uint32) {
 
 			err := s.verifyState(graphOffersMap, true)
 			if err != nil {
-				cause := errors.Cause(err)
-				if cause == context.Canceled || cause == db.ErrCancelled {
+				if isCancelledError(err) {
 					return
 				}
 
 				errorCount := s.incrementStateVerificationErrors()
-				switch cause.(type) {
+				switch errors.Cause(err).(type) {
 				case ingesterrors.StateError:
 					markStateInvalid(s.historyQ, err)
 				default:
@@ -435,4 +432,13 @@ func markStateInvalid(historyQ history.IngestionQ, err error) {
 	if err := q.UpdateExpStateInvalid(true); err != nil {
 		log.WithField("err", err).Error(updateExpStateInvalidErrMsg)
 	}
+}
+
+func isCancelledError(err error) bool {
+	cause := errors.Cause(err)
+	if err == nil {
+		return false
+	}
+
+	return cause == context.Canceled || cause == db.ErrCancelled
 }
