@@ -10,7 +10,7 @@ import (
 	"github.com/stellar/go/support/db"
 )
 
-//go:generate go-bindata -ignore .+\.go$ -pkg bdata -o migrations/bindata.go ./...
+//go:generate go-bindata -nometadata -ignore .+\.go$ -pkg bdata -o migrations/bindata.go ./...
 
 // TickerSession provides helper methods for making queries against `DB`.
 type TickerSession struct {
