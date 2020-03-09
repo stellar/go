@@ -272,9 +272,7 @@ func (s *System) runStateMachine(cur stateMachineNode) error {
 		}
 
 		next, err := cur.run(s)
-		if cause := errors.Cause(err); cause != nil &&
-			cause != context.Canceled &&
-			cause != db.ErrCancelled {
+		if err != nil && !isCancelledError(err) {
 			log.WithFields(logpkg.F{
 				"error":         err,
 				"current_state": cur,
