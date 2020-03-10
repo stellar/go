@@ -9,8 +9,6 @@ import (
 	"github.com/stellar/go/support/db/dbtest"
 )
 
-var v string
-
 func Open(t *testing.T) *dbtest.DB {
 	db := dbtest.Postgres(t)
 
