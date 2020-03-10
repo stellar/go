@@ -1,6 +1,7 @@
 package expingest
 
 import (
+	"bytes"
 	"context"
 	"database/sql"
 	"testing"
@@ -11,6 +12,7 @@ import (
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/support/db"
 	"github.com/stellar/go/support/errors"
+	logpkg "github.com/stellar/go/support/log"
 	"github.com/stellar/go/xdr"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -163,6 +165,72 @@ func TestStateMachineRunReturnsErrorWhenNextStateIsShutdownWithError(t *testing.
 	err := system.runStateMachine(verifyRangeState{})
 	assert.Error(t, err)
 	assert.EqualError(t, err, "invalid range: [0, 0]")
+}
+
+func TestMaybeVerifyStateGetExpStateInvalidDBErrCancelOrContextCanceled(t *testing.T) {
+	historyQ := &mockDBQ{}
+	system := &System{
+		historyQ: historyQ,
+		ctx:      context.Background(),
+	}
+
+	var out bytes.Buffer
+	logger := logpkg.New()
+	logger.Logger.Out = &out
+	done := logger.StartTest(logpkg.InfoLevel)
+
+	oldLogger := log
+	log = logger
+	defer func() { log = oldLogger }()
+
+	historyQ.On("GetExpStateInvalid").Return(false, db.ErrCancelled).Once()
+	system.maybeVerifyState(0)
+
+	historyQ.On("GetExpStateInvalid").Return(false, context.Canceled).Once()
+	system.maybeVerifyState(0)
+
+	logged := done()
+	assert.Len(t, logged, 0)
+	historyQ.AssertExpectations(t)
+}
+func TestMaybeVerifyInternalDBErrCancelOrContextCanceled(t *testing.T) {
+	historyQ := &mockDBQ{}
+	graph := &mockOrderBookGraph{}
+	system := &System{
+		historyQ: historyQ,
+		ctx:      context.Background(),
+		graph:    graph,
+	}
+
+	var out bytes.Buffer
+	logger := logpkg.New()
+	logger.Logger.Out = &out
+	done := logger.StartTest(logpkg.InfoLevel)
+
+	oldLogger := log
+	log = logger
+	defer func() { log = oldLogger }()
+
+	graph.On("OffersMap").Return(map[xdr.Int64]xdr.OfferEntry{}).Twice()
+	historyQ.On("GetExpStateInvalid").Return(false, nil).Twice()
+	historyQ.On("Rollback").Return(nil).Twice()
+	historyQ.On("CloneIngestionQ").Return(historyQ).Twice()
+
+	historyQ.On("BeginTx", mock.Anything).Return(db.ErrCancelled).Once()
+	system.maybeVerifyState(63)
+	system.wg.Wait()
+
+	historyQ.On("BeginTx", mock.Anything).Return(context.Canceled).Once()
+	system.maybeVerifyState(63)
+	system.wg.Wait()
+
+	logged := done()
+
+	// it logs "State verification finished" twice, but no errors
+	assert.Len(t, logged, 2)
+
+	graph.AssertExpectations(t)
+	historyQ.AssertExpectations(t)
 }
 
 type mockDBQ struct {
