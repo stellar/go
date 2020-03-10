@@ -592,7 +592,7 @@ func (h reingestHistoryRangeState) String() string {
 	)
 }
 
-func (h reingestHistoryRangeState) ingestRange(s *System, createTx bool, fromLedger, toLedger uint32) error {
+func (h reingestHistoryRangeState) ingestRange(s *System, fromLedger, toLedger uint32) error {
 	if s.historyQ.GetTx() == nil {
 		return errors.New("expected transaction to be present")
 	}
@@ -638,7 +638,7 @@ func (h reingestHistoryRangeState) run(s *System) (transition, error) {
 			return stop(), errors.Wrap(err, getLastIngestedErrMsg)
 		}
 
-		if err := h.ingestRange(s, false, h.fromLedger, h.toLedger); err != nil {
+		if err := h.ingestRange(s, h.fromLedger, h.toLedger); err != nil {
 			return stop(), err
 		}
 
@@ -664,7 +664,7 @@ func (h reingestHistoryRangeState) run(s *System) (transition, error) {
 
 				// ingest each ledger in a separate transaction to prevent deadlocks
 				// when acquiring ShareLocks from multiple parallel reingest range processes
-				if err := h.ingestRange(s, true, ledger, ledger); err != nil {
+				if err := h.ingestRange(s, ledger, ledger); err != nil {
 					return err
 				}
 
