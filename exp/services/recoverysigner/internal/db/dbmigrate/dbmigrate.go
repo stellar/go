@@ -1,14 +1,16 @@
-package db
+package dbmigrate
 
 import (
 	"github.com/jmoiron/sqlx"
 	migrate "github.com/rubenv/sql-migrate"
-	"github.com/stellar/go/exp/services/recoverysigner/internal/db/migrations"
 )
 
+//go:generate go-bindata -nometadata -ignore .+\.(go|swp)$ -pkg dbmigrate -o dbmigrate_generated.go ./migrations
+
 var migrationSource = &migrate.AssetMigrationSource{
-	Asset:    migrations.Asset,
-	AssetDir: migrations.AssetDir,
+	Asset:    Asset,
+	AssetDir: AssetDir,
+	Dir:      "migrations",
 }
 
 // PlanMigration finds the migrations that would be applied if Migrate was to

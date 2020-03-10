@@ -19,7 +19,7 @@ func Open(t *testing.T) *dbtest.DB {
 	// packages and tests are executed with the current working directory set
 	// to the package the test lives in.
 	_, filename, _, _ := runtime.Caller(0)
-	migrationsDir := path.Join(path.Dir(filename), "..", "migrations")
+	migrationsDir := path.Join(path.Dir(filename), "..", "dbmigrate", "migrations")
 
 	migrations := &migrate.FileMigrationSource{
 		Dir: migrationsDir,

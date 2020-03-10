@@ -8,6 +8,7 @@ import (
 	migrate "github.com/rubenv/sql-migrate"
 	"github.com/spf13/cobra"
 	dbpkg "github.com/stellar/go/exp/services/recoverysigner/internal/db"
+	"github.com/stellar/go/exp/services/recoverysigner/internal/db/dbmigrate"
 	"github.com/stellar/go/support/config"
 	supportlog "github.com/stellar/go/support/log"
 )
@@ -81,7 +82,7 @@ func (c *DBMigrateCommand) Run(opts Options, args []string) {
 		}
 	}
 
-	migrations, err := dbpkg.PlanMigration(db, dir, count)
+	migrations, err := dbmigrate.PlanMigration(db, dir, count)
 	if err != nil {
 		c.Logger.Errorf("Error planning migration: %s", err.Error())
 		return
@@ -90,7 +91,7 @@ func (c *DBMigrateCommand) Run(opts Options, args []string) {
 		c.Logger.Infof("Migrations to apply %s: %s", dirStr, strings.Join(migrations, ", "))
 	}
 
-	n, err := dbpkg.Migrate(db, dir, count)
+	n, err := dbmigrate.Migrate(db, dir, count)
 	if err != nil {
 		c.Logger.Errorf("Error applying migrations: %s", err.Error())
 		return

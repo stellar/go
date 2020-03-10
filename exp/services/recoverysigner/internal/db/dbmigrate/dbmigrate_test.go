@@ -1,13 +1,30 @@
-package db
+package dbmigrate
 
 import (
+	"net/http"
+	"os"
+	"strings"
 	"testing"
 
+	assetfs "github.com/elazarl/go-bindata-assetfs"
 	migrate "github.com/rubenv/sql-migrate"
+	"github.com/shurcooL/httpfs/filter"
 	"github.com/stellar/go/exp/services/recoverysigner/internal/db/dbtest"
+	supportHttp "github.com/stellar/go/support/http"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+func TestGeneratedAssets(t *testing.T) {
+	localAssets := http.FileSystem(filter.Keep(http.Dir("."), func(path string, fi os.FileInfo) bool {
+		return fi.IsDir() || strings.HasSuffix(path, ".sql")
+	}))
+	generatedAssets := &assetfs.AssetFS{Asset: Asset, AssetDir: AssetDir, AssetInfo: AssetInfo}
+
+	if !supportHttp.EqualFileSystems(localAssets, generatedAssets, "/") {
+		t.Fatalf("generated migrations does not match local migrations")
+	}
+}
 
 func TestPlanMigration_noneToApply(t *testing.T) {
 	db := dbtest.Open(t)

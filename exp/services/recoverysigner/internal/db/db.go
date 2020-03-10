@@ -5,5 +5,5 @@ import (
 )
 
 func Open(dataSourceName string) (*sqlx.DB, error) {
-	return sqlx.Connect("postgres", dataSourceName)
+	return sqlx.Open("postgres", dataSourceName)
 }
