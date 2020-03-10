@@ -1,3 +1,3 @@
 package migrations
 
-//go:generate go-bindata -ignore .+\.go -pkg migrations -o migrations_generated.go ./
+//go:generate go-bindata -nometadata -ignore .+\.(go|swp)$ -pkg migrations -o migrations_generated.go ./
