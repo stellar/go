@@ -272,9 +272,7 @@ func (s *System) runStateMachine(cur stateMachineNode) error {
 		}
 
 		next, err := cur.run(s)
-		if cause := errors.Cause(err); cause != nil &&
-			cause != context.Canceled &&
-			cause != db.ErrCancelled {
+		if err != nil && !isCancelledError(err) {
 			log.WithFields(logpkg.F{
 				"error":         err,
 				"current_state": cur,
@@ -347,7 +345,7 @@ func (s *System) loadOffersIntoMemory(sequence uint32) error {
 
 func (s *System) maybeVerifyState(lastIngestedLedger uint32) {
 	stateInvalid, err := s.historyQ.GetExpStateInvalid()
-	if err != nil {
+	if err != nil && !isCancelledError(err) {
 		log.WithField("err", err).Error("Error getting state invalid value")
 	}
 
@@ -361,6 +359,10 @@ func (s *System) maybeVerifyState(lastIngestedLedger uint32) {
 
 			err := s.verifyState(graphOffersMap, true)
 			if err != nil {
+				if isCancelledError(err) {
+					return
+				}
+
 				errorCount := s.incrementStateVerificationErrors()
 				switch errors.Cause(err).(type) {
 				case ingesterrors.StateError:
@@ -428,4 +430,9 @@ func markStateInvalid(historyQ history.IngestionQ, err error) {
 	if err := q.UpdateExpStateInvalid(true); err != nil {
 		log.WithField("err", err).Error(updateExpStateInvalidErrMsg)
 	}
+}
+
+func isCancelledError(err error) bool {
+	cause := errors.Cause(err)
+	return cause == context.Canceled || cause == db.ErrCancelled
 }
