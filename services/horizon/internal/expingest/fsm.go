@@ -535,8 +535,10 @@ func (h historyRangeState) run(s *System) (transition, error) {
 		return start(), nil
 	}
 
-	if err = ingestHistoryRange(s, h.fromLedger, h.toLedger); err != nil {
-		return start(), err
+	for cur := h.fromLedger; cur <= h.toLedger; cur++ {
+		if err = runTransactionProcessorsOnLedger(s, cur); err != nil {
+			return start(), err
+		}
 	}
 
 	if err = s.historyQ.Commit(); err != nil {
@@ -546,34 +548,32 @@ func (h historyRangeState) run(s *System) (transition, error) {
 	return start(), nil
 }
 
-func ingestHistoryRange(s *System, from, to uint32) error {
-	for cur := from; cur <= to; cur++ {
-		log.WithFields(logpkg.F{
-			"sequence": cur,
+func runTransactionProcessorsOnLedger(s *System, ledger uint32) error {
+	log.WithFields(logpkg.F{
+		"sequence": ledger,
+		"state":    false,
+		"ledger":   true,
+		"graph":    false,
+		"commit":   false,
+	}).Info("Processing ledger")
+	startTime := time.Now()
+
+	ledgerTransactionStats, err := s.runner.RunTransactionProcessorsOnLedger(ledger)
+	if err != nil {
+		return errors.Wrap(err, fmt.Sprintf("error processing ledger sequence=%d", ledger))
+	}
+
+	log.
+		WithFields(ledgerTransactionStats.Map()).
+		WithFields(logpkg.F{
+			"sequence": ledger,
+			"duration": time.Since(startTime).Seconds(),
 			"state":    false,
 			"ledger":   true,
 			"graph":    false,
 			"commit":   false,
-		}).Info("Processing ledger")
-		startTime := time.Now()
-
-		ledgerTransactionStats, err := s.runner.RunTransactionProcessorsOnLedger(cur)
-		if err != nil {
-			return errors.Wrap(err, fmt.Sprintf("error processing ledger sequence=%d", cur))
-		}
-
-		log.
-			WithFields(ledgerTransactionStats.Map()).
-			WithFields(logpkg.F{
-				"sequence": cur,
-				"duration": time.Since(startTime).Seconds(),
-				"state":    false,
-				"ledger":   true,
-				"graph":    false,
-				"commit":   false,
-			}).
-			Info("Processed ledger")
-	}
+		}).
+		Info("Processed ledger")
 	return nil
 }
 
@@ -592,6 +592,34 @@ func (h reingestHistoryRangeState) String() string {
 	)
 }
 
+func (h reingestHistoryRangeState) ingestRange(s *System, fromLedger, toLedger uint32) error {
+	if s.historyQ.GetTx() == nil {
+		return errors.New("expected transaction to be present")
+	}
+
+	// Clear history data before ingesting - used in `reingest range` command.
+	start, end, err := toid.LedgerRangeInclusive(
+		int32(fromLedger),
+		int32(toLedger),
+	)
+	if err != nil {
+		return errors.Wrap(err, "Invalid range")
+	}
+
+	err = s.historyQ.DeleteRangeAll(start, end)
+	if err != nil {
+		return errors.Wrap(err, "error in DeleteRangeAll")
+	}
+
+	for cur := fromLedger; cur <= toLedger; cur++ {
+		if err = runTransactionProcessorsOnLedger(s, cur); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 // reingestHistoryRangeState is used as a command to reingest historical data
 func (h reingestHistoryRangeState) run(s *System) (transition, error) {
 	if h.fromLedger == 0 || h.toLedger == 0 ||
@@ -599,15 +627,23 @@ func (h reingestHistoryRangeState) run(s *System) (transition, error) {
 		return stop(), errors.Errorf("invalid range: [%d, %d]", h.fromLedger, h.toLedger)
 	}
 
-	if err := s.historyQ.Begin(); err != nil {
-		return stop(), errors.Wrap(err, "Error starting a transaction")
-	}
-	defer s.historyQ.Rollback()
-
 	if h.force {
+		if err := s.historyQ.Begin(); err != nil {
+			return stop(), errors.Wrap(err, "Error starting a transaction")
+		}
+		defer s.historyQ.Rollback()
+
 		// acquire distributed lock so no one else can perform ingestion operations.
 		if _, err := s.historyQ.GetLastLedgerExpIngest(); err != nil {
 			return stop(), errors.Wrap(err, getLastIngestedErrMsg)
+		}
+
+		if err := h.ingestRange(s, h.fromLedger, h.toLedger); err != nil {
+			return stop(), err
+		}
+
+		if err := s.historyQ.Commit(); err != nil {
+			return stop(), errors.Wrap(err, commitErrMsg)
 		}
 	} else {
 		lastIngestedLedger, err := s.historyQ.GetLastLedgerExpIngestNonBlocking()
@@ -618,28 +654,30 @@ func (h reingestHistoryRangeState) run(s *System) (transition, error) {
 		if lastIngestedLedger > 0 && h.toLedger >= lastIngestedLedger {
 			return stop(), ErrReingestRangeConflict
 		}
-	}
 
-	// Clear history data before ingesting - used in `reingest range` command.
-	start, end, err := toid.LedgerRangeInclusive(
-		int32(h.fromLedger),
-		int32(h.toLedger),
-	)
-	if err != nil {
-		return stop(), errors.Wrap(err, "Invalid range")
-	}
+		for cur := h.fromLedger; cur <= h.toLedger; cur++ {
+			err := func(ledger uint32) error {
+				if err := s.historyQ.Begin(); err != nil {
+					return errors.Wrap(err, "Error starting a transaction")
+				}
+				defer s.historyQ.Rollback()
 
-	err = s.historyQ.DeleteRangeAll(start, end)
-	if err != nil {
-		return stop(), errors.Wrap(err, "error in DeleteRangeAll")
-	}
+				// ingest each ledger in a separate transaction to prevent deadlocks
+				// when acquiring ShareLocks from multiple parallel reingest range processes
+				if err := h.ingestRange(s, ledger, ledger); err != nil {
+					return err
+				}
 
-	if err = ingestHistoryRange(s, h.fromLedger, h.toLedger); err != nil {
-		return stop(), err
-	}
+				if err := s.historyQ.Commit(); err != nil {
+					return errors.Wrap(err, commitErrMsg)
+				}
 
-	if err := s.historyQ.Commit(); err != nil {
-		return stop(), errors.Wrap(err, commitErrMsg)
+				return nil
+			}(cur)
+			if err != nil {
+				return stop(), err
+			}
+		}
 	}
 
 	return stop(), nil

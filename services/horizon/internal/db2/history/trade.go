@@ -7,8 +7,6 @@ import (
 	sq "github.com/Masterminds/squirrel"
 	"github.com/stellar/go/services/horizon/internal/db2"
 	"github.com/stellar/go/services/horizon/internal/toid"
-	"github.com/stellar/go/support/errors"
-	supportTime "github.com/stellar/go/support/time"
 	"github.com/stellar/go/xdr"
 )
 
@@ -216,114 +214,6 @@ var selectReverseTradeFields = sq.Select(
 	"htrd.price_d as price_n",
 	"htrd.price_n as price_d",
 )
-
-var tradesInsert = sq.Insert("history_trades").Columns(
-	"history_operation_id",
-	"\"order\"",
-	"ledger_closed_at",
-	"offer_id",
-	"base_offer_id",
-	"base_account_id",
-	"base_asset_id",
-	"base_amount",
-	"counter_offer_id",
-	"counter_account_id",
-	"counter_asset_id",
-	"counter_amount",
-	"base_is_seller",
-	"price_n",
-	"price_d",
-)
-
-// Trade records a trade into the history_trades table
-func (q *Q) InsertTrade(
-	opid int64,
-	order int32,
-	buyer xdr.AccountId,
-	buyOfferExists bool,
-	buyOffer xdr.OfferEntry,
-	trade xdr.ClaimOfferAtom,
-	sellPrice xdr.Price,
-	ledgerClosedAt supportTime.Millis,
-) error {
-	sellerAccountId, err := q.GetCreateAccountID(trade.SellerId)
-	if err != nil {
-		return errors.Wrap(err, "failed to load seller account id")
-	}
-
-	buyerAccountId, err := q.GetCreateAccountID(buyer)
-	if err != nil {
-		return errors.Wrap(err, "failed to load buyer account id")
-	}
-
-	soldAssetId, err := q.GetCreateAssetID(trade.AssetSold)
-	if err != nil {
-		return errors.Wrap(err, "failed to get sold asset id")
-	}
-
-	boughtAssetId, err := q.GetCreateAssetID(trade.AssetBought)
-	if err != nil {
-		return errors.Wrap(err, "failed to get bought asset id")
-	}
-
-	sellOfferId := EncodeOfferId(uint64(trade.OfferId), CoreOfferIDType)
-
-	// if the buy offer exists, encode the stellar core generated id as the offer id
-	// if not, encode the toid as the offer id
-	var buyOfferId int64
-	if buyOfferExists {
-		buyOfferId = EncodeOfferId(uint64(buyOffer.OfferId), CoreOfferIDType)
-	} else {
-		buyOfferId = EncodeOfferId(uint64(opid), TOIDType)
-	}
-
-	orderPreserved, baseAssetId, counterAssetId := getCanonicalAssetOrder(soldAssetId, boughtAssetId)
-
-	var baseAccountId, counterAccountId int64
-	var baseAmount, counterAmount xdr.Int64
-	var baseOfferId, counterOfferId int64
-
-	if orderPreserved {
-		baseAccountId = sellerAccountId
-		baseAmount = trade.AmountSold
-		counterAccountId = buyerAccountId
-		counterAmount = trade.AmountBought
-		baseOfferId = sellOfferId
-		counterOfferId = buyOfferId
-	} else {
-		baseAccountId = buyerAccountId
-		baseAmount = trade.AmountBought
-		counterAccountId = sellerAccountId
-		counterAmount = trade.AmountSold
-		baseOfferId = buyOfferId
-		counterOfferId = sellOfferId
-		sellPrice.Invert()
-	}
-
-	sql := tradesInsert.Values(
-		opid,
-		order,
-		ledgerClosedAt.ToTime(),
-		trade.OfferId,
-		baseOfferId,
-		baseAccountId,
-		baseAssetId,
-		baseAmount,
-		counterOfferId,
-		counterAccountId,
-		counterAssetId,
-		counterAmount,
-		orderPreserved,
-		sellPrice.N,
-		sellPrice.D,
-	)
-
-	_, err = q.Exec(sql)
-	if err != nil {
-		return errors.Wrap(err, "failed to exec sql")
-	}
-	return nil
-}
 
 func getCanonicalAssetOrder(assetId1 int64, assetId2 int64) (orderPreserved bool, baseAssetId int64, counterAssetId int64) {
 	if assetId1 < assetId2 {

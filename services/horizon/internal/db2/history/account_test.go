@@ -1,6 +1,7 @@
 package history
 
 import (
+	"sort"
 	"testing"
 
 	"github.com/stellar/go/services/horizon/internal/test"
@@ -59,6 +60,41 @@ func assertAccountsContainAddresses(tt *test.T, accounts map[string]int64, addre
 		tt.Assert.False(set[accountID])
 		set[accountID] = true
 	}
+}
+
+func TestCreateAccountsSortedOrder(t *testing.T) {
+	tt := test.Start(t)
+	defer tt.Finish()
+	test.ResetHorizonDB(t, tt.HorizonDB)
+	q := &Q{tt.HorizonSession()}
+
+	addresses := []string{
+		"GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H",
+		"GCYVFGI3SEQJGBNQQG7YCMFWEYOHK3XPVOVPA6C566PXWN4SN7LILZSM",
+		"GBYSBDAJZMHL5AMD7QXQ3JEP3Q4GLKADWIJURAAHQALNAWD6Z5XF2RAC",
+		"GAOQJGUAB7NI7K7I62ORBXMN3J4SSWQUQ7FOEPSDJ322W2HMCNWPHXFB",
+	}
+	accounts, err := q.CreateAccounts(addresses, 1)
+	tt.Assert.NoError(err)
+
+	idToAddress := map[int64]string{}
+	sortedIDs := []int64{}
+	for address, id := range accounts {
+		idToAddress[id] = address
+		sortedIDs = append(sortedIDs, id)
+	}
+
+	sort.Slice(sortedIDs, func(i, j int) bool {
+		return sortedIDs[i] < sortedIDs[j]
+	})
+	sort.Strings(addresses)
+
+	values := []string{}
+	for _, id := range sortedIDs {
+		values = append(values, idToAddress[id])
+	}
+
+	tt.Assert.Equal(addresses, values)
 }
 
 func TestCreateAccounts(t *testing.T) {

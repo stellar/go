@@ -1,11 +1,54 @@
 package history
 
 import (
+	"sort"
 	"testing"
 
 	"github.com/stellar/go/services/horizon/internal/test"
 	"github.com/stellar/go/xdr"
 )
+
+func TestCreateAssetsSortedOrder(t *testing.T) {
+	tt := test.Start(t)
+	defer tt.Finish()
+	test.ResetHorizonDB(t, tt.HorizonDB)
+
+	q := &Q{tt.HorizonSession()}
+	assets := []xdr.Asset{
+		usdAsset, nativeAsset, eurAsset,
+		xdr.MustNewCreditAsset("CNY", issuer.Address()),
+	}
+	assetMap, err := q.CreateAssets(
+		assets,
+		2,
+	)
+	tt.Assert.NoError(err)
+
+	idsToAsset := map[int64]string{}
+	sortedIDs := []int64{}
+	for assetString, asset := range assetMap {
+		idsToAsset[asset.ID] = assetString
+		sortedIDs = append(sortedIDs, asset.ID)
+	}
+
+	sort.Slice(assets, func(i, j int) bool {
+		return assets[i].String() < assets[j].String()
+	})
+	sort.Slice(sortedIDs, func(i, j int) bool {
+		return sortedIDs[i] < sortedIDs[j]
+	})
+
+	var assetStrings []string
+	for _, asset := range assets {
+		assetStrings = append(assetStrings, asset.String())
+	}
+
+	var values []string
+	for _, id := range sortedIDs {
+		values = append(values, idsToAsset[id])
+	}
+	tt.Assert.Equal(assetStrings, values)
+}
 
 func TestCreateAssets(t *testing.T) {
 	tt := test.Start(t)

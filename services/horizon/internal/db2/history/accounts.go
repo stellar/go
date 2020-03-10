@@ -83,37 +83,6 @@ func accountToMap(account xdr.AccountEntry, lastModifiedLedger xdr.Uint32) map[s
 	}
 }
 
-// InsertAccount creates a row in the accounts table.
-// Returns number of rows affected and error.
-func (q *Q) InsertAccount(account xdr.AccountEntry, lastModifiedLedger xdr.Uint32) (int64, error) {
-	m := accountToMap(account, lastModifiedLedger)
-
-	sql := sq.Insert("accounts").SetMap(m)
-	result, err := q.Exec(sql)
-	if err != nil {
-		return 0, err
-	}
-
-	return result.RowsAffected()
-}
-
-// UpdateAccount updates a row in the offers table.
-// Returns number of rows affected and error.
-func (q *Q) UpdateAccount(account xdr.AccountEntry, lastModifiedLedger xdr.Uint32) (int64, error) {
-	m := accountToMap(account, lastModifiedLedger)
-
-	accountID := m["account_id"]
-	delete(m, "account_id")
-
-	sql := sq.Update("accounts").SetMap(m).Where(sq.Eq{"account_id": accountID})
-	result, err := q.Exec(sql)
-	if err != nil {
-		return 0, err
-	}
-
-	return result.RowsAffected()
-}
-
 // UpsertAccounts upserts a batch of accounts in the accounts table.
 // There's currently no limit of the number of accounts this method can
 // accept other than 2GB limit of the query string length what should be enough
