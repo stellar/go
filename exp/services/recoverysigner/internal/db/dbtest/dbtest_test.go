@@ -11,10 +11,8 @@ func TestOpen(t *testing.T) {
 	db := Open(t)
 	session := db.Open()
 
-	result := struct {
-		Count int `db:"count"`
-	}{}
-	err := session.Get(&result, `SELECT COUNT(*) FROM gorp_migrations`)
+	count := 0
+	err := session.Get(&count, `SELECT COUNT(*) FROM gorp_migrations`)
 	require.NoError(t, err)
-	assert.Greater(t, result.Count, 0)
+	assert.Greater(t, count, 0)
 }
