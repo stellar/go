@@ -593,11 +593,8 @@ func (h reingestHistoryRangeState) String() string {
 }
 
 func (h reingestHistoryRangeState) ingestRange(s *System, createTx bool, fromLedger, toLedger uint32) error {
-	if createTx {
-		if err := s.historyQ.Begin(); err != nil {
-			return errors.Wrap(err, "Error starting a transaction")
-		}
-		defer s.historyQ.Rollback()
+	if s.historyQ.GetTx() == nil {
+		return errors.New("expected transaction to be present")
 	}
 
 	// Clear history data before ingesting - used in `reingest range` command.
@@ -617,12 +614,6 @@ func (h reingestHistoryRangeState) ingestRange(s *System, createTx bool, fromLed
 	for cur := fromLedger; cur <= toLedger; cur++ {
 		if err = runTransactionProcessorsOnLedger(s, cur); err != nil {
 			return err
-		}
-	}
-
-	if createTx {
-		if err := s.historyQ.Commit(); err != nil {
-			return errors.Wrap(err, commitErrMsg)
 		}
 	}
 
@@ -665,9 +656,25 @@ func (h reingestHistoryRangeState) run(s *System) (transition, error) {
 		}
 
 		for cur := h.fromLedger; cur <= h.toLedger; cur++ {
-			// ingest each ledger in a separate transaction to prevent deadlocks
-			// when acquiring ShareLocks from multiple parallel reingest range processes
-			if err := h.ingestRange(s, true, cur, cur); err != nil {
+			err := func(ledger uint32) error {
+				if err := s.historyQ.Begin(); err != nil {
+					return errors.Wrap(err, "Error starting a transaction")
+				}
+				defer s.historyQ.Rollback()
+
+				// ingest each ledger in a separate transaction to prevent deadlocks
+				// when acquiring ShareLocks from multiple parallel reingest range processes
+				if err := h.ingestRange(s, true, ledger, ledger); err != nil {
+					return err
+				}
+
+				if err := s.historyQ.Commit(); err != nil {
+					return errors.Wrap(err, commitErrMsg)
+				}
+
+				return nil
+			}(cur)
+			if err != nil {
 				return stop(), err
 			}
 		}
