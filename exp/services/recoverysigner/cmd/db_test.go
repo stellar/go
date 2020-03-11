@@ -201,8 +201,8 @@ func TestDBCommand_Migrate_invalidCount(t *testing.T) {
 		messages = append(messages, l.Message)
 	}
 	wantMessages := []string{
-		"Invalid migration count, must be a number or not provided.",
-		"Invalid migration count, must be a number or not provided.",
+		"Invalid migration count, must be a number.",
+		"Invalid migration count, must be a number.",
 	}
 	assert.Equal(t, wantMessages, messages)
 }
