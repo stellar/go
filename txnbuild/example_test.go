@@ -6,6 +6,7 @@ import (
 
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/network"
+	"github.com/stellar/go/txnbuild/data"
 	horizonclient "github.com/stellar/go/txnbuild/examplehorizonclient"
 )
 
@@ -184,6 +185,29 @@ func ExampleManageData() {
 		Name:  "Fruit preference",
 		Value: []byte("Apple"),
 	}
+
+	tx := Transaction{
+		SourceAccount: &sourceAccount,
+		Operations:    []Operation{&op},
+		Timebounds:    NewInfiniteTimeout(), // Use a real timeout in production!
+		Network:       network.TestNetworkPassphrase,
+	}
+
+	txe, err := tx.BuildSignEncode(kp.(*keypair.Full))
+	check(err)
+	fmt.Println(txe)
+
+	// Output: AAAAAODcbeFyXKxmUWK1L6znNbKKIkPkHRJNbLktcKPqLnLFAAAAZAAMoj8AAAAEAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAKAAAAEEZydWl0IHByZWZlcmVuY2UAAAABAAAABUFwcGxlAAAAAAAAAAAAAAHqLnLFAAAAQO1ELJBEoqBDyIsS7uSJwe1LOimV/E+09MyF1G/+yrxSggFVPEjD5LXcm/6POze3IsMuIYJU1et5Q2Vt9f73zQo=
+}
+
+func ExampleNewManageDataMemoRequired() {
+	kp, _ := keypair.Parse("SBPQUZ6G4FZNWFHKUWC5BEYWF6R52E3SEP7R3GWYSM2XTKGF5LNTWW4R")
+	client := horizonclient.DefaultTestNetClient
+	ar := horizonclient.AccountRequest{AccountID: kp.Address()}
+	sourceAccount, err := client.AccountDetail(ar)
+	check(err)
+
+	op := data.NewManageDataMemoRequired(true)
 
 	tx := Transaction{
 		SourceAccount: &sourceAccount,
