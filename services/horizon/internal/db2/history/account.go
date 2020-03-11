@@ -1,11 +1,12 @@
 package history
 
 import (
+	"sort"
+
 	sq "github.com/Masterminds/squirrel"
 	"github.com/stellar/go/services/horizon/internal/db2"
 	"github.com/stellar/go/support/db"
 	"github.com/stellar/go/support/errors"
-	"github.com/stellar/go/xdr"
 )
 
 // Accounts provides a helper to filter rows from the `history_accounts` table
@@ -20,12 +21,6 @@ func (q *Q) Accounts() *AccountsQ {
 // AccountByAddress loads a row from `history_accounts`, by address
 func (q *Q) AccountByAddress(dest interface{}, addy string) error {
 	sql := selectAccount.Limit(1).Where("ha.address = ?", addy)
-	return q.Get(dest, sql)
-}
-
-// AccountByID loads a row from `history_accounts`, by id
-func (q *Q) AccountByID(dest interface{}, id int64) error {
-	sql := selectAccount.Limit(1).Where("ha.id = ?", id)
 	return q.Get(dest, sql)
 }
 
@@ -66,6 +61,9 @@ func (q *Q) CreateAccounts(addresses []string, batchSize int) (map[string]int64,
 		Suffix:       "ON CONFLICT (address) DO NOTHING",
 	}
 
+	// sort assets before inserting rows into history_assets to prevent deadlocks on acquiring a ShareLock
+	// https://github.com/stellar/go/issues/2370
+	sort.Strings(addresses)
 	for _, address := range addresses {
 		err := builder.Row(map[string]interface{}{
 			"address": address,
@@ -101,37 +99,6 @@ func (q *Q) CreateAccounts(addresses []string, batchSize int) (map[string]int64,
 	}
 
 	return addressToID, nil
-}
-
-// Return id for account. If account doesn't exist, it will be created and the new id returned.
-// `ON CONFLICT` is required when running a distributed ingestion.
-func (q *Q) GetCreateAccountID(
-	aid xdr.AccountId,
-) (result int64, err error) {
-
-	var existing Account
-
-	err = q.AccountByAddress(&existing, aid.Address())
-
-	//account already exists, return id
-	if err == nil {
-		result = existing.ID
-		return
-	}
-
-	// unexpected error
-	if !q.NoRows(err) {
-		return
-	}
-
-	//insert account and return id
-	err = q.GetRaw(
-		&result,
-		`INSERT INTO history_accounts (address) VALUES (?) ON CONFLICT (address) DO UPDATE SET address=EXCLUDED.address RETURNING id`,
-		aid.Address(),
-	)
-
-	return
 }
 
 var selectAccount = sq.Select("ha.*").From("history_accounts ha")

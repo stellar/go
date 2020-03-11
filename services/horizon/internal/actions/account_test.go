@@ -179,7 +179,11 @@ func TestAccountInfo(t *testing.T) {
 		Thresholds:    thresholds,
 		Flags:         0,
 	}
-	_, err := q.InsertAccount(accountEntry, 4)
+	batch := q.NewAccountsBatchInsertBuilder(0)
+	err := batch.Add(accountEntry, 4)
+	assert.NoError(t, err)
+	assert.NoError(t, batch.Exec())
+
 	tt.Assert.NoError(err)
 
 	_, err = q.InsertTrustLine(xdr.TrustLineEntry{
@@ -239,7 +243,15 @@ func TestAccountInfo(t *testing.T) {
 
 	// even though horizon ingestion account differs from core account,
 	// no error is returned because they have different last modified ledgers
-	_, err = q.UpdateAccount(accountEntry, 5)
+	err = q.UpsertAccounts([]xdr.LedgerEntry{
+		xdr.LedgerEntry{
+			LastModifiedLedgerSeq: 5,
+			Data: xdr.LedgerEntryData{
+				Type:    xdr.LedgerEntryTypeAccount,
+				Account: &accountEntry,
+			},
+		},
+	})
 	tt.Assert.NoError(err)
 
 	account, err = AccountInfo(
@@ -300,12 +312,14 @@ func TestGetAccountsHandlerPageResultsBySigner(t *testing.T) {
 	q := &history.Q{tt.HorizonSession()}
 	handler := &GetAccountsHandler{}
 
-	_, err := q.InsertAccount(account1, 1234)
-	tt.Assert.NoError(err)
-	_, err = q.InsertAccount(account2, 1234)
-	tt.Assert.NoError(err)
-	_, err = q.InsertAccount(account3, 1234)
-	tt.Assert.NoError(err)
+	batch := q.NewAccountsBatchInsertBuilder(0)
+	err := batch.Add(account1, 1234)
+	assert.NoError(t, err)
+	err = batch.Add(account2, 1234)
+	assert.NoError(t, err)
+	err = batch.Add(account3, 1234)
+	assert.NoError(t, err)
+	assert.NoError(t, batch.Exec())
 
 	for _, row := range accountSigners {
 		q.CreateAccountSigner(row.Account, row.Signer, row.Weight)
@@ -378,10 +392,12 @@ func TestGetAccountsHandlerPageResultsByAsset(t *testing.T) {
 	q := &history.Q{tt.HorizonSession()}
 	handler := &GetAccountsHandler{}
 
-	_, err := q.InsertAccount(account1, 1234)
-	tt.Assert.NoError(err)
-	_, err = q.InsertAccount(account2, 1234)
-	tt.Assert.NoError(err)
+	batch := q.NewAccountsBatchInsertBuilder(0)
+	err := batch.Add(account1, 1234)
+	assert.NoError(t, err)
+	err = batch.Add(account2, 1234)
+	assert.NoError(t, err)
+	assert.NoError(t, batch.Exec())
 
 	for _, row := range accountSigners {
 		_, err = q.CreateAccountSigner(row.Account, row.Signer, row.Weight)

@@ -78,13 +78,12 @@ func TestInsertAccount(t *testing.T) {
 	test.ResetHorizonDB(t, tt.HorizonDB)
 	q := &Q{tt.HorizonSession()}
 
-	rows, err := q.InsertAccount(account1, 1234)
+	batch := q.NewAccountsBatchInsertBuilder(0)
+	err := batch.Add(account1, 1234)
 	assert.NoError(t, err)
-	assert.Equal(t, int64(1), rows)
-
-	rows, err = q.InsertAccount(account2, 1235)
+	err = batch.Add(account2, 1235)
 	assert.NoError(t, err)
-	assert.Equal(t, int64(1), rows)
+	assert.NoError(t, batch.Exec())
 
 	accounts, err := q.GetAccountsByIDs([]string{
 		"GAOQJGUAB7NI7K7I62ORBXMN3J4SSWQUQ7FOEPSDJ322W2HMCNWPHXFB",
@@ -106,65 +105,6 @@ func TestInsertAccount(t *testing.T) {
 	assert.Equal(t, byte(4), accounts[0].ThresholdHigh)
 	assert.Equal(t, int64(3), accounts[0].BuyingLiabilities)
 	assert.Equal(t, int64(4), accounts[0].SellingLiabilities)
-}
-
-func TestUpdateAccount(t *testing.T) {
-	tt := test.Start(t)
-	defer tt.Finish()
-	test.ResetHorizonDB(t, tt.HorizonDB)
-	q := &Q{tt.HorizonSession()}
-
-	rows, err := q.InsertAccount(account1, 1234)
-	assert.NoError(t, err)
-	assert.Equal(t, int64(1), rows)
-
-	modifiedAccount := account1
-	modifiedAccount.Balance = 32847893
-
-	rows, err = q.UpdateAccount(modifiedAccount, 1235)
-	assert.NoError(t, err)
-	assert.Equal(t, int64(1), rows)
-
-	keys := []string{
-		"GAOQJGUAB7NI7K7I62ORBXMN3J4SSWQUQ7FOEPSDJ322W2HMCNWPHXFB",
-		"GCT2NQM5KJJEF55NPMY444C6M6CA7T33HRNCMA6ZFBIIXKNCRO6J25K7",
-	}
-	accounts, err := q.GetAccountsByIDs(keys)
-	assert.NoError(t, err)
-	assert.Len(t, accounts, 1)
-
-	expectedBinary, err := modifiedAccount.MarshalBinary()
-	assert.NoError(t, err)
-
-	dbEntry := xdr.AccountEntry{
-		AccountId:     xdr.MustAddress(accounts[0].AccountID),
-		Balance:       xdr.Int64(accounts[0].Balance),
-		SeqNum:        xdr.SequenceNumber(accounts[0].SequenceNumber),
-		NumSubEntries: xdr.Uint32(accounts[0].NumSubEntries),
-		InflationDest: &inflationDest,
-		Flags:         xdr.Uint32(accounts[0].Flags),
-		HomeDomain:    xdr.String32(accounts[0].HomeDomain),
-		Thresholds: xdr.Thresholds{
-			accounts[0].MasterWeight,
-			accounts[0].ThresholdLow,
-			accounts[0].ThresholdMedium,
-			accounts[0].ThresholdHigh,
-		},
-		Ext: xdr.AccountEntryExt{
-			V: 1,
-			V1: &xdr.AccountEntryV1{
-				Liabilities: xdr.Liabilities{
-					Buying:  xdr.Int64(accounts[0].BuyingLiabilities),
-					Selling: xdr.Int64(accounts[0].SellingLiabilities),
-				},
-			},
-		},
-	}
-
-	actualBinary, err := dbEntry.MarshalBinary()
-	assert.NoError(t, err)
-	assert.Equal(t, expectedBinary, actualBinary)
-	assert.Equal(t, uint32(1235), accounts[0].LastModifiedLedger)
 }
 
 func TestUpsertAccount(t *testing.T) {
@@ -293,10 +233,12 @@ func TestRemoveAccount(t *testing.T) {
 	test.ResetHorizonDB(t, tt.HorizonDB)
 	q := &Q{tt.HorizonSession()}
 
-	rows, err := q.InsertAccount(account1, 1234)
+	batch := q.NewAccountsBatchInsertBuilder(0)
+	err := batch.Add(account1, 1234)
 	assert.NoError(t, err)
-	assert.Equal(t, int64(1), rows)
+	assert.NoError(t, batch.Exec())
 
+	var rows int64
 	rows, err = q.RemoveAccount("GAOQJGUAB7NI7K7I62ORBXMN3J4SSWQUQ7FOEPSDJ322W2HMCNWPHXFB")
 	assert.NoError(t, err)
 	assert.Equal(t, int64(1), rows)
@@ -320,10 +262,12 @@ func TestAccountsForAsset(t *testing.T) {
 	eurTrustLine.AccountId = account1.AccountId
 	usdTrustLine.AccountId = account2.AccountId
 
-	_, err := q.InsertAccount(account1, 1234)
-	tt.Assert.NoError(err)
-	_, err = q.InsertAccount(account2, 1235)
-	tt.Assert.NoError(err)
+	batch := q.NewAccountsBatchInsertBuilder(0)
+	err := batch.Add(account1, 1234)
+	assert.NoError(t, err)
+	err = batch.Add(account2, 1235)
+	assert.NoError(t, err)
+	assert.NoError(t, batch.Exec())
 
 	_, err = q.InsertTrustLine(eurTrustLine, 1234)
 	tt.Assert.NoError(err)
@@ -371,12 +315,14 @@ func TestAccountEntriesForSigner(t *testing.T) {
 	eurTrustLine.AccountId = account1.AccountId
 	usdTrustLine.AccountId = account2.AccountId
 
-	_, err := q.InsertAccount(account1, 1234)
-	tt.Assert.NoError(err)
-	_, err = q.InsertAccount(account2, 1235)
-	tt.Assert.NoError(err)
-	_, err = q.InsertAccount(account3, 1235)
-	tt.Assert.NoError(err)
+	batch := q.NewAccountsBatchInsertBuilder(0)
+	err := batch.Add(account1, 1234)
+	assert.NoError(t, err)
+	err = batch.Add(account2, 1235)
+	assert.NoError(t, err)
+	err = batch.Add(account3, 1235)
+	assert.NoError(t, err)
+	assert.NoError(t, batch.Exec())
 
 	_, err = q.InsertTrustLine(eurTrustLine, 1234)
 	tt.Assert.NoError(err)
@@ -454,8 +400,10 @@ func TestGetAccountByID(t *testing.T) {
 	test.ResetHorizonDB(t, tt.HorizonDB)
 	q := &Q{tt.HorizonSession()}
 
-	_, err := q.InsertAccount(account1, 1234)
-	tt.Assert.NoError(err)
+	batch := q.NewAccountsBatchInsertBuilder(0)
+	err := batch.Add(account1, 1234)
+	assert.NoError(t, err)
+	assert.NoError(t, batch.Exec())
 
 	resultAccount, err := q.GetAccountByID(account1.AccountId.Address())
 	assert.NoError(t, err)

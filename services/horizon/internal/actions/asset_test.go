@@ -219,9 +219,10 @@ func TestAssetStats(t *testing.T) {
 		if err := accountEntry.AccountId.SetAddress(account.AccountID); err != nil {
 			t.Fatalf("unexpected error %v", err)
 		}
-		numChanged, err := q.InsertAccount(accountEntry, 3)
+		batch := q.NewAccountsBatchInsertBuilder(0)
+		err := batch.Add(accountEntry, 3)
 		tt.Assert.NoError(err)
-		tt.Assert.Equal(numChanged, int64(1))
+		tt.Assert.NoError(batch.Exec())
 	}
 
 	for _, testCase := range []struct {
