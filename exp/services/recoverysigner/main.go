@@ -20,6 +20,7 @@ func main() {
 	}
 
 	rootCmd.AddCommand((&cmd.ServeCommand{Logger: logger}).Command())
+	rootCmd.AddCommand((&cmd.DBCommand{Logger: logger}).Command())
 
 	err := rootCmd.Execute()
 	if err != nil {
