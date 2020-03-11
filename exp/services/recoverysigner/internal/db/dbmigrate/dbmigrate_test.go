@@ -45,8 +45,12 @@ func TestPlanMigration_upApplyAll(t *testing.T) {
 
 	migrations, err := PlanMigration(session, migrate.Up, 0)
 	require.NoError(t, err)
-	require.Greater(t, len(migrations), 1)
-	assert.Equal(t, "20200309000000-initial-1.sql", migrations[0])
+	require.GreaterOrEqual(t, len(migrations), 2)
+	wantAtLeastMigrations := []string{
+		"20200309000000-initial-1.sql",
+		"20200309000001-initial-2.sql",
+	}
+	assert.Equal(t, wantAtLeastMigrations, migrations[:2])
 }
 
 func TestPlanMigration_upApplyNone(t *testing.T) {
