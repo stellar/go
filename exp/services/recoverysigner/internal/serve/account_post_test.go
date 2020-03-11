@@ -30,18 +30,24 @@ func TestAccountPost_newContentTypeJSON(t *testing.T) {
 	ctx = auth.NewContext(ctx, auth.Auth{Address: "GDIXCQJ2W2N6TAS6AYW4LW2EBV7XNRUCLNHQB37FARDEWBQXRWP47Q6N"})
 	req := `{
 	"type": "share",
-	"identities": {
-		"owner": {
-			"account": "GBF3XFXGBGNQDN3HOSZ7NVRF6TJ2JOD5U6ELIWJOOEI6T5WKMQT2YSXQ",
-			"phone_number": "+10000000000",
-			"email": "user1@example.com"
+	"identities": [
+		{
+			"role": "owner",
+			"auth_methods": [
+				{ "type": "account", "value": "GBF3XFXGBGNQDN3HOSZ7NVRF6TJ2JOD5U6ELIWJOOEI6T5WKMQT2YSXQ" },
+				{ "type": "phone_number" "value": "+10000000000" },
+				{ "type": "email", "value": "user1@example.com" }
+			]
 		},
-		"other": {
-			"account": "GB5VOTKJ3IPGIYQBJ6GVJMUVEAIYGXZUJE4WYLPBJSHOTKLZTETBYOBI",
-			"phone_number": "+20000000000",
-			"email": "user2@example.com"
+		{
+			"role": "other",
+			"auth_methods": [
+				{ "type": "account", "value": "GB5VOTKJ3IPGIYQBJ6GVJMUVEAIYGXZUJE4WYLPBJSHOTKLZTETBYOBI" },
+				{ "type": "phone_number", "value": "+20000000000" },
+				{ "type": "email", "value": "user2@example.com" }
+			]
 		}
-	}
+	]
 }`
 	r := httptest.NewRequest("POST", "/GDIXCQJ2W2N6TAS6AYW4LW2EBV7XNRUCLNHQB37FARDEWBQXRWP47Q6N", strings.NewReader(req))
 	r = r.WithContext(ctx)
@@ -60,11 +66,10 @@ func TestAccountPost_newContentTypeJSON(t *testing.T) {
 
 	wantBody := `{
 	"address": "GDIXCQJ2W2N6TAS6AYW4LW2EBV7XNRUCLNHQB37FARDEWBQXRWP47Q6N",
-	"identities": {
-		"owner": { "present": true },
-		"other": { "present": true }
-	},
-	"identity": "account",
+	"identities": [
+		{ "role": "owner" }
+		{ "role": "other" }
+	],
 	"signer": "GCAPXRXSU7P6D353YGXMP6ROJIC744HO5OZCIWTXZQK2X757YU5KCHUE"
 }`
 	assert.JSONEq(t, wantBody, string(body))
@@ -98,12 +103,20 @@ func TestAccountPost_newContentTypeForm(t *testing.T) {
 	ctx := context.Background()
 	ctx = auth.NewContext(ctx, auth.Auth{Address: "GDIXCQJ2W2N6TAS6AYW4LW2EBV7XNRUCLNHQB37FARDEWBQXRWP47Q6N"})
 	reqValues := url.Values{}
-	reqValues.Set("identities.owner.account", "GBF3XFXGBGNQDN3HOSZ7NVRF6TJ2JOD5U6ELIWJOOEI6T5WKMQT2YSXQ")
-	reqValues.Set("identities.owner.phone_number", "+10000000000")
-	reqValues.Set("identities.owner.email", "user1@example.com")
-	reqValues.Set("identities.other.account", "GB5VOTKJ3IPGIYQBJ6GVJMUVEAIYGXZUJE4WYLPBJSHOTKLZTETBYOBI")
-	reqValues.Set("identities.other.phone_number", "+20000000000")
-	reqValues.Set("identities.other.email", "user2@example.com")
+	reqValues.Set("identities.0.role", "owner")
+	reqValues.Set("identities.0.auth_methods.0.type", "account")
+	reqValues.Set("identities.0.auth_methods.0.value", "GBF3XFXGBGNQDN3HOSZ7NVRF6TJ2JOD5U6ELIWJOOEI6T5WKMQT2YSXQ")
+	reqValues.Set("identities.0.auth_methods.1.type", "phone_number")
+	reqValues.Set("identities.0.auth_methods.1.value", "+10000000000")
+	reqValues.Set("identities.0.auth_methods.2.type", "email")
+	reqValues.Set("identities.0.auth_methods.2.value", "user1@example.com")
+	reqValues.Set("identities.1.role", "other")
+	reqValues.Set("identities.1.auth_methods.0.type", "account")
+	reqValues.Set("identities.1.auth_methods.0.value", "GB5VOTKJ3IPGIYQBJ6GVJMUVEAIYGXZUJE4WYLPBJSHOTKLZTETBYOBI")
+	reqValues.Set("identities.1.auth_methods.1.type", "phone_number")
+	reqValues.Set("identities.1.auth_methods.1.value", "+20000000000")
+	reqValues.Set("identities.1.auth_methods.2.type", "email")
+	reqValues.Set("identities.1.auth_methods.2.value", "user2@example.com")
 	req := reqValues.Encode()
 	t.Log("Request Body:", req)
 	r := httptest.NewRequest("POST", "/GDIXCQJ2W2N6TAS6AYW4LW2EBV7XNRUCLNHQB37FARDEWBQXRWP47Q6N", strings.NewReader(req))
@@ -124,11 +137,10 @@ func TestAccountPost_newContentTypeForm(t *testing.T) {
 
 	wantBody := `{
 	"address": "GDIXCQJ2W2N6TAS6AYW4LW2EBV7XNRUCLNHQB37FARDEWBQXRWP47Q6N",
-	"identities": {
-		"owner": { "present": true },
-		"other": { "present": true }
-	},
-	"identity": "account",
+	"identities": [
+		{ "role": "owner" }
+		{ "role": "other" }
+	],
 	"signer": "GCAPXRXSU7P6D353YGXMP6ROJIC744HO5OZCIWTXZQK2X757YU5KCHUE"
 }`
 	assert.JSONEq(t, wantBody, string(body))

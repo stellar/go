@@ -106,20 +106,16 @@ func TestAccountList_authenticatedByPhoneNumber(t *testing.T) {
 	"accounts": [
 		{
 			"address": "GDIXCQJ2W2N6TAS6AYW4LW2EBV7XNRUCLNHQB37FARDEWBQXRWP47Q6N",
-			"identities": {
-				"owner": { "present": true },
-				"other": { "present": false }
-			},
-			"identity": "owner",
+			"identities": [
+				{ "role": "owner", "authenticated": true }
+			],
 			"signer": "GCAPXRXSU7P6D353YGXMP6ROJIC744HO5OZCIWTXZQK2X757YU5KCHUE"
 		},
 		{
 			"address": "GDU2CH4V3QYQB2BLMX45XQLVBEKSIN2EZLP37I6MZZ7NAR5U3TLZDQEY",
-			"identities": {
-				"owner": { "present": false },
-				"other": { "present": true }
-			},
-			"identity": "other",
+			"identities": [
+				{ "role": "other", "authenticated": true }
+			],
 			"signer": "GCAPXRXSU7P6D353YGXMP6ROJIC744HO5OZCIWTXZQK2X757YU5KCHUE"
 		}
 	]
@@ -172,20 +168,16 @@ func TestAccountList_authenticatedByEmail(t *testing.T) {
 	"accounts": [
 		{
 			"address": "GDIXCQJ2W2N6TAS6AYW4LW2EBV7XNRUCLNHQB37FARDEWBQXRWP47Q6N",
-			"identities": {
-				"owner": { "present": true },
-				"other": { "present": false }
-			},
-			"identity": "owner",
+			"identities": [
+				{ "role": "owner", "authenticated": true }
+			],
 			"signer": "GCAPXRXSU7P6D353YGXMP6ROJIC744HO5OZCIWTXZQK2X757YU5KCHUE"
 		},
 		{
 			"address": "GDU2CH4V3QYQB2BLMX45XQLVBEKSIN2EZLP37I6MZZ7NAR5U3TLZDQEY",
-			"identities": {
-				"owner": { "present": false },
-				"other": { "present": true }
-			},
-			"identity": "other",
+			"identities": [
+				{ "role": "other", "authenticated": true }
+			],
 			"signer": "GCAPXRXSU7P6D353YGXMP6ROJIC744HO5OZCIWTXZQK2X757YU5KCHUE"
 		}
 	]
