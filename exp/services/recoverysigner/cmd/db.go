@@ -85,6 +85,10 @@ func (c *DBCommand) Migrate(cmd *cobra.Command, args []string) {
 			c.Logger.Errorf("Invalid migration count, must be a number or not provided.")
 			return
 		}
+		if count < 1 {
+			c.Logger.Errorf("Invalid migration count, must be a number greater than zero.")
+			return
+		}
 	}
 
 	migrations, err := dbmigrate.PlanMigration(db, dir, count)
