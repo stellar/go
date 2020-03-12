@@ -28,7 +28,7 @@ func TestAccountList_authenticatedButNonePermitted(t *testing.T) {
 			{
 				Role: "owner",
 				AuthMethods: []account.AuthMethod{
-					{Type: account.AuthMethodTypeAccount, Value: "GDIXCQJ2W2N6TAS6AYW4LW2EBV7XNRUCLNHQB37FARDEWBQXRWP47Q6N"},
+					{Type: account.AuthMethodTypeAddress, Value: "GDIXCQJ2W2N6TAS6AYW4LW2EBV7XNRUCLNHQB37FARDEWBQXRWP47Q6N"},
 				},
 			},
 		},
@@ -39,7 +39,7 @@ func TestAccountList_authenticatedButNonePermitted(t *testing.T) {
 			{
 				Role: "other",
 				AuthMethods: []account.AuthMethod{
-					{Type: account.AuthMethodTypeAccount, Value: "GDIXCQJ2W2N6TAS6AYW4LW2EBV7XNRUCLNHQB37FARDEWBQXRWP47Q6N"},
+					{Type: account.AuthMethodTypeAddress, Value: "GDIXCQJ2W2N6TAS6AYW4LW2EBV7XNRUCLNHQB37FARDEWBQXRWP47Q6N"},
 				},
 			},
 		},

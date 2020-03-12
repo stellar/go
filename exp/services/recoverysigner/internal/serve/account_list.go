@@ -74,7 +74,7 @@ func (h accountListHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 					Role: i.Role,
 				}
 				for _, m := range i.AuthMethods {
-					if m.Type == account.AuthMethodTypeAccount && m.Value == claims.Address {
+					if m.Type == account.AuthMethodTypeAddress && m.Value == claims.Address {
 						accRespIdentity.Authenticated = true
 						break
 					}

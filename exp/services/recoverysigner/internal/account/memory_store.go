@@ -56,7 +56,7 @@ func (ms *memoryStore) FindWithIdentityAddress(address string) ([]Account, error
 	for _, a := range ms.accounts {
 		for _, i := range a.Identities {
 			for _, m := range i.AuthMethods {
-				if m.Type == AuthMethodTypeAccount && m.Value == address {
+				if m.Type == AuthMethodTypeAddress && m.Value == address {
 					accounts = append(accounts, a)
 				}
 			}

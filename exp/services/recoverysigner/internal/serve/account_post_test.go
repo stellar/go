@@ -34,7 +34,7 @@ func TestAccountPost_newContentTypeJSON(t *testing.T) {
 		{
 			"role": "owner",
 			"auth_methods": [
-				{ "type": "stellar_account", "value": "GBF3XFXGBGNQDN3HOSZ7NVRF6TJ2JOD5U6ELIWJOOEI6T5WKMQT2YSXQ" },
+				{ "type": "stellar_address", "value": "GBF3XFXGBGNQDN3HOSZ7NVRF6TJ2JOD5U6ELIWJOOEI6T5WKMQT2YSXQ" },
 				{ "type": "phone_number", "value": "+10000000000" },
 				{ "type": "email", "value": "user1@example.com" }
 			]
@@ -42,7 +42,7 @@ func TestAccountPost_newContentTypeJSON(t *testing.T) {
 		{
 			"role": "other",
 			"auth_methods": [
-				{ "type": "stellar_account", "value": "GB5VOTKJ3IPGIYQBJ6GVJMUVEAIYGXZUJE4WYLPBJSHOTKLZTETBYOBI" },
+				{ "type": "stellar_address", "value": "GB5VOTKJ3IPGIYQBJ6GVJMUVEAIYGXZUJE4WYLPBJSHOTKLZTETBYOBI" },
 				{ "type": "phone_number", "value": "+20000000000" },
 				{ "type": "email", "value": "user2@example.com" }
 			]
@@ -82,7 +82,7 @@ func TestAccountPost_newContentTypeJSON(t *testing.T) {
 			{
 				Role: "owner",
 				AuthMethods: []account.AuthMethod{
-					{Type: account.AuthMethodTypeAccount, Value: "GBF3XFXGBGNQDN3HOSZ7NVRF6TJ2JOD5U6ELIWJOOEI6T5WKMQT2YSXQ"},
+					{Type: account.AuthMethodTypeAddress, Value: "GBF3XFXGBGNQDN3HOSZ7NVRF6TJ2JOD5U6ELIWJOOEI6T5WKMQT2YSXQ"},
 					{Type: account.AuthMethodTypePhoneNumber, Value: "+10000000000"},
 					{Type: account.AuthMethodTypeEmail, Value: "user1@example.com"},
 				},
@@ -90,7 +90,7 @@ func TestAccountPost_newContentTypeJSON(t *testing.T) {
 			{
 				Role: "other",
 				AuthMethods: []account.AuthMethod{
-					{Type: account.AuthMethodTypeAccount, Value: "GB5VOTKJ3IPGIYQBJ6GVJMUVEAIYGXZUJE4WYLPBJSHOTKLZTETBYOBI"},
+					{Type: account.AuthMethodTypeAddress, Value: "GB5VOTKJ3IPGIYQBJ6GVJMUVEAIYGXZUJE4WYLPBJSHOTKLZTETBYOBI"},
 					{Type: account.AuthMethodTypePhoneNumber, Value: "+20000000000"},
 					{Type: account.AuthMethodTypeEmail, Value: "user2@example.com"},
 				},
@@ -112,14 +112,14 @@ func TestAccountPost_newContentTypeForm(t *testing.T) {
 	ctx = auth.NewContext(ctx, auth.Auth{Address: "GDIXCQJ2W2N6TAS6AYW4LW2EBV7XNRUCLNHQB37FARDEWBQXRWP47Q6N"})
 	reqValues := url.Values{}
 	reqValues.Set("identities.0.role", "owner")
-	reqValues.Set("identities.0.auth_methods.0.type", "stellar_account")
+	reqValues.Set("identities.0.auth_methods.0.type", "stellar_address")
 	reqValues.Set("identities.0.auth_methods.0.value", "GBF3XFXGBGNQDN3HOSZ7NVRF6TJ2JOD5U6ELIWJOOEI6T5WKMQT2YSXQ")
 	reqValues.Set("identities.0.auth_methods.1.type", "phone_number")
 	reqValues.Set("identities.0.auth_methods.1.value", "+10000000000")
 	reqValues.Set("identities.0.auth_methods.2.type", "email")
 	reqValues.Set("identities.0.auth_methods.2.value", "user1@example.com")
 	reqValues.Set("identities.1.role", "other")
-	reqValues.Set("identities.1.auth_methods.0.type", "stellar_account")
+	reqValues.Set("identities.1.auth_methods.0.type", "stellar_address")
 	reqValues.Set("identities.1.auth_methods.0.value", "GB5VOTKJ3IPGIYQBJ6GVJMUVEAIYGXZUJE4WYLPBJSHOTKLZTETBYOBI")
 	reqValues.Set("identities.1.auth_methods.1.type", "phone_number")
 	reqValues.Set("identities.1.auth_methods.1.value", "+20000000000")
@@ -161,7 +161,7 @@ func TestAccountPost_newContentTypeForm(t *testing.T) {
 			{
 				Role: "owner",
 				AuthMethods: []account.AuthMethod{
-					{Type: account.AuthMethodTypeAccount, Value: "GBF3XFXGBGNQDN3HOSZ7NVRF6TJ2JOD5U6ELIWJOOEI6T5WKMQT2YSXQ"},
+					{Type: account.AuthMethodTypeAddress, Value: "GBF3XFXGBGNQDN3HOSZ7NVRF6TJ2JOD5U6ELIWJOOEI6T5WKMQT2YSXQ"},
 					{Type: account.AuthMethodTypePhoneNumber, Value: "+10000000000"},
 					{Type: account.AuthMethodTypeEmail, Value: "user1@example.com"},
 				},
@@ -169,7 +169,7 @@ func TestAccountPost_newContentTypeForm(t *testing.T) {
 			{
 				Role: "other",
 				AuthMethods: []account.AuthMethod{
-					{Type: account.AuthMethodTypeAccount, Value: "GB5VOTKJ3IPGIYQBJ6GVJMUVEAIYGXZUJE4WYLPBJSHOTKLZTETBYOBI"},
+					{Type: account.AuthMethodTypeAddress, Value: "GB5VOTKJ3IPGIYQBJ6GVJMUVEAIYGXZUJE4WYLPBJSHOTKLZTETBYOBI"},
 					{Type: account.AuthMethodTypePhoneNumber, Value: "+20000000000"},
 					{Type: account.AuthMethodTypeEmail, Value: "user2@example.com"},
 				},

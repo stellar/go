@@ -66,7 +66,7 @@ func (h accountSignHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		} else {
 			for _, i := range acc.Identities {
 				for _, m := range i.AuthMethods {
-					if m.Type == account.AuthMethodTypeAccount && m.Value == claims.Address {
+					if m.Type == account.AuthMethodTypeAddress && m.Value == claims.Address {
 						addressAuthenticated = true
 						break
 					}

@@ -13,7 +13,7 @@ type Identity struct {
 type AuthMethodType string
 
 const (
-	AuthMethodTypeAccount     AuthMethodType = "stellar_account"
+	AuthMethodTypeAddress     AuthMethodType = "stellar_address"
 	AuthMethodTypePhoneNumber AuthMethodType = "phone_number"
 	AuthMethodTypeEmail       AuthMethodType = "email"
 )
