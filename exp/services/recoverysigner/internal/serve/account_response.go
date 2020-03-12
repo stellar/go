@@ -7,6 +7,6 @@ type accountResponse struct {
 }
 
 type accountResponseIdentity struct {
-	Role          string `json:"role"`
+	Role          string `json:"role,omitempty"`
 	Authenticated bool   `json:"authenticated,omitempty"`
 }

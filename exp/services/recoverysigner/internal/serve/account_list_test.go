@@ -26,7 +26,7 @@ func TestAccountList_authenticatedButNonePermitted(t *testing.T) {
 		Address: "GDU2CH4V3QYQB2BLMX45XQLVBEKSIN2EZLP37I6MZZ7NAR5U3TLZDQEY",
 		Identities: []account.Identity{
 			{
-				Role: "owner",
+				Role: "sender",
 				AuthMethods: []account.AuthMethod{
 					{Type: account.AuthMethodTypeAddress, Value: "GDIXCQJ2W2N6TAS6AYW4LW2EBV7XNRUCLNHQB37FARDEWBQXRWP47Q6N"},
 				},
@@ -37,7 +37,7 @@ func TestAccountList_authenticatedButNonePermitted(t *testing.T) {
 		Address: "GCS4CVAAX7MVUNHP24655TNHIJ4YFN7GW5V3RFDC2BXVVMVDTB3GYH5U",
 		Identities: []account.Identity{
 			{
-				Role: "other",
+				Role: "receiver",
 				AuthMethods: []account.AuthMethod{
 					{Type: account.AuthMethodTypeAddress, Value: "GDIXCQJ2W2N6TAS6AYW4LW2EBV7XNRUCLNHQB37FARDEWBQXRWP47Q6N"},
 				},
@@ -77,7 +77,7 @@ func TestAccountList_authenticatedByPhoneNumber(t *testing.T) {
 		Address: "GDIXCQJ2W2N6TAS6AYW4LW2EBV7XNRUCLNHQB37FARDEWBQXRWP47Q6N",
 		Identities: []account.Identity{
 			{
-				Role: "owner",
+				Role: "sender",
 				AuthMethods: []account.AuthMethod{
 					{Type: account.AuthMethodTypePhoneNumber, Value: "+10000000000"},
 				},
@@ -88,7 +88,7 @@ func TestAccountList_authenticatedByPhoneNumber(t *testing.T) {
 		Address: "GDU2CH4V3QYQB2BLMX45XQLVBEKSIN2EZLP37I6MZZ7NAR5U3TLZDQEY",
 		Identities: []account.Identity{
 			{
-				Role: "other",
+				Role: "receiver",
 				AuthMethods: []account.AuthMethod{
 					{Type: account.AuthMethodTypePhoneNumber, Value: "+10000000000"},
 				},
@@ -99,7 +99,7 @@ func TestAccountList_authenticatedByPhoneNumber(t *testing.T) {
 		Address: "GCS4CVAAX7MVUNHP24655TNHIJ4YFN7GW5V3RFDC2BXVVMVDTB3GYH5U",
 		Identities: []account.Identity{
 			{
-				Role: "other",
+				Role: "receiver",
 				AuthMethods: []account.AuthMethod{
 					{Type: account.AuthMethodTypePhoneNumber, Value: "+20000000000"},
 				},
@@ -132,14 +132,14 @@ func TestAccountList_authenticatedByPhoneNumber(t *testing.T) {
 		{
 			"address": "GDIXCQJ2W2N6TAS6AYW4LW2EBV7XNRUCLNHQB37FARDEWBQXRWP47Q6N",
 			"identities": [
-				{ "role": "owner", "authenticated": true }
+				{ "role": "sender", "authenticated": true }
 			],
 			"signer": "GCAPXRXSU7P6D353YGXMP6ROJIC744HO5OZCIWTXZQK2X757YU5KCHUE"
 		},
 		{
 			"address": "GDU2CH4V3QYQB2BLMX45XQLVBEKSIN2EZLP37I6MZZ7NAR5U3TLZDQEY",
 			"identities": [
-				{ "role": "other", "authenticated": true }
+				{ "role": "receiver", "authenticated": true }
 			],
 			"signer": "GCAPXRXSU7P6D353YGXMP6ROJIC744HO5OZCIWTXZQK2X757YU5KCHUE"
 		}
@@ -154,7 +154,7 @@ func TestAccountList_authenticatedByEmail(t *testing.T) {
 		Address: "GDIXCQJ2W2N6TAS6AYW4LW2EBV7XNRUCLNHQB37FARDEWBQXRWP47Q6N",
 		Identities: []account.Identity{
 			{
-				Role: "owner",
+				Role: "sender",
 				AuthMethods: []account.AuthMethod{
 					{Type: account.AuthMethodTypeEmail, Value: "user1@example.com"},
 				},
@@ -165,7 +165,7 @@ func TestAccountList_authenticatedByEmail(t *testing.T) {
 		Address: "GDU2CH4V3QYQB2BLMX45XQLVBEKSIN2EZLP37I6MZZ7NAR5U3TLZDQEY",
 		Identities: []account.Identity{
 			{
-				Role: "other",
+				Role: "receiver",
 				AuthMethods: []account.AuthMethod{
 					{Type: account.AuthMethodTypeEmail, Value: "user1@example.com"},
 				},
@@ -176,7 +176,7 @@ func TestAccountList_authenticatedByEmail(t *testing.T) {
 		Address: "GCS4CVAAX7MVUNHP24655TNHIJ4YFN7GW5V3RFDC2BXVVMVDTB3GYH5U",
 		Identities: []account.Identity{
 			{
-				Role: "other",
+				Role: "receiver",
 				AuthMethods: []account.AuthMethod{
 					{Type: account.AuthMethodTypeEmail, Value: "user2@example.com"},
 				},
@@ -209,14 +209,14 @@ func TestAccountList_authenticatedByEmail(t *testing.T) {
 		{
 			"address": "GDIXCQJ2W2N6TAS6AYW4LW2EBV7XNRUCLNHQB37FARDEWBQXRWP47Q6N",
 			"identities": [
-				{ "role": "owner", "authenticated": true }
+				{ "role": "sender", "authenticated": true }
 			],
 			"signer": "GCAPXRXSU7P6D353YGXMP6ROJIC744HO5OZCIWTXZQK2X757YU5KCHUE"
 		},
 		{
 			"address": "GDU2CH4V3QYQB2BLMX45XQLVBEKSIN2EZLP37I6MZZ7NAR5U3TLZDQEY",
 			"identities": [
-				{ "role": "other", "authenticated": true }
+				{ "role": "receiver", "authenticated": true }
 			],
 			"signer": "GCAPXRXSU7P6D353YGXMP6ROJIC744HO5OZCIWTXZQK2X757YU5KCHUE"
 		}
@@ -231,7 +231,7 @@ func TestAccountList_notAuthenticated(t *testing.T) {
 		Address: "GDIXCQJ2W2N6TAS6AYW4LW2EBV7XNRUCLNHQB37FARDEWBQXRWP47Q6N",
 		Identities: []account.Identity{
 			{
-				Role: "owner",
+				Role: "sender",
 				AuthMethods: []account.AuthMethod{
 					{Type: account.AuthMethodTypeEmail, Value: "user1@example.com"},
 				},
@@ -242,7 +242,7 @@ func TestAccountList_notAuthenticated(t *testing.T) {
 		Address: "GDU2CH4V3QYQB2BLMX45XQLVBEKSIN2EZLP37I6MZZ7NAR5U3TLZDQEY",
 		Identities: []account.Identity{
 			{
-				Role: "other",
+				Role: "receiver",
 				AuthMethods: []account.AuthMethod{
 					{Type: account.AuthMethodTypeEmail, Value: "user1@example.com"},
 				},
@@ -253,7 +253,7 @@ func TestAccountList_notAuthenticated(t *testing.T) {
 		Address: "GCS4CVAAX7MVUNHP24655TNHIJ4YFN7GW5V3RFDC2BXVVMVDTB3GYH5U",
 		Identities: []account.Identity{
 			{
-				Role: "other",
+				Role: "receiver",
 				AuthMethods: []account.AuthMethod{
 					{Type: account.AuthMethodTypeEmail, Value: "user2@example.com"},
 				},

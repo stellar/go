@@ -167,13 +167,13 @@ func TestAccountSign_phoneNumberAuthenticatedButNotPermitted(t *testing.T) {
 		Address: "GA6HNE7O2N2IXIOBZNZ4IPTS2P6DSAJJF5GD5PDLH5GYOZ6WMPSKCXD4",
 		Identities: []account.Identity{
 			{
-				Role: "owner",
+				Role: "sender",
 				AuthMethods: []account.AuthMethod{
 					{Type: account.AuthMethodTypePhoneNumber, Value: "+10000000000"},
 				},
 			},
 			{
-				Role: "other",
+				Role: "receiver",
 				AuthMethods: []account.AuthMethod{
 					{Type: account.AuthMethodTypePhoneNumber, Value: "+10000000000"},
 				},
@@ -184,13 +184,13 @@ func TestAccountSign_phoneNumberAuthenticatedButNotPermitted(t *testing.T) {
 		Address: "GBLOP46WEVXWO5N75TDX7GXLYFQE3XLDT5NQ2VYIBEWWEMSZWR3AUISZ",
 		Identities: []account.Identity{
 			{
-				Role: "owner",
+				Role: "sender",
 				AuthMethods: []account.AuthMethod{
 					{Type: account.AuthMethodTypePhoneNumber, Value: "+20000000000"},
 				},
 			},
 			{
-				Role: "other",
+				Role: "receiver",
 				AuthMethods: []account.AuthMethod{
 					{Type: account.AuthMethodTypePhoneNumber, Value: "+20000000000"},
 				},
@@ -238,13 +238,13 @@ func TestAccountSign_emailAuthenticatedButNotPermitted(t *testing.T) {
 		Address: "GA6HNE7O2N2IXIOBZNZ4IPTS2P6DSAJJF5GD5PDLH5GYOZ6WMPSKCXD4",
 		Identities: []account.Identity{
 			{
-				Role: "owner",
+				Role: "sender",
 				AuthMethods: []account.AuthMethod{
 					{Type: account.AuthMethodTypeEmail, Value: "user1@example.com"},
 				},
 			},
 			{
-				Role: "other",
+				Role: "receiver",
 				AuthMethods: []account.AuthMethod{
 					{Type: account.AuthMethodTypeEmail, Value: "user1@example.com"},
 				},
@@ -255,13 +255,13 @@ func TestAccountSign_emailAuthenticatedButNotPermitted(t *testing.T) {
 		Address: "GBLOP46WEVXWO5N75TDX7GXLYFQE3XLDT5NQ2VYIBEWWEMSZWR3AUISZ",
 		Identities: []account.Identity{
 			{
-				Role: "owner",
+				Role: "sender",
 				AuthMethods: []account.AuthMethod{
 					{Type: account.AuthMethodTypeEmail, Value: "user2@example.com"},
 				},
 			},
 			{
-				Role: "other",
+				Role: "receiver",
 				AuthMethods: []account.AuthMethod{
 					{Type: account.AuthMethodTypeEmail, Value: "user2@example.com"},
 				},
@@ -608,7 +608,7 @@ func TestAccountSign_phoneNumberOwnerAuthenticated(t *testing.T) {
 		Address: "GA6HNE7O2N2IXIOBZNZ4IPTS2P6DSAJJF5GD5PDLH5GYOZ6WMPSKCXD4",
 		Identities: []account.Identity{
 			{
-				Role: "owner",
+				Role: "sender",
 				AuthMethods: []account.AuthMethod{
 					{Type: account.AuthMethodTypePhoneNumber, Value: "+10000000000"},
 				},
@@ -676,7 +676,7 @@ func TestAccountSign_phoneNumberOtherAuthenticated(t *testing.T) {
 		Address: "GA6HNE7O2N2IXIOBZNZ4IPTS2P6DSAJJF5GD5PDLH5GYOZ6WMPSKCXD4",
 		Identities: []account.Identity{
 			{
-				Role: "other",
+				Role: "receiver",
 				AuthMethods: []account.AuthMethod{
 					{Type: account.AuthMethodTypePhoneNumber, Value: "+10000000000"},
 				},
@@ -744,7 +744,7 @@ func TestAccountSign_emailOwnerAuthenticated(t *testing.T) {
 		Address: "GA6HNE7O2N2IXIOBZNZ4IPTS2P6DSAJJF5GD5PDLH5GYOZ6WMPSKCXD4",
 		Identities: []account.Identity{
 			{
-				Role: "owner",
+				Role: "sender",
 				AuthMethods: []account.AuthMethod{
 					{Type: account.AuthMethodTypeEmail, Value: "user1@example.com"},
 				},
@@ -812,7 +812,7 @@ func TestAccountSign_emailOtherAuthenticated(t *testing.T) {
 		Address: "GA6HNE7O2N2IXIOBZNZ4IPTS2P6DSAJJF5GD5PDLH5GYOZ6WMPSKCXD4",
 		Identities: []account.Identity{
 			{
-				Role: "other",
+				Role: "receiver",
 				AuthMethods: []account.AuthMethod{
 					{Type: account.AuthMethodTypeEmail, Value: "user1@example.com"},
 				},

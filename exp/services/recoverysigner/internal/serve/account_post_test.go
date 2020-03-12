@@ -18,7 +18,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestAccountPost_newContentTypeJSON(t *testing.T) {
+func TestAccountPost_newWithoutRoleContentTypeJSON(t *testing.T) {
 	s := account.NewMemoryStore()
 	h := accountPostHandler{
 		Logger:         supportlog.DefaultLogger,
@@ -32,7 +32,131 @@ func TestAccountPost_newContentTypeJSON(t *testing.T) {
 	"type": "share",
 	"identities": [
 		{
-			"role": "owner",
+			"auth_methods": [
+				{ "type": "stellar_address", "value": "GBF3XFXGBGNQDN3HOSZ7NVRF6TJ2JOD5U6ELIWJOOEI6T5WKMQT2YSXQ" },
+				{ "type": "phone_number", "value": "+10000000000" },
+				{ "type": "email", "value": "user1@example.com" }
+			]
+		}
+	]
+}`
+	r := httptest.NewRequest("POST", "/GDIXCQJ2W2N6TAS6AYW4LW2EBV7XNRUCLNHQB37FARDEWBQXRWP47Q6N", strings.NewReader(req))
+	r = r.WithContext(ctx)
+
+	w := httptest.NewRecorder()
+	m := chi.NewMux()
+	m.Post("/{address}", h.ServeHTTP)
+	m.ServeHTTP(w, r)
+	resp := w.Result()
+
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+	assert.Equal(t, "application/json; charset=utf-8", resp.Header.Get("Content-Type"))
+
+	body, err := ioutil.ReadAll(resp.Body)
+	require.NoError(t, err)
+
+	wantBody := `{
+	"address": "GDIXCQJ2W2N6TAS6AYW4LW2EBV7XNRUCLNHQB37FARDEWBQXRWP47Q6N",
+	"identities": [
+		{ }
+	],
+	"signer": "GCAPXRXSU7P6D353YGXMP6ROJIC744HO5OZCIWTXZQK2X757YU5KCHUE"
+}`
+	assert.JSONEq(t, wantBody, string(body))
+
+	acc, err := s.Get("GDIXCQJ2W2N6TAS6AYW4LW2EBV7XNRUCLNHQB37FARDEWBQXRWP47Q6N")
+	require.NoError(t, err)
+	wantAcc := account.Account{
+		Address: "GDIXCQJ2W2N6TAS6AYW4LW2EBV7XNRUCLNHQB37FARDEWBQXRWP47Q6N",
+		Identities: []account.Identity{
+			{
+				AuthMethods: []account.AuthMethod{
+					{Type: account.AuthMethodTypeAddress, Value: "GBF3XFXGBGNQDN3HOSZ7NVRF6TJ2JOD5U6ELIWJOOEI6T5WKMQT2YSXQ"},
+					{Type: account.AuthMethodTypePhoneNumber, Value: "+10000000000"},
+					{Type: account.AuthMethodTypeEmail, Value: "user1@example.com"},
+				},
+			},
+		},
+	}
+	assert.Equal(t, wantAcc, acc)
+}
+
+func TestAccountPost_newWithoutRoleContentTypeForm(t *testing.T) {
+	s := account.NewMemoryStore()
+	h := accountPostHandler{
+		Logger:         supportlog.DefaultLogger,
+		AccountStore:   s,
+		SigningAddress: keypair.MustParseAddress("GCAPXRXSU7P6D353YGXMP6ROJIC744HO5OZCIWTXZQK2X757YU5KCHUE"),
+	}
+
+	ctx := context.Background()
+	ctx = auth.NewContext(ctx, auth.Auth{Address: "GDIXCQJ2W2N6TAS6AYW4LW2EBV7XNRUCLNHQB37FARDEWBQXRWP47Q6N"})
+	reqValues := url.Values{}
+	reqValues.Set("identities.0.auth_methods.0.type", "stellar_address")
+	reqValues.Set("identities.0.auth_methods.0.value", "GBF3XFXGBGNQDN3HOSZ7NVRF6TJ2JOD5U6ELIWJOOEI6T5WKMQT2YSXQ")
+	reqValues.Set("identities.0.auth_methods.1.type", "phone_number")
+	reqValues.Set("identities.0.auth_methods.1.value", "+10000000000")
+	reqValues.Set("identities.0.auth_methods.2.type", "email")
+	reqValues.Set("identities.0.auth_methods.2.value", "user1@example.com")
+	req := reqValues.Encode()
+	t.Log("Request Body:", req)
+	r := httptest.NewRequest("POST", "/GDIXCQJ2W2N6TAS6AYW4LW2EBV7XNRUCLNHQB37FARDEWBQXRWP47Q6N", strings.NewReader(req))
+	r = r.WithContext(ctx)
+	r.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+	w := httptest.NewRecorder()
+	m := chi.NewMux()
+	m.Post("/{address}", h.ServeHTTP)
+	m.ServeHTTP(w, r)
+	resp := w.Result()
+
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+	assert.Equal(t, "application/json; charset=utf-8", resp.Header.Get("Content-Type"))
+
+	body, err := ioutil.ReadAll(resp.Body)
+	require.NoError(t, err)
+
+	wantBody := `{
+	"address": "GDIXCQJ2W2N6TAS6AYW4LW2EBV7XNRUCLNHQB37FARDEWBQXRWP47Q6N",
+	"identities": [
+		{ }
+	],
+	"signer": "GCAPXRXSU7P6D353YGXMP6ROJIC744HO5OZCIWTXZQK2X757YU5KCHUE"
+}`
+	assert.JSONEq(t, wantBody, string(body))
+
+	acc, err := s.Get("GDIXCQJ2W2N6TAS6AYW4LW2EBV7XNRUCLNHQB37FARDEWBQXRWP47Q6N")
+	require.NoError(t, err)
+	wantAcc := account.Account{
+		Address: "GDIXCQJ2W2N6TAS6AYW4LW2EBV7XNRUCLNHQB37FARDEWBQXRWP47Q6N",
+		Identities: []account.Identity{
+			{
+				AuthMethods: []account.AuthMethod{
+					{Type: account.AuthMethodTypeAddress, Value: "GBF3XFXGBGNQDN3HOSZ7NVRF6TJ2JOD5U6ELIWJOOEI6T5WKMQT2YSXQ"},
+					{Type: account.AuthMethodTypePhoneNumber, Value: "+10000000000"},
+					{Type: account.AuthMethodTypeEmail, Value: "user1@example.com"},
+				},
+			},
+		},
+	}
+	assert.Equal(t, wantAcc, acc)
+}
+
+func TestAccountPost_newWithRoleContentTypeJSON(t *testing.T) {
+	s := account.NewMemoryStore()
+	h := accountPostHandler{
+		Logger:         supportlog.DefaultLogger,
+		AccountStore:   s,
+		SigningAddress: keypair.MustParseAddress("GCAPXRXSU7P6D353YGXMP6ROJIC744HO5OZCIWTXZQK2X757YU5KCHUE"),
+	}
+
+	ctx := context.Background()
+	ctx = auth.NewContext(ctx, auth.Auth{Address: "GDIXCQJ2W2N6TAS6AYW4LW2EBV7XNRUCLNHQB37FARDEWBQXRWP47Q6N"})
+	req := `{
+	"type": "share",
+	"identities": [
+		{
+			"role": "sender",
 			"auth_methods": [
 				{ "type": "stellar_address", "value": "GBF3XFXGBGNQDN3HOSZ7NVRF6TJ2JOD5U6ELIWJOOEI6T5WKMQT2YSXQ" },
 				{ "type": "phone_number", "value": "+10000000000" },
@@ -40,7 +164,7 @@ func TestAccountPost_newContentTypeJSON(t *testing.T) {
 			]
 		},
 		{
-			"role": "other",
+			"role": "receiver",
 			"auth_methods": [
 				{ "type": "stellar_address", "value": "GB5VOTKJ3IPGIYQBJ6GVJMUVEAIYGXZUJE4WYLPBJSHOTKLZTETBYOBI" },
 				{ "type": "phone_number", "value": "+20000000000" },
@@ -67,8 +191,8 @@ func TestAccountPost_newContentTypeJSON(t *testing.T) {
 	wantBody := `{
 	"address": "GDIXCQJ2W2N6TAS6AYW4LW2EBV7XNRUCLNHQB37FARDEWBQXRWP47Q6N",
 	"identities": [
-		{ "role": "owner" },
-		{ "role": "other" }
+		{ "role": "sender" },
+		{ "role": "receiver" }
 	],
 	"signer": "GCAPXRXSU7P6D353YGXMP6ROJIC744HO5OZCIWTXZQK2X757YU5KCHUE"
 }`
@@ -80,7 +204,7 @@ func TestAccountPost_newContentTypeJSON(t *testing.T) {
 		Address: "GDIXCQJ2W2N6TAS6AYW4LW2EBV7XNRUCLNHQB37FARDEWBQXRWP47Q6N",
 		Identities: []account.Identity{
 			{
-				Role: "owner",
+				Role: "sender",
 				AuthMethods: []account.AuthMethod{
 					{Type: account.AuthMethodTypeAddress, Value: "GBF3XFXGBGNQDN3HOSZ7NVRF6TJ2JOD5U6ELIWJOOEI6T5WKMQT2YSXQ"},
 					{Type: account.AuthMethodTypePhoneNumber, Value: "+10000000000"},
@@ -88,7 +212,7 @@ func TestAccountPost_newContentTypeJSON(t *testing.T) {
 				},
 			},
 			{
-				Role: "other",
+				Role: "receiver",
 				AuthMethods: []account.AuthMethod{
 					{Type: account.AuthMethodTypeAddress, Value: "GB5VOTKJ3IPGIYQBJ6GVJMUVEAIYGXZUJE4WYLPBJSHOTKLZTETBYOBI"},
 					{Type: account.AuthMethodTypePhoneNumber, Value: "+20000000000"},
@@ -100,7 +224,7 @@ func TestAccountPost_newContentTypeJSON(t *testing.T) {
 	assert.Equal(t, wantAcc, acc)
 }
 
-func TestAccountPost_newContentTypeForm(t *testing.T) {
+func TestAccountPost_newWithRoleContentTypeForm(t *testing.T) {
 	s := account.NewMemoryStore()
 	h := accountPostHandler{
 		Logger:         supportlog.DefaultLogger,
@@ -111,14 +235,14 @@ func TestAccountPost_newContentTypeForm(t *testing.T) {
 	ctx := context.Background()
 	ctx = auth.NewContext(ctx, auth.Auth{Address: "GDIXCQJ2W2N6TAS6AYW4LW2EBV7XNRUCLNHQB37FARDEWBQXRWP47Q6N"})
 	reqValues := url.Values{}
-	reqValues.Set("identities.0.role", "owner")
+	reqValues.Set("identities.0.role", "sender")
 	reqValues.Set("identities.0.auth_methods.0.type", "stellar_address")
 	reqValues.Set("identities.0.auth_methods.0.value", "GBF3XFXGBGNQDN3HOSZ7NVRF6TJ2JOD5U6ELIWJOOEI6T5WKMQT2YSXQ")
 	reqValues.Set("identities.0.auth_methods.1.type", "phone_number")
 	reqValues.Set("identities.0.auth_methods.1.value", "+10000000000")
 	reqValues.Set("identities.0.auth_methods.2.type", "email")
 	reqValues.Set("identities.0.auth_methods.2.value", "user1@example.com")
-	reqValues.Set("identities.1.role", "other")
+	reqValues.Set("identities.1.role", "receiver")
 	reqValues.Set("identities.1.auth_methods.0.type", "stellar_address")
 	reqValues.Set("identities.1.auth_methods.0.value", "GB5VOTKJ3IPGIYQBJ6GVJMUVEAIYGXZUJE4WYLPBJSHOTKLZTETBYOBI")
 	reqValues.Set("identities.1.auth_methods.1.type", "phone_number")
@@ -146,8 +270,8 @@ func TestAccountPost_newContentTypeForm(t *testing.T) {
 	wantBody := `{
 	"address": "GDIXCQJ2W2N6TAS6AYW4LW2EBV7XNRUCLNHQB37FARDEWBQXRWP47Q6N",
 	"identities": [
-		{ "role": "owner" },
-		{ "role": "other" }
+		{ "role": "sender" },
+		{ "role": "receiver" }
 	],
 	"signer": "GCAPXRXSU7P6D353YGXMP6ROJIC744HO5OZCIWTXZQK2X757YU5KCHUE"
 }`
@@ -159,7 +283,7 @@ func TestAccountPost_newContentTypeForm(t *testing.T) {
 		Address: "GDIXCQJ2W2N6TAS6AYW4LW2EBV7XNRUCLNHQB37FARDEWBQXRWP47Q6N",
 		Identities: []account.Identity{
 			{
-				Role: "owner",
+				Role: "sender",
 				AuthMethods: []account.AuthMethod{
 					{Type: account.AuthMethodTypeAddress, Value: "GBF3XFXGBGNQDN3HOSZ7NVRF6TJ2JOD5U6ELIWJOOEI6T5WKMQT2YSXQ"},
 					{Type: account.AuthMethodTypePhoneNumber, Value: "+10000000000"},
@@ -167,7 +291,7 @@ func TestAccountPost_newContentTypeForm(t *testing.T) {
 				},
 			},
 			{
-				Role: "other",
+				Role: "receiver",
 				AuthMethods: []account.AuthMethod{
 					{Type: account.AuthMethodTypeAddress, Value: "GB5VOTKJ3IPGIYQBJ6GVJMUVEAIYGXZUJE4WYLPBJSHOTKLZTETBYOBI"},
 					{Type: account.AuthMethodTypePhoneNumber, Value: "+20000000000"},
