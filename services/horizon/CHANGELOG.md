@@ -10,7 +10,7 @@ file. This project adheres to [Semantic Versioning](http://semver.org/).
 ### Fixed
 * Fix `horizon db reap` bug which caused the command to exit without deleting any history table rows ([#2336](https://github.com/stellar/go/pull/2336)).
 * The horizon reap system now also deletes rows from `history_trades`. Previously, the reap system only deleted rows from `history_operation_participants`, `history_operations`, `history_transaction_participants`, `history_transactions`, `history_ledgers`, and `history_effects` ([#2336](https://github.com/stellar/go/pull/2336)).
-* Fix deadlock when running `reingest range` ([#2373](https://github.com/stellar/go/pull/2373)).
+* Fix deadlock when running `horizon db reingest range` ([#2373](https://github.com/stellar/go/pull/2373)).
 * Fix signer update effects ([#2375](https://github.com/stellar/go/pull/2375)).
 * Fix incorrect error in log when shutting down the system while `verifyState` is running ([#2366](https://github.com/stellar/go/pull/2366)).
 
