@@ -519,10 +519,13 @@ func (is *Session) ingestSignerEffects(effects *EffectIngestion, op xdr.SetOptio
 			})
 			continue
 		}
-		effects.Add(source, history.EffectSignerUpdated, map[string]interface{}{
-			"public_key": addy,
-			"weight":     weight,
-		})
+
+		if weight != before[addy] {
+			effects.Add(source, history.EffectSignerUpdated, map[string]interface{}{
+				"public_key": addy,
+				"weight":     weight,
+			})
+		}
 	}
 
 	afterSortedSigners := []string{}
