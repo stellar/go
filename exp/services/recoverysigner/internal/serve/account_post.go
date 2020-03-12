@@ -64,8 +64,8 @@ func (h accountPostHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			Role: i.Role,
 		}
 		for _, m := range i.AuthMethods {
-			t, err := account.AuthMethodTypeFromString(m.Type)
-			if err != nil {
+			t, tErr := account.AuthMethodTypeFromString(m.Type)
+			if tErr != nil {
 				badRequest.Render(w)
 				return
 			}
