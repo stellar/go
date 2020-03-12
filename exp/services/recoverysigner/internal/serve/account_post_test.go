@@ -18,7 +18,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestAccountPost_newWithoutRoleContentTypeJSON(t *testing.T) {
+func TestAccountPost_newWithRoleOwnerContentTypeJSON(t *testing.T) {
 	s := account.NewMemoryStore()
 	h := accountPostHandler{
 		Logger:         supportlog.DefaultLogger,
@@ -32,6 +32,7 @@ func TestAccountPost_newWithoutRoleContentTypeJSON(t *testing.T) {
 	"type": "share",
 	"identities": [
 		{
+			"role": "owner",
 			"auth_methods": [
 				{ "type": "stellar_address", "value": "GBF3XFXGBGNQDN3HOSZ7NVRF6TJ2JOD5U6ELIWJOOEI6T5WKMQT2YSXQ" },
 				{ "type": "phone_number", "value": "+10000000000" },
@@ -58,7 +59,7 @@ func TestAccountPost_newWithoutRoleContentTypeJSON(t *testing.T) {
 	wantBody := `{
 	"address": "GDIXCQJ2W2N6TAS6AYW4LW2EBV7XNRUCLNHQB37FARDEWBQXRWP47Q6N",
 	"identities": [
-		{ }
+		{ "role": "owner" }
 	],
 	"signer": "GCAPXRXSU7P6D353YGXMP6ROJIC744HO5OZCIWTXZQK2X757YU5KCHUE"
 }`
@@ -70,6 +71,7 @@ func TestAccountPost_newWithoutRoleContentTypeJSON(t *testing.T) {
 		Address: "GDIXCQJ2W2N6TAS6AYW4LW2EBV7XNRUCLNHQB37FARDEWBQXRWP47Q6N",
 		Identities: []account.Identity{
 			{
+				Role: "owner",
 				AuthMethods: []account.AuthMethod{
 					{Type: account.AuthMethodTypeAddress, Value: "GBF3XFXGBGNQDN3HOSZ7NVRF6TJ2JOD5U6ELIWJOOEI6T5WKMQT2YSXQ"},
 					{Type: account.AuthMethodTypePhoneNumber, Value: "+10000000000"},
@@ -81,7 +83,7 @@ func TestAccountPost_newWithoutRoleContentTypeJSON(t *testing.T) {
 	assert.Equal(t, wantAcc, acc)
 }
 
-func TestAccountPost_newWithoutRoleContentTypeForm(t *testing.T) {
+func TestAccountPost_newWithRoleOwnerContentTypeForm(t *testing.T) {
 	s := account.NewMemoryStore()
 	h := accountPostHandler{
 		Logger:         supportlog.DefaultLogger,
@@ -92,6 +94,7 @@ func TestAccountPost_newWithoutRoleContentTypeForm(t *testing.T) {
 	ctx := context.Background()
 	ctx = auth.NewContext(ctx, auth.Auth{Address: "GDIXCQJ2W2N6TAS6AYW4LW2EBV7XNRUCLNHQB37FARDEWBQXRWP47Q6N"})
 	reqValues := url.Values{}
+	reqValues.Set("identities.0.role", "owner")
 	reqValues.Set("identities.0.auth_methods.0.type", "stellar_address")
 	reqValues.Set("identities.0.auth_methods.0.value", "GBF3XFXGBGNQDN3HOSZ7NVRF6TJ2JOD5U6ELIWJOOEI6T5WKMQT2YSXQ")
 	reqValues.Set("identities.0.auth_methods.1.type", "phone_number")
@@ -119,7 +122,7 @@ func TestAccountPost_newWithoutRoleContentTypeForm(t *testing.T) {
 	wantBody := `{
 	"address": "GDIXCQJ2W2N6TAS6AYW4LW2EBV7XNRUCLNHQB37FARDEWBQXRWP47Q6N",
 	"identities": [
-		{ }
+		{ "role": "owner" }
 	],
 	"signer": "GCAPXRXSU7P6D353YGXMP6ROJIC744HO5OZCIWTXZQK2X757YU5KCHUE"
 }`
@@ -131,6 +134,7 @@ func TestAccountPost_newWithoutRoleContentTypeForm(t *testing.T) {
 		Address: "GDIXCQJ2W2N6TAS6AYW4LW2EBV7XNRUCLNHQB37FARDEWBQXRWP47Q6N",
 		Identities: []account.Identity{
 			{
+				Role: "owner",
 				AuthMethods: []account.AuthMethod{
 					{Type: account.AuthMethodTypeAddress, Value: "GBF3XFXGBGNQDN3HOSZ7NVRF6TJ2JOD5U6ELIWJOOEI6T5WKMQT2YSXQ"},
 					{Type: account.AuthMethodTypePhoneNumber, Value: "+10000000000"},
@@ -142,7 +146,7 @@ func TestAccountPost_newWithoutRoleContentTypeForm(t *testing.T) {
 	assert.Equal(t, wantAcc, acc)
 }
 
-func TestAccountPost_newWithRoleContentTypeJSON(t *testing.T) {
+func TestAccountPost_newWithRolesSenderReceiverContentTypeJSON(t *testing.T) {
 	s := account.NewMemoryStore()
 	h := accountPostHandler{
 		Logger:         supportlog.DefaultLogger,
@@ -224,7 +228,7 @@ func TestAccountPost_newWithRoleContentTypeJSON(t *testing.T) {
 	assert.Equal(t, wantAcc, acc)
 }
 
-func TestAccountPost_newWithRoleContentTypeForm(t *testing.T) {
+func TestAccountPost_newWithRolesSenderReceiverContentTypeForm(t *testing.T) {
 	s := account.NewMemoryStore()
 	h := accountPostHandler{
 		Logger:         supportlog.DefaultLogger,
