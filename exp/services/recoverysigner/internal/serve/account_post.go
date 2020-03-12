@@ -64,8 +64,14 @@ func (h accountPostHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			Role: i.Role,
 		}
 		for _, m := range i.AuthMethods {
+			t, err := account.AuthMethodTypeFromString(m.Type)
+			if err != nil {
+				badRequest.Render(w)
+				return
+			}
+
 			accIdentity.AuthMethods = append(accIdentity.AuthMethods, account.AuthMethod{
-				Type:  account.AuthMethodType(m.Type), // TODO: Validate AuthMethodType
+				Type:  t,
 				Value: m.Value,
 			})
 		}
