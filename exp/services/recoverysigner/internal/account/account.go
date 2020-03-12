@@ -1,19 +1,24 @@
 package account
 
 type Account struct {
-	Address         string
-	OwnerIdentities Identities
-	OtherIdentities Identities
+	Address    string
+	Identities []Identity
 }
 
-type Identities struct {
-	Address     string
-	PhoneNumber string
-	Email       string
+type Identity struct {
+	Role        string
+	AuthMethods []AuthMethod
 }
 
-// Present indicates if the Identities contains at least one identity. Returns
-// false if it is an empty/zero value.
-func (i Identities) Present() bool {
-	return i != Identities{}
+type AuthMethodType string
+
+const (
+	AuthMethodTypeAccount     AuthMethodType = "stellar_account"
+	AuthMethodTypePhoneNumber AuthMethodType = "phone_number"
+	AuthMethodTypeEmail       AuthMethodType = "email"
+)
+
+type AuthMethod struct {
+	Type  AuthMethodType
+	Value string
 }

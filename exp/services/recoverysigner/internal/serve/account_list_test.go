@@ -24,14 +24,24 @@ func TestAccountList_authenticatedButNonePermitted(t *testing.T) {
 	})
 	s.Add(account.Account{
 		Address: "GDU2CH4V3QYQB2BLMX45XQLVBEKSIN2EZLP37I6MZZ7NAR5U3TLZDQEY",
-		OwnerIdentities: account.Identities{
-			Address: "GDIXCQJ2W2N6TAS6AYW4LW2EBV7XNRUCLNHQB37FARDEWBQXRWP47Q6N",
+		Identities: []account.Identity{
+			{
+				Role: "owner",
+				AuthMethods: []account.AuthMethod{
+					{Type: account.AuthMethodTypeAccount, Value: "GDIXCQJ2W2N6TAS6AYW4LW2EBV7XNRUCLNHQB37FARDEWBQXRWP47Q6N"},
+				},
+			},
 		},
 	})
 	s.Add(account.Account{
 		Address: "GCS4CVAAX7MVUNHP24655TNHIJ4YFN7GW5V3RFDC2BXVVMVDTB3GYH5U",
-		OtherIdentities: account.Identities{
-			Address: "GDIXCQJ2W2N6TAS6AYW4LW2EBV7XNRUCLNHQB37FARDEWBQXRWP47Q6N",
+		Identities: []account.Identity{
+			{
+				Role: "other",
+				AuthMethods: []account.AuthMethod{
+					{Type: account.AuthMethodTypeAccount, Value: "GDIXCQJ2W2N6TAS6AYW4LW2EBV7XNRUCLNHQB37FARDEWBQXRWP47Q6N"},
+				},
+			},
 		},
 	})
 	h := accountListHandler{
@@ -65,20 +75,35 @@ func TestAccountList_authenticatedByPhoneNumber(t *testing.T) {
 	s := account.NewMemoryStore()
 	s.Add(account.Account{
 		Address: "GDIXCQJ2W2N6TAS6AYW4LW2EBV7XNRUCLNHQB37FARDEWBQXRWP47Q6N",
-		OwnerIdentities: account.Identities{
-			PhoneNumber: "+10000000000",
+		Identities: []account.Identity{
+			{
+				Role: "owner",
+				AuthMethods: []account.AuthMethod{
+					{Type: account.AuthMethodTypePhoneNumber, Value: "+10000000000"},
+				},
+			},
 		},
 	})
 	s.Add(account.Account{
 		Address: "GDU2CH4V3QYQB2BLMX45XQLVBEKSIN2EZLP37I6MZZ7NAR5U3TLZDQEY",
-		OtherIdentities: account.Identities{
-			PhoneNumber: "+10000000000",
+		Identities: []account.Identity{
+			{
+				Role: "other",
+				AuthMethods: []account.AuthMethod{
+					{Type: account.AuthMethodTypePhoneNumber, Value: "+10000000000"},
+				},
+			},
 		},
 	})
 	s.Add(account.Account{
 		Address: "GCS4CVAAX7MVUNHP24655TNHIJ4YFN7GW5V3RFDC2BXVVMVDTB3GYH5U",
-		OtherIdentities: account.Identities{
-			PhoneNumber: "+20000000000",
+		Identities: []account.Identity{
+			{
+				Role: "other",
+				AuthMethods: []account.AuthMethod{
+					{Type: account.AuthMethodTypePhoneNumber, Value: "+20000000000"},
+				},
+			},
 		},
 	})
 	h := accountListHandler{
@@ -127,20 +152,35 @@ func TestAccountList_authenticatedByEmail(t *testing.T) {
 	s := account.NewMemoryStore()
 	s.Add(account.Account{
 		Address: "GDIXCQJ2W2N6TAS6AYW4LW2EBV7XNRUCLNHQB37FARDEWBQXRWP47Q6N",
-		OwnerIdentities: account.Identities{
-			Email: "user1@example.com",
+		Identities: []account.Identity{
+			{
+				Role: "owner",
+				AuthMethods: []account.AuthMethod{
+					{Type: account.AuthMethodTypeEmail, Value: "user1@example.com"},
+				},
+			},
 		},
 	})
 	s.Add(account.Account{
 		Address: "GDU2CH4V3QYQB2BLMX45XQLVBEKSIN2EZLP37I6MZZ7NAR5U3TLZDQEY",
-		OtherIdentities: account.Identities{
-			Email: "user1@example.com",
+		Identities: []account.Identity{
+			{
+				Role: "other",
+				AuthMethods: []account.AuthMethod{
+					{Type: account.AuthMethodTypeEmail, Value: "user1@example.com"},
+				},
+			},
 		},
 	})
 	s.Add(account.Account{
 		Address: "GCS4CVAAX7MVUNHP24655TNHIJ4YFN7GW5V3RFDC2BXVVMVDTB3GYH5U",
-		OtherIdentities: account.Identities{
-			Email: "user2@example.com",
+		Identities: []account.Identity{
+			{
+				Role: "other",
+				AuthMethods: []account.AuthMethod{
+					{Type: account.AuthMethodTypeEmail, Value: "user2@example.com"},
+				},
+			},
 		},
 	})
 	h := accountListHandler{
@@ -189,20 +229,35 @@ func TestAccountList_notAuthenticated(t *testing.T) {
 	s := account.NewMemoryStore()
 	s.Add(account.Account{
 		Address: "GDIXCQJ2W2N6TAS6AYW4LW2EBV7XNRUCLNHQB37FARDEWBQXRWP47Q6N",
-		OwnerIdentities: account.Identities{
-			Email: "user1@example.com",
+		Identities: []account.Identity{
+			{
+				Role: "owner",
+				AuthMethods: []account.AuthMethod{
+					{Type: account.AuthMethodTypeEmail, Value: "user1@example.com"},
+				},
+			},
 		},
 	})
 	s.Add(account.Account{
 		Address: "GDU2CH4V3QYQB2BLMX45XQLVBEKSIN2EZLP37I6MZZ7NAR5U3TLZDQEY",
-		OtherIdentities: account.Identities{
-			Email: "user1@example.com",
+		Identities: []account.Identity{
+			{
+				Role: "other",
+				AuthMethods: []account.AuthMethod{
+					{Type: account.AuthMethodTypeEmail, Value: "user1@example.com"},
+				},
+			},
 		},
 	})
 	s.Add(account.Account{
 		Address: "GCS4CVAAX7MVUNHP24655TNHIJ4YFN7GW5V3RFDC2BXVVMVDTB3GYH5U",
-		OtherIdentities: account.Identities{
-			Email: "user2@example.com",
+		Identities: []account.Identity{
+			{
+				Role: "other",
+				AuthMethods: []account.AuthMethod{
+					{Type: account.AuthMethodTypeEmail, Value: "user2@example.com"},
+				},
+			},
 		},
 	})
 	h := accountListHandler{
