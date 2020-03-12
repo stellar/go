@@ -61,19 +61,40 @@ func (h accountSignHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// Verify that the authenticated client has access to the account.
 	addressAuthenticated := false
 	if claims.Address != "" {
-		addressAuthenticated = claims.Address == acc.Address ||
-			claims.Address == acc.OwnerIdentities.Address ||
-			claims.Address == acc.OtherIdentities.Address
+		if claims.Address == acc.Address {
+			addressAuthenticated = true
+		} else {
+			for _, i := range acc.Identities {
+				for _, m := range i.AuthMethods {
+					if m.Type == account.AuthMethodTypeAddress && m.Value == claims.Address {
+						addressAuthenticated = true
+						break
+					}
+				}
+			}
+		}
 	}
 	phoneNumberAuthenticated := false
 	if claims.PhoneNumber != "" {
-		phoneNumberAuthenticated = claims.PhoneNumber == acc.OwnerIdentities.PhoneNumber ||
-			claims.PhoneNumber == acc.OtherIdentities.PhoneNumber
+		for _, i := range acc.Identities {
+			for _, m := range i.AuthMethods {
+				if m.Type == account.AuthMethodTypePhoneNumber && m.Value == claims.PhoneNumber {
+					phoneNumberAuthenticated = true
+					break
+				}
+			}
+		}
 	}
 	emailAuthenticated := false
 	if claims.Email != "" {
-		emailAuthenticated = claims.Email == acc.OwnerIdentities.Email ||
-			claims.Email == acc.OtherIdentities.Email
+		for _, i := range acc.Identities {
+			for _, m := range i.AuthMethods {
+				if m.Type == account.AuthMethodTypeEmail && m.Value == claims.Email {
+					emailAuthenticated = true
+					break
+				}
+			}
+		}
 	}
 	if !addressAuthenticated && !phoneNumberAuthenticated && !emailAuthenticated {
 		notFound.Render(w)
