@@ -35,6 +35,9 @@ func TestDBCommand_Migrate_upDownAll(t *testing.T) {
 		wantIDs := []string{
 			"20200309000000-initial-1.sql",
 			"20200309000001-initial-2.sql",
+			"20200311000000-create-accounts.sql",
+			"20200311000001-create-identities.sql",
+			"20200311000002-create-auth-methods.sql",
 		}
 		assert.Equal(t, wantIDs, ids)
 
@@ -44,8 +47,8 @@ func TestDBCommand_Migrate_upDownAll(t *testing.T) {
 			messages = append(messages, l.Message)
 		}
 		wantMessages := []string{
-			"Migrations to apply up: 20200309000000-initial-1.sql, 20200309000001-initial-2.sql",
-			"Successfully applied 2 migrations up.",
+			"Migrations to apply up: 20200309000000-initial-1.sql, 20200309000001-initial-2.sql, 20200311000000-create-accounts.sql, 20200311000001-create-identities.sql, 20200311000002-create-auth-methods.sql",
+			"Successfully applied 5 migrations up.",
 		}
 		assert.Equal(t, wantMessages, messages)
 	}
@@ -69,8 +72,8 @@ func TestDBCommand_Migrate_upDownAll(t *testing.T) {
 			messages = append(messages, l.Message)
 		}
 		wantMessages := []string{
-			"Migrations to apply down: 20200309000001-initial-2.sql, 20200309000000-initial-1.sql",
-			"Successfully applied 2 migrations down.",
+			"Migrations to apply down: 20200311000002-create-auth-methods.sql, 20200311000001-create-identities.sql, 20200311000000-create-accounts.sql, 20200309000001-initial-2.sql, 20200309000000-initial-1.sql",
+			"Successfully applied 5 migrations down.",
 		}
 		assert.Equal(t, wantMessages, messages)
 	}
