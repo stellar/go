@@ -1,19 +1,39 @@
 package account
 
+import "github.com/stellar/go/support/errors"
+
 type Account struct {
-	Address         string
-	OwnerIdentities Identities
-	OtherIdentities Identities
+	Address    string
+	Identities []Identity
 }
 
-type Identities struct {
-	Address     string
-	PhoneNumber string
-	Email       string
+type Identity struct {
+	Role        string
+	AuthMethods []AuthMethod
 }
 
-// Present indicates if the Identities contains at least one identity. Returns
-// false if it is an empty/zero value.
-func (i Identities) Present() bool {
-	return i != Identities{}
+type AuthMethodType string
+
+const (
+	AuthMethodTypeAddress     AuthMethodType = "stellar_address"
+	AuthMethodTypePhoneNumber AuthMethodType = "phone_number"
+	AuthMethodTypeEmail       AuthMethodType = "email"
+)
+
+func AuthMethodTypeFromString(s string) (AuthMethodType, error) {
+	if AuthMethodTypes[AuthMethodType(s)] {
+		return AuthMethodType(s), nil
+	}
+	return AuthMethodType(""), errors.Errorf("auth method type %q unrecognized", s)
+}
+
+var AuthMethodTypes = map[AuthMethodType]bool{
+	AuthMethodTypeAddress:     true,
+	AuthMethodTypePhoneNumber: true,
+	AuthMethodTypeEmail:       true,
+}
+
+type AuthMethod struct {
+	Type  AuthMethodType
+	Value string
 }

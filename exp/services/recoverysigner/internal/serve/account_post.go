@@ -21,18 +21,17 @@ type accountPostHandler struct {
 
 type accountPostRequest struct {
 	Address    *keypair.FromAddress         `path:"address"`
-	Identities accountPostRequestIdentities `json:"identities" form:"identities"`
-}
-
-type accountPostRequestIdentities struct {
-	Owner accountPostRequestIdentity `json:"owner" form:"owner"`
-	Other accountPostRequestIdentity `json:"other" form:"other"`
+	Identities []accountPostRequestIdentity `json:"identities" form:"identities"`
 }
 
 type accountPostRequestIdentity struct {
-	Address     string `json:"account" form:"account"`
-	PhoneNumber string `json:"phone_number" form:"phone_number"`
-	Email       string `json:"email" form:"email"`
+	Role        string                                 `json:"role" form:"role"`
+	AuthMethods []accountPostRequestIdentityAuthMethod `json:"auth_methods" form:"auth_methods"`
+}
+
+type accountPostRequestIdentityAuthMethod struct {
+	Type  string `json:"type" form:"type"`
+	Value string `json:"value" form:"value"`
 }
 
 func (h accountPostHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -57,18 +56,28 @@ func (h accountPostHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	acc := account.Account{
-		Address: req.Address.Address(),
-		OwnerIdentities: account.Identities{
-			Address:     req.Identities.Owner.Address,
-			PhoneNumber: req.Identities.Owner.PhoneNumber,
-			Email:       req.Identities.Owner.Email,
-		},
-		OtherIdentities: account.Identities{
-			Address:     req.Identities.Other.Address,
-			PhoneNumber: req.Identities.Other.PhoneNumber,
-			Email:       req.Identities.Other.Email,
-		},
+		Address:    req.Address.Address(),
+		Identities: []account.Identity{},
 	}
+	for _, i := range req.Identities {
+		accIdentity := account.Identity{
+			Role: i.Role,
+		}
+		for _, m := range i.AuthMethods {
+			t, tErr := account.AuthMethodTypeFromString(m.Type)
+			if tErr != nil {
+				badRequest.Render(w)
+				return
+			}
+
+			accIdentity.AuthMethods = append(accIdentity.AuthMethods, account.AuthMethod{
+				Type:  t,
+				Value: m.Value,
+			})
+		}
+		acc.Identities = append(acc.Identities, accIdentity)
+	}
+
 	err = h.AccountStore.Add(acc)
 	if err == account.ErrAlreadyExists {
 		conflict.Render(w)
@@ -80,17 +89,14 @@ func (h accountPostHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	resp := accountResponse{
-		Address: req.Address.Address(),
-		Identities: accountResponseIdentities{
-			Owner: accountResponseIdentity{
-				Present: acc.OwnerIdentities.Present(),
-			},
-			Other: accountResponseIdentity{
-				Present: acc.OtherIdentities.Present(),
-			},
-		},
-		Identity: "account",
-		Signer:   h.SigningAddress.Address(),
+		Address: acc.Address,
+		Signer:  h.SigningAddress.Address(),
+	}
+	for _, i := range acc.Identities {
+		respIdentity := accountResponseIdentity{
+			Role: i.Role,
+		}
+		resp.Identities = append(resp.Identities, respIdentity)
 	}
 	httpjson.Render(w, resp, httpjson.JSON)
 }

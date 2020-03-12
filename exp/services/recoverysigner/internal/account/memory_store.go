@@ -53,10 +53,13 @@ func (ms *memoryStore) FindWithIdentityAddress(address string) ([]Account, error
 	defer ms.accountsMu.Unlock()
 
 	accounts := []Account{}
-	for _, a := range ms.accountsAddressMap {
-		if address == a.OwnerIdentities.Address ||
-			address == a.OtherIdentities.Address {
-			accounts = append(accounts, a)
+	for _, a := range ms.accounts {
+		for _, i := range a.Identities {
+			for _, m := range i.AuthMethods {
+				if m.Type == AuthMethodTypeAddress && m.Value == address {
+					accounts = append(accounts, a)
+				}
+			}
 		}
 	}
 	return accounts, nil
@@ -68,9 +71,12 @@ func (ms *memoryStore) FindWithIdentityPhoneNumber(phoneNumber string) ([]Accoun
 
 	accounts := []Account{}
 	for _, a := range ms.accounts {
-		if phoneNumber == a.OwnerIdentities.PhoneNumber ||
-			phoneNumber == a.OtherIdentities.PhoneNumber {
-			accounts = append(accounts, a)
+		for _, i := range a.Identities {
+			for _, m := range i.AuthMethods {
+				if m.Type == AuthMethodTypePhoneNumber && m.Value == phoneNumber {
+					accounts = append(accounts, a)
+				}
+			}
 		}
 	}
 	return accounts, nil
@@ -82,9 +88,12 @@ func (ms *memoryStore) FindWithIdentityEmail(email string) ([]Account, error) {
 
 	accounts := []Account{}
 	for _, a := range ms.accounts {
-		if email == a.OwnerIdentities.Email ||
-			email == a.OtherIdentities.Email {
-			accounts = append(accounts, a)
+		for _, i := range a.Identities {
+			for _, m := range i.AuthMethods {
+				if m.Type == AuthMethodTypeEmail && m.Value == email {
+					accounts = append(accounts, a)
+				}
+			}
 		}
 	}
 	return accounts, nil

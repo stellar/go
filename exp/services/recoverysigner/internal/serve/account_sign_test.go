@@ -165,20 +165,36 @@ func TestAccountSign_phoneNumberAuthenticatedButNotPermitted(t *testing.T) {
 	s := account.NewMemoryStore()
 	s.Add(account.Account{
 		Address: "GA6HNE7O2N2IXIOBZNZ4IPTS2P6DSAJJF5GD5PDLH5GYOZ6WMPSKCXD4",
-		OwnerIdentities: account.Identities{
-			PhoneNumber: "+10000000000",
-		},
-		OtherIdentities: account.Identities{
-			PhoneNumber: "+10000000000",
+		Identities: []account.Identity{
+			{
+				Role: "sender",
+				AuthMethods: []account.AuthMethod{
+					{Type: account.AuthMethodTypePhoneNumber, Value: "+10000000000"},
+				},
+			},
+			{
+				Role: "receiver",
+				AuthMethods: []account.AuthMethod{
+					{Type: account.AuthMethodTypePhoneNumber, Value: "+10000000000"},
+				},
+			},
 		},
 	})
 	s.Add(account.Account{
 		Address: "GBLOP46WEVXWO5N75TDX7GXLYFQE3XLDT5NQ2VYIBEWWEMSZWR3AUISZ",
-		OwnerIdentities: account.Identities{
-			PhoneNumber: "+20000000000",
-		},
-		OtherIdentities: account.Identities{
-			PhoneNumber: "+20000000000",
+		Identities: []account.Identity{
+			{
+				Role: "sender",
+				AuthMethods: []account.AuthMethod{
+					{Type: account.AuthMethodTypePhoneNumber, Value: "+20000000000"},
+				},
+			},
+			{
+				Role: "receiver",
+				AuthMethods: []account.AuthMethod{
+					{Type: account.AuthMethodTypePhoneNumber, Value: "+20000000000"},
+				},
+			},
 		},
 	})
 	h := accountSignHandler{
@@ -220,20 +236,36 @@ func TestAccountSign_emailAuthenticatedButNotPermitted(t *testing.T) {
 	s := account.NewMemoryStore()
 	s.Add(account.Account{
 		Address: "GA6HNE7O2N2IXIOBZNZ4IPTS2P6DSAJJF5GD5PDLH5GYOZ6WMPSKCXD4",
-		OwnerIdentities: account.Identities{
-			Email: "user1@example.com",
-		},
-		OtherIdentities: account.Identities{
-			Email: "user1@example.com",
+		Identities: []account.Identity{
+			{
+				Role: "sender",
+				AuthMethods: []account.AuthMethod{
+					{Type: account.AuthMethodTypeEmail, Value: "user1@example.com"},
+				},
+			},
+			{
+				Role: "receiver",
+				AuthMethods: []account.AuthMethod{
+					{Type: account.AuthMethodTypeEmail, Value: "user1@example.com"},
+				},
+			},
 		},
 	})
 	s.Add(account.Account{
 		Address: "GBLOP46WEVXWO5N75TDX7GXLYFQE3XLDT5NQ2VYIBEWWEMSZWR3AUISZ",
-		OwnerIdentities: account.Identities{
-			Email: "user2@example.com",
-		},
-		OtherIdentities: account.Identities{
-			Email: "user2@example.com",
+		Identities: []account.Identity{
+			{
+				Role: "sender",
+				AuthMethods: []account.AuthMethod{
+					{Type: account.AuthMethodTypeEmail, Value: "user2@example.com"},
+				},
+			},
+			{
+				Role: "receiver",
+				AuthMethods: []account.AuthMethod{
+					{Type: account.AuthMethodTypeEmail, Value: "user2@example.com"},
+				},
+			},
 		},
 	})
 	h := accountSignHandler{
@@ -574,8 +606,13 @@ func TestAccountSign_phoneNumberOwnerAuthenticated(t *testing.T) {
 	s := account.NewMemoryStore()
 	s.Add(account.Account{
 		Address: "GA6HNE7O2N2IXIOBZNZ4IPTS2P6DSAJJF5GD5PDLH5GYOZ6WMPSKCXD4",
-		OwnerIdentities: account.Identities{
-			PhoneNumber: "+10000000000",
+		Identities: []account.Identity{
+			{
+				Role: "sender",
+				AuthMethods: []account.AuthMethod{
+					{Type: account.AuthMethodTypePhoneNumber, Value: "+10000000000"},
+				},
+			},
 		},
 	})
 	h := accountSignHandler{
@@ -637,8 +674,13 @@ func TestAccountSign_phoneNumberOtherAuthenticated(t *testing.T) {
 	s := account.NewMemoryStore()
 	s.Add(account.Account{
 		Address: "GA6HNE7O2N2IXIOBZNZ4IPTS2P6DSAJJF5GD5PDLH5GYOZ6WMPSKCXD4",
-		OtherIdentities: account.Identities{
-			PhoneNumber: "+10000000000",
+		Identities: []account.Identity{
+			{
+				Role: "receiver",
+				AuthMethods: []account.AuthMethod{
+					{Type: account.AuthMethodTypePhoneNumber, Value: "+10000000000"},
+				},
+			},
 		},
 	})
 	h := accountSignHandler{
@@ -700,8 +742,13 @@ func TestAccountSign_emailOwnerAuthenticated(t *testing.T) {
 	s := account.NewMemoryStore()
 	s.Add(account.Account{
 		Address: "GA6HNE7O2N2IXIOBZNZ4IPTS2P6DSAJJF5GD5PDLH5GYOZ6WMPSKCXD4",
-		OwnerIdentities: account.Identities{
-			Email: "user1@example.com",
+		Identities: []account.Identity{
+			{
+				Role: "sender",
+				AuthMethods: []account.AuthMethod{
+					{Type: account.AuthMethodTypeEmail, Value: "user1@example.com"},
+				},
+			},
 		},
 	})
 	h := accountSignHandler{
@@ -763,8 +810,13 @@ func TestAccountSign_emailOtherAuthenticated(t *testing.T) {
 	s := account.NewMemoryStore()
 	s.Add(account.Account{
 		Address: "GA6HNE7O2N2IXIOBZNZ4IPTS2P6DSAJJF5GD5PDLH5GYOZ6WMPSKCXD4",
-		OtherIdentities: account.Identities{
-			Email: "user1@example.com",
+		Identities: []account.Identity{
+			{
+				Role: "receiver",
+				AuthMethods: []account.AuthMethod{
+					{Type: account.AuthMethodTypeEmail, Value: "user1@example.com"},
+				},
+			},
 		},
 	})
 	h := accountSignHandler{
