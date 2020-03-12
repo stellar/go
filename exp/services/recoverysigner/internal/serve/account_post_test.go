@@ -67,8 +67,8 @@ func TestAccountPost_newContentTypeJSON(t *testing.T) {
 	wantBody := `{
 	"address": "GDIXCQJ2W2N6TAS6AYW4LW2EBV7XNRUCLNHQB37FARDEWBQXRWP47Q6N",
 	"identities": [
-		{ "role": "owner", "authenticated": false },
-		{ "role": "other", "authenticated": false }
+		{ "role": "owner" },
+		{ "role": "other" }
 	],
 	"signer": "GCAPXRXSU7P6D353YGXMP6ROJIC744HO5OZCIWTXZQK2X757YU5KCHUE"
 }`
@@ -146,8 +146,8 @@ func TestAccountPost_newContentTypeForm(t *testing.T) {
 	wantBody := `{
 	"address": "GDIXCQJ2W2N6TAS6AYW4LW2EBV7XNRUCLNHQB37FARDEWBQXRWP47Q6N",
 	"identities": [
-		{ "role": "owner", "authenticated": false },
-		{ "role": "other", "authenticated": false }
+		{ "role": "owner" },
+		{ "role": "other" }
 	],
 	"signer": "GCAPXRXSU7P6D353YGXMP6ROJIC744HO5OZCIWTXZQK2X757YU5KCHUE"
 }`
