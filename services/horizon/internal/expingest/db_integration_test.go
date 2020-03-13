@@ -1,5 +1,3 @@
-// +build update
-
 package expingest
 
 import (

@@ -1,8 +1,9 @@
+// +build update
+
 package expingest
 
 import (
 	"context"
-	stdio "io"
 	"io/ioutil"
 	"math/rand"
 	"path/filepath"
@@ -129,35 +130,35 @@ func (r *sampleChangeReader) Close() error {
 		return err
 	}
 
-	for _, entry := range r.data {
-		address := entry.Data.Data.AccountId.Address()
+	for _, dataEntry := range r.data {
+		address := dataEntry.Data.Data.AccountId.Address()
 		if entry := r.allAccounts[address]; entry != nil {
 			r.accounts = append(r.accounts, entry)
 			delete(r.allAccounts, address)
 		}
 	}
 
-	for _, entry := range r.trustlines {
-		address := entry.Data.TrustLine.AccountId.Address()
+	for _, trustlineEntry := range r.trustlines {
+		address := trustlineEntry.Data.TrustLine.AccountId.Address()
 		if entry := r.allAccounts[address]; entry != nil {
 			r.accounts = append(r.accounts, entry)
 			delete(r.allAccounts, address)
 		}
 	}
 
-	for _, entry := range r.offers {
-		seller := entry.Data.Offer.SellerId.Address()
+	for _, offerEntry := range r.offers {
+		seller := offerEntry.Data.Offer.SellerId.Address()
 		if entry := r.allAccounts[seller]; entry != nil {
 			r.accounts = append(r.accounts, entry)
 			delete(r.allAccounts, seller)
 		}
 
-		if issuer := getIssuer(entry.Data.Offer.Buying); r.allAccounts[issuer] != nil {
+		if issuer := getIssuer(offerEntry.Data.Offer.Buying); r.allAccounts[issuer] != nil {
 			r.accounts = append(r.accounts, r.allAccounts[issuer])
 			delete(r.allAccounts, issuer)
 		}
 
-		if issuer := getIssuer(entry.Data.Offer.Selling); r.allAccounts[issuer] != nil {
+		if issuer := getIssuer(offerEntry.Data.Offer.Selling); r.allAccounts[issuer] != nil {
 			r.accounts = append(r.accounts, r.allAccounts[issuer])
 			delete(r.allAccounts, issuer)
 		}
@@ -205,18 +206,19 @@ func TestUpdateSampleChanges(t *testing.T) {
 		t.Fatalf("could not create sample change reader: %v", err)
 	}
 
-	for {
-		_, err := reader.Read()
-		if err == stdio.EOF {
-			break
-		} else if err != nil {
-			t.Fatalf("could not read change: %v", err)
-		}
+	changeStats := &io.StatsChangeProcessor{}
+	err = io.StreamChanges(changeStats, reader)
+	if err != nil {
+		t.Fatalf("could not stream changes: %v", err)
 	}
 	err = reader.Close()
 	if err != nil {
 		t.Fatalf("could not close reader: %v", err)
 	}
+
+	results := changeStats.GetResults()
+	log.WithFields(results.Map()).
+		Info("Finished processing ledger entry changes")
 
 	contents, err := ioutil.ReadFile(path)
 	if err != nil {
