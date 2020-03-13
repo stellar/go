@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/jmoiron/sqlx"
+	"github.com/stellar/go/exp/ingest/adapters"
 	"github.com/stellar/go/exp/ingest/io"
 	"github.com/stellar/go/exp/ingest/ledgerbackend"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
@@ -364,6 +365,10 @@ type mockProcessorsRunner struct {
 
 func (m *mockProcessorsRunner) SetLedgerBackend(ledgerBackend ledgerbackend.LedgerBackend) {
 	m.Called(ledgerBackend)
+}
+
+func (m *mockProcessorsRunner) SetHistoryAdapter(historyAdapter adapters.HistoryArchiveAdapterInterface) {
+	m.Called(historyAdapter)
 }
 
 func (m *mockProcessorsRunner) EnableMemoryStatsLogging() {
