@@ -13,6 +13,8 @@ file. This project adheres to [Semantic Versioning](http://semver.org/).
 * Fix deadlock when running `horizon db reingest range` ([#2373](https://github.com/stellar/go/pull/2373)).
 * Fix signer update effects ([#2375](https://github.com/stellar/go/pull/2375)).
 * Fix incorrect error in log when shutting down the system while `verifyState` is running ([#2366](https://github.com/stellar/go/pull/2366)).
+* Expose date header to CORS clients ([#2316](https://github.com/stellar/go/pull/2316)).
+* Fix inconsistent ledger view in `/accounts/{id}` when streaming ([#2344](https://github.com/stellar/go/pull/2344)).
 
 ### Removed
 * Dropped support for Go 1.12. ([#2346](https://github.com/stellar/go/pull/2346)).
