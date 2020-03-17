@@ -47,6 +47,9 @@ func (i accountPostRequestIdentity) Validate() error {
 	if i.Role == "" {
 		return errors.Errorf("role is not set but required")
 	}
+	if len(i.AuthMethods) == 0 {
+		return errors.Errorf("auth methods not provided for identity but required")
+	}
 	return nil
 }
 
