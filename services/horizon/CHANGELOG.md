@@ -5,11 +5,21 @@ file. This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## Unreleased
 
-* Fix `horizon db reap` bug which caused the command to exit without deleting any history table rows.
-* The horizon reap system now also deletes rows from `history_trades`. Previously, the reap system only deleted rows from `history_operation_participants`, `history_operations`, `history_transaction_participants`, `history_transactions`, `history_ledgers`, and `history_effects`.
-* Dropped support for Go 1.12.
+## v1.0.1
 
-## 1.0.0
+### Fixed
+* Fix `horizon db reap` bug which caused the command to exit without deleting any history table rows ([#2336](https://github.com/stellar/go/pull/2336)).
+* The horizon reap system now also deletes rows from `history_trades`. Previously, the reap system only deleted rows from `history_operation_participants`, `history_operations`, `history_transaction_participants`, `history_transactions`, `history_ledgers`, and `history_effects` ([#2336](https://github.com/stellar/go/pull/2336)).
+* Fix deadlock when running `horizon db reingest range` ([#2373](https://github.com/stellar/go/pull/2373)).
+* Fix signer update effects ([#2375](https://github.com/stellar/go/pull/2375)).
+* Fix incorrect error in log when shutting down the system while `verifyState` is running ([#2366](https://github.com/stellar/go/pull/2366)).
+* Expose date header to CORS clients ([#2316](https://github.com/stellar/go/pull/2316)).
+* Fix inconsistent ledger view in `/accounts/{id}` when streaming ([#2344](https://github.com/stellar/go/pull/2344)).
+
+### Removed
+* Dropped support for Go 1.12. ([#2346](https://github.com/stellar/go/pull/2346)).
+
+## v1.0.0
 
 ### Before you upgrade
 
