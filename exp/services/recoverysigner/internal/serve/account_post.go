@@ -50,12 +50,25 @@ func (i accountPostRequestIdentity) Validate() error {
 	if len(i.AuthMethods) == 0 {
 		return errors.Errorf("auth methods not provided for identity but required")
 	}
+	for _, am := range i.AuthMethods {
+		err := am.Validate()
+		if err != nil {
+			return err
+		}
+	}
 	return nil
 }
 
 type accountPostRequestIdentityAuthMethod struct {
 	Type  string `json:"type" form:"type"`
 	Value string `json:"value" form:"value"`
+}
+
+func (am accountPostRequestIdentityAuthMethod) Validate() error {
+	if !account.AuthMethodType(am.Type).Valid() {
+		return errors.Errorf("auth method type %q unrecognized", am.Type)
+	}
+	return nil
 }
 
 func (h accountPostHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -93,14 +106,8 @@ func (h accountPostHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			Role: i.Role,
 		}
 		for _, m := range i.AuthMethods {
-			t, tErr := account.AuthMethodTypeFromString(m.Type)
-			if tErr != nil {
-				badRequest.Render(w)
-				return
-			}
-
 			accIdentity.AuthMethods = append(accIdentity.AuthMethods, account.AuthMethod{
-				Type:  t,
+				Type:  account.AuthMethodType(m.Type),
 				Value: m.Value,
 			})
 		}
