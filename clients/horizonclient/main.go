@@ -139,11 +139,12 @@ type Client struct {
 	clock *clock.Clock
 }
 
+// SubmitTxOpt optional parameters for SubmitTransaction
 type SubmitTxOpt int
 
 const (
-	// SkipMemoRequiredCheck skips sep29 check
-	SkipMemoRequiredCheck SubmitTxOpt = iota
+	// SkipMemoRequiredCheck skips SEP0029 memo required check
+	SkipMemoRequiredCheck SubmitTxOpt = 99
 )
 
 // ClientInterface contains methods implemented by the horizon client
