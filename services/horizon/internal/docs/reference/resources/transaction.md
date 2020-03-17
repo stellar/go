@@ -15,7 +15,7 @@ To learn more about the concept of transactions in the Stellar network, take a l
 | id                      | string                   | The canonical id of this transaction, suitable for use as the :id parameter for url templates that require a transaction's ID. |
 | paging_token            | string                   | A [paging token](./page.md) suitable for use as the `cursor` parameter to transaction collection resources.                    |
 | successful              | bool                     | Indicates if transaction was successful or not.                                                                                |
-| hash                    | string                   | A hex-encoded SHA-256 hash of the transaction's [XDR](../../learn/xdr.md)-encoded form.                                        |
+| hash                    | string                   | A hex-encoded, lowercase SHA-256 hash of the transaction's [XDR](../../learn/xdr.md)-encoded form.                                        |
 | ledger                  | number                   | Sequence number of the ledger in which this transaction was applied.                                                           |
 | created_at              | ISO8601 string           |                                                                                                                                |
 | source_account          | string                   |                                                                                                                                |

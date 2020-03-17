@@ -71,7 +71,7 @@ If the transaction failed or errored, then an error response will be returned. P
 
 | Name              | Type   |                                                                       |
 |-------------------|--------|-----------------------------------------------------------------------|
-| `hash`            | string | A hex-encoded hash of the submitted transaction.                      |
+| `hash`            | string | A hex-encoded, lowercase hash of the submitted transaction.                      |
 | `ledger`          | number | The ledger number that the submitted transaction was included in.     |
 | `envelope_xdr`    | string | A base64 encoded `TransactionEnvelope` [XDR](../xdr.md) object. |
 | `result_xdr`      | string | A base64 encoded `TransactionResult` [XDR](../xdr.md) object.   |
