@@ -7,6 +7,7 @@ import (
 	"github.com/stellar/go/exp/services/recoverysigner/internal/account"
 	"github.com/stellar/go/exp/services/recoverysigner/internal/serve/auth"
 	"github.com/stellar/go/keypair"
+	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/support/http/httpdecode"
 	supportlog "github.com/stellar/go/support/log"
 	"github.com/stellar/go/support/render/httpjson"
@@ -24,9 +25,26 @@ type accountPostRequest struct {
 	Identities []accountPostRequestIdentity `json:"identities" form:"identities"`
 }
 
+func (r accountPostRequest) Validate() error {
+	for _, i := range r.Identities {
+		err := i.Validate()
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 type accountPostRequestIdentity struct {
 	Role        string                                 `json:"role" form:"role"`
 	AuthMethods []accountPostRequestIdentityAuthMethod `json:"auth_methods" form:"auth_methods"`
+}
+
+func (i accountPostRequestIdentity) Validate() error {
+	if i.Role == "" {
+		return errors.Errorf("role is not set but required")
+	}
+	return nil
 }
 
 type accountPostRequestIdentityAuthMethod struct {
@@ -52,6 +70,11 @@ func (h accountPostHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	if req.Address.Address() != claims.Address {
 		unauthorized.Render(w)
+		return
+	}
+
+	if req.Validate() != nil {
+		badRequest.Render(w)
 		return
 	}
 
