@@ -38,6 +38,62 @@ func (c *Client) sendRequest(hr HorizonRequest, resp interface{}) (err error) {
 	return c.sendRequestURL(c.HorizonURL+endpoint, "get", resp)
 }
 
+func (c *Client) checkMemoRequired(transaction txnbuild.Transaction) error {
+	destinations := map[string]bool{}
+
+	for i, op := range transaction.Operations {
+		var destination, operationFormatted string
+
+		if err := op.Validate(); err != nil {
+			return err
+		}
+
+		switch p := op.(type) {
+		case *txnbuild.Payment:
+			destination = p.Destination
+			operationFormatted = "Payment"
+		case *txnbuild.PathPaymentStrictReceive:
+			destination = p.Destination
+			operationFormatted = "PathPaymentStrictReceive"
+		case *txnbuild.PathPaymentStrictSend:
+			destination = p.Destination
+			operationFormatted = "PathPaymentStrictSend"
+		case *txnbuild.AccountMerge:
+			destination = p.Destination
+			operationFormatted = "AccountMerge"
+		default:
+			continue
+		}
+
+		if destinations[destination] {
+			continue
+		}
+		destinations[destination] = true
+
+		request := AccountRequest{
+			AccountID: destination,
+			DataKey:   "config.memo_required",
+		}
+
+		data, err := c.AccountData(request)
+		if err != nil {
+			horizonError, ok := err.(*Error)
+
+			if !ok || horizonError.Response.StatusCode != 404 {
+				return err
+			}
+
+			continue
+		}
+
+		if data.Value == "MQ==" {
+			return errors.New(fmt.Sprintf("MemoRequired:Operation[%d](%s) - Destination: %s requires a memo in the transaction", i, operationFormatted, destination))
+		}
+	}
+
+	return nil
+}
+
 // sendRequestURL sends a url to a horizon server.
 // It can be used for requests that do not implement the HorizonRequest interface.
 func (c *Client) sendRequestURL(requestURL string, method string, a interface{}) (err error) {

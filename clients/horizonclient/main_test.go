@@ -1,6 +1,7 @@
 package horizonclient
 
 import (
+	"fmt"
 	"net/http"
 	"testing"
 	"time"
@@ -27,6 +28,156 @@ func TestFixHTTP(t *testing.T) {
 	client.Root()
 	// When a request is made, default HTTP client is set
 	assert.IsType(t, client.HTTP, &http.Client{})
+}
+
+func TestCheckMemoRequired(t *testing.T) {
+	tt := assert.New(t)
+
+	hmock := httptest.NewClient()
+	client := &Client{
+		HorizonURL: "https://localhost/",
+		HTTP:       hmock,
+	}
+
+	data := map[string]string{
+		"value": "MQ==",
+	}
+
+	notFound := map[string]interface{}{
+		"type":   "https://stellar.org/horizon-errors/not_found",
+		"title":  "Resource Missing",
+		"status": 404,
+		"detail": "The resource at the url requested was not found.  This usually occurs for one of two reasons:  The url requested is not valid, or no data in our database could be found with the parameters provided.",
+	}
+
+	kp := keypair.MustParseFull("SA26PHIKZM6CXDGR472SSGUQQRYXM6S437ZNHZGRM6QA4FOPLLLFRGDX")
+	sourceAccount := txnbuild.NewSimpleAccount(kp.Address(), int64(0))
+
+	paymentMemoRequired := txnbuild.Payment{
+		Destination: "GAYHAAKPAQLMGIJYMIWPDWCGUCQ5LAWY4Q7Q3IKSP57O7GUPD3NEOSEA",
+		Amount:      "10",
+		Asset:       txnbuild.NativeAsset{},
+	}
+
+	paymentNoMemo := txnbuild.Payment{
+		Destination: "GDWIRURRED6SQSZVQVVMK46PE2MOZEKHV6ZU54JG3NPVRDIF4XCXYYW4",
+		Amount:      "10",
+		Asset:       txnbuild.NativeAsset{},
+	}
+
+	asset := txnbuild.CreditAsset{"ABCD", kp.Address()}
+	pathPaymentStrictSend := txnbuild.PathPaymentStrictSend{
+		SendAsset:   asset,
+		SendAmount:  "10",
+		Destination: "GDYM6SBBGDF6ZDRM2SKGVIWM257Q4V63V3IYNDQQWPKNV4QDERS4YTLX",
+		DestAsset:   txnbuild.NativeAsset{},
+		DestMin:     "1",
+		Path:        []txnbuild.Asset{asset},
+	}
+
+	pathPaymentStrictReceive := txnbuild.PathPaymentStrictReceive{
+		SendAsset:   asset,
+		SendMax:     "10",
+		Destination: "GD2JTIDP2JJKNIDXW4L6AU2RYFXZIUH3YFIS43PJT2467AP46CWBHSCN",
+		DestAsset:   txnbuild.NativeAsset{},
+		DestAmount:  "1",
+		Path:        []txnbuild.Asset{asset},
+	}
+
+	accountMerge := txnbuild.AccountMerge{
+		Destination: "GBVZZ5XPHECNGA5SENAJP4C6ZJ7FGZ55ZZUCTFTHREZM73LKUGCQDRHR",
+	}
+
+	testCases := []struct {
+		desc         string
+		destination  string
+		expected     string
+		operations   []txnbuild.Operation
+		mockNotFound bool
+	}{
+		{
+			desc:        "payment operation",
+			destination: "GAYHAAKPAQLMGIJYMIWPDWCGUCQ5LAWY4Q7Q3IKSP57O7GUPD3NEOSEA",
+			expected:    "MemoRequired:Operation[0](Payment) - Destination: GAYHAAKPAQLMGIJYMIWPDWCGUCQ5LAWY4Q7Q3IKSP57O7GUPD3NEOSEA requires a memo in the transaction",
+			operations: []txnbuild.Operation{
+				&paymentMemoRequired,
+				&pathPaymentStrictReceive,
+				&pathPaymentStrictSend,
+				&accountMerge,
+			},
+		},
+		{
+			desc:        "strict receive operation",
+			destination: "GD2JTIDP2JJKNIDXW4L6AU2RYFXZIUH3YFIS43PJT2467AP46CWBHSCN",
+			expected:    "MemoRequired:Operation[1](PathPaymentStrictReceive) - Destination: GD2JTIDP2JJKNIDXW4L6AU2RYFXZIUH3YFIS43PJT2467AP46CWBHSCN requires a memo in the transaction",
+			operations: []txnbuild.Operation{
+				&paymentNoMemo,
+				&pathPaymentStrictReceive,
+			},
+			mockNotFound: true,
+		},
+		{
+			desc:        "strict send operation",
+			destination: "GDYM6SBBGDF6ZDRM2SKGVIWM257Q4V63V3IYNDQQWPKNV4QDERS4YTLX",
+			expected:    "MemoRequired:Operation[1](PathPaymentStrictSend) - Destination: GDYM6SBBGDF6ZDRM2SKGVIWM257Q4V63V3IYNDQQWPKNV4QDERS4YTLX requires a memo in the transaction",
+			operations: []txnbuild.Operation{
+				&paymentNoMemo,
+				&pathPaymentStrictSend,
+			},
+			mockNotFound: true,
+		},
+		{
+			desc:        "merge account operation",
+			destination: "GBVZZ5XPHECNGA5SENAJP4C6ZJ7FGZ55ZZUCTFTHREZM73LKUGCQDRHR",
+			expected:    "MemoRequired:Operation[1](AccountMerge) - Destination: GBVZZ5XPHECNGA5SENAJP4C6ZJ7FGZ55ZZUCTFTHREZM73LKUGCQDRHR requires a memo in the transaction",
+			operations: []txnbuild.Operation{
+				&paymentNoMemo,
+				&accountMerge,
+			},
+			mockNotFound: true,
+		},
+		{
+			desc: "two operations with same destination",
+			operations: []txnbuild.Operation{
+				&paymentNoMemo,
+				&paymentNoMemo,
+			},
+			mockNotFound: true,
+		},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.desc, func(t *testing.T) {
+			tx := txnbuild.Transaction{
+				SourceAccount: &sourceAccount,
+				Operations:    tc.operations,
+				Timebounds:    txnbuild.NewTimebounds(0, 10),
+				Network:       network.TestNetworkPassphrase,
+			}
+
+			if len(tc.destination) > 0 {
+				hmock.On(
+					"GET",
+					fmt.Sprintf("https://localhost/accounts/%s/data/config.memo_required", tc.destination),
+				).ReturnJSON(200, data)
+			}
+
+			if tc.mockNotFound {
+				hmock.On(
+					"GET",
+					"https://localhost/accounts/GDWIRURRED6SQSZVQVVMK46PE2MOZEKHV6ZU54JG3NPVRDIF4XCXYYW4/data/config.memo_required",
+				).ReturnJSON(404, notFound)
+			}
+
+			err := client.checkMemoRequired(tx)
+
+			if len(tc.expected) > 0 {
+				tt.Error(err)
+				tt.Contains(err.Error(), tc.expected)
+			} else {
+				tt.NoError(err)
+			}
+		})
+	}
 }
 
 func TestAccounts(t *testing.T) {
