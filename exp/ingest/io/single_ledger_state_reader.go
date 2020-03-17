@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"io"
 	"sync"
+	"time"
 
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/support/historyarchive"
@@ -38,6 +39,7 @@ type SingleLedgerStateReader struct {
 
 	// This should be set to true in tests only
 	disableBucketListHashValidation bool
+	sleep                           func(time.Duration)
 }
 
 // Ensure SingleLedgerStateReader implements ChangeReader
@@ -59,12 +61,16 @@ type tempSet interface {
 	Close() error
 }
 
-const msrBufferSize = 50000
+const (
+	msrBufferSize = 50000
 
-// preloadedEntries defines a number of bucket entries to preload from a
-// bucket in a single run. This is done to allow preloading keys from
-// temp set.
-const preloadedEntries = 20000
+	// preloadedEntries defines a number of bucket entries to preload from a
+	// bucket in a single run. This is done to allow preloading keys from
+	// temp set.
+	preloadedEntries = 20000
+
+	sleepDuration = time.Second
+)
 
 // MakeSingleLedgerStateReader is a factory method for SingleLedgerStateReader.
 // `maxStreamRetries` determines how many times the reader will retry when encountering
@@ -98,7 +104,26 @@ func MakeSingleLedgerStateReader(
 		closeOnce:        sync.Once{},
 		done:             make(chan bool),
 		maxStreamRetries: maxStreamRetries,
+		sleep:            time.Sleep,
 	}, nil
+}
+
+func (msr *SingleLedgerStateReader) bucketExists(hash historyarchive.Hash) (bool, error) {
+	duration := sleepDuration
+	var exists bool
+	var err error
+	for attempts := 0; ; attempts++ {
+		exists, err = msr.archive.BucketExists(hash)
+		if err == nil {
+			return exists, nil
+		}
+		if attempts >= msr.maxStreamRetries {
+			break
+		}
+		msr.sleep(duration)
+		duration *= 2
+	}
+	return exists, err
 }
 
 // streamBuckets is internal method that streams buckets from the given HAS.
@@ -152,7 +177,7 @@ func (msr *SingleLedgerStateReader) streamBuckets() {
 			continue
 		}
 
-		exists, err := msr.archive.BucketExists(hash)
+		exists, err := msr.bucketExists(hash)
 		if err != nil {
 			msr.readChan <- msr.error(
 				errors.Wrapf(err, "error checking if bucket exists: %s", hash),
