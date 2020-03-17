@@ -1,7 +1,7 @@
 -- +migrate Up
 
 CREATE TABLE accounts (
-  id TEXT NOT NULL PRIMARY KEY,
+  id UUID NOT NULL PRIMARY KEY,
   created_at TIMESTAMP NOT NULL,
   deleted_at TIMESTAMP,
 

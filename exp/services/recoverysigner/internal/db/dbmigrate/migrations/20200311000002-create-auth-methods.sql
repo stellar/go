@@ -3,11 +3,11 @@
 CREATE TYPE auth_method_type AS ENUM ('stellar_address', 'phone_number', 'email');
 
 CREATE TABLE auth_methods (
-  id TEXT NOT NULL PRIMARY KEY,
+  id UUID NOT NULL PRIMARY KEY,
   created_at TIMESTAMP NOT NULL,
   deleted_at TIMESTAMP,
 
-  identity_id TEXT NOT NULL REFERENCES identities(id) ON DELETE CASCADE,
+  identity_id UUID NOT NULL REFERENCES identities(id) ON DELETE CASCADE,
   "type" auth_method_type NOT NULL,
   value text NOT NULL
 );
