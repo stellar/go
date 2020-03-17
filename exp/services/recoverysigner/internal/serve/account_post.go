@@ -27,7 +27,7 @@ type accountPostRequest struct {
 
 func (r accountPostRequest) Validate() error {
 	if len(r.Identities) == 0 {
-		return errors.Errorf("identities not provided at least one required")
+		return errors.Errorf("no identities provided but at least one is required")
 	}
 	for _, i := range r.Identities {
 		err := i.Validate()
