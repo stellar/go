@@ -469,8 +469,21 @@ func (c *Client) SubmitTransactionXDR(transactionXdr string) (txSuccess hProtoco
 
 // SubmitTransaction submits a transaction to the network. err can be either error object or horizon.Error object.
 // See https://www.stellar.org/developers/horizon/reference/endpoints/transactions-create.html
-func (c *Client) SubmitTransaction(transaction txnbuild.Transaction) (txSuccess hProtocol.TransactionSuccess,
-	err error) {
+func (c *Client) SubmitTransaction(transaction txnbuild.Transaction, opts ...SubmitTxOpt) (txSuccess hProtocol.TransactionSuccess, err error) {
+	skipMemoRequired := false
+	for _, opt := range opts {
+		if opt == SkipMemoRequiredCheck {
+			skipMemoRequired = true
+		}
+	}
+
+	if !skipMemoRequired && transaction.Memo == nil {
+		err = c.checkMemoRequired(transaction)
+		if err != nil {
+			return
+		}
+	}
+
 	txeBase64, err := transaction.Base64()
 	if err != nil {
 		err = errors.Wrap(err, "Unable to convert transaction object to base64 string")

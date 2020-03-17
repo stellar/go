@@ -39,17 +39,6 @@ func TestCheckMemoRequired(t *testing.T) {
 		HTTP:       hmock,
 	}
 
-	data := map[string]string{
-		"value": "MQ==",
-	}
-
-	notFound := map[string]interface{}{
-		"type":   "https://stellar.org/horizon-errors/not_found",
-		"title":  "Resource Missing",
-		"status": 404,
-		"detail": "The resource at the url requested was not found.  This usually occurs for one of two reasons:  The url requested is not valid, or no data in our database could be found with the parameters provided.",
-	}
-
 	kp := keypair.MustParseFull("SA26PHIKZM6CXDGR472SSGUQQRYXM6S437ZNHZGRM6QA4FOPLLLFRGDX")
 	sourceAccount := txnbuild.NewSimpleAccount(kp.Address(), int64(0))
 
@@ -158,14 +147,14 @@ func TestCheckMemoRequired(t *testing.T) {
 				hmock.On(
 					"GET",
 					fmt.Sprintf("https://localhost/accounts/%s/data/config.memo_required", tc.destination),
-				).ReturnJSON(200, data)
+				).ReturnJSON(200, memoRequiredResponse)
 			}
 
 			if tc.mockNotFound {
 				hmock.On(
 					"GET",
 					"https://localhost/accounts/GDWIRURRED6SQSZVQVVMK46PE2MOZEKHV6ZU54JG3NPVRDIF4XCXYYW4/data/config.memo_required",
-				).ReturnJSON(404, notFound)
+				).ReturnString(404, notFoundResponse)
 			}
 
 			err := client.checkMemoRequired(tx)
@@ -963,7 +952,7 @@ func TestSubmitTransactionRequest(t *testing.T) {
 		On("POST", "https://localhost/transactions").
 		ReturnString(400, transactionFailure)
 
-	_, err = client.SubmitTransaction(tx)
+	_, err = client.SubmitTransaction(tx, SkipMemoRequiredCheck)
 
 	if assert.Error(t, err) {
 		assert.Contains(t, err.Error(), "horizon error")
@@ -977,7 +966,7 @@ func TestSubmitTransactionRequest(t *testing.T) {
 		On("POST", "https://localhost/transactions").
 		ReturnError("http.Client error")
 
-	_, err = client.SubmitTransaction(tx)
+	_, err = client.SubmitTransaction(tx, SkipMemoRequiredCheck)
 	if assert.Error(t, err) {
 		assert.Contains(t, err.Error(), "http.Client error")
 		_, ok := err.(*Error)
@@ -990,6 +979,52 @@ func TestSubmitTransactionRequest(t *testing.T) {
 		"https://localhost/transactions?tx=AAAAAAU08yUQ8sHqhY8j9mXWwERfHC%2F3cKFSe%2FspAr0rGtO2AAAAZAAAAAAAAAABAAAAAQAAAAAAAAAAAAAAAAAAAAoAAAAAAAAAAQAAAAAAAAABAAAAAAU08yUQ8sHqhY8j9mXWwERfHC%2F3cKFSe%2FspAr0rGtO2AAAAAAAAAAAF9eEAAAAAAAAAAAErGtO2AAAAQKZUywjRbomZ8k14vOAf4%2Bx5kDYCBgZmXzNoeCQ6%2BFnDrkeP05oJ3DrKywbnmq7tfaxq4kDB%2FFqhMviDBuYf3gc%3D",
 	).ReturnString(200, txSuccess)
 
+	_, err = client.SubmitTransaction(tx, SkipMemoRequiredCheck)
+	assert.NoError(t, err)
+
+	// successful tx with config.memo_required not found
+	hmock.On(
+		"POST",
+		"https://localhost/transactions?tx=AAAAAAU08yUQ8sHqhY8j9mXWwERfHC%2F3cKFSe%2FspAr0rGtO2AAAAZAAAAAAAAAABAAAAAQAAAAAAAAAAAAAAAAAAAAoAAAAAAAAAAQAAAAAAAAABAAAAAAU08yUQ8sHqhY8j9mXWwERfHC%2F3cKFSe%2FspAr0rGtO2AAAAAAAAAAAF9eEAAAAAAAAAAAErGtO2AAAAQKZUywjRbomZ8k14vOAf4%2Bx5kDYCBgZmXzNoeCQ6%2BFnDrkeP05oJ3DrKywbnmq7tfaxq4kDB%2FFqhMviDBuYf3gc%3D",
+	).ReturnString(200, txSuccess)
+
+	hmock.On(
+		"GET",
+		"https://localhost/accounts/GACTJ4ZFCDZMD2UFR4R7MZOWYBCF6HBP65YKCUT37MUQFPJLDLJ3N5D2/data/config.memo_required",
+	).ReturnString(404, notFoundResponse)
+
+	_, err = client.SubmitTransaction(tx)
+	assert.NoError(t, err)
+
+	// memo required - does not submit transaction
+	hmock.On(
+		"GET",
+		"https://localhost/accounts/GACTJ4ZFCDZMD2UFR4R7MZOWYBCF6HBP65YKCUT37MUQFPJLDLJ3N5D2/data/config.memo_required",
+	).ReturnJSON(200, memoRequiredResponse)
+
+	_, err = client.SubmitTransaction(tx)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "MemoRequired:Operation[0](Payment) - Destination: GACTJ4ZFCDZMD2UFR4R7MZOWYBCF6HBP65YKCUT37MUQFPJLDLJ3N5D2 requires a memo in the transaction")
+
+	// skips memo check if tx includes a memo
+	hmock.On(
+		"POST",
+		"https://localhost/transactions?tx=AAAAAAU08yUQ8sHqhY8j9mXWwERfHC%2F3cKFSe%2FspAr0rGtO2AAAAZAAAAAAAAAACAAAAAQAAAAAAAAAAAAAAAAAAAAoAAAABAAAACkhlbGxvV29ybGQAAAAAAAEAAAAAAAAAAQAAAAAFNPMlEPLB6oWPI%2FZl1sBEXxwv93ChUnv7KQK9KxrTtgAAAAAAAAAABfXhAAAAAAAAAAABKxrTtgAAAEDusMdn4dwEhBtYHIxkvdpPbfVa7CM6HG9vRzWLe8%2FMCtQIT4d0IgleroyT%2FF2EmPpAQQmuDXm4DGR7c%2FeTa9YL",
+	).ReturnString(200, txSuccess)
+
+	tx = txnbuild.Transaction{
+		Memo:          txnbuild.MemoText("HelloWorld"),
+		SourceAccount: &sourceAccount,
+		Operations:    []txnbuild.Operation{&payment},
+		Timebounds:    txnbuild.NewTimebounds(0, 10),
+		Network:       network.TestNetworkPassphrase,
+	}
+
+	err = tx.Build()
+	assert.NoError(t, err)
+
+	err = tx.Sign(kp)
+	assert.NoError(t, err)
 	_, err = client.SubmitTransaction(tx)
 	assert.NoError(t, err)
 }
@@ -1323,6 +1358,10 @@ var accountResponse = `{
     "test": "dGVzdA=="
   }
 }`
+
+var memoRequiredResponse = map[string]string{
+	"value": "MQ==",
+}
 
 var notFoundResponse = `{
   "type": "https://stellar.org/horizon-errors/not_found",

@@ -139,6 +139,13 @@ type Client struct {
 	clock *clock.Clock
 }
 
+type SubmitTxOpt int
+
+const (
+	// SkipMemoRequiredCheck skips sep29 check
+	SkipMemoRequiredCheck SubmitTxOpt = iota
+)
+
 // ClientInterface contains methods implemented by the horizon client
 type ClientInterface interface {
 	Accounts(request AccountsRequest) (hProtocol.AccountsPage, error)
@@ -155,7 +162,7 @@ type ClientInterface interface {
 	Operations(request OperationRequest) (operations.OperationsPage, error)
 	OperationDetail(id string) (operations.Operation, error)
 	SubmitTransactionXDR(transactionXdr string) (hProtocol.TransactionSuccess, error)
-	SubmitTransaction(transactionXdr txnbuild.Transaction) (hProtocol.TransactionSuccess, error)
+	SubmitTransaction(transactionXdr txnbuild.Transaction, opts ...SubmitTxOpt) (hProtocol.TransactionSuccess, error)
 	Transactions(request TransactionRequest) (hProtocol.TransactionsPage, error)
 	TransactionDetail(txHash string) (hProtocol.Transaction, error)
 	OrderBook(request OrderBookRequest) (hProtocol.OrderBookSummary, error)
