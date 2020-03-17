@@ -201,8 +201,41 @@ func TestDBCommand_Migrate_invalidCount(t *testing.T) {
 		messages = append(messages, l.Message)
 	}
 	wantMessages := []string{
-		"Invalid migration count, must be a number or not provided.",
-		"Invalid migration count, must be a number or not provided.",
+		"Invalid migration count, must be a number.",
+		"Invalid migration count, must be a number.",
+	}
+	assert.Equal(t, wantMessages, messages)
+}
+
+func TestDBCommand_Migrate_zeroCount(t *testing.T) {
+	db := dbtest.Postgres(t)
+	log := log.New()
+
+	dbCommand := DBCommand{
+		Logger:      log,
+		DatabaseURL: db.DSN,
+	}
+
+	logsGet := log.StartTest(logrus.InfoLevel)
+
+	dbCommand.Migrate(&cobra.Command{}, []string{"down", "0"})
+	dbCommand.Migrate(&cobra.Command{}, []string{"up", "0"})
+
+	session, err := dbpkg.Open(db.DSN)
+	require.NoError(t, err)
+	tables := []string{}
+	err = session.Select(&tables, `SELECT table_name FROM information_schema.tables WHERE table_schema='public'`)
+	require.NoError(t, err)
+	assert.Empty(t, tables)
+
+	logs := logsGet()
+	messages := []string{}
+	for _, l := range logs {
+		messages = append(messages, l.Message)
+	}
+	wantMessages := []string{
+		"Invalid migration count, must be a number greater than zero.",
+		"Invalid migration count, must be a number greater than zero.",
 	}
 	assert.Equal(t, wantMessages, messages)
 }

@@ -82,7 +82,11 @@ func (c *DBCommand) Migrate(cmd *cobra.Command, args []string) {
 	if len(args) >= 2 {
 		count, err = strconv.Atoi(args[1])
 		if err != nil {
-			c.Logger.Errorf("Invalid migration count, must be a number or not provided.")
+			c.Logger.Errorf("Invalid migration count, must be a number.")
+			return
+		}
+		if count < 1 {
+			c.Logger.Errorf("Invalid migration count, must be a number greater than zero.")
 			return
 		}
 	}

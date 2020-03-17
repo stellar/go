@@ -46,16 +46,13 @@ func (h accountListHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		} else {
 			accResp := accountResponse{
 				Address: acc.Address,
-				Identities: accountResponseIdentities{
-					Owner: accountResponseIdentity{
-						Present: acc.OwnerIdentities.Present(),
-					},
-					Other: accountResponseIdentity{
-						Present: acc.OtherIdentities.Present(),
-					},
-				},
-				Identity: "account",
-				Signer:   h.SigningAddress.Address(),
+				Signer:  h.SigningAddress.Address(),
+			}
+			for _, i := range acc.Identities {
+				accRespIdentity := accountResponseIdentity{
+					Role: i.Role,
+				}
+				accResp.Identities = append(accResp.Identities, accRespIdentity)
 			}
 			resp.Accounts = append(resp.Accounts, accResp)
 		}
@@ -68,25 +65,21 @@ func (h accountListHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		for _, acc := range accs {
-			identity := ""
-			switch {
-			case claims.Address == acc.OwnerIdentities.Address:
-				identity = "owner"
-			case claims.Address == acc.OtherIdentities.Address:
-				identity = "other"
-			}
 			accResp := accountResponse{
 				Address: acc.Address,
-				Identities: accountResponseIdentities{
-					Owner: accountResponseIdentity{
-						Present: acc.OwnerIdentities.Present(),
-					},
-					Other: accountResponseIdentity{
-						Present: acc.OtherIdentities.Present(),
-					},
-				},
-				Identity: identity,
-				Signer:   h.SigningAddress.Address(),
+				Signer:  h.SigningAddress.Address(),
+			}
+			for _, i := range acc.Identities {
+				accRespIdentity := accountResponseIdentity{
+					Role: i.Role,
+				}
+				for _, m := range i.AuthMethods {
+					if m.Type == account.AuthMethodTypeAddress && m.Value == claims.Address {
+						accRespIdentity.Authenticated = true
+						break
+					}
+				}
+				accResp.Identities = append(accResp.Identities, accRespIdentity)
 			}
 			resp.Accounts = append(resp.Accounts, accResp)
 		}
@@ -101,25 +94,21 @@ func (h accountListHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		for _, acc := range accs {
-			identity := ""
-			switch {
-			case claims.PhoneNumber == acc.OwnerIdentities.PhoneNumber:
-				identity = "owner"
-			case claims.PhoneNumber == acc.OtherIdentities.PhoneNumber:
-				identity = "other"
-			}
 			accResp := accountResponse{
 				Address: acc.Address,
-				Identities: accountResponseIdentities{
-					Owner: accountResponseIdentity{
-						Present: acc.OwnerIdentities.Present(),
-					},
-					Other: accountResponseIdentity{
-						Present: acc.OtherIdentities.Present(),
-					},
-				},
-				Identity: identity,
-				Signer:   h.SigningAddress.Address(),
+				Signer:  h.SigningAddress.Address(),
+			}
+			for _, i := range acc.Identities {
+				accRespIdentity := accountResponseIdentity{
+					Role: i.Role,
+				}
+				for _, m := range i.AuthMethods {
+					if m.Type == account.AuthMethodTypePhoneNumber && m.Value == claims.PhoneNumber {
+						accRespIdentity.Authenticated = true
+						break
+					}
+				}
+				accResp.Identities = append(accResp.Identities, accRespIdentity)
 			}
 			resp.Accounts = append(resp.Accounts, accResp)
 		}
@@ -134,25 +123,21 @@ func (h accountListHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		for _, acc := range accs {
-			identity := ""
-			switch {
-			case claims.Email == acc.OwnerIdentities.Email:
-				identity = "owner"
-			case claims.Email == acc.OtherIdentities.Email:
-				identity = "other"
-			}
 			accResp := accountResponse{
 				Address: acc.Address,
-				Identities: accountResponseIdentities{
-					Owner: accountResponseIdentity{
-						Present: acc.OwnerIdentities.Present(),
-					},
-					Other: accountResponseIdentity{
-						Present: acc.OtherIdentities.Present(),
-					},
-				},
-				Identity: identity,
-				Signer:   h.SigningAddress.Address(),
+				Signer:  h.SigningAddress.Address(),
+			}
+			for _, i := range acc.Identities {
+				accRespIdentity := accountResponseIdentity{
+					Role: i.Role,
+				}
+				for _, m := range i.AuthMethods {
+					if m.Type == account.AuthMethodTypeEmail && m.Value == claims.Email {
+						accRespIdentity.Authenticated = true
+						break
+					}
+				}
+				accResp.Identities = append(accResp.Identities, accRespIdentity)
 			}
 			resp.Accounts = append(resp.Accounts, accResp)
 		}
