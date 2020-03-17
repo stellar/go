@@ -68,6 +68,7 @@ func (am accountPostRequestIdentityAuthMethod) Validate() error {
 	if !account.AuthMethodType(am.Type).Valid() {
 		return errors.Errorf("auth method type %q unrecognized", am.Type)
 	}
+	// TODO: Validate auth method values: Stellar address, phone number and email.
 	return nil
 }
 
